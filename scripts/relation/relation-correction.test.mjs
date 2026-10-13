@@ -16,6 +16,7 @@ import { planRelationBackfill } from '../factory/admission.mjs';
 import { applyRelationCorrections, approvedAmendments, correctionItemsFor, nextPacketId, packetTextFor } from './backfill-apply.mjs';
 import { newQueueState } from './backfill-queue.mjs';
 import { buildRelationIndex } from './candidate-retrieval.mjs';
+import { copyShardedAuthority, readShardedJson } from '../../tests/helpers/sharded-authority.mjs';
 
 // #501 through the real production path: real canonical records, the real semantic authority and the real ledger and
 // audit validators, applied in a scratch copy of the data files (the repository is never written). Nothing here is
@@ -28,7 +29,7 @@ async function scratchRoot() {
   const root = await mkdtemp(path.join(os.tmpdir(), 'relation-correction-'));
   await mkdir(path.join(root, 'data/validation'), { recursive: true });
   await cp(path.join(REPO, 'data/canonical'), path.join(root, 'data/canonical'), { recursive: true });
-  await cp(path.join(REPO, AUTHORITY), path.join(root, AUTHORITY));
+  await copyShardedAuthority(path.join(REPO, AUTHORITY), path.join(root, AUTHORITY));
   for (const dir of ['data/candidates', 'data/reviews']) await symlink(path.join(REPO, dir), path.join(root, dir));
   await cp(path.join(REPO, 'data/relation-backfill'), path.join(root, 'data/relation-backfill'), { recursive: true }).catch((error) => { if (error?.code !== 'ENOENT') throw error; });
   return root;
@@ -42,7 +43,7 @@ const readRecords = async (root) => {
   }
   return records;
 };
-const readAuthority = async (root) => JSON.parse(await readFile(path.join(root, AUTHORITY), 'utf8'));
+const readAuthority = async (root) => (await readShardedJson(path.join(root, AUTHORITY)));
 const recordPaths = async (root) => {
   const map = new Map();
   for (const name of await readdir(path.join(root, 'data/canonical'))) {

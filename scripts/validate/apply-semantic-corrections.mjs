@@ -1,4 +1,6 @@
 import { createHash } from 'node:crypto';
+import { readShardedJson } from '../lib/sharded-json.mjs';
+import { planDecisionSourceFiles } from '../lib/sharded-json-sources.mjs';
 import {
   mkdir,
   mkdtemp,
@@ -780,7 +782,7 @@ function prepareBoundaryDecisions(boundaryDecisions, manifest, decisionSource) {
   return next;
 }
 
-async function promoteFiles(files) {
+export async function promoteFiles(files) {
   const entries = [...files.entries()];
   const originals = await Promise.all(entries.map(async ([filePath]) => {
     try {
@@ -792,6 +794,7 @@ async function promoteFiles(files) {
   }));
   try {
     for (const [filePath, bytes] of entries) {
+      if (bytes === null) { await rm(filePath, { force: true }); continue; }
       await mkdir(path.dirname(filePath), { recursive: true });
       await writeFile(filePath, bytes);
     }
@@ -897,7 +900,7 @@ export async function applyCorrections({
   if (!correctionManifestPath) fail('apply-semantic-corrections requires --corrections=<path>');
   const [manifest, decisionSource, canonical, boundaryDecisions] = await Promise.all([
     readJson(correctionManifestPath),
-    readJson(decisionSourcePath),
+    readShardedJson(decisionSourcePath),
     readCanonicalRecords(canonicalDirectory),
     readJson(boundaryDecisionsPath),
   ]);
@@ -992,7 +995,9 @@ export async function applyCorrections({
         : path.join(canonicalDirectory, relativePath);
       promotionFiles.set(targetPath, await readFile(temporaryPath));
     }
-    promotionFiles.set(decisionSourcePath, await readFile(temporaryDecisionSourcePath));
+    for (const file of await planDecisionSourceFiles(await readFile(temporaryDecisionSourcePath), decisionSourcePath)) {
+      promotionFiles.set(file.path, file.bytes);
+    }
     promotionFiles.set(boundaryDecisionsPath, await readFile(temporaryBoundaryDecisionsPath));
     if (reviewOutputPath) {
       promotionFiles.set(reviewOutputPath, await readFile(temporaryReviewOutputPath));

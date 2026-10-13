@@ -37,7 +37,7 @@ function gitRun(root, args, { allowFailure = false } = {}) {
 }
 
 // Full snapshot files for Stage 3 and explicit factory audits.
-export const FACTORY_SNAPSHOT_PATHSPEC = ['data/candidates', 'data/reviews', 'data/canonical', 'data/relation-backfill', 'data/validation/canonical-semantic-decision-source.json'];
+export const FACTORY_SNAPSHOT_PATHSPEC = ['data/candidates', 'data/reviews', 'data/canonical', 'data/relation-backfill', 'data/validation/canonical-semantic-decision-source.json', 'data/validation/canonical-semantic-decision-source.shards'];
 
 export function createGitRepository({ root = process.cwd() } = {}) {
   return {
@@ -206,6 +206,7 @@ export async function loadFactorySnapshot({ git, headSha }) {
   const canonicalEntries = [];
   const semanticAuthorityPath = 'data/validation/canonical-semantic-decision-source.json';
   if (files.includes(semanticAuthorityPath)) sourceFiles.set(semanticAuthorityPath, git.show(headSha, semanticAuthorityPath));
+  for (const file of files.filter((name) => name.startsWith('data/validation/canonical-semantic-decision-source.shards/'))) sourceFiles.set(file, git.show(headSha, file));
   for (const [batchId, paths] of candidateFiles) {
     if (![2, 3].includes(paths.size) || !paths.has('manifest.json') || !paths.has('candidates.jsonl')) {
       throw new Stage2WorkerError(batchId + ' has an incomplete candidate artifact set');

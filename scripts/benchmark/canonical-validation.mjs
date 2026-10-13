@@ -38,6 +38,7 @@ import { validateDatasetRecords } from '../validate/dataset-integrity.mjs';
 import { auditCanonicalLexicalQuality } from '../validate/lexical-quality.mjs';
 import { normalizeCanonicalDirectory } from '../normalize/canonical.mjs';
 import { validateSharedDictionary } from '../ci/validate-shared-dictionary.mjs';
+import { readShardedJson } from '../lib/sharded-json.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
@@ -1707,7 +1708,7 @@ export async function benchmarkCanonicalValidation({
         : undefined),
   );
   const semanticDecisionSourceTemplate = suppliedSemanticDecisionSourceTemplate
-    ?? JSON.parse(await readFile(DEFAULT_SEMANTIC_DECISION_SOURCE_PATH, 'utf8'));
+    ?? await readShardedJson(DEFAULT_SEMANTIC_DECISION_SOURCE_PATH);
   const canonicalDirectory = path.join(REPOSITORY_DIRECTORY, 'data', 'canonical');
   const inputPreparationStart = now();
   const canonicalTemplateContext = await loadCanonicalContext({

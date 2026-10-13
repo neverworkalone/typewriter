@@ -19,6 +19,7 @@ import {
   WRITER_ROUTE_RELATION_TYPES,
   WRITER_ROUTE_TARGET_POS,
 } from './sense-boundary.mjs';
+import { readShardedJson, readShardedJsonLogicalBytes } from '../lib/sharded-json.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
@@ -323,7 +324,7 @@ async function buildReport({ decisions, canonical, decisionSource, batchDecision
     fail('the reviewed snapshot must retain 42 independently supported splits and hold 207 unresolved boundaries');
   }
   const decisionsBytes = await readFile(DECISIONS_PATH);
-  const semanticDecisionSourceBytes = await readFile(DECISION_SOURCE_PATH);
+  const semanticDecisionSourceBytes = await readShardedJsonLogicalBytes(DECISION_SOURCE_PATH);
   const surfaceFormReviewBytes = await readFile(SURFACE_FORM_REVIEW_PATH);
   const totalSenseCount = canonical.records.reduce((sum, { record }) => sum + record.senses.length, 0);
   const inventory = {
@@ -425,7 +426,7 @@ export async function runIssue225Audit({ write = false } = {}) {
   const [decisions, canonical, decisionSource, batchDecisionSources] = await Promise.all([
     readJson(DECISIONS_PATH),
     readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY),
-    readJson(DECISION_SOURCE_PATH),
+    readShardedJson(DECISION_SOURCE_PATH),
     readAuthoredBatchDecisionSources(),
   ]);
   const outputs = await buildReport({

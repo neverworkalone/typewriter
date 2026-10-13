@@ -23,6 +23,7 @@ import { canonicalSnapshotDigest, usageKeyOfRow } from './stage1.mjs';
 import { validateCandidateTransition, validateLinkedTransition } from './transitions.mjs';
 import { COMPACT_CONTRACT, TRASH_DIRECTORY, validateTrashChunk, validateArchivedUnresolved } from './permanent-trash.mjs';
 import { GIT_MAX_BUFFER } from './git-limits.mjs';
+import { readShardedJson } from '../lib/sharded-json.mjs';
 
 const REPOSITORY_DIRECTORY = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const DEFAULT_BASE_REF = 'origin/master';
@@ -240,10 +241,10 @@ export async function validateFactoryRepository({ root = REPOSITORY_DIRECTORY, b
 async function validateStage3SemanticAuthorityLinks({ root, reviewArtifacts }) {
   const complete = [...reviewArtifacts].filter(([, { manifest }]) => manifest.status === 'complete');
   if (complete.length === 0) return [];
-  const sourceText = await readOptional(path.join(root, 'data/validation/canonical-semantic-decision-source.json'));
-  if (sourceText === undefined) return ['complete Stage 3 admissions require the complete canonical semantic decision source'];
+  const sourcePath = path.join(root, 'data/validation/canonical-semantic-decision-source.json');
+  if (await readOptional(sourcePath) === undefined) return ['complete Stage 3 admissions require the complete canonical semantic decision source'];
   let source;
-  try { source = JSON.parse(sourceText); }
+  try { source = await readShardedJson(sourcePath); }
   catch { return ['complete canonical semantic decision source is invalid JSON']; }
   const events = new Map((source.factory_admissions ?? []).map((event) => [`${event.batch_id}-a${event.attempt}`, event]));
   const errors = [];
@@ -315,10 +316,10 @@ export function walkStage3History(entryId, canonical, changes) {
 // Relation-only backfill packets (#446) are recorded as semantic-authority events instead of review manifests;
 // their changes join the same digest chain a record's Stage 3 history is walked through.
 async function readBackfillEvents(root) {
-  const text = await readOptional(path.join(root, 'data/validation/canonical-semantic-decision-source.json'));
-  if (text === undefined) return [];
+  const sourcePath = path.join(root, 'data/validation/canonical-semantic-decision-source.json');
+  if (await readOptional(sourcePath) === undefined) return [];
   let events;
-  try { events = JSON.parse(text).factory_admissions ?? []; } catch { return []; }
+  try { events = (await readShardedJson(sourcePath)).factory_admissions ?? []; } catch { return []; }
   return events.filter((event) => /^R\d{6}$/u.test(event?.batch_id));
 }
 

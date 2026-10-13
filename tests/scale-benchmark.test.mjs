@@ -14,6 +14,7 @@ import {
 import { findAmbiguousParticleFragments } from '../scripts/validate/lexical-quality.mjs';
 import { loadCanonicalContext } from '../scripts/validate/canonical-context.mjs';
 import { buildCanonicalSemanticAudit, createCanonicalAuditCache, sha256Json } from '../scripts/validate/semantic-audit.mjs';
+import { readShardedJsonSync } from '../scripts/lib/sharded-json.mjs';
 
 const templates = [
   {
@@ -733,7 +734,7 @@ test('synthetic benchmark decision source passes the shared semantic audit again
 test('the synthetic decision source passes the shared semantic audit whichever live authority records carry shared rationale codes', async () => {
   // Records changed by a Stage 3 admission or a relation backfill store inline review text; untouched records reference
   // shared rationale templates by code. The benchmark owns its rationale templates, so the audit passes for any mix.
-  const live = JSON.parse(readFileSync(new URL('../data/validation/canonical-semantic-decision-source.json', import.meta.url), 'utf8'));
+  const live = readShardedJsonSync(new URL('../data/validation/canonical-semantic-decision-source.json', import.meta.url).pathname);
   const inlineRecord = (record) => ({
     record_id: record.record_id,
     record_sha256: record.record_sha256,
@@ -769,7 +770,7 @@ test('the synthetic decision source passes the shared semantic audit whichever l
 test('the shared semantic audit still rejects a generic rationale or one without record, sense and gloss binding in a synthetic source', async () => {
   // Negative controls for the benchmark-owned rationale templates: the same generation path that passes above must be
   // rejected as soon as its rationale text stops citing the reviewed record, sense and gloss.
-  const live = JSON.parse(readFileSync(new URL('../data/validation/canonical-semantic-decision-source.json', import.meta.url), 'utf8'));
+  const live = readShardedJsonSync(new URL('../data/validation/canonical-semantic-decision-source.json', import.meta.url).pathname);
   const directory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-benchmark-negative-'));
   try {
     const canonicalDirectory = path.join(directory, 'canonical');

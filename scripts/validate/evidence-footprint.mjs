@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readShardedJsonLogicalBytes } from '../lib/sharded-json.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
@@ -436,7 +437,7 @@ function baselineDiff(baseline, files) {
 }
 
 async function readArtifact(relativePath) {
-  const bytes = await readFile(path.join(REPOSITORY_DIRECTORY, relativePath));
+  const bytes = await readShardedJsonLogicalBytes(path.join(REPOSITORY_DIRECTORY, relativePath));
   let value;
   try {
     value = JSON.parse(bytes.toString('utf8'));

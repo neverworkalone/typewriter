@@ -65,6 +65,7 @@ import {
   makeProductionState,
   makeSemanticAudit,
 } from './helpers/semantic-audit-fixture.mjs';
+import { copyShardedAuthority, readShardedJson } from './helpers/sharded-authority.mjs';
 
 const BATCH_ID = 'm5-11-expansion-20260913';
 
@@ -141,9 +142,7 @@ async function buildM511PromotionTransactionFixture(temporaryDirectory) {
   const historicalDecisionSourcePath = path.join(temporaryDirectory, 'm5-11-decision-source.json');
   const historicalCanonical = await readCanonicalRecords(prospectiveCanonicalDirectory);
   const historicalIds = new Set(historicalCanonical.records.map(({ record }) => record.id));
-  const historicalDecisionSource = restorePreFactoryDecisionSource(JSON.parse(
-    await readFile(DEFAULT_SEMANTIC_DECISION_SOURCE_PATH, 'utf8'),
-  ), historicalCanonical.records);
+  const historicalDecisionSource = restorePreFactoryDecisionSource(await readShardedJson(DEFAULT_SEMANTIC_DECISION_SOURCE_PATH), historicalCanonical.records);
   const historicalReview = historicalDecisionSource.authored_review;
   const historicalRecords = historicalCanonical.records.map(({ record }) => record);
   const historicalSenseCount = historicalRecords.reduce((sum, record) => sum + record.senses.length, 0);

@@ -488,14 +488,17 @@ export async function applyStage3Admission({ root, git, claim, prepared } = {}) 
   const surfacePlan = await planSurfaceFormDispositions({ root, records: [...projected.values()], judgments: stage3SurfaceFormJudgments(plan.decisions) });
   await applyStage3FileChanges(plan, { root, reviewManifestPath });
   const surfaceFiles = await writeSurfaceFormDispositions(surfacePlan);
-  await writeFile(path.join(root, semanticAuthority.sourcePath), semanticAuthority.sourceText, 'utf8');
+  for (const file of semanticAuthority.sourceFiles) {
+    await mkdir(path.dirname(path.join(root, file.path)), { recursive: true });
+    await writeFile(path.join(root, file.path), file.text, 'utf8');
+  }
   const digest = await canonicalSnapshotDigest(root);
   plan.reviewManifest.admission.canonical_snapshot_digest = digest;
   await writeFile(reviewManifestPath, JSON.stringify(plan.reviewManifest, null, 2) + '\n', 'utf8');
   const marker = path.join(root, MARKER_NAME(claim.batchId, claim.attempt));
   await rm(marker, { force: true });
   const reportFiles = refreshStage3ReportCheckpoints(root);
-  return { ...prepared, semanticAuthority, plan, files: [...new Set([...reportFiles, ...surfaceFiles, ...plan.changes.map((change) => change.path), semanticAuthority.sourcePath, `data/reviews/${claim.batchId}/manifest.json`, MARKER_NAME(claim.batchId, claim.attempt)])] };
+  return { ...prepared, semanticAuthority, plan, files: [...new Set([...reportFiles, ...surfaceFiles, ...plan.changes.map((change) => change.path), ...semanticAuthority.sourceFiles.map((file) => file.path), `data/reviews/${claim.batchId}/manifest.json`, MARKER_NAME(claim.batchId, claim.attempt)])] };
 }
 
 // Existing M9 reports contain live canonical/search/SQLite checkpoint fields.

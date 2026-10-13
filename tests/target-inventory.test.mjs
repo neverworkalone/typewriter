@@ -18,8 +18,9 @@ import {
   DEFAULT_CANONICAL_DIRECTORY,
   readCanonicalRecords,
 } from '../scripts/validate/canonical-jsonl.mjs';
+import { copyShardedAuthority, readShardedJson } from './helpers/sharded-authority.mjs';
 
-const authority = JSON.parse(await readFile('data/validation/canonical-semantic-decision-source.json', 'utf8'));
+const authority = await readShardedJson('data/validation/canonical-semantic-decision-source.json');
 const factoryCreations = (authority.factory_admissions ?? []).flatMap((event) => event.changes).filter((change) => change.operation === 'create').length;
 
 async function readInventory() {

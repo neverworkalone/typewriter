@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { readFile, readdir } from 'node:fs/promises';
+
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -11,6 +13,7 @@ import {
   isGrandfatheredM512ADecisionSource,
   SOURCE_BOUND_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION,
 } from './semantic-decision-row.mjs';
+import { inflateShardedJsonText } from '../lib/sharded-json.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 export const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
@@ -29,6 +32,28 @@ export class ArtifactPolicyError extends Error {
 
 function fail(message, code = 'ARTIFACT_POLICY_ERROR') {
   throw new ArtifactPolicyError(message, code);
+}
+
+// Repository-relative shard paths a manifest references; each must stay inside its own `<name>.shards/` directory.
+function shardReferencePaths(manifestPath, value) {
+  const prefix = `${path.posix.basename(manifestPath, '.json')}.shards/`;
+  const found = new Set();
+  const visit = (node) => {
+    if (Array.isArray(node)) { node.forEach(visit); return; }
+    if (!node || typeof node !== 'object') return;
+    for (const [key, child] of Object.entries(node)) {
+      if (key !== '$shards') { visit(child); continue; }
+      for (const { file } of child) {
+        const normalized = typeof file === 'string' ? path.posix.normalize(file) : '';
+        if (!normalized.startsWith(prefix) || normalized.split('/').includes('..') || !normalized.endsWith('.json')) {
+          fail(`${manifestPath} references a shard outside ${prefix}: ${JSON.stringify(file)}`, 'SHARD_REFERENCE_PATH');
+        }
+        found.add(path.posix.join(path.posix.dirname(manifestPath), normalized));
+      }
+    }
+  };
+  visit(value);
+  return found;
 }
 
 function patternRegExp(pattern) {
@@ -635,8 +660,24 @@ async function validateDurableEvidenceSemantics({ repositoryDirectory, tracked, 
       );
     }
   }
+  // A tracked shard file must be referenced by its manifest, which validates it as part of its logical object below.
+  const shardManifests = new Map();
+  for (const filePath of tracked) {
+    if (!filePath.startsWith('data/') || !/\.shards\//u.test(filePath)) continue;
+    const manifestPath = filePath.replace(/\.shards\/.*$/u, '.json');
+    if (!shardManifests.has(manifestPath)) {
+      let manifestBytes;
+      try { manifestBytes = await readFile(path.join(repositoryDirectory, manifestPath)); } catch (error) { if (error.code !== 'ENOENT') throw error; }
+      shardManifests.set(manifestPath, manifestBytes ? shardReferencePaths(manifestPath, parseJsonWithUniqueKeys(manifestBytes, manifestPath)) : new Set());
+    }
+    if (!shardManifests.get(manifestPath).has(filePath)) {
+      fail(`${filePath} is a tracked shard that its manifest ${manifestPath} does not reference`, 'UNREFERENCED_SHARD');
+    }
+  }
   for (const filePath of tracked) {
     if (!filePath.startsWith('data/')) continue;
+    // Shard files are validated as part of their manifest's logical object below.
+    if (/\.shards\//u.test(filePath)) continue;
     const requiredContractName = requiredDurableContractRole(filePath, semantics);
     const absolutePath = path.join(repositoryDirectory, filePath);
     let bytes;
@@ -650,8 +691,15 @@ async function validateDurableEvidenceSemantics({ repositoryDirectory, tracked, 
       let value;
       try {
         value = parseJsonWithUniqueKeys(bytes, filePath);
+        if (bytes.includes('$shards')) {
+          shardReferencePaths(filePath, value);
+          value = inflateShardedJsonText(bytes.toString('utf8'), (file) => readFileSync(path.join(path.dirname(absolutePath), file), 'utf8'), {
+            parse: (text) => parseJsonWithUniqueKeys(text, filePath),
+          });
+        }
       } catch (error) {
-        if (error.code === 'DUPLICATE_JSON_KEY') throw error;
+        if (error.code === 'DUPLICATE_JSON_KEY' || error.code === 'SHARD_REFERENCE_PATH') throw error;
+        if (error.code === 'ENOENT') fail(`${filePath} references a shard file that does not exist: ${error.path}`, 'SHARD_MISSING');
         continue;
       }
       // Preserve the gate-specific duplication diagnostics before applying the

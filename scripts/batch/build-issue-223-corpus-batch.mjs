@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { readShardedJson, writeShardedJson } from '../lib/sharded-json.mjs';
+import { SEMANTIC_DECISION_SOURCE_ARRAYS } from '../lib/sharded-json-sources.mjs';
 import { createHash } from 'node:crypto';
 import { access, readFile, writeFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
@@ -1105,7 +1107,7 @@ export async function buildIssue223CorpusBatch({
   );
 
   const semanticHistoryPath = path.join(ROOT, 'data/validation/canonical-semantic-decision-source.json');
-  const semanticHistory = JSON.parse(await readFile(semanticHistoryPath, 'utf8'));
+  const semanticHistory = await readShardedJson(semanticHistoryPath);
   const authoredRowsByRecordId = new Map(semanticHistory.authored_review.records.map((row) => [row.record_id, row]));
   for (const decision of semanticDecisions) {
     const record = records.find(({ id }) => id === decision.candidate_record_id);
@@ -1137,7 +1139,7 @@ export async function buildIssue223CorpusBatch({
   semanticHistory.source.canonical_records_sha256 = canonicalDigest;
   semanticHistory.authored_review.source.canonical_records_sha256 = canonicalDigest;
   semanticHistory.authored_review_sha256 = sha256Json(semanticHistory.authored_review);
-  await writeFile(semanticHistoryPath, prettyBytes(semanticHistory));
+  await writeShardedJson(semanticHistory, semanticHistoryPath, { arrays: SEMANTIC_DECISION_SOURCE_ARRAYS });
 
   return {
     batch_id: batchId,

@@ -1,4 +1,5 @@
 import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { readShardedJson } from '../lib/sharded-json.mjs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -81,7 +82,7 @@ export async function rebuildSemanticEvidence({
   coverageOutputPath,
   auditOutputPath,
 } = {}) {
-  const decisionSource = await readJson(decisionSourceInputPath);
+  const decisionSource = await readShardedJson(decisionSourceInputPath);
   const temporaryRoot = !reviewOutputPath || !coverageOutputPath || !auditOutputPath
     ? await mkdtemp(path.join(os.tmpdir(), 'typewriter-semantic-evidence-'))
     : undefined;
