@@ -139,13 +139,13 @@ test('the correction promotion deletes an emptied shard with the manifest and re
     const next = { ...logical, factory_admissions: [admission(1)] };
     const files = await planDecisionSourceFiles(Buffer.from(JSON.stringify(next)), manifestPath);
 
-    // A later write in the same promotion fails (its parent is a regular file): everything is restored.
-    const blocker = path.join(directory, 'blocker');
-    await writeFile(blocker, 'file');
+    // The last write fails after the manifest, the changed shard and the deletion were applied (its payload is not
+    // writable; its file does not exist, so the snapshot step succeeds): everything is restored.
     const failing = new Map(files.map((file) => [file.path, file.bytes]));
-    failing.set(path.join(blocker, 'out.json'), Buffer.from('{}'));
-    await assert.rejects(promoteFiles(failing));
+    failing.set(path.join(directory, 'later-output.json'), 12345);
+    await assert.rejects(promoteFiles(failing), { code: 'ERR_INVALID_ARG_TYPE' });
     assert.deepEqual(await snapshot(), before);
+    await assert.rejects(readFile(path.join(directory, 'later-output.json')), { code: 'ENOENT' });
 
     // The successful promotion removes the emptied shard and leaves manifest and files consistent.
     await promoteFiles(new Map(files.map((file) => [file.path, file.bytes])));
