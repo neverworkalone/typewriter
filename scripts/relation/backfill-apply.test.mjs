@@ -11,7 +11,7 @@ import { loadCanonicalContext, readCanonicalContext, writeCanonicalContext } fro
 import { reviewedRelationId } from '../batch/authored-semantic-decision-source.mjs';
 import { validateFactoryRepository } from '../factory/validate.mjs';
 import { planRelationBackfill, targetMeaningSha256, writePlannedRecords } from '../factory/admission.mjs';
-import { approvedAmendments, applyBackfill, applyRelationCorrections, nextPacketId, packetTextFor } from './backfill-apply.mjs';
+import { approvedAmendments, applyBackfill, applyRelationCorrections, completedPacketId, correctionItemsFor, nextPacketId, packetTextFor } from './backfill-apply.mjs';
 import { inventoryCanonicalSenses, newQueueState } from './backfill-queue.mjs';
 import { buildRelationIndex } from './candidate-retrieval.mjs';
 import { copyShardedAuthority, readShardedJson } from '../../tests/helpers/sharded-authority.mjs';
@@ -272,6 +272,39 @@ test('an approval retyped by a committed correction is not resurrected, while an
     assert.equal(result.relations_appended, 1);
     const sense = (await readRecords(root)).find((record) => record.id === source.record_id).senses.find(({ id }) => id === source.sense_id);
     assert.deepEqual(sense.relations.filter((relation) => relation.target_sense === target.sense_id).map((relation) => relation.type).sort(), ['association', 'direct', 'near']);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('the review marker ignores an interrupted correction packet, so resuming it still retires the older approval', async () => {
+  const canonical = await loadCanonicalContext();
+  const index = buildRelationIndex(canonical);
+  const { source, target, state } = oneApproval(canonical, index);
+  const approved = state.done[source.sense_id].approved_relations[0].relation;
+  const root = await scratchRoot();
+  try {
+    assert.equal((await applyBackfill({ root, state, index, refreshReports: false })).status, 'applied');
+    const applied = await readRecords(root);
+    const direct = { target: target.record_id, target_sense: target.sense_id, type: 'direct', note: approved.note };
+    const items = correctionItemsFor(applied, [{
+      source_sense_id: source.sense_id, previous_relation: approved, relation: direct,
+      target_meaning_sha256: targetMeaningSha256(new Map(applied.map((record) => [record.id, record])), target.sense_id),
+      rationale: `${source.record_id} ${source.sense_id}: 회귀 시험용 근거로 유형을 바로잡는다.`,
+    }]);
+    // Only the intent file exists: no canonical change and no authority event, as after a crash.
+    const interrupted = await nextId(root);
+    const dir = path.join(root, 'data/relation-backfill');
+    await writeFile(path.join(dir, `${interrupted}.json`), `${JSON.stringify({ packet_id: interrupted, relation_corrections: items }, null, 1)}\n`);
+    const marker = await completedPacketId(root);
+    assert.notEqual(marker, interrupted);
+    // A review recorded now (same canonical revision) carries the completed marker, never the unfinished file's id.
+    const reviewed = structuredClone(state);
+    reviewed.done[source.sense_id].recorded_after_packet = marker;
+    const result = await applyBackfill({ root, state: reviewed, index: buildRelationIndex({ ...canonical, records: applied }), refreshReports: false });
+    assert.deepEqual(result.packets, [interrupted]);
+    const sense = (await readRecords(root)).find((record) => record.id === source.record_id).senses.find(({ id }) => id === source.sense_id);
+    assert.deepEqual(sense.relations.filter((relation) => relation.target_sense === target.sense_id).map((relation) => relation.type), ['direct']);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

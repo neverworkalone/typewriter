@@ -1,4 +1,4 @@
-import { mkdir, readFile, readdir, rename, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -6,7 +6,7 @@ import { loadCanonicalContext } from '../validate/canonical-context.mjs';
 import {
   BACKFILL_CONTRACT, candidateEvidence, currentCandidatesForDone, packetBoundErrors, inventoryCanonicalSenses, newQueueState, nextPacket, recordOutcomes, retrievePacket, summarizeQueue,
 } from './backfill-queue.mjs';
-import { applyBackfill } from './backfill-apply.mjs';
+import { applyBackfill, completedPacketId } from './backfill-apply.mjs';
 import { buildRelationIndex } from './candidate-retrieval.mjs';
 
 // Usage:
@@ -73,8 +73,7 @@ if (command === 'status') {
   const packet = packetFile.packet.map((row) => byId.get(row.sense_id)).filter(Boolean);
   if (packet.length !== packetFile.packet.length) { console.error('packet names a sense that is not in the canonical inventory'); process.exit(1); }
   const artifact = retrievePacket(canonical, packet, { index });
-  const packetIds = (await readdir(path.join(process.cwd(), 'data/relation-backfill')).catch(() => [])).filter((name) => /^R\d{6}\.json$/u.test(name)).map((name) => name.slice(0, 7)).sort();
-  const result = recordOutcomes(state, packet, outcomes, { candidates: candidateEvidence(artifact, index), index, snapshotDigest: artifact.canonical_snapshot_digest, afterPacket: packetIds.at(-1) ?? null });
+  const result = recordOutcomes(state, packet, outcomes, { candidates: candidateEvidence(artifact, index), index, snapshotDigest: artifact.canonical_snapshot_digest, afterPacket: await completedPacketId(process.cwd()) });
   if (result.errors.length) { console.error(result.errors.join('\n')); process.exit(1); }
   await mkdir(path.dirname(statePath), { recursive: true });
   // Atomic replace: a crash mid-write leaves the previous complete file in place.

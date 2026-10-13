@@ -104,6 +104,12 @@ async function readPackets(root) {
   return packets;
 }
 
+/** The newest packet id the semantic authority has recorded as complete (a packet file alone may be an interrupted apply). */
+export async function completedPacketId(root) {
+  const ids = ((await readAuthority(root)).factory_admissions ?? []).map((event) => event.batch_id).filter((id) => /^R\d{6}$/u.test(id ?? '')).sort();
+  return ids.at(-1) ?? null;
+}
+
 const readAuthority = (root) => readShardedJson(path.join(root, AUTHORITY_PATH));
 
 // Packet first (intent), then canonical, then the authority event; the event is what marks the packet complete.
