@@ -1,0 +1,152 @@
+{
+ "packet_id": "R000022",
+ "relation_corrections": [
+  {
+   "source_record_id": "w6075",
+   "source_sense_id": "w6075-s1",
+   "source_gloss_sha256": "53b25243abdc5b3aa1a171ccc8be65bb91422e7b5a63db4ad00bc17ad70f92bf",
+   "target_meaning_sha256": "494015620ebfee853a65818d3f27a2def8d2488a7ae4cba6f84bf89a20adfc9d",
+   "previous_relation": {
+    "target": "w237",
+    "target_sense": "w237-s2",
+    "type": "direct",
+    "note": "도구나 물건을 사용하는 쓰다"
+   },
+   "relation": {
+    "target": "w237",
+    "target_sense": "w237-s2",
+    "type": "near",
+    "note": "도구나 물건을 사용하는 쓰다",
+    "relevance": 4
+   },
+   "position": 11,
+   "rationale": "w6075-s1→w237-s2: 리뷰 PR #606 지적 반영. 도구(사물)와 쓰다(사용 행위)는 목적어와 서술어로 함께 쓰일 뿐 서로 바꿔 쓰는 말이 아니다. R000021의 direct 승격을 취소하고 원래 near와 relevance를 복원한다."
+  },
+  {
+   "source_record_id": "w891",
+   "source_sense_id": "w891-s1",
+   "source_gloss_sha256": "d4f7827322ceb4df91c0949717ae66ec262c12f1714e731f294d6531f3416367",
+   "target_meaning_sha256": "b5f2d279eaca7d093855f90a9b8e9009f0996af180ded9a7fa65316d76c5de96",
+   "previous_relation": {
+    "target": "w288",
+    "target_sense": "w288-s1",
+    "type": "direct",
+    "note": "걱정이 풀려 마음이 놓이는 표현이다"
+   },
+   "relation": {
+    "target": "w288",
+    "target_sense": "w288-s1",
+    "type": "near",
+    "note": "걱정이 풀려 마음이 놓이는 표현이다",
+    "relevance": 3
+   },
+   "position": 7,
+   "rationale": "w891-s1→w288-s1: 리뷰 PR #606 지적 반영. 아늑한 분위기가 주는 편안함과 걱정이 풀린 결과인 마음이 놓임은 원인·결과 연상이지 같은 뜻이 아니다. R000021의 direct 승격을 취소하고 원래 near와 relevance를 복원한다."
+  },
+  {
+   "source_record_id": "w5355",
+   "source_sense_id": "w5355-s1",
+   "source_gloss_sha256": "cd7787f659b1684899ad37cbcd63e30e94264acd8bc439f62cf0987754aa832a",
+   "target_meaning_sha256": "e265d1905e0ac4a602dfe7a26728d0572ba95aa05040bcdfd049f9c216c376c6",
+   "previous_relation": {
+    "target": "w7389",
+    "target_sense": "w7389-s1",
+    "type": "direct",
+    "note": "요청이나 부름에 반응해 응하는 동작이다"
+   },
+   "relation": {
+    "target": "w7389",
+    "target_sense": "w7389-s1",
+    "type": "near",
+    "note": "요청이나 부름에 반응해 응하는 동작이다",
+    "relevance": 3
+   },
+   "position": 9,
+   "rationale": "w5355-s1→w7389-s1: 리뷰 PR #606 지적 반영. 대답(내놓는 말)과 응하다(요청에 따르다)는 뜻이 달라 말의 결로 남긴다. R000021의 direct 승격을 취소하고 원래 near와 relevance를 복원한다."
+  },
+  {
+   "source_record_id": "w5355",
+   "source_sense_id": "w5355-s1",
+   "source_gloss_sha256": "cd7787f659b1684899ad37cbcd63e30e94264acd8bc439f62cf0987754aa832a",
+   "target_meaning_sha256": "f69c5bb6fe00b806aca2d72e0b95f2aee3b61908ced13179359168b013e7590f",
+   "previous_relation": {
+    "target": "w4774",
+    "target_sense": "w4774-s1",
+    "type": "direct",
+    "note": "상대가 한 말에 이어 받는 표현이다"
+   },
+   "relation": {
+    "target": "w4774",
+    "target_sense": "w4774-s1",
+    "type": "near",
+    "note": "상대가 한 말에 이어 받는 표현이다",
+    "relevance": 3
+   },
+   "position": 10,
+   "rationale": "w5355-s1→w4774-s1: 리뷰 PR #606 지적 반영. 말을 받다는 이어 말하는 표현이라 대답의 유의어로 보기 어렵다. R000021의 direct 승격을 취소하고 원래 near와 relevance를 복원한다."
+  },
+  {
+   "source_record_id": "w5355",
+   "source_sense_id": "w5355-s1",
+   "source_gloss_sha256": "cd7787f659b1684899ad37cbcd63e30e94264acd8bc439f62cf0987754aa832a",
+   "target_meaning_sha256": "d740e303e32acaf9a817e80b2d44124f8f99f977f8ee0bc2d4ab214eb7764dd3",
+   "previous_relation": {
+    "target": "w3157",
+    "target_sense": "w3157-s1",
+    "type": "direct",
+    "note": "작고 낮게 하는 대답이다"
+   },
+   "relation": {
+    "target": "w3157",
+    "target_sense": "w3157-s1",
+    "type": "near",
+    "note": "작고 낮게 하는 대답이다",
+    "relevance": 3
+   },
+   "position": 11,
+   "rationale": "w5355-s1→w3157-s1: 리뷰 PR #606 지적 반영. 낮게 대답하다는 방식이 한정된 표현이라 말의 결로 남긴다. R000021의 direct 승격을 취소하고 원래 near와 relevance를 복원한다."
+  },
+  {
+   "source_record_id": "w6920",
+   "source_sense_id": "w6920-s1",
+   "source_gloss_sha256": "557bd5bb7f099df8b5b3c49a063e82b3724af2b2f931453c8760b56f7e809959",
+   "target_meaning_sha256": "19977cd321a8c3a592b268c6f30e76eb10307d8c6c7cafa3b3ea9be856e6b262",
+   "previous_relation": {
+    "target": "w2747",
+    "target_sense": "w2747-s1",
+    "type": "direct",
+    "note": "가려진 것을 드러내는 동작이다"
+   },
+   "relation": {
+    "target": "w2747",
+    "target_sense": "w2747-s1",
+    "type": "near",
+    "note": "가려진 것을 드러내는 동작이다",
+    "relevance": 3
+   },
+   "position": 3,
+   "rationale": "w6920-s1→w2747-s1: 리뷰 PR #606 지적 반영. 노출은 드러나 보임이고 드러내다는 드러나게 하는 사동이라 말의 결로 남긴다. R000021의 direct 승격을 취소하고 원래 near와 relevance를 복원한다."
+  },
+  {
+   "source_record_id": "w8459",
+   "source_sense_id": "w8459-s1",
+   "source_gloss_sha256": "11cf60d4abeb9f1acc95e8868444c00f35cc4d810efb2037745fe32c63656124",
+   "target_meaning_sha256": "9963b794fd2b05e31894c344db668fe5bb371c02101f95a8923e40bfbd3b5bcb",
+   "previous_relation": {
+    "target": "w2107",
+    "target_sense": "w2107-s1",
+    "type": "direct",
+    "note": "간절히 이루어지기를 바라는 염원이다"
+   },
+   "relation": {
+    "target": "w2107",
+    "target_sense": "w2107-s1",
+    "type": "near",
+    "note": "간절히 이루어지기를 바라는 염원이다",
+    "relevance": 4
+   },
+   "position": 6,
+   "rationale": "w8459-s1→w2107-s1: 리뷰 PR #606 지적 반영. 애타다(마음 졸이며 바람)와 염원(오래 품는 소망)은 행위와 대상이 달라 말의 결로 남긴다. R000021의 direct 승격을 취소하고 원래 near와 relevance를 복원한다."
+  }
+ ]
+}
