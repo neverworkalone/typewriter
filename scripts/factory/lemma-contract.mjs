@@ -324,6 +324,8 @@ function validateCompactMetadata(manifest, ensemble, details) {
     if (!isPlainObject(production) || production.contract !== 'lexical-factory-refill-v1'
       || production.target !== manifest.selection?.bound || !Number.isSafeInteger(production.pages) || production.pages < 1
       || !Number.isSafeInteger(production.visited_proposal_count) || production.visited_proposal_count < 1
+      || (production.unrepresentable_proposal_count !== undefined
+        && (!Number.isSafeInteger(production.unrepresentable_proposal_count) || production.unrepresentable_proposal_count < 0))
       || typeof production.exhausted !== 'boolean' || !isSha256(production.checkpoint_binding)
       || !isSha256(production.initial_evidence_sha256) || `corpus:${production.source_snapshot}` !== manifest.source_snapshot
       || (manifest.candidate_count < production.target && (!production.exhausted

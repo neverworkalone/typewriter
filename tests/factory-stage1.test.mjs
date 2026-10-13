@@ -238,6 +238,42 @@ test('a candidate without a located paragraph is held on its surface observation
   assert.deepEqual(rows[0].observations.map((o) => [o.evidence.kind, o.holds]), [['corpus-surface', ['no_evidence']]]);
 });
 
+test('oversized proposals without bounded hits are skipped from token evidence and refill continues', async () => {
+  const longProposal = '가'.repeat(85);
+  const initial = evidenceDoc([cand(longProposal, 'noun', [])]);
+  const converted = observationsFromCorpusEvidence(initial);
+  assert.deepEqual(converted.observations, []);
+  assert.equal(converted.source.omitted_unrepresentable_candidate_count, 1);
+
+  const root = await mkdtemp(path.join(tmpdir(), 'factory-stage1-unrepresentable-'));
+  const cache = await taskCacheFor(root);
+  await mkdir(path.join(root, 'data/canonical'), { recursive: true });
+  await writeFile(path.join(root, 'data/canonical/a.jsonl'), `${CANONICAL.map((entry) => JSON.stringify(entry)).join('\n')}\n`);
+  await writeFile(path.join(cache.taskDirectory, 'candidate-evidence.json'), JSON.stringify(initial));
+  const page = evidenceDoc([cand('걸음', 'noun', [hit('d1', 'p1', '걸음')])], {
+    selection: { exhaustion: { contract: 'corpus-selector-exhaustion-v1', remaining_lemma_count: 0 } },
+  });
+  let selectedPageCount = 0;
+  const result = await runStage1([
+    '--evidence', cache.evidenceArgument, '--task-id', 'T000001', '--base-ref', 'none',
+    '--policy', 'provider-resolution-v1', '--max-candidates', '1',
+  ], {
+    root, cachePaths: cache.cachePaths, analyzer: syntheticAnalyzer(), permission: async () => {}, log: () => {},
+    selectPage: async ({ exclusions }) => {
+      selectedPageCount += 1;
+      assert.ok(exclusions.has(longProposal), 'the oversized proposal is visited once and not reselected');
+      return page;
+    },
+  });
+
+  assert.equal(selectedPageCount, 1);
+  assert.deepEqual(result.rows.map((row) => row.input), ['걸음']);
+  assert.equal(result.production.unrepresentable_proposal_count, 1);
+  assert.ok(!result.candidatesText.includes(longProposal));
+  assert.deepEqual(await validateFactoryRepository({ root }), []);
+  await rm(root, { recursive: true, force: true });
+});
+
 test('non-token corpus surfaces are counted and omitted; candidates with no valid hit keep a no_evidence hold', async () => {
   const invalidSurfaces = ["걸음'을", "낯선'", '걸음 을 걷다', '🙂', '1\uFE0F\u20E3', '걸음1\uFE0F\u20E3', '1.', '걸음🙂', '걸음\u0007', '가'.repeat(25), '걸음\u0301'];
   const { manifest, rows, candidatesText, summary } = await produce(evidenceDoc([

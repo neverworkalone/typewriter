@@ -105,7 +105,9 @@ export async function refillCandidateBatch({ initialEvidence, arguments: args, e
       }
       if (!count) produced = await produceCandidateBatch({ ...args, evidence: combined, providers, refill: true, finalizeEmpty: true });
       produced.production = { contract: 'lexical-factory-refill-v1', target: args.maxCandidates, pages: state.pages.length,
-        visited_proposal_count: visited.size, exhausted: state.exhausted, source_snapshot: snapshotOf(initialEvidence),
+        visited_proposal_count: visited.size,
+        unrepresentable_proposal_count: produced.unrepresentableProposalCount ?? 0,
+        exhausted: state.exhausted, source_snapshot: snapshotOf(initialEvidence),
         initial_evidence_sha256: digest(JSON.stringify(initialEvidence)), checkpoint_binding: binding,
         ...(state.exhausted ? { exhaustion: { ...state.exhaustion,
           ...(state.pages.at(-1).selection.exclusion_sha256 ? { exclusion_sha256: state.pages.at(-1).selection.exclusion_sha256 } : {}),
