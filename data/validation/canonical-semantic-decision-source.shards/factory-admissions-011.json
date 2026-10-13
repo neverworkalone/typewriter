@@ -88577,7 +88577,7 @@
   {
     "batch_id": "R000029",
     "attempt": 1,
-    "semantic_decisions_sha256": "52af026fb4815c13b38d7d8c5b1711c22962827f0a13ae0ab1efa97d1d465d5e",
+    "semantic_decisions_sha256": "a6b819782af5ce08c065b11a6b464d323e60c8a5ccb8a02991468eec62f070b5",
     "entries": [],
     "relation_amendments": [
       {
@@ -89772,15 +89772,16 @@
         "source_record_id": "w1023",
         "source_sense_id": "w1023-s1",
         "source_gloss_sha256": "e401b395219b1b8ccbe56833017d2c7019e4cbca42b73581087f5523e6369f41",
-        "authored_relation_id": "rel-c5c195c263dd7212ed46c078",
-        "relation_id": "rel-c5c195c263dd7212ed46c078",
+        "authored_relation_id": "rel-de8b3c606fcdaa1b8ec2e485",
+        "relation_id": "rel-de8b3c606fcdaa1b8ec2e485",
         "relation": {
           "target": "w1022",
           "target_sense": "w1022-s1",
-          "type": "direct",
-          "note": "땅속에서 물이 솟아나는 샘이다"
+          "type": "near",
+          "note": "땅속에서 물이 솟아나는 샘이다",
+          "relevance": 4
         },
-        "rationale_sha256": "c529579ac2ba31238481ea9351171fa88ab5eb419067cde6bf1afffcfb6c6d64",
+        "rationale_sha256": "a29508f06704dcd51e93d5a0467d990fd5c71f87f4bf148af7c6864940e1b096",
         "outcome": "appended"
       },
       {
@@ -89797,7 +89798,7 @@
           "note": "땅에서 솟아나는 샘물이다",
           "relevance": 3
         },
-        "rationale_sha256": "ccf07cdd5b83788153eae0a874af9802680db88237aacd45e6790a44aed8b67a",
+        "rationale_sha256": "94348f3edd14f1d9a9dd2d3d3bfc2497e2bdbd1e6e3eec6a25463f6092411987",
         "outcome": "appended"
       },
       {
@@ -89814,7 +89815,7 @@
           "note": "어떤 대상이나 장소의 둘레인 주변이다",
           "relevance": 5
         },
-        "rationale_sha256": "609da9a43515eb1724d2bc2d4bf2e4a76030bc5dbbbff40979c397b78b833f72",
+        "rationale_sha256": "c27d8ce05ce58ec578c45a9a5e3e2025d2ecde35602f9053e92eea414ab886c7",
         "outcome": "appended"
       },
       {
@@ -89831,7 +89832,7 @@
           "note": "길의 가장자리인 길가이다",
           "relevance": 6
         },
-        "rationale_sha256": "11a2b539281f60c7ddf19d65895bb26a0807b4d402b6136c20b12474ab5b7c1a",
+        "rationale_sha256": "e453b8443b2143e9863184176d42ed2da41e6997fa14e7035c060fb12d666c0e",
         "outcome": "appended"
       },
       {
@@ -89848,7 +89849,7 @@
           "note": "도시나 지역의 가장자리인 외곽이다",
           "relevance": 6
         },
-        "rationale_sha256": "b4f58e475eed772d26e6af5e128b1f3672c7b1bc6b8cba59d5d836abe9bab371",
+        "rationale_sha256": "16f27ae925d2d831fe488ed3e9c6fdf91e6d851a620edf245cabeb2186fc3123",
         "outcome": "appended"
       },
       {
@@ -89865,7 +89866,7 @@
           "note": "들이 넓게 펼쳐진 곳인 들녘이다",
           "relevance": 6
         },
-        "rationale_sha256": "ad3453cc4e47da8480ca59000dd1fb3fef1fb0803b99ee04d27cb65de83f0cfd",
+        "rationale_sha256": "bddeaffee1889e487acdfde7290f2dcba1e0f40562be5affa8c96963489cdbf5",
         "outcome": "appended"
       },
       {
@@ -89983,7 +89984,7 @@
           "type": "direct",
           "note": "여러 내용을 구분해 적은 항목이다"
         },
-        "rationale_sha256": "70e2306a8572c60a88808357a48b93fc36d740b573b6f03a78a298853bc6f307",
+        "rationale_sha256": "b06a832946388a72ac8be0279d73f745ee750b277bb4528892adcc863d5be775",
         "outcome": "appended"
       },
       {
@@ -89991,15 +89992,16 @@
         "source_record_id": "w10275",
         "source_sense_id": "w10275-s1",
         "source_gloss_sha256": "4a7410db0d117735dfac4497ee74ad104982026d4d622aa0e59490df8e23b77a",
-        "authored_relation_id": "rel-cdab83734753dd869100d2ed",
-        "relation_id": "rel-cdab83734753dd869100d2ed",
+        "authored_relation_id": "rel-399df006cc3e4fc6e586d7af",
+        "relation_id": "rel-399df006cc3e4fc6e586d7af",
         "relation": {
           "target": "w9532",
           "target_sense": "w9532-s1",
-          "type": "direct",
-          "note": "법령이나 규정을 이루는 항목인 조항이다"
+          "type": "near",
+          "note": "법령이나 규정을 이루는 항목인 조항이다",
+          "relevance": 4
         },
-        "rationale_sha256": "62a87adf81d5c375c01edef97101e7f10f4934cc103cd00ce492142ce8d0dbea",
+        "rationale_sha256": "24a0fa00ebc24878cf0356685eb3058eb4ffcc6ea864fd52fd340eabbee8029e",
         "outcome": "appended"
       },
       {
@@ -90016,7 +90018,7 @@
           "note": "독립된 하나의 낱낱인 개체이다",
           "relevance": 5
         },
-        "rationale_sha256": "9d3b0a8579d6be3b586d6ef02818cc047f12f993c7b949c371e49dad419a65fd",
+        "rationale_sha256": "af5b1cf9e33df37a03ac8d5c5d0788a5af72a74841bc200dde57e0a8d32e4814",
         "outcome": "appended"
       },
       {
@@ -90033,7 +90035,7 @@
           "note": "글자를 이루는 낱낱의 자모 순서인 철자이다",
           "relevance": 5
         },
-        "rationale_sha256": "3497f3e2bde628abb2d34742d49489a986449ba65c5b811771d0009a1f72bcac",
+        "rationale_sha256": "37dd1fe115d6e2674dd480de64a923deae1161b320dc5cd22e69df08c304f165",
         "outcome": "appended"
       },
       {
@@ -90050,7 +90052,7 @@
           "note": "기계나 장치의 일부를 이루는 부품이다",
           "relevance": 5
         },
-        "rationale_sha256": "1742acbc7cac6b78388e1235cfcd53172efe06458b1174147a9df8a495d65090",
+        "rationale_sha256": "e103dd92d3c11ea3095f3320ba0b96e603af46cebf550ef84725f0075eddd800",
         "outcome": "appended"
       },
       {
@@ -90067,7 +90069,7 @@
           "note": "책을 이루는 낱장의 한 면인 책장이다",
           "relevance": 6
         },
-        "rationale_sha256": "576a0725c9d2ba5da3adbea62dc21647977b3aaee04d93b3fce6e6323c9fd272",
+        "rationale_sha256": "764ef965e458764c494cff7e6286e5a02ceb806ab8ff34935394db3386582b91",
         "outcome": "appended"
       },
       {
@@ -90185,7 +90187,7 @@
           "type": "direct",
           "note": "물이 얕고 빠르게 흐르는 여울이다"
         },
-        "rationale_sha256": "a36d576cef4c5347e26ae33218b6596da0fc6385a088698e12af8c000529e88f",
+        "rationale_sha256": "5e07f095773346127df1741b8e007e5c7615874c3d5c9306d448178ac28ebda5",
         "outcome": "appended"
       },
       {
@@ -90193,15 +90195,16 @@
         "source_record_id": "w1033",
         "source_sense_id": "w1033-s1",
         "source_gloss_sha256": "43f617f7fcdce884d5372d50fb781dd09e8f3c82412e1092259cad06c87e090e",
-        "authored_relation_id": "rel-d742e43e430d23045eb2428d",
-        "relation_id": "rel-d742e43e430d23045eb2428d",
+        "authored_relation_id": "rel-4568bfd2d98610a40a208177",
+        "relation_id": "rel-4568bfd2d98610a40a208177",
         "relation": {
           "target": "w4657",
           "target_sense": "w4657-s1",
-          "type": "direct",
-          "note": "하천을 가로막은 보 아래의 보 아래 여울목이다"
+          "type": "near",
+          "note": "하천을 가로막은 보 아래의 보 아래 여울목이다",
+          "relevance": 4
         },
-        "rationale_sha256": "a9408b47f4337856a7a64669d887ae2aa5034d965cd564ff0dd54519990ecd33",
+        "rationale_sha256": "8d6634790b5f6c6a9c52bba3c3b8dad3d6780a7bb8f459590e86b4fe28e6bc48",
         "outcome": "appended"
       },
       {
@@ -90218,7 +90221,7 @@
           "note": "시냇물이 흐르는 작은 개천이다",
           "relevance": 5
         },
-        "rationale_sha256": "f52604a992cd7e53b55ab5c6c850622258916348ad8702f9760b92d5394b20fe",
+        "rationale_sha256": "2d6ae76ec245d4946b09942af56625c06f838b1ddfa1dbca8d19714013ab0b86",
         "outcome": "appended"
       },
       {
@@ -90235,7 +90238,7 @@
           "note": "물이 흐르도록 길게 파 놓은 도랑이다",
           "relevance": 5
         },
-        "rationale_sha256": "eccdb53f7787c2982798d7f26999b6317aaef391a6f4d281e842fe75834f3d79",
+        "rationale_sha256": "5266d8fb63c6ebacde91d1aa4ce5b17be5959d11c335a8b395a67d25b559f1cb",
         "outcome": "appended"
       },
       {
@@ -90252,7 +90255,7 @@
           "note": "물이 흐르도록 만든 길인 수로이다",
           "relevance": 5
         },
-        "rationale_sha256": "09719de427ed997ec57732ffe15d7761c8aac9ac38208a3626b737fdd195ea9e",
+        "rationale_sha256": "15147d209555a056c7a052f47b5ba05747cbe2de0fcb06d8c3ca69791d408c17",
         "outcome": "appended"
       },
       {
@@ -90269,7 +90272,7 @@
           "note": "액체가 낮은 쪽으로 움직이는 흐르다 행동이다",
           "relevance": 5
         },
-        "rationale_sha256": "be5131140da8dbc98613fa5fc86970f2fe4d8d2e4a4fdafb7d2949ba96b5e5a9",
+        "rationale_sha256": "824d7362a496d31b4a0cde14d7bf341e6fd17ab94e0e8bfca7a51e959a272580",
         "outcome": "appended"
       },
       {
@@ -91126,15 +91129,16 @@
         "source_record_id": "w10370",
         "source_sense_id": "w10370-s1",
         "source_gloss_sha256": "9cccde6bf15def02a06505c09b8993fb694622d51568fd5d347bf8a975c653dc",
-        "authored_relation_id": "rel-08fdf44d94d705b4e4624fb7",
-        "relation_id": "rel-08fdf44d94d705b4e4624fb7",
+        "authored_relation_id": "rel-f8574712cc77b7cb26788211",
+        "relation_id": "rel-f8574712cc77b7cb26788211",
         "relation": {
           "target": "w10352",
           "target_sense": "w10352-s1",
-          "type": "direct",
-          "note": "일정한 격식을 갖추어 치르는 예식이다"
+          "type": "near",
+          "note": "일정한 격식을 갖추어 치르는 예식이다",
+          "relevance": 4
         },
-        "rationale_sha256": "a9800f5e5a6eec2203f01e90593c572ab19c47f8d30ad76564624ed7eb8e4b34",
+        "rationale_sha256": "30b627ce3852d30225ea9c8f98f8b7264d59f0a32c7329b8536ae3fa8288ca0d",
         "outcome": "appended"
       },
       {
@@ -91151,7 +91155,7 @@
           "note": "두 사람이 부부가 되는 혼인이다",
           "relevance": 4
         },
-        "rationale_sha256": "b13f26577045536233cf5c8f5b73b5b57dabd45a77f81b244e72b9335deb0113",
+        "rationale_sha256": "1f8c03e7482f82541f3a6a3b167a0ca25eebcdde0e58d7b2742062b28afee497",
         "outcome": "appended"
       },
       {
@@ -91168,7 +91172,7 @@
           "note": "정해진 절차와 형식으로 치르는 의례이다",
           "relevance": 5
         },
-        "rationale_sha256": "02d70fb81867365e5b56ca59d43fb7a0a6fe3d39d597c1b338dc8fb2881f4757",
+        "rationale_sha256": "14334281faf5a68d2a1c9218980aa455795804473ee9b06e2ec2ba6e9cc5e4a4",
         "outcome": "appended"
       },
       {
@@ -91185,7 +91189,7 @@
           "note": "의식을 치르는 장소인 식장이다",
           "relevance": 5
         },
-        "rationale_sha256": "14c4b6f508f6dc20926e7fb78db94ee5b71be7abae606e439c1a0e778caef0cd",
+        "rationale_sha256": "c93316f31a5aa31477630d795cab32c13452e1b527275dfc9fd19e7d05c303ad",
         "outcome": "appended"
       },
       {
@@ -91202,7 +91206,7 @@
           "note": "혼례식 뒤 가족끼리 예를 올리는 예식장 폐백실이다",
           "relevance": 6
         },
-        "rationale_sha256": "cf57fb0e046c7684d85806fe79cb34d5d4d637d219394ad1138e2d21be3e9d19",
+        "rationale_sha256": "18e4df20f7592f1547adb7a386c89fa39a284f5bccfdc862fda550f90198edbb",
         "outcome": "appended"
       },
       {
@@ -91219,7 +91223,7 @@
           "note": "혼례나 예복에 쓰는 족두리이다",
           "relevance": 6
         },
-        "rationale_sha256": "676c70affce6f689bd60452fc8dc533d565fb0f85ab23b10625c9e056f20551a",
+        "rationale_sha256": "7b49055f8cbb5756a90f2f3630ab321b5f168ae07805b7912f8c19b9d76b9395",
         "outcome": "appended"
       },
       {
@@ -91236,7 +91240,7 @@
           "note": "행사나 일을 치러 마치는 치르다 행동이다",
           "relevance": 6
         },
-        "rationale_sha256": "8a463ab87276fdc5f441193724d7f4bd51b70cbf79f4356b8f37d9483b2d3f44",
+        "rationale_sha256": "ca3a8106a5e2ccfe7c63fbfbd9cb7bfeec745d2ada746c75476106f3ed5e7b2a",
         "outcome": "appended"
       },
       {
@@ -92539,7 +92543,7 @@
           "type": "direct",
           "note": "국가 기관에서 맡는 벼슬인 관직이다"
         },
-        "rationale_sha256": "7e0f3f55ba8cd11a8f9a0e55e93bbd1438f2d3cd63e240cb91b1bccc28a902ba",
+        "rationale_sha256": "a0882c669679da85210fc1d1eac5a46d0741bf10cbe40b58bc7b13b7bcf2fab2",
         "outcome": "appended"
       },
       {
@@ -92555,7 +92559,7 @@
           "type": "direct",
           "note": "조직 안에서 맡은 일의 자리인 직위이다"
         },
-        "rationale_sha256": "6dd115ec24ad4808be0deeca965bb4f8a263775ab50a6f21abc7dac14f0b7e56",
+        "rationale_sha256": "1fb24d2a0e1e478617517897147b0d562dad0dfe6ccf2882addd494bcaca19b6",
         "outcome": "appended"
       },
       {
@@ -92563,15 +92567,16 @@
         "source_record_id": "w10641",
         "source_sense_id": "w10641-s1",
         "source_gloss_sha256": "a0cacafd888828db864c85bd7d00dfdadd3a99a2a0a0425a0ad06d6ce585ce07",
-        "authored_relation_id": "rel-f683298100434703535e00bd",
-        "relation_id": "rel-f683298100434703535e00bd",
+        "authored_relation_id": "rel-2abf0d9c23542bbc71ac3b8e",
+        "relation_id": "rel-2abf0d9c23542bbc71ac3b8e",
         "relation": {
           "target": "w8900",
           "target_sense": "w8900-s1",
-          "type": "direct",
-          "note": "맡은 일이나 직무상의 책임인 직무이다"
+          "type": "near",
+          "note": "맡은 일이나 직무상의 책임인 직무이다",
+          "relevance": 4
         },
-        "rationale_sha256": "19f84a1b423ed93ee02dbebc7edfc53c207dea1290ef21d939976a5e00a2c725",
+        "rationale_sha256": "3f492c090aac1401189ade687a162dd381858223d7f79d47477ee716e2f09071",
         "outcome": "appended"
       },
       {
@@ -92588,7 +92593,7 @@
           "note": "사회 구성원 모두와 관련된 영역이나 성질인 공공이다",
           "relevance": 4
         },
-        "rationale_sha256": "12f7aa4a1450e08eecf889b0a31f7ab2f85d78afb60be345735aaf8605e14ebb",
+        "rationale_sha256": "03205a9d38cd7a462749c659a132aaf2103b73a10ac3160a29cce8c7a73ac933",
         "outcome": "appended"
       },
       {
@@ -92605,7 +92610,7 @@
           "note": "일정한 영토와 국민을 가진 국가이다",
           "relevance": 5
         },
-        "rationale_sha256": "6e9d0919a5ec6ddd1c8fd5da9357827b0293e14f454e506c06b315433b534a44",
+        "rationale_sha256": "6f01300b79d057842a5962f436c03f06d72ef52a53e5b3ee2a7cf220144c902d",
         "outcome": "appended"
       },
       {
@@ -92622,7 +92627,7 @@
           "note": "사회나 조직에서 일정한 일을 맡는 기관이다",
           "relevance": 5
         },
-        "rationale_sha256": "defabfda288943a1f19a5891683cb9c85c566af6bfd91c21555b8f738fe2d7d2",
+        "rationale_sha256": "07602debbbeeab82023e19b683270759b5b2f60e123380b9acea811ae67bb0c9",
         "outcome": "appended"
       },
       {
@@ -92639,7 +92644,7 @@
           "note": "대표나 공직자를 투표로 뽑는 선거이다",
           "relevance": 6
         },
-        "rationale_sha256": "802f387d948d2bc1381ebc8ea433b09b6eb6e413ab3655a0906b5b8decbeefd0",
+        "rationale_sha256": "74a7ffc0d5983097dbab4a79597c368b4c51a811ce8d0f71338fec3f945f7b23",
         "outcome": "appended"
       },
       {
@@ -92656,7 +92661,7 @@
           "note": "공직이나 조직이 썩어 바르지 못한 부패이다",
           "relevance": 6
         },
-        "rationale_sha256": "d7a1060c2bf7d07165cde9bf39fdd43d9e6eb1b6803f5cd5f703ced9016af83d",
+        "rationale_sha256": "115e936e76f1c9834e6217aacbdbb790defae45b5ae3373abb074ebbb50dd362",
         "outcome": "appended"
       },
       {
@@ -93938,15 +93943,16 @@
         "source_record_id": "w10864",
         "source_sense_id": "w10864-s1",
         "source_gloss_sha256": "d0f8d2a95e764924ad40985d5d401237bb9b86fce60e36ee63f254ced97b844f",
-        "authored_relation_id": "rel-dc71956f7bba15fde56281e6",
-        "relation_id": "rel-dc71956f7bba15fde56281e6",
+        "authored_relation_id": "rel-5cea3d1f3c16817dd32ceefb",
+        "relation_id": "rel-5cea3d1f3c16817dd32ceefb",
         "relation": {
           "target": "w5833",
           "target_sense": "w5833-s1",
-          "type": "direct",
-          "note": "동력을 이용해 일정한 일을 하는 기계이다"
+          "type": "near",
+          "note": "동력을 이용해 일정한 일을 하는 기계이다",
+          "relevance": 4
         },
-        "rationale_sha256": "18d893a0b6faaa5765554ed4c0f35f7a0c3603dbe83573df3917c74be0ebf134",
+        "rationale_sha256": "d7fea2f1af12c4dd5f8bb85e81768f67b8f69c362fb7ea8a1889cf11d5e9c033",
         "outcome": "appended"
       },
       {
@@ -93963,7 +93969,7 @@
           "note": "동력으로 움직이는 기계인 머신이다",
           "relevance": 4
         },
-        "rationale_sha256": "60c64a058f4e8f370ebc019726e7dd5636546e5ebcc486085b7b61102b03fdb5",
+        "rationale_sha256": "9c12dac41a9b5de0767c7c886a9dfc71c136c2e1f9d4ea6c48a831fc7773bbb7",
         "outcome": "appended"
       },
       {
@@ -93980,7 +93986,7 @@
           "note": "입거나 쓴 옷과 천을 빠는 일인 빨래이다",
           "relevance": 4
         },
-        "rationale_sha256": "1fec5a8514f6421e95b48c7ed154fd59fe7e4c0df0a2583534aedabeef0c018d",
+        "rationale_sha256": "4c11adb6c196631a00ace7d90f64659ef26c95a2da9dc4d646490f74d04e11af",
         "outcome": "appended"
       },
       {
@@ -93997,7 +94003,7 @@
           "note": "세탁할 옷을 모아 담는 빨래바구니이다",
           "relevance": 5
         },
-        "rationale_sha256": "bc75ae00713cd0734bf113bb4e2af4aef46196a8494a70009c1b14000dc8721d",
+        "rationale_sha256": "b5aacaad9373578f8f1454e99d88eb50ea3e08e44aa94daaa80d5cf7d31b2bb1",
         "outcome": "appended"
       },
       {
@@ -94014,7 +94020,7 @@
           "note": "빨래를 널어 말리도록 거는 빨래줄이다",
           "relevance": 6
         },
-        "rationale_sha256": "6e9a959b408aeffaedd883a425e793c84628af8d3f5e5bc8da4e424f213571e3",
+        "rationale_sha256": "8847b23d95c727c0b5b2ff67a96b5055e610251dfeb1a5f9dae7a11620a34f62",
         "outcome": "appended"
       },
       {
@@ -95049,15 +95055,16 @@
         "source_record_id": "w11369",
         "source_sense_id": "w11369-s1",
         "source_gloss_sha256": "8fee5e5ebd7674aece3363a5368ebfca9d5f6f9fe78f7eb1e98e0cf63eda3aed",
-        "authored_relation_id": "rel-872f9f2e28e2975322d4e722",
-        "relation_id": "rel-872f9f2e28e2975322d4e722",
+        "authored_relation_id": "rel-7048aed7017f41c53d6d8d87",
+        "relation_id": "rel-7048aed7017f41c53d6d8d87",
         "relation": {
           "target": "w2270",
           "target_sense": "w2270-s1",
-          "type": "antonym",
-          "note": "군더더기나 지저분함이 없는 깔끔함이다"
+          "type": "association",
+          "note": "군더더기나 지저분함이 없는 깔끔함이다",
+          "relevance": 6
         },
-        "rationale_sha256": "f7af3ed401d2142b7c8626e6f080fbc90a2adc2d9f4b922a6cf0f0ea00b2280a",
+        "rationale_sha256": "e0d6bb9f140dd697cd9131ed68f086e96ae1fab2f6a1aefe61e1a690806107fc",
         "outcome": "appended"
       },
       {
@@ -95074,7 +95081,7 @@
           "note": "깨끗한 것을 지저분하게 하는 더럽히다 행동이다",
           "relevance": 4
         },
-        "rationale_sha256": "5932fbcabf6895108afab60214a7852608bffa2fe5759bc94cf7e7b325e564ab",
+        "rationale_sha256": "0d3870227db20a84ead286574e6dfc0c4e9c6337b0f0389e630ecc54e49a9bd7",
         "outcome": "appended"
       },
       {
@@ -95091,7 +95098,7 @@
           "note": "더럽고 지저분한 물질인 오물이다",
           "relevance": 5
         },
-        "rationale_sha256": "ee20f86e537ff1f6f80f7df83e194e516fc1989fa96110d9a2a84ace1159dd49",
+        "rationale_sha256": "5faa5cb754d8485ccb6ab4ff4d2f623aa98e2cb3dcbf9de6231916130bbf8b20",
         "outcome": "appended"
       },
       {
@@ -95108,7 +95115,7 @@
           "note": "공기 중에 떠다니는 먼지이다",
           "relevance": 5
         },
-        "rationale_sha256": "fe3220722ce8967305c95f9ecb2b4ebef82ddabd11f1f9e640dbdb730186f08d",
+        "rationale_sha256": "819a3c4b40b7c096052b8fabb4f9c2452ea44e7e4efdecf59da75d51fb1b98a3",
         "outcome": "appended"
       },
       {
@@ -95125,7 +95132,7 @@
           "note": "흙을 만지거나 땅을 짚어 손끝이 더러워지는 손끝에 흙이 묻다 표현이다",
           "relevance": 6
         },
-        "rationale_sha256": "2a2cb86f2e5571bcc484d3f8d8526b52c9d02104c75b46f44a4f2593a6a8d094",
+        "rationale_sha256": "ef0022e474331df9724c0aca23cb56b224570df9c7d00eeca2ab73dbfc66ce4f",
         "outcome": "appended"
       },
       {
@@ -95142,7 +95149,7 @@
           "note": "베개를 감싸 더러워지지 않게 하는 베갯잇이다",
           "relevance": 6
         },
-        "rationale_sha256": "ba0f5ae3e9ee2d2160942dd515a9129440a339c3a625043643e065e2303f4680",
+        "rationale_sha256": "751ef14776f2ff624716b084cf2d9b55ae9d05e6914a0b6460e240aff8776425",
         "outcome": "appended"
       },
       {
@@ -96974,15 +96981,16 @@
         "source_record_id": "w11882",
         "source_sense_id": "w11882-s1",
         "source_gloss_sha256": "6dd71053eebf4190e6fd4c4958025f394982296ed3870a4a10d14a6518b81e1a",
-        "authored_relation_id": "rel-4f881fb6f90aaffcd9aa4eed",
-        "relation_id": "rel-4f881fb6f90aaffcd9aa4eed",
+        "authored_relation_id": "rel-720701cabbb4f9bd9c9cf2e0",
+        "relation_id": "rel-720701cabbb4f9bd9c9cf2e0",
         "relation": {
           "target": "w5736",
           "target_sense": "w5736-s1",
-          "type": "direct",
-          "note": "교사가 학생을 가르치는 수업이다"
+          "type": "near",
+          "note": "교사가 학생을 가르치는 수업이다",
+          "relevance": 4
         },
-        "rationale_sha256": "6ebaa59e5e2c827b58a834a4338f15123bef5aeb68700fbd56dea4f0c08d84c0",
+        "rationale_sha256": "a5d973dba75db5ab72dc949edd1f6c24450257e720796724d6744233af0ea304",
         "outcome": "appended"
       },
       {
@@ -96999,7 +97007,7 @@
           "note": "지식과 기술을 가르치는 교육이다",
           "relevance": 4
         },
-        "rationale_sha256": "c7af19463172c67a37d43279f147203af7eecec559186601435ceed51d7325a3",
+        "rationale_sha256": "d8fe407505dbb6af3c648d40926e889831cec3396a964800c3ef87203119dfbf",
         "outcome": "appended"
       },
       {
@@ -97016,7 +97024,7 @@
           "note": "학교 밖에서 과목이나 기술을 가르치는 학원이다",
           "relevance": 5
         },
-        "rationale_sha256": "0966b9d69c8c525b679e2ba9a2cd13fffd33fdac868b4f6759b92c86f052746d",
+        "rationale_sha256": "ebd8bbd1adf753ec20eeb76aa8aa8748eb9f7e37c2c23a2e7c40650cf5a17d37",
         "outcome": "appended"
       },
       {
@@ -97033,7 +97041,7 @@
           "note": "지식이나 기술 삶의 태도를 가르치는 스승이다",
           "relevance": 5
         },
-        "rationale_sha256": "5ee192f7803cc1291659bef2df6a825c618997307dcde2365cff2e3429fafaff",
+        "rationale_sha256": "b70cf25ef114fd5dd6de77570984c623029bdd136e3c70af0919a5a8bd4fc0a6",
         "outcome": "appended"
       },
       {
@@ -97050,7 +97058,7 @@
           "note": "지식이나 기술을 익히게 하는 가르치다 행동이다",
           "relevance": 5
         },
-        "rationale_sha256": "64ce838e445a1f4e0e9a0459f4d075859633fb73e60ccfa8956fd3324b736bda",
+        "rationale_sha256": "04f00e38635d2ea685991eb4cab6613203a4ad30828682ba5b6d38265105d180",
         "outcome": "appended"
       },
       {
@@ -97067,7 +97075,7 @@
           "note": "강의나 수업을 맡아 가르치는 강사이다",
           "relevance": 5
         },
-        "rationale_sha256": "ca6587212dfb533362a44d206987439928abb17479289256b60264f211bcd8b7",
+        "rationale_sha256": "6d513b85425d39ae4494867c03526d741d0fb2f8d5c4cfc3e97f3bd9ae79c75f",
         "outcome": "appended"
       },
       {
@@ -97084,7 +97092,7 @@
           "note": "학교에서 학생을 가르치는 교사이다",
           "relevance": 6
         },
-        "rationale_sha256": "7b70c5ffe63afea97d6df57ab94ce0dce3f237adb9e16ea0b633c629dea51a53",
+        "rationale_sha256": "b021676e153edff8b8b083b6c0af036ad7777f02b1608bdb4891dbe97847210e",
         "outcome": "appended"
       },
       {
@@ -97101,7 +97109,7 @@
           "note": "학교에서 가르치는 과목인 교과이다",
           "relevance": 6
         },
-        "rationale_sha256": "7674287a7b8223e35578450fcf2fa94305083a3b603c31d5dd8e8261479daee6",
+        "rationale_sha256": "da7aa5d8eb1351161886aeabe19e835daee7c90ed822cca211c67475710a6b38",
         "outcome": "appended"
       },
       {
@@ -97635,15 +97643,16 @@
         "source_record_id": "w12020",
         "source_sense_id": "w12020-s1",
         "source_gloss_sha256": "674fdc64b37b0097877957a853ccc69e3a0fbf35c5a1780e22c4d27b7bf83ca4",
-        "authored_relation_id": "rel-9d1c254069f0455ae68f1480",
-        "relation_id": "rel-9d1c254069f0455ae68f1480",
+        "authored_relation_id": "rel-f91a624a1cd9a9fa92cb403e",
+        "relation_id": "rel-f91a624a1cd9a9fa92cb403e",
         "relation": {
           "target": "w5833",
           "target_sense": "w5833-s1",
-          "type": "direct",
-          "note": "동력을 이용해 일정한 일을 하는 기계이다"
+          "type": "near",
+          "note": "동력을 이용해 일정한 일을 하는 기계이다",
+          "relevance": 4
         },
-        "rationale_sha256": "260fbbf53ce7c86b3da1cb6925d5d0de8e61c9fe0a6e59776772246087b127e5",
+        "rationale_sha256": "05604ffebb088f690f08ca3b60870271d638789679e3699939d8e70f2b709a21",
         "outcome": "appended"
       },
       {
@@ -97660,7 +97669,7 @@
           "note": "동력으로 움직이는 기계인 머신이다",
           "relevance": 4
         },
-        "rationale_sha256": "915b498c7fcbcf0fb74d7c8c667a20ae5935871997a19534b3f49bd62fda27b2",
+        "rationale_sha256": "861fb809926cd485dceae1d7731864b6f1de9f2905542383e30e5f597bb71f53",
         "outcome": "appended"
       },
       {
@@ -97677,7 +97686,7 @@
           "note": "몸이나 물체가 자리를 옮기는 움직이다 행동이다",
           "relevance": 5
         },
-        "rationale_sha256": "a202a361e6f53a395d1bdeb0a43392e00a6bb627cb2906a8eec52857945c0ebf",
+        "rationale_sha256": "b30aa61f1f5db0561d2e0d70e4380a4ca542714a562bb320968b90f9bbd1f9f1",
         "outcome": "appended"
       },
       {
@@ -97694,7 +97703,7 @@
           "note": "생각하고 행동하며 사회를 이루는 사람이다",
           "relevance": 6
         },
-        "rationale_sha256": "352fe435487d24aab2eb60345d9749a6cb7774c2b375aaf949dbc09be60d3f03",
+        "rationale_sha256": "9d8c504ca4dead5cb39b04d9387cc48d6c540f7bddf5f391b20d251cecf2cea4",
         "outcome": "appended"
       },
       {
@@ -97923,15 +97932,16 @@
         "source_record_id": "w12105",
         "source_sense_id": "w12105-s1",
         "source_gloss_sha256": "25a8a16e3ece907929710ba3e6248b5ff68ab25ade34d78f231baab4856e882a",
-        "authored_relation_id": "rel-394e1eb47e633d0626a53793",
-        "relation_id": "rel-394e1eb47e633d0626a53793",
+        "authored_relation_id": "rel-3dfa04f90c0bc61f6600e7ac",
+        "relation_id": "rel-3dfa04f90c0bc61f6600e7ac",
         "relation": {
           "target": "w11551",
           "target_sense": "w11551-s1",
-          "type": "direct",
-          "note": "바닥에 까는 물건인 깔개이다"
+          "type": "near",
+          "note": "바닥에 까는 물건인 깔개이다",
+          "relevance": 4
         },
-        "rationale_sha256": "d54240df6d8314f8a162837b60dce63acd06d16b8cf356527210353219a7e3f7",
+        "rationale_sha256": "bdb6867abd5396009b448085353c12c85b17488ae0508220e374e7db1e5ba758",
         "outcome": "appended"
       },
       {
@@ -97939,15 +97949,16 @@
         "source_record_id": "w12105",
         "source_sense_id": "w12105-s1",
         "source_gloss_sha256": "25a8a16e3ece907929710ba3e6248b5ff68ab25ade34d78f231baab4856e882a",
-        "authored_relation_id": "rel-6b04ba011d578caff62a617a",
-        "relation_id": "rel-6b04ba011d578caff62a617a",
+        "authored_relation_id": "rel-64710877480e0eaf2da5bf75",
+        "relation_id": "rel-64710877480e0eaf2da5bf75",
         "relation": {
           "target": "w4044",
           "target_sense": "w4044-s1",
-          "type": "direct",
-          "note": "책상 위에 까는 천인 책상보이다"
+          "type": "near",
+          "note": "책상 위에 까는 천인 책상보이다",
+          "relevance": 4
         },
-        "rationale_sha256": "45542f11302eda8f1c3b0288f73350309f8ccee7c37c50bb049c46321e48d5cb",
+        "rationale_sha256": "7e57500cf54a7cd1239aa426654e234bc890191c5a9b676c82cf58925532c45b",
         "outcome": "appended"
       },
       {
@@ -97964,7 +97975,7 @@
           "note": "바닥이나 의자에 까는 방석이다",
           "relevance": 4
         },
-        "rationale_sha256": "b111d50b37fb5cd636e6338d337f365f82deeb76dc1bccc8f36dab7221076381",
+        "rationale_sha256": "ab79cef8602832ded587fc3498109ec60a600724cb670b5825623179a69ed254",
         "outcome": "appended"
       },
       {
@@ -97981,7 +97992,7 @@
           "note": "뜨거운 냄비를 탁자에 받치는 냄비받침이다",
           "relevance": 5
         },
-        "rationale_sha256": "ebcb3d805174be6d3a5e71e3329b7da4759c4d316906b955a4222d29127d2cb6",
+        "rationale_sha256": "a62c24cb2fea21e28a2caf0b1f58f1e1f516b9550167817358d08d4360f46c61",
         "outcome": "appended"
       },
       {
@@ -97998,7 +98009,7 @@
           "note": "몸 위에 덮어 보온하는 담요이다",
           "relevance": 5
         },
-        "rationale_sha256": "6bad03e1b2796ead5d3ee4a4aed65a394d30441fc47ccdd9149c8fe53b7b67e7",
+        "rationale_sha256": "e8dedad12a4cb6146f610b788d7376b825bd094c71c769089d505b0f46e822dd",
         "outcome": "appended"
       },
       {
@@ -98015,7 +98026,7 @@
           "note": "실이나 털로 짜서 바닥에 까는 카펫이다",
           "relevance": 5
         },
-        "rationale_sha256": "4215d87c8df3a1af55d8ec4f0e0f268ab6b8d1397bc64152ff276e50006f3b5d",
+        "rationale_sha256": "842f32254ab8c4446245ae0f0eca0e61ed528b410a97be768b9eb9d622643e18",
         "outcome": "appended"
       },
       {
@@ -98032,7 +98043,7 @@
           "note": "음식과 그릇을 놓고 식사하는 식탁이다",
           "relevance": 5
         },
-        "rationale_sha256": "2e8dddd328af34e6947b6c49b980dba9bb89d2bab1f370fd3d5b06e90d9f4a38",
+        "rationale_sha256": "e66cd1411093f0de3446bda95c5910abf2022bf6ec212c30c319167c309681ec",
         "outcome": "appended"
       },
       {
@@ -98049,7 +98060,7 @@
           "note": "잠자리에 까는 요와 덮는 이불을 아우르는 이부자리이다",
           "relevance": 6
         },
-        "rationale_sha256": "fe6b723669211768b13be2bbcc9b90874c9115aa061d46b576d9b8de79499167",
+        "rationale_sha256": "bf47b4645cb15881983aea5c8d73faaf5966bfe688e0b2724de8133c4123c1ae",
         "outcome": "appended"
       },
       {
@@ -98431,15 +98442,16 @@
         "source_record_id": "w12229",
         "source_sense_id": "w12229-s1",
         "source_gloss_sha256": "43805c2fac15087d10308b5ae5f41b7eabef3ea148e469c72d7879a98a576470",
-        "authored_relation_id": "rel-008fd9301d230935bd73f2d6",
-        "relation_id": "rel-008fd9301d230935bd73f2d6",
+        "authored_relation_id": "rel-b2252cd0d23ee3bcf39d9628",
+        "relation_id": "rel-b2252cd0d23ee3bcf39d9628",
         "relation": {
           "target": "w5909",
           "target_sense": "w5909-s1",
-          "type": "antonym",
-          "note": "경기나 경쟁에서 상대를 이기는 승리이다"
+          "type": "association",
+          "note": "경기나 경쟁에서 상대를 이기는 승리이다",
+          "relevance": 6
         },
-        "rationale_sha256": "272009f46c316b4393f950634856f0d96b10764be538fda60a925a1adfe751f8",
+        "rationale_sha256": "1b6cb16dd24b1e1ba4e0833e329f0ce2e56a4a511f31ff346f0dffc4253017c9",
         "outcome": "appended"
       },
       {
@@ -98456,7 +98468,7 @@
           "note": "선발이나 경쟁에서 떨어지는 탈락이다",
           "relevance": 4
         },
-        "rationale_sha256": "429170f14ae600eb401bcf7b4e6b1d68578d692001fb2e8c6a1633cf8125b52a",
+        "rationale_sha256": "c126edd034eb16c7ebab5575b3b6ec209c7d542d8fbe94824abf71bd5980328a",
         "outcome": "appended"
       },
       {
@@ -98473,7 +98485,7 @@
           "note": "싸움이나 경쟁에서 상대에게 지는 패배이다",
           "relevance": 4
         },
-        "rationale_sha256": "37a4132cc070ddad3fef21c2423d27e7874b9bf7c74e23bd8bd76a5c0d924208",
+        "rationale_sha256": "ae992196bcf94cd2b8adb99f81ce895c0fabe20e0eaf50a24d630e9b6679c63e",
         "outcome": "appended"
       },
       {
@@ -98490,7 +98502,7 @@
           "note": "같은 목표를 두고 서로 앞서려고 겨루는 경쟁이다",
           "relevance": 5
         },
-        "rationale_sha256": "c8025f253d84f65dcc23546efe9495a70abf743956dc2a05aeffbf6c51e9ec43",
+        "rationale_sha256": "3596630604d2ad1fe7b474281577a657b2b6ce36e6f09a63141c19bd04592db2",
         "outcome": "appended"
       },
       {
@@ -98507,7 +98519,7 @@
           "note": "경쟁에서 이길 수 있는 힘인 경쟁력이다",
           "relevance": 6
         },
-        "rationale_sha256": "6625b343d6f2fe8895bf77137b074d7437b0668dcd7cc92f69d76ae2e81ab7b8",
+        "rationale_sha256": "a3ca259d23784ae3ed6a1253be5f1a0e1d3ae04b9bd7c545437cfb8c0fbde710",
         "outcome": "appended"
       },
       {
@@ -99143,15 +99155,16 @@
         "source_record_id": "w12439",
         "source_sense_id": "w12439-s1",
         "source_gloss_sha256": "f3c7829a99dcde29cb42d341951a622e233b18bd73fb537f127d92ddc099fef7",
-        "authored_relation_id": "rel-3c5c54b2937033176daf09e3",
-        "relation_id": "rel-3c5c54b2937033176daf09e3",
+        "authored_relation_id": "rel-ae7563894e9f486d773f0bb4",
+        "relation_id": "rel-ae7563894e9f486d773f0bb4",
         "relation": {
           "target": "w1268",
           "target_sense": "w1268-s1",
-          "type": "direct",
-          "note": "서로 같지 않고 벌어진 정도인 차이이다"
+          "type": "near",
+          "note": "서로 같지 않고 벌어진 정도인 차이이다",
+          "relevance": 4
         },
-        "rationale_sha256": "e65d471ae8968a74b9de7001ba4df35dfa6af8bd74ea97aa03dc9c760bdb8f7a",
+        "rationale_sha256": "7c5fd32922ef88c02cc08cb58cab6ef4257439f11b1937e86baa3676fb772fdb",
         "outcome": "appended"
       },
       {
@@ -99168,7 +99181,7 @@
           "note": "정해진 기준이나 예상에서 벗어나는 어긋나다 상태이다",
           "relevance": 4
         },
-        "rationale_sha256": "e4706ea2b0704516353f5500b2d585651c84ac00c54deab10653a1d0c19744a3",
+        "rationale_sha256": "587a1bd57fed4b07874770d646ba5ff3318323560e771684058eabfd7a038d18",
         "outcome": "appended"
       },
       {
@@ -99185,7 +99198,7 @@
           "note": "일이나 사이가 순조롭지 못하고 어긋나는 틀어지다 상태이다",
           "relevance": 5
         },
-        "rationale_sha256": "74a092f89ec32af86d3bc9b4355bad72a1edebf87ad46880c0701921547e7afe",
+        "rationale_sha256": "82d92ac19dc20e058828f5ad218d0f8dd8b18e415d33dcb1d17044a21fb37503",
         "outcome": "appended"
       },
       {
@@ -99202,7 +99215,7 @@
           "note": "말이나 내용이 사실과 틀리지 않는 맞다 상태이다",
           "relevance": 5
         },
-        "rationale_sha256": "103280531a271942c765e0065fa93c6ae9c107ccc723589db087c179b738698f",
+        "rationale_sha256": "dd54d233a2060ae4f4e535772cf044d0f8a1957574e4eee254f3d0d37f7e7c51",
         "outcome": "appended"
       },
       {
@@ -99219,7 +99232,7 @@
           "note": "밝은 부분과 어두운 부분의 차이인 명암이다",
           "relevance": 6
         },
-        "rationale_sha256": "49ba2bfb2cde75b53ef0e00d8e5f03fce3f02c36b72dd6f8b814df98ef614e92",
+        "rationale_sha256": "489fd8e160bc156a9de260744b9fb2166afc8fc981f171e1a714179f732c4e83",
         "outcome": "appended"
       },
       {
@@ -101933,15 +101946,16 @@
         "source_record_id": "w2902",
         "source_sense_id": "w2902-s2",
         "source_gloss_sha256": "0d29ccb81ea9c8301d2404e7f4b0f8bc7b1e2574baa88b8d3412fd1f54355e15",
-        "authored_relation_id": "rel-dce70450cdca7acd4ce6d1dd",
-        "relation_id": "rel-dce70450cdca7acd4ce6d1dd",
+        "authored_relation_id": "rel-701e151fa2c9c072336653b9",
+        "relation_id": "rel-701e151fa2c9c072336653b9",
         "relation": {
           "target": "w5625",
           "target_sense": "w5625-s1",
-          "type": "direct",
-          "note": "사람이나 장소를 만나러 가는 찾아가다 행동이다"
+          "type": "near",
+          "note": "사람이나 장소를 만나러 가는 찾아가다 행동이다",
+          "relevance": 4
         },
-        "rationale_sha256": "e317e2f2652a406a3f553fbcfa3d013be1f19ff9355ef68c1a3dafd38c52936f",
+        "rationale_sha256": "05ad440a36486b8c0d25bd29b57a982b5d270e3507fc144074b4fcfd975d0f90",
         "outcome": "appended"
       },
       {
@@ -101949,15 +101963,16 @@
         "source_record_id": "w2902",
         "source_sense_id": "w2902-s2",
         "source_gloss_sha256": "0d29ccb81ea9c8301d2404e7f4b0f8bc7b1e2574baa88b8d3412fd1f54355e15",
-        "authored_relation_id": "rel-873f27b93e9d24e454185466",
-        "relation_id": "rel-873f27b93e9d24e454185466",
+        "authored_relation_id": "rel-38e8b5ac353f8bb3dac3eefa",
+        "relation_id": "rel-38e8b5ac353f8bb3dac3eefa",
         "relation": {
           "target": "w5470",
           "target_sense": "w5470-s1",
-          "type": "direct",
-          "note": "어떤 사람이나 장소로 오는 찾아오다 행동이다"
+          "type": "near",
+          "note": "어떤 사람이나 장소로 오는 찾아오다 행동이다",
+          "relevance": 4
         },
-        "rationale_sha256": "131acfb33ae72e9b297a7413b849ee4900e484d5d9b5f4124653859b790c0c78",
+        "rationale_sha256": "9ded69bdbb3e4f99e6228ed1342b82d437ee6e2adee90a23924422070e4bdf09",
         "outcome": "appended"
       },
       {
@@ -101974,7 +101989,7 @@
           "note": "필요한 사람이나 장소를 찾아 돌아다니는 찾아다니다 행동이다",
           "relevance": 4
         },
-        "rationale_sha256": "47938ab796ba9ecbe01af88067eea6b7777accfdec1ac83c4e82f0ef5a5dd18a",
+        "rationale_sha256": "b2c9ed451b01d1077439975b13a34f18994b87b666ca8f8681ea20e2477c3e43",
         "outcome": "appended"
       },
       {
@@ -101991,7 +102006,7 @@
           "note": "어떤 장소를 찾아온 사람인 방문객이다",
           "relevance": 4
         },
-        "rationale_sha256": "3822b69ec22427bbdab0a7ad4f1ec7f469f4ce6147c347397349d938505ce08c",
+        "rationale_sha256": "eb71da746d1402bc80ec57dbaccb89c4bdaeb059057d75b2dfa508544d4e41fc",
         "outcome": "appended"
       },
       {
@@ -102008,7 +102023,7 @@
           "note": "사람이나 대상을 마주하는 만나다 행동이다",
           "relevance": 5
         },
-        "rationale_sha256": "bd03f749c1c0adff27af9f13e75f7574a0336471c21539dc26cb3ee35ac586f4",
+        "rationale_sha256": "883b91d388a3c00635ea976e911c0eeefb77bc7b9a076df74a6457df06a05a1f",
         "outcome": "appended"
       },
       {
@@ -102025,7 +102040,7 @@
           "note": "방문자가 왔음을 안에서 알리는 초인종이다",
           "relevance": 6
         },
-        "rationale_sha256": "0a398fe17be99051fd174e83eed391bd8e6686d6b129e786d662be56a62a4168",
+        "rationale_sha256": "9301f6c39634179b53b1f2dc8211425756b2db54e90858fe591d4b44c50c4984",
         "outcome": "appended"
       },
       {
@@ -102042,7 +102057,7 @@
           "note": "세금 신고나 서류 상담을 하는 세무서 민원실이다",
           "relevance": 6
         },
-        "rationale_sha256": "ba20ae38e9cfa6cb3bbf9b805275736cf45a5b3883397558edea433d43b3592d",
+        "rationale_sha256": "706667888c0cd647531d7c0f6750111787dd05c0981c434ed506de8f9584e11d",
         "outcome": "appended"
       },
       {
@@ -102728,15 +102743,16 @@
         "source_record_id": "w3023",
         "source_sense_id": "w3023-s1",
         "source_gloss_sha256": "a0017f2da65a23fd24c94d9e94d128c7c433be14e68e7b2828373f9752c02dbe",
-        "authored_relation_id": "rel-8a10121960e91d7dbb7b1e5c",
-        "relation_id": "rel-8a10121960e91d7dbb7b1e5c",
+        "authored_relation_id": "rel-0898bbb3cbc299c2c643a2a8",
+        "relation_id": "rel-0898bbb3cbc299c2c643a2a8",
         "relation": {
           "target": "w5085",
           "target_sense": "w5085-s1",
-          "type": "direct",
-          "note": "문을 밀거나 당겨 여닫는 문손잡이이다"
+          "type": "near",
+          "note": "문을 밀거나 당겨 여닫는 문손잡이이다",
+          "relevance": 4
         },
-        "rationale_sha256": "a371862dabd49b92e6e601762e9ad803cc1a79c7916f61304e2d7ed3e07afdbe",
+        "rationale_sha256": "ceb1097f496816b053b5099b31eb460b17ca8f5b5771d8b52be15b9903adbaab",
         "outcome": "appended"
       },
       {
@@ -102744,15 +102760,16 @@
         "source_record_id": "w3023",
         "source_sense_id": "w3023-s1",
         "source_gloss_sha256": "a0017f2da65a23fd24c94d9e94d128c7c433be14e68e7b2828373f9752c02dbe",
-        "authored_relation_id": "rel-d71eb48003b52f5309deb8ce",
-        "relation_id": "rel-d71eb48003b52f5309deb8ce",
+        "authored_relation_id": "rel-37473a5c34795840626a2a28",
+        "relation_id": "rel-37473a5c34795840626a2a28",
         "relation": {
           "target": "w3021",
           "target_sense": "w3021-s1",
-          "type": "direct",
-          "note": "바구니를 들고 옮길 때 잡는 바구니 손잡이이다"
+          "type": "near",
+          "note": "바구니를 들고 옮길 때 잡는 바구니 손잡이이다",
+          "relevance": 4
         },
-        "rationale_sha256": "2a8cabf5ecdb6f083d347d5046cee4d7a790c03d193d2944b8b5225d46f4022b",
+        "rationale_sha256": "8bf7a0f7be2e1abfe66e496c2fbdddbc09a5d5d632849531885b93a5b94d6b26",
         "outcome": "appended"
       },
       {
@@ -102760,15 +102777,16 @@
         "source_record_id": "w3023",
         "source_sense_id": "w3023-s1",
         "source_gloss_sha256": "a0017f2da65a23fd24c94d9e94d128c7c433be14e68e7b2828373f9752c02dbe",
-        "authored_relation_id": "rel-b7e0fcb4d78cd1763e75bff5",
-        "relation_id": "rel-b7e0fcb4d78cd1763e75bff5",
+        "authored_relation_id": "rel-0d264af267f58aedf2335837",
+        "relation_id": "rel-0d264af267f58aedf2335837",
         "relation": {
           "target": "w5156",
           "target_sense": "w5156-s1",
-          "type": "direct",
-          "note": "우산을 들고 펼치도록 붙인 우산손잡이이다"
+          "type": "near",
+          "note": "우산을 들고 펼치도록 붙인 우산손잡이이다",
+          "relevance": 4
         },
-        "rationale_sha256": "b706939c0382f54c8cbeb6db90b1bfc7f2bb840214b10099c38e995dce6e77cc",
+        "rationale_sha256": "9e62195d9154320d82aa64e795f7a16c96d5c7c5da2bae5aef02187984027818",
         "outcome": "appended"
       },
       {
@@ -102785,7 +102803,7 @@
           "note": "음식을 끓이는 그릇인 냄비이다",
           "relevance": 4
         },
-        "rationale_sha256": "21ccf8db6caf258311ac28350f87e14615eeb1d8a75dcaf0182834de804d1cd5",
+        "rationale_sha256": "064a8141626d4a5a1ea32f169ef812170efdc43df4c768d03b088275442b188b",
         "outcome": "appended"
       },
       {
@@ -102802,7 +102820,7 @@
           "note": "뜨거운 냄비를 탁자에 받치는 냄비받침이다",
           "relevance": 5
         },
-        "rationale_sha256": "3bb3433552687c9c8274f4a58e74f41499588ee98042604760d0e6ccdbda21a8",
+        "rationale_sha256": "f4e10a7d36d483005a657307da6defe554d9e5702645353e485c5fdfd744f473",
         "outcome": "appended"
       },
       {
@@ -102819,7 +102837,7 @@
           "note": "있던 곳에서 다른 곳으로 옮기는 옮기다 행동이다",
           "relevance": 6
         },
-        "rationale_sha256": "5e8d4e16a38c583086f59cf4b243462a5a83131ba4cd6fd0f8d658785dfab3d0",
+        "rationale_sha256": "9f2ad4bd55977a433f4b66ddd5242d17fba2510ec6652d9070673bc565bd9cce",
         "outcome": "appended"
       },
       {
@@ -102836,7 +102854,7 @@
           "note": "어떤 것의 왼쪽과 오른쪽인 양옆이다",
           "relevance": 6
         },
-        "rationale_sha256": "efd926b904ffb5fa7b84f12d74d6488e3054c09f12f2d4a786c72f5cc436a47a",
+        "rationale_sha256": "2d865b97ee27e3681a1a7ef4eb05b153f4374097510d877d5cf470e777b60ca0",
         "outcome": "appended"
       },
       {
@@ -102844,15 +102862,16 @@
         "source_record_id": "w3025",
         "source_sense_id": "w3025-s1",
         "source_gloss_sha256": "ea5f6f417ad9fe75cf50032da8e227248a2388b54da8e71e19fdbebb1b0b6d8a",
-        "authored_relation_id": "rel-ae94876adb832978f7a55faa",
-        "relation_id": "rel-ae94876adb832978f7a55faa",
+        "authored_relation_id": "rel-5c02deab664fb3e9e78241cf",
+        "relation_id": "rel-5c02deab664fb3e9e78241cf",
         "relation": {
           "target": "w5085",
           "target_sense": "w5085-s1",
-          "type": "direct",
-          "note": "문을 밀거나 당겨 여닫는 문손잡이이다"
+          "type": "near",
+          "note": "문을 밀거나 당겨 여닫는 문손잡이이다",
+          "relevance": 4
         },
-        "rationale_sha256": "e3305eec1b1b292cc8fc42f96dc3b12e9313f2e7244ee80fbb093236b4145f62",
+        "rationale_sha256": "96921a5e9c85d3739fcd6094e8e248d6e0fceb7ca5fd00de4e1f646a4dc73ee4",
         "outcome": "appended"
       },
       {
@@ -102860,15 +102879,16 @@
         "source_record_id": "w3025",
         "source_sense_id": "w3025-s1",
         "source_gloss_sha256": "ea5f6f417ad9fe75cf50032da8e227248a2388b54da8e71e19fdbebb1b0b6d8a",
-        "authored_relation_id": "rel-83fbf63d67ee0500cdb38ccc",
-        "relation_id": "rel-83fbf63d67ee0500cdb38ccc",
+        "authored_relation_id": "rel-4c993531ebf1f26db5d52dfb",
+        "relation_id": "rel-4c993531ebf1f26db5d52dfb",
         "relation": {
           "target": "w510",
           "target_sense": "w510-s1",
-          "type": "direct",
-          "note": "문을 열고 닫을 때 잡는 문고리이다"
+          "type": "near",
+          "note": "문을 열고 닫을 때 잡는 문고리이다",
+          "relevance": 4
         },
-        "rationale_sha256": "6ede54b6321d35862b5fb3db65089cbdd1964756e80f96d6040e66a5408b2f5b",
+        "rationale_sha256": "2ecf21acdc8f5b18409ba8a7e04d73f71d7028cc489eff400a07a07dea28a67d",
         "outcome": "appended"
       },
       {
@@ -102876,15 +102896,16 @@
         "source_record_id": "w3025",
         "source_sense_id": "w3025-s1",
         "source_gloss_sha256": "ea5f6f417ad9fe75cf50032da8e227248a2388b54da8e71e19fdbebb1b0b6d8a",
-        "authored_relation_id": "rel-97707e1e5eccea22e69dbd0e",
-        "relation_id": "rel-97707e1e5eccea22e69dbd0e",
+        "authored_relation_id": "rel-180587b111e2e149b32daea3",
+        "relation_id": "rel-180587b111e2e149b32daea3",
         "relation": {
           "target": "w3021",
           "target_sense": "w3021-s1",
-          "type": "direct",
-          "note": "바구니를 들고 옮길 때 잡는 바구니 손잡이이다"
+          "type": "near",
+          "note": "바구니를 들고 옮길 때 잡는 바구니 손잡이이다",
+          "relevance": 4
         },
-        "rationale_sha256": "1f7e1c5e08f5c1a2f804c7c7a7f63f43ee51da8bdf1d94761bec71562b32a477",
+        "rationale_sha256": "19d2af5429dc99b85a0f6f544979acdd88260983299c0f82b687c9407cb234c1",
         "outcome": "appended"
       },
       {
@@ -102901,7 +102922,7 @@
           "note": "지퍼를 움직여 열고 닫는 지퍼손잡이이다",
           "relevance": 4
         },
-        "rationale_sha256": "43c154c3d2ed6bd19cb79c1321f4e5304be7ec4a7d90ca1226f22c24eba58a42",
+        "rationale_sha256": "99a389efd0cb9e24664e5425a63c46a41018753f169d40d17be5e5d3bdd55695",
         "outcome": "appended"
       },
       {
@@ -102918,7 +102939,7 @@
           "note": "물체를 한 점을 중심으로 빙 움직이게 하는 돌리다 행동이다",
           "relevance": 5
         },
-        "rationale_sha256": "5738d344b5f4c5b32a047b50c67727e2f2754c3e1449b96fb5a378ed0a184631",
+        "rationale_sha256": "0af5c02c3ddd34d99da3876301c2b478cb0fe18d70922ca07b698df445974100",
         "outcome": "appended"
       },
       {
@@ -102935,7 +102956,7 @@
           "note": "문을 열고 닫거나 두드릴 때 나는 문소리이다",
           "relevance": 6
         },
-        "rationale_sha256": "92e7a1aab4a67479aae73fc921269fc1e49f5f969cad8f0d4982fbe715914199",
+        "rationale_sha256": "b107248f6803562a175f36467ee453dab6b133f52604e4c40be082ebb3935a4e",
         "outcome": "appended"
       },
       {
@@ -105821,15 +105842,16 @@
         "source_record_id": "w4071",
         "source_sense_id": "w4071-s1",
         "source_gloss_sha256": "05e35ba6a7457248d874cc4ea123cfcead3c97450d9edc2e0e7abe1288efca6c",
-        "authored_relation_id": "rel-deee84acda6e466c5a68ba82",
-        "relation_id": "rel-deee84acda6e466c5a68ba82",
+        "authored_relation_id": "rel-fea0ce9ce0c5ad4f8b227351",
+        "relation_id": "rel-fea0ce9ce0c5ad4f8b227351",
         "relation": {
           "target": "w4072",
           "target_sense": "w4072-s1",
-          "type": "direct",
-          "note": "길고 납작하게 켠 나무판인 널빤지이다"
+          "type": "near",
+          "note": "길고 납작하게 켠 나무판인 널빤지이다",
+          "relevance": 4
         },
-        "rationale_sha256": "0134a1fa10c425d3fd91e70c20b747f4658c1752efb1634de2fdd67eae58c6ec",
+        "rationale_sha256": "f7c35fe1e399afc6dc283eba1bf3801fe4054af6ee2b50149f140c15acec18e3",
         "outcome": "appended"
       },
       {
@@ -105846,7 +105868,7 @@
           "note": "사람이 앉거나 물건을 놓는 넓은 마루이다",
           "relevance": 5
         },
-        "rationale_sha256": "d348a843a5aed7bc5b7fea8c473e7cdfa6cfc93d6893f164a6883d231b15b75a",
+        "rationale_sha256": "ca63a8c5c4797e9120e9421b0fbba152a7974f6195d048aa72579dc3bc92fa05",
         "outcome": "appended"
       },
       {
@@ -105863,7 +105885,7 @@
           "note": "집 안에서 방과 방 사이에 있는 마루이다",
           "relevance": 5
         },
-        "rationale_sha256": "f76ec36849da7e13b446a1226b24042a14841e01567bda5bbbbfd5d55b7853ad",
+        "rationale_sha256": "efe4085f2f4bc75e2f6c207dad8ac8af5d4feb6f3553a1dba7296ca265f22aa8",
         "outcome": "appended"
       },
       {
@@ -105880,7 +105902,7 @@
           "note": "두 줄에 널빤지를 매어 타는 그네이다",
           "relevance": 6
         },
-        "rationale_sha256": "7ff4b45fd1559579d75eed7059d7b87aadb8e035a0656c1b8cb557471c5aeaab",
+        "rationale_sha256": "8225de1a5cfac7d97eada43a77d612f957be8df0cfd8a95dcfaf5287e444abdc",
         "outcome": "appended"
       },
       {
@@ -106108,15 +106130,16 @@
         "source_record_id": "w4100",
         "source_sense_id": "w4100-s1",
         "source_gloss_sha256": "9e48691dc5aecd7d522264af0b5728cbf3ac1f86b71bf5e677e86ceff8349ac2",
-        "authored_relation_id": "rel-997ced509d93ea8a4accad4c",
-        "relation_id": "rel-997ced509d93ea8a4accad4c",
+        "authored_relation_id": "rel-eee462824ab7749de9b45953",
+        "relation_id": "rel-eee462824ab7749de9b45953",
         "relation": {
           "target": "w5031",
           "target_sense": "w5031-s1",
-          "type": "direct",
-          "note": "가구나 건축에 쓰도록 켠 판재이다"
+          "type": "near",
+          "note": "가구나 건축에 쓰도록 켠 판재이다",
+          "relevance": 4
         },
-        "rationale_sha256": "765b63cb0987a3fe6da758af6ff8cf2c16cba895ae7c1420f0168e14b96dbbdb",
+        "rationale_sha256": "86dc4b1b60af0f3d847f47cf68f558cb1e316ef5fb9bb37e79cf805da08a191b",
         "outcome": "appended"
       },
       {
@@ -106124,15 +106147,16 @@
         "source_record_id": "w4100",
         "source_sense_id": "w4100-s1",
         "source_gloss_sha256": "9e48691dc5aecd7d522264af0b5728cbf3ac1f86b71bf5e677e86ceff8349ac2",
-        "authored_relation_id": "rel-1afed8d411416243f8caa35a",
-        "relation_id": "rel-1afed8d411416243f8caa35a",
+        "authored_relation_id": "rel-5f6203a738e03008ee1916e8",
+        "relation_id": "rel-5f6203a738e03008ee1916e8",
         "relation": {
           "target": "w5185",
           "target_sense": "w5185-s1",
-          "type": "direct",
-          "note": "나무를 넓고 평평하게 켠 나무판이다"
+          "type": "near",
+          "note": "나무를 넓고 평평하게 켠 나무판이다",
+          "relevance": 4
         },
-        "rationale_sha256": "9447605f329d2109e1fce5f61d37af3d8065e2220fd148334b74e5311da218fe",
+        "rationale_sha256": "ea81d459c4abb1caef5ab175eb2b766e645faa2ffd099ed56381ec70d2b33f05",
         "outcome": "appended"
       },
       {
@@ -106149,7 +106173,7 @@
           "note": "나무판을 이어 물건을 담는 나무상자이다",
           "relevance": 5
         },
-        "rationale_sha256": "7e3ae9f22b2ba53821e307dfd8dda5cd0cb4f31148f1ed8c5f25b44bce5851a0",
+        "rationale_sha256": "dbb15cc62cbed7917fc610adfc7e1e06011faeb781000a39e531cb4c0e62f8a5",
         "outcome": "appended"
       },
       {
@@ -106166,7 +106190,7 @@
           "note": "분필이나 마커로 글을 쓰는 넓은 판인 칠판이다",
           "relevance": 5
         },
-        "rationale_sha256": "237c99a35eb303452c4ebb7a578e8810d817293f9fb5ff6551763ea1690d714d",
+        "rationale_sha256": "46792760c5a8aa41e1ed0bb7de9b903b00c58a71ac843fba077cb06ce8bc557d",
         "outcome": "appended"
       },
       {
@@ -106183,7 +106207,7 @@
           "note": "짚으로 엮어 만든 넓은 멍석이다",
           "relevance": 5
         },
-        "rationale_sha256": "aab3e401f9b2854ec546164335442efe38781d406aec6fb1204d051a0df5e4b1",
+        "rationale_sha256": "c4c54516cff2ddc2dc903e5bc4ea16fdbe188e8c41640a70091638b9eb2875a9",
         "outcome": "appended"
       },
       {
@@ -106200,7 +106224,7 @@
           "note": "줄기와 가지가 자라는 나무이다",
           "relevance": 5
         },
-        "rationale_sha256": "bf5435b872a418de00be44c342f5bc36ffc2cbe0384a617aeef00b646bf13154",
+        "rationale_sha256": "aaf0a6d1b938b07ed4fcdc970d535d5dafde2f088d0ebf2fe3c4bc55a9108899",
         "outcome": "appended"
       },
       {
@@ -106217,7 +106241,7 @@
           "note": "질척한 땅을 밟지 않도록 깐 늪지 나무판길이다",
           "relevance": 6
         },
-        "rationale_sha256": "87c661b3d3a2c2598d5a3a3e4b7f3241989c78ca6591bdd50610a25083ec74f7",
+        "rationale_sha256": "cf9105961780bf81789a7ab89043c3c9d01a2fc37fbb723abe54733a76371fff",
         "outcome": "appended"
       },
       {
@@ -106344,15 +106368,16 @@
         "source_record_id": "w4108",
         "source_sense_id": "w4108-s1",
         "source_gloss_sha256": "b887774dc1b5923ee2031d85cb8dfe6795cdc7d743190b3fa21d0b4872ba289a",
-        "authored_relation_id": "rel-0bd336d8cf937ba116a885c2",
-        "relation_id": "rel-0bd336d8cf937ba116a885c2",
+        "authored_relation_id": "rel-176dc6042bea47d63db6cbba",
+        "relation_id": "rel-176dc6042bea47d63db6cbba",
         "relation": {
           "target": "w502",
           "target_sense": "w502-s1",
-          "type": "direct",
-          "note": "먼지나 쓰레기를 쓸어 내는 빗자루이다"
+          "type": "near",
+          "note": "먼지나 쓰레기를 쓸어 내는 빗자루이다",
+          "relevance": 4
         },
-        "rationale_sha256": "3196e32056a4fa7178ba6035d66dce70a4fc090b66bb59b7e4aaf2fb81043607",
+        "rationale_sha256": "8c5bbc28bee1ab9c5f13d3e782e045839821a09d93df8647cde0936236c923b2",
         "outcome": "appended"
       },
       {
@@ -106369,7 +106394,7 @@
           "note": "빗자루나 손으로 표면의 먼지를 모으는 쓸다 행동이다",
           "relevance": 4
         },
-        "rationale_sha256": "a8ff8a74e960fb8402a23999aec6ca072db131d40b93580be2bd1011e7c6d245",
+        "rationale_sha256": "a38200c66942195cb02839cd20515bb70caa06126570b95d9218383722b46498",
         "outcome": "appended"
       },
       {
@@ -106386,7 +106411,7 @@
           "note": "도구를 잡는 손잡이 부분인 자루이다",
           "relevance": 5
         },
-        "rationale_sha256": "508f416bcf63efde58344546f7237fcb9aed58a9f7f567ea9c0334c2e52d9996",
+        "rationale_sha256": "95ff6590a52b5351ab916c87cc1755e364f8279847195ccf25155438ef1e1074",
         "outcome": "appended"
       },
       {
@@ -106403,7 +106428,7 @@
           "note": "끈을 묶어 만든 마디인 매듭이다",
           "relevance": 6
         },
-        "rationale_sha256": "882c2cbb9399f9c9a05ca0ed0caa899f0f535863a304ea125084ac42a3da0179",
+        "rationale_sha256": "bc56cc9c7c1631591fbe6a4388797e3ea89daa7f78b4e6f8d546a91bc5d24232",
         "outcome": "appended"
       },
       {
@@ -106420,7 +106445,7 @@
           "note": "줄기와 가지가 자라는 나무이다",
           "relevance": 6
         },
-        "rationale_sha256": "5c6b9ad56d2133e65534eea964a22cdd7e2ec57b221aeb8ab9045ed75446ea5d",
+        "rationale_sha256": "c229be1979a1682bcce262ecf559a448b39bf49f8b9d2bcb161e382f7bb1e073",
         "outcome": "appended"
       },
       {
@@ -107886,15 +107911,16 @@
         "source_record_id": "w4490",
         "source_sense_id": "w4490-s1",
         "source_gloss_sha256": "9b1a9a90d4bcb4e039630febfc90020610b9280cd161f8db2bc6778ae20586b1",
-        "authored_relation_id": "rel-1e1093bfa8d5490262b692db",
-        "relation_id": "rel-1e1093bfa8d5490262b692db",
+        "authored_relation_id": "rel-73136c5a39a785b0769ad44a",
+        "relation_id": "rel-73136c5a39a785b0769ad44a",
         "relation": {
           "target": "w9633",
           "target_sense": "w9633-s1",
-          "type": "direct",
-          "note": "일을 하는 장소인 작업장이다"
+          "type": "near",
+          "note": "일을 하는 장소인 작업장이다",
+          "relevance": 4
         },
-        "rationale_sha256": "60ec69252ef65e53196f7e4bdc46c5ef336e9239e85ccc85a79ea2c50eca8184",
+        "rationale_sha256": "c76e32c59f48d5b1dfeef9e9d9529c4fcb3483a923face888fa769aa30fa78a8",
         "outcome": "appended"
       },
       {
@@ -107902,15 +107928,16 @@
         "source_record_id": "w4490",
         "source_sense_id": "w4490-s1",
         "source_gloss_sha256": "9b1a9a90d4bcb4e039630febfc90020610b9280cd161f8db2bc6778ae20586b1",
-        "authored_relation_id": "rel-05933891870d822bbf8dc90c",
-        "relation_id": "rel-05933891870d822bbf8dc90c",
+        "authored_relation_id": "rel-46deede03286d7405a0618ed",
+        "relation_id": "rel-46deede03286d7405a0618ed",
         "relation": {
           "target": "w8765",
           "target_sense": "w8765-s1",
-          "type": "direct",
-          "note": "일을 하며 시간을 보내는 일터이다"
+          "type": "near",
+          "note": "일을 하며 시간을 보내는 일터이다",
+          "relevance": 4
         },
-        "rationale_sha256": "69d89f17cdc9df881870db37cbe98da3fd09714157961b9d0521a7ee8d55ea20",
+        "rationale_sha256": "d651ce9a847ffd202d6680d4064ef9b39bf0d24480cf972c7fbd87ca53b6f05b",
         "outcome": "appended"
       },
       {
@@ -107927,7 +107954,7 @@
           "note": "음식의 맛을 내고 보존하는 소금이다",
           "relevance": 4
         },
-        "rationale_sha256": "b4f941d24534e9430fbede0d750303230df9aa44922e99e12bddd2261a38c55d",
+        "rationale_sha256": "565e44f16160916c5458d210340aba574fafa47142b2497eb1d7857f739855dd",
         "outcome": "appended"
       },
       {
@@ -107944,7 +107971,7 @@
           "note": "바다를 이루는 짠물인 바닷물이다",
           "relevance": 5
         },
-        "rationale_sha256": "28700d2803c4e7ed24e5f2184e921b286919bb256d2f63669c455ae93a769398",
+        "rationale_sha256": "52b488c45ac011d2b37fd50407f461acf28b5c1557d0a7f55f1a0ff41d3e4eef",
         "outcome": "appended"
       },
       {
@@ -107961,7 +107988,7 @@
           "note": "흩어져 있는 것을 긁어 모으는 긁어모으다 행동이다",
           "relevance": 6
         },
-        "rationale_sha256": "43d889dc93054772f04ccd24a00e84775b847fa7d00870020f982a120e9e5e73",
+        "rationale_sha256": "c4951addf226fe7829e1dcdbb95f0a1151553d2e0a9769a6d2791a71bd38431f",
         "outcome": "appended"
       },
       {
@@ -107978,7 +108005,7 @@
           "note": "흙을 고르고 낙엽을 긁는 갈퀴이다",
           "relevance": 6
         },
-        "rationale_sha256": "02a9157ec5415265ad929421d19596835d65f29b407b8f6578e66c95ae2770b8",
+        "rationale_sha256": "627dd18b1ed3f06c6d33cfe33b52055c030c2661fd18dbe282a2acf2e3723313",
         "outcome": "appended"
       },
       {
@@ -107995,7 +108022,7 @@
           "note": "여럿을 한곳에 합치는 모으다 행동이다",
           "relevance": 6
         },
-        "rationale_sha256": "b49a884df86de1759791e12dff01fc75de4a58f823fcbbfec3dc161cd9907405",
+        "rationale_sha256": "69dbc2e431ab0a03753eeba117331cfedefa56ab7414462ff440db81b8b047b9",
         "outcome": "appended"
       },
       {
@@ -108207,15 +108234,16 @@
         "source_record_id": "w4578",
         "source_sense_id": "w4578-s1",
         "source_gloss_sha256": "732952b8693bbc8675a23764bda206d880f2910d12feaf699bb4645125cec063",
-        "authored_relation_id": "rel-37bdd0312a479382eb9cba1f",
-        "relation_id": "rel-37bdd0312a479382eb9cba1f",
+        "authored_relation_id": "rel-b22d32a7673fb14746250100",
+        "relation_id": "rel-b22d32a7673fb14746250100",
         "relation": {
           "target": "w11053",
           "target_sense": "w11053-s1",
-          "type": "direct",
-          "note": "머물며 쉴 수 있도록 마련된 쉼터이다"
+          "type": "near",
+          "note": "머물며 쉴 수 있도록 마련된 쉼터이다",
+          "relevance": 4
         },
-        "rationale_sha256": "8f141d14e7ba02dad73de554a62faf0475215b0756ae9d290263e7f6e31acb35",
+        "rationale_sha256": "33265d595d22a15ddc8312c41426e44ff8e787f7a7c6ad68d8c2c32792da21bd",
         "outcome": "appended"
       },
       {
@@ -108223,15 +108251,16 @@
         "source_record_id": "w4578",
         "source_sense_id": "w4578-s1",
         "source_gloss_sha256": "732952b8693bbc8675a23764bda206d880f2910d12feaf699bb4645125cec063",
-        "authored_relation_id": "rel-709f765311472879d6374e9f",
-        "relation_id": "rel-709f765311472879d6374e9f",
+        "authored_relation_id": "rel-6b260eb72618efc6aa46eb52",
+        "relation_id": "rel-6b260eb72618efc6aa46eb52",
         "relation": {
           "target": "w1058",
           "target_sense": "w1058-s1",
-          "type": "direct",
-          "note": "잠시 쉬어 갈 수 있도록 마련한 휴게소이다"
+          "type": "near",
+          "note": "잠시 쉬어 갈 수 있도록 마련한 휴게소이다",
+          "relevance": 4
         },
-        "rationale_sha256": "3128764e22efbc8f37d8a7f0f15a3f41feef0c754b188bc11cd65b523fb12da2",
+        "rationale_sha256": "c5a36890a4e9c48ff2cefcd87495382633929e4df9f147b4b3b00f0b381d62de",
         "outcome": "appended"
       },
       {
@@ -108248,7 +108277,7 @@
           "note": "나라에서 관리하며 주요 지방을 잇는 국도이다",
           "relevance": 5
         },
-        "rationale_sha256": "561d9c53ad966c9ee8967530fe7bb2fc20cb540e54be13688aa1d44377e06781",
+        "rationale_sha256": "552a6109633df03e8e0d8522055ff13718e3c66ab69e2b389c6a314f4702e870",
         "outcome": "appended"
       },
       {
@@ -108265,7 +108294,7 @@
           "note": "사람과 자동차가 다니는 도로이다",
           "relevance": 5
         },
-        "rationale_sha256": "e8da2ec9594ce5b4564ad7463f9e3f4c5bd3a3aa23dccc507d12f1808f5bd274",
+        "rationale_sha256": "587bcf109acf82dc71c02e1bede1c3a7479869ea80b86438f602d5db1958a6d0",
         "outcome": "appended"
       },
       {
@@ -108282,7 +108311,7 @@
           "note": "용변을 보고 손과 몸을 씻는 화장실이다",
           "relevance": 6
         },
-        "rationale_sha256": "e0d9a50974bec774088547a7f3310050ceb45729913c89ed95336aec26d002e7",
+        "rationale_sha256": "2c41bc4b18e8e57efdf0c6a0ead4c6087ce750f9e0983eda8e5fef8177a9863d",
         "outcome": "appended"
       },
       {
@@ -108299,7 +108328,7 @@
           "note": "사람이 먹도록 만든 음식이다",
           "relevance": 6
         },
-        "rationale_sha256": "ba26bd3c94b2e06be68e1a6ce5c54644458ebcf46d610ddbd729b6b3a3933599",
+        "rationale_sha256": "b0691367eb6bbb6a34ffe7bfbdd27d5a726a1fd19aa60cc4e52c7b3ac1c2f28b",
         "outcome": "appended"
       },
       {
@@ -108316,7 +108345,7 @@
           "note": "필요한 것을 갖추는 마련이다",
           "relevance": 6
         },
-        "rationale_sha256": "35d3104d73670a1c2d71e90255c6d18742bc317b428caabc88b32401c154b558",
+        "rationale_sha256": "40ae4ead5a0b1eff1b5283fe47ff3d267ac24e244c2009e37119cef8d90ce17d",
         "outcome": "appended"
       },
       {
@@ -109951,15 +109980,16 @@
         "source_record_id": "w502",
         "source_sense_id": "w502-s1",
         "source_gloss_sha256": "40fbc2840fdfa9846834b24ac29eb6d320ca9d070f2214eab591fcf7bdce351f",
-        "authored_relation_id": "rel-60b7c78b519b478b9e37bb19",
-        "relation_id": "rel-60b7c78b519b478b9e37bb19",
+        "authored_relation_id": "rel-498a19c190927bde61e3887b",
+        "relation_id": "rel-498a19c190927bde61e3887b",
         "relation": {
           "target": "w4108",
           "target_sense": "w4108-s1",
-          "type": "direct",
-          "note": "싸리나무 가지를 묶어 만든 빗자루인 싸리비이다"
+          "type": "near",
+          "note": "싸리나무 가지를 묶어 만든 빗자루인 싸리비이다",
+          "relevance": 4
         },
-        "rationale_sha256": "aea1fe0d022cc90c6ec6925883cb3f12cf0830a82dbf6c676063f6b6469a6913",
+        "rationale_sha256": "9102420ce246e54eb0df94e4d8b7225169f4a3a88effc40e086015b2cd7758c4",
         "outcome": "appended"
       },
       {
@@ -109976,7 +110006,7 @@
           "note": "쓸어 모은 먼지나 부스러기를 받는 쓰레받기이다",
           "relevance": 4
         },
-        "rationale_sha256": "d53b4d1c471889dc6888378205c6c025146fbcc56d42fdd79fc3323335a38e4f",
+        "rationale_sha256": "c94fad2206ea8d3cb0f4088d882bbfef2eb1180017c7cec72ed26c9e36a0a4a7",
         "outcome": "appended"
       },
       {
@@ -109993,7 +110023,7 @@
           "note": "빗자루나 손으로 표면의 먼지를 모으는 쓸다 행동이다",
           "relevance": 5
         },
-        "rationale_sha256": "331b2023e877e8a05840d7e999f101ea54c8f46042b28ddaf38b17f64f7875ab",
+        "rationale_sha256": "4138788a3d69813f037e8f93021bdf713d961f9eefe0eec8f228ec57781a9565",
         "outcome": "appended"
       },
       {
@@ -110010,7 +110040,7 @@
           "note": "더는 쓰지 않아 버리는 쓰레기이다",
           "relevance": 5
         },
-        "rationale_sha256": "ae5db5d59b79d5b7f7d0e3251c1658c16ae09ae78554d079e5ddada72e2e832a",
+        "rationale_sha256": "47a065be96f61e145b3850579cb43e955dc0e39b0d322694f0ae67caf11a3656",
         "outcome": "appended"
       },
       {
@@ -110027,7 +110057,7 @@
           "note": "여럿을 한곳에 합치는 모으다 행동이다",
           "relevance": 6
         },
-        "rationale_sha256": "4d03281b9cd6c07cea4b5a5ff3f8d7b0ccfa2a445d6e31a19eaf99eaf0fe4212",
+        "rationale_sha256": "21eb33b779fed9f238124c83de10a8c41fa473914e698f6fee315f60fdc1dbea",
         "outcome": "appended"
       },
       {
@@ -110476,15 +110506,16 @@
         "source_record_id": "w5141",
         "source_sense_id": "w5141-s1",
         "source_gloss_sha256": "d1f1146d363ac83beef445f9c4504c2cad00de39e1f7e59d82bfca36fd68c9bf",
-        "authored_relation_id": "rel-506f24e3dfe5009864e14f3f",
-        "relation_id": "rel-506f24e3dfe5009864e14f3f",
+        "authored_relation_id": "rel-27a0772698a88abc9d3c2278",
+        "relation_id": "rel-27a0772698a88abc9d3c2278",
         "relation": {
           "target": "w5138",
           "target_sense": "w5138-s1",
-          "type": "direct",
-          "note": "바닥이나 표면의 물기와 먼지를 닦는 걸레이다"
+          "type": "near",
+          "note": "바닥이나 표면의 물기와 먼지를 닦는 걸레이다",
+          "relevance": 4
         },
-        "rationale_sha256": "f75367821bdbcae7c1f8c1fe7d6d357d5c60a862029452adcf3659fae3cb0695",
+        "rationale_sha256": "39b08ae39125b063d83345817e566111e1237b9ec21a08dabc1a6471ff92f101",
         "outcome": "appended"
       },
       {
@@ -110492,15 +110523,16 @@
         "source_record_id": "w5141",
         "source_sense_id": "w5141-s1",
         "source_gloss_sha256": "d1f1146d363ac83beef445f9c4504c2cad00de39e1f7e59d82bfca36fd68c9bf",
-        "authored_relation_id": "rel-54e99ca437208c3f6a3ab93b",
-        "relation_id": "rel-54e99ca437208c3f6a3ab93b",
+        "authored_relation_id": "rel-47c2411be8b54176d6905e58",
+        "relation_id": "rel-47c2411be8b54176d6905e58",
         "relation": {
           "target": "w5143",
           "target_sense": "w5143-s1",
-          "type": "direct",
-          "note": "물에 적셔 바닥이나 표면을 닦는 물걸레이다"
+          "type": "near",
+          "note": "물에 적셔 바닥이나 표면을 닦는 물걸레이다",
+          "relevance": 4
         },
-        "rationale_sha256": "3429b49b0420a74ac58f29dbaf6540da14ccf8214a87d5cdd156b13e4f766fec",
+        "rationale_sha256": "fecb4db5f34686d8aca763fd47696e460259bb27ae8d9e00eb8d7975f7f33799",
         "outcome": "appended"
       },
       {
@@ -110517,7 +110549,7 @@
           "note": "도구를 잡는 손잡이 부분인 자루이다",
           "relevance": 5
         },
-        "rationale_sha256": "80e3114d608efdc422bf97776a0d1391ea965977dda62a4b82a1ae77f13aec4b",
+        "rationale_sha256": "78851a1ee3134bf413cea2cbf8b7426f503daf92b18578f5ab04a4a1f6884963",
         "outcome": "appended"
       },
       {
@@ -110534,7 +110566,7 @@
           "note": "실 모양으로 가늘고 긴 섬유이다",
           "relevance": 6
         },
-        "rationale_sha256": "f85b48398f16640dad6847e68824c67416c21f032a6aabdbe49bc22b09b339cf",
+        "rationale_sha256": "8615faa490fbc75f5a7f534b54aed5abdcefb2189503be7a942525e3a48c5ebd",
         "outcome": "appended"
       },
       {
@@ -110551,7 +110583,7 @@
           "note": "일을 하는 데 쓰는 도구이다",
           "relevance": 6
         },
-        "rationale_sha256": "45851c1e97834e684aae777bbb4a5c520ba27b96515d88191c373f7782abe289",
+        "rationale_sha256": "1bba86cb35bbd1f8e5aa0e4aabba4fc02ea605b4fc7aed5bdb174022f94280bf",
         "outcome": "appended"
       },
       {
@@ -110568,7 +110600,7 @@
           "note": "사람이 서거나 물건이 놓이는 바닥이다",
           "relevance": 6
         },
-        "rationale_sha256": "4f689cff862b81f10aabaef2bc73bb176670078673f3dd02bc312a94941b9a72",
+        "rationale_sha256": "29d4165858df6d38dda79f9b09d5d7ad61d08a669c167e1bd202231293b37af7",
         "outcome": "appended"
       },
       {
@@ -110576,15 +110608,16 @@
         "source_record_id": "w5146",
         "source_sense_id": "w5146-s1",
         "source_gloss_sha256": "2fcefa91d429f9b09d15acb6acbf4d434a278dafcd8e4ffa79fe0323d5163bc8",
-        "authored_relation_id": "rel-20a7b6807a9fbf361cb9c324",
-        "relation_id": "rel-20a7b6807a9fbf361cb9c324",
+        "authored_relation_id": "rel-e33918405c6179ac768aebac",
+        "relation_id": "rel-e33918405c6179ac768aebac",
         "relation": {
           "target": "w1205",
           "target_sense": "w1205-s1",
-          "type": "direct",
-          "note": "손을 보호하는 물건인 장갑이다"
+          "type": "near",
+          "note": "손을 보호하는 물건인 장갑이다",
+          "relevance": 4
         },
-        "rationale_sha256": "48cfbf958bf618f99f43ed9d28986a1e8887af4c6f8f910db6f3d2bf49861dfd",
+        "rationale_sha256": "df5f2b3f56b6e8eacbdd53f82a63f3b60ce108adf6853a3333fa7b91b5cf69e5",
         "outcome": "appended"
       },
       {
@@ -110601,7 +110634,7 @@
           "note": "목표를 이루려고 맡아서 하는 작업이다",
           "relevance": 5
         },
-        "rationale_sha256": "9cfe0172cc7f774cc2de02871dab6dabe5530592bffa76c986bf7d9dd332d1e8",
+        "rationale_sha256": "52268f3276e0ec3956759ea65a46f59546241a0ae7e2b618794da33e1a367750",
         "outcome": "appended"
       },
       {
@@ -110618,7 +110651,7 @@
           "note": "일을 하는 장소인 작업장이다",
           "relevance": 5
         },
-        "rationale_sha256": "bc0e4b6b349582898e374ccf26656286c77d7e8955d9ecc065f2cdd7d6c2183c",
+        "rationale_sha256": "a39a2d6d2513d32e29f6d5c2e9fe7c215a4a46475fc1cb0de40b1352303e3ae6",
         "outcome": "appended"
       },
       {
@@ -110635,7 +110668,7 @@
           "note": "몸에 상처를 입거나 해를 입는 다치다 행동이다",
           "relevance": 6
         },
-        "rationale_sha256": "bb052e03dd4fd58735e7b04c80dc8e4cfae3afb5e56e72386dbba75756f78961",
+        "rationale_sha256": "6eac8afa751e91fc5dda32f2342f436eee1dbc53d9442e2feb9f972de377dc1e",
         "outcome": "appended"
       },
       {
@@ -110652,7 +110685,7 @@
           "note": "깨끗한 것을 지저분하게 하는 더럽히다 행동이다",
           "relevance": 6
         },
-        "rationale_sha256": "8bf77b32cc462fab1916ba3b1cc4ff0bdf91321c0cc4574af6771757c730e6d9",
+        "rationale_sha256": "2c922bcb26a7e5822fd68468013653b975e8135251f7145c096527350f6a9b77",
         "outcome": "appended"
       },
       {
@@ -110762,15 +110795,16 @@
         "source_record_id": "w5152",
         "source_sense_id": "w5152-s1",
         "source_gloss_sha256": "b5010721b49304a0e7f88c9fd82f0198d0680a219b3db027d22030205bb37b26",
-        "authored_relation_id": "rel-4c695132e347866af56f43a7",
-        "relation_id": "rel-4c695132e347866af56f43a7",
+        "authored_relation_id": "rel-88267b8622df06bc6cd7c6b5",
+        "relation_id": "rel-88267b8622df06bc6cd7c6b5",
         "relation": {
           "target": "w11551",
           "target_sense": "w11551-s1",
-          "type": "direct",
-          "note": "바닥에 까는 물건인 깔개이다"
+          "type": "near",
+          "note": "바닥에 까는 물건인 깔개이다",
+          "relevance": 4
         },
-        "rationale_sha256": "bf449160d1133bdfed86b29cab4b0a4690558e6069fa44372a4e71f9f8cc0927",
+        "rationale_sha256": "ef5b8dcd2363c5801875bc531646f6a9e4bb83f839893209e536017315d4ff6c",
         "outcome": "appended"
       },
       {
@@ -110787,7 +110821,7 @@
           "note": "신발 바닥에서 땅에 닿는 두꺼운 층인 밑창이다",
           "relevance": 4
         },
-        "rationale_sha256": "c843615eaab5d6e4e0c61868b28a4b617ad31c476589364708716bc0c04760b4",
+        "rationale_sha256": "12d6dc3d7983697b2af3524bcf7f8d3a0eb43f600dc26dec18c608c64e93a37e",
         "outcome": "appended"
       },
       {
@@ -110804,7 +110838,7 @@
           "note": "바닥에 깔아 놓는 두꺼운 직물인 양탄자이다",
           "relevance": 5
         },
-        "rationale_sha256": "543996d30a43d23d9ea4133c2ec9ca721d24b6645ca2592422724bceb4e228e1",
+        "rationale_sha256": "52859a5d21f25eabfe48bf4086a659512d0b72d545ccc17860524b4e65242ff9",
         "outcome": "appended"
       },
       {
@@ -110821,7 +110855,7 @@
           "note": "발에 신어 보호하는 신발이다",
           "relevance": 5
         },
-        "rationale_sha256": "8fcdc77a03d09b3e2603dcb70768bd22c10f0c1587cbbe790c45747b62c12751",
+        "rationale_sha256": "d677aefba1b4af1708433de57f65ba31d7b334aaca165912e7565adae0562af4",
         "outcome": "appended"
       },
       {
@@ -110838,7 +110872,7 @@
           "note": "무게를 아래에서 떠받치는 받치다 행동이다",
           "relevance": 6
         },
-        "rationale_sha256": "4747ed9c89fd4256dc70df3f5ed405e78a9b61b87a221790b88f00d3f9c3ae7a",
+        "rationale_sha256": "8b78d5b1a9a4099ddda3389dd6d8676bb0afc91a6594ae122671d22e431e32cc",
         "outcome": "appended"
       },
       {
@@ -110855,7 +110889,7 @@
           "note": "온도가 높아 몸에 포근한 따뜻하다 상태이다",
           "relevance": 6
         },
-        "rationale_sha256": "b76a3aa9bc42f52f54e1bb5d14d17ddc936e35606183dc15aa470237db98044d",
+        "rationale_sha256": "097e6281589f0c9e2c325892fb27a37d2d5c9d2e0f0474e9e187b7477e227945",
         "outcome": "appended"
       },
       {
@@ -110872,7 +110906,7 @@
           "note": "경계나 표면에서 더 깊은 안쪽이다",
           "relevance": 6
         },
-        "rationale_sha256": "8501406caa9649a65fb95d062760023420b97d6a21f49ec024bf1b24069fdb9f",
+        "rationale_sha256": "d989633f1ddf77a9b78584e7bcba9c6f6fb320ffc4b2f54307ed7757ef694c1b",
         "outcome": "appended"
       },
       {
@@ -110889,7 +110923,7 @@
           "note": "사람이 서거나 물건이 놓이는 바닥이다",
           "relevance": 6
         },
-        "rationale_sha256": "bb4fe1fe790978ff062040077426285043da402535aa1bd6b59154092e6b10a5",
+        "rationale_sha256": "1e7c28c90c01b7a436861a49974a6bee2bb967afc0db2a51f3115ddf04b941b2",
         "outcome": "appended"
       },
       {
@@ -110965,15 +110999,16 @@
         "source_record_id": "w5205",
         "source_sense_id": "w5205-s1",
         "source_gloss_sha256": "e0cc657b19835306d62a65e4fd741d1076f2a55030db4db7016b2f02d39eec71",
-        "authored_relation_id": "rel-21f90db866048c90b30e099a",
-        "relation_id": "rel-21f90db866048c90b30e099a",
+        "authored_relation_id": "rel-cce43252c3de64f0194af35e",
+        "relation_id": "rel-cce43252c3de64f0194af35e",
         "relation": {
           "target": "w506",
           "target_sense": "w506-s1",
-          "type": "direct",
-          "note": "몸을 덮어 따뜻하게 하는 이불이다"
+          "type": "near",
+          "note": "몸을 덮어 따뜻하게 하는 이불이다",
+          "relevance": 4
         },
-        "rationale_sha256": "7fce5fb836694c489babb22b2e13c7d58f4aaa519f40a66df670e032f7eca8d5",
+        "rationale_sha256": "fa62275fb01dbdab7cfca6ea579559f8ce4c8e8a48d37995ad08f59ded7b2071",
         "outcome": "appended"
       },
       {
@@ -110990,7 +111025,7 @@
           "note": "솜을 넣어 두툼하게 만든 솜이불이다",
           "relevance": 4
         },
-        "rationale_sha256": "4a0055fcc2381bb207e32d2f9c76c07ac950553f224218e7ccdbe95ba956d01f",
+        "rationale_sha256": "44ecf97a83d06e87ee8f639c5f4d5eccb042aa4ab889674fcb732350ce50c2bd",
         "outcome": "appended"
       },
       {
@@ -111007,7 +111042,7 @@
           "note": "천 사이에 솜을 넣고 박은 누비이다",
           "relevance": 4
         },
-        "rationale_sha256": "74240ab909610749223b4c03ecc9ef15b4afe0be39ef84267c1f770c1a8aae4d",
+        "rationale_sha256": "a0a2495e3beebc06b115a2e82fec57c7a9bc6d7cb4a94ddca37c7f350d2d6fad",
         "outcome": "appended"
       },
       {
@@ -111024,7 +111059,7 @@
           "note": "둘 이상의 대상 사이의 거리인 간격이다",
           "relevance": 6
         },
-        "rationale_sha256": "691296443ff32335e65c39ab883b523a2aa7de62a700b8bc84c24c6bec19a970",
+        "rationale_sha256": "78cf0272bc7358455fcaa179d4b1287315b9481170482782dd9e583cc259ab57",
         "outcome": "appended"
       },
       {
@@ -111041,7 +111076,7 @@
           "note": "정해진 시간과 순서에 따른 일정이다",
           "relevance": 6
         },
-        "rationale_sha256": "f0df5529958e481b1c0508be24dc46da7c5bbb49bc9a52f387a255d5a045b108",
+        "rationale_sha256": "8343cfb4eeb4ab1ba24312a9fb0c90b2ad0ee1035d5f4767f35992d9e9d9e696",
         "outcome": "appended"
       },
       {
@@ -111049,15 +111084,16 @@
         "source_record_id": "w5207",
         "source_sense_id": "w5207-s1",
         "source_gloss_sha256": "dfc7368cd8eb779bc26464154475e27d4eb2d592c593f38392becbf7fb4d55a1",
-        "authored_relation_id": "rel-9be4ce0eb7d8d9822bd02a58",
-        "relation_id": "rel-9be4ce0eb7d8d9822bd02a58",
+        "authored_relation_id": "rel-c92034f5e4ddd6be2526b4ee",
+        "relation_id": "rel-c92034f5e4ddd6be2526b4ee",
         "relation": {
           "target": "w506",
           "target_sense": "w506-s1",
-          "type": "direct",
-          "note": "몸을 덮어 따뜻하게 하는 이불이다"
+          "type": "near",
+          "note": "몸을 덮어 따뜻하게 하는 이불이다",
+          "relevance": 4
         },
-        "rationale_sha256": "e984fe9ec7c0e24adb3d10210f18fa37a11d1d1b82e1417aec4e6427994fdc2e",
+        "rationale_sha256": "7c63eee97480e80140f032520e65902ce9ce27888f701e959e0b0d27022e893f",
         "outcome": "appended"
       },
       {
@@ -111065,15 +111101,16 @@
         "source_record_id": "w5207",
         "source_sense_id": "w5207-s1",
         "source_gloss_sha256": "dfc7368cd8eb779bc26464154475e27d4eb2d592c593f38392becbf7fb4d55a1",
-        "authored_relation_id": "rel-695a5b0602df6dedeb0a3b33",
-        "relation_id": "rel-695a5b0602df6dedeb0a3b33",
+        "authored_relation_id": "rel-d0e4791e75b712b97dc7b97f",
+        "relation_id": "rel-d0e4791e75b712b97dc7b97f",
         "relation": {
           "target": "w5205",
           "target_sense": "w5205-s1",
-          "type": "direct",
-          "note": "천 사이에 솜을 넣고 박아 만든 누비이불이다"
+          "type": "near",
+          "note": "천 사이에 솜을 넣고 박아 만든 누비이불이다",
+          "relevance": 4
         },
-        "rationale_sha256": "3ce46d7ee5bdd5921a11e8f5e78e29df06bdee3c18c670b276dc752b340e18ce",
+        "rationale_sha256": "8cdf0c48c5eef79b74d36981e3cd0c2f2d9325b50e8cabd31f50d9233ac5c22c",
         "outcome": "appended"
       },
       {
@@ -111090,7 +111127,7 @@
           "note": "솜이나 속을 넣지 않은 홑이불이다",
           "relevance": 5
         },
-        "rationale_sha256": "1787926f56718759cc888ef3ad87c1659acd201158dd8b8ec410cbed16dd6e62",
+        "rationale_sha256": "b4d4aa49458e0e33468a445b549bebbf3051ae885c9b8038c50d88e1a3af5d10",
         "outcome": "appended"
       },
       {
@@ -111107,7 +111144,7 @@
           "note": "옷이나 이불을 넣어 두는 장롱이다",
           "relevance": 6
         },
-        "rationale_sha256": "578b8b0de6b3c45b0dcaf22291614194e96d9928be7a319fb8c683f05ff131dc",
+        "rationale_sha256": "de92dd9b82469293603b1ec9dabfa7a9383398a0b2dceefbe470657d2542936c",
         "outcome": "appended"
       },
       {
@@ -111124,7 +111161,7 @@
           "note": "솜처럼 둥글고 두툼한 구름인 뭉게구름이다",
           "relevance": 6
         },
-        "rationale_sha256": "e29a99712315efd741ca0d272373f92c7896173152354d0ffed42170eee4cdf8",
+        "rationale_sha256": "dbfb059002007f09ed9cea3e8d1216e1b5651d0a10460124a4dd8b403f185980",
         "outcome": "appended"
       },
       {
@@ -111336,15 +111373,16 @@
         "source_record_id": "w5228",
         "source_sense_id": "w5228-s1",
         "source_gloss_sha256": "72f86d10ae75cf3d2dd14785c0551d4ac838704dd6681fa6ec1e29ea99b5df00",
-        "authored_relation_id": "rel-a7d5b85a176d2fa7fe98f087",
-        "relation_id": "rel-a7d5b85a176d2fa7fe98f087",
+        "authored_relation_id": "rel-97440c3d5cec98b3b64e1bc3",
+        "relation_id": "rel-97440c3d5cec98b3b64e1bc3",
         "relation": {
           "target": "w1188",
           "target_sense": "w1188-s1",
-          "type": "direct",
-          "note": "물건을 담아 나르는 용기인 바구니이다"
+          "type": "near",
+          "note": "물건을 담아 나르는 용기인 바구니이다",
+          "relevance": 4
         },
-        "rationale_sha256": "c3018bf8110df4b2ccbe491d4f0430e9a4af682656a717b1bf4e49c7a51df095",
+        "rationale_sha256": "bd13ec1fe498426d7b214bd299529e4342179f3b6a13c571cb3d78e3294d1bd1",
         "outcome": "appended"
       },
       {
@@ -111360,7 +111398,7 @@
           "type": "direct",
           "note": "버들이나 대나무를 엮어 만든 광주리이다"
         },
-        "rationale_sha256": "db4a107c81eaaaf7542bdedff97dd5e409a3540961c81fb26f7c7119c43837dd",
+        "rationale_sha256": "8f3743709fe34ca87514b53c5fb245b800ef1ac67ebaf0f52289ad4cc5b5ced6",
         "outcome": "appended"
       },
       {
@@ -111377,7 +111415,7 @@
           "note": "속이 비고 마디가 있는 대나무이다",
           "relevance": 5
         },
-        "rationale_sha256": "0d595c906926fe6450780bb78adc6a41adadc25627a8d785ac60ca4f5cb6297f",
+        "rationale_sha256": "ba446054548fec885f0694e4521d23eff6144e9eca1b6e073f53204d835edd90",
         "outcome": "appended"
       },
       {
@@ -111394,7 +111432,7 @@
           "note": "바구니를 들고 옮길 때 잡는 바구니 손잡이이다",
           "relevance": 6
         },
-        "rationale_sha256": "dfa4a535111fea2ca1b837288d1463208a4d9eeca093f264dd4732a3b0104b7f",
+        "rationale_sha256": "18289575a2510bd6ec8e78e96ddd57e1b10ec9d465b2f968c09d78e5f735abaa",
         "outcome": "appended"
       },
       {
@@ -111411,7 +111449,7 @@
           "note": "줄기와 가지가 자라는 나무이다",
           "relevance": 6
         },
-        "rationale_sha256": "4ab8c0af45ca088b112a79cc862fd6e5908f4da71a84eb084dbaf26725c025e4",
+        "rationale_sha256": "f03331ff8d71eebd4d213800e3da6dd38a342f775bd3e6a088910f22a0d3a9e7",
         "outcome": "appended"
       },
       {
@@ -111419,15 +111457,16 @@
         "source_record_id": "w5238",
         "source_sense_id": "w5238-s1",
         "source_gloss_sha256": "6738de5581d82c7f8ef651eda85dfc0d3a5c778e396d21a6a3417e2ba738b79d",
-        "authored_relation_id": "rel-79982fc9dfef401b36cf6f18",
-        "relation_id": "rel-79982fc9dfef401b36cf6f18",
+        "authored_relation_id": "rel-46e11aa04035939c43d44d37",
+        "relation_id": "rel-46e11aa04035939c43d44d37",
         "relation": {
           "target": "w510",
           "target_sense": "w510-s1",
-          "type": "direct",
-          "note": "문을 열고 닫을 때 잡는 문고리이다"
+          "type": "near",
+          "note": "문을 열고 닫을 때 잡는 문고리이다",
+          "relevance": 4
         },
-        "rationale_sha256": "9baf06823a623a349a819f65a55e5a98a0fbccd351fdc6fa936249712946c31e",
+        "rationale_sha256": "95877df0a510ecb4d095b0ab67744259dc78ac35517b963fdb75699b8cf8f81e",
         "outcome": "appended"
       },
       {
@@ -111435,15 +111474,16 @@
         "source_record_id": "w5238",
         "source_sense_id": "w5238-s1",
         "source_gloss_sha256": "6738de5581d82c7f8ef651eda85dfc0d3a5c778e396d21a6a3417e2ba738b79d",
-        "authored_relation_id": "rel-792722471653f420d04b6bd7",
-        "relation_id": "rel-792722471653f420d04b6bd7",
+        "authored_relation_id": "rel-6128eee7cd17de0334377a0c",
+        "relation_id": "rel-6128eee7cd17de0334377a0c",
         "relation": {
           "target": "w3025",
           "target_sense": "w3025-s1",
-          "type": "direct",
-          "note": "창짝을 열고 닫을 때 잡는 창문 손잡이이다"
+          "type": "near",
+          "note": "창짝을 열고 닫을 때 잡는 창문 손잡이이다",
+          "relevance": 4
         },
-        "rationale_sha256": "bc94da678e5dda53394300e1ae5768f23a7fedabf41e2e1494f0f0a87e9faba2",
+        "rationale_sha256": "8670884c7715c759ba0d2305e4f8667a60cbdd17dd5f99546b21d86c8aad8b96",
         "outcome": "appended"
       },
       {
@@ -111451,15 +111491,16 @@
         "source_record_id": "w5238",
         "source_sense_id": "w5238-s1",
         "source_gloss_sha256": "6738de5581d82c7f8ef651eda85dfc0d3a5c778e396d21a6a3417e2ba738b79d",
-        "authored_relation_id": "rel-a88aca4add2e1f34f915b1ae",
-        "relation_id": "rel-a88aca4add2e1f34f915b1ae",
+        "authored_relation_id": "rel-b85e13a8b24558a76481a8b8",
+        "relation_id": "rel-b85e13a8b24558a76481a8b8",
         "relation": {
           "target": "w3021",
           "target_sense": "w3021-s1",
-          "type": "direct",
-          "note": "바구니를 들고 옮길 때 잡는 바구니 손잡이이다"
+          "type": "near",
+          "note": "바구니를 들고 옮길 때 잡는 바구니 손잡이이다",
+          "relevance": 4
         },
-        "rationale_sha256": "903b0207d09d243436e0d411acc4c2946a08e7506f5bc60c737531593acad711",
+        "rationale_sha256": "6bb27e37d0fd9ec9a4246c5877a7fab654431a411a9cdec8fe753f14f60d2d81",
         "outcome": "appended"
       },
       {
@@ -111476,7 +111517,7 @@
           "note": "두 줄의 이가 서로 맞물려 여닫는 지퍼이다",
           "relevance": 4
         },
-        "rationale_sha256": "5a0c7f16c8d844b1cb8c9b6828f6295f177026cd1893f32d19ef4f0110df7e66",
+        "rationale_sha256": "e6b599e8497e540b233b2f3d5907220b9dc1114f833365c79d56c3f8c439b299",
         "outcome": "appended"
       },
       {
@@ -111493,7 +111534,7 @@
           "note": "손바닥에 이어진 손가락이다",
           "relevance": 6
         },
-        "rationale_sha256": "c911b584dbae6d5a627f9cd3d1f5557f64081cd186ad34fb9f5dc5d8af50429a",
+        "rationale_sha256": "e01a582b61a43ef6c995ed806fd6c1c84eea51bd6ddd84b5cc8bba206bb97fa8",
         "outcome": "appended"
       },
       {
@@ -111510,7 +111551,7 @@
           "note": "도구를 잡는 손잡이 부분인 자루이다",
           "relevance": 6
         },
-        "rationale_sha256": "cd40e69156dae3940884085c7f62b82043e488e7dc44cf76c27b330185b249e6",
+        "rationale_sha256": "71613f8419b7cd45b5dfd27c33668566d597cb668c2fa337545a8c9b4dbe3be7",
         "outcome": "appended"
       },
       {
@@ -111892,15 +111933,16 @@
         "source_record_id": "w5313",
         "source_sense_id": "w5313-s1",
         "source_gloss_sha256": "069fca2452abe712be903f5ed95f9bdbc1709e69622030176b0b5ba5e22dc432",
-        "authored_relation_id": "rel-011279b598b8cca0ab5d1843",
-        "relation_id": "rel-011279b598b8cca0ab5d1843",
+        "authored_relation_id": "rel-09b784dfad60a570d542edfd",
+        "relation_id": "rel-09b784dfad60a570d542edfd",
         "relation": {
           "target": "w8577",
           "target_sense": "w8577-s1",
-          "type": "direct",
-          "note": "물건 위를 덮어 가리는 덮개이다"
+          "type": "near",
+          "note": "물건 위를 덮어 가리는 덮개이다",
+          "relevance": 4
         },
-        "rationale_sha256": "15a95263b1168838f8acdd3079f24070934f57a3fb8f9213ce5f32bfa8133d86",
+        "rationale_sha256": "63ac6d40f82e43db017230a80751bdb0037f1159e7ca15d92c8d362aa50a5759",
         "outcome": "appended"
       },
       {
@@ -111908,15 +111950,16 @@
         "source_record_id": "w5313",
         "source_sense_id": "w5313-s1",
         "source_gloss_sha256": "069fca2452abe712be903f5ed95f9bdbc1709e69622030176b0b5ba5e22dc432",
-        "authored_relation_id": "rel-b4809a5878b80e84fb67fc2e",
-        "relation_id": "rel-b4809a5878b80e84fb67fc2e",
+        "authored_relation_id": "rel-3cd94d46b1c3d62a1a68d7fe",
+        "relation_id": "rel-3cd94d46b1c3d62a1a68d7fe",
         "relation": {
           "target": "w10014",
           "target_sense": "w10014-s1",
-          "type": "direct",
-          "note": "병이나 통의 아가리를 막는 마개이다"
+          "type": "near",
+          "note": "병이나 통의 아가리를 막는 마개이다",
+          "relevance": 4
         },
-        "rationale_sha256": "3ed85cbcabe0377b0158b7b3d5040018c232e09ba5d8d290ea72fa12d146d061",
+        "rationale_sha256": "38bb0bd43358e41ebfa4585686e6d156664f97be3ecf72da87b33134da598676",
         "outcome": "appended"
       },
       {
@@ -111932,7 +111975,7 @@
           "type": "direct",
           "note": "그릇이나 상자의 입구를 덮는 뚜껑이다"
         },
-        "rationale_sha256": "53adbb30f5f66e2a5261fa113444431159400c1db6d1b265f81938f3a5a714ca",
+        "rationale_sha256": "1b88b3cda7dccdeb0d26a13615d45d3fb874caf02482a40daf0ca5e38ff86459",
         "outcome": "appended"
       },
       {
@@ -111949,7 +111992,7 @@
           "note": "금속판으로 만들어 음료나 음식을 담는 깡통이다",
           "relevance": 4
         },
-        "rationale_sha256": "c5db498c4f3e43d101d27f2d31ece362b351b77e15accbbdbb176d47e193a401",
+        "rationale_sha256": "0a0a841dae954c582ee3962e8d1740722d5e07739200eeeeb1e40ebcc26d355a",
         "outcome": "appended"
       },
       {
@@ -111966,7 +112009,7 @@
           "note": "음식을 깡통에 넣어 밀봉한 통조림이다",
           "relevance": 5
         },
-        "rationale_sha256": "d5863d2fa6b7fde14b3957db7d7f5b7893a1a36a56a116ae25e2516fca33b27d",
+        "rationale_sha256": "b9e015c13c654d4614d5d84cc9e06aef02fd5cbf77fc667afd868902c9d13577",
         "outcome": "appended"
       },
       {
@@ -111983,7 +112026,7 @@
           "note": "건물이나 공간 안으로 드는 곳인 입구이다",
           "relevance": 6
         },
-        "rationale_sha256": "9d8b46060cbddafeaff2de2d01d87e2d94f6024aea24043f5fae923379ba33ac",
+        "rationale_sha256": "7e1fe007117b321dcb7eca10de4eaf6222aeffaec8419397c2c4b336d76f1a8d",
         "outcome": "appended"
       },
       {
@@ -112000,7 +112043,7 @@
           "note": "열과 전기를 잘 전달하는 금속이다",
           "relevance": 6
         },
-        "rationale_sha256": "b5302c27306bce4d710800c1d1eb517c8bce85444a2a9a0ae22c4f4bb9b72fbe",
+        "rationale_sha256": "ed9f5ebed09a0dfef6a1b80df3077b0499b7a9896bb86ce4f176f392e38aa4e0",
         "outcome": "appended"
       },
       {
@@ -112169,7 +112212,7 @@
           "type": "direct",
           "note": "성질이나 물건을 몸에 지니는 지니다 행동이다"
         },
-        "rationale_sha256": "f1b9396a255261477672e80a8c474b9efe946205612bc3c59e99aed9067d867a",
+        "rationale_sha256": "e69491c281c03bae97eeccad05b63be8e1c976646d4b04cb514826d691e11df8",
         "outcome": "appended"
       },
       {
@@ -112177,15 +112220,16 @@
         "source_record_id": "w5429",
         "source_sense_id": "w5429-s1",
         "source_gloss_sha256": "fb373db84a8bb1b5f259a2b4ca730583bdade9a6b2e1461ab92d1f1f41194b99",
-        "authored_relation_id": "rel-00b46f00554fbcf93c75b17d",
-        "relation_id": "rel-00b46f00554fbcf93c75b17d",
+        "authored_relation_id": "rel-3ab9b055e1eb96d6e9c15fa7",
+        "relation_id": "rel-3ab9b055e1eb96d6e9c15fa7",
         "relation": {
           "target": "w6058",
           "target_sense": "w6058-s1",
-          "type": "direct",
-          "note": "대상이나 재산을 자기 것으로 가진 소유이다"
+          "type": "near",
+          "note": "대상이나 재산을 자기 것으로 가진 소유이다",
+          "relevance": 4
         },
-        "rationale_sha256": "fd6e3bc38c28b9cb06ca3d1630d5eeaf74998819a60b38989842b4393723a25b",
+        "rationale_sha256": "0554d16f23af3922a3f5fcfd1e46902b377b9231f8582f926b3b93c33ce841f6",
         "outcome": "appended"
       },
       {
@@ -112202,7 +112246,7 @@
           "note": "값을 치르고 물건을 자기 것으로 하는 사다 행동이다",
           "relevance": 4
         },
-        "rationale_sha256": "6940411658fad755948cea6fe180c47170b9a2271248f855f4bf89b4bf066fd3",
+        "rationale_sha256": "1a753b08bca1b5242db27cd8d4aa0c47658199c3ab4094633ed7afd38357195e",
         "outcome": "appended"
       },
       {
@@ -112219,7 +112263,7 @@
           "note": "남의 물건을 몰래 가져가는 훔치다 행동이다",
           "relevance": 5
         },
-        "rationale_sha256": "97a307ec2f9a7c815c165352d36a5119dc85124740013d6a1360c6ab604adc36",
+        "rationale_sha256": "f143eae47b468c720e4eb5697e232fd764e03830d6e935d1ad3f9a00fedc27e7",
         "outcome": "appended"
       },
       {
@@ -112236,7 +112280,7 @@
           "note": "자기 것으로 가지고 있는 물건인 소유물이다",
           "relevance": 5
         },
-        "rationale_sha256": "226d5fabf6324ac5b55990c406c8d47f2d7273d2f9cccb818a4e6e455cb24b6d",
+        "rationale_sha256": "a8ef1377ef2bb46547344865d63e661e426c8b8fa92ee684ea61c75ddf3d59e4",
         "outcome": "appended"
       },
       {
@@ -112253,7 +112297,7 @@
           "note": "행동이나 생각이 향하는 대상이다",
           "relevance": 6
         },
-        "rationale_sha256": "ee2567136566afb5233de46b847c5b50f89207d28fed7f65fa658cc873f13c21",
+        "rationale_sha256": "e225570e1e378565f7617f2293c7ce592f40521bcebfc239259e4eef6499ce14",
         "outcome": "appended"
       },
       {
@@ -112270,7 +112314,7 @@
           "note": "다른 사람과 구별되는 그 사람 자신인 자기이다",
           "relevance": 6
         },
-        "rationale_sha256": "2f68583ca990b5056ca7a4b6dc875f3cabafeb9611489a999d473af0b5fb9a5d",
+        "rationale_sha256": "123286cf342ce92687a209b27963076da1368bb8a03b96e90c5b226720c90c10",
         "outcome": "appended"
       },
       {
@@ -113421,15 +113465,16 @@
         "source_record_id": "w5771",
         "source_sense_id": "w5771-s1",
         "source_gloss_sha256": "884a3490dd7b04924b7aa8bda2c1584b74859d8120c154d2c54a07d097d49367",
-        "authored_relation_id": "rel-78c130094c0941cf38faa707",
-        "relation_id": "rel-78c130094c0941cf38faa707",
+        "authored_relation_id": "rel-cd90d04091ecbbd5fab1c124",
+        "relation_id": "rel-cd90d04091ecbbd5fab1c124",
         "relation": {
           "target": "w3009",
           "target_sense": "w3009-s1",
-          "type": "direct",
-          "note": "허구의 인물과 사건을 엮은 소설책이다"
+          "type": "near",
+          "note": "허구의 인물과 사건을 엮은 소설책이다",
+          "relevance": 4
         },
-        "rationale_sha256": "232d656ae62884dc6e3710216c9ab4b84272988e6a40773134ee9e986eed6cb8",
+        "rationale_sha256": "53a1d4b73fa8278a0491bf389be374d5e2a2b7061e33ae486c9d94ad4a4907ef",
         "outcome": "appended"
       },
       {
@@ -113446,7 +113491,7 @@
           "note": "사건이나 경험의 흐름을 말로 풀어낸 이야기이다",
           "relevance": 4
         },
-        "rationale_sha256": "e636424972b80dd26ee12ded8d4e31d6807be7c10693bb88626f5bc2b7869c5f",
+        "rationale_sha256": "a4bb4be3c9897fb644ee9946ff0091504ef233c710d6bd591d037449c525b6c3",
         "outcome": "appended"
       },
       {
@@ -113463,7 +113508,7 @@
           "note": "시나 소설처럼 글을 짓는 문예이다",
           "relevance": 5
         },
-        "rationale_sha256": "b18540bec04a5cfc84285c03bea695aade65aa756049f0c4b9e23a3d466ddfde",
+        "rationale_sha256": "ec399035362a4f4d68db71108aae1bea14721884769679651a1578385e13049d",
         "outcome": "appended"
       },
       {
@@ -113480,7 +113525,7 @@
           "note": "시나 소설 같은 글을 쓰는 문인이다",
           "relevance": 5
         },
-        "rationale_sha256": "c94b538e9cf0391fc5721ab26bddedac0f770889ef7521de3f5e62ccf1f4d836",
+        "rationale_sha256": "6465858493eab385118cc8fdd55bacc794c8232275a40df15286d0aade93d2d8",
         "outcome": "appended"
       },
       {
@@ -113497,7 +113542,7 @@
           "note": "사람이나 사회에 영향을 준 사건이다",
           "relevance": 5
         },
-        "rationale_sha256": "d2857e58565e96ef8ee9d18a294969a4a5772ed2873315956bebc49974fa08ba",
+        "rationale_sha256": "e09013c561ebae7b6ced8dbf98b4724ba1b287a0e55ca1311221c2be908e6954",
         "outcome": "appended"
       },
       {
@@ -113514,7 +113559,7 @@
           "note": "특징 있는 사람인 인물이다",
           "relevance": 6
         },
-        "rationale_sha256": "182959a222e76e1277e023244f475b060a4a856970217011a1cbe0a5891cdeb4",
+        "rationale_sha256": "69ba7e6ba408dab0116e69a9b017ea515eaea063e787ba5f4481e7be1caa8830",
         "outcome": "appended"
       },
       {
@@ -113522,15 +113567,16 @@
         "source_record_id": "w5773",
         "source_sense_id": "w5773-s1",
         "source_gloss_sha256": "318aa6b0578e1bc37b90d530fdb34d912909d1e9a5dafdb3d1adbd835b7093db",
-        "authored_relation_id": "rel-26cb27b9fa54f9173cfb734f",
-        "relation_id": "rel-26cb27b9fa54f9173cfb734f",
+        "authored_relation_id": "rel-1a4be01be489c7b4b0497ce3",
+        "relation_id": "rel-1a4be01be489c7b4b0497ce3",
         "relation": {
           "target": "w8050",
           "target_sense": "w8050-s1",
-          "type": "direct",
-          "note": "경찰 업무를 맡아 법과 질서를 지키는 경찰관이다"
+          "type": "near",
+          "note": "경찰 업무를 맡아 법과 질서를 지키는 경찰관이다",
+          "relevance": 4
         },
-        "rationale_sha256": "ce042fe69b7c7453f57cdf556555c87b354b3784c933f7e86f00d0a530b75518",
+        "rationale_sha256": "f29b6d610653496cd7aa988e6789f0008ca76493296f88f7929b67e5b775f575",
         "outcome": "appended"
       },
       {
@@ -113547,7 +113593,7 @@
           "note": "경찰 공무원 계급 가운데 하나인 순경이다",
           "relevance": 4
         },
-        "rationale_sha256": "068e318f9bc607680c75b39e6f1900c09ba64342a32587beefea68297da84181",
+        "rationale_sha256": "cd08965bb97cb8287e940f1ab90b0d31e65912af4c9c1925b8ad6fd41823ef5c",
         "outcome": "appended"
       },
       {
@@ -113564,7 +113610,7 @@
           "note": "군대 안에서 경찰 임무를 맡는 헌병이다",
           "relevance": 5
         },
-        "rationale_sha256": "c68fc4facb0d035b76ed6807574300151ef4be94190499e57e90bfed934e48c5",
+        "rationale_sha256": "b94f485a4eea2b6e4d48377ad5380491d31b09ff0abc04ef112d8611c89eaacf",
         "outcome": "appended"
       },
       {
@@ -113581,7 +113627,7 @@
           "note": "일제강점기에 경찰관을 이르던 순사이다",
           "relevance": 5
         },
-        "rationale_sha256": "373aa9a63ea76237651a0f827ea431d4f6c0c149ae5eb374d9807194b92cc9ce",
+        "rationale_sha256": "3b900e3d344ab1ad96edd8d5231371d6d16961b9e76d7458e9dd8ff77056d385",
         "outcome": "appended"
       },
       {
@@ -113598,7 +113644,7 @@
           "note": "경찰서를 이끄는 으뜸인 서장이다",
           "relevance": 5
         },
-        "rationale_sha256": "4961fbe604808c7ab6a34b3bb91ecb809aeb551ef44989905971d4a51f0441ae",
+        "rationale_sha256": "6401ee7ea411e1dcff60805be7a17d55f1a1294eb073df9d971b296a655a5546",
         "outcome": "appended"
       },
       {
@@ -113615,7 +113661,7 @@
           "note": "한 지역의 치안을 맡는 파출소이다",
           "relevance": 5
         },
-        "rationale_sha256": "6ee80f9fcf079dcd29cd027cd10af5b5f8f8f98da9e4823406095363f1a8ff91",
+        "rationale_sha256": "e8d46cba48cd8954958e6102df85d0906875715ce0dacfa6df1381c5d745f0af",
         "outcome": "appended"
       },
       {
@@ -113632,7 +113678,7 @@
           "note": "위험이나 사고가 일어날 염려가 없는 안전이다",
           "relevance": 5
         },
-        "rationale_sha256": "4a219ec6020398f5c1f4a831f1029873afc5324d7df20d40e07c7a3941ad9339",
+        "rationale_sha256": "7ec2ea522becd757cb92b8ea5aeee0980d1f7501756d4a10187f3a01ccc2f74b",
         "outcome": "appended"
       },
       {
@@ -113649,7 +113695,7 @@
           "note": "공공 기관이나 공무원이 맡아 하는 공무이다",
           "relevance": 6
         },
-        "rationale_sha256": "108b6944dd09add714b3199fd9c286dbca5fda14ad35bf55fcd3d527df72a7cd",
+        "rationale_sha256": "58e53d6070be4b707633cc732d34db0dfece791e6bd75f3fb7f5959a19089ef1",
         "outcome": "appended"
       },
       {
@@ -116455,15 +116501,16 @@
         "source_record_id": "w6340",
         "source_sense_id": "w6340-s1",
         "source_gloss_sha256": "c9575b93e30e87e3659b8fc8728689cfdb557110836eac9a5f5bedf04364c1e2",
-        "authored_relation_id": "rel-9e85da111e3ad50e2cffcb4c",
-        "relation_id": "rel-9e85da111e3ad50e2cffcb4c",
+        "authored_relation_id": "rel-b047a2d33db3fb628d58e06a",
+        "relation_id": "rel-b047a2d33db3fb628d58e06a",
         "relation": {
           "target": "w11202",
           "target_sense": "w11202-s1",
-          "type": "direct",
-          "note": "산의 맨 위쪽 꼭대기인 산꼭대기이다"
+          "type": "near",
+          "note": "산의 맨 위쪽 꼭대기인 산꼭대기이다",
+          "relevance": 4
         },
-        "rationale_sha256": "9bceb7b13f6f6c13d46c69b0a99fb69026f73d2990fd6e62a4655964a06860f9",
+        "rationale_sha256": "24be42bbb28f3bec4df09100474e1b98423275277a7964f9c0b6f99eb092bd88",
         "outcome": "appended"
       },
       {
@@ -116471,15 +116518,16 @@
         "source_record_id": "w6340",
         "source_sense_id": "w6340-s1",
         "source_gloss_sha256": "c9575b93e30e87e3659b8fc8728689cfdb557110836eac9a5f5bedf04364c1e2",
-        "authored_relation_id": "rel-ca20a5950e26f2341d96e0b5",
-        "relation_id": "rel-ca20a5950e26f2341d96e0b5",
+        "authored_relation_id": "rel-f2475ef44fdddcc039abc580",
+        "relation_id": "rel-f2475ef44fdddcc039abc580",
         "relation": {
           "target": "w710",
           "target_sense": "w710-s1",
-          "type": "direct",
-          "note": "산의 꼭대기나 능선의 가장 높은 곳인 산마루이다"
+          "type": "near",
+          "note": "산의 꼭대기나 능선의 가장 높은 곳인 산마루이다",
+          "relevance": 4
         },
-        "rationale_sha256": "d95e335b0dda4561c1b392af8e19f1698b8dcfc9d86eeced3e151747430836bc",
+        "rationale_sha256": "57da1bba5bf9a00869d6aa6483294401e81c4d1ece30a0205c75a381049dcff1",
         "outcome": "appended"
       },
       {
@@ -116487,15 +116535,16 @@
         "source_record_id": "w6340",
         "source_sense_id": "w6340-s1",
         "source_gloss_sha256": "c9575b93e30e87e3659b8fc8728689cfdb557110836eac9a5f5bedf04364c1e2",
-        "authored_relation_id": "rel-db7f15cf879838290978095b",
-        "relation_id": "rel-db7f15cf879838290978095b",
+        "authored_relation_id": "rel-cd0db80af701ff0a483d4665",
+        "relation_id": "rel-cd0db80af701ff0a483d4665",
         "relation": {
           "target": "w8818",
           "target_sense": "w8818-s1",
-          "type": "direct",
-          "note": "산이나 언덕에서 가장 높이 솟은 봉우리이다"
+          "type": "near",
+          "note": "산이나 언덕에서 가장 높이 솟은 봉우리이다",
+          "relevance": 4
         },
-        "rationale_sha256": "55430b0490dd86685cd789747fb9188e96f58638e88d682b8a55ac8c10dbf7a0",
+        "rationale_sha256": "0c21898e1ff16d5628167e5117920ad99a72e7f1377a5a6126611d580aa8e702",
         "outcome": "appended"
       },
       {
@@ -116503,15 +116552,16 @@
         "source_record_id": "w6340",
         "source_sense_id": "w6340-s1",
         "source_gloss_sha256": "c9575b93e30e87e3659b8fc8728689cfdb557110836eac9a5f5bedf04364c1e2",
-        "authored_relation_id": "rel-20ec831adc85ad3e92f11b9b",
-        "relation_id": "rel-20ec831adc85ad3e92f11b9b",
+        "authored_relation_id": "rel-94757e7c54ffe170c7210634",
+        "relation_id": "rel-94757e7c54ffe170c7210634",
         "relation": {
           "target": "w10256",
           "target_sense": "w10256-s1",
-          "type": "direct",
-          "note": "산에서 뾰족하게 솟은 산봉우리이다"
+          "type": "near",
+          "note": "산에서 뾰족하게 솟은 산봉우리이다",
+          "relevance": 4
         },
-        "rationale_sha256": "a080de90bbcec107a6fde4b62f88a5ae6a9f50df8d5620447d687c3165480fda",
+        "rationale_sha256": "89257b78c8a1709869e278b5831f7498795b4e22e3933f72c142bbcf951e52ae",
         "outcome": "appended"
       },
       {
@@ -116528,7 +116578,7 @@
           "note": "기둥의 가장 위쪽에서 보와 만나는 기둥머리이다",
           "relevance": 5
         },
-        "rationale_sha256": "017d2d259f29a79ad298d34339a7678703a26b5a2763530c1daf11c207b01817",
+        "rationale_sha256": "7da2ef4f737bac9fce7965d36bb58c91ec5cd0492991d289dfcbd44e4eeb67b2",
         "outcome": "appended"
       },
       {
@@ -116545,7 +116595,7 @@
           "note": "화산이 폭발하며 산꼭대기에 생긴 분화구이다",
           "relevance": 5
         },
-        "rationale_sha256": "5b30b5d73d9f255ab75e814dbd6b1e32e2387a81f8bf53e3d135e5cdbe9ded39",
+        "rationale_sha256": "193dafc4e10529b66d4daf7d11788e32526e4438ea304e4e49b7c111129fb411",
         "outcome": "appended"
       },
       {
@@ -116562,7 +116612,7 @@
           "note": "밑에서 위까지의 거리인 높이이다",
           "relevance": 5
         },
-        "rationale_sha256": "899e2d8411b95fd2b14deff40a4877bdb876b1c45c63effba76bf2d7b98a8758",
+        "rationale_sha256": "c8cc31ef2bf0e8982ca1f2897e6d2eb4691e50de07790f61380266fdf11a2cc8",
         "outcome": "appended"
       },
       {
@@ -116579,7 +116629,7 @@
           "note": "산꼭대기나 비탈에 눈이 쌓인 설산이다",
           "relevance": 6
         },
-        "rationale_sha256": "16eb0ced0bddfb7b1dd466a17fbad126360f23b2ec435d3ec858f4e571f75d96",
+        "rationale_sha256": "0fb0cf3c6f6fbdbebb32d2bfb51b6826f1f60d5709f16d17ef28f1fa1e693007",
         "outcome": "appended"
       },
       {
@@ -117814,15 +117864,16 @@
         "source_record_id": "w6571",
         "source_sense_id": "w6571-s1",
         "source_gloss_sha256": "b37c2d01d0f35cf10d17171b73a57e9fcc0e45461931e01b03463ac22e7b09e2",
-        "authored_relation_id": "rel-ae892159b2435e2ccbbc432e",
-        "relation_id": "rel-ae892159b2435e2ccbbc432e",
+        "authored_relation_id": "rel-9a0641c2286c7d4849c437cf",
+        "relation_id": "rel-9a0641c2286c7d4849c437cf",
         "relation": {
           "target": "w6253",
           "target_sense": "w6253-s1",
-          "type": "direct",
-          "note": "손을 움직여 뜻이나 방향을 나타내는 손짓이다"
+          "type": "near",
+          "note": "손을 움직여 뜻이나 방향을 나타내는 손짓이다",
+          "relevance": 4
         },
-        "rationale_sha256": "4859033c2e16fedfe00c4323c25018e1122c4f083058380cc4631c1139eaf0b9",
+        "rationale_sha256": "3f0496f87f5ffaa80b16384b766e49d6f94c60de430dac630d4a35d1de327b3c",
         "outcome": "appended"
       },
       {
@@ -117830,15 +117881,16 @@
         "source_record_id": "w6571",
         "source_sense_id": "w6571-s1",
         "source_gloss_sha256": "b37c2d01d0f35cf10d17171b73a57e9fcc0e45461931e01b03463ac22e7b09e2",
-        "authored_relation_id": "rel-285ada044210f45e637c045b",
-        "relation_id": "rel-285ada044210f45e637c045b",
+        "authored_relation_id": "rel-998f3d1d7e680447d72f9fa3",
+        "relation_id": "rel-998f3d1d7e680447d72f9fa3",
         "relation": {
           "target": "w11355",
           "target_sense": "w11355-s1",
-          "type": "direct",
-          "note": "고개를 움직여 뜻을 나타내는 고갯짓이다"
+          "type": "near",
+          "note": "고개를 움직여 뜻을 나타내는 고갯짓이다",
+          "relevance": 4
         },
-        "rationale_sha256": "f9a7f9ba0ccd310c536bb19c40ddcdc8422ddb2097273c401e84073109e3dd34",
+        "rationale_sha256": "dca728e11404d5a797b0efded6f968795ee21c2f47e0c0ab63a18a412cc789fe",
         "outcome": "appended"
       },
       {
@@ -117854,7 +117906,7 @@
           "type": "direct",
           "note": "뜻이나 감정을 나타내려고 하는 몸짓인 제스처이다"
         },
-        "rationale_sha256": "d746332b67270751d262c2f1d81fbcbda6a6abd37880a7335577664ffd9e4605",
+        "rationale_sha256": "15afab8bec4392968c8bea5ff11a0ad224fa484172f8d1ef7b73fe062bbd5299",
         "outcome": "appended"
       },
       {
@@ -117871,7 +117923,7 @@
           "note": "공경이나 예의를 나타내는 경례이다",
           "relevance": 4
         },
-        "rationale_sha256": "adab17fef64485129ad2acb53f7c749b053eb33090c6af4846d7b8f88f1561a6",
+        "rationale_sha256": "12bfaf0d9d0288a512e51e1a409cfc7033c1444fcae428beddf35a489449a45d",
         "outcome": "appended"
       },
       {
@@ -117888,7 +117940,7 @@
           "note": "사람을 만나거나 헤어질 때 하는 인사이다",
           "relevance": 5
         },
-        "rationale_sha256": "cb29aabe866c7b451b7762d30d9ebd9c728a81522c55c1e5d10b83107c7a4782",
+        "rationale_sha256": "e5094b309023205cb9adebe6adbee68f15735ee448a43200f28b2f845e7fb0c0",
         "outcome": "appended"
       },
       {
@@ -117905,7 +117957,7 @@
           "note": "몸이나 물체가 움직이는 모양인 동작이다",
           "relevance": 4
         },
-        "rationale_sha256": "4ef2c9df4c5a7e4d2ddac3230a2c635298cc045722729ee46665f4fdd2d2aa22",
+        "rationale_sha256": "508ea55267cdf3b8fddff524e10a0b3e7879b58c2a74951d63d29c32165f0de1",
         "outcome": "appended"
       },
       {
@@ -117922,7 +117974,7 @@
           "note": "뜻이나 상태를 겉으로 드러내는 나타내다 행동이다",
           "relevance": 6
         },
-        "rationale_sha256": "ad5f41bd27a2ccf8111d3793cf57938253d64e40f195b2c04dcc7ad7f667638f",
+        "rationale_sha256": "0f7960ee50cfd08b8c39ce9eca6288c2930fb68c37767e6bc156c9cf1d1aefc6",
         "outcome": "appended"
       },
       {
@@ -117939,7 +117991,7 @@
           "note": "사람이나 사물이 풍기는 모습인 자태이다",
           "relevance": 6
         },
-        "rationale_sha256": "a433a9ad847b1e491e01f882e8886a7ae76ec2a872ab9e85a4fb9551078bd923",
+        "rationale_sha256": "fa5bbfa53165fc5cd3a750ff99d83e91ccea86debb2620ad0e6c7e42fb1a6639",
         "outcome": "appended"
       },
       {
@@ -117956,7 +118008,7 @@
           "note": "손을 움직여 사람을 부르거나 뜻을 나타내는 손짓하다 행동이다",
           "relevance": 6
         },
-        "rationale_sha256": "6c459a5296214234be31fbec14ef2d8a553ed331583179ea49944dfc2d218ced",
+        "rationale_sha256": "9b03c11b38de777d8198c8172e0ce18805735adb2e1e17de68c10cc56acadf8b",
         "outcome": "appended"
       },
       {
@@ -117973,7 +118025,7 @@
           "note": "고개를 위아래로 움직이는 끄덕이다 행동이다",
           "relevance": 6
         },
-        "rationale_sha256": "83a338b192c86834003764f6261cfd72c5e7b2786f03bc9ae19d6d49637d824b",
+        "rationale_sha256": "4c99ab2a212f16dee354912491098f6e4172583eb5fc35dfa5f67e1102980868",
         "outcome": "appended"
       },
       {
@@ -118142,7 +118194,7 @@
           "type": "direct",
           "note": "여럿이 지키기로 정한 규칙이다"
         },
-        "rationale_sha256": "40e3d1dbaa6f47d0e61879e9452b5c778336a12cf916955965019bbd570cbad4",
+        "rationale_sha256": "13da05e82afaacca0b7e0f0d54daeaa0ae5d2254c00de42cba9d6df66e0a8280",
         "outcome": "appended"
       },
       {
@@ -118150,15 +118202,16 @@
         "source_record_id": "w6597",
         "source_sense_id": "w6597-s1",
         "source_gloss_sha256": "98530f1332e868c6bae1bfa80b3c57a7c66a2dff2fd73969906ada23d0e8dda8",
-        "authored_relation_id": "rel-be044c309bf6ca14be0dd2f7",
-        "relation_id": "rel-be044c309bf6ca14be0dd2f7",
+        "authored_relation_id": "rel-e4309ed341ef3d6a547d4f02",
+        "relation_id": "rel-e4309ed341ef3d6a547d4f02",
         "relation": {
           "target": "w9532",
           "target_sense": "w9532-s1",
-          "type": "direct",
-          "note": "법령이나 규정을 이루는 항목인 조항이다"
+          "type": "near",
+          "note": "법령이나 규정을 이루는 항목인 조항이다",
+          "relevance": 4
         },
-        "rationale_sha256": "b013f294a0f654d00deada9245dafe524cb898755056e5b930d49cc6467d6f17",
+        "rationale_sha256": "87bb5a1bf35fa3c22e5f11a58e87470a5d1040db64e52af62757ea18692452eb",
         "outcome": "appended"
       },
       {
@@ -118174,7 +118227,7 @@
           "type": "direct",
           "note": "일정한 기준이나 조건을 정하는 설정이다"
         },
-        "rationale_sha256": "971914243ec6de4ad45b81b2a42308ea42faa7e40642541b064cc8e82a545d98",
+        "rationale_sha256": "c73325e9036e8bd2c5da47d7b3b8d1e66d6a08e100c7e9937b53b4d6cd6d5788",
         "outcome": "appended"
       },
       {
@@ -118191,7 +118244,7 @@
           "note": "법이나 규칙 문서의 내용을 고치는 개정이다",
           "relevance": 4
         },
-        "rationale_sha256": "354059bf99d31684c231384dd963e8f679a5d5eab73326a5e6828dac0bc53177",
+        "rationale_sha256": "6fb9c8ec6af0d3d3ac47e7f4968b05562bcf5a5a7484c9221fe2caad2d248f9f",
         "outcome": "appended"
       },
       {
@@ -118208,7 +118261,7 @@
           "note": "판단하거나 비교할 때 쓰는 기준이다",
           "relevance": 4
         },
-        "rationale_sha256": "46075ce9bc368542710a2978ea22c396f79688713380841ef0951e44ee1d4281",
+        "rationale_sha256": "c1f2125b83a5d9d7289b2552355bb75a224dfaf2d5f2cfcfc845cdf18ff6adfa",
         "outcome": "appended"
       },
       {
@@ -118225,7 +118278,7 @@
           "note": "말이나 글에 담긴 내용이다",
           "relevance": 6
         },
-        "rationale_sha256": "8b7a0450cc587bb11297b3edbb11d87395d0a0b25f709ebb325e389fb30804a3",
+        "rationale_sha256": "b6917673e678b4215cc40fa1230bda1e30062b0c3f1707328ccc1f4ebce8e37d",
         "outcome": "appended"
       },
       {
@@ -118242,7 +118295,7 @@
           "note": "법이나 규칙 도덕적 기준을 어기는 범하다 행동이다",
           "relevance": 6
         },
-        "rationale_sha256": "253a703c62e2939c41d819e762109e21c24fb0cd8f7e2d15ebe95cc4456acd3d",
+        "rationale_sha256": "76ad0e316b56c3052ea6037d84aa63aeea02413e9991f97b3dad6179abd1f2b3",
         "outcome": "appended"
       },
       {
@@ -118259,7 +118312,7 @@
           "note": "사람이나 물건을 일정한 방식으로 처리하는 처분이다",
           "relevance": 6
         },
-        "rationale_sha256": "5eaacee186cf8c9ca4a1cc9b560e7b2839d1a9e8d665f332b041d6764a0ffbbf",
+        "rationale_sha256": "450f3c202e3b12d2269fa26e40043c0bec30857b9773e455aa1c60f121705063",
         "outcome": "appended"
       },
       {
@@ -120319,7 +120372,7 @@
           "type": "direct",
           "note": "다른 일이나 상태가 이루어지는 밑바탕인 바탕이다"
         },
-        "rationale_sha256": "1f4e38112da4cc4917dbc7eabed823c156e91e846ce4d3082848b6725974ceb6",
+        "rationale_sha256": "536295c92148c9e419dfd5a6c5a58776714d53aeb339800dc448e4fa22c9492c",
         "outcome": "appended"
       },
       {
@@ -120335,7 +120388,7 @@
           "type": "direct",
           "note": "다른 일을 이루는 바탕인 기본이다"
         },
-        "rationale_sha256": "e3a2c104b3a20b0e3d83d41fc80c5321beff5d72be750550b9811e64e6d3e5d4",
+        "rationale_sha256": "ff75255e60f1e041fc9de86613abf1ac276ab8806df5d6b531d614909bac41f4",
         "outcome": "appended"
       },
       {
@@ -120351,7 +120404,7 @@
           "type": "direct",
           "note": "사물이나 일이 세워지는 밑바탕인 토대이다"
         },
-        "rationale_sha256": "827f566ad1b9c966fb0ea516334b9b9c9e78919521af0529db3fad42107ac8e5",
+        "rationale_sha256": "48e5c87eb411dd9c2bb711bb86a7d54739be11985a191ad1d2f5115c741388ea",
         "outcome": "appended"
       },
       {
@@ -120359,15 +120412,16 @@
         "source_record_id": "w6709",
         "source_sense_id": "w6709-s1",
         "source_gloss_sha256": "0727c28a1fcc00525ea84bc9c782c1206cfc315eb2dee4cf31d7b33e940a7737",
-        "authored_relation_id": "rel-98d1df56f6ad7ccc8c2644ae",
-        "relation_id": "rel-98d1df56f6ad7ccc8c2644ae",
+        "authored_relation_id": "rel-846e1a16afc2f94775fff4a5",
+        "relation_id": "rel-846e1a16afc2f94775fff4a5",
         "relation": {
           "target": "w4075",
           "target_sense": "w4075-s1",
-          "type": "direct",
-          "note": "기둥 아래에 놓는 기초인 초석이다"
+          "type": "near",
+          "note": "기둥 아래에 놓는 기초인 초석이다",
+          "relevance": 4
         },
-        "rationale_sha256": "dc12e90c4c4b99be4ec19e461f2c11e5a257253d329a1b77255908451362496b",
+        "rationale_sha256": "50a3eb4d34e56907c7c317e33c43ee3c0024b89074ad6c8ee47cbf1cde06927d",
         "outcome": "appended"
       },
       {
@@ -120384,7 +120438,7 @@
           "note": "어린이에게 기초 교육을 하는 초등학교이다",
           "relevance": 5
         },
-        "rationale_sha256": "4fc422e34caf28f61567f86ad71ade981fdcb1fd91e70ce651a21afa95536b3b",
+        "rationale_sha256": "963484cb050b0ddf05f668bf2daf6769e225798225162a86a39492632d2c862b",
         "outcome": "appended"
       },
       {
@@ -120401,7 +120455,7 @@
           "note": "군인에게 기초 훈련을 시키는 훈련소이다",
           "relevance": 5
         },
-        "rationale_sha256": "6f60a401458c2f328f9bf05450a9b4e321657b95c5cca68d37f9a38cc8995840",
+        "rationale_sha256": "343d736a1085cf12cafa44406005eaf2806c7f7e0b0dec8ded7acca4f1cb2da9",
         "outcome": "appended"
       },
       {
@@ -120418,7 +120472,7 @@
           "note": "배우거나 경험해 알게 된 내용인 지식이다",
           "relevance": 5
         },
-        "rationale_sha256": "5940ceb588d5ca054ec88357ef646611dba2e19a7e63078e4cb97978b69f3a89",
+        "rationale_sha256": "1c35b87b047688c67de96fd2abab499a088a9d07f7cd991480c619f1724449ce",
         "outcome": "appended"
       },
       {
@@ -120435,7 +120489,7 @@
           "note": "일이나 지식이 갈라지는 분야이다",
           "relevance": 6
         },
-        "rationale_sha256": "e8f8056f285ac22e54c21835accc5c475448970067be3199c00efc1743cd7a0f",
+        "rationale_sha256": "912d227c7bddf4b5ad1f555caa3de0853bf44d9aaba3e3499fba2bcd54bbcfe1",
         "outcome": "appended"
       },
       {
@@ -120452,7 +120506,7 @@
           "note": "복잡한 일의 방향이나 갈피를 잡는 가닥을 잡다 표현이다",
           "relevance": 6
         },
-        "rationale_sha256": "929390f44a49b913c7989895779a2283b023766243c466f9ad98d822262671e0",
+        "rationale_sha256": "f0aabf918e73b5eed57623f9172888e0414ecf2aebefed09acef8ce3ba68039a",
         "outcome": "appended"
       },
       {
@@ -120662,15 +120716,16 @@
         "source_record_id": "w6730",
         "source_sense_id": "w6730-s1",
         "source_gloss_sha256": "28c61971eaa602f0caad45e2ff93b10c5a97673d63641205be9bb1d1ebffe672",
-        "authored_relation_id": "rel-61504494f48444c1bf9c1d47",
-        "relation_id": "rel-61504494f48444c1bf9c1d47",
+        "authored_relation_id": "rel-970c863fa635f6eef168f525",
+        "relation_id": "rel-970c863fa635f6eef168f525",
         "relation": {
           "target": "w5495",
           "target_sense": "w5495-s1",
-          "type": "direct",
-          "note": "실제로 보거나 겪지 않은 것을 그려 보는 상상이다"
+          "type": "near",
+          "note": "실제로 보거나 겪지 않은 것을 그려 보는 상상이다",
+          "relevance": 4
         },
-        "rationale_sha256": "7fdf98c251c44fc8069706da8bd929362b87dc7b2bc1e8dc655ec6a6774ff262",
+        "rationale_sha256": "931eb1b9b6d7aa53b6ddecb1e95654c8cec1ee7e9610172b51e840acbc66fb4a",
         "outcome": "appended"
       },
       {
@@ -120678,15 +120733,16 @@
         "source_record_id": "w6730",
         "source_sense_id": "w6730-s1",
         "source_gloss_sha256": "28c61971eaa602f0caad45e2ff93b10c5a97673d63641205be9bb1d1ebffe672",
-        "authored_relation_id": "rel-e74b15c90181767d78eb9f2a",
-        "relation_id": "rel-e74b15c90181767d78eb9f2a",
+        "authored_relation_id": "rel-aee97172c3efa6f1a90f7fd1",
+        "relation_id": "rel-aee97172c3efa6f1a90f7fd1",
         "relation": {
           "target": "w2826",
           "target_sense": "w2826-s1",
-          "type": "direct",
-          "note": "실제로 보지 못한 일을 마음속에 그리는 상상하다 행동이다"
+          "type": "association",
+          "note": "실제로 보지 못한 일을 마음속에 그리는 상상하다 행동이다",
+          "relevance": 5
         },
-        "rationale_sha256": "30ebb8c7435cd1853d54a5ee12bbc16eb881045fdc5892673e3cc38f276711e4",
+        "rationale_sha256": "8f7d88cbf2f647d178bf868ce349d5bf48d781447958e98e409d27a54accb058",
         "outcome": "appended"
       },
       {
@@ -120703,7 +120759,7 @@
           "note": "현실과 거리가 있는 일을 그려 보는 공상이다",
           "relevance": 4
         },
-        "rationale_sha256": "929dbdfaa70759fff2b8d19908277f2f7b022e053f4ec5010f0a94759e0ec6f4",
+        "rationale_sha256": "99aa4c9fe3d85fc355f1620ef12c6007dd7996a2645b18012d02020db493ac4c",
         "outcome": "appended"
       },
       {
@@ -120720,7 +120776,7 @@
           "note": "현실에 없거나 이루기 어려운 일을 마음속에 그린 환상이다",
           "relevance": 5
         },
-        "rationale_sha256": "bed5b8175f99b8003c8297eef6f0c459b4ddc79cc3491387cf49959330c96c31",
+        "rationale_sha256": "a5cbccb8d0ac44466b3b59217836610f134b5e50eb44656ac9a543515177c63a",
         "outcome": "appended"
       },
       {
@@ -120737,7 +120793,7 @@
           "note": "일을 이루기 전에 세부를 그려 보는 구상이다",
           "relevance": 5
         },
-        "rationale_sha256": "df727f272ec7cf97de96613dec406c9fc2631ce97cebfe8732aafd2854845315",
+        "rationale_sha256": "0d3a6dc46ae382b4c09dfe46e5a6521e27d413479ec973d4667b1eb8e901149c",
         "outcome": "appended"
       },
       {
@@ -120754,7 +120810,7 @@
           "note": "실제로 있는 것이 아니라고 보고 꾸민 가상이다",
           "relevance": 5
         },
-        "rationale_sha256": "a144262caa1e54afa1b1ee6cb4ad19a7fdee36428e35ddbbc04ed6b8e5f45d73",
+        "rationale_sha256": "25b0c75015d9bf42816f6362a89195bd24eb075258d65abf0079515308d5b0bc",
         "outcome": "appended"
       },
       {
@@ -120771,7 +120827,7 @@
           "note": "생각이나 감정이 자리하는 마음속이다",
           "relevance": 5
         },
-        "rationale_sha256": "0bdd941e67126ae25361940111d7796413926ca26bd33a63a93ec8b634990be0",
+        "rationale_sha256": "a5a7512d4d9416ecd20b6062a5790a70bd980d08228fdeafd664fa86b8b8a562",
         "outcome": "appended"
       },
       {
@@ -120788,7 +120844,7 @@
           "note": "생각과 감정을 느끼는 마음이다",
           "relevance": 6
         },
-        "rationale_sha256": "373c92b04855ca1677e47ae2724837788c9394f4f7fc9bf25b8e6740d40e2ab1",
+        "rationale_sha256": "19d40105eb48a748708a147fb9e890f68846667413d25dc51be524c1ec446fa6",
         "outcome": "appended"
       },
       {
@@ -120796,15 +120852,16 @@
         "source_record_id": "w6744",
         "source_sense_id": "w6744-s1",
         "source_gloss_sha256": "575538437f3e96bd069e9a62c756d1570c6ce0ce978654a5b3e46b5ae0431fac",
-        "authored_relation_id": "rel-f50012139210dd81164944ae",
-        "relation_id": "rel-f50012139210dd81164944ae",
+        "authored_relation_id": "rel-390c8496f0d801d8c57c6cbe",
+        "relation_id": "rel-390c8496f0d801d8c57c6cbe",
         "relation": {
           "target": "w5700",
           "target_sense": "w5700-s1",
-          "type": "direct",
-          "note": "글이나 예술 작품을 만들어 내는 작가이다"
+          "type": "near",
+          "note": "글이나 예술 작품을 만들어 내는 작가이다",
+          "relevance": 4
         },
-        "rationale_sha256": "edf97d340523a162cf6ebee0066833ab98e8e4b33d8a453c3f87529ce60ac0c3",
+        "rationale_sha256": "b057f8acb5f7290cefc7ba5eb47deaf9314548e15e767978afe308f4e75992c9",
         "outcome": "appended"
       },
       {
@@ -120812,15 +120869,16 @@
         "source_record_id": "w6744",
         "source_sense_id": "w6744-s1",
         "source_gloss_sha256": "575538437f3e96bd069e9a62c756d1570c6ce0ce978654a5b3e46b5ae0431fac",
-        "authored_relation_id": "rel-4e09459274bf7e8897a3c167",
-        "relation_id": "rel-4e09459274bf7e8897a3c167",
+        "authored_relation_id": "rel-c3193596c7952dd2de8538d8",
+        "relation_id": "rel-c3193596c7952dd2de8538d8",
         "relation": {
           "target": "w11083",
           "target_sense": "w11083-s1",
-          "type": "direct",
-          "note": "음악 작품을 짓는 일을 하는 작곡가이다"
+          "type": "near",
+          "note": "음악 작품을 짓는 일을 하는 작곡가이다",
+          "relevance": 4
         },
-        "rationale_sha256": "ac6a89c6889378e783317e3ede287a9a2e0887b11f48af022a10dc3c9d11810f",
+        "rationale_sha256": "73f1ad37d519bb54ed7a8ad5f5b7d73e1a1e346910177312496698886ac73aaa",
         "outcome": "appended"
       },
       {
@@ -120828,15 +120886,16 @@
         "source_record_id": "w6744",
         "source_sense_id": "w6744-s1",
         "source_gloss_sha256": "575538437f3e96bd069e9a62c756d1570c6ce0ce978654a5b3e46b5ae0431fac",
-        "authored_relation_id": "rel-4a09d7d8d8092996dd9d62f3",
-        "relation_id": "rel-4a09d7d8d8092996dd9d62f3",
+        "authored_relation_id": "rel-3d7eca601ba520bdd82d1f61",
+        "relation_id": "rel-3d7eca601ba520bdd82d1f61",
         "relation": {
           "target": "w6713",
           "target_sense": "w6713-s1",
-          "type": "direct",
-          "note": "그림을 그려 작품을 만드는 화가이다"
+          "type": "near",
+          "note": "그림을 그려 작품을 만드는 화가이다",
+          "relevance": 4
         },
-        "rationale_sha256": "7ae4042f5c91982b51779cd07006a9b95f6e98b085efa6a69f810c774189fce7",
+        "rationale_sha256": "8d30fa7c770b210ce73dc2d0c7d92d3f15576d240045179f3113da5fdbe15b79",
         "outcome": "appended"
       },
       {
@@ -120852,7 +120911,7 @@
           "type": "direct",
           "note": "예술 활동을 하는 사람인 아티스트이다"
         },
-        "rationale_sha256": "061980e55fe11aacf4bbc4406cc5a12b6810e2fe2a21a16d0ae49f4d87593fad",
+        "rationale_sha256": "c4015b034058c3a39ba566114b42efdc367736151e1c470b15af588c76f14277",
         "outcome": "appended"
       },
       {
@@ -120869,7 +120928,7 @@
           "note": "그림이나 조각 같은 조형 예술인 미술이다",
           "relevance": 5
         },
-        "rationale_sha256": "4e98931ce6d7fad157ddc5174693b772327a57a6bcb583b0aa0a8c3c127f9e1c",
+        "rationale_sha256": "8646d2352ec477166272509d764f3c97a691b5c1e172bdea736ed7653def5da4",
         "outcome": "appended"
       },
       {
@@ -120886,7 +120945,7 @@
           "note": "예술적 생각이나 솜씨를 담은 작품이다",
           "relevance": 5
         },
-        "rationale_sha256": "c93db3eaae77514f4c2eada6259b4d2d1365f4ca5ac0607437beeee77423c97b",
+        "rationale_sha256": "6f345ce9a8deb00082e98cf2df32efb3c84b5b77f259f8dd797ddd8b9d8a1973",
         "outcome": "appended"
       },
       {
@@ -120903,7 +120962,7 @@
           "note": "아름다움이나 생각을 형식과 표현으로 드러내는 예술이다",
           "relevance": 5
         },
-        "rationale_sha256": "22fe6a303f62c2c6bbf144966f0bdbba4a56d53e13db3be41c30b1e357d5bafe",
+        "rationale_sha256": "bf7d86986d4af480795274d9a31561e4b28ff742c722349c3301d750280b467a",
         "outcome": "appended"
       },
       {
@@ -120920,7 +120979,7 @@
           "note": "재료와 방법을 써서 물건을 만드는 제작이다",
           "relevance": 6
         },
-        "rationale_sha256": "053c9dcf44c93a54e1c3ff46bae3ddec1ea5dee14f97cf60c57bb71080078566",
+        "rationale_sha256": "cb6e26867b065b93d84063b8ac7a271a387b419e013dfcf3435324308614ffb4",
         "outcome": "appended"
       },
       {
@@ -120937,7 +120996,7 @@
           "note": "작품을 보고 느낀 생각인 감상이다",
           "relevance": 6
         },
-        "rationale_sha256": "d139c956e486fd400ae0da5db016ea8ffc87b83c9464a657e2babaef40b31bfe",
+        "rationale_sha256": "eb4741f312857a90b8501fdf137c5e86325c831ea5505da612190946495fce1d",
         "outcome": "appended"
       },
       {
@@ -121215,15 +121274,16 @@
         "source_record_id": "w6760",
         "source_sense_id": "w6760-s1",
         "source_gloss_sha256": "426ff36f7d1f875016fe774cfbbd8b81a00f142e087c4512c37619d61d402609",
-        "authored_relation_id": "rel-bb290df1bb331ff573fa4ab0",
-        "relation_id": "rel-bb290df1bb331ff573fa4ab0",
+        "authored_relation_id": "rel-4a077ac402c274d722e0bf96",
+        "relation_id": "rel-4a077ac402c274d722e0bf96",
         "relation": {
           "target": "w7273",
           "target_sense": "w7273-s1",
-          "type": "direct",
-          "note": "학생이 수업 밖에서 하는 숙제이다"
+          "type": "near",
+          "note": "학생이 수업 밖에서 하는 숙제이다",
+          "relevance": 4
         },
-        "rationale_sha256": "dcbfd489ed48c071ca375457d2876b0776310b03acbf60f4ad7e57de80ffdceb",
+        "rationale_sha256": "28190b77b5a28ffecf62a2638d62e20ee597f404d9d4d4164d0c53bab362eba6",
         "outcome": "appended"
       },
       {
@@ -121239,7 +121299,7 @@
           "type": "direct",
           "note": "꼭 이루어야 할 일인 과업이다"
         },
-        "rationale_sha256": "d190f5f7ae4ae01c7283abc9c097a84052c877b90c171284e7c11ee860d41b81",
+        "rationale_sha256": "253a41f403b69bcef9fc2c2dc56e58b06496ae464d3c973a1c6cb80bf3261d0f",
         "outcome": "appended"
       },
       {
@@ -121247,15 +121307,16 @@
         "source_record_id": "w6760",
         "source_sense_id": "w6760-s1",
         "source_gloss_sha256": "426ff36f7d1f875016fe774cfbbd8b81a00f142e087c4512c37619d61d402609",
-        "authored_relation_id": "rel-bf001d6b8b4523e7b759aa2f",
-        "relation_id": "rel-bf001d6b8b4523e7b759aa2f",
+        "authored_relation_id": "rel-af32246eb213e76558d44e67",
+        "relation_id": "rel-af32246eb213e76558d44e67",
         "relation": {
           "target": "w6237",
           "target_sense": "w6237-s1",
-          "type": "direct",
-          "note": "맡아서 해내야 하는 중요한 일인 임무이다"
+          "type": "near",
+          "note": "맡아서 해내야 하는 중요한 일인 임무이다",
+          "relevance": 4
         },
-        "rationale_sha256": "fcb847af34ebd6126211252e0a8133361370f35d2af6d5bc9f260296b6f0cd5a",
+        "rationale_sha256": "3ea448638b3b0e207efc66023a7018eb1bc29518ac49d99213894275da7c6766",
         "outcome": "appended"
       },
       {
@@ -121272,7 +121333,7 @@
           "note": "맡아 이루어야 한다고 여기는 사명이다",
           "relevance": 4
         },
-        "rationale_sha256": "87d7b6206db484bb892e3ffc5495540dbfd2540016add509edfe47b9d23a32e6",
+        "rationale_sha256": "4f3cfcab12fb3d9a817387e9e5a78f04f970681c27f11cb71af9e7a674baf4c8",
         "outcome": "appended"
       },
       {
@@ -121289,7 +121350,7 @@
           "note": "맡아서 해야 할 임무인 소임이다",
           "relevance": 4
         },
-        "rationale_sha256": "2e9b5c0020c114c0c9d7011a38e892a620f5e21fe514e8aa3027a3d1b413168d",
+        "rationale_sha256": "887bcadb8eda2a1714771ad678f91e8b4f7e6789dbca4f3cf629dc39365421c8",
         "outcome": "appended"
       },
       {
@@ -121306,7 +121367,7 @@
           "note": "마땅히 맡아서 해야 할 책무이다",
           "relevance": 5
         },
-        "rationale_sha256": "0c7125840ee58bf789e792156121cb297674e28326ac2da5113b9db9b2c1fa2b",
+        "rationale_sha256": "ad804072b6660862d4b5eac4418fc62fd47d0067aa6a7d26334a3fdd09d02430",
         "outcome": "appended"
       },
       {
@@ -121323,7 +121384,7 @@
           "note": "맡은 일이나 과제를 재빨리 끝내는 해치우다 행동이다",
           "relevance": 5
         },
-        "rationale_sha256": "40d24628e22afb329c621fc130f4ded598eb61bef7eae1eea78012a7ebac05b1",
+        "rationale_sha256": "903fac16fc4371970f7b936fd3c1e9a9b31b653030ed08c258220675e11a8863",
         "outcome": "appended"
       },
       {
@@ -121340,7 +121401,7 @@
           "note": "목표나 과제를 이루어 내는 성취이다",
           "relevance": 5
         },
-        "rationale_sha256": "1aa4c7ab0b71f7c72a6836ea30501b94b20067cefdb34e5433ac4bfff77e69a3",
+        "rationale_sha256": "cce98853844315716fd90123fb5763879a308e06a9ec994a12551a4067c96f94",
         "outcome": "appended"
       },
       {
@@ -121357,7 +121418,7 @@
           "note": "문제나 곤란한 일을 푸는 해결이다",
           "relevance": 5
         },
-        "rationale_sha256": "f4cab07e3ed1dbb4aefb263a890b1d31fd44532c8efa079fd496b5bfe119ed67",
+        "rationale_sha256": "45d09cae1a534a6cb4ba0248cfc9b6018331463b5b5bb5e7165c36fca81b4efd",
         "outcome": "appended"
       },
       {
@@ -121374,7 +121435,7 @@
           "note": "시험이나 과제에서 얻은 결과인 성적이다",
           "relevance": 6
         },
-        "rationale_sha256": "52f1505cc5e4288807b35ff6699760936b4e30e7b1cf328d63d8e3e752b16d0a",
+        "rationale_sha256": "73b50404405b25b2be391ccaaf0c1e659adedb251c7ad54c0e8632f5ef25e1ac",
         "outcome": "appended"
       },
       {
@@ -121391,7 +121452,7 @@
           "note": "일을 해결하기 어렵고 난처한 곤란이다",
           "relevance": 6
         },
-        "rationale_sha256": "e852f9374726736188e2562c9615a2289e26ec71c78d8b986cf7b58b096ae56b",
+        "rationale_sha256": "47029d5d46ec9c1b29b7bc245d4511cea0182b3334b503127ff85356187d80b7",
         "outcome": "appended"
       },
       {
@@ -128170,15 +128231,16 @@
         "source_record_id": "w7184",
         "source_sense_id": "w7184-s1",
         "source_gloss_sha256": "90c3f9c7b977a13361b35d6bf7ca3212475d6fedb2c9cf02a03f9cc69b268e64",
-        "authored_relation_id": "rel-2224bd5498bf9125ab69e279",
-        "relation_id": "rel-2224bd5498bf9125ab69e279",
+        "authored_relation_id": "rel-176ae9b63422afe494e9cb0e",
+        "relation_id": "rel-176ae9b63422afe494e9cb0e",
         "relation": {
           "target": "w6247",
           "target_sense": "w6247-s1",
-          "type": "antonym",
-          "note": "붙잡히지 않으려고 빠르게 달아나는 도망가다 행동이다"
+          "type": "association",
+          "note": "붙잡히지 않으려고 빠르게 달아나는 도망가다 행동이다",
+          "relevance": 6
         },
-        "rationale_sha256": "a595906a3ae41558e2d3dc454fa444b01c6f7b8682be0f0f1c117f7f85f717c8",
+        "rationale_sha256": "8b53fee9731e82a9a7404029d179e0408d7a962bf4914b36f50205451d5daf5d",
         "outcome": "appended"
       },
       {
@@ -128194,7 +128256,7 @@
           "type": "direct",
           "note": "손이나 도구에 붙들리는 잡히다 행동이다"
         },
-        "rationale_sha256": "396459a77f93698ad107d93ab6d9023ed509c09a0e09c7edfb788c7ae197e4b3",
+        "rationale_sha256": "ca998a1e115b742718683e64170a8fc739f97c994a8abc15e107bc3532b71285",
         "outcome": "appended"
       },
       {
@@ -128210,7 +128272,7 @@
           "type": "direct",
           "note": "다른 사람의 손이나 힘에 붙들려 있는 붙잡혀 있다 표현이다"
         },
-        "rationale_sha256": "c42cf5aa9cf1b27f5165946bc4ed2d94bd9d5ece4d73495a224c96847039548b",
+        "rationale_sha256": "d127966819f66a6e8f64156a8c3fab7dcaaf6d5331019b3718472cd2c891dbb4",
         "outcome": "appended"
       },
       {
@@ -128227,7 +128289,7 @@
           "note": "생각이나 감정에 강하게 사로잡히는 사로잡히다 상태이다",
           "relevance": 5
         },
-        "rationale_sha256": "1614ec5e9cccf3884eea5234dca6f982639f4a9843ac4a2ab5a0f58505f4a08c",
+        "rationale_sha256": "907c895acf9e1e96526055afe841056a0252da7212a3ffe7f32238734515fb2c",
         "outcome": "appended"
       },
       {
@@ -128244,7 +128306,7 @@
           "note": "몸을 움직이지 못하도록 묶는 결박이다",
           "relevance": 5
         },
-        "rationale_sha256": "ee4fee2a8099b17a0aeebf3149d6889ec24f3fb789f39a3f65c54f595c7a258a",
+        "rationale_sha256": "213ac021b7ee4adb03a9f29f25c0bc45b4679606314b582e2a66e446de6f725a",
         "outcome": "appended"
       },
       {
@@ -128261,7 +128323,7 @@
           "note": "몸이나 물체가 자리를 옮기는 움직이다 행동이다",
           "relevance": 6
         },
-        "rationale_sha256": "26fe6a116ee3d6f96fca88592339b8c77f46422f37d65a75cb2bfb9bfa97b242",
+        "rationale_sha256": "256b8d660dffa22f75a007e6fd268186c2d6b5baac6b7106e8b7f523970cd2a5",
         "outcome": "appended"
       },
       {
@@ -128278,7 +128340,7 @@
           "note": "일을 하는 데 쓰는 도구이다",
           "relevance": 6
         },
-        "rationale_sha256": "85108881cf8bf29203037121a73f633342f8b15d94500498a4d9dc9035627299",
+        "rationale_sha256": "6e49956c25ba98584bfb61de2e8ff7a8f6e0418f9fff83e9e03f302eb8606d05",
         "outcome": "appended"
       },
       {
@@ -133281,15 +133343,16 @@
         "source_record_id": "w7539",
         "source_sense_id": "w7539-s1",
         "source_gloss_sha256": "d956600d70369579e6e7ae97cff1fb11f24cf3362314630a86ef8591c93679a8",
-        "authored_relation_id": "rel-2a69af7e4541d6b49ee3c551",
-        "relation_id": "rel-2a69af7e4541d6b49ee3c551",
+        "authored_relation_id": "rel-d94f6ff6f89a100bfca5fa5d",
+        "relation_id": "rel-d94f6ff6f89a100bfca5fa5d",
         "relation": {
           "target": "w5535",
           "target_sense": "w5535-s1",
-          "type": "antonym",
-          "note": "사물이나 상태가 이전과 달라지는 변화이다"
+          "type": "association",
+          "note": "사물이나 상태가 이전과 달라지는 변화이다",
+          "relevance": 6
         },
-        "rationale_sha256": "3cc902d2ff89951a34d1fe1ba0716a7c774a58fc635412cabef1a0d9c35e82bf",
+        "rationale_sha256": "2e1045feef3d6ae87135090ad596826aa6ea3f9fecdc2cee87f96b1ff8a7c204",
         "outcome": "appended"
       },
       {
@@ -133306,7 +133369,7 @@
           "note": "생활이나 관계가 단조로워 생기는 권태감이다",
           "relevance": 4
         },
-        "rationale_sha256": "1d0924a41310af4c963c40ba4f2ad17272a3c0b1021ff90c2f576e9f54710c2b",
+        "rationale_sha256": "acdaac6927ac5fc6d6d5f689572929705ec4e68901bef45309971236b67fe728",
         "outcome": "appended"
       },
       {
@@ -133323,7 +133386,7 @@
           "note": "꾸밈이 적고 소박한 느낌의 수수하다 상태이다",
           "relevance": 5
         },
-        "rationale_sha256": "2edf432fcf0d6d058a1110784c04fa4f94464b9a290d3baa2147d6a13b45697e",
+        "rationale_sha256": "813b45d3587890b1d64c56eb8302c889bbd9634a4eef4bf42907cf9f74c818fa",
         "outcome": "appended"
       },
       {
@@ -133340,7 +133403,7 @@
           "note": "높낮이 변화가 적고 넓게 펼쳐진 평원이다",
           "relevance": 6
         },
-        "rationale_sha256": "a4057bacb7d6d8a891d5122e8eea9a8dcca16b5ceb630a84784c60aa3f0aecd9",
+        "rationale_sha256": "b16a6f15e0a3ed8f3ee8b1f94a42649e8f911baeb03e23311a633ddffe4ffd95",
         "outcome": "appended"
       },
       {
@@ -133357,7 +133420,7 @@
           "note": "대상이 한 시점에 놓인 상태이다",
           "relevance": 6
         },
-        "rationale_sha256": "66de25b83ec35ab182245a2e99035df98869fb83c91a231fe75bec80b27d452f",
+        "rationale_sha256": "cecc7a5cf5162009b6899d38867917d38859e9cdaf378dcc0e3fbe00860a41b4",
         "outcome": "appended"
       },
       {
@@ -146437,7 +146500,7 @@
           "R000029"
         ],
         "added_relation_ids": [
-          "rel-c5c195c263dd7212ed46c078",
+          "rel-de8b3c606fcdaa1b8ec2e485",
           "rel-68666b80d321443d4fe010e3",
           "rel-77699a1f7c13b5da8f627b0f",
           "rel-011f3f28091fd2466655347b",
@@ -146445,7 +146508,7 @@
           "rel-c9c209c2e4b23737bf4af211"
         ],
         "before_sha256": "12c11c547bb0e45af7b92222d370b040f4f3767449f8838ad43f63380c1e13a2",
-        "after_sha256": "63ad7ed5ba7d63803c3ca816ecb7d8ea1c04d2e979ab917677635e19170252b3",
+        "after_sha256": "de5088a9e36c152c3b87373c2b3a469ff81b770aa5d13465302b4f87237fb4a3",
         "previous_semantic_review_sha256": "d4cfd85ad5adf2c36b342f1e7e3e2ac9d2d60a5fc4816c988de744b6d1e0a0df",
         "previous_semantic_review": {
           "record_id": "w1023",
@@ -146490,7 +146553,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "9bf5bca955d22506537949bc0a70bea88202b3962184e51333d5bcc79a761552"
+        "semantic_review_sha256": "8ab969adc7e0d9af102037657e9ca3eff8e9ae5b6187ddfc09bd8ae1f6699062"
       },
       {
         "entry_id": "w10272",
@@ -146554,14 +146617,14 @@
         ],
         "added_relation_ids": [
           "rel-9ff0f53ebbd38c72282a623f",
-          "rel-cdab83734753dd869100d2ed",
+          "rel-399df006cc3e4fc6e586d7af",
           "rel-09571818320ca194516da00e",
           "rel-1cb24a7cf0a23bdb135412ec",
           "rel-1255f108f44c5ab94f9ae54b",
           "rel-874194f60f2ce50741965a77"
         ],
         "before_sha256": "b13797194bac822499d29762ebcc0e178409955858a981ebb7374e324860b61e",
-        "after_sha256": "5cc964715b3ca862b6a3f8f86f89a7076111dbd0a756b1a0eafbe7b8881570ec",
+        "after_sha256": "24f572ab122b48295df409310f910138564181f3a0ac9c8f17dd0a8150ad4573",
         "previous_semantic_review_sha256": "5d4754e48a5b81ab389c4ea38328e4f0ca9758e1c4b2559b17673d0d1eef7f60",
         "previous_semantic_review": {
           "record_id": "w10275",
@@ -146596,7 +146659,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "ecbc58783553e2d848bb0efc994c441a6312e5beb79391688666fe4c8b33d6a4"
+        "semantic_review_sha256": "d8aca9f1755e04cb04f149bc593b2c6dca167e00c1171b6030098a3999401705"
       },
       {
         "entry_id": "w10282",
@@ -146660,14 +146723,14 @@
         ],
         "added_relation_ids": [
           "rel-8901c9721acd33265922d2d7",
-          "rel-d742e43e430d23045eb2428d",
+          "rel-4568bfd2d98610a40a208177",
           "rel-581a9fe73e860e1dc2bf097d",
           "rel-e6d6fe88a8660b9d7b5e347a",
           "rel-18e9b796740ad2224c312112",
           "rel-85f9392fd297eb236de831c7"
         ],
         "before_sha256": "706cdab6328e612c4acddd6254af900a5f7eb474406c82943fca55283d7ed32d",
-        "after_sha256": "7e625549082b7e6d635ac0d34699e45a5ad56b188b7f7e39ebbe021a802f3273",
+        "after_sha256": "b6fbb4f15db2e20ac2a07871c399c92ee606c10eafa30af1299c756ef30640ee",
         "previous_semantic_review_sha256": "5221ba7b0d2bdb480ac10fe5cb9654e9352675b7a44657968e444c0be93dc632",
         "previous_semantic_review": {
           "record_id": "w1033",
@@ -146712,7 +146775,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "c4ce88ccdcd9fbc6d1a1358cb2a04c588d79f7a27049f3733ebab637847ee86a"
+        "semantic_review_sha256": "a9f4110d5ff402e88f5d4547b1bacbc9a335cb3a91cdb09ae63758648d980c1e"
       },
       {
         "entry_id": "w10332",
@@ -147205,7 +147268,7 @@
           "R000029"
         ],
         "added_relation_ids": [
-          "rel-08fdf44d94d705b4e4624fb7",
+          "rel-f8574712cc77b7cb26788211",
           "rel-e730b13c4a65aab8b3e83799",
           "rel-42e17261532ec8569d3504ba",
           "rel-0b9542f089ce1ede818194fb",
@@ -147214,7 +147277,7 @@
           "rel-0c091b28c6126d74e185af63"
         ],
         "before_sha256": "7066f095db8ebbd6a02277888d3ef3b7968d1e5267372c9e4891b0a871380607",
-        "after_sha256": "e41683d95f2a70b64c4c66fc026ba85dbfa0c725e5db585fd3ba207e9ad3dd74",
+        "after_sha256": "1d53e1c7d3022e3d32c3619e1de61cabdb99dbf2289d14340c0359a3c6ee9410",
         "previous_semantic_review_sha256": "86bd12631fde2915d38fdc1bdfd9db7a919c952a29a8d99b667addc3211eee2f",
         "previous_semantic_review": {
           "record_id": "w10370",
@@ -147249,7 +147312,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "f847d244090a8d4f608b815997fa6f9f0d243cb754d14b0725d83c20d58dddec"
+        "semantic_review_sha256": "ee78c5eafb738735fef9b4f47da13ccf22fc338b2a72863edd051ef319a99e56"
       },
       {
         "entry_id": "w10371",
@@ -147948,7 +148011,7 @@
         "added_relation_ids": [
           "rel-32cb7490ebde1707c9f09e99",
           "rel-331dd5ae26b797e8ec1c8f98",
-          "rel-f683298100434703535e00bd",
+          "rel-2abf0d9c23542bbc71ac3b8e",
           "rel-e04af00805c0c28b00f26a33",
           "rel-04772204b22292ff12746959",
           "rel-8f12e5c72f525bfdbde33ef6",
@@ -147956,7 +148019,7 @@
           "rel-c68884490632bbaf63f91106"
         ],
         "before_sha256": "4efecbb576a98d60c02464561f3ef8af75760214e7644a3046e66f8f68894594",
-        "after_sha256": "d525a1b3908beae9df780d906cfb7cbf7f12a41da48aed49d0f489b491276398",
+        "after_sha256": "eb0753f081db71967ee9733e96efc2532dd966a0eb5b26b90808bc708b5958c5",
         "previous_semantic_review_sha256": "4a361dfec51b75d3a2b6b0f911b4e9e3f09a527a29d6c743a7115a54fece47f5",
         "previous_semantic_review": {
           "record_id": "w10641",
@@ -147991,7 +148054,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "4bbc3d981eb23b184cea60f02f209f0ef2384a3c21f2d7bb8b23162ee018a28d"
+        "semantic_review_sha256": "57e50d5539d6184f6c8dce2a5755471fc1c58d07b64db681be2ccd679364646f"
       },
       {
         "entry_id": "w10663",
@@ -148691,14 +148754,14 @@
           "R000029"
         ],
         "added_relation_ids": [
-          "rel-dc71956f7bba15fde56281e6",
+          "rel-5cea3d1f3c16817dd32ceefb",
           "rel-01c9a87cb3e97f2ee6774c23",
           "rel-49385a140375c8030bf3fa29",
           "rel-c112a4f5d0e407160856987e",
           "rel-8259daf00329394fb2c3cecf"
         ],
         "before_sha256": "059419e5d422a2ffc7378ca1bbd5d0a3ce9f12a1d960f3e37e59175113deacb2",
-        "after_sha256": "baa1f87b71a6c7ff3300be65a49e66cde3e636a6d9e73bbeb9543c6c4ec5d118",
+        "after_sha256": "b28fc8b7564eafcf172d2d089586712b8cf2ac70475a73c99aa04258b599a94e",
         "previous_semantic_review_sha256": "b8b41e6e26a8272fd14959ba1afd4324ba96f69dbdc445c26990ad1a496d963a",
         "previous_semantic_review": {
           "record_id": "w10864",
@@ -148733,7 +148796,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "288bb13b060423cda8797c87fd38c58e3206689b5287c271ea33c7f8315d11df"
+        "semantic_review_sha256": "4f6c8fa7839fdb848911305baf6031714e78ade6a365f28a44d4b0634577562a"
       },
       {
         "entry_id": "w1090",
@@ -149322,7 +149385,7 @@
           "R000029"
         ],
         "added_relation_ids": [
-          "rel-872f9f2e28e2975322d4e722",
+          "rel-7048aed7017f41c53d6d8d87",
           "rel-41cc06f7dd9cfb98453a1e8c",
           "rel-a9a9687cc70a36db6fe02898",
           "rel-49343f14234f532ae825e353",
@@ -149330,7 +149393,7 @@
           "rel-36af0c77b654e8a3bb0cd966"
         ],
         "before_sha256": "71c807e660e82ffd60f48e43839de4027fe9dddc57f8b881c98a47fd7204260f",
-        "after_sha256": "f25823f9e4fefa87154102f2fb1254a41f7165a9b526c31a40e8e59c1d79d97b",
+        "after_sha256": "23f147d4ae69c76d7c7d294102c4f6320bb1f2ce359cf890cbe4dd6802c599ea",
         "previous_semantic_review_sha256": "1f0cf4ff1b262817130741ff4346be14615acdbf004f44a892ab05f8b099217f",
         "previous_semantic_review": {
           "record_id": "w11369",
@@ -149365,7 +149428,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "24351a2a656760aae235df4ac71f94345dff7cdc6ea0ff61854e43f70a35d9ed"
+        "semantic_review_sha256": "b69336daa475ec4ee585f02dfc161bc20ed61bb94f194a21a1e3205086452f12"
       },
       {
         "entry_id": "w11377",
@@ -150472,7 +150535,7 @@
           "R000029"
         ],
         "added_relation_ids": [
-          "rel-4f881fb6f90aaffcd9aa4eed",
+          "rel-720701cabbb4f9bd9c9cf2e0",
           "rel-2cbf70f69c5b43b0114d19c9",
           "rel-c2c3b522e73973c15b8a8f9f",
           "rel-03c7361f1ff16ce60cbfbdd9",
@@ -150482,7 +150545,7 @@
           "rel-1ffcb6bcd9417fb8e1251bda"
         ],
         "before_sha256": "aa3a8bea9c5ff643e7f0384b4a70c7ae4a15f42262c37e610b895cca91d17535",
-        "after_sha256": "89c1a2f544906492bd4f135fad8534be2ea83f819b49562678c30a5369f34ec7",
+        "after_sha256": "1d93a4b6d8b0a48c50e83c757248e1995502c765d87f4480ed1860f476fc1525",
         "previous_semantic_review_sha256": "df0363d0e777fd1246225dc3c1356dceb792e7619f333afd73f6eb8192f8194e",
         "previous_semantic_review": {
           "record_id": "w11882",
@@ -150517,7 +150580,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "b5193f5f4a401b8d9b10214b125c8d108029e9a19f0eeb90b21e3ebab1a13521"
+        "semantic_review_sha256": "edc47ee94c419525ad957b1c9ae382d970eb560db9d63016bdd5278c823a4a38"
       },
       {
         "entry_id": "w11896",
@@ -150793,13 +150856,13 @@
           "R000029"
         ],
         "added_relation_ids": [
-          "rel-9d1c254069f0455ae68f1480",
+          "rel-f91a624a1cd9a9fa92cb403e",
           "rel-8c39ded81af693404ebd9506",
           "rel-ccfbee02a6da584cd4617e4b",
           "rel-2a28a3ae33a5d3a2000b55bc"
         ],
         "before_sha256": "22bce8b533d40c0c4a5898fdfb0dcbc54a8da9ebed50e0f97de70cf58dbac0a5",
-        "after_sha256": "d4fde9f9793aea8919bee3138cfc1db3f0cb28969d0710b9fea376427c6f9045",
+        "after_sha256": "e0bfbba390eed550737209ddcc32a123841dc57d7fd06b6330874c9166de22c6",
         "previous_semantic_review_sha256": "e9a192f5780f8d5540f60001254a243236bf70ae4a70bffc18861a260ab9d9ea",
         "previous_semantic_review": {
           "record_id": "w12020",
@@ -150834,7 +150897,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "11399010ec7916ad6271c7a3f8ce0ff11765e5c10db2f1ae305ee155adf52d93"
+        "semantic_review_sha256": "1c596fd1d5b3909820ece34498c2ae33cd88bc589cb79c5fa490cd99d62aaea5"
       },
       {
         "entry_id": "w12064",
@@ -150951,8 +151014,8 @@
           "R000029"
         ],
         "added_relation_ids": [
-          "rel-394e1eb47e633d0626a53793",
-          "rel-6b04ba011d578caff62a617a",
+          "rel-3dfa04f90c0bc61f6600e7ac",
+          "rel-64710877480e0eaf2da5bf75",
           "rel-f758497fb4f494ca07ac9e3f",
           "rel-071883962592eabcfb0f6ad3",
           "rel-a2097e0bf7314660746b93f2",
@@ -150961,7 +151024,7 @@
           "rel-f4a48102076d1df0f0838de6"
         ],
         "before_sha256": "f3fec865a45ed0db1066b14dc50cb41c67c9e0bf5d604e65266a009fb7b358cf",
-        "after_sha256": "ae60551faece80fb1633ed0518cb465e9b0a6e4193bdd2e5df954a8289c80d25",
+        "after_sha256": "fa0bc939a7d154c014918a3798b57343a29908598914efc4e1f66573d9aa3be8",
         "previous_semantic_review_sha256": "eb79e2e5ed282947a4fe581dc96b96301fa9c7860ddd48cc432074a98fd0fa59",
         "previous_semantic_review": {
           "record_id": "w12105",
@@ -150996,7 +151059,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "a97873fabf70fc7fd51579d69a692f8ccce66d3fe23f956234c7c4e01680cf51"
+        "semantic_review_sha256": "4cade4a256f6011ceadd72f03a4b738a93c578a751ef88bb392da0fec4dffe4f"
       },
       {
         "entry_id": "w12110",
@@ -151169,14 +151232,14 @@
           "R000029"
         ],
         "added_relation_ids": [
-          "rel-008fd9301d230935bd73f2d6",
+          "rel-b2252cd0d23ee3bcf39d9628",
           "rel-4e08bef4e53af8861ea7917e",
           "rel-33caf90c16d01dd1af464a34",
           "rel-0408888170b548da899795df",
           "rel-97f2ecd6209d0ca64dd5199e"
         ],
         "before_sha256": "6b4806fd39b48da4ba90642a96715e4f3d1fe4463ffd26ed3734f70d3b5410bd",
-        "after_sha256": "b0de48354b3f2553085b65e9f5a7484c31eb34f44612f75004735a77d9c3abac",
+        "after_sha256": "9436adba0cc3a2bdc1a2f73a774fc2f0a3228f7b9245fb5eaa4963f61fb34ffd",
         "previous_semantic_review_sha256": "675827ba9120a89facd865ed431ec98f6e73b94c84e864dae8b0f8badf1e333d",
         "previous_semantic_review": {
           "record_id": "w12229",
@@ -151211,7 +151274,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "53e40038cbe6b46b174f8b62edf636b1e758d2d5c803053c1af4f2e362fa58a4"
+        "semantic_review_sha256": "6429d132cb47c4325ffd95b1c386af2c03d193471d26bceb50ba9b51df773f5f"
       },
       {
         "entry_id": "w12251",
@@ -151540,14 +151603,14 @@
           "R000029"
         ],
         "added_relation_ids": [
-          "rel-3c5c54b2937033176daf09e3",
+          "rel-ae7563894e9f486d773f0bb4",
           "rel-db9165e9d53017d902cbd231",
           "rel-dc804458ad0b54b30c6f3326",
           "rel-8c8d31cbd4ce4a15af14a753",
           "rel-501a113a3d92e29c0a3a5654"
         ],
         "before_sha256": "a6309d5882ab3d348755a6392c5acf3ec95449b83f20890e02f665f4a4e701a7",
-        "after_sha256": "a7bfec7e52b31f878677cf8e0f45c6ab7b820e7ce3b626a125a754d031fba1f1",
+        "after_sha256": "d86c47dfb81f35d3657f3558d8b118c6033b05799995326fd74462539829467a",
         "previous_semantic_review_sha256": "f8d4f2358affdef4da375186012750a19f0a8fcdaaed62274492bd23bcccbb69",
         "previous_semantic_review": {
           "record_id": "w12439",
@@ -151582,7 +151645,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "88d7a90f64ddd162079dd4db692c2b1498b6932de375848ca43fadc04ff568fd"
+        "semantic_review_sha256": "50c2796312cc57797a8bf5ca25dfed0e440e1b0ebec7108d8e3e7ee659d54e30"
       },
       {
         "entry_id": "w12530",
@@ -153178,8 +153241,8 @@
           "R000029"
         ],
         "added_relation_ids": [
-          "rel-dce70450cdca7acd4ce6d1dd",
-          "rel-873f27b93e9d24e454185466",
+          "rel-701e151fa2c9c072336653b9",
+          "rel-38e8b5ac353f8bb3dac3eefa",
           "rel-297d41bee163ed4b34d5a98e",
           "rel-6a21d8923a9793b604664198",
           "rel-c6ae939fe9a0fae2b6e0fc22",
@@ -153187,7 +153250,7 @@
           "rel-1ea4c3f5d3bbd922e4b01bb4"
         ],
         "before_sha256": "c7c3cd1d86b7a5a80e28212d585ab7e6a1928e92182a1b5555d10b782acafe5f",
-        "after_sha256": "493a9f29f74b29bfc7664f605106978fa3706214625f550ed968444be1a452ab",
+        "after_sha256": "da001605c5cb529f499e037e3798882b829501496d2386ece606e31035f8f272",
         "previous_semantic_review_sha256": "f6eed20eccd36ff23a94f70056b4eec319cb0016ebfd424b8cce128b8b9b0c4b",
         "previous_semantic_review": {
           "record_id": "w2902",
@@ -153260,7 +153323,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "a78d1a38763a934a7f5057160b03d14de61bb079f8f5affba387ee02fd40de5f"
+        "semantic_review_sha256": "7a576a5a54d1f83dee36adc10deb7b54d1e928d516217981bbbe14709b8396ef"
       },
       {
         "entry_id": "w2929",
@@ -153639,16 +153702,16 @@
           "R000029"
         ],
         "added_relation_ids": [
-          "rel-8a10121960e91d7dbb7b1e5c",
-          "rel-d71eb48003b52f5309deb8ce",
-          "rel-b7e0fcb4d78cd1763e75bff5",
+          "rel-0898bbb3cbc299c2c643a2a8",
+          "rel-37473a5c34795840626a2a28",
+          "rel-0d264af267f58aedf2335837",
           "rel-a7e7469aea5a83d1c0ef424f",
           "rel-74645d16448dbc040c60b1c1",
           "rel-adbef64f8cbd43491840e150",
           "rel-bce9a2cc99d70d107eac64a8"
         ],
         "before_sha256": "534532e0164eea77efaa716f24d4fd30f32ca17495dcfacd362e91bd626ae944",
-        "after_sha256": "d25b657cb49abdc8ebcad4730c3b8b88a495b27f56dbc3a901a385ab724cae41",
+        "after_sha256": "202d41b8aa8fdca7715a475ccd15854c01754364aa8c845740928a8ef17e6e87",
         "previous_semantic_review_sha256": "3dc23be0f14550876d6806abec64030643ce098c062e49e2ce9a76d649a84a0f",
         "previous_semantic_review": {
           "record_id": "w3023",
@@ -153683,7 +153746,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "d696e8778c1d759721a2b3879f9b68db64b099275f87989927eaf5ab0819b4fa"
+        "semantic_review_sha256": "cedfca04cf2766eea4eeaa70c2f3da0222cd6c2638f93a331f475140ba8a3b8e"
       },
       {
         "entry_id": "w3025",
@@ -153693,15 +153756,15 @@
           "R000029"
         ],
         "added_relation_ids": [
-          "rel-ae94876adb832978f7a55faa",
-          "rel-83fbf63d67ee0500cdb38ccc",
-          "rel-97707e1e5eccea22e69dbd0e",
+          "rel-5c02deab664fb3e9e78241cf",
+          "rel-4c993531ebf1f26db5d52dfb",
+          "rel-180587b111e2e149b32daea3",
           "rel-523fd4e9d0f5ef0b241f156a",
           "rel-94581d807672bfea51b54fc4",
           "rel-306f2339d58fee7090fe4228"
         ],
         "before_sha256": "4866787a930ddd1e34871d2686ce20ab856c3029df5b1b352c75a983c86204a4",
-        "after_sha256": "adf515e05293ca741f53b1b03a6270e43629c8bf1fe71e9b2c6389ceda621422",
+        "after_sha256": "8fbc864078addf4367b4610dadfa50b60835baaa6fd58c8cac4ed50e205fa228",
         "previous_semantic_review_sha256": "b64d593e8bc1c77bf6a41859173ceabfd074954b176fd8819ed187bcedd4e118",
         "previous_semantic_review": {
           "record_id": "w3025",
@@ -153736,7 +153799,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "ba6138d0235ee2a14b6aaae9e9c0a92bd55a55d8e34dd7baa37deea2093ad475"
+        "semantic_review_sha256": "80015dcfeddab172b07c304355c613ee1aaf7d0af222eb79ae282c73ff2ac0e7"
       },
       {
         "entry_id": "w3155",
@@ -155149,13 +155212,13 @@
           "R000029"
         ],
         "added_relation_ids": [
-          "rel-deee84acda6e466c5a68ba82",
+          "rel-fea0ce9ce0c5ad4f8b227351",
           "rel-dc135babeac28453ce72275b",
           "rel-c898410ab51177f1de4c10bf",
           "rel-3dd666772e95a772b60cb449"
         ],
         "before_sha256": "abace7d919f723c28dbe4e5b9ebed2e6103016be70a30f1a584ad3fc9b37a5cd",
-        "after_sha256": "af354df64792ee61a2660be00f49ce86e3a14d67490074f85804d0aa0367bb83",
+        "after_sha256": "bce38ce7859ececfdb4497865b4d76ee0e8da2da27c68f11392b17f13a463e0d",
         "previous_semantic_review_sha256": "d42f547c355746db503074251ab0c1050f001560f17a7f364c052e8ad9c6fb7e",
         "previous_semantic_review": {
           "record_id": "w4071",
@@ -155190,7 +155253,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "5db85f0ad478626867944166ce50e3559205f59a1bbd7917f9900382481782e3"
+        "semantic_review_sha256": "f73ac6668e6822f6624e360672d6ac30e64b633692d55e6ef272d35e9b7d73d1"
       },
       {
         "entry_id": "w4081",
@@ -155456,8 +155519,8 @@
           "R000029"
         ],
         "added_relation_ids": [
-          "rel-997ced509d93ea8a4accad4c",
-          "rel-1afed8d411416243f8caa35a",
+          "rel-eee462824ab7749de9b45953",
+          "rel-5f6203a738e03008ee1916e8",
           "rel-f0bd61b3c278e7ee498437bd",
           "rel-7933a995ed5af222756288dc",
           "rel-ea3c49b9c864e3d44adc41ea",
@@ -155465,7 +155528,7 @@
           "rel-8dd4ead87fdd6d6b8018bfe8"
         ],
         "before_sha256": "6651ddaa6f77a11d77fb68d8f0b0d86112beaaae178948e3143d196618d594e9",
-        "after_sha256": "b785582f6d7e5249ff0c6f7c7fa11f96678d1ca113c909c3404f998bb8ab27a5",
+        "after_sha256": "d5f69d2104ac614e31f789b06aefe6be942d93c223b873eb8656e80738dad057",
         "previous_semantic_review_sha256": "42fc21cbd664afa66f0019f602a9dfa09aa9536b604935b7740708c0877afd82",
         "previous_semantic_review": {
           "record_id": "w4100",
@@ -155500,7 +155563,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "b693589f859b136e8b97466f80ae4a38aba7420a54a4c8ff284654e39b4a21a4"
+        "semantic_review_sha256": "2648c6aaf912f5cee61b1e095a4cdc39d0d582809f80a52cadfb9ce944f5bdda"
       },
       {
         "entry_id": "w4107",
@@ -155564,14 +155627,14 @@
           "R000029"
         ],
         "added_relation_ids": [
-          "rel-0bd336d8cf937ba116a885c2",
+          "rel-176dc6042bea47d63db6cbba",
           "rel-4b4c217c13e1573546ee5bcb",
           "rel-7800ae98cfd6be39f912c9d3",
           "rel-939ed25ab2c2b6ff2366b7ea",
           "rel-a13a9c070ca179d2229ca5a1"
         ],
         "before_sha256": "e021100d448588ee38219a473d83c32d612edd7006f17f6f848ede118023ca4a",
-        "after_sha256": "20e47b8ba9d6213e869035ca63a04a3f852a2951fdbee5a62c06afa67446c7a4",
+        "after_sha256": "927d4a76d5b90185ad7d85d31fa6fed1d844d5827efab99d0ada85458f3788de",
         "previous_semantic_review_sha256": "41c9196a4e10a54f8f3d978f4403952cd8e4165b163c6fd1e9e604d9834424e0",
         "previous_semantic_review": {
           "record_id": "w4108",
@@ -155606,7 +155669,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "14865c784d71d1ee7b2b2778aa2da3c6fd3423503136cdaa0fbf789e6ff2fb67"
+        "semantic_review_sha256": "ffb331572224129776a3080b5003f08592b6e92ebccad1e582872725e69e2271"
       },
       {
         "entry_id": "w412",
@@ -156370,8 +156433,8 @@
           "R000029"
         ],
         "added_relation_ids": [
-          "rel-1e1093bfa8d5490262b692db",
-          "rel-05933891870d822bbf8dc90c",
+          "rel-73136c5a39a785b0769ad44a",
+          "rel-46deede03286d7405a0618ed",
           "rel-8e1cf873228bb64cdb262f0e",
           "rel-451b4f71caa57ebb63c4ba9c",
           "rel-a1f6f8ad491a8af2aa159873",
@@ -156379,7 +156442,7 @@
           "rel-39d5cb2cc5b334ecf2595cd0"
         ],
         "before_sha256": "401b0d81ccb7c620609822b8b3af9fbd3bb48661e1ff472193dae8f2643d8d97",
-        "after_sha256": "b5dcbfd2f41960a08f84123de17c1fa1f99008368ef074078cfd363bdf65c91a",
+        "after_sha256": "b3e87242ae0c1d5bd64fad5fead27596079d62a53cb532d2602a18a549094acd",
         "previous_semantic_review_sha256": "2b3b0230e3f0248faf05a23d48b2d246b35d35a16a9eeab884745d87c207f8bd",
         "previous_semantic_review": {
           "record_id": "w4490",
@@ -156414,7 +156477,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "cedf8fed5cc99ecf26da4a94126be299beda5ce380a960dc67be4050b8784375"
+        "semantic_review_sha256": "a01483c5505972018167fb337d31d0d0d8999a1a812521a6d29b3e4963cd77a4"
       },
       {
         "entry_id": "w4511",
@@ -156530,8 +156593,8 @@
           "R000029"
         ],
         "added_relation_ids": [
-          "rel-37bdd0312a479382eb9cba1f",
-          "rel-709f765311472879d6374e9f",
+          "rel-b22d32a7673fb14746250100",
+          "rel-6b260eb72618efc6aa46eb52",
           "rel-f82cff11ca31a076f5f25ca7",
           "rel-9e2c41c352f62dc4f2179400",
           "rel-4b82b1bfce10f83fc0f35964",
@@ -156539,7 +156602,7 @@
           "rel-014cd275200df7a912082120"
         ],
         "before_sha256": "a6059f036d86c66b81169b4dc6de1c61882350957bb9d8a63ad389468e57433d",
-        "after_sha256": "19ace19f7ca1b697a707084cb86f4ff06751fbd9f1e742e4465162a2c010f1e9",
+        "after_sha256": "a9d138825195784f49c700a20dcdae72eb8a8439a1d61b89cdd87562e02f4e4b",
         "previous_semantic_review_sha256": "e528c35624e85d0c2fe0ea552a633913df2b6537ecc93694cdd8a5019968ff94",
         "previous_semantic_review": {
           "record_id": "w4578",
@@ -156574,7 +156637,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "ac8dc5eba015d5c4b197a2b4e6793a8837ea0b0f1c81d8dda1a136830020f908"
+        "semantic_review_sha256": "dc8cea6149ee00e590b23898f743f6a6726968efeafdba0e31c05acbb5e78e24"
       },
       {
         "entry_id": "w4597",
@@ -157452,14 +157515,14 @@
           "R000029"
         ],
         "added_relation_ids": [
-          "rel-60b7c78b519b478b9e37bb19",
+          "rel-498a19c190927bde61e3887b",
           "rel-d1229a625c6967b56031ce2a",
           "rel-92b8f4b9334cd5e910f8723c",
           "rel-d3a3efd08bcaba866ba1522e",
           "rel-5b46b970401db8e3dc10810b"
         ],
         "before_sha256": "79f43801362a681a630493bc416ee5b19214a96b4c2bdd3df9ed5d43e566e226",
-        "after_sha256": "e0e97604887fdd3af7c993ec8bef7e2c020884da37daff929c31b6b2863420c4",
+        "after_sha256": "6d22ee821d761c2ec33bb3e04dc4d6284d0ebbacb78afbd36de85fb5f68f1717",
         "previous_semantic_review_sha256": "e963584990b725dae06ea2d2ed89d1f441a152aac47d95e438a850d8cc62c4de",
         "previous_semantic_review": {
           "record_id": "w502",
@@ -157504,7 +157567,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "e9bc527bff88ad2092a9a33275655c8cec0c8fcade0cb3aabe07b6109c58f262"
+        "semantic_review_sha256": "5482a83724f6d95dda1189c2f8d778fd23c0f36047afa460951413f9bfdbfbb6"
       },
       {
         "entry_id": "w5033",
@@ -157728,15 +157791,15 @@
           "R000029"
         ],
         "added_relation_ids": [
-          "rel-506f24e3dfe5009864e14f3f",
-          "rel-54e99ca437208c3f6a3ab93b",
+          "rel-27a0772698a88abc9d3c2278",
+          "rel-47c2411be8b54176d6905e58",
           "rel-6aa8bd6bec5faa7b3784f566",
           "rel-3755e0160962b0c41d060044",
           "rel-8c530eb62423ecdf4106de43",
           "rel-09c986cd980a7796463eab46"
         ],
         "before_sha256": "4f5ed7edff33a6de1265acf0f08fcf3b4dca33aad81914efe4e6928d14d9d127",
-        "after_sha256": "fdbe32c3e3e8d217400145f7fed7d45d29f328a82da52c7a8780c76483cc740c",
+        "after_sha256": "48ead696d945de7b481d287180affb589db74d4a9c0013c3d1b9f728026c8079",
         "previous_semantic_review_sha256": "1952093af9b89a114383095f176d19121ee426dc37af92d9e25bd0ba202f0954",
         "previous_semantic_review": {
           "record_id": "w5141",
@@ -157771,7 +157834,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "5e15fb23360bac6756e72d0425934971f4a3a5aaa6cb9a146bf5cea68fa1b04d"
+        "semantic_review_sha256": "984b72b9bd75a4c83f73412a75ef6012f008b1fee625b96e548b61a78ef2b0da"
       },
       {
         "entry_id": "w5146",
@@ -157781,14 +157844,14 @@
           "R000029"
         ],
         "added_relation_ids": [
-          "rel-20a7b6807a9fbf361cb9c324",
+          "rel-e33918405c6179ac768aebac",
           "rel-1d814768add138eee8c2a786",
           "rel-31236869dc20e8ad05cef0c5",
           "rel-5f689e8f8687eca9bf80583b",
           "rel-7f9a7dfeef5fd8aa1dddebb4"
         ],
         "before_sha256": "495638d3ea6ef028ee6f9bcec89c4b9ed8c18574bfe2b278311bf937c70ce1a0",
-        "after_sha256": "571e4664788ddaa9cbc349a35af202a0a902fa457bcb667b3ea3fd596afbecbf",
+        "after_sha256": "5e5be165cf9244a56eb92ec497ef67ede807e772c4f49fb2f04aa21c495a547e",
         "previous_semantic_review_sha256": "e3959d7ee0422dfffc068a4539ac76dd928de820e72eeb14176b6b894d86258d",
         "previous_semantic_review": {
           "record_id": "w5146",
@@ -157823,7 +157886,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "92fe25b80039bd528706aa12d69f364d7347076ebda9233b86a96a6f380797ac"
+        "semantic_review_sha256": "b0c72ee2253d8d2e89eb65267dbcb48580c33a363aba22197337db6134786092"
       },
       {
         "entry_id": "w5150",
@@ -157886,7 +157949,7 @@
           "R000029"
         ],
         "added_relation_ids": [
-          "rel-4c695132e347866af56f43a7",
+          "rel-88267b8622df06bc6cd7c6b5",
           "rel-3d34836032c5be8c8c344b55",
           "rel-e70f3e18f662e2f5bdb8ba6d",
           "rel-a36418b5d19aed1323fa567b",
@@ -157896,7 +157959,7 @@
           "rel-ea0016a5867e27b0be4888f6"
         ],
         "before_sha256": "f7c915ac77dac7c45560536a1b086125048cf02be09e4d72f000d310e683f9f2",
-        "after_sha256": "98428a8eac2f661fbe911d3cc7b86d1f5b17ebc465032b2cb49817e94555678b",
+        "after_sha256": "c89ffd09fe6a6df94e6d3f2b4db913f0166c4480c7d01bfea30f8ba2c0a838e8",
         "previous_semantic_review_sha256": "89cd7b01fc2864692680669cfc4abbe7fc2e3c7502ed37776114dece31550bbd",
         "previous_semantic_review": {
           "record_id": "w5152",
@@ -157931,7 +157994,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "a59584e0488c6e60e75de40074aabecb6bb323a1f727a86da1b99198fc9c1574"
+        "semantic_review_sha256": "d458ef2850dd2f8722cdd4446ab9fb94a379054010a76d8887b1e17241a3f71d"
       },
       {
         "entry_id": "w5163",
@@ -157992,14 +158055,14 @@
           "R000029"
         ],
         "added_relation_ids": [
-          "rel-21f90db866048c90b30e099a",
+          "rel-cce43252c3de64f0194af35e",
           "rel-074fa61ef06378c0e7d58827",
           "rel-4ad62a3d90daedda6974f749",
           "rel-d88eeb0f855ff4cedfc18608",
           "rel-420e4b8144cb4399bbc6c4ee"
         ],
         "before_sha256": "550f645fb32a23f90a22e9d3f2c3d360b2c57b35de373608d6bcf39197ebbd4d",
-        "after_sha256": "38e1ec5712d627dcc9c7af671bdfeefa24d2cbac7406fbd274166c8f49b10d96",
+        "after_sha256": "34a24c47a45ecbe8a0466230d22abfa39e23a8ca53996385350091e4f2c5907d",
         "previous_semantic_review_sha256": "202024516147a82dfcc0af24b169cb056c2ecdfceccadc3ccc68fe37e3029c42",
         "previous_semantic_review": {
           "record_id": "w5205",
@@ -158034,7 +158097,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "2348981dd05c7e26f0dd7d0c7ab8d616f987ea13cab1d030175f45f9f034c5d4"
+        "semantic_review_sha256": "4bb1b9a28dd861cdfa5bbd1c338eaf9dd9c34e76c8e6d24ba391d063833b4122"
       },
       {
         "entry_id": "w5207",
@@ -158044,14 +158107,14 @@
           "R000029"
         ],
         "added_relation_ids": [
-          "rel-9be4ce0eb7d8d9822bd02a58",
-          "rel-695a5b0602df6dedeb0a3b33",
+          "rel-c92034f5e4ddd6be2526b4ee",
+          "rel-d0e4791e75b712b97dc7b97f",
           "rel-c5678fe48006fcebb3225db2",
           "rel-8fd136e0d0e3c32eccdfec11",
           "rel-46e1b527d4a3ee8089f6ef2e"
         ],
         "before_sha256": "b988fe96ab00606429c5297ab871824eaf3c5ef355e2e24658a0ac673c360dad",
-        "after_sha256": "eea413e63d51ad97688bd423b11679c0176e0f0e41e4f726de53b290c10a81b0",
+        "after_sha256": "ec4446889605db5d51017ba4a2c251596226f76048e2935c40d5c9dcdc74a7fb",
         "previous_semantic_review_sha256": "4f5e0448153841f1ae25c30e5eba8111f5df7fb3f40604d70a1cd52e679cafb2",
         "previous_semantic_review": {
           "record_id": "w5207",
@@ -158086,7 +158149,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "de8dbbb32ac6c56b7af388a1fd3fe24079ce885f46dbe66e6f7dda711de94ef7"
+        "semantic_review_sha256": "6a8ce6dbeabc194b567170b35415c1e0b1a0fa946d3b5929161d647d10c89e54"
       },
       {
         "entry_id": "w5223",
@@ -158202,14 +158265,14 @@
           "R000029"
         ],
         "added_relation_ids": [
-          "rel-a7d5b85a176d2fa7fe98f087",
+          "rel-97440c3d5cec98b3b64e1bc3",
           "rel-1f0e836898438cc877778399",
           "rel-abdaff36e8c9742759de04ef",
           "rel-f6c0cbaa9706862a5544b0ac",
           "rel-8e8f7748b62e0d07f2f37b54"
         ],
         "before_sha256": "2fde3c8bdb858065fe832a71236a9bfea35b90082813c6180b23683801f72817",
-        "after_sha256": "03f1c4a4060a2c040fa47cb64a1604c8f32220fab3b933e9229d0549934bf897",
+        "after_sha256": "ae0beafbb4d45bbc2bb94027ba51e22ec18d778c8a2c238faf86bd8c3c7160d5",
         "previous_semantic_review_sha256": "37b0a2beedd7218a110ae3021405aa52087d552c66f4c89047bed0b9ddb4bf18",
         "previous_semantic_review": {
           "record_id": "w5228",
@@ -158244,7 +158307,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "39eb64700a5db0c28c5a359e364ceb28f9559e3cddb964dbd06e2780beab67bf"
+        "semantic_review_sha256": "4c37e1f4d752f8151658bea046f3f89d39d9737c228e7db9aad1d4340af14d94"
       },
       {
         "entry_id": "w5238",
@@ -158254,15 +158317,15 @@
           "R000029"
         ],
         "added_relation_ids": [
-          "rel-79982fc9dfef401b36cf6f18",
-          "rel-792722471653f420d04b6bd7",
-          "rel-a88aca4add2e1f34f915b1ae",
+          "rel-46e11aa04035939c43d44d37",
+          "rel-6128eee7cd17de0334377a0c",
+          "rel-b85e13a8b24558a76481a8b8",
           "rel-e8669176fda08c67d718c910",
           "rel-e7ce3d808e3f7f9cc43dbc46",
           "rel-83c8fab6ecac08b5bbce655b"
         ],
         "before_sha256": "f3dcfe7d05f3286a5749c38d7e8cea8600651367b6ced1b2aaa5e19c9168a009",
-        "after_sha256": "f2f0a9842266d8b776bc97f072689bcf93f7765debb96e7e0a194628721408e2",
+        "after_sha256": "7aaaa607ea4a452e2ed97766f81db415feaeb5acf5cdc2fd330aa893d6181e92",
         "previous_semantic_review_sha256": "3e865c60b1434e69127dee423b8a9c7be89fc9c34910ee8362376bdd2f4d51c3",
         "previous_semantic_review": {
           "record_id": "w5238",
@@ -158297,7 +158360,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "78bcf15434c250350b46aea9abe92245dad17fb11a6297e23d14e984fd600f71"
+        "semantic_review_sha256": "1e4fa0bb0f90a7f17cbe8f775edf538e2bd6018f15ae2b2bde309b5d0f9955c3"
       },
       {
         "entry_id": "w5256",
@@ -158470,8 +158533,8 @@
           "R000029"
         ],
         "added_relation_ids": [
-          "rel-011279b598b8cca0ab5d1843",
-          "rel-b4809a5878b80e84fb67fc2e",
+          "rel-09b784dfad60a570d542edfd",
+          "rel-3cd94d46b1c3d62a1a68d7fe",
           "rel-59e520469f282d8607d8354f",
           "rel-609d8121e4008f7dcb2bc734",
           "rel-ce26a98af494fa36309db830",
@@ -158479,7 +158542,7 @@
           "rel-9c12e43848cbd7a6c9657706"
         ],
         "before_sha256": "9fed772a72bff4e29705d9fa0d7fd5c2c45d023f2acbea4a9e8c1ca190878d9c",
-        "after_sha256": "e87fead3f7a841a6c646439a0fd68a6e0eade6a40fae1c69b1f84b83f2ecd709",
+        "after_sha256": "54030ff87760d3555d7283d102b9da0fb154ad8df87bd3920694a5782df3df9c",
         "previous_semantic_review_sha256": "fca2976d58cf04e133061b80e2daa6743ec7d10e01e0ce63e8b70c40ae35f466",
         "previous_semantic_review": {
           "record_id": "w5313",
@@ -158514,7 +158577,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "c7c96a42e6e697075eca8b4da792b46e0739f7f5b7100daa303fdb9089f617d2"
+        "semantic_review_sha256": "266e1b8a47b7e830d00fae2fc1a9cdea4a80835f328e6ed4bc1a0563e1085c7d"
       },
       {
         "entry_id": "w5340",
@@ -158628,7 +158691,7 @@
         ],
         "added_relation_ids": [
           "rel-d307b868d5a80b18daca66bd",
-          "rel-00b46f00554fbcf93c75b17d",
+          "rel-3ab9b055e1eb96d6e9c15fa7",
           "rel-88d9ec59c1000a5dbef847a9",
           "rel-a2a551b53277833112fc2959",
           "rel-671ad7efecd27bcd948edc25",
@@ -158636,7 +158699,7 @@
           "rel-faa77c866e386222873d2473"
         ],
         "before_sha256": "a57dde0f8228b5b0fa14bf28b929e5668e0926d04585ca6982bf3b55d1bb90cc",
-        "after_sha256": "0da94afa7ac04bd392eeb3a75bbdd96673562c1e8c5be1fca1c0e587074eb5b9",
+        "after_sha256": "bd843acf1fead0873c86a42421bc2124024165e570e437aecc6aa0fc7936232e",
         "previous_semantic_review_sha256": "28e78fe06f3c1943423ba331f10e95b43decb2f61a2063dea0f0c324d279beb3",
         "previous_semantic_review": {
           "record_id": "w5429",
@@ -158671,7 +158734,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "d12f60da3a59a1faa15cbf3364c3261d31e794ec885cba496432ba2cbd136fc9"
+        "semantic_review_sha256": "3b4c086f79322e87897594976130364e623a935a9c475b6654cb1a5e7d5a6b8f"
       },
       {
         "entry_id": "w5445",
@@ -159219,7 +159282,7 @@
           "R000029"
         ],
         "added_relation_ids": [
-          "rel-78c130094c0941cf38faa707",
+          "rel-cd90d04091ecbbd5fab1c124",
           "rel-77edcb842a8f9c26de9597c1",
           "rel-f42d279ca852bcf120379fc0",
           "rel-f56bc0db59a26184aed26864",
@@ -159227,7 +159290,7 @@
           "rel-8f29ca6134136bf13c31b235"
         ],
         "before_sha256": "964b2c43c4f46a29716bba09f2284696773b2f209096c45062a5277a985c38da",
-        "after_sha256": "2753abf42f7669053b8d08775503b1e6a937a15564cc74899673420032702b2e",
+        "after_sha256": "4c657bc65e8c918a2b4d191c00bbb8bb0706b84c6789e6d117b3484d64237773",
         "previous_semantic_review_sha256": "ea71896644501820a827c14be674cd18331a2003dbde2df60a0f6b92cdaeec78",
         "previous_semantic_review": {
           "record_id": "w5771",
@@ -159262,7 +159325,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "fa389a0f9dd3474960e9acc77315cfd60d87e63e07cf252057244374fa6de9ff"
+        "semantic_review_sha256": "671b841ada3595bcda616a0d5a08ff4ff0a89789c419dd56267830efbbc120f5"
       },
       {
         "entry_id": "w5773",
@@ -159272,7 +159335,7 @@
           "R000029"
         ],
         "added_relation_ids": [
-          "rel-26cb27b9fa54f9173cfb734f",
+          "rel-1a4be01be489c7b4b0497ce3",
           "rel-a2327fad81665bccf910540f",
           "rel-1c000e12c73d34e126c58d90",
           "rel-02d1e080e28911fc6521a691",
@@ -159282,7 +159345,7 @@
           "rel-6a8fb6ff4608db41d221f398"
         ],
         "before_sha256": "ccf6b3c509a2d39f320bbd841e9ca45c039c4c4d8d8043e71f6fb838026fd7e0",
-        "after_sha256": "9f0a99c34d73d143085c88eebc409fb84e96c3f5c175905b2ff080de042189c1",
+        "after_sha256": "5bec67d1f644715211444c3712d4a9b661eaf227ecd90261ade3d5000acbe5ed",
         "previous_semantic_review_sha256": "613e822d2fe01cfb01abd0589916bfffbc84e1ce39544483bfd5cd6d32a42b3a",
         "previous_semantic_review": {
           "record_id": "w5773",
@@ -159317,7 +159380,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "b3645819786ba2b25452975315fd5d30bfb2802897bd7aca513a8f01ce3d7fdf"
+        "semantic_review_sha256": "3e4210ce0b868b4f8802a251c5445a50396788f8a256da9eee38c1fb3afe0747"
       },
       {
         "entry_id": "w5775",
@@ -160837,17 +160900,17 @@
           "R000029"
         ],
         "added_relation_ids": [
-          "rel-9e85da111e3ad50e2cffcb4c",
-          "rel-ca20a5950e26f2341d96e0b5",
-          "rel-db7f15cf879838290978095b",
-          "rel-20ec831adc85ad3e92f11b9b",
+          "rel-b047a2d33db3fb628d58e06a",
+          "rel-f2475ef44fdddcc039abc580",
+          "rel-cd0db80af701ff0a483d4665",
+          "rel-94757e7c54ffe170c7210634",
           "rel-93d488983b2ba16dcb5c751a",
           "rel-bda105be39d81e388f03b22f",
           "rel-cc28099ca3d04f585d4ebd18",
           "rel-757d483b88889cedc66a4ce5"
         ],
         "before_sha256": "f6a1de893cef9c9bc89a0d91189e06651e603e2938e80146d9ce240391823629",
-        "after_sha256": "ebdf1990e87e5333b335d77e0f0957c8d8dfc67679c9c18918b08981a8e6023a",
+        "after_sha256": "f0c6ac131ca4b01c53c5fda8940124094cbc862ff558a55af9fa07db5c84c974",
         "previous_semantic_review_sha256": "faa07c050bf8abbf70a79cea83bb98b87a174dfc184e71b734fc9a79bd582969",
         "previous_semantic_review": {
           "record_id": "w6340",
@@ -160882,7 +160945,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "4b0f0526f3a4002e1d73a58bd1e37e09d638343c011f2d1d27fbfca25f9471b8"
+        "semantic_review_sha256": "e53d4f30756b9a5c33dab3994f6f9b33eb30b60a20e8f8d5913313f3d23b1113"
       },
       {
         "entry_id": "w6352",
@@ -161482,8 +161545,8 @@
           "R000029"
         ],
         "added_relation_ids": [
-          "rel-ae892159b2435e2ccbbc432e",
-          "rel-285ada044210f45e637c045b",
+          "rel-9a0641c2286c7d4849c437cf",
+          "rel-998f3d1d7e680447d72f9fa3",
           "rel-26e76eec16770a316bf3e1ea",
           "rel-64d7fd8e00768994b01a125a",
           "rel-e0fdf6aab569064c37ce4716",
@@ -161494,7 +161557,7 @@
           "rel-45c5739c1a973b31af22b437"
         ],
         "before_sha256": "0fa6be412341435886b802f1a3392f9c263f7aa6a52fc5d34ea24d80613a6815",
-        "after_sha256": "30defd72af040370094f5e18cfa32b725ab1cc551bb6d20ffe0ee2cdff09a4ef",
+        "after_sha256": "2a882967fce8e0583bfe130c3c3fcd605c597d0df2bc8d90480b2c48451df730",
         "previous_semantic_review_sha256": "75c0d795cc9a8c33c3b6eede8cce6b8452ce86ba551fa5b60f8682ed1865ca69",
         "previous_semantic_review": {
           "record_id": "w6571",
@@ -161529,7 +161592,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "485367dc8367edd7bb0d3123c6c9808ee36e4d8d1d88be74bfb2e65f56e365aa"
+        "semantic_review_sha256": "f7a555fbe9c45dd5662c61a4b8d56b7721f22efc970b25c07b90b7f849b7c4c9"
       },
       {
         "entry_id": "w6595",
@@ -161596,7 +161659,7 @@
         ],
         "added_relation_ids": [
           "rel-a5b8c92e7583bdb547d84008",
-          "rel-be044c309bf6ca14be0dd2f7",
+          "rel-e4309ed341ef3d6a547d4f02",
           "rel-d3b2ca7677f6386e3840c421",
           "rel-bcf7e941e6124d36a494ee6b",
           "rel-e418a7ce411faf6e81be6b53",
@@ -161605,7 +161668,7 @@
           "rel-64ea3942320a3f1e9b8ee5dd"
         ],
         "before_sha256": "7eec887b02245f059c77987b0b14923af34954836d0722e3b5b93fb98e6ef8a2",
-        "after_sha256": "335988581de6d473fda6212217ba54c4f55f8249db7987912533dc190c7ca41c",
+        "after_sha256": "546fda8725a4ab16e50a85d48835cac3d562bc761553d18e40e9db4d5e65091f",
         "previous_semantic_review_sha256": "0143b8cfbd2e9136d05a1352f447896f2ea7d3fd8b729a249ed59e7d4814f298",
         "previous_semantic_review": {
           "record_id": "w6597",
@@ -161640,7 +161703,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "ca5c3046e451e5652842b04458d0ae5ed236374d051f2c37bf6872176c87f0d0"
+        "semantic_review_sha256": "6f736bf708888a838c0c57cadda426d3a764f50eb291fb6a45009eb07d5a6f54"
       },
       {
         "entry_id": "w6605",
@@ -162479,7 +162542,7 @@
           "rel-286197beee19b5cdf63212c5",
           "rel-857645fda2b286b482890d4f",
           "rel-b043863c59a17a2cce095f75",
-          "rel-98d1df56f6ad7ccc8c2644ae",
+          "rel-846e1a16afc2f94775fff4a5",
           "rel-78b6746aa5e24d7fd873aac5",
           "rel-e02f3fe439d7ebe489c0bd77",
           "rel-19f3e477b26dc8f7939dd558",
@@ -162487,7 +162550,7 @@
           "rel-9a7811f2b74f5e3700648e1b"
         ],
         "before_sha256": "7ba344fd39d2052fa64e35f6d988538ec1d3e28511b048b33fe90506cdebf0b7",
-        "after_sha256": "34aee732824cede4cbfaa36bf0bfc0f9f0b65e87fd80aaa0d606a2383f0647be",
+        "after_sha256": "49ab4bbc5bd4a93442716b23b941d47c4b040b1f34c9c4da073c63513e567653",
         "previous_semantic_review_sha256": "89ff50f76e3573fc96bed559c77ad1436eb595a0faec9ccabde2404f760afb28",
         "previous_semantic_review": {
           "record_id": "w6709",
@@ -162522,7 +162585,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "176ad8252cd9bcc114ba21316678f2ca80a083bf198edee6550c2024f054c378"
+        "semantic_review_sha256": "065bf2870d6271cf6154bdd850175fa21ef597ccad5b3d455727287545f1cc44"
       },
       {
         "entry_id": "w6713",
@@ -162638,8 +162701,8 @@
           "R000029"
         ],
         "added_relation_ids": [
-          "rel-61504494f48444c1bf9c1d47",
-          "rel-e74b15c90181767d78eb9f2a",
+          "rel-970c863fa635f6eef168f525",
+          "rel-aee97172c3efa6f1a90f7fd1",
           "rel-3db30640172723f99b50124f",
           "rel-64d913fe4b88fc87a1520208",
           "rel-e9759f388df524d606699f0b",
@@ -162648,7 +162711,7 @@
           "rel-c6a2b23f7a17d7bfdab00d47"
         ],
         "before_sha256": "99c2aecc18cee42259c4a55ccc565294f6e6d21dd71f0694230c15406f68f10d",
-        "after_sha256": "885a36ea460cab1239277899de0bbc9c703d2b01b9d46019aca4abe7bc8a550e",
+        "after_sha256": "080a4ef20b562d429a372cd64e9f3956a2cd1faf5f0b31b9281bc897ce56a63c",
         "previous_semantic_review_sha256": "b1599260afc342b947d5b27d49301270e40260014e8517f1abc0747fbf460fd1",
         "previous_semantic_review": {
           "record_id": "w6730",
@@ -162683,7 +162746,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "4da71a71a2679eabaff7b4f36d12591bcf06f730c451390214ce9306428836d9"
+        "semantic_review_sha256": "366287475d4274b0f2cdeb382abf251c7d8ebda95c2bcd727e499491f5373d10"
       },
       {
         "entry_id": "w6744",
@@ -162693,9 +162756,9 @@
           "R000029"
         ],
         "added_relation_ids": [
-          "rel-f50012139210dd81164944ae",
-          "rel-4e09459274bf7e8897a3c167",
-          "rel-4a09d7d8d8092996dd9d62f3",
+          "rel-390c8496f0d801d8c57c6cbe",
+          "rel-c3193596c7952dd2de8538d8",
+          "rel-3d7eca601ba520bdd82d1f61",
           "rel-6383360e7faa6742050907a1",
           "rel-81958df05993a37c078ecc39",
           "rel-e33d2ad4add63e2c69887c0e",
@@ -162704,7 +162767,7 @@
           "rel-b92d71b76f154451f69d249b"
         ],
         "before_sha256": "7deac146ebf67f2448baf78e558559d8eb5d63be1e96c56a666f9f08085e0749",
-        "after_sha256": "0269504eb1a1f49327849abe678cd26459e3e74d6d454d5f1dda1b43facd7196",
+        "after_sha256": "26820fad014b2933b599bf0332f7803a09e3e2f410eac0e9a31c8eee89f9c06b",
         "previous_semantic_review_sha256": "aa07ceb1045f71f61e247db3479c4e12b43849770b2e2262ea32bf307701817b",
         "previous_semantic_review": {
           "record_id": "w6744",
@@ -162739,7 +162802,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "12dc058058ecef42a21c21672bcc958e5052822648d67e0c49f7faa289e5ecf0"
+        "semantic_review_sha256": "c2132a066471d32be7ce4ba999617f95140a8df8509ba33fdbd4dfdbf062210a"
       },
       {
         "entry_id": "w6747",
@@ -162859,9 +162922,9 @@
           "R000029"
         ],
         "added_relation_ids": [
-          "rel-bb290df1bb331ff573fa4ab0",
+          "rel-4a077ac402c274d722e0bf96",
           "rel-6717defa076ac0f07a188916",
-          "rel-bf001d6b8b4523e7b759aa2f",
+          "rel-af32246eb213e76558d44e67",
           "rel-1ed7ccbaf3b4807a8785f2ab",
           "rel-e75494e3dbd42084123670c3",
           "rel-aa80c4bfc5417dcad86c209e",
@@ -162872,7 +162935,7 @@
           "rel-e95f63e0a4a783e63e790266"
         ],
         "before_sha256": "ab9dd33e1fde5b3e9369d4829cb6e055fc78b2a705cd831776243eaa63f9b81d",
-        "after_sha256": "61b6c0eef1b373d6135612166fb24aad02072c4e9e11c183858d139abe4f46d4",
+        "after_sha256": "02e1a230060630a812ec51c4b044e17cf9aedd6e7f577ce3b0060ebe1616cc3b",
         "previous_semantic_review_sha256": "e299c6a9a835aa57db18aeca83cf728d3781afce7ae8fcbab2dd0e0bd1700cdf",
         "previous_semantic_review": {
           "record_id": "w6760",
@@ -162907,7 +162970,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "671ff1733c621af03e4fa4c4ce2f69f11566bed904dbb0433bf3f5590ffd8615"
+        "semantic_review_sha256": "58dfd7bceb47649e4aed6a34ce70f6decbc67c7d58794be32c2b48e9e692355f"
       },
       {
         "entry_id": "w6762",
@@ -165736,7 +165799,7 @@
           "R000029"
         ],
         "added_relation_ids": [
-          "rel-2224bd5498bf9125ab69e279",
+          "rel-176ae9b63422afe494e9cb0e",
           "rel-917cbb61917dedeb5ca75e0a",
           "rel-33258f35ee581b965bc90940",
           "rel-d4aa11332ba568a78b2091cb",
@@ -165745,7 +165808,7 @@
           "rel-d6d59a2b968df08529132979"
         ],
         "before_sha256": "8d7b72689823794496457f8e7604af6185c5c976da20b62fe4d160e16ad3baf6",
-        "after_sha256": "1805c5ac7d4f365098808e842a40b35c2dc2d99c4c310d44a6b2910f00b2317f",
+        "after_sha256": "10db9c3cd4212389271f8b8471787ba3c3a3c3784ffc6f028b9d911ee9ffc411",
         "previous_semantic_review_sha256": "a8dcf2021142567c83d693b9a795b06bfbaab8319333455f46d3eda92c8d0554",
         "previous_semantic_review": {
           "record_id": "w7184",
@@ -165780,7 +165843,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "e514927768a8f919af1e884dcf247e7f041142c7e69761611cd8e17ad8d18bc3"
+        "semantic_review_sha256": "2b61cc6cf01c0eca8ac53566e3430ed017ce23476b03af8f9de1ba8c9df03c25"
       },
       {
         "entry_id": "w7190",
@@ -167929,14 +167992,14 @@
           "R000029"
         ],
         "added_relation_ids": [
-          "rel-2a69af7e4541d6b49ee3c551",
+          "rel-d94f6ff6f89a100bfca5fa5d",
           "rel-137146335272be23d6b42724",
           "rel-e074571cb972bca42dfcb204",
           "rel-0d4cda3709a2ee619f984637",
           "rel-6b154fc70eb6880ff7560ffe"
         ],
         "before_sha256": "a3cf3f8a94c9a3926a2ff3e46a67a3e1aa228ca4e77a5c4e0187f2315db8ca83",
-        "after_sha256": "4cf437a8f99f85b7cf43b9226de03af06a250619bb238f4947ff9d8d64584c0d",
+        "after_sha256": "463ba7e59d48c10929af7f8d85bae34931329426c297d0e6162e22a1d7c0aca6",
         "previous_semantic_review_sha256": "459c07e79c11837ad36b6e0da0e5e8d8ef9225bcf644bc408f4330954a956d88",
         "previous_semantic_review": {
           "record_id": "w7539",
@@ -167971,7 +168034,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "df4b27f5a3c5f7624cc8ae5c33724bb30bfae4fa6e4b017cce13688f8ab43b55"
+        "semantic_review_sha256": "0d6f10adc7a3599bb0b8e0ebc99f1f2916929acec7d9f398bebd4c81cf4d4f90"
       },
       {
         "entry_id": "w7540",
@@ -173765,6 +173828,6 @@
         "semantic_review_sha256": "b0b2d23e2d3ccbf2ec9bce6676f3ee02104032ea7fe6e94b8e5e89257dbc20b2"
       }
     ],
-    "sha256": "bf1eaf7915e02d37f9b923b7f82e07a5908d5a7612bc61aba7c743fa66cc9f7c"
+    "sha256": "a8200e3edebf034e0833666df467f17dbecdb43f449a16ee807e25f113ec344d"
   }
 ]
