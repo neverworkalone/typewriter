@@ -407,7 +407,7 @@ test('a corrected record amended by relations and senses in either order passes 
     && record.senses.length === 1 && record.senses[0].pos === 'noun'
     && record.senses.some((item) => (item.relations ?? []).some((relation) => relation.relevance !== undefined))
     && preRelevanceRecordSha256(record) !== sha256Json(record));
-  assert.ok(target, 'the live canonical has an untouched corrected record with relevance-bearing relations');
+  assert.ok(target, 'the pre-factory base has a corrected record with relevance-bearing relations');
   const sense = target.senses.find((item) => (item.relations ?? []).some((relation) => relation.relevance !== undefined));
   const rowFor = (decisionRow) => {
     const id = decisionRow.source_candidate_id;
