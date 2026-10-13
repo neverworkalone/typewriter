@@ -7,9 +7,9 @@
   "scope": "complete-canonical",
   "source": {
     "kind": "canonical-jsonl-record-values",
-    "canonical_records_sha256": "13dd23c907d57a62f4c678ffbcbde3e1bd62529cd4a51e31cbbf27836d9a2448"
+    "canonical_records_sha256": "bcee4b40f11ad6ffd84eabcc41db88639c4b73f9b2a4fd4013d6b2979f87ffb7"
   },
-  "authored_review_sha256": "dc35e3769d32f862f041b0cc2cb9f3dc1519cc17e1c22f37d3c4b88dc7d1cdff",
+  "authored_review_sha256": "aaf82c3c3d6975091bfc22fad1a72d5c6a8750d049742bbf2785eccb27e02c05",
   "authored_review": {
     "schema_version": "2",
     "contract_version": "lexical-semantic-review-storage-v1",
@@ -1058,7 +1058,7 @@
     },
     "source": {
       "kind": "canonical-jsonl-record-values",
-      "canonical_records_sha256": "13dd23c907d57a62f4c678ffbcbde3e1bd62529cd4a51e31cbbf27836d9a2448"
+      "canonical_records_sha256": "bcee4b40f11ad6ffd84eabcc41db88639c4b73f9b2a4fd4013d6b2979f87ffb7"
     },
     "records": {
       "$shards": [
@@ -1249,6 +1249,10 @@
       {
         "file": "canonical-semantic-decision-source.shards/factory-admissions-010.json",
         "count": 2
+      },
+      {
+        "file": "canonical-semantic-decision-source.shards/factory-admissions-011.json",
+        "count": 1
       }
     ]
   }
