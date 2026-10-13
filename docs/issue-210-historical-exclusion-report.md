@@ -259,7 +259,7 @@ Every path below is hashed in the machine inventory. The inventory preserves eac
 | `data/canonical/issue-222-m9-d-corpus-batch-03.jsonl` | `df7735ab9460b8e7fef31fd95902ef199138ed7ed537eb0081c773c1b9ea2006` |
 | `data/canonical/issue-222-m9-d-corpus-batch-04.jsonl` | `e7c54e8a65b4634faa3d6e48df4fc842449f277ed8e8f49cc315affbd5b2f7be` |
 | `data/canonical/issue-222-m9-d-corpus-batch-05.jsonl` | `b6fe80351531dc90757390d1a60cf76ced15d0b649c136d037e9500ac33f70de` |
-| `data/canonical/issue-222-m9-d-corpus-batch-06.jsonl` | `5e7642d5158997397fb3f3f3bebc92030a57a67c1caade0927ea3d7a7d055841` |
+| `data/canonical/issue-222-m9-d-corpus-batch-06.jsonl` | `ed5c48b5549225521bd282226a7601bcf71f90552ff709dfe1a7ec780455dfa2` |
 | `data/canonical/issue-222-m9-d-corpus-batch-07.jsonl` | `49841774988a137dbfaf00f0ec6fbc85b7d855a1a1788bbcadb771b4ee252bcc` |
 | `data/canonical/issue-222-m9-d-corpus-batch-08.jsonl` | `e0b41e080acbcde0a2a5f7541917ebbfc089d911ca3ff37bc5f13d10bbd4a4ec` |
 | `data/canonical/issue-222-m9-d-historical-batch-01.jsonl` | `91c1d7e11d5101d82cd91c89ee129f48d76ce03bf1137602915cdedf8384d343` |
@@ -269,7 +269,7 @@ Every path below is hashed in the machine inventory. The inventory preserves eac
 | `data/canonical/issue-223-m9-e-corpus-batch-04.jsonl` | `8485e79f7246b7a8264b5c29ee99841522b3434a84cd2fe292495f9f557c8f73` |
 | `data/canonical/issue-223-m9-e-corpus-batch-05.jsonl` | `e3326ab69ed77e93e98a009a4538bd2c56b3f8ce7641f01b454eb4090fa83cc2` |
 | `data/canonical/issue-223-m9-e-corpus-batch-06.jsonl` | `e1edd2e519feaac267db17479ef0fb17af7fa5d7de0352e99e2666bd397e2ab6` |
-| `data/canonical/issue-223-m9-e-corpus-batch-07.jsonl` | `efe73187f3e85c6e5dae96a25a2f92835da4b402307874ecb4f4259b05de0d30` |
+| `data/canonical/issue-223-m9-e-corpus-batch-07.jsonl` | `b025d94c6eb9626cdde8de5735f7b25ce8d8b06057b84e51e5b2156a42ce8a75` |
 | `data/canonical/issue-223-m9-e-corpus-batch-08.jsonl` | `b5663ed9878c8dec5fc192647402d53cd27b66b08ef3ba18bd8142a7cf5afe28` |
 | `data/canonical/issue-223-m9-e-corpus-batch-09.jsonl` | `7a3e3c290d031671013bbd0092a9cb013c3534d5ea84fbedb58e2f40185c0352` |
 | `data/canonical/issue-223-m9-e-corpus-batch-10.jsonl` | `c34bb6c629e1e3b886d3a77d302d15b147afcecdbd3b78fcd8ce6d0c4bf893a9` |
@@ -284,7 +284,7 @@ Every path below is hashed in the machine inventory. The inventory preserves eac
 | `data/canonical/m5-11-expansion.jsonl` | `f6c5f50c7d7d1ff03cb2fb0f60fad629ca7fdf3cc3d9edc524baa1307905e7a3` |
 | `data/canonical/m5-12a-expansion.jsonl` | `3cfc81749833849e2fe1947c48a2384908fa0feb030893ed8b23171538cc2a1a` |
 | `data/canonical/m5-13-expansion.jsonl` | `13d210dd0b6d1271c02085d12aa751be17133475bbfcadc00f16a55e85186a7e` |
-| `data/canonical/m5-14-expansion.jsonl` | `faaed15c5d71aa89c70ba9869f509f1b8a524c5acd8afb97772b5e5c49849a64` |
+| `data/canonical/m5-14-expansion.jsonl` | `de6a1ac7eb0d5b13c7eb91cd3c481762930abd747d07ebacbc1c4fa60e9b8f18` |
 | `data/canonical/m5-15-expansion.jsonl` | `0ed06ae63061bf489bf843d9dcca3c21d803676da791f69bc1657b932e4ade80` |
 | `data/canonical/m5-3-calibration.jsonl` | `582901c28809305b89569982ab2301c157b908df22f44e80163924a4e829fe23` |
 | `data/canonical/m5-5-recalibration.jsonl` | `fb03dcfeabed1e14378dea910ee3986daaa6dd02ccfdb8d7ae4acd86dc396998` |
@@ -293,7 +293,7 @@ Every path below is hashed in the machine inventory. The inventory preserves eac
 | `data/canonical/pilot.jsonl` | `9034b88d8fedca879af7208649acb81091db6e486984331acf1c938395be3f53` |
 | `data/inventory/m5-target-promotions.jsonl` | `07d623ce84afca980f957eae4497d29ac847cc8de7999c0f8278a5cc760bef4a` |
 | `data/inventory/m5-target-seed.json` | `6c580008269555ff1f3227a2e1d1ec1732066d6e428be119c7d1deddf02d742a` |
-| `data/validation/canonical-semantic-decision-source.json` | `ee620abaf2eef9997b1fcc4408dfaa1a85f212b86ff4c6097d1cc4f49ce9e18d` |
+| `data/validation/canonical-semantic-decision-source.json` | `dbf2d24956881b1b9d97231410c35dc3dd9cf0dfb031a26bbd573ada1315e181` |
 | `data/validation/issue-219-m9-lexical-batch-report.json` | `0a27715e8dc0afe85d396f96747ef20d2c5ae1434534ae2b907cff41680c8345` |
 | `data/validation/issue-220-m9-b-checkpoint-report.json` | `03c8b457fda86dd6affcbfd07cfee01b074a01c198a7222eb0300d614cf1afdc` |
 | `data/validation/m6-2-inflection-exceptions.json` | `0c042487df854df06aecd72f32bafb08d79235e7ad7628641cdc9194979886b7` |
@@ -303,7 +303,7 @@ Every path below is hashed in the machine inventory. The inventory preserves eac
 | `docs/issue-208-searchable-start-retrospective.md` | `3e5dfd512389b4a505010686c10c32e0cdfdbb328290e1f4f0bc92a8f6aa6621` |
 | `docs/issue-211-bounded-lexical-recovery.md` | `e0a264b879f612b32fd20ebbb3c0a475d324ded5f461d4d0406f27bcb820a294` |
 | `docs/issue-219-m9-a-recovery.md` | `8b58ba80f5d35ae7bd516bdc21090c803aa460f30816efe4e031540bb8669bcc` |
-| `docs/issue-220-m9-b-checkpoint.md` | `7362b16b1b21a45c495ef0228a1abfad348d34e0e6f26bddcdffa1142fd32e6f` |
+| `docs/issue-220-m9-b-checkpoint.md` | `657c017a98e05d72320cae6d45887c730381c5f62d1eb0eeb62e4fb5ea155ea9` |
 | `docs/m3-handoff.md` | `215dedb02808c108ba06c9d20258d9fde5c03b3c5a35da556320a8c652ab3b04` |
 | `docs/m4-handoff.md` | `4492845b7a362c70b4ddb7a4c7582f2d37b3e6d2c9a9afa394edb414ed714c49` |
 | `docs/m5-16-final-audit-report.md` | `a60a58a20551d72c0388b8fd99fe5d92b3fd19c3a76cd3701c7d7e8fc82739f8` |

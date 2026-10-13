@@ -44,8 +44,12 @@ general topic or scene association.
   (패자 ↔ 승자, not 패자 ↔ 승리). A difference of scope alone is not such a
   difference: 레슨 ↔ 수업 and 꼭대기 ↔ 산꼭대기 are positive direct
   calibrations because they remain close alternatives in a recurring natural
-  context. Decide `direct` first and use `near` only for texture that is not a
-  close alternative.
+  context. A different kind of thing is not a scope difference: an action and
+  its agent or person (목격자 → 목격, 경비 → 경비원) and actions of different
+  body parts (발을 뻗다 → 손을 뻗다/팔을 뻗다) are not close alternatives, so
+  they stay `near`/`association`. Decide `direct` first and use `near` only for
+  texture that is not a close alternative. `tests/relation-editorial-controls.test.mjs`
+  keeps these positive and negative controls against the canonical relations.
 - `antonym` claims meaningful semantic opposition between the bound senses in
   a recognizable natural usage context. Ordinary, literary, figurative,
   technical, domain-specific and culinary contexts can establish the contrast.
