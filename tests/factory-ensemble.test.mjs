@@ -410,7 +410,9 @@ test('bounded batches record context decisions linked to rows, excluded lemmas, 
   assert.deepEqual(validateCandidateBatch({ manifest: bounded.manifest, candidatesText: bounded.candidatesText }), []);
 
   const deferred = await produce(evidence, providers, {
-    maxCandidates: 1, producedLemmas: new Set(['가다']), contextProposals, contextSource, contextAgent: 'codex',
+    maxCandidates: 1, excludedLemmas: new Set(['가다']),
+    exclusionProvenance: { priorProduced: new Set(['가다']), archivedFailed: new Set(), evidenceBound: new Set() },
+    contextProposals, contextSource, contextAgent: 'codex',
   });
   assert.deepEqual(deferred.rows.map((row) => row.input), ['갈다']);
   assert.deepEqual(deferred.manifest.context_fallback.decisions.map((decision) => decision.decision_id), ['D0001', 'D0002', 'D0003']);
@@ -644,10 +646,17 @@ test('Stage 1 reapplies the digest-bound corpus exclusion set after provider alt
       ...JSON.parse(compactResult.stage1DecisionsText) };
     const result = { ...compactResult, manifest: restoreManifest(compactResult.manifest, history, trashIndex(archive)) };
     assert.deepEqual(result.rows.map((row) => row.input), ['짠하다'], 'the provider-supported alternative 걷다 is in the inherited exclusion source');
-    assert.equal(result.summary.skippedProducedLemmas, 1);
+    assert.equal(result.summary.skippedExcludedLemmas, 1);
     assert.equal(result.manifest.excluded_observations.length, 3);
-    assert.ok(result.manifest.excluded_observations.every((entry) => entry.disposition === 'prior_produced_lemma'
+    assert.ok(result.manifest.excluded_observations.every((entry) => entry.disposition === 'evidence_bound_exclusion'
       && entry.lemma === '걷다' && entry.pos === 'verb' && entry.surface === '걸어'));
+    assert.ok(result.manifest.selection.source_exclusion_binding.exclusion_sha256);
+    assert.deepEqual(result.manifest.selection.source_exclusion_binding.matched_lemmas, ['걷다']);
+    const missingMatchedLemma = structuredClone(result.manifest);
+    missingMatchedLemma.selection.source_exclusion_binding.matched_lemmas = [];
+    assert.match(validateCandidateBatch({ manifest: missingMatchedLemma, candidatesText: result.candidatesText }).join(),
+      /evidence_bound_exclusion requires source exclusion binding evidence/u,
+      'an evidence-bound disposition must name the matched lemma in its compact source binding');
     assert.equal(new Set(result.manifest.excluded_observations.map((entry) => entry.observation_digest)).size, 3,
       'separate paragraphs and usage groups have separate source observation identities');
     assert.equal(new Set(result.manifest.excluded_observations.map((entry) => entry.ensemble.trace_digest)).size, 1,
@@ -1320,6 +1329,7 @@ test('production excludes archived failed lemmas resolved from different proposa
     const next = await cacheForTask(root, 'T000002');
     await writeFile(path.join(next.taskDirectory, 'candidate-evidence.json'), JSON.stringify(evidenceDoc([
       cand('다른제안', 'verb', [h('new', '가는')]), cand('바람', 'noun', [h('new', '바람')]),
+      cand('걷다', 'noun', [h('new', '걸음')]),
     ])));
     const args = ['--evidence', next.evidenceArgument, '--task-id', 'T000002', '--base-ref', 'none', '--max-candidates', String(target)];
     const dry = await runStage1([...args, '--dry-run'], deps);
@@ -1340,13 +1350,62 @@ test('production excludes archived failed lemmas resolved from different proposa
     assert.deepEqual(new Set(result.rows.map((row) => row.input)), new Set(['바람', '노을']));
     assert.equal(result.manifest.production.exhausted, true);
     assert.equal(result.manifest.production.target, target);
-    assert.equal(result.manifest.production.visited_proposal_count, 4);
+    assert.equal(result.manifest.production.visited_proposal_count, 5);
     const decisions = JSON.parse(await readFile(path.join(root, result.manifest.stage1_decisions.path), 'utf8'));
-    assert.equal(decisions.excluded_observations.length, 2);
-    assert.ok(decisions.excluded_observations.every((row) => row.lemma === '가다' && row.disposition === 'prior_produced_lemma'));
-    assert.equal(result.manifest.ensemble.counts.observations, 4);
+    assert.equal(decisions.excluded_observations.length, 3);
+    assert.ok(decisions.excluded_observations.filter((row) => row.lemma === '가다')
+      .every((row) => row.disposition === 'archived_failed_proposal'));
+    assert.ok(decisions.excluded_observations.filter((row) => row.lemma === '걸음')
+      .every((row) => row.disposition === 'prior_produced_lemma'));
+    assert.equal(result.manifest.ensemble.counts.observations, 5);
     assert.deepEqual(await validateFactoryRepository({ root }), [], 'real compact batch/archive artifacts pass the shared validator');
+    const decisionsPath = path.join(root, result.manifest.stage1_decisions.path);
+    const manifestPath = path.join(root, `data/candidates/${result.manifest.batch_id}/manifest.json`);
+    const wrongDecisions = structuredClone(decisions);
+    wrongDecisions.excluded_observations[0].disposition = 'prior_produced_lemma';
+    const wrongDecisionsText = `${JSON.stringify(wrongDecisions, null, 2)}\n`;
+    const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
+    manifest.stage1_decisions.sha256 = sha256Hex(wrongDecisionsText);
+    await writeFile(decisionsPath, wrongDecisionsText);
+    await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+    assert.match((await validateFactoryRepository({ root })).join('\n'), /must be archived_failed_proposal/u,
+      'the shared validator rejects an archived proposal mislabeled as prior production even when all digests are rebound');
+    const priorLabeledDeferred = structuredClone(decisions);
+    priorLabeledDeferred.excluded_observations.find((row) => row.lemma === '걸음').disposition = 'deferred_lemma';
+    const priorLabeledDeferredText = `${JSON.stringify(priorLabeledDeferred, null, 2)}\n`;
+    manifest.stage1_decisions.sha256 = sha256Hex(priorLabeledDeferredText);
+    await writeFile(decisionsPath, priorLabeledDeferredText);
+    await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+    assert.match((await validateFactoryRepository({ root })).join('\n'), /must be prior_produced_lemma, got deferred_lemma/u,
+      'deferred is valid only when no prior production or archive exclusion applies');
   });
+});
+
+test('shared validator accepts an ordinary deferred lemma and rejects it relabeled as prior production', async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), 'factory-deferred-provenance-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const cache = await cacheForTask(root);
+  const evidence = evidenceDoc([
+    cand('가다', 'verb', [h('d1', '가는')]), cand('나다', 'verb', [h('d2', '나는')]),
+  ]);
+  const table = { 가는: [p('가다', 'verb')], 나는: [p('나다', 'verb')] };
+  const deps = { root, cachePaths: cache.cachePaths, providers: triple({ k: table, h: table, m: table }), permission: async () => {}, log: () => {} };
+  await writeFile(path.join(cache.taskDirectory, 'candidate-evidence.json'), JSON.stringify(evidence));
+  const result = await runStage1(['--evidence', cache.evidenceArgument, '--task-id', 'T000001', '--base-ref', 'none', '--max-candidates', '1'], deps);
+  assert.deepEqual(result.rows.map((row) => row.input), ['가다']);
+  const decisions = JSON.parse(result.stage1DecisionsText);
+  assert.equal(decisions.excluded_observations[0].disposition, 'deferred_lemma');
+  assert.deepEqual(await validateFactoryRepository({ root }), [], 'a normal bound-overflow decision passes the repository validator');
+
+  const decisionsPath = path.join(root, result.manifest.stage1_decisions.path);
+  const manifestPath = path.join(root, `data/candidates/${result.manifest.batch_id}/manifest.json`);
+  decisions.excluded_observations[0].disposition = 'prior_produced_lemma';
+  const text = `${JSON.stringify(decisions, null, 2)}\n`;
+  result.manifest.stage1_decisions.sha256 = sha256Hex(text);
+  await writeFile(decisionsPath, text);
+  await writeFile(manifestPath, `${JSON.stringify(result.manifest, null, 2)}\n`);
+  assert.match((await validateFactoryRepository({ root })).join('\n'), /has no prior candidate, archived proposal, or bound source exclusion/u,
+    'the shared validator rejects an unsupported prior-produced label even after the artifact digest is rebound');
 });
 
 test('default refill selector derives a corpus-safe batch id from a T-prefixed task id', async (t) => {
@@ -1687,7 +1746,10 @@ test('compact batches retain source-bound candidate and excluded context binding
     details.context_fallback.decisions.push(entry);
   });
   await checkBoth(unused, /resolves no retained observation/);
-  const excludedResult = await produce(evidence, providers, { ...options, producedLemmas: new Set(['가다']) });
+  const excludedResult = await produce(evidence, providers, { ...options,
+    excludedLemmas: new Set(['가다']),
+    exclusionProvenance: { priorProduced: new Set(['가다']), archivedFailed: new Set(), evidenceBound: new Set() },
+  });
   const excludedGood = makeBatch(excludedResult);
   await checkBoth(excludedGood);
   for (const [field, value] of [['lemma', '걷다'], ['pos', 'noun'], ['surface', '갈까'], ['evidence', { kind: 'corpus-paragraph', ref: 'foreign#p1' }]]) {

@@ -571,13 +571,13 @@ export function buildLemmaRow({ lemma, observations: entry, candidateId, ensembl
 
 // Eligible lemmas (not yet in any earlier batch) in deterministic lemma order; the first
 // `maxCandidates` distinct lemmas become the batch, the rest are deferred.
-export function selectLemmas({ lemmas, maxCandidates = DEFAULT_MAX_CANDIDATES, producedLemmas = new Set() }) {
+export function selectLemmas({ lemmas, maxCandidates = DEFAULT_MAX_CANDIDATES, excludedLemmas = new Set() }) {
   if (!Number.isInteger(maxCandidates) || maxCandidates < 1 || maxCandidates > HARD_MAX_CANDIDATES) {
     throw new Stage1Error([`max candidates must be an integer from 1 to ${HARD_MAX_CANDIDATES}`]);
   }
-  const fresh = [...lemmas.keys()].filter((lemma) => !producedLemmas.has(lemma)).sort(compare);
-  if (fresh.length === 0) throw new Stage1Error(['no unprocessed lemmas: every resolved lemma in the evidence is already in an existing candidate batch (source exhausted)']);
-  return { selected: fresh.slice(0, maxCandidates), deferred: fresh.slice(maxCandidates), skippedProduced: lemmas.size - fresh.length };
+  const fresh = [...lemmas.keys()].filter((lemma) => !excludedLemmas.has(lemma)).sort(compare);
+  if (fresh.length === 0) throw new Stage1Error(['no unexcluded lemmas: prior production or another bound exclusion covers every resolved lemma in the evidence (source exhausted)']);
+  return { selected: fresh.slice(0, maxCandidates), deferred: fresh.slice(maxCandidates), skippedExcluded: lemmas.size - fresh.length };
 }
 
 // Identity of a produced usage across batches: lemma + POS + its primary evidence reference
@@ -660,15 +660,17 @@ export const batchMetrics = (rows, { unresolved, repeatsMerged }) => {
 
 // Keep assigned observations outside the candidate rows in an explicit, text-free disposition
 // ledger. This includes prior-produced lemmas and lemmas beyond the current batch bound.
-function excludedObservationsForBatch({ grouped, selected, deferred, producedLemmas }) {
+function excludedObservationsForBatch({ grouped, selected, deferred, exclusionProvenance }) {
   const selectedSet = new Set(selected);
   const deferredSet = new Set(deferred);
   const decisionsByObservation = new Map(grouped.decisions.map((decision) => [decision.observation_digest, decision]));
   const excluded = [];
   for (const [lemma, observations] of grouped.lemmas) {
     if (selectedSet.has(lemma)) continue;
-    const disposition = producedLemmas.has(lemma) ? 'prior_produced_lemma'
-      : deferredSet.has(lemma) ? 'deferred_lemma' : null;
+    const disposition = exclusionProvenance.priorProduced.has(lemma) ? 'prior_produced_lemma'
+      : exclusionProvenance.archivedFailed.has(lemma) ? 'archived_failed_proposal'
+        : exclusionProvenance.evidenceBound.has(lemma) ? 'evidence_bound_exclusion'
+          : deferredSet.has(lemma) ? 'deferred_lemma' : null;
     if (!disposition) throw new Stage1Error([`resolved lemma ${lemma} has no batch disposition`]);
     for (const item of observations.values()) {
       const decision = decisionsByObservation.get(item.observation_digest);
@@ -830,7 +832,8 @@ export async function compareResolutionPolicies({ observations, kiwiProvider, en
 // Pure producer: evidence + analyzer + canonical → v2 manifest and candidates.jsonl text.
 export async function produceCandidateBatch({
   evidence, analyzer, providers, canonicalEntries, canonicalDigest, batchId, taskId, maxCandidates = DEFAULT_MAX_CANDIDATES,
-  producedLemmas = new Set(), searchFormSupport = new Map(), producerRevision = null,
+  excludedLemmas = new Set(), exclusionProvenance = null, sourceExclusionBinding = null,
+  searchFormSupport = new Map(), producerRevision = null,
   // `provider-resolution-v1` (conditional fallback, default order [kiwi]) stays the explicit compatibility/A-B baseline of
   // the library; the production CLI selects the all-three ensemble by default (docs/lexical-factory-ensemble-v2.md).
   policy = RESOLUTION_POLICY, contextProposals = null, contextReplay = null, contextSource = null, contextAgent = null,
@@ -859,16 +862,24 @@ export async function produceCandidateBatch({
   if (!refill && grouped.unresolved.length > MAX_UNRESOLVED_OBSERVATIONS) {
     throw new Stage1Error([`${grouped.unresolved.length} observations have no reliable lemma/POS, above the bound ${MAX_UNRESOLVED_OBSERVATIONS}; split the evidence run`]);
   }
-  const empty = ![...grouped.lemmas.keys()].some((lemma) => !producedLemmas.has(lemma));
+  const classifiedExclusions = exclusionProvenance ?? {
+    priorProduced: new Set(),
+    archivedFailed: new Set(),
+    evidenceBound: new Set(),
+  };
+  const empty = ![...grouped.lemmas.keys()].some((lemma) => !excludedLemmas.has(lemma));
   if (refill && empty && !finalizeEmpty) return {
     incomplete: true, rows: [], grouped,
     unrepresentableProposalCount: source.omitted_unrepresentable_candidate_count,
   };
-  const { selected, deferred, skippedProduced } = refill && finalizeEmpty && empty
-    ? { selected: [], deferred: [], skippedProduced: grouped.lemmas.size }
-    : selectLemmas({ lemmas: grouped.lemmas, maxCandidates, producedLemmas });
+  const { selected, deferred, skippedExcluded } = refill && finalizeEmpty && empty
+    ? { selected: [], deferred: [], skippedExcluded: grouped.lemmas.size }
+    : selectLemmas({ lemmas: grouped.lemmas, maxCandidates, excludedLemmas });
   const rows = selected.map((lemma, index) => buildLemmaRow({ lemma, observations: grouped.lemmas.get(lemma), candidateId: candidateIdFor(batchId, index + 1), ensemble }));
-  const excludedObservations = ensemble ? excludedObservationsForBatch({ grouped, selected, deferred, producedLemmas }) : [];
+  const excludedObservations = ensemble ? excludedObservationsForBatch({ grouped, selected, deferred,
+    exclusionProvenance: classifiedExclusions }) : [];
+  const matchedBoundLemmas = [...new Set(excludedObservations
+    .filter((entry) => entry.disposition === 'evidence_bound_exclusion').map((entry) => entry.lemma))].sort(compare);
   const contextRecords = ensemble ? contextDecisionsForBatch(grouped, rows, excludedObservations) : [];
   const candidatesText = serializeCandidates(rows);
   // Default [kiwi] omits the provider fields: byte-identical to the pre-provider manifest.
@@ -882,7 +893,8 @@ export async function produceCandidateBatch({
     batch_id: batchId,
     candidate_count: rows.length,
     observation_count: rows.reduce((sum, row) => sum + row.observation_total, 0),
-    selection: { bound: maxCandidates, eligible_lemma_count: selected.length + deferred.length, deferred_lemma_count: deferred.length },
+    selection: { bound: maxCandidates, eligible_lemma_count: selected.length + deferred.length, deferred_lemma_count: deferred.length,
+      ...(sourceExclusionBinding ? { source_exclusion_binding: { ...sourceExclusionBinding, matched_lemmas: matchedBoundLemmas } } : {}) },
     unresolved_observations: grouped.unresolved,
     ...(ensemble ? { excluded_observations: excludedObservations } : {}),
     source_adapter: CORPUS_SOURCE_ADAPTER,
@@ -917,7 +929,7 @@ export async function produceCandidateBatch({
       omittedNonTokenSurfaceHits: source.omitted_non_token_surface_hits,
       omittedUnrepresentableProposals: source.omitted_unrepresentable_candidate_count,
       deferredLemmas: deferred,
-      skippedProducedLemmas: skippedProduced,
+      skippedExcludedLemmas: skippedExcluded,
       metrics: batchMetrics(rows, grouped),
       routes: routeCounts(rows, canonicalEntries, searchFormSupport),
     },

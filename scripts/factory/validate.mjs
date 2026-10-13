@@ -21,7 +21,7 @@ import { nonliteralCoverageAdvisories, validateLemmaDecision } from './lemma-dec
 import { loadSearchFormSupport } from './search-form-support.mjs';
 import { canonicalSnapshotDigest, usageKeyOfRow } from './stage1.mjs';
 import { validateCandidateTransition, validateLinkedTransition } from './transitions.mjs';
-import { COMPACT_CONTRACT, TRASH_DIRECTORY, validateTrashChunk, validateArchivedUnresolved } from './permanent-trash.mjs';
+import { COMPACT_CONTRACT, STAGE1_DECISIONS_V2, TRASH_DIRECTORY, validateTrashChunk, validateArchivedUnresolved } from './permanent-trash.mjs';
 import { GIT_MAX_BUFFER } from './git-limits.mjs';
 import { readShardedJson } from '../lib/sharded-json.mjs';
 
@@ -113,10 +113,12 @@ export async function validateFactoryRepository({ root = REPOSITORY_DIRECTORY, b
     const expectedFiles = manifest.contract === COMPACT_CONTRACT ? [...CANDIDATE_FILES, 'stage1-decisions.json'] : CANDIDATE_FILES;
     if (JSON.stringify(files) !== JSON.stringify(expectedFiles)) errors.push(`${batch}: candidate directory must hold exactly ${expectedFiles.join(' and ')}, found ${files.join(', ') || 'nothing'}`);
     const stage1DecisionsText = manifest.contract === COMPACT_CONTRACT ? await readOptional(path.join(directory, 'stage1-decisions.json')) : undefined;
+    let stage1Decisions = null;
+    try { if (stage1DecisionsText !== undefined) stage1Decisions = JSON.parse(stage1DecisionsText); } catch { /* shape validation reports malformed decisions */ }
     if (manifest.batch_id !== batch) errors.push(`${batch}: batch_id ${manifest.batch_id} does not match its directory`);
     const candidatesText = await readOptional(path.join(directory, 'candidates.jsonl'));
     errors.push(...validateCandidateBatch({ manifest, candidatesText, stage1DecisionsText }).map((error) => `${batch}: ${error}`));
-    candidates.set(batch, { manifest, candidatesText });
+    candidates.set(batch, { manifest, candidatesText, stage1Decisions });
   }
   for (const [batch, { manifest }] of candidates) {
     // The Stage 3 snapshot loader reads a deliberately archive-free, already-
@@ -137,7 +139,17 @@ export async function validateFactoryRepository({ root = REPOSITORY_DIRECTORY, b
   const seenIds = new Set();
   const seenUsages = new Map();
   const seenLemmas = new Map();
-  for (const [batch, { candidatesText }] of [...candidates].sort(([a], [b]) => (a < b ? -1 : 1))) {
+  const sortedCandidates = [...candidates].sort(([a], [b]) => (a < b ? -1 : 1));
+  const v2DecisionBatches = new Set(sortedCandidates.filter(([batch, { manifest, stage1Decisions }]) =>
+    !mergedMaster && stage1Decisions?.contract === STAGE1_DECISIONS_V2
+      && (!base?.candidate?.[batch] || base.candidate[batch].stage1_decisions?.sha256 !== manifest.stage1_decisions?.sha256))
+    .map(([batch]) => batch));
+  const archivedLemmaBatches = v2DecisionBatches.size ? await loadArchivedLemmaBatches(root) : new Map();
+  for (const [batch, { manifest, candidatesText, stage1Decisions }] of sortedCandidates) {
+    if (v2DecisionBatches.has(batch)) {
+      errors.push(...validateStage1ExclusionProvenance({ batch, manifest, stage1Decisions,
+        priorProducedLemmas: new Set(seenLemmas.keys()), archivedLemmaBatches }));
+    }
     for (const row of parseJsonl(candidatesText ?? '', batch, [])) {
       if (seenIds.has(row.candidate_id)) errors.push(`${batch}: candidate_id ${row.candidate_id} is not unique across batches`);
       seenIds.add(row.candidate_id);
@@ -559,6 +571,53 @@ async function validateChangedArchive(root, base, report, changedArchiveOccurren
       if (!line.trim()) continue;
       const id = JSON.parse(line).observation_id;
       if (changedIds.has(id)) errors.push(`${changedIds.get(id)}: duplicate archive identity ${id} also in ${name}`);
+    }
+  }
+  return errors;
+}
+
+// V2 Stage 1 dispositions distinguish earlier output from archive and source-bound exclusions.
+// Read only the compact lemma/occurrence projection from trash; historical analyses are not replayed.
+async function loadArchivedLemmaBatches(root) {
+  const byLemma = new Map();
+  let names;
+  try { names = (await readdir(path.join(root, TRASH_DIRECTORY))).sort(); }
+  catch (error) { if (error.code === 'ENOENT') return byLemma; throw error; }
+  for (const name of names) {
+    if (!/^T\d{6}\.jsonl$/u.test(name)) continue;
+    const text = await readFile(path.join(root, TRASH_DIRECTORY, name), 'utf8');
+    for (const line of text.split('\n')) {
+      if (!line.trim()) continue;
+      let row;
+      try { row = JSON.parse(line); } catch { continue; }
+      const lemma = row.identity?.[4];
+      if (typeof lemma !== 'string') continue;
+      const batches = byLemma.get(lemma) ?? new Set();
+      for (const variant of row.variants ?? []) for (const occurrence of variant.occurrences ?? []) {
+        if (/^C\d{6}$/u.test(String(occurrence.batch_id ?? ''))) batches.add(occurrence.batch_id);
+      }
+      byLemma.set(lemma, batches);
+    }
+  }
+  return byLemma;
+}
+
+function validateStage1ExclusionProvenance({ batch, manifest, stage1Decisions, priorProducedLemmas, archivedLemmaBatches }) {
+  const errors = [];
+  const sourceBinding = manifest.selection?.source_exclusion_binding;
+  for (const [index, entry] of (stage1Decisions?.excluded_observations ?? []).entries()) {
+    const priorProduced = priorProducedLemmas.has(entry.lemma);
+    const archiveBatches = archivedLemmaBatches.get(entry.lemma) ?? new Set();
+    const archivedBeforeBatch = [...archiveBatches].some((archivedBatch) => archivedBatch < batch);
+    const expected = priorProduced ? 'prior_produced_lemma'
+      : archivedBeforeBatch ? 'archived_failed_proposal'
+        : sourceBinding?.matched_lemmas?.includes(entry.lemma) ? 'evidence_bound_exclusion' : null;
+    if (entry.disposition === 'deferred_lemma') {
+      if (expected) errors.push(`${batch}: excluded observation ${index} for ${entry.lemma} must be ${expected}, got deferred_lemma`);
+    } else if (!expected) {
+      errors.push(`${batch}: excluded observation ${index} for ${entry.lemma} has no prior candidate, archived proposal, or bound source exclusion`);
+    } else if (entry.disposition !== expected) {
+      errors.push(`${batch}: excluded observation ${index} for ${entry.lemma} must be ${expected}, got ${entry.disposition}`);
     }
   }
   return errors;
