@@ -183,7 +183,10 @@ export function nextPacket(rows, state, { limit = 50, currentCandidates = new Re
   if (state?.contract !== BACKFILL_CONTRACT) throw new Error('unknown backfill state contract');
   if (!Number.isInteger(limit) || limit < 1 || limit > MAX_PACKET_SIZE) throw new Error(`limit must be an integer 1-${MAX_PACKET_SIZE}`);
   const pending = orderInventory(rows).filter((row) => !isReviewCurrent(row, state.done[row.sense_id], currentCandidates));
-  return pending.slice(0, limit);
+  // First reviews come before re-reviews. Growing canonical keeps changing the candidate pool of the highest-demand
+  // senses, so in demand order alone they would return to the head of every packet and starve the senses never reviewed.
+  const first = pending.filter((row) => state.done[row.sense_id] === undefined);
+  return [...first, ...pending.filter((row) => state.done[row.sense_id] !== undefined)].slice(0, limit);
 }
 
 /**

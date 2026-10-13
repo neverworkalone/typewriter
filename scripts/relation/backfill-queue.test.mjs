@@ -105,6 +105,11 @@ test('a review is re-queued when its gloss changed or the canonical now offers a
   assert.equal(pending(rowsB, revisionB), true, 'the unreviewed candidate returns the sense to the queue');
   assert.equal(summarizeQueue(rowsB, state, current(revisionB, state, rowsB)).completed, 0, 'status no longer counts the stale review');
   assert.equal(pending(rowsB, revisionB, new ReviewContext([], buildRelationIndex(revisionB))), true, 'without a current pool the old review fails closed');
+  // First reviews are served before re-reviews, so a returning high-demand sense never starves the unreviewed ones.
+  const packetB = nextPacket(rowsB, state, { limit: rowsB.length, currentCandidates: current(revisionB, state, rowsB) }).map((row) => row.sense_id);
+  assert.ok(packetB.length > 1 && packetB.includes(id), 'the stale review is still offered');
+  assert.equal(packetB.at(-1), id, 'but after every sense that was never reviewed');
+  assert.notEqual(nextPacket(rowsB, state, { limit: 1, currentCandidates: current(revisionB, state, rowsB) })[0].sense_id, id);
 });
 
 test('packets are fed by the production retriever and its fail-closed artifact validator', () => {
