@@ -190,7 +190,7 @@ export function nextPacket(rows, state, { limit = 50, currentCandidates = new Re
  * Validates and records review outcomes for a packet. Relation tuples are checked by the shared amendment
  * validator, so a backfill relation obeys exactly the production contract. Returns the updated state (pure).
  */
-export function recordOutcomes(state, packet, outcomes, { candidates, index, snapshotDigest } = {}) {
+export function recordOutcomes(state, packet, outcomes, { candidates, index, snapshotDigest, afterPacket = null } = {}) {
   if (!index || typeof snapshotDigest !== 'string' || !snapshotDigest) throw new Error('recordOutcomes needs the canonical index and the retrieval snapshot digest');
   const bound = packetBoundErrors(packet);
   if (bound.length) return { state, errors: bound };
@@ -243,6 +243,9 @@ export function recordOutcomes(state, packet, outcomes, { candidates, index, sna
         relation_id: reviewedRelationId(row.sense_id, amendment.relation), relation: amendment.relation, rationale: amendment.rationale,
       })),
       canonical_snapshot_digest: snapshotDigest,
+      // The newest committed backfill/correction packet when this was reviewed: a correction committed later retires the
+      // approval, while one committed earlier was already known to the reviewer.
+      recorded_after_packet: afterPacket,
       reviewed_candidates: reviewedCandidates,
     };
   }

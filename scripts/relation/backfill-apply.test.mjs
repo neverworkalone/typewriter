@@ -10,8 +10,8 @@ import { validateDatasetDirectory, validateDatasetRecords } from '../validate/da
 import { loadCanonicalContext, readCanonicalContext, writeCanonicalContext } from '../validate/canonical-context.mjs';
 import { reviewedRelationId } from '../batch/authored-semantic-decision-source.mjs';
 import { validateFactoryRepository } from '../factory/validate.mjs';
-import { planRelationBackfill, writePlannedRecords } from '../factory/admission.mjs';
-import { approvedAmendments, applyBackfill, nextPacketId, packetTextFor } from './backfill-apply.mjs';
+import { planRelationBackfill, targetMeaningSha256, writePlannedRecords } from '../factory/admission.mjs';
+import { approvedAmendments, applyBackfill, applyRelationCorrections, completedPacketId, correctionItemsFor, nextPacketId, packetTextFor } from './backfill-apply.mjs';
 import { inventoryCanonicalSenses, newQueueState } from './backfill-queue.mjs';
 import { buildRelationIndex } from './candidate-retrieval.mjs';
 import { copyShardedAuthority, readShardedJson } from '../../tests/helpers/sharded-authority.mjs';
@@ -226,6 +226,87 @@ test('a run interrupted after the packet (and optionally the canonical write) is
     } finally {
       await rm(root, { recursive: true, force: true });
     }
+  }
+});
+
+test('an approval retyped by a committed correction is not resurrected, while an independent type for the same target is still written', async () => {
+  const canonical = await loadCanonicalContext();
+  const index = buildRelationIndex(canonical);
+  const { source, target, state } = oneApproval(canonical, index);
+  const approved = state.done[source.sense_id].approved_relations[0].relation;
+  const root = await scratchRoot();
+  try {
+    assert.equal((await applyBackfill({ root, state, index, refreshReports: false })).status, 'applied');
+    const applied = await readRecords(root);
+    const meaning = targetMeaningSha256(new Map(applied.map((record) => [record.id, record])), target.sense_id);
+    const direct = { target: target.record_id, target_sense: target.sense_id, type: 'direct', note: approved.note };
+    const proposal = {
+      source_sense_id: source.sense_id, previous_relation: approved, target_meaning_sha256: meaning, relation: direct,
+      rationale: `${source.record_id} ${source.sense_id}: 회귀 시험용 근거로 유형을 바로잡는다.`,
+    };
+    const correction = await applyRelationCorrections({ root, proposals: [proposal], refreshReports: false });
+    assert.equal(correction.status, 'applied');
+    const retyped = await readRecords(root);
+    const eventsBefore = await authorityEvents(root);
+    // The old approval (the association tuple) is gone from canonical but must not come back beside the direct one.
+    const replay = await applyBackfill({ root, state, index: buildRelationIndex({ ...canonical, records: retyped }), refreshReports: false });
+    assert.equal(replay.status, 'nothing-to-apply');
+    assert.deepEqual(await readRecords(root), retyped);
+    assert.equal(await authorityEvents(root), eventsBefore);
+
+    // A review made after that correction, approving the same tuple again, is a newer decision and is written and recorded.
+    const rereviewed = structuredClone(state);
+    rereviewed.done[source.sense_id].recorded_after_packet = correction.packets.at(-1);
+    const again = await applyBackfill({ root, state: rereviewed, index: buildRelationIndex({ ...canonical, records: retyped }), refreshReports: false });
+    assert.equal(again.status, 'applied');
+    assert.equal(again.relations_appended, 1);
+    assert.equal(await authorityEvents(root), eventsBefore + 1);
+    const restored = await readRecords(root);
+
+    // Positive control: an independently approved different type for the same target is a separate tuple and is written.
+    const independent = newQueueState(canonical.canonicalRevision);
+    const near = { target: target.record_id, target_sense: target.sense_id, type: 'near', note: '회귀 시험용 말의 결이다.', relevance: 4 };
+    independent.done[source.sense_id] = approvedEntry(index, source.sense_id, near, `${source.record_id} ${source.sense_id}: 회귀 시험용 근거.`);
+    const result = await applyBackfill({ root, state: independent, index: buildRelationIndex({ ...canonical, records: restored }), refreshReports: false });
+    assert.equal(result.status, 'applied');
+    assert.equal(result.relations_appended, 1);
+    const sense = (await readRecords(root)).find((record) => record.id === source.record_id).senses.find(({ id }) => id === source.sense_id);
+    assert.deepEqual(sense.relations.filter((relation) => relation.target_sense === target.sense_id).map((relation) => relation.type).sort(), ['association', 'direct', 'near']);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('the review marker ignores an interrupted correction packet, so resuming it still retires the older approval', async () => {
+  const canonical = await loadCanonicalContext();
+  const index = buildRelationIndex(canonical);
+  const { source, target, state } = oneApproval(canonical, index);
+  const approved = state.done[source.sense_id].approved_relations[0].relation;
+  const root = await scratchRoot();
+  try {
+    assert.equal((await applyBackfill({ root, state, index, refreshReports: false })).status, 'applied');
+    const applied = await readRecords(root);
+    const direct = { target: target.record_id, target_sense: target.sense_id, type: 'direct', note: approved.note };
+    const items = correctionItemsFor(applied, [{
+      source_sense_id: source.sense_id, previous_relation: approved, relation: direct,
+      target_meaning_sha256: targetMeaningSha256(new Map(applied.map((record) => [record.id, record])), target.sense_id),
+      rationale: `${source.record_id} ${source.sense_id}: 회귀 시험용 근거로 유형을 바로잡는다.`,
+    }]);
+    // Only the intent file exists: no canonical change and no authority event, as after a crash.
+    const interrupted = await nextId(root);
+    const dir = path.join(root, 'data/relation-backfill');
+    await writeFile(path.join(dir, `${interrupted}.json`), `${JSON.stringify({ packet_id: interrupted, relation_corrections: items }, null, 1)}\n`);
+    const marker = await completedPacketId(root);
+    assert.notEqual(marker, interrupted);
+    // A review recorded now (same canonical revision) carries the completed marker, never the unfinished file's id.
+    const reviewed = structuredClone(state);
+    reviewed.done[source.sense_id].recorded_after_packet = marker;
+    const result = await applyBackfill({ root, state: reviewed, index: buildRelationIndex({ ...canonical, records: applied }), refreshReports: false });
+    assert.deepEqual(result.packets, [interrupted]);
+    const sense = (await readRecords(root)).find((record) => record.id === source.record_id).senses.find(({ id }) => id === source.sense_id);
+    assert.deepEqual(sense.relations.filter((relation) => relation.target_sense === target.sense_id).map((relation) => relation.type), ['direct']);
+  } finally {
+    await rm(root, { recursive: true, force: true });
   }
 });
 
