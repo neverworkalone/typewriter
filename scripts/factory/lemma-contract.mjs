@@ -321,11 +321,13 @@ function validateCompactMetadata(manifest, ensemble, details) {
     || !isSha256(manifest.stage1_decisions.sha256)) errors.push('candidate manifest: invalid stage1 decisions reference');
   if (manifest.production !== undefined) {
     const production = manifest.production;
+    if (isPlainObject(production) && production.unrepresentable_proposal_count !== undefined
+      && (!Number.isSafeInteger(production.unrepresentable_proposal_count) || production.unrepresentable_proposal_count < 0)) {
+      errors.push('candidate manifest: production.unrepresentable_proposal_count must be a nonnegative safe integer');
+    }
     if (!isPlainObject(production) || production.contract !== 'lexical-factory-refill-v1'
       || production.target !== manifest.selection?.bound || !Number.isSafeInteger(production.pages) || production.pages < 1
       || !Number.isSafeInteger(production.visited_proposal_count) || production.visited_proposal_count < 1
-      || (production.unrepresentable_proposal_count !== undefined
-        && (!Number.isSafeInteger(production.unrepresentable_proposal_count) || production.unrepresentable_proposal_count < 0))
       || typeof production.exhausted !== 'boolean' || !isSha256(production.checkpoint_binding)
       || !isSha256(production.initial_evidence_sha256) || `corpus:${production.source_snapshot}` !== manifest.source_snapshot
       || (manifest.candidate_count < production.target && (!production.exhausted

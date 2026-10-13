@@ -270,6 +270,18 @@ test('oversized proposals without bounded hits are skipped from token evidence a
   assert.deepEqual(result.rows.map((row) => row.input), ['걸음']);
   assert.equal(result.production.unrepresentable_proposal_count, 1);
   assert.ok(!result.candidatesText.includes(longProposal));
+  const stage1DecisionsText = await readFile(path.join(root, result.manifest.stage1_decisions.path), 'utf8');
+  const validProducedBatch = { manifest: result.manifest, candidatesText: result.candidatesText, stage1DecisionsText };
+  assert.deepEqual(validateCandidateBatch(validProducedBatch), []);
+  for (const invalidCount of [-1, 1.5]) {
+    const invalidProductionCountManifest = {
+      ...result.manifest,
+      production: { ...result.manifest.production, unrepresentable_proposal_count: invalidCount },
+    };
+    assert.ok(validateCandidateBatch({ ...validProducedBatch, manifest: invalidProductionCountManifest })
+      .some((error) => /production\.unrepresentable_proposal_count must be a nonnegative safe integer/u.test(error)),
+    `the shared validator rejects invalid unrepresentable proposal count ${invalidCount}`);
+  }
   assert.deepEqual(await validateFactoryRepository({ root }), []);
   await rm(root, { recursive: true, force: true });
 });
