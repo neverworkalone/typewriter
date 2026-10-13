@@ -1175,19 +1175,28 @@
   },
   {
     "record_id": "w12434",
-    "record_sha256": "e132b3e0eede506d944b498899eb017b7ae0a1c13fb6367b55fc3d60e6989d5d",
-    "authored_batch_decision": {
-      "source_id": "issue-223-m9-e-corpus-batch-15-20261003-semantic-decisions-20261003-r1",
-      "source_sha256": "8e57c200bc995bd988453f9c2277a1d9a18249888b6e419b18a57b46359075da",
-      "artifact_sha256": "7318d102f9e1f5565916f5e2fe7e66ff86258952854d24bac1b6228f1b871ae9",
-      "decision_row_sha256": "2c47c58dd969427a5752927b55ec82df5aea0dc9ab315a1602fea26526e4c7ea",
-      "candidate_record_id": "w12434",
-      "candidate_record_sha256": "e132b3e0eede506d944b498899eb017b7ae0a1c13fb6367b55fc3d60e6989d5d",
-      "decision": "included",
-      "selection_rank": 291,
-      "selection_axis": "A",
-      "reviewed_record_sha256": "e132b3e0eede506d944b498899eb017b7ae0a1c13fb6367b55fc3d60e6989d5d"
-    }
+    "record_sha256": "75188794dd97e08056a7bf9189e20ca90801cb68e956cfc77bad59f8d4db6de2",
+    "boundary_review": {
+      "review_id": "issue-223-m9-e-corpus-batch-15-semantic-verification-20261003-r1:canonical:w12434:boundary",
+      "decision": "retain",
+      "classification": "atomic",
+      "evidence": [
+        {
+          "sense_id": "w12434-s1",
+          "evidence_basis": "w12434 w12434-s1: 시찰: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 품사와 동음이의를 점검했다. 공장 시찰와 경비 상태 시찰에서 의미가 갈리지 않아 하나의 풀이로 충분하다.",
+          "rationale": "m5-18196 w12434 w12434-s1: 시찰: 문맥 0: 공장 시찰; 문맥 1: 도지사의 시찰; 문맥 2: 경비 상태 시찰 — 모두 같은 어휘의 같은 쓰임으로 읽힌다. Reviewed gloss SHA-256 fac9f039e3e5b9c98469ffb5f34f59b3d792c231ec8dca013187883e0fff652b."
+        }
+      ],
+      "pairwise": [],
+      "rationale": "m5-18196 w12434 w12434-s1: 시찰: 문맥 0: 공장 시찰; 문맥 1: 도지사의 시찰; 문맥 2: 경비 상태 시찰 — 모두 같은 어휘의 같은 쓰임으로 읽힌다. Reviewed gloss SHA-256 fac9f039e3e5b9c98469ffb5f34f59b3d792c231ec8dca013187883e0fff652b."
+    },
+    "sense_reviews": [
+      {
+        "sense_id": "w12434-s1",
+        "relation_decision": "relations-reviewed",
+        "relation_rationale": "w12434 w12434-s1 fac9f039e3e5 [R000024]: Stage 3 attempt R000024-a1 appended near relation rel-78a85cf807e75c11bd35a6e0 to w9689; rationale digest 0e9f47f5ab7a. w12434 w12434-s1 fac9f039e3e5 [R000024]: Stage 3 attempt R000024-a1 appended near relation rel-382c187fc190d9b5cc6aafb2 to w8670; rationale digest 44a372ec5cee. w12434 w12434-s1 fac9f039e3e5 [R000024]: Stage 3 attempt R000024-a1 appended association relation rel-4b5a5b2fceda06c69439278a to w735; rationale digest cabf3e1b8cf8."
+      }
+    ]
   },
   {
     "record_id": "w12435",
@@ -1440,19 +1449,28 @@
   },
   {
     "record_id": "w12450",
-    "record_sha256": "6a90332a4a472de775929f749f2798dc3298db6697a79e679814fa98eb74a85e",
-    "authored_batch_decision": {
-      "source_id": "issue-223-m9-e-corpus-batch-15-20261003-semantic-decisions-20261003-r1",
-      "source_sha256": "8e57c200bc995bd988453f9c2277a1d9a18249888b6e419b18a57b46359075da",
-      "artifact_sha256": "7318d102f9e1f5565916f5e2fe7e66ff86258952854d24bac1b6228f1b871ae9",
-      "decision_row_sha256": "b85f64ea9055109e9978e0e8adf286d7e821a23118e4c5deddc5f2dc056d9298",
-      "candidate_record_id": "w12450",
-      "candidate_record_sha256": "6a90332a4a472de775929f749f2798dc3298db6697a79e679814fa98eb74a85e",
-      "decision": "included",
-      "selection_rank": 307,
-      "selection_axis": "A",
-      "reviewed_record_sha256": "6a90332a4a472de775929f749f2798dc3298db6697a79e679814fa98eb74a85e"
-    }
+    "record_sha256": "540b925136e12904a16c26bdbe7486e76b7928b7fa069c0bf64baa812b83680c",
+    "boundary_review": {
+      "review_id": "issue-223-m9-e-corpus-batch-15-semantic-verification-20261003-r1:canonical:w12450:boundary",
+      "decision": "retain",
+      "classification": "atomic",
+      "evidence": [
+        {
+          "sense_id": "w12450-s1",
+          "evidence_basis": "w12450 w12450-s1: 우러나다: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 품사와 동음이의를 점검했다. 경험에서 우러난 공감와 마음에서 우러나는 감사에서 의미가 갈리지 않아 하나의 풀이로 충분하다.",
+          "rationale": "m5-18212 w12450 w12450-s1: 우러나다: 문맥 0: 경험에서 우러난 공감; 문맥 1: 성품에서 우러나는 빛; 문맥 2: 마음에서 우러나는 감사 — 모두 같은 어휘의 같은 쓰임으로 읽힌다. Reviewed gloss SHA-256 2dc10f8851bf5d98e9e1ce0e343961f7b1534c4a72470b60bbce234571eb0e6b."
+        }
+      ],
+      "pairwise": [],
+      "rationale": "m5-18212 w12450 w12450-s1: 우러나다: 문맥 0: 경험에서 우러난 공감; 문맥 1: 성품에서 우러나는 빛; 문맥 2: 마음에서 우러나는 감사 — 모두 같은 어휘의 같은 쓰임으로 읽힌다. Reviewed gloss SHA-256 2dc10f8851bf5d98e9e1ce0e343961f7b1534c4a72470b60bbce234571eb0e6b."
+    },
+    "sense_reviews": [
+      {
+        "sense_id": "w12450-s1",
+        "relation_decision": "relations-reviewed",
+        "relation_rationale": "w12450 w12450-s1 2dc10f8851bf [R000024]: Stage 3 attempt R000024-a1 appended direct relation rel-dc86340635e39c73cb6d8ef6 to w10110; rationale digest ed946dc55bf4. w12450 w12450-s1 2dc10f8851bf [R000024]: Stage 3 attempt R000024-a1 appended near relation rel-45d60fcec2c0edc67dde9b7c to w5427; rationale digest 1fb8ba5b3f62. w12450 w12450-s1 2dc10f8851bf [R000024]: Stage 3 attempt R000024-a1 appended near relation rel-b69d389206ece72475204eae to w6181; rationale digest 85df0ac476c7."
+      }
+    ]
   },
   {
     "record_id": "w12451",
@@ -2318,19 +2336,28 @@
   },
   {
     "record_id": "w12497",
-    "record_sha256": "e5555dfb4db7c891cb097596a31bb2163013ce41fdf04db2969882b3c5ed46d0",
-    "authored_batch_decision": {
-      "source_id": "issue-223-m9-e-corpus-batch-15-20261003-semantic-decisions-20261003-r1",
-      "source_sha256": "8e57c200bc995bd988453f9c2277a1d9a18249888b6e419b18a57b46359075da",
-      "artifact_sha256": "7318d102f9e1f5565916f5e2fe7e66ff86258952854d24bac1b6228f1b871ae9",
-      "decision_row_sha256": "5cec4a8bdb40ba1bd9089b79d33e635c9190e9a2ea28a2b0a51b7f224786d876",
-      "candidate_record_id": "w12497",
-      "candidate_record_sha256": "e5555dfb4db7c891cb097596a31bb2163013ce41fdf04db2969882b3c5ed46d0",
-      "decision": "included",
-      "selection_rank": 354,
-      "selection_axis": "A",
-      "reviewed_record_sha256": "e5555dfb4db7c891cb097596a31bb2163013ce41fdf04db2969882b3c5ed46d0"
-    }
+    "record_sha256": "c8a43e5fc255ab940f7e008881de8a1bd58a83a4133f00b759e1d15888db7c8f",
+    "boundary_review": {
+      "review_id": "issue-223-m9-e-corpus-batch-15-semantic-verification-20261003-r1:canonical:w12497:boundary",
+      "decision": "retain",
+      "classification": "atomic",
+      "evidence": [
+        {
+          "sense_id": "w12497-s1",
+          "evidence_basis": "w12497 w12497-s1: 빚어지다: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 품사와 동음이의를 점검했다. 바위가 풍화로 빚어짐와 분위기가 빚어짐에서 의미가 갈리지 않아 하나의 풀이로 충분하다.",
+          "rationale": "m5-18267 w12497 w12497-s1: 빚어지다: 문맥 0: 바위가 풍화로 빚어짐; 문맥 1: 자연 훼손으로 빚어짐; 문맥 2: 분위기가 빚어짐 — 모두 같은 어휘의 같은 쓰임으로 읽힌다. Reviewed gloss SHA-256 43b3ee35b73a06ac0df7f03c3c4136b389f3ce1d47dcc5d6bc2c562f2e8053f5."
+        }
+      ],
+      "pairwise": [],
+      "rationale": "m5-18267 w12497 w12497-s1: 빚어지다: 문맥 0: 바위가 풍화로 빚어짐; 문맥 1: 자연 훼손으로 빚어짐; 문맥 2: 분위기가 빚어짐 — 모두 같은 어휘의 같은 쓰임으로 읽힌다. Reviewed gloss SHA-256 43b3ee35b73a06ac0df7f03c3c4136b389f3ce1d47dcc5d6bc2c562f2e8053f5."
+    },
+    "sense_reviews": [
+      {
+        "sense_id": "w12497-s1",
+        "relation_decision": "relations-reviewed",
+        "relation_rationale": "w12497 w12497-s1 43b3ee35b73a [R000024]: Stage 3 attempt R000024-a1 appended near relation rel-ffbf344369e49eadb798f31c to w8629; rationale digest 4c9557753560. w12497 w12497-s1 43b3ee35b73a [R000024]: Stage 3 attempt R000024-a1 appended association relation rel-4f402f1564ab648637261104 to w5482; rationale digest 78b7aea4e63c. w12497 w12497-s1 43b3ee35b73a [R000024]: Stage 3 attempt R000024-a1 appended association relation rel-2afe2c3866f1c4629907fbc0 to w5800; rationale digest 78dcd8097675."
+      }
+    ]
   },
   {
     "record_id": "w12498",
@@ -2366,19 +2393,28 @@
   },
   {
     "record_id": "w12500",
-    "record_sha256": "17dbb7b4d7e5ec170ecc4ede00d103549035ef3a8aa593c9b21c716c4780771c",
-    "authored_batch_decision": {
-      "source_id": "issue-223-m9-e-corpus-batch-15-20261003-semantic-decisions-20261003-r1",
-      "source_sha256": "8e57c200bc995bd988453f9c2277a1d9a18249888b6e419b18a57b46359075da",
-      "artifact_sha256": "7318d102f9e1f5565916f5e2fe7e66ff86258952854d24bac1b6228f1b871ae9",
-      "decision_row_sha256": "1c4932e5f1b3791074d474b7147cc5b0b355a2614aa4910e2384f030661c622f",
-      "candidate_record_id": "w12500",
-      "candidate_record_sha256": "17dbb7b4d7e5ec170ecc4ede00d103549035ef3a8aa593c9b21c716c4780771c",
-      "decision": "included",
-      "selection_rank": 357,
-      "selection_axis": "X",
-      "reviewed_record_sha256": "17dbb7b4d7e5ec170ecc4ede00d103549035ef3a8aa593c9b21c716c4780771c"
-    }
+    "record_sha256": "ecd08dfac59ff9cf9833de9bf1d7fec7819350fed95648d615fa7a1dcceb9836",
+    "boundary_review": {
+      "review_id": "issue-223-m9-e-corpus-batch-15-semantic-verification-20261003-r1:canonical:w12500:boundary",
+      "decision": "retain",
+      "classification": "atomic",
+      "evidence": [
+        {
+          "sense_id": "w12500-s1",
+          "evidence_basis": "w12500 w12500-s1: 얼굴색: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 품사와 동음이의를 점검했다. 얼굴색 하나 안 변함와 얼굴색이 어두움에서 의미가 갈리지 않아 하나의 풀이로 충분하다.",
+          "rationale": "m5-18272 w12500 w12500-s1: 얼굴색: 문맥 0: 얼굴색 하나 안 변함; 문맥 1: 누르스름한 얼굴색; 문맥 2: 얼굴색이 어두움 — 모두 같은 어휘의 같은 쓰임으로 읽힌다. Reviewed gloss SHA-256 260558cf37ede6efca8032fb21702273cd98e57ecab4265c1ef153ec4a1ae8c8."
+        }
+      ],
+      "pairwise": [],
+      "rationale": "m5-18272 w12500 w12500-s1: 얼굴색: 문맥 0: 얼굴색 하나 안 변함; 문맥 1: 누르스름한 얼굴색; 문맥 2: 얼굴색이 어두움 — 모두 같은 어휘의 같은 쓰임으로 읽힌다. Reviewed gloss SHA-256 260558cf37ede6efca8032fb21702273cd98e57ecab4265c1ef153ec4a1ae8c8."
+    },
+    "sense_reviews": [
+      {
+        "sense_id": "w12500-s1",
+        "relation_decision": "relations-reviewed",
+        "relation_rationale": "w12500 w12500-s1 260558cf37ed [R000024]: Stage 3 attempt R000024-a1 appended direct relation rel-246ff3371fc8ef9ef1907d16 to w9411; rationale digest de3001e54c33. w12500 w12500-s1 260558cf37ed [R000024]: Stage 3 attempt R000024-a1 appended direct relation rel-751d03dc3908dee9fc5fffc9 to w8589; rationale digest 7e61f0956cd3. w12500 w12500-s1 260558cf37ed [R000024]: Stage 3 attempt R000024-a1 appended near relation rel-f8298b94057cc1e04fd5e537 to w9408; rationale digest 214db2396e6b. w12500 w12500-s1 260558cf37ed [R000024]: Stage 3 attempt R000024-a1 appended near relation rel-ce0b4e02610618e22fbe4f05 to w10617; rationale digest 8ba5a4d1d8fc. w12500 w12500-s1 260558cf37ed [R000024]: Stage 3 attempt R000024-a1 appended near relation rel-f7cddcd175afb30dc95644cf to w10609; rationale digest 9ed9b41fbca9. w12500 w12500-s1 260558cf37ed [R000024]: Stage 3 attempt R000024-a1 appended association relation rel-a2921c2383bcbd3b4e7abcbc to w6082; rationale digest a9714c210cb2."
+      }
+    ]
   },
   {
     "record_id": "w12501",
@@ -2658,19 +2694,28 @@
   },
   {
     "record_id": "w12516",
-    "record_sha256": "b0a84e957822f20f1ae25673720f10e140e038b71173cd4ce2363203ab46eb7d",
-    "authored_batch_decision": {
-      "source_id": "issue-223-m9-e-corpus-batch-15-20261003-semantic-decisions-20261003-r1",
-      "source_sha256": "8e57c200bc995bd988453f9c2277a1d9a18249888b6e419b18a57b46359075da",
-      "artifact_sha256": "7318d102f9e1f5565916f5e2fe7e66ff86258952854d24bac1b6228f1b871ae9",
-      "decision_row_sha256": "9aa091ebc6a266456949ff459b1c5c1e5882868588813ef0a54cc9b43e870413",
-      "candidate_record_id": "w12516",
-      "candidate_record_sha256": "b0a84e957822f20f1ae25673720f10e140e038b71173cd4ce2363203ab46eb7d",
-      "decision": "included",
-      "selection_rank": 373,
-      "selection_axis": "A",
-      "reviewed_record_sha256": "b0a84e957822f20f1ae25673720f10e140e038b71173cd4ce2363203ab46eb7d"
-    }
+    "record_sha256": "8a7c5b0b30adb4f8ead25c550c18fc1f9434ee8d78a6f79622b74d8176db981c",
+    "boundary_review": {
+      "review_id": "issue-223-m9-e-corpus-batch-15-semantic-verification-20261003-r1:canonical:w12516:boundary",
+      "decision": "retain",
+      "classification": "atomic",
+      "evidence": [
+        {
+          "sense_id": "w12516-s1",
+          "evidence_basis": "w12516 w12516-s1: 공습: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 품사와 동음이의를 점검했다. 공습 대피소와 전쟁의 공습에서 의미가 갈리지 않아 하나의 풀이로 충분하다.",
+          "rationale": "m5-18305 w12516 w12516-s1: 공습: 문맥 0: 공습 대피소; 문맥 1: 진주만 공습; 문맥 2: 전쟁의 공습 — 모두 같은 어휘의 같은 쓰임으로 읽힌다. Reviewed gloss SHA-256 d0990fdfe942ce5cf1bcd645508a6534991113b7acb7aeab3b8c8d7d3a54e2cb."
+        }
+      ],
+      "pairwise": [],
+      "rationale": "m5-18305 w12516 w12516-s1: 공습: 문맥 0: 공습 대피소; 문맥 1: 진주만 공습; 문맥 2: 전쟁의 공습 — 모두 같은 어휘의 같은 쓰임으로 읽힌다. Reviewed gloss SHA-256 d0990fdfe942ce5cf1bcd645508a6534991113b7acb7aeab3b8c8d7d3a54e2cb."
+    },
+    "sense_reviews": [
+      {
+        "sense_id": "w12516-s1",
+        "relation_decision": "relations-reviewed",
+        "relation_rationale": "w12516 w12516-s1 d0990fdfe942 [R000024]: Stage 3 attempt R000024-a1 appended near relation rel-6ca78208497efcd3dd7d50ce to w5716; rationale digest 4db31c62b582. w12516 w12516-s1 d0990fdfe942 [R000024]: Stage 3 attempt R000024-a1 appended near relation rel-68f8935fa7f414269dd316b5 to w11956; rationale digest 2f365fe99507. w12516 w12516-s1 d0990fdfe942 [R000024]: Stage 3 attempt R000024-a1 appended near relation rel-7f6499a92a21e072e51a3f29 to w11929; rationale digest 158188ac99f7. w12516 w12516-s1 d0990fdfe942 [R000024]: Stage 3 attempt R000024-a1 appended association relation rel-401290618c563996b15dc633 to w6370; rationale digest 2133236dd46d."
+      }
+    ]
   },
   {
     "record_id": "w12517",
@@ -4643,7 +4688,7 @@
   },
   {
     "record_id": "w12593",
-    "record_sha256": "593ae6a839e22c8d370bd962597d11adebdae8594c5c7c202b4e871c60af0179",
+    "record_sha256": "2514c8d7ff68387b972bf99e5bfdaa9180cd5ad4d2d5e1197b666f5150687e28",
     "boundary_review": {
       "review_id": "factory-stage3:C000003-a1:w12593:boundary",
       "decision": "retain",
@@ -4661,11 +4706,8 @@
     "sense_reviews": [
       {
         "sense_id": "w12593-s1",
-        "relation_decision": "no-relations",
-        "semantic_rationale": "w12593 w12593-s1 cf85cf0c8a32 [C000003-0186]: C000003-0186: o01은 고민에 깊이 들어간 상태, o02는 매력에 깊이 이끌린 상태를 나타낸다.",
-        "boundary_rationale": "w12593 w12593-s1 cf85cf0c8a32 [C000003-0186]: C000003-0186: o01은 고민에 깊이 들어간 상태, o02는 매력에 깊이 이끌린 상태를 나타낸다.",
-        "relation_rationale": "w12593 w12593-s1 cf85cf0c8a32 [C000003-0186]: C000003-0186 C000003-0186-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
-        "no_relation_rationale": "w12593 w12593-s1 cf85cf0c8a32 [C000003-0186]: C000003-0186 C000003-0186-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+        "relation_decision": "relations-reviewed",
+        "relation_rationale": "w12593 w12593-s1 cf85cf0c8a32 [R000024]: Stage 3 attempt R000024-a1 appended near relation rel-ded18af56d20450a22402d9c to w7303; rationale digest f61178f9b5ee. w12593 w12593-s1 cf85cf0c8a32 [R000024]: Stage 3 attempt R000024-a1 appended near relation rel-8a0f629a59806a34237c3064 to w2118; rationale digest 507c25c6ced1. w12593 w12593-s1 cf85cf0c8a32 [R000024]: Stage 3 attempt R000024-a1 appended association relation rel-56f098e09b3935ee1a5841ea to w11106; rationale digest 0b9383894afc. w12593 w12593-s1 cf85cf0c8a32 [R000024]: Stage 3 attempt R000024-a1 appended association relation rel-31c304e3e75c9762e228cf4a to w9677; rationale digest fa92b510b2a7."
       }
     ]
   },
@@ -4881,7 +4923,7 @@
   },
   {
     "record_id": "w12601",
-    "record_sha256": "51fc2cd85ba690e67bd72673eeb5af6cb5fd77bea3c50328790cd397babd5fac",
+    "record_sha256": "f24471108dfa958619dc4b10283be082a5540067efc7ba329ee7e74ed47a9d9d",
     "boundary_review": {
       "review_id": "factory-stage3:C000003-a1:w12601:boundary",
       "decision": "retain",
@@ -4899,11 +4941,8 @@
     "sense_reviews": [
       {
         "sense_id": "w12601-s1",
-        "relation_decision": "no-relations",
-        "semantic_rationale": "w12601 w12601-s1 b0ca133a1b15 [C000003-0238]: C000003-0238: o01은 앞으로 알게 되는 변화, o02는 이미 알고 있는 상태를 나타낸다.",
-        "boundary_rationale": "w12601 w12601-s1 b0ca133a1b15 [C000003-0238]: C000003-0238: o01은 앞으로 알게 되는 변화, o02는 이미 알고 있는 상태를 나타낸다.",
-        "relation_rationale": "w12601 w12601-s1 b0ca133a1b15 [C000003-0238]: C000003-0238 C000003-0238-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
-        "no_relation_rationale": "w12601 w12601-s1 b0ca133a1b15 [C000003-0238]: C000003-0238 C000003-0238-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+        "relation_decision": "relations-reviewed",
+        "relation_rationale": "w12601 w12601-s1 b0ca133a1b15 [R000024]: Stage 3 attempt R000024-a1 appended near relation rel-29a60214aa9e0603bff9b1fc to w5373; rationale digest ad29f7a24f43. w12601 w12601-s1 b0ca133a1b15 [R000024]: Stage 3 attempt R000024-a1 appended near relation rel-f9ea1e01206737b1d2eb3c93 to w7892; rationale digest f766dc9ce5a8."
       }
     ]
   },
@@ -5271,7 +5310,7 @@
   },
   {
     "record_id": "w12614",
-    "record_sha256": "2bfd34437f8aeb8679f0d10c17f2e5ae2ca8bb9fc1c1593bd8255cd30dbfaf62",
+    "record_sha256": "c822539d7994166ae541891e253c69d4abaa8ace7eba7b99dc50f7fe7a4e6565",
     "boundary_review": {
       "review_id": "factory-stage3:C000003-a1:w12614:boundary",
       "decision": "retain",
@@ -5289,11 +5328,8 @@
     "sense_reviews": [
       {
         "sense_id": "w12614-s1",
-        "relation_decision": "no-relations",
-        "semantic_rationale": "w12614 w12614-s1 1b232d871aa4 [C000003-0287]: C000003-0287: o01은 고문의 고통을 견디지 못한다는 쓰임으로 이 뜻이다.",
-        "boundary_rationale": "w12614 w12614-s1 1b232d871aa4 [C000003-0287]: C000003-0287: o01은 고문의 고통을 견디지 못한다는 쓰임으로 이 뜻이다.",
-        "relation_rationale": "w12614 w12614-s1 1b232d871aa4 [C000003-0287]: C000003-0287 C000003-0287-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
-        "no_relation_rationale": "w12614 w12614-s1 1b232d871aa4 [C000003-0287]: C000003-0287 C000003-0287-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+        "relation_decision": "relations-reviewed",
+        "relation_rationale": "w12614 w12614-s1 1b232d871aa4 [R000024]: Stage 3 attempt R000024-a1 appended near relation rel-50c539edc9515877b3dc1964 to w8933; rationale digest 478e9f058b73. w12614 w12614-s1 1b232d871aa4 [R000024]: Stage 3 attempt R000024-a1 appended association relation rel-01e23d8134fd5478acd2633f to w12247; rationale digest 4773fce2cddb."
       }
     ]
   },
@@ -5768,7 +5804,7 @@
   },
   {
     "record_id": "w12631",
-    "record_sha256": "cf947e72ca73c00628bf0c139f77f9de1d99cd730184b2e450190b32fe0500eb",
+    "record_sha256": "2b3402f9c706c42d6cddcc955bfb18914e32ef4eb8c879a1ea67d66121595367",
     "boundary_review": {
       "review_id": "factory-stage3:C000003-a1:w12631:boundary",
       "decision": "retain",
@@ -5786,17 +5822,14 @@
     "sense_reviews": [
       {
         "sense_id": "w12631-s1",
-        "relation_decision": "no-relations",
-        "semantic_rationale": "w12631 w12631-s1 59ad9037a9f2 [C000003-0340]: C000003-0340: o01은 못마땅해 큰 소리를 내는 쓰임이고 o02는 큰 소리로 지시를 내리는 쓰임이다.",
-        "boundary_rationale": "w12631 w12631-s1 59ad9037a9f2 [C000003-0340]: C000003-0340: o01은 못마땅해 큰 소리를 내는 쓰임이고 o02는 큰 소리로 지시를 내리는 쓰임이다.",
-        "relation_rationale": "w12631 w12631-s1 59ad9037a9f2 [C000003-0340]: C000003-0340 C000003-0340-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
-        "no_relation_rationale": "w12631 w12631-s1 59ad9037a9f2 [C000003-0340]: C000003-0340 C000003-0340-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+        "relation_decision": "relations-reviewed",
+        "relation_rationale": "w12631 w12631-s1 59ad9037a9f2 [R000024]: Stage 3 attempt R000024-a1 appended direct relation rel-451cb4ce06203fed109c71b3 to w9607; rationale digest d8825d2607d5. w12631 w12631-s1 59ad9037a9f2 [R000024]: Stage 3 attempt R000024-a1 appended association relation rel-da83c187450415ac28144461 to w11342; rationale digest 402ae175a442. w12631 w12631-s1 59ad9037a9f2 [R000024]: Stage 3 attempt R000024-a1 appended association relation rel-6d489ae8b66cb980f305b848 to w9703; rationale digest 03ebe8ca22d9."
       }
     ]
   },
   {
     "record_id": "w12632",
-    "record_sha256": "df69b90254aee199e77a3a1756a436e3c286722ec5e4c27891928bf5a466c559",
+    "record_sha256": "d4de5e918bed609d9826042c51d112cbb1c510d426aa5e5588bf2d041c440d2e",
     "boundary_review": {
       "review_id": "factory-stage3:C000003-a1:w12632:boundary",
       "decision": "retain",
@@ -5814,11 +5847,8 @@
     "sense_reviews": [
       {
         "sense_id": "w12632-s1",
-        "relation_decision": "no-relations",
-        "semantic_rationale": "w12632 w12632-s1 6f608e687cb1 [C000003-0342]: C000003-0342: o01~o03은 힘이 들어 기운이 다하는 쓰임이다.",
-        "boundary_rationale": "w12632 w12632-s1 6f608e687cb1 [C000003-0342]: C000003-0342: o01~o03은 힘이 들어 기운이 다하는 쓰임이다.",
-        "relation_rationale": "w12632 w12632-s1 6f608e687cb1 [C000003-0342]: C000003-0342 C000003-0342-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
-        "no_relation_rationale": "w12632 w12632-s1 6f608e687cb1 [C000003-0342]: C000003-0342 C000003-0342-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+        "relation_decision": "relations-reviewed",
+        "relation_rationale": "w12632 w12632-s1 6f608e687cb1 [R000024]: Stage 3 attempt R000024-a1 appended near relation rel-1ae37f6a3bd26d47e10dc1f4 to w9410; rationale digest b6f0a1f15519. w12632 w12632-s1 6f608e687cb1 [R000024]: Stage 3 attempt R000024-a1 appended near relation rel-931c14511c15121454202cfc to w11697; rationale digest 5c30f5bac44c."
       }
     ]
   },
