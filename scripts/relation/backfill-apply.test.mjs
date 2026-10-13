@@ -244,7 +244,8 @@ test('an approval retyped by a committed correction is not resurrected, while an
       source_sense_id: source.sense_id, previous_relation: approved, target_meaning_sha256: meaning, relation: direct,
       rationale: `${source.record_id} ${source.sense_id}: 회귀 시험용 근거로 유형을 바로잡는다.`,
     };
-    assert.equal((await applyRelationCorrections({ root, proposals: [proposal], refreshReports: false })).status, 'applied');
+    const correction = await applyRelationCorrections({ root, proposals: [proposal], refreshReports: false });
+    assert.equal(correction.status, 'applied');
     const retyped = await readRecords(root);
     const eventsBefore = await authorityEvents(root);
     // The old approval (the association tuple) is gone from canonical but must not come back beside the direct one.
@@ -253,15 +254,24 @@ test('an approval retyped by a committed correction is not resurrected, while an
     assert.deepEqual(await readRecords(root), retyped);
     assert.equal(await authorityEvents(root), eventsBefore);
 
+    // A review made after that correction, approving the same tuple again, is a newer decision and is written and recorded.
+    const rereviewed = structuredClone(state);
+    rereviewed.done[source.sense_id].recorded_after_packet = correction.packets.at(-1);
+    const again = await applyBackfill({ root, state: rereviewed, index: buildRelationIndex({ ...canonical, records: retyped }), refreshReports: false });
+    assert.equal(again.status, 'applied');
+    assert.equal(again.relations_appended, 1);
+    assert.equal(await authorityEvents(root), eventsBefore + 1);
+    const restored = await readRecords(root);
+
     // Positive control: an independently approved different type for the same target is a separate tuple and is written.
     const independent = newQueueState(canonical.canonicalRevision);
     const near = { target: target.record_id, target_sense: target.sense_id, type: 'near', note: '회귀 시험용 말의 결이다.', relevance: 4 };
     independent.done[source.sense_id] = approvedEntry(index, source.sense_id, near, `${source.record_id} ${source.sense_id}: 회귀 시험용 근거.`);
-    const result = await applyBackfill({ root, state: independent, index: buildRelationIndex({ ...canonical, records: retyped }), refreshReports: false });
+    const result = await applyBackfill({ root, state: independent, index: buildRelationIndex({ ...canonical, records: restored }), refreshReports: false });
     assert.equal(result.status, 'applied');
     assert.equal(result.relations_appended, 1);
     const sense = (await readRecords(root)).find((record) => record.id === source.record_id).senses.find(({ id }) => id === source.sense_id);
-    assert.deepEqual(sense.relations.filter((relation) => relation.target_sense === target.sense_id).map((relation) => relation.type).sort(), ['direct', 'near']);
+    assert.deepEqual(sense.relations.filter((relation) => relation.target_sense === target.sense_id).map((relation) => relation.type).sort(), ['association', 'direct', 'near']);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

@@ -193,16 +193,21 @@ export async function applyBackfill({ root, state, index, refreshReports = true 
   // A conflicting existing tuple is rejected by the shared planner; an exact tuple that is already present is a no-op.
   const probe = planRelationBackfill({ packetId: 'R000000', amendments, canonicalRecords: records, recordPathById });
   const missing = new Set(probe.relationAmendments.filter((entry) => entry.outcome === 'appended').map((entry) => entry.authored_relation_id));
-  // An approved tuple that a committed relation correction has since retyped or removed is settled history: the old
-  // tuple is not resurrected. Any other approval, including a different type for a target that is already related, is
-  // independent and is written.
-  const retired = new Set();
-  for (const text of (await readPackets(root)).values()) {
+  // An approved tuple that a relation correction committed AFTER the review retyped or removed is settled history: the
+  // old tuple is not resurrected. A tuple approved after that correction (or a different type for the same target) is
+  // an independent, newer decision and is written. Approvals recorded before the packet marker existed predate every
+  // correction.
+  const retiredBy = new Map();
+  for (const [packetId, text] of await readPackets(root)) {
     let packet;
     try { packet = JSON.parse(text); } catch { continue; }
-    for (const item of packet?.[CORRECTION_FIELD] ?? []) retired.add(`${item.source_sense_id}|${item.previous_relation.target_sense}|${item.previous_relation.type}`);
+    for (const item of packet?.[CORRECTION_FIELD] ?? []) {
+      const key = `${item.source_sense_id}|${item.previous_relation.target_sense}|${item.previous_relation.type}`;
+      if (!(retiredBy.get(key) >= packetId)) retiredBy.set(key, packetId);
+    }
   }
-  const pending = amendments.filter((item) => missing.has(reviewedId(item)) && !retired.has(`${item.source_sense_id}|${item.relation.target_sense}|${item.relation.type}`));
+  const retired = (item) => (retiredBy.get(`${item.source_sense_id}|${item.relation.target_sense}|${item.relation.type}`) ?? '') > (state.done[item.source_sense_id]?.recorded_after_packet ?? '');
+  const pending = amendments.filter((item) => missing.has(reviewedId(item)) && !retired(item));
   let recordsChanged = 0;
   if (pending.length) {
     const packetId = nextPacketId(source.factory_admissions ?? []);
