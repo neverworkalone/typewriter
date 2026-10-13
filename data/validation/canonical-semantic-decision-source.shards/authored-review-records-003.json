@@ -362,19 +362,28 @@
   },
   {
     "record_id": "w12386",
-    "record_sha256": "5dc5a09ede2f8826fb60e2ed8c424561538ca479ab40b6f5084a7e5bb0a5b08e",
-    "authored_batch_decision": {
-      "source_id": "issue-223-m9-e-corpus-batch-15-20261003-semantic-decisions-20261003-r1",
-      "source_sha256": "8e57c200bc995bd988453f9c2277a1d9a18249888b6e419b18a57b46359075da",
-      "artifact_sha256": "7318d102f9e1f5565916f5e2fe7e66ff86258952854d24bac1b6228f1b871ae9",
-      "decision_row_sha256": "a30120ec7996fc57bec906c4ae0b21b092084f64fac83dae315876509dbca877",
-      "candidate_record_id": "w12386",
-      "candidate_record_sha256": "5dc5a09ede2f8826fb60e2ed8c424561538ca479ab40b6f5084a7e5bb0a5b08e",
-      "decision": "included",
-      "selection_rank": 243,
-      "selection_axis": "O",
-      "reviewed_record_sha256": "5dc5a09ede2f8826fb60e2ed8c424561538ca479ab40b6f5084a7e5bb0a5b08e"
-    }
+    "record_sha256": "4e895251dab804ad6d5eb59760b95398d28a18c30bca64da6ce5740847c2ff21",
+    "boundary_review": {
+      "review_id": "issue-223-m9-e-corpus-batch-15-semantic-verification-20261003-r1:canonical:w12386:boundary",
+      "decision": "retain",
+      "classification": "atomic",
+      "evidence": [
+        {
+          "sense_id": "w12386-s1",
+          "evidence_basis": "w12386 w12386-s1: 종잇조각: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 품사와 동음이의를 점검했다. 종잇조각 하나와 휴지통의 종잇조각에서 의미가 갈리지 않아 하나의 풀이로 충분하다.",
+          "rationale": "m5-18132 w12386 w12386-s1: 종잇조각: 문맥 0: 종잇조각 하나; 문맥 1: 종잇조각을 뭐랄까; 문맥 2: 휴지통의 종잇조각 — 모두 같은 어휘의 같은 쓰임으로 읽힌다. Reviewed gloss SHA-256 41c942d6b12ff8128506095bce9c361a23fc577c691b200c819f643126e94bbc."
+        }
+      ],
+      "pairwise": [],
+      "rationale": "m5-18132 w12386 w12386-s1: 종잇조각: 문맥 0: 종잇조각 하나; 문맥 1: 종잇조각을 뭐랄까; 문맥 2: 휴지통의 종잇조각 — 모두 같은 어휘의 같은 쓰임으로 읽힌다. Reviewed gloss SHA-256 41c942d6b12ff8128506095bce9c361a23fc577c691b200c819f643126e94bbc."
+    },
+    "sense_reviews": [
+      {
+        "sense_id": "w12386-s1",
+        "relation_decision": "relations-reviewed",
+        "relation_rationale": "w12386 w12386-s1 41c942d6b12f [R000028]: Stage 3 attempt R000028-a1 appended near relation rel-f2f25cabf7bd53509762ac86 to w747; rationale digest a949cd8ebb99. w12386 w12386-s1 41c942d6b12f [R000028]: Stage 3 attempt R000028-a1 appended near relation rel-2230f215c6fe5254ff3fb8db to w5089; rationale digest 6df25ae1e5dd. w12386 w12386-s1 41c942d6b12f [R000028]: Stage 3 attempt R000028-a1 appended near relation rel-b4ab8d312aef634f4558b885 to w5032; rationale digest aaa4dc82d453. w12386 w12386-s1 41c942d6b12f [R000028]: Stage 3 attempt R000028-a1 appended near relation rel-8de5d080007fb0238412d75a to w980; rationale digest c9578cd3b416. w12386 w12386-s1 41c942d6b12f [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-ce326a66cd354a58ed217c41 to w241; rationale digest 4b89e4a71aa9. w12386 w12386-s1 41c942d6b12f [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-5e3285637e6de31ef415fe44 to w7940; rationale digest 7dd68feb3ae5. w12386 w12386-s1 41c942d6b12f [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-cbd5b6488b2113f89d5b097c to w6308; rationale digest 0c9eceb30713."
+      }
+    ]
   },
   {
     "record_id": "w12387",
@@ -426,19 +435,28 @@
   },
   {
     "record_id": "w12390",
-    "record_sha256": "98359b7273735a390bd49dcef3addc144633042eeb0f3b3b233b8fc5e21f8909",
-    "authored_batch_decision": {
-      "source_id": "issue-223-m9-e-corpus-batch-15-20261003-semantic-decisions-20261003-r1",
-      "source_sha256": "8e57c200bc995bd988453f9c2277a1d9a18249888b6e419b18a57b46359075da",
-      "artifact_sha256": "7318d102f9e1f5565916f5e2fe7e66ff86258952854d24bac1b6228f1b871ae9",
-      "decision_row_sha256": "9db660125a51e8227c1a52ce7498191e47dca6b9a39345b40eb05a228b691d53",
-      "candidate_record_id": "w12390",
-      "candidate_record_sha256": "98359b7273735a390bd49dcef3addc144633042eeb0f3b3b233b8fc5e21f8909",
-      "decision": "included",
-      "selection_rank": 247,
-      "selection_axis": "O",
-      "reviewed_record_sha256": "98359b7273735a390bd49dcef3addc144633042eeb0f3b3b233b8fc5e21f8909"
-    }
+    "record_sha256": "3e1621a3c9a5ccb588147b480df3e5156165ba2c6453fe92630dd3b52498c9bf",
+    "boundary_review": {
+      "review_id": "issue-223-m9-e-corpus-batch-15-semantic-verification-20261003-r1:canonical:w12390:boundary",
+      "decision": "retain",
+      "classification": "atomic",
+      "evidence": [
+        {
+          "sense_id": "w12390-s1",
+          "evidence_basis": "w12390 w12390-s1: 연어: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 품사와 동음이의를 점검했다. 동화 연어와 연어를 억지로 먹음에서 의미가 갈리지 않아 하나의 풀이로 충분하다.",
+          "rationale": "m5-18136 w12390 w12390-s1: 연어: 문맥 0: 동화 연어; 문맥 1: 연어를 먹음; 문맥 2: 연어를 억지로 먹음 — 모두 같은 어휘의 같은 쓰임으로 읽힌다. Reviewed gloss SHA-256 82b4de515c0c2738eb567eb22b1b064aa2ef2fee7f51d6b12b560f4766d8918f."
+        }
+      ],
+      "pairwise": [],
+      "rationale": "m5-18136 w12390 w12390-s1: 연어: 문맥 0: 동화 연어; 문맥 1: 연어를 먹음; 문맥 2: 연어를 억지로 먹음 — 모두 같은 어휘의 같은 쓰임으로 읽힌다. Reviewed gloss SHA-256 82b4de515c0c2738eb567eb22b1b064aa2ef2fee7f51d6b12b560f4766d8918f."
+    },
+    "sense_reviews": [
+      {
+        "sense_id": "w12390-s1",
+        "relation_decision": "relations-reviewed",
+        "relation_rationale": "w12390 w12390-s1 82b4de515c0c [R000028]: Stage 3 attempt R000028-a1 appended near relation rel-313e73294e711e8ea7506e72 to w12248; rationale digest 62e1a4c324b8. w12390 w12390-s1 82b4de515c0c [R000028]: Stage 3 attempt R000028-a1 appended near relation rel-01e25bfed93023b84cdfb1b7 to w12217; rationale digest ed433b99fe00. w12390 w12390-s1 82b4de515c0c [R000028]: Stage 3 attempt R000028-a1 appended near relation rel-4483a0c76df35a7fc0455bd9 to w11258; rationale digest ef1018ca83fc. w12390 w12390-s1 82b4de515c0c [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-92abf6f8137f7b92d2129b3a to w6338; rationale digest e7c326c03478. w12390 w12390-s1 82b4de515c0c [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-b44a441659657ec003e56f67 to w5852; rationale digest 5b407467a451. w12390 w12390-s1 82b4de515c0c [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-2e57c1193c6b6d54961b69de to w7908; rationale digest e3387cfa3a3c. w12390 w12390-s1 82b4de515c0c [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-611f4b6908dccc301929ff4e to w10189; rationale digest c05c7b768ff6. w12390 w12390-s1 82b4de515c0c [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-1b75a218b1638270a0085dbc to w9993; rationale digest 0c570cc3ecdf."
+      }
+    ]
   },
   {
     "record_id": "w12391",
@@ -554,19 +572,28 @@
   },
   {
     "record_id": "w12398",
-    "record_sha256": "b13a5fbd936233b337bd0e645f4fba86bf864aad7d6175d247bad0d4c0212328",
-    "authored_batch_decision": {
-      "source_id": "issue-223-m9-e-corpus-batch-15-20261003-semantic-decisions-20261003-r1",
-      "source_sha256": "8e57c200bc995bd988453f9c2277a1d9a18249888b6e419b18a57b46359075da",
-      "artifact_sha256": "7318d102f9e1f5565916f5e2fe7e66ff86258952854d24bac1b6228f1b871ae9",
-      "decision_row_sha256": "ab8670abe98a706b0d6986960c7379250fecc43fc93befa1f6b14725e384b0ef",
-      "candidate_record_id": "w12398",
-      "candidate_record_sha256": "b13a5fbd936233b337bd0e645f4fba86bf864aad7d6175d247bad0d4c0212328",
-      "decision": "included",
-      "selection_rank": 255,
-      "selection_axis": "A",
-      "reviewed_record_sha256": "b13a5fbd936233b337bd0e645f4fba86bf864aad7d6175d247bad0d4c0212328"
-    }
+    "record_sha256": "905ea5036a6f916cb6e5d10f30afd5e59a402c6490388586fbc17caed6a0f297",
+    "boundary_review": {
+      "review_id": "issue-223-m9-e-corpus-batch-15-semantic-verification-20261003-r1:canonical:w12398:boundary",
+      "decision": "retain",
+      "classification": "atomic",
+      "evidence": [
+        {
+          "sense_id": "w12398-s1",
+          "evidence_basis": "w12398 w12398-s1: 투고: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 품사와 동음이의를 점검했다. 출판사 투고와 투고도 합격에서 의미가 갈리지 않아 하나의 풀이로 충분하다.",
+          "rationale": "m5-18144 w12398 w12398-s1: 투고: 문맥 0: 출판사 투고; 문맥 1: 투고를 해 봄; 문맥 2: 투고도 합격 — 모두 같은 어휘의 같은 쓰임으로 읽힌다. Reviewed gloss SHA-256 9cf3405cfb13bac4c0a9c3e173479db9dda0e55620c12e0d6ca15d61539449ed."
+        }
+      ],
+      "pairwise": [],
+      "rationale": "m5-18144 w12398 w12398-s1: 투고: 문맥 0: 출판사 투고; 문맥 1: 투고를 해 봄; 문맥 2: 투고도 합격 — 모두 같은 어휘의 같은 쓰임으로 읽힌다. Reviewed gloss SHA-256 9cf3405cfb13bac4c0a9c3e173479db9dda0e55620c12e0d6ca15d61539449ed."
+    },
+    "sense_reviews": [
+      {
+        "sense_id": "w12398-s1",
+        "relation_decision": "relations-reviewed",
+        "relation_rationale": "w12398 w12398-s1 9cf3405cfb13 [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-d08b4ad898f0857df25114d9 to w2989; rationale digest 1ebd652ef42a. w12398 w12398-s1 9cf3405cfb13 [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-edbb200714fc2f171310d1fa to w8539; rationale digest 25bb014058ea. w12398 w12398-s1 9cf3405cfb13 [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-d1b5aaf7d863a3a340be9d51 to w5783; rationale digest ede9d4a60d36. w12398 w12398-s1 9cf3405cfb13 [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-4cc5b0eece2798e6221a3f6c to w5111; rationale digest 1523452c41f8."
+      }
+    ]
   },
   {
     "record_id": "w12399",
@@ -643,19 +670,28 @@
   },
   {
     "record_id": "w12403",
-    "record_sha256": "271188fe4bae81bfce714c278b22d7142647d6f2b7defb990c8fa93b4b0c179b",
-    "authored_batch_decision": {
-      "source_id": "issue-223-m9-e-corpus-batch-15-20261003-semantic-decisions-20261003-r1",
-      "source_sha256": "8e57c200bc995bd988453f9c2277a1d9a18249888b6e419b18a57b46359075da",
-      "artifact_sha256": "7318d102f9e1f5565916f5e2fe7e66ff86258952854d24bac1b6228f1b871ae9",
-      "decision_row_sha256": "b079a826eca09c5b095513a018a0d4fece2b7db5fddc6706aaf0b4ca5efce49e",
-      "candidate_record_id": "w12403",
-      "candidate_record_sha256": "271188fe4bae81bfce714c278b22d7142647d6f2b7defb990c8fa93b4b0c179b",
-      "decision": "included",
-      "selection_rank": 260,
-      "selection_axis": "X",
-      "reviewed_record_sha256": "271188fe4bae81bfce714c278b22d7142647d6f2b7defb990c8fa93b4b0c179b"
-    }
+    "record_sha256": "2285980d0420e4dbbc71549e68976ef68abfc45090347381b24b4d61a856d42a",
+    "boundary_review": {
+      "review_id": "issue-223-m9-e-corpus-batch-15-semantic-verification-20261003-r1:canonical:w12403:boundary",
+      "decision": "retain",
+      "classification": "atomic",
+      "evidence": [
+        {
+          "sense_id": "w12403-s1",
+          "evidence_basis": "w12403 w12403-s1: 민요: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 품사와 동음이의를 점검했다. 포르투갈 민요와 아리랑 민요에서 의미가 갈리지 않아 하나의 풀이로 충분하다.",
+          "rationale": "m5-18152 w12403 w12403-s1: 민요: 문맥 0: 포르투갈 민요; 문맥 1: 아일랜드 민요; 문맥 2: 아리랑 민요 — 모두 같은 어휘의 같은 쓰임으로 읽힌다. Reviewed gloss SHA-256 75de0ed2c0430ad7edd4eec8bf6e4a3e546bd96eeb7f8b71d626b24225142eba."
+        }
+      ],
+      "pairwise": [],
+      "rationale": "m5-18152 w12403 w12403-s1: 민요: 문맥 0: 포르투갈 민요; 문맥 1: 아일랜드 민요; 문맥 2: 아리랑 민요 — 모두 같은 어휘의 같은 쓰임으로 읽힌다. Reviewed gloss SHA-256 75de0ed2c0430ad7edd4eec8bf6e4a3e546bd96eeb7f8b71d626b24225142eba."
+    },
+    "sense_reviews": [
+      {
+        "sense_id": "w12403-s1",
+        "relation_decision": "relations-reviewed",
+        "relation_rationale": "w12403 w12403-s1 75de0ed2c043 [R000028]: Stage 3 attempt R000028-a1 appended near relation rel-f01ec5c4adab5431179edd33 to w5519; rationale digest acd0b8aa97bc. w12403 w12403-s1 75de0ed2c043 [R000028]: Stage 3 attempt R000028-a1 appended near relation rel-d552039550cc676538f9c328 to w11779; rationale digest eb4bcb882f8b. w12403 w12403-s1 75de0ed2c043 [R000028]: Stage 3 attempt R000028-a1 appended near relation rel-ab36d7e344a9df4f868c31cc to w9448; rationale digest 7a2ba297155d. w12403 w12403-s1 75de0ed2c043 [R000028]: Stage 3 attempt R000028-a1 appended near relation rel-369f8e70a0f24475dd84a256 to w7126; rationale digest 7aa52f1c230f. w12403 w12403-s1 75de0ed2c043 [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-f2248e2c3f1725a0953299b3 to w12427; rationale digest 3d4a3f33febc. w12403 w12403-s1 75de0ed2c043 [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-2d36dc8310b251c4066baa12 to w8256; rationale digest dba1ca23a22c. w12403 w12403-s1 75de0ed2c043 [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-4ac9d2dfa8a2766db9f051b4 to w7768; rationale digest 17403dd04a2a."
+      }
+    ]
   },
   {
     "record_id": "w12404",
@@ -1188,19 +1224,28 @@
   },
   {
     "record_id": "w12432",
-    "record_sha256": "c14d1f3000f0d2eda385415f42c81beafbe421d327eb67c953e323188f33c9d9",
-    "authored_batch_decision": {
-      "source_id": "issue-223-m9-e-corpus-batch-15-20261003-semantic-decisions-20261003-r1",
-      "source_sha256": "8e57c200bc995bd988453f9c2277a1d9a18249888b6e419b18a57b46359075da",
-      "artifact_sha256": "7318d102f9e1f5565916f5e2fe7e66ff86258952854d24bac1b6228f1b871ae9",
-      "decision_row_sha256": "07ec5c68380305a85a6b453d1e962d32849d26af168747e722a3fb6348b03a39",
-      "candidate_record_id": "w12432",
-      "candidate_record_sha256": "c14d1f3000f0d2eda385415f42c81beafbe421d327eb67c953e323188f33c9d9",
-      "decision": "included",
-      "selection_rank": 289,
-      "selection_axis": "E",
-      "reviewed_record_sha256": "c14d1f3000f0d2eda385415f42c81beafbe421d327eb67c953e323188f33c9d9"
-    }
+    "record_sha256": "45a43230d85b5a8ea1bbd812055f8865b0801fafb850483543b8b414d14f478c",
+    "boundary_review": {
+      "review_id": "issue-223-m9-e-corpus-batch-15-semantic-verification-20261003-r1:canonical:w12432:boundary",
+      "decision": "retain",
+      "classification": "atomic",
+      "evidence": [
+        {
+          "sense_id": "w12432-s1",
+          "evidence_basis": "w12432 w12432-s1: 교주: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 품사와 동음이의를 점검했다. 교단의 교주와 무뚝뚝한 교주에서 의미가 갈리지 않아 하나의 풀이로 충분하다.",
+          "rationale": "m5-18194 w12432 w12432-s1: 교주: 문맥 0: 교단의 교주; 문맥 1: 저 사람들의 교주; 문맥 2: 무뚝뚝한 교주 — 모두 같은 어휘의 같은 쓰임으로 읽힌다. Reviewed gloss SHA-256 e96e97e75bcc13ef7e71bc0b7fdfa0b38f0d086271cc082bdd25fe1f8c9c305a."
+        }
+      ],
+      "pairwise": [],
+      "rationale": "m5-18194 w12432 w12432-s1: 교주: 문맥 0: 교단의 교주; 문맥 1: 저 사람들의 교주; 문맥 2: 무뚝뚝한 교주 — 모두 같은 어휘의 같은 쓰임으로 읽힌다. Reviewed gloss SHA-256 e96e97e75bcc13ef7e71bc0b7fdfa0b38f0d086271cc082bdd25fe1f8c9c305a."
+    },
+    "sense_reviews": [
+      {
+        "sense_id": "w12432-s1",
+        "relation_decision": "relations-reviewed",
+        "relation_rationale": "w12432 w12432-s1 e96e97e75bcc [R000028]: Stage 3 attempt R000028-a1 appended near relation rel-69227c783a2ef46e0231c0a9 to w10564; rationale digest 35374122801a. w12432 w12432-s1 e96e97e75bcc [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-8e25365609710852c43c4ce8 to w5906; rationale digest 51ff10fbf951. w12432 w12432-s1 e96e97e75bcc [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-97a8dd40c99b51d3442113bb to w7531; rationale digest 80400bf5a1ea. w12432 w12432-s1 e96e97e75bcc [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-d35ace3280cd29fff29721bf to w11525; rationale digest 7815f54fca12. w12432 w12432-s1 e96e97e75bcc [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-bfa3943682e5cf79460a8cc4 to w12460; rationale digest 68d81740879b. w12432 w12432-s1 e96e97e75bcc [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-1ae21a26cfa587bc277fd03b to w9803; rationale digest e4caccd8d2ac. w12432 w12432-s1 e96e97e75bcc [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-cc2acda3f86be67f23120563 to w9781; rationale digest 680e84bb4db2. w12432 w12432-s1 e96e97e75bcc [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-9fae54f5d583f9b8a2536e2c to w12050; rationale digest 042ca58f97ad."
+      }
+    ]
   },
   {
     "record_id": "w12433",
@@ -1254,19 +1299,28 @@
   },
   {
     "record_id": "w12435",
-    "record_sha256": "36f26392ff3c7a6eb67981134d2d6b1640cd86ba4887e5187dabe861d5dcde5d",
-    "authored_batch_decision": {
-      "source_id": "issue-223-m9-e-corpus-batch-15-20261003-semantic-decisions-20261003-r1",
-      "source_sha256": "8e57c200bc995bd988453f9c2277a1d9a18249888b6e419b18a57b46359075da",
-      "artifact_sha256": "7318d102f9e1f5565916f5e2fe7e66ff86258952854d24bac1b6228f1b871ae9",
-      "decision_row_sha256": "70c88ee357ae133a9ac9e8b938745777840046ef0e6bebe4451775f84051c7c6",
-      "candidate_record_id": "w12435",
-      "candidate_record_sha256": "36f26392ff3c7a6eb67981134d2d6b1640cd86ba4887e5187dabe861d5dcde5d",
-      "decision": "included",
-      "selection_rank": 292,
-      "selection_axis": "C",
-      "reviewed_record_sha256": "36f26392ff3c7a6eb67981134d2d6b1640cd86ba4887e5187dabe861d5dcde5d"
-    }
+    "record_sha256": "f0639f105326c85cac7cab393e31c9fd23f53e2d5642296ceffcf0af83ef0d12",
+    "boundary_review": {
+      "review_id": "issue-223-m9-e-corpus-batch-15-semantic-verification-20261003-r1:canonical:w12435:boundary",
+      "decision": "retain",
+      "classification": "atomic",
+      "evidence": [
+        {
+          "sense_id": "w12435-s1",
+          "evidence_basis": "w12435 w12435-s1: 식장: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 품사와 동음이의를 점검했다. 졸업식장와 졸업식장에 함께에서 의미가 갈리지 않아 하나의 풀이로 충분하다.",
+          "rationale": "m5-18197 w12435 w12435-s1: 식장: 문맥 0: 졸업식장; 문맥 1: 식장의 장관; 문맥 2: 졸업식장에 함께 — 모두 같은 어휘의 같은 쓰임으로 읽힌다. Reviewed gloss SHA-256 3724300cac776bf603a9779e9c913c91d1ace4c80d988f929ccc7b73e32a9b06."
+        }
+      ],
+      "pairwise": [],
+      "rationale": "m5-18197 w12435 w12435-s1: 식장: 문맥 0: 졸업식장; 문맥 1: 식장의 장관; 문맥 2: 졸업식장에 함께 — 모두 같은 어휘의 같은 쓰임으로 읽힌다. Reviewed gloss SHA-256 3724300cac776bf603a9779e9c913c91d1ace4c80d988f929ccc7b73e32a9b06."
+    },
+    "sense_reviews": [
+      {
+        "sense_id": "w12435-s1",
+        "relation_decision": "relations-reviewed",
+        "relation_rationale": "w12435 w12435-s1 3724300cac77 [R000028]: Stage 3 attempt R000028-a1 appended near relation rel-520075c33525eb8fd91b2077 to w10352; rationale digest cce2974cc770. w12435 w12435-s1 3724300cac77 [R000028]: Stage 3 attempt R000028-a1 appended near relation rel-686e20d320e9aea2da253e0a to w10370; rationale digest c6999e099970. w12435 w12435-s1 3724300cac77 [R000028]: Stage 3 attempt R000028-a1 appended near relation rel-4ece54aec998078196b16200 to w8439; rationale digest 6bb984689b77. w12435 w12435-s1 3724300cac77 [R000028]: Stage 3 attempt R000028-a1 appended near relation rel-13bb3c763d5f2c747ef3134c to w12241; rationale digest 28879240b9cd. w12435 w12435-s1 3724300cac77 [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-a19784937ed70b058a7425b1 to w5605; rationale digest 110c3573c23e. w12435 w12435-s1 3724300cac77 [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-e264072d05f71822a2aafe1c to w12054; rationale digest 4a4c58905520. w12435 w12435-s1 3724300cac77 [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-0b01667482ca7ca485c11d9c to w12613; rationale digest 3e9b5734c91e. w12435 w12435-s1 3724300cac77 [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-aa22199e80e5c036ad7e0c1c to w5744; rationale digest 9a68b260997d."
+      }
+    ]
   },
   {
     "record_id": "w12436",
@@ -1480,19 +1534,28 @@
   },
   {
     "record_id": "w12448",
-    "record_sha256": "34e58ad00821d04e2901b22cbd7a24275d5355abf6c5262802097dd8ddebf751",
-    "authored_batch_decision": {
-      "source_id": "issue-223-m9-e-corpus-batch-15-20261003-semantic-decisions-20261003-r1",
-      "source_sha256": "8e57c200bc995bd988453f9c2277a1d9a18249888b6e419b18a57b46359075da",
-      "artifact_sha256": "7318d102f9e1f5565916f5e2fe7e66ff86258952854d24bac1b6228f1b871ae9",
-      "decision_row_sha256": "30b4ac7279960b0acb115308bb832e0bf4d00016016382201e8e7e4ac81d9bea",
-      "candidate_record_id": "w12448",
-      "candidate_record_sha256": "34e58ad00821d04e2901b22cbd7a24275d5355abf6c5262802097dd8ddebf751",
-      "decision": "included",
-      "selection_rank": 305,
-      "selection_axis": "C",
-      "reviewed_record_sha256": "34e58ad00821d04e2901b22cbd7a24275d5355abf6c5262802097dd8ddebf751"
-    }
+    "record_sha256": "b4504fcdfb3ee6690bd23dd0ac13ace6a8681e238da860a53f007dab9eae4b68",
+    "boundary_review": {
+      "review_id": "issue-223-m9-e-corpus-batch-15-semantic-verification-20261003-r1:canonical:w12448:boundary",
+      "decision": "retain",
+      "classification": "atomic",
+      "evidence": [
+        {
+          "sense_id": "w12448-s1",
+          "evidence_basis": "w12448 w12448-s1: 상회: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 품사와 동음이의를 점검했다. 마을 상회와 상회에 대한 이야기에서 의미가 갈리지 않아 하나의 풀이로 충분하다.",
+          "rationale": "m5-18210 w12448 w12448-s1: 상회: 문맥 0: 마을 상회; 문맥 1: 디더리지 상회; 문맥 2: 상회에 대한 이야기 — 모두 같은 어휘의 같은 쓰임으로 읽힌다. Reviewed gloss SHA-256 bf049ed5459dd4b1e58e2ef6abdc3b6dceb5de9c8300b21f3706737131ffb3ff."
+        }
+      ],
+      "pairwise": [],
+      "rationale": "m5-18210 w12448 w12448-s1: 상회: 문맥 0: 마을 상회; 문맥 1: 디더리지 상회; 문맥 2: 상회에 대한 이야기 — 모두 같은 어휘의 같은 쓰임으로 읽힌다. Reviewed gloss SHA-256 bf049ed5459dd4b1e58e2ef6abdc3b6dceb5de9c8300b21f3706737131ffb3ff."
+    },
+    "sense_reviews": [
+      {
+        "sense_id": "w12448-s1",
+        "relation_decision": "relations-reviewed",
+        "relation_rationale": "w12448 w12448-s1 bf049ed5459d [R000028]: Stage 3 attempt R000028-a1 appended direct relation rel-29ba66aa6959f4bfef55c15d to w11397; rationale digest 5fdf298ba3b3. w12448 w12448-s1 bf049ed5459d [R000028]: Stage 3 attempt R000028-a1 appended near relation rel-3a8df9e11efeed56a124c28c to w10932; rationale digest f52473616fb8. w12448 w12448-s1 bf049ed5459d [R000028]: Stage 3 attempt R000028-a1 appended near relation rel-f0e1e78445e353869766bc91 to w9479; rationale digest ca1532df15d8. w12448 w12448-s1 bf049ed5459d [R000028]: Stage 3 attempt R000028-a1 appended near relation rel-04f926f997c09ff9b72f91bc to w8285; rationale digest 1c0e91884d0a. w12448 w12448-s1 bf049ed5459d [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-9491564a93f09c72faa0c8f9 to w7997; rationale digest 8437295dd9db. w12448 w12448-s1 bf049ed5459d [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-b8595e1cdf2e0b8078370348 to w7847; rationale digest 9ef798973936. w12448 w12448-s1 bf049ed5459d [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-4fbc09d22aff1cbd750213db to w5549; rationale digest ed5332635406."
+      }
+    ]
   },
   {
     "record_id": "w12449",
@@ -1678,19 +1741,28 @@
   },
   {
     "record_id": "w12457",
-    "record_sha256": "164f3a319288722c5ee65a13d6c498a91d8f6c59362fbddf63943b8095d2c5c6",
-    "authored_batch_decision": {
-      "source_id": "issue-223-m9-e-corpus-batch-15-20261003-semantic-decisions-20261003-r1",
-      "source_sha256": "8e57c200bc995bd988453f9c2277a1d9a18249888b6e419b18a57b46359075da",
-      "artifact_sha256": "7318d102f9e1f5565916f5e2fe7e66ff86258952854d24bac1b6228f1b871ae9",
-      "decision_row_sha256": "fac2d10550aec733295ef47420e41d06acc360b7c415d62258d9a20f79aa9aea",
-      "candidate_record_id": "w12457",
-      "candidate_record_sha256": "164f3a319288722c5ee65a13d6c498a91d8f6c59362fbddf63943b8095d2c5c6",
-      "decision": "included",
-      "selection_rank": 314,
-      "selection_axis": "E",
-      "reviewed_record_sha256": "164f3a319288722c5ee65a13d6c498a91d8f6c59362fbddf63943b8095d2c5c6"
-    }
+    "record_sha256": "bc34b49e141f88032844146c97a327503f1755124b1c58ce25858e7b79c0e755",
+    "boundary_review": {
+      "review_id": "issue-223-m9-e-corpus-batch-15-semantic-verification-20261003-r1:canonical:w12457:boundary",
+      "decision": "retain",
+      "classification": "atomic",
+      "evidence": [
+        {
+          "sense_id": "w12457-s1",
+          "evidence_basis": "w12457 w12457-s1: 사무원: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 품사와 동음이의를 점검했다. 사무원 곽 선생와 젊은 사무원에서 의미가 갈리지 않아 하나의 풀이로 충분하다.",
+          "rationale": "m5-18221 w12457 w12457-s1: 사무원: 문맥 0: 사무원 곽 선생; 문맥 1: 사무원의 업무; 문맥 2: 젊은 사무원 — 모두 같은 어휘의 같은 쓰임으로 읽힌다. Reviewed gloss SHA-256 b3947d0dec3321d79ae7f57f80f68da0234c56942f46c73e97ca55ab96459f65."
+        }
+      ],
+      "pairwise": [],
+      "rationale": "m5-18221 w12457 w12457-s1: 사무원: 문맥 0: 사무원 곽 선생; 문맥 1: 사무원의 업무; 문맥 2: 젊은 사무원 — 모두 같은 어휘의 같은 쓰임으로 읽힌다. Reviewed gloss SHA-256 b3947d0dec3321d79ae7f57f80f68da0234c56942f46c73e97ca55ab96459f65."
+    },
+    "sense_reviews": [
+      {
+        "sense_id": "w12457-s1",
+        "relation_decision": "relations-reviewed",
+        "relation_rationale": "w12457 w12457-s1 b3947d0dec33 [R000028]: Stage 3 attempt R000028-a1 appended near relation rel-6cd6a87a1a1a68be5525f5ea to w12173; rationale digest b98ba56b6806. w12457 w12457-s1 b3947d0dec33 [R000028]: Stage 3 attempt R000028-a1 appended near relation rel-d864898659a8c4c6378bec36 to w10561; rationale digest 451278cff9fb. w12457 w12457-s1 b3947d0dec33 [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-e6cee64a69e89b891f5b9f64 to w7857; rationale digest 639a074456a2. w12457 w12457-s1 b3947d0dec33 [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-48dada94ea2d6f73dc0de433 to w2604; rationale digest 99d1556a3ded. w12457 w12457-s1 b3947d0dec33 [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-69b1ff7c7a0711b2c3536143 to w8991; rationale digest 8122b2299773. w12457 w12457-s1 b3947d0dec33 [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-1949f6dff12346f3b154c4a5 to w10738; rationale digest 1bfa8488d2b3."
+      }
+    ]
   },
   {
     "record_id": "w12458",
@@ -1849,19 +1921,28 @@
   },
   {
     "record_id": "w12466",
-    "record_sha256": "ab3ff3a7cccd0cb28baf424cd0b921fe3c9b0c9746b9c276dafd9f163da49b8a",
-    "authored_batch_decision": {
-      "source_id": "issue-223-m9-e-corpus-batch-15-20261003-semantic-decisions-20261003-r1",
-      "source_sha256": "8e57c200bc995bd988453f9c2277a1d9a18249888b6e419b18a57b46359075da",
-      "artifact_sha256": "7318d102f9e1f5565916f5e2fe7e66ff86258952854d24bac1b6228f1b871ae9",
-      "decision_row_sha256": "2126d7b3a703e9066fec7cd7ad5bc11602ce407a1784888e820a7d99a3360669",
-      "candidate_record_id": "w12466",
-      "candidate_record_sha256": "ab3ff3a7cccd0cb28baf424cd0b921fe3c9b0c9746b9c276dafd9f163da49b8a",
-      "decision": "included",
-      "selection_rank": 323,
-      "selection_axis": "X",
-      "reviewed_record_sha256": "ab3ff3a7cccd0cb28baf424cd0b921fe3c9b0c9746b9c276dafd9f163da49b8a"
-    }
+    "record_sha256": "3b18ffe543dc094382bb8b5bf9988e94cb22c0517aae670caef7497cc24abe80",
+    "boundary_review": {
+      "review_id": "issue-223-m9-e-corpus-batch-15-semantic-verification-20261003-r1:canonical:w12466:boundary",
+      "decision": "retain",
+      "classification": "atomic",
+      "evidence": [
+        {
+          "sense_id": "w12466-s1",
+          "evidence_basis": "w12466 w12466-s1: 지원금: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 품사와 동음이의를 점검했다. 지원금 신청와 학교 지원금에서 의미가 갈리지 않아 하나의 풀이로 충분하다.",
+          "rationale": "m5-18230 w12466 w12466-s1: 지원금: 문맥 0: 지원금 신청; 문맥 1: 영화 제작 지원금; 문맥 2: 학교 지원금 — 모두 같은 어휘의 같은 쓰임으로 읽힌다. Reviewed gloss SHA-256 99908c3eeed53b3d1f40009380f9601c908a14e1a2ba3bd964e718d274e0677f."
+        }
+      ],
+      "pairwise": [],
+      "rationale": "m5-18230 w12466 w12466-s1: 지원금: 문맥 0: 지원금 신청; 문맥 1: 영화 제작 지원금; 문맥 2: 학교 지원금 — 모두 같은 어휘의 같은 쓰임으로 읽힌다. Reviewed gloss SHA-256 99908c3eeed53b3d1f40009380f9601c908a14e1a2ba3bd964e718d274e0677f."
+    },
+    "sense_reviews": [
+      {
+        "sense_id": "w12466-s1",
+        "relation_decision": "relations-reviewed",
+        "relation_rationale": "w12466 w12466-s1 99908c3eeed5 [R000028]: Stage 3 attempt R000028-a1 appended near relation rel-7f6ba65371e20469c65d663b to w11752; rationale digest 3dffc064a5df. w12466 w12466-s1 99908c3eeed5 [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-dfe8d26ef307eff5e9b23a44 to w5792; rationale digest 7e5a0326e73d. w12466 w12466-s1 99908c3eeed5 [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-6010cf4964a24243c5e0a36c to w10412; rationale digest 4c52e13993ac. w12466 w12466-s1 99908c3eeed5 [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-35932b9e3ad6bed5bd83863c to w11758; rationale digest c8225ed16b60. w12466 w12466-s1 99908c3eeed5 [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-3660afdedbbca801c1289b32 to w5947; rationale digest b492e7037c39."
+      }
+    ]
   },
   {
     "record_id": "w12467",
@@ -2052,19 +2133,28 @@
   },
   {
     "record_id": "w12477",
-    "record_sha256": "8200241c8b3cbcaf04883840a8030059de24a9da794ae8050f874680ccb4475d",
-    "authored_batch_decision": {
-      "source_id": "issue-223-m9-e-corpus-batch-15-20261003-semantic-decisions-20261003-r1",
-      "source_sha256": "8e57c200bc995bd988453f9c2277a1d9a18249888b6e419b18a57b46359075da",
-      "artifact_sha256": "7318d102f9e1f5565916f5e2fe7e66ff86258952854d24bac1b6228f1b871ae9",
-      "decision_row_sha256": "c461558096ac461cb660f3b5b1c628741f62a827b3159bd7b0697b462df157d1",
-      "candidate_record_id": "w12477",
-      "candidate_record_sha256": "8200241c8b3cbcaf04883840a8030059de24a9da794ae8050f874680ccb4475d",
-      "decision": "included",
-      "selection_rank": 334,
-      "selection_axis": "A",
-      "reviewed_record_sha256": "8200241c8b3cbcaf04883840a8030059de24a9da794ae8050f874680ccb4475d"
-    }
+    "record_sha256": "70e16a0d9da95bb807bd190e3ff50939b6fa326ac0f5fd8f956a18f56ec56225",
+    "boundary_review": {
+      "review_id": "issue-223-m9-e-corpus-batch-15-semantic-verification-20261003-r1:canonical:w12477:boundary",
+      "decision": "retain",
+      "classification": "atomic",
+      "evidence": [
+        {
+          "sense_id": "w12477-s1",
+          "evidence_basis": "w12477 w12477-s1: 뒷바라지: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 품사와 동음이의를 점검했다. 나를 돌봐 주는 일와 남편 뒷바라지에서 의미가 갈리지 않아 하나의 풀이로 충분하다.",
+          "rationale": "m5-18242 w12477 w12477-s1: 뒷바라지: 문맥 0: 나를 돌봐 주는 일; 문맥 1: 2대 독자 뒷바라지; 문맥 2: 남편 뒷바라지 — 모두 같은 어휘의 같은 쓰임으로 읽힌다. Reviewed gloss SHA-256 4b669549adb7964d381ba625d9952919977d11cf38d743ab3875782bec2f3571."
+        }
+      ],
+      "pairwise": [],
+      "rationale": "m5-18242 w12477 w12477-s1: 뒷바라지: 문맥 0: 나를 돌봐 주는 일; 문맥 1: 2대 독자 뒷바라지; 문맥 2: 남편 뒷바라지 — 모두 같은 어휘의 같은 쓰임으로 읽힌다. Reviewed gloss SHA-256 4b669549adb7964d381ba625d9952919977d11cf38d743ab3875782bec2f3571."
+    },
+    "sense_reviews": [
+      {
+        "sense_id": "w12477-s1",
+        "relation_decision": "relations-reviewed",
+        "relation_rationale": "w12477 w12477-s1 4b669549adb7 [R000028]: Stage 3 attempt R000028-a1 appended direct relation rel-67b59a94ba34f0af52cda0df to w7896; rationale digest 2f2bf38694cf. w12477 w12477-s1 4b669549adb7 [R000028]: Stage 3 attempt R000028-a1 appended direct relation rel-961b6d7c1eee5660545627de to w5792; rationale digest 7865e0a34418. w12477 w12477-s1 4b669549adb7 [R000028]: Stage 3 attempt R000028-a1 appended near relation rel-341cec9e5dd1b73895bfa2ff to w10412; rationale digest 5611efd993f9. w12477 w12477-s1 4b669549adb7 [R000028]: Stage 3 attempt R000028-a1 appended near relation rel-f7031726ae9c47dac065902a to w12213; rationale digest cd6ae70fcb94. w12477 w12477-s1 4b669549adb7 [R000028]: Stage 3 attempt R000028-a1 appended near relation rel-23b476b7f692916989ee1ae3 to w11538; rationale digest 91b3feca0598. w12477 w12477-s1 4b669549adb7 [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-683fd0528551687560c8bdde to w11758; rationale digest 8765b9e6bb43. w12477 w12477-s1 4b669549adb7 [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-20d191ea1d1a4da0327caf02 to w12466; rationale digest 817845dc47f4."
+      }
+    ]
   },
   {
     "record_id": "w12478",
@@ -2125,19 +2215,28 @@
   },
   {
     "record_id": "w12481",
-    "record_sha256": "6b067f96ce2ca3debbba7b2cc76c5000ce7a346fcd31f7203d5ad05277e9b665",
-    "authored_batch_decision": {
-      "source_id": "issue-223-m9-e-corpus-batch-15-20261003-semantic-decisions-20261003-r1",
-      "source_sha256": "8e57c200bc995bd988453f9c2277a1d9a18249888b6e419b18a57b46359075da",
-      "artifact_sha256": "7318d102f9e1f5565916f5e2fe7e66ff86258952854d24bac1b6228f1b871ae9",
-      "decision_row_sha256": "3c027d2cce4c16f97738f3706764169397f343a2b83105a702864edc2ab7d279",
-      "candidate_record_id": "w12481",
-      "candidate_record_sha256": "6b067f96ce2ca3debbba7b2cc76c5000ce7a346fcd31f7203d5ad05277e9b665",
-      "decision": "included",
-      "selection_rank": 338,
-      "selection_axis": "A",
-      "reviewed_record_sha256": "6b067f96ce2ca3debbba7b2cc76c5000ce7a346fcd31f7203d5ad05277e9b665"
-    }
+    "record_sha256": "5cf7dd707ceb7adbd9f9cd5ddcb8d35b5f599b6970402f65681123a7f1cf576f",
+    "boundary_review": {
+      "review_id": "issue-223-m9-e-corpus-batch-15-semantic-verification-20261003-r1:canonical:w12481:boundary",
+      "decision": "retain",
+      "classification": "atomic",
+      "evidence": [
+        {
+          "sense_id": "w12481-s1",
+          "evidence_basis": "w12481 w12481-s1: 삐다: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 품사와 동음이의를 점검했다. 발목을 삠와 발이 삐어서 응급실에서 의미가 갈리지 않아 하나의 풀이로 충분하다.",
+          "rationale": "m5-18249 w12481 w12481-s1: 삐다: 문맥 0: 발목을 삠; 문맥 1: 발을 삐어 아픔; 문맥 2: 발이 삐어서 응급실 — 모두 같은 어휘의 같은 쓰임으로 읽힌다. Reviewed gloss SHA-256 a2023fa5c623add45712d4d537be4b7d38d1d14794704b09248be6e32167364b."
+        }
+      ],
+      "pairwise": [],
+      "rationale": "m5-18249 w12481 w12481-s1: 삐다: 문맥 0: 발목을 삠; 문맥 1: 발을 삐어 아픔; 문맥 2: 발이 삐어서 응급실 — 모두 같은 어휘의 같은 쓰임으로 읽힌다. Reviewed gloss SHA-256 a2023fa5c623add45712d4d537be4b7d38d1d14794704b09248be6e32167364b."
+    },
+    "sense_reviews": [
+      {
+        "sense_id": "w12481-s1",
+        "relation_decision": "relations-reviewed",
+        "relation_rationale": "w12481 w12481-s1 a2023fa5c623 [R000028]: Stage 3 attempt R000028-a1 appended direct relation rel-f2f10aeb8f69c873db0d6d7d to w3881; rationale digest 90b9239f556e. w12481 w12481-s1 a2023fa5c623 [R000028]: Stage 3 attempt R000028-a1 appended near relation rel-20d50a4e525dd74aec97132b to w7003; rationale digest 0978f73a81bf. w12481 w12481-s1 a2023fa5c623 [R000028]: Stage 3 attempt R000028-a1 appended near relation rel-5ade31d9fbf8d863476a0f3c to w9548; rationale digest 5176cf05bac2. w12481 w12481-s1 a2023fa5c623 [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-889885704ab9510889e0663f to w9069; rationale digest bd721f63c1ef. w12481 w12481-s1 a2023fa5c623 [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-306af20fcf018d6edf6ccd26 to w12439; rationale digest 15ca5e90b651."
+      }
+    ]
   },
   {
     "record_id": "w12482",
@@ -2289,19 +2388,28 @@
   },
   {
     "record_id": "w12489",
-    "record_sha256": "54ae2b3ddffc97db2b03380a823b84376f62b9e4dc13fd76f88fd75f70123dfe",
-    "authored_batch_decision": {
-      "source_id": "issue-223-m9-e-corpus-batch-15-20261003-semantic-decisions-20261003-r1",
-      "source_sha256": "8e57c200bc995bd988453f9c2277a1d9a18249888b6e419b18a57b46359075da",
-      "artifact_sha256": "7318d102f9e1f5565916f5e2fe7e66ff86258952854d24bac1b6228f1b871ae9",
-      "decision_row_sha256": "b0fb64e6f79635513f0a4dec64c145caad26e01d88e1a0111f50f34ca86818c3",
-      "candidate_record_id": "w12489",
-      "candidate_record_sha256": "54ae2b3ddffc97db2b03380a823b84376f62b9e4dc13fd76f88fd75f70123dfe",
-      "decision": "included",
-      "selection_rank": 346,
-      "selection_axis": "O",
-      "reviewed_record_sha256": "54ae2b3ddffc97db2b03380a823b84376f62b9e4dc13fd76f88fd75f70123dfe"
-    }
+    "record_sha256": "c03307030d1bc0f5a45daf2cf51da4e340bc55861ff0245b403d0c6b258e1793",
+    "boundary_review": {
+      "review_id": "issue-223-m9-e-corpus-batch-15-semantic-verification-20261003-r1:canonical:w12489:boundary",
+      "decision": "retain",
+      "classification": "atomic",
+      "evidence": [
+        {
+          "sense_id": "w12489-s1",
+          "evidence_basis": "w12489 w12489-s1: 책꽂이: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 품사와 동음이의를 점검했다. 책꽂이 한쪽와 유리 책꽂이에서 의미가 갈리지 않아 하나의 풀이로 충분하다.",
+          "rationale": "m5-18257 w12489 w12489-s1: 책꽂이: 문맥 0: 책꽂이 한쪽; 문맥 1: 책을 꽂는 책꽂이; 문맥 2: 유리 책꽂이 — 모두 같은 어휘의 같은 쓰임으로 읽힌다. Reviewed gloss SHA-256 b76cd14134dc8e2739e1c619dd3daa9b45ae845a960abdb88ebf3f88862cc5c5."
+        }
+      ],
+      "pairwise": [],
+      "rationale": "m5-18257 w12489 w12489-s1: 책꽂이: 문맥 0: 책꽂이 한쪽; 문맥 1: 책을 꽂는 책꽂이; 문맥 2: 유리 책꽂이 — 모두 같은 어휘의 같은 쓰임으로 읽힌다. Reviewed gloss SHA-256 b76cd14134dc8e2739e1c619dd3daa9b45ae845a960abdb88ebf3f88862cc5c5."
+    },
+    "sense_reviews": [
+      {
+        "sense_id": "w12489-s1",
+        "relation_decision": "relations-reviewed",
+        "relation_rationale": "w12489 w12489-s1 b76cd14134dc [R000028]: Stage 3 attempt R000028-a1 appended direct relation rel-9c54b51e13c21ad40f78e465 to w746; rationale digest 63bd09e11232. w12489 w12489-s1 b76cd14134dc [R000028]: Stage 3 attempt R000028-a1 appended direct relation rel-9737567bdfc3d4f62876a4d0 to w2910; rationale digest 6b74bf4dee1f. w12489 w12489-s1 b76cd14134dc [R000028]: Stage 3 attempt R000028-a1 appended near relation rel-986911f1f2d319550601360e to w4053; rationale digest 48a69b90f92c. w12489 w12489-s1 b76cd14134dc [R000028]: Stage 3 attempt R000028-a1 appended near relation rel-a1b372ee78f0007ea5c8c654 to w5158; rationale digest a0489e870343. w12489 w12489-s1 b76cd14134dc [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-c51a2302f126e91e53836e95 to w6468; rationale digest b08368eaf489. w12489 w12489-s1 b76cd14134dc [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-c19d405af5285a303506a634 to w9479; rationale digest a84e1db5c36f."
+      }
+    ]
   },
   {
     "record_id": "w12490",
@@ -2592,19 +2700,28 @@
   },
   {
     "record_id": "w12504",
-    "record_sha256": "475d12b39fd1e31009a9d0d65486725850834d19d5cf42e1f59efbbd1a96836c",
-    "authored_batch_decision": {
-      "source_id": "issue-223-m9-e-corpus-batch-15-20261003-semantic-decisions-20261003-r1",
-      "source_sha256": "8e57c200bc995bd988453f9c2277a1d9a18249888b6e419b18a57b46359075da",
-      "artifact_sha256": "7318d102f9e1f5565916f5e2fe7e66ff86258952854d24bac1b6228f1b871ae9",
-      "decision_row_sha256": "83ac30be4c47a826c2950b3b7ff01eb6e535140208f2ae7b799efd449811387f",
-      "candidate_record_id": "w12504",
-      "candidate_record_sha256": "475d12b39fd1e31009a9d0d65486725850834d19d5cf42e1f59efbbd1a96836c",
-      "decision": "included",
-      "selection_rank": 361,
-      "selection_axis": "Q",
-      "reviewed_record_sha256": "475d12b39fd1e31009a9d0d65486725850834d19d5cf42e1f59efbbd1a96836c"
-    }
+    "record_sha256": "0a5fcb9a95f03dcb9471423eccd54f859a02c32670536bf8c11ff263cd503e62",
+    "boundary_review": {
+      "review_id": "issue-223-m9-e-corpus-batch-15-semantic-verification-20261003-r1:canonical:w12504:boundary",
+      "decision": "retain",
+      "classification": "atomic",
+      "evidence": [
+        {
+          "sense_id": "w12504-s1",
+          "evidence_basis": "w12504 w12504-s1: 당차다: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 품사와 동음이의를 점검했다. 당찬 모습와 당차고 용감함에서 의미가 갈리지 않아 하나의 풀이로 충분하다.",
+          "rationale": "m5-18284 w12504 w12504-s1: 당차다: 문맥 0: 당찬 모습; 문맥 1: 당차게 말함; 문맥 2: 당차고 용감함 — 모두 같은 어휘의 같은 쓰임으로 읽힌다. Reviewed gloss SHA-256 a8df34753380198589959eb562ac3e8a74b7829434f6054bdbd1ecffbb9604e9."
+        }
+      ],
+      "pairwise": [],
+      "rationale": "m5-18284 w12504 w12504-s1: 당차다: 문맥 0: 당찬 모습; 문맥 1: 당차게 말함; 문맥 2: 당차고 용감함 — 모두 같은 어휘의 같은 쓰임으로 읽힌다. Reviewed gloss SHA-256 a8df34753380198589959eb562ac3e8a74b7829434f6054bdbd1ecffbb9604e9."
+    },
+    "sense_reviews": [
+      {
+        "sense_id": "w12504-s1",
+        "relation_decision": "relations-reviewed",
+        "relation_rationale": "w12504 w12504-s1 a8df34753380 [R000028]: Stage 3 attempt R000028-a1 appended direct relation rel-442f012f42b4e45173cfc4af to w359; rationale digest 907825510569. w12504 w12504-s1 a8df34753380 [R000028]: Stage 3 attempt R000028-a1 appended direct relation rel-6ac96afc2082ebfe2fdecc71 to w664; rationale digest 2af068dae788. w12504 w12504-s1 a8df34753380 [R000028]: Stage 3 attempt R000028-a1 appended near relation rel-a1b9d195171d2721d9632bec to w6565; rationale digest a0c90a52858c. w12504 w12504-s1 a8df34753380 [R000028]: Stage 3 attempt R000028-a1 appended near relation rel-0c11e1dd7a009a286bd2de86 to w10218; rationale digest a0394fd27218. w12504 w12504-s1 a8df34753380 [R000028]: Stage 3 attempt R000028-a1 appended near relation rel-fd92ba9f53eb36762e622e2e to w6702; rationale digest 5193f822bc1c. w12504 w12504-s1 a8df34753380 [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-13c28b53381315262903e7b6 to w12603; rationale digest 462e5b1ab0ea. w12504 w12504-s1 a8df34753380 [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-4163e45dbd787d576f99392d to w9661; rationale digest da7e028a3bb7. w12504 w12504-s1 a8df34753380 [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-55c58e39a1533ac48c47bef8 to w12563; rationale digest e98a47869bc6."
+      }
+    ]
   },
   {
     "record_id": "w12505",
@@ -3354,7 +3471,7 @@
   },
   {
     "record_id": "w12544",
-    "record_sha256": "0b95c87bb85f4bd03171dd6f481d061b681736ad9cc60dfe8a40e0d116adab82",
+    "record_sha256": "5abedc0e3e501adf08e97f117190642bc9059542ebbcb3813e96fe8329e9aaab",
     "boundary_review": {
       "review_id": "factory-stage3:C000001-a1:w12544:boundary",
       "decision": "split",
@@ -3392,9 +3509,8 @@
       },
       {
         "sense_id": "w12544-s2",
-        "relation_decision": "no-relations",
-        "relation_rationale": "w12544 w12544-s2 aca300537e5d [C000001-0004]: C000001-0004 C000001-0004-s2: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
-        "no_relation_rationale": "w12544 w12544-s2 aca300537e5d [C000001-0004]: C000001-0004 C000001-0004-s2: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+        "relation_decision": "relations-reviewed",
+        "relation_rationale": "w12544 w12544-s2 aca300537e5d [R000028]: Stage 3 attempt R000028-a1 appended direct relation rel-a9fb798c969019fd29094d84 to w12604; rationale digest 060f490e5e34. w12544 w12544-s2 aca300537e5d [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-f6360922d1764cc3b97c6b7a to w271; rationale digest b8b3edb0f6b1. w12544 w12544-s2 aca300537e5d [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-c64b6a532d02bfe5f571ff02 to w10297; rationale digest ec80c527a0ff."
       }
     ]
   },
@@ -4311,7 +4427,7 @@
   },
   {
     "record_id": "w12574",
-    "record_sha256": "3ec065998f70917b4397afa9bb54b4906ee1cb82ac3163116fe03312fc0a7670",
+    "record_sha256": "f13211a033bba19064ea5b0861090cab116a16550f23d8391f6b6b3d9641b87b",
     "boundary_review": {
       "review_id": "factory-stage3:C000003-a1:w12574:boundary",
       "decision": "split",
@@ -4344,9 +4460,8 @@
     "sense_reviews": [
       {
         "sense_id": "w12574-s1",
-        "relation_decision": "no-relations",
-        "relation_rationale": "w12574 w12574-s1 f8aee30b8f9d [C000003-0104]: C000003-0104 C000003-0104-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
-        "no_relation_rationale": "w12574 w12574-s1 f8aee30b8f9d [C000003-0104]: C000003-0104 C000003-0104-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+        "relation_decision": "relations-reviewed",
+        "relation_rationale": "w12574 w12574-s1 f8aee30b8f9d [R000028]: Stage 3 attempt R000028-a1 appended near relation rel-784c170abf556e0720a33322 to w12573; rationale digest b518a78fca22. w12574 w12574-s1 f8aee30b8f9d [R000028]: Stage 3 attempt R000028-a1 appended near relation rel-b997971e06dd7356b3928d8d to w3880; rationale digest bcf1d11ce558. w12574 w12574-s1 f8aee30b8f9d [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-7590dff264d1c7e1e6e3ccf5 to w10104; rationale digest b958650d7c9d. w12574 w12574-s1 f8aee30b8f9d [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-123a64f0f46939060e00cac3 to w5328; rationale digest 06e7f2a05f0c. w12574 w12574-s1 f8aee30b8f9d [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-70f526869d51037f15ef4dcf to w12305; rationale digest f90a7af0588b. w12574 w12574-s1 f8aee30b8f9d [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-fa8725e66ae4fcbf9cf52635 to w12610; rationale digest 1e1f3ffc35eb."
       },
       {
         "sense_id": "w12574-s2",
@@ -4841,7 +4956,7 @@
   },
   {
     "record_id": "w12594",
-    "record_sha256": "e30b7b185189d253157de2d303f502185f966be876bdd87a65f717c1f829a467",
+    "record_sha256": "da4cd14ff6e5e4ac713ecb98dd6f524691283f1a7e10d353d1291bf541079dc1",
     "boundary_review": {
       "review_id": "factory-stage3:C000003-a1:w12594:boundary",
       "decision": "retain",
@@ -4859,11 +4974,8 @@
     "sense_reviews": [
       {
         "sense_id": "w12594-s1",
-        "relation_decision": "no-relations",
-        "semantic_rationale": "w12594 w12594-s1 e7d346769d2c [C000003-0195]: C000003-0195: o01은 집안과 무관하게 삶을 이어 가며 지내겠다는 쓰임이다.",
-        "boundary_rationale": "w12594 w12594-s1 e7d346769d2c [C000003-0195]: C000003-0195: o01은 집안과 무관하게 삶을 이어 가며 지내겠다는 쓰임이다.",
-        "relation_rationale": "w12594 w12594-s1 e7d346769d2c [C000003-0195]: C000003-0195 C000003-0195-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
-        "no_relation_rationale": "w12594 w12594-s1 e7d346769d2c [C000003-0195]: C000003-0195 C000003-0195-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+        "relation_decision": "relations-reviewed",
+        "relation_rationale": "w12594 w12594-s1 e7d346769d2c [R000028]: Stage 3 attempt R000028-a1 appended direct relation rel-1d60cda2f5e665f40ff7bddd to w5523; rationale digest 39603e5e58e4. w12594 w12594-s1 e7d346769d2c [R000028]: Stage 3 attempt R000028-a1 appended direct relation rel-70a77393f173b903565577de to w12630; rationale digest 1582e9ae6bab. w12594 w12594-s1 e7d346769d2c [R000028]: Stage 3 attempt R000028-a1 appended near relation rel-1e4504f5f1ab7d22d1497b61 to w5913; rationale digest e1d25ecbe16a. w12594 w12594-s1 e7d346769d2c [R000028]: Stage 3 attempt R000028-a1 appended near relation rel-06279630d5d394e0237f1d0b to w11124; rationale digest dd8f04122dfa. w12594 w12594-s1 e7d346769d2c [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-c13e8ee8c7d8829822beb784 to w5635; rationale digest a4add77f4385. w12594 w12594-s1 e7d346769d2c [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-827448e8ebd97a68d38f0853 to w5533; rationale digest 623d2f41e9df. w12594 w12594-s1 e7d346769d2c [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-0a14658631bef4c472e67085 to w12566; rationale digest 62fb180abfaf."
       }
     ]
   },
@@ -5018,7 +5130,7 @@
   },
   {
     "record_id": "w12600",
-    "record_sha256": "791651d54fc869646d1b1c2e37f10379f367a4f8440012f170ddab1de55e1c5e",
+    "record_sha256": "d9c0d73cc8514a026ce21a07f54a14bd32b9079e35315a7c1df0184ac736db91",
     "boundary_review": {
       "review_id": "factory-stage3:C000003-a1:w12600:boundary",
       "decision": "retain",
@@ -5036,11 +5148,8 @@
     "sense_reviews": [
       {
         "sense_id": "w12600-s1",
-        "relation_decision": "no-relations",
-        "semantic_rationale": "w12600 w12600-s1 dc468ee09020 [C000003-0235]: C000003-0235: o01~o03은 어른이 되기 전의 어린 사람을 가리킨다.",
-        "boundary_rationale": "w12600 w12600-s1 dc468ee09020 [C000003-0235]: C000003-0235: o01~o03은 어른이 되기 전의 어린 사람을 가리킨다.",
-        "relation_rationale": "w12600 w12600-s1 dc468ee09020 [C000003-0235]: C000003-0235 C000003-0235-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
-        "no_relation_rationale": "w12600 w12600-s1 dc468ee09020 [C000003-0235]: C000003-0235 C000003-0235-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+        "relation_decision": "relations-reviewed",
+        "relation_rationale": "w12600 w12600-s1 dc468ee09020 [R000028]: Stage 3 attempt R000028-a1 appended direct relation rel-54569b904fd2905fda387695 to w6673; rationale digest 590234453a75. w12600 w12600-s1 dc468ee09020 [R000028]: Stage 3 attempt R000028-a1 appended near relation rel-53b51b5fd22811eef0cfed00 to w5759; rationale digest 00efcd4300ef. w12600 w12600-s1 dc468ee09020 [R000028]: Stage 3 attempt R000028-a1 appended near relation rel-7eaccb3330e885f526d44dbf to w5789; rationale digest 9cf4ba6b33ec. w12600 w12600-s1 dc468ee09020 [R000028]: Stage 3 attempt R000028-a1 appended near relation rel-c0ad523c63a668dc33d1acc1 to w10976; rationale digest d3fe89614111. w12600 w12600-s1 dc468ee09020 [R000028]: Stage 3 attempt R000028-a1 appended near relation rel-9463432d06a3f7474f37be10 to w8940; rationale digest 16b4c3e4b705. w12600 w12600-s1 dc468ee09020 [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-a4509078ddbc598b12ff6481 to w11656; rationale digest b772110a2b1f. w12600 w12600-s1 dc468ee09020 [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-76e4efee559b8b861b006c28 to w11827; rationale digest e172edefcf51. w12600 w12600-s1 dc468ee09020 [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-5a73a143879daca23c977d7f to w7825; rationale digest abd3589001fa. w12600 w12600-s1 dc468ee09020 [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-3949a58af6417edfb85b9a33 to w7140; rationale digest 9b09cb76c56e."
       }
     ]
   },
@@ -5149,7 +5258,7 @@
   },
   {
     "record_id": "w12605",
-    "record_sha256": "d069737c269f007457cd571c03aa944a412f3a15a56f6ec9527856c0f4d343e6",
+    "record_sha256": "14257ee800220c9ee1ab50eaaedc798c3c796f7592b0ad5f5910b7ccd8c30a04",
     "boundary_review": {
       "review_id": "factory-stage3:C000003-a1:w12605:boundary",
       "decision": "retain",
@@ -5167,11 +5276,8 @@
     "sense_reviews": [
       {
         "sense_id": "w12605-s1",
-        "relation_decision": "no-relations",
-        "semantic_rationale": "w12605 w12605-s1 ca89c1e560d7 [C000003-0264]: C000003-0264: o01은 부르는 사람이 있는 곳으로 움직여 이르라는 쓰임이다.",
-        "boundary_rationale": "w12605 w12605-s1 ca89c1e560d7 [C000003-0264]: C000003-0264: o01은 부르는 사람이 있는 곳으로 움직여 이르라는 쓰임이다.",
-        "relation_rationale": "w12605 w12605-s1 ca89c1e560d7 [C000003-0264]: C000003-0264 C000003-0264-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
-        "no_relation_rationale": "w12605 w12605-s1 ca89c1e560d7 [C000003-0264]: C000003-0264 C000003-0264-s1: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+        "relation_decision": "relations-reviewed",
+        "relation_rationale": "w12605 w12605-s1 ca89c1e560d7 [R000028]: Stage 3 attempt R000028-a1 appended near relation rel-71cee04c79b52553ed270d66 to w5866; rationale digest 189e7da6cef5. w12605 w12605-s1 ca89c1e560d7 [R000028]: Stage 3 attempt R000028-a1 appended near relation rel-b03417b8b4958a9383359c1c to w9014; rationale digest 8a09d1c39eb1. w12605 w12605-s1 ca89c1e560d7 [R000028]: Stage 3 attempt R000028-a1 appended near relation rel-e47bd93ddbcfa3467ab3fa94 to w5575; rationale digest 289fe473b081. w12605 w12605-s1 ca89c1e560d7 [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-50ddf2f11a11b567b25f206a to w5548; rationale digest 9bd7edf8df3a. w12605 w12605-s1 ca89c1e560d7 [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-b6aa835bcf511148c4aa0fcf to w5602; rationale digest c6bb3a826995. w12605 w12605-s1 ca89c1e560d7 [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-29505d96d18de0d696b83c6e to w10428; rationale digest 7ec24c409610. w12605 w12605-s1 ca89c1e560d7 [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-64bceb5771496a05b26a80fa to w10332; rationale digest ca13a1567bf4."
       }
     ]
   },
@@ -5550,7 +5656,7 @@
   },
   {
     "record_id": "w12618",
-    "record_sha256": "1387cac82e73f363794f98f105dbdaad4a6d923e7e5a0f23866e909623dd7675",
+    "record_sha256": "b3579baf7f60be0ed810097bfbfbb42cb9b797a499575493183ba54c47f38fea",
     "boundary_review": {
       "review_id": "factory-stage3:C000003-a1:w12618:boundary",
       "decision": "split",
@@ -5588,9 +5694,8 @@
       },
       {
         "sense_id": "w12618-s2",
-        "relation_decision": "no-relations",
-        "relation_rationale": "w12618 w12618-s2 971517f549c6 [C000003-0306]: C000003-0306 C000003-0306-s2: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다.",
-        "no_relation_rationale": "w12618 w12618-s2 971517f549c6 [C000003-0306]: C000003-0306 C000003-0306-s2: 이번 검토에서는 근거가 확인된 연관 관계가 없어 관계를 두지 않는다."
+        "relation_decision": "relations-reviewed",
+        "relation_rationale": "w12618 w12618-s2 971517f549c6 [R000028]: Stage 3 attempt R000028-a1 appended near relation rel-5e7289dd7ba53047a4f5a1aa to w5934; rationale digest 1e0bc5367a95. w12618 w12618-s2 971517f549c6 [R000028]: Stage 3 attempt R000028-a1 appended near relation rel-8c9d383dd0c22ad84745c750 to w10474; rationale digest 4fdb360f5d77. w12618 w12618-s2 971517f549c6 [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-866ea20d03dc7dcb711f3ca4 to w6025; rationale digest 17e31e694e4c. w12618 w12618-s2 971517f549c6 [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-96215f284f2086f447f47215 to w10850; rationale digest 8433570df64b. w12618 w12618-s2 971517f549c6 [R000028]: Stage 3 attempt R000028-a1 appended association relation rel-ce49bc0b352f605161abeb8b to w10623; rationale digest 357e06d7d38c."
       }
     ]
   },
