@@ -229,6 +229,28 @@ test('a run interrupted after the packet (and optionally the canonical write) is
   }
 });
 
+test('an approval superseded by a different-type relation to the same target is not resurrected as a second relation', async () => {
+  const canonical = await loadCanonicalContext();
+  const index = buildRelationIndex(canonical);
+  const { source, target, state } = oneApproval(canonical, index);
+  const root = await scratchRoot();
+  try {
+    assert.equal((await applyBackfill({ root, state, index, refreshReports: false })).status, 'applied');
+    const recordsBefore = await readRecords(root);
+    const eventsBefore = await authorityEvents(root);
+    // A later review of the same pair (or the old approval after a correction retyped it) names another type.
+    const retyped = newQueueState(canonical.canonicalRevision);
+    const near = { target: target.record_id, target_sense: target.sense_id, type: 'near', note: '회귀 시험용 말의 결이다.', relevance: 4 };
+    retyped.done[source.sense_id] = approvedEntry(index, source.sense_id, near, `${source.record_id} ${source.sense_id}: 회귀 시험용 근거.`);
+    const after = buildRelationIndex({ ...canonical, records: recordsBefore });
+    assert.equal((await applyBackfill({ root, state: retyped, index: after, refreshReports: false })).status, 'nothing-to-apply');
+    assert.deepEqual(await readRecords(root), recordsBefore);
+    assert.equal(await authorityEvents(root), eventsBefore);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('an exact tuple that is already present without any packet is a no-op, not an interrupted apply', async () => {
   const canonical = await loadCanonicalContext();
   const index = buildRelationIndex(canonical);

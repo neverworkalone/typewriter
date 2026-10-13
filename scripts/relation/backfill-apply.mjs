@@ -193,7 +193,11 @@ export async function applyBackfill({ root, state, index, refreshReports = true 
   // A conflicting existing tuple is rejected by the shared planner; an exact tuple that is already present is a no-op.
   const probe = planRelationBackfill({ packetId: 'R000000', amendments, canonicalRecords: records, recordPathById });
   const missing = new Set(probe.relationAmendments.filter((entry) => entry.outcome === 'appended').map((entry) => entry.authored_relation_id));
-  const pending = amendments.filter((item) => missing.has(reviewedId(item)));
+  // An approval whose source sense already relates to that target under another type has been settled since the review
+  // (e.g. a later relation correction retyped it), so the old tuple is never resurrected as a second relation.
+  const relatedTargets = new Map();
+  for (const record of records) for (const sense of record.senses ?? []) relatedTargets.set(sense.id, new Set((sense.relations ?? []).map((relation) => relation.target_sense)));
+  const pending = amendments.filter((item) => missing.has(reviewedId(item)) && !relatedTargets.get(item.source_sense_id)?.has(item.relation.target_sense));
   let recordsChanged = 0;
   if (pending.length) {
     const packetId = nextPacketId(source.factory_admissions ?? []);
