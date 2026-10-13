@@ -22703,11 +22703,10 @@
    "relation": {
     "target": "w5792",
     "target_sense": "w5792-s1",
-    "type": "near",
-    "note": "상대가 일을 이루도록 돕는 도와주다 행동이다",
-    "relevance": 4
+    "type": "direct",
+    "note": "상대가 일을 이루도록 돕는 도와주다 행동이다"
    },
-   "rationale": "w3738-s1: 상대가 일을 이루도록 돕는 도와주다 행동이다 AI self-check: 손길을 보태다는 일을 돕기 위해 손을 내어 함께하는 행동이라 손을 보태다와 거들다와 도와주다를 말의 결로 연결하고 지원과 봉사자와 자선을 연상으로 연결한다"
+   "rationale": "w3738-s1: 상대가 일을 이루도록 돕는 도와주다 행동이다 AI self-check: 타인의 일을 돕는 같은 행위자 역할의 대체 표현으로 본다"
   },
   {
    "source_record_id": "w3738",
@@ -22792,10 +22791,11 @@
    "relation": {
     "target": "w3743",
     "target_sense": "w3743-s1",
-    "type": "direct",
-    "note": "일을 위해 다른 사람의 손이나 힘을 빌리는 행동이다"
+    "type": "association",
+    "note": "일을 위해 다른 사람의 손이나 힘을 빌리는 행동이다",
+    "relevance": 7
    },
-   "rationale": "w3742-s1: 일을 위해 다른 사람의 손이나 힘을 빌리는 행동이다 AI self-check: 같은 뜻 축에서 작가가 대체 표현으로 쓸 수 있는 유의 관계로 본다"
+   "rationale": "w3742-s1: 일을 위해 다른 사람의 손이나 힘을 빌리는 행동이다 AI self-check: 도움을 주는 쪽과 받는 쪽으로 참여자 역할이 달라 탐색형 연결로만 둔다"
   },
   {
    "source_record_id": "w3742",
@@ -22816,11 +22816,10 @@
    "relation": {
     "target": "w5792",
     "target_sense": "w5792-s1",
-    "type": "near",
-    "note": "상대가 일을 이루도록 돕는 도와주다 행동이다",
-    "relevance": 5
+    "type": "direct",
+    "note": "상대가 일을 이루도록 돕는 도와주다 행동이다"
    },
-   "rationale": "w3742-s1: 상대가 일을 이루도록 돕는 도와주다 행동이다 AI self-check: 손을 보태다는 다른 사람의 일에 힘이나 수고를 더하는 행동이라 손길을 보태다와 손을 빌리다와 손을 거들다와 거들다를 말의 결로 연결하고 수고와 도와주다를 연상으로 연결한다"
+   "rationale": "w3742-s1: 상대가 일을 이루도록 돕는 도와주다 행동이다 AI self-check: 타인의 일을 돕는 같은 행위자 역할의 대체 표현으로 본다"
   },
   {
    "source_record_id": "w3742",
@@ -52864,16 +52863,16 @@
   "rel-921de01d80f6c771b1a4778b": "8a108671fde3e9e77a8e587c26a7bfd8456086a511f40ffb6e6c705e77c18778",
   "rel-2227ad1131b0782417b0adb3": "084b13ca3d3da793769b8a8fae2b4ec084165345c9976dd024227654ca001716",
   "rel-fd4471f36426a13cb1b8e625": "aa3c421317469d76493fe80ec1e511714862c51c1833205c1da316aaf79c3abc",
-  "rel-9e4a235fee1704c991a49047": "8c4875711d3dab969c740bdd09f68a8d7a4a6f06eed9539ef0f3188d1810d041",
+  "rel-a950fdf9efded6b46d196a25": "8c4875711d3dab969c740bdd09f68a8d7a4a6f06eed9539ef0f3188d1810d041",
   "rel-a4bc6089c03d265192c28cfd": "1338c05b139d13c4e6f212b484992ea45da6ca2f61a42d09c3b4d45e8b702969",
   "rel-5bd12b975c4258b7913279f2": "d115de173ea90f820c24ae4b78a031ce17086cb404f5f748a633a1933adb588e",
   "rel-91df1be554b2d39ad2963f1e": "cd64ce59a66e466901d46b2ea0c2fecd8732cb616874817724d7ed2f42f12a6e",
   "rel-f8b5c2237ffb41c03b438129": "d94f616b9bf6333a19cbe2bf5aa641e6350ccd0397c36e1618a73b51f07b8aba",
   "rel-419ed6e13bdc96729416e9e1": "31d7b3fabeeda908ca872138a54e5cfd0552c488a6d9126648807bbb780639ba",
   "rel-918d947e10e986d568e62a5c": "4d2bb4372a6503356d33f8b2a3521547a7c8e4c85ee34079f6d6f20f722c7f56",
-  "rel-29bca466980b6f15f6d4c5af": "6e269dabc382e506485e3205d803adcd6fb8a357add89dbabc6ec543abbfd941",
+  "rel-5b8242f87d0825033a8f8ae0": "6e269dabc382e506485e3205d803adcd6fb8a357add89dbabc6ec543abbfd941",
   "rel-de5f5e73037900eada635813": "aa3c421317469d76493fe80ec1e511714862c51c1833205c1da316aaf79c3abc",
-  "rel-ecfaf44879c7488f40532492": "8c4875711d3dab969c740bdd09f68a8d7a4a6f06eed9539ef0f3188d1810d041",
+  "rel-141ef341ab867bda12b6ac07": "8c4875711d3dab969c740bdd09f68a8d7a4a6f06eed9539ef0f3188d1810d041",
   "rel-096beeffc1fa2a5214ea09ba": "49f2941a816127528e041c548c0270ced3774df59e8f61d53841b1d3f3c90391",
   "rel-675473e2208538e17ceb0588": "e73a14699e13e27a078e01adc7fb66beb63d63e8d3a25d85443583c485c6708a",
   "rel-3970fdaba34d9fcc82d77449": "8b8255e01a4ec5a282f550ed056542336c0b137c2d7deba6d53bc2a80478cced",

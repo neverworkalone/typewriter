@@ -100485,7 +100485,7 @@
   {
     "batch_id": "R000027",
     "attempt": 1,
-    "semantic_decisions_sha256": "bcd6b5a2fe947a0ec1e9e91a815d15e84ab3a0f60493dbe241752c8a121653e8",
+    "semantic_decisions_sha256": "e30abca1585b3c92a1b87f375205c5b0967383ca4b00568f6de305ffc834e25a",
     "entries": [],
     "relation_amendments": [
       {
@@ -130200,16 +130200,15 @@
         "source_record_id": "w3738",
         "source_sense_id": "w3738-s1",
         "source_gloss_sha256": "75127d4a10dd1d5d2d455305b562a25b1cab12f025df0b982667c62a66a0e453",
-        "authored_relation_id": "rel-9e4a235fee1704c991a49047",
-        "relation_id": "rel-9e4a235fee1704c991a49047",
+        "authored_relation_id": "rel-a950fdf9efded6b46d196a25",
+        "relation_id": "rel-a950fdf9efded6b46d196a25",
         "relation": {
           "target": "w5792",
           "target_sense": "w5792-s1",
-          "type": "near",
-          "note": "상대가 일을 이루도록 돕는 도와주다 행동이다",
-          "relevance": 4
+          "type": "direct",
+          "note": "상대가 일을 이루도록 돕는 도와주다 행동이다"
         },
-        "rationale_sha256": "7e212d3e27ee6689be61c74371c9b33ba59550b4d3221787d34266e81a7ae986",
+        "rationale_sha256": "1f01e2b316f2c94a09b40f2c20998eda33826ed2d6301b6e1c227da9a61aaef1",
         "outcome": "appended"
       },
       {
@@ -130317,15 +130316,16 @@
         "source_record_id": "w3742",
         "source_sense_id": "w3742-s1",
         "source_gloss_sha256": "ce7e86f6072fae526c7fd5c4d94b40f7f1be50e8b0c4cd6c53c9cb7071d010f4",
-        "authored_relation_id": "rel-29bca466980b6f15f6d4c5af",
-        "relation_id": "rel-29bca466980b6f15f6d4c5af",
+        "authored_relation_id": "rel-5b8242f87d0825033a8f8ae0",
+        "relation_id": "rel-5b8242f87d0825033a8f8ae0",
         "relation": {
           "target": "w3743",
           "target_sense": "w3743-s1",
-          "type": "direct",
-          "note": "일을 위해 다른 사람의 손이나 힘을 빌리는 행동이다"
+          "type": "association",
+          "note": "일을 위해 다른 사람의 손이나 힘을 빌리는 행동이다",
+          "relevance": 7
         },
-        "rationale_sha256": "30f9a7d0684eb2ec513c37da60c097c611a643e7e2ff03d0c510828a69103909",
+        "rationale_sha256": "46fedbfeda20df6dec659c8a6e5ed9aae5f66ea34ab78e42d87a6c6fe98221ec",
         "outcome": "appended"
       },
       {
@@ -130349,16 +130349,15 @@
         "source_record_id": "w3742",
         "source_sense_id": "w3742-s1",
         "source_gloss_sha256": "ce7e86f6072fae526c7fd5c4d94b40f7f1be50e8b0c4cd6c53c9cb7071d010f4",
-        "authored_relation_id": "rel-ecfaf44879c7488f40532492",
-        "relation_id": "rel-ecfaf44879c7488f40532492",
+        "authored_relation_id": "rel-141ef341ab867bda12b6ac07",
+        "relation_id": "rel-141ef341ab867bda12b6ac07",
         "relation": {
           "target": "w5792",
           "target_sense": "w5792-s1",
-          "type": "near",
-          "note": "상대가 일을 이루도록 돕는 도와주다 행동이다",
-          "relevance": 5
+          "type": "direct",
+          "note": "상대가 일을 이루도록 돕는 도와주다 행동이다"
         },
-        "rationale_sha256": "8af275795e7e19ede578ab647f0ed6c06d44145dbda61e151e8221d1c55f2f85",
+        "rationale_sha256": "6c568f406e6c91c23c5f7e6b958f386b8dfd804234fd108ae921999a39377317",
         "outcome": "appended"
       },
       {
@@ -180808,14 +180807,14 @@
         "added_relation_ids": [
           "rel-2227ad1131b0782417b0adb3",
           "rel-fd4471f36426a13cb1b8e625",
-          "rel-9e4a235fee1704c991a49047",
+          "rel-a950fdf9efded6b46d196a25",
           "rel-a4bc6089c03d265192c28cfd",
           "rel-5bd12b975c4258b7913279f2",
           "rel-91df1be554b2d39ad2963f1e",
           "rel-f8b5c2237ffb41c03b438129"
         ],
         "before_sha256": "bb63ede266682dba2782e48fdf365a00297ccba136fee511dc2ef54295a828bf",
-        "after_sha256": "ee3f27c8c5b620f632d86b309f3e076fbc15f1a17ed443519c6b90e170e12b12",
+        "after_sha256": "d1deb10351319d172169423371daae44705911341c4ba756811204721ef4eff0",
         "previous_semantic_review_sha256": "b5d8139afdba89d8b65897a4ae14a5dc33b6454375875977f6d205d3edc33914",
         "previous_semantic_review": {
           "record_id": "w3738",
@@ -180850,7 +180849,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "c18877d4e9a1bc7099c77cc7b75515629898097cc62dce0aa27b99adb22c6e26"
+        "semantic_review_sha256": "54d6b4168eb7bee81ba5b73eb999b2e5bf5d9371f96e61f6ba0f50446f3e24cc"
       },
       {
         "entry_id": "w3742",
@@ -180862,15 +180861,15 @@
         "added_relation_ids": [
           "rel-419ed6e13bdc96729416e9e1",
           "rel-918d947e10e986d568e62a5c",
-          "rel-29bca466980b6f15f6d4c5af",
+          "rel-5b8242f87d0825033a8f8ae0",
           "rel-de5f5e73037900eada635813",
-          "rel-ecfaf44879c7488f40532492",
+          "rel-141ef341ab867bda12b6ac07",
           "rel-096beeffc1fa2a5214ea09ba",
           "rel-675473e2208538e17ceb0588",
           "rel-3970fdaba34d9fcc82d77449"
         ],
         "before_sha256": "1b50dab87c3a8a2b7103c7b80a99cd2d853acb9a33263bedadfbcbfa2b934280",
-        "after_sha256": "a0d748829c24ad2a08392e2a5e2bfe6eea2f4aa6537c1de0cd041e2622ffc264",
+        "after_sha256": "2f09d3ea6150df43dab2311f5883fd7371c3183c5d8cafd2c9a82b76834cc6cc",
         "previous_semantic_review_sha256": "9582d61dd3ede1aa5b19485a4287e07ea1ecfab48195668bfcbd5b90442647be",
         "previous_semantic_review": {
           "record_id": "w3742",
@@ -180905,7 +180904,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "3b67cbf2b4f61e82ab3bb45f5ef592db73ed10760320aeba91b11b713a537956"
+        "semantic_review_sha256": "2bfcbea9b1d7a0efb85e5b6e7a59d81a9036b79400b25f7e1dc7abbaca59a379"
       },
       {
         "entry_id": "w3811",
@@ -196395,6 +196394,6 @@
         "semantic_review_sha256": "2a75c6b06305a3fc2e62b2e400cbab7fe2ea5289c85014488fdf9dfefe8429f0"
       }
     ],
-    "sha256": "11803f372d23c24218f7eec1c9ca2c53e1cf4d95328e9bb59eb21000ab7237f4"
+    "sha256": "461d9c190ad5d927463550fb4af0daae8bf23febc17451ecf4913c38b32c2717"
   }
 ]

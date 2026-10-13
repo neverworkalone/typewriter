@@ -284,7 +284,7 @@ Every path below is hashed in the machine inventory. The inventory preserves eac
 | `data/canonical/m5-11-expansion.jsonl` | `4321733628e8f39c92201e3ac016f667ffa7b3e803226474cf1237dbf1b7e8e0` |
 | `data/canonical/m5-12a-expansion.jsonl` | `6eeb77477cc07a88f2a6c9410ec153ee7da9abb3ddfe78df191db3105a2194bc` |
 | `data/canonical/m5-13-expansion.jsonl` | `a7b21629bbb885c0dc96ee2b9ef6b1282591cf707e7fbe59838ce47a856ef441` |
-| `data/canonical/m5-14-expansion.jsonl` | `8e98b74462bf0510abbe6b96e166a90617b79b17b71ba7b148140ffc2d22503e` |
+| `data/canonical/m5-14-expansion.jsonl` | `ce8443093d348993bf3cddc33778e7434c4b71223379ad8a091bbca936d179ad` |
 | `data/canonical/m5-15-expansion.jsonl` | `daab1bbbe8b34eb64bc94bc5885bb20f37628e7e5396fb34938c1564b505324b` |
 | `data/canonical/m5-3-calibration.jsonl` | `582901c28809305b89569982ab2301c157b908df22f44e80163924a4e829fe23` |
 | `data/canonical/m5-5-recalibration.jsonl` | `f2ebd2c7a1261fee6fedd4865109582cbfa484f31bdd1d53804bd0e581eef510` |
@@ -293,7 +293,7 @@ Every path below is hashed in the machine inventory. The inventory preserves eac
 | `data/canonical/pilot.jsonl` | `cf6631a387d9228463e5ce5ef55abea2f7ca8304dd44baacab10bdb94f24ed3d` |
 | `data/inventory/m5-target-promotions.jsonl` | `07d623ce84afca980f957eae4497d29ac847cc8de7999c0f8278a5cc760bef4a` |
 | `data/inventory/m5-target-seed.json` | `6c580008269555ff1f3227a2e1d1ec1732066d6e428be119c7d1deddf02d742a` |
-| `data/validation/canonical-semantic-decision-source.json` | `b2d7e5393600e1a548298717f008a526af527655cf982a86d8cb4d8261934c8c` |
+| `data/validation/canonical-semantic-decision-source.json` | `e5b42cff39c5c16ec2af4aedda48a03504bd227477f161ece553169ce4badd5b` |
 | `data/validation/issue-219-m9-lexical-batch-report.json` | `eff96edc003ffe65f6c45b273556228857f0d7bae49bdd3c248c05c2e0e166de` |
 | `data/validation/issue-220-m9-b-checkpoint-report.json` | `434905f16aca5f45d953006ca59b5ecb24adb57d58209373ff700ec730ec1231` |
 | `data/validation/m6-2-inflection-exceptions.json` | `0c042487df854df06aecd72f32bafb08d79235e7ad7628641cdc9194979886b7` |
