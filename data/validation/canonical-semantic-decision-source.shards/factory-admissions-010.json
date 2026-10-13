@@ -100485,7 +100485,7 @@
   {
     "batch_id": "R000027",
     "attempt": 1,
-    "semantic_decisions_sha256": "b4a8d24046da5d6f5a2561f94ff45815c04f35ff86a4b572983399bb45f9a969",
+    "semantic_decisions_sha256": "b614e5f56c28c37b032103c2547f7b2c5301d38ce0bb40f52646197ad2f7d2fe",
     "entries": [],
     "relation_amendments": [
       {
@@ -100860,22 +100860,6 @@
           "relevance": 5
         },
         "rationale_sha256": "7ab8ecc4fd49c805cb11b9558ddbad4cab4b448e28580ea2cdf757d404fe7865",
-        "outcome": "appended"
-      },
-      {
-        "source_candidate_id": "R000027",
-        "source_record_id": "w10050",
-        "source_sense_id": "w10050-s1",
-        "source_gloss_sha256": "9df37b825e92230d5fee49ae6081a303e9ff3cd8562ad2361a1e3c1b53559f3e",
-        "authored_relation_id": "rel-6e453af92cd7f79ae81b6113",
-        "relation_id": "rel-6e453af92cd7f79ae81b6113",
-        "relation": {
-          "target": "w12485",
-          "target_sense": "w12485-s1",
-          "type": "antonym",
-          "note": "인터넷에 연결되지 않은 오프라인이다"
-        },
-        "rationale_sha256": "52cb181c5a25c6789d464d58839ef79c46c498c26ba1de682b62f513b09047ee",
         "outcome": "appended"
       },
       {
@@ -106127,7 +106111,7 @@
           "note": "몸을 휘어지게 하는 굽히다 행동이다",
           "relevance": 3
         },
-        "rationale_sha256": "86fed3b128b26590cfd4473dbc4a18cacd4cf89cd89e6f8bb06b002392c35910",
+        "rationale_sha256": "f3c56a7e5af18c58d3ee0f9edeeb119bb6a161892cb50dbbcdaa27359decf061",
         "outcome": "appended"
       },
       {
@@ -106144,7 +106128,7 @@
           "note": "상체를 앞으로 숙여 허리를 굽히는 행동이다",
           "relevance": 4
         },
-        "rationale_sha256": "f3e704c53db5b8383a7618b80e0ed5dd6fefb5681ea4a9a4ea4dc550a9e59985",
+        "rationale_sha256": "a284e75b296b1751f816704224dfb709a6b652fa56fc836752d4615f9590c8bc",
         "outcome": "appended"
       },
       {
@@ -106161,7 +106145,7 @@
           "note": "허리와 등을 앞으로 둥글게 구부리는 행동이다",
           "relevance": 4
         },
-        "rationale_sha256": "06a665018ff0a1c7928cada5d74e7b5651c6b59e37a37a5cdfff5e62a68f0999",
+        "rationale_sha256": "8fa02e0dbeeb121235a9fca909566ce22e785a288a1b212dde9f925de5b6c9d7",
         "outcome": "appended"
       },
       {
@@ -106178,7 +106162,7 @@
           "note": "무릎관절을 접어 다리를 굽히는 행동이다",
           "relevance": 4
         },
-        "rationale_sha256": "32272828f6263c620d22f882cdaeac666b0ee7c87886870d9b994ff0fb5eafde",
+        "rationale_sha256": "3303597924c7a79479bb9e5ee790a5b121fd51ee3dccbd9811512ab5cc0d7677",
         "outcome": "appended"
       },
       {
@@ -106195,7 +106179,7 @@
           "note": "몸을 작게 만들도록 팔다리를 오므리는 웅크리다 행동이다",
           "relevance": 5
         },
-        "rationale_sha256": "0eb2fe56ad1d6fce2daa23c9c64d2535df050e7cc384806af59ffe0f8327e899",
+        "rationale_sha256": "a70a62390dd58b3064481c710df1e8ce6c8d816081746a17cdecff749a818aaa",
         "outcome": "appended"
       },
       {
@@ -106212,7 +106196,7 @@
           "note": "몸을 낮추고 구부려 앉는 쭈그리다 행동이다",
           "relevance": 5
         },
-        "rationale_sha256": "593dc06d11e5a5d140c95549e609c92fe40c419388854aff47b9defae6fe010c",
+        "rationale_sha256": "b7c15c0eebe6f9ed6af32c81866acb6120bee4f70ed9e1a4f6af1723bd860335",
         "outcome": "appended"
       },
       {
@@ -106229,7 +106213,7 @@
           "note": "손가락 관절을 안쪽으로 접는 행동이다",
           "relevance": 5
         },
-        "rationale_sha256": "b50e8afe8d2f52ac4df28684879fcf4eb4aa230896b57d41accb4109ed566f79",
+        "rationale_sha256": "10660f2e1a4786b3b136386db6eae10f2f9b74b64f7e63cd1f4fd996f01d6e38",
         "outcome": "appended"
       },
       {
@@ -106237,15 +106221,16 @@
         "source_record_id": "w1078",
         "source_sense_id": "w1078-s1",
         "source_gloss_sha256": "9be7e9e3f916586925d977e3571204a701cc3125914fcd5b80b3042ce1467954",
-        "authored_relation_id": "rel-34a98b5049977df5c0c2c098",
-        "relation_id": "rel-34a98b5049977df5c0c2c098",
+        "authored_relation_id": "rel-d273a929000a6b2ed99d8cc5",
+        "relation_id": "rel-d273a929000a6b2ed99d8cc5",
         "relation": {
           "target": "w1133",
           "target_sense": "w1133-s1",
-          "type": "antonym",
-          "note": "몸을 뒤로 넘어가게 하는 젖히다 행동이다"
+          "type": "association",
+          "note": "몸을 뒤로 넘어가게 하는 젖히다 행동이다",
+          "relevance": 7
         },
-        "rationale_sha256": "b9af2c9ca5248cef338cb940f89d1afe09f7f1299dd455f8c53f3f8995e2841a",
+        "rationale_sha256": "c725c143a833aafde7b16b2a794693a6713c0327b5ae6d68848ab193f55fa2db",
         "outcome": "appended"
       },
       {
@@ -106262,7 +106247,7 @@
           "note": "뼈와 뼈가 이어져 몸을 움직이게 하는 관절이다",
           "relevance": 6
         },
-        "rationale_sha256": "2653ac00bd23296159b3c1c08e5b248163084c22a528527ee40bcb6a32c9a670",
+        "rationale_sha256": "c7f7afeaed277c92496f4b679faa574eb023b70a12a12428990fe9ce3f70f343",
         "outcome": "appended"
       },
       {
@@ -106279,7 +106264,7 @@
           "note": "허리 주변 근육이 굳어 잘 움직이지 않는 상태이다",
           "relevance": 6
         },
-        "rationale_sha256": "336cdfb820985d270bb53095aba2fde88b01567c0c5685600b7ef0797c72f882",
+        "rationale_sha256": "c50b0e08341c655d2ba333bf46604311a9bc4d9de60e4036f457d9441343af06",
         "outcome": "appended"
       },
       {
@@ -109899,7 +109884,7 @@
           "note": "어떤 일을 해낼 수 있는 힘인 능력이다",
           "relevance": 4
         },
-        "rationale_sha256": "a27372c19f966a7129138298e26d1001f2b1b7197c1b329fd40c0e148f232c30",
+        "rationale_sha256": "434d8dba6fdab9eed66cd8e10b5284af933c1183a3f09bb571b112ae2bcfc6a9",
         "outcome": "appended"
       },
       {
@@ -109916,7 +109901,7 @@
           "note": "어떤 일을 해낼 수 있는 힘인 역량이다",
           "relevance": 4
         },
-        "rationale_sha256": "864d0ce616fb98942e66ef4d7419ed5d69711a2ff9529e4ef320b4a4169ce3f5",
+        "rationale_sha256": "a108127d37c49a05ecaaeac194c576b09a0d52c87e12ebbe1527920eb20da5d1",
         "outcome": "appended"
       },
       {
@@ -109933,7 +109918,7 @@
           "note": "어떤 일을 해낼 수 있는 실력이다",
           "relevance": 5
         },
-        "rationale_sha256": "770ba55672ff2fce8004194094a7470105952250410f83e26f0eef6e9fba375e",
+        "rationale_sha256": "a41558972cdd025dc0671c5bf1375358395d004137e3f321c225515e6974c9e9",
         "outcome": "appended"
       },
       {
@@ -109950,7 +109935,7 @@
           "note": "어떤 일을 해낼 수 있는 남은 힘인 여력이다",
           "relevance": 5
         },
-        "rationale_sha256": "c4cf889d7a17b26a68c0a734c33a77b763463785f3e997ccd1481523847b9822",
+        "rationale_sha256": "86586a90c7c93a9ab2091a4c2c06aa84aefbe3a91eb84e48a315efe489ccfb6c",
         "outcome": "appended"
       },
       {
@@ -109958,15 +109943,16 @@
         "source_record_id": "w11175",
         "source_sense_id": "w11175-s1",
         "source_gloss_sha256": "0bab408dfbde4499c1c3fbc2b717cd2059e3ce8848e57f71c163acc2fb386109",
-        "authored_relation_id": "rel-5c88f71e34072d08efb1ff81",
-        "relation_id": "rel-5c88f71e34072d08efb1ff81",
+        "authored_relation_id": "rel-fadad560562d6171d2ed5480",
+        "relation_id": "rel-fadad560562d6171d2ed5480",
         "relation": {
           "target": "w8483",
           "target_sense": "w8483-s1",
-          "type": "antonym",
-          "note": "일을 해낼 능력이 부족한 무능이다"
+          "type": "association",
+          "note": "일을 해낼 능력이 부족한 무능이다",
+          "relevance": 7
         },
-        "rationale_sha256": "3946eca10c27362093be5b1e6110632d6f174b9720f5fe4f8fbca8e433b5fc79",
+        "rationale_sha256": "3817e814c29f2ffe79e5d63525236e5a82f2375487f2c79412e046980b4e1c82",
         "outcome": "appended"
       },
       {
@@ -109983,7 +109969,7 @@
           "note": "어떤 일을 잘해 내는 재능이다",
           "relevance": 6
         },
-        "rationale_sha256": "ad802e4a69d9ddda68b8260847344e26516d59a7b27b45e355cbaed32d225c4f",
+        "rationale_sha256": "c7845f5c07893f16f08653935972ca394893ba66cf5acf78ef7b43aafc6fcda6",
         "outcome": "appended"
       },
       {
@@ -110000,7 +109986,7 @@
           "note": "어떤 일에 알맞은 성격이나 소질인 적성이다",
           "relevance": 6
         },
-        "rationale_sha256": "b9c6eb0dda9d4148d096134471f32575318a78c3badcf3ea4d0a92b40a9bd1cc",
+        "rationale_sha256": "1f1ce9a81878aca42f26d593902102bb0086d95466b493e9121d05312fa5e467",
         "outcome": "appended"
       },
       {
@@ -110017,7 +110003,7 @@
           "note": "어떤 일을 해 나가는 힘의 근원인 원동력이다",
           "relevance": 6
         },
-        "rationale_sha256": "5e03b20c57280618c391972f27d580246b7c741d6a4f9474baab41e501570433",
+        "rationale_sha256": "52379f86b43faf299d2a8f4793dc03a7f783b1a00b0fb77b9c16569dc3380fbc",
         "outcome": "appended"
       },
       {
@@ -111666,22 +111652,6 @@
           "relevance": 5
         },
         "rationale_sha256": "71805640118209fd95a9c6fc21feed77dfd9cf8be20fb32e7979931126f4281e",
-        "outcome": "appended"
-      },
-      {
-        "source_candidate_id": "R000027",
-        "source_record_id": "w11365",
-        "source_sense_id": "w11365-s1",
-        "source_gloss_sha256": "38ca868444470dd5bb5d9e427c0a8c856ab25ce12ff4aaef7ece59fa59dd6797",
-        "authored_relation_id": "rel-80e388fe30201fdd67adbd7b",
-        "relation_id": "rel-80e388fe30201fdd67adbd7b",
-        "relation": {
-          "target": "w12485",
-          "target_sense": "w12485-s1",
-          "type": "antonym",
-          "note": "인터넷에 연결되지 않은 오프라인이다"
-        },
-        "rationale_sha256": "6c520511cf2ccd11ff25a63491f52a79fb2b6225a564609ef16ea84afd9ee563",
         "outcome": "appended"
       },
       {
@@ -118239,7 +118209,7 @@
           "note": "어떤 사실이나 이치를 깨달아 알게 하는 깨우치다 행동이다",
           "relevance": 3
         },
-        "rationale_sha256": "9d05fc9a7ab58cdfef1a35611deaa70488c45f3b11f1157ff04c9e1513a759fa",
+        "rationale_sha256": "e13f30b852adaf263222b1d6a46c9db39e3e2dcf428c7785d6ec60f47594517b",
         "outcome": "appended"
       },
       {
@@ -118256,7 +118226,7 @@
           "note": "상황이나 사실을 눈치채는 알아차리다 행동이다",
           "relevance": 4
         },
-        "rationale_sha256": "b6a2fba1ffe37926da3a259b8320bfc9cecefe9057622646eea449a59ff60771",
+        "rationale_sha256": "e1721d4239eb0e756d0d09a4b227f79ccdc5579f56647df1bccba13787ce01a7",
         "outcome": "appended"
       },
       {
@@ -118273,7 +118243,7 @@
           "note": "모르던 사실이나 진실이 드러나는 밝혀지다 상태이다",
           "relevance": 5
         },
-        "rationale_sha256": "55c9a437324165a05d85e23610182c26526f0866e7893e7111daaaa3993dbfe8",
+        "rationale_sha256": "bab2dbfaee39f06eb89bf7e4e77d04117315fa4cd6740f29a2c9785cafcaeaba",
         "outcome": "appended"
       },
       {
@@ -118281,15 +118251,16 @@
         "source_record_id": "w12196",
         "source_sense_id": "w12196-s1",
         "source_gloss_sha256": "6283a1ec41914c176c346add3183ff3dee74c4825dd08013ace8f5a64d777ce4",
-        "authored_relation_id": "rel-3e926319256f94e20401832a",
-        "relation_id": "rel-3e926319256f94e20401832a",
+        "authored_relation_id": "rel-75df81038bb3283d43f89c10",
+        "relation_id": "rel-75df81038bb3283d43f89c10",
         "relation": {
           "target": "w12548",
           "target_sense": "w12548-s1",
-          "type": "antonym",
-          "note": "어떤 사실이나 방법을 알지 못하는 모르다 상태이다"
+          "type": "association",
+          "note": "어떤 사실이나 방법을 알지 못하는 모르다 상태이다",
+          "relevance": 7
         },
-        "rationale_sha256": "50963020efd55b981311fff77af11d1e541ad8dbff6165be5f10240f16b66c59",
+        "rationale_sha256": "c7e573d184b4cfac24d44b9599cc0762a0066f436c0184bf755d8f65fd58a99e",
         "outcome": "appended"
       },
       {
@@ -118306,7 +118277,7 @@
           "note": "이전에는 모르던 사실을 알게 되는 깨달음이다",
           "relevance": 5
         },
-        "rationale_sha256": "eae8d15fe4de7d3ec49cf8008f3cea1375c8f3194fded2fa46b65232e44d7a6a",
+        "rationale_sha256": "1fd779114f5b044a39276a186675e6ca19cbc7b26c7704e06d66d86c387c0f78",
         "outcome": "appended"
       },
       {
@@ -118323,7 +118294,7 @@
           "note": "새롭거나 모르는 것을 알고 싶어 하는 호기심이다",
           "relevance": 6
         },
-        "rationale_sha256": "90fc0e04915a2b2d7b41df5ac49ed782175492bb44899cabff33568ffd3e0c1e",
+        "rationale_sha256": "75895cc904018dfff43d13266819f1427c18600c71f44f5f0d4bd24558cfac18",
         "outcome": "appended"
       },
       {
@@ -118340,7 +118311,7 @@
           "note": "모르는 것을 상대에게 알아내려고 하는 묻다 행동이다",
           "relevance": 6
         },
-        "rationale_sha256": "8ee514a0b9aa7e808aaebcda3e303790a9b3539f5e1d9857d56df9d605e4c701",
+        "rationale_sha256": "bfc6bfd3d5935b0d50a7ff4e26f6e1346056557f45c5d73d203944263905fae8",
         "outcome": "appended"
       },
       {
@@ -118357,7 +118328,7 @@
           "note": "모르는 내용이나 의견을 알아보려고 하는 물어보다 행동이다",
           "relevance": 6
         },
-        "rationale_sha256": "0e6d2a744830c9e5cc240a9e00ccc5b2cd7d55e35d68c637f5ce9fc872c719b8",
+        "rationale_sha256": "f70643f8f9619422d2d4c6ad13c63f5ea47306c3f676340d10a71b37689eef5e",
         "outcome": "appended"
       },
       {
@@ -136492,7 +136463,7 @@
           "note": "어떤 대상이나 자리 쪽으로 가까이 가는 다가서다 행동이다",
           "relevance": 4
         },
-        "rationale_sha256": "85a4575099c323c898d2b44328003565603d3ae520921e02583d1a65f5a0f9ec",
+        "rationale_sha256": "1b778c5b30171057f3f717a573d8aed2484240933bca7dd62f45aa96fd359169",
         "outcome": "appended"
       },
       {
@@ -136509,7 +136480,7 @@
           "note": "서로 떨어지지 않도록 맞닿아 붙는 맞붙다 행동이다",
           "relevance": 4
         },
-        "rationale_sha256": "b01e813d626d7c63216e19309f8581374b9bb9a0d1660c660e2da783469fb7b4",
+        "rationale_sha256": "ded3f904d417b966c3ce19780b25355c717e6ac67c546aa787974e0c075b722f",
         "outcome": "appended"
       },
       {
@@ -136526,7 +136497,7 @@
           "note": "서로 맞닿아 떨어지지 않는 붙다 행동이다",
           "relevance": 4
         },
-        "rationale_sha256": "f260d8226c3e11533d3085c62dc0188e1399c98da574a482224a23b0347fa48d",
+        "rationale_sha256": "501190d3e7227bcf7fb46457ac6b271b342355606164b49cabb2e664c6501041",
         "outcome": "appended"
       },
       {
@@ -136543,7 +136514,7 @@
           "note": "가까이 옮겨 앉는 다가앉다 행동이다",
           "relevance": 5
         },
-        "rationale_sha256": "cb31b0954a9b2d73d4626d8d592556526c23b78442278ccd106b8b643fa57125",
+        "rationale_sha256": "c6c913f6ccf64415ae8809b56237a9821c2429dfe99b0153bb138e643828c742",
         "outcome": "appended"
       },
       {
@@ -136551,15 +136522,16 @@
         "source_record_id": "w492",
         "source_sense_id": "w492-s1",
         "source_gloss_sha256": "7f37c14982aee5f6b98e0d7465cccd59a1d3593bc323b437145ab72f9d8a4a6d",
-        "authored_relation_id": "rel-17ff68245ad363a0262629dc",
-        "relation_id": "rel-17ff68245ad363a0262629dc",
+        "authored_relation_id": "rel-0d21c656f6b091a7ecd72316",
+        "relation_id": "rel-0d21c656f6b091a7ecd72316",
         "relation": {
           "target": "w12579",
           "target_sense": "w12579-s1",
-          "type": "antonym",
-          "note": "거리가 많이 떨어져 있는 멀다 상태이다"
+          "type": "association",
+          "note": "거리가 많이 떨어져 있는 멀다 상태이다",
+          "relevance": 7
         },
-        "rationale_sha256": "9ca20cf2577955d7b618eb276f0ee9716286a091f2e662fe25571850ed182951",
+        "rationale_sha256": "bc31a16644921e85e7e972033c22aa2580045742a9d29369ae160462867645c5",
         "outcome": "appended"
       },
       {
@@ -136576,7 +136548,7 @@
           "note": "어깨가 닿을 만큼 가까이 서는 행동이다",
           "relevance": 5
         },
-        "rationale_sha256": "7ce2173b956334aa522085759e47a4e003468fc13a90d1cf279fcd71b01073b2",
+        "rationale_sha256": "809ca299a438d2b1e63081a2739fc7c0d9c8dd47a3a7e08d51a52a0709558f42",
         "outcome": "appended"
       },
       {
@@ -136593,7 +136565,7 @@
           "note": "벌어진 두 다리를 서로 붙이는 행동이다",
           "relevance": 6
         },
-        "rationale_sha256": "b03e63e64e399adbd5a72f08522aad8df25018b54e63f73bdf023dda7d8fcb4a",
+        "rationale_sha256": "abe676b29ba29f545c409ac5289fc948c1da9b9c120b32e01f337f36bc7a6f84",
         "outcome": "appended"
       },
       {
@@ -136610,7 +136582,7 @@
           "note": "양발을 가까이 붙여 간격을 줄이는 행동이다",
           "relevance": 6
         },
-        "rationale_sha256": "bc34f467418de0433c74b8650ce8a692420f69d4417a75a0e8cacabf1652c425",
+        "rationale_sha256": "5a50ac82c8d847b2dcd577ebc1e5b7fc8b49fd86bc0a8741eb72d3a29e5459aa",
         "outcome": "appended"
       },
       {
@@ -136627,7 +136599,7 @@
           "note": "벌어진 손가락을 서로 좁히는 행동이다",
           "relevance": 6
         },
-        "rationale_sha256": "fd0a82d394a199dc55878a964417be7fe03e2431f1b8b30153edde544a0e92a6",
+        "rationale_sha256": "c2d9e0e1ae60021ddf3bef19734a476d3a606cd9f431d4d57d83ab195dfe5b83",
         "outcome": "appended"
       },
       {
@@ -136644,7 +136616,7 @@
           "note": "어떤 말이나 행동의 근거인 거리이다",
           "relevance": 6
         },
-        "rationale_sha256": "7a0c1a1142f16bb333b0a2a21fe318f8b8193c35a1140c6066b5f2cd942dcb11",
+        "rationale_sha256": "4e75be5036aaf46fd97874cabbf52b7ae232b1e08fe53898aa6339bbc140b73f",
         "outcome": "appended"
       },
       {
@@ -141306,15 +141278,16 @@
         "source_record_id": "w527",
         "source_sense_id": "w527-s2",
         "source_gloss_sha256": "f546ef70d95c75a5477d747042a416cee3554c1d86314c2240b5ef6bc93a6869",
-        "authored_relation_id": "rel-e820914485d95e7f9589b391",
-        "relation_id": "rel-e820914485d95e7f9589b391",
+        "authored_relation_id": "rel-07057eaf0b8a3d5ffcda834a",
+        "relation_id": "rel-07057eaf0b8a3d5ffcda834a",
         "relation": {
           "target": "w520",
           "target_sense": "w520-s1",
-          "type": "antonym",
-          "note": "고개를 아래로 내리는 행동이다"
+          "type": "association",
+          "note": "고개를 아래로 내리는 행동이다",
+          "relevance": 7
         },
-        "rationale_sha256": "44b32eef3d791d8fc8fbfe58e7c1b5211559fc003947f873eae16fe4802f18cf",
+        "rationale_sha256": "327faa50780830006076a80bffdcba0dcc9d1d39647489735662ec5743b295ae",
         "outcome": "appended"
       },
       {
@@ -141331,7 +141304,7 @@
           "note": "고개를 들어 앞이나 위를 바라보는 행동이다",
           "relevance": 4
         },
-        "rationale_sha256": "48538ad3b5b81f48fde177bdf0b330645a36b4fdcbee1c9c5f7882a4e8dc3714",
+        "rationale_sha256": "e6357ef594f47286161e5b086dfcee447199fbb9636736cd8f812bfeabc0a8cb",
         "outcome": "appended"
       },
       {
@@ -141348,7 +141321,7 @@
           "note": "잃었거나 빼앗긴 것을 다시 찾는 되찾다 행동이다",
           "relevance": 5
         },
-        "rationale_sha256": "6a9615417a9ec5cea2ca571cefe334d8a899dde74b19722c0bc106b1cdec43c8",
+        "rationale_sha256": "7ef65b84c9078a3c5e97090a90570cbb4215021d261b2ffa7c4f6e37ae01472a",
         "outcome": "appended"
       },
       {
@@ -141365,7 +141338,7 @@
           "note": "기운차고 당당한 걸음으로 걷는 활보하다 행동이다",
           "relevance": 5
         },
-        "rationale_sha256": "41f09c065c64195fd404875de8d9b5ffb86d4243f967d6ea4c2d4b3936b5714e",
+        "rationale_sha256": "5a7a52c24048313910bc7e99feac15fa30a70fc4e3264259cf478eac401f9088",
         "outcome": "appended"
       },
       {
@@ -141382,7 +141355,7 @@
           "note": "기운이나 의욕을 높여 주는 북돋우다 행동이다",
           "relevance": 5
         },
-        "rationale_sha256": "c585df0daf99773bbd3410d2526d540d749a71054c4aa6b492799b03dcc1708a",
+        "rationale_sha256": "d29e5d126c252e1c3137f17639d274a6db857436417cf8406fefca992f57c5b1",
         "outcome": "appended"
       },
       {
@@ -141399,7 +141372,7 @@
           "note": "자기 능력이나 판단을 믿는 자신감이다",
           "relevance": 5
         },
-        "rationale_sha256": "d65b09da03adabd9acc8aea79d6ea1d10c004fb82671b71e38cf4f4493402eeb",
+        "rationale_sha256": "3426619e3b1200cef1fd54dd7c321e64edc72d4ab9c71b71484397b466384f53",
         "outcome": "appended"
       },
       {
@@ -141416,7 +141389,7 @@
           "note": "기세나 자신감을 잃고 위축되는 주눅이다",
           "relevance": 5
         },
-        "rationale_sha256": "700adb562a284807988e0456f2959c8327b78c02e8abf6acf50535fd9f04986c",
+        "rationale_sha256": "d605ea70fea6cfc38f426dcc10d6b937edbf42f9a5f587248a9908b653421558",
         "outcome": "appended"
       },
       {
@@ -141433,7 +141406,7 @@
           "note": "잃거나 나빠진 기능을 되찾는 재활이다",
           "relevance": 6
         },
-        "rationale_sha256": "5e9cca58a68cf2b1b6001736c16283033b6b9e780260560d14551ef9ce1102a1",
+        "rationale_sha256": "346d6ba8e84759f0408e5e934b19bfa46bbba6bf0121769db435a96725fb543a",
         "outcome": "appended"
       },
       {
@@ -141450,7 +141423,7 @@
           "note": "기운이 매우 센 억세다 상태이다",
           "relevance": 6
         },
-        "rationale_sha256": "f80d50ff277da81da72fb06c22a20b79c9ec6cedf88e1be1f9d933b1c3354d08",
+        "rationale_sha256": "8e95cfee157e1986580cc9825ca4883193dad2edc582aa8588f5719b5f751298",
         "outcome": "appended"
       },
       {
@@ -141467,7 +141440,7 @@
           "note": "기운이나 힘이 없는 힘없다 상태이다",
           "relevance": 6
         },
-        "rationale_sha256": "36d122d73b0e274882812bc92888937c39be5316f36c760026f891a8c84ea151",
+        "rationale_sha256": "bebaffa35b36efd57ca366f2d7204ace64d6891bdf6a7e5ab95c03bb1ac2e861",
         "outcome": "appended"
       },
       {
@@ -147181,15 +147154,16 @@
         "source_record_id": "w5781",
         "source_sense_id": "w5781-s1",
         "source_gloss_sha256": "c1b3f586969444418f2b9e4577243f8ace22c113bfdc623204df1b4f44faa39a",
-        "authored_relation_id": "rel-643820dec8836b20ed3a02aa",
-        "relation_id": "rel-643820dec8836b20ed3a02aa",
+        "authored_relation_id": "rel-c6483dae04d03eb46b51ede9",
+        "relation_id": "rel-c6483dae04d03eb46b51ede9",
         "relation": {
           "target": "w5538",
           "target_sense": "w5538-s1",
-          "type": "antonym",
-          "note": "현재보다 앞선 때나 지나간 때인 과거이다"
+          "type": "association",
+          "note": "현재보다 앞선 때나 지나간 때인 과거이다",
+          "relevance": 7
         },
-        "rationale_sha256": "f912ec3e1087b4af3ee23f551041d7a6c21e79efe7544378f2d2d9686c774a33",
+        "rationale_sha256": "54aa61a1a11286f30ffaa5ce23600fbeac3c117febfac9bea1c2aea8d6b64474",
         "outcome": "appended"
       },
       {
@@ -147206,7 +147180,7 @@
           "note": "말하는 시점과 일치하는 때인 지금이다",
           "relevance": 3
         },
-        "rationale_sha256": "2ccf75779a091e6f48727b569601cdc82c21167a93122fa873a2daefa1ad9364",
+        "rationale_sha256": "ff175b9e6d8647d9060a402976538a3fc8a5f3e7b5d5d3491e61aba69d74c2bf",
         "outcome": "appended"
       },
       {
@@ -147223,7 +147197,7 @@
           "note": "현재를 중심으로 가까운 때인 요즘이다",
           "relevance": 4
         },
-        "rationale_sha256": "a57a6ddcfb864e9ed7855d0ad8f5d8df4fbe6600c5465475b679e3c59d01b787",
+        "rationale_sha256": "ef9e6f8a6bb826ac2043f88097c2b3e100b7cc1b4da183b63e74c1203efb13dc",
         "outcome": "appended"
       },
       {
@@ -147240,7 +147214,7 @@
           "note": "현재의 상황인 현황이다",
           "relevance": 4
         },
-        "rationale_sha256": "96e5b89aece11d9c8c7d38ad51c825ba67a7a48071377db46a2f862a8d9c997d",
+        "rationale_sha256": "aa37c3fcf54b5e6a80243982edcbbc4ba740079b35604d6e20f85f9f953c2b15",
         "outcome": "appended"
       },
       {
@@ -147257,7 +147231,7 @@
           "note": "달력에서 현재 날짜로 가리키는 날인 오늘이다",
           "relevance": 5
         },
-        "rationale_sha256": "b9a11578bb13dce01d08eaeba95fe525a0f9485ec4f88d2cca101581e978fc19",
+        "rationale_sha256": "6584b346cf0156f803d45104c1ed5a084bc0e5ac91d8c7b05bf854b438a963dd",
         "outcome": "appended"
       },
       {
@@ -147274,7 +147248,7 @@
           "note": "매우 짧게 이어지는 특정한 때인 순간이다",
           "relevance": 5
         },
-        "rationale_sha256": "1167c7a75c632481e7dc3f5b6cfebfc61f5363701981baa255734db0d6a382f1",
+        "rationale_sha256": "feb205d8a8c8349fcf35a5a37ba20d2f19ad9a5bb91a4e552956bb6861906f63",
         "outcome": "appended"
       },
       {
@@ -147291,7 +147265,7 @@
           "note": "현재 맡고 있는 직무인 현직이다",
           "relevance": 6
         },
-        "rationale_sha256": "8edf65321be1360cec22a65fc4c0bf2da76b6c6d289d470f436608b7977562d2",
+        "rationale_sha256": "2fc183545a6130c754b69bccf850c3387460da0250024e117a7e7cb8d794cb32",
         "outcome": "appended"
       },
       {
@@ -147308,7 +147282,7 @@
           "note": "은퇴하지 않고 현재 일하는 현역이다",
           "relevance": 6
         },
-        "rationale_sha256": "99b154a68c6a741ef9ae9363aab30489b79828c124baa0b113df5d34869abb84",
+        "rationale_sha256": "48dc3c1c09b76130fae5a5cce496217c3bd320bd04cb191f1c8b08fa4d686aa7",
         "outcome": "appended"
       },
       {
@@ -147325,7 +147299,7 @@
           "note": "대상이 한 시점에 놓인 상태이다",
           "relevance": 6
         },
-        "rationale_sha256": "4fd402b26bf96b6879c25f37aeb676cd05748678a6305d482297bb5a8c231574",
+        "rationale_sha256": "a372a65e2096ba021d06cf154bb401941bede3ad8384c6d0019f5781198992d2",
         "outcome": "appended"
       },
       {
@@ -147971,7 +147945,7 @@
           "note": "마음이 우울한 느낌인 우울감이다",
           "relevance": 3
         },
-        "rationale_sha256": "1802a946c59d78986924457b34e6813a49408688b903ba9ba659850a98ceba25",
+        "rationale_sha256": "447a8ea257cca6710a911a5a93914ba08ea699737e4bd5bd6a68d73867a89911",
         "outcome": "appended"
       },
       {
@@ -147988,7 +147962,7 @@
           "note": "기분이 가라앉고 마음이 어두운 우울하다 상태이다",
           "relevance": 4
         },
-        "rationale_sha256": "fec915a9b6c7156816948c3e49942348b795bd736d7ae8c9142fba74a6e1ffb7",
+        "rationale_sha256": "4731cb072ed35da1cfd3b3eb0d7a36932001967c6916094eef8b839b023c1a2e",
         "outcome": "appended"
       },
       {
@@ -148005,7 +147979,7 @@
           "note": "오래 이어지는 우울감과 의욕 저하를 보이는 우울증이다",
           "relevance": 5
         },
-        "rationale_sha256": "9e1aee3d8fc59afdbec40c097460fdc5b52edc8b67ad8d80193039c745592e26",
+        "rationale_sha256": "4a39a7fc49454d8abbbd2e22e3b4be28da53d0008633ca5e212d481db78f7753",
         "outcome": "appended"
       },
       {
@@ -148013,15 +147987,16 @@
         "source_record_id": "w5837",
         "source_sense_id": "w5837-s1",
         "source_gloss_sha256": "73d1ec2bbc5cb29771c395277b55c837844a91d57f953b634b24abd03ed15800",
-        "authored_relation_id": "rel-04c1146d6044c7f8489fc8d3",
-        "relation_id": "rel-04c1146d6044c7f8489fc8d3",
+        "authored_relation_id": "rel-dfa514e68662ccae586b16ad",
+        "relation_id": "rel-dfa514e68662ccae586b16ad",
         "relation": {
           "target": "w579",
           "target_sense": "w579-s1",
-          "type": "antonym",
-          "note": "더없이 기쁘고 즐거운 환희이다"
+          "type": "association",
+          "note": "더없이 기쁘고 즐거운 환희이다",
+          "relevance": 7
         },
-        "rationale_sha256": "7fe78e6b34dd612db164f17735cf363fbbf09a54e5d80b52290e3cb261b6f6cd",
+        "rationale_sha256": "0dc38bb09fd74165c8fba5f971ee1f6de32f8f4a9f7691839ce3c8bc3694b721",
         "outcome": "appended"
       },
       {
@@ -148038,7 +148013,7 @@
           "note": "잃거나 이루어지지 않은 일로 느끼는 슬픔이다",
           "relevance": 5
         },
-        "rationale_sha256": "cb6ac8d3a2638f9f12b0c825a7de08c2b5c79b3cb5f4fb37142bb3362a268fa6",
+        "rationale_sha256": "b232218274bd41ae36fcfb89bcaf2d94e4b459661fe5b90ecb3dfe83067a1b35",
         "outcome": "appended"
       },
       {
@@ -148055,7 +148030,7 @@
           "note": "걱정이나 책임 때문에 마음이 무거운 상태이다",
           "relevance": 5
         },
-        "rationale_sha256": "22e70b7d8c40213402987fb5799015d37c3759b4dd4f985791f51527a86f0be4",
+        "rationale_sha256": "6fef07816363a4aa97cfd9097fa07b9486928576d3380e0591f23139639fcdbe",
         "outcome": "appended"
       },
       {
@@ -148072,7 +148047,7 @@
           "note": "하고 싶은 일을 하거나 좋은 일을 겪을 때의 즐거움이다",
           "relevance": 6
         },
-        "rationale_sha256": "2d914004c399a214f3dd66992367d4a6e392d1acdceff8b9cbd79326e1afdb37",
+        "rationale_sha256": "7eab99967602dda5bdcfbfba90eda17a4f57906afb3532da5d6fd3da84b7984e",
         "outcome": "appended"
       },
       {
@@ -148089,7 +148064,7 @@
           "note": "마음이 가라앉지 않고 떠 있는 들뜸이다",
           "relevance": 6
         },
-        "rationale_sha256": "456b2c9c9170aa56ee42b5da2f561ceebe2e54e827ca41c796dbd4b7f1b5b917",
+        "rationale_sha256": "a98757eb738fc5b7ed6c484fef898bccedd0b18365a737737ad75080b4032cc2",
         "outcome": "appended"
       },
       {
@@ -148674,15 +148649,16 @@
         "source_record_id": "w5900",
         "source_sense_id": "w5900-s1",
         "source_gloss_sha256": "3c47cb7d08f19ba007e7d632924da0e6596e4cb13032ccea20c5390a91719623",
-        "authored_relation_id": "rel-156aa919df6334d3984f2bac",
-        "relation_id": "rel-156aa919df6334d3984f2bac",
+        "authored_relation_id": "rel-500475578e0594e9f2be88dc",
+        "relation_id": "rel-500475578e0594e9f2be88dc",
         "relation": {
           "target": "w4951",
           "target_sense": "w4951-s1",
-          "type": "antonym",
-          "note": "굽혀 쥔 손가락을 벌려 펴는 주먹을 펴다 행동이다"
+          "type": "association",
+          "note": "굽혀 쥔 손가락을 벌려 펴는 주먹을 펴다 행동이다",
+          "relevance": 7
         },
-        "rationale_sha256": "54ddb7954f5f72d2ce86c76aeeb0563be2e86a07561d6c2c10e519157f880f88",
+        "rationale_sha256": "9e8a962c45149ff2bc40658d784b80a8646d4c8a7b5c040a1a9470e5591d4b7f",
         "outcome": "appended"
       },
       {
@@ -148699,7 +148675,7 @@
           "note": "손가락 관절을 안쪽으로 접는 행동이다",
           "relevance": 4
         },
-        "rationale_sha256": "2e1359188bd9ababa6f90634c96e2e38f829d4570a110af25ecc5ebdc15767a4",
+        "rationale_sha256": "36874f561f10d6e69c52f3fefe0425a00e890ad21976827a3bad8336ac00527f",
         "outcome": "appended"
       },
       {
@@ -148716,7 +148692,7 @@
           "note": "손가락을 손바닥 쪽으로 접는 행동이다",
           "relevance": 5
         },
-        "rationale_sha256": "658cdcae9be29c3c9e5aba7ccd09b101455c85875c9dca9a74474afaf09b6ed8",
+        "rationale_sha256": "424019896d6cd4fa0de1a6011b530e7858ce3d0a98d006ca7cefb4f8117e9a51",
         "outcome": "appended"
       },
       {
@@ -148733,7 +148709,7 @@
           "note": "손가락을 안쪽으로 굽혀 움켜쥐는 행동이다",
           "relevance": 5
         },
-        "rationale_sha256": "b78fc2d881cb7afd58d7341faa8142f4e80bde41b421b616c5246620d26eac4a",
+        "rationale_sha256": "3ccfac76c4342191f9a7103cbf6bfb2942f6e583b2274e02eea041112eb06e1f",
         "outcome": "appended"
       },
       {
@@ -148750,7 +148726,7 @@
           "note": "손바닥에 이어져 물건을 잡는 손가락이다",
           "relevance": 4
         },
-        "rationale_sha256": "8d9689a265ef1c6d10029d386d984ee6c64ebcbe1978974df8e08eab87cc981a",
+        "rationale_sha256": "4ef49e003849266efefedd241a109a3b568144abc46031cf744d2dd0127ad2c1",
         "outcome": "appended"
       },
       {
@@ -148767,7 +148743,7 @@
           "note": "두 사람이 장갑을 끼고 주먹으로 겨루는 권투이다",
           "relevance": 5
         },
-        "rationale_sha256": "22b4e322099edb19ad4b8500cb24a8b67618a2e1b887b7656998c8a139412d80",
+        "rationale_sha256": "d619870e9f50b4f4e8157e48cc8fa003a416bf8e5ec103ce544018064d3b460a",
         "outcome": "appended"
       },
       {
@@ -148784,7 +148760,7 @@
           "note": "쥔 손을 위에서 아래로 내리치는 행동이다",
           "relevance": 6
         },
-        "rationale_sha256": "93c50e49c98e90ad7ba4d007786c6b13529880a795d7c5295b3fc0a8dd4f5a91",
+        "rationale_sha256": "9cea75f63a6a0eeb3f65151a611e89f8f049ea42c9f85904897269be15b9d64a",
         "outcome": "appended"
       },
       {
@@ -148801,7 +148777,7 @@
           "note": "손가락 관절이 뻣뻣해 굳은 상태이다",
           "relevance": 6
         },
-        "rationale_sha256": "5bde22ccc97761f6dc8733a39d25998930a459ca9a33a8c903f71ee4257d05cc",
+        "rationale_sha256": "4669f738dc2ed59ef70e043d068d24ff3380debe0f8d5e6dabf8409529ce5edb",
         "outcome": "appended"
       },
       {
@@ -161850,15 +161826,16 @@
         "source_record_id": "w8935",
         "source_sense_id": "w8935-s1",
         "source_gloss_sha256": "4a948eb362c22fc6873bf0d15ca1fdd0c5d0d6a3d770bc694e53ece38929a4da",
-        "authored_relation_id": "rel-56495d1868c83040860726ba",
-        "relation_id": "rel-56495d1868c83040860726ba",
+        "authored_relation_id": "rel-47f0f41b147930b3f5279d80",
+        "relation_id": "rel-47f0f41b147930b3f5279d80",
         "relation": {
           "target": "w527",
           "target_sense": "w527-s2",
-          "type": "antonym",
-          "note": "기운이나 자신감을 되찾는 행동이다"
+          "type": "association",
+          "note": "기운이나 자신감을 되찾는 행동이다",
+          "relevance": 7
         },
-        "rationale_sha256": "1859943c5204901168d9c386b2b61499ff1ed3958cd3cf4a5670b1cd88464415",
+        "rationale_sha256": "9f33e9da70b2945f32a39ccb6e530173f3e41857ae7c3c6768d55d12f3070e7a",
         "outcome": "appended"
       },
       {
@@ -167777,11 +167754,10 @@
           "rel-7814cce296e7c72ff4937b7e",
           "rel-4d1c0734b0c4101d0a658322",
           "rel-746dccf9dd44a22cbf225259",
-          "rel-6e453af92cd7f79ae81b6113",
           "rel-6132db29a817fb8c0ef42bec"
         ],
         "before_sha256": "57604ca9afca37652d71ec5dfd5c0c656ed4d1fc9e9abefd9e2dd3a9da8b2d6a",
-        "after_sha256": "7e6afe738a76528fd8e004fbc3abdcefc60ea91fbc54fa77fb4dd2eccababb6c",
+        "after_sha256": "62b07e4979534ae9b69b37285b7f5899185b2f5f8aed619bd1a6cab7a4019f19",
         "previous_semantic_review_sha256": "1260be62106aeb6c1aeab6234db1fb0c5966dc3c529c9d69d1e6362f8f12dd75",
         "previous_semantic_review": {
           "record_id": "w10050",
@@ -167816,7 +167792,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "e36229bd7e612700c2f525819f3573f1bc3721c7d1e76a6f81d3206e0329b984"
+        "semantic_review_sha256": "ee8787ef8c23f17414f9d3dd669276d2b9d2ea0a46be8a9ccd6ed3b3c12aad7a"
       },
       {
         "entry_id": "w10060",
@@ -170040,12 +170016,12 @@
           "rel-d1b5c42673041f535b8d94ca",
           "rel-c8626db41224da00338dc7d6",
           "rel-10691ad06c61b9c529bcbf58",
-          "rel-34a98b5049977df5c0c2c098",
+          "rel-d273a929000a6b2ed99d8cc5",
           "rel-69dd97a6cbecdc123c6716b5",
           "rel-61af513b048ec3600bf25e98"
         ],
         "before_sha256": "14135f8092f70332da95141eb82b463e920bec9565f36916a6500c8021c1e1eb",
-        "after_sha256": "ae69a4b953ba069e412bbd4babccda658d4b876630085bd94eb1e3675c64b52e",
+        "after_sha256": "012199a59091654990ee35420fc7246cb9d52818ee72a94570c3446a3bf285cb",
         "previous_semantic_review_sha256": "6bdbfb7e49085452dbdf07b9fc30990c3656e5d47998c7d477796f937dad8d66",
         "previous_semantic_review": {
           "record_id": "w1078",
@@ -170117,7 +170093,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "ff6f264a9ae3af17e4224006a31c698f95809ba12d04291f00e242d3b17166d0"
+        "semantic_review_sha256": "a036b3cdbde162729bd84ef5b064938fd765a58d39f734f01cd53faf535d0976"
       },
       {
         "entry_id": "w10819",
@@ -171778,13 +171754,13 @@
           "rel-dfdb7dbc7a5a489133b27b16",
           "rel-a987c5bd2d4c779160bf5d9e",
           "rel-3602c06e4495270f6a27eeda",
-          "rel-5c88f71e34072d08efb1ff81",
+          "rel-fadad560562d6171d2ed5480",
           "rel-1ba06fabcf687089a6dfe55e",
           "rel-8bd3aff1b2811bb5d6549997",
           "rel-bd2926d96f29102f48aa1acc"
         ],
         "before_sha256": "e1316874544ffd128121664de8d4dbe92b22116fa343b4285769439a6bffca6c",
-        "after_sha256": "04bacedb26299c55344636b287f34ef4c1ed53e2fb9469765b783a895af705f3",
+        "after_sha256": "8286d6948d944058f308ac58a5fccf079f786c81b6ba22205089768014cec240",
         "previous_semantic_review_sha256": "70b7fe680d7ff0f84503b33dbefd77ed55b2e6c617928cd2051a9eda79f10856",
         "previous_semantic_review": {
           "record_id": "w11175",
@@ -171819,7 +171795,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "1f656fe28e7490c66c375bdd425471862e0673c168dbdcdeab437ed97fe91299"
+        "semantic_review_sha256": "2e5101ad464edc62bd642eb7dfcb199a33812686ee5ab824e03cc36a6296a987"
       },
       {
         "entry_id": "w11187",
@@ -172574,7 +172550,6 @@
         "added_relation_ids": [
           "rel-83dc2e44676f8a205cce5d7a",
           "rel-6a70696efe352eda41f81548",
-          "rel-80e388fe30201fdd67adbd7b",
           "rel-5f8cf47ccc91666105a85569",
           "rel-6af2abe62d257d597886bf79",
           "rel-be873c5f4faac23f260b21b4",
@@ -172582,7 +172557,7 @@
           "rel-b23409419ab49e8b29f8b823"
         ],
         "before_sha256": "8636bcf69582a1bf145dd3e15e59a9cde0c1e197cbd6b300b3df43bb3735372d",
-        "after_sha256": "090bbdd11ee74313d913cc0bf2e45384e26a1ea87c12b452b3cfb83fdce18e8f",
+        "after_sha256": "7e9b07aef6da910be7cef1cc1660e6b4f3a83197e72a2ea969c4f18ea244918f",
         "previous_semantic_review_sha256": "cea1b868b8854002691a040d34cf7822c64c166151070ffe9c7cebaed179268d",
         "previous_semantic_review": {
           "record_id": "w11365",
@@ -172617,7 +172592,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "6d9352a6f82a4ad02dbc36866a82c3dac96151cd40d8b9e283e01628a2f96901"
+        "semantic_review_sha256": "9bb7cd2f252a565423ea5cef6447f6a58771479a111a7883643b1114d9b4a022"
       },
       {
         "entry_id": "w11372",
@@ -175401,14 +175376,14 @@
           "rel-03af110a53c975e01ced6d97",
           "rel-411ddaa30c0bd9d2c0ef4726",
           "rel-8f112a3928397430c4ea7f80",
-          "rel-3e926319256f94e20401832a",
+          "rel-75df81038bb3283d43f89c10",
           "rel-22a339e224edebbfe0427db7",
           "rel-954d60b125300b823937bae3",
           "rel-50f54f80a2a42949f1879b0a",
           "rel-61dd3621a18a1b46db7bde15"
         ],
         "before_sha256": "7c5c92456b0e763e90f076c397b0e442d064e89c93120e6884bd9817c96ce88b",
-        "after_sha256": "a255c36fcad01de16fc69a88b57adac222f5b0ac7417442560e9eceed406078b",
+        "after_sha256": "2c0fbe30f6a680c999784c38d51b60b060c3998599f400302e746dcd08ad7972",
         "previous_semantic_review_sha256": "929f41ea06b2420c9c86af81fc55475b979d04b9d18b899a5de44b3e070cd304",
         "previous_semantic_review": {
           "record_id": "w12196",
@@ -175443,7 +175418,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "4ab40074248218c433a18b5e509727ebabafaece266b47e359dfe25132abb4f0"
+        "semantic_review_sha256": "c66a024688bf4722fb3c698045722c5cab40cb020321a84468dfacc63e6a9e0d"
       },
       {
         "entry_id": "w1220",
@@ -183811,7 +183786,7 @@
           "rel-8045d6dd805bd3532dbbf75a",
           "rel-52b52dd1c2805889dee6308b",
           "rel-5a4b2961fa523f5aad0b399b",
-          "rel-17ff68245ad363a0262629dc",
+          "rel-0d21c656f6b091a7ecd72316",
           "rel-904e91f2cceea9ef6aed0d2e",
           "rel-97d66b031520c9be69fc8751",
           "rel-748fef4fe78bcde341b5ba0b",
@@ -183819,7 +183794,7 @@
           "rel-cf46da1382eaaa66ca8dc961"
         ],
         "before_sha256": "5d35f2a55bba44bbc4ca03109e1cd886d9d02f66d121b2c4d87320bf4abf31f2",
-        "after_sha256": "21185dd9068ca4921296d71f54ab29759a035175f9d5f1c12c426e6fb1d94b15",
+        "after_sha256": "925df64e7be37f4c2f2ec148045bc309236aac53c33c9e9d5d2e9dced24d39dc",
         "previous_semantic_review_sha256": "11b3e4c69611aba341578b390b5d19c3a0a9e93eee488e51fd779dda67743fb6",
         "previous_semantic_review": {
           "record_id": "w492",
@@ -183864,7 +183839,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "544778d9880dab99dc40711668d6f9d674c2929bc2f27d69bb35a9f12fe4f597"
+        "semantic_review_sha256": "b035a216d81d59c798c4cf4439893526515550c90034563cf0d2c760d685e172"
       },
       {
         "entry_id": "w4954",
@@ -185709,7 +185684,7 @@
           "R000027"
         ],
         "added_relation_ids": [
-          "rel-e820914485d95e7f9589b391",
+          "rel-07057eaf0b8a3d5ffcda834a",
           "rel-c0dcd4e9773dc5d43b872f9e",
           "rel-157b0a11ffc07f63524e08d6",
           "rel-a34204087a2960826a5945fc",
@@ -185721,7 +185696,7 @@
           "rel-d93e240198d0d870cc1e3443"
         ],
         "before_sha256": "ecf88e73f6c8dea049961e35ca827f04fefccb5a59a17c016f43d435f01a9514",
-        "after_sha256": "6bb8bcff1e75f644de91a0fcfcfcf2f8eb5b66ae32e81c56b5858fbb44d27fd0",
+        "after_sha256": "252dd641d3d3ce02794df147ef322e0ff4577d91e3627586bf88e9b6101ad016",
         "previous_semantic_review_sha256": "d95b20e872e111d1ba302ee7e463f52456189b98e366a495aff319f31d9eda45",
         "previous_semantic_review": {
           "record_id": "w527",
@@ -185847,7 +185822,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "73ed0a509824a1403fcfb8e29f7f6fbdb91d9d04ffd749ba19c1ce481242278b"
+        "semantic_review_sha256": "bba264baf91422d21c47ced9a9f9d0f4c45ae94b0b249f2258220c1e9a0689f7"
       },
       {
         "entry_id": "w5274",
@@ -188376,7 +188351,7 @@
           "R000027"
         ],
         "added_relation_ids": [
-          "rel-643820dec8836b20ed3a02aa",
+          "rel-c6483dae04d03eb46b51ede9",
           "rel-d672e411a6fa7f643c2eb293",
           "rel-9928cb41580d91a87416dd86",
           "rel-358d2020c1ea2da519e2360b",
@@ -188387,7 +188362,7 @@
           "rel-14a4f6844a94333ea18dcf37"
         ],
         "before_sha256": "54adbf5e46eb1e33254045149bc91ff1cc08c489029b46c59591d97eecae642d",
-        "after_sha256": "f91df32b5f24caebef90e1046ed10695555f7c8ac737d988fea22dee2cfc9c2a",
+        "after_sha256": "2ffe34bc9c4a0295fa2d96fd3ba47a2f710b0c218648a6f9691a0732f38a0032",
         "previous_semantic_review_sha256": "46a5d549145a24545f335841145186956908077f4bbc2c69490a04ace48dbb05",
         "previous_semantic_review": {
           "record_id": "w5781",
@@ -188422,7 +188397,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "052001895c5c67113c86d82a0dcf787c498b1037a461ede1c063a45a52b19811"
+        "semantic_review_sha256": "770d3c12884fdc2fce2f14f2ec5aeb1c427d458a4277b48d4f2184c01b48ade2"
       },
       {
         "entry_id": "w5795",
@@ -188660,14 +188635,14 @@
           "rel-df63481ead46406ef3a2c592",
           "rel-6f3e7c984b1b0426a68cd1a1",
           "rel-fd24fbed3ae318e92960be9f",
-          "rel-04c1146d6044c7f8489fc8d3",
+          "rel-dfa514e68662ccae586b16ad",
           "rel-1459a70b666a9ca5962d4f43",
           "rel-94569d628b2d01e97e7e5c7a",
           "rel-8e60c3f42c738376f3baeff3",
           "rel-7d575203f6565ba6cda2e502"
         ],
         "before_sha256": "a9f7d3bacc51abe20ea902fbf09a4a99c1c080d766c300bb5d110eb1397578c7",
-        "after_sha256": "6568d3c873766e35ab22cd145f9077b171c9c54d7dccfb9e5ac933231d97cac6",
+        "after_sha256": "34c46f85e375de496de7bb5d219fcd8bcc95d6fce49d91d5835a7e6d7ce08038",
         "previous_semantic_review_sha256": "2379c41def346d4ff1e21f230b3d2503f44f5731104951eb252ae9de2f79379d",
         "previous_semantic_review": {
           "record_id": "w5837",
@@ -188702,7 +188677,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "03ffefc9fb0fafaadbcde3922b13d062abb218b10582764fca5d321668725c17"
+        "semantic_review_sha256": "45cd1c34308083b10cfb5afbc39e590f0ef2a4cd5af4661bd92f5db08cc7cbf1"
       },
       {
         "entry_id": "w5864",
@@ -188934,7 +188909,7 @@
           "R000027"
         ],
         "added_relation_ids": [
-          "rel-156aa919df6334d3984f2bac",
+          "rel-500475578e0594e9f2be88dc",
           "rel-60959ea61bf13555668d630d",
           "rel-d333c9a7804910323ae9c971",
           "rel-e8ac495eea69c1c4fdbf4e2a",
@@ -188944,7 +188919,7 @@
           "rel-13e0e24cb2f2cf796bbfb1e6"
         ],
         "before_sha256": "3d2db21d10c755911f97847307b0b53defc82c57daf7810a64230e2bf67fddb5",
-        "after_sha256": "1dc06df37fcad71b5274ab0c05a3387289424af4d7f5e02749b3009ae63da40f",
+        "after_sha256": "9a33d85b40a53d5ae3261439ca75969c9c247814d745edd9771e77d5e5f4fec8",
         "previous_semantic_review_sha256": "4957fa32595d63cfa60c789911f87ef85ef896abdca9a440553ecf0af8e297f1",
         "previous_semantic_review": {
           "record_id": "w5900",
@@ -188979,7 +188954,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "abb8197e4acc228a1e3a954d6a8957dd98964f95cea5e37c755a619dbc2dae46"
+        "semantic_review_sha256": "4b8af864ff20d660233330a71bdc175c0aad4bbc0cf60c242a4cb170b9e3f28d"
       },
       {
         "entry_id": "w5913",
@@ -194197,13 +194172,13 @@
           "rel-73b53d4c822cb47d3429bff5",
           "rel-b06264bd6a197f8dcb03bf9b",
           "rel-06f55d904ddf39bae7fdbe92",
-          "rel-56495d1868c83040860726ba",
+          "rel-47f0f41b147930b3f5279d80",
           "rel-66604b00d915f8602859444e",
           "rel-1482b73b8987cd310fab8ebd",
           "rel-a1cea4f07c501d4db94f7a02"
         ],
         "before_sha256": "e82a54a2d9f95c5afbf1ea475b819324d4acc804125e2dec4fe5b1cadc134b6b",
-        "after_sha256": "219a88588c00ac09f9149343266664464094e8d9b6e397314e7eef493e4f5f23",
+        "after_sha256": "fc368fba3bc3e576effa33f5512565f07fb4fcbda41c4d5b6ae8f46c55f4e1a9",
         "previous_semantic_review_sha256": "7aafda0ba73f327b77dcfeb7ab0d797d8367db034b52c5a81ca1da8fc0c9b76a",
         "previous_semantic_review": {
           "record_id": "w8935",
@@ -194238,7 +194213,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "af49323707f8cc153718148d09a68c47220ef598d60437010d1fb1f32500725f"
+        "semantic_review_sha256": "08ddffca33709b6d330c0e4a8842468320d0b7e0c710d933f7567eff54ffe359"
       },
       {
         "entry_id": "w8983",
@@ -196603,6 +196578,6 @@
         "semantic_review_sha256": "2a75c6b06305a3fc2e62b2e400cbab7fe2ea5289c85014488fdf9dfefe8429f0"
       }
     ],
-    "sha256": "7e947cf09dc23800b8b22639798b0699b46f03a0292ec2762f058522ebace534"
+    "sha256": "6ff0f3d4591a4ac6a3dabbb5cef7b73b43c1f2c08b3387c9f4e599dcd4d5d1a0"
   }
 ]
