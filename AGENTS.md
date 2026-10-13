@@ -296,6 +296,13 @@ are distinct from the PR-review gates in `REVIEW.md`.
   provenance and ambiguity; submit candidate batches as separate PRs, independent
   of downstream stages. Do not finalize senses/glosses, do Stage 2 authoring, or
   change canonical JSONL.
+  - The ordinary selector reuses the sealed morphology store and validates
+    current permission fields plus source, store, index, runtime, schema and
+    completion bindings. Keep the store's historical permission digest as
+    provenance. A prose-only permission-document change does not require a
+    routine full audit, digest rebind, or rebuild. Run the explicit full-audit
+    command only for a concrete integrity, migration, or forensic question;
+    see [`docs/corpus-morphology-slices.md`](docs/corpus-morphology-slices.md#stage-1-sealed-store-consumer-581).
   - Use **one execution Issue per assigned Stage 1 run**, not one per batch.
     Reuse an Issue supplied by the owner; otherwise create one when starting
     the run, and link each batch PR to it.
