@@ -31,6 +31,12 @@ import { publishArtifacts, recoverArtifacts } from '../scripts/factory/artifact-
 import { planHistoryMigration } from '../scripts/factory/migrate-candidate-history.mjs';
 import { eligibleBatches } from '../scripts/factory/stage2-worker.mjs';
 import { buildExclusionManifest, parseArguments as parseCorpusArguments } from '../scripts/reference/run-corpus-lemma-pilot.mjs';
+import { canonicalDictionaryCacheKey, loadOrBuildCanonicalDictionary } from '../scripts/reference/canonical-dictionary-cache.mjs';
+import { DICTIONARY_VERSION } from '../scripts/build/dictionary.mjs';
+import { BUILD_TOOL_VERSION } from '../scripts/build/provenance.mjs';
+import { SQLITE_SCHEMA_VERSION } from '../scripts/build/sqlite-schema.mjs';
+import { NORMALIZATION_VERSION } from '../scripts/normalize/canonical.mjs';
+import { SURFACE_FORM_PROJECTION_VERSION } from '../scripts/inflection/surface-form-projection.mjs';
 
 // Synthetic providers (labeled synthetic: no native runtime runs here; the real-runtime smoke lives in
 // tests/factory-ensemble-native-smoke.test.mjs and is skipped with a reason when a runtime is absent).
@@ -1358,6 +1364,7 @@ test('default refill selector derives a corpus-safe batch id from a T-prefixed t
     assert.match(selector.batchId, /^t000001-[0-9a-f]{12}$/u);
     assert.equal(selector.candidateLimit, 2);
     assert.equal(selector.includeCanonicalLemmas, true);
+    assert.equal(selector.canonicalDictionaryCacheDirectory, cache.taskDirectory);
     assert.equal(selector.reuseAnalysisFrom, cache.taskDirectory);
     assert.equal(selector.outputDirectory, path.join(cache.taskDirectory, 'refill-C000001-000001'));
     assert.equal(selector.exclusionLemmaSources.length, 1);
@@ -1392,6 +1399,62 @@ test('default refill selector derives a corpus-safe batch id from a T-prefixed t
   assert.deepEqual(await validateFactoryRepository({ root }), []);
 });
 
+test('source-bound canonical dictionary cache builds once, verifies reuse, and rejects tampered SQLite', async (t) => {
+  const temporaryRoot = await mkdtemp(path.join(tmpdir(), 'typewriter-canonical-dictionary-cache-'));
+  t.after(() => rm(temporaryRoot, { recursive: true, force: true }));
+  const cachePaths = resolveTypewriterCachePaths({
+    env: { TYPEWRITER_CACHE_ROOT: path.join(temporaryRoot, 'cache') },
+    homeDirectory: temporaryRoot,
+  });
+  await mkdir(cachePaths.runs, { recursive: true });
+  const canonicalCacheDirectory = path.join(cachePaths.runs, 'stage1-task');
+  await mkdir(canonicalCacheDirectory, { recursive: true });
+  let buildCalls = 0;
+  const build = async ({ outputPath, repositoryDirectory }) => {
+    buildCalls += 1;
+    const metadata = {
+      source_revision: execFileSync('git', ['rev-parse', '--verify', 'HEAD'], { cwd: repositoryDirectory, encoding: 'utf8' }).trim(),
+      build_tool_version: BUILD_TOOL_VERSION,
+      normalization_version: NORMALIZATION_VERSION,
+      schema_version: SQLITE_SCHEMA_VERSION,
+      surface_form_projection_version: SURFACE_FORM_PROJECTION_VERSION,
+      dictionary_version: DICTIONARY_VERSION,
+      node_version: process.version,
+      canonical_revision: 'a'.repeat(64),
+      record_count: '1',
+      search_form_count: '1',
+      generated_surface_form_count: '0',
+    };
+    const database = new DatabaseSync(outputPath);
+    try {
+      database.exec(`CREATE TABLE metadata (key TEXT NOT NULL PRIMARY KEY, value TEXT NOT NULL); PRAGMA user_version = ${Number.parseInt(SQLITE_SCHEMA_VERSION, 10)};`);
+      const insert = database.prepare('INSERT INTO metadata (key, value) VALUES (?, ?)');
+      for (const [key, value] of Object.entries(metadata)) insert.run(key, String(value));
+    } finally {
+      database.close();
+    }
+    return { metadata, recordCount: 1, searchFormCount: 1, generatedSurfaceFormCount: 0 };
+  };
+  const args = { repositoryDirectory: process.cwd(), canonicalCacheDirectory, cachePaths, build };
+
+  const first = await loadOrBuildCanonicalDictionary(args);
+  const reused = await loadOrBuildCanonicalDictionary(args);
+  assert.equal(buildCalls, 1, 'unchanged canonical and builder inputs reuse the immutable task cache');
+  assert.equal(first.reused, false);
+  assert.equal(reused.reused, true);
+  assert.equal(first.cacheManifestSha256, reused.cacheManifestSha256);
+  assert.equal(first.canonicalSnapshotSha256, first.cacheIdentity.canonical_snapshot_sha256);
+  assert.notEqual(canonicalDictionaryCacheKey({ ...first.cacheIdentity, canonical_snapshot_sha256: 'a'.repeat(64) }), first.cacheKey,
+    'a changed canonical snapshot selects a fresh cache identity');
+  assert.notEqual(canonicalDictionaryCacheKey({ ...first.cacheIdentity, builder_source_sha256: 'b'.repeat(64) }), first.cacheKey,
+    'a changed builder source selects a fresh cache identity');
+
+  const originalDatabase = await readFile(first.outputPath);
+  await writeFile(first.outputPath, Buffer.concat([originalDatabase, Buffer.from([0])]));
+  await assert.rejects(loadOrBuildCanonicalDictionary(args), /source binding does not match/u,
+    'corrupt or stale cache content fails closed instead of being reused');
+});
+
 test('refill resumes identical inputs, fails closed on runtime errors and records true exhaustion', async (t) => {
   const root = await mkdtemp(path.join(tmpdir(), 'factory-refill-resume-'));
   t.after(() => rm(root, { recursive: true, force: true }));
@@ -1399,12 +1462,19 @@ test('refill resumes identical inputs, fails closed on runtime errors and record
   const providers = triple({ k: table, h: table, m: table });
   const initialEvidence = evidenceDoc([cand('가다', 'verb', [h('d1', '가는')])]);
   const args = { batchId: 'C000001', taskId: 'T000001', maxCandidates: 2, canonicalEntries: [], canonicalDigest: HEX, policy: ENSEMBLE_POLICY, providers };
-  const common = { initialEvidence, arguments: args, exclusions: new Set(), checkpointPath: path.join(root, 'checkpoint.json') };
+  const progressEvents = [];
+  const common = { initialEvidence, arguments: args, exclusions: new Set(), checkpointPath: path.join(root, 'checkpoint.json'),
+    progress: (event) => progressEvents.push(event) };
   await assert.rejects(() => refillCandidateBatch({ ...common, selectPage: async () => { throw new Error('interrupted selector'); } }), /interrupted selector/);
   const before = providers.map((provider) => provider.calls.length);
   const resumed = await refillCandidateBatch({ ...common, selectPage: async () => ({ ...evidenceDoc([cand('걸음', 'noun', [h('d2', '걸음')])]), selection: { exhaustion: { contract: 'corpus-selector-exhaustion-v1', remaining_lemma_count: 0 } } }) });
   assert.equal(resumed.rows.length, 2);
   providers.forEach((provider, index) => assert.equal(provider.calls.length, before[index] + 1, 'checkpoint avoids reanalysis of first page'));
+  const profile = progressEvents.find((event) => event.profile)?.profile;
+  assert.ok(Number.isFinite(profile.producer_pass_wall_ms));
+  assert.deepEqual(Object.keys(profile.cumulative_provider_wall_ms), ['kiwi', 'khaiii', 'mecab']);
+  assert.ok(profile.checkpoint_writes > 0 && profile.checkpoint_bytes > 0);
+  assert.ok(profile.checkpoint_serialization_ms >= 0 && profile.checkpoint_write_ms >= 0);
   const short = await refillCandidateBatch({ ...common, checkpointPath: path.join(root, 'short.json'), selectPage: async () => ({ ...evidenceDoc([]), selection: { exhaustion: { contract: 'corpus-selector-exhaustion-v1', remaining_lemma_count: 0 } } }) });
   assert.equal(short.rows.length, 1);
   assert.equal(short.production.exhausted, true);

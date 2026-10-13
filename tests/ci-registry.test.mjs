@@ -533,7 +533,7 @@ test('Normal coverage additions bind actual always-on tests without weakening ex
   assert.equal(classifyDeepGatePaths([manifestPath]).deepMode, 'full');
   assert.equal(classifyDeepGatePaths(['scripts/validate/canonical-jsonl.mjs']).deepMode, 'selective');
 
-  assert.equal(validateAdditiveNormalCoverage(base, current).size, 1);
+  assert.equal(validateAdditiveNormalCoverage(base, current).size, current.bindings.length);
   assert.throws(() => validateAdditiveNormalCoverage(current, base), /removes or alters/);
   assert.throws(() => validateAdditiveNormalCoverage(current, {
     ...current,

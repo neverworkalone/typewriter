@@ -4,6 +4,7 @@ import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promis
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 import {
   DEFAULT_CANDIDATE_LIMIT,
@@ -16,6 +17,8 @@ import {
 } from './run-corpus-lemma-pilot.mjs';
 import { observationsFromCorpusEvidence } from '../factory/stage1.mjs';
 import { resolveTypewriterCachePaths } from '../typewriter-cache.mjs';
+
+const REPOSITORY_DIRECTORY = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
 test('corpus production defaults to 200 and supports bounded batches through 500', () => {
   assert.equal(DEFAULT_CANDIDATE_LIMIT, 200);
@@ -33,6 +36,7 @@ test('cached morphology reuse stays in the shared cache and uses a separate run 
   const runs = resolveTypewriterCachePaths().runs;
   assert.equal(options.reuseAnalysisFrom, `${runs}/issue-223/source`);
   assert.equal(options.outputDirectory, `${runs}/issue-223/next`);
+  assert.equal(options.canonicalDictionaryCacheDirectory, options.outputDirectory);
   assert.throws(() => parseArguments([
     '--reuse-analysis-from', 'data/reference/production/issue-223/source',
     '--output-directory', 'data/reference/production/issue-223/source',
@@ -40,6 +44,11 @@ test('cached morphology reuse stays in the shared cache and uses a separate run 
   assert.throws(() => parseArguments([
     '--reuse-analysis-from', '../../outside-cache',
   ]), /must be inside/u);
+  assert.equal(parseArguments([
+    '--canonical-dictionary-cache-directory', 'runs/issue-223/selection-initial',
+    '--output-directory', 'runs/issue-223/refill-1',
+  ]).canonicalDictionaryCacheDirectory, `${runs}/issue-223/selection-initial`);
+  assert.throws(() => parseArguments(['--canonical-dictionary-cache-directory', '../../outside-cache']), /must be inside/u);
   assert.equal(parseArguments([]).outputDirectory, `${runs}/issue-201-pilot`);
 });
 

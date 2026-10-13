@@ -1,15 +1,15 @@
 import { createHash } from 'node:crypto';
 import { spawn } from 'node:child_process';
-import { mkdir, mkdtemp, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rename, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { buildDictionary } from '../build/dictionary.mjs';
 import { isSurfaceToken } from '../factory/lemma-contract.mjs';
 import { COMPACT_CONTRACT, TRASH_DIRECTORY } from '../factory/permanent-trash.mjs';
 import { assertWithinDirectory, isWithinDirectory, resolveCacheArtifactPath, resolveTypewriterCachePaths } from '../typewriter-cache.mjs';
 import { resolveManagedPython } from '../python/env.mjs';
+import { loadOrBuildCanonicalDictionary } from './canonical-dictionary-cache.mjs';
 import {
   assertCorpusPermission,
   createCorpusIndexReader,
@@ -34,6 +34,7 @@ export function parseArguments(argumentsList, { repositoryDirectory = REPOSITORY
     python: process.env.TYPEWRITER_PYTHON || null,
     candidateLimit: DEFAULT_CANDIDATE_LIMIT,
     outputDirectory: null,
+    canonicalDictionaryCacheDirectory: null,
     reuseAnalysisFrom: null,
     morphologyStore: null,
     morphologySourceSnapshot: null,
@@ -66,6 +67,13 @@ export function parseArguments(argumentsList, { repositoryDirectory = REPOSITORY
       const value = argumentsList[index + 1];
       if (!value || value.startsWith('--')) throw new Error('--output-directory requires a path.');
       options.outputDirectory = value;
+      index += 1;
+      continue;
+    }
+    if (argument === '--canonical-dictionary-cache-directory') {
+      const value = argumentsList[index + 1];
+      if (!value || value.startsWith('--')) throw new Error('--canonical-dictionary-cache-directory requires a shared-cache runs directory.');
+      options.canonicalDictionaryCacheDirectory = value;
       index += 1;
       continue;
     }
@@ -130,6 +138,12 @@ export function parseArguments(argumentsList, { repositoryDirectory = REPOSITORY
     ? resolveCacheArtifactPath(options.outputDirectory, { paths: cachePaths, areas: ['runs'], label: '--output-directory' })
     : path.join(cachePaths.runs, options.batchId);
   assertWithinDirectory(cachePaths.runs, options.outputDirectory, { label: 'Corpus candidate output directory' });
+  options.canonicalDictionaryCacheDirectory = options.canonicalDictionaryCacheDirectory
+    ? resolveCacheArtifactPath(options.canonicalDictionaryCacheDirectory, {
+      paths: cachePaths, areas: ['runs'], label: '--canonical-dictionary-cache-directory',
+    })
+    : options.outputDirectory;
+  assertWithinDirectory(cachePaths.runs, options.canonicalDictionaryCacheDirectory, { label: 'Canonical dictionary cache directory' });
   if (options.reuseAnalysisFrom) {
     options.reuseAnalysisFrom = resolveCacheArtifactPath(options.reuseAnalysisFrom, {
       paths: cachePaths,
@@ -818,7 +832,7 @@ async function main() {
     console.log(
       'Usage: node scripts/reference/run-corpus-lemma-pilot.mjs [--python <venv-python>]\n'
         + 'Selects from the verified 100% corpus morphology store by default. Options: --candidate-limit 1-500 (default 200), '
-        + '--batch-id <id>, --output-directory ~/.cache/typewriter/runs/<run-id>, repeated '
+        + '--batch-id <id>, --output-directory ~/.cache/typewriter/runs/<run-id>, --canonical-dictionary-cache-directory <shared task cache>, repeated '
         + '--exclude-lemma-source <repository-json-or-jsonl-or-shared-cache-artifact>, --morphology-store <shared store directory>. '
         + 'Historical compatibility modes: --reuse-analysis-from <prior cache run directory> or --scan-corpus. '
         + 'Requires the complete audited morphology store, shared corpus index '
@@ -852,20 +866,18 @@ async function main() {
   const exclusionManifest = await buildExclusionManifest([...new Set([...options.exclusionLemmaSources, ...automaticSources])]);
   await writeFile(exclusionManifestPath, JSON.stringify(exclusionManifest, null, 2) + '\n', 'utf8');
 
-  const temporaryDirectory = await mkdtemp(
-    path.join(outputDirectory, '.canonical-dictionary-'),
-  );
-  const dictionaryPath = path.join(temporaryDirectory, 'dictionary.sqlite');
-  try {
-    const dictionary = await buildDictionary({
-      outputPath: dictionaryPath,
-      repositoryDirectory: REPOSITORY_DIRECTORY,
-      checkPilotCompleteness: true,
-      allowDirty: true,
-    });
+  const dictionary = await loadOrBuildCanonicalDictionary({
+    repositoryDirectory: REPOSITORY_DIRECTORY,
+    canonicalCacheDirectory: options.canonicalDictionaryCacheDirectory,
+  });
+  const dictionaryPath = dictionary.outputPath;
+  {
     process.stdout.write(
       JSON.stringify({
-        phase: 'canonical_surface_built',
+        phase: 'canonical_dictionary_ready',
+        reused: dictionary.reused,
+        cache_key: dictionary.cacheKey,
+        cache_manifest_sha256: dictionary.cacheManifestSha256,
         record_count: dictionary.recordCount,
         search_form_count: dictionary.searchFormCount,
         generated_surface_form_count: dictionary.generatedSurfaceFormCount,
@@ -929,6 +941,8 @@ async function main() {
       canonical_build: {
         dictionary_version: dictionary.metadata.dictionary_version,
         canonical_revision: dictionary.metadata.canonical_revision,
+        canonical_snapshot_sha256: dictionary.canonicalSnapshotSha256,
+        cache_manifest_sha256: dictionary.cacheManifestSha256,
         record_count: dictionary.recordCount,
         search_form_count: dictionary.searchFormCount,
         generated_surface_form_count: dictionary.generatedSurfaceFormCount,
@@ -975,8 +989,6 @@ async function main() {
         publication_state: evidenceInventory.orchestration.publication_state,
       }) + '\n',
     );
-  } finally {
-    await rm(temporaryDirectory, { recursive: true, force: true });
   }
 }
 
