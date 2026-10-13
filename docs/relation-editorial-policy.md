@@ -32,7 +32,14 @@ general topic or scene association.
   gloss breadth, register, intensity or habitual collocations. Do not demote
   a defensible contextual relation merely because the short glosses emphasize
   different facets or scopes. 차분하다 ↔ 침착하다 and 늪 ↔ 습지 are positive
-  direct calibrations.
+  direct calibrations, as are 자물쇠구멍 ↔ 열쇠구멍, 손길을 보태다 ↔ 손을 보태다,
+  손을 보태다 ↔ 도와주다 (same helper role), 따라오다 ↔ 쫓아오다 and
+  연주회 ↔ 음악회 (same bound meaning, scope or intensity differences only).
+  부활절 ↔ 성탄절 and 찬송 ↔ 자장가 are negative controls: same category,
+  different scene, so they stay near/association. 손을 보태다 (giving help) ↔
+  손을 빌리다 (receiving help) is also negative: the participant roles differ,
+  so it stays exploratory. Decide `direct` first and use `near` only for
+  texture that is not a close alternative.
 - `antonym` claims meaningful semantic opposition between the bound senses in
   a recognizable natural usage context. Ordinary, literary, figurative,
   technical, domain-specific and culinary contexts can establish the contrast.
