@@ -14,7 +14,7 @@ import { buildStage3SemanticAuthority } from '../scripts/factory/semantic-author
 import { reviewedCandidateRecord } from '../scripts/factory/artifacts.mjs';
 import {
   buildSemanticAuditFromDecisionSource, canonicalRecordsBeforeFactoryAdmissions, inspectSenseBoundaryPairs,
-  attachFactoryAdmissions, factoryAdmissionsOf, restoreFactoryAdmissions, validateSemanticAuditCoverage, isAdditiveFactoryAmendment, preRelevanceRecordSha256, readAuthoredBatchDecisionSources, factoryHistoryReachesCorrection, sha256Json, continuesPreviousChange,
+  attachFactoryAdmissions, factoryAdmissionsOf, restorePreFactoryDecisionSource, canonicalRecordsSha256, restoreFactoryAdmissions, validateSemanticAuditCoverage, isAdditiveFactoryAmendment, preRelevanceRecordSha256, readAuthoredBatchDecisionSources, factoryHistoryReachesCorrection, sha256Json, continuesPreviousChange,
 } from '../scripts/validate/semantic-audit.mjs';
 import { validateDatasetRecords } from '../scripts/validate/dataset-integrity.mjs';
 import { createCanonicalContext, readCanonicalContext, writeCanonicalContext } from '../scripts/validate/canonical-context.mjs';
@@ -389,8 +389,17 @@ test('a corrected record is reached through relation and sense amendments in any
 // order through planStage3Admission + buildStage3SemanticAuthority, chained on the previous authority, then the complete
 // audit and the dataset consumer judge the result. Tampering with the sense operation or the correction must be rejected.
 test('a corrected record amended by relations and senses in either order passes the shared audit consumers, and tampering is rejected', async () => {
-  const { records, paths } = await realCanonical();
-  const authority0 = await readShardedJson('data/validation/canonical-semantic-decision-source.json');
+  // The base is the dataset before every factory/backfill event: relation backfills amend each corrected record in turn, so a
+  // fixture that needs an untouched live record would be exhausted by ordinary production.
+  const { records: liveRecords, paths } = await realCanonical();
+  const liveAuthority = await readShardedJson('data/validation/canonical-semantic-decision-source.json');
+  const records = canonicalRecordsBeforeFactoryAdmissions(liveRecords.map((record) => ({ record })), liveAuthority).map(({ record }) => record);
+  const authority0 = restorePreFactoryDecisionSource(liveAuthority, records.map((record) => ({ record })));
+  authority0.factory_admissions = [];
+  const baseDigest = canonicalRecordsSha256(records.map((record) => ({ record })));
+  authority0.source = { ...authority0.source, canonical_records_sha256: baseDigest };
+  authority0.authored_review.source = { ...authority0.authored_review.source, canonical_records_sha256: baseDigest };
+  authority0.authored_review_sha256 = sha256Json(authority0.authored_review);
   const corrected = new Set(authority0.authored_review.review_pass.correction_history.map((item) => item.record_id));
   const touched = new Set((authority0.factory_admissions ?? []).flatMap((event) => event.changes.map((change) => change.entry_id)));
   // The correction digest predates relevance, so the base must carry relevance-bearing relations for the digests to differ.
@@ -460,7 +469,7 @@ test('a corrected record amended by relations and senses in either order passes 
     assert.doesNotThrow(() => validateDatasetRecords(infos, { semanticAudit: built, requireSemanticAudit: true }));
     return built;
   };
-  const baseLedger = await readShardedJson('data/validation/canonical-semantic-decision-source.json');
+  const baseLedger = authority0;
   for (const order of [['relation', 'sense'], ['sense', 'relation']]) {
     let current = records; let ledger = baseLedger; let last;
     for (const [index, kind] of order.entries()) {
