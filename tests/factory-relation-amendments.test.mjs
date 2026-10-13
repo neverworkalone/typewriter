@@ -468,12 +468,11 @@ test('a corrected record amended by relations and senses in either order passes 
       last = await admit(batch, kind === 'relation' ? relationRow(batch) : senseRow(batch), current, ledger);
       current = last.after; ledger = last.source;
     }
-    judge(last.after, last.source);
+    const built = judge(last.after, last.source);
     const ops = last.source.factory_admissions.slice(-2).map((event) => event.changes.find((change) => change.entry_id === target.id)?.operation);
     assert.deepEqual(ops, order.map((kind) => (kind === 'relation' ? 'append_relations' : 'append_senses')));
 
     // Persistence: a saved audit JSON needs its validated ledger back; a serialized context restores it on rehydration.
-    const built = buildSemanticAuditFromDecisionSource(last.after, last.source, { baseRecords: last.after, batchDecisionSources, artifactId: 'test-mixed-history' });
     const infos = last.after.map((record) => ({ record }));
     const saved = JSON.parse(JSON.stringify(built));
     assert.throws(() => validateSemanticAuditCoverage(infos, saved, { baseRecords: infos }), /correction_history and source-bound Stage 3 admission history/u);

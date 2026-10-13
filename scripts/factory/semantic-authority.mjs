@@ -416,6 +416,33 @@ function buildReviewForRelationCorrection({ record, beforeReview, corrections, b
   return compactSemanticReviewRecord(full);
 }
 
+// The complete source-bound audit of the unchanged base is a pure function of its three inputs. A process that admits
+// several plans against the same base (the Stage 3 worker tests) would otherwise repeat it; the single in-memory entry is
+// keyed by the content of every input, so it can never outlive a changed record, authority source or batch decision source.
+// Only a passing audit is retained: a failing one is recomputed and rejected every time.
+let lastBaseAudit;
+
+function baseAuditReviewsById(baseCanonicalRecords, source, batchDecisionSources) {
+  // Batch sources are large; their bytes are already digested when read, so that digest identifies them. A source without one
+  // (or without a path) is never keyed, and the audit simply runs.
+  const batchKeys = batchDecisionSources.map((entry) => (entry?.sourceSha256 && entry.sourcePath ? [entry.sourcePath, entry.sourceSha256] : undefined));
+  const key = batchKeys.includes(undefined) ? undefined : sha256Json([sha256Json(baseCanonicalRecords), sha256Json(source), batchKeys]);
+  if (key !== undefined && lastBaseAudit?.key === key) return lastBaseAudit.reviewsById;
+  let baseAudit;
+  try {
+    baseAudit = buildSemanticAuditFromDecisionSource(baseCanonicalRecords, source, {
+      baseRecords: baseCanonicalRecords, batchDecisionSources,
+      artifactId: 'stage3-base-canonical-semantic-audit',
+    });
+  } catch (error) {
+    failSystemic(`latest master semantic authority failed its complete source-bound audit: ${error.message}`, 'STAGE3_BASE_SEMANTIC_AUTHORITY');
+  }
+  // A private copy: the caller goes on to rewrite the source this audit was built from.
+  const reviewsById = new Map(structuredClone(baseAudit.review.records).map((review) => [review.record_id, review]));
+  lastBaseAudit = key === undefined ? undefined : { key, reviewsById };
+  return reviewsById;
+}
+
 /**
  * Extend the complete-canonical semantic source only from already source-bound
  * Stage 2 decisions. Existing authored review rows are materialized and
@@ -433,17 +460,10 @@ export async function buildStage3SemanticAuthority({
   }
   const semanticRows = new Map((semanticDecisions?.decisions ?? []).map((row) => [row.source_candidate_id, row]));
   const batchDecisionSources = await readAuthoredBatchDecisionSources();
-  let baseAudit;
-  try {
-    baseAudit = buildSemanticAuditFromDecisionSource(baseCanonicalRecords, source, {
-      baseRecords: baseCanonicalRecords, batchDecisionSources,
-      artifactId: 'stage3-base-canonical-semantic-audit',
-    });
-  } catch (error) {
-    failSystemic(`latest master semantic authority failed its complete source-bound audit: ${error.message}`, 'STAGE3_BASE_SEMANTIC_AUTHORITY');
-  }
+  const baseReviewById = baseAuditReviewsById(baseCanonicalRecords, source, batchDecisionSources);
   const baseById = new Map(baseCanonicalRecords.map((record) => [record.id, record]));
-  const reviewById = new Map(baseAudit.review.records.map((review) => [review.record_id, review]));
+  // Each consumer gets its own copy, so no review builder can alter the retained audit.
+  const reviewById = { get: (id) => (baseReviewById.has(id) ? structuredClone(baseReviewById.get(id)) : undefined) };
   const afterById = new Map(baseById);
   for (const [id, update] of plan.records) afterById.set(id, update.record);
   const afterRecords = [...afterById.values()];

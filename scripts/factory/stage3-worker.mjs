@@ -8,7 +8,7 @@ import { planStage3Admission, applyStage3FileChanges, Stage3AdmissionError } fro
 import { planSurfaceFormDispositions, writeSurfaceFormDispositions } from './surface-form-dispositions.mjs';
 import { stage3SurfaceFormJudgments } from './surface-form-judgments.mjs';
 import { buildStage3SemanticAuthority } from './semantic-authority.mjs';
-import { FACTORY_SNAPSHOT_PATHSPEC, loadStage2QueueSnapshot } from './stage2-worker.mjs';
+import { FACTORY_SNAPSHOT_PATHSPEC, gitShowMany, loadStage2QueueSnapshot } from './stage2-worker.mjs';
 import { buildCanonicalIndex } from './identity-adapter.mjs';
 import { isLemmaRow } from './lemma-contract.mjs';
 import { validateLemmaDecision } from './lemma-decisions.mjs';
@@ -57,6 +57,7 @@ export function createStage3GitRepository({ root = process.cwd() } = {}) {
       const listing = gitRun(root, ['ls-tree', '-r', '--name-only', ref, '--', ...pathspec]);
       return listing ? listing.split('\n').filter(Boolean) : [];
     },
+    showMany(ref, files) { return gitShowMany(root, ref, files); },
     show(ref, file) {
       return execFileSync('git', ['show', ref + ':' + file], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: GIT_MAX_BUFFER });
     },
@@ -444,8 +445,12 @@ export async function claimNextStage3Batch({
 function canonicalRecordLocations(git, headSha) {
   const rows = [];
   const pathById = new Map();
-  for (const file of git.listFiles(headSha).filter((name) => /^data\/canonical\/[^/]+\.jsonl$/u.test(name)).sort()) {
-    const content = git.show(headSha, file);
+  const canonicalFiles = git.listFiles(headSha).filter((name) => /^data\/canonical\/[^/]+\.jsonl$/u.test(name)).sort();
+  const shown = typeof git.showMany === 'function'
+    ? git.showMany(headSha, canonicalFiles)
+    : new Map(canonicalFiles.map((file) => [file, git.show(headSha, file)]));
+  for (const file of canonicalFiles) {
+    const content = shown.get(file);
     for (const [index, line] of content.split('\n').entries()) {
       if (!line) continue;
       const record = JSON.parse(line);
