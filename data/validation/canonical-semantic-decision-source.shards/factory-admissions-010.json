@@ -100485,7 +100485,7 @@
   {
     "batch_id": "R000027",
     "attempt": 1,
-    "semantic_decisions_sha256": "b614e5f56c28c37b032103c2547f7b2c5301d38ce0bb40f52646197ad2f7d2fe",
+    "semantic_decisions_sha256": "15cb153480eeadfe3b3dbc7a06829cc00864d05fcf39c51bf467532ea95307ac",
     "entries": [],
     "relation_amendments": [
       {
@@ -118209,7 +118209,7 @@
           "note": "어떤 사실이나 이치를 깨달아 알게 하는 깨우치다 행동이다",
           "relevance": 3
         },
-        "rationale_sha256": "e13f30b852adaf263222b1d6a46c9db39e3e2dcf428c7785d6ec60f47594517b",
+        "rationale_sha256": "9d05fc9a7ab58cdfef1a35611deaa70488c45f3b11f1157ff04c9e1513a759fa",
         "outcome": "appended"
       },
       {
@@ -118226,7 +118226,7 @@
           "note": "상황이나 사실을 눈치채는 알아차리다 행동이다",
           "relevance": 4
         },
-        "rationale_sha256": "e1721d4239eb0e756d0d09a4b227f79ccdc5579f56647df1bccba13787ce01a7",
+        "rationale_sha256": "b6a2fba1ffe37926da3a259b8320bfc9cecefe9057622646eea449a59ff60771",
         "outcome": "appended"
       },
       {
@@ -118243,7 +118243,7 @@
           "note": "모르던 사실이나 진실이 드러나는 밝혀지다 상태이다",
           "relevance": 5
         },
-        "rationale_sha256": "bab2dbfaee39f06eb89bf7e4e77d04117315fa4cd6740f29a2c9785cafcaeaba",
+        "rationale_sha256": "55c9a437324165a05d85e23610182c26526f0866e7893e7111daaaa3993dbfe8",
         "outcome": "appended"
       },
       {
@@ -118251,16 +118251,15 @@
         "source_record_id": "w12196",
         "source_sense_id": "w12196-s1",
         "source_gloss_sha256": "6283a1ec41914c176c346add3183ff3dee74c4825dd08013ace8f5a64d777ce4",
-        "authored_relation_id": "rel-75df81038bb3283d43f89c10",
-        "relation_id": "rel-75df81038bb3283d43f89c10",
+        "authored_relation_id": "rel-3e926319256f94e20401832a",
+        "relation_id": "rel-3e926319256f94e20401832a",
         "relation": {
           "target": "w12548",
           "target_sense": "w12548-s1",
-          "type": "association",
-          "note": "어떤 사실이나 방법을 알지 못하는 모르다 상태이다",
-          "relevance": 7
+          "type": "antonym",
+          "note": "어떤 사실이나 방법을 알지 못하는 모르다 상태이다"
         },
-        "rationale_sha256": "c7e573d184b4cfac24d44b9599cc0762a0066f436c0184bf755d8f65fd58a99e",
+        "rationale_sha256": "50963020efd55b981311fff77af11d1e541ad8dbff6165be5f10240f16b66c59",
         "outcome": "appended"
       },
       {
@@ -118277,7 +118276,7 @@
           "note": "이전에는 모르던 사실을 알게 되는 깨달음이다",
           "relevance": 5
         },
-        "rationale_sha256": "1fd779114f5b044a39276a186675e6ca19cbc7b26c7704e06d66d86c387c0f78",
+        "rationale_sha256": "eae8d15fe4de7d3ec49cf8008f3cea1375c8f3194fded2fa46b65232e44d7a6a",
         "outcome": "appended"
       },
       {
@@ -118294,7 +118293,7 @@
           "note": "새롭거나 모르는 것을 알고 싶어 하는 호기심이다",
           "relevance": 6
         },
-        "rationale_sha256": "75895cc904018dfff43d13266819f1427c18600c71f44f5f0d4bd24558cfac18",
+        "rationale_sha256": "90fc0e04915a2b2d7b41df5ac49ed782175492bb44899cabff33568ffd3e0c1e",
         "outcome": "appended"
       },
       {
@@ -118311,7 +118310,7 @@
           "note": "모르는 것을 상대에게 알아내려고 하는 묻다 행동이다",
           "relevance": 6
         },
-        "rationale_sha256": "bfc6bfd3d5935b0d50a7ff4e26f6e1346056557f45c5d73d203944263905fae8",
+        "rationale_sha256": "8ee514a0b9aa7e808aaebcda3e303790a9b3539f5e1d9857d56df9d605e4c701",
         "outcome": "appended"
       },
       {
@@ -118328,7 +118327,7 @@
           "note": "모르는 내용이나 의견을 알아보려고 하는 물어보다 행동이다",
           "relevance": 6
         },
-        "rationale_sha256": "f70643f8f9619422d2d4c6ad13c63f5ea47306c3f676340d10a71b37689eef5e",
+        "rationale_sha256": "0e6d2a744830c9e5cc240a9e00ccc5b2cd7d55e35d68c637f5ce9fc872c719b8",
         "outcome": "appended"
       },
       {
@@ -161826,16 +161825,15 @@
         "source_record_id": "w8935",
         "source_sense_id": "w8935-s1",
         "source_gloss_sha256": "4a948eb362c22fc6873bf0d15ca1fdd0c5d0d6a3d770bc694e53ece38929a4da",
-        "authored_relation_id": "rel-47f0f41b147930b3f5279d80",
-        "relation_id": "rel-47f0f41b147930b3f5279d80",
+        "authored_relation_id": "rel-56495d1868c83040860726ba",
+        "relation_id": "rel-56495d1868c83040860726ba",
         "relation": {
           "target": "w527",
           "target_sense": "w527-s2",
-          "type": "association",
-          "note": "기운이나 자신감을 되찾는 행동이다",
-          "relevance": 7
+          "type": "antonym",
+          "note": "기운이나 자신감을 되찾는 행동이다"
         },
-        "rationale_sha256": "9f33e9da70b2945f32a39ccb6e530173f3e41857ae7c3c6768d55d12f3070e7a",
+        "rationale_sha256": "1859943c5204901168d9c386b2b61499ff1ed3958cd3cf4a5670b1cd88464415",
         "outcome": "appended"
       },
       {
@@ -175376,14 +175374,14 @@
           "rel-03af110a53c975e01ced6d97",
           "rel-411ddaa30c0bd9d2c0ef4726",
           "rel-8f112a3928397430c4ea7f80",
-          "rel-75df81038bb3283d43f89c10",
+          "rel-3e926319256f94e20401832a",
           "rel-22a339e224edebbfe0427db7",
           "rel-954d60b125300b823937bae3",
           "rel-50f54f80a2a42949f1879b0a",
           "rel-61dd3621a18a1b46db7bde15"
         ],
         "before_sha256": "7c5c92456b0e763e90f076c397b0e442d064e89c93120e6884bd9817c96ce88b",
-        "after_sha256": "2c0fbe30f6a680c999784c38d51b60b060c3998599f400302e746dcd08ad7972",
+        "after_sha256": "a255c36fcad01de16fc69a88b57adac222f5b0ac7417442560e9eceed406078b",
         "previous_semantic_review_sha256": "929f41ea06b2420c9c86af81fc55475b979d04b9d18b899a5de44b3e070cd304",
         "previous_semantic_review": {
           "record_id": "w12196",
@@ -175418,7 +175416,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "c66a024688bf4722fb3c698045722c5cab40cb020321a84468dfacc63e6a9e0d"
+        "semantic_review_sha256": "4ab40074248218c433a18b5e509727ebabafaece266b47e359dfe25132abb4f0"
       },
       {
         "entry_id": "w1220",
@@ -194172,13 +194170,13 @@
           "rel-73b53d4c822cb47d3429bff5",
           "rel-b06264bd6a197f8dcb03bf9b",
           "rel-06f55d904ddf39bae7fdbe92",
-          "rel-47f0f41b147930b3f5279d80",
+          "rel-56495d1868c83040860726ba",
           "rel-66604b00d915f8602859444e",
           "rel-1482b73b8987cd310fab8ebd",
           "rel-a1cea4f07c501d4db94f7a02"
         ],
         "before_sha256": "e82a54a2d9f95c5afbf1ea475b819324d4acc804125e2dec4fe5b1cadc134b6b",
-        "after_sha256": "fc368fba3bc3e576effa33f5512565f07fb4fcbda41c4d5b6ae8f46c55f4e1a9",
+        "after_sha256": "219a88588c00ac09f9149343266664464094e8d9b6e397314e7eef493e4f5f23",
         "previous_semantic_review_sha256": "7aafda0ba73f327b77dcfeb7ab0d797d8367db034b52c5a81ca1da8fc0c9b76a",
         "previous_semantic_review": {
           "record_id": "w8935",
@@ -194213,7 +194211,7 @@
             }
           ]
         },
-        "semantic_review_sha256": "08ddffca33709b6d330c0e4a8842468320d0b7e0c710d933f7567eff54ffe359"
+        "semantic_review_sha256": "af49323707f8cc153718148d09a68c47220ef598d60437010d1fb1f32500725f"
       },
       {
         "entry_id": "w8983",
@@ -196578,6 +196576,6 @@
         "semantic_review_sha256": "2a75c6b06305a3fc2e62b2e400cbab7fe2ea5289c85014488fdf9dfefe8429f0"
       }
     ],
-    "sha256": "6ff0f3d4591a4ac6a3dabbb5cef7b73b43c1f2c08b3387c9f4e599dcd4d5d1a0"
+    "sha256": "944e248ff3316fd84eab532f520c5321dc63d459153bcc4154dced115ac69733"
   }
 ]
