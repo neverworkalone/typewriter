@@ -1603,6 +1603,14 @@ test('zero-yield true exhaustion persists unresolved observations in a terminal 
   assert.equal(result.manifest.candidate_count, 0);
   assert.equal(result.manifest.archive.unresolved_count, 1);
   assert.equal(trashIndex(await loadTrash(root)).size, 1);
+  const stage1DecisionsText = await readFile(path.join(root, result.manifest.stage1_decisions.path), 'utf8');
+  assert.deepEqual(validateCandidateBatch({ manifest: result.manifest, candidatesText: result.candidatesText, stage1DecisionsText }), []);
+  const emptyArchive = structuredClone(result.manifest);
+  emptyArchive.archive.unresolved_count = 0;
+  emptyArchive.archive.unresolved_sha256 = sha256Hex('[]');
+  assert.ok(validateCandidateBatch({ manifest: emptyArchive, candidatesText: result.candidatesText, stage1DecisionsText })
+    .some((error) => /exhausted Stage 1 results must preserve a source observation/u.test(error)),
+  'the shared validator refuses an exhausted zero-row result with no unresolved or excluded source observations');
   const exclusions = await buildExclusionManifest([path.join(root, 'data/candidates/C000001/candidates.jsonl')], { repositoryDirectory: root, cachePaths: cache.cachePaths });
   assert.deepEqual(exclusions.lemmas, []);
   assert.equal(exclusions.source_artifacts.length, 2, 'an exhausted zero-row source stays bound and adds no guessed lemma');

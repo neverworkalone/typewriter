@@ -252,6 +252,10 @@ export function validateLemmaCandidateBatch({ manifest, candidatesText, maxUnres
   }
   if (compact && manifest.status === 'exhausted' && (manifest.candidate_count !== 0 || manifest.observation_count !== 0
     || manifest.production?.exhausted !== true)) errors.push('exhausted Stage 1 results require zero candidates/observations and proven source exhaustion');
+  if (compact && manifest.status === 'exhausted'
+    && ![manifest.archive?.unresolved_count, manifest.archive?.excluded_count].some((count) => Number.isSafeInteger(count) && count > 0)) {
+    errors.push('exhausted Stage 1 results must preserve a source observation in the unresolved archive or excluded ledger');
+  }
   const selection = manifest.selection;
   if (!isPlainObject(selection) || Object.keys(selection).sort().join() !== 'bound,deferred_lemma_count,eligible_lemma_count'
     || !Number.isInteger(selection.bound) || selection.bound < 1
@@ -321,6 +325,10 @@ function validateCompactMetadata(manifest, ensemble, details) {
     || !isSha256(manifest.stage1_decisions.sha256)) errors.push('candidate manifest: invalid stage1 decisions reference');
   if (manifest.production !== undefined) {
     const production = manifest.production;
+    if (isPlainObject(production) && production.unrepresentable_proposal_count !== undefined
+      && (!Number.isSafeInteger(production.unrepresentable_proposal_count) || production.unrepresentable_proposal_count < 0)) {
+      errors.push('candidate manifest: production.unrepresentable_proposal_count must be a nonnegative safe integer');
+    }
     if (!isPlainObject(production) || production.contract !== 'lexical-factory-refill-v1'
       || production.target !== manifest.selection?.bound || !Number.isSafeInteger(production.pages) || production.pages < 1
       || !Number.isSafeInteger(production.visited_proposal_count) || production.visited_proposal_count < 1

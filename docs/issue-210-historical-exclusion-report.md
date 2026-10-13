@@ -247,7 +247,7 @@ Every path below is hashed in the machine inventory. The inventory preserves eac
 | `data/batches/m5-9-preimport-inventory.json` | `08716ca1ec9d58c0f54c99773421944792589763cf33f23c0a6ec539c8164120` |
 | `data/canonical/factory-C000001-a1.jsonl` | `d3f832e45417e6bf6151645f7c618538f210214b8e7ae6df7bd6d49f491b767c` |
 | `data/canonical/factory-C000002-a2.jsonl` | `be6ba8be2a8489e5733ae15da8c661459837fddf16d3d4abf5253f6498937a72` |
-| `data/canonical/factory-C000003-a1.jsonl` | `50d7c13ee4ffc9034031b7f9920cbe976bbc8a590940bb374a1af264e3f1e77e` |
+| `data/canonical/factory-C000003-a1.jsonl` | `6d22292b69e936e0e925dbe05e37933643bf0177c8cb04d371404f8dc950227f` |
 | `data/canonical/issue-204-corpus-pilot.jsonl` | `860e30410f38849c0f0e18a9f9e569911f9a427dddb017a4001df1db7be85ff6` |
 | `data/canonical/issue-211-bounded-recovery.jsonl` | `9812f0a51db22914c11b82690c7dcda8c6a88b4e956e19d941a3f10aed05b4ee` |
 | `data/canonical/issue-219-m9-a-recovery.jsonl` | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |
@@ -257,10 +257,10 @@ Every path below is hashed in the machine inventory. The inventory preserves eac
 | `data/canonical/issue-222-m9-d-corpus-batch-01.jsonl` | `fa090030ac98f3540c7413dc405020ae18e774d392692651a35c978f90313a8f` |
 | `data/canonical/issue-222-m9-d-corpus-batch-02.jsonl` | `2985ea90bb600f8067c149beb644c3a70868b92a484c6026380a4f09deed3899` |
 | `data/canonical/issue-222-m9-d-corpus-batch-03.jsonl` | `8d8dbcea208b570693e79ec2b5320e5d335803280d62d7f7082e121b63829f21` |
-| `data/canonical/issue-222-m9-d-corpus-batch-04.jsonl` | `76968ba7a46e782820f87d10804ca7cd55dcbb5f291114ae9f06c0ce9965d715` |
+| `data/canonical/issue-222-m9-d-corpus-batch-04.jsonl` | `8540f5451f02a1d73e26452b75e54f03f160aea1cbfd09ce82673211bbb72736` |
 | `data/canonical/issue-222-m9-d-corpus-batch-05.jsonl` | `ebb39540b9a13292cfbadf03b01124ba555406634d299036fddd7b6a689ae26d` |
 | `data/canonical/issue-222-m9-d-corpus-batch-06.jsonl` | `efd031e59c9f11231c58e5aba9782554709e153785c37472543aeda7a7b28c48` |
-| `data/canonical/issue-222-m9-d-corpus-batch-07.jsonl` | `7f691f5d75476978ac4a765161b4176e756d1d1da80367f30bba9ccb25790b36` |
+| `data/canonical/issue-222-m9-d-corpus-batch-07.jsonl` | `8af2d81782ff7952baa6c20f6af74d03331434bc9364f079c8637d8ab8dcbd5d` |
 | `data/canonical/issue-222-m9-d-corpus-batch-08.jsonl` | `1d75362cbb4e45dce4c96d6c49fe268cc964ffe911f0bb94781b9610f43240d2` |
 | `data/canonical/issue-222-m9-d-historical-batch-01.jsonl` | `123a8782f82c55074c94b238792da5885a47ec4f6c3af9d028f7dfd8dd461d0b` |
 | `data/canonical/issue-223-m9-e-corpus-batch-01.jsonl` | `bb7cf7809b8a00168bb48986e468c852de0eea7d5a497fabbfbea700c0317dba` |
@@ -284,7 +284,7 @@ Every path below is hashed in the machine inventory. The inventory preserves eac
 | `data/canonical/m5-11-expansion.jsonl` | `5f770252c3b36b6cf2085935a5f28a3de145383ef59fdea143d82139399ee6d0` |
 | `data/canonical/m5-12a-expansion.jsonl` | `ccadec6c0d4cbe0bf95167ce50c203db76f3a8d184aea97a1441e4e4a3003a0c` |
 | `data/canonical/m5-13-expansion.jsonl` | `cdb8c86ae6df2a78298368eecc662951c8c8f21407f9bc3b305d19c52541b99d` |
-| `data/canonical/m5-14-expansion.jsonl` | `77f4e1343f795d671a3d2157b589130ef086a4fbe609985be7b3311aa2ab5163` |
+| `data/canonical/m5-14-expansion.jsonl` | `9e4dcb520273fda89d34e85e739aedf39e91c39fa8a3bf54cb79fd54874a7bca` |
 | `data/canonical/m5-15-expansion.jsonl` | `bbc131b8562dd03cdddaf5062e5037ba83540c4072ffa41588d25aa11f4517b2` |
 | `data/canonical/m5-3-calibration.jsonl` | `b810f11e4fccb97c8015d691aed529b3db1d6574036a4f98906ce411d8640f5d` |
 | `data/canonical/m5-5-recalibration.jsonl` | `1b3775988207d8c13129d63a03400e5c788d65a9ad481a803f5577d292bdec1c` |
@@ -293,7 +293,7 @@ Every path below is hashed in the machine inventory. The inventory preserves eac
 | `data/canonical/pilot.jsonl` | `25c90876071e6ab482d2d71e6dd2f2b5addfbece59a19017b52be1689e350eb5` |
 | `data/inventory/m5-target-promotions.jsonl` | `07d623ce84afca980f957eae4497d29ac847cc8de7999c0f8278a5cc760bef4a` |
 | `data/inventory/m5-target-seed.json` | `6c580008269555ff1f3227a2e1d1ec1732066d6e428be119c7d1deddf02d742a` |
-| `data/validation/canonical-semantic-decision-source.json` | `a6b9c474e22b595aa634fcd06ce41c7a7151ec97e86cfdfac86661f8f6925ac0` |
+| `data/validation/canonical-semantic-decision-source.json` | `d99c6330f84a341a9b0822489a4c1b901d9ab5cd0f5425135d1a0553e2370875` |
 | `data/validation/issue-219-m9-lexical-batch-report.json` | `4d3333e8aa9ba31d0b29c269dad1f5753febdb2935944051e9544699e58bfee1` |
 | `data/validation/issue-220-m9-b-checkpoint-report.json` | `6a557d3f7e777d8751c11aaa68fa3bc654e2b2f2e50f9ec0f78199901168b3fa` |
 | `data/validation/m6-2-inflection-exceptions.json` | `0c042487df854df06aecd72f32bafb08d79235e7ad7628641cdc9194979886b7` |
