@@ -101,11 +101,24 @@ lockfile, and `package-lock.json` must not be regenerated. From a clean clone:
     pnpm run build
     TYPEWRITER_ZIP_DIR=/tmp/typewriter-package pnpm run package
 
-For every newly created Git worktree, run one command; pnpm reuses the
-machine-wide content-addressed store and only links a worktree-local
-`node_modules`:
+For a newly created Codex worktree that does not already have the required
+dependencies, run this from the repository root. It uses only the prepared
+machine-local store and creates an independent `node_modules` for this worktree:
 
-    pnpm install --frozen-lockfile --prefer-offline
+    corepack pnpm install --offline --frozen-lockfile --ignore-scripts \
+      --store-dir "$HOME/.cache/typewriter/pnpm-store"
+
+Skip the install when the worktree already has its required dependencies; do not
+symlink another worktree's `node_modules`. The shared store is already prepared
+for the current lockfile. If a changed lockfile refers to missing artifacts,
+report the specific cache miss. Only the owner or an explicitly authorized
+one-time online frozen install may replenish the store. To prepare or refresh
+the store, run this one-time command:
+
+    corepack pnpm install --frozen-lockfile --ignore-scripts \
+      --store-dir "$HOME/.cache/typewriter/pnpm-store"
+
+Do not use that online command as the standard worktree setup path.
 
 The default test command runs the normal CI gate, including repository
 validation, regression and unit tests, product builds, and product output

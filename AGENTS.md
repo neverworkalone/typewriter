@@ -246,6 +246,24 @@ Preserve unrelated local changes. Use a separate worktree when necessary.
 
 This rule applies when starting a new issue, not when continuing an existing issue or addressing feedback on its PR.
 
+## Local worktree dependencies
+
+For a newly created Codex worktree that does not already have the required
+dependencies, run this from the repository root:
+
+```sh
+corepack pnpm install --offline --frozen-lockfile --ignore-scripts \
+  --store-dir "$HOME/.cache/typewriter/pnpm-store"
+```
+
+The shared store is machine-local and already contains the current lockfile's
+packages. Skip the install when the worktree already has the required
+dependencies. Each worktree keeps its own `node_modules`; do not symlink another
+worktree's directory. If a lockfile change causes an offline cache miss, report
+the specific missing artifact. Only the owner or an explicitly authorized
+one-time online frozen install may replenish the shared store; see the
+[development setup](README.md#development) for its command.
+
 ### Generalize lexical validation
 
 Lexical quality rules discovered while working on one batch or word should

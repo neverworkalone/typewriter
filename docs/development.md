@@ -5,11 +5,25 @@
 The complete M2 toolchain uses the built-in `node:sqlite` module and the vendored
 SQLite WASM runtime, and the product uses Vite 8.2.2. Together they require
 Node.js 24.19.0 or newer (Node 24 LTS); CI uses Node.js 24.x.
-Install the pinned runtime before running the commands:
+From a clean clone, install the pinned dependencies before running the commands:
 
 ```sh
 pnpm install --frozen-lockfile --ignore-scripts
 ```
+
+For a newly created Codex worktree without the required dependencies, use the
+prepared machine-local store from the repository root:
+
+```sh
+corepack pnpm install --offline --frozen-lockfile --ignore-scripts \
+  --store-dir "$HOME/.cache/typewriter/pnpm-store"
+```
+
+Skip this install when the worktree already has its required dependencies. Each
+worktree has its own `node_modules`; do not symlink another worktree's directory.
+If a changed lockfile causes an offline cache miss, report the specific missing
+artifact. Store preparation or refresh requires an owner-authorized one-time
+online frozen install; see [README development setup](../README.md#development).
 
 The product MV3 shell uses Vue 3 with Vite. The two product entrypoints are
 `popup.html` and `options.html`; their Vue source lives under `src/popup/` and
