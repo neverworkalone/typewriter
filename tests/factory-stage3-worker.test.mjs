@@ -1686,6 +1686,23 @@ test('a missing, duplicated, forged, foreign-entry or wrong-POS existing-sense p
   await assert.rejects((await appendSenseScenario({ entryId: 'w753', pairs: (all) => all.map((pair) => ({ ...pair, decision: 'merge' })) })).authority(), rejectsWith('STAGE3_BOUNDARY_EXISTING_PAIR'));
 });
 
+test('the retained base audit follows its inputs: a changed base record is audited again and rejected, and a pass never leaks into the next result', async () => {
+  const first = await appendSenseScenario({ entryId: 'w6468' });
+  const passed = await first.authority();
+  const again = await (await appendSenseScenario({ entryId: 'w6468' })).authority();
+  assert.equal(again.sourceEvent.sha256, passed.sourceEvent.sha256, 'a repeated admission over the same base reproduces the same event');
+  // Same array identity, changed content: the audit must not be answered from the earlier pass.
+  const { canonicalRecords } = await realCanonical();
+  const tampered = structuredClone(canonicalRecords);
+  tampered.find((record) => record.id === 'w6468').senses[0].gloss += ' 변조';
+  await assert.rejects(
+    buildStage3SemanticAuthority({ root: process.cwd(), baseCanonicalRecords: tampered, plan: first.plan, semanticDecisions: { decisions: [first.row] }, semanticDecisionsText: '{}' }),
+    (error) => error instanceof Stage3AdmissionError && error.code === 'STAGE3_BASE_SEMANTIC_AUTHORITY',
+  );
+  // A rejection is not retained: the untouched base still passes afterwards.
+  assert.ok((await first.authority()).sourceObject);
+});
+
 test('a single existing same-POS sense keeps working with the context id alone', async () => {
   const { authority } = await appendSenseScenario({ entryId: 'w6468' });
   assert.ok((await authority()).sourceObject);

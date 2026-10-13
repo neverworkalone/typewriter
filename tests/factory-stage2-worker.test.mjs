@@ -681,17 +681,32 @@ test('the production Git adapter and snapshot loader accept the committed relati
 
   const snapshot = await loadFactorySnapshot({ git, headSha: 'HEAD' });
   assert.equal(snapshot.validated, true);
-  const metadataOnly = { ...git, show: (ref, file) => {
+  // The batched reader must stay interposable: every wrapper reroutes both `show` and `showMany` through its own read.
+  const interposed = (show) => ({ ...git, show, showMany: (ref, files) => new Map(files.map((file) => [file, show(ref, file)])) });
+  const metadataOnly = interposed((ref, file) => {
     assert.equal(file.startsWith('data/candidate-trash/'), false, 'trash is outside Stage 2/3 snapshots');
     return git.show(ref, file);
-  } };
+  });
   assert.equal((await loadFactorySnapshot({ git: metadataOnly, headSha: 'HEAD' })).validated, true);
 
   const withoutPacket = { ...git, listFiles: (ref) => git.listFiles(ref).filter((file) => file !== packets[0]) };
   await assert.rejects(loadFactorySnapshot({ git: withoutPacket, headSha: 'HEAD' }), /has no committed packet file/u);
 
-  const alteredPacket = { ...git, show: (ref, file) => (file === packets[0] ? git.show(ref, file) + ' ' : git.show(ref, file)) };
+  const alteredPacket = interposed((ref, file) => (file === packets[0] ? git.show(ref, file) + ' ' : git.show(ref, file)));
   await assert.rejects(loadFactorySnapshot({ git: alteredPacket, headSha: 'HEAD' }), /does not match its semantic authority event digest/u);
+});
+
+test('the batched blob reader returns exactly what git show returns and fails closed on a missing path', () => {
+  const root = new URL('..', import.meta.url).pathname;
+  const git = createGitRepository({ root });
+  const files = git.listFiles('HEAD').filter((file) => /^data\/(?:canonical|reviews)\//u.test(file)).slice(0, 12);
+  assert.ok(files.length > 1);
+  const many = git.showMany('HEAD', files);
+  assert.deepEqual([...many.keys()], files);
+  for (const file of files) assert.equal(many.get(file), git.show('HEAD', file), file);
+  assert.equal(git.showMany('HEAD', []).size, 0);
+  assert.throws(() => git.showMany('HEAD', [files[0], 'data/canonical/does-not-exist.jsonl']), /does-not-exist\.jsonl failed/u);
+  assert.throws(() => git.showMany('no-such-ref', files), /no-such-ref/u);
 });
 
 test('every Git subprocess call that reads whole committed files passes the shared buffer limit, which exceeds the largest production blob', () => {

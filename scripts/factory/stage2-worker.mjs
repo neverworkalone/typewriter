@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -39,6 +39,34 @@ function gitRun(root, args, { allowFailure = false } = {}) {
 // Full snapshot files for Stage 3 and explicit factory audits.
 export const FACTORY_SNAPSHOT_PATHSPEC = ['data/candidates', 'data/reviews', 'data/canonical', 'data/relation-backfill', 'data/validation/canonical-semantic-decision-source.json', 'data/validation/canonical-semantic-decision-source.shards'];
 
+// Reads many blobs of one ref through a single `git cat-file --batch` process instead of one `git show` per file. Content is
+// byte-identical to `git show ref:file`; a missing path fails closed like `git show` does.
+export function gitShowMany(root, ref, files) {
+  const contents = new Map();
+  if (files.length === 0) return contents;
+  const result = spawnSync('git', ['cat-file', '--batch'], {
+    cwd: root, input: files.map((file) => `${ref}:${file}\n`).join(''), stdio: ['pipe', 'pipe', 'pipe'], maxBuffer: GIT_MAX_BUFFER,
+  });
+  if (result.error || result.status !== 0) {
+    throw new Error(`git cat-file --batch ${ref} failed: ${result.error?.message ?? String(result.stderr ?? '').trim()}`);
+  }
+  const output = result.stdout;
+  let position = 0;
+  for (const file of files) {
+    const lineEnd = output.indexOf(0x0a, position);
+    const header = lineEnd < 0 ? '' : output.subarray(position, lineEnd).toString('utf8');
+    const match = header.match(/^[0-9a-f]+ (\w+) (\d+)$/u);
+    if (!match || match[1] !== 'blob') throw new Error(`git show ${ref}:${file} failed: ${header || 'truncated output'}`);
+    const size = Number(match[2]);
+    const end = lineEnd + 1 + size;
+    if (end >= output.length + 1 || output[end] !== 0x0a) throw new Error(`git show ${ref}:${file} failed: truncated blob`);
+    contents.set(file, output.subarray(lineEnd + 1, end).toString('utf8'));
+    position = end + 1;
+  }
+  if (position !== output.length) throw new Error(`git cat-file --batch ${ref} returned unexpected trailing output`);
+  return contents;
+}
+
 export function createGitRepository({ root = process.cwd() } = {}) {
   return {
     root,
@@ -52,6 +80,7 @@ export function createGitRepository({ root = process.cwd() } = {}) {
       const listing = gitRun(root, ['ls-tree', '-r', '--name-only', ref, '--', ...pathspec]);
       return listing ? listing.split('\n').filter(Boolean) : [];
     },
+    showMany(ref, files) { return gitShowMany(root, ref, files); },
     show(ref, file) {
       return execFileSync('git', ['show', ref + ':' + file], {
         cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: GIT_MAX_BUFFER,
@@ -205,27 +234,33 @@ export async function loadFactorySnapshot({ git, headSha }) {
   const sourceFiles = new Map();
   const canonicalEntries = [];
   const semanticAuthorityPath = 'data/validation/canonical-semantic-decision-source.json';
-  if (files.includes(semanticAuthorityPath)) sourceFiles.set(semanticAuthorityPath, git.show(headSha, semanticAuthorityPath));
-  for (const file of files.filter((name) => name.startsWith('data/validation/canonical-semantic-decision-source.shards/'))) sourceFiles.set(file, git.show(headSha, file));
   for (const [batchId, paths] of candidateFiles) {
     if (![2, 3].includes(paths.size) || !paths.has('manifest.json') || !paths.has('candidates.jsonl')) {
       throw new Stage2WorkerError(batchId + ' has an incomplete candidate artifact set');
     }
-    for (const file of paths.values()) sourceFiles.set(file, git.show(headSha, file));
   }
   for (const [batchId, paths] of reviewFiles) {
     const expected = ['manifest.json', 'decisions.jsonl', 'semantic-decisions.json', 'intake-handoff.json'];
     if (paths.size !== expected.length || expected.some((name) => !paths.has(name))) {
       throw new Stage2WorkerError(batchId + ' has an incomplete review artifact set');
     }
-    for (const file of paths.values()) sourceFiles.set(file, git.show(headSha, file));
   }
-  for (const file of backfillPacketPaths.sort()) sourceFiles.set(file, git.show(headSha, file));
-  for (const file of canonicalPaths.sort()) {
-    const text = git.show(headSha, file);
-    sourceFiles.set(file, text);
-    canonicalEntries.push(...parseCanonicalEntries(text, file));
-  }
+  // One batched read in the original read order; an adapter without showMany reads file by file.
+  const canonicalSorted = canonicalPaths.sort();
+  const backfillSorted = backfillPacketPaths.sort();
+  const readOrder = [
+    ...(files.includes(semanticAuthorityPath) ? [semanticAuthorityPath] : []),
+    ...files.filter((name) => name.startsWith('data/validation/canonical-semantic-decision-source.shards/')),
+    ...[...candidateFiles.values()].flatMap((paths) => [...paths.values()]),
+    ...[...reviewFiles.values()].flatMap((paths) => [...paths.values()]),
+    ...backfillSorted,
+    ...canonicalSorted,
+  ];
+  const shown = typeof git.showMany === 'function'
+    ? git.showMany(headSha, readOrder)
+    : new Map(readOrder.map((file) => [file, git.show(headSha, file)]));
+  for (const file of readOrder) sourceFiles.set(file, shown.get(file));
+  for (const file of canonicalSorted) canonicalEntries.push(...parseCanonicalEntries(sourceFiles.get(file), file));
 
   const report = {};
   const root = await mkdtemp(path.join(tmpdir(), 'typewriter-stage2-master-'));
