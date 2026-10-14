@@ -10,6 +10,7 @@ import {
   addToSenseIndex,
   convertItem,
   createSenseIndex,
+  finalizeSenseIndex,
   flattenSenses,
   mapPos,
   readStdictItems,
@@ -18,11 +19,13 @@ import {
   surfaceForms,
 } from './convert.mjs';
 
-export const SELECTION_VERSION = 'stdict-pilot-selection-v1';
+export const SELECTION_VERSION = 'stdict-selection-v2';
+/** Hash order of the 1,000-record pilot; the first shard keeps every pilot record that the inclusion policy still admits. */
+const PILOT_SELECTION_VERSION = 'stdict-pilot-selection-v1';
 const DEFAULT_SOURCE = path.join(os.homedir(), '.cache/typewriter/dict/stdict');
 
 const hashOf = (targetCode) => createHash('sha256')
-  .update(`${SELECTION_VERSION}:${targetCode}`)
+  .update(`${PILOT_SELECTION_VERSION}:${targetCode}`)
   .digest('hex');
 
 /** One compact summary per source entry; everything selection needs. */
@@ -152,20 +155,59 @@ export function selectPilot(summaries, { index, count = STDICT_SHARD_SIZE }) {
   return taken;
 }
 
-export async function buildPilot({ sourceDirectory = DEFAULT_SOURCE, count = STDICT_SHARD_SIZE } = {}) {
+const shardName = (number) => `stdict-${String(number).padStart(4, '0')}.jsonl`;
+
+/**
+ * Deterministic shard membership from the source and the inclusion policy alone.
+ *   shard 1  = pilot records the policy still admits (identity and shard are kept), refilled with the lowest
+ *              unassigned eligible target_codes up to the shard size
+ *   shard n  = the remaining eligible target_codes in ascending order, `STDICT_SHARD_SIZE` per file
+ * A loaded record is never moved: a later policy-compatible rebuild yields the same membership.
+ */
+export function assignShards({ eligibleCodes, pilotCodes, shardSize = STDICT_SHARD_SIZE }) {
+  const eligible = new Set(eligibleCodes);
+  const first = [...pilotCodes].filter((code) => eligible.has(code)).sort((left, right) => left - right);
+  const firstSet = new Set(first);
+  const ascending = [...eligible].sort((left, right) => left - right);
+  const rest = [];
+  for (const code of ascending) {
+    if (firstSet.has(code)) continue;
+    if (first.length < shardSize) {
+      first.push(code);
+      firstSet.add(code);
+    } else {
+      rest.push(code);
+    }
+  }
+  first.sort((left, right) => left - right);
+  const shards = [first];
+  for (let at = 0; at < rest.length; at += shardSize) shards.push(rest.slice(at, at + shardSize));
+  return shards;
+}
+
+/** Reads the whole source once and returns what shard assignment and conversion need. */
+export async function loadStdictSource({ sourceDirectory = DEFAULT_SOURCE } = {}) {
   const index = createSenseIndex();
   const summaries = [];
-  const items = new Map();
+  const itemsByCode = new Map();
   const files = await readStdictItems(sourceDirectory, (item) => {
     addToSenseIndex(index, item);
     summaries.push(summarize(item));
+    itemsByCode.set(item.target_code, item);
   });
-  const selection = selectPilot(summaries, { index, count });
-  await readStdictItems(sourceDirectory, (item) => {
-    if (selection.has(item.target_code)) items.set(item.target_code, item);
-  });
-  const codes = [...selection.keys()].sort((left, right) => left - right);
-  const isSelected = (code) => selection.has(code);
+  finalizeSenseIndex(index);
+  const eligibleCodes = [...index.entries]
+    .filter(([, entry]) => entry.included > 0 && !entry.held)
+    .map(([code]) => code);
+  const pilotCodes = [...selectPilot(summaries, { index, count: STDICT_SHARD_SIZE }).keys()];
+  return {
+    index, summaries, itemsByCode, sourceFiles: files.length, sourceEntryCount: summaries.length,
+    shards: assignShards({ eligibleCodes, pilotCodes }),
+  };
+}
+
+/** Converts the given target_codes in order; `isSelected` says which relation targets are loaded. */
+export function convertCodes(source, codes, { isSelected }) {
   const lines = [];
   const records = [];
   const held = [];
@@ -173,16 +215,8 @@ export async function buildPilot({ sourceDirectory = DEFAULT_SOURCE, count = STD
   const markupReport = [];
   const conversions = [];
   for (const code of codes) {
-    const item = items.get(code);
-    const { record, report } = convertItem(item, { index, isSelected });
-    if (report.unsupportedPos.length > 0) {
-      held.push({ target_code: code, word_unit: item.word_info.word_unit, reason: `unsupported part of speech ${JSON.stringify(report.unsupportedPos.map(({ pos }) => pos))}` });
-      continue;
-    }
-    if (report.unknownMarkup.length > 0) {
-      held.push({ target_code: code, word_unit: item.word_info.word_unit, reason: `unknown definition markup in ${report.unknownMarkup.join(', ')}` });
-      continue;
-    }
+    const item = source.itemsByCode.get(code);
+    const { record, report } = convertItem(item, { index: source.index, isSelected });
     try {
       validateCanonicalRecord(record);
     } catch (error) {
@@ -196,23 +230,26 @@ export async function buildPilot({ sourceDirectory = DEFAULT_SOURCE, count = STD
     conversions.push({
       target_code: code,
       id: record.id,
-      stratum: selection.get(code),
       word_unit: item.word_info.word_unit,
       source_pos: [...new Set((item.word_info.pos_info ?? []).map((posInfo) => posInfo.pos ?? '품사 없음'))],
       sense_codes: flattenSenses(item).map(({ sense }) => Number(sense.sense_code)),
+      kept_senses: record.senses.length,
+      excluded_senses: report.excluded.length,
     });
   }
-  return {
-    sourceFiles: files.length,
-    sourceEntryCount: summaries.length,
-    shard: `${lines.join('\n')}\n`,
-    records,
-    held,
-    relationReport,
-    markupReport,
-    conversions,
-    selection,
-  };
+  return { shard: lines.length ? `${lines.join('\n')}\n` : '', records, held, relationReport, markupReport, conversions };
+}
+
+/**
+ * Builds shards 1..`through`. Relations are only emitted to targets inside the loaded shards; a target that
+ * is eligible but not loaded yet is `out-of-sample` and is added to its source record by a later `through`.
+ */
+export async function buildShards({ source, through = 1 }) {
+  const loaded = new Set(source.shards.slice(0, through).flat());
+  return source.shards.slice(0, through).map((codes, position) => ({
+    name: shardName(position + 1),
+    ...convertCodes(source, codes, { isSelected: (code) => loaded.has(code) }),
+  }));
 }
 
 export function countBy(rows, keyOf) {
@@ -224,31 +261,33 @@ export function countBy(rows, keyOf) {
   return Object.fromEntries(Object.entries(counts).sort(([left], [right]) => (left < right ? -1 : 1)));
 }
 
-export function provenanceManifest(result, { shardName }) {
+export function provenanceManifest(result, { source }) {
   const sha256 = createHash('sha256').update(result.shard).digest('hex');
   return {
-    contract: 'stdict-shard-provenance-v1',
+    contract: 'stdict-shard-provenance-v2',
     selection_version: SELECTION_VERSION,
     source: {
       dictionary: '표준국어대사전 (STDICT)',
-      file_count: result.sourceFiles,
-      entry_count: result.sourceEntryCount,
+      file_count: source.sourceFiles,
+      entry_count: source.sourceEntryCount,
     },
     id_contract: {
       record: 'w<target_code>, zero-padded to the three digits the canonical id pattern requires',
-      sense: '<record id>-s<n>, n = 1-based source order of the sense within the entry',
-      note: 'Existing records and sense numbers never change; future shards append the remaining target_codes in ascending order.',
+      sense: '<record id>-s<n>, n = 1-based source order of the sense within the entry; a policy-excluded sense leaves a gap and is never renumbered',
+      sense_codes: 'every original sense_code in source order; the suffix n of a kept sense id indexes into it',
+      note: 'A loaded record keeps its id, shard and sense numbers; later shards take the remaining eligible target_codes in ascending order.',
     },
-    shard: shardName,
+    shard: result.name,
     shard_sha256: sha256,
     record_count: result.records.length,
     held_count: result.held.length,
     summary: {
       by_word_unit: countBy(result.conversions, (row) => row.word_unit),
-      by_stratum: countBy(result.conversions, (row) => row.stratum),
       by_source_pos: countBy(result.conversions, (row) => row.source_pos.join('/')),
       relations_by_status: countBy(result.relationReport, (row) => `${row.source_type}:${row.status}`),
       definition_markup_cleaned: countBy(result.markupReport, (row) => row.markup),
+      kept_senses: result.conversions.reduce((sum, row) => sum + row.kept_senses, 0),
+      excluded_senses: result.conversions.reduce((sum, row) => sum + row.excluded_senses, 0),
     },
     records: result.conversions.map(({ target_code, id, sense_codes }) => ({ target_code, id, sense_codes })),
   };
@@ -261,28 +300,27 @@ async function main() {
     return at >= 0 ? args[at + 1] : fallback;
   };
   const outDirectory = path.resolve(option('out', 'data/canonical'));
-  const manifestPath = path.resolve(option('manifest', 'data/provenance/stdict-0001.json'));
-  const shardName = option('name', 'stdict-0001.jsonl');
-  const result = await buildPilot({ sourceDirectory: option('source', DEFAULT_SOURCE) });
-  const manifest = provenanceManifest(result, { shardName });
-  const manifestText = `${JSON.stringify(manifest, null, 1)}\n`;
+  const provenanceDirectory = path.resolve(option('provenance', 'data/provenance'));
+  const through = Number(option('through', '1'));
+  const source = await loadStdictSource({ sourceDirectory: option('source', DEFAULT_SOURCE) });
+  const built = await buildShards({ source, through });
+  const outputs = built.flatMap((result) => [
+    [path.join(outDirectory, result.name), result.shard],
+    [path.join(provenanceDirectory, result.name.replace(/\.jsonl$/u, '.json')), `${JSON.stringify(provenanceManifest(result, { source }), null, 1)}\n`],
+  ]);
   if (args.includes('--verify')) {
-    const current = await readFile(path.join(outDirectory, shardName), 'utf8');
-    const currentManifest = await readFile(manifestPath, 'utf8');
-    if (current !== result.shard || currentManifest !== manifestText) {
-      throw new Error('regenerated STDICT shard or provenance differs from the committed files');
+    for (const [file, text] of outputs) {
+      if (await readFile(file, 'utf8').catch(() => null) !== text) {
+        throw new Error(`regenerated STDICT output differs from the committed file: ${path.relative('.', file)}`);
+      }
     }
-    console.log(`verified ${shardName}: ${result.records.length} records, byte-identical`);
+    console.log(`verified ${built.length} shard(s), ${built.reduce((sum, result) => sum + result.records.length, 0)} records, byte-identical`);
     return;
   }
   await mkdir(outDirectory, { recursive: true });
-  await mkdir(path.dirname(manifestPath), { recursive: true });
-  await writeFile(path.join(outDirectory, shardName), result.shard);
-  await writeFile(manifestPath, manifestText);
-  if (option('report')) {
-    await writeFile(path.resolve(option('report')), `${JSON.stringify({ held: result.held, relations: result.relationReport }, null, 1)}\n`);
-  }
-  console.log(`wrote ${shardName}: ${result.records.length} records, ${result.held.length} held`);
+  await mkdir(provenanceDirectory, { recursive: true });
+  for (const [file, text] of outputs) await writeFile(file, text);
+  console.log(`wrote ${built.length} shard(s): ${built.map((result) => `${result.name} ${result.records.length}`).join(', ')}; ${source.shards.length} shard(s) in total`);
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

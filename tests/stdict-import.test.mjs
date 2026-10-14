@@ -14,6 +14,7 @@ import {
   cleanDefinition,
   convertItem,
   createSenseIndex,
+  finalizeSenseIndex,
   flattenSenses,
   mapPos,
   recordIdFor,
@@ -22,7 +23,8 @@ import {
   surfaceForms,
 } from '../scripts/stdict/convert.mjs';
 import { SearchSession } from '../src/domain/search-session.js';
-import { buildPilot } from '../scripts/stdict/build-shard.mjs';
+import { assignShards, buildShards, loadStdictSource, provenanceManifest } from '../scripts/stdict/build-shard.mjs';
+import { classifySense } from '../scripts/stdict/policy.mjs';
 import { readCanonicalRecords, validateCanonicalRecord } from '../scripts/validate/canonical-jsonl.mjs';
 import { validateDatasetRecords } from '../scripts/validate/dataset-integrity.mjs';
 
@@ -149,7 +151,10 @@ test('official relations bind by sense_code and report every non-converted statu
 test('converted fixture passes the schema, dataset gate, SQLite build and homograph/relation navigation', async () => {
   const selected = new Set(FIXTURE.map(({ target_code: code }) => code));
   const context = fixtureContext(selected);
-  const records = FIXTURE.map((source) => convertItem(source, context).record);
+  finalizeSenseIndex(context.index);
+  const converted = FIXTURE.map((source) => convertItem(source, context).record);
+  assert.equal(converted[4], null, 'an affix-only entry is not a record');
+  const records = converted.filter(Boolean);
   for (const record of records) validateCanonicalRecord(record);
   const directory = await mkdtemp(path.join(tmpdir(), 'typewriter-stdict-'));
   try {
@@ -160,13 +165,13 @@ test('converted fixture passes the schema, dataset gate, SQLite build and homogr
     validateDatasetRecords(canonical.records, { lexicalQuality: { blocking_finding_count: 0 } });
     const outputPath = path.join(directory, 'dictionary.sqlite');
     const summary = await buildDictionary({ inputDirectory: canonicalDirectory, outputPath, allowDirty: true });
-    assert.equal(summary.recordCount, FIXTURE.length);
+    assert.equal(summary.recordCount, FIXTURE.length - 1);
     const database = new DatabaseSync(outputPath, { readOnly: true });
     try {
       const homographs = findRecordsBySearchTerm(database, '각본').matches.map(({ id }) => id).sort();
       assert.deepEqual(homographs, ['w100', 'w101']);
       assert.deepEqual(findRecordsBySearchTerm(database, '각설이 타령').matches.map(({ id }) => id), ['w103']);
-      assert.deepEqual(findRecordsBySearchTerm(database, '간').matches.map(({ id }) => id), ['w104']);
+      assert.deepEqual(findRecordsBySearchTerm(database, '간').matches, [], 'the affix meaning is not searchable');
       const record = getRecord(database, 'w100');
       const [direct] = record.senses[0].relations;
       assert.equal(direct.target, 'w101');
@@ -181,12 +186,13 @@ test('converted fixture passes the schema, dataset gate, SQLite build and homogr
   }
 });
 
-test('committed STDICT pilot shard keeps its identity and provenance contract', async () => {
+test('committed STDICT shard keeps its identity, policy and provenance contract', async () => {
   const text = await readFile(SHARD, 'utf8');
   const lines = text.split('\n');
   assert.equal(lines.pop(), '');
   assert.equal(lines.length, 1000);
   const provenance = JSON.parse(await readFile(PROVENANCE, 'utf8'));
+  assert.equal(provenance.contract, 'stdict-shard-provenance-v2');
   assert.equal(provenance.shard_sha256, createHash('sha256').update(text).digest('hex'));
   assert.equal(provenance.record_count, 1000);
   assert.equal(provenance.held_count, 0);
@@ -196,13 +202,15 @@ test('committed STDICT pilot shard keeps its identity and provenance contract', 
   assert.deepEqual(records.map(({ id }) => Number(id.slice(1))), records.map(({ id }) => Number(id.slice(1))).sort((a, b) => a - b));
   provenance.records.forEach((row, position) => {
     const record = records[position];
-    assert.equal(record.id, `w${row.target_code}`);
+    assert.equal(record.id, `w${String(row.target_code).padStart(3, '0')}`);
     assert.equal(record.id, row.id);
-    assert.equal(record.senses.length, row.sense_codes.length);
-    record.senses.forEach((sense, senseIndex) => assert.equal(sense.id, `${record.id}-s${senseIndex + 1}`));
+    // Suffixes index the original sense_codes; a policy-excluded sense leaves a gap, never a renumbering.
+    const suffixes = record.senses.map((sense) => Number(sense.id.slice(`${record.id}-s`.length)));
+    assert.ok(suffixes.every((suffix, at) => suffix >= 1 && suffix <= row.sense_codes.length && (at === 0 || suffix > suffixes[at - 1])));
   });
   for (const record of records) {
     for (const sense of record.senses) {
+      assert.ok(!['particle', 'ending', 'affix'].includes(sense.pos), `${sense.id} is a grammatical element`);
       for (const relation of sense.relations ?? []) {
         assert.ok(['direct', 'antonym'].includes(relation.type));
         assert.equal(Object.hasOwn(relation, 'relevance'), false);
@@ -211,16 +219,13 @@ test('committed STDICT pilot shard keeps its identity and provenance contract', 
       }
     }
   }
-  const classes = new Set(provenance.records.length && Object.keys(provenance.summary.by_stratum));
-  for (const required of ['verb', 'adjective', 'adverb', 'noun', 'phrase', 'proverb', 'idiom', 'multi-pos',
-    'homograph-group', 'particle', 'ending', 'affix', 'pos-less-word', 'synonym-pair', 'antonym-pair']) {
-    assert.ok(classes.has(required), `pilot covers ${required}`);
-  }
 });
 
-test('pilot selection regenerates byte-identically from the source download', { skip: await access(SOURCE).then(() => false, () => 'STDICT source download is not available') }, async () => {
-  const result = await buildPilot({ sourceDirectory: SOURCE });
-  assert.equal(result.shard, await readFile(SHARD, 'utf8'));
+test('shard and provenance regenerate byte-identically from the source download', { skip: await access(SOURCE).then(() => false, () => 'STDICT source download is not available') }, async () => {
+  const source = await loadStdictSource({ sourceDirectory: SOURCE });
+  const [first] = await buildShards({ source, through: 1 });
+  assert.equal(first.shard, await readFile(SHARD, 'utf8'));
+  assert.equal(`${JSON.stringify(provenanceManifest(first, { source }), null, 1)}\n`, await readFile(PROVENANCE, 'utf8'));
 });
 
 test('licensed-source records are exempt from authored editorial heuristics but not structure', async () => {
@@ -401,4 +406,102 @@ test('search aliases coexist with exact lemmas, shared targets, same-record matc
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
+});
+
+// Inclusion policy (Issue #678): decided per source sense, never per target_code or by string shape alone.
+const polity = (word, sourcePos, definition = '뜻풀이.', wordUnit = '단어') => classifySense({ word, wordUnit, sourcePos, definition });
+
+test('the inclusion policy excludes grammatical elements and roots by sense, keeping independent words', () => {
+  for (const [pos, reason] of [['조사', 'particle'], ['어미', 'ending'], ['접사', 'affix']]) {
+    assert.deepEqual(polity('-가', pos), { include: false, reason });
+  }
+  // Independent words and expressions stay, including a word whose spelling merely contains `-님` or `-다`.
+  for (const pos of ['명사', '의존 명사', '대명사', '수사', '동사', '보조 동사', '형용사', '보조 형용사', '부사', '관형사', '감탄사']) {
+    assert.equal(polity('스님', pos).include, true, pos);
+  }
+  for (const unit of ['구', '속담', '관용구']) assert.equal(polity('각설이^타령', '구', '노래.', unit).include, true);
+  assert.deepEqual(polity('선생님', '명사'), { include: true });
+  // A POS-less sense is a root, a bound form, or an independent unclassified expression.
+  assert.deepEqual(polity('나직', '품사 없음', '‘나직하다’의 어근.'), { include: false, reason: 'root', rootTarget: '나직하다' });
+  assert.deepEqual(polity('가03', undefined, '‘가하다01「2」’의 어근.'), { include: false, reason: 'root', rootTarget: '가하다01' });
+  assert.deepEqual(polity('-라면서', '품사 없음', '‘-라고 하면서’가 줄어든 말.'), { include: false, reason: 'bound-form' });
+  assert.deepEqual(polity('어쨌건', '품사 없음', '‘어찌하였건’이 줄어든 말.'), { include: true });
+  assert.deepEqual(polity('그러-면', '품사 없음', '‘그리하면’이 줄어든 말.'), { include: true });
+  // Unsupported explicit POS and unknown markup are held, not reclassified.
+  assert.equal(polity('새말', '미지원품사').hold, 'unsupported-pos');
+  assert.equal(polity('새말', '명사', '뜻<blink>풀이</blink>').hold, 'unknown-markup');
+});
+
+test('filtering keeps original sense numbers and only drops entries with no admitted sense', () => {
+  const mixed = {
+    target_code: 700,
+    word_info: {
+      word: '가나',
+      word_unit: '단어',
+      pos_info: [
+        { pos: '명사', comm_pattern_info: [{ sense_info: [{ sense_code: 7001, definition: '첫째.' }] }] },
+        { pos: '접사', comm_pattern_info: [{ sense_info: [{ sense_code: 7002, definition: '더하는 말.' }] }] },
+        { pos: '동사', comm_pattern_info: [{ sense_info: [{ sense_code: 7003, definition: '셋째.' }] }] },
+      ],
+    },
+  };
+  const only = item(701, '-나', '단어', [[7011, '더하는 말.'], [7012, '다른 말.']], '접사');
+  const index = createSenseIndex();
+  for (const source of [mixed, only]) addToSenseIndex(index, source);
+  finalizeSenseIndex(index);
+  const { record, report } = convertItem(mixed, { index, isSelected: () => true });
+  assert.deepEqual(record.senses.map(({ id, pos }) => [id, pos]), [['w700-s1', 'noun'], ['w700-s3', 'verb']]);
+  assert.deepEqual(report.excluded, [{ sense: 'w700-s2', reason: 'affix' }]);
+  assert.equal(convertItem(only, { index, isSelected: () => true }).record, null);
+});
+
+test('a root becomes a search alias of its one complete word and is never a record or a guess', () => {
+  const root = (code, word, definition, sourceCode) => item(code, word, '단어', [[sourceCode, definition]], '품사 없음');
+  const source = [
+    item(800, '나직-하다', '단어', [[8001, '소리가 낮다.']], '형용사'),
+    root(801, '나직', '‘나직하다’의 어근.', 8011),
+    item(802, '마땅-하다01', '단어', [[8021, '알맞다.']], '형용사'),
+    item(803, '마땅-하다02', '단어', [[8031, '옳다.']], '형용사'),
+    root(804, '마땅', '‘마땅하다’의 어근.', 8041),
+    root(805, '허공', '‘허공하다’의 어근.', 8051),
+    root(806, '굳', '‘굳하다’의 어근.', 8061),
+    item(807, '굳-하다', '단어', [[8071, '더하는 말.']], '접사'),
+  ];
+  const index = createSenseIndex();
+  for (const entry of source) addToSenseIndex(index, entry);
+  finalizeSenseIndex(index);
+  assert.deepEqual(index.rootReport.map(({ target_code: code, status }) => [code, status]), [
+    [801, 'resolved'], [804, 'no-target'], [805, 'no-target'], [806, 'target-excluded'],
+  ]);
+  const convert = (code) => convertItem(source.find(({ target_code: target }) => target === code), { index, isSelected: () => true });
+  assert.deepEqual(convert(800).record.search_forms, ['나직하다', '나직']);
+  assert.deepEqual(convert(802).record.search_forms, ['마땅하다'], 'an ambiguous root is not linked to either homograph');
+  assert.equal(convert(801).record, null, 'the root itself is no record');
+});
+
+test('a relation to a policy-excluded target is a decided absence, not a pending or broken link', () => {
+  const source = [
+    item(900, '가', '단어', [[9001, '뜻.', [['동의어', 9011], ['동의어', 9021]]]]),
+    item(901, '-나', '단어', [[9011, '뜻.']], '접사'),
+    item(902, '다', '단어', [[9021, '뜻.']]),
+  ];
+  const index = createSenseIndex();
+  for (const entry of source) addToSenseIndex(index, entry);
+  finalizeSenseIndex(index);
+  const status = (loaded) => convertItem(source[0], { index, isSelected: (code) => loaded.has(code) }).report.relations.map((row) => row.status);
+  assert.deepEqual(status(new Set([900, 901, 902])), ['policy-excluded', 'converted']);
+  assert.deepEqual(status(new Set([900])), ['policy-excluded', 'out-of-sample']);
+});
+
+test('shard assignment keeps admitted pilot records, refills the first shard, and never moves a loaded record', () => {
+  const shards = assignShards({ eligibleCodes: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], pilotCodes: [9, 7, 99], shardSize: 4 });
+  assert.deepEqual(shards, [[1, 2, 7, 9], [3, 4, 5, 6], [8, 10]], 'pilot 99 is no longer eligible; its place is refilled');
+  const grown = assignShards({ eligibleCodes: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], pilotCodes: [9, 7, 99], shardSize: 4 });
+  assert.deepEqual(grown.slice(0, 2), shards.slice(0, 2).map((codes, at) => (at === 0 ? codes : codes)), 'earlier shards keep their members when the tail grows');
+  assert.deepEqual(assignShards({ eligibleCodes: [3, 1, 2], pilotCodes: [], shardSize: 2 }), [[1, 2], [3]]);
+});
+
+test('crossed subscript and superscript markup is converted without losing text', () => {
+  assert.equal(cleanDefinition("화학식은 NO<sub style='font-size:11px;'>2<sup style='font-size:11px;'></sub>+</sup>.").text, '화학식은 NO₂⁺.');
+  assert.equal(cleanDefinition("화학식은 NO<sub style='font-size:11px;'>2<sup style='font-size:11px;'></sub>+</sup>.").unknownMarkup, false);
 });

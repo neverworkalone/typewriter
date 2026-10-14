@@ -1,6 +1,8 @@
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 
+import { classifySense, normalizeWordKey } from './policy.mjs';
+
 /**
  * Deterministic 표준국어대사전 (STDICT) JSON -> canonical record conversion.
  *
@@ -8,7 +10,8 @@ import path from 'node:path';
  *   record id  = `w${target_code}` (zero-padded to 3 digits)
  *   candidate  = record id (role `start` requires candidate_id === id)
  *   sense id   = `${record id}-s${n}`, n = 1-based position of the sense in
- *                source order (pos_info -> comm_pattern_info -> sense_info)
+ *                source order (pos_info -> comm_pattern_info -> sense_info);
+ *                a sense removed by the inclusion policy leaves a gap, never a renumbering
  *   sense_code = recoverable from the source by (target_code, n)
  */
 
@@ -65,6 +68,8 @@ const mapScript = (text, table) => {
 // Markup STDICT embeds in `definition`: cross-reference ids, script markup, math emphasis and inline images.
 const ID_TAGS = /<(each_sense_no|sense_no|ptrn_no)>[^<]*<\/\1>/gu;
 const SUP_TAG = /<sup(?:\s[^>]*)?>([^<]*)<\/sup>/gu;
+// A subscript and a superscript source-crossed (`<sub>2<sup></sub>+</sup>`) read as sub(`2`) followed by sup(`+`).
+const CROSSED_SUB_SUP = /<sub(?:\s[^>]*)?>([^<]*)<sup(?:\s[^>]*)?><\/sub>([^<]*)<\/sup>/gu;
 const SUB_TAG = /<sub(?:\s[^>]*)?>([^<]*)<\/sub>/gu;
 const IMG_TAG = /<img(?:\s[^>]*)?>/gu;
 const WRAP_TOKEN = /<\/?(I|i|l|equ|font)(?:\s[^>]*)?>/gu;
@@ -85,6 +90,7 @@ export function cleanDefinition(definition) {
   // Emphasis tokens are stripped one by one: the source sometimes nests them badly (`<sup><I>n</sup></I>`) or leaves a
   // literal `<` inside (`<I>(x+1)<0</I>`), and only the text itself matters.
   text = text.replace(WRAP_TOKEN, (token, name) => { if (!token.startsWith('</')) note(name); return ''; });
+  text = text.replace(CROSSED_SUB_SUP, (_, below, above) => { note('sub'); note('sup'); return mapScript(below, SUBSCRIPT) + mapScript(above, SUPERSCRIPT); });
   text = text.replace(SUP_TAG, (_, inner) => { note('sup'); return mapScript(inner, SUPERSCRIPT); });
   text = text.replace(SUB_TAG, (_, inner) => { note('sub'); return mapScript(inner, SUBSCRIPT); });
   text = text.replace(/&#x([0-9a-f]+);|&#(\d+);/giu, (_, hex, decimal) => {
@@ -129,17 +135,68 @@ export function flattenSenses(item) {
   return senses;
 }
 
-/** Compact lookup used to bind lexical links by `sense_code` first. */
+/**
+ * Compact lookup used to bind lexical links by `sense_code` first. Every sense keeps its original source position
+ * (`position`) and its policy verdict (`include`): filtering never renumbers, so `-s<n>` and `sense_code` stay aligned.
+ */
 export function addToSenseIndex(index, item) {
   const targetCode = item.target_code;
-  flattenSenses(item).forEach(({ sense }, position) => {
-    index.senseByCode.set(Number(sense.sense_code), { targetCode, position });
+  const { word, word_unit: wordUnit } = item.word_info;
+  const entry = { included: 0, held: false };
+  flattenSenses(item).forEach(({ sense, sourcePos }, position) => {
+    const verdict = classifySense({ word, wordUnit, sourcePos, definition: sense.definition });
+    index.senseByCode.set(Number(sense.sense_code), { targetCode, position, include: verdict.include });
+    if (verdict.include) entry.included += 1;
+    if (verdict.include && verdict.hold) entry.held = true;
+    if (verdict.rootTarget) index.roots.push({ targetCode, word, rootTarget: verdict.rootTarget });
   });
   index.targetCodes.add(targetCode);
+  index.entries.set(targetCode, entry);
+  if (wordUnit === '단어') {
+    const key = normalizeWordKey(word);
+    const codes = index.wordIndex.get(key);
+    if (codes) codes.push(targetCode);
+    else index.wordIndex.set(key, [targetCode]);
+  }
 }
 
 export function createSenseIndex() {
-  return { senseByCode: new Map(), targetCodes: new Set() };
+  return {
+    senseByCode: new Map(),
+    targetCodes: new Set(),
+    entries: new Map(),
+    wordIndex: new Map(),
+    roots: [],
+    aliasesByTarget: new Map(),
+    rootReport: [],
+  };
+}
+
+/**
+ * Root senses are not entries of their own; each becomes a search alias of the one complete word its official
+ * definition names. The target is matched against the source word including its homograph number and is only linked
+ * when that is unambiguous, differs from the root itself, and keeps at least one included sense. Everything else is
+ * counted by reason and never guessed.
+ */
+export function finalizeSenseIndex(index) {
+  index.aliasesByTarget = new Map();
+  index.rootReport = [];
+  for (const root of index.roots) {
+    const hits = index.wordIndex.get(normalizeWordKey(root.rootTarget)) ?? [];
+    const target = hits.length === 1 ? hits[0] : null;
+    const entry = target === null ? null : index.entries.get(target);
+    const status = hits.length === 0 ? 'no-target'
+      : hits.length > 1 ? 'ambiguous'
+        : target === root.targetCode ? 'self'
+          : !entry.included || entry.held ? 'target-excluded' : 'resolved';
+    index.rootReport.push({ target_code: root.targetCode, status });
+    if (status !== 'resolved') continue;
+    const forms = index.aliasesByTarget.get(target) ?? [];
+    const alias = surfaceForms(root.word, '단어').lemma;
+    if (!forms.includes(alias)) forms.push(alias);
+    index.aliasesByTarget.set(target, forms);
+  }
+  return index;
 }
 
 export async function readStdictItems(directory, onItem) {
@@ -163,9 +220,15 @@ export function convertItem(item, { index, isSelected }) {
   const targetCode = item.target_code;
   const id = recordIdFor(targetCode);
   const flat = flattenSenses(item);
-  const report = { relations: [], markup: [], unknownMarkup: [], unsupportedPos: [] };
-  const senses = flat.map(({ sense, sourcePos }, position) => {
+  const report = { relations: [], markup: [], unknownMarkup: [], unsupportedPos: [], excluded: [] };
+  const senses = [];
+  flat.forEach(({ sense, sourcePos }, position) => {
     const senseId = `${id}-s${position + 1}`;
+    const verdict = classifySense({ word: info.word, wordUnit: info.word_unit, sourcePos, definition: sense.definition });
+    if (!verdict.include) {
+      report.excluded.push({ sense: senseId, reason: verdict.reason });
+      return;
+    }
     const cleaned = cleanDefinition(sense.definition);
     for (const name of cleaned.markup) report.markup.push({ sense: senseId, markup: name });
     if (cleaned.unknownMarkup) report.unknownMarkup.push(senseId);
@@ -192,6 +255,17 @@ export function convertItem(item, { index, isSelected }) {
         report.relations.push({ ...entry, status: 'self' });
         continue;
       }
+      // A policy-excluded target sense (or entry) is a decided absence, distinct from a target that simply has not
+      // been loaded yet and from a source link that never resolved.
+      const targetEntry = index.entries.get(resolved.targetCode);
+      if (!resolved.include || !targetEntry || targetEntry.included === 0) {
+        report.relations.push({ ...entry, status: 'policy-excluded' });
+        continue;
+      }
+      if (targetEntry.held) {
+        report.relations.push({ ...entry, status: 'held-target' });
+        continue;
+      }
       if (!isSelected(resolved.targetCode)) {
         report.relations.push({ ...entry, status: 'out-of-sample' });
         continue;
@@ -208,15 +282,19 @@ export function convertItem(item, { index, isSelected }) {
       report.relations.push({ ...entry, status: 'converted' });
     }
     if (relations.length > 0) converted.relations = relations;
-    return converted;
+    senses.push(converted);
   });
+  if (senses.length === 0) return { record: null, report };
+  const forms = surfaceForms(info.word, info.word_unit);
+  const aliases = (index.aliasesByTarget?.get(targetCode) ?? []).filter((alias) => !forms.search_forms.includes(alias));
   return {
     record: {
       id,
       record_type: info.word_unit === '단어' ? 'entry' : 'expression',
       role: 'start',
       candidate_id: id,
-      ...surfaceForms(info.word, info.word_unit),
+      lemma: forms.lemma,
+      search_forms: [...forms.search_forms, ...aliases],
       senses,
       source: 'stdict',
     },

@@ -867,6 +867,27 @@ function collisionAudit(records, rows) {
   return { exactCollisions, ambiguousGeneratedForms };
 }
 
+/**
+ * Collisions whose every candidate is an official-source record follow a fixed policy (exact lookup keeps
+ * precedence, every sense-bound candidate is retained), so they need no per-form reviewer entry: a manifest line per
+ * form would only restate the policy for hundreds of thousands of records. Any authored candidate keeps the review.
+ */
+export function reviewableCollisions(records, collisions) {
+  const licensedIds = new Set();
+  for (const recordInfo of records) {
+    const record = recordOf(recordInfo);
+    if (record && isLicensedSourceRecord(record)) licensedIds.add(record.id);
+  }
+  if (licensedIds.size === 0) return collisions;
+  const authored = ({ record_id: id }) => !licensedIds.has(id);
+  return {
+    exactCollisions: collisions.exactCollisions.filter((entry) => (
+      entry.exact_candidates.some(authored) || entry.generated_candidates.some(authored)
+    )),
+    ambiguousGeneratedForms: collisions.ambiguousGeneratedForms.filter((entry) => entry.candidates.some(authored)),
+  };
+}
+
 function compareExactCandidates(left, right) {
   return compareStrings(left.record_id, right.record_id)
     || compareStrings(left.record_type, right.record_type)
@@ -1384,7 +1405,7 @@ export function buildSurfaceFormProjection(
   }
 
   const collisions = collisionAudit(records, rows);
-  if (requireCollisionReview) validateCollisionReview(activeReviewManifest, collisions);
+  if (requireCollisionReview) validateCollisionReview(activeReviewManifest, reviewableCollisions(records, collisions));
   return {
     rows: rows.map(({ form, record_id, sense_id, rule_id }) => ({
       form,
