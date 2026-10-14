@@ -622,3 +622,22 @@ test('explicit manifests on official-source predicates still win and are still v
     class_id: 'm6-2-b-irregular-adjective', record_id: 'w9999', sense_id: 'w9999-s1',
   }]), (error) => error.code === 'MISSING_EXCEPTION_RECORD');
 });
+
+test('collisions among official-source records need no per-form review, authored ones still do', () => {
+  const build = (records) => buildSurfaceFormProjection(records, {
+    exceptionManifest: { schema_version: 1, contract_id: 'm6-2-inflection-exceptions-v1', exceptions: [] },
+    reviewManifest: reviewManifest(),
+    requireExceptionTargets: true,
+    requireClassDispositions: true,
+    requireCollisionReview: true,
+  });
+  // `먹는` is generated for the verb and is also the exact lemma of a noun; `보다` and `보다` homographs generate the same `본`.
+  const pair = (marked) => [entry('w9970', '먹다', 'verb'), entry('w9971', '먹는', 'noun'), entry('w9972', '보다', 'verb'), entry('w9973', '보다', 'verb')]
+    .map((record) => (marked ? licensed(record) : record));
+  const official = build(pair(true));
+  assert.ok(official.collisions.exactCollisions.length > 0 && official.collisions.ambiguousGeneratedForms.length > 0, 'the collisions are still detected and reported');
+  for (const code of ['SURFACE_FORM_COLLISION_REVIEW_MISMATCH']) {
+    assert.throws(() => build(pair(false)), (error) => error.code === code, 'the same collisions among authored records need a review');
+    assert.throws(() => build([...pair(true).slice(0, 3), entry('w9974', '보다', 'verb')]), (error) => error.code === code, 'one authored candidate restores the review');
+  }
+});

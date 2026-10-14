@@ -7,6 +7,7 @@ import {
   loadSurfaceFormExceptionManifest,
   loadSurfaceFormReviewManifest,
   resolveSurfaceFormJudgments,
+  reviewableCollisions,
 } from '../inflection/surface-form-projection.mjs';
 import { Stage3AdmissionError } from './admission.mjs';
 
@@ -71,7 +72,8 @@ export async function planSurfaceFormDispositions({ root, records: projected, ju
   // collisions. The policy is fixed (exact lookup keeps precedence; every sense-bound candidate is
   // retained), so these entries are dictated by the rule rather than judged here; reasons are kept.
   const records = projectedRecords;
-  const { collisions } = buildSurfaceFormProjection(records, { exceptionManifest, reviewManifest });
+  const projection = buildSurfaceFormProjection(records, { exceptionManifest, reviewManifest });
+  const collisions = reviewableCollisions(records, projection.collisions);
   const reviewed = reviewManifest.reviewed_collisions;
   const reasonOf = (entries) => new Map(entries.map((entry) => [entry.form, entry.reason]));
   const exactReasons = reasonOf(reviewed.exact_generated);

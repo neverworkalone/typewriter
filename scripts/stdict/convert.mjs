@@ -1,5 +1,8 @@
+import { createHash } from 'node:crypto';
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
+
+import { classifySense, normalizeWordKey } from './policy.mjs';
 
 /**
  * Deterministic 표준국어대사전 (STDICT) JSON -> canonical record conversion.
@@ -8,7 +11,8 @@ import path from 'node:path';
  *   record id  = `w${target_code}` (zero-padded to 3 digits)
  *   candidate  = record id (role `start` requires candidate_id === id)
  *   sense id   = `${record id}-s${n}`, n = 1-based position of the sense in
- *                source order (pos_info -> comm_pattern_info -> sense_info)
+ *                source order (pos_info -> comm_pattern_info -> sense_info);
+ *                a sense removed by the inclusion policy leaves a gap, never a renumbering
  *   sense_code = recoverable from the source by (target_code, n)
  */
 
@@ -65,6 +69,8 @@ const mapScript = (text, table) => {
 // Markup STDICT embeds in `definition`: cross-reference ids, script markup, math emphasis and inline images.
 const ID_TAGS = /<(each_sense_no|sense_no|ptrn_no)>[^<]*<\/\1>/gu;
 const SUP_TAG = /<sup(?:\s[^>]*)?>([^<]*)<\/sup>/gu;
+// A subscript and a superscript source-crossed (`<sub>2<sup></sub>+</sup>`) read as sub(`2`) followed by sup(`+`).
+const CROSSED_SUB_SUP = /<sub(?:\s[^>]*)?>([^<]*)<sup(?:\s[^>]*)?><\/sub>([^<]*)<\/sup>/gu;
 const SUB_TAG = /<sub(?:\s[^>]*)?>([^<]*)<\/sub>/gu;
 const IMG_TAG = /<img(?:\s[^>]*)?>/gu;
 const WRAP_TOKEN = /<\/?(I|i|l|equ|font)(?:\s[^>]*)?>/gu;
@@ -85,6 +91,7 @@ export function cleanDefinition(definition) {
   // Emphasis tokens are stripped one by one: the source sometimes nests them badly (`<sup><I>n</sup></I>`) or leaves a
   // literal `<` inside (`<I>(x+1)<0</I>`), and only the text itself matters.
   text = text.replace(WRAP_TOKEN, (token, name) => { if (!token.startsWith('</')) note(name); return ''; });
+  text = text.replace(CROSSED_SUB_SUP, (_, below, above) => { note('sub'); note('sup'); return mapScript(below, SUBSCRIPT) + mapScript(above, SUPERSCRIPT); });
   text = text.replace(SUP_TAG, (_, inner) => { note('sup'); return mapScript(inner, SUPERSCRIPT); });
   text = text.replace(SUB_TAG, (_, inner) => { note('sub'); return mapScript(inner, SUBSCRIPT); });
   text = text.replace(/&#x([0-9a-f]+);|&#(\d+);/giu, (_, hex, decimal) => {
@@ -129,28 +136,153 @@ export function flattenSenses(item) {
   return senses;
 }
 
-/** Compact lookup used to bind lexical links by `sense_code` first. */
+/**
+ * Compact lookup used to bind lexical links by `sense_code` first. Every sense keeps its original source position
+ * (`position`) and its policy verdict (`include`): filtering never renumbers, so `-s<n>` and `sense_code` stay aligned.
+ */
 export function addToSenseIndex(index, item) {
   const targetCode = item.target_code;
-  flattenSenses(item).forEach(({ sense }, position) => {
-    index.senseByCode.set(Number(sense.sense_code), { targetCode, position });
+  const { word, word_unit: wordUnit } = item.word_info;
+  const entry = { included: 0, held: false };
+  flattenSenses(item).forEach(({ sense, sourcePos }, position) => {
+    const verdict = classifySense({ word, wordUnit, sourcePos, definition: sense.definition });
+    index.senseByCode.set(Number(sense.sense_code), { targetCode, position, include: verdict.include });
+    if (verdict.include) entry.included += 1;
+    if (verdict.include && verdict.hold) entry.held = true;
+    if (verdict.rootTarget) index.roots.push({ targetCode, word, rootTarget: verdict.rootTarget });
   });
   index.targetCodes.add(targetCode);
+  index.entries.set(targetCode, entry);
+  if (wordUnit === '단어') {
+    const key = normalizeWordKey(word);
+    const codes = index.wordIndex.get(key);
+    if (codes) codes.push(targetCode);
+    else index.wordIndex.set(key, [targetCode]);
+  }
 }
 
 export function createSenseIndex() {
-  return { senseByCode: new Map(), targetCodes: new Set() };
+  return {
+    senseByCode: new Map(),
+    targetCodes: new Set(),
+    entries: new Map(),
+    wordIndex: new Map(),
+    roots: [],
+    aliasesByTarget: new Map(),
+    rootReport: [],
+  };
 }
 
-export async function readStdictItems(directory, onItem) {
-  const files = (await readdir(directory)).filter((name) => name.endsWith('.json')).sort(
-    (left, right) => Number(left.match(/_(\d+)\.json$/u)?.[1]) - Number(right.match(/_(\d+)\.json$/u)?.[1]),
-  );
-  for (const file of files) {
-    const parsed = JSON.parse(await readFile(path.join(directory, file), 'utf8'));
-    for (const item of parsed.channel.item) onItem(item, file);
+/**
+ * Root senses are not entries of their own; each becomes a search alias of the one complete word its official
+ * definition names. The target is matched against the source word including its homograph number and is only linked
+ * when that is unambiguous, differs from the root itself, and keeps at least one included sense. Everything else is
+ * counted by reason and never guessed.
+ */
+export function finalizeSenseIndex(index) {
+  index.aliasesByTarget = new Map();
+  index.rootReport = [];
+  for (const root of index.roots) {
+    const hits = index.wordIndex.get(normalizeWordKey(root.rootTarget)) ?? [];
+    const target = hits.length === 1 ? hits[0] : null;
+    const entry = target === null ? null : index.entries.get(target);
+    const status = hits.length === 0 ? 'no-target'
+      : hits.length > 1 ? 'ambiguous'
+        : target === root.targetCode ? 'self'
+          : !entry.included || entry.held ? 'target-excluded' : 'resolved';
+    index.rootReport.push({ target_code: root.targetCode, status });
+    if (status !== 'resolved') continue;
+    const forms = index.aliasesByTarget.get(target) ?? [];
+    const alias = surfaceForms(root.word, '단어').lemma;
+    if (!forms.includes(alias)) forms.push(alias);
+    index.aliasesByTarget.set(target, forms);
   }
-  return files;
+  return index;
+}
+
+const countSenses = (items) => items.reduce((sum, item) => sum + flattenSenses(item).length, 0);
+const sourceFileNumber = (name) => Number(name.match(/_(\d+)\.json$/u)?.[1]);
+
+/**
+ * Reads the whole source, and only the source the trusted inventory names: the expected file set, each file's
+ * sha256 and entry count, and the dictionary's own `channel.total`. A missing, extra, altered or truncated file
+ * fails here, before any shard or settlement is produced, so a partial download can never be counted as complete.
+ * `inventory` is required; there is no way to read an unverified source.
+ */
+export async function readStdictItems(directory, onItem, { inventory } = {}) {
+  if (!Array.isArray(inventory?.files) || inventory.files.length === 0) {
+    throw new Error('Reading the STDICT source requires its trusted file inventory.');
+  }
+  const found = (await readdir(directory)).filter((name) => name.endsWith('.json'));
+  const expected = new Set(inventory.files.map(({ name }) => name));
+  const missing = [...expected].filter((name) => !found.includes(name));
+  const extra = found.filter((name) => !expected.has(name));
+  if (missing.length > 0 || extra.length > 0) {
+    throw new Error(`STDICT source files do not match the inventory (missing: ${missing.join(', ') || 'none'}; unexpected: ${extra.join(', ') || 'none'}).`);
+  }
+  if (inventory.channel_total !== inventory.entry_count) {
+    throw new Error('The STDICT source inventory is inconsistent: its entry count differs from the dictionary total.');
+  }
+  const files = [...inventory.files].sort((left, right) => sourceFileNumber(left.name) - sourceFileNumber(right.name));
+  let entryCount = 0;
+  let senseCount = 0;
+  for (const file of files) {
+    const text = await readFile(path.join(directory, file.name), 'utf8');
+    if (createHash('sha256').update(text).digest('hex') !== file.sha256) {
+      throw new Error(`STDICT source file ${file.name} differs from the inventory (sha256).`);
+    }
+    const { channel } = JSON.parse(text);
+    if (channel.item.length !== file.entries || channel.total !== inventory.channel_total) {
+      throw new Error(`STDICT source file ${file.name} has ${channel.item.length} entries; the inventory expects ${file.entries}.`);
+    }
+    if (countSenses(channel.item) !== file.senses) {
+      throw new Error(`STDICT source file ${file.name} has ${countSenses(channel.item)} senses; the inventory expects ${file.senses}.`);
+    }
+    entryCount += channel.item.length;
+    senseCount += file.senses;
+    for (const item of channel.item) onItem(item, file.name);
+  }
+  if (entryCount !== inventory.entry_count || senseCount !== inventory.sense_count || files.length !== inventory.file_count) {
+    throw new Error(`STDICT source has ${files.length} files / ${entryCount} entries / ${senseCount} senses; the inventory expects ${inventory.file_count} / ${inventory.entry_count} / ${inventory.sense_count}.`);
+  }
+  return files.map(({ name }) => name);
+}
+
+/**
+ * Builds the inventory of a source directory. It refuses an incomplete download: every file must report the same
+ * dictionary-wide `channel.total`, the entries found must add up to exactly that total, and, when `expected` states the
+ * population the owner decided on (file, entry and sense counts), the directory must match it. A partial directory can
+ * therefore never be recorded as the new trusted source.
+ */
+export async function inventoryStdictSource(directory, { expected } = {}) {
+  const names = (await readdir(directory)).filter((name) => name.endsWith('.json'))
+    .sort((left, right) => sourceFileNumber(left) - sourceFileNumber(right));
+  const files = [];
+  const totals = new Set();
+  for (const name of names) {
+    const text = await readFile(path.join(directory, name), 'utf8');
+    const { channel } = JSON.parse(text);
+    totals.add(channel.total);
+    files.push({ name, sha256: createHash('sha256').update(text).digest('hex'), entries: channel.item.length, senses: countSenses(channel.item) });
+  }
+  const entryCount = files.reduce((sum, { entries }) => sum + entries, 0);
+  const senseCount = files.reduce((sum, { senses }) => sum + senses, 0);
+  const [channelTotal] = totals;
+  if (files.length === 0 || totals.size !== 1 || !Number.isInteger(channelTotal) || entryCount !== channelTotal) {
+    throw new Error(`STDICT source is incomplete or inconsistent: ${files.length} files hold ${entryCount} entries; the dictionary reports ${[...totals].join(', ')}.`);
+  }
+  if (expected && (files.length !== expected.file_count || entryCount !== expected.entry_count || senseCount !== expected.sense_count)) {
+    throw new Error(`STDICT source has ${files.length} files / ${entryCount} entries / ${senseCount} senses; the expected population is ${expected.file_count} / ${expected.entry_count} / ${expected.sense_count}.`);
+  }
+  return {
+    contract: 'stdict-source-inventory-v1',
+    dictionary: '표준국어대사전 (STDICT)',
+    file_count: files.length,
+    entry_count: entryCount,
+    sense_count: senseCount,
+    channel_total: channelTotal,
+    files,
+  };
 }
 
 /**
@@ -163,9 +295,15 @@ export function convertItem(item, { index, isSelected }) {
   const targetCode = item.target_code;
   const id = recordIdFor(targetCode);
   const flat = flattenSenses(item);
-  const report = { relations: [], markup: [], unknownMarkup: [], unsupportedPos: [] };
-  const senses = flat.map(({ sense, sourcePos }, position) => {
+  const report = { relations: [], markup: [], unknownMarkup: [], unsupportedPos: [], excluded: [] };
+  const senses = [];
+  flat.forEach(({ sense, sourcePos }, position) => {
     const senseId = `${id}-s${position + 1}`;
+    const verdict = classifySense({ word: info.word, wordUnit: info.word_unit, sourcePos, definition: sense.definition });
+    if (!verdict.include) {
+      report.excluded.push({ sense: senseId, reason: verdict.reason });
+      return;
+    }
     const cleaned = cleanDefinition(sense.definition);
     for (const name of cleaned.markup) report.markup.push({ sense: senseId, markup: name });
     if (cleaned.unknownMarkup) report.unknownMarkup.push(senseId);
@@ -192,6 +330,17 @@ export function convertItem(item, { index, isSelected }) {
         report.relations.push({ ...entry, status: 'self' });
         continue;
       }
+      // A policy-excluded target sense (or entry) is a decided absence, distinct from a target that simply has not
+      // been loaded yet and from a source link that never resolved.
+      const targetEntry = index.entries.get(resolved.targetCode);
+      if (!resolved.include || !targetEntry || targetEntry.included === 0) {
+        report.relations.push({ ...entry, status: 'policy-excluded' });
+        continue;
+      }
+      if (targetEntry.held) {
+        report.relations.push({ ...entry, status: 'held-target' });
+        continue;
+      }
       if (!isSelected(resolved.targetCode)) {
         report.relations.push({ ...entry, status: 'out-of-sample' });
         continue;
@@ -208,15 +357,19 @@ export function convertItem(item, { index, isSelected }) {
       report.relations.push({ ...entry, status: 'converted' });
     }
     if (relations.length > 0) converted.relations = relations;
-    return converted;
+    senses.push(converted);
   });
+  if (senses.length === 0) return { record: null, report };
+  const forms = surfaceForms(info.word, info.word_unit);
+  const aliases = (index.aliasesByTarget?.get(targetCode) ?? []).filter((alias) => !forms.search_forms.includes(alias));
   return {
     record: {
       id,
       record_type: info.word_unit === '단어' ? 'entry' : 'expression',
       role: 'start',
       candidate_id: id,
-      ...surfaceForms(info.word, info.word_unit),
+      lemma: forms.lemma,
+      search_forms: [...forms.search_forms, ...aliases],
       senses,
       source: 'stdict',
     },

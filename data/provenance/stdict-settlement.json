@@ -1,0 +1,122 @@
+{
+ "contract": "stdict-settlement-v1",
+ "source": {
+  "file_count": 88,
+  "entry_count": 436587,
+  "sense_count": 509143
+ },
+ "entries": {
+  "by_status": {
+   "excluded": 9004,
+   "included": 427583
+  },
+  "included_by_unit": {
+   "관용구": 3886,
+   "구": 63010,
+   "단어": 353251,
+   "속담": 7436
+  },
+  "included_by_shape": {
+   "multi-pos": 2831,
+   "single-pos": 424752
+  },
+  "included_with_excluded_senses": 22,
+  "excluded_by_reason": {
+   "affix": 532,
+   "bound-form": 198,
+   "ending": 734,
+   "ending+bound-form": 77,
+   "particle": 174,
+   "root": 7289
+  },
+  "held_target_codes": []
+ },
+ "senses": {
+  "by_status": {
+   "excluded": 9784,
+   "included": 499359
+  },
+  "included_by_pos": {
+   "adjective": 16959,
+   "adverb": 17955,
+   "determiner": 1813,
+   "expression": 77064,
+   "interjection": 801,
+   "noun": 309100,
+   "unclassified": 228,
+   "verb": 75439
+  },
+  "included_by_source_pos": {
+   "감탄사": 801,
+   "관용구(관용구)": 4457,
+   "관형사": 1813,
+   "구(구)": 64391,
+   "대명사": 478,
+   "동사": 75374,
+   "명사": 307281,
+   "보조 동사": 65,
+   "보조 형용사": 29,
+   "부사": 17955,
+   "속담(속담)": 8216,
+   "수사": 217,
+   "의존 명사": 1124,
+   "품사 없음": 228,
+   "형용사": 16930
+  },
+  "excluded_by_reason": {
+   "affix": 727,
+   "bound-form": 334,
+   "ending": 1055,
+   "particle": 363,
+   "root": 7305
+  },
+  "excluded_by_reason_and_source_pos": {
+   "affix:접사": 727,
+   "bound-form:품사 없음": 334,
+   "ending:어미": 1055,
+   "particle:조사": 363,
+   "root:품사 없음": 7305
+  }
+ },
+ "roots": {
+  "by_status": {
+   "no-target": 8,
+   "resolved": 7297
+  },
+  "alias_target_records": 7297,
+  "alias_forms": 7297
+ },
+ "relations_all_targets_loaded": {
+  "동의어:broken": 3,
+  "동의어:converted": 162057,
+  "동의어:self": 1,
+  "반대말:converted": 6338
+ },
+ "definition_markup_cleaned": {
+  "I": 1261,
+  "each_sense_no": 3,
+  "entity": 190,
+  "equ": 173,
+  "font": 6,
+  "i": 11,
+  "img": 304,
+  "l": 9,
+  "ptrn_no": 7,
+  "sub": 5470,
+  "sup": 328
+ },
+ "shards": {
+  "count": 428,
+  "sizes": {
+   "first": 1000,
+   "last": 583,
+   "full": true
+  },
+  "held_after_conversion": 0
+ },
+ "reconciliation": {
+  "source_inventory": true,
+  "entries": true,
+  "senses": true
+ }
+}
