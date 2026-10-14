@@ -82,7 +82,8 @@ sense 수준 링크 196,808건: 동의어 162,127 · 비슷한말 26,264 · 반�
 | `pos` | `senses[].pos` (아래 어댑테이션) |
 | `sense_code` | `senses[].id` (`<record>-s<n>`), 원 `sense_code`는 매핑표에 보관 |
 | `definition` | `senses[].gloss` |
-| `lexical_info` 동의어/비슷한말/반대말 | `relations[]` (`direct` / `near` / `antonym`) |
+| `lexical_info` 동의어 / 반대말 | `relations[]` `direct` / `antonym` (relevance 없음, 아래 §3) |
+| `lexical_info` 비슷한말 | 1단계에서 canonical 관계로 주입하지 않음 (§3) |
 
 호환되지 않는 지점(실제 비호환):
 
@@ -97,63 +98,103 @@ sense 수준 링크 196,808건: 동의어 162,127 · 비슷한말 26,264 · 반�
    수용 가능합니다(변경 불필요).
 5. **동형이의어**: 번호별 별도 `target_code`이므로 record 분리로 해결됩니다. 표시용 lemma는 같고 id가 다른 record가
    35,293군 생기므로 검색 결과의 동형이의어 구분 표시가 UI에서 필요한지 확인해야 합니다.
-6. **`relations.note` 필수**: STDICT 동의어에는 설명문이 없습니다. 정형 문구(출처 관계 유형) 또는 필수 해제가
-   필요합니다.
+6. **`relations.note` 필수**: STDICT 동의어·반대말에는 설명문이 없습니다. 출처 관계 유형을 밝히는 정형 문구를 쓰거나
+   필수를 완화해야 합니다.
+7. **`near` 등 탐색형 관계는 `relevance` 1..9가 필수**(`docs/domain-model.md` #396, `dataset-integrity`)이고
+   `direct`/`antonym`에는 붙일 수 없습니다. STDICT에는 이 편집 판단이 없습니다(§3).
 
 필요한 최소 변경(추가 필드 없음):
 
-- 품사 enum 확장 또는 허용 범위 결정(결정 사항 D1).
+- 품사 enum 확장(§6의 처리 계획, 결정 D1).
 - `role`을 baseline 값 하나로 고정하거나 선택 항목화.
 - `relations.note` 처리 방식.
 - 필요하면 STDICT 식별자 보관용 매핑 필드 1개(예: record의 `source_id`)는 선택 사항이며, 매핑표를 Git 밖
   산출물이 아닌 canonical 안에 둘지에 따라 결정합니다.
 
-## 3. Phase 1에서 가져올 내용
+## 3. 1단계에 주입할 관계와 2단계로 넘길 관계
 
-- 가져옴: 표제어(단위·품사·동형이의 구분), sense id/정의, sense 간 동의어·비슷한말·반대말 링크.
-- 가져오지 않음: 발음, 활용, 원어, 어원, 문형, 예문, 멀티미디어, 분야 태그, 항목 수준 참고 어휘.
-- 옛 Typewriter 의미와 병합하지 않습니다. 옛 데이터는 `legacy` 브랜치에 보존되므로 migration도 만들지 않습니다.
-- 준말/본말/높임말/낮춤말 관계 약 2,035건은 현재 `direct`/`near`로 억지 매핑하지 않고 Phase 1에서 제외하는 것이
-  정직합니다(결정 D3).
+| STDICT 링크 | 건수 | 1단계 처리 |
+| --- | --- | --- |
+| 동의어 | 162,127 | `direct` 주입. 사전 수록 동의어이며 `relevance`를 붙이지 않으므로 계약에 맞습니다. |
+| 반대말 | 6,367 | `antonym` 주입(`relevance` 없음). |
+| 비슷한말 | 26,264 | **1단계에서 주입하지 않음.** `near`는 `relevance` 1..9 편집 판단이 필수이고 STDICT에는 없습니다. 임의 상수로 채우면 편집 판단을 위조하게 되고, `near`는 말의 결이라 2단계 집필 대상입니다. 이 링크는 Git 밖 원본에 남기고 2단계(`relation:candidates`)의 후보 입력으로만 씁니다. |
+| 준말·본말·높임말·낮춤말·참고 어휘 | 약 2,050 | 대응하는 현 관계 유형이 없어 1단계 제외. 필요하면 오너가 유형 신설을 별도로 결정합니다(현 데이터로 필요성이 입증되지 않음). |
 
-## 4. 새 생산 흐름
+사전이 동의어로 표시한 것만 `direct`(사전급 동의어)로 옮기고 나머지는 편집 단계로 넘깁니다. 동의어 주입은 `note`에 출처 관계 유형을 정형으로
+적고, 변환기는 `sense_code`로 대상 sense를 해석해 `target_sense`를 채웁니다(링크 해석 불가 7건은 제외 목록으로 기록).
 
-1. (Task 3) STDICT → canonical JSONL 결정적 변환: 표기 정규화, 품사 매핑, 링크의 `sense_code` 해석, 관계 3종만
-   변환. 기존 `build:dictionary`로 SQLite 생성.
-2. 이후 Stage 1→2→3(`factory:stage1/2/3`)는 STDICT identity를 대상으로 **말의 결/연상 관계**(`near`, `mood`, `scene`,
-   `sensory`, `action`, `association`)만 새로 생산합니다. `direct`/`antonym`은 STDICT 출처이므로 중복 생산하지
-   않습니다.
-3. 재사용 가능한 것은 코드(생산·검증 워커, 빌드)이고, 폐기 대상은 옛 canonical/batch/review/candidate 데이터입니다.
-   현재 canonical은 46개 파일, 12,312 record이며 관계 59,651건이라 규모상 STDICT(43.7만 항목)가
-   훨씬 큽니다.
-   단, Stage 1 후보 선정이 기존 canonical에 의존하는 코드가 있으면 Task 2에서 확인이 필요합니다(결정 D4).
+수록 범위: 표제어와 sense 전체(§6 처리 계획), 뜻풀이(`definition`)는 필수. 발음, 활용, 원어, 어원, 문형, 예문, 멀티미디어,
+분야 태그, 항목 수준 참고 어휘는 가져오지 않습니다. 옛 Typewriter 의미와 병합하지 않으며(`legacy` 브랜치 보존) migration도
+만들지 않습니다.
+
+## 4. 새 생산 흐름과 기존 Stage 1→2→3 재사용 판단 (코드 구현 없음)
+
+현 Stage 1/2/3은 **어휘 발굴 → 신표제어/신품사/신의미 집필 → admission** 파이프라인입니다
+(`docs/lexical-production-factory.md` §2, §5.1, §6.1). Stage 1은 코퍼스 관찰에서 canonical에 없는 표제어(`new_entry`),
+새 품사(`new_pos_on_existing_lemma`), 새 의미(`new_sense_on_existing_entry`)를 후보로 만들고(`scripts/factory/stage1.mjs`,
+`coverage_status`는 `uncovered`/`exact_canonical_lemma`), Stage 2 `included`는 새 의미 주장, Stage 3은 lexical admission입니다.
+STDICT baseline에서는 표제어와 sense가 이미 canonical에 있으므로, "이미 있는 sense에 관계만 추가"하는 작업은 이 경로에 맞지
+않습니다. 맞는 기존 경로는 **relation-only backfill**(같은 문서 §4.1: `relation:candidates` → 승인 큐 →
+`backfill-queue-cli.mjs apply`, `R######` 패킷, `relation-amendments.mjs`의 `append_relations`)입니다. 이 경로는 lexical
+admission 없이 기존 sense에 `near/mood/scene/sensory/action/association`(relevance 필수)과 근거(rationale)를 기록합니다.
+
+| 단계 | 판단 | 필요한 변경 지점 |
+| --- | --- | --- |
+| 기준선 생성 (Task 3) | 신규 일회성 변환 | STDICT → canonical JSONL. Stage 1~3을 거치지 않음. 품사 enum·`role`·`note` 계약 조정 (§2) |
+| Stage 1 (발굴) | **baseline 이후에는 신표제어 보충용으로만 유지.** 관계 생산에는 쓰지 않음 | 코퍼스 후보의 `covered` 판정은 canonical 조회이므로 STDICT canonical에도 동작. 동형이의어(`각본01`) id 구조와 표기 정규화 때문에 `exact_canonical_lemma` 판정 입력 확인 필요(구현 시) |
+| Stage 2 (집필) | 신규 표제어/의미 집필에만 사용. 관계-only 생산에는 부적합 | 변경 없음 |
+| Stage 3 (admission) | 신규 표제어/의미 admission에만 사용 | 변경 없음. 단 STDICT 소스 id를 기존 `w`/`r` 접두 규칙에 맞춰야 함 |
+| 말의 결·연상 생산 | **relation-only backfill 재사용** | 후보 입력에 STDICT 비슷한말 링크를 추가(`relation:candidates`), 기존 relation-only 입력/출력 계약은 그대로 |
+
+기존 데이터는 `legacy`에 보존되므로 old canonical/batch/review는 migration 없이 폐기합니다. 재사용 가능한 것은 코드,
+폐기하는 것은 옛 데이터입니다. 확인하지 못한 점: backfill 큐/패킷 코드와 `data/relation-backfill/` 이력이 옛 canonical
+sense id를 가정하는 부분의 범위(Task 2/3에서 구현 시 확인할 사항이며, 새 validator를 요구하지 않음). 이 판단은 Stage 1
+결정형(`new_entry`/`new_pos`/`new_sense`/`covered`)과 relation-only backfill의 입력/출력을 문서 수준에서 비교한 결과이고
+코드를 실행해 검증하지는 않았습니다.
 
 ## 5. 실현 가능성
 
-- 규모: 원본 789 MB는 Git 밖 보관. 변환 결과 canonical JSONL은 약 43.7만 record/50.9만 sense로 정의문을 포함하면
-  수십~100 MB대로 예상되며, 정확한 크기는 구현 전 측정이 필요합니다(미검증). 정의문을 Git에 올리면 저장소가 크게
-  늘어납니다.
-- 검색: 표면형 정규화(`-`/`^`/번호 제거)와 동형이의어 id 분리가 필수입니다. 활용형 생성 규칙(`generated_surface_forms`)은
-  기존 코드를 재사용할 수 있습니다.
-- **라이선스(최대 위험)**: AGENTS.md는 외부 사전 정의/관계를 canonical에 복사하지 않는다고 규정하고, DATA-LICENSE는
-  데이터를 CC BY 4.0으로 두며 "권리가 확인된 레코드만"이라고 합니다. 표준국어대사전 데이터의 재배포·상업 이용·2차
-  저작물 조건은 이 저장소에서 **확인하지 못했습니다**. 국립국어원 이용약관/공공누리 유형을 오너가 확인해야 하며, 확인
-  전에는 정의문과 관계를 공개 저장소에 넣을 수 없습니다. 이것이 NO-GO 후보 1순위 차단 요소입니다.
+- 규모: 원본 789 MB는 Git 밖 보관. 변환 결과 canonical은 약 43.7만 record/50.9만 sense로 뜻풀이를 포함해 크기는
+  구현 전 측정이 필요합니다(미검증). 현재 canonical은 12,312 record이므로 약 35배입니다.
+- 검색: 표면형 정규화(`-`/`^`/번호 제거)와 동형이의어 id 분리가 필수입니다. 활용형 생성(`generated_surface_forms`)은 기존
+  코드를 재사용할 수 있습니다.
+- **라이선스**: 오너는 새 데이터에 **CC BY-SA 2.0 대한민국**을 적용하기로 선택했고 뜻풀이 수록은 필수 목표입니다. 이 문서는 그
+  결정을 전제로 하며 뜻풀이 제외를 대안으로 두지 않습니다. 아직 확인되지 않은 것: 실제 다운로드본의 이용 조건·예외,
+  `DATA-LICENSE.md`/NOTICE 문구 변경 필요 여부(Task 3 이전에 정리). 수록 대상의 레코드별 권리 증명은 `DATA-LICENSE.md`가
+  요구하지 않습니다. 기존 AGENTS.md의 "외부 사전 정의 비복사" 원칙은 이 Reset의 오너 결정으로 대체되므로 AGENTS.md/
+  `docs/data-policy.md` 갱신이 Task 2 또는 3의 범위입니다.
 
-## 6. 결정 및 권고
+## 6. 전량 표제어 수록: 항목 종류별 처리 계획
 
-**권고: 조건부 GO.** 기술적으로는 가능합니다(구조 정합, id·sense·관계가 모두 안정적, 현 모델 변경 최소). Task 2
-(옛 lexical production data 삭제)는 아래 **D1~D2 두 결정 완료를 전제로** 진행할 수 있습니다. 옛 데이터는 `legacy`에 있으므로
-삭제로 인한 복구 불가 위험은 없습니다.
+오너는 불필요한 필드만 제외하라고 했으므로 항목 자체는 제외하지 않습니다. 현 모델로 바로 수록 가능한 것은 단어 4품사
+352,239 + expression 74,332 = 426,571항목이며, 나머지 **약 10,016항목**(항목×품사 합계와 항목 수 차이는 복수 품사 때문에
+개별 누락 수와 다를 수 있음)은 모델 확장이 필요합니다.
 
-오너 결정이 필요한 차단 항목:
+| 원본 종류 | 항목×품사 | 제안 처리(최소 확장) |
+| --- | --- | --- |
+| 의존 명사 | 870 | `senses[].pos`에 `dependent-noun` 추가 또는 `noun`으로 수록(오너 결정) |
+| 대명사 | 352 | `pronoun` 추가 또는 `noun` 수록 |
+| 수사 | 188 | `numeral` 추가 또는 `noun` 수록 |
+| 관형사 | 1,583 | `determiner` 추가 |
+| 감탄사 | 650 | `interjection` 추가 |
+| 보조 동사 / 보조 형용사 | 41 / 18 | `verb` / `adjective`로 수록(보조 용언 표지는 가져오지 않음) |
+| 조사 / 어미 / 접사 | 180 / 811 / 532 | `particle` / `ending` / `affix` 추가(표면형은 `-` 제거 후 저장) |
+| 품사 없는 단어 | 7,770 | `expression` 또는 별도 `unclassified`로 수록(원본 `word_unit`이 단어이나 품사 없음) |
 
-- **D0 (라이선스, 선결)**: STDICT 이용 조건이 정의문·동의어 관계의 CC BY 4.0 재배포를 허용하는가. 불허/불명이면 정의문을
-  빼고(id+표제어+관계만) 가져오거나 Git 밖에서만 보유하는 설계로 바꿔야 합니다.
-- **D1 (품사 범위)**: 4종+표현만 가져올지(352,239+74,332 항목), 의존 명사·대명사·수사 등을 `noun`에 접을지, enum을
-  확장할지. 접사·어미·조사는 제외를 권고합니다.
-- **D2 (`품사 없음` 단어 7,770)**: 제외/표현으로 편입 중 선택.
-- **D3 (준말/본말/높임말/낮춤말)**: Phase 1 제외 권고.
-- **D4 (기존 코드 의존)**: 생산 코드가 옛 canonical 존재를 가정하는지 Task 2 착수 시 확인(분석 범위 밖, 미검증).
+수록 판단과 enum 확장은 제안일 뿐이며, 어떤 종류를 현 파이프라인에서 검색 가능하게 둘지(예: 어미·조사는 검색 제외)는
+오너의 별도 범위 결정입니다. 즉 **수록하되 검색 노출 여부는 별도**로 구분합니다.
 
-Task 2와 Task 3은 이 문서 승인 이후에만 진행합니다.
+## 7. 결정 및 권고
+
+**권고: 조건부 GO.** 기술적으로 가능합니다(id·sense·관계가 안정적이고 모델 변경이 품사 enum, `role`, `note`에 한정). 옛
+데이터는 `legacy`에 있어 Task 2의 삭제로 인한 복구 불가 위험은 없습니다. 말의 결·연상 생산은 relation-only backfill 경로를
+재사용하며 Stage 1~3은 신규 표제어 보충용으로 남습니다.
+
+오너 결정 사항:
+
+- **D1 (품사 모델)**: §6 표의 품사 확장안(또는 `noun` 등으로 접는 안)과 검색 노출 범위.
+- **D2 (품사 없는 단어 7,770)**: 수록 방식.
+- **D3 (준말·본말·높임말·낮춤말 등 약 2,050건)**: 1단계 제외 권고, 관계 유형 신설은 별도 결정.
+- **D4 (정책 문서)**: CC BY-SA 2.0 KR 적용에 따른 `DATA-LICENSE.md`/NOTICE/AGENTS.md 변경 범위, 다운로드본의 이용 조건 확인.
+
+Task 2와 Task 3은 이 문서가 승인된 이후에만 진행합니다.
