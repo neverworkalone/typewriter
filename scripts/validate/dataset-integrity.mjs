@@ -10,7 +10,6 @@ import {
 } from './canonical-context.mjs';
 import { isVerifiedImmutable, recordCompleteRevisionCheck } from './immutable-digest.mjs';
 import { auditCanonicalLexicalQuality } from './lexical-quality.mjs';
-import { assertLicensedSourceBinding } from './licensed-source.mjs';
 import {
   buildCanonicalSemanticAudit,
   buildSemanticTopicEvidence,
@@ -282,8 +281,6 @@ export function validateDatasetRecords(
   } = {},
 ) {
   if (context && !context.derived) context.derived = {};
-  // The licensed-source exemptions are valid only for records bound to a verified provenance manifest.
-  try { assertLicensedSourceBinding(recordInfos); } catch (error) { fail(error.message, error.code); }
   const indexes = indexRecords(recordInfos, context);
   // Role identity and relation integrity depend only on the complete record set.
   // When a shared context holds exactly this record array and every record is

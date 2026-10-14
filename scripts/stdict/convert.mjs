@@ -1,8 +1,6 @@
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import { STDICT_NOTES } from '../validate/licensed-source.mjs';
-
 /**
  * Deterministic 표준국어대사전 (STDICT) JSON -> canonical record conversion.
  *
@@ -15,7 +13,10 @@ import { STDICT_NOTES } from '../validate/licensed-source.mjs';
  */
 
 export const STDICT_SHARD_SIZE = 1000;
-export { STDICT_NOTES };
+export const STDICT_NOTES = Object.freeze({
+  direct: '표준국어대사전 동의어',
+  antonym: '표준국어대사전 반대말',
+});
 
 const RELATION_BY_SOURCE_TYPE = Object.freeze({
   동의어: 'direct',

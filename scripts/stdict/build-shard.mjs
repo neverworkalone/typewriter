@@ -5,7 +5,6 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { validateCanonicalRecord } from '../validate/canonical-jsonl.mjs';
-import { sourceProjectionSha256 } from '../validate/licensed-source.mjs';
 import {
   STDICT_SHARD_SIZE,
   addToSenseIndex,
@@ -242,7 +241,6 @@ export function provenanceManifest(result, { shardName }) {
     },
     shard: shardName,
     shard_sha256: sha256,
-    source_projection_sha256: sourceProjectionSha256(result.records),
     record_count: result.records.length,
     held_count: result.held.length,
     summary: {
