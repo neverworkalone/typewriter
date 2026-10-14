@@ -1,0 +1,185 @@
+{
+ "contract": "relation-editorial-controls-v1",
+ "cases": [
+  {
+   "class": "scope-only",
+   "verdict": "direct",
+   "source": {
+    "sense_id": "w11882-s1",
+    "lemma": "레슨",
+    "pos": "noun",
+    "gloss_sha256": "6dd71053eebf4190e6fd4c4958025f394982296ed3870a4a10d14a6518b81e1a"
+   },
+   "target": {
+    "sense_id": "w5736-s1",
+    "lemma": "수업",
+    "pos": "noun",
+    "gloss_sha256": "167d86f0cfb26dfb39d77f922f447446d15fa11bfeafbe04f9f20b246ccd56fb"
+   }
+  },
+  {
+   "class": "scope-only",
+   "verdict": "direct",
+   "source": {
+    "sense_id": "w6340-s1",
+    "lemma": "꼭대기",
+    "pos": "noun",
+    "gloss_sha256": "c9575b93e30e87e3659b8fc8728689cfdb557110836eac9a5f5bedf04364c1e2"
+   },
+   "target": {
+    "sense_id": "w11202-s1",
+    "lemma": "산꼭대기",
+    "pos": "noun",
+    "gloss_sha256": "7ebe56046381012aa6c91c6bc16d66a8748554a84028df67c8c204bd33723246"
+   }
+  },
+  {
+   "class": "same-movement",
+   "verdict": "direct",
+   "source": {
+    "sense_id": "w578-s1",
+    "lemma": "손을 뻗다",
+    "pos": "expression",
+    "gloss_sha256": "ae9f1c98e6156f825a245e39c18d4571706ad51f5bc97bbc3602f2139c6dca9e"
+   },
+   "target": {
+    "sense_id": "w3826-s1",
+    "lemma": "팔을 뻗다",
+    "pos": "expression",
+    "gloss_sha256": "3d5ba5aa4c848e1601d34046e552e3d1daf0da18fdecaa0423184647fd97c445"
+   }
+  },
+  {
+   "class": "same-movement",
+   "verdict": "direct",
+   "source": {
+    "sense_id": "w3826-s1",
+    "lemma": "팔을 뻗다",
+    "pos": "expression",
+    "gloss_sha256": "3d5ba5aa4c848e1601d34046e552e3d1daf0da18fdecaa0423184647fd97c445"
+   },
+   "target": {
+    "sense_id": "w578-s1",
+    "lemma": "손을 뻗다",
+    "pos": "expression",
+    "gloss_sha256": "ae9f1c98e6156f825a245e39c18d4571706ad51f5bc97bbc3602f2139c6dca9e"
+   }
+  },
+  {
+   "class": "action-vs-agent",
+   "verdict": "not-direct",
+   "source": {
+    "sense_id": "w9688-s1",
+    "lemma": "목격자",
+    "pos": "noun",
+    "gloss_sha256": "768644b3ab324b01fb78ad3d620ab547d7e0944939aa355acc6115473935b03b"
+   },
+   "target": {
+    "sense_id": "w6341-s1",
+    "lemma": "목격",
+    "pos": "noun",
+    "gloss_sha256": "13691933df40d80b405f111442a10ea9e4684ef964da4e6ca98a36619bda82a8"
+   }
+  },
+  {
+   "class": "action-vs-agent",
+   "verdict": "not-direct",
+   "source": {
+    "sense_id": "w7161-s1",
+    "lemma": "경비",
+    "pos": "noun",
+    "gloss_sha256": "1ba9c46dd12add9c9a0f9c1ee8fd8b226589ae780a74aad99cc589ae40af43cb"
+   },
+   "target": {
+    "sense_id": "w9024-s1",
+    "lemma": "경비원",
+    "pos": "noun",
+    "gloss_sha256": "eecf34f548a3726f573fe5d4599e7090bd48ccf8b092441f998e53d276b85b74"
+   }
+  },
+  {
+   "class": "action-vs-agent",
+   "verdict": "not-direct",
+   "source": {
+    "sense_id": "w6730-s1",
+    "lemma": "상상력",
+    "pos": "noun",
+    "gloss_sha256": "28c61971eaa602f0caad45e2ff93b10c5a97673d63641205be9bb1d1ebffe672"
+   },
+   "target": {
+    "sense_id": "w2826-s1",
+    "lemma": "상상하다",
+    "pos": "verb",
+    "gloss_sha256": "17aa4a7ee9ed1f30d0835d308473ce1dcd6b1b9c0d2a29498474878e1995602e"
+   }
+  },
+  {
+   "class": "different-movement",
+   "verdict": "not-direct",
+   "source": {
+    "sense_id": "w3774-s1",
+    "lemma": "발을 뻗다",
+    "pos": "expression",
+    "gloss_sha256": "0e4ba7622c6397fdeed42a764eb73a6c6ce55d368f9ea8eddeab3536a6d9ccbd"
+   },
+   "target": {
+    "sense_id": "w578-s1",
+    "lemma": "손을 뻗다",
+    "pos": "expression",
+    "gloss_sha256": "ae9f1c98e6156f825a245e39c18d4571706ad51f5bc97bbc3602f2139c6dca9e"
+   }
+  },
+  {
+   "class": "different-movement",
+   "verdict": "not-direct",
+   "source": {
+    "sense_id": "w3774-s1",
+    "lemma": "발을 뻗다",
+    "pos": "expression",
+    "gloss_sha256": "0e4ba7622c6397fdeed42a764eb73a6c6ce55d368f9ea8eddeab3536a6d9ccbd"
+   },
+   "target": {
+    "sense_id": "w3668-s1",
+    "lemma": "손을 뻗치다",
+    "pos": "expression",
+    "gloss_sha256": "3840d7fd80123bf68a18d5230de0a9a7df0c204b733c8d32ba8875424f62d427"
+   }
+  },
+  {
+   "class": "different-movement",
+   "verdict": "not-direct",
+   "source": {
+    "sense_id": "w3774-s1",
+    "lemma": "발을 뻗다",
+    "pos": "expression",
+    "gloss_sha256": "0e4ba7622c6397fdeed42a764eb73a6c6ce55d368f9ea8eddeab3536a6d9ccbd"
+   },
+   "target": {
+    "sense_id": "w3826-s1",
+    "lemma": "팔을 뻗다",
+    "pos": "expression",
+    "gloss_sha256": "3d5ba5aa4c848e1601d34046e552e3d1daf0da18fdecaa0423184647fd97c445"
+   }
+  },
+  {
+   "class": "action-vs-agent",
+   "verdict": "not-direct",
+   "forbidden_types": [
+    "direct",
+    "antonym"
+   ],
+   "source": {
+    "sense_id": "w12229-s1",
+    "lemma": "패자",
+    "pos": "noun",
+    "gloss_sha256": "43805c2fac15087d10308b5ae5f41b7eabef3ea148e469c72d7879a98a576470"
+   },
+   "target": {
+    "sense_id": "w5909-s1",
+    "lemma": "승리",
+    "pos": "noun",
+    "gloss_sha256": "d4a0db426e6499859c35886a578dd343281325d53302008b127cfa41e67f08f4"
+   }
+  }
+ ]
+}

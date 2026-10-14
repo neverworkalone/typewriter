@@ -38,8 +38,26 @@ general topic or scene association.
   부활절 ↔ 성탄절 and 찬송 ↔ 자장가 are negative controls: same category,
   different scene, so they stay near/association. 손을 보태다 (giving help) ↔
   손을 빌리다 (receiving help) is also negative: the participant roles differ,
-  so it stays exploratory. Decide `direct` first and use `near` only for
-  texture that is not a close alternative.
+  so it stays exploratory. 상상력 (ability) ↔ 상상하다 (the act) is likewise
+  negative because the bound senses name different kinds of thing (ability vs
+  act, person vs result, whole vs part), and an `antonym` needs the same axis
+  (패자 ↔ 승자, not 패자 ↔ 승리). A difference of scope alone is not such a
+  difference: 레슨 ↔ 수업 and 꼭대기 ↔ 산꼭대기 are positive direct
+  calibrations because they remain close alternatives in a recurring natural
+  context. A different kind of thing is not a scope difference. The
+  shared boundary (`scripts/relation/direct-boundary.mjs`, carried by the Stage 2
+  author hand-off and every Stage D packet) names four classes: `scope-only`
+  differences stay `direct`, as do `same-movement` actions that overlap in one
+  reaching movement (손을 뻗다 ↔ 팔을 뻗다); `action-vs-agent` (an action, ability or result
+  vs the person or thing that performs or bears it, e.g. 목격자 → 목격,
+  경비 → 경비원) and `different-movement` actions whose bound movements differ (발을 뻗다 →
+  손을 뻗다/팔을 뻗다; the body-part word alone never decides) are not close alternatives and stay `near`/`association`. Decide `direct`
+  first and use `near` only for texture that is not a close alternative. The
+  classes are an editorial question for the actual bound senses, not a
+  mechanical synonym validator; `data/validation/relation-editorial-controls.json`
+  records sense-id-bound positive and negative controls and
+  `tests/relation-editorial-controls.test.mjs` keeps them, and the hand-off,
+  under the registered lexical checks.
 - `antonym` claims meaningful semantic opposition between the bound senses in
   a recognizable natural usage context. Ordinary, literary, figurative,
   technical, domain-specific and culinary contexts can establish the contrast.

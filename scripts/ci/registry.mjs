@@ -181,6 +181,7 @@ const RAW_CI_CATEGORIES = Object.freeze({
       globalCanonicalAuditCheck(),
       testCheck('tests/lexical-quality.test.mjs', 'Test shared lexical quality'),
       testCheck('tests/relation-admission.test.mjs', 'Test relation admission'),
+      { ...testCheck('tests/relation-editorial-controls.test.mjs', 'Test relation editorial direct/antonym boundary controls and shared hand-off'), tier: 'normal' },
       testCheck('tests/semantic-audit-decision-source.test.mjs', 'Test semantic audit decision source'),
       testCheck(
         'tests/shared-admission-context.test.mjs',

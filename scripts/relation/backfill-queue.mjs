@@ -2,7 +2,7 @@ import { EXPLORATORY_RELATION_TYPES, reviewedRelationId } from '../batch/authore
 import { relationAmendmentErrors } from '../factory/relation-amendments.mjs';
 import { sha256Json } from '../validate/semantic-audit.mjs';
 import { buildRelationIndex, retrieveRelationCandidates, validateRelationCandidateArtifact } from './candidate-retrieval.mjs';
-
+import { DIRECT_BOUNDARY_INSTRUCTION } from './direct-boundary.mjs';
 // Canonical relation backfill queue (issue #400). It only orders and tracks work: every queued sense is reviewed
 // through the SAME candidate retrieval, relation tuple contract (types, relevance 1-9, source-bound rationale,
 // gloss digest) and amendment validator that new Stage 2 production uses. A sense without relations is never a
@@ -187,6 +187,11 @@ export function nextPacket(rows, state, { limit = 50, currentCandidates = new Re
   // senses, so in demand order alone they would return to the head of every packet and starve the senses never reviewed.
   const first = pending.filter((row) => state.done[row.sense_id] === undefined);
   return [...first, ...pending.filter((row) => state.done[row.sense_id] !== undefined)].slice(0, limit);
+}
+
+/** The `next` payload: the bounded packet, its candidate evidence and the shared direct/antonym editorial boundary. */
+export function packetPayload(canonicalRevision, packet, candidates) {
+  return { contract: 'relation-backfill-packet-v1', canonical_revision: canonicalRevision, editorial_boundary: DIRECT_BOUNDARY_INSTRUCTION, packet, candidates };
 }
 
 /**

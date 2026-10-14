@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { PassThrough } from 'node:stream';
 import test from 'node:test';
 
+import { DIRECT_BOUNDARY_INSTRUCTION } from '../scripts/relation/direct-boundary.mjs';
 import { GIT_MAX_BUFFER } from '../scripts/factory/git-limits.mjs';
 import { createGitHubClient, repositoryFromRemote } from '../scripts/factory/github-client.mjs';
 import { CANDIDATE_MANIFEST_CONTRACT, PROPOSAL_CONTRACT, expectedAnalyzerDigest, sha256Hex } from '../scripts/factory/contract.mjs';
@@ -598,6 +599,7 @@ test('interactive primary-context hand-offs return a result PR and same-branch f
     const authorEvent = await readEvent(0);
     assert.equal(authorEvent.event, 'AUTHOR_STAGE2_RESULT');
     assert.ok(authorEvent.instructions.some((line) => line.includes('relation:candidates') && line.includes('no-relations')));
+    assert.ok(authorEvent.instructions.includes(DIRECT_BOUNDARY_INSTRUCTION), 'the author hand-off carries the shared direct/antonym boundary');
     assert.ok(authorEvent.instructions.some((line) => line.includes('dictionary-grade lexical accuracy') && line.includes('do NOT need interchangeability in every sentence')), 'lexical synonymy is not universal substitutability');
     assert.ok(authorEvent.instructions.some((line) => line.includes('enrich writer-facing nuance') && line.includes('do not reflexively veto')), 'creative links are preserve-first rather than a word-substitution gate');
     assert.ok(authorEvent.instructions.some((line) => line.includes('relevance 1..9') && line.includes('SAME SOURCE SENSE') && line.includes('already-authored canonical')), 'relevance is a relative same-source/group priority');
