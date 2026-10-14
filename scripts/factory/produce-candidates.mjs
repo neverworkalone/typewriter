@@ -15,7 +15,7 @@ import { parseJsonl, sha256Hex } from './contract.mjs';
 import { loadSearchFormSupport } from './search-form-support.mjs';
 import { publishArtifacts, recoverArtifacts } from './artifact-transaction.mjs';
 import { refillCandidateBatch } from './refill.mjs';
-import { COMPACT_CONTRACT, STAGE1_DECISIONS_V2, loadTrash, failedProposalLemmas, mergeUnresolved, compactManifest, TRASH_DIRECTORY, chunkText, jsonText, digest } from './permanent-trash.mjs';
+import { COMPACT_CONTRACT, STAGE1_DECISIONS_V2, loadTrash, failedProposalLemmas, archivedObservationKeys, mergeUnresolved, compactManifest, TRASH_DIRECTORY, chunkText, jsonText, digest } from './permanent-trash.mjs';
 import { validateFactoryRepository, loadBaseManifests, loadCanonicalEntries } from './validate.mjs';
 import {
   assertWithinDirectory,
@@ -465,6 +465,7 @@ export async function runStage1(argv, {
       evidenceBound: sourceExcludedLemmas,
     },
     sourceExclusionBinding: sourceExclusion.binding,
+    archivedObservationKeys: archivedObservationKeys(trash),
     searchFormSupport: await loadSearchFormSupport(canonicalEntries),
   };
   let produced;

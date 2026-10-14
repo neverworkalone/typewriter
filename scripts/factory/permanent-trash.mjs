@@ -18,6 +18,14 @@ const tuple = (entry, snapshot) => [snapshot, entry.surface.normalize('NFC'), en
   entry.evidence.ref, entry.extractor_hint?.lemma?.normalize('NFC') ?? null, entry.extractor_hint?.pos ?? null];
 export const trashIdentity = (entry, snapshot) => tuple(entry, snapshot);
 export const trashId = (entry, snapshot) => digest(json(tuple(entry, snapshot)));
+// Keys of every archived observation variant. A resolved-empty refill batch is a no-op when each
+// unresolved observation it would archive is already present (it would only add an occurrence).
+export const archivedObservationKeys = (chunks) => new Set([...chunks.values()].flatMap((rows) => rows.flatMap(
+  (row) => row.variants.map((variant) => `${row.observation_id}:${variant.analysis_sha256}`))));
+export function isArchivedObservation(keys, entry, snapshot) {
+  const { queue_id: _queueId, ...observation } = entry;
+  return keys.has(`${trashId(observation, snapshot)}:${digest(json(observation))}`);
+}
 export const jsonText = (value) => `${JSON.stringify(value, null, 2)}\n`;
 export const chunkText = (rows) => rows.map(json).join('\n') + '\n';
 export function unresolvedReferences(manifest) {

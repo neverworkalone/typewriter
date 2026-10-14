@@ -2,7 +2,7 @@ import { readFile, mkdir, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { providerDescriptor } from './analyzer-providers.mjs';
 import { produceCandidateBatch, Stage1Error } from './stage1.mjs';
-import { digest, jsonText } from './permanent-trash.mjs';
+import { digest, jsonText, isArchivedObservation } from './permanent-trash.mjs';
 
 async function save(file, value) {
   const started = performance.now();
@@ -106,9 +106,13 @@ export async function refillCandidateBatch({ initialEvidence, arguments: args, e
       }
       if (!count) {
         produced = await produceCandidateBatch({ ...args, evidence: combined, providers, refill: true, finalizeEmpty: true });
-        const preservedSourceObservationCount = produced.manifest.unresolved_observations.length
-          + (produced.manifest.excluded_observations?.length ?? 0);
-        if (preservedSourceObservationCount === 0) {
+        // Excluded observations are already-decided source and an archived unresolved observation would
+        // only gain another occurrence; neither is a new source observation, so a batch holding only
+        // those is a repeat of an earlier exhausted batch rather than progress.
+        const archived = args.archivedObservationKeys ?? new Set();
+        const newSourceObservationCount = produced.manifest.unresolved_observations
+          .filter((entry) => !isArchivedObservation(archived, entry, produced.manifest.source_snapshot)).length;
+        if (newSourceObservationCount === 0) {
           await rm(checkpointPath, { force: true });
           throw new Stage1Error(['source exhausted with no new source observations; no batch published']);
         }
