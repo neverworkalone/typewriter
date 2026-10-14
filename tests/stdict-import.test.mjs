@@ -530,14 +530,23 @@ test('the source reader accepts only the inventoried file set, bytes and entry c
     await assert.rejects(() => read({ ...inventory, file_count: 1, files: inventory.files.slice(0, 1), entry_count: 2 }), /unexpected: d_2\.json/u);
     // An altered or truncated file, and a wrong entry total.
     await assert.rejects(() => read({ ...inventory, files: [{ ...inventory.files[0], sha256: 'f'.repeat(64) }, inventory.files[1]] }), /d_1\.json differs from the inventory/u);
-    await assert.rejects(() => read({ ...inventory, entry_count: 4 }), /expects 2 \/ 4/u);
+    await assert.rejects(() => read({ ...inventory, entry_count: 4 }), /inventory is inconsistent/u);
     await write('d_2.json', entries(3, 4));
     await assert.rejects(() => read(), /d_2\.json differs from the inventory/u);
-    const regenerated = await inventoryStdictSource(directory);
+
+    // The inventory itself is only written for a complete, self-consistent source of the expected population.
+    await assert.rejects(() => inventoryStdictSource(directory), /incomplete or inconsistent: 2 files hold 4 entries; the dictionary reports 3/u);
+    await write('d_1.json', entries(1, 2), 4);
+    await write('d_2.json', entries(3, 4), 4);
+    const regenerated = await inventoryStdictSource(directory, { expected: { file_count: 2, entry_count: 4 } });
+    await assert.rejects(() => inventoryStdictSource(directory, { expected: { file_count: 3, entry_count: 6 } }), /expected population is 3 \/ 6/u);
     await assert.rejects(() => read({ ...regenerated, files: [regenerated.files[0], { ...regenerated.files[1], entries: 1 }] }), /has 2 entries; the inventory expects 1/u);
     assert.deepEqual((await read(regenerated)).seen, [1, 2, 3, 4]);
     await rm(path.join(directory, 'd_2.json'));
     await assert.rejects(() => read(regenerated), /missing: d_2\.json/u);
+    await assert.rejects(() => inventoryStdictSource(directory), /incomplete or inconsistent: 1 files hold 2 entries; the dictionary reports 4/u);
+    await rm(path.join(directory, 'd_1.json'));
+    await assert.rejects(() => inventoryStdictSource(directory), /incomplete or inconsistent/u);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
@@ -546,7 +555,7 @@ test('the source reader accepts only the inventoried file set, bytes and entry c
 test('the committed source inventory names the 88 STDICT files and their 436,587 entries', async () => {
   const inventory = JSON.parse(await readFile(path.join(ROOT, 'data/provenance/stdict-source-inventory.json'), 'utf8'));
   assert.equal(inventory.contract, 'stdict-source-inventory-v1');
-  assert.deepEqual([inventory.file_count, inventory.entry_count, inventory.files.length], [88, 436587, 88]);
+  assert.deepEqual([inventory.file_count, inventory.entry_count, inventory.files.length, inventory.channel_total], [88, 436587, 88, 436587]);
   assert.equal(inventory.files.reduce((sum, file) => sum + file.entries, 0), inventory.entry_count);
   assert.equal(new Set(inventory.files.map(({ name }) => name)).size, 88);
 });

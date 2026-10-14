@@ -219,6 +219,9 @@ export async function readStdictItems(directory, onItem, { inventory } = {}) {
   if (missing.length > 0 || extra.length > 0) {
     throw new Error(`STDICT source files do not match the inventory (missing: ${missing.join(', ') || 'none'}; unexpected: ${extra.join(', ') || 'none'}).`);
   }
+  if (inventory.channel_total !== inventory.entry_count) {
+    throw new Error('The STDICT source inventory is inconsistent: its entry count differs from the dictionary total.');
+  }
   const files = [...inventory.files].sort((left, right) => sourceFileNumber(left.name) - sourceFileNumber(right.name));
   let entryCount = 0;
   for (const file of files) {
@@ -227,7 +230,7 @@ export async function readStdictItems(directory, onItem, { inventory } = {}) {
       throw new Error(`STDICT source file ${file.name} differs from the inventory (sha256).`);
     }
     const { channel } = JSON.parse(text);
-    if (channel.item.length !== file.entries || (inventory.channel_total !== undefined && channel.total !== inventory.channel_total)) {
+    if (channel.item.length !== file.entries || channel.total !== inventory.channel_total) {
       throw new Error(`STDICT source file ${file.name} has ${channel.item.length} entries; the inventory expects ${file.entries}.`);
     }
     entryCount += channel.item.length;
@@ -239,24 +242,37 @@ export async function readStdictItems(directory, onItem, { inventory } = {}) {
   return files.map(({ name }) => name);
 }
 
-/** Builds the inventory of a source directory (used once to commit the trusted inventory, and by `--verify`). */
-export async function inventoryStdictSource(directory) {
+/**
+ * Builds the inventory of a source directory. It refuses an incomplete download: every file must report the same
+ * dictionary-wide `channel.total`, the entries found must add up to exactly that total, and, when `expected` states the
+ * population the owner decided on (file and entry counts), the directory must match it. A partial directory can
+ * therefore never be recorded as the new trusted source.
+ */
+export async function inventoryStdictSource(directory, { expected } = {}) {
   const names = (await readdir(directory)).filter((name) => name.endsWith('.json'))
     .sort((left, right) => sourceFileNumber(left) - sourceFileNumber(right));
   const files = [];
-  let total;
+  const totals = new Set();
   for (const name of names) {
     const text = await readFile(path.join(directory, name), 'utf8');
     const { channel } = JSON.parse(text);
-    total ??= channel.total;
+    totals.add(channel.total);
     files.push({ name, sha256: createHash('sha256').update(text).digest('hex'), entries: channel.item.length });
+  }
+  const entryCount = files.reduce((sum, { entries }) => sum + entries, 0);
+  const [channelTotal] = totals;
+  if (files.length === 0 || totals.size !== 1 || !Number.isInteger(channelTotal) || entryCount !== channelTotal) {
+    throw new Error(`STDICT source is incomplete or inconsistent: ${files.length} files hold ${entryCount} entries; the dictionary reports ${[...totals].join(', ')}.`);
+  }
+  if (expected && (files.length !== expected.file_count || entryCount !== expected.entry_count)) {
+    throw new Error(`STDICT source has ${files.length} files / ${entryCount} entries; the expected population is ${expected.file_count} / ${expected.entry_count}.`);
   }
   return {
     contract: 'stdict-source-inventory-v1',
     dictionary: '표준국어대사전 (STDICT)',
     file_count: files.length,
-    entry_count: files.reduce((sum, { entries }) => sum + entries, 0),
-    channel_total: total,
+    entry_count: entryCount,
+    channel_total: channelTotal,
     files,
   };
 }
