@@ -605,7 +605,15 @@ test('Stage 1 reapplies the digest-bound corpus exclusion set after provider alt
   const root = await mkdtemp(path.join(tmpdir(), 'factory-ensemble-exclusion-'));
   try {
     const cache = await cacheForTask(root);
-    const sourceArtifacts = [{ path: 'data/reference/production/stage1-409/c18/exclude-lemma-source.json', sha256: HEX }];
+    const sourcePath = 'data/reference/production/stage1-409/c18/exclude-lemma-source.json';
+    const sourceBytes = Buffer.from(JSON.stringify({ candidate_records: [{ lemma: '걷다' }] }));
+    await mkdir(path.dirname(path.join(root, sourcePath)), { recursive: true });
+    await writeFile(path.join(root, sourcePath), sourceBytes);
+    execFileSync('git', ['init', '-q'], { cwd: root });
+    execFileSync('git', ['add', sourcePath], { cwd: root });
+    execFileSync('git', ['-c', 'user.name=Factory test', '-c', 'user.email=factory-test@example.invalid',
+      'commit', '-q', '-m', 'Add trusted text-free exclusion source'], { cwd: root });
+    const sourceArtifacts = [{ path: sourcePath, sha256: sha256Hex(sourceBytes) }];
     const exclusionPayload = { lemmas: ['걷다'], schema_version: 'm9-reviewed-lemma-exclusions-v1', source_artifacts: sourceArtifacts };
     const exclusionManifest = { ...exclusionPayload, exclusion_sha256: sha256Hex(JSON.stringify(exclusionPayload)) };
     await writeFile(path.join(cache.taskDirectory, 'reviewed-lemma-exclusions.json'), JSON.stringify(exclusionManifest));
@@ -664,6 +672,22 @@ test('Stage 1 reapplies the digest-bound corpus exclusion set after provider alt
     assert.equal(result.manifest.ensemble.counts.input_observations, 4);
     assert.equal(result.manifest.ensemble.counts.observations, 4);
     assert.equal(result.manifest.ensemble.counts.excluded, 3);
+    const trustedBase = loadBaseManifests('HEAD', root);
+    assert.deepEqual(await validateFactoryRepository({ root, base: trustedBase }), [],
+      'the compact runStage1 output is accepted when the source bytes, digest, and lemma membership match the trusted base');
+    const persistedManifestPath = path.join(root, 'data/candidates', result.manifest.batch_id, 'manifest.json');
+    const originalPersistedManifestText = await readFile(persistedManifestPath, 'utf8');
+    const forged = JSON.parse(originalPersistedManifestText);
+    const forgedSourceArtifacts = [{ path: 'data/reference/nonexistent-source.json', sha256: '0'.repeat(64) }];
+    forged.selection.source_exclusion_binding.source_artifacts = forgedSourceArtifacts;
+    forged.selection.source_exclusion_binding.exclusion_sha256 = sha256Hex(JSON.stringify({
+      lemmas: ['걷다'], schema_version: 'm9-reviewed-lemma-exclusions-v1', source_artifacts: forgedSourceArtifacts,
+    }));
+    await writeFile(persistedManifestPath, JSON.stringify(forged) + '\n');
+    assert.match((await validateFactoryRepository({ root, base: trustedBase })).join('\n'),
+      /source exclusion artifact data\/reference\/nonexistent-source\.json is unavailable in the trusted base snapshot/u,
+      'rehashing a fake source binding and its matched lemma cannot make the repository validator accept it');
+    await writeFile(persistedManifestPath, originalPersistedManifestText);
     const omitted = structuredClone(result.manifest);
     omitted.excluded_observations.pop();
     omitted.ensemble.counts.excluded = omitted.excluded_observations.length;

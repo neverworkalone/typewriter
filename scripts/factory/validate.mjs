@@ -17,6 +17,7 @@ import {
 import { confusableLemmaAdvisories, validateDecisionHandoff } from './handoff.mjs';
 import { buildCanonicalIndex } from './identity-adapter.mjs';
 import { isLemmaRow } from './lemma-contract.mjs';
+import { exclusionManifestSha256, exclusionSourceLemmas } from './source-exclusions.mjs';
 import { nonliteralCoverageAdvisories, validateLemmaDecision } from './lemma-decisions.mjs';
 import { loadSearchFormSupport } from './search-form-support.mjs';
 import { canonicalSnapshotDigest, usageKeyOfRow } from './stage1.mjs';
@@ -147,8 +148,13 @@ export async function validateFactoryRepository({ root = REPOSITORY_DIRECTORY, b
   const archivedLemmaBatches = v2DecisionBatches.size ? await loadArchivedLemmaBatches(root) : new Map();
   for (const [batch, { manifest, candidatesText, stage1Decisions }] of sortedCandidates) {
     if (v2DecisionBatches.has(batch)) {
+      const sourceExclusion = await verifySourceExclusionBinding({
+        batch, binding: manifest.selection?.source_exclusion_binding, root, baseCommit: archiveBase?.commit ?? null,
+      });
+      errors.push(...sourceExclusion.errors);
       errors.push(...validateStage1ExclusionProvenance({ batch, manifest, stage1Decisions,
-        priorProducedLemmas: new Set(seenLemmas.keys()), archivedLemmaBatches }));
+        priorProducedLemmas: new Set(seenLemmas.keys()), archivedLemmaBatches,
+        verifiedSourceLemmas: sourceExclusion.lemmas }));
     }
     for (const row of parseJsonl(candidatesText ?? '', batch, [])) {
       if (seenIds.has(row.candidate_id)) errors.push(`${batch}: candidate_id ${row.candidate_id} is not unique across batches`);
@@ -602,7 +608,71 @@ async function loadArchivedLemmaBatches(root) {
   return byLemma;
 }
 
-function validateStage1ExclusionProvenance({ batch, manifest, stage1Decisions, priorProducedLemmas, archivedLemmaBatches }) {
+async function verifySourceExclusionBinding({ batch, binding, root, baseCommit }) {
+  const errors = [];
+  const lemmas = new Set();
+  if (!binding) return { errors, lemmas };
+  if (!Array.isArray(binding.source_artifacts) || !Array.isArray(binding.matched_lemmas)) {
+    return { errors: [`${batch}: source exclusion binding is incomplete`], lemmas };
+  }
+  const sources = binding.source_artifacts;
+  const sourcePaths = sources.map((source) => typeof source?.path === 'string' ? source.path : '');
+  const sortedSourcePaths = [...sourcePaths].sort();
+  if (JSON.stringify(sourcePaths) !== JSON.stringify(sortedSourcePaths)
+    || new Set(sourcePaths).size !== sources.length) {
+    errors.push(`${batch}: source exclusion artifacts must be unique and sorted by path`);
+  }
+  const bytesByPath = new Map();
+  for (const source of sources) {
+    const relativePath = source?.path;
+    if (typeof relativePath !== 'string' || !relativePath || path.posix.isAbsolute(relativePath)
+      || relativePath.split('/').some((part) => !part || part === '.' || part === '..')
+      || path.posix.normalize(relativePath) !== relativePath) {
+      errors.push(`${batch}: source exclusion artifact path is not a normalized repository-relative path`);
+      continue;
+    }
+    let bytes;
+    try {
+      bytes = baseCommit
+        ? execFileSync('git', ['show', `${baseCommit}:${relativePath}`], {
+          cwd: root, encoding: null, stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: GIT_MAX_BUFFER,
+        })
+        : await readFile(path.join(root, relativePath));
+    } catch {
+      errors.push(`${batch}: source exclusion artifact ${relativePath} is unavailable in the trusted base snapshot`);
+      continue;
+    }
+    bytesByPath.set(relativePath, bytes);
+    if (sha256Hex(bytes) !== source.sha256) {
+      errors.push(`${batch}: source exclusion artifact ${relativePath} digest differs from the trusted base snapshot`);
+    }
+  }
+  for (const source of sources) {
+    const relativePath = source?.path;
+    const bytes = bytesByPath.get(relativePath);
+    if (!bytes) continue;
+    try {
+      const companionManifestPath = path.posix.join(path.posix.dirname(relativePath), 'manifest.json');
+      const sourceLemmas = exclusionSourceLemmas(relativePath, bytes, {
+        emptyCandidateManifestBytes: bytesByPath.get(companionManifestPath),
+      });
+      for (const lemma of sourceLemmas) lemmas.add(lemma);
+    } catch (error) {
+      errors.push(`${batch}: source exclusion artifact ${relativePath} cannot prove lemma membership: ${error.message}`);
+    }
+  }
+  const orderedLemmas = [...lemmas].sort((left, right) => left < right ? -1 : left > right ? 1 : 0);
+  const matched = binding.matched_lemmas;
+  for (const lemma of matched) {
+    if (!lemmas.has(lemma)) errors.push(`${batch}: matched source-exclusion lemma ${lemma} is absent from the verified source artifacts`);
+  }
+  if (exclusionManifestSha256(orderedLemmas, sources) !== binding.exclusion_sha256) {
+    errors.push(`${batch}: source exclusion digest does not match verified source lemma membership and artifact digests`);
+  }
+  return { errors, lemmas };
+}
+
+function validateStage1ExclusionProvenance({ batch, manifest, stage1Decisions, priorProducedLemmas, archivedLemmaBatches, verifiedSourceLemmas }) {
   const errors = [];
   const sourceBinding = manifest.selection?.source_exclusion_binding;
   for (const [index, entry] of (stage1Decisions?.excluded_observations ?? []).entries()) {
@@ -611,7 +681,8 @@ function validateStage1ExclusionProvenance({ batch, manifest, stage1Decisions, p
     const archivedBeforeBatch = [...archiveBatches].some((archivedBatch) => archivedBatch < batch);
     const expected = priorProduced ? 'prior_produced_lemma'
       : archivedBeforeBatch ? 'archived_failed_proposal'
-        : sourceBinding?.matched_lemmas?.includes(entry.lemma) ? 'evidence_bound_exclusion' : null;
+      : verifiedSourceLemmas.has(entry.lemma) && sourceBinding?.matched_lemmas?.includes(entry.lemma)
+        ? 'evidence_bound_exclusion' : null;
     if (entry.disposition === 'deferred_lemma') {
       if (expected) errors.push(`${batch}: excluded observation ${index} for ${entry.lemma} must be ${expected}, got deferred_lemma`);
     } else if (!expected) {
