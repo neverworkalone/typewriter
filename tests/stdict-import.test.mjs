@@ -19,6 +19,7 @@ import {
   serializeRecord,
   surfaceForms,
 } from '../scripts/stdict/convert.mjs';
+import { SearchSession } from '../src/domain/search-session.js';
 import { buildPilot } from '../scripts/stdict/build-shard.mjs';
 import { readCanonicalRecords, validateCanonicalRecord } from '../scripts/validate/canonical-jsonl.mjs';
 import { validateDatasetRecords } from '../scripts/validate/dataset-integrity.mjs';
@@ -251,4 +252,73 @@ test('an unsupported explicit POS is reported so the entry is held, never conver
   const { report } = convertItem(item(910, '새말', '단어', [[1, '뜻풀이.']], '미지원품사'), fixtureContext(new Set([910])));
   assert.deepEqual(report.unsupportedPos, [{ sense: 'w910-s1', pos: '미지원품사', word_unit: '단어' }]);
   assert.deepEqual(convertItem(item(911, '새말', '단어', [[1, '뜻풀이.']], '품사 없음'), fixtureContext(new Set([911]))).report.unsupportedPos, []);
+});
+
+// Search aliases (`search_forms`) are many-to-many paths into complete records. Synthetic words only: this tests
+// search semantics through the real producer -> SQLite -> consumer route, not any approved STDICT root link.
+test('search aliases coexist with exact lemmas, shared targets, same-record matches and generated forms', async () => {
+  const word = (id, lemma, pos, searchForms = [lemma]) => ({
+    id, record_type: 'entry', role: 'start', candidate_id: id, lemma, search_forms: searchForms, source: 'stdict',
+    senses: [{ id: `${id}-s1`, pos, gloss: `${lemma}의 뜻풀이.` }],
+  });
+  const records = [
+    word('w201', '나직하다', 'adjective', ['나직하다', '나직']),
+    word('w202', '나직나직하다', 'adjective', ['나직나직하다', '나직']),
+    word('w300', '나직', 'noun'),
+    word('w400', '시민단체', 'noun', ['시민단체', '시민 단체']),
+    word('w410', '먹다', 'verb'),
+    word('w411', '먹는', 'noun'),
+    word('w420', '보다', 'verb', ['보다', '본']),
+  ];
+  const directory = await mkdtemp(path.join(tmpdir(), 'typewriter-alias-'));
+  try {
+    const canonicalDirectory = path.join(directory, 'canonical');
+    await mkdir(canonicalDirectory);
+    await writeFile(path.join(canonicalDirectory, 'stdict-0001.jsonl'), `${records.map(serializeRecord).join('\n')}\n`);
+    const outputPath = path.join(directory, 'dictionary.sqlite');
+    await buildDictionary({ inputDirectory: canonicalDirectory, outputPath, allowDirty: true });
+    const database = new DatabaseSync(outputPath, { readOnly: true });
+    try {
+      const shape = (term) => findRecordsBySearchTerm(database, term).matches
+        .map(({ id, match }) => [id, match.kind, match.field]);
+
+      // 1 + 2: the exact lemma ranks first without suppressing either alias target; alias targets keep a stable order.
+      assert.deepEqual(shape('나직'), [
+        ['w300', 'exact-lemma', 'lemma'],
+        ['w201', 'exact-search-form', 'search-form'],
+        ['w202', 'exact-search-form', 'search-form'],
+      ]);
+      assert.deepEqual(shape('나직'), shape('나직'), 'order is deterministic');
+      assert.deepEqual(shape('나직하다'), [['w201', 'exact-lemma', 'lemma']], 'unrelated exact matches are untouched');
+
+      // 3: one record matched as lemma and as alias appears once, with the best match type.
+      assert.deepEqual(shape('시민단체'), [['w400', 'exact-lemma', 'lemma']]);
+      assert.deepEqual(shape('시민 단체'), [['w400', 'exact-search-form', 'search-form']]);
+
+      // 3: a generated form never hides an exact lemma, and an alias that is also generated is one search-form match.
+      assert.deepEqual(shape('먹는'), [['w411', 'exact-lemma', 'lemma'], ['w410', 'generated-surface-form', 'generated-surface-form']]);
+      assert.deepEqual(shape('본'), [['w420', 'exact-search-form', 'search-form']]);
+
+      // 5: aliases are not records or senses, and identity/gloss survive the response.
+      assert.equal(database.prepare('SELECT COUNT(*) AS n FROM records').get().n, records.length);
+      assert.equal(database.prepare('SELECT COUNT(*) AS n FROM senses').get().n, records.length);
+      assert.equal(getRecord(database, 'w201').senses[0].gloss, '나직하다의 뜻풀이.');
+
+      // 4: the runtime consumer keeps every candidate and selects the first (exact lemma) one.
+      const session = new SearchSession({
+        runtime: {
+          search: async (term) => findRecordsBySearchTerm(database, term),
+          getRecord: async (id) => getRecord(database, id),
+        },
+      });
+      const state = await session.searchExact('나직');
+      assert.deepEqual(state.results.map(({ id }) => id), ['w300', 'w201', 'w202']);
+      assert.equal(state.selectedRecordId, 'w300');
+      assert.deepEqual(state.results.map(({ match }) => match.kind), ['exact-lemma', 'exact-search-form', 'exact-search-form']);
+    } finally {
+      database.close();
+    }
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });
