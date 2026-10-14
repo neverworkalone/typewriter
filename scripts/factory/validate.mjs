@@ -91,7 +91,7 @@ export async function validateFactoryRepository({ root = REPOSITORY_DIRECTORY, b
   const errors = [];
   let archiveBase = base;
   if (!archiveBase) {
-    try { if (git(['rev-parse', '--show-toplevel'], root) === root) archiveBase = { commit: git(['rev-parse', 'HEAD'], root) }; } catch { /* synthetic roots have no baseline */ }
+    try { if (!git(['rev-parse', '--show-prefix'], root)) archiveBase = { commit: git(['rev-parse', 'HEAD'], root) }; } catch { /* synthetic roots have no baseline */ }
   }
   report.archiveValidation = { checked_chunks: 0, unchanged_chunks_skipped: 0 };
   const changedArchiveOccurrences = new Map();
@@ -631,13 +631,15 @@ async function verifySourceExclusionBinding({ batch, binding, root, baseCommit }
       errors.push(`${batch}: source exclusion artifact path is not a normalized repository-relative path`);
       continue;
     }
+    if (!baseCommit) {
+      errors.push(`${batch}: source exclusion artifact ${relativePath} cannot be verified without a trusted Git base snapshot`);
+      continue;
+    }
     let bytes;
     try {
-      bytes = baseCommit
-        ? execFileSync('git', ['show', `${baseCommit}:${relativePath}`], {
-          cwd: root, encoding: null, stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: GIT_MAX_BUFFER,
-        })
-        : await readFile(path.join(root, relativePath));
+      bytes = execFileSync('git', ['show', `${baseCommit}:${relativePath}`], {
+        cwd: root, encoding: null, stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: GIT_MAX_BUFFER,
+      });
     } catch {
       errors.push(`${batch}: source exclusion artifact ${relativePath} is unavailable in the trusted base snapshot`);
       continue;

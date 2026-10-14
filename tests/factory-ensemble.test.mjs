@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -675,6 +675,16 @@ test('Stage 1 reapplies the digest-bound corpus exclusion set after provider alt
     const trustedBase = loadBaseManifests('HEAD', root);
     assert.deepEqual(await validateFactoryRepository({ root, base: trustedBase }), [],
       'the compact runStage1 output is accepted when the source bytes, digest, and lemma membership match the trusted base');
+    const gitDirectory = path.join(root, '.git');
+    const hiddenGitDirectory = path.join(root, '.git-hidden-for-test');
+    await rename(gitDirectory, hiddenGitDirectory);
+    try {
+      assert.match((await validateFactoryRepository({ root })).join('\n'),
+        /cannot be verified without a trusted Git base snapshot/u,
+        'source-bound dispositions fail closed when a synthetic non-Git root cannot provide a trusted base snapshot');
+    } finally {
+      await rename(hiddenGitDirectory, gitDirectory);
+    }
     const persistedManifestPath = path.join(root, 'data/candidates', result.manifest.batch_id, 'manifest.json');
     const originalPersistedManifestText = await readFile(persistedManifestPath, 'utf8');
     const forged = JSON.parse(originalPersistedManifestText);
