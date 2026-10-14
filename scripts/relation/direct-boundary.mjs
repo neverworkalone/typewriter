@@ -25,7 +25,13 @@ export const DIRECT_BOUNDARY_CLASSES = [
   {
     id: 'narrative-contrast',
     verdict: 'not-direct',
-    rule: 'A state and the act that destroys it, or a rise and a later exit in a career, are a causal or narrative contrast, not opposition on one axis; keep them association (an antonym needs the same axis).',
+    rule: 'A state and the separate act that destroys it, or a rise and a later exit in a career, are a causal or narrative contrast, not opposition on one axis; keep them association (an antonym needs the same axis).',
+  },
+  {
+    id: 'same-axis-opposition',
+    verdict: 'direct',
+    required_types: ['antonym'],
+    rule: 'Poles of one axis of change (sealed shut vs opened, in the same recurring context of one object) are a real antonym, not a narrative contrast; do not demote them to association.',
   },
 ];
 
