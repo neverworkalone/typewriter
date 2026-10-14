@@ -10,7 +10,7 @@ import { buildStage3SemanticAuthority, AUTHORITY_PATH } from '../factory/semanti
 import { refreshStage3ReportCheckpoints } from '../factory/stage3-worker.mjs';
 import { canonicalRecordsSha256, sha256Json } from '../validate/semantic-audit.mjs';
 import { backfillPacketErrors } from '../factory/validate.mjs';
-import { approvalsStillHold } from './backfill-queue.mjs';
+import { BACKFILL_EXCLUDED_POS, approvalsStillHold } from './backfill-queue.mjs';
 import { buildRelationIndex } from './candidate-retrieval.mjs';
 import { readShardedJson } from '../lib/sharded-json.mjs';
 
@@ -32,7 +32,8 @@ export function approvedAmendments(state, index) {
     const sense = index.bySenseId.get(senseId);
     // The same check the queue uses: a removed sense, changed source gloss, or a target whose owner or meaning changed
     // since the review means the approval no longer holds, so nothing is written and the queue returns it for re-review.
-    if (!sense || !approvalsStillHold({ sense_id: senseId, gloss_sha256: sha256Json(sense.gloss) }, entry, index)) { stale.push(senseId); continue; }
+    // An approval recorded before the source became ineligible (pos `unclassified`) is not written; the queue never re-offers it.
+    if (!sense || sense.pos === BACKFILL_EXCLUDED_POS || !approvalsStillHold({ sense_id: senseId, gloss_sha256: sha256Json(sense.gloss) }, entry, index)) { stale.push(senseId); continue; }
     for (const { relation, rationale } of entry.approved_relations) {
       amendments.push({
         source_record_id: sense.record_id, source_sense_id: senseId, source_gloss_sha256: entry.gloss_sha256, relation, rationale,
@@ -186,6 +187,9 @@ export async function applyBackfill({ root, state, index, refreshReports = true 
     // Resuming writes whatever the intent has not written yet, so each such tuple must still mean what it meant when
     // it was approved; tuples already in canonical are only being recorded.
     for (const item of packet.relation_amendments) {
+      if (index.bySenseId.get(item.source_sense_id)?.pos === BACKFILL_EXCLUDED_POS) {
+        throw new Error(`interrupted packet ${id}: the source ${item.source_sense_id} is an unclassified sense, which is not a backfill source; remove the unwritten packet`);
+      }
       if (isPresent(records, item)) continue;
       if (packet.target_meaning_sha256[reviewedId(item)] !== meaningOf(index, item.relation.target_sense)) {
         throw new Error(`interrupted packet ${id}: the target ${item.relation.target_sense} of ${item.source_sense_id} changed meaning since approval; remove the unwritten packet and re-review`);
