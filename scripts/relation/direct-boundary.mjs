@@ -22,6 +22,11 @@ export const DIRECT_BOUNDARY_CLASSES = [
     verdict: 'not-direct',
     rule: 'Actions whose bound movements differ (extending a leg vs reaching out to grasp) are neighbouring texture, not close alternatives; judge the actual movement and its natural context, not the body-part word.',
   },
+  {
+    id: 'narrative-contrast',
+    verdict: 'not-direct',
+    rule: 'A state and the act that destroys it, or a rise and a later exit in a career, are a causal or narrative contrast, not opposition on one axis; keep them association (an antonym needs the same axis).',
+  },
 ];
 
 export const DIRECT_BOUNDARY_INSTRUCTION = [

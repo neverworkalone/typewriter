@@ -46,11 +46,11 @@ general topic or scene association.
   calibrations because they remain close alternatives in a recurring natural
   context. A different kind of thing is not a scope difference. The
   shared boundary (`scripts/relation/direct-boundary.mjs`, carried by the Stage 2
-  author hand-off and every Stage D packet) names four classes: `scope-only`
+  author hand-off and every Stage D packet) names five classes: `scope-only`
   differences stay `direct`, as do `same-movement` actions that overlap in one
   reaching movement (손을 뻗다 ↔ 팔을 뻗다); `action-vs-agent` (an action, ability or result
   vs the person or thing that performs or bears it, e.g. 목격자 → 목격,
-  경비 → 경비원) and `different-movement` actions whose bound movements differ (발을 뻗다 →
+  경비 → 경비원) `narrative-contrast` pairs where a state meets the act that destroys it, or a rise meets a later exit (실재 → 말살, 승진 → 퇴임: causal or career-story contrast, not one axis; 취임 ↔ 퇴임 stays the same-axis antonym), and `different-movement` actions whose bound movements differ (발을 뻗다 →
   손을 뻗다/팔을 뻗다; the body-part word alone never decides) are not close alternatives and stay `near`/`association`. Decide `direct`
   first and use `near` only for texture that is not a close alternative. The
   classes are an editorial question for the actual bound senses, not a

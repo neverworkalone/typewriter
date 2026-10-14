@@ -180,6 +180,46 @@
     "pos": "noun",
     "gloss_sha256": "d4a0db426e6499859c35886a578dd343281325d53302008b127cfa41e67f08f4"
    }
+  },
+  {
+   "class": "narrative-contrast",
+   "verdict": "not-direct",
+   "forbidden_types": [
+    "direct",
+    "antonym"
+   ],
+   "source": {
+    "sense_id": "w8978-s1",
+    "lemma": "실재",
+    "pos": "noun",
+    "gloss_sha256": "7eef2da849ef57fa30a4871d1e228bdad74dacac9673096a298706993a24b823"
+   },
+   "target": {
+    "sense_id": "w11103-s1",
+    "lemma": "말살",
+    "pos": "noun",
+    "gloss_sha256": "c90a2258717bbd1dcbbfbcd3739a15b02e71dd1adbd52be559549f5d9af48e8b"
+   }
+  },
+  {
+   "class": "narrative-contrast",
+   "verdict": "not-direct",
+   "forbidden_types": [
+    "direct",
+    "antonym"
+   ],
+   "source": {
+    "sense_id": "w8099-s1",
+    "lemma": "승진",
+    "pos": "noun",
+    "gloss_sha256": "256ae17e373e916354fcf9e8d5b46d41aef68d95c69cbc7fd0853250a3fc8d3c"
+   },
+   "target": {
+    "sense_id": "w12469-s1",
+    "lemma": "퇴임",
+    "pos": "noun",
+    "gloss_sha256": "a19e2a3a0dd46df1486f51de1a6e2a7a0b5ed65efee38014496ab4b1d14abf17"
+   }
   }
  ]
 }
