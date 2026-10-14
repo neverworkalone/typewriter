@@ -1,0 +1,68 @@
+{
+ "packet_id": "R000033",
+ "relation_corrections": [
+  {
+   "source_record_id": "w11250",
+   "source_sense_id": "w11250-s1",
+   "source_gloss_sha256": "603074a95ebc2535f716b6e1673f6069ab12be91f50626c9cef5c6a9190faf22",
+   "target_meaning_sha256": "94c608b5f40fa72f932723151df2411942962741b007a17ac81a9f7765be267d",
+   "previous_relation": {
+    "target": "w5503",
+    "target_sense": "w5503-s1",
+    "type": "antonym",
+    "note": "외부의 억압이나 구속에서 벗어난 자유이다"
+   },
+   "relation": {
+    "target": "w5503",
+    "target_sense": "w5503-s1",
+    "type": "association",
+    "note": "외부의 억압이나 구속에서 벗어난 자유이다",
+    "relevance": 7
+   },
+   "position": 0,
+   "rationale": "w11250-s1: AI self-check: 옥죄다는 자유를 제약하는 행위이고 자유는 그 제약에서 벗어난 상태라 같은 축의 대립어가 아니라 연상으로 보존한다"
+  },
+  {
+   "source_record_id": "w448",
+   "source_sense_id": "w448-s1",
+   "source_gloss_sha256": "387d15ecbc7f17ca3d1d78068115a1096d017098195d14438bd7ce5c7ff03a15",
+   "target_meaning_sha256": "355d57f46113cedd33d9103512029bbcbb3ac4e02405c9192faf532eaaeb5037",
+   "previous_relation": {
+    "target": "w370",
+    "target_sense": "w370-s1",
+    "type": "antonym",
+    "note": "마음이나 움직임이 가라앉아 고요한 차분하다 상태이다"
+   },
+   "relation": {
+    "target": "w370",
+    "target_sense": "w370-s1",
+    "type": "association",
+    "note": "마음이나 움직임이 가라앉아 고요한 차분하다 상태이다",
+    "relevance": 7
+   },
+   "position": 1,
+   "rationale": "w448-s1: AI self-check: 차분하다와 섣부르다는 침착함과 성급함으로 이어지는 말이지만 같은 축의 대립은 아니라 연상으로 보존한다"
+  },
+  {
+   "source_record_id": "w9812",
+   "source_sense_id": "w9812-s1",
+   "source_gloss_sha256": "19bbb40b853f9b6de272d199a622443bd98a8a9f4a5d4c755c6170fbe97a16f9",
+   "target_meaning_sha256": "f21de540d7ffb8b4575882cd09652fd14698e1c249c89da3f066bd4279bf9c68",
+   "previous_relation": {
+    "target": "w10243",
+    "target_sense": "w10243-s1",
+    "type": "antonym",
+    "note": "정도나 수준, 기능 따위가 낮아지는 저하이다"
+   },
+   "relation": {
+    "target": "w10243",
+    "target_sense": "w10243-s1",
+    "type": "association",
+    "note": "정도나 수준, 기능 따위가 낮아지는 저하이다",
+    "relevance": 7
+   },
+   "position": 0,
+   "rationale": "w9812-s1: AI self-check: 저하는 정도가 낮아지는 일이고 심화는 정도가 깊어지는 일이라 축이 달라 연상으로 보존한다"
+  }
+ ]
+}

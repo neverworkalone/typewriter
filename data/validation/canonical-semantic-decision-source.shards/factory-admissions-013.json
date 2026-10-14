@@ -1,0 +1,430 @@
+[
+  {
+    "batch_id": "R000033",
+    "attempt": 1,
+    "semantic_decisions_sha256": "d3a7df47c0aafc8b09b2a389b5d2fb5edd298e492d6de39c4ec3d30ca17a9abf",
+    "entries": [],
+    "relation_corrections": [
+      {
+        "source_candidate_id": "R000033",
+        "source_record_id": "w11250",
+        "source_sense_id": "w11250-s1",
+        "source_gloss_sha256": "603074a95ebc2535f716b6e1673f6069ab12be91f50626c9cef5c6a9190faf22",
+        "target_meaning_sha256": "94c608b5f40fa72f932723151df2411942962741b007a17ac81a9f7765be267d",
+        "previous_relation_id": "rel-e330ee6eb0c510639460691a",
+        "previous_relation": {
+          "target": "w5503",
+          "target_sense": "w5503-s1",
+          "type": "antonym",
+          "note": "외부의 억압이나 구속에서 벗어난 자유이다"
+        },
+        "relation_id": "rel-49825ff4f90c8a9f634e0e1b",
+        "relation": {
+          "target": "w5503",
+          "target_sense": "w5503-s1",
+          "type": "association",
+          "note": "외부의 억압이나 구속에서 벗어난 자유이다",
+          "relevance": 7
+        },
+        "rationale_sha256": "6ccdbe4c9e18e957e33884707b41d21dc764c149765c26b0327414a361e8000d",
+        "position": 0,
+        "outcome": "amended"
+      },
+      {
+        "source_candidate_id": "R000033",
+        "source_record_id": "w448",
+        "source_sense_id": "w448-s1",
+        "source_gloss_sha256": "387d15ecbc7f17ca3d1d78068115a1096d017098195d14438bd7ce5c7ff03a15",
+        "target_meaning_sha256": "355d57f46113cedd33d9103512029bbcbb3ac4e02405c9192faf532eaaeb5037",
+        "previous_relation_id": "rel-5b041df493cbf90582bc8183",
+        "previous_relation": {
+          "target": "w370",
+          "target_sense": "w370-s1",
+          "type": "antonym",
+          "note": "마음이나 움직임이 가라앉아 고요한 차분하다 상태이다"
+        },
+        "relation_id": "rel-8c4085980efb448c9845ef73",
+        "relation": {
+          "target": "w370",
+          "target_sense": "w370-s1",
+          "type": "association",
+          "note": "마음이나 움직임이 가라앉아 고요한 차분하다 상태이다",
+          "relevance": 7
+        },
+        "rationale_sha256": "5780a3177ebb7f37135441fded70f3ba8793f1ced09bc57b93d11fe274d4e944",
+        "position": 1,
+        "outcome": "amended"
+      },
+      {
+        "source_candidate_id": "R000033",
+        "source_record_id": "w9812",
+        "source_sense_id": "w9812-s1",
+        "source_gloss_sha256": "19bbb40b853f9b6de272d199a622443bd98a8a9f4a5d4c755c6170fbe97a16f9",
+        "target_meaning_sha256": "f21de540d7ffb8b4575882cd09652fd14698e1c249c89da3f066bd4279bf9c68",
+        "previous_relation_id": "rel-4ed04976a64deedb36f077dd",
+        "previous_relation": {
+          "target": "w10243",
+          "target_sense": "w10243-s1",
+          "type": "antonym",
+          "note": "정도나 수준, 기능 따위가 낮아지는 저하이다"
+        },
+        "relation_id": "rel-6b3be3ca7370e6fc2c3510ed",
+        "relation": {
+          "target": "w10243",
+          "target_sense": "w10243-s1",
+          "type": "association",
+          "note": "정도나 수준, 기능 따위가 낮아지는 저하이다",
+          "relevance": 7
+        },
+        "rationale_sha256": "81532e92d51fff27e0f3478300854cc7d85e6e945e2eef4cfdbfc162971d3d07",
+        "position": 0,
+        "outcome": "amended"
+      }
+    ],
+    "changes": [
+      {
+        "entry_id": "w11250",
+        "operation": "amend_relations",
+        "path": "data/canonical/issue-223-m9-e-corpus-batch-12.jsonl",
+        "source_candidate_ids": [
+          "R000033"
+        ],
+        "amended_relation_ids": [
+          "rel-e330ee6eb0c510639460691a"
+        ],
+        "before_sha256": "5d0429e4977b42b5dad9117c04320781224d5d9d9db303bd83e9257c7b82c49e",
+        "after_sha256": "f56421140248e37d291f2f8b628c082dd00ab22b8174fcd1170fdd3f8686a723",
+        "previous_semantic_review_sha256": "930b920a14f6b130589f8c545b3a578907462a9c31c4d7c065ca0601aac1db2a",
+        "previous_semantic_review": {
+          "record_id": "w11250",
+          "record_sha256": "5d0429e4977b42b5dad9117c04320781224d5d9d9db303bd83e9257c7b82c49e",
+          "boundary_review": {
+            "review_id": "issue-223-m9-e-corpus-batch-12-semantic-verification-20261002-r1:canonical:w11250:boundary",
+            "decision": "retain",
+            "classification": "atomic",
+            "evidence": [
+              {
+                "sense_id": "w11250-s1",
+                "evidence_basis": "w11250 w11250-s1: 옥죄다: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 옥죄는 느낌처럼 몸이나 마음을 압박하는 상황에서 쓰인다.",
+                "rationale": "m5-16671 w11250 w11250-s1: 옥죄다: 문맥 0의 자신을 옥죄는 것, 문맥 1의 온몸을 옥죄고 있는 기분, 문맥 2의 몸을 옥죄어 버릴 같다가 모두 바싹 죄어 자유롭지 못하게 한다는 하나의 뜻이다. Reviewed gloss SHA-256 603074a95ebc2535f716b6e1673f6069ab12be91f50626c9cef5c6a9190faf22."
+              }
+            ],
+            "pairwise": [],
+            "rationale": "m5-16671 w11250 w11250-s1: 옥죄다: 문맥 0의 자신을 옥죄는 것, 문맥 1의 온몸을 옥죄고 있는 기분, 문맥 2의 몸을 옥죄어 버릴 같다가 모두 바싹 죄어 자유롭지 못하게 한다는 하나의 뜻이다. Reviewed gloss SHA-256 603074a95ebc2535f716b6e1673f6069ab12be91f50626c9cef5c6a9190faf22."
+          },
+          "sense_reviews": [
+            {
+              "sense_id": "w11250-s1",
+              "relation_decision": "relations-reviewed",
+              "relation_rationale": "w11250 w11250-s1 603074a95ebc [R000032]: Stage 3 attempt R000032-a1 appended antonym relation rel-e330ee6eb0c510639460691a to w5503; rationale digest e63b2edf45fa. w11250 w11250-s1 603074a95ebc [R000032]: Stage 3 attempt R000032-a1 appended near relation rel-8347786cc467277e01199682 to w8944; rationale digest 9be9c7544b34. w11250 w11250-s1 603074a95ebc [R000032]: Stage 3 attempt R000032-a1 appended near relation rel-9af84b5d515b6c831d6654c3 to w6921; rationale digest d901a6582d34. w11250 w11250-s1 603074a95ebc [R000032]: Stage 3 attempt R000032-a1 appended near relation rel-2fb5f16c612ef42b8efaf5c2 to w8654; rationale digest e021760fa93f. w11250 w11250-s1 603074a95ebc [R000032]: Stage 3 attempt R000032-a1 appended near relation rel-257f3e737429c09a1f40b969 to w8710; rationale digest f0c3b4e997fa. w11250 w11250-s1 603074a95ebc [R000032]: Stage 3 attempt R000032-a1 appended near relation rel-018da1c3c6f4653a8f109708 to w3883; rationale digest 93829fd81856. w11250 w11250-s1 603074a95ebc [R000032]: Stage 3 attempt R000032-a1 appended near relation rel-293799da7518fc934bf063f4 to w291; rationale digest 7a2b2be487aa. w11250 w11250-s1 603074a95ebc [R000032]: Stage 3 attempt R000032-a1 appended association relation rel-f064bcacb0f2770b8cb6b34f to w216; rationale digest a6271666bcc0. w11250 w11250-s1 603074a95ebc [R000032]: Stage 3 attempt R000032-a1 appended association relation rel-cb413462295a3cda852db4fa to w8319; rationale digest 6acfc3e9c80f."
+            }
+          ]
+        },
+        "previous_record": {
+          "id": "w11250",
+          "record_type": "entry",
+          "role": "start",
+          "candidate_id": "w11250",
+          "lemma": "옥죄다",
+          "search_forms": [
+            "옥죄다"
+          ],
+          "senses": [
+            {
+              "id": "w11250-s1",
+              "pos": "verb",
+              "gloss": "바싹 죄어 자유롭지 못하게 하다.",
+              "relations": [
+                {
+                  "target": "w5503",
+                  "target_sense": "w5503-s1",
+                  "type": "antonym",
+                  "note": "외부의 억압이나 구속에서 벗어난 자유이다"
+                },
+                {
+                  "target": "w8944",
+                  "target_sense": "w8944-s1",
+                  "type": "near",
+                  "note": "자유롭게 움직이거나 행동하지 못하도록 얽어매인 상태인 속박이다",
+                  "relevance": 4
+                },
+                {
+                  "target": "w6921",
+                  "target_sense": "w6921-s1",
+                  "type": "near",
+                  "note": "힘이나 부담을 가해 상대를 누르는 압박이다",
+                  "relevance": 4
+                },
+                {
+                  "target": "w8654",
+                  "target_sense": "w8654-s1",
+                  "type": "near",
+                  "note": "사람이나 규칙, 형편에 매이는 얽매이다 상태이다",
+                  "relevance": 4
+                },
+                {
+                  "target": "w8710",
+                  "target_sense": "w8710-s1",
+                  "type": "near",
+                  "note": "사람을 일정한 곳에 가두어 두는 감금이다",
+                  "relevance": 5
+                },
+                {
+                  "target": "w3883",
+                  "target_sense": "w3883-s1",
+                  "type": "near",
+                  "note": "발이 자유롭게 움직이지 못하게 되는 발목이 묶이다 표현이다",
+                  "relevance": 5
+                },
+                {
+                  "target": "w291",
+                  "target_sense": "w291-s2",
+                  "type": "near",
+                  "note": "사정이나 제약 때문에 움직이지 못하는 발이 묶이다 표현이다",
+                  "relevance": 5
+                },
+                {
+                  "target": "w216",
+                  "target_sense": "w216-s1",
+                  "type": "association",
+                  "note": "붙잡고 있던 사람이나 동물을 풀어 주는 놓아주다 행동이다",
+                  "relevance": 6
+                },
+                {
+                  "target": "w8319",
+                  "target_sense": "w8319-s1",
+                  "type": "association",
+                  "note": "닫힌 장소나 제도를 열어 자유롭게 드나들게 하는 개방이다",
+                  "relevance": 6
+                }
+              ]
+            }
+          ]
+        },
+        "semantic_review_sha256": "68babbb189f7c33cb0b63bdd502670794fb4fbfcb8d6e5bc8b1765ddf358c932"
+      },
+      {
+        "entry_id": "w448",
+        "operation": "amend_relations",
+        "path": "data/canonical/m5-9-expansion.jsonl",
+        "source_candidate_ids": [
+          "R000033"
+        ],
+        "amended_relation_ids": [
+          "rel-5b041df493cbf90582bc8183"
+        ],
+        "before_sha256": "ba019a6feae803eb3c892ef9eb3fccbacca5d6f1fb4d17a434d97c6755b911f8",
+        "after_sha256": "b6a257c604febcc35d47b104b1eb1e8f363705f06ca047813ca71207bcfdbb62",
+        "previous_semantic_review_sha256": "e070c83f3b1733ab753133dce21b190822e07e12ee73569215de3f71c8478f41",
+        "previous_semantic_review": {
+          "record_id": "w448",
+          "record_sha256": "ba019a6feae803eb3c892ef9eb3fccbacca5d6f1fb4d17a434d97c6755b911f8",
+          "boundary_review": {
+            "review_id": "canonical-semantic-review:w448:boundary",
+            "decision": "retain",
+            "classification": "atomic",
+            "evidence": [
+              {
+                "sense_id": "w448-s1",
+                "evidence_basis": "gloss subject, predicate, and writer-facing usage were reviewed",
+                "rationale": "w448 w448-s1 was separately reviewed against gloss 387d15ecbc7f and writer-facing usage evidence."
+              }
+            ],
+            "pairwise": [],
+            "rationale": "w448 boundary decision was authored from each sense gloss and pairwise writer-facing usage evidence; no current sense count was used as the decision source."
+          },
+          "sense_reviews": [
+            {
+              "sense_id": "w448-s1",
+              "relation_decision": "relations-reviewed",
+              "relation_rationale": "w448 w448-s1: separately authored relation decision relations-reviewed after reviewing the complete relation tuple set. w448 w448-s1 387d15ecbc7f [R000032]: Stage 3 attempt R000032-a1 appended antonym relation rel-5b041df493cbf90582bc8183 to w370; rationale digest 1b8be6444313. w448 w448-s1 387d15ecbc7f [R000032]: Stage 3 attempt R000032-a1 appended near relation rel-c3a3d69c0e899d3e95481315 to w4832; rationale digest eac5fbe01de7. w448 w448-s1 387d15ecbc7f [R000032]: Stage 3 attempt R000032-a1 appended near relation rel-6217a76afc0e3d8aba34dde1 to w669; rationale digest 34f253f68db6. w448 w448-s1 387d15ecbc7f [R000032]: Stage 3 attempt R000032-a1 appended near relation rel-44e6033dd2581b4e274b686f to w5768; rationale digest 5c2c6e265237. w448 w448-s1 387d15ecbc7f [R000032]: Stage 3 attempt R000032-a1 appended association relation rel-a21d4ad2a1ad457841aaf849 to w7840; rationale digest 1147ef18ae2f. w448 w448-s1 387d15ecbc7f [R000032]: Stage 3 attempt R000032-a1 appended association relation rel-3006071ce4b4a44182f01745 to w5586; rationale digest 66d61867a3a5. w448 w448-s1 387d15ecbc7f [R000032]: Stage 3 attempt R000032-a1 appended association relation rel-43fd130fd29aa4fda6c370a2 to w5426; rationale digest 06e5412e9e02."
+            }
+          ]
+        },
+        "previous_record": {
+          "id": "w448",
+          "record_type": "entry",
+          "role": "start",
+          "candidate_id": "w448",
+          "lemma": "섣부르다",
+          "search_forms": [
+            "섣부르다"
+          ],
+          "senses": [
+            {
+              "id": "w448-s1",
+              "pos": "adjective",
+              "gloss": "충분히 살피지 않고 서둘러 판단하거나 행동하는 성질이 있다",
+              "relations": [
+                {
+                  "target": "w454",
+                  "target_sense": "w454-s1",
+                  "type": "near",
+                  "note": "섣부르다는 살핌이 부족한 서두름이고 성급하다는 기다리지 못하는 급한 태도라 서로의 경계를 비교한다.",
+                  "relevance": 3
+                },
+                {
+                  "target": "w370",
+                  "target_sense": "w370-s1",
+                  "type": "antonym",
+                  "note": "마음이나 움직임이 가라앉아 고요한 차분하다 상태이다"
+                },
+                {
+                  "target": "w4832",
+                  "target_sense": "w4832-s1",
+                  "type": "near",
+                  "note": "충분히 살피지 않고 급하게 판단하는 속단하다 행동이다",
+                  "relevance": 4
+                },
+                {
+                  "target": "w669",
+                  "target_sense": "w669-s1",
+                  "type": "near",
+                  "note": "앞뒤를 충분히 살피지 않고 함부로 하는 무모하다 상태이다",
+                  "relevance": 5
+                },
+                {
+                  "target": "w5768",
+                  "target_sense": "w5768-s1",
+                  "type": "near",
+                  "note": "시간이나 상황이 다급한 급하다 상태이다",
+                  "relevance": 5
+                },
+                {
+                  "target": "w7840",
+                  "target_sense": "w7840-s1",
+                  "type": "association",
+                  "note": "마음이 급하고 답답해 조바심을 내는 안달이다",
+                  "relevance": 6
+                },
+                {
+                  "target": "w5586",
+                  "target_sense": "w5586-s1",
+                  "type": "association",
+                  "note": "사정이나 근거를 따져 결론을 내리는 판단이다",
+                  "relevance": 6
+                },
+                {
+                  "target": "w5426",
+                  "target_sense": "w5426-s1",
+                  "type": "association",
+                  "note": "사람이 실제로 하는 행동이다",
+                  "relevance": 6
+                }
+              ]
+            }
+          ]
+        },
+        "semantic_review_sha256": "8f58a346b42088ffc7c8675a7a210c593e2ec70224c60d2892a3d71df42c9e29"
+      },
+      {
+        "entry_id": "w9812",
+        "operation": "amend_relations",
+        "path": "data/canonical/issue-223-m9-e-corpus-batch-07.jsonl",
+        "source_candidate_ids": [
+          "R000033"
+        ],
+        "amended_relation_ids": [
+          "rel-4ed04976a64deedb36f077dd"
+        ],
+        "before_sha256": "e8410144d31dd8b9a09c2041fb619e2c13206ef0b5595fbab15b266d1c8af0ad",
+        "after_sha256": "6c5ff911c702844845830d66176126eed289ec67acb249b43a876e5fafd045fd",
+        "previous_semantic_review_sha256": "686732a556c09a345368413f68b02043c318d443b1dc5b87920ecf1142c79ed7",
+        "previous_semantic_review": {
+          "record_id": "w9812",
+          "record_sha256": "e8410144d31dd8b9a09c2041fb619e2c13206ef0b5595fbab15b266d1c8af0ad",
+          "boundary_review": {
+            "review_id": "issue-223-m9-e-corpus-batch-07-semantic-verification-20261001-r1:canonical:w9812:boundary",
+            "decision": "retain",
+            "classification": "atomic",
+            "evidence": [
+              {
+                "sense_id": "w9812-s1",
+                "evidence_basis": "w9812 w9812-s1: 심화: 풀이는 표제어의 검토된 핵심 뜻과 맞는다. 갈등이나 연구의 정도가 더 깊어지는 변화를 짚는다.",
+                "rationale": "m5-14662 w9812 w9812-s1: 심화: 맥락 0은 깊이를 더한다는 뜻이고 맥락 1, 2는 정도가 깊어진다는 같은 뜻이다. Reviewed gloss SHA-256 19bbb40b853f9b6de272d199a622443bd98a8a9f4a5d4c755c6170fbe97a16f9."
+              }
+            ],
+            "pairwise": [],
+            "rationale": "m5-14662 w9812 w9812-s1: 심화: 맥락 0은 깊이를 더한다는 뜻이고 맥락 1, 2는 정도가 깊어진다는 같은 뜻이다. Reviewed gloss SHA-256 19bbb40b853f9b6de272d199a622443bd98a8a9f4a5d4c755c6170fbe97a16f9."
+          },
+          "sense_reviews": [
+            {
+              "sense_id": "w9812-s1",
+              "relation_decision": "relations-reviewed",
+              "relation_rationale": "w9812 w9812-s1 19bbb40b853f [R000032]: Stage 3 attempt R000032-a1 appended antonym relation rel-4ed04976a64deedb36f077dd to w10243; rationale digest 1eb01f1d17eb. w9812 w9812-s1 19bbb40b853f [R000032]: Stage 3 attempt R000032-a1 appended near relation rel-437ba9df673670512f181844 to w7959; rationale digest 90505f53fe47. w9812 w9812-s1 19bbb40b853f [R000032]: Stage 3 attempt R000032-a1 appended near relation rel-0ca442a3e4f4aaf81b7fd263 to w7420; rationale digest f63f05e4b44f. w9812 w9812-s1 19bbb40b853f [R000032]: Stage 3 attempt R000032-a1 appended near relation rel-a80f7306d79fdb0409acecd6 to w6640; rationale digest 1f6cdbec60c0. w9812 w9812-s1 19bbb40b853f [R000032]: Stage 3 attempt R000032-a1 appended association relation rel-e79ac255a5611c9de5f1a923 to w8114; rationale digest 801e774d5332. w9812 w9812-s1 19bbb40b853f [R000032]: Stage 3 attempt R000032-a1 appended association relation rel-03c70ab97dec434559dfe0e1 to w5794; rationale digest 62ee165e8276. w9812 w9812-s1 19bbb40b853f [R000032]: Stage 3 attempt R000032-a1 appended association relation rel-907882ea823c4a5a71ed80fb to w12622; rationale digest 905707752d6d."
+            }
+          ]
+        },
+        "previous_record": {
+          "id": "w9812",
+          "record_type": "entry",
+          "role": "start",
+          "candidate_id": "w9812",
+          "lemma": "심화",
+          "search_forms": [
+            "심화"
+          ],
+          "senses": [
+            {
+              "id": "w9812-s1",
+              "pos": "noun",
+              "gloss": "정도나 수준이 깊어짐.",
+              "relations": [
+                {
+                  "target": "w10243",
+                  "target_sense": "w10243-s1",
+                  "type": "antonym",
+                  "note": "정도나 수준, 기능 따위가 낮아지는 저하이다"
+                },
+                {
+                  "target": "w7959",
+                  "target_sense": "w7959-s1",
+                  "type": "near",
+                  "note": "정도나 수준이 높은 상태인 고도이다",
+                  "relevance": 5
+                },
+                {
+                  "target": "w7420",
+                  "target_sense": "w7420-s1",
+                  "type": "near",
+                  "note": "상태나 수준이 이전보다 나아지는 진보이다",
+                  "relevance": 5
+                },
+                {
+                  "target": "w6640",
+                  "target_sense": "w6640-s1",
+                  "type": "near",
+                  "note": "기능이나 수준이 자라 나아지는 발달이다",
+                  "relevance": 5
+                },
+                {
+                  "target": "w8114",
+                  "target_sense": "w8114-s1",
+                  "type": "association",
+                  "note": "오랜 노력 끝에 이른 수준이나 상태인 경지이다",
+                  "relevance": 6
+                },
+                {
+                  "target": "w5794",
+                  "target_sense": "w5794-s1",
+                  "type": "association",
+                  "note": "능력이나 상태를 견주는 수준이다",
+                  "relevance": 6
+                },
+                {
+                  "target": "w12622",
+                  "target_sense": "w12622-s1",
+                  "type": "association",
+                  "note": "어떤 일이나 성질이 이른 정도이다",
+                  "relevance": 6
+                }
+              ]
+            }
+          ]
+        },
+        "semantic_review_sha256": "fbd76d4a28b3dc8e79c90b762a18323685f0efbb0dd769c5916745187bb944a9"
+      }
+    ],
+    "sha256": "d823b244d1d87792e2a13faee855305e9d1df8532f9d6232c7beff73f6b6a22f"
+  }
+]
