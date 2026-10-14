@@ -29,14 +29,20 @@ separate terms. See [`DATA-LICENSE.md`](DATA-LICENSE.md) and [`BRAND.md`](BRAND.
 
 ## Dictionary data
 
-CC BY 4.0 is the selected license for Typewriter-authored dictionary data to the
-extent Typewriter owns or controls the rights being licensed. The owner's release
-decision permits the independently authored current canonical dataset and its
-generated SQLite, extension, and web products to be distributed under that
-scope; an individual clearance map for every record is not required. Third-party
-material and any specifically demonstrated infringement are excluded and must
-retain their own terms or be removed/cleared as a targeted item. See
-[`DATA-LICENSE.md`](DATA-LICENSE.md).
+The **new STDICT-based Typewriter dictionary** (source-derived headwords,
+senses, definitions and permitted lexical relationships, plus Typewriter-authored
+**말의 결 / 연상** enrichment) will be distributed under
+[CC BY-SA 2.0 Korea](https://creativecommons.org/licenses/by-sa/2.0/kr/).
+This applies to the covered dictionary content and its distribution in
+`data/canonical/`, generated `dictionary.sqlite`, the extension and web products;
+it does **not** relicense separate Typewriter software or third-party runtime
+components. The National Institute of Korean Language (NIKL) retains its rights
+in the `표준국어대사전` source; Typewriter licenses only the original contributions
+for which it has rights. Attributions, exclusions, and the prospective cutover
+are described in [`DATA-LICENSE.md`](DATA-LICENSE.md).
+
+Existing grants for previously published independently authored data are not
+revoked by adopting the new baseline license.
 
 ## Brand assets
 
