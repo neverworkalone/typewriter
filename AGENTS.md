@@ -59,24 +59,22 @@ Do not turn Typewriter into sentence generation. The writer writes the sentence;
 
 ## Data source and licensing discipline
 
-The **new** canonical dictionary baseline is a selected, deterministically
-converted subset of the National Institute of Korean Language's
-**표준국어대사전 (STDICT)**. The source's eligible headwords, definitions and
-licensed lexical links may be included under **CC BY-SA 2.0 Korea** with source
-attribution; Typewriter's independently authored **말의 결 / 연상** data is
-licensed under the same terms. This is an explicit exception to the former
-author-only canonical source rule. See `DATA-LICENSE.md` and `docs/data-policy.md`.
-The reset/import itself requires its own task; it is not completed by this policy.
+Typewriter's approved lexical sources are the National Institute of Korean
+Language's **표준국어대사전 (STDICT)**, **한국어기초사전 (KRDICT)**, and
+**우리말샘**. Selected, licensed headwords, definitions, and lexical links
+from these dictionaries may enter canonical under **CC BY-SA 2.0 Korea**,
+with attribution to the applicable source. Typewriter's original
+**말의 결 / 연상** enrichment uses the same license. See `DATA-LICENSE.md`
+and `docs/data-policy.md`.
 
 - Do not commit raw downloaded dictionary JSON, bulk API responses, scraped
   pages, raw corpus passages, protected source-attributed examples or multimedia.
-  The approved product-needed STDICT canonical **projection** is different from a
-  raw source dump.
-- Do not copy restricted content from other dictionaries or assume transforming
-  it changes the licensing conditions.
-- Maintain source IDs/provenance, license attribution and intended rights scope.
+  Selected licensed canonical **projections** are distinct from raw source dumps.
+- Do not copy restricted content from unrelated dictionaries or assume that
+  transforming it removes licensing conditions.
+- Maintain source IDs/provenance, attribution and license applicability.
 - Typewriter-specific creative relation classifications, notes, and relevance
-  remain authored/reviewed editorial decisions, not automatic STDICT judgments.
+  remain authored/reviewed editorial decisions, not automatic dictionary judgments.
 
 Other external APIs, dictionaries, corpora and LLMs remain subject to their
 respective use conditions. No new blanket validator or old-data migration is
