@@ -11,7 +11,7 @@ work areas are documented here without creating empty scaffolding.
 
 | Material | Responsibility | Location | Repository rule |
 | --- | --- | --- | --- |
-| Canonical dictionary data | Typewriter-authored and editorially reviewed words, senses, expressions, and relations | `data/canonical/*.jsonl` | Tracked in Git. This is the editable source of truth. |
+| Canonical dictionary data | New STDICT-derived licensed headwords/senses/definitions/lexical links, with Typewriter-authored and reviewed 말의 결/연상 enrichment | `data/canonical/*.jsonl` | Tracked in Git after the separately planned import; the selected CC BY-SA 2.0 KR projection, not the raw source download, is the editable source of truth. |
 | Stage 1 permanent trash | Globally deduplicated unresolved source observations and their original analysis/batch histories | `data/candidate-trash/T*.jsonl` | Permanent, text-free, at most 500 observations per file; no automatic re-mining. |
 | Stage 1 batch decisions | Normal excluded dispositions and context decisions; no unresolved payloads | `data/candidates/C*/stage1-decisions.json` | Counts and byte digest are bound by the compact manifest; uses the common factory validator. |
 | M5 target inventory | Non-canonical target selection, classification, review-state decisions, and promoted inventory history | `data/inventory/m5-target-seed.json` plus append-only `data/inventory/m5-target-promotions.jsonl` and the on-demand projection builder | The active seed contains planning rows; the promotion ledger contains immutable promoted events. The deterministic inventory projection joins both in memory and is never a canonical or product build input. |
@@ -45,9 +45,10 @@ the M2 toolchain is:
 data/canonical/*.jsonl
 ```
 
-Only reviewed Typewriter records belong there. The generated SQLite and packaged
-extension are built into ignored `artifacts/` or `dist/` output and are never edited
-as canonical data.
+Only approved licensed STDICT-derived records and reviewed Typewriter-authored
+enrichment belong there after the reset/import. Raw STDICT downloads remain
+outside Git. The generated SQLite and packaged extension are built into ignored
+`artifacts/` or `dist/` output and are never edited as canonical data.
 
 These locations are local-only or intentionally deferred:
 
