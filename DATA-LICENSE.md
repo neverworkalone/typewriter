@@ -1,70 +1,93 @@
-# Typewriter data license
+# Typewriter dictionary data license
 
-The selected license for Typewriter-owned dictionary data is
-[Creative Commons Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/).
-It permits commercial reuse and AI training subject to the license's attribution
-and other terms. No non-commercial, AI-training, competition, or other field-of-use
-restriction is added.
+## New STDICT-based dictionary
 
-## Scope
+The **new** Typewriter dictionary baseline, built from the National Institute of
+Korean Language's **표준국어대사전 (Standard Korean Language Dictionary, STDICT)**,
+and the original Typewriter **말의 결 / 연상** enrichments added to it will be
+distributed under the
+[Creative Commons Attribution–ShareAlike 2.0 Korea license (CC BY-SA 2.0 KR)](https://creativecommons.org/licenses/by-sa/2.0/kr/).
 
-The owner authorizes distribution of Typewriter's independently authored lexical
-result, including canonical lemmas, senses, glosses, relationships, and generated
-dictionary databases and packages, under the selected license to the extent
-Typewriter owns or controls the rights being licensed. No per-record rights
-certificate or exhaustive historical-source audit is a general prerequisite for
-that owner-approved output. A source reference used during research does not by
-itself make an independently authored result a copy of the source.
+The official dictionary's eligible text is used under the NIKL
+[STDICT copyright policy](https://stdict.korean.go.kr/join/copyrightPolicy.do).
+Typewriter licenses its own original contributions on the same terms to the
+extent it owns or controls those rights; it does not claim ownership of NIKL
+source content. Covered lexical content in canonical JSONL, the generated
+`dictionary.sqlite`, and dictionary data included in Chrome Extension and web
+distributions follows this data license. Software in those distributions
+remains separately licensed under Apache 2.0 (see [LICENSE.md](LICENSE.md)).
 
-This license does not grant rights in third-party material, trademarks, or source
-content whose terms do not permit redistribution. Do not distribute raw NIKL
-corpus files, passages or excerpts, local corpus indexes or analysis databases,
-verbatim third-party dictionary/API material, or any specifically identified
-infringing content. Remove or clear a demonstrated rights violation as a targeted
-item; unknown ancestry alone does not impose a blanket hold on the authored
-dictionary. A transformation, paraphrase, translation, or model-generated draft
-does not by itself authorize copying protected source expression.
+Commercial use and redistribution are permitted under the license. Redistributors
+must provide appropriate attribution, a link to the license, and indicate relevant
+adaptations; adaptations shared as derivative works must comply with the
+ShareAlike terms. No separate non-commercial, no-AI, or competitor restriction
+is added to the covered dictionary content.
 
-Attribution must identify Typewriter, link to this license, and indicate changes
-when data is adapted. For example: “Typewriter data, CC BY 4.0; modified for this
-use.”
+This policy applies to the **new STDICT-derived baseline and its future
+enrichment**; it does not claim that the still-unreplaced dataset or any
+previously released data has already been replaced, or revoke existing license
+grants.
 
-## Current release decision — Typewriter-authored output
+## Source, modifications, and attribution
 
-Typewriter has obtained approval to use the NIKL Written Corpus 2025 for
-research and development, including local processing, indexing, lexical candidate
-discovery, and reference use, as documented in
-`docs/external-material-review-written-corpus-2025.md`.
+- **Source:** 국립국어원, **표준국어대사전**.
+  https://stdict.korean.go.kr/
+- **Source copyright policy:** https://stdict.korean.go.kr/join/copyrightPolicy.do
+- **License:** CC BY-SA 2.0 대한민국.
+  https://creativecommons.org/licenses/by-sa/2.0/kr/
+- **Typewriter modifications (when the new baseline is built):** select
+  product-needed text fields; normalize headword/search forms; map source
+  entries, meanings, and licensed synonym/antonym links into the Typewriter
+  canonical model; add separately authored 말의 결 and 연상 relationships.
 
-The project maintains an owner-approved public GitHub research and development
-workflow (issue #239). This workflow tracks Typewriter-authored lexical records
-and editorial evidence while keeping raw corpus text, excerpts, local corpus
-indexes, and restricted source material out of the repository.
+Suggested attribution for a distribution **containing the new baseline**:
 
-**NIKL result-publication approval is met for the submitted result.** The owner
-confirmed on 2026-10-12 that the NIKL portal shows
-`승인` for the result-publication application submitted on 2026-09-27 for
-Typewriter, classified as `인공지능 모델/서비스/제품`, targeting the existing
-Chrome Web Store listing. This meets the NIKL result-publication approval
-condition for that submitted result; the application evidence and its stated
-scope are recorded in
-`docs/external-material-review-written-corpus-2025.md`.
+> 사전 기본 자료: 국립국어원 『표준국어대사전』
+> (https://stdict.korean.go.kr/).
+> 저작자표시-동일조건변경허락 2.0 대한민국
+> (https://creativecommons.org/licenses/by-sa/2.0/kr/).
+> Typewriter에서 표제어·뜻풀이·관계 정보를 선별·정규화하고,
+> 자체 작성한 말의 결·연상 관계를 추가하였습니다.
 
-**Typewriter-authored output is distributable by default under this project
-license.** This owner decision covers the current canonical JSONL, generated
-`dictionary.sqlite`, Chrome Extension, Pages product, and original project code
-and data in the public repository. Keep the stated NIKL attribution with the
-result and apply the ordinary exact-revision, deterministic-build,
-package-content, license/notice, and applicable Store or Pages checks described
-in `docs/publication-boundary.md` and `docs/build.md`.
+A downstream distributor should preserve source attribution and give notice
+of its own changes. The Typewriter name, logos, and visual identity do not
+receive a trademark or brand license through this data grant.
 
-The approval and owner decision do not authorize redistribution of raw corpus
-material or copied third-party content, and they do not grant Typewriter rights
-that it does not control. If a specific artifact is shown to contain protected
-source text, an actual third-party infringement, credentials, or other concrete
-restricted material, exclude or remediate that material before publication. Do
-not require an individual clearance map for every lexical record or an exhaustive
-audit of every historical GitHub ref, conversation, log, or hosted surface as a
-condition for shipping independently authored Typewriter output. Historical
-audit findings and candidate `publication_state` evidence remain historical;
-they do not serve as product-release permission flags.
+## What may be included
+
+The planned STDICT baseline may contain licensed headwords, parts of speech,
+sense definitions, and licensed sense-bound lexical links needed by Typewriter.
+It must **not** copy source-attributed example passages or multimedia
+(images, audio, video, pronunciation recordings) merely because the main
+dictionary text uses CC BY-SA; those materials can carry **separate rights**.
+Material expressly marked with different terms remains governed by those terms.
+The bulk downloaded source files/API responses remain outside Git; publishing
+the selected, licensed canonical projection is distinct from publishing the raw
+download.
+
+Other external dictionaries, scraped pages, protected examples, or material
+whose terms prohibit the intended redistribution are **not** approved for import
+by this decision. Formatting or paraphrasing does not override those rights.
+Check source-specific exceptions before the STDICT import is distributed; this
+policy alone does not assert that the new corpus is already packaged or shipped.
+
+## NIKL Written Corpus 2025 is a separate source
+
+The NIKL **문어 말뭉치 2025(1.0)** has its own research/reference and
+result-publication permission records, described in
+[docs/external-material-review-written-corpus-2025.md](docs/external-material-review-written-corpus-2025.md).
+That approval concerns the **submitted Typewriter result**, not a general
+license to redistribute the corpus and not the permission basis for STDICT.
+
+Do not publish the raw written corpus, its passages or excerpts, or local
+corpus SQLite/FTS or morphology indexes in Git, a generated dictionary, an
+extension package, or a web distribution. Keep its existing attribution and
+approval-specific conditions separate from the STDICT data license.
+
+## Release boundary
+
+Before shipping the new STDICT-backed product, publish the applicable NIKL
+and Typewriter credits, link the CC BY-SA 2.0 KR license, verify source-specific
+exclusions, and include the notices in the actual extension or web distribution
+where users can find them. Maintain normal exact-revision package checks;
+this policy change does not itself constitute a shipped data migration.
