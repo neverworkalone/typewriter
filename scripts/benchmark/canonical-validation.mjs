@@ -1716,7 +1716,7 @@ export async function benchmarkCanonicalValidation({
     .some((name) => name.endsWith('.jsonl'));
   const canonicalDirectory = hasProductionCanonical
     ? productionCanonicalDirectory
-    : path.join(REPOSITORY_DIRECTORY, 'tests', 'fixtures', 'canonical-sample');
+    : path.join(REPOSITORY_DIRECTORY, 'tests', 'fixtures', 'benchmark-template');
   const inputPreparationStart = now();
   const canonicalTemplateContext = await loadCanonicalContext({
     directory: canonicalDirectory,
