@@ -70,7 +70,7 @@
               "type": "object",
               "properties": {
                 "pos": {
-                "enum": ["noun", "adjective", "verb", "adverb"]
+                "enum": ["noun", "adjective", "verb", "adverb", "determiner", "interjection", "particle", "ending", "affix", "unclassified"]
                 }
               }
             }
@@ -117,7 +117,7 @@
         },
         "pos": {
           "type": "string",
-          "enum": ["noun", "adjective", "verb", "adverb", "expression"]
+          "enum": ["noun", "adjective", "verb", "adverb", "determiner", "interjection", "particle", "ending", "affix", "unclassified", "expression"]
         },
         "gloss": {
           "type": "string",

@@ -144,6 +144,7 @@ const RAW_CI_CATEGORIES = Object.freeze({
       inProcessCheck('Validate M6-3 surface-form projection coverage', 'surface-form-projection'),
       testCheck('tests/validate-canonical-jsonl.test.mjs', 'Test canonical JSONL validator'),
       testCheck('tests/canonical-context.test.mjs', 'Test shared canonical context'),
+      testCheck('tests/stdict-import.test.mjs', 'Test STDICT canonical conversion, licensed-source gate and pilot shard'),
       testCheck('tests/validate-dataset-integrity.test.mjs', 'Test dataset validator'),
       pnpmCheck('Validate lexical rule inventory', 'validate:rules'),
       testCheck('tests/lexical-rule-inventory.test.mjs', 'Test lexical rule inventory'),
