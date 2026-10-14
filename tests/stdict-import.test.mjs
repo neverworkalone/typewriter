@@ -11,6 +11,7 @@ import { buildDictionary } from '../scripts/build/dictionary.mjs';
 import { findRecordsBySearchTerm, getRecord } from '../scripts/build/query.mjs';
 import {
   addToSenseIndex,
+  cleanDefinition,
   convertItem,
   createSenseIndex,
   mapPos,
@@ -73,6 +74,20 @@ test('surface forms strip homograph numbers and boundary markers consistently', 
   assert.deepEqual(surfaceForms('간(에) 바람 들다', '관용구').lemma, '간(에) 바람 들다');
 });
 
+test('definitions are cleaned of embedded markup without hiding what was removed', () => {
+  assert.deepEqual(cleanDefinition('‘<sense_no>3837</sense_no>거리’ 또는 ‘<each_sense_no>22875,54856</each_sense_no>지역’의 뜻.'), {
+    text: '‘거리’ 또는 ‘지역’의 뜻.', markup: ['sense_no', 'each_sense_no'], unknownMarkup: false,
+  });
+  assert.equal(cleanDefinition("비타민 B<sub style='font-size:11px;'>12</sub>와 10<sup style='font-size:11px;'>36</sup>").text, '비타민 B₁₂와 10³⁶');
+  assert.equal(cleanDefinition('<I>ab=ac</I>는 <I>a</I>가 0이 아닐 경우').text, 'ab=ac는 a가 0이 아닐 경우');
+  assert.equal(cleanDefinition('상형은 ‘<equ>&#x2636;</equ>’으로').text, '상형은 ‘☶’으로');
+  assert.equal(cleanDefinition('끝말  <img src=\'x.png\'>  이다.').text, '끝말 이다.');
+  assert.equal(cleanDefinition('작품에 <거미의 향연>, <Y의 비극> 따위가 있다.').text, '작품에 <거미의 향연>, <Y의 비극> 따위가 있다.', 'angle-bracket titles are not markup');
+  assert.equal(cleanDefinition('뜻<blink>풀이</blink>').unknownMarkup, true, 'an unknown tag is surfaced, never silently kept');
+  const held = convertItem(item(900, '이상', '단어', [[1, '뜻<blink>풀이</blink>']]), fixtureContext(new Set([900])));
+  assert.deepEqual(held.report.unknownMarkup, ['w900-s1']);
+});
+
 test('part-of-speech mapping never silently drops a class', () => {
   const mapped = Object.fromEntries(
     ['명사', '의존 명사', '대명사', '수사', '동사', '보조 동사', '형용사', '보조 형용사', '부사', '관형사', '감탄사', '조사', '어미', '접사', undefined]
@@ -89,6 +104,7 @@ test('official relations bind by sense_code and report every non-converted statu
   const { record, report } = convertItem(FIXTURE[0], fixtureContext(new Set([100, 101, 102])));
   assert.equal(record.id, 'w100');
   assert.equal(record.candidate_id, 'w100');
+  assert.equal(record.source, 'stdict');
   assert.deepEqual(record.senses[0].relations.map(({ target_sense, type }) => [target_sense, type]), [
     ['w101-s1', 'direct'],
     ['w102-s1', 'antonym'],
@@ -183,7 +199,7 @@ test('pilot selection regenerates byte-identically from the source download', { 
   assert.equal(result.shard, await readFile(SHARD, 'utf8'));
 });
 
-test('licensed-source shards are exempt from authored editorial heuristics but not structure', async () => {
+test('licensed-source records are exempt from authored editorial heuristics but not structure', async () => {
   const { auditCanonicalLexicalQuality } = await import('../scripts/validate/lexical-quality.mjs');
   const { reviewableRecordInfos } = await import('../scripts/validate/licensed-source.mjs');
   const homographs = [
@@ -193,17 +209,19 @@ test('licensed-source shards are exempt from authored editorial heuristics but n
     id, record_type: 'entry', role: 'start', candidate_id: id, lemma, search_forms: [lemma],
     senses: [{ id: `${id}-s1`, pos: 'noun', gloss }],
   }));
-  const infos = (file, records = homographs) => records.map((record, index) => ({
-    record, filePath: path.join('/data/canonical', file), lineNumber: index + 1,
+  const infos = (records, marked) => records.map((record, index) => ({
+    record: marked ? { ...record, source: 'stdict' } : record, filePath: '/data/canonical/x.jsonl', lineNumber: index + 1,
   }));
-  const audit = (file, records) => auditCanonicalLexicalQuality(infos(file, records), { throwOnError: false });
-  assert.equal(audit('stdict-0007.jsonl').blocking_finding_count, 0);
-  assert.ok(audit('authored-0001.jsonl').blocking_finding_count > 0, 'authored shards keep every heuristic');
+  const audit = (records, marked) => auditCanonicalLexicalQuality(infos(records, marked), { throwOnError: false });
+  assert.equal(audit(homographs, true).blocking_finding_count, 0);
+  assert.ok(audit(homographs, false).blocking_finding_count > 0, 'authored records keep every heuristic');
   const brokenPos = structuredClone(homographs);
   brokenPos[0].record_type = 'expression';
-  assert.ok(audit('stdict-0007.jsonl', brokenPos).blocking_finding_count > 0, 'structure is still enforced');
-  const mixed = [...infos('stdict-0007.jsonl'), ...infos('authored-0001.jsonl', [{ ...homographs[0], id: 'w200', candidate_id: 'w200', senses: [{ id: 'w200-s1', pos: 'noun', gloss: '준말.' }] }])];
+  assert.ok(audit(brokenPos, true).blocking_finding_count > 0, 'structure is still enforced');
+  const authored = { ...homographs[0], id: 'w200', candidate_id: 'w200', senses: [{ id: 'w200-s1', pos: 'noun', gloss: '준말.' }] };
+  const mixed = [...infos(homographs, true), ...infos([authored], false)];
   assert.deepEqual(reviewableRecordInfos(mixed).map(({ record }) => record.id), ['w200']);
-  const plain = infos('authored-0001.jsonl');
+  assert.deepEqual(reviewableRecordInfos(mixed.map(({ record }) => record)).map(({ id }) => id), ['w200'], 'plain records are classified the same way');
+  const plain = infos(homographs, false);
   assert.equal(reviewableRecordInfos(plain), plain, 'identity is preserved when nothing is exempt');
 });

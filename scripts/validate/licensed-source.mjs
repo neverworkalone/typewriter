@@ -1,18 +1,19 @@
-import path from 'node:path';
-
 /**
- * Canonical shards converted deterministically from an official, licensed
- * dictionary (표준국어대사전) are named `stdict-NNNN.jsonl`. Their definitions
- * are source text, not Typewriter-authored lexical candidates, so the
- * authoring-time semantic review and editorial gloss heuristics do not apply
- * to them. Structural, identity, relation and surface-form checks still do.
+ * Records converted deterministically from an official, licensed dictionary
+ * (표준국어대사전) carry `source: "stdict"`. Their definitions are source text,
+ * not Typewriter-authored lexical candidates, so authoring-time semantic review
+ * and editorial gloss heuristics do not apply to them. Structural, identity,
+ * relation and surface-form checks still do. The marker is on the record, not
+ * on a file name, so every flow that handles plain records agrees on it.
  */
-export const LICENSED_SOURCE_SHARD_PATTERN = /^stdict-\d{4,}\.jsonl$/u;
+export const LICENSED_SOURCE_MARKER = 'stdict';
+
+export function isLicensedSourceRecord(record) {
+  return record?.source === LICENSED_SOURCE_MARKER;
+}
 
 export function isLicensedSourceRecordInfo(recordInfo) {
-  const filePath = recordInfo?.filePath ?? recordInfo?.source;
-  return typeof filePath === 'string'
-    && LICENSED_SOURCE_SHARD_PATTERN.test(path.basename(filePath));
+  return isLicensedSourceRecord(recordInfo?.record ?? recordInfo);
 }
 
 const reviewableCache = new WeakMap();

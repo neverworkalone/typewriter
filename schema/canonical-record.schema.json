@@ -31,6 +31,11 @@
       "type": "string",
       "pattern": "^w[0-9]{3,}$"
     },
+    "source": {
+      "type": "string",
+      "description": "Present only on records converted deterministically from an official licensed dictionary; such records are source text, not authored candidates, and are outside authored semantic review. Provenance (target_code, sense_code) is recorded under data/provenance.",
+      "enum": ["stdict"]
+    },
     "lemma": {
       "type": "string",
       "pattern": "\\S"

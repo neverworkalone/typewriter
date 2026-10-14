@@ -1,5 +1,6 @@
 import path from 'node:path';
 
+import { isLicensedSourceRecord } from '../validate/licensed-source.mjs';
 import { SEMANTIC_DECISION_SOURCE_ARRAYS } from '../lib/sharded-json-sources.mjs';
 import { Stage3AdmissionError, canonicalRecordSha256 } from './admission.mjs';
 import { existingSensePairsOf } from './existing-sense-pairs.mjs';
@@ -474,6 +475,9 @@ export async function buildStage3SemanticAuthority({
   const events = [...(source.factory_admissions ?? [])];
   const changes = [];
   for (const change of plan.changes) {
+    // Licensed-source records are outside authored semantic review (see validate/licensed-source.mjs): a relation
+    // amendment on one is recorded by the event's amendment list and the packet, but it has no review row to rewrite.
+    if (isLicensedSourceRecord(afterById.get(change.entry_id))) continue;
     if (change.operation === 'append_relations') {
       const record = afterById.get(change.entry_id);
       const beforeRecord = baseById.get(change.entry_id);

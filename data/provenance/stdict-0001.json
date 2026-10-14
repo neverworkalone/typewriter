@@ -12,7 +12,7 @@
   "note": "Existing records and sense numbers never change; future shards append the remaining target_codes in ascending order."
  },
  "shard": "stdict-0001.jsonl",
- "shard_sha256": "eaf968465a98f8dad982d8fdadc73283391524062c11271a11dcf3978bbb08de",
+ "shard_sha256": "683e991caf51cd05d179deb02b7d0e3d5a113cf6e9d41947d8273d00ee91bb3c",
  "record_count": 1000,
  "held_count": 0,
  "summary": {
@@ -92,6 +92,13 @@
    "동의어:out-of-sample": 362,
    "반대말:converted": 40,
    "반대말:out-of-sample": 27
+  },
+  "definition_markup_cleaned": {
+   "I": 11,
+   "each_sense_no": 1,
+   "ptrn_no": 1,
+   "sub": 10,
+   "sup": 9
   }
  },
  "records": [

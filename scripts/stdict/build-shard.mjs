@@ -170,10 +170,15 @@ export async function buildPilot({ sourceDirectory = DEFAULT_SOURCE, count = STD
   const records = [];
   const held = [];
   const relationReport = [];
+  const markupReport = [];
   const conversions = [];
   for (const code of codes) {
     const item = items.get(code);
     const { record, report } = convertItem(item, { index, isSelected });
+    if (report.unknownMarkup.length > 0) {
+      held.push({ target_code: code, word_unit: item.word_info.word_unit, reason: `unknown definition markup in ${report.unknownMarkup.join(', ')}` });
+      continue;
+    }
     try {
       validateCanonicalRecord(record);
     } catch (error) {
@@ -183,6 +188,7 @@ export async function buildPilot({ sourceDirectory = DEFAULT_SOURCE, count = STD
     lines.push(serializeRecord(record));
     records.push(record);
     relationReport.push(...report.relations.map((row) => ({ ...row, target_code: code })));
+    markupReport.push(...report.markup);
     conversions.push({
       target_code: code,
       id: record.id,
@@ -199,6 +205,7 @@ export async function buildPilot({ sourceDirectory = DEFAULT_SOURCE, count = STD
     records,
     held,
     relationReport,
+    markupReport,
     conversions,
     selection,
   };
@@ -237,6 +244,7 @@ export function provenanceManifest(result, { shardName }) {
       by_stratum: countBy(result.conversions, (row) => row.stratum),
       by_source_pos: countBy(result.conversions, (row) => row.source_pos.join('/')),
       relations_by_status: countBy(result.relationReport, (row) => `${row.source_type}:${row.status}`),
+      definition_markup_cleaned: countBy(result.markupReport, (row) => row.markup),
     },
     records: result.conversions.map(({ target_code, id, sense_codes }) => ({ target_code, id, sense_codes })),
   };
