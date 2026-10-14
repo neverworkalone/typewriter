@@ -176,6 +176,15 @@ assets:
   새 Typewriter 사전은 표제어·뜻풀이·어휘 관계를 선별·정규화하고 자체
   말의 결·연상 관계를 추가할 예정입니다. 출처 및 변경 사실을 표시하며,
   해당 데이터에 CC BY-SA 2.0 대한민국을 적용합니다.
+- **한국어기초사전 (향후 비교·보충 자료):** 국립국어원 『한국어기초사전』
+  (https://krdict.korean.go.kr/), [공식 저작권 정책](https://krdict.korean.go.kr/kor/kboardPolicy/copyRightTermsInfo).
+  별도 표시가 없는 자료의 라이선스는 [CC BY-SA 2.0 대한민국](https://creativecommons.org/licenses/by-sa/2.0/kr/)입니다.
+  JSON은 확보했지만 아직 Typewriter canonical에 통합하지 않았습니다.
+- **우리말샘 (향후 비교·보충 자료):** 국립국어원 『우리말샘』
+  (https://opendict.korean.go.kr/), [공식 저작권 정책](https://opendict.korean.go.kr/service/copyrightPolicy).
+  별도 표시가 없는 자료의 라이선스는 [CC BY-SA 2.0 대한민국](https://creativecommons.org/licenses/by-sa/2.0/kr/)입니다.
+  JSON은 확보했지만 아직 Typewriter canonical에 통합하지 않았습니다.
+  세 사전 모두 개별 저작권이 있는 용례·멀티미디어의 권리 조건을 별도로 확인해야 합니다.
 - **말뭉치 참고 출처 (별도):** 국립국어원 문어 말뭉치 2025(1.0),
   국립국어원 모두의 말뭉치 (https://kli.korean.go.kr/corpus).
   원문과 로컬 인덱스는 배포하지 않습니다.
