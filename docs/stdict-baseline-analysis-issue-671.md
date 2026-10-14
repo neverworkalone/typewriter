@@ -134,7 +134,7 @@ sense 수준 링크 196,808건: 동의어 162,127 · 비슷한말 26,264 · 반�
 새 품사(`new_pos_on_existing_lemma`), 새 의미(`new_sense_on_existing_entry`)를 후보로 만들고(`scripts/factory/stage1.mjs`,
 `coverage_status`는 `uncovered`/`exact_canonical_lemma`), Stage 2 `included`는 새 의미 주장, Stage 3은 lexical admission입니다.
 STDICT baseline에서는 표제어와 sense가 이미 canonical에 있으므로, "이미 있는 sense에 관계만 추가"하는 작업은 이 경로에 맞지
-않습니다. 맞는 기존 경로는 **relation-only backfill**(같은 문서 §4.1: `relation:candidates` → 승인 큐 →
+않습니다. 맞는 기존 경로는 **relation-only backfill**(같은 문서 §4.1: `backfill-queue-cli.mjs next` → 검토 `record` →
 `backfill-queue-cli.mjs apply`, `R######` 패킷, `relation-amendments.mjs`의 `append_relations`)입니다. 이 경로는 lexical
 admission 없이 기존 sense에 `near/mood/scene/sensory/action/association`(relevance 필수)과 근거(rationale)를 기록합니다.
 
