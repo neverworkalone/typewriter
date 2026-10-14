@@ -4,7 +4,7 @@ import path from 'node:path';
 
 import { loadCanonicalContext } from '../validate/canonical-context.mjs';
 import {
-  BACKFILL_CONTRACT, candidateEvidence, currentCandidatesForDone, packetBoundErrors, inventoryCanonicalSenses, newQueueState, nextPacket, recordOutcomes, retrievePacket, summarizeQueue,
+  BACKFILL_CONTRACT, candidateEvidence, currentCandidatesForDone, packetBoundErrors, inventoryCanonicalSenses, newQueueState, nextPacket, packetPayload, recordOutcomes, retrievePacket, summarizeQueue,
 } from './backfill-queue.mjs';
 import { applyBackfill, completedPacketId } from './backfill-apply.mjs';
 import { buildRelationIndex } from './candidate-retrieval.mjs';
@@ -48,7 +48,7 @@ if (command === 'status') {
   console.log(JSON.stringify(summarizeQueue(rows, state, current), null, 2));
 } else if (command === 'next') {
   const packet = nextPacket(rows, state, { limit: Number(flag('--limit', '50')), currentCandidates: current });
-  const payload = { contract: 'relation-backfill-packet-v1', canonical_revision: canonical.canonicalRevision, packet, candidates: retrievePacket(canonical, packet, { index }) };
+  const payload = packetPayload(canonical.canonicalRevision, packet, retrievePacket(canonical, packet, { index }));
   const out = flag('--out');
   if (out) await writeFile(out, `${JSON.stringify(payload, null, 1)}\n`); else console.log(JSON.stringify(payload, null, 1));
 } else if (command === 'record') {

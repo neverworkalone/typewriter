@@ -44,12 +44,19 @@ general topic or scene association.
   (패자 ↔ 승자, not 패자 ↔ 승리). A difference of scope alone is not such a
   difference: 레슨 ↔ 수업 and 꼭대기 ↔ 산꼭대기 are positive direct
   calibrations because they remain close alternatives in a recurring natural
-  context. A different kind of thing is not a scope difference: an action and
-  its agent or person (목격자 → 목격, 경비 → 경비원) and actions of different
-  body parts (발을 뻗다 → 손을 뻗다/팔을 뻗다) are not close alternatives, so
-  they stay `near`/`association`. Decide `direct` first and use `near` only for
-  texture that is not a close alternative. `tests/relation-editorial-controls.test.mjs`
-  keeps these positive and negative controls against the canonical relations.
+  context. A different kind of thing is not a scope difference. The
+  shared boundary (`scripts/relation/direct-boundary.mjs`, carried by the Stage 2
+  author hand-off and every Stage D packet) names three classes: `scope-only`
+  differences stay `direct`; `action-vs-agent` (an action, ability or result
+  vs the person or thing that performs or bears it, e.g. 목격자 → 목격,
+  경비 → 경비원) and `different-body-part` actions (발을 뻗다 → 손을 뻗다/팔을
+  뻗다) are not close alternatives and stay `near`/`association`. Decide `direct`
+  first and use `near` only for texture that is not a close alternative. The
+  classes are an editorial question for the actual bound senses, not a
+  mechanical synonym validator; `data/validation/relation-editorial-controls.json`
+  records sense-id-bound positive and negative controls and
+  `tests/relation-editorial-controls.test.mjs` keeps them, and the hand-off,
+  under the registered lexical checks.
 - `antonym` claims meaningful semantic opposition between the bound senses in
   a recognizable natural usage context. Ordinary, literary, figurative,
   technical, domain-specific and culinary contexts can establish the contrast.
