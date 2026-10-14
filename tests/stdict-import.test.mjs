@@ -22,6 +22,10 @@ import {
 import { buildPilot } from '../scripts/stdict/build-shard.mjs';
 import { readCanonicalRecords, validateCanonicalRecord } from '../scripts/validate/canonical-jsonl.mjs';
 import { validateDatasetRecords } from '../scripts/validate/dataset-integrity.mjs';
+import {
+  LICENSED_SOURCE_PROVENANCE_CONTRACT,
+  sourceProjectionSha256,
+} from '../scripts/validate/licensed-source.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SHARD = path.join(ROOT, 'data/canonical/stdict-0001.jsonl');
@@ -59,6 +63,27 @@ const FIXTURE = [
   item(105, '별-천지', '단어', [[905, '특별히 좋은 세상.']]),
   item(106, '이', '단어', [[906, '뜻이 아직 분류되지 않은 낱말.']], '품사 없음'),
 ];
+
+// A provenance manifest for converted records, written beside the canonical directory like the committed one.
+async function writeShard(directory, records, { name = 'stdict-0001.jsonl', mutateManifest } = {}) {
+  const canonicalDirectory = path.join(directory, 'canonical');
+  await mkdir(canonicalDirectory, { recursive: true });
+  await mkdir(path.join(directory, 'provenance'), { recursive: true });
+  await writeFile(path.join(canonicalDirectory, name), `${records.map(serializeRecord).join('\n')}\n`);
+  const manifest = {
+    contract: LICENSED_SOURCE_PROVENANCE_CONTRACT,
+    shard: name,
+    source_projection_sha256: sourceProjectionSha256(records),
+    records: records.map((record) => ({
+      target_code: Number(record.id.slice(1)),
+      id: record.id,
+      sense_codes: record.senses.map((_, index) => index + 1),
+    })),
+  };
+  mutateManifest?.(manifest);
+  await writeFile(path.join(directory, 'provenance', name.replace(/\.jsonl$/u, '.json')), JSON.stringify(manifest));
+  return canonicalDirectory;
+}
 
 function fixtureContext(selected) {
   const index = createSenseIndex();
@@ -115,6 +140,9 @@ test('part-of-speech mapping never silently drops a class', () => {
   assert.equal(mapped['보조 동사'], 'verb');
   assert.equal(mapped['접사'], 'affix');
   assert.equal(mapped.undefined, 'unclassified');
+  assert.equal(mapPos('품사 없음', '단어'), 'unclassified');
+  assert.equal(mapPos('미지원품사', '단어'), null, 'an explicit POS the contract does not know is never reclassified');
+  assert.equal(mapPos('명사', '미지원단위'), null, 'an unknown word unit is not guessed');
   for (const unit of ['구', '속담', '관용구']) assert.equal(mapPos('구', unit), 'expression');
 });
 
@@ -147,9 +175,7 @@ test('converted fixture passes the schema, dataset gate, SQLite build and homogr
   for (const record of records) validateCanonicalRecord(record);
   const directory = await mkdtemp(path.join(tmpdir(), 'typewriter-stdict-'));
   try {
-    const canonicalDirectory = path.join(directory, 'canonical');
-    await mkdir(canonicalDirectory);
-    await writeFile(path.join(canonicalDirectory, 'stdict-0001.jsonl'), `${records.map(serializeRecord).join('\n')}\n`);
+    const canonicalDirectory = await writeShard(directory, records);
     const canonical = await readCanonicalRecords(canonicalDirectory, { useSharedContext: false });
     validateDatasetRecords(canonical.records, { lexicalQuality: { blocking_finding_count: 0 } });
     const outputPath = path.join(directory, 'dictionary.sqlite');
@@ -242,4 +268,68 @@ test('licensed-source records are exempt from authored editorial heuristics but 
   assert.deepEqual(reviewableRecordInfos(mixed.map(({ record }) => record)).map(({ id }) => id), ['w200'], 'plain records are classified the same way');
   const plain = infos(homographs, false);
   assert.equal(reviewableRecordInfos(plain), plain, 'identity is preserved when nothing is exempt');
+});
+
+test('an unsupported explicit POS is reported so the entry is held, never converted to unclassified', () => {
+  const { report } = convertItem(item(910, '새말', '단어', [[1, '뜻풀이.']], '미지원품사'), fixtureContext(new Set([910])));
+  assert.deepEqual(report.unsupportedPos, [{ sense: 'w910-s1', pos: '미지원품사', word_unit: '단어' }]);
+  assert.deepEqual(convertItem(item(911, '새말', '단어', [[1, '뜻풀이.']], '품사 없음'), fixtureContext(new Set([911]))).report.unsupportedPos, []);
+});
+
+test('the editorial exemption holds only for records bound to a verified provenance manifest', async () => {
+  const selected = new Set(FIXTURE.map(({ target_code: code }) => code));
+  const context = fixtureContext(selected);
+  const records = FIXTURE.map((source) => convertItem(source, context).record);
+  const loads = async (directory) => (await readCanonicalRecords(path.join(directory, 'canonical'), { useSharedContext: false })).records;
+  const gate = (infos) => validateDatasetRecords(infos, { lexicalQuality: { blocking_finding_count: 0 } });
+  const withTemp = async (callback) => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'typewriter-stdict-bind-'));
+    try { await callback(directory); } finally { await rm(directory, { recursive: true, force: true }); }
+  };
+
+  await withTemp(async (directory) => {
+    await writeShard(directory, records);
+    gate(await loads(directory));
+    const appended = structuredClone(records);
+    appended[0].senses[0].relations.push({ target: 'w101', target_sense: 'w101-s1', type: 'near', note: '말의 결', relevance: 3 });
+    await writeShard(directory, appended, { mutateManifest: (manifest) => { manifest.source_projection_sha256 = sourceProjectionSha256(records); } });
+    gate(await loads(directory));
+  });
+
+  const check = async (pattern, prepare) => withTemp(async (directory) => {
+    const infos = await prepare(directory);
+    assert.throws(() => gate(infos), pattern);
+  });
+  // forged marker: an arbitrary authored-looking record claiming the source
+  await check(/outside a stdict-NNNN\.jsonl shard/u, async () => [{ record: { ...records[0], source: 'stdict' }, filePath: '/data/canonical/authored-0001.jsonl', lineNumber: 1 }]);
+  // altered official text
+  await check(/does not match the provenance manifest digest/u, async (directory) => {
+    const tampered = structuredClone(records);
+    tampered[1].senses[0].gloss = '바뀐 뜻풀이.';
+    await writeShard(directory, tampered, { mutateManifest: (manifest) => { manifest.source_projection_sha256 = sourceProjectionSha256(records); } });
+    return loads(directory);
+  });
+  // an extra, unlisted record in a valid shard
+  await check(/manifest lists/u, async (directory) => {
+    await writeShard(directory, records, { mutateManifest: (manifest) => { manifest.records.pop(); } });
+    return loads(directory);
+  });
+  // id that is not the manifest's target_code
+  await check(/does not match manifest record/u, async (directory) => {
+    await writeShard(directory, records, { mutateManifest: (manifest) => { manifest.records[0].target_code += 1; } });
+    return loads(directory);
+  });
+  // a record without the marker inside a licensed shard
+  await check(/without the source marker/u, async (directory) => {
+    await writeShard(directory, records);
+    const infos = await loads(directory);
+    delete infos[2].record.source;
+    return infos;
+  });
+  // no manifest at all
+  await check(/provenance manifest .* is unreadable/u, async (directory) => {
+    await writeShard(directory, records);
+    await rm(path.join(directory, 'provenance'), { recursive: true });
+    return loads(directory);
+  });
 });

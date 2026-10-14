@@ -1,6 +1,8 @@
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 
+import { STDICT_NOTES } from '../validate/licensed-source.mjs';
+
 /**
  * Deterministic 표준국어대사전 (STDICT) JSON -> canonical record conversion.
  *
@@ -13,10 +15,7 @@ import path from 'node:path';
  */
 
 export const STDICT_SHARD_SIZE = 1000;
-export const STDICT_NOTES = Object.freeze({
-  direct: '표준국어대사전 동의어',
-  antonym: '표준국어대사전 반대말',
-});
+export { STDICT_NOTES };
 
 const RELATION_BY_SOURCE_TYPE = Object.freeze({
   동의어: 'direct',
@@ -41,9 +40,19 @@ const POS_MAP = Object.freeze({
   접사: 'affix',
 });
 
+const WORD_UNITS = new Set(['단어', '구', '속담', '관용구']);
+/** Source value of a word that carries no part of speech. */
+const NO_POS = new Set([undefined, null, '', '품사 없음']);
+
+/**
+ * Canonical POS for a source POS. A word with no POS becomes `unclassified`; an explicit POS this contract does not
+ * know, or an unknown word unit, returns `null` so the entry is held instead of being silently reclassified.
+ */
 export function mapPos(sourcePos, wordUnit) {
+  if (!WORD_UNITS.has(wordUnit)) return null;
   if (wordUnit !== '단어') return 'expression';
-  return POS_MAP[sourcePos] ?? 'unclassified';
+  if (NO_POS.has(sourcePos)) return 'unclassified';
+  return POS_MAP[sourcePos] ?? null;
 }
 
 const SUPERSCRIPT = Object.freeze({ 0: '⁰', 1: '¹', 2: '²', 3: '³', 4: '⁴', 5: '⁵', 6: '⁶', 7: '⁷', 8: '⁸', 9: '⁹', '+': '⁺', '-': '⁻', '=': '⁼', '(': '⁽', ')': '⁾', n: 'ⁿ' });
@@ -153,15 +162,17 @@ export function convertItem(item, { index, isSelected }) {
   const targetCode = item.target_code;
   const id = recordIdFor(targetCode);
   const flat = flattenSenses(item);
-  const report = { relations: [], markup: [], unknownMarkup: [] };
+  const report = { relations: [], markup: [], unknownMarkup: [], unsupportedPos: [] };
   const senses = flat.map(({ sense, sourcePos }, position) => {
     const senseId = `${id}-s${position + 1}`;
     const cleaned = cleanDefinition(sense.definition);
     for (const name of cleaned.markup) report.markup.push({ sense: senseId, markup: name });
     if (cleaned.unknownMarkup) report.unknownMarkup.push(senseId);
+    const pos = mapPos(sourcePos, info.word_unit);
+    if (pos === null) report.unsupportedPos.push({ sense: senseId, pos: sourcePos ?? null, word_unit: info.word_unit });
     const converted = {
       id: senseId,
-      pos: mapPos(sourcePos, info.word_unit),
+      pos: pos ?? 'unclassified',
       gloss: cleaned.text,
     };
     const relations = [];

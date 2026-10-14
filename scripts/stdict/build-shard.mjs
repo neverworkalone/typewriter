@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { validateCanonicalRecord } from '../validate/canonical-jsonl.mjs';
+import { sourceProjectionSha256 } from '../validate/licensed-source.mjs';
 import {
   STDICT_SHARD_SIZE,
   addToSenseIndex,
@@ -175,6 +176,10 @@ export async function buildPilot({ sourceDirectory = DEFAULT_SOURCE, count = STD
   for (const code of codes) {
     const item = items.get(code);
     const { record, report } = convertItem(item, { index, isSelected });
+    if (report.unsupportedPos.length > 0) {
+      held.push({ target_code: code, word_unit: item.word_info.word_unit, reason: `unsupported part of speech ${JSON.stringify(report.unsupportedPos.map(({ pos }) => pos))}` });
+      continue;
+    }
     if (report.unknownMarkup.length > 0) {
       held.push({ target_code: code, word_unit: item.word_info.word_unit, reason: `unknown definition markup in ${report.unknownMarkup.join(', ')}` });
       continue;
@@ -237,6 +242,7 @@ export function provenanceManifest(result, { shardName }) {
     },
     shard: shardName,
     shard_sha256: sha256,
+    source_projection_sha256: sourceProjectionSha256(result.records),
     record_count: result.records.length,
     held_count: result.held.length,
     summary: {
