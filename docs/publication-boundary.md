@@ -13,7 +13,15 @@ development, and the owner's 2026-10-12 release decision permits Typewriter's
 independently authored lexical output under the project data license. This covers
 the current canonical data and generated SQLite, Chrome Extension, Pages product,
 and original project code/data in GitHub to the extent Typewriter controls the
-rights. It does not expand the grant to third-party material.
+rights. It does not expand the grant to unrelated third-party material.
+
+**Dictionary data license policy (2026-10-14):** Licensed, selected lexical
+projections from the 국립국어원 **표준국어대사전 (STDICT)**,
+**한국어기초사전 (KRDICT)** and **우리말샘**, together with Typewriter-authored
+말의 결/연상 enrichment, use **CC BY-SA 2.0 Korea** for dictionary content.
+The source permission basis is each dictionary's official copyright policy,
+as linked in `DATA-LICENSE.md`; the Written Corpus 2025 publication approval
+is separate. Original software remains Apache 2.0 and documentation CC BY 4.0.
 
 The inventory was first checked against the tracked tree at f3822cf (the M5
 final-audit merge, 2026-09-24); its path and GitHub surface notes are historical
@@ -64,9 +72,11 @@ all historical refs, discussions, Actions logs, attachments, or hosted surfaces
 is a general release prerequisite.
 
 Keep raw NIKL corpus files, corpus passages and excerpts, local corpus indexes
-and analysis databases, verbatim third-party dictionary/API material, leaked
-credentials, and specifically demonstrated third-party infringements out of
-public artifacts. If a concrete violation is found, remove or clear the affected
+and analysis databases, raw downloaded NIKL dictionary JSON, unrelated
+restricted dictionary/API material, leaked credentials, and specifically
+demonstrated third-party infringements out of public artifacts. Selected
+licensed canonical projections from the three approved dictionaries are
+not prohibited raw downloads. If a concrete violation is found, remove or clear the affected
 item; unknown source ancestry alone does not impose a global hold. For each
 release, select the exact canonical revision, run the deterministic build and
 package/content/license/notice checks, and satisfy applicable Chrome Web Store or
@@ -104,7 +114,7 @@ be introduced into the existing public repository.
 | .github/workflows/ | PUBLIC-WITH-SEPARATE-LICENSE | Typewriter project automation | CI workflow source; runs may produce logs and artifacts hosted separately by GitHub. | Original workflow source is Apache-2.0 under LICENSE.md. Use the registered CI and exact package checks for a release; restrict a specific log, artifact, or ref only when it is shown to expose prohibited material. An exhaustive historical audit is not a general release gate. |
 | docs/ | PUBLIC-WITH-SEPARATE-LICENSE | Typewriter project documentation and editorial/process records | Development, design, data-policy, review, M5 reports, and audit evidence. This remains the documentation authority; it is not the Pages source tree. | Original documentation text is CC BY 4.0. Embedded canonical data, third-party material, and marks are excluded. Keep raw source excerpts, sensitive details, and specifically identified restricted content out of the exact release artifact. |
 | AGENTS.md, REVIEW.md | PUBLIC-WITH-SEPARATE-LICENSE | Typewriter project process documentation | Repository instructions and review policy. | Original process documentation is CC BY 4.0. Check paths, credentials, and personal data at the release boundary; preserve canonical/admission safeguards. |
-| data/canonical/ | PUBLIC-WITH-SEPARATE-LICENSE | Typewriter-authored lexical records; external works may inform research, while the stored result is curated and authored by Typewriter | Canonical source of truth for words, senses, expressions, and relations; these records feed generated SQLite. | Typewriter-authored output is distributable under CC BY 4.0 to the extent Typewriter controls the rights. Remove or clear a specific record only when evidence demonstrates protected copied content or another concrete violation; missing per-record source history alone is not a blanket hold. |
+| data/canonical/ | PUBLIC-WITH-SEPARATE-LICENSE | Licensed NIKL source data from STDICT, KRDICT and 우리말샘, with Typewriter-authored editorial enrichment | Canonical source for words, senses, expressions, relations and the SQLite build; raw downloaded dictionaries remain external. | Licensed canonical data and Typewriter-authored additions use CC BY-SA 2.0 KR, with source attribution for the relevant dictionary and Typewriter, license links and source-specific exclusions. |
 | data/inventory/ | PUBLIC-WITH-SEPARATE-LICENSE | Typewriter editorial planning and promotion decisions | Target selection, classification, hold/reject/defer state, and promotion history; not canonical build input. | Typewriter-authored planning and promotion records may be distributed under the project license. Keep raw source text and private local review material out; remediate any specifically identified copied third-party content. |
 | data/batches/ | PUBLIC-WITH-SEPARATE-LICENSE | Typewriter process evidence, authored decisions, and historical snapshots | Manifests, digests, review decisions, relation evidence, and frozen historical inputs; some files duplicate canonical records for reproducibility. | Authored evidence may be distributed under the project license. Do not include raw corpus passages or verbatim third-party material; a historical snapshot is not globally held solely because a per-record rights map is absent. |
 | data/validation/ | PUBLIC-WITH-SEPARATE-LICENSE | Typewriter-authored semantic decisions and validation inputs | Durable decisions and source-bound audit inputs; validation projections may be reproducible from these sources. | Typewriter-authored validation records may be distributed under the project license. Keep local raw-source material private and remediate any specifically demonstrated infringement. |
@@ -115,7 +125,7 @@ be introduced into the existing public repository.
 | `LICENSE.md`, `DATA-LICENSE.md`, `BRAND.md`, `PRIVACY.md` | `PUBLIC-WITH-SEPARATE-LICENSE` | Typewriter license, brand, and extension privacy notices | Defines code, data, documentation, brand, and current extension privacy boundaries. | Their original explanatory text is CC BY 4.0; the grants and exclusions in each file govern the corresponding material. Embedded third-party license texts and brand assets are excluded. Verify the privacy notice against the exact package permissions and runtime behavior. |
 | .gitignore | PUBLIC-WITH-SEPARATE-LICENSE | Typewriter project repository configuration | Ignore rules for local and generated files. | Original repository configuration is Apache-2.0. Ignore rules do not replace checks that the exact release artifact excludes raw corpus files, credentials, and other specifically restricted material. |
 | Transient dist/, artifacts/, local SQLite files, and unapproved extension archives | PURGE-BEFORE-PUBLIC | Generated locally from canonical data and pinned dependencies | Build/package outputs, not editable sources of truth; none are tracked at the boundary revision. | Do not commit or attach scratch outputs. Validate the exact intended artifact for allowed files, Typewriter-authored data, licenses/notices, and concrete restricted content; no blanket hold applies to a valid package. |
-| Allowlisted Pages artifact and extension release package, including dictionary.sqlite | PUBLIC-WITH-SEPARATE-LICENSE | Deterministic build from the selected canonical revision and pinned dependencies | Generated distribution surface; SQLite contains canonical data and the package contains third-party runtime files. | Publish after exact-revision, deterministic-build, package-content/license/notice, and applicable Store or Pages checks pass. Exclude raw corpus and specifically identified copied or restricted content. Repository policy documents stay out of the Store ZIP; publish and link the privacy policy through the Store disclosure flow when required. Record the canonical revision. |
+| Allowlisted Pages artifact and extension release package, including dictionary.sqlite | PUBLIC-WITH-SEPARATE-LICENSE | Deterministic build from the selected canonical revision and pinned dependencies | Generated distribution surface; SQLite contains canonical data and the package contains separately licensed runtime files. | Include attribution for applicable STDICT/KRDICT/우리말샘 source data, the CC BY-SA 2.0 KR license and Typewriter adaptation notice in the product distribution, alongside exact-revision package checks and software license notices. Exclude raw source dumps, raw corpus and individually restricted content. Repository policy documents stay out of the Store ZIP; publish and link privacy terms through Store disclosure when required. |
 | Future `web/` source and `vite.web.config.js` | `PUBLIC-WITH-SEPARATE-LICENSE` | Planned Typewriter web product source; not present at this boundary revision | Separate Pages source and presentation layer over the shared runtime. | Original web software/configuration is Apache-2.0; Typewriter-authored data follows the project data license; brand remains All Rights Reserved. Keep it separate from `docs/` and extension `public/`. |
 
 The original root-file groupings were checked against the tracked tree at the
@@ -144,7 +154,7 @@ Typewriter output can ship.
 
 | Material | State | Boundary |
 | --- | --- | --- |
-| Raw API responses, scraped pages, downloaded dictionaries/corpora, restricted source files | `KEEP-PRIVATE` | Keep outside the repository. A source-policy decision and independently curated Typewriter result do not authorize publication of the raw source. |
+| Raw API responses, scraped pages, downloaded dictionaries/corpora, restricted source files | `KEEP-PRIVATE` | Keep outside the repository. Licensed selected STDICT/KRDICT/우리말샘 canonical projections are distinct from raw downloaded JSON; using them as product data does not authorize distributing raw source files or other restricted content. |
 | Unreviewed LLM/model drafts, candidate bodies, and temporary editorial staging | `KEEP-PRIVATE` | Keep outside canonical data, Git, generated databases, packages, Pages artifacts, and public GitHub attachments. |
 | Private editorial/source-review notes that contain unredacted external material | `KEEP-PRIVATE` | Use only for the audit where terms permit; publish a minimal rights/provenance decision only when safe and necessary. |
 | Credentials, private keys, local configuration, local absolute paths, developer machine state, and browser user data | `KEEP-PRIVATE` | Never publish or include in repository artifacts. Revoke/rotate credentials if exposure is found. |
@@ -163,10 +173,14 @@ Typewriter-authored output are met. For each product release:
 1. Select and record the exact canonical/source revision and run the deterministic
    build and applicable exact-package validation.
 2. Check the package file set, bundled software licenses/notices, NIKL attribution,
-   and applicable Chrome Web Store or Pages requirements.
+   and applicable Chrome Web Store or Pages requirements. Include attribution
+   for each NIKL dictionary source represented in the distribution, the
+   CC BY-SA 2.0 KR license link and Typewriter's changes in accessible notices.
 3. Keep raw NIKL corpus files, passages/excerpts, local indexing/analysis
-   databases, verbatim third-party material, credentials, and any specifically
-   demonstrated infringement out of the target artifact. Remediate a concrete
+   databases, raw NIKL dictionary downloads, unrelated restricted third-party material,
+   credentials, and any specifically demonstrated infringement out of the
+   target artifact. Exclude source-attributed examples and multimedia unless
+   separately authorized. Remediate a concrete
    violation at the affected item or artifact.
 
 These operational checks apply to the target release. They do not impose an

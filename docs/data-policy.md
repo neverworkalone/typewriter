@@ -2,24 +2,37 @@
 
 ## Purpose
 
-Typewriter's repository contains Typewriter's curated lexical data, not a dump of an
-external dictionary, API, corpus, or model output. External material may support
-research, verification, or draft generation only when its applicable terms permit
-the intended use. Runtime lookup remains local to the packaged dictionary database.
+Typewriter's canonical dictionary policy covers selected, licensed lexical data
+from three National Institute of Korean Language dictionaries:
+**표준국어대사전 (STDICT)**, **한국어기초사전 (KRDICT)**, and **우리말샘**.
+The data and original Typewriter 말의 결/연상 enrichment are made available
+under [CC BY-SA 2.0 Korea](https://creativecommons.org/licenses/by-sa/2.0/kr/).
+Canonical contains curated, product-needed dictionary projections, not raw
+dictionary/API dumps.
+
+Each source's official copyright policy governs eligibility and attribution
+(see [DATA-LICENSE.md](../DATA-LICENSE.md)). Source-attributed examples
+and multimedia may have separate rights; do not treat them as licensed by
+the general dictionary-text terms. Unrelated external material remains
+subject to its own restrictions. Runtime lookup remains local to the
+packaged dictionary database.
 
 ## Material roles
 
-External material can have one of these limited roles:
+External material generally has one of these roles:
 
+- **Approved NIKL dictionary sources:** eligible headwords, POS, senses,
+  definitions, and lexical links from STDICT, KRDICT, and 우리말샘 may be selected
+  and converted to canonical under CC BY-SA 2.0 KR with provenance and attribution.
 - **Reference:** helps an editor investigate a word or usage.
 - **Verification:** helps check a Typewriter-authored decision.
-- **Draft generation:** helps produce a candidate for later human review.
+- **Draft generation:** helps produce a candidate for later editorial review.
 
-These roles do not make the external material canonical. Raw responses, scraped
-pages, copied entries, unreviewed drafts, and bulk third-party datasets do not belong
-in `data/canonical/` or in a generated product database. Reformatting, combining,
-paraphrasing, or translating restricted material does not by itself remove its
-license or contractual limits.
+Only selected, licensed **projections** of these three dictionaries, not their
+raw downloads, are authorized as external dictionary source content in
+canonical. Raw API responses, scraped pages, copied entries from unapproved
+sources, unreviewed drafts, and protected third-party datasets do not belong
+in product data. Reformatting restricted material does not erase its terms.
 
 ## External-material review record
 
@@ -40,14 +53,14 @@ source is actually reviewed. Do not fill it with invented approvals.
 - License or terms URL:
 - Checked on: YYYY-MM-DD
 - Reviewer:
-- Intended role: reference | verification | draft generation
+- Intended role: approved NIKL dictionary source | reference | verification | draft generation
 - Permission basis for that role:
 - Allowed storage:
 - Allowed processing or transformation:
 - Distribution or embedding restrictions:
 - Required attribution or notices:
 - Decision: permitted for stated role | pending | not permitted
-- Typewriter data decision: no adoption | Typewriter-authored result may be considered after review
+- Typewriter data decision: no adoption | licensed NIKL dictionary projection | Typewriter-authored result may be considered after review
 - Notes and limitations:
 ```
 
@@ -67,33 +80,31 @@ must also be explicitly reviewed, even when the tool keeps all material local.
 
 ## Canonical-data rules
 
-Canonical records must be Typewriter's own reviewed data and must remain traceable
-to an editorial decision. Before a record enters `data/canonical/`:
+Licensed dictionary data from **STDICT, KRDICT, and 우리말샘** may enter
+canonical through source-specific deterministic mappings without treating
+previously documented official senses as newly authored Stage 1→2→3 senses.
+Preserve each source's identity for imported entries, senses and lexical links,
+and distribute the required attribution and license with the selected data.
+Do not import source-attributed example passages, multimedia, or materials
+with incompatible individual rights.
 
-- the editor has reviewed the relevant source conditions when external material was
-  involved;
-- the record is not a raw response, scrape, copied entry, or unreviewed draft;
-- any required notice or attribution is recorded in the appropriate project
-  documentation;
-- unresolved source restrictions are treated as a reason to hold the record out of
-  the canonical dataset.
-
-The final relation type, sense distinction, ranking, and wording are Typewriter
-editorial decisions. A source, model, or automated confidence value may inform a
-decision but does not replace review or become editorial truth automatically.
+**Typewriter-authored enrichment** (말의 결 and 연상), independently authored
+new senses, and other original records remain subject to the editorial
+production, review, and admission requirements. Reusing licensed dictionary
+definitions or official links is not a claim of Typewriter authorship.
+Other unapproved third-party materials remain excluded.
 
 ## Storage and build boundary
 
-Keep raw external material in a temporary workspace outside the repository unless
-its applicable terms permit local storage and processing under the shared
-`~/.cache/typewriter/` work area. Material kept there is local-only: do not add it
-to Git or product inputs. See [the shared cache contract](local-reference-cache.md)
-for paths and migration. When those terms do not permit local storage, keep the
-material outside the checkout or do not store it. Keep unreviewed drafts in a
-temporary workspace outside the repository. The canonical input is limited to
-reviewed Typewriter JSONL. The deterministic build reads canonical input and
-produces generated SQLite; it must not silently pull from external services, local
-reference material, or temporary research material.
+Keep raw downloaded reference/dictionary files under the permitted external
+workspace (including `~/.cache/typewriter/`) **outside Git**. Licensed,
+selected, deterministically generated canonical JSONL projections of STDICT,
+KRDICT, and 우리말샘 are approved source content; their raw downloads are
+not tracked or distributed. Keep unreviewed authored drafts outside the
+repository. The dictionary builder reads canonical JSONL and produces
+SQLite reproducibly: it must never silently fetch external services,
+local source downloads, or temporary research files during a product build.
+See [the shared cache contract](local-reference-cache.md).
 
 M5 target-selection files under `data/inventory/` are tracked editorial planning
 artifacts, not canonical input. They may record a candidate, classification, hold,

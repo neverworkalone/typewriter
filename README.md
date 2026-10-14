@@ -26,10 +26,11 @@ The Chrome Web Store listing above is the target identified in the NIKL
 result-publication application. The owner confirmed on 2026-10-12 that NIKL
 approved the application submitted on 2026-09-27 for the Typewriter result.
 Together with the owner's release decision, this permits distribution of
-Typewriter-authored lemmas, senses, glosses, and relations under the project data
-license after ordinary package and release checks. It does not authorize raw
-corpus text, passages, local indexes, or copied third-party material. See
-[Data License](DATA-LICENSE.md).
+the **independently authored result described in that application** under its
+applicable data terms after ordinary release checks; it does not authorize
+raw corpus text, passages, or local indexes. That corpus approval is separate
+from the official STDICT copyright policy governing the planned new dictionary
+baseline. See [Data License](DATA-LICENSE.md).
 
 ## Product philosophy
 
@@ -161,15 +162,35 @@ assets:
   with scope described in [LICENSE.md](LICENSE.md).
 - Original documentation: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/),
   with scope described in [LICENSE.md](LICENSE.md).
-- Dictionary data: Typewriter-authored lexical output is distributable under
-  CC BY 4.0 to the extent Typewriter controls the rights. NIKL result-publication
-  approval is recorded for the submitted Chrome Web Store result; raw corpus and
-  copied third-party material remain excluded. See [Data License](DATA-LICENSE.md).
+- Dictionary data based on **표준국어대사전, 한국어기초사전, 우리말샘**, including
+  Typewriter-authored **말의 결 / 연상** enrichment:
+  [CC BY-SA 2.0 대한민국](https://creativecommons.org/licenses/by-sa/2.0/kr/).
+  See [Data License](DATA-LICENSE.md) for attribution and source-specific rights.
+  The original Typewriter software remains Apache 2.0.
 - Typewriter and Never Work Alone names, logos, and visual identity: all rights
   reserved; see [Brand policy](BRAND.md).
 - Third-party components retain their own licenses; see
   [Third-party notices](THIRD-PARTY-NOTICES.txt).
-- 국립국어원 문어말뭉치 2025(1.0). 국립국어원 모두의 말뭉치 (https://kli.korean.go.kr/corpus).
+**국립국어원 사전 자료 출처 및 저작권 정책**
+
+- **표준국어대사전:** 국립국어원 『표준국어대사전』
+  (https://stdict.korean.go.kr/),
+  [저작권 정책](https://stdict.korean.go.kr/join/copyrightPolicy.do).
+- **한국어기초사전:** 국립국어원 『한국어기초사전』
+  (https://krdict.korean.go.kr/),
+  [저작권 정책](https://krdict.korean.go.kr/kor/kboardPolicy/copyRightTermsInfo).
+- **우리말샘:** 국립국어원 『우리말샘』
+  (https://opendict.korean.go.kr/),
+  [저작권 정책](https://opendict.korean.go.kr/service/copyrightPolicy).
+
+별도 표시가 없는 세 사전의 자료에는
+[CC BY-SA 2.0 대한민국](https://creativecommons.org/licenses/by-sa/2.0/kr/)을
+적용하며, Typewriter의 어휘 선정·정규화·관계 정보 가공과 자체
+말의 결·연상 관계에도 동일한 조건을 적용합니다.
+출처가 별도로 있는 용례와 멀티미디어 등 개별 권리 자료는 해당 조건을 따릅니다.
+- **말뭉치 참고 출처 (별도):** 국립국어원 문어 말뭉치 2025(1.0),
+  국립국어원 모두의 말뭉치 (https://kli.korean.go.kr/corpus).
+  원문과 로컬 인덱스는 배포하지 않습니다.
 
 A file being present in Git, build output, or a package does not mean its content
 is cleared for reuse. The [license overview](LICENSE.md) describes the file

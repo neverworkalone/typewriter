@@ -11,13 +11,18 @@ Check:
 - the source permits the intended use;
 - storage and redistribution are permitted where required;
 - attribution/notice requirements are satisfied;
-- raw API responses, scraped pages, or restricted dictionary material do not
-  enter canonical/distributed data;
+- raw API responses, scraped pages, restricted dictionary material, and
+  unlicensed content do not enter canonical/distributed data; **the selected,
+  permitted canonical projections from STDICT, KRDICT and 우리말샘 under CC BY-SA
+  2.0 KR are licensed source exceptions**, not raw downloads;
 - transformation or paraphrasing is not treated as removing source terms;
 - required provenance remains traceable.
 
 External sources may support reference, verification, or drafting only within
-their applicable terms.
+their applicable terms. Selected licensed text and lexical links from
+STDICT, KRDICT and 우리말샘 may also be imported with source-specific rights
+and attribution recorded. Keep source-attributed examples and individually
+restricted multimedia out.
 
 ## R&D visibility is not distribution permission
 
