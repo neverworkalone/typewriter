@@ -829,12 +829,12 @@
     ]
   },
   "current": {
-    "canonical_sha256": "ee53861bdf083abdd4e41cd3d75fc26152aa99e3b835b2a230ae5f26f2f74831",
+    "canonical_sha256": "f8069b21037de86fa5c90371a22cb7fecff8327f80106371babc944071bba178",
     "canonical_record_count": 12312,
     "canonical_start_count": 12270,
     "reference_only_count": 42,
     "sense_count": 12620,
-    "relation_count": 56559,
+    "relation_count": 59651,
     "canonical_search_form_count": 12569,
     "searchable_lemma_count": 12312,
     "record_type_counts": {
@@ -848,7 +848,7 @@
       "noun": 9216,
       "verb": 1669
     },
-    "relation_empty_searchable_record_count": 5495,
+    "relation_empty_searchable_record_count": 5005,
     "exact_search_coverage": {
       "expected_lemma_count": 12312,
       "covered_lemma_count": 12312,
@@ -893,7 +893,7 @@
     "production_admission": "pass",
     "semantic_audit": "pass",
     "deterministic_sqlite": "pass",
-    "logical_database_digest": "176bdc393e34e33f0d8a05061ef41c4e96efd1e96ff2b73d4ce75e40ea81295b"
+    "logical_database_digest": "122dc56bd2814c0a27d83751bae0e13c255bafd4d697b937c98e400576530a22"
   },
   "defect_findings": [
     {
@@ -1011,6 +1011,6 @@
   "normal_ci": {
     "command": "npm run ci:normal",
     "result": "pending",
-    "canonical_sha256": "ee53861bdf083abdd4e41cd3d75fc26152aa99e3b835b2a230ae5f26f2f74831"
+    "canonical_sha256": "f8069b21037de86fa5c90371a22cb7fecff8327f80106371babc944071bba178"
   }
 }

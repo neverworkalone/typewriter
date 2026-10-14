@@ -7,9 +7,9 @@
   "scope": "complete-canonical",
   "source": {
     "kind": "canonical-jsonl-record-values",
-    "canonical_records_sha256": "ee53861bdf083abdd4e41cd3d75fc26152aa99e3b835b2a230ae5f26f2f74831"
+    "canonical_records_sha256": "f8069b21037de86fa5c90371a22cb7fecff8327f80106371babc944071bba178"
   },
-  "authored_review_sha256": "a2a54555e24c5221ab62dd1ef583522d0123be283fe6ae0a36e29ac91d8e7664",
+  "authored_review_sha256": "ee92a6991371037314b77a414c3c34b2cf22ad16bd134f15e56f6421dd65bda8",
   "authored_review": {
     "schema_version": "2",
     "contract_version": "lexical-semantic-review-storage-v1",
@@ -1058,7 +1058,7 @@
     },
     "source": {
       "kind": "canonical-jsonl-record-values",
-      "canonical_records_sha256": "ee53861bdf083abdd4e41cd3d75fc26152aa99e3b835b2a230ae5f26f2f74831"
+      "canonical_records_sha256": "f8069b21037de86fa5c90371a22cb7fecff8327f80106371babc944071bba178"
     },
     "records": {
       "$shards": [
@@ -1256,7 +1256,7 @@
       },
       {
         "file": "canonical-semantic-decision-source.shards/factory-admissions-012.json",
-        "count": 1
+        "count": 2
       }
     ]
   }
