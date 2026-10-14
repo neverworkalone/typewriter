@@ -16,7 +16,7 @@ const FIXTURE = JSON.parse(await readFile('data/validation/relation-editorial-co
 
 export function controlErrors(cases, senseIndex) {
   const errors = [];
-  for (const { class: cls, verdict, source, target, forbidden_types: forbidden } of cases) {
+  for (const { class: cls, verdict, source, target, forbidden_types: forbidden, required_types: required } of cases) {
     const label = `${source.sense_id} → ${target.sense_id}`;
     const bound = [source, target].map((ref) => ({ ref, found: senseIndex.get(ref.sense_id) }));
     for (const { ref, found } of bound) {
@@ -27,7 +27,8 @@ export function controlErrors(cases, senseIndex) {
     if (!from) continue;
     const types = (from.relations ?? []).filter((relation) => relation.target_sense === target.sense_id).map((relation) => relation.type);
     if (!DIRECT_BOUNDARY_CLASSES.some((entry) => entry.id === cls && entry.verdict === verdict)) errors.push(`${label}: unknown boundary class ${cls}/${verdict}`);
-    if (verdict === 'direct' && !types.includes('direct')) errors.push(`${label}: ${cls} control must stay direct`);
+    for (const type of required ?? []) if (!types.includes(type)) errors.push(`${label}: ${cls} control must stay ${type}`);
+    if (verdict === 'direct' && !required && !types.includes('direct')) errors.push(`${label}: ${cls} control must stay direct`);
     if (verdict === 'not-direct') {
       for (const type of forbidden ?? ['direct']) if (types.includes(type)) errors.push(`${label}: ${cls} control must not be ${type}`);
     }
@@ -67,6 +68,9 @@ test('old fails, new passes: a wrongly typed control or a stale bound sense is r
   assert.deepEqual(controlErrors(negative, build('near')), []);
   assert.match(controlErrors(positive, build('near'))[0], /must stay direct/u);
   assert.deepEqual(controlErrors(positive, build('direct')), []);
+  const opposition = [{ class: 'same-axis-opposition', verdict: 'direct', required_types: ['antonym'], source: ref('x-s1'), target: ref('y-s1') }];
+  assert.match(controlErrors(opposition, build('association'))[0], /must stay antonym/u);
+  assert.deepEqual(controlErrors(opposition, build('antonym')), []);
   const stale = build('near');
   stale.get('y-s1').sense.gloss = '바뀐 뜻풀이.';
   assert.match(controlErrors(negative, stale)[0], /changed pos or gloss/u);
