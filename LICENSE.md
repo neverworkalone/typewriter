@@ -29,20 +29,16 @@ separate terms. See [`DATA-LICENSE.md`](DATA-LICENSE.md) and [`BRAND.md`](BRAND.
 
 ## Dictionary data
 
-The **new STDICT-based Typewriter dictionary** (source-derived headwords,
-senses, definitions and permitted lexical relationships, plus Typewriter-authored
-**말의 결 / 연상** enrichment) will be distributed under
+Typewriter dictionary content sourced from the National Institute of Korean
+Language's **표준국어대사전, 한국어기초사전, and 우리말샘**, plus independently
+authored **말의 결 / 연상** enrichment, follows
 [CC BY-SA 2.0 Korea](https://creativecommons.org/licenses/by-sa/2.0/kr/).
-This applies to the covered dictionary content and its distribution in
-`data/canonical/`, generated `dictionary.sqlite`, the extension and web products;
-it does **not** relicense separate Typewriter software or third-party runtime
-components. The National Institute of Korean Language (NIKL) retains its rights
-in the `표준국어대사전` source; Typewriter licenses only the original contributions
-for which it has rights. Attributions, exclusions, and the prospective cutover
+This applies to eligible dictionary content in `data/canonical/`, generated
+`dictionary.sqlite`, and extension/web distributions. It does **not** relicense
+separate Typewriter software or third-party runtime components. NIKL retains
+its rights in source content, while Typewriter licenses its own additions to
+the extent it controls those rights. Source-specific attribution and exceptions
 are described in [`DATA-LICENSE.md`](DATA-LICENSE.md).
-
-Existing grants for previously published independently authored data are not
-revoked by adopting the new baseline license.
 
 ## Brand assets
 
