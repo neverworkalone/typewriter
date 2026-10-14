@@ -14,13 +14,15 @@ import { buildRelationIndex } from './candidate-retrieval.mjs';
 //   node scripts/relation/backfill-queue-cli.mjs next [--limit N] [--out packet.json]
 //   node scripts/relation/backfill-queue-cli.mjs record <packet.json> <outcomes.json>
 //   node scripts/relation/backfill-queue-cli.mjs apply     (writes approved, not-yet-present relations into canonical)
+// `--canonical <directory>` reads another canonical directory (default: the repository's data/canonical).
 // State lives outside the repository (default ~/.cache/typewriter/relation-backfill/state.json, or --state <path>).
 const args = process.argv.slice(2);
 const flag = (name, fallback) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : fallback; };
 const statePath = flag('--state', path.join(os.homedir(), '.cache/typewriter/relation-backfill/state.json'));
 const command = args[0];
 
-const canonical = await loadCanonicalContext();
+const canonicalDirectory = flag('--canonical');
+const canonical = await loadCanonicalContext(canonicalDirectory ? { directory: path.resolve(canonicalDirectory) } : {});
 const index = buildRelationIndex(canonical);
 const rows = inventoryCanonicalSenses(index);
 // Only a missing state file means "first run". An unreadable or corrupt file must stop the command: replacing it

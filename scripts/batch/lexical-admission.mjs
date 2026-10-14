@@ -124,7 +124,6 @@ function validateLexicalAdditionInternal({
   canonicalContext,
   allowReplay = false,
   allowHistoricalRelationEnrichment = false,
-  checkPilotCompleteness = false,
   candidateLabel = 'candidate records',
   reviewedLabel = 'reviewed canonical records',
   prospectiveLabel = 'prospective canonical dataset',
@@ -316,7 +315,6 @@ function validateLexicalAdditionInternal({
   }
   const indexes = validateDatasetRecords(prospectiveInfos, {
     context: canonicalContext,
-    checkPilotCompleteness,
     semanticAudit,
     requireSemanticAudit: true,
     semanticAuditBaseRecords: baseInfos,

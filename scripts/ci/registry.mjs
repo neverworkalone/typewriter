@@ -145,25 +145,6 @@ const RAW_CI_CATEGORIES = Object.freeze({
       testCheck('tests/validate-canonical-jsonl.test.mjs', 'Test canonical JSONL validator'),
       testCheck('tests/canonical-context.test.mjs', 'Test shared canonical context'),
       testCheck('tests/validate-dataset-integrity.test.mjs', 'Test dataset validator'),
-      testCheck('tests/m6-1-quality-baseline.test.mjs', 'Test M6-1 baseline metrics, gates, and report contracts'),
-      testCheck('tests/m6-4-quality-audit.test.mjs', 'Test M6-4 audit snapshot and tamper rejection'),
-      testCheck('tests/m6-5-correction-calibration.test.mjs', 'Test M6-5 correction calibration evidence'),
-      inProcessCheck('Validate frozen M6-4 quality audit snapshot', 'm6-4-frozen-snapshot'),
-      {
-        ...testCheck('tests/target-inventory.test.mjs', 'Test target inventory'),
-        schedule: 'affected',
-        paths: [
-          'scripts/validate/target-inventory.mjs',
-          'scripts/inventory/generate-target-inventory.mjs',
-          'tests/target-inventory.test.mjs',
-        ],
-        deepInputs: [
-          'data/canonical/',
-          'data/inventory/',
-          'data/validation/canonical-semantic-decision-source.json',
-          'data/validation/canonical-semantic-decision-source.shards/',
-        ],
-      },
       pnpmCheck('Validate lexical rule inventory', 'validate:rules'),
       testCheck('tests/lexical-rule-inventory.test.mjs', 'Test lexical rule inventory'),
       testCheck('tests/ci-runner.test.mjs', 'Test CI category runner fail-fast behavior'),
@@ -180,15 +161,11 @@ const RAW_CI_CATEGORIES = Object.freeze({
     checks: [
       globalCanonicalAuditCheck(),
       testCheck('tests/lexical-quality.test.mjs', 'Test shared lexical quality'),
-      testCheck('tests/relation-admission.test.mjs', 'Test relation admission'),
-      { ...testCheck('tests/relation-editorial-controls.test.mjs', 'Test relation editorial direct/antonym boundary controls and shared hand-off'), tier: 'normal' },
       testCheck('tests/semantic-audit-decision-source.test.mjs', 'Test semantic audit decision source'),
       testCheck(
         'tests/shared-admission-context.test.mjs',
         'Test shared admission context equivalence, tamper rejection, and immutable digest reuse',
       ),
-      testCheck('tests/semantic-corrections.test.mjs', 'Test semantic corrections'),
-      testCheck('tests/semantic-decision-source-locality.test.mjs', 'Test semantic decision-source locality'),
       testCheck('tests/lexical-selection.test.mjs', 'Test shared lexical selection'),
       testCheck('tests/intake-pipeline.test.mjs', 'Test source-agnostic intake pipeline'),
       testCheck('tests/intake-end-to-end.test.mjs', 'Test corpus intake to SQLite direct-search path'),
@@ -236,12 +213,11 @@ const RAW_CI_CATEGORIES = Object.freeze({
   batch: {
     label: 'Batch process, contract, recovery, and authorization validation',
     checks: [
-      testCheck('tests/batch-workflow.test.mjs', 'Test shared batch workflow'),
       testCheck('tests/lexical-production-candidates.test.mjs', 'Test lexical production candidates'),
       testCheck('tests/lexical-production-state.test.mjs', 'Test lexical production state'),
       commandCheck(
         'Test shared Typewriter cache paths and explicit local-reference migration',
-        ['--test', 'scripts/typewriter-cache.test.mjs', 'scripts/reference/migrate-local-reference.test.mjs', 'scripts/reference/run-corpus-lemma-pilot.test.mjs', 'scripts/batch/repository-source-digest.test.mjs', 'scripts/batch/issue-221-source-digests.test.mjs'],
+        ['--test', 'scripts/typewriter-cache.test.mjs', 'scripts/reference/migrate-local-reference.test.mjs', 'scripts/reference/run-corpus-lemma-pilot.test.mjs', 'scripts/batch/repository-source-digest.test.mjs'],
       ),
       commandCheck(
         'Test M9 corpus candidate-review disposition regressions',
@@ -266,7 +242,7 @@ const RAW_CI_CATEGORIES = Object.freeze({
       {
         ...commandCheck(
           'Test Issue #400/#446 relation enrichment pilot contract, backfill queue and canonical apply',
-          ['--test', 'scripts/relation/pilot.test.mjs', 'scripts/relation/backfill-queue.test.mjs', 'scripts/relation/backfill-queue-cli.test.mjs', 'scripts/relation/backfill-apply.test.mjs', 'scripts/relation/backfill-historical-validators.test.mjs', 'scripts/relation/relation-correction.test.mjs'],
+          ['--test', 'scripts/relation/pilot.test.mjs', 'scripts/relation/backfill-queue.test.mjs', 'scripts/relation/backfill-queue-cli.test.mjs', 'scripts/relation/backfill-apply.test.mjs', 'scripts/relation/relation-correction.test.mjs'],
         ),
         schedule: 'affected',
         paths: [
@@ -277,34 +253,23 @@ const RAW_CI_CATEGORIES = Object.freeze({
           'scripts/factory/source-exclusions.mjs',
           'scripts/factory/validate.mjs',
           'scripts/validate/semantic-audit.mjs',
-          'scripts/batch/validate-issue-211.mjs',
-          'scripts/batch/validate-issue-220.mjs',
           'scripts/relation/pilot.test.mjs',
           'scripts/relation/backfill-queue.test.mjs',
           'scripts/relation/backfill-queue-cli.test.mjs',
           'scripts/relation/backfill-apply.test.mjs',
-          'scripts/relation/backfill-historical-validators.test.mjs',
           'scripts/relation/relation-correction.test.mjs',
         ],
         deepInputs: [
           'data/canonical/',
-          'data/candidates/C000003/',
           'data/relation-backfill/',
-          'data/reviews/C000003/',
           'data/validation/canonical-semantic-decision-source.json',
           'data/validation/canonical-semantic-decision-source.shards/',
         ],
       },
       commandCheck(
-        'Test Issue #223 review-only import boundary',
-        ['--test', 'scripts/batch/validate-issue-223.test.mjs'],
-      ),
-      commandCheck(
         'Test Issue #223 reviewer run-record binding and raw-output derivation',
         ['--test', 'scripts/batch/reviewer-raw-outputs.test.mjs'],
       ),
-      testCheck('tests/intake-batch-boundary.test.mjs', 'Test B16+ review-only, canonical-import review, intake artifact verification and a real builder run (no complete-canonical validator rerun)'),
-      testCheck('tests/m9-production-progress.test.mjs', 'Test M9 production checkpoint progress'),
       commandCheck(
         'Test M10 per-batch stage timing ledger',
         ['--test', 'scripts/batch/stage-timing.test.mjs'],
@@ -346,11 +311,6 @@ const RAW_CI_CATEGORIES = Object.freeze({
       testCheck('tests/searchable-start-contract.test.mjs', 'Test role-independent searchable lexical eligibility'),
       testCheck('tests/scale-benchmark.test.mjs', 'Test deterministic product-shaped scale fixture'),
       testCheck('tests/surface-form-projection.test.mjs', 'Test M6-3 surface-form projection and search'),
-      testCheck('tests/search-regressions.test.mjs', 'Test search regressions'),
-      testCheck('tests/issue-204-search.test.mjs', 'Test Issue #204 exact and generated search'),
-      testCheck('tests/issue-211-search.test.mjs', 'Test Issue #211 exact search and workflow'),
-      testCheck('tests/issue-219-search.test.mjs', 'Test Issue #219 exact search and workflow'),
-      testCheck('tests/m6-2-inflection-contract.test.mjs', 'Test M6-2 inflection search contract'),
       pnpmCheck('Run product unit tests', 'test:unit'),
       pnpmCheck('Build product extension', 'build'),
       pnpmCheck('Build Typewriter Web', 'build:web'),
@@ -370,7 +330,6 @@ const RAW_CI_CATEGORIES = Object.freeze({
           'tests/artifact-policy.test.mjs',
         ],
         deepInputs: [
-          'data/batches/m5-12a-semantic-decisions.json',
           'data/validation/canonical-semantic-decision-source.json',
           'data/validation/canonical-semantic-decision-source.shards/',
         ],
@@ -418,12 +377,10 @@ const RAW_CI_CATEGORIES = Object.freeze({
           'scripts/validate/lexical-quality.mjs',
           'scripts/validate/semantic-audit.mjs',
           'scripts/validate/surface-form-projection.mjs',
-          'scripts/validate/target-inventory.mjs',
           'schema/canonical-record.schema.json',
         ],
         deepInputs: [
           'data/canonical/',
-          'data/inventory/',
           'data/validation/canonical-semantic-decision-source.json',
           'data/validation/canonical-semantic-decision-source.shards/',
         ],
@@ -449,7 +406,7 @@ const RAW_CI_CATEGORIES = Object.freeze({
           'schema',
           'tests/reproducibility.test.mjs',
         ],
-        deepInputs: ['data/batches/m5-10a-wave-a-base-canonical/'],
+        deepInputs: ['data/canonical/'],
       },
       {
         ...pnpmCheck(

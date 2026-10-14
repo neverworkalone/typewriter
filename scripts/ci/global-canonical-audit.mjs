@@ -8,7 +8,6 @@ import {
   buildCanonicalSemanticAudit,
   buildSemanticTopicEvidence,
 } from '../validate/semantic-audit.mjs';
-import { validateTargetInventory } from '../validate/target-inventory.mjs';
 import {
   buildOrReuseSurfaceFormProjection,
   loadSurfaceFormExceptionManifest,
@@ -41,16 +40,9 @@ export async function runGlobalCanonicalAudit({ canonicalContext } = {}) {
 
   const indexes = validateDatasetRecords(context.records, {
     context,
-    checkPilotCompleteness: true,
     semanticAudit,
     requireSemanticAudit: true,
     lexicalQuality,
-  });
-  const inventory = await validateTargetInventory({
-    canonicalContext: context,
-    semanticAudit,
-    lexicalQuality,
-    checkPilotCompleteness: true,
   });
   const surfaceFormExceptionManifest = context.derived.surfaceFormExceptionManifest
     ?? await loadSurfaceFormExceptionManifest();
@@ -78,8 +70,6 @@ export async function runGlobalCanonicalAudit({ canonicalContext } = {}) {
       candidate_count: indexes.candidatesById.size,
       lexical_blocking_finding_count: lexicalQuality.blocking_finding_count,
       semantic_audit_complete: true,
-      target_inventory_revision: inventory.revision,
-      target_inventory_entry_count: inventory.inventoryEntryCount,
       surface_form_eligible_sense_count: surfaceFormProjection.coverage.eligible_sense_count,
       generated_surface_form_count: surfaceFormProjection.coverage.generated_surface_form_count,
       surface_form_exclusion_count: surfaceFormProjection.coverage.excluded_rule_count,

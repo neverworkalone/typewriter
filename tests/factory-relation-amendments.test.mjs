@@ -1,3 +1,4 @@
+import { syntheticCanonicalBase } from './helpers/synthetic-canonical-base.mjs';
 import assert from 'node:assert/strict';
 import { cp, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
@@ -145,25 +146,15 @@ test('Stage 2 amendment shape is validated for every admitted decision and refus
   assert.match(at({ source_candidate_id: NEW_ID, disposition: 'held', reason: '근거 부족', relation_amendments: [amendment()] }).join('\n'), /must not carry relation_amendments/u);
 });
 
-// Production path: real canonical revision + real semantic authority + the complete source-bound audit.
+// Production path: a synthetic canonical base admitted through the real Stage 3 authority + the complete source-bound audit.
 async function realCanonical() {
-  const records = [];
-  const paths = new Map();
-  for (const name of (await readdir('data/canonical')).filter((file) => file.endsWith('.jsonl'))) {
-    for (const line of (await readFile(path.join('data/canonical', name), 'utf8')).split('\n').filter(Boolean)) {
-      const record = JSON.parse(line);
-      records.push(record);
-      paths.set(record.id, `data/canonical/${name}`);
-    }
-  }
-  return { records, paths };
+  const base = await syntheticCanonicalBase();
+  return { records: base.canonicalRecords, paths: base.recordPathById, root: base.root };
 }
 
-test('a reverse amendment on a real canonical record passes the authority and the complete semantic audit', async () => {
-  const { records, paths } = await realCanonical();
-  const ledger = await readShardedJson('data/validation/canonical-semantic-decision-source.json');
-  const touched = new Set((ledger.factory_admissions ?? []).flatMap((event) => event.changes.map((change) => change.entry_id)));
-  const existing = records.find((record) => !touched.has(record.id) && record.senses.length === 1 && record.senses[0].pos === 'noun');
+test('a reverse amendment on an admitted canonical record passes the authority and the complete semantic audit', async () => {
+  const { records, paths, root } = await realCanonical();
+  const existing = records.find((record) => record.senses.length === 1 && record.senses[0].pos === 'noun' && !record.senses[0].relations?.length);
   const sense = existing.senses[0];
   const id = 'C900001-0001';
   const decisionRow = {
@@ -194,7 +185,7 @@ test('a reverse amendment on a real canonical record passes the authority and th
     candidates: [{ candidate_id: id }], decisions: [decisionRow], canonicalRecords: records, recordPathById: paths, baseCanonicalSnapshotDigest: digest,
   });
   const authority = await buildStage3SemanticAuthority({
-    root: process.cwd(), baseCanonicalRecords: records, plan: admission, semanticDecisions: { decisions: [row] }, semanticDecisionsText: '{}',
+    root, baseCanonicalRecords: records, plan: admission, semanticDecisions: { decisions: [row] }, semanticDecisionsText: '{}',
   });
   const after = records.map((item) => admission.records.get(item.id)?.record ?? item)
     .concat([...admission.records.values()].filter((update) => !update.before).map((update) => update.record));
@@ -206,7 +197,8 @@ test('a reverse amendment on a real canonical record passes the authority and th
   assert.equal(event.relation_amendments[0].outcome, 'appended');
   assert.equal(event.changes.find((change) => change.entry_id === existing.id).operation, 'append_relations');
   const restored = canonicalRecordsBeforeFactoryAdmissions(after, authority.sourceObject);
-  assert.deepEqual(restored.find((item) => (item.record ?? item).id === existing.id), records.find((item) => item.id === existing.id));
+  // Every record of this base was itself admitted by the factory, so undoing the factory history restores no record.
+  assert.deepEqual(restored, []);
   const manifest = { ...admission.reviewManifest, admission: {
     ...admission.reviewManifest.admission, canonical_snapshot_digest: digest,
     semantic_authority: { path: 'data/validation/canonical-semantic-decision-source.json', source_id: authority.sourceObject.source_id, admission_sha256: event.sha256 },
@@ -282,10 +274,8 @@ test('hostile amendment JSON yields contract errors, never exceptions, on every 
 });
 
 test('two admitted decisions proposing one tuple: first appends, second is an idempotent no-op, through the real authority, audit and validators', async () => {
-  const { records, paths } = await realCanonical();
-  const ledger = await readShardedJson('data/validation/canonical-semantic-decision-source.json');
-  const touched = new Set((ledger.factory_admissions ?? []).flatMap((event) => event.changes.map((change) => change.entry_id)));
-  const existing = records.find((record) => !touched.has(record.id) && record.senses.length === 1 && record.senses[0].pos === 'noun');
+  const { records, paths, root } = await realCanonical();
+  const existing = records.find((record) => record.senses.length === 1 && record.senses[0].pos === 'noun' && !record.senses[0].relations?.length);
   const sense = existing.senses[0];
   const idA = 'C900001-0001';
   const idB = 'C900001-0002';
@@ -323,7 +313,7 @@ test('two admitted decisions proposing one tuple: first appends, second is an id
   assert.deepEqual(admission.relationAmendments.map((item) => item.outcome), ['appended', 'already_present']);
   assert.equal(admission.records.get(existing.id).record.senses[0].relations.length, 1);
   const authority = await buildStage3SemanticAuthority({
-    root: process.cwd(), baseCanonicalRecords: records, plan: admission, semanticDecisions: { decisions: decisions.map(rowFor) }, semanticDecisionsText: '{}',
+    root, baseCanonicalRecords: records, plan: admission, semanticDecisions: { decisions: decisions.map(rowFor) }, semanticDecisionsText: '{}',
   });
   const after = records.map((item) => admission.records.get(item.id)?.record ?? item)
     .concat([...admission.records.values()].filter((update) => !update.before).map((update) => update.record));
@@ -388,141 +378,6 @@ test('a corrected record is reached through relation and sense amendments in any
 // The real flow, end to end: a record with pre-relevance correction history gains a relation (A) and a sense (B) in either
 // order through planStage3Admission + buildStage3SemanticAuthority, chained on the previous authority, then the complete
 // audit and the dataset consumer judge the result. Tampering with the sense operation or the correction must be rejected.
-test('a corrected record amended by relations and senses in either order passes the shared audit consumers, and tampering is rejected', async () => {
-  // The base is the dataset before every factory/backfill event: relation backfills amend each corrected record in turn, so a
-  // fixture that needs an untouched live record would be exhausted by ordinary production.
-  const { records: liveRecords, paths } = await realCanonical();
-  const liveAuthority = await readShardedJson('data/validation/canonical-semantic-decision-source.json');
-  const records = canonicalRecordsBeforeFactoryAdmissions(liveRecords.map((record) => ({ record })), liveAuthority).map(({ record }) => record);
-  const authority0 = restorePreFactoryDecisionSource(liveAuthority, records.map((record) => ({ record })));
-  authority0.factory_admissions = [];
-  const baseDigest = canonicalRecordsSha256(records.map((record) => ({ record })));
-  authority0.source = { ...authority0.source, canonical_records_sha256: baseDigest };
-  authority0.authored_review.source = { ...authority0.authored_review.source, canonical_records_sha256: baseDigest };
-  authority0.authored_review_sha256 = sha256Json(authority0.authored_review);
-  const corrected = new Set(authority0.authored_review.review_pass.correction_history.map((item) => item.record_id));
-  const touched = new Set((authority0.factory_admissions ?? []).flatMap((event) => event.changes.map((change) => change.entry_id)));
-  // The correction digest predates relevance, so the base must carry relevance-bearing relations for the digests to differ.
-  const target = records.find((record) => corrected.has(record.id) && !touched.has(record.id)
-    && record.senses.length === 1 && record.senses[0].pos === 'noun'
-    && record.senses.some((item) => (item.relations ?? []).some((relation) => relation.relevance !== undefined))
-    && preRelevanceRecordSha256(record) !== sha256Json(record));
-  assert.ok(target, 'the pre-factory base has a corrected record with relevance-bearing relations');
-  const sense = target.senses.find((item) => (item.relations ?? []).some((relation) => relation.relevance !== undefined));
-  const rowFor = (decisionRow) => {
-    const id = decisionRow.source_candidate_id;
-    const record = reviewedCandidateRecord(decisionRow);
-    const row = {
-      source_candidate_id: id, candidate_record_id: id, candidate_record_sha256: sha256Json(record), decision: 'included',
-      decision_rationale: `${id}: 합성 시험 결정.`, gloss_judgment: 'fit',
-      sense_reviews: record.senses.map((item) => ({
-        sense_id: item.id, boundary_action: 'retain', boundary_classification: 'atomic', boundary_decision: 'atomic',
-        boundary_rationale: `${id} ${item.id}: 한 가지 뜻으로 한정된다.`, semantic_rationale: `${id} ${item.id}: ${item.gloss}`,
-        relation_decision: 'no-relations', relation_count: 0, relation_ids: [], no_relation_rationale: `${id} ${item.id}: 관계 없음.`,
-      })),
-      boundary_pairs: [],
-    };
-    row.review_binding = authorSemanticReviewBinding(row, record);
-    return row;
-  };
-  const relationRow = (batch) => ({
-    source_candidate_id: `${batch}-0001`, disposition: 'included', target: { kind: 'new_entry' },
-    reviewed_record: { lemma: `합성${batch}낱말`, senses: [{ pos: 'noun', gloss: `합성 시험 ${batch}에서 쓰는 첫째 뜻풀이.` }] },
-    relation_amendments: [{
-      source_record_id: target.id, source_sense_id: sense.id, source_gloss_sha256: sha256Json(sense.gloss),
-      relation: { target: `${batch}-0001`, target_sense: `${batch}-0001-s1`, type: 'association', note: '새 낱말에서 거꾸로 떠오르는 연상이다.', relevance: 4 },
-      rationale: `${target.id} ${sense.id}: ${batch} 합성 시험의 역방향 연상 근거.`,
-    }],
-  });
-  const senseRow = (batch) => ({
-    source_candidate_id: `${batch}-0001`, disposition: 'included',
-    target: { kind: 'new_pos_on_existing_lemma', entry_id: target.id },
-    reviewed_record: { lemma: target.lemma, senses: [{ pos: 'verb', gloss: `합성 시험 ${batch}에서 쓰는 동사 뜻풀이.` }] },
-  });
-  const admit = async (batch, decisionRow, before, ledger) => {
-    const scratch = await mkdtemp(path.join(os.tmpdir(), 'mixed-history-'));
-    await mkdir(path.join(scratch, 'data/validation'), { recursive: true });
-    await writeShardedJson(ledger, path.join(scratch, 'data/validation/canonical-semantic-decision-source.json'), { arrays: SEMANTIC_DECISION_SOURCE_ARRAYS });
-    for (const dir of ['data/candidates', 'data/reviews']) await symlink(path.resolve(dir), path.join(scratch, dir));
-    try {
-      const plan = planStage3Admission({
-        batchId: batch, attempt: 1, admissionPr: 1,
-        candidateManifest: { batch_id: batch, status: 'complete', candidates_sha256: digest },
-        reviewManifest: { batch_id: batch, status: 'ready', attempt: 1, candidates_sha256: digest, semantic_decisions_sha256: digest },
-        candidates: [{ candidate_id: decisionRow.source_candidate_id }], decisions: [decisionRow], canonicalRecords: before, recordPathById: paths, baseCanonicalSnapshotDigest: digest,
-      });
-      const built = await buildStage3SemanticAuthority({
-        root: scratch, baseCanonicalRecords: before, plan, semanticDecisions: { decisions: [rowFor(decisionRow)] }, semanticDecisionsText: '{}',
-      });
-      const after = before.map((item) => plan.records.get(item.id)?.record ?? item)
-        .concat([...plan.records.values()].filter((update) => !update.before).map((update) => update.record));
-      return { after, source: built.sourceObject };
-    } finally {
-      await rm(scratch, { recursive: true, force: true });
-    }
-  };
-  const batchDecisionSources = await readAuthoredBatchDecisionSources();
-  const judge = (after, source) => {
-    const built = buildSemanticAuditFromDecisionSource(after, source, { baseRecords: after, batchDecisionSources, artifactId: 'test-mixed-history' });
-    assert.doesNotThrow(() => validateSemanticAuditCoverage(built.canonical?.records ?? after, built.artifact ?? built, { baseRecords: built.canonical?.records ?? after }));
-    const infos = after.map((record) => ({ record }));
-    assert.doesNotThrow(() => validateDatasetRecords(infos, { semanticAudit: built, requireSemanticAudit: true }));
-    return built;
-  };
-  const baseLedger = authority0;
-  for (const order of [['relation', 'sense'], ['sense', 'relation']]) {
-    let current = records; let ledger = baseLedger; let last;
-    for (const [index, kind] of order.entries()) {
-      const batch = `C90000${index + 1}`;
-      last = await admit(batch, kind === 'relation' ? relationRow(batch) : senseRow(batch), current, ledger);
-      current = last.after; ledger = last.source;
-    }
-    const built = judge(last.after, last.source);
-    const ops = last.source.factory_admissions.slice(-2).map((event) => event.changes.find((change) => change.entry_id === target.id)?.operation);
-    assert.deepEqual(ops, order.map((kind) => (kind === 'relation' ? 'append_relations' : 'append_senses')));
-
-    // Persistence: a saved audit JSON needs its validated ledger back; a serialized context restores it on rehydration.
-    const infos = last.after.map((record) => ({ record }));
-    const saved = JSON.parse(JSON.stringify(built));
-    assert.throws(() => validateSemanticAuditCoverage(infos, saved, { baseRecords: infos }), /correction_history and source-bound Stage 3 admission history/u);
-    restoreFactoryAdmissions(saved, last.source, infos, 'saved mixed-history audit');
-    assert.doesNotThrow(() => validateSemanticAuditCoverage(infos, saved, { baseRecords: infos }));
-    assert.doesNotThrow(() => validateDatasetRecords(infos, { semanticAudit: saved, requireSemanticAudit: true }));
-    const dir = await mkdtemp(path.join(os.tmpdir(), 'mixed-context-'));
-    try {
-      const context = createCanonicalContext({ records: infos, fileCount: 1 });
-      context.semanticAudit = built; context.semanticDecisionSource = last.source;
-      const contextPath = path.join(dir, 'context.json');
-      await writeCanonicalContext(context, contextPath);
-      const reread = await readCanonicalContext(contextPath);
-      assert.doesNotThrow(() => validateSemanticAuditCoverage(reread.records, reread.semanticAudit, { baseRecords: reread.records }));
-      assert.doesNotThrow(() => validateDatasetRecords(reread.records, { semanticAudit: reread.semanticAudit, requireSemanticAudit: true }));
-    } finally {
-      await rm(dir, { recursive: true, force: true });
-    }
-
-    // Rewritten history, resealed so each consumer reaches the provenance check: the correction digest, the sense operation's
-    // declared digests and sense ids, and the amended relation tuple.
-    const reseal = (mutate) => {
-      const forged = structuredClone(last.source);
-      mutate(forged);
-      for (const event of forged.factory_admissions) { delete event.sha256; event.sha256 = sha256Json(event); }
-      forged.authored_review_sha256 = sha256Json(forged.authored_review);
-      return forged;
-    };
-    const eventOf = (forged, operation) => forged.factory_admissions.find((event) => event.changes.some((change) => change.entry_id === target.id && change.operation === operation));
-    const forgeries = {
-      'correction digest': (forged) => { forged.authored_review.review_pass.correction_history.find((item) => item.record_id === target.id).after_record_sha256 = 'f'.repeat(64); },
-      'sense before digest': (forged) => { eventOf(forged, 'append_senses').changes.find((change) => change.entry_id === target.id).before_sha256 = 'e'.repeat(64); },
-      'sense after digest': (forged) => { eventOf(forged, 'append_senses').changes.find((change) => change.entry_id === target.id).after_sha256 = 'e'.repeat(64); },
-      'added sense id': (forged) => { eventOf(forged, 'append_senses').changes.find((change) => change.entry_id === target.id).added_sense_ids = [`${target.id}-s9`]; },
-      'relation tuple': (forged) => { const item = eventOf(forged, 'append_relations').relation_amendments.find((entry) => entry.source_record_id === target.id); item.relation = { ...item.relation, type: 'mood' }; },
-    };
-    for (const [name, mutate] of Object.entries(forgeries)) {
-      assert.throws(() => judge(last.after, reseal(mutate)), (error) => /correction_history|admission|bind|digest|sha256/u.test(error.message), `${order.join('+')} ${name}`);
-    }
-  }
-});
 
 test('the validated factory ledger travels with a review in memory only', () => {
   const review = { review_pass: {} };

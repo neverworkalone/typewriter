@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
+import path from 'node:path';
 import { performance } from 'node:perf_hooks';
 import test from 'node:test';
+
+import { syntheticCanonicalBase } from '../../tests/helpers/synthetic-canonical-base.mjs';
 
 import { loadCanonicalContext } from '../validate/canonical-context.mjs';
 import {
@@ -342,8 +345,8 @@ test('revision-less digest covers lemma, pos, search forms and relations', () =>
   }
 });
 
-test('real canonical replay: deterministic, bounded cost, no mutation, no relations created', async () => {
-  const context = await loadCanonicalContext();
+test('synthetic canonical replay: deterministic, bounded cost, no mutation, no relations created', async () => {
+  const context = await loadCanonicalContext({ directory: path.join((await syntheticCanonicalBase()).root, 'data/canonical') });
   const canonical = { canonicalRevision: context.canonicalRevision, records: context.records };
   const before = JSON.stringify(canonical.records.length);
   const t0 = performance.now();

@@ -19,7 +19,7 @@ const REPOSITORY_DIRECTORY = path.resolve(
 );
 const PILOT_DIRECTORY = path.join(
   REPOSITORY_DIRECTORY,
-  'data/batches/m5-10a-wave-a-base-canonical',
+  'tests/fixtures/canonical-sample',
 );
 
 async function createOutputDirectory() {
@@ -35,14 +35,12 @@ test('two independent builds have the same logical snapshot and provenance', asy
     const first = await buildDictionary({
       inputDirectory: PILOT_DIRECTORY,
       outputPath: firstPath,
-      checkPilotCompleteness: true,
       repositoryDirectory: REPOSITORY_DIRECTORY,
       allowDirty: true,
     });
     const second = await buildDictionary({
       inputDirectory: PILOT_DIRECTORY,
       outputPath: secondPath,
-      checkPilotCompleteness: true,
       repositoryDirectory: REPOSITORY_DIRECTORY,
       allowDirty: true,
     });
@@ -56,14 +54,14 @@ test('two independent builds have the same logical snapshot and provenance', asy
     assert.equal(first.metadata.node_version, process.version);
     assert.equal(first.metadata.sqlite_module, 'node:sqlite');
     assert.match(first.metadata.sqlite_version, /^\d+\.\d+\.\d+$/);
-    assert.equal(first.metadata.record_count, '620');
-    assert.equal(first.metadata.start_count, '578');
-    assert.equal(first.metadata.reference_only_count, '42');
-    assert.equal(first.metadata.candidate_count, '578');
-    assert.equal(first.metadata.search_form_count, '696');
-    assert.equal(first.metadata.sense_count, '743');
-    assert.equal(first.metadata.relation_count, '467');
-    assert.equal(first.metadata.expression_count, '39');
+    assert.equal(first.metadata.record_count, '5');
+    assert.equal(first.metadata.start_count, '4');
+    assert.equal(first.metadata.reference_only_count, '1');
+    assert.equal(first.metadata.candidate_count, '4');
+    assert.equal(first.metadata.search_form_count, '5');
+    assert.equal(first.metadata.sense_count, '6');
+    assert.equal(first.metadata.relation_count, '3');
+    assert.equal(first.metadata.expression_count, '1');
     assert.equal(first.metadata.worktree_state, second.metadata.worktree_state);
     assert.deepEqual(first.metadata, second.metadata);
     assert.equal(Object.hasOwn(first.metadata, 'build_timestamp'), false);

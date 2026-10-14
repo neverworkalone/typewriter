@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { cp, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 import { buildCanonicalSemanticAudit, canonicalRecordsBeforeFactoryAdmissions, sha256Json, validateFactoryAdmissionLedger, validateSemanticAuditCoverage } from '../validate/semantic-audit.mjs';
 import { validateDatasetRecords } from '../validate/dataset-integrity.mjs';
-import { loadCanonicalContext } from '../validate/canonical-context.mjs';
+import { loadCanonicalContext as loadCanonicalContextFrom } from '../validate/canonical-context.mjs';
 import { validateFactoryRepository } from '../factory/validate.mjs';
 import { planRelationCorrections, targetMeaningSha256, writePlannedRecords } from '../factory/admission.mjs';
 import { relationCorrectionErrors, revertRelationCorrections } from '../factory/relation-corrections.mjs';
@@ -17,21 +17,23 @@ import { applyRelationCorrections, approvedAmendments, correctionItemsFor, nextP
 import { newQueueState } from './backfill-queue.mjs';
 import { buildRelationIndex } from './candidate-retrieval.mjs';
 import { copyShardedAuthority, readShardedJson } from '../../tests/helpers/sharded-authority.mjs';
+import { syntheticCanonicalBase } from '../../tests/helpers/synthetic-canonical-base.mjs';
 
-// #501 through the real production path: real canonical records, the real semantic authority and the real ledger and
-// audit validators, applied in a scratch copy of the data files (the repository is never written). Nothing here is
-// fixed to a particular word: the senses are picked from whatever the live canonical holds.
+// #501 through the real production path: a synthetic canonical base admitted by the real Stage 3 authority, and the real
+// ledger and audit validators, applied in a scratch copy of the data files (nothing in the repository is written).
+// Nothing here is fixed to a particular word: the senses are picked from whatever the base holds.
 
-const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const AUTHORITY = 'data/validation/canonical-semantic-decision-source.json';
+const BASE = await syntheticCanonicalBase();
+const loadCanonicalContext = () => loadCanonicalContextFrom({ directory: path.join(BASE.root, 'data/canonical') });
 
 async function scratchRoot() {
   const root = await mkdtemp(path.join(os.tmpdir(), 'relation-correction-'));
   await mkdir(path.join(root, 'data/validation'), { recursive: true });
-  await cp(path.join(REPO, 'data/canonical'), path.join(root, 'data/canonical'), { recursive: true });
-  await copyShardedAuthority(path.join(REPO, AUTHORITY), path.join(root, AUTHORITY));
-  for (const dir of ['data/candidates', 'data/reviews']) await symlink(path.join(REPO, dir), path.join(root, dir));
-  await cp(path.join(REPO, 'data/relation-backfill'), path.join(root, 'data/relation-backfill'), { recursive: true }).catch((error) => { if (error?.code !== 'ENOENT') throw error; });
+  await cp(path.join(BASE.root, 'data/canonical'), path.join(root, 'data/canonical'), { recursive: true });
+  await copyShardedAuthority(path.join(BASE.root, AUTHORITY), path.join(root, AUTHORITY));
+  for (const name of ['m6-2-inflection-exceptions.json', 'm6-3-surface-form-review.json']) await cp(path.join(BASE.root, 'data/validation', name), path.join(root, 'data/validation', name));
+  for (const dir of ['data/candidates', 'data/reviews', 'data/relation-backfill']) await mkdir(path.join(root, dir), { recursive: true });
   return root;
 }
 

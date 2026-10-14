@@ -506,18 +506,9 @@ export async function applyStage3Admission({ root, git, claim, prepared } = {}) 
   return { ...prepared, semanticAuthority, plan, files: [...new Set([...reportFiles, ...surfaceFiles, ...plan.changes.map((change) => change.path), ...semanticAuthority.sourceFiles.map((file) => file.path), `data/reviews/${claim.batchId}/manifest.json`, MARKER_NAME(claim.batchId, claim.attempt)])] };
 }
 
-// Existing M9 reports contain live canonical/search/SQLite checkpoint fields.
-// Refresh them through their ordinary source-bound report producers before pinning CI's tree.
-export function refreshStage3ReportCheckpoints(root, run = execFileSync) {
-  for (const script of ['inventory:issue-210:write', 'batch:issue-219:report', 'batch:issue-220:report', 'batch:issue-222:report']) {
-    run('pnpm', ['run', script], { cwd: root, stdio: 'inherit' });
-  }
-  return [
-    'docs/issue-210-historical-exclusion-report.md', 'data/inventory/issue-210-recovery-inventory.json',
-    'docs/issue-222-m9-d-scale-coverage.md', 'data/validation/issue-222-m9-d-scale-coverage-report.json',
-    'docs/issue-219-m9-a-recovery.md', 'data/validation/issue-219-m9-lexical-batch-report.json',
-    'docs/issue-220-m9-b-checkpoint.md', 'data/validation/issue-220-m9-b-checkpoint-report.json',
-  ];
+// The one-off M9 reports that used to be refreshed here were removed with the legacy data; no checkpoint file is derived.
+export function refreshStage3ReportCheckpoints() {
+  return [];
 }
 
 export function runStage3PreflightCi(root, run = execFileSync) {

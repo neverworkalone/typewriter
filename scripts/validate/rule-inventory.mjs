@@ -12,8 +12,6 @@ export const DEFAULT_RULE_INVENTORY_PATH = path.join(
 export const RULE_CLASSIFICATIONS = Object.freeze([
   'dictionary-wide invariant',
   'admission invariant',
-  'batch policy',
-  'historical assertion',
   'obsolete/duplicate',
 ]);
 
@@ -23,12 +21,8 @@ const SHARED_IMPLEMENTATION_PREFIXES = Object.freeze([
   'scripts/batch/lexical-',
   'scripts/build/',
   'scripts/normalize/',
-  'scripts/inventory/',
 ]);
-const SHARED_IMPLEMENTATION_PATHS = new Set([
-  'scripts/batch/validate-batch.mjs',
-  'scripts/batch/import-reviewed-batch.mjs',
-]);
+const SHARED_IMPLEMENTATION_PATHS = new Set([]);
 
 export class RuleInventoryError extends Error {
   constructor(message, code = 'RULE_INVENTORY_ERROR') {

@@ -21,7 +21,7 @@ const REPOSITORY_DIRECTORY = path.resolve(
 );
 const PILOT_DIRECTORY = path.join(
   REPOSITORY_DIRECTORY,
-  'data/batches/m5-10a-wave-a-base-canonical',
+  'tests/fixtures/canonical-sample',
 );
 
 async function createOutputDirectory() {
@@ -40,14 +40,13 @@ test('builds a read-only SQLite dictionary with representative lookups', async (
     const summary = await buildDictionary({
       inputDirectory: PILOT_DIRECTORY,
       outputPath,
-      checkPilotCompleteness: true,
       allowDirty: true,
     });
 
-    assert.equal(summary.recordCount, 620);
-    assert.equal(summary.searchFormCount, 696);
-    assert.equal(summary.senseCount, 743);
-    assert.equal(summary.relationCount, 467);
+    assert.equal(summary.recordCount, 5);
+    assert.equal(summary.searchFormCount, 5);
+    assert.equal(summary.senseCount, 6);
+    assert.equal(summary.relationCount, 3);
     assert.match(summary.metadata.canonical_revision, /^[0-9a-f]{64}$/);
     assert.equal(summary.metadata.schema_version, '3');
     assert.equal(summary.metadata.normalization_version, '1');
@@ -55,20 +54,20 @@ test('builds a read-only SQLite dictionary with representative lookups', async (
 
     const database = new DatabaseSync(outputPath, { readOnly: true });
     try {
-      assert.equal(countRows(database, 'records'), 620);
-      assert.equal(countRows(database, 'search_forms'), 696);
-      assert.equal(countRows(database, 'senses'), 743);
-      assert.equal(countRows(database, 'relations'), 467);
+      assert.equal(countRows(database, 'records'), 5);
+      assert.equal(countRows(database, 'search_forms'), 5);
+      assert.equal(countRows(database, 'senses'), 6);
+      assert.equal(countRows(database, 'relations'), 3);
       assert.equal(countRows(database, 'generated_surface_forms'), summary.generatedSurfaceFormCount);
       assert.deepEqual(getMetadata(database), summary.metadata);
 
-      assert.deepEqual(findRecordsByExactTerm(database, '담담'), [
+      assert.deepEqual(findRecordsByExactTerm(database, '기쁨'), [
         {
-          id: 'w026',
+          id: 'w001',
           record_type: 'entry',
           role: 'start',
-          candidate_id: 'w026',
-          lemma: '담담하다',
+          candidate_id: 'w001',
+          lemma: '기쁨',
         },
       ]);
       assert.deepEqual(
@@ -76,24 +75,17 @@ test('builds a read-only SQLite dictionary with representative lookups', async (
           id,
           lemma,
         })),
-        [{ id: 'w288', lemma: '마음이 놓이다' }],
+        [{ id: 'w003', lemma: '마음이 놓이다' }],
       );
       assert.deepEqual(findRecordsByExactTerm(database, '환희'), []);
-      assert.equal(getRecord(database, 'w579'), null);
-      assert.deepEqual(findRecordsByExactTerm(database, '숨이 트이다'), []);
+      assert.equal(getRecord(database, 'w999'), null);
 
-      const generated = findRecordsBySearchTerm(database, '바라보는');
-      assert.equal(generated.status, 'ready');
-      assert.deepEqual(generated.matches.map(({ id }) => id), ['w202']);
-      assert.deepEqual(generated.matches[0].match.senseIds, ['w202-s1']);
-      assert.deepEqual(generated.matches[0].match.ruleIds, ['verb-present-adnominal-neun']);
+      const polysemousRecord = getRecord(database, 'w002');
+      assert.equal(polysemousRecord.senses.length, 2);
+      assert.equal(polysemousRecord.senses[0].id, 'w002-s1');
+      assert.equal(polysemousRecord.senses[0].relations[0].target, 'w001');
 
-      const polysemousRecord = getRecord(database, 'w237');
-      assert.equal(polysemousRecord.senses.length, 4);
-      assert.equal(polysemousRecord.senses[0].id, 'w237-s1');
-      assert.equal(polysemousRecord.senses[0].relations[0].target, 'r014');
-
-      const expression = getRecord(database, 'w288');
+      const expression = getRecord(database, 'w003');
       assert.equal(expression.record_type, 'expression');
       assert.equal(expression.role, 'start');
       assert.equal(expression.senses[0].pos, 'expression');
@@ -102,13 +94,13 @@ test('builds a read-only SQLite dictionary with representative lookups', async (
       assert.equal(reference.role, 'reference-only');
       assert.equal(reference.candidate_id, null);
 
-      const directRelations = getSenseRelations(database, 'w026-s1');
-      assert.equal(directRelations[0].target, 'r008');
-      assert.equal(directRelations[0].target_sense, 'r008-s1');
-      assert.equal(directRelations[0].target_lemma, '덤덤하다');
+      const directRelations = getSenseRelations(database, 'w001-s1');
+      assert.equal(directRelations[0].target, 'r001');
+      assert.equal(directRelations[0].target_sense, 'r001-s1');
+      assert.equal(directRelations[0].target_lemma, '즐거움');
       assert.equal(directRelations[0].type, 'direct');
-      assert.match(directRelations[0].note, /직접 바꿔/);
-      assert.deepEqual(getSenseRelations(database, 'r008-s1'), []);
+      assert.match(directRelations[0].note, /바꿔 쓸/);
+      assert.deepEqual(getSenseRelations(database, 'r001-s1'), []);
 
       const indexes = database
         .prepare("SELECT name FROM sqlite_master WHERE type = 'index' ORDER BY name")
@@ -137,7 +129,7 @@ test('builds a read-only SQLite dictionary with representative lookups', async (
 
     const reopened = new DatabaseSync(outputPath, { readOnly: true });
     try {
-      assert.equal(countRows(reopened, 'records'), 620);
+      assert.equal(countRows(reopened, 'records'), 5);
       assert.equal(getRecord(reopened, 'w999'), null);
     } finally {
       reopened.close();
@@ -226,14 +218,13 @@ test('preserves adverb POS in the canonical-to-SQLite build', async () => {
 test('rebuilds from an empty output and protects canonical input', async () => {
   const outputDirectory = await createOutputDirectory();
   const outputPath = path.join(outputDirectory, 'dictionary.sqlite');
-  const canonicalPath = path.join(PILOT_DIRECTORY, 'pilot.jsonl');
+  const canonicalPath = path.join(PILOT_DIRECTORY, 'sample.jsonl');
 
   try {
     const before = await readFile(canonicalPath);
     await buildDictionary({
       inputDirectory: PILOT_DIRECTORY,
       outputPath,
-      checkPilotCompleteness: true,
       allowDirty: true,
     });
 
@@ -244,7 +235,6 @@ test('rebuilds from an empty output and protects canonical input', async () => {
     await buildDictionary({
       inputDirectory: PILOT_DIRECTORY,
       outputPath,
-      checkPilotCompleteness: true,
       allowDirty: true,
     });
     assert.deepEqual(await readFile(canonicalPath), before);
@@ -259,7 +249,7 @@ test('rebuilds from an empty output and protects canonical input', async () => {
           .get(),
         undefined,
       );
-      assert.equal(countRows(freshDatabase, 'records'), 620);
+      assert.equal(countRows(freshDatabase, 'records'), 5);
     } finally {
       freshDatabase.close();
     }

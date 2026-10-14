@@ -1,0 +1,6 @@
+{
+  "contract": "lexical-factory-zero-data-reset-v1",
+  "issue": 672,
+  "owner_decision": "Issue #671 closed with an affirmative owner GO to reset production to zero lexical data",
+  "scope": "Relaxes the immutable-history comparison against the base only in the change that introduces this file; the legacy branch keeps the history."
+}

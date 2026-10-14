@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
@@ -733,6 +734,19 @@ export function loadBaseManifests(ref, root = REPOSITORY_DIRECTORY) {
   return base;
 }
 
+// Merged factory data is immutable, so the one-time zero-data reset (#672) must be declared. The tracked marker
+// config/zero-data-reset.json relaxes the comparison against the base only in the change that introduces it:
+// once the marker is on the base, every later change is compared against the post-reset history as usual.
+export const ZERO_DATA_RESET_MARKER = 'config/zero-data-reset.json';
+export const ZERO_DATA_RESET_CONTRACT = 'lexical-factory-zero-data-reset-v1';
+
+export function zeroDataResetIntroduced(root, baseCommit) {
+  let marker;
+  try { marker = JSON.parse(readFileSync(path.join(root, ZERO_DATA_RESET_MARKER), 'utf8')); } catch { return false; }
+  if (marker?.contract !== ZERO_DATA_RESET_CONTRACT || !Number.isInteger(marker.issue) || marker.issue < 1) return false;
+  try { git(['cat-file', '-e', `${baseCommit}:${ZERO_DATA_RESET_MARKER}`], root); return false; } catch { return true; }
+}
+
 // `FACTORY_BASE_REF=none` is the only way to skip the comparison (explicit, never default).
 export async function runCli({ root = process.env.FACTORY_ROOT ?? REPOSITORY_DIRECTORY, ref = process.env.FACTORY_BASE_REF ?? DEFAULT_BASE_REF, report = {} } = {}) {
   let base = null;
@@ -742,6 +756,7 @@ export async function runCli({ root = process.env.FACTORY_ROOT ?? REPOSITORY_DIR
     } catch {
       return [`cannot resolve factory base ${ref} (fetch master, or set FACTORY_BASE_REF); refusing to skip transition checks`];
     }
+    if (zeroDataResetIntroduced(root, base.commit)) base = { candidate: {}, review: {}, semantic: {}, commit: null, reset: true };
   }
   return validateFactoryRepository({ root, base, report });
 }

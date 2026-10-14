@@ -212,7 +212,6 @@ export async function buildDictionary({
   inputDirectory = DEFAULT_CANONICAL_DIRECTORY,
   outputPath = DEFAULT_DICTIONARY_OUTPUT,
   metadata = {},
-  checkPilotCompleteness = false,
   repositoryDirectory = process.cwd(),
   sourceRevision,
   allowDirty = false,
@@ -229,7 +228,6 @@ export async function buildDictionary({
     directory: inputDirectory,
   });
   const model = normalizedModel ?? await normalizeCanonicalDirectory(inputDirectory, {
-    checkPilotCompleteness,
     canonicalContext: context,
     semanticAudit,
   });
@@ -331,7 +329,6 @@ export async function buildDictionary({
 
 export async function main() {
   const summary = await buildDictionary({
-    checkPilotCompleteness: !process.argv.includes('--no-pilot-regression'),
     allowDirty: process.argv.includes('--allow-dirty'),
   });
   console.log(

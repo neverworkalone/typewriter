@@ -83,7 +83,7 @@ await runCli([level], {
   createSession: () => createCanonicalSession({
     prepareContext: () => loadCanonicalContext({ directory: CURRENT_FIXTURE, contextPath: null }),
   }).then((session) => {
-    const prepared = { ...session, checkPilotCompleteness: false };
+    const prepared = { ...session };
     if (scenario.forgetSharedArtifact) {
       Object.defineProperty(prepared, 'sharedDictionaryPath', { get: () => undefined, set() {} });
     }

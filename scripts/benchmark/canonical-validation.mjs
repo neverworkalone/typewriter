@@ -274,10 +274,10 @@ export function createSyntheticDecisionSource(recordInfos, template, scale, hash
       record_sha256: cachedSha256Json(record, hashCache),
       boundary_review: {
         decision: record.senses.length > 1
-          ? templatePairwiseRecord.boundary_review.decision
+          ? (templatePairwiseRecord?.boundary_review.decision ?? 'split')
           : 'retain',
         classification: record.senses.length > 1
-          ? templatePairwiseRecord.boundary_review.classification
+          ? (templatePairwiseRecord?.boundary_review.classification ?? 'separated')
           : 'atomic',
         evidence: record.senses.map((sense) => ({
           sense_id: sense.id,
@@ -290,8 +290,8 @@ export function createSyntheticDecisionSource(recordInfos, template, scale, hash
               record.senses.slice(leftIndex + 1).map((rightSense) => ({
                 left_sense_id: leftSense.id,
                 right_sense_id: rightSense.id,
-                relationship: templatePairwise.relationship,
-                decision: templatePairwise.decision,
+                relationship: templatePairwise?.relationship ?? 'distinct',
+                decision: templatePairwise?.decision ?? 'retain',
                 evidence_basis_code: rationaleCodes.pairwiseEvidence,
                 distinguishing_feature_code: rationaleCodes.pairwiseDistinguishingFeature,
                 rationale_code: rationaleCodes.pairwiseRationale,
@@ -1709,7 +1709,14 @@ export async function benchmarkCanonicalValidation({
   );
   const semanticDecisionSourceTemplate = suppliedSemanticDecisionSourceTemplate
     ?? await readShardedJson(DEFAULT_SEMANTIC_DECISION_SOURCE_PATH);
-  const canonicalDirectory = path.join(REPOSITORY_DIRECTORY, 'data', 'canonical');
+  // The corpus is scaled from real canonical record shapes; a repository with no canonical data yet
+  // (zero-data state) scales from the small synthetic sample used by the generic tests instead.
+  const productionCanonicalDirectory = path.join(REPOSITORY_DIRECTORY, 'data', 'canonical');
+  const hasProductionCanonical = (await readdir(productionCanonicalDirectory).catch(() => []))
+    .some((name) => name.endsWith('.jsonl'));
+  const canonicalDirectory = hasProductionCanonical
+    ? productionCanonicalDirectory
+    : path.join(REPOSITORY_DIRECTORY, 'tests', 'fixtures', 'canonical-sample');
   const inputPreparationStart = now();
   const canonicalTemplateContext = await loadCanonicalContext({
     directory: canonicalDirectory,
@@ -1832,7 +1839,6 @@ export async function benchmarkCanonicalValidation({
         const validationStart = now();
         const indexes = validateDatasetRecords(context.records, {
           context,
-          checkPilotCompleteness: false,
           semanticAudit,
           requireSemanticAudit: false,
           lexicalQuality,
@@ -1863,7 +1869,6 @@ export async function benchmarkCanonicalValidation({
           result.failure_stage = 'normalize';
           const normalizeStart = now();
           const normalizedModel = await normalizeCanonicalDirectory(canonicalDirectory, {
-            checkPilotCompleteness: false,
             canonicalContext: context,
             semanticAudit,
           });

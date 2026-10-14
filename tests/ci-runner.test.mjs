@@ -10,6 +10,7 @@ import { CI_CATEGORIES, registerCheck } from '../scripts/ci/registry.mjs';
 import { classifyDeepGateDiff } from '../scripts/ci/deep-gate.mjs';
 import { runChecks, runCli, runLevel } from '../scripts/ci/run-category.mjs';
 import { loadCanonicalContext } from '../scripts/validate/canonical-context.mjs';
+import { sampleCanonicalRecordLine, syntheticRelationPacket } from './helpers/synthetic-data.mjs';
 
 const TEST_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 
@@ -442,16 +443,11 @@ test('PR workflow routes an affected exact-head Deep gate into ci:pr and only it
     ], changedPath);
   }
 
-  const canonicalPath = 'data/canonical/pilot.jsonl';
-  const canonicalFile = await readFile(path.resolve(TEST_DIRECTORY, '../', canonicalPath), 'utf8');
-  const originalRecord = JSON.parse(canonicalFile.split('\n')[0]);
+  const canonicalPath = 'data/canonical/sample.jsonl';
+  const originalRecord = JSON.parse(sampleCanonicalRecordLine());
   const changedRecord = { ...originalRecord, lemma: `${originalRecord.lemma}확인` };
   const packetPath = 'data/relation-backfill/R999999.json';
-  const packet = JSON.parse(await readFile(
-    path.resolve(TEST_DIRECTORY, '../data/relation-backfill/R000004.json'),
-    'utf8',
-  ));
-  packet.packet_id = 'R999999';
+  const packet = syntheticRelationPacket('R999999');
   const relationRepairPaths = [
     canonicalPath,
     packetPath,

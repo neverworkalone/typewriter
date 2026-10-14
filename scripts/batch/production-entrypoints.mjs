@@ -7,19 +7,11 @@ export const ACTIVE_PRODUCTION_ENTRYPOINTS = Object.freeze({
   'scripts/factory/admission.mjs': 'Lexical Factory Stage 3 canonical writer; accepts only a source-bound ready review, writes deterministic entry/sense mappings, and records its admission provenance.',
 });
 
-// Historical, batch-specific pipelines. Each writes a fixed, already-completed
-// batch's artifact (constant output path, no batch-id argument) and is re-verified
-// by its own validator; none can admit a new batch.
-export const HISTORICAL_ENTRYPOINTS = Object.freeze({
-  'scripts/batch/m5-12a-pipeline.mjs': 'm5-12a-expansion.jsonl',
-  'scripts/batch/m5-13-pipeline.mjs': 'm5-13-expansion.jsonl',
-  'scripts/batch/m5-14-pipeline.mjs': 'm5-14-expansion.jsonl',
-  'scripts/batch/m5-15-pipeline.mjs': 'm5-15-expansion.jsonl',
-  'scripts/batch/promote-m5-11.mjs': 'm5-11 promotion (fixed batch)',
-});
+// Historical, batch-specific pipelines (fixed output path, no batch-id argument). None remain.
+export const HISTORICAL_ENTRYPOINTS = Object.freeze({});
 
 // Best-effort static tripwire (the authoritative control is the data-level
-// baseline gate in validate-issue-223: any record outside a validated batch import
+// baseline gate: any record outside a validated batch import
 // changes the baseline digest, whatever wrote it). Detects a write whose arguments
 // name canonical data directly, via the import path, or via an identifier that was
 // assigned from an expression naming canonical data. Writes into temporary
@@ -46,11 +38,8 @@ export function writesCanonical(source) {
 // Scripts that mention canonical data and write files, but whose write targets are
 // manifests, audits, reports, metrics or inventories (checked by their write
 // targets), not canonical records. Records they could not legitimately add are
-// still caught by the data-level baseline gate in validate-issue-223.
+// still caught by the data-level baseline gate.
 export const DERIVED_ARTIFACT_WRITERS = Object.freeze([
-  'scripts/batch/build-m5-10a-wave-a2-stage.mjs',
-  'scripts/batch/derive-metrics.mjs',
-  'scripts/batch/refresh-m5-11-derived-evidence.mjs',
   'scripts/relation/backfill-queue-cli.mjs',
   'scripts/validate/build-semantic-audit.mjs',
   'scripts/validate/canonical-context.mjs',

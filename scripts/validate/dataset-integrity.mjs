@@ -24,10 +24,6 @@ import {
   loadSurfaceFormReviewManifestSync,
 } from '../inflection/surface-form-projection.mjs';
 
-const EXPECTED_PILOT_CANDIDATE_IDS = Object.freeze(
-  Array.from({ length: 300 }, (_, index) => `w${String(index + 1).padStart(3, '0')}`),
-);
-
 export class DatasetIntegrityError extends ValidationError {
   constructor(message, code = 'DATASET_INTEGRITY_ERROR') {
     super(message, code);
@@ -268,46 +264,10 @@ function validateRelations(recordInfos, indexes, { requireRelevance = false } = 
   }
 }
 
-export function validatePilotCompleteness(recordInfos) {
-  const startsByCandidateId = new Map();
-
-  for (const recordInfo of recordInfos) {
-    if (recordInfo.record.role !== 'start') {
-      continue;
-    }
-
-    const candidateId = recordInfo.record.candidate_id;
-    const existing = startsByCandidateId.get(candidateId) ?? [];
-    existing.push(recordInfo);
-    startsByCandidateId.set(candidateId, existing);
-  }
-
-  const missing = EXPECTED_PILOT_CANDIDATE_IDS.filter(
-    (candidateId) => !startsByCandidateId.has(candidateId),
-  );
-  const duplicated = EXPECTED_PILOT_CANDIDATE_IDS.filter(
-    (candidateId) => (startsByCandidateId.get(candidateId)?.length ?? 0) > 1,
-  );
-  if (missing.length || duplicated.length) {
-    const details = [];
-    if (missing.length) {
-      details.push(`missing start candidate(s): ${missing.join(', ')}`);
-    }
-    if (duplicated.length) {
-      details.push(`duplicated start candidate(s): ${duplicated.join(', ')}`);
-    }
-    fail(
-      `pilot completeness regression failed (${details.join('; ')})`,
-      'PILOT_COMPLETENESS',
-    );
-  }
-}
-
 export function validateDatasetRecords(
   recordInfos,
   {
     context,
-    checkPilotCompleteness = false,
     semanticAudit,
     requireSemanticAudit = false,
     semanticAuditBaseRecords,
@@ -442,10 +402,6 @@ export function validateDatasetRecords(
     fail(finding.message, finding.code);
   }
 
-  if (checkPilotCompleteness) {
-    validatePilotCompleteness(recordInfos);
-  }
-
   return indexes;
 }
 
@@ -510,9 +466,7 @@ export async function validateDatasetDirectory(
 }
 
 export async function main() {
-  const checkPilotCompleteness = !process.argv.includes('--no-pilot-regression');
   const summary = await validateDatasetDirectory(DEFAULT_CANONICAL_DIRECTORY, {
-    checkPilotCompleteness,
   });
   console.log(
     `Validated dataset: ${summary.fileCount} file(s) / ${summary.recordCount} record(s) / ${summary.senseCount} sense(s) / ${summary.relationCount} relation(s).`,

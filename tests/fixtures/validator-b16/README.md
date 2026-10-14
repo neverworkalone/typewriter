@@ -1,1 +1,0 @@
-Synthetic B16 fixture for tests/validator-b16-positive.test.mjs. 소년기/청년기 candidates and their corpus counts and hit identifiers are SYNTHETIC test data (not corpus-derived, never canonical); 호시탐탐 is B15's real held candidate. Used only inside a temporary tree.

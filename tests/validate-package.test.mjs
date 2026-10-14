@@ -454,6 +454,7 @@ test('rejects corrupt SQLite and WASM runtime fixtures', async () => {
     const result = validatePackageDirectory({
       packageDir: temporaryDirectory,
       projectRoot: REPOSITORY_DIRECTORY,
+      canonicalDirectory: path.join(REPOSITORY_DIRECTORY, 'tests/fixtures/canonical-sample'),
     });
     const errors = result.errors.join('\n');
 

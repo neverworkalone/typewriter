@@ -21,9 +21,15 @@ const sha256 = (value) => createHash('sha256').update(value).digest('hex');
 const compare = (left, right) => left < right ? -1 : left > right ? 1 : 0;
 export const canonicalDictionaryCacheKey = (identity) => sha256(JSON.stringify(identity));
 
+// A repository with no canonical data yet (zero-data state) has no directory to list.
+const namesIn = (directory) => readdir(directory).catch((error) => {
+  if (error.code === 'ENOENT') return [];
+  throw error;
+});
+
 async function canonicalSnapshotSha256(repositoryDirectory) {
   const directory = path.join(repositoryDirectory, 'data/canonical');
-  const names = (await readdir(directory)).filter((name) => name.endsWith('.jsonl')).sort(compare);
+  const names = (await namesIn(directory)).filter((name) => name.endsWith('.jsonl')).sort(compare);
   const parts = [];
   for (const name of names) parts.push([name, sha256(await readFile(path.join(directory, name)))]);
   return sha256(JSON.stringify(parts));
@@ -84,7 +90,7 @@ async function builderSourceSha256(repositoryDirectory) {
 async function canonicalBuildInputSha256(repositoryDirectory) {
   const validationDirectory = path.join(repositoryDirectory, 'data/validation/canonical-semantic-decision-source.shards');
   const batchDirectory = path.join(repositoryDirectory, 'data/batches');
-  const batchNames = (await readdir(batchDirectory)).filter((name) => name.endsWith('-semantic-decisions.json')).sort(compare);
+  const batchNames = (await namesIn(batchDirectory)).filter((name) => name.endsWith('-semantic-decisions.json')).sort(compare);
   const files = [
     path.join(repositoryDirectory, 'data/validation/canonical-semantic-decision-source.json'),
     ...await filesUnder(validationDirectory),
@@ -233,7 +239,6 @@ export async function loadOrBuildCanonicalDictionary({
     const dictionary = await build({
       outputPath: path.join(temporaryDirectory, 'dictionary.sqlite'),
       repositoryDirectory,
-      checkPilotCompleteness: true,
       allowDirty: true,
     });
     const currentIdentity = await cacheIdentity(repositoryDirectory);

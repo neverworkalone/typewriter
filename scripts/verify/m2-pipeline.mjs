@@ -190,30 +190,32 @@ function expectedMetadata(model, surfaceProjection) {
 }
 
 function assertRepresentativeQueries(database, model) {
-  const canonicalRecord = model.records.find((record) => record.id === 'w026');
-  assert.ok(canonicalRecord, 'canonical w026 must exist');
-  const canonicalSense = canonicalRecord.senses.find((sense) => sense.id === 'w026-s1');
-  assert.ok(canonicalSense, 'canonical w026-s1 must exist');
-  const canonicalRelation = canonicalSense.relations
-    .find((relation) => relation.target === 'r008');
-  assert.ok(canonicalRelation, 'canonical w026-s1 -> r008 relation must exist');
+  // Representative lookups derive from the first record that has a relation, so the audit holds for any
+  // dataset (including an empty one, which has nothing to look up).
+  const targetIds = new Map(model.records.map((record) => [record.id, record]));
+  for (const canonicalRecord of model.records) {
+    for (const canonicalSense of canonicalRecord.senses) {
+      const canonicalRelation = (canonicalSense.relations ?? []).find((candidate) => targetIds.has(candidate.target));
+      if (!canonicalRelation) continue;
 
-  assert.deepEqual(
-    findRecordsByExactTerm(database, '담담').map(({ id, lemma }) => ({ id, lemma })),
-    [{ id: 'w026', lemma: '담담하다' }],
-  );
+      assert.ok(
+        findRecordsByExactTerm(database, canonicalRecord.lemma).some(({ id }) => id === canonicalRecord.id),
+        `exact lookup must find ${canonicalRecord.id}`,
+      );
+      const record = getRecord(database, canonicalRecord.id);
+      assert.equal(record.lemma, canonicalRecord.lemma);
+      assert.deepEqual(record.search_forms, canonicalRecord.search_forms);
 
-  const record = getRecord(database, 'w026');
-  assert.equal(record.lemma, canonicalRecord.lemma);
-  assert.deepEqual(record.search_forms, canonicalRecord.search_forms);
-
-  const relation = getSenseRelations(database, 'w026-s1')
-    .find(({ target }) => target === canonicalRelation.target);
-  assert.ok(relation, 'SQLite relation target must be queryable');
-  assert.equal(relation.target_sense, canonicalRelation.target_sense);
-  assert.equal(relation.type, canonicalRelation.type);
-  assert.equal(relation.note, canonicalRelation.note);
-  assert.equal(relation.target_lemma, '덤덤하다');
+      const relation = getSenseRelations(database, canonicalSense.id)
+        .find(({ target }) => target === canonicalRelation.target);
+      assert.ok(relation, 'SQLite relation target must be queryable');
+      assert.equal(relation.target_sense, canonicalRelation.target_sense);
+      assert.equal(relation.type, canonicalRelation.type);
+      assert.equal(relation.note, canonicalRelation.note);
+      assert.equal(relation.target_lemma, targetIds.get(canonicalRelation.target).lemma);
+      return;
+    }
+  }
 }
 
 function assertProvenanceMetadata(metadata, expectedWorktreeState = undefined) {
@@ -318,7 +320,6 @@ export async function runM2Pipeline({
     records: context.records,
   };
   const dataset = await validateDatasetDirectory(inputDirectory, {
-    checkPilotCompleteness: true,
     canonicalContext: context,
     semanticAudit: context.semanticAudit,
     requireSurfaceFormProjection: true,
@@ -326,7 +327,6 @@ export async function runM2Pipeline({
     requireSurfaceFormCollisionReview: requireCollisionReview,
   });
   const model = suppliedModel ?? await normalizeCanonicalDirectory(inputDirectory, {
-    checkPilotCompleteness: true,
     canonicalContext: context,
     semanticAudit: context.semanticAudit,
   });
@@ -382,7 +382,6 @@ export async function runM2Pipeline({
     const first = await buildDictionary({
       inputDirectory,
       outputPath: firstPath,
-      checkPilotCompleteness: true,
       repositoryDirectory,
       allowDirty,
       canonicalContext: context,
@@ -393,7 +392,6 @@ export async function runM2Pipeline({
     const second = await buildDictionary({
       inputDirectory,
       outputPath: secondPath,
-      checkPilotCompleteness: true,
       repositoryDirectory,
       allowDirty,
       canonicalContext: context,

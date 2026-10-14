@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { cp, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 import { buildCanonicalSemanticAudit, canonicalRecordsBeforeFactoryAdmissions, continuesPreviousChange, preRelevanceRecordSha256, restorePreFactoryDecisionSource, readSemanticAuditArtifact, sha256Json, validateFactoryAdmissionLedger, validateSemanticAuditCoverage } from '../validate/semantic-audit.mjs';
 import { validateDatasetDirectory, validateDatasetRecords } from '../validate/dataset-integrity.mjs';
-import { loadCanonicalContext, readCanonicalContext, writeCanonicalContext } from '../validate/canonical-context.mjs';
+import { loadCanonicalContext as loadCanonicalContextFrom, readCanonicalContext, writeCanonicalContext } from '../validate/canonical-context.mjs';
 import { reviewedRelationId } from '../batch/authored-semantic-decision-source.mjs';
 import { validateFactoryRepository } from '../factory/validate.mjs';
 import { planRelationBackfill, targetMeaningSha256, writePlannedRecords } from '../factory/admission.mjs';
@@ -15,22 +15,24 @@ import { approvedAmendments, applyBackfill, applyRelationCorrections, completedP
 import { inventoryCanonicalSenses, newQueueState } from './backfill-queue.mjs';
 import { buildRelationIndex } from './candidate-retrieval.mjs';
 import { copyShardedAuthority, readShardedJson } from '../../tests/helpers/sharded-authority.mjs';
+import { syntheticCanonicalBase } from '../../tests/helpers/synthetic-canonical-base.mjs';
 
-// #446 B through the real production path: real canonical records, the real semantic authority and the real ledger
-// validator, applied in a scratch copy of the data files (the repository is never written).
+// #446 B through the real production path: a synthetic canonical base admitted by the real Stage 3 authority, and the real
+// ledger validator, applied in a scratch copy of the data files (nothing in the repository is written).
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const AUTHORITY = 'data/validation/canonical-semantic-decision-source.json';
 
+const BASE = await syntheticCanonicalBase();
+const loadCanonicalContext = () => loadCanonicalContextFrom({ directory: path.join(BASE.root, 'data/canonical') });
+
 async function scratchRoot() {
   const root = await mkdtemp(path.join(os.tmpdir(), 'backfill-apply-'));
   await mkdir(path.join(root, 'data/validation'), { recursive: true });
-  await cp(path.join(REPO, 'data/canonical'), path.join(root, 'data/canonical'), { recursive: true });
-  await copyShardedAuthority(path.join(REPO, AUTHORITY), path.join(root, AUTHORITY));
-  // Factory batches are only read; link them instead of copying.
-  for (const dir of ['data/candidates', 'data/reviews']) await symlink(path.join(REPO, dir), path.join(root, dir));
-  // Packets already committed for earlier backfills belong to the copied ledger; a test applies on top of them.
-  await cp(path.join(REPO, 'data/relation-backfill'), path.join(root, 'data/relation-backfill'), { recursive: true }).catch((error) => { if (error?.code !== 'ENOENT') throw error; });
+  await cp(path.join(BASE.root, 'data/canonical'), path.join(root, 'data/canonical'), { recursive: true });
+  await copyShardedAuthority(path.join(BASE.root, AUTHORITY), path.join(root, AUTHORITY));
+  for (const name of ['m6-2-inflection-exceptions.json', 'm6-3-surface-form-review.json']) await cp(path.join(BASE.root, 'data/validation', name), path.join(root, 'data/validation', name));
+  for (const dir of ['data/candidates', 'data/reviews', 'data/relation-backfill']) await mkdir(path.join(root, dir), { recursive: true });
   return root;
 }
 
@@ -123,8 +125,8 @@ test('an approved relation is written once as a candidate-less backfill event th
 test('a backfill onto a Stage 3-created record still passes the real factory history and relation checks', async () => {
   const canonical = await loadCanonicalContext();
   const index = buildRelationIndex(canonical);
-  const manifest = JSON.parse(await readFile(path.join(REPO, 'data/reviews/C000003/manifest.json'), 'utf8'));
-  const created = manifest.admission.changes.find((change) => change.operation === 'create');
+  const ledger = await readShardedJson(path.join(BASE.root, AUTHORITY));
+  const created = ledger.factory_admissions[0].changes.find((change) => change.operation === 'create');
   const source = index.senses.find((sense) => sense.record_id === created.entry_id);
   const target = index.senses.find((sense) => sense.record_id !== source.record_id && !source.relations.some((relation) => relation.target_sense === sense.sense_id));
   const relation = { target: target.record_id, target_sense: target.sense_id, type: 'association', note: '회귀 시험용 연상이다.', relevance: 5 };
@@ -140,41 +142,6 @@ test('a backfill onto a Stage 3-created record still passes the real factory his
     await rm(root, { recursive: true, force: true });
   }
 });
-
-// Keep the regression tied to the immutable pre-#396 admission and first backfill, even after later batches append a
-// newer ledger change for that record. Check the real authority transition with the shared continuity rule instead of
-// depending on a relevance-only digest mismatch still existing in today's canonical.
-test('a historical backfill in the real ledger continues a pre-relevance admission', async () => {
-  const authority = (await readShardedJson(path.join(REPO, AUTHORITY)));
-  const events = authority.factory_admissions ?? [];
-  let transition;
-  for (let eventIndex = 1; eventIndex < events.length && !transition; eventIndex += 1) {
-    const event = events[eventIndex];
-    if (!/^R\d{6}$/u.test(event.batch_id ?? '')) continue;
-    for (const change of event.changes ?? []) {
-      if (change.operation !== 'append_relations' || !change.previous_record || !change.previous_semantic_review) continue;
-      let previous;
-      let previousEvent;
-      for (let earlierIndex = eventIndex - 1; earlierIndex >= 0 && !previous; earlierIndex -= 1) {
-        const match = (events[earlierIndex].changes ?? []).find((candidate) => candidate.entry_id === change.entry_id);
-        if (match) { previous = match; previousEvent = events[earlierIndex]; }
-      }
-      if (!previous || sha256Json(change.previous_record) === previous.after_sha256
-        || preRelevanceRecordSha256(change.previous_record) !== previous.after_sha256) continue;
-      if (sha256Json({ ...change.previous_semantic_review, record_sha256: previous.after_sha256 }) !== previous.semantic_review_sha256) continue;
-      transition = { event, change, previousEvent, previous };
-      break;
-    }
-  }
-  assert.ok(transition, 'the real factory ledger contains a first relation backfill across pre-relevance drift');
-
-  const { change, previous } = transition;
-  assert.equal(continuesPreviousChange(change, previous), true);
-  const rewritten = structuredClone(change);
-  rewritten.previous_record.senses[0].gloss += ' (rewritten)';
-  assert.equal(continuesPreviousChange(rewritten, previous), false, 'the same real transition still rejects non-relevance drift');
-});
-
 function oneApproval(canonical, index) {
   const { source, target } = pickPair(index);
   const relation = { target: target.record_id, target_sense: target.sense_id, type: 'association', note: '회귀 시험용 연상이다.', relevance: 5 };
@@ -408,83 +375,6 @@ test('resuming an interrupted packet re-checks the approved target meaning: a ch
     assert.deepEqual(await readRecords(root), recordsBefore);
     assert.equal(await authorityEvents(root), eventsBefore);
     assert.equal((await applyBackfill({ root, state, index, refreshReports: false })).status, 'applied', 'positive control: unchanged meaning resumes');
-  } finally {
-    await rm(root, { recursive: true, force: true });
-  }
-});
-
-// A record with pre-relevance correction history, amended by a relation-only backfill, through the shared consumers
-// (complete-canonical coverage and dataset validation): the ledger travels with the audit, and a rewritten correction
-// digest still breaks the chain.
-test('a relation-only backfill of a record with correction history passes the shared audit consumers and still rejects a rewritten correction', async () => {
-  const canonical = await loadCanonicalContext();
-  const index = buildRelationIndex(canonical);
-  const authority = (await readShardedJson(path.join(REPO, AUTHORITY)));
-  const corrected = new Set(authority.authored_review.review_pass.correction_history.map((item) => item.record_id));
-  const source = index.senses.find((sense) => corrected.has(sense.record_id));
-  assert.ok(source, 'the live canonical has a record with correction history');
-  const related = new Set(source.relations.map((relation) => relation.target_sense));
-  const target = index.senses.find((sense) => sense.record_id !== source.record_id && !related.has(sense.sense_id));
-  const relation = { target: target.record_id, target_sense: target.sense_id, type: 'association', note: '회귀 시험용 연상이다.', relevance: 4 };
-  const state = newQueueState(canonical.canonicalRevision);
-  state.done[source.sense_id] = approvedEntry(index, source.sense_id, relation, `${source.record_id} ${source.sense_id}: 회귀 시험용 근거.`);
-  const root = await scratchRoot();
-  try {
-    assert.equal((await applyBackfill({ root, state, index, refreshReports: false })).status, 'applied');
-    const build = async (decisionSourcePath) => buildCanonicalSemanticAudit({
-      canonicalDirectory: path.join(root, 'data/canonical'), decisionSourcePath,
-    });
-    const built = await build(path.join(root, AUTHORITY));
-    assert.doesNotThrow(() => validateSemanticAuditCoverage(built.canonical.records, built.artifact, { baseRecords: built.canonical.records }));
-    assert.doesNotThrow(() => validateDatasetRecords(built.canonical.records, { semanticAudit: built.artifact, requireSemanticAudit: true }));
-
-    // The same behavior holds for a context serialized to disk and read back (the in-memory ledger is restored).
-    const context = await loadCanonicalContext({ directory: path.join(root, 'data/canonical') });
-    context.semanticAudit = built.artifact;
-    context.semanticDecisionSource = built.decisionSource;
-    const contextPath = path.join(root, 'context.json');
-    await writeCanonicalContext(context, contextPath);
-    const reread = await readCanonicalContext(contextPath);
-    assert.doesNotThrow(() => validateSemanticAuditCoverage(reread.records, reread.semanticAudit, { baseRecords: reread.records }));
-    assert.doesNotThrow(() => validateDatasetRecords(reread.records, { semanticAudit: reread.semanticAudit, requireSemanticAudit: true, context: reread }));
-
-    // A separately saved audit JSON has no in-memory ledger: bare coverage rejects it, the dataset consumer restores the validated ledger.
-    const auditPath = path.join(root, 'saved-audit.json');
-    await writeFile(auditPath, JSON.stringify(built.artifact));
-    const saved = await readSemanticAuditArtifact(auditPath);
-    assert.throws(() => validateSemanticAuditCoverage(built.canonical.records, saved, { baseRecords: built.canonical.records }), /correction_history and source-bound Stage 3 admission history/u);
-    await assert.doesNotReject(() => validateDatasetDirectory(path.join(root, 'data/canonical'), {
-      semanticAuditPath: auditPath, decisionSourcePath: path.join(root, AUTHORITY), requireSemanticAudit: true,
-    }));
-
-    // A serialized context whose stored ledger event digest was altered is rejected on rehydration, not trusted.
-    const brokenContext = JSON.parse(await readFile(contextPath, 'utf8'));
-    brokenContext.semantic_decision_source.factory_admissions.at(-1).sha256 = 'd'.repeat(64);
-    const brokenContextPath = path.join(root, 'broken-context.json');
-    await writeFile(brokenContextPath, JSON.stringify(brokenContext));
-    await assert.rejects(() => readCanonicalContext(brokenContextPath), /sha256|bind|digest/u);
-
-    // A tampered before digest on the amendment, resealed so the ledger itself must reject it.
-    const forged = (await readShardedJson(path.join(root, AUTHORITY)));
-    const event = forged.factory_admissions.at(-1);
-    event.changes.find((change) => change.entry_id === source.record_id).before_sha256 = 'e'.repeat(64);
-    delete event.sha256;
-    event.sha256 = sha256Json(event);
-    const forgedPath = path.join(root, 'forged-authority.json');
-    await writeFile(forgedPath, JSON.stringify(forged, null, 2));
-    await assert.rejects(() => build(forgedPath).then((result) => validateSemanticAuditCoverage(result.canonical.records, result.artifact, { baseRecords: result.canonical.records })), /does not bind/u);
-
-    // A rewritten correction digest, resealed (authored review digest) so the audit reaches the correction chain.
-    const rewritten = (await readShardedJson(path.join(root, AUTHORITY)));
-    const correction = rewritten.authored_review.review_pass.correction_history.find((item) => item.record_id === source.record_id);
-    correction.after_record_sha256 = 'f'.repeat(64);
-    rewritten.authored_review_sha256 = sha256Json(rewritten.authored_review);
-    const tamperedPath = path.join(root, 'tampered-authority.json');
-    await writeFile(tamperedPath, JSON.stringify(rewritten, null, 2));
-    await assert.rejects(
-      () => build(tamperedPath).then((result) => validateSemanticAuditCoverage(result.canonical.records, result.artifact, { baseRecords: result.canonical.records })),
-      /correction_history and source-bound Stage 3 admission history/u,
-    );
   } finally {
     await rm(root, { recursive: true, force: true });
   }

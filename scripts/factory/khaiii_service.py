@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 """Local Khaiii batch analysis service for Factory Stage 1 (issue #273).
 
-Same stdin/stdout shape as scripts/intake/kiwi_service.py. Runs either inside the pinned container
-(docker/khaiii/Dockerfile, `docker` runtime, no network) or on the host against the verified
-`genonfire/khaiii` macOS arm64 release (`native` runtime; KHAIII_NATIVE_ROOT). The normalization
-below is shared by both runtimes. Khaiii returns exactly one best path and no score,
+Same stdin/stdout shape as scripts/intake/kiwi_service.py. Runs on the host against the verified
+`genonfire/khaiii` macOS arm64 release (`native` runtime; KHAIII_NATIVE_ROOT). Khaiii returns exactly one best path and no score,
 so every result carries a single analysis; N-best, ranking and `derived_from*` are never invented.
 A noun/root directly followed by XSV/XSA inside the one path is reported as that one derived
 predicate (the whole surface explained by one proposal); it is not linked to a separate root.
@@ -25,7 +23,7 @@ PROPOSAL_CONTRACT = "derivation-root-v1"
 MAX_BATCH_SIZE = 500
 MAX_TEXT_LENGTH = 2000
 NATIVE_ROOT = os.environ.get("KHAIII_NATIVE_ROOT", "")
-RUNTIME = "native" if NATIVE_ROOT else "docker"
+RUNTIME = "native"
 RESOURCE_DIR = os.path.join(NATIVE_ROOT, "share", "khaiii") if NATIVE_ROOT else os.environ.get("KHAIII_RESOURCE_DIR", "/usr/local/share/khaiii")
 LIB_PATH = os.path.join(NATIVE_ROOT, "lib", "libkhaiii.dylib") if NATIVE_ROOT else ""
 POS_BY_TAG = {"NNG": "noun", "VV": "verb", "VA": "adjective", "MAG": "adverb"}
@@ -92,7 +90,7 @@ def run_metadata() -> dict:
         "service_version": SERVICE_VERSION,
         "proposal_contract": PROPOSAL_CONTRACT,
         "provider": "khaiii",
-        "khaiii_version": _package_version("khaiii") if RUNTIME == "docker" else _native_version(),
+        "khaiii_version": _native_version(),
         "khaiii_source_tag": _source()[0],
         "khaiii_source_sha": _source()[1],
         "release_fork_commit": _release_provenance().get("fork_commit", "container"),

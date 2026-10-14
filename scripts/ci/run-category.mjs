@@ -29,7 +29,6 @@ import { normalizeCanonicalDirectory } from '../normalize/canonical.mjs';
 import { runGlobalCanonicalAudit } from './global-canonical-audit.mjs';
 import { validateSharedDictionary } from './validate-shared-dictionary.mjs';
 import { runM2Pipeline } from '../verify/m2-pipeline.mjs';
-import { validateFrozenM6QualityAuditSnapshot } from '../validate/m6-4-quality-audit.mjs';
 import { classifyDeepGateDiff, routePrDeepGate } from './deep-gate.mjs';
 import {
   assertBuildEventsMatchPhase,
@@ -498,7 +497,6 @@ async function ensureSharedDictionary(session) {
   const summary = await buildDictionary({
     inputDirectory: session.canonicalContext.canonicalDirectory,
     outputPath,
-    checkPilotCompleteness: session.checkPilotCompleteness ?? true,
     repositoryDirectory: REPOSITORY_DIRECTORY,
     allowDirty: process.env.TYPEWRITER_ALLOW_DIRTY === 'true',
     canonicalContext: session.canonicalContext,
@@ -514,11 +512,6 @@ async function ensureSharedDictionary(session) {
 
 async function runInProcessCheck(name, context) {
   const canonicalContext = context.canonicalContext;
-  if (name === 'm6-4-frozen-snapshot') {
-    console.log(JSON.stringify(await validateFrozenM6QualityAuditSnapshot(), null, 2));
-    return;
-  }
-
   if (name === 'canonical-jsonl') {
     console.log(
       `Validated ${canonicalContext.fileCount} canonical JSONL file(s) / ${canonicalContext.records.length} record(s) with schema.`,
@@ -583,7 +576,6 @@ async function runInProcessCheck(name, context) {
     context.normalizedModel = await normalizeCanonicalDirectory(
       canonicalContext.canonicalDirectory,
       {
-        checkPilotCompleteness: true,
         canonicalContext,
         semanticAudit: canonicalContext.semanticAudit,
       },
