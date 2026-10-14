@@ -13,8 +13,12 @@ export const BACKFILL_CONTRACT = 'relation-backfill-queue-v1';
 export const MAX_PACKET_SIZE = 200; // bounded unit of work per resume step
 export const OUTCOMES = Object.freeze(['relations-reviewed', 'no-relations']);
 
+/** POS-less independent expressions stay canonical and searchable but are never a backfill source sense. */
+export const BACKFILL_EXCLUDED_POS = 'unclassified';
+
 /**
- * One inventory row per canonical sense. `demand` is a transparent, replaceable proxy for writer demand: how many
+ * One inventory row per backfill-eligible canonical sense (senses with pos `unclassified` are omitted per sense, not per
+ * record; they remain in canonical, search and as relation targets). `demand` is a transparent, replaceable proxy for writer demand: how many
  * other senses already point at this one with an exploratory relation. It orders work only; it is not lexical truth.
  */
 export function inventoryCanonicalSenses(index) {
@@ -26,7 +30,7 @@ export function inventoryCanonicalSenses(index) {
       if (key) incoming.set(key, (incoming.get(key) ?? 0) + 1);
     }
   }
-  return index.senses.map((entry) => ({
+  return index.senses.filter((entry) => entry.pos !== BACKFILL_EXCLUDED_POS).map((entry) => ({
     sense_id: entry.sense_id,
     record_id: entry.record_id,
     pos: entry.pos,
@@ -291,7 +295,7 @@ export function summarizeQueue(rows, state, currentCandidates = new ReviewContex
   const outcomes = {};
   for (const row of done) { const o = state.done[row.sense_id].outcome; outcomes[o] = (outcomes[o] ?? 0) + 1; }
   return {
-    canonical_senses: rows.length,
+    backfill_eligible_senses: rows.length, // excludes pos `unclassified` senses, which are never backfill sources
     with_incoming_demand: rows.filter((row) => row.demand > 0).length,
     with_no_outgoing_exploratory: rows.filter((row) => row.outgoing_exploratory === 0).length,
     completed: done.length,

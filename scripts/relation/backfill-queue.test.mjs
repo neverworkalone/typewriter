@@ -356,3 +356,29 @@ test('worker partitions are disjoint, cover the queue and stay stable while othe
     assert.throws(() => nextPacket(many, state, { partition: bad }), /partition must be/u);
   }
 });
+
+test('unclassified senses never enter the backfill inventory, per sense and across packets', () => {
+  const mixed = {
+    canonicalRevision: 'c'.repeat(64),
+    records: [
+      { id: 'w123', record_type: 'entry', role: 'start', candidate_id: 'w123', lemma: '가다', search_forms: ['가다'], senses: [
+        { id: 'w123-s1', pos: 'noun', gloss: '첫째 뜻풀이.' },
+        { id: 'w123-s2', pos: 'unclassified', gloss: '품사 없는 표현.' },
+        { id: 'w123-s3', pos: 'verb', gloss: '셋째 뜻풀이.', relations: [{ target: 'w9', target_sense: 'w9-s1', type: 'near', note: 'n', relevance: 3 }] },
+      ] },
+      { id: 'w9', record_type: 'entry', role: 'start', candidate_id: 'w9', lemma: '관용구', search_forms: ['관용구'], senses: [
+        { id: 'w9-s1', pos: 'unclassified', gloss: '독립 표현.' },
+      ] },
+    ],
+  };
+  const idx = buildRelationIndex(mixed);
+  const inv = inventoryCanonicalSenses(idx);
+  assert.deepEqual(inv.map((row) => row.sense_id).sort(), ['w123-s1', 'w123-s3']);
+  assert.ok(inv.every((row) => row.gloss_sha256 && row.pos !== 'unclassified'));
+  assert.ok(idx.bySenseId.has('w123-s2') && idx.bySenseId.has('w9-s1'), 'excluded senses stay in the relation index');
+  const state = newQueueState(mixed.canonicalRevision);
+  assert.deepEqual(nextPacket(inv, state, { limit: 10 }).map((row) => row.sense_id).sort(), ['w123-s1', 'w123-s3']);
+  const summary = summarizeQueue(inv, state);
+  assert.equal(summary.backfill_eligible_senses, 2);
+  assert.equal(summary.pending, 2);
+});
