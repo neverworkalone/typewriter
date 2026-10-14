@@ -273,6 +273,7 @@ const RAW_CI_CATEGORIES = Object.freeze({
           'scripts/factory/relation-amendments.mjs',
           'scripts/factory/relation-corrections.mjs',
           'scripts/factory/semantic-authority.mjs',
+          'scripts/factory/source-exclusions.mjs',
           'scripts/factory/validate.mjs',
           'scripts/validate/semantic-audit.mjs',
           'scripts/batch/validate-issue-211.mjs',

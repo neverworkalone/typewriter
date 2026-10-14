@@ -437,7 +437,7 @@ test('CLI writes an immutable, valid lemma batch and nothing else; reruns only y
   const next = await runStage1(args, deps);
   assert.equal(next.manifest.batch_id, 'C000002');
   assert.deepEqual(next.rows.map((row) => [row.candidate_id, row.input]), [['C000002-0001', '걸음']]);
-  assert.equal(next.summary.skippedProducedLemmas, 0); // excluded before analysis
+  assert.equal(next.summary.skippedExcludedLemmas, 0); // excluded before analysis
   assert.deepEqual(await validateFactoryRepository({ root }), []);
 });
 

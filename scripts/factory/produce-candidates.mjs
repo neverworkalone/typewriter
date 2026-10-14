@@ -15,7 +15,7 @@ import { parseJsonl, sha256Hex } from './contract.mjs';
 import { loadSearchFormSupport } from './search-form-support.mjs';
 import { publishArtifacts, recoverArtifacts } from './artifact-transaction.mjs';
 import { refillCandidateBatch } from './refill.mjs';
-import { COMPACT_CONTRACT, loadTrash, failedProposalLemmas, mergeUnresolved, compactManifest, TRASH_DIRECTORY, chunkText, jsonText, digest } from './permanent-trash.mjs';
+import { COMPACT_CONTRACT, STAGE1_DECISIONS_V2, loadTrash, failedProposalLemmas, mergeUnresolved, compactManifest, TRASH_DIRECTORY, chunkText, jsonText, digest } from './permanent-trash.mjs';
 import { validateFactoryRepository, loadBaseManifests, loadCanonicalEntries } from './validate.mjs';
 import {
   assertWithinDirectory,
@@ -250,7 +250,7 @@ async function evidenceBoundExcludedLemmas({ evidence, evidencePath, cachePaths 
     || evidence?.orchestration !== undefined
     || selection?.exclusion_sha256 !== undefined
     || selection?.exclusion_source_artifacts !== undefined;
-  if (!hasBinding) return new Set();
+  if (!hasBinding) return { lemmas: new Set(), binding: null };
   if (!selection || !/^[0-9a-f]{64}$/u.test(String(selection.exclusion_sha256 ?? ''))
     || !Array.isArray(selection.exclusion_source_artifacts)) {
     throw new Stage1Error(['candidate evidence has an incomplete prior-lemma exclusion binding']);
@@ -302,7 +302,7 @@ async function evidenceBoundExcludedLemmas({ evidence, evidencePath, cachePaths 
   if (orchestrationDigest !== computedDigest) {
     throw new Stage1Error(['reviewed-lemma exclusion digest does not match evidence orchestration']);
   }
-  return new Set(lemmas);
+  return { lemmas: new Set(lemmas), binding: { exclusion_sha256: computedDigest, source_artifacts: sources } };
 }
 
 // Review pack for the contextual fallback: eligible unresolved observations with a bounded window of
@@ -368,7 +368,8 @@ export async function runStage1(argv, {
   }
   // Exclusion is before morphology, never before the source/text-free contract.
   observationsFromCorpusEvidence(evidence);
-  const sourceExcludedLemmas = await evidenceBoundExcludedLemmas({ evidence, evidencePath, cachePaths });
+  const sourceExclusion = await evidenceBoundExcludedLemmas({ evidence, evidencePath, cachePaths });
+  const sourceExcludedLemmas = sourceExclusion.lemmas;
   const canonicalEntries = await loadCanonicalEntries(root);
   const producerRevision = producerRevisionFor(root);
   if (!options.dryRun) {
@@ -457,7 +458,13 @@ export async function runStage1(argv, {
     maxCandidates: options.maxCandidates,
     // Reapply every active exclusion to resolved lemmas, including outputs of
     // different proposals. Use the same set for initial selection and refill.
-    producedLemmas: proposalExclusions,
+    excludedLemmas: proposalExclusions,
+    exclusionProvenance: {
+      priorProduced: producedLemmaKeys,
+      archivedFailed: failedProposals,
+      evidenceBound: sourceExcludedLemmas,
+    },
+    sourceExclusionBinding: sourceExclusion.binding,
     searchFormSupport: await loadSearchFormSupport(canonicalEntries),
   };
   let produced;
@@ -534,7 +541,7 @@ export async function runStage1(argv, {
   const target = path.join(root, 'data/candidates', batchId);
   if (!options.dryRun) {
     const merged = mergeUnresolved(trash, [produced.manifest]);
-    const compact = compactManifest(produced.manifest, merged.references.get(batchId));
+    const compact = compactManifest(produced.manifest, merged.references.get(batchId), { decisionContract: STAGE1_DECISIONS_V2 });
     compact.manifest.production = produced.production;
     if (!produced.rows.length) compact.manifest.status = 'exhausted';
     const files = new Map([...merged.changed].map((file) => [`${TRASH_DIRECTORY}/${file}`, chunkText(merged.chunks.get(file))]));
