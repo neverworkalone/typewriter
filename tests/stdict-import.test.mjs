@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { access, mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { access, mkdtemp, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -31,8 +31,6 @@ import { readCanonicalRecords, validateCanonicalRecord } from '../scripts/valida
 import { validateDatasetRecords } from '../scripts/validate/dataset-integrity.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const SHARD = path.join(ROOT, 'data/canonical/stdict-0001.jsonl');
-const PROVENANCE = path.join(ROOT, 'data/provenance/stdict-0001.json');
 const SOURCE = path.join(process.env.HOME ?? '', '.cache/typewriter/dict/stdict');
 
 function item(targetCode, word, unit, senses, pos = '명사') {
@@ -188,46 +186,64 @@ test('converted fixture passes the schema, dataset gate, SQLite build and homogr
   }
 });
 
-test('committed STDICT shard keeps its identity, policy and provenance contract', async () => {
-  const text = await readFile(SHARD, 'utf8');
-  const lines = text.split('\n');
-  assert.equal(lines.pop(), '');
-  assert.equal(lines.length, 1000);
-  const provenance = JSON.parse(await readFile(PROVENANCE, 'utf8'));
-  assert.equal(provenance.contract, 'stdict-shard-provenance-v2');
-  assert.equal(provenance.shard_sha256, createHash('sha256').update(text).digest('hex'));
-  assert.equal(provenance.record_count, 1000);
-  assert.equal(provenance.held_count, 0);
-  const records = lines.map((line) => JSON.parse(line));
-  const ids = new Set(records.map(({ id }) => id));
-  assert.equal(ids.size, 1000);
-  assert.deepEqual(records.map(({ id }) => Number(id.slice(1))), records.map(({ id }) => Number(id.slice(1))).sort((a, b) => a - b));
-  provenance.records.forEach((row, position) => {
-    const record = records[position];
-    assert.equal(record.id, `w${String(row.target_code).padStart(3, '0')}`);
-    assert.equal(record.id, row.id);
-    // Suffixes index the original sense_codes; a policy-excluded sense leaves a gap, never a renumbering.
-    const suffixes = record.senses.map((sense) => Number(sense.id.slice(`${record.id}-s`.length)));
-    assert.ok(suffixes.every((suffix, at) => suffix >= 1 && suffix <= row.sense_codes.length && (at === 0 || suffix > suffixes[at - 1])));
-  });
-  for (const record of records) {
+const committedShards = (await readdir(path.join(ROOT, 'data/canonical')))
+  .filter((name) => /^stdict-\d{4}\.jsonl$/.test(name))
+  .sort();
+
+test('committed STDICT shards keep their identity, policy and provenance contract', async () => {
+  assert.ok(committedShards.length >= 1);
+  committedShards.forEach((name, index) => assert.equal(name, `stdict-${String(index + 1).padStart(4, '0')}.jsonl`));
+  const loaded = [];
+  for (const name of committedShards) {
+    const text = await readFile(path.join(ROOT, 'data/canonical', name), 'utf8');
+    const lines = text.split('\n');
+    assert.equal(lines.pop(), '');
+    const last = name === committedShards.at(-1) && committedShards.length === 428;
+    if (!last) assert.equal(lines.length, 1000, `${name} is full`);
+    else assert.ok(lines.length >= 1 && lines.length <= 1000);
+    const provenance = JSON.parse(await readFile(path.join(ROOT, 'data/provenance', name.replace('.jsonl', '.json')), 'utf8'));
+    assert.equal(provenance.contract, 'stdict-shard-provenance-v2');
+    assert.equal(provenance.shard_sha256, createHash('sha256').update(text).digest('hex'));
+    assert.equal(provenance.record_count, lines.length);
+    assert.equal(provenance.held_count, 0);
+    const records = lines.map((line) => JSON.parse(line));
+    assert.equal(new Set(records.map(({ id }) => id)).size, records.length);
+    const codes = records.map(({ id }) => Number(id.slice(1)));
+    assert.deepEqual(codes, [...codes].sort((a, b) => a - b));
+    provenance.records.forEach((row, position) => {
+      const record = records[position];
+      assert.equal(record.id, `w${String(row.target_code).padStart(3, '0')}`);
+      assert.equal(record.id, row.id);
+      // Suffixes index the original sense_codes; a policy-excluded sense leaves a gap, never a renumbering.
+      const suffixes = record.senses.map((sense) => Number(sense.id.slice(`${record.id}-s`.length)));
+      assert.ok(suffixes.every((suffix, at) => suffix >= 1 && suffix <= row.sense_codes.length && (at === 0 || suffix > suffixes[at - 1])));
+    });
+    loaded.push(...records);
+  }
+  const ids = new Set(loaded.map(({ id }) => id));
+  assert.equal(ids.size, loaded.length, 'a record lives in exactly one shard');
+  for (const record of loaded) {
     for (const sense of record.senses) {
       assert.ok(!['particle', 'ending', 'affix'].includes(sense.pos), `${sense.id} is a grammatical element`);
       for (const relation of sense.relations ?? []) {
         assert.ok(['direct', 'antonym'].includes(relation.type));
         assert.equal(Object.hasOwn(relation, 'relevance'), false);
-        assert.ok(ids.has(relation.target), `${sense.id} targets an in-shard record`);
+        assert.ok(ids.has(relation.target), `${sense.id} targets a loaded record`);
         assert.ok(relation.target_sense.startsWith(`${relation.target}-s`));
       }
     }
   }
 });
 
-test('shard and provenance regenerate byte-identically from the source download', { skip: await access(SOURCE).then(() => false, () => 'STDICT source download is not available') }, async () => {
+test('shards and provenance regenerate byte-identically from the source download', { skip: await access(SOURCE).then(() => false, () => 'STDICT source download is not available') }, async () => {
   const source = await loadStdictSource({ sourceDirectory: SOURCE });
-  const [first] = await buildShards({ source, through: 1 });
-  assert.equal(first.shard, await readFile(SHARD, 'utf8'));
-  assert.equal(`${JSON.stringify(provenanceManifest(first, { source }), null, 1)}\n`, await readFile(PROVENANCE, 'utf8'));
+  const built = await buildShards({ source, through: committedShards.length });
+  assert.equal(built.length, committedShards.length);
+  for (const [index, shard] of built.entries()) {
+    const name = committedShards[index];
+    assert.equal(shard.shard, await readFile(path.join(ROOT, 'data/canonical', name), 'utf8'), `${name} shard`);
+    assert.equal(`${JSON.stringify(provenanceManifest(shard, { source }), null, 1)}\n`, await readFile(path.join(ROOT, 'data/provenance', name.replace('.jsonl', '.json')), 'utf8'), `${name} provenance`);
+  }
 });
 
 test('licensed-source records are exempt from authored editorial heuristics but not structure', async () => {
