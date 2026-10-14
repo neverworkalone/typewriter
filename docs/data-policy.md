@@ -2,36 +2,37 @@
 
 ## Purpose
 
-Typewriter's **new** canonical dictionary baseline will be a curated,
-product-needed projection of the **국립국어원 표준국어대사전 (STDICT)** under
-[CC BY-SA 2.0 Korea](https://creativecommons.org/licenses/by-sa/2.0/kr/),
-with Typewriter-authored 말의 결 and 연상 enrichment licensed on the same terms.
-It is **not** a wholesale raw dictionary/API dump. The reset and import are
-separate implementation tasks; this policy does not claim that import is complete.
+Typewriter's canonical dictionary policy covers selected, licensed lexical data
+from three National Institute of Korean Language dictionaries:
+**표준국어대사전 (STDICT)**, **한국어기초사전 (KRDICT)**, and **우리말샘**.
+The data and original Typewriter 말의 결/연상 enrichment are made available
+under [CC BY-SA 2.0 Korea](https://creativecommons.org/licenses/by-sa/2.0/kr/).
+Canonical contains curated, product-needed dictionary projections, not raw
+dictionary/API dumps.
 
-The NIKL [STDICT copyright policy](https://stdict.korean.go.kr/join/copyrightPolicy.do)
-permits reuse of material not separately marked otherwise, subject to attribution
-and ShareAlike. Source-attributed example passages and multimedia have separate
-rights and are not adopted through this exception. Other external material may
-support research, verification, or drafting only within its own terms.
-Runtime lookup remains local to the packaged dictionary database.
+Each source's official copyright policy governs eligibility and attribution
+(see [DATA-LICENSE.md](../DATA-LICENSE.md)). Source-attributed examples
+and multimedia may have separate rights; do not treat them as licensed by
+the general dictionary-text terms. Unrelated external material remains
+subject to its own restrictions. Runtime lookup remains local to the
+packaged dictionary database.
 
 ## Material roles
 
 External material generally has one of these roles:
 
-- **Approved STDICT baseline source:** licensed headwords, POS, senses,
-  definitions, and permitted lexical links selected and converted to canonical
-  under CC BY-SA 2.0 KR; provenance and required attribution retained.
+- **Approved NIKL dictionary sources:** eligible headwords, POS, senses,
+  definitions, and lexical links from STDICT, KRDICT, and 우리말샘 may be selected
+  and converted to canonical under CC BY-SA 2.0 KR with provenance and attribution.
 - **Reference:** helps an editor investigate a word or usage.
 - **Verification:** helps check a Typewriter-authored decision.
 - **Draft generation:** helps produce a candidate for later editorial review.
 
-Only the specifically approved STDICT **selected projection**, not its entire raw
-download, is authorized as external dictionary source content in canonical.
-Raw API responses, scraped pages, copied entries from other unapproved sources,
-unreviewed drafts, and protected third-party datasets do not belong in product
-data. Reformatting or paraphrasing restricted material does not erase its terms.
+Only selected, licensed **projections** of these three dictionaries, not their
+raw downloads, are authorized as external dictionary source content in
+canonical. Raw API responses, scraped pages, copied entries from unapproved
+sources, unreviewed drafts, and protected third-party datasets do not belong
+in product data. Reformatting restricted material does not erase its terms.
 
 ## External-material review record
 
@@ -52,14 +53,14 @@ source is actually reviewed. Do not fill it with invented approvals.
 - License or terms URL:
 - Checked on: YYYY-MM-DD
 - Reviewer:
-- Intended role: approved STDICT baseline | reference | verification | draft generation
+- Intended role: approved NIKL dictionary source | reference | verification | draft generation
 - Permission basis for that role:
 - Allowed storage:
 - Allowed processing or transformation:
 - Distribution or embedding restrictions:
 - Required attribution or notices:
 - Decision: permitted for stated role | pending | not permitted
-- Typewriter data decision: no adoption | licensed STDICT baseline projection | Typewriter-authored result may be considered after review
+- Typewriter data decision: no adoption | licensed NIKL dictionary projection | Typewriter-authored result may be considered after review
 - Notes and limitations:
 ```
 
@@ -79,30 +80,31 @@ must also be explicitly reviewed, even when the tool keeps all material local.
 
 ## Canonical-data rules
 
-The **STDICT baseline** may enter canonical through a deterministic mapping of
-the licensed, eligible source fields, without putting hundreds of thousands of
-existing dictionary meanings through Stage 1→2→3 again. Preserve source identity
-for each imported entry/sense and its lexical links, and publish the source
-attribution and license with the covered dataset. Do not import source-attributed
-example passages, multimedia, or content with incompatible individual rights.
+Licensed dictionary data from **STDICT, KRDICT, and 우리말샘** may enter
+canonical through source-specific deterministic mappings without treating
+previously documented official senses as newly authored Stage 1→2→3 senses.
+Preserve each source's identity for imported entries, senses and lexical links,
+and distribute the required attribution and license with the selected data.
+Do not import source-attributed example passages, multimedia, or materials
+with incompatible individual rights.
 
-**Typewriter-authored enrichment** (말의 결 and 연상), new senses, and
-independently authored records remain subject to the existing editorial
-production, review and admission requirements. Reusing STDICT's licensed
-definitions or official lexical links is not a claim that Typewriter independently
-authored them. Other unapproved third-party materials remain excluded.
+**Typewriter-authored enrichment** (말의 결 and 연상), independently authored
+new senses, and other original records remain subject to the editorial
+production, review, and admission requirements. Reusing licensed dictionary
+definitions or official links is not a claim of Typewriter authorship.
+Other unapproved third-party materials remain excluded.
 
 ## Storage and build boundary
 
 Keep raw downloaded reference/dictionary files under the permitted external
-workspace (including `~/.cache/typewriter/`) **outside Git**. A licensed,
-selected, deterministically generated STDICT canonical JSONL projection is the
-approved exception to the former "third-party content never canonical" rule;
-the raw JSON source is not a tracked input or distributable artifact. Keep
-unreviewed authored drafts outside the repository. The dictionary builder reads
-canonical JSONL and produces SQLite reproducibly: it must never silently fetch
-external services, local source downloads, or temporary research files during a
-product build. See [the shared cache contract](local-reference-cache.md).
+workspace (including `~/.cache/typewriter/`) **outside Git**. Licensed,
+selected, deterministically generated canonical JSONL projections of STDICT,
+KRDICT, and 우리말샘 are approved source content; their raw downloads are
+not tracked or distributed. Keep unreviewed authored drafts outside the
+repository. The dictionary builder reads canonical JSONL and produces
+SQLite reproducibly: it must never silently fetch external services,
+local source downloads, or temporary research files during a product build.
+See [the shared cache contract](local-reference-cache.md).
 
 M5 target-selection files under `data/inventory/` are tracked editorial planning
 artifacts, not canonical input. They may record a candidate, classification, hold,
