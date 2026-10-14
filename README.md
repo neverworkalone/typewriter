@@ -162,29 +162,32 @@ assets:
   with scope described in [LICENSE.md](LICENSE.md).
 - Original documentation: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/),
   with scope described in [LICENSE.md](LICENSE.md).
-- **New STDICT-based dictionary data**, including Typewriter-authored
-  **말의 결 / 연상** enrichment: [CC BY-SA 2.0 Korea](https://creativecommons.org/licenses/by-sa/2.0/kr/)
-  under the scope described in [Data License](DATA-LICENSE.md). This is the
-  planned replacement baseline, not a claim that it has already been imported.
-  The original Typewriter code remains Apache 2.0.
+- Dictionary data based on **표준국어대사전, 한국어기초사전, 우리말샘**, including
+  Typewriter-authored **말의 결 / 연상** enrichment:
+  [CC BY-SA 2.0 대한민국](https://creativecommons.org/licenses/by-sa/2.0/kr/).
+  See [Data License](DATA-LICENSE.md) for attribution and source-specific rights.
+  The original Typewriter software remains Apache 2.0.
 - Typewriter and Never Work Alone names, logos, and visual identity: all rights
   reserved; see [Brand policy](BRAND.md).
 - Third-party components retain their own licenses; see
   [Third-party notices](THIRD-PARTY-NOTICES.txt).
-- **표준국어대사전 출처:** 국립국어원 『표준국어대사전』
-  (https://stdict.korean.go.kr/), [저작권 정책](https://stdict.korean.go.kr/join/copyrightPolicy.do).
-  새 Typewriter 사전은 표제어·뜻풀이·어휘 관계를 선별·정규화하고 자체
-  말의 결·연상 관계를 추가할 예정입니다. 출처 및 변경 사실을 표시하며,
-  해당 데이터에 CC BY-SA 2.0 대한민국을 적용합니다.
-- **한국어기초사전 (향후 비교·보충 자료):** 국립국어원 『한국어기초사전』
-  (https://krdict.korean.go.kr/), [공식 저작권 정책](https://krdict.korean.go.kr/kor/kboardPolicy/copyRightTermsInfo).
-  별도 표시가 없는 자료의 라이선스는 [CC BY-SA 2.0 대한민국](https://creativecommons.org/licenses/by-sa/2.0/kr/)입니다.
-  JSON은 확보했지만 아직 Typewriter canonical에 통합하지 않았습니다.
-- **우리말샘 (향후 비교·보충 자료):** 국립국어원 『우리말샘』
-  (https://opendict.korean.go.kr/), [공식 저작권 정책](https://opendict.korean.go.kr/service/copyrightPolicy).
-  별도 표시가 없는 자료의 라이선스는 [CC BY-SA 2.0 대한민국](https://creativecommons.org/licenses/by-sa/2.0/kr/)입니다.
-  JSON은 확보했지만 아직 Typewriter canonical에 통합하지 않았습니다.
-  세 사전 모두 개별 저작권이 있는 용례·멀티미디어의 권리 조건을 별도로 확인해야 합니다.
+**국립국어원 사전 자료 출처 및 저작권 정책**
+
+- **표준국어대사전:** 국립국어원 『표준국어대사전』
+  (https://stdict.korean.go.kr/),
+  [저작권 정책](https://stdict.korean.go.kr/join/copyrightPolicy.do).
+- **한국어기초사전:** 국립국어원 『한국어기초사전』
+  (https://krdict.korean.go.kr/),
+  [저작권 정책](https://krdict.korean.go.kr/kor/kboardPolicy/copyRightTermsInfo).
+- **우리말샘:** 국립국어원 『우리말샘』
+  (https://opendict.korean.go.kr/),
+  [저작권 정책](https://opendict.korean.go.kr/service/copyrightPolicy).
+
+별도 표시가 없는 세 사전의 자료에는
+[CC BY-SA 2.0 대한민국](https://creativecommons.org/licenses/by-sa/2.0/kr/)을
+적용하며, Typewriter의 어휘 선정·정규화·관계 정보 가공과 자체
+말의 결·연상 관계에도 동일한 조건을 적용합니다.
+출처가 별도로 있는 용례와 멀티미디어 등 개별 권리 자료는 해당 조건을 따릅니다.
 - **말뭉치 참고 출처 (별도):** 국립국어원 문어 말뭉치 2025(1.0),
   국립국어원 모두의 말뭉치 (https://kli.korean.go.kr/corpus).
   원문과 로컬 인덱스는 배포하지 않습니다.
