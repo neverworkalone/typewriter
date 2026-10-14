@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
+import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -126,6 +126,37 @@ test('CLI record verifies approved targets, preserves them across a restart, and
     assert.equal(run(['record', packetPath, outcomesPath, '--state', otherState]).status, 0);
     const other = JSON.parse(await readFile(otherState, 'utf8')).done[row.sense_id];
     assert.notEqual(other.approved_relations[0].relation_id, saved.approved_relations[0].relation_id);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('concurrent record processes keep every worker\'s approvals (state is serialized, not last-writer-wins)', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'backfill-cli-race-'));
+  try {
+    const state = path.join(dir, 'state.json');
+    const outcomesFor = (packetFile) => packetFile.packet.map((row) => ({ sense_id: row.sense_id, outcome: 'no-relations', rationale: `${row.sense_id}: 제시된 후보와 이어지지 않는다.` }));
+    const packets = [];
+    for (const index of [1, 2]) {
+      const packetPath = path.join(dir, `packet-${index}.json`);
+      const next = run(['next', '--limit', '3', '--partition', `${index}/2`, '--state', state, '--out', packetPath]);
+      assert.equal(next.status, 0, next.stderr);
+      const packetFile = JSON.parse(await readFile(packetPath, 'utf8'));
+      const outcomesPath = path.join(dir, `outcomes-${index}.json`);
+      await writeFile(outcomesPath, JSON.stringify(outcomesFor(packetFile)));
+      packets.push({ packetPath, outcomesPath, ids: packetFile.packet.map((row) => row.sense_id) });
+    }
+    assert.equal(new Set(packets.flatMap(({ ids }) => ids)).size, packets.flatMap(({ ids }) => ids).length, 'partitioned packets are disjoint');
+    const results = await Promise.all(packets.map(({ packetPath, outcomesPath }) => new Promise((resolve) => {
+      const child = spawn(process.execPath, [CLI, 'record', packetPath, outcomesPath, '--state', state, '--canonical', CANONICAL]);
+      let stderr = '';
+      child.stderr.on('data', (chunk) => { stderr += chunk; });
+      child.on('close', (status) => resolve({ status, stderr }));
+    })));
+    assert.ok(results.every(({ status }) => status === 0), results.map(({ stderr }) => stderr).join('\n'));
+    const saved = Object.keys(JSON.parse(await readFile(state, 'utf8')).done).sort();
+    assert.deepEqual(saved, packets.flatMap(({ ids }) => ids).sort(), 'both workers\' approvals survive');
+    await assert.rejects(stat(`${state}.lock`), { code: 'ENOENT' }, 'the lock is released');
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

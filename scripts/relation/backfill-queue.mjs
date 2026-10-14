@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { EXPLORATORY_RELATION_TYPES, reviewedRelationId } from '../batch/authored-semantic-decision-source.mjs';
 import { relationAmendmentErrors } from '../factory/relation-amendments.mjs';
 import { sha256Json } from '../validate/semantic-audit.mjs';
@@ -176,13 +177,28 @@ export function packetBoundErrors(packet) {
 }
 
 /**
+ * Stable disjoint worker partition `{ index, count }` (1-based index). Membership depends only on the sense id, so
+ * concurrent authors who each pass their own partition never receive the same sense, and a sense keeps its owner while
+ * other senses are completed. Without a partition every pending sense belongs to the caller (single-author mode).
+ */
+export function partitionFilter(partition) {
+  if (partition === null || partition === undefined) return () => true;
+  const { index, count } = partition;
+  if (!Number.isInteger(count) || count < 1 || !Number.isInteger(index) || index < 1 || index > count) {
+    throw new Error('partition must be index/count with 1 <= index <= count');
+  }
+  return (row) => createHash('sha256').update(row.sense_id).digest().readUInt32BE(0) % count === index - 1;
+}
+
+/**
  * Next bounded packet of pending senses: never reviewed, or reviewed against a different gloss or an incomplete
  * candidate pool (see isReviewCurrent). A sense that no longer exists is simply dropped from consideration.
  */
-export function nextPacket(rows, state, { limit = 50, currentCandidates = new ReviewContext([], null) } = {}) {
+export function nextPacket(rows, state, { limit = 50, currentCandidates = new ReviewContext([], null), partition = null } = {}) {
   if (state?.contract !== BACKFILL_CONTRACT) throw new Error('unknown backfill state contract');
   if (!Number.isInteger(limit) || limit < 1 || limit > MAX_PACKET_SIZE) throw new Error(`limit must be an integer 1-${MAX_PACKET_SIZE}`);
-  const pending = orderInventory(rows).filter((row) => !isReviewCurrent(row, state.done[row.sense_id], currentCandidates));
+  const inPartition = partitionFilter(partition);
+  const pending = orderInventory(rows).filter((row) => inPartition(row) && !isReviewCurrent(row, state.done[row.sense_id], currentCandidates));
   // First reviews come before re-reviews. Growing canonical keeps changing the candidate pool of the highest-demand
   // senses, so in demand order alone they would return to the head of every packet and starve the senses never reviewed.
   const first = pending.filter((row) => state.done[row.sense_id] === undefined);
