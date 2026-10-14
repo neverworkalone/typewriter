@@ -508,7 +508,7 @@ test('crossed subscript and superscript markup is converted without losing text'
   assert.equal(cleanDefinition("화학식은 NO<sub style='font-size:11px;'>2<sup style='font-size:11px;'></sub>+</sup>.").unknownMarkup, false);
 });
 
-test('the source reader accepts only the inventoried file set, bytes and entry counts', async () => {
+test('the source reader accepts only the inventoried file set, bytes, entry and sense counts', async () => {
   const directory = await mkdtemp(path.join(tmpdir(), 'typewriter-stdict-source-'));
   try {
     const entries = (...codes) => codes.map((code) => item(code, '단어', '단어', [[code * 10, '뜻풀이.']]));
@@ -538,8 +538,17 @@ test('the source reader accepts only the inventoried file set, bytes and entry c
     await assert.rejects(() => inventoryStdictSource(directory), /incomplete or inconsistent: 2 files hold 4 entries; the dictionary reports 3/u);
     await write('d_1.json', entries(1, 2), 4);
     await write('d_2.json', entries(3, 4), 4);
-    const regenerated = await inventoryStdictSource(directory, { expected: { file_count: 2, entry_count: 4 } });
-    await assert.rejects(() => inventoryStdictSource(directory, { expected: { file_count: 3, entry_count: 6 } }), /expected population is 3 \/ 6/u);
+    const regenerated = await inventoryStdictSource(directory, { expected: { file_count: 2, entry_count: 4, sense_count: 4 } });
+    await assert.rejects(() => inventoryStdictSource(directory, { expected: { file_count: 3, entry_count: 6, sense_count: 6 } }), /expected population is 3 \/ 6 \/ 6/u);
+    // Same files and entry counts, but a sense is missing inside an entry: the sense population catches it.
+    await assert.rejects(() => inventoryStdictSource(directory, { expected: { file_count: 2, entry_count: 4, sense_count: 5 } }), /4 senses; the expected population is 2 \/ 4 \/ 5/u);
+    await assert.rejects(() => read({ ...regenerated, sense_count: 5 }), /expects 2 \/ 4 \/ 5/u);
+    await assert.rejects(() => read({ ...regenerated, files: [regenerated.files[0], { ...regenerated.files[1], senses: 3 }] }), /d_2\.json has 2 senses; the inventory expects 3/u);
+    const noSense = JSON.parse(await readFile(path.join(directory, 'd_2.json'), 'utf8'));
+    noSense.channel.item[1].word_info.pos_info[0].comm_pattern_info[0].sense_info = [];
+    await writeFile(path.join(directory, 'd_2.json'), JSON.stringify(noSense));
+    await assert.rejects(() => inventoryStdictSource(directory, { expected: { file_count: 2, entry_count: 4, sense_count: 4 } }), /3 senses; the expected population is 2 \/ 4 \/ 4/u);
+    await write('d_2.json', entries(3, 4), 4);
     await assert.rejects(() => read({ ...regenerated, files: [regenerated.files[0], { ...regenerated.files[1], entries: 1 }] }), /has 2 entries; the inventory expects 1/u);
     assert.deepEqual((await read(regenerated)).seen, [1, 2, 3, 4]);
     await rm(path.join(directory, 'd_2.json'));
@@ -555,7 +564,8 @@ test('the source reader accepts only the inventoried file set, bytes and entry c
 test('the committed source inventory names the 88 STDICT files and their 436,587 entries', async () => {
   const inventory = JSON.parse(await readFile(path.join(ROOT, 'data/provenance/stdict-source-inventory.json'), 'utf8'));
   assert.equal(inventory.contract, 'stdict-source-inventory-v1');
-  assert.deepEqual([inventory.file_count, inventory.entry_count, inventory.files.length, inventory.channel_total], [88, 436587, 88, 436587]);
+  assert.deepEqual([inventory.file_count, inventory.entry_count, inventory.sense_count, inventory.files.length, inventory.channel_total], [88, 436587, 509143, 88, 436587]);
   assert.equal(inventory.files.reduce((sum, file) => sum + file.entries, 0), inventory.entry_count);
+  assert.equal(inventory.files.reduce((sum, file) => sum + file.senses, 0), inventory.sense_count);
   assert.equal(new Set(inventory.files.map(({ name }) => name)).size, 88);
 });

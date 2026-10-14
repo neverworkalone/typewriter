@@ -5,8 +5,9 @@ shard PR(약 20~25 shard씩)에서 같은 도구로 추가됩니다. 원본 JSON
 
 ## 원본 완전성
 
-`data/provenance/stdict-source-inventory.json`이 88개 원본 파일의 이름·sha256·entry 수와 사전 자체의 `channel.total`을 담은 신뢰 인벤토리입니다.
+`data/provenance/stdict-source-inventory.json`이 88개 원본 파일의 이름·sha256·entry 수·sense 수와 사전 자체의 `channel.total`을 담은 신뢰 인벤토리입니다.
 `readStdictItems()`(shard 생성과 정산의 유일한 원본 입력 경계)는 인벤토리를 필수로 받아, 파일이 빠지거나 더해지거나 바뀌거나 잘리면 어떤 산출물도 만들기 전에 실패합니다.
+인벤토리는 88개 파일 / 436,587 entry / 509,143 sense의 완전한 다운로드에서만 생성되며, 읽을 때도 파일·entry·sense 수를 모두 대조합니다.
 `node scripts/stdict/inventory.mjs [--verify]`로 생성·확인합니다.
 
 ## 수록 정책 (sense 단위, `scripts/stdict/policy.mjs`)

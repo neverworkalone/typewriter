@@ -7,12 +7,12 @@ import { inventoryStdictSource } from './convert.mjs';
 
 const DEFAULT_FILE = 'data/provenance/stdict-source-inventory.json';
 /** Population decided in #671/#678: the complete STDICT download. */
-export const EXPECTED_STDICT_POPULATION = Object.freeze({ file_count: 88, entry_count: 436587 });
+export const EXPECTED_STDICT_POPULATION = Object.freeze({ file_count: 88, entry_count: 436587, sense_count: 509143 });
 
 /**
  * Writes (or `--verify`s) the trusted inventory of the STDICT download: the exact file set with each file's sha256
  * and entry count. Shard generation and settlement refuse any source that differs from it, and the inventory itself is only
- * written for the complete 88-file / 436,587-entry download.
+ * written for the complete 88-file / 436,587-entry / 509,143-sense download.
  */
 async function main() {
   const args = process.argv.slice(2);

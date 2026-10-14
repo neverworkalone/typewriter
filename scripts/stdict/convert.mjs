@@ -200,6 +200,7 @@ export function finalizeSenseIndex(index) {
   return index;
 }
 
+const countSenses = (items) => items.reduce((sum, item) => sum + flattenSenses(item).length, 0);
 const sourceFileNumber = (name) => Number(name.match(/_(\d+)\.json$/u)?.[1]);
 
 /**
@@ -224,6 +225,7 @@ export async function readStdictItems(directory, onItem, { inventory } = {}) {
   }
   const files = [...inventory.files].sort((left, right) => sourceFileNumber(left.name) - sourceFileNumber(right.name));
   let entryCount = 0;
+  let senseCount = 0;
   for (const file of files) {
     const text = await readFile(path.join(directory, file.name), 'utf8');
     if (createHash('sha256').update(text).digest('hex') !== file.sha256) {
@@ -233,11 +235,15 @@ export async function readStdictItems(directory, onItem, { inventory } = {}) {
     if (channel.item.length !== file.entries || channel.total !== inventory.channel_total) {
       throw new Error(`STDICT source file ${file.name} has ${channel.item.length} entries; the inventory expects ${file.entries}.`);
     }
+    if (countSenses(channel.item) !== file.senses) {
+      throw new Error(`STDICT source file ${file.name} has ${countSenses(channel.item)} senses; the inventory expects ${file.senses}.`);
+    }
     entryCount += channel.item.length;
+    senseCount += file.senses;
     for (const item of channel.item) onItem(item, file.name);
   }
-  if (entryCount !== inventory.entry_count || files.length !== inventory.file_count) {
-    throw new Error(`STDICT source has ${files.length} files / ${entryCount} entries; the inventory expects ${inventory.file_count} / ${inventory.entry_count}.`);
+  if (entryCount !== inventory.entry_count || senseCount !== inventory.sense_count || files.length !== inventory.file_count) {
+    throw new Error(`STDICT source has ${files.length} files / ${entryCount} entries / ${senseCount} senses; the inventory expects ${inventory.file_count} / ${inventory.entry_count} / ${inventory.sense_count}.`);
   }
   return files.map(({ name }) => name);
 }
@@ -245,7 +251,7 @@ export async function readStdictItems(directory, onItem, { inventory } = {}) {
 /**
  * Builds the inventory of a source directory. It refuses an incomplete download: every file must report the same
  * dictionary-wide `channel.total`, the entries found must add up to exactly that total, and, when `expected` states the
- * population the owner decided on (file and entry counts), the directory must match it. A partial directory can
+ * population the owner decided on (file, entry and sense counts), the directory must match it. A partial directory can
  * therefore never be recorded as the new trusted source.
  */
 export async function inventoryStdictSource(directory, { expected } = {}) {
@@ -257,21 +263,23 @@ export async function inventoryStdictSource(directory, { expected } = {}) {
     const text = await readFile(path.join(directory, name), 'utf8');
     const { channel } = JSON.parse(text);
     totals.add(channel.total);
-    files.push({ name, sha256: createHash('sha256').update(text).digest('hex'), entries: channel.item.length });
+    files.push({ name, sha256: createHash('sha256').update(text).digest('hex'), entries: channel.item.length, senses: countSenses(channel.item) });
   }
   const entryCount = files.reduce((sum, { entries }) => sum + entries, 0);
+  const senseCount = files.reduce((sum, { senses }) => sum + senses, 0);
   const [channelTotal] = totals;
   if (files.length === 0 || totals.size !== 1 || !Number.isInteger(channelTotal) || entryCount !== channelTotal) {
     throw new Error(`STDICT source is incomplete or inconsistent: ${files.length} files hold ${entryCount} entries; the dictionary reports ${[...totals].join(', ')}.`);
   }
-  if (expected && (files.length !== expected.file_count || entryCount !== expected.entry_count)) {
-    throw new Error(`STDICT source has ${files.length} files / ${entryCount} entries; the expected population is ${expected.file_count} / ${expected.entry_count}.`);
+  if (expected && (files.length !== expected.file_count || entryCount !== expected.entry_count || senseCount !== expected.sense_count)) {
+    throw new Error(`STDICT source has ${files.length} files / ${entryCount} entries / ${senseCount} senses; the expected population is ${expected.file_count} / ${expected.entry_count} / ${expected.sense_count}.`);
   }
   return {
     contract: 'stdict-source-inventory-v1',
     dictionary: '표준국어대사전 (STDICT)',
     file_count: files.length,
     entry_count: entryCount,
+    sense_count: senseCount,
     channel_total: channelTotal,
     files,
   };
