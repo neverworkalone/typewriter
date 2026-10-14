@@ -17,24 +17,23 @@ const REPOSITORY_DIRECTORY = path.resolve(
 );
 const PILOT_DIRECTORY = path.join(
   REPOSITORY_DIRECTORY,
-  'data/batches/m5-10a-wave-a-base-canonical',
+  'tests/fixtures/canonical-sample',
 );
 const FIXTURE_DIRECTORY = path.join(
   REPOSITORY_DIRECTORY,
   'tests/fixtures/normalization',
 );
 
-test('normalizes the pilot without losing records, senses, relations, or notes', async () => {
+test('normalizes the sample without losing records, senses, relations, or notes', async () => {
   const source = await readCanonicalRecords(PILOT_DIRECTORY);
   const model = await normalizeCanonicalDirectory(PILOT_DIRECTORY, {
-    checkPilotCompleteness: true,
   });
 
   assert.equal(model.normalization_version, '1');
-  assert.equal(model.records.length, 620);
+  assert.equal(model.records.length, 6);
   assert.equal(
     model.records.reduce((count, record) => count + record.senses.length, 0),
-    743,
+    7,
   );
   assert.equal(
     model.records.reduce(
@@ -46,7 +45,7 @@ test('normalizes the pilot without losing records, senses, relations, or notes',
         ),
       0,
     ),
-    467,
+    3,
   );
 
   const ids = model.records.map((record) => record.id);
@@ -105,16 +104,16 @@ test('normalizes the pilot without losing records, senses, relations, or notes',
 
   const relationlessSense = model.records
     .flatMap((record) => record.senses)
-    .find((sense) => sense.id === 'w032-s2');
+    .find((sense) => sense.id === 'w002-s2');
   assert.deepEqual(relationlessSense.relations, []);
 
   const directRelation = model.records
-    .find((record) => record.id === 'w026')
+    .find((record) => record.id === 'w001')
     .senses[0].relations[0];
-  assert.equal(directRelation.target_sense, 'r008-s1');
+  assert.equal(directRelation.target_sense, 'r001-s1');
   assert.equal(
     directRelation.note,
-    '소식을 담담하게 받아들였다 / 소식을 덤덤하게 받아들였다. 이 문장 틀에서는 직접 바꿔 넣을 수 있다.',
+    '기쁨과 즐거움은 같은 정서를 가리키는 말로 바꿔 쓸 수 있다.',
   );
 });
 
@@ -141,11 +140,10 @@ test('is independent of file batching, applies defaults, and is idempotent', asy
 });
 
 test('does not modify canonical input and refuses invalid dataset input', async () => {
-  const sourcePath = path.join(REPOSITORY_DIRECTORY, 'data/canonical/pilot.jsonl');
+  const sourcePath = path.join(REPOSITORY_DIRECTORY, 'tests/fixtures/canonical-sample/sample.jsonl');
   const before = await readFile(sourcePath);
 
   await normalizeCanonicalDirectory(PILOT_DIRECTORY, {
-    checkPilotCompleteness: true,
   });
 
   assert.deepEqual(await readFile(sourcePath), before);

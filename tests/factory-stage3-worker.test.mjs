@@ -18,6 +18,7 @@ import {
   buildSemanticAuditFromDecisionSource, inspectSenseBoundaryPairs, readAuthoredBatchDecisionSources, sha256Json,
 } from '../scripts/validate/semantic-audit.mjs';
 import { authorSemanticReviewBinding } from '../scripts/validate/semantic-decision-row.mjs';
+import { syntheticCanonicalBase } from './helpers/synthetic-canonical-base.mjs';
 
 import { planStage3Admission, applyStage3FileChanges, Stage3AdmissionError } from '../scripts/factory/admission.mjs';
 import {
@@ -33,14 +34,20 @@ import {
   recoverStage3Attempt,
   supersedeStage3RejectionForRetry,
   releaseStage3Claim,
-  refreshStage3ReportCheckpoints,
   runStage3PreflightCi,
   runStage3Session,
 } from '../scripts/factory/stage3-worker.mjs';
 import { parseArguments, runStage3Cli } from '../scripts/factory/run-stage3-worker.mjs';
 import { copyShardedAuthority } from './helpers/sharded-authority.mjs';
 
-const authorityShards = (root) => readdirSync(path.join(root, 'data/validation/canonical-semantic-decision-source.shards')).map((name) => `canonical-semantic-decision-source.shards/${name}`);
+const authorityShards = (root) => {
+  try {
+    return readdirSync(path.join(root, 'data/validation/canonical-semantic-decision-source.shards')).map((name) => `canonical-semantic-decision-source.shards/${name}`);
+  } catch (error) {
+    if (error.code === 'ENOENT') return [];
+    throw error;
+  }
+};
 
 const digest = 'a'.repeat(64);
 const baseRecord = {
@@ -1080,15 +1087,8 @@ test('a multi-sense canonical record is a split, separated boundary whether its 
 // Production path for a new multi-sense entry: plan -> buildStage3SemanticAuthority -> the same complete
 // source-bound semantic audit that ci:normal applies. Synthetic lemma; reads (never writes) the real canonical revision.
 test('a new two-sense entry is admitted by the semantic authority and passes the complete semantic audit', async () => {
-  const canonicalRecords = [];
-  const recordPathById = new Map();
-  for (const name of (await readdir('data/canonical')).filter((file) => file.endsWith('.jsonl'))) {
-    for (const line of (await readFile(path.join('data/canonical', name), 'utf8')).split('\n').filter(Boolean)) {
-      const record = JSON.parse(line);
-      canonicalRecords.push(record);
-      recordPathById.set(record.id, 'data/canonical/' + name);
-    }
-  }
+  const base = await syntheticCanonicalBase();
+  const { canonicalRecords, recordPathById } = base;
   const id = 'C900001-0001';
   const decision = {
     source_candidate_id: id, disposition: 'included', target: { kind: 'new_entry' },
@@ -1121,7 +1121,7 @@ test('a new two-sense entry is admitted by the semantic authority and passes the
     candidates: [{ candidate_id: id }], decisions: [decision], canonicalRecords, recordPathById, baseCanonicalSnapshotDigest: digest,
   });
   const authority = await buildStage3SemanticAuthority({
-    root: process.cwd(), baseCanonicalRecords: canonicalRecords, plan, semanticDecisions: { decisions: [row] }, semanticDecisionsText: '{}',
+    root: base.root, baseCanonicalRecords: canonicalRecords, plan, semanticDecisions: { decisions: [row] }, semanticDecisionsText: '{}',
   });
   const entryId = plan.entries[0].record_id;
   const reviewed = authority.sourceObject.authored_review.records.find((review) => review.record_id === entryId);
@@ -1142,15 +1142,8 @@ test('a new two-sense entry is admitted by the semantic authority and passes the
 // Production path for positive relation evidence: a new sense relating to an existing canonical target and to
 // another sense of the same batch, one sense with relations and one with an explicit no-relations result.
 test('a new entry with reviewed relations passes the authority and the complete semantic audit', async () => {
-  const canonicalRecords = [];
-  const recordPathById = new Map();
-  for (const name of (await readdir('data/canonical')).filter((file) => file.endsWith('.jsonl'))) {
-    for (const line of (await readFile(path.join('data/canonical', name), 'utf8')).split('\n').filter(Boolean)) {
-      const record = JSON.parse(line);
-      canonicalRecords.push(record);
-      recordPathById.set(record.id, 'data/canonical/' + name);
-    }
-  }
+  const base = await syntheticCanonicalBase();
+  const { canonicalRecords, recordPathById } = base;
   const target = canonicalRecords.find((record) => record.senses.some((sense) => sense.pos === 'noun'));
   const targetSense = target.senses.find((sense) => sense.pos === 'noun');
   const idA = 'C900001-0001';
@@ -1211,7 +1204,7 @@ test('a new entry with reviewed relations passes the authority and the complete 
     [target.id, targetSense.id], [entryB.record_id, entryB.sense_ids[0]],
   ]);
   const authority = await buildStage3SemanticAuthority({
-    root: process.cwd(), baseCanonicalRecords: canonicalRecords, plan, semanticDecisions: { decisions: rows }, semanticDecisionsText: '{}',
+    root: base.root, baseCanonicalRecords: canonicalRecords, plan, semanticDecisions: { decisions: rows }, semanticDecisionsText: '{}',
   });
   const afterRecords = canonicalRecords.map((existing) => plan.records.get(existing.id)?.record ?? existing)
     .concat([...plan.records.values()].filter((update) => !update.before).map((update) => update.record));
@@ -1301,15 +1294,8 @@ test('planning surface-form dispositions from projected records writes nothing, 
 
 // Real applyStage3Admission: a surface-form judgment gap must stop it before any canonical or manifest write.
 test('applyStage3Admission leaves the worktree untouched when a surface-form judgment gap is found', async () => {
-  const canonicalRecords = [];
-  const recordPathById = new Map();
-  for (const name of (await readdir('data/canonical')).filter((file) => file.endsWith('.jsonl'))) {
-    for (const line of (await readFile(path.join('data/canonical', name), 'utf8')).split('\n').filter(Boolean)) {
-      const record = JSON.parse(line);
-      canonicalRecords.push(record);
-      recordPathById.set(record.id, 'data/canonical/' + name);
-    }
-  }
+  const base = await syntheticCanonicalBase();
+  const { canonicalRecords, recordPathById } = base;
   const id = 'C900001-0001';
   // A verb whose final coda needs a reviewer's regular/irregular judgment cannot be decided by the rule.
   const decision = {
@@ -1338,7 +1324,7 @@ test('applyStage3Admission leaves the worktree untouched when a surface-form jud
   const root = await mkdtemp(path.join(os.tmpdir(), 'stage3-apply-gap-'));
   try {
     await mkdir(path.join(root, 'data/validation'), { recursive: true });
-    await copyShardedAuthority('data/validation/canonical-semantic-decision-source.json', path.join(root, 'data/validation/canonical-semantic-decision-source.json'));
+    await copyShardedAuthority(path.join(base.root, 'data/validation/canonical-semantic-decision-source.json'), path.join(root, 'data/validation/canonical-semantic-decision-source.json'));
     for (const file of ['data/validation/m6-2-inflection-exceptions.json', 'data/validation/m6-3-surface-form-review.json']) {
       await writeFile(path.join(root, file), await readFile(file, 'utf8'));
     }
@@ -1448,15 +1434,6 @@ test('historical collision evidence is scoped to retained senses while strict co
 });
 
 
-test('Stage 3 refreshes its live dependent checkpoints through existing source-bound report producers', () => {
-  const commands = [];
-  const files = refreshStage3ReportCheckpoints('/repo', (file, args, options) => commands.push({ file, args, options }));
-  assert.deepEqual(commands.map(({ args }) => args), [['run', 'inventory:issue-210:write'], ['run', 'batch:issue-219:report'], ['run', 'batch:issue-220:report'], ['run', 'batch:issue-222:report']]);
-  assert.equal(files.length, 8);
-  assert.ok(files.every((file) => file.startsWith('docs/') || file.startsWith('data/validation/') || file.startsWith('data/inventory/')));
-});
-
-
 test('restart recognizes REST list merged_at without a merged flag for either outcome', async () => {
   const claimRef = 'refs/heads/stage3-claims/C999999-a1';
   const activeLock = { batchId: 'C999999', attempt: 1, sha: 'lock', baseSha: 'base' };
@@ -1563,15 +1540,8 @@ test('Stage 3 addresses Stage 2 judgments by the allocated canonical entry and s
 });
 
 test('a Stage 2 judgment on a planned admission closes the surface-form gap under the allocated canonical ids', async () => {
-  const canonicalRecords = [];
-  const recordPathById = new Map();
-  for (const name of (await readdir('data/canonical')).filter((file) => file.endsWith('.jsonl'))) {
-    for (const line of (await readFile(path.join('data/canonical', name), 'utf8')).split('\n').filter(Boolean)) {
-      const record = JSON.parse(line);
-      canonicalRecords.push(record);
-      recordPathById.set(record.id, 'data/canonical/' + name);
-    }
-  }
+  const base = await syntheticCanonicalBase();
+  const { canonicalRecords, recordPathById } = base;
   const id = 'C900001-0001';
   const decision = {
     source_candidate_id: id, disposition: 'included', target: { kind: 'new_entry' },
@@ -1603,23 +1573,16 @@ test('a Stage 2 judgment on a planned admission closes the surface-form gap unde
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
-// Pairwise boundary evidence against every existing same-POS sense (issue #379). Real canonical entries are read
-// (never written): w753 has two noun senses, w6468 exactly one.
+// Pairwise boundary evidence against every existing same-POS sense (issue #379). Entries of the synthetic canonical base are read
+// of the synthetic base: w00001 has two noun senses, w00002 exactly one.
 const realCanonical = async () => {
-  const canonicalRecords = [];
-  const recordPathById = new Map();
-  for (const name of (await readdir('data/canonical')).filter((file) => file.endsWith('.jsonl'))) {
-    for (const line of (await readFile(path.join('data/canonical', name), 'utf8')).split('\n').filter(Boolean)) {
-      const record = JSON.parse(line);
-      canonicalRecords.push(record);
-      recordPathById.set(record.id, 'data/canonical/' + name);
-    }
-  }
-  return { canonicalRecords, recordPathById };
+  const base = await syntheticCanonicalBase();
+  const { canonicalRecords, recordPathById } = base;
+  return { canonicalRecords, recordPathById, root: base.root };
 };
 const NEW_GLOSSES = ['합성 시험에서 쓰는 첫째 새 뜻풀이.', '합성 시험에서 쓰는 완전히 다른 둘째 새 뜻풀이.'];
 async function appendSenseScenario({ entryId, newCount = 1, context, pairs }) {
-  const { canonicalRecords, recordPathById } = await realCanonical();
+  const { canonicalRecords, recordPathById, root } = await realCanonical();
   const target = canonicalRecords.find((record) => record.id === entryId);
   const id = 'C900001-0001';
   const decision = {
@@ -1657,46 +1620,46 @@ async function appendSenseScenario({ entryId, newCount = 1, context, pairs }) {
     reviewManifest: { batch_id: 'C900001', status: 'ready', attempt: 1, candidates_sha256: digest, semantic_decisions_sha256: digest },
     candidates: [{ candidate_id: id }], decisions: [decision], canonicalRecords, recordPathById, baseCanonicalSnapshotDigest: digest,
   });
-  const authority = () => buildStage3SemanticAuthority({ root: process.cwd(), baseCanonicalRecords: canonicalRecords, plan, semanticDecisions: { decisions: [row] }, semanticDecisionsText: '{}' });
-  return { authority, decision, row, target, plan, canonicalRecords };
+  const authority = () => buildStage3SemanticAuthority({ root, baseCanonicalRecords: canonicalRecords, plan, semanticDecisions: { decisions: [row] }, semanticDecisionsText: '{}' });
+  return { authority, decision, row, target, plan, canonicalRecords, root };
 }
 const rejectsWith = (code) => (error) => error instanceof Stage3AdmissionError && error.category === 'lexical' && error.code === code;
 
 test('an existing entry with two same-POS senses needs pair evidence for each; a single context id no longer suffices', async () => {
-  const { authority } = await appendSenseScenario({ entryId: 'w753' });
+  const { authority } = await appendSenseScenario({ entryId: 'w00001' });
   await assert.rejects(authority(), rejectsWith('STAGE3_BOUNDARY_CONTEXT_MISSING'));
 });
 
 test('two existing same-POS senses plus one new sense pass with both pairs, and Stage 3 consumes exactly Stage 2 evidence', async () => {
-  const { authority, target, plan } = await appendSenseScenario({ entryId: 'w753', pairs: (all) => all });
+  const { authority, target, plan } = await appendSenseScenario({ entryId: 'w00001', pairs: (all) => all });
   const result = await authority();
-  const reviewed = result.sourceObject.authored_review.records.find((review) => review.record_id === 'w753');
-  const newId = plan.records.get('w753').record.senses.at(-1).id;
+  const reviewed = result.sourceObject.authored_review.records.find((review) => review.record_id === 'w00001');
+  const newId = plan.records.get('w00001').record.senses.at(-1).id;
   const pairs = reviewed.boundary_review.pairwise.filter((pair) => pair.left_sense_id === newId || pair.right_sense_id === newId);
   assert.equal(pairs.length, target.senses.length);
   for (const pair of pairs) assert.match(pair.evidence_basis, /쓰임은 다르다|쓰임이 다르다/u);
 });
 
 test('a missing, duplicated, forged, foreign-entry or wrong-POS existing-sense pair fails closed', async () => {
-  await assert.rejects((await appendSenseScenario({ entryId: 'w753', pairs: (all) => all.slice(0, 1) })).authority(), rejectsWith('STAGE3_BOUNDARY_CONTEXT_MISSING'));
-  await assert.rejects((await appendSenseScenario({ entryId: 'w753', pairs: (all) => [...all, all[0]] })).authority(), rejectsWith('STAGE3_BOUNDARY_EXISTING_PAIR'));
-  await assert.rejects((await appendSenseScenario({ entryId: 'w753', pairs: (all) => [...all.slice(0, 1), { ...all[1], existing_sense_id: 'w753-s9' }] })).authority(), rejectsWith('STAGE3_BOUNDARY_EXISTING_PAIR'));
-  await assert.rejects((await appendSenseScenario({ entryId: 'w753', pairs: (all) => [...all.slice(0, 1), { ...all[1], existing_sense_id: 'w6468-s1' }] })).authority(), rejectsWith('STAGE3_BOUNDARY_EXISTING_PAIR'));
-  await assert.rejects((await appendSenseScenario({ entryId: 'w753', pairs: (all) => all.map((pair) => ({ ...pair, existing_gloss_sha256: 'b'.repeat(64) })) })).authority(), rejectsWith('STAGE3_BOUNDARY_EXISTING_PAIR'));
-  await assert.rejects((await appendSenseScenario({ entryId: 'w753', pairs: (all) => all.map((pair) => ({ ...pair, decision: 'merge' })) })).authority(), rejectsWith('STAGE3_BOUNDARY_EXISTING_PAIR'));
+  await assert.rejects((await appendSenseScenario({ entryId: 'w00001', pairs: (all) => all.slice(0, 1) })).authority(), rejectsWith('STAGE3_BOUNDARY_CONTEXT_MISSING'));
+  await assert.rejects((await appendSenseScenario({ entryId: 'w00001', pairs: (all) => [...all, all[0]] })).authority(), rejectsWith('STAGE3_BOUNDARY_EXISTING_PAIR'));
+  await assert.rejects((await appendSenseScenario({ entryId: 'w00001', pairs: (all) => [...all.slice(0, 1), { ...all[1], existing_sense_id: 'w00001-s9' }] })).authority(), rejectsWith('STAGE3_BOUNDARY_EXISTING_PAIR'));
+  await assert.rejects((await appendSenseScenario({ entryId: 'w00001', pairs: (all) => [...all.slice(0, 1), { ...all[1], existing_sense_id: 'w00002-s1' }] })).authority(), rejectsWith('STAGE3_BOUNDARY_EXISTING_PAIR'));
+  await assert.rejects((await appendSenseScenario({ entryId: 'w00001', pairs: (all) => all.map((pair) => ({ ...pair, existing_gloss_sha256: 'b'.repeat(64) })) })).authority(), rejectsWith('STAGE3_BOUNDARY_EXISTING_PAIR'));
+  await assert.rejects((await appendSenseScenario({ entryId: 'w00001', pairs: (all) => all.map((pair) => ({ ...pair, decision: 'merge' })) })).authority(), rejectsWith('STAGE3_BOUNDARY_EXISTING_PAIR'));
 });
 
 test('the retained base audit follows its inputs: a changed base record is audited again and rejected, and a pass never leaks into the next result', async () => {
-  const first = await appendSenseScenario({ entryId: 'w6468' });
+  const first = await appendSenseScenario({ entryId: 'w00002' });
   const passed = await first.authority();
-  const again = await (await appendSenseScenario({ entryId: 'w6468' })).authority();
+  const again = await (await appendSenseScenario({ entryId: 'w00002' })).authority();
   assert.equal(again.sourceEvent.sha256, passed.sourceEvent.sha256, 'a repeated admission over the same base reproduces the same event');
   // Same array identity, changed content: the audit must not be answered from the earlier pass.
-  const { canonicalRecords } = await realCanonical();
+  const { canonicalRecords } = first;
   const tampered = structuredClone(canonicalRecords);
-  tampered.find((record) => record.id === 'w6468').senses[0].gloss += ' 변조';
+  tampered.find((record) => record.id === 'w00002').senses[0].gloss += ' 변조';
   await assert.rejects(
-    buildStage3SemanticAuthority({ root: process.cwd(), baseCanonicalRecords: tampered, plan: first.plan, semanticDecisions: { decisions: [first.row] }, semanticDecisionsText: '{}' }),
+    buildStage3SemanticAuthority({ root: first.root, baseCanonicalRecords: tampered, plan: first.plan, semanticDecisions: { decisions: [first.row] }, semanticDecisionsText: '{}' }),
     (error) => error instanceof Stage3AdmissionError && error.code === 'STAGE3_BASE_SEMANTIC_AUTHORITY',
   );
   // A rejection is not retained: the untouched base still passes afterwards.
@@ -1704,33 +1667,33 @@ test('the retained base audit follows its inputs: a changed base record is audit
 });
 
 test('a single existing same-POS sense keeps working with the context id alone', async () => {
-  const { authority } = await appendSenseScenario({ entryId: 'w6468' });
+  const { authority } = await appendSenseScenario({ entryId: 'w00002' });
   assert.ok((await authority()).sourceObject);
 });
 
 test('several new senses need the full existing × new coverage', async () => {
-  const full = await appendSenseScenario({ entryId: 'w753', newCount: 2, pairs: (all) => all });
+  const full = await appendSenseScenario({ entryId: 'w00001', newCount: 2, pairs: (all) => all });
   assert.equal(full.row.existing_sense_pairs.length, 4);
   assert.ok((await full.authority()).sourceObject);
-  await assert.rejects((await appendSenseScenario({ entryId: 'w753', newCount: 2, pairs: (all) => all.slice(0, 3) })).authority(), rejectsWith('STAGE3_BOUNDARY_CONTEXT_MISSING'));
-  await assert.rejects((await appendSenseScenario({ entryId: 'w753', newCount: 2, pairs: (all) => all.filter(({ new_sense_id: id }) => id.endsWith('-s1')) })).authority(), rejectsWith('STAGE3_BOUNDARY_CONTEXT_MISSING'));
+  await assert.rejects((await appendSenseScenario({ entryId: 'w00001', newCount: 2, pairs: (all) => all.slice(0, 3) })).authority(), rejectsWith('STAGE3_BOUNDARY_CONTEXT_MISSING'));
+  await assert.rejects((await appendSenseScenario({ entryId: 'w00001', newCount: 2, pairs: (all) => all.filter(({ new_sense_id: id }) => id.endsWith('-s1')) })).authority(), rejectsWith('STAGE3_BOUNDARY_CONTEXT_MISSING'));
 });
 
 test('Stage 2 validation computes the required pairs from the canonical entry and rejects every incomplete or invalid set', async () => {
-  const { row, decision, target } = await appendSenseScenario({ entryId: 'w753', newCount: 2, pairs: (all) => all });
+  const { row, decision, target } = await appendSenseScenario({ entryId: 'w00001', newCount: 2, pairs: (all) => all });
   const ok = validateExistingSensePairs(decision, row, { existingSenses: target.senses, required: true });
   assert.deepEqual(ok, []);
   const withPairs = (pairs) => ({ ...row, existing_sense_pairs: pairs });
   const check = (pairs, pattern, existingSenses = target.senses) => assert.ok(validateExistingSensePairs(decision, withPairs(pairs), { existingSenses, required: true }).some((error) => pattern.test(error)), pattern.source);
   check(row.existing_sense_pairs.slice(1), /missing existing_sense_pairs/u);
   check([...row.existing_sense_pairs, row.existing_sense_pairs[0]], /duplicate pair/u);
-  check([...row.existing_sense_pairs.slice(1), { ...row.existing_sense_pairs[0], existing_sense_id: 'w753-s9' }], /not a sense of the target entry/u);
+  check([...row.existing_sense_pairs.slice(1), { ...row.existing_sense_pairs[0], existing_sense_id: 'w00001-s9' }], /not a sense of the target entry/u);
   check([...row.existing_sense_pairs.slice(1), { ...row.existing_sense_pairs[0], new_sense_id: 'C900001-0001-s9' }], /must name a reviewed sense/u);
   check(row.existing_sense_pairs.map((pair) => ({ ...pair, existing_gloss_sha256: 'b'.repeat(64) })), /does not bind the canonical gloss/u);
   check(row.existing_sense_pairs, /is verb, the new sense is noun/u, target.senses.map((sense) => ({ ...sense, pos: 'verb' })));
   check(row.existing_sense_pairs.map((pair) => ({ ...pair, rationale: '근거.' })), /candidate-specific/u);
   // One existing same-POS sense: nothing is required, but pairs that are given must still be valid.
-  const single = await appendSenseScenario({ entryId: 'w6468' });
+  const single = await appendSenseScenario({ entryId: 'w00002' });
   assert.deepEqual(validateExistingSensePairs(single.decision, single.row, { existingSenses: single.target.senses, required: true }), []);
   assert.deepEqual(validateExistingSensePairs({ ...decision, target: { kind: 'new_entry' } }, row, { required: true }).length, 1);
   // Without a comparable canonical state (stale review) only the structure is checked.
@@ -1738,14 +1701,14 @@ test('Stage 2 validation computes the required pairs from the canonical entry an
 });
 
 // A new POS is proven absent from the entry by the decision hand-off; its gloss is not judged by token overlap
-// with the other POS (issue #393). Real canonical w6757 is the noun 잠시 "짧은 시간 동안.".
+// with the other POS (issue #393). Synthetic base w00004 is a noun with the gloss "짧은 시간 동안.".
 async function newSenseScenario({ kind, pos, gloss }) {
-  const { canonicalRecords, recordPathById } = await realCanonical();
-  const target = canonicalRecords.find((record) => record.id === 'w6757');
+  const { canonicalRecords, recordPathById, root } = await realCanonical();
+  const target = canonicalRecords.find((record) => record.id === 'w00004');
   const id = 'C900001-0001';
   const decision = {
     source_candidate_id: id, disposition: 'included',
-    target: kind === 'new_pos_on_existing_lemma' ? { kind, entry_id: 'w6757' } : { kind, entry_id: 'w6757', context_sense_id: 'w6757-s1' },
+    target: kind === 'new_pos_on_existing_lemma' ? { kind, entry_id: 'w00004' } : { kind, entry_id: 'w00004', context_sense_id: 'w00004-s1' },
     reviewed_record: { lemma: target.lemma, senses: [{ pos, gloss }] },
   };
   const record = reviewedCandidateRecord(decision);
@@ -1766,7 +1729,7 @@ async function newSenseScenario({ kind, pos, gloss }) {
     reviewManifest: { batch_id: 'C900001', status: 'ready', attempt: 1, candidates_sha256: digest, semantic_decisions_sha256: digest },
     candidates: [{ candidate_id: id }], decisions: [decision], canonicalRecords, recordPathById, baseCanonicalSnapshotDigest: digest,
   });
-  return { plan, authority: () => buildStage3SemanticAuthority({ root: process.cwd(), baseCanonicalRecords: canonicalRecords, plan: plan(), semanticDecisions: { decisions: [row] }, semanticDecisionsText: '{}' }) };
+  return { plan, authority: () => buildStage3SemanticAuthority({ root, baseCanonicalRecords: canonicalRecords, plan: plan(), semanticDecisions: { decisions: [row] }, semanticDecisionsText: '{}' }) };
 }
 
 test('a new POS whose gloss contains every token of another POS gloss is admitted without paraphrase games', async () => {
@@ -1789,9 +1752,9 @@ test('the Stage 3 Git adapter lists the same snapshot paths as the Stage 2 adapt
   // Both workers validate merged master through the same loader; an adapter that omits a path class (the relation backfill
   // packets of #446) makes the worker fail on master before it can claim anything.
   const root = new URL('..', import.meta.url).pathname;
-  const { createGitRepository, loadFactorySnapshot } = await import('../scripts/factory/stage2-worker.mjs');
+  const { createGitRepository, loadFactorySnapshot, FACTORY_SNAPSHOT_PATHSPEC } = await import('../scripts/factory/stage2-worker.mjs');
   const stage3 = createStage3GitRepository({ root });
   assert.deepEqual(stage3.listFiles('HEAD'), createGitRepository({ root }).listFiles('HEAD'));
-  assert.ok(stage3.listFiles('HEAD').some((file) => /^data\/relation-backfill\/R\d{6}\.json$/u.test(file)));
+  assert.ok(FACTORY_SNAPSHOT_PATHSPEC.includes('data/relation-backfill'), 'the shared snapshot pathspec keeps the relation backfill packets');
   assert.equal((await loadFactorySnapshot({ git: stage3, headSha: 'HEAD' })).validated, true);
 });

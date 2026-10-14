@@ -18,7 +18,7 @@ const archive = path.join(cache, NATIVE_RELEASE.asset);
 const sha256 = (buffer) => createHash('sha256').update(buffer).digest('hex');
 
 async function main() {
-  if (process.platform !== 'darwin' || process.arch !== 'arm64') throw new Error('the native Khaiii release is macOS arm64 only; use the docker runtime');
+  if (process.platform !== 'darwin' || process.arch !== 'arm64') throw new Error('the native Khaiii release is macOS arm64 only');
   await mkdir(cache, { recursive: true });
   let bytes = existsSync(archive) ? await readFile(archive) : null;
   if (!bytes || sha256(bytes) !== NATIVE_RELEASE.archive_sha256) {

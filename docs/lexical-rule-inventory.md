@@ -16,8 +16,6 @@
 | --- | --- | --- |
 | dictionary-wide invariant | 기존·신규·수정된 모든 canonical record/sense에 적용되는 불변식 | canonical schema, dataset integrity, lexical quality, inventory, build, search |
 | admission invariant | 새 record 또는 수정 record가 canonical에 들어가기 전에 반드시 통과해야 하는 불변식 | semantic audit, shared production state, production orchestration, lexical admission, generic batch adapter |
-| batch policy | 목표 개수, reserve, ID 범위, timing, authorization처럼 한 실행에만 필요한 정책 | M5-11, Wave A2, Wave B validator와 recorder |
-| historical assertion | 과거 count/digest/result를 보존하는 회귀 주장 | M5-8, M5-9, M5-10D, M5-11 base snapshot |
 | obsolete/duplicate | 더 이상 실행 경로가 아니며 shared contract로 대체되었거나 금지된 과거 방식 | active owner 없음 |
 
 ## Shared production pipeline

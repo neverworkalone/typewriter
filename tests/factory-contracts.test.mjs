@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
 import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -105,7 +104,7 @@ test('decision rows must cover every candidate exactly once in order', () => {
   assert.ok(validateDecisionRows([{ source_candidate_id: ids[0] }, { source_candidate_id: ids[0] }], ids).some((e) => e.includes('duplicate')));
 });
 
-test('confusable-headword hints are advisory in Stage 2 validation, and C000007 keeps the mis-spelled observations out', () => {
+test('confusable-headword hints are advisory in Stage 2 validation', () => {
   const included = (reviewed) => ({ source_candidate_id: 'C000001-0001', disposition: 'included', target: { kind: 'new_entry' }, reviewed_record: reviewed });
   const hinted = included({ lemma: '쫓다', senses: [{ pos: 'verb', gloss: '어떤 이상이나 목표를 이루려고 좇아 따르다.' }] });
   const valid = included({ lemma: '맞추다', senses: [{ pos: 'verb', gloss: '총의 조준점을 과녁에 맞게 조절하다.' }] });
@@ -117,15 +116,6 @@ test('confusable-headword hints are advisory in Stage 2 validation, and C000007 
   assert.equal(advisories.length, 1);
   assert.equal(advisories[0].confusable_lemma, '좇다');
 
-  // Source-bound decision: the observations spelled 쫓다 / 부딪혀 in the sense of 좇다 / 부딪치다 stay rejected.
-  const rows = readFileSync(new URL('../data/reviews/C000007/decisions.jsonl', import.meta.url), 'utf8').trim().split('\n').map((line) => JSON.parse(line));
-  const row = (id) => rows.find((entry) => entry.source_candidate_id === id);
-  const groupFor = (id, observation) => row(id).group_decisions.find((group) => (group.observation_ids ?? []).includes(observation));
-  assert.equal(groupFor('C000007-0449', 'C000007-0449.o01').disposition, 'rejected');
-  assert.equal(groupFor('C000007-0449', 'C000007-0449.o02').disposition, 'rejected');
-  assert.equal(groupFor('C000007-0198', 'C000007-0198.o01').disposition, 'rejected');
-  assert.equal(row('C000007-0449').reviewed_record, undefined);
-  assert.equal(row('C000007-0198').reviewed_record, undefined);
 });
 
 test('status-only change never alters the manifest content digest', () => {
@@ -485,6 +475,42 @@ test('registered validator fails closed on merged-batch mutation, deletion, held
   });
   assert.notEqual(unresolved.status, 0);
   assert.match(unresolved.stderr, /cannot resolve factory base/);
+});
+
+test('a zero-data reset marker relaxes the deletion check only when it is tracked in HEAD and absent from the base', async () => {
+  const f = await gitFixture();
+  const marker = JSON.stringify({ contract: 'lexical-factory-zero-data-reset-v1', issue: 672 });
+  f.git('rm', '-rq', 'data/candidates/C000001');
+  f.git('commit', '-qm', 'delete history');
+  assert.match(f.run().stderr, /deleted/, 'without a marker the deletion of merged history is refused');
+
+  // An untracked or staged-only marker never counts: only the marker blob committed in HEAD does.
+  await f.write('config/zero-data-reset.json', marker);
+  assert.match(f.run().stderr, /deleted/, 'an untracked marker does not relax the check');
+  f.git('add', 'config/zero-data-reset.json');
+  assert.match(f.run().stderr, /deleted/, 'a staged but uncommitted marker does not relax the check');
+  await f.write('config/zero-data-reset.json', JSON.stringify({ contract: 'other', issue: 672 }));
+  f.git('add', '-A'); f.git('commit', '-qm', 'wrong contract');
+  assert.match(f.run().stderr, /deleted/, 'a committed marker with another contract does not count');
+
+  // The working tree cannot override the committed blob.
+  await f.write('config/zero-data-reset.json', marker);
+  assert.match(f.run().stderr, /deleted/, 'the validator reads the HEAD blob, not the edited file');
+  f.git('add', '-A'); f.git('commit', '-qm', 'reset marker');
+  const introduced = f.run();
+  assert.equal(introduced.status, 0, introduced.stderr);
+
+  // Once the marker is part of the base, it no longer relaxes anything.
+  f.git('checkout', '-q', 'master'); f.git('merge', '-q', '--ff-only', 'work');
+  f.git('checkout', '-q', '-b', 'later');
+  await f.write('data/candidates/C000002/manifest.json', JSON.stringify(f.batch.manifest));
+  await f.write('data/candidates/C000002/candidates.jsonl', f.batch.candidatesText);
+  f.git('add', '-A'); f.git('commit', '-qm', 'new batch');
+  f.git('checkout', '-q', 'master'); f.git('merge', '-q', '--ff-only', 'later');
+  f.git('checkout', '-q', '-b', 'again');
+  f.git('rm', '-rq', 'data/candidates/C000002');
+  f.git('commit', '-qm', 'delete again');
+  assert.match(f.run().stderr, /deleted/, 'a marker already on the base never excuses a later deletion');
 });
 
 test('loadBaseManifests reads base manifests larger than the 1 MiB default exec buffer', async () => {

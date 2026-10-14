@@ -93,7 +93,6 @@ export function createProductRuntimeAssets({
       const summary = await buildDictionary({
         inputDirectory: canonicalDirectory,
         outputPath,
-        checkPilotCompleteness: true,
         repositoryDirectory: projectRoot,
         allowDirty,
       });

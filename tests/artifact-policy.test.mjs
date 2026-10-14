@@ -10,10 +10,6 @@ import {
   serializeSemanticAuditArtifact,
 } from '../scripts/validate/semantic-audit.mjs';
 import {
-  buildTargetInventory,
-  serializeTargetInventory,
-} from '../scripts/inventory/generate-target-inventory.mjs';
-import {
   ArtifactPolicyError,
   classifyTrackedArtifacts,
   detectProjectionRole,
@@ -22,6 +18,7 @@ import {
 } from '../scripts/validate/artifact-policy.mjs';
 import { parseJsonWithUniqueKeys } from '../scripts/validate/unique-json.mjs';
 import { copyShardedAuthority, readShardedJson } from './helpers/sharded-authority.mjs';
+import { syntheticCanonicalBase } from './helpers/synthetic-canonical-base.mjs';
 import { writeShardedJson } from '../scripts/lib/sharded-json.mjs';
 import { SEMANTIC_DECISION_SOURCE_ARRAYS } from '../scripts/lib/sharded-json-sources.mjs';
 
@@ -121,24 +118,6 @@ function candidateRecordFixture({ multiSense = false, relation = false } = {}) {
     senses,
   };
 }
-
-test('current semantic audit and target inventory are deterministic in-memory projections', async () => {
-  const { artifact } = await buildCanonicalSemanticAudit();
-  const inventory = await buildTargetInventory();
-
-  const source = await readShardedJson('data/validation/canonical-semantic-decision-source.json');
-  assert.equal(artifact.source.canonical_records_sha256, source.source.canonical_records_sha256);
-  assert.equal(artifact.record_count, inventory.canonical_snapshot.record_count);
-  assert.equal(artifact.record_count, inventory.canonical_snapshot.start_count + inventory.canonical_snapshot.reference_only_count);
-  assert.equal(artifact.sense_count, artifact.review.records.reduce((count, record) => count + record.sense_reviews.length, 0));
-  const semanticAuditBytes = serializeSemanticAuditArtifact(artifact);
-  const inventoryBytes = serializeTargetInventory(inventory);
-  const secondAudit = (await buildCanonicalSemanticAudit()).artifact;
-  const secondInventory = await buildTargetInventory();
-  assert.equal(sha256(semanticAuditBytes), sha256(serializeSemanticAuditArtifact(secondAudit)));
-  assert.equal(sha256(inventoryBytes), sha256(serializeTargetInventory(secondInventory)));
-  assert.equal(inventory.canonical_snapshot.reference_only_count, 42);
-});
 
 test('artifact policy classifies projections before they can become tracked data', async () => {
   const policy = await readArtifactPolicy();
@@ -325,47 +304,6 @@ test('artifact policy tracks only the two immutable candidate artifacts per batc
     validateArtifactPolicy({ tracked: ['data/candidates/C000002/raw-corpus.txt'] }),
     (error) => error instanceof ArtifactPolicyError && /not classified as durable evidence/u.test(error.message),
   );
-});
-
-test('Issue #223 retrospective semantic QA uses a registered closed durable artifact contract', async () => {
-  const repositoryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-issue-223-qa-policy-'));
-  const relativePath = 'data/batches/issue-223-b01-b04-semantic-qa.json';
-  const filePath = path.join(repositoryDirectory, relativePath);
-  const value = {
-    schema_version: '1',
-    contract_version: 'issue-223-b01-b04-semantic-qa-v1',
-    kind: 'issue-223-retrospective-semantic-qa',
-    issue: 223,
-    parent_issue: 218,
-    recorded_on: '2026-10-02',
-    policy: 'source-bound AI self-check; preserve completed legacy review results',
-    source_batches: [],
-    legacy_runs: [],
-    legacy_review_results: [],
-    ai_self_checks: [],
-    historical_overlap: {},
-    coverage: {},
-  };
-
-  try {
-    await mkdir(path.dirname(filePath), { recursive: true });
-    await writeFile(filePath, `${JSON.stringify(value)}\n`, 'utf8');
-    await assert.doesNotReject(validateArtifactPolicy({ repositoryDirectory, tracked: [relativePath] }));
-
-    await writeFile(filePath, `${JSON.stringify({ ...value, unregistered_decision: true })}\n`, 'utf8');
-    await assert.rejects(
-      validateArtifactPolicy({ repositoryDirectory, tracked: [relativePath] }),
-      (error) => error instanceof ArtifactPolicyError && error.code === 'DURABLE_EVIDENCE_POLICY_SHAPE',
-    );
-
-    await writeFile(filePath, `${JSON.stringify({ ...value, contract_version: 'issue-223-b01-b04-semantic-qa-v2' })}\n`, 'utf8');
-    await assert.rejects(
-      validateArtifactPolicy({ repositoryDirectory, tracked: [relativePath] }),
-      (error) => error instanceof ArtifactPolicyError && error.code === 'DURABLE_CONTRACT_UNREGISTERED',
-    );
-  } finally {
-    await rm(repositoryDirectory, { recursive: true, force: true });
-  }
 });
 
 test('artifact policy rejects role-shaped projections relocated into a future batch path', async () => {
@@ -648,32 +586,6 @@ test('artifact policy rejects any future v2 batch decision source', async () => 
   }
 });
 
-test('artifact policy grandfathering accepts only the exact historical M5-12A source bytes', async () => {
-  const repositoryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-v2-grandfather-policy-'));
-  const relativePath = 'data/batches/m5-12a-semantic-decisions.json';
-  const filePath = path.join(repositoryDirectory, relativePath);
-  const historicalBytes = await readFile(path.resolve(relativePath));
-
-  try {
-    await mkdir(path.dirname(filePath), { recursive: true });
-    await writeFile(filePath, historicalBytes);
-    await assert.doesNotReject(validateArtifactPolicy({
-      repositoryDirectory,
-      tracked: [relativePath],
-    }));
-
-    const alteredSource = JSON.parse(historicalBytes.toString('utf8'));
-    alteredSource.source_id = 'm5-12a-altered-source';
-    await writeFile(filePath, `${JSON.stringify(alteredSource)}\n`, 'utf8');
-    await assert.rejects(
-      validateArtifactPolicy({ repositoryDirectory, tracked: [relativePath] }),
-      (error) => error instanceof ArtifactPolicyError && error.code === 'DURABLE_CONTRACT_UNREGISTERED',
-    );
-  } finally {
-    await rm(repositoryDirectory, { recursive: true, force: true });
-  }
-});
-
 test('artifact policy closes nested admission and promotion durable containers', async () => {
   const repositoryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-nested-policy-'));
   const cases = [
@@ -904,7 +816,7 @@ test('artifact policy validates sharded decision source rows and keeps shards bo
   const relativePath = 'data/validation/canonical-semantic-decision-source.json';
   const filePath = path.join(repositoryDirectory, relativePath);
   const shardDirectory = 'data/validation/canonical-semantic-decision-source.shards';
-  const source = await readShardedJson(path.resolve(relativePath));
+  const source = await readShardedJson(path.join((await syntheticCanonicalBase()).root, relativePath));
   const rejectsWith = (tracked, code) => assert.rejects(
     validateArtifactPolicy({ repositoryDirectory, tracked }),
     (error) => error.code === code,
@@ -949,7 +861,7 @@ test('artifact policy closes the compact canonical decision source against deriv
   const repositoryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-canonical-source-policy-'));
   const relativePath = 'data/validation/canonical-semantic-decision-source.json';
   const filePath = path.join(repositoryDirectory, relativePath);
-  const source = await readShardedJson(path.resolve('data/validation/canonical-semantic-decision-source.json'));
+  const source = await readShardedJson(path.join((await syntheticCanonicalBase()).root, 'data/validation/canonical-semantic-decision-source.json'));
 
   try {
     await mkdir(path.dirname(filePath), { recursive: true });
@@ -994,7 +906,7 @@ test('artifact policy closes factory admission history and preserved snapshots r
   const repositoryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-factory-ledger-policy-'));
   const relativePath = 'data/validation/canonical-semantic-decision-source.json';
   const filePath = path.join(repositoryDirectory, relativePath);
-  const source = await readShardedJson(path.resolve(relativePath));
+  const source = await readShardedJson(path.join((await syntheticCanonicalBase()).root, relativePath));
   source.factory_admissions = [{
     batch_id: 'C999999', attempt: 1, semantic_decisions_sha256: 'a'.repeat(64),
     entries: [{ source_candidate_id: 'C999999-0001', record_id: 'w1001', sense_ids: ['w1001-s2'] }],

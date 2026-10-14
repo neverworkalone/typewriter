@@ -15,24 +15,23 @@ const REPOSITORY_DIRECTORY = path.resolve(
 );
 const PILOT_DIRECTORY = path.join(
   REPOSITORY_DIRECTORY,
-  'data/batches/m5-10a-wave-a-base-canonical',
+  'tests/fixtures/canonical-sample',
 );
 const FIXTURE_DIRECTORY = path.join(
   REPOSITORY_DIRECTORY,
   'tests/fixtures/dataset-integrity',
 );
 
-test('validates the pilot dataset counts and current completeness regression', async () => {
+test('validates the sample dataset counts', async () => {
   assert.deepEqual(
     await validateDatasetDirectory(PILOT_DIRECTORY, {
-      checkPilotCompleteness: true,
     }),
     {
-      fileCount: 6,
-      recordCount: 620,
-      senseCount: 743,
-      relationCount: 467,
-      candidateCount: 578,
+      fileCount: 1,
+      recordCount: 6,
+      senseCount: 7,
+      relationCount: 3,
+      candidateCount: 5,
     },
   );
 });

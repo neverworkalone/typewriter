@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { copyFile, mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -605,27 +605,29 @@ test('Stage 1 reapplies the digest-bound corpus exclusion set after provider alt
   const root = await mkdtemp(path.join(tmpdir(), 'factory-ensemble-exclusion-'));
   try {
     const cache = await cacheForTask(root);
+    // A genuine exhausted zero-row batch, produced by the real Stage 1 path: the empty candidates source and its companion manifest.
+    await writeFile(path.join(cache.taskDirectory, 'candidate-evidence.json'), JSON.stringify(evidenceDoc([cand('없다', 'adjective', [h('d1', '없는')])])));
+    const exhaustedRun = await runStage1(['--evidence', cache.evidenceArgument, '--task-id', 'T000001', '--base-ref', 'none'], {
+      root, cachePaths: cache.cachePaths, providers: triple({}), permission: async () => {}, log: () => {},
+      selectPage: async () => ({ ...evidenceDoc([]), selection: { exhaustion: { contract: 'corpus-selector-exhaustion-v1', remaining_lemma_count: 0 } } }),
+    });
+    const exhaustedBatchId = exhaustedRun.manifest.batch_id;
     const sourcePath = 'data/reference/production/stage1-409/c18/exclude-lemma-source.json';
-    const candidatePath = 'data/candidates/C000083/candidates.jsonl';
-    const companionManifestPath = 'data/candidates/C000083/manifest.json';
+    const candidatePath = `data/candidates/${exhaustedBatchId}/candidates.jsonl`;
+    const companionManifestPath = `data/candidates/${exhaustedBatchId}/manifest.json`;
     const forgedCandidatePath = 'data/reference/production/stage1-409/c18/forged-empty-source/candidates.jsonl';
     const forgedCompanionPath = 'data/reference/production/stage1-409/c18/forged-empty-source/manifest.json';
     const sourceBytes = Buffer.from(JSON.stringify({ candidate_records: [{ lemma: '걷다' }] }));
     await mkdir(path.dirname(path.join(root, sourcePath)), { recursive: true });
-    await mkdir(path.dirname(path.join(root, candidatePath)), { recursive: true });
     await mkdir(path.dirname(path.join(root, forgedCandidatePath)), { recursive: true });
     await writeFile(path.join(root, sourcePath), sourceBytes);
-    await copyFile(new URL('../data/candidates/C000083/candidates.jsonl', import.meta.url), path.join(root, candidatePath));
-    await copyFile(new URL('../data/candidates/C000083/manifest.json', import.meta.url), path.join(root, companionManifestPath));
-    await copyFile(new URL('../data/candidates/C000083/stage1-decisions.json', import.meta.url),
-      path.join(root, 'data/candidates/C000083/stage1-decisions.json'));
-    await copyFile(new URL('../data/candidates/C000083/candidates.jsonl', import.meta.url), path.join(root, forgedCandidatePath));
+    await writeFile(path.join(root, forgedCandidatePath), '');
     await writeFile(path.join(root, forgedCompanionPath), JSON.stringify({
       contract: 'lexical-factory-candidate-manifest-v3', status: 'exhausted', candidate_count: 1,
       production: { exhausted: true }, candidates_sha256: sha256Hex(Buffer.alloc(0)),
     }));
     execFileSync('git', ['init', '-q'], { cwd: root });
-    execFileSync('git', ['add', sourcePath, 'data/candidates/C000083', forgedCandidatePath, forgedCompanionPath], { cwd: root });
+    execFileSync('git', ['add', sourcePath, `data/candidates/${exhaustedBatchId}`, 'data/candidate-trash', forgedCandidatePath, forgedCompanionPath], { cwd: root });
     execFileSync('git', ['-c', 'user.name=Factory test', '-c', 'user.email=factory-test@example.invalid',
       'commit', '-q', '-m', 'Add trusted text-free exclusion source'], { cwd: root });
     const exclusionManifest = await buildExclusionManifest([
@@ -738,7 +740,7 @@ test('Stage 1 reapplies the digest-bound corpus exclusion set after provider alt
     )));
     await writeFile(persistedManifestPath, JSON.stringify(mismatchedCompanion) + '\n');
     assert.match((await validateFactoryRepository({ root, base: trustedBase })).join('\n'),
-      /source exclusion artifact data\/candidates\/C000083\/manifest\.json digest differs from the trusted base snapshot/u,
+      new RegExp(`source exclusion artifact data/candidates/${exhaustedBatchId}/manifest\\.json digest differs from the trusted base snapshot`, 'u'),
       'rehashing a mismatched companion manifest cannot make an empty candidate source trustworthy');
     const forged = JSON.parse(originalPersistedManifestText);
     const forgedSourceArtifacts = [{ path: 'data/reference/nonexistent-source.json', sha256: '0'.repeat(64) }];

@@ -664,44 +664,10 @@ test('only a genuine Stage 2 tracking Issue is prior-issue evidence; a bare clai
   assert.equal(prior.refs.has(claimRef), true);
 });
 
-test('the production Git adapter and snapshot loader accept the committed relation backfill packets and still fail closed on a missing or altered one', async () => {
-  // A semantic-authority backfill event is bound to its committed packet file (#446). The real tracked data goes through the
-  // real `createGitRepository` adapter, so a path the adapter does not list (or the loader does not stage) is caught here.
-  const root = new URL('..', import.meta.url).pathname;
-  const git = createGitRepository({ root });
-  const packets = git.listFiles('HEAD').filter((file) => /^data\/relation-backfill\/R\d{6}\.json$/u.test(file));
-  assert.ok(packets.length >= 1, 'the production adapter lists the committed relation backfill packets');
-  const stage2Reads = [];
-  const queueSnapshot = await loadStage2QueueSnapshot({
-    git: { ...git, show: (ref, file) => { stage2Reads.push(file); return git.show(ref, file); } },
-    headSha: 'HEAD',
-  });
-  assert.equal(queueSnapshot.selectionReady, true);
-  assert.ok(stage2Reads.length > 0);
-  assert.ok(stage2Reads.every((file) => file.startsWith('data/candidates/') || file.startsWith('data/reviews/')));
-  assert.ok(stage2Reads.every((file) => file.endsWith('/manifest.json')));
-
-  const snapshot = await loadFactorySnapshot({ git, headSha: 'HEAD' });
-  assert.equal(snapshot.validated, true);
-  // The batched reader must stay interposable: every wrapper reroutes both `show` and `showMany` through its own read.
-  const interposed = (show) => ({ ...git, show, showMany: (ref, files) => new Map(files.map((file) => [file, show(ref, file)])) });
-  const metadataOnly = interposed((ref, file) => {
-    assert.equal(file.startsWith('data/candidate-trash/'), false, 'trash is outside Stage 2/3 snapshots');
-    return git.show(ref, file);
-  });
-  assert.equal((await loadFactorySnapshot({ git: metadataOnly, headSha: 'HEAD' })).validated, true);
-
-  const withoutPacket = { ...git, listFiles: (ref) => git.listFiles(ref).filter((file) => file !== packets[0]) };
-  await assert.rejects(loadFactorySnapshot({ git: withoutPacket, headSha: 'HEAD' }), /has no committed packet file/u);
-
-  const alteredPacket = interposed((ref, file) => (file === packets[0] ? git.show(ref, file) + ' ' : git.show(ref, file)));
-  await assert.rejects(loadFactorySnapshot({ git: alteredPacket, headSha: 'HEAD' }), /does not match its semantic authority event digest/u);
-});
-
 test('the batched blob reader returns exactly what git show returns and fails closed on a missing path', () => {
   const root = new URL('..', import.meta.url).pathname;
   const git = createGitRepository({ root });
-  const files = git.listFiles('HEAD').filter((file) => /^data\/(?:canonical|reviews)\//u.test(file)).slice(0, 12);
+  const files = git.listFiles('HEAD').filter((file) => file.startsWith('data/')).slice(0, 12);
   assert.ok(files.length > 1);
   const many = git.showMany('HEAD', files);
   assert.deepEqual([...many.keys()], files);

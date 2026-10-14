@@ -35,6 +35,7 @@ import {
 } from '../scripts/ci/deep-gate.mjs';
 import NORMAL_COVERAGE from '../scripts/ci/deep-gate-coverage.json' with { type: 'json' };
 import { chunkText, mergeUnresolved, validateTrashChunk } from '../scripts/factory/permanent-trash.mjs';
+import { sampleCanonicalRecordLine, syntheticRelationPacket } from './helpers/synthetic-data.mjs';
 const TEST_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 
 test('real Git classification reads large routine files and preserves fail-closed routing', async (t) => {
@@ -57,10 +58,9 @@ test('real Git classification reads large routine files and preserves fail-close
   const inventoryPath = 'data/inventory/large-fixture.json';
   const largeJson = JSON.stringify({ observations: ['x'.repeat(2 * 1024 * 1024)] });
   const packetPath = 'data/relation-backfill/R999999.json';
-  const packet = JSON.parse(await readFile(path.resolve(TEST_DIRECTORY, '../data/relation-backfill/R000004.json'), 'utf8'));
-  packet.packet_id = 'R999999';
+  const packet = syntheticRelationPacket('R999999');
   const canonicalPath = 'data/canonical/large-fixture.jsonl';
-  const record = (await readFile(path.resolve(TEST_DIRECTORY, '../data/canonical/pilot.jsonl'), 'utf8')).split('\n')[0];
+  const record = sampleCanonicalRecordLine();
   const canonical = `${record}\n`.repeat(Math.ceil(2 * 1024 * 1024 / Buffer.byteLength(record)));
   let scenarioCount = 0;
   const classify = async (files) => {
@@ -427,18 +427,6 @@ test('current-canonical surface-form gate runs in-process on the shared projecti
   assert.equal(checks[projectionIndex].command({}).executable, '[in-process]');
 });
 
-test('normal canonical CI verifies the frozen M6-4 snapshot without a second full audit build', () => {
-  const checks = CI_CATEGORIES.canonical.checks;
-  const snapshotCheck = checks.find((check) => check.inProcess === 'm6-4-frozen-snapshot');
-
-  assert.ok(snapshotCheck);
-  assert.equal(snapshotCheck.command({}).executable, '[in-process]');
-  assert.equal(
-    checks.some((check) => check.command({}).args?.includes('audit:m6-4')),
-    false,
-  );
-});
-
 test('CI levels are nested and deep owns the scale benchmark', async () => {
   assert.deepEqual(
     CI_NORMAL_CATEGORY_ORDER.slice(0, CI_FAST_CATEGORY_ORDER.length),
@@ -474,16 +462,8 @@ test('CI levels are nested and deep owns the scale benchmark', async () => {
   const allLevelChecks = selectChecksForPolicy(allChecks, CI_LEVEL_EXECUTION_POLICY.all);
   assert.ok(allLevelChecks.every((check) => ['normal', 'deep'].includes(check.tier)));
   assert.equal(
-    CI_CATEGORIES.batch.checks.find((check) => check.label === 'Test shared batch workflow').tier,
+    CI_CATEGORIES.batch.checks.find((check) => check.label === 'Test lexical production state').tier,
     'normal',
-  );
-  assert.equal(
-    CI_CATEGORIES.batch.checks.some((check) => check.testFiles?.includes('tests/m5-12a.test.mjs')),
-    false,
-  );
-  assert.equal(
-    CI_CATEGORIES.deep.checks.some((check) => check.testFiles?.includes('tests/m5-12a.test.mjs')),
-    false,
   );
   assert.equal(CI_NORMAL_CATEGORY_ORDER.includes('product'), true);
   assert.equal(CI_CATEGORIES.factory.checks.length, 2);
@@ -646,7 +626,7 @@ test('Deep gate separates validated data from affected contracts and fails close
   const deepCheckIds = (result) => result.selectedDeepChecks ?? [];
   const benchmarkId = 'deep/Run 100K/500K/1M release-shaped performance and scale benchmark';
   const relationId = 'batch/Test Issue #400/#446 relation enrichment pilot contract, backfill queue and canonical apply';
-  const targetInventoryId = 'canonical/Test target inventory';
+  const artifactPolicyId = 'artifacts/Test artifact policy';
 
   for (const pathValue of [
     '.github/workflows/deep.yml',
@@ -673,7 +653,7 @@ test('Deep gate separates validated data from affected contracts and fails close
     assert.deepEqual(deepCheckIds(classifyDeepGatePaths([pathValue])), [benchmarkId], pathValue);
   }
   assert.deepEqual(deepCheckIds(classifyDeepGatePaths(['config/ci-level-evidence.json'])), [benchmarkId]);
-  assert.deepEqual(deepCheckIds(classifyDeepGatePaths(['tests/target-inventory.test.mjs'])), [targetInventoryId]);
+  assert.deepEqual(deepCheckIds(classifyDeepGatePaths(['tests/artifact-policy.test.mjs'])), [artifactPolicyId]);
   assert.deepEqual(deepCheckIds(classifyDeepGatePaths(['scripts/relation/backfill-apply.test.mjs'])), [relationId]);
   assert.deepEqual(
     deepCheckIds(classifyDeepGatePaths(['schema/canonical-record.schema.json'])).sort(),
@@ -695,7 +675,6 @@ test('Deep gate separates validated data from affected contracts and fails close
     'web/src/App.vue',
     'public/favicon.ico',
     'tests/normalize-canonical.test.mjs',
-    'tests/issue-219-search.test.mjs',
   ]) {
     assert.equal(classifyDeepGatePaths([pathValue]).deepMode, 'none', pathValue);
   }
@@ -729,9 +708,8 @@ test('Deep gate separates validated data from affected contracts and fails close
     'full',
   );
 
-  const canonicalPath = 'data/canonical/pilot.jsonl';
-  const canonicalFile = await readFile(path.resolve(TEST_DIRECTORY, '../', canonicalPath), 'utf8');
-  const originalRecord = JSON.parse(canonicalFile.split('\n')[0]);
+  const canonicalPath = 'data/canonical/sample.jsonl';
+  const originalRecord = JSON.parse(sampleCanonicalRecordLine());
   const changedRecord = { ...originalRecord, lemma: `${originalRecord.lemma}확인` };
   const canonicalRunGit = (nextRecord) => (args) => {
     if (args[0] === 'diff' && args.includes('--name-only')) return Buffer.from(`${canonicalPath}\0`);
@@ -750,8 +728,7 @@ test('Deep gate separates validated data from affected contracts and fails close
   assert.equal(malformedCanonical.reason, 'routine-data-validation-failed');
 
   const packetPath = 'data/relation-backfill/R999999.json';
-  const packet = JSON.parse(await readFile(path.resolve(TEST_DIRECTORY, '../data/relation-backfill/R000004.json'), 'utf8'));
-  packet.packet_id = 'R999999';
+  const packet = syntheticRelationPacket('R999999');
   const packetRunGit = (value) => (args) => {
     if (args[0] === 'diff' && args.includes('--name-only')) return Buffer.from(`${packetPath}\0`);
     if (args[0] === 'show') return Buffer.from(JSON.stringify(value));
@@ -828,7 +805,7 @@ test('Deep gate separates validated data from affected contracts and fails close
   ));
   assert.ok(normalSemanticAuthorityTest, 'Normal must retain semantic-authority regressions');
   const allDeep = selectChecksForPolicy(allChecks, CI_LEVEL_EXECUTION_POLICY.all).filter((check) => check.tier === 'deep');
-  assert.equal(allDeep.length, 8, 'scheduled/manual ci:all keeps all current-system Deep checks');
+  assert.equal(allDeep.length, 7, 'scheduled/manual ci:all keeps all current-system Deep checks');
   const affectedBenchmarkChecks = selectChecksForPolicy(allChecks, {
     tiers: ['deep'],
     changedPaths: ['scripts/benchmark/sqlite-runtime.mjs'],

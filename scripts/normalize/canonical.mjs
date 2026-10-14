@@ -73,7 +73,6 @@ export function normalizeRecords(recordInfosOrRecords) {
 export async function normalizeCanonicalDirectory(
   directory = DEFAULT_CANONICAL_DIRECTORY,
   {
-    checkPilotCompleteness = false,
     canonicalContext,
     semanticAudit,
   } = {},
@@ -89,7 +88,6 @@ export async function normalizeCanonicalDirectory(
       })).artifact
       : undefined);
   validateDatasetRecords(context.records, {
-    checkPilotCompleteness,
     context,
     semanticAudit: effectiveSemanticAudit,
     requireSemanticAudit,
@@ -100,7 +98,6 @@ export async function normalizeCanonicalDirectory(
 
 export async function main() {
   const model = await normalizeCanonicalDirectory(DEFAULT_CANONICAL_DIRECTORY, {
-    checkPilotCompleteness: !process.argv.includes('--no-pilot-regression'),
   });
   const senseCount = model.records.reduce(
     (count, record) => count + record.senses.length,

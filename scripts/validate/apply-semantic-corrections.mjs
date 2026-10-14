@@ -627,7 +627,6 @@ function validateCorrectionWithLiveProducer({
       sourcePath: `${sourcePrefix}:admission`,
     },
     productionPayloads,
-    checkPilotCompleteness: true,
     candidateLabel: 'semantic correction candidate records',
     reviewedLabel: 'semantic correction reviewed records',
     prospectiveLabel: 'semantic correction prospective canonical records',
@@ -959,7 +958,6 @@ export async function applyCorrections({
     });
     const semanticAudit = await readSemanticAuditArtifact(temporaryAuditOutputPath);
     await validateDatasetDirectory(temporaryCanonicalDirectory, {
-      checkPilotCompleteness: true,
       requireSemanticAudit: true,
       semanticAudit,
       semanticAuditPath: temporaryAuditOutputPath,

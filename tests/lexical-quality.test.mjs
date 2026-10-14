@@ -193,7 +193,6 @@ test('the shared audit covers the complete current canonical dictionary', async 
   const { readCanonicalRecords } = await import('../scripts/validate/canonical-jsonl.mjs');
   const canonical = await readCanonicalRecords(path.resolve('data/canonical'));
   const result = await validateDatasetDirectory(path.resolve('data/canonical'), {
-    checkPilotCompleteness: true,
   });
   const expectedSenseCount = canonical.records.reduce(
     (sum, recordInfo) => sum + recordInfo.record.senses.length,

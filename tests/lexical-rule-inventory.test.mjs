@@ -30,12 +30,10 @@ async function validateMutation(mutator) {
 test('lexical rule inventory covers every classification and shared owner', async () => {
   const summary = await validateLexicalRuleInventory();
 
-  assert.ok(summary.ruleCount >= 20);
+  assert.ok(summary.ruleCount >= 10);
   for (const classification of [
     'dictionary-wide invariant',
     'admission invariant',
-    'batch policy',
-    'historical assertion',
     'obsolete/duplicate',
   ]) {
     assert.ok(summary.classificationCounts[classification] > 0, classification);
@@ -61,7 +59,7 @@ test('lexical rule inventory rejects duplicate IDs and missing implementation fi
 test('lexical rule inventory rejects local quality forks and bypass declarations', async () => {
   await assert.rejects(
     validateMutation((inventory) => {
-      inventory.rules[0].implementation.path = 'scripts/batch/validate-m5-11-admission.mjs';
+      inventory.rules[0].implementation.path = 'scripts/ci/registry.mjs';
     }),
     (error) => error instanceof RuleInventoryError && error.code === 'NON_SHARED_IMPLEMENTATION',
   );

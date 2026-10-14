@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import test from 'node:test';
 
 import { createKhaiiiAnalyzer, createKhaiiiProvider, KHAIII_RUNTIMES, NATIVE_RELEASE, PINNED_KHAIII, assertPinnedKhaiii, defaultNativeRoot,
@@ -10,8 +10,6 @@ import { PROVIDER_REGISTRY } from '../scripts/factory/produce-candidates.mjs';
 import { FILLER, HEX, cand, fillerTable, holdsOf, item, khaiii, kiwi, produce, realSmoke, rowOf, unresolvedOf } from './support/khaiii-fixtures.mjs';
 import { analysisInputDigest } from '../scripts/intake/pipeline.mjs';
 
-// Normal CI runs this file only. It never probes, runs or builds Docker; the Docker runtime is
-// covered by the manual tests/manual/khaiii-docker.test.mjs (npm run test:khaiii:docker).
 
 test('Khaiii service regressions (synthetic Khaiii API; not proof the official binary ran)', () => {
   const result = spawnSync(process.env.TYPEWRITER_PYTHON || 'python3', ['scripts/factory/test_khaiii_service.py'], { encoding: 'utf8', env: { ...process.env, PYTHONDONTWRITEBYTECODE: '1' } });
@@ -29,9 +27,6 @@ test('provider declares honest best-only capabilities and a pinned, reproducible
   }
   const native = createKhaiiiProvider({ analyze: async () => ({}), runtime: 'native' }).identity.config;
   assert.deepEqual([native.archive_sha256, native.library_digest, native.fork_commit], [NATIVE_RELEASE.archive_sha256, NATIVE_RELEASE.library_digest, NATIVE_RELEASE.fork_commit]);
-  // Runtime and binary identity are part of the digest: native and docker never share one.
-  assert.notEqual(providerIdentityDigest(createKhaiiiProvider({ analyze: async () => ({}), runtime: 'native' }).identity),
-    providerIdentityDigest(createKhaiiiProvider({ analyze: async () => ({}), runtime: 'docker' }).identity));
 });
 
 test('metadata drift (version, source, resource bundle, binary, runtime) fails closed per runtime', () => {
@@ -42,31 +37,27 @@ test('metadata drift (version, source, resource bundle, binary, runtime) fails c
       assert.throws(() => assertPinnedKhaiii({ ...pinnedMetadata(runtime), ...patch }, runtime), /does not match pinned/);
     }
   }
-  assert.throws(() => assertPinnedKhaiii(pinnedMetadata('docker'), 'native'), /does not match pinned/, 'a container result cannot pass as the native runtime');
-  assert.throws(() => assertPinnedKhaiii(pinnedMetadata('native'), 'docker'), /does not match pinned/);
+  assert.throws(() => assertPinnedKhaiii(pinnedMetadata('native'), 'docker'), /unknown Khaiii runtime/);
   assert.throws(() => assertPinnedKhaiii(undefined), /required/);
 });
 
-test('runtime selection: native is the only default on every host; docker only when explicitly requested', () => {
+test('runtime selection: native is the only runtime', () => {
   assert.equal(resolveKhaiiiRuntime({ env: {} }), 'native');
   assert.equal(resolveKhaiiiRuntime({ env: { TYPEWRITER_KHAIII_RUNTIME: '' } }), 'native');
-  assert.equal(resolveKhaiiiRuntime({ env: { TYPEWRITER_KHAIII_RUNTIME: 'docker' } }), 'docker');
   assert.equal(resolveKhaiiiRuntime({ env: { TYPEWRITER_KHAIII_RUNTIME: 'native' } }), 'native');
-  assert.throws(() => resolveKhaiiiRuntime({ env: { TYPEWRITER_KHAIII_RUNTIME: 'podman' } }), /native\|docker/);
-  // A host without the native release (e.g. Linux) must opt in to docker; it is never chosen implicitly.
-  assert.throws(() => createKhaiiiProvider({ runtime: resolveKhaiiiRuntime({ env: {} }), platform: 'linux', arch: 'x64' }), /macOS arm64 only.*TYPEWRITER_KHAIII_RUNTIME=docker/u);
-  assert.doesNotThrow(() => createKhaiiiProvider({ runtime: resolveKhaiiiRuntime({ env: { TYPEWRITER_KHAIII_RUNTIME: 'docker' } }), platform: 'linux', arch: 'x64' }));
+  assert.throws(() => resolveKhaiiiRuntime({ env: { TYPEWRITER_KHAIII_RUNTIME: 'docker' } }), /must be one of native/);
+  assert.throws(() => createKhaiiiProvider({ runtime: resolveKhaiiiRuntime({ env: {} }), platform: 'linux', arch: 'x64' }), /macOS arm64 only/u);
 });
 
-test('native failure is reported, never silently switched to docker', async () => {
-  const missing = createKhaiiiAnalyzer({ runtime: 'native', nativeRoot: '/nonexistent/khaiii', platform: 'darwin', arch: 'arm64', docker: '/nonexistent/docker-must-not-run' });
-  await assert.rejects(() => missing([{ id: 'a', text: '먹었다' }]), /native release not found.*Not falling back to docker/u);
-  assert.throws(() => createKhaiiiAnalyzer({ runtime: 'native', platform: 'linux', arch: 'x64' }), /macOS arm64 only.*TYPEWRITER_KHAIII_RUNTIME=docker/u);
+test('native failure is reported', async () => {
+  const missing = createKhaiiiAnalyzer({ runtime: 'native', nativeRoot: '/nonexistent/khaiii', platform: 'darwin', arch: 'arm64' });
+  await assert.rejects(() => missing([{ id: 'a', text: '먹었다' }]), /native release not found/u);
+  assert.throws(() => createKhaiiiAnalyzer({ runtime: 'native', platform: 'linux', arch: 'x64' }), /macOS arm64 only/u);
   assert.equal(defaultNativeRoot('/c'), `/c/${NATIVE_RELEASE.tag}/${NATIVE_RELEASE.directory}`);
 });
 
 test('kiwi alone never constructs or runs Khaiii (lazy registry)', async () => {
-  // The registry entry is a factory: nothing is constructed (and no container started) unless listed.
+  // The registry entry is a factory: nothing is constructed unless listed.
   assert.equal(typeof PROVIDER_REGISTRY.khaiii, 'function');
   let started = 0;
   const original = PROVIDER_REGISTRY.khaiii;
@@ -109,8 +100,8 @@ test('Khaiii that explains only part of a surface keeps the shared lemma_mismatc
 });
 
 test('Khaiii failure is isolated to a closed run and metadata change alters the analyzer digest', async () => {
-  const down = { ...khaiii({}), analyze: async () => { throw new Error('docker unavailable'); } };
-  await assert.rejects(() => produce([FILLER, cand('낯설다', 'adjective', '낯선')], [kiwi(fillerTable), down]), /khaiii failed closed: docker unavailable/);
+  const down = { ...khaiii({}), analyze: async () => { throw new Error('khaiii unavailable'); } };
+  await assert.rejects(() => produce([FILLER, cand('낯설다', 'adjective', '낯선')], [kiwi(fillerTable), down]), /khaiii failed closed: khaiii unavailable/);
   const run = (providers) => produce([FILLER, cand('낯설다', 'adjective', '낯선')], providers);
   const base = await run([kiwi(fillerTable), khaiii({ 낯선: [[item('낯설다', 'adjective')]] })]);
   const again = await run([kiwi(fillerTable), khaiii({ 낯선: [[item('낯설다', 'adjective')]] })]);
@@ -134,20 +125,3 @@ const nativeSkip = process.platform === 'darwin' && process.arch === 'arm64' && 
   : `native Khaiii release not available on ${process.platform}/${process.arch} at ${nativeRoot} (run scripts/factory/fetch-khaiii-native.mjs on macOS arm64); native real-binary evidence not produced here`;
 
 test('REAL pinned Khaiii v0.4 native macOS arm64 release smoke', { skip: nativeSkip }, () => realSmoke('native', { nativeRoot }));
-
-// Patterns are assembled from fragments so this file does not match itself.
-const forbidden = new RegExp(['image\\W+inspect', 'spawnSync\\(\\s*dock' + 'er', 'DEFAULT_KHAIII' + '_IMAGE', 'TYPEWRITER' + '_DOCKER'].join('|'), 'u');
-
-test('normal CI never discovers, probes or runs the Docker runtime', () => {
-  const registry = readFileSync('scripts/ci/registry.mjs', 'utf8');
-  const scripts = JSON.parse(readFileSync('package.json', 'utf8')).scripts;
-  assert.ok(!registry.includes('manual/khaiii-docker'), 'the manual Docker test is not registered in any CI category');
-  for (const [name, command] of Object.entries(scripts)) {
-    if (name.startsWith('ci:') || name === 'test' || name.startsWith('test:unit')) assert.ok(!command.includes('manual/khaiii-docker'), `${name} must not run the Docker test`);
-  }
-  assert.equal(scripts['test:khaiii:docker'], 'node --test tests/manual/khaiii-docker.test.mjs');
-  for (const file of ['tests/factory-khaiii-provider.test.mjs', 'tests/support/khaiii-fixtures.mjs']) {
-    const source = readFileSync(file, 'utf8');
-    assert.ok(!forbidden.test(source), `${file} must not touch the Docker CLI or image`);
-  }
-});

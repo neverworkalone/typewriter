@@ -48,7 +48,6 @@ export async function prepareCurrentRevisionDatabases({
   temporaryDirectory,
   repositoryDirectory,
   independentBuilds = 2,
-  checkPilotCompleteness = false,
   sharedDatabasePath = process.env.TYPEWRITER_SHARED_DICTIONARY_PATH,
   // 'throw' (default) fails closed when the shared artifact is for another
   // revision; 'build' is only for runs whose subject is a different canonical.
@@ -76,7 +75,6 @@ export async function prepareCurrentRevisionDatabases({
     await build({
       inputDirectory: DEFAULT_CANONICAL_DIRECTORY,
       outputPath,
-      checkPilotCompleteness,
       allowDirty: true,
       repositoryDirectory,
     });
@@ -110,7 +108,6 @@ export async function openCurrentRevisionDatabasePath({
     temporaryDirectory: outputDirectory,
     repositoryDirectory,
     independentBuilds: 1,
-    checkPilotCompleteness: true,
     onRevisionMismatch: targetsOtherCanonical ? 'build' : 'throw',
   });
   if (reusedSharedArtifact) {

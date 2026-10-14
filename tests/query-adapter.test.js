@@ -10,8 +10,6 @@ import {
   ERROR_CODES,
   REQUEST_METHODS,
 } from '../src/runtime/protocol.js';
-import searchRegressionCorpus from './fixtures/search-regressions/m4-baseline.json';
-import { expectedBrowserQueries } from './helpers/search-regressions.js';
 
 class FakeWorker {
   constructor(handler) {
@@ -69,9 +67,13 @@ describe('DictionaryRuntime', () => {
     );
   });
 
-  it('reuses the shared baseline corpus for exact browser query requests', async () => {
+  it('forwards exact browser query requests and returns their results', async () => {
     let worker;
-    const baselineQueries = expectedBrowserQueries(searchRegressionCorpus);
+    const baselineQueries = [
+      { query: '기쁨', result_ids: ['w001'] },
+      { query: '웃음', result_ids: ['w002'] },
+      { query: '없는말', result_ids: [] },
+    ];
     const resultsByQuery = new Map(
       baselineQueries.map(({ query, result_ids }) => [
         query,

@@ -91,21 +91,7 @@ export const DEFAULT_SEMANTIC_DECISION_SOURCE_PATH = path.resolve(
   SCRIPT_DIRECTORY,
   '../../data/validation/canonical-semantic-decision-source.json',
 );
-export const DEFAULT_AUTHORED_BATCH_DECISION_SOURCE_PATHS = Object.freeze([
-  path.resolve(SCRIPT_DIRECTORY, '../../data/batches/m5-12a-semantic-decisions.json'),
-  path.resolve(SCRIPT_DIRECTORY, '../../data/batches/m5-13-semantic-decisions.json'),
-  path.resolve(SCRIPT_DIRECTORY, '../../data/batches/m5-14-semantic-decisions.json'),
-  path.resolve(SCRIPT_DIRECTORY, '../../data/batches/m5-15-semantic-decisions.json'),
-  path.resolve(SCRIPT_DIRECTORY, '../../data/batches/issue-204-semantic-decisions.json'),
-  path.resolve(SCRIPT_DIRECTORY, '../../data/batches/issue-211-semantic-decisions.json'),
-  path.resolve(SCRIPT_DIRECTORY, '../../data/batches/issue-219-m9-a-semantic-decisions.json'),
-  path.resolve(SCRIPT_DIRECTORY, '../../data/batches/issue-220-m9-b-batch-01-semantic-decisions.json'),
-  path.resolve(SCRIPT_DIRECTORY, '../../data/batches/issue-220-m9-b-batch-02-semantic-decisions.json'),
-  path.resolve(SCRIPT_DIRECTORY, '../../data/batches/issue-221-corpus-semantic-decisions.json'),
-  path.resolve(SCRIPT_DIRECTORY, '../../data/batches/issue-222-m9-d-corpus-batch-01-semantic-decisions.json'),
-  path.resolve(SCRIPT_DIRECTORY, '../../data/batches/issue-222-m9-d-corpus-batch-02-semantic-decisions.json'),
-  path.resolve(SCRIPT_DIRECTORY, '../../data/batches/issue-222-m9-d-historical-semantic-decisions.json'),
-]);
+export const DEFAULT_AUTHORED_BATCH_DECISION_SOURCE_PATHS = Object.freeze([]);
 const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
 
 export class SemanticAuditError extends Error {
@@ -704,18 +690,14 @@ function sha256Bytes(bytes) {
  */
 async function resolveAuthoredBatchDecisionSourcePaths() {
   const batchDirectory = path.resolve(REPOSITORY_DIRECTORY, 'data/batches');
-  const names = (await readdir(batchDirectory))
+  const names = await readdir(batchDirectory).catch((error) => {
+    if (error.code === 'ENOENT') return [];
+    throw error;
+  });
+  return names
     .filter((name) => /^issue-(?:222-m9-d-corpus|223-m9-e-(?:corpus|historical))-batch-\d+-semantic-decisions\.json$/u.test(name))
-    .sort((left, right) => left.localeCompare(right, 'en'));
-  const corpusPaths = names.map((name) => path.join(batchDirectory, name));
-  const fixed = DEFAULT_AUTHORED_BATCH_DECISION_SOURCE_PATHS.filter((sourcePath) => (
-    !/^issue-(?:222-m9-d-corpus|223-m9-e-(?:corpus|historical))-batch-\d+-semantic-decisions\.json$/u.test(path.basename(sourcePath))
-      && !/^issue-222-m9-d-historical-semantic-decisions\.json$/u.test(path.basename(sourcePath))
-  ));
-  const historical = DEFAULT_AUTHORED_BATCH_DECISION_SOURCE_PATHS.filter((sourcePath) => (
-    /^issue-222-m9-d-historical-semantic-decisions\.json$/u.test(path.basename(sourcePath))
-  ));
-  return [...fixed, ...corpusPaths, ...historical];
+    .sort((left, right) => left.localeCompare(right, 'en'))
+    .map((name) => path.join(batchDirectory, name));
 }
 
 export async function readAuthoredBatchDecisionSources(sourcePaths) {

@@ -12,7 +12,7 @@ import {
 import { normalizeCanonicalDirectory } from '../scripts/normalize/canonical.mjs';
 
 const PILOT_DIRECTORY = path.resolve(
-  'data/batches/m5-10a-wave-a-base-canonical',
+  'tests/fixtures/canonical-sample',
 );
 
 test('runs the complete M2 pipeline and compares canonical rows to SQLite', async () => {
@@ -21,15 +21,15 @@ test('runs the complete M2 pipeline and compares canonical rows to SQLite', asyn
     allowDirty: true,
   });
 
-  assert.equal(summary.fileCount, 6);
-  assert.equal(summary.recordCount, 620);
-  assert.equal(summary.startCount, 578);
-  assert.equal(summary.referenceOnlyCount, 42);
-  assert.equal(summary.candidateCount, 578);
-  assert.equal(summary.searchFormCount, 696);
-  assert.equal(summary.senseCount, 743);
-  assert.equal(summary.relationCount, 467);
-  assert.equal(summary.expressionCount, 39);
+  assert.equal(summary.fileCount, 1);
+  assert.equal(summary.recordCount, 6);
+  assert.equal(summary.startCount, 5);
+  assert.equal(summary.referenceOnlyCount, 1);
+  assert.equal(summary.candidateCount, 5);
+  assert.equal(summary.searchFormCount, 7);
+  assert.equal(summary.senseCount, 7);
+  assert.equal(summary.relationCount, 3);
+  assert.equal(summary.expressionCount, 1);
   assert.equal(summary.databaseBuilds, 2);
   assert.equal(summary.normalizationVersion, '1');
   assert.ok(['clean', 'dirty-allowed'].includes(summary.worktreeState));
@@ -38,22 +38,21 @@ test('runs the complete M2 pipeline and compares canonical rows to SQLite', asyn
 test('rejects normalized semantic-field drift before SQLite comparison', async () => {
   const canonical = await readCanonicalRecords(PILOT_DIRECTORY);
   const model = await normalizeCanonicalDirectory(PILOT_DIRECTORY, {
-    checkPilotCompleteness: true,
   });
   const mutations = [
     (candidate) => {
-      candidate.records.find((record) => record.id === 'w026').lemma = '변경된 표제어';
+      candidate.records.find((record) => record.id === 'w001').lemma = '변경된 표제어';
     },
     (candidate) => {
       candidate.records
-        .find((record) => record.id === 'w026')
-        .senses.find((sense) => sense.id === 'w026-s1')
+        .find((record) => record.id === 'w001')
+        .senses.find((sense) => sense.id === 'w001-s1')
         .gloss = '변경된 풀이';
     },
     (candidate) => {
       candidate.records
-        .find((record) => record.id === 'w026')
-        .senses.find((sense) => sense.id === 'w026-s1')
+        .find((record) => record.id === 'w001')
+        .senses.find((sense) => sense.id === 'w001-s1')
         .relations[0]
         .note = '변경된 관계 메모';
     },

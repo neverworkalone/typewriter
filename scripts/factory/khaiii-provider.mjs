@@ -10,20 +10,15 @@ import { resolveTypewriterCachePaths } from '../typewriter-cache.mjs';
 // settle a candidate alone (provider-resolution-v1). The module is never constructed unless
 // `khaiii` appears in `--providers`.
 //
-// Two interchangeable runtimes feed the same `khaiii_service.py` (one normalization, one provider
-// interface), selected by TYPEWRITER_KHAIII_RUNTIME=native|docker:
-//   native — the verified `genonfire/khaiii` v0.4 macOS arm64 GitHub Release (the default;
-//            fetched and checked by scripts/factory/fetch-khaiii-native.mjs);
-//   docker — the pinned Linux container built from docker/khaiii/Dockerfile (explicit fallback only).
-// A failing runtime is a clear error; it never falls back to the other one silently.
+// The only runtime is `native`: the verified `genonfire/khaiii` v0.4 macOS arm64 GitHub Release
+// (fetched and checked by scripts/factory/fetch-khaiii-native.mjs) feeding `khaiii_service.py`.
+// A failing runtime is a clear error.
 
 export const KHAIII_SERVICE_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), 'khaiii_service.py');
 export const KHAIII_BATCH_SIZE = 200;
-export const KHAIII_RUNTIMES = Object.freeze(['native', 'docker']);
-export const DEFAULT_KHAIII_IMAGE = 'typewriter-khaiii:v0.4';
+export const KHAIII_RUNTIMES = Object.freeze(['native']);
 
-// Pins shared by both runtimes: same upstream revision, same compiled model bundle (digest verified
-// identical on the native and container builds).
+// Upstream revision and compiled model bundle pins.
 export const PINNED_KHAIII = Object.freeze({
   khaiii_version: '0.4',
   khaiii_source_tag: 'v0.4',
@@ -53,14 +48,12 @@ export const defaultNativeRoot = (cache = DEFAULT_NATIVE_CACHE) => path.join(cac
 const RUNTIME_PINS = Object.freeze({
   native: Object.freeze({ runtime: 'native', library_digest: NATIVE_RELEASE.library_digest, release_fork_commit: NATIVE_RELEASE.fork_commit,
     release_provenance_digest: NATIVE_RELEASE.provenance_digest }),
-  docker: Object.freeze({ runtime: 'docker', library_digest: 'container', release_fork_commit: 'container', release_provenance_digest: 'container' }),
 });
 
 // Metadata a correct run of `runtime` must report.
 export const pinnedMetadata = (runtime) => ({ ...PINNED_KHAIII, ...RUNTIME_PINS[runtime] });
 
-// `native` is the only default. Docker is an explicit choice, never implied by the host: a host
-// without the native release must say TYPEWRITER_KHAIII_RUNTIME=docker (createKhaiiiAnalyzer errors otherwise).
+// `native` is the only runtime.
 export function resolveKhaiiiRuntime({ env = process.env } = {}) {
   const requested = env.TYPEWRITER_KHAIII_RUNTIME;
   if (requested === undefined || requested === '') return 'native';
@@ -91,29 +84,23 @@ function collect(child, label, resolve, reject, requests) {
   child.stdin.end(JSON.stringify({ requests }));
 }
 
-// One offline container per bounded batch: no network, read-only service script.
-const dockerBatch = (docker, image) => (requests) => new Promise((resolve, reject) => {
-  const args = ['run', '--rm', '-i', '--network', 'none', '-v', `${KHAIII_SERVICE_PATH}:/svc/khaiii_service.py:ro`, image, 'python3', '/svc/khaiii_service.py'];
-  collect(spawn(docker, args, { stdio: ['pipe', 'pipe', 'pipe'] }), 'docker', resolve, reject, requests);
-});
-
 // One host process per bounded batch against the extracted release; no network is used.
 const nativeBatch = (python, root) => (requests) => new Promise((resolve, reject) => {
   if (!existsSync(path.join(root, 'lib', 'libkhaiii.dylib'))) {
-    reject(new Error(`Khaiii native release not found at ${root}; run: node scripts/factory/fetch-khaiii-native.mjs (or set TYPEWRITER_KHAIII_NATIVE_ROOT). Not falling back to docker.`));
+    reject(new Error(`Khaiii native release not found at ${root}; run: node scripts/factory/fetch-khaiii-native.mjs (or set TYPEWRITER_KHAIII_NATIVE_ROOT).`));
     return;
   }
   collect(spawn(python, [KHAIII_SERVICE_PATH], { stdio: ['pipe', 'pipe', 'pipe'], env: { ...process.env, KHAIII_NATIVE_ROOT: root } }), 'native', resolve, reject, requests);
 });
 
-export function createKhaiiiAnalyzer({ runtime = resolveKhaiiiRuntime(), docker = process.env.TYPEWRITER_DOCKER || 'docker',
-  image = process.env.TYPEWRITER_KHAIII_IMAGE || DEFAULT_KHAIII_IMAGE, python = process.env.TYPEWRITER_PYTHON || 'python3',
+export function createKhaiiiAnalyzer({ runtime = resolveKhaiiiRuntime(), 
+  python = process.env.TYPEWRITER_PYTHON || 'python3',
   nativeRoot = process.env.TYPEWRITER_KHAIII_NATIVE_ROOT || defaultNativeRoot(), batchSize = KHAIII_BATCH_SIZE, platform = process.platform, arch = process.arch } = {}) {
   if (!KHAIII_RUNTIMES.includes(runtime)) throw new Error(`unknown Khaiii runtime ${runtime}`);
   if (runtime === 'native' && !(platform === 'darwin' && arch === 'arm64')) {
-    throw new Error(`Khaiii native runtime supports macOS arm64 only (this host: ${platform}/${arch}); set TYPEWRITER_KHAIII_RUNTIME=docker explicitly`);
+    throw new Error(`Khaiii native runtime supports macOS arm64 only (this host: ${platform}/${arch})`);
   }
-  const runBatch = runtime === 'native' ? nativeBatch(python, nativeRoot) : dockerBatch(docker, image);
+  const runBatch = nativeBatch(python, nativeRoot);
   return async function analyze(requests) {
     const results = [];
     let metadata = null;

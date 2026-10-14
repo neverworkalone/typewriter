@@ -5,9 +5,13 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-// Real queue -> CLI record/read path on the live canonical (derived dynamically, so it stays valid as canonical grows).
+import { syntheticCanonicalBase } from '../../tests/helpers/synthetic-canonical-base.mjs';
+
+// Real queue -> CLI record/read path on a synthetic canonical base (offers are derived dynamically, not fixed to words).
 const CLI = path.resolve(import.meta.dirname, 'backfill-queue-cli.mjs');
-const run = (args) => spawnSync(process.execPath, [CLI, ...args], { encoding: 'utf8' });
+const BASE = await syntheticCanonicalBase();
+const CANONICAL = path.join(BASE.root, 'data/canonical');
+const run = (args) => spawnSync(process.execPath, [CLI, ...args, '--canonical', CANONICAL], { encoding: 'utf8' });
 
 test('CLI record verifies approved targets, preserves them across a restart, and rejects off-pool targets', async () => {
   const dir = await mkdtemp(path.join(tmpdir(), 'backfill-cli-'));
@@ -55,7 +59,7 @@ test('CLI record verifies approved targets, preserves them across a restart, and
     assert.equal(saved.canonical_snapshot_digest, packetFile.candidates.canonical_snapshot_digest);
 
     // Restart: a fresh process reads the preserved state; the completed sense is current and no longer queued.
-    const status = JSON.parse(execFileSync(process.execPath, [CLI, 'status', '--state', state], { encoding: 'utf8' }));
+    const status = JSON.parse(execFileSync(process.execPath, [CLI, 'status', '--state', state, '--canonical', CANONICAL], { encoding: 'utf8' }));
     assert.equal(status.completed, 1);
     const again = run(['next', '--limit', '1', '--state', state, '--out', path.join(dir, 'packet2.json')]);
     assert.equal(again.status, 0, again.stderr);
@@ -64,7 +68,9 @@ test('CLI record verifies approved targets, preserves them across a restart, and
     // One record call is one bounded unit: a packet of more than 200 distinct canonical senses is refused before any
     // retrieval, and the existing state stays byte-for-byte as it was.
     const live = await readFile(state, 'utf8');
-    const ids = JSON.parse(execFileSync(process.execPath, ['-e', `import('${path.resolve(import.meta.dirname, '../validate/canonical-context.mjs')}').then(async (m) => { const c = await m.loadCanonicalContext(); console.log(JSON.stringify({ rev: c.canonicalRevision, ids: c.records.flatMap((i) => i.record.senses.map((s) => s.id)).slice(0, 201) })); })`], { encoding: 'utf8' }));
+    const ids = JSON.parse(execFileSync(process.execPath, ['-e', `import('${path.resolve(import.meta.dirname, '../validate/canonical-context.mjs')}').then(async (m) => { const c = await m.loadCanonicalContext({ directory: ${JSON.stringify(CANONICAL)} }); console.log(JSON.stringify({ rev: c.canonicalRevision, ids: c.records.flatMap((i) => i.record.senses.map((s) => s.id)).slice(0, 201) })); })`], { encoding: 'utf8' }));
+    // The base is small: pad with further ids so the packet exceeds the bound (the bound is checked before any lookup).
+    ids.ids = [...ids.ids, ...Array.from({ length: 201 }, (_, index) => `w9${String(index).padStart(4, '0')}-s1`)].slice(0, 201);
     assert.equal(new Set(ids.ids).size, 201);
     const hugePath = path.join(dir, 'huge.json');
     await writeFile(hugePath, JSON.stringify({ canonical_revision: ids.rev, packet: ids.ids.map((sense_id) => ({ sense_id })) }));
