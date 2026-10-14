@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { isLicensedSourceRecord } from '../validate/licensed-source.mjs';
 import { contractOpenOVowelWithAt } from './contract.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
@@ -507,6 +508,29 @@ function expectedRegularRiskClass(record, sense) {
   return REGULAR_RISK_CODA_CLASS_IDS.get(coda)?.[sense.pos] ?? null;
 }
 
+const IMPLICIT_RISK_CODA_REASON = 'Official-source predicate with an unreviewed risk-coda class: generated forms are not produced (fail closed).';
+const IMPLICIT_OPEN_PAST_REASON = 'Official-source predicate whose open-vowel plain past is not in the projection whitelist: that form is not produced.';
+
+/**
+ * Official-source (licensed) records are not authored, so their predicate senses carry no sense-by-sense
+ * dispositions. Where the rule itself decides, it is applied here from the same inputs; where a reviewer
+ * would have to judge (risk-coda regularity, unsupported open-vowel past), nothing is guessed and the
+ * affected forms are not generated. An explicit exception class or disposition always wins.
+ */
+function implicitSenseResolution(record, sense, classId, disposition) {
+  if (!isLicensedSourceRecord(record) || classId || disposition) return { classId, disposition };
+  if (sense.pos === 'adjective' && record.lemma.endsWith('없다')) return { classId: 'm6-2-eopda-present-adnominal', disposition };
+  if (sense.pos === 'adjective' && record.lemma.endsWith('있다')) return { classId: 'm6-2-itda-present-adnominal', disposition };
+  if (!record.lemma.endsWith('다') || record.lemma.includes(' ')) return { classId, disposition };
+  if (expectedRegularRiskClass(record, sense)) {
+    return { classId, disposition: { class_id: 'm6-3-predicate-excluded', reason: IMPLICIT_RISK_CODA_REASON } };
+  }
+  if (plainPastRuleId(record, null) === SURFACE_FORM_RULE_IDS.predicatePlainPastRegisteredException) {
+    return { classId, disposition: { class_id: 'm6-3-open-vowel-past-excluded', reason: IMPLICIT_OPEN_PAST_REASON } };
+  }
+  return { classId, disposition };
+}
+
 function compareStrings(left, right) {
   return left < right ? -1 : left > right ? 1 : 0;
 }
@@ -941,6 +965,7 @@ function validateCollisionReview(manifest, actual) {
 export function collectClassDispositionGaps(eligible, exceptionsBySense, dispositionsBySense) {
   const gaps = [];
   for (const { record } of eligible) {
+    if (isLicensedSourceRecord(record)) continue;
     for (const sense of record.senses) {
       if (sense.pos !== 'verb' && sense.pos !== 'adjective') continue;
       const key = sourceKey(record.id, sense.id);
@@ -1236,8 +1261,12 @@ export function buildSurfaceFormProjection(
     for (const sense of record.senses) {
       if (sense.pos !== 'verb' && sense.pos !== 'adjective') continue;
       const key = sourceKey(record.id, sense.id);
-      const classId = exceptionsBySense.get(key) ?? null;
-      const disposition = dispositionsBySense.get(key);
+      const { classId, disposition } = implicitSenseResolution(
+        record,
+        sense,
+        exceptionsBySense.get(key) ?? null,
+        dispositionsBySense.get(key),
+      );
       const ruleIds = ruleIdsForSense(record, sense, classId);
 
       if (disposition?.class_id === 'm6-3-predicate-excluded') {

@@ -568,3 +568,57 @@ test('unknown or misbound irregular exception classes fail closed', () => {
     (error) => error.code === 'EXCEPTION_CLASS_TARGET_MISMATCH',
   );
 });
+
+// Official-source (licensed) predicate senses carry no sense-by-sense dispositions: the shared rule applies
+// what it dictates and generates nothing a reviewer would have had to judge. Authored records keep the gate.
+const licensed = (record) => ({ ...record, source: 'stdict' });
+const strictBuild = (records, dispositions = [], exceptions = []) => buildSurfaceFormProjection(records, {
+  exceptionManifest: { schema_version: 1, contract_id: 'm6-2-inflection-exceptions-v1', exceptions },
+  reviewManifest: reviewManifest(dispositions),
+  requireExceptionTargets: true,
+  requireClassDispositions: true,
+});
+const gateFixtures = () => [
+  entry('w9960', '상관없다', 'adjective'),
+  entry('w9961', '맛있다', 'adjective'),
+  entry('w9962', '좋다', 'adjective'),
+  entry('w9963', '입다', 'verb'),
+  entry('w9964', '지키다', 'verb'),
+  entry('w9965', '먹다', 'verb'),
+];
+
+test('official-source predicates pass the strict gate without per-sense dispositions', () => {
+  const projection = strictBuild(gateFixtures().map(licensed));
+  const formsOf = (id) => projection.rows.filter(({ record_id: recordId }) => recordId === id);
+  assert.ok(rowsForForm(projection, '상관없는').some(({ record_id: id }) => id === 'w9960'));
+  assert.deepEqual(rowsForForm(projection, '상관없은'), []);
+  assert.ok(rowsForForm(projection, '맛있는').some(({ record_id: id }) => id === 'w9961'));
+  assert.ok(rowsForForm(projection, '먹는').some(({ record_id: id }) => id === 'w9965'));
+  // Unreviewed risk coda: nothing is guessed, and exact lemma lookup is unaffected.
+  assert.deepEqual(formsOf('w9962'), []);
+  assert.deepEqual(formsOf('w9963'), []);
+  // Unsupported open-vowel plain past is skipped while the other forms remain.
+  assert.ok(rowsForForm(projection, '지키는').some(({ record_id: id }) => id === 'w9964'));
+  assert.ok(!formsOf('w9964').some(({ rule_id: rule }) => rule.startsWith('predicate-plain-past')));
+  assert.ok(projection.exclusions.some(({ record_id: id }) => id === 'w9962'));
+});
+
+test('the same predicates without the official-source marker still need explicit dispositions', () => {
+  for (const [index, code] of [[0, 'MISSING_EXCEPTION_CLASS'], [2, 'MISSING_PREDICATE_CLASS_DISPOSITION'], [4, 'MISSING_PLAIN_PAST_DISPOSITION']]) {
+    assert.throws(() => strictBuild([gateFixtures()[index]]), (error) => error.code === code);
+  }
+});
+
+test('explicit manifests on official-source predicates still win and are still validated', () => {
+  const records = gateFixtures().map(licensed);
+  const regular = strictBuild(records, [{
+    class_id: 'm6-3-regular-h-adjective', record_id: 'w9962', sense_id: 'w9962-s1', reason: 'Reviewed regular class.',
+  }]);
+  assert.ok(regular.rows.some(({ record_id: id }) => id === 'w9962'));
+  assert.throws(() => strictBuild(records, [{
+    class_id: 'm6-3-regular-h-adjective', record_id: 'w9963', sense_id: 'w9963-s1', reason: 'Wrong coda.',
+  }]), (error) => error.code === 'SURFACE_FORM_REVIEW_CLASS_TARGET_MISMATCH');
+  assert.throws(() => strictBuild(records, [], [{
+    class_id: 'm6-2-b-irregular-adjective', record_id: 'w9999', sense_id: 'w9999-s1',
+  }]), (error) => error.code === 'MISSING_EXCEPTION_RECORD');
+});
