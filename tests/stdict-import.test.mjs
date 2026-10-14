@@ -8,14 +8,16 @@ import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 
 import { buildDictionary } from '../scripts/build/dictionary.mjs';
-import { findRecordsBySearchTerm, getRecord } from '../scripts/build/query.mjs';
+import { findRecordsBySearchTerm, getRecord, getSenseRelations } from '../scripts/build/query.mjs';
 import {
   addToSenseIndex,
   cleanDefinition,
   convertItem,
   createSenseIndex,
+  flattenSenses,
   mapPos,
   recordIdFor,
+  STDICT_NOTES,
   serializeRecord,
   surfaceForms,
 } from '../scripts/stdict/convert.mjs';
@@ -251,4 +253,78 @@ test('an unsupported explicit POS is reported so the entry is held, never conver
   const { report } = convertItem(item(910, '새말', '단어', [[1, '뜻풀이.']], '미지원품사'), fixtureContext(new Set([910])));
   assert.deepEqual(report.unsupportedPos, [{ sense: 'w910-s1', pos: '미지원품사', word_unit: '단어' }]);
   assert.deepEqual(convertItem(item(911, '새말', '단어', [[1, '뜻풀이.']], '품사 없음'), fixtureContext(new Set([911]))).report.unsupportedPos, []);
+});
+
+// A filtered shard keeps original source-order sense ids (`-s1`, `-s3`), never renumbered. #678 filters; this
+// proves every consumer of the canonical sense id treats the suffix as an opaque id, not as a position.
+test('sparse source-order sense ids survive schema, dataset gate, SQLite, search and relation navigation', async () => {
+  const sparse = {
+    id: 'w123', record_type: 'entry', role: 'start', candidate_id: 'w123', lemma: '먹다', search_forms: ['먹다'], source: 'stdict',
+    senses: [
+      { id: 'w123-s1', pos: 'noun', gloss: '첫째 뜻풀이.' },
+      { id: 'w123-s3', pos: 'verb', gloss: '셋째 뜻풀이.', relations: [{ target: 'w124', target_sense: 'w124-s1', type: 'direct', note: STDICT_NOTES.direct }] },
+    ],
+  };
+  const pointing = {
+    id: 'w124', record_type: 'entry', role: 'start', candidate_id: 'w124', lemma: '새말', search_forms: ['새말'], source: 'stdict',
+    senses: [{ id: 'w124-s1', pos: 'noun', gloss: '다른 뜻풀이.', relations: [
+      { target: 'w123', target_sense: 'w123-s3', type: 'direct', note: STDICT_NOTES.direct },
+      { target: 'w123', target_sense: 'w123-s1', type: 'antonym', note: STDICT_NOTES.antonym },
+    ] }],
+  };
+  const records = [sparse, pointing];
+  for (const record of records) validateCanonicalRecord(record);
+  const directory = await mkdtemp(path.join(tmpdir(), 'typewriter-sparse-'));
+  try {
+    const canonicalDirectory = path.join(directory, 'canonical');
+    await mkdir(canonicalDirectory);
+    const write = (list) => writeFile(path.join(canonicalDirectory, 'stdict-0001.jsonl'), `${list.map(serializeRecord).join('\n')}\n`);
+    await write(records);
+    const canonical = await readCanonicalRecords(canonicalDirectory, { useSharedContext: false });
+    validateDatasetRecords(canonical.records, { lexicalQuality: { blocking_finding_count: 0 } });
+    const outputPath = path.join(directory, 'dictionary.sqlite');
+    await buildDictionary({ inputDirectory: canonicalDirectory, outputPath, allowDirty: true });
+    const database = new DatabaseSync(outputPath, { readOnly: true });
+    try {
+      const record = getRecord(database, 'w123');
+      assert.deepEqual(record.senses.map(({ id, pos }) => [id, pos]), [['w123-s1', 'noun'], ['w123-s3', 'verb']], 'ids are kept, order is display order');
+      assert.deepEqual(database.prepare('SELECT id, position FROM senses WHERE record_id = ? ORDER BY position').all('w123').map((row) => [row.id, row.position]), [['w123-s1', 0], ['w123-s3', 1]], 'display positions stay contiguous');
+      assert.equal(database.prepare('SELECT 1 FROM senses WHERE id = ?').get('w123-s2'), undefined, 's2 is never created or rebound');
+      const relations = getSenseRelations(database, 'w124-s1');
+      assert.deepEqual(relations.map(({ type, target_sense: sense, target_pos: pos, target_gloss: gloss }) => [type, sense, pos, gloss]), [
+        ['direct', 'w123-s3', 'verb', '셋째 뜻풀이.'],
+        ['antonym', 'w123-s1', 'noun', '첫째 뜻풀이.'],
+      ], 'a relation resolves to the sense with that id, not the sense at that position');
+      assert.deepEqual(getSenseRelations(database, 'w123-s3').map(({ target_sense: sense }) => sense), ['w124-s1']);
+      const generated = database.prepare('SELECT form, sense_id FROM generated_surface_forms WHERE record_id = ? ORDER BY form, sense_id').all('w123');
+      assert.ok(generated.some(({ form }) => form === '먹는'), 'the verb sense generates forms');
+      assert.ok(generated.every(({ sense_id: id }) => id === 'w123-s3'), 'generated forms bind to the surviving verb sense id');
+      assert.ok(findRecordsBySearchTerm(database, '먹는').matches.some(({ id }) => id === 'w123'));
+    } finally {
+      database.close();
+    }
+    // A relation to a filtered-out sense is an orphan, not a silent rebinding to another sense.
+    const orphan = structuredClone(pointing);
+    orphan.senses[0].relations[0].target_sense = 'w123-s2';
+    await write([sparse, orphan]);
+    const reread = await readCanonicalRecords(canonicalDirectory, { useSharedContext: false });
+    assert.throws(() => validateDatasetRecords(reread.records, { lexicalQuality: { blocking_finding_count: 0 } }), /w123-s2/u);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('official links and the sense_code crosswalk bind by original source position, not by surviving index', () => {
+  const triple = item(123, '먹다', '단어', [[7001, '첫째.'], [7002, '둘째.'], [7003, '셋째.']]);
+  const pointing = item(124, '새말', '단어', [[7100, '다른 뜻.', [['동의어', 7003], ['반대말', 7001]]]]);
+  const index = createSenseIndex();
+  for (const source of [triple, pointing]) addToSenseIndex(index, source);
+  const context = { index, isSelected: () => true };
+  const { record } = convertItem(pointing, context);
+  assert.deepEqual(record.senses[0].relations.map(({ target_sense: sense }) => sense), ['w123-s3', 'w123-s1']);
+  // Provenance keeps every original sense_code in source order; the suffix of a surviving id indexes into it, so
+  // after sense 2 is filtered `w123-s3` still maps to 7003, and the filtered array index (1) is never used.
+  const original = flattenSenses(triple).map(({ sense }) => Number(sense.sense_code));
+  const surviving = convertItem(triple, context).record.senses.filter(({ id }) => id !== 'w123-s2');
+  assert.deepEqual(surviving.map(({ id }) => original[Number(id.match(/-s(\d+)$/u)[1]) - 1]), [7001, 7003]);
 });
