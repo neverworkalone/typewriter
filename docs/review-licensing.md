@@ -13,15 +13,15 @@ Check:
 - attribution/notice requirements are satisfied;
 - raw API responses, scraped pages, restricted dictionary material, and
   unlicensed content do not enter canonical/distributed data; **the selected,
-  permitted STDICT canonical projection under CC BY-SA 2.0 KR is an explicit
-  licensed source exception**, not a raw download;
+  permitted canonical projections from STDICT, KRDICT and 우리말샘 under CC BY-SA
+  2.0 KR are licensed source exceptions**, not raw downloads;
 - transformation or paraphrasing is not treated as removing source terms;
 - required provenance remains traceable.
 
 External sources may support reference, verification, or drafting only within
-their applicable terms. For the adopted STDICT baseline, eligible licensed
-source text and lexical links may also be imported after source-specific rights
-and attribution are recorded. Keep source-attributed examples and individually
+their applicable terms. Selected licensed text and lexical links from
+STDICT, KRDICT and 우리말샘 may also be imported with source-specific rights
+and attribution recorded. Keep source-attributed examples and individually
 restricted multimedia out.
 
 ## R&D visibility is not distribution permission
