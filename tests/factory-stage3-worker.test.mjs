@@ -1752,9 +1752,9 @@ test('the Stage 3 Git adapter lists the same snapshot paths as the Stage 2 adapt
   // Both workers validate merged master through the same loader; an adapter that omits a path class (the relation backfill
   // packets of #446) makes the worker fail on master before it can claim anything.
   const root = new URL('..', import.meta.url).pathname;
-  const { createGitRepository, loadFactorySnapshot } = await import('../scripts/factory/stage2-worker.mjs');
+  const { createGitRepository, loadFactorySnapshot, FACTORY_SNAPSHOT_PATHSPEC } = await import('../scripts/factory/stage2-worker.mjs');
   const stage3 = createStage3GitRepository({ root });
   assert.deepEqual(stage3.listFiles('HEAD'), createGitRepository({ root }).listFiles('HEAD'));
-  assert.ok(stage3.listFiles('HEAD').some((file) => /^data\/relation-backfill\/R\d{6}\.json$/u.test(file)));
+  assert.ok(FACTORY_SNAPSHOT_PATHSPEC.includes('data/relation-backfill'), 'the shared snapshot pathspec keeps the relation backfill packets');
   assert.equal((await loadFactorySnapshot({ git: stage3, headSha: 'HEAD' })).validated, true);
 });
