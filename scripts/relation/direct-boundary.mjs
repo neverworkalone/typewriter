@@ -13,9 +13,14 @@ export const DIRECT_BOUNDARY_CLASSES = [
     rule: 'An action, ability or result and the person or thing that performs or bears it are different kinds of thing; keep them near/association (an antonym needs the same axis).',
   },
   {
-    id: 'different-body-part',
+    id: 'same-movement',
+    verdict: 'direct',
+    rule: 'Actions that name overlapping parts of the same movement (reaching out arm and hand to grasp or touch) remain close alternatives; a difference of body part alone is not a reason to demote.',
+  },
+  {
+    id: 'different-movement',
     verdict: 'not-direct',
-    rule: 'Actions of different body parts, or of a whole body part and a specific sub-part, are neighbouring texture, not close alternatives.',
+    rule: 'Actions whose bound movements differ (extending a leg vs reaching out to grasp) are neighbouring texture, not close alternatives; judge the actual movement and its natural context, not the body-part word.',
   },
 ];
 

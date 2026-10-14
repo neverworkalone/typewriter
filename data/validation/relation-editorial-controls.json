@@ -34,6 +34,38 @@
    }
   },
   {
+   "class": "same-movement",
+   "verdict": "direct",
+   "source": {
+    "sense_id": "w578-s1",
+    "lemma": "손을 뻗다",
+    "pos": "expression",
+    "gloss_sha256": "ae9f1c98e6156f825a245e39c18d4571706ad51f5bc97bbc3602f2139c6dca9e"
+   },
+   "target": {
+    "sense_id": "w3826-s1",
+    "lemma": "팔을 뻗다",
+    "pos": "expression",
+    "gloss_sha256": "3d5ba5aa4c848e1601d34046e552e3d1daf0da18fdecaa0423184647fd97c445"
+   }
+  },
+  {
+   "class": "same-movement",
+   "verdict": "direct",
+   "source": {
+    "sense_id": "w3826-s1",
+    "lemma": "팔을 뻗다",
+    "pos": "expression",
+    "gloss_sha256": "3d5ba5aa4c848e1601d34046e552e3d1daf0da18fdecaa0423184647fd97c445"
+   },
+   "target": {
+    "sense_id": "w578-s1",
+    "lemma": "손을 뻗다",
+    "pos": "expression",
+    "gloss_sha256": "ae9f1c98e6156f825a245e39c18d4571706ad51f5bc97bbc3602f2139c6dca9e"
+   }
+  },
+  {
    "class": "action-vs-agent",
    "verdict": "not-direct",
    "source": {
@@ -82,7 +114,7 @@
    }
   },
   {
-   "class": "different-body-part",
+   "class": "different-movement",
    "verdict": "not-direct",
    "source": {
     "sense_id": "w3774-s1",
@@ -98,7 +130,7 @@
    }
   },
   {
-   "class": "different-body-part",
+   "class": "different-movement",
    "verdict": "not-direct",
    "source": {
     "sense_id": "w3774-s1",
@@ -114,7 +146,7 @@
    }
   },
   {
-   "class": "different-body-part",
+   "class": "different-movement",
    "verdict": "not-direct",
    "source": {
     "sense_id": "w3774-s1",
