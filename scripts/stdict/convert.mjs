@@ -5,7 +5,7 @@ import path from 'node:path';
  * Deterministic 표준국어대사전 (STDICT) JSON -> canonical record conversion.
  *
  * Identity contract (stable for every future shard):
- *   record id  = `w${target_code}`
+ *   record id  = `w${target_code}` (zero-padded to 3 digits)
  *   candidate  = record id (role `start` requires candidate_id === id)
  *   sense id   = `${record id}-s${n}`, n = 1-based position of the sense in
  *                source order (pos_info -> comm_pattern_info -> sense_info)
@@ -57,7 +57,7 @@ const ID_TAGS = /<(each_sense_no|sense_no|ptrn_no)>[^<]*<\/\1>/gu;
 const SUP_TAG = /<sup(?:\s[^>]*)?>([^<]*)<\/sup>/gu;
 const SUB_TAG = /<sub(?:\s[^>]*)?>([^<]*)<\/sub>/gu;
 const IMG_TAG = /<img(?:\s[^>]*)?>/gu;
-const WRAP_TAG = /<(I|i|l|equ|font)(?:\s[^>]*)?>([^<]*)<\/\1>/gu;
+const WRAP_TOKEN = /<\/?(I|i|l|equ|font)(?:\s[^>]*)?>/gu;
 // A real tag is an ASCII name followed by whitespace, `/` or `>`; `<거미의 향연>` and `<Y의 비극>` are titles.
 const ANY_TAG = /<\/?[A-Za-z_]+(?:[\s/][^>]*)?>/u;
 
@@ -72,9 +72,11 @@ export function cleanDefinition(definition) {
   const note = (name) => markup.push(name);
   text = text.replace(ID_TAGS, (_, name) => { note(name); return ''; });
   text = text.replace(IMG_TAG, () => { note('img'); return ''; });
+  // Emphasis tokens are stripped one by one: the source sometimes nests them badly (`<sup><I>n</sup></I>`) or leaves a
+  // literal `<` inside (`<I>(x+1)<0</I>`), and only the text itself matters.
+  text = text.replace(WRAP_TOKEN, (token, name) => { if (!token.startsWith('</')) note(name); return ''; });
   text = text.replace(SUP_TAG, (_, inner) => { note('sup'); return mapScript(inner, SUPERSCRIPT); });
   text = text.replace(SUB_TAG, (_, inner) => { note('sub'); return mapScript(inner, SUBSCRIPT); });
-  text = text.replace(WRAP_TAG, (_, name, inner) => { note(name); return inner; });
   text = text.replace(/&#x([0-9a-f]+);|&#(\d+);/giu, (_, hex, decimal) => {
     note('entity');
     return String.fromCodePoint(hex ? Number.parseInt(hex, 16) : Number(decimal));
@@ -84,7 +86,8 @@ export function cleanDefinition(definition) {
 }
 
 export function recordIdFor(targetCode) {
-  return `w${targetCode}`;
+  // The canonical id pattern needs at least three digits; target_codes 1-99 are zero-padded.
+  return `w${String(targetCode).padStart(3, '0')}`;
 }
 
 export function surfaceForms(word, wordUnit) {

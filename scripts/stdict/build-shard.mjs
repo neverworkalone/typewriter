@@ -231,7 +231,7 @@ export function provenanceManifest(result, { shardName }) {
       entry_count: result.sourceEntryCount,
     },
     id_contract: {
-      record: 'w<target_code>',
+      record: 'w<target_code>, zero-padded to the three digits the canonical id pattern requires',
       sense: '<record id>-s<n>, n = 1-based source order of the sense within the entry',
       note: 'Existing records and sense numbers never change; future shards append the remaining target_codes in ascending order.',
     },

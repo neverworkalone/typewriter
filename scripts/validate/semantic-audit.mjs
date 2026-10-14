@@ -7,7 +7,7 @@ import {
   DEFAULT_CANONICAL_DIRECTORY,
 } from './canonical-jsonl.mjs';
 import { loadCanonicalContext } from './canonical-context.mjs';
-import { reviewableRecordInfos } from './licensed-source.mjs';
+import { completeRecordInfos, isLicensedSourceRecord, reviewableRecordInfos } from './licensed-source.mjs';
 import { revertRelationCorrections } from '../factory/relation-corrections.mjs';
 import {
   LEXICAL_TOPIC_EVIDENCE_CONTRACT_VERSION,
@@ -2400,7 +2400,7 @@ function validateSemanticDecisionSourceImpl(
   if (source.canonical_records_sha256 !== expectedCanonicalDigest) {
     fail(`${label}.source.canonical_records_sha256 does not match the complete canonical input`, 'SEMANTIC_AUDIT_SOURCE_MISMATCH');
   }
-  const factoryAdmissions = validateFactoryAdmissionLedger(decisionSource, recordInfos, label);
+  const factoryAdmissions = validateFactoryAdmissionLedger(decisionSource, completeRecordInfos(recordInfos), label);
   const authoredReview = requireObject(decisionSource.authored_review, `${label}.authored_review`);
   requireDigest(decisionSource.authored_review_sha256, `${label}.authored_review_sha256`);
   if (decisionSource.authored_review_sha256 !== cachedSha256Json(authoredReview, hashCache)) {
@@ -2549,10 +2549,19 @@ export function validateFactoryAdmissionLedger(decisionSource, recordInfos, labe
         fail(`${changeLabel}.before_sha256 does not match its operation`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
       }
       requireDigest(change.after_sha256, `${changeLabel}.after_sha256`);
-      if (change.operation === 'create' ? change.previous_semantic_review_sha256 !== null : !SHA256_PATTERN.test(change.previous_semantic_review_sha256 ?? '')) {
-        fail(`${changeLabel}.previous_semantic_review_sha256 does not match its operation`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+      // A change to a licensed-source record has no authored review to bind: it records `null` for both review digests,
+      // and only the canonical record digests below tie it to the record it changed.
+      const reviewExempt = change.semantic_review_sha256 === null;
+      if (reviewExempt) {
+        if (change.previous_semantic_review_sha256 !== null || !isLicensedSourceRecord(canonicalById.get(change.entry_id))) {
+          fail(`${changeLabel} is review-exempt but ${change.entry_id} is not a licensed-source record`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+        }
+      } else {
+        if (change.operation === 'create' ? change.previous_semantic_review_sha256 !== null : !SHA256_PATTERN.test(change.previous_semantic_review_sha256 ?? '')) {
+          fail(`${changeLabel}.previous_semantic_review_sha256 does not match its operation`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+        }
+        requireDigest(change.semantic_review_sha256, `${changeLabel}.semantic_review_sha256`);
       }
-      requireDigest(change.semantic_review_sha256, `${changeLabel}.semantic_review_sha256`);
       if (change.previous_semantic_review !== undefined || change.previous_record !== undefined) {
         if (change.operation === 'create'
           || sha256Json(change.previous_semantic_review) !== change.previous_semantic_review_sha256
@@ -2618,6 +2627,12 @@ export function validateFactoryAdmissionLedger(decisionSource, recordInfos, labe
   }
   for (const [recordId, change] of latestChangeByRecord) {
     const record = canonicalById.get(recordId);
+    if (change.semantic_review_sha256 === null) {
+      if (!record || !matchesHistoricalRecordDigest(record, change.after_sha256)) {
+        fail(`${label}.factory_admissions latest change for ${recordId} does not bind the current canonical record`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+      }
+      continue;
+    }
     const review = reviewById.get(recordId);
     if (!record || !review) fail(`${label}.factory_admissions latest change for ${recordId} has no canonical record or semantic review`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
     const fullDigest = cachedSha256Json(record);

@@ -15,6 +15,7 @@ import {
   convertItem,
   createSenseIndex,
   mapPos,
+  recordIdFor,
   serializeRecord,
   surfaceForms,
 } from '../scripts/stdict/convert.mjs';
@@ -86,6 +87,23 @@ test('definitions are cleaned of embedded markup without hiding what was removed
   assert.equal(cleanDefinition('뜻<blink>풀이</blink>').unknownMarkup, true, 'an unknown tag is surfaced, never silently kept');
   const held = convertItem(item(900, '이상', '단어', [[1, '뜻<blink>풀이</blink>']]), fixtureContext(new Set([900])));
   assert.deepEqual(held.report.unknownMarkup, ['w900-s1']);
+});
+
+test('record ids satisfy the canonical id pattern for every target_code', () => {
+  assert.equal(recordIdFor(4), 'w004');
+  assert.equal(recordIdFor(99), 'w099');
+  assert.equal(recordIdFor(445), 'w445');
+  assert.equal(recordIdFor(536223), 'w536223');
+  for (const code of [1, 99, 100, 536223]) {
+    const { record } = convertItem(item(code, '단어', '단어', [[code * 10, '아무 뜻풀이.']]), fixtureContext(new Set([code])));
+    validateCanonicalRecord(record);
+  }
+});
+
+test('malformed source markup is cleaned from the text, a literal less-than is kept', () => {
+  assert.equal(cleanDefinition("3×2<sup style='font-size:11px;'><I>n</sup></I>(<I>n</I>=0)<sub style='font-size:11px;'></sub>을").text, '3×2ⁿ(n=0)을');
+  assert.equal(cleanDefinition('<I>‘(x－1)(x+1)<0’ </I>따위를 이른다.').text, '‘(x－1)(x+1)<0’ 따위를 이른다.');
+  assert.equal(cleanDefinition('<I>‘(x－1)(x+1)<0’ </I>따위').unknownMarkup, false);
 });
 
 test('part-of-speech mapping never silently drops a class', () => {

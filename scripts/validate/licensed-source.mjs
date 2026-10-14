@@ -17,6 +17,7 @@ export function isLicensedSourceRecordInfo(recordInfo) {
 }
 
 const reviewableCache = new WeakMap();
+const completeSetOf = new WeakMap();
 
 /**
  * Records that still require authored semantic review. The same array is
@@ -31,6 +32,15 @@ export function reviewableRecordInfos(recordInfos) {
       ? recordInfos.filter((recordInfo) => !isLicensedSourceRecordInfo(recordInfo))
       : recordInfos;
     reviewableCache.set(recordInfos, reviewable);
+    if (reviewable !== recordInfos) completeSetOf.set(reviewable, recordInfos);
   }
   return reviewable;
+}
+
+/**
+ * The complete record set a reviewable subset was taken from. The admission ledger also names licensed-source records
+ * and is therefore checked against the complete set.
+ */
+export function completeRecordInfos(recordInfos) {
+  return completeSetOf.get(recordInfos) ?? recordInfos;
 }

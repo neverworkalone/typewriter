@@ -475,9 +475,12 @@ export async function buildStage3SemanticAuthority({
   const events = [...(source.factory_admissions ?? [])];
   const changes = [];
   for (const change of plan.changes) {
-    // Licensed-source records are outside authored semantic review (see validate/licensed-source.mjs): a relation
-    // amendment on one is recorded by the event's amendment list and the packet, but it has no review row to rewrite.
-    if (isLicensedSourceRecord(afterById.get(change.entry_id))) continue;
+    // Licensed-source records are outside authored semantic review (see validate/licensed-source.mjs): the amendment is
+    // still ledgered (record digests, amendment ids) but binds no review row, so both review digests are null.
+    if (isLicensedSourceRecord(afterById.get(change.entry_id))) {
+      changes.push({ ...change, previous_semantic_review_sha256: null, semantic_review_sha256: null });
+      continue;
+    }
     if (change.operation === 'append_relations') {
       const record = afterById.get(change.entry_id);
       const beforeRecord = baseById.get(change.entry_id);
