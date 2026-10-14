@@ -187,10 +187,10 @@ export async function applyBackfill({ root, state, index, refreshReports = true 
     // Resuming writes whatever the intent has not written yet, so each such tuple must still mean what it meant when
     // it was approved; tuples already in canonical are only being recorded.
     for (const item of packet.relation_amendments) {
-      if (isPresent(records, item)) continue;
       if (index.bySenseId.get(item.source_sense_id)?.pos === BACKFILL_EXCLUDED_POS) {
         throw new Error(`interrupted packet ${id}: the source ${item.source_sense_id} is an unclassified sense, which is not a backfill source; remove the unwritten packet`);
       }
+      if (isPresent(records, item)) continue;
       if (packet.target_meaning_sha256[reviewedId(item)] !== meaningOf(index, item.relation.target_sense)) {
         throw new Error(`interrupted packet ${id}: the target ${item.relation.target_sense} of ${item.source_sense_id} changed meaning since approval; remove the unwritten packet and re-review`);
       }

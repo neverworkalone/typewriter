@@ -404,3 +404,24 @@ test('an unclassified source is never written: a stored approval is skipped and 
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test('an unrecorded packet whose canonical write already happened is not completed for an unclassified source', async () => {
+  const canonical = await loadCanonicalContext();
+  const index = buildRelationIndex(canonical);
+  const { state } = oneApproval(canonical, index);
+  const [sourceId] = Object.keys(state.done);
+  const unclassified = buildRelationIndex({ ...canonical, records: canonical.records.map((info) => ({ ...info, record: { ...info.record,
+    senses: info.record.senses.map((sense) => (sense.id === sourceId ? { ...sense, pos: 'unclassified' } : sense)) } })) });
+  const root = await scratchRoot();
+  try {
+    const { plan, packet } = await planOnDisk(root, state, index);
+    await writeFile(path.join(root, `data/relation-backfill/${await nextId(root)}.json`), packet);
+    await writePlannedRecords(plan, root);
+    const eventsBefore = await authorityEvents(root);
+    await assert.rejects(applyBackfill({ root, state, index: unclassified, refreshReports: false }), /unclassified sense/u);
+    assert.equal(await authorityEvents(root), eventsBefore, 'no completion event for an unclassified source');
+    assert.equal((await applyBackfill({ root, state, index, refreshReports: false })).status, 'applied', 'positive control: eligible source completes');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
