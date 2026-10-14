@@ -117,7 +117,7 @@ sense 수준 링크 196,808건: 동의어 162,127 · 비슷한말 26,264 · 반�
 | --- | --- | --- |
 | 동의어 | 162,127 | `direct` 주입. 사전 수록 동의어이며 `relevance`를 붙이지 않으므로 계약에 맞습니다. |
 | 반대말 | 6,367 | `antonym` 주입(`relevance` 없음). |
-| 비슷한말 | 26,264 | **1단계에서 주입하지 않음.** `near`는 `relevance` 1..9 편집 판단이 필수이고 STDICT에는 없습니다. 임의 상수로 채우면 편집 판단을 위조하게 되고, `near`는 말의 결이라 2단계 집필 대상입니다. 이 링크는 Git 밖 원본에 남기고 2단계(`relation:candidates`)의 후보 입력으로만 씁니다. |
+| 비슷한말 | 26,264 | **1단계에서 주입하지 않음.** `near`는 `relevance` 1..9 편집 판단이 필수이고 STDICT에는 없습니다. 임의 상수로 채우면 편집 판단을 위조하게 되고, `near`는 말의 결이라 2단계 집필 대상입니다. 이 링크는 Git 밖 원본에 남기고 backfill의 후보 힌트로만 씁니다(§4). |
 | 준말·본말·높임말·낮춤말·참고 어휘 | 약 2,050 | 대응하는 현 관계 유형이 없어 1단계 제외. 필요하면 오너가 유형 신설을 별도로 결정합니다(현 데이터로 필요성이 입증되지 않음). |
 
 사전이 동의어로 표시한 것만 `direct`(사전급 동의어)로 옮기고 나머지는 편집 단계로 넘깁니다. 동의어 주입은 `note`에 출처 관계 유형을 정형으로
@@ -138,13 +138,24 @@ STDICT baseline에서는 표제어와 sense가 이미 canonical에 있으므로,
 `backfill-queue-cli.mjs apply`, `R######` 패킷, `relation-amendments.mjs`의 `append_relations`)입니다. 이 경로는 lexical
 admission 없이 기존 sense에 `near/mood/scene/sensory/action/association`(relevance 필수)과 근거(rationale)를 기록합니다.
 
-| 단계 | 판단 | 필요한 변경 지점 |
-| --- | --- | --- |
-| 기준선 생성 (Task 3) | 신규 일회성 변환 | STDICT → canonical JSONL. Stage 1~3을 거치지 않음. 품사 enum·`role`·`note` 계약 조정 (§2) |
-| Stage 1 (발굴) | **baseline 이후에는 신표제어 보충용으로만 유지.** 관계 생산에는 쓰지 않음 | 코퍼스 후보의 `covered` 판정은 canonical 조회이므로 STDICT canonical에도 동작. 동형이의어(`각본01`) id 구조와 표기 정규화 때문에 `exact_canonical_lemma` 판정 입력 확인 필요(구현 시) |
-| Stage 2 (집필) | 신규 표제어/의미 집필에만 사용. 관계-only 생산에는 부적합 | 변경 없음 |
-| Stage 3 (admission) | 신규 표제어/의미 admission에만 사용 | 변경 없음. 단 STDICT 소스 id를 기존 `w`/`r` 접두 규칙에 맞춰야 함 |
-| 말의 결·연상 생산 | **relation-only backfill 재사용** | 후보 입력에 STDICT 비슷한말 링크를 추가(`relation:candidates`), 기존 relation-only 입력/출력 계약은 그대로 |
+실제 backfill 경로(HEAD 코드 기준): `backfill-queue-cli.mjs next`(`status`/`record`/`apply`) →
+`backfill-queue.mjs retrievePacket` → `retrieveRelationCandidates(index, [{kind:'canonical', sense_id}])` → `record` → `apply`.
+`pnpm run relation:candidates <C######>`(`stage2-candidates.mjs`)는 Stage 2 리뷰 배치의 신규 sense만 읽는 별도 명령이며 STDICT
+canonical sense 백필과 연결되지 않으므로 이 설계에서 사용하지 않습니다.
+
+**비슷한말 힌트 연결에 필요한 변경 경계.** `retrieveRelationCandidates`는 source별 `hints`를 이미 받습니다
+(`candidate-retrieval.mjs`의 `source.hints`). 반면 `retrievePacket`은 `{kind:'canonical', sense_id}`만 만들고 힌트를 넘기지
+않으므로 STDICT 힌트는 현재 후보로 들어가지 않습니다. 필요한 변경은 다음 경계에 한정됩니다.
+
+1. STDICT `비슷한말` 링크를 새 canonical id로 변환한 `source sense_id → 힌트 target` 표(Git 밖 또는 결정적 파생물)를 만든다.
+   `link_target_code`는 `sense_code`로 해석해 canonical sense id로 매핑한다.
+2. `retrievePacket`이 그 표에서 packet 행마다 `hints`를 채워 `retrieveRelationCandidates`에 전달한다.
+3. 같은 힌트가 패킷 발행(`next`), `record` 검토 시점의 재검색(`backfill-queue-cli.mjs`의 `retrievePacket` 호출), 그리고 완료 상태
+   재검증(`currentCandidatesForDone`/`isReviewCurrent`)에 모두 동일하게 반영되어야 한다. 한 곳이라도 힌트가 빠지면 기록된 검토가
+   stale로 판정되거나 힌트 후보가 승인에서 누락된다.
+
+신규 검증기나 구현은 이 문서의 범위가 아니며 위는 Task 3 이후에 구현할 변경 경계입니다. 대안으로, 공식 비슷한말 후보 입력을 후속
+결정으로 미루고 기존 큐는 일반 검색 기반 관계 후보만 생산하게 둘 수도 있습니다(오너 결정 D5).
 
 기존 데이터는 `legacy`에 보존되므로 old canonical/batch/review는 migration 없이 폐기합니다. 재사용 가능한 것은 코드,
 폐기하는 것은 옛 데이터입니다. 확인하지 못한 점: backfill 큐/패킷 코드와 `data/relation-backfill/` 이력이 옛 canonical
@@ -195,6 +206,7 @@ sense id를 가정하는 부분의 범위(Task 2/3에서 구현 시 확인할 �
 - **D1 (품사 모델)**: §6 표의 품사 확장안(또는 `noun` 등으로 접는 안)과 검색 노출 범위.
 - **D2 (품사 없는 단어 7,770)**: 수록 방식.
 - **D3 (준말·본말·높임말·낮춤말 등 약 2,050건)**: 1단계 제외 권고, 관계 유형 신설은 별도 결정.
+- **D5 (비슷한말 힌트)**: §4의 3개 경계를 변경해 힌트로 쓸지, 후속 결정으로 미루고 일반 검색 기반 후보만 쓸지.
 - **D4 (정책 문서)**: CC BY-SA 2.0 KR 적용에 따른 `DATA-LICENSE.md`/NOTICE/AGENTS.md 변경 범위, 다운로드본의 이용 조건 확인.
 
 Task 2와 Task 3은 이 문서가 승인된 이후에만 진행합니다.
