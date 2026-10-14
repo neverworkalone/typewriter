@@ -304,9 +304,10 @@ async function main() {
   const through = Number(option('through', '1'));
   const source = await loadStdictSource({ sourceDirectory: option('source', DEFAULT_SOURCE) });
   const built = await buildShards({ source, through });
+  const provenanceText = (result) => `${JSON.stringify(provenanceManifest(result, { source }), null, 1)}\n`;
   const outputs = built.flatMap((result) => [
     [path.join(outDirectory, result.name), result.shard],
-    [path.join(provenanceDirectory, result.name.replace(/\.jsonl$/u, '.json')), `${JSON.stringify(provenanceManifest(result, { source }), null, 1)}\n`],
+    [path.join(provenanceDirectory, result.name.replace(/\.jsonl$/u, '.json')), provenanceText(result)],
   ]);
   if (args.includes('--verify')) {
     for (const [file, text] of outputs) {
@@ -319,7 +320,10 @@ async function main() {
   }
   await mkdir(outDirectory, { recursive: true });
   await mkdir(provenanceDirectory, { recursive: true });
-  for (const [file, text] of outputs) await writeFile(file, text);
+  for (const result of built) {
+    await writeFile(path.join(outDirectory, result.name), result.shard);
+    await writeFile(path.join(provenanceDirectory, result.name.replace(/\.jsonl$/u, '.json')), provenanceText(result));
+  }
   console.log(`wrote ${built.length} shard(s): ${built.map((result) => `${result.name} ${result.records.length}`).join(', ')}; ${source.shards.length} shard(s) in total`);
 }
 
