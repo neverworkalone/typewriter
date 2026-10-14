@@ -623,6 +623,9 @@ async function verifySourceExclusionBinding({ batch, binding, root, baseCommit }
     errors.push(`${batch}: source exclusion artifacts must be unique and sorted by path`);
   }
   const bytesByPath = new Map();
+  const candidateCompanionPaths = new Set(sourcePaths
+    .filter((relativePath) => path.posix.basename(relativePath) === 'candidates.jsonl')
+    .map((relativePath) => path.posix.join(path.posix.dirname(relativePath), 'manifest.json')));
   for (const source of sources) {
     const relativePath = source?.path;
     if (typeof relativePath !== 'string' || !relativePath || path.posix.isAbsolute(relativePath)
@@ -649,18 +652,32 @@ async function verifySourceExclusionBinding({ batch, binding, root, baseCommit }
       errors.push(`${batch}: source exclusion artifact ${relativePath} digest differs from the trusted base snapshot`);
     }
   }
+  const candidateSourceLemmas = new Map();
   for (const source of sources) {
     const relativePath = source?.path;
     const bytes = bytesByPath.get(relativePath);
     if (!bytes) continue;
+    if (candidateCompanionPaths.has(relativePath)) continue;
     try {
       const companionManifestPath = path.posix.join(path.posix.dirname(relativePath), 'manifest.json');
       const sourceLemmas = exclusionSourceLemmas(relativePath, bytes, {
         emptyCandidateManifestBytes: bytesByPath.get(companionManifestPath),
       });
+      if (path.posix.basename(relativePath) === 'candidates.jsonl') {
+        candidateSourceLemmas.set(relativePath, sourceLemmas);
+      }
       for (const lemma of sourceLemmas) lemmas.add(lemma);
     } catch (error) {
       errors.push(`${batch}: source exclusion artifact ${relativePath} cannot prove lemma membership: ${error.message}`);
+    }
+  }
+  for (const source of sources) {
+    const relativePath = source?.path;
+    if (!candidateCompanionPaths.has(relativePath) || !bytesByPath.has(relativePath)) continue;
+    const candidatePath = path.posix.join(path.posix.dirname(relativePath), 'candidates.jsonl');
+    const candidateLemmas = candidateSourceLemmas.get(candidatePath);
+    if (!candidateLemmas || candidateLemmas.length !== 0) {
+      errors.push(`${batch}: source exclusion manifest ${relativePath} is not bound to a verified empty candidate source`);
     }
   }
   const orderedLemmas = [...lemmas].sort((left, right) => left < right ? -1 : left > right ? 1 : 0);

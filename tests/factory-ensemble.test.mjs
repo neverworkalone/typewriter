@@ -606,16 +606,35 @@ test('Stage 1 reapplies the digest-bound corpus exclusion set after provider alt
   try {
     const cache = await cacheForTask(root);
     const sourcePath = 'data/reference/production/stage1-409/c18/exclude-lemma-source.json';
+    const candidatePath = 'data/candidates/C000083/candidates.jsonl';
+    const companionManifestPath = 'data/candidates/C000083/manifest.json';
+    const forgedCandidatePath = 'data/reference/production/stage1-409/c18/forged-empty-source/candidates.jsonl';
+    const forgedCompanionPath = 'data/reference/production/stage1-409/c18/forged-empty-source/manifest.json';
     const sourceBytes = Buffer.from(JSON.stringify({ candidate_records: [{ lemma: '걷다' }] }));
     await mkdir(path.dirname(path.join(root, sourcePath)), { recursive: true });
+    await mkdir(path.dirname(path.join(root, candidatePath)), { recursive: true });
+    await mkdir(path.dirname(path.join(root, forgedCandidatePath)), { recursive: true });
     await writeFile(path.join(root, sourcePath), sourceBytes);
+    await copyFile(new URL('../data/candidates/C000083/candidates.jsonl', import.meta.url), path.join(root, candidatePath));
+    await copyFile(new URL('../data/candidates/C000083/manifest.json', import.meta.url), path.join(root, companionManifestPath));
+    await copyFile(new URL('../data/candidates/C000083/stage1-decisions.json', import.meta.url),
+      path.join(root, 'data/candidates/C000083/stage1-decisions.json'));
+    await copyFile(new URL('../data/candidates/C000083/candidates.jsonl', import.meta.url), path.join(root, forgedCandidatePath));
+    await writeFile(path.join(root, forgedCompanionPath), JSON.stringify({
+      contract: 'lexical-factory-candidate-manifest-v3', status: 'exhausted', candidate_count: 1,
+      production: { exhausted: true }, candidates_sha256: sha256Hex(Buffer.alloc(0)),
+    }));
     execFileSync('git', ['init', '-q'], { cwd: root });
-    execFileSync('git', ['add', sourcePath], { cwd: root });
+    execFileSync('git', ['add', sourcePath, 'data/candidates/C000083', forgedCandidatePath, forgedCompanionPath], { cwd: root });
     execFileSync('git', ['-c', 'user.name=Factory test', '-c', 'user.email=factory-test@example.invalid',
       'commit', '-q', '-m', 'Add trusted text-free exclusion source'], { cwd: root });
-    const sourceArtifacts = [{ path: sourcePath, sha256: sha256Hex(sourceBytes) }];
-    const exclusionPayload = { lemmas: ['걷다'], schema_version: 'm9-reviewed-lemma-exclusions-v1', source_artifacts: sourceArtifacts };
-    const exclusionManifest = { ...exclusionPayload, exclusion_sha256: sha256Hex(JSON.stringify(exclusionPayload)) };
+    const exclusionManifest = await buildExclusionManifest([
+      path.join(root, sourcePath), path.join(root, candidatePath),
+    ], { repositoryDirectory: root, cachePaths: cache.cachePaths });
+    const sourceArtifacts = exclusionManifest.source_artifacts;
+    assert.deepEqual(sourceArtifacts.map((source) => source.path), [candidatePath, companionManifestPath, sourcePath].sort(),
+      'the production exclusion builder binds both the actual empty candidates file and its companion manifest');
+    const exclusionPayload = { lemmas: exclusionManifest.lemmas, source_artifacts: sourceArtifacts };
     await writeFile(path.join(cache.taskDirectory, 'reviewed-lemma-exclusions.json'), JSON.stringify(exclusionManifest));
     const evidence = {
       ...evidenceDoc([
@@ -687,6 +706,40 @@ test('Stage 1 reapplies the digest-bound corpus exclusion set after provider alt
     }
     const persistedManifestPath = path.join(root, 'data/candidates', result.manifest.batch_id, 'manifest.json');
     const originalPersistedManifestText = await readFile(persistedManifestPath, 'utf8');
+    const rebindSources = (manifest, sourceArtifacts) => {
+      const binding = manifest.selection.source_exclusion_binding;
+      binding.source_artifacts = sourceArtifacts;
+      binding.exclusion_sha256 = sha256Hex(JSON.stringify({
+        lemmas: binding.matched_lemmas,
+        schema_version: 'm9-reviewed-lemma-exclusions-v1',
+        source_artifacts: sourceArtifacts,
+      }));
+    };
+    const withoutCompanion = JSON.parse(originalPersistedManifestText);
+    rebindSources(withoutCompanion, withoutCompanion.selection.source_exclusion_binding.source_artifacts
+      .filter((source) => source.path !== companionManifestPath));
+    await writeFile(persistedManifestPath, JSON.stringify(withoutCompanion) + '\n');
+    assert.match((await validateFactoryRepository({ root, base: trustedBase })).join('\n'),
+      /Empty candidate exclusion source has no bound manifest/u,
+      'recomputing the binding digest cannot remove the empty candidates source companion manifest');
+    const forgedCompanion = JSON.parse(originalPersistedManifestText);
+    const forgedCompanionArtifacts = [...forgedCompanion.selection.source_exclusion_binding.source_artifacts,
+      { path: forgedCandidatePath, sha256: sha256Hex(Buffer.alloc(0)) },
+      { path: forgedCompanionPath, sha256: sha256Hex(Buffer.from(await readFile(path.join(root, forgedCompanionPath), 'utf8'))) }]
+      .sort((left, right) => left.path < right.path ? -1 : left.path > right.path ? 1 : 0);
+    rebindSources(forgedCompanion, forgedCompanionArtifacts);
+    await writeFile(persistedManifestPath, JSON.stringify(forgedCompanion) + '\n');
+    assert.match((await validateFactoryRepository({ root, base: trustedBase })).join('\n'),
+      /Empty candidate source is not a bound exhausted Stage 1 result/u,
+      'a forged but base-committed companion manifest cannot certify empty candidates');
+    const mismatchedCompanion = JSON.parse(originalPersistedManifestText);
+    rebindSources(mismatchedCompanion, mismatchedCompanion.selection.source_exclusion_binding.source_artifacts.map((source) => (
+      source.path === companionManifestPath ? { ...source, sha256: '0'.repeat(64) } : source
+    )));
+    await writeFile(persistedManifestPath, JSON.stringify(mismatchedCompanion) + '\n');
+    assert.match((await validateFactoryRepository({ root, base: trustedBase })).join('\n'),
+      /source exclusion artifact data\/candidates\/C000083\/manifest\.json digest differs from the trusted base snapshot/u,
+      'rehashing a mismatched companion manifest cannot make an empty candidate source trustworthy');
     const forged = JSON.parse(originalPersistedManifestText);
     const forgedSourceArtifacts = [{ path: 'data/reference/nonexistent-source.json', sha256: '0'.repeat(64) }];
     forged.selection.source_exclusion_binding.source_artifacts = forgedSourceArtifacts;
