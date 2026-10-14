@@ -1,94 +1,78 @@
 # Typewriter dictionary data license
 
-## New STDICT-based dictionary
+## Dictionary data: CC BY-SA 2.0 Korea
 
-The **new** Typewriter dictionary baseline, built from the National Institute of
-Korean Language's **표준국어대사전 (Standard Korean Language Dictionary, STDICT)**,
-and the original Typewriter **말의 결 / 연상** enrichments added to it will be
-distributed under the
+Typewriter dictionary data based on the National Institute of Korean Language
+(NIKL) dictionaries **표준국어대사전 (Standard Korean Language Dictionary)**,
+**한국어기초사전 (Korean Basic Dictionary)**, and **우리말샘 (Open Korean
+Dictionary)**, together with Typewriter-authored **말의 결 / 연상** lexical
+enrichment, is provided under the
 [Creative Commons Attribution–ShareAlike 2.0 Korea license (CC BY-SA 2.0 KR)](https://creativecommons.org/licenses/by-sa/2.0/kr/).
 
-The official dictionary's eligible text is used under the NIKL
-[STDICT copyright policy](https://stdict.korean.go.kr/join/copyrightPolicy.do).
-Typewriter licenses its own original contributions on the same terms to the
-extent it owns or controls those rights; it does not claim ownership of NIKL
-source content. Covered lexical content in canonical JSONL, the generated
-`dictionary.sqlite`, and dictionary data included in Chrome Extension and web
-distributions follows this data license. Software in those distributions
-remains separately licensed under Apache 2.0 (see [LICENSE.md](LICENSE.md)).
+The NIKL dictionaries' eligible content is reused under each official source's
+copyright policy. NIKL retains its rights to its source materials; Typewriter
+licenses only its own original contributions under the same terms, to the extent
+it owns or controls the relevant rights. This data policy covers licensed
+dictionary content in canonical JSONL, generated `dictionary.sqlite`, and
+dictionary data bundled in the Chrome Extension or web products. The separate
+software in those products remains under Apache 2.0 (see [LICENSE.md](LICENSE.md)).
 
-Commercial use and redistribution are permitted under the license. Redistributors
-must provide appropriate attribution, a link to the license, and indicate relevant
-adaptations; adaptations shared as derivative works must comply with the
-ShareAlike terms. No separate non-commercial, no-AI, or competitor restriction
-is added to the covered dictionary content.
+Commercial use and redistribution are permitted subject to attribution and
+ShareAlike. Redistributors must credit the relevant original source(s), provide
+the applicable license link, and indicate changes. Adaptations distributed as
+derivative works must comply with ShareAlike. The project adds no separate
+non-commercial, no-AI, or non-competition restriction to licensed dictionary data.
 
-This policy applies to the **new STDICT-derived baseline and its future
-enrichment**; it does not claim that the still-unreplaced dataset or any
-previously released data has already been replaced, or revoke existing license
-grants.
+## Dictionary sources and attribution
 
-## Source, modifications, and attribution
+| Source | Provider | Official site | Copyright policy |
+| --- | --- | --- | --- |
+| 표준국어대사전 (STDICT) | 국립국어원 | https://stdict.korean.go.kr/ | https://stdict.korean.go.kr/join/copyrightPolicy.do |
+| 한국어기초사전 (KRDICT) | 국립국어원 | https://krdict.korean.go.kr/ | https://krdict.korean.go.kr/kor/kboardPolicy/copyRightTermsInfo |
+| 우리말샘 | 국립국어원 | https://opendict.korean.go.kr/ | https://opendict.korean.go.kr/service/copyrightPolicy |
 
-- **Source:** 국립국어원, **표준국어대사전**.
-  https://stdict.korean.go.kr/
-- **Source copyright policy:** https://stdict.korean.go.kr/join/copyrightPolicy.do
-- **License:** CC BY-SA 2.0 대한민국.
-  https://creativecommons.org/licenses/by-sa/2.0/kr/
-- **Typewriter modifications (when the new baseline is built):** select
-  product-needed text fields; normalize headword/search forms; map source
-  entries, meanings, and licensed synonym/antonym links into the Typewriter
-  canonical model; add separately authored 말의 결 and 연상 relationships.
+For eligible materials without a separately stated license, the listed
+dictionary policies provide **CC BY-SA 2.0 대한민국**:
+https://creativecommons.org/licenses/by-sa/2.0/kr/
 
-Suggested attribution for a distribution **containing the new baseline**:
+Suggested attribution wording for Typewriter dictionary distributions:
 
-> 사전 기본 자료: 국립국어원 『표준국어대사전』
-> (https://stdict.korean.go.kr/).
-> 저작자표시-동일조건변경허락 2.0 대한민국
+> 사전 자료 출처: 국립국어원 『표준국어대사전』
+> (https://stdict.korean.go.kr/), 『한국어기초사전』
+> (https://krdict.korean.go.kr/), 『우리말샘』
+> (https://opendict.korean.go.kr/).
+> 라이선스: 저작자표시-동일조건변경허락 2.0 대한민국
 > (https://creativecommons.org/licenses/by-sa/2.0/kr/).
-> Typewriter에서 표제어·뜻풀이·관계 정보를 선별·정규화하고,
-> 자체 작성한 말의 결·연상 관계를 추가하였습니다.
+> Typewriter는 사전 자료의 표제어·뜻풀이·어휘 관계를 선별·정규화하고
+> 자체 작성한 말의 결·연상 관계를 추가합니다.
 
-A downstream distributor should preserve source attribution and give notice
-of its own changes. The Typewriter name, logos, and visual identity do not
-receive a trademark or brand license through this data grant.
+For a particular distribution, the attribution should accurately identify
+the sources actually represented in the distributed content and any changes
+made. Downstream distributors must preserve the required source credits and
+indicate their own modifications. The Typewriter/ Never Work Alone names,
+logos, and visual identities do not receive a trademark or brand license
+through this data grant.
 
-## Other NIKL dictionaries available for future comparison
+## Licensed data scope and exclusions
 
-Typewriter has also downloaded JSON from **한국어기초사전 (Korean Basic
-Dictionary)** and **우리말샘 (Open Korean Dictionary)**. These files have
-**not** yet been incorporated into the STDICT baseline or canonical data.
+Eligible NIKL dictionary headwords, parts of speech, sense definitions, and
+licensed sense-level links may be selected, normalized, and included in
+canonical data. Typewriter-specific enrichment is authored and reviewed
+independently, under the same data license.
 
-- **한국어기초사전:** https://krdict.korean.go.kr/
-  ([official copyright policy](https://krdict.korean.go.kr/kor/kboardPolicy/copyRightTermsInfo)).
-- **우리말샘:** https://opendict.korean.go.kr/
-  ([official copyright policy](https://opendict.korean.go.kr/service/copyrightPolicy)).
+Source-attributed example passages and multimedia (images, audio, video,
+pronunciation recordings) must **not** be assumed to carry the general
+dictionary-text license; use them only with separately verified permission.
+Any content explicitly marked with different terms follows those terms.
+Downloaded bulk JSON files and raw API responses remain outside Git and
+product distributions. A licensed, selected canonical projection is distinct
+from publishing the raw download.
 
-Both official policies state that content without separately specified terms is
-available under **CC BY-SA 2.0 Korea**, including commercial reuse with
-attribution and ShareAlike. Their inclusion here documents source licenses and
-future reference potential, **not an import approval or claim of current use**.
-Review the exact downloaded material for exceptions before any future import;
-source-attributed example passages and multimedia cannot be assumed to carry
-the general text license. Keep raw JSON outside the repository.
-
-## What may be included
-
-The planned STDICT baseline may contain licensed headwords, parts of speech,
-sense definitions, and licensed sense-bound lexical links needed by Typewriter.
-It must **not** copy source-attributed example passages or multimedia
-(images, audio, video, pronunciation recordings) merely because the main
-dictionary text uses CC BY-SA; those materials can carry **separate rights**.
-Material expressly marked with different terms remains governed by those terms.
-The bulk downloaded source files/API responses remain outside Git; publishing
-the selected, licensed canonical projection is distinct from publishing the raw
-download.
-
-Other external dictionaries, scraped pages, protected examples, or material
-whose terms prohibit the intended redistribution are **not** approved for import
-by this decision. Formatting or paraphrasing does not override those rights.
-Check source-specific exceptions before the STDICT import is distributed; this
-policy alone does not assert that the new corpus is already packaged or shipped.
+Other external dictionaries, scraped pages, protected examples, or content
+whose terms prohibit redistribution are not approved by this policy.
+Reformatting or paraphrasing restricted content does not override its terms.
+Check the actual downloaded datasets for source-specific exceptions before
+redistributing selected content.
 
 ## NIKL Written Corpus 2025 is a separate source
 
@@ -96,7 +80,8 @@ The NIKL **문어 말뭉치 2025(1.0)** has its own research/reference and
 result-publication permission records, described in
 [docs/external-material-review-written-corpus-2025.md](docs/external-material-review-written-corpus-2025.md).
 That approval concerns the **submitted Typewriter result**, not a general
-license to redistribute the corpus and not the permission basis for STDICT.
+license to redistribute the corpus and not the permission basis for the three
+NIKL dictionaries listed above.
 
 Do not publish the raw written corpus, its passages or excerpts, or local
 corpus SQLite/FTS or morphology indexes in Git, a generated dictionary, an
@@ -105,8 +90,7 @@ approval-specific conditions separate from the STDICT data license.
 
 ## Release boundary
 
-Before shipping the new STDICT-backed product, publish the applicable NIKL
-and Typewriter credits, link the CC BY-SA 2.0 KR license, verify source-specific
-exclusions, and include the notices in the actual extension or web distribution
-where users can find them. Maintain normal exact-revision package checks;
-this policy change does not itself constitute a shipped data migration.
+Include applicable source and Typewriter credits, link the CC BY-SA 2.0 KR
+license, verify source-specific exceptions, and provide user-accessible notices
+in the extension and web distributions. Maintain normal exact-revision and
+package-content checks.
