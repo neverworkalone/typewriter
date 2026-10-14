@@ -25,7 +25,7 @@ import { resolveTypewriterCachePaths } from '../scripts/typewriter-cache.mjs';
 import { loadBaseManifests, validateFactoryRepository } from '../scripts/factory/validate.mjs';
 import { analysisInputDigest } from '../scripts/intake/pipeline.mjs';
 import { HEX, hit, item, khaiii, kiwi, stub } from './support/khaiii-fixtures.mjs';
-import { mergeUnresolved, trashIndex, restoreManifest, compactManifest, chunkText, validateTrashChunk, validateArchivedUnresolved, failedProposalLemmas, loadTrash } from '../scripts/factory/permanent-trash.mjs';
+import { archivedObservationKeys, mergeUnresolved, trashIndex, restoreManifest, compactManifest, chunkText, validateTrashChunk, validateArchivedUnresolved, failedProposalLemmas, loadTrash } from '../scripts/factory/permanent-trash.mjs';
 import { refillCandidateBatch } from '../scripts/factory/refill.mjs';
 import { publishArtifacts, recoverArtifacts } from '../scripts/factory/artifact-transaction.mjs';
 import { planHistoryMigration } from '../scripts/factory/migrate-candidate-history.mjs';
@@ -1673,6 +1673,36 @@ test('refill resumes identical inputs, fails closed on runtime errors and record
   await assert.rejects(() => refillCandidateBatch({ ...common, checkpointPath: path.join(root, 'empty-not-exhausted.json'), selectPage: async () => ({ ...evidenceDoc([]), selection: { exhaustion: { contract: 'corpus-selector-exhaustion-v1', remaining_lemma_count: 1 } } }) }), /not proof/);
   const broken = providers.map((provider) => ({ ...provider, analyze: async () => { throw new Error('runtime unavailable'); } }));
   await assert.rejects(() => refillCandidateBatch({ ...common, checkpointPath: path.join(root, 'broken.json'), arguments: { ...args, providers: broken }, selectPage: async () => {} }), /failed closed/);
+});
+
+test('a zero-candidate refill repeating only excluded or already archived observations publishes no batch', async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), 'factory-refill-repeat-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const exhausted = async () => ({ ...evidenceDoc([]), selection: { exhaustion: { contract: 'corpus-selector-exhaustion-v1', remaining_lemma_count: 0 } } });
+  const run = (name, rows, archivedObservationKeys) => {
+    const providers = triple({ k: { 가는: GADA.가는, 낯선: [p('낯설다', 'adjective', '낯설')] },
+      h: { 가는: GADA.가는, 낯선: [p('낯익다', 'adjective', '낯익')] }, m: { 가는: GADA.가는, 낯선: [p('낯가리다', 'verb', '낯가리')] } });
+    const args = { batchId: 'C000001', taskId: 'T000001', maxCandidates: 2, canonicalEntries: [], canonicalDigest: HEX,
+      policy: ENSEMBLE_POLICY, providers, excludedLemmas: new Set(['가다']),
+      exclusionProvenance: { priorProduced: new Set(['가다']), archivedFailed: new Set(), evidenceBound: new Set() },
+      ...(archivedObservationKeys ? { archivedObservationKeys } : {}) };
+    return refillCandidateBatch({ initialEvidence: evidenceDoc(rows), arguments: args, exclusions: new Set(['가다']),
+      checkpointPath: path.join(root, `${name}.json`), selectPage: exhausted });
+  };
+  const excluded = [cand('가다', 'verb', [h('d1', '가는')])];
+  const unresolved = [...excluded, cand('낯설다', 'adjective', [h('d2', '낯선')])];
+  // An already-decided exclusion is not a new source observation.
+  await assert.rejects(() => run('excluded-only', excluded), /source exhausted with no new source observations; no batch published/u);
+  // A genuinely new unresolved observation is still preserved for the archive.
+  const first = await run('new-unresolved', unresolved);
+  assert.equal(first.rows.length, 0);
+  assert.equal(first.manifest.unresolved_observations.length, 1);
+  // The identical batch repeated against its own archive adds no information.
+  const archived = archivedObservationKeys(mergeUnresolved(new Map(), [first.manifest]).chunks);
+  await assert.rejects(() => run('repeat-unresolved', unresolved, archived), /source exhausted with no new source observations; no batch published/u);
+  // A different unresolved observation is not masked by an unrelated archive.
+  const other = archivedObservationKeys(new Map([['T000001.jsonl', [{ observation_id: 'f'.repeat(64), variants: [{ analysis_sha256: 'e'.repeat(64) }] }]]]));
+  assert.equal((await run('other-archive', unresolved, other)).manifest.unresolved_observations.length, 1);
 });
 
 test('candidate and trash publication rolls back validation failures and recovers interrupted journal', async (t) => {
