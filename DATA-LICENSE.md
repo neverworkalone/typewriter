@@ -53,6 +53,25 @@ A downstream distributor should preserve source attribution and give notice
 of its own changes. The Typewriter name, logos, and visual identity do not
 receive a trademark or brand license through this data grant.
 
+## Other NIKL dictionaries available for future comparison
+
+Typewriter has also downloaded JSON from **한국어기초사전 (Korean Basic
+Dictionary)** and **우리말샘 (Open Korean Dictionary)**. These files have
+**not** yet been incorporated into the STDICT baseline or canonical data.
+
+- **한국어기초사전:** https://krdict.korean.go.kr/
+  ([official copyright policy](https://krdict.korean.go.kr/kor/kboardPolicy/copyRightTermsInfo)).
+- **우리말샘:** https://opendict.korean.go.kr/
+  ([official copyright policy](https://opendict.korean.go.kr/service/copyrightPolicy)).
+
+Both official policies state that content without separately specified terms is
+available under **CC BY-SA 2.0 Korea**, including commercial reuse with
+attribution and ShareAlike. Their inclusion here documents source licenses and
+future reference potential, **not an import approval or claim of current use**.
+Review the exact downloaded material for exceptions before any future import;
+source-attributed example passages and multimedia cannot be assumed to carry
+the general text license. Keep raw JSON outside the repository.
+
 ## What may be included
 
 The planned STDICT baseline may contain licensed headwords, parts of speech,
