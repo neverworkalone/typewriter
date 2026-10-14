@@ -30,10 +30,10 @@ test('normalizes the sample without losing records, senses, relations, or notes'
   });
 
   assert.equal(model.normalization_version, '1');
-  assert.equal(model.records.length, 5);
+  assert.equal(model.records.length, 6);
   assert.equal(
     model.records.reduce((count, record) => count + record.senses.length, 0),
-    6,
+    7,
   );
   assert.equal(
     model.records.reduce(

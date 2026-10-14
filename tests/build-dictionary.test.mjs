@@ -43,9 +43,9 @@ test('builds a read-only SQLite dictionary with representative lookups', async (
       allowDirty: true,
     });
 
-    assert.equal(summary.recordCount, 5);
-    assert.equal(summary.searchFormCount, 5);
-    assert.equal(summary.senseCount, 6);
+    assert.equal(summary.recordCount, 6);
+    assert.equal(summary.searchFormCount, 7);
+    assert.equal(summary.senseCount, 7);
     assert.equal(summary.relationCount, 3);
     assert.match(summary.metadata.canonical_revision, /^[0-9a-f]{64}$/);
     assert.equal(summary.metadata.schema_version, '3');
@@ -54,9 +54,9 @@ test('builds a read-only SQLite dictionary with representative lookups', async (
 
     const database = new DatabaseSync(outputPath, { readOnly: true });
     try {
-      assert.equal(countRows(database, 'records'), 5);
-      assert.equal(countRows(database, 'search_forms'), 5);
-      assert.equal(countRows(database, 'senses'), 6);
+      assert.equal(countRows(database, 'records'), 6);
+      assert.equal(countRows(database, 'search_forms'), 7);
+      assert.equal(countRows(database, 'senses'), 7);
       assert.equal(countRows(database, 'relations'), 3);
       assert.equal(countRows(database, 'generated_surface_forms'), summary.generatedSurfaceFormCount);
       assert.deepEqual(getMetadata(database), summary.metadata);
@@ -129,7 +129,7 @@ test('builds a read-only SQLite dictionary with representative lookups', async (
 
     const reopened = new DatabaseSync(outputPath, { readOnly: true });
     try {
-      assert.equal(countRows(reopened, 'records'), 5);
+      assert.equal(countRows(reopened, 'records'), 6);
       assert.equal(getRecord(reopened, 'w999'), null);
     } finally {
       reopened.close();
@@ -249,7 +249,7 @@ test('rebuilds from an empty output and protects canonical input', async () => {
           .get(),
         undefined,
       );
-      assert.equal(countRows(freshDatabase, 'records'), 5);
+      assert.equal(countRows(freshDatabase, 'records'), 6);
     } finally {
       freshDatabase.close();
     }

@@ -54,12 +54,12 @@ test('two independent builds have the same logical snapshot and provenance', asy
     assert.equal(first.metadata.node_version, process.version);
     assert.equal(first.metadata.sqlite_module, 'node:sqlite');
     assert.match(first.metadata.sqlite_version, /^\d+\.\d+\.\d+$/);
-    assert.equal(first.metadata.record_count, '5');
-    assert.equal(first.metadata.start_count, '4');
+    assert.equal(first.metadata.record_count, '6');
+    assert.equal(first.metadata.start_count, '5');
     assert.equal(first.metadata.reference_only_count, '1');
-    assert.equal(first.metadata.candidate_count, '4');
-    assert.equal(first.metadata.search_form_count, '5');
-    assert.equal(first.metadata.sense_count, '6');
+    assert.equal(first.metadata.candidate_count, '5');
+    assert.equal(first.metadata.search_form_count, '7');
+    assert.equal(first.metadata.sense_count, '7');
     assert.equal(first.metadata.relation_count, '3');
     assert.equal(first.metadata.expression_count, '1');
     assert.equal(first.metadata.worktree_state, second.metadata.worktree_state);

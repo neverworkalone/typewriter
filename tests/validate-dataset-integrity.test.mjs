@@ -28,10 +28,10 @@ test('validates the sample dataset counts', async () => {
     }),
     {
       fileCount: 1,
-      recordCount: 5,
-      senseCount: 6,
+      recordCount: 6,
+      senseCount: 7,
       relationCount: 3,
-      candidateCount: 4,
+      candidateCount: 5,
     },
   );
 });

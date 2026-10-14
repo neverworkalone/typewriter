@@ -1611,7 +1611,7 @@ export function validateBenchmarkReport(report, {
     || [...selectedSqliteScales].some((scale) => !reportedSqliteScales.has(scale))) {
     throw new Error('benchmark report SQLite scales do not match the requested scales');
   }
-  if (releasePerformance && !report.release_performance_baseline) {
+  if (releasePerformance && !report.release_performance_baseline && !report.release_performance_baseline_skipped) {
     throw new Error('benchmark report is missing the real release baseline');
   }
   if (report.release_performance_baseline) {
@@ -1737,7 +1737,8 @@ export async function benchmarkCanonicalValidation({
   let realReleaseBaseline = null;
 
   try {
-    if (releasePerformance) {
+    // The real-data baseline measures the production canonical; with none (zero-data state) it is not produced.
+    if (releasePerformance && hasProductionCanonical) {
       realReleaseBaseline = await benchmarkRealRelease({
         canonicalDirectory,
         canonicalContext: canonicalTemplateContext,
@@ -2028,6 +2029,7 @@ export async function benchmarkCanonicalValidation({
     benchmark_setup: 'synthetic JSONL generation and synthetic authored-decision construction are fixture preparation; the product, package, and SQLite WASM runtime measurements run on temporary synthetic builds',
     runtime_environment: await benchmarkEnvironment(),
     release_performance_baseline: realReleaseBaseline,
+    ...(releasePerformance && !hasProductionCanonical ? { release_performance_baseline_skipped: 'no production canonical data' } : {}),
     sqlite_scales: [...selectedSqliteScales].sort((left, right) => left - right),
     corpus_cost_wiring: {
       fast: 'real session load/index plus semantic audit/topic evidence/lexical quality/full dataset validation/normalization and one shared SQLite build; fixture generation is excluded',
