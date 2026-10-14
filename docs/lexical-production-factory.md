@@ -228,13 +228,25 @@ distinct-citation-lemma-v1`; the v1 manifest fields are kept (`task_id`, `batch_
   distinct observations behind them;
 - `selection: {bound, eligible_lemma_count, deferred_lemma_count}` — the bound is a
   lemma count, deterministic lemma order, `eligible = candidates + deferred`;
+  new batches also preserve the optional digest and source references for an
+  evidence-bound exclusion set, plus the sorted matched lemmas represented by
+  evidence-bound dispositions in that batch;
 - `unresolved_observations: [{surface, evidence, holds}]` — observations with no
   reliable lemma/POS (`analysis_missing|stale|error|unsupported`), preserved for
   verification and not counted as headwords.
 - New ensemble manifests use `ensemble-resolution-v3` accounting. Every analyzed
   observation is represented by a candidate observation, an unresolved queue row,
-  or `excluded_observations[]` with disposition `prior_produced_lemma` or
-  `deferred_lemma`. Excluded observations retain their text-free source reference,
+  or `excluded_observations[]`. New Stage 1 decision artifacts distinguish
+  `prior_produced_lemma`, `archived_failed_proposal`, `evidence_bound_exclusion`,
+  and `deferred_lemma`; legacy decision-v1 artifacts keep their original labels.
+  The shared validator checks prior-production and archive dispositions against
+  earlier candidate rows and archive history. For source-bound exclusions it
+  reads each text-free source artifact from the trusted base commit, checks its
+  exact SHA-256, reconstructs the source-side lemma membership and exclusion
+  digest, and verifies the batch's matched lemmas against that membership. A
+  cache-only path cannot substantiate a committed `evidence_bound_exclusion`;
+  use a repository-tracked text-free source artifact. Deferred entries are
+  rejected when an earlier exclusion applies. Excluded observations retain their text-free source reference,
   analysis/observation digests, holds and ensemble trace; they cannot become a new
   candidate row. `ensemble.counts.input_observations` counts distinct source-observation
   identities normalized from the input decisions before disposition, separately

@@ -5,6 +5,8 @@ import { validateUnresolved, isReferenceToken } from './lemma-contract.mjs';
 
 export const COMPACT_CONTRACT = 'lexical-factory-candidate-manifest-v3';
 export const TRASH_CONTRACT = 'lexical-factory-permanent-trash-v1';
+export const STAGE1_DECISIONS_V1 = 'lexical-factory-stage1-decisions-v1';
+export const STAGE1_DECISIONS_V2 = 'lexical-factory-stage1-decisions-v2';
 export const TRASH_DIRECTORY = 'data/candidate-trash';
 export const CHUNK_SIZE = 500;
 export const digest = (value) => createHash('sha256').update(value).digest('hex');
@@ -89,12 +91,15 @@ export function mergeUnresolved(chunks, manifests) {
   return { chunks, references, changed };
 }
 
-export function compactManifest(manifest, references) {
+export function compactManifest(manifest, references, { decisionContract = STAGE1_DECISIONS_V1 } = {}) {
+  if (![STAGE1_DECISIONS_V1, STAGE1_DECISIONS_V2].includes(decisionContract)) {
+    throw new Error(`unsupported Stage 1 decisions contract ${decisionContract}`);
+  }
   const { unresolved_observations: unresolved, excluded_observations: excluded, context_fallback: fallback, ...metadata } = manifest;
   const history = { batch_id: manifest.batch_id, unresolved: references,
     ...(excluded === undefined ? {} : { excluded_observations: excluded }),
     ...(fallback === undefined ? {} : { context_fallback: fallback }) };
-  const decisions = { contract: 'lexical-factory-stage1-decisions-v1', batch_id: manifest.batch_id,
+  const decisions = { contract: decisionContract, batch_id: manifest.batch_id,
     ...(excluded === undefined ? {} : { excluded_observations: excluded }),
     ...(fallback === undefined ? {} : { context_fallback: fallback }) };
   const stage1DecisionsText = jsonText(decisions);

@@ -38,8 +38,15 @@ retain batch and queue IDs. Every existing and new batch keeps normal excluded
 dispositions and full context decisions in its own
 `data/candidates/C*/stage1-decisions.json`, without unresolved payloads or a
 second copy of trash references. The compact manifest contains only counts,
-digests and the decision file reference. Its context block has no decision array
-or list of decision IDs. There is no separate candidate-history directory.
+digests, source-exclusion bindings, and the decision file reference. Its context
+block has no decision array or list of decision IDs. There is no separate
+candidate-history directory.
+New decision-v2 artifacts distinguish lemmas already present in earlier
+candidate output, lemmas excluded by earlier permanent-trash history, and lemmas
+excluded by a digest-bound source selection. The shared validator checks the first
+two against earlier candidate/archive records, checks source-bound lemmas against
+the matched-lemma list and source binding, and rejects a deferred label when an
+earlier exclusion applies. Decision-v1 artifacts remain valid as written.
 Review/admission `candidates_sha256` continues to bind **candidates.jsonl** bytes.
 It is distinct from the manifest file SHA. The migration report records both
 old and new manifest file SHA for every batch.
@@ -64,8 +71,11 @@ known candidate/excluded category counts cannot exceed the recorded totals;
 queue-dependent aggregate and truth-unknown links remain part of the one-time
 historical audit and the producer's full pre-compaction check. When trash files change, the common validator compares their IDs with existing
 row IDs to reject cross-file duplicates. JSON keys are decoded before comparison,
-including Unicode escapes; past analysis relationships are not revalidated. Unchanged runs skip all trash reads. The writer also enforces
-global uniqueness, with a complete one-time migration proof.
+including Unicode escapes; past analysis relationships are not revalidated.
+Runs without a new decision-v2 artifact skip trash reads. To verify a new v2
+exclusion disposition, Normal reads only the archived lemma/occurrence projection;
+it does not replay prior analysis variants. The writer also enforces global
+uniqueness, with a complete one-time migration proof.
 
 ## Production target
 

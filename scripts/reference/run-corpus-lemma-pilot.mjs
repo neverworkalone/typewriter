@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 import { isSurfaceToken } from '../factory/lemma-contract.mjs';
 import { COMPACT_CONTRACT, TRASH_DIRECTORY } from '../factory/permanent-trash.mjs';
+import { excludedLemmasForArtifact, verifiedExclusionManifestLemmas } from '../factory/source-exclusions.mjs';
 import { assertWithinDirectory, isWithinDirectory, resolveCacheArtifactPath, resolveTypewriterCachePaths } from '../typewriter-cache.mjs';
 import { resolveManagedPython } from '../python/env.mjs';
 import { loadOrBuildCanonicalDictionary } from './canonical-dictionary-cache.mjs';
@@ -230,65 +231,7 @@ function relativeExclusionSourcePath(sourcePath, { repositoryDirectory, cachePat
   return relativePath.split(path.sep).join('/');
 }
 
-function verifiedExclusionManifestLemmas(artifact, relativePath) {
-  const { schema_version: schema, lemmas, source_artifacts: sources, exclusion_sha256: digest } = artifact;
-  if (schema !== 'm9-reviewed-lemma-exclusions-v1' || !Array.isArray(lemmas) || !Array.isArray(sources)) {
-    throw new Error(`Unsupported or incomplete prior exclusion manifest: ${relativePath}`);
-  }
-  if (lemmas.length === 0 || lemmas.some((lemma) => (
-    typeof lemma !== 'string'
-    || lemma.length === 0
-    || lemma !== lemma.trim()
-    || lemma.normalize('NFC') !== lemma
-  ))) {
-    throw new Error(`Prior exclusion manifest must contain trimmed NFC lemmas: ${relativePath}`);
-  }
-  if (sources.length === 0) {
-    throw new Error(`Prior exclusion manifest with lemmas must bind at least one source artifact: ${relativePath}`);
-  }
-  const sortedLemmas = [...new Set(lemmas)].sort((left, right) => (left < right ? -1 : left > right ? 1 : 0));
-  if (sortedLemmas.length !== lemmas.length || sortedLemmas.some((lemma, index) => lemma !== lemmas[index])) {
-    throw new Error(`Prior exclusion manifest lemmas must be unique and deterministically sorted: ${relativePath}`);
-  }
-  if (sources.some((source) => !source || typeof source.path !== 'string' || !source.path
-    || !/^[0-9a-f]{64}$/u.test(String(source.sha256 ?? '')))) {
-    throw new Error(`Prior exclusion manifest sources must bind paths and SHA-256 digests: ${relativePath}`);
-  }
-  const payload = { lemmas, schema_version: schema, source_artifacts: sources };
-  if (digest !== hashFileContents(JSON.stringify(payload))) {
-    throw new Error(`Prior exclusion manifest digest does not match its contents: ${relativePath}`);
-  }
-  return lemmas;
-}
-
-export function excludedLemmasForArtifact(artifact, relativePath) {
-  let sourceLemmas;
-  if ((artifact.contract_version === 'issue-204-pilot-review-v1'
-    || artifact.contract_version === 'm9-corpus-candidate-review-v1')
-    && Array.isArray(artifact.decisions)) {
-    sourceLemmas = artifact.decisions.map((row) => row?.morphology_proposal?.lemma);
-  } else if (Array.isArray(artifact.candidate_records)) {
-    sourceLemmas = artifact.candidate_records.map((row) => row?.lemma);
-  } else if (Array.isArray(artifact.targets)) {
-    sourceLemmas = artifact.targets.map((row) => row?.lemma);
-  } else if (artifact.selection?.contract_version === 'm9-corpus-candidate-selection-v1'
-    && Array.isArray(artifact.candidates)) {
-    sourceLemmas = artifact.candidates.map((row) => row?.proposed_lemma);
-  } else if (artifact.schema_version === 'm9-reviewed-lemma-exclusions-v1') {
-    sourceLemmas = verifiedExclusionManifestLemmas(artifact, relativePath);
-  } else {
-    throw new Error(`Unsupported exclusion decision contract: ${relativePath}`);
-  }
-  if (sourceLemmas.length === 0 || sourceLemmas.some((lemma) => (
-    typeof lemma !== 'string'
-    || lemma.length === 0
-    || lemma !== lemma.trim()
-    || lemma.normalize('NFC') !== lemma
-  ))) {
-    throw new Error(`Exclusion decisions must contain reviewed trimmed NFC lemmas: ${relativePath}`);
-  }
-  return sourceLemmas;
-}
+export { excludedLemmasForArtifact } from '../factory/source-exclusions.mjs';
 
 export async function buildExclusionManifest(sourcePaths, {
   repositoryDirectory = REPOSITORY_DIRECTORY,

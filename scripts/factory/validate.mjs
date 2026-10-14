@@ -17,11 +17,12 @@ import {
 import { confusableLemmaAdvisories, validateDecisionHandoff } from './handoff.mjs';
 import { buildCanonicalIndex } from './identity-adapter.mjs';
 import { isLemmaRow } from './lemma-contract.mjs';
+import { exclusionManifestSha256, exclusionSourceLemmas } from './source-exclusions.mjs';
 import { nonliteralCoverageAdvisories, validateLemmaDecision } from './lemma-decisions.mjs';
 import { loadSearchFormSupport } from './search-form-support.mjs';
 import { canonicalSnapshotDigest, usageKeyOfRow } from './stage1.mjs';
 import { validateCandidateTransition, validateLinkedTransition } from './transitions.mjs';
-import { COMPACT_CONTRACT, TRASH_DIRECTORY, validateTrashChunk, validateArchivedUnresolved } from './permanent-trash.mjs';
+import { COMPACT_CONTRACT, STAGE1_DECISIONS_V2, TRASH_DIRECTORY, validateTrashChunk, validateArchivedUnresolved } from './permanent-trash.mjs';
 import { GIT_MAX_BUFFER } from './git-limits.mjs';
 import { readShardedJson } from '../lib/sharded-json.mjs';
 
@@ -90,7 +91,7 @@ export async function validateFactoryRepository({ root = REPOSITORY_DIRECTORY, b
   const errors = [];
   let archiveBase = base;
   if (!archiveBase) {
-    try { if (git(['rev-parse', '--show-toplevel'], root) === root) archiveBase = { commit: git(['rev-parse', 'HEAD'], root) }; } catch { /* synthetic roots have no baseline */ }
+    try { if (!git(['rev-parse', '--show-prefix'], root)) archiveBase = { commit: git(['rev-parse', 'HEAD'], root) }; } catch { /* synthetic roots have no baseline */ }
   }
   report.archiveValidation = { checked_chunks: 0, unchanged_chunks_skipped: 0 };
   const changedArchiveOccurrences = new Map();
@@ -113,10 +114,12 @@ export async function validateFactoryRepository({ root = REPOSITORY_DIRECTORY, b
     const expectedFiles = manifest.contract === COMPACT_CONTRACT ? [...CANDIDATE_FILES, 'stage1-decisions.json'] : CANDIDATE_FILES;
     if (JSON.stringify(files) !== JSON.stringify(expectedFiles)) errors.push(`${batch}: candidate directory must hold exactly ${expectedFiles.join(' and ')}, found ${files.join(', ') || 'nothing'}`);
     const stage1DecisionsText = manifest.contract === COMPACT_CONTRACT ? await readOptional(path.join(directory, 'stage1-decisions.json')) : undefined;
+    let stage1Decisions = null;
+    try { if (stage1DecisionsText !== undefined) stage1Decisions = JSON.parse(stage1DecisionsText); } catch { /* shape validation reports malformed decisions */ }
     if (manifest.batch_id !== batch) errors.push(`${batch}: batch_id ${manifest.batch_id} does not match its directory`);
     const candidatesText = await readOptional(path.join(directory, 'candidates.jsonl'));
     errors.push(...validateCandidateBatch({ manifest, candidatesText, stage1DecisionsText }).map((error) => `${batch}: ${error}`));
-    candidates.set(batch, { manifest, candidatesText });
+    candidates.set(batch, { manifest, candidatesText, stage1Decisions });
   }
   for (const [batch, { manifest }] of candidates) {
     // The Stage 3 snapshot loader reads a deliberately archive-free, already-
@@ -137,7 +140,22 @@ export async function validateFactoryRepository({ root = REPOSITORY_DIRECTORY, b
   const seenIds = new Set();
   const seenUsages = new Map();
   const seenLemmas = new Map();
-  for (const [batch, { candidatesText }] of [...candidates].sort(([a], [b]) => (a < b ? -1 : 1))) {
+  const sortedCandidates = [...candidates].sort(([a], [b]) => (a < b ? -1 : 1));
+  const v2DecisionBatches = new Set(sortedCandidates.filter(([batch, { manifest, stage1Decisions }]) =>
+    !mergedMaster && stage1Decisions?.contract === STAGE1_DECISIONS_V2
+      && (!base?.candidate?.[batch] || base.candidate[batch].stage1_decisions?.sha256 !== manifest.stage1_decisions?.sha256))
+    .map(([batch]) => batch));
+  const archivedLemmaBatches = v2DecisionBatches.size ? await loadArchivedLemmaBatches(root) : new Map();
+  for (const [batch, { manifest, candidatesText, stage1Decisions }] of sortedCandidates) {
+    if (v2DecisionBatches.has(batch)) {
+      const sourceExclusion = await verifySourceExclusionBinding({
+        batch, binding: manifest.selection?.source_exclusion_binding, root, baseCommit: archiveBase?.commit ?? null,
+      });
+      errors.push(...sourceExclusion.errors);
+      errors.push(...validateStage1ExclusionProvenance({ batch, manifest, stage1Decisions,
+        priorProducedLemmas: new Set(seenLemmas.keys()), archivedLemmaBatches,
+        verifiedSourceLemmas: sourceExclusion.lemmas }));
+    }
     for (const row of parseJsonl(candidatesText ?? '', batch, [])) {
       if (seenIds.has(row.candidate_id)) errors.push(`${batch}: candidate_id ${row.candidate_id} is not unique across batches`);
       seenIds.add(row.candidate_id);
@@ -559,6 +577,137 @@ async function validateChangedArchive(root, base, report, changedArchiveOccurren
       if (!line.trim()) continue;
       const id = JSON.parse(line).observation_id;
       if (changedIds.has(id)) errors.push(`${changedIds.get(id)}: duplicate archive identity ${id} also in ${name}`);
+    }
+  }
+  return errors;
+}
+
+// V2 Stage 1 dispositions distinguish earlier output from archive and source-bound exclusions.
+// Read only the compact lemma/occurrence projection from trash; historical analyses are not replayed.
+async function loadArchivedLemmaBatches(root) {
+  const byLemma = new Map();
+  let names;
+  try { names = (await readdir(path.join(root, TRASH_DIRECTORY))).sort(); }
+  catch (error) { if (error.code === 'ENOENT') return byLemma; throw error; }
+  for (const name of names) {
+    if (!/^T\d{6}\.jsonl$/u.test(name)) continue;
+    const text = await readFile(path.join(root, TRASH_DIRECTORY, name), 'utf8');
+    for (const line of text.split('\n')) {
+      if (!line.trim()) continue;
+      let row;
+      try { row = JSON.parse(line); } catch { continue; }
+      const lemma = row.identity?.[4];
+      if (typeof lemma !== 'string') continue;
+      const batches = byLemma.get(lemma) ?? new Set();
+      for (const variant of row.variants ?? []) for (const occurrence of variant.occurrences ?? []) {
+        if (/^C\d{6}$/u.test(String(occurrence.batch_id ?? ''))) batches.add(occurrence.batch_id);
+      }
+      byLemma.set(lemma, batches);
+    }
+  }
+  return byLemma;
+}
+
+async function verifySourceExclusionBinding({ batch, binding, root, baseCommit }) {
+  const errors = [];
+  const lemmas = new Set();
+  if (!binding) return { errors, lemmas };
+  if (!Array.isArray(binding.source_artifacts) || !Array.isArray(binding.matched_lemmas)) {
+    return { errors: [`${batch}: source exclusion binding is incomplete`], lemmas };
+  }
+  const sources = binding.source_artifacts;
+  const sourcePaths = sources.map((source) => typeof source?.path === 'string' ? source.path : '');
+  const sortedSourcePaths = [...sourcePaths].sort();
+  if (JSON.stringify(sourcePaths) !== JSON.stringify(sortedSourcePaths)
+    || new Set(sourcePaths).size !== sources.length) {
+    errors.push(`${batch}: source exclusion artifacts must be unique and sorted by path`);
+  }
+  const bytesByPath = new Map();
+  const candidateCompanionPaths = new Set(sourcePaths
+    .filter((relativePath) => path.posix.basename(relativePath) === 'candidates.jsonl')
+    .map((relativePath) => path.posix.join(path.posix.dirname(relativePath), 'manifest.json')));
+  for (const source of sources) {
+    const relativePath = source?.path;
+    if (typeof relativePath !== 'string' || !relativePath || path.posix.isAbsolute(relativePath)
+      || relativePath.split('/').some((part) => !part || part === '.' || part === '..')
+      || path.posix.normalize(relativePath) !== relativePath) {
+      errors.push(`${batch}: source exclusion artifact path is not a normalized repository-relative path`);
+      continue;
+    }
+    if (!baseCommit) {
+      errors.push(`${batch}: source exclusion artifact ${relativePath} cannot be verified without a trusted Git base snapshot`);
+      continue;
+    }
+    let bytes;
+    try {
+      bytes = execFileSync('git', ['show', `${baseCommit}:${relativePath}`], {
+        cwd: root, encoding: null, stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: GIT_MAX_BUFFER,
+      });
+    } catch {
+      errors.push(`${batch}: source exclusion artifact ${relativePath} is unavailable in the trusted base snapshot`);
+      continue;
+    }
+    bytesByPath.set(relativePath, bytes);
+    if (sha256Hex(bytes) !== source.sha256) {
+      errors.push(`${batch}: source exclusion artifact ${relativePath} digest differs from the trusted base snapshot`);
+    }
+  }
+  const candidateSourceLemmas = new Map();
+  for (const source of sources) {
+    const relativePath = source?.path;
+    const bytes = bytesByPath.get(relativePath);
+    if (!bytes) continue;
+    if (candidateCompanionPaths.has(relativePath)) continue;
+    try {
+      const companionManifestPath = path.posix.join(path.posix.dirname(relativePath), 'manifest.json');
+      const sourceLemmas = exclusionSourceLemmas(relativePath, bytes, {
+        emptyCandidateManifestBytes: bytesByPath.get(companionManifestPath),
+      });
+      if (path.posix.basename(relativePath) === 'candidates.jsonl') {
+        candidateSourceLemmas.set(relativePath, sourceLemmas);
+      }
+      for (const lemma of sourceLemmas) lemmas.add(lemma);
+    } catch (error) {
+      errors.push(`${batch}: source exclusion artifact ${relativePath} cannot prove lemma membership: ${error.message}`);
+    }
+  }
+  for (const source of sources) {
+    const relativePath = source?.path;
+    if (!candidateCompanionPaths.has(relativePath) || !bytesByPath.has(relativePath)) continue;
+    const candidatePath = path.posix.join(path.posix.dirname(relativePath), 'candidates.jsonl');
+    const candidateLemmas = candidateSourceLemmas.get(candidatePath);
+    if (!candidateLemmas || candidateLemmas.length !== 0) {
+      errors.push(`${batch}: source exclusion manifest ${relativePath} is not bound to a verified empty candidate source`);
+    }
+  }
+  const orderedLemmas = [...lemmas].sort((left, right) => left < right ? -1 : left > right ? 1 : 0);
+  const matched = binding.matched_lemmas;
+  for (const lemma of matched) {
+    if (!lemmas.has(lemma)) errors.push(`${batch}: matched source-exclusion lemma ${lemma} is absent from the verified source artifacts`);
+  }
+  if (exclusionManifestSha256(orderedLemmas, sources) !== binding.exclusion_sha256) {
+    errors.push(`${batch}: source exclusion digest does not match verified source lemma membership and artifact digests`);
+  }
+  return { errors, lemmas };
+}
+
+function validateStage1ExclusionProvenance({ batch, manifest, stage1Decisions, priorProducedLemmas, archivedLemmaBatches, verifiedSourceLemmas }) {
+  const errors = [];
+  const sourceBinding = manifest.selection?.source_exclusion_binding;
+  for (const [index, entry] of (stage1Decisions?.excluded_observations ?? []).entries()) {
+    const priorProduced = priorProducedLemmas.has(entry.lemma);
+    const archiveBatches = archivedLemmaBatches.get(entry.lemma) ?? new Set();
+    const archivedBeforeBatch = [...archiveBatches].some((archivedBatch) => archivedBatch < batch);
+    const expected = priorProduced ? 'prior_produced_lemma'
+      : archivedBeforeBatch ? 'archived_failed_proposal'
+      : verifiedSourceLemmas.has(entry.lemma) && sourceBinding?.matched_lemmas?.includes(entry.lemma)
+        ? 'evidence_bound_exclusion' : null;
+    if (entry.disposition === 'deferred_lemma') {
+      if (expected) errors.push(`${batch}: excluded observation ${index} for ${entry.lemma} must be ${expected}, got deferred_lemma`);
+    } else if (!expected) {
+      errors.push(`${batch}: excluded observation ${index} for ${entry.lemma} has no prior candidate, archived proposal, or bound source exclusion`);
+    } else if (entry.disposition !== expected) {
+      errors.push(`${batch}: excluded observation ${index} for ${entry.lemma} must be ${expected}, got ${entry.disposition}`);
     }
   }
   return errors;

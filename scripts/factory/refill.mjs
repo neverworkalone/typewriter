@@ -23,6 +23,7 @@ const morphologySnapshotOf = (evidence) => evidence.analysis_cache?.mode === 've
 // checkpoint caches source-bound analyzer answers, never a separate AI judgment.
 export async function refillCandidateBatch({ initialEvidence, arguments: args, exclusions, checkpointPath, selectPage, progress = () => {} }) {
   const binding = digest(JSON.stringify({ evidence: initialEvidence, exclusions: [...exclusions].sort(),
+    exclusion_provenance: Object.fromEntries(Object.entries(args.exclusionProvenance ?? {}).map(([key, lemmas]) => [key, [...lemmas].sort()])),
     morphology_source_snapshot_sha256: morphologySnapshotOf(initialEvidence),
     batch: args.batchId, task: args.taskId, target: args.maxCandidates, canonical: args.canonicalDigest,
     revision: args.producerRevision, policy: args.policy, providers: args.providers.map(providerDescriptor),

@@ -13,7 +13,7 @@ import {
   validateReviewField,
 } from './ensemble-resolver.mjs';
 import { RESOLVING_OUTCOMES, contextDecisionsSha256, fallbackBlockers, validateContextDecisions } from './context-fallback.mjs';
-import { COMPACT_CONTRACT, TRASH_CONTRACT } from './permanent-trash.mjs';
+import { COMPACT_CONTRACT, STAGE1_DECISIONS_V1, STAGE1_DECISIONS_V2, TRASH_CONTRACT } from './permanent-trash.mjs';
 import {
   PROPOSAL_CONTRACT,
   CANDIDATE_STATUSES,
@@ -257,13 +257,16 @@ export function validateLemmaCandidateBatch({ manifest, candidatesText, maxUnres
     errors.push('exhausted Stage 1 results must preserve a source observation in the unresolved archive or excluded ledger');
   }
   const selection = manifest.selection;
-  if (!isPlainObject(selection) || Object.keys(selection).sort().join() !== 'bound,deferred_lemma_count,eligible_lemma_count'
+  const selectionKeys = isPlainObject(selection) ? Object.keys(selection).sort().join() : '';
+  if (!isPlainObject(selection) || !['bound,deferred_lemma_count,eligible_lemma_count',
+    'bound,deferred_lemma_count,eligible_lemma_count,source_exclusion_binding'].includes(selectionKeys)
     || !Number.isInteger(selection.bound) || selection.bound < 1
     || !Number.isInteger(selection.eligible_lemma_count) || !Number.isInteger(selection.deferred_lemma_count)) {
     errors.push('candidate manifest: selection must be {bound, eligible_lemma_count, deferred_lemma_count}');
   } else {
     if (manifest.candidate_count > selection.bound) errors.push('candidate manifest: candidate_count exceeds the selection bound');
     if (selection.eligible_lemma_count !== manifest.candidate_count + selection.deferred_lemma_count) errors.push('candidate manifest: eligible lemmas must equal candidates plus deferred lemmas');
+    if (selection.source_exclusion_binding !== undefined) errors.push(...validateSourceExclusionBinding(selection.source_exclusion_binding));
   }
   const ensemble = manifest.resolution_policy === ENSEMBLE_POLICY;
   let details;
@@ -274,7 +277,7 @@ export function validateLemmaCandidateBatch({ manifest, candidatesText, maxUnres
     const expected = ['batch_id', 'contract', ...(ensemble ? ['context_fallback'] : []),
       ...(manifest.ensemble?.contract === ENSEMBLE_CONTRACT ? ['excluded_observations'] : [])].sort().join();
     if (!isPlainObject(details) || Object.keys(details).sort().join() !== expected
-      || details.contract !== 'lexical-factory-stage1-decisions-v1' || details.batch_id !== manifest.batch_id) return [...errors, 'stage1-decisions.json has invalid fields or batch binding'];
+      || ![STAGE1_DECISIONS_V1, STAGE1_DECISIONS_V2].includes(details.contract) || details.batch_id !== manifest.batch_id) return [...errors, 'stage1-decisions.json has invalid fields or batch binding'];
   }
   const decisions = (compact ? details : manifest).context_fallback?.decisions;
   const decisionIds = new Set((Array.isArray(decisions) ? decisions : [])
@@ -302,7 +305,7 @@ export function validateLemmaCandidateBatch({ manifest, candidatesText, maxUnres
   });
   if (observations !== manifest.observation_count) errors.push(`candidate manifest: observation_count ${manifest.observation_count} differs from the rows' observation_total ${observations}`);
   if (ensemble && errors.length === 0) errors.push(...validateEnsembleBindings(compact
-    ? { ...manifest, context_fallback: details.context_fallback, excluded_observations: details.excluded_observations, unresolved_observations: [] }
+    ? { ...manifest, stage1DecisionContract: details.contract, context_fallback: details.context_fallback, excluded_observations: details.excluded_observations, unresolved_observations: [] }
     : manifest, rows, { compact }));
   return errors;
 }
@@ -350,7 +353,8 @@ function validateCompactMetadata(manifest, ensemble, details) {
       || contextDecisionsSha256(fallback.decisions) !== fallback.decisions_sha256) errors.push('candidate decisions: invalid context decisions');
     else errors.push(...validateContextDecisions(fallback.decisions));
     const decisionIds = new Set((Array.isArray(fallback?.decisions) ? fallback.decisions : []).filter((entry) => RESOLVING_OUTCOMES.includes(entry?.outcome)).map((entry) => entry.decision_id));
-    errors.push(...validateExcludedObservations({ ...manifest, excluded_observations: details.excluded_observations }, decisionIds));
+    errors.push(...validateExcludedObservations({ ...manifest, stage1DecisionContract: details.contract,
+      excluded_observations: details.excluded_observations }, decisionIds));
     // Counts and traces remain historical metadata; their full relationship was
     // checked once before compaction, not reconstructed on every future PR.
     if (![ENSEMBLE_CONTRACT, LEGACY_ENSEMBLE_CONTRACT].includes(manifest.ensemble?.contract)
@@ -411,7 +415,18 @@ function validateExcludedObservations(manifest, decisionIds) {
       errors.push(`${at}: excluded observation has an invalid field set`);
       continue;
     }
-    if (!['prior_produced_lemma', 'deferred_lemma'].includes(entry.disposition)) errors.push(`${at}: disposition must be prior_produced_lemma or deferred_lemma`);
+    const decisionsContract = manifest.stage1DecisionContract ?? STAGE1_DECISIONS_V2;
+    const allowedDispositions = decisionsContract === STAGE1_DECISIONS_V1
+      ? ['prior_produced_lemma', 'deferred_lemma']
+      : ['prior_produced_lemma', 'archived_failed_proposal', 'evidence_bound_exclusion', 'deferred_lemma'];
+    if (!allowedDispositions.includes(entry.disposition)) errors.push(`${at}: disposition is not supported by the Stage 1 decisions contract`);
+    if (entry.disposition === 'evidence_bound_exclusion') {
+      const binding = manifest.selection?.source_exclusion_binding;
+      if (!binding || !Array.isArray(binding.source_artifacts) || binding.source_artifacts.length === 0
+        || !binding.matched_lemmas?.includes(entry.lemma)) {
+        errors.push(`${at}: evidence_bound_exclusion requires source exclusion binding evidence`);
+      }
+    }
     if (typeof entry.lemma !== 'string' || !KOREAN_WORD.test(entry.lemma)) errors.push(`${at}: lemma must be a Korean citation-form word`);
     if (!POS_VALUES.includes(entry.pos)) errors.push(`${at}: pos must be one of ${POS_VALUES.join(', ')}`);
     if (!isSurfaceToken(entry.surface)) errors.push(`${at}: surface must be a single bounded word form`);
@@ -428,6 +443,33 @@ function validateExcludedObservations(manifest, decisionIds) {
     const order = `${entry.disposition}\u0000${entry.lemma}\u0000${entry.observation_digest}`;
     if (previousOrder !== null && !(previousOrder < order)) errors.push(`${at}: excluded observations must be uniquely and deterministically sorted`);
     previousOrder = order;
+  }
+  const matchedSourceLemmas = manifest.selection?.source_exclusion_binding?.matched_lemmas;
+  if (Array.isArray(matchedSourceLemmas)) for (const lemma of matchedSourceLemmas) {
+    if (!entries.some((entry) => entry.lemma === lemma && entry.disposition === 'evidence_bound_exclusion')) {
+      errors.push(`candidate manifest: matched source exclusion lemma ${lemma} has no evidence-bound disposition`);
+    }
+  }
+  return errors;
+}
+
+function validateSourceExclusionBinding(binding) {
+  const errors = [];
+  if (!isPlainObject(binding) || Object.keys(binding).sort().join() !== 'exclusion_sha256,matched_lemmas,source_artifacts'
+    || !isSha256(binding.exclusion_sha256) || !Array.isArray(binding.source_artifacts)
+    || !Array.isArray(binding.matched_lemmas)) {
+    return ['candidate manifest: invalid source exclusion binding'];
+  }
+  const sortedLemmas = [...new Set(binding.matched_lemmas)].sort();
+  if (sortedLemmas.length !== binding.matched_lemmas.length
+    || sortedLemmas.some((lemma, index) => lemma !== binding.matched_lemmas[index] || typeof lemma !== 'string' || !KOREAN_WORD.test(lemma))) {
+    errors.push('candidate manifest: source exclusion matched lemmas must be unique, sorted Korean citation forms');
+  }
+  for (const [index, source] of binding.source_artifacts.entries()) {
+    if (!isPlainObject(source) || Object.keys(source).sort().join() !== 'path,sha256'
+      || typeof source.path !== 'string' || source.path.length === 0 || !isSha256(source.sha256)) {
+      errors.push(`candidate manifest: source exclusion binding source ${index} is invalid`);
+    }
   }
   return errors;
 }

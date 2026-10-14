@@ -93,8 +93,11 @@ Under the ensemble policy the v2 manifest additionally carries (all text-free):
   length. The shared validator requires `input_observations === observations`, independently checking the partition.
   `trace_sha256` binds the provider identities, every observation digest/trace pair across all three dispositions,
   row review summaries and recorded context decisions. Historical v2 manifests remain valid as written.
-- `excluded_observations[]`: text-free assigned observations with disposition `prior_produced_lemma` or
-  `deferred_lemma`, citation lemma/POS, bounded surface and source reference, analysis digest, holds, observation digest
+- `excluded_observations[]`: text-free assigned observations. New Stage 1 decisions distinguish
+  `prior_produced_lemma`, `archived_failed_proposal`, `evidence_bound_exclusion`, and `deferred_lemma`;
+  legacy decision-v1 artifacts keep their original labels. The source-bound category requires the
+  manifest's digest, source references, and matched lemma list for its exclusion input. The validator also rejects deferred dispositions when an earlier exclusion applies. Records retain the citation lemma/POS,
+  bounded surface and source reference, analysis digest, holds, observation digest
   and the same ensemble trace record used on candidate observations. These records explain why a provider decision was
   analyzed but did not create a current candidate row. Source-observation identity binds the observed surface, source
   reference and usage group, independently of the extractor hint. Repeated hits at one identity are normalized once;
