@@ -28,7 +28,10 @@ CREATE TABLE senses (
   id TEXT PRIMARY KEY NOT NULL,
   record_id TEXT NOT NULL,
   position INTEGER NOT NULL CHECK (position >= 0),
-  pos TEXT NOT NULL CHECK (pos IN ('noun', 'adjective', 'verb', 'adverb', 'expression')),
+  pos TEXT NOT NULL CHECK (pos IN (
+    'noun', 'adjective', 'verb', 'adverb', 'determiner', 'interjection',
+    'particle', 'ending', 'affix', 'unclassified', 'expression'
+  )),
   gloss TEXT NOT NULL,
   UNIQUE (id, record_id),
   UNIQUE (record_id, position),

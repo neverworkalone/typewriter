@@ -338,3 +338,21 @@ test('a stale approval does not explain (and so never hides) an incoming link', 
   const stale = { ...state.done, [row.sense_id]: { ...entry, gloss_sha256: 'e'.repeat(64) } };
   assert.equal(explained(stale).get(targetId)?.has(row.sense_id) ?? false, false, 'a stale approval explains nothing');
 });
+
+test('worker partitions are disjoint, cover the queue and stay stable while other senses are completed', () => {
+  const many = Array.from({ length: 60 }, (_, i) => ({ ...rows[0], sense_id: `w${100 + i}-s1`, record_id: `w${100 + i}` }));
+  const state = newQueueState('x');
+  const all = (partition) => nextPacket(many, state, { limit: MAX_PACKET_SIZE, partition }).map((row) => row.sense_id);
+  const [first, second, third] = [1, 2, 3].map((index) => all({ index, count: 3 }));
+  assert.deepEqual([...first, ...second, ...third].sort(), all(null).sort(), 'every sense belongs to exactly one partition');
+  assert.equal(new Set([...first, ...second, ...third]).size, many.length);
+  assert.ok([first, second, third].every((part) => part.length > 0));
+  const other = second.slice(0, 5).map((id) => many.find((row) => row.sense_id === id));
+  const { state: after } = recordOutcomes(state, other, other.map((row) => ({ sense_id: row.sense_id, outcome: 'no-relations', rationale: `${row.sense_id}: 후보 없음.` })), {
+    candidates: new Map(other.map((row) => [row.sense_id, []])), index, snapshotDigest: 'x',
+  });
+  assert.deepEqual(nextPacket(many, after, { limit: MAX_PACKET_SIZE, partition: { index: 1, count: 3 } }).map((row) => row.sense_id), first, 'completing other partitions never moves a sense');
+  for (const bad of [{ index: 0, count: 2 }, { index: 3, count: 2 }, { index: 1, count: 0 }, { index: 1.5, count: 2 }]) {
+    assert.throws(() => nextPacket(many, state, { partition: bad }), /partition must be/u);
+  }
+});

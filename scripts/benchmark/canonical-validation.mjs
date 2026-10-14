@@ -1,4 +1,5 @@
 import { execFile as execFileCallback } from 'node:child_process';
+import { reviewableRecordInfos } from '../validate/licensed-source.mjs';
 import { createHash } from 'node:crypto';
 import { createReadStream } from 'node:fs';
 import { performance } from 'node:perf_hooks';
@@ -1712,8 +1713,13 @@ export async function benchmarkCanonicalValidation({
   // The corpus is scaled from real canonical record shapes; a repository with no canonical data yet
   // (zero-data state) scales from the small synthetic sample used by the generic tests instead.
   const productionCanonicalDirectory = path.join(REPOSITORY_DIRECTORY, 'data', 'canonical');
-  const hasProductionCanonical = (await readdir(productionCanonicalDirectory).catch(() => []))
-    .some((name) => name.endsWith('.jsonl'));
+  // Licensed-source records are exempt from authored review (see validate/licensed-source.mjs), so the synthetic
+  // corpus, which is audited as authored data, cannot be scaled from them.
+  const productionContext = (await readdir(productionCanonicalDirectory).catch(() => [])).some((name) => name.endsWith('.jsonl'))
+    ? await loadCanonicalContext({ directory: productionCanonicalDirectory, contextPath: null })
+    : undefined;
+  const hasProductionCanonical = productionContext !== undefined
+    && reviewableRecordInfos(productionContext.records).length > 0;
   const canonicalDirectory = hasProductionCanonical
     ? productionCanonicalDirectory
     : path.join(REPOSITORY_DIRECTORY, 'tests', 'fixtures', 'benchmark-template');

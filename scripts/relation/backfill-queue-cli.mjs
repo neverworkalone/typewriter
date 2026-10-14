@@ -8,10 +8,11 @@ import {
 } from './backfill-queue.mjs';
 import { applyBackfill, completedPacketId } from './backfill-apply.mjs';
 import { buildRelationIndex } from './candidate-retrieval.mjs';
+import { acquireStateLock } from './state-lock.mjs';
 
 // Usage:
 //   node scripts/relation/backfill-queue-cli.mjs status
-//   node scripts/relation/backfill-queue-cli.mjs next [--limit N] [--out packet.json]
+//   node scripts/relation/backfill-queue-cli.mjs next [--limit N] [--partition I/K] [--out packet.json]
 //   node scripts/relation/backfill-queue-cli.mjs record <packet.json> <outcomes.json>
 //   node scripts/relation/backfill-queue-cli.mjs apply     (writes approved, not-yet-present relations into canonical)
 // `--canonical <directory>` reads another canonical directory (default: the repository's data/canonical).
@@ -20,6 +21,17 @@ const args = process.argv.slice(2);
 const flag = (name, fallback) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : fallback; };
 const statePath = flag('--state', path.join(os.homedir(), '.cache/typewriter/relation-backfill/state.json'));
 const command = args[0];
+const partitionFlag = flag('--partition');
+let partition = null;
+if (partitionFlag !== undefined) {
+  const match = /^(\d+)\/(\d+)$/u.exec(partitionFlag);
+  if (!match) { console.error('--partition must be I/K (for example 1/2)'); process.exit(2); }
+  partition = { index: Number(match[1]), count: Number(match[2]) };
+}
+
+// `record` and `apply` read, decide and rewrite the state; hold the lock across all of it so concurrent authors cannot
+// overwrite each other's approvals. `status` and `next` only read and never block authors.
+if (command === 'record' || command === 'apply') await acquireStateLock(statePath);
 
 const canonicalDirectory = flag('--canonical');
 const canonical = await loadCanonicalContext(canonicalDirectory ? { directory: path.resolve(canonicalDirectory) } : {});
@@ -49,7 +61,7 @@ const current = currentCandidatesForDone(canonical, rows, state, { index });
 if (command === 'status') {
   console.log(JSON.stringify(summarizeQueue(rows, state, current), null, 2));
 } else if (command === 'next') {
-  const packet = nextPacket(rows, state, { limit: Number(flag('--limit', '50')), currentCandidates: current });
+  const packet = nextPacket(rows, state, { limit: Number(flag('--limit', '50')), currentCandidates: current, partition });
   const payload = packetPayload(canonical.canonicalRevision, packet, retrievePacket(canonical, packet, { index }));
   const out = flag('--out');
   if (out) await writeFile(out, `${JSON.stringify(payload, null, 1)}\n`); else console.log(JSON.stringify(payload, null, 1));

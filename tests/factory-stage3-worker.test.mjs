@@ -1225,6 +1225,13 @@ async function surfaceFormRoot(records) {
   }, null, 2) + '\n');
   return root;
 }
+// Isolated roots must not inherit the dispositions of whatever canonical data the repository holds.
+const EMPTY_SURFACE_FORM_MANIFESTS = {
+  'data/validation/m6-2-inflection-exceptions.json': JSON.stringify({ schema_version: 1, contract_id: 'm6-2-inflection-exceptions-v1', source_issue: 174, exceptions: [] }, null, 2) + '\n',
+  'data/validation/m6-3-surface-form-review.json': JSON.stringify({
+    schema_version: 1, contract_id: 'm6-3-searchable-predicate-review-v2', source_issue: 209, dispositions: [], reviewed_collisions: { exact_generated: [], ambiguous_generated: [] },
+  }, null, 2) + '\n',
+};
 const predicate = (id, lemma, pos = 'verb') => ({ id, record_type: 'entry', role: 'start', candidate_id: id, lemma, search_forms: [lemma], senses: [{ id: id + '-s1', pos, gloss: '뜻풀이.' }] });
 
 test('Stage 3 adds the rule-dictated sense-bound surface-form disposition for new predicate senses, idempotently', async () => {
@@ -1326,7 +1333,7 @@ test('applyStage3Admission leaves the worktree untouched when a surface-form jud
     await mkdir(path.join(root, 'data/validation'), { recursive: true });
     await copyShardedAuthority(path.join(base.root, 'data/validation/canonical-semantic-decision-source.json'), path.join(root, 'data/validation/canonical-semantic-decision-source.json'));
     for (const file of ['data/validation/m6-2-inflection-exceptions.json', 'data/validation/m6-3-surface-form-review.json']) {
-      await writeFile(path.join(root, file), await readFile(file, 'utf8'));
+      await writeFile(path.join(root, file), EMPTY_SURFACE_FORM_MANIFESTS[file]);
     }
     await mkdir(path.join(root, 'data/canonical'), { recursive: true });
     await mkdir(path.join(root, 'data/reviews/C900001'), { recursive: true });
@@ -1561,7 +1568,7 @@ test('a Stage 2 judgment on a planned admission closes the surface-form gap unde
   try {
     for (const file of ['data/validation/m6-2-inflection-exceptions.json', 'data/validation/m6-3-surface-form-review.json']) {
       await mkdir(path.dirname(path.join(root, file)), { recursive: true });
-      await writeFile(path.join(root, file), await readFile(file, 'utf8'));
+      await writeFile(path.join(root, file), EMPTY_SURFACE_FORM_MANIFESTS[file]);
     }
     const projected = [...canonicalRecords, record];
     await assert.rejects(planSurfaceFormDispositions({ root, records: projected }), (error) => error.code === 'STAGE3_SURFACE_FORM_JUDGMENT');

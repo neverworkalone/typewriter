@@ -49,15 +49,19 @@ The current canonical model supports two record shapes:
 
 | Record shape | Currently supported sense POS |
 | --- | --- |
-| `entry` | `noun`, `adjective`, `verb`, `adverb` |
+| `entry` | `noun`, `adjective`, `verb`, `adverb`, plus the STDICT classes `determiner`, `interjection`, `particle`, `ending`, `affix`, `unclassified` (Issue #676) |
 | `expression` | `expression` (a fixed expression represented as its own lexical unit) |
 
 An in-scope record may be searched by its canonical `lemma` and curated
 `search_forms`; the existing generated-surface-form contract remains a separate
-search path. The current shape has no POS representation for categories such as
-pronouns, numerals, determiners, particles, or interjections. Their product
-scope is unresolved: this issue does not add POS values or change the schema,
-and their absence from the enum is a model boundary to decide explicitly, not a
+search path. STDICT import (Issue #676) resolves the proposal in
+`docs/stdict-baseline-analysis-issue-671.md` §6 minimally: 의존 명사, 대명사 and 수사
+are stored as `noun`, 보조 동사/형용사 as `verb`/`adjective`, and the classes that
+cannot honestly be one of those get their own value (`determiner`, `interjection`,
+`particle`, `ending`, `affix`; `unclassified` for a word with no source POS).
+Whether such records are searchable is not a POS decision: they are stored and
+searchable like any other record, and any narrower search scope is a separate
+product decision. Their absence from the earlier enum was a model boundary, not a
 judgment that those words are too common or insufficiently writer-useful.
 Subcategories not represented separately (for example, proper nouns within
 `noun`) are not excluded by a missing subcategory field.

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { isLicensedSourceRecordInfo } from './licensed-source.mjs';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -27,8 +28,22 @@ export const LEXICAL_TOPIC_EVIDENCE_KIND = 'semantic-review-topic-analysis';
 
 const RECORD_TYPES = Object.freeze(['entry', 'expression']);
 const ROLES = Object.freeze(['start', 'reference-only']);
-const ENTRY_POS = Object.freeze(['noun', 'adjective', 'verb', 'adverb']);
+const ENTRY_POS = Object.freeze([
+  'noun', 'adjective', 'verb', 'adverb',
+  'determiner', 'interjection', 'particle', 'ending', 'affix', 'unclassified',
+]);
 const ALL_POS = Object.freeze([...ENTRY_POS, 'expression']);
+/**
+ * Findings that stay blocking for licensed-source shards: record shape, identity
+ * and part-of-speech contract. Editorial gloss/alias/boundary heuristics are
+ * for authored candidates and do not judge official dictionary text.
+ */
+const LICENSED_SOURCE_BLOCKING_CODES = new Set([
+  'LEXICAL_SHAPE_ERROR', 'LEXICAL_RECORD_TYPE', 'LEXICAL_ROLE', 'LEXICAL_LEMMA',
+  'LEXICAL_SEARCH_FORM_LEMMA', 'LEXICAL_SEARCH_FORM_DUPLICATE', 'LEXICAL_SENSES',
+  'LEXICAL_CANONICAL_ID', 'LEXICAL_EXPRESSION_POS', 'LEXICAL_ENTRY_EXPRESSION_POS',
+  'LEXICAL_SENSE_SHAPE', 'LEXICAL_SENSE_POS', 'LEXICAL_ENTRY_POS', 'LEXICAL_GLOSS_EMPTY',
+]);
 const CONNECTORS = Object.freeze(['이나', '또는', '거나']);
 const SEMANTIC_BOUNDARY_ACTIONS = Object.freeze(['retain', 'split', 'merge', 'rewrite', 'fail']);
 const SEMANTIC_BOUNDARY_CLASSIFICATIONS = Object.freeze([
@@ -1782,7 +1797,7 @@ export function auditCanonicalLexicalQuality(
   const classificationCounts = {};
   let senseCount = 0;
   const glossConnectorCache = context?.semanticAuditCache?.glossConnectors;
-  for (const finding of findBulkGlossProjectionFindings(recordInfos)) {
+  for (const finding of findBulkGlossProjectionFindings(recordInfos.filter((info) => !isLicensedSourceRecordInfo(info)))) {
     const owner = finding.owners[0];
     findings.push({
       ...finding,
@@ -1811,7 +1826,9 @@ export function auditCanonicalLexicalQuality(
       topicEvidence,
       glossConnectorCache,
     });
+    const licensed = isLicensedSourceRecordInfo(recordInfo);
     for (const finding of qualityFindings) {
+      if (licensed && !LICENSED_SOURCE_BLOCKING_CODES.has(finding.code)) continue;
       const senseMatch = /\.senses\[(\d+)\]/u.exec(finding.message);
       const senseIndex = senseMatch ? Number(senseMatch[1]) : undefined;
       findings.push({
@@ -1821,8 +1838,9 @@ export function auditCanonicalLexicalQuality(
         location: sourceLabel(recordInfo, index),
       });
     }
+    senseCount += record.senses?.length ?? 0;
+    if (licensed) continue;
     for (const sense of record.senses ?? []) {
-      senseCount += 1;
       const observations = glossConnectorCache?.get(sense.gloss)
         ?? inspectGlossConnectors(sense.gloss);
       for (const observation of observations) {
@@ -1852,6 +1870,8 @@ export function auditCanonicalLexicalQuality(
   const searchFormOwners = new Map();
   for (const [index, record] of normalized.entries()) {
     if (!record || typeof record !== 'object') continue;
+    // Homographs legitimately share a lemma; identity is the record id.
+    if (isLicensedSourceRecordInfo(recordInfos[index])) continue;
     const location = sourceLabel(recordInfos[index], index);
     if (typeof record.lemma === 'string') {
       const key = record.lemma.normalize('NFC');

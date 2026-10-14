@@ -7,6 +7,7 @@ import {
   DEFAULT_CANONICAL_DIRECTORY,
 } from './canonical-jsonl.mjs';
 import { loadCanonicalContext } from './canonical-context.mjs';
+import { completeRecordInfos, isLicensedSourceRecord, reviewableRecordInfos } from './licensed-source.mjs';
 import { revertRelationCorrections } from '../factory/relation-corrections.mjs';
 import {
   LEXICAL_TOPIC_EVIDENCE_CONTRACT_VERSION,
@@ -177,7 +178,9 @@ function compareCanonicalRecordIds(leftId, rightId) {
  * not a stable append order: a newly named JSONL file can sort between older
  * files without changing any record value.
  */
-export function orderCanonicalRecordInfos(recordInfos) {
+export function orderCanonicalRecordInfos(allRecordInfos) {
+  // Licensed-source shards carry official text and are outside authored review.
+  const recordInfos = reviewableRecordInfos(allRecordInfos);
   let isAlreadyOrdered = true;
   for (let index = 1; index < recordInfos.length; index += 1) {
     if (compareCanonicalRecordIds(
@@ -305,7 +308,7 @@ export function factoryHistoryReachesCorrection(record, events, correctionDigest
 
 const CANONICAL_AUDIT_CACHE_TOKEN = Symbol('canonical-audit-cache');
 
-export function createCanonicalAuditCache(recordInfos) {
+function createCanonicalAuditCacheImpl(recordInfos) {
   const ordered = orderCanonicalRecordInfos(recordInfos);
   return {
     [CANONICAL_AUDIT_CACHE_TOKEN]: true,
@@ -957,7 +960,7 @@ function materializedBoundarySource(review, decisionSourceId) {
  * expanded field below is a deterministic projection of canonical content or
  * a compact authored judgment retained by the source.
  */
-export function materializeSemanticReviewArtifact(
+function materializeSemanticReviewArtifactImpl(
   recordInfos,
   compactReview,
   { decisionSourceId, batchDecisionSources = [], hashCache, onRecord } = {},
@@ -1276,7 +1279,7 @@ function buildSenseCoverage(record, sense, { hashCache } = {}) {
  * not invent semantic/editorial decisions, pass statuses, boundary
  * classifications, or no-relation rationales.
  */
-export function buildSemanticCoverageArtifact(
+function buildSemanticCoverageArtifactImpl(
   recordInfos,
   { artifactId = 'canonical-semantic-coverage', hashCache } = {},
 ) {
@@ -1309,7 +1312,7 @@ export function buildSemanticCoverageArtifact(
  * artifact. The decision artifact is required from the caller and is never
  * synthesized from canonical records here.
  */
-export function assembleSemanticAuditArtifact(
+function assembleSemanticAuditArtifactImpl(
   recordInfos,
   semanticReview,
   { artifactId = 'canonical-semantic-audit', hashCache } = {},
@@ -1348,7 +1351,7 @@ export function assembleSemanticAuditArtifact(
  * The decision source remains the only durable semantic input; coverage,
  * review, and the outer audit envelope are deterministic views of it.
  */
-export function buildSemanticAuditFromDecisionSource(
+function buildSemanticAuditFromDecisionSourceImpl(
   recordInfos,
   decisionSource,
   {
@@ -2257,7 +2260,7 @@ function validateCompactSemanticReviewEnvelope(
  * Validate a separately authored semantic/editorial decision artifact. No
  * decision is inferred from the canonical record by this validator.
  */
-export function validateSemanticReviewArtifact(
+function validateSemanticReviewArtifactImpl(
   recordInfos,
   artifact,
   {
@@ -2359,7 +2362,7 @@ export function validateSemanticReviewArtifact(
  * this function only verifies its bindings and never derives a decision from
  * canonical content.
  */
-export function validateSemanticDecisionSource(
+function validateSemanticDecisionSourceImpl(
   recordInfos,
   decisionSource,
   {
@@ -2397,7 +2400,7 @@ export function validateSemanticDecisionSource(
   if (source.canonical_records_sha256 !== expectedCanonicalDigest) {
     fail(`${label}.source.canonical_records_sha256 does not match the complete canonical input`, 'SEMANTIC_AUDIT_SOURCE_MISMATCH');
   }
-  const factoryAdmissions = validateFactoryAdmissionLedger(decisionSource, recordInfos, label);
+  const factoryAdmissions = validateFactoryAdmissionLedger(decisionSource, completeRecordInfos(recordInfos), label);
   const authoredReview = requireObject(decisionSource.authored_review, `${label}.authored_review`);
   requireDigest(decisionSource.authored_review_sha256, `${label}.authored_review_sha256`);
   if (decisionSource.authored_review_sha256 !== cachedSha256Json(authoredReview, hashCache)) {
@@ -2546,10 +2549,19 @@ export function validateFactoryAdmissionLedger(decisionSource, recordInfos, labe
         fail(`${changeLabel}.before_sha256 does not match its operation`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
       }
       requireDigest(change.after_sha256, `${changeLabel}.after_sha256`);
-      if (change.operation === 'create' ? change.previous_semantic_review_sha256 !== null : !SHA256_PATTERN.test(change.previous_semantic_review_sha256 ?? '')) {
-        fail(`${changeLabel}.previous_semantic_review_sha256 does not match its operation`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+      // A change to a licensed-source record has no authored review to bind: it records `null` for both review digests,
+      // and only the canonical record digests below tie it to the record it changed.
+      const reviewExempt = change.semantic_review_sha256 === null;
+      if (reviewExempt) {
+        if (change.previous_semantic_review_sha256 !== null || !isLicensedSourceRecord(canonicalById.get(change.entry_id))) {
+          fail(`${changeLabel} is review-exempt but ${change.entry_id} is not a licensed-source record`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+        }
+      } else {
+        if (change.operation === 'create' ? change.previous_semantic_review_sha256 !== null : !SHA256_PATTERN.test(change.previous_semantic_review_sha256 ?? '')) {
+          fail(`${changeLabel}.previous_semantic_review_sha256 does not match its operation`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+        }
+        requireDigest(change.semantic_review_sha256, `${changeLabel}.semantic_review_sha256`);
       }
-      requireDigest(change.semantic_review_sha256, `${changeLabel}.semantic_review_sha256`);
       if (change.previous_semantic_review !== undefined || change.previous_record !== undefined) {
         if (change.operation === 'create'
           || sha256Json(change.previous_semantic_review) !== change.previous_semantic_review_sha256
@@ -2615,6 +2627,12 @@ export function validateFactoryAdmissionLedger(decisionSource, recordInfos, labe
   }
   for (const [recordId, change] of latestChangeByRecord) {
     const record = canonicalById.get(recordId);
+    if (change.semantic_review_sha256 === null) {
+      if (!record || !matchesHistoricalRecordDigest(record, change.after_sha256)) {
+        fail(`${label}.factory_admissions latest change for ${recordId} does not bind the current canonical record`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+      }
+      continue;
+    }
     const review = reviewById.get(recordId);
     if (!record || !review) fail(`${label}.factory_admissions latest change for ${recordId} has no canonical record or semantic review`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
     const fullDigest = cachedSha256Json(record);
@@ -2633,7 +2651,7 @@ export function validateFactoryAdmissionLedger(decisionSource, recordInfos, labe
  * Verify the complete pre-written audit envelope. Coverage is deterministic
  * machine evidence; review is a separately authored semantic decision set.
  */
-export function validateSemanticAuditCoverage(
+function validateSemanticAuditCoverageImpl(
   recordInfos,
   artifact,
   {
@@ -2713,7 +2731,7 @@ export function validateSemanticAuditCoverage(
  * the semantic review.  This is the only input that can establish a blocking
  * noun-topic reading; lexical POS presence remains open-world evidence.
  */
-export function buildSemanticTopicEvidence(
+function buildSemanticTopicEvidenceImpl(
   recordInfos,
   artifact,
   { label = 'semantic audit', requireTopicAnalysis = true, hashCache } = {},
@@ -3031,3 +3049,26 @@ export async function restoreImportRecordsBeforeFactoryAdmissions(importRecords,
 export async function loadCanonicalBeforeFactoryAdmissions(recordInfos, { decisionSourcePath } = {}) {
   return canonicalRecordsBeforeFactoryAdmissions(recordInfos, await readSemanticDecisionSourceArtifact(decisionSourcePath));
 }
+
+/**
+ * Licensed-source shards (see licensed-source.mjs) are outside authored semantic
+ * review. Every public entry that binds records, digests or coverage drops them
+ * once, at the boundary, so no caller can forget to.
+ */
+function reviewableFirstArgument(implementation) {
+  return (recordInfos, ...rest) => implementation(
+    reviewableRecordInfos(recordInfos),
+    ...rest.map((argument) => (argument && typeof argument === 'object' && argument.baseRecords
+      ? { ...argument, baseRecords: reviewableRecordInfos(argument.baseRecords) }
+      : argument)),
+  );
+}
+export const createCanonicalAuditCache = reviewableFirstArgument(createCanonicalAuditCacheImpl);
+export const materializeSemanticReviewArtifact = reviewableFirstArgument(materializeSemanticReviewArtifactImpl);
+export const buildSemanticCoverageArtifact = reviewableFirstArgument(buildSemanticCoverageArtifactImpl);
+export const assembleSemanticAuditArtifact = reviewableFirstArgument(assembleSemanticAuditArtifactImpl);
+export const buildSemanticAuditFromDecisionSource = reviewableFirstArgument(buildSemanticAuditFromDecisionSourceImpl);
+export const validateSemanticReviewArtifact = reviewableFirstArgument(validateSemanticReviewArtifactImpl);
+export const validateSemanticDecisionSource = reviewableFirstArgument(validateSemanticDecisionSourceImpl);
+export const validateSemanticAuditCoverage = reviewableFirstArgument(validateSemanticAuditCoverageImpl);
+export const buildSemanticTopicEvidence = reviewableFirstArgument(buildSemanticTopicEvidenceImpl);

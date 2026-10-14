@@ -5,6 +5,7 @@
 export const ACTIVE_PRODUCTION_ENTRYPOINTS = Object.freeze({
   'scripts/batch/build-issue-223-corpus-batch.mjs': 'Corpus batch builder (B05+). Batches from INTAKE_HANDOFF_FIRST_BATCH require the shared intake hand-off.',
   'scripts/factory/admission.mjs': 'Lexical Factory Stage 3 canonical writer; accepts only a source-bound ready review, writes deterministic entry/sense mappings, and records its admission provenance.',
+  'scripts/stdict/build-shard.mjs': 'Deterministic STDICT shard converter (#676). Writes licensed official-source records marked `source: "stdict"` with target_code/sense_code provenance; the shared canonical gate validates every shard it writes.',
 });
 
 // Historical, batch-specific pipelines (fixed output path, no batch-id argument). None remain.
