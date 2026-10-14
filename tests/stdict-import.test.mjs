@@ -16,6 +16,8 @@ import {
   createSenseIndex,
   finalizeSenseIndex,
   flattenSenses,
+  inventoryStdictSource,
+  readStdictItems,
   mapPos,
   recordIdFor,
   STDICT_NOTES,
@@ -504,4 +506,47 @@ test('shard assignment keeps admitted pilot records, refills the first shard, an
 test('crossed subscript and superscript markup is converted without losing text', () => {
   assert.equal(cleanDefinition("화학식은 NO<sub style='font-size:11px;'>2<sup style='font-size:11px;'></sub>+</sup>.").text, '화학식은 NO₂⁺.');
   assert.equal(cleanDefinition("화학식은 NO<sub style='font-size:11px;'>2<sup style='font-size:11px;'></sub>+</sup>.").unknownMarkup, false);
+});
+
+test('the source reader accepts only the inventoried file set, bytes and entry counts', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'typewriter-stdict-source-'));
+  try {
+    const entries = (...codes) => codes.map((code) => item(code, '단어', '단어', [[code * 10, '뜻풀이.']]));
+    const write = (name, list, total = 3) => writeFile(path.join(directory, name), JSON.stringify({ channel: { total, item: list } }));
+    await write('d_1.json', entries(1, 2));
+    await write('d_2.json', entries(3));
+    const inventory = await inventoryStdictSource(directory);
+    assert.deepEqual([inventory.file_count, inventory.entry_count, inventory.channel_total], [2, 3, 3]);
+    const read = async (expected = inventory) => {
+      const seen = [];
+      const files = await readStdictItems(directory, (entry) => seen.push(entry.target_code), { inventory: expected });
+      return { files, seen };
+    };
+    assert.deepEqual(await read(), { files: ['d_1.json', 'd_2.json'], seen: [1, 2, 3] });
+
+    await assert.rejects(() => readStdictItems(directory, () => {}), /requires its trusted file inventory/u);
+    // A file the inventory names but the download lacks, or a file it does not name.
+    await assert.rejects(() => read({ ...inventory, file_count: 3, files: [...inventory.files, { name: 'd_3.json', sha256: '0', entries: 1 }] }), /missing: d_3\.json/u);
+    await assert.rejects(() => read({ ...inventory, file_count: 1, files: inventory.files.slice(0, 1), entry_count: 2 }), /unexpected: d_2\.json/u);
+    // An altered or truncated file, and a wrong entry total.
+    await assert.rejects(() => read({ ...inventory, files: [{ ...inventory.files[0], sha256: 'f'.repeat(64) }, inventory.files[1]] }), /d_1\.json differs from the inventory/u);
+    await assert.rejects(() => read({ ...inventory, entry_count: 4 }), /expects 2 \/ 4/u);
+    await write('d_2.json', entries(3, 4));
+    await assert.rejects(() => read(), /d_2\.json differs from the inventory/u);
+    const regenerated = await inventoryStdictSource(directory);
+    await assert.rejects(() => read({ ...regenerated, files: [regenerated.files[0], { ...regenerated.files[1], entries: 1 }] }), /has 2 entries; the inventory expects 1/u);
+    assert.deepEqual((await read(regenerated)).seen, [1, 2, 3, 4]);
+    await rm(path.join(directory, 'd_2.json'));
+    await assert.rejects(() => read(regenerated), /missing: d_2\.json/u);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('the committed source inventory names the 88 STDICT files and their 436,587 entries', async () => {
+  const inventory = JSON.parse(await readFile(path.join(ROOT, 'data/provenance/stdict-source-inventory.json'), 'utf8'));
+  assert.equal(inventory.contract, 'stdict-source-inventory-v1');
+  assert.deepEqual([inventory.file_count, inventory.entry_count, inventory.files.length], [88, 436587, 88]);
+  assert.equal(inventory.files.reduce((sum, file) => sum + file.entries, 0), inventory.entry_count);
+  assert.equal(new Set(inventory.files.map(({ name }) => name)).size, 88);
 });

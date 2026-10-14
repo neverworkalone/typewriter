@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -199,15 +200,65 @@ export function finalizeSenseIndex(index) {
   return index;
 }
 
-export async function readStdictItems(directory, onItem) {
-  const files = (await readdir(directory)).filter((name) => name.endsWith('.json')).sort(
-    (left, right) => Number(left.match(/_(\d+)\.json$/u)?.[1]) - Number(right.match(/_(\d+)\.json$/u)?.[1]),
-  );
-  for (const file of files) {
-    const parsed = JSON.parse(await readFile(path.join(directory, file), 'utf8'));
-    for (const item of parsed.channel.item) onItem(item, file);
+const sourceFileNumber = (name) => Number(name.match(/_(\d+)\.json$/u)?.[1]);
+
+/**
+ * Reads the whole source, and only the source the trusted inventory names: the expected file set, each file's
+ * sha256 and entry count, and the dictionary's own `channel.total`. A missing, extra, altered or truncated file
+ * fails here, before any shard or settlement is produced, so a partial download can never be counted as complete.
+ * `inventory` is required; there is no way to read an unverified source.
+ */
+export async function readStdictItems(directory, onItem, { inventory } = {}) {
+  if (!Array.isArray(inventory?.files) || inventory.files.length === 0) {
+    throw new Error('Reading the STDICT source requires its trusted file inventory.');
   }
-  return files;
+  const found = (await readdir(directory)).filter((name) => name.endsWith('.json'));
+  const expected = new Set(inventory.files.map(({ name }) => name));
+  const missing = [...expected].filter((name) => !found.includes(name));
+  const extra = found.filter((name) => !expected.has(name));
+  if (missing.length > 0 || extra.length > 0) {
+    throw new Error(`STDICT source files do not match the inventory (missing: ${missing.join(', ') || 'none'}; unexpected: ${extra.join(', ') || 'none'}).`);
+  }
+  const files = [...inventory.files].sort((left, right) => sourceFileNumber(left.name) - sourceFileNumber(right.name));
+  let entryCount = 0;
+  for (const file of files) {
+    const text = await readFile(path.join(directory, file.name), 'utf8');
+    if (createHash('sha256').update(text).digest('hex') !== file.sha256) {
+      throw new Error(`STDICT source file ${file.name} differs from the inventory (sha256).`);
+    }
+    const { channel } = JSON.parse(text);
+    if (channel.item.length !== file.entries || (inventory.channel_total !== undefined && channel.total !== inventory.channel_total)) {
+      throw new Error(`STDICT source file ${file.name} has ${channel.item.length} entries; the inventory expects ${file.entries}.`);
+    }
+    entryCount += channel.item.length;
+    for (const item of channel.item) onItem(item, file.name);
+  }
+  if (entryCount !== inventory.entry_count || files.length !== inventory.file_count) {
+    throw new Error(`STDICT source has ${files.length} files / ${entryCount} entries; the inventory expects ${inventory.file_count} / ${inventory.entry_count}.`);
+  }
+  return files.map(({ name }) => name);
+}
+
+/** Builds the inventory of a source directory (used once to commit the trusted inventory, and by `--verify`). */
+export async function inventoryStdictSource(directory) {
+  const names = (await readdir(directory)).filter((name) => name.endsWith('.json'))
+    .sort((left, right) => sourceFileNumber(left) - sourceFileNumber(right));
+  const files = [];
+  let total;
+  for (const name of names) {
+    const text = await readFile(path.join(directory, name), 'utf8');
+    const { channel } = JSON.parse(text);
+    total ??= channel.total;
+    files.push({ name, sha256: createHash('sha256').update(text).digest('hex'), entries: channel.item.length });
+  }
+  return {
+    contract: 'stdict-source-inventory-v1',
+    dictionary: '표준국어대사전 (STDICT)',
+    file_count: files.length,
+    entry_count: files.reduce((sum, { entries }) => sum + entries, 0),
+    channel_total: total,
+    files,
+  };
 }
 
 /**

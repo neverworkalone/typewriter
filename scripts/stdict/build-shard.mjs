@@ -23,6 +23,12 @@ export const SELECTION_VERSION = 'stdict-selection-v2';
 /** Hash order of the 1,000-record pilot; the first shard keeps every pilot record that the inclusion policy still admits. */
 const PILOT_SELECTION_VERSION = 'stdict-pilot-selection-v1';
 const DEFAULT_SOURCE = path.join(os.homedir(), '.cache/typewriter/dict/stdict');
+const INVENTORY_FILE = fileURLToPath(new URL('../../data/provenance/stdict-source-inventory.json', import.meta.url));
+
+/** The committed, trusted inventory of the 88 source files (see `inventory.mjs`). */
+export async function loadSourceInventory(file = INVENTORY_FILE) {
+  return JSON.parse(await readFile(file, 'utf8'));
+}
 
 const hashOf = (targetCode) => createHash('sha256')
   .update(`${PILOT_SELECTION_VERSION}:${targetCode}`)
@@ -186,7 +192,8 @@ export function assignShards({ eligibleCodes, pilotCodes, shardSize = STDICT_SHA
 }
 
 /** Reads the whole source once and returns what shard assignment and conversion need. */
-export async function loadStdictSource({ sourceDirectory = DEFAULT_SOURCE } = {}) {
+export async function loadStdictSource({ sourceDirectory = DEFAULT_SOURCE, inventory } = {}) {
+  inventory ??= await loadSourceInventory();
   const index = createSenseIndex();
   const summaries = [];
   const itemsByCode = new Map();
@@ -194,14 +201,14 @@ export async function loadStdictSource({ sourceDirectory = DEFAULT_SOURCE } = {}
     addToSenseIndex(index, item);
     summaries.push(summarize(item));
     itemsByCode.set(item.target_code, item);
-  });
+  }, { inventory });
   finalizeSenseIndex(index);
   const eligibleCodes = [...index.entries]
     .filter(([, entry]) => entry.included > 0 && !entry.held)
     .map(([code]) => code);
   const pilotCodes = [...selectPilot(summaries, { index, count: STDICT_SHARD_SIZE }).keys()];
   return {
-    index, summaries, itemsByCode, sourceFiles: files.length, sourceEntryCount: summaries.length,
+    index, inventory, summaries, itemsByCode, sourceFiles: files.length, sourceEntryCount: summaries.length,
     shards: assignShards({ eligibleCodes, pilotCodes }),
   };
 }

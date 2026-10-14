@@ -3,6 +3,12 @@
 이 문서는 #678의 **코드/규칙 PR(PR A)** 결과입니다. 전체 436,587건 중 shard 데이터는 아직 `stdict-0001`만 있으며, 나머지는 후속
 shard PR(약 20~25 shard씩)에서 같은 도구로 추가됩니다. 원본 JSON(`~/.cache/typewriter/dict/stdict`)은 Git 밖에 있고 여기에는 집계만 적습니다.
 
+## 원본 완전성
+
+`data/provenance/stdict-source-inventory.json`이 88개 원본 파일의 이름·sha256·entry 수와 사전 자체의 `channel.total`을 담은 신뢰 인벤토리입니다.
+`readStdictItems()`(shard 생성과 정산의 유일한 원본 입력 경계)는 인벤토리를 필수로 받아, 파일이 빠지거나 더해지거나 바뀌거나 잘리면 어떤 산출물도 만들기 전에 실패합니다.
+`node scripts/stdict/inventory.mjs [--verify]`로 생성·확인합니다.
+
 ## 수록 정책 (sense 단위, `scripts/stdict/policy.mjs`)
 
 | 원본 sense | canonical | 비고 |

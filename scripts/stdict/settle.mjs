@@ -79,6 +79,7 @@ export async function settle({ source }) {
       held_after_conversion: everything.held.length,
     },
     reconciliation: {
+      source_inventory: source.sourceFiles === source.inventory.file_count && source.sourceEntryCount === source.inventory.entry_count,
       entries: entryRows.length === source.sourceEntryCount
         && entryRows.length === Object.values(countBy(entryRows, ({ status }) => status)).reduce((sum, value) => sum + value, 0),
       senses: everything.conversions.reduce((sum, row) => sum + row.kept_senses, 0)
