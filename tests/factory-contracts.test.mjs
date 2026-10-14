@@ -477,20 +477,30 @@ test('registered validator fails closed on merged-batch mutation, deletion, held
   assert.match(unresolved.stderr, /cannot resolve factory base/);
 });
 
-test('a zero-data reset marker relaxes the deletion check only in the change that introduces it', async () => {
+test('a zero-data reset marker relaxes the deletion check only when it is tracked in HEAD and absent from the base', async () => {
   const f = await gitFixture();
   const marker = JSON.stringify({ contract: 'lexical-factory-zero-data-reset-v1', issue: 672 });
   f.git('rm', '-rq', 'data/candidates/C000001');
+  f.git('commit', '-qm', 'delete history');
   assert.match(f.run().stderr, /deleted/, 'without a marker the deletion of merged history is refused');
 
-  await f.write('config/zero-data-reset.json', JSON.stringify({ contract: 'other', issue: 672 }));
-  assert.notEqual(f.run().status, 0, 'a marker with another contract does not count');
+  // An untracked or staged-only marker never counts: only the marker blob committed in HEAD does.
   await f.write('config/zero-data-reset.json', marker);
+  assert.match(f.run().stderr, /deleted/, 'an untracked marker does not relax the check');
+  f.git('add', 'config/zero-data-reset.json');
+  assert.match(f.run().stderr, /deleted/, 'a staged but uncommitted marker does not relax the check');
+  await f.write('config/zero-data-reset.json', JSON.stringify({ contract: 'other', issue: 672 }));
+  f.git('add', '-A'); f.git('commit', '-qm', 'wrong contract');
+  assert.match(f.run().stderr, /deleted/, 'a committed marker with another contract does not count');
+
+  // The working tree cannot override the committed blob.
+  await f.write('config/zero-data-reset.json', marker);
+  assert.match(f.run().stderr, /deleted/, 'the validator reads the HEAD blob, not the edited file');
+  f.git('add', '-A'); f.git('commit', '-qm', 'reset marker');
   const introduced = f.run();
   assert.equal(introduced.status, 0, introduced.stderr);
 
   // Once the marker is part of the base, it no longer relaxes anything.
-  f.git('add', '-A'); f.git('commit', '-qm', 'reset');
   f.git('checkout', '-q', 'master'); f.git('merge', '-q', '--ff-only', 'work');
   f.git('checkout', '-q', '-b', 'later');
   await f.write('data/candidates/C000002/manifest.json', JSON.stringify(f.batch.manifest));
@@ -499,6 +509,7 @@ test('a zero-data reset marker relaxes the deletion check only in the change tha
   f.git('checkout', '-q', 'master'); f.git('merge', '-q', '--ff-only', 'later');
   f.git('checkout', '-q', '-b', 'again');
   f.git('rm', '-rq', 'data/candidates/C000002');
+  f.git('commit', '-qm', 'delete again');
   assert.match(f.run().stderr, /deleted/, 'a marker already on the base never excuses a later deletion');
 });
 

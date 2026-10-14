@@ -1,5 +1,4 @@
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
@@ -741,8 +740,9 @@ export const ZERO_DATA_RESET_MARKER = 'config/zero-data-reset.json';
 export const ZERO_DATA_RESET_CONTRACT = 'lexical-factory-zero-data-reset-v1';
 
 export function zeroDataResetIntroduced(root, baseCommit) {
+  // The marker must be tracked in HEAD and is read from that blob, never from the working tree.
   let marker;
-  try { marker = JSON.parse(readFileSync(path.join(root, ZERO_DATA_RESET_MARKER), 'utf8')); } catch { return false; }
+  try { marker = JSON.parse(git(['show', `HEAD:${ZERO_DATA_RESET_MARKER}`], root)); } catch { return false; }
   if (marker?.contract !== ZERO_DATA_RESET_CONTRACT || !Number.isInteger(marker.issue) || marker.issue < 1) return false;
   try { git(['cat-file', '-e', `${baseCommit}:${ZERO_DATA_RESET_MARKER}`], root); return false; } catch { return true; }
 }
