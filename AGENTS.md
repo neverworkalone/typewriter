@@ -59,19 +59,28 @@ Do not turn Typewriter into sentence generation. The writer writes the sentence;
 
 ## Data source and licensing discipline
 
-The repository stores **Typewriter's canonical curated data**, not external dictionary/API dumps.
+The **new** canonical dictionary baseline is a selected, deterministically
+converted subset of the National Institute of Korean Language's
+**표준국어대사전 (STDICT)**. The source's eligible headwords, definitions and
+licensed lexical links may be included under **CC BY-SA 2.0 Korea** with source
+attribution; Typewriter's independently authored **말의 결 / 연상** data is
+licensed under the same terms. This is an explicit exception to the former
+author-only canonical source rule. See `DATA-LICENSE.md` and `docs/data-policy.md`.
+The reset/import itself requires its own task; it is not completed by this policy.
 
-External APIs, dictionaries, corpora, and LLMs may be used as reference, verification, or draft-generation tools only when their terms permit the intended use.
+- Do not commit raw downloaded dictionary JSON, bulk API responses, scraped
+  pages, raw corpus passages, protected source-attributed examples or multimedia.
+  The approved product-needed STDICT canonical **projection** is different from a
+  raw source dump.
+- Do not copy restricted content from other dictionaries or assume transforming
+  it changes the licensing conditions.
+- Maintain source IDs/provenance, license attribution and intended rights scope.
+- Typewriter-specific creative relation classifications, notes, and relevance
+  remain authored/reviewed editorial decisions, not automatic STDICT judgments.
 
-Unless an active issue explicitly establishes otherwise:
-
-- do not commit raw API responses, scraped pages, copied dictionary entries, or bulk third-party datasets;
-- do not copy restricted definitions, examples, rankings, or relationship lists into canonical data;
-- do not assume that reformatting, combining, paraphrasing, or translating third-party data removes its license or terms;
-- use reusable open data only under its applicable license and attribution requirements;
-- record source-policy decisions in the repository's data/licensing documentation when they affect ongoing work.
-
-The final relation, classification, ranking, and curation stored in Typewriter must be defensible as Typewriter data, not a disguised copy of a restricted source.
+Other external APIs, dictionaries, corpora and LLMs remain subject to their
+respective use conditions. No new blanket validator or old-data migration is
+required by this license decision.
 
 ## Canonical data and generated artifacts
 
