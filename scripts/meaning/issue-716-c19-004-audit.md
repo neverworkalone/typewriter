@@ -4,11 +4,11 @@
 
 This pass starts from origin/master 2ef369d42027c25d84112947012ba0795096213c. The baseline shard has 999 meanings and 1003 unique canonical sense references across 721 lemmas. The source-bound census maps every reference to committed canonical data and finds 147 lemmas with multiple meanings and 574 lemmas with one existing meaning. No lemma in this shard appears in another C19 shard.
 
-The edit specification is scripts/meaning/issue-716-c19-004.json. It makes 21 MERGE decisions covering 43 source senses, makes 6 direct cross-reference GLOSS EDITs, and makes no DROP decisions. The result has 977 meanings and 1003 unique canonical sense references. All source senses not named in a new MERGE remain separate KEEP meanings. The 4 already-grouped base meanings (한국적: w361204-s1 + w361204-s2; 한두째: w364116-s1 + w364116-s2; 한시적: w366602-s1 + w366602-s2; 한의학적: w505373-s1 + w505373-s2) are preserved. Canonical records remain unchanged.
+The edit specification is scripts/meaning/issue-716-c19-004.json. It makes 19 MERGE decisions covering 39 source senses, makes 6 direct cross-reference GLOSS EDITs, and makes no DROP decisions. The result has 979 meanings and 1003 unique canonical sense references. All source senses not named in a new MERGE remain separate KEEP meanings. The 4 already-grouped base meanings (한국적: w361204-s1 + w361204-s2; 한두째: w364116-s1 + w364116-s2; 한시적: w366602-s1 + w366602-s2; 한의학적: w505373-s1 + w505373-s2) are preserved. Canonical records remain unchanged.
 
 The only verbatim same-lemma, same-POS source gloss match is the already-grouped 한의학적 pair. No other exact duplicate or noun/determiner-equivalent pair was found in this shard.
 
-Across C19, meaning rows move from 33380 to 33358; all canonical sense references remain accounted for.
+Across C19, meaning rows move from 33380 to 33360; all canonical sense references remain accounted for.
 
 ## Source-bound decisions
 
@@ -74,7 +74,7 @@ The table lists every source sense in all 147 multi-meaning lemmas. A listed sen
 | 한미 | w367063-s1, w367065-s1 | KEEP all listed meanings — 가난하고 지체가 낮음과 한국·미국 병칭은 상태와 국가다. |
 | 한민 | w367347-s1, w367347-s2 | KEEP all listed meanings — 직업 없는 백성과 한가한 사람은 사회적 처지와 개인의 여유다. |
 | 한민족 | w503636-s1, w503637-s1 | KEEP all listed meanings — 중국의 한족과 한반도의 우리 민족은 민족 집단이 다르다. |
-| 한바다 | w367354-s1, w367354-s2 | MERGE w367354-s1 + w367354-s2 → “매우 깊고 넓은 바다. 매우 넓고 방대한 것을 비유적으로 이르기도 한다.” — 깊고 넓은 바다와 넓고 방대한 것의 비유는 같은 넓고 큰 바다 이미지의 문자적·비유적 용례다. |
+| 한바다 | w367354-s1, w367354-s2 | KEEP all listed meanings — w367354-s1은 실제 바다를, w367354-s2는 바다가 아닌 사물·개념의 넓고 방대한 크기를 비유적으로 가리킨다. 공유된 넓이 이미지만으로 자연 대상과 추상적 비유의 독립 지시 대상을 하나로 만들지 않는다. |
 | 한바탕 | w505589-s1, w505589-s2 | MERGE w505589-s1 + w505589-s2 → “크게 벌어진 한 판. 또는 한판 크게 하는 모양.” — 크게 벌어진 한 판과 한판 크게 하는 모양은 한 차례 크게 벌이는 일을 명사·부사로 나타낸다. |
 | 한바탕하다 | w367636-s1, w367636-s2 | MERGE w367636-s1 + w367636-s2 → “어떠한 일을 크게 한 번 벌이다. 크게 싸우는 일도 이른다.” — 어떤 일을 크게 한 번 벌이는 것과 크게 한 번 싸우는 것은 같은 행위축의 일반 용례와 구체 용례다. |
 | 한반 | w367639-s1, w367640-s1 | KEEP all listed meanings — 먹줄의 가운데 기준선과 땀띠의 한방 명칭은 도구 표시와 피부 질환이다. |
@@ -119,7 +119,7 @@ The table lists every source sense in all 147 multi-meaning lemmas. A listed sen
 | 한수석 | w365620-s1, w365620-s2 | KEEP all listed meanings — 결정질 석회암인 대리석과 석고·방해석 광물은 구성 광물과 용도가 다른 돌이다. |
 | 한술 더 뜨다 | w524749-s1, w524749-s2 | KEEP all listed meanings — 잘못을 더하는 부정적 행위와 남의 생각을 미리 헤아려 대처하는 준비는 평가 방향과 행동이 다르다. |
 | 한술 밥에 배부르랴 | w524748-s1, w524748-s2 | MERGE w524748-s1 + w524748-s2 → “어떤 일이든 단번에 만족할 수 없으며, 힘을 조금 들이고 많은 효과를 기대할 수 없다는 말.” — 단번에 만족할 수 없다는 풀이와 적은 힘으로 큰 효과를 기대할 수 없다는 풀이는 적은 양·노력으로 큰 만족을 바라기 어렵다는 같은 속담 뜻이다. |
-| 한숨 | w365942-s1, w499708-s1, w499708-s2 | MERGE w499708-s1 + w499708-s2 → “숨을 한 번 쉴 동안이나 잠깐 동안. 또는 잠깐 동안의 휴식이나 잠.” — 숨 한 번 쉴 정도의 짧은 시간과 잠깐의 휴식·잠은 모두 짧게 이어지는 시간이나 쉼을 가리킨다.<br>KEEP w365942-s1 — 숨 한 번의 짧은 시간과 잠깐의 쉼·잠을 한 축으로 묶었다. 한숨 내쉬기는 별도 의미로 남겼다. |
+| 한숨 | w365942-s1, w499708-s1, w499708-s2 | KEEP all listed meanings — w365942-s1은 길게 몰아 내쉬는 숨, w499708-s1은 숨 한 번 쉴 동안의 시간 간격, w499708-s2는 잠깐의 휴식이나 잠이라는 사건을 가리킨다. 짧은 기간이라는 공통점만으로 시간량과 휴식·수면 행위를 합치지 않는다. |
 | 한습 | w365964-s1, w499895-s1, w499895-s2 | KEEP all listed meanings — 가축의 한 살과 한사·습사 및 냉습 병증은 나이와 병리 개념이다. |
 | 한시 | w366256-s1, w366256-s2, w366257-s1, w499896-s1, w499896-s2 | KEEP all listed meanings — 정형 한시, 한나라 때 시, 한영이 전한 시경, 같은 시각, 짧은 시간은 문학 양식·역사 문헌·시간이다. |
 | 한시(가) 새롭다 | w532863-s1, w532863-s2, w532863-s3 | KEEP all listed meanings — 시간의 긴요함·아쉬움, 짧은 시간이 괴롭게 느껴짐, 사물 변화의 두드러짐은 정서와 관찰 평가가 다르다. |
@@ -184,6 +184,10 @@ These references remain explicitly unresolved rather than guessed:
 
 The source-bound census, decisions, and gloss checks were performed in the primary agent context. This is agent self-check, not an independent first/second review or human editorial approval. Issue #716 independent PR review stages remain separate and required.
 
+### Stage 2 review follow-up — 2026-10-16
+
+Stage 2 review identified independent referents in 한바다 (literal sea vs. non-sea objects described metaphorically) and 한숨 (time interval vs. rest or sleep event). Their MERGE edits were removed and the four original singleton meaning rows restored; no canonical sense reference was changed or dropped. I rechecked the remaining 19 MERGE source groups against their committed canonical glosses for a merge based only on a shared image or short duration. No additional group met that condition: the remaining cold-weather and moon/water/rain cases refer to a shared object and cold-state axis, while the other groups retain their documented same-axis, example, or grammatical-framing rationale.
+
 ## Validation
 
-`node scripts/meaning/validate.mjs` passed with 496,959 meanings and 117 adjudications. `git diff --check` passed. The shard has 977 meanings and retains all 1,003 canonical sense references; C19 has 33,358 meanings. No DROP or adjudication change was added, and canonical files remain unchanged.
+`node scripts/meaning/validate.mjs` passed with 496,959 meanings and 117 adjudications. `git diff --check` passed. The shard has 979 meanings and retains all 1,003 canonical sense references; C19 has 33,360 meanings. No DROP or adjudication change was added, and canonical files remain unchanged.
