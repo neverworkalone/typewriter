@@ -53,3 +53,12 @@ This pass does not claim that every C19 polysemy group has been adjudicated. Its
 On 2026-10-15, a source-bound pass reviewed the 142 non-pilot multi-meaning lemma groups in `c19_001`; the `하다` senses were already edited in the #715 pilot. The shard began with 983 meanings / 1,000 canonical sense references across 660 lemmas, including 517 single-source-sense singleton lemmas. After focused Stage 2 PR review corrections, 50 MERGE decisions (46 pairs and four three-sense groups) reduce the shard to 929 meanings while preserving all 1,000 source references. No new DROP was needed; the 11 prior C19 adjudications remain unchanged.
 
 The follow-up audit is `scripts/meaning/issue-716-c19-001-audit.md`, with edits in `scripts/meaning/issue-716-c19-001.json`. The full C19 projection now has 33,451 meanings and 33,630 canonical sense references. Repository validation passed at 498,397 meanings / 33 adjudications. This completes authoring decisions for the `c19_001` shard only; the other C19 groups remain pending and Issue #716 stays open. The independent PR review stages remain required.
+
+
+## Follow-up status — c19_002
+
+On 2026-10-15, a source-bound pass reviewed all 119 multi-meaning lemma groups in c19_002; the 615 single-source-sense lemmas remain single-sense KEEP. The shard started with 1,001 meanings and 1,001 canonical sense references across 734 lemmas. It now has 967 meanings with all 1,001 references preserved after 34 MERGE decisions and no DROP decisions.
+
+The audit is scripts/meaning/issue-716-c19-002-audit.md, with the reproducible edit specification in scripts/meaning/issue-716-c19-002.json. The full C19 projection now has 33,417 meanings and 33,630 canonical sense references; its 11 prior duplicate adjudications are unchanged. node scripts/meaning/validate.mjs passed with 497,018 meanings and 117 adjudications, and git diff --check passed. Canonical data remains unchanged.
+
+This completes authoring decisions for c19_002 only. Multi-meaning groups in the remaining C19 shards are still pending, and Issue #716 remains open. The independent PR review stages remain required.
