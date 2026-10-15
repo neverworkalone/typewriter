@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, readdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -388,12 +388,30 @@ test('initial generator refuses adjudication-only state and only --force resets'
   assert.equal(readMeanings(fixture.meaningsDirectory).rows.length, 4);
 });
 
-test('initial generator CLI: --check is read-only and default run fails closed on edits', () => {
+test('initial generator CLI (temp root): --check and default run follow the repository state and never alter edited data', () => {
   const script = path.resolve(import.meta.dirname, 'initial.mjs');
-  const real = spawnSync(process.execPath, [script, '--check'], { encoding: 'utf8' });
-  assert.equal(real.status, 0, real.stderr);
-  const plain = spawnSync(process.execPath, [script], { encoding: 'utf8' });
-  assert.notEqual(plain.status, null);
-  const after = spawnSync(process.execPath, [script, '--check'], { encoding: 'utf8' });
-  assert.equal(after.status, 0, 'default run never alters a matching corpus');
+  const fixture = guardFixture();
+  const root = path.dirname(fixture.meaningsDirectory);
+  const cliRoot = path.join(root, 'cli');
+  mkdirSync(path.join(cliRoot, 'data'), { recursive: true });
+  symlinkSync(fixture.options.canonicalDirectory, path.join(cliRoot, 'data/canonical'));
+  symlinkSync(fixture.meaningsDirectory, path.join(cliRoot, 'data/meanings'));
+  symlinkSync(fixture.adjudicationDirectory, path.join(cliRoot, 'data/adjudication'));
+  const run = (...args) => spawnSync(process.execPath, [script, '--root', cliRoot, ...args], { encoding: 'utf8' });
+  // meaning/adjudication directories must exist for the symlinks above to resolve; the default run creates meanings.
+  mkdirSync(fixture.meaningsDirectory, { recursive: true });
+  mkdirSync(fixture.adjudicationDirectory, { recursive: true });
+  assert.equal(run().status, 0);
+  assert.equal(run('--check').status, 0);
+  assert.equal(run().status, 0, 'rerun on the initial state is a no-op');
+  const { rows } = readMeanings(fixture.meaningsDirectory);
+  rows[0] = { ...rows[0], gloss: '편집된 뜻' };
+  writeMeanings(fixture.meaningsDirectory, rows);
+  const before = fixture.snapshot();
+  assert.equal(run('--check').status, 1);
+  const refused = run();
+  assert.equal(refused.status, 1);
+  assert.match(refused.stderr, /editing has started/);
+  assert.equal(fixture.snapshot(), before, 'edited data is byte-identical after both CLI calls');
+  assert.equal(run('--check').status, 1);
 });

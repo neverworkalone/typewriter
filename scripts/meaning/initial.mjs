@@ -83,7 +83,8 @@ export function generateInitialMeanings({ canonicalDirectory, meaningsDirectory,
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+  const rootFlag = process.argv.indexOf('--root');
+  const root = rootFlag > 0 ? path.resolve(process.argv[rootFlag + 1]) : path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
   const canonical = path.join(root, 'data/canonical');
   const meanings = path.join(root, 'data/meanings');
   if (process.argv.includes('--check')) {
