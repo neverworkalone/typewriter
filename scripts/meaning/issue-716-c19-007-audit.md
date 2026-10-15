@@ -4,11 +4,11 @@
 
 This pass starts from verified `origin/master` commit `2ae607f6de27df551323f1377e0e0fe9213239ca`. The baseline `c19_007` shard contains 993 meaning rows and 1000 unique canonical sense references across 791 lemmas. It has 108 multi-meaning lemmas and 683 single-meaning lemmas. All source references resolve against committed canonical records. No lemma overlaps another C19 shard.
 
-The edit specification is `scripts/meaning/issue-716-c19-007.json`. It contains 28 MERGE decisions covering 56 canonical senses, 7 source-bound GLOSS EDITs, and 0 DROP decisions. The result has 965 meaning rows and retains all 1000 canonical sense references. A same-lemma, same-POS exact-gloss scan found 0 verbatim duplicate source group(s) in the baseline multi-meaning lemmas. Canonical records remain unchanged.
+The edit specification is `scripts/meaning/issue-716-c19-007.json`. It contains 26 MERGE decisions covering 52 canonical senses, 7 source-bound GLOSS EDITs, and 0 DROP decisions. The result has 967 meaning rows and retains all 1000 canonical sense references. A same-lemma, same-POS exact-gloss scan found 0 verbatim duplicate source group(s) in the baseline multi-meaning lemmas. Canonical records remain unchanged.
 
 The 7 meanings that were already grouped at the base are preserved without changing their sense bindings: 항구적 (m505647_1: w505647-s1 + w505647-s2); 항시적 (m363724_1: w363724-s1 + w363724-s2); 항정선 (m366825_1: w366825-s1 + w366825-s2); 항정선 항로 (m366826_1: w366826-s1 + w366826-s2); 항하사 (m503348_2: w503348-s2 + w503348-s4); 해 (m365162_2: w365162-s2 + w365162-s4); 해 (m365437_1: w365437-s1 + w365437-s3).
 
-The full C19 projection moves from 33301 to 33273 meaning rows while preserving 33630 canonical sense references; prior adjudications are unchanged. Repository validation reports 496874 meanings and 117 adjudications after this shard is applied.
+The full C19 projection moves from 33301 to 33275 meaning rows while preserving 33630 canonical sense references; prior adjudications are unchanged. Repository validation reports 496876 meanings and 117 adjudications after this shard is applied.
 
 ## Source-bound decisions
 
@@ -107,8 +107,8 @@ The table lists every canonical source sense in the 108 baseline multi-meaning l
 | 해갈 | `w502303-s1` (noun): 목마름을 해소함.<br>`w502303-s2` (noun): 비가 내려 가뭄을 겨우 벗어남.<br>`w502303-s3` (noun): 없던 돈이 조금 생김을 비유적으로 이르는 말. | MERGE `w502303-s1`, `w502303-s2` → “목마름을 해소함. 비가 내려 가뭄에서 겨우 벗어나는 일도 이른다.” — 목마름과 가뭄의 해소는 물 부족을 푸는 같은 축이라 통합했다. 금전이 조금 생기는 비유는 다른 결핍·결과를 가리켜 따로 뒀다.<br>KEEP separate `w502303-s3` — 목마름과 가뭄의 해소는 물 부족을 푸는 같은 축이라 통합했다. 금전이 조금 생기는 비유는 다른 결핍·결과를 가리켜 따로 뒀다. |
 | 해갈되다 | `w368597-s1` (verb): 목마름이 해소되다.<br>`w368597-s2` (verb): 비가 내려 가뭄에서 겨우 벗어나다.<br>`w368597-s3` (verb): (비유적으로) 없던 돈이 조금 생기게 되다. | MERGE `w368597-s1`, `w368597-s2` → “목마름이 해소되거나 비가 내려 가뭄에서 겨우 벗어나다.” — 목마름과 가뭄의 물 부족 해소를 같은 축으로 통합하고 금전 유입 비유는 분리했다.<br>KEEP separate `w368597-s3` — 목마름과 가뭄의 물 부족 해소를 같은 축으로 통합하고 금전 유입 비유는 분리했다. |
 | 해갈하다 | `w368598-s1` (verb): 목마름을 해소하다.<br>`w368598-s2` (verb): 비가 내려 가뭄을 겨우 벗어나다.<br>`w368598-s3` (verb): (비유적으로) 없던 돈이 조금 생기다. | MERGE `w368598-s1`, `w368598-s2` → “목마름을 해소하거나 비가 내려 가뭄에서 겨우 벗어나다.” — 목마름과 가뭄의 물 부족 해소를 같은 축으로 통합하고 금전 유입 비유는 분리했다.<br>KEEP separate `w368598-s3` — 목마름과 가뭄의 물 부족 해소를 같은 축으로 통합하고 금전 유입 비유는 분리했다. |
-| 해거리 | `w368630-s1` (noun): 한 해를 거름. 또는 한 해씩 거름.<br>`w368630-s2` (noun): 한 해를 걸러서 열매가 많이 열림. 또는 그런 현상. 한 해에 열매가 많이 열리면 나무가 약해져서 그다음 해에는 열매가 거의 열리지 않는다. | MERGE `w368630-s1`, `w368630-s2` → “한 해를 거르거나 한 해씩 걸러 열매가 많이 열림. 한 해 열매가 많이 열리면 다음 해에는 거의 열리지 않는 현상도 이른다.” — 한 해를 건너뛰는 주기와 과실이 한 해씩 많이 열리는 현상은 같은 격년 주기 의미다. |
-| 해거리하다 | `w364192-s1` (verb): 한 해를 거르다. 또는 한 해씩 거르다.<br>`w364192-s2` (verb): 한 해를 걸러서 열매가 많이 열리다. 한 해에 열매가 많이 열리면 나무가 약해져서 그다음 해에는 열매가 거의 열리지 않는다. | MERGE `w364192-s1`, `w364192-s2` → “한 해를 거르거나 한 해씩 걸러 열매가 많이 열리다. 한 해 열매가 많이 열리면 다음 해에는 거의 열리지 않는 현상도 이른다.” — 한 해를 거르거나 과실이 한 해씩 많이 열리는 행위는 같은 격년 주기다. |
+| 해거리 | `w368630-s1` (noun): 한 해를 거름. 또는 한 해씩 거름.<br>`w368630-s2` (noun): 한 해를 걸러서 열매가 많이 열림. 또는 그런 현상. 한 해에 열매가 많이 열리면 나무가 약해져서 그다음 해에는 열매가 거의 열리지 않는다. | KEEP separate `w368630-s1`, `w368630-s2` — 일반적인 격년 간격은 canonical `격년`(`w16094-s2`)과 직접 연결되고, 과수의 격년결실 현상은 별도 `격년결실`(`w16096-s1`)과 직접 연결되어 서로 다른 의미축을 보존했다. |
+| 해거리하다 | `w364192-s1` (verb): 한 해를 거르다. 또는 한 해씩 거르다.<br>`w364192-s2` (verb): 한 해를 걸러서 열매가 많이 열리다. 한 해에 열매가 많이 열리면 나무가 약해져서 그다음 해에는 열매가 거의 열리지 않는다. | KEEP separate `w364192-s1`, `w364192-s2` — 일반적인 격년 간격은 canonical `격년하다`(`w16095-s2`)와 직접 연결되고, 과수의 격년결실은 별도의 결과·현상 의미이므로 분리했다. |
 | 해결 | `w502430-s1` (noun): 제기된 문제를 해명하거나 얽힌 일을 잘 처리함.<br>`w502430-s2` (noun): 안어울림음을 어울림음으로 이끎. 또는 그런 일. | KEEP separate `w502430-s1`, `w502430-s2` — 일반 문제 처리와 음악에서 불협화음을 협화음으로 이끄는 작곡 용례는 적용 영역과 결과가 다르다. |
 | 해결사 | `w364496-s1` (noun): 해결하기 어려운 일이나 채무 따위에 관련된 일을 맡아 폭력으로 해결해 주고 돈을 받는 폭력배.<br>`w364496-s2` (noun): 어떤 특정 분야에서 일 처리가 능숙한 사람. | KEEP separate `w364496-s1`, `w364496-s2` — 폭력과 금품을 수반하는 사적 해결업자와 특정 분야에 능숙한 해결 담당자는 역할·행위가 다르다. |
 | 해경 | `w364497-s1` (noun): ‘해안 경비대’를 줄여 이르는 말.<br>`w364497-s2` (noun): ‘해양 경찰’을 줄여 이르는 말. | KEEP separate `w364497-s1`, `w364497-s2` — 해안 경비대와 해양 경찰이라는 서로 다른 공식 명칭만으로 조직 정체성이 같다고 단정하지 않았다. |
@@ -133,13 +133,18 @@ The seven arrow glosses in this shard were compared with committed canonical tar
 
 ## Boundary checks
 
-- The hot-line, route, 항진 intensification, 항소, 항의, 항오발천, 항해도, 항행하다, 해갈, 해거리, 해관세, and naval-base merges were limited to a shared function, action, physical path, or result axis; domain, conveyance, or example details remain in the representative gloss.
+- The hot-line, route, 항진 intensification, 항소, 항의, 항오발천, 항해도, 항행하다, 해갈, 해관세, and naval-base merges were limited to a shared function, action, physical path, or result axis; domain, conveyance, or example details remain in the representative gloss.
+- `해거리` and `해거리하다` keep the general year-skipping meaning separate from alternate-year fruit bearing, whose canonical senses are directly linked to `격년결실` and have a distinct result/phenomenon axis.
 - Independent physical referents, object/result distinctions, oppositional directions, legal roles, named institutions, historical offices, literal/figurative uses, and distinct scientific units remain separate where the source glosses define them.
 - The two sense targets of `행간02` are unresolved from the source arrow and remain held; no target sense was guessed.
 - No meaning was dropped and no adjudication row was added.
 
+## Stage 2 feedback follow-up
+
+The two MERGEs for `해거리` and `해거리하다` were removed after checking the canonical glosses and direct targets. The general year-skipping senses point to `격년` (`w16094-s2`) and `격년하다` (`w16095-s2`); `해거리`'s fruit-bearing phenomenon points to `격년결실` (`w16096-s1`). The base singleton IDs and source-bound glosses were restored by replaying the edited specification from `origin/master`. The other 26 MERGEs were rechecked for the same general-interval/action versus independent result/phenomenon distinction; none showed that conflation. The reviewer submission account matches the PR author, so it is not counted as an independent review, but its source evidence was assessed and the two corrections were accepted.
+
 ## Validation and provenance
 
-`node scripts/meaning/apply-edits.mjs scripts/meaning/issue-716-c19-007.json` reproduced the shard from its base. `node scripts/meaning/validate.mjs` passed with 496874 meanings and 117 adjudications; `git diff --check` passed. The output retains every canonical source reference exactly once, with no canonical data changes.
+`node scripts/meaning/apply-edits.mjs scripts/meaning/issue-716-c19-007.json` reproduced the shard from its base. `node scripts/meaning/validate.mjs` passed with 496876 meanings and 117 adjudications; `git diff --check` passed. The output retains every canonical source reference exactly once, with no canonical data changes.
 
 The source-bound authoring and follow-up checks were performed in this primary agent context. This is agent self-check, not independent first/second review or human editorial approval. Independent PR review remains required under `REVIEW.md`. Issue #716 remains open; this pass completes authoring decisions for `c19_007` only.
