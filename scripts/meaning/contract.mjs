@@ -115,8 +115,9 @@ const rowKey = (kind, row) => (kind === 'meaning' ? row.id : row.sense_id);
 // Typed numeric id tuple: meaning `m<entry>[_<n>]` -> (entry, n); adjudication `w<entry>-s<n>` -> (entry, n).
 const idTuple = (kind, row) => {
   if (kind === 'meaning') {
-    const parsed = parseMeaningId(row.id);
-    return [idNumber(parsed.entryId), BigInt(parsed.ordinal ?? 0)];
+    // Read from the id text: suffixes are unbounded, so ordering must not go through the Number `ordinal`.
+    const match = MEANING_ID.exec(row.id);
+    return [BigInt(match[1]), BigInt(match[2] ?? 0)];
   }
   const match = SENSE_ID.exec(row.sense_id);
   return [idNumber(match[1]), BigInt(match[2])];

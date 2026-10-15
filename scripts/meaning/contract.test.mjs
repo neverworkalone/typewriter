@@ -341,6 +341,12 @@ test('cross-record MERGE: same lemma passes, different lemma fails, duplicate_of
   assert.match(bigErrors('m0097_1', ['w0097-s1', 'w00097-s1']), /lowest member record \(w00097\)/);
   const bigRows = [{ id: 'm9007199254740993', lemma: '가', gloss: 'g', sense_ids: ['w9007199254740993-s1'] }, { id: 'm9007199254740992', lemma: '가', gloss: 'g', sense_ids: ['w9007199254740992-s1'] }];
   assert.deepEqual(planShards(bigRows, 'meaning').get('c01_001.jsonl').map((r) => r.id), ['m9007199254740992', 'm9007199254740993']);
+  const ordinalRows = ['m1_9007199254740993', 'm1_9007199254740992', `m1_${'9'.repeat(400)}`, 'm1_2'].map((id) => row(id, '가', ['w1-s1']));
+  assert.deepEqual(planShards(ordinalRows, 'meaning').get('c01_001.jsonl').map((r) => r.id), ['m1_2', 'm1_9007199254740992', 'm1_9007199254740993', `m1_${'9'.repeat(400)}`]);
+  const ordDir = tmp();
+  mkdirSync(path.join(ordDir, 'm'));
+  writeFileSync(path.join(ordDir, 'm', 'c01_001.jsonl'), [ordinalRows[0], ordinalRows[1]].map((r) => `${JSON.stringify(r)}\n`).join(''));
+  assert.match(readMeanings(path.join(ordDir, 'm')).errors.join('\n'), /rows must be ordered/);
   assert.match(paddedErrors('m0100_1', ['w0097-s1', 'w0100-s1']), /lowest member record/);
   assert.match(errorsOf([row('m1_1', '가', ['w1-s1', 'w3-s1'])]), /differs from canonical/);
   assert.match(errorsOf([row('m1_1', '가', ['w1-s1']), row('m2_1', '가', ['w1-s1', 'w2-s1'])]), /referenced by both/);
