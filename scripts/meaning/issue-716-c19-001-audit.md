@@ -4,9 +4,9 @@
 
 This pass covers all 660 lemmas represented in `data/meanings/c19_001.jsonl` at base `origin/master` 4190fc0f3d6b70df5ed08f8b6bd7c729fdc8fe07. The shard began with 983 meanings and 1000 canonical sense references. It contains 517 singleton lemmas with exactly one source sense and 143 multi-meaning lemma groups. No multi-meaning lemma represented in this shard has additional meaning rows in another C19 shard.
 
-The pre-existing `하다` meanings were completed in the #715 pilot and are not re-edited here. I reviewed the remaining 142 multi-meaning lemma groups source by source, considering each lemma's full C19 group. This pass makes 54 MERGE decisions (49 pairs and five three-sense groups), no DROP decisions, and records KEEP for the distinct senses in each group. The 517 singleton lemmas have no competing same-lemma sense and remain single-sense KEEP.
+The pre-existing `하다` meanings were completed in the #715 pilot and are not re-edited here. I reviewed the remaining 142 multi-meaning lemma groups source by source, considering each lemma's full C19 group. After the Stage 2 PR review follow-up below, this pass makes 51 MERGE decisions (47 pairs and four three-sense groups), no DROP decisions, and records KEEP for the distinct senses in each group. The 517 singleton lemmas have no competing same-lemma sense and remain single-sense KEEP.
 
-The shard now contains 924 meanings and 1000 referenced senses. C19 contains 33446 meanings and 33630 canonical sense references, with its prior 11 duplicate adjudications unchanged. The resulting data passed `node scripts/meaning/validate.mjs`; the repository reports 498,392 meanings and 33 adjudications. `data/canonical/` is unchanged.
+The shard now contains 928 meanings and 1000 referenced senses. C19 contains 33450 meanings and 33630 canonical sense references, with its prior 11 duplicate adjudications unchanged. The resulting data passed `node scripts/meaning/validate.mjs`; the repository reports 498,396 meanings and 33 adjudications. `data/canonical/` is unchanged.
 
 ## Source-bound decision coverage
 
@@ -96,7 +96,7 @@ Canonical sense IDs below identify the exact source meanings checked. For each g
 | `하디` | `w363845-s1`, `w363846-s1`, `w501880-s1` | KEEP `w363845-s1`, `w363846-s1`, `w501880-s1` | 동일 음역의 소설가·수학자·정치가는 서로 다른 인물이다. |
 | `하띠` | `w359787-s1`, `w359787-s2` | MERGE `w359787-s1` + `w359787-s2` → “놀이에서 가장 적게 맞히거나 끗수가 낮은 띠.” | 두 놀이에서 낮은 결과에 해당하는 띠를 같은 축으로 묶는다. |
 | `하란` | `w360051-s1`, `w502413-s1` | KEEP `w360051-s1`, `w502413-s1` | 문서의 아래 난과 새우의 알은 동음 이의다. |
-| `하랍` | `w360069-s1`, `w501770-s1` | MERGE `w360069-s1` + `w501770-s1` → “승려가 된 뒤부터의 나이. 특히 출가한 지 얼마 되지 않아 법랍이 적은 승려를 이르기도 한다.” | 승려가 된 뒤의 연수와 그 연수가 적은 승려는 같은 법랍 축으로 병합한다. |
+| `하랍` | `w360069-s1`, `w501770-s1` | KEEP `w360069-s1`, `w501770-s1` | `w360069-s1`은 승려가 된 뒤의 나이·연수를, `w501770-s1`은 법랍이 적은 승려라는 사람을 가리킨다. 연수와 사람은 독립 지시 대상이다. |
 | `하래` | `w360071-s1`, `w360071-s2` | MERGE `w360071-s1` + `w360071-s2` → “높은 곳에서 낮은 곳으로 내려옴. 특히 서울에서 시골로 내려옴을 이른다.” | 높은 곳에서 낮은 곳으로의 이동과 서울에서 시골로의 이동은 같은 축으로 병합한다. |
 | `하래하다` | `w501771-s1`, `w501771-s2` | MERGE `w501771-s1` + `w501771-s2` → “높은 곳에서 낮은 곳으로 내려오다. 특히 서울에서 시골로 내려오는 것을 이른다.” | 높은 곳에서 낮은 곳으로 이동하는 뜻과 서울에서 시골로 가는 뜻은 같은 축으로 병합한다. |
 | `하량` | `w360336-s1`, `w360346-s1`, `w360347-s1` | KEEP `w360336-s1`, `w360346-s1`, `w360347-s1` | 윗사람의 헤아림, 작은 다리, 짐의 양은 동음 이의다. |
@@ -110,7 +110,7 @@ Canonical sense IDs below identify the exact source meanings checked. For each g
 | `하루가 새롭다` | `w532838-s1`, `w532838-s2`, `w532838-s3` | KEEP `w532838-s1`, `w532838-s2`, `w532838-s3` | 시간이 아까움, 시간이 괴롭고 길게 느낌, 변화가 두드러짐은 정서·시간 체험·변화 축이 다르다. |
 | `하루살이` | `w500636-s1`, `w500636-s2`, `w500636-s3` | KEEP `w500636-s1`, `w500636-s2`, `w500636-s3` | 하루살이 곤충, 하루하루 겨우 사는 삶, 짧은 생명/정권은 생물·궁핍·지속 기간의 축이 달라 보존한다. |
 | `하루하루` | `w499687-s1`, `w499687-s2` | MERGE `w499687-s1` + `w499687-s2` → “그날그날의 날. 또는 하루가 지날 때마다.” | 날마다라는 명사/부사 용법은 같은 하루 단위의 연속 축으로 병합한다. |
-| `하룻강아지` | `w499689-s1`, `w499689-s2` | MERGE `w499689-s1` + `w499689-s2` → “난 지 얼마 안 된 어린 강아지. 또는 사회 경험과 지식이 적은 어린 사람을 놀림조로 이르는 말.” | 어린 강아지와 미숙한 어린 사람은 어린 나이/미숙함의 literal·비유 축으로 병합한다. |
+| `하룻강아지` | `w499689-s1`, `w499689-s2` | KEEP `w499689-s1`, `w499689-s2` | 첫 sense는 실제 어린 개를, 둘째는 사회 경험과 지식이 적은 어린 사람을 놀림조로 이르는 비유를 가리킨다. 동물과 사람이라는 독립 지시 대상을 보존한다. |
 | `하룻날` | `w360306-s1`, `w360306-s2` | KEEP `w360306-s1`, `w360306-s2` | 매달 첫날과 불특정한 어느 날은 특정 날짜와 임의 날짜로 분리한다. |
 | `하룻밤` | `w503399-s1`, `w503399-s2` | MERGE `w503399-s1` + `w503399-s2` → “해가 진 뒤 다음 날 해가 뜰 때까지의 동안. 또는 그런 어느 밤.” | 야간의 시간 구간과 그중 어느 밤이라는 용법은 같은 한 밤의 기간/발생으로 병합한다. |
 | `하룻밤을 자도 헌 각시` | `w533008-s1`, `w533008-s2` | KEEP `w533008-s1`, `w533008-s2` | 물건의 사용 후 헌 상태와 지조에 대한 비유는 서로 다른 해석이다. |
@@ -135,7 +135,7 @@ Canonical sense IDs below identify the exact source meanings checked. For each g
 | `하만` | `w363130-s1`, `w503870-s1` | KEEP `w363130-s1`, `w503870-s1` | 하구 지형과 독일 사상가는 동음 이의다. |
 | `하머 클라비어` | `w363405-s1`, `w363405-s2` | KEEP `w363405-s1`, `w363405-s2` | 초기 피아노라는 악기 유형과 베토벤 피아노 소나타 작품의 고유 곡명은 구별한다. |
 | `하면` | `w363410-s1`, `w363419-s1` | KEEP `w363410-s1`, `w363419-s1` | 물건 밑바닥과 동물의 여름잠은 동음 이의다. |
-| `하명` | `w357119-s1`, `w498254-s1`, `w498254-s2`, `w498254-s3` | MERGE `w357119-s1` + `w498254-s1` + `w498254-s2` → “임금이나 윗사람의 명령. 또는 명령을 내림.”; KEEP `w498254-s3` | 임금/윗사람의 명령과 그 발령은 같은 축으로 병합하고, 법률상 국민에게 의무를 부과하는 행정 처분은 별도다. |
+| `하명` | `w357119-s1`, `w498254-s1`, `w498254-s2`, `w498254-s3` | MERGE `w357119-s1` + `w498254-s1` → “임금이나 윗사람의 명령.”; KEEP `w498254-s2`, `w498254-s3` | `w357119-s1`과 `w498254-s1`은 명령 자체를 가리킨다. `w498254-s2`는 명령을 내리는 행위이고 `w498254-s3`는 법률상 의무를 부과하는 행정 처분이므로 각각 분리한다. |
 | `하모` | `w357122-s1`, `w498422-s1` | KEEP `w357122-s1`, `w498422-s1` | 여름철 새·짐승의 털과 불명확한 문어 용례는 보존한다. 빈 참조 표현은 대상이 확인되지 않아 KEEP한다. |
 | `하모니` | `w357123-s1`, `w357123-s2` | MERGE `w357123-s1` + `w357123-s2` → “부분들이 서로 모순 없이 어울려 통일감과 쾌감을 이루는 관계. 음악에서는 일정한 법칙에 따른 화음의 연결을 이른다.” | 부분의 미적 통일과 음악 화음 연결은 조화롭게 어울리는 같은 축으로 병합한다. |
 | `하모닉스` | `w357387-s1`, `w357387-s2`, `w357387-s3` | MERGE `w357387-s1` + `w357387-s2` → “원래 소리보다 큰 진동수를 가진 배음. 현악기에서 줄에 손가락을 가볍게 대어 얻는 음을 이르기도 한다.”; KEEP `w357387-s3` | 배음과 현악기에서 그 배음을 얻는 주법은 같은 음향 현상으로 병합하고 고대 음악 이론은 별도다. |
@@ -147,7 +147,7 @@ Canonical sense IDs below identify the exact source meanings checked. For each g
 | `하방` | `w361860-s1`, `w362677-s1`, `w362678-s1`, `w362679-s1` | KEEP `w361860-s1`, `w362677-s1`, `w362678-s1`, `w362679-s1` | 아래 방향, 중국의 하방 운동, 건축 인방, 서울에서 먼 지방은 서로 다르다. |
 | `하배` | `w362686-s1`, `w501684-s1`, `w501684-s2` | KEEP `w362686-s1`, `w501684-s1`, `w501684-s2` | 예법상 배례, 하인 무리, 불교의 하위 수행자는 구별한다. |
 | `하백` | `w362703-s1`, `w501685-s1` | MERGE `w362703-s1` + `w501685-s1` → “물을 맡아 다스린다는 신. 고구려 시조 주몽의 외조부로 전하는 전설 속 인물.” | 물의 신과 주몽 외조부는 같은 신의 역할/신화상 관계이므로 병합한다. |
-| `하번` | `w501287-s1`, `w501287-s2`, `w501287-s3`, `w501287-s4` | MERGE `w501287-s1` + `w501287-s4` → “순번이나 사관의 교대 근무에서 아래 번(番)에 있는 사람 또는 그 번.”; KEEP `w501287-s2`, `w501287-s3` | 낮은 순번의 사람과 사관의 낮은 교대 번을 합치고, 교대 후 퇴근자 및 복무 뒤 귀향은 사건/상태가 달라 둔다. |
+| `하번` | `w501287-s1`, `w501287-s2`, `w501287-s3`, `w501287-s4` | KEEP `w501287-s1`, `w501287-s2`, `w501287-s3`, `w501287-s4` | `w501287-s1`은 순번이 아래인 사람이고 `w501287-s4`는 사관 숙직 제도의 아래 번(番)으로, 사람과 제도상의 당번을 구별한다. 교대 근무를 마친 사람과 복무 뒤 지방으로 내려가던 일도 별도다. |
 | `하변` | `w362708-s1`, `w362709-s1` | KEEP `w362708-s1`, `w362709-s1` | 삼각형 밑변의 옛말과 하천 가장자리는 구별한다. |
 | `하복` | `w363261-s1`, `w363262-s1`, `w363263-s1`, `w363280-s1` | KEEP `w363261-s1`, `w363262-s1`, `w363263-s1`, `w363280-s1` | 더러운 옷, 배꼽 아래 배, 여름옷, 큰 행복은 동음 이의다. |
 | `하부` | `w363284-s1`, `w495218-s1`, `w495218-s2`, `w495219-s1`, `w495219-s2`, `w495219-s3` | MERGE `w363284-s1` + `w495219-s2` → “하급의 관청·기관이나 부서. 또는 그곳의 사람.”; KEEP `w495218-s1`, `w495218-s2`, `w495219-s1`, `w495219-s3` | 낮은 관청과 하급 기관/부서는 같은 하위 행정 조직 축으로 병합하고, 허가 발급, 물건 보냄, 아래쪽 부분, 백제 오부는 따로 둔다. |
@@ -219,6 +219,10 @@ The representative gloss for each edit preserves the shared meaning axis and inc
 | 54 | `w363284-s1` + `w495219-s2` | “하급의 관청·기관이나 부서. 또는 그곳의 사람.” | 두 source gloss가 하급 행정 조직과 그 구성원을 가리키며 관청/기관 표현 차이만 있다. |
 
 ## Review provenance and remaining work
+
+### Stage 2 PR review follow-up (2026-10-15)
+
+The Stage 2 technical/editorial PR review on pre-fix HEAD `08e9ab8e113e3f84b06cb95190ae348a4009d919` identified two over-merges: a counted monastic age versus a monk with few years of ordination (`하랍`), and an actual puppy versus a figuratively described inexperienced person (`하룻강아지`). It also asked for a focused recheck of `하번` and `하명`. I accepted the two findings and, applying the contract's independent-referent rule and conservative KEEP rule, separated the person from the institutional turn in `하번` and the command from the act of issuing it in `하명`. The source glosses and same-lemma bindings are preserved; the legal-administrative `하명` sense remains separate. These are targeted `c19_001` corrections, not a review of other C19 shards.
 
 This is the primary author's source-bound self-check, not independent first/second review or human editorial approval. The two PR review stages required by Issue #716 remain separate. This pass completes authoring decisions for c19_001; it does not complete C19 or Issue #716. Multi-meaning groups outside c19_001 remain pending, and unchanged rows in other shards are not complete KEEP decisions. Keep Issue #716 open until every in-scope group has been reviewed and both review stages pass.
 
