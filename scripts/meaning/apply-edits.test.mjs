@@ -22,6 +22,25 @@ test('merge keeps the lowest member id, lists all sense_ids and covers every sen
   assert.deepEqual(validateMeaningDataset({ ...next, senses: allSenses(senses('w10', 4), senses('w11', 1)), complete: true }), []);
 });
 
+test('single-sense gloss edits preserve the canonical binding and pass complete dataset validation', () => {
+  const entry = readFileSync(path.join(root, 'data/canonical/stdict-0161.jsonl'), 'utf8')
+    .split('\n').filter(Boolean).map((line) => JSON.parse(line)).find((row) => row.id === 'w212148');
+  const referencedEntry = readFileSync(path.join(root, 'data/canonical/stdict-0359.jsonl'), 'utf8')
+    .split('\n').filter(Boolean).map((line) => JSON.parse(line)).find((row) => row.id === 'w455663');
+  const sense = entry.senses[0];
+  const directGloss = referencedEntry.senses[0].gloss;
+  const meanings = [{ id: 'm212148', lemma: entry.lemma, gloss: sense.gloss, sense_ids: [sense.id] }];
+  const next = applyEdits({ meanings, adjudications: [] }, {
+    glosses: [{ sense_id: sense.id, gloss: directGloss }],
+  });
+  assert.deepEqual(next.meanings, [{ id: 'm212148', lemma: entry.lemma, gloss: directGloss, sense_ids: [sense.id] }]);
+  assert.deepEqual(validateMeaningDataset({
+    ...next,
+    senses: new Map([[sense.id, { lemma: entry.lemma }]]),
+    complete: true,
+  }), []);
+});
+
 test('drop records a duplicate verdict across records and keeps the target meaning', () => {
   const meanings = [...initial('w20', '전락하다', 2), ...initial('w21', '전락하다', 1)];
   const next = applyEdits({ meanings, adjudications: [] }, { drops: [{ sense_id: 'w21-s1', duplicate_of: 'w20-s1' }] });
@@ -34,6 +53,9 @@ test('invalid edits are rejected whole: cross-record merge, re-edit, single-sens
   const meanings = [...initial('w30', '사전', 2), ...initial('w31', '사전', 1)];
   const reject = (spec, pattern) => assert.throws(() => applyEdits({ meanings, adjudications: [] }, spec), pattern);
   reject({ merges: [{ senses: ['w30-s1'], gloss: 'x' }] }, /at least two/u);
+  reject({ glosses: [{ sense_id: 'w30-s99', gloss: 'x' }] }, /no meaning/u);
+  reject({ glosses: [{ sense_id: 'w30-s1', gloss: 'x' }, { sense_id: 'w30-s1', gloss: 'y' }] }, /more than once/u);
+  reject({ glosses: [{ sense_id: 'w30-s1', gloss: 'x' }], merges: [{ senses: ['w30-s1', 'w30-s2'], gloss: 'y' }] }, /more than once/u);
   reject({ merges: [{ senses: ['w30-s1', 'w30-s5'], gloss: 'x' }] }, /no meaning/u);
   reject({ merges: [{ senses: ['w30-s1', 'w30-s2'], gloss: 'x' }, { senses: ['w30-s2', 'w30-s1'], gloss: 'y' }] }, /more than once/u);
   reject({ merges: [{ senses: ['w30-s1', 'w30-s2'], gloss: ' ' }] }, /gloss/u);
