@@ -28,8 +28,8 @@ The table lists every canonical source sense reviewed for each multi-meaning lem
 | 하소 | w360338-s1, w360590-s1, w503891-s1, w503892-s1 | KEEP w360338-s1, w360590-s1, w503891-s1, w503892-s1 | 질환 증상, 물질을 태워 재로 만드는 과정, 억울함을 말함, 종결어미 말씨는 다른 의미축이다. |
 | 하소하다 | w360321-s1, w360322-s1, w360591-s1 | KEEP w360321-s1, w360322-s1, w360591-s1 | 사정을 말함, -소 말씨를 씀, 물질을 태워 재로 만듦은 구별된다. |
 | 하솔 | w503414-s1, w503414-s2 | KEEP w503414-s1, w503414-s2 | 하인의 집단과 손아래 식구를 거느리거나 그 식구를 가리키는 뜻은 사람 집단과 가족 관계가 다르다. |
-| 하송 | w360619-s1, w360619-s2, w360620-s1 | MERGE w360619-s1 + w360619-s2 → “아랫사람에게 물건을 내려보냄. 윗사람이 아랫사람에게 보내는 일을 높여 이르기도 한다.”; KEEP w360620-s1 | 아랫사람에게 물건을 보내는 일반 행위와 윗사람이 이를 높여 이르는 용법을 같은 송부 축으로 묶었다. 축하하며 칭송함은 별도다. |
-| 하송하다 | w360621-s1, w503415-s1, w503415-s2 | MERGE w503415-s1 + w503415-s2 → “아랫사람에게 물건을 내려보내다. 윗사람이 아랫사람에게 보내는 일을 높여 이르기도 한다.”; KEEP w360621-s1 | 물건을 아랫사람에게 보내는 동작과 그 높임 용법은 같은 송부 축이다. 축하하며 칭송하는 동작은 다르다. |
+| 하송 | w360619-s1, w360619-s2, w360620-s1 | MERGE w360619-s1 + w360619-s2 → “밑으로 내려보냄. 윗사람이 아랫사람에게 물건을 보내는 일을 높여 이르기도 한다.”; KEEP w360620-s1 | 일반적인 아래 방향 송부와 윗사람이 아랫사람에게 물건을 보내는 존대 용법은 같은 송부 축이다. gloss는 수신자·물건 조건을 존대 용법에만 두며, 축하하며 칭송함은 별도다. |
+| 하송하다 | w360621-s1, w503415-s1, w503415-s2 | MERGE w503415-s1 + w503415-s2 → “밑으로 내려보내다. 윗사람이 아랫사람에게 물건을 보내는 일을 높여 이르기도 한다.”; KEEP w360621-s1 | 일반적인 아래 방향 송부 동작과 윗사람이 아랫사람에게 물건을 보내는 존대 용법은 같은 송부 축이다. gloss는 수신자·물건 조건을 존대 용법에만 두며, 축하하며 칭송하는 동작은 다르다. |
 | 하수 | w360623-s1, w360624-s1, w360624-s2, w361153-s1, w361153-s2, w361154-s1, w361155-s1, w361155-s2, w361155-s3, w361157-s1, w361158-s1, w361160-s1, w503697-s1, w503698-s1 | MERGE w361155-s1 + w361155-s3 → “나뭇가지나 위·눈꺼풀 따위가 축 늘어져 내려 드리거나 처짐.”; KEEP w360623-s1, w360624-s1, w360624-s2, w361153-s1, w361153-s2, w361154-s1, w361155-s2, w361157-s1, w361158-s1, w361160-s1, w503697-s1, w503698-s1 | 가지가 처지는 상태와 위·눈꺼풀이 처지는 상태는 같은 늘어짐 축으로 묶었다. 손대어 일을 시작함·살해, 하수·시설, 재수급, 춤사위, 나이·여름 쇠약·장수·강물은 다른 뜻이다. |
 | 하수오 | w503073-s1, w503073-s2 | KEEP w503073-s1, w503073-s2 | 식물 자체와 그 뿌리를 한방에서 부르는 재료명은 대상 범위와 쓰임이 다르다. |
 | 하수인 | w361713-s1, w361713-s2 | KEEP w361713-s1, w361713-s2 | 직접 살해한 사람과 다른 이 밑에서 졸개가 된 사람은 행위 이력과 역할이 다르다. |
@@ -139,3 +139,7 @@ This is the primary author source-bound self-check. It is not independent first/
 ## Validation
 
 `node scripts/meaning/validate.mjs` passed: 497,018 meanings and 117 adjudications. `git diff --check` passed.
+
+## Stage 2 review follow-up
+
+The Stage 2 source-bound review found that the `하송` and `하송하다` merge glosses had made the recipient and object from their honorific source senses mandatory for the broader “send downward” senses. The glosses now state general downward sending first and mark the superior-to-subordinate object-sending use as an additional honorific use. The merge partition remains unchanged: 34 MERGE decisions, no DROP decisions, 967 meanings and 1,001 canonical references. A focused comparison of all 34 MERGE decisions for actor, recipient, or target restrictions found no additional affected case. The preceding four participant-role gloss corrections remain in commit `5812c7bc`.

@@ -61,4 +61,6 @@ On 2026-10-15, a source-bound pass reviewed all 119 multi-meaning lemma groups i
 
 The audit is scripts/meaning/issue-716-c19-002-audit.md, with the reproducible edit specification in scripts/meaning/issue-716-c19-002.json. The full C19 projection now has 33,417 meanings and 33,630 canonical sense references; its 11 prior duplicate adjudications are unchanged. node scripts/meaning/validate.mjs passed with 497,018 meanings and 117 adjudications, and git diff --check passed. Canonical data remains unchanged.
 
+Stage 2 review found that the `하송` and `하송하다` glosses narrowed the broader “send downward” source senses to an inferior recipient and an object. Both glosses and their audit rationale now state the general spatial direction first and keep the superior-to-subordinate object-sending condition within the honorific use. The 34 MERGE decisions, 967 meanings, 1,001 references, and 11 prior adjudications are unchanged. A focused comparison of all 34 merge glosses for narrower actor, recipient, or target constraints found no other affected group.
+
 This completes authoring decisions for c19_002 only. Multi-meaning groups in the remaining C19 shards are still pending, and Issue #716 remains open. The independent PR review stages remain required.
