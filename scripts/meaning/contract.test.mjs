@@ -10,8 +10,7 @@ import {
   validateMeaningDataset, validateMeaningRow, writeAdjudications, writeMeanings,
 } from './contract.mjs';
 import { mkdirSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { diffInitialShards, projectInitialMeanings } from './initial.mjs';
+import { projectInitialMeanings } from './initial.mjs';
 import { createCanonicalContext } from '../validate/canonical-context.mjs';
 import { runChecks } from '../ci/run-category.mjs';
 import { loadMeaningData } from './contract.mjs';
@@ -283,10 +282,24 @@ test('initial projection: one sense = one meaning, deterministic ids, canonical 
   assert.deepEqual(readdirSync(dir).map((f) => readFileSync(path.join(dir, f), 'utf8')), first);
 });
 
-test('real data: data/meanings is exactly the initial projection of canonical and covers every sense once', () => {
-  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-  assert.deepEqual(diffInitialShards(path.join(root, 'data/canonical'), path.join(root, 'data/meanings')), []);
-  const { meanings, errors } = validateMeaningFiles();
+test('edited corpus (merge, gloss edit, DROP) stays valid under the complete contract; omissions fail', () => {
+  const entries = [
+    { id: 'w001', lemma: '가다', senses: [{ id: 'w001-s1', gloss: 'A' }, { id: 'w001-s2', gloss: 'B' }, { id: 'w001-s3', gloss: 'C' }] },
+    { id: 'w002', lemma: '가다', senses: [{ id: 'w002-s1', gloss: 'D' }] },
+  ];
+  const senses = new Map(entries.flatMap((e) => e.senses.map((s) => [s.id, { lemma: e.lemma }])));
+  const edited = [
+    { id: 'm001_1', lemma: '가다', gloss: '편집된 뜻', sense_ids: ['w001-s1', 'w001-s2'] },
+    { id: 'm002', lemma: '가다', gloss: 'D', sense_ids: ['w002-s1'] },
+  ];
+  const drop = { sense_id: 'w001-s3', lemma: '가다', decision: 'drop', reason: 'duplicate', duplicate_of: 'w001-s1' };
+  assert.deepEqual(validateMeaningDataset({ meanings: edited, adjudications: [drop], senses, complete: true }), []);
+  assert.ok(validateMeaningDataset({ meanings: edited, senses, complete: true }).some((e) => e.startsWith('w001-s3: canonical sense has no meaning')));
+});
+
+test('real data: committed meanings satisfy the complete contract against canonical (edits allowed)', () => {
+  // Equality with the initial projection is a one-off check (`node scripts/meaning/initial.mjs --check`), not a
+  // standing invariant: editing (merge, gloss change, DROP) legitimately diverges from it.
+  const { errors } = validateMeaningFiles();
   assert.deepEqual(errors, []);
-  assert.ok(meanings.every((m) => m.sense_ids.length === 1));
 });
