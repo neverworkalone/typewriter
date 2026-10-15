@@ -4,7 +4,7 @@
 
 This pass covers every lemma in `data/meanings/c19_003.jsonl` at base `origin/master` `687b06979874321184ea9fab8d76ce31111e2a94`. The shard starts with 993 meanings and 1001 unique canonical sense references across 743 lemmas. The source-bound census found 131 multi-meaning lemma groups and 612 single-source-sense lemmas. Every source reference mapped to canonical; no lemma represented in this shard has rows in another C19 shard. No same-lemma, same-POS source-gloss duplicates were found.
 
-The edit specification is `scripts/meaning/issue-716-c19-003.json`. It makes 39 MERGE decisions, no DROP decisions, and preserves every unmerged source sense as KEEP. The validated shard and aggregate counts are recorded below after applying the edits. Canonical source files are unchanged.
+The edit specification is `scripts/meaning/issue-716-c19-003.json`. It makes 34 MERGE decisions, no DROP decisions, and preserves every unmerged source sense as KEEP. The validated shard and aggregate counts are recorded below after applying the edits. Canonical source files are unchanged.
 
 The table names all source senses for every multi-meaning lemma. Every listed sense not in a MERGE group remains a separate KEEP; singleton lemmas have no same-lemma competing meaning and remain KEEP.
 
@@ -45,7 +45,7 @@ The table names all source senses for every multi-meaning lemma. Every listed se
 | 학도 | w363915-s1, w363915-s2, w363916-s1, w501530-s1 | MERGE w363915-s1 + w363915-s2 → “학교에 다니거나 학문을 닦는 사람.” — 학교에서 공부하는 사람과 학문을 닦는 사람은 학습자라는 같은 역할이다.<br>KEEP w363916-s1, w501530-s1 — 학문의 중심 도시와 눈에 덮여 학의 날개처럼 보이는 늑도 섬은 도시 기능과 지명 유래가 다르다.. |
 | 학도대 | w359804-s1, w359804-s2, w359804-s3 | KEEP w359804-s1, w359804-s2, w359804-s3 — 학생 의용병 군대, 사상·훈련 목적의 학생 단체, 대한 제국 무관·연성 학교 생도 군대는 조직 목적과 역사적 소속이 다르다.. |
 | 학동 | w501532-s1, w501532-s2 | KEEP w501532-s1, w501532-s2 — 글방에서 배우는 어린이와 초등학생 또래라는 연령대는 실제 학습 활동과 연령 기준이 다르다.. |
-| 학려 | w360120-s1, w360120-s2, w360120-s3, w360121-s1, w360121-s2 | MERGE w360121-s1 + w360121-s2 → “학이 욺. 또는 그 울음소리. 가엾고 처량한 문장이나 말을 비유적으로 이르기도 한다.” — 처량한 글·말은 학 울음소리를 빗댄 용법으로 같은 소리 이미지의 확장이다.<br>KEEP w360120-s1, w360120-s2, w360120-s3 — 같은 학문을 하는 벗, 교리 연구 승려, 학료 소속 승려는 교우·수행 역할·소속 장소가 다르다.. |
+| 학려 | w360120-s1, w360120-s2, w360120-s3, w360121-s1, w360121-s2 | KEEP w360120-s1, w360120-s2, w360120-s3, w360121-s1, w360121-s2 — 학문 동료·승려 역할과 학 울음, 처량한 문장·말은 사람 관계·수행 신분·자연음·언어 표현으로 지시 대상이 다르다. |
 | 학력 | w360122-s1, w500867-s1 | KEEP w360122-s1, w500867-s1 — 교육으로 얻은 지식·기술 능력과 학교에 다닌 이력은 역량과 경력 기록이다.. |
 | 학력고사 | w360124-s1, w360124-s2 | MERGE w360124-s1 + w360124-s2 → “학습 결과나 대학 입학에 필요한 학력을 평가하는 시험. 1981년부터 1992년까지 교육부가 해마다 실시한 시험을 이르기도 한다.” — 일반 학습 평가와 해당 시기의 대학 입학 학력 시험은 같은 평가 시험 축이다. |
 | 학령 | w360386-s1, w360387-s1, w360387-s2, w360388-s1 | KEEP w360387-s1, w360387-s2 — 초등학교 입학 기준 연령(만 6세)과 의무 교육을 받는 연령 기간(만 6~12세)은 서로 다른 범위다. |
@@ -58,7 +58,7 @@ The table names all source senses for every multi-meaning lemma. Every listed se
 | 학무 | w360964-s1, w501723-s1 | KEEP w360964-s1, w501723-s1 — 학이 등장하는 조선 궁중무용과 학교의 학사 행정은 공연과 행정 업무다.. |
 | 학문 | w360968-s1, w361217-s1 | MERGE w360968-s1 + w361217-s1 → “어떤 분야를 체계적으로 배우고 익히는 일 또는 그런 지식. 특히 시서·육예 따위의 유학 경전을 배우는 일을 이른다.” — 유학 경전 학습은 체계적으로 분야를 배우는 학문의 구체 용례다. |
 | 학반 | w361233-s1, w361234-s1 | KEEP w361233-s1, w361234-s1 — 교실에서 공부하는 학생 집단과 학 무늬 흉배를 단 문관의 옛 호칭은 학급과 관직·복식이다.. |
-| 학번 | w361238-s1, w361238-s2 | MERGE w361238-s1 + w361238-s2 → “학교 행정상 학생에게 부여하는 고유 번호. 주로 입학 연도와 학과를 기준으로 하며, 같은 해 입학생에게 입학 연도를 공동 번호로 쓰기도 한다.” — 학생별 고유 번호와 입학 연도 공동 번호는 학생을 식별하는 같은 번호 체계다. |
+| 학번 | w361238-s1, w361238-s2 | KEEP w361238-s1, w361238-s2 — 학생마다 다른 행정 식별 번호와 같은 입학 연도 집단을 나타내는 번호는 식별 단위와 용도가 다르다. |
 | 학벌 | w501068-s1, w501068-s2 | KEEP w501068-s1, w501068-s2 — 학문·출신 학교로 얻은 개인의 사회적 지위와 학교·학파에 따른 집단 파벌은 지위와 집단 관계다.. |
 | 학병 | w361241-s1, w361242-s1 | KEEP w361241-s1, w361242-s1 — 한방에서 말하는 말라리아와 학생 신분으로 입대한 병사·군대는 질병과 군인이다.. |
 | 학보 | w357427-s1, w357427-s2, w357428-s1 | KEEP w357427-s1, w357427-s2, w357428-s1 — 학술 성과 보고, 대학 교내지·학술지, 고려 시대 학교 장학 재단은 기록·정기간행물·재정 조직이다.. |
@@ -69,7 +69,7 @@ The table names all source senses for every multi-meaning lemma. Every listed se
 | 학생복 | w361196-s1, w361196-s2 | MERGE w361196-s1 + w361196-s2 → “학생들이 입는 옷. 학교에서 입도록 정한 제복을 이르기도 한다.” — 학교가 정한 학생 제복은 학생들이 입는 옷의 구체적 유형이다. |
 | 학생부 | w535066-s1, w535066-s2, w535069-s1 | KEEP w535066-s1, w535066-s2, w535069-s1 — 경기·경연의 학생 부문, 조직 안 학생 모임, 학교생활 기록부의 약칭은 경기 구분·집단·행정 문서다.. |
 | 학소 | w361742-s1, w361742-s2 | KEEP w361742-s1, w361742-s2 — 익살맞게 웃는 모습과 남을 희롱하며 웃는 행위는 웃음의 성격과 대상이 다르다.. |
-| 학수 | w360540-s1, w360540-s2, w360541-s1, w361744-s1 | MERGE w360540-s1 + w360540-s2 → “학의 목. 학처럼 목을 길게 빼고 간절히 기다리는 모습을 이르기도 한다.” — 간절히 기다리는 모습은 학의 목을 길게 빼는 이미지에서 온 같은 비유 축이다.<br>KEEP w360541-s1, w361744-s1 — 장수를 비는 학수와 학문을 닦는 행위는 장수 축원과 학습이다.. |
+| 학수 | w360540-s1, w360540-s2, w360541-s1, w361744-s1 | KEEP w360540-s1, w360540-s2, w360541-s1, w361744-s1 — 학의 신체 부위, 그 이미지를 빌린 간절한 기다림, 장수 축원, 학문 수련은 신체·태도·축원·학습이다. |
 | 학술 | w360841-s1, w360841-s2 | KEEP w360841-s1, w360841-s2 — 학문과 기술을 아우르는 분야와 학문의 방법·이론은 포괄 영역과 연구 체계다.. |
 | 학슬 | w361096-s1, w501138-s1, w501138-s2, w501138-s3, w501138-s4 | KEEP w361096-s1, w501138-s1, w501138-s2, w501138-s3, w501138-s4 — 약용 식물 열매, 한시의 성조 배치법, 거문고 부위, 학다리처럼 마르는 무릎 병은 생약·시법·악기·질병이다.. |
 | 학습 | w501139-s1, w501139-s2 | MERGE w501139-s1 + w501139-s2 → “배워서 익히는 일. 경험에 따른 행동이나 그 잠재력의 변화 또는 지식 습득 과정을 이르기도 한다.” — 일반적인 배움과 경험으로 행동·지식이 변하는 학습 과정은 같은 축의 일반·전문 풀이이다. |
@@ -84,7 +84,7 @@ The table names all source senses for every multi-meaning lemma. Every listed se
 | 학원 | w362856-s1, w362857-s1, w362857-s2, w362858-s1, w503671-s1, w503671-s2 | MERGE w362857-s1 + w503671-s1 + w503671-s2 → “학교를 비롯하여 일정한 교과 과정에 따라 학생을 가르치는 교육 기관. 학교 설치 기준을 갖추지 못한 사립 교육 기관도 이른다.” — 학교·정규 교육 기관과 학교 기준을 갖추지 못한 사립 학원은 학생을 가르치는 교육 기관의 유형들이다.<br>KEEP w362856-s1, w362857-s2, w362858-s1 — 공부하는 사람들의 집단, 학교 정원·실습지, 1919년 학생 잡지는 교육 기관과 대상·부속 공간·간행물로 다르다.. |
 | 학원가 | w535794-s1, w535794-s2 | KEEP w535794-s1, w535794-s2 — 학원이 모인 거리라는 장소와 학원 관련 종사자들의 사회라는 사람 집단은 공간과 집단이다.. |
 | 학유 | w358816-s1, w358816-s2 | KEEP w358816-s1, w358816-s2 — 같은 품계와 유사한 기관이라도 고려·조선 시대의 관직은 시대별 제도상 지시 대상이 달라 구분했다. |
-| 학익 | w358819-s1, w358819-s2 | MERGE w358819-s1 + w358819-s2 → “학의 날개. 학이 날개를 편 듯이 치는 진형을 이르기도 한다.” — 진형의 이름은 학이 편 날개 모양에서 나온 용법으로 같은 시각적 형태를 보존한다. |
+| 학익 | w358819-s1, w358819-s2 | KEEP w358819-s1, w358819-s2 — 실제 학의 날개와 학의 날개 모양을 본뜬 포위 진형은 동물 신체와 군사 전술 대상이다. s2는 별도 진형 표제어 학익진과 direct 관계로 연결된다. |
 | 학인 | w358821-s1, w358821-s2 | MERGE w358821-s1 + w358821-s2 → “배우는 사람. 학자나 문필가가 아호로 쓰거나 도(道)를 배우는 이를 이르기도 한다.” — 아호로 쓰인 학인과 도를 배우는 학인은 배우는 사람이라는 같은 역할을 공유한다. |
 | 학자 | w359085-s1, w503673-s1, w503673-s2 | MERGE w503673-s1 + w503673-s2 → “학문을 연구하거나 학문에 능통한 사람. 특히 경학이나 예학에 능한 이를 이르기도 한다.” — 일반 학자와 경학·예학에 능한 사람은 같은 학문 연구자 유형의 범위 차이다.<br>KEEP w359085-s1 — 공부와 학문 수련에 드는 비용은 학문 연구자·전문 학자라는 사람과 다르다.. |
 | 학장 | w359090-s1, w500601-s1, w500601-s2, w500601-s3 | KEEP w359090-s1, w500601-s1, w500601-s2, w500601-s3 — 단과대학의 장, 학문 연구자, 스승의 제자, 자격을 갖춘 불교 승려는 직책·학자·제자·종교적 지위다.. |
@@ -111,7 +111,7 @@ The table names all source senses for every multi-meaning lemma. Every listed se
 | 한 번 똥 눈 개가 일생 눈다고 한다 | w532669-s1, w532669-s2 | KEEP w532669-s1, w532669-s2 — 한 번의 잘못이 오래 낙인이 된다는 교훈과 한 번 나쁘게 본 뒤 계속 부정적으로 본다는 비판은 행위자의 오점과 관찰자의 편견이다.. |
 | 한 손 놓다 | w532728-s1, w532728-s2 | KEEP w532728-s1, w532728-s2 — 어려운 고비 뒤 여유를 얻는 상태와 한 손만 써도 된다고 상대를 얕보는 태도는 안도와 과소평가다.. |
 | 한 아들에 열 며느리 | w532685-s1, w532685-s2 | KEEP w532685-s1, w532685-s2 — 부모가 아들의 여러 첩을 말리지 않는 상황과 여러 첩을 두어도 며느리를 미워하지 않는다는 태도는 행위 허용과 감정 평가다.. |
-| 한 치 앞을 못 보다 | w532734-s1, w532734-s2 | MERGE w532734-s1 + w532734-s2 → “시력이 좋지 않아 가까이 있는 것도 보지 못하다. 앞을 내다보는 식견이 얕음을 비유하기도 한다.” — 가까운 것도 못 본다는 시각 이미지가 앞일을 내다보지 못하는 짧은 식견으로 확장된다. |
+| 한 치 앞을 못 보다 | w532734-s1, w532734-s2 | KEEP w532734-s1, w532734-s2 — 가까운 곳을 보지 못하는 신체적 시력과 식견이 얕은 인지적 판단은 물리 시각과 통찰의 한계다. |
 | 한가 | w362158-s1, w362415-s1, w362415-s2, w362418-s1, w503858-s1, w503858-s2 | KEEP w362158-s1, w362415-s1, w362415-s2, w362418-s1, w503858-s1, w503858-s2 — 원통함의 항거, 가난한 집, 낮은 문벌 집안, 한의술 시술자, 땀이 많은 체질, 병증으로 땀 흘림은 감정·가계·직업·체질·증상이다.. |
 | 한가락 | w363023-s1, w363024-s1 | KEEP w363023-s1, w363024-s1 — 어떤 분야의 뛰어난 재주와 전통 음악의 첫 번째 가락은 능력 평가와 음계 명칭이다.. |
 | 한가을 | w501543-s1, w501543-s2 | KEEP w501543-s1, w501543-s2 — 무르익은 가을철이라는 계절 시점과 농사일이 한창인 시기는 계절과 농사 일정이다.. |
@@ -143,6 +143,14 @@ The table names all source senses for every multi-meaning lemma. Every listed se
 | 한국미 | w361477-s1, w503564-s1 | KEEP w361477-s1, w503564-s1 — 한국에서 생산된 쌀과 한국의 아름다움은 ‘한국+미’의 서로 다른 한자어 의미다.. |
 | 한국사 | w503565-s1, w503565-s2 | KEEP w503565-s1, w503565-s2 — 한국사의 일반 개념과 진단 학회가 발간한 7권짜리 특정 통사는 학문 분야와 출판물이다.. |
 | 한국은행 | w362007-s1, w362007-s2 | KEEP w362007-s1, w362007-s2 — 대한민국의 중앙은행과 일제 강점기 일본 제일은행 서울 지점에서 출발한 식민 통제 은행은 설립·주권·기관 정체성이 다르다.. |
+
+## PR feedback follow-up — c19_003
+
+PR #750 feedback identified five source-bound overmerges. The source senses and `docs/meaning-editing-contract.md` support keeping each pair separate: `학익` is an animal wing versus a military formation; `학수` is anatomy versus a waiting posture; `학려` is a natural cry versus human literary language; `한 치 앞을 못 보다` is physical vision versus cognitive foresight; and `학번` is an individual student identifier versus a shared cohort-year marker. The edit spec now omits these five merges, restoring each original singleton meaning ID and source gloss. Canonical records remain unchanged.
+
+A bounded recheck of the remaining 34 merge groups found no other confirmed independent target conflated by a shared image. Close cases remain grouped where the specific use is still a subtype or contextual realization of the same meaning axis: `학생복` is student clothing including a school uniform, `학력고사` is an academic evaluation including the historical entrance exam, `학생` includes the historical learner role, and `하행하다` includes travel from Seoul to the provinces. The `한 방(을) 먹다` and `한 방 먹이다` literal/verbal pairs remain the same received or delivered sharp-impact axis; only the modality of the impact changes. This focused recheck does not claim a new full-corpus audit or re-adjudicate the 131 multi-meaning groups' KEEP decisions.
+
+The revised spec replays from the PR base to 34 MERGE decisions, 956 shard meanings, and all 1,001 unique canonical sense references, with no DROP or adjudication changes.
 
 ## Review provenance
 
