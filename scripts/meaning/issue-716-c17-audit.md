@@ -14,6 +14,8 @@ The source-bound pass considered each c17 lemma, its records, and the bound cano
 
 Representative checks included resolving the `태국` official-name and transliteration senses into one direct country gloss that preserves both distinctions; correcting `테이블`'s opaque reference to the furniture meaning rather than the homonymous fortune-telling sense of `탁자`; and writing a direct adjective gloss for `틀리다` where its source reference points to a mismatched `다르다` entry. The `통발` fish-fin sense and the two uses of `트기` were checked against their bound source meanings rather than inferred from the more familiar homonyms. Four drops are exact duplicate meanings, each retaining a valid meaning for the same lemma.
 
+PR review found that the `타살하다` merge gloss “남을 때려서 죽이다” covered `w335986-s1` (“때려서 죽이다”) but narrowed the broader `w335984-s1` (“남을 죽이다”). Both the edit spec and materialized gloss now state the broad meaning first and identify beating as a specific use.
+
 The malformed `트더지다` reference remains held because its source target cannot be identified from `→ .`. No replacement meaning was guessed. All other eligible c17 cross-reference meanings received a direct gloss or were covered by an already direct same-lemma merge gloss.
 
 These source-bound editorial checks were performed by the assigned primary agent in this context. They are recorded as agent self-check, not independent review or human editorial approval. PR review is a separate gate.
