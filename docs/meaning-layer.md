@@ -35,3 +35,7 @@ has been applied and `data/canonical/` is untouched. Regenerate with `node scrip
 (deterministic; a rerun is a no-op) and verify the untouched initial state once with `node scripts/meaning/initial.mjs --check` (a one-off check; it intentionally fails after editing begins). Once editing starts,
 the projection is a historical baseline: `validateMeaningDataset({ complete: true })` (used by `validate.mjs` and the
 `meaning-references` check) requires every canonical sense to be referenced by exactly one meaning or recorded as dropped.
+
+## Editing (Issue #715)
+KEEP/MERGE/DROP criteria, the in-place edit tool (`scripts/meaning/apply-edits.mjs`) and the pilot results are in
+[meaning-editing-contract.md](meaning-editing-contract.md). Edits never reflow shards.
