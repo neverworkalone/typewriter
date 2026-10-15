@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { meaningId, planShards, writeMeanings } from './contract.mjs';
+import { meaningId, parseShardFileName, planShards, readAdjudications, readMeanings, writeMeanings } from './contract.mjs';
 
 /**
  * Initial meaning projection (Issue #714): every canonical sense becomes its own meaning with the canonical gloss.
@@ -47,8 +47,47 @@ export function diffInitialShards(canonicalDirectory, meaningsDirectory) {
   return problems;
 }
 
+/**
+ * Why `meaningsDirectory`/`adjudicationDirectory` must not be regenerated (empty when they are safe to write).
+ * Safe means: no meaning shards and no adjudication shards yet (pre-generation), or meanings already identical to the
+ * initial projection with no adjudication. Anything else is treated as editing having started (fail-closed).
+ */
+export function editingStartedReasons(canonicalDirectory, meaningsDirectory, adjudicationDirectory) {
+  const shardFiles = (dir) => (existsSync(dir) ? readdirSync(dir).filter((name) => !name.startsWith('.') && (parseShardFileName(name) || name.endsWith('.jsonl'))) : []);
+  const reasons = [];
+  const adjudications = shardFiles(adjudicationDirectory);
+  if (adjudications.length) {
+    const { rows } = readAdjudications(adjudicationDirectory);
+    reasons.push(`adjudication data exists (${rows.length} rows in ${adjudications.length} shards)`);
+  }
+  if (!shardFiles(meaningsDirectory).length) return reasons;
+  const problems = diffInitialShards(canonicalDirectory, meaningsDirectory);
+  if (!problems.length) return reasons;
+  const { rows } = readMeanings(meaningsDirectory);
+  const merged = rows.filter((row) => row.sense_ids?.length > 1).length;
+  if (merged) reasons.push(`${merged} meanings reference several sense_ids (MERGE)`);
+  reasons.push(`meanings differ from the initial projection (${problems.length} shard problems, e.g. ${problems[0]})`);
+  return reasons;
+}
+
+/** Default initial generation: refuses before any write when editing has started. `force` is for explicit recovery only. */
+export function generateInitialMeanings({ canonicalDirectory, meaningsDirectory, adjudicationDirectory, force = false }) {
+  const reasons = editingStartedReasons(canonicalDirectory, meaningsDirectory, adjudicationDirectory);
+  const rows = projectInitialMeanings(readCanonicalEntries(canonicalDirectory));
+  if (force && existsSync(adjudicationDirectory) && readdirSync(adjudicationDirectory).some((name) => !name.startsWith('.'))) {
+    throw new Error(`refusing to reset ${meaningsDirectory} even with force: ${adjudicationDirectory} holds adjudication decisions that would conflict with the 1:1 projection; remove or handle them explicitly first`);
+  }
+  if (reasons.length && !force) {
+    throw new Error(`refusing to overwrite ${meaningsDirectory}: editing has started (${reasons.join('; ')}); use --check to inspect or --force-reset-initial to deliberately reset`);
+  }
+  if (!reasons.length && !diffInitialShards(canonicalDirectory, meaningsDirectory).length) return { rows: rows.length, files: [], written: false };
+  const files = writeMeanings(meaningsDirectory, rows);
+  return { rows: rows.length, files, written: true };
+}
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+  const rootFlag = process.argv.indexOf('--root');
+  const root = rootFlag > 0 ? path.resolve(process.argv[rootFlag + 1]) : path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
   const canonical = path.join(root, 'data/canonical');
   const meanings = path.join(root, 'data/meanings');
   if (process.argv.includes('--check')) {
@@ -56,8 +95,14 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     if (problems.length) { console.error(problems.slice(0, 50).join('\n')); process.exit(1); }
     console.log('data/meanings matches the initial canonical projection');
   } else {
-    const rows = projectInitialMeanings(readCanonicalEntries(canonical));
-    const files = writeMeanings(meanings, rows);
-    console.log(`wrote ${rows.length} meanings into ${files.length} shards`);
+    try {
+      const result = generateInitialMeanings({
+        canonicalDirectory: canonical,
+        meaningsDirectory: meanings,
+        adjudicationDirectory: path.join(root, 'data/adjudication'),
+        force: process.argv.includes('--force-reset-initial'),
+      });
+      console.log(result.written ? `wrote ${result.rows} meanings into ${result.files.length} shards` : `data/meanings already matches the initial projection (${result.rows} meanings); nothing written`);
+    } catch (error) { console.error(error.message); process.exit(1); }
   }
 }

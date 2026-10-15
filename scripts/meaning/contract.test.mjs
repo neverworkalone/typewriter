@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, readdirSync, symlinkSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -10,7 +11,7 @@ import {
   validateMeaningDataset, validateMeaningRow, writeAdjudications, writeMeanings,
 } from './contract.mjs';
 import { mkdirSync } from 'node:fs';
-import { projectInitialMeanings } from './initial.mjs';
+import { generateInitialMeanings, projectInitialMeanings } from './initial.mjs';
 import { createCanonicalContext } from '../validate/canonical-context.mjs';
 import { runChecks } from '../ci/run-category.mjs';
 import { loadMeaningData } from './contract.mjs';
@@ -356,4 +357,111 @@ test('cross-record MERGE: same lemma passes, different lemma fails, duplicate_of
   assert.match(errorsOf([], [{ ...drop, duplicate_of: 'w9-s1' }]), /unknown duplicate_of/);
   assert.match(errorsOf([], [{ ...drop, duplicate_of: 'w3-s1' }]), /has lemma 나, not 가/);
   assert.match(errorsOf([], [drop, { ...drop, sense_id: 'w1-s2', duplicate_of: 'w2-s1' }]), /itself dropped/);
+});
+
+/** Synthetic canonical (3 entries, one with two senses) and a snapshot helper for the overwrite guard. */
+function guardFixture() {
+  const root = tmp();
+  const canonicalDirectory = path.join(root, 'canonical');
+  mkdirSync(canonicalDirectory);
+  const entry = (id, lemma, glosses) => ({ id, lemma, senses: glosses.map((gloss, i) => ({ id: glosses.length === 1 ? `${id}-s1` : `${id}-s${i + 1}`, gloss })) });
+  writeFileSync(path.join(canonicalDirectory, 'a.jsonl'), [entry('w1', '가다', ['움직이다']), entry('w2', '나무', ['식물', '재료']), entry('w3', '다리', ['신체'])].map((e) => `${JSON.stringify(e)}\n`).join(''));
+  const meaningsDirectory = path.join(root, 'meanings');
+  const adjudicationDirectory = path.join(root, 'adjudication');
+  const options = { canonicalDirectory, meaningsDirectory, adjudicationDirectory };
+  const snapshot = () => {
+    const out = {};
+    for (const dir of [canonicalDirectory, meaningsDirectory, adjudicationDirectory]) {
+      if (!existsSync(dir)) { out[dir] = null; continue; }
+      for (const file of readdirSync(dir).sort()) out[`${dir}/${file}`] = readFileSync(path.join(dir, file), 'utf8');
+    }
+    return JSON.stringify(out);
+  };
+  return { options, snapshot, meaningsDirectory, adjudicationDirectory };
+}
+
+test('initial generator: empty corpus generates, identical corpus is a no-op', () => {
+  const { options, meaningsDirectory } = guardFixture();
+  assert.equal(generateInitialMeanings(options).written, true);
+  const first = readMeanings(meaningsDirectory);
+  assert.deepEqual(first.errors, []);
+  assert.equal(first.rows.length, 4);
+  assert.equal(generateInitialMeanings(options).written, false);
+});
+
+test('initial generator refuses MERGE, edited gloss, DROP and stray files with no change at all', () => {
+  const edits = {
+    merge: ({ meaningsDirectory }) => {
+      const { rows } = readMeanings(meaningsDirectory);
+      const [a, b, ...rest] = rows;
+      writeMeanings(meaningsDirectory, [{ ...a, sense_ids: [...a.sense_ids, ...rows.find((r) => r.lemma === '나무').sense_ids] }, ...rest.filter((r) => r.lemma !== '나무'), b].filter((r) => r.lemma !== '나무' || r === a));
+    },
+    gloss: ({ meaningsDirectory }) => {
+      const { rows } = readMeanings(meaningsDirectory);
+      rows[0] = { ...rows[0], gloss: '편집된 뜻' };
+      writeMeanings(meaningsDirectory, rows);
+    },
+    drop: ({ adjudicationDirectory }) => writeAdjudications(adjudicationDirectory, [{ sense_id: 'w2-s2', lemma: '나무', decision: 'drop', reason: 'duplicate', duplicate_of: 'w2-s1' }]),
+    extraMeaning: ({ meaningsDirectory }) => {
+      const { rows } = readMeanings(meaningsDirectory);
+      writeMeanings(meaningsDirectory, [...rows, row('m9', '라면', ['w9-s1'])]);
+    },
+  };
+  for (const [name, edit] of Object.entries(edits)) {
+    const fixture = guardFixture();
+    generateInitialMeanings(fixture.options);
+    edit(fixture);
+    const before = fixture.snapshot();
+    assert.throws(() => generateInitialMeanings(fixture.options), /editing has started/, name);
+    assert.equal(fixture.snapshot(), before, `${name}: no file changed`);
+  }
+});
+
+test('initial generator refuses adjudication-only state, with or without force, leaving both directories unchanged', () => {
+  const fixture = guardFixture();
+  writeAdjudications(fixture.adjudicationDirectory, [{ sense_id: 'w2-s2', lemma: '나무', decision: 'drop', reason: 'duplicate', duplicate_of: 'w2-s1' }]);
+  const before = fixture.snapshot();
+  assert.throws(() => generateInitialMeanings(fixture.options), /adjudication data exists/);
+  assert.throws(() => generateInitialMeanings({ ...fixture.options, force: true }), /even with force/);
+  assert.equal(fixture.snapshot(), before);
+});
+
+test('force reset restores a consistent initial corpus when no adjudication exists', () => {
+  const fixture = guardFixture();
+  generateInitialMeanings(fixture.options);
+  const { rows } = readMeanings(fixture.meaningsDirectory);
+  rows[0] = { ...rows[0], gloss: '편집된 뜻' };
+  writeMeanings(fixture.meaningsDirectory, rows);
+  assert.throws(() => generateInitialMeanings(fixture.options), /editing has started/);
+  assert.equal(generateInitialMeanings({ ...fixture.options, force: true }).written, true);
+  const senses = loadCanonicalSenses(fixture.options.canonicalDirectory);
+  assert.deepEqual(validateMeaningDataset({ meanings: readMeanings(fixture.meaningsDirectory).rows, adjudications: [], senses, complete: true }), []);
+});
+
+test('initial generator CLI (temp root): --check and default run follow the repository state and never alter edited data', () => {
+  const script = path.resolve(import.meta.dirname, 'initial.mjs');
+  const fixture = guardFixture();
+  const root = path.dirname(fixture.meaningsDirectory);
+  const cliRoot = path.join(root, 'cli');
+  mkdirSync(path.join(cliRoot, 'data'), { recursive: true });
+  symlinkSync(fixture.options.canonicalDirectory, path.join(cliRoot, 'data/canonical'));
+  symlinkSync(fixture.meaningsDirectory, path.join(cliRoot, 'data/meanings'));
+  symlinkSync(fixture.adjudicationDirectory, path.join(cliRoot, 'data/adjudication'));
+  const run = (...args) => spawnSync(process.execPath, [script, '--root', cliRoot, ...args], { encoding: 'utf8' });
+  // meaning/adjudication directories must exist for the symlinks above to resolve; the default run creates meanings.
+  mkdirSync(fixture.meaningsDirectory, { recursive: true });
+  mkdirSync(fixture.adjudicationDirectory, { recursive: true });
+  assert.equal(run().status, 0);
+  assert.equal(run('--check').status, 0);
+  assert.equal(run().status, 0, 'rerun on the initial state is a no-op');
+  const { rows } = readMeanings(fixture.meaningsDirectory);
+  rows[0] = { ...rows[0], gloss: '편집된 뜻' };
+  writeMeanings(fixture.meaningsDirectory, rows);
+  const before = fixture.snapshot();
+  assert.equal(run('--check').status, 1);
+  const refused = run();
+  assert.equal(refused.status, 1);
+  assert.match(refused.stderr, /editing has started/);
+  assert.equal(fixture.snapshot(), before, 'edited data is byte-identical after both CLI calls');
+  assert.equal(run('--check').status, 1);
 });
