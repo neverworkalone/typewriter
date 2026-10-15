@@ -4,11 +4,12 @@ import { loadMeaningData } from './contract.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
-export function validateMeaningFiles({ canonical = true } = {}) {
+export function validateMeaningFiles({ canonical = true, senses = null } = {}) {
   return loadMeaningData({
     meaningsDirectory: path.join(root, 'data/meanings'),
     adjudicationDirectory: path.join(root, 'data/adjudication'),
     canonicalDirectory: canonical ? path.join(root, 'data/canonical') : null,
+    senses,
   });
 }
 

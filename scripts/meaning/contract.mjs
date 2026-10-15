@@ -270,10 +270,20 @@ export function validateMeaningDataset({ meanings, adjudications = [], senses = 
   return [...new Set(errors)];
 }
 
-/** Read the untouched canonical layer into `Map<senseId, { lemma }>`. */
-export function loadCanonicalSenses(directory) {
+/** Senses of the already-loaded shared canonical context (CI Normal session) as `Map<senseId, { lemma }>`; no file reads. */
+export function canonicalSensesFromContext(canonicalContext) {
   const senses = new Map();
-  for (const file of readdirSync(directory).filter((name) => name.endsWith('.jsonl')).sort()) {
+  for (const [senseId, { recordInfo }] of canonicalContext.indexes.sensesById) {
+    senses.set(senseId, { lemma: (recordInfo.record ?? recordInfo).lemma });
+  }
+  return senses;
+}
+
+/** Read the untouched canonical layer from disk into `Map<senseId, { lemma }>` (`files` limits it to named files). */
+export function loadCanonicalSenses(directory, { files = null } = {}) {
+  const senses = new Map();
+  const names = files ?? readdirSync(directory).filter((name) => name.endsWith('.jsonl')).sort();
+  for (const file of names) {
     for (const line of readFileSync(path.join(directory, file), 'utf8').split('\n')) {
       if (!line) continue;
       const entry = JSON.parse(line);
@@ -283,15 +293,20 @@ export function loadCanonicalSenses(directory) {
   return senses;
 }
 
-/** Load and validate `data/meanings` + `data/adjudication`; returns `{ meanings, adjudications, errors }`. */
-export function loadMeaningData({ meaningsDirectory, adjudicationDirectory, canonicalDirectory = null }) {
+/**
+ * Load and validate `data/meanings` + `data/adjudication`; returns `{ meanings, adjudications, errors }`.
+ * References are checked against `senses` (e.g. from the shared CI canonical context) or, failing that,
+ * `canonicalDirectory`; with neither only the files themselves are checked.
+ */
+export function loadMeaningData({ meaningsDirectory, adjudicationDirectory, canonicalDirectory = null, senses = null }) {
   const meanings = readMeanings(meaningsDirectory);
   const adjudications = readAdjudications(adjudicationDirectory);
   const errors = [...meanings.errors, ...adjudications.errors];
+  const needsReferences = meanings.rows.length + adjudications.rows.length > 0;
   errors.push(...validateMeaningDataset({
     meanings: meanings.rows,
     adjudications: adjudications.rows,
-    senses: canonicalDirectory ? loadCanonicalSenses(canonicalDirectory) : null,
+    senses: senses ?? (canonicalDirectory && needsReferences ? loadCanonicalSenses(canonicalDirectory) : null),
   }));
   return { meanings: meanings.rows, adjudications: adjudications.rows, errors };
 }

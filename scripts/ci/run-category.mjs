@@ -26,6 +26,8 @@ import {
   buildSemanticTopicEvidence,
 } from '../validate/semantic-audit.mjs';
 import { normalizeCanonicalDirectory } from '../normalize/canonical.mjs';
+import { canonicalSensesFromContext } from '../meaning/contract.mjs';
+import { validateMeaningFiles } from '../meaning/validate.mjs';
 import { runGlobalCanonicalAudit } from './global-canonical-audit.mjs';
 import { validateSharedDictionary } from './validate-shared-dictionary.mjs';
 import { runM2Pipeline } from '../verify/m2-pipeline.mjs';
@@ -521,6 +523,14 @@ async function runInProcessCheck(name, context) {
 
   if (name === 'global-canonical-audit') {
     console.log(JSON.stringify(await runGlobalCanonicalAudit({ canonicalContext }), null, 2));
+    return;
+  }
+
+  if (name === 'meaning-references') {
+    // Reuses the session's single canonical load; stored meanings/adjudications are checked against it.
+    const { meanings, adjudications, errors } = validateMeaningFiles({ senses: canonicalSensesFromContext(canonicalContext) });
+    if (errors.length > 0) throw new Error(`Meaning data invalid:\n${errors.slice(0, 50).join('\n')}`);
+    console.log(`Validated ${meanings.length} meaning(s) / ${adjudications.length} adjudication(s) against the shared canonical context.`);
     return;
   }
 

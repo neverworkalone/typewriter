@@ -5,11 +5,13 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import {
-  INITIAL_CODES, OTHER_INITIAL_CODE, initialCodeOf, loadCanonicalSenses, meaningId, parseMeaningId,
+  INITIAL_CODES, OTHER_INITIAL_CODE, initialCodeOf, canonicalSensesFromContext, loadCanonicalSenses, meaningId, parseMeaningId,
   parseShardFileName, planShards, readAdjudications, readMeanings, shardFileName, validateAdjudicationRow,
   validateMeaningDataset, validateMeaningRow, writeAdjudications, writeMeanings,
 } from './contract.mjs';
 import { mkdirSync } from 'node:fs';
+import { createCanonicalContext } from '../validate/canonical-context.mjs';
+import { runChecks } from '../ci/run-category.mjs';
 import { loadMeaningData } from './contract.mjs';
 import { validateMeaningFiles } from './validate.mjs';
 
@@ -179,7 +181,7 @@ test('real canonical layer: reference shapes resolve and canonical is read-only'
   const canonicalDir = path.resolve(import.meta.dirname, '../../data/canonical');
   const digest = () => createHash('sha256').update(readFileSync(path.join(canonicalDir, 'stdict-0001.jsonl'))).digest('hex');
   const before = digest();
-  const senses = loadCanonicalSenses(canonicalDir);
+  const senses = loadCanonicalSenses(canonicalDir, { files: ['stdict-0001.jsonl'] });
   const [firstId, { lemma }] = [...senses][0];
   const entryId = firstId.split('-')[0];
   const dir = tmp();
@@ -190,7 +192,7 @@ test('real canonical layer: reference shapes resolve and canonical is read-only'
 });
 
 test('every real canonical lemma initial maps consistently to a valid code', () => {
-  const senses = loadCanonicalSenses(path.resolve(import.meta.dirname, '../../data/canonical'));
+  const senses = loadCanonicalSenses(path.resolve(import.meta.dirname, '../../data/canonical'), { files: ['stdict-0002.jsonl'] });
   const seen = new Map();
   for (const { lemma } of senses.values()) {
     const first = [...lemma][0];
@@ -224,4 +226,24 @@ test('canonical-only edits break unchanged meaning/adjudication references (real
 
 test('committed meaning and adjudication data satisfy the contract', () => {
   assert.deepEqual(validateMeaningFiles().errors, []);
+});
+
+test('Normal meaning check reuses the shared canonical context instead of reading canonical again', async () => {
+  const records = [
+    { id: 'w1', lemma: '가', search_forms: ['가'], senses: [{ id: 'w1-s1' }, { id: 'w1-s2' }] },
+    { id: 'w2', lemma: '나', search_forms: ['나'], senses: [{ id: 'w2-s1' }] },
+  ];
+  const canonicalContext = createCanonicalContext({ records, fileCount: 1 }, { canonicalDirectory: '/nonexistent/canonical' });
+  const fromContext = canonicalSensesFromContext(canonicalContext);
+  assert.deepEqual([...fromContext], [['w1-s1', { lemma: '가' }], ['w1-s2', { lemma: '가' }], ['w2-s1', { lemma: '나' }]]);
+  // Shared-context references are validated without touching any canonical directory.
+  const root = tmp();
+  writeMeanings(path.join(root, 'm'), [row('m1', '가', ['w1-s1']), row('m2', '나', ['w2-s1'])]);
+  const args = { meaningsDirectory: path.join(root, 'm'), adjudicationDirectory: path.join(root, 'a'), canonicalDirectory: '/nonexistent/canonical' };
+  assert.deepEqual(loadMeaningData({ ...args, senses: fromContext }).errors, []);
+  assert.match(loadMeaningData({ ...args, senses: new Map([['w2-s1', { lemma: '나' }]]) }).errors.join('\n'), /unknown canonical sense/);
+  assert.throws(() => loadMeaningData(args), /ENOENT/);
+  // The real runner path: the registered Normal in-process check runs on the session context.
+  const check = { label: 'meaning', inProcess: 'meaning-references', command: () => ({ executable: '[in-process]', args: [] }) };
+  await runChecks([check], { canonicalContext }, { log: () => {} });
 });

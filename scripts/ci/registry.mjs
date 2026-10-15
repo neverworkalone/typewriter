@@ -154,10 +154,7 @@ const RAW_CI_CATEGORIES = Object.freeze({
         tier: 'normal',
       },
       {
-        ...commandCheck(
-          'Validate meaning/adjudication references against current canonical',
-          ['scripts/meaning/validate.mjs'],
-        ),
+        ...inProcessCheck('Validate meaning/adjudication references against current canonical', 'meaning-references'),
         tier: 'normal',
       },
       pnpmCheck('Validate lexical rule inventory', 'validate:rules'),

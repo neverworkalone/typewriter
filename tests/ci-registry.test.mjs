@@ -1166,6 +1166,7 @@ test('meaning reference integrity is a Normal check selected even when only cano
   const meaningChecks = Object.values(CI_CATEGORIES).flatMap((category) => category.checks)
     .filter((check) => /meaning\/adjudication/u.test(check.label));
   assert.equal(meaningChecks.length, 2);
+  assert.ok(meaningChecks.some((check) => check.inProcess === 'meaning-references'), 'references run in-process on the shared canonical context');
   for (const check of meaningChecks) {
     assert.equal(check.tier, 'normal');
     assert.equal(check.schedule, 'always');
