@@ -126,7 +126,10 @@ const compareRows = (kind) => (a, b) => {
   if (a.lemma !== b.lemma) return a.lemma < b.lemma ? -1 : 1;
   const [ea, na] = idTuple(kind, a);
   const [eb, nb] = idTuple(kind, b);
-  return compareBig(ea, eb) || compareBig(na, nb);
+  // Equal integers can differ in zero-padding (`w0097` / `w00097`): the raw id text is the final tie-break (total order).
+  const keyA = rowKey(kind, a);
+  const keyB = rowKey(kind, b);
+  return compareBig(ea, eb) || compareBig(na, nb) || (keyA < keyB ? -1 : keyA > keyB ? 1 : 0);
 };
 
 /**
