@@ -67,3 +67,11 @@
 
 - **1차 점검(과/부족 MERGE, 누락, 잘못된 DROP, gloss 포괄성)**: 전체 sense가 정확히 한 meaning에 속함을 `validate.mjs`(complete)로 확인했다. 점검 결과 `하다`의 조건·이유 합병과 경유·시기 도달 합병이 과합병으로 판단되어 분리했다. 합친 gloss는 구성 sense의 핵심어를 모두 포함하는지 눈으로 대조했다.
 - **2차 점검(작가 관점의 자연스러움)**: `가다`·`보다`는 축이 소수로 정리되어 자연스러우며, `하다`의 문법 용법군은 `~다고 하다`류 인용·접속·이유·희망으로 정리되었다. 독립 검토에서 추가 지적이 나오면 스펙을 수정해 다시 적용한다.
+
+## 전량 재편집 결과: c08 (Issue #716, 초성 ㅂ)
+
+- 범위: `data/meanings/c08_001..043.jsonl`. 다의 lemma 약 5,980개를 record·sense 전체 단위로 검토해 KEEP / MERGE / DROP을 판정했고, canonical 데이터는 변경하지 않았다.
+- 결과: 42,590 → 41,024 meaning (MERGE 1,442건, DROP duplicate 10건 → `data/adjudication/c08_001.jsonl`). 스펙은 `scripts/meaning/spec-716-c08.json`으로 편집 이력에 보존한다.
+- 주요 MERGE 유형: 같은 의미의 품사·용법 쌍(명사/관형사 용법 `-적`, 부사/형용사형), 같은 계열 의성·의태어, 같은 lemma 안의 거의 동일한 record 간 gloss, 같은 의미축의 비유·확장 용법.
+- 항상 KEEP: 동음이의 한자어, 고유명사(인물·지명), 반대 의미, 독립 지시 대상, 참조형 gloss(‘준말’·‘→’) — 참조 대상 sense가 합쳐진 경우에도 별도 meaning으로 둔다. 확신이 없으면 KEEP.
+- 자체 점검(정직한 표기): 판정·1차·2차 점검은 모두 작성 agent 한 명의 자체 점검이며 독립 리뷰가 아니다. 1차: `apply-edits`가 모든 충돌(중복 사용·다른 lemma·이미 합쳐진 meaning·DROP 대상)을 거부함을 확인하고 한 건의 sense id 오기를 수정했다. 2차: `validate.mjs`(complete)와 `node --test scripts/meaning/*.test.mjs`(32건)를 통과했다. 독립 Stage 1/2 리뷰는 PR에서 `REVIEW.md`에 따라 별도로 이뤄진다.
