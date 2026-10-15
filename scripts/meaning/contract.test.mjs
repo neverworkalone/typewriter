@@ -510,3 +510,16 @@ test('initial generator CLI (temp root): --check and default run follow the repo
   assert.equal(fixture.snapshot(), before, 'edited data is byte-identical after both CLI calls');
   assert.equal(run('--check').status, 1);
 });
+
+test('merged glosses never attach the object particle to an adverbial -게/-히 clause', () => {
+  const dir = path.join(path.dirname(new URL(import.meta.url).pathname), '../../data/meanings');
+  const bad = [];
+  for (const file of readdirSync(dir).filter((name) => name.endsWith('.jsonl'))) {
+    for (const line of readFileSync(path.join(dir, file), 'utf8').split('\n').filter(Boolean)) {
+      const meaning = JSON.parse(line);
+      if (meaning.sense_ids.length > 1 && /(?<!가)[게히]를 포함한다/.test(meaning.gloss)) bad.push(`${meaning.id} ${meaning.gloss}`);
+    }
+  }
+  assert.deepEqual(bad, []);
+  assert.ok(/(?<!가)[게히]를 포함한다/.test('뚜렷하게를 포함한다'));
+});

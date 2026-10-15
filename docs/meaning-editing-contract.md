@@ -95,4 +95,4 @@
 - 결과: 42,590 → 41,024 meaning (MERGE 1,442건, DROP duplicate 10건 → `data/adjudication/c08_001.jsonl`). 스펙은 `scripts/meaning/c08-716.json`으로 편집 이력에 보존한다.
 - 주요 MERGE 유형: 같은 의미의 품사·용법 쌍(명사/관형사 용법 `-적`, 부사/형용사형), 같은 계열 의성·의태어, 같은 lemma 안의 거의 동일한 record 간 gloss, 같은 의미축의 비유·확장 용법.
 - 항상 KEEP: 동음이의 한자어, 고유명사(인물·지명), 반대 의미, 독립 지시 대상, 참조형 gloss(‘준말’·‘→’) — 참조 대상 sense가 합쳐진 경우에도 별도 meaning으로 둔다. 확신이 없으면 KEEP.
-- 리뷰 기록(정직한 표기, c08): 판정·1차·2차 점검은 모두 작성 agent 한 명의 자체 점검이며 독립 리뷰가 아니다. 1차: `apply-edits`가 모든 충돌(중복 사용·다른 lemma·이미 합쳐진 meaning·DROP 대상)을 거부함을 확인하고 한 건의 sense id 오기를 수정했다. 2차: `validate.mjs`(complete)와 `node --test scripts/meaning/*.test.mjs`(32건)를 통과했다. 독립 Stage 1/2 리뷰는 PR에서 `REVIEW.md`에 따라 별도로 이뤄진다.
+- 리뷰 기록(정직한 표기, c08): 판정·1차·2차 점검은 모두 작성 agent 한 명의 자체 점검이며 독립 리뷰가 아니다. 1차: `apply-edits`가 모든 충돌(중복 사용·다른 lemma·이미 합쳐진 meaning·DROP 대상)을 거부함을 확인하고 한 건의 sense id 오기를 수정했다. 2차: `validate.mjs`(complete)와 `node --test scripts/meaning/*.test.mjs`(32건)를 통과했다. 독립 Stage 1/2 리뷰는 PR에서 `REVIEW.md`에 따라 별도로 이뤄진다. Stage 1 지적으로 부사 gloss 네 건(`바듯이`, `바로`, `번히`, `분명히`)의 `-게를 포함한다` 결합을 부사구 병렬로 고쳤고, 같은 결합이 병합 gloss에 다시 생기지 않도록 회귀 테스트를 추가했다.
