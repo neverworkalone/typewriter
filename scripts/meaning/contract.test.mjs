@@ -324,6 +324,9 @@ test('cross-record MERGE: same lemma passes, different lemma fails, duplicate_of
   const errorsOf = (meanings, adjudications = []) => validateMeaningDataset({ meanings, adjudications, senses }).join('\n');
   assert.equal(errorsOf([row('m1_1', '가', ['w1-s1', 'w1-s2'])]), '');
   assert.equal(errorsOf([row('m1_1', '가', ['w1-s1', 'w2-s1'])]), '');
+  assert.match(errorsOf([row('m2_1', '가', ['w1-s1', 'w2-s1'])]), /lowest member record \(w1\)/);
+  assert.equal(errorsOf([row('m1_2', '가', ['w2-s1', 'w1-s2'])]), '');
+  assert.equal(errorsOf([row('m2_1', '가', ['w2-s1'])]), '');
   assert.match(errorsOf([row('m1_1', '가', ['w1-s1', 'w3-s1'])]), /differs from canonical/);
   assert.match(errorsOf([row('m1_1', '가', ['w1-s1']), row('m2_1', '가', ['w1-s1', 'w2-s1'])]), /referenced by both/);
   const drop = { sense_id: 'w2-s1', lemma: '가', decision: 'drop', reason: 'duplicate', duplicate_of: 'w1-s1' };

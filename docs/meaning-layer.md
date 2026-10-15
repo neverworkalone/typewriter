@@ -17,7 +17,7 @@ same lemma, different from the dropped sense, and not itself dropped. A MERGE (d
 ## IDs
 `w0097 -> m0097` for a lone meaning; several meanings use `m0097_1`, `m0097_2`, ... (a lone meaning and suffixed ones
 never mix; numbers need not be contiguous). The ID's record is only an identifier base, not the sole record of the meaning's senses. When a
-MERGE spans records, keep the ID of the member sense with the lowest (record number, sense number); no new ID sequence is created.
+MERGE spans records, the ID's record number must be the lowest record number among the member senses (enforced by the dataset validator; the suffix is free); no new ID sequence is created.
 
 ## Shards
 Files are `cXX_NNN.jsonl` (`NNN` from `001`, contiguous per `cXX`). `cXX` comes from the lemma's Hangul initial via the
