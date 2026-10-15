@@ -164,7 +164,11 @@ export function createDictionaryHost({
 
   function getDatabase() {
     if (!databasePromise) {
-      databasePromise = loadDatabase();
+      databasePromise = loadDatabase().catch((error) => {
+        // Do not cache a failed load: the next request must retry.
+        databasePromise = null;
+        throw error;
+      });
     }
 
     return databasePromise;
