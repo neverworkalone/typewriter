@@ -83,3 +83,11 @@ Stage 2 review separated 한바다’s literal sea from its non-sea metaphor and
 The audit is `scripts/meaning/issue-716-c19-004-audit.md`, with reproducible edits in `scripts/meaning/issue-716-c19-004.json`. Two malformed or unresolved cross-references remain held with no guessed gloss. The full C19 projection now has 33,360 meanings and 33,630 canonical sense references; its 11 prior C19 adjudications are unchanged. `node scripts/meaning/validate.mjs` passed with 496,961 meanings and 117 adjudications, and `git diff --check` passed. Canonical data remains unchanged.
 
 This completes authoring decisions for c19_004 only. The remaining C19 shards are pending, and Issue #716 remains open. The independent PR review stages remain required.
+
+## Follow-up status — c19_005
+
+On 2026-10-16, a source-bound pass reviewed all 145 multi-meaning lemma groups in `c19_005`; the 614 single-meaning lemmas retain their existing meanings. The shard started with 998 meanings and 1,001 canonical sense references across 759 lemmas. It now has 980 meanings with all 1,001 references preserved after 18 MERGE decisions covering 36 source senses and no GLOSS EDIT or DROP. Three already-grouped meanings in `한정적` and `한창` were preserved. The audit includes all source senses for both the 130 groups that still have multiple rows and the 15 groups reduced to one row.
+
+The audit is `scripts/meaning/issue-716-c19-005-audit.md`, with the reproducible edit specification in `scripts/meaning/issue-716-c19-005.json`. The full C19 projection now has 33,342 meanings and 33,630 canonical sense references; its 11 prior duplicate adjudications are unchanged. `node scripts/meaning/validate.mjs` passed with 496,943 meanings and 117 adjudications, and `git diff --check` passed. Canonical data remains unchanged.
+
+This completes authoring decisions for c19_005 only. The remaining C19 shards are pending, and Issue #716 remains open. The independent PR review stages remain required.

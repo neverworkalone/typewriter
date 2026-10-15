@@ -190,4 +190,4 @@ Stage 2 review identified independent referents in 한바다 (literal sea vs. no
 
 ## Validation
 
-`node scripts/meaning/validate.mjs` passed with 496,959 meanings and 117 adjudications. `git diff --check` passed. The shard has 979 meanings and retains all 1,003 canonical sense references; C19 has 33,360 meanings. No DROP or adjudication change was added, and canonical files remain unchanged.
+`node scripts/meaning/validate.mjs` passed with 496,961 meanings and 117 adjudications. `git diff --check` passed. The shard has 979 meanings and retains all 1,003 canonical sense references; C19 has 33,360 meanings. No DROP or adjudication change was added, and canonical files remain unchanged.
