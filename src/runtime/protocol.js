@@ -1,4 +1,5 @@
 export const RUNTIME_PROTOCOL_VERSION = 1;
+export const BACKGROUND_PORT_NAME = 'typewriter/dictionary';
 
 export const MESSAGE_TYPES = Object.freeze({
   request: 'typewriter/dictionary-request',

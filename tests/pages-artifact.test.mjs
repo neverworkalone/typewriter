@@ -59,6 +59,8 @@ async function createArtifact(t, {
   }
   for (const fileName of [
     'runtime/dictionary-worker.mjs',
+    'runtime/dictionary-background.mjs',
+    'runtime/dictionary-host.js',
     'runtime/dictionary-build-info.js',
     'runtime/dictionary-contract.js',
     'runtime/dictionary-validation.js',

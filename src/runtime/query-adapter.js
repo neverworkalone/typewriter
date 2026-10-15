@@ -1,4 +1,5 @@
 import {
+  BACKGROUND_PORT_NAME,
   createRequest,
   ERROR_CODES,
   MESSAGE_TYPES,
@@ -61,7 +62,80 @@ export function resolveDictionaryWorkerUrl(
   return new URL(workerPath, applicationBaseUrl);
 }
 
+function hasBackgroundDictionaryHost() {
+  try {
+    return typeof chrome !== 'undefined'
+      && typeof chrome.runtime?.connect === 'function'
+      && Boolean(chrome.runtime.getManifest?.()?.background?.service_worker);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Worker-like facade over the extension service worker that owns the
+ * dictionary database. Closing it only drops the port, so the database
+ * outlives the popup. If the service worker was suspended, the next request
+ * reconnects and the host reloads the database on demand.
+ */
+export function createBackgroundDictionaryPort() {
+  const listeners = { message: new Set(), error: new Set(), messageerror: new Set() };
+  const outstanding = new Set();
+  let port = null;
+
+  const emit = (type, event) => {
+    for (const listener of listeners[type]) listener(event);
+  };
+
+  const connect = () => {
+    const nextPort = chrome.runtime.connect({ name: BACKGROUND_PORT_NAME });
+    nextPort.onMessage.addListener((message) => {
+      outstanding.delete(message?.id);
+      emit('message', { data: message });
+    });
+    nextPort.onDisconnect.addListener(() => {
+      if (port !== nextPort) return;
+      port = null;
+      if (outstanding.size > 0) {
+        outstanding.clear();
+        emit('error', { message: 'The dictionary service worker disconnected.' });
+      }
+    });
+    return nextPort;
+  };
+
+  return {
+    postMessage(message) {
+      port ??= connect();
+      outstanding.add(message?.id);
+      try {
+        port.postMessage(message);
+      } catch (error) {
+        outstanding.delete(message?.id);
+        port = null;
+        throw error;
+      }
+    },
+    addEventListener(type, listener) {
+      listeners[type]?.add(listener);
+    },
+    removeEventListener(type, listener) {
+      listeners[type]?.delete(listener);
+    },
+    terminate() {
+      const current = port;
+      port = null;
+      outstanding.clear();
+      current?.disconnect();
+    },
+  };
+}
+
 export function createDefaultDictionaryWorker(workerPath) {
+  if (hasBackgroundDictionaryHost()) {
+    return createBackgroundDictionaryPort();
+  }
+
   if (typeof Worker === 'undefined') {
     throw new DictionaryRuntimeError(
       ERROR_CODES.WORKER_UNAVAILABLE,

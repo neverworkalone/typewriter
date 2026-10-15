@@ -74,7 +74,10 @@ deterministic source/ID ties; it does not use frequency or generated scores.
 `pnpm run build` also assembles the product runtime under `dist/`:
 
 - `dictionary.sqlite` is generated from the canonical JSONL pilot data;
-- `runtime/dictionary-worker.mjs` is the dedicated module worker;
+- `runtime/dictionary-host.js` holds the shared database load/query logic;
+  `runtime/dictionary-worker.mjs` hosts it in a dedicated module worker (web)
+  and `runtime/dictionary-background.mjs` hosts it in the extension service
+  worker so popups reuse one prepared database;
 - `runtime/protocol.js` contains the versioned request/response contract;
 - `runtime/query-adapter.js` is the browser-facing read-only adapter; and
 - `runtime/sqlite-query.js` contains the shared SQLite query operations used by

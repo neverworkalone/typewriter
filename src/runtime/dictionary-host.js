@@ -1,0 +1,275 @@
+import {
+  ERROR_CODES,
+  MESSAGE_TYPES,
+  RUNTIME_PROTOCOL_VERSION,
+} from './protocol.js';
+import {
+  findRecordsBySearchTerm,
+  getRecord,
+  getSenseRelations,
+} from './sqlite-query.js';
+import { validateRuntimeDictionary } from './dictionary-validation.js';
+
+export function createDictionaryHost({
+  sqlite3InitModule,
+  dictionaryUrl,
+  expectedSourceRevision,
+}) {
+  let databasePromise;
+
+  function workerError(code, message, details) {
+    const error = new Error(message);
+    error.code = code;
+
+    if (details !== undefined) {
+      error.details = details;
+    }
+
+    return error;
+  }
+
+  function errorPayload(error, fallbackCode = ERROR_CODES.QUERY_FAILED) {
+    return {
+      code: typeof error?.code === 'string' ? error.code : fallbackCode,
+      message: typeof error?.message === 'string' && error.message.length > 0
+        ? error.message
+        : 'Dictionary runtime request failed.',
+      ...(error?.details === undefined ? {} : { details: error.details }),
+    };
+  }
+
+  async function loadDatabase() {
+    let sqlite3;
+
+    try {
+      sqlite3 = await sqlite3InitModule();
+    } catch (error) {
+      throw workerError(
+        ERROR_CODES.WASM_LOAD_FAILED,
+        'The SQLite WASM module could not be initialized.',
+        { cause: error?.message || String(error) },
+      );
+    }
+
+    let response;
+    try {
+      response = await fetch(dictionaryUrl);
+    } catch (error) {
+      throw workerError(
+        ERROR_CODES.ASSET_LOAD_FAILED,
+        'The packaged dictionary database could not be fetched.',
+        { cause: error?.message || String(error) },
+      );
+    }
+
+    if (!response.ok) {
+      throw workerError(
+        ERROR_CODES.ASSET_LOAD_FAILED,
+        `The packaged dictionary database returned HTTP ${response.status}.`,
+        { status: response.status },
+      );
+    }
+
+    let bytes;
+    try {
+      bytes = new Uint8Array(await response.arrayBuffer());
+    } catch (error) {
+      throw workerError(
+        ERROR_CODES.ASSET_LOAD_FAILED,
+        'The packaged dictionary database could not be read.',
+        { cause: error?.message || String(error) },
+      );
+    }
+
+    let database;
+    try {
+      database = new sqlite3.oo1.DB();
+      const pointer = sqlite3.wasm.allocFromTypedArray(bytes);
+      const resultCode = sqlite3.capi.sqlite3_deserialize(
+        database.pointer,
+        'main',
+        pointer,
+        bytes.byteLength,
+        bytes.byteLength,
+        sqlite3.capi.SQLITE_DESERIALIZE_FREEONCLOSE,
+      );
+
+      database.checkRc(resultCode);
+      database.exec('PRAGMA query_only = ON');
+
+      const queryOnly = Number(database.selectValue('PRAGMA query_only'));
+      if (queryOnly !== 1) {
+        throw workerError(
+          ERROR_CODES.DATABASE_LOAD_FAILED,
+          'The dictionary database could not be placed in query-only mode.',
+          { query_only: queryOnly },
+        );
+      }
+
+      const dictionaryMetadata = validateRuntimeDictionary(database, {
+        expectedSourceRevision,
+      });
+
+      let writeBlocked = false;
+      try {
+        database.exec(
+          "INSERT INTO records (id, record_type, role, lemma) VALUES ('__typewriter_read_only_probe__', 'entry', 'start', '쓰기 금지')",
+        );
+      } catch {
+        writeBlocked = true;
+      }
+
+      const persistedWriteCount = Number(database.selectValue(
+        "SELECT COUNT(*) FROM records WHERE id = '__typewriter_read_only_probe__'",
+      ));
+      if (!writeBlocked || persistedWriteCount !== 0) {
+        throw workerError(
+          ERROR_CODES.DATABASE_LOAD_FAILED,
+          'The packaged dictionary accepted or persisted a write.',
+          {
+            query_only: queryOnly,
+            write_blocked: writeBlocked,
+            persisted_write_count: persistedWriteCount,
+          },
+        );
+      }
+
+      return {
+        database,
+        sqlite3,
+        bytes: bytes.byteLength,
+        queryOnly,
+        writeBlocked,
+        persistedWriteCount,
+        dictionaryMetadata,
+      };
+    } catch (error) {
+      try {
+        database?.close();
+      } catch {
+        // Preserve the original load error.
+      }
+
+      if (error?.code) {
+        throw error;
+      }
+
+      throw workerError(
+        ERROR_CODES.DATABASE_LOAD_FAILED,
+        'The packaged dictionary database could not be opened.',
+        { cause: error?.message || String(error) },
+      );
+    }
+  }
+
+  function getDatabase() {
+    if (!databasePromise) {
+      databasePromise = loadDatabase().catch((error) => {
+        // Do not cache a failed load: the next request must retry.
+        databasePromise = null;
+        throw error;
+      });
+    }
+
+    return databasePromise;
+  }
+
+  function getStatus(runtime) {
+    return {
+      ready: true,
+      state: 'ready',
+      query_only: runtime.queryOnly,
+      write_blocked: runtime.writeBlocked,
+      persisted_write_count: runtime.persistedWriteCount,
+      database_bytes: runtime.bytes,
+      sqlite_version: runtime.sqlite3.version.libVersion,
+      dictionary_version: runtime.dictionaryMetadata.dictionary_version,
+      schema_version: runtime.dictionaryMetadata.schema_version,
+      source_revision: runtime.dictionaryMetadata.source_revision,
+    };
+  }
+
+  function validateString(value, name) {
+    if (typeof value !== 'string' || value.length === 0) {
+      throw workerError(ERROR_CODES.INVALID_ARGUMENT, `${name} must be a non-empty string.`);
+    }
+
+    return value;
+  }
+
+  async function dispatch(method, params = {}) {
+    if (method === 'close') {
+      const runtime = await getDatabase();
+      runtime.database.close();
+      databasePromise = null;
+      return { closed: true };
+    }
+
+    const runtime = await getDatabase();
+    const { database } = runtime;
+
+    try {
+      switch (method) {
+        case 'ready':
+        case 'status':
+          return getStatus(runtime);
+        case 'search':
+          return findRecordsBySearchTerm(database, validateString(params.term, 'term'));
+        case 'get-record':
+          return getRecord(database, validateString(params.recordId, 'recordId'));
+        case 'get-relations':
+          return getSenseRelations(database, validateString(params.senseId, 'senseId'));
+        case 'metadata':
+          return runtime.dictionaryMetadata;
+        default:
+          throw workerError(
+            ERROR_CODES.UNSUPPORTED_REQUEST,
+            `Unsupported dictionary runtime request: ${method}.`,
+          );
+      }
+    } catch (error) {
+      if (error?.code) {
+        throw error;
+      }
+
+      throw workerError(
+        ERROR_CODES.QUERY_FAILED,
+        'The dictionary runtime query failed.',
+        { cause: error?.message || String(error) },
+      );
+    }
+  }
+
+  async function handleRequest(request) {
+    if (
+      !request
+      || request.protocol !== RUNTIME_PROTOCOL_VERSION
+      || request.type !== MESSAGE_TYPES.request
+    ) {
+      if (request?.id === undefined) return null;
+      return {
+        protocol: RUNTIME_PROTOCOL_VERSION,
+        type: MESSAGE_TYPES.response,
+        id: request.id,
+        ok: false,
+        error: errorPayload(workerError(
+          ERROR_CODES.INVALID_REQUEST,
+          'The dictionary worker received an invalid request.',
+        )),
+      };
+    }
+
+    const base = {
+      protocol: RUNTIME_PROTOCOL_VERSION,
+      type: MESSAGE_TYPES.response,
+      id: request.id,
+    };
+    try {
+      return { ...base, ok: true, result: await dispatch(request.method, request.params) };
+    } catch (error) {
+      return { ...base, ok: false, error: errorPayload(error) };
+    }
+  }
+
+  return { handleRequest };
+}

@@ -51,7 +51,12 @@ function readMetadata(database) {
   }
 }
 
-export function validatePackagedDictionary(database, {
+/**
+ * Minimal checks the extension needs at startup: schema, dictionary version
+ * and source revision. Whole-database scans stay in build/package validation
+ * and `validatePackagedDictionary`.
+ */
+export function validateRuntimeDictionary(database, {
   expectedSourceRevision = undefined,
 } = {}) {
   const metadata = readMetadata(database);
@@ -107,6 +112,13 @@ export function validatePackagedDictionary(database, {
       },
     );
   }
+
+  return metadata;
+}
+
+/** Full integrity validation for build, package and benchmark tooling. */
+export function validatePackagedDictionary(database, options = {}) {
+  const metadata = validateRuntimeDictionary(database, options);
 
   let integrity;
   try {
