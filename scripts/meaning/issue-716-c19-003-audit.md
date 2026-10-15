@@ -130,7 +130,7 @@ The table names all source senses for every multi-meaning lemma. Every listed se
 | 한경 | w360677-s1, w504741-s1 | KEEP w360677-s1, w504741-s1 — 한나라 때 만든 거울과 한기·열이 번갈아 나타나는 병증은 역사 유물과 증상이다.. |
 | 한계 농도 | w360682-s1, w360682-s2 | KEEP w360682-s1, w360682-s2 — 검출 가능한 최소 농도와 혼합물에 허용되는 다른 물질의 최대 농도는 하한과 상한으로 방향이 반대다.. |
 | 한계 생산력설 | w501728-s1, w501728-s2 | KEEP w501728-s1, w501728-s2 — 생산자가 비용 최소화를 위해 요소를 편성한다는 설명과 한계 생산력에 따른 요소별 분배 주장은 생산 결정과 소득 분배다.. |
-| 한계 주파수 | w498097-s1, w498097-s2 | MERGE w498097-s1 + w498097-s2 → “어떤 현상이 나타나거나 갑자기 바뀌는 한계 주파수. 광전 장치에서 광전자 방출 효과를 내는 최저 입사·방사 에너지를 이르기도 한다.” — 일반 현상 변화의 경계 주파수와 광전 효과의 최저 주파수는 한계 주파수라는 같은 threshold 축이다. |
+| 한계 주파수 | w498097-s1, w498097-s2 | MERGE w498097-s1 + w498097-s2 → “어떤 현상이 나타나거나 갑자기 바뀌는 한계 주파수. 광전 장치에서 광전자 방출 효과를 나타내는 최저 주파수이며, 해당 주파수에 대응하는 입사·방사 에너지를 가리키기도 한다.” — 두 원문 모두 경계 주파수를 뜻한다. 광전 효과의 최저 주파수를 명시하고, 대응하는 입사·방사 에너지는 그 주파수 값과 구별했다. |
 | 한고 | w356844-s1, w356846-s1 | KEEP w356844-s1, w356846-s1 — 옛날부터 드물다는 성질과 극심한 추위로 겪는 괴로움은 희소성과 고통이다.. |
 | 한고조 | w356849-s1, w503374-s1 | KEEP w356849-s1, w503374-s1 — 한나라의 역사적 황제와 수행을 게을리하는 중생의 비유인 히말라야 상상 새는 인물과 설화적 동물이다.. |
 | 한공 | w356346-s1, w356347-s1 | KEEP w356346-s1, w356347-s1 — 땀을 몸 밖으로 내보내는 피부 구멍과 맑고 찬 겨울 하늘은 신체 구조와 기상·경관이다.. |
@@ -149,6 +149,8 @@ The table names all source senses for every multi-meaning lemma. Every listed se
 PR #750 feedback identified five source-bound overmerges. The source senses and `docs/meaning-editing-contract.md` support keeping each pair separate: `학익` is an animal wing versus a military formation; `학수` is anatomy versus a waiting posture; `학려` is a natural cry versus human literary language; `한 치 앞을 못 보다` is physical vision versus cognitive foresight; and `학번` is an individual student identifier versus a shared cohort-year marker. The edit spec now omits these five merges, restoring each original singleton meaning ID and source gloss. Canonical records remain unchanged.
 
 A bounded recheck of the remaining 34 merge groups found no other confirmed independent target conflated by a shared image. Close cases remain grouped where the specific use is still a subtype or contextual realization of the same meaning axis: `학생복` is student clothing including a school uniform, `학력고사` is an academic evaluation including the historical entrance exam, `학생` includes the historical learner role, and `하행하다` includes travel from Seoul to the provinces. The `한 방(을) 먹다` and `한 방 먹이다` literal/verbal pairs remain the same received or delivered sharp-impact axis; only the modality of the impact changes. This focused recheck does not claim a new full-corpus audit or re-adjudicate the 131 multi-meaning groups' KEEP decisions.
+
+A later source-bound review found that the previous `한계 주파수` gloss dropped `주파수` from the photoelectric threshold qualifier, making `최저` modify `에너지`. The corrected gloss states the minimum frequency and distinguishes the corresponding incident/radiation energy. A limited scan of all 34 merged canonical gloss pairs and outputs for `주파수`, `에너지`, and `최저` found no other analogous qualifier loss.
 
 The revised spec replays from the PR base to 34 MERGE decisions, 956 shard meanings, and all 1,001 unique canonical sense references, with no DROP or adjudication changes.
 
