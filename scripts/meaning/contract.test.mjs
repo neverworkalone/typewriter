@@ -301,9 +301,13 @@ test('real data: committed meanings satisfy the file contract without re-reading
   // Canonical references and completeness of the stored corpus are checked once, by the Normal in-process
   // `meaning-references` check on the shared session context. Equality with the initial projection is a one-off
   // manual check (`node scripts/meaning/initial.mjs --check`), not a standing invariant.
-  const { meanings, errors } = validateMeaningFiles({ canonical: false });
+  // The impossible canonical directory is injected into the real wrapper: any canonical read would throw ENOENT.
+  const missingCanonical = '/nonexistent/canonical';
+  const { meanings, errors } = validateMeaningFiles({ canonical: false, canonicalDirectory: missingCanonical });
   assert.deepEqual(errors, []);
   assert.ok(meanings.length > 0);
+  // Positive probe: the same injection does trip when canonical is requested, so the guard above is effective.
+  assert.throws(() => validateMeaningFiles({ canonicalDirectory: missingCanonical }), /ENOENT/);
   // A stored row plus an impossible canonical directory proves the opt-out never scans canonical.
   const root = tmp();
   writeMeanings(path.join(root, 'm'), [row('m1', '가', ['w1-s1'])]);
