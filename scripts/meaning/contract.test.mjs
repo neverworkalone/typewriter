@@ -224,8 +224,15 @@ test('canonical-only edits break unchanged meaning/adjudication references (real
   assert.match(setup({ ...real, lemma: `${real.lemma}다` })().join('\n'), /differs from canonical/);
 });
 
-test('committed meaning and adjudication data satisfy the contract', () => {
-  assert.deepEqual(validateMeaningFiles().errors, []);
+test('committed meaning and adjudication data satisfy the file contract without re-reading canonical', () => {
+  // Canonical references of stored data are validated by the Normal in-process `meaning-references` check on the
+  // shared session context; this isolated test must never re-parse the whole canonical revision.
+  assert.deepEqual(validateMeaningFiles({ canonical: false }).errors, []);
+  const root = tmp();
+  writeMeanings(path.join(root, 'm'), [row('m1', '가', ['w1-s1'])]);
+  const args = { meaningsDirectory: path.join(root, 'm'), adjudicationDirectory: path.join(root, 'a') };
+  assert.deepEqual(loadMeaningData({ ...args, canonicalDirectory: null }).errors, []);
+  assert.throws(() => loadMeaningData({ ...args, canonicalDirectory: '/nonexistent/canonical' }), /ENOENT/, 'stored rows + canonicalDirectory do read canonical');
 });
 
 test('Normal meaning check reuses the shared canonical context instead of reading canonical again', async () => {
