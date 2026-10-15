@@ -1161,3 +1161,18 @@ test('PR gate never selects Full Deep and preserves affected checks even alongsi
   assert.match(weeklyDeep, /pnpm run ci:all/u);
   assert.match(weeklyDeep, /cron: '0 22 \* \* 0'/u);
 });
+
+test('meaning reference integrity is a Normal check selected even when only canonical data changes', () => {
+  const meaningChecks = Object.values(CI_CATEGORIES).flatMap((category) => category.checks)
+    .filter((check) => /meaning\/adjudication/u.test(check.label));
+  assert.equal(meaningChecks.length, 2);
+  assert.ok(meaningChecks.some((check) => check.inProcess === 'meaning-references'), 'references run in-process on the shared canonical context');
+  for (const check of meaningChecks) {
+    assert.equal(check.tier, 'normal');
+    assert.equal(check.schedule, 'always');
+  }
+  for (const changedPaths of [['data/canonical/stdict-0001.jsonl'], ['data/meanings/c01_001.jsonl'], []]) {
+    const selected = selectChecksForPolicy(meaningChecks, { tiers: ['normal'], changedPaths });
+    assert.equal(selected.length, 2, JSON.stringify(changedPaths));
+  }
+});
