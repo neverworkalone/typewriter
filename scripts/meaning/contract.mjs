@@ -111,6 +111,15 @@ export function validateAdjudicationRow(row, where = 'adjudication') {
 const compareBig = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 const idNumber = (id) => BigInt(id.slice(1));
 
+/** Total order of record ids shared by the validator and the edit tool: numeric, then string for equal zero-padded numbers. */
+export const compareEntryIds = (a, b) => compareBig(idNumber(a), idNumber(b)) || (a < b ? -1 : a > b ? 1 : 0);
+/** Total order of canonical sense ids: record (compareEntryIds), then sense number. */
+export const compareSenseIds = (a, b) => {
+  const [, entryA, senseA] = SENSE_ID.exec(a);
+  const [, entryB, senseB] = SENSE_ID.exec(b);
+  return compareEntryIds(entryA, entryB) || compareBig(BigInt(senseA), BigInt(senseB));
+};
+
 const rowKey = (kind, row) => (kind === 'meaning' ? row.id : row.sense_id);
 // Typed numeric id tuple: meaning `m<entry>[_<n>]` -> (entry, n); adjudication `w<entry>-s<n>` -> (entry, n).
 const idTuple = (kind, row) => {
@@ -250,8 +259,7 @@ export function validateMeaningDataset({ meanings, adjudications = [], senses = 
       for (const senseId of meaning.sense_ids) {
         const entryId = entryIdOfSense(senseId);
         if (!entryId) continue;
-        const order = lowest === null ? -1 : compareBig(idNumber(entryId), idNumber(lowest));
-        if (order < 0 || (order === 0 && entryId < lowest)) lowest = entryId;
+        if (lowest === null || compareEntryIds(entryId, lowest) < 0) lowest = entryId;
       }
       if (lowest !== null && parsed.entryId !== lowest) errors.push(`${meaning.id}: id must use the lowest member record (${lowest})`);
     }

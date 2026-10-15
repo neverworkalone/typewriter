@@ -154,6 +154,13 @@ const RAW_CI_CATEGORIES = Object.freeze({
         tier: 'normal',
       },
       {
+        ...commandCheck(
+          'Test Issue #715 meaning edit tool (merge/drop spec validation, same-lemma cross-record merge, duplicate_of targets)',
+          ['--test', 'scripts/meaning/apply-edits.test.mjs'],
+        ),
+        tier: 'normal',
+      },
+      {
         ...inProcessCheck('Validate meaning/adjudication references against current canonical', 'meaning-references'),
         tier: 'normal',
       },
