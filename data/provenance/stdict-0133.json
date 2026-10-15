@@ -1,0 +1,7175 @@
+{
+ "contract": "stdict-shard-provenance-v2",
+ "selection_version": "stdict-selection-v2",
+ "source": {
+  "dictionary": "표준국어대사전 (STDICT)",
+  "file_count": 88,
+  "entry_count": 436587
+ },
+ "id_contract": {
+  "record": "w<target_code>, zero-padded to the three digits the canonical id pattern requires",
+  "sense": "<record id>-s<n>, n = 1-based source order of the sense within the entry; a policy-excluded sense leaves a gap and is never renumbered",
+  "sense_codes": "every original sense_code in source order; the suffix n of a kept sense id indexes into it",
+  "note": "A loaded record keeps its id, shard and sense numbers; later shards take the remaining eligible target_codes in ascending order."
+ },
+ "shard": "stdict-0133.jsonl",
+ "shard_sha256": "7709d3dbde19298c7b78806c553c215edf4e70087ae2e4da17b90cdc0a5ae16c",
+ "record_count": 1000,
+ "held_count": 0,
+ "summary": {
+  "by_word_unit": {
+   "구": 142,
+   "단어": 858
+  },
+  "by_source_pos": {
+   "감탄사": 1,
+   "관형사": 1,
+   "동사": 121,
+   "동사/형용사": 2,
+   "명사": 702,
+   "명사/감탄사": 1,
+   "명사/관형사": 5,
+   "부사": 14,
+   "품사 없음": 142,
+   "형용사": 11
+  },
+  "relations_by_status": {
+   "동의어:converted": 204,
+   "동의어:out-of-sample": 194,
+   "반대말:converted": 3,
+   "반대말:out-of-sample": 7
+  },
+  "definition_markup_cleaned": {
+   "I": 9,
+   "img": 1,
+   "sub": 1
+  },
+  "kept_senses": 1123,
+  "excluded_senses": 0
+ },
+ "records": [
+  {
+   "target_code": 177686,
+   "id": "w177686",
+   "sense_codes": [
+    499015
+   ]
+  },
+  {
+   "target_code": 177687,
+   "id": "w177687",
+   "sense_codes": [
+    191406
+   ]
+  },
+  {
+   "target_code": 177688,
+   "id": "w177688",
+   "sense_codes": [
+    535753
+   ]
+  },
+  {
+   "target_code": 177689,
+   "id": "w177689",
+   "sense_codes": [
+    499016
+   ]
+  },
+  {
+   "target_code": 177690,
+   "id": "w177690",
+   "sense_codes": [
+    191409
+   ]
+  },
+  {
+   "target_code": 177691,
+   "id": "w177691",
+   "sense_codes": [
+    191410
+   ]
+  },
+  {
+   "target_code": 177692,
+   "id": "w177692",
+   "sense_codes": [
+    191411
+   ]
+  },
+  {
+   "target_code": 177693,
+   "id": "w177693",
+   "sense_codes": [
+    191412
+   ]
+  },
+  {
+   "target_code": 177694,
+   "id": "w177694",
+   "sense_codes": [
+    425190
+   ]
+  },
+  {
+   "target_code": 177695,
+   "id": "w177695",
+   "sense_codes": [
+    191413
+   ]
+  },
+  {
+   "target_code": 177696,
+   "id": "w177696",
+   "sense_codes": [
+    191592
+   ]
+  },
+  {
+   "target_code": 177697,
+   "id": "w177697",
+   "sense_codes": [
+    191593
+   ]
+  },
+  {
+   "target_code": 177698,
+   "id": "w177698",
+   "sense_codes": [
+    462126
+   ]
+  },
+  {
+   "target_code": 177699,
+   "id": "w177699",
+   "sense_codes": [
+    425222
+   ]
+  },
+  {
+   "target_code": 177700,
+   "id": "w177700",
+   "sense_codes": [
+    191219
+   ]
+  },
+  {
+   "target_code": 177701,
+   "id": "w177701",
+   "sense_codes": [
+    194236
+   ]
+  },
+  {
+   "target_code": 177702,
+   "id": "w177702",
+   "sense_codes": [
+    194238
+   ]
+  },
+  {
+   "target_code": 177704,
+   "id": "w177704",
+   "sense_codes": [
+    194239
+   ]
+  },
+  {
+   "target_code": 177705,
+   "id": "w177705",
+   "sense_codes": [
+    194240
+   ]
+  },
+  {
+   "target_code": 177706,
+   "id": "w177706",
+   "sense_codes": [
+    388784
+   ]
+  },
+  {
+   "target_code": 177707,
+   "id": "w177707",
+   "sense_codes": [
+    13767
+   ]
+  },
+  {
+   "target_code": 177708,
+   "id": "w177708",
+   "sense_codes": [
+    405351,
+    408938
+   ]
+  },
+  {
+   "target_code": 177711,
+   "id": "w177711",
+   "sense_codes": [
+    499263
+   ]
+  },
+  {
+   "target_code": 177712,
+   "id": "w177712",
+   "sense_codes": [
+    193579
+   ]
+  },
+  {
+   "target_code": 177713,
+   "id": "w177713",
+   "sense_codes": [
+    425436
+   ]
+  },
+  {
+   "target_code": 177714,
+   "id": "w177714",
+   "sense_codes": [
+    572749
+   ]
+  },
+  {
+   "target_code": 177715,
+   "id": "w177715",
+   "sense_codes": [
+    193580
+   ]
+  },
+  {
+   "target_code": 177716,
+   "id": "w177716",
+   "sense_codes": [
+    193581
+   ]
+  },
+  {
+   "target_code": 177717,
+   "id": "w177717",
+   "sense_codes": [
+    352302
+   ]
+  },
+  {
+   "target_code": 177718,
+   "id": "w177718",
+   "sense_codes": [
+    193808
+   ]
+  },
+  {
+   "target_code": 177719,
+   "id": "w177719",
+   "sense_codes": [
+    193810,
+    591326
+   ]
+  },
+  {
+   "target_code": 177720,
+   "id": "w177720",
+   "sense_codes": [
+    193811,
+    591328
+   ]
+  },
+  {
+   "target_code": 177721,
+   "id": "w177721",
+   "sense_codes": [
+    535628
+   ]
+  },
+  {
+   "target_code": 177722,
+   "id": "w177722",
+   "sense_codes": [
+    535629
+   ]
+  },
+  {
+   "target_code": 177724,
+   "id": "w177724",
+   "sense_codes": [
+    191415
+   ]
+  },
+  {
+   "target_code": 177725,
+   "id": "w177725",
+   "sense_codes": [
+    191416
+   ]
+  },
+  {
+   "target_code": 177726,
+   "id": "w177726",
+   "sense_codes": [
+    425191
+   ]
+  },
+  {
+   "target_code": 177727,
+   "id": "w177727",
+   "sense_codes": [
+    191417
+   ]
+  },
+  {
+   "target_code": 177728,
+   "id": "w177728",
+   "sense_codes": [
+    12913,
+    45730
+   ]
+  },
+  {
+   "target_code": 177729,
+   "id": "w177729",
+   "sense_codes": [
+    191418
+   ]
+  },
+  {
+   "target_code": 177730,
+   "id": "w177730",
+   "sense_codes": [
+    191419
+   ]
+  },
+  {
+   "target_code": 177731,
+   "id": "w177731",
+   "sense_codes": [
+    462108
+   ]
+  },
+  {
+   "target_code": 177732,
+   "id": "w177732",
+   "sense_codes": [
+    352022
+   ]
+  },
+  {
+   "target_code": 177733,
+   "id": "w177733",
+   "sense_codes": [
+    191421
+   ]
+  },
+  {
+   "target_code": 177734,
+   "id": "w177734",
+   "sense_codes": [
+    499017
+   ]
+  },
+  {
+   "target_code": 177735,
+   "id": "w177735",
+   "sense_codes": [
+    388472
+   ]
+  },
+  {
+   "target_code": 177736,
+   "id": "w177736",
+   "sense_codes": [
+    12914,
+    45731
+   ]
+  },
+  {
+   "target_code": 177737,
+   "id": "w177737",
+   "sense_codes": [
+    535755
+   ]
+  },
+  {
+   "target_code": 177738,
+   "id": "w177738",
+   "sense_codes": [
+    462110
+   ]
+  },
+  {
+   "target_code": 177739,
+   "id": "w177739",
+   "sense_codes": [
+    12865,
+    45669
+   ]
+  },
+  {
+   "target_code": 177741,
+   "id": "w177741",
+   "sense_codes": [
+    190541
+   ]
+  },
+  {
+   "target_code": 177742,
+   "id": "w177742",
+   "sense_codes": [
+    535651
+   ]
+  },
+  {
+   "target_code": 177743,
+   "id": "w177743",
+   "sense_codes": [
+    190543
+   ]
+  },
+  {
+   "target_code": 177744,
+   "id": "w177744",
+   "sense_codes": [
+    190544
+   ]
+  },
+  {
+   "target_code": 177745,
+   "id": "w177745",
+   "sense_codes": [
+    388378
+   ]
+  },
+  {
+   "target_code": 177747,
+   "id": "w177747",
+   "sense_codes": [
+    461976
+   ]
+  },
+  {
+   "target_code": 177748,
+   "id": "w177748",
+   "sense_codes": [
+    190323
+   ]
+  },
+  {
+   "target_code": 177749,
+   "id": "w177749",
+   "sense_codes": [
+    572371
+   ]
+  },
+  {
+   "target_code": 177750,
+   "id": "w177750",
+   "sense_codes": [
+    388360
+   ]
+  },
+  {
+   "target_code": 177752,
+   "id": "w177752",
+   "sense_codes": [
+    190325
+   ]
+  },
+  {
+   "target_code": 177753,
+   "id": "w177753",
+   "sense_codes": [
+    190326
+   ]
+  },
+  {
+   "target_code": 177754,
+   "id": "w177754",
+   "sense_codes": [
+    190327
+   ]
+  },
+  {
+   "target_code": 177755,
+   "id": "w177755",
+   "sense_codes": [
+    190999
+   ]
+  },
+  {
+   "target_code": 177756,
+   "id": "w177756",
+   "sense_codes": [
+    351963
+   ]
+  },
+  {
+   "target_code": 177757,
+   "id": "w177757",
+   "sense_codes": [
+    191000
+   ]
+  },
+  {
+   "target_code": 177758,
+   "id": "w177758",
+   "sense_codes": [
+    498964
+   ]
+  },
+  {
+   "target_code": 177759,
+   "id": "w177759",
+   "sense_codes": [
+    14345,
+    45308
+   ]
+  },
+  {
+   "target_code": 177760,
+   "id": "w177760",
+   "sense_codes": [
+    535990
+   ]
+  },
+  {
+   "target_code": 177761,
+   "id": "w177761",
+   "sense_codes": [
+    193640
+   ]
+  },
+  {
+   "target_code": 177762,
+   "id": "w177762",
+   "sense_codes": [
+    352272
+   ]
+  },
+  {
+   "target_code": 177763,
+   "id": "w177763",
+   "sense_codes": [
+    193413
+   ]
+  },
+  {
+   "target_code": 177764,
+   "id": "w177764",
+   "sense_codes": [
+    193414
+   ]
+  },
+  {
+   "target_code": 177765,
+   "id": "w177765",
+   "sense_codes": [
+    193415
+   ]
+  },
+  {
+   "target_code": 177766,
+   "id": "w177766",
+   "sense_codes": [
+    13691
+   ]
+  },
+  {
+   "target_code": 177767,
+   "id": "w177767",
+   "sense_codes": [
+    461977
+   ]
+  },
+  {
+   "target_code": 177768,
+   "id": "w177768",
+   "sense_codes": [
+    190329
+   ]
+  },
+  {
+   "target_code": 177769,
+   "id": "w177769",
+   "sense_codes": [
+    190331
+   ]
+  },
+  {
+   "target_code": 177770,
+   "id": "w177770",
+   "sense_codes": [
+    190551
+   ]
+  },
+  {
+   "target_code": 177771,
+   "id": "w177771",
+   "sense_codes": [
+    190552
+   ]
+  },
+  {
+   "target_code": 177772,
+   "id": "w177772",
+   "sense_codes": [
+    190553
+   ]
+  },
+  {
+   "target_code": 177773,
+   "id": "w177773",
+   "sense_codes": [
+    190555
+   ]
+  },
+  {
+   "target_code": 177774,
+   "id": "w177774",
+   "sense_codes": [
+    535654
+   ]
+  },
+  {
+   "target_code": 177777,
+   "id": "w177777",
+   "sense_codes": [
+    194111
+   ]
+  },
+  {
+   "target_code": 177778,
+   "id": "w177778",
+   "sense_codes": [
+    425496
+   ]
+  },
+  {
+   "target_code": 177779,
+   "id": "w177779",
+   "sense_codes": [
+    194112
+   ]
+  },
+  {
+   "target_code": 177780,
+   "id": "w177780",
+   "sense_codes": [
+    425497
+   ]
+  },
+  {
+   "target_code": 177781,
+   "id": "w177781",
+   "sense_codes": [
+    499306
+   ]
+  },
+  {
+   "target_code": 177782,
+   "id": "w177782",
+   "sense_codes": [
+    194115
+   ]
+  },
+  {
+   "target_code": 177783,
+   "id": "w177783",
+   "sense_codes": [
+    194116
+   ]
+  },
+  {
+   "target_code": 177784,
+   "id": "w177784",
+   "sense_codes": [
+    194117,
+    591696
+   ]
+  },
+  {
+   "target_code": 177785,
+   "id": "w177785",
+   "sense_codes": [
+    194118
+   ]
+  },
+  {
+   "target_code": 177786,
+   "id": "w177786",
+   "sense_codes": [
+    194120
+   ]
+  },
+  {
+   "target_code": 177787,
+   "id": "w177787",
+   "sense_codes": [
+    194324
+   ]
+  },
+  {
+   "target_code": 177788,
+   "id": "w177788",
+   "sense_codes": [
+    352362
+   ]
+  },
+  {
+   "target_code": 177789,
+   "id": "w177789",
+   "sense_codes": [
+    536074
+   ]
+  },
+  {
+   "target_code": 177790,
+   "id": "w177790",
+   "sense_codes": [
+    462518
+   ]
+  },
+  {
+   "target_code": 177791,
+   "id": "w177791",
+   "sense_codes": [
+    536135
+   ]
+  },
+  {
+   "target_code": 177793,
+   "id": "w177793",
+   "sense_codes": [
+    194071
+   ]
+  },
+  {
+   "target_code": 177794,
+   "id": "w177794",
+   "sense_codes": [
+    195012
+   ]
+  },
+  {
+   "target_code": 177795,
+   "id": "w177795",
+   "sense_codes": [
+    536137
+   ]
+  },
+  {
+   "target_code": 177796,
+   "id": "w177796",
+   "sense_codes": [
+    462519
+   ]
+  },
+  {
+   "target_code": 177797,
+   "id": "w177797",
+   "sense_codes": [
+    195014
+   ]
+  },
+  {
+   "target_code": 177798,
+   "id": "w177798",
+   "sense_codes": [
+    352435
+   ]
+  },
+  {
+   "target_code": 177799,
+   "id": "w177799",
+   "sense_codes": [
+    572907
+   ]
+  },
+  {
+   "target_code": 177802,
+   "id": "w177802",
+   "sense_codes": [
+    194783
+   ]
+  },
+  {
+   "target_code": 177804,
+   "id": "w177804",
+   "sense_codes": [
+    195001
+   ]
+  },
+  {
+   "target_code": 177806,
+   "id": "w177806",
+   "sense_codes": [
+    14303,
+    45260
+   ]
+  },
+  {
+   "target_code": 177807,
+   "id": "w177807",
+   "sense_codes": [
+    195003
+   ]
+  },
+  {
+   "target_code": 177808,
+   "id": "w177808",
+   "sense_codes": [
+    195004
+   ]
+  },
+  {
+   "target_code": 177809,
+   "id": "w177809",
+   "sense_codes": [
+    425582
+   ]
+  },
+  {
+   "target_code": 177810,
+   "id": "w177810",
+   "sense_codes": [
+    14308,
+    45300
+   ]
+  },
+  {
+   "target_code": 177811,
+   "id": "w177811",
+   "sense_codes": [
+    195005
+   ]
+  },
+  {
+   "target_code": 177812,
+   "id": "w177812",
+   "sense_codes": [
+    195006
+   ]
+  },
+  {
+   "target_code": 177813,
+   "id": "w177813",
+   "sense_codes": [
+    195008
+   ]
+  },
+  {
+   "target_code": 177814,
+   "id": "w177814",
+   "sense_codes": [
+    185232
+   ]
+  },
+  {
+   "target_code": 177815,
+   "id": "w177815",
+   "sense_codes": [
+    498327
+   ]
+  },
+  {
+   "target_code": 177816,
+   "id": "w177816",
+   "sense_codes": [
+    186022
+   ]
+  },
+  {
+   "target_code": 177817,
+   "id": "w177817",
+   "sense_codes": [
+    186023
+   ]
+  },
+  {
+   "target_code": 177819,
+   "id": "w177819",
+   "sense_codes": [
+    186025
+   ]
+  },
+  {
+   "target_code": 177820,
+   "id": "w177820",
+   "sense_codes": [
+    387889
+   ]
+  },
+  {
+   "target_code": 177822,
+   "id": "w177822",
+   "sense_codes": [
+    186230
+   ]
+  },
+  {
+   "target_code": 177823,
+   "id": "w177823",
+   "sense_codes": [
+    498444
+   ]
+  },
+  {
+   "target_code": 177824,
+   "id": "w177824",
+   "sense_codes": [
+    387920
+   ]
+  },
+  {
+   "target_code": 177825,
+   "id": "w177825",
+   "sense_codes": [
+    186232
+   ]
+  },
+  {
+   "target_code": 177831,
+   "id": "w177831",
+   "sense_codes": [
+    185235
+   ]
+  },
+  {
+   "target_code": 177833,
+   "id": "w177833",
+   "sense_codes": [
+    405280,
+    408776
+   ]
+  },
+  {
+   "target_code": 177834,
+   "id": "w177834",
+   "sense_codes": [
+    571809
+   ]
+  },
+  {
+   "target_code": 177835,
+   "id": "w177835",
+   "sense_codes": [
+    498328
+   ]
+  },
+  {
+   "target_code": 177836,
+   "id": "w177836",
+   "sense_codes": [
+    424505
+   ]
+  },
+  {
+   "target_code": 177837,
+   "id": "w177837",
+   "sense_codes": [
+    185237
+   ]
+  },
+  {
+   "target_code": 177838,
+   "id": "w177838",
+   "sense_codes": [
+    351739
+   ]
+  },
+  {
+   "target_code": 177839,
+   "id": "w177839",
+   "sense_codes": [
+    188543
+   ]
+  },
+  {
+   "target_code": 177843,
+   "id": "w177843",
+   "sense_codes": [
+    186031
+   ]
+  },
+  {
+   "target_code": 177844,
+   "id": "w177844",
+   "sense_codes": [
+    186032
+   ]
+  },
+  {
+   "target_code": 177846,
+   "id": "w177846",
+   "sense_codes": [
+    12884,
+    43993
+   ]
+  },
+  {
+   "target_code": 177847,
+   "id": "w177847",
+   "sense_codes": [
+    12885,
+    43994
+   ]
+  },
+  {
+   "target_code": 177849,
+   "id": "w177849",
+   "sense_codes": [
+    191945
+   ]
+  },
+  {
+   "target_code": 177850,
+   "id": "w177850",
+   "sense_codes": [
+    351719
+   ]
+  },
+  {
+   "target_code": 177851,
+   "id": "w177851",
+   "sense_codes": [
+    188544
+   ]
+  },
+  {
+   "target_code": 177853,
+   "id": "w177853",
+   "sense_codes": [
+    188759
+   ]
+  },
+  {
+   "target_code": 177854,
+   "id": "w177854",
+   "sense_codes": [
+    498733
+   ]
+  },
+  {
+   "target_code": 177855,
+   "id": "w177855",
+   "sense_codes": [
+    188761
+   ]
+  },
+  {
+   "target_code": 177856,
+   "id": "w177856",
+   "sense_codes": [
+    424908
+   ]
+  },
+  {
+   "target_code": 177857,
+   "id": "w177857",
+   "sense_codes": [
+    572183
+   ]
+  },
+  {
+   "target_code": 177858,
+   "id": "w177858",
+   "sense_codes": [
+    188764
+   ]
+  },
+  {
+   "target_code": 177861,
+   "id": "w177861",
+   "sense_codes": [
+    572184
+   ]
+  },
+  {
+   "target_code": 177862,
+   "id": "w177862",
+   "sense_codes": [
+    351743
+   ]
+  },
+  {
+   "target_code": 177863,
+   "id": "w177863",
+   "sense_codes": [
+    188767
+   ]
+  },
+  {
+   "target_code": 177865,
+   "id": "w177865",
+   "sense_codes": [
+    188770
+   ]
+  },
+  {
+   "target_code": 177867,
+   "id": "w177867",
+   "sense_codes": [
+    191952
+   ]
+  },
+  {
+   "target_code": 177868,
+   "id": "w177868",
+   "sense_codes": [
+    191953
+   ]
+  },
+  {
+   "target_code": 177869,
+   "id": "w177869",
+   "sense_codes": [
+    572538
+   ]
+  },
+  {
+   "target_code": 177870,
+   "id": "w177870",
+   "sense_codes": [
+    191955
+   ]
+  },
+  {
+   "target_code": 177871,
+   "id": "w177871",
+   "sense_codes": [
+    191956
+   ]
+  },
+  {
+   "target_code": 177873,
+   "id": "w177873",
+   "sense_codes": [
+    388536
+   ]
+  },
+  {
+   "target_code": 177874,
+   "id": "w177874",
+   "sense_codes": [
+    572539
+   ]
+  },
+  {
+   "target_code": 177875,
+   "id": "w177875",
+   "sense_codes": [
+    498710
+   ]
+  },
+  {
+   "target_code": 177876,
+   "id": "w177876",
+   "sense_codes": [
+    424886
+   ]
+  },
+  {
+   "target_code": 177877,
+   "id": "w177877",
+   "sense_codes": [
+    13266,
+    44384
+   ]
+  },
+  {
+   "target_code": 177878,
+   "id": "w177878",
+   "sense_codes": [
+    332199,
+    335591,
+    337843
+   ]
+  },
+  {
+   "target_code": 177879,
+   "id": "w177879",
+   "sense_codes": [
+    535401
+   ]
+  },
+  {
+   "target_code": 177880,
+   "id": "w177880",
+   "sense_codes": [
+    188548
+   ]
+  },
+  {
+   "target_code": 177881,
+   "id": "w177881",
+   "sense_codes": [
+    424887
+   ]
+  },
+  {
+   "target_code": 177882,
+   "id": "w177882",
+   "sense_codes": [
+    535402
+   ]
+  },
+  {
+   "target_code": 177883,
+   "id": "w177883",
+   "sense_codes": [
+    188551
+   ]
+  },
+  {
+   "target_code": 177884,
+   "id": "w177884",
+   "sense_codes": [
+    535790
+   ]
+  },
+  {
+   "target_code": 177885,
+   "id": "w177885",
+   "sense_codes": [
+    191717
+   ]
+  },
+  {
+   "target_code": 177886,
+   "id": "w177886",
+   "sense_codes": [
+    535791
+   ]
+  },
+  {
+   "target_code": 177887,
+   "id": "w177887",
+   "sense_codes": [
+    352077
+   ]
+  },
+  {
+   "target_code": 177888,
+   "id": "w177888",
+   "sense_codes": [
+    515933,
+    519368,
+    521748,
+    522241
+   ]
+  },
+  {
+   "target_code": 177889,
+   "id": "w177889",
+   "sense_codes": [
+    191718
+   ]
+  },
+  {
+   "target_code": 177890,
+   "id": "w177890",
+   "sense_codes": [
+    13090,
+    44218
+   ]
+  },
+  {
+   "target_code": 177891,
+   "id": "w177891",
+   "sense_codes": [
+    425263
+   ]
+  },
+  {
+   "target_code": 177892,
+   "id": "w177892",
+   "sense_codes": [
+    388538
+   ]
+  },
+  {
+   "target_code": 177893,
+   "id": "w177893",
+   "sense_codes": [
+    572540
+   ]
+  },
+  {
+   "target_code": 177894,
+   "id": "w177894",
+   "sense_codes": [
+    188558
+   ]
+  },
+  {
+   "target_code": 177897,
+   "id": "w177897",
+   "sense_codes": [
+    188560
+   ]
+  },
+  {
+   "target_code": 177898,
+   "id": "w177898",
+   "sense_codes": [
+    188562
+   ]
+  },
+  {
+   "target_code": 177899,
+   "id": "w177899",
+   "sense_codes": [
+    368821,
+    372250
+   ]
+  },
+  {
+   "target_code": 177900,
+   "id": "w177900",
+   "sense_codes": [
+    535405
+   ]
+  },
+  {
+   "target_code": 177901,
+   "id": "w177901",
+   "sense_codes": [
+    388190
+   ]
+  },
+  {
+   "target_code": 177902,
+   "id": "w177902",
+   "sense_codes": [
+    461785
+   ]
+  },
+  {
+   "target_code": 177903,
+   "id": "w177903",
+   "sense_codes": [
+    188563
+   ]
+  },
+  {
+   "target_code": 177904,
+   "id": "w177904",
+   "sense_codes": [
+    191726
+   ]
+  },
+  {
+   "target_code": 177905,
+   "id": "w177905",
+   "sense_codes": [
+    13170,
+    44187
+   ]
+  },
+  {
+   "target_code": 177906,
+   "id": "w177906",
+   "sense_codes": [
+    191727
+   ]
+  },
+  {
+   "target_code": 177907,
+   "id": "w177907",
+   "sense_codes": [
+    191728
+   ]
+  },
+  {
+   "target_code": 177908,
+   "id": "w177908",
+   "sense_codes": [
+    12906,
+    43946
+   ]
+  },
+  {
+   "target_code": 177911,
+   "id": "w177911",
+   "sense_codes": [
+    191527
+   ]
+  },
+  {
+   "target_code": 177912,
+   "id": "w177912",
+   "sense_codes": [
+    191528
+   ]
+  },
+  {
+   "target_code": 177913,
+   "id": "w177913",
+   "sense_codes": [
+    191529
+   ]
+  },
+  {
+   "target_code": 177914,
+   "id": "w177914",
+   "sense_codes": [
+    535767
+   ]
+  },
+  {
+   "target_code": 177915,
+   "id": "w177915",
+   "sense_codes": [
+    425213
+   ]
+  },
+  {
+   "target_code": 177916,
+   "id": "w177916",
+   "sense_codes": [
+    572526
+   ]
+  },
+  {
+   "target_code": 177918,
+   "id": "w177918",
+   "sense_codes": [
+    191729
+   ]
+  },
+  {
+   "target_code": 177919,
+   "id": "w177919",
+   "sense_codes": [
+    188573
+   ]
+  },
+  {
+   "target_code": 177920,
+   "id": "w177920",
+   "sense_codes": [
+    499012
+   ]
+  },
+  {
+   "target_code": 177921,
+   "id": "w177921",
+   "sense_codes": [
+    191350
+   ]
+  },
+  {
+   "target_code": 177922,
+   "id": "w177922",
+   "sense_codes": [
+    462102
+   ]
+  },
+  {
+   "target_code": 177923,
+   "id": "w177923",
+   "sense_codes": [
+    425184
+   ]
+  },
+  {
+   "target_code": 177924,
+   "id": "w177924",
+   "sense_codes": [
+    191352
+   ]
+  },
+  {
+   "target_code": 177925,
+   "id": "w177925",
+   "sense_codes": [
+    191353
+   ]
+  },
+  {
+   "target_code": 177926,
+   "id": "w177926",
+   "sense_codes": [
+    352013
+   ]
+  },
+  {
+   "target_code": 177927,
+   "id": "w177927",
+   "sense_codes": [
+    191354
+   ]
+  },
+  {
+   "target_code": 177928,
+   "id": "w177928",
+   "sense_codes": [
+    425166
+   ]
+  },
+  {
+   "target_code": 177929,
+   "id": "w177929",
+   "sense_codes": [
+    425167
+   ]
+  },
+  {
+   "target_code": 177930,
+   "id": "w177930",
+   "sense_codes": [
+    191149
+   ]
+  },
+  {
+   "target_code": 177931,
+   "id": "w177931",
+   "sense_codes": [
+    191731
+   ]
+  },
+  {
+   "target_code": 177933,
+   "id": "w177933",
+   "sense_codes": [
+    352078
+   ]
+  },
+  {
+   "target_code": 177934,
+   "id": "w177934",
+   "sense_codes": [
+    191733
+   ]
+  },
+  {
+   "target_code": 177935,
+   "id": "w177935",
+   "sense_codes": [
+    442220,
+    445769
+   ]
+  },
+  {
+   "target_code": 177936,
+   "id": "w177936",
+   "sense_codes": [
+    191735
+   ]
+  },
+  {
+   "target_code": 177937,
+   "id": "w177937",
+   "sense_codes": [
+    191736
+   ]
+  },
+  {
+   "target_code": 177938,
+   "id": "w177938",
+   "sense_codes": [
+    191737
+   ]
+  },
+  {
+   "target_code": 177939,
+   "id": "w177939",
+   "sense_codes": [
+    388510
+   ]
+  },
+  {
+   "target_code": 177940,
+   "id": "w177940",
+   "sense_codes": [
+    351608
+   ]
+  },
+  {
+   "target_code": 177941,
+   "id": "w177941",
+   "sense_codes": [
+    332150,
+    335624
+   ]
+  },
+  {
+   "target_code": 177942,
+   "id": "w177942",
+   "sense_codes": [
+    535709
+   ]
+  },
+  {
+   "target_code": 177943,
+   "id": "w177943",
+   "sense_codes": [
+    191151
+   ]
+  },
+  {
+   "target_code": 177944,
+   "id": "w177944",
+   "sense_codes": [
+    191152
+   ]
+  },
+  {
+   "target_code": 177945,
+   "id": "w177945",
+   "sense_codes": [
+    191153
+   ]
+  },
+  {
+   "target_code": 177946,
+   "id": "w177946",
+   "sense_codes": [
+    191155
+   ]
+  },
+  {
+   "target_code": 177947,
+   "id": "w177947",
+   "sense_codes": [
+    191156
+   ]
+  },
+  {
+   "target_code": 177948,
+   "id": "w177948",
+   "sense_codes": [
+    191157
+   ]
+  },
+  {
+   "target_code": 177949,
+   "id": "w177949",
+   "sense_codes": [
+    12792,
+    44757
+   ]
+  },
+  {
+   "target_code": 177951,
+   "id": "w177951",
+   "sense_codes": [
+    535741
+   ]
+  },
+  {
+   "target_code": 177952,
+   "id": "w177952",
+   "sense_codes": [
+    191357
+   ]
+  },
+  {
+   "target_code": 177954,
+   "id": "w177954",
+   "sense_codes": [
+    191358
+   ]
+  },
+  {
+   "target_code": 177955,
+   "id": "w177955",
+   "sense_codes": [
+    535743
+   ]
+  },
+  {
+   "target_code": 177956,
+   "id": "w177956",
+   "sense_codes": [
+    536307
+   ]
+  },
+  {
+   "target_code": 177957,
+   "id": "w177957",
+   "sense_codes": [
+    462680,
+    499616
+   ]
+  },
+  {
+   "target_code": 177958,
+   "id": "w177958",
+   "sense_codes": [
+    196500
+   ]
+  },
+  {
+   "target_code": 177959,
+   "id": "w177959",
+   "sense_codes": [
+    352622
+   ]
+  },
+  {
+   "target_code": 177961,
+   "id": "w177961",
+   "sense_codes": [
+    425766
+   ]
+  },
+  {
+   "target_code": 177962,
+   "id": "w177962",
+   "sense_codes": [
+    196503,
+    1392618
+   ]
+  },
+  {
+   "target_code": 177963,
+   "id": "w177963",
+   "sense_codes": [
+    196505
+   ]
+  },
+  {
+   "target_code": 177964,
+   "id": "w177964",
+   "sense_codes": [
+    196506
+   ]
+  },
+  {
+   "target_code": 177965,
+   "id": "w177965",
+   "sense_codes": [
+    196507
+   ]
+  },
+  {
+   "target_code": 177966,
+   "id": "w177966",
+   "sense_codes": [
+    425337
+   ]
+  },
+  {
+   "target_code": 177967,
+   "id": "w177967",
+   "sense_codes": [
+    462247
+   ]
+  },
+  {
+   "target_code": 177968,
+   "id": "w177968",
+   "sense_codes": [
+    351886
+   ]
+  },
+  {
+   "target_code": 177969,
+   "id": "w177969",
+   "sense_codes": [
+    388368
+   ]
+  },
+  {
+   "target_code": 177970,
+   "id": "w177970",
+   "sense_codes": [
+    388369
+   ]
+  },
+  {
+   "target_code": 177971,
+   "id": "w177971",
+   "sense_codes": [
+    190457
+   ]
+  },
+  {
+   "target_code": 177972,
+   "id": "w177972",
+   "sense_codes": [
+    190458
+   ]
+  },
+  {
+   "target_code": 177973,
+   "id": "w177973",
+   "sense_codes": [
+    190459
+   ]
+  },
+  {
+   "target_code": 177974,
+   "id": "w177974",
+   "sense_codes": [
+    190460
+   ]
+  },
+  {
+   "target_code": 177975,
+   "id": "w177975",
+   "sense_codes": [
+    191220
+   ]
+  },
+  {
+   "target_code": 177976,
+   "id": "w177976",
+   "sense_codes": [
+    190229
+   ]
+  },
+  {
+   "target_code": 177977,
+   "id": "w177977",
+   "sense_codes": [
+    461964
+   ]
+  },
+  {
+   "target_code": 177978,
+   "id": "w177978",
+   "sense_codes": [
+    388349
+   ]
+  },
+  {
+   "target_code": 177979,
+   "id": "w177979",
+   "sense_codes": [
+    191823
+   ]
+  },
+  {
+   "target_code": 177980,
+   "id": "w177980",
+   "sense_codes": [
+    191824
+   ]
+  },
+  {
+   "target_code": 177981,
+   "id": "w177981",
+   "sense_codes": [
+    191825
+   ]
+  },
+  {
+   "target_code": 177982,
+   "id": "w177982",
+   "sense_codes": [
+    191826
+   ]
+  },
+  {
+   "target_code": 177983,
+   "id": "w177983",
+   "sense_codes": [
+    191827
+   ]
+  },
+  {
+   "target_code": 177984,
+   "id": "w177984",
+   "sense_codes": [
+    499060,
+    591366
+   ]
+  },
+  {
+   "target_code": 177985,
+   "id": "w177985",
+   "sense_codes": [
+    191828
+   ]
+  },
+  {
+   "target_code": 177986,
+   "id": "w177986",
+   "sense_codes": [
+    191830
+   ]
+  },
+  {
+   "target_code": 177987,
+   "id": "w177987",
+   "sense_codes": [
+    352088
+   ]
+  },
+  {
+   "target_code": 177988,
+   "id": "w177988",
+   "sense_codes": [
+    462145
+   ]
+  },
+  {
+   "target_code": 177989,
+   "id": "w177989",
+   "sense_codes": [
+    498696
+   ]
+  },
+  {
+   "target_code": 177990,
+   "id": "w177990",
+   "sense_codes": [
+    424870
+   ]
+  },
+  {
+   "target_code": 177991,
+   "id": "w177991",
+   "sense_codes": [
+    188429
+   ]
+  },
+  {
+   "target_code": 177992,
+   "id": "w177992",
+   "sense_codes": [
+    388181
+   ]
+  },
+  {
+   "target_code": 177993,
+   "id": "w177993",
+   "sense_codes": [
+    424871
+   ]
+  },
+  {
+   "target_code": 177994,
+   "id": "w177994",
+   "sense_codes": [
+    461770
+   ]
+  },
+  {
+   "target_code": 177995,
+   "id": "w177995",
+   "sense_codes": [
+    572774,
+    591338
+   ]
+  },
+  {
+   "target_code": 177996,
+   "id": "w177996",
+   "sense_codes": [
+    193813
+   ]
+  },
+  {
+   "target_code": 177998,
+   "id": "w177998",
+   "sense_codes": [
+    193816
+   ]
+  },
+  {
+   "target_code": 178000,
+   "id": "w178000",
+   "sense_codes": [
+    193818
+   ]
+  },
+  {
+   "target_code": 178001,
+   "id": "w178001",
+   "sense_codes": [
+    193819
+   ]
+  },
+  {
+   "target_code": 178002,
+   "id": "w178002",
+   "sense_codes": [
+    462386
+   ]
+  },
+  {
+   "target_code": 178003,
+   "id": "w178003",
+   "sense_codes": [
+    388740
+   ]
+  },
+  {
+   "target_code": 178004,
+   "id": "w178004",
+   "sense_codes": [
+    462387
+   ]
+  },
+  {
+   "target_code": 178005,
+   "id": "w178005",
+   "sense_codes": [
+    479364,
+    482810
+   ]
+  },
+  {
+   "target_code": 178006,
+   "id": "w178006",
+   "sense_codes": [
+    198730
+   ]
+  },
+  {
+   "target_code": 178007,
+   "id": "w178007",
+   "sense_codes": [
+    195391
+   ]
+  },
+  {
+   "target_code": 178008,
+   "id": "w178008",
+   "sense_codes": [
+    195392
+   ]
+  },
+  {
+   "target_code": 178009,
+   "id": "w178009",
+   "sense_codes": [
+    195393
+   ]
+  },
+  {
+   "target_code": 178010,
+   "id": "w178010",
+   "sense_codes": [
+    195394
+   ]
+  },
+  {
+   "target_code": 178011,
+   "id": "w178011",
+   "sense_codes": [
+    195395
+   ]
+  },
+  {
+   "target_code": 178012,
+   "id": "w178012",
+   "sense_codes": [
+    425630
+   ]
+  },
+  {
+   "target_code": 178013,
+   "id": "w178013",
+   "sense_codes": [
+    536176
+   ]
+  },
+  {
+   "target_code": 178014,
+   "id": "w178014",
+   "sense_codes": [
+    479215,
+    482847
+   ]
+  },
+  {
+   "target_code": 178015,
+   "id": "w178015",
+   "sense_codes": [
+    442279,
+    445942
+   ]
+  },
+  {
+   "target_code": 178016,
+   "id": "w178016",
+   "sense_codes": [
+    332217,
+    335689
+   ]
+  },
+  {
+   "target_code": 178017,
+   "id": "w178017",
+   "sense_codes": [
+    498963
+   ]
+  },
+  {
+   "target_code": 178018,
+   "id": "w178018",
+   "sense_codes": [
+    12813,
+    45655
+   ]
+  },
+  {
+   "target_code": 178019,
+   "id": "w178019",
+   "sense_codes": [
+    12814,
+    45656
+   ]
+  },
+  {
+   "target_code": 178020,
+   "id": "w178020",
+   "sense_codes": [
+    424872
+   ]
+  },
+  {
+   "target_code": 178021,
+   "id": "w178021",
+   "sense_codes": [
+    188432
+   ]
+  },
+  {
+   "target_code": 178022,
+   "id": "w178022",
+   "sense_codes": [
+    188433
+   ]
+  },
+  {
+   "target_code": 178023,
+   "id": "w178023",
+   "sense_codes": [
+    498698
+   ]
+  },
+  {
+   "target_code": 178024,
+   "id": "w178024",
+   "sense_codes": [
+    191594
+   ]
+  },
+  {
+   "target_code": 178025,
+   "id": "w178025",
+   "sense_codes": [
+    191595
+   ]
+  },
+  {
+   "target_code": 178026,
+   "id": "w178026",
+   "sense_codes": [
+    191596
+   ]
+  },
+  {
+   "target_code": 178027,
+   "id": "w178027",
+   "sense_codes": [
+    13335,
+    45296
+   ]
+  },
+  {
+   "target_code": 178028,
+   "id": "w178028",
+   "sense_codes": [
+    191597
+   ]
+  },
+  {
+   "target_code": 178029,
+   "id": "w178029",
+   "sense_codes": [
+    191598
+   ]
+  },
+  {
+   "target_code": 178030,
+   "id": "w178030",
+   "sense_codes": [
+    191599
+   ]
+  },
+  {
+   "target_code": 178032,
+   "id": "w178032",
+   "sense_codes": [
+    191601
+   ]
+  },
+  {
+   "target_code": 178033,
+   "id": "w178033",
+   "sense_codes": [
+    191602
+   ]
+  },
+  {
+   "target_code": 178035,
+   "id": "w178035",
+   "sense_codes": [
+    191001
+   ]
+  },
+  {
+   "target_code": 178036,
+   "id": "w178036",
+   "sense_codes": [
+    351964
+   ]
+  },
+  {
+   "target_code": 178037,
+   "id": "w178037",
+   "sense_codes": [
+    191002
+   ]
+  },
+  {
+   "target_code": 178038,
+   "id": "w178038",
+   "sense_codes": [
+    479277,
+    482820
+   ]
+  },
+  {
+   "target_code": 178039,
+   "id": "w178039",
+   "sense_codes": [
+    462072
+   ]
+  },
+  {
+   "target_code": 178040,
+   "id": "w178040",
+   "sense_codes": [
+    388417
+   ]
+  },
+  {
+   "target_code": 178041,
+   "id": "w178041",
+   "sense_codes": [
+    191003
+   ]
+  },
+  {
+   "target_code": 178042,
+   "id": "w178042",
+   "sense_codes": [
+    388418
+   ]
+  },
+  {
+   "target_code": 178043,
+   "id": "w178043",
+   "sense_codes": [
+    191004
+   ]
+  },
+  {
+   "target_code": 178044,
+   "id": "w178044",
+   "sense_codes": [
+    498965
+   ]
+  },
+  {
+   "target_code": 178045,
+   "id": "w178045",
+   "sense_codes": [
+    191005
+   ]
+  },
+  {
+   "target_code": 178046,
+   "id": "w178046",
+   "sense_codes": [
+    572441
+   ]
+  },
+  {
+   "target_code": 178047,
+   "id": "w178047",
+   "sense_codes": [
+    191007
+   ]
+  },
+  {
+   "target_code": 178048,
+   "id": "w178048",
+   "sense_codes": [
+    191221
+   ]
+  },
+  {
+   "target_code": 178050,
+   "id": "w178050",
+   "sense_codes": [
+    535718
+   ]
+  },
+  {
+   "target_code": 178051,
+   "id": "w178051",
+   "sense_codes": [
+    13494,
+    45407,
+    65393
+   ]
+  },
+  {
+   "target_code": 178052,
+   "id": "w178052",
+   "sense_codes": [
+    191013
+   ]
+  },
+  {
+   "target_code": 178053,
+   "id": "w178053",
+   "sense_codes": [
+    191014
+   ]
+  },
+  {
+   "target_code": 178054,
+   "id": "w178054",
+   "sense_codes": [
+    191846
+   ]
+  },
+  {
+   "target_code": 178055,
+   "id": "w178055",
+   "sense_codes": [
+    462417
+   ]
+  },
+  {
+   "target_code": 178056,
+   "id": "w178056",
+   "sense_codes": [
+    352336
+   ]
+  },
+  {
+   "target_code": 178057,
+   "id": "w178057",
+   "sense_codes": [
+    13970
+   ]
+  },
+  {
+   "target_code": 178059,
+   "id": "w178059",
+   "sense_codes": [
+    194068
+   ]
+  },
+  {
+   "target_code": 178060,
+   "id": "w178060",
+   "sense_codes": [
+    499304
+   ]
+  },
+  {
+   "target_code": 178061,
+   "id": "w178061",
+   "sense_codes": [
+    194069
+   ]
+  },
+  {
+   "target_code": 178063,
+   "id": "w178063",
+   "sense_codes": [
+    425149
+   ]
+  },
+  {
+   "target_code": 178064,
+   "id": "w178064",
+   "sense_codes": [
+    191015
+   ]
+  },
+  {
+   "target_code": 178067,
+   "id": "w178067",
+   "sense_codes": [
+    552614
+   ]
+  },
+  {
+   "target_code": 178070,
+   "id": "w178070",
+   "sense_codes": [
+    498967
+   ]
+  },
+  {
+   "target_code": 178073,
+   "id": "w178073",
+   "sense_codes": [
+    191021
+   ]
+  },
+  {
+   "target_code": 178074,
+   "id": "w178074",
+   "sense_codes": [
+    191022
+   ]
+  },
+  {
+   "target_code": 178075,
+   "id": "w178075",
+   "sense_codes": [
+    351967
+   ]
+  },
+  {
+   "target_code": 178076,
+   "id": "w178076",
+   "sense_codes": [
+    194073
+   ]
+  },
+  {
+   "target_code": 178077,
+   "id": "w178077",
+   "sense_codes": [
+    194074
+   ]
+  },
+  {
+   "target_code": 178079,
+   "id": "w178079",
+   "sense_codes": [
+    194077
+   ]
+  },
+  {
+   "target_code": 178080,
+   "id": "w178080",
+   "sense_codes": [
+    368890,
+    372327
+   ]
+  },
+  {
+   "target_code": 178081,
+   "id": "w178081",
+   "sense_codes": [
+    194078
+   ]
+  },
+  {
+   "target_code": 178082,
+   "id": "w178082",
+   "sense_codes": [
+    194286
+   ]
+  },
+  {
+   "target_code": 178085,
+   "id": "w178085",
+   "sense_codes": [
+    388792
+   ]
+  },
+  {
+   "target_code": 178086,
+   "id": "w178086",
+   "sense_codes": [
+    499331
+   ]
+  },
+  {
+   "target_code": 178087,
+   "id": "w178087",
+   "sense_codes": [
+    499332
+   ]
+  },
+  {
+   "target_code": 178088,
+   "id": "w178088",
+   "sense_codes": [
+    193641
+   ]
+  },
+  {
+   "target_code": 178089,
+   "id": "w178089",
+   "sense_codes": [
+    462360
+   ]
+  },
+  {
+   "target_code": 178090,
+   "id": "w178090",
+   "sense_codes": [
+    193642
+   ]
+  },
+  {
+   "target_code": 178091,
+   "id": "w178091",
+   "sense_codes": [
+    193643
+   ]
+  },
+  {
+   "target_code": 178092,
+   "id": "w178092",
+   "sense_codes": [
+    462361
+   ]
+  },
+  {
+   "target_code": 178093,
+   "id": "w178093",
+   "sense_codes": [
+    193644
+   ]
+  },
+  {
+   "target_code": 178094,
+   "id": "w178094",
+   "sense_codes": [
+    462362
+   ]
+  },
+  {
+   "target_code": 178095,
+   "id": "w178095",
+   "sense_codes": [
+    193645
+   ]
+  },
+  {
+   "target_code": 178096,
+   "id": "w178096",
+   "sense_codes": [
+    193646
+   ]
+  },
+  {
+   "target_code": 178098,
+   "id": "w178098",
+   "sense_codes": [
+    190546
+   ]
+  },
+  {
+   "target_code": 178099,
+   "id": "w178099",
+   "sense_codes": [
+    195009
+   ]
+  },
+  {
+   "target_code": 178100,
+   "id": "w178100",
+   "sense_codes": [
+    195010
+   ]
+  },
+  {
+   "target_code": 178101,
+   "id": "w178101",
+   "sense_codes": [
+    195219
+   ]
+  },
+  {
+   "target_code": 178102,
+   "id": "w178102",
+   "sense_codes": [
+    462544
+   ]
+  },
+  {
+   "target_code": 178104,
+   "id": "w178104",
+   "sense_codes": [
+    536162
+   ]
+  },
+  {
+   "target_code": 178105,
+   "id": "w178105",
+   "sense_codes": [
+    14028,
+    44954
+   ]
+  },
+  {
+   "target_code": 178106,
+   "id": "w178106",
+   "sense_codes": [
+    425583
+   ]
+  },
+  {
+   "target_code": 178108,
+   "id": "w178108",
+   "sense_codes": [
+    193864
+   ]
+  },
+  {
+   "target_code": 178109,
+   "id": "w178109",
+   "sense_codes": [
+    572788,
+    1392346
+   ]
+  },
+  {
+   "target_code": 178110,
+   "id": "w178110",
+   "sense_codes": [
+    193865
+   ]
+  },
+  {
+   "target_code": 178111,
+   "id": "w178111",
+   "sense_codes": [
+    462392
+   ]
+  },
+  {
+   "target_code": 178112,
+   "id": "w178112",
+   "sense_codes": [
+    193867
+   ]
+  },
+  {
+   "target_code": 178113,
+   "id": "w178113",
+   "sense_codes": [
+    193868
+   ]
+  },
+  {
+   "target_code": 178114,
+   "id": "w178114",
+   "sense_codes": [
+    193869
+   ]
+  },
+  {
+   "target_code": 178115,
+   "id": "w178115",
+   "sense_codes": [
+    193870
+   ]
+  },
+  {
+   "target_code": 178120,
+   "id": "w178120",
+   "sense_codes": [
+    387867,
+    1392328
+   ]
+  },
+  {
+   "target_code": 178121,
+   "id": "w178121",
+   "sense_codes": [
+    351396
+   ]
+  },
+  {
+   "target_code": 178122,
+   "id": "w178122",
+   "sense_codes": [
+    186007
+   ]
+  },
+  {
+   "target_code": 178123,
+   "id": "w178123",
+   "sense_codes": [
+    498426
+   ]
+  },
+  {
+   "target_code": 178124,
+   "id": "w178124",
+   "sense_codes": [
+    186008
+   ]
+  },
+  {
+   "target_code": 178125,
+   "id": "w178125",
+   "sense_codes": [
+    186009
+   ]
+  },
+  {
+   "target_code": 178126,
+   "id": "w178126",
+   "sense_codes": [
+    405256,
+    408748
+   ]
+  },
+  {
+   "target_code": 178127,
+   "id": "w178127",
+   "sense_codes": [
+    571876
+   ]
+  },
+  {
+   "target_code": 178128,
+   "id": "w178128",
+   "sense_codes": [
+    186011
+   ]
+  },
+  {
+   "target_code": 178130,
+   "id": "w178130",
+   "sense_codes": [
+    535118
+   ]
+  },
+  {
+   "target_code": 178131,
+   "id": "w178131",
+   "sense_codes": [
+    479198,
+    482660,
+    484965,
+    485486
+   ]
+  },
+  {
+   "target_code": 178132,
+   "id": "w178132",
+   "sense_codes": [
+    535119
+   ]
+  },
+  {
+   "target_code": 178133,
+   "id": "w178133",
+   "sense_codes": [
+    12777,
+    43878
+   ]
+  },
+  {
+   "target_code": 178134,
+   "id": "w178134",
+   "sense_codes": [
+    535120
+   ]
+  },
+  {
+   "target_code": 178135,
+   "id": "w178135",
+   "sense_codes": [
+    405264,
+    408759
+   ]
+  },
+  {
+   "target_code": 178136,
+   "id": "w178136",
+   "sense_codes": [
+    186034
+   ]
+  },
+  {
+   "target_code": 178139,
+   "id": "w178139",
+   "sense_codes": [
+    13268,
+    44386
+   ]
+  },
+  {
+   "target_code": 178140,
+   "id": "w178140",
+   "sense_codes": [
+    185630
+   ]
+  },
+  {
+   "target_code": 178141,
+   "id": "w178141",
+   "sense_codes": [
+    535071
+   ]
+  },
+  {
+   "target_code": 178142,
+   "id": "w178142",
+   "sense_codes": [
+    185631
+   ]
+  },
+  {
+   "target_code": 178143,
+   "id": "w178143",
+   "sense_codes": [
+    387847
+   ]
+  },
+  {
+   "target_code": 178144,
+   "id": "w178144",
+   "sense_codes": [
+    185632
+   ]
+  },
+  {
+   "target_code": 178145,
+   "id": "w178145",
+   "sense_codes": [
+    387848
+   ]
+  },
+  {
+   "target_code": 178146,
+   "id": "w178146",
+   "sense_codes": [
+    185633
+   ]
+  },
+  {
+   "target_code": 178147,
+   "id": "w178147",
+   "sense_codes": [
+    351358
+   ]
+  },
+  {
+   "target_code": 178149,
+   "id": "w178149",
+   "sense_codes": [
+    186233
+   ]
+  },
+  {
+   "target_code": 178150,
+   "id": "w178150",
+   "sense_codes": [
+    186234
+   ]
+  },
+  {
+   "target_code": 178151,
+   "id": "w178151",
+   "sense_codes": [
+    387921
+   ]
+  },
+  {
+   "target_code": 178152,
+   "id": "w178152",
+   "sense_codes": [
+    186236
+   ]
+  },
+  {
+   "target_code": 178153,
+   "id": "w178153",
+   "sense_codes": [
+    185634
+   ]
+  },
+  {
+   "target_code": 178154,
+   "id": "w178154",
+   "sense_codes": [
+    498385
+   ]
+  },
+  {
+   "target_code": 178155,
+   "id": "w178155",
+   "sense_codes": [
+    498386
+   ]
+  },
+  {
+   "target_code": 178156,
+   "id": "w178156",
+   "sense_codes": [
+    387849
+   ]
+  },
+  {
+   "target_code": 178157,
+   "id": "w178157",
+   "sense_codes": [
+    351359
+   ]
+  },
+  {
+   "target_code": 178158,
+   "id": "w178158",
+   "sense_codes": [
+    461466
+   ]
+  },
+  {
+   "target_code": 178159,
+   "id": "w178159",
+   "sense_codes": [
+    424576
+   ]
+  },
+  {
+   "target_code": 178160,
+   "id": "w178160",
+   "sense_codes": [
+    351376
+   ]
+  },
+  {
+   "target_code": 178161,
+   "id": "w178161",
+   "sense_codes": [
+    535094
+   ]
+  },
+  {
+   "target_code": 178162,
+   "id": "w178162",
+   "sense_codes": [
+    185838
+   ]
+  },
+  {
+   "target_code": 178163,
+   "id": "w178163",
+   "sense_codes": [
+    498408
+   ]
+  },
+  {
+   "target_code": 178165,
+   "id": "w178165",
+   "sense_codes": [
+    461807
+   ]
+  },
+  {
+   "target_code": 178166,
+   "id": "w178166",
+   "sense_codes": [
+    424905
+   ]
+  },
+  {
+   "target_code": 178167,
+   "id": "w178167",
+   "sense_codes": [
+    188746
+   ]
+  },
+  {
+   "target_code": 178168,
+   "id": "w178168",
+   "sense_codes": [
+    188747
+   ]
+  },
+  {
+   "target_code": 178171,
+   "id": "w178171",
+   "sense_codes": [
+    188751
+   ]
+  },
+  {
+   "target_code": 178172,
+   "id": "w178172",
+   "sense_codes": [
+    572179
+   ]
+  },
+  {
+   "target_code": 178173,
+   "id": "w178173",
+   "sense_codes": [
+    572164
+   ]
+  },
+  {
+   "target_code": 178175,
+   "id": "w178175",
+   "sense_codes": [
+    188553
+   ]
+  },
+  {
+   "target_code": 178176,
+   "id": "w178176",
+   "sense_codes": [
+    188554
+   ]
+  },
+  {
+   "target_code": 178177,
+   "id": "w178177",
+   "sense_codes": [
+    461782
+   ]
+  },
+  {
+   "target_code": 178178,
+   "id": "w178178",
+   "sense_codes": [
+    188555
+   ]
+  },
+  {
+   "target_code": 178179,
+   "id": "w178179",
+   "sense_codes": [
+    461783
+   ]
+  },
+  {
+   "target_code": 178180,
+   "id": "w178180",
+   "sense_codes": [
+    188557
+   ]
+  },
+  {
+   "target_code": 178181,
+   "id": "w178181",
+   "sense_codes": [
+    188774
+   ]
+  },
+  {
+   "target_code": 178182,
+   "id": "w178182",
+   "sense_codes": [
+    461810
+   ]
+  },
+  {
+   "target_code": 178183,
+   "id": "w178183",
+   "sense_codes": [
+    191962
+   ]
+  },
+  {
+   "target_code": 178184,
+   "id": "w178184",
+   "sense_codes": [
+    188752
+   ]
+  },
+  {
+   "target_code": 178185,
+   "id": "w178185",
+   "sense_codes": [
+    424906
+   ]
+  },
+  {
+   "target_code": 178186,
+   "id": "w178186",
+   "sense_codes": [
+    188753
+   ]
+  },
+  {
+   "target_code": 178187,
+   "id": "w178187",
+   "sense_codes": [
+    535433
+   ]
+  },
+  {
+   "target_code": 178188,
+   "id": "w178188",
+   "sense_codes": [
+    498732
+   ]
+  },
+  {
+   "target_code": 178189,
+   "id": "w178189",
+   "sense_codes": [
+    188754
+   ]
+  },
+  {
+   "target_code": 178190,
+   "id": "w178190",
+   "sense_codes": [
+    188755
+   ]
+  },
+  {
+   "target_code": 178191,
+   "id": "w178191",
+   "sense_codes": [
+    535434
+   ]
+  },
+  {
+   "target_code": 178192,
+   "id": "w178192",
+   "sense_codes": [
+    188756
+   ]
+  },
+  {
+   "target_code": 178193,
+   "id": "w178193",
+   "sense_codes": [
+    424907
+   ]
+  },
+  {
+   "target_code": 178194,
+   "id": "w178194",
+   "sense_codes": [
+    424888
+   ]
+  },
+  {
+   "target_code": 178195,
+   "id": "w178195",
+   "sense_codes": [
+    188565
+   ]
+  },
+  {
+   "target_code": 178196,
+   "id": "w178196",
+   "sense_codes": [
+    13091,
+    44219
+   ]
+  },
+  {
+   "target_code": 178197,
+   "id": "w178197",
+   "sense_codes": [
+    188567
+   ]
+  },
+  {
+   "target_code": 178198,
+   "id": "w178198",
+   "sense_codes": [
+    188568
+   ]
+  },
+  {
+   "target_code": 178199,
+   "id": "w178199",
+   "sense_codes": [
+    188994
+   ]
+  },
+  {
+   "target_code": 178200,
+   "id": "w178200",
+   "sense_codes": [
+    188995
+   ]
+  },
+  {
+   "target_code": 178201,
+   "id": "w178201",
+   "sense_codes": [
+    424927
+   ]
+  },
+  {
+   "target_code": 178202,
+   "id": "w178202",
+   "sense_codes": [
+    188997
+   ]
+  },
+  {
+   "target_code": 178203,
+   "id": "w178203",
+   "sense_codes": [
+    188998
+   ]
+  },
+  {
+   "target_code": 178204,
+   "id": "w178204",
+   "sense_codes": [
+    535475,
+    591074
+   ]
+  },
+  {
+   "target_code": 178205,
+   "id": "w178205",
+   "sense_codes": [
+    189000
+   ]
+  },
+  {
+   "target_code": 178206,
+   "id": "w178206",
+   "sense_codes": [
+    189001
+   ]
+  },
+  {
+   "target_code": 178207,
+   "id": "w178207",
+   "sense_codes": [
+    535476
+   ]
+  },
+  {
+   "target_code": 178208,
+   "id": "w178208",
+   "sense_codes": [
+    535477
+   ]
+  },
+  {
+   "target_code": 178209,
+   "id": "w178209",
+   "sense_codes": [
+    189003
+   ]
+  },
+  {
+   "target_code": 178210,
+   "id": "w178210",
+   "sense_codes": [
+    189004
+   ]
+  },
+  {
+   "target_code": 178211,
+   "id": "w178211",
+   "sense_codes": [
+    351766
+   ]
+  },
+  {
+   "target_code": 178212,
+   "id": "w178212",
+   "sense_codes": [
+    189006
+   ]
+  },
+  {
+   "target_code": 178213,
+   "id": "w178213",
+   "sense_codes": [
+    188574
+   ]
+  },
+  {
+   "target_code": 178214,
+   "id": "w178214",
+   "sense_codes": [
+    461789
+   ]
+  },
+  {
+   "target_code": 178215,
+   "id": "w178215",
+   "sense_codes": [
+    188576
+   ]
+  },
+  {
+   "target_code": 178216,
+   "id": "w178216",
+   "sense_codes": [
+    424889
+   ]
+  },
+  {
+   "target_code": 178217,
+   "id": "w178217",
+   "sense_codes": [
+    498713
+   ]
+  },
+  {
+   "target_code": 178218,
+   "id": "w178218",
+   "sense_codes": [
+    188577
+   ]
+  },
+  {
+   "target_code": 178219,
+   "id": "w178219",
+   "sense_codes": [
+    188578
+   ]
+  },
+  {
+   "target_code": 178220,
+   "id": "w178220",
+   "sense_codes": [
+    188579
+   ]
+  },
+  {
+   "target_code": 178221,
+   "id": "w178221",
+   "sense_codes": [
+    188580
+   ]
+  },
+  {
+   "target_code": 178222,
+   "id": "w178222",
+   "sense_codes": [
+    188581
+   ]
+  },
+  {
+   "target_code": 178223,
+   "id": "w178223",
+   "sense_codes": [
+    13176,
+    45171
+   ]
+  },
+  {
+   "target_code": 178224,
+   "id": "w178224",
+   "sense_codes": [
+    188582
+   ]
+  },
+  {
+   "target_code": 178225,
+   "id": "w178225",
+   "sense_codes": [
+    535407
+   ]
+  },
+  {
+   "target_code": 178226,
+   "id": "w178226",
+   "sense_codes": [
+    188583
+   ]
+  },
+  {
+   "target_code": 178227,
+   "id": "w178227",
+   "sense_codes": [
+    188584
+   ]
+  },
+  {
+   "target_code": 178228,
+   "id": "w178228",
+   "sense_codes": [
+    188585
+   ]
+  },
+  {
+   "target_code": 178229,
+   "id": "w178229",
+   "sense_codes": [
+    388191
+   ]
+  },
+  {
+   "target_code": 178230,
+   "id": "w178230",
+   "sense_codes": [
+    535436
+   ]
+  },
+  {
+   "target_code": 178231,
+   "id": "w178231",
+   "sense_codes": [
+    188778
+   ]
+  },
+  {
+   "target_code": 178232,
+   "id": "w178232",
+   "sense_codes": [
+    535795
+   ]
+  },
+  {
+   "target_code": 178233,
+   "id": "w178233",
+   "sense_codes": [
+    191755
+   ]
+  },
+  {
+   "target_code": 178234,
+   "id": "w178234",
+   "sense_codes": [
+    191756
+   ]
+  },
+  {
+   "target_code": 178235,
+   "id": "w178235",
+   "sense_codes": [
+    191757
+   ]
+  },
+  {
+   "target_code": 178236,
+   "id": "w178236",
+   "sense_codes": [
+    13490,
+    44621
+   ]
+  },
+  {
+   "target_code": 178237,
+   "id": "w178237",
+   "sense_codes": [
+    352079
+   ]
+  },
+  {
+   "target_code": 178238,
+   "id": "w178238",
+   "sense_codes": [
+    499054
+   ]
+  },
+  {
+   "target_code": 178239,
+   "id": "w178239",
+   "sense_codes": [
+    368854,
+    372290
+   ]
+  },
+  {
+   "target_code": 178240,
+   "id": "w178240",
+   "sense_codes": [
+    188587
+   ]
+  },
+  {
+   "target_code": 178241,
+   "id": "w178241",
+   "sense_codes": [
+    191738
+   ]
+  },
+  {
+   "target_code": 178242,
+   "id": "w178242",
+   "sense_codes": [
+    191739
+   ]
+  },
+  {
+   "target_code": 178243,
+   "id": "w178243",
+   "sense_codes": [
+    191740
+   ]
+  },
+  {
+   "target_code": 178245,
+   "id": "w178245",
+   "sense_codes": [
+    191742
+   ]
+  },
+  {
+   "target_code": 178246,
+   "id": "w178246",
+   "sense_codes": [
+    191743
+   ]
+  },
+  {
+   "target_code": 178247,
+   "id": "w178247",
+   "sense_codes": [
+    535793
+   ]
+  },
+  {
+   "target_code": 178248,
+   "id": "w178248",
+   "sense_codes": [
+    191745
+   ]
+  },
+  {
+   "target_code": 178251,
+   "id": "w178251",
+   "sense_codes": [
+    388464
+   ]
+  },
+  {
+   "target_code": 178252,
+   "id": "w178252",
+   "sense_codes": [
+    12784,
+    43926
+   ]
+  },
+  {
+   "target_code": 178253,
+   "id": "w178253",
+   "sense_codes": [
+    191759
+   ]
+  },
+  {
+   "target_code": 178254,
+   "id": "w178254",
+   "sense_codes": [
+    191760
+   ]
+  },
+  {
+   "target_code": 178255,
+   "id": "w178255",
+   "sense_codes": [
+    425244
+   ]
+  },
+  {
+   "target_code": 178257,
+   "id": "w178257",
+   "sense_codes": [
+    13547,
+    44629
+   ]
+  },
+  {
+   "target_code": 178258,
+   "id": "w178258",
+   "sense_codes": [
+    13548,
+    44630,
+    65244,
+    69805
+   ]
+  },
+  {
+   "target_code": 178260,
+   "id": "w178260",
+   "sense_codes": [
+    535412,
+    591238
+   ]
+  },
+  {
+   "target_code": 178261,
+   "id": "w178261",
+   "sense_codes": [
+    13008,
+    44071,
+    65334
+   ]
+  },
+  {
+   "target_code": 178262,
+   "id": "w178262",
+   "sense_codes": [
+    462103
+   ]
+  },
+  {
+   "target_code": 178263,
+   "id": "w178263",
+   "sense_codes": [
+    191543
+   ]
+  },
+  {
+   "target_code": 178265,
+   "id": "w178265",
+   "sense_codes": [
+    572388
+   ]
+  },
+  {
+   "target_code": 178266,
+   "id": "w178266",
+   "sense_codes": [
+    190463
+   ]
+  },
+  {
+   "target_code": 178267,
+   "id": "w178267",
+   "sense_codes": [
+    572389
+   ]
+  },
+  {
+   "target_code": 178268,
+   "id": "w178268",
+   "sense_codes": [
+    190465
+   ]
+  },
+  {
+   "target_code": 178269,
+   "id": "w178269",
+   "sense_codes": [
+    193236
+   ]
+  },
+  {
+   "target_code": 178270,
+   "id": "w178270",
+   "sense_codes": [
+    193237
+   ]
+  },
+  {
+   "target_code": 178271,
+   "id": "w178271",
+   "sense_codes": [
+    193239
+   ]
+  },
+  {
+   "target_code": 178272,
+   "id": "w178272",
+   "sense_codes": [
+    193240
+   ]
+  },
+  {
+   "target_code": 178273,
+   "id": "w178273",
+   "sense_codes": [
+    535939
+   ]
+  },
+  {
+   "target_code": 178274,
+   "id": "w178274",
+   "sense_codes": [
+    352255
+   ]
+  },
+  {
+   "target_code": 178275,
+   "id": "w178275",
+   "sense_codes": [
+    462320
+   ]
+  },
+  {
+   "target_code": 178276,
+   "id": "w178276",
+   "sense_codes": [
+    193451
+   ]
+  },
+  {
+   "target_code": 178277,
+   "id": "w178277",
+   "sense_codes": [
+    499250,
+    1393190
+   ]
+  },
+  {
+   "target_code": 178279,
+   "id": "w178279",
+   "sense_codes": [
+    193453
+   ]
+  },
+  {
+   "target_code": 178280,
+   "id": "w178280",
+   "sense_codes": [
+    425421
+   ]
+  },
+  {
+   "target_code": 178281,
+   "id": "w178281",
+   "sense_codes": [
+    12758,
+    45594
+   ]
+  },
+  {
+   "target_code": 178282,
+   "id": "w178282",
+   "sense_codes": [
+    188430
+   ]
+  },
+  {
+   "target_code": 178283,
+   "id": "w178283",
+   "sense_codes": [
+    351908
+   ]
+  },
+  {
+   "target_code": 178284,
+   "id": "w178284",
+   "sense_codes": [
+    190466
+   ]
+  },
+  {
+   "target_code": 178285,
+   "id": "w178285",
+   "sense_codes": [
+    535663
+   ]
+  },
+  {
+   "target_code": 178286,
+   "id": "w178286",
+   "sense_codes": [
+    405287,
+    408778
+   ]
+  },
+  {
+   "target_code": 178287,
+   "id": "w178287",
+   "sense_codes": [
+    462028
+   ]
+  },
+  {
+   "target_code": 178288,
+   "id": "w178288",
+   "sense_codes": [
+    190695
+   ]
+  },
+  {
+   "target_code": 178289,
+   "id": "w178289",
+   "sense_codes": [
+    535664
+   ]
+  },
+  {
+   "target_code": 178290,
+   "id": "w178290",
+   "sense_codes": [
+    190697
+   ]
+  },
+  {
+   "target_code": 178292,
+   "id": "w178292",
+   "sense_codes": [
+    332182
+   ]
+  },
+  {
+   "target_code": 178293,
+   "id": "w178293",
+   "sense_codes": [
+    190699
+   ]
+  },
+  {
+   "target_code": 178294,
+   "id": "w178294",
+   "sense_codes": [
+    498891
+   ]
+  },
+  {
+   "target_code": 178295,
+   "id": "w178295",
+   "sense_codes": [
+    351889
+   ]
+  },
+  {
+   "target_code": 178296,
+   "id": "w178296",
+   "sense_codes": [
+    388350
+   ]
+  },
+  {
+   "target_code": 178297,
+   "id": "w178297",
+   "sense_codes": [
+    461965
+   ]
+  },
+  {
+   "target_code": 178298,
+   "id": "w178298",
+   "sense_codes": [
+    388351
+   ]
+  },
+  {
+   "target_code": 178300,
+   "id": "w178300",
+   "sense_codes": [
+    190230
+   ]
+  },
+  {
+   "target_code": 178302,
+   "id": "w178302",
+   "sense_codes": [
+    195396
+   ]
+  },
+  {
+   "target_code": 178303,
+   "id": "w178303",
+   "sense_codes": [
+    195397
+   ]
+  },
+  {
+   "target_code": 178304,
+   "id": "w178304",
+   "sense_codes": [
+    352485
+   ]
+  },
+  {
+   "target_code": 178305,
+   "id": "w178305",
+   "sense_codes": [
+    195398
+   ]
+  },
+  {
+   "target_code": 178306,
+   "id": "w178306",
+   "sense_codes": [
+    195400
+   ]
+  },
+  {
+   "target_code": 178307,
+   "id": "w178307",
+   "sense_codes": [
+    13714,
+    45570
+   ]
+  },
+  {
+   "target_code": 178308,
+   "id": "w178308",
+   "sense_codes": [
+    195401
+   ]
+  },
+  {
+   "target_code": 178309,
+   "id": "w178309",
+   "sense_codes": [
+    195402
+   ]
+  },
+  {
+   "target_code": 178310,
+   "id": "w178310",
+   "sense_codes": [
+    195403
+   ]
+  },
+  {
+   "target_code": 178311,
+   "id": "w178311",
+   "sense_codes": [
+    332236,
+    591365,
+    335710
+   ]
+  },
+  {
+   "target_code": 178312,
+   "id": "w178312",
+   "sense_codes": [
+    388916
+   ]
+  },
+  {
+   "target_code": 178313,
+   "id": "w178313",
+   "sense_codes": [
+    195404
+   ]
+  },
+  {
+   "target_code": 178314,
+   "id": "w178314",
+   "sense_codes": [
+    195405
+   ]
+  },
+  {
+   "target_code": 178315,
+   "id": "w178315",
+   "sense_codes": [
+    195167
+   ]
+  },
+  {
+   "target_code": 178316,
+   "id": "w178316",
+   "sense_codes": [
+    195168
+   ]
+  },
+  {
+   "target_code": 178317,
+   "id": "w178317",
+   "sense_codes": [
+    352455
+   ]
+  },
+  {
+   "target_code": 178318,
+   "id": "w178318",
+   "sense_codes": [
+    195169
+   ]
+  },
+  {
+   "target_code": 178320,
+   "id": "w178320",
+   "sense_codes": [
+    425223
+   ]
+  },
+  {
+   "target_code": 178321,
+   "id": "w178321",
+   "sense_codes": [
+    191604
+   ]
+  },
+  {
+   "target_code": 178323,
+   "id": "w178323",
+   "sense_codes": [
+    191606
+   ]
+  },
+  {
+   "target_code": 178324,
+   "id": "w178324",
+   "sense_codes": [
+    191607
+   ]
+  },
+  {
+   "target_code": 178325,
+   "id": "w178325",
+   "sense_codes": [
+    190234
+   ]
+  },
+  {
+   "target_code": 178326,
+   "id": "w178326",
+   "sense_codes": [
+    190235
+   ]
+  },
+  {
+   "target_code": 178328,
+   "id": "w178328",
+   "sense_codes": [
+    190468
+   ]
+  },
+  {
+   "target_code": 178329,
+   "id": "w178329",
+   "sense_codes": [
+    190469
+   ]
+  },
+  {
+   "target_code": 178330,
+   "id": "w178330",
+   "sense_codes": [
+    190470
+   ]
+  },
+  {
+   "target_code": 178331,
+   "id": "w178331",
+   "sense_codes": [
+    190471,
+    1392336
+   ]
+  },
+  {
+   "target_code": 178332,
+   "id": "w178332",
+   "sense_codes": [
+    190472
+   ]
+  },
+  {
+   "target_code": 178333,
+   "id": "w178333",
+   "sense_codes": [
+    425091
+   ]
+  },
+  {
+   "target_code": 178334,
+   "id": "w178334",
+   "sense_codes": [
+    188435
+   ]
+  },
+  {
+   "target_code": 178335,
+   "id": "w178335",
+   "sense_codes": [
+    535383
+   ]
+  },
+  {
+   "target_code": 178336,
+   "id": "w178336",
+   "sense_codes": [
+    188436
+   ]
+  },
+  {
+   "target_code": 178337,
+   "id": "w178337",
+   "sense_codes": [
+    351702
+   ]
+  },
+  {
+   "target_code": 178338,
+   "id": "w178338",
+   "sense_codes": [
+    572148
+   ]
+  },
+  {
+   "target_code": 178339,
+   "id": "w178339",
+   "sense_codes": [
+    498699
+   ]
+  },
+  {
+   "target_code": 178340,
+   "id": "w178340",
+   "sense_codes": [
+    535803
+   ]
+  },
+  {
+   "target_code": 178341,
+   "id": "w178341",
+   "sense_codes": [
+    188444
+   ]
+  },
+  {
+   "target_code": 178342,
+   "id": "w178342",
+   "sense_codes": [
+    188445
+   ]
+  },
+  {
+   "target_code": 178343,
+   "id": "w178343",
+   "sense_codes": [
+    188446
+   ]
+  },
+  {
+   "target_code": 178344,
+   "id": "w178344",
+   "sense_codes": [
+    405267,
+    408956
+   ]
+  },
+  {
+   "target_code": 178345,
+   "id": "w178345",
+   "sense_codes": [
+    191424
+   ]
+  },
+  {
+   "target_code": 178346,
+   "id": "w178346",
+   "sense_codes": [
+    191425
+   ]
+  },
+  {
+   "target_code": 178347,
+   "id": "w178347",
+   "sense_codes": [
+    191611
+   ]
+  },
+  {
+   "target_code": 178348,
+   "id": "w178348",
+   "sense_codes": [
+    352061
+   ]
+  },
+  {
+   "target_code": 178349,
+   "id": "w178349",
+   "sense_codes": [
+    499037
+   ]
+  },
+  {
+   "target_code": 178350,
+   "id": "w178350",
+   "sense_codes": [
+    535776
+   ]
+  },
+  {
+   "target_code": 178353,
+   "id": "w178353",
+   "sense_codes": [
+    535777
+   ]
+  },
+  {
+   "target_code": 178355,
+   "id": "w178355",
+   "sense_codes": [
+    191614
+   ]
+  },
+  {
+   "target_code": 178356,
+   "id": "w178356",
+   "sense_codes": [
+    499039
+   ]
+  },
+  {
+   "target_code": 178357,
+   "id": "w178357",
+   "sense_codes": [
+    191615
+   ]
+  },
+  {
+   "target_code": 178358,
+   "id": "w178358",
+   "sense_codes": [
+    425224
+   ]
+  },
+  {
+   "target_code": 178359,
+   "id": "w178359",
+   "sense_codes": [
+    12815,
+    45657
+   ]
+  },
+  {
+   "target_code": 178360,
+   "id": "w178360",
+   "sense_codes": [
+    498997
+   ]
+  },
+  {
+   "target_code": 178362,
+   "id": "w178362",
+   "sense_codes": [
+    442266,
+    445930
+   ]
+  },
+  {
+   "target_code": 178366,
+   "id": "w178366",
+   "sense_codes": [
+    462089
+   ]
+  },
+  {
+   "target_code": 178367,
+   "id": "w178367",
+   "sense_codes": [
+    462090
+   ]
+  },
+  {
+   "target_code": 178369,
+   "id": "w178369",
+   "sense_codes": [
+    462007
+   ]
+  },
+  {
+   "target_code": 178372,
+   "id": "w178372",
+   "sense_codes": [
+    191617
+   ]
+  },
+  {
+   "target_code": 178373,
+   "id": "w178373",
+   "sense_codes": [
+    191618
+   ]
+  },
+  {
+   "target_code": 178374,
+   "id": "w178374",
+   "sense_codes": [
+    572508
+   ]
+  },
+  {
+   "target_code": 178375,
+   "id": "w178375",
+   "sense_codes": [
+    352063
+   ]
+  },
+  {
+   "target_code": 178376,
+   "id": "w178376",
+   "sense_codes": [
+    352064
+   ]
+  },
+  {
+   "target_code": 178377,
+   "id": "w178377",
+   "sense_codes": [
+    572510
+   ]
+  },
+  {
+   "target_code": 178378,
+   "id": "w178378",
+   "sense_codes": [
+    191619
+   ]
+  },
+  {
+   "target_code": 178379,
+   "id": "w178379",
+   "sense_codes": [
+    515970,
+    519524
+   ]
+  },
+  {
+   "target_code": 178380,
+   "id": "w178380",
+   "sense_codes": [
+    442286,
+    445947
+   ]
+  },
+  {
+   "target_code": 178381,
+   "id": "w178381",
+   "sense_codes": [
+    425174
+   ]
+  },
+  {
+   "target_code": 178382,
+   "id": "w178382",
+   "sense_codes": [
+    425104
+   ]
+  },
+  {
+   "target_code": 178383,
+   "id": "w178383",
+   "sense_codes": [
+    190547
+   ]
+  },
+  {
+   "target_code": 178386,
+   "id": "w178386",
+   "sense_codes": [
+    190549
+   ]
+  },
+  {
+   "target_code": 178388,
+   "id": "w178388",
+   "sense_codes": [
+    190550
+   ]
+  },
+  {
+   "target_code": 178398,
+   "id": "w178398",
+   "sense_codes": [
+    190556
+   ]
+  },
+  {
+   "target_code": 178399,
+   "id": "w178399",
+   "sense_codes": [
+    425512
+   ]
+  },
+  {
+   "target_code": 178400,
+   "id": "w178400",
+   "sense_codes": [
+    499340
+   ]
+  },
+  {
+   "target_code": 178401,
+   "id": "w178401",
+   "sense_codes": [
+    194325
+   ]
+  },
+  {
+   "target_code": 178402,
+   "id": "w178402",
+   "sense_codes": [
+    552674,
+    556123
+   ]
+  },
+  {
+   "target_code": 178403,
+   "id": "w178403",
+   "sense_codes": [
+    462444
+   ]
+  },
+  {
+   "target_code": 178404,
+   "id": "w178404",
+   "sense_codes": [
+    194326
+   ]
+  },
+  {
+   "target_code": 178405,
+   "id": "w178405",
+   "sense_codes": [
+    352363
+   ]
+  },
+  {
+   "target_code": 178406,
+   "id": "w178406",
+   "sense_codes": [
+    479314
+   ]
+  },
+  {
+   "target_code": 178407,
+   "id": "w178407",
+   "sense_codes": [
+    572958
+   ]
+  },
+  {
+   "target_code": 178408,
+   "id": "w178408",
+   "sense_codes": [
+    536187
+   ]
+  },
+  {
+   "target_code": 178410,
+   "id": "w178410",
+   "sense_codes": [
+    352358
+   ]
+  },
+  {
+   "target_code": 178411,
+   "id": "w178411",
+   "sense_codes": [
+    498929
+   ]
+  },
+  {
+   "target_code": 178412,
+   "id": "w178412",
+   "sense_codes": [
+    190557
+   ]
+  },
+  {
+   "target_code": 178414,
+   "id": "w178414",
+   "sense_codes": [
+    388381
+   ]
+  },
+  {
+   "target_code": 178415,
+   "id": "w178415",
+   "sense_codes": [
+    190559
+   ]
+  },
+  {
+   "target_code": 178416,
+   "id": "w178416",
+   "sense_codes": [
+    190560
+   ]
+  },
+  {
+   "target_code": 178417,
+   "id": "w178417",
+   "sense_codes": [
+    190562
+   ]
+  },
+  {
+   "target_code": 178418,
+   "id": "w178418",
+   "sense_codes": [
+    190563
+   ]
+  },
+  {
+   "target_code": 178419,
+   "id": "w178419",
+   "sense_codes": [
+    190564
+   ]
+  },
+  {
+   "target_code": 178420,
+   "id": "w178420",
+   "sense_codes": [
+    462008
+   ]
+  },
+  {
+   "target_code": 178421,
+   "id": "w178421",
+   "sense_codes": [
+    571907
+   ]
+  },
+  {
+   "target_code": 178422,
+   "id": "w178422",
+   "sense_codes": [
+    424615
+   ]
+  },
+  {
+   "target_code": 178423,
+   "id": "w178423",
+   "sense_codes": [
+    424616
+   ]
+  },
+  {
+   "target_code": 178425,
+   "id": "w178425",
+   "sense_codes": [
+    185774
+   ]
+  },
+  {
+   "target_code": 178426,
+   "id": "w178426",
+   "sense_codes": [
+    185775
+   ]
+  },
+  {
+   "target_code": 178427,
+   "id": "w178427",
+   "sense_codes": [
+    185776
+   ]
+  },
+  {
+   "target_code": 178428,
+   "id": "w178428",
+   "sense_codes": [
+    185777
+   ]
+  },
+  {
+   "target_code": 178429,
+   "id": "w178429",
+   "sense_codes": [
+    185778
+   ]
+  },
+  {
+   "target_code": 178430,
+   "id": "w178430",
+   "sense_codes": [
+    424568
+   ]
+  },
+  {
+   "target_code": 178431,
+   "id": "w178431",
+   "sense_codes": [
+    185779
+   ]
+  },
+  {
+   "target_code": 178432,
+   "id": "w178432",
+   "sense_codes": [
+    185781
+   ]
+  },
+  {
+   "target_code": 178433,
+   "id": "w178433",
+   "sense_codes": [
+    185782
+   ]
+  },
+  {
+   "target_code": 178434,
+   "id": "w178434",
+   "sense_codes": [
+    185783
+   ]
+  },
+  {
+   "target_code": 178435,
+   "id": "w178435",
+   "sense_codes": [
+    461482
+   ]
+  },
+  {
+   "target_code": 178436,
+   "id": "w178436",
+   "sense_codes": [
+    461483
+   ]
+  },
+  {
+   "target_code": 178437,
+   "id": "w178437",
+   "sense_codes": [
+    461484
+   ]
+  },
+  {
+   "target_code": 178438,
+   "id": "w178438",
+   "sense_codes": [
+    185787
+   ]
+  },
+  {
+   "target_code": 178439,
+   "id": "w178439",
+   "sense_codes": [
+    424569
+   ]
+  },
+  {
+   "target_code": 178440,
+   "id": "w178440",
+   "sense_codes": [
+    185788
+   ]
+  },
+  {
+   "target_code": 178441,
+   "id": "w178441",
+   "sense_codes": [
+    535089
+   ]
+  },
+  {
+   "target_code": 178442,
+   "id": "w178442",
+   "sense_codes": [
+    424570
+   ]
+  },
+  {
+   "target_code": 178443,
+   "id": "w178443",
+   "sense_codes": [
+    461539
+   ]
+  },
+  {
+   "target_code": 178445,
+   "id": "w178445",
+   "sense_codes": [
+    186238
+   ]
+  },
+  {
+   "target_code": 178446,
+   "id": "w178446",
+   "sense_codes": [
+    186239
+   ]
+  },
+  {
+   "target_code": 178447,
+   "id": "w178447",
+   "sense_codes": [
+    571910
+   ]
+  },
+  {
+   "target_code": 178448,
+   "id": "w178448",
+   "sense_codes": [
+    186241
+   ]
+  },
+  {
+   "target_code": 178451,
+   "id": "w178451",
+   "sense_codes": [
+    335585
+   ]
+  },
+  {
+   "target_code": 178454,
+   "id": "w178454",
+   "sense_codes": [
+    185794
+   ]
+  },
+  {
+   "target_code": 178455,
+   "id": "w178455",
+   "sense_codes": [
+    387868
+   ]
+  },
+  {
+   "target_code": 178456,
+   "id": "w178456",
+   "sense_codes": [
+    351394
+   ]
+  },
+  {
+   "target_code": 178457,
+   "id": "w178457",
+   "sense_codes": [
+    185994
+   ]
+  },
+  {
+   "target_code": 178458,
+   "id": "w178458",
+   "sense_codes": [
+    185995
+   ]
+  },
+  {
+   "target_code": 178459,
+   "id": "w178459",
+   "sense_codes": [
+    186420
+   ]
+  },
+  {
+   "target_code": 178460,
+   "id": "w178460",
+   "sense_codes": [
+    186422
+   ]
+  },
+  {
+   "target_code": 178462,
+   "id": "w178462",
+   "sense_codes": [
+    387891
+   ]
+  },
+  {
+   "target_code": 178463,
+   "id": "w178463",
+   "sense_codes": [
+    186035
+   ]
+  },
+  {
+   "target_code": 178464,
+   "id": "w178464",
+   "sense_codes": [
+    186037
+   ]
+  },
+  {
+   "target_code": 178465,
+   "id": "w178465",
+   "sense_codes": [
+    186039
+   ]
+  },
+  {
+   "target_code": 178466,
+   "id": "w178466",
+   "sense_codes": [
+    186040,
+    387892
+   ]
+  },
+  {
+   "target_code": 178467,
+   "id": "w178467",
+   "sense_codes": [
+    186041
+   ]
+  },
+  {
+   "target_code": 178468,
+   "id": "w178468",
+   "sense_codes": [
+    186242
+   ]
+  },
+  {
+   "target_code": 178469,
+   "id": "w178469",
+   "sense_codes": [
+    186243
+   ]
+  },
+  {
+   "target_code": 178470,
+   "id": "w178470",
+   "sense_codes": [
+    571912
+   ]
+  },
+  {
+   "target_code": 178473,
+   "id": "w178473",
+   "sense_codes": [
+    461540
+   ]
+  },
+  {
+   "target_code": 178474,
+   "id": "w178474",
+   "sense_codes": [
+    424621
+   ]
+  },
+  {
+   "target_code": 178476,
+   "id": "w178476",
+   "sense_codes": [
+    351425
+   ]
+  },
+  {
+   "target_code": 178477,
+   "id": "w178477",
+   "sense_codes": [
+    572182
+   ]
+  },
+  {
+   "target_code": 178479,
+   "id": "w178479",
+   "sense_codes": [
+    188980
+   ]
+  },
+  {
+   "target_code": 178480,
+   "id": "w178480",
+   "sense_codes": [
+    424909
+   ]
+  },
+  {
+   "target_code": 178481,
+   "id": "w178481",
+   "sense_codes": [
+    515900,
+    519349
+   ]
+  },
+  {
+   "target_code": 178482,
+   "id": "w178482",
+   "sense_codes": [
+    12894,
+    44056
+   ]
+  },
+  {
+   "target_code": 178483,
+   "id": "w178483",
+   "sense_codes": [
+    188771
+   ]
+  },
+  {
+   "target_code": 178484,
+   "id": "w178484",
+   "sense_codes": [
+    188772
+   ]
+  },
+  {
+   "target_code": 178485,
+   "id": "w178485",
+   "sense_codes": [
+    461809
+   ]
+  },
+  {
+   "target_code": 178486,
+   "id": "w178486",
+   "sense_codes": [
+    188993
+   ]
+  },
+  {
+   "target_code": 178487,
+   "id": "w178487",
+   "sense_codes": [
+    186246
+   ]
+  },
+  {
+   "target_code": 178488,
+   "id": "w178488",
+   "sense_codes": [
+    13270,
+    44388,
+    65187
+   ]
+  },
+  {
+   "target_code": 178489,
+   "id": "w178489",
+   "sense_codes": [
+    185839
+   ]
+  },
+  {
+   "target_code": 178490,
+   "id": "w178490",
+   "sense_codes": [
+    461496
+   ]
+  },
+  {
+   "target_code": 178491,
+   "id": "w178491",
+   "sense_codes": [
+    388752
+   ]
+  },
+  {
+   "target_code": 178492,
+   "id": "w178492",
+   "sense_codes": [
+    193920
+   ]
+  },
+  {
+   "target_code": 178493,
+   "id": "w178493",
+   "sense_codes": [
+    194122
+   ]
+  },
+  {
+   "target_code": 178494,
+   "id": "w178494",
+   "sense_codes": [
+    194575
+   ]
+  },
+  {
+   "target_code": 178495,
+   "id": "w178495",
+   "sense_codes": [
+    194576
+   ]
+  },
+  {
+   "target_code": 178496,
+   "id": "w178496",
+   "sense_codes": [
+    194577
+   ]
+  },
+  {
+   "target_code": 178497,
+   "id": "w178497",
+   "sense_codes": [
+    194578
+   ]
+  },
+  {
+   "target_code": 178501,
+   "id": "w178501",
+   "sense_codes": [
+    425095
+   ]
+  },
+  {
+   "target_code": 178502,
+   "id": "w178502",
+   "sense_codes": [
+    572885
+   ]
+  },
+  {
+   "target_code": 178503,
+   "id": "w178503",
+   "sense_codes": [
+    462493
+   ]
+  },
+  {
+   "target_code": 178504,
+   "id": "w178504",
+   "sense_codes": [
+    13020,
+    44896,
+    65450
+   ]
+  },
+  {
+   "target_code": 178505,
+   "id": "w178505",
+   "sense_codes": [
+    351938
+   ]
+  },
+  {
+   "target_code": 178507,
+   "id": "w178507",
+   "sense_codes": [
+    368812,
+    372319
+   ]
+  },
+  {
+   "target_code": 178508,
+   "id": "w178508",
+   "sense_codes": [
+    332200,
+    335670
+   ]
+  },
+  {
+   "target_code": 178509,
+   "id": "w178509",
+   "sense_codes": [
+    190732
+   ]
+  },
+  {
+   "target_code": 178512,
+   "id": "w178512",
+   "sense_codes": [
+    14084,
+    45062
+   ]
+  },
+  {
+   "target_code": 178513,
+   "id": "w178513",
+   "sense_codes": [
+    425540
+   ]
+  },
+  {
+   "target_code": 178514,
+   "id": "w178514",
+   "sense_codes": [
+    516054,
+    519492
+   ]
+  },
+  {
+   "target_code": 178515,
+   "id": "w178515",
+   "sense_codes": [
+    194787
+   ]
+  },
+  {
+   "target_code": 178516,
+   "id": "w178516",
+   "sense_codes": [
+    462494
+   ]
+  },
+  {
+   "target_code": 178517,
+   "id": "w178517",
+   "sense_codes": [
+    194788
+   ]
+  },
+  {
+   "target_code": 178519,
+   "id": "w178519",
+   "sense_codes": [
+    194789
+   ]
+  },
+  {
+   "target_code": 178520,
+   "id": "w178520",
+   "sense_codes": [
+    499392
+   ]
+  },
+  {
+   "target_code": 178521,
+   "id": "w178521",
+   "sense_codes": [
+    352345
+   ]
+  },
+  {
+   "target_code": 178522,
+   "id": "w178522",
+   "sense_codes": [
+    194144
+   ]
+  },
+  {
+   "target_code": 178523,
+   "id": "w178523",
+   "sense_codes": [
+    499312
+   ]
+  },
+  {
+   "target_code": 178524,
+   "id": "w178524",
+   "sense_codes": [
+    194145
+   ]
+  },
+  {
+   "target_code": 178525,
+   "id": "w178525",
+   "sense_codes": [
+    352346
+   ]
+  },
+  {
+   "target_code": 178526,
+   "id": "w178526",
+   "sense_codes": [
+    536051
+   ]
+  },
+  {
+   "target_code": 178527,
+   "id": "w178527",
+   "sense_codes": [
+    194146
+   ]
+  },
+  {
+   "target_code": 178528,
+   "id": "w178528",
+   "sense_codes": [
+    462000
+   ]
+  },
+  {
+   "target_code": 178529,
+   "id": "w178529",
+   "sense_codes": [
+    190500
+   ]
+  },
+  {
+   "target_code": 178530,
+   "id": "w178530",
+   "sense_codes": [
+    351915
+   ]
+  },
+  {
+   "target_code": 178531,
+   "id": "w178531",
+   "sense_codes": [
+    462006
+   ]
+  },
+  {
+   "target_code": 178532,
+   "id": "w178532",
+   "sense_codes": [
+    572399
+   ]
+  },
+  {
+   "target_code": 178533,
+   "id": "w178533",
+   "sense_codes": [
+    190540
+   ]
+  },
+  {
+   "target_code": 178534,
+   "id": "w178534",
+   "sense_codes": [
+    351916
+   ]
+  },
+  {
+   "target_code": 178537,
+   "id": "w178537",
+   "sense_codes": [
+    191468
+   ]
+  },
+  {
+   "target_code": 178538,
+   "id": "w178538",
+   "sense_codes": [
+    191469
+   ]
+  },
+  {
+   "target_code": 178539,
+   "id": "w178539",
+   "sense_codes": [
+    194148
+   ]
+  },
+  {
+   "target_code": 178540,
+   "id": "w178540",
+   "sense_codes": [
+    425501
+   ]
+  },
+  {
+   "target_code": 178541,
+   "id": "w178541",
+   "sense_codes": [
+    536052
+   ]
+  },
+  {
+   "target_code": 178542,
+   "id": "w178542",
+   "sense_codes": [
+    194149
+   ]
+  },
+  {
+   "target_code": 178543,
+   "id": "w178543",
+   "sense_codes": [
+    194150
+   ]
+  },
+  {
+   "target_code": 178544,
+   "id": "w178544",
+   "sense_codes": [
+    194151
+   ]
+  },
+  {
+   "target_code": 178545,
+   "id": "w178545",
+   "sense_codes": [
+    462423
+   ]
+  },
+  {
+   "target_code": 178546,
+   "id": "w178546",
+   "sense_codes": [
+    194152
+   ]
+  },
+  {
+   "target_code": 178547,
+   "id": "w178547",
+   "sense_codes": [
+    499313
+   ]
+  },
+  {
+   "target_code": 178548,
+   "id": "w178548",
+   "sense_codes": [
+    352347
+   ]
+  },
+  {
+   "target_code": 178549,
+   "id": "w178549",
+   "sense_codes": [
+    194357
+   ]
+  },
+  {
+   "target_code": 178550,
+   "id": "w178550",
+   "sense_codes": [
+    190005
+   ]
+  },
+  {
+   "target_code": 178551,
+   "id": "w178551",
+   "sense_codes": [
+    442223,
+    445882
+   ]
+  },
+  {
+   "target_code": 178552,
+   "id": "w178552",
+   "sense_codes": [
+    12969,
+    44882
+   ]
+  },
+  {
+   "target_code": 178553,
+   "id": "w178553",
+   "sense_codes": [
+    190006
+   ]
+  },
+  {
+   "target_code": 178554,
+   "id": "w178554",
+   "sense_codes": [
+    190007
+   ]
+  },
+  {
+   "target_code": 178555,
+   "id": "w178555",
+   "sense_codes": [
+    12970,
+    44883
+   ]
+  },
+  {
+   "target_code": 178556,
+   "id": "w178556",
+   "sense_codes": [
+    572336
+   ]
+  },
+  {
+   "target_code": 178557,
+   "id": "w178557",
+   "sense_codes": [
+    425030
+   ]
+  },
+  {
+   "target_code": 178558,
+   "id": "w178558",
+   "sense_codes": [
+    190008
+   ]
+  },
+  {
+   "target_code": 178559,
+   "id": "w178559",
+   "sense_codes": [
+    190009
+   ]
+  },
+  {
+   "target_code": 178560,
+   "id": "w178560",
+   "sense_codes": [
+    425031
+   ]
+  },
+  {
+   "target_code": 178561,
+   "id": "w178561",
+   "sense_codes": [
+    351859
+   ]
+  },
+  {
+   "target_code": 178562,
+   "id": "w178562",
+   "sense_codes": [
+    190012
+   ]
+  },
+  {
+   "target_code": 178563,
+   "id": "w178563",
+   "sense_codes": [
+    190013
+   ]
+  },
+  {
+   "target_code": 178564,
+   "id": "w178564",
+   "sense_codes": [
+    572337
+   ]
+  },
+  {
+   "target_code": 178565,
+   "id": "w178565",
+   "sense_codes": [
+    190015
+   ]
+  },
+  {
+   "target_code": 178566,
+   "id": "w178566",
+   "sense_codes": [
+    190016
+   ]
+  },
+  {
+   "target_code": 178567,
+   "id": "w178567",
+   "sense_codes": [
+    190017
+   ]
+  },
+  {
+   "target_code": 178568,
+   "id": "w178568",
+   "sense_codes": [
+    388329
+   ]
+  },
+  {
+   "target_code": 178569,
+   "id": "w178569",
+   "sense_codes": [
+    535588
+   ]
+  },
+  {
+   "target_code": 178570,
+   "id": "w178570",
+   "sense_codes": [
+    190019
+   ]
+  },
+  {
+   "target_code": 178571,
+   "id": "w178571",
+   "sense_codes": [
+    442285,
+    445844,
+    448209
+   ]
+  },
+  {
+   "target_code": 178572,
+   "id": "w178572",
+   "sense_codes": [
+    572167
+   ]
+  },
+  {
+   "target_code": 178573,
+   "id": "w178573",
+   "sense_codes": [
+    188644
+   ]
+  },
+  {
+   "target_code": 178574,
+   "id": "w178574",
+   "sense_codes": [
+    351763
+   ]
+  },
+  {
+   "target_code": 178575,
+   "id": "w178575",
+   "sense_codes": [
+    188940
+   ]
+  },
+  {
+   "target_code": 178576,
+   "id": "w178576",
+   "sense_codes": [
+    424924
+   ]
+  },
+  {
+   "target_code": 178577,
+   "id": "w178577",
+   "sense_codes": [
+    351764
+   ]
+  },
+  {
+   "target_code": 178578,
+   "id": "w178578",
+   "sense_codes": [
+    188942
+   ]
+  },
+  {
+   "target_code": 178579,
+   "id": "w178579",
+   "sense_codes": [
+    190020
+   ]
+  },
+  {
+   "target_code": 178580,
+   "id": "w178580",
+   "sense_codes": [
+    535589
+   ]
+  },
+  {
+   "target_code": 178581,
+   "id": "w178581",
+   "sense_codes": [
+    190021
+   ]
+  },
+  {
+   "target_code": 178582,
+   "id": "w178582",
+   "sense_codes": [
+    368803,
+    372315
+   ]
+  },
+  {
+   "target_code": 178583,
+   "id": "w178583",
+   "sense_codes": [
+    388330
+   ]
+  },
+  {
+   "target_code": 178584,
+   "id": "w178584",
+   "sense_codes": [
+    498841
+   ]
+  },
+  {
+   "target_code": 178585,
+   "id": "w178585",
+   "sense_codes": [
+    189800
+   ]
+  },
+  {
+   "target_code": 178586,
+   "id": "w178586",
+   "sense_codes": [
+    189801
+   ]
+  },
+  {
+   "target_code": 178587,
+   "id": "w178587",
+   "sense_codes": [
+    189802
+   ]
+  },
+  {
+   "target_code": 178588,
+   "id": "w178588",
+   "sense_codes": [
+    189803
+   ]
+  },
+  {
+   "target_code": 178589,
+   "id": "w178589",
+   "sense_codes": [
+    388306
+   ]
+  },
+  {
+   "target_code": 178590,
+   "id": "w178590",
+   "sense_codes": [
+    351837
+   ]
+  },
+  {
+   "target_code": 178592,
+   "id": "w178592",
+   "sense_codes": [
+    535907
+   ]
+  },
+  {
+   "target_code": 178593,
+   "id": "w178593",
+   "sense_codes": [
+    426026
+   ]
+  },
+  {
+   "target_code": 178594,
+   "id": "w178594",
+   "sense_codes": [
+    352863
+   ]
+  },
+  {
+   "target_code": 178595,
+   "id": "w178595",
+   "sense_codes": [
+    198518
+   ]
+  },
+  {
+   "target_code": 178596,
+   "id": "w178596",
+   "sense_codes": [
+    198519
+   ]
+  },
+  {
+   "target_code": 178597,
+   "id": "w178597",
+   "sense_codes": [
+    198520
+   ]
+  },
+  {
+   "target_code": 178598,
+   "id": "w178598",
+   "sense_codes": [
+    462900
+   ]
+  },
+  {
+   "target_code": 178599,
+   "id": "w178599",
+   "sense_codes": [
+    198521
+   ]
+  },
+  {
+   "target_code": 178600,
+   "id": "w178600",
+   "sense_codes": [
+    198522
+   ]
+  },
+  {
+   "target_code": 178601,
+   "id": "w178601",
+   "sense_codes": [
+    14171,
+    45027
+   ]
+  },
+  {
+   "target_code": 178602,
+   "id": "w178602",
+   "sense_codes": [
+    405409,
+    408870
+   ]
+  },
+  {
+   "target_code": 178603,
+   "id": "w178603",
+   "sense_codes": [
+    14172,
+    45028
+   ]
+  },
+  {
+   "target_code": 178604,
+   "id": "w178604",
+   "sense_codes": [
+    14173,
+    45029
+   ]
+  },
+  {
+   "target_code": 178605,
+   "id": "w178605",
+   "sense_codes": [
+    198732
+   ]
+  },
+  {
+   "target_code": 178607,
+   "id": "w178607",
+   "sense_codes": [
+    572668,
+    1272177
+   ]
+  },
+  {
+   "target_code": 178608,
+   "id": "w178608",
+   "sense_codes": [
+    192821
+   ]
+  },
+  {
+   "target_code": 178609,
+   "id": "w178609",
+   "sense_codes": [
+    14157,
+    45097,
+    64728
+   ]
+  },
+  {
+   "target_code": 178610,
+   "id": "w178610",
+   "sense_codes": [
+    192817
+   ]
+  },
+  {
+   "target_code": 178612,
+   "id": "w178612",
+   "sense_codes": [
+    192819
+   ]
+  },
+  {
+   "target_code": 178613,
+   "id": "w178613",
+   "sense_codes": [
+    388762
+   ]
+  },
+  {
+   "target_code": 178614,
+   "id": "w178614",
+   "sense_codes": [
+    572806
+   ]
+  },
+  {
+   "target_code": 178615,
+   "id": "w178615",
+   "sense_codes": [
+    462407
+   ]
+  },
+  {
+   "target_code": 178616,
+   "id": "w178616",
+   "sense_codes": [
+    194013
+   ]
+  },
+  {
+   "target_code": 178617,
+   "id": "w178617",
+   "sense_codes": [
+    462408
+   ]
+  },
+  {
+   "target_code": 178618,
+   "id": "w178618",
+   "sense_codes": [
+    425482
+   ]
+  },
+  {
+   "target_code": 178619,
+   "id": "w178619",
+   "sense_codes": [
+    194015
+   ]
+  },
+  {
+   "target_code": 178620,
+   "id": "w178620",
+   "sense_codes": [
+    194016
+   ]
+  },
+  {
+   "target_code": 178621,
+   "id": "w178621",
+   "sense_codes": [
+    352214
+   ]
+  },
+  {
+   "target_code": 178622,
+   "id": "w178622",
+   "sense_codes": [
+    13934,
+    44903
+   ]
+  },
+  {
+   "target_code": 178623,
+   "id": "w178623",
+   "sense_codes": [
+    198736
+   ]
+  },
+  {
+   "target_code": 178624,
+   "id": "w178624",
+   "sense_codes": [
+    573307
+   ]
+  },
+  {
+   "target_code": 178625,
+   "id": "w178625",
+   "sense_codes": [
+    536577
+   ]
+  },
+  {
+   "target_code": 178626,
+   "id": "w178626",
+   "sense_codes": [
+    198940
+   ]
+  },
+  {
+   "target_code": 178627,
+   "id": "w178627",
+   "sense_codes": [
+    499177
+   ]
+  },
+  {
+   "target_code": 178628,
+   "id": "w178628",
+   "sense_codes": [
+    192853
+   ]
+  },
+  {
+   "target_code": 178629,
+   "id": "w178629",
+   "sense_codes": [
+    192854
+   ]
+  },
+  {
+   "target_code": 178630,
+   "id": "w178630",
+   "sense_codes": [
+    192855
+   ]
+  },
+  {
+   "target_code": 178631,
+   "id": "w178631",
+   "sense_codes": [
+    192856
+   ]
+  },
+  {
+   "target_code": 178632,
+   "id": "w178632",
+   "sense_codes": [
+    192858
+   ]
+  },
+  {
+   "target_code": 178633,
+   "id": "w178633",
+   "sense_codes": [
+    388642
+   ]
+  },
+  {
+   "target_code": 178634,
+   "id": "w178634",
+   "sense_codes": [
+    462723
+   ]
+  },
+  {
+   "target_code": 178636,
+   "id": "w178636",
+   "sense_codes": [
+    196859
+   ]
+  },
+  {
+   "target_code": 178637,
+   "id": "w178637",
+   "sense_codes": [
+    536359
+   ]
+  },
+  {
+   "target_code": 178638,
+   "id": "w178638",
+   "sense_codes": [
+    536360
+   ]
+  },
+  {
+   "target_code": 178639,
+   "id": "w178639",
+   "sense_codes": [
+    499648
+   ]
+  },
+  {
+   "target_code": 178640,
+   "id": "w178640",
+   "sense_codes": [
+    196860
+   ]
+  },
+  {
+   "target_code": 178641,
+   "id": "w178641",
+   "sense_codes": [
+    196861
+   ]
+  },
+  {
+   "target_code": 178643,
+   "id": "w178643",
+   "sense_codes": [
+    425804
+   ]
+  },
+  {
+   "target_code": 178645,
+   "id": "w178645",
+   "sense_codes": [
+    573127
+   ]
+  },
+  {
+   "target_code": 178646,
+   "id": "w178646",
+   "sense_codes": [
+    196866
+   ]
+  },
+  {
+   "target_code": 178647,
+   "id": "w178647",
+   "sense_codes": [
+    192828
+   ]
+  },
+  {
+   "target_code": 178649,
+   "id": "w178649",
+   "sense_codes": [
+    516019,
+    519463
+   ]
+  },
+  {
+   "target_code": 178650,
+   "id": "w178650",
+   "sense_codes": [
+    192615
+   ]
+  },
+  {
+   "target_code": 178652,
+   "id": "w178652",
+   "sense_codes": [
+    13936,
+    44905
+   ]
+  },
+  {
+   "target_code": 178653,
+   "id": "w178653",
+   "sense_codes": [
+    192826
+   ]
+  },
+  {
+   "target_code": 178654,
+   "id": "w178654",
+   "sense_codes": [
+    192874
+   ]
+  },
+  {
+   "target_code": 178655,
+   "id": "w178655",
+   "sense_codes": [
+    499180
+   ]
+  },
+  {
+   "target_code": 178656,
+   "id": "w178656",
+   "sense_codes": [
+    192875
+   ]
+  },
+  {
+   "target_code": 178657,
+   "id": "w178657",
+   "sense_codes": [
+    192876
+   ]
+  },
+  {
+   "target_code": 178658,
+   "id": "w178658",
+   "sense_codes": [
+    535910
+   ]
+  },
+  {
+   "target_code": 178659,
+   "id": "w178659",
+   "sense_codes": [
+    192878
+   ]
+  },
+  {
+   "target_code": 178660,
+   "id": "w178660",
+   "sense_codes": [
+    193036
+   ]
+  },
+  {
+   "target_code": 178661,
+   "id": "w178661",
+   "sense_codes": [
+    193038
+   ]
+  },
+  {
+   "target_code": 178662,
+   "id": "w178662",
+   "sense_codes": [
+    193039
+   ]
+  },
+  {
+   "target_code": 178663,
+   "id": "w178663",
+   "sense_codes": [
+    197592
+   ]
+  },
+  {
+   "target_code": 178664,
+   "id": "w178664",
+   "sense_codes": [
+    389153
+   ]
+  },
+  {
+   "target_code": 178665,
+   "id": "w178665",
+   "sense_codes": [
+    197593
+   ]
+  },
+  {
+   "target_code": 178666,
+   "id": "w178666",
+   "sense_codes": [
+    197596
+   ]
+  },
+  {
+   "target_code": 178669,
+   "id": "w178669",
+   "sense_codes": [
+    197599
+   ]
+  },
+  {
+   "target_code": 178670,
+   "id": "w178670",
+   "sense_codes": [
+    197600
+   ]
+  },
+  {
+   "target_code": 178671,
+   "id": "w178671",
+   "sense_codes": [
+    572673
+   ]
+  },
+  {
+   "target_code": 178672,
+   "id": "w178672",
+   "sense_codes": [
+    193071
+   ]
+  },
+  {
+   "target_code": 178673,
+   "id": "w178673",
+   "sense_codes": [
+    193072
+   ]
+  },
+  {
+   "target_code": 178675,
+   "id": "w178675",
+   "sense_codes": [
+    193074
+   ]
+  },
+  {
+   "target_code": 178676,
+   "id": "w178676",
+   "sense_codes": [
+    572691
+   ]
+  },
+  {
+   "target_code": 178677,
+   "id": "w178677",
+   "sense_codes": [
+    425382
+   ]
+  },
+  {
+   "target_code": 178678,
+   "id": "w178678",
+   "sense_codes": [
+    193075
+   ]
+  },
+  {
+   "target_code": 178679,
+   "id": "w178679",
+   "sense_codes": [
+    193076
+   ]
+  },
+  {
+   "target_code": 178681,
+   "id": "w178681",
+   "sense_codes": [
+    193077
+   ]
+  },
+  {
+   "target_code": 178682,
+   "id": "w178682",
+   "sense_codes": [
+    193078
+   ]
+  },
+  {
+   "target_code": 178684,
+   "id": "w178684",
+   "sense_codes": [
+    193079
+   ]
+  },
+  {
+   "target_code": 178685,
+   "id": "w178685",
+   "sense_codes": [
+    192879
+   ]
+  },
+  {
+   "target_code": 178686,
+   "id": "w178686",
+   "sense_codes": [
+    572674
+   ]
+  },
+  {
+   "target_code": 178687,
+   "id": "w178687",
+   "sense_codes": [
+    192881
+   ]
+  },
+  {
+   "target_code": 178688,
+   "id": "w178688",
+   "sense_codes": [
+    192882
+   ]
+  },
+  {
+   "target_code": 178689,
+   "id": "w178689",
+   "sense_codes": [
+    14490,
+    45441
+   ]
+  },
+  {
+   "target_code": 178690,
+   "id": "w178690",
+   "sense_codes": [
+    192883
+   ]
+  },
+  {
+   "target_code": 178691,
+   "id": "w178691",
+   "sense_codes": [
+    192885
+   ]
+  },
+  {
+   "target_code": 178692,
+   "id": "w178692",
+   "sense_codes": [
+    425365
+   ]
+  },
+  {
+   "target_code": 178693,
+   "id": "w178693",
+   "sense_codes": [
+    192886
+   ]
+  },
+  {
+   "target_code": 178694,
+   "id": "w178694",
+   "sense_codes": [
+    192887
+   ]
+  },
+  {
+   "target_code": 178695,
+   "id": "w178695",
+   "sense_codes": [
+    499183
+   ]
+  },
+  {
+   "target_code": 178697,
+   "id": "w178697",
+   "sense_codes": [
+    499297
+   ]
+  },
+  {
+   "target_code": 178698,
+   "id": "w178698",
+   "sense_codes": [
+    194034
+   ]
+  },
+  {
+   "target_code": 178699,
+   "id": "w178699",
+   "sense_codes": [
+    352332
+   ]
+  },
+  {
+   "target_code": 178700,
+   "id": "w178700",
+   "sense_codes": [
+    194035
+   ]
+  },
+  {
+   "target_code": 178701,
+   "id": "w178701",
+   "sense_codes": [
+    194036
+   ]
+  },
+  {
+   "target_code": 178702,
+   "id": "w178702",
+   "sense_codes": [
+    388764
+   ]
+  },
+  {
+   "target_code": 178703,
+   "id": "w178703",
+   "sense_codes": [
+    194038
+   ]
+  },
+  {
+   "target_code": 178704,
+   "id": "w178704",
+   "sense_codes": [
+    194039
+   ]
+  },
+  {
+   "target_code": 178705,
+   "id": "w178705",
+   "sense_codes": [
+    192668
+   ]
+  },
+  {
+   "target_code": 178707,
+   "id": "w178707",
+   "sense_codes": [
+    197588
+   ]
+  },
+  {
+   "target_code": 178708,
+   "id": "w178708",
+   "sense_codes": [
+    197590
+   ]
+  },
+  {
+   "target_code": 178709,
+   "id": "w178709",
+   "sense_codes": [
+    389152
+   ]
+  },
+  {
+   "target_code": 178710,
+   "id": "w178710",
+   "sense_codes": [
+    197591
+   ]
+  },
+  {
+   "target_code": 178711,
+   "id": "w178711",
+   "sense_codes": [
+    193612
+   ]
+  },
+  {
+   "target_code": 178712,
+   "id": "w178712",
+   "sense_codes": [
+    462356
+   ]
+  },
+  {
+   "target_code": 178713,
+   "id": "w178713",
+   "sense_codes": [
+    193613,
+    1392613
+   ]
+  },
+  {
+   "target_code": 178714,
+   "id": "w178714",
+   "sense_codes": [
+    13651,
+    45499
+   ]
+  },
+  {
+   "target_code": 178715,
+   "id": "w178715",
+   "sense_codes": [
+    193838
+   ]
+  },
+  {
+   "target_code": 178716,
+   "id": "w178716",
+   "sense_codes": [
+    194040
+   ]
+  },
+  {
+   "target_code": 178717,
+   "id": "w178717",
+   "sense_codes": [
+    14258,
+    45197
+   ]
+  },
+  {
+   "target_code": 178718,
+   "id": "w178718",
+   "sense_codes": [
+    192672
+   ]
+  },
+  {
+   "target_code": 178719,
+   "id": "w178719",
+   "sense_codes": [
+    388618
+   ]
+  },
+  {
+   "target_code": 178720,
+   "id": "w178720",
+   "sense_codes": [
+    368924,
+    372358
+   ]
+  },
+  {
+   "target_code": 178724,
+   "id": "w178724",
+   "sense_codes": [
+    193523
+   ]
+  },
+  {
+   "target_code": 178725,
+   "id": "w178725",
+   "sense_codes": [
+    13876,
+    45739
+   ]
+  },
+  {
+   "target_code": 178726,
+   "id": "w178726",
+   "sense_codes": [
+    193524
+   ]
+  },
+  {
+   "target_code": 178727,
+   "id": "w178727",
+   "sense_codes": [
+    14154
+   ]
+  },
+  {
+   "target_code": 178728,
+   "id": "w178728",
+   "sense_codes": [
+    388645
+   ]
+  },
+  {
+   "target_code": 178729,
+   "id": "w178729",
+   "sense_codes": [
+    462284
+   ]
+  },
+  {
+   "target_code": 178730,
+   "id": "w178730",
+   "sense_codes": [
+    192898
+   ]
+  },
+  {
+   "target_code": 178731,
+   "id": "w178731",
+   "sense_codes": [
+    192899
+   ]
+  },
+  {
+   "target_code": 178732,
+   "id": "w178732",
+   "sense_codes": [
+    192901
+   ]
+  },
+  {
+   "target_code": 178733,
+   "id": "w178733",
+   "sense_codes": [
+    535956
+   ]
+  },
+  {
+   "target_code": 178734,
+   "id": "w178734",
+   "sense_codes": [
+    425384
+   ]
+  },
+  {
+   "target_code": 178735,
+   "id": "w178735",
+   "sense_codes": [
+    193092
+   ]
+  },
+  {
+   "target_code": 178736,
+   "id": "w178736",
+   "sense_codes": [
+    193094
+   ]
+  },
+  {
+   "target_code": 178737,
+   "id": "w178737",
+   "sense_codes": [
+    535955
+   ]
+  },
+  {
+   "target_code": 178738,
+   "id": "w178738",
+   "sense_codes": [
+    388667
+   ]
+  },
+  {
+   "target_code": 178739,
+   "id": "w178739",
+   "sense_codes": [
+    193062
+   ]
+  },
+  {
+   "target_code": 178743,
+   "id": "w178743",
+   "sense_codes": [
+    195223
+   ]
+  },
+  {
+   "target_code": 178744,
+   "id": "w178744",
+   "sense_codes": [
+    195224
+   ]
+  },
+  {
+   "target_code": 178745,
+   "id": "w178745",
+   "sense_codes": [
+    572932
+   ]
+  },
+  {
+   "target_code": 178747,
+   "id": "w178747",
+   "sense_codes": [
+    516069,
+    519514,
+    521764,
+    522248
+   ]
+  },
+  {
+   "target_code": 178748,
+   "id": "w178748",
+   "sense_codes": [
+    195226
+   ]
+  },
+  {
+   "target_code": 178749,
+   "id": "w178749",
+   "sense_codes": [
+    193872,
+    860669
+   ]
+  },
+  {
+   "target_code": 178750,
+   "id": "w178750",
+   "sense_codes": [
+    193873
+   ]
+  },
+  {
+   "target_code": 178752,
+   "id": "w178752",
+   "sense_codes": [
+    195515
+   ]
+  },
+  {
+   "target_code": 178754,
+   "id": "w178754",
+   "sense_codes": [
+    189532
+   ]
+  },
+  {
+   "target_code": 178755,
+   "id": "w178755",
+   "sense_codes": [
+    189533
+   ]
+  },
+  {
+   "target_code": 178756,
+   "id": "w178756",
+   "sense_codes": [
+    189534
+   ]
+  },
+  {
+   "target_code": 178757,
+   "id": "w178757",
+   "sense_codes": [
+    189535
+   ]
+  },
+  {
+   "target_code": 178758,
+   "id": "w178758",
+   "sense_codes": [
+    424980
+   ]
+  },
+  {
+   "target_code": 178759,
+   "id": "w178759",
+   "sense_codes": [
+    572279
+   ]
+  },
+  {
+   "target_code": 178760,
+   "id": "w178760",
+   "sense_codes": [
+    189537
+   ]
+  },
+  {
+   "target_code": 178761,
+   "id": "w178761",
+   "sense_codes": [
+    195030
+   ]
+  },
+  {
+   "target_code": 178762,
+   "id": "w178762",
+   "sense_codes": [
+    462547
+   ]
+  },
+  {
+   "target_code": 178763,
+   "id": "w178763",
+   "sense_codes": [
+    195253
+   ]
+  },
+  {
+   "target_code": 178765,
+   "id": "w178765",
+   "sense_codes": [
+    425608
+   ]
+  },
+  {
+   "target_code": 178766,
+   "id": "w178766",
+   "sense_codes": [
+    195256
+   ]
+  },
+  {
+   "target_code": 178767,
+   "id": "w178767",
+   "sense_codes": [
+    195257
+   ]
+  },
+  {
+   "target_code": 178768,
+   "id": "w178768",
+   "sense_codes": [
+    515978,
+    519433
+   ]
+  },
+  {
+   "target_code": 178769,
+   "id": "w178769",
+   "sense_codes": [
+    351793
+   ]
+  },
+  {
+   "target_code": 178770,
+   "id": "w178770",
+   "sense_codes": [
+    388260
+   ]
+  },
+  {
+   "target_code": 178771,
+   "id": "w178771",
+   "sense_codes": [
+    498793
+   ]
+  },
+  {
+   "target_code": 178772,
+   "id": "w178772",
+   "sense_codes": [
+    424960
+   ]
+  },
+  {
+   "target_code": 178773,
+   "id": "w178773",
+   "sense_codes": [
+    189338
+   ]
+  },
+  {
+   "target_code": 178774,
+   "id": "w178774",
+   "sense_codes": [
+    572436
+   ]
+  },
+  {
+   "target_code": 178775,
+   "id": "w178775",
+   "sense_codes": [
+    535695
+   ]
+  },
+  {
+   "target_code": 178777,
+   "id": "w178777",
+   "sense_codes": [
+    13565,
+    45526
+   ]
+  },
+  {
+   "target_code": 178778,
+   "id": "w178778",
+   "sense_codes": [
+    191176
+   ]
+  },
+  {
+   "target_code": 178779,
+   "id": "w178779",
+   "sense_codes": [
+    191177
+   ]
+  },
+  {
+   "target_code": 178780,
+   "id": "w178780",
+   "sense_codes": [
+    498988
+   ]
+  },
+  {
+   "target_code": 178781,
+   "id": "w178781",
+   "sense_codes": [
+    191178
+   ]
+  },
+  {
+   "target_code": 178782,
+   "id": "w178782",
+   "sense_codes": [
+    191179
+   ]
+  },
+  {
+   "target_code": 178783,
+   "id": "w178783",
+   "sense_codes": [
+    535714
+   ]
+  },
+  {
+   "target_code": 178784,
+   "id": "w178784",
+   "sense_codes": [
+    498944
+   ]
+  },
+  {
+   "target_code": 178785,
+   "id": "w178785",
+   "sense_codes": [
+    572414
+   ]
+  },
+  {
+   "target_code": 178786,
+   "id": "w178786",
+   "sense_codes": [
+    552608,
+    556157
+   ]
+  },
+  {
+   "target_code": 178787,
+   "id": "w178787",
+   "sense_codes": [
+    190734
+   ]
+  },
+  {
+   "target_code": 178788,
+   "id": "w178788",
+   "sense_codes": [
+    190735
+   ]
+  },
+  {
+   "target_code": 178789,
+   "id": "w178789",
+   "sense_codes": [
+    351939
+   ]
+  },
+  {
+   "target_code": 178790,
+   "id": "w178790",
+   "sense_codes": [
+    462032
+   ]
+  },
+  {
+   "target_code": 178791,
+   "id": "w178791",
+   "sense_codes": [
+    462033
+   ]
+  },
+  {
+   "target_code": 178792,
+   "id": "w178792",
+   "sense_codes": [
+    12804,
+    45598
+   ]
+  },
+  {
+   "target_code": 178793,
+   "id": "w178793",
+   "sense_codes": [
+    535648
+   ]
+  },
+  {
+   "target_code": 178794,
+   "id": "w178794",
+   "sense_codes": [
+    190499
+   ]
+  },
+  {
+   "target_code": 178795,
+   "id": "w178795",
+   "sense_codes": [
+    351912
+   ]
+  },
+  {
+   "target_code": 178796,
+   "id": "w178796",
+   "sense_codes": [
+    498989
+   ]
+  },
+  {
+   "target_code": 178797,
+   "id": "w178797",
+   "sense_codes": [
+    191181
+   ]
+  },
+  {
+   "target_code": 178798,
+   "id": "w178798",
+   "sense_codes": [
+    191182
+   ]
+  },
+  {
+   "target_code": 178799,
+   "id": "w178799",
+   "sense_codes": [
+    425171
+   ]
+  },
+  {
+   "target_code": 178800,
+   "id": "w178800",
+   "sense_codes": [
+    191183
+   ]
+  },
+  {
+   "target_code": 178801,
+   "id": "w178801",
+   "sense_codes": [
+    191184
+   ]
+  },
+  {
+   "target_code": 178802,
+   "id": "w178802",
+   "sense_codes": [
+    191185
+   ]
+  },
+  {
+   "target_code": 178803,
+   "id": "w178803",
+   "sense_codes": [
+    191186
+   ]
+  },
+  {
+   "target_code": 178804,
+   "id": "w178804",
+   "sense_codes": [
+    498990
+   ]
+  },
+  {
+   "target_code": 178805,
+   "id": "w178805",
+   "sense_codes": [
+    191187
+   ]
+  },
+  {
+   "target_code": 178806,
+   "id": "w178806",
+   "sense_codes": [
+    190501
+   ]
+  },
+  {
+   "target_code": 178807,
+   "id": "w178807",
+   "sense_codes": [
+    190502
+   ]
+  },
+  {
+   "target_code": 178808,
+   "id": "w178808",
+   "sense_codes": [
+    190503
+   ]
+  },
+  {
+   "target_code": 178809,
+   "id": "w178809",
+   "sense_codes": [
+    388373
+   ]
+  },
+  {
+   "target_code": 178810,
+   "id": "w178810",
+   "sense_codes": [
+    462452
+   ]
+  },
+  {
+   "target_code": 178812,
+   "id": "w178812",
+   "sense_codes": [
+    190506
+   ]
+  },
+  {
+   "target_code": 178813,
+   "id": "w178813",
+   "sense_codes": [
+    190749
+   ]
+  },
+  {
+   "target_code": 178814,
+   "id": "w178814",
+   "sense_codes": [
+    190750
+   ]
+  },
+  {
+   "target_code": 178815,
+   "id": "w178815",
+   "sense_codes": [
+    190752
+   ]
+  },
+  {
+   "target_code": 178816,
+   "id": "w178816",
+   "sense_codes": [
+    190753
+   ]
+  },
+  {
+   "target_code": 178817,
+   "id": "w178817",
+   "sense_codes": [
+    535622
+   ]
+  },
+  {
+   "target_code": 178818,
+   "id": "w178818",
+   "sense_codes": [
+    425062
+   ]
+  },
+  {
+   "target_code": 178820,
+   "id": "w178820",
+   "sense_codes": [
+    388357
+   ]
+  },
+  {
+   "target_code": 178821,
+   "id": "w178821",
+   "sense_codes": [
+    190276
+   ]
+  },
+  {
+   "target_code": 178822,
+   "id": "w178822",
+   "sense_codes": [
+    13274,
+    45234,
+    65388
+   ]
+  },
+  {
+   "target_code": 178823,
+   "id": "w178823",
+   "sense_codes": [
+    194359
+   ]
+  },
+  {
+   "target_code": 178824,
+   "id": "w178824",
+   "sense_codes": [
+    405327,
+    408821
+   ]
+  },
+  {
+   "target_code": 178825,
+   "id": "w178825",
+   "sense_codes": [
+    424895
+   ]
+  },
+  {
+   "target_code": 178826,
+   "id": "w178826",
+   "sense_codes": [
+    188643
+   ]
+  },
+  {
+   "target_code": 178827,
+   "id": "w178827",
+   "sense_codes": [
+    535623
+   ]
+  },
+  {
+   "target_code": 178828,
+   "id": "w178828",
+   "sense_codes": [
+    552616,
+    556163
+   ]
+  },
+  {
+   "target_code": 178829,
+   "id": "w178829",
+   "sense_codes": [
+    552617,
+    556164
+   ]
+  },
+  {
+   "target_code": 178830,
+   "id": "w178830",
+   "sense_codes": [
+    535624
+   ]
+  },
+  {
+   "target_code": 178831,
+   "id": "w178831",
+   "sense_codes": [
+    190277
+   ]
+  },
+  {
+   "target_code": 178832,
+   "id": "w178832",
+   "sense_codes": [
+    535625
+   ]
+  },
+  {
+   "target_code": 178833,
+   "id": "w178833",
+   "sense_codes": [
+    572363
+   ]
+  },
+  {
+   "target_code": 178835,
+   "id": "w178835",
+   "sense_codes": [
+    535626
+   ]
+  },
+  {
+   "target_code": 178836,
+   "id": "w178836",
+   "sense_codes": [
+    190279
+   ]
+  },
+  {
+   "target_code": 178840,
+   "id": "w178840",
+   "sense_codes": [
+    188645
+   ]
+  },
+  {
+   "target_code": 178841,
+   "id": "w178841",
+   "sense_codes": [
+    461799
+   ]
+  },
+  {
+   "target_code": 178842,
+   "id": "w178842",
+   "sense_codes": [
+    188646
+   ]
+  },
+  {
+   "target_code": 178843,
+   "id": "w178843",
+   "sense_codes": [
+    424896
+   ]
+  },
+  {
+   "target_code": 178844,
+   "id": "w178844",
+   "sense_codes": [
+    572168
+   ]
+  },
+  {
+   "target_code": 178845,
+   "id": "w178845",
+   "sense_codes": [
+    535418
+   ]
+  },
+  {
+   "target_code": 178846,
+   "id": "w178846",
+   "sense_codes": [
+    188647
+   ]
+  },
+  {
+   "target_code": 178847,
+   "id": "w178847",
+   "sense_codes": [
+    188648
+   ]
+  }
+ ]
+}
