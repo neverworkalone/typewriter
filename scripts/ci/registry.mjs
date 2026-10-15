@@ -151,8 +151,14 @@ const RAW_CI_CATEGORIES = Object.freeze({
           'Test Issue #713 meaning/adjudication data contract (ids, initial codes, shard placement, canonical references)',
           ['--test', 'scripts/meaning/contract.test.mjs'],
         ),
-        schedule: 'affected',
-        paths: ['scripts/meaning', 'data/meanings', 'data/adjudication'],
+        tier: 'normal',
+      },
+      {
+        ...commandCheck(
+          'Validate meaning/adjudication references against current canonical',
+          ['scripts/meaning/validate.mjs'],
+        ),
+        tier: 'normal',
       },
       pnpmCheck('Validate lexical rule inventory', 'validate:rules'),
       testCheck('tests/lexical-rule-inventory.test.mjs', 'Test lexical rule inventory'),

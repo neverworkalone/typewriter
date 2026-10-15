@@ -9,6 +9,8 @@ import {
   parseShardFileName, planShards, readAdjudications, readMeanings, shardFileName, validateAdjudicationRow,
   validateMeaningDataset, validateMeaningRow, writeAdjudications, writeMeanings,
 } from './contract.mjs';
+import { mkdirSync } from 'node:fs';
+import { loadMeaningData } from './contract.mjs';
 import { validateMeaningFiles } from './validate.mjs';
 
 const tmp = () => mkdtempSync(path.join(tmpdir(), 'meaning-'));
@@ -199,6 +201,25 @@ test('every real canonical lemma initial maps consistently to a valid code', () 
     const isChoseong = Object.hasOwn(INITIAL_CODES, first) || (first >= '가' && first <= '힣');
     assert.equal(code === OTHER_INITIAL_CODE, !isChoseong, first);
   }
+});
+
+test('canonical-only edits break unchanged meaning/adjudication references (real-shaped canonical)', () => {
+  const real = JSON.parse(readFileSync(path.resolve(import.meta.dirname, '../../data/canonical/stdict-0001.jsonl'), 'utf8').split('\n')[1]);
+  assert.ok(real.senses.length >= 2);
+  const [keep, other] = real.senses.map((sense) => sense.id);
+  const setup = (entry) => {
+    const root = tmp();
+    const canonical = path.join(root, 'canonical');
+    mkdirSync(canonical);
+    writeFileSync(path.join(canonical, 'stdict-0001.jsonl'), `${JSON.stringify(entry)}\n`);
+    writeMeanings(path.join(root, 'meanings'), [{ id: meaningId(real.id), lemma: real.lemma, gloss: '뜻', sense_ids: [keep] }]);
+    writeAdjudications(path.join(root, 'adjudication'), [{ sense_id: other, lemma: real.lemma, decision: 'drop', reason: 'duplicate', duplicate_of: keep }]);
+    return () => loadMeaningData({ meaningsDirectory: path.join(root, 'meanings'), adjudicationDirectory: path.join(root, 'adjudication'), canonicalDirectory: canonical }).errors;
+  };
+  assert.deepEqual(setup(real)(), []);
+  assert.match(setup({ ...real, senses: real.senses.filter((sense) => sense.id !== keep) })().join('\n'), /unknown canonical sense/);
+  assert.match(setup({ ...real, senses: real.senses.filter((sense) => sense.id !== other) })().join('\n'), /adjudicated unknown canonical sense/);
+  assert.match(setup({ ...real, lemma: `${real.lemma}다` })().join('\n'), /differs from canonical/);
 });
 
 test('committed meaning and adjudication data satisfy the contract', () => {

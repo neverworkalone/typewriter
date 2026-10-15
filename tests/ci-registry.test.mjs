@@ -805,7 +805,7 @@ test('Deep gate separates validated data from affected contracts and fails close
   ));
   assert.ok(normalSemanticAuthorityTest, 'Normal must retain semantic-authority regressions');
   const allDeep = selectChecksForPolicy(allChecks, CI_LEVEL_EXECUTION_POLICY.all).filter((check) => check.tier === 'deep');
-  assert.equal(allDeep.length, 8, 'scheduled/manual ci:all keeps all current-system Deep checks');
+  assert.equal(allDeep.length, 7, 'scheduled/manual ci:all keeps all current-system Deep checks');
   const affectedBenchmarkChecks = selectChecksForPolicy(allChecks, {
     tiers: ['deep'],
     changedPaths: ['scripts/benchmark/sqlite-runtime.mjs'],
@@ -1160,4 +1160,18 @@ test('PR gate never selects Full Deep and preserves affected checks even alongsi
   assert.doesNotMatch(workflow, /pnpm run ci:all|Full Deep validation/u);
   assert.match(weeklyDeep, /pnpm run ci:all/u);
   assert.match(weeklyDeep, /cron: '0 22 \* \* 0'/u);
+});
+
+test('meaning reference integrity is a Normal check selected even when only canonical data changes', () => {
+  const meaningChecks = Object.values(CI_CATEGORIES).flatMap((category) => category.checks)
+    .filter((check) => /meaning\/adjudication/u.test(check.label));
+  assert.equal(meaningChecks.length, 2);
+  for (const check of meaningChecks) {
+    assert.equal(check.tier, 'normal');
+    assert.equal(check.schedule, 'always');
+  }
+  for (const changedPaths of [['data/canonical/stdict-0001.jsonl'], ['data/meanings/c01_001.jsonl'], []]) {
+    const selected = selectChecksForPolicy(meaningChecks, { tiers: ['normal'], changedPaths });
+    assert.equal(selected.length, 2, JSON.stringify(changedPaths));
+  }
 });
