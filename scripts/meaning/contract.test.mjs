@@ -47,9 +47,9 @@ test('meaning ids reuse the entry number; numbering need not be contiguous', () 
 
 test('row schema accepts valid and rejects invalid meanings and adjudications', () => {
   assert.deepEqual(validateMeaningRow({ id: 'm0097_1', lemma: '가다', gloss: '이동하다.', sense_ids: ['w0097-s1', 'w0097-s3'] }), []);
+  assert.deepEqual(validateMeaningRow({ id: 'm0097_1', lemma: '가다', gloss: '이동하다.', sense_ids: ['w0097-s1', 'w0098-s2'] }), []);
   const invalid = [
     { id: 'm0097_1', lemma: '가다', gloss: '이동하다.', sense_ids: [] },
-    { id: 'm0097_1', lemma: '가다', gloss: '이동하다.', sense_ids: ['w0098-s1'] },
     { id: 'm0097_1', lemma: '가다', gloss: '이동하다.', sense_ids: ['w0097-s1', 'w0097-s1'] },
     { id: 'm0097_1', lemma: ' 가다', gloss: '이동하다.', sense_ids: ['w0097-s1'] },
     { id: 'm0097_1', lemma: '가다', gloss: '', sense_ids: ['w0097-s1'] },
@@ -317,4 +317,19 @@ test('real data: committed meanings satisfy the file contract without re-reading
   const senses = new Map([['w1-s1', { lemma: '가' }], ['w1-s2', { lemma: '가' }]]);
   assert.match(loadMeaningData({ ...args, senses, complete: true }).errors.join('\n'), /w1-s2: canonical sense has no meaning/);
   assert.deepEqual(loadMeaningData({ ...args, senses: new Map([['w1-s1', { lemma: '가' }]]), complete: true }).errors, []);
+});
+
+test('cross-record MERGE: same lemma passes, different lemma fails, duplicate_of must share the lemma', () => {
+  const senses = new Map([['w1-s1', { lemma: '가' }], ['w1-s2', { lemma: '가' }], ['w2-s1', { lemma: '가' }], ['w3-s1', { lemma: '나' }]]);
+  const errorsOf = (meanings, adjudications = []) => validateMeaningDataset({ meanings, adjudications, senses }).join('\n');
+  assert.equal(errorsOf([row('m1_1', '가', ['w1-s1', 'w1-s2'])]), '');
+  assert.equal(errorsOf([row('m1_1', '가', ['w1-s1', 'w2-s1'])]), '');
+  assert.match(errorsOf([row('m1_1', '가', ['w1-s1', 'w3-s1'])]), /differs from canonical/);
+  assert.match(errorsOf([row('m1_1', '가', ['w1-s1']), row('m2_1', '가', ['w1-s1', 'w2-s1'])]), /referenced by both/);
+  const drop = { sense_id: 'w2-s1', lemma: '가', decision: 'drop', reason: 'duplicate', duplicate_of: 'w1-s1' };
+  assert.equal(errorsOf([row('m1_1', '가', ['w1-s1'])], [drop]), '');
+  assert.match(errorsOf([row('m1_1', '가', ['w1-s1', 'w2-s1'])], [drop]), /still referenced/);
+  assert.match(errorsOf([], [{ ...drop, duplicate_of: 'w9-s1' }]), /unknown duplicate_of/);
+  assert.match(errorsOf([], [{ ...drop, duplicate_of: 'w3-s1' }]), /has lemma 나, not 가/);
+  assert.match(errorsOf([], [drop, { ...drop, sense_id: 'w1-s2', duplicate_of: 'w2-s1' }]), /itself dropped/);
 });
