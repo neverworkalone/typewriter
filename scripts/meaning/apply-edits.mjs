@@ -2,22 +2,9 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  parseShardFileName, readAdjudications, readMeanings, validateAdjudicationRow, validateMeaningRow,
+  compareSenseIds, parseShardFileName, readAdjudications, readMeanings, validateAdjudicationRow, validateMeaningDataset, validateMeaningRow,
   writeAdjudications,
 } from './contract.mjs';
-
-const SENSE = /^w(\d+)-s(\d+)$/u;
-// Canonical order (record number, then sense number), exact for unbounded ids.
-const compareSenseIds = (a, b) => {
-  const [, ea, na] = SENSE.exec(a) ?? [null, '0', '0'];
-  const [, eb, nb] = SENSE.exec(b) ?? [null, '0', '0'];
-  const ra = BigInt(ea);
-  const rb = BigInt(eb);
-  if (ra !== rb) return ra < rb ? -1 : 1;
-  const sa = BigInt(na);
-  const sb = BigInt(nb);
-  return sa < sb ? -1 : sa > sb ? 1 : 0;
-};
 
 /**
  * Applies an edit spec to the meaning/adjudication rows (Issue #715).
@@ -75,11 +62,14 @@ export function applyEdits({ meanings, adjudications }, spec) {
     removed.add(row.id);
     newAdjudications.push(verdict);
   }
-  if (errors.length) throw new Error([...new Set(errors)].join('\n'));
-  return {
+  const result = {
     meanings: [...meanings.filter((row) => !removed.has(row.id)), ...added],
     adjudications: [...adjudications, ...newAdjudications],
   };
+  // The produced rows must satisfy the shared dataset contract (ids, representative record, references) before anything is written.
+  if (!errors.length) errors.push(...validateMeaningDataset(result));
+  if (errors.length) throw new Error([...new Set(errors)].join('\n'));
+  return result;
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

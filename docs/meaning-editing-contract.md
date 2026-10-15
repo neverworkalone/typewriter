@@ -27,7 +27,7 @@
 ## 도구와 절차
 
 - 편집 지시는 JSON 스펙(`{ merges: [{ senses: [sense id, ...], gloss }], drops: [{ sense_id, duplicate_of }] }`)이다. `node scripts/meaning/apply-edits.mjs <spec.json>`가 적용한다.
-- 적용은 **제자리 편집**이다. 행은 현재 shard에 남고 shard를 재배치하지 않으므로, 한 lemma 편집이 다른 shard의 diff를 만들지 않는다 (cXX 단위 병렬 작업 보장).
+- 적용은 제자리 편집이며, 한 lemma 편집이 무관한 shard를 재배치하지 않는다.
 - 잘못된 스펙(1개 sense 병합, 이미 병합/DROP된 sense, 중복 편집, 존재하지 않는 sense, 빈 gloss, 다른 lemma 병합, 같은 record든 다른 record든 존재하지 않거나 이미 DROP된 `duplicate_of`, 잘못된 reason)은 **전체를 거부**하고 일부만 적용하지 않는다.
 - 적용 후 `node scripts/meaning/validate.mjs`(complete)로 모든 canonical sense가 정확히 하나의 meaning에 있거나 DROP 기록이 있음을 확인한다.
 - 스펙 파일은 편집 이력으로 보존한다 (`scripts/meaning/pilot-715.json`).

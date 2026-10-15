@@ -71,6 +71,18 @@ test('senses of different records of the SAME lemma merge under the first sense 
   assert.throws(() => applyEdits({ meanings, adjudications: [] }, { merges: [{ senses: ['w50-s1', 'w52-s1'], gloss: 'x' }] }), /different lemmas/u);
 });
 
+test('equal record numbers with different zero-padding yield one id regardless of input order, accepted by the validator', () => {
+  const meanings = [...initial('w0097', '가', 1), ...initial('w00097', '가', 1)];
+  const known = new Map([['w0097-s1', { lemma: '가' }], ['w00097-s1', { lemma: '가' }]]);
+  const results = [['w0097-s1', 'w00097-s1'], ['w00097-s1', 'w0097-s1']].map((order) => {
+    const next = applyEdits({ meanings, adjudications: [] }, { merges: [{ senses: order, gloss: '합친 뜻' }] });
+    assert.deepEqual(validateMeaningDataset({ ...next, senses: known, complete: true }), []);
+    return next.meanings;
+  });
+  assert.deepEqual(results[0], results[1]);
+  assert.equal(results[0][0].id, 'm00097');
+});
+
 test('pilot spec (#715) uses valid sense ids, unique members and never edits away a duplicate_of target', () => {
   const spec = JSON.parse(readFileSync(path.join(root, 'scripts/meaning/pilot-715.json'), 'utf8'));
   const seen = new Set();
