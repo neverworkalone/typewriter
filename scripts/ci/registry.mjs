@@ -146,6 +146,14 @@ const RAW_CI_CATEGORIES = Object.freeze({
       testCheck('tests/canonical-context.test.mjs', 'Test shared canonical context'),
       testCheck('tests/stdict-import.test.mjs', 'Test STDICT canonical conversion, licensed-source gate and pilot shard'),
       testCheck('tests/validate-dataset-integrity.test.mjs', 'Test dataset validator'),
+      {
+        ...commandCheck(
+          'Test Issue #713 meaning/adjudication data contract (ids, initial codes, shard placement, canonical references)',
+          ['--test', 'scripts/meaning/contract.test.mjs'],
+        ),
+        schedule: 'affected',
+        paths: ['scripts/meaning', 'data/meanings', 'data/adjudication'],
+      },
       pnpmCheck('Validate lexical rule inventory', 'validate:rules'),
       testCheck('tests/lexical-rule-inventory.test.mjs', 'Test lexical rule inventory'),
       testCheck('tests/ci-runner.test.mjs', 'Test CI category runner fail-fast behavior'),
