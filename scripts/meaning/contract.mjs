@@ -9,7 +9,7 @@ import path from 'node:path';
  */
 
 // Explicit mapping table: Hangul initial consonant (choseong) -> shard group code. `c20` collects lemmas that do not
-// start with a Hangul syllable. Order follows the Unicode choseong index so the table is auditable.
+// start with a Hangul syllable or a bare initial jamo such as `ㄱ`. Order follows the Unicode choseong index so the table is auditable.
 export const INITIAL_CODES = Object.freeze({
   'ㄱ': 'c01', 'ㄲ': 'c02', 'ㄴ': 'c03', 'ㄷ': 'c04', 'ㄸ': 'c05', 'ㄹ': 'c06', 'ㅁ': 'c07', 'ㅂ': 'c08', 'ㅃ': 'c09',
   'ㅅ': 'c10', 'ㅆ': 'c11', 'ㅇ': 'c12', 'ㅈ': 'c13', 'ㅉ': 'c14', 'ㅊ': 'c15', 'ㅋ': 'c16', 'ㅌ': 'c17', 'ㅍ': 'c18',
