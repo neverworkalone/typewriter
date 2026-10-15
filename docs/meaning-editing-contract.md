@@ -71,6 +71,6 @@
 ## c03(ㄴ) 전량 편집 기록 (Issue #716)
 
 - 범위: `data/meanings/c03_*.jsonl` 전체. 2개 이상 meaning을 가진 lemma 2,552개(7,326 meaning)를 모두 검토했고 나머지(단일 meaning lemma)는 KEEP이다.
-- 결과: c03 meaning 18,465 → 17619개. MERGE 762건, DROP duplicate 3건(`data/adjudication/c03_001.jsonl`). 적용 스펙은 `scripts/meaning/edits/c03-716/*.json`에 보존한다(`100.json`은 속담 일관성 보정).
+- 결과: c03 meaning 18,465 → 17619개. MERGE 762건, DROP duplicate 4건(`data/adjudication/c03_001.jsonl`). 적용 스펙은 `scripts/meaning/edits/c03-716/*.json`에 보존한다(`100.json`은 속담 일관성 보정).
 - 적용 기준: 같은 어간의 파생형(-하다/-히/-대다/-거리다/품사 변형)은 동일한 축을 같은 방식으로 합쳤다. 서로 다른 지시 대상(동음이의어, 고유명사, 서로 다른 학술 용어), 방향이 반대인 뜻, 관용·비유는 KEEP했다.
 - 리뷰 표기: 작성·1차·2차 점검은 모두 작성 agent의 **자체 점검**이며 독립 리뷰가 아니다. `validate.mjs`(complete)로 전체 sense 포함을 확인했다.
