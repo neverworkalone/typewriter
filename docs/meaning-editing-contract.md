@@ -75,8 +75,8 @@
 ### c13 (ㅈ)
 
 - 범위: `c13_001`~`c13_059`, lemma 39,935개 · meaning 58,732개. 기존 pilot DROP `w292883-s1`은 보존했다.
-- 결과: MERGE 288건(576 sense → 288 meaning), 새 DROP `duplicate` 19건. `c13`은 58,732 → 58,425 meaning, adjudication은 1 → 20건이다. 스펙은 `scripts/meaning/c13-716.json`이며, canonical 원본은 바꾸지 않았다.
-- 후보 검토: 같은 POS의 gloss 어휘 토큰 Jaccard가 0.5 이상인 318개 lemma 그룹을 원문 sense 기준으로 확인했다. 이와 별도로 `것`/`수`/`수의` 정의가 정확히 맞는 명사·관형 쌍 206개와, 단단한 물체의 충돌 소리에서 일반 충돌과 서로 걸리는 물체의 충돌만 다른 42쌍을 확인했다. 모든 19개 DROP은 gloss가 같고 canonical에 직접 동의어 연결이 있는 경우로 한정했다. 이 후보 범위 밖의 저유사도 다중 meaning lemma는 개별 대조하지 않고 KEEP으로 두었으므로 전수 개별 semantic review를 뜻하지 않는다.
+- 결과: MERGE 284건(568 sense → 284 meaning), 새 DROP `duplicate` 23건. `c13`은 58,732 → 58,425 meaning, adjudication은 1 → 24건이다. 스펙은 `scripts/meaning/c13-716.json`이며, canonical 원본은 바꾸지 않았다.
+- 후보 검토: 같은 POS의 gloss 어휘 토큰 Jaccard가 0.5 이상인 318개 lemma 그룹을 원문 sense 기준으로 확인했다. 이와 별도로 `것`/`수`/`수의` 정의가 정확히 맞는 명사·관형 쌍 206개와, 단단한 물체의 충돌 소리에서 일반 충돌과 서로 걸리는 물체의 충돌만 다른 42쌍을 확인했다. 처음 기록한 19개 DROP은 gloss가 같고 canonical의 direct 연결도 있는 중복이었다. Stage 2 피드백에서 `조식`, `중대문`, `중도`, `지상`의 같은 lemma·같은 품사·완전히 같은 source gloss 4쌍을 추가로 확인해, direct 관계 유무를 DROP 조건으로 삼지 않고 `duplicate`로 adjudicate했다. 이 후보 범위 밖의 저유사도 다중 meaning lemma는 개별 대조하지 않고 KEEP으로 두었으므로 전수 개별 semantic review를 뜻하지 않는다.
 - 새 경계 사례: 소리의 대상만 일반 물체에서 서로 걸리는 단단한 물체로 좁혀지는 쌍은 같은 충돌 소리 meaning으로 MERGE했다. 잠금쇠가 잠기거나 열리는 소리, 끈기 있는 물체가 달라붙는 소리, 주체가 받음/전함처럼 방향이 반대인 sense는 구분을 유지했다. 직함의 시대·기관 차이, 가족 호칭의 지칭 대상 차이도 KEEP했다.
 
 ### 리뷰 기록 (정직한 표기, c13)
