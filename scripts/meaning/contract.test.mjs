@@ -297,9 +297,20 @@ test('edited corpus (merge, gloss edit, DROP) stays valid under the complete con
   assert.ok(validateMeaningDataset({ meanings: edited, senses, complete: true }).some((e) => e.startsWith('w001-s3: canonical sense has no meaning')));
 });
 
-test('real data: committed meanings satisfy the complete contract against canonical (edits allowed)', () => {
-  // Equality with the initial projection is a one-off check (`node scripts/meaning/initial.mjs --check`), not a
-  // standing invariant: editing (merge, gloss change, DROP) legitimately diverges from it.
-  const { errors } = validateMeaningFiles();
+test('real data: committed meanings satisfy the file contract without re-reading canonical', () => {
+  // Canonical references and completeness of the stored corpus are checked once, by the Normal in-process
+  // `meaning-references` check on the shared session context. Equality with the initial projection is a one-off
+  // manual check (`node scripts/meaning/initial.mjs --check`), not a standing invariant.
+  const { meanings, errors } = validateMeaningFiles({ canonical: false });
   assert.deepEqual(errors, []);
+  assert.ok(meanings.length > 0);
+  // A stored row plus an impossible canonical directory proves the opt-out never scans canonical.
+  const root = tmp();
+  writeMeanings(path.join(root, 'm'), [row('m1', '가', ['w1-s1'])]);
+  const args = { meaningsDirectory: path.join(root, 'm'), adjudicationDirectory: path.join(root, 'a') };
+  assert.deepEqual(loadMeaningData({ ...args, canonicalDirectory: null, complete: true }).errors, []);
+  // The shared-context path enforces completeness: an uncovered canonical sense fails, a covered one passes.
+  const senses = new Map([['w1-s1', { lemma: '가' }], ['w1-s2', { lemma: '가' }]]);
+  assert.match(loadMeaningData({ ...args, senses, complete: true }).errors.join('\n'), /w1-s2: canonical sense has no meaning/);
+  assert.deepEqual(loadMeaningData({ ...args, senses: new Map([['w1-s1', { lemma: '가' }]]), complete: true }).errors, []);
 });
