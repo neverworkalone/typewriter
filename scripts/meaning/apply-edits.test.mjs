@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
@@ -47,6 +49,60 @@ test('drop records a duplicate verdict across records and keeps the target meani
   assert.deepEqual(next.adjudications, [{ sense_id: 'w21-s1', lemma: '전락하다', decision: 'drop', reason: 'duplicate', duplicate_of: 'w20-s1' }]);
   assert.equal(next.meanings.some((row) => row.sense_ids.includes('w21-s1')), false);
   assert.deepEqual(validateMeaningDataset({ ...next, senses: allSenses(senses('w20', 2), senses('w21', 1)), complete: true }), []);
+});
+
+test('out_of_scope drops omit duplicate_of and remove meanings without a redirect', () => {
+  const meanings = [...initial('w20', 'ㅏ', 2), ...initial('w21', 'apple', 1)];
+  const next = applyEdits({ meanings, adjudications: [] }, {
+    drops: [{ sense_id: 'w20-s1', reason: 'out_of_scope' }],
+  });
+  assert.deepEqual(next.adjudications, [{ sense_id: 'w20-s1', lemma: 'ㅏ', decision: 'drop', reason: 'out_of_scope' }]);
+  assert.equal(next.meanings.some((row) => row.sense_ids.includes('w20-s1')), false);
+  assert.deepEqual(validateMeaningDataset({
+    ...next,
+    senses: new Map([
+      ['w20-s1', { lemma: 'ㅏ' }],
+      ['w20-s2', { lemma: 'ㅏ' }],
+      ['w21-s1', { lemma: 'apple' }],
+    ]),
+    complete: true,
+  }), []);
+  assert.throws(() => applyEdits({ meanings, adjudications: [] }, {
+    drops: [{ sense_id: 'w20-s1', reason: 'out_of_scope', duplicate_of: 'w20-s2' }],
+  }), /duplicate_of must be absent/u);
+  assert.throws(() => applyEdits({ meanings, adjudications: [] }, {
+    drops: [{ sense_id: 'w20-s1', reason: 'duplicate' }],
+  }), /duplicate_of must be a canonical sense id/u);
+});
+
+test('apply-edits removes a shard when all its meanings are dropped', () => {
+  const tempRoot = mkdtempSync(path.join(tmpdir(), 'meaning-apply-edits-'));
+  const scriptDir = path.join(tempRoot, 'scripts/meaning');
+  const meaningsDir = path.join(tempRoot, 'data/meanings');
+  const adjudicationDir = path.join(tempRoot, 'data/adjudication');
+  mkdirSync(scriptDir, { recursive: true });
+  mkdirSync(meaningsDir, { recursive: true });
+  mkdirSync(adjudicationDir, { recursive: true });
+  copyFileSync(path.join(root, 'scripts/meaning/apply-edits.mjs'), path.join(scriptDir, 'apply-edits.mjs'));
+  copyFileSync(path.join(root, 'scripts/meaning/contract.mjs'), path.join(scriptDir, 'contract.mjs'));
+  writeFileSync(path.join(meaningsDir, 'c20_001.jsonl'), [
+    { id: 'm20_1', lemma: 'ㅏ', gloss: '글자', sense_ids: ['w20-s1'] },
+    { id: 'm21_1', lemma: 'ㅏ', gloss: '소리', sense_ids: ['w21-s1'] },
+  ].map((row) => `${JSON.stringify(row)}\n`).join(''));
+  const specPath = path.join(tempRoot, 'edits.json');
+  writeFileSync(specPath, JSON.stringify({ drops: [
+    { sense_id: 'w20-s1', reason: 'out_of_scope' },
+    { sense_id: 'w21-s1', reason: 'out_of_scope' },
+  ] }));
+
+  const result = spawnSync(process.execPath, [realpathSync(path.join(scriptDir, 'apply-edits.mjs')), specPath], { encoding: 'utf8' });
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  assert.deepEqual(readdirSync(meaningsDir), [], result.stdout);
+  assert.deepEqual(readFileSync(path.join(adjudicationDir, 'c20_001.jsonl'), 'utf8').trimEnd().split('\n').map(JSON.parse), [
+    { sense_id: 'w20-s1', lemma: 'ㅏ', decision: 'drop', reason: 'out_of_scope' },
+    { sense_id: 'w21-s1', lemma: 'ㅏ', decision: 'drop', reason: 'out_of_scope' },
+  ]);
+  assert.equal(existsSync(path.join(meaningsDir, 'c20_001.jsonl')), false);
 });
 
 test('invalid edits are rejected whole: cross-record merge, re-edit, single-sense merge, dropped duplicate_of, unknown sense', () => {
