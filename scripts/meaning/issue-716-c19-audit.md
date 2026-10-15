@@ -73,3 +73,11 @@ On 2026-10-16, a source-bound pass reviewed all 131 multi-meaning lemma groups i
 The audit is `scripts/meaning/issue-716-c19-003-audit.md`, with the reproducible edit specification in `scripts/meaning/issue-716-c19-003.json`. The full C19 projection now has 33,380 meanings and 33,630 canonical sense references; its 11 prior C19 adjudications are unchanged. `node scripts/meaning/validate.mjs` passed with 496,981 meanings and 117 adjudications, and `git diff --check` passed. Canonical data remains unchanged.
 
 This completes authoring decisions for c19_003 only. Multi-meaning groups in the remaining C19 shards are still pending, and Issue #716 remains open. The independent PR review stages remain required.
+
+## Follow-up status — c19_004
+
+On 2026-10-16, a source-bound pass reviewed all 147 multi-meaning lemma groups in `c19_004`; the 574 single-meaning lemma groups retain their existing meanings except for eligible source-reference gloss edits. The shard started with 999 meanings and 1,003 canonical sense references across 721 lemmas. It now has 977 meanings with all 1,003 references preserved after 21 MERGE decisions covering 43 source senses, six direct cross-reference GLOSS EDITs, and no DROP decisions. Four source groups already merged at the base remain unchanged. No lemma overlaps another C19 shard.
+
+The audit is `scripts/meaning/issue-716-c19-004-audit.md`, with reproducible edits in `scripts/meaning/issue-716-c19-004.json`. Two malformed or unresolved cross-references remain held with no guessed gloss. The full C19 projection now has 33,358 meanings and 33,630 canonical sense references; its 11 prior C19 adjudications are unchanged. `node scripts/meaning/validate.mjs` passed with 496,959 meanings and 117 adjudications, and `git diff --check` passed. Canonical data remains unchanged.
+
+This completes authoring decisions for c19_004 only. The remaining C19 shards are pending, and Issue #716 remains open. The independent PR review stages remain required.
