@@ -47,3 +47,9 @@ Every duplicate pair was checked against the canonical gloss, lemma, POS, and so
 The source-bound author check and follow-up check were performed in this primary agent context. This is agent self-check, not independent first/second review or human editorial approval. The review process required by Issue #716 remains separate.
 
 This pass does not claim that every C19 polysemy group has been adjudicated. Its census screened exact same-lemma/POS/gloss duplicates and narrowly defined noun/determiner equivalence; it did not inspect every multi-meaning lemma. The remaining groups are pending, and unchanged rows are not complete KEEP decisions. C19 must not be marked complete on the strength of this partial pass; Issue #716 remains open.
+
+## Follow-up status — c19_001
+
+On 2026-10-15, a separate source-bound pass reviewed the 142 non-pilot multi-meaning lemma groups in `c19_001`; the `하다` senses were already edited in the #715 pilot. The shard began with 983 meanings / 1,000 canonical sense references across 660 lemmas, including 517 single-source-sense singleton lemmas. The 54 MERGE decisions (49 pairs and five three-sense groups) reduce the shard to 924 meanings while preserving all 1,000 source references. No new DROP was needed; the 11 prior C19 adjudications remain unchanged.
+
+The follow-up audit is `scripts/meaning/issue-716-c19-001-audit.md`, with edits in `scripts/meaning/issue-716-c19-001.json`. The full C19 projection now has 33,446 meanings and 33,630 canonical sense references. Repository validation passed at 498,392 meanings / 33 adjudications. This completes authoring decisions for the `c19_001` shard only; the other C19 groups remain pending and Issue #716 stays open. The independent PR review stages remain required.
