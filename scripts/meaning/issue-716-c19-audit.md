@@ -127,3 +127,16 @@ On 2026-10-16, a source-bound pass reviewed all 118 multi-meaning lemma groups i
 The complete source review is `scripts/meaning/issue-716-c19-009-audit.md`, with the reproducible edit specification in `scripts/meaning/issue-716-c19-009.json`. The full C19 projection now has 33,207 meanings and 33,630 canonical sense references; the 11 prior C19 adjudications are unchanged. `node scripts/meaning/validate.mjs` passed with 496,808 meanings and 117 adjudications, and `git diff --check` passed. Canonical data remains unchanged.
 
 This completes authoring decisions for c19_009 only. The remaining C19 shards are pending, and Issue #716 remains open. The independent PR review stages remain required.
+
+
+## Follow-up correction — c19_009 audit
+
+After PR #757 merged, the indexed “원말” summary in scripts/meaning/issue-716-c19-009-audit.md was corrected: 해자05 belongs to w369632-s1, and the omitted 해태04 reference belongs to w502809-s1. w502149-s1 remains a separate 해좌 meaning. This documentation correction changes no meaning data or edit decisions.
+
+## Follow-up status — c19_010
+
+On 2026-10-16, a source-bound pass reviewed the 145 multi-meaning lemma groups in `c19_010`; the other 564 single-meaning lemma groups retain their existing meanings except for exact cross-reference gloss edits. The shard began with 995 meaning rows and 1,000 canonical sense references across 709 lemmas. After review feedback, it has 940 rows, preserving all 1,000 references, after 45 MERGE decisions covering 100 source senses (a net reduction of 55 rows), 13 exact cross-reference GLOSS EDITs, and no DROP decisions.
+
+The complete source review is `scripts/meaning/issue-716-c19-010-audit.md`, with the reproducible edit specification in `scripts/meaning/issue-716-c19-010.json`. Feedback led to keeping the two `행정 경찰` source senses separate because one denotes police personnel/organization and the other the policing action, and to making the `행혀나` gloss directly understandable without looking up `행여`. All 46 original MERGE decisions were rechecked for action/agent and place/action mismatches; after splitting `행정 경찰`, the other 45 remain. `향도` remains merged because its broader source sense explicitly includes both guiding and the guide person, while the second sense specifies the military guide role. No other mismatch in those categories was found. The feedback submission account matches the PR author and is not counted as an independent review.
+
+The full C19 projection now has 33,152 meaning rows and 33,630 canonical sense references. `node scripts/meaning/validate.mjs` passed with 496,753 meanings and 117 adjudications, and `git diff --check` passed. Canonical data remains unchanged. This completes authoring decisions for `c19_010` only; remaining C19 work and Issue #716 stay open. Independent PR review stages remain required.

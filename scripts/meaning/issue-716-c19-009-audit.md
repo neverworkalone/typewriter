@@ -176,10 +176,15 @@ Five references remain held because their source labels do not identify one targ
 | w364992-s1 | 핼기동이 → 먼산바라기 | 먼산바라기에 두 canonical sense가 있어 source가 target sense를 지정하지 않음 |
 | w365600-s1 | 햄기동이 → 먼산바라기 | 먼산바라기에 두 canonical sense가 있어 source가 target sense를 지정하지 않음 |
 
-Three additional source glosses use indexed “원말” references rather than an arrow: w371067-s1 points to 해장03, w371068-s1 to 해장하다02, and w502149-s1 to 해자05. The committed projection does not preserve an exact mapping from those source indices to one target sense ID, so these remain unchanged rather than receiving guessed glosses.
+Four additional source glosses use indexed “원말” references rather than an arrow: w371067-s1 points to 해장03, w371068-s1 to 해장하다02, w369632-s1 to 해자05, and w502809-s1 to 해태04. The committed projection does not preserve exact mappings from those source indices to one target sense ID, so these remain unchanged rather than receiving guessed glosses.
 
 ## Scope and validation
 
 All source bindings remain represented exactly once. No same-lemma, same-POS, identical-gloss source pair met the DROP duplicate contract. The edit changes only C19_009 meaning rows and its reproducible specification/audit; no canonical data or other shard is edited. No lemma overlap with another C19 shard was found.
 
 The aggregate C19 audit will record the final counts and validation outcome after the required repository-wide validator and diff check run.
+
+
+## Follow-up correction after PR #757
+
+The indexed “원말” summary was corrected after review. The source for 해자05 is w369632-s1; w502149-s1 is a separate 해좌 meaning. The omitted 해태04 reference is w502809-s1. No meaning rows or edit decisions changed.
