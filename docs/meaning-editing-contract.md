@@ -76,7 +76,7 @@
 
 - 범위: `c07_001`~`c07_029`, lemma 21,912개 · meaning 28,572개. meaning이 하나뿐인 lemma(18,324개)는 편집할 합류 대상이 없으므로 KEEP이다.
 - 검토 대상: 둘 이상의 meaning을 가진 lemma 3,588개 가운데, 같은 record에 여러 sense가 있거나 서로 다른 record 사이에 gloss가 유사한(어휘 bigram 겹침 ≥ 0.4) 2,606개 lemma(7,873 meaning)를 gloss 단위로 전수 검토했다. 나머지 982개 lemma는 서로 gloss가 겹치지 않는 다른 record(동음이의어)뿐이어서 KEEP이다.
-- 결과: MERGE 551건(sense 1,138개 → meaning 551개), DROP `duplicate` 4건(`w110025-s1`, `w423316-s1`, `w114811-s2`, `w121660-s1`). 28,572 → 27,985 meaning. 스펙: `scripts/meaning/c07-716.json`, DROP 기록: `data/adjudication/c07_001.jsonl`.
+- 결과: MERGE 551건(sense 1,138개 → meaning 551개), DROP `duplicate` 4건(`w110025-s1`, `w423316-s1`, `w114811-s2`, `w121660-s1`). 28,572 → 27,981 meaning (28,572 − (1,138 − 551) − 4). 스펙: `scripts/meaning/c07-716.json`, DROP 기록: `data/adjudication/c07_001.jsonl`.
 - 새로 확인한 경계 사례와 판정:
   - **수사/관형사 쌍**(`마흔`, `만`, `막`의 수·수의): 품사 차이만이므로 MERGE한다. 같은 이유로 `~적`의 `것`/`관형` 쌍, `~하다`·`~히`·`~되다` 파생형의 `(명사)`/`(관형)` 쌍도 합친다.
   - **"매~/마다" 쌍**(`매년`, `매월` 등의 `한 해 한 해`/`해마다`): 같은 의미축이므로 MERGE한다.
