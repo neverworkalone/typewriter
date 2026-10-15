@@ -3,7 +3,8 @@ import path from 'node:path';
 
 /**
  * Meaning editorial layer (Issue #713). `data/canonical/` stays the untouched STDICT source layer; `data/meanings/`
- * holds Typewriter's final meanings (each referencing one or more canonical senses of ONE entry) and
+ * holds Typewriter's final meanings (each referencing one or more canonical senses sharing the meaning's lemma, possibly
+ * from different records) and
  * `data/adjudication/` records editorial verdicts such as DROP. This module is the shared contract: ID rules,
  * initial -> `cXX` mapping, shard placement, schema validation, and a deterministic writer/loader.
  */
@@ -84,7 +85,6 @@ export function validateMeaningRow(row, where = 'meaning') {
     for (const senseId of row.sense_ids) {
       const entryId = typeof senseId === 'string' ? entryIdOfSense(senseId) : null;
       if (!entryId) errors.push(`${where}: invalid sense id ${JSON.stringify(senseId)}`);
-      else if (id && entryId !== id.entryId) errors.push(`${where}: sense ${senseId} does not belong to entry ${id.entryId}`);
       if (seen.has(senseId)) errors.push(`${where}: duplicate sense id ${senseId}`);
       seen.add(senseId);
     }
@@ -107,21 +107,29 @@ export function validateAdjudicationRow(row, where = 'adjudication') {
   return errors;
 }
 
+// Exact integer ordering for canonical id numbers (they are unbounded; Number loses precision past 2^53).
+const compareBig = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+const idNumber = (id) => BigInt(id.slice(1));
+
 const rowKey = (kind, row) => (kind === 'meaning' ? row.id : row.sense_id);
 // Typed numeric id tuple: meaning `m<entry>[_<n>]` -> (entry, n); adjudication `w<entry>-s<n>` -> (entry, n).
 const idTuple = (kind, row) => {
   if (kind === 'meaning') {
-    const parsed = parseMeaningId(row.id);
-    return [Number(parsed.entryId.slice(1)), parsed.ordinal ?? 0];
+    // Read from the id text: suffixes are unbounded, so ordering must not go through the Number `ordinal`.
+    const match = MEANING_ID.exec(row.id);
+    return [BigInt(match[1]), BigInt(match[2] ?? 0)];
   }
   const match = SENSE_ID.exec(row.sense_id);
-  return [Number(match[1].slice(1)), Number(match[2])];
+  return [idNumber(match[1]), BigInt(match[2])];
 };
 const compareRows = (kind) => (a, b) => {
   if (a.lemma !== b.lemma) return a.lemma < b.lemma ? -1 : 1;
   const [ea, na] = idTuple(kind, a);
   const [eb, nb] = idTuple(kind, b);
-  return ea - eb || na - nb;
+  // Equal integers can differ in zero-padding (`w0097` / `w00097`): the raw id text is the final tie-break (total order).
+  const keyA = rowKey(kind, a);
+  const keyB = rowKey(kind, b);
+  return compareBig(ea, eb) || compareBig(na, nb) || (keyA < keyB ? -1 : keyA > keyB ? 1 : 0);
 };
 
 /**
@@ -235,6 +243,18 @@ export function validateMeaningDataset({ meanings, adjudications = [], senses = 
       if (!byEntry.has(parsed.entryId)) byEntry.set(parsed.entryId, []);
       byEntry.get(parsed.entryId).push(parsed);
     }
+    // Deterministic representative: the lowest-numbered member record (numeric compare; equal numbers with different
+    // zero-padding tie-break by string order). The ID must carry that record's id string verbatim.
+    if (parsed) {
+      let lowest = null;
+      for (const senseId of meaning.sense_ids) {
+        const entryId = entryIdOfSense(senseId);
+        if (!entryId) continue;
+        const order = lowest === null ? -1 : compareBig(idNumber(entryId), idNumber(lowest));
+        if (order < 0 || (order === 0 && entryId < lowest)) lowest = entryId;
+      }
+      if (lowest !== null && parsed.entryId !== lowest) errors.push(`${meaning.id}: id must use the lowest member record (${lowest})`);
+    }
     for (const senseId of meaning.sense_ids) {
       if (claimed.has(senseId)) errors.push(`${senseId}: referenced by both ${claimed.get(senseId)} and ${meaning.id}`);
       claimed.set(senseId, meaning.id);
@@ -265,7 +285,11 @@ export function validateMeaningDataset({ meanings, adjudications = [], senses = 
       const sense = senses.get(item.sense_id);
       if (!sense) errors.push(`${item.sense_id}: adjudicated unknown canonical sense`);
       else if (sense.lemma !== item.lemma) errors.push(`${item.sense_id}: lemma ${item.lemma} differs from canonical ${sense.lemma}`);
-      if (item.duplicate_of && !senses.has(item.duplicate_of)) errors.push(`${item.sense_id}: unknown duplicate_of ${item.duplicate_of}`);
+      if (item.duplicate_of) {
+        const target = senses.get(item.duplicate_of);
+        if (!target) errors.push(`${item.sense_id}: unknown duplicate_of ${item.duplicate_of}`);
+        else if (target.lemma !== item.lemma) errors.push(`${item.sense_id}: duplicate_of ${item.duplicate_of} has lemma ${target.lemma}, not ${item.lemma}`);
+      }
     }
     if (complete) {
       for (const senseId of senses.keys()) {

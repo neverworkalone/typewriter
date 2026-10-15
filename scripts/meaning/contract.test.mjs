@@ -48,9 +48,9 @@ test('meaning ids reuse the entry number; numbering need not be contiguous', () 
 
 test('row schema accepts valid and rejects invalid meanings and adjudications', () => {
   assert.deepEqual(validateMeaningRow({ id: 'm0097_1', lemma: '가다', gloss: '이동하다.', sense_ids: ['w0097-s1', 'w0097-s3'] }), []);
+  assert.deepEqual(validateMeaningRow({ id: 'm0097_1', lemma: '가다', gloss: '이동하다.', sense_ids: ['w0097-s1', 'w0098-s2'] }), []);
   const invalid = [
     { id: 'm0097_1', lemma: '가다', gloss: '이동하다.', sense_ids: [] },
-    { id: 'm0097_1', lemma: '가다', gloss: '이동하다.', sense_ids: ['w0098-s1'] },
     { id: 'm0097_1', lemma: '가다', gloss: '이동하다.', sense_ids: ['w0097-s1', 'w0097-s1'] },
     { id: 'm0097_1', lemma: ' 가다', gloss: '이동하다.', sense_ids: ['w0097-s1'] },
     { id: 'm0097_1', lemma: '가다', gloss: '', sense_ids: ['w0097-s1'] },
@@ -318,6 +318,65 @@ test('real data: committed meanings satisfy the file contract without re-reading
   const senses = new Map([['w1-s1', { lemma: '가' }], ['w1-s2', { lemma: '가' }]]);
   assert.match(loadMeaningData({ ...args, senses, complete: true }).errors.join('\n'), /w1-s2: canonical sense has no meaning/);
   assert.deepEqual(loadMeaningData({ ...args, senses: new Map([['w1-s1', { lemma: '가' }]]), complete: true }).errors, []);
+});
+
+test('cross-record MERGE: same lemma passes, different lemma fails, duplicate_of must share the lemma', () => {
+  const senses = new Map([['w1-s1', { lemma: '가' }], ['w1-s2', { lemma: '가' }], ['w2-s1', { lemma: '가' }], ['w3-s1', { lemma: '나' }]]);
+  const errorsOf = (meanings, adjudications = []) => validateMeaningDataset({ meanings, adjudications, senses }).join('\n');
+  assert.equal(errorsOf([row('m1_1', '가', ['w1-s1', 'w1-s2'])]), '');
+  assert.equal(errorsOf([row('m1_1', '가', ['w1-s1', 'w2-s1'])]), '');
+  assert.match(errorsOf([row('m2_1', '가', ['w1-s1', 'w2-s1'])]), /lowest member record \(w1\)/);
+  assert.equal(errorsOf([row('m1_2', '가', ['w2-s1', 'w1-s2'])]), '');
+  assert.equal(errorsOf([row('m2_1', '가', ['w2-s1'])]), '');
+  const padded = new Map([['w0097-s1', { lemma: '가' }], ['w0100-s1', { lemma: '가' }]]);
+  const paddedErrors = (id, ids) => validateMeaningDataset({ meanings: [row(id, '가', ids)], senses: padded }).join('\n');
+  assert.equal(paddedErrors('m0097_1', ['w0100-s1', 'w0097-s1']), '');
+  assert.match(paddedErrors('m97_1', ['w0097-s1', 'w0100-s1']), /lowest member record \(w0097\)/);
+  assert.equal(paddedErrors('m0097', ['w0097-s1']), '');
+  assert.match(paddedErrors('m97', ['w0097-s1']), /lowest member record/);
+  const big = new Map([['w9007199254740992-s1', { lemma: '가' }], ['w9007199254740993-s1', { lemma: '가' }], ['w00097-s1', { lemma: '가' }], ['w0097-s1', { lemma: '가' }]]);
+  const bigErrors = (id, ids) => validateMeaningDataset({ meanings: [row(id, '가', ids)], senses: big }).join('\n');
+  assert.equal(bigErrors('m9007199254740992_1', ['w9007199254740993-s1', 'w9007199254740992-s1']), '');
+  assert.match(bigErrors('m9007199254740993_1', ['w9007199254740992-s1', 'w9007199254740993-s1']), /lowest member record \(w9007199254740992\)/);
+  assert.equal(bigErrors('m00097_1', ['w0097-s1', 'w00097-s1']), '');
+  assert.match(bigErrors('m0097_1', ['w0097-s1', 'w00097-s1']), /lowest member record \(w00097\)/);
+  const bigRows = [{ id: 'm9007199254740993', lemma: '가', gloss: 'g', sense_ids: ['w9007199254740993-s1'] }, { id: 'm9007199254740992', lemma: '가', gloss: 'g', sense_ids: ['w9007199254740992-s1'] }];
+  assert.deepEqual(planShards(bigRows, 'meaning').get('c01_001.jsonl').map((r) => r.id), ['m9007199254740992', 'm9007199254740993']);
+  const ordinalRows = ['m1_9007199254740993', 'm1_9007199254740992', `m1_${'9'.repeat(400)}`, 'm1_2'].map((id) => row(id, '가', ['w1-s1']));
+  assert.deepEqual(planShards(ordinalRows, 'meaning').get('c01_001.jsonl').map((r) => r.id), ['m1_2', 'm1_9007199254740992', 'm1_9007199254740993', `m1_${'9'.repeat(400)}`]);
+  const tied = [row('m0097', '가', ['w0097-s1']), row('m00097', '가', ['w00097-s1'])];
+  const tiedIds = (rows) => planShards(rows, 'meaning').get('c01_001.jsonl').map((r) => r.id);
+  assert.deepEqual(tiedIds(tied), tiedIds([...tied].reverse()));
+  assert.deepEqual(tiedIds(tied), ['m00097', 'm0097']);
+  const adj = (id) => ({ sense_id: id, lemma: '가', decision: 'drop', reason: 'duplicate', duplicate_of: 'w1-s1' });
+  const tiedAdj = [adj('w0097-s2'), adj('w00097-s2')];
+  const adjIds = (rows) => planShards(rows, 'adjudication').get('c01_001.jsonl').map((r) => r.sense_id);
+  assert.deepEqual(adjIds(tiedAdj), adjIds([...tiedAdj].reverse()));
+  const tieDir = tmp();
+  for (const [kind, rows, reader] of [['meaning', tied, readMeanings], ['adjudication', tiedAdj, readAdjudications]]) {
+    const dir = path.join(tieDir, kind);
+    mkdirSync(dir);
+    const ordered = [...(kind === 'meaning' ? tiedIds(rows) : adjIds(rows))];
+    const byKey = (key) => rows.find((r) => (r.id ?? r.sense_id) === key);
+    const write = (keys) => writeFileSync(path.join(dir, 'c01_001.jsonl'), keys.map((k) => `${JSON.stringify(byKey(k))}\n`).join(''));
+    write(ordered);
+    assert.deepEqual(reader(dir).errors, []);
+    write([...ordered].reverse());
+    assert.match(reader(dir).errors.join('\n'), /rows must be ordered/);
+  }
+  const ordDir = tmp();
+  mkdirSync(path.join(ordDir, 'm'));
+  writeFileSync(path.join(ordDir, 'm', 'c01_001.jsonl'), [ordinalRows[0], ordinalRows[1]].map((r) => `${JSON.stringify(r)}\n`).join(''));
+  assert.match(readMeanings(path.join(ordDir, 'm')).errors.join('\n'), /rows must be ordered/);
+  assert.match(paddedErrors('m0100_1', ['w0097-s1', 'w0100-s1']), /lowest member record/);
+  assert.match(errorsOf([row('m1_1', '가', ['w1-s1', 'w3-s1'])]), /differs from canonical/);
+  assert.match(errorsOf([row('m1_1', '가', ['w1-s1']), row('m2_1', '가', ['w1-s1', 'w2-s1'])]), /referenced by both/);
+  const drop = { sense_id: 'w2-s1', lemma: '가', decision: 'drop', reason: 'duplicate', duplicate_of: 'w1-s1' };
+  assert.equal(errorsOf([row('m1_1', '가', ['w1-s1'])], [drop]), '');
+  assert.match(errorsOf([row('m1_1', '가', ['w1-s1', 'w2-s1'])], [drop]), /still referenced/);
+  assert.match(errorsOf([], [{ ...drop, duplicate_of: 'w9-s1' }]), /unknown duplicate_of/);
+  assert.match(errorsOf([], [{ ...drop, duplicate_of: 'w3-s1' }]), /has lemma 나, not 가/);
+  assert.match(errorsOf([], [drop, { ...drop, sense_id: 'w1-s2', duplicate_of: 'w2-s1' }]), /itself dropped/);
 });
 
 /** Synthetic canonical (3 entries, one with two senses) and a snapshot helper for the overwrite guard. */
