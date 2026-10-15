@@ -127,3 +127,8 @@ On 2026-10-16, a source-bound pass reviewed all 118 multi-meaning lemma groups i
 The complete source review is `scripts/meaning/issue-716-c19-009-audit.md`, with the reproducible edit specification in `scripts/meaning/issue-716-c19-009.json`. The full C19 projection now has 33,207 meanings and 33,630 canonical sense references; the 11 prior C19 adjudications are unchanged. `node scripts/meaning/validate.mjs` passed with 496,808 meanings and 117 adjudications, and `git diff --check` passed. Canonical data remains unchanged.
 
 This completes authoring decisions for c19_009 only. The remaining C19 shards are pending, and Issue #716 remains open. The independent PR review stages remain required.
+
+
+## Follow-up correction — c19_009 audit
+
+After PR #757 merged, the indexed “원말” summary in scripts/meaning/issue-716-c19-009-audit.md was corrected: 해자05 belongs to w369632-s1, and the omitted 해태04 reference belongs to w502809-s1. w502149-s1 remains a separate 해좌 meaning. This documentation correction changes no meaning data or edit decisions.
