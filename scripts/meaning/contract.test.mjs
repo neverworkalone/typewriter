@@ -61,6 +61,9 @@ test('row schema accepts valid and rejects invalid meanings and adjudications', 
   for (const item of invalid) assert.notEqual(validateMeaningRow(item).length, 0, JSON.stringify(item));
   const ok = { sense_id: 'w2-s2', lemma: '가다', decision: 'drop', reason: 'duplicate', duplicate_of: 'w2-s1' };
   assert.deepEqual(validateAdjudicationRow(ok), []);
+  const outOfScope = { sense_id: 'w2-s3', lemma: '가다', decision: 'drop', reason: 'out_of_scope' };
+  assert.deepEqual(validateAdjudicationRow(outOfScope), []);
+  assert.match(validateAdjudicationRow({ ...outOfScope, duplicate_of: 'w2-s1' }).join('\n'), /duplicate_of must be absent/u);
   for (const patch of [{ reason: 'other' }, { decision: 'keep' }, { duplicate_of: 'w2-s2' }, { duplicate_of: undefined }, { sense_id: 'x' }]) {
     assert.notEqual(validateAdjudicationRow({ ...ok, ...patch }).length, 0, JSON.stringify(patch));
   }
@@ -296,6 +299,28 @@ test('edited corpus (merge, gloss edit, DROP) stays valid under the complete con
   const drop = { sense_id: 'w001-s3', lemma: '가다', decision: 'drop', reason: 'duplicate', duplicate_of: 'w001-s1' };
   assert.deepEqual(validateMeaningDataset({ meanings: edited, adjudications: [drop], senses, complete: true }), []);
   assert.ok(validateMeaningDataset({ meanings: edited, senses, complete: true }).some((e) => e.startsWith('w001-s3: canonical sense has no meaning')));
+});
+
+test('out_of_scope covers a product-excluded sense without redirect and does not auto-exclude future c20 senses', () => {
+  const senses = new Map([
+    ['w020-s1', { lemma: 'ㅏ' }],
+    ['w021-s1', { lemma: 'apple' }],
+  ]);
+  const meanings = [row('m021', 'apple', ['w021-s1'])];
+  const outOfScope = { sense_id: 'w020-s1', lemma: 'ㅏ', decision: 'drop', reason: 'out_of_scope' };
+  assert.deepEqual(validateMeaningDataset({ meanings, adjudications: [outOfScope], senses, complete: true }), []);
+
+  senses.set('w022-s1', { lemma: 'ㅑ' });
+  assert.match(
+    validateMeaningDataset({ meanings, adjudications: [outOfScope], senses, complete: true }).join('\n'),
+    /w022-s1: canonical sense has no meaning and is not dropped/u,
+  );
+
+  const redirecting = { ...outOfScope, reason: 'duplicate', duplicate_of: 'w021-s1' };
+  assert.match(
+    validateMeaningDataset({ meanings, adjudications: [redirecting], senses }).join('\n'),
+    /duplicate_of w021-s1 has lemma apple, not ㅏ/u,
+  );
 });
 
 test('real data: committed meanings satisfy the file contract without re-reading canonical', () => {
