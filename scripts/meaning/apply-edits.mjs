@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -9,12 +9,13 @@ import {
 /**
  * Applies an edit spec to the meaning/adjudication rows (Issue #715).
  *
- * Spec: `{ glosses: [{ sense_id, gloss }], merges: [{ senses: [senseId, ...], gloss }], drops: [{ sense_id, duplicate_of, reason? }] }`.
+ * Spec: `{ glosses: [{ sense_id, gloss }], merges: [{ senses: [senseId, ...], gloss }], drops: [{ sense_id, reason?, duplicate_of? }] }`.
  * - A merge replaces the single-sense meanings of `senses` (one or several records of the SAME lemma) with ONE meaning
  *   whose id is the id of the first member in canonical order, whose `sense_ids` list all members in that order and
  *   whose gloss is the authored `gloss`. Members must still be untouched single-sense meanings.
  * - A gloss edit rewrites one untouched single-sense meaning in place, preserving its id and sense binding.
- * - A drop removes the meaning of `sense_id` and records the verdict in adjudication. `duplicate_of` must stay referenced.
+ * - A `duplicate` drop removes the meaning and requires a still-referenced `duplicate_of`; an `out_of_scope` drop
+ *   removes the meaning and must omit `duplicate_of`.
  * Pure: returns new row arrays; the CLI writes them. Throws with every problem found instead of partially applying.
  */
 export function applyEdits({ meanings, adjudications }, spec) {
@@ -64,12 +65,16 @@ export function applyEdits({ meanings, adjudications }, spec) {
     const where = `drops[${i}] (${drop.sense_id})`;
     const row = claim(drop.sense_id, where);
     if (!row) continue;
-    const verdict = { sense_id: drop.sense_id, lemma: row.lemma, decision: 'drop', reason: drop.reason ?? 'duplicate', duplicate_of: drop.duplicate_of };
+    const reason = drop.reason ?? 'duplicate';
+    const verdict = { sense_id: drop.sense_id, lemma: row.lemma, decision: 'drop', reason };
+    if (reason === 'duplicate' || Object.hasOwn(drop, 'duplicate_of')) verdict.duplicate_of = drop.duplicate_of;
     errors.push(...validateAdjudicationRow(verdict, where));
-    // The target must be a currently valid meaning sense of the same lemma, wherever its record is.
-    const target = bySense.get(drop.duplicate_of);
-    if (!target || dropped.has(drop.duplicate_of)) errors.push(`${where}: duplicate_of ${drop.duplicate_of} has no meaning (unknown or itself dropped)`);
-    else if (target.lemma !== row.lemma) errors.push(`${where}: duplicate_of ${drop.duplicate_of} belongs to lemma ${target.lemma}, not ${row.lemma}`);
+    if (reason === 'duplicate') {
+      // The target must be a currently valid meaning sense of the same lemma, wherever its record is.
+      const target = bySense.get(drop.duplicate_of);
+      if (!target || dropped.has(drop.duplicate_of)) errors.push(`${where}: duplicate_of ${drop.duplicate_of} has no meaning (unknown or itself dropped)`);
+      else if (target.lemma !== row.lemma) errors.push(`${where}: duplicate_of ${drop.duplicate_of} belongs to lemma ${target.lemma}, not ${row.lemma}`);
+    }
     removed.add(row.id);
     newAdjudications.push(verdict);
   }
@@ -111,8 +116,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     if (!perFile.has(file)) perFile.set(file, []);
     perFile.get(file).push(row);
   }
-  for (const file of fileOf.values()) {
-    if (!perFile.has(file)) throw new Error(`${file}: every row was removed; empty shards are not allowed`);
+  for (const file of new Set(fileOf.values())) {
+    if (!perFile.has(file)) rmSync(path.join(meaningsDirectory, file));
   }
   for (const [file, rows] of perFile) {
     rows.sort((a, b) => position.get(a.id) - position.get(b.id));
