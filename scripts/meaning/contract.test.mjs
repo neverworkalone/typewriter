@@ -333,6 +333,14 @@ test('cross-record MERGE: same lemma passes, different lemma fails, duplicate_of
   assert.match(paddedErrors('m97_1', ['w0097-s1', 'w0100-s1']), /lowest member record \(w0097\)/);
   assert.equal(paddedErrors('m0097', ['w0097-s1']), '');
   assert.match(paddedErrors('m97', ['w0097-s1']), /lowest member record/);
+  const big = new Map([['w9007199254740992-s1', { lemma: '가' }], ['w9007199254740993-s1', { lemma: '가' }], ['w00097-s1', { lemma: '가' }], ['w0097-s1', { lemma: '가' }]]);
+  const bigErrors = (id, ids) => validateMeaningDataset({ meanings: [row(id, '가', ids)], senses: big }).join('\n');
+  assert.equal(bigErrors('m9007199254740992_1', ['w9007199254740993-s1', 'w9007199254740992-s1']), '');
+  assert.match(bigErrors('m9007199254740993_1', ['w9007199254740992-s1', 'w9007199254740993-s1']), /lowest member record \(w9007199254740992\)/);
+  assert.equal(bigErrors('m00097_1', ['w0097-s1', 'w00097-s1']), '');
+  assert.match(bigErrors('m0097_1', ['w0097-s1', 'w00097-s1']), /lowest member record \(w00097\)/);
+  const bigRows = [{ id: 'm9007199254740993', lemma: '가', gloss: 'g', sense_ids: ['w9007199254740993-s1'] }, { id: 'm9007199254740992', lemma: '가', gloss: 'g', sense_ids: ['w9007199254740992-s1'] }];
+  assert.deepEqual(planShards(bigRows, 'meaning').get('c01_001.jsonl').map((r) => r.id), ['m9007199254740992', 'm9007199254740993']);
   assert.match(paddedErrors('m0100_1', ['w0097-s1', 'w0100-s1']), /lowest member record/);
   assert.match(errorsOf([row('m1_1', '가', ['w1-s1', 'w3-s1'])]), /differs from canonical/);
   assert.match(errorsOf([row('m1_1', '가', ['w1-s1']), row('m2_1', '가', ['w1-s1', 'w2-s1'])]), /referenced by both/);

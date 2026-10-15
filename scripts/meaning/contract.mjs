@@ -107,21 +107,25 @@ export function validateAdjudicationRow(row, where = 'adjudication') {
   return errors;
 }
 
+// Exact integer ordering for canonical id numbers (they are unbounded; Number loses precision past 2^53).
+const compareBig = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+const idNumber = (id) => BigInt(id.slice(1));
+
 const rowKey = (kind, row) => (kind === 'meaning' ? row.id : row.sense_id);
 // Typed numeric id tuple: meaning `m<entry>[_<n>]` -> (entry, n); adjudication `w<entry>-s<n>` -> (entry, n).
 const idTuple = (kind, row) => {
   if (kind === 'meaning') {
     const parsed = parseMeaningId(row.id);
-    return [Number(parsed.entryId.slice(1)), parsed.ordinal ?? 0];
+    return [idNumber(parsed.entryId), BigInt(parsed.ordinal ?? 0)];
   }
   const match = SENSE_ID.exec(row.sense_id);
-  return [Number(match[1].slice(1)), Number(match[2])];
+  return [idNumber(match[1]), BigInt(match[2])];
 };
 const compareRows = (kind) => (a, b) => {
   if (a.lemma !== b.lemma) return a.lemma < b.lemma ? -1 : 1;
   const [ea, na] = idTuple(kind, a);
   const [eb, nb] = idTuple(kind, b);
-  return ea - eb || na - nb;
+  return compareBig(ea, eb) || compareBig(na, nb);
 };
 
 /**
@@ -242,8 +246,8 @@ export function validateMeaningDataset({ meanings, adjudications = [], senses = 
       for (const senseId of meaning.sense_ids) {
         const entryId = entryIdOfSense(senseId);
         if (!entryId) continue;
-        if (lowest === null || Number(entryId.slice(1)) < Number(lowest.slice(1))
-          || (Number(entryId.slice(1)) === Number(lowest.slice(1)) && entryId < lowest)) lowest = entryId;
+        const order = lowest === null ? -1 : compareBig(idNumber(entryId), idNumber(lowest));
+        if (order < 0 || (order === 0 && entryId < lowest)) lowest = entryId;
       }
       if (lowest !== null && parsed.entryId !== lowest) errors.push(`${meaning.id}: id must use the lowest member record (${lowest})`);
     }
