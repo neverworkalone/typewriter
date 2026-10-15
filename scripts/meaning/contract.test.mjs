@@ -20,6 +20,9 @@ test('initial mapping covers every choseong, jamo-independent of final consonant
   assert.equal(initialCodeOf('깎다'), 'c02');
   assert.equal(initialCodeOf('힣'), 'c19');
   assert.equal(initialCodeOf('까'), 'c02');
+  for (const [jamo, code] of Object.entries(INITIAL_CODES)) assert.equal(initialCodeOf(jamo), code, jamo);
+  assert.equal(initialCodeOf('ㄱ'), 'c01');
+  assert.equal(initialCodeOf('ㅏ'), OTHER_INITIAL_CODE);
   assert.equal(initialCodeOf('apple'), OTHER_INITIAL_CODE);
   assert.equal(initialCodeOf(''), OTHER_INITIAL_CODE);
   assert.equal(new Set(Object.values(INITIAL_CODES)).size, 19);
@@ -134,6 +137,20 @@ test('real canonical layer: reference shapes resolve and canonical is read-only'
   const loaded = readMeanings(dir);
   assert.deepEqual(validateMeaningDataset({ meanings: loaded.rows, senses }), []);
   assert.equal(digest(), before);
+});
+
+test('every real canonical lemma initial maps consistently to a valid code', () => {
+  const senses = loadCanonicalSenses(path.resolve(import.meta.dirname, '../../data/canonical'));
+  const seen = new Map();
+  for (const { lemma } of senses.values()) {
+    const first = [...lemma][0];
+    if (!seen.has(first)) seen.set(first, initialCodeOf(lemma));
+  }
+  assert.equal(seen.get('ㄱ'), 'c01');
+  for (const [first, code] of seen) {
+    const isChoseong = Object.hasOwn(INITIAL_CODES, first) || (first >= '가' && first <= '힣');
+    assert.equal(code === OTHER_INITIAL_CODE, !isChoseong, first);
+  }
 });
 
 test('committed meaning and adjudication data satisfy the contract', () => {

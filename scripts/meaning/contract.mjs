@@ -31,9 +31,13 @@ const MEANING_ID = /^m(\d+)(?:_([1-9]\d*))?$/u;
 const SHARD_FILE = /^(c\d{2})_(\d{3})\.jsonl$/u;
 
 export const initialCodeOf = (lemma) => {
-  const code = String(lemma ?? '').codePointAt(0);
-  if (code === undefined || code < HANGUL_FIRST || code > HANGUL_LAST) return OTHER_INITIAL_CODE;
-  return INITIAL_CODES[CHOSEONG[Math.floor((code - HANGUL_FIRST) / SYLLABLES_PER_INITIAL)]];
+  const first = String(lemma ?? '').codePointAt(0);
+  if (first === undefined) return OTHER_INITIAL_CODE;
+  // A bare supported initial jamo (compatibility jamo, e.g. the entry `ㄱ`) maps through the table directly.
+  const jamo = String.fromCodePoint(first);
+  if (Object.hasOwn(INITIAL_CODES, jamo)) return INITIAL_CODES[jamo];
+  if (first < HANGUL_FIRST || first > HANGUL_LAST) return OTHER_INITIAL_CODE;
+  return INITIAL_CODES[CHOSEONG[Math.floor((first - HANGUL_FIRST) / SYLLABLES_PER_INITIAL)]];
 };
 
 export const entryIdOfSense = (senseId) => SENSE_ID.exec(senseId)?.[1] ?? null;
