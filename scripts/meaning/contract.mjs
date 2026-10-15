@@ -64,13 +64,6 @@ export const parseShardFileName = (file) => {
 
 const isObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 const nonEmpty = (value) => typeof value === 'string' && value.trim() !== '' && value === value.trim();
-const compareIds = (a, b) => {
-  const left = parseMeaningId(a) ?? { entryId: a, ordinal: null };
-  const right = parseMeaningId(b) ?? { entryId: b, ordinal: null };
-  const diff = Number(left.entryId.replace(/\D/gu, '')) - Number(right.entryId.replace(/\D/gu, ''));
-  return diff || (left.ordinal ?? 0) - (right.ordinal ?? 0);
-};
-
 function checkKeys(row, allowed, errors, where) {
   for (const key of Object.keys(row)) if (!allowed.includes(key)) errors.push(`${where}: unknown field ${key}`);
 }
@@ -115,9 +108,20 @@ export function validateAdjudicationRow(row, where = 'adjudication') {
 }
 
 const rowKey = (kind, row) => (kind === 'meaning' ? row.id : row.sense_id);
+// Typed numeric id tuple: meaning `m<entry>[_<n>]` -> (entry, n); adjudication `w<entry>-s<n>` -> (entry, n).
+const idTuple = (kind, row) => {
+  if (kind === 'meaning') {
+    const parsed = parseMeaningId(row.id);
+    return [Number(parsed.entryId.slice(1)), parsed.ordinal ?? 0];
+  }
+  const match = SENSE_ID.exec(row.sense_id);
+  return [Number(match[1].slice(1)), Number(match[2])];
+};
 const compareRows = (kind) => (a, b) => {
   if (a.lemma !== b.lemma) return a.lemma < b.lemma ? -1 : 1;
-  return compareIds(rowKey(kind, a), rowKey(kind, b)) || (rowKey(kind, a) < rowKey(kind, b) ? -1 : rowKey(kind, a) > rowKey(kind, b) ? 1 : 0);
+  const [ea, na] = idTuple(kind, a);
+  const [eb, nb] = idTuple(kind, b);
+  return ea - eb || na - nb;
 };
 
 /**
@@ -244,12 +248,9 @@ export function validateMeaningDataset({ meanings, adjudications = [], senses = 
     if (dropped.has(item.sense_id)) errors.push(`${item.sense_id}: adjudicated more than once`);
     dropped.add(item.sense_id);
     if (claimed.has(item.sense_id)) errors.push(`${item.sense_id}: dropped but still referenced by ${claimed.get(item.sense_id)}`);
-    if (item.duplicate_of && dropped.has(item.duplicate_of)) errors.push(`${item.sense_id}: duplicate_of ${item.duplicate_of} is itself dropped`);
   }
   for (const item of adjudications) {
-    if (item.duplicate_of && adjudications.some((other) => other.sense_id === item.duplicate_of)) {
-      errors.push(`${item.sense_id}: duplicate_of ${item.duplicate_of} is itself dropped`);
-    }
+    if (item.duplicate_of && dropped.has(item.duplicate_of)) errors.push(`${item.sense_id}: duplicate_of ${item.duplicate_of} is itself dropped`);
   }
   if (senses) {
     for (const meaning of meanings) {

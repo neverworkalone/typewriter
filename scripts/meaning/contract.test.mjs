@@ -122,6 +122,37 @@ test('reader enforces lemma-then-id row order inside and across shards, for both
   assert.match(readAdjudications(write({ 'c01_001.jsonl': [drop('w3-s2', '가'), drop('w3-s1', '가')] })).errors.join('\n'), order);
 });
 
+test('adjudication order compares (entry, sense) numerically, never concatenated digits', () => {
+  const drop = (id) => ({ sense_id: id, lemma: '가', decision: 'drop', reason: 'duplicate', duplicate_of: 'w1-s1' });
+  const ids = ['w7-s2', 'w7-s10', 'w7-s34', 'w8-s1', 'w10-s1'];
+  const dir = tmp();
+  writeAdjudications(dir, [...ids].reverse().map(drop));
+  const back = readAdjudications(dir);
+  assert.deepEqual(back.errors, []);
+  assert.deepEqual(back.rows.map((item) => item.sense_id), ids);
+  const line = (item) => `${JSON.stringify(item)}\n`;
+  const external = tmp();
+  writeFileSync(path.join(external, 'c01_001.jsonl'), ['w7-s34', 'w8-s1'].map((id) => line(drop(id))).join(''));
+  assert.deepEqual(readAdjudications(external).errors, []);
+  const reversed = tmp();
+  writeFileSync(path.join(reversed, 'c01_001.jsonl'), ['w8-s1', 'w7-s34'].map((id) => line(drop(id))).join(''));
+  assert.match(readAdjudications(reversed).errors.join('\n'), /must be ordered/);
+  const meanings = tmp();
+  writeMeanings(meanings, [row('m10', '가'), row('m9', '가'), row('m9_1', '가')].slice(0, 2));
+  assert.deepEqual(readMeanings(meanings).rows.map((item) => item.id), ['m9', 'm10']);
+});
+
+test('dataset validation rejects DROP-to-DROP in any order and stays linear on large input', () => {
+  const drop = (id, of) => ({ sense_id: id, lemma: '가', decision: 'drop', reason: 'duplicate', duplicate_of: of });
+  const forward = [drop('w1-s2', 'w1-s3'), drop('w1-s3', 'w1-s1')];
+  assert.match(validateMeaningDataset({ meanings: [], adjudications: forward }).join('\n'), /w1-s2: duplicate_of w1-s3 is itself dropped/);
+  assert.match(validateMeaningDataset({ meanings: [], adjudications: [...forward].reverse() }).join('\n'), /itself dropped/);
+  const many = Array.from({ length: 50000 }, (_, i) => drop(`w${i + 2}-s2`, `w${i + 2}-s1`));
+  const started = performance.now();
+  assert.deepEqual(validateMeaningDataset({ meanings: [], adjudications: many }), []);
+  assert.ok(performance.now() - started < 2000, 'validation must be linear in the number of DROP rows');
+});
+
 test('dataset validation: id shape, ownership, adjudication and canonical references', () => {
   const canonical = new Map([['w1-s1', { lemma: '가' }], ['w1-s2', { lemma: '가' }], ['w1-s3', { lemma: '가' }]]);
   const meanings = [row('m1_1', '가', ['w1-s1', 'w1-s2']), row('m1_2', '가', ['w1-s3'])];
