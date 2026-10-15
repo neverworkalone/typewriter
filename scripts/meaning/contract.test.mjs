@@ -327,6 +327,13 @@ test('cross-record MERGE: same lemma passes, different lemma fails, duplicate_of
   assert.match(errorsOf([row('m2_1', '가', ['w1-s1', 'w2-s1'])]), /lowest member record \(w1\)/);
   assert.equal(errorsOf([row('m1_2', '가', ['w2-s1', 'w1-s2'])]), '');
   assert.equal(errorsOf([row('m2_1', '가', ['w2-s1'])]), '');
+  const padded = new Map([['w0097-s1', { lemma: '가' }], ['w0100-s1', { lemma: '가' }]]);
+  const paddedErrors = (id, ids) => validateMeaningDataset({ meanings: [row(id, '가', ids)], senses: padded }).join('\n');
+  assert.equal(paddedErrors('m0097_1', ['w0100-s1', 'w0097-s1']), '');
+  assert.match(paddedErrors('m97_1', ['w0097-s1', 'w0100-s1']), /lowest member record \(w0097\)/);
+  assert.equal(paddedErrors('m0097', ['w0097-s1']), '');
+  assert.match(paddedErrors('m97', ['w0097-s1']), /lowest member record/);
+  assert.match(paddedErrors('m0100_1', ['w0097-s1', 'w0100-s1']), /lowest member record/);
   assert.match(errorsOf([row('m1_1', '가', ['w1-s1', 'w3-s1'])]), /differs from canonical/);
   assert.match(errorsOf([row('m1_1', '가', ['w1-s1']), row('m2_1', '가', ['w1-s1', 'w2-s1'])]), /referenced by both/);
   const drop = { sense_id: 'w2-s1', lemma: '가', decision: 'drop', reason: 'duplicate', duplicate_of: 'w1-s1' };

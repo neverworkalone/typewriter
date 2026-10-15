@@ -235,10 +235,17 @@ export function validateMeaningDataset({ meanings, adjudications = [], senses = 
       if (!byEntry.has(parsed.entryId)) byEntry.set(parsed.entryId, []);
       byEntry.get(parsed.entryId).push(parsed);
     }
-    // Deterministic representative: the ID's record is the lowest-numbered record among the member senses.
+    // Deterministic representative: the lowest-numbered member record (numeric compare; equal numbers with different
+    // zero-padding tie-break by string order). The ID must carry that record's id string verbatim.
     if (parsed) {
-      const lowest = Math.min(...meaning.sense_ids.map((senseId) => Number((entryIdOfSense(senseId) ?? 'w0').slice(1))));
-      if (Number(parsed.entryId.slice(1)) !== lowest) errors.push(`${meaning.id}: id must use the lowest member record (w${meaning.sense_ids.map(entryIdOfSense).find((e) => Number(e.slice(1)) === lowest).slice(1)})`);
+      let lowest = null;
+      for (const senseId of meaning.sense_ids) {
+        const entryId = entryIdOfSense(senseId);
+        if (!entryId) continue;
+        if (lowest === null || Number(entryId.slice(1)) < Number(lowest.slice(1))
+          || (Number(entryId.slice(1)) === Number(lowest.slice(1)) && entryId < lowest)) lowest = entryId;
+      }
+      if (lowest !== null && parsed.entryId !== lowest) errors.push(`${meaning.id}: id must use the lowest member record (${lowest})`);
     }
     for (const senseId of meaning.sense_ids) {
       if (claimed.has(senseId)) errors.push(`${senseId}: referenced by both ${claimed.get(senseId)} and ${meaning.id}`);
