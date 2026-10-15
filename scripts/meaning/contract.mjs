@@ -24,7 +24,7 @@ const HANGUL_LAST = 0xd7a3;
 const SYLLABLES_PER_INITIAL = 21 * 28;
 
 export const TARGET_SHARD_MEANINGS = 1000;
-export const ADJUDICATION_REASONS = Object.freeze(['duplicate']);
+export const ADJUDICATION_REASONS = Object.freeze(['duplicate', 'out_of_scope']);
 
 const ENTRY_ID = /^w(\d+)$/u;
 const SENSE_ID = /^(w\d+)-s([1-9]\d*)$/u;
@@ -103,6 +103,8 @@ export function validateAdjudicationRow(row, where = 'adjudication') {
   if (row.reason === 'duplicate') {
     if (!entryIdOfSense(row.duplicate_of ?? '')) errors.push(`${where}: duplicate_of must be a canonical sense id`);
     else if (row.duplicate_of === row.sense_id) errors.push(`${where}: duplicate_of must differ from sense_id`);
+  } else if (row.reason === 'out_of_scope' && Object.hasOwn(row, 'duplicate_of')) {
+    errors.push(`${where}: duplicate_of must be absent for out_of_scope`);
   }
   return errors;
 }
@@ -279,7 +281,7 @@ export function validateMeaningDataset({ meanings, adjudications = [], senses = 
     if (claimed.has(item.sense_id)) errors.push(`${item.sense_id}: dropped but still referenced by ${claimed.get(item.sense_id)}`);
   }
   for (const item of adjudications) {
-    if (item.duplicate_of && dropped.has(item.duplicate_of)) errors.push(`${item.sense_id}: duplicate_of ${item.duplicate_of} is itself dropped`);
+    if (item.reason === 'duplicate' && item.duplicate_of && dropped.has(item.duplicate_of)) errors.push(`${item.sense_id}: duplicate_of ${item.duplicate_of} is itself dropped`);
   }
   if (senses) {
     for (const meaning of meanings) {
@@ -293,7 +295,7 @@ export function validateMeaningDataset({ meanings, adjudications = [], senses = 
       const sense = senses.get(item.sense_id);
       if (!sense) errors.push(`${item.sense_id}: adjudicated unknown canonical sense`);
       else if (sense.lemma !== item.lemma) errors.push(`${item.sense_id}: lemma ${item.lemma} differs from canonical ${sense.lemma}`);
-      if (item.duplicate_of) {
+      if (item.reason === 'duplicate' && item.duplicate_of) {
         const target = senses.get(item.duplicate_of);
         if (!target) errors.push(`${item.sense_id}: unknown duplicate_of ${item.duplicate_of}`);
         else if (target.lemma !== item.lemma) errors.push(`${item.sense_id}: duplicate_of ${item.duplicate_of} has lemma ${target.lemma}, not ${item.lemma}`);
