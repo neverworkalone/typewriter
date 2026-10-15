@@ -64,3 +64,12 @@ The audit is scripts/meaning/issue-716-c19-002-audit.md, with the reproducible e
 Stage 2 review found that the `하송` and `하송하다` glosses narrowed the broader “send downward” source senses to an inferior recipient and an object. Both glosses and their audit rationale now state the general spatial direction first and keep the superior-to-subordinate object-sending condition within the honorific use. The 34 MERGE decisions, 967 meanings, 1,001 references, and 11 prior adjudications are unchanged. A focused comparison of all 34 merge glosses for narrower actor, recipient, or target constraints found no other affected group.
 
 This completes authoring decisions for c19_002 only. Multi-meaning groups in the remaining C19 shards are still pending, and Issue #716 remains open. The independent PR review stages remain required.
+
+
+## Follow-up status — c19_003
+
+On 2026-10-16, a source-bound pass reviewed all 131 multi-meaning lemma groups in `c19_003`; the 612 single-source-sense lemmas remain KEEP. The shard started with 993 meanings and 1,001 canonical sense references across 743 lemmas. It now has 951 meanings with all 1,001 references preserved after 39 MERGE decisions and no DROP decisions. Six proposed merges were retained as KEEP after comparing their distinct financial role, age range, historical office, record medium/content, and dry-state/susceptibility meanings. An existing pair of meaning rows for `하향적` remains split; each row already contains its noun/determiner source senses, and the general downward direction and downward-blooming plant trait remain distinct.
+
+The audit is `scripts/meaning/issue-716-c19-003-audit.md`, with the reproducible edit specification in `scripts/meaning/issue-716-c19-003.json`. The full C19 projection now has 33,375 meanings and 33,630 canonical sense references; its 11 prior C19 adjudications are unchanged. `node scripts/meaning/validate.mjs` passed with 496,976 meanings and 117 adjudications, and `git diff --check` passed. Canonical data remains unchanged.
+
+This completes authoring decisions for c19_003 only. Multi-meaning groups in the remaining C19 shards are still pending, and Issue #716 remains open. The independent PR review stages remain required.
