@@ -16,7 +16,7 @@
 
 병합은 2-sense 106건, 3-sense 8건, 4-sense 3건이다. 결과는 5,612개 c16 meaning이다. DROP은 없으며 adjudication은 기존 1건 그대로다. 전체 저장소 검증 결과는 499,179 meanings / 1 adjudication이다.
 
-편집 스펙은 `issue-716-c16-edits.json`에 보존했다. 119 MERGE의 입력은 모두 원본 source sense ID이며 `apply-edits.mjs`로 적용했다. KEEP는 스펙에 넣지 않고 기존 meaning을 유지했다. `data/canonical/`은 수정하지 않았다.
+편집 스펙은 `issue-716-c16-edits.json`에 보존했다. 117 MERGE의 입력은 모두 원본 source sense ID이며 `apply-edits.mjs`로 적용했다. KEEP는 스펙에 넣지 않고 기존 meaning을 유지했다. `data/canonical/`은 수정하지 않았다.
 
 ## 판정 경계
 
