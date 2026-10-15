@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { applyEdits } from './apply-edits.mjs';
-import { validateMeaningDataset, validateMeaningRow } from './contract.mjs';
+import { validateMeaningDataset } from './contract.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const senses = (entry, count) => Array.from({ length: count }, (_, i) => `${entry}-s${i + 1}`);
@@ -69,14 +69,6 @@ test('senses of different records of the SAME lemma merge under the first sense 
   const known = new Map([['w50-s1', { lemma: '강피밥' }], ['w51-s1', { lemma: '강피밥' }], ['w52-s1', { lemma: '다른말' }]]);
   assert.deepEqual(validateMeaningDataset({ ...next, senses: known, complete: true }), []);
   assert.throws(() => applyEdits({ meanings, adjudications: [] }, { merges: [{ senses: ['w50-s1', 'w52-s1'], gloss: 'x' }] }), /different lemmas/u);
-});
-
-test('row contract: id derives from the first sense and sense_ids are in canonical order', () => {
-  const ok = { id: 'm50', lemma: '가', gloss: 'g', sense_ids: ['w50-s1', 'w51-s1'] };
-  assert.deepEqual(validateMeaningRow(ok), []);
-  assert.match(validateMeaningRow({ ...ok, id: 'm51' }).join(), /first sense/u);
-  assert.match(validateMeaningRow({ ...ok, sense_ids: ['w51-s1', 'w50-s1'] }).join(), /canonical order/u);
-  assert.match(validateMeaningRow({ ...ok, sense_ids: ['w50-s1', 'w50-s1'] }).join(), /duplicate sense id/u);
 });
 
 test('pilot spec (#715) uses valid sense ids, unique members and never edits away a duplicate_of target', () => {

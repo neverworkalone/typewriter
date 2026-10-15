@@ -2,9 +2,22 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  compareSenseIds, parseShardFileName, readAdjudications, readMeanings, validateAdjudicationRow, validateMeaningRow,
+  parseShardFileName, readAdjudications, readMeanings, validateAdjudicationRow, validateMeaningRow,
   writeAdjudications,
 } from './contract.mjs';
+
+const SENSE = /^w(\d+)-s(\d+)$/u;
+// Canonical order (record number, then sense number), exact for unbounded ids.
+const compareSenseIds = (a, b) => {
+  const [, ea, na] = SENSE.exec(a) ?? [null, '0', '0'];
+  const [, eb, nb] = SENSE.exec(b) ?? [null, '0', '0'];
+  const ra = BigInt(ea);
+  const rb = BigInt(eb);
+  if (ra !== rb) return ra < rb ? -1 : 1;
+  const sa = BigInt(na);
+  const sb = BigInt(nb);
+  return sa < sb ? -1 : sa > sb ? 1 : 0;
+};
 
 /**
  * Applies an edit spec to the meaning/adjudication rows (Issue #715).

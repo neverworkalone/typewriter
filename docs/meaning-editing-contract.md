@@ -19,7 +19,7 @@
 2. **같은 lemma의 모든 record/sense를 함께 본다.** 한 record만 보고 판정하지 않는다.
 3. **사전학적 미세 구분**(목적·대상·수단만 다른 경우)은 작가에게 같은 뜻이면 MERGE한다. 반대로 **방향이 반대**(작동 ↔ 꺼짐), **관용·완곡 용법**(죽다, 대소변), **독립 지시 대상**은 합치지 않는다.
 4. 합친 gloss는 대표 의미를 앞에 쓰고, 합쳐진 하위 용법을 문장 안에서 "~을 포함한다"로 열거한다. 새 문장을 지어내지 않고 원 gloss의 어휘를 쓴다.
-5. **같은 lemma라면 record 경계와 무관하게** 실제 의미가 같을 때 MERGE할 수 있다(한 meaning이 여러 record의 sense를 참조). 다른 lemma의 sense는 합치지 않는다. 합친 meaning의 id는 첫 sense(canonical 순서)의 record에서 따오고 `sense_ids`는 canonical 순서로 나열한다. 의미가 다른 동음이의어는 합치지 않는다.
+5. **같은 lemma라면 record 경계와 무관하게** 실제 의미가 같을 때 MERGE할 수 있다(한 meaning이 여러 record의 sense를 참조). 다른 lemma의 sense는 합치지 않는다. 합친 meaning의 id record 번호는 구성 sense 중 가장 낮은 record 번호이며(데이터셋 검증기가 강제), `apply-edits`는 `sense_ids`를 canonical 순서로 나열한다. 의미가 다른 동음이의어는 합치지 않는다.
    **완전히 중복된 source sense**(gloss·의미가 사실상 동일)는 MERGE가 아니라 DROP `duplicate`로 처리한다.
 6. DROP은 gloss가 사실상 동일한 sense만 대상이다. `duplicate_of`는 그 자신이 DROP되지 않아야 한다. 판단이 갈리면 KEEP한다(누락보다 보존).
 7. MERGE 대표 id는 **canonical 순서상 첫 구성원의 meaning id**(`mNNN_K`)다. 번호가 연속일 필요는 없다.
