@@ -10,9 +10,9 @@
 
 ## Editorial checks
 
-The first source-bound pass considered every c11 lemma and all of its records and senses. Single-meaning lemmas remain KEEP. For multi-meaning lemmas, the decisions and representative glosses are preserved in [`issue-716-c11-edits.json`](issue-716-c11-edits.json). The first follow-up pass checked all 54 merged output rows against their bound source senses, but the PR review found two omissions: `썰다`'s shortened `써리다02` sense was incorrectly merged with the cutting sense, and the `씌다` gloss omitted its umbrella use. The edit spec now keeps the two `썰다` meanings separate and names the umbrella use in the `씌다` gloss. A post-correction source-bound pass checked all 53 remaining merged rows and their source glosses; ambiguous distinctions remain separate.
+The first source-bound pass considered every c11 lemma and all of its records and senses. Single-meaning lemmas remain KEEP unless a source gloss is an opaque cross-reference that needs a direct meaning-layer gloss. Multi-meaning decisions and authored glosses are preserved in [`issue-716-c11-edits.json`](issue-716-c11-edits.json). The PR review found that `썰다`'s shortened `써리다02` sense was incorrectly merged with the cutting sense and the `씌다` gloss omitted its umbrella use. The two `썰다` meanings are now separate, and the `씌다` gloss names the umbrella use. A follow-up review confirmed those changes and noted that `m212148` still showed only the cross-reference; its gloss is now directly written as `써레질을 하다.` from the referenced canonical sense `w455663-s1`. The post-correction source-bound pass checked all 53 merged rows and this single-sense gloss edit; ambiguous distinctions remain separate.
 
-Both editorial checks were performed by the assigned primary agent in this context. This is recorded as agent self-check, not independent review or human editorial approval. PR review is a separate gate; the two reported findings are corrected in this revision.
+Both editorial checks were performed by the assigned primary agent in this context. This is recorded as agent self-check, not independent review or human editorial approval. PR review is a separate gate; the reported source-bound findings are corrected in this revision.
 
 ## Validation
 
