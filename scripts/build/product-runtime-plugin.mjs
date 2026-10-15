@@ -35,6 +35,14 @@ export function createProductRuntimeAssets({
         path.join(runtimeDirectory, 'dictionary-worker.mjs'),
       ),
       cp(
+        path.join(projectRoot, 'src/runtime/dictionary-background.mjs'),
+        path.join(runtimeDirectory, 'dictionary-background.mjs'),
+      ),
+      cp(
+        path.join(projectRoot, 'src/runtime/dictionary-host.js'),
+        path.join(runtimeDirectory, 'dictionary-host.js'),
+      ),
+      cp(
         path.join(projectRoot, 'src/runtime/dictionary-contract.js'),
         path.join(runtimeDirectory, 'dictionary-contract.js'),
       ),

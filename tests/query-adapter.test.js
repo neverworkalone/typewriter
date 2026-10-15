@@ -1,6 +1,8 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  createBackgroundDictionaryPort,
+  createDefaultDictionaryWorker,
   DictionaryRuntime,
   DictionaryRuntimeError,
   resolveDictionaryWorkerUrl,
@@ -314,5 +316,75 @@ describe('DictionaryRuntime', () => {
     expect(runtime.state).toBe('closed');
     expect(() => runtime.search('')).toThrow(DictionaryRuntimeError);
     expect(() => runtime.getRecord(null)).toThrow(DictionaryRuntimeError);
+  });
+});
+
+describe('background dictionary port', () => {
+  function installChrome({ background = true } = {}) {
+    const ports = [];
+    const chromeStub = {
+      runtime: {
+        getManifest: () => (background ? { background: { service_worker: 'x.mjs' } } : {}),
+        connect: vi.fn(({ name }) => {
+          const port = {
+            name,
+            sent: [],
+            disconnected: false,
+            onMessage: { addListener: (fn) => { port.deliver = fn; } },
+            onDisconnect: { addListener: (fn) => { port.drop = fn; } },
+            postMessage: (message) => port.sent.push(message),
+            disconnect: () => { port.disconnected = true; },
+          };
+          ports.push(port);
+          return port;
+        }),
+      },
+    };
+    vi.stubGlobal('chrome', chromeStub);
+    return { ports, chromeStub };
+  }
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('is the default dictionary host inside an extension with a service worker', () => {
+    installChrome();
+    const host = createDefaultDictionaryWorker();
+    expect(typeof host.postMessage).toBe('function');
+  });
+
+  it('keeps the database host alive when a popup runtime closes', async () => {
+    const { ports } = installChrome();
+    const runtime = new DictionaryRuntime();
+    const ready = runtime.ready();
+    const [port] = ports;
+    port.deliver(createSuccessResponse(port.sent[0].id, { ready: true }));
+    await ready;
+
+    runtime.close();
+    expect(port.disconnected).toBe(true);
+    expect(port.sent.map((message) => message.method)).toEqual([REQUEST_METHODS.ready]);
+  });
+
+  it('reconnects after the service worker was suspended', () => {
+    const { ports } = installChrome();
+    const facade = createBackgroundDictionaryPort();
+    facade.postMessage({ id: 'a' });
+    ports[0].deliver({ id: 'a' });
+    ports[0].drop();
+    facade.postMessage({ id: 'b' });
+    expect(ports).toHaveLength(2);
+    expect(ports[1].sent).toEqual([{ id: 'b' }]);
+  });
+
+  it('fails in-flight requests when the service worker disconnects', () => {
+    const { ports } = installChrome();
+    const facade = createBackgroundDictionaryPort();
+    const onError = vi.fn();
+    facade.addEventListener('error', onError);
+    facade.postMessage({ id: 'a' });
+    ports[0].drop();
+    expect(onError).toHaveBeenCalledTimes(1);
   });
 });

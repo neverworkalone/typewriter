@@ -10,6 +10,7 @@ import {
 import {
   readForeignKeyViolations,
   validatePackagedDictionary,
+  validateRuntimeDictionary,
 } from '../src/runtime/dictionary-validation.js';
 import { SQLITE_SCHEMA_SQL } from '../scripts/build/sqlite-schema.mjs';
 
@@ -149,5 +150,38 @@ test('rejects dangling foreign keys even when quick_check and every row count st
     });
   } finally {
     database.close();
+  }
+});
+
+test('runtime validation keeps contract checks but skips whole-database scans', () => {
+  const countMismatch = createDictionary({ metadataOverrides: { record_count: '7' } });
+  const staleRevision = createDictionary();
+  const wrongSchema = createDictionary({ userVersion: '4' });
+  const wrongVersion = createDictionary({ metadataOverrides: { dictionary_version: 'old' } });
+  const unverified = createDictionary({ metadataOverrides: { source_revision_verified: 'false' } });
+  try {
+    for (const key of Object.keys(DICTIONARY_COUNT_QUERIES)) {
+      countMismatch.prepare('UPDATE metadata SET value = ? WHERE key = ?').run('7', key);
+    }
+    assert.doesNotThrow(() => validateRuntimeDictionary(countMismatch));
+    assert.throws(() => validatePackagedDictionary(countMismatch), {
+      code: 'DATABASE_METADATA_INVALID',
+    });
+    assert.throws(() => validateRuntimeDictionary(staleRevision, {
+      expectedSourceRevision: 'b'.repeat(40),
+    }), { code: 'DICTIONARY_REVISION_MISMATCH' });
+    assert.throws(() => validateRuntimeDictionary(wrongSchema), {
+      code: 'DATABASE_SCHEMA_MISMATCH',
+    });
+    assert.throws(() => validateRuntimeDictionary(wrongVersion), {
+      code: 'DICTIONARY_VERSION_MISMATCH',
+    });
+    assert.throws(() => validateRuntimeDictionary(unverified), {
+      code: 'DATABASE_METADATA_INVALID',
+    });
+  } finally {
+    for (const database of [countMismatch, staleRevision, wrongSchema, wrongVersion, unverified]) {
+      database.close();
+    }
   }
 });

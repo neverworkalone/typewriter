@@ -83,6 +83,8 @@ test('derives dictionary metadata from the supplied canonical directory and reje
       ['options.html', '<main>fixture options</main>'],
       ['logo.png', 'fixture logo'],
       ['runtime/dictionary-worker.mjs', '// fixture worker\n'],
+      ['runtime/dictionary-background.mjs', '// fixture background\n'],
+      ['runtime/dictionary-host.js', '// fixture host\n'],
       ['runtime/dictionary-build-info.js', 'export const EXPECTED_DICTIONARY_SOURCE_REVISION = "fixture";\n'],
       ['runtime/dictionary-contract.js', '// fixture dictionary contract\n'],
       ['runtime/dictionary-validation.js', '// fixture dictionary validation\n'],

@@ -49,6 +49,8 @@ const REQUIRED_PRODUCT_FILES = Object.freeze([
   'release-info.json',
   'logo.png',
   'runtime/dictionary-worker.mjs',
+  'runtime/dictionary-background.mjs',
+  'runtime/dictionary-host.js',
   'runtime/dictionary-build-info.js',
   'runtime/dictionary-contract.js',
   'runtime/dictionary-validation.js',

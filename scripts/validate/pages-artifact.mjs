@@ -20,6 +20,8 @@ const ALLOWED_FILES = new Set([
   'favicon.ico',
   'dictionary.sqlite',
   'runtime/dictionary-worker.mjs',
+  'runtime/dictionary-background.mjs',
+  'runtime/dictionary-host.js',
   'runtime/dictionary-build-info.js',
   'runtime/dictionary-contract.js',
   'runtime/dictionary-validation.js',

@@ -3,6 +3,7 @@ export {
   DictionaryQueryAdapter,
   DictionaryRuntime,
   DictionaryRuntimeError,
+  createBackgroundDictionaryPort,
   createDefaultDictionaryWorker,
   createDictionaryRuntime,
   resolveDictionaryWorkerUrl,
