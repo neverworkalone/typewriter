@@ -91,3 +91,15 @@ On 2026-10-16, a source-bound pass reviewed all 145 multi-meaning lemma groups i
 The audit is `scripts/meaning/issue-716-c19-005-audit.md`, with the reproducible edit specification in `scripts/meaning/issue-716-c19-005.json`. The full C19 projection now has 33,342 meanings and 33,630 canonical sense references; its 11 prior duplicate adjudications are unchanged. `node scripts/meaning/validate.mjs` passed with 496,943 meanings and 117 adjudications, and `git diff --check` passed. Canonical data remains unchanged.
 
 This completes authoring decisions for c19_005 only. The remaining C19 shards are pending, and Issue #716 remains open. The independent PR review stages remain required.
+
+## Follow-up status — c19_005 after PR #753
+
+After PR #753 merged, the audit wording for the `한창` merge was updated to preserve the source frequency sentence that the described skin condition is common among people with higher body weight. The 18 MERGE decisions, 980 meaning rows, and 1,001 canonical references are unchanged. This is an audit clarification only.
+
+## Follow-up status — c19_006
+
+On 2026-10-16, a source-bound pass reviewed all 139 multi-meaning lemma groups in `c19_006`; the 616 single-meaning lemmas retain their existing meanings. The shard began with 996 meanings and 1,002 canonical sense references across 755 lemmas. It now has 955 meanings with all 1,002 references preserved after 41 MERGE decisions covering 82 senses, eight source-bound cross-reference GLOSS EDITs, and no DROP decisions. Six already-grouped meaning rows from the base remain intact. Three ambiguous cross-reference targets remain explicitly unresolved. The audit includes every source sense in the 139 multi-meaning groups and records each MERGE or KEEP decision.
+
+The audit is `scripts/meaning/issue-716-c19-006-audit.md`, with reproducible edits in `scripts/meaning/issue-716-c19-006.json`. PR feedback led to separating `합집`'s general collection action from the book produced by publication and `합작품`'s literal collaborative work from its figurative use for a joint achievement. The other 41 MERGE decisions were rechecked for those result-object and literal/figurative boundaries; no further pair met those conditions. The feedback submission account matched the PR author and is not counted as independent review. The full C19 projection now has 33,301 meanings and 33,630 canonical sense references; prior adjudications are unchanged. `node scripts/meaning/validate.mjs` passed with 496,902 meanings and 117 adjudications, and `git diff --check` passed. Canonical data remains unchanged.
+
+This completes authoring decisions for c19_006 only. The remaining C19 shards are pending, and Issue #716 remains open. The independent PR review stages remain required.
