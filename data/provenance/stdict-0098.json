@@ -13,7 +13,7 @@
   "note": "A loaded record keeps its id, shard and sense numbers; later shards take the remaining eligible target_codes in ascending order."
  },
  "shard": "stdict-0098.jsonl",
- "shard_sha256": "69f7376d7c05d7e984c939834a498c94067779a8310fd45b495d00a0336c3474",
+ "shard_sha256": "cb6679f632afc33c2db8517bcb6a1b5e8d44941065f3fc146e2b04f69f74eab2",
  "record_count": 1000,
  "held_count": 0,
  "summary": {
@@ -33,9 +33,10 @@
    "형용사": 25
   },
   "relations_by_status": {
-   "동의어:converted": 203,
-   "동의어:out-of-sample": 196,
-   "반대말:out-of-sample": 10
+   "동의어:converted": 210,
+   "동의어:out-of-sample": 189,
+   "반대말:converted": 5,
+   "반대말:out-of-sample": 5
   },
   "definition_markup_cleaned": {
    "ptrn_no": 1
