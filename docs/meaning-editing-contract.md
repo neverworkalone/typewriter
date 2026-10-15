@@ -8,10 +8,11 @@
 | 판정 | 의미 | 결과 |
 | --- | --- | --- |
 | KEEP | 사용자 관점에서 독립된 의미축 | 초기 meaning 그대로 둔다 |
+| GLOSS EDIT | 독립 의미는 유지하되 source gloss가 작가에게 뜻을 바로 보여 주지 않는 교차참조 등이다 | meaning ID와 sense 결합을 유지하며 meaning-layer gloss만 직접 설명으로 고친다 |
 | MERGE | 같은 의미축의 여러 sense | 하나의 meaning으로 합치고 **포함 sense 전체를 대표하는 새 gloss**를 쓴다 |
 | DROP | 명백한 `duplicate`만 | `data/meanings/`에서 제외하고 `data/adjudication/`에 근거(`duplicate_of`)를 기록한다 |
 
-원본 sense/gloss는 canonical에 그대로 남는다. canonical은 수정하지 않는다.
+원본 sense/gloss는 canonical에 그대로 남는다. canonical은 수정하지 않는다. GLOSS EDIT는 source-bound meaning-layer gloss 편집이며 source sense나 sense 결합은 바꾸지 않는다.
 
 ## 편집 원칙
 
@@ -26,7 +27,7 @@
 
 ## 도구와 절차
 
-- 편집 지시는 JSON 스펙(`{ merges: [{ senses: [sense id, ...], gloss }], drops: [{ sense_id, duplicate_of }] }`)이다. `node scripts/meaning/apply-edits.mjs <spec.json>`가 적용한다.
+- 편집 지시는 JSON 스펙(`{ glosses: [{ sense_id, gloss }], merges: [{ senses: [sense id, ...], gloss }], drops: [{ sense_id, duplicate_of }] }`)이다. `glosses`는 아직 MERGE되지 않은 한 sense meaning의 gloss를 고치며 ID와 sense binding은 보존한다. `node scripts/meaning/apply-edits.mjs <spec.json>`가 적용한다.
 - 적용은 제자리 편집이며, 한 lemma 편집이 무관한 shard를 재배치하지 않는다.
 - 잘못된 스펙(1개 sense 병합, 이미 병합/DROP된 sense, 중복 편집, 존재하지 않는 sense, 빈 gloss, 다른 lemma 병합, 같은 record든 다른 record든 존재하지 않거나 이미 DROP된 `duplicate_of`, 잘못된 reason)은 **전체를 거부**하고 일부만 적용하지 않는다.
 - 적용 후 `node scripts/meaning/validate.mjs`(complete)로 모든 canonical sense가 정확히 하나의 meaning에 있거나 DROP 기록이 있음을 확인한다.
@@ -35,7 +36,7 @@
 ## 전량 작업용 지침(프롬프트)
 
 > 한 lemma의 모든 record와 sense를 먼저 나열한다. 각 sense를 **작가가 찾는 의미축** 기준으로 묶는다.
-> 같은 축이면 MERGE(대표 gloss를 새로 쓴다), 독립이면 KEEP, 다른 record에 gloss가 사실상 동일한 sense가 있으면 DROP duplicate.
+> 같은 축이면 MERGE(대표 gloss를 새로 쓴다), 독립이면 KEEP한다. 독립 의미라도 source gloss가 뜻을 직접 설명하지 않는 교차참조 등이라면 source-bound GLOSS EDIT를 기록한다. 다른 record에 gloss가 사실상 동일한 sense가 있으면 DROP duplicate.
 > 품사·문법 용법 차이는 이유가 되지 않는다. 방향이 반대이거나 관용 용법이면 합치지 않는다.
 > 같은 lemma의 sense라면 record가 달라도 실제 의미가 같을 때 합칠 수 있다(다른 lemma는 불가). gloss까지 완전히 중복이면 MERGE가 아니라 DROP duplicate다. 확신이 없으면 KEEP한다.
 > 출력은 `apply-edits` 스펙(JSON)이며 gloss는 포함하는 모든 sense를 빠짐없이 대표해야 한다.
