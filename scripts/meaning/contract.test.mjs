@@ -378,14 +378,25 @@ test('initial generator refuses MERGE, edited gloss, DROP and stray files with n
   }
 });
 
-test('initial generator refuses adjudication-only state and only --force resets', () => {
+test('initial generator refuses adjudication-only state, with or without force, leaving both directories unchanged', () => {
   const fixture = guardFixture();
   writeAdjudications(fixture.adjudicationDirectory, [{ sense_id: 'w2-s2', lemma: '나무', decision: 'drop', reason: 'duplicate', duplicate_of: 'w2-s1' }]);
   const before = fixture.snapshot();
   assert.throws(() => generateInitialMeanings(fixture.options), /adjudication data exists/);
+  assert.throws(() => generateInitialMeanings({ ...fixture.options, force: true }), /even with force/);
   assert.equal(fixture.snapshot(), before);
+});
+
+test('force reset restores a consistent initial corpus when no adjudication exists', () => {
+  const fixture = guardFixture();
+  generateInitialMeanings(fixture.options);
+  const { rows } = readMeanings(fixture.meaningsDirectory);
+  rows[0] = { ...rows[0], gloss: '편집된 뜻' };
+  writeMeanings(fixture.meaningsDirectory, rows);
+  assert.throws(() => generateInitialMeanings(fixture.options), /editing has started/);
   assert.equal(generateInitialMeanings({ ...fixture.options, force: true }).written, true);
-  assert.equal(readMeanings(fixture.meaningsDirectory).rows.length, 4);
+  const senses = loadCanonicalSenses(fixture.options.canonicalDirectory);
+  assert.deepEqual(validateMeaningDataset({ meanings: readMeanings(fixture.meaningsDirectory).rows, adjudications: [], senses, complete: true }), []);
 });
 
 test('initial generator CLI (temp root): --check and default run follow the repository state and never alter edited data', () => {

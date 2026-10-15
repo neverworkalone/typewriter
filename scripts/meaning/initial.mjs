@@ -74,6 +74,9 @@ export function editingStartedReasons(canonicalDirectory, meaningsDirectory, adj
 export function generateInitialMeanings({ canonicalDirectory, meaningsDirectory, adjudicationDirectory, force = false }) {
   const reasons = editingStartedReasons(canonicalDirectory, meaningsDirectory, adjudicationDirectory);
   const rows = projectInitialMeanings(readCanonicalEntries(canonicalDirectory));
+  if (force && existsSync(adjudicationDirectory) && readdirSync(adjudicationDirectory).some((name) => !name.startsWith('.'))) {
+    throw new Error(`refusing to reset ${meaningsDirectory} even with force: ${adjudicationDirectory} holds adjudication decisions that would conflict with the 1:1 projection; remove or handle them explicitly first`);
+  }
   if (reasons.length && !force) {
     throw new Error(`refusing to overwrite ${meaningsDirectory}: editing has started (${reasons.join('; ')}); use --check to inspect or --force-reset-initial to deliberately reset`);
   }
