@@ -20,6 +20,8 @@ A Stage 2 source-bound follow-up compared merged glosses with the full bound sou
 
 The malformed `트더지다` reference remains held because its source target cannot be identified from `→ .`. No replacement meaning was guessed. All other eligible c17 cross-reference meanings received a direct gloss or were covered by an already direct same-lemma merge gloss.
 
+The Stage 1 follow-up identified one remaining scope omission in the `토지 회사` merge: the prior gloss did not preserve `w496041-s1`'s condition that landlords become shareholders in a particular region. The revised gloss now states that condition only for the first source use, preserves its listed land-management and sales activities, and separately retains `w496041-s2`'s land-distribution-business use. Both the edit spec and materialized row keep the original two sense bindings.
+
 These source-bound editorial checks were performed by the assigned primary agent in this context. They are recorded as agent self-check, not independent review or human editorial approval. PR review is a separate gate.
 
 ## Validation
