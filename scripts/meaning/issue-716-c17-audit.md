@@ -2,7 +2,7 @@
 
 ## Scope and result
 
-- Baseline: `master` at `e7a4304c667fab6877de7633af203284abb922b2`.
+- Baseline: `master` at `ee0464feedb38184391b88b0908b9265e55fe047`.
 - Reviewed all twelve c17 meaning shards: 11,949 initial meanings across 8,918 lemmas. The projection had 1,607 lemmas with multiple canonical senses (853 with multiple senses in one source record and 754 spanning records).
 - Kept all 8,918 lemmas. Merged 260 same-lemma groups covering 549 canonical senses, reducing the shard by 289 meanings. Recorded four exact duplicate drops with same-lemma retained targets. The result has 11,656 c17 meanings and four c17 adjudications.
 - Added 457 direct meaning-layer glosses for opaque source cross-references. Three further references are represented by their same-lemma merge glosses: the two `태국` senses and the `특명` abbreviation sense. The malformed source reference for `w343533-s1` (`→ .`) remains an explicit hold rather than a guessed gloss.
@@ -20,4 +20,4 @@ These source-bound editorial checks were performed by the assigned primary agent
 
 ## Validation
 
-Replaying the complete edit spec from the recorded baseline with the production `applyEdits` function matches the stored result by meaning ID and adjudication sense ID: 498,277 meanings and 26 adjudications, with no mismatches. The c17 output contains 11,656 meanings and four adjudications. `node scripts/meaning/validate.mjs` passed for the full dataset, and `git diff --check` passed.
+Replaying the complete edit spec from the recorded baseline with the production `applyEdits` function matches the stored result by meaning ID and adjudication sense ID: 498,031 meanings and 37 adjudications, with no mismatches. The c17 output contains 11,656 meanings and four adjudications. `node scripts/meaning/validate.mjs` passed for the full dataset, and `git diff --check` passed.
