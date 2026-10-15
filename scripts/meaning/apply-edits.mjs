@@ -2,16 +2,16 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  entryIdOfSense, parseMeaningId, parseShardFileName, readAdjudications, readMeanings, validateAdjudicationRow, validateMeaningRow,
+  compareSenseIds, parseShardFileName, readAdjudications, readMeanings, validateAdjudicationRow, validateMeaningRow,
   writeAdjudications,
 } from './contract.mjs';
 
 /**
  * Applies an edit spec to the meaning/adjudication rows (Issue #715).
  *
- * Spec: `{ merges: [{ entry, senses: [n, ...], gloss }], drops: [{ sense_id, duplicate_of, reason? }] }`.
- * - A merge replaces the single-sense meanings of `entry`'s senses `senses` with ONE meaning whose id is the id of the
- *   lowest-numbered member (`mNNN_K`, or `mNNN` when the record has one sense), whose `sense_ids` list all members and
+ * Spec: `{ merges: [{ senses: [senseId, ...], gloss }], drops: [{ sense_id, duplicate_of, reason? }] }`.
+ * - A merge replaces the single-sense meanings of `senses` (one or several records of the SAME lemma) with ONE meaning
+ *   whose id is the id of the first member in canonical order, whose `sense_ids` list all members in that order and
  *   whose gloss is the authored `gloss`. Members must still be untouched single-sense meanings.
  * - A drop removes the meaning of `sense_id` and records the verdict in adjudication. `duplicate_of` must stay referenced.
  * Pure: returns new row arrays; the CLI writes them. Throws with every problem found instead of partially applying.
@@ -35,40 +35,34 @@ export function applyEdits({ meanings, adjudications }, spec) {
   };
 
   for (const [i, merge] of (spec.merges ?? []).entries()) {
-    const where = `merges[${i}] (${merge.entry})`;
-    const ordinals = [...merge.senses].sort((a, b) => a - b);
-    if (ordinals.length < 2) { errors.push(`${where}: a merge needs at least two senses`); continue; }
-    const senseIds = ordinals.map((n) => `${merge.entry}-s${n}`);
+    const where = `merges[${i}] (${(merge.senses ?? []).join(', ')})`;
+    if (!Array.isArray(merge.senses) || merge.senses.length < 2) { errors.push(`${where}: a merge needs at least two senses`); continue; }
+    const senseIds = [...merge.senses].sort(compareSenseIds);
     const rows = senseIds.map((senseId) => claim(senseId, where));
     if (rows.some((row) => !row)) continue;
     const first = rows[0];
-    const id = parseMeaningId(first.id);
+    if (rows.some((row) => row.lemma !== first.lemma)) { errors.push(`${where}: senses belong to different lemmas`); continue; }
     const merged = { id: first.id, lemma: first.lemma, gloss: merge.gloss, sense_ids: senseIds };
-    if (rows.some((row) => row.lemma !== first.lemma)) errors.push(`${where}: senses belong to different lemmas`);
-    if (!id) errors.push(`${where}: bad id ${first.id}`);
     errors.push(...validateMeaningRow(merged, where));
     for (const row of rows) removed.add(row.id);
     added.push(merged);
   }
 
+  const dropped = new Set((spec.drops ?? []).map((drop) => drop.sense_id));
   for (const [i, drop] of (spec.drops ?? []).entries()) {
     const where = `drops[${i}] (${drop.sense_id})`;
     const row = claim(drop.sense_id, where);
     if (!row) continue;
     const verdict = { sense_id: drop.sense_id, lemma: row.lemma, decision: 'drop', reason: drop.reason ?? 'duplicate', duplicate_of: drop.duplicate_of };
     errors.push(...validateAdjudicationRow(verdict, where));
-    if (entryIdOfSense(drop.duplicate_of) !== entryIdOfSense(drop.sense_id) && !bySense.has(drop.duplicate_of)) {
-      errors.push(`${where}: duplicate_of ${drop.duplicate_of} has no meaning`);
-    }
+    // The target must be a currently valid meaning sense of the same lemma, wherever its record is.
+    const target = bySense.get(drop.duplicate_of);
+    if (!target || dropped.has(drop.duplicate_of)) errors.push(`${where}: duplicate_of ${drop.duplicate_of} has no meaning (unknown or itself dropped)`);
+    else if (target.lemma !== row.lemma) errors.push(`${where}: duplicate_of ${drop.duplicate_of} belongs to lemma ${target.lemma}, not ${row.lemma}`);
     removed.add(row.id);
     newAdjudications.push(verdict);
   }
-  for (const verdict of newAdjudications) {
-    if (claimed.has(verdict.duplicate_of) && !added.some((m) => m.sense_ids.includes(verdict.duplicate_of))) {
-      errors.push(`${verdict.sense_id}: duplicate_of ${verdict.duplicate_of} is itself dropped`);
-    }
-  }
-  if (errors.length) throw new Error(errors.join('\n'));
+  if (errors.length) throw new Error([...new Set(errors)].join('\n'));
   return {
     meanings: [...meanings.filter((row) => !removed.has(row.id)), ...added],
     adjudications: [...adjudications, ...newAdjudications],

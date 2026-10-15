@@ -6,7 +6,7 @@
 | Path | Content |
 | --- | --- |
 | `data/canonical/` | STDICT normalized source. Never modified by meaning work. |
-| `data/meanings/` | Final meanings: `{ id, lemma, gloss, sense_ids }`. A meaning references one or more senses of **one** entry. |
+| `data/meanings/` | Final meanings: `{ id, lemma, gloss, sense_ids }`. A meaning references one or more senses of **one lemma** (possibly several records); its id derives from its first sense. |
 | `data/adjudication/` | Editorial verdicts: `{ sense_id, lemma, decision: "drop", reason: "duplicate", duplicate_of }`. |
 
 Only the `duplicate` drop reason is official; add others per concrete case. Meaning criteria are real meaning

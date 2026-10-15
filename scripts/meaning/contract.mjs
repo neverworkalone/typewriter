@@ -68,6 +68,17 @@ function checkKeys(row, allowed, errors, where) {
   for (const key of Object.keys(row)) if (!allowed.includes(key)) errors.push(`${where}: unknown field ${key}`);
 }
 
+const senseKey = (senseId) => {
+  const match = typeof senseId === 'string' ? SENSE_ID.exec(senseId) : null;
+  return match ? [Number(match[1].slice(1)), Number(match[2])] : null;
+};
+
+export const compareSenseIds = (a, b) => {
+  const [ea, na] = senseKey(a) ?? [0, 0];
+  const [eb, nb] = senseKey(b) ?? [0, 0];
+  return ea - eb || na - nb;
+};
+
 /** Row-level schema check. Returns a list of error strings. */
 export function validateMeaningRow(row, where = 'meaning') {
   const errors = [];
@@ -84,9 +95,16 @@ export function validateMeaningRow(row, where = 'meaning') {
     for (const senseId of row.sense_ids) {
       const entryId = typeof senseId === 'string' ? entryIdOfSense(senseId) : null;
       if (!entryId) errors.push(`${where}: invalid sense id ${JSON.stringify(senseId)}`);
-      else if (id && entryId !== id.entryId) errors.push(`${where}: sense ${senseId} does not belong to entry ${id.entryId}`);
       if (seen.has(senseId)) errors.push(`${where}: duplicate sense id ${senseId}`);
       seen.add(senseId);
+    }
+    // A meaning may span several records of one lemma (lemma equality is checked against canonical at dataset level);
+    // its id is derived from the first sense, and senses are listed in canonical order so ids and files are deterministic.
+    const first = typeof row.sense_ids[0] === 'string' ? entryIdOfSense(row.sense_ids[0]) : null;
+    if (id && first && first !== id.entryId) errors.push(`${where}: id ${row.id} must derive from the entry of its first sense (${first})`);
+    const keys = row.sense_ids.map(senseKey);
+    if (keys.every(Boolean) && keys.some((key, i) => i > 0 && (keys[i - 1][0] - key[0] || keys[i - 1][1] - key[1]) >= 0)) {
+      errors.push(`${where}: sense_ids must be unique and in canonical order`);
     }
   }
   return errors;
