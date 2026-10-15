@@ -4,10 +4,10 @@
 
 C19 contains 34 meaning shards (`c19_001`–`c19_034`): 33,624 existing meanings covering 33,641 canonical sense references and 24,465 lemmas. The source-bound census found 4,825 lemmas with multiple meanings. This pass makes only edits supported by exact canonical evidence:
 
-- 102 MERGE pairs: 97 noun/determiner pairs across 89 lemmas have source glosses that become byte-for-byte identical after removing only the noun nominalizer `것` or the determiner's attributive ending `의`; the `한의학적` noun/determiner pair (`w505373-s1`, `w505373-s2`) has an identical verbatim gloss. Four additional pairs share one meaning axis across grammatical framing or a domain example; their source-bound decisions are recorded below.
+- 108 MERGE pairs: 97 noun/determiner pairs across 89 lemmas have source glosses that become byte-for-byte identical after removing only the noun nominalizer `것` or the determiner's attributive ending `의`; the `한의학적` noun/determiner pair (`w505373-s1`, `w505373-s2`) has an identical verbatim gloss. Ten additional pairs share one meaning axis across grammatical framing, a domain example, or the same object and counting unit; their source-bound decisions are recorded below.
 - 11 DROP decisions in 10 duplicate groups: same-lemma, same-POS canonical senses have verbatim-identical glosses. Each dropped sense has a surviving `duplicate_of`; the canonical sense is not modified.
 
-The resulting C19 area has 33,511 meanings, 33,630 referenced senses, and 11 adjudicated duplicate senses. The edit specification is `scripts/meaning/issue-716-c19.json`; it touches only C19 meaning shards and `data/adjudication/c19_001.jsonl`. `data/canonical/` remains unchanged.
+The resulting C19 area has 33,505 meanings, 33,630 referenced senses, and 11 adjudicated duplicate senses. The edit specification is `scripts/meaning/issue-716-c19.json`; it touches only C19 meaning shards and `data/adjudication/c19_001.jsonl`. `data/canonical/` remains unchanged.
 
 ## Noun/determiner evidence
 
@@ -19,6 +19,12 @@ Each of the 97 normalized pairs was checked within the same lemma: the canonical
 - `한창` (`w502461-s1`, `w502461-s2`): both define the peak at which an event is most active or a state is most mature. The noun's “때” and adverb's “모양” are retained together in the representative gloss.
 - `헝겁` (`w370107-s1`, `w370107-s2`): both describe confused, flurried behavior caused by intense delight; the source varies only between the action noun “짓” and adverbial “모양”. The representative gloss includes both forms.
 - `항정선` (`w366825-s1`, `w366825-s2`): both define the same line crossing each meridian at an equal angle; the only difference is whether the route is an aircraft's or a ship's. The representative gloss names both vehicles.
+- `항정선 항로` (`w366826-s1`, `w366826-s2`): both are routes following a rhumb line; only the vehicle (aircraft or ship) differs.
+- `행` (`w372771-s1`, `w372771-s2`): the counted object is the same line of writing; one source sense names it and the other names its counting unit.
+- `획` (`w385092-s1`, `w385092-s2`): the counted object is the same stroke or dot; one source sense names the mark and the other names its counting unit.
+- `해` (`w365162-s2`, `w365162-s4`): both identify the same Earth-to-Sun orbital period; the latter explicitly uses that period as a counting unit.
+- `호동` (`w369125-s1`, `w369125-s2`): both identify a dwelling divided by household number; the latter explicitly counts that same dwelling.
+- `호` (`w369574-s1`, `w369574-s2`): both identify the house formed by a registered household; the latter explicitly counts that same house.
 
 ## Duplicate evidence
 
