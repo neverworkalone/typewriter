@@ -105,6 +105,23 @@ test('reader rejects placement violations', () => {
   assert.match(readMeanings(junk).errors.join('\n'), /not a cXX_NNN|newline/);
 });
 
+test('reader enforces lemma-then-id row order inside and across shards, for both kinds', () => {
+  const line = (item) => `${JSON.stringify(item)}\n`;
+  const write = (files) => {
+    const dir = tmp();
+    for (const [name, items] of Object.entries(files)) writeFileSync(path.join(dir, name), items.map(line).join(''));
+    return dir;
+  };
+  const order = /must be ordered/;
+  assert.deepEqual(readMeanings(write({ 'c01_001.jsonl': [row('m1', '가'), row('m2', '가나')] })).errors, []);
+  assert.match(readMeanings(write({ 'c01_001.jsonl': [row('m2', '가나'), row('m1', '가')] })).errors.join('\n'), order);
+  assert.match(readMeanings(write({ 'c01_001.jsonl': [row('m1_2', '가'), row('m1_1', '가')] })).errors.join('\n'), order);
+  assert.match(readMeanings(write({ 'c01_001.jsonl': [row('m9', '가나')], 'c01_002.jsonl': [row('m1', '가')] })).errors.join('\n'), order);
+  const drop = (id, lemma) => ({ sense_id: id, lemma, decision: 'drop', reason: 'duplicate', duplicate_of: 'w1-s1' });
+  assert.deepEqual(readAdjudications(write({ 'c01_001.jsonl': [drop('w3-s1', '가'), drop('w3-s2', '가')] })).errors, []);
+  assert.match(readAdjudications(write({ 'c01_001.jsonl': [drop('w3-s2', '가'), drop('w3-s1', '가')] })).errors.join('\n'), order);
+});
+
 test('dataset validation: id shape, ownership, adjudication and canonical references', () => {
   const canonical = new Map([['w1-s1', { lemma: '가' }], ['w1-s2', { lemma: '가' }], ['w1-s3', { lemma: '가' }]]);
   const meanings = [row('m1_1', '가', ['w1-s1', 'w1-s2']), row('m1_2', '가', ['w1-s3'])];

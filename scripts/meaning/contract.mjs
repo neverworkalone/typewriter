@@ -176,6 +176,8 @@ export function readShards(directory, kind) {
   const files = readdirSync(directory).filter((name) => !name.startsWith('.')).sort();
   const lastIndex = new Map();
   const lemmaShard = new Map();
+  const previous = new Map();
+  const order = compareRows(kind);
   for (const file of files) {
     const parsed = parseShardFileName(file);
     if (!parsed) { errors.push(`${file}: not a cXX_NNN.jsonl shard file`); continue; }
@@ -197,6 +199,9 @@ export function readShards(directory, kind) {
       const home = lemmaShard.get(`${row.lemma}`);
       if (home !== undefined && home !== file) errors.push(`${where}: lemma ${row.lemma} is split across ${home} and ${file}`);
       lemmaShard.set(row.lemma, file);
+      const before = previous.get(parsed.code);
+      if (before && order(before, row) > 0) errors.push(`${where}: rows must be ordered by lemma then id within ${parsed.code} (after ${rowKey(kind, before)})`);
+      previous.set(parsed.code, row);
       rows.push(row);
     });
   }

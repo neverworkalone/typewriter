@@ -19,7 +19,7 @@ never mix; numbers need not be contiguous).
 ## Shards
 Files are `cXX_NNN.jsonl` (`NNN` from `001`, contiguous per `cXX`). `cXX` comes from the lemma's Hangul initial via the
 explicit table in `scripts/meaning/contract.mjs` (`c01` ㄱ … `c19` ㅎ; `c20` for lemmas starting with neither a Hangul syllable nor a bare initial jamo such as `ㄱ`). Shards hold about
-1,000 rows, close only on a lemma boundary, and rows are ordered by lemma then id. Parallel ownership is a whole `cXX`
+1,000 rows, close only on a lemma boundary, and rows are ordered by lemma then id (enforced by the reader across shards of one `cXX`). Parallel ownership is a whole `cXX`
 (all its shards). `meaning` and `adjudication` use the same naming under their own directories.
 
 ## API
