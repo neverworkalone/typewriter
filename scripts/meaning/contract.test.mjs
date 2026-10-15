@@ -10,6 +10,8 @@ import {
   validateMeaningDataset, validateMeaningRow, writeAdjudications, writeMeanings,
 } from './contract.mjs';
 import { mkdirSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { diffInitialShards, projectInitialMeanings } from './initial.mjs';
 import { createCanonicalContext } from '../validate/canonical-context.mjs';
 import { runChecks } from '../ci/run-category.mjs';
 import { loadMeaningData } from './contract.mjs';
@@ -252,5 +254,39 @@ test('Normal meaning check reuses the shared canonical context instead of readin
   assert.throws(() => loadMeaningData(args), /ENOENT/);
   // The real runner path: the registered Normal in-process check runs on the session context.
   const check = { label: 'meaning', inProcess: 'meaning-references', command: () => ({ executable: '[in-process]', args: [] }) };
-  await runChecks([check], { canonicalContext }, { log: () => {} });
+  // The committed full corpus does not resolve against this tiny context, which proves the check uses the context.
+  await assert.rejects(runChecks([check], { canonicalContext }, { log: () => {} }), /Meaning data invalid/);
+});
+
+test('initial projection: one sense = one meaning, deterministic ids, canonical gloss, complete coverage (synthetic)', () => {
+  const entries = [
+    { id: 'w001', lemma: '가다', senses: [{ id: 'w001-s1', gloss: 'A' }] },
+    { id: 'w002', lemma: '가다', senses: [{ id: 'w002-s1', gloss: 'B' }, { id: 'w002-s3', gloss: 'C' }] },
+    { id: 'w003', lemma: 'abc', senses: [{ id: 'w003-s1', gloss: 'D' }] },
+  ];
+  const rows = projectInitialMeanings(entries);
+  assert.deepEqual(rows.map((r) => [r.id, r.sense_ids[0], r.gloss]), [
+    ['m001', 'w001-s1', 'A'], ['m002_1', 'w002-s1', 'B'], ['m002_3', 'w002-s3', 'C'], ['m003', 'w003-s1', 'D'],
+  ]);
+  const senses = new Map(entries.flatMap((e) => e.senses.map((s) => [s.id, { lemma: e.lemma }])));
+  assert.deepEqual(validateMeaningDataset({ meanings: rows, senses, complete: true }), []);
+  const missing = validateMeaningDataset({ meanings: rows.slice(1), senses, complete: true });
+  assert.ok(missing.some((e) => e.startsWith('w001-s1: canonical sense has no meaning')));
+  // An adjudicated drop counts as covered; incomplete mode never demands coverage.
+  const dropped = { sense_id: 'w001-s1', lemma: '가다', decision: 'drop', reason: 'duplicate', duplicate_of: 'w002-s1' };
+  assert.deepEqual(validateMeaningDataset({ meanings: rows.slice(1), adjudications: [dropped], senses, complete: true }), []);
+  assert.deepEqual(validateMeaningDataset({ meanings: rows.slice(1), senses }), []);
+  const dir = tmp();
+  writeMeanings(dir, rows);
+  const first = readdirSync(dir).map((f) => readFileSync(path.join(dir, f), 'utf8'));
+  writeMeanings(dir, projectInitialMeanings(entries));
+  assert.deepEqual(readdirSync(dir).map((f) => readFileSync(path.join(dir, f), 'utf8')), first);
+});
+
+test('real data: data/meanings is exactly the initial projection of canonical and covers every sense once', () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+  assert.deepEqual(diffInitialShards(path.join(root, 'data/canonical'), path.join(root, 'data/meanings')), []);
+  const { meanings, errors } = validateMeaningFiles();
+  assert.deepEqual(errors, []);
+  assert.ok(meanings.every((m) => m.sense_ids.length === 1));
 });
