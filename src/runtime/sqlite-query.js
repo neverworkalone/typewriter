@@ -104,6 +104,47 @@ export function getSenseRelations(database, senseId) {
   `, [senseId]);
 }
 
+/** Meanings of an exact lemma, each with its member senses (source evidence) in stored order. */
+export function getMeaningsByLemma(database, lemma) {
+  const meanings = allRows(database, `
+    SELECT id, lemma, gloss FROM meanings WHERE lemma = ? ORDER BY id
+  `, [lemma]);
+  return meanings.map((meaning) => ({
+    ...meaning,
+    sense_ids: allRows(database, `
+      SELECT sense_id FROM meaning_members WHERE meaning_id = ? ORDER BY position
+    `, [meaning.id]).map(({ sense_id: senseId }) => senseId),
+  }));
+}
+
+/** Projected meaning relations of one meaning with target display data and source-sense provenance. */
+export function getMeaningRelations(database, meaningId) {
+  return allRows(database, `
+    SELECT
+      meaning_relations.position,
+      meaning_relations.target_meaning_id AS target,
+      meaning_relations.type,
+      meaning_relations.note,
+      meaning_relations.relevance,
+      meaning_relations.origin,
+      target_meanings.lemma AS target_lemma,
+      target_meanings.gloss AS target_gloss
+    FROM meaning_relations
+    INNER JOIN meanings AS target_meanings
+      ON target_meanings.id = meaning_relations.target_meaning_id
+    WHERE meaning_relations.source_meaning_id = ?
+    ORDER BY meaning_relations.position
+  `, [meaningId]).map((relation) => ({
+    ...relation,
+    sources: allRows(database, `
+      SELECT source_sense_id, source_position, source_redirected, target_redirected
+      FROM meaning_relation_sources
+      WHERE source_meaning_id = ? AND relation_position = ?
+      ORDER BY position
+    `, [meaningId, relation.position]),
+  }));
+}
+
 export function getRecord(database, recordId) {
   const record = firstRow(database, `
     SELECT id, record_type, role, candidate_id, lemma

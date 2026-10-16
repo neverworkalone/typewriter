@@ -78,10 +78,70 @@ CREATE TABLE relations (
     REFERENCES senses(id, record_id)
 );
 
+CREATE TABLE meanings (
+  id TEXT PRIMARY KEY NOT NULL,
+  lemma TEXT NOT NULL,
+  gloss TEXT NOT NULL
+);
+
+CREATE TABLE meaning_members (
+  meaning_id TEXT NOT NULL,
+  position INTEGER NOT NULL CHECK (position >= 0),
+  sense_id TEXT NOT NULL UNIQUE,
+  PRIMARY KEY (meaning_id, position),
+  FOREIGN KEY (meaning_id) REFERENCES meanings(id) ON DELETE CASCADE,
+  FOREIGN KEY (sense_id) REFERENCES senses(id)
+);
+
+CREATE TABLE sense_adjudications (
+  sense_id TEXT PRIMARY KEY NOT NULL,
+  reason TEXT NOT NULL CHECK (reason IN ('duplicate', 'out_of_scope')),
+  duplicate_of_sense_id TEXT,
+  CHECK ((reason = 'duplicate') = (duplicate_of_sense_id IS NOT NULL)),
+  FOREIGN KEY (sense_id) REFERENCES senses(id),
+  FOREIGN KEY (duplicate_of_sense_id) REFERENCES senses(id)
+);
+
+CREATE TABLE meaning_relations (
+  source_meaning_id TEXT NOT NULL,
+  position INTEGER NOT NULL CHECK (position >= 0),
+  target_meaning_id TEXT NOT NULL,
+  type TEXT NOT NULL CHECK (type IN (
+    'direct', 'near', 'antonym', 'mood',
+    'scene', 'sensory', 'action', 'association'
+  )),
+  note TEXT NOT NULL,
+  relevance INTEGER CHECK (relevance IS NULL OR relevance BETWEEN 1 AND 9),
+  origin TEXT NOT NULL,
+  PRIMARY KEY (source_meaning_id, position),
+  UNIQUE (source_meaning_id, target_meaning_id, type),
+  CHECK (source_meaning_id <> target_meaning_id),
+  FOREIGN KEY (source_meaning_id) REFERENCES meanings(id) ON DELETE CASCADE,
+  FOREIGN KEY (target_meaning_id) REFERENCES meanings(id)
+);
+
+CREATE TABLE meaning_relation_sources (
+  source_meaning_id TEXT NOT NULL,
+  relation_position INTEGER NOT NULL,
+  position INTEGER NOT NULL CHECK (position >= 0),
+  source_sense_id TEXT NOT NULL,
+  source_position INTEGER NOT NULL CHECK (source_position >= 0),
+  source_redirected INTEGER NOT NULL CHECK (source_redirected IN (0, 1)),
+  target_redirected INTEGER NOT NULL CHECK (target_redirected IN (0, 1)),
+  PRIMARY KEY (source_meaning_id, relation_position, position),
+  UNIQUE (source_sense_id, source_position),
+  FOREIGN KEY (source_meaning_id, relation_position)
+    REFERENCES meaning_relations(source_meaning_id, position) ON DELETE CASCADE,
+  FOREIGN KEY (source_sense_id, source_position)
+    REFERENCES relations(source_sense_id, position)
+);
+
 CREATE INDEX idx_records_lemma ON records(lemma);
 CREATE INDEX idx_search_forms_form ON search_forms(form);
 CREATE INDEX idx_senses_record_position ON senses(record_id, position);
 CREATE INDEX idx_generated_surface_forms_form ON generated_surface_forms(form);
 CREATE INDEX idx_relations_source_position ON relations(source_sense_id, position);
 CREATE INDEX idx_relations_target ON relations(target_record_id, target_sense_id);
+CREATE INDEX idx_meanings_lemma ON meanings(lemma);
+CREATE INDEX idx_meaning_relations_target ON meaning_relations(target_meaning_id);
 `;

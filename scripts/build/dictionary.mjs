@@ -17,6 +17,8 @@ import {
   resolveBuildProvenance,
 } from './provenance.mjs';
 import { SQLITE_SCHEMA_SQL, SQLITE_SCHEMA_VERSION } from './sqlite-schema.mjs';
+import { loadMeaningData, canonicalSensesFromContext } from '../meaning/contract.mjs';
+import { projectMeaningRelations } from '../meaning/project.mjs';
 import { DICTIONARY_VERSION } from '../../src/runtime/dictionary-contract.js';
 import {
   buildOrReuseSurfaceFormProjection,
@@ -29,6 +31,44 @@ export { DICTIONARY_VERSION };
 export const DEFAULT_DICTIONARY_OUTPUT = path.resolve(
   'artifacts/dictionary.sqlite',
 );
+
+const DEFAULT_MEANINGS_DIRECTORY = path.resolve('data/meanings');
+const DEFAULT_ADJUDICATION_DIRECTORY = path.resolve('data/adjudication');
+
+/**
+ * The product meaning layer: the whole `data/meanings` corpus (validated complete against canonical) for the default
+ * canonical input; fixture inputs get an empty layer unless a meaning directory is supplied explicitly.
+ */
+function loadMeaningLayer({ model, context, inputDirectory, meaningsDirectory, adjudicationDirectory }) {
+  const isDefault = path.resolve(inputDirectory) === path.resolve(DEFAULT_CANONICAL_DIRECTORY);
+  const meaningDir = meaningsDirectory ?? (isDefault ? DEFAULT_MEANINGS_DIRECTORY : null);
+  if (!meaningDir) {
+    return { meanings: [], adjudications: [], relations: [], stats: projectMeaningRelations({ records: [], meanings: [] }).stats };
+  }
+  const loaded = loadMeaningData({
+    meaningsDirectory: meaningDir,
+    adjudicationDirectory: adjudicationDirectory ?? DEFAULT_ADJUDICATION_DIRECTORY,
+    senses: canonicalSensesFromContext(context),
+    complete: true,
+  });
+  if (loaded.errors.length > 0) {
+    throw new BuildError(
+      `meaning data is invalid: ${loaded.errors.slice(0, 10).join('; ')}`,
+      'INVALID_MEANING_DATA',
+    );
+  }
+  const projection = projectMeaningRelations({
+    records: model.records,
+    meanings: loaded.meanings,
+    adjudications: loaded.adjudications,
+  });
+  return {
+    meanings: loaded.meanings,
+    adjudications: loaded.adjudications,
+    relations: projection.relations,
+    stats: projection.stats,
+  };
+}
 
 export class BuildError extends Error {
   constructor(message, code = 'BUILD_ERROR') {
@@ -66,7 +106,7 @@ function assertOutputIsGeneratedOutsideCanonical(inputDirectory, outputPath) {
   }
 }
 
-function metadataEntries(model, metadata, surfaceProjection) {
+function metadataEntries(model, metadata, surfaceProjection, meaningLayer) {
   const counts = {
     record_count: model.records.length,
     start_count: model.records.filter((record) => record.role === 'start').length,
@@ -88,6 +128,16 @@ function metadataEntries(model, metadata, surfaceProjection) {
     generated_surface_form_count: surfaceProjection.rows.length,
     surface_form_eligible_sense_count: surfaceProjection.coverage.eligible_sense_count,
     surface_form_exclusion_count: surfaceProjection.exclusions.length,
+    meaning_count: meaningLayer.meanings.length,
+    meaning_member_count: meaningLayer.meanings.reduce(
+      (count, meaning) => count + meaning.sense_ids.length,
+      0,
+    ),
+    meaning_relation_count: meaningLayer.relations.length,
+    sense_adjudication_count: meaningLayer.adjudications.length,
+    ...Object.fromEntries(
+      Object.entries(meaningLayer.stats).map(([key, value]) => [`meaning_projection_${key}`, value]),
+    ),
     expression_count: model.records.filter(
       (record) => record.record_type === 'expression',
     ).length,
@@ -118,7 +168,7 @@ function metadataEntries(model, metadata, surfaceProjection) {
     });
 }
 
-function insertModel(database, model, metadata, surfaceFormRows) {
+function insertModel(database, model, metadata, surfaceFormRows, meaningLayer) {
   const insertMetadata = database.prepare(
     'INSERT INTO metadata (key, value) VALUES (?, ?)',
   );
@@ -137,6 +187,27 @@ function insertModel(database, model, metadata, surfaceFormRows) {
   const insertRelation = database.prepare(
     `INSERT INTO relations
       (source_sense_id, position, target_record_id, target_sense_id, type, note, relevance)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  );
+
+  const insertMeaning = database.prepare(
+    'INSERT INTO meanings (id, lemma, gloss) VALUES (?, ?, ?)',
+  );
+  const insertMember = database.prepare(
+    'INSERT INTO meaning_members (meaning_id, position, sense_id) VALUES (?, ?, ?)',
+  );
+  const insertAdjudication = database.prepare(
+    'INSERT INTO sense_adjudications (sense_id, reason, duplicate_of_sense_id) VALUES (?, ?, ?)',
+  );
+  const insertMeaningRelation = database.prepare(
+    `INSERT INTO meaning_relations
+      (source_meaning_id, position, target_meaning_id, type, note, relevance, origin)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  );
+  const insertMeaningRelationSource = database.prepare(
+    `INSERT INTO meaning_relation_sources
+      (source_meaning_id, relation_position, position, source_sense_id, source_position,
+       source_redirected, target_redirected)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
   );
 
@@ -188,6 +259,39 @@ function insertModel(database, model, metadata, surfaceFormRows) {
       });
     }
   }
+
+  // The meaning layer references senses and the original relation rows, so it follows them.
+  for (const meaning of meaningLayer.meanings) {
+    insertMeaning.run(meaning.id, meaning.lemma, meaning.gloss);
+    meaning.sense_ids.forEach((senseId, position) => {
+      insertMember.run(meaning.id, position, senseId);
+    });
+  }
+  for (const item of meaningLayer.adjudications) {
+    insertAdjudication.run(item.sense_id, item.reason, item.duplicate_of ?? null);
+  }
+  for (const relation of meaningLayer.relations) {
+    insertMeaningRelation.run(
+      relation.source_meaning_id,
+      relation.position,
+      relation.target_meaning_id,
+      relation.type,
+      relation.note,
+      relation.relevance,
+      relation.origin,
+    );
+    relation.sources.forEach((source, position) => {
+      insertMeaningRelationSource.run(
+        relation.source_meaning_id,
+        relation.position,
+        position,
+        source.source_sense_id,
+        source.source_position,
+        source.source_redirected,
+        source.target_redirected,
+      );
+    });
+  }
 }
 
 function verifyDatabase(database) {
@@ -218,6 +322,8 @@ export async function buildDictionary({
   canonicalContext,
   semanticAudit,
   normalizedModel,
+  meaningsDirectory,
+  adjudicationDirectory,
   requireSurfaceFormClassifications,
   requireSurfaceFormCollisionReview,
 } = {}) {
@@ -251,6 +357,13 @@ export async function buildDictionary({
     requireClassDispositions,
     requireCollisionReview,
   });
+  const meaningLayer = loadMeaningLayer({
+    model,
+    context,
+    inputDirectory,
+    meaningsDirectory,
+    adjudicationDirectory,
+  });
   const provenance = await resolveBuildProvenance({
     repositoryDirectory,
     sourceRevision,
@@ -276,14 +389,14 @@ export async function buildDictionary({
       node_version: process.version,
       sqlite_module: 'node:sqlite',
       sqlite_version: sqliteVersion,
-    }, surfaceFormProjection);
+    }, surfaceFormProjection, meaningLayer);
     database.exec('PRAGMA foreign_keys = ON;');
     database.exec(
       `PRAGMA user_version = ${Number.parseInt(SQLITE_SCHEMA_VERSION, 10)};`,
     );
     database.exec(SQLITE_SCHEMA_SQL);
     database.exec('BEGIN IMMEDIATE;');
-    insertModel(database, model, generatedMetadata, surfaceFormProjection.rows);
+    insertModel(database, model, generatedMetadata, surfaceFormProjection.rows, meaningLayer);
     database.exec('COMMIT;');
     verifyDatabase(database);
   } catch (error) {
@@ -320,6 +433,9 @@ export async function buildDictionary({
       0,
     ),
     relationCount: countRelations(model.records),
+    meaningCount: meaningLayer.meanings.length,
+    meaningRelationCount: meaningLayer.relations.length,
+    meaningProjection: meaningLayer.stats,
     generatedSurfaceFormCount: surfaceFormProjection.rows.length,
     surfaceFormExclusionCount: surfaceFormProjection.exclusions.length,
     surfaceFormCoverage: surfaceFormProjection.coverage,

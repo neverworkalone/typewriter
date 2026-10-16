@@ -161,6 +161,13 @@ const RAW_CI_CATEGORIES = Object.freeze({
         tier: 'normal',
       },
       {
+        ...commandCheck(
+          'Test Issue #717 sense-to-meaning relation projection (redirect, dedup, provenance, skips)',
+          ['--test', 'scripts/meaning/project.test.mjs'],
+        ),
+        tier: 'normal',
+      },
+      {
         ...inProcessCheck('Validate meaning/adjudication references against current canonical', 'meaning-references'),
         tier: 'normal',
       },

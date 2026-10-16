@@ -405,8 +405,8 @@ function validateDictionaryMetadata({
     }
 
     const userVersion = database.prepare('PRAGMA user_version').get()?.user_version;
-    if (userVersion !== 3) {
-      errors.push(`Dictionary SQLite user_version must be 3, received ${JSON.stringify(userVersion)}.`);
+    if (userVersion !== 4) {
+      errors.push(`Dictionary SQLite user_version must be 4, received ${JSON.stringify(userVersion)}.`);
     }
     const generatedSurfaceForms = database.prepare(
       `SELECT generated_surface_forms.form,
