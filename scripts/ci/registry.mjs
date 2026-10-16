@@ -172,6 +172,10 @@ const RAW_CI_CATEGORIES = Object.freeze({
         tier: 'normal',
       },
       {
+        ...testCheck('tests/meaning-rank-order.test.mjs', 'Test meaning rank order agreement between producer and SQLite validator'),
+        tier: 'normal',
+      },
+      {
         ...testCheck('tests/meaning-search.test.mjs', 'Test meaning search candidates, stored ranking and 더보기 partition'),
         tier: 'normal',
       },

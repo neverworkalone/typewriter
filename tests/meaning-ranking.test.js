@@ -19,6 +19,16 @@ describe('meaning ranking', () => {
       .toEqual(['m97', 'm443', 'm443_2', 'm443_10', 'm1000']);
   });
 
+  it('is a total order over leading zeros, unbounded integers and ordinals', () => {
+    expect(['m9', 'm09', 'm1_1000001', 'm2', 'm007', 'm7'].sort(compareMeaningIds))
+      .toEqual(['m007', 'm7', 'm09', 'm9', 'm1_1000001', 'm2'].sort(compareMeaningIds));
+    expect(compareMeaningIds('m09', 'm9')).toBeLessThan(0);
+    expect(compareMeaningIds('m9', 'm09')).toBeGreaterThan(0);
+    expect(compareMeaningIds('m1_1000001', 'm2')).toBeLessThan(0);
+    expect(compareMeaningIds(`m${'9'.repeat(30)}`, `m1${'0'.repeat(30)}`)).toBeLessThan(0);
+    expect(compareMeaningIds('m5', 'm5')).toBe(0);
+  });
+
   it('counts distinct targets per ranking key', () => {
     expect(countMeaningRelations([
       { type: 'direct', target_meaning_id: 'm1' },

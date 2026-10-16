@@ -27,10 +27,17 @@ export const DICTIONARY_COUNT_QUERIES = Object.freeze({
 const quoted = (types) => types.map((type) => `'${type}'`).join(', ');
 const MEANING_LEXICAL_TYPES_SQL = quoted(LEXICAL_RELATION_TYPES);
 const MEANING_EXPLORATORY_TYPES_SQL = quoted(EXPLORATORY_RELATION_TYPES);
-// Numeric (entry number, ordinal) order of a meaning ID: `m443_1` < `m445` < `m1000`.
-const MEANING_ORDER_SQL = (id) => `
-  CAST(substr(${id}, 2, instr(${id} || '_', '_') - 2) AS INTEGER) * 1000000
-  + CASE WHEN instr(${id}, '_') = 0 THEN 0 ELSE CAST(substr(${id}, instr(${id}, '_') + 1) AS INTEGER) END`;
+// Total order of a meaning ID as a row value, equal to `compareMeaningIds`: (entry number, ordinal, raw ID).
+// Numbers are compared exactly as digit strings (leading zeros stripped, then by length, then text), so no
+// integer overflow or packing is involved: `m09` < `m9`, `m1_1000001` < `m2`, `m99...9` < `m100...0`.
+const MEANING_ENTRY_DIGITS = (id) => `substr(${id}, 2, instr(${id} || '_', '_') - 2)`;
+const MEANING_ORDINAL_DIGITS = (id) => `CASE WHEN instr(${id}, '_') = 0 THEN '0' ELSE substr(${id}, instr(${id}, '_') + 1) END`;
+const NORMALIZED_DIGITS = (digits) => `CASE WHEN ltrim(${digits}, '0') = '' THEN '0' ELSE ltrim(${digits}, '0') END`;
+const MEANING_ORDER_SQL = (id) => {
+  const entry = NORMALIZED_DIGITS(MEANING_ENTRY_DIGITS(id));
+  const ordinal = NORMALIZED_DIGITS(MEANING_ORDINAL_DIGITS(id));
+  return `length(${entry}), ${entry}, length(${ordinal}), ${ordinal}, ${id}`;
+};
 
 // Meaning of a sense: its own member meaning, else (for a `duplicate` drop) the meaning of `duplicate_of`.
 const memberMeaning = (sense) => `(SELECT meaning_id FROM meaning_members WHERE sense_id = ${sense})`;

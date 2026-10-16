@@ -15,17 +15,25 @@ export const EXPLORATORY_RELATION_TYPES = typesOf(UI_GROUP_IDS.texture, UI_GROUP
 
 const MEANING_ID = /^m(\d+)(?:_(\d+))?$/u;
 
-/** `m97` -> [97, 0], `m97_2` -> [97, 2]; numeric so `m443` sorts before `m1000`. */
+/**
+ * `m97` -> [97n, 0n], `m97_2` -> [97n, 2n]. Exact (unbounded) integers; the raw ID is the final tie-break, so
+ * IDs that differ only in leading zeros (`m09`, `m9`) still have a fixed order, as in `compareEntryIds`.
+ */
 export function meaningIdOrder(id) {
   const match = MEANING_ID.exec(String(id));
   if (!match) throw new TypeError(`not a meaning id: ${id}`);
-  return [Number(match[1]), match[2] === undefined ? 0 : Number(match[2])];
+  return [BigInt(match[1]), BigInt(match[2] ?? 0), String(id)];
 }
 
+const compareOrdered = (left, right) => (left < right ? -1 : left > right ? 1 : 0);
+
+/** Total order: (entry number, ordinal, raw ID). */
 export function compareMeaningIds(left, right) {
-  const [leftEntry, leftOrdinal] = meaningIdOrder(left);
-  const [rightEntry, rightOrdinal] = meaningIdOrder(right);
-  return leftEntry - rightEntry || leftOrdinal - rightOrdinal;
+  const leftOrder = meaningIdOrder(left);
+  const rightOrder = meaningIdOrder(right);
+  return leftOrder.reduce((difference, part, index) => (
+    difference || compareOrdered(part, rightOrder[index])
+  ), 0);
 }
 
 /** Counts DESC (유의어·반의어, then 말의 결·연상), then meaning ID. A total order for distinct IDs. */
