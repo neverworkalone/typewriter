@@ -561,7 +561,7 @@ Detailed rules should live in dedicated documents as they are introduced by the 
 
 Do not duplicate dedicated documents in `AGENTS.md`.
 
-When reusing work from another branch, bring over only the needed changes; never overwrite policy/contract files with older whole-file copies. Before pushing, refresh `origin/master` and inspect `git diff origin/master -- <changed-policy-file>`; reconcile any policy deleted or reverted since the branch diverged.
+When reusing work from another branch, copy only needed changes; never replace a policy/contract file wholesale with an older version. **Only if that transfer changes a policy/contract file**, compare it once against current `master` and reconcile any regression. Ordinary pushes need no extra check.
 
 ## Decision rule
 
