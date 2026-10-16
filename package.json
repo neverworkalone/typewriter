@@ -10,6 +10,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:ui": "vite build --mode ui",
     "dev:web": "vite --config vite.web.config.js",
     "build:web": "vite build --config vite.web.config.js",
     "test:web:integration": "node scripts/test-web-landing-integration.mjs",

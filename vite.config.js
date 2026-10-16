@@ -21,33 +21,38 @@ const fullDictionaryPath = path.resolve(
 );
 const shouldMinify = process.env.TYPEWRITER_BUILD_MINIFY !== 'false';
 
-export default defineConfig({
-  plugins: [
-    vue(),
-    createProductRuntimeAssets({
-      projectRoot,
-      canonicalDirectory,
-      outputDirectory,
-      sharedDictionaryPath,
-      fullDictionaryPath,
-    }),
-  ],
-  build: {
-    outDir: outputDirectory,
-    target: 'es2022',
-    minify: shouldMinify ? 'esbuild' : false,
-    emptyOutDir: true,
-    rollupOptions: {
-      input: {
-        popup: `${projectRoot}/popup.html`,
-        options: `${projectRoot}/options.html`,
-      },
-      output: {
-        format: 'es',
-        entryFileNames: 'assets/[name]-[hash].js',
-        chunkFileNames: 'chunks/[name]-[hash].js',
-        assetFileNames: 'assets/[name]-[hash][extname]',
+// `vite build --mode ui` (pnpm run build:ui) is the DB-free UI development build.
+export default defineConfig(({ mode }) => {
+  const uiOnly = mode === 'ui';
+  return {
+    plugins: [
+      vue(),
+      createProductRuntimeAssets({
+        projectRoot,
+        canonicalDirectory,
+        outputDirectory,
+        sharedDictionaryPath,
+        fullDictionaryPath,
+        uiOnly,
+      }),
+    ],
+    build: {
+      outDir: outputDirectory,
+      target: 'es2022',
+      minify: shouldMinify ? 'esbuild' : false,
+      emptyOutDir: !uiOnly,
+      rollupOptions: {
+        input: {
+          popup: `${projectRoot}/popup.html`,
+          options: `${projectRoot}/options.html`,
+        },
+        output: {
+          format: 'es',
+          entryFileNames: 'assets/[name]-[hash].js',
+          chunkFileNames: 'chunks/[name]-[hash].js',
+          assetFileNames: 'assets/[name]-[hash][extname]',
+        },
       },
     },
-  },
+  };
 });

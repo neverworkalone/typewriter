@@ -1,4 +1,4 @@
-import { cp, mkdir, writeFile } from 'node:fs/promises';
+import { cp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import path from 'node:path';
 
@@ -20,6 +20,9 @@ export function createProductRuntimeAssets({
   sharedDictionaryPath = null,
   fullDictionaryPath = path.join(projectRoot, 'artifacts/dictionary.sqlite'),
   allowDirty = process.env.TYPEWRITER_ALLOW_DIRTY === 'true',
+  // UI-only development build (`pnpm run build:ui`): never creates, reads, extracts, checks or removes any database
+  // or the DB-derived runtime/dictionary-build-info.js. Not a release or packaging path.
+  uiOnly = false,
 }) {
   const sqliteWasmDirectory = path.join(
     projectRoot,
@@ -86,6 +89,11 @@ export function createProductRuntimeAssets({
       )),
     ]);
 
+    if (uiOnly) {
+      console.log('UI-only build: dictionary database and dictionary-build-info.js left untouched.');
+      return;
+    }
+
     const outputPath = path.join(outputDirectory, 'dictionary.sqlite');
     // The Extension ships only the Lite product database, always extracted from a verified Full database: either the
     // CI-shared Full artifact, or a Full database built here from the current sources (never a reused cache).
@@ -142,9 +150,17 @@ export function createProductRuntimeAssets({
     );
   }
 
+  // Vite's emptyOutDir is off for the UI-only build, so remove only the hashed UI bundle directories it regenerates.
+  async function removeStaleUiBundles() {
+    await Promise.all(['assets', 'chunks'].map(
+      (directory) => rm(path.join(outputDirectory, directory), { recursive: true, force: true }),
+    ));
+  }
+
   return {
     name: 'typewriter-product-runtime-assets',
     apply: 'build',
+    ...(uiOnly ? { buildStart: removeStaleUiBundles } : {}),
     closeBundle: copyRuntimeAssets,
   };
 }

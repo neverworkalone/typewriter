@@ -143,6 +143,26 @@ TYPEWRITER_ALLOW_DIRTY=true pnpm run build
 The generated product database and runtime assets are build output; canonical JSONL
 remains the editable source of truth.
 
+### UI-only development build
+
+```sh
+pnpm run build:ui
+```
+
+`build:ui` (`vite build --mode ui`) is a fast build for Vue/JS/CSS work. It rebuilds the Extension UI bundles and
+copies the ordinary runtime and legal files into `dist/`, but handles **no database at all**: it does not build or
+verify a Full database, extract Lite, read or check `artifacts/dictionary.sqlite` or `dist/dictionary.sqlite`, or
+generate `runtime/dictionary-build-info.js` (which is derived from the database `source_revision`). It succeeds
+without any SQLite file present and never creates one.
+
+- `emptyOutDir` is disabled in this mode. Only the hashed UI bundle directories `dist/assets` and `dist/chunks` are
+  cleared and regenerated; an existing `dist/dictionary.sqlite` and `runtime/dictionary-build-info.js` are kept
+  byte for byte, as is `artifacts/dictionary.sqlite`.
+- The result is **not** an installable or distributable package. To search the dictionary, `dist/` must already hold a
+  database from a normal `pnpm run build`. If canonical data changed, `build:ui` does not refresh it (intended).
+- `pnpm run build`, `build:dictionary`, `pnpm run package`/`./pack.sh`, CI and release builds are unchanged and never
+  use this mode.
+
 ## GitHub Pages build and deployment
 
 The Pages workflow builds the separate web source under web/ at the repository path
