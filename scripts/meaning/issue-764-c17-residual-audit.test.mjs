@@ -6,7 +6,7 @@ import test from 'node:test';
 
 // Manual audit-coverage regression. Run directly with:
 // node --test scripts/meaning/issue-764-c17-residual-audit.test.mjs
-// This checks evidence coverage and source binding; it does not automate lexical judgments.
+// This checks evidence coverage and selected source-bound boundary regressions; it does not infer lexical identity.
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const meaningDir = path.join(root, 'data/meanings');
 const canonicalDir = path.join(root, 'data/canonical');
@@ -28,13 +28,23 @@ const auditRows = audit.split('\n## 후보 검토 후 하나의 Meaning으로 �
 const targetSenseIds = new Set([...auditRows.matchAll(/; resolved — ([^;\n]+); compare — /gu)]
   .flatMap(([, evidence]) => senseIdsIn(evidence)));
 const expectedEvidenceIds = new Set([...expectedSenseIds, ...targetSenseIds]);
+const identityRegressionSenseIds = new Set([
+  'w335349-s1', 'w335633-s1', 'w335634-s1', 'w335635-s1', 'w335636-s1',
+  'w335637-s1', 'w342818-s1', 'w489651-s1', 'w489652-s1', 'w489653-s1',
+  'w343081-s1', 'w343082-s1', 'w343083-s1', 'w495379-s1', 'w496287-s1', 'w496488-s1',
+  'w350459-s1', 'w350460-s1', 'w494494-s1', 'w342772-s1', 'w342772-s2',
+  'w345843-s1', 'w345844-s1', 'w345845-s1', 'w349212-s1', 'w349742-s1', 'w495184-s1',
+  'w497369-s1', 'w497369-s2',
+]);
 const sourceGlossBySense = new Map();
+const identitySourceGlossBySense = new Map();
 for (const file of readdirSync(canonicalDir).filter((name) => name.startsWith('stdict-') && name.endsWith('.jsonl')).sort()) {
   for (const line of readFileSync(path.join(canonicalDir, file), 'utf8').split('\n')) {
     if (!line) continue;
     const entry = JSON.parse(line);
     for (const sense of entry.senses ?? []) {
       if (expectedEvidenceIds.has(sense.id)) sourceGlossBySense.set(sense.id, sense.gloss);
+      if (identityRegressionSenseIds.has(sense.id)) identitySourceGlossBySense.set(sense.id, sense.gloss);
     }
   }
 }
@@ -130,4 +140,37 @@ test('C17 residual audit covers every retained Meaning with complete bound-sourc
   assert.equal(new Set(seenMeaningIds).size, seenMeaningIds.length, 'a retained Meaning must appear only once');
   assert.equal(referencedMeaningIds.length, expectedReferenceMeaningCount, 'every reference-bound Meaning must have resolved target evidence');
   assert.deepEqual(seenMeaningIds.sort(), [...residualByLemma.values()].flat().map((row) => row.id).sort(), 'audit/output Meaning ID sets');
+});
+
+test('C17 keeps distinct named identities separate while retaining the one-letter positive control', () => {
+  const identityCases = [
+    { lemma: '태조', groups: [['w335349-s1'], ['w335633-s1'], ['w335634-s1'], ['w335635-s1'], ['w335636-s1'], ['w335637-s1'], ['w342818-s1'], ['w489651-s1'], ['w489652-s1'], ['w489653-s1']] },
+    { lemma: '태종', groups: [['w343081-s1'], ['w343082-s1'], ['w343083-s1'], ['w495379-s1'], ['w496287-s1'], ['w496488-s1']] },
+    { lemma: '테티스', groups: [['w350459-s1'], ['w350460-s1'], ['w494494-s1']] },
+    { lemma: '통고', groups: [['w342772-s1'], ['w342772-s2'], ['w345843-s1'], ['w345844-s1'], ['w345845-s1']] },
+    { lemma: '트리톤', groups: [['w349212-s1'], ['w349742-s1'], ['w495184-s1']] },
+  ];
+
+  for (const { lemma, groups } of identityCases) {
+    const meanings = rowsByLemma.get(lemma) ?? [];
+    assert.equal(meanings.length, groups.length, `${lemma}: preserve the source-bound identity groups`);
+    assert.deepEqual(meanings.map((row) => row.sense_ids).sort((a, b) => a[0].localeCompare(b[0])),
+      groups.map((group) => [...group].sort()).sort((a, b) => a[0].localeCompare(b[0])), `${lemma}: exact source-sense grouping`);
+    for (const group of groups) {
+      const meaning = meanings.find((row) => row.sense_ids.includes(group[0]));
+      assert.ok(meaning, `${lemma}/${group.join(',')}: expected Meaning exists`);
+      for (const senseId of group) {
+        assert.equal(identitySourceGlossBySense.has(senseId), true, `${lemma}/${senseId}: canonical source gloss exists`);
+        assert.ok(meaning.sense_ids.includes(senseId), `${lemma}/${senseId}: source sense remains bound`);
+      }
+      if (group.length === 1) {
+        assert.equal(meaning.gloss, identitySourceGlossBySense.get(group[0]), `${lemma}/${group[0]}: source gloss is reproduced exactly`);
+      }
+    }
+  }
+
+  const letterMeaning = (rowsByLemma.get('ㅌ') ?? []).find((row) => row.sense_ids.includes('w497369-s1'));
+  assert.ok(letterMeaning, 'the Hangul letter positive control remains represented');
+  assert.deepEqual(letterMeaning.sense_ids, ['w497369-s1', 'w497369-s2'], 'the letter and its sound are one lexical identity');
+  assert.equal(identitySourceGlossBySense.has('w497369-s1') && identitySourceGlossBySense.has('w497369-s2'), true, 'positive-control source senses exist');
 });
