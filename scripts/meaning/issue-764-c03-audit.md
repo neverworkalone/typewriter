@@ -69,3 +69,26 @@ The exact-baseline replay completed all 1,835 repartitions and produced 491,487 
 | `늦추다` | Merged delaying a time, slowing a tempo, loosening something, and easing tension as connected ways of making something later, slower, or less tight. |
 
 The remaining unique-gloss groups in these lemmas retain their recorded partitions. This source-bound author self-check does not replace or relabel the independent PR review. Canonical data and adjudications remain unchanged; Issue #764 remains open.
+
+
+## PR Stage 2 blocker follow-up — same-record verb over-splitting
+
+On PR #785 HEAD `7fdb43bc9660ba11145a20925f24d712e530612a`, the Stage 2 review identified three concrete under-merges: `녹다` (`w408835-s1..s11`), `넣다` (`w406793-s1..s14`), and `늘어지다` (`w410211-s1..s6`). I compared every cited source gloss with the edit's exact `before` rows and accepted the finding: these are connected uses of one verb, not independent homonyms. I merged each connected set and wrote one gloss retaining all bound source uses.
+
+To bound the related-risk check, I enumerated C03 standard-dictionary entries having at least four all-verb senses from one canonical record, currently split across at least three Meaning rows. The pre-fix output contained 11 such entries. I source-checked all senses in that cohort, merged the connected uses below, and preserved independent same-lemma records in the negative controls. The same query returns zero remaining entries in this defined cohort after replay; it is not a census of every C03 lexical judgment.
+
+| Lemma | Source-bound resolution |
+| --- | --- |
+| `녹다` | Merged verb senses `w408835-s1..s11`, including melting/dissolving, bodily and emotional loosening, loss, flavor, absorption/disappearance, intoxication, and infatuation. Kept the independent tea-noun record `w67524-s1` separate. |
+| `넣다` | Merged `w406793-s1..s14` as the same verb of putting/adding/including: spatial and range placement, mixing/inserting, membership, machine operation, bank deposits, engraving, third-party insertion, document submission, force, stoking a fire, newspaper delivery, and planting. |
+| `늘어지다` | Merged `w410211-s1..s6`: physical lengthening/drooping and their bodily, temporal/spatial, speed, and relaxed-state uses. |
+| `높이다` | Merged `w68572-s1..s15` as the causative use of raising/increasing, including pitch/loudness, strength of an opinion, status, reputation, and honorific treatment. |
+| `넘기다` | Merged `w411059-s1..s11` as causing something to pass over, through, or to another party, including time, obstacles, pages, hair, falling, swallowing, transfer, overflow, and a missed shot. |
+| `넘어가다` | Merged `w408063-s1..s15` as one verb of tipping, crossing, transfer, and passage, retaining the source's sunset, page-turning, death, temptation, swallowing, voice, and neglect uses in the gloss. |
+| `놀리다` | Merged the seven causative uses `w407520-s1..s7` of `놀다` (play, idle time, rest, unused resources, body movement, tool use, and careless speech). Kept the independent mocking record `w69050` and re-washing record `w407350` separate. |
+| `날리다` | Merged `w407593-s1..s7` and passive use `w407794-s1` under the same flight/dispatch verb, including physical movement, fame, loss, careless completion, and a directed smile. |
+| `넘어오다` | Merged `w65136-s1..s7` as movement or transfer toward this side/current time, including a tilted object, a moved heart, and something rising through the throat. |
+| `놓이다` | Merged `w409425-s1..s7` as passive/state uses of `놓다`: placement/installation, a set trap, inserted material or ingredients, and worries or tension being released. |
+| `넘겨보다` | Merged `w509707-s1..s4` as looking over or toward something, extending to interest, desire, and inference. |
+
+The manual checkpoint `issue-764-c03-editorial-checkpoint.manual.mjs` records old-snapshot-fails/new-output-passes cases for all 11 groups, checks the source-linked gloss signals, and retains negative controls for eye/snow `눈`, the distinct `낙수` identities, `난계` disorder/friendship, the tea-noun `녹다`, and `놀리다`'s independent records. It is intentionally outside the CI registry and is run directly. `node scripts/meaning/validate.mjs` remains the complete structural/sense-coverage check. The 54 additional merges reduce C03 from 15,735 to 15,681 Meaning rows. The final replay contains 491,433 corpus meanings and 117 adjudications; no canonical or adjudication data changed, and Issue #764 remains open.
