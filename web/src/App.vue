@@ -62,13 +62,13 @@ const gallery = [
 
 <template>
   <a class="skip-link" href="#main">본문으로 건너뛰기</a>
-  <div class="web-app" data-product-surface="web-landing" id="top">
+  <div class="web-app" data-product-surface="web-landing">
     <section class="hero" aria-labelledby="hero-title">
       <img class="hero-photo" :src="heroPhoto" alt="" width="1280" height="800" fetchpriority="high" />
       <div class="hero-shade" aria-hidden="true"></div>
       <div class="hero-fade" aria-hidden="true"></div>
       <header class="site-header">
-        <a class="wordmark" href="#top" aria-label="Typewriter 처음으로">Type<span>writer</span></a>
+        <p class="wordmark">Type<span>writer</span></p>
         <nav class="site-nav" aria-label="주요 링크">
           <a :href="CHROME_WEB_STORE_URL" target="_blank" rel="noopener noreferrer">설치하기</a>
           <a :href="GITHUB_URL" target="_blank" rel="noopener noreferrer">GitHub</a>
@@ -206,7 +206,7 @@ const gallery = [
     <footer class="site-footer">
       <div class="wrap footer-grid">
         <div>
-          <p class="wordmark footer-wordmark" aria-label="Typewriter">Type<span>writer</span></p>
+          <p class="wordmark footer-wordmark">Type<span>writer</span></p>
           <p class="footer-tagline">작가를 위한, 말의 결을 찾는 사전</p>
         </div>
         <nav class="site-nav footer-nav" aria-label="바로가기">
