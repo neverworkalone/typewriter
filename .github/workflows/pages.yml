@@ -1,9 +1,6 @@
 name: GitHub Pages
 
 on:
-  schedule:
-    # 03:17 UTC = 12:17 KST (scheduled starts may be delayed).
-    - cron: '17 3 * * *'
   workflow_dispatch:
 
 permissions:
@@ -15,7 +12,7 @@ concurrency:
 
 jobs:
   build:
-    name: Build and validate Pages artifact
+    name: Build and validate static Pages artifact
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
@@ -23,8 +20,6 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v6
@@ -38,12 +33,12 @@ jobs:
       - name: Install pinned dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
 
-      - name: Build web product at the repository Pages path
+      - name: Build static landing page at the repository Pages path
         run: pnpm run build:web
         env:
           TYPEWRITER_WEB_BASE_PATH: /typewriter/
 
-      - name: Validate artifact allowlist and provenance
+      - name: Validate static artifact allowlist and provenance
         run: pnpm run validate:pages-artifact
         env:
           TYPEWRITER_EXPECTED_SOURCE_REVISION: ${{ github.sha }}

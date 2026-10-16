@@ -2,40 +2,33 @@ import { execFileSync } from 'node:child_process';
 import { lstat, readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { DatabaseSync } from 'node:sqlite';
+import { gzipSync } from 'node:zlib';
 
 import { PRODUCT_LEGAL_FILES } from './product-output-contract.mjs';
-import { loadCanonicalContext } from '../validate/canonical-context.mjs';
-import { readForeignKeyViolations } from '../../src/runtime/dictionary-validation.js';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 export const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
 export const PAGES_BASE_PATH = '/typewriter/';
+export const PAGES_BUILD_INFO_FILE = 'pages-build-info.json';
+export const PAGES_BUILD_INFO_SCHEMA = 'typewriter-pages-build-info/1';
 const ASSET_PATTERN = /^assets\/[A-Za-z0-9_-]+-[A-Za-z0-9_-]{8}\.(?:js|css)$/u;
 const CHUNK_PATTERN = /^chunks\/[A-Za-z0-9_-]+-[A-Za-z0-9_-]{8}\.js$/u;
-const ALLOWED_DIRECTORIES = new Set(['about', 'assets', 'chunks', 'runtime', 'runtime/vendor']);
+const ALLOWED_DIRECTORIES = new Set(['about', 'assets', 'chunks']);
 const ALLOWED_FILES = new Set([
   'index.html',
   'about/index.html',
   'favicon.ico',
-  'dictionary.sqlite',
-  'runtime/dictionary-worker.mjs',
-  'runtime/dictionary-background.mjs',
-  'runtime/dictionary-host.js',
-  'runtime/dictionary-build-info.js',
-  'runtime/dictionary-contract.js',
-  'runtime/dictionary-validation.js',
-  'runtime/protocol.js',
-  'runtime/query-adapter.js',
-  'runtime/search-query.js',
-  'runtime/sqlite-query.js',
-  'runtime/vendor/sqlite3.mjs',
-  'runtime/vendor/sqlite3.wasm',
+  PAGES_BUILD_INFO_FILE,
   ...PRODUCT_LEGAL_FILES,
 ]);
-const REQUIRED_FILES = new Set([
-  ...ALLOWED_FILES,
-]);
+const REQUIRED_FILES = new Set(ALLOWED_FILES);
+const HTML_PAGES = ['index.html', 'about/index.html'];
+const SCRIPT_PAGES = ['index.html'];
+
+// The Pages product is a static landing page: the dictionary and its search
+// runtime live only in the Chrome Extension package.
+const DICTIONARY_RUNTIME_FILE_PATTERN = /(?:^|\/)(?:runtime|vendor)(?:\/|$)|\.(?:sqlite3?|db|wasm)$|dictionary-(?:worker|background|host|build-info|contract|validation)|(?:^|\/)sqlite3\./u;
+const DICTIONARY_RUNTIME_BUNDLE_PATTERN = /dictionary\.sqlite|sqlite3\.wasm|sqlite3Worker1|@sqlite\.org|dictionary-worker|DictionaryRuntime/u;
 
 export class PagesArtifactError extends Error {
   constructor(message, code = 'PAGES_ARTIFACT_ERROR') {
@@ -98,6 +91,12 @@ async function collectArtifactFiles(outputDirectory, relativeDirectory = '', res
     if (entry.isSymbolicLink()) {
       fail('Pages artifact contains a symbolic link: ' + relativePath, 'PAGES_ARTIFACT_SYMLINK');
     }
+    if (DICTIONARY_RUNTIME_FILE_PATTERN.test(relativePath)) {
+      fail(
+        'Pages artifact must not contain the dictionary database or search runtime: ' + relativePath,
+        'PAGES_ARTIFACT_DICTIONARY_RUNTIME',
+      );
+    }
     if (entry.isDirectory()) {
       if (!ALLOWED_DIRECTORIES.has(relativePath)) {
         fail('Pages artifact contains an unapproved directory: ' + relativePath, 'PAGES_ARTIFACT_DIRECTORY');
@@ -132,13 +131,10 @@ function assertRequiredFiles(files) {
     );
   }
 
-  const javascriptAssets = files.filter((filePath) => (
-    ASSET_PATTERN.test(filePath) && filePath.endsWith('.js')
+  const hasAsset = (extension) => files.some((filePath) => (
+    ASSET_PATTERN.test(filePath) && filePath.endsWith(extension)
   ));
-  const stylesheetAssets = files.filter((filePath) => (
-    ASSET_PATTERN.test(filePath) && filePath.endsWith('.css')
-  ));
-  if (javascriptAssets.length === 0 || stylesheetAssets.length === 0) {
+  if (!hasAsset('.js') || !hasAsset('.css')) {
     fail(
       'Pages artifact must include hashed JavaScript and CSS bundles under assets/.',
       'PAGES_ARTIFACT_ASSET_COUNT',
@@ -146,15 +142,29 @@ function assertRequiredFiles(files) {
   }
 }
 
-async function validateHtmlAssetPaths(outputDirectory, files) {
-  const fileSet = new Set(files);
+function resolveArtifactReference(htmlPath, reference) {
+  const pageUrl = new URL(PAGES_BASE_PATH + htmlPath, 'https://typewriter.invalid');
+  const resolved = new URL(reference, pageUrl);
+  if (resolved.origin !== pageUrl.origin) return { external: true };
+  if (!resolved.pathname.startsWith(PAGES_BASE_PATH)) return { outside: resolved.pathname };
+  let relativePath = resolved.pathname.slice(PAGES_BASE_PATH.length);
+  if (relativePath === '' || relativePath.endsWith('/')) relativePath += 'index.html';
+  return { relativePath };
+}
 
-  for (const htmlPath of ['index.html', 'about/index.html']) {
+async function validateHtmlPages(outputDirectory, files) {
+  const fileSet = new Set(files);
+  const initialLoadFiles = new Set();
+
+  for (const htmlPath of HTML_PAGES) {
     const html = await readFile(path.join(outputDirectory, htmlPath), 'utf8');
     const references = [...html.matchAll(/\b(?:src|href)="([^"]+)"/gu)]
       .map(([, reference]) => reference);
+    const loadsScript = SCRIPT_PAGES.includes(htmlPath);
+    if (htmlPath === 'index.html') initialLoadFiles.add(htmlPath);
 
-    if (!references.includes(PAGES_BASE_PATH + 'favicon.ico')) {
+    if (!references.some((reference) => reference.endsWith('favicon.ico')
+      && resolveArtifactReference(htmlPath, reference).relativePath === 'favicon.ico')) {
       fail(
         `Pages ${htmlPath} must resolve favicon.ico under ${PAGES_BASE_PATH}`,
         'PAGES_ARTIFACT_BASE_PATH',
@@ -165,33 +175,60 @@ async function validateHtmlAssetPaths(outputDirectory, files) {
       if (/^(?:[a-z][a-z0-9+.-]*:|\/\/)/iu.test(reference)) {
         fail(`Pages ${htmlPath} must not load remote assets: ${reference}`, 'PAGES_ARTIFACT_REMOTE_ASSET');
       }
-      if (reference.startsWith('/') && !reference.startsWith(PAGES_BASE_PATH)) {
+      if (reference.startsWith('#')) continue;
+      const target = resolveArtifactReference(htmlPath, reference);
+      if (target.outside) {
         fail(
-          `Pages ${htmlPath} contains an absolute path outside ${PAGES_BASE_PATH}: ${reference}`,
+          `Pages ${htmlPath} contains a path outside ${PAGES_BASE_PATH}: ${reference}`,
           'PAGES_ARTIFACT_BASE_PATH',
         );
       }
-      if (reference.startsWith(PAGES_BASE_PATH)) {
-        const pathname = new URL(reference, 'https://typewriter.invalid').pathname;
-        const relativePath = pathname.slice(PAGES_BASE_PATH.length);
-        if (!fileSet.has(relativePath)) {
-          fail(
-            `Pages ${htmlPath} references a missing artifact file: ${relativePath}`,
-            'PAGES_ARTIFACT_HTML_REFERENCE',
-          );
-        }
+      if (!fileSet.has(target.relativePath)) {
+        fail(
+          `Pages ${htmlPath} references a missing artifact file: ${target.relativePath}`,
+          'PAGES_ARTIFACT_HTML_REFERENCE',
+        );
+      }
+      if (htmlPath === 'index.html') initialLoadFiles.add(target.relativePath);
+    }
+
+    if (loadsScript) {
+      if (!references.some((reference) => (
+        reference.startsWith(PAGES_BASE_PATH + 'assets/') && reference.endsWith('.js')
+      ))) {
+        fail(`Pages ${htmlPath} must load a JavaScript bundle under the Pages base path.`, 'PAGES_ARTIFACT_BASE_PATH');
+      }
+      if (!references.some((reference) => (
+        reference.startsWith(PAGES_BASE_PATH + 'assets/') && reference.endsWith('.css')
+      ))) {
+        fail(`Pages ${htmlPath} must load a CSS bundle under the Pages base path.`, 'PAGES_ARTIFACT_BASE_PATH');
       }
     }
 
-    if (!references.some((reference) => (
-      reference.startsWith(PAGES_BASE_PATH + 'assets/') && reference.endsWith('.js')
-    ))) {
-      fail(`Pages ${htmlPath} must load a JavaScript bundle under the Pages base path.`, 'PAGES_ARTIFACT_BASE_PATH');
+    if (htmlPath === 'about/index.html') {
+      const refresh = html.match(/<meta[^>]+http-equiv="refresh"[^>]+content="[^"]*?url=([^"]+)"/iu);
+      const target = refresh ? resolveArtifactReference(htmlPath, refresh[1]) : null;
+      if (target?.relativePath !== 'index.html') {
+        fail(
+          'Pages about/index.html must redirect to the landing page under the Pages base path.',
+          'PAGES_ARTIFACT_ABOUT_REDIRECT',
+        );
+      }
     }
-    if (!references.some((reference) => (
-      reference.startsWith(PAGES_BASE_PATH + 'assets/') && reference.endsWith('.css')
-    ))) {
-      fail(`Pages ${htmlPath} must load a CSS bundle under the Pages base path.`, 'PAGES_ARTIFACT_BASE_PATH');
+  }
+
+  return initialLoadFiles;
+}
+
+async function validateNoDictionaryRuntimeInBundles(outputDirectory, files) {
+  for (const filePath of files) {
+    if (!ASSET_PATTERN.test(filePath) && !CHUNK_PATTERN.test(filePath)) continue;
+    const content = await readFile(path.join(outputDirectory, filePath), 'utf8');
+    if (DICTIONARY_RUNTIME_BUNDLE_PATTERN.test(content)) {
+      fail(
+        'Pages bundle must not include the dictionary search runtime: ' + filePath,
+        'PAGES_ARTIFACT_DICTIONARY_RUNTIME',
+      );
     }
   }
 }
@@ -221,97 +258,77 @@ async function validateLegalFiles(repositoryDirectory, outputDirectory) {
   }
 }
 
-function readDatabaseMetadata(databasePath) {
-  let database;
-  try {
-    database = new DatabaseSync(databasePath, { readOnly: true });
-    const integrity = database.prepare('PRAGMA integrity_check').get()?.integrity_check;
-    if (integrity !== 'ok') {
-      fail('Pages dictionary failed SQLite integrity_check.', 'PAGES_ARTIFACT_SQLITE');
-    }
-    const foreignKeyViolations = readForeignKeyViolations(database);
-    if (foreignKeyViolations.length > 0) {
-      fail(
-        `Pages dictionary foreign_key_check found ${foreignKeyViolations.length} violation(s).`,
-        'PAGES_ARTIFACT_SQLITE',
-      );
-    }
-    const rows = database.prepare('SELECT key, value FROM metadata ORDER BY key').all();
-    return Object.fromEntries(rows.map(({ key, value }) => [key, value]));
-  } catch (error) {
-    if (error instanceof PagesArtifactError) throw error;
-    fail('Pages dictionary metadata could not be read: ' + error.message, 'PAGES_ARTIFACT_SQLITE');
-  } finally {
-    database?.close();
-  }
-}
-
-function assertDatabaseMetadata(metadata, expectedSourceRevision, expectedCanonicalRevision) {
+async function readBuildInfo(outputDirectory, expectedSourceRevision) {
   if (!/^[0-9a-f]{40}$/u.test(expectedSourceRevision)) {
     fail('expected source revision must be a full Git SHA.', 'PAGES_ARTIFACT_SOURCE_REVISION');
   }
-  if (!/^[0-9a-f]{64}$/u.test(expectedCanonicalRevision)) {
-    fail('expected canonical revision must be a SHA-256 digest.', 'PAGES_ARTIFACT_CANONICAL_REVISION');
+  let info;
+  try {
+    info = JSON.parse(await readFile(path.join(outputDirectory, PAGES_BUILD_INFO_FILE), 'utf8'));
+  } catch (error) {
+    fail('Pages build info could not be read: ' + error.message, 'PAGES_ARTIFACT_SOURCE_REVISION');
   }
-  if (metadata.source_revision !== expectedSourceRevision
-    || metadata.source_revision_source !== 'git-head'
-    || metadata.source_revision_verified !== 'true'
-    || metadata.worktree_state !== 'clean') {
+  if (info?.schema !== PAGES_BUILD_INFO_SCHEMA
+    || info.source_revision !== expectedSourceRevision
+    || info.source_revision_source !== 'git-head'
+    || info.source_revision_verified !== 'true'
+    || info.worktree_state !== 'clean') {
     fail(
-      'Pages dictionary provenance must bind to the exact clean Git source revision.',
+      'Pages build info must bind to the exact clean Git source revision.',
       'PAGES_ARTIFACT_SOURCE_REVISION',
     );
   }
-  if (metadata.canonical_revision !== expectedCanonicalRevision) {
-    fail(
-      'Pages dictionary canonical revision does not match the current canonical inputs.',
-      'PAGES_ARTIFACT_CANONICAL_REVISION',
-    );
+  if (info.base_path !== PAGES_BASE_PATH) {
+    fail(`Pages build info base path must be ${PAGES_BASE_PATH}`, 'PAGES_ARTIFACT_BASE_PATH');
   }
+  return info;
+}
+
+async function measureArtifact(outputDirectory, files, initialLoadFiles) {
+  const measure = async (filePaths) => {
+    let bytes = 0;
+    let gzipBytes = 0;
+    for (const filePath of filePaths) {
+      const content = await readFile(path.join(outputDirectory, filePath));
+      bytes += content.length;
+      gzipBytes += gzipSync(content).length;
+    }
+    return { bytes, gzipBytes };
+  };
+  const [total, initialLoad] = await Promise.all([
+    measure(files),
+    measure([...initialLoadFiles]),
+  ]);
+  return { total, initialLoad };
 }
 
 export async function validatePagesArtifact({
   outputDirectory = path.join(REPOSITORY_DIRECTORY, 'dist-web'),
   repositoryDirectory = REPOSITORY_DIRECTORY,
-  canonicalDirectory = path.join(REPOSITORY_DIRECTORY, 'data/canonical'),
   expectedSourceRevision,
-  expectedCanonicalRevision,
 } = {}) {
   const resolvedOutputDirectory = path.resolve(outputDirectory);
   const resolvedRepositoryDirectory = path.resolve(repositoryDirectory);
-  const [fileInventory, canonicalContext] = await Promise.all([
-    collectArtifactFiles(resolvedOutputDirectory),
-    expectedCanonicalRevision
-      ? Promise.resolve(null)
-      : loadCanonicalContext({ directory: canonicalDirectory, contextPath: null }),
-  ]);
+  const fileInventory = await collectArtifactFiles(resolvedOutputDirectory);
   const expectedGitRevision = expectedSourceRevision
     ?? currentGitRevision(resolvedRepositoryDirectory);
-  const expectedCanonicalDigest = expectedCanonicalRevision
-    ?? canonicalContext.canonicalRevision;
 
   assertRequiredFiles(fileInventory.files);
-  await validateHtmlAssetPaths(resolvedOutputDirectory, fileInventory.files);
+  const initialLoadFiles = await validateHtmlPages(resolvedOutputDirectory, fileInventory.files);
+  await validateNoDictionaryRuntimeInBundles(resolvedOutputDirectory, fileInventory.files);
   await validateFavicon(resolvedRepositoryDirectory, resolvedOutputDirectory);
   await validateLegalFiles(resolvedRepositoryDirectory, resolvedOutputDirectory);
-  const metadata = readDatabaseMetadata(path.join(resolvedOutputDirectory, 'dictionary.sqlite'));
-  assertDatabaseMetadata(metadata, expectedGitRevision, expectedCanonicalDigest);
-  const runtimeBuildInfo = await readFile(
-    path.join(resolvedOutputDirectory, 'runtime/dictionary-build-info.js'),
-    'utf8',
+  const buildInfo = await readBuildInfo(resolvedOutputDirectory, expectedGitRevision);
+  const sizes = await measureArtifact(
+    resolvedOutputDirectory,
+    fileInventory.files,
+    initialLoadFiles,
   );
-  const expectedRuntimeRevision = `export const EXPECTED_DICTIONARY_SOURCE_REVISION = ${JSON.stringify(metadata.source_revision)};`;
-  if (!runtimeBuildInfo.split(/\r?\n/u).includes(expectedRuntimeRevision)) {
-    fail(
-      'Pages runtime build info must match the packaged dictionary source revision.',
-      'PAGES_ARTIFACT_SOURCE_REVISION',
-    );
-  }
 
   return {
     fileCount: fileInventory.files.length,
-    sourceRevision: metadata.source_revision,
-    canonicalRevision: metadata.canonical_revision,
+    sourceRevision: buildInfo.source_revision,
+    sizes,
   };
 }
 
@@ -321,10 +338,16 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   console.log(
     'Pages artifact contract passed: '
       + result.fileCount
-      + ' allowlisted files; source='
+      + ' allowlisted static files; source='
       + result.sourceRevision
-      + '; canonical='
-      + result.canonicalRevision
-      + '.',
+      + '; artifact='
+      + result.sizes.total.bytes
+      + ' B ('
+      + result.sizes.total.gzipBytes
+      + ' B gzip); initial load='
+      + result.sizes.initialLoad.bytes
+      + ' B ('
+      + result.sizes.initialLoad.gzipBytes
+      + ' B gzip).',
   );
 }

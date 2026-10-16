@@ -193,16 +193,15 @@ output. See `DATA-LICENSE.md` for the owner-approved scope and exclusions.
 
 GitHub Pages must use a custom Actions workflow and a separate `web/` source tree.
 The existing `docs/` stays the development/design/audit authority. The Pages artifact
-contains the dictionary entrypoint and the product introduction entrypoint at
-`about/index.html`, with the shared runtime/worker, SQLite WASM assets, and a database
-generated from the exact canonical revision selected for that release, plus other files explicitly
-allowlisted for the site. Required legal files remain in the artifact without needing
-visible links on either page. It must not include `manifest.json`, Chrome-only package
-files, tests, M5 evidence, raw sources, or unapproved files from the extension root
-`public/` directory.
+is a static product landing page: the landing entrypoint, the `about/` redirect, hashed
+JS/CSS, the favicon, the required legal files and `pages-build-info.json`. It does not
+contain `dictionary.sqlite`, any search runtime or SQLite WASM, `manifest.json`,
+Chrome-only package files, tests, M5 evidence, raw sources, or unapproved files from
+the extension root `public/` directory. Required legal files remain in the artifact
+without needing visible links on either page.
 
-The exact Pages file set, repository base paths, SQLite integrity, legal files, and
-Git and canonical revision bindings are checked by
+The exact Pages file set, repository base paths, absence of any database or search
+runtime, legal files, and the Git revision binding are checked by
 scripts/validate/pages-artifact.mjs. Pull request builds keep the generated site
 on the ephemeral runner and never upload or deploy it. Each push to `master`
 uploads the artifact only after validation succeeds, then a dependent deployment job

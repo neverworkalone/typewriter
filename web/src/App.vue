@@ -1,484 +1,124 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-
-import DictionaryPanel from '../../src/components/DictionaryPanel.vue';
-import ToggleControl from '../../src/components/ToggleControl.vue';
+import ExtensionPreview from './components/ExtensionPreview.vue';
 import SiteFooter from './components/SiteFooter.vue';
 import SiteHeader from './components/SiteHeader.vue';
-import { SearchSession } from '../../src/domain/index.js';
-import { DictionaryRuntime } from '../../src/runtime/query-adapter.js';
-import {
-  BACKGROUND_PRESETS,
-  createSettingsStore,
-  DEFAULT_SETTINGS,
-  getBackgroundPreset,
-  SETTING_DEFINITIONS,
-} from '../../src/ui/settings.js';
+import { CHROME_WEB_STORE_URL, GITHUB_URL } from './site-links.js';
 
-const props = defineProps({
-  runtime: {
-    type: Object,
-    default: null,
+const features = [
+  {
+    title: '유의어',
+    body: '사전에서 같은 뜻으로 이어지는 말을 먼저 보여 줍니다. 문장의 의미를 그대로 두고 다른 단어를 고를 때 쓰세요.',
   },
-  session: {
-    type: Object,
-    default: null,
+  {
+    title: '반의어',
+    body: '같은 축에서 맞서는 말을 찾아, 문장의 방향을 바꾸거나 대비를 세울 수 있습니다.',
   },
-  settingsStore: {
-    type: Object,
-    default: null,
+  {
+    title: '말의 결',
+    body: '뜻은 비슷해도 분위기와 질감이 다른 표현을 살펴봅니다. 같은 장면을 다른 온도로 쓰고 싶을 때 도움이 됩니다.',
   },
-});
+  {
+    title: '연상',
+    body: '장면, 감각, 행동으로 이어지는 말을 따라가며 글감을 넓힙니다. 한 단어에서 다음 단어로 길이 이어집니다.',
+  },
+];
 
-const ownsRuntime = !props.runtime && !props.session;
-const runtime = props.runtime || (props.session ? null : new DictionaryRuntime());
-const session = props.session || new SearchSession({ runtime });
-const settingsStore = props.settingsStore || createSettingsStore({ storage: null });
+const steps = [
+  ['01', '쓰다가 멈춥니다', '문장 속 단어가 마음에 들지 않을 때, 확장 프로그램을 엽니다.'],
+  ['02', '단어를 찾아봅니다', '찾은 말의 관계가 유형별로 나뉘어 나타납니다.'],
+  ['03', '작가가 고릅니다', '문맥에 맞는 말은 작가가 직접 고르고, 문장은 작가가 씁니다.'],
+];
 
-const query = ref('');
-const searchState = ref(session.state);
-const settings = ref({ ...DEFAULT_SETTINGS });
-const settingsError = ref(false);
-const settingsOpen = ref(false);
-const runtimeStatus = ref(null);
-const lastRecords = ref([]);
-const dictionaryPanel = ref(null);
-const settingsDialog = ref(null);
-const settingsCloseButton = ref(null);
-let unsubscribe = null;
-let stopBackgroundSync = null;
-let previousBodyBackground = '';
-let webHistoryIndex = 0;
-let restoringBrowserHistory = false;
-let suppressInitialHistoryEntry = false;
-let navigationPending = false;
-let previousFocus = null;
-
-const records = computed(() => (
-  searchState.value.status === 'ready'
-    ? searchState.value.results
-    : searchState.value.status === 'loading'
-      ? lastRecords.value
-      : []
-));
-
-const historyAction = computed(() => actionFromSearchState(searchState.value));
-const backgroundColor = computed(() => getBackgroundPreset(settings.value.background).color);
-
-function rootAction() {
-  return { type: 'root' };
-}
-
-function actionFromSearchState(state) {
-  if (state.mode === 'exact' && typeof state.query === 'string') {
-    return { type: 'query', query: state.query };
-  }
-  if (state.mode === 'relation-target' && state.targetRecordId) {
-    return {
-      type: 'target',
-      targetRecordId: state.targetRecordId,
-      sourceSenseId: state.navigation?.sourceSenseId ?? null,
-      targetSenseId: state.navigation?.targetSenseId ?? null,
-      relationType: state.navigation?.relationType ?? null,
-    };
-  }
-  return null;
-}
-
-function actionFromLocation() {
-  const parameters = new URL(window.location.href).searchParams;
-  const term = parameters.get('q');
-  if (term) return { type: 'query', query: term };
-
-  const targetRecordId = parameters.get('target');
-  if (targetRecordId) {
-    return {
-      type: 'target',
-      targetRecordId,
-      sourceSenseId: parameters.get('sourceSense') || null,
-      targetSenseId: parameters.get('targetSense') || null,
-      relationType: parameters.get('relationType') || null,
-    };
-  }
-
-  return null;
-}
-
-function actionUrl(action) {
-  const url = new URL(window.location.href);
-  url.search = '';
-  url.hash = '';
-
-  if (action.type === 'query') {
-    url.searchParams.set('q', action.query);
-  } else if (action.type === 'target') {
-    url.searchParams.set('target', action.targetRecordId);
-    if (action.sourceSenseId) url.searchParams.set('sourceSense', action.sourceSenseId);
-    if (action.targetSenseId) url.searchParams.set('targetSense', action.targetSenseId);
-    if (action.relationType) url.searchParams.set('relationType', action.relationType);
-  }
-
-  return url;
-}
-
-function actionMatchesState(action, state) {
-  if (!action || action.type === 'root') return state.mode === 'idle';
-  if (action.type === 'query') {
-    return state.mode === 'exact' && state.query === action.query;
-  }
-  return state.mode === 'relation-target'
-    && state.targetRecordId === action.targetRecordId
-    && (action.targetSenseId === null
-      || state.navigation?.targetSenseId === action.targetSenseId);
-}
-
-function applyState(nextState) {
-  if (nextState.status === 'loading' && nextState.mode !== 'idle') {
-    navigationPending = true;
-  }
-  searchState.value = nextState;
-
-  if (nextState.status === 'ready') {
-    lastRecords.value = nextState.results;
-  } else if (nextState.status === 'empty' || nextState.status === 'error') {
-    lastRecords.value = [];
-  }
-
-  if (nextState.status === 'loading' && nextState.query !== null) {
-    query.value = nextState.query;
-  }
-  if (nextState.status === 'ready') {
-    query.value = nextState.query ?? nextState.results[0]?.lemma ?? query.value;
-  } else if (nextState.status === 'idle' && nextState.mode === 'idle') {
-    query.value = '';
-  }
-
-  const action = actionFromSearchState(nextState);
-  if (
-    action
-    && ['ready', 'empty', 'error'].includes(nextState.status)
-    && navigationPending
-    && !restoringBrowserHistory
-    && !suppressInitialHistoryEntry
-  ) {
-    webHistoryIndex += 1;
-    window.history.pushState({
-      typewriterIndex: webHistoryIndex,
-      typewriterAction: action,
-    }, '', actionUrl(action));
-  }
-  if (['ready', 'empty', 'error'].includes(nextState.status)) {
-    navigationPending = false;
-  }
-}
-
-async function loadSettings() {
-  try {
-    settings.value = await settingsStore.load();
-  } catch {
-    settings.value = { ...DEFAULT_SETTINGS };
-  }
-}
-
-async function saveSetting(key, value) {
-  const updated = { ...settings.value, [key]: value };
-  settings.value = updated;
-  settingsError.value = false;
-
-  try {
-    settings.value = await settingsStore.save(updated);
-  } catch {
-    settingsError.value = true;
-  }
-}
-
-async function loadRuntimeStatus() {
-  if (typeof runtime?.getRuntimeStatus !== 'function') return;
-
-  try {
-    runtimeStatus.value = await runtime.getRuntimeStatus();
-  } catch {
-    runtimeStatus.value = null;
-  }
-}
-
-async function runAction(action) {
-  if (action.type === 'query') {
-    await session.searchExact(action.query);
-    return;
-  }
-  if (action.type === 'target') {
-    await session.openRelationTarget(action);
-    return;
-  }
-  session.reset();
-}
-
-async function search(value = query.value) {
-  const term = typeof value === 'string' ? value : '';
-  if (!term.trim()) return;
-
-  suppressInitialHistoryEntry = false;
-  query.value = term;
-  await session.searchExact(term);
-  await nextTick();
-  dictionaryPanel.value?.focusSearch?.();
-}
-
-function clearSearch() {
-  if (typeof session.cancelPending === 'function') {
-    navigationPending = false;
-    session.cancelPending();
-  }
-  query.value = '';
-}
-
-async function openRelation(relation) {
-  suppressInitialHistoryEntry = false;
-  await session.openRelationTarget(relation);
-  await nextTick();
-  dictionaryPanel.value?.focusSearch?.();
-}
-
-async function retry() {
-  if (searchState.value.error?.kind === 'load' && typeof runtime?.retry === 'function') {
-    try {
-      await runtime.retry();
-    } catch {
-      // SearchSession records the retry failure below.
-    }
-  }
-
-  if (searchState.value.mode === 'relation-target' && searchState.value.targetRecordId) {
-    await session.openRelationTarget(historyAction.value);
-    return;
-  }
-  await search(searchState.value.query || query.value);
-}
-
-function goBack() {
-  if (webHistoryIndex > 0) {
-    window.history.back();
-  } else {
-    session.back();
-    nextTick(() => dictionaryPanel.value?.focusSearch?.());
-  }
-}
-
-function openSettings() {
-  previousFocus = document.activeElement;
-  settingsOpen.value = true;
-  nextTick(() => settingsCloseButton.value?.focus());
-}
-
-function closeSettings() {
-  settingsOpen.value = false;
-  nextTick(() => previousFocus?.focus?.());
-}
-
-function keepSettingsFocusInside(event) {
-  if (event.key !== 'Tab') return;
-
-  const focusable = [...(settingsDialog.value?.querySelectorAll(
-    'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
-  ) ?? [])].filter((element) => element.getAttribute('aria-hidden') !== 'true');
-  if (focusable.length === 0) {
-    event.preventDefault();
-    return;
-  }
-
-  const first = focusable[0];
-  const last = focusable.at(-1);
-  if (event.shiftKey && (document.activeElement === first || !settingsDialog.value?.contains(document.activeElement))) {
-    event.preventDefault();
-    last.focus();
-  } else if (!event.shiftKey && (document.activeElement === last || !settingsDialog.value?.contains(document.activeElement))) {
-    event.preventDefault();
-    first.focus();
-  }
-}
-
-async function restoreBrowserHistory(event) {
-  const targetIndex = event.state?.typewriterIndex;
-  const action = event.state?.typewriterAction;
-  if (!Number.isInteger(targetIndex) || !action) return;
-
-  restoringBrowserHistory = true;
-  try {
-    if (searchState.value.status === 'loading') {
-      session.cancelPending();
-      navigationPending = false;
-    }
-
-    while (webHistoryIndex > targetIndex && session.state.canGoBack) {
-      session.back();
-      webHistoryIndex -= 1;
-    }
-    while (webHistoryIndex < targetIndex && session.state.canGoForward) {
-      session.forward();
-      webHistoryIndex += 1;
-    }
-
-    if (!actionMatchesState(action, session.state)) {
-      await runAction(action);
-    }
-    webHistoryIndex = targetIndex;
-  } finally {
-    restoringBrowserHistory = false;
-  }
-  await nextTick();
-  dictionaryPanel.value?.focusSearch?.();
-}
-
-function initializeBrowserHistory() {
-  const currentUrl = window.location.href;
-  const initialAction = actionFromLocation();
-  const rootUrl = new URL(currentUrl);
-  rootUrl.search = '';
-  rootUrl.hash = '';
-
-  webHistoryIndex = 0;
-  window.history.replaceState({
-    typewriterIndex: 0,
-    typewriterAction: rootAction(),
-  }, '', rootUrl);
-
-  if (initialAction) {
-    webHistoryIndex = 1;
-    window.history.pushState({
-      typewriterIndex: 1,
-      typewriterAction: initialAction,
-    }, '', actionUrl(initialAction));
-    suppressInitialHistoryEntry = true;
-    void runAction(initialAction).finally(() => {
-      suppressInitialHistoryEntry = false;
-    });
-  }
-}
-
-onMounted(() => {
-  unsubscribe = session.subscribe(applyState);
-  window.addEventListener('popstate', restoreBrowserHistory);
-  previousBodyBackground = document.body.style.backgroundColor;
-  stopBackgroundSync = watch(backgroundColor, (color) => {
-    document.body.style.backgroundColor = color;
-  }, { immediate: true });
-  initializeBrowserHistory();
-  void loadSettings();
-  void loadRuntimeStatus();
-});
-
-onBeforeUnmount(() => {
-  unsubscribe?.();
-  stopBackgroundSync?.();
-  window.removeEventListener('popstate', restoreBrowserHistory);
-  document.body.style.backgroundColor = previousBodyBackground;
-  if (ownsRuntime) runtime?.close();
-});
+const principles = [
+  ['01', '사람이 문장을 씁니다', '문장 생성이나 AI 다시쓰기를 하지 않습니다.'],
+  ['02', '관계를 구분해 보여 줍니다', '바꿔 쓸 말과 분위기·장면·감각의 연상을 구별합니다.'],
+  ['03', '검색은 설치한 브라우저 안에서', '사전 조회에 외부 사전 API나 AI 서비스 연결을 사용하지 않습니다.'],
+];
 </script>
 
 <template>
-  <main
-    class="web-app"
-    data-product-surface="web"
-    :data-runtime-query-only="runtimeStatus?.query_only"
-    :data-runtime-write-blocked="runtimeStatus?.write_blocked"
-    :data-runtime-persisted-write-count="runtimeStatus?.persisted_write_count"
-  >
+  <a class="skip-link" href="#main">본문으로 건너뛰기</a>
+  <div class="web-app" data-product-surface="web-landing" id="top">
     <SiteHeader />
 
-    <section class="search-stage" aria-label="Typewriter 사전 검색">
-      <h1 class="search-stage-title">머릿속에 맴도는 말을 찾아보세요.</h1>
-      <DictionaryPanel
-        ref="dictionaryPanel"
-        :query="query"
-        :records="records"
-        :status="searchState.status"
-        :error="searchState.error"
-        :empty-reason="searchState.emptyReason"
-        :mode="searchState.mode"
-        :can-go-back="searchState.canGoBack"
-        :selected-record-id="searchState.selectedRecordId"
-        :selected-sense-id="searchState.selectedSenseId"
-        :settings="settings"
-        settings-href="#preferences"
-        @update:query="query = $event"
-        @submit="search"
-        @clear="clearSearch"
-        @relation="openRelation"
-        @back="goBack"
-        @select-candidate="(candidate) => session.selectCandidate(candidate.recordId, candidate.senseId)"
-        @retry="retry"
-        @open-settings="openSettings"
-      />
-    </section>
+    <main id="main">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <p class="eyebrow">CHROME EXTENSION · KOREAN WRITER'S DICTIONARY</p>
+          <h1 id="hero-title">
+            작가를 위한,<br />말의 결을<span class="hero-mobile-break" aria-hidden="true"></span> 찾는 사전.
+          </h1>
+          <p class="hero-description">
+            문장을 쓰다가 다른 말이 필요할 때, 뜻을 그대로 두거나 결을 바꾸며 다음 단어를 찾아 보세요.
+            Typewriter는 Chrome 확장 프로그램으로 설치해 쓰는 사전입니다.
+          </p>
+          <div class="hero-actions">
+            <a class="button" :href="CHROME_WEB_STORE_URL">Chrome 웹 스토어에서 설치</a>
+            <a class="button button-quiet" href="#features">기능 살펴보기</a>
+          </div>
+        </div>
+        <ExtensionPreview />
+      </section>
+
+      <section class="section" aria-labelledby="steps-title">
+        <div class="section-heading">
+          <p class="eyebrow">HOW IT WORKS</p>
+          <h2 id="steps-title">쓰던 자리에서, 한 걸음.</h2>
+        </div>
+        <ol class="steps">
+          <li v-for="[number, title, body] in steps" :key="number">
+            <span class="item-number">{{ number }}</span>
+            <h3>{{ title }}</h3>
+            <p>{{ body }}</p>
+          </li>
+        </ol>
+      </section>
+
+      <section id="features" class="section" aria-labelledby="features-title">
+        <div class="section-heading">
+          <p class="eyebrow">FEATURES</p>
+          <h2 id="features-title">한 단어에서, 다른 결로.</h2>
+        </div>
+        <ul class="features">
+          <li v-for="feature in features" :key="feature.title">
+            <h3>{{ feature.title }}</h3>
+            <p>{{ feature.body }}</p>
+          </li>
+        </ul>
+      </section>
+
+      <section id="philosophy" class="section philosophy" aria-labelledby="philosophy-title">
+        <div class="section-heading">
+          <p class="eyebrow">PHILOSOPHY</p>
+          <h2 id="philosophy-title">말은 작가의 몫으로 남깁니다.</h2>
+        </div>
+        <div class="philosophy-body">
+          <p>
+            Typewriter는 일반적인 뜻풀이를 늘어놓는 사전이 아니라, 문장을 쓰는 사람이 다음 단어를 찾도록 돕는
+            작가용 사전입니다. 단어에서 뜻뿐 아니라 분위기, 장면, 감각으로 이어지는 길을 보여 줍니다.
+          </p>
+          <ul class="principles">
+            <li v-for="[number, title, body] in principles" :key="number">
+              <span class="item-number">{{ number }}</span>
+              <h3>{{ title }}</h3>
+              <p>{{ body }}</p>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <section id="install" class="section install" aria-labelledby="install-title">
+        <h2 id="install-title">지금 Chrome에 추가하세요.</h2>
+        <p>
+          사전은 설치한 확장 프로그램 안에서 동작합니다. 이 페이지는 제품을 소개하는 안내 페이지이며 검색은 제공하지 않습니다.
+        </p>
+        <div class="hero-actions">
+          <a class="button" :href="CHROME_WEB_STORE_URL">Chrome 웹 스토어에서 설치</a>
+          <a class="button button-quiet" :href="GITHUB_URL">GitHub에서 프로젝트 보기</a>
+        </div>
+      </section>
+    </main>
 
     <SiteFooter />
-
-    <div
-      v-if="settingsOpen"
-      class="settings-backdrop"
-      role="presentation"
-      @click.self="closeSettings"
-      @keydown.esc="closeSettings"
-    >
-      <section
-        ref="settingsDialog"
-        id="preferences"
-        class="web-settings"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="settings-title"
-        @keydown="keepSettingsFocusInside"
-      >
-        <header class="settings-heading">
-          <div>
-            <p class="eyebrow">YOUR READING SPACE</p>
-            <h2 id="settings-title">검색 결과 설정</h2>
-          </div>
-          <button
-            ref="settingsCloseButton"
-            class="settings-close"
-            type="button"
-            aria-label="설정 닫기"
-            @click="closeSettings"
-          >×</button>
-        </header>
-
-        <p class="settings-description">표시할 항목과 화면 배경을 이 브라우저에 저장합니다.</p>
-        <div class="web-setting-list">
-          <div v-for="setting in SETTING_DEFINITIONS" :key="setting.key" class="web-setting-row">
-            <div>
-              <strong>{{ setting.label }}</strong>
-              <span>{{ setting.description }}</span>
-            </div>
-            <ToggleControl
-              :model-value="settings[setting.key]"
-              :label="setting.label + ' 표시'"
-              @update:model-value="saveSetting(setting.key, $event)"
-            />
-          </div>
-        </div>
-        <div class="web-background-settings">
-          <h3>화면 배경</h3>
-          <div class="background-options" role="radiogroup" aria-label="화면 배경">
-            <button
-              v-for="preset in BACKGROUND_PRESETS"
-              :key="preset.key"
-              type="button"
-              role="radio"
-              :aria-checked="String(settings.background === preset.key)"
-              :aria-label="preset.label"
-              :class="{ 'is-selected': settings.background === preset.key }"
-              :style="{ '--preset-color': preset.color }"
-              @click="saveSetting('background', preset.key)"
-            >{{ preset.label }}</button>
-          </div>
-        </div>
-        <p v-if="settingsError" class="settings-error" role="status">
-          설정을 저장하지 못했습니다. 브라우저 저장 공간을 확인해 주세요.
-        </p>
-      </section>
-    </div>
-  </main>
+  </div>
 </template>

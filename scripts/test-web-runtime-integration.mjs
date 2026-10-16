@@ -200,25 +200,6 @@ async function main() {
     });
     await waitForRuntimeReady(extensionPage, 'popup');
 
-    const webPage = await context.newPage();
-    webPage.on('pageerror', (error) => pageErrors.push(`web: ${error.message}`));
-    await webPage.goto(`${webOrigin}/typewriter/`, { waitUntil: 'load' });
-    await waitForRuntimeReady(webPage, 'web');
-
-    const legalAccess = await webPage.evaluate(async (fileNames) => (
-      Promise.all(fileNames.map(async (fileName) => {
-        const response = await fetch(`./${fileName}`);
-        const visibleLink = [...document.querySelectorAll('a[href]')]
-          .some((anchor) => anchor.getAttribute('href') === `./${fileName}`);
-        return { fileName, visibleLink, status: response.status };
-      }))
-    ), PRODUCT_LEGAL_FILES);
-    assert.deepEqual(legalAccess, PRODUCT_LEGAL_FILES.map((fileName) => ({
-      fileName,
-      visibleLink: false,
-      status: 200,
-    })), 'web must package legal files without requiring visible links');
-
     for (const term of [
       '담담하다',
       '담담',
@@ -231,106 +212,136 @@ async function main() {
       '달',
     ]) {
       const popupSnapshot = await search(extensionPage, term);
-      const webSnapshot = await search(webPage, term);
-      assert.deepEqual(webSnapshot, popupSnapshot, `${term} product parity`);
+      assert.ok(popupSnapshot.recordIds.length > 0, `${term} must resolve in the extension`);
     }
 
     const popupInflectionCollision = await search(extensionPage, '들었다');
-    const webInflectionCollision = await search(webPage, '들었다');
     assert.deepEqual(popupInflectionCollision.recordIds, ['w201']);
     assert.deepEqual(popupInflectionCollision.candidateSenseIds, [
       'w201-s1',
       'w201-s2',
       'w2797-s1',
     ]);
-    assert.deepEqual(webInflectionCollision, popupInflectionCollision);
-    for (const page of [extensionPage, webPage]) {
-      await page.locator('[role="option"][data-sense-id="w2797-s1"]').click();
-      await waitForRecord(page, 'w2797');
-    }
+    await extensionPage.locator('[role="option"][data-sense-id="w2797-s1"]').click();
+    await waitForRecord(extensionPage, 'w2797');
     const popupSelectedInflectionCollision = await snapshot(extensionPage);
-    const webSelectedInflectionCollision = await snapshot(webPage);
     assert.deepEqual(popupSelectedInflectionCollision.recordIds, ['w2797']);
     assert.deepEqual(popupSelectedInflectionCollision.visibleSenseIds, ['w2797-s1']);
-    assert.deepEqual(webSelectedInflectionCollision, popupSelectedInflectionCollision);
 
     const popupPolysemy = await search(extensionPage, '쓰다');
-    const webPolysemy = await search(webPage, '쓰다');
-    const expectedCandidateSenses = ['w237-s1', 'w237-s2', 'w237-s3', 'w237-s4'];
     assert.deepEqual(popupPolysemy.recordIds, ['w237']);
-    assert.deepEqual(popupPolysemy.candidateSenseIds, expectedCandidateSenses);
+    assert.deepEqual(popupPolysemy.candidateSenseIds, [
+      'w237-s1',
+      'w237-s2',
+      'w237-s3',
+      'w237-s4',
+    ]);
     assert.deepEqual(popupPolysemy.visibleSenseIds, ['w237-s1']);
-    assert.deepEqual(webPolysemy, popupPolysemy);
 
-    for (const page of [extensionPage, webPage]) {
-      await page.locator('[role="option"][data-sense-id="w237-s2"]').click();
-      await page.waitForFunction(() => (
-        document.querySelector('[role="option"][aria-selected="true"]')
-          ?.getAttribute('data-sense-id') === 'w237-s2'
-        && document.querySelector('.sense-block')?.getAttribute('data-sense-id') === 'w237-s2'
-      ));
-    }
-    const popupSelectedSense = await snapshot(extensionPage);
-    const webSelectedSense = await snapshot(webPage);
-    assert.deepEqual(popupSelectedSense, webSelectedSense, 'selected sense parity');
-    assert.deepEqual(popupSelectedSense.visibleSenseIds, ['w237-s2']);
+    await extensionPage.locator('[role="option"][data-sense-id="w237-s2"]').click();
+    await extensionPage.waitForFunction(() => (
+      document.querySelector('[role="option"][aria-selected="true"]')
+        ?.getAttribute('data-sense-id') === 'w237-s2'
+      && document.querySelector('.sense-block')?.getAttribute('data-sense-id') === 'w237-s2'
+    ));
+    assert.deepEqual((await snapshot(extensionPage)).visibleSenseIds, ['w237-s2']);
 
     await search(extensionPage, '담담하다');
-    await search(webPage, '담담하다');
-    for (const page of [extensionPage, webPage]) {
-      await page.locator('[data-target-record-id="r008"]').click();
-      await waitForRecord(page, 'r008');
-    }
+    await extensionPage.locator('[data-target-record-id="r008"]').click();
+    await waitForRecord(extensionPage, 'r008');
     const popupRelationTarget = await snapshot(extensionPage);
-    const webRelationTarget = await snapshot(webPage);
-    assert.deepEqual(popupRelationTarget, webRelationTarget, 'relation target parity');
     assert.deepEqual(popupRelationTarget.recordIds, ['r008']);
     assert.deepEqual(popupRelationTarget.visibleSenseIds, ['r008-s1']);
 
-    await webPage.goBack();
-    await waitForRecord(webPage, 'w026');
-    assert.equal(new URL(webPage.url()).searchParams.get('q'), '담담하다');
-    await webPage.goForward();
-    await waitForRecord(webPage, 'r008');
-    assert.equal(new URL(webPage.url()).searchParams.get('target'), 'r008');
-
-    await webPage.setViewportSize({ width: 390, height: 844 });
-    await assertNoHorizontalOverflow(webPage, 'dictionary page at mobile width');
-    await webPage.setViewportSize({ width: 1280, height: 800 });
-
-    await webPage.getByRole('link', { name: '제품 소개' }).click();
-    await webPage.waitForURL(`${webOrigin}/typewriter/about/`);
-    assert.ok(requests.has('/typewriter/'));
-    assert.ok(requests.has('/typewriter/about/'));
-    assert.equal(await webPage.locator('[data-product-surface]').getAttribute('data-product-surface'), 'web-about');
+    // Static landing page: rendering, responsiveness, navigation, CTA, keyboard
+    // access, and a network log that proves no dictionary is requested.
+    const webRequests = [];
+    const webPage = await context.newPage();
+    webPage.on('pageerror', (error) => pageErrors.push(`web: ${error.message}`));
+    webPage.on('request', (request) => webRequests.push(new URL(request.url())));
+    const landing = await webPage.goto(`${webOrigin}/typewriter/`, { waitUntil: 'networkidle' });
+    assert.equal(landing?.status(), 200);
+    await webPage.locator('[data-product-surface="web-landing"]').waitFor();
+    const headline = (await webPage.getByRole('heading', { level: 1 }).innerText())
+      .replace(/\s+/gu, ' ');
+    assert.equal(headline, '작가를 위한, 말의 결을 찾는 사전.');
+    assert.equal(await webPage.getByRole('textbox').count(), 0, 'landing must not offer a search box');
     assert.equal(await webPage.locator('[data-dictionary-panel]').count(), 0);
 
-    const aboutPage = await context.newPage();
-    const aboutResponse = await aboutPage.goto(`${webOrigin}/typewriter/about/`, { waitUntil: 'load' });
-    assert.equal(aboutResponse?.status(), 200, 'product introduction must load directly');
-    await aboutPage.locator('[data-product-surface="web-about"]').waitFor();
-    const aboutLinks = await aboutPage.locator('.site-navigation a').evaluateAll((links) => (
-      Object.fromEntries(links.map((link) => [link.textContent.trim(), new URL(link.href).pathname]))
+    const headingLevels = await webPage.locator('h1, h2, h3').evaluateAll((nodes) => (
+      nodes.map((node) => Number(node.tagName.slice(1)))
     ));
-    assert.deepEqual(aboutLinks, {
-      '제품 소개': '/typewriter/about/',
-      GitHub: '/neverworkalone/typewriter',
+    assert.equal(headingLevels[0], 1);
+    assert.equal(headingLevels.filter((level) => level === 1).length, 1);
+    headingLevels.slice(1).forEach((level, index) => {
+      assert.ok(level - headingLevels[index] <= 1, 'heading levels must not skip');
     });
-    const aboutReload = await aboutPage.reload({ waitUntil: 'load' });
-    assert.equal(aboutReload?.status(), 200, 'product introduction must survive a direct reload');
-    await aboutPage.locator('[data-product-surface="web-about"]').waitFor();
-    assert.equal(await aboutPage.locator('[data-dictionary-panel]').count(), 0);
-    await aboutPage.setViewportSize({ width: 390, height: 844 });
-    await assertNoHorizontalOverflow(aboutPage, 'product introduction page at mobile width');
-    await aboutPage.getByRole('link', { name: 'Typewriter 홈' }).click();
-    await aboutPage.waitForURL(`${webOrigin}/typewriter/`);
-    await waitForRuntimeReady(aboutPage, 'web');
 
-    assert.ok(requests.has('/typewriter/runtime/dictionary-worker.mjs'));
-    assert.ok(requests.has('/typewriter/runtime/vendor/sqlite3.wasm'));
-    assert.ok(requests.has('/typewriter/dictionary.sqlite'));
+    const storeLinks = await webPage.getByRole('link', { name: /Chrome/u }).evaluateAll((links) => (
+      links.map((link) => link.href)
+    ));
+    assert.ok(storeLinks.length >= 2);
+    for (const href of storeLinks) {
+      assert.equal(
+        href,
+        'https://chromewebstore.google.com/detail/typewriter/dpifnfihnakglmffddnhmefbllmnbbmk',
+      );
+    }
+
+    // Keyboard: the skip link is the first tab stop and focus is visible.
+    await webPage.keyboard.press('Tab');
+    assert.equal(await webPage.evaluate(() => document.activeElement?.className), 'skip-link');
+    await webPage.keyboard.press('Enter');
+    assert.equal(new URL(webPage.url()).hash, '#main');
+    for (let index = 0; index < 8; index += 1) {
+      await webPage.keyboard.press('Tab');
+      const outline = await webPage.evaluate(() => (
+        getComputedStyle(document.activeElement).outlineStyle
+      ));
+      assert.notEqual(outline, 'none', 'focused controls must show a focus indicator');
+    }
+
+    // In-page navigation lands on the matching section.
+    await webPage.getByRole('link', { name: '철학', exact: true }).click();
+    assert.equal(new URL(webPage.url()).hash, '#philosophy');
+    await webPage.locator('#philosophy').waitFor();
+
+    for (const viewport of [
+      { width: 390, height: 844 },
+      { width: 768, height: 1024 },
+      { width: 1280, height: 800 },
+    ]) {
+      await webPage.setViewportSize(viewport);
+      await assertNoHorizontalOverflow(webPage, `landing at ${viewport.width}px`);
+    }
+
+    const legalAccess = await webPage.evaluate(async (fileNames) => (
+      Promise.all(fileNames.map(async (fileName) => (
+        (await fetch(`./${fileName}`)).status
+      )))
+    ), PRODUCT_LEGAL_FILES);
+    assert.deepEqual(legalAccess, PRODUCT_LEGAL_FILES.map(() => 200));
+
+    // /about/ stays valid by redirecting to the landing page.
+    const aboutPage = await context.newPage();
+    const aboutRequests = [];
+    aboutPage.on('request', (request) => aboutRequests.push(new URL(request.url())));
+    await aboutPage.goto(`${webOrigin}/typewriter/about/`, { waitUntil: 'load' });
+    await aboutPage.waitForURL(`${webOrigin}/typewriter/#philosophy`);
+    await aboutPage.locator('[data-product-surface="web-landing"]').waitFor();
+
+    const forbidden = /dictionary\.sqlite|\.wasm$|\/runtime\//u;
+    for (const url of [...webRequests, ...aboutRequests]) {
+      assert.ok(!forbidden.test(url.pathname), `landing must not request ${url.pathname}`);
+    }
+    assert.equal(
+      [...requests].filter((pathname) => /sqlite|\.wasm|\/runtime\//u.test(pathname)).length,
+      0,
+      'static server must not have served any dictionary or runtime file',
+    );
+
     assert.deepEqual(pageErrors, [], 'product pages must not report runtime errors');
-    console.log('Chromium product runtime parity passed at /typewriter/.');
+    console.log('Extension search and static landing page passed in Chromium.');
   } finally {
     await context?.close();
     await new Promise((resolve) => server.close(resolve));
