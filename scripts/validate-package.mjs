@@ -323,7 +323,15 @@ function validateFileModes(packageDir, files) {
   return errors;
 }
 
-const STATIC_IMPORT = /(?:^|[\n;])\s*(?:import|export)\s+(?:[^'";]*?\s+from\s+)?['"](\.{1,2}\/[^'"]+)['"]/g;
+// Relative module references in a runtime file: `from '…'` (import/export forms), side-effect `import '…'`, dynamic
+// `import('…')` and `new URL('…', import.meta.url | self.location.href)`. Full-line and block comments are ignored.
+const RELATIVE_SPECIFIER = "['\"](\\.{1,2}\\/[^'\"\\n]+)['\"]";
+const MODULE_REFERENCES = [
+  new RegExp(`\\bfrom\\s*${RELATIVE_SPECIFIER}`, 'g'),
+  new RegExp(`\\bimport\\s*\\(?\\s*${RELATIVE_SPECIFIER}`, 'g'),
+  new RegExp(`\\bnew\\s+URL\\s*\\(\\s*${RELATIVE_SPECIFIER}\\s*,\\s*(?:import\\.meta\\.url|self\\.location\\.href)`, 'g'),
+];
+const stripComments = (source) => source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 // Every runtime module is copied file by file, so each relative import must resolve to a packaged file;
 // otherwise the service worker/worker fails at load time ("Service worker registration failed. Status code: 3").
@@ -338,10 +346,12 @@ export function validateRuntimeImports(packageDir, files) {
     } catch {
       continue;
     }
-    for (const match of source.matchAll(STATIC_IMPORT)) {
-      const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(file), match[1]));
+    const code = stripComments(source);
+    const specifiers = new Set(MODULE_REFERENCES.flatMap((pattern) => [...code.matchAll(pattern)].map((match) => match[1])));
+    for (const specifier of specifiers) {
+      const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(file), specifier));
       if (!present.has(resolved)) {
-        errors.push(`Packaged runtime module ${file} imports ${match[1]}, which is not in the package.`);
+        errors.push(`Packaged runtime module ${file} imports ${specifier}, which is not in the package.`);
       }
     }
   }

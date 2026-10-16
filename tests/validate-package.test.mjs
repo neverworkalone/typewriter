@@ -613,7 +613,7 @@ test('packaged runtime modules only import packaged files (service worker load f
     }
     await writeFile(path.join(temporaryDirectory, 'runtime/dictionary-build-info.js'), 'export const X = 1;\n');
     await writeFile(path.join(temporaryDirectory, 'runtime/vendor/sqlite3.mjs'), 'export default 1;\n');
-    const files = [...copied.map((name) => `runtime/${name}`), 'runtime/dictionary-build-info.js', 'runtime/vendor/sqlite3.mjs'];
+    const files = [...copied.map((name) => `runtime/${name}`), 'runtime/dictionary-build-info.js', 'runtime/vendor/sqlite3.mjs', 'dictionary.sqlite'];
 
     // Every module the extension copies must have all of its relative imports copied too.
     assert.deepEqual(validateRuntimeImports(temporaryDirectory, files), []);
@@ -623,6 +623,31 @@ test('packaged runtime modules only import packaged files (service worker load f
     assert.ok(validateRuntimeImports(temporaryDirectory, missing).some((error) => error.includes('./dictionary-contract.js')));
     await writeFile(path.join(temporaryDirectory, 'runtime/sqlite-query.js'), "import x from '../domain/relation-groups.js';\n");
     assert.ok(validateRuntimeImports(temporaryDirectory, files).some((error) => error.includes('../domain/relation-groups.js')));
+
+    // Every reference form is checked, for a packaged target (pass) and a missing one (fail).
+    const forms = {
+      'static default': (target) => `import value from '${target}';\n`,
+      'multi-line named': (target) => `import {\n  a,\n  b,\n} from '${target}';\n`,
+      'side effect': (target) => `import '${target}';\n`,
+      'export from': (target) => `export { a } from '${target}';\n`,
+      'export star': (target) => `export * from "${target}";\n`,
+      'dynamic': (target) => `const module = await import("${target}");\n`,
+      'dynamic spaced': (target) => `const module = await import( '${target}' );\n`,
+      'new URL': (target) => `const url = new URL('${target}', import.meta.url);\n`,
+      'new URL location': (target) => `const url = new URL('${target}', self.location.href);\n`,
+    };
+    for (const [name, write] of Object.entries(forms)) {
+      await writeFile(path.join(temporaryDirectory, 'runtime/sqlite-query.js'), write('./protocol.js'));
+      assert.deepEqual(validateRuntimeImports(temporaryDirectory, files), [], `${name}: packaged target`);
+      await writeFile(path.join(temporaryDirectory, 'runtime/sqlite-query.js'), write('./missing.js'));
+      assert.ok(
+        validateRuntimeImports(temporaryDirectory, files).some((error) => error.includes('./missing.js')),
+        `${name}: missing target`,
+      );
+    }
+    // Commented-out references are ignored.
+    await writeFile(path.join(temporaryDirectory, 'runtime/sqlite-query.js'), "// import x from './missing.js';\n/* import('./missing.js') */\n");
+    assert.deepEqual(validateRuntimeImports(temporaryDirectory, files), []);
   } finally {
     await rm(temporaryDirectory, { recursive: true, force: true });
   }
