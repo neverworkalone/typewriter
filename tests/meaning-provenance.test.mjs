@@ -126,6 +126,19 @@ test('meaning relation provenance: valid mapping passes; deleted, mis-bound and 
       await copyFile(good, copy(`${name}.sqlite`));
       assert.ok(violations(copy(`${name}.sqlite`), (db) => db.exec(sql)).meaning_relation_content_mismatch > 0, name);
     }
+    // Reordering the provenance ordinals and the displayed values together must not bypass the canonical-first rule.
+    await copyFile(good, copy('reordered.sqlite'));
+    const reordered = violations(copy('reordered.sqlite'), (db) => {
+      db.exec('PRAGMA foreign_keys = OFF');
+      db.exec(`
+        UPDATE meaning_relation_sources SET position = 100 WHERE source_sense_id = 'w001-s1' AND source_position = 0;
+        UPDATE meaning_relation_sources SET position = 0 WHERE source_sense_id = 'w001-s2' AND source_position = 0;
+        UPDATE meaning_relation_sources SET position = 1 WHERE source_sense_id = 'w001-s1' AND source_position = 0;
+        UPDATE meaning_relations SET note = '둘째 근거', relevance = 4 WHERE source_meaning_id = 'm001' AND target_meaning_id = 'm002';
+      `);
+    });
+    assert.deepEqual(reordered, { meaning_relation_source_order_violation: 1 });
+
     // An authored relation owns its own note/relevance and is not compared with STDICT.
     await copyFile(good, copy('authored-content.sqlite'));
     assert.deepEqual(violations(copy('authored-content.sqlite'), (db) => db.exec(
