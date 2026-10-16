@@ -13,7 +13,7 @@ This is the C11 source-bound self-check for Issue #764, based on PR #766's base 
 | C11 lemmas with multiple canonical senses | 373 | 373 |
 | C11 single-sense lemmas explicitly retained | 1,633 | 1,633 |
 | C11 lemmas whose Meaning count changed | — | 301 |
-| C11 lemmas with multiple Meaning rows | — | 86 |
+| C11 lemmas with multiple Meaning rows at PR #766 final HEAD | — | 84 |
 | C11 same-record splits remaining after source recheck | — | 25 |
 | Repository adjudications | 117 | 117 |
 
@@ -86,6 +86,10 @@ The audit did not treat a shared broad category or a repeated form as sufficient
 
 The 15 lemmas reduced to one Meaning in this re-audit are `ㅆ`, `싸라기`, `싹싹`, `쌍어`, `쌔물거리다`, `쌔물대다`, `쌔물쌔물`, `쌔물쌔물하다`, `쌕쌕거림`, `썩썩거리다`, `썩썩대다`, `썩은 새끼로 범[호랑이] 잡기`, `쎄리`, `쎄리깐`, and `쏘아`. These groupings preserve a shared lexical core: letter/sound, rice grain/ice pellet, cut-and-remove action/result, source-backed paired-fish metaphor, smiling/coy conduct, respiratory sound, related cut/rub sounds, two outcomes of one proverb, same slang target class, or command/action under that command.
 
+### Final #766 count correction
+
+The table above records the final #766 output: 84 C11 lemmas with multiple Meanings and 25 same-record splits. The earlier `86` in this table was a stale review-checkpoint count. At the intermediate PR #766 HEAD `35eff327186ce07c9e571d7a180ff7ff9b20e44d`, `싹을 밟다` and `쐐기(를) 박다[치다]` still each had two Meaning rows, so that checkpoint had 86 multi-Meaning lemmas and 27 same-record splits. The final PR head `9d8585fc364f6f8671c9aec46a58b86e147a0ec2` merged each pair into one Meaning, accounting for exactly 86→84 and 27→25. No rows were removed; both idioms retained all of their bound canonical senses. The new post-merge audit and edit spec are in [`issue-774-c11-audit.md`](issue-774-c11-audit.md) and [`issue-774-c11.json`](issue-774-c11.json).
+
 Three candidate merges from an early pass were deliberately not retained after this full comparison: `쌍권총` literal pistols vs student slang, `쐬벌이` money-making vs theft, and `썩썩` quickness vs sound. A shared numeral, broad activity category, or adverbial form alone did not establish a source-supported natural extension. The final spec also keeps the literal “quickly” sense of `썩썩` separate while grouping its two cutting/rubbing sound senses.
 
 ## Follow-up: Stage 2 same-record split review and exact replay (review 5542357159 checkpoint)
@@ -131,7 +135,7 @@ Review `5542545031` found that two of the 27 checkpoint KEEP decisions treated d
 
 The merged representative glosses lead with the shared source image and then preserve the source uses: the wedge gloss covers fixation and separation/obstruction; the sprout gloss covers stopping a new start and noticing a sign. No canonical or adjudication row was changed.
 
-I restored only the three C11 Meaning shards from PR base `80632ae9e5f62df05b17fcc59fa1c3bce60b66a6` and replayed the entire spec. The current replay has 2,122 C11 rows (2,006 lemmas, 2,725 bound senses), 496,123 repository Meanings, and 117 adjudications. Exactly 301 C11 lemmas have a changed Meaning count versus the PR base; 86 retain multiple Meaning rows and 25 retain same-record splits. All 2,006 `before` snapshots match the PR-base rows, every final group matches the replayed shard output, and all 2,725 source senses are covered once. The controls remain `쌀쌀하다` as one Meaning, `쐐기` as separate tool versus grouped larvae, and `쌍성` as three independent Meanings. Canonical JSONL, adjudication data, and shards outside C11 are unchanged.
+I restored only the three C11 Meaning shards from PR base `80632ae9e5f62df05b17fcc59fa1c3bce60b66a6` and replayed the entire spec. The final #766 replay has 2,122 C11 rows (2,006 lemmas, 2,725 bound senses), 496,123 repository Meanings, and 117 adjudications. Exactly 301 C11 lemmas have a changed Meaning count versus the PR base; 84 retain multiple Meaning rows and 25 retain same-record splits. All 2,006 `before` snapshots match the PR-base rows, every final group matches the replayed shard output, and all 2,725 source senses are covered once. The controls remain `쌀쌀하다` as one Meaning, `쐐기` as separate tool versus grouped larvae, and `쌍성` as three independent Meanings. Canonical JSONL, adjudication data, and shards outside C11 are unchanged.
 
 ## Gloss checks
 
