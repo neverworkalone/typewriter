@@ -127,8 +127,12 @@ a:focus-visible {
 
 .site-nav a {
   color: #fff;
-  text-decoration: underline;
+  text-decoration: none;
   text-underline-offset: 3px;
+}
+
+.site-nav a:hover {
+  text-decoration: underline;
 }
 
 /* 01 · Hero */
@@ -640,10 +644,6 @@ a:focus-visible {
 .footer-nav a {
   color: #e4d9d4;
   text-decoration: none;
-}
-
-.footer-nav a:hover {
-  text-decoration: underline;
 }
 
 .footer-legal {
