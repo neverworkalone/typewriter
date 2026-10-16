@@ -145,8 +145,8 @@ differs from the checked-out source, and it reports the artifact size and the
 initial-load transfer size.
 
 Pull requests build and validate on an ephemeral runner, but never upload or deploy
-Pages. The workflow runs on manual dispatch (`workflow_dispatch`); it has no cron
-schedule. On `master` it builds and validates the artifact for that exact commit,
+Pages. The workflow runs on manual dispatch (`workflow_dispatch`) and on pushes to
+`master` that change files under `web/`; it has no cron schedule. On `master` it builds and validates the artifact for that exact commit,
 uploads it only after validation succeeds, then deploys it to the
 `github-pages` environment. The deployment job depends on the successful build and
 uses only Pages, OIDC, and Actions read permissions. Configure the repository Pages
