@@ -135,8 +135,10 @@ export function projectRecord(record, {
   const projectedSenses = senses.map(projectSense);
   const licensed = (sense) => senseIds.includes(sense.id)
     || (sense.senseIds ?? []).some((memberId) => senseIds.includes(memberId));
-  const visibleSenses = senseId && projectedSenses.some(({ id }) => id === senseId)
-    ? projectedSenses.filter(({ id }) => id === senseId)
+  // A requested sense may be the meaning itself or one of its source senses (older links, duplicate senses).
+  const requested = (sense) => sense.id === senseId || (sense.senseIds ?? []).includes(senseId);
+  const visibleSenses = senseId && projectedSenses.some(requested)
+    ? projectedSenses.filter(requested)
     : Array.isArray(senseIds)
       ? projectedSenses.filter(licensed)
       : projectedSenses;

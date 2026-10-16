@@ -179,9 +179,16 @@ export function getMeaningRecord(database, recordId) {
     ORDER BY meanings.display_rank
   `, [recordId]).map((meaning) => ({
     ...meaning,
+    // Source senses that resolve to this meaning: its members plus the `duplicate` senses redirected to a
+    // member (the same resolution the relation projection uses), so a match on any of them finds the meaning.
     sense_ids: allRows(database, `
-      SELECT sense_id FROM meaning_members WHERE meaning_id = ? ORDER BY position
-    `, [meaning.id]).map(({ sense_id: senseId }) => senseId),
+      SELECT sense_id FROM meaning_members WHERE meaning_id = ?
+      UNION ALL
+      SELECT adjudication.sense_id FROM sense_adjudications AS adjudication
+      INNER JOIN meaning_members AS member ON member.sense_id = adjudication.duplicate_of_sense_id
+      WHERE adjudication.reason = 'duplicate' AND member.meaning_id = ?
+      ORDER BY 1
+    `, [meaning.id, meaning.id]).map(({ sense_id: senseId }) => senseId),
     relations: allRows(database, `
       SELECT
         meaning_relations.position,

@@ -18,6 +18,7 @@ const GLOSSES = {
   이동0: '위치를 옮김.', 떠남0: '있던 곳을 벗어남.', 쓸쓸함0: '외롭고 적적한 느낌.',
   가다0: '어떤 장소로 이동하다.', 가다1: '어떤 상태나 시간이 지나가다.', 가다2: '목적지에 도착하러 떠나다.',
   가다3: '기계나 물건이 제대로 작동하다.', 가다4: '값이나 무게 따위가 나가다.',
+  오르다0: '높은 데로 옮겨 가다.', 오르다1: '위쪽으로 이동하다.',
   파0: '한글 자모의 열넷째 글자.',
   나무0: '줄기가 단단한 여러해살이 식물.', 나무1: '집을 짓거나 가구를 만드는 재료.',
 };
@@ -42,9 +43,11 @@ const RECORDS = [
   ]),
   record(12, '나무', [[], []]),
   record(13, '파', [[]]),
+  record(16, '오르다', [[], []]),
 ];
 const DROPPED = new Set(['w013-s1']);
-const MEANINGS = RECORDS.flatMap((item) => item.senses.filter((sense) => !DROPPED.has(sense.id)).map((sense, index) => ({
+const DUPLICATES = { 'w016-s2': 'w016-s1' };
+const MEANINGS = RECORDS.flatMap((item) => item.senses.filter((sense) => !DROPPED.has(sense.id) && !(sense.id in DUPLICATES)).map((sense, index) => ({
   id: item.senses.length === 1 ? `m${item.id.slice(1)}` : `m${item.id.slice(1)}_${index + 1}`,
   lemma: item.lemma,
   gloss: sense.gloss,
@@ -56,7 +59,10 @@ async function buildFixture(directory) {
   await mkdir(canonicalDirectory);
   await writeFile(path.join(canonicalDirectory, 'part.jsonl'), `${RECORDS.map((item) => JSON.stringify(item)).join('\n')}\n`);
   writeMeanings(path.join(directory, 'meanings'), MEANINGS);
-  writeAdjudications(path.join(directory, 'adjudication'), [...DROPPED].map((sense_id) => ({ sense_id, lemma: '파', decision: 'drop', reason: 'out_of_scope' })));
+  writeAdjudications(path.join(directory, 'adjudication'), [
+    ...[...DROPPED].map((sense_id) => ({ sense_id, lemma: '파', decision: 'drop', reason: 'out_of_scope' })),
+    ...Object.entries(DUPLICATES).map(([sense_id, duplicate_of]) => ({ sense_id, lemma: '오르다', decision: 'drop', reason: 'duplicate', duplicate_of })),
+  ]);
   const outputPath = path.join(directory, 'dictionary.sqlite');
   await buildDictionary({
     inputDirectory: canonicalDirectory,
@@ -66,6 +72,10 @@ async function buildFixture(directory) {
     adjudicationDirectory: path.join(directory, 'adjudication'),
   });
   return outputPath;
+}
+
+function getMeaningsRecordFor(database, term) {
+  return findRecordsBySearchTerm(database, term).matches.map(({ id }) => getMeaningRecord(database, id));
 }
 
 function search(database, term) {
@@ -125,6 +135,13 @@ test('meaning search: candidates are meanings, ranked by stored counts, at most 
       const kept = await new SearchSession({ runtime }).searchExact('가다');
       assert.equal(kept.status, 'ready');
       assert.equal(kept.results.length, 1);
+
+      // A duplicate sense resolves to the surviving meaning, so a surface match on it still finds the meaning
+      // (and a link to the raw sense opens it).
+      const [oreuda] = getMeaningsRecordFor(database, '오르다');
+      assert.deepEqual(oreuda.senses.map(({ id, sense_ids: ids }) => [id, ids]), [['m016_1', ['w016-s1', 'w016-s2']]]);
+      const viaDuplicate = projectSearchResults([oreuda], [{ id: oreuda.id, match: { kind: 'generated-surface-form', senseIds: ['w016-s2'] } }]);
+      assert.deepEqual(viaDuplicate[0].senses.map(({ id }) => id), ['m016_1']);
 
       // A single-meaning lemma has no more list.
       const [single] = search(database, '이동');
