@@ -2,14 +2,15 @@ import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'no
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  compareSenseIds, parseShardFileName, readAdjudications, readMeanings, validateAdjudicationRow, validateMeaningDataset, validateMeaningRow,
+  compareSenseIds, entryIdOfSense, parseShardFileName, readAdjudications, readMeanings, validateAdjudicationRow, validateMeaningDataset, validateMeaningRow,
   writeAdjudications,
 } from './contract.mjs';
+import { projectInitialMeanings, readCanonicalEntries } from './initial.mjs';
 
 /**
- * Applies an edit spec to the meaning/adjudication rows (Issue #715).
+ * Applies an edit spec to the meaning/adjudication rows (Issues #715 and #764).
  *
- * Spec: `{ glosses: [{ sense_id, gloss }], merges: [{ senses: [senseId, ...], gloss }], drops: [{ sense_id, reason?, duplicate_of? }] }`.
+ * Spec: `{ glosses, merges, repartitions, drops }`.
  * - A merge replaces the single-sense meanings of `senses` (one or several records of the SAME lemma) with ONE meaning
  *   whose id is the id of the first member in canonical order, whose `sense_ids` list all members in that order and
  *   whose gloss is the authored `gloss`. Members must still be untouched single-sense meanings.
@@ -18,13 +19,17 @@ import {
  *   removes the meaning and must omit `duplicate_of`.
  * Pure: returns new row arrays; the CLI writes them. Throws with every problem found instead of partially applying.
  */
-export function applyEdits({ meanings, adjudications }, spec) {
+export function applyEdits({ meanings, adjudications, initialMeaningIds = null }, spec) {
   const errors = [];
   const bySense = new Map();
   for (const row of meanings) for (const senseId of row.sense_ids) bySense.set(senseId, row);
   const removed = new Set();
   const replacements = new Map();
   const added = [];
+  const repartitioned = [];
+  const repartitionedMeaningIds = new Set();
+  const repartitionedSenseIds = new Set();
+  const repartitionedLemmas = new Set();
   const newAdjudications = [];
   const claimed = new Set();
 
@@ -33,6 +38,7 @@ export function applyEdits({ meanings, adjudications }, spec) {
     claimed.add(senseId);
     const row = bySense.get(senseId);
     if (!row) errors.push(`${where}: sense ${senseId} has no meaning (already dropped or unknown)`);
+    else if (repartitionedSenseIds.has(senseId)) errors.push(`${where}: sense ${senseId} is already included in a repartition`);
     else if (row.sense_ids.length !== 1) errors.push(`${where}: meaning ${row.id} is already merged`);
     return row ?? null;
   };
@@ -60,6 +66,88 @@ export function applyEdits({ meanings, adjudications }, spec) {
     added.push(merged);
   }
 
+  // A meaning regroup under a newer editorial boundary can split or coalesce current rows,
+  // including rows that a previous adjudication already merged. The explicit before snapshot
+  // makes this a deliberate, source-preserving reclassification rather than a reset.
+  for (const [i, edit] of (spec.repartitions ?? []).entries()) {
+    const where = `repartitions[${i}] (${edit.lemma})`;
+    if (repartitionedLemmas.has(edit.lemma)) {
+      errors.push(`${where}: lemma is included in more than one repartition`);
+      continue;
+    }
+    if (!initialMeaningIds) {
+      errors.push(`${where}: initial meaning ids from canonical data are required`);
+      continue;
+    }
+    if (typeof edit.lemma !== 'string' || !edit.lemma.trim()) {
+      errors.push(`${where}: lemma must be a non-empty string`);
+      continue;
+    }
+    const current = meanings.filter((row) => row.lemma === edit.lemma);
+    const expected = edit.before;
+    if (!Array.isArray(expected)) {
+      errors.push(`${where}: before must list the exact current meaning rows`);
+      continue;
+    }
+    if (expected.some((row) => !row || typeof row.id !== 'string' || typeof row.gloss !== 'string'
+      || !Array.isArray(row.sense_ids) || row.sense_ids.some((senseId) => !entryIdOfSense(senseId)))) {
+      errors.push(`${where}: before rows need valid ids, glosses and sense_ids`);
+      continue;
+    }
+    const normalizeRows = (rows) => rows.map((row) => ({
+      id: row.id,
+      gloss: row.gloss,
+      sense_ids: [...row.sense_ids].sort(compareSenseIds),
+    })).sort((a, b) => a.id.localeCompare(b.id));
+    if (JSON.stringify(normalizeRows(current)) !== JSON.stringify(normalizeRows(expected))) {
+      errors.push(`${where}: current meanings do not match the recorded before snapshot`);
+      continue;
+    }
+    if (!Array.isArray(edit.groups) || edit.groups.length === 0) {
+      errors.push(`${where}: groups must contain at least one final meaning`);
+      continue;
+    }
+    const available = new Set(current.flatMap((row) => row.sense_ids));
+    const localSeen = new Set();
+    const nextRows = [];
+    for (const [j, group] of edit.groups.entries()) {
+      const groupWhere = `${where}.groups[${j}]`;
+      if (!Array.isArray(group.senses) || group.senses.length === 0) {
+        errors.push(`${groupWhere}: senses must be a non-empty array`);
+        continue;
+      }
+      for (const senseId of group.senses) {
+        if (!entryIdOfSense(senseId)) errors.push(`${groupWhere}: invalid sense id ${JSON.stringify(senseId)}`);
+      }
+      if (group.senses.some((senseId) => !entryIdOfSense(senseId))) continue;
+      const senseIds = [...group.senses].sort(compareSenseIds);
+      for (const senseId of senseIds) {
+        if (!available.has(senseId)) errors.push(`${groupWhere}: sense ${senseId} is not in the current ${edit.lemma} meanings`);
+        if (localSeen.has(senseId)) errors.push(`${groupWhere}: sense ${senseId} appears in more than one final group`);
+        localSeen.add(senseId);
+        if (repartitionedSenseIds.has(senseId)) errors.push(`${groupWhere}: sense ${senseId} appears in more than one repartition`);
+        if (claimed.has(senseId)) errors.push(`${groupWhere}: sense ${senseId} is also changed by a gloss, merge, or drop`);
+      }
+      const firstSense = senseIds[0];
+      const id = initialMeaningIds.get(firstSense);
+      if (!id) errors.push(`${groupWhere}: no initial meaning id exists for ${firstSense}`);
+      const row = { id, lemma: edit.lemma, gloss: group.gloss, sense_ids: senseIds };
+      errors.push(...validateMeaningRow(row, groupWhere));
+      nextRows.push(row);
+    }
+    for (const senseId of available) if (!localSeen.has(senseId)) errors.push(`${where}: current sense ${senseId} is missing from final groups`);
+    if (localSeen.size !== available.size) continue;
+    const hasLocalErrors = errors.some((message) => message.startsWith(where));
+    if (hasLocalErrors) continue;
+    repartitionedLemmas.add(edit.lemma);
+    for (const row of current) {
+      if (repartitionedMeaningIds.has(row.id)) errors.push(`${where}: meaning ${row.id} is included in more than one repartition`);
+      repartitionedMeaningIds.add(row.id);
+    }
+    for (const senseId of localSeen) repartitionedSenseIds.add(senseId);
+    repartitioned.push(...nextRows);
+  }
+
   const dropped = new Set((spec.drops ?? []).map((drop) => drop.sense_id));
   for (const [i, drop] of (spec.drops ?? []).entries()) {
     const where = `drops[${i}] (${drop.sense_id})`;
@@ -79,7 +167,7 @@ export function applyEdits({ meanings, adjudications }, spec) {
     newAdjudications.push(verdict);
   }
   const result = {
-    meanings: [...meanings.filter((row) => !removed.has(row.id)).map((row) => replacements.get(row.id) ?? row), ...added],
+    meanings: [...meanings.filter((row) => !removed.has(row.id) && !repartitionedMeaningIds.has(row.id)).map((row) => replacements.get(row.id) ?? row), ...added, ...repartitioned],
     adjudications: [...adjudications, ...newAdjudications],
   };
   // The produced rows must satisfy the shared dataset contract (ids, representative record, references) before anything is written.
@@ -98,21 +186,29 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const current = { meanings: readMeanings(meaningsDirectory), adjudications: readAdjudications(adjudicationDirectory) };
   const problems = [...current.meanings.errors, ...current.adjudications.errors];
   if (problems.length) { console.error(problems.slice(0, 50).join('\n')); process.exit(1); }
-  const next = applyEdits({ meanings: current.meanings.rows, adjudications: current.adjudications.rows }, spec);
+  let initialMeaningIds = null;
+  if (spec.repartitions?.length) {
+    initialMeaningIds = new Map();
+    for (const row of projectInitialMeanings(readCanonicalEntries(path.join(root, 'data/canonical')))) {
+      for (const senseId of row.sense_ids) initialMeaningIds.set(senseId, row.id);
+    }
+  }
+  const next = applyEdits({ meanings: current.meanings.rows, adjudications: current.adjudications.rows, initialMeaningIds }, spec);
   // Edit in place: every row stays in its current shard so an edit never reflows (and re-diffs) unrelated shards.
-  const position = new Map();
   const fileOf = new Map();
+  const fileForLemma = new Map();
   for (const file of readdirSync(meaningsDirectory).filter((name) => parseShardFileName(name)).sort()) {
     for (const line of readFileSync(path.join(meaningsDirectory, file), 'utf8').split('\n')) {
       if (!line) continue;
       const row = JSON.parse(line);
-      position.set(row.id, position.size);
       fileOf.set(row.id, file);
+      fileForLemma.set(row.lemma, file);
     }
   }
   const perFile = new Map();
   for (const row of next.meanings) {
-    const file = fileOf.get(row.id);
+    const file = fileOf.get(row.id) ?? fileForLemma.get(row.lemma);
+    if (!file) throw new Error(`cannot locate a meaning shard for ${row.lemma} (${row.id})`);
     if (!perFile.has(file)) perFile.set(file, []);
     perFile.get(file).push(row);
   }
@@ -120,10 +216,21 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     if (!perFile.has(file)) rmSync(path.join(meaningsDirectory, file));
   }
   for (const [file, rows] of perFile) {
-    rows.sort((a, b) => position.get(a.id) - position.get(b.id));
+    rows.sort((a, b) => {
+      if (a.lemma !== b.lemma) return a.lemma < b.lemma ? -1 : 1;
+      const idA = /^m(\d+)(?:_(\d+))?$/u.exec(a.id);
+      const idB = /^m(\d+)(?:_(\d+))?$/u.exec(b.id);
+      const entryA = BigInt(idA[1]);
+      const entryB = BigInt(idB[1]);
+      if (entryA !== entryB) return entryA < entryB ? -1 : 1;
+      const ordinalA = BigInt(idA[2] ?? 0);
+      const ordinalB = BigInt(idB[2] ?? 0);
+      if (ordinalA !== ordinalB) return ordinalA < ordinalB ? -1 : 1;
+      return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+    });
     const text = rows.map((row) => `${JSON.stringify(row)}\n`).join('');
     if (readFileSync(path.join(meaningsDirectory, file), 'utf8') !== text) writeFileSync(path.join(meaningsDirectory, file), text);
   }
   if (next.adjudications.length) writeAdjudications(adjudicationDirectory, next.adjudications);
-  console.log(`applied ${spec.glosses?.length ?? 0} gloss edits, ${spec.merges?.length ?? 0} merges and ${spec.drops?.length ?? 0} drops: ${next.meanings.length} meanings, ${next.adjudications.length} adjudications`);
+  console.log(`applied ${spec.glosses?.length ?? 0} gloss edits, ${spec.merges?.length ?? 0} merges, ${spec.repartitions?.length ?? 0} repartitions and ${spec.drops?.length ?? 0} drops: ${next.meanings.length} meanings, ${next.adjudications.length} adjudications`);
 }

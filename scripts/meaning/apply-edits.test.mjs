@@ -24,6 +24,86 @@ test('merge keeps the lowest member id, lists all sense_ids and covers every sen
   assert.deepEqual(validateMeaningDataset({ ...next, senses: allSenses(senses('w10', 4), senses('w11', 1)), complete: true }), []);
 });
 
+test('repartition can split and coalesce prior meanings against an exact snapshot', () => {
+  const meanings = [
+    { id: 'm50_1', lemma: '나무', gloss: '이전 합침', sense_ids: ['w50-s1', 'w50-s2'] },
+    { id: 'm51', lemma: '나무', gloss: '다른 뜻', sense_ids: ['w51-s1'] },
+  ];
+  const initialMeaningIds = new Map([
+    ['w50-s1', 'm50_1'], ['w50-s2', 'm50_2'], ['w51-s1', 'm51'],
+  ]);
+  const next = applyEdits({ meanings, adjudications: [], initialMeaningIds }, {
+    repartitions: [{
+      lemma: '나무',
+      before: meanings.map(({ id, gloss, sense_ids }) => ({ id, gloss, sense_ids })),
+      groups: [
+        { senses: ['w50-s1'], gloss: '첫 뜻' },
+        { senses: ['w50-s2', 'w51-s1'], gloss: '새로 묶은 뜻' },
+      ],
+    }],
+  });
+  assert.deepEqual(next.meanings, [
+    { id: 'm50_1', lemma: '나무', gloss: '첫 뜻', sense_ids: ['w50-s1'] },
+    { id: 'm50_2', lemma: '나무', gloss: '새로 묶은 뜻', sense_ids: ['w50-s2', 'w51-s1'] },
+  ]);
+});
+
+test('repartition rejects stale snapshots and incomplete sense coverage', () => {
+  const meanings = [{ id: 'm50_1', lemma: '나무', gloss: '이전 합침', sense_ids: ['w50-s1', 'w50-s2'] }];
+  const initialMeaningIds = new Map([['w50-s1', 'm50_1'], ['w50-s2', 'm50_2']]);
+  const edit = {
+    lemma: '나무',
+    before: [{ id: 'm50_2', gloss: '이전 합침', sense_ids: ['w50-s1', 'w50-s2'] }],
+    groups: [{ senses: ['w50-s1'], gloss: '첫 뜻' }],
+  };
+  assert.throws(() => applyEdits({ meanings, adjudications: [], initialMeaningIds }, { repartitions: [edit] }), /before snapshot/u);
+  edit.before = meanings.map(({ id, gloss, sense_ids }) => ({ id, gloss, sense_ids }));
+  assert.throws(() => applyEdits({ meanings, adjudications: [], initialMeaningIds }, { repartitions: [edit] }), /missing from final groups/u);
+});
+
+test('CLI writes newly restored initial meaning ids into the lemma shard in canonical order', () => {
+  const tempRoot = mkdtempSync(path.join(tmpdir(), 'meaning-repartition-'));
+  const scriptDir = path.join(tempRoot, 'scripts/meaning');
+  const canonicalDir = path.join(tempRoot, 'data/canonical');
+  const meaningsDir = path.join(tempRoot, 'data/meanings');
+  const adjudicationDir = path.join(tempRoot, 'data/adjudication');
+  mkdirSync(scriptDir, { recursive: true });
+  mkdirSync(canonicalDir, { recursive: true });
+  mkdirSync(meaningsDir, { recursive: true });
+  mkdirSync(adjudicationDir, { recursive: true });
+  for (const name of ['apply-edits.mjs', 'contract.mjs', 'initial.mjs']) {
+    copyFileSync(path.join(root, 'scripts/meaning', name), path.join(scriptDir, name));
+  }
+  writeFileSync(path.join(canonicalDir, 'stdict-0001.jsonl'), [
+    { id: 'w50', lemma: '싸다', senses: [
+      { id: 'w50-s1', pos: 'verb', gloss: '첫 원뜻' },
+      { id: 'w50-s2', pos: 'verb', gloss: '둘째 원뜻' },
+    ] },
+    { id: 'w51', lemma: '싸다', senses: [{ id: 'w51-s1', pos: 'verb', gloss: '다른 원뜻' }] },
+  ].map((row) => `${JSON.stringify(row)}\n`).join(''));
+  const meanings = [
+    { id: 'm50_1', lemma: '싸다', gloss: '이전 합침', sense_ids: ['w50-s1', 'w50-s2'] },
+    { id: 'm51', lemma: '싸다', gloss: '다른 원뜻', sense_ids: ['w51-s1'] },
+  ];
+  writeFileSync(path.join(meaningsDir, 'c11_001.jsonl'), meanings.map((row) => `${JSON.stringify(row)}\n`).join(''));
+  const specPath = path.join(tempRoot, 'edits.json');
+  writeFileSync(specPath, JSON.stringify({ repartitions: [{
+    lemma: '싸다',
+    before: meanings.map(({ id, gloss, sense_ids }) => ({ id, gloss, sense_ids })),
+    groups: [
+      { senses: ['w50-s1'], gloss: '첫 뜻' },
+      { senses: ['w50-s2', 'w51-s1'], gloss: '함께 묶은 뜻' },
+    ],
+  }] }));
+
+  const result = spawnSync(process.execPath, [realpathSync(path.join(scriptDir, 'apply-edits.mjs')), specPath], { encoding: 'utf8' });
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  assert.deepEqual(readFileSync(path.join(meaningsDir, 'c11_001.jsonl'), 'utf8').trimEnd().split('\n').map(JSON.parse), [
+    { id: 'm50_1', lemma: '싸다', gloss: '첫 뜻', sense_ids: ['w50-s1'] },
+    { id: 'm50_2', lemma: '싸다', gloss: '함께 묶은 뜻', sense_ids: ['w50-s2', 'w51-s1'] },
+  ]);
+});
+
 test('single-sense gloss edits preserve the canonical binding and pass complete dataset validation', () => {
   const entry = readFileSync(path.join(root, 'data/canonical/stdict-0161.jsonl'), 'utf8')
     .split('\n').filter(Boolean).map((line) => JSON.parse(line)).find((row) => row.id === 'w212148');
@@ -83,8 +163,9 @@ test('apply-edits removes a shard when all its meanings are dropped', () => {
   mkdirSync(scriptDir, { recursive: true });
   mkdirSync(meaningsDir, { recursive: true });
   mkdirSync(adjudicationDir, { recursive: true });
-  copyFileSync(path.join(root, 'scripts/meaning/apply-edits.mjs'), path.join(scriptDir, 'apply-edits.mjs'));
-  copyFileSync(path.join(root, 'scripts/meaning/contract.mjs'), path.join(scriptDir, 'contract.mjs'));
+  for (const name of ['apply-edits.mjs', 'contract.mjs', 'initial.mjs']) {
+    copyFileSync(path.join(root, 'scripts/meaning', name), path.join(scriptDir, name));
+  }
   writeFileSync(path.join(meaningsDir, 'c20_001.jsonl'), [
     { id: 'm20_1', lemma: 'ㅏ', gloss: '글자', sense_ids: ['w20-s1'] },
     { id: 'm21_1', lemma: 'ㅏ', gloss: '소리', sense_ids: ['w21-s1'] },
