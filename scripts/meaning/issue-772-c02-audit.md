@@ -2,14 +2,14 @@
 
 ## Scope and evidence
 
-Source-bound self-check for Issue #772, based on `origin/master` at `b67dc3e4` (PR #767 merged). It re-judged all **180** C02 lemmas that still had more than one Meaning after #767, against each lemma's full set of canonical records and senses, in both directions (under-merge and over-merge). The executable record is [`issue-772-c02.json`](issue-772-c02.json): 28 `repartitions`, each with an exact `before` snapshot of the #767 output and a complete `groups` partition, applied with the shared `apply-edits`. Canonical JSONL, adjudications and the other 18 initial-code shards are unchanged.
+Source-bound self-check for Issue #772, based on `origin/master` at `b67dc3e4` (PR #767 merged). It re-judged all **180** C02 lemmas that still had more than one Meaning after #767, against each lemma's full set of canonical records and senses, in both directions (under-merge and over-merge). The executable record is [`issue-772-c02.json`](issue-772-c02.json): 41 `repartitions`, each with an exact `before` snapshot of the #767 output and a complete `groups` partition, applied with the shared `apply-edits`. Canonical JSONL, adjudications and the other 18 initial-code shards are unchanged.
 
 | Measure | #767 | #772 |
 | --- | ---: | ---: |
-| C02 Meaning rows | 3,794 | 3,766 |
+| C02 Meaning rows | 3,794 | 3,751 |
 | C02 source senses | 5,096 | 5,096 |
-| Multi-Meaning lemmas | 180 | 162 |
-| Lemmas regrouped | — | 28 |
+| Multi-Meaning lemmas | 180 | 151 |
+| Lemmas regrouped | — | 41 |
 
 Every C02 sense is still in exactly one Meaning; `validate.mjs` (complete) passes.
 
@@ -30,25 +30,29 @@ Every C02 sense is still in exactly one Meaning; `validate.mjs` (complete) passe
 
 ## Gloss fidelity check (Stage 1 feedback)
 
-All 28 merged representative glosses were re-read against their bound canonical sense glosses for abstraction or misstatement. Corrected: `끼적거리다` (the eating sense is stated directly, not as a comparison), `꼭지` units (length vs bundle), `끗` (cloth-fold length stated as such), `꽃노래` (invented "노래하는 노래" opener removed), `꺼지다` (물체의 바닥이 내려앉거나 빠지거나), `깨다` (hatching stated as source does: intransitive 나오다 and causative 까게 하다), `까칫까칫하다` (야위거나 restored). The parallel derivative families (`끼적*`, `깨작*`, `꺼칫꺼칫하다`) were checked for the same pattern; their glosses keep the eating/behavior sense direct. Structural membership checks cannot detect this class of error, so it stays a manual source check.
+All merged representative glosses were re-read against their bound canonical sense glosses for abstraction or misstatement. Corrected: `끼적거리다` (the eating sense is stated directly, not as a comparison), `꼭지` units (length vs bundle), `끗` (cloth-fold length stated as such), `꽃노래` (invented "노래하는 노래" opener removed), `꺼지다` (물체의 바닥이 내려앉거나 빠지거나), `깨다` (hatching stated as source does: intransitive 나오다 and causative 까게 하다), `까칫까칫하다` (야위거나 restored). The parallel derivative families (`끼적*`, `깨작*`, `꺼칫꺼칫하다`) were checked for the same pattern; their glosses keep the eating/behavior sense direct. Structural membership checks cannot detect this class of error, so it stays a manual source check.
 
 Owner supplement (#764): a Meaning merge and the gloss wording are separate. Merged glosses therefore list each bound source usage as its own sentence and no longer open with an invented common abstraction; `꼭`, `꼭꼭` and `꼭지` were rewritten accordingly. This does not widen any merge.
+
+## Reference-record check (Stage 1 feedback)
+
+Whether a Meaning row is a `→ X` cross-reference is not itself a reason to keep it apart: the targets' actual senses were looked up. Merged because the targets are the same or neighbouring uses of one word: `끄스르다`/`끄슬리다`/`끄시르다` (→ 그슬리다 `불에 겉만 약간 타다` / → 그을리다 `오래 쬐어 검게 되다`), `깜보기` (꽁초 is a sense of 깜부기), `꼭두` (곡두 and 허깨비 both name a thing seen that is not there; → 꼭뒤 stays separate), `깨적거리다` (깨작거리다02 and 께적거리다 are the same dawdling action), `깡뚱` (깡똥01/02 have the identical gloss), `꾀이다` (꾀다01~03 plus the passive), `깨이다`(→ 깎이다 and → 줄어지다, both reduction), `끊치다` (그치다/끊어지다), `깽깽` (깨깨01 crying and the pain/dog cry), `깨보숭이` (깨고물/깨소금, sesame powders), `꼭두머리`(맨 처음 / 꼭대기). Kept separate because the targets are different words or things: `꼬망지`(꼬리/꼴찌), `꼬치`(고추/고치), `꽁치`(공것/학꽁치), `꾸레미`(꾸러미/부리망), `꽃굴`(고콜), `꺽쇠`(꺾쇠), `깍정이`(깍쟁이), `꼬질대`(꽂을대), `깔딱`(딸꾹), `깨깨`(깨끗이), `끌`/`끌끌`(끄르륵 준말), `끼룩*`(끼루룩 is a bird call), `꿉실꿉실`(꿉슬꿉슬 curly), `깨치다`(깨뜨리다), `깨이다` → 깨다03/05 (homonym number not resolvable to one sense), `낌새`(틈새). The out-of-scope `그스르다` in c01 is untouched.
 
 ## Full audit of the 180 lemmas
 
 Counts show #767 → #772 Meaning numbers. Retained splits record why no natural extension path exists in the source senses; each category was applied lemma by lemma to the actual record/sense lists, not to the gloss strings alone.
 
-### MERGED — 26 lemmas
+### MERGED — 39 lemmas
 
 #772에서 하나(또는 같은 어휘 단위)로 재통합·재분할
 
-`까부라지다`(2→1), `까치놀`(2→1), `까칫까칫하다`(2→1), `깨다`(4→3), `깨작거리다`(2→1), `깨작깨작`(2→1), `깨작깨작하다`(2→1), `깨작대다`(2→1), `깨작이다`(2→1), `꺼지다`(2→1), `꺼칫꺼칫하다`(2→1), `꺽`(2→1), `껑청`(2→1), `껴묻히다`(2→1), `꼭`(7→2), `꼭꼭`(4→2), `꽃노래`(2→1), `꽃봉오리`(2→1), `꽃술`(3→2), `꿍치다`(2→1), `끗`(3→2), `끼적거리다`(2→1), `끼적끼적`(2→1), `끼적끼적하다`(2→1), `끼적대다`(2→1), `끼적이다`(2→1)
+`까부라지다`(2→1), `까치놀`(2→1), `까칫까칫하다`(2→1), `깜보기`(2→1), `깡뚱`(2→1), `깨다`(4→3), `깨보숭이`(3→2), `깨이다`(5→4), `깨작거리다`(2→1), `깨작깨작`(2→1), `깨작깨작하다`(2→1), `깨작대다`(2→1), `깨작이다`(2→1), `깨적거리다`(2→1), `깽깽`(2→1), `꺼지다`(2→1), `꺼칫꺼칫하다`(2→1), `꺽`(2→1), `껑청`(2→1), `껴묻히다`(2→1), `꼭`(7→2), `꼭꼭`(4→2), `꼭두`(3→2), `꼭두머리`(2→1), `꽃노래`(2→1), `꽃봉오리`(2→1), `꽃술`(3→2), `꾀이다`(4→1), `꿍치다`(2→1), `끄스르다`(2→1), `끄슬리다`(2→1), `끄시르다`(2→1), `끊치다`(2→1), `끗`(3→2), `끼적거리다`(2→1), `끼적끼적`(2→1), `끼적끼적하다`(2→1), `끼적대다`(2→1), `끼적이다`(2→1)
 
-### REF — 48 lemmas
+### REF — 35 lemmas
 
 다른 낱말을 가리키는 참조형(→, 준말·센말·본말) record가 있어 그 sense는 대상 어휘에 귀속된 별도 행으로 유지하고, 나머지 용법은 해당 record의 판정을 따른다.
 
-`까치`(2→2), `깍정이`(3→3), `깔딱`(2→2), `깔딱깔딱`(2→2), `깔리다`(2→2), `깜보기`(2→2), `깜짜기`(2→2), `깡뚱`(2→2), `깨깨`(3→3), `깨보숭이`(3→3), `깨이다`(5→5), `깨적거리다`(2→2), `깨치다`(2→2), `깽깽`(2→2), `꺽쇠`(2→2), `껴얹다`(2→2), `꼬독꼬독`(2→2), `꼬망지`(2→2), `꼬빡`(2→2), `꼬임`(2→2), `꼬임수`(2→2), `꼬질대`(2→2), `꼬치`(3→3), `꼭두`(3→3), `꼭두머리`(2→2), `꽁치`(3→3), `꽂이`(2→2), `꽃굴`(2→2), `꾀다`(2→2), `꾀이다`(4→4), `꾸다`(3→3), `꾸레미`(2→2), `꿉실꿉실`(2→2), `뀌다`(3→3), `끄스르다`(2→2), `끄슬리다`(2→2), `끄시르다`(2→2), `끊치다`(2→2), `끌`(2→2), `끌끌`(2→2), `끌끌하다`(2→2), `끝`(2→2), `끼룩`(2→2), `끼룩거리다`(2→2), `끼룩끼룩`(2→2), `끼룩끼룩하다`(2→2), `끼룩대다`(2→2), `낌새`(2→2)
+`까치`(2→2), `깍정이`(3→3), `깔딱`(2→2), `깔딱깔딱`(2→2), `깔리다`(2→2), `깜짜기`(2→2), `깨깨`(3→3), `깨치다`(2→2), `꺽쇠`(2→2), `껴얹다`(2→2), `꼬독꼬독`(2→2), `꼬망지`(2→2), `꼬빡`(2→2), `꼬임`(2→2), `꼬임수`(2→2), `꼬질대`(2→2), `꼬치`(3→3), `꽁치`(3→3), `꽂이`(2→2), `꽃굴`(2→2), `꾀다`(2→2), `꾸다`(3→3), `꾸레미`(2→2), `꿉실꿉실`(2→2), `뀌다`(3→3), `끌`(2→2), `끌끌`(2→2), `끌끌하다`(2→2), `끝`(2→2), `끼룩`(2→2), `끼룩거리다`(2→2), `끼룩끼룩`(2→2), `끼룩끼룩하다`(2→2), `끼룩대다`(2→2), `낌새`(2→2)
 
 ### HOMO — 41 lemmas
 
