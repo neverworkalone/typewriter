@@ -8,8 +8,9 @@ export function expandExactSearchCandidates(records) {
       throw new TypeError('Each exact search record must have an ID.');
     }
     const senses = Array.isArray(record.senses) ? record.senses : [];
+    // 더보기 is decided once for the whole search (see projection `moreSenseIds`), also for single-meaning records.
+    const moreSenseIds = new Set(record.moreSenseIds ?? []);
     if (senses.length > 1) {
-      const moreSenseIds = new Set(record.moreSenseIds ?? []);
       return senses.map((sense, senseIndex) => ({
         isMore: moreSenseIds.has(sense.id),
         key: `${record.id}:${sense.id}`,
@@ -31,7 +32,13 @@ export function expandExactSearchCandidates(records) {
       sense,
       senseIndex: 0,
       isSenseChoice: false,
-      isMore: false,
+      isMore: sense !== null && moreSenseIds.has(sense.id),
     }];
   });
+}
+
+/** The candidate selected first: the first default-view candidate, else the first candidate. */
+export function defaultExactSearchCandidate(records) {
+  const candidates = expandExactSearchCandidates(records);
+  return candidates.find(({ isMore }) => !isMore) ?? candidates[0] ?? null;
 }

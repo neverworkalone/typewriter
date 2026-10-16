@@ -13,6 +13,7 @@ import {
   SEARCH_STATUS,
   withHistoryFlags,
 } from './search-state.js';
+import { defaultExactSearchCandidate } from './exact-search-candidates.js';
 import { normalizeSearchResponse } from '../runtime/search-query.js';
 
 export class SearchDomainError extends Error {
@@ -202,10 +203,11 @@ export class SearchSession {
       }
 
       const results = projectSearchResults(records, candidateSummaries);
+      const selected = defaultExactSearchCandidate(results);
       operation.request = {
         ...operation.request,
-        selectedRecordId: results[0]?.id ?? null,
-        selectedSenseId: results[0]?.senses?.[0]?.id ?? null,
+        selectedRecordId: selected?.recordId ?? results[0]?.id ?? null,
+        selectedSenseId: selected?.senseId ?? results[0]?.senses?.[0]?.id ?? null,
       };
       return results;
     });

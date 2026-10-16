@@ -160,8 +160,7 @@ const isMeaningSense = (sense) => Number.isInteger(sense.lexical_relation_count)
 
 /**
  * Collapse the records of one lemma (homonyms) into a single result whose senses are the lemma's meanings in
- * display order, with the default view (`primarySenseIds`, at most 3) and the 더보기 remainder (`moreSenseIds`).
- * Raw-sense records (no meaning counts) are returned unchanged.
+ * display order. Raw-sense records (no meaning counts) are returned unchanged.
  */
 function mergeMeaningRecords(records) {
   const byLemma = new Map();
@@ -179,16 +178,32 @@ function mergeMeaningRecords(records) {
     if (meanings.length === 0 || !meanings.every(isMeaningSense)) {
       return group;
     }
-    const { ordered, primary, more } = partitionMeanings(meanings);
     return [{
       ...group[0],
       searchForms: [...new Set(group.flatMap(({ searchForms }) => searchForms))],
-      senses: ordered,
-      hasRelations: ordered.some(({ hasRelations }) => hasRelations),
-      primarySenseIds: primary.map(({ id }) => id),
-      moreSenseIds: more.map(({ id }) => id),
+      senses: [...meanings].sort(compareMeaningRank),
+      hasRelations: meanings.some(({ hasRelations }) => hasRelations),
     }];
   }).flat();
+}
+
+/**
+ * One default/더보기 split for the whole search: the default view (`primarySenseIds`, at most 3) and the
+ * remainder (`moreSenseIds`) are chosen across every matched record, not per lemma. Record order (match tier)
+ * is unchanged.
+ */
+function partitionAcrossRecords(records) {
+  const meaningRecords = records.filter(({ senses }) => senses.length > 0 && senses.every(isMeaningSense));
+  const { primary } = partitionMeanings(meaningRecords.flatMap(({ senses }) => senses));
+  const primaryIds = new Set(primary.map(({ id }) => id));
+  return records.map((record) => {
+    if (!meaningRecords.includes(record)) return record;
+    return {
+      ...record,
+      primarySenseIds: record.senses.filter(({ id }) => primaryIds.has(id)).map(({ id }) => id),
+      moreSenseIds: record.senses.filter(({ id }) => !primaryIds.has(id)).map(({ id }) => id),
+    };
+  });
 }
 
 export function projectSearchResults(records, matches = null) {
@@ -214,7 +229,7 @@ export function projectSearchResults(records, matches = null) {
     // Meaning is the candidate unit: a record with no meaning (every sense dropped, e.g. out_of_scope) has
     // nothing to show and is not a candidate. Raw-sense records keep their existing behaviour.
     .filter((record) => !record.isMeaningView || record.senses.length > 0);
-  return mergeMeaningRecords(projected);
+  return partitionAcrossRecords(mergeMeaningRecords(projected));
 }
 
 export function projectRelationTarget(record, context = {}) {
