@@ -34,6 +34,38 @@ separate tool operations, not as one compound shell command.
 - Keep the fix focused: no unrelated refactors, extra validation layers, or
   new issues. Preserve existing required checks.
 
+## Invariant-First Fixes
+
+Before editing, state in one sentence the rule the code must guarantee (in the PR
+body or commit message), then enumerate the whole set of inputs that can break
+it and close that set in one change. A reported example is one element of the
+set, not the scope of the fix.
+
+- Enumerate along these axes: every input form (all syntax, encodings and
+  notations), boundary values, results that span several records or lemmas, and
+  every consuming path (build, runtime, packaging, web).
+- Write the regression as a table over the enumerated set, not as the single
+  reported case, and include valid-but-unusual inputs and fail-closed controls.
+- Do not parse text with ad-hoc regular expressions when the input has a
+  grammar. Use a declared parser or an existing shared function, and search the
+  repository for an existing implementation of the same concept before writing
+  a new one.
+- If a second review finding in one PR belongs to the same class, change the
+  implementation approach instead of patching another variant.
+
+## Pre-push Verification
+
+Before pushing, check the issue's acceptance criteria one by one against
+multi-record or multi-lemma inputs, valid-but-unusual inputs, and every
+consuming path, and record the result in the PR.
+
+- Do not treat source-tree tests alone as proof. For code that is bundled,
+  copied file by file, or otherwise packaged, verify the real build output:
+  module resolution, required files, and schema or contract versions.
+- Verify invariants against real data with a sample large enough to include
+  the unusual cases, not only synthetic fixtures.
+- Report what was and was not verified (for example, no manual browser run).
+
 ## Cross-agent invocation — all implementation work
 
 The prohibition on lexical subagents also applies to invoking **other AI agents
