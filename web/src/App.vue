@@ -223,10 +223,6 @@ const legalLinks = [
         </nav>
       </div>
       <div class="wrap footer-legal">
-        <p>
-          사전 데이터는 국립국어원 표준국어대사전·한국어기초사전·우리말샘에서 선별한 내용(CC BY-SA 2.0 KR)과
-          Typewriter가 직접 편집한 말의 결·연상으로 구성됩니다.
-        </p>
         <ul aria-label="법적 고지">
           <li v-for="[file, label] in legalLinks" :key="file">
             <a :href="`${baseHref}${file}`">{{ label }}</a>

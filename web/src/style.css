@@ -6,6 +6,9 @@
   --line: #ded5cc;
   --red: #f0444c;
   --red-text: #bc343f;
+  /* White text on the install CTA must keep >= 4.5:1 (WCAG AA). */
+  --cta: #d6303a;
+  --cta-hover: #bf2832;
   --night: #1c191b;
   --manifesto: #2c2326;
   --blush: #f1e4e1;
@@ -242,15 +245,15 @@ a:focus-visible {
   height: 57px;
   margin-top: 27px;
   padding: 0 21px;
-  border: 1px solid var(--red);
+  border: 1px solid var(--cta);
   border-radius: 6px;
-  background: var(--red);
+  background: var(--cta);
   font-size: 16px;
 }
 
 .cta-primary:hover {
-  background: #d93840;
-  border-color: #d93840;
+  background: var(--cta-hover);
+  border-color: var(--cta-hover);
 }
 
 .cta-primary:active,
@@ -647,17 +650,13 @@ a:focus-visible {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 12px 32px;
   margin-top: 24px;
   padding: 18px 0 28px;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
   font-size: 11px;
   line-height: 1.7;
-}
-
-.footer-legal p {
-  max-width: 640px;
 }
 
 .footer-legal ul {

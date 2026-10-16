@@ -146,6 +146,47 @@ async function main() {
     // The legacy /about/ anchor target still exists on the landing page.
     await webPage.locator('#philosophy').waitFor();
 
+    // Contrast: every visible text node must meet WCAG AA against the nearest
+    // opaque ancestor background (3:1 for large text), at desktop and mobile.
+    for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+      await webPage.setViewportSize(viewport);
+      const failures = await webPage.evaluate(() => {
+        const parse = (value) => value.match(/[\d.]+/gu).map(Number);
+        const channel = (v) => {
+          const c = v / 255;
+          return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+        };
+        const luminance = ([r, g, b]) => 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+        const opaqueBackground = (element) => {
+          for (let node = element; node; node = node.parentElement) {
+            const [r, g, b, a = 1] = parse(getComputedStyle(node).backgroundColor);
+            if (a === 1) return [r, g, b];
+          }
+          return [255, 255, 255];
+        };
+        const found = [];
+        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+        for (let text = walker.nextNode(); text; text = walker.nextNode()) {
+          const element = text.parentElement;
+          if (!text.textContent.trim() || element.closest('[aria-hidden="true"]')) continue;
+          const style = getComputedStyle(element);
+          if (style.display === 'none' || element.getClientRects().length === 0) continue;
+          const [r, g, b, a = 1] = parse(style.color);
+          if (a < 1) continue;
+          const lighter = Math.max(luminance([r, g, b]), luminance(opaqueBackground(element)));
+          const darker = Math.min(luminance([r, g, b]), luminance(opaqueBackground(element)));
+          const ratio = (lighter + 0.05) / (darker + 0.05);
+          const size = parseFloat(style.fontSize);
+          const large = size >= 24 || (size >= 18.66 && Number(style.fontWeight) >= 700);
+          if (ratio < (large ? 3 : 4.5)) {
+            found.push(`${text.textContent.trim().slice(0, 24)} ${ratio.toFixed(2)}`);
+          }
+        }
+        return found;
+      });
+      assert.deepEqual(failures, [], `text contrast at ${viewport.width}px`);
+    }
+
     for (const viewport of [
       { width: 390, height: 844 },
       { width: 768, height: 1024 },
