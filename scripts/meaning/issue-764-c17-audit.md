@@ -8,13 +8,13 @@ C17(ㅌ)의 Meaning 후보 1,607개를 bound STDICT sense gloss와 대조했다:
 
 | Measure | Before | After |
 | --- | ---: | ---: |
-| C17 Meaning rows | 11,656 | 10,315 |
-| 다중 Meaning lemma | 1,423 | 869 |
+| C17 Meaning rows | 11,656 | 10,322 |
+| 다중 Meaning lemma | 1,423 | 871 |
 | 재분할한 lemma | — | 811 |
-| Meaning 행 감소 | — | 1,341 |
-| 변경 유형 | — | 796 net row reduction / 0 net row increase / 15 same-count regroup |
-| 후보 lemma의 Meaning rows | 4,345 | 3,004 |
-| 후보 중 한 Meaning만 남았고 그 안에 여러 sense가 있는 lemma | 184 | 738 |
+| Meaning 행 감소 | — | 1,334 |
+| 변경 유형 | — | 791 net row reduction / 0 net row increase / 20 same-count regroup |
+| 후보 lemma의 Meaning rows | 4,345 | 3,011 |
+| 후보 중 한 Meaning만 남았고 그 안에 여러 sense가 있는 lemma | 184 | 736 |
 
 ## Boundary decisions
 
@@ -25,9 +25,9 @@ C17(ㅌ)의 Meaning 후보 1,607개를 bound STDICT sense gloss와 대조했다:
 
 ## Residual audit
 
-issue-764-c17-residual-audit.md는 결과에 여러 Meaning이 남은 869개 후보를 기록한다. 모든 보존 Meaning 행마다 bound canonical gloss를 인용하고 같은 표제어의 모든 대안 Meaning ID와 source sense ID를 대조한다. 각 대안의 bound gloss도 해당 행에 개별 기록했다. 이미 한 Meaning으로 묶인 다중-sense 후보 가운데 이번 스펙에서 바꾸지 않은 항목은 같은 파일의 별도 절에 남긴다. 각 변경 lemma의 원본·최종 partition은 스펙에서 검토할 수 있다.
+issue-764-c17-residual-audit.md는 결과에 여러 Meaning이 남은 871개 후보를 기록한다. 모든 보존 Meaning 행마다 bound canonical gloss를 인용하고 같은 표제어의 모든 대안 Meaning ID와 source sense ID를 대조한다. 각 대안의 bound gloss도 해당 행에 개별 기록했다. 이미 한 Meaning으로 묶인 다중-sense 후보 가운데 이번 스펙에서 바꾸지 않은 항목은 같은 파일의 별도 절에 남긴다. 각 변경 lemma의 원본·최종 partition은 스펙에서 검토할 수 있다.
 
-이번 스펙의 811개 repartition lemma의 모든 source sense, 최종 Meaning, 판정 근거는 [issue-764-c17-merge-audit.md](issue-764-c17-merge-audit.md)에 개별 기록했다.
+이번 스펙의 811개 repartition lemma와 1,301개 최종 group의 모든 source sense, 최종 Meaning, 판정 근거는 [issue-764-c17-merge-audit.md](issue-764-c17-merge-audit.md)에 개별 기록했다.
 
 ## Review follow-up
 
@@ -39,9 +39,11 @@ issue-764-c17-residual-audit.md는 결과에 여러 Meaning이 남은 869개 후
 - Stage 2 리뷰 `5552180549`는 서로 다른 canonical record를 병합한 118개 그룹·114개 lemma를 대상으로 같은 계열의 의미 경계 오류를 재점검해 달라고 요청했다. 이 범위에서 `통신선`의 배/전선, `탈선`·`탈선하다`의 선원 무단 이탈/철도와 그 record 내부 비유 확장, `톳`의 김 계수 단위/해조류를 분리했다. 같은 source-bound 확인에서 `타살`, `타상`, `타점`, `탁발하다`, `탁성`, `탁탁하다`, `태감`, `태반`, `택지`, `토가`, `토향`, `통발`, `통행권`, `투구`, `투전`, `티`도 수정해 총 20개 lemma의 partition을 갱신했다. 해조류 sense `w346982-s1`의 녹미채 direct relation은 분리된 해조 Meaning에만 투영되는 회귀를 추가했다. 이 검토는 118개 그룹의 해당 defect class를 범위로 하며 869개 잔여 lemma 전체나 313개 same-record split-risk 후보 전체의 전수 QA를 뜻하지 않는다.
 - 같은 118개 교차-record 후보 중 Stage 1 후속 리뷰 `5552489704`가 `통발`의 고기잡이 함정/식충 식물과 `통행권`의 허가 증서/법률상 권리를 추가로 지적했다. source gloss의 구체적 포획 원리와 통행 허가 축을 대조해 두 경계를 병합했고, `통발`의 `w344145-s1` 어전 relation 및 `통행권`의 `w350643-s1` 통행면장 relation은 각각 원본 sense provenance를 유지하는 projection 회귀를 추가했다. `통행권`은 잔여 다중-Meaning 후보에서 제외했다. 118개 후보 전체의 독립 의미 전수 검토를 주장하지 않는다.
 
+- Stage 2 리뷰 `5552670746`의 차단 세 경계(`토성` 姓/聲, `토제` 제방/제작, `통상시` 판단 행위/시간)를 source-bound로 분리했다. 같은 범위의 잔존 교차-record 100개 group도 다시 대조해 `탕산`·`탕산하다`의 가산 소진/파멸 결과, `투광`·`투광하다`의 조명 행위/투과 현상 네 그룹을 추가 분리했다. 최종 93개 교차-record group은 각 lemma의 canonical gloss를 기준으로 공유 identity·자연스러운 확장 근거가 있는 경우 유지했다. 통상시와 평상시의 실제 양방향 `direct` 투영이 w517385-s1(보통 때) Meaning에만 연결되고 w347118-s1(보통으로 봄)으로 번지지 않는 회귀를 추가했다. `reviewCases`는 30개 source-bound 경계를 검사하고, 네 탕산 관계 사례도 실제 projector의 source-sense provenance를 확인한다. 이는 해당 100개 cross-record 위험 집합 검토이며 전체 C17의 독립 재검토가 아니다.
+
 ## Validation and limits
 
-- Replayed `scripts/meaning/issue-764-c17.json` from PR base `5d35c767b9319e0fbb839a559575c91ef5752d25`: all 811 repartitions and two standalone gloss edits applied with complete sense coverage, producing 10,315 C17 rows; all four reference-target gloss corrections were reproduced and all 117 adjudications stayed unchanged.
-- `node --test scripts/meaning/issue-764-c17-residual-audit.test.mjs` checks all 869 residual lemmas and the retained Meaning/source evidence, the pre-follow-up 316/332 and current 313/330 same-record split candidate counts, the 23 exact source-bound partition cases, and positive/negative identity and relation-projection controls. It does not infer lexical identity automatically.
-- `node scripts/meaning/validate.mjs` passed: 480,784 meanings, 117 adjudications.
+- Replayed `scripts/meaning/issue-764-c17.json` from PR base `5d35c767b9319e0fbb839a559575c91ef5752d25`: all 811 repartitions and two standalone gloss edits applied with complete sense coverage, producing 10,322 C17 rows; all four reference-target gloss corrections were reproduced and all 117 adjudications stayed unchanged.
+- `node --test scripts/meaning/issue-764-c17-residual-audit.test.mjs` checks all 871 residual lemmas and the retained Meaning/source evidence, the pre-follow-up 316/332 and current 313/330 same-record split candidate counts, the 30 exact source-bound partition cases, and positive/negative identity and relation-projection controls. It does not infer lexical identity automatically.
+- `node scripts/meaning/validate.mjs` passed: 480,791 meanings, 117 adjudications.
 - This is an agent self-check, not independent review. Closely related senses and lexicalized technical uses remain editorial boundary judgments for the PR reviewer to assess.

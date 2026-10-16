@@ -32,6 +32,13 @@ const reviewCases = [
   { lemma: '통발', before: [['w344144-s1'], ['w344145-s1'], ['w492619-s1']], groups: [['w344144-s1'], ['w344145-s1', 'w492619-s1']] },
   { lemma: '통신선', before: [['w349666-s1'], ['w349667-s1']], groups: [['w349666-s1'], ['w349667-s1']] },
   { lemma: '통행권', before: [['w350643-s1'], ['w350643-s2'], ['w350644-s1'], ['w350644-s2']], groups: [['w350643-s1', 'w350643-s2', 'w350644-s1', 'w350644-s2']] },
+  { lemma: '탕산', before: [['w341954-s1'], ['w341956-s1'], ['w494544-s1']], groups: [['w341954-s1'], ['w341956-s1'], ['w494544-s1']] },
+  { lemma: '탕산하다', before: [['w341955-s1'], ['w497023-s1']], groups: [['w341955-s1'], ['w497023-s1']] },
+  { lemma: '토성', before: [['w350201-s1'], ['w350202-s1'], ['w350203-s1'], ['w350204-s1'], ['w350204-s2'], ['w350205-s1'], ['w495559-s1']], groups: [['w350201-s1'], ['w350202-s1'], ['w350203-s1'], ['w350204-s1', 'w350204-s2'], ['w350205-s1'], ['w495559-s1']] },
+  { lemma: '토제', before: [['w348249-s1'], ['w348250-s1'], ['w348252-s1'], ['w348253-s1'], ['w348254-s1']], groups: [['w348249-s1'], ['w348250-s1'], ['w348252-s1'], ['w348253-s1'], ['w348254-s1']] },
+  { lemma: '통상시', before: [['w347118-s1'], ['w517385-s1']], groups: [['w347118-s1'], ['w517385-s1']] },
+  { lemma: '투광', before: [['w348337-s1'], ['w348602-s1'], ['w497774-s1']], groups: [['w348337-s1'], ['w348602-s1'], ['w497774-s1']] },
+  { lemma: '투광하다', before: [['w348601-s1'], ['w348603-s1'], ['w348604-s1']], groups: [['w348601-s1'], ['w348603-s1'], ['w348604-s1']] },
   { lemma: '투구', before: [['w348609-s1'], ['w348611-s1'], ['w348612-s1'], ['w348612-s2'], ['w348614-s1'], ['w495016-s1']], groups: [['w348609-s1'], ['w348611-s1'], ['w348612-s1'], ['w348612-s2'], ['w348614-s1'], ['w495016-s1']] },
   { lemma: '투전', before: [['w350021-s1'], ['w350261-s1'], ['w350263-s1']], groups: [['w350021-s1'], ['w350261-s1'], ['w350263-s1']] },
   { lemma: '티', before: [['w353023-s1'], ['w353023-s2'], ['w353026-s1'], ['w353027-s1'], ['w495437-s1'], ['w495437-s2'], ['w495451-s1'], ['w515511-s1']], groups: [['w353023-s1', 'w353023-s2'], ['w353026-s1'], ['w353027-s1'], ['w495437-s1', 'w495437-s2'], ['w495451-s1'], ['w515511-s1']] },
@@ -40,6 +47,7 @@ const reviewSenseIds = new Set(reviewCases.flatMap(({ groups }) => groups.flat()
 const projectionProbeSenseIds = new Set([
   'w335985-s1', 'w340436-s1', 'w342605-s1', 'w343447-s1', 'w342388-s1', 'w346982-s1',
   'w350643-s1', 'w350644-s1', 'w348611-s1', 'w495016-s1', 'w350261-s1', 'w515511-s1', 'w344145-s1', 'w492619-s1',
+  'w341954-s1', 'w341956-s1', 'w341955-s1', 'w497023-s1', 'w517385-s1', 'w357670-s1',
 ]);
 const meaningFiles = readdirSync(meaningDir).filter((file) => /^c17_\d+\.jsonl$/u.test(file)).sort();
 const rows = meaningFiles.flatMap((file) => readFileSync(path.join(meaningDir, file), 'utf8')
@@ -271,7 +279,42 @@ test('C17 applies naming-principle and distinct-identity boundaries with a one-l
     source_sense_id: 'w345436-s1', source_position: 0, source_redirected: 0, target_redirected: 0,
   }], 'the projected relation retains its canonical source-sense provenance');
 
+  const ordinaryPeriodMeaning = (rowsByLemma.get('통상시') ?? []).find((row) => row.sense_ids.includes('w517385-s1'));
+  const ordinaryJudgmentMeaning = (rowsByLemma.get('통상시') ?? []).find((row) => row.sense_ids.includes('w347118-s1'));
+  const ordinarySynonymMeaning = [...projectionTargetRows.values()].find((row) => row.sense_ids.includes('w357670-s1'));
+  const ordinaryPeriodRecord = projectionSourceRecords.get('w517385');
+  const ordinarySynonymRecord = projectionSourceRecords.get('w357670');
+  assert.ok(ordinaryPeriodMeaning && ordinaryJudgmentMeaning && ordinarySynonymMeaning
+    && ordinaryPeriodRecord && ordinarySynonymRecord, '통상시 source and target Meaning endpoints are present');
+  assert.notEqual(ordinaryPeriodMeaning.id, ordinaryJudgmentMeaning.id,
+    'the ordinary-time and ordinary-judgment senses have separate Meaning endpoints');
+  const ordinaryProjection = projectMeaningRelations({
+    records: [ordinaryPeriodRecord, ordinarySynonymRecord],
+    meanings: projectionMeanings,
+  });
+  const periodToSynonym = ordinaryProjection.relations.filter((relation) => relation.type === 'direct'
+    && relation.source_meaning_id === ordinaryPeriodMeaning.id
+    && relation.target_meaning_id === ordinarySynonymMeaning.id
+    && relation.sources.some((source) => source.source_sense_id === 'w517385-s1'));
+  const synonymToPeriod = ordinaryProjection.relations.filter((relation) => relation.type === 'direct'
+    && relation.source_meaning_id === ordinarySynonymMeaning.id
+    && relation.target_meaning_id === ordinaryPeriodMeaning.id
+    && relation.sources.some((source) => source.source_sense_id === 'w357670-s1'));
+  assert.equal(periodToSynonym.length, 1, '통상시(ordinary time) direct projects to 평상시 in the forward direction');
+  assert.equal(synonymToPeriod.length, 1, '평상시 direct projects to 통상시(ordinary time) in the reverse direction');
+  assert.deepEqual(periodToSynonym[0].sources.map((source) => source.source_sense_id), ['w517385-s1'],
+    'forward direct provenance remains on the ordinary-time source sense');
+  assert.deepEqual(synonymToPeriod[0].sources.map((source) => source.source_sense_id), ['w357670-s1'],
+    'reverse direct provenance remains on the 평상시 source sense');
+  assert.ok(!ordinaryProjection.relations.some((relation) => relation.source_meaning_id === ordinaryJudgmentMeaning.id
+    || relation.target_meaning_id === ordinaryJudgmentMeaning.id),
+  'the 평상시 direct relation never reaches the ordinary-judgment Meaning');
+
   const relationCases = [
+    { lemma: '탕산', source: 'w341954-s1', other: 'w341956-s1', target: 'w342269-s1' },
+    { lemma: '탕산', source: 'w341956-s1', other: 'w341954-s1', target: 'w343275-s1' },
+    { lemma: '탕산하다', source: 'w341955-s1', other: 'w497023-s1', target: 'w342270-s1' },
+    { lemma: '탕산하다', source: 'w497023-s1', other: 'w341955-s1', target: 'w343521-s1' },
     { lemma: '타살', source: 'w335985-s1', other: 'w336289-s1', target: 'w38107-s1' },
     { lemma: '타상', source: 'w340436-s1', other: 'w497650-s1', target: 'w494681-s1' },
     { lemma: '탁발하다', source: 'w342605-s1', other: 'w345545-s1', target: 'w141693-s1' },
