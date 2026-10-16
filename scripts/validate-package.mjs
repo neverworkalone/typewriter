@@ -13,6 +13,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { parseAst } from 'vite';
 import { isDeepStrictEqual } from 'node:util';
 import { DatabaseSync } from 'node:sqlite';
 import {
@@ -55,6 +56,7 @@ const REQUIRED_PRODUCT_FILES = Object.freeze([
   'runtime/dictionary-build-info.js',
   'runtime/dictionary-contract.js',
   'runtime/dictionary-validation.js',
+  'runtime/meaning-ranking.js',
   'runtime/protocol.js',
   'runtime/query-adapter.js',
   'runtime/search-query.js',
@@ -322,8 +324,89 @@ function validateFileModes(packageDir, files) {
   return errors;
 }
 
-function validateRuntimeAssets(packageDir, files) {
+// Relative module references of a runtime file, collected from the parsed syntax tree (Vite's `parseAst`), so text
+// in strings, templates, regular expressions and comments is never mistaken for code:
+// import/export declarations with a source, dynamic `import(…)`, and `new URL('…', import.meta.url |
+// self.location.href)`. A dynamic `import(…)` must take a string or a template literal without `${}`; any other
+// argument cannot be checked against the package, so it is reported.
+const isRelativeSpecifier = (value) => typeof value === 'string' && /^\.{1,2}\//.test(value);
+
+function staticString(node) {
+  if (node?.type === 'Literal' && typeof node.value === 'string') return node.value;
+  if (node?.type === 'TemplateLiteral' && node.expressions.length === 0) return node.quasis[0].value.cooked;
+  return null;
+}
+
+function isUrlBase(node) {
+  if (node?.type !== 'MemberExpression' || node.computed) return false;
+  const property = node.property?.name;
+  const object = node.object;
+  return (property === 'url' && object?.type === 'MetaProperty')
+    || (property === 'href' && object?.type === 'MemberExpression' && object.object?.name === 'self'
+      && object.property?.name === 'location');
+}
+
+function collectModuleReferences(source) {
+  const specifiers = new Set();
+  let uncheckable = 0;
+  const visit = (node) => {
+    if (!node || typeof node !== 'object') return;
+    if (Array.isArray(node)) {
+      node.forEach(visit);
+      return;
+    }
+    if (node.source && ['ImportDeclaration', 'ExportAllDeclaration', 'ExportNamedDeclaration'].includes(node.type)) {
+      specifiers.add(staticString(node.source));
+    } else if (node.type === 'ImportExpression') {
+      const specifier = staticString(node.source);
+      if (specifier === null) uncheckable += 1;
+      else specifiers.add(specifier);
+    } else if (node.type === 'NewExpression' && node.callee?.name === 'URL' && isUrlBase(node.arguments?.[1])) {
+      specifiers.add(staticString(node.arguments[0]));
+    }
+    for (const key of Object.keys(node)) {
+      if (key !== 'type' && key !== 'start' && key !== 'end') visit(node[key]);
+    }
+  };
+  visit(parseAst(source));
+  return { specifiers: [...specifiers].filter(isRelativeSpecifier), uncheckable };
+}
+
+// Every runtime module is copied file by file, so each relative import must resolve to a packaged file;
+// otherwise the service worker/worker fails at load time ("Service worker registration failed. Status code: 3").
+export function validateRuntimeImports(packageDir, files) {
   const errors = [];
+  const present = new Set(files);
+  for (const file of files) {
+    if (!/^runtime\/.+\.(?:js|mjs)$/.test(file)) continue;
+    let source;
+    try {
+      source = readFileSync(path.join(packageDir, file), 'utf8');
+    } catch {
+      continue;
+    }
+    let references;
+    try {
+      references = collectModuleReferences(source);
+    } catch (error) {
+      errors.push(`Packaged runtime module ${file} could not be parsed: ${String(error.message).split('\n')[0]}`);
+      continue;
+    }
+    if (references.uncheckable > 0) {
+      errors.push(`Packaged runtime module ${file} has a dynamic import() whose target cannot be checked statically.`);
+    }
+    for (const specifier of references.specifiers) {
+      const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(file), specifier));
+      if (!present.has(resolved)) {
+        errors.push(`Packaged runtime module ${file} imports ${specifier}, which is not in the package.`);
+      }
+    }
+  }
+  return errors;
+}
+
+function validateRuntimeAssets(packageDir, files) {
+  const errors = validateRuntimeImports(packageDir, files);
   for (const file of REQUIRED_PRODUCT_FILES) {
     if (!files.includes(file)) continue;
     try {

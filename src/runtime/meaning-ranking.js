@@ -1,17 +1,13 @@
-import { RELATION_GROUP_DEFINITIONS, UI_GROUP_IDS } from '../domain/relation-groups.js';
+// Packaged as-is into the extension's runtime/ directory (see product-runtime-plugin.mjs): it must not import
+// anything outside src/runtime. The type lists mirror src/domain/relation-groups.js; tests/meaning-ranking.test.js
+// keeps them in sync.
 
 export const DEFAULT_MEANING_LIMIT = 3;
 
-const typesOf = (...groupIds) => Object.freeze(
-  RELATION_GROUP_DEFINITIONS
-    .filter(({ id }) => groupIds.includes(id))
-    .flatMap(({ relationTypes }) => relationTypes),
-);
-
 /** Relation types counted as 유의어 + 반의어 (first ranking key). */
-export const LEXICAL_RELATION_TYPES = typesOf(UI_GROUP_IDS.synonyms, UI_GROUP_IDS.antonyms);
+export const LEXICAL_RELATION_TYPES = Object.freeze(['direct', 'antonym']);
 /** Relation types counted as 말의 결 + 연상 (second ranking key). */
-export const EXPLORATORY_RELATION_TYPES = typesOf(UI_GROUP_IDS.texture, UI_GROUP_IDS.association);
+export const EXPLORATORY_RELATION_TYPES = Object.freeze(['near', 'mood', 'scene', 'sensory', 'action', 'association']);
 
 const MEANING_ID = /^m(\d+)(?:_(\d+))?$/u;
 

@@ -89,6 +89,7 @@ test('derives dictionary metadata from the supplied canonical directory and reje
       ['runtime/dictionary-build-info.js', 'export const EXPECTED_DICTIONARY_SOURCE_REVISION = "fixture";\n'],
       ['runtime/dictionary-contract.js', '// fixture dictionary contract\n'],
       ['runtime/dictionary-validation.js', '// fixture dictionary validation\n'],
+      ['runtime/meaning-ranking.js', '// fixture meaning ranking\n'],
       ['runtime/protocol.js', '// fixture protocol\n'],
       ['runtime/query-adapter.js', '// fixture adapter\n'],
       ['runtime/search-query.js', '// fixture search\n'],
@@ -590,6 +591,106 @@ test('creates byte-identical package ZIPs with normalized archive metadata', asy
       execFileSync('unzip', ['-Z1', firstZipPath], { encoding: 'utf8' }).trim().split(/\r?\n/u),
       ['assets/main.js', 'manifest.json'],
     );
+  } finally {
+    await rm(temporaryDirectory, { recursive: true, force: true });
+  }
+});
+
+test('packaged runtime modules only import packaged files (service worker load failure)', async () => {
+  const { validateRuntimeImports } = await import('../scripts/validate-package.mjs');
+  const temporaryDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-runtime-imports-'));
+  try {
+    // Reproduce the product copy list from the real plugin, plus the files it generates or vendors.
+    const pluginSource = readFileSync(path.join(REPOSITORY_DIRECTORY, 'scripts/build/product-runtime-plugin.mjs'), 'utf8');
+    const copied = [...pluginSource.matchAll(/'src\/runtime\/([\w.-]+\.(?:js|mjs))'/g)].map((match) => match[1]);
+    assert.ok(copied.includes('dictionary-host.js'));
+    await mkdir(path.join(temporaryDirectory, 'runtime/vendor'), { recursive: true });
+    for (const name of copied) {
+      await writeFile(
+        path.join(temporaryDirectory, 'runtime', name),
+        readFileSync(path.join(REPOSITORY_DIRECTORY, 'src/runtime', name)),
+      );
+    }
+    await writeFile(path.join(temporaryDirectory, 'runtime/dictionary-build-info.js'), 'export const X = 1;\n');
+    await writeFile(path.join(temporaryDirectory, 'runtime/vendor/sqlite3.mjs'), 'export default 1;\n');
+    const files = [...copied.map((name) => `runtime/${name}`), 'runtime/dictionary-build-info.js', 'runtime/vendor/sqlite3.mjs', 'dictionary.sqlite'];
+
+    // Every module the extension copies must have all of its relative imports copied too.
+    assert.deepEqual(validateRuntimeImports(temporaryDirectory, files), []);
+
+    // Control: a module whose import is not packaged is rejected.
+    const missing = files.filter((file) => file !== 'runtime/dictionary-contract.js');
+    assert.ok(validateRuntimeImports(temporaryDirectory, missing).some((error) => error.includes('./dictionary-contract.js')));
+    await writeFile(path.join(temporaryDirectory, 'runtime/sqlite-query.js'), "import x from '../domain/relation-groups.js';\n");
+    assert.ok(validateRuntimeImports(temporaryDirectory, files).some((error) => error.includes('../domain/relation-groups.js')));
+
+    // Every reference form is checked, for a packaged target (pass) and a missing one (fail).
+    const forms = {
+      'static default': (target) => `import value from '${target}';\n`,
+      'multi-line named': (target) => `import {\n  a,\n  b,\n} from '${target}';\n`,
+      'side effect': (target) => `import '${target}';\n`,
+      'export from': (target) => `export { a } from '${target}';\n`,
+      'export star': (target) => `export * from "${target}";\n`,
+      'dynamic': (target) => `const module = await import("${target}");\n`,
+      'dynamic template literal': (target) => `const module = await import(\`${target}\`);\n`,
+      'dynamic with options': (target) => `const module = await import('${target}', { with: { type: 'json' } });\n`,
+      'dynamic spaced': (target) => `const module = await import( '${target}' );\n`,
+      'new URL': (target) => `const url = new URL('${target}', import.meta.url);\n`,
+      'new URL location': (target) => `const url = new URL('${target}', self.location.href);\n`,
+    };
+    for (const [name, write] of Object.entries(forms)) {
+      await writeFile(path.join(temporaryDirectory, 'runtime/sqlite-query.js'), write('./protocol.js'));
+      assert.deepEqual(validateRuntimeImports(temporaryDirectory, files), [], `${name}: packaged target`);
+      await writeFile(path.join(temporaryDirectory, 'runtime/sqlite-query.js'), write('./missing.js'));
+      assert.ok(
+        validateRuntimeImports(temporaryDirectory, files).some((error) => error.includes('./missing.js')),
+        `${name}: missing target`,
+      );
+    }
+    // A dynamic import whose target is computed cannot be verified, so it is rejected.
+    for (const code of ["await import(name);", "await import('./' + name);", "await import(`./${name}.js`);"]) {
+      await writeFile(path.join(temporaryDirectory, 'runtime/sqlite-query.js'), `${code}\n`);
+      assert.ok(
+        validateRuntimeImports(temporaryDirectory, files).some((error) => error.includes('cannot be checked statically')),
+        code,
+      );
+    }
+    // Comment markers inside strings, templates and regular expressions must not hide real references.
+    for (const [name, code] of Object.entries({
+      'string with /*': 'const marker = "/*";\nawait import("./missing.js");\n/* */\n',
+      'template with /*': 'const marker = `/*`;\nawait import("./missing.js");\n/* */\n',
+      'regex with /*': 'const marker = /\\/\\*/;\nawait import("./missing.js");\n/* */\n',
+      'string with //': 'const url = "https://example.invalid/";\nawait import("./missing.js");\n',
+      'after line comment': '// note\nawait import("./missing.js"); // trailing\n',
+    })) {
+      await writeFile(path.join(temporaryDirectory, 'runtime/sqlite-query.js'), code);
+      assert.ok(
+        validateRuntimeImports(temporaryDirectory, files).some((error) => error.includes('./missing.js')),
+        name,
+      );
+    }
+    // Reference-shaped text in strings, templates and regular expressions is not a reference.
+    await writeFile(
+      path.join(temporaryDirectory, 'runtime/sqlite-query.js'),
+      [
+        'const a = "예: import(\'./missing.js\')";',
+        "const b = 'from \"./missing.js\"';",
+        'const c = `import("./missing.js") new URL("./missing.js", import.meta.url)`;',
+        'const d = /import\\(.\\/missing.js.\\)/;',
+        'const e = "// import(\'./missing.js\') /* ./missing.js */";',
+        '',
+      ].join('\n'),
+    );
+    assert.deepEqual(validateRuntimeImports(temporaryDirectory, files), []);
+    // ...while a real reference next to such text is still found.
+    await writeFile(path.join(temporaryDirectory, 'runtime/sqlite-query.js'), 'const a = "import(\'./ok.js\')";\nawait import("./missing.js");\n');
+    assert.ok(validateRuntimeImports(temporaryDirectory, files).some((error) => error.includes('./missing.js')));
+    // Unparseable runtime code is reported, not silently skipped.
+    await writeFile(path.join(temporaryDirectory, 'runtime/sqlite-query.js'), 'const = ;\n');
+    assert.ok(validateRuntimeImports(temporaryDirectory, files).some((error) => error.includes('could not be parsed')));
+    // Commented-out references are ignored.
+    await writeFile(path.join(temporaryDirectory, 'runtime/sqlite-query.js'), "// import x from './missing.js';\n/* import('./missing.js') */\n");
+    assert.deepEqual(validateRuntimeImports(temporaryDirectory, files), []);
   } finally {
     await rm(temporaryDirectory, { recursive: true, force: true });
   }
