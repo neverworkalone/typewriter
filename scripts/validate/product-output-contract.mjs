@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFile, readdir } from 'node:fs/promises';
+import { access, readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -23,15 +23,16 @@ export async function validateProductOutputContract(options = {}) {
     ?? (path.resolve(root) === repositoryRoot
       ? process.env.TYPEWRITER_WEB_BUILD_OUTPUT_DIRECTORY ?? path.join(root, 'dist-web')
       : path.join(root, 'dist-web')));
-  const [extensionDatabase, webDatabase] = await Promise.all([
-    readFile(path.join(extensionOutput, 'dictionary.sqlite')),
-    readFile(path.join(webOutput, 'dictionary.sqlite')),
-  ]);
-  assert.deepEqual(
-    extensionDatabase,
-    webDatabase,
-    'extension and web products must copy the same CI-built SQLite artifact',
-  );
+  // Only the extension carries the dictionary. The static Pages product must
+  // never ship the database or search runtime.
+  const extensionDatabase = await readFile(path.join(extensionOutput, 'dictionary.sqlite'));
+  assert.ok(extensionDatabase.length > 0, 'extension must package dictionary.sqlite');
+  for (const forbidden of ['dictionary.sqlite', 'runtime']) {
+    await assert.rejects(
+      access(path.join(webOutput, forbidden)),
+      `dist-web must not contain ${forbidden}`,
+    );
+  }
 
   for (const fileName of PRODUCT_LEGAL_FILES) {
     const [source, extensionCopy, webCopy] = await Promise.all([

@@ -131,16 +131,23 @@ remains the editable source of truth.
 ## GitHub Pages build and deployment
 
 The Pages workflow builds the separate web source under web/ at the repository path
-/typewriter/. It emits a dictionary page at `/typewriter/` and a product introduction
-page at `/typewriter/about/`; both pages load directly from the Pages artifact and
-share the site navigation. The command `pnpm run validate:pages-artifact` rejects
-unknown files, extension-only assets, remote page assets, incorrect base paths,
-changed legal files, and dictionaries whose verified Git or canonical revision
-differs from the checked-out source.
+/typewriter/. The site is a static product landing page for the Chrome Extension:
+`/typewriter/` introduces the product and links to the Chrome Web Store, and
+`/typewriter/about/` redirects to the landing page's philosophy section. Pages
+provides no dictionary search; the dictionary runs only in the installed extension.
+`pnpm run build:web` builds no SQLite database and copies no search runtime, so
+`dist-web/` contains only hashed JS/CSS, the two HTML entrypoints, the favicon, the
+legal files and `pages-build-info.json` (the exact clean Git revision). The command
+`pnpm run validate:pages-artifact` rejects unknown files, any database, WASM or
+search-runtime file or bundle content (fail-closed), remote page assets, incorrect
+base paths, broken internal references, changed legal files, and a build revision that
+differs from the checked-out source, and it reports the artifact size and the
+initial-load transfer size.
 
 Pull requests build and validate on an ephemeral runner, but never upload or deploy
-Pages. Every push to `master` builds and validates the artifact for that exact
-commit, uploads it only after validation succeeds, then deploys it to the
+Pages. The workflow runs on manual dispatch (`workflow_dispatch`) and on pushes to
+`master` that change files under `web/`; it has no cron schedule. On `master` it builds and validates the artifact for that exact commit,
+uploads it only after validation succeeds, then deploys it to the
 `github-pages` environment. The deployment job depends on the successful build and
 uses only Pages, OIDC, and Actions read permissions. Configure the repository Pages
 publishing source to GitHub Actions and allow `master` in the `github-pages`

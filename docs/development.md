@@ -132,8 +132,9 @@ normal gate includes the product output contract checks. Use pnpm run test:unit
 for Vue unit tests. Product/package verification runs through
 pnpm run test:mv3:package.
 
-The browser-based runtime check is an optional debugging tool for web-page or
-runtime issues; it does not run in `pnpm test` or CI. Build both products, install
+The browser-based check covers the extension search runtime and the static landing
+page (rendering, responsive layout, navigation, CTA links, keyboard focus, and zero
+dictionary/WASM requests). It is an optional debugging tool; it does not run in `pnpm test` or CI. Build both products, install
 Chromium once, then run the check:
 
 ```sh

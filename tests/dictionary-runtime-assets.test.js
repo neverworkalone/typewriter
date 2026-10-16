@@ -46,7 +46,7 @@ describe('product dictionary runtime assets', () => {
     expect(workerSource).toContain("case 'metadata'");
   });
 
-  it('builds the same runtime assets and dictionary for extension and web', async () => {
+  it('builds the dictionary runtime only for the extension; the static web build has none', async () => {
     const [extensionConfig, webConfig, runtimePlugin] = await Promise.all([
       readFile(path.join(repositoryRoot, 'vite.config.js'), 'utf8'),
       readFile(path.join(repositoryRoot, 'vite.web.config.js'), 'utf8'),
@@ -54,7 +54,9 @@ describe('product dictionary runtime assets', () => {
     ]);
 
     expect(extensionConfig).toContain('createProductRuntimeAssets({');
-    expect(webConfig).toContain('createProductRuntimeAssets({');
+    expect(webConfig).not.toContain('createProductRuntimeAssets');
+    expect(webConfig).not.toContain('product-runtime-plugin');
+    expect(webConfig).not.toContain('buildDictionary');
     expect(webConfig).toContain("?? '/typewriter/'");
     expect(webConfig).toContain("path.join(webRoot, 'public')");
     expect(runtimePlugin).toContain("src/runtime/dictionary-worker.mjs");

@@ -128,17 +128,16 @@ extension files in dist/, and the package command creates and validates an
 extension ZIP. For the clean-checkout release candidate flow, install Chrome for
 Testing and run `pnpm run validate:release`; see [Build and reproducibility](docs/build.md).
 
-To build the separate GitHub Pages web candidate locally, run
-`pnpm run build:web`. It writes `dist-web/` for the repository base path
-`/typewriter/` and uses the same deterministic SQLite builder and browser runtime
-as the extension. The output includes the product license texts and third-party
-notices linked from the web product. It contains the current canonical corpus;
-Typewriter-authored records may be distributed under the project data license
-after the exact-revision and package-content checks in
-[Data License](DATA-LICENSE.md) and [Build and reproducibility](docs/build.md).
+GitHub Pages is a static product landing page for the Chrome Extension; it has no
+dictionary demo. To build it locally, run `pnpm run build:web`. It writes `dist-web/`
+for the repository base path `/typewriter/` without building SQLite or copying any
+search runtime, and includes the product license texts and third-party notices.
+Check it with `pnpm run validate:pages-artifact`. The dictionary, including canonical
+data distributed under the project data license, ships only in the extension package;
+see [Data License](DATA-LICENSE.md) and [Build and reproducibility](docs/build.md).
 
-The optional Chromium runtime check is for debugging web-page or runtime issues;
-it is not part of `pnpm test` or CI. After building both products, install
+The optional Chromium check is for debugging the extension runtime and the landing
+page; it is not part of `pnpm test` or CI. After building both products, install
 Chromium once with `pnpm exec playwright install chromium`, then run
 `pnpm run test:web:integration`.
 

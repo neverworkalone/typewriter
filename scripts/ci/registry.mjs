@@ -344,6 +344,7 @@ const RAW_CI_CATEGORIES = Object.freeze({
       pnpmCheck('Run product unit tests', 'test:unit'),
       pnpmCheck('Build product extension', 'build'),
       pnpmCheck('Build Typewriter Web', 'build:web'),
+      pnpmCheck('Validate static Pages artifact', 'validate:pages-artifact'),
       pnpmCheck('Validate built product output contracts', 'validate:product-outputs'),
     ],
   },

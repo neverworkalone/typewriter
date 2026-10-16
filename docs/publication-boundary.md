@@ -126,7 +126,7 @@ be introduced into the existing public repository.
 | .gitignore | PUBLIC-WITH-SEPARATE-LICENSE | Typewriter project repository configuration | Ignore rules for local and generated files. | Original repository configuration is Apache-2.0. Ignore rules do not replace checks that the exact release artifact excludes raw corpus files, credentials, and other specifically restricted material. |
 | Transient dist/, artifacts/, local SQLite files, and unapproved extension archives | PURGE-BEFORE-PUBLIC | Generated locally from canonical data and pinned dependencies | Build/package outputs, not editable sources of truth; none are tracked at the boundary revision. | Do not commit or attach scratch outputs. Validate the exact intended artifact for allowed files, Typewriter-authored data, licenses/notices, and concrete restricted content; no blanket hold applies to a valid package. |
 | Allowlisted Pages artifact and extension release package, including dictionary.sqlite | PUBLIC-WITH-SEPARATE-LICENSE | Deterministic build from the selected canonical revision and pinned dependencies | Generated distribution surface; SQLite contains canonical data and the package contains separately licensed runtime files. | Include attribution for applicable STDICT/KRDICT/우리말샘 source data, the CC BY-SA 2.0 KR license and Typewriter adaptation notice in the product distribution, alongside exact-revision package checks and software license notices. Exclude raw source dumps, raw corpus and individually restricted content. Repository policy documents stay out of the Store ZIP; publish and link privacy terms through Store disclosure when required. |
-| Future `web/` source and `vite.web.config.js` | `PUBLIC-WITH-SEPARATE-LICENSE` | Planned Typewriter web product source; not present at this boundary revision | Separate Pages source and presentation layer over the shared runtime. | Original web software/configuration is Apache-2.0; Typewriter-authored data follows the project data license; brand remains All Rights Reserved. Keep it separate from `docs/` and extension `public/`. |
+| Future `web/` source and `vite.web.config.js` | `PUBLIC-WITH-SEPARATE-LICENSE` | Planned Typewriter web product source; not present at this boundary revision | Separate static Pages source (product landing page) with no dictionary runtime. | Original web software/configuration is Apache-2.0; Typewriter-authored data follows the project data license; brand remains All Rights Reserved. Keep it separate from `docs/` and extension `public/`. |
 
 The original root-file groupings were checked against the tracked tree at the
 boundary revision with git ls-tree and git ls-files. Recheck the complete path
@@ -193,16 +193,15 @@ output. See `DATA-LICENSE.md` for the owner-approved scope and exclusions.
 
 GitHub Pages must use a custom Actions workflow and a separate `web/` source tree.
 The existing `docs/` stays the development/design/audit authority. The Pages artifact
-contains the dictionary entrypoint and the product introduction entrypoint at
-`about/index.html`, with the shared runtime/worker, SQLite WASM assets, and a database
-generated from the exact canonical revision selected for that release, plus other files explicitly
-allowlisted for the site. Required legal files remain in the artifact without needing
-visible links on either page. It must not include `manifest.json`, Chrome-only package
-files, tests, M5 evidence, raw sources, or unapproved files from the extension root
-`public/` directory.
+is a static product landing page: the landing entrypoint, the `about/` redirect, hashed
+JS/CSS, the favicon, the required legal files and `pages-build-info.json`. It does not
+contain `dictionary.sqlite`, any search runtime or SQLite WASM, `manifest.json`,
+Chrome-only package files, tests, M5 evidence, raw sources, or unapproved files from
+the extension root `public/` directory. Required legal files remain in the artifact
+without needing visible links on either page.
 
-The exact Pages file set, repository base paths, SQLite integrity, legal files, and
-Git and canonical revision bindings are checked by
+The exact Pages file set, repository base paths, absence of any database or search
+runtime, legal files, and the Git revision binding are checked by
 scripts/validate/pages-artifact.mjs. Pull request builds keep the generated site
 on the ephemeral runner and never upload or deploy it. Each push to `master`
 uploads the artifact only after validation succeeds, then a dependent deployment job
