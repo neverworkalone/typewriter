@@ -142,10 +142,10 @@ test('C17 residual audit covers every retained Meaning with complete bound-sourc
   assert.deepEqual(seenMeaningIds.sort(), [...residualByLemma.values()].flat().map((row) => row.id).sort(), 'audit/output Meaning ID sets');
 });
 
-test('C17 keeps distinct named identities separate while retaining the one-letter positive control', () => {
+test('C17 applies naming-principle and distinct-identity boundaries with a one-letter positive control', () => {
   const identityCases = [
-    { lemma: '태조', groups: [['w335349-s1'], ['w335633-s1'], ['w335634-s1'], ['w335635-s1'], ['w335636-s1'], ['w335637-s1'], ['w342818-s1'], ['w489651-s1'], ['w489652-s1'], ['w489653-s1']] },
-    { lemma: '태종', groups: [['w343081-s1'], ['w343082-s1'], ['w343083-s1'], ['w495379-s1'], ['w496287-s1'], ['w496488-s1']] },
+    { lemma: '태조', groups: [['w335349-s1', 'w335633-s1', 'w335634-s1', 'w335635-s1', 'w335636-s1', 'w335637-s1', 'w342818-s1', 'w489651-s1', 'w489652-s1', 'w489653-s1']] },
+    { lemma: '태종', groups: [['w343081-s1', 'w343082-s1', 'w495379-s1', 'w496287-s1', 'w496488-s1'], ['w343083-s1']] },
     { lemma: '테티스', groups: [['w350459-s1'], ['w350460-s1'], ['w494494-s1']] },
     { lemma: '통고', groups: [['w342772-s1'], ['w342772-s2'], ['w345843-s1'], ['w345844-s1'], ['w345845-s1']] },
     { lemma: '트리톤', groups: [['w349212-s1'], ['w349742-s1'], ['w495184-s1']] },
@@ -165,6 +165,8 @@ test('C17 keeps distinct named identities separate while retaining the one-lette
       }
       if (group.length === 1) {
         assert.equal(meaning.gloss, identitySourceGlossBySense.get(group[0]), `${lemma}/${group[0]}: source gloss is reproduced exactly`);
+      } else {
+        assert.equal(meaning.gloss, group.map((senseId) => identitySourceGlossBySense.get(senseId)).join(' '), `${lemma}/${group.join(',')}: all source glosses are preserved in the shared Meaning`);
       }
     }
   }
