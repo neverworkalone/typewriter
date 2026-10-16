@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const spec = JSON.parse(readFileSync(new URL('./edits-716-c04.json', import.meta.url), 'utf8'));
@@ -17,6 +17,7 @@ const separate = [
   ['w81739-s1', 'w81739-s2'], ['w82834-s1', 'w82834-s2'], ['w83336-s1', 'w83336-s2'], ['w413147-s1', 'w413147-s2'],
   ['w85417-s1', 'w85417-s2'], ['w85895-s1', 'w85895-s2'], ['w87869-s1', 'w87869-s2'], ['w92163-s1', 'w92163-s2'],
   ['w93216-s1', 'w93216-s2'], ['w417030-s1', 'w417030-s2'], ['w93728-s1', 'w93728-s2'],
+  ['w78274-s1', 'w78274-s2'], ['w75690-s1', 'w75690-s2'], ['w76830-s2', 'w76830-s3'], ['w78257-s3', 'w78257-s4'], ['w411002-s1', 'w411002-s2'], ['w415470-s1', 'w415470-s2'], ['w84898-s1', 'w84898-s2'], ['w412543-s1', 'w412543-s2'], ['w417915-s1', 'w417915-s2'], ['w95259-s1', 'w95259-s2'], ['w93138-s1', 'w93138-s2'],
 ];
 
 test('c04 spec keeps different-referent senses as separate meanings', () => {
@@ -35,4 +36,15 @@ test('c04 spec merges a general sense with its concrete use and records exact-gl
 test('c04 spec merges every sense at most once', () => {
   const seen = new Set();
   for (const merge of spec.merges) for (const id of merge.senses) { assert.equal(seen.has(id), false, id); seen.add(id); }
+});
+
+// The committed meaning rows must also keep these senses apart (the spec alone is not the shipped data).
+test('committed c04 meanings keep different-referent senses in separate rows', () => {
+  const directory = new URL('../../data/meanings/', import.meta.url);
+  const rows = readdirSync(directory).filter((name) => name.startsWith('c04_'))
+    .flatMap((name) => readFileSync(new URL(name, directory), 'utf8').trim().split('\n').map((line) => JSON.parse(line)));
+  for (const ids of separate) {
+    const together = rows.some((row) => ids.every((id) => row.sense_ids.includes(id)));
+    assert.equal(together, false, `${ids.join(' + ')} must be separate rows`);
+  }
 });
