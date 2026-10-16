@@ -111,6 +111,19 @@ test('rejects a JavaScript bundle that embeds the dictionary search runtime', as
   await assert.rejects(validate(outputDirectory), { code: 'PAGES_ARTIFACT_DICTIONARY_RUNTIME' });
 });
 
+test('accepts hashed landing images and rejects unhashed or unapproved image files', async (t) => {
+  const { outputDirectory } = await createArtifact(t);
+  await writeFile(path.join(outputDirectory, 'assets/hero-AbCd1234.jpg'), 'x');
+  await writeFile(path.join(outputDirectory, 'assets/icon48-AbCd1234.png'), 'x');
+  await validate(outputDirectory);
+
+  await writeFile(path.join(outputDirectory, 'assets/hero.jpg'), 'x');
+  await assert.rejects(validate(outputDirectory), { code: 'PAGES_ARTIFACT_FILE' });
+  await rm(path.join(outputDirectory, 'assets/hero.jpg'));
+  await writeFile(path.join(outputDirectory, 'assets/clip-AbCd1234.mp4'), 'x');
+  await assert.rejects(validate(outputDirectory), { code: 'PAGES_ARTIFACT_FILE' });
+});
+
 test('rejects extension manifests and any other unapproved artifact files', async (t) => {
   const { outputDirectory } = await createArtifact(t);
   await writeFile(path.join(outputDirectory, 'manifest.json'), '{}');

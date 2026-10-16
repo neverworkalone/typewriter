@@ -14,9 +14,11 @@ const webOutput = path.resolve(
 const contentTypes = new Map([
   ['.css', 'text/css; charset=utf-8'],
   ['.html', 'text/html; charset=utf-8'],
+  ['.jpg', 'image/jpeg'],
   ['.js', 'text/javascript; charset=utf-8'],
   ['.json', 'application/json; charset=utf-8'],
   ['.md', 'text/markdown; charset=utf-8'],
+  ['.png', 'image/png'],
   ['.txt', 'text/plain; charset=utf-8'],
 ]);
 
@@ -95,7 +97,7 @@ async function main() {
     await webPage.locator('[data-product-surface="web-landing"]').waitFor();
     const headline = (await webPage.getByRole('heading', { level: 1 }).innerText())
       .replace(/\s+/gu, ' ');
-    assert.equal(headline, '작가를 위한, 말의 결을 찾는 사전.');
+    assert.equal(headline, '더 좋은 단어가, 더 넓은 이야기를 만듭니다.');
     assert.equal(await webPage.getByRole('textbox').count(), 0, 'landing must not offer a search box');
     assert.equal(await webPage.locator('[data-dictionary-panel]').count(), 0);
 
@@ -108,7 +110,7 @@ async function main() {
       assert.ok(level - headingLevels[index] <= 1, 'heading levels must not skip');
     });
 
-    const storeLinks = await webPage.getByRole('link', { name: /Chrome/u }).evaluateAll((links) => (
+    const storeLinks = await webPage.getByRole('link', { name: /크롬 웹 스토어/u }).evaluateAll((links) => (
       links.map((link) => link.href)
     ));
     assert.ok(storeLinks.length >= 2);
@@ -124,7 +126,16 @@ async function main() {
     assert.equal(await webPage.evaluate(() => document.activeElement?.className), 'skip-link');
     await webPage.keyboard.press('Enter');
     assert.equal(new URL(webPage.url()).hash, '#main');
-    for (let index = 0; index < 8; index += 1) {
+    // Focus moved to #main, so every remaining link after it must be reachable
+    // and visibly focused.
+    const linksAfterMain = await webPage.evaluate(() => (
+      [...document.querySelectorAll('a[href]')].filter((link) => (
+        document.querySelector('#main').compareDocumentPosition(link)
+          & Node.DOCUMENT_POSITION_FOLLOWING
+      )).length
+    ));
+    assert.ok(linksAfterMain >= 6);
+    for (let index = 0; index < linksAfterMain; index += 1) {
       await webPage.keyboard.press('Tab');
       const outline = await webPage.evaluate(() => (
         getComputedStyle(document.activeElement).outlineStyle
@@ -132,9 +143,7 @@ async function main() {
       assert.notEqual(outline, 'none', 'focused controls must show a focus indicator');
     }
 
-    // In-page navigation lands on the matching section.
-    await webPage.getByRole('link', { name: '철학', exact: true }).click();
-    assert.equal(new URL(webPage.url()).hash, '#philosophy');
+    // The legacy /about/ anchor target still exists on the landing page.
     await webPage.locator('#philosophy').waitFor();
 
     for (const viewport of [
