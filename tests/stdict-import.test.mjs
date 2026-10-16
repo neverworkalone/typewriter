@@ -168,10 +168,10 @@ test('converted fixture passes the schema, dataset gate, SQLite build and homogr
     const canonical = await readCanonicalRecords(canonicalDirectory, { useSharedContext: false });
     validateDatasetRecords(canonical.records, { lexicalQuality: { blocking_finding_count: 0 } });
     const outputPath = path.join(directory, 'dictionary.sqlite');
-    const summary = await buildDictionary({ inputDirectory: canonicalDirectory, outputPath, allowDirty: true, keepStaging: true });
+    const summary = await buildDictionary({ inputDirectory: canonicalDirectory, outputPath, allowDirty: true });
     assert.equal(summary.recordCount, FIXTURE.length - 1);
-    // Raw source senses/relations are build-time only: the staging database holds them, the product database does not.
-    const database = new DatabaseSync(summary.stagingPath, { readOnly: true });
+    // Raw source senses/relations are build-time only: the Full database holds them, the Lite database does not.
+    const database = new DatabaseSync(summary.outputPath, { readOnly: true });
     const product = new DatabaseSync(outputPath, { readOnly: true });
     try {
       const homographs = findRecordsBySearchTerm(product, '각본').matches.map(({ id }) => id).sort();
@@ -314,9 +314,9 @@ test('sparse source-order sense ids survive schema, dataset gate, SQLite, search
     const canonical = await readCanonicalRecords(canonicalDirectory, { useSharedContext: false });
     validateDatasetRecords(canonical.records, { lexicalQuality: { blocking_finding_count: 0 } });
     const outputPath = path.join(directory, 'dictionary.sqlite');
-    await buildDictionary({ inputDirectory: canonicalDirectory, outputPath, allowDirty: true, keepStaging: true });
-    // The staging database holds the raw source senses/relations next to the product tables.
-    const database = new DatabaseSync(`${outputPath}.staging`, { readOnly: true });
+    await buildDictionary({ inputDirectory: canonicalDirectory, outputPath, allowDirty: true });
+    // The Full database holds the raw source senses/relations next to the product tables.
+    const database = new DatabaseSync(outputPath, { readOnly: true });
     try {
       const record = getRecord(database, 'w123');
       assert.deepEqual(record.senses.map(({ id, pos }) => [id, pos]), [['w123-s1', 'noun'], ['w123-s3', 'verb']], 'ids are kept, order is display order');
@@ -385,9 +385,9 @@ test('search aliases coexist with exact lemmas, shared targets, same-record matc
     await mkdir(canonicalDirectory);
     await writeFile(path.join(canonicalDirectory, 'stdict-0001.jsonl'), `${records.map(serializeRecord).join('\n')}\n`);
     const outputPath = path.join(directory, 'dictionary.sqlite');
-    await buildDictionary({ inputDirectory: canonicalDirectory, outputPath, allowDirty: true, keepStaging: true });
+    await buildDictionary({ inputDirectory: canonicalDirectory, outputPath, allowDirty: true });
     const database = new DatabaseSync(outputPath, { readOnly: true });
-    const source = new DatabaseSync(`${outputPath}.staging`, { readOnly: true });
+    const source = new DatabaseSync(outputPath, { readOnly: true });
     try {
       const shape = (term) => findRecordsBySearchTerm(database, term).matches
         .map(({ id, match }) => [id, match.kind, match.field]);

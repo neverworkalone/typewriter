@@ -3,6 +3,7 @@ import { DatabaseSync } from 'node:sqlite';
 import path from 'node:path';
 
 import { buildDictionary } from './dictionary.mjs';
+import { extractLiteDictionary } from './lite-dictionary.mjs';
 
 const PRODUCT_LEGAL_FILES = Object.freeze([
   'Apache-2.0.txt',
@@ -17,6 +18,7 @@ export function createProductRuntimeAssets({
   canonicalDirectory,
   outputDirectory,
   sharedDictionaryPath = null,
+  fullDictionaryPath = path.join(projectRoot, 'artifacts/dictionary.sqlite'),
   allowDirty = process.env.TYPEWRITER_ALLOW_DIRTY === 'true',
 }) {
   const sqliteWasmDirectory = path.join(
@@ -85,6 +87,9 @@ export function createProductRuntimeAssets({
     ]);
 
     const outputPath = path.join(outputDirectory, 'dictionary.sqlite');
+    // The Extension ships only the Lite product database, always extracted from a verified Full database: either the
+    // CI-shared Full artifact, or a Full database built here from the current sources (never a reused cache).
+    let fullPath;
     if (sharedDictionaryPath) {
       const relativeSharedPath = path.relative(
         outputDirectory,
@@ -99,21 +104,24 @@ export function createProductRuntimeAssets({
         );
       }
 
-      await cp(sharedDictionaryPath, outputPath);
-      console.log(`Product dictionary reused from shared artifact: ${sharedDictionaryPath}`);
+      fullPath = path.resolve(sharedDictionaryPath);
+      console.log(`Full dictionary reused from shared artifact: ${fullPath}`);
     } else {
       const summary = await buildDictionary({
         inputDirectory: canonicalDirectory,
-        outputPath,
+        outputPath: fullDictionaryPath,
         repositoryDirectory: projectRoot,
         allowDirty,
       });
+      fullPath = summary.outputPath;
 
       console.log(
-        `Product dictionary built: ${summary.recordCount} records, `
+        `Full dictionary built: ${summary.recordCount} records, `
           + `${summary.senseCount} senses, ${summary.relationCount} relations.`,
       );
     }
+    await extractLiteDictionary({ fullPath, litePath: outputPath });
+    console.log(`Product (Lite) dictionary extracted from ${fullPath}.`);
 
     const database = new DatabaseSync(outputPath, { readOnly: true });
     let sourceRevision;

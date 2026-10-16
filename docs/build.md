@@ -33,8 +33,22 @@ Schema and dataset-integrity validation always run.
 ## SQLite dictionary
 
 `node scripts/build/dictionary.mjs` consumes the in-memory normalized model and
-creates `artifacts/dictionary.sqlite` from a fresh output path. The generated
-database is ignored build output and is never an editable source. The builder
+(`pnpm run build:dictionary`) creates the **Full** database `artifacts/dictionary.sqlite` from a fresh
+output path: STDICT source tables, Meaning data and provenance, verified with the source-bound checks. It is the
+development, source-lookup and audit database and never builds a Lite file. The generated
+database is ignored build output and is never an editable source.
+
+`pnpm run build` (and therefore `./pack.sh`, which calls it once) builds a fresh Full database at
+`artifacts/dictionary.sqlite` from the current sources (no cache or reuse; `TYPEWRITER_FULL_DICTIONARY_PATH` redirects
+it), verifies it, and then extracts the **Lite** product database `dist/dictionary.sqlite` from it
+(`scripts/build/lite-dictionary.mjs`). In CI, `TYPEWRITER_SHARED_DICTIONARY_PATH` names the once-built **Full**
+artifact of the current canonical revision; the extension build extracts Lite from it instead of building again, and a
+Lite or mislabeled file is rejected. Lite extraction is not a canonical build. Only `dist/` (Lite) is packaged;
+`artifacts/` is ignored and never enters a ZIP.
+
+Both databases carry `metadata.database_kind` (`full` or `lite`) that must agree with their table set. Lite inherits
+every other metadata value (`source_revision`, `canonical_revision`, `worktree_state`, counts) from the Full it was
+extracted from; package and runtime validation reject anything that is not `lite`. The builder
 requires Node.js 24.19.0 or newer (Node 24 LTS) for the built-in `node:sqlite` module and the
 product Vite toolchain.
 
@@ -47,15 +61,15 @@ contains only the current lookup model:
 - `meanings`, `meaning_members`, `sense_adjudications` and `meaning_relations` hold the
   meaning layer and projected relations ([meaning layer](meaning-layer.md#relation-projection-and-sqlite-issue-717));
 - `generated_surface_forms` holds the sense-bound generated forms with the source sense position;
-- the STDICT source `senses`, `relations` and `meaning_relation_sources` live only in the build-time staging database
-  (`SQLITE_SOURCE_SCHEMA_SQL`), where projection/provenance is verified; they are never shipped (Issue #792);
+- the STDICT source `senses`, `relations` and `meaning_relation_sources` live only in the Full database
+  (`SQLITE_SOURCE_SCHEMA_SQL`), where projection/provenance is verified; the Lite product database never ships them (Issue #792, #795);
 - `metadata` stores deterministic contract versions and generated row counts.
 
 Exact lemma and search-form indexes support lookup; member and adjudication record
 indexes support the meaning view. The builder inserts records and senses before
-relations so forward references work in the staging database, whose SQLite foreign keys,
+relations so forward references work in the Full database, whose SQLite foreign keys,
 integrity checks and source-derived checks verify the graph before the product tables
-are copied into the shipped database. Each build
+are extracted into the Lite database. Each build
 removes the requested generated file first; it does not depend on an existing DB or
 apply migrations. An output path inside `data/canonical/` is rejected.
 

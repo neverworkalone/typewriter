@@ -334,6 +334,10 @@ const RAW_CI_CATEGORIES = Object.freeze({
       inProcessCheck('Run integrated M2 audit', 'm2-audit'),
       inProcessCheck('Verify shared surface-form projection reuse', 'surface-form-projection-reuse'),
       testCheck('tests/build-dictionary.test.mjs', 'Test SQLite dictionary build'),
+      {
+        ...testCheck('tests/lite-dictionary.test.mjs', 'Test Full dictionary to Lite product extraction'),
+        tier: 'normal',
+      },
       testCheck('tests/relation-relevance.test.mjs', 'Test exploratory relation relevance'),
       testCheck('tests/relation-enrichment-top100.test.mjs', 'Test Issue #400 Top-100 window through the production append path'),
       testCheck('tests/m2-pipeline.test.mjs', 'Test integrated M2 audit'),

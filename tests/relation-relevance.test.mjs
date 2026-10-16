@@ -78,11 +78,10 @@ test('SQLite persists relevance and keeps every relation past 100', async () => 
       outputPath,
       repositoryDirectory: REPOSITORY_DIRECTORY,
       allowDirty: true,
-      keepStaging: true,
     });
     assert.equal(summary.metadata.schema_version, SQLITE_SCHEMA_VERSION);
-    // Raw source relations (with their relevance) exist only in the build staging database.
-    const database = new DatabaseSync(summary.stagingPath, { readOnly: true });
+    // Raw source relations (with their relevance) exist only in the Full database.
+    const database = new DatabaseSync(summary.outputPath, { readOnly: true });
     try {
       const result = getSenseRelations(database, 'r000001-s1');
       assert.equal(result.length, 106);

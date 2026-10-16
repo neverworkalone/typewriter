@@ -17,8 +17,8 @@ function plainRows(rows) {
 }
 
 /**
- * Raw STDICT source views of the build-time staging database (`buildDictionary({ keepStaging: true })`). The product
- * database ships no source senses or relations, so the product runtime has no equivalent.
+ * Raw STDICT source views of the Full database (`artifacts/dictionary.sqlite`, the `buildDictionary` output). The Lite
+ * product database ships no source senses or relations, so the product runtime has no equivalent.
  */
 export function getSourceSenseRelations(database, senseId) {
   return plainRows(database.prepare(`
@@ -139,7 +139,7 @@ export function readLogicalDatabaseSnapshot(database) {
     ),
   };
 
-  // The STDICT source tables exist only in the build-time staging database, never in the product database.
+  // The STDICT source tables exist only in the Full database, never in the Lite product database.
   const tables = new Set(schema.filter(({ type }) => type === 'table').map(({ name }) => name));
   if (tables.has('senses')) {
     rows.senses = plainRows(
