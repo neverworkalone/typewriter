@@ -146,7 +146,7 @@ export function getMeaningRelations(database, meaningId) {
 }
 
 /**
- * Meaning view of a record: the record header plus the meanings it contributes member senses to, in place of its raw
+ * Meaning view of a record: the record header plus the meanings its senses resolve to (member or `duplicate` redirect), in place of its raw
  * senses, so the UI candidate unit is the Typewriter meaning. Each meaning carries its precomputed ranking counts,
  * its member sense IDs (source evidence only) and its meaning relations; a relation target is the target
  * meaning's owner record plus the meaning ID, which `getMeaningRecord` can open again.
@@ -175,9 +175,15 @@ export function getMeaningRecord(database, recordId) {
     WHERE meanings.id IN (
       SELECT meaning_members.meaning_id FROM meaning_members
       INNER JOIN senses ON senses.id = meaning_members.sense_id
-      WHERE senses.record_id = ?)
+      WHERE senses.record_id = ?
+      UNION
+      -- a duplicate sense of this record resolves to the surviving meaning, which may belong to another record
+      SELECT meaning_members.meaning_id FROM sense_adjudications AS adjudication
+      INNER JOIN senses ON senses.id = adjudication.sense_id
+      INNER JOIN meaning_members ON meaning_members.sense_id = adjudication.duplicate_of_sense_id
+      WHERE adjudication.reason = 'duplicate' AND senses.record_id = ?)
     ORDER BY meanings.display_rank
-  `, [recordId]).map((meaning) => ({
+  `, [recordId, recordId]).map((meaning) => ({
     ...meaning,
     // Source senses that resolve to this meaning: its members plus the `duplicate` senses redirected to a
     // member (the same resolution the relation projection uses), so a match on any of them finds the meaning.

@@ -5,6 +5,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { DatabaseSync } from 'node:sqlite';
 
+import { SQLITE_SCHEMA_SQL } from '../scripts/build/sqlite-schema.mjs';
 import { buildDictionary } from '../scripts/build/dictionary.mjs';
 import { writeAdjudications, writeMeanings } from '../scripts/meaning/contract.mjs';
 import { SearchSession } from '../src/domain/search-session.js';
@@ -151,5 +152,30 @@ test('meaning search: candidates are meanings, ranked by stored counts, at most 
     }
   } finally {
     await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('meaning record: a duplicate sense whose survivor is in another record still resolves to that meaning', () => {
+  // Canonical fixtures cannot hold two records of one lemma, so the cross-record `duplicate_of` the meaning
+  // contract allows is exercised on a minimal hand-built database.
+  const database = new DatabaseSync(':memory:');
+  try {
+    database.exec('PRAGMA foreign_keys = OFF');
+    database.exec(SQLITE_SCHEMA_SQL);
+    database.exec(`
+      INSERT INTO records (id, record_type, role, lemma) VALUES ('w001', 'entry', 'start', '가'), ('w002', 'entry', 'start', '가');
+      INSERT INTO senses (id, record_id, position, pos, gloss) VALUES
+        ('w001-s1', 'w001', 0, 'noun', '첫째 뜻풀이.'), ('w002-s1', 'w002', 0, 'noun', '중복된 뜻풀이.');
+      INSERT INTO meanings (id, lemma, gloss, record_id, lexical_relation_count, exploratory_relation_count, display_rank)
+        VALUES ('m001', '가', '첫째 뜻풀이.', 'w001', 0, 0, 1);
+      INSERT INTO meaning_members (meaning_id, position, sense_id) VALUES ('m001', 0, 'w001-s1');
+      INSERT INTO sense_adjudications (sense_id, reason, duplicate_of_sense_id) VALUES ('w002-s1', 'duplicate', 'w001-s1');
+    `);
+    const record = getMeaningRecord(database, 'w002');
+    assert.deepEqual(record.senses.map(({ id, sense_ids: ids }) => [id, ids]), [['m001', ['w001-s1', 'w002-s1']]]);
+    const [projected] = projectSearchResults([record], [{ id: 'w002', match: { kind: 'generated-surface-form', senseIds: ['w002-s1'] } }]);
+    assert.deepEqual(projected.senses.map(({ id }) => id), ['m001']);
+  } finally {
+    database.close();
   }
 });
