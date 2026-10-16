@@ -9,11 +9,11 @@ C15(ㅊ) 전체 `data/meanings/c15_001.jsonl`~`c15_025.jsonl`을 base `417aaf0fd
 | Measure | Before | After |
 | --- | ---: | ---: |
 | C15 lemmas | 17,432 | 17,432 |
-| C15 Meaning rows | 24,466 | 20,730 |
-| 다중 Meaning lemma | 3,684 | 1,995 |
+| C15 Meaning rows | 24,466 | 20,907 |
+| 다중 Meaning lemma | 3,684 | 2,061 |
 | 재분할(repartition) 적용 lemma | — | 2,270 (+ Stage 2에서 215) |
 | 병합으로 줄어든 Meaning 행 | — | 3,559 (1차 3,328 + Stage 2 반영 231) |
-| 전체 meanings (repo) | 495,125 | 491,389 |
+| 전체 meanings (repo) | 495,125 | 491,566 |
 
 Meaning이 하나뿐인 13,748개 lemma는 병합 대상이 없어 재판정 대상에서 제외했다. 다중 Meaning이던 3,684개 lemma를 개별로 읽었다. 단, 모든 뜻풀이가 `‘X「n」’의 준말`뿐인 준말 항목은 본말과 같은 규칙으로 병합했고, 목록 중반 이후의 준말 항목은 본말을 확인한 뒤 따로 읽지 않았다. 읽은 lemma 가운데 1,411개는 독립 어휘로 판단해 기존 분리를 그대로 유지했다.
 
