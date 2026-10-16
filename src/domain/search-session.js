@@ -72,6 +72,13 @@ function resolveTarget(target, context = {}) {
   };
 }
 
+// The product candidate unit is the Typewriter meaning; runtimes without a meaning view fall back to raw records.
+function loadRecord(runtime, recordId) {
+  return typeof runtime.getMeaningRecord === 'function'
+    ? runtime.getMeaningRecord(recordId)
+    : runtime.getRecord(recordId);
+}
+
 function hasFullRecord(record) {
   return record && Array.isArray(record.senses);
 }
@@ -184,7 +191,7 @@ export class SearchSession {
 
       const candidateSummaries = response.matches;
       const records = await Promise.all(candidateSummaries.map((summary) => (
-        hasFullRecord(summary) ? summary : this.runtime.getRecord(summary.id)
+        hasFullRecord(summary) ? summary : loadRecord(this.runtime, summary.id)
       )));
 
       if (records.some((record) => !record)) {
@@ -284,7 +291,7 @@ export class SearchSession {
     });
 
     return this._run(operation, async () => {
-      const record = await this.runtime.getRecord(resolved.targetRecordId);
+      const record = await loadRecord(this.runtime, resolved.targetRecordId);
       if (!record) {
         return null;
       }

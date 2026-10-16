@@ -9,7 +9,9 @@ export function expandExactSearchCandidates(records) {
     }
     const senses = Array.isArray(record.senses) ? record.senses : [];
     if (senses.length > 1) {
+      const moreSenseIds = new Set(record.moreSenseIds ?? []);
       return senses.map((sense, senseIndex) => ({
+        isMore: moreSenseIds.has(sense.id),
         key: `${record.id}:${sense.id}`,
         recordId: record.id,
         senseId: sense.id,
@@ -29,6 +31,7 @@ export function expandExactSearchCandidates(records) {
       sense,
       senseIndex: 0,
       isSenseChoice: false,
+      isMore: false,
     }];
   });
 }

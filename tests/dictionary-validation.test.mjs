@@ -48,8 +48,8 @@ test('validates current packaged schema, version, revision, integrity, and row c
 });
 
 test('rejects a schema metadata or SQLite user_version mismatch before queries run', () => {
-  const metadataMismatch = createDictionary({ metadataOverrides: { schema_version: '5' } });
-  const pragmaMismatch = createDictionary({ userVersion: '5' });
+  const metadataMismatch = createDictionary({ metadataOverrides: { schema_version: String(Number(SQLITE_SCHEMA_VERSION) + 1) } });
+  const pragmaMismatch = createDictionary({ userVersion: String(Number(SQLITE_SCHEMA_VERSION) + 1) });
   try {
     assert.throws(() => validatePackagedDictionary(metadataMismatch), {
       code: 'DATABASE_SCHEMA_MISMATCH',
@@ -156,7 +156,7 @@ test('rejects dangling foreign keys even when quick_check and every row count st
 test('runtime validation keeps contract checks but skips whole-database scans', () => {
   const countMismatch = createDictionary({ metadataOverrides: { record_count: '7' } });
   const staleRevision = createDictionary();
-  const wrongSchema = createDictionary({ userVersion: '5' });
+  const wrongSchema = createDictionary({ userVersion: String(Number(SQLITE_SCHEMA_VERSION) + 1) });
   const wrongVersion = createDictionary({ metadataOverrides: { dictionary_version: 'old' } });
   const unverified = createDictionary({ metadataOverrides: { source_revision_verified: 'false' } });
   try {

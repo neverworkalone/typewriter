@@ -1,5 +1,7 @@
+import { EXPLORATORY_RELATION_TYPES, LEXICAL_RELATION_TYPES } from './meaning-ranking.js';
+
 export const DICTIONARY_VERSION = 'm2-pilot-1';
-export const SQLITE_SCHEMA_VERSION = '4';
+export const SQLITE_SCHEMA_VERSION = '5';
 
 export const MEANING_RELATION_ORIGINS = Object.freeze({
   projection: 'stdict-sense-projection',
@@ -22,6 +24,14 @@ export const DICTIONARY_COUNT_QUERIES = Object.freeze({
   expression_count: "SELECT COUNT(*) FROM records WHERE record_type = 'expression'",
 });
 
+const quoted = (types) => types.map((type) => `'${type}'`).join(', ');
+const MEANING_LEXICAL_TYPES_SQL = quoted(LEXICAL_RELATION_TYPES);
+const MEANING_EXPLORATORY_TYPES_SQL = quoted(EXPLORATORY_RELATION_TYPES);
+// Numeric (entry number, ordinal) order of a meaning ID: `m443_1` < `m445` < `m1000`.
+const MEANING_ORDER_SQL = (id) => `
+  CAST(substr(${id}, 2, instr(${id} || '_', '_') - 2) AS INTEGER) * 1000000
+  + CASE WHEN instr(${id}, '_') = 0 THEN 0 ELSE CAST(substr(${id}, instr(${id}, '_') + 1) AS INTEGER) END`;
+
 // Meaning of a sense: its own member meaning, else (for a `duplicate` drop) the meaning of `duplicate_of`.
 const memberMeaning = (sense) => `(SELECT meaning_id FROM meaning_members WHERE sense_id = ${sense})`;
 const resolvedMeaning = (sense) => `COALESCE(${memberMeaning(sense)}, (
@@ -36,6 +46,29 @@ const redirected = (sense) => `(${memberMeaning(sense)} IS NULL)`;
  * (not only a wrong row count) without a second build or a re-parse of canonical data.
  */
 export const MEANING_INTEGRITY_QUERIES = Object.freeze({
+  // Ranking metadata is precomputed at build time: counts are the distinct relation targets per ranking key
+  // (유의어·반의어 / 말의 결·연상), and display_rank is the dense total order by counts DESC then numeric meaning ID.
+  meaning_relation_count_mismatch: `
+    SELECT COUNT(*) FROM meanings AS meaning
+    WHERE meaning.lexical_relation_count <> (
+        SELECT COUNT(DISTINCT target_meaning_id) FROM meaning_relations
+        WHERE source_meaning_id = meaning.id AND type IN (${MEANING_LEXICAL_TYPES_SQL}))
+       OR meaning.exploratory_relation_count <> (
+        SELECT COUNT(DISTINCT target_meaning_id) FROM meaning_relations
+        WHERE source_meaning_id = meaning.id AND type IN (${MEANING_EXPLORATORY_TYPES_SQL}))`,
+  meaning_rank_not_dense: `
+    SELECT CASE WHEN COUNT(*) = COALESCE(MAX(display_rank), 0) THEN 0 ELSE 1 END FROM meanings`,
+  meaning_rank_order_violation: `
+    SELECT COUNT(*) FROM meanings AS earlier
+    INNER JOIN meanings AS later ON later.display_rank = earlier.display_rank + 1
+    WHERE earlier.lexical_relation_count < later.lexical_relation_count
+       OR (earlier.lexical_relation_count = later.lexical_relation_count
+           AND (earlier.exploratory_relation_count < later.exploratory_relation_count
+             OR (earlier.exploratory_relation_count = later.exploratory_relation_count
+                 AND (${MEANING_ORDER_SQL('earlier.id')}) >= (${MEANING_ORDER_SQL('later.id')}))))`,
+  meaning_record_mismatch: `
+    SELECT COUNT(*) FROM meanings AS meaning
+    WHERE meaning.record_id <> 'w' || substr(meaning.id, 2, instr(meaning.id || '_', '_') - 2)`,
   meaning_relation_without_provenance: `
     SELECT COUNT(*) FROM meaning_relations AS relation
     WHERE relation.origin = '${MEANING_RELATION_ORIGINS.projection}' AND NOT EXISTS (

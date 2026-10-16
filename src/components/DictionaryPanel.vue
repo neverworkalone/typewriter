@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, ref } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 
 import { expandExactSearchCandidates } from '../domain/exact-search-candidates.js';
 import { SEARCH_MODES, SEARCH_STATUS } from '../domain/search-state.js';
@@ -113,7 +113,7 @@ function definitionLabel(record, sense, senseIndex) {
   return definition?.text || definition?.gloss || `${record.lemma} 뜻 ${senseIndex + 1}`;
 }
 
-const candidateOptions = computed(() => {
+const allCandidateOptions = computed(() => {
   if (
     !props.interactive
     || props.mode !== SEARCH_MODES.exact
@@ -123,6 +123,7 @@ const candidateOptions = computed(() => {
   }
 
   return expandExactSearchCandidates(props.records).map((candidate) => ({
+    isMore: candidate.isMore,
     key: candidate.key,
     recordId: candidate.recordId,
     senseId: candidate.senseId,
@@ -132,7 +133,23 @@ const candidateOptions = computed(() => {
   }));
 });
 
-const candidateListEnabled = computed(() => candidateOptions.value.length > 1);
+// 더보기: meanings beyond the default view stay hidden until requested (or until one of them is selected).
+const showAllCandidates = ref(false);
+watch(() => props.records, () => {
+  showAllCandidates.value = false;
+});
+const candidateOptions = computed(() => (
+  showAllCandidates.value
+    ? allCandidateOptions.value
+    : allCandidateOptions.value.filter((option) => (
+      !option.isMore
+      || (option.recordId === props.selectedRecordId && option.senseId === props.selectedSenseId)
+    ))
+));
+const hiddenCandidateCount = computed(() => (
+  allCandidateOptions.value.length - candidateOptions.value.length
+));
+const candidateListEnabled = computed(() => allCandidateOptions.value.length > 1);
 const selectedCandidateOption = computed(() => {
   if (!candidateListEnabled.value) return null;
 
@@ -364,11 +381,13 @@ defineExpose({ focusSearch });
         :interactive="interactive"
         :show-back="showBack"
         :candidate-options="candidateOptions"
+        :hidden-candidate-count="hiddenCandidateCount"
         :selected-record-id="selectedCandidateRecordId"
         :selected-sense-id="selectedCandidateSenseId"
         @relation="emit('relation', $event)"
         @back="emit('back')"
         @select-candidate="emit('select-candidate', $event)"
+        @show-more-candidates="showAllCandidates = true"
         @candidate-focus="handleCandidateFocus"
         @candidate-keydown="handleCandidateKeydown"
       />

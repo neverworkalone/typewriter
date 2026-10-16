@@ -84,7 +84,12 @@ CREATE TABLE relations (
 CREATE TABLE meanings (
   id TEXT PRIMARY KEY NOT NULL,
   lemma TEXT NOT NULL,
-  gloss TEXT NOT NULL
+  gloss TEXT NOT NULL,
+  record_id TEXT NOT NULL,
+  lexical_relation_count INTEGER NOT NULL CHECK (lexical_relation_count >= 0),
+  exploratory_relation_count INTEGER NOT NULL CHECK (exploratory_relation_count >= 0),
+  display_rank INTEGER NOT NULL UNIQUE CHECK (display_rank >= 1),
+  FOREIGN KEY (record_id) REFERENCES records(id)
 );
 
 CREATE TABLE meaning_members (
@@ -149,5 +154,6 @@ CREATE INDEX idx_generated_surface_forms_form ON generated_surface_forms(form);
 CREATE INDEX idx_relations_source_position ON relations(source_sense_id, position);
 CREATE INDEX idx_relations_target ON relations(target_record_id, target_sense_id);
 CREATE INDEX idx_meanings_lemma ON meanings(lemma);
+CREATE INDEX idx_meanings_record ON meanings(record_id);
 CREATE INDEX idx_meaning_relations_target ON meaning_relations(target_meaning_id);
 `;
