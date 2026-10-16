@@ -452,6 +452,10 @@ Normal validators still reject invalid data. Verified append-only `deep-gate-cov
 classified as runner or registry implementation changes. A skipped Deep check must be listed with its reason; it never counts as
 completed Deep evidence.
 
+### Local Normal CI preflight
+
+Before local Normal CI (`ci:normal`, `pnpm test`, `ci:pr`/`ci:all`), require an empty `git status --porcelain=v1 --untracked-files=all`; otherwise commit intended changes first. Do not run dirty just to trigger `DIRTY_WORKTREE` and retry. `TYPEWRITER_ALLOW_DIRTY=true` is development-only, not PR gate evidence. If CI itself dirties the worktree, fix that producer; retain existing provenance guards.
+
 For data changes, validation may include:
 
 - JSON/JSONL schema checks;
