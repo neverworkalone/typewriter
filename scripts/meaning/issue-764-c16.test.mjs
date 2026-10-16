@@ -10,7 +10,8 @@ const rows = readdirSync(dir).filter((f) => /^c16_\d+\.jsonl$/.test(f)).sort()
   .flatMap((f) => readFileSync(path.join(dir, f), 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)));
 const meaningOf = new Map(rows.flatMap((row) => row.sense_ids.map((id) => [id, row.id])));
 const spec = JSON.parse(readFileSync(path.join(root, 'scripts/meaning/issue-764-c16.json'), 'utf8'));
-const sameMeaning = (ids) => new Set(ids.map((id) => meaningOf.get(id))).size === 1;
+const sameMeaning = (ids) => ids.every((id) => meaningOf.has(id)) && new Set(ids.map((id) => meaningOf.get(id))).size === 1;
+const known = (ids) => ids.every((id) => meaningOf.has(id));
 
 test('C16 repartition spec groups are exactly the final Meaning rows', () => {
   const byId = new Map(rows.map((row) => [row.id, row]));
@@ -36,6 +37,11 @@ const mustMerge = [
   ['쌀쌀하다 analogue 카랑카랑', ['w338862-s1', 'w338862-s2']], // 목소리 / 날씨의 맑고 차가운 결
   ['카드', ['w489053-s1', 'w489053-s2', 'w489053-s3', 'w489053-s4', 'w489053-s5', 'w489053-s6', 'w489053-s7', 'w489053-s8']],
   ['쿠웨이트', ['w339419-s1', 'w492404-s1']], // 나라와 그 수도
+  ['콩과', ['w491158-s1', 'w491158-s2']], // 콩 식물과 그 식물군
+  ['켤레', ['w493168-s1', 'w493169-s1']], // 일상의 한 쌍 / 수학의 대응 관계
+  ['코르사주', ['w339080-s1', 'w339080-s2']], // 의복 부위 / 그 자리에 다는 장식
+  ['콱', ['w491758-s1', 'w491758-s2', 'w491758-s3']],
+  ['클럽', ['w345346-s2', 'w345346-s3']],
   ['큰이', ['w346076-s1', 'w346076-s2']], // 남의 맏이 / 남의 본부인: 한 집단의 으뜸
   ['콩팥', ['w340476-s1', 'w492299-s1']], // 콩과 팥 / 그 모양을 딴 장기
 ];
@@ -57,3 +63,10 @@ const mustSplit = [
 for (const [name, a, b] of mustSplit) {
   test(`C16 over-merge control: ${name} stays separate`, () => assert.ok(!sameMeaning([a, b]), name));
 }
+
+test('C16 controls fail on unknown sense ids instead of passing vacuously', () => {
+  assert.equal(sameMeaning(['w000000-s1', 'w000000-s2']), false);
+  assert.equal(known(['w000000-s1']), false);
+  for (const [name, ids] of mustMerge) assert.ok(known(ids), `${name}: control sense ids must exist`);
+  for (const [name, a, b] of mustSplit) assert.ok(known([a, b]), `${name}: control sense ids must exist`);
+});
