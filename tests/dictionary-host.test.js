@@ -33,6 +33,7 @@ beforeAll(() => {
     source_revision: SOURCE_REVISION,
     source_revision_source: 'git-head',
     source_revision_verified: 'true',
+    database_kind: 'lite',
     ...Object.fromEntries(Object.keys(DICTIONARY_COUNT_QUERIES).map((key) => [key, '0'])),
   };
   const insert = database.prepare('INSERT INTO metadata (key, value) VALUES (?, ?)');

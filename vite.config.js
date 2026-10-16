@@ -16,6 +16,9 @@ const outputDirectory = path.resolve(
 const sharedDictionaryPath = process.env.TYPEWRITER_SHARED_DICTIONARY_PATH
   ? path.resolve(process.env.TYPEWRITER_SHARED_DICTIONARY_PATH)
   : null;
+const fullDictionaryPath = path.resolve(
+  process.env.TYPEWRITER_FULL_DICTIONARY_PATH ?? path.join(projectRoot, 'artifacts/dictionary.sqlite'),
+);
 const shouldMinify = process.env.TYPEWRITER_BUILD_MINIFY !== 'false';
 
 export default defineConfig({
@@ -26,6 +29,7 @@ export default defineConfig({
       canonicalDirectory,
       outputDirectory,
       sharedDictionaryPath,
+      fullDictionaryPath,
     }),
   ],
   build: {

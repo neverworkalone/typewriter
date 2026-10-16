@@ -21,6 +21,7 @@ import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 
 import { buildDictionary } from '../build/dictionary.mjs';
+import { verifyLiteExtraction } from '../build/lite-dictionary.mjs';
 import { CI_LEVEL_CATEGORY_ORDER } from '../ci/registry.mjs';
 import {
   contextSummary,
@@ -615,9 +616,12 @@ async function measureProductOutput({ context, databasePath, productDirectory, s
   await runProductBuild({ sharedDictionaryPath: databasePath, outputDirectory: productDirectory });
   const productDictionaryPath = path.join(productDirectory, 'dictionary.sqlite');
   const productDictionaryDigest = await sha256File(productDictionaryPath);
-  if (productDictionaryDigest !== databaseDigest) {
-    throw new Error('product build did not reuse the shared SQLite artifact');
+  // The extension ships Lite, extracted from the shared Full artifact: the files differ (source tables, kind), so the
+  // contract is a verified extraction, not byte identity.
+  if (productDictionaryDigest === databaseDigest) {
+    throw new Error('product build shipped the Full shared SQLite artifact instead of a Lite extraction');
   }
+  verifyLiteExtraction({ fullPath: databasePath, litePath: productDictionaryPath });
   const productBuildMs = elapsed(productBuildStart);
   const packageStart = now();
   const packageMetrics = await packageProductBuild(productDirectory);
@@ -647,6 +651,7 @@ async function measureProductOutput({ context, databasePath, productDirectory, s
     runtime_measurement_ms: elapsed(runtimeStart),
     shared_sqlite_sha256: databaseDigest,
     product_dictionary_sha256: productDictionaryDigest,
+    lite_extraction_verified: true,
     package: packageMetrics,
     sqlite_wasm_runtime: runtimeMetrics,
   };
@@ -1453,10 +1458,13 @@ function validateProductAndRuntimeEvidence(product, scale) {
     requireNonnegativeNumber(product[metric], 'product performance ' + metric, scale);
   }
 
+  // shared_sqlite_sha256 is the Full artifact, product_dictionary_sha256 the Lite extracted from it: distinct files
+  // whose product tables were verified identical (lite_extraction_verified).
   const productDigests = [product.shared_sqlite_sha256, product.product_dictionary_sha256];
   if (productDigests.some((digest) => typeof digest !== 'string' || !/^[0-9a-f]{64}$/u.test(digest))
-    || new Set(productDigests).size !== 1) {
-    throw new Error(`scale ${scale} is missing matching product and shared SQLite digests`);
+    || new Set(productDigests).size !== 2
+    || product.lite_extraction_verified !== true) {
+    throw new Error(`scale ${scale} is missing distinct verified Full shared and Lite product SQLite digests`);
   }
   return queryPathsByCategory;
 }
@@ -1544,16 +1552,19 @@ function validateProductScaleResult(result, templateProfile) {
   );
   validateRunnerMemoryEvidence(result.runner_memory, scale);
 
-  const digests = [
+  // Full digests (shared artifact and both independent rebuilds) must agree; the Lite digest is its own, consistent
+  // between the product measurement and the result, and never equal to the Full digest.
+  const fullDigests = [
     product.shared_sqlite_sha256,
-    product.product_dictionary_sha256,
     result.shared_sqlite_sha256,
-    result.product_dictionary_sha256,
     result.reproducible_sqlite_sha256,
     result.reproducible_second_sqlite_sha256,
   ];
-  if (digests.some((digest) => typeof digest !== 'string' || !/^[0-9a-f]{64}$/u.test(digest))
-    || new Set(digests).size !== 1) {
+  const liteDigests = [product.product_dictionary_sha256, result.product_dictionary_sha256];
+  if ([...fullDigests, ...liteDigests].some((digest) => typeof digest !== 'string' || !/^[0-9a-f]{64}$/u.test(digest))
+    || new Set(fullDigests).size !== 1
+    || new Set(liteDigests).size !== 1
+    || liteDigests[0] === fullDigests[0]) {
     throw new Error(`scale ${scale} is missing matching SQLite and product reproducibility digests`);
   }
   if (result.corpus_cost?.deep?.reproducible !== true) {
@@ -1930,8 +1941,7 @@ export async function benchmarkCanonicalValidation({
             wall_clock_ms: corpusElapsed(totalStart, normalEnd, result),
             continuation_ms: Math.round((normalEnd - normalStart) * 100) / 100,
             shared_sqlite_artifact_reused: true,
-            product_dictionary_digest_matches: result.product_performance.product_dictionary_sha256
-              === result.product_performance.shared_sqlite_sha256,
+            lite_extracted_from_shared_full: result.product_performance.lite_extraction_verified === true,
             sqlite_build_count: 0,
             corpus_phases: [
               'validateSharedDictionary',

@@ -13,6 +13,8 @@ import { loadCanonicalContext } from '../validate/canonical-context.mjs';
 import { validateDatasetDirectory } from '../validate/dataset-integrity.mjs';
 import { normalizeCanonicalDirectory } from '../normalize/canonical.mjs';
 import { buildDictionary } from '../build/dictionary.mjs';
+import { extractLiteDictionary, readDatabaseKind } from '../build/lite-dictionary.mjs';
+import { DATABASE_KINDS } from '../../src/runtime/dictionary-contract.js';
 import { SQLITE_SCHEMA_VERSION } from '../build/sqlite-schema.mjs';
 import {
   findRecordsByExactTerm,
@@ -206,11 +208,11 @@ function assertRepresentativeQueries(database, model, sourceSnapshot) {
       assert.equal(record.lemma, canonicalRecord.lemma);
       assert.deepEqual(record.search_forms, canonicalRecord.search_forms);
 
-      // The product database ships no raw source relations; they are checked in the build staging database.
+      // The Lite product database ships no raw source relations; they are checked in the Full database.
       if (sourceSnapshot) {
         const relation = sourceSnapshot.rows.relations
           .find((row) => row.source_sense_id === canonicalSense.id && row.target_record_id === canonicalRelation.target);
-        assert.ok(relation, 'staging relation target must be queryable');
+        assert.ok(relation, 'source relation target must be queryable');
         assert.equal(relation.target_sense_id, canonicalRelation.target_sense);
         assert.equal(relation.type, canonicalRelation.type);
         assert.equal(relation.note, canonicalRelation.note);
@@ -241,10 +243,14 @@ function assertProvenanceMetadata(metadata, expectedWorktreeState = undefined) {
 
 function verifyDatabase(database, model, expected, surfaceProjection, worktreeState, sourceDatabase) {
   const snapshot = readLogicalDatabaseSnapshot(database);
-  assert.equal(snapshot.rows.senses, undefined, 'the product database must not ship STDICT source senses');
-  assert.equal(snapshot.rows.relations, undefined, 'the product database must not ship STDICT source relations');
-  assert.equal(snapshot.rows.meaning_relation_sources, undefined, 'the product database must not ship relation sources');
-  const sourceSnapshot = sourceDatabase ? readLogicalDatabaseSnapshot(sourceDatabase) : undefined;
+  // A Full database carries its own STDICT source layer; a Lite product database must not ship it.
+  const isFull = readDatabaseKind(database) === DATABASE_KINDS.full;
+  if (!isFull) {
+    assert.equal(snapshot.rows.senses, undefined, 'the product database must not ship STDICT source senses');
+    assert.equal(snapshot.rows.relations, undefined, 'the product database must not ship STDICT source relations');
+    assert.equal(snapshot.rows.meaning_relation_sources, undefined, 'the product database must not ship relation sources');
+  }
+  const sourceSnapshot = isFull ? snapshot : (sourceDatabase ? readLogicalDatabaseSnapshot(sourceDatabase) : undefined);
   assert.deepEqual(snapshot.rows.records, expected.records);
   assert.deepEqual(snapshot.rows.search_forms, expected.search_forms);
   if (sourceSnapshot) {
@@ -385,65 +391,55 @@ export async function runM2Pipeline({
   );
   const firstPath = path.join(temporaryDirectory, 'first.sqlite');
   const secondPath = path.join(temporaryDirectory, 'second.sqlite');
-  const firstStagingPath = `${firstPath}.staging`;
-  const secondStagingPath = `${secondPath}.staging`;
 
   try {
-    const first = await buildDictionary({
+    const buildOptions = {
       inputDirectory,
-      outputPath: firstPath,
-      stagingOutputPath: firstStagingPath,
-      keepStaging: true,
       repositoryDirectory,
       allowDirty,
       canonicalContext: context,
       semanticAudit: context.semanticAudit,
       requireSurfaceFormClassifications: requireClassDispositions,
       requireSurfaceFormCollisionReview: requireCollisionReview,
-    });
-    const second = await buildDictionary({
-      inputDirectory,
-      outputPath: secondPath,
-      stagingOutputPath: secondStagingPath,
-      keepStaging: true,
-      repositoryDirectory,
-      allowDirty,
-      canonicalContext: context,
-      semanticAudit: context.semanticAudit,
-      requireSurfaceFormClassifications: requireClassDispositions,
-      requireSurfaceFormCollisionReview: requireCollisionReview,
-    });
+    };
+    const first = await buildDictionary({ ...buildOptions, outputPath: firstPath });
+    const second = await buildDictionary({ ...buildOptions, outputPath: secondPath });
     const expected = expectedRowsFromCanonicalRecords(canonical.records, surfaceProjection.rows);
     const expectedWorktreeState = first.metadata.worktree_state;
 
+    // Both independent builds are Full databases; the Lite product database is extracted from the first and must
+    // agree with it on every product table.
+    const litePath = path.join(temporaryDirectory, 'lite.sqlite');
+    await extractLiteDictionary({ fullPath: firstPath, litePath });
     const firstDatabase = new DatabaseSync(firstPath, { readOnly: true });
     const secondDatabase = new DatabaseSync(secondPath, { readOnly: true });
-    const firstStaging = new DatabaseSync(firstStagingPath, { readOnly: true });
-    const secondStaging = new DatabaseSync(secondStagingPath, { readOnly: true });
+    const liteDatabase = new DatabaseSync(litePath, { readOnly: true });
     let firstSnapshot;
     let secondSnapshot;
     try {
-      firstSnapshot = verifyDatabase(
+      firstSnapshot = verifyDatabase(firstDatabase, model, expected, surfaceProjection, expectedWorktreeState);
+      secondSnapshot = verifyDatabase(secondDatabase, model, expected, surfaceProjection, expectedWorktreeState);
+      const liteSnapshot = verifyDatabase(
+        liteDatabase,
+        model,
+        expected,
+        surfaceProjection,
+        expectedWorktreeState,
         firstDatabase,
-        model,
-        expected,
-        surfaceProjection,
-        expectedWorktreeState,
-        firstStaging,
       );
-      secondSnapshot = verifyDatabase(
-        secondDatabase,
-        model,
-        expected,
-        surfaceProjection,
-        expectedWorktreeState,
-        secondStaging,
-      );
+      for (const table of Object.keys(liteSnapshot.rows)) {
+        // The Lite database inherits all metadata unchanged except its own database kind.
+        const withoutKind = (rows) => (table === 'metadata' ? rows.filter(({ key }) => key !== 'database_kind') : rows);
+        assert.deepEqual(
+          withoutKind(liteSnapshot.rows[table]),
+          withoutKind(firstSnapshot.rows[table]),
+          `Lite ${table} must equal Full ${table}`,
+        );
+      }
     } finally {
       firstDatabase.close();
       secondDatabase.close();
-      firstStaging.close();
-      secondStaging.close();
+      liteDatabase.close();
     }
     assert.deepEqual(firstSnapshot, secondSnapshot);
     assert.deepEqual(first.metadata, second.metadata);
