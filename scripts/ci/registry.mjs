@@ -155,7 +155,7 @@ const RAW_CI_CATEGORIES = Object.freeze({
       },
       {
         ...commandCheck(
-          'Test Issue #715 meaning edit tool (merge/drop spec validation, same-lemma cross-record merge, duplicate_of targets)',
+          'Test Issue #715 meaning edit tool (single-sense gloss edits, merge/drop spec validation, duplicate_of targets)',
           ['--test', 'scripts/meaning/apply-edits.test.mjs'],
         ),
         tier: 'normal',
