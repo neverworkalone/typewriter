@@ -1030,9 +1030,8 @@ test('CI and Pages workflows keep their trigger responsibilities separate', asyn
   assert.doesNotMatch(deepWorkflow, /pull_request:/u);
 
   const pagesEvents = pagesWorkflow.split('\non:\n')[1]?.split('\npermissions:\n')[0]?.trim();
-  assert.match(pagesEvents, /^schedule:/u);
-  assert.match(pagesEvents, /- cron: '17 3 \* \* \*'/u);
-  assert.match(pagesEvents, /^  workflow_dispatch:$/mu);
+  assert.doesNotMatch(pagesEvents, /schedule:|cron:/u);
+  assert.match(pagesEvents, /^workflow_dispatch:$|^  workflow_dispatch:$/mu);
   assert.doesNotMatch(pagesEvents, /(?:^|\n)\s*push:/u);
   assert.equal((pagesWorkflow.match(/github\.ref == 'refs\/heads\/master'/gu) ?? []).length, 2,
     'both Pages artifact upload and deployment must require master');

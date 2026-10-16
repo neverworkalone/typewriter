@@ -343,7 +343,7 @@ const RAW_CI_CATEGORIES = Object.freeze({
       testCheck('tests/surface-form-projection.test.mjs', 'Test M6-3 surface-form projection and search'),
       pnpmCheck('Run product unit tests', 'test:unit'),
       pnpmCheck('Build product extension', 'build'),
-      pnpmCheck('Build static Typewriter landing page', 'build:web'),
+      pnpmCheck('Build Typewriter Web', 'build:web'),
       pnpmCheck('Validate static Pages artifact', 'validate:pages-artifact'),
       pnpmCheck('Validate built product output contracts', 'validate:product-outputs'),
     ],
