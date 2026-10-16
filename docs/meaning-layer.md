@@ -52,7 +52,7 @@ transformation, not an editorial decision. A sense maps to the meaning listing i
 is redirected through `duplicate_of` to the surviving meaning (as source or target). A relation whose endpoint is
 `out_of_scope` (or has no meaning) is skipped, as is a relation that collapses onto a single meaning. The rest is
 unique per `source meaning + target meaning + type`; every contributing sense relation is kept as provenance. The first
-contributing relation (canonical order) supplies `note`/`relevance`; positions are per source meaning in that order.
+contributing relation (canonical order) supplies `note`/`relevance`, verified exactly against the first provenance row; positions are per source meaning in that order.
 Skip/dedup/redirect counts are written to `metadata` as `meaning_projection_*`, so
 `source = projected + deduplicated + skipped`.
 

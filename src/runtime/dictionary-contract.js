@@ -41,7 +41,20 @@ export const MEANING_INTEGRITY_QUERIES = Object.freeze({
     WHERE relation.origin = '${MEANING_RELATION_ORIGINS.projection}' AND NOT EXISTS (
       SELECT 1 FROM meaning_relation_sources AS source
       WHERE source.source_meaning_id = relation.source_meaning_id
-        AND source.relation_position = relation.position)`,
+        AND source.relation_position = relation.position
+        AND source.position = 0)`,
+  // A projected relation shows the note/relevance of its first contributing source relation, exactly.
+  meaning_relation_content_mismatch: `
+    SELECT COUNT(*) FROM meaning_relations AS relation
+    INNER JOIN meaning_relation_sources AS source
+      ON source.source_meaning_id = relation.source_meaning_id
+     AND source.relation_position = relation.position
+     AND source.position = 0
+    INNER JOIN relations AS original
+      ON original.source_sense_id = source.source_sense_id
+     AND original.position = source.source_position
+    WHERE relation.origin = '${MEANING_RELATION_ORIGINS.projection}'
+      AND (relation.note IS NOT original.note OR relation.relevance IS NOT original.relevance)`,
   // Typewriter-authored relations carry no STDICT provenance; provenance may only back projected relations.
   meaning_relation_provenance_on_non_projection: `
     SELECT COUNT(*) FROM meaning_relation_sources AS source

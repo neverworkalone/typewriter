@@ -20,7 +20,7 @@ const direct = (target_sense) => ({ target: target_sense.split('-')[0], target_s
 
 // w001-s1/s2 merge into one meaning; both reach w002-s1 (one deduplicated meaning relation, two sources) and s2 reaches w003-s1.
 const RECORDS = [
-  record(1, '가나', [['첫째 뜻풀이.', [direct('w002-s1')]], ['둘째 뜻풀이.', [direct('w002-s1'), direct('w003-s1')]]]),
+  record(1, '가나', [['첫째 뜻풀이.', [{ ...direct('w002-s1'), type: 'near', note: '첫째 근거', relevance: 2 }]], ['둘째 뜻풀이.', [{ ...direct('w002-s1'), type: 'near', note: '둘째 근거', relevance: 4 }, direct('w003-s1')]]]),
   record(2, '다라', [['다라의 뜻풀이.']]),
   record(3, '마바', [['마바의 뜻풀이.']]),
 ];
@@ -112,6 +112,26 @@ test('meaning relation provenance: valid mapping passes; deleted, mis-bound and 
       DELETE FROM meaning_relation_sources WHERE source_meaning_id = 'm001' AND relation_position = 0;
       UPDATE meaning_relations SET origin = 'typewriter-authored' WHERE source_meaning_id = 'm001' AND position = 0;
     `)).projectable_relation_without_provenance > 0);
+
+    // Displayed note/relevance must equal the first contributing source relation (here w001-s1's, not w001-s2's).
+        const stored = new DatabaseSync(good, { readOnly: true });
+    const row = stored.prepare("SELECT note, relevance FROM meaning_relations WHERE source_meaning_id = 'm001' AND target_meaning_id = 'm002'").get();
+    stored.close();
+    assert.deepEqual({ ...row }, { note: '첫째 근거', relevance: 2 });
+    for (const [name, sql] of [
+      ['note', "UPDATE meaning_relations SET note = '허위 원본 근거' WHERE source_meaning_id = 'm001' AND target_meaning_id = 'm002'"],
+      ['relevance', "UPDATE meaning_relations SET relevance = 9 WHERE source_meaning_id = 'm001' AND target_meaning_id = 'm002'"],
+      ['priority', "UPDATE meaning_relations SET note = '둘째 근거', relevance = 4 WHERE source_meaning_id = 'm001' AND target_meaning_id = 'm002'"],
+    ]) {
+      await copyFile(good, copy(`${name}.sqlite`));
+      assert.ok(violations(copy(`${name}.sqlite`), (db) => db.exec(sql)).meaning_relation_content_mismatch > 0, name);
+    }
+    // An authored relation owns its own note/relevance and is not compared with STDICT.
+    await copyFile(good, copy('authored-content.sqlite'));
+    assert.deepEqual(violations(copy('authored-content.sqlite'), (db) => db.exec(
+      "INSERT INTO meaning_relations (source_meaning_id, position, target_meaning_id, type, note, relevance, origin) "
+      + "VALUES ('m002', 0, 'm001', 'mood', '자체 근거', 9, 'typewriter-authored')",
+    )), {});
 
     await copyFile(good, copy('flag.sqlite'));
     assert.ok(violations(copy('flag.sqlite'), (db) => db.exec(
