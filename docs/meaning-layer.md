@@ -94,3 +94,8 @@ order (`MEANING_INTEGRITY_QUERIES`). The partition rule lives in `src/runtime/me
 (`partitionMeanings`): meanings with at least one relation fill the default view in rank order up to 3; the rest,
 including every meaning without relations, go behind 더보기. If no meaning of the result has a relation, the lowest-ID
 meaning is shown and the rest go behind 더보기. The UI shows the default candidates and a 더보기 control for the rest.
+
+The default view and the candidate list use one search-wide ranking: when several records match (for example one
+surface form reaching several lemmas), the split into at most 3 default meanings and 더보기 is made once over all of
+their meanings, candidates are listed in `compareMeaningRank` order regardless of record or input order, and the first
+selection is the top-ranked meaning. Each candidate keeps its record and match.

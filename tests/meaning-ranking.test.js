@@ -103,8 +103,37 @@ describe('default view across one search', () => {
       record('w010', '가', [sense('m010_1', 1), sense('m010_2', 0, 2)]),
       record('w020', '나', [sense('m020_1', 2), sense('m020_2', 0, 1)]),
     ]);
-    expect(shown).toEqual(['m010_1', 'm010_2', 'm020_1']);
+    // Search-wide ranking order, not record order.
+    expect(shown).toEqual(['m020_1', 'm010_1', 'm010_2']);
     expect(more).toEqual(['m020_2']);
+  });
+
+  it('lists and selects candidates by global rank for generated-surface matches, whatever the record order', () => {
+    // 들었다 reaches two lemmas through generated surface forms; each match licenses only some meanings.
+    const records = [
+      record('w014', '듣다', [sense('m014_1', 0, 1), sense('m014_2', 1), sense('m014_3', 0, 4)]),
+      record('w015', '들다', [sense('m015_1', 2), sense('m015_2', 0, 2), sense('m015_3', 5)]),
+    ];
+    const licensed = { w014: ['m014_1', 'm014_2'], w015: ['m015_1', 'm015_2'] };
+    const run = (ordered) => {
+      const matches = ordered.map(({ id }) => ({
+        id,
+        match: { kind: 'generated-surface-form', senseIds: licensed[id].map((meaningId) => `${meaningId}-s`) },
+      }));
+      const results = projectSearchResults(ordered, matches);
+      const candidates = expandExactSearchCandidates(results);
+      return {
+        order: candidates.map(({ senseId }) => senseId),
+        shown: candidates.filter(({ isMore }) => !isMore).map(({ senseId }) => senseId),
+        first: defaultExactSearchCandidate(results).senseId,
+      };
+    };
+    const forward = run(records);
+    // Only licensed meanings are candidates: m015_1 (2,0), m014_2 (1,0), m015_2 (0,2), m014_1 (0,1).
+    expect(forward.order).toEqual(['m015_1', 'm014_2', 'm015_2', 'm014_1']);
+    expect(forward.shown).toEqual(['m015_1', 'm014_2', 'm015_2']);
+    expect(forward.first).toBe('m015_1');
+    expect(run([...records].reverse())).toEqual(forward);
   });
 
   it('starts on a default-view candidate even when it is not in the first record', () => {
