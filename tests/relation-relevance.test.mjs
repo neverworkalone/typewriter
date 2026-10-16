@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { SQLITE_SCHEMA_VERSION } from '../src/runtime/dictionary-contract.js';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 
@@ -78,7 +79,7 @@ test('SQLite persists relevance and keeps every relation past 100', async () => 
       repositoryDirectory: REPOSITORY_DIRECTORY,
       allowDirty: true,
     });
-    assert.equal(summary.metadata.schema_version, '4');
+    assert.equal(summary.metadata.schema_version, SQLITE_SCHEMA_VERSION);
     const database = new DatabaseSync(outputPath, { readOnly: true });
     try {
       const result = getSenseRelations(database, 'r000001-s1');
