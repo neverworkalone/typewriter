@@ -30,7 +30,7 @@ I then re-read all 187 remaining multi-Meaning lemmas against their bound glosse
 
 Stage 2 found three more under-merges: `콩과` (the bean plant and the plant family it belongs to), `켤레` (an everyday pair and the mathematical conjugate relation share the "two that correspond" composition), and `코르사주` (a bodice section and the flower ornament worn on that part). All three are merged with their source glosses preserved.
 
-I then re-checked every remaining lemma whose Meaning rows still split a single canonical record, since that was the pattern behind the findings, and merged the ones where the same word extends to a different object: `커터`(tool → boat that cuts through water), `콘트랄토`(register → viola named for it), `콱`, `크래커`(biscuit/party cracker; the hacker stays apart), `클럽`, `킬`(steel and tennis "kill"; the keel stays apart). Same-record splits kept with explicit reasons are `카노티에`, `카르통`, `카시아파`, `카운터`, `카운트`, `카피르족`, `캐넌`, `큐`, and the proper-name pairs.
+I then re-checked every remaining lemma whose Meaning rows still split a single canonical record, since that was the pattern behind the findings, and merged the ones where the same word extends to a different object: `커터`(tool → boat that cuts through water), `콘트랄토`(register → viola named for it), `콱`, `크래커`(biscuit/party cracker; the hacker stays apart), `클럽`, `킬`(only the keel and keel boat; see the fourth follow-up for the later reversals). Same-record splits kept with explicit reasons are `카노티에`, `카르통`, `카시아파`, `카운터`, `카운트`, `카피르족`, `캐넌`, `큐`, and the proper-name pairs.
 
 The regression test now fails on unknown sense IDs instead of passing vacuously, and adds the new controls.
 
