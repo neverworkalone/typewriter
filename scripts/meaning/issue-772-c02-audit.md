@@ -6,9 +6,9 @@ Source-bound self-check for Issue #772, based on `origin/master` at `b67dc3e4` (
 
 | Measure | #767 | #772 |
 | --- | ---: | ---: |
-| C02 Meaning rows | 3,794 | 3,765 |
+| C02 Meaning rows | 3,794 | 3,766 |
 | C02 source senses | 5,096 | 5,096 |
-| Multi-Meaning lemmas | 180 | 161 |
+| Multi-Meaning lemmas | 180 | 162 |
 | Lemmas regrouped | — | 28 |
 
 Every C02 sense is still in exactly one Meaning; `validate.mjs` (complete) passes.
@@ -20,13 +20,17 @@ Every C02 sense is still in exactly one Meaning; `validate.mjs` (complete) passe
 - `꽃노래`: a ritual segment and a folk song are two performance contexts of one "song of flowers"; genre/context alone does not make a homonym, and no source shows a separate proper work or rite name. 1 Meaning.
 - `끗`: the counting units for folded cloth and gambling score are merged as one 셈의 단위; the linguistics term `종지사` (주시경) stays separate.
 - `꼭`/`꼭꼭`: `w55687`/`w55746` (틀림없이·잘·흡족하게·비슷하게) and `w404222`/`w404409` (야무지게 누름·견딤·숨음) are one "빈틈없이 단단하고 틀림없는" adverb, so they are one Meaning each; the Bukcheong lion-play servant `w404221` and the hen's brooding call `w55747` stay separate.
-- Over-merge control `꼭지` (8→1 in #767): `s1~s4` (knob, kite mark, flail pin, fruit stalk) and `s5` (거지 우두머리, a synonym of 꼭지딴: the "head") share the small protruding top/head; the three counting units `s6~s8` (bundle, 20-ja thread length, proof bundle) do not reduce to that image and form a second Meaning. Result: 2.
+- Over-merge control `꼭지` (8→1 in #767): `s1~s4` (knob, kite mark, flail pin, fruit stalk) and `s5` (거지 우두머리, a synonym of 꼭지딴: the "head") share the small protruding top/head and form one Meaning. The counting units are not one image: `s6`/`s8` count tied bundles and proof bundles (묶음의 단위), while `s7` measures thread length (1 꼭지 = 20 자). A generic "unit" label cannot show continuity between measuring a length and counting bundles, so `s7` is its own Meaning. Result: 3.
 - Over-merge control `껍질샘` (= `각선`): `s1` is the excretory organ of lower crustaceans; `s2`/`s3` (mollusc shell, bird eggshell) are tissues that secrete the shell substance. Different organ function with no extension path, so `s1` is separate from `s2~s3`. The #764 audit listed this as retained while the data was merged; data and audit now agree (2 Meanings).
 - Positive/negative controls kept from #767: `까바리`(밥그릇/깡통) and `꽃내미장단` are single Meanings; `꽁이`(수갑/열쇠) stays two.
 
 ## Other regroupings
 
 `꺼지다` (the `거품이 꺼지다` sense bridges sinking and vanishing), `깨다` (egg hatching is breaking the shell; waking from sleep stays separate, per the source's own `깨다` numbering), `까부라지다` (bending/shrinking, linked by `고부라지다` in `w53799-s2`), `까칫까칫하다`/`꺼칫꺼칫하다` (rough skin vs catching on the skin), `꺽` (belch and choked-throat sounds), `껑청` (long legs, standing and leaping), `껴묻히다` (voice variants of burying/attaching together), `꽃봉오리` (the dance gesture imitates a bud), `꽃술` (stamens and the decorative strands that look like them), `꿍치다` (tying up → hiding).
+
+## Gloss fidelity check (Stage 1 feedback)
+
+All 28 merged representative glosses were re-read against their bound canonical sense glosses for abstraction or misstatement. Corrected: `끼적거리다` (the eating sense is stated directly, not as a comparison), `꼭지` units (length vs bundle), `끗` (cloth-fold length stated as such), `꽃노래` (invented "노래하는 노래" opener removed), `꺼지다` (물체의 바닥이 내려앉거나 빠지거나), `깨다` (hatching stated as source does: intransitive 나오다 and causative 까게 하다), `까칫까칫하다` (야위거나 restored). The parallel derivative families (`끼적*`, `깨작*`, `꺼칫꺼칫하다`) were checked for the same pattern; their glosses keep the eating/behavior sense direct. Structural membership checks cannot detect this class of error, so it stays a manual source check.
 
 ## Full audit of the 180 lemmas
 
