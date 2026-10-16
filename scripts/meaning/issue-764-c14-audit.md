@@ -2,15 +2,15 @@
 
 ## Scope and evidence
 
-This is the C14 (ㅉ) source-bound self-check for Issue #764, based on `origin/master` at `417aaf0f`. It re-judged every C14 lemma that had more than one #716 Meaning row (520 of 1,435 lemmas, 1,607 rows) against the lemma's full set of canonical records and senses and the current Meaning glosses. The executable decision record is [`issue-764-c14.json`](issue-764-c14.json): each of the 446 lemmas whose grouping changed carries an exact `before` snapshot and a complete `groups` partition. The other 74 multi-Meaning lemmas were re-read and deliberately retained. Single-Meaning lemmas cannot be split or merged and are untouched.
+This is the C14 (ㅉ) source-bound self-check for Issue #764, based on `origin/master` at `417aaf0f`. It re-judged every C14 lemma that had more than one #716 Meaning row (520 of 1,435 lemmas, 1,607 rows) against the lemma's full set of canonical records and senses and the current Meaning glosses. The executable decision record is [`issue-764-c14.json`](issue-764-c14.json): each of the 450 lemmas whose grouping changed carries an exact `before` snapshot and a complete `groups` partition. The other 70 multi-Meaning lemmas were re-read and deliberately retained. Single-Meaning lemmas cannot be split or merged and are untouched.
 
 | Measure | Before | After |
 | --- | ---: | ---: |
 | C14 lemmas | 1,435 | 1,435 |
-| C14 Meaning rows | 2,522 | 1,649 |
+| C14 Meaning rows | 2,522 | 1,639 |
 | Multi-Meaning lemmas re-judged | 520 | — |
-| Lemmas whose Meaning count changed | — | 446 |
-| Multi-Meaning lemmas retained as is | — | 74 |
+| Lemmas whose Meaning count changed | — | 450 |
+| Multi-Meaning lemmas retained as is | — | 70 |
 | Repository adjudications | 117 | 117 |
 
 Every canonical C14 sense stays in exactly one final group; no sense is dropped and no adjudication is added. Canonical JSONL is unchanged. `apply-edits` checks the exact current snapshot of each lemma and rejects missing, duplicated or foreign senses before writing.
