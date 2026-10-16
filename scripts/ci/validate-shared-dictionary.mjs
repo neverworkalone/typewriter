@@ -8,6 +8,7 @@ import {
   loadCanonicalContext,
 } from '../validate/canonical-context.mjs';
 import { DEFAULT_CANONICAL_DIRECTORY } from '../validate/canonical-jsonl.mjs';
+import { SQLITE_SCHEMA_VERSION } from '../build/sqlite-schema.mjs';
 import {
   buildOrReuseSurfaceFormProjection,
   loadSurfaceFormExceptionManifest,
@@ -37,8 +38,8 @@ export async function validateSharedDictionary({
       throw new Error(`shared SQLite foreign-key check failed: ${JSON.stringify(foreignKeys)}`);
     }
     const userVersion = database.prepare('PRAGMA user_version').get().user_version;
-    if (userVersion !== 3) {
-      throw new Error(`shared SQLite schema version must be 3, received ${userVersion}`);
+    if (userVersion !== Number.parseInt(SQLITE_SCHEMA_VERSION, 10)) {
+      throw new Error(`shared SQLite schema version must be ${SQLITE_SCHEMA_VERSION}, received ${userVersion}`);
     }
     const metadata = Object.fromEntries(
       database.prepare('SELECT key, value FROM metadata ORDER BY key').all()
