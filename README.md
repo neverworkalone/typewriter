@@ -161,6 +161,7 @@ assets:
 - Third-party components retain their own licenses; see
   [Third-party notices](THIRD-PARTY-NOTICES.txt).
 
+
 **국립국어원 사전 자료 출처 및 저작권 정책**
 
 - **표준국어대사전:** 국립국어원 『표준국어대사전』
