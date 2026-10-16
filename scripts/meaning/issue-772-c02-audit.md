@@ -32,6 +32,8 @@ Every C02 sense is still in exactly one Meaning; `validate.mjs` (complete) passe
 
 All 28 merged representative glosses were re-read against their bound canonical sense glosses for abstraction or misstatement. Corrected: `끼적거리다` (the eating sense is stated directly, not as a comparison), `꼭지` units (length vs bundle), `끗` (cloth-fold length stated as such), `꽃노래` (invented "노래하는 노래" opener removed), `꺼지다` (물체의 바닥이 내려앉거나 빠지거나), `깨다` (hatching stated as source does: intransitive 나오다 and causative 까게 하다), `까칫까칫하다` (야위거나 restored). The parallel derivative families (`끼적*`, `깨작*`, `꺼칫꺼칫하다`) were checked for the same pattern; their glosses keep the eating/behavior sense direct. Structural membership checks cannot detect this class of error, so it stays a manual source check.
 
+Owner supplement (#764): a Meaning merge and the gloss wording are separate. Merged glosses therefore list each bound source usage as its own sentence and no longer open with an invented common abstraction; `꼭`, `꼭꼭` and `꼭지` were rewritten accordingly. This does not widen any merge.
+
 ## Full audit of the 180 lemmas
 
 Counts show #767 → #772 Meaning numbers. Retained splits record why no natural extension path exists in the source senses; each category was applied lemma by lemma to the actual record/sense lists, not to the gloss strings alone.
