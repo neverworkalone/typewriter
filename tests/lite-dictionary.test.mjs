@@ -171,7 +171,7 @@ test('Lite verification passes for a real extraction with different files and fa
     for (const mutation of [
       "UPDATE records SET lemma = lemma || 'x' WHERE id = (SELECT MIN(id) FROM records)",
       "UPDATE metadata SET value = 'tampered' WHERE key = 'source_revision'",
-      'DELETE FROM search_forms WHERE rowid = (SELECT MIN(rowid) FROM search_forms)',
+      'DELETE FROM search_forms WHERE (record_id, position) = (SELECT record_id, position FROM search_forms ORDER BY record_id, position LIMIT 1)',
     ]) {
       const tampered = path.join(directory, 'tampered-lite.sqlite');
       await copyFile(litePath, tampered);
@@ -181,5 +181,24 @@ test('Lite verification passes for a real extraction with different files and fa
     }
     // Swapped roles are refused by kind.
     assert.throws(() => verifyLiteExtraction({ fullPath: litePath, litePath: fullPath }), /must be a full/u);
+  });
+});
+
+// Invariant (Issue #800): the shipped Lite database stores every keyed product table clustered on its primary key
+// (no separate rowid table + autoindex) and is repacked, so no free pages are left from the bulk copy.
+test('Lite product tables are WITHOUT ROWID and the file is repacked', async () => {
+  const CLUSTERED_TABLES = [
+    'records', 'search_forms', 'generated_surface_forms', 'meanings', 'meaning_members', 'meaning_relations',
+  ];
+  await withFullAndLite(({ litePath }) => {
+    withDatabase(litePath, (lite) => {
+      for (const table of CLUSTERED_TABLES) {
+        const { sql } = lite.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?").get(table);
+        assert.match(sql, /WITHOUT ROWID\s*$/u, `${table} must be WITHOUT ROWID`);
+        assert.throws(() => lite.prepare(`SELECT rowid FROM ${table} LIMIT 1`).get(), /no such column: rowid/u);
+      }
+      assert.equal(lite.prepare('PRAGMA freelist_count').get().freelist_count, 0);
+      assert.doesNotThrow(() => validatePackagedDictionary(lite));
+    });
   });
 });
