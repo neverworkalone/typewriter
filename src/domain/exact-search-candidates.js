@@ -99,6 +99,9 @@ export function firstSentence(text) {
       const before = source[index - 1];
       const after = source[index + 1];
       if (open.at(-1) === char && !(after && /[\p{L}\p{N}]/u.test(after))) {
+        // Inside a quote, an ASCII letter followed by ' + space is either a closing quote or a possessive
+        // (dogs' bones). That cannot be decided here, so fail closed: keep the whole text, CSS clips it.
+        if (before && /[A-Za-z]/.test(before)) return source;
         open.pop();
       } else if ((before === undefined || /[\s([{“‘「『]/u.test(before)) && after && !/\s/.test(after)) {
         open.push(char);

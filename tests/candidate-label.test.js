@@ -35,6 +35,10 @@ describe('firstSentence', () => {
     ['"그가 \'가자.\' 했다." 하고 말했다. 다음.', '"그가 \'가자.\' 했다." 하고 말했다.'],
     ["It's a dog's life. Next.", "It's a dog's life."],
     ["the dogs' bones are here. Next.", "the dogs' bones are here."],
+    // ambiguous ASCII ' + space inside a quote (closing quote vs possessive): keep the whole text
+    ["She read the line 'the dogs' bones.' aloud, then stopped. Next.", "She read the line 'the dogs' bones.' aloud, then stopped. Next."],
+    ["He said 'stop' loudly. Next.", "He said 'stop' loudly. Next."],
+    ["'가자' 하고 말했다. 다음.", "'가자' 하고 말했다."],
     ["'끝났다.' 다음.", "'끝났다.' 다음."],
     ["'닫히지 않은 따옴표. 다음.", "'닫히지 않은 따옴표. 다음."],
     // no terminator / no boundary: whole text, no loss
