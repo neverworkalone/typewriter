@@ -222,3 +222,39 @@ test('rejects a packaged dictionary that is not a labelled Lite product database
     unlabelled.close();
   }
 });
+
+test('the extension startup validation rejects Full-kind and source-table databases and accepts Lite', () => {
+  const lite = createDictionary();
+  try {
+    assert.doesNotThrow(() => validateRuntimeDictionary(lite));
+  } finally {
+    lite.close();
+  }
+  for (const database_kind of ['full', 'unknown']) {
+    const database = createDictionary({ metadataOverrides: { database_kind } });
+    try {
+      assert.throws(() => validateRuntimeDictionary(database), { code: 'DATABASE_METADATA_INVALID' });
+    } finally {
+      database.close();
+    }
+  }
+  const unlabelled = createDictionary();
+  try {
+    unlabelled.exec("DELETE FROM metadata WHERE key = 'database_kind'");
+    assert.throws(() => validateRuntimeDictionary(unlabelled), { code: 'DATABASE_METADATA_INVALID' });
+  } finally {
+    unlabelled.close();
+  }
+  for (const table of BUILD_ONLY_TABLES) {
+    const database = createDictionary();
+    try {
+      database.exec(`CREATE TABLE ${table} (id TEXT)`);
+      assert.throws(() => validateRuntimeDictionary(database), {
+        code: 'DATABASE_INTEGRITY_FAILED',
+        details: { build_only_tables: [table] },
+      });
+    } finally {
+      database.close();
+    }
+  }
+});

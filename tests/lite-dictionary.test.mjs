@@ -18,7 +18,7 @@ import {
   getMeaningRecord,
   readLogicalDatabaseSnapshot,
 } from '../scripts/build/query.mjs';
-import { validatePackagedDictionary } from '../src/runtime/dictionary-validation.js';
+import { validatePackagedDictionary, validateRuntimeDictionary } from '../src/runtime/dictionary-validation.js';
 import { BUILD_ONLY_TABLES } from '../src/runtime/dictionary-contract.js';
 import { validateSharedDictionary } from '../scripts/ci/validate-shared-dictionary.mjs';
 
@@ -65,6 +65,9 @@ test('Full keeps the source layer and Lite drops it; kinds are identified and cr
     });
     // The package/runtime validator refuses Full; the CI shared-artifact validator refuses Lite.
     withDatabase(fullPath, (full) => assert.throws(() => validatePackagedDictionary(full), /Lite|build-only/u));
+    // The extension startup path (validateRuntimeDictionary) refuses a real Full database and accepts the real Lite.
+    withDatabase(fullPath, (full) => assert.throws(() => validateRuntimeDictionary(full), /Lite|build-only/u));
+    withDatabase(litePath, (lite) => assert.doesNotThrow(() => validateRuntimeDictionary(lite)));
   });
 });
 
