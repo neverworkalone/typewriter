@@ -9,11 +9,11 @@ This is the C06 source-bound self-check for Issue #764, based on the current cle
 | Canonical records | 2,891 | 2,891 |
 | Lemmas | 2,673 | 2,673 |
 | Canonical senses | 3,101 | 3,101 |
-| Meaning rows | 3,043 | 2,922 |
+| Meaning rows | 3,043 | 2,920 |
 | Multi-sense lemmas | 254 | 254 |
 | Single-sense lemmas explicitly retained | — | 2,419 |
-| Lemmas whose Meaning count changed | — | 97 |
-| Lemmas retaining multiple Meanings | — | 152 |
+| Lemmas whose Meaning count changed | — | 99 |
+| Lemmas retaining multiple Meanings | — | 150 |
 | Adjudications | 0 new | 0 new |
 
 Every C06 source sense occurs in exactly one final group. The edit does not drop senses or append adjudications. Canonical JSONL is unchanged. The executable spec contains exact before snapshots and final groups for all 2,673 lemmas, including single-sense lemmas. The apply script checks snapshot equality and complete, non-overlapping source-sense coverage.
@@ -35,14 +35,14 @@ The first column lists the complete final source-sense partition for every lemma
 | 라베 | w99099-s1 / w424298-s1 | 분리 |
 | 라임 | w99107-s1 / w99108-s1 | 분리 |
 | 라틴 | w99138-s1+w99138-s2 | 통합 |
-| 람다 | w99297-s1 / w99297-s2 | 분리 |
+| 람다 | w99297-s1+w99297-s2 | 통합 |
 | 라오콘 | w99484-s1+w100020-s1 | 통합 |
 | 라운드 | w99501-s1+w99501-s2 | 통합 |
 | 라르고 | w99631-s1+w99631-s2 / w99632-s1 | 분리 |
-| 라인 아웃 | w99636-s1+w99636-s3 / w99636-s2 | 분리 |
+| 라인 아웃 | w99636-s1+w99636-s2+w99636-s3 | 통합 |
 | 라인업 | w99686-s1+w99686-s2 | 통합 |
 | 라마 | w99854-s1 / w99855-s1 / w419172-s1 | 분리 |
-| 램 | w99865-s1 / w99865-s2 / w418240-s1+w418240-s2+w418240-s3 / w99866-s1 / w99867-s1 | 분리 |
+| 램 | w99865-s1+w99865-s2 / w418240-s1+w418240-s2+w418240-s3 / w99866-s1 / w99867-s1 | 분리 |
 | 레온 | w99896-s1 / w99897-s1 / w99898-s1 | 분리 |
 | 레이놀즈 | w99899-s1 / w419615-s1 | 분리 |
 | 라살 | w99968-s1 / w99969-s1 / w417462-s1 | 분리 |
@@ -291,7 +291,7 @@ The first column lists the complete final source-sense partition for every lemma
 | 라운드 | w99501-s1, w99501-s2 | 두 종목에서 경기를 나누어 진행하는 한 단위. |
 | 라이너 | w100250-s2, w100250-s3 | 옷·기계 안쪽을 덧대는 보호용 라이닝. |
 | 라이선스 | w100131-s1, w100131-s2, w100131-s3 | 행정 면허, 거래 허가, 기술 사용권은 모두 허가의 범위. |
-| 라인 아웃 | w99636-s1, w99636-s3 | 터치라인 밖으로 공이 나가는 스포츠 상황의 종목별 용법. |
+| 라인 아웃 | w99636-s1, w99636-s2, w99636-s3 | 종목·대상·판정은 다르지만 모두 경기의 선·경계 밖으로 나가는 구성 의미를 사용하며 세 원뜻을 한 gloss에 보존. |
 | 라인란트 | w420832-s1, w420832-s2 | 역사적 행정구역은 라인강 연안 지역의 구체적 범위. |
 | 라인업 | w99686-s1, w99686-s2 | 출전 선수 명단과 정렬은 한 팀의 구성·배치. |
 | 러시아 문자 | w102560-s1, w102560-s2 | 현재 러시아 문자와 그 역사적 문자 바탕은 같은 문자 계보. |
@@ -403,7 +403,7 @@ The first column lists the complete final source-sense partition for every lemma
 - 라디오그램 remains divided among the combined radio/record player, X-ray, and wireless telegram senses: the shared radio component does not make the resulting device, radiation, and message one lexical identity.
 - 라이 retains the favorable position of a golf ball and the angle between a club shaft and head as separate golf terms; shared domain alone does not connect the meanings.
 - 라이트 keeps the distinct Wright brothers, architect, author, and cross-reference sense separate; the matching Roman spelling does not merge people or redirect targets.
-- 라인 아웃 groups rugby and handball uses concerning a ball crossing the touchline, while the baseball runner-out rule stays separate. 라인 크로스 groups the sports infractions because each source sense defines crossing or stepping over a line as the same foul.
+- 라인 아웃 groups rugby, baseball, and handball boundary-out uses while preserving their distinct restarts and rulings. 라인 크로스 groups the sports infractions because each source sense defines crossing or stepping over a line as the same foul.
 - 랩 groups athletic lap counts with the time measured for a lap, and wrap clothing with food film as uses that cover a body or food. Rap music remains separate. 리 keeps distance, ratio, length, and weight units separate when their quantities and dimensions differ.
 - 레닌 keeps the kidney enzyme, milk-curdling enzyme, and revolutionary as separate identities. 루트 groups mathematical root/chord root and the computer top directory/administrator account separately from the political figure and route/path senses.
 - Eponymous people and their unrelated namesakes remain distinct throughout (for example, the Ramans, Lavoisiers, Lawrences, Rockefellers, Russells, and Riemanns). Historical agreements with the same city-based title, including 런던 조약 senses, remain separate instruments.
@@ -411,15 +411,15 @@ The first column lists the complete final source-sense partition for every lemma
 
 ## Stage 2 follow-up source-bound review
 
-After the Stage 2 review, I parsed the exact reviewed PR HEAD `ff273fad72acfd1bec0f49b1b48d9edc7dd1ea11` and enumerated every canonical record whose senses occupied more than one final Meaning. The review's count of 48 is the number of lemmas; the corresponding count by canonical record ID is 50. I compared all source senses, their final memberships, and the relevant linked or derived entries. After the accepted follow-up corrections, twenty-two canonical records across twenty-one lemmas now share one Meaning; the remaining twenty-eight record splits across twenty-eight lemmas are retained below with their source-bound distinction. This count includes the country/capital senses for `룩셈부르크`, sport/player senses for `러거`, and the three boundaries accepted in review `5545350706`. This is a primary-context agent self-check, not an independent review or a mechanical string rule.
+After the Stage 2 review, I parsed the exact reviewed PR HEAD `ff273fad72acfd1bec0f49b1b48d9edc7dd1ea11` and enumerated every canonical record whose senses occupied more than one final Meaning. The review's count of 48 is the number of lemmas; the corresponding count by canonical record ID is 50. I compared all source senses, their final memberships, and the relevant linked or derived entries. After the accepted follow-up corrections, twenty-four canonical records across twenty-three lemmas now share one Meaning; the remaining twenty-six record splits across twenty-six lemmas are retained below with their source-bound distinction. This count includes the country/capital senses for `룩셈부르크`, sport/player senses for `러거`, the three boundaries accepted in review `5545350706`, and the two additional merges accepted in review `5545413031`. This is a primary-context agent self-check, not an independent review or a mechanical string rule.
 
 | Lemma / canonical record | Final source-sense groups | Assessment |
 | --- | --- | --- |
 | 란체라 (`w98782`) | w98782-s1 / w98782-s2 | 분리: 멕시코 시골풍 대중음악과 아르헨티나의 3/4·6/8박 민요·춤은 지역별 장르와 리듬이 달라 유지. |
 | 라틴 (`w99138`) | w99138-s1+w99138-s2 | 통합: 라틴어와 라틴 민족·언어 계통을 가리키는 표현은 하나의 라틴 계보 명칭으로 묶음. |
 | 람다 (`w99297`) | w99297-s1+w99297-s2 | 통합: 부피 단위의 기호가 그리스 자모 λ와 같고 단위 이름도 그 자모를 그대로 사용하므로, 글자와 그 기호로 명명된 단위를 한 Meaning에 원뜻 그대로 병기. |
-| 라인 아웃 (`w99636`) | w99636-s1+w99636-s3 / w99636-s2 | 분리: 럭비·핸드볼의 터치라인 이탈은 같은 경계 상황으로 묶고, 야구 주자의 주루선 이탈 아웃은 별도 판정으로 유지. |
-| 램 (`w99865`) | w99865-s1 / w99865-s2 | 분리: 어린양의 털가죽·직물과 식용 고기는 산출물과 용도가 달라 유지. |
+| 라인 아웃 (`w99636`) | w99636-s1+w99636-s2+w99636-s3 | 통합: 공이나 주자가 경기의 선·경계 밖으로 나가 생기는 용법을 묶고, 럭비 재개 방식·야구 아웃·핸드볼 경계 이탈의 원뜻을 모두 보존. |
+| 램 (`w99865`) | w99865-s1+w99865-s2 | 통합: 같은 어린양에서 나온 털가죽·가죽 유사 천과 고기의 산출물 용법을 묶고 두 원뜻을 보존. 기계의 램(w418240) 및 컴퓨터 기억 장치(w99867)는 별개로 유지. |
 | 램 (`w418240`) | w418240-s1+w418240-s2+w418240-s3 | 통합: 말뚝을 치는 망치와 기계의 왕복 램 부품은 힘을 가해 치거나 가공하는 왕복 작동 부재로 묶음. |
 | 라디오그램 (`w100007`) | w100007-s1 / w100007-s2 / w100007-s3 | 분리: 음향 기기, 엑스선 사진, 무선 전보는 매체와 결과물이 달라 각각 유지. |
 | 라이어 (`w100186`) | w100186-s1 / w100186-s2 | 분리: 현악기 리라와 거짓말하는 사람은 동음 표기일 뿐 어휘 의미가 달라 유지. |
@@ -481,7 +481,7 @@ The review identified two over-merges of separately titled works and two under-m
 | 룩셈부르크 | w103570-s1+w103570-s2 / w419193-s1 | 통합/분리: the country and its capital share the exact geographic name, which the source glosses explicitly connect; their two original glosses are concatenated in one Meaning. The Luxembourg revolutionary remains independent. |
 | 러거 | w424485-s1+w424485-s2 | 통합: the source names both rugby football and a player of that same sport; the result preserves both original glosses in one Meaning. |
 
-The manual issue-specific regression at scripts/meaning/issue-764-c06.test.mjs checks exact spec-to-output membership, all four work-title senses as separate groups, the epic/opera split, the country/capital and sport/player merges, and the independent Luxembourg revolutionary as a negative control. A direct comparison confirms all four boundary assertions fail on the a8f0029a memberships and pass after that repartition. The three additional merge findings below were independently checked against HEAD `620c9aec`; the 28 other retained same-record splits continue to have their source-bound dispositions listed above. This follow-up does not infer automatic merges from shared spelling or source-record boundaries.
+The manual issue-specific regression at scripts/meaning/issue-764-c06.test.mjs checks exact spec-to-output membership, all four work-title senses as separate groups, the epic/opera split, the country/capital and sport/player merges, and the independent Luxembourg revolutionary as a negative control. A direct comparison confirms all four boundary assertions fail on the a8f0029a memberships and pass after that repartition. The three additional merge findings below were independently checked against HEAD `620c9aec`; at that point 28 other retained same-record splits had source-bound dispositions listed above. The subsequent Stage 1 review adds two cases below. This follow-up does not infer automatic merges from shared spelling or source-record boundaries.
 
 ## Follow-up to Stage 2 review 5545350706
 
@@ -495,11 +495,25 @@ The review identified three same-record under-merges whose source senses use one
 
 The bounded same-pattern comparison found `로드` (rod and its length unit) and `릴` (reel device and film-length unit) already grouped, consistent with the direct name-to-measure extension in `람다`. The remaining `리` senses name distinct ratio, length, and weight measures, so they do not share that specific symbol-based naming principle. `로드레이서` remains split: its source distinguishes a person competing in a road race from a vehicle used in the event; sharing the event does not make the vehicle the same receiving or racing role. `로마 조약` remains split because its senses are two separately negotiated international instruments, not a city and its named administrative area. These comparisons are limited to the relevant source-bound patterns, not a new census of all C06 meanings.
 
+## Follow-up to Stage 1 review 5545413031
+
+The Stage 1 reviewer independently accepted the three prior naming-principle corrections and identified two additional under-merges in the retained same-record set. I accepted both after comparing every canonical gloss in each record with the current spec and output. Across the five findings, thirteen source senses in five lemmas now share their supported lexical Meanings, with each original source gloss retained verbatim.
+
+| Lemma | Source senses | Final decision and evidence |
+| --- | --- | --- |
+| 라인 아웃 | w99636-s1+w99636-s2+w99636-s3 | 통합: rugby line-out, baseball runner out beyond the base line, and handball ball out across the touchline all use the same line/boundary-out expression. Their distinct event, consequence, and sport details remain in the three verbatim source glosses. |
+| 램 | w99865-s1+w99865-s2 | 통합: lamb hide/fur or lamb-like fabric and lamb meat are named outputs of the same animal lexeme. Both original glosses remain verbatim together; the distinct mechanical ram senses (w418240) and computer RAM (w99867) stay separate. |
+
+The bounded sibling check compared the animal-output disposition with `리치` (tree/fruit already grouped) and `라텍스` (source material/processed material already grouped). For `램`, the mechanical source record and the computer-memory record are negative controls rather than products of the lamb lexeme. The separate `로드레이서` participant/vehicle and `로마 조약` title/document controls remain unchanged for the reasons above. This targeted comparison found no additional same-record split with these two specific naming patterns among the reviewed remainder; it is not a full semantic re-audit of the 2,673 lemmas.
+
+The regression now contains positive `same` controls for all five accepted findings on HEAD `620c9aec`, preserves the prior work, title, Luxembourg-person, and rugby controls, checks the lamb/mechanical-ram and lamb/computer-RAM negatives, and verifies every merged source gloss verbatim. All five new merge assertions fail on `620c9aec` and pass on the current repartition. Exact-base replay from `417aaf0fd718c6b1695b177b685348cdd6205729` reproduces all 2,673 repartitions and four C06 shards byte-for-byte, with 3,101 canonical senses represented once and adjudications unchanged.
+
 The manual regression now checks the three positive pairs above, the prior four accepted findings, separate `로드레이서` person/vehicle and `로마 조약` document controls, and distinct named works and the independent Luxembourg revolutionary. A direct comparison confirms the three new merge assertions fail on HEAD `620c9aec` and pass on this repartition. Exact-base replay from `417aaf0fd718c6b1695b177b685348cdd6205729` reproduces all 2,673 repartitions and four C06 shards byte-for-byte, with all 3,101 canonical senses represented once and adjudications unchanged.
 
 ## Validation record
 
-- Stage 2 follow-up for review `5545350706`: `node scripts/meaning/validate.mjs` passed (495,004 meanings; 117 adjudications); exact-base replay from `417aaf0fd718c6b1695b177b685348cdd6205729` reproduced all 2,673 repartitions and four C06 shards byte-for-byte, preserving all 3,101 canonical senses and all adjudications. The manual C06 boundary regression passed 19/19 checks, including the three new naming-principle merges, verbatim source-gloss preservation, prior review controls, separate works, the independent Luxembourg revolutionary, and bounded sibling negatives. All three new merge assertions fail on HEAD `620c9aec` and pass on this repartition. `git diff --check` passed.
+- Stage 1 follow-up for review `5545413031`: `node scripts/meaning/validate.mjs` passed (495,002 meanings; 117 adjudications); exact-base replay from `417aaf0fd718c6b1695b177b685348cdd6205729` reproduced all 2,673 repartitions and four C06 shards byte-for-byte, preserving all 3,101 canonical senses and all adjudications. The manual C06 boundary regression passed 23/23 checks, including all five new naming-principle merges, verbatim source-gloss preservation, prior review controls, separate works and people, and animal/mechanical/computer negative controls. All five new merge assertions fail on HEAD `620c9aec` and pass on this repartition. `git diff --check` passed.
+- Prior Stage 2 follow-up for review `5545350706` on HEAD `620c9aec`: `node scripts/meaning/validate.mjs` passed (495,004 meanings; 117 adjudications); exact-base replay reproduced all 2,673 repartitions and four C06 shards byte-for-byte. The manual regression passed 19/19 checks.
 - Prior Stage 2 review correction (commit `620c9aec`): `node scripts/meaning/validate.mjs` passed (495,007 meanings; 117 adjudications); exact-base replay reproduced all 2,673 repartitions and four C06 shards byte-for-byte. The manual regression passed 13/13 checks.
 - Baseline node scripts/meaning/validate.mjs passed before editing (495,125 meanings; 117 adjudications). The post-edit validator passed (495,005 meanings; 117 adjudications).
 - Exact-base replay from 417aaf0fd718c6b1695b177b685348cdd6205729 passed: all 2,673 repartitions reproduced the working Meaning rows, and all four C06 shard files matched replay byte-for-byte.

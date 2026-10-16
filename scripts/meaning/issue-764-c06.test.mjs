@@ -42,6 +42,8 @@ const mustMerge = [
   ['람다 글자/기호를 쓰는 부피 단위', ['w99297-s1', 'w99297-s2']],
   ['리시버 수신 장치/서브를 받는 선수', ['w418668-s1', 'w418668-s2']],
   ['로마의 역사적 도시/동명 행정 구역', ['w417861-s1', 'w417861-s2', 'w417861-s3', 'w417861-s4']],
+  ['라인 아웃의 공/주자 경계 이탈 용법', ['w99636-s1', 'w99636-s2', 'w99636-s3']],
+  ['램 어린양의 털가죽/고기', ['w99865-s1', 'w99865-s2']],
 ];
 for (const [name, senseIds] of mustMerge) {
   test(`C06 under-merge control: ${name} is one Meaning`, () => assert.ok(sameMeaning(senseIds), name));
@@ -69,6 +71,8 @@ const mustSplit = [
   ['룩셈부르크 수도/혁명가', 'w103570-s2', 'w419193-s1'],
   ['로드레이서 경기자/경기용 자전거나 오토바이', 'w105637-s1', 'w105637-s2'],
   ['로마 조약의 서로 다른 국제 협정', 'w417471-s1', 'w417471-s2'],
+  ['램 어린양/기계 왕복 부품', 'w99865-s1', 'w418240-s2'],
+  ['램 어린양/컴퓨터 기억 장치', 'w99865-s2', 'w99867-s1'],
 ];
 for (const [name, left, right] of mustSplit) {
   test(`C06 over-merge control: ${name} stays separate`, () => {
