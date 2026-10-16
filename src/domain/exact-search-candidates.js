@@ -93,6 +93,18 @@ export function firstSentence(text) {
       else open.push(char);
       continue;
     }
+    if (char === "'") {
+      // ASCII single quotes also serve as apostrophes: only a quote at a word start opens, and only one
+      // not followed by a letter/digit closes. Anything else (don't, dogs') is ignored.
+      const before = source[index - 1];
+      const after = source[index + 1];
+      if (open.at(-1) === char && !(after && /[\p{L}\p{N}]/u.test(after))) {
+        open.pop();
+      } else if ((before === undefined || /[\s([{“‘「『]/u.test(before)) && after && !/\s/.test(after)) {
+        open.push(char);
+      }
+      continue;
+    }
     if (OPENERS.has(char)) {
       open.push(char);
       continue;
