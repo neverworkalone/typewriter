@@ -91,7 +91,7 @@
 
 ### c10 (ㅅ)
 
-`data/meanings/c10_001`~`c10_061`(ㅅ, 42,288 lemma)을 계약대로 재편집했다. 스펙은 두 개이며 순서대로 `apply-edits`로 적용했다: `scripts/meaning/c10-716.json`(1차: 917 MERGE, 14 DROP)과 `scripts/meaning/c10-716-b.json`(2차: 2,225 MERGE). 결과는 60,813 → 57,342 meaning이며 `validate.mjs`(complete)와 `scripts/meaning` 테스트를 통과한다.
+`data/meanings/c10_001`~`c10_061`(ㅅ, 42,288 lemma)을 계약대로 재편집했다. 스펙은 두 개이며 순서대로 `apply-edits`로 적용했다: `scripts/meaning/c10-716.json`(1차: 917 MERGE, 14 DROP)과 `scripts/meaning/c10-716-b.json`(2차: 2,220 MERGE). 결과는 60,813 → 57,349 meaning이며 `validate.mjs`(complete)와 `scripts/meaning` 테스트를 통과한다.
 
 - **검토 범위(전량)**: meaning이 둘 이상인 모든 lemma(7,525개)의 같은 lemma sense 전부를 canonical 원문 gloss에 결속해 읽고 KEEP/MERGE/DROP을 판정했다. 1차는 용언 3개 이상·유사 gloss 쌍을, 2차는 1차에서 열람하지 않은 2~4 meaning 명사를 포함한 나머지 lemma 전체를 어휘 순서대로 처음부터 끝까지 읽었다. 판정 대상에서 제외한 lemma는 없다. 후보 필터 없이 전수 열람했으나 판정은 의미 판단이므로 `KEEP`은 ‘검토 후 독립 의미로 유지’를 뜻한다.
 - **2차 판단 기준**: 같은 lemma·같은 품사에서 gloss가 같은 의미를 좁은/넓은 용례로 나열한 경우(`A 또는 B`, 하위 사례 포함)는 MERGE, 지시 대상이 다른 계수 단위·관직의 시대 차이·성씨/인명/지명·직접 의미와 비유 의미가 갈리는 항목은 KEEP했다. 같은 어휘의 `-하다`/`-되다`/`-히`/`-이` 파생형은 각각의 lemma에서 같은 기준으로 판정했다.
