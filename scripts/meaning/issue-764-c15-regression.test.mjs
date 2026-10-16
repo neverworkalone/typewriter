@@ -44,6 +44,7 @@ test('independent words and proper names stay separate Meanings', () => {
   assert.ok(!same('w315324-s1', 'w486341-s1'), '차양: adoption system vs awning');
   assert.ok(!same('w328155-s1', 'w328155-s2'), '천기: 天紀 (celestial order) vs 天璣 (star name)');
   assert.ok(!same('w328155-s1', 'w328159-s1'), '천기: 天紀 vs the star 天璣');
+  assert.ok(!same('w334660-s1', 'w334660-s2'), '축모: curled hair vs sheep wool (different naming principle)');
   assert.ok(!same('w331985-s1', 'w331985-s2'), '취타수: military band player vs cannon gunner');
   assert.ok(!same('w337342-s1', 'w337342-s2'), '칙찬: king writing himself vs compiling by royal order');
   assert.ok(!same('w337343-s1', 'w337343-s2'), '칙찬하다');
