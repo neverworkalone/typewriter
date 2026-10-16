@@ -78,7 +78,7 @@ test('SQLite persists relevance and keeps every relation past 100', async () => 
       repositoryDirectory: REPOSITORY_DIRECTORY,
       allowDirty: true,
     });
-    assert.equal(summary.metadata.schema_version, '3');
+    assert.equal(summary.metadata.schema_version, '4');
     const database = new DatabaseSync(outputPath, { readOnly: true });
     try {
       const result = getSenseRelations(database, 'r000001-s1');
