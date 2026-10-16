@@ -84,8 +84,25 @@ function isAbbreviationPeriod(text, index) {
 export function firstSentence(text) {
   if (typeof text !== 'string') return '';
   const source = text.trim();
-  const open = [];
-  for (let index = 0; index < source.length; index += 1) {
+  const end = firstSentenceEnd(source);
+  return typeof end === 'number' ? source.slice(0, end) : source;
+}
+
+const UNCLOSED = Symbol('unclosed');
+
+// Scans from `start` with the given open-bracket/quote stack. Returns the end offset of the first sentence,
+// null when the text has no boundary, or UNCLOSED when the scan ended inside an unclosed bracket/quote.
+function firstSentenceEnd(source, start = 0, stack = [], memo = new Map()) {
+  const memoKey = `${start}|${stack.join('')}`;
+  if (memo.has(memoKey)) return memo.get(memoKey);
+  const result = scanSentence(source, start, stack, memo);
+  memo.set(memoKey, result);
+  return result;
+}
+
+function scanSentence(source, start, initialStack, memo) {
+  const open = [...initialStack];
+  for (let index = start; index < source.length; index += 1) {
     const char = source[index];
     if (char === '"') {
       // Straight double quotes are their own opener and closer.
@@ -99,9 +116,17 @@ export function firstSentence(text) {
       const before = source[index - 1];
       const after = source[index + 1];
       if (open.at(-1) === char && !(after && /[\p{L}\p{N}]/u.test(after))) {
-        // Inside a quote, an ASCII letter followed by ' + space is either a closing quote or a possessive
-        // (dogs' bones). That cannot be decided here, so fail closed: keep the whole text, CSS clips it.
-        if (before && /[A-Za-z]/.test(before)) return source;
+        if (before && /[A-Za-z]/.test(before)) {
+          // After an ASCII letter this is a closing quote or a possessive (dogs' bones). Try both readings:
+          // a reading that never closes its quote is rejected; if the remaining readings disagree on where
+          // the sentence ends, keep the whole text (null).
+          const closing = firstSentenceEnd(source, index + 1, open.slice(0, -1), memo);
+          const possessive = firstSentenceEnd(source, index + 1, open, memo);
+          const readings = [closing, possessive].filter((value) => value !== UNCLOSED);
+          if (readings.length === 0) return UNCLOSED;
+          if (readings.some((value) => value !== readings[0])) return null;
+          return readings[0];
+        }
         open.pop();
       } else if ((before === undefined || /[\s([{“‘「『]/u.test(before)) && after && !/\s/.test(after)) {
         open.push(char);
@@ -127,7 +152,7 @@ export function firstSentence(text) {
     if (char === '.' && end === index + 1 && isAbbreviationPeriod(source, index)) continue;
     // Nothing to show before the terminator (e.g. "..."-only text): keep the whole text.
     if (!/[^\s.!?。！？]/.test(source.slice(0, index))) continue;
-    return source.slice(0, end);
+    return end;
   }
-  return source;
+  return open.length > 0 ? UNCLOSED : null;
 }
