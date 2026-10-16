@@ -2,44 +2,46 @@
 
 ## Scope and evidence
 
-This is the C11 source-bound self-check for Issue #764, based on `origin/master` at `1ca8deb3e32f50b82be6e749b916b9ea755605c9`. The audit reads every canonical C11 record and sense together with the current #716 Meaning rows. The executable decision record is [`issue-764-c11.json`](issue-764-c11.json): it contains exact `before` snapshots and a final group for every C11 lemma, including lemmas whose grouping is retained.
+This is the C11 source-bound self-check for Issue #764, based on PR #766's base `80632ae9e5f62df05b17fcc59fa1c3bce60b66a6`. The audit reads every canonical C11 record and sense together with the current #716 Meaning rows. The executable decision record is [`issue-764-c11.json`](issue-764-c11.json): its `before` snapshots now match all rows in the three C11 shards at that base, and it records a final group for every C11 lemma, including lemmas whose grouping is retained.
 
 | Measure | Before | After |
 | --- | ---: | ---: |
 | C11 canonical records | 2,120 | 2,120 |
 | C11 lemmas | 2,006 | 2,006 |
 | C11 canonical senses | 2,725 | 2,725 |
-| C11 Meaning rows | 2,660 | 2,155 |
+| C11 Meaning rows | 2,660 | 2,124 |
 | C11 lemmas with multiple canonical senses | 373 | 373 |
 | C11 single-sense lemmas explicitly retained | 1,633 | 1,633 |
-| C11 lemmas whose Meaning count changed | — | 281 |
+| C11 lemmas whose Meaning count changed | — | 299 |
+| C11 lemmas with multiple Meaning rows | — | 86 |
+| C11 same-record splits remaining after source recheck | — | 27 |
 | Repository adjudications | 117 | 117 |
 
-Every canonical C11 sense occurs in exactly one final group. The edit has no drops and appends no adjudications. Canonical JSONL is unchanged. The complete `before`/`groups` mapping provides the source-sense membership for all 2,006 lemmas; the application checks exact current snapshots and complete, non-overlapping sense coverage before writing.
+Every canonical C11 sense occurs in exactly one final group. The edit has no drops and appends no adjudications. Canonical JSONL is unchanged. The complete `before`/`groups` mapping covers all 2,006 lemmas; the application checks exact snapshots and complete, non-overlapping sense coverage before writing. Replaying the full spec from the exact PR-base C11 shards produces the 2,124-row result.
 
 ## Boundary decisions
 
 - `쌀쌀하다` (`w455618-s1`, `w455618-s2`) is one Meaning: physical coldness in weather or wind and coldness in a person's disposition share the cold core. Its representative gloss covers both.
+- `썰렁썰렁하다` (`w452544-s1..s4`) is one Meaning. The light breeze, boiling water, and waving limbs match the three source uses already grouped for `썰렁썰렁` (`w212166-s1..s3`); the chilly-state adjective extends the breeze use rather than establishing an independent homonym.
 - `싸이다` separates `w214500-s1`, the causative of defecating/urinating, from `w454438-s1..s4`, the covering, enclosing, being surrounded by a situation, and social-envelopment uses. `쌔다` follows the same boundary for its `싸이다` short forms and keeps `쌓이다` short forms in their accumulation family.
 - `쐐기질` and `쐐기질하다` combine literal wedging with the figurative act of intruding between people: inserting a wedge and inserting oneself to obstruct are a direct metaphorical extension. The separate `쐐기(를) 박다` use that means making a firm commitment remains distinct from the interference group.
-- `쓸리다` has three groups. Friction and abrasion (`w208548-s1`, `w208801-s2`, `w455256-s1`) share rubbing contact; sweeping, transferring, crowding, or being carried across (`w208562-s1..s2`, `w208801-s1`, `w208801-s3..s5`) share a sweeping movement; leaning to one side (`w454100-s1`) has no such contact or movement evidence and remains separate.
+- `쓸리다` has two groups. Rubbing, abrasion, trailing, sweeping, transferring, gathering, spreading, and being carried across (`w208548-s1`, `w208562-s1..s2`, `w208801-s1..s5`, `w455256-s1`) share the source-bound sweep/contact action family; the senses explicitly connect to uses of `쓸다02`. Only leaning to one side (`w454100-s1`) remains separate because its source gloss has no contact or movement relation to that family.
 - `쌈박` and its repeated forms keep cutting sounds separate from blinking. The matching expressive form alone does not establish one lexical identity. The same boundary is used for `씀벅`/`씀뻑` forms: repeated blinking and a pricking, stinging sensation remain separate because neither action is a natural extension of the other.
 - Clear independent identities remain separate, including the two `쌍계사` temples, the mill part and dog called `쌀개`, the obligation and paired-dance senses of `쌍무`, and the linguistic, musical, and astronomical senses of `쌍성`.
 - Context and grammatical role do not create a split by themselves. For example, `쌓다`/`쌓이다` keep the physical piling, accumulated foundations or experience, and repeated/intensified auxiliary use together through the accumulation core; `쓰다` still separates burial, game-piece movement, bitter/unpleasant experience, writing, covering or bearing, use/spending, and the independent “도리에 맞는 바른 상태” sense.
 
-## Follow-up: complete multi-Meaning re-audit on PR #766
+## Follow-up: Stage 1 multi-Meaning re-audit checkpoint
 
-After review `5542036285` on PR #766 (HEAD `8611c1fcc32c35c831343cd243dd727c97de88e5`), I reopened every one of the 102 lemmas that still had multiple Meaning rows, checked all 393 bound canonical senses and their POS/glosses, and revised the full repartition spec. This was a source-bound self-check in the primary agent context. The spec now has an exact `before` snapshot and final source-sense partition for all 2,006 C11 lemmas; `apply-edits.mjs` validates complete, non-overlapping coverage before writing.
+After review `5542036285` on PR #766 (HEAD `8611c1fcc32c35c831343cd243dd727c97de88e5`), I reopened the 102 lemmas that then had multiple Meaning rows, checked their 393 bound canonical senses and POS/glosses, and revised the repartition decisions. This was a source-bound self-check in the primary agent context, not an independent review. The counts below record that earlier checkpoint; the Stage 2 recheck and exact-base replay below supersede its Meaning-row totals.
 
-| Follow-up measure | PR HEAD | Re-audited result |
-| --- | ---: | ---: |
-| C11 Meaning rows | 2,155 | 2,127 |
-| Previously multi-Meaning lemmas reviewed | 102 | 102 |
-| Canonical senses in those lemmas | 393 | 393 |
-| Meaning rows for those lemmas | 251 | 223 |
-| Lemmas now represented by one Meaning | — | 15 |
-| Lemmas that retain distinct Meaning groups | — | 87 |
-| Lemmas with a changed Meaning-row count in this follow-up | — | 24 |
+| Follow-up measure at the checkpoint | Result |
+| --- | ---: |
+| Previously multi-Meaning lemmas reviewed | 102 |
+| Canonical senses in those lemmas | 393 |
+| Meaning rows for those lemmas | 251 → 223 |
+| Lemmas represented by one Meaning | 15 |
+| Lemmas retaining multiple Meaning groups | 87 |
+| Lemmas with a changed Meaning-row count in that follow-up | 24 |
 
 The four substantive reviewer examples were checked against their exact source bindings. `쐐기` (`w211904-s1`, `w211904-s2`) now groups the two moth-larva descriptions under the shared caterpillar category while retaining the wedge-tool group. `쎄리깐` (`w214782-s1`, `w214782-s2`) now groups police station and substation as facility subtypes. `쌕쌕거림` (`w512341-s1`, `w512341-s2`) now groups the two rough-breathing sounds. `썰렁썰렁하다` (`w452544-s1`, `w452544-s4`) now groups the cool breeze and chilly state. The related verb lemmas `쌕쌕거리다` (`w214514-s1`, `w214514-s2`) and `쌕쌕대다` (`w214515-s1`, `w214515-s2`) already bound both senses to one Meaning each on the reviewed HEAD, so no edit was needed there.
 
@@ -85,6 +87,38 @@ The audit did not treat a shared broad category or a repeated form as sufficient
 The 15 lemmas reduced to one Meaning in this re-audit are `ㅆ`, `싸라기`, `싹싹`, `쌍어`, `쌔물거리다`, `쌔물대다`, `쌔물쌔물`, `쌔물쌔물하다`, `쌕쌕거림`, `썩썩거리다`, `썩썩대다`, `썩은 새끼로 범[호랑이] 잡기`, `쎄리`, `쎄리깐`, and `쏘아`. These groupings preserve a shared lexical core: letter/sound, rice grain/ice pellet, cut-and-remove action/result, source-backed paired-fish metaphor, smiling/coy conduct, respiratory sound, related cut/rub sounds, two outcomes of one proverb, same slang target class, or command/action under that command.
 
 Three candidate merges from an early pass were deliberately not retained after this full comparison: `쌍권총` literal pistols vs student slang, `쐬벌이` money-making vs theft, and `썩썩` quickness vs sound. A shared numeral, broad activity category, or adverbial form alone did not establish a source-supported natural extension. The final spec also keeps the literal “quickly” sense of `썩썩` separate while grouping its two cutting/rubbing sound senses.
+
+## Follow-up: Stage 2 same-record split review and exact replay
+
+Stage 2 review `5542357159` identified two source-bound under-merges and requested a targeted recheck of the 29 C11 lemmas where senses from one canonical record were split across Meaning rows. I inspected the exact source glosses, POS, current bindings, and related forms for all 29. I corrected the two supported findings below and retained the other 27 boundaries for the record-specific reasons listed. This does not claim a new independent semantic audit of all 86 remaining multi-Meaning lemmas.
+
+| Corrected lemma | Source-bound decision |
+| --- | --- |
+| `쓸리다` | Merge `w208548-s1`, `w208562-s1..s2`, `w208801-s1..s5`, and `w455256-s1`. The source record explicitly binds passive/causative uses to the same sweeping, rubbing, displacement, and gathering actions grouped for `쓸다`; voice, affected object, and extent do not establish an independent word. Keep only the unrelated leaning sense `w454100-s1` separate. |
+| `썰렁썰렁하다` | Merge `w452544-s1..s4`. The three motion uses match `썰렁썰렁` (`w212166-s1..s3`), already one Meaning; the cold-state adjective is a natural weather extension of the cool breeze. The POS and application differences do not establish an independent homonym. |
+
+The remaining same-record splits retain distinct source meanings; the reason is the source distinction, not record or POS boundaries alone.
+
+| Lemma(s) retained | Source-bound reason |
+| --- | --- |
+| `쌍아` | Paired eyebrows are an appearance; swollen tonsils are a disease. Their shared bilateral anatomy is only a broad category. |
+| `썩정이`, `씨룩` | The source redirects to `삭정이`, `씰긋`, and `씰룩`, which identify different objects or facial motions. |
+| `쌍구`, `쌍구법` | Tracing/engraving/painting a contour differs from the three-finger brush grip; sharing the calligraphy domain does not make them one technique. |
+| `쓰렁쓰렁` | Secretive conduct and perfunctory work have distinct manner and intent. |
+| `쐬벌이` | Earning money and theft are different actions; both being slang does not establish a natural lexical extension. |
+| `쌈` | Bundled-item count units and the gold-weight unit have different referents and measures. |
+| `쌔다` | The excretion short form follows a different `싸이다` sense from the covering/surrounding short forms. |
+| `쓱싹` | A sawing/filing sound differs from dishonest handling or an erroneous calculation. |
+| `씀벅거리다`, `씀벅대다`, `씀벅씀벅`, `씀벅씀벅하다`, `씀벅이다`, `씀뻑거리다`, `씀뻑대다`, `씀뻑씀뻑`, `씀뻑씀뻑하다`, `씀뻑이다` | The variants consistently distinguish visible blinking from a prickling/stinging bodily sensation; neither is a natural extension of the other. |
+| `쓴술` | The source distinguishes mel-rice wine from a bitter medicinal wine. |
+| `쑥대머리` | Disheveled hair differs from the named pansori section. |
+| `썩` | “To a much greater degree” and “without delay/quickly” describe different adverbial axes without a source-supported extension between them. |
+| `쓰다` | The uses for applying or spending resources share one family; “be in a proper state” is a separate source meaning. |
+| `쌍권총` | Two physical pistols and student slang for two failed courses share the numeral, not a lexical identity. |
+| `싹을 밟다` | Suppressing a new undertaking and noticing a sign have different event outcomes; the source provides no bridge that makes one an extension of the other. |
+| `쐐기(를) 박다[치다]` | Firmly settling a commitment differs from interfering between people or disrupting a connection; these are distinct metaphorical actions and outcomes. |
+
+The pre-Stage-2 spec had 2,155 `before` rows and did not match the PR base's 2,660 C11 input rows. I regenerated all 2,006 `before` arrays from PR base `80632ae9e5f62df05b17fcc59fa1c3bce60b66a6`, then restored only the three C11 Meaning shards from that base and ran `node scripts/meaning/apply-edits.mjs scripts/meaning/issue-764-c11.json`. The replay produced 2,124 C11 rows (2,006 lemmas, 2,725 bound senses), 496,125 repository Meanings, and 117 adjudications. The count changed for 299 C11 lemmas against the actual PR base; 86 lemmas retain multiple Meaning rows and 27 of those have same-record splits. The positive controls `쌀쌀하다` and `쐐기` remain merged as required; the negative control `쌍성` remains three independent Meanings. Canonical JSONL and adjudication data remain unchanged, and no shard outside C11 was rewritten.
 
 ## Gloss checks
 
