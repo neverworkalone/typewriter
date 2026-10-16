@@ -61,6 +61,33 @@ export const MEANING_INTEGRITY_QUERIES = Object.freeze({
     INNER JOIN senses AS later_sense ON later_sense.id = later_relation.source_sense_id
     WHERE (earlier_sense.record_id, earlier_sense.position, earlier_relation.position)
        >= (later_sense.record_id, later_sense.position, later_relation.position)`,
+  // Projected relations of one source meaning are positioned by first appearance in canonical order, so their
+  // first contributors (position 0) must be strictly increasing with the relation position.
+  meaning_relation_position_order_violation: `
+    SELECT COUNT(*) FROM meaning_relations AS earlier
+    INNER JOIN meaning_relations AS later
+      ON later.source_meaning_id = earlier.source_meaning_id
+     AND later.position > earlier.position
+    INNER JOIN meaning_relation_sources AS earlier_source
+      ON earlier_source.source_meaning_id = earlier.source_meaning_id
+     AND earlier_source.relation_position = earlier.position
+     AND earlier_source.position = 0
+    INNER JOIN relations AS earlier_relation
+      ON earlier_relation.source_sense_id = earlier_source.source_sense_id
+     AND earlier_relation.position = earlier_source.source_position
+    INNER JOIN senses AS earlier_sense ON earlier_sense.id = earlier_relation.source_sense_id
+    INNER JOIN meaning_relation_sources AS later_source
+      ON later_source.source_meaning_id = later.source_meaning_id
+     AND later_source.relation_position = later.position
+     AND later_source.position = 0
+    INNER JOIN relations AS later_relation
+      ON later_relation.source_sense_id = later_source.source_sense_id
+     AND later_relation.position = later_source.source_position
+    INNER JOIN senses AS later_sense ON later_sense.id = later_relation.source_sense_id
+    WHERE earlier.origin = '${MEANING_RELATION_ORIGINS.projection}'
+      AND later.origin = '${MEANING_RELATION_ORIGINS.projection}'
+      AND (earlier_sense.record_id, earlier_sense.position, earlier_relation.position)
+       >= (later_sense.record_id, later_sense.position, later_relation.position)`,
   // A projected relation shows the note/relevance of its first contributing source relation, exactly.
   meaning_relation_content_mismatch: `
     SELECT COUNT(*) FROM meaning_relations AS relation

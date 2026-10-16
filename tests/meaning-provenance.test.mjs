@@ -139,6 +139,21 @@ test('meaning relation provenance: valid mapping passes; deleted, mis-bound and 
     });
     assert.deepEqual(reordered, { meaning_relation_source_order_violation: 1 });
 
+    // Swapping the positions of two projected relations (and their provenance links) changes the product order only.
+    await copyFile(good, copy('swapped.sqlite'));
+    const swapped = violations(copy('swapped.sqlite'), (db) => {
+      db.exec('PRAGMA foreign_keys = OFF');
+      db.exec(`
+        UPDATE meaning_relations SET position = 100 WHERE source_meaning_id = 'm001' AND position = 0;
+        UPDATE meaning_relation_sources SET relation_position = 100 WHERE source_meaning_id = 'm001' AND relation_position = 0;
+        UPDATE meaning_relations SET position = 0 WHERE source_meaning_id = 'm001' AND position = 1;
+        UPDATE meaning_relation_sources SET relation_position = 0 WHERE source_meaning_id = 'm001' AND relation_position = 1;
+        UPDATE meaning_relations SET position = 1 WHERE source_meaning_id = 'm001' AND position = 100;
+        UPDATE meaning_relation_sources SET relation_position = 1 WHERE source_meaning_id = 'm001' AND relation_position = 100;
+      `);
+    });
+    assert.deepEqual(swapped, { meaning_relation_position_order_violation: 1 });
+
     // An authored relation owns its own note/relevance and is not compared with STDICT.
     await copyFile(good, copy('authored-content.sqlite'));
     assert.deepEqual(violations(copy('authored-content.sqlite'), (db) => db.exec(
