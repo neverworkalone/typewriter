@@ -3,6 +3,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
+import { projectMeaningRelations } from './project.mjs';
 
 // Manual audit-coverage regression. Run directly with:
 // node --test scripts/meaning/issue-764-c17-residual-audit.test.mjs
@@ -34,14 +35,26 @@ const identityRegressionSenseIds = new Set([
   'w343081-s1', 'w343082-s1', 'w343083-s1', 'w495379-s1', 'w496287-s1', 'w496488-s1',
   'w350459-s1', 'w350460-s1', 'w494494-s1', 'w342772-s1', 'w342772-s2',
   'w345843-s1', 'w345844-s1', 'w345845-s1', 'w349212-s1', 'w349742-s1', 'w495184-s1',
-  'w497369-s1', 'w497369-s2',
+  'w497369-s1', 'w497369-s2', 'w343346-s1', 'w343346-s2', 'w345436-s1', 'w345436-s2',
+  'w496506-s1', 'w496506-s2', 'w496506-s3', 'w497715-s1', 'w296689-s1', 'w347855-s1', 'w347855-s9',
+  'w353163-s1', 'w353164-s1',
 ]);
+const meaningIdBySense = new Map(rows.flatMap((row) => row.sense_ids.map((senseId) => [senseId, row.id])));
+let sameRecordSplitRecordCount = 0;
+const sameRecordSplitLemmas = new Set();
 const sourceGlossBySense = new Map();
 const identitySourceGlossBySense = new Map();
+let tamnaSourceRecord = null;
 for (const file of readdirSync(canonicalDir).filter((name) => name.startsWith('stdict-') && name.endsWith('.jsonl')).sort()) {
   for (const line of readFileSync(path.join(canonicalDir, file), 'utf8').split('\n')) {
     if (!line) continue;
     const entry = JSON.parse(line);
+    if (entry.id === 'w345436') tamnaSourceRecord = entry;
+    const splitMeaningIds = new Set((entry.senses ?? []).map((sense) => meaningIdBySense.get(sense.id)).filter(Boolean));
+    if (splitMeaningIds.size > 1) {
+      sameRecordSplitRecordCount += 1;
+      sameRecordSplitLemmas.add(entry.lemma);
+    }
     for (const sense of entry.senses ?? []) {
       if (expectedEvidenceIds.has(sense.id)) sourceGlossBySense.set(sense.id, sense.gloss);
       if (identityRegressionSenseIds.has(sense.id)) identitySourceGlossBySense.set(sense.id, sense.gloss);
@@ -149,6 +162,7 @@ test('C17 applies naming-principle and distinct-identity boundaries with a one-l
     { lemma: '테티스', groups: [['w350459-s1'], ['w350460-s1'], ['w494494-s1']] },
     { lemma: '통고', groups: [['w342772-s1'], ['w342772-s2'], ['w345843-s1'], ['w345844-s1'], ['w345845-s1']] },
     { lemma: '트리톤', groups: [['w349212-s1'], ['w349742-s1'], ['w495184-s1']] },
+    { lemma: '티보', groups: [['w353163-s1'], ['w353164-s1']] },
   ];
 
   for (const { lemma, groups } of identityCases) {
@@ -175,4 +189,49 @@ test('C17 applies naming-principle and distinct-identity boundaries with a one-l
   assert.ok(letterMeaning, 'the Hangul letter positive control remains represented');
   assert.deepEqual(letterMeaning.sense_ids, ['w497369-s1', 'w497369-s2'], 'the letter and its sound are one lexical identity');
   assert.equal(identitySourceGlossBySense.has('w497369-s1') && identitySourceGlossBySense.has('w497369-s2'), true, 'positive-control source senses exist');
+
+  const spec = JSON.parse(readFileSync(path.join(root, 'scripts/meaning/issue-764-c17.json'), 'utf8'));
+  const reviewCases = [
+    { lemma: '태즈메이니아', before: [['w343346-s1'], ['w343346-s2']], group: ['w343346-s1', 'w343346-s2'] },
+    { lemma: '탐라', before: [['w345436-s1'], ['w345436-s2']], group: ['w345436-s1', 'w345436-s2'] },
+    { lemma: '터놓다', before: [['w496506-s1'], ['w496506-s2'], ['w496506-s3']], group: ['w496506-s1', 'w496506-s2', 'w496506-s3'] },
+  ];
+  for (const { lemma, before, group } of reviewCases) {
+    const edit = spec.repartitions.find((item) => item.lemma === lemma);
+    assert.ok(edit, `${lemma}: the boundary correction must replay from the execution spec`);
+    assert.deepEqual(edit.before.map((row) => row.sense_ids), before, `${lemma}: record the old split for the regression`);
+    assert.deepEqual(edit.groups.map((row) => row.senses), [group], `${lemma}: the revised spec has one source-bound group`);
+    const result = rowsByLemma.get(lemma) ?? [];
+    assert.equal(result.length, 1, `${lemma}: the final projection has one Meaning`);
+    assert.deepEqual(result[0].sense_ids, group, `${lemma}: preserve every source sense exactly once`);
+    assert.equal(result[0].gloss, edit.before.map((row) => row.gloss).join(' '), `${lemma}: preserve the before glosses in order`);
+    for (const senseId of group) assert.ok(identitySourceGlossBySense.has(senseId), `${lemma}/${senseId}: canonical source exists`);
+  }
+
+  const through = (rowsByLemma.get('통하다') ?? []).find((row) => row.sense_ids.includes('w347855-s1'));
+  assert.ok(through?.sense_ids.includes('w347855-s9'), 'the physical-through / communication positive control stays in one Meaning');
+  const tamnaMeaning = (rowsByLemma.get('탐라') ?? []).find((row) => row.sense_ids.includes('w345436-s1'));
+  const tamnaCountryMeaning = (rowsByLemma.get('탐라국') ?? []).find((row) => row.sense_ids.includes('w497715-s1'));
+  assert.ok(tamnaSourceRecord && tamnaMeaning && tamnaCountryMeaning, 'the bound Tamna relation endpoints exist');
+  assert.equal(identitySourceGlossBySense.get('w345436-s2'), '‘제주도01’의 옛 이름.', 'the canonical reference gloss stays source-bound');
+  assert.ok(tamnaMeaning.gloss.includes(identitySourceGlossBySense.get('w296689-s1')), 'the merged gloss preserves the canonical reference target gloss');
+  const projection = projectMeaningRelations({
+    records: [tamnaSourceRecord],
+    meanings: [tamnaMeaning, tamnaCountryMeaning],
+  });
+  assert.deepEqual(projection.relations.map((relation) => [relation.source_meaning_id, relation.target_meaning_id, relation.type]), [
+    [tamnaMeaning.id, tamnaCountryMeaning.id, 'direct'],
+  ], 'the canonical Tamna synonym relation still projects after regrouping');
+  assert.deepEqual(projection.relations[0].sources, [{
+    source_sense_id: 'w345436-s1', source_position: 0, source_redirected: 0, target_redirected: 0,
+  }], 'the projected relation retains its canonical source-sense provenance');
+});
+
+test('C17 tracks the same-record split risk cohort after source-bound corrections', () => {
+  // The prior HEAD had 332 split records across 316 lemmas; this is a candidate count, not an error count.
+  assert.equal(sameRecordSplitRecordCount, 329);
+  assert.equal(sameRecordSplitLemmas.size, 313);
+  for (const senseId of ['w343346-s1', 'w345436-s1', 'w496506-s1']) {
+    assert.ok(meaningIdBySense.has(senseId), `${senseId}: reviewed same-record source sense remains in C17`);
+  }
 });
