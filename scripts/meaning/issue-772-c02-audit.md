@@ -2,14 +2,14 @@
 
 ## Scope and evidence
 
-Source-bound self-check for Issue #772, based on `origin/master` at `b67dc3e4` (PR #767 merged). It re-judged all **180** C02 lemmas that still had more than one Meaning after #767, against each lemma's full set of canonical records and senses, in both directions (under-merge and over-merge). The executable record is [`issue-772-c02.json`](issue-772-c02.json): 42 `repartitions`, each with an exact `before` snapshot of the #767 output and a complete `groups` partition, applied with the shared `apply-edits`. Canonical JSONL, adjudications and the other 18 initial-code shards are unchanged.
+Source-bound self-check for Issue #772, based on `origin/master` at `b67dc3e4` (PR #767 merged). It re-judged all **180** C02 lemmas that still had more than one Meaning after #767, against each lemma's full set of canonical records and senses, in both directions (under-merge and over-merge). The executable record is [`issue-772-c02.json`](issue-772-c02.json): 44 `repartitions`, each with an exact `before` snapshot of the #767 output and a complete `groups` partition, applied with the shared `apply-edits`. Canonical JSONL, adjudications and the other 18 initial-code shards are unchanged.
 
 | Measure | #767 | #772 |
 | --- | ---: | ---: |
-| C02 Meaning rows | 3,794 | 3,750 |
+| C02 Meaning rows | 3,794 | 3,748 |
 | C02 source senses | 5,096 | 5,096 |
-| Multi-Meaning lemmas | 180 | 150 |
-| Lemmas regrouped | — | 42 |
+| Multi-Meaning lemmas | 180 | 148 |
+| Lemmas regrouped | — | 44 |
 
 Every C02 sense is still in exactly one Meaning; `validate.mjs` (complete) passes.
 
@@ -22,6 +22,7 @@ Every C02 sense is still in exactly one Meaning; `validate.mjs` (complete) passe
 - `꼭`/`꼭꼭`: `w55687`/`w55746` (틀림없이·잘·흡족하게·비슷하게) and `w404222`/`w404409` (야무지게 누름·견딤·숨음) are one "빈틈없이 단단하고 틀림없는" adverb, so they are one Meaning each; the Bukcheong lion-play servant `w404221` and the hen's brooding call `w55747` stay separate.
 - Over-merge control `꼭지` (8→1 in #767): `s1~s4` (knob, kite mark, flail pin, fruit stalk) and `s5` (거지 우두머리, a synonym of 꼭지딴: the "head") share the small protruding top/head and form one Meaning. The counting units are not one image: `s6`/`s8` count tied bundles and proof bundles (묶음의 단위), while `s7` measures thread length (1 꼭지 = 20 자). A generic "unit" label cannot show continuity between measuring a length and counting bundles, so `s7` is its own Meaning. Result: 3.
 - Over-merge control `껍질샘` (= `각선`): `s1` is the excretory organ of lower crustaceans; `s2`/`s3` (mollusc shell, bird eggshell) are tissues that secrete the shell substance. Different organ function with no extension path, so `s1` is separate from `s2~s3`. The #764 audit listed this as retained while the data was merged; data and audit now agree (2 Meanings).
+- Updated #764 criteria (§2-1 same-category kinds, §2-2 shared naming principle): `깔깔이`(조젯 and fresh banknotes are both named for the stiff, rough 깔깔한 feel) and `꽃씨`(화초의 씨앗 and the slang for a matchstick's sulfur grain, named by the same seed image) are 1 Meaning each, with each usage kept as its own sentence. `꽁이`(수갑/열쇠) stays two: sharing a locking context is not a shared naming principle. Other retained splits (`꼬꼬마`, `꽃물`, `꽃자리`, `꽃발`, `까치발`, `깽깽이` …) have no common composition of the whole headword.
 - Positive/negative controls kept from #767: `까바리`(밥그릇/깡통) and `꽃내미장단` are single Meanings; `꽁이`(수갑/열쇠) stays two.
 
 ## Other regroupings
@@ -44,11 +45,11 @@ Basis for `꾀이다`/`꾀다` as one Meaning: the source itself places both 속
 
 Counts show #767 → #772 Meaning numbers. Retained splits record why no natural extension path exists in the source senses; each category was applied lemma by lemma to the actual record/sense lists, not to the gloss strings alone.
 
-### MERGED — 40 lemmas
+### MERGED — 42 lemmas
 
 #772에서 하나(또는 같은 어휘 단위)로 재통합·재분할
 
-`까부라지다`(2→1), `까치놀`(2→1), `까칫까칫하다`(2→1), `깜보기`(2→1), `깡뚱`(2→1), `깨다`(4→3), `깨보숭이`(3→2), `깨이다`(5→4), `깨작거리다`(2→1), `깨작깨작`(2→1), `깨작깨작하다`(2→1), `깨작대다`(2→1), `깨작이다`(2→1), `깨적거리다`(2→1), `깽깽`(2→1), `꺼지다`(2→1), `꺼칫꺼칫하다`(2→1), `꺽`(2→1), `껑청`(2→1), `껴묻히다`(2→1), `꼭`(7→2), `꼭꼭`(4→2), `꼭두`(3→2), `꼭두머리`(2→1), `꽃노래`(2→1), `꽃봉오리`(2→1), `꽃술`(3→2), `꾀다`(2→1), `꾀이다`(4→1), `꿍치다`(2→1), `끄스르다`(2→1), `끄슬리다`(2→1), `끄시르다`(2→1), `끊치다`(2→1), `끗`(3→2), `끼적거리다`(2→1), `끼적끼적`(2→1), `끼적끼적하다`(2→1), `끼적대다`(2→1), `끼적이다`(2→1)
+`까부라지다`(2→1), `까치놀`(2→1), `까칫까칫하다`(2→1), `깔깔이`(2→1), `깜보기`(2→1), `깡뚱`(2→1), `깨다`(4→3), `깨보숭이`(3→2), `깨이다`(5→4), `깨작거리다`(2→1), `깨작깨작`(2→1), `깨작깨작하다`(2→1), `깨작대다`(2→1), `깨작이다`(2→1), `깨적거리다`(2→1), `깽깽`(2→1), `꺼지다`(2→1), `꺼칫꺼칫하다`(2→1), `꺽`(2→1), `껑청`(2→1), `껴묻히다`(2→1), `꼭`(7→2), `꼭꼭`(4→2), `꼭두`(3→2), `꼭두머리`(2→1), `꽃노래`(2→1), `꽃봉오리`(2→1), `꽃술`(3→2), `꽃씨`(2→1), `꾀다`(2→1), `꾀이다`(4→1), `꿍치다`(2→1), `끄스르다`(2→1), `끄슬리다`(2→1), `끄시르다`(2→1), `끊치다`(2→1), `끗`(3→2), `끼적거리다`(2→1), `끼적끼적`(2→1), `끼적끼적하다`(2→1), `끼적대다`(2→1), `끼적이다`(2→1)
 
 ### REF — 34 lemmas
 
@@ -56,11 +57,11 @@ Counts show #767 → #772 Meaning numbers. Retained splits record why no natural
 
 `까치`(2→2), `깍정이`(3→3), `깔딱`(2→2), `깔딱깔딱`(2→2), `깔리다`(2→2), `깜짜기`(2→2), `깨깨`(3→3), `깨치다`(2→2), `꺽쇠`(2→2), `껴얹다`(2→2), `꼬독꼬독`(2→2), `꼬망지`(2→2), `꼬빡`(2→2), `꼬임`(2→2), `꼬임수`(2→2), `꼬질대`(2→2), `꼬치`(3→3), `꽁치`(3→3), `꽂이`(2→2), `꽃굴`(2→2), `꾸다`(3→3), `꾸레미`(2→2), `꿉실꿉실`(2→2), `뀌다`(3→3), `끌`(2→2), `끌끌`(2→2), `끌끌하다`(2→2), `끝`(2→2), `끼룩`(2→2), `끼룩거리다`(2→2), `끼룩끼룩`(2→2), `끼룩끼룩하다`(2→2), `끼룩대다`(2→2), `낌새`(2→2)
 
-### HOMO — 41 lemmas
+### HOMO — 39 lemmas
 
 표기만 같고 원본 sense가 가리키는 대상·기능이 서로 이어지지 않는 독립 동음이의어(동물/식물/기구/지명·용어 등)이다. 의미 확장 경로를 원문 gloss에서 찾지 못했다.
 
-`까다`(3→3), `까지다`(2→2), `까치발`(3→3), `깍지`(2→2), `깔깔이`(2→2), `깔때기`(3→3), `깡`(2→2), `깨끼`(2→2), `깽깽이`(2→2), `꺾기`(2→2), `꼬꼬마`(2→2), `꼬느다`(2→2), `꼬박`(3→3), `꼬치꼬치`(2→2), `꼴`(2→2), `꼼치`(2→2), `꽁이`(2→2), `꽃`(3→3), `꽃다지`(2→2), `꽃대`(2→2), `꽃등`(2→2), `꽃물`(3→3), `꽃받기`(3→3), `꽃발`(2→2), `꽃비`(2→2), `꽃씨`(2→2), `꽃자리`(3→3), `꽈리`(2→2), `꽝`(2→2), `꾐`(2→2), `꾸리`(2→2), `꿀떡`(2→2), `꿀리다`(2→2), `꿩`(2→2), `끄다`(2→2), `끝전`(2→2), `끼`(2→2), `끼다`(2→2), `끼이다`(2→2), `끼치다`(2→2), `끽`(2→2)
+`까다`(3→3), `까지다`(2→2), `까치발`(3→3), `깍지`(2→2), `깔때기`(3→3), `깡`(2→2), `깨끼`(2→2), `깽깽이`(2→2), `꺾기`(2→2), `꼬꼬마`(2→2), `꼬느다`(2→2), `꼬박`(3→3), `꼬치꼬치`(2→2), `꼴`(2→2), `꼼치`(2→2), `꽁이`(2→2), `꽃`(3→3), `꽃다지`(2→2), `꽃대`(2→2), `꽃등`(2→2), `꽃물`(3→3), `꽃받기`(3→3), `꽃발`(2→2), `꽃비`(2→2), `꽃자리`(3→3), `꽈리`(2→2), `꽝`(2→2), `꾐`(2→2), `꾸리`(2→2), `꿀떡`(2→2), `꿀리다`(2→2), `꿩`(2→2), `끄다`(2→2), `끝전`(2→2), `끼`(2→2), `끼다`(2→2), `끼이다`(2→2), `끼치다`(2→2), `끽`(2→2)
 
 ### MIMETIC — 65 lemmas
 
