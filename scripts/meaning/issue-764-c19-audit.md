@@ -2,7 +2,7 @@
 
 ## Scope and method
 
-This primary-agent source-bound self-check starts from origin/master at 6eb5d379537373d14f89c60206feffdb01cf7c81. It covers all 34 C19 shards (c19_001–c19_034): 33,060 current Meaning rows, 24,465 lemmas, and 33,630 unique bound canonical senses. Every one of the 4,549 lemmas with multiple current Meanings was re-partitioned; singleton lemmas remain unchanged.
+The initial primary-agent source-bound pass started from origin/master at 6eb5d379537373d14f89c60206feffdb01cf7c81. It covers all 34 C19 shards (c19_001–c19_034): 33,060 current Meaning rows, 24,465 lemmas, and 33,630 unique bound canonical senses. Every one of the 4,549 lemmas with multiple current Meanings was re-partitioned; singleton lemmas remain unchanged.
 
 The source-bound ledger covers 2,142 same-record and 2,407 cross-record candidate lemmas. Concise rationale text was retained for 350 same-record decisions; narrative rationale text for 1792 earlier same-record decisions was not retained, so this audit does not invent it. For those entries, it shows every current Meaning row, every bound canonical source gloss, and the exact final partition. All 2,407 cross-record decisions include a candidate-specific rationale. This is an agent self-check, not independent review or human editorial approval.
 
@@ -107659,3 +107659,2515 @@ For a final group, the current Meaning gloss is retained when that whole current
 - C19 now has 29,204 Meaning rows and all 33,630 prior canonical sense references.
 - `git diff --check` passed. Canonical JSONL and adjudication files are unchanged.
 - A pure replay from baseline 6eb5d379 reproduced all 478,269 Meaning rows and 117 adjudications exactly.
+
+
+## Addendum: retained singleton groups checked for Issue #764
+
+During the Stage 1 review of PR #807, the reviewer identified 276 C19 lemmas omitted from the repartition spec that each had one current Meaning bound to multiple canonical senses (561 sense bindings). The original pass concentrated on lemmas with multiple current Meanings; this addendum records the previously unrecorded source-bound re-evaluation of all 276 retained boundaries. It is a primary-agent self-check, not independent review or human editorial approval.
+
+For each lemma below, the decision is to retain one Meaning only after comparing every listed canonical binding with the existing edited Meaning gloss. The recurring noun/determiner pairs share the concrete property stated in their source glosses; a POS or inflection change by itself is not an independent lexical identity under Issue #764. The three variant pairs are documented individually. No split or gloss correction was indicated by this comparison, so the replay spec and C19 shards remain unchanged by this addendum.
+
+### 276 retained groups
+
+#### 하과
+
+- Existing Meaning: `m503420_1` — 고려 시대에 사학의 선비들이 여름에 절에 가서 50일 동안 고문·고시와 당송의 시를 외며 시부를 짓던 공부. 또는 글방에서 여름에 하던 공부.
+- Bound canonical senses:
+  - `w503420-s1` (`w503420`, noun): 고려 시대에, 사학(私學)의 선비들이 여름에 절에 가서 하던 공부. 오뉴월에 시작하여 50일 동안 고문(古文), 고시(古詩)와 당송(唐宋)의 시를 외며 시부(詩賦)를 지었다.
+  - `w503420-s2` (`w503420`, noun): 글방에서 여름에 하던 공부.
+- Decision: retain one Meaning (`m503420_1`); final gloss: 고려 시대에 사학의 선비들이 여름에 절에 가서 50일 동안 고문·고시와 당송의 시를 외며 시부를 짓던 공부. 또는 글방에서 여름에 하던 공부.
+- Source-bound rationale: 두 원문은 고려 사학의 여름 강학과 글방의 여름 공부를 설명한다. 장소·시대의 구체성만 다르고 표제어가 가리키는 여름 공부라는 활동은 같다.
+
+#### 하급반
+
+- Existing Meaning: `m363478_1` — 아래 학년의 학급. 또는 등급이나 수준이 낮은 반.
+- Bound canonical senses:
+  - `w363478-s1` (`w363478`, noun): 아래 학년의 학급.
+  - `w363478-s2` (`w363478`, noun): 등급이나 수준이 낮은 반.
+- Decision: retain one Meaning (`m363478_1`); final gloss: 아래 학년의 학급. 또는 등급이나 수준이 낮은 반.
+- Source-bound rationale: 아래 학년의 반과 낮은 수준의 반은 모두 학습 단계가 낮은 학급을 가리킨다. 평가 축의 적용이 다른 것이지 별개 단어는 아니다.
+
+#### 하나는 열을 꾸려도 열은 하나를 못 꾸린다
+
+- Existing Meaning: `m532844_1` — 한 사람이 여러 사람을 돌보는 것은 가능해도 여러 사람이 한 사람을 돌보기는 어렵다는 말. 자식이 많아도 부모를 잘 모시지 못하는 경우를 이르기도 한다.
+- Bound canonical senses:
+  - `w532844-s1` (`w532844`, expression): 한 사람이 잘되면 여러 사람을 돌보아 줄 수 있으나 여러 사람이 힘을 합하여 한 사람을 돌보아 주기는 힘들다는 말.
+  - `w532844-s2` (`w532844`, expression): 자식이 많아도 부모는 잘 거느리고 살아가나 자식들은 그렇지 못하다는 말.
+- Decision: retain one Meaning (`m532844_1`); final gloss: 한 사람이 여러 사람을 돌보는 것은 가능해도 여러 사람이 한 사람을 돌보기는 어렵다는 말. 자식이 많아도 부모를 잘 모시지 못하는 경우를 이르기도 한다.
+- Source-bound rationale: 첫 풀이의 한 사람이 여럿을 돌보는 비대칭과 둘째의 부모·자녀 사례는 같은 속담의 가족 관계 적용이다.
+
+#### 하나를 알면 백을 안다
+
+- Existing Meaning: `m532850_1` — 일부나 한마디만 보고 전체나 여러 사실을 미루어 알 만큼 총기가 있음을 비유적으로 이르는 말.
+- Bound canonical senses:
+  - `w532850-s1` (`w532850`, expression): 일부만 보고 전체를 미루어 안다는 말.
+  - `w532850-s2` (`w532850`, expression): 한마디 말을 듣고도 여러 가지 사실을 미루어 알아낼 정도로 매우 총기가 있다는 말.
+- Decision: retain one Meaning (`m532850_1`); final gloss: 일부나 한마디만 보고 전체나 여러 사실을 미루어 알 만큼 총기가 있음을 비유적으로 이르는 말.
+- Source-bound rationale: 일부에서 전체를 추론한다는 풀이와 한마디에서 여러 사실을 알아내는 총기 풀이가 같은 추론 능력의 속담 의미를 설명한다.
+
+#### 하느작거리다
+
+- Existing Meaning: `m361404_1` — 나뭇가지나 천 따위가 가볍게 자꾸 흔들리거나 팔다리 따위가 힘없이 조금 느리게 자꾸 움직이다. 또는 그렇게 하다.
+- Bound canonical senses:
+  - `w361404-s1` (`w361404`, verb): 나뭇가지나 천 따위의 가늘고 긴 물체가 자꾸 가볍게 흔들리다.
+  - `w361404-s2` (`w361404`, verb): 팔다리 따위가 힘없이 조금 느리게 자꾸 움직이다. 또는 그렇게 하다.
+- Decision: retain one Meaning (`m361404_1`); final gloss: 나뭇가지나 천 따위가 가볍게 자꾸 흔들리거나 팔다리 따위가 힘없이 조금 느리게 자꾸 움직이다. 또는 그렇게 하다.
+- Source-bound rationale: 가늘고 긴 물체의 흔들림과 팔다리의 느리고 힘없는 움직임은 가볍고 축 늘어진 반복 동작이라는 같은 움직임 축이다.
+
+#### 하느작대다
+
+- Existing Meaning: `m503605_1` — 나뭇가지나 천 따위가 가볍게 자꾸 흔들리거나 팔다리 따위가 힘없이 조금 느리게 자꾸 움직이다. 또는 그렇게 하다.
+- Bound canonical senses:
+  - `w503605-s1` (`w503605`, verb): 나뭇가지나 천 따위의 가늘고 긴 물체가 자꾸 가볍게 흔들리다.
+  - `w503605-s2` (`w503605`, verb): 팔다리 따위가 힘없이 조금 느리게 자꾸 움직이다. 또는 그렇게 하다.
+- Decision: retain one Meaning (`m503605_1`); final gloss: 나뭇가지나 천 따위가 가볍게 자꾸 흔들리거나 팔다리 따위가 힘없이 조금 느리게 자꾸 움직이다. 또는 그렇게 하다.
+- Source-bound rationale: 가늘고 긴 물체가 흔들리는 경우와 팔다리가 느리고 힘없이 움직이는 경우 모두 하느작거리는 반복 움직임의 대상 차이다.
+
+#### 하느작이다
+
+- Existing Meaning: `m361405_1` — 나뭇가지나 천 따위가 가볍게 흔들리거나 팔다리 따위가 힘없이 조금 느리게 움직이다. 또는 그렇게 하다.
+- Bound canonical senses:
+  - `w361405-s1` (`w361405`, verb): 나뭇가지나 천 따위의 가늘고 긴 물체가 가볍게 흔들리다.
+  - `w361405-s2` (`w361405`, verb): 팔다리 따위가 힘없이 조금 느리게 움직이다. 또는 그렇게 하다.
+- Decision: retain one Meaning (`m361405_1`); final gloss: 나뭇가지나 천 따위가 가볍게 흔들리거나 팔다리 따위가 힘없이 조금 느리게 움직이다. 또는 그렇게 하다.
+- Source-bound rationale: 물체의 가벼운 흔들림과 팔다리의 힘없는 느린 움직임이 같은 느슨하고 가벼운 동작 특성을 공유한다.
+
+#### 하느작하느작
+
+- Existing Meaning: `m499885_1` — 나뭇가지나 천 따위가 가볍게 흔들리거나 팔다리 따위가 힘없이 조금 느리게 움직이는 모양.
+- Bound canonical senses:
+  - `w499885-s1` (`w499885`, adverb): 나뭇가지나 천 따위의 가늘고 긴 물체가 가볍고 자꾸 흔들리는 모양.
+  - `w499885-s2` (`w499885`, adverb): 팔다리 따위가 힘없이 자꾸 조금 느리게 움직이는 모양.
+- Decision: retain one Meaning (`m499885_1`); final gloss: 나뭇가지나 천 따위가 가볍게 흔들리거나 팔다리 따위가 힘없이 조금 느리게 움직이는 모양.
+- Source-bound rationale: 물체가 흔들리는 모양과 팔다리가 움직이는 모양은 같은 가볍고 힘없는 반복 움직임을 부사적으로 나타낸다.
+
+#### 하느작하느작하다
+
+- Existing Meaning: `m361407_1` — 나뭇가지나 천 따위가 가볍게 흔들리거나 팔다리 따위가 힘없이 조금 느리게 움직이다. 또는 그렇게 하다.
+- Bound canonical senses:
+  - `w361407-s1` (`w361407`, verb): 나뭇가지나 천 따위의 가늘고 긴 물체가 가볍게 자꾸 흔들리다.
+  - `w361407-s2` (`w361407`, verb): 팔다리 따위가 힘없이 자꾸 조금 느리게 움직이다. 또는 그렇게 하다.
+- Decision: retain one Meaning (`m361407_1`); final gloss: 나뭇가지나 천 따위가 가볍게 흔들리거나 팔다리 따위가 힘없이 조금 느리게 움직이다. 또는 그렇게 하다.
+- Source-bound rationale: 가늘고 긴 물체의 흔들림과 팔다리 움직임은 같은 가볍고 느슨한 반복 동작의 대상별 용법이다.
+
+#### 하늘 천 하면 검을 현 한다
+
+- Existing Meaning: `m533043_1` — 하나를 가르치면 앞질러 깨닫거나 상대나 윗사람의 의도를 미리 알아 그에 맞게 일을 처리하는 총기를 비유적으로 이르는 말.
+- Bound canonical senses:
+  - `w533043-s1` (`w533043`, expression): 하나를 가르치면 둘, 셋을 앞질러 가며 깨달음을 비유적으로 이르는 말.
+  - `w533043-s2` (`w533043`, expression): 상대나 윗사람의 의도를 미리 알아 그에 맞게 일을 처리해 나감을 비유적으로 이르는 말.
+- Decision: retain one Meaning (`m533043_1`); final gloss: 하나를 가르치면 앞질러 깨닫거나 상대나 윗사람의 의도를 미리 알아 그에 맞게 일을 처리하는 총기를 비유적으로 이르는 말.
+- Source-bound rationale: 앞서 깨닫는 배움과 말하지 않은 의도를 알아 처리하는 일은 주어진 단서에서 앞질러 파악하는 총기라는 같은 속담 의미다.
+
+#### 하늘구멍
+
+- Existing Meaning: `m503489_1` — 가려진 것의 틈이나 갈라진 구름 사이로 내다보이는 하늘의 작은 부분.
+- Bound canonical senses:
+  - `w503489-s1` (`w503489`, noun): 가려진 것의 틈으로 내다보이는 하늘의 부분.
+  - `w503489-s2` (`w503489`, noun): 덮였던 구름이 갈라지면서 나타나는 하늘의 작은 부분.
+- Decision: retain one Meaning (`m503489_1`); final gloss: 가려진 것의 틈이나 갈라진 구름 사이로 내다보이는 하늘의 작은 부분.
+- Source-bound rationale: 가려진 틈과 갈라진 구름은 모두 하늘이 부분적으로 드러나는 좁은 틈이며, 보이는 대상도 하나의 하늘 구멍이다.
+
+#### 하늘빛
+
+- Existing Meaning: `m503778_1` — 하늘의 빛깔. 특히 맑은 하늘과 같은 연한 파란빛.
+- Bound canonical senses:
+  - `w503778-s1` (`w503778`, noun): 하늘의 빛깔.
+  - `w503778-s2` (`w503778`, noun): 맑은 하늘의 빛깔과 같은 연한 파란빛.
+- Decision: retain one Meaning (`m503778_1`); final gloss: 하늘의 빛깔. 특히 맑은 하늘과 같은 연한 파란빛.
+- Source-bound rationale: 하늘 자체의 빛깔과 맑은 하늘을 닮은 연한 파란빛은 같은 하늘색의 일반·대표 색조다.
+
+#### 하늘에 돌 던지는 격
+
+- Existing Meaning: `m533025_1` — 상대가 되지 않을 대상에게 무모하게 덤벼 시비를 걸거나 자기에게 해가 돌아올 짓을 함을 비유적으로 이르는 말.
+- Bound canonical senses:
+  - `w533025-s1` (`w533025`, expression): 하늘을 향하여 돌을 던져 보아야 자기에게 떨어진다는 뜻으로, 자기에게 해가 돌아올 짓을 함을 비유적으로 이르는 말.
+  - `w533025-s2` (`w533025`, expression): 상대가 되지도 아니하는 보잘것없는 사람이 건드려도 꿈쩍도 아니 할 대상에게 무모하게 시비를 걸며 욕함을 비유적으로 이르는 말.
+- Decision: retain one Meaning (`m533025_1`); final gloss: 상대가 되지 않을 대상에게 무모하게 덤벼 시비를 걸거나 자기에게 해가 돌아올 짓을 함을 비유적으로 이르는 말.
+- Source-bound rationale: 돌을 던져 자기에게 해가 돌아오는 경우와 강한 상대를 건드리는 무모한 경우는 같은 속담의 무모한 도전·역효과를 풀이한다.
+
+#### 하늘이 노랗다
+
+- Existing Meaning: `m533051_1` — 지나친 과로나 상심으로 기력이 몹시 쇠하거나 큰 충격을 받아 정신이 아찔함을 이르는 말.
+- Bound canonical senses:
+  - `w533051-s1` (`w533051`, expression): 지나친 과로나 상심으로 기력이 몹시 쇠하다.
+  - `w533051-s2` (`w533051`, expression): 큰 충격을 받아 정신이 아찔하다.
+- Decision: retain one Meaning (`m533051_1`); final gloss: 지나친 과로나 상심으로 기력이 몹시 쇠하거나 큰 충격을 받아 정신이 아찔함을 이르는 말.
+- Source-bound rationale: 과로·상심으로 기력이 쇠한 상태와 큰 충격으로 정신이 아찔한 상태는 극심한 충격이나 고갈로 몸과 정신이 흔들리는 같은 관용 표현이다.
+
+#### 하대하다
+
+- Existing Meaning: `m364857_1` — 상대편을 낮게 대우하거나 낮은 말을 쓰다.
+- Bound canonical senses:
+  - `w364857-s1` (`w364857`, verb): 상대편을 낮게 대우하다.
+  - `w364857-s2` (`w364857`, verb): 상대편에게 낮은 말을 쓰다.
+- Decision: retain one Meaning (`m364857_1`); final gloss: 상대편을 낮게 대우하거나 낮은 말을 쓰다.
+- Source-bound rationale: 낮게 대우하는 일과 낮은 말을 쓰는 일은 상대를 낮춰 대하는 태도의 행위·언어 표현이다.
+
+#### 하띠
+
+- Existing Meaning: `m359787_1` — 놀이에서 가장 적게 맞히거나 끗수가 낮은 띠.
+- Bound canonical senses:
+  - `w359787-s1` (`w359787`, noun): 연전띠내기에서, 활을 쏘아 가장 적게 맞히거나 화살을 나중에 던져 짠 띠.
+  - `w359787-s2` (`w359787`, noun): 화투에서, 제일 끗수가 적은 띠.
+- Decision: retain one Meaning (`m359787_1`); final gloss: 놀이에서 가장 적게 맞히거나 끗수가 낮은 띠.
+- Source-bound rationale: 연전띠내기에서 가장 적게 맞힌 띠와 화투의 최저 끗수 띠는 서로 다른 놀이에서 가장 낮은 성적을 표시하는 같은 이름의 놀이 표식이다.
+
+#### 하래
+
+- Existing Meaning: `m360071_1` — 높은 곳에서 낮은 곳으로 내려옴. 특히 서울에서 시골로 내려옴을 이른다.
+- Bound canonical senses:
+  - `w360071-s1` (`w360071`, noun): 높은 곳에서 낮은 곳으로 내려옴.
+  - `w360071-s2` (`w360071`, noun): 서울에서 시골로 내려옴.
+- Decision: retain one Meaning (`m360071_1`); final gloss: 높은 곳에서 낮은 곳으로 내려옴. 특히 서울에서 시골로 내려옴을 이른다.
+- Source-bound rationale: 높은 곳에서 낮은 곳으로 내려오는 일과 서울에서 시골로 내려오는 일은 중심·상위 위치에서 지방으로 향하는 하래의 일반·관용 적용이다.
+
+#### 하래하다
+
+- Existing Meaning: `m501771_1` — 높은 곳에서 낮은 곳으로 내려오다. 특히 서울에서 시골로 내려오는 것을 이른다.
+- Bound canonical senses:
+  - `w501771-s1` (`w501771`, verb): 높은 곳에서 낮은 곳으로 내려오다.
+  - `w501771-s2` (`w501771`, verb): 서울에서 시골로 내려오다.
+- Decision: retain one Meaning (`m501771_1`); final gloss: 높은 곳에서 낮은 곳으로 내려오다. 특히 서울에서 시골로 내려오는 것을 이른다.
+- Source-bound rationale: 일반적인 하강과 서울에서 시골로 내려오는 용법은 같은 아래쪽 이동이며 후자는 구체적인 이동 경로다.
+
+#### 하료
+
+- Existing Meaning: `m499494_1` — 아랫자리에 있는 동료나 지위가 낮은 관리.
+- Bound canonical senses:
+  - `w499494-s1` (`w499494`, noun): 아랫자리에 있는 동료.
+  - `w499494-s2` (`w499494`, noun): 지위가 낮은 관리.
+- Decision: retain one Meaning (`m499494_1`); final gloss: 아랫자리에 있는 동료나 지위가 낮은 관리.
+- Source-bound rationale: 아랫자리에 있는 동료와 지위가 낮은 관리는 모두 조직 위계에서 아래에 있는 사람을 가리킨다.
+
+#### 하루하루
+
+- Existing Meaning: `m499687_1` — 그날그날의 날. 또는 하루가 지날 때마다.
+- Bound canonical senses:
+  - `w499687-s1` (`w499687`, noun): 그날그날의 날.
+  - `w499687-s2` (`w499687`, adverb): 하루가 지날 때마다.
+- Decision: retain one Meaning (`m499687_1`); final gloss: 그날그날의 날. 또는 하루가 지날 때마다.
+- Source-bound rationale: 그날그날의 하루를 세는 명사 용법과 하루가 지날 때마다의 부사 용법은 매일을 단위로 반복되는 같은 시간 개념이다.
+
+#### 하룻밤
+
+- Existing Meaning: `m503399_1` — 해가 진 뒤 다음 날 해가 뜰 때까지의 동안. 또는 그런 어느 밤.
+- Bound canonical senses:
+  - `w503399-s1` (`w503399`, noun): 해가 지고 나서 다음 날 해가 뜰 때까지의 동안.
+  - `w503399-s2` (`w503399`, noun): 어떤 날 밤.
+- Decision: retain one Meaning (`m503399_1`); final gloss: 해가 진 뒤 다음 날 해가 뜰 때까지의 동안. 또는 그런 어느 밤.
+- Source-bound rationale: 해 진 뒤 다음 날 해 뜰 때까지의 밤과 특정 날짜의 밤은 같은 야간 시간 범위의 일반·개별 표현이다.
+
+#### 하륙
+
+- Existing Meaning: `m360872_1` — 배·화물차·비행기 따위에 실었던 짐을 땅에 내려놓거나 배에서 뭍으로 내림.
+- Bound canonical senses:
+  - `w360872-s1` (`w360872`, noun): 배, 화물차, 비행기 따위에 실었던 짐을 땅에 내려놓음.
+  - `w360872-s2` (`w360872`, noun): 배에서 뭍으로 내림.
+- Decision: retain one Meaning (`m360872_1`); final gloss: 배·화물차·비행기 따위에 실었던 짐을 땅에 내려놓거나 배에서 뭍으로 내림.
+- Source-bound rationale: 운송 수단에서 짐을 내리는 일과 배에서 사람이 뭍으로 내리는 일은 모두 실린 것이 배에서 육지로 내려오는 같은 하선·하역 축이다.
+
+#### 하륙하다
+
+- Existing Meaning: `m360873_1` — 배·화물차·비행기 따위에 실었던 짐을 땅에 내려놓거나 배에서 뭍으로 내리다.
+- Bound canonical senses:
+  - `w360873-s1` (`w360873`, verb): 배, 화물차, 비행기 따위에 실었던 짐을 땅에 내려놓다.
+  - `w360873-s2` (`w360873`, verb): 배에서 뭍으로 내리다.
+- Decision: retain one Meaning (`m360873_1`); final gloss: 배·화물차·비행기 따위에 실었던 짐을 땅에 내려놓거나 배에서 뭍으로 내리다.
+- Source-bound rationale: 운송물 하역과 승객의 배 내림은 대상이 달라도 배나 운송 수단에서 육지로 내리는 동작이다.
+
+#### 하리타분하다
+
+- Existing Meaning: `m501097_1` — 사물·현상이나 성질·행동 따위가 조금 흐리고 답답할 정도로 분명하지 못하다.
+- Bound canonical senses:
+  - `w501097-s1` (`w501097`, adjective): 사물이나 현상 따위가 똑똑하지 못하고 조금 흐리다.
+  - `w501097-s2` (`w501097`, adjective): 성질이나 행동 따위가 조금 답답할 정도로 흐리고 분명하지 못하다.
+- Decision: retain one Meaning (`m501097_1`); final gloss: 사물·현상이나 성질·행동 따위가 조금 흐리고 답답할 정도로 분명하지 못하다.
+- Source-bound rationale: 사물·현상의 흐릿함과 성질·행동의 답답하고 분명하지 않음은 물리적 흐림이 추상 영역으로 확장된 같은 불명료함이다.
+
+#### 하리타분히
+
+- Existing Meaning: `m362001_1` — 사물·현상이나 성질·행동 따위가 조금 흐리고 답답할 정도로 분명하지 못하게.
+- Bound canonical senses:
+  - `w362001-s1` (`w362001`, adverb): 사물이나 현상 따위가 똑똑하지 못하고 조금 흐리게.
+  - `w362001-s2` (`w362001`, adverb): 성질이나 행동 따위가 조금 답답할 정도로 흐리고 분명하지 못하게.
+- Decision: retain one Meaning (`m362001_1`); final gloss: 사물·현상이나 성질·행동 따위가 조금 흐리고 답답할 정도로 분명하지 못하게.
+- Source-bound rationale: 사물의 흐릿함과 성질·행동의 불분명함은 같은 흐리고 답답한 상태를 부사로 나타낸다.
+
+#### 하림하다
+
+- Existing Meaning: `m362242_1` — 신이 하늘에서 인간 세상으로 내려오거나 윗사람이 아랫사람이 있는 곳에 다다름을 높여 이르다.
+- Bound canonical senses:
+  - `w362242-s1` (`w362242`, verb): 신이 하늘에서 인간 세상으로 내려오다.
+  - `w362242-s2` (`w362242`, verb): (높이는 뜻으로) 주로 편지글에서, 윗사람이 아랫사람 있는 곳에 다다르다.
+- Decision: retain one Meaning (`m362242_1`); final gloss: 신이 하늘에서 인간 세상으로 내려오거나 윗사람이 아랫사람이 있는 곳에 다다름을 높여 이르다.
+- Source-bound rationale: 신이 인간 세상으로 내려옴과 윗사람이 아랫사람 있는 곳에 다다름은 상위에서 아래로 내려와 이르는 동작이며 후자는 높임 표현이다.
+
+#### 하모니
+
+- Existing Meaning: `m357123_1` — 부분들이 서로 모순 없이 어울려 통일감과 쾌감을 이루는 관계. 음악에서는 일정한 법칙에 따른 화음의 연결을 이른다.
+- Bound canonical senses:
+  - `w357123-s1` (`w357123`, noun): 미적 대상의 부분들이 성질이나 수량성에서 서로 모순이 없는 통일 관계를 맺어 쾌감을 낳는 것.
+  - `w357123-s2` (`w357123`, noun): 일정한 법칙에 따른 화음의 연결.
+- Decision: retain one Meaning (`m357123_1`); final gloss: 부분들이 서로 모순 없이 어울려 통일감과 쾌감을 이루는 관계. 음악에서는 일정한 법칙에 따른 화음의 연결을 이른다.
+- Source-bound rationale: 부분들의 조화로운 통일과 화음의 연결은 서로 어울려 조화를 이루는 하모니의 일반적·음악적 적용이다.
+
+#### 하백
+
+- Existing Meaning: `m362703` — 물을 맡아 다스린다는 신. 고구려 시조 주몽의 외조부로 전하는 전설 속 인물.
+- Bound canonical senses:
+  - `w362703-s1` (`w362703`, noun): 물을 맡아 다스린다는 신.
+  - `w501685-s1` (`w501685`, noun): 고구려의 시조인 주몽의 외조부. 전설상의 인물로, 주몽의 어머니 유화(柳花)가 해모수와 사통(私通)하자 이를 벌하여 태백산 남쪽의 우발수(優渤水)로 내쫓았다고 한다.
+- Decision: retain one Meaning (`m362703`); final gloss: 물을 맡아 다스린다는 신. 고구려 시조 주몽의 외조부로 전하는 전설 속 인물.
+- Source-bound rationale: 두 canonical record는 모두 물을 다스리는 신 하백을 가리키며, 주몽의 외조부라는 설명은 같은 신의 신화적 신원이다.
+
+#### 하선하다
+
+- Existing Meaning: `m357345_1` — 사람이 배에서 내리다. 짐을 배에서 부리기도 한다.
+- Bound canonical senses:
+  - `w357345-s1` (`w357345`, verb): 배에서 내리다.
+  - `w357345-s2` (`w357345`, verb): 짐을 배에서 부리다.
+- Decision: retain one Meaning (`m357345_1`); final gloss: 사람이 배에서 내리다. 짐을 배에서 부리기도 한다.
+- Source-bound rationale: 사람이 배에서 내리는 것과 짐을 배에서 부리는 것은 하선이라는 배에서 내려오는 동작의 승객·화물 적용이다.
+
+#### 하야말갛다
+
+- Existing Meaning: `m363426_1` — 하얀빛을 띠며 맑다. 살빛이 윤기 있게 희고 맑은 것을 이르기도 한다.
+- Bound canonical senses:
+  - `w363426-s1` (`w363426`, adjective): 살빛이 탐스럽도록 윤기가 있게 희고 맑다.
+  - `w363426-s2` (`w363426`, adjective): 하얀빛을 띠며 말갛다.
+- Decision: retain one Meaning (`m363426_1`); final gloss: 하얀빛을 띠며 맑다. 살빛이 윤기 있게 희고 맑은 것을 이르기도 한다.
+- Source-bound rationale: 윤기 있게 희고 맑은 살빛과 하얗고 맑은 빛깔은 같은 밝고 투명한 흰빛의 표현이다.
+
+#### 하열
+
+- Existing Meaning: `m361311_1` — 신체 아랫부분, 특히 하초에 열이 있는 증상.
+- Bound canonical senses:
+  - `w361311-s1` (`w361311`, noun): 신체의 아랫부분에 열이 있는 증상.
+  - `w361311-s2` (`w361311`, noun): 하초에 열이 있는 증상.
+- Decision: retain one Meaning (`m361311_1`); final gloss: 신체 아랫부분, 특히 하초에 열이 있는 증상.
+- Source-bound rationale: 신체 아랫부분과 하초는 같은 신체 영역을 가리키므로 두 증상 풀이가 동일한 열 증상을 설명한다.
+
+#### 하원갑
+
+- Existing Meaning: `m359776_1` — 음양설에서 시대 변화의 세 단계 가운데 마지막인 세 번째 육십갑자 60년 주기. 천도교에서는 운이 다해 망해 가는 시대로 이르기도 한다.
+- Bound canonical senses:
+  - `w359776-s1` (`w359776`, noun): 음양설에서, 시대 변화의 큰 단위로 잡는 세 묶음의 육십갑자 가운데 세 번째 육십갑자의 60년. 한 시대가 차차 쇠약해지는 단계로 본다.
+  - `w359776-s2` (`w359776`, noun): 천도교에서, 운이 다하여 망하여 가는 시대를 이르는 말.
+- Decision: retain one Meaning (`m359776_1`); final gloss: 음양설에서 시대 변화의 세 단계 가운데 마지막인 세 번째 육십갑자 60년 주기. 천도교에서는 운이 다해 망해 가는 시대로 이르기도 한다.
+- Source-bound rationale: 60년 육십갑자의 마지막 단계와 쇠약해지는 시대라는 풀이가 같은 순환 주기의 하강 국면을 가리킨다.
+
+#### 하품에 딸꾹질
+
+- Existing Meaning: `m524672_1` — 어려운 일이 공교롭게도 잇달아 생기거나, 일마다 방해를 받아 낭패를 봄을 비유적으로 이르는 말.
+- Bound canonical senses:
+  - `w524672-s1` (`w524672`, expression): 어려운 일이 공교롭게 계속됨을 비유적으로 이르는 말.
+  - `w524672-s2` (`w524672`, expression): 일마다 공교롭게도 방해가 끼어 낭패를 보게 됨을 비유적으로 이르는 말.
+- Decision: retain one Meaning (`m524672_1`); final gloss: 어려운 일이 공교롭게도 잇달아 생기거나, 일마다 방해를 받아 낭패를 봄을 비유적으로 이르는 말.
+- Source-bound rationale: 어려움이 잇따르는 경우와 일마다 방해가 끼는 경우는 공교로운 장애가 계속된다는 같은 속담 풀이의 결과 차이다.
+
+#### 하품에 폐기
+
+- Existing Meaning: `m524673_1` — 어려운 일이 공교롭게도 잇달아 생기거나, 일마다 방해를 받아 낭패를 봄을 비유적으로 이르는 말.
+- Bound canonical senses:
+  - `w524673-s1` (`w524673`, expression): 어려운 일이 공교롭게 계속됨을 비유적으로 이르는 말.
+  - `w524673-s2` (`w524673`, expression): 일마다 공교롭게도 방해가 끼어 낭패를 보게 됨을 비유적으로 이르는 말.
+- Decision: retain one Meaning (`m524673_1`); final gloss: 어려운 일이 공교롭게도 잇달아 생기거나, 일마다 방해를 받아 낭패를 봄을 비유적으로 이르는 말.
+- Source-bound rationale: 어려움의 연속과 일마다 방해를 받아 낭패를 보는 경우는 같은 불운이 거듭되는 속담 의미다.
+
+#### 하프톤
+
+- Existing Meaning: `m361169_1` — 그림·사진·인쇄물에서 화면이나 색조의 밝기가 중간 정도인 상태.
+- Bound canonical senses:
+  - `w361169-s1` (`w361169`, noun): 그림, 사진 따위에서 화면의 밝기가 중간 정도인 색조(色調).
+  - `w361169-s2` (`w361169`, noun): 인쇄물에서, 중간 정도의 밝기.
+- Decision: retain one Meaning (`m361169_1`); final gloss: 그림·사진·인쇄물에서 화면이나 색조의 밝기가 중간 정도인 상태.
+- Source-bound rationale: 그림·사진의 중간 밝기 색조와 인쇄물의 중간 밝기는 매체만 다른 하프톤의 같은 중간 명암 개념이다.
+
+#### 하향기
+
+- Existing Meaning: `m362258_1` — 아래로 향하는 시기. 기력 따위가 쇠퇴하는 시기를 이르기도 한다.
+- Bound canonical senses:
+  - `w362258-s1` (`w362258`, noun): 아래로 향하는 시기.
+  - `w362258-s2` (`w362258`, noun): 기력 따위가 쇠퇴하는 시기.
+- Decision: retain one Meaning (`m362258_1`); final gloss: 아래로 향하는 시기. 기력 따위가 쇠퇴하는 시기를 이르기도 한다.
+- Source-bound rationale: 아래로 향하는 시기와 기력 쇠퇴기는 일반적인 하락 국면 및 그 구체적 적용이다.
+
+#### 하황은
+
+- Existing Meaning: `m362842_1` — 사신들 잔치에 쓰던 춤음악. 조선 세종 때 지은 아악곡으로 회례연의 넷째 잔이나 동지·정월 초하루에 연주하였다.
+- Bound canonical senses:
+  - `w362842-s1` (`w362842`, noun): 사신들 잔치에 쓰던 춤음악.
+  - `w362842-s2` (`w362842`, noun): 조선 세종 때 지은 아악곡. 회례연에서 넷째 잔을 올릴 때 또는 동지나 정월 초하루에 연주하였다.
+- Decision: retain one Meaning (`m362842_1`); final gloss: 사신들 잔치에 쓰던 춤음악. 조선 세종 때 지은 아악곡으로 회례연의 넷째 잔이나 동지·정월 초하루에 연주하였다.
+- Source-bound rationale: 사신 잔치의 춤음악과 세종 때 회례연 등에서 연주한 악곡은 같은 이름의 궁중 음악을 용도와 편성 맥락으로 설명한다.
+
+#### 하황은지악
+
+- Existing Meaning: `m362844_1` — 사신들 잔치에 쓰던 춤음악. 조선 세종 때 지은 아악곡으로 회례연의 넷째 잔이나 동지·정월 초하루에 연주하였다.
+- Bound canonical senses:
+  - `w362844-s1` (`w362844`, noun): 사신들 잔치에 쓰던 춤음악.
+  - `w362844-s2` (`w362844`, noun): 조선 세종 때 지은 아악곡. 회례연에서 넷째 잔을 올릴 때 또는 동지나 정월 초하루에 연주하였다.
+- Decision: retain one Meaning (`m362844_1`); final gloss: 사신들 잔치에 쓰던 춤음악. 조선 세종 때 지은 아악곡으로 회례연의 넷째 잔이나 동지·정월 초하루에 연주하였다.
+- Source-bound rationale: 사신 잔치에서 쓰인 춤음악과 특정 회례연·절일에 연주한 악곡은 동일한 궁중 악곡의 용도와 역사 설명이다.
+
+#### 학구적
+
+- Existing Meaning: `m362720_1` — 학문 연구에 몰두하는 것.
+- Bound canonical senses:
+  - `w362720-s1` (`w362720`, noun): 학문 연구에 몰두하는 것.
+  - `w362720-s2` (`w362720`, determiner): 학문 연구에 몰두하는.
+- Decision: retain one Meaning (`m362720_1`); final gloss: 학문 연구에 몰두하는 것.
+- Source-bound rationale: 명사 sense w362720-s1의 풀이 ‘학문 연구에 몰두하는 것.’와 관형사 sense w362720-s2의 풀이 ‘학문 연구에 몰두하는.’는 ‘학문 연구에 몰두하는’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘학문 연구에 몰두하는 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 학규
+
+- Existing Meaning: `m363000_1` — 학과나 학교의 편제·교과 과정·입학·졸업·상벌 따위에 관한 규칙.
+- Bound canonical senses:
+  - `w363000-s1` (`w363000`, noun): 학과의 규칙.
+  - `w363000-s2` (`w363000`, noun): 학교의 학과, 편제, 교과 과정, 입학, 졸업, 상벌 따위에 관한 규칙.
+- Decision: retain one Meaning (`m363000_1`); final gloss: 학과나 학교의 편제·교과 과정·입학·졸업·상벌 따위에 관한 규칙.
+- Source-bound rationale: 학과 규칙과 학교의 편제·교과·입학·졸업 등에 관한 규칙은 학교 교육 운영 규칙이라는 같은 개념의 축약·상세 풀이이다.
+
+#### 학년
+
+- Existing Meaning: `m363596_1` — 한 학년 동안의 학습 과정 단위. 과목의 정도에 따라 구분하는 학교 교육의 단계도 이른다.
+- Bound canonical senses:
+  - `w363596-s1` (`w363596`, noun): 일 년간의 학습 과정의 단위.
+  - `w363596-s2` (`w363596`, noun): 수업하는 과목의 정도에 따라 일 년을 단위로 구분한 학교 교육의 단계.
+- Decision: retain one Meaning (`m363596_1`); final gloss: 한 학년 동안의 학습 과정 단위. 과목의 정도에 따라 구분하는 학교 교육의 단계도 이른다.
+- Source-bound rationale: 일 년 학습 과정의 단위와 학교 교육에서 일 년마다 나눈 단계는 같은 연간 교육 단위를 설명한다.
+
+#### 학력고사
+
+- Existing Meaning: `m360124_1` — 학습 결과나 대학 입학에 필요한 학력을 평가하는 시험. 1981년부터 1992년까지 교육부가 해마다 실시한 시험을 이르기도 한다.
+- Bound canonical senses:
+  - `w360124-s1` (`w360124`, noun): 일정 범위의 학습 결과에 대하여 얻어진 능력을 평가하기 위하여 실시하는 시험.
+  - `w360124-s2` (`w360124`, noun): 1981년도부터 1992년도까지 대학 입학에 필요한 학력이 있는지 검사하기 위하여 교육부에서 해마다 실시하던 시험.
+- Decision: retain one Meaning (`m360124_1`); final gloss: 학습 결과나 대학 입학에 필요한 학력을 평가하는 시험. 1981년부터 1992년까지 교육부가 해마다 실시한 시험을 이르기도 한다.
+- Source-bound rationale: 일반적인 학습 성취 능력 시험과 1981–1992년 대학 입학 학력시험은 같은 학력 평가의 일반 개념과 역사적 실시 사례다.
+
+#### 학리적
+
+- Existing Meaning: `m360694_1` — 학문에서의 원리나 이론에 바탕을 둔 것.
+- Bound canonical senses:
+  - `w360694-s1` (`w360694`, noun): 학문에서의 원리나 이론에 바탕을 둔 것.
+  - `w360694-s2` (`w360694`, determiner): 학문에서의 원리나 이론에 바탕을 둔.
+- Decision: retain one Meaning (`m360694_1`); final gloss: 학문에서의 원리나 이론에 바탕을 둔 것.
+- Source-bound rationale: 명사 sense w360694-s1의 풀이 ‘학문에서의 원리나 이론에 바탕을 둔 것.’와 관형사 sense w360694-s2의 풀이 ‘학문에서의 원리나 이론에 바탕을 둔.’는 ‘학문에서의 원리나 이론에 바탕을 둔’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘학문에서의 원리나 이론에 바탕을 둔 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 학문
+
+- Existing Meaning: `m360968` — 어떤 분야를 체계적으로 배우고 익히는 일 또는 그런 지식. 특히 시서·육예 따위의 유학 경전을 배우는 일을 이른다.
+- Bound canonical senses:
+  - `w360968-s1` (`w360968`, noun): ≪서경≫, ≪시경≫, ≪주역≫, ≪춘추≫, 예(禮), 악(樂) 따위의 시서·육예를 배우는 일.
+  - `w361217-s1` (`w361217`, noun): 어떤 분야를 체계적으로 배워서 익힘. 또는 그런 지식.
+- Decision: retain one Meaning (`m360968`); final gloss: 어떤 분야를 체계적으로 배우고 익히는 일 또는 그런 지식. 특히 시서·육예 따위의 유학 경전을 배우는 일을 이른다.
+- Source-bound rationale: 시서·육예를 배우는 전통적 공부와 분야를 체계적으로 배우고 익히는 일은 학문이라는 학습 활동의 역사적 범위와 일반 범위다.
+
+#### 학문적
+
+- Existing Meaning: `m361218_1` — 학문과 관련되어 있거나 학문으로서의 방법이나 체계가 서 있는 것.
+- Bound canonical senses:
+  - `w361218-s1` (`w361218`, noun): 학문과 관련되어 있거나 학문으로서의 방법이나 체계가 서 있는 것.
+  - `w361218-s2` (`w361218`, determiner): 학문과 관련되어 있거나 학문으로서의 방법이나 체계가 서 있는.
+- Decision: retain one Meaning (`m361218_1`); final gloss: 학문과 관련되어 있거나 학문으로서의 방법이나 체계가 서 있는 것.
+- Source-bound rationale: 명사 sense w361218-s1의 풀이 ‘학문과 관련되어 있거나 학문으로서의 방법이나 체계가 서 있는 것.’와 관형사 sense w361218-s2의 풀이 ‘학문과 관련되어 있거나 학문으로서의 방법이나 체계가 서 있는.’는 ‘학문과 관련되어 있거나 학문으로서의 방법이나 체계가 서 있는’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘학문과 관련되어 있거나 학문으로서의 방법이나 체계가 서 있는 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 학생복
+
+- Existing Meaning: `m361196_1` — 학생들이 입는 옷. 학교에서 입도록 정한 제복을 이르기도 한다.
+- Bound canonical senses:
+  - `w361196-s1` (`w361196`, noun): 학교에서 학생들이 입도록 정한 제복.
+  - `w361196-s2` (`w361196`, noun): 학생들이 입는 옷.
+- Decision: retain one Meaning (`m361196_1`); final gloss: 학생들이 입는 옷. 학교에서 입도록 정한 제복을 이르기도 한다.
+- Source-bound rationale: 학교가 정한 제복과 학생들이 입는 옷은 학교·학생 착용복이라는 한 범주이며, 제복은 그 구체적 유형이다.
+
+#### 학술적
+
+- Existing Meaning: `m501134_1` — 학술에 관한 것.
+- Bound canonical senses:
+  - `w501134-s1` (`w501134`, noun): 학술에 관한 것.
+  - `w501134-s2` (`w501134`, determiner): 학술에 관한.
+- Decision: retain one Meaning (`m501134_1`); final gloss: 학술에 관한 것.
+- Source-bound rationale: 명사 sense w501134-s1의 풀이 ‘학술에 관한 것.’와 관형사 sense w501134-s2의 풀이 ‘학술에 관한.’는 ‘학술에 관한’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘학술에 관한 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 학습
+
+- Existing Meaning: `m501139_1` — 배워서 익히는 일. 경험에 따른 행동이나 그 잠재력의 변화 또는 지식 습득 과정을 이르기도 한다.
+- Bound canonical senses:
+  - `w501139-s1` (`w501139`, noun): 배워서 익힘.
+  - `w501139-s2` (`w501139`, noun): 경험의 결과로 나타나는, 비교적 지속적인 행동의 변화나 그 잠재력의 변화. 또는 지식을 습득하는 과정.
+- Decision: retain one Meaning (`m501139_1`); final gloss: 배워서 익히는 일. 경험에 따른 행동이나 그 잠재력의 변화 또는 지식 습득 과정을 이르기도 한다.
+- Source-bound rationale: 배워 익히는 과정과 경험으로 인한 지속적 행동·잠재력 변화는 학습 과정의 일반 풀이와 심리학적 설명이다.
+
+#### 학업
+
+- Existing Meaning: `m495991_1` — 공부하여 학문을 닦는 일. 주로 학교에서 일반·전문 지식을 배우는 공부를 이른다.
+- Bound canonical senses:
+  - `w495991-s1` (`w495991`, noun): 공부하여 학문을 닦는 일.
+  - `w495991-s2` (`w495991`, noun): 주로 학교에서 일반 지식과 전문 지식을 배우기 위하여 공부하는 일.
+- Decision: retain one Meaning (`m495991_1`); final gloss: 공부하여 학문을 닦는 일. 주로 학교에서 일반·전문 지식을 배우는 공부를 이른다.
+- Source-bound rationale: 학문을 닦는 공부와 학교에서 일반·전문 지식을 배우는 공부는 학업의 일반 활동과 학교 중심 사례다.
+
+#### 학예
+
+- Existing Meaning: `m495993_1` — 학문·문장과 예능·기예를 아울러 이르는 말.
+- Bound canonical senses:
+  - `w495993-s1` (`w495993`, noun): 학문과 예능을 통틀어 이르는 말.
+  - `w495993-s2` (`w495993`, noun): 문장과 기예를 통틀어 이르는 말.
+- Decision: retain one Meaning (`m495993_1`); final gloss: 학문·문장과 예능·기예를 아울러 이르는 말.
+- Source-bound rationale: 학문·예능과 문장·기예는 배움과 예술 활동을 아우르는 같은 학예 범주의 서로 다른 표현이다.
+
+#### 학인
+
+- Existing Meaning: `m358821_1` — 배우는 사람. 학자나 문필가가 아호로 쓰거나 도(道)를 배우는 이를 이르기도 한다.
+- Bound canonical senses:
+  - `w358821-s1` (`w358821`, noun): 배우는 사람이라는 뜻으로, 학자나 문필가가 아호(雅號)로 쓰는 말.
+  - `w358821-s2` (`w358821`, noun): 도(道)를 배우는 사람.
+- Decision: retain one Meaning (`m358821_1`); final gloss: 배우는 사람. 학자나 문필가가 아호로 쓰거나 도(道)를 배우는 이를 이르기도 한다.
+- Source-bound rationale: 학자·문필가의 아호로 쓰는 배움의 사람과 도를 배우는 사람은 모두 배우는 사람이라는 동일한 어휘 정체성의 용례다.
+
+#### 학자적
+
+- Existing Meaning: `m359084_1` — 학자의 자질이나 면모를 갖춘 것.
+- Bound canonical senses:
+  - `w359084-s1` (`w359084`, noun): 학자의 자질이나 면모를 갖춘 것.
+  - `w359084-s2` (`w359084`, determiner): 학자의 자질이나 면모를 갖춘.
+- Decision: retain one Meaning (`m359084_1`); final gloss: 학자의 자질이나 면모를 갖춘 것.
+- Source-bound rationale: 명사 sense w359084-s1의 풀이 ‘학자의 자질이나 면모를 갖춘 것.’와 관형사 sense w359084-s2의 풀이 ‘학자의 자질이나 면모를 갖춘.’는 ‘학자의 자질이나 면모를 갖춘’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘학자의 자질이나 면모를 갖춘 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 학풍
+
+- Existing Meaning: `m361582_1` — 학문에서의 태도나 경향. 학교 특유의 기풍을 이르기도 한다.
+- Bound canonical senses:
+  - `w361582-s1` (`w361582`, noun): 학문에서의 태도나 경향.
+  - `w361582-s2` (`w361582`, noun): 학교 특유의 기풍.
+- Decision: retain one Meaning (`m361582_1`); final gloss: 학문에서의 태도나 경향. 학교 특유의 기풍을 이르기도 한다.
+- Source-bound rationale: 학문의 태도·경향과 학교 특유의 기풍은 학습 공동체가 지닌 학문적 분위기라는 같은 경향·문화 축이다.
+
+#### 학행
+
+- Existing Meaning: `m361877_1` — 학문과 덕행, 또는 학문과 불도의 수행을 아울러 이르는 말.
+- Bound canonical senses:
+  - `w361877-s1` (`w361877`, noun): 학문과 덕행, 곧 배움과 실천을 아울러 이르는 말.
+  - `w361877-s2` (`w361877`, noun): 학문과 불도의 수행.
+- Decision: retain one Meaning (`m361877_1`); final gloss: 학문과 덕행, 또는 학문과 불도의 수행을 아울러 이르는 말.
+- Source-bound rationale: 배움과 덕행의 결합 및 배움과 불도 수행의 결합은 학문을 실천과 함께 이르는 용법이며 종교 맥락만 달라진다.
+
+#### 한 방 먹이다
+
+- Existing Meaning: `m532725_1` — (속되게) 세게 한 번 때리다. 말 따위로 상대방에게 충격을 주는 일도 이른다.
+- Bound canonical senses:
+  - `w532725-s1` (`w532725`, expression): (속되게) 세게 한 번 때리다.
+  - `w532725-s2` (`w532725`, expression): (속되게) 말 따위로 상대방에게 충격을 주다.
+- Decision: retain one Meaning (`m532725_1`); final gloss: (속되게) 세게 한 번 때리다. 말 따위로 상대방에게 충격을 주는 일도 이른다.
+- Source-bound rationale: 실제 한 번 때리는 것과 말로 충격을 주는 것은 물리적 타격이 언어적 충격으로 확장된 같은 한 방의 비유다.
+
+#### 한 방(을) 먹다
+
+- Existing Meaning: `m532724_1` — (속되게) 세게 한 번 맞다. 말 따위로 상대방에게 충격을 받는 일도 이른다.
+- Bound canonical senses:
+  - `w532724-s1` (`w532724`, expression): (속되게) 세게 한 번 맞다.
+  - `w532724-s2` (`w532724`, expression): (속되게) 말 따위로 상대방으로부터 충격을 받다.
+- Decision: retain one Meaning (`m532724_1`); final gloss: (속되게) 세게 한 번 맞다. 말 따위로 상대방에게 충격을 받는 일도 이른다.
+- Source-bound rationale: 실제로 맞는 것과 말에 충격받는 것은 타격의 물리적·언어적 용법이며 같은 관용 표현이다.
+
+#### 한갓되다
+
+- Existing Meaning: `m363612_1` — 겨우 하찮은 것에 그쳐 아무 보람이나 실속이 없다.
+- Bound canonical senses:
+  - `w363612-s1` (`w363612`, adjective): 겨우 하찮은 것밖에 안 되다.
+  - `w363612-s2` (`w363612`, adjective): 아무 보람이나 실속이 없다.
+- Decision: retain one Meaning (`m363612_1`); final gloss: 겨우 하찮은 것에 그쳐 아무 보람이나 실속이 없다.
+- Source-bound rationale: 하찮은 것에 그침과 보람·실속이 없음은 가치나 성과가 없다는 한 평가 축이다.
+
+#### 한갓되이
+
+- Existing Meaning: `m363624_1` — 겨우 하찮은 것에 그치거나 아무 보람이나 실속이 없이.
+- Bound canonical senses:
+  - `w363624-s1` (`w363624`, adverb): 겨우 하찮은 것밖에 안 되게.
+  - `w363624-s2` (`w363624`, adverb): 아무 보람이나 실속이 없이.
+- Decision: retain one Meaning (`m363624_1`); final gloss: 겨우 하찮은 것에 그치거나 아무 보람이나 실속이 없이.
+- Source-bound rationale: 하찮은 것에 그침과 보람 없이 함은 모두 실속·가치가 없는 상태를 부사적으로 이른다.
+
+#### 한강에 돌 던지기
+
+- Existing Meaning: `m524705_1` — 사물이나 노력이 미미하여 효과·영향이 없거나 보람이 없음을 이르는 말.
+- Bound canonical senses:
+  - `w524705-s1` (`w524705`, expression): 어떤 사물이 지나치게 미미하여 일을 하는 데에 효과나 영향이 전혀 없다는 말.
+  - `w524705-s2` (`w524705`, expression): 아무리 투자를 하거나 애를 써도 보람이 전혀 없다는 말.
+- Decision: retain one Meaning (`m524705_1`); final gloss: 사물이나 노력이 미미하여 효과·영향이 없거나 보람이 없음을 이르는 말.
+- Source-bound rationale: 미미한 영향과 애써도 보람 없는 결과는 노력·대상이 너무 작아 효과를 내지 못한다는 같은 비유다.
+
+#### 한계 주파수
+
+- Existing Meaning: `m498097_1` — 어떤 현상이 나타나거나 갑자기 바뀌는 한계 주파수. 광전 장치에서 광전자 방출 효과를 나타내는 최저 주파수이며, 해당 주파수에 대응하는 입사·방사 에너지를 가리키기도 한다.
+- Bound canonical senses:
+  - `w498097-s1` (`w498097`, expression): 광전 장치에서, 광전자 방출 효과를 나타내는 최저 주파수의 입사·방사 에너지.
+  - `w498097-s2` (`w498097`, expression): 어떤 현상이 갑자기 변화하는 한계의 주파수.
+- Decision: retain one Meaning (`m498097_1`); final gloss: 어떤 현상이 나타나거나 갑자기 바뀌는 한계 주파수. 광전 장치에서 광전자 방출 효과를 나타내는 최저 주파수이며, 해당 주파수에 대응하는 입사·방사 에너지를 가리키기도 한다.
+- Source-bound rationale: 현상 변화의 경계 주파수와 광전자 방출의 최저 주파수는 한 현상이 시작·변화하는 임계 주파수의 일반·기술 사례다.
+
+#### 한구석
+
+- Existing Meaning: `m361199_1` — 한쪽으로 치우쳐 구석진 곳. 한쪽 면이나 부분을 이르기도 한다.
+- Bound canonical senses:
+  - `w361199-s1` (`w361199`, noun): 한쪽으로 치우쳐 구석진 곳.
+  - `w361199-s2` (`w361199`, noun): 한쪽 면. 또는 한쪽 부분.
+- Decision: retain one Meaning (`m361199_1`); final gloss: 한쪽으로 치우쳐 구석진 곳. 한쪽 면이나 부분을 이르기도 한다.
+- Source-bound rationale: 구석진 한쪽 장소와 한쪽 면·부분은 전체 중 한쪽에 치우치거나 제한된 부분이라는 공간 의미다.
+
+#### 한국적
+
+- Existing Meaning: `m361204_1` — 한국에 알맞고 한국의 특징을 보여 주는 것.
+- Bound canonical senses:
+  - `w361204-s1` (`w361204`, noun): 한국에 알맞고 한국의 특징을 보여 주는 것.
+  - `w361204-s2` (`w361204`, determiner): 한국에 알맞고 한국의 특징을 보여 주는.
+- Decision: retain one Meaning (`m361204_1`); final gloss: 한국에 알맞고 한국의 특징을 보여 주는 것.
+- Source-bound rationale: 명사 sense w361204-s1의 풀이 ‘한국에 알맞고 한국의 특징을 보여 주는 것.’와 관형사 sense w361204-s2의 풀이 ‘한국에 알맞고 한국의 특징을 보여 주는.’는 ‘한국에 알맞고 한국의 특징을 보여 주는’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘한국에 알맞고 한국의 특징을 보여 주는 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 한글 학교
+
+- Existing Meaning: `m359095_1` — 한글을 가르치는 교육 기관. 광복 직후 문맹 퇴치를 위해 세운 학교나 교민·외국인을 대상으로 한 학교를 이르기도 한다.
+- Bound canonical senses:
+  - `w359095-s1` (`w359095`, expression): 광복 직후에 문맹 퇴치를 위하여 한글을 가르치던 교육 기관.
+  - `w359095-s2` (`w359095`, expression): 교민이나 외국인을 대상으로 한글을 가르치는 기관.
+- Decision: retain one Meaning (`m359095_1`); final gloss: 한글을 가르치는 교육 기관. 광복 직후 문맹 퇴치를 위해 세운 학교나 교민·외국인을 대상으로 한 학교를 이르기도 한다.
+- Source-bound rationale: 광복 직후 문맹 퇴치 학교와 교민·외국인 대상 학교는 한글을 가르치는 기관이라는 동일한 기관 유형의 역사·대상별 사례다.
+
+#### 한기신
+
+- Existing Meaning: `m368115_1` — 죽을 때까지로 한정함. 또는 죽을 때까지.
+- Bound canonical senses:
+  - `w368115-s1` (`w368115`, noun): 죽을 때까지로 한정함.
+  - `w368115-s2` (`w368115`, adverb): 죽을 때까지.
+- Decision: retain one Meaning (`m368115_1`); final gloss: 죽을 때까지로 한정함. 또는 죽을 때까지.
+- Source-bound rationale: 죽을 때까지로 한정하는 명사적 기간과 죽을 때까지라는 부사적 한정은 같은 종신 기간을 문장 안에서 다르게 쓰는 것이다.
+
+#### 한대 기단
+
+- Existing Meaning: `m362420_1` — 아한대 고기압에서 생기는 온도와 습도가 낮고 차가운 기운. 시베리아·오호츠크해 기단 따위의 대륙성·해양성 기단과 한대에서 발생하는 극기단·아한대 기단을 통틀어 이른다.
+- Bound canonical senses:
+  - `w362420-s1` (`w362420`, expression): 아한대 고기압 내에서 발생하는, 온도와 습도가 낮고 차가운 기운. 시베리아 기단 따위의 대륙성 한대 기단과 오호츠크해 기단 따위의 해양성 한대 기단이 있다.
+  - `w362420-s2` (`w362420`, expression): 한대에서 발생하여 나타나는 극기단, 한대 기단, 아한대 기단 따위를 통틀어 이르는 말.
+- Decision: retain one Meaning (`m362420_1`); final gloss: 아한대 고기압에서 생기는 온도와 습도가 낮고 차가운 기운. 시베리아·오호츠크해 기단 따위의 대륙성·해양성 기단과 한대에서 발생하는 극기단·아한대 기단을 통틀어 이른다.
+- Source-bound rationale: 아한대 고기압에서 생기는 차고 건조한 기단과 한대·아한대 기단의 총칭은 같은 한랭 기단 범주의 구체적 설명과 포괄 설명이다.
+
+#### 한더위에 털감투
+
+- Existing Meaning: `m524766_1` — 제철이 지나 쓸데없거나 격에 맞지 아니하여 거추장스러운 물건을 비유적으로 이르는 말.
+- Bound canonical senses:
+  - `w524766-s1` (`w524766`, expression): 제철이 지나 쓸데없고, 오히려 거추장스러운 물건을 비유적으로 이르는 말.
+  - `w524766-s2` (`w524766`, expression): 격에 맞지 아니한 물건을 비유적으로 이르는 말.
+- Decision: retain one Meaning (`m524766_1`); final gloss: 제철이 지나 쓸데없거나 격에 맞지 아니하여 거추장스러운 물건을 비유적으로 이르는 말.
+- Source-bound rationale: 철이 지나 쓸모없고 거추장스러운 물건과 격에 맞지 않는 물건은 더위에 털감투가 어울리지 않는다는 한 비유의 두 평가다.
+
+#### 한두째
+
+- Existing Meaning: `m364116_1` — 순서가 첫 번째나 두 번째쯤 되는 차례.
+- Bound canonical senses:
+  - `w364116-s1` (`w364116`, noun): 순서가 첫 번째나 두 번째쯤 되는 차례.
+  - `w364116-s2` (`w364116`, determiner): 순서가 첫 번째나 두 번째쯤 되는 차례의.
+- Decision: retain one Meaning (`m364116_1`); final gloss: 순서가 첫 번째나 두 번째쯤 되는 차례.
+- Source-bound rationale: 명사 sense w364116-s1는 ‘순서가 첫 번째나 두 번째쯤 되는 차례.’, 관형사 sense w364116-s2는 ‘순서가 첫 번째나 두 번째쯤 되는 차례의.’로, 둘 다 표제어가 순서상 첫째 또는 둘째쯤의 위치·차례를 나타낸다. 관형사 풀이의 ‘의’는 그 차례를 뒤따르는 명사를 꾸미는 문법적 연결이고 별도 어휘 개념을 만들지 않는다. #764가 품사·문법 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘순서가 첫 번째나 두 번째쯤 되는 차례.’는 순서상 차례라는 핵심을 보존한다.
+
+#### 한물가다
+
+- Existing Meaning: `m502469_1` — 채소·과일·어물 따위가 한창 나오는 때가 지나거나 어물 따위가 싱싱한 정도가 떨어지다. 한창때가 지나 기세가 꺾이는 일을 이르기도 한다.
+- Bound canonical senses:
+  - `w502469-s1` (`w502469`, verb): 채소, 과일, 어물 따위의 한창 나오는 때가 지나다.
+  - `w502469-s2` (`w502469`, verb): 어물 따위가 싱싱한 정도가 떨어지다.
+  - `w502469-s3` (`w502469`, verb): 한창때가 지나 기세가 꺾이다.
+- Decision: retain one Meaning (`m502469_1`); final gloss: 채소·과일·어물 따위가 한창 나오는 때가 지나거나 어물 따위가 싱싱한 정도가 떨어지다. 한창때가 지나 기세가 꺾이는 일을 이르기도 한다.
+- Source-bound rationale: 제철이 지남, 어물의 신선도 저하, 사람의 기세가 꺾임은 한창인 때가 지나 쇠퇴한다는 같은 변화 축이다.
+
+#### 한바탕
+
+- Existing Meaning: `m505589_1` — 크게 벌어진 한 판. 또는 한판 크게 하는 모양.
+- Bound canonical senses:
+  - `w505589-s1` (`w505589`, noun): 크게 벌어진 한판.
+  - `w505589-s2` (`w505589`, adverb): 한판 크게.
+- Decision: retain one Meaning (`m505589_1`); final gloss: 크게 벌어진 한 판. 또는 한판 크게 하는 모양.
+- Source-bound rationale: 크게 벌어진 한판이라는 명사와 한판 크게 한다는 부사 용법은 한 차례 크게 벌어지는 일의 같은 단위다.
+
+#### 한바탕하다
+
+- Existing Meaning: `m367636_1` — 어떠한 일을 크게 한 번 벌이다. 크게 싸우는 일도 이른다.
+- Bound canonical senses:
+  - `w367636-s1` (`w367636`, verb): 어떠한 일을 크게 한번 벌이다.
+  - `w367636-s2` (`w367636`, verb): 크게 한번 싸우다.
+- Decision: retain one Meaning (`m367636_1`); final gloss: 어떠한 일을 크게 한 번 벌이다. 크게 싸우는 일도 이른다.
+- Source-bound rationale: 일을 크게 한 번 벌이는 것과 크게 한 번 싸우는 것은 한바탕 벌이는 행위와 그 대표적 사례다.
+
+#### 한배하다
+
+- Existing Meaning: `m364864_1` — 등에 땀을 흘리다. 부끄럽거나 무서워서 땀이 등을 적시는 일도 이른다.
+- Bound canonical senses:
+  - `w364864-s1` (`w364864`, verb): 등에 땀을 흘리다.
+  - `w364864-s2` (`w364864`, verb): 몹시 부끄럽거나 무서워서 흐르는 땀이 등을 적시다.
+- Decision: retain one Meaning (`m364864_1`); final gloss: 등에 땀을 흘리다. 부끄럽거나 무서워서 땀이 등을 적시는 일도 이른다.
+- Source-bound rationale: 등에 땀이 나도록 하는 상태와 부끄럽거나 무서워 등까지 적시는 상태는 같은 땀이 등으로 흐르는 신체 반응이며 둘째는 원인을 한정한다.
+
+#### 한센인
+
+- Existing Meaning: `m514752_1` — 나병균을 발견한 한센의 이름에서 유래하여 ‘나환자’를 달리 이르는 말. 한센병에 걸린 사람이나 한센병에 걸렸다가 완치된 사람을 이르기도 한다.
+- Bound canonical senses:
+  - `w514752-s1` (`w514752`, noun): ‘나환자’를 달리 이르는 말. 나병균을 발견한 한센의 이름에서 유래한 명칭이다.
+  - `w514752-s2` (`w514752`, noun): 한센병에 걸린 사람. 또는 한센병에 걸렸다가 완치된 사람.
+- Decision: retain one Meaning (`m514752_1`); final gloss: 나병균을 발견한 한센의 이름에서 유래하여 ‘나환자’를 달리 이르는 말. 한센병에 걸린 사람이나 한센병에 걸렸다가 완치된 사람을 이르기도 한다.
+- Source-bound rationale: 한센병 환자를 이르던 명칭과 현재 환자·완치자를 포함하는 정의는 같은 질병과 연결된 사람 집단을 가리키며 완치 여부는 독립 어휘를 만들지 않는다.
+
+#### 한소끔
+
+- Existing Meaning: `m363321_1` — 일정한 정도로 한 차례 진행되는 모양. 물 따위가 한 번 끓어오르는 모양도 이른다.
+- Bound canonical senses:
+  - `w363321-s1` (`w363321`, adverb): 한 번 끓어오르는 모양.
+  - `w363321-s2` (`w363321`, adverb): 일정한 정도로 한 차례 진행되는 모양.
+- Decision: retain one Meaning (`m363321_1`); final gloss: 일정한 정도로 한 차례 진행되는 모양. 물 따위가 한 번 끓어오르는 모양도 이른다.
+- Source-bound rationale: 한 번 끓어오름과 일정 정도 한 차례 진행됨은 한 차례 진행되는 짧은 국면이라는 같은 횟수·정도 용법이다.
+
+#### 한술 밥에 배부르랴
+
+- Existing Meaning: `m524748_1` — 어떤 일이든 단번에 만족할 수 없으며, 힘을 조금 들이고 많은 효과를 기대할 수 없다는 말.
+- Bound canonical senses:
+  - `w524748-s1` (`w524748`, expression): 어떤 일이든지 단번에 만족할 수는 없다는 말.
+  - `w524748-s2` (`w524748`, expression): 힘을 조금 들이고 많은 효과를 기대할 수 없다는 말.
+- Decision: retain one Meaning (`m524748_1`); final gloss: 어떤 일이든 단번에 만족할 수 없으며, 힘을 조금 들이고 많은 효과를 기대할 수 없다는 말.
+- Source-bound rationale: 한 번에 만족할 수 없다는 풀이와 적은 노력으로 큰 효과를 기대할 수 없다는 풀이는 작은 투입으로 만족을 얻기 어렵다는 같은 속담이다.
+
+#### 한시적
+
+- Existing Meaning: `m366602_1` — 일정한 기간에 한정되어 있는 것.
+- Bound canonical senses:
+  - `w366602-s1` (`w366602`, noun): 일정한 기간에 한정되어 있는 것.
+  - `w366602-s2` (`w366602`, determiner): 일정한 기간에 한정되어 있는.
+- Decision: retain one Meaning (`m366602_1`); final gloss: 일정한 기간에 한정되어 있는 것.
+- Source-bound rationale: 명사 sense w366602-s1의 풀이 ‘일정한 기간에 한정되어 있는 것.’와 관형사 sense w366602-s2의 풀이 ‘일정한 기간에 한정되어 있는.’는 ‘일정한 기간에 한정되어 있는’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘일정한 기간에 한정되어 있는 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 한의학적
+
+- Existing Meaning: `m505373_1` — 한의학에 바탕을 둔 것.
+- Bound canonical senses:
+  - `w505373-s1` (`w505373`, noun): 한의학에 바탕을 둔 것.
+  - `w505373-s2` (`w505373`, determiner): 한의학에 바탕을 둔 것.
+- Decision: retain one Meaning (`m505373_1`); final gloss: 한의학에 바탕을 둔 것.
+- Source-bound rationale: 명사 sense w505373-s1와 관형사 sense w505373-s2의 원본 풀이가 모두 ‘한의학에 바탕을 둔 것.’로 동일하다. 두 binding은 한의학에 바탕을 둔 성격이라는 동일한 어휘 의미를 직접 지지하므로 독립 어휘 경계의 근거가 없다. #764의 기준에 따라 한 Meaning으로 유지하며, 현재 gloss ‘한의학에 바탕을 둔 것.’가 공통 풀이를 보존한다.
+
+#### 한일모
+
+- Existing Meaning: `m365158_1` — 날이 저물 때까지로 한정함. 또는 날이 저물 때까지.
+- Bound canonical senses:
+  - `w365158-s1` (`w365158`, noun): 날이 저물 때까지로 한정함.
+  - `w365158-s2` (`w365158`, adverb): 날이 저물 때까지.
+- Decision: retain one Meaning (`m365158_1`); final gloss: 날이 저물 때까지로 한정함. 또는 날이 저물 때까지.
+- Source-bound rationale: 날이 저물 때까지라는 명사적 기간과 부사적 한정은 같은 하루 끝 시점을 나타낸다.
+
+#### 한종신
+
+- Existing Meaning: `m498837_1` — 죽을 때까지로 한정함. 또는 죽을 때까지.
+- Bound canonical senses:
+  - `w498837-s1` (`w498837`, noun): 죽을 때까지로 한정함.
+  - `w498837-s2` (`w498837`, adverb): 죽을 때까지.
+- Decision: retain one Meaning (`m498837_1`); final gloss: 죽을 때까지로 한정함. 또는 죽을 때까지.
+- Source-bound rationale: 죽을 때까지라는 기간 명사와 부사 용법은 같은 종신 기간의 문장 기능 차이다.
+
+#### 한종일
+
+- Existing Meaning: `m364123_1` — 날이 저물 때까지로 한정함. 또는 날이 저물 때까지.
+- Bound canonical senses:
+  - `w364123-s1` (`w364123`, noun): 날이 저물 때까지로 한정함.
+  - `w364123-s2` (`w364123`, adverb): 날이 저물 때까지.
+- Decision: retain one Meaning (`m364123_1`); final gloss: 날이 저물 때까지로 한정함. 또는 날이 저물 때까지.
+- Source-bound rationale: 날이 저물 때까지라는 명사적 기간과 부사적 한정은 같은 하루 끝 시점을 나타낸다.
+
+#### 한증가마
+
+- Existing Meaning: `m365033_1` — 한증을 하기 위하여 만든 큰 가마. 한증막에 불을 때고 더운 김을 공급하기 위하여 설치한 가마.
+- Bound canonical senses:
+  - `w365033-s1` (`w365033`, noun): 한증을 하기 위하여 만든 큰 가마.
+  - `w365033-s2` (`w365033`, noun): 한증막에 불을 때고 더운 김을 공급하기 위하여 설치한 가마.
+- Decision: retain one Meaning (`m365033_1`); final gloss: 한증을 하기 위하여 만든 큰 가마. 한증막에 불을 때고 더운 김을 공급하기 위하여 설치한 가마.
+- Source-bound rationale: 한증용 큰 가마와 한증막에 열·증기를 공급하는 가마는 같은 한증 설비의 구조와 기능 설명이다.
+
+#### 한척
+
+- Existing Meaning: `m366289` — 때 묻은 옷을 빨거나 그릇을 씻음.
+- Bound canonical senses:
+  - `w366289-s1` (`w366289`, noun): 때 묻은 옷을 빪.
+  - `w502462-s1` (`w502462`, noun): 옷을 빨거나 그릇을 씻음.
+- Decision: retain one Meaning (`m366289`); final gloss: 때 묻은 옷을 빨거나 그릇을 씻음.
+- Source-bound rationale: 때 묻은 옷을 빠는 것과 옷이나 그릇을 씻는 것은 세척 행위의 구체적 대상 차이다.
+
+#### 한척하다
+
+- Existing Meaning: `m366288` — 옷을 빨거나 그릇을 씻다.
+- Bound canonical senses:
+  - `w366288-s1` (`w366288`, verb): 옷을 빨거나 그릇을 씻다.
+  - `w366290-s1` (`w366290`, verb): 때 묻은 옷을 빨다.
+- Decision: retain one Meaning (`m366288`); final gloss: 옷을 빨거나 그릇을 씻다.
+- Source-bound rationale: 때 묻은 옷을 빠는 일과 옷·그릇을 씻는 일은 동일한 세척 동작의 대상 범위 차이다.
+
+#### 한천명
+
+- Existing Meaning: `m502466_1` — 날이 밝기를 한정함. 또는 날이 밝을 때까지.
+- Bound canonical senses:
+  - `w502466-s1` (`w502466`, noun): 날이 밝기를 한정함.
+  - `w502466-s2` (`w502466`, adverb): 날이 밝을 때까지.
+- Decision: retain one Meaning (`m502466_1`); final gloss: 날이 밝기를 한정함. 또는 날이 밝을 때까지.
+- Source-bound rationale: 날이 밝을 때까지로 한정하는 기간과 그때까지라는 부사 용법은 같은 새벽 경계의 시간 표현이다.
+
+#### 한평생
+
+- Existing Meaning: `m365791` — 살아 있는 동안. 살아 있는 동안까지.
+- Bound canonical senses:
+  - `w365791-s1` (`w365791`, noun): 살아 있는 동안.
+  - `w365792-s1` (`w365792`, adverb): 살아 있는 동안까지.
+- Decision: retain one Meaning (`m365791`); final gloss: 살아 있는 동안. 살아 있는 동안까지.
+- Source-bound rationale: 살아 있는 동안이라는 기간과 살아 있는 동안까지라는 부사적 한정은 한 사람의 평생이라는 동일한 시간 범위다.
+
+#### 한훤
+
+- Existing Meaning: `m367672_1` — 날씨의 춥고 더움을 말하는 인사. 편지의 처음에 쓰는 날씨에 관한 문안.
+- Bound canonical senses:
+  - `w367672-s1` (`w367672`, noun): 날씨의 춥고 더움을 말하는 인사.
+  - `w367672-s2` (`w367672`, noun): 춥고 더움에 대해 묻는다는 뜻으로, 편지의 처음에 쓰는 날씨에 관한 문안.
+- Decision: retain one Meaning (`m367672_1`); final gloss: 날씨의 춥고 더움을 말하는 인사. 편지의 처음에 쓰는 날씨에 관한 문안.
+- Source-bound rationale: 춥고 더움을 묻는 인사와 편지 첫머리의 날씨 문안은 같은 계절 안부 인사를 대면·서면 맥락으로 설명한다.
+
+#### 할양
+
+- Existing Meaning: `m366445_1` — 땅이나 물건 따위를 한 부분 떼어서 남에게 넘겨줌. 국가 간의 합의에 의하여 자기 나라 영토의 일부를 다른 나라에 넘기는 일도 이른다.
+- Bound canonical senses:
+  - `w366445-s1` (`w366445`, noun): 땅이나 물건 따위를 한 부분 떼어서 남에게 넘겨줌.
+  - `w366445-s2` (`w366445`, noun): 국가 간의 합의에 의하여 자기 나라 영토의 일부를 다른 나라에 넘겨줌. 또는 그런 일.
+- Decision: retain one Meaning (`m366445_1`); final gloss: 땅이나 물건 따위를 한 부분 떼어서 남에게 넘겨줌. 국가 간의 합의에 의하여 자기 나라 영토의 일부를 다른 나라에 넘기는 일도 이른다.
+- Source-bound rationale: 땅·물건 일부를 넘김과 국가 간 영토 일부를 넘김은 일부를 양도한다는 같은 행위의 일반·국제 관계 적용이다.
+
+#### 할양되다
+
+- Existing Meaning: `m366446_1` — 땅이나 물건 따위의 한 부분이 떼어져서 넘어가다. 국가 간의 합의에 의하여 영토의 일부가 넘어가기도 한다.
+- Bound canonical senses:
+  - `w366446-s1` (`w366446`, verb): 땅이나 물건 따위의 한 부분이 떼어져서 넘어가다.
+  - `w366446-s2` (`w366446`, verb): 국가 간의 합의에 의하여 영토의 일부가 넘어가다.
+- Decision: retain one Meaning (`m366446_1`); final gloss: 땅이나 물건 따위의 한 부분이 떼어져서 넘어가다. 국가 간의 합의에 의하여 영토의 일부가 넘어가기도 한다.
+- Source-bound rationale: 일반 재산 일부가 넘어감과 국가 간 영토 일부가 넘어감은 양도되는 같은 피동 행위의 대상 차이다.
+
+#### 할양하다
+
+- Existing Meaning: `m366447_1` — 땅이나 물건 따위를 한 부분 떼어서 남에게 넘겨주다. 국가 간의 합의에 의하여 자기 나라 영토의 일부를 다른 나라에 넘겨주기도 한다.
+- Bound canonical senses:
+  - `w366447-s1` (`w366447`, verb): 땅이나 물건 따위를 한 부분 떼어서 남에게 넘겨주다.
+  - `w366447-s2` (`w366447`, verb): 국가 간의 합의에 의하여 자기 나라 영토의 일부를 다른 나라에 넘겨주다.
+- Decision: retain one Meaning (`m366447_1`); final gloss: 땅이나 물건 따위를 한 부분 떼어서 남에게 넘겨주다. 국가 간의 합의에 의하여 자기 나라 영토의 일부를 다른 나라에 넘겨주기도 한다.
+- Source-bound rationale: 땅·물건 일부를 넘기는 행위와 영토를 국가 간 넘기는 행위는 같은 양도의 일반·국제 관계 용법이다.
+
+#### 할증금
+
+- Existing Meaning: `m367104_1` — 일정한 가격, 급료 따위에 여분을 더하여 주는 금액. 채권 따위를 상환할 때 추첨과 같은 방법으로 주는 여분의 금액도 이른다.
+- Bound canonical senses:
+  - `w367104-s1` (`w367104`, noun): 일정한 가격, 급료 따위에 여분을 더하여 주는 금액.
+  - `w367104-s2` (`w367104`, noun): 채권 따위를 상환할 때 추첨과 같은 방법으로 주는 여분의 금액.
+- Decision: retain one Meaning (`m367104_1`); final gloss: 일정한 가격, 급료 따위에 여분을 더하여 주는 금액. 채권 따위를 상환할 때 추첨과 같은 방법으로 주는 여분의 금액도 이른다.
+- Source-bound rationale: 가격·급료에 더하는 금액과 채권 상환 시 추가 지급하는 금액은 기준액 위에 얹는 같은 할증분이다.
+
+#### 함답
+
+- Existing Meaning: `m499520_1` — 공문에 대한 회답. 육품 이상의 벼슬아치에게 서면으로 심문할 때 서면으로 회답하는 일도 이른다.
+- Bound canonical senses:
+  - `w499520-s1` (`w499520`, noun): 공문에 대한 회답.
+  - `w499520-s2` (`w499520`, noun): 육품 이상의 벼슬아치에게 서면으로 심문할 때 서면으로 회답하는 일.
+- Decision: retain one Meaning (`m499520_1`); final gloss: 공문에 대한 회답. 육품 이상의 벼슬아치에게 서면으로 심문할 때 서면으로 회답하는 일도 이른다.
+- Source-bound rationale: 공문에 대한 회답과 고위 관리를 서면 심문한 회답은 공식 문서에 대한 서면 답변의 일반·절차상 사례다.
+
+#### 함묵
+
+- Existing Meaning: `m364432` — 입을 다물고 잠잠히 있음. 또는 말하지 아니함.
+- Bound canonical senses:
+  - `w364432-s1` (`w364432`, noun): 입을 다물고 잠잠히 있음.
+  - `w364434-s1` (`w364434`, noun): 입을 다문다는 뜻으로, 말하지 아니함을 이르는 말.
+- Decision: retain one Meaning (`m364432`); final gloss: 입을 다물고 잠잠히 있음. 또는 말하지 아니함.
+- Source-bound rationale: 입을 다물고 잠잠한 상태와 말하지 않는 상태는 침묵을 같은 행위·상태로 풀이한다.
+
+#### 함묵하다
+
+- Existing Meaning: `m364433` — 입을 다물고 잠잠히 있다. 말하지 아니하다.
+- Bound canonical senses:
+  - `w364433-s1` (`w364433`, verb): 입을 다물고 잠잠히 있다.
+  - `w364435-s1` (`w364435`, verb): 말하지 아니하다. 입을 다문다는 뜻에서 나온 말이다.
+- Decision: retain one Meaning (`m364433`); final gloss: 입을 다물고 잠잠히 있다. 말하지 아니하다.
+- Source-bound rationale: 입을 다물고 있는 것과 말하지 않는 것은 동일한 침묵 행위의 표현이다.
+
+#### 함수 눈금
+
+- Existing Meaning: `m365175_1` — 함수자에 표시된 눈금. 어떤 함수 f(x)가 있을 때, 수직선 위에서 그 좌표가 f=(x)인 점에 x의 값을 나타낸 눈금.
+- Bound canonical senses:
+  - `w365175-s1` (`w365175`, expression): 함수자에 표시된 눈금.
+  - `w365175-s2` (`w365175`, expression): 어떤 함수 f(x)가 있을 때, 수직선 위에서 그 좌표가 f=(x)인 점에 x의 값을 나타낸 눈금.
+- Decision: retain one Meaning (`m365175_1`); final gloss: 함수자에 표시된 눈금. 어떤 함수 f(x)가 있을 때, 수직선 위에서 그 좌표가 f=(x)인 점에 x의 값을 나타낸 눈금.
+- Source-bound rationale: 함수자에 적힌 눈금과 함수값을 수직선에 나타낸 x값 눈금은 함수 정보를 표시하는 같은 도구의 구체적 설명이다.
+
+#### 함유
+
+- Existing Meaning: `m366779` — 물질이 어떤 성분을 포함하고 있음. 석유 성분이 포함되어 있음도 이른다.
+- Bound canonical senses:
+  - `w366779-s1` (`w366779`, noun): 물질이 어떤 성분을 포함하고 있음.
+  - `w366781-s1` (`w366781`, noun): 석유 성분이 포함되어 있음.
+- Decision: retain one Meaning (`m366779`); final gloss: 물질이 어떤 성분을 포함하고 있음. 석유 성분이 포함되어 있음도 이른다.
+- Source-bound rationale: 어떤 성분을 포함함과 석유 성분을 포함함은 성분을 담고 있다는 일반·특수 대상 용법이다.
+
+#### 함유하다
+
+- Existing Meaning: `m366780` — 물질이 어떤 성분을 포함하고 있다. 석유 성분이 포함되어 있다.
+- Bound canonical senses:
+  - `w366780-s1` (`w366780`, verb): 물질이 어떤 성분을 포함하고 있다.
+  - `w366788-s1` (`w366788`, verb): 석유 성분이 포함되어 있다.
+- Decision: retain one Meaning (`m366780`); final gloss: 물질이 어떤 성분을 포함하고 있다. 석유 성분이 포함되어 있다.
+- Source-bound rationale: 물질이 성분을 포함하는 것과 석유 성분을 포함하는 것은 같은 포함 관계이며 대상 성분만 구체화된다.
+
+#### 함입
+
+- Existing Meaning: `m505389_1` — 빠져 들어감. 표면에 있는 세포층의 일부가 안쪽으로 빠져 들어가서 그곳에서 새로운 층을 만드는 일. 또는 그런 현상.
+- Bound canonical senses:
+  - `w505389-s1` (`w505389`, noun): 빠져 들어감.
+  - `w505389-s2` (`w505389`, noun): 표면에 있는 세포층의 일부가 안쪽으로 빠져 들어가서 그곳에서 새로운 층을 만듦. 또는 그런 현상.
+- Decision: retain one Meaning (`m505389_1`); final gloss: 빠져 들어감. 표면에 있는 세포층의 일부가 안쪽으로 빠져 들어가서 그곳에서 새로운 층을 만드는 일. 또는 그런 현상.
+- Source-bound rationale: 안으로 빠져 들어감과 세포층이 안쪽으로 접혀 새 층을 만드는 것은 내부로 들어가는 일반 현상과 생물학적 사례다.
+
+#### 함입되다
+
+- Existing Meaning: `m367122_1` — 빠져 들어가게 되다. 표면에 있는 세포층의 일부가 안쪽으로 빠져 들어가서 그곳에서 새로운 층이 만들어지다.
+- Bound canonical senses:
+  - `w367122-s1` (`w367122`, verb): 빠져 들어가게 되다.
+  - `w367122-s2` (`w367122`, verb): 표면에 있는 세포층의 일부가 안쪽으로 빠져 들어가서 그곳에서 새로운 층이 만들어지다.
+- Decision: retain one Meaning (`m367122_1`); final gloss: 빠져 들어가게 되다. 표면에 있는 세포층의 일부가 안쪽으로 빠져 들어가서 그곳에서 새로운 층이 만들어지다.
+- Source-bound rationale: 안쪽으로 빠져 들어가게 되는 것과 세포층이 내부로 접히는 것은 같은 함입의 일반·생물학적 피동 용법이다.
+
+#### 함입하다
+
+- Existing Meaning: `m505164_1` — 빠져 들어가다. 표면에 있는 세포층의 일부가 안쪽으로 빠져 들어가서 그곳에서 새로운 층을 만들다.
+- Bound canonical senses:
+  - `w505164-s1` (`w505164`, verb): 빠져 들어가다.
+  - `w505164-s2` (`w505164`, verb): 표면에 있는 세포층의 일부가 안쪽으로 빠져 들어가서 그곳에서 새로운 층을 만들다.
+- Decision: retain one Meaning (`m505164_1`); final gloss: 빠져 들어가다. 표면에 있는 세포층의 일부가 안쪽으로 빠져 들어가서 그곳에서 새로운 층을 만들다.
+- Source-bound rationale: 안으로 들어가는 것과 세포층이 안으로 들어가 새 층을 만드는 것은 같은 안쪽 함입 현상의 일반·생물학적 적용이다.
+
+#### 합리적
+
+- Existing Meaning: `m506072_1` — 이론이나 이치에 합당한 것.
+- Bound canonical senses:
+  - `w506072-s1` (`w506072`, noun): 이론이나 이치에 합당한 것.
+  - `w506072-s2` (`w506072`, determiner): 이론이나 이치에 합당한.
+- Decision: retain one Meaning (`m506072_1`); final gloss: 이론이나 이치에 합당한 것.
+- Source-bound rationale: 명사 sense w506072-s1의 풀이 ‘이론이나 이치에 합당한 것.’와 관형사 sense w506072-s2의 풀이 ‘이론이나 이치에 합당한.’는 ‘이론이나 이치에 합당한’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘이론이나 이치에 합당한 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 합리하다
+
+- Existing Meaning: `m365825_1` — 논리적 원리나 법칙에 잘 부합하다. 이론이나 이치에 합당하다.
+- Bound canonical senses:
+  - `w365825-s1` (`w365825`, verb): 논리적 원리나 법칙에 잘 부합하다.
+  - `w365825-s2` (`w365825`, adjective): 이론이나 이치에 합당하다.
+- Decision: retain one Meaning (`m365825_1`); final gloss: 논리적 원리나 법칙에 잘 부합하다. 이론이나 이치에 합당하다.
+- Source-bound rationale: 논리 원리·법칙에 부합하는 동작과 이치에 맞는 상태는 같은 합리성 축의 동사·형용사 용법이다.
+
+#### 합명
+
+- Existing Meaning: `m366152_1` — 이름을 모아서 죽 씀. 공동 책임을 지기 위하여 이름을 함께 쓰는 일도 이른다.
+- Bound canonical senses:
+  - `w366152-s1` (`w366152`, noun): 이름을 모아서 죽 씀.
+  - `w366152-s2` (`w366152`, noun): 공동 책임을 지기 위하여 이름을 함께 씀.
+- Decision: retain one Meaning (`m366152_1`); final gloss: 이름을 모아서 죽 씀. 공동 책임을 지기 위하여 이름을 함께 쓰는 일도 이른다.
+- Source-bound rationale: 이름을 함께 쓰는 것과 공동 책임을 지려고 이름을 같이 쓰는 것은 같은 공동 명의 행위이며 책임은 목적을 한정한다.
+
+#### 합명하다
+
+- Existing Meaning: `m366451_1` — 이름을 모아서 죽 쓰다. 공동 책임을 지기 위하여 이름을 함께 쓰기도 하다.
+- Bound canonical senses:
+  - `w366451-s1` (`w366451`, verb): 이름을 모아서 죽 쓰다.
+  - `w366451-s2` (`w366451`, verb): 공동 책임을 지기 위하여 이름을 함께 쓰다.
+- Decision: retain one Meaning (`m366451_1`); final gloss: 이름을 모아서 죽 쓰다. 공동 책임을 지기 위하여 이름을 함께 쓰기도 하다.
+- Source-bound rationale: 이름을 모아 함께 쓰는 것과 공동 책임을 위해 이름을 함께 쓰는 것은 동일한 공동 명의 행위의 목적 차이다.
+
+#### 합목적적
+
+- Existing Meaning: `m505340_1` — 목적에 맞는 것.
+- Bound canonical senses:
+  - `w505340-s1` (`w505340`, noun): 목적에 맞는 것.
+  - `w505340-s2` (`w505340`, determiner): 목적에 맞는.
+- Decision: retain one Meaning (`m505340_1`); final gloss: 목적에 맞는 것.
+- Source-bound rationale: 명사 sense w505340-s1의 풀이 ‘목적에 맞는 것.’와 관형사 sense w505340-s2의 풀이 ‘목적에 맞는.’는 ‘목적에 맞는’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘목적에 맞는 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 합법적
+
+- Existing Meaning: `m367088_1` — 법령이나 규범에 맞는 것.
+- Bound canonical senses:
+  - `w367088-s1` (`w367088`, noun): 법령이나 규범에 맞는 것.
+  - `w367088-s2` (`w367088`, determiner): 법령이나 규범에 맞는.
+- Decision: retain one Meaning (`m367088_1`); final gloss: 법령이나 규범에 맞는 것.
+- Source-bound rationale: 명사 sense w367088-s1의 풀이 ‘법령이나 규범에 맞는 것.’와 관형사 sense w367088-s2의 풀이 ‘법령이나 규범에 맞는.’는 ‘법령이나 규범에 맞는’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘법령이나 규범에 맞는 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 합법칙적
+
+- Existing Meaning: `m506271_1` — 자연, 역사, 사회 현상이 일정한 법칙에 따라 일어나는 것.
+- Bound canonical senses:
+  - `w506271-s1` (`w506271`, noun): 자연, 역사, 사회 현상이 일정한 법칙에 따라 일어나는 것.
+  - `w506271-s2` (`w506271`, determiner): 자연, 역사, 사회 현상이 일정한 법칙에 따라 일어나는.
+- Decision: retain one Meaning (`m506271_1`); final gloss: 자연, 역사, 사회 현상이 일정한 법칙에 따라 일어나는 것.
+- Source-bound rationale: 명사 sense w506271-s1의 풀이 ‘자연, 역사, 사회 현상이 일정한 법칙에 따라 일어나는 것.’와 관형사 sense w506271-s2의 풀이 ‘자연, 역사, 사회 현상이 일정한 법칙에 따라 일어나는.’는 ‘자연, 역사, 사회 현상이 일정한 법칙에 따라 일어나는’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘자연, 역사, 사회 현상이 일정한 법칙에 따라 일어나는 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 합병
+
+- Existing Meaning: `m367408` — 둘 이상의 부대를 합쳐서 한 부대로 편성함. 둘 이상의 기구나 단체, 나라 따위가 하나로 합쳐지거나 그렇게 만드는 일도 이른다.
+- Bound canonical senses:
+  - `w367408-s1` (`w367408`, noun): 둘 이상의 부대를 합쳐서 한 부대로 편성함. 또는 그런 일.
+  - `w367410-s1` (`w367410`, noun): 둘 이상의 기구나 단체, 나라 따위가 하나로 합쳐짐. 또는 그렇게 만듦.
+- Decision: retain one Meaning (`m367408`); final gloss: 둘 이상의 부대를 합쳐서 한 부대로 편성함. 둘 이상의 기구나 단체, 나라 따위가 하나로 합쳐지거나 그렇게 만드는 일도 이른다.
+- Source-bound rationale: 부대를 한 부대로 편성하는 것과 단체·기관·나라를 하나로 합치는 것은 여러 조직 단위를 하나로 만드는 동일한 합병 행위의 대상별 적용이다.
+
+#### 합병하다
+
+- Existing Meaning: `m367409` — 둘 이상의 부대를 합쳐서 한 부대로 편성하다. 둘 이상의 기구나 단체, 나라 따위가 하나로 합쳐지다. 또는 그렇게 만들다.
+- Bound canonical senses:
+  - `w367409-s1` (`w367409`, verb): 둘 이상의 부대를 합쳐서 한 부대로 편성하다.
+  - `w367421-s1` (`w367421`, verb): 둘 이상의 기구나 단체, 나라 따위가 하나로 합쳐지다. 또는 그렇게 만들다.
+- Decision: retain one Meaning (`m367409`); final gloss: 둘 이상의 부대를 합쳐서 한 부대로 편성하다. 둘 이상의 기구나 단체, 나라 따위가 하나로 합쳐지다. 또는 그렇게 만들다.
+- Source-bound rationale: 부대 편성과 기관·단체·국가 통합은 여러 단위를 하나로 결합한다는 같은 동작이며 목적어 종류만 다르다.
+
+#### 합선되다
+
+- Existing Meaning: `m368652_1` — 전기 회로의 두 점 사이가 영이나 영에 가까운 상태로 접속되다. 절연이 잘 안되어 두 점 사이가 접속되기도 하다.
+- Bound canonical senses:
+  - `w368652-s1` (`w368652`, verb): 전기 회로의 두 점 사이가 영이나 영에 가깝게 접속되다.
+  - `w368652-s2` (`w368652`, verb): 전기 회로의 두 점 사이의 절연(絕緣)이 잘 안되어서 두 점 사이가 접속되다.
+- Decision: retain one Meaning (`m368652_1`); final gloss: 전기 회로의 두 점 사이가 영이나 영에 가까운 상태로 접속되다. 절연이 잘 안되어 두 점 사이가 접속되기도 하다.
+- Source-bound rationale: 회로 두 점이 거의 영저항으로 이어지는 상태와 절연 불량으로 두 점이 연결되는 상태는 원인이 달라도 같은 전기적 단락이다.
+
+#### 합선하다
+
+- Existing Meaning: `m368653_1` — 전기 회로의 두 점 사이를 영이나 영에 가까운 상태로 접속하다. 절연이 잘 안되어 두 점 사이가 접속되기도 하다.
+- Bound canonical senses:
+  - `w368653-s1` (`w368653`, verb): 전기 회로의 두 점 사이를 영이나 영에 가깝게 접속하다.
+  - `w368653-s2` (`w368653`, verb): 전기 회로의 두 점 사이의 절연(絕緣)이 잘 안되어서 두 점 사이가 접속되다.
+- Decision: retain one Meaning (`m368653_1`); final gloss: 전기 회로의 두 점 사이를 영이나 영에 가까운 상태로 접속하다. 절연이 잘 안되어 두 점 사이가 접속되기도 하다.
+- Source-bound rationale: 회로 두 점을 낮은 저항으로 연결하는 것과 절연 불량으로 연결하는 것은 같은 단락 연결을 다른 원인·상태로 설명한다.
+
+#### 합승
+
+- Existing Meaning: `m365386_1` — 자동차 따위에 여럿이 함께 탐. 다른 승객이 있는 택시에 함께 타는 일도 이른다.
+- Bound canonical senses:
+  - `w365386-s1` (`w365386`, noun): 자동차 따위에 여럿이 함께 탐.
+  - `w365386-s2` (`w365386`, noun): 다른 승객이 있는 택시를 함께 탐.
+- Decision: retain one Meaning (`m365386_1`); final gloss: 자동차 따위에 여럿이 함께 탐. 다른 승객이 있는 택시에 함께 타는 일도 이른다.
+- Source-bound rationale: 여럿이 자동차를 함께 타는 것과 다른 승객이 있는 택시를 함께 타는 것은 동승이라는 같은 행위의 일반·택시 사례다.
+
+#### 합승하다
+
+- Existing Meaning: `m502309_1` — 자동차 따위에 여럿이 함께 타다. 다른 승객이 있는 택시에 함께 타기도 하다.
+- Bound canonical senses:
+  - `w502309-s1` (`w502309`, verb): 자동차 따위에 여럿이 함께 타다.
+  - `w502309-s2` (`w502309`, verb): 다른 승객이 있는 택시를 함께 타다.
+- Decision: retain one Meaning (`m502309_1`); final gloss: 자동차 따위에 여럿이 함께 타다. 다른 승객이 있는 택시에 함께 타기도 하다.
+- Source-bound rationale: 자동차에 함께 타는 것과 이미 승객이 있는 택시를 같이 타는 것은 같은 동승 동작이며 택시 상황이 구체적이다.
+
+#### 합의서
+
+- Existing Meaning: `m515578_1` — 당사자들이 합의를 보았음을 증명하는 서류. 가해자가 피해자에게 끼친 손해를 적절하게 보상해 주기로 합의할 때 작성하는 문서도 이른다.
+- Bound canonical senses:
+  - `w515578-s1` (`w515578`, noun): 당사자들이 합의를 보았음을 증명하는 서류.
+  - `w515578-s2` (`w515578`, noun): 가해자가 피해자에게 끼친 손해를 적절하게 보상해 주겠다고 피해자와 합의를 하기로 하고 작성하는 문서.
+- Decision: retain one Meaning (`m515578_1`); final gloss: 당사자들이 합의를 보았음을 증명하는 서류. 가해자가 피해자에게 끼친 손해를 적절하게 보상해 주기로 합의할 때 작성하는 문서도 이른다.
+- Source-bound rationale: 당사자 간 합의 증명 문서와 피해 보상 합의 문서는 합의 내용을 서면으로 남기는 같은 문서 유형이며 후자는 구체적 사안이다.
+
+#### 합의제
+
+- Existing Meaning: `m364574_1` — 여러 구성원이 합의하여 행정 기관의 의사를 결정하는 제도. 재판 사건을 합의체에 의하여 재판하는 제도도 이른다.
+- Bound canonical senses:
+  - `w364574-s1` (`w364574`, noun): 행정 기관의 의사를 여러 구성원이 합의하여 결정하는 제도.
+  - `w364574-s2` (`w364574`, noun): 재판 사건을 합의체에 의하여 재판하는 제도.
+- Decision: retain one Meaning (`m364574_1`); final gloss: 여러 구성원이 합의하여 행정 기관의 의사를 결정하는 제도. 재판 사건을 합의체에 의하여 재판하는 제도도 이른다.
+- Source-bound rationale: 행정기관의 공동 의사결정과 재판부의 합의 재판은 여러 구성원이 함께 결정하는 같은 제도 원리의 기관별 적용이다.
+
+#### 합제하다
+
+- Existing Meaning: `m366136_1` — 여러 사람의 제사를 함께 지내다. 한데 모아 놓고 일정한 날에 두루 어울려 제사를 지내기도 하다.
+- Bound canonical senses:
+  - `w366136-s1` (`w366136`, verb): 여러 사람의 제사를 함께 지내다.
+  - `w366136-s2` (`w366136`, verb): 한데 모아 놓고 일정한 날에 두루 어울려 제사를 지내다.
+- Decision: retain one Meaning (`m366136_1`); final gloss: 여러 사람의 제사를 함께 지내다. 한데 모아 놓고 일정한 날에 두루 어울려 제사를 지내기도 하다.
+- Source-bound rationale: 여러 사람의 제사를 함께 지내는 것과 한데 모아 일정한 날 두루 지내는 것은 공동 제례를 같은 방식으로 설명한다.
+
+#### 합창되다
+
+- Existing Meaning: `m367135_1` — 여러 사람의 목소리가 맞추어져 노래가 불리다. 여러 성부가 나뉘어 서로 화성을 이루면서 다른 선율로 노래가 불리기도 하다.
+- Bound canonical senses:
+  - `w367135-s1` (`w367135`, verb): 여러 사람의 목소리가 맞추어져 노래가 불리다.
+  - `w367135-s2` (`w367135`, verb): 여러 사람의 성부가 여럿으로 나뉘어 서로 화성이 이루어지면서 다른 선율로 노래가 불리다.
+- Decision: retain one Meaning (`m367135_1`); final gloss: 여러 사람의 목소리가 맞추어져 노래가 불리다. 여러 성부가 나뉘어 서로 화성을 이루면서 다른 선율로 노래가 불리기도 하다.
+- Source-bound rationale: 여러 목소리를 맞춰 노래하는 것과 성부를 나누어 화성으로 부르는 것은 합창이라는 같은 집단 가창의 편성 차이다.
+
+#### 핫라인
+
+- Existing Meaning: `m367973_1` — 긴급 비상용으로 쓰는 직통 전화. 미국의 백악관과 러시아의 크렘린 사이에 개설한 전화도 이른다.
+- Bound canonical senses:
+  - `w367973-s1` (`w367973`, noun): 미국의 백악관과 러시아의 크렘린 사이에 개설한 직통 전화. 사고나 오해로 인한 우발적인 전쟁을 방지하기 위하여 1963년 8월에 개통하였다.
+  - `w367973-s2` (`w367973`, noun): 긴급 비상용으로 쓰는 직통 전화.
+- Decision: retain one Meaning (`m367973_1`); final gloss: 긴급 비상용으로 쓰는 직통 전화. 미국의 백악관과 러시아의 크렘린 사이에 개설한 전화도 이른다.
+- Source-bound rationale: 백악관과 크렘린의 직통 전화는 긴급 사태 대응용 직통 전화의 역사적 사례이며, 둘은 같은 통신 유형이다.
+
+#### 항구적
+
+- Existing Meaning: `m505647_1` — 변하지 아니하고 오래가는 것.
+- Bound canonical senses:
+  - `w505647-s1` (`w505647`, noun): 변하지 아니하고 오래가는 것.
+  - `w505647-s2` (`w505647`, determiner): 변하지 아니하고 오래가는.
+- Decision: retain one Meaning (`m505647_1`); final gloss: 변하지 아니하고 오래가는 것.
+- Source-bound rationale: 명사 sense w505647-s1의 풀이 ‘변하지 아니하고 오래가는 것.’와 관형사 sense w505647-s2의 풀이 ‘변하지 아니하고 오래가는.’는 ‘변하지 아니하고 오래가는’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘변하지 아니하고 오래가는 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 항로
+
+- Existing Meaning: `m367737_1` — 선박이 지나다니는 해로. 항공기가 통행하는 공로도 이른다.
+- Bound canonical senses:
+  - `w367737-s1` (`w367737`, noun): 선박이 지나다니는 해로(海路).
+  - `w367737-s2` (`w367737`, noun): 항공기가 통행하는 공로(空路).
+- Decision: retain one Meaning (`m367737_1`); final gloss: 선박이 지나다니는 해로. 항공기가 통행하는 공로도 이른다.
+- Source-bound rationale: 선박의 해로와 항공기의 공로는 이동 수단에 따라 달리 부르는 운항 경로이며, 항로라는 같은 경로 개념이다.
+
+#### 항소
+
+- Existing Meaning: `m498223_1` — 민사 소송에서 제일심의 종국 판결이나 형사 소송에서 제일심 판결에 불복하여 제이심 법원에 상소함. 또는 그 상소.
+- Bound canonical senses:
+  - `w498223-s1` (`w498223`, noun): 민사 소송에서, 제일심의 종국 판결에 대하여 불복하여 상소함. 또는 그 상소.
+  - `w498223-s2` (`w498223`, noun): 형사 소송에서, 제일심 판결에 대하여 불복하여 제이심 법원에 상소함. 또는 그 상소.
+- Decision: retain one Meaning (`m498223_1`); final gloss: 민사 소송에서 제일심의 종국 판결이나 형사 소송에서 제일심 판결에 불복하여 제이심 법원에 상소함. 또는 그 상소.
+- Source-bound rationale: 민사·형사 사건 모두 제1심 판결에 불복해 상급심 판단을 구하는 같은 소송상 절차다.
+
+#### 항소하다
+
+- Existing Meaning: `m365101_1` — 민사 소송에서 제일심의 종국 판결이나 형사 소송에서 제일심 판결에 불복하여 제이심 법원에 상소하다.
+- Bound canonical senses:
+  - `w365101-s1` (`w365101`, verb): 민사 소송에서, 제일심의 종국 판결에 대하여 불복하여 상소하다.
+  - `w365101-s2` (`w365101`, verb): 형사 소송에서, 제일심 판결에 대하여 불복하여 제이심 법원에 상소하다.
+- Decision: retain one Meaning (`m365101_1`); final gloss: 민사 소송에서 제일심의 종국 판결이나 형사 소송에서 제일심 판결에 불복하여 제이심 법원에 상소하다.
+- Source-bound rationale: 민사와 형사에서 대상 판결이 달라도 제1심 판결에 불복해 상급 법원에 상소하는 동일한 절차를 이른다.
+
+#### 항시적
+
+- Existing Meaning: `m363724_1` — 언제나 늘 있는 것.
+- Bound canonical senses:
+  - `w363724-s1` (`w363724`, noun): 언제나 늘 있는 것.
+  - `w363724-s2` (`w363724`, determiner): 언제나 늘 있는.
+- Decision: retain one Meaning (`m363724_1`); final gloss: 언제나 늘 있는 것.
+- Source-bound rationale: 명사 sense w363724-s1의 풀이 ‘언제나 늘 있는 것.’와 관형사 sense w363724-s2의 풀이 ‘언제나 늘 있는.’는 ‘언제나 늘 있는’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘언제나 늘 있는 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 항오발천
+
+- Existing Meaning: `m502717_1` — 낮은 군사·벼슬자리에서 점차 높은 자리로 오름. 병졸로 시작하여 장관에 이르는 일도 이른다.
+- Bound canonical senses:
+  - `w502717-s1` (`w502717`, noun): 병졸로 시작하여 장관에 오름.
+  - `w502717-s2` (`w502717`, noun): 낮은 벼슬자리에서 점차 높은 벼슬자리로 오름.
+- Decision: retain one Meaning (`m502717_1`); final gloss: 낮은 군사·벼슬자리에서 점차 높은 자리로 오름. 병졸로 시작하여 장관에 이르는 일도 이른다.
+- Source-bound rationale: 병졸에서 장관으로 오르는 것과 낮은 벼슬에서 높은 벼슬로 오르는 것은 하위 계급에서 상위 직위로 진출한다는 같은 승진 의미다.
+
+#### 항오발천되다
+
+- Existing Meaning: `m364890_1` — 낮은 군사·벼슬자리에서 점차 높은 자리로 오르게 되다. 병졸로 시작하여 장관에 오르는 경우도 이른다.
+- Bound canonical senses:
+  - `w364890-s1` (`w364890`, verb): 병졸로 시작하여 장관에 오르게 되다.
+  - `w364890-s2` (`w364890`, verb): 낮은 벼슬자리에서 점차 높은 벼슬자리로 오르게 되다.
+- Decision: retain one Meaning (`m364890_1`); final gloss: 낮은 군사·벼슬자리에서 점차 높은 자리로 오르게 되다. 병졸로 시작하여 장관에 오르는 경우도 이른다.
+- Source-bound rationale: 병졸에서 장관으로, 또는 낮은 관직에서 높은 관직으로 오르는 것은 같은 하위 직위에서의 승진을 피동으로 나타낸다.
+
+#### 항오발천하다
+
+- Existing Meaning: `m364891_1` — 낮은 군사·벼슬자리에서 점차 높은 자리로 오르다. 병졸로 시작하여 장관에 오르는 일도 이른다.
+- Bound canonical senses:
+  - `w364891-s1` (`w364891`, verb): 병졸로 시작하여 장관에 오르다.
+  - `w364891-s2` (`w364891`, verb): 낮은 벼슬자리에서 점차 높은 벼슬자리로 오르다.
+- Decision: retain one Meaning (`m364891_1`); final gloss: 낮은 군사·벼슬자리에서 점차 높은 자리로 오르다. 병졸로 시작하여 장관에 오르는 일도 이른다.
+- Source-bound rationale: 병졸에서 장관으로의 진급과 낮은 관직에서의 승진은 하위에서 상위로 오르는 같은 경력 이동이다.
+
+#### 항의하다
+
+- Existing Meaning: `m365222_1` — 못마땅한 생각이나 반대의 뜻을 주장하다. 국가가 다른 나라의 처사에 반대하는 뜻을 정식으로 통고하기도 하다.
+- Bound canonical senses:
+  - `w365222-s1` (`w365222`, verb): 못마땅한 생각이나 반대의 뜻을 주장하다.
+  - `w365222-s2` (`w365222`, verb): 어떤 나라가 다른 나라의 처사에 반대하는 뜻을 정식으로 통고하다.
+- Decision: retain one Meaning (`m365222_1`); final gloss: 못마땅한 생각이나 반대의 뜻을 주장하다. 국가가 다른 나라의 처사에 반대하는 뜻을 정식으로 통고하기도 하다.
+- Source-bound rationale: 못마땅함을 주장하는 것과 국가가 다른 국가에 반대 의사를 공식 통고하는 것은 반대 의사를 표명한다는 같은 항의 행위의 일반·외교 사례다.
+
+#### 항재
+
+- Existing Meaning: `m366472_1` — 기초 공사나 광산 갱도에서 버팀목으로 쓰는 재목.
+- Bound canonical senses:
+  - `w366472-s1` (`w366472`, noun): 기초 공사의 버팀목으로 쓰는 재목.
+  - `w366472-s2` (`w366472`, noun): 광산 갱도의 버팀목으로 쓰는 나무.
+- Decision: retain one Meaning (`m366472_1`); final gloss: 기초 공사나 광산 갱도에서 버팀목으로 쓰는 재목.
+- Source-bound rationale: 기초 공사와 광산 갱도에서 쓰는 나무는 구조물을 받치는 같은 버팀목이며 설치 장소가 다르다.
+
+#### 항정선
+
+- Existing Meaning: `m366825_1` — 항공기나 배의 항로가 각 자오선과 동일한 각도로 교차하는 선.
+- Bound canonical senses:
+  - `w366825-s1` (`w366825`, noun): 항공기의 항로가 각 자오선과 동일한 각도로 교차하는 선.
+  - `w366825-s2` (`w366825`, noun): 배의 항로가 각 자오선과 동일한 각도로 교차하는 선.
+- Decision: retain one Meaning (`m366825_1`); final gloss: 항공기나 배의 항로가 각 자오선과 동일한 각도로 교차하는 선.
+- Source-bound rationale: 항공기와 배의 경로가 자오선과 일정한 각도로 만나는 선은 이동 수단이 달라도 같은 항법상의 선이다.
+
+#### 항정선 항로
+
+- Existing Meaning: `m366826_1` — 항정선에 따른 비행기나 배의 항로.
+- Bound canonical senses:
+  - `w366826-s1` (`w366826`, expression): 항정선에 따른 비행기의 항로.
+  - `w366826-s2` (`w366826`, expression): 항정선에 따른 배의 항로.
+- Decision: retain one Meaning (`m366826_1`); final gloss: 항정선에 따른 비행기나 배의 항로.
+- Source-bound rationale: 비행기와 배가 항정선을 따라가는 경로는 같은 항정선 항로의 운송 수단별 적용이다.
+
+#### 항정선 항법
+
+- Existing Meaning: `m366827_1` — 항정선을 따라 항행하는 방법. 비행기나 배가 항정선을 따라 항행하는 항법을 이른다.
+- Bound canonical senses:
+  - `w366827-s1` (`w366827`, expression): 비행기가 항정선을 따라 항행하는 방법.
+  - `w366827-s2` (`w366827`, expression): 배가 항정선에 따라 항행하는 항법.
+- Decision: retain one Meaning (`m366827_1`); final gloss: 항정선을 따라 항행하는 방법. 비행기나 배가 항정선을 따라 항행하는 항법을 이른다.
+- Source-bound rationale: 비행기와 배가 항정선을 따라 항행하는 것은 같은 항법 원리를 서로 다른 이동 수단에 적용한다.
+
+#### 항해도
+
+- Existing Meaning: `m503352_1` — 항해를 하는 데 쓰는 지도. 연안 항해에 필요한 육표·등대·암초·장애물·조류의 방향 따위가 기입되어 침로를 결정하는 데 쓰는 해도도 이른다.
+- Bound canonical senses:
+  - `w503352-s1` (`w503352`, noun): 항해를 하는 데 쓰는 지도를 통틀어 이르는 말.
+  - `w503352-s2` (`w503352`, noun): 연안 항해에 필요한 사항을 적은 해도. 육표(陸標)·등대·암초의 위치·장애물·조류의 방향 따위가 기입되어 있으며, 무선 방위 신호 따위를 이용하여 침로를 결정하는 데 쓴다.
+- Decision: retain one Meaning (`m503352_1`); final gloss: 항해를 하는 데 쓰는 지도. 연안 항해에 필요한 육표·등대·암초·장애물·조류의 방향 따위가 기입되어 침로를 결정하는 데 쓰는 해도도 이른다.
+- Source-bound rationale: 항해용 지도의 총칭과 연안 항해에 필요한 표지·장애물 정보 지도는 같은 해도 범주의 일반·상세 설명이다.
+
+#### 해관세
+
+- Existing Meaning: `m363168_1` — 조선 고종 때 해관에서 수출입품에 매기던 관세. 청나라 때 해관에서 해로 수출입품에 매기던 관세도 이른다.
+- Bound canonical senses:
+  - `w363168-s1` (`w363168`, noun): 조선 고종 때에, 해관에서 수출입품에 대하여 매기던 관세.
+  - `w363168-s2` (`w363168`, noun): 중국 청나라 때에 해관에서 해로에 의한 수출입품에 매기던 관세.
+- Decision: retain one Meaning (`m363168_1`); final gloss: 조선 고종 때 해관에서 수출입품에 매기던 관세. 청나라 때 해관에서 해로 수출입품에 매기던 관세도 이른다.
+- Source-bound rationale: 조선과 청나라의 해관에서 수출입품에 매긴 세금은 시기·국가만 다른 같은 관세 제도다.
+
+#### 해군 기지
+
+- Existing Meaning: `m364310_1` — 군항과 그 경비 지역. 해군의 작전, 함정의 수리·보급·출동·귀항의 중심이 되는 곳이기도 하다.
+- Bound canonical senses:
+  - `w364310-s1` (`w364310`, expression): 군항과 그 경비 지역.
+  - `w364310-s2` (`w364310`, expression): 해군의 작전, 함정의 수리·보급·출동·귀항 따위의 중심이 되는 곳.
+- Decision: retain one Meaning (`m364310_1`); final gloss: 군항과 그 경비 지역. 해군의 작전, 함정의 수리·보급·출동·귀항의 중심이 되는 곳이기도 하다.
+- Source-bound rationale: 군항·경비 지역과 작전·수리·보급 중심지는 해군 함정과 작전을 지원하는 같은 기지의 공간·기능 설명이다.
+
+#### 해나다
+
+- Existing Meaning: `m361250_1` — 날씨가 흐리지 아니하고 개거나, 해가 구름 속에서 나와 볕이 나다.
+- Bound canonical senses:
+  - `w361250-s1` (`w361250`, verb): 날씨가 흐리지 아니하고 개다.
+  - `w361250-s2` (`w361250`, verb): 해가 구름 속에서 나와 볕이 나다.
+- Decision: retain one Meaning (`m361250_1`); final gloss: 날씨가 흐리지 아니하고 개거나, 해가 구름 속에서 나와 볕이 나다.
+- Source-bound rationale: 흐린 날씨가 개는 것과 구름 사이로 해가 나와 볕이 드는 것은 구름이 걷히는 같은 날씨 변화를 일반·구체적으로 말한다.
+
+#### 해량
+
+- Existing Meaning: `m370192` — 바다처럼 넓은 마음으로 너그럽게 양해하거나 잘 헤아림. 주로 편지 따위에서 상대편에게 용서를 구할 때 쓴다.
+- Bound canonical senses:
+  - `w370192-s1` (`w370192`, noun): 바다와 같은 넓은 마음으로 너그럽게 양해함. 주로 편지 따위에서 상대편에게 용서를 구할 때 쓴다.
+  - `w503527-s1` (`w503527`, noun): 바다처럼 넓은 도량. 또는 그런 마음으로 잘 헤아림. 주로 상대편에게 용서를 구할 때 쓴다.
+- Decision: retain one Meaning (`m370192`); final gloss: 바다처럼 넓은 마음으로 너그럽게 양해하거나 잘 헤아림. 주로 편지 따위에서 상대편에게 용서를 구할 때 쓴다.
+- Source-bound rationale: 바다 같은 넓은 마음으로 양해하는 것과 넓은 도량으로 헤아리는 것은 편지에서 너그럽게 이해해 달라는 같은 해량의 태도다.
+
+#### 해량하다
+
+- Existing Meaning: `m370191` — 바다처럼 넓은 도량으로 잘 헤아리거나 너그럽게 양해하다. 주로 편지 따위에서 상대편에게 용서를 구할 때 쓴다.
+- Bound canonical senses:
+  - `w370191-s1` (`w370191`, verb): 바다처럼 넓은 도량으로 잘 헤아리다. 주로 상대편에게 용서를 구할 때 쓴다.
+  - `w503528-s1` (`w503528`, verb): 바다와 같은 넓은 마음으로 너그럽게 양해하다. 주로 편지 따위에서 상대편에게 용서를 구할 때 쓴다.
+- Decision: retain one Meaning (`m370191`); final gloss: 바다처럼 넓은 도량으로 잘 헤아리거나 너그럽게 양해하다. 주로 편지 따위에서 상대편에게 용서를 구할 때 쓴다.
+- Source-bound rationale: 넓은 도량으로 헤아리는 것과 너그럽게 양해하는 것은 넓은 마음으로 상대를 이해한다는 같은 동작이며 편지 용법이 공통된다.
+
+#### 해리 온도
+
+- Existing Meaning: `m501871_1` — 화합물의 해리 압력이 외부 압력과 같아지는 온도. 외부 압력이 1기압일 때의 온도를 이른다.
+- Bound canonical senses:
+  - `w501871-s1` (`w501871`, expression): 화합물의 해리 반응이 맹렬하게 진행되는 온도. 화합물의 해리 압력이 외부 압력과 같아지는 경우에 온도는 더 올라가지 않고 화합물이 해리되면서 분해되는 과정이 격렬하게 진행될 때의 온도이며, 이 온도를 화합물의 분해 온도라고도 한다. 탄산 칼슘을 주성분으로 하는 석회석의 경우 해리 온도는 그것이 배소되며 산화 칼슘으로 되는 때의 온도, 즉 910℃ 이상의 온도이다.
+  - `w501871-s2` (`w501871`, expression): 해리 압력이 1기압이 되는 온도.
+- Decision: retain one Meaning (`m501871_1`); final gloss: 화합물의 해리 압력이 외부 압력과 같아지는 온도. 외부 압력이 1기압일 때의 온도를 이른다.
+- Source-bound rationale: 해리 반응이 격렬해지는 온도와 해리 압력이 1기압이 되는 온도는 해리 조건을 경계로 정한 같은 기술적 온도다.
+
+#### 해맑다
+
+- Existing Meaning: `m370500_1` — 물질적 대상이 환하게 맑거나, 사람의 모습·자연·소리 따위에 잡스럽거나 탁한 것이 없이 티 없이 깨끗하고 경쾌하다.
+- Bound canonical senses:
+  - `w370500-s1` (`w370500`, adjective): 물질적인 대상물이 환하게 맑다.
+  - `w370500-s2` (`w370500`, adjective): 사람의 모습이나 자연의 대상 따위에 잡스러운 것이 섞이지 않아 티 없이 깨끗하다.
+  - `w370500-s3` (`w370500`, adjective): 소리 따위가 탁하지 않고 경쾌하다.
+- Decision: retain one Meaning (`m370500_1`); final gloss: 물질적 대상이 환하게 맑거나, 사람의 모습·자연·소리 따위에 잡스럽거나 탁한 것이 없이 티 없이 깨끗하고 경쾌하다.
+- Source-bound rationale: 물질의 맑음, 사람·자연의 티 없는 깨끗함, 탁하지 않은 소리는 모두 잡티·탁함이 없는 맑고 깨끗한 상태의 감각 영역별 확장이다.
+
+#### 해면되다
+
+- Existing Meaning: `m368728_1` — 책임에서 벗어나 면해지거나 관직이나 직책 따위에서 물러나다.
+- Bound canonical senses:
+  - `w368728-s1` (`w368728`, verb): 책임에서 벗어나 면해지다.
+  - `w368728-s2` (`w368728`, verb): 관직이나 직책 따위에서 물러나다.
+- Decision: retain one Meaning (`m368728_1`); final gloss: 책임에서 벗어나 면해지거나 관직이나 직책 따위에서 물러나다.
+- Source-bound rationale: 책임에서 벗어나는 것과 관직·직책에서 물러나는 것은 맡은 의무나 지위에서 해제되는 같은 피동 변화다.
+
+#### 해면하다
+
+- Existing Meaning: `m368729_1` — 책임을 벗어서 면하게 하거나 관직이나 직책 따위에서 물러나게 하다.
+- Bound canonical senses:
+  - `w368729-s1` (`w368729`, verb): 책임을 벗어서 면하게 하다.
+  - `w368729-s2` (`w368729`, verb): 관직이나 직책 따위에서 물러나게 하다.
+- Decision: retain one Meaning (`m368729_1`); final gloss: 책임을 벗어서 면하게 하거나 관직이나 직책 따위에서 물러나게 하다.
+- Source-bound rationale: 책임을 면하게 하는 것과 직책에서 물러나게 하는 것은 의무·직위를 해제하는 같은 사역 행위다.
+
+#### 해바라지다
+
+- Existing Meaning: `m365865_1` — 어울리지 아니하게 조금 넓게 바라지거나 그런 상태이다.
+- Bound canonical senses:
+  - `w365865-s1` (`w365865`, verb): 어울리지 아니하게 넓게 바라지다.
+  - `w365865-s2` (`w365865`, adjective): 어울리지 아니하게 조금 넓다.
+- Decision: retain one Meaning (`m365865_1`); final gloss: 어울리지 아니하게 조금 넓게 바라지거나 그런 상태이다.
+- Source-bound rationale: 넓게 벌어지는 동작과 넓게 벌어진 상태는 같은 어울리지 않는 확장 모양의 변화·결과다.
+
+#### 해반닥거리다
+
+- Existing Meaning: `m365874_1` — 눈을 크게 뜨고 흰자위를 자꾸 반득이며 움직이다. 또는 그렇게 되게 하거나, 물고기 따위가 몸을 잦히며 자꾸 반득이다.
+- Bound canonical senses:
+  - `w365874-s1` (`w365874`, verb): 눈을 크게 뜨고 흰자위를 자꾸 반득이며 움직이다. 또는 그렇게 되게 하다.
+  - `w365874-s2` (`w365874`, verb): 물고기 따위가 몸을 잦히며 자꾸 반득이다.
+- Decision: retain one Meaning (`m365874_1`); final gloss: 눈을 크게 뜨고 흰자위를 자꾸 반득이며 움직이다. 또는 그렇게 되게 하거나, 물고기 따위가 몸을 잦히며 자꾸 반득이다.
+- Source-bound rationale: 눈 흰자위와 물고기 몸의 반짝임은 대상은 달라도 반득이는 표면이 반복적으로 움직이는 같은 반짝임 동작이다.
+
+#### 해반닥대다
+
+- Existing Meaning: `m366153_1` — 눈을 크게 뜨고 흰자위를 자꾸 반득이며 움직이다. 또는 그렇게 되게 하거나, 물고기 따위가 몸을 잦히며 자꾸 반득이다.
+- Bound canonical senses:
+  - `w366153-s1` (`w366153`, verb): 눈을 크게 뜨고 흰자위를 자꾸 반득이며 움직이다. 또는 그렇게 되게 하다.
+  - `w366153-s2` (`w366153`, verb): 물고기 따위가 몸을 잦히며 자꾸 반득이다.
+- Decision: retain one Meaning (`m366153_1`); final gloss: 눈을 크게 뜨고 흰자위를 자꾸 반득이며 움직이다. 또는 그렇게 되게 하거나, 물고기 따위가 몸을 잦히며 자꾸 반득이다.
+- Source-bound rationale: 눈 흰자위의 움직임과 물고기 몸짓은 모두 반득이는 모양을 반복하는 같은 동작 특성이다.
+
+#### 해반닥이다
+
+- Existing Meaning: `m366154_1` — 눈을 크게 뜨고 흰자위를 반득이며 움직이다. 또는 그렇게 되게 하거나, 물고기 따위가 몸을 잦히며 반득이다.
+- Bound canonical senses:
+  - `w366154-s1` (`w366154`, verb): 눈을 크게 뜨고 흰자위를 반득이며 움직이다. 또는 그렇게 되게 하다.
+  - `w366154-s2` (`w366154`, verb): 물고기 따위가 몸을 잦히며 반득이다.
+- Decision: retain one Meaning (`m366154_1`); final gloss: 눈을 크게 뜨고 흰자위를 반득이며 움직이다. 또는 그렇게 되게 하거나, 물고기 따위가 몸을 잦히며 반득이다.
+- Source-bound rationale: 눈 흰자위를 움직이는 경우와 물고기 몸을 잦히는 경우는 반득이는 움직임을 주체에 따라 달리 나타낸다.
+
+#### 해반닥해반닥
+
+- Existing Meaning: `m366156_1` — 눈을 크게 뜨고 흰자위를 잇따라 반득이며 움직이거나 물고기 따위가 몸을 잦히며 잇따라 반득이는 모양.
+- Bound canonical senses:
+  - `w366156-s1` (`w366156`, adverb): 눈을 크게 뜨고 흰자위를 잇따라 반득이며 움직이는 모양.
+  - `w366156-s2` (`w366156`, adverb): 물고기 따위가 몸을 잦히며 잇따라 반득이는 모양.
+- Decision: retain one Meaning (`m366156_1`); final gloss: 눈을 크게 뜨고 흰자위를 잇따라 반득이며 움직이거나 물고기 따위가 몸을 잦히며 잇따라 반득이는 모양.
+- Source-bound rationale: 눈 흰자위와 물고기 몸이 잇따라 반득이는 모양은 같은 반짝이는 반복 동작의 대상별 표현이다.
+
+#### 해반닥해반닥하다
+
+- Existing Meaning: `m499246_1` — 눈을 크게 뜨고 흰자위를 잇따라 반득이며 움직이다. 또는 그렇게 되게 하거나, 물고기 따위가 몸을 잦히며 잇따라 반득이다.
+- Bound canonical senses:
+  - `w499246-s1` (`w499246`, verb): 눈을 크게 뜨고 흰자위를 잇따라 반득이며 움직이다. 또는 그렇게 되게 하다.
+  - `w499246-s2` (`w499246`, verb): 물고기 따위가 몸을 잦히며 잇따라 반득이다.
+- Decision: retain one Meaning (`m499246_1`); final gloss: 눈을 크게 뜨고 흰자위를 잇따라 반득이며 움직이다. 또는 그렇게 되게 하거나, 물고기 따위가 몸을 잦히며 잇따라 반득이다.
+- Source-bound rationale: 눈 흰자위와 물고기 몸이 잇따라 반득이는 동작은 같은 반복적 반짝임의 주체 차이다.
+
+#### 해발쪽하다
+
+- Existing Meaning: `m366860_1` — 입이나 구멍 따위가 속이 들여다보일 정도로 조금 넓게 바라지거나 그런 상태이다.
+- Bound canonical senses:
+  - `w366860-s1` (`w366860`, verb): 입이나 구멍 따위가 속이 들여다보일 정도로 조금 넓게 바라지다.
+  - `w366860-s2` (`w366860`, adjective): 입이나 구멍 따위가 속이 들여다보일 정도로 조금 넓게 바라진 상태이다.
+- Decision: retain one Meaning (`m366860_1`); final gloss: 입이나 구멍 따위가 속이 들여다보일 정도로 조금 넓게 바라지거나 그런 상태이다.
+- Source-bound rationale: 입·구멍이 넓게 벌어지는 동작과 벌어진 상태는 같은 모양 변화의 진행·결과다.
+
+#### 해발쪽해발쪽하다
+
+- Existing Meaning: `m367157_1` — 입이나 구멍 따위가 여럿이 다 또는 자꾸 속이 들여다보일 정도로 조금 넓게 바라지거나 그런 상태이다.
+- Bound canonical senses:
+  - `w367157-s1` (`w367157`, verb): 입이나 구멍 따위가 여럿이 다 또는 자꾸 속이 들여다보일 정도로 조금 넓게 바라지다.
+  - `w367157-s2` (`w367157`, adjective): 입이나 구멍 따위가 여럿이 다 속이 들여다보일 정도로 조금 넓게 바라진 상태이다.
+- Decision: retain one Meaning (`m367157_1`); final gloss: 입이나 구멍 따위가 여럿이 다 또는 자꾸 속이 들여다보일 정도로 조금 넓게 바라지거나 그런 상태이다.
+- Source-bound rationale: 여럿이 또는 반복해서 벌어지는 동작과 벌어진 상태는 같은 넓게 열린 모양의 반복·결과다.
+
+#### 해빈
+
+- Existing Meaning: `m502892_1` — 바닷물과 땅이 서로 닿는 곳이나 그 근처. 간조선에서 퇴적물이나 지형의 변화가 생기는 곳부터 영구 식생의 선까지 육지 쪽으로 퍼져 있는 고화하지 않은 퇴적물대도 이른다.
+- Bound canonical senses:
+  - `w502892-s1` (`w502892`, noun): 바닷물과 땅이 서로 닿은 곳이나 그 근처.
+  - `w502892-s2` (`w502892`, noun): 간조선에서부터 퇴적물이나 지형의 변화가 생기는 곳. 또는 영구 식생의 선(線)까지 육지 쪽으로 퍼져 있는 고화(固化)하지 않은 퇴적물대.
+- Decision: retain one Meaning (`m502892_1`); final gloss: 바닷물과 땅이 서로 닿는 곳이나 그 근처. 간조선에서 퇴적물이나 지형의 변화가 생기는 곳부터 영구 식생의 선까지 육지 쪽으로 퍼져 있는 고화하지 않은 퇴적물대도 이른다.
+- Source-bound rationale: 바닷물과 땅의 접점이라는 일반 해안과 퇴적물·식생선으로 규정한 해안대는 같은 해빈 지형의 간략·지질학적 설명이다.
+
+#### 해석 규정
+
+- Existing Meaning: `m364958_1` — 당사자의 의사 표시나 법률의 의미를 분명하게 해석하기 위한 규정.
+- Bound canonical senses:
+  - `w364958-s1` (`w364958`, expression): 당사자의 의사 표시 내용이 명확하지 아니할 경우에, 그 의미를 명확하게 해석하여 법률관계를 분명하게 하기 위한 규정.
+  - `w364958-s2` (`w364958`, expression): 법률의 해석을 제시한 규정.
+- Decision: retain one Meaning (`m364958_1`); final gloss: 당사자의 의사 표시나 법률의 의미를 분명하게 해석하기 위한 규정.
+- Source-bound rationale: 당사자 의사를 해석하는 규칙과 법률 해석을 제시하는 규정은 법적 의미를 분명히 하는 같은 해석 규칙의 적용 대상 차이다.
+
+#### 해석되다
+
+- Existing Meaning: `m499049_1` — 문장이나 사물 따위로 표현된 내용이 이해되어 설명되거나, 사물이나 행위 따위의 내용이 판단되고 이해되다.
+- Bound canonical senses:
+  - `w499049-s1` (`w499049`, verb): 문장이나 사물 따위로 표현된 내용이 이해된 상태에서 설명되다.
+  - `w499049-s2` (`w499049`, verb): 사물이나 행위 따위의 내용이 판단되고 이해되다.
+- Decision: retain one Meaning (`m499049_1`); final gloss: 문장이나 사물 따위로 표현된 내용이 이해되어 설명되거나, 사물이나 행위 따위의 내용이 판단되고 이해되다.
+- Source-bound rationale: 표현 내용을 이해해 설명하는 것과 사물·행위 내용을 판단해 이해하는 것은 의미를 풀어 파악하는 같은 해석의 피동 용법이다.
+
+#### 해석하다
+
+- Existing Meaning: `m364956` — 사물을 자세히 풀어 논리적으로 밝히거나, 문장이나 사물·행위 따위로 표현된 내용을 이해하고 설명하거나 판단하다.
+- Bound canonical senses:
+  - `w364956-s1` (`w364956`, verb): 사물을 자세히 풀어서 논리적으로 밝히다.
+  - `w364957-s1` (`w364957`, verb): 문장이나 사물 따위로 표현된 내용을 이해하고 설명하다.
+  - `w364957-s2` (`w364957`, verb): 사물이나 행위 따위의 내용을 판단하고 이해하다.
+- Decision: retain one Meaning (`m364956`); final gloss: 사물을 자세히 풀어 논리적으로 밝히거나, 문장이나 사물·행위 따위로 표현된 내용을 이해하고 설명하거나 판단하다.
+- Source-bound rationale: 사물을 논리적으로 밝히는 것과 표현·행위 내용을 이해하고 설명하는 것은 대상의 의미를 풀어 파악한다는 같은 해석 행위다.
+
+#### 해손
+
+- Existing Meaning: `m366540_1` — 물질적·정신적으로 밑지거나 해를 입음. 항해 중 사고로 선박이나 화물이 입은 손해도 이른다.
+- Bound canonical senses:
+  - `w366540-s1` (`w366540`, noun): 물질적으로나 정신적으로 밑짐.
+  - `w366540-s2` (`w366540`, noun): 해를 입음.
+  - `w366541-s1` (`w366541`, noun): 항해 중에 사고로 인하여 선박이나 화물이 입은 손해.
+- Decision: retain one Meaning (`m366540_1`); final gloss: 물질적·정신적으로 밑지거나 해를 입음. 항해 중 사고로 선박이나 화물이 입은 손해도 이른다.
+- Source-bound rationale: 물질·정신상의 손해와 항해 사고로 선박·화물이 입는 손해는 손실이라는 같은 개념의 일반·해상 용법이다.
+
+#### 해송자
+
+- Existing Meaning: `m505235_1` — 잣나무의 열매인 잣. 단단한 송이에 들어 있으며 기름기가 많아 기름이나 고명으로 쓰고, 한방에서 이르며 동맥 경화증 방지와 변비 치료에 쓴다.
+- Bound canonical senses:
+  - `w505235-s1` (`w505235`, noun): 잣나무의 열매. 솔방울 같은 단단한 송이에 들어 있으며, 맛이 고소하고 기름기가 많아 기름을 내거나 고명으로 쓴다.
+  - `w505235-s2` (`w505235`, noun): ‘잣’을 한방에서 이르는 말. 성질이 따뜻하여 동맥 경화증 방지와 변비 치료에 쓴다.
+- Decision: retain one Meaning (`m505235_1`); final gloss: 잣나무의 열매인 잣. 단단한 송이에 들어 있으며 기름기가 많아 기름이나 고명으로 쓰고, 한방에서 이르며 동맥 경화증 방지와 변비 치료에 쓴다.
+- Source-bound rationale: 잣나무의 열매와 한방에서 잣이라 부르는 것은 같은 잣 종자를 일반 식품·약재 맥락에서 설명한다.
+
+#### 해양적
+
+- Existing Meaning: `m501763_1` — 해양의 성격을 띤 것.
+- Bound canonical senses:
+  - `w501763-s1` (`w501763`, noun): 해양의 성격을 띤 것.
+  - `w501763-s2` (`w501763`, determiner): 해양의 성격을 띤.
+- Decision: retain one Meaning (`m501763_1`); final gloss: 해양의 성격을 띤 것.
+- Source-bound rationale: 명사 sense w501763-s1의 풀이 ‘해양의 성격을 띤 것.’와 관형사 sense w501763-s2의 풀이 ‘해양의 성격을 띤.’는 ‘해양의 성격을 띤’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘해양의 성격을 띤 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 해외
+
+- Existing Meaning: `m502841_1` — 바다의 밖. 다른 나라를 이르기도 한다.
+- Bound canonical senses:
+  - `w502841-s1` (`w502841`, noun): 바다의 밖.
+  - `w502841-s2` (`w502841`, noun): 다른 나라를 이르는 말.
+- Decision: retain one Meaning (`m502841_1`); final gloss: 바다의 밖. 다른 나라를 이르기도 한다.
+- Source-bound rationale: 바다 밖이라는 공간 표현이 다른 나라를 가리키는 관용적 확장으로 이어진 같은 바깥 지역 의미다.
+
+#### 해임장
+
+- Existing Meaning: `m502694_1` — 어떤 사람을 해임한다는 내용을 적은 글. 외교 사절을 소환할 때 본국 정부가 그 사절이 주재하던 국가의 원수 또는 외무 장관에게 제출하는 해임 문서도 이른다.
+- Bound canonical senses:
+  - `w502694-s1` (`w502694`, noun): 어떤 사람을 해임한다는 내용을 적은 글.
+  - `w502694-s2` (`w502694`, noun): 외교 사절을 소환할 경우에, 본국 정부가 외교 사절이 주재하던 국가의 원수 또는 외무 장관에게 제출하는 해임의 문서.
+- Decision: retain one Meaning (`m502694_1`); final gloss: 어떤 사람을 해임한다는 내용을 적은 글. 외교 사절을 소환할 때 본국 정부가 그 사절이 주재하던 국가의 원수 또는 외무 장관에게 제출하는 해임 문서도 이른다.
+- Source-bound rationale: 해임 내용을 적은 문서와 외교 사절 소환 때 제출하는 문서는 해임을 공식 통지하는 같은 문서 유형이며 후자는 외교 절차의 사례다.
+
+#### 해치다
+
+- Existing Meaning: `m502811_1` — 어떤 상태에 손상을 입혀 망가지게 하거나 사람의 마음이나 몸에 해를 입혀 다치게 하거나 죽이다.
+- Bound canonical senses:
+  - `w502811-s1` (`w502811`, verb): 어떤 상태에 손상을 입혀 망가지게 하다.
+  - `w502811-s2` (`w502811`, verb): 사람의 마음이나 몸에 해를 입히다.
+  - `w502811-s3` (`w502811`, verb): 다치게 하거나 죽이다.
+- Decision: retain one Meaning (`m502811_1`); final gloss: 어떤 상태에 손상을 입혀 망가지게 하거나 사람의 마음이나 몸에 해를 입혀 다치게 하거나 죽이다.
+- Source-bound rationale: 상태를 망가뜨리는 것, 몸·마음에 해를 주는 것, 다치게 하거나 죽이는 것은 손상을 가한다는 같은 해악 행위의 정도·대상 차이다.
+
+#### 해탈
+
+- Existing Meaning: `m503008_1` — 얽매임에서 벗어남. 불교에서는 번뇌의 얽매임에서 풀리고 미혹의 괴로움에서 벗어나는 궁극적인 실천 목적을 이른다.
+- Bound canonical senses:
+  - `w503008-s1` (`w503008`, noun): 번뇌의 얽매임에서 풀리고 미혹의 괴로움에서 벗어남. 본디 열반과 같이 불교의 궁극적인 실천 목적이다. 유위(有爲) 해탈, 무위(無爲) 해탈, 성정(性淨) 해탈, 장진(障盡) 해탈 따위로 나누어진다.
+  - `w503008-s2` (`w503008`, noun): 얽매임에서 벗어남.
+- Decision: retain one Meaning (`m503008_1`); final gloss: 얽매임에서 벗어남. 불교에서는 번뇌의 얽매임에서 풀리고 미혹의 괴로움에서 벗어나는 궁극적인 실천 목적을 이른다.
+- Source-bound rationale: 불교의 번뇌에서 벗어남과 일반적인 얽매임에서 벗어남은 속박에서 풀리는 같은 해탈 개념의 종교적·일반적 범위다.
+
+#### 해탈하다
+
+- Existing Meaning: `m365902_1` — 얽매임에서 벗어나다. 불교에서는 번뇌의 얽매임에서 풀리고 미혹의 괴로움에서 벗어나 열반하는 일을 이른다.
+- Bound canonical senses:
+  - `w365902-s1` (`w365902`, verb): 번뇌의 얽매임에서 풀리고 미혹의 괴로움에서 벗어나다. 본디 열반하는 일과 같이 불교의 궁극적인 실천 목적이다. 유위(有爲) 해탈, 무위(無爲) 해탈, 성정(性淨) 해탈, 장진(障盡) 해탈 하는 일 따위로 나누어진다.
+  - `w365902-s2` (`w365902`, verb): 얽매임에서 벗어나다.
+- Decision: retain one Meaning (`m365902_1`); final gloss: 얽매임에서 벗어나다. 불교에서는 번뇌의 얽매임에서 풀리고 미혹의 괴로움에서 벗어나 열반하는 일을 이른다.
+- Source-bound rationale: 불교적 번뇌 해방과 일반적인 속박 탈피는 묶임에서 풀려나는 같은 행위이며 불교 풀이가 구체적이다.
+
+#### 해풍
+
+- Existing Meaning: `m505196_1` — 바다에서 육지로 불어오는 바람. 낮에 바다에서 육지로 부는 바람을 이른다.
+- Bound canonical senses:
+  - `w505196-s1` (`w505196`, noun): 바다에서 육지로 불어오는 바람.
+  - `w505196-s2` (`w505196`, noun): 낮에 바다에서 육지로 부는 바람.
+- Decision: retain one Meaning (`m505196_1`); final gloss: 바다에서 육지로 불어오는 바람. 낮에 바다에서 육지로 부는 바람을 이른다.
+- Source-bound rationale: 바다에서 육지로 부는 바람과 낮에 부는 바닷바람은 방향·시간 조건이 이어지는 같은 해풍 현상이다.
+
+#### 해학적
+
+- Existing Meaning: `m368101_1` — 익살스럽고도 품위가 있는 말이나 행동이 있는 것.
+- Bound canonical senses:
+  - `w368101-s1` (`w368101`, noun): 익살스럽고도 품위가 있는 말이나 행동이 있는 것.
+  - `w368101-s2` (`w368101`, determiner): 익살스럽고도 품위가 있는 말이나 행동이 있는.
+- Decision: retain one Meaning (`m368101_1`); final gloss: 익살스럽고도 품위가 있는 말이나 행동이 있는 것.
+- Source-bound rationale: 명사 sense w368101-s1의 풀이 ‘익살스럽고도 품위가 있는 말이나 행동이 있는 것.’와 관형사 sense w368101-s2의 풀이 ‘익살스럽고도 품위가 있는 말이나 행동이 있는.’는 ‘익살스럽고도 품위가 있는 말이나 행동이 있는’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘익살스럽고도 품위가 있는 말이나 행동이 있는 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 해화
+
+- Existing Meaning: `m366699_1` — 서로 잘 어울림. 음악의 곡조가 서로 잘 어울리는 일도 이른다.
+- Bound canonical senses:
+  - `w366699-s1` (`w366699`, noun): 서로 잘 어울림.
+  - `w366699-s2` (`w366699`, noun): 음악의 곡조가 서로 잘 어울림.
+- Decision: retain one Meaning (`m366699_1`); final gloss: 서로 잘 어울림. 음악의 곡조가 서로 잘 어울리는 일도 이른다.
+- Source-bound rationale: 서로 어울리는 것과 음악 곡조가 어울리는 것은 조화라는 같은 관계의 일반·음악 적용이다.
+
+#### 해화하다
+
+- Existing Meaning: `m366700_1` — 서로 잘 어울리다. 음악의 곡조가 서로 잘 어울리기도 하다.
+- Bound canonical senses:
+  - `w366700-s1` (`w366700`, verb): 서로 잘 어울리다.
+  - `w366700-s2` (`w366700`, verb): 음악의 곡조가 서로 잘 어울리다.
+- Decision: retain one Meaning (`m366700_1`); final gloss: 서로 잘 어울리다. 음악의 곡조가 서로 잘 어울리기도 하다.
+- Source-bound rationale: 서로 어울리는 것과 곡조가 어울리는 것은 조화를 이루는 같은 동작이며 음악이 구체적 대상이다.
+
+#### 핵론하다
+
+- Existing Meaning: `m371344` — 허물을 들어 논박하다. 일의 실상을 조사하여 논박하기도 하다.
+- Bound canonical senses:
+  - `w371344-s1` (`w371344`, verb): 허물을 들어 논박하다.
+  - `w371346-s1` (`w371346`, verb): 일의 실상을 조사하여 논박하다.
+- Decision: retain one Meaning (`m371344`); final gloss: 허물을 들어 논박하다. 일의 실상을 조사하여 논박하기도 하다.
+- Source-bound rationale: 허물을 들어 논박하는 것과 실상을 조사해 논박하는 것은 사실을 살펴 잘못을 따져 논박한다는 같은 행위다.
+
+#### 핵심적
+
+- Existing Meaning: `m362594_1` — 사물의 가장 중심이 되는 것.
+- Bound canonical senses:
+  - `w362594-s1` (`w362594`, noun): 사물의 가장 중심이 되는 것.
+  - `w362594-s2` (`w362594`, determiner): 사물의 가장 중심이 되는.
+- Decision: retain one Meaning (`m362594_1`); final gloss: 사물의 가장 중심이 되는 것.
+- Source-bound rationale: 명사 sense w362594-s1의 풀이 ‘사물의 가장 중심이 되는 것.’와 관형사 sense w362594-s2의 풀이 ‘사물의 가장 중심이 되는.’는 ‘사물의 가장 중심이 되는’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘사물의 가장 중심이 되는 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 핵심체
+
+- Existing Meaning: `m369336_1` — 가장 중심이 되는 부분. 원자로에서는 연료 원자핵 따위가 분열하여 에너지를 방출하는 중심부를 이른다.
+- Bound canonical senses:
+  - `w369336-s1` (`w369336`, noun): 가장 중심이 되는 부분.
+  - `w369336-s2` (`w369336`, noun): 연료 원자핵 따위가 분열하여 에너지를 방출하는 원자로의 중심부.
+- Decision: retain one Meaning (`m369336_1`); final gloss: 가장 중심이 되는 부분. 원자로에서는 연료 원자핵 따위가 분열하여 에너지를 방출하는 중심부를 이른다.
+- Source-bound rationale: 가장 중심이 되는 부분과 원자로의 중심부는 중심체라는 같은 구조적 핵심의 일반·기술 사례다.
+
+#### 핸디캡
+
+- Existing Meaning: `m364971_1` — 자신에게 특별히 불리하게 작용하는 여건. 운동 경기에서는 기량 차이가 나는 경기자의 기회를 공평하게 주려고 우월한 경기자에게 지우는 점수·횟수·거리·중량 따위의 불리한 조건을 이른다.
+- Bound canonical senses:
+  - `w364971-s1` (`w364971`, noun): 자신에게 특별히 불리하게 작용하는 여건.
+  - `w364971-s2` (`w364971`, noun): 운동 경기 따위에서, 기량의 차이가 나는 경기자에게 이길 기회를 공평하게 주기 위하여 우월한 경기자에게 지우는 불리한 조건. 경기 승패에 영향을 줄 수 있는 점수·횟수·거리·중량 따위를 조절하여 대등한 경기를 할 수 있도록 한다.
+- Decision: retain one Meaning (`m364971_1`); final gloss: 자신에게 특별히 불리하게 작용하는 여건. 운동 경기에서는 기량 차이가 나는 경기자의 기회를 공평하게 주려고 우월한 경기자에게 지우는 점수·횟수·거리·중량 따위의 불리한 조건을 이른다.
+- Source-bound rationale: 불리한 여건이라는 일반 의미와 경기에서 우월한 쪽에 부과하는 조정은 불리한 조건을 지우는 같은 개념의 일반·경기 용법이다.
+
+#### 행각하다
+
+- Existing Meaning: `m372778_1` — 어떤 목적으로 여기저기 돌아다니다. 수행을 위하여 여러 곳을 다니기도 하다.
+- Bound canonical senses:
+  - `w372778-s1` (`w372778`, verb): 어떤 목적으로 여기저기 돌아다니다.
+  - `w372778-s2` (`w372778`, verb): 여기저기 돌아다니며 수행하다.
+- Decision: retain one Meaning (`m372778_1`); final gloss: 어떤 목적으로 여기저기 돌아다니다. 수행을 위하여 여러 곳을 다니기도 하다.
+- Source-bound rationale: 목적으로 여기저기 다니는 것과 수행하며 다니는 것은 목적을 두고 떠돌아 다니는 같은 행각의 일반·종교적 용례다.
+
+#### 행군
+
+- Existing Meaning: `m505400_1` — 여러 사람이 줄을 지어 먼 거리를 이동하는 일. 군대가 대열을 지어 이동하는 일을 이른다.
+- Bound canonical senses:
+  - `w505400-s1` (`w505400`, noun): 여러 사람이 줄을 지어 먼 거리를 이동하는 일.
+  - `w505400-s2` (`w505400`, noun): 군대가 대열을 지어 먼 거리를 이동하는 일.
+- Decision: retain one Meaning (`m505400_1`); final gloss: 여러 사람이 줄을 지어 먼 거리를 이동하는 일. 군대가 대열을 지어 이동하는 일을 이른다.
+- Source-bound rationale: 사람들이 줄지어 먼 거리를 이동하는 것과 군대의 대열 이동은 같은 조직적 장거리 행진의 일반·군사 사례다.
+
+#### 행군하다
+
+- Existing Meaning: `m366394_1` — 여러 사람이 줄을 지어 먼 거리를 이동하다. 군대가 대열을 지어 이동하는 일을 이른다.
+- Bound canonical senses:
+  - `w366394-s1` (`w366394`, verb): 여러 사람이 줄을 지어 먼 거리를 이동하다.
+  - `w366394-s2` (`w366394`, verb): 군대가 대열을 지어 먼 거리를 이동하다.
+- Decision: retain one Meaning (`m366394_1`); final gloss: 여러 사람이 줄을 지어 먼 거리를 이동하다. 군대가 대열을 지어 이동하는 일을 이른다.
+- Source-bound rationale: 사람들의 줄지은 장거리 이동과 군대의 대열 이동은 같은 행군 동작의 일반·군사 용법이다.
+
+#### 행동적
+
+- Existing Meaning: `m367311_1` — 몸을 움직여 동작을 하거나 어떤 일을 하는 것.
+- Bound canonical senses:
+  - `w367311-s1` (`w367311`, noun): 몸을 움직여 동작을 하거나 어떤 일을 하는 것.
+  - `w367311-s2` (`w367311`, determiner): 몸을 움직여 동작을 하거나 어떤 일을 하는.
+- Decision: retain one Meaning (`m367311_1`); final gloss: 몸을 움직여 동작을 하거나 어떤 일을 하는 것.
+- Source-bound rationale: 명사 sense w367311-s1의 풀이 ‘몸을 움직여 동작을 하거나 어떤 일을 하는 것.’와 관형사 sense w367311-s2의 풀이 ‘몸을 움직여 동작을 하거나 어떤 일을 하는.’는 ‘몸을 움직여 동작을 하거나 어떤 일을 하는’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘몸을 움직여 동작을 하거나 어떤 일을 하는 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 행랑 빌리면 안방까지 든다
+
+- Existing Meaning: `m533062_1` — 처음에는 조심하거나 작은 일로 시작해, 약속이나 경계를 어기고 점차 큰 범위까지 침범함을 비유적으로 이르는 말.
+- Bound canonical senses:
+  - `w533062-s1` (`w533062`, expression): 행랑을 빌려 쓴다는 구실로 시작해서 안방에까지 들어간다는 뜻으로, 염치없이 처음에 한 약속을 어기고 야금야금 침범해 들어감을 비유적으로 이르는 말.
+  - `w533062-s2` (`w533062`, expression): 처음에는 조심하여 삼가다가 차차 통이 큰 짓까지 하게 된다는 말.
+- Decision: retain one Meaning (`m533062_1`); final gloss: 처음에는 조심하거나 작은 일로 시작해, 약속이나 경계를 어기고 점차 큰 범위까지 침범함을 비유적으로 이르는 말.
+- Source-bound rationale: 처음 약속을 어기며 야금야금 침범하는 경우와 조심하다 큰일을 하는 경우는 작은 시작이 과도한 침범으로 커진다는 같은 속담의 적용이다.
+
+#### 행랑이 몸채 노릇 한다
+
+- Existing Meaning: `m533063_1` — 손님이 주인 노릇을 하거나 아랫사람이 윗사람을 제치고 일을 주관함을 비유적으로 이르는 말.
+- Bound canonical senses:
+  - `w533063-s1` (`w533063`, expression): 손님이 주인 노릇 함을 비유적으로 이르는 말.
+  - `w533063-s2` (`w533063`, expression): 아랫사람이 윗사람을 제치고 일을 주관함을 비유적으로 이르는 말.
+- Decision: retain one Meaning (`m533063_1`); final gloss: 손님이 주인 노릇을 하거나 아랫사람이 윗사람을 제치고 일을 주관함을 비유적으로 이르는 말.
+- Source-bound rationale: 손님이 주인 노릇 하는 것과 아랫사람이 윗사람을 제치고 주관하는 것은 낮은 지위의 사람이 상위 역할을 차지한다는 같은 비유다.
+
+#### 행마
+
+- Existing Meaning: `m367856_1` — 바둑·장기·쌍륙 따위에서 말을 쓰거나 돌을 놓음. 바둑에서는 세력을 펴기 위해 돌을 놓는 일을 이른다.
+- Bound canonical senses:
+  - `w367856-s1` (`w367856`, noun): 바둑, 장기, 쌍륙 따위에서 말을 씀.
+  - `w367856-s2` (`w367856`, noun): 바둑에서, 세력을 펴서 돌을 놓음.
+- Decision: retain one Meaning (`m367856_1`); final gloss: 바둑·장기·쌍륙 따위에서 말을 쓰거나 돌을 놓음. 바둑에서는 세력을 펴기 위해 돌을 놓는 일을 이른다.
+- Source-bound rationale: 말을 쓰는 여러 보드게임과 바둑에서 세력을 펴며 돌을 놓는 것은 게임 말을 운용하는 일반·바둑 특수 용법이다.
+
+#### 행마하다
+
+- Existing Meaning: `m367857_1` — 바둑·장기·쌍륙 따위에서 말을 쓰다. 바둑에서는 세력을 펴기 위해 돌을 놓다.
+- Bound canonical senses:
+  - `w367857-s1` (`w367857`, verb): 바둑, 장기, 쌍륙 따위에서 말을 쓰다.
+  - `w367857-s2` (`w367857`, verb): 바둑에서, 세력을 펴서 돌을 놓다.
+- Decision: retain one Meaning (`m367857_1`); final gloss: 바둑·장기·쌍륙 따위에서 말을 쓰다. 바둑에서는 세력을 펴기 위해 돌을 놓다.
+- Source-bound rationale: 보드게임의 말을 쓰는 일과 바둑에서 세력을 펴 돌을 두는 일은 게임에서 말을 운용한다는 같은 동작의 일반·바둑 사례다.
+
+#### 행법
+
+- Existing Meaning: `m368475_1` — 수행하는 방법. 불교에서는 부처의 경지에 이르기 위한 수행법, 계·정·혜의 삼학 따위를 이른다.
+- Bound canonical senses:
+  - `w368475-s1` (`w368475`, noun): 사법(四法)의 하나. 부처의 경지에 이르기 위하여 하는 수행을 이른다. 계(戒)·정(定)·혜(慧)의 삼학(三學) 따위이다.
+  - `w368475-s2` (`w368475`, noun): 수행하는 방법.
+- Decision: retain one Meaning (`m368475_1`); final gloss: 수행하는 방법. 불교에서는 부처의 경지에 이르기 위한 수행법, 계·정·혜의 삼학 따위를 이른다.
+- Source-bound rationale: 불도 수행 방법과 일반적인 수행 방법은 수행을 이루는 방법이라는 같은 행법 개념의 종교·일반 용법이다.
+
+#### 행벡터
+
+- Existing Meaning: `m498827_1` — 행렬에서 한 행에 배열된 수를 요소로 하는 벡터. 한 행이 n열인 행렬로 나타낸다.
+- Bound canonical senses:
+  - `w498827-s1` (`w498827`, noun): 한 행이 n열인 행렬.
+  - `w498827-s2` (`w498827`, noun): 행렬에서 한 행에 배열된 수를 요소로 하는 벡터.
+- Decision: retain one Meaning (`m498827_1`); final gloss: 행렬에서 한 행에 배열된 수를 요소로 하는 벡터. 한 행이 n열인 행렬로 나타낸다.
+- Source-bound rationale: 행렬의 한 행과 그 행의 수를 요소로 삼은 벡터는 같은 행 단위 벡터를 두 방식으로 정의한다.
+
+#### 행사되다
+
+- Existing Meaning: `m364095_1` — 부려져서 쓰이다. 권리의 내용이 실현되는 일도 이른다.
+- Bound canonical senses:
+  - `w364095-s1` (`w364095`, verb): 부려져서 쓰이다.
+  - `w364095-s2` (`w364095`, verb): 권리의 내용이 실현되다.
+- Decision: retain one Meaning (`m364095_1`); final gloss: 부려져서 쓰이다. 권리의 내용이 실현되는 일도 이른다.
+- Source-bound rationale: 도구처럼 쓰이는 것과 권리 내용이 실현되는 것은 권한·기능을 실제로 사용하는 같은 행사 개념의 적용 대상 차이다.
+
+#### 행사적
+
+- Existing Meaning: `m364092_1` — 행사로서 치르는 것.
+- Bound canonical senses:
+  - `w364092-s1` (`w364092`, noun): 행사로서 치르는 것.
+  - `w364092-s2` (`w364092`, determiner): 행사로서 치르는.
+- Decision: retain one Meaning (`m364092_1`); final gloss: 행사로서 치르는 것.
+- Source-bound rationale: 명사 sense w364092-s1의 풀이 ‘행사로서 치르는 것.’와 관형사 sense w364092-s2의 풀이 ‘행사로서 치르는.’는 ‘행사로서 치르는’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘행사로서 치르는 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 행습
+
+- Existing Meaning: `m503000_1` — 행동이 버릇이 되거나 몸에 밴 습관. 개인이나 집단에 특징적으로 나타나는 습성도 이른다.
+- Bound canonical senses:
+  - `w503000-s1` (`w503000`, noun): 버릇이 되도록 행동함. 또는 몸에 밴 버릇.
+  - `w503000-s2` (`w503000`, noun): 집단이나 개인에게서 특징적으로 보이는 습성이나 습관.
+- Decision: retain one Meaning (`m503000_1`); final gloss: 행동이 버릇이 되거나 몸에 밴 습관. 개인이나 집단에 특징적으로 나타나는 습성도 이른다.
+- Source-bound rationale: 버릇이 되도록 행동하는 일과 개인·집단에 밴 특징적 습관은 반복 행동과 그 결과 습성이 연결된 같은 행습이다.
+
+#### 행습적
+
+- Existing Meaning: `m366246_1` — 자주 그렇게 하여 버릇이 되다시피 한 것.
+- Bound canonical senses:
+  - `w366246-s1` (`w366246`, noun): 자주 그렇게 하여 버릇이 되다시피 한 것.
+  - `w366246-s2` (`w366246`, determiner): 자주 그렇게 하여 버릇이 되다시피 한.
+- Decision: retain one Meaning (`m366246_1`); final gloss: 자주 그렇게 하여 버릇이 되다시피 한 것.
+- Source-bound rationale: 명사 sense w366246-s1의 풀이 ‘자주 그렇게 하여 버릇이 되다시피 한 것.’와 관형사 sense w366246-s2의 풀이 ‘자주 그렇게 하여 버릇이 되다시피 한.’는 ‘자주 그렇게 하여 버릇이 되다시피 한’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘자주 그렇게 하여 버릇이 되다시피 한 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 행온
+
+- Existing Meaning: `m367521_1` — 오온(五蘊)의 하나인 의지적 행위. 의지나 충동적 욕구에 해당하는 마음의 작용을 이른다.
+- Bound canonical senses:
+  - `w367521-s1` (`w367521`, noun): 의지적 행위인 온(蘊).
+  - `w367521-s2` (`w367521`, noun): 오온(五蘊)의 하나. 의지, 혹은 충동적 욕구에 해당하는 마음의 작용을 이른다. 아비달마 교학에서는, 46심소(心所)에서 수(受)와 상(想)을 제외한 44와 불상응행법(不相應行法) 14를 합한 58법을 통틀어 이르는 말이다.
+- Decision: retain one Meaning (`m367521_1`); final gloss: 오온(五蘊)의 하나인 의지적 행위. 의지나 충동적 욕구에 해당하는 마음의 작용을 이른다.
+- Source-bound rationale: 의지적 행위인 온과 오온 가운데 의지·충동 욕구 작용이라는 풀이는 같은 불교 개념 행온을 간략·교학적으로 설명한다.
+
+#### 행위 능력
+
+- Existing Meaning: `m505200_1` — 법률 행위를 단독으로 하여 법률상 효과를 발생시킬 수 있는 능력. 자연인이나 법인뿐 아니라 국제법상 국가의 의사 행위에도 적용한다.
+- Bound canonical senses:
+  - `w505200-s1` (`w505200`, expression): 사법에서, 법률 행위를 단독으로 할 수 있는 능력. 의사 능력이 없는 자연인은 행위 능력을 갖지 못하며, 민법에서는 일률적으로 미성년자·금치산자·한정 치산자를 행위 능력이 없는 자로 규정하여 그 행위를 취소할 수 있도록 규정하였다. 법인은 그 목적 및 법률의 범위 내에서만 행위 능력을 갖는다.
+  - `w505200-s2` (`w505200`, expression): 국제법에서, 국가가 자기의 의사 행위에 따라 효과를 발생시킬 수 있는 능력.
+- Decision: retain one Meaning (`m505200_1`); final gloss: 법률 행위를 단독으로 하여 법률상 효과를 발생시킬 수 있는 능력. 자연인이나 법인뿐 아니라 국제법상 국가의 의사 행위에도 적용한다.
+- Source-bound rationale: 개인의 민사 법률행위 능력과 국가의 국제법상 의사행위 능력은 법적 행위로 효과를 일으킬 수 있는 같은 추상적 능력의 주체별 적용이다.
+
+#### 행정 공무원
+
+- Existing Meaning: `m367334_1` — 국가의 행정 사무를 담당하는 공무원. 행정부에서 근무하는 공무원을 이른다.
+- Bound canonical senses:
+  - `w367334-s1` (`w367334`, expression): 국가의 행정 사무를 담당하는 공무원을 통틀어 이르는 말.
+  - `w367334-s2` (`w367334`, expression): 행정부에 근무하는 공무원.
+- Decision: retain one Meaning (`m367334_1`); final gloss: 국가의 행정 사무를 담당하는 공무원. 행정부에서 근무하는 공무원을 이른다.
+- Source-bound rationale: 행정 사무 담당 공무원과 행정부 근무 공무원은 행정 기능을 맡는 공무원의 같은 직무 범주를 가리킨다.
+
+#### 행정 명령
+
+- Existing Meaning: `m371924_1` — 행정 기관이 행정 목적을 위해 직권으로 내리는 명령. 군대에서는 교통·보급·후송·인사 관련 명령을 이른다.
+- Bound canonical senses:
+  - `w371924-s1` (`w371924`, expression): 교통, 보급, 후송, 인사 따위의 행정에 관한 명령. 보통 사단 이상의 부대가 내린다.
+  - `w371924-s2` (`w371924`, expression): 행정 기관이 행정 목적을 위하여 직권으로 내리는 모든 명령.
+- Decision: retain one Meaning (`m371924_1`); final gloss: 행정 기관이 행정 목적을 위해 직권으로 내리는 명령. 군대에서는 교통·보급·후송·인사 관련 명령을 이른다.
+- Source-bound rationale: 군대의 행정 운영 지시와 행정기관이 행정 목적상 직권으로 내리는 지시는 행정 사무를 명하는 같은 문서·명령 유형의 발령 주체 차이다.
+
+#### 행정 쟁송
+
+- Existing Meaning: `m356076_1` — 행정상 법률 관계의 분쟁이나 의문을 이해관계자의 신청에 따라 심판하는 절차. 행정권 내부 기관이 심판하는 경우도 이른다.
+- Bound canonical senses:
+  - `w356076-s1` (`w356076`, expression): 행정에서의 법률관계에 분쟁 또는 의문이 있는 경우, 이해관계자의 신청에 의하여 일정한 판단 기관이 이를 심판하는 절차.
+  - `w356076-s2` (`w356076`, expression): 행정에서의 법률관계에 분쟁 또는 의문이 있는 경우, 행정권 내부의 기관이 심판하는 절차.
+- Decision: retain one Meaning (`m356076_1`); final gloss: 행정상 법률 관계의 분쟁이나 의문을 이해관계자의 신청에 따라 심판하는 절차. 행정권 내부 기관이 심판하는 경우도 이른다.
+- Source-bound rationale: 행정 법률관계 분쟁을 판단하는 절차와 그 판단을 행정권 내부 기관이 하는 절차는 같은 행정상 쟁송의 판단 기관 차이다.
+
+#### 행정 절차
+
+- Existing Meaning: `m356334_1` — 행정 기관이 행정 행위를 할 때 따라야 하는 절차. 행정 기관의 심판도 이른다.
+- Bound canonical senses:
+  - `w356334-s1` (`w356334`, expression): 행정 기관이 규칙의 제정, 쟁송의 재결, 결정 따위의 행정 행위를 할 경우에 따라야 할 절차.
+  - `w356334-s2` (`w356334`, expression): 행정 기관에 의한 심판.
+- Decision: retain one Meaning (`m356334_1`); final gloss: 행정 기관이 행정 행위를 할 때 따라야 하는 절차. 행정 기관의 심판도 이른다.
+- Source-bound rationale: 행정기관의 각종 행위에 따르는 절차와 행정기관에 의한 심판은 행정작용을 처리·판단하는 절차라는 같은 법률 영역이다.
+
+#### 행정적
+
+- Existing Meaning: `m367041_1` — 정치나 사무를 행하는 것.
+- Bound canonical senses:
+  - `w367041-s1` (`w367041`, noun): 정치나 사무를 행하는 것.
+  - `w367041-s2` (`w367041`, determiner): 정치나 사무를 행하는.
+- Decision: retain one Meaning (`m367041_1`); final gloss: 정치나 사무를 행하는 것.
+- Source-bound rationale: 명사 sense w367041-s1의 풀이 ‘정치나 사무를 행하는 것.’와 관형사 sense w367041-s2의 풀이 ‘정치나 사무를 행하는.’는 ‘정치나 사무를 행하는’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘정치나 사무를 행하는 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 행진하다
+
+- Existing Meaning: `m370891` — 군대나 여러 사람이 대열을 지어 앞으로 나아가다. 군대가 먼 거리를 이동하는 일을 이른다.
+- Bound canonical senses:
+  - `w370891-s1` (`w370891`, verb): 군대가 대열을 지어 먼 거리를 이동하다.
+  - `w370893-s1` (`w370893`, verb): 줄을 지어 앞으로 나아가다.
+- Decision: retain one Meaning (`m370891`); final gloss: 군대나 여러 사람이 대열을 지어 앞으로 나아가다. 군대가 먼 거리를 이동하는 일을 이른다.
+- Source-bound rationale: 군대가 대열로 먼 거리를 가는 것과 줄지어 앞으로 나아가는 것은 대열을 이루어 이동하는 같은 행진의 군사·일반 용법이다.
+
+#### 행하
+
+- Existing Meaning: `m506631_1` — 수고한 사람에게 품삯이나 봉급 이외에 더 주는 돈이나 물건. 집안 경사 때 부리는 사람, 심부름·시중을 든 사람, 놀이 뒤 기생·광대에게 주는 보수도 이른다.
+- Bound canonical senses:
+  - `w506631-s1` (`w506631`, noun): 집안에 경사가 있을 때 주인이 부리는 사람에게 주는 돈이나 물건.
+  - `w506631-s2` (`w506631`, noun): 심부름을 하거나 시중을 든 사람에게 주는 돈이나 물건.
+  - `w506631-s3` (`w506631`, noun): 품삯 이외에 더 주는 돈.
+  - `w506631-s4` (`w506631`, noun): 놀이가 끝난 뒤에 기생이나 광대에게 주는 보수.
+- Decision: retain one Meaning (`m506631_1`); final gloss: 수고한 사람에게 품삯이나 봉급 이외에 더 주는 돈이나 물건. 집안 경사 때 부리는 사람, 심부름·시중을 든 사람, 놀이 뒤 기생·광대에게 주는 보수도 이른다.
+- Source-bound rationale: 하인·심부름꾼·예인에게 주는 돈과 품삯 외 추가금은 일을 제공한 사람에게 주는 사례·보수라는 같은 행하의 맥락별 지급이다.
+
+#### 향내
+
+- Existing Meaning: `m375452_1` — 향기로운 냄새. 향에서 나는 냄새를 이른다.
+- Bound canonical senses:
+  - `w375452-s1` (`w375452`, noun): 향기로운 냄새.
+  - `w375452-s2` (`w375452`, noun): 향의 냄새.
+- Decision: retain one Meaning (`m375452_1`); final gloss: 향기로운 냄새. 향에서 나는 냄새를 이른다.
+- Source-bound rationale: 향기로운 냄새와 향의 냄새는 향에서 비롯된 향기라는 같은 냄새를 일반·원천으로 설명한다.
+
+#### 향락설
+
+- Existing Meaning: `m365455_1` — 예술에서의 도락적 입장. 쾌락을 좇아 인생을 즐기는 일을 목적으로 삼는 태도나 생활 방식도 이른다.
+- Bound canonical senses:
+  - `w365455-s1` (`w365455`, noun): 예술에서의 도락적(道樂的) 입장.
+  - `w365455-s2` (`w365455`, noun): 쾌락의 추구를 인생의 목적으로 하는 생활 방식. 고통을 피하고 낙(樂)으로 인생을 즐기려는 태도이다.
+- Decision: retain one Meaning (`m365455_1`); final gloss: 예술에서의 도락적 입장. 쾌락을 좇아 인생을 즐기는 일을 목적으로 삼는 태도나 생활 방식도 이른다.
+- Source-bound rationale: 예술적 도락의 입장과 쾌락을 삶의 목적으로 삼는 태도는 즐거움을 중시하는 같은 향락 관점의 예술·생활 적용이다.
+
+#### 향락적
+
+- Existing Meaning: `m365453_1` — 놀고 즐기는 것.
+- Bound canonical senses:
+  - `w365453-s1` (`w365453`, noun): 놀고 즐기는 것.
+  - `w365453-s2` (`w365453`, determiner): 놀고 즐기는.
+- Decision: retain one Meaning (`m365453_1`); final gloss: 놀고 즐기는 것.
+- Source-bound rationale: 명사 sense w365453-s1의 풀이 ‘놀고 즐기는 것.’와 관형사 sense w365453-s2의 풀이 ‘놀고 즐기는.’는 ‘놀고 즐기는’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘놀고 즐기는 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 향토적
+
+- Existing Meaning: `m370951_1` — 고향이나 시골의 정취가 담긴 것.
+- Bound canonical senses:
+  - `w370951-s1` (`w370951`, noun): 고향이나 시골의 정취가 담긴 것.
+  - `w370951-s2` (`w370951`, determiner): 고향이나 시골의 정취가 담긴.
+- Decision: retain one Meaning (`m370951_1`); final gloss: 고향이나 시골의 정취가 담긴 것.
+- Source-bound rationale: 명사 sense w370951-s1의 풀이 ‘고향이나 시골의 정취가 담긴 것.’와 관형사 sense w370951-s2의 풀이 ‘고향이나 시골의 정취가 담긴.’는 ‘고향이나 시골의 정취가 담긴’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘고향이나 시골의 정취가 담긴 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 허경
+
+- Existing Meaning: `m371802_1` — 헛것을 보거나 별다른 이유 없이 놀람.
+- Bound canonical senses:
+  - `w371802-s1` (`w371802`, noun): 헛것을 보고 놀람.
+  - `w371802-s2` (`w371802`, noun): 괜히 놀람.
+- Decision: retain one Meaning (`m371802_1`); final gloss: 헛것을 보거나 별다른 이유 없이 놀람.
+- Source-bound rationale: 헛것을 보고 놀라는 것과 괜히 놀라는 것은 명확한 현실 원인 없이 놀라는 같은 반응이며 환각은 한 가능한 계기다.
+
+#### 허경하다
+
+- Existing Meaning: `m371803_1` — 헛것을 보거나 별다른 이유 없이 놀라다.
+- Bound canonical senses:
+  - `w371803-s1` (`w371803`, verb): 헛것을 보고 놀라다.
+  - `w371803-s2` (`w371803`, verb): 괜히 놀라다.
+- Decision: retain one Meaning (`m371803_1`); final gloss: 헛것을 보거나 별다른 이유 없이 놀라다.
+- Source-bound rationale: 헛것을 보고 놀라는 것과 괜히 놀라는 것은 근거가 분명하지 않은 놀람이라는 같은 동작의 구체·일반 용법이다.
+
+#### 허공에 뜨다
+
+- Existing Meaning: `m532982_1` — 현실이나 자기 위치에 발을 붙이지 못하거나, 이론·학설이 실천과 동떨어진 상태를 이르는 말.
+- Bound canonical senses:
+  - `w532982-s1` (`w532982`, expression): 현실과 관련이 없는 동떨어진 상태를 이르는 말.
+  - `w532982-s2` (`w532982`, expression): 자기 위치에 발을 붙이지 못한 상태를 이르는 말.
+  - `w532982-s3` (`w532982`, expression): 이론이나 학설이 실천과 떨어져 있는 상태를 이르는 말.
+- Decision: retain one Meaning (`m532982_1`); final gloss: 현실이나 자기 위치에 발을 붙이지 못하거나, 이론·학설이 실천과 동떨어진 상태를 이르는 말.
+- Source-bound rationale: 현실과 동떨어짐, 자기 위치에 발을 못 붙임, 이론이 실천과 분리됨은 현실적 기반·연결이 없다는 같은 비유 축이다.
+
+#### 허구적
+
+- Existing Meaning: `m503921_1` — 사실에 없는 일을 사실처럼 꾸며 만드는 성질을 띤 것.
+- Bound canonical senses:
+  - `w503921-s1` (`w503921`, noun): 사실에 없는 일을 사실처럼 꾸며 만드는 성질을 띤 것.
+  - `w503921-s2` (`w503921`, determiner): 사실에 없는 일을 사실처럼 꾸며 만드는 성질을 띤.
+- Decision: retain one Meaning (`m503921_1`); final gloss: 사실에 없는 일을 사실처럼 꾸며 만드는 성질을 띤 것.
+- Source-bound rationale: 명사 sense w503921-s1의 풀이 ‘사실에 없는 일을 사실처럼 꾸며 만드는 성질을 띤 것.’와 관형사 sense w503921-s2의 풀이 ‘사실에 없는 일을 사실처럼 꾸며 만드는 성질을 띤.’는 ‘사실에 없는 일을 사실처럼 꾸며 만드는 성질을 띤’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘사실에 없는 일을 사실처럼 꾸며 만드는 성질을 띤 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 허리가 잘리다
+
+- Existing Meaning: `m524793_1` — 국토가 분단되거나 어떤 행동이나 일이 중단되다.
+- Bound canonical senses:
+  - `w524793-s1` (`w524793`, expression): 국토가 분단되다.
+  - `w524793-s2` (`w524793`, expression): 어떤 행동이나 일이 중단되다.
+- Decision: retain one Meaning (`m524793_1`); final gloss: 국토가 분단되거나 어떤 행동이나 일이 중단되다.
+- Source-bound rationale: 국토 분단과 일·행동의 중단은 허리가 잘린 듯한 연속성 단절이라는 같은 관용 비유의 대상 차이다.
+
+#### 허리통
+
+- Existing Meaning: `m376073_1` — 허리의 둘레. 바지·치마·고의 따위에서 허리를 이루는 둘레도 이른다.
+- Bound canonical senses:
+  - `w376073-s1` (`w376073`, noun): 허리의 둘레.
+  - `w376073-s2` (`w376073`, noun): 바지, 치마, 고의 따위에서 허리를 이루는 둘레.
+- Decision: retain one Meaning (`m376073_1`); final gloss: 허리의 둘레. 바지·치마·고의 따위에서 허리를 이루는 둘레도 이른다.
+- Source-bound rationale: 사람 허리의 둘레와 옷에서 허리를 이루는 둘레는 같은 허리 부위의 둘레를 몸·의복에 적용한다.
+
+#### 허무적
+
+- Existing Meaning: `m370628_1` — 세상이나 인생을 허무한 것이라고 생각하는 경향이 있는 것.
+- Bound canonical senses:
+  - `w370628-s1` (`w370628`, noun): 세상이나 인생을 허무한 것이라고 생각하는 경향이 있는 것.
+  - `w370628-s2` (`w370628`, determiner): 세상이나 인생을 허무한 것이라고 생각하는 경향이 있는.
+- Decision: retain one Meaning (`m370628_1`); final gloss: 세상이나 인생을 허무한 것이라고 생각하는 경향이 있는 것.
+- Source-bound rationale: 명사 sense w370628-s1의 풀이 ‘세상이나 인생을 허무한 것이라고 생각하는 경향이 있는 것.’와 관형사 sense w370628-s2의 풀이 ‘세상이나 인생을 허무한 것이라고 생각하는 경향이 있는.’는 ‘세상이나 인생을 허무한 것이라고 생각하는 경향이 있는’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘세상이나 인생을 허무한 것이라고 생각하는 경향이 있는 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 허무주의적
+
+- Existing Meaning: `m370919_1` — 세상이나 인생을 허무주의의 관점에서 보는 것.
+- Bound canonical senses:
+  - `w370919-s1` (`w370919`, noun): 세상이나 인생을 허무주의의 관점에서 보는 것.
+  - `w370919-s2` (`w370919`, determiner): 세상이나 인생을 허무주의의 관점에서 보는.
+- Decision: retain one Meaning (`m370919_1`); final gloss: 세상이나 인생을 허무주의의 관점에서 보는 것.
+- Source-bound rationale: 명사 sense w370919-s1의 풀이 ‘세상이나 인생을 허무주의의 관점에서 보는 것.’와 관형사 sense w370919-s2의 풀이 ‘세상이나 인생을 허무주의의 관점에서 보는.’는 ‘세상이나 인생을 허무주의의 관점에서 보는’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘세상이나 인생을 허무주의의 관점에서 보는 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 허방(을) 짚다
+
+- Existing Meaning: `m524820_1` — 발을 잘못 디디어 허방에 빠지거나, 잘못 알거나 잘못 예산하여 실패하다.
+- Bound canonical senses:
+  - `w524820-s1` (`w524820`, expression): 발을 잘못 디디어 허방에 빠지다.
+  - `w524820-s2` (`w524820`, expression): 잘못 알거나 잘못 예산하여 실패하다.
+- Decision: retain one Meaning (`m524820_1`); final gloss: 발을 잘못 디디어 허방에 빠지거나, 잘못 알거나 잘못 예산하여 실패하다.
+- Source-bound rationale: 발을 헛디디는 것과 잘못 판단·예산해 실패하는 것은 발을 잘못 놓듯 판단을 잘못하는 같은 관용 표현이다.
+
+#### 허전장령
+
+- Existing Meaning: `m371824_1` — 장수나 윗사람의 명령을 거짓으로 꾸며서 전함.
+- Bound canonical senses:
+  - `w371824-s1` (`w371824`, noun): 장수의 명령을 거짓으로 꾸며서 전함.
+  - `w371824-s2` (`w371824`, noun): 윗사람의 명령을 거짓으로 꾸며서 전함을 비유적으로 이르는 말.
+- Decision: retain one Meaning (`m371824_1`); final gloss: 장수나 윗사람의 명령을 거짓으로 꾸며서 전함.
+- Source-bound rationale: 장수의 명령과 윗사람의 명령을 거짓으로 꾸며 전하는 것은 명령을 꾸며 전달한다는 같은 행위이며 후자는 비유적 확대다.
+
+#### 허전장령하다
+
+- Existing Meaning: `m371825_1` — 장수나 윗사람의 명령을 거짓으로 꾸며서 전하다.
+- Bound canonical senses:
+  - `w371825-s1` (`w371825`, verb): 장수의 명령을 거짓으로 꾸며서 전하다.
+  - `w371825-s2` (`w371825`, verb): (비유적으로) 윗사람의 명령을 거짓으로 꾸며서 전하다.
+- Decision: retain one Meaning (`m371825_1`); final gloss: 장수나 윗사람의 명령을 거짓으로 꾸며서 전하다.
+- Source-bound rationale: 장수의 명령을 위조해 전하는 것과 윗사람 명령을 비유적으로 꾸며 전하는 것은 동일한 거짓 전달 행위의 범위 차이다.
+
+#### 허즉실
+
+- Existing Meaning: `m503744_1` — 겉보기에는 허술하지만 속은 충실함. 특히 허술한 전투 태세를 보이나 실제 무력은 강하다는 판단이나, 아무 방비가 없는 듯한 곳에 복병이 있음을 이른다.
+- Bound canonical senses:
+  - `w503744-s1` (`w503744`, noun): 겉보기에 허술하면 속이 충실함.
+  - `w503744-s2` (`w503744`, noun): 허술한 전투태세를 보이지만 실제 무력은 강함. 또는 그렇다는 적정 판단. 아무 방비가 없는 듯한 곳에 복병이 있음을 이른다.
+- Decision: retain one Meaning (`m503744_1`); final gloss: 겉보기에는 허술하지만 속은 충실함. 특히 허술한 전투 태세를 보이나 실제 무력은 강하다는 판단이나, 아무 방비가 없는 듯한 곳에 복병이 있음을 이른다.
+- Source-bound rationale: 허술해 보이나 속이 충실함과 빈틈을 보여도 실제 무력이 강한 것은 겉과 속이 반대라는 같은 병법·일반 원리다.
+
+#### 허즉실하다
+
+- Existing Meaning: `m372721_1` — 겉보기에는 허술하지만 속은 충실하다. 특히 허술한 전투 태세를 보이나 실제 무력은 강하거나, 아무 방비가 없는 듯한 곳에 복병이 있다.
+- Bound canonical senses:
+  - `w372721-s1` (`w372721`, adjective): 겉보기에 허술하면 속이 충실하다.
+  - `w372721-s2` (`w372721`, adjective): 허술한 전투태세를 보이지만 실제 무력은 강하다. 아무 방비가 없는 듯한 곳에 복병이 있음을 이른다.
+- Decision: retain one Meaning (`m372721_1`); final gloss: 겉보기에는 허술하지만 속은 충실하다. 특히 허술한 전투 태세를 보이나 실제 무력은 강하거나, 아무 방비가 없는 듯한 곳에 복병이 있다.
+- Source-bound rationale: 겉은 허술하지만 속은 충실한 상태와 약해 보이나 실제로 강한 전투태세는 같은 허즉실 원리를 형용한다.
+
+#### 허허롭다
+
+- Existing Meaning: `m515597_1` — 텅 빈 느낌이 있거나 매우 허전한 느낌이 있다.
+- Bound canonical senses:
+  - `w515597-s1` (`w515597`, adjective): 텅 빈 느낌이 있다.
+  - `w515597-s2` (`w515597`, adjective): 매우 허전한 느낌이 있다.
+- Decision: retain one Meaning (`m515597_1`); final gloss: 텅 빈 느낌이 있거나 매우 허전한 느낌이 있다.
+- Source-bound rationale: 텅 빈 느낌과 매우 허전한 느낌은 비어 있음에서 오는 같은 정서적 공허감이다.
+
+#### 헌금
+
+- Existing Meaning: `m502864_1` — 돈을 바치거나, 주일이나 축일에 하나님에게 돈을 바침. 또는 그렇게 바치는 돈.
+- Bound canonical senses:
+  - `w502864-s1` (`w502864`, noun): 돈을 바침. 또는 그 돈.
+  - `w502864-s2` (`w502864`, noun): 주일이나 축일에 하나님에게 돈을 바침. 또는 그 돈.
+- Decision: retain one Meaning (`m502864_1`); final gloss: 돈을 바치거나, 주일이나 축일에 하나님에게 돈을 바침. 또는 그렇게 바치는 돈.
+- Source-bound rationale: 일반적으로 돈을 바치는 것과 예배일에 하나님께 바치는 것은 같은 헌금의 종교적 사례다.
+
+#### 헌금하다
+
+- Existing Meaning: `m376923_1` — 돈을 바치다. 특히 주일이나 축일에 하나님에게 바치다.
+- Bound canonical senses:
+  - `w376923-s1` (`w376923`, verb): 돈을 바치다.
+  - `w376923-s2` (`w376923`, verb): 주일이나 축일에 하나님에게 돈을 바치다.
+- Decision: retain one Meaning (`m376923_1`); final gloss: 돈을 바치다. 특히 주일이나 축일에 하나님에게 바치다.
+- Source-bound rationale: 돈을 바치는 일반 행위와 예배일 하나님께 바치는 행위는 같은 봉헌이며 후자가 목적·수령자를 구체화한다.
+
+#### 헌사
+
+- Existing Meaning: `m371841_1` — 축하하거나 찬양하는 뜻으로 바치거나, 책을 다른 사람에게 바치는 뜻을 적은 글.
+- Bound canonical senses:
+  - `w371841-s1` (`w371841`, noun): 축하하거나 찬양하는 뜻으로 바치는 글.
+  - `w371841-s2` (`w371841`, noun): 지은이나 발행자가 그 책을 다른 사람에게 바치는 뜻을 적은 글.
+- Decision: retain one Meaning (`m371841_1`); final gloss: 축하하거나 찬양하는 뜻으로 바치거나, 책을 다른 사람에게 바치는 뜻을 적은 글.
+- Source-bound rationale: 축하·찬양으로 바치는 글과 책을 특정인에게 바치는 글은 받는 이를 기리는 글이라는 같은 헌사의 유형이다.
+
+#### 헌상
+
+- Existing Meaning: `m503761_1` — 임금에게 바치거나 물건을 삼가 올림.
+- Bound canonical senses:
+  - `w503761-s1` (`w503761`, noun): 임금에게 바침.
+  - `w503761-s2` (`w503761`, noun): 물건을 삼가 올림.
+- Decision: retain one Meaning (`m503761_1`); final gloss: 임금에게 바치거나 물건을 삼가 올림.
+- Source-bound rationale: 임금에게 바치는 일과 물건을 삼가 올리는 일은 존중하며 물건을 윗사람에게 올리는 같은 행위다.
+
+#### 헌상되다
+
+- Existing Meaning: `m371842_1` — 임금에게 바쳐지거나 물건이 삼가 올려지다.
+- Bound canonical senses:
+  - `w371842-s1` (`w371842`, verb): 임금에게 바쳐지다.
+  - `w371842-s2` (`w371842`, verb): 물건이 삼가 올려지다.
+- Decision: retain one Meaning (`m371842_1`); final gloss: 임금에게 바쳐지거나 물건이 삼가 올려지다.
+- Source-bound rationale: 임금에게 바쳐지는 것과 물건이 공손히 올려지는 것은 같은 존대적 봉헌의 피동 용법이다.
+
+#### 헌상하다
+
+- Existing Meaning: `m371843_1` — 임금에게 바치거나 물건을 삼가 올리다.
+- Bound canonical senses:
+  - `w371843-s1` (`w371843`, verb): 임금에게 바치다.
+  - `w371843-s2` (`w371843`, verb): 물건을 삼가 올리다.
+- Decision: retain one Meaning (`m371843_1`); final gloss: 임금에게 바치거나 물건을 삼가 올리다.
+- Source-bound rationale: 임금에게 물건을 바치는 것과 물건을 삼가 올리는 것은 공손히 올리는 같은 봉헌 행위의 대상 차이다.
+
+#### 헌수하다
+
+- Existing Meaning: `m372137` — 잔을 올리다. 특히 환갑잔치 따위에서 장수를 비는 뜻으로 주인공에게 술잔을 올리다.
+- Bound canonical senses:
+  - `w372137-s1` (`w372137`, verb): 잔을 올리다.
+  - `w372138-s1` (`w372138`, verb): 환갑잔치 따위에서, 주인공에게 장수를 비는 뜻으로 술잔을 올리다.
+- Decision: retain one Meaning (`m372137`); final gloss: 잔을 올리다. 특히 환갑잔치 따위에서 장수를 비는 뜻으로 주인공에게 술잔을 올리다.
+- Source-bound rationale: 잔을 올리는 일반 행위와 환갑에 장수를 빌며 올리는 것은 같은 축수 잔 올림의 일반·관례 사례다.
+
+#### 헌신적
+
+- Existing Meaning: `m372423_1` — 몸과 마음을 바쳐 있는 힘을 다하는 것.
+- Bound canonical senses:
+  - `w372423-s1` (`w372423`, noun): 몸과 마음을 바쳐 있는 힘을 다하는 것.
+  - `w372423-s2` (`w372423`, determiner): 몸과 마음을 바쳐 있는 힘을 다하는.
+- Decision: retain one Meaning (`m372423_1`); final gloss: 몸과 마음을 바쳐 있는 힘을 다하는 것.
+- Source-bound rationale: 명사 sense w372423-s1의 풀이 ‘몸과 마음을 바쳐 있는 힘을 다하는 것.’와 관형사 sense w372423-s2의 풀이 ‘몸과 마음을 바쳐 있는 힘을 다하는.’는 ‘몸과 마음을 바쳐 있는 힘을 다하는’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘몸과 마음을 바쳐 있는 힘을 다하는 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 헐떡하다
+
+- Existing Meaning: `m368852_1` — 심한 고생이나 병으로 얼굴이 여위고 핏기가 없거나, 몹시 지쳐 눈이 푹 들어가 있다.
+- Bound canonical senses:
+  - `w368852-s1` (`w368852`, adjective): 심한 고생이나 병으로 얼굴이 여위고 핏기가 없다.
+  - `w368852-s2` (`w368852`, adjective): 몹시 지쳐 눈이 푹 들어가 있다.
+- Decision: retain one Meaning (`m368852_1`); final gloss: 심한 고생이나 병으로 얼굴이 여위고 핏기가 없거나, 몹시 지쳐 눈이 푹 들어가 있다.
+- Source-bound rationale: 고생·병으로 여위고 핏기 없는 얼굴과 지쳐 눈이 들어간 모습은 탈진으로 나타나는 같은 수척한 외양이다.
+
+#### 험난하다
+
+- Existing Meaning: `m501253_1` — 지세가 다니기에 위험하고 어렵거나, 험하여 고생스럽다.
+- Bound canonical senses:
+  - `w501253-s1` (`w501253`, adjective): 지세가 다니기에 위험하고 어렵다.
+  - `w501253-s2` (`w501253`, adjective): 험하여 고생스럽다.
+- Decision: retain one Meaning (`m501253_1`); final gloss: 지세가 다니기에 위험하고 어렵거나, 험하여 고생스럽다.
+- Source-bound rationale: 위험하고 지나기 어려운 지세와 험해 고생스러운 상태는 장애와 고통이 큰 같은 험난함의 물리·추상 적용이다.
+
+#### 험로
+
+- Existing Meaning: `m504219_1` — 험한 길. 또는 험난한 삶을 비유적으로 이르는 말.
+- Bound canonical senses:
+  - `w504219-s1` (`w504219`, noun): 험한 길.
+  - `w504219-s2` (`w504219`, noun): 험난한 삶을 비유적으로 이르는 말.
+- Decision: retain one Meaning (`m504219_1`); final gloss: 험한 길. 또는 험난한 삶을 비유적으로 이르는 말.
+- Source-bound rationale: 험한 실제 길과 험난한 삶은 장애가 이어지는 길을 삶에 옮긴 같은 비유다.
+
+#### 헛수
+
+- Existing Meaning: `m372276_1` — 바둑이나 장기 따위에서 헛되이 두는 수. 또는 실패한 계책을 비유적으로 이르는 말.
+- Bound canonical senses:
+  - `w372276-s1` (`w372276`, noun): 바둑이나 장기 따위에서, 헛되이 두는 수.
+  - `w372276-s2` (`w372276`, noun): 실패한 계책을 비유적으로 이르는 말.
+- Decision: retain one Meaning (`m372276_1`); final gloss: 바둑이나 장기 따위에서 헛되이 두는 수. 또는 실패한 계책을 비유적으로 이르는 말.
+- Source-bound rationale: 보드게임에서 헛되이 둔 수와 실패한 계책은 들인 수가 성과 없이 끝난다는 같은 헛된 수의 문자·비유 용법이다.
+
+#### 헝겁
+
+- Existing Meaning: `m370107_1` — 매우 좋아서 정신을 차리지 못하고 허둥거리는 짓이나 모양.
+- Bound canonical senses:
+  - `w370107-s1` (`w370107`, noun): 매우 좋아서 정신을 차리지 못하고 허둥거리는 짓.
+  - `w370107-s2` (`w370107`, adverb): 매우 좋아서 정신을 차리지 못하고 허둥거리는 모양.
+- Decision: retain one Meaning (`m370107_1`); final gloss: 매우 좋아서 정신을 차리지 못하고 허둥거리는 짓이나 모양.
+- Source-bound rationale: 정신을 못 차리고 허둥대는 짓과 그 모양은 같은 들뜬 행동을 명사·부사로 나타낸다.
+
+#### 헤드
+
+- Existing Meaning: `m504400_1` — 전류를 자기로, 자기를 전류로 바꾸는 변환 장치. 테이프의 녹음·재생·말소에 쓰거나 자기 디스크 자료를 읽고 쓰고 지우는 데 쓴다.
+- Bound canonical senses:
+  - `w504400-s1` (`w504400`, noun): 전류를 자기로 바꾸고, 자기를 전류로 바꾸는 변환 장치. 테이프의 녹음, 재생, 말소에 쓴다.
+  - `w504400-s2` (`w504400`, noun): 자기 디스크의 자료를 읽거나 쓰거나 지우는 장치.
+- Decision: retain one Meaning (`m504400_1`); final gloss: 전류를 자기로, 자기를 전류로 바꾸는 변환 장치. 테이프의 녹음·재생·말소에 쓰거나 자기 디스크 자료를 읽고 쓰고 지우는 데 쓴다.
+- Source-bound rationale: 테이프의 녹음·재생·말소 장치와 자기 디스크의 읽기·쓰기·지우기 장치는 매체에 정보를 기록·판독하는 같은 자기 변환 장치다.
+
+#### 헤드폰
+
+- Existing Meaning: `m373091_1` — 스피커 부분이 두 귀를 덮는 소형 장치로, 밴드로 머리에 걸어 귀에 고정하여 전화 수신이나 라디오 청취·방송·녹음에 쓴다.
+- Bound canonical senses:
+  - `w373091-s1` (`w373091`, noun): 밴드로 머리에 걸고 귀에 고정하는 전화 수신기.
+  - `w373091-s2` (`w373091`, noun): 라디오 따위를 듣거나 방송·녹음할 때 쓰는 소형 스피커. 밴드로 머리에 걸 수 있으며, 스피커 부분은 두 귀를 덮게 되어 있다.
+- Decision: retain one Meaning (`m373091_1`); final gloss: 스피커 부분이 두 귀를 덮는 소형 장치로, 밴드로 머리에 걸어 귀에 고정하여 전화 수신이나 라디오 청취·방송·녹음에 쓴다.
+- Source-bound rationale: 머리에 걸어 귀에 고정하는 전화 수신기와 라디오·방송·녹음용 소형 스피커는 귀에 쓰는 같은 개인용 음향 장치다.
+
+#### 헤벌어지다
+
+- Existing Meaning: `m506191_1` — 어울리지 아니하게 넓게 벌어지거나, 그렇게 넓다.
+- Bound canonical senses:
+  - `w506191-s1` (`w506191`, verb): 어울리지 아니하게 넓게 벌어지다.
+  - `w506191-s2` (`w506191`, adjective): 어울리지 아니하게 넓다.
+- Decision: retain one Meaning (`m506191_1`); final gloss: 어울리지 아니하게 넓게 벌어지거나, 그렇게 넓다.
+- Source-bound rationale: 입·구멍이 넓게 벌어지는 동작과 넓어진 상태는 같은 부적절하게 넓은 벌어짐의 진행·결과다.
+
+#### 헤벌쭉하다
+
+- Existing Meaning: `m371675_1` — 입이나 구멍 따위가 속이 들여다보일 정도로 넓게 벌어지거나, 그렇게 벌어진 상태이다.
+- Bound canonical senses:
+  - `w371675-s1` (`w371675`, verb): 입이나 구멍 따위가 속이 들여다보일 정도로 넓게 벌어지다.
+  - `w371675-s2` (`w371675`, adjective): 입이나 구멍 따위가 속이 들여다보일 정도로 넓게 벌어진 상태이다.
+- Decision: retain one Meaning (`m371675_1`); final gloss: 입이나 구멍 따위가 속이 들여다보일 정도로 넓게 벌어지거나, 그렇게 벌어진 상태이다.
+- Source-bound rationale: 입·구멍이 넓게 열리는 동작과 열린 상태는 같은 넓게 벌어진 모양을 동작·상태로 표현한다.
+
+#### 헤벌쭉헤벌쭉하다
+
+- Existing Meaning: `m372251_1` — 입이나 구멍 따위가 여럿이 다 또는 자꾸 속이 들여다보일 정도로 넓게 벌어지거나, 그러한 상태이다.
+- Bound canonical senses:
+  - `w372251-s1` (`w372251`, verb): 입이나 구멍 따위가 여럿이 다 또는 자꾸 속이 들여다보일 정도로 넓게 벌어지다.
+  - `w372251-s2` (`w372251`, adjective): 입이나 구멍 따위가 여럿이 다 속이 들여다보일 정도로 넓게 벌어진 상태이다.
+- Decision: retain one Meaning (`m372251_1`); final gloss: 입이나 구멍 따위가 여럿이 다 또는 자꾸 속이 들여다보일 정도로 넓게 벌어지거나, 그러한 상태이다.
+- Source-bound rationale: 입·구멍 여러 곳이 반복해 벌어지는 동작과 벌어진 상태는 같은 반복적 넓은 개방의 진행·결과다.
+
+#### 혁명적
+
+- Existing Meaning: `m376616_1` — 혁명을 실현하거나 지향하는 것.
+- Bound canonical senses:
+  - `w376616-s1` (`w376616`, noun): 혁명을 실현하거나 지향하는 것.
+  - `w376616-s2` (`w376616`, determiner): 혁명을 실현하거나 지향하는.
+- Decision: retain one Meaning (`m376616_1`); final gloss: 혁명을 실현하거나 지향하는 것.
+- Source-bound rationale: 명사 sense w376616-s1의 풀이 ‘혁명을 실현하거나 지향하는 것.’와 관형사 sense w376616-s2의 풀이 ‘혁명을 실현하거나 지향하는.’는 ‘혁명을 실현하거나 지향하는’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘혁명을 실현하거나 지향하는 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 혁신적
+
+- Existing Meaning: `m505835_1` — 묵은 풍속, 관습, 조직, 방법 따위를 완전히 바꾸어 새롭게 하는 것.
+- Bound canonical senses:
+  - `w505835-s1` (`w505835`, noun): 묵은 풍속, 관습, 조직, 방법 따위를 완전히 바꾸어 새롭게 하는 것.
+  - `w505835-s2` (`w505835`, determiner): 묵은 풍속, 관습, 조직, 방법 따위를 완전히 바꾸어 새롭게 하는.
+- Decision: retain one Meaning (`m505835_1`); final gloss: 묵은 풍속, 관습, 조직, 방법 따위를 완전히 바꾸어 새롭게 하는 것.
+- Source-bound rationale: 명사 sense w505835-s1의 풀이 ‘묵은 풍속, 관습, 조직, 방법 따위를 완전히 바꾸어 새롭게 하는 것.’와 관형사 sense w505835-s2의 풀이 ‘묵은 풍속, 관습, 조직, 방법 따위를 완전히 바꾸어 새롭게 하는.’는 ‘묵은 풍속, 관습, 조직, 방법 따위를 완전히 바꾸어 새롭게 하는’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘묵은 풍속, 관습, 조직, 방법 따위를 완전히 바꾸어 새롭게 하는 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 혁질
+
+- Existing Meaning: `m372184_1` — 가죽 본디의 성질. 또는 가죽이나 식물 표피 따위가 가죽처럼 단단하고 질긴 성질.
+- Bound canonical senses:
+  - `w372184-s1` (`w372184`, noun): 가죽 본디의 성질.
+  - `w372184-s2` (`w372184`, noun): 가죽처럼 단단하고 질긴 성질.
+  - `w372184-s3` (`w372184`, noun): 식물의 표피 따위에서 볼 수 있는, 가죽과 같이 단단하고 질긴 성질.
+- Decision: retain one Meaning (`m372184_1`); final gloss: 가죽 본디의 성질. 또는 가죽이나 식물 표피 따위가 가죽처럼 단단하고 질긴 성질.
+- Source-bound rationale: 가죽의 성질과 가죽처럼 단단하고 질긴 성질, 식물 표피의 질긴 성질은 단단하고 질긴 가죽 같은 재질 특성의 실제·유사 적용이다.
+
+#### 현대적
+
+- Existing Meaning: `m506855_1` — 현대에 적합한 느낌이 있거나 현대에 특징적인 것.
+- Bound canonical senses:
+  - `w506855-s1` (`w506855`, noun): 현대에 적합한 느낌이 있거나 현대에 특징적인 것.
+  - `w506855-s2` (`w506855`, determiner): 현대에 적합한 느낌이 있거나 현대에 특징적인.
+- Decision: retain one Meaning (`m506855_1`); final gloss: 현대에 적합한 느낌이 있거나 현대에 특징적인 것.
+- Source-bound rationale: 명사 sense w506855-s1의 풀이 ‘현대에 적합한 느낌이 있거나 현대에 특징적인 것.’와 관형사 sense w506855-s2의 풀이 ‘현대에 적합한 느낌이 있거나 현대에 특징적인.’는 ‘현대에 적합한 느낌이 있거나 현대에 특징적인’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘현대에 적합한 느낌이 있거나 현대에 특징적인 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 현등하다
+
+- Existing Meaning: `m500956_1` — 등을 높이 매달다. 밤에 행군할 때는 깃대에 매달기도 한다.
+- Bound canonical senses:
+  - `w500956-s1` (`w500956`, verb): 등을 높이 매달다.
+  - `w500956-s2` (`w500956`, verb): 밤에 행군할 때 깃대에 등을 매달다.
+- Decision: retain one Meaning (`m500956_1`); final gloss: 등을 높이 매달다. 밤에 행군할 때는 깃대에 매달기도 한다.
+- Source-bound rationale: 등을 높이 매다는 것과 야간 행군 때 깃대에 다는 것은 등불을 높이 매다는 같은 동작의 구체적 군사 상황이다.
+
+#### 현미경적
+
+- Existing Meaning: `m505838_1` — 현미경을 통하여서 보아야만 할 만큼 아주 작은 것.
+- Bound canonical senses:
+  - `w505838-s1` (`w505838`, noun): 현미경을 통하여서 보아야만 할 만큼 아주 작은 것.
+  - `w505838-s2` (`w505838`, determiner): 현미경을 통하여서 보아야만 할 만큼 아주 작은.
+- Decision: retain one Meaning (`m505838_1`); final gloss: 현미경을 통하여서 보아야만 할 만큼 아주 작은 것.
+- Source-bound rationale: 명사 sense w505838-s1의 풀이 ‘현미경을 통하여서 보아야만 할 만큼 아주 작은 것.’와 관형사 sense w505838-s2의 풀이 ‘현미경을 통하여서 보아야만 할 만큼 아주 작은.’는 ‘현미경을 통하여서 보아야만 할 만큼 아주 작은’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘현미경을 통하여서 보아야만 할 만큼 아주 작은 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 현성용
+
+- Existing Meaning: `m372003_1` — 거룩한 모습을 드러내는 일. 예수가 다볼산에서 거룩한 모습을 드러낸 일을 이른다.
+- Bound canonical senses:
+  - `w372003-s1` (`w372003`, noun): 거룩한 모습을 드러냄.
+  - `w372003-s2` (`w372003`, noun): 예수가 팔레스타인의 다볼산(Tabor山) 위에서 자기의 거룩한 모습을 드러낸 일.
+- Decision: retain one Meaning (`m372003_1`); final gloss: 거룩한 모습을 드러내는 일. 예수가 다볼산에서 거룩한 모습을 드러낸 일을 이른다.
+- Source-bound rationale: 거룩한 모습을 드러냄과 예수가 다볼산에서 모습을 드러낸 일은 같은 종교 개념의 일반·대표 사건이다.
+
+#### 현성용하다
+
+- Existing Meaning: `m372004_1` — 거룩한 모습을 드러내다. 예수가 다볼산에서 거룩한 모습을 드러낸 일을 이른다.
+- Bound canonical senses:
+  - `w372004-s1` (`w372004`, verb): 거룩한 모습을 드러내다.
+  - `w372004-s2` (`w372004`, verb): 예수가 팔레스타인의 다볼산(Tabor山) 위에서 자기의 거룩한 모습을 드러내다.
+- Decision: retain one Meaning (`m372004_1`); final gloss: 거룩한 모습을 드러내다. 예수가 다볼산에서 거룩한 모습을 드러낸 일을 이른다.
+- Source-bound rationale: 거룩한 모습을 드러내는 일반 행위와 예수의 다볼산 사건은 같은 현성용의 일반·특정 사례다.
+
+#### 현세적
+
+- Existing Meaning: `m371742_1` — 믿음이나 생각 따위가 현세에 가치를 두고 있는 것.
+- Bound canonical senses:
+  - `w371742-s1` (`w371742`, noun): 믿음이나 생각 따위가 현세에 가치를 두고 있는 것.
+  - `w371742-s2` (`w371742`, determiner): 믿음이나 생각 따위가 현세에 가치를 두고 있는.
+- Decision: retain one Meaning (`m371742_1`); final gloss: 믿음이나 생각 따위가 현세에 가치를 두고 있는 것.
+- Source-bound rationale: 명사 sense w371742-s1의 풀이 ‘믿음이나 생각 따위가 현세에 가치를 두고 있는 것.’와 관형사 sense w371742-s2의 풀이 ‘믿음이나 생각 따위가 현세에 가치를 두고 있는.’는 ‘믿음이나 생각 따위가 현세에 가치를 두고 있는’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘믿음이나 생각 따위가 현세에 가치를 두고 있는 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 현실주의적
+
+- Existing Meaning: `m369853_1` — 현실의 조건이나 상태를 그대로 인정하며 그에 입각하여 사고하고 행동하는 태도를 가진 것.
+- Bound canonical senses:
+  - `w369853-s1` (`w369853`, noun): 현실의 조건이나 상태를 그대로 인정하며 그에 입각하여 사고하고 행동하는 태도를 가진 것.
+  - `w369853-s2` (`w369853`, determiner): 현실의 조건이나 상태를 그대로 인정하며 그에 입각하여 사고하고 행동하는 태도를 가진.
+- Decision: retain one Meaning (`m369853_1`); final gloss: 현실의 조건이나 상태를 그대로 인정하며 그에 입각하여 사고하고 행동하는 태도를 가진 것.
+- Source-bound rationale: 명사 sense w369853-s1의 풀이 ‘현실의 조건이나 상태를 그대로 인정하며 그에 입각하여 사고하고 행동하는 태도를 가진 것.’와 관형사 sense w369853-s2의 풀이 ‘현실의 조건이나 상태를 그대로 인정하며 그에 입각하여 사고하고 행동하는 태도를 가진.’는 ‘현실의 조건이나 상태를 그대로 인정하며 그에 입각하여 사고하고 행동하는 태도를 가진’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘현실의 조건이나 상태를 그대로 인정하며 그에 입각하여 사고하고 행동하는 태도를 가진 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 현인군자
+
+- Existing Meaning: `m373696_1` — 현인과 군자, 곧 어진 사람을 이르는 말.
+- Bound canonical senses:
+  - `w373696-s1` (`w373696`, noun): 현인과 군자를 아울러 이르는 말.
+  - `w373696-s2` (`w373696`, noun): 어진 사람을 이르는 말.
+- Decision: retain one Meaning (`m373696_1`); final gloss: 현인과 군자, 곧 어진 사람을 이르는 말.
+- Source-bound rationale: 현인·군자를 함께 이르는 말과 어진 사람을 이르는 말은 덕과 지혜를 갖춘 사람이라는 겹치는 인물 범주다.
+
+#### 현재적
+
+- Existing Meaning: `m369900_1` — 겉으로 나타나 있는 것.
+- Bound canonical senses:
+  - `w369900-s1` (`w369900`, noun): 겉으로 나타나 있는 것.
+  - `w369900-s2` (`w369900`, determiner): 겉으로 나타나 있는.
+- Decision: retain one Meaning (`m369900_1`); final gloss: 겉으로 나타나 있는 것.
+- Source-bound rationale: 명사 sense w369900-s1의 풀이 ‘겉으로 나타나 있는 것.’와 관형사 sense w369900-s2의 풀이 ‘겉으로 나타나 있는.’는 ‘겉으로 나타나 있는’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘겉으로 나타나 있는 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 현학적
+
+- Existing Meaning: `m500439_1` — 학식이 있음을 자랑하는 것.
+- Bound canonical senses:
+  - `w500439-s1` (`w500439`, noun): 학식이 있음을 자랑하는 것.
+  - `w500439-s2` (`w500439`, determiner): 학식이 있음을 자랑하는.
+- Decision: retain one Meaning (`m500439_1`); final gloss: 학식이 있음을 자랑하는 것.
+- Source-bound rationale: 명사 sense w500439-s1의 풀이 ‘학식이 있음을 자랑하는 것.’와 관형사 sense w500439-s2의 풀이 ‘학식이 있음을 자랑하는.’는 ‘학식이 있음을 자랑하는’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘학식이 있음을 자랑하는 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 현현적
+
+- Existing Meaning: `m370150_1` — 어떤 존재 또는 개념의 성질이나 요소가 이것들의 전개나 분석에 의하여 분명히 드러나는 것.
+- Bound canonical senses:
+  - `w370150-s1` (`w370150`, noun): 어떤 존재 또는 개념의 성질이나 요소가 이것들의 전개나 분석에 의하여 분명히 드러나는 것.
+  - `w370150-s2` (`w370150`, determiner): 어떤 존재 또는 개념의 성질이나 요소가 이것들의 전개나 분석에 의하여 분명히 드러나는.
+- Decision: retain one Meaning (`m370150_1`); final gloss: 어떤 존재 또는 개념의 성질이나 요소가 이것들의 전개나 분석에 의하여 분명히 드러나는 것.
+- Source-bound rationale: 명사 sense w370150-s1의 풀이 ‘어떤 존재 또는 개념의 성질이나 요소가 이것들의 전개나 분석에 의하여 분명히 드러나는 것.’와 관형사 sense w370150-s2의 풀이 ‘어떤 존재 또는 개념의 성질이나 요소가 이것들의 전개나 분석에 의하여 분명히 드러나는.’는 ‘어떤 존재 또는 개념의 성질이나 요소가 이것들의 전개나 분석에 의하여 분명히 드러나는’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘어떤 존재 또는 개념의 성질이나 요소가 이것들의 전개나 분석에 의하여 분명히 드러나는 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 혈연적
+
+- Existing Meaning: `m371141_1` — 핏줄로 연결된 인연에 바탕을 둔 것.
+- Bound canonical senses:
+  - `w371141-s1` (`w371141`, noun): 핏줄로 연결된 인연에 바탕을 둔 것.
+  - `w371141-s2` (`w371141`, determiner): 핏줄로 연결된 인연에 바탕을 둔.
+- Decision: retain one Meaning (`m371141_1`); final gloss: 핏줄로 연결된 인연에 바탕을 둔 것.
+- Source-bound rationale: 명사 sense w371141-s1의 풀이 ‘핏줄로 연결된 인연에 바탕을 둔 것.’와 관형사 sense w371141-s2의 풀이 ‘핏줄로 연결된 인연에 바탕을 둔.’는 ‘핏줄로 연결된 인연에 바탕을 둔’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘핏줄로 연결된 인연에 바탕을 둔 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 협동적
+
+- Existing Meaning: `m507273_1` — 서로 마음과 힘을 하나로 합하여 하는 것.
+- Bound canonical senses:
+  - `w507273-s1` (`w507273`, noun): 서로 마음과 힘을 하나로 합하여 하는 것.
+  - `w507273-s2` (`w507273`, determiner): 서로 마음과 힘을 하나로 합하여 하는.
+- Decision: retain one Meaning (`m507273_1`); final gloss: 서로 마음과 힘을 하나로 합하여 하는 것.
+- Source-bound rationale: 명사 sense w507273-s1의 풀이 ‘서로 마음과 힘을 하나로 합하여 하는 것.’와 관형사 sense w507273-s2의 풀이 ‘서로 마음과 힘을 하나로 합하여 하는.’는 ‘서로 마음과 힘을 하나로 합하여 하는’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘서로 마음과 힘을 하나로 합하여 하는 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 협조적
+
+- Existing Meaning: `m372617_1` — 힘을 합하여 서로 조화를 이루는 것.
+- Bound canonical senses:
+  - `w372617-s1` (`w372617`, noun): 힘을 합하여 서로 조화를 이루는 것.
+  - `w372617-s2` (`w372617`, determiner): 힘을 합하여 서로 조화를 이루는.
+- Decision: retain one Meaning (`m372617_1`); final gloss: 힘을 합하여 서로 조화를 이루는 것.
+- Source-bound rationale: 명사 sense w372617-s1의 풀이 ‘힘을 합하여 서로 조화를 이루는 것.’와 관형사 sense w372617-s2의 풀이 ‘힘을 합하여 서로 조화를 이루는.’는 ‘힘을 합하여 서로 조화를 이루는’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘힘을 합하여 서로 조화를 이루는 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 형상적
+
+- Existing Meaning: `m503315_1` — 형상에 바탕을 두는 것.
+- Bound canonical senses:
+  - `w503315-s1` (`w503315`, noun): 형상에 바탕을 두는 것.
+  - `w503315-s2` (`w503315`, determiner): 형상에 바탕을 두는.
+- Decision: retain one Meaning (`m503315_1`); final gloss: 형상에 바탕을 두는 것.
+- Source-bound rationale: 명사 sense w503315-s1의 풀이 ‘형상에 바탕을 두는 것.’와 관형사 sense w503315-s2의 풀이 ‘형상에 바탕을 두는.’는 ‘형상에 바탕을 두는’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘형상에 바탕을 두는 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 형식적
+
+- Existing Meaning: `m371479_1` — 사물이 외부로 나타나 보이는 모양을 위주로 하는 것.
+- Bound canonical senses:
+  - `w371479-s1` (`w371479`, noun): 사물이 외부로 나타나 보이는 모양을 위주로 하는 것.
+  - `w371479-s2` (`w371479`, determiner): 사물이 외부로 나타나 보이는 모양을 위주로 하는.
+- Decision: retain one Meaning (`m371479_1`); final gloss: 사물이 외부로 나타나 보이는 모양을 위주로 하는 것.
+- Source-bound rationale: 명사 sense w371479-s1의 풀이 ‘사물이 외부로 나타나 보이는 모양을 위주로 하는 것.’와 관형사 sense w371479-s2의 풀이 ‘사물이 외부로 나타나 보이는 모양을 위주로 하는.’는 ‘사물이 외부로 나타나 보이는 모양을 위주로 하는’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘사물이 외부로 나타나 보이는 모양을 위주로 하는 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 형이상적
+
+- Existing Meaning: `m501176_1` — 이성적 사유나 직관에 의해서만 얻을 수 있는 성질을 가지고 있는 것.
+- Bound canonical senses:
+  - `w501176-s1` (`w501176`, noun): 이성적 사유나 직관에 의해서만 얻을 수 있는 성질을 가지고 있는 것.
+  - `w501176-s2` (`w501176`, determiner): 이성적 사유나 직관에 의해서만 얻을 수 있는 성질을 가지고 있는.
+- Decision: retain one Meaning (`m501176_1`); final gloss: 이성적 사유나 직관에 의해서만 얻을 수 있는 성질을 가지고 있는 것.
+- Source-bound rationale: 명사 sense w501176-s1의 풀이 ‘이성적 사유나 직관에 의해서만 얻을 수 있는 성질을 가지고 있는 것.’와 관형사 sense w501176-s2의 풀이 ‘이성적 사유나 직관에 의해서만 얻을 수 있는 성질을 가지고 있는.’는 ‘이성적 사유나 직관에 의해서만 얻을 수 있는 성질을 가지고 있는’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘이성적 사유나 직관에 의해서만 얻을 수 있는 성질을 가지고 있는 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 형이상학적
+
+- Existing Meaning: `m369863_1` — 형이상학에 관련되거나 바탕을 둔 것.
+- Bound canonical senses:
+  - `w369863-s1` (`w369863`, noun): 형이상학에 관련되거나 바탕을 둔 것.
+  - `w369863-s2` (`w369863`, determiner): 형이상학에 관련되거나 바탕을 둔.
+- Decision: retain one Meaning (`m369863_1`); final gloss: 형이상학에 관련되거나 바탕을 둔 것.
+- Source-bound rationale: 명사 sense w369863-s1의 풀이 ‘형이상학에 관련되거나 바탕을 둔 것.’와 관형사 sense w369863-s2의 풀이 ‘형이상학에 관련되거나 바탕을 둔.’는 ‘형이상학에 관련되거나 바탕을 둔’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘형이상학에 관련되거나 바탕을 둔 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 형이하적
+
+- Existing Meaning: `m507009_1` — 형체를 갖추어 나타나 있는 물질의 영역과 관련된 것.
+- Bound canonical senses:
+  - `w507009-s1` (`w507009`, noun): 형체를 갖추어 나타나 있는 물질의 영역과 관련된 것.
+  - `w507009-s2` (`w507009`, determiner): 형체를 갖추어 나타나 있는 물질의 영역과 관련된.
+- Decision: retain one Meaning (`m507009_1`); final gloss: 형체를 갖추어 나타나 있는 물질의 영역과 관련된 것.
+- Source-bound rationale: 명사 sense w507009-s1의 풀이 ‘형체를 갖추어 나타나 있는 물질의 영역과 관련된 것.’와 관형사 sense w507009-s2의 풀이 ‘형체를 갖추어 나타나 있는 물질의 영역과 관련된.’는 ‘형체를 갖추어 나타나 있는 물질의 영역과 관련된’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘형체를 갖추어 나타나 있는 물질의 영역과 관련된 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 형이하학적
+
+- Existing Meaning: `m507010_1` — 형이하학에 관련되거나 바탕을 둔 것.
+- Bound canonical senses:
+  - `w507010-s1` (`w507010`, noun): 형이하학에 관련되거나 바탕을 둔 것.
+  - `w507010-s2` (`w507010`, determiner): 형이하학에 관련되거나 바탕을 둔.
+- Decision: retain one Meaning (`m507010_1`); final gloss: 형이하학에 관련되거나 바탕을 둔 것.
+- Source-bound rationale: 명사 sense w507010-s1의 풀이 ‘형이하학에 관련되거나 바탕을 둔 것.’와 관형사 sense w507010-s2의 풀이 ‘형이하학에 관련되거나 바탕을 둔.’는 ‘형이하학에 관련되거나 바탕을 둔’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘형이하학에 관련되거나 바탕을 둔 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 형태적
+
+- Existing Meaning: `m369736_1` — 사물 또는 어떠한 구조나 전체를 이루고 있는 구성체의 모양에 관련된 것.
+- Bound canonical senses:
+  - `w369736-s1` (`w369736`, noun): 사물 또는 어떠한 구조나 전체를 이루고 있는 구성체의 모양에 관련된 것.
+  - `w369736-s2` (`w369736`, determiner): 사물 또는 어떠한 구조나 전체를 이루고 있는 구성체의 모양에 관련된.
+- Decision: retain one Meaning (`m369736_1`); final gloss: 사물 또는 어떠한 구조나 전체를 이루고 있는 구성체의 모양에 관련된 것.
+- Source-bound rationale: 명사 sense w369736-s1의 풀이 ‘사물 또는 어떠한 구조나 전체를 이루고 있는 구성체의 모양에 관련된 것.’와 관형사 sense w369736-s2의 풀이 ‘사물 또는 어떠한 구조나 전체를 이루고 있는 구성체의 모양에 관련된.’는 ‘사물 또는 어떠한 구조나 전체를 이루고 있는 구성체의 모양에 관련된’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘사물 또는 어떠한 구조나 전체를 이루고 있는 구성체의 모양에 관련된 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 형태학적
+
+- Existing Meaning: `m501569_1` — 형태학에 따르거나 형태학과 관련된 것.
+- Bound canonical senses:
+  - `w501569-s1` (`w501569`, noun): 형태학에 따르거나 형태학과 관련된 것.
+  - `w501569-s2` (`w501569`, determiner): 형태학에 따르거나 형태학과 관련된.
+- Decision: retain one Meaning (`m501569_1`); final gloss: 형태학에 따르거나 형태학과 관련된 것.
+- Source-bound rationale: 명사 sense w501569-s1의 풀이 ‘형태학에 따르거나 형태학과 관련된 것.’와 관형사 sense w501569-s2의 풀이 ‘형태학에 따르거나 형태학과 관련된.’는 ‘형태학에 따르거나 형태학과 관련된’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘형태학에 따르거나 형태학과 관련된 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 혜성적
+
+- Existing Meaning: `m371752_1` — 혜성처럼 갑자기 나타나 뚜렷한 자취를 남기는 것.
+- Bound canonical senses:
+  - `w371752-s1` (`w371752`, noun): 혜성처럼 갑자기 나타나 뚜렷한 자취를 남기는 것.
+  - `w371752-s2` (`w371752`, determiner): 혜성처럼 갑자기 나타나 뚜렷한 자취를 남기는.
+- Decision: retain one Meaning (`m371752_1`); final gloss: 혜성처럼 갑자기 나타나 뚜렷한 자취를 남기는 것.
+- Source-bound rationale: 명사 sense w371752-s1의 풀이 ‘혜성처럼 갑자기 나타나 뚜렷한 자취를 남기는 것.’와 관형사 sense w371752-s2의 풀이 ‘혜성처럼 갑자기 나타나 뚜렷한 자취를 남기는.’는 ‘혜성처럼 갑자기 나타나 뚜렷한 자취를 남기는’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘혜성처럼 갑자기 나타나 뚜렷한 자취를 남기는 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 호의적
+
+- Existing Meaning: `m373589_1` — 좋게 생각해 주는 것.
+- Bound canonical senses:
+  - `w373589-s1` (`w373589`, noun): 좋게 생각해 주는 것.
+  - `w373589-s2` (`w373589`, determiner): 좋게 생각해 주는.
+- Decision: retain one Meaning (`m373589_1`); final gloss: 좋게 생각해 주는 것.
+- Source-bound rationale: 명사 sense w373589-s1의 풀이 ‘좋게 생각해 주는 것.’와 관형사 sense w373589-s2의 풀이 ‘좋게 생각해 주는.’는 ‘좋게 생각해 주는’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘좋게 생각해 주는 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 호인적
+
+- Existing Meaning: `m373935_1` — 성품이 좋은 사람다운 것.
+- Bound canonical senses:
+  - `w373935-s1` (`w373935`, noun): 성품이 좋은 사람다운 것.
+  - `w373935-s2` (`w373935`, determiner): 성품이 좋은 사람다운.
+- Decision: retain one Meaning (`m373935_1`); final gloss: 성품이 좋은 사람다운 것.
+- Source-bound rationale: 명사 sense w373935-s1의 풀이 ‘성품이 좋은 사람다운 것.’와 관형사 sense w373935-s2의 풀이 ‘성품이 좋은 사람다운.’는 ‘성품이 좋은 사람다운’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘성품이 좋은 사람다운 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 호전적
+
+- Existing Meaning: `m505745_1` — 싸우기를 좋아하는 것.
+- Bound canonical senses:
+  - `w505745-s1` (`w505745`, noun): 싸우기를 좋아하는 것.
+  - `w505745-s2` (`w505745`, determiner): 싸우기를 좋아하는.
+- Decision: retain one Meaning (`m505745_1`); final gloss: 싸우기를 좋아하는 것.
+- Source-bound rationale: 명사 sense w505745-s1의 풀이 ‘싸우기를 좋아하는 것.’와 관형사 sense w505745-s2의 풀이 ‘싸우기를 좋아하는.’는 ‘싸우기를 좋아하는’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘싸우기를 좋아하는 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 호혜적
+
+- Existing Meaning: `m375330_1` — 서로 특별한 혜택을 주고받는 것.
+- Bound canonical senses:
+  - `w375330-s1` (`w375330`, noun): 서로 특별한 혜택을 주고받는 것.
+  - `w375330-s2` (`w375330`, determiner): 서로 특별한 혜택을 주고받는.
+- Decision: retain one Meaning (`m375330_1`); final gloss: 서로 특별한 혜택을 주고받는 것.
+- Source-bound rationale: 명사 sense w375330-s1의 풀이 ‘서로 특별한 혜택을 주고받는 것.’와 관형사 sense w375330-s2의 풀이 ‘서로 특별한 혜택을 주고받는.’는 ‘서로 특별한 혜택을 주고받는’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘서로 특별한 혜택을 주고받는 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 화학적
+
+- Existing Meaning: `m375138_1` — 화학 현상의 특징을 띠거나 화학 현상과 관련된 것.
+- Bound canonical senses:
+  - `w375138-s1` (`w375138`, noun): 화학 현상의 특징을 띠거나 화학 현상과 관련된 것.
+  - `w375138-s2` (`w375138`, determiner): 화학 현상의 특징을 띠거나 화학 현상과 관련된.
+- Decision: retain one Meaning (`m375138_1`); final gloss: 화학 현상의 특징을 띠거나 화학 현상과 관련된 것.
+- Source-bound rationale: 명사 sense w375138-s1의 풀이 ‘화학 현상의 특징을 띠거나 화학 현상과 관련된 것.’와 관형사 sense w375138-s2의 풀이 ‘화학 현상의 특징을 띠거나 화학 현상과 관련된.’는 ‘화학 현상의 특징을 띠거나 화학 현상과 관련된’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘화학 현상의 특징을 띠거나 화학 현상과 관련된 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 확정적
+
+- Existing Meaning: `m504601_1` — 틀림없이 그렇게 될 것으로 정하여진 것.
+- Bound canonical senses:
+  - `w504601-s1` (`w504601`, noun): 틀림없이 그렇게 될 것으로 정하여진 것.
+  - `w504601-s2` (`w504601`, determiner): 틀림없이 그렇게 될 것으로 정하여진.
+- Decision: retain one Meaning (`m504601_1`); final gloss: 틀림없이 그렇게 될 것으로 정하여진 것.
+- Source-bound rationale: 명사 sense w504601-s1의 풀이 ‘틀림없이 그렇게 될 것으로 정하여진 것.’와 관형사 sense w504601-s2의 풀이 ‘틀림없이 그렇게 될 것으로 정하여진.’는 ‘틀림없이 그렇게 될 것으로 정하여진’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘틀림없이 그렇게 될 것으로 정하여진 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 환경적
+
+- Existing Meaning: `m375883_1` — 생물에게 직접·간접으로 영향을 주는 자연적인 조건이나 사회적 상황과 관련된 것.
+- Bound canonical senses:
+  - `w375883-s1` (`w375883`, noun): 생물에게 직접·간접으로 영향을 주는 자연적인 조건이나 사회적 상황과 관련된 것.
+  - `w375883-s2` (`w375883`, determiner): 생물에게 직접·간접으로 영향을 주는 자연적인 조건이나 사회적 상황과 관련된.
+- Decision: retain one Meaning (`m375883_1`); final gloss: 생물에게 직접·간접으로 영향을 주는 자연적인 조건이나 사회적 상황과 관련된 것.
+- Source-bound rationale: 명사 sense w375883-s1의 풀이 ‘생물에게 직접·간접으로 영향을 주는 자연적인 조건이나 사회적 상황과 관련된 것.’와 관형사 sense w375883-s2의 풀이 ‘생물에게 직접·간접으로 영향을 주는 자연적인 조건이나 사회적 상황과 관련된.’는 ‘생물에게 직접·간접으로 영향을 주는 자연적인 조건이나 사회적 상황과 관련된’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘생물에게 직접·간접으로 영향을 주는 자연적인 조건이나 사회적 상황과 관련된 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 환경친화적
+
+- Existing Meaning: `m516668_1` — 자연환경을 오염하지 않고 자연 그대로의 환경과 잘 어울리는 것.
+- Bound canonical senses:
+  - `w516668-s1` (`w516668`, noun): 자연환경을 오염하지 않고 자연 그대로의 환경과 잘 어울리는 것.
+  - `w516668-s2` (`w516668`, determiner): 자연환경을 오염하지 않고 자연 그대로의 환경과 잘 어울리는.
+- Decision: retain one Meaning (`m516668_1`); final gloss: 자연환경을 오염하지 않고 자연 그대로의 환경과 잘 어울리는 것.
+- Source-bound rationale: 명사 sense w516668-s1의 풀이 ‘자연환경을 오염하지 않고 자연 그대로의 환경과 잘 어울리는 것.’와 관형사 sense w516668-s2의 풀이 ‘자연환경을 오염하지 않고 자연 그대로의 환경과 잘 어울리는.’는 ‘자연환경을 오염하지 않고 자연 그대로의 환경과 잘 어울리는’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘자연환경을 오염하지 않고 자연 그대로의 환경과 잘 어울리는 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 환멸적
+
+- Existing Meaning: `m375133_1` — 꿈이나 기대나 환상이 깨어진 뒤의 괴롭고도 속절없는 마음을 느끼는 것.
+- Bound canonical senses:
+  - `w375133-s1` (`w375133`, noun): 꿈이나 기대나 환상이 깨어진 뒤의 괴롭고도 속절없는 마음을 느끼는 것.
+  - `w375133-s2` (`w375133`, determiner): 꿈이나 기대나 환상이 깨어진 뒤의 괴롭고도 속절없는 마음을 느끼는.
+- Decision: retain one Meaning (`m375133_1`); final gloss: 꿈이나 기대나 환상이 깨어진 뒤의 괴롭고도 속절없는 마음을 느끼는 것.
+- Source-bound rationale: 명사 sense w375133-s1의 풀이 ‘꿈이나 기대나 환상이 깨어진 뒤의 괴롭고도 속절없는 마음을 느끼는 것.’와 관형사 sense w375133-s2의 풀이 ‘꿈이나 기대나 환상이 깨어진 뒤의 괴롭고도 속절없는 마음을 느끼는.’는 ‘꿈이나 기대나 환상이 깨어진 뒤의 괴롭고도 속절없는 마음을 느끼는’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘꿈이나 기대나 환상이 깨어진 뒤의 괴롭고도 속절없는 마음을 느끼는 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 환상적
+
+- Existing Meaning: `m382637_1` — 생각 따위가 현실적인 기초나 가능성이 없고 헛된 것.
+- Bound canonical senses:
+  - `w382637-s1` (`w382637`, noun): 생각 따위가 현실적인 기초나 가능성이 없고 헛된 것.
+  - `w382637-s2` (`w382637`, determiner): 생각 따위가 현실적인 기초나 가능성이 없고 헛된.
+- Decision: retain one Meaning (`m382637_1`); final gloss: 생각 따위가 현실적인 기초나 가능성이 없고 헛된 것.
+- Source-bound rationale: 명사 sense w382637-s1의 풀이 ‘생각 따위가 현실적인 기초나 가능성이 없고 헛된 것.’와 관형사 sense w382637-s2의 풀이 ‘생각 따위가 현실적인 기초나 가능성이 없고 헛된.’는 ‘생각 따위가 현실적인 기초나 가능성이 없고 헛된’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘생각 따위가 현실적인 기초나 가능성이 없고 헛된 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 회귀적
+
+- Existing Meaning: `m386120_1` — 한 바퀴 돌아 제자리로 돌아오거나 돌아가는 것.
+- Bound canonical senses:
+  - `w386120-s1` (`w386120`, noun): 한 바퀴 돌아 제자리로 돌아오거나 돌아가는 것.
+  - `w386120-s2` (`w386120`, determiner): 한 바퀴 돌아 제자리로 돌아오거나 돌아가는.
+- Decision: retain one Meaning (`m386120_1`); final gloss: 한 바퀴 돌아 제자리로 돌아오거나 돌아가는 것.
+- Source-bound rationale: 명사 sense w386120-s1의 풀이 ‘한 바퀴 돌아 제자리로 돌아오거나 돌아가는 것.’와 관형사 sense w386120-s2의 풀이 ‘한 바퀴 돌아 제자리로 돌아오거나 돌아가는.’는 ‘한 바퀴 돌아 제자리로 돌아오거나 돌아가는’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘한 바퀴 돌아 제자리로 돌아오거나 돌아가는 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 회색적
+
+- Existing Meaning: `m506719_1` — 주로 정치적인 면에서 태도가 불분명한 것.
+- Bound canonical senses:
+  - `w506719-s1` (`w506719`, noun): 주로 정치적인 면에서 태도가 불분명한 것.
+  - `w506719-s2` (`w506719`, determiner): 주로 정치적인 면에서 태도가 불분명한.
+- Decision: retain one Meaning (`m506719_1`); final gloss: 주로 정치적인 면에서 태도가 불분명한 것.
+- Source-bound rationale: 명사 sense w506719-s1의 풀이 ‘주로 정치적인 면에서 태도가 불분명한 것.’와 관형사 sense w506719-s2의 풀이 ‘주로 정치적인 면에서 태도가 불분명한.’는 ‘주로 정치적인 면에서 태도가 불분명한’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘주로 정치적인 면에서 태도가 불분명한 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 회의적
+
+- Existing Meaning: `m378562_1` — 어떤 일에 의심을 품는 것.
+- Bound canonical senses:
+  - `w378562-s1` (`w378562`, noun): 어떤 일에 의심을 품는 것.
+  - `w378562-s2` (`w378562`, determiner): 어떤 일에 의심을 품는.
+- Decision: retain one Meaning (`m378562_1`); final gloss: 어떤 일에 의심을 품는 것.
+- Source-bound rationale: 명사 sense w378562-s1의 풀이 ‘어떤 일에 의심을 품는 것.’와 관형사 sense w378562-s2의 풀이 ‘어떤 일에 의심을 품는.’는 ‘어떤 일에 의심을 품는’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘어떤 일에 의심을 품는 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 회피적
+
+- Existing Meaning: `m382549_1` — 어떤 일을 당하지 않으려고 돌아서서 피하는 것.
+- Bound canonical senses:
+  - `w382549-s1` (`w382549`, noun): 어떤 일을 당하지 않으려고 돌아서서 피하는 것.
+  - `w382549-s2` (`w382549`, determiner): 어떤 일을 당하지 않으려고 돌아서서 피하는.
+- Decision: retain one Meaning (`m382549_1`); final gloss: 어떤 일을 당하지 않으려고 돌아서서 피하는 것.
+- Source-bound rationale: 명사 sense w382549-s1의 풀이 ‘어떤 일을 당하지 않으려고 돌아서서 피하는 것.’와 관형사 sense w382549-s2의 풀이 ‘어떤 일을 당하지 않으려고 돌아서서 피하는.’는 ‘어떤 일을 당하지 않으려고 돌아서서 피하는’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘어떤 일을 당하지 않으려고 돌아서서 피하는 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 획기적
+
+- Existing Meaning: `m508081_1` — 어떤 과정이나 분야에서 전혀 새로운 시기를 열어 놓을 만큼 뚜렷이 구분되는 것.
+- Bound canonical senses:
+  - `w508081-s1` (`w508081`, noun): 어떤 과정이나 분야에서 전혀 새로운 시기를 열어 놓을 만큼 뚜렷이 구분되는 것.
+  - `w508081-s2` (`w508081`, determiner): 어떤 과정이나 분야에서 전혀 새로운 시기를 열어 놓을 만큼 뚜렷이 구분되는.
+- Decision: retain one Meaning (`m508081_1`); final gloss: 어떤 과정이나 분야에서 전혀 새로운 시기를 열어 놓을 만큼 뚜렷이 구분되는 것.
+- Source-bound rationale: 명사 sense w508081-s1의 풀이 ‘어떤 과정이나 분야에서 전혀 새로운 시기를 열어 놓을 만큼 뚜렷이 구분되는 것.’와 관형사 sense w508081-s2의 풀이 ‘어떤 과정이나 분야에서 전혀 새로운 시기를 열어 놓을 만큼 뚜렷이 구분되는.’는 ‘어떤 과정이나 분야에서 전혀 새로운 시기를 열어 놓을 만큼 뚜렷이 구분되는’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘어떤 과정이나 분야에서 전혀 새로운 시기를 열어 놓을 만큼 뚜렷이 구분되는 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 획시기적
+
+- Existing Meaning: `m379327_1` — 어떤 과정이나 분야에서 전혀 새로운 시기를 열어 놓을 만큼 뚜렷이 구분되는 것.
+- Bound canonical senses:
+  - `w379327-s1` (`w379327`, noun): 어떤 과정이나 분야에서 전혀 새로운 시기를 열어 놓을 만큼 뚜렷이 구분되는 것.
+  - `w379327-s2` (`w379327`, determiner): 어떤 과정이나 분야에서 전혀 새로운 시기를 열어 놓을 만큼 뚜렷이 구분되는.
+- Decision: retain one Meaning (`m379327_1`); final gloss: 어떤 과정이나 분야에서 전혀 새로운 시기를 열어 놓을 만큼 뚜렷이 구분되는 것.
+- Source-bound rationale: 명사 sense w379327-s1의 풀이 ‘어떤 과정이나 분야에서 전혀 새로운 시기를 열어 놓을 만큼 뚜렷이 구분되는 것.’와 관형사 sense w379327-s2의 풀이 ‘어떤 과정이나 분야에서 전혀 새로운 시기를 열어 놓을 만큼 뚜렷이 구분되는.’는 ‘어떤 과정이나 분야에서 전혀 새로운 시기를 열어 놓을 만큼 뚜렷이 구분되는’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘어떤 과정이나 분야에서 전혀 새로운 시기를 열어 놓을 만큼 뚜렷이 구분되는 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 획시대적
+
+- Existing Meaning: `m506702_1` — 시대를 그어 구분하는 것. 종래의 업적에서 뚜렷한 진보를 보였을 때를 이른다.
+- Bound canonical senses:
+  - `w506702-s1` (`w506702`, noun): 시대를 그어 구분하는 것. 종래의 업적에서 뚜렷한 진보를 보였을 때를 이른다.
+  - `w506702-s2` (`w506702`, determiner): 시대를 그어 구분하는. 종래의 업적에서 뚜렷한 진보를 보였을 때를 이른다.
+- Decision: retain one Meaning (`m506702_1`); final gloss: 시대를 그어 구분하는 것. 종래의 업적에서 뚜렷한 진보를 보였을 때를 이른다.
+- Source-bound rationale: 명사 sense w506702-s1와 관형사 sense w506702-s2는 모두 ‘시대를 그어 구분하는’이라는 핵심 풀이와 ‘종래의 업적에서 뚜렷한 진보를 보였을 때’라는 동일한 설명을 공유한다. 명사 풀이의 ‘것’과 관형사형은 같은 구별·진보의 개념을 문장 안에서 명사화하거나 꾸미는 차이다. 두 source gloss의 실제 설명을 모두 보존해 한 Meaning으로 유지하며, 현재 gloss ‘시대를 그어 구분하는 것. 종래의 업적에서 뚜렷한 진보를 보였을 때를 이른다.’가 두 요소를 담는다.
+
+#### 효과적
+
+- Existing Meaning: `m379501_1` — 어떤 목적을 지닌 행위에 의하여 보람이나 좋은 결과가 드러나는 것.
+- Bound canonical senses:
+  - `w379501-s1` (`w379501`, noun): 어떤 목적을 지닌 행위에 의하여 보람이나 좋은 결과가 드러나는 것.
+  - `w379501-s2` (`w379501`, determiner): 어떤 목적을 지닌 행위에 의하여 보람이나 좋은 결과가 드러나는.
+- Decision: retain one Meaning (`m379501_1`); final gloss: 어떤 목적을 지닌 행위에 의하여 보람이나 좋은 결과가 드러나는 것.
+- Source-bound rationale: 명사 sense w379501-s1의 풀이 ‘어떤 목적을 지닌 행위에 의하여 보람이나 좋은 결과가 드러나는 것.’와 관형사 sense w379501-s2의 풀이 ‘어떤 목적을 지닌 행위에 의하여 보람이나 좋은 결과가 드러나는.’는 ‘어떤 목적을 지닌 행위에 의하여 보람이나 좋은 결과가 드러나는’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘어떤 목적을 지닌 행위에 의하여 보람이나 좋은 결과가 드러나는 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 효율적
+
+- Existing Meaning: `m384313_1` — 들인 노력에 비하여 얻는 결과가 큰 것.
+- Bound canonical senses:
+  - `w384313-s1` (`w384313`, noun): 들인 노력에 비하여 얻는 결과가 큰 것.
+  - `w384313-s2` (`w384313`, determiner): 들인 노력에 비하여 얻는 결과가 큰.
+- Decision: retain one Meaning (`m384313_1`); final gloss: 들인 노력에 비하여 얻는 결과가 큰 것.
+- Source-bound rationale: 명사 sense w384313-s1의 풀이 ‘들인 노력에 비하여 얻는 결과가 큰 것.’와 관형사 sense w384313-s2의 풀이 ‘들인 노력에 비하여 얻는 결과가 큰.’는 ‘들인 노력에 비하여 얻는 결과가 큰’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘들인 노력에 비하여 얻는 결과가 큰 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 후진적
+
+- Existing Meaning: `m517131_1` — 어떤 발전 수준에 뒤지거나 뒤떨어지는 것.
+- Bound canonical senses:
+  - `w517131-s1` (`w517131`, noun): 어떤 발전 수준에 뒤지거나 뒤떨어지는 것.
+  - `w517131-s2` (`w517131`, determiner): 어떤 발전 수준에 뒤지거나 뒤떨어지는.
+- Decision: retain one Meaning (`m517131_1`); final gloss: 어떤 발전 수준에 뒤지거나 뒤떨어지는 것.
+- Source-bound rationale: 명사 sense w517131-s1의 풀이 ‘어떤 발전 수준에 뒤지거나 뒤떨어지는 것.’와 관형사 sense w517131-s2의 풀이 ‘어떤 발전 수준에 뒤지거나 뒤떨어지는.’는 ‘어떤 발전 수준에 뒤지거나 뒤떨어지는’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘어떤 발전 수준에 뒤지거나 뒤떨어지는 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 후차적
+
+- Existing Meaning: `m379205_1` — 차례에서 나중이 되는 것.
+- Bound canonical senses:
+  - `w379205-s1` (`w379205`, noun): 차례에서 나중이 되는 것.
+  - `w379205-s2` (`w379205`, determiner): 차례에서 나중이 되는.
+- Decision: retain one Meaning (`m379205_1`); final gloss: 차례에서 나중이 되는 것.
+- Source-bound rationale: 명사 sense w379205-s1의 풀이 ‘차례에서 나중이 되는 것.’와 관형사 sense w379205-s2의 풀이 ‘차례에서 나중이 되는.’는 ‘차례에서 나중이 되는’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘차례에서 나중이 되는 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 희곡적
+
+- Existing Meaning: `m507756_1` — 희곡과 같은 것.
+- Bound canonical senses:
+  - `w507756-s1` (`w507756`, noun): 희곡과 같은 것.
+  - `w507756-s2` (`w507756`, determiner): 희곡과 같은.
+- Decision: retain one Meaning (`m507756_1`); final gloss: 희곡과 같은 것.
+- Source-bound rationale: 명사 sense w507756-s1의 풀이 ‘희곡과 같은 것.’와 관형사 sense w507756-s2의 풀이 ‘희곡과 같은.’는 ‘희곡과 같은’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘희곡과 같은 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 희생적
+
+- Existing Meaning: `m389006_1` — 다른 사람이나 어떤 목적을 위하여 자신의 목숨, 재산, 명예, 이익 따위를 바치거나 버리는 것.
+- Bound canonical senses:
+  - `w389006-s1` (`w389006`, noun): 다른 사람이나 어떤 목적을 위하여 자신의 목숨, 재산, 명예, 이익 따위를 바치거나 버리는 것.
+  - `w389006-s2` (`w389006`, determiner): 다른 사람이나 어떤 목적을 위하여 자신의 목숨, 재산, 명예, 이익 따위를 바치거나 버리는.
+- Decision: retain one Meaning (`m389006_1`); final gloss: 다른 사람이나 어떤 목적을 위하여 자신의 목숨, 재산, 명예, 이익 따위를 바치거나 버리는 것.
+- Source-bound rationale: 명사 sense w389006-s1의 풀이 ‘다른 사람이나 어떤 목적을 위하여 자신의 목숨, 재산, 명예, 이익 따위를 바치거나 버리는 것.’와 관형사 sense w389006-s2의 풀이 ‘다른 사람이나 어떤 목적을 위하여 자신의 목숨, 재산, 명예, 이익 따위를 바치거나 버리는.’는 ‘다른 사람이나 어떤 목적을 위하여 자신의 목숨, 재산, 명예, 이익 따위를 바치거나 버리는’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘다른 사람이나 어떤 목적을 위하여 자신의 목숨, 재산, 명예, 이익 따위를 바치거나 버리는 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+#### 희화적
+
+- Existing Meaning: `m385244_1` — 익살맞고 우스꽝스러운 것.
+- Bound canonical senses:
+  - `w385244-s1` (`w385244`, noun): 익살맞고 우스꽝스러운 것.
+  - `w385244-s2` (`w385244`, determiner): 익살맞고 우스꽝스러운.
+- Decision: retain one Meaning (`m385244_1`); final gloss: 익살맞고 우스꽝스러운 것.
+- Source-bound rationale: 명사 sense w385244-s1의 풀이 ‘익살맞고 우스꽝스러운 것.’와 관형사 sense w385244-s2의 풀이 ‘익살맞고 우스꽝스러운.’는 ‘익살맞고 우스꽝스러운’라는 동일한 속성·의미를 서술한다. ‘것’으로 대상을 명사화하는 표현과 같은 술어의 관형형은 문법적 실현이 다를 뿐 독립 어휘 의미를 나타내지 않는다. #764가 품사 차이만으로 자동 분리하지 않도록 한 기준에 따라 한 Meaning으로 유지한다. 현재 gloss ‘익살맞고 우스꽝스러운 것.’는 두 bound gloss의 공통 핵심을 보존한다.
+
+
+## Additional replay verification
+
+After refreshing `origin/master`, the edit spec was applied in a clean detached worktree at `6f37ba315daa77a5dfe4974d39721c0919bf7937` (the remote `master` HEAD used for this retry):
+
+- `node scripts/meaning/apply-edits.mjs scripts/meaning/issue-764-c19.json` applied 4,549 repartitions, with 0 gloss edits, 0 merges, and 0 drops; the result contained 473,088 meanings and 125 adjudications.
+- `node scripts/meaning/validate.mjs` passed on that replay result.
+- All 34 generated `data/meanings/c19_NNN.jsonl` shards were byte-for-byte identical to the rebased PR working tree.
+- This source-bound review required no grouping or gloss corrections. The replay spec and C19 shard contents therefore remain unchanged by the 276-group addendum; this addendum records the review evidence only.
