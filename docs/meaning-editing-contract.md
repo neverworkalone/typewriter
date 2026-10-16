@@ -67,3 +67,7 @@
 
 - **1차 점검(과/부족 MERGE, 누락, 잘못된 DROP, gloss 포괄성)**: 전체 sense가 정확히 한 meaning에 속함을 `validate.mjs`(complete)로 확인했다. 점검 결과 `하다`의 조건·이유 합병과 경유·시기 도달 합병이 과합병으로 판단되어 분리했다. 합친 gloss는 구성 sense의 핵심어를 모두 포함하는지 눈으로 대조했다.
 - **2차 점검(작가 관점의 자연스러움)**: `가다`·`보다`는 축이 소수로 정리되어 자연스러우며, `하다`의 문법 용법군은 `~다고 하다`류 인용·접속·이유·희망으로 정리되었다. 독립 검토에서 추가 지적이 나오면 스펙을 수정해 다시 적용한다.
+
+## #716 c01 전량 편집 기록
+
+`scripts/meaning/edits-716-c01.json`은 c01 shard(`data/meanings/c01_*.jsonl`)에 적용한 MERGE/DROP 이력이다. 다의 lemma만 검토 대상으로 삼았고(단일 meaning lemma는 자동 KEEP), 같은 lemma 안의 품사 변형·비유 확장·중복 정의 sense를 합쳤다. 이 검토는 **작성 agent의 자체 점검(self-check)이며 독립 리뷰가 아니다**. 독립 검토는 PR의 `REVIEW.md` 절차를 따른다.
