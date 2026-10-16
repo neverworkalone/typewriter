@@ -9,15 +9,15 @@ This is the C09 (ㅃ) source-bound self-check for Issue #764, based on `origin/m
 | C09 canonical records | 2,005 | 2,005 |
 | C09 lemmas | 1,848 | 1,848 |
 | C09 canonical senses | 3,081 | 3,081 |
-| C09 Meaning rows | 2,980 | 1,911 |
+| C09 Meaning rows | 2,980 | 1,913 |
 | Multi-sense lemmas re-judged | 617 | — |
 | Lemmas whose grouping changed | — | 560 |
-| Lemmas with multiple final Meanings | — | 53 |
+| Lemmas with multiple final Meanings | — | 55 |
 | Final same-record splits | — | 15 |
-| Final cross-record-only splits | — | 38 |
+| Final cross-record-only splits | — | 40 |
 | Repository adjudications | 117 | 117 |
 
-The Stage 2 review examined the prior C09 result at 2,101 Meaning rows: 196 lemmas had multiple Meanings, including 146 same-record splits across 147 canonical records and 50 cross-record-only splits. This audit rechecked all 146 same-record cases and all 50 cross-record-only cases against their canonical source senses, then checked related derivatives and linked records. The revised result has 53 multi-Meaning lemmas; 131 of the initial same-record split lemmas no longer split a source record, and 12 of the initial cross-record-only boundaries now share one Meaning. The 9 specifically reported under-merges are included in those changes.
+The Stage 2 review examined the prior C09 result at 2,101 Meaning rows: 196 lemmas had multiple Meanings, including 146 same-record splits across 147 canonical records and 50 cross-record-only splits. This audit rechecked all 146 same-record cases and all 50 cross-record-only cases against their canonical source senses, then checked related derivatives and linked records. The result before the gloss-preservation follow-up had 53 multi-Meaning lemmas; 131 of the initial same-record split lemmas no longer split a source record, and 12 of the initial cross-record-only boundaries now share one Meaning. The 9 specifically reported under-merges are included in those changes.
 
 Every canonical C09 sense occurs in exactly one final group. All 1,848 lemmas are represented; the 1,231 lemmas with one canonical sense remain one Meaning each. No sense was dropped and no adjudication was added. Canonical JSONL and adjudication files are unchanged. The editor replay uses each exact `before` snapshot and requires complete, non-overlapping sense coverage.
 
@@ -30,10 +30,20 @@ The same check was applied across related forms and separate canonical records. 
 ## Integrated meanings
 
 - **The 9 Stage 2 findings:** `빠뜨리다` (`w438059-s1..s4`) and `빠트리다` (`w167944-s1..s4`) each now have one Meaning for dropping someone or something into water, a deep place, or difficulty and for losing or omitting an item. `빠글거리다`, `빠글대다`, `빠글빠글`, and `빠글빠글하다` each include liquid, foam, crowded movement, and anxious agitation in one Meaning. `삥` (`w441695-s1..s4`) groups turning, dizziness, surrounding, and tears; the separate card-game sense (`w442477-s1`) stays apart. `뺑그르르` (`w441496-s1/s2`) and `뺑그르르하다` (`w167157-s1/s2`) group rotation with tears at the eye.
-- **Connected source uses:** `빠지다` (`w438190-s1..s13`, `w438207-s1..s6`) is one verb Meaning across leaving a place or expected position, absence and decrease, entering a place or state, remaining profit, and comparative appearance. The record split did not establish an independent lexical identity for the profit or state-entry senses.
-- **Shared sensory and action images:** related `빠작` forms group dry crackling with burning, sweat, and anxious tension; `빠지직`/`빠직` forms group crackling, splitting, bowel sound, and sweat. `빡빡`, `뻐적`, and `뻑뻑` families group forceful friction or tearing with their source-defined bodily and figurative extensions. `빨딱` and `뻘떡` families include heartbeats, effort, standing or falling, and rapid drinking. `빨쪽` and `뻘쭉` families include openings, smiles, protruding ends, and the related raised shape. `뻐개다` includes splitting, ruining a nearly finished task, striking, and opening the mouth in joy.
+- **Connected source uses:** `빠지다` (`w438190-s1..s13`, `w438207-s1..s6`) is one verb Meaning across leaving a place or expected position, absence and decrease, entering a place or state, remaining profit, and comparative appearance. Its gloss separately preserves being deceived by a plausible story or trick (`w438207-s3`), being unable to get free of an absorbing interest (`s5`), and the disapproving auxiliary use for an extreme quality or state (`s6`).
+- **Shared sensory and action images:** related `빠작` forms group dry crackling with burning, sweat, and anxious tension; `빠지직`/`빠직` forms group crackling, splitting, bowel sound, and sweat. `빡빡`, `뻐적`, and `뻑뻑` families group forceful friction or tearing with their source-defined bodily and figurative extensions. `빨딱` and `뻘떡` families include heartbeats, effort, standing or falling, and rapid drinking. `빨쪽` and `뻘쭉` families include openings, smiles, protruding ends, and the related raised shape. `뻐개다` groups splitting, ruining a nearly finished task, striking, and opening the mouth in joy; its separate redirect `w163018-s1` to the boastful `뻐기다01` use remains a second Meaning.
 - **Related sound-symbolic forms:** the `뺘드득` and `삐드득` families group friction and toy-flute sounds by the shared tight, high-pitched squeak. `뽀도독`, `뽀드득`/`뽀득`, `뿌두둑`, and `뿌드득`/`뿌득` group their source-described rubbing, snow-crunching, and bowel sounds as one sharp, compressed sound image per lemma. `뿌지직`/`뿌직` group sizzling, splitting, bowel, and sweat uses; `뿍` groups a short burst with the forceful scraping and tearing sound. These decisions preserve every sense in the gloss and do not equate the underlying events.
-- **Other linked records and derivatives:** `빠금`/`빠끔` forms group small gaps or partly opened doors with mouth-opening and intake uses. `빼다` groups extraction, removal, and escape, while dressing up or posing remains separate. `빨빨` and `뻘뻘` group hurried movement with heavy sweating. `빤짝`/`빤짝빤짝` and `뻔쩍`/`뻔쩍뻔쩍` group sudden lifting or eye-opening with flashes and momentary clarity. `뺑글뺑글` and `삥글삥글` group smooth rotation with the rounded motion of smiling. `삐삐` groups the pager with its signal, flute, and piercing child-cry sounds, while gauntness remains separate. `삥삥하다` groups rotation, dizziness, and dazed movement. `뺑대`, `뿌다구니`, `뼈끝`, `뼈지다`, `뺨`, `뿔`, and `뿔테` group the source-supported plant/tool, part/fragment, bone, cheek-width, horn/projection/anger, and horn-ring/frame extensions respectively.
+- **Other linked records and derivatives:** `빠금`/`빠끔` forms group small gaps or partly opened doors with mouth-opening and intake uses; the `빠꼼` glosses now spell out both sets of source uses rather than only saying “stronger form.” `빼다` groups extraction, removal, and escape, while dressing up or posing remains separate. `빨빨` and `뻘뻘` group hurried movement with heavy sweating. `빤짝`/`빤짝빤짝` and `뻔쩍`/`뻔쩍뻔쩍` group sudden lifting or eye-opening with flashes and momentary clarity. `뺑글뺑글` and `삥글삥글` group smooth rotation with the rounded motion of smiling. `삐삐` groups the pager with its signal, flute, and piercing child-cry sounds, while gauntness remains separate. `삥삥하다` groups rotation, dizziness, and dazed movement and states the linked uncertain-judgment use. `뻗치다` now names the five `뻗다` usages it intensifies. `뿌득하다` keeps its `뿌드득하다` friction/straining sounds together and separates the unrelated redirect to the dry, stiff surface use of `뿌둑하다`. `뺑대`, `뿌다구니`, `뼈끝`, `뼈지다`, `뺨`, `뿔`, and `뿔테` group the source-supported plant/tool, part/fragment, bone, cheek-width, horn/projection/anger, and horn-ring/frame extensions respectively.
+
+## Stage 2 gloss-preservation follow-up
+
+The Stage 2 re-review at HEAD `331f8fc88ffeb30b661a5c70d43c6ed4387be813` found that the `빠지다` gloss preserved source-sense IDs but compressed away the deception, absorption, and disapproving auxiliary uses. I rechecked the glosses for **all 598 merged groups** for a bounded set of high-risk source signals: slang/derogatory/teasing or everyday register, facial action and affect, figurative-use markers, the explicit auxiliary/evaluation definition, emphasis references, deception, and absorption. **57 groups covering 83 source senses** carried at least one such signal. A separate redirect pass followed the seven arrow senses in five C09 groups to the named canonical entries; it found the `뻐개다` and `뿌득하다` redirects had been swept into unrelated groups, while the `빠꼼`, `빠꼼빠꼼`, and `삥삥하다` glosses needed their target usages made explicit.
+
+The corrected glosses preserve those source functions, register cues, emotional states, and figurative uses. Other specific corrections from the sample clarify `빼다`'s long-shaped-object use, mark the colloquial uses of `빵빵하다`, retain the teasing tone in the `빼죽`/`빼쭉` and `삐죽`/`삐쭉` families, and state the low-register use of `빼빼`, `뾰족집`, and `뿌다구니`. The new cross-record boundaries are `뻐개다` (`w163011-s1..s4` versus `w163018-s1 → 뻐기다01`, resolved to the boastful use `w164364-s1`) and `뿌득하다` (`w168989-s1/s2`, the friction and straining sounds, versus `w168992-s1 → 뿌둑하다`, a nearly dry and slightly stiff surface). The first source definitions do not share a demonstrated lexical extension with their redirect targets.
+
+The adversarial regression [`issue-764-c09-gloss-regression.manual.mjs`](issue-764-c09-gloss-regression.manual.mjs) rebuilds the C09 result through the real `applyEdits` producer from all exact `before` snapshots, validates complete membership for 3,081 source senses, compares the replayed result with all four committed shards, and checks the selected source-bound signals. Its negative control removes those signals from generated glosses and verifies that the coverage check detects the loss. It is a one-off Manual test, run directly and not registered in CI; semantic judgments remain editorial rather than a general-purpose lexical string validator.
+
+The reviewer-named retained boundaries were also checked against their full source senses and linked records. `뼈칼` remains split between the prehistoric animal-bone knife (`w440778-s1`, synonym `골검`, `w27312-s1`) and the sewing tool that presses a pattern into cloth (`w440778-s2`, synonym `각관자`, `w3639-s2`); sharing a broad “tool” category does not supply one naming principle. `뿌르르` remains split between running/chasing and light trembling, with no source-supported extension beyond the same form. `빵빵하다` remains split between the verb uses of kicking, bursts, and horns (`w159963-s1..s3`) and the adjective uses of fullness, plumpness, and social influence (`w437924-s1..s3`). The possible pressure/burst scene does not explain the full sound group and the separate influence use; POS alone did not determine the boundary. The gloss now marks both adjective senses `w437924-s2/s3` as colloquial.
 
 ## Remaining same-record boundaries
 
@@ -58,7 +68,7 @@ The 15 retained same-record splits below were checked against the listed source 
 
 ## Remaining cross-record-only boundaries
 
-These 38 lemmas retain multiple Meanings only across separate canonical records. The source-bound contrasts are recorded here so the record boundary itself is not being used as the rationale.
+These 40 lemmas retain multiple Meanings only across separate canonical records. The source-bound contrasts are recorded here so the record boundary itself is not being used as the rationale.
 
 | Lemma | Source boundary retained |
 | --- | --- |
@@ -71,6 +81,7 @@ These 38 lemmas retain multiple Meanings only across separate canonical records.
 | `빨깍빨깍` | `w156695` abrupt anger, commotion, and opening versus `w438171` wet bubbling, kneading, and drinking sounds. |
 | `빨다` | `w156717` sucking or licking, `w156718` laundering, and `w156719` tapering to a point. |
 | `빨리다` | `w166258`/`w166260` laundering passive or causative versus `w166259`/`w440557` suction and being drawn in. |
+| `뻐개다` | `w163011-s1..s4`: splitting, disrupting, striking, or opening the mouth in joy versus `w163018-s1` redirecting to the boastful `뻐기다01` use (`w164364-s1`). |
 | `빵` | `w167440` bread or food versus `w167441` impact sounds, `w167442` prison slang, and `w534216` sexual slang. |
 | `빵빵하다` | `w159963` kicking, bursting, or horns versus `w437924` fullness, plumpness, or influence. |
 | `빼다` | `w163814` grooming or posing versus `w163825`/`w441769` extraction, removal, and escape. |
@@ -89,6 +100,7 @@ These 38 lemmas retain multiple Meanings only across separate canonical records.
 | `뽁` | `w164912` sexual slang versus `w435970` scraping or tearing sounds. |
 | `뽕` | `w163135` drug slang, `w163136` mulberry, `w163388` a hole or escaping-gas sound, and `w534235` a clothing insert. |
 | `뿌르르` | `w165176` running or chasing versus `w169302` light trembling. |
+| `뿌득하다` | `w168989-s1/s2`: shortened friction or straining sounds versus `w168992-s1` redirecting to `뿌둑하다`'s dry, slightly stiff surface. |
 | `뿔말` | `w167875` antelope, `w167876` aquatic plant, and `w167877` algae. |
 | `삐까번쩍하다`, `삐까삐까하다` | `w163119`/`w533900` and `w163120`/`w533902` preserve their distinct source-record redirects. |
 | `삐다` | `w163664` a sprain versus `w437711` pooled water receding. |
