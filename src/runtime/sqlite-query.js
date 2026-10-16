@@ -145,6 +145,81 @@ export function getMeaningRelations(database, meaningId) {
   }));
 }
 
+/**
+ * Meaning view of a record: the record header plus the meanings its senses resolve to (member or `duplicate` redirect), in place of its raw
+ * senses, so the UI candidate unit is the Typewriter meaning. Each meaning carries its precomputed ranking counts,
+ * its member sense IDs (source evidence only) and its meaning relations; a relation target is the target
+ * meaning's owner record plus the meaning ID, which `getMeaningRecord` can open again.
+ */
+export function getMeaningRecord(database, recordId) {
+  const record = firstRow(database, `
+    SELECT id, record_type, role, candidate_id, lemma
+    FROM records
+    WHERE id = ?
+  `, [recordId]);
+
+  if (!record) return null;
+
+  const searchForms = allRows(database, `
+    SELECT form FROM search_forms WHERE record_id = ? ORDER BY position
+  `, [recordId]).map(({ form }) => form);
+
+  const senses = allRows(database, `
+    SELECT meanings.id, meanings.gloss, meanings.display_rank,
+           meanings.lexical_relation_count, meanings.exploratory_relation_count,
+           (SELECT senses.pos FROM meaning_members
+              INNER JOIN senses ON senses.id = meaning_members.sense_id
+              WHERE meaning_members.meaning_id = meanings.id
+              ORDER BY meaning_members.position LIMIT 1) AS pos
+    FROM meanings
+    WHERE meanings.id IN (
+      SELECT meaning_members.meaning_id FROM meaning_members
+      INNER JOIN senses ON senses.id = meaning_members.sense_id
+      WHERE senses.record_id = ?
+      UNION
+      -- a duplicate sense of this record resolves to the surviving meaning, which may belong to another record
+      SELECT meaning_members.meaning_id FROM sense_adjudications AS adjudication
+      INNER JOIN senses ON senses.id = adjudication.sense_id
+      INNER JOIN meaning_members ON meaning_members.sense_id = adjudication.duplicate_of_sense_id
+      WHERE adjudication.reason = 'duplicate' AND senses.record_id = ?)
+    ORDER BY meanings.display_rank
+  `, [recordId, recordId]).map((meaning) => ({
+    ...meaning,
+    // Source senses that resolve to this meaning: its members plus the `duplicate` senses redirected to a
+    // member (the same resolution the relation projection uses), so a match on any of them finds the meaning.
+    sense_ids: allRows(database, `
+      SELECT sense_id FROM meaning_members WHERE meaning_id = ?
+      UNION ALL
+      SELECT adjudication.sense_id FROM sense_adjudications AS adjudication
+      INNER JOIN meaning_members AS member ON member.sense_id = adjudication.duplicate_of_sense_id
+      WHERE adjudication.reason = 'duplicate' AND member.meaning_id = ?
+      ORDER BY 1
+    `, [meaning.id, meaning.id]).map(({ sense_id: senseId }) => senseId),
+    relations: allRows(database, `
+      SELECT
+        meaning_relations.position,
+        target_meanings.record_id AS target,
+        meaning_relations.target_meaning_id AS target_sense,
+        meaning_relations.type,
+        meaning_relations.note,
+        meaning_relations.relevance,
+        target_meanings.lemma AS target_lemma,
+        (SELECT senses.pos FROM meaning_members
+           INNER JOIN senses ON senses.id = meaning_members.sense_id
+           WHERE meaning_members.meaning_id = target_meanings.id
+           ORDER BY meaning_members.position LIMIT 1) AS target_pos,
+        target_meanings.gloss AS target_gloss
+      FROM meaning_relations
+      INNER JOIN meanings AS target_meanings
+        ON target_meanings.id = meaning_relations.target_meaning_id
+      WHERE meaning_relations.source_meaning_id = ?
+      ORDER BY meaning_relations.position
+    `, [meaning.id]),
+  }));
+
+  return { ...record, view: 'meaning', search_forms: searchForms, senses };
+}
+
 export function getRecord(database, recordId) {
   const record = firstRow(database, `
     SELECT id, record_type, role, candidate_id, lemma

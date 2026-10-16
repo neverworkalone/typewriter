@@ -13,6 +13,7 @@ import {
   SEARCH_STATUS,
   withHistoryFlags,
 } from './search-state.js';
+import { defaultExactSearchCandidate } from './exact-search-candidates.js';
 import { normalizeSearchResponse } from '../runtime/search-query.js';
 
 export class SearchDomainError extends Error {
@@ -70,6 +71,13 @@ function resolveTarget(target, context = {}) {
       ?? context.relationType
       ?? null,
   };
+}
+
+// The product candidate unit is the Typewriter meaning; runtimes without a meaning view fall back to raw records.
+function loadRecord(runtime, recordId) {
+  return typeof runtime.getMeaningRecord === 'function'
+    ? runtime.getMeaningRecord(recordId)
+    : runtime.getRecord(recordId);
 }
 
 function hasFullRecord(record) {
@@ -184,7 +192,7 @@ export class SearchSession {
 
       const candidateSummaries = response.matches;
       const records = await Promise.all(candidateSummaries.map((summary) => (
-        hasFullRecord(summary) ? summary : this.runtime.getRecord(summary.id)
+        hasFullRecord(summary) ? summary : loadRecord(this.runtime, summary.id)
       )));
 
       if (records.some((record) => !record)) {
@@ -195,10 +203,11 @@ export class SearchSession {
       }
 
       const results = projectSearchResults(records, candidateSummaries);
+      const selected = defaultExactSearchCandidate(results);
       operation.request = {
         ...operation.request,
-        selectedRecordId: results[0]?.id ?? null,
-        selectedSenseId: results[0]?.senses?.[0]?.id ?? null,
+        selectedRecordId: selected?.recordId ?? results[0]?.id ?? null,
+        selectedSenseId: selected?.senseId ?? results[0]?.senses?.[0]?.id ?? null,
       };
       return results;
     });
@@ -284,7 +293,7 @@ export class SearchSession {
     });
 
     return this._run(operation, async () => {
-      const record = await this.runtime.getRecord(resolved.targetRecordId);
+      const record = await loadRecord(this.runtime, resolved.targetRecordId);
       if (!record) {
         return null;
       }

@@ -47,6 +47,22 @@ async function buildFixture(directory) {
   return outputPath;
 }
 
+// Authored relations arrive through the build, which recomputes the ranking; a hand-edit must do the same.
+const RERANK_SQL = `
+  UPDATE meanings SET
+    lexical_relation_count = (SELECT COUNT(DISTINCT target_meaning_id) FROM meaning_relations
+      WHERE source_meaning_id = meanings.id AND type IN ('direct', 'antonym')),
+    exploratory_relation_count = (SELECT COUNT(DISTINCT target_meaning_id) FROM meaning_relations
+      WHERE source_meaning_id = meanings.id AND type NOT IN ('direct', 'antonym'));
+  UPDATE meanings SET display_rank = display_rank + 1000;
+  UPDATE meanings SET display_rank = (
+    SELECT COUNT(*) FROM meanings AS other
+    WHERE other.lexical_relation_count > meanings.lexical_relation_count
+       OR (other.lexical_relation_count = meanings.lexical_relation_count
+           AND (other.exploratory_relation_count > meanings.exploratory_relation_count
+             OR (other.exploratory_relation_count = meanings.exploratory_relation_count AND other.id <= meanings.id)))
+  );`;
+
 function violations(databasePath, mutate = () => {}) {
   const database = new DatabaseSync(databasePath);
   try {
@@ -96,7 +112,22 @@ test('meaning relation provenance: valid mapping passes; deleted, mis-bound and 
     assert.deepEqual(violations(copy('authored.sqlite'), (db) => db.exec(
       "INSERT INTO meaning_relations (source_meaning_id, position, target_meaning_id, type, note, relevance, origin) "
       + "VALUES ('m002', 0, 'm003', 'near', '작성한 연관', 3, 'typewriter-authored')",
-    )), {});
+    ) || db.exec(RERANK_SQL)), {});
+    await copyFile(good, copy('stale-rank.sqlite'));
+    assert.deepEqual(violations(copy('stale-rank.sqlite'), (db) => db.exec(
+      "INSERT INTO meaning_relations (source_meaning_id, position, target_meaning_id, type, note, relevance, origin) "
+      + "VALUES ('m002', 0, 'm003', 'near', '작성한 연관', 3, 'typewriter-authored')",
+    )), { meaning_relation_count_mismatch: 1 });
+    await copyFile(good, copy('swapped-rank.sqlite'));
+    assert.deepEqual(violations(copy('swapped-rank.sqlite'), (db) => db.exec(`
+      UPDATE meanings SET display_rank = 100 WHERE id = 'm001';
+      UPDATE meanings SET display_rank = 1 WHERE id = 'm002';
+      UPDATE meanings SET display_rank = 2 WHERE id = 'm001';
+    `)), { meaning_rank_order_violation: 1 });
+    await copyFile(good, copy('gap-rank.sqlite'));
+    assert.deepEqual(violations(copy('gap-rank.sqlite'), (db) => db.exec(
+      "UPDATE meanings SET display_rank = 9 WHERE id = 'm003'",
+    )), { meaning_rank_not_dense: 1 });
     await copyFile(good, copy('origin.sqlite'));
     assert.throws(() => violations(copy('origin.sqlite'), (db) => db.exec(
       "UPDATE meaning_relations SET origin = 'other' WHERE source_meaning_id = 'm001' AND position = 0",
@@ -159,7 +190,7 @@ test('meaning relation provenance: valid mapping passes; deleted, mis-bound and 
     assert.deepEqual(violations(copy('authored-content.sqlite'), (db) => db.exec(
       "INSERT INTO meaning_relations (source_meaning_id, position, target_meaning_id, type, note, relevance, origin) "
       + "VALUES ('m002', 0, 'm001', 'mood', '자체 근거', 9, 'typewriter-authored')",
-    )), {});
+    ) || db.exec(RERANK_SQL)), {});
 
     await copyFile(good, copy('flag.sqlite'));
     assert.ok(violations(copy('flag.sqlite'), (db) => db.exec(

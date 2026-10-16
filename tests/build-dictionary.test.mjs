@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 
 import { BuildError, buildDictionary } from '../scripts/build/dictionary.mjs';
+import { SQLITE_SCHEMA_VERSION } from '../src/runtime/dictionary-contract.js';
 import {
   findRecordsByExactTerm,
   findRecordsBySearchTerm,
@@ -48,7 +49,7 @@ test('builds a read-only SQLite dictionary with representative lookups', async (
     assert.equal(summary.senseCount, 7);
     assert.equal(summary.relationCount, 3);
     assert.match(summary.metadata.canonical_revision, /^[0-9a-f]{64}$/);
-    assert.equal(summary.metadata.schema_version, '4');
+    assert.equal(summary.metadata.schema_version, SQLITE_SCHEMA_VERSION);
     assert.equal(summary.metadata.normalization_version, '1');
     assert.equal(summary.metadata.generated_surface_form_count, String(summary.generatedSurfaceFormCount));
 
@@ -110,6 +111,7 @@ test('builds a read-only SQLite dictionary with representative lookups', async (
         'idx_generated_surface_forms_form',
         'idx_meaning_relations_target',
         'idx_meanings_lemma',
+        'idx_meanings_record',
         'idx_records_lemma',
         'idx_relations_source_position',
         'idx_relations_target',
@@ -334,6 +336,16 @@ test('builds the meaning layer and projected meaning relations with provenance',
         assert.ok(relation.sources.length > 0);
         assert.equal(relation.sources[0].source_sense_id, 'w001-s1');
       }
+      // Ranking metadata is precomputed: dense unique display_rank following counts DESC, then numeric ID.
+      const ranked = database.prepare(
+        'SELECT id, record_id, lexical_relation_count AS l, exploratory_relation_count AS e, display_rank AS r FROM meanings ORDER BY display_rank',
+      ).all().map((row) => ({ ...row }));
+      assert.deepEqual(ranked.map(({ r }) => r), ranked.map((_, index) => index + 1));
+      for (let index = 1; index < ranked.length; index += 1) {
+        const [a, b] = [ranked[index - 1], ranked[index]];
+        assert.ok(a.l > b.l || (a.l === b.l && (a.e > b.e || (a.e === b.e && Number(a.id.slice(1).split('_')[0]) <= Number(b.id.slice(1).split('_')[0])))), `${a.id} before ${b.id}`);
+      }
+      assert.ok(ranked.every(({ id, record_id: recordId }) => recordId === `w${id.slice(1).split('_')[0]}`));
       assert.deepEqual(database.prepare('PRAGMA foreign_key_check').all(), []);
     } finally {
       database.close();

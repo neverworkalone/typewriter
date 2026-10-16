@@ -56,11 +56,11 @@ contributing relation (canonical order) supplies `note`/`relevance`, verified ex
 Skip/dedup/redirect counts are written to `metadata` as `meaning_projection_*`, so
 `source = projected + deduplicated + skipped`.
 
-`dictionary.sqlite` (schema version 4) keeps the original source tables and adds the product meaning contract:
+`dictionary.sqlite` (schema version 5) keeps the original source tables and adds the product meaning contract:
 
 | Table | Content |
 | --- | --- |
-| `meanings` | `id`, `lemma`, `gloss` |
+| `meanings` | `id`, `lemma`, `gloss`, `record_id` (ID-base record), ranking metadata (below) |
 | `meaning_members` | `meaning_id`, `position`, `sense_id` (unique; FK to `senses`): source evidence of each meaning |
 | `sense_adjudications` | dropped senses with `reason` and `duplicate_of_sense_id` |
 | `meaning_relations` | `source_meaning_id`, `position`, `target_meaning_id`, `type`, `note`, `relevance`, `origin` |
@@ -74,3 +74,28 @@ edited on the same table with `origin='typewriter-authored'`, need no STDICT pro
 `src/runtime/sqlite-query.js` are the shared meaning-based read helpers. The default canonical build requires the complete
 meaning corpus and fails closed (`INVALID_MEANING_DATA`); builds from other canonical fixtures get an empty meaning layer
 unless a meanings directory is passed.
+
+## Search, ranking and 더보기 (Issue #718)
+The search candidate unit is the meaning; raw STDICT senses are never listed, they stay in `meaning_members` as
+evidence. `getMeaningRecord` (`get-meaning-record`) returns a record whose `senses` are the meanings it contributes
+member senses to, with meaning gloss, meaning relations and ranking counts. `getRecord` keeps returning the raw
+source view. Relation targets open the target meaning (its `record_id` plus the meaning ID).
+
+Ranking metadata is computed once at build time (`scripts/build/dictionary.mjs`) and stored in `meanings`:
+
+| Column | Content |
+| --- | --- |
+| `lexical_relation_count` | distinct targets of `direct` + `antonym` (유의어 + 반의어) |
+| `exploratory_relation_count` | distinct targets of `near`, `mood`, `scene`, `sensory`, `action`, `association` (말의 결 + 연상) |
+| `display_rank` | dense unique order: lexical DESC, exploratory DESC, numeric meaning ID |
+
+The build verification, `validatePackagedDictionary` and `validate-package` re-derive the counts and check the rank
+order (`MEANING_INTEGRITY_QUERIES`). The partition rule lives in `src/runtime/meaning-ranking.js`
+(`partitionMeanings`): meanings with at least one relation fill the default view in rank order up to 3; the rest,
+including every meaning without relations, go behind 더보기. If no meaning of the result has a relation, the lowest-ID
+meaning is shown and the rest go behind 더보기. The UI shows the default candidates and a 더보기 control for the rest.
+
+The default view and the candidate list use one search-wide ranking: when several records match (for example one
+surface form reaching several lemmas), the split into at most 3 default meanings and 더보기 is made once over all of
+their meanings, candidates are listed in `compareMeaningRank` order regardless of record or input order, and the first
+selection is the top-ranked meaning. Each candidate keeps its record and match.

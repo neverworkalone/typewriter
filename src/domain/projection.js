@@ -5,6 +5,7 @@ import {
   UI_GROUP_IDS,
 } from './relation-groups.js';
 import { isPagedRelationGroup } from './relation-paging.js';
+import { compareMeaningRank, partitionMeanings } from '../runtime/meaning-ranking.js';
 
 function copyNullable(value) {
   return value === undefined ? null : value;
@@ -102,10 +103,20 @@ export function projectSense(sense) {
       .map((group) => [group.id, group]),
   );
 
+  // Meaning view only: precomputed ranking counts and the source senses kept as evidence.
+  const meaningFields = Number.isInteger(sense.lexical_relation_count)
+    ? {
+      lexical_relation_count: sense.lexical_relation_count,
+      exploratory_relation_count: sense.exploratory_relation_count,
+      senseIds: Array.isArray(sense.sense_ids) ? [...sense.sense_ids] : [],
+    }
+    : {};
+
   return {
     id: sense.id,
     pos: sense.pos,
     gloss: sense.gloss,
+    ...meaningFields,
     hasRelations: relations.length > 0,
     relations,
     unmappedRelations: relations.filter(({ groupId }) => groupId === null),
@@ -122,10 +133,14 @@ export function projectRecord(record, {
 } = {}) {
   const senses = Array.isArray(record.senses) ? record.senses : [];
   const projectedSenses = senses.map(projectSense);
-  const visibleSenses = senseId && projectedSenses.some(({ id }) => id === senseId)
-    ? projectedSenses.filter(({ id }) => id === senseId)
+  const licensed = (sense) => senseIds.includes(sense.id)
+    || (sense.senseIds ?? []).some((memberId) => senseIds.includes(memberId));
+  // A requested sense may be the meaning itself or one of its source senses (older links, duplicate senses).
+  const requested = (sense) => sense.id === senseId || (sense.senseIds ?? []).includes(senseId);
+  const visibleSenses = senseId && projectedSenses.some(requested)
+    ? projectedSenses.filter(requested)
     : Array.isArray(senseIds)
-      ? projectedSenses.filter(({ id }) => senseIds.includes(id))
+      ? projectedSenses.filter(licensed)
       : projectedSenses;
   const projected = {
     id: record.id,
@@ -135,6 +150,7 @@ export function projectRecord(record, {
     lemma: record.lemma,
     searchForms: Array.isArray(record.search_forms) ? [...record.search_forms] : [],
     senses: visibleSenses,
+    isMeaningView: record.view === 'meaning',
     hasRelations: visibleSenses.some((sense) => sense.hasRelations),
     match,
   };
@@ -142,12 +158,62 @@ export function projectRecord(record, {
   return projected;
 }
 
+const isMeaningSense = (sense) => Number.isInteger(sense.lexical_relation_count);
+
+/**
+ * Collapse the records of one lemma (homonyms) into a single result whose senses are the lemma's meanings in
+ * display order. Raw-sense records (no meaning counts) are returned unchanged.
+ */
+function mergeMeaningRecords(records) {
+  const byLemma = new Map();
+  for (const record of records) {
+    const group = byLemma.get(record.lemma);
+    if (group) group.push(record);
+    else byLemma.set(record.lemma, [record]);
+  }
+
+  return [...byLemma.values()].map((group) => {
+    // A meaning appears in every record that contributes a member sense; keep it once.
+    const meanings = [...new Map(
+      group.flatMap(({ senses }) => senses).map((meaning) => [meaning.id, meaning]),
+    ).values()];
+    if (meanings.length === 0 || !meanings.every(isMeaningSense)) {
+      return group;
+    }
+    return [{
+      ...group[0],
+      searchForms: [...new Set(group.flatMap(({ searchForms }) => searchForms))],
+      senses: [...meanings].sort(compareMeaningRank),
+      hasRelations: meanings.some(({ hasRelations }) => hasRelations),
+    }];
+  }).flat();
+}
+
+/**
+ * One default/더보기 split for the whole search: the default view (`primarySenseIds`, at most 3) and the
+ * remainder (`moreSenseIds`) are chosen across every matched record, not per lemma. Record order (match tier)
+ * is unchanged.
+ */
+function partitionAcrossRecords(records) {
+  const meaningRecords = records.filter(({ senses }) => senses.length > 0 && senses.every(isMeaningSense));
+  const { primary } = partitionMeanings(meaningRecords.flatMap(({ senses }) => senses));
+  const primaryIds = new Set(primary.map(({ id }) => id));
+  return records.map((record) => {
+    if (!meaningRecords.includes(record)) return record;
+    return {
+      ...record,
+      primarySenseIds: record.senses.filter(({ id }) => primaryIds.has(id)).map(({ id }) => id),
+      moreSenseIds: record.senses.filter(({ id }) => !primaryIds.has(id)).map(({ id }) => id),
+    };
+  });
+}
+
 export function projectSearchResults(records, matches = null) {
   const matchById = Array.isArray(matches)
     ? new Map(matches.map((summary) => [summary.id, summary.match || null]))
     : null;
 
-  return records
+  const projected = records
     .map((record, position) => {
       const match = matchById?.has(record.id)
         ? matchById.get(record.id)
@@ -161,7 +227,11 @@ export function projectSearchResults(records, matches = null) {
           ? match.senseIds
           : null,
       });
-    });
+    })
+    // Meaning is the candidate unit: a record with no meaning (every sense dropped, e.g. out_of_scope) has
+    // nothing to show and is not a candidate. Raw-sense records keep their existing behaviour.
+    .filter((record) => !record.isMeaningView || record.senses.length > 0);
+  return partitionAcrossRecords(mergeMeaningRecords(projected));
 }
 
 export function projectRelationTarget(record, context = {}) {

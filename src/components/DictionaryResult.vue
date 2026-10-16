@@ -29,6 +29,10 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  hiddenCandidateCount: {
+    type: Number,
+    default: 0,
+  },
   selectedRecordId: {
     type: String,
     default: null,
@@ -43,13 +47,16 @@ const emit = defineEmits([
   'relation',
   'back',
   'select-candidate',
+  'show-more-candidates',
   'candidate-focus',
   'candidate-keydown',
 ]);
 
 const senses = computed(() => (Array.isArray(props.record.senses) ? props.record.senses : []));
 const settings = computed(() => props.settings || DEFAULT_SETTINGS);
-const showCandidatePicker = computed(() => props.candidateOptions.length > 1);
+const showCandidatePicker = computed(() => (
+  props.candidateOptions.length + props.hiddenCandidateCount > 1
+));
 const selectedCandidateKey = computed(() => {
   if (!showCandidatePicker.value) return null;
 
@@ -182,7 +189,7 @@ defineExpose({ focusCandidate });
         tabindex="-1"
         :aria-selected="String(option.key === selectedCandidateKey)"
         :aria-posinset="optionIndex + 1"
-        :aria-setsize="candidateOptions.length"
+        :aria-setsize="candidateOptions.length + hiddenCandidateCount"
         @focus="emit('candidate-focus', option)"
         @keydown="emit('candidate-keydown', { option, event: $event })"
         @click="emit('select-candidate', option)"
@@ -190,6 +197,12 @@ defineExpose({ focusCandidate });
         <span class="candidate-indicator" aria-hidden="true"></span>
         <span class="candidate-label">{{ option.label }}</span>
       </button>
+      <button
+        v-if="interactive && hiddenCandidateCount > 0"
+        class="relation-more candidate-more"
+        type="button"
+        @click="emit('show-more-candidates')"
+      >더보기 ({{ hiddenCandidateCount }})</button>
     </div>
 
     <div v-if="senses.length === 0" class="result-no-senses">
