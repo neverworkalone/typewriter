@@ -24,6 +24,7 @@ function createDictionary({ metadataOverrides = {}, userVersion = SQLITE_SCHEMA_
     source_revision: 'a'.repeat(40),
     source_revision_source: 'git-head',
     source_revision_verified: 'true',
+    database_kind: 'lite',
     ...Object.fromEntries(Object.keys(DICTIONARY_COUNT_QUERIES).map((key) => [key, '0'])),
     ...metadataOverrides,
   };
@@ -41,6 +42,7 @@ test('validates current packaged schema, version, revision, integrity, and row c
       source_revision: 'a'.repeat(40),
       source_revision_source: 'git-head',
       source_revision_verified: 'true',
+      database_kind: 'lite',
       ...Object.fromEntries(Object.keys(DICTIONARY_COUNT_QUERIES).map((key) => [key, '0'])),
     });
   } finally {
@@ -200,5 +202,23 @@ test('rejects a packaged dictionary that ships a build-only STDICT source table'
     } finally {
       database.close();
     }
+  }
+});
+
+test('rejects a packaged dictionary that is not a labelled Lite product database', () => {
+  for (const database_kind of ['full', 'unknown', '']) {
+    const database = createDictionary({ metadataOverrides: { database_kind } });
+    try {
+      assert.throws(() => validatePackagedDictionary(database), { code: 'DATABASE_METADATA_INVALID' });
+    } finally {
+      database.close();
+    }
+  }
+  const unlabelled = createDictionary();
+  try {
+    unlabelled.exec("DELETE FROM metadata WHERE key = 'database_kind'");
+    assert.throws(() => validatePackagedDictionary(unlabelled), { code: 'DATABASE_METADATA_INVALID' });
+  } finally {
+    unlabelled.close();
   }
 });

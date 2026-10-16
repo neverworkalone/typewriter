@@ -14,6 +14,14 @@ export const MEANING_RELATION_ORIGINS = Object.freeze({
  */
 export const BUILD_ONLY_TABLES = Object.freeze(['senses', 'relations', 'meaning_relation_sources']);
 
+/**
+ * Metadata key that identifies the purpose of a dictionary database. `full` is the development/verification database
+ * (artifacts/dictionary.sqlite) with the STDICT source layer; `lite` is the Meaning-based product database that ships
+ * in the extension and is extracted from a verified Full database.
+ */
+export const DATABASE_KIND_KEY = 'database_kind';
+export const DATABASE_KINDS = Object.freeze({ full: 'full', lite: 'lite' });
+
 export const BUILD_ONLY_TABLES_QUERY = `SELECT name FROM sqlite_master WHERE type = 'table' AND name IN (${
   BUILD_ONLY_TABLES.map((name) => `'${name}'`).join(', ')}) ORDER BY name`;
 

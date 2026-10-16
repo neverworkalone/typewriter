@@ -5,6 +5,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { DatabaseSync } from 'node:sqlite';
 
+import { extractLiteDictionary } from '../scripts/build/lite-dictionary.mjs';
 import { buildDictionary } from '../scripts/build/dictionary.mjs';
 import { writeAdjudications, writeMeanings } from '../scripts/meaning/contract.mjs';
 import { MEANING_INTEGRITY_QUERIES } from '../src/runtime/dictionary-contract.js';
@@ -44,10 +45,11 @@ async function buildFixture(directory) {
     allowDirty: true,
     meaningsDirectory: path.join(directory, 'meanings'),
     adjudicationDirectory: path.join(directory, 'adjudication'),
-    keepStaging: true,
   });
-  // The source-derived checks run on the build staging database, which still holds the STDICT source tables.
-  return { deployed: outputPath, staging: `${outputPath}.staging` };
+  // The source-derived checks run on the Full database; the Lite product database is extracted from it.
+  const litePath = path.join(directory, 'lite.sqlite');
+  await extractLiteDictionary({ fullPath: outputPath, litePath });
+  return { deployed: litePath, full: outputPath };
 }
 
 // Authored relations arrive through the build, which recomputes the ranking; a hand-edit must do the same.
@@ -82,7 +84,7 @@ function violations(databasePath, mutate = () => {}) {
 test('meaning relation provenance: valid mapping passes; deleted, mis-bound and missing provenance fail', async () => {
   const directory = await mkdtemp(path.join(tmpdir(), 'typewriter-provenance-'));
   try {
-    const { deployed, staging: good } = await buildFixture(directory);
+    const { deployed, full: good } = await buildFixture(directory);
     const database = new DatabaseSync(good, { readOnly: true });
     assert.equal(database.prepare('SELECT COUNT(*) AS c FROM meaning_relations').get().c, 2);
     assert.equal(database.prepare('SELECT COUNT(*) AS c FROM meaning_relation_sources').get().c, 3);
@@ -95,7 +97,7 @@ test('meaning relation provenance: valid mapping passes; deleted, mis-bound and 
     );
     shipped.close();
     const shippedChecked = new DatabaseSync(deployed, { readOnly: true });
-    // Source-derived checks need the staging tables; the shipped database runs only its self-contained checks.
+    // Source-derived checks need the Full tables; the shipped database runs only its self-contained checks.
     assert.doesNotThrow(() => validatePackagedDictionary(shippedChecked, { expectedSourceRevision: undefined }));
     shippedChecked.close();
     assert.deepEqual(violations(good), {});

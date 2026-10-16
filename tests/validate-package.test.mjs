@@ -134,6 +134,7 @@ test('derives dictionary metadata from the supplied canonical directory and reje
       source_revision: sourceRevision,
       source_revision_source: 'git-head',
       source_revision_verified: 'true',
+      database_kind: 'lite',
       worktree_state: 'clean',
       node_version: process.version,
       sqlite_version: '3.53.0',

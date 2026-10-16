@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { existsSync } from 'node:fs';
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -7,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 
 import { BuildError, buildDictionary } from '../scripts/build/dictionary.mjs';
+import { extractLiteDictionary } from '../scripts/build/lite-dictionary.mjs';
 import { SQLITE_SCHEMA_VERSION } from '../src/runtime/dictionary-contract.js';
 import {
   findRecordsByExactTerm,
@@ -41,10 +43,11 @@ test('builds a read-only SQLite dictionary with representative lookups', async (
       inputDirectory: PILOT_DIRECTORY,
       outputPath,
       allowDirty: true,
-      keepStaging: true,
     });
 
-    assert.equal(summary.stagingPath, `${outputPath}.staging`);
+    assert.equal(summary.outputPath, outputPath);
+    assert.equal(summary.metadata.database_kind, 'full');
+    assert.equal(existsSync(`${outputPath}.staging`), false);
     assert.equal(summary.recordCount, 6);
     assert.equal(summary.searchFormCount, 7);
     assert.equal(summary.senseCount, 7);
@@ -54,11 +57,36 @@ test('builds a read-only SQLite dictionary with representative lookups', async (
     assert.equal(summary.metadata.normalization_version, '1');
     assert.equal(summary.metadata.generated_surface_form_count, String(summary.generatedSurfaceFormCount));
 
-    const database = new DatabaseSync(outputPath, { readOnly: true });
+    // The Full database keeps the STDICT source senses/relations/provenance next to the product tables.
+    const full = new DatabaseSync(outputPath, { readOnly: true });
+    try {
+      assert.equal(countRows(full, 'senses'), 7);
+      assert.equal(countRows(full, 'relations'), 3);
+      assert.deepEqual(
+        full.prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name").all().map(({ name }) => name),
+        [
+          'generated_surface_forms', 'meaning_members', 'meaning_relation_sources', 'meaning_relations', 'meanings',
+          'metadata', 'records', 'relations', 'search_forms', 'sense_adjudications', 'senses',
+        ],
+      );
+      const relation = full.prepare(
+        "SELECT target_record_id, target_sense_id, type, note FROM relations WHERE source_sense_id = 'w001-s1'",
+      ).get();
+      assert.equal(relation.target_record_id, 'r001');
+      assert.equal(relation.target_sense_id, 'r001-s1');
+      assert.equal(relation.type, 'direct');
+      assert.match(relation.note, /바꿔 쓸/);
+    } finally {
+      full.close();
+    }
+
+    // The Lite product database is extracted from the verified Full database and ships no source layer.
+    const litePath = path.join(outputDirectory, 'lite.sqlite');
+    await extractLiteDictionary({ fullPath: outputPath, litePath });
+    const database = new DatabaseSync(litePath, { readOnly: true });
     try {
       assert.equal(countRows(database, 'records'), 6);
       assert.equal(countRows(database, 'search_forms'), 7);
-      // The STDICT source senses/relations/provenance never ship; they exist only in the staging database.
       assert.deepEqual(
         database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name").all().map(({ name }) => name),
         [
@@ -66,22 +94,8 @@ test('builds a read-only SQLite dictionary with representative lookups', async (
           'metadata', 'records', 'search_forms', 'sense_adjudications',
         ],
       );
-      const staging = new DatabaseSync(summary.stagingPath, { readOnly: true });
-      try {
-        assert.equal(countRows(staging, 'senses'), 7);
-        assert.equal(countRows(staging, 'relations'), 3);
-        const relation = staging.prepare(
-          "SELECT target_record_id, target_sense_id, type, note FROM relations WHERE source_sense_id = 'w001-s1'",
-        ).get();
-        assert.equal(relation.target_record_id, 'r001');
-        assert.equal(relation.target_sense_id, 'r001-s1');
-        assert.equal(relation.type, 'direct');
-        assert.match(relation.note, /바꿔 쓸/);
-      } finally {
-        staging.close();
-      }
       assert.equal(countRows(database, 'generated_surface_forms'), summary.generatedSurfaceFormCount);
-      assert.deepEqual(getMetadata(database), summary.metadata);
+      assert.deepEqual(getMetadata(database), { ...summary.metadata, database_kind: 'lite' });
 
       assert.deepEqual(findRecordsByExactTerm(database, '기쁨'), [
         {
@@ -214,9 +228,8 @@ test('preserves adverb POS in the canonical-to-SQLite build', async () => {
       outputPath,
       allowDirty: true,
       repositoryDirectory: REPOSITORY_DIRECTORY,
-      keepStaging: true,
     });
-    const database = new DatabaseSync(`${outputPath}.staging`, { readOnly: true });
+    const database = new DatabaseSync(outputPath, { readOnly: true });
     try {
       assert.equal(database.prepare('SELECT pos FROM senses WHERE id = ?').get('w990-s1').pos, 'adverb');
     } finally {
@@ -330,7 +343,9 @@ test('builds the meaning layer and projected meaning relations with provenance',
     assert.equal(summary.metadata.meaning_relation_count, '3');
     assert.equal(summary.metadata.meaning_projection_source_relation_count, '3');
 
-    const database = new DatabaseSync(outputPath, { readOnly: true });
+    const litePath = path.join(path.dirname(outputPath), 'lite.sqlite');
+    await extractLiteDictionary({ fullPath: outputPath, litePath });
+    const database = new DatabaseSync(litePath, { readOnly: true });
     try {
       assert.equal(countRows(database, 'meanings'), 7);
       assert.equal(countRows(database, 'meaning_members'), 7);
