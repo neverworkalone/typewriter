@@ -65,6 +65,36 @@ export function readLogicalDatabaseSnapshot(database) {
         )
         .all(),
     ),
+    meanings: plainRows(
+      database.prepare('SELECT id, lemma, gloss FROM meanings ORDER BY id').all(),
+    ),
+    meaning_members: plainRows(
+      database
+        .prepare('SELECT meaning_id, position, sense_id FROM meaning_members ORDER BY meaning_id, position')
+        .all(),
+    ),
+    sense_adjudications: plainRows(
+      database
+        .prepare('SELECT sense_id, reason, duplicate_of_sense_id FROM sense_adjudications ORDER BY sense_id')
+        .all(),
+    ),
+    meaning_relations: plainRows(
+      database
+        .prepare(
+          `SELECT source_meaning_id, position, target_meaning_id, type, note, relevance, origin
+           FROM meaning_relations ORDER BY source_meaning_id, position`,
+        )
+        .all(),
+    ),
+    meaning_relation_sources: plainRows(
+      database
+        .prepare(
+          `SELECT source_meaning_id, relation_position, position, source_sense_id, source_position,
+                  source_redirected, target_redirected
+           FROM meaning_relation_sources ORDER BY source_meaning_id, relation_position, position`,
+        )
+        .all(),
+    ),
     generated_surface_forms: plainRows(
       database
         .prepare(

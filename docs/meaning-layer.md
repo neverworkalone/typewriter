@@ -45,3 +45,32 @@ has been applied and `data/canonical/` is untouched. Generate with `node scripts
 (deterministic; a rerun is a no-op) and verify the untouched initial state once with `node scripts/meaning/initial.mjs --check` (a one-off check; it intentionally fails after editing begins). Once editing starts,
 the projection is a historical baseline: `validateMeaningDataset({ complete: true })` (used by `validate.mjs` and the
 `meaning-references` check) requires every canonical sense to be referenced by exactly one meaning or recorded as dropped.
+
+## Relation projection and SQLite (Issue #717)
+`scripts/meaning/project.mjs` projects the untouched STDICT sense relations onto meanings; it is a deterministic
+transformation, not an editorial decision. A sense maps to the meaning listing it in `sense_ids`; a `duplicate` sense
+is redirected through `duplicate_of` to the surviving meaning (as source or target). A relation whose endpoint is
+`out_of_scope` (or has no meaning) is skipped, as is a relation that collapses onto a single meaning. The rest is
+unique per `source meaning + target meaning + type`; every contributing sense relation is kept as provenance. The first
+contributing relation (canonical order) supplies `note`/`relevance`, verified exactly against the first provenance row, whose position is checked against canonical order (record id, sense position, relation position); positions are per source meaning in that order (the first contributors of projected relations of one source meaning must increase with the position).
+Skip/dedup/redirect counts are written to `metadata` as `meaning_projection_*`, so
+`source = projected + deduplicated + skipped`.
+
+`dictionary.sqlite` (schema version 4) keeps the original source tables and adds the product meaning contract:
+
+| Table | Content |
+| --- | --- |
+| `meanings` | `id`, `lemma`, `gloss` |
+| `meaning_members` | `meaning_id`, `position`, `sense_id` (unique; FK to `senses`): source evidence of each meaning |
+| `sense_adjudications` | dropped senses with `reason` and `duplicate_of_sense_id` |
+| `meaning_relations` | `source_meaning_id`, `position`, `target_meaning_id`, `type`, `note`, `relevance`, `origin` |
+| `meaning_relation_sources` | provenance: FK `(source_sense_id, source_position)` to the original `relations` row, plus redirect flags |
+
+`meaning_relations.origin` is one of `stdict-sense-projection` or `typewriter-authored` (CHECK). Projected rows must have
+complete, correctly bound `meaning_relation_sources`; Typewriter-authored relations (유의어, 반의어, 말의 결, 연상) are
+edited on the same table with `origin='typewriter-authored'`, need no STDICT provenance, and may not own provenance rows
+(a projected row relabelled as authored fails the projectable-relation and provenance-ownership checks). The sense
+`relations` table stays the STDICT evidence layer. `getMeaningsByLemma` and `getMeaningRelations` in
+`src/runtime/sqlite-query.js` are the shared meaning-based read helpers. The default canonical build requires the complete
+meaning corpus and fails closed (`INVALID_MEANING_DATA`); builds from other canonical fixtures get an empty meaning layer
+unless a meanings directory is passed.

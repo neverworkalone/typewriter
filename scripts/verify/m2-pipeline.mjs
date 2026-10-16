@@ -13,6 +13,7 @@ import { loadCanonicalContext } from '../validate/canonical-context.mjs';
 import { validateDatasetDirectory } from '../validate/dataset-integrity.mjs';
 import { normalizeCanonicalDirectory } from '../normalize/canonical.mjs';
 import { buildDictionary } from '../build/dictionary.mjs';
+import { SQLITE_SCHEMA_VERSION } from '../build/sqlite-schema.mjs';
 import {
   findRecordsByExactTerm,
   getMetadata,
@@ -220,9 +221,9 @@ function assertRepresentativeQueries(database, model) {
 
 function assertProvenanceMetadata(metadata, expectedWorktreeState = undefined) {
   assert.equal(metadata.dictionary_version, 'm2-pilot-1');
-  assert.equal(metadata.schema_version, '3');
+  assert.equal(metadata.schema_version, SQLITE_SCHEMA_VERSION);
   assert.equal(metadata.normalization_version, '1');
-  assert.equal(metadata.build_contract, 'canonical-jsonl -> normalized-v1 -> sqlite-v3');
+  assert.equal(metadata.build_contract, `canonical-jsonl -> normalized-v1 -> sqlite-v${SQLITE_SCHEMA_VERSION}`);
   assert.equal(metadata.surface_form_projection_version, '1');
   assert.equal(metadata.build_tool_version, '1');
   assert.equal(metadata.node_version, process.version);

@@ -8,6 +8,8 @@ import {
   loadCanonicalContext,
 } from '../validate/canonical-context.mjs';
 import { DEFAULT_CANONICAL_DIRECTORY } from '../validate/canonical-jsonl.mjs';
+import { SQLITE_SCHEMA_VERSION } from '../build/sqlite-schema.mjs';
+import { MEANING_INTEGRITY_QUERIES } from '../../src/runtime/dictionary-contract.js';
 import {
   buildOrReuseSurfaceFormProjection,
   loadSurfaceFormExceptionManifest,
@@ -36,9 +38,15 @@ export async function validateSharedDictionary({
     if (foreignKeys.length > 0) {
       throw new Error(`shared SQLite foreign-key check failed: ${JSON.stringify(foreignKeys)}`);
     }
+    for (const [name, sql] of Object.entries(MEANING_INTEGRITY_QUERIES)) {
+      const violations = Number(Object.values(database.prepare(sql).get())[0]);
+      if (violations !== 0) {
+        throw new Error(`shared SQLite meaning relation provenance check ${name} found ${violations} violation(s)`);
+      }
+    }
     const userVersion = database.prepare('PRAGMA user_version').get().user_version;
-    if (userVersion !== 3) {
-      throw new Error(`shared SQLite schema version must be 3, received ${userVersion}`);
+    if (userVersion !== Number.parseInt(SQLITE_SCHEMA_VERSION, 10)) {
+      throw new Error(`shared SQLite schema version must be ${SQLITE_SCHEMA_VERSION}, received ${userVersion}`);
     }
     const metadata = Object.fromEntries(
       database.prepare('SELECT key, value FROM metadata ORDER BY key').all()

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -48,7 +48,7 @@ test('builds a read-only SQLite dictionary with representative lookups', async (
     assert.equal(summary.senseCount, 7);
     assert.equal(summary.relationCount, 3);
     assert.match(summary.metadata.canonical_revision, /^[0-9a-f]{64}$/);
-    assert.equal(summary.metadata.schema_version, '3');
+    assert.equal(summary.metadata.schema_version, '4');
     assert.equal(summary.metadata.normalization_version, '1');
     assert.equal(summary.metadata.generated_surface_form_count, String(summary.generatedSurfaceFormCount));
 
@@ -108,6 +108,8 @@ test('builds a read-only SQLite dictionary with representative lookups', async (
         .map(({ name }) => name);
       assert.deepEqual(indexes.filter((name) => name.startsWith('idx_')), [
         'idx_generated_surface_forms_form',
+        'idx_meaning_relations_target',
+        'idx_meanings_lemma',
         'idx_records_lemma',
         'idx_relations_source_position',
         'idx_relations_target',
@@ -265,6 +267,88 @@ test('rebuilds from an empty output and protects canonical input', async () => {
         assert.equal(error.code, 'OUTPUT_INSIDE_CANONICAL');
         return true;
       },
+    );
+  } finally {
+    await rm(outputDirectory, { recursive: true, force: true });
+  }
+});
+
+test('builds the meaning layer and projected meaning relations with provenance', async () => {
+  const outputDirectory = await createOutputDirectory();
+  const outputPath = path.join(outputDirectory, 'dictionary.sqlite');
+  const meaningsDirectory = path.join(outputDirectory, 'meanings');
+  const adjudicationDirectory = path.join(outputDirectory, 'adjudication');
+
+  try {
+    const { writeMeanings, writeAdjudications } = await import('../scripts/meaning/contract.mjs');
+    // The fixture's reference-only record uses an r-prefixed id; the meaning layer needs canonical w-ids.
+    const canonicalDirectory = path.join(outputDirectory, 'canonical');
+    await mkdir(canonicalDirectory);
+    for (const name of (await readdir(PILOT_DIRECTORY)).filter((item) => item.endsWith('.jsonl'))) {
+      const text = (await readFile(path.join(PILOT_DIRECTORY, name), 'utf8')).replaceAll('r001', 'w006');
+      await writeFile(path.join(canonicalDirectory, name), text);
+    }
+    const canonical = (await readdir(canonicalDirectory)).filter((name) => name.endsWith('.jsonl'));
+    const meanings = [];
+    for (const name of canonical) {
+      for (const line of (await readFile(path.join(canonicalDirectory, name), 'utf8')).split('\n')) {
+        if (!line) continue;
+        const record = JSON.parse(line);
+        record.senses.forEach((sense, index) => {
+          const number = record.id.slice(1);
+          meanings.push({
+            id: record.senses.length === 1 ? `m${number}` : `m${number}_${index + 1}`,
+            lemma: record.lemma,
+            gloss: sense.gloss,
+            sense_ids: [sense.id],
+          });
+        });
+      }
+    }
+    writeMeanings(meaningsDirectory, meanings);
+    writeAdjudications(adjudicationDirectory, []);
+
+    const summary = await buildDictionary({
+      inputDirectory: canonicalDirectory,
+      outputPath,
+      allowDirty: true,
+      meaningsDirectory,
+      adjudicationDirectory,
+    });
+    assert.equal(summary.meaningCount, 7);
+    assert.equal(summary.meaningRelationCount, 3);
+    assert.equal(summary.metadata.meaning_relation_count, '3');
+    assert.equal(summary.metadata.meaning_projection_source_relation_count, '3');
+
+    const database = new DatabaseSync(outputPath, { readOnly: true });
+    try {
+      assert.equal(countRows(database, 'meanings'), 7);
+      assert.equal(countRows(database, 'meaning_members'), 7);
+      assert.equal(countRows(database, 'meaning_relations'), 3);
+      assert.equal(countRows(database, 'meaning_relation_sources'), 3);
+      const { getMeaningRelations, getMeaningsByLemma } = await import('../src/runtime/sqlite-query.js');
+      assert.deepEqual(getMeaningsByLemma(database, '기쁨').map((m) => [m.id, m.sense_ids]), [['m001', ['w001-s1']]]);
+      const relations = getMeaningRelations(database, 'm001');
+      assert.ok(relations.length > 0);
+      for (const relation of relations) {
+        assert.ok(relation.sources.length > 0);
+        assert.equal(relation.sources[0].source_sense_id, 'w001-s1');
+      }
+      assert.deepEqual(database.prepare('PRAGMA foreign_key_check').all(), []);
+    } finally {
+      database.close();
+    }
+
+    await rm(path.join(meaningsDirectory, 'c01_001.jsonl'), { force: true });
+    await assert.rejects(
+      buildDictionary({
+        inputDirectory: canonicalDirectory,
+        outputPath: path.join(outputDirectory, 'broken.sqlite'),
+        allowDirty: true,
+        meaningsDirectory: path.join(outputDirectory, 'missing-meanings'),
+        adjudicationDirectory,
+      }),
+      (error) => error.code === 'INVALID_MEANING_DATA',
     );
   } finally {
     await rm(outputDirectory, { recursive: true, force: true });

@@ -1,6 +1,7 @@
 import {
   DICTIONARY_COUNT_QUERIES,
   DICTIONARY_VERSION,
+  MEANING_INTEGRITY_QUERIES,
   SQLITE_SCHEMA_VERSION,
 } from './dictionary-contract.js';
 import { ERROR_CODES } from './protocol.js';
@@ -153,6 +154,28 @@ export function validatePackagedDictionary(database, options = {}) {
       ERROR_CODES.DATABASE_INTEGRITY_FAILED,
       'The packaged dictionary contains invalid foreign-key references.',
       { foreign_key_violations: foreignKeyViolations },
+    );
+  }
+
+  let meaningViolations;
+  try {
+    meaningViolations = Object.fromEntries(
+      Object.entries(MEANING_INTEGRITY_QUERIES)
+        .map(([key, sql]) => [key, Number(selectValue(database, sql))])
+        .filter(([, count]) => count !== 0),
+    );
+  } catch (error) {
+    throw validationError(
+      ERROR_CODES.DATABASE_INTEGRITY_FAILED,
+      'The packaged dictionary meaning relations could not be verified.',
+      { cause: error?.message || String(error) },
+    );
+  }
+  if (Object.keys(meaningViolations).length > 0) {
+    throw validationError(
+      ERROR_CODES.DATABASE_INTEGRITY_FAILED,
+      'The packaged dictionary meaning relation provenance does not match its source relations.',
+      { meaning_violations: meaningViolations },
     );
   }
 

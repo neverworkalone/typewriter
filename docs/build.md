@@ -47,6 +47,8 @@ contains only the current lookup model:
 - `senses` preserves source record, sense position, part of speech, and gloss;
 - `relations` preserves source sense order, target record/sense, relation type, and
   note;
+- `meanings`, `meaning_members`, `sense_adjudications`, `meaning_relations` and `meaning_relation_sources` hold the
+  meaning layer and projected relations ([meaning layer](meaning-layer.md#relation-projection-and-sqlite-issue-717));
 - `metadata` stores deterministic contract versions and generated row counts.
 
 Exact lemma and search-form indexes support lookup. Sense-by-record and
