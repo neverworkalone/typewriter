@@ -10,13 +10,19 @@ This is the C04 (ㄷ) source-bound self-check at baseline `417aaf0fd718c6b1695b1
 | --- | ---: | ---: |
 | C04 lemmas | 21,202 | 21,202 |
 | C04 canonical senses | 29,644 | 29,644 |
-| C04 Meaning rows | 29,644 | 27,086 |
+| C04 Meaning rows | 29,644 | 26,998 |
 | Multi-Meaning lemmas reviewed | 3,880 | — |
-| Lemmas with changed grouping or duplicate adjudication | — | 1,662 |
+| Lemmas with changed grouping or duplicate adjudication | — | 1,670 |
 | Duplicate DROP rows | — | 8 |
 | Repository adjudications | 117 | 125 |
 
-MERGE combines 4,334 source senses into 1,784 Meaning rows, reducing the row count by 2,550. The eight DROP rows remove exact same-lemma, same-POS duplicate source senses; each surviving target remains represented. All other reviewed source senses remain in separate Meanings. The 17,322 single-source lemmas are unchanged. Canonical JSONL is unchanged.
+MERGE combines 4,433 source senses into 1,795 Meaning rows, reducing the row count by 2,638. The eight DROP rows remove exact same-lemma, same-POS duplicate source senses; each surviving target remains represented. The 17,322 single-source lemmas are unchanged. Canonical JSONL is unchanged.
+
+## Stage 2 feedback follow-up at the reviewed PR HEAD
+
+The review identified concrete under-merges among same-record senses that the first self-check had left separate. I rechecked those canonical glosses and changed the source-preserving Meaning groups rather than relying on the prior KEEP decisions. The follow-up adds eleven merge groups across `던지다` (`w415145-s1..s12`), `돌다` (`w416923-s1..s22`), `돌리다` (`w411305-s1..s15`), `돌아가다` (`w413657-s1..s15`), `대다` (`w80022-s1..s17`), `당기다` (`w413558-s1..s4`), `더하다` (`w414967-s1..s4`), `덜다` (`w412339-s1..s2`), `대기` (the large-vessel senses `w78068-s1..s3` and atmosphere senses `w79004-s1/s2`), and `달` (`w413863-s1/s2`). These are physical-to-figurative, general-to-specific, or naturally metonymic uses of one lexical identity; unrelated senses in those lemmas remain separate. The existing `단` group was expanded to include `w74065-s1` with `w412736-s1/s2` and `w515246-s1`, whose exception, exclusivity, and “mere small amount” uses share a limiting function.
+
+[`issue-764-c04-review-corrections.json`](issue-764-c04-review-corrections.json) records the exact before/after repartitions applied to the previous PR output. The updated primary spec remains the canonical-baseline replay spec. Replaying it with production `applyEdits` over the 3,880 reviewed multi-Meaning lemmas matched all 9,676 current Meaning rows exactly. This is a source-bound self-check, not an independent review; the separate review gate remains pending.
 
 ## Boundary decisions
 
