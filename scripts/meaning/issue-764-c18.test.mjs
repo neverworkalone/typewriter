@@ -4,6 +4,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { initialCodeOf, readAdjudications } from './contract.mjs';
+import { readCanonicalEntries } from './initial.mjs';
+import { projectMeaningRelations } from './project.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const meaningDir = path.join(root, 'data/meanings');
@@ -88,9 +90,9 @@ test('C18 complete canonical sense coverage and residual audit match the data', 
   }
 
   const audit = readFileSync(path.join(root, 'scripts/meaning/issue-764-c18-audit.md'), 'utf8');
-  assert.ok(audit.includes('| C18 Meaning rows | 15,434 | 14,756 |'), 'C18 row counts');
-  assert.ok(audit.includes('| Lemmas with several Meanings | 2,096 | 1,824 |'), 'multi-Meaning counts');
-  assert.ok(audit.includes('| Rows in the 385 repartitioned lemmas | 1,309 | 631 |'), 'repartition counts');
+  assert.ok(audit.includes('| C18 Meaning rows | 15,434 | 14,773 |'), 'C18 row counts');
+  assert.ok(audit.includes('| Lemmas with several Meanings | 2,096 | 1,833 |'), 'multi-Meaning counts');
+  assert.ok(audit.includes('| Rows in the 385 repartitioned lemmas | 1,309 | 648 |'), 'repartition counts');
   assert.equal(spec.repartitions.length, 385, 'audit scope');
 });
 
@@ -104,12 +106,38 @@ const mustMerge = [
   ['풍차 windmill and pinwheel', ['w360733-s1', 'w360733-s2']],
   ['표식 marker and its 표지03 redirect', ['w357192-s1', 'w499421-s1']],
   ['피로 ordinary and material fatigue', ['w500065-s1', 'w500065-s2']],
+  ['피모 skin and coat uses', ['w360751-s1', 'w365720-s1']],
+  ['피복 physical and topological covering', ['w361935-s1', 'w503877-s1']],
+  ['필로 writing path, logic, and brush uses', ['w365421-s1', 'w365421-s2', 'w365421-s3']],
+  ['필부 ordinary woman senses', ['w366639-s1', 'w366639-s2']],
+  ['필부 ordinary man senses', ['w500029-s1', 'w500029-s2']],
+  ['표표 floating and fluttering uses', ['w355581-s1', 'w355581-s2', 'w495805-s1', 'w495805-s2', 'w495805-s3']],
+  ['파선 wave-line and wavefront uses', ['w354331-s1', 'w354331-s2']],
+  ['폐장 lung-and-gut literal and figurative uses', ['w503469-s1', 'w503469-s2']],
+  ['폐기 discard and repeal uses of 廢棄', ['w499273-s1', 'w499273-s2']],
 ];
 for (const [name, ids] of mustMerge) {
   test(`C18 polysemy control: ${name} is one Meaning`, () => assert.ok(sameMeaning(ids), name));
 }
 
 const mustSplit = [
+  ['폐기 exhaust gas and disposal/repeal', 'w359259-s1', 'w499273-s1'],
+  ['피복 clothing and covering', 'w361934-s1', 'w361935-s1'],
+  ['포 cannon and janggi 包 piece', 'w359616-s1', 'w497814-s1'],
+  ['필로 writing fatigue and writing path', 'w365420-s1', 'w365421-s1'],
+  ['필부 woman and man', 'w366639-s1', 'w500029-s1'],
+  ['편벽하다 biased and flatter', 'w351999-s1', 'w499211-s1'],
+  ['편사 self-interest and favoritism', 'w351493-s1', 'w351740-s1'],
+  ['폐사 humble company and humble home', 'w356876-s1', 'w498405-s1'],
+  ['폐장 lung and lung-gut compound', 'w358286-s1', 'w503469-s1'],
+  ['포루 artillery tower and covered battlement', 'w357980-s1', 'w357981-s1'],
+  ['표표하다 floating and conspicuous appearance', 'w355581-s1', 'w500487-s1'],
+  ['파다하다 multitude and widespread rumor', 'w351416-s1', 'w351419-s1'],
+  ['파락 shake off and ruin', 'w495832-s1', 'w517316-s1'],
+  ['파락하다 shake away and collapse', 'w351807-s1', 'w517317-s1'],
+  ['파상설 snow surface and wave theory', 'w347197-s1', 'w495476-s1'],
+  ['파선 wave line and cycloid', 'w354331-s1', 'w495453-s1'],
+  ['표풍 drifting in wind and cyclone', 'w355588-s1', 'w355590-s1'],
   ['파랑 waves and blue color', 'w352885-s1', 'w499529-s1'],
   ['표식 marker and fossil exemplar', 'w357192-s1', 'w357193-s1'],
   ['풍차 clothing and windmill', 'w360410-s1', 'w360733-s1'],
@@ -120,6 +148,29 @@ const mustSplit = [
 for (const [name, a, b] of mustSplit) {
   test(`C18 independent-identity control: ${name} stays separate`, () => assert.ok(separateMeanings(a, b), name));
 }
+
+test('C18 폐기 source relation provenance stays bound to the exhaust sense after the homonym split', () => {
+  const adjudications = readAdjudications(path.join(root, 'data/adjudication')).rows;
+  const allMeanings = readdirSync(path.join(root, 'data/meanings')).filter((file) => file.endsWith('.jsonl')).sort()
+    .flatMap((file) => readFileSync(path.join(root, 'data/meanings', file), 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line)));
+  const relevantRecords = readCanonicalEntries(path.join(root, 'data/canonical'))
+    .filter((record) => ['w359259', 'w499273', 'w430558'].includes(record.id));
+  const { relations } = projectMeaningRelations({
+    records: relevantRecords,
+    meanings: allMeanings,
+    adjudications,
+  });
+  const exhaust = rowBySense.get('w359259-s1');
+  const discarded = rowBySense.get('w499273-s1');
+  const target = allMeanings.find((row) => row.sense_ids.includes('w430558-s2'));
+  const relation = relations.find((item) => item.source_meaning_id === exhaust.id
+    && item.target_meaning_id === target.id && item.type === 'direct');
+
+  assert.ok(relation, 'the source-bound direct link from 폐기(廢氣) to 배기 must be projected');
+  assert.deepEqual(relation.sources.map((source) => source.source_sense_id), ['w359259-s1']);
+  assert.equal(relations.some((item) => item.source_meaning_id === discarded.id), false,
+    'the 폐기(廢棄) meaning must not inherit the 폐기(廢氣) relation');
+});
 
 test('C18 controls fail on unknown source ids instead of passing vacuously', () => {
   assert.equal(sameMeaning(['w000000-s1', 'w000000-s2']), false);
