@@ -161,6 +161,13 @@ const RAW_CI_CATEGORIES = Object.freeze({
         tier: 'normal',
       },
       {
+        ...commandCheck(
+          'Test Issue #716 c04 edit spec (different-referent senses stay separate, exact-gloss duplicates are drops)',
+          ['--test', 'scripts/meaning/edits-716-c04.test.mjs'],
+        ),
+        tier: 'normal',
+      },
+      {
         ...inProcessCheck('Validate meaning/adjudication references against current canonical', 'meaning-references'),
         tier: 'normal',
       },
