@@ -29,9 +29,9 @@ const reviewCases = [
   { lemma: '토가', before: [['w342756-s1'], ['w342757-s1'], ['w343012-s1']], groups: [['w342756-s1'], ['w342757-s1'], ['w343012-s1']] },
   { lemma: '토향', before: [['w344418-s1'], ['w344419-s1']], groups: [['w344418-s1'], ['w344419-s1']] },
   { lemma: '톳', before: [['w346759-s1'], ['w346982-s1']], groups: [['w346759-s1'], ['w346982-s1']] },
-  { lemma: '통발', before: [['w344144-s1'], ['w344145-s1'], ['w492619-s1']], groups: [['w344144-s1'], ['w344145-s1'], ['w492619-s1']] },
+  { lemma: '통발', before: [['w344144-s1'], ['w344145-s1'], ['w492619-s1']], groups: [['w344144-s1'], ['w344145-s1', 'w492619-s1']] },
   { lemma: '통신선', before: [['w349666-s1'], ['w349667-s1']], groups: [['w349666-s1'], ['w349667-s1']] },
-  { lemma: '통행권', before: [['w350643-s1'], ['w350643-s2'], ['w350644-s1'], ['w350644-s2']], groups: [['w350643-s1', 'w350643-s2'], ['w350644-s1', 'w350644-s2']] },
+  { lemma: '통행권', before: [['w350643-s1'], ['w350643-s2'], ['w350644-s1'], ['w350644-s2']], groups: [['w350643-s1', 'w350643-s2', 'w350644-s1', 'w350644-s2']] },
   { lemma: '투구', before: [['w348609-s1'], ['w348611-s1'], ['w348612-s1'], ['w348612-s2'], ['w348614-s1'], ['w495016-s1']], groups: [['w348609-s1'], ['w348611-s1'], ['w348612-s1'], ['w348612-s2'], ['w348614-s1'], ['w495016-s1']] },
   { lemma: '투전', before: [['w350021-s1'], ['w350261-s1'], ['w350263-s1']], groups: [['w350021-s1'], ['w350261-s1'], ['w350263-s1']] },
   { lemma: '티', before: [['w353023-s1'], ['w353023-s2'], ['w353026-s1'], ['w353027-s1'], ['w495437-s1'], ['w495437-s2'], ['w495451-s1'], ['w515511-s1']], groups: [['w353023-s1', 'w353023-s2'], ['w353026-s1'], ['w353027-s1'], ['w495437-s1', 'w495437-s2'], ['w495451-s1'], ['w515511-s1']] },
@@ -39,7 +39,7 @@ const reviewCases = [
 const reviewSenseIds = new Set(reviewCases.flatMap(({ groups }) => groups.flat()));
 const projectionProbeSenseIds = new Set([
   'w335985-s1', 'w340436-s1', 'w342605-s1', 'w343447-s1', 'w342388-s1', 'w346982-s1',
-  'w350643-s1', 'w348611-s1', 'w495016-s1', 'w350261-s1', 'w515511-s1', 'w344145-s1',
+  'w350643-s1', 'w350644-s1', 'w348611-s1', 'w495016-s1', 'w350261-s1', 'w515511-s1', 'w344145-s1', 'w492619-s1',
 ]);
 const meaningFiles = readdirSync(meaningDir).filter((file) => /^c17_\d+\.jsonl$/u.test(file)).sort();
 const rows = meaningFiles.flatMap((file) => readFileSync(path.join(meaningDir, file), 'utf8')
@@ -278,8 +278,6 @@ test('C17 applies naming-principle and distinct-identity boundaries with a one-l
     { lemma: '탁성', source: 'w343447-s1', other: 'w343446-s1', target: 'w288209-s1' },
     { lemma: '태반', source: 'w342388-s1', other: 'w342389-s1', target: 'w80394-s1' },
     { lemma: '톳', source: 'w346982-s1', other: 'w346759-s1', target: 'w67215-s1' },
-    { lemma: '통발', source: 'w344145-s1', other: 'w492619-s1', target: 'w228082-s1' },
-    { lemma: '통행권', source: 'w350643-s1', other: 'w350644-s1', target: 'w350651-s1' },
     { lemma: '투구', source: 'w348611-s1', other: 'w495016-s1', target: 'w91494-s1' },
     { lemma: '투구', source: 'w495016-s1', other: 'w348611-s1', target: 'w349836-s1' },
     { lemma: '투전', source: 'w350261-s1', other: 'w350263-s1', target: 'w413289-s1' },
@@ -301,6 +299,27 @@ test('C17 applies naming-principle and distinct-identity boundaries with a one-l
     assert.equal(matching[0].sources[0].source_sense_id, source, `${lemma}/${source}: projection provenance stays on its canonical sense`);
     assert.ok(!result.relations.some((relation) => relation.source_meaning_id === otherMeaningId
       && relation.target_meaning_id === targetMeaningId), `${lemma}/${other}: unrelated meaning does not inherit the source relation`);
+  }
+
+  for (const { lemma, source, coGrouped, target } of [
+    { lemma: '통발', source: 'w344145-s1', coGrouped: 'w492619-s1', target: 'w228082-s1' },
+    { lemma: '통행권', source: 'w350643-s1', coGrouped: 'w350644-s1', target: 'w350651-s1' },
+  ]) {
+    const sourceMeaningId = meaningIdBySense.get(source);
+    const coGroupedMeaningId = meaningIdBySense.get(coGrouped);
+    const targetMeaningId = [...projectionTargetRows.values()].find((row) => row.sense_ids.includes(target))?.id
+      ?? meaningIdBySense.get(target);
+    const sourceRecord = projectionSourceRecords.get(source.split('-')[0]);
+    const coGroupedRecord = projectionSourceRecords.get(coGrouped.split('-')[0]);
+    assert.ok(sourceMeaningId && coGroupedMeaningId && targetMeaningId && sourceRecord && coGroupedRecord,
+      `${lemma}: merged relation endpoints are present`);
+    assert.equal(sourceMeaningId, coGroupedMeaningId, `${lemma}: the naturally extended senses share one Meaning`);
+    const result = projectMeaningRelations({ records: [sourceRecord, coGroupedRecord], meanings: projectionMeanings });
+    const matching = result.relations.filter((relation) => relation.type === 'direct'
+      && relation.source_meaning_id === sourceMeaningId && relation.target_meaning_id === targetMeaningId);
+    assert.equal(matching.length, 1, `${lemma}/${source}: canonical direct relation still projects after merging`);
+    assert.deepEqual(matching[0].sources.map((item) => item.source_sense_id), [source],
+      `${lemma}/${source}: the direct relation keeps only its original canonical sense provenance`);
   }
 });
 
