@@ -355,6 +355,7 @@ defineExpose({ focusCandidate });
 .candidate-option {
   display: flex;
   width: 100%;
+  min-width: 0;
   min-height: 20px;
   align-items: center;
   gap: 5px;
@@ -366,7 +367,6 @@ defineExpose({ focusCandidate });
   font: inherit;
   font-size: 13px;
   line-height: normal;
-  overflow-wrap: anywhere;
   text-align: left;
 }
 
@@ -389,7 +389,10 @@ defineExpose({ focusCandidate });
 
 .candidate-label {
   min-width: 0;
-  overflow-wrap: anywhere;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .candidate-option:focus-visible {

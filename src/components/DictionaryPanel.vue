@@ -1,7 +1,7 @@
 <script setup>
 import { computed, nextTick, ref, watch } from 'vue';
 
-import { expandExactSearchCandidates } from '../domain/exact-search-candidates.js';
+import { expandExactSearchCandidates, firstSentence } from '../domain/exact-search-candidates.js';
 import { SEARCH_MODES, SEARCH_STATUS } from '../domain/search-state.js';
 import { SEARCH_UNSUPPORTED_REASONS } from '../runtime/search-query.js';
 import { DEFAULT_SETTINGS, getBackgroundPreset } from '../ui/settings.js';
@@ -128,7 +128,7 @@ const allCandidateOptions = computed(() => {
     recordId: candidate.recordId,
     senseId: candidate.senseId,
     label: candidate.isSenseChoice
-      ? definitionLabel(candidate.record, candidate.sense, candidate.senseIndex)
+      ? firstSentence(definitionLabel(candidate.record, candidate.sense, candidate.senseIndex))
       : candidate.record.lemma,
   }));
 });
