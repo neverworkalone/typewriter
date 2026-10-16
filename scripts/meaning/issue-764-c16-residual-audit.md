@@ -1,6 +1,6 @@
 # Issue #764 C16 residual multi-Meaning audit
 
-Every C16 lemma that still has more than one Meaning row after the #764 edit (175 lemmas) is listed with each Meaning row's canonical sense IDs, a truncated canonical gloss, and the source-bound reason it is not treated as one lexical identity. Proper-name homonyms (different real people, places, or works that share a name) are the largest group; for them each row is a distinct referent.
+Every C16 lemma that still has more than one Meaning row after the #764 edit (178 lemmas) is listed with each Meaning row's canonical sense IDs, a truncated canonical gloss, and the source-bound reason it is not treated as one lexical identity. Proper-name homonyms (different real people, places, or works that share a name) are the largest group; for them each row is a distinct referent.
 
 ## 카
 
@@ -402,6 +402,20 @@ Every C16 lemma that still has more than one Meaning row after the #764 edit (17
 
 근거: 숨소리·일부러 내는 소리(묶음)와 영국 물리학자 인명은 다르다.
 
+## 커버
+
+- `m340603_1` (w340603-s1, w340603-s2): 물건을 보호하거나 가리거나 덮거나 싸는 물건. 권투 따위의 운동 경기에서, 상대 선수의 공격을 막는 일.
+- `m340603_3` (w340603-s3): 탁구에서, 공이 탁구대의 모서리에 맞는 일. 정규 타구로 인정한다.
+
+근거: 물건을 덮어 보호하는 용법과 공격을 막는 용법은 한 Meaning이다. 탁구에서 공이 탁구대 모서리에 맞는 정규 타구(에지볼과 같은 말)는 보호·덮음·막음과 이어지지 않는 모서리 접촉 판정이라 분리한다.
+
+## 컨버트
+
+- `m335067_1` (w335067-s1): 럭비 풋볼에서, 트라이한 후 골킥에 성공하는 일.
+- `m335067_2` (w335067-s2): 야구에서, 수비의 위치를 바꾸는 일.
+
+근거: 럭비의 골킥 성공과 야구의 수비 위치 변경은 종목별로 정해진 별개의 기술 용어이며, 한 개념이 확장된 근거가 원본에 없다.
+
 ## 컬러
 
 - `m340469_1` (w340469-s1, w340469-s2): 빛깔이 있는 것. 개성이나 분위기. 또는 그 작품만의 느낌이나 맛.
@@ -486,6 +500,13 @@ Every C16 lemma that still has more than one Meaning row after the #764 edit (17
 - `m489830_1` (w489830-s1, w489830-s2): 절대 온도의 단위. 1기압에서 물의 어는점 섭씨온도 0도는 절대 온도 273.15켈빈으로 나타내며, 끓는점 …
 
 근거: 영국 물리학자 인명과 그 이름을 딴 온도·전력 단위(묶음)는 지시 범주가 다르다.
+
+## 켜
+
+- `m340999_1` (w340999-s1, w340999-s2): 포개어진 물건의 하나하나의 층 또는 그런 층을 세는 단위.
+- `m340999_3` (w340999-s3): 노름하는 횟수를 세는 단위.
+
+근거: 포개진 층과 그 층을 세는 단위, 노름 횟수를 세는 단위는 세는 대상이 달라 한 명명 원리로 설명되지 않는다.
 
 ## 켜다
 
@@ -1261,10 +1282,11 @@ Every C16 lemma that still has more than one Meaning row after the #764 edit (17
 ## 킬
 
 - `m344117_1` (w344117-s1, w344117-s2): 선박 바닥의 중앙을 받치는 길고 큰 재목. 이물에서 고물에 걸쳐 선체를 받치는 기능을 한다. 영국 해안에서 …
-- `m344118_1` (w344118-s1, w344118-s2, w344118-s3): 녹은 강철에 규소나 알루미늄 따위의 강력한 탈산제를 넣는 일. 금속이 굳을 때에 탄소와 산소가 반응하여 일산…
+- `m344118_1` (w344118-s1): 녹은 강철에 규소나 알루미늄 따위의 강력한 탈산제를 넣는 일. 금속이 굳을 때에 탄소와 산소가 반응하여 일산…
+- `m344118_2` (w344118-s2, w344118-s3): 테니스에서 상대가 받을 수 없을 만큼 강하게 치거나, 배구에서 높이 올려진 공을 상대 코트 안으로 강하게 치…
 - `m497442` (w497442-s1): 독일 북부, 유틀란트반도의 킬만(灣) 안쪽에 있는 도시. 제이 차 세계 대전 때에 독일 해군 기지가 있었으며…
 
-근거: 배의 용골(묶음), 강철 탈산, 테니스·배구 강타, 독일 도시는 서로 다른 어휘다.
+근거: 배의 용골과 용골 배(묶음), 강철 탈산, 테니스·배구의 강타, 독일 도시는 서로 다른 분야의 별개 용어이며 ‘죽이다’라는 일반 어의로 이어지는 근거가 원본에 없다.
 
 ## 킹
 
