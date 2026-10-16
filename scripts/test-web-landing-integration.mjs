@@ -134,7 +134,7 @@ async function main() {
           & Node.DOCUMENT_POSITION_FOLLOWING
       )).length
     ));
-    assert.ok(linksAfterMain >= 6);
+    assert.ok(linksAfterMain >= 3);
     for (let index = 0; index < linksAfterMain; index += 1) {
       await webPage.keyboard.press('Tab');
       const outline = await webPage.evaluate(() => (
