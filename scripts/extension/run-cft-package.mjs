@@ -96,11 +96,11 @@ async function createFailureFixture(sourceDirectory, fixtureDirectory, name) {
       database.prepare("UPDATE metadata SET value = ? WHERE key = 'source_revision'")
         .run('0'.repeat(40));
     } else if (name === 'incomplete-database') {
-      database.prepare(`
-        DELETE FROM relations
-        WHERE source_sense_id IN (SELECT id FROM senses WHERE record_id = 'w026')
-          OR target_record_id = 'w026'
-      `).run();
+      database.exec('PRAGMA foreign_keys = OFF');
+      database.prepare("DELETE FROM meaning_relations WHERE source_meaning_id IN (SELECT id FROM meanings WHERE record_id = 'w026') OR target_meaning_id IN (SELECT id FROM meanings WHERE record_id = 'w026')").run();
+      database.prepare("DELETE FROM meaning_members WHERE record_id = 'w026'").run();
+      database.prepare("DELETE FROM meanings WHERE record_id = 'w026'").run();
+      database.prepare("DELETE FROM generated_surface_forms WHERE record_id = 'w026'").run();
       database.prepare("DELETE FROM records WHERE id = 'w026'").run();
     } else if (name === 'foreign-key-violation') {
       database.exec('PRAGMA foreign_keys = OFF');

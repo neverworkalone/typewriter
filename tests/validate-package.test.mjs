@@ -221,6 +221,21 @@ test('derives dictionary metadata from the supplied canonical directory and reje
     repairedFixture.prepare("DELETE FROM search_forms WHERE form = 'orphan'").run();
     repairedFixture.close();
 
+    const sourceTableFixture = new DatabaseSync(databasePath);
+    sourceTableFixture.exec('CREATE TABLE senses (id TEXT PRIMARY KEY)');
+    sourceTableFixture.close();
+    const shippedSourceTable = validatePackageDirectory({
+      packageDir: packageDirectory,
+      projectRoot: REPOSITORY_DIRECTORY,
+      canonicalDirectory,
+    });
+    assert.ok(shippedSourceTable.errors.includes(
+      'Dictionary ships build-only STDICT source table(s): senses.',
+    ));
+    const withoutSourceTable = new DatabaseSync(databasePath);
+    withoutSourceTable.exec('DROP TABLE senses');
+    withoutSourceTable.close();
+
     const runtimeBuildInfoPath = path.join(packageDirectory, 'runtime/dictionary-build-info.js');
     await writeFile(
       runtimeBuildInfoPath,

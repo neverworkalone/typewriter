@@ -8,6 +8,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { buildDictionary } from '../scripts/build/dictionary.mjs';
 import { writeAdjudications, writeMeanings } from '../scripts/meaning/contract.mjs';
 import { MEANING_INTEGRITY_QUERIES } from '../src/runtime/dictionary-contract.js';
+import { MEANING_SOURCE_INTEGRITY_QUERIES } from '../scripts/build/meaning-source-checks.mjs';
 import { validatePackagedDictionary } from '../src/runtime/dictionary-validation.js';
 
 const record = (n, lemma, senses) => ({
@@ -43,8 +44,10 @@ async function buildFixture(directory) {
     allowDirty: true,
     meaningsDirectory: path.join(directory, 'meanings'),
     adjudicationDirectory: path.join(directory, 'adjudication'),
+    keepStaging: true,
   });
-  return outputPath;
+  // The source-derived checks run on the build staging database, which still holds the STDICT source tables.
+  return { deployed: outputPath, staging: `${outputPath}.staging` };
 }
 
 // Authored relations arrive through the build, which recomputes the ranking; a hand-edit must do the same.
@@ -68,7 +71,7 @@ function violations(databasePath, mutate = () => {}) {
   try {
     database.exec('PRAGMA foreign_keys = ON');
     mutate(database);
-    return Object.fromEntries(Object.entries(MEANING_INTEGRITY_QUERIES)
+    return Object.fromEntries(Object.entries({ ...MEANING_INTEGRITY_QUERIES, ...MEANING_SOURCE_INTEGRITY_QUERIES })
       .map(([name, sql]) => [name, Number(Object.values(database.prepare(sql).get())[0])])
       .filter(([, count]) => count !== 0));
   } finally {
@@ -79,11 +82,22 @@ function violations(databasePath, mutate = () => {}) {
 test('meaning relation provenance: valid mapping passes; deleted, mis-bound and missing provenance fail', async () => {
   const directory = await mkdtemp(path.join(tmpdir(), 'typewriter-provenance-'));
   try {
-    const good = await buildFixture(directory);
+    const { deployed, staging: good } = await buildFixture(directory);
     const database = new DatabaseSync(good, { readOnly: true });
     assert.equal(database.prepare('SELECT COUNT(*) AS c FROM meaning_relations').get().c, 2);
     assert.equal(database.prepare('SELECT COUNT(*) AS c FROM meaning_relation_sources').get().c, 3);
     database.close();
+    const shipped = new DatabaseSync(deployed, { readOnly: true });
+    assert.equal(shipped.prepare('SELECT COUNT(*) AS c FROM meaning_relations').get().c, 2);
+    assert.deepEqual(
+      shipped.prepare("SELECT name FROM sqlite_master WHERE name IN ('senses', 'relations', 'meaning_relation_sources')").all(),
+      [],
+    );
+    shipped.close();
+    const shippedChecked = new DatabaseSync(deployed, { readOnly: true });
+    // Source-derived checks need the staging tables; the shipped database runs only its self-contained checks.
+    assert.doesNotThrow(() => validatePackagedDictionary(shippedChecked, { expectedSourceRevision: undefined }));
+    shippedChecked.close();
     assert.deepEqual(violations(good), {});
 
     const copy = (name) => path.join(directory, name);
@@ -197,8 +211,10 @@ test('meaning relation provenance: valid mapping passes; deleted, mis-bound and 
       'UPDATE meaning_relation_sources SET target_redirected = 1',
     )).meaning_relation_source_mismatch > 0);
 
-    const tampered = new DatabaseSync(copy('deleted.sqlite'));
+    await copyFile(deployed, copy('shipped-tampered.sqlite'));
+    const tampered = new DatabaseSync(copy('shipped-tampered.sqlite'));
     try {
+      tampered.exec("DELETE FROM meaning_relations WHERE source_meaning_id = 'm001' AND position = 0");
       assert.throws(() => validatePackagedDictionary(tampered), (error) => error.code !== undefined);
     } finally {
       tampered.close();

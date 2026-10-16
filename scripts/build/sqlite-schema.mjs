@@ -27,24 +27,11 @@ CREATE TABLE search_forms (
   FOREIGN KEY (record_id) REFERENCES records(id) ON DELETE CASCADE
 );
 
-CREATE TABLE senses (
-  id TEXT PRIMARY KEY NOT NULL,
-  record_id TEXT NOT NULL,
-  position INTEGER NOT NULL CHECK (position >= 0),
-  pos TEXT NOT NULL CHECK (pos IN (
-    'noun', 'adjective', 'verb', 'adverb', 'determiner', 'interjection',
-    'particle', 'ending', 'affix', 'unclassified', 'expression'
-  )),
-  gloss TEXT NOT NULL,
-  UNIQUE (id, record_id),
-  UNIQUE (record_id, position),
-  FOREIGN KEY (record_id) REFERENCES records(id) ON DELETE CASCADE
-);
-
 CREATE TABLE generated_surface_forms (
   form TEXT NOT NULL,
   record_id TEXT NOT NULL,
   sense_id TEXT NOT NULL,
+  sense_position INTEGER NOT NULL CHECK (sense_position >= 0),
   rule_id TEXT NOT NULL CHECK (rule_id IN (
     'verb-present-adnominal-neun',
     'verb-past-adnominal-eun',
@@ -59,32 +46,17 @@ CREATE TABLE generated_surface_forms (
     'predicate-plain-past-registered-exception'
   )),
   PRIMARY KEY (form, record_id, sense_id),
-  FOREIGN KEY (sense_id, record_id)
-    REFERENCES senses(id, record_id) ON DELETE CASCADE
-);
-
-CREATE TABLE relations (
-  source_sense_id TEXT NOT NULL,
-  position INTEGER NOT NULL CHECK (position >= 0),
-  target_record_id TEXT NOT NULL,
-  target_sense_id TEXT,
-  type TEXT NOT NULL CHECK (type IN (
-    'direct', 'near', 'antonym', 'mood',
-    'scene', 'sensory', 'action', 'association'
-  )),
-  note TEXT NOT NULL,
-  relevance INTEGER CHECK (relevance IS NULL OR relevance BETWEEN 1 AND 9),
-  PRIMARY KEY (source_sense_id, position),
-  FOREIGN KEY (source_sense_id) REFERENCES senses(id) ON DELETE CASCADE,
-  FOREIGN KEY (target_record_id) REFERENCES records(id),
-  FOREIGN KEY (target_sense_id, target_record_id)
-    REFERENCES senses(id, record_id)
+  FOREIGN KEY (record_id) REFERENCES records(id) ON DELETE CASCADE
 );
 
 CREATE TABLE meanings (
   id TEXT PRIMARY KEY NOT NULL,
   lemma TEXT NOT NULL,
   gloss TEXT NOT NULL,
+  pos TEXT NOT NULL CHECK (pos IN (
+    'noun', 'adjective', 'verb', 'adverb', 'determiner', 'interjection',
+    'particle', 'ending', 'affix', 'unclassified', 'expression'
+  )),
   record_id TEXT NOT NULL,
   lexical_relation_count INTEGER NOT NULL CHECK (lexical_relation_count >= 0),
   exploratory_relation_count INTEGER NOT NULL CHECK (exploratory_relation_count >= 0),
@@ -96,18 +68,19 @@ CREATE TABLE meaning_members (
   meaning_id TEXT NOT NULL,
   position INTEGER NOT NULL CHECK (position >= 0),
   sense_id TEXT NOT NULL UNIQUE,
+  record_id TEXT NOT NULL,
   PRIMARY KEY (meaning_id, position),
   FOREIGN KEY (meaning_id) REFERENCES meanings(id) ON DELETE CASCADE,
-  FOREIGN KEY (sense_id) REFERENCES senses(id)
+  FOREIGN KEY (record_id) REFERENCES records(id)
 );
 
 CREATE TABLE sense_adjudications (
   sense_id TEXT PRIMARY KEY NOT NULL,
   reason TEXT NOT NULL CHECK (reason IN ('duplicate', 'out_of_scope')),
+  record_id TEXT NOT NULL,
   duplicate_of_sense_id TEXT,
   CHECK ((reason = 'duplicate') = (duplicate_of_sense_id IS NOT NULL)),
-  FOREIGN KEY (sense_id) REFERENCES senses(id),
-  FOREIGN KEY (duplicate_of_sense_id) REFERENCES senses(id)
+  FOREIGN KEY (record_id) REFERENCES records(id)
 );
 
 CREATE TABLE meaning_relations (
@@ -131,6 +104,53 @@ CREATE TABLE meaning_relations (
   FOREIGN KEY (target_meaning_id) REFERENCES meanings(id)
 );
 
+CREATE INDEX idx_records_lemma ON records(lemma);
+CREATE INDEX idx_search_forms_form ON search_forms(form);
+CREATE INDEX idx_meaning_members_record ON meaning_members(record_id);
+CREATE INDEX idx_sense_adjudications_record ON sense_adjudications(record_id);
+CREATE INDEX idx_generated_surface_forms_form ON generated_surface_forms(form);
+CREATE INDEX idx_meanings_lemma ON meanings(lemma);
+CREATE INDEX idx_meanings_record ON meanings(record_id);
+CREATE INDEX idx_meaning_relations_target ON meaning_relations(target_meaning_id);
+`;
+
+/**
+ * STDICT source tables that exist only in the build-time staging database. The product database never ships them
+ * (Typewriter shows meanings, not raw source senses); they back the sense -> meaning projection checks.
+ */
+export const SQLITE_SOURCE_SCHEMA_SQL = `
+CREATE TABLE senses (
+  id TEXT PRIMARY KEY NOT NULL,
+  record_id TEXT NOT NULL,
+  position INTEGER NOT NULL CHECK (position >= 0),
+  pos TEXT NOT NULL CHECK (pos IN (
+    'noun', 'adjective', 'verb', 'adverb', 'determiner', 'interjection',
+    'particle', 'ending', 'affix', 'unclassified', 'expression'
+  )),
+  gloss TEXT NOT NULL,
+  UNIQUE (id, record_id),
+  UNIQUE (record_id, position),
+  FOREIGN KEY (record_id) REFERENCES records(id) ON DELETE CASCADE
+);
+
+CREATE TABLE relations (
+  source_sense_id TEXT NOT NULL,
+  position INTEGER NOT NULL CHECK (position >= 0),
+  target_record_id TEXT NOT NULL,
+  target_sense_id TEXT,
+  type TEXT NOT NULL CHECK (type IN (
+    'direct', 'near', 'antonym', 'mood',
+    'scene', 'sensory', 'action', 'association'
+  )),
+  note TEXT NOT NULL,
+  relevance INTEGER CHECK (relevance IS NULL OR relevance BETWEEN 1 AND 9),
+  PRIMARY KEY (source_sense_id, position),
+  FOREIGN KEY (source_sense_id) REFERENCES senses(id) ON DELETE CASCADE,
+  FOREIGN KEY (target_record_id) REFERENCES records(id),
+  FOREIGN KEY (target_sense_id, target_record_id)
+    REFERENCES senses(id, record_id)
+);
+
 CREATE TABLE meaning_relation_sources (
   source_meaning_id TEXT NOT NULL,
   relation_position INTEGER NOT NULL,
@@ -147,13 +167,7 @@ CREATE TABLE meaning_relation_sources (
     REFERENCES relations(source_sense_id, position)
 );
 
-CREATE INDEX idx_records_lemma ON records(lemma);
-CREATE INDEX idx_search_forms_form ON search_forms(form);
 CREATE INDEX idx_senses_record_position ON senses(record_id, position);
-CREATE INDEX idx_generated_surface_forms_form ON generated_surface_forms(form);
 CREATE INDEX idx_relations_source_position ON relations(source_sense_id, position);
 CREATE INDEX idx_relations_target ON relations(target_record_id, target_sense_id);
-CREATE INDEX idx_meanings_lemma ON meanings(lemma);
-CREATE INDEX idx_meanings_record ON meanings(record_id);
-CREATE INDEX idx_meaning_relations_target ON meaning_relations(target_meaning_id);
 `;

@@ -10,7 +10,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { buildDictionary } from '../scripts/build/dictionary.mjs';
 import { validateCanonicalRecord } from '../scripts/validate/canonical-jsonl.mjs';
 import { validateDatasetRecords } from '../scripts/validate/dataset-integrity.mjs';
-import { getSenseRelations } from '../src/runtime/sqlite-query.js';
+import { getSourceSenseRelations as getSenseRelations } from '../scripts/build/query.mjs';
 
 const REPOSITORY_DIRECTORY = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -78,9 +78,11 @@ test('SQLite persists relevance and keeps every relation past 100', async () => 
       outputPath,
       repositoryDirectory: REPOSITORY_DIRECTORY,
       allowDirty: true,
+      keepStaging: true,
     });
     assert.equal(summary.metadata.schema_version, SQLITE_SCHEMA_VERSION);
-    const database = new DatabaseSync(outputPath, { readOnly: true });
+    // Raw source relations (with their relevance) exist only in the build staging database.
+    const database = new DatabaseSync(summary.stagingPath, { readOnly: true });
     try {
       const result = getSenseRelations(database, 'r000001-s1');
       assert.equal(result.length, 106);

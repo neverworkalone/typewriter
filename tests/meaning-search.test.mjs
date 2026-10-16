@@ -164,12 +164,10 @@ test('meaning record: a duplicate sense whose survivor is in another record stil
     database.exec(SQLITE_SCHEMA_SQL);
     database.exec(`
       INSERT INTO records (id, record_type, role, lemma) VALUES ('w001', 'entry', 'start', '가'), ('w002', 'entry', 'start', '가');
-      INSERT INTO senses (id, record_id, position, pos, gloss) VALUES
-        ('w001-s1', 'w001', 0, 'noun', '첫째 뜻풀이.'), ('w002-s1', 'w002', 0, 'noun', '중복된 뜻풀이.');
-      INSERT INTO meanings (id, lemma, gloss, record_id, lexical_relation_count, exploratory_relation_count, display_rank)
-        VALUES ('m001', '가', '첫째 뜻풀이.', 'w001', 0, 0, 1);
-      INSERT INTO meaning_members (meaning_id, position, sense_id) VALUES ('m001', 0, 'w001-s1');
-      INSERT INTO sense_adjudications (sense_id, reason, duplicate_of_sense_id) VALUES ('w002-s1', 'duplicate', 'w001-s1');
+      INSERT INTO meanings (id, lemma, gloss, pos, record_id, lexical_relation_count, exploratory_relation_count, display_rank)
+        VALUES ('m001', '가', '첫째 뜻풀이.', 'noun', 'w001', 0, 0, 1);
+      INSERT INTO meaning_members (meaning_id, position, sense_id, record_id) VALUES ('m001', 0, 'w001-s1', 'w001');
+      INSERT INTO sense_adjudications (sense_id, reason, record_id, duplicate_of_sense_id) VALUES ('w002-s1', 'duplicate', 'w002', 'w001-s1');
     `);
     const record = getMeaningRecord(database, 'w002');
     assert.deepEqual(record.senses.map(({ id, sense_ids: ids }) => [id, ids]), [['m001', ['w001-s1', 'w002-s1']]]);

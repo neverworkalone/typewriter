@@ -67,7 +67,7 @@ source order나 canonical relation type을 재분류하지 않는다. 우선순�
   candidate record를 ID로 읽어 exact 검색 결과를 만든다. 상태의 `queryMeta`에는
   raw query, normalized query, 적용 규칙, no-match/unsupported reason, match
   provenance가 남는다.
-- `openRelationTarget(target)`는 `runtime.getRecord(targetId)`만 호출한다.
+- `openRelationTarget(target)`는 `runtime.getMeaningRecord(targetId)`(meaning view가 없는 runtime은 `getRecord`)만 호출한다.
   자유 입력 exact search와 관계 target 탐색은 서로 다른 `mode`와 `action`이다.
 - `emptyReason`은 `no-exact-match`, 승인된 unsupported reason, 또는
   `relation-target-not-found`를 보존한다. Product shell은 이를 각각 미수록,

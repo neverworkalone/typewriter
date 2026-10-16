@@ -73,7 +73,7 @@ function resolveTarget(target, context = {}) {
   };
 }
 
-// The product candidate unit is the Typewriter meaning; runtimes without a meaning view fall back to raw records.
+// The product candidate unit is the Typewriter meaning; a runtime without a meaning view may still supply records.
 function loadRecord(runtime, recordId) {
   return typeof runtime.getMeaningRecord === 'function'
     ? runtime.getMeaningRecord(recordId)
@@ -86,7 +86,7 @@ function hasFullRecord(record) {
 
 export class SearchSession {
   constructor({ runtime, initialState = createInitialSearchState() } = {}) {
-    if (!runtime || typeof runtime.getRecord !== 'function') {
+    if (!runtime || (typeof runtime.getMeaningRecord !== 'function' && typeof runtime.getRecord !== 'function')) {
       throw new SearchDomainError(
         'INVALID_RUNTIME',
         '검색 세션에는 dictionary runtime이 필요합니다.',

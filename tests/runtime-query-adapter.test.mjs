@@ -15,8 +15,7 @@ import {
   EXACT_SEARCH_ROWS_SQL,
   findRecordsBySearchTerm,
   getMetadata,
-  getRecord,
-  getSenseRelations,
+  getMeaningRecord,
 } from '../src/runtime/sqlite-query.js';
 import { measureSqliteWasmRuntime } from '../scripts/benchmark/sqlite-runtime.mjs';
 import { SQLITE_SCHEMA_SQL } from '../scripts/build/sqlite-schema.mjs';
@@ -26,19 +25,22 @@ const FIXTURE_SOURCE_REVISION = 'a'.repeat(40);
 const FIXTURE_SQL = `
 INSERT INTO records VALUES ('w001', 'entry', 'start', 'w001', '가다');
 INSERT INTO search_forms VALUES ('w001', 0, '가다'), ('w001', 1, '가');
-INSERT INTO senses VALUES ('w001-s1', 'w001', 0, 'verb', '합성 뜻');
 INSERT INTO generated_surface_forms VALUES (
-  '가는', 'w001', 'w001-s1', 'verb-present-adnominal-neun'
+  '가는', 'w001', 'w001-s1', 0, 'verb-present-adnominal-neun'
 );
 INSERT INTO records VALUES ('w002', 'entry', 'start', 'w002', '눈');
 INSERT INTO search_forms VALUES ('w002', 0, '눈');
-INSERT INTO senses VALUES
-  ('w002-s1', 'w002', 0, 'noun', '첫 번째 뜻'),
-  ('w002-s2', 'w002', 1, 'noun', '두 번째 뜻');
-INSERT INTO records VALUES ('r003', 'entry', 'reference-only', NULL, '빛');
-INSERT INTO search_forms VALUES ('r003', 0, '빛'), ('r003', 1, '빛나다');
-INSERT INTO senses VALUES ('r003-s1', 'r003', 0, 'noun', '밝음');
-INSERT INTO relations VALUES ('w001-s1', 0, 'r003', 'r003-s1', 'near', '연결된 뜻', 3);
+INSERT INTO records VALUES ('w003', 'entry', 'reference-only', NULL, '빛');
+INSERT INTO search_forms VALUES ('w003', 0, '빛'), ('w003', 1, '빛나다');
+INSERT INTO meanings VALUES
+  ('m001', '가다', '합성 뜻', 'verb', 'w001', 0, 1, 1),
+  ('m002_1', '눈', '첫 번째 뜻', 'noun', 'w002', 0, 0, 2),
+  ('m002_2', '눈', '두 번째 뜻', 'noun', 'w002', 0, 0, 3),
+  ('m003', '빛', '밝음', 'noun', 'w003', 0, 0, 4);
+INSERT INTO meaning_members VALUES
+  ('m001', 0, 'w001-s1', 'w001'), ('m002_1', 0, 'w002-s1', 'w002'),
+  ('m002_2', 0, 'w002-s2', 'w002'), ('m003', 0, 'w003-s1', 'w003');
+INSERT INTO meaning_relations VALUES ('m001', 0, 'm003', 'near', '연결된 뜻', 3, 'stdict-sense-projection');
 `;
 
 function seedDatabase(database) {
@@ -92,15 +94,15 @@ test('the shared search adapter returns the same exact, form, surface, and ambig
     assert.equal(findRecordsBySearchTerm(wasm, '가다').matches[0].match.field, 'lemma');
     assert.equal(findRecordsBySearchTerm(wasm, '가').matches[0].match.field, 'search-form');
     assert.equal(findRecordsBySearchTerm(wasm, '가는').matches[0].match.field, 'generated-surface-form');
-    assert.equal(findRecordsBySearchTerm(wasm, '빛').matches[0].id, 'r003');
+    assert.equal(findRecordsBySearchTerm(wasm, '빛').matches[0].id, 'w003');
     assert.equal(findRecordsBySearchTerm(wasm, '빛').matches[0].role, 'reference-only');
-    assert.equal(findRecordsBySearchTerm(wasm, '빛나다').matches[0].id, 'r003');
+    assert.equal(findRecordsBySearchTerm(wasm, '빛나다').matches[0].id, 'w003');
     assert.equal(findRecordsBySearchTerm(wasm, '빛나다').matches[0].match.field, 'search-form');
-    assert.equal(getRecord(wasm, 'w002').senses.length, 2);
-    assert.equal(getRecord(native, 'w002').senses.length, 2);
+    assert.equal(getMeaningRecord(wasm, 'w002').senses.length, 2);
+    assert.equal(getMeaningRecord(native, 'w002').senses.length, 2);
     assert.deepEqual(getMetadata(wasm), getMetadata(native));
-    assert.deepEqual(getSenseRelations(wasm, 'w001-s1'), getSenseRelations(native, 'w001-s1'));
-    assert.deepEqual(getRecord(wasm, 'w001'), getRecord(native, 'w001'));
+    assert.deepEqual(getMeaningRecord(wasm, 'w001'), getMeaningRecord(native, 'w001'));
+    assert.equal(getMeaningRecord(wasm, 'w001').senses[0].relations[0].target, 'w003');
 
     for (const database of [native, wasm]) {
       const plan = queryPlan(database, EXACT_SEARCH_ROWS_SQL, ['term', 'term']);

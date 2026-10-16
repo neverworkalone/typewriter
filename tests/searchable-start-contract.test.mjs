@@ -26,8 +26,7 @@ import {
 } from '../src/runtime/dictionary-contract.js';
 import {
   findRecordsBySearchTerm,
-  getRecord,
-  getSenseRelations,
+  getMeaningRecord,
 } from '../src/runtime/sqlite-query.js';
 import { sha256Json } from '../scripts/validate/semantic-audit.mjs';
 import {
@@ -109,17 +108,20 @@ function seedDatabase(database) {
     INSERT INTO search_forms VALUES ('r002', 0, '공통표제어'), ('r002', 1, '보통말');
     INSERT INTO search_forms VALUES ('r003', 0, '다듬다');
     INSERT INTO search_forms VALUES ('w004', 0, '다듬은말'), ('w004', 1, '다듬은');
-    INSERT INTO senses VALUES
-      ('w001-s1', 'w001', 0, 'noun', '검색 출발점'),
-      ('r002-s1', 'r002', 0, 'noun', '관계 대상이며 관계는 아직 없음'),
-      ('r003-s1', 'r003', 0, 'verb', '관계 대상이며 표면형 규칙을 따름'),
-      ('w004-s1', 'w004', 0, 'noun', '정확 검색어와 generated form이 충돌할 때의 precedence 대상');
-    INSERT INTO relations VALUES
-      ('w001-s1', 0, 'r002', 'r002-s1', 'near', '기준어에서 연결된 보통말', 3),
-      ('w001-s1', 1, 'r003', 'r003-s1', 'action', '기준어에서 이어지는 동작', 4);
+    INSERT INTO meanings VALUES
+      ('m001', '기준어', '검색 출발점', 'noun', 'w001', 0, 2, 1),
+      ('m002', '공통표제어', '관계 대상이며 관계는 아직 없음', 'noun', 'r002', 0, 0, 2),
+      ('m003', '다듬다', '관계 대상이며 표면형 규칙을 따름', 'verb', 'r003', 0, 0, 3),
+      ('m004', '다듬은말', '정확 검색어와 generated form이 충돌할 때의 precedence 대상', 'noun', 'w004', 0, 0, 4);
+    INSERT INTO meaning_members VALUES
+      ('m001', 0, 'w001-s1', 'w001'), ('m002', 0, 'r002-s1', 'r002'),
+      ('m003', 0, 'r003-s1', 'r003'), ('m004', 0, 'w004-s1', 'w004');
+    INSERT INTO meaning_relations VALUES
+      ('m001', 0, 'm002', 'near', '기준어에서 연결된 보통말', 3, 'stdict-sense-projection'),
+      ('m001', 1, 'm003', 'action', '기준어에서 이어지는 동작', 4, 'stdict-sense-projection');
     INSERT INTO generated_surface_forms VALUES
-      ('다듬는', 'r003', 'r003-s1', 'verb-present-adnominal-neun'),
-      ('다듬은', 'r003', 'r003-s1', 'verb-past-adnominal-eun');
+      ('다듬는', 'r003', 'r003-s1', 0, 'verb-present-adnominal-neun'),
+      ('다듬은', 'r003', 'r003-s1', 0, 'verb-past-adnominal-eun');
   `);
 }
 
@@ -436,11 +438,11 @@ test('native and WASM SQLite search relation targets by lemma, form, and support
       assert.equal(response.matches[0].role, 'reference-only');
     }
 
-    const emptyRelationTarget = getRecord(wasm, 'r002');
+    const emptyRelationTarget = getMeaningRecord(wasm, 'r002');
     assert.deepEqual(emptyRelationTarget.senses[0].relations, []);
     assert.equal(findRecordsBySearchTerm(wasm, '공통표제어').matches[0].id, 'r002');
     assert.deepEqual(
-      getSenseRelations(wasm, 'w001-s1').map(({ target }) => target),
+      getMeaningRecord(wasm, 'w001').senses[0].relations.map(({ target }) => target),
       ['r002', 'r003'],
       'relation-target navigation remains available for directly searchable records',
     );
@@ -448,7 +450,7 @@ test('native and WASM SQLite search relation targets by lemma, form, and support
     const session = new SearchSession({
       runtime: {
         search: async (term) => findRecordsBySearchTerm(wasm, term),
-        getRecord: async (recordId) => getRecord(wasm, recordId),
+        getMeaningRecord: async (recordId) => getMeaningRecord(wasm, recordId),
       },
     });
     const state = await session.searchExact('공통표제어');

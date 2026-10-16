@@ -279,19 +279,9 @@ export class DictionaryRuntime {
     return this.search(term);
   }
 
-  getRecord(recordId) {
-    requireString(recordId, 'recordId');
-    return this._afterReady(REQUEST_METHODS.getRecord, { recordId });
-  }
-
   getMeaningRecord(recordId) {
     requireString(recordId, 'recordId');
     return this._afterReady(REQUEST_METHODS.getMeaningRecord, { recordId });
-  }
-
-  getSenseRelations(senseId) {
-    requireString(senseId, 'senseId');
-    return this._afterReady(REQUEST_METHODS.getRelations, { senseId });
   }
 
   getMetadata() {

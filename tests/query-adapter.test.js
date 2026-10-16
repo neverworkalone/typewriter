@@ -187,7 +187,7 @@ describe('DictionaryRuntime', () => {
             return;
           }
 
-          if (request.method === REQUEST_METHODS.getRecord) {
+          if (request.method === REQUEST_METHODS.getMeaningRecord) {
             respond(currentWorker, request, {
               id: 'w026',
               role: 'start',
@@ -213,7 +213,7 @@ describe('DictionaryRuntime', () => {
     await expect(runtime.findRecordsByExactTerm('담담')).resolves.toEqual([
       expect.objectContaining({ id: 'w026', role: 'start' }),
     ]);
-    await expect(runtime.getRecord('w026')).resolves.toMatchObject({
+    await expect(runtime.getMeaningRecord('w026')).resolves.toMatchObject({
       id: 'w026',
       senses: [{ id: 'w026-s1' }],
     });
@@ -221,7 +221,7 @@ describe('DictionaryRuntime', () => {
     expect(worker.messages.map(({ method }) => method)).toEqual([
       REQUEST_METHODS.ready,
       REQUEST_METHODS.search,
-      REQUEST_METHODS.getRecord,
+      REQUEST_METHODS.getMeaningRecord,
     ]);
   });
 
@@ -315,7 +315,7 @@ describe('DictionaryRuntime', () => {
     });
     expect(runtime.state).toBe('closed');
     expect(() => runtime.search('')).toThrow(DictionaryRuntimeError);
-    expect(() => runtime.getRecord(null)).toThrow(DictionaryRuntimeError);
+    expect(() => runtime.getMeaningRecord(null)).toThrow(DictionaryRuntimeError);
   });
 });
 

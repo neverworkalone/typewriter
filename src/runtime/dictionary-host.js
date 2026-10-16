@@ -6,8 +6,6 @@ import {
 import {
   findRecordsBySearchTerm,
   getMeaningRecord,
-  getRecord,
-  getSenseRelations,
 } from './sqlite-query.js';
 import { validateRuntimeDictionary } from './dictionary-validation.js';
 
@@ -216,12 +214,8 @@ export function createDictionaryHost({
           return getStatus(runtime);
         case 'search':
           return findRecordsBySearchTerm(database, validateString(params.term, 'term'));
-        case 'get-record':
-          return getRecord(database, validateString(params.recordId, 'recordId'));
         case 'get-meaning-record':
           return getMeaningRecord(database, validateString(params.recordId, 'recordId'));
-        case 'get-relations':
-          return getSenseRelations(database, validateString(params.senseId, 'senseId'));
         case 'metadata':
           return runtime.dictionaryMetadata;
         default:

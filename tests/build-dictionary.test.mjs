@@ -12,8 +12,7 @@ import {
   findRecordsByExactTerm,
   findRecordsBySearchTerm,
   getMetadata,
-  getRecord,
-  getSenseRelations,
+  getMeaningRecord,
 } from '../scripts/build/query.mjs';
 
 const REPOSITORY_DIRECTORY = path.resolve(
@@ -42,8 +41,10 @@ test('builds a read-only SQLite dictionary with representative lookups', async (
       inputDirectory: PILOT_DIRECTORY,
       outputPath,
       allowDirty: true,
+      keepStaging: true,
     });
 
+    assert.equal(summary.stagingPath, `${outputPath}.staging`);
     assert.equal(summary.recordCount, 6);
     assert.equal(summary.searchFormCount, 7);
     assert.equal(summary.senseCount, 7);
@@ -57,8 +58,28 @@ test('builds a read-only SQLite dictionary with representative lookups', async (
     try {
       assert.equal(countRows(database, 'records'), 6);
       assert.equal(countRows(database, 'search_forms'), 7);
-      assert.equal(countRows(database, 'senses'), 7);
-      assert.equal(countRows(database, 'relations'), 3);
+      // The STDICT source senses/relations/provenance never ship; they exist only in the staging database.
+      assert.deepEqual(
+        database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name").all().map(({ name }) => name),
+        [
+          'generated_surface_forms', 'meaning_members', 'meaning_relations', 'meanings',
+          'metadata', 'records', 'search_forms', 'sense_adjudications',
+        ],
+      );
+      const staging = new DatabaseSync(summary.stagingPath, { readOnly: true });
+      try {
+        assert.equal(countRows(staging, 'senses'), 7);
+        assert.equal(countRows(staging, 'relations'), 3);
+        const relation = staging.prepare(
+          "SELECT target_record_id, target_sense_id, type, note FROM relations WHERE source_sense_id = 'w001-s1'",
+        ).get();
+        assert.equal(relation.target_record_id, 'r001');
+        assert.equal(relation.target_sense_id, 'r001-s1');
+        assert.equal(relation.type, 'direct');
+        assert.match(relation.note, /바꿔 쓸/);
+      } finally {
+        staging.close();
+      }
       assert.equal(countRows(database, 'generated_surface_forms'), summary.generatedSurfaceFormCount);
       assert.deepEqual(getMetadata(database), summary.metadata);
 
@@ -79,29 +100,16 @@ test('builds a read-only SQLite dictionary with representative lookups', async (
         [{ id: 'w003', lemma: '마음이 놓이다' }],
       );
       assert.deepEqual(findRecordsByExactTerm(database, '환희'), []);
-      assert.equal(getRecord(database, 'w999'), null);
+      assert.equal(getMeaningRecord(database, 'w999'), null);
 
-      const polysemousRecord = getRecord(database, 'w002');
-      assert.equal(polysemousRecord.senses.length, 2);
-      assert.equal(polysemousRecord.senses[0].id, 'w002-s1');
-      assert.equal(polysemousRecord.senses[0].relations[0].target, 'w001');
-
-      const expression = getRecord(database, 'w003');
+      const expression = getMeaningRecord(database, 'w003');
       assert.equal(expression.record_type, 'expression');
       assert.equal(expression.role, 'start');
-      assert.equal(expression.senses[0].pos, 'expression');
+      assert.equal(expression.view, 'meaning');
 
-      const reference = getRecord(database, 'r001');
+      const reference = getMeaningRecord(database, 'r001');
       assert.equal(reference.role, 'reference-only');
       assert.equal(reference.candidate_id, null);
-
-      const directRelations = getSenseRelations(database, 'w001-s1');
-      assert.equal(directRelations[0].target, 'r001');
-      assert.equal(directRelations[0].target_sense, 'r001-s1');
-      assert.equal(directRelations[0].target_lemma, '즐거움');
-      assert.equal(directRelations[0].type, 'direct');
-      assert.match(directRelations[0].note, /바꿔 쓸/);
-      assert.deepEqual(getSenseRelations(database, 'r001-s1'), []);
 
       const indexes = database
         .prepare("SELECT name FROM sqlite_master WHERE type = 'index' ORDER BY name")
@@ -109,14 +117,13 @@ test('builds a read-only SQLite dictionary with representative lookups', async (
         .map(({ name }) => name);
       assert.deepEqual(indexes.filter((name) => name.startsWith('idx_')), [
         'idx_generated_surface_forms_form',
+        'idx_meaning_members_record',
         'idx_meaning_relations_target',
         'idx_meanings_lemma',
         'idx_meanings_record',
         'idx_records_lemma',
-        'idx_relations_source_position',
-        'idx_relations_target',
         'idx_search_forms_form',
-        'idx_senses_record_position',
+        'idx_sense_adjudications_record',
       ]);
       assert.deepEqual(database.prepare('PRAGMA foreign_key_check').all(), []);
 
@@ -134,7 +141,7 @@ test('builds a read-only SQLite dictionary with representative lookups', async (
     const reopened = new DatabaseSync(outputPath, { readOnly: true });
     try {
       assert.equal(countRows(reopened, 'records'), 6);
-      assert.equal(getRecord(reopened, 'w999'), null);
+      assert.equal(getMeaningRecord(reopened, 'w999'), null);
     } finally {
       reopened.close();
     }
@@ -207,8 +214,9 @@ test('preserves adverb POS in the canonical-to-SQLite build', async () => {
       outputPath,
       allowDirty: true,
       repositoryDirectory: REPOSITORY_DIRECTORY,
+      keepStaging: true,
     });
-    const database = new DatabaseSync(outputPath, { readOnly: true });
+    const database = new DatabaseSync(`${outputPath}.staging`, { readOnly: true });
     try {
       assert.equal(database.prepare('SELECT pos FROM senses WHERE id = ?').get('w990-s1').pos, 'adverb');
     } finally {
@@ -327,14 +335,23 @@ test('builds the meaning layer and projected meaning relations with provenance',
       assert.equal(countRows(database, 'meanings'), 7);
       assert.equal(countRows(database, 'meaning_members'), 7);
       assert.equal(countRows(database, 'meaning_relations'), 3);
-      assert.equal(countRows(database, 'meaning_relation_sources'), 3);
+      assert.deepEqual(
+        database.prepare("SELECT name FROM sqlite_master WHERE name IN ('senses', 'relations', 'meaning_relation_sources')").all(),
+        [],
+      );
+      assert.deepEqual(
+        database.prepare('SELECT id, pos FROM meanings ORDER BY id').all().map((row) => ({ ...row })).slice(0, 1),
+        [{ id: 'm001', pos: 'noun' }],
+      );
+      assert.deepEqual(database.prepare("SELECT sense_id, record_id FROM meaning_members WHERE meaning_id = 'm001'").all().map((row) => ({ ...row })),
+        [{ sense_id: 'w001-s1', record_id: 'w001' }]);
       const { getMeaningRelations, getMeaningsByLemma } = await import('../src/runtime/sqlite-query.js');
       assert.deepEqual(getMeaningsByLemma(database, '기쁨').map((m) => [m.id, m.sense_ids]), [['m001', ['w001-s1']]]);
       const relations = getMeaningRelations(database, 'm001');
       assert.ok(relations.length > 0);
       for (const relation of relations) {
-        assert.ok(relation.sources.length > 0);
-        assert.equal(relation.sources[0].source_sense_id, 'w001-s1');
+        assert.equal(relation.origin, 'stdict-sense-projection');
+        assert.equal(relation.sources, undefined);
       }
       // Ranking metadata is precomputed: dense unique display_rank following counts DESC, then numeric ID.
       const ranked = database.prepare(
