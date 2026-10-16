@@ -511,22 +511,41 @@ test('initial generator CLI (temp root): --check and default run follow the repo
   assert.equal(run('--check').status, 1);
 });
 
-// Any word ending in -게/-히 followed by the object particle is an adverbial clause misused as a noun phrase, unless
-// the word is a genuine noun that merely ends in 게 (extend the list when a valid noun such as 대게 appears).
-const NOUNS_ENDING_IN_GE = new Set(['가게', '대게', '꽃게', '참게', '털게', '방게', '민꽃게']);
-const hasAdverbialObjectParticle = (gloss) => [...gloss.matchAll(/([가-힣]+)(게|히)를 포함한다/g)]
-  .some(([, stem, ending]) => ending === '히' || !NOUNS_ENDING_IN_GE.has(stem + ending));
+// "…게/…히를 포함한다" is only a defect when the merged meaning is adverbial: the particle then follows an adverb clause.
+// Nouns that merely end in 게 (대게, 무게, 가게 …) are told apart by the canonical part of speech of the merged senses, not by a word list.
+const GE_OBJECT_PARTICLE = /[가-힣](?:게|히)를 포함한다/;
+const isAdverbialObjectParticleMisuse = (gloss, memberPos) => GE_OBJECT_PARTICLE.test(gloss) && memberPos.includes('adverb');
 
-test('merged glosses never attach the object particle to an adverbial -게/-히 clause', () => {
-  const dir = path.join(path.dirname(new URL(import.meta.url).pathname), '../../data/meanings');
-  const bad = [];
+test('merged adverb glosses never attach the object particle to an adverbial -게/-히 clause', () => {
+  const root = path.join(path.dirname(new URL(import.meta.url).pathname), '../..');
+  const dir = path.join(root, 'data/meanings');
+  const candidates = [];
   for (const file of readdirSync(dir).filter((name) => name.endsWith('.jsonl'))) {
     for (const line of readFileSync(path.join(dir, file), 'utf8').split('\n').filter(Boolean)) {
       const meaning = JSON.parse(line);
-      if (meaning.sense_ids.length > 1 && hasAdverbialObjectParticle(meaning.gloss)) bad.push(`${meaning.id} ${meaning.gloss}`);
+      if (meaning.sense_ids.length > 1 && GE_OBJECT_PARTICLE.test(meaning.gloss)) candidates.push(meaning);
     }
   }
+  const wanted = new Set(candidates.flatMap((meaning) => meaning.sense_ids));
+  const pos = new Map();
+  const canonicalDir = path.join(root, 'data/canonical');
+  for (const file of readdirSync(canonicalDir).filter((name) => name.endsWith('.jsonl'))) {
+    for (const line of readFileSync(path.join(canonicalDir, file), 'utf8').split('\n').filter(Boolean)) {
+      for (const sense of JSON.parse(line).senses ?? []) if (wanted.has(sense.id)) pos.set(sense.id, sense.pos);
+    }
+  }
+  const bad = candidates
+    .filter((meaning) => isAdverbialObjectParticleMisuse(meaning.gloss, meaning.sense_ids.map((id) => pos.get(id))))
+    .map((meaning) => `${meaning.id} ${meaning.gloss}`);
   assert.deepEqual(bad, []);
-  for (const bad of ['뚜렷하게를 포함한다', '어긋나지 아니하게를 포함한다', '확실히를 포함한다', '좋게를 포함한다', '크게를 포함한다', '낮게를 포함한다']) assert.ok(hasAdverbialObjectParticle(bad), bad);
-  for (const ok of ['대게를 포함한다', '가게를 포함한다', '종이를 포함한다']) assert.ok(!hasAdverbialObjectParticle(ok), ok);
+});
+
+test('adverbial object-particle check flags adverbs and accepts nouns ending in 게', () => {
+  for (const gloss of ['뚜렷하게를 포함한다', '어긋나지 아니하게를 포함한다', '확실히를 포함한다', '좋게를 포함한다', '크게를 포함한다', '낮게를 포함한다']) {
+    assert.ok(isAdverbialObjectParticleMisuse(gloss, ['adverb']), gloss);
+  }
+  for (const gloss of ['대게를 포함한다', '가게를 포함한다', '물건의 무게를 포함한다']) {
+    assert.ok(!isAdverbialObjectParticleMisuse(gloss, ['noun']), gloss);
+  }
+  assert.ok(!isAdverbialObjectParticleMisuse('좋은 뜻을 포함한다', ['adverb']));
 });
