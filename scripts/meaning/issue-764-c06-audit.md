@@ -395,5 +395,5 @@ The first column lists the complete final source-sense partition for every multi
 
 - Baseline node scripts/meaning/validate.mjs passed before editing (495,125 meanings; 117 adjudications). The post-edit validator passed (495,026 meanings; 117 adjudications).
 - Exact-base replay from 417aaf0fd718c6b1695b177b685348cdd6205729 passed: all 2,673 repartitions reproduced the working Meaning rows, and all four C06 shard files matched replay byte-for-byte.
-- The tracked diff is limited to data/meanings/c06_001.jsonl through c06_004.jsonl; canonical JSONL and adjudication data are unchanged.
+- The base-to-HEAD diff contains six paths: the four Meaning data outputs are `data/meanings/c06_001.jsonl` through `c06_004.jsonl`, and the other two added paths are this audit and the executable spec. Canonical JSONL and adjudication data are unchanged.
 - git diff --check passed. Clean-worktree corepack pnpm run ci:normal passed on implementation commit aa7f2c55, covering canonical, lexical, toolchain, batch, product, and artifact scopes with one current-revision SQLite build.
