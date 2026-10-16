@@ -2,16 +2,16 @@
 
 ## Scope and evidence
 
-This is the C02 (ㄲ) source-bound self-check for Issue #764, based on `origin/master` at `80632ae9`. It re-judged every C02 lemma that had more than one #716 Meaning row (770 lemmas, 1,928 rows) against the lemma's full set of canonical records and senses. The executable decision record is [`issue-764-c02.json`](issue-764-c02.json): each of the 647 lemmas whose grouping changed carries an exact `before` snapshot and a complete `groups` partition. The other 123 multi-Meaning lemmas were re-read and deliberately retained (see below); single-Meaning lemmas cannot be split or merged and are untouched.
+This is the C02 (ㄲ) source-bound self-check for Issue #764, based on `origin/master` at `80632ae9`. It re-judged every C02 lemma that had more than one #716 Meaning row (770 lemmas, 1,928 rows) against the lemma's full set of canonical records and senses. The executable decision record is [`issue-764-c02.json`](issue-764-c02.json): each of the 657 lemmas whose grouping changed carries an exact `before` snapshot and a complete `groups` partition. The other 113 multi-Meaning lemmas were re-read and deliberately retained (see below); single-Meaning lemmas cannot be split or merged and are untouched.
 
 | Measure | Before | After |
 | --- | ---: | ---: |
 | C02 lemmas | 3,578 | 3,578 |
 | C02 canonical senses in Meaning rows | 5,096 | 5,096 |
-| C02 Meaning rows | 4,736 | 3,804 |
+| C02 Meaning rows | 4,736 | 3,788 |
 | Multi-Meaning lemmas re-judged | 770 | — |
-| Lemmas whose Meaning count changed | — | 647 |
-| Multi-Meaning lemmas retained as is | — | 123 |
+| Lemmas whose Meaning count changed | — | 657 |
+| Multi-Meaning lemmas retained as is | — | 113 |
 | Repository adjudications | 117 | 117 |
 
 Every canonical C02 sense stays in exactly one final group; no sense is dropped and no adjudication is added. Canonical JSONL is unchanged. `apply-edits` checks the exact current snapshot of each lemma and rejects missing, duplicated or foreign senses before writing.
@@ -24,6 +24,8 @@ Every canonical C02 sense stays in exactly one final group; no sense is dropped 
 - `까닥거리다`/`까딱거리다` families keep the 'show-off' homonym apart from the head-nodding/shaking sense; within the 까딱 family only same-record head-nod and small-object senses are merged. Likewise `까부라지다` keeps the 'bent' and 'shrunken/limp' records apart, and `꼬이다`/`꾀다` keep 'twisted' separate from 'lure / gather'.
 - `끼다` was re-judged from all its records: insertion, being held between, linking arms, keeping close, adding, mixing in and borrowing power form one Meaning; fog, smoke, dirt, moss, rust and a hint of expression settling on a surface (`w404652`) form a second Meaning. `끼치다` keeps 'bring about an influence' apart from 'goosebumps / being overwhelmed'.
 - Form identity or a shared mimetic base alone did not justify a merge (`꼴꼴`, `꿀꿀`, `꽁꽁거리다`, `끔쩍`/`깜짝` eye vs startled, `꼭`/`꼭꼭`, `꼬질꼬질`), and a plain list of unrelated senses was not accepted as a merged gloss.
+
+- Stage 2 feedback on PR #767 identified `까먹다`, `깜둥이` and `깜찍이` as under-merged. All three were re-grouped as one lexical item each (사람/개, 명사/부사, 돈/기억 are usage differences, not independent homonyms). The same cause was then checked across every C02 lemma whose senses of one record or of near-identical records sit in different groups; `깜부기`, `꽁꽁`, `꽃시계`, `깔깔이`, `꼬꼬마`, `꼬질꼬질(하다)`, `꼴리다`, `꽁이`, `꽃씨`, `꿇다`, `끗`(counting units) and `껍질샘` were merged on the same ground. Cross-reference records that point to different words, and independent homonyms (`꾐`, `꾸정꾸정` s4, `꺾기`, `끗` 종지사) stay separate.
 
 ## Gloss checks
 
