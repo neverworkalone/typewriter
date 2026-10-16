@@ -9,22 +9,22 @@ This is the C11 source-bound self-check for Issue #764, based on PR #766's base 
 | C11 canonical records | 2,120 | 2,120 |
 | C11 lemmas | 2,006 | 2,006 |
 | C11 canonical senses | 2,725 | 2,725 |
-| C11 Meaning rows | 2,660 | 2,124 |
+| C11 Meaning rows | 2,660 | 2,122 |
 | C11 lemmas with multiple canonical senses | 373 | 373 |
 | C11 single-sense lemmas explicitly retained | 1,633 | 1,633 |
-| C11 lemmas whose Meaning count changed | — | 299 |
+| C11 lemmas whose Meaning count changed | — | 301 |
 | C11 lemmas with multiple Meaning rows | — | 86 |
-| C11 same-record splits remaining after source recheck | — | 27 |
+| C11 same-record splits remaining after source recheck | — | 25 |
 | Repository adjudications | 117 | 117 |
 
-Every canonical C11 sense occurs in exactly one final group. The edit has no drops and appends no adjudications. Canonical JSONL is unchanged. The complete `before`/`groups` mapping covers all 2,006 lemmas; the application checks exact snapshots and complete, non-overlapping sense coverage before writing. Replaying the full spec from the exact PR-base C11 shards produces the 2,124-row result.
+Every canonical C11 sense occurs in exactly one final group. The edit has no drops and appends no adjudications. Canonical JSONL is unchanged. The complete `before`/`groups` mapping covers all 2,006 lemmas; the application checks exact snapshots and complete, non-overlapping sense coverage before writing. Replaying the full spec from the exact PR-base C11 shards produces the 2,122-row result.
 
 ## Boundary decisions
 
 - `쌀쌀하다` (`w455618-s1`, `w455618-s2`) is one Meaning: physical coldness in weather or wind and coldness in a person's disposition share the cold core. Its representative gloss covers both.
 - `썰렁썰렁하다` (`w452544-s1..s4`) is one Meaning. The light breeze, boiling water, and waving limbs match the three source uses already grouped for `썰렁썰렁` (`w212166-s1..s3`); the chilly-state adjective extends the breeze use rather than establishing an independent homonym.
 - `싸이다` separates `w214500-s1`, the causative of defecating/urinating, from `w454438-s1..s4`, the covering, enclosing, being surrounded by a situation, and social-envelopment uses. `쌔다` follows the same boundary for its `싸이다` short forms and keeps `쌓이다` short forms in their accumulation family.
-- `쐐기질` and `쐐기질하다` combine literal wedging with the figurative act of intruding between people: inserting a wedge and inserting oneself to obstruct are a direct metaphorical extension. The separate `쐐기(를) 박다` use that means making a firm commitment remains distinct from the interference group.
+- `쐐기질`, `쐐기질하다`, and `쐐기(를) 박다[치다]` preserve the wedge image across literal fixation, firm commitment, and figurative separation or obstruction. The idiom's four source senses are one Meaning; the unrelated wedge-tool/larva distinction remains.
 - `쓸리다` has two groups. Rubbing, abrasion, trailing, sweeping, transferring, gathering, spreading, and being carried across (`w208548-s1`, `w208562-s1..s2`, `w208801-s1..s5`, `w455256-s1`) share the source-bound sweep/contact action family; the senses explicitly connect to uses of `쓸다02`. Only leaning to one side (`w454100-s1`) remains separate because its source gloss has no contact or movement relation to that family.
 - `쌈박` and its repeated forms keep cutting sounds separate from blinking. The matching expressive form alone does not establish one lexical identity. The same boundary is used for `씀벅`/`씀뻑` forms: repeated blinking and a pricking, stinging sensation remain separate because neither action is a natural extension of the other.
 - Clear independent identities remain separate, including the two `쌍계사` temples, the mill part and dog called `쌀개`, the obligation and paired-dance senses of `쌍무`, and the linguistic, musical, and astronomical senses of `쌍성`.
@@ -88,9 +88,9 @@ The 15 lemmas reduced to one Meaning in this re-audit are `ㅆ`, `싸라기`, `�
 
 Three candidate merges from an early pass were deliberately not retained after this full comparison: `쌍권총` literal pistols vs student slang, `쐬벌이` money-making vs theft, and `썩썩` quickness vs sound. A shared numeral, broad activity category, or adverbial form alone did not establish a source-supported natural extension. The final spec also keeps the literal “quickly” sense of `썩썩` separate while grouping its two cutting/rubbing sound senses.
 
-## Follow-up: Stage 2 same-record split review and exact replay
+## Follow-up: Stage 2 same-record split review and exact replay (review 5542357159 checkpoint)
 
-Stage 2 review `5542357159` identified two source-bound under-merges and requested a targeted recheck of the 29 C11 lemmas where senses from one canonical record were split across Meaning rows. I inspected the exact source glosses, POS, current bindings, and related forms for all 29. I corrected the two supported findings below and retained the other 27 boundaries for the record-specific reasons listed. This does not claim a new independent semantic audit of all 86 remaining multi-Meaning lemmas.
+Stage 2 review `5542357159` identified two source-bound under-merges and requested a targeted recheck of the 29 C11 lemmas where senses from one canonical record were split across Meaning rows. I inspected the exact source glosses, POS, current bindings, and related forms for all 29. At this checkpoint I corrected two findings and retained 27 boundaries for the record-specific reasons listed. Review `5542545031` later identified two outcome-only KEEP rationales in that list; the following section records those corrections and current counts. This does not claim a new independent semantic audit of all 86 remaining multi-Meaning lemmas.
 
 | Corrected lemma | Source-bound decision |
 | --- | --- |
@@ -118,7 +118,20 @@ The remaining same-record splits retain distinct source meanings; the reason is 
 | `싹을 밟다` | Suppressing a new undertaking and noticing a sign have different event outcomes; the source provides no bridge that makes one an extension of the other. |
 | `쐐기(를) 박다[치다]` | Firmly settling a commitment differs from interfering between people or disrupting a connection; these are distinct metaphorical actions and outcomes. |
 
-The pre-Stage-2 spec had 2,155 `before` rows and did not match the PR base's 2,660 C11 input rows. I regenerated all 2,006 `before` arrays from PR base `80632ae9e5f62df05b17fcc59fa1c3bce60b66a6`, then restored only the three C11 Meaning shards from that base and ran `node scripts/meaning/apply-edits.mjs scripts/meaning/issue-764-c11.json`. The replay produced 2,124 C11 rows (2,006 lemmas, 2,725 bound senses), 496,125 repository Meanings, and 117 adjudications. The count changed for 299 C11 lemmas against the actual PR base; 86 lemmas retain multiple Meaning rows and 27 of those have same-record splits. The positive controls `쌀쌀하다` and `쐐기` remain merged as required; the negative control `쌍성` remains three independent Meanings. Canonical JSONL and adjudication data remain unchanged, and no shard outside C11 was rewritten.
+At that checkpoint, the pre-Stage-2 spec had 2,155 `before` rows and did not match the PR base's 2,660 C11 input rows. I regenerated all 2,006 `before` arrays from PR base `80632ae9e5f62df05b17fcc59fa1c3bce60b66a6`, then restored only the three C11 Meaning shards from that base and ran `node scripts/meaning/apply-edits.mjs scripts/meaning/issue-764-c11.json`. The checkpoint replay produced 2,124 C11 rows (2,006 lemmas, 2,725 bound senses), 496,125 repository Meanings, and 117 adjudications. The count changed for 299 C11 lemmas against the actual PR base; 86 lemmas retained multiple Meaning rows and 27 had same-record splits at that checkpoint. The positive controls `쌀쌀하다` and `쐐기` remained merged; the negative control `쌍성` remained three independent Meanings. Canonical JSONL and adjudication data were unchanged, and no shard outside C11 was rewritten.
+
+## Follow-up: Stage 2 idiom-extension review and exact replay (review 5542545031)
+
+Review `5542545031` found that two of the 27 checkpoint KEEP decisions treated different outcomes of one expression as evidence of separate lexical identities. I rechecked that limited pattern across the 27 same-record-split rationales. These two expressions were the outcome-only cases; the other 25 retained rationales distinguish separate referents, actions, source identities, or lexical axes rather than splitting one idiom solely by its result. This targeted check does not claim a new independent audit of all 86 multi-Meaning lemmas.
+
+| Corrected lemma | Source-bound decision |
+| --- | --- |
+| `쐐기(를) 박다[치다]` | Merge `w522918-s1..s4`. The source wedge is used to stop movement or widen a gap (`w211902-s1`); the related `쐐기질` senses already group literal wedging with figurative interruption (`w452534-s1/s2`). The idiom extends that same image to firmly settling a commitment or intervening to divide/block a relationship or course of events. Keep the separate tool and larva meanings of `쐐기`. |
+| `싹을 밟다` | Merge `w522896-s1/s2`. The source noun `싹` already groups a sprout with the metaphorical beginning/sign (`w211215-s1..s3`). The idiom's two uses concern acting on or noticing that nascent sign; suppressing a start versus detecting its hint is an outcome difference, not evidence of an unrelated expression. |
+
+The merged representative glosses lead with the shared source image and then preserve the source uses: the wedge gloss covers fixation and separation/obstruction; the sprout gloss covers stopping a new start and noticing a sign. No canonical or adjudication row was changed.
+
+I restored only the three C11 Meaning shards from PR base `80632ae9e5f62df05b17fcc59fa1c3bce60b66a6` and replayed the entire spec. The current replay has 2,122 C11 rows (2,006 lemmas, 2,725 bound senses), 496,123 repository Meanings, and 117 adjudications. Exactly 301 C11 lemmas have a changed Meaning count versus the PR base; 86 retain multiple Meaning rows and 25 retain same-record splits. All 2,006 `before` snapshots match the PR-base rows, every final group matches the replayed shard output, and all 2,725 source senses are covered once. The controls remain `쌀쌀하다` as one Meaning, `쐐기` as separate tool versus grouped larvae, and `쌍성` as three independent Meanings. Canonical JSONL, adjudication data, and shards outside C11 are unchanged.
 
 ## Gloss checks
 
