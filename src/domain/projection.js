@@ -148,6 +148,7 @@ export function projectRecord(record, {
     lemma: record.lemma,
     searchForms: Array.isArray(record.search_forms) ? [...record.search_forms] : [],
     senses: visibleSenses,
+    isMeaningView: record.view === 'meaning',
     hasRelations: visibleSenses.some((sense) => sense.hasRelations),
     match,
   };
@@ -209,7 +210,10 @@ export function projectSearchResults(records, matches = null) {
           ? match.senseIds
           : null,
       });
-    });
+    })
+    // Meaning is the candidate unit: a record with no meaning (every sense dropped, e.g. out_of_scope) has
+    // nothing to show and is not a candidate. Raw-sense records keep their existing behaviour.
+    .filter((record) => !record.isMeaningView || record.senses.length > 0);
   return mergeMeaningRecords(projected);
 }
 

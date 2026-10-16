@@ -7,6 +7,7 @@ import { DatabaseSync } from 'node:sqlite';
 
 import { buildDictionary } from '../scripts/build/dictionary.mjs';
 import { writeAdjudications, writeMeanings } from '../scripts/meaning/contract.mjs';
+import { SearchSession } from '../src/domain/search-session.js';
 import { projectSearchResults } from '../src/domain/projection.js';
 import { expandExactSearchCandidates } from '../src/domain/exact-search-candidates.js';
 import { findRecordsBySearchTerm, getMeaningRecord } from '../src/runtime/sqlite-query.js';
@@ -17,6 +18,7 @@ const GLOSSES = {
   이동0: '위치를 옮김.', 떠남0: '있던 곳을 벗어남.', 쓸쓸함0: '외롭고 적적한 느낌.',
   가다0: '어떤 장소로 이동하다.', 가다1: '어떤 상태나 시간이 지나가다.', 가다2: '목적지에 도착하러 떠나다.',
   가다3: '기계나 물건이 제대로 작동하다.', 가다4: '값이나 무게 따위가 나가다.',
+  파0: '한글 자모의 열넷째 글자.',
   나무0: '줄기가 단단한 여러해살이 식물.', 나무1: '집을 짓거나 가구를 만드는 재료.',
 };
 const record = (n, lemma, senses) => ({
@@ -39,8 +41,10 @@ const RECORDS = [
     [],
   ]),
   record(12, '나무', [[], []]),
+  record(13, '파', [[]]),
 ];
-const MEANINGS = RECORDS.flatMap((item) => item.senses.map((sense, index) => ({
+const DROPPED = new Set(['w013-s1']);
+const MEANINGS = RECORDS.flatMap((item) => item.senses.filter((sense) => !DROPPED.has(sense.id)).map((sense, index) => ({
   id: item.senses.length === 1 ? `m${item.id.slice(1)}` : `m${item.id.slice(1)}_${index + 1}`,
   lemma: item.lemma,
   gloss: sense.gloss,
@@ -52,7 +56,7 @@ async function buildFixture(directory) {
   await mkdir(canonicalDirectory);
   await writeFile(path.join(canonicalDirectory, 'part.jsonl'), `${RECORDS.map((item) => JSON.stringify(item)).join('\n')}\n`);
   writeMeanings(path.join(directory, 'meanings'), MEANINGS);
-  writeAdjudications(path.join(directory, 'adjudication'), []);
+  writeAdjudications(path.join(directory, 'adjudication'), [...DROPPED].map((sense_id) => ({ sense_id, lemma: '파', decision: 'drop', reason: 'out_of_scope' })));
   const outputPath = path.join(directory, 'dictionary.sqlite');
   await buildDictionary({
     inputDirectory: canonicalDirectory,
@@ -107,6 +111,20 @@ test('meaning search: candidates are meanings, ranked by stored counts, at most 
       const [plain] = search(database, '나무');
       assert.deepEqual(plain.primarySenseIds, ['m012_1']);
       assert.deepEqual(plain.moreSenseIds, ['m012_2']);
+
+      // A record whose every sense is out_of_scope has no meaning: no candidate and no empty card.
+      assert.deepEqual(search(database, '파'), []);
+      const runtime = {
+        search: async (term) => findRecordsBySearchTerm(database, term),
+        getRecord: async () => { throw new Error('raw record not expected'); },
+        getMeaningRecord: async (id) => getMeaningRecord(database, id),
+      };
+      const dropped = await new SearchSession({ runtime }).searchExact('파');
+      assert.equal(dropped.status, 'empty');
+      assert.deepEqual(dropped.results, []);
+      const kept = await new SearchSession({ runtime }).searchExact('가다');
+      assert.equal(kept.status, 'ready');
+      assert.equal(kept.results.length, 1);
 
       // A single-meaning lemma has no more list.
       const [single] = search(database, '이동');

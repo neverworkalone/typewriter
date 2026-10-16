@@ -204,7 +204,7 @@ export function getMeaningRecord(database, recordId) {
     `, [meaning.id]),
   }));
 
-  return { ...record, search_forms: searchForms, senses };
+  return { ...record, view: 'meaning', search_forms: searchForms, senses };
 }
 
 export function getRecord(database, recordId) {
