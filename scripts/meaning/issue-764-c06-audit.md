@@ -9,11 +9,11 @@ This is the C06 source-bound self-check for Issue #764, based on the current cle
 | Canonical records | 2,891 | 2,891 |
 | Lemmas | 2,673 | 2,673 |
 | Canonical senses | 3,101 | 3,101 |
-| Meaning rows | 3,043 | 2,923 |
+| Meaning rows | 3,043 | 2,925 |
 | Multi-sense lemmas | 254 | 254 |
 | Single-sense lemmas explicitly retained | — | 2,419 |
 | Lemmas whose Meaning count changed | — | 94 |
-| Lemmas retaining multiple Meanings | — | 154 |
+| Lemmas retaining multiple Meanings | — | 155 |
 | Adjudications | 0 new | 0 new |
 
 Every C06 source sense occurs in exactly one final group. The edit does not drop senses or append adjudications. Canonical JSONL is unchanged. The executable spec contains exact before snapshots and final groups for all 2,673 lemmas, including single-sense lemmas. The apply script checks snapshot equality and complete, non-overlapping source-sense coverage.
@@ -123,7 +123,7 @@ The first column lists the complete final source-sense partition for every lemma
 | 러시아 문자 | w102560-s1+w102560-s2 | 통합 |
 | 롬 | w102629-s1 / w417545-s1 | 분리 |
 | 레이저 폭탄 | w102736-s1 / w102736-s2 | 분리 |
-| 로미오와 줄리엣 | w102822-s1+w422538-s1+w422538-s2+w422538-s3 | 통합 |
+| 로미오와 줄리엣 | w102822-s1 / w422538-s1 / w422538-s2 / w422538-s3 | 분리 |
 | 로즈 | w102826-s1 / w103552-s1 / w418989-s1 | 분리 |
 | 로지 | w102906-s1 / w422521-s1 | 분리 |
 | 르누아르 | w103093-s1 / w417825-s1 / w417826-s1 | 분리 |
@@ -139,7 +139,7 @@ The first column lists the complete final source-sense partition for every lemma
 | 루트 | w103548-s1+w103548-s2 / w103549-s1+w103549-s2 / w103550-s1 / w103551-s1+w103551-s2 | 분리 |
 | 로트 | w103554-s1 / w103555-s1 | 분리 |
 | 로빈슨 | w103569-s1 / w103629-s1 / w417658-s1 / w417659-s1 | 분리 |
-| 룩셈부르크 | w103570-s1 / w103570-s2 / w419193-s1 | 분리 |
+| 룩셈부르크 | w103570-s1+w103570-s2 / w419193-s1 | 분리 |
 | 루트비히 | w103610-s1 / w418634-s1 | 분리 |
 | 롱 | w103719-s1 / w422094-s1 | 분리 |
 | 로빙 | w103843-s1+w103843-s2+w103843-s3 | 통합 |
@@ -260,7 +260,7 @@ The first column lists the complete final source-sense partition for every lemma
 | 레일 | w421153-s1+w421153-s2 | 통합 |
 | 로고스 | w421416-s1+w421416-s2+w421416-s3 | 통합 |
 | 롤리 | w421548-s1 / w421825-s1 | 분리 |
-| 로엔그린 | w421601-s1+w421601-s2 | 통합 |
+| 로엔그린 | w421601-s1 / w421601-s2 | 분리 |
 | 론도 | w421618-s1+w421618-s2 | 통합 |
 | 롱 스트라이드 | w421811-s1+w421811-s2 | 통합 |
 | 롱런하다 | w421848-s1+w421848-s2 | 통합 |
@@ -275,7 +275,7 @@ The first column lists the complete final source-sense partition for every lemma
 | 룰렛 | w423564-s1+w423564-s2 | 통합 |
 | 리사이클링 | w423746-s1 / w423746-s2 | 분리 |
 | 라파엘 | w424300-s1 / w424300-s2 | 분리 |
-| 러거 | w424485-s1 / w424485-s2 | 분리 |
+| 러거 | w424485-s1+w424485-s2 | 통합 |
 | 럼버 페이퍼 | w424660-s1+w424660-s2 | 통합 |
 | 락타이드 | w510409-s1+w510409-s2 | 통합 |
 
@@ -324,7 +324,7 @@ The first column lists the complete final source-sense partition for every lemma
 | 로마니스트 | w417586-s1, w417586-s2, w417586-s3 | 로마법 연구자와 그 연구 전통을 세운 법학파. |
 | 로맨스 | w102166-s1, w102166-s2 | 연애담과 그 이야기를 다룬 문학 장르. 음악 형식은 별도. |
 | 로맨티시스트 | w102232-s1, w102232-s2 | 낭만주의자에서 낭만적 공상가로 이어지는 용법. |
-| 로미오와 줄리엣 | w102822-s1, w422538-s1, w422538-s2, w422538-s3 | 원작 희곡과 같은 이야기에서 나온 음악 작품의 표제. |
+| 로미오와 줄리엣 | w102822-s1, w422538-s1, w422538-s2, w422538-s3 | 셰익스피어 희곡, 베를리오즈 교향곡, 차이콥스키 서곡, 프로코피예프 발레곡은 각각 다른 창작 작품이다. 같은 제목과 서사의 유래만으로 작품 정체성을 합치지 않는다. |
 | 로벨리아 | w104318-s1, w422288-s1 | 같은 속 식물의 지역·형태·쓰임이 다른 종. |
 | 로봇 | w104581-s1, w104581-s2, w104581-s3 | 자동화 장치의 기능·형태와 기계적 복종의 비유. |
 | 로비 | w417657-s1, w417657-s2, w417657-s3 | 건물 공간에서 그 공간에서 이루어지는 청원 활동으로 확장. |
@@ -332,7 +332,7 @@ The first column lists the complete final source-sense partition for every lemma
 | 로스 | w104154-s1, w104154-s2, w104154-s3 | 조리법과 그 조리에 쓰는 고기 부위. |
 | 로스트 | w105648-s1, w105648-s2, w105648-s3, w105648-s4, w105648-s5 | 굽는 행위·구이용 부위·완성 요리는 roast의 조리·음식 용법. |
 | 로스트비프 | w422050-s1, w422050-s2 | 같은 요리를 굽는 열원에 따라 설명한 용법. |
-| 로엔그린 | w421601-s1, w421601-s2 | 오페라는 같은 인물·이야기에서 나온 각색 작품. |
+| 로엔그린 | w421601-s1 / w421601-s2 | 중세 서사시와 바그너 오페라는 같은 인물·이야기를 다루지만 서로 다른 작품이다. |
 | 로열패밀리 | w104795-s1, w104795-s2 | 왕실 가족에서 특권적 대우를 받는 가족으로의 비유 확장. |
 | 로이터 | w104274-s1, w417263-s1 | 설립자 이름이 통신사 이름으로 쓰인 고유명사 확장. |
 | 로제트 | w100732-s1, w100732-s2, w100732-s3 | 장미 모양을 본뜬 형태·물건에 쓰이는 공통 명칭. |
@@ -411,7 +411,7 @@ The first column lists the complete final source-sense partition for every lemma
 
 ## Stage 2 follow-up source-bound review
 
-After the Stage 2 review, I parsed the exact reviewed PR HEAD `ff273fad72acfd1bec0f49b1b48d9edc7dd1ea11` and enumerated every canonical record whose senses occupied more than one final Meaning. The review's count of 48 is the number of lemmas; the corresponding count by canonical record ID is 50. I compared all source senses, their final memberships, and the relevant linked or derived entries. Seventeen records across sixteen lemmas now share one Meaning; the remaining thirty-three record splits across thirty-three lemmas are retained below with their source-bound distinction. This is a primary-context agent self-check, not an independent review or a mechanical string rule.
+After the Stage 2 review, I parsed the exact reviewed PR HEAD `ff273fad72acfd1bec0f49b1b48d9edc7dd1ea11` and enumerated every canonical record whose senses occupied more than one final Meaning. The review's count of 48 is the number of lemmas; the corresponding count by canonical record ID is 50. I compared all source senses, their final memberships, and the relevant linked or derived entries. Nineteen canonical records across eighteen lemmas now share one Meaning; the remaining thirty-one record splits across thirty-one lemmas are retained below with their source-bound distinction. This updates the earlier 50-record follow-up by merging the country/capital senses for `룩셈부르크` and the sport/player senses for `러거`. This is a primary-context agent self-check, not an independent review or a mechanical string rule.
 
 | Lemma / canonical record | Final source-sense groups | Assessment |
 | --- | --- | --- |
@@ -437,7 +437,7 @@ After the Stage 2 review, I parsed the exact reviewed PR HEAD `ff273fad72acfd1be
 | 로맨스 (`w102166`) | w102166-s1+w102166-s2 / w102166-s3 | 분리: 연애담과 중세 애정·무용담 서사 장르는 연결된 이야기 유형으로 묶고, 음악 형식은 별도 유지. |
 | 롤링 (`w102549`) | w102549-s1 / w102549-s2 | 분리: 선박·항공기의 좌우 흔들림과 금속 압연 공정은 움직임과 제조 작업이 달라 유지. |
 | 레이저 폭탄 (`w102736`) | w102736-s1 / w102736-s2 | 분리: 레이저 유도 재래식 폭탄과 레이저 핵융합 수소 폭탄은 유도 방식과 폭발 원리가 달라 유지. |
-| 룩셈부르크 (`w103570`) | w103570-s1 / w103570-s2 | 분리: 룩셈부르크 국가와 수도 도시는 같은 지명을 쓰지만 서로 다른 정치·지리 대상이므로 유지. |
+| 룩셈부르크 (`w103570`) | w103570-s1+w103570-s2 | 통합: 국가 gloss에 같은 이름의 수도가 직접 명시되고 도시 gloss도 그 수도로 정의하므로, 동일 지명 원리의 국가·수도 용법을 묶고 두 원뜻을 모두 병기. (`w419193-s1` 혁명가는 별도 Meaning.) |
 | 리브르 (`w104710`) | w104710-s1 / w104710-s2 | 분리: 프랑스의 옛 화폐 단위와 옛 무게 단위는 측정 차원이 달라 유지. |
 | 뢴트겐 (`w422980`) | w422980-s1 / w422980-s2 | 분리: 엑스선 자체와 방사선 노출량·세기의 단위는 물리 대상과 측정 단위가 달라 유지. |
 | 루프 (`w104822`) | w104822-s1+w104822-s2+w104822-s3+w104822-s4+w104822-s5 | 통합: 고리·단춧고리·곡선 경로·곡선 타구·반복 명령은 닫힌 경로 또는 되돌아 반복되는 loop 이미지로 묶음. |
@@ -464,16 +464,29 @@ After the Stage 2 review, I parsed the exact reviewed PR HEAD `ff273fad72acfd1be
 | 르포르타주 (`w422295`) | w422295-s1+w422295-s2 | 통합: 현지 보고 기사와 다큐멘터리 문학 형식은 사실을 현장에서 기록·전달하는 르포르타주 의미로 묶음. |
 | 리사이클링 (`w423746`) | w423746-s1 / w423746-s2 | 분리: 폐기물 재생 이용과 국제 금융 자금 재배치는 대상·작동이 다른 전문 의미로 유지. |
 | 라파엘 (`w424300`) | w424300-s1 / w424300-s2 | 분리: 유대교 대천사와 화가 라파엘로의 영어 이름은 서로 다른 인물 정체성이므로 유지. |
-| 러거 (`w424485`) | w424485-s1 / w424485-s2 | 분리: 럭비 경기와 그 경기를 하는 선수는 종목과 참가자라는 범주가 달라 유지. |
+| 러거 (`w424485`) | w424485-s1+w424485-s2 | 통합: 경기명과 그 경기에 참여하는 선수의 호칭은 동일한 럭비 종목 명칭의 경기·참가자 용법이며, 두 원뜻을 한 Meaning gloss에 보존. |
 
-Positive consistency controls: `라벨` and `레이블` now each group the matching product-label and file-label senses; canonical direct links pair those senses. `롱런` and `롱런하다` both preserve the long-duration performance meaning across noun and verb forms. `르포` and `르포르타주` each group field-report and documentary-literary senses, matching their linked lexical usage. These are human source-bound checks, not string-based validation.
+Positive consistency controls: `라벨` and `레이블` now each group the matching product-label and file-label senses; canonical direct links pair those senses. `롱런` and `롱런하다` both preserve the long-duration performance meaning across noun and verb forms. `르포` and `르포르타주` each group field-report and documentary-literary senses, matching their linked lexical usage. `룩셈부르크` country/capital and `러거` sport/player are now grouped while the independent Luxembourg revolutionary remains separate.
 
-Negative controls retained: `라이트` senses denote different people; `라임` distinguishes the citrus tree/fruit from rhyme; `리크` distinguishes electrical leakage from the vegetable; and `레벨` keeps a surveying instrument apart from a degree or standard. The additional same-record candidates were assessed individually: `라인` keeps a corporate work division apart from a boundary line; `로테이션` keeps ski body-turning apart from cyclic reassignment; `루프` is grouped only where the source supports a loop-shaped or repeating path.
+Negative controls retained: `라이트` senses denote different people; `라임` distinguishes the citrus tree/fruit from rhyme; `리크` distinguishes electrical leakage from the vegetable; and `레벨` keeps a surveying instrument apart from a degree or standard. Distinct works are also kept apart: the four `로미오와 줄리엣` titles and the `로엔그린` epic and opera. The additional same-record candidates were assessed individually: `라인` keeps a corporate work division apart from a boundary line; `로테이션` keeps ski body-turning apart from cyclic reassignment; `루프` is grouped only where the source supports a loop-shaped or repeating path. These boundaries are human source-bound judgments, not string-based validation.
 
+## Follow-up to Stage 2 review 5545006258
+
+The review identified two over-merges of separately titled works and two under-merges of senses with a shared, specific naming principle. The four conclusions below are grounded in the existing source sense IDs and canonical glosses; no canonical or adjudication data changes.
+
+| Lemma | Source senses | Final decision and evidence |
+| --- | --- | --- |
+| 로미오와 줄리엣 | w102822-s1 / w422538-s1 / w422538-s2 / w422538-s3 | 분리: Shakespeare's 1597 play, Berlioz's 1839 symphony, Tchaikovsky's 1870 overture, and Prokofiev's 1935 ballet are four independently authored works, despite the shared title and source narrative. Each original source gloss is retained on its own Meaning. |
+| 로엔그린 | w421601-s1 / w421601-s2 | 분리: the medieval epic and Wagner's 1850 opera are independently authored works about the same character and story. Both canonical glosses remain unchanged on separate Meanings. |
+| 룩셈부르크 | w103570-s1+w103570-s2 / w419193-s1 | 통합/분리: the country and its capital share the exact geographic name, which the source glosses explicitly connect; their two original glosses are concatenated in one Meaning. The Luxembourg revolutionary remains independent. |
+| 러거 | w424485-s1+w424485-s2 | 통합: the source names both rugby football and a player of that same sport; the result preserves both original glosses in one Meaning. |
+
+The manual issue-specific regression at scripts/meaning/issue-764-c06.test.mjs checks exact spec-to-output membership, all four work-title senses as separate groups, the epic/opera split, the country/capital and sport/player merges, and the independent Luxembourg revolutionary as a negative control. A direct comparison confirms all four boundary assertions fail on the a8f0029a memberships and pass after this repartition. The 31 other retained same-record splits continue to have their source-bound dispositions listed above; this follow-up does not infer automatic merges from shared spelling or source-record boundaries.
 ## Validation record
 
+- Stage 2 review correction: `node scripts/meaning/validate.mjs` passed (495,007 meanings; 117 adjudications); exact-base replay from `417aaf0fd718c6b1695b177b685348cdd6205729` reproduced all 2,673 repartitions and four C06 shards byte-for-byte, preserving all 3,101 canonical senses and all adjudications. The manual C06 boundary regression passed 13/13 checks, including distinct work titles, country/capital and sport/player controls, and the independent Luxembourg person. `git diff --check` passed.
 - Baseline node scripts/meaning/validate.mjs passed before editing (495,125 meanings; 117 adjudications). The post-edit validator passed (495,005 meanings; 117 adjudications).
 - Exact-base replay from 417aaf0fd718c6b1695b177b685348cdd6205729 passed: all 2,673 repartitions reproduced the working Meaning rows, and all four C06 shard files matched replay byte-for-byte.
-- The base-to-HEAD diff contains six paths: the four Meaning data outputs are `data/meanings/c06_001.jsonl` through `c06_004.jsonl`, and the other two added paths are this audit and the executable spec. Canonical JSONL and adjudication data are unchanged.
+- The base-to-HEAD diff contains seven paths: the four Meaning data outputs are `data/meanings/c06_001.jsonl` through `c06_004.jsonl`; the other three are this audit, the executable spec, and the manual C06 boundary regression. Canonical JSONL and adjudication data are unchanged.
 - git diff --check passed. Clean-worktree corepack pnpm run ci:normal passed on implementation commit aa7f2c55, covering canonical, lexical, toolchain, batch, product, and artifact scopes with one current-revision SQLite build.
 - Follow-up validation on commit 6e600ab5: `node scripts/meaning/validate.mjs` passed (495,005 meanings; 117 adjudications), and exact-base replay passed for all 2,673 repartitions, 3,101 canonical senses, and four byte-identical C06 shards; adjudications remained unchanged. `git diff --check` passed. A clean-worktree `corepack pnpm run ci:normal` reached the batch category but failed in the unrelated `scripts/reference/literature-rescue.test.mjs` (3 failures: the synthetic literature lookups returned `unavailable` instead of `attempted`); running that test alone reproduced the same failure. No literature/reference files are changed in this PR. The current follow-up commit therefore does not have a passing full Normal CI result in this environment.
