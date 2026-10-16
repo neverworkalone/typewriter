@@ -10,9 +10,7 @@ export const REQUEST_METHODS = Object.freeze({
   ready: 'ready',
   status: 'status',
   search: 'search',
-  getRecord: 'get-record',
   getMeaningRecord: 'get-meaning-record',
-  getRelations: 'get-relations',
   metadata: 'metadata',
   close: 'close',
 });

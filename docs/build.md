@@ -44,17 +44,18 @@ contains only the current lookup model:
 - `records` preserves record identity, `entry`/`expression`, role, optional
   candidate, and lemma;
 - `search_forms` preserves every form and its source position;
-- `senses` preserves source record, sense position, part of speech, and gloss;
-- `relations` preserves source sense order, target record/sense, relation type, and
-  note;
-- `meanings`, `meaning_members`, `sense_adjudications`, `meaning_relations` and `meaning_relation_sources` hold the
+- `meanings`, `meaning_members`, `sense_adjudications` and `meaning_relations` hold the
   meaning layer and projected relations ([meaning layer](meaning-layer.md#relation-projection-and-sqlite-issue-717));
+- `generated_surface_forms` holds the sense-bound generated forms with the source sense position;
+- the STDICT source `senses`, `relations` and `meaning_relation_sources` live only in the build-time staging database
+  (`SQLITE_SOURCE_SCHEMA_SQL`), where projection/provenance is verified; they are never shipped (Issue #792);
 - `metadata` stores deterministic contract versions and generated row counts.
 
-Exact lemma and search-form indexes support lookup. Sense-by-record and
-source/target relation indexes support ordered record and relation traversal. The
-builder inserts records and senses before relations so forward references work, and
-SQLite foreign keys plus integrity checks verify the resulting graph. Each build
+Exact lemma and search-form indexes support lookup; member and adjudication record
+indexes support the meaning view. The builder inserts records and senses before
+relations so forward references work in the staging database, whose SQLite foreign keys,
+integrity checks and source-derived checks verify the graph before the product tables
+are copied into the shipped database. Each build
 removes the requested generated file first; it does not depend on an existing DB or
 apply migrations. An output path inside `data/canonical/` is rejected.
 

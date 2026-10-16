@@ -24,6 +24,7 @@ import {
 import { DEFAULT_CANONICAL_DIRECTORY } from './validate/canonical-jsonl.mjs';
 import {
   DICTIONARY_VERSION,
+  BUILD_ONLY_TABLES_QUERY,
   MEANING_INTEGRITY_QUERIES,
   SQLITE_SCHEMA_VERSION,
 } from '../src/runtime/dictionary-contract.js';
@@ -415,10 +416,7 @@ function validateDictionaryMetadata({
               generated_surface_forms.sense_id,
               generated_surface_forms.rule_id
        FROM generated_surface_forms
-       INNER JOIN senses
-         ON senses.id = generated_surface_forms.sense_id
-        AND senses.record_id = generated_surface_forms.record_id
-       ORDER BY generated_surface_forms.record_id, senses.position,
+       ORDER BY generated_surface_forms.record_id, generated_surface_forms.sense_position,
                 generated_surface_forms.form, generated_surface_forms.rule_id`,
     ).all();
     if (metadata.generated_surface_form_count !== String(generatedSurfaceForms.length)) {
@@ -427,10 +425,14 @@ function validateDictionaryMetadata({
     if (expectedGeneratedSurfaceForms && JSON.stringify(generatedSurfaceForms) !== JSON.stringify(expectedGeneratedSurfaceForms)) {
       errors.push('Dictionary generated surface forms do not match the supplied canonical projection.');
     }
+    const buildOnlyTables = database.prepare(BUILD_ONLY_TABLES_QUERY).all().map(({ name }) => name);
+    if (buildOnlyTables.length > 0) {
+      errors.push(`Dictionary ships build-only STDICT source table(s): ${buildOnlyTables.join(', ')}.`);
+    }
     for (const [name, sql] of Object.entries(MEANING_INTEGRITY_QUERIES)) {
       const violations = Number(Object.values(database.prepare(sql).get())[0]);
       if (violations !== 0) {
-        errors.push(`Dictionary meaning relation provenance check ${name} found ${violations} violation(s).`);
+        errors.push(`Dictionary meaning layer check ${name} found ${violations} violation(s).`);
       }
     }
     const integrity = database.prepare('PRAGMA integrity_check').get()?.integrity_check;

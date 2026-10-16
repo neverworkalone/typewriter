@@ -3,6 +3,7 @@ import test from 'node:test';
 import { DatabaseSync } from 'node:sqlite';
 
 import {
+  BUILD_ONLY_TABLES,
   DICTIONARY_COUNT_QUERIES,
   DICTIONARY_VERSION,
   SQLITE_SCHEMA_VERSION,
@@ -181,6 +182,22 @@ test('runtime validation keeps contract checks but skips whole-database scans', 
     });
   } finally {
     for (const database of [countMismatch, staleRevision, wrongSchema, wrongVersion, unverified]) {
+      database.close();
+    }
+  }
+});
+
+test('rejects a packaged dictionary that ships a build-only STDICT source table', () => {
+  for (const table of BUILD_ONLY_TABLES) {
+    const database = createDictionary();
+    try {
+      assert.doesNotThrow(() => validatePackagedDictionary(database));
+      database.exec(`CREATE TABLE ${table} (id TEXT)`);
+      assert.throws(() => validatePackagedDictionary(database), {
+        code: 'DATABASE_INTEGRITY_FAILED',
+        details: { build_only_tables: [table] },
+      });
+    } finally {
       database.close();
     }
   }

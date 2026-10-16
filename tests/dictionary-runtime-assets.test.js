@@ -41,8 +41,9 @@ describe('product dictionary runtime assets', () => {
     expect(workerSource).toContain('writeBlocked');
     expect(workerSource).toContain('persistedWriteCount');
     expect(workerSource).toContain("databasePromise = loadDatabase()");
-    expect(workerSource).toContain("case 'get-record'");
-    expect(workerSource).toContain("case 'get-relations'");
+    expect(workerSource).toContain("case 'get-meaning-record'");
+    expect(workerSource).not.toContain("case 'get-record'");
+    expect(workerSource).not.toContain("case 'get-relations'");
     expect(workerSource).toContain("case 'metadata'");
   });
 

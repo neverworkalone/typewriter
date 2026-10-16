@@ -9,7 +9,7 @@ import {
 } from '../validate/canonical-context.mjs';
 import { DEFAULT_CANONICAL_DIRECTORY } from '../validate/canonical-jsonl.mjs';
 import { SQLITE_SCHEMA_VERSION } from '../build/sqlite-schema.mjs';
-import { MEANING_INTEGRITY_QUERIES } from '../../src/runtime/dictionary-contract.js';
+import { BUILD_ONLY_TABLES_QUERY, MEANING_INTEGRITY_QUERIES } from '../../src/runtime/dictionary-contract.js';
 import {
   buildOrReuseSurfaceFormProjection,
   loadSurfaceFormExceptionManifest,
@@ -38,10 +38,14 @@ export async function validateSharedDictionary({
     if (foreignKeys.length > 0) {
       throw new Error(`shared SQLite foreign-key check failed: ${JSON.stringify(foreignKeys)}`);
     }
+    const buildOnlyTables = database.prepare(BUILD_ONLY_TABLES_QUERY).all().map(({ name }) => name);
+    if (buildOnlyTables.length > 0) {
+      throw new Error(`shared SQLite ships build-only STDICT source table(s): ${buildOnlyTables.join(', ')}`);
+    }
     for (const [name, sql] of Object.entries(MEANING_INTEGRITY_QUERIES)) {
       const violations = Number(Object.values(database.prepare(sql).get())[0]);
       if (violations !== 0) {
-        throw new Error(`shared SQLite meaning relation provenance check ${name} found ${violations} violation(s)`);
+        throw new Error(`shared SQLite meaning layer check ${name} found ${violations} violation(s)`);
       }
     }
     const userVersion = database.prepare('PRAGMA user_version').get().user_version;
@@ -93,10 +97,7 @@ export async function validateSharedDictionary({
               generated_surface_forms.sense_id,
               generated_surface_forms.rule_id
        FROM generated_surface_forms
-       INNER JOIN senses
-         ON senses.id = generated_surface_forms.sense_id
-        AND senses.record_id = generated_surface_forms.record_id
-       ORDER BY generated_surface_forms.record_id, senses.position,
+       ORDER BY generated_surface_forms.record_id, generated_surface_forms.sense_position,
                 generated_surface_forms.form, generated_surface_forms.rule_id`,
     ).all();
     if (JSON.stringify(actualSurfaceRows) !== JSON.stringify(surfaceProjection.rows)) {

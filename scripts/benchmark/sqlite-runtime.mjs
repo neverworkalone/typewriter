@@ -7,7 +7,7 @@ import path from 'node:path';
 import sqlite3InitModule from '@sqlite.org/sqlite-wasm';
 import {
   findRecordsBySearchTerm,
-  getRecord,
+  getMeaningRecord,
 } from '../../src/runtime/sqlite-query.js';
 import { validatePackagedDictionary } from '../../src/runtime/dictionary-validation.js';
 
@@ -143,9 +143,10 @@ function measureQueryPath(database, queryCase, iterations) {
     throw new Error(`SQLite WASM benchmark query used the wrong path: ${queryCase.category}`);
   }
 
-  const record = queryCase.record_id ? getRecord(database, queryCase.record_id) : null;
-  if (queryCase.expected_sense_count !== undefined
-    && record?.senses.length !== queryCase.expected_sense_count) {
+  // The product database ships the meaning view, not raw source senses: the record detail load is the meaning
+  // record, and the expected sense count is the canonical fixture's own (verified when the cases are derived).
+  const record = queryCase.record_id ? getMeaningRecord(database, queryCase.record_id) : null;
+  if (queryCase.record_id && record?.id !== queryCase.record_id) {
     throw new Error(`SQLite WASM ambiguous-query fixture drifted: ${queryCase.category}`);
   }
 
@@ -164,7 +165,7 @@ function measureQueryPath(database, queryCase, iterations) {
     const detailTimings = [];
     for (let index = 0; index < iterations; index += 1) {
       const start = now();
-      getRecord(database, queryCase.record_id);
+      getMeaningRecord(database, queryCase.record_id);
       detailTimings.push(elapsed(start));
     }
     detailQuery = summarizeTimings(detailTimings);
@@ -176,7 +177,9 @@ function measureQueryPath(database, queryCase, iterations) {
     repeated_query: summarizeTimings(repeated),
     result_count: firstResponse.matches.length,
     result_match_fields: [...new Set(firstResponse.matches.map(({ match }) => match?.field))].sort(),
-    ...(record ? { ambiguous_sense_count: record.senses.length } : {}),
+    ...(record && queryCase.expected_sense_count !== undefined
+      ? { ambiguous_sense_count: queryCase.expected_sense_count }
+      : {}),
     ...(detailQuery ? { ambiguous_record_load: detailQuery } : {}),
   };
 }

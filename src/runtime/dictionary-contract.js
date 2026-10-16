@@ -1,12 +1,21 @@
 import { EXPLORATORY_RELATION_TYPES, LEXICAL_RELATION_TYPES } from './meaning-ranking.js';
 
 export const DICTIONARY_VERSION = 'm2-pilot-1';
-export const SQLITE_SCHEMA_VERSION = '5';
+export const SQLITE_SCHEMA_VERSION = '6';
 
 export const MEANING_RELATION_ORIGINS = Object.freeze({
   projection: 'stdict-sense-projection',
   authored: 'typewriter-authored',
 });
+
+/**
+ * STDICT source tables that back build-time verification only. The product database must not ship them: users see
+ * Typewriter meanings and meaning relations, and the source layer would only add size.
+ */
+export const BUILD_ONLY_TABLES = Object.freeze(['senses', 'relations', 'meaning_relation_sources']);
+
+export const BUILD_ONLY_TABLES_QUERY = `SELECT name FROM sqlite_master WHERE type = 'table' AND name IN (${
+  BUILD_ONLY_TABLES.map((name) => `'${name}'`).join(', ')}) ORDER BY name`;
 
 export const DICTIONARY_COUNT_QUERIES = Object.freeze({
   record_count: 'SELECT COUNT(*) FROM records',
@@ -14,13 +23,10 @@ export const DICTIONARY_COUNT_QUERIES = Object.freeze({
   reference_only_count: "SELECT COUNT(*) FROM records WHERE role = 'reference-only'",
   candidate_count: 'SELECT COUNT(*) FROM records WHERE candidate_id IS NOT NULL',
   search_form_count: 'SELECT COUNT(*) FROM search_forms',
-  sense_count: 'SELECT COUNT(*) FROM senses',
-  relation_count: 'SELECT COUNT(*) FROM relations',
   generated_surface_form_count: 'SELECT COUNT(*) FROM generated_surface_forms',
   meaning_count: 'SELECT COUNT(*) FROM meanings',
   meaning_member_count: 'SELECT COUNT(*) FROM meaning_members',
   meaning_relation_count: 'SELECT COUNT(*) FROM meaning_relations',
-  meaning_relation_source_count: 'SELECT COUNT(*) FROM meaning_relation_sources',
   expression_count: "SELECT COUNT(*) FROM records WHERE record_type = 'expression'",
 });
 
@@ -39,18 +45,10 @@ const MEANING_ORDER_SQL = (id) => {
   return `length(${entry}), ${entry}, length(${ordinal}), ${ordinal}, ${id}`;
 };
 
-// Meaning of a sense: its own member meaning, else (for a `duplicate` drop) the meaning of `duplicate_of`.
-const memberMeaning = (sense) => `(SELECT meaning_id FROM meaning_members WHERE sense_id = ${sense})`;
-const resolvedMeaning = (sense) => `COALESCE(${memberMeaning(sense)}, (
-  SELECT member.meaning_id FROM sense_adjudications AS adjudication
-  INNER JOIN meaning_members AS member ON member.sense_id = adjudication.duplicate_of_sense_id
-  WHERE adjudication.sense_id = ${sense} AND adjudication.reason = 'duplicate'))`;
-const redirected = (sense) => `(${memberMeaning(sense)} IS NULL)`;
-
 /**
- * Each query counts violations of the sense -> meaning relation projection and must return 0. They re-derive the
- * expected projection from the stored source tables, so a deleted, extra or mis-bound provenance row is detected
- * (not only a wrong row count) without a second build or a re-parse of canonical data.
+ * Each query counts violations of the deployed meaning layer and must return 0. They only read tables that ship in
+ * the product database; the checks that re-derive the sense -> meaning projection from the STDICT source sense and
+ * relation tables run at build time (`scripts/build/meaning-source-checks.mjs`).
  */
 export const MEANING_INTEGRITY_QUERIES = Object.freeze({
   // Ranking metadata is precomputed at build time: counts are the distinct relation targets per ranking key
@@ -76,99 +74,4 @@ export const MEANING_INTEGRITY_QUERIES = Object.freeze({
   meaning_record_mismatch: `
     SELECT COUNT(*) FROM meanings AS meaning
     WHERE meaning.record_id <> 'w' || substr(meaning.id, 2, instr(meaning.id || '_', '_') - 2)`,
-  meaning_relation_without_provenance: `
-    SELECT COUNT(*) FROM meaning_relations AS relation
-    WHERE relation.origin = '${MEANING_RELATION_ORIGINS.projection}' AND NOT EXISTS (
-      SELECT 1 FROM meaning_relation_sources AS source
-      WHERE source.source_meaning_id = relation.source_meaning_id
-        AND source.relation_position = relation.position
-        AND source.position = 0)`,
-  // Contributors are stored in canonical order (record id, sense position, relation position), so position 0 is
-  // the real first contributor whose note/relevance the projected relation shows.
-  meaning_relation_source_order_violation: `
-    SELECT COUNT(*) FROM meaning_relation_sources AS earlier
-    INNER JOIN meaning_relation_sources AS later
-      ON later.source_meaning_id = earlier.source_meaning_id
-     AND later.relation_position = earlier.relation_position
-     AND later.position > earlier.position
-    INNER JOIN relations AS earlier_relation
-      ON earlier_relation.source_sense_id = earlier.source_sense_id
-     AND earlier_relation.position = earlier.source_position
-    INNER JOIN senses AS earlier_sense ON earlier_sense.id = earlier_relation.source_sense_id
-    INNER JOIN relations AS later_relation
-      ON later_relation.source_sense_id = later.source_sense_id
-     AND later_relation.position = later.source_position
-    INNER JOIN senses AS later_sense ON later_sense.id = later_relation.source_sense_id
-    WHERE (earlier_sense.record_id, earlier_sense.position, earlier_relation.position)
-       >= (later_sense.record_id, later_sense.position, later_relation.position)`,
-  // Projected relations of one source meaning are positioned by first appearance in canonical order, so their
-  // first contributors (position 0) must be strictly increasing with the relation position.
-  meaning_relation_position_order_violation: `
-    SELECT COUNT(*) FROM meaning_relations AS earlier
-    INNER JOIN meaning_relations AS later
-      ON later.source_meaning_id = earlier.source_meaning_id
-     AND later.position > earlier.position
-    INNER JOIN meaning_relation_sources AS earlier_source
-      ON earlier_source.source_meaning_id = earlier.source_meaning_id
-     AND earlier_source.relation_position = earlier.position
-     AND earlier_source.position = 0
-    INNER JOIN relations AS earlier_relation
-      ON earlier_relation.source_sense_id = earlier_source.source_sense_id
-     AND earlier_relation.position = earlier_source.source_position
-    INNER JOIN senses AS earlier_sense ON earlier_sense.id = earlier_relation.source_sense_id
-    INNER JOIN meaning_relation_sources AS later_source
-      ON later_source.source_meaning_id = later.source_meaning_id
-     AND later_source.relation_position = later.position
-     AND later_source.position = 0
-    INNER JOIN relations AS later_relation
-      ON later_relation.source_sense_id = later_source.source_sense_id
-     AND later_relation.position = later_source.source_position
-    INNER JOIN senses AS later_sense ON later_sense.id = later_relation.source_sense_id
-    WHERE earlier.origin = '${MEANING_RELATION_ORIGINS.projection}'
-      AND later.origin = '${MEANING_RELATION_ORIGINS.projection}'
-      AND (earlier_sense.record_id, earlier_sense.position, earlier_relation.position)
-       >= (later_sense.record_id, later_sense.position, later_relation.position)`,
-  // A projected relation shows the note/relevance of its first contributing source relation, exactly.
-  meaning_relation_content_mismatch: `
-    SELECT COUNT(*) FROM meaning_relations AS relation
-    INNER JOIN meaning_relation_sources AS source
-      ON source.source_meaning_id = relation.source_meaning_id
-     AND source.relation_position = relation.position
-     AND source.position = 0
-    INNER JOIN relations AS original
-      ON original.source_sense_id = source.source_sense_id
-     AND original.position = source.source_position
-    WHERE relation.origin = '${MEANING_RELATION_ORIGINS.projection}'
-      AND (relation.note IS NOT original.note OR relation.relevance IS NOT original.relevance)`,
-  // Typewriter-authored relations carry no STDICT provenance; provenance may only back projected relations.
-  meaning_relation_provenance_on_non_projection: `
-    SELECT COUNT(*) FROM meaning_relation_sources AS source
-    INNER JOIN meaning_relations AS relation
-      ON relation.source_meaning_id = source.source_meaning_id
-     AND relation.position = source.relation_position
-    WHERE relation.origin <> '${MEANING_RELATION_ORIGINS.projection}'`,
-  meaning_relation_source_mismatch: `
-    SELECT COUNT(*) FROM meaning_relation_sources AS source
-    INNER JOIN meaning_relations AS relation
-      ON relation.source_meaning_id = source.source_meaning_id
-     AND relation.position = source.relation_position
-    INNER JOIN relations AS original
-      ON original.source_sense_id = source.source_sense_id
-     AND original.position = source.source_position
-    WHERE original.target_sense_id IS NULL
-       OR COALESCE(${resolvedMeaning('original.source_sense_id')} = relation.source_meaning_id, 0) = 0
-       OR COALESCE(${resolvedMeaning('original.target_sense_id')} = relation.target_meaning_id, 0) = 0
-       OR original.type <> relation.type
-       OR source.source_redirected <> ${redirected('original.source_sense_id')}
-       OR source.target_redirected <> ${redirected('original.target_sense_id')}`,
-  projectable_relation_without_provenance: `
-    SELECT COUNT(*) FROM relations AS original
-    WHERE original.target_sense_id IS NOT NULL
-      AND ${resolvedMeaning('original.source_sense_id')} IS NOT NULL
-      AND ${resolvedMeaning('original.target_sense_id')} IS NOT NULL
-      AND ${resolvedMeaning('original.source_sense_id')} <> ${resolvedMeaning('original.target_sense_id')}
-      AND NOT EXISTS (
-        SELECT 1 FROM meaning_relation_sources AS source
-        WHERE source.source_sense_id = original.source_sense_id
-          AND source.source_position = original.position)`,
 });

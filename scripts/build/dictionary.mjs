@@ -16,7 +16,8 @@ import {
   BUILD_TOOL_VERSION,
   resolveBuildProvenance,
 } from './provenance.mjs';
-import { SQLITE_SCHEMA_SQL, SQLITE_SCHEMA_VERSION } from './sqlite-schema.mjs';
+import { SQLITE_SCHEMA_SQL, SQLITE_SCHEMA_VERSION, SQLITE_SOURCE_SCHEMA_SQL } from './sqlite-schema.mjs';
+import { MEANING_SOURCE_INTEGRITY_QUERIES } from './meaning-source-checks.mjs';
 import { loadMeaningData, canonicalSensesFromContext, parseMeaningId } from '../meaning/contract.mjs';
 import { compareMeaningRank, countMeaningRelations } from '../../src/runtime/meaning-ranking.js';
 import { projectMeaningRelations } from '../meaning/project.mjs';
@@ -212,7 +213,7 @@ function insertModel(database, model, metadata, surfaceFormRows, meaningLayer) {
     'INSERT INTO senses (id, record_id, position, pos, gloss) VALUES (?, ?, ?, ?, ?)',
   );
   const insertGeneratedSurfaceForm = database.prepare(
-    'INSERT INTO generated_surface_forms (form, record_id, sense_id, rule_id) VALUES (?, ?, ?, ?)',
+    'INSERT INTO generated_surface_forms (form, record_id, sense_id, sense_position, rule_id) VALUES (?, ?, ?, ?, ?)',
   );
   const insertRelation = database.prepare(
     `INSERT INTO relations
@@ -222,14 +223,14 @@ function insertModel(database, model, metadata, surfaceFormRows, meaningLayer) {
 
   const insertMeaning = database.prepare(
     `INSERT INTO meanings
-      (id, lemma, gloss, record_id, lexical_relation_count, exploratory_relation_count, display_rank)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      (id, lemma, gloss, pos, record_id, lexical_relation_count, exploratory_relation_count, display_rank)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   );
   const insertMember = database.prepare(
-    'INSERT INTO meaning_members (meaning_id, position, sense_id) VALUES (?, ?, ?)',
+    'INSERT INTO meaning_members (meaning_id, position, sense_id, record_id) VALUES (?, ?, ?, ?)',
   );
   const insertAdjudication = database.prepare(
-    'INSERT INTO sense_adjudications (sense_id, reason, duplicate_of_sense_id) VALUES (?, ?, ?)',
+    'INSERT INTO sense_adjudications (sense_id, reason, record_id, duplicate_of_sense_id) VALUES (?, ?, ?, ?)',
   );
   const insertMeaningRelation = database.prepare(
     `INSERT INTO meaning_relations
@@ -246,6 +247,19 @@ function insertModel(database, model, metadata, surfaceFormRows, meaningLayer) {
   for (const [key, value] of metadata) {
     insertMetadata.run(key, value);
   }
+
+  // The shipped tables keep only what the product reads of a source sense (owner record, position, part of speech).
+  const sourceSenses = new Map();
+  for (const record of model.records) {
+    record.senses.forEach((sense, position) => {
+      sourceSenses.set(sense.id, { record_id: record.id, position, pos: sense.pos });
+    });
+  }
+  const sourceSense = (senseId) => {
+    const sense = sourceSenses.get(senseId);
+    if (!sense) throw new BuildError(`meaning layer references unknown sense ${senseId}`, 'INVALID_MEANING_DATA');
+    return sense;
+  };
 
   for (const record of model.records) {
     insertRecord.run(
@@ -270,6 +284,7 @@ function insertModel(database, model, metadata, surfaceFormRows, meaningLayer) {
       row.form,
       row.record_id,
       row.sense_id,
+      sourceSense(row.sense_id).position,
       row.rule_id,
     );
   }
@@ -298,17 +313,18 @@ function insertModel(database, model, metadata, surfaceFormRows, meaningLayer) {
       meaning.id,
       meaning.lemma,
       meaning.gloss,
+      sourceSense(meaning.sense_ids[0]).pos,
       meaning.record_id,
       meaning.lexical_relation_count,
       meaning.exploratory_relation_count,
       meaning.display_rank,
     );
     meaning.sense_ids.forEach((senseId, position) => {
-      insertMember.run(meaning.id, position, senseId);
+      insertMember.run(meaning.id, position, senseId, sourceSense(senseId).record_id);
     });
   }
   for (const item of meaningLayer.adjudications) {
-    insertAdjudication.run(item.sense_id, item.reason, item.duplicate_of ?? null);
+    insertAdjudication.run(item.sense_id, item.reason, sourceSense(item.sense_id).record_id, item.duplicate_of ?? null);
   }
   for (const relation of meaningLayer.relations) {
     insertMeaningRelation.run(
@@ -334,7 +350,29 @@ function insertModel(database, model, metadata, surfaceFormRows, meaningLayer) {
   }
 }
 
-function verifyDatabase(database) {
+const DEPLOYED_TABLE_COPIES = [
+  ['metadata', 'key, value', 'key'],
+  ['records', 'id, record_type, role, candidate_id, lemma', 'id'],
+  ['search_forms', 'record_id, position, form', 'record_id, position'],
+  ['generated_surface_forms', 'form, record_id, sense_id, sense_position, rule_id', 'form, record_id, sense_id'],
+  ['meanings', 'id, lemma, gloss, pos, record_id, lexical_relation_count, exploratory_relation_count, display_rank', 'id'],
+  ['meaning_members', 'meaning_id, position, sense_id, record_id', 'meaning_id, position'],
+  ['sense_adjudications', 'sense_id, reason, record_id, duplicate_of_sense_id', 'sense_id'],
+  ['meaning_relations', 'source_meaning_id, position, target_meaning_id, type, note, relevance, origin', 'source_meaning_id, position'],
+];
+
+/** Copy the product tables from the verified staging database, in primary-key order so the output is deterministic. */
+function copyDeployedTables(database, stagingPath) {
+  database.prepare('ATTACH DATABASE ? AS staging').run(stagingPath);
+  database.exec('BEGIN IMMEDIATE;');
+  for (const [table, columns, order] of DEPLOYED_TABLE_COPIES) {
+    database.exec(`INSERT INTO main.${table} (${columns}) SELECT ${columns} FROM staging.${table} ORDER BY ${order};`);
+  }
+  database.exec('COMMIT;');
+  database.exec('DETACH DATABASE staging;');
+}
+
+function verifyDatabase(database, { includeSource = false } = {}) {
   const foreignKeyErrors = database.prepare('PRAGMA foreign_key_check').all();
   if (foreignKeyErrors.length > 0) {
     throw new BuildError(
@@ -351,7 +389,10 @@ function verifyDatabase(database) {
     );
   }
 
-  for (const [name, sql] of Object.entries(MEANING_INTEGRITY_QUERIES)) {
+  const queries = includeSource
+    ? { ...MEANING_INTEGRITY_QUERIES, ...MEANING_SOURCE_INTEGRITY_QUERIES }
+    : MEANING_INTEGRITY_QUERIES;
+  for (const [name, sql] of Object.entries(queries)) {
     const violations = Number(Object.values(database.prepare(sql).get())[0]);
     if (violations !== 0) {
       throw new BuildError(
@@ -376,6 +417,8 @@ export async function buildDictionary({
   adjudicationDirectory,
   requireSurfaceFormClassifications,
   requireSurfaceFormCollisionReview,
+  stagingOutputPath,
+  keepStaging = false,
 } = {}) {
   const resolvedOutputPath = path.resolve(outputPath);
   assertOutputIsGeneratedOutsideCanonical(inputDirectory, resolvedOutputPath);
@@ -420,13 +463,20 @@ export async function buildDictionary({
     allowDirty,
   });
 
+  const stagingPath = path.resolve(stagingOutputPath ?? `${resolvedOutputPath}.staging`);
+  if (stagingPath === resolvedOutputPath) {
+    throw new BuildError('staging SQLite output must differ from the dictionary output', 'INVALID_STAGING_PATH');
+  }
+  assertOutputIsGeneratedOutsideCanonical(inputDirectory, stagingPath);
+
   await mkdir(path.dirname(resolvedOutputPath), { recursive: true });
   await rm(resolvedOutputPath, { force: true });
+  await rm(stagingPath, { force: true });
 
   let database;
   let generatedMetadata;
   try {
-    database = new DatabaseSync(resolvedOutputPath);
+    database = new DatabaseSync(stagingPath);
     const sqliteVersion = database
       .prepare('SELECT sqlite_version() AS version')
       .get().version;
@@ -441,13 +491,23 @@ export async function buildDictionary({
       sqlite_version: sqliteVersion,
     }, surfaceFormProjection, meaningLayer);
     database.exec('PRAGMA foreign_keys = ON;');
+    database.exec(SQLITE_SCHEMA_SQL);
+    database.exec(SQLITE_SOURCE_SCHEMA_SQL);
+    database.exec('BEGIN IMMEDIATE;');
+    insertModel(database, model, generatedMetadata, surfaceFormProjection.rows, meaningLayer);
+    database.exec('COMMIT;');
+    verifyDatabase(database, { includeSource: true });
+    database.close();
+    database = undefined;
+
+    // Only the verified meaning layer ships; the STDICT source senses/relations stay in the staging database.
+    database = new DatabaseSync(resolvedOutputPath);
+    database.exec('PRAGMA foreign_keys = ON;');
     database.exec(
       `PRAGMA user_version = ${Number.parseInt(SQLITE_SCHEMA_VERSION, 10)};`,
     );
     database.exec(SQLITE_SCHEMA_SQL);
-    database.exec('BEGIN IMMEDIATE;');
-    insertModel(database, model, generatedMetadata, surfaceFormProjection.rows, meaningLayer);
-    database.exec('COMMIT;');
+    copyDeployedTables(database, stagingPath);
     verifyDatabase(database);
   } catch (error) {
     if (database) {
@@ -460,6 +520,7 @@ export async function buildDictionary({
       database = undefined;
     }
     await rm(resolvedOutputPath, { force: true });
+    await rm(stagingPath, { force: true });
 
     if (error instanceof ValidationError || error instanceof BuildError) {
       throw error;
@@ -469,10 +530,12 @@ export async function buildDictionary({
   }
 
   database.close();
+  if (!keepStaging) await rm(stagingPath, { force: true });
   markSQLiteBuild(context);
 
   return {
     outputPath: resolvedOutputPath,
+    stagingPath: keepStaging ? stagingPath : null,
     recordCount: model.records.length,
     searchFormCount: model.records.reduce(
       (count, record) => count + record.search_forms.length,

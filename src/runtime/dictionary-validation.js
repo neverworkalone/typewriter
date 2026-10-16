@@ -1,4 +1,5 @@
 import {
+  BUILD_ONLY_TABLES_QUERY,
   DICTIONARY_COUNT_QUERIES,
   DICTIONARY_VERSION,
   MEANING_INTEGRITY_QUERIES,
@@ -157,6 +158,24 @@ export function validatePackagedDictionary(database, options = {}) {
     );
   }
 
+  let buildOnlyTables;
+  try {
+    buildOnlyTables = selectRows(database, BUILD_ONLY_TABLES_QUERY).map(({ name }) => name);
+  } catch (error) {
+    throw validationError(
+      ERROR_CODES.DATABASE_INTEGRITY_FAILED,
+      'The packaged dictionary schema could not be inspected.',
+      { cause: error?.message || String(error) },
+    );
+  }
+  if (buildOnlyTables.length > 0) {
+    throw validationError(
+      ERROR_CODES.DATABASE_INTEGRITY_FAILED,
+      'The packaged dictionary contains build-only STDICT source tables.',
+      { build_only_tables: buildOnlyTables },
+    );
+  }
+
   let meaningViolations;
   try {
     meaningViolations = Object.fromEntries(
@@ -174,7 +193,7 @@ export function validatePackagedDictionary(database, options = {}) {
   if (Object.keys(meaningViolations).length > 0) {
     throw validationError(
       ERROR_CODES.DATABASE_INTEGRITY_FAILED,
-      'The packaged dictionary meaning relation provenance does not match its source relations.',
+      'The packaged dictionary meaning layer is inconsistent.',
       { meaning_violations: meaningViolations },
     );
   }

@@ -21,7 +21,6 @@ import {
 } from '../scripts/inflection/surface-form-projection.mjs';
 import {
   findRecordsBySearchTerm,
-  getRecord,
 } from '../scripts/build/query.mjs';
 import { projectSearchResults } from '../src/domain/projection.js';
 import { readCanonicalRecords } from '../scripts/validate/canonical-jsonl.mjs';
@@ -55,12 +54,12 @@ function createSearchDatabase(records, projection) {
   const insertSearchForm = database.prepare(
     'INSERT INTO search_forms (record_id, position, form) VALUES (?, ?, ?)',
   );
-  const insertSense = database.prepare(
-    'INSERT INTO senses (id, record_id, position, pos, gloss) VALUES (?, ?, ?, ?, ?)',
-  );
   const insertSurfaceForm = database.prepare(
-    'INSERT INTO generated_surface_forms (form, record_id, sense_id, rule_id) VALUES (?, ?, ?, ?)',
+    'INSERT INTO generated_surface_forms (form, record_id, sense_id, sense_position, rule_id) VALUES (?, ?, ?, ?, ?)',
   );
+  const sensePosition = new Map(records.flatMap((record) => (
+    record.senses.map((sense, position) => [sense.id, position])
+  )));
 
   for (const record of records) {
     insertRecord.run(
@@ -73,12 +72,9 @@ function createSearchDatabase(records, projection) {
     record.search_forms.forEach((form, position) => {
       insertSearchForm.run(record.id, position, form);
     });
-    record.senses.forEach((sense, position) => {
-      insertSense.run(sense.id, record.id, position, sense.pos, sense.gloss);
-    });
   }
   for (const row of projection.rows) {
-    insertSurfaceForm.run(row.form, row.record_id, row.sense_id, row.rule_id);
+    insertSurfaceForm.run(row.form, row.record_id, row.sense_id, sensePosition.get(row.sense_id), row.rule_id);
   }
   return database;
 }
@@ -501,13 +497,13 @@ test('shared search keeps generated ambiguity, exact precedence, sense scope, an
       ['predicate-plain-past-coda-bearing'],
     ]);
     const generatedProjection = projectSearchResults(
-      [getRecord(database, 'w014')],
+      [records.find(({ id }) => id === 'w014')],
       collision.matches,
     );
     assert.deepEqual(generatedProjection[0].senses.map(({ id }) => id), ['w014-s1']);
     const exactListen = findRecordsBySearchTerm(database, '듣다');
     const exactProjection = projectSearchResults(
-      [getRecord(database, 'w014')],
+      [records.find(({ id }) => id === 'w014')],
       exactListen.matches,
     );
     assert.deepEqual(exactProjection[0].senses.map(({ id }) => id), ['w014-s1', 'w014-s2']);

@@ -17,8 +17,7 @@ import { SQLITE_SCHEMA_VERSION } from '../build/sqlite-schema.mjs';
 import {
   findRecordsByExactTerm,
   getMetadata,
-  getRecord,
-  getSenseRelations,
+  getMeaningRecord,
   readLogicalDatabaseSnapshot,
 } from '../build/query.mjs';
 
@@ -190,7 +189,7 @@ function expectedMetadata(model, surfaceProjection) {
   };
 }
 
-function assertRepresentativeQueries(database, model) {
+function assertRepresentativeQueries(database, model, sourceSnapshot) {
   // Representative lookups derive from the first record that has a relation, so the audit holds for any
   // dataset (including an empty one, which has nothing to look up).
   const targetIds = new Map(model.records.map((record) => [record.id, record]));
@@ -203,17 +202,19 @@ function assertRepresentativeQueries(database, model) {
         findRecordsByExactTerm(database, canonicalRecord.lemma).some(({ id }) => id === canonicalRecord.id),
         `exact lookup must find ${canonicalRecord.id}`,
       );
-      const record = getRecord(database, canonicalRecord.id);
+      const record = getMeaningRecord(database, canonicalRecord.id);
       assert.equal(record.lemma, canonicalRecord.lemma);
       assert.deepEqual(record.search_forms, canonicalRecord.search_forms);
 
-      const relation = getSenseRelations(database, canonicalSense.id)
-        .find(({ target }) => target === canonicalRelation.target);
-      assert.ok(relation, 'SQLite relation target must be queryable');
-      assert.equal(relation.target_sense, canonicalRelation.target_sense);
-      assert.equal(relation.type, canonicalRelation.type);
-      assert.equal(relation.note, canonicalRelation.note);
-      assert.equal(relation.target_lemma, targetIds.get(canonicalRelation.target).lemma);
+      // The product database ships no raw source relations; they are checked in the build staging database.
+      if (sourceSnapshot) {
+        const relation = sourceSnapshot.rows.relations
+          .find((row) => row.source_sense_id === canonicalSense.id && row.target_record_id === canonicalRelation.target);
+        assert.ok(relation, 'staging relation target must be queryable');
+        assert.equal(relation.target_sense_id, canonicalRelation.target_sense);
+        assert.equal(relation.type, canonicalRelation.type);
+        assert.equal(relation.note, canonicalRelation.note);
+      }
       return;
     }
   }
@@ -238,12 +239,18 @@ function assertProvenanceMetadata(metadata, expectedWorktreeState = undefined) {
   }
 }
 
-function verifyDatabase(database, model, expected, surfaceProjection, worktreeState) {
+function verifyDatabase(database, model, expected, surfaceProjection, worktreeState, sourceDatabase) {
   const snapshot = readLogicalDatabaseSnapshot(database);
+  assert.equal(snapshot.rows.senses, undefined, 'the product database must not ship STDICT source senses');
+  assert.equal(snapshot.rows.relations, undefined, 'the product database must not ship STDICT source relations');
+  assert.equal(snapshot.rows.meaning_relation_sources, undefined, 'the product database must not ship relation sources');
+  const sourceSnapshot = sourceDatabase ? readLogicalDatabaseSnapshot(sourceDatabase) : undefined;
   assert.deepEqual(snapshot.rows.records, expected.records);
   assert.deepEqual(snapshot.rows.search_forms, expected.search_forms);
-  assert.deepEqual(snapshot.rows.senses, expected.senses);
-  assert.deepEqual(snapshot.rows.relations, expected.relations);
+  if (sourceSnapshot) {
+    assert.deepEqual(sourceSnapshot.rows.senses, expected.senses);
+    assert.deepEqual(sourceSnapshot.rows.relations, expected.relations);
+  }
   assert.deepEqual(snapshot.rows.generated_surface_forms, surfaceProjection.rows);
 
   const metadata = getMetadata(database);
@@ -251,7 +258,7 @@ function verifyDatabase(database, model, expected, surfaceProjection, worktreeSt
     assert.equal(metadata[key], value, `metadata ${key}`);
   }
   assertProvenanceMetadata(metadata, worktreeState);
-  assertRepresentativeQueries(database, model);
+  assertRepresentativeQueries(database, model, sourceSnapshot);
   return snapshot;
 }
 
@@ -378,11 +385,15 @@ export async function runM2Pipeline({
   );
   const firstPath = path.join(temporaryDirectory, 'first.sqlite');
   const secondPath = path.join(temporaryDirectory, 'second.sqlite');
+  const firstStagingPath = `${firstPath}.staging`;
+  const secondStagingPath = `${secondPath}.staging`;
 
   try {
     const first = await buildDictionary({
       inputDirectory,
       outputPath: firstPath,
+      stagingOutputPath: firstStagingPath,
+      keepStaging: true,
       repositoryDirectory,
       allowDirty,
       canonicalContext: context,
@@ -393,6 +404,8 @@ export async function runM2Pipeline({
     const second = await buildDictionary({
       inputDirectory,
       outputPath: secondPath,
+      stagingOutputPath: secondStagingPath,
+      keepStaging: true,
       repositoryDirectory,
       allowDirty,
       canonicalContext: context,
@@ -405,6 +418,8 @@ export async function runM2Pipeline({
 
     const firstDatabase = new DatabaseSync(firstPath, { readOnly: true });
     const secondDatabase = new DatabaseSync(secondPath, { readOnly: true });
+    const firstStaging = new DatabaseSync(firstStagingPath, { readOnly: true });
+    const secondStaging = new DatabaseSync(secondStagingPath, { readOnly: true });
     let firstSnapshot;
     let secondSnapshot;
     try {
@@ -414,6 +429,7 @@ export async function runM2Pipeline({
         expected,
         surfaceProjection,
         expectedWorktreeState,
+        firstStaging,
       );
       secondSnapshot = verifyDatabase(
         secondDatabase,
@@ -421,10 +437,13 @@ export async function runM2Pipeline({
         expected,
         surfaceProjection,
         expectedWorktreeState,
+        secondStaging,
       );
     } finally {
       firstDatabase.close();
       secondDatabase.close();
+      firstStaging.close();
+      secondStaging.close();
     }
     assert.deepEqual(firstSnapshot, secondSnapshot);
     assert.deepEqual(first.metadata, second.metadata);

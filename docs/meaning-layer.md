@@ -56,30 +56,37 @@ contributing relation (canonical order) supplies `note`/`relevance`, verified ex
 Skip/dedup/redirect counts are written to `metadata` as `meaning_projection_*`, so
 `source = projected + deduplicated + skipped`.
 
-`dictionary.sqlite` (schema version 5) keeps the original source tables and adds the product meaning contract:
+`dictionary.sqlite` (schema version 6) ships only the product meaning contract. The STDICT source `senses`, `relations` and
+`meaning_relation_sources` tables exist only in a build-time staging database (Issue #792) and are never packaged:
 
 | Table | Content |
 | --- | --- |
-| `meanings` | `id`, `lemma`, `gloss`, `record_id` (ID-base record), ranking metadata (below) |
-| `meaning_members` | `meaning_id`, `position`, `sense_id` (unique; FK to `senses`): source evidence of each meaning |
-| `sense_adjudications` | dropped senses with `reason` and `duplicate_of_sense_id` |
+| `meanings` | `id`, `lemma`, `gloss`, `pos` (part of speech of the first member sense), `record_id` (ID-base record), ranking metadata (below) |
+| `meaning_members` | `meaning_id`, `position`, `sense_id` (unique source sense ID, no FK), `record_id` (owner record of that sense) |
+| `sense_adjudications` | dropped senses with `reason`, owner `record_id` and `duplicate_of_sense_id` (no FK) |
 | `meaning_relations` | `source_meaning_id`, `position`, `target_meaning_id`, `type`, `note`, `relevance`, `origin` |
-| `meaning_relation_sources` | provenance: FK `(source_sense_id, source_position)` to the original `relations` row, plus redirect flags |
+| `generated_surface_forms` | `form`, `record_id`, `sense_id`, `sense_position` (source sense position, for stable ordering), `rule_id` |
 
-`meaning_relations.origin` is one of `stdict-sense-projection` or `typewriter-authored` (CHECK). Projected rows must have
-complete, correctly bound `meaning_relation_sources`; Typewriter-authored relations (유의어, 반의어, 말의 결, 연상) are
-edited on the same table with `origin='typewriter-authored'`, need no STDICT provenance, and may not own provenance rows
-(a projected row relabelled as authored fails the projectable-relation and provenance-ownership checks). The sense
-`relations` table stays the STDICT evidence layer. `getMeaningsByLemma` and `getMeaningRelations` in
-`src/runtime/sqlite-query.js` are the shared meaning-based read helpers. The default canonical build requires the complete
-meaning corpus and fails closed (`INVALID_MEANING_DATA`); builds from other canonical fixtures get an empty meaning layer
-unless a meanings directory is passed.
+`meaning_relations.origin` is one of `stdict-sense-projection` or `typewriter-authored` (CHECK). Typewriter-authored
+relations (유의어, 반의어, 말의 결, 연상) are edited on the same table with `origin='typewriter-authored'`.
+
+`buildDictionary` first writes the staging database (`<output>.staging`, removed after the build unless `keepStaging` is
+set) with the full source tables, and runs there the relation-projection and provenance checks of
+`scripts/build/meaning-source-checks.mjs` (complete, correctly bound and ordered provenance; note/relevance equal to the
+first contributing source relation; the denormalized `meaning_members.record_id`, `meanings.pos`,
+`sense_adjudications.record_id` and `generated_surface_forms.sense_position` equal the source senses'). Only after those
+pass does it copy the product tables, in primary-key order, into the shipped database and verify it again with the
+self-contained `MEANING_INTEGRITY_QUERIES` (ranking, record binding). Package, shared-artifact and runtime validation
+use the same self-contained queries and additionally reject a database that ships any `BUILD_ONLY_TABLES`.
+`getMeaningsByLemma` and `getMeaningRelations` in `src/runtime/sqlite-query.js` are the shared meaning-based read helpers.
+The default canonical build requires the complete meaning corpus and fails closed (`INVALID_MEANING_DATA`); builds from
+other canonical fixtures get an empty meaning layer unless a meanings directory is passed.
 
 ## Search, ranking and 더보기 (Issue #718)
-The search candidate unit is the meaning; raw STDICT senses are never listed, they stay in `meaning_members` as
-evidence. `getMeaningRecord` (`get-meaning-record`) returns a record whose `senses` are the meanings it contributes
-member senses to, with meaning gloss, meaning relations and ranking counts. `getRecord` keeps returning the raw
-source view. Relation targets open the target meaning (its `record_id` plus the meaning ID).
+The search candidate unit is the meaning; raw STDICT senses are never listed or shipped, their IDs stay in
+`meaning_members` as evidence. `getMeaningRecord` (`get-meaning-record`) is the only record read of the runtime: it returns a record
+whose `senses` are the meanings it contributes member senses to, with meaning gloss, meaning relations and ranking
+counts (the former raw `getRecord` / `getSenseRelations` APIs were removed with the source tables). Relation targets open the target meaning (its `record_id` plus the meaning ID).
 
 Ranking metadata is computed once at build time (`scripts/build/dictionary.mjs`) and stored in `meanings`:
 

@@ -2,16 +2,14 @@ import {
   findRecordsByExactTerm,
   findRecordsBySearchTerm,
   getMetadata,
-  getRecord,
-  getSenseRelations,
+  getMeaningRecord,
 } from '../../src/runtime/sqlite-query.js';
 
 export {
   findRecordsByExactTerm,
   findRecordsBySearchTerm,
   getMetadata,
-  getRecord,
-  getSenseRelations,
+  getMeaningRecord,
 };
 
 function plainRows(rows) {
@@ -48,34 +46,17 @@ export function readLogicalDatabaseSnapshot(database) {
         )
         .all(),
     ),
-    senses: plainRows(
-      database
-        .prepare(
-          'SELECT id, record_id, position, pos, gloss FROM senses ORDER BY record_id, position',
-        )
-        .all(),
-    ),
-    relations: plainRows(
-      database
-        .prepare(
-          `SELECT source_sense_id, position, target_record_id,
-                  target_sense_id, type, note, relevance
-           FROM relations
-           ORDER BY source_sense_id, position`,
-        )
-        .all(),
-    ),
     meanings: plainRows(
-      database.prepare('SELECT id, lemma, gloss, record_id, lexical_relation_count, exploratory_relation_count, display_rank FROM meanings ORDER BY id').all(),
+      database.prepare('SELECT id, lemma, gloss, pos, record_id, lexical_relation_count, exploratory_relation_count, display_rank FROM meanings ORDER BY id').all(),
     ),
     meaning_members: plainRows(
       database
-        .prepare('SELECT meaning_id, position, sense_id FROM meaning_members ORDER BY meaning_id, position')
+        .prepare('SELECT meaning_id, position, sense_id, record_id FROM meaning_members ORDER BY meaning_id, position')
         .all(),
     ),
     sense_adjudications: plainRows(
       database
-        .prepare('SELECT sense_id, reason, duplicate_of_sense_id FROM sense_adjudications ORDER BY sense_id')
+        .prepare('SELECT sense_id, reason, record_id, duplicate_of_sense_id FROM sense_adjudications ORDER BY sense_id')
         .all(),
     ),
     meaning_relations: plainRows(
@@ -83,15 +64,6 @@ export function readLogicalDatabaseSnapshot(database) {
         .prepare(
           `SELECT source_meaning_id, position, target_meaning_id, type, note, relevance, origin
            FROM meaning_relations ORDER BY source_meaning_id, position`,
-        )
-        .all(),
-    ),
-    meaning_relation_sources: plainRows(
-      database
-        .prepare(
-          `SELECT source_meaning_id, relation_position, position, source_sense_id, source_position,
-                  source_redirected, target_redirected
-           FROM meaning_relation_sources ORDER BY source_meaning_id, relation_position, position`,
         )
         .all(),
     ),
@@ -103,15 +75,45 @@ export function readLogicalDatabaseSnapshot(database) {
                   generated_surface_forms.sense_id,
                   generated_surface_forms.rule_id
            FROM generated_surface_forms
-           INNER JOIN senses
-             ON senses.id = generated_surface_forms.sense_id
-            AND senses.record_id = generated_surface_forms.record_id
-           ORDER BY generated_surface_forms.record_id, senses.position,
+           ORDER BY generated_surface_forms.record_id, generated_surface_forms.sense_position,
                     generated_surface_forms.form, generated_surface_forms.rule_id`,
         )
         .all(),
     ),
   };
+
+  // The STDICT source tables exist only in the build-time staging database, never in the product database.
+  const tables = new Set(schema.filter(({ type }) => type === 'table').map(({ name }) => name));
+  if (tables.has('senses')) {
+    rows.senses = plainRows(
+      database
+        .prepare('SELECT id, record_id, position, pos, gloss FROM senses ORDER BY record_id, position')
+        .all(),
+    );
+  }
+  if (tables.has('relations')) {
+    rows.relations = plainRows(
+      database
+        .prepare(
+          `SELECT source_sense_id, position, target_record_id,
+                  target_sense_id, type, note, relevance
+           FROM relations
+           ORDER BY source_sense_id, position`,
+        )
+        .all(),
+    );
+  }
+  if (tables.has('meaning_relation_sources')) {
+    rows.meaning_relation_sources = plainRows(
+      database
+        .prepare(
+          `SELECT source_meaning_id, relation_position, position, source_sense_id, source_position,
+                  source_redirected, target_redirected
+           FROM meaning_relation_sources ORDER BY source_meaning_id, relation_position, position`,
+        )
+        .all(),
+    );
+  }
 
   return {
     schema,
