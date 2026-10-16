@@ -55,6 +55,7 @@ const REQUIRED_PRODUCT_FILES = Object.freeze([
   'runtime/dictionary-build-info.js',
   'runtime/dictionary-contract.js',
   'runtime/dictionary-validation.js',
+  'runtime/meaning-ranking.js',
   'runtime/protocol.js',
   'runtime/query-adapter.js',
   'runtime/search-query.js',
@@ -322,8 +323,33 @@ function validateFileModes(packageDir, files) {
   return errors;
 }
 
-function validateRuntimeAssets(packageDir, files) {
+const STATIC_IMPORT = /(?:^|[\n;])\s*(?:import|export)\s+(?:[^'";]*?\s+from\s+)?['"](\.{1,2}\/[^'"]+)['"]/g;
+
+// Every runtime module is copied file by file, so each relative import must resolve to a packaged file;
+// otherwise the service worker/worker fails at load time ("Service worker registration failed. Status code: 3").
+export function validateRuntimeImports(packageDir, files) {
   const errors = [];
+  const present = new Set(files);
+  for (const file of files) {
+    if (!/^runtime\/.+\.(?:js|mjs)$/.test(file)) continue;
+    let source;
+    try {
+      source = readFileSync(path.join(packageDir, file), 'utf8');
+    } catch {
+      continue;
+    }
+    for (const match of source.matchAll(STATIC_IMPORT)) {
+      const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(file), match[1]));
+      if (!present.has(resolved)) {
+        errors.push(`Packaged runtime module ${file} imports ${match[1]}, which is not in the package.`);
+      }
+    }
+  }
+  return errors;
+}
+
+function validateRuntimeAssets(packageDir, files) {
+  const errors = validateRuntimeImports(packageDir, files);
   for (const file of REQUIRED_PRODUCT_FILES) {
     if (!files.includes(file)) continue;
     try {

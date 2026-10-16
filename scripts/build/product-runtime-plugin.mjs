@@ -51,6 +51,10 @@ export function createProductRuntimeAssets({
         path.join(runtimeDirectory, 'dictionary-validation.js'),
       ),
       cp(
+        path.join(projectRoot, 'src/runtime/meaning-ranking.js'),
+        path.join(runtimeDirectory, 'meaning-ranking.js'),
+      ),
+      cp(
         path.join(projectRoot, 'src/runtime/protocol.js'),
         path.join(runtimeDirectory, 'protocol.js'),
       ),

@@ -89,6 +89,7 @@ test('derives dictionary metadata from the supplied canonical directory and reje
       ['runtime/dictionary-build-info.js', 'export const EXPECTED_DICTIONARY_SOURCE_REVISION = "fixture";\n'],
       ['runtime/dictionary-contract.js', '// fixture dictionary contract\n'],
       ['runtime/dictionary-validation.js', '// fixture dictionary validation\n'],
+      ['runtime/meaning-ranking.js', '// fixture meaning ranking\n'],
       ['runtime/protocol.js', '// fixture protocol\n'],
       ['runtime/query-adapter.js', '// fixture adapter\n'],
       ['runtime/search-query.js', '// fixture search\n'],
@@ -590,6 +591,38 @@ test('creates byte-identical package ZIPs with normalized archive metadata', asy
       execFileSync('unzip', ['-Z1', firstZipPath], { encoding: 'utf8' }).trim().split(/\r?\n/u),
       ['assets/main.js', 'manifest.json'],
     );
+  } finally {
+    await rm(temporaryDirectory, { recursive: true, force: true });
+  }
+});
+
+test('packaged runtime modules only import packaged files (service worker load failure)', async () => {
+  const { validateRuntimeImports } = await import('../scripts/validate-package.mjs');
+  const temporaryDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-runtime-imports-'));
+  try {
+    // Reproduce the product copy list from the real plugin, plus the files it generates or vendors.
+    const pluginSource = readFileSync(path.join(REPOSITORY_DIRECTORY, 'scripts/build/product-runtime-plugin.mjs'), 'utf8');
+    const copied = [...pluginSource.matchAll(/'src\/runtime\/([\w.-]+\.(?:js|mjs))'/g)].map((match) => match[1]);
+    assert.ok(copied.includes('dictionary-host.js'));
+    await mkdir(path.join(temporaryDirectory, 'runtime/vendor'), { recursive: true });
+    for (const name of copied) {
+      await writeFile(
+        path.join(temporaryDirectory, 'runtime', name),
+        readFileSync(path.join(REPOSITORY_DIRECTORY, 'src/runtime', name)),
+      );
+    }
+    await writeFile(path.join(temporaryDirectory, 'runtime/dictionary-build-info.js'), 'export const X = 1;\n');
+    await writeFile(path.join(temporaryDirectory, 'runtime/vendor/sqlite3.mjs'), 'export default 1;\n');
+    const files = [...copied.map((name) => `runtime/${name}`), 'runtime/dictionary-build-info.js', 'runtime/vendor/sqlite3.mjs'];
+
+    // Every module the extension copies must have all of its relative imports copied too.
+    assert.deepEqual(validateRuntimeImports(temporaryDirectory, files), []);
+
+    // Control: a module whose import is not packaged is rejected.
+    const missing = files.filter((file) => file !== 'runtime/dictionary-contract.js');
+    assert.ok(validateRuntimeImports(temporaryDirectory, missing).some((error) => error.includes('./dictionary-contract.js')));
+    await writeFile(path.join(temporaryDirectory, 'runtime/sqlite-query.js'), "import x from '../domain/relation-groups.js';\n");
+    assert.ok(validateRuntimeImports(temporaryDirectory, files).some((error) => error.includes('../domain/relation-groups.js')));
   } finally {
     await rm(temporaryDirectory, { recursive: true, force: true });
   }

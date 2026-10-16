@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { RELATION_GROUP_DEFINITIONS, UI_GROUP_IDS } from '../src/domain/relation-groups.js';
 import { projectSearchResults } from '../src/domain/projection.js';
 import {
   defaultExactSearchCandidate,
@@ -8,6 +9,8 @@ import {
 import {
   compareMeaningIds,
   countMeaningRelations,
+  EXPLORATORY_RELATION_TYPES,
+  LEXICAL_RELATION_TYPES,
   partitionMeanings,
 } from '../src/runtime/meaning-ranking.js';
 
@@ -19,6 +22,12 @@ const meaning = (id, lexical = 0, exploratory = 0) => ({
 const ids = (list) => list.map(({ id }) => id);
 
 describe('meaning ranking', () => {
+  it('keeps the packaged type lists in sync with the UI relation groups', () => {
+    const typesOf = (...ids) => RELATION_GROUP_DEFINITIONS.filter(({ id }) => ids.includes(id)).flatMap(({ relationTypes }) => relationTypes);
+    expect([...LEXICAL_RELATION_TYPES]).toEqual(typesOf(UI_GROUP_IDS.synonyms, UI_GROUP_IDS.antonyms));
+    expect([...EXPLORATORY_RELATION_TYPES]).toEqual(typesOf(UI_GROUP_IDS.texture, UI_GROUP_IDS.association));
+  });
+
   it('orders meaning IDs numerically, not as text', () => {
     expect(['m1000', 'm443_2', 'm443', 'm443_10', 'm97'].sort(compareMeaningIds))
       .toEqual(['m97', 'm443', 'm443_2', 'm443_10', 'm1000']);
