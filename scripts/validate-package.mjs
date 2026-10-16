@@ -323,14 +323,20 @@ function validateFileModes(packageDir, files) {
   return errors;
 }
 
-// Relative module references in a runtime file: `from '…'` (import/export forms), side-effect `import '…'`, dynamic
-// `import('…')` and `new URL('…', import.meta.url | self.location.href)`. Full-line and block comments are ignored.
-const RELATIVE_SPECIFIER = "['\"](\\.{1,2}\\/[^'\"\\n]+)['\"]";
+// Relative module references in a runtime file: `from '…'` (import/export forms), side-effect `import '…'`,
+// dynamic `import(…)` and `new URL('…', import.meta.url | self.location.href)`. Full-line and block comments are
+// ignored. Dynamic `import(…)` must take a plain string or template literal without `${}`; any other argument cannot
+// be checked against the package, so it is rejected.
+const RELATIVE_SPECIFIER = '[\'"](\\.{1,2}\\/[^\'"\\n]+)[\'"]';
+const RELATIVE_OR_TEMPLATE = '[\'"`](\\.{1,2}\\/[^\'"`\\n$]+)[\'"`]';
 const MODULE_REFERENCES = [
   new RegExp(`\\bfrom\\s*${RELATIVE_SPECIFIER}`, 'g'),
-  new RegExp(`\\bimport\\s*\\(?\\s*${RELATIVE_SPECIFIER}`, 'g'),
-  new RegExp(`\\bnew\\s+URL\\s*\\(\\s*${RELATIVE_SPECIFIER}\\s*,\\s*(?:import\\.meta\\.url|self\\.location\\.href)`, 'g'),
+  new RegExp(`\\bimport\\s*${RELATIVE_SPECIFIER}`, 'g'),
+  new RegExp(`\\bimport\\s*\\(\\s*${RELATIVE_OR_TEMPLATE}`, 'g'),
+  new RegExp(`\\bnew\\s+URL\\s*\\(\\s*${RELATIVE_OR_TEMPLATE}\\s*,\\s*(?:import\\.meta\\.url|self\\.location\\.href)`, 'g'),
 ];
+const DYNAMIC_IMPORT = /\bimport\s*\(\s*([\s\S]{0,200})/g;
+const STATIC_LITERAL_ARGUMENT = /^(['"`])[^'"`\n$]*\1\s*[,)]/;
 const stripComments = (source) => source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 // Every runtime module is copied file by file, so each relative import must resolve to a packaged file;
@@ -348,6 +354,11 @@ export function validateRuntimeImports(packageDir, files) {
     }
     const code = stripComments(source);
     const specifiers = new Set(MODULE_REFERENCES.flatMap((pattern) => [...code.matchAll(pattern)].map((match) => match[1])));
+    for (const match of code.matchAll(DYNAMIC_IMPORT)) {
+      if (!STATIC_LITERAL_ARGUMENT.test(match[1])) {
+        errors.push(`Packaged runtime module ${file} has a dynamic import() whose target cannot be checked statically.`);
+      }
+    }
     for (const specifier of specifiers) {
       const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(file), specifier));
       if (!present.has(resolved)) {

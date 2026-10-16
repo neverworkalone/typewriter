@@ -632,6 +632,8 @@ test('packaged runtime modules only import packaged files (service worker load f
       'export from': (target) => `export { a } from '${target}';\n`,
       'export star': (target) => `export * from "${target}";\n`,
       'dynamic': (target) => `const module = await import("${target}");\n`,
+      'dynamic template literal': (target) => `const module = await import(\`${target}\`);\n`,
+      'dynamic with options': (target) => `const module = await import('${target}', { with: { type: 'json' } });\n`,
       'dynamic spaced': (target) => `const module = await import( '${target}' );\n`,
       'new URL': (target) => `const url = new URL('${target}', import.meta.url);\n`,
       'new URL location': (target) => `const url = new URL('${target}', self.location.href);\n`,
@@ -643,6 +645,14 @@ test('packaged runtime modules only import packaged files (service worker load f
       assert.ok(
         validateRuntimeImports(temporaryDirectory, files).some((error) => error.includes('./missing.js')),
         `${name}: missing target`,
+      );
+    }
+    // A dynamic import whose target is computed cannot be verified, so it is rejected.
+    for (const code of ["await import(name);", "await import('./' + name);", "await import(`./${name}.js`);"]) {
+      await writeFile(path.join(temporaryDirectory, 'runtime/sqlite-query.js'), `${code}\n`);
+      assert.ok(
+        validateRuntimeImports(temporaryDirectory, files).some((error) => error.includes('cannot be checked statically')),
+        code,
       );
     }
     // Commented-out references are ignored.
