@@ -1,6 +1,6 @@
 # Issue #764 C16 residual multi-Meaning audit
 
-Every C16 lemma that still has more than one Meaning row after the #764 edit (178 lemmas) is listed with each Meaning row's canonical sense IDs, a truncated canonical gloss, and the source-bound reason it is not treated as one lexical identity. Proper-name homonyms (different real people, places, or works that share a name) are the largest group; for them each row is a distinct referent.
+Every C16 lemma that still has more than one Meaning row after the #764 edit (177 lemmas) is listed with each Meaning row's canonical sense IDs, a truncated canonical gloss, and the source-bound reason it is not treated as one lexical identity. Proper-name homonyms (different real people, places, or works that share a name) are the largest group; for them each row is a distinct referent.
 
 ## 카
 
@@ -1123,13 +1123,6 @@ Every C16 lemma that still has more than one Meaning row after the #764 edit (17
 - `m496821` (w496821-s1): 풍신(風神)의 큰딸.
 
 근거: 풍신의 큰딸은 신화 속 인물로 손님·거래자 용법과 관계가 없다.
-
-## 큰이
-
-- `m346076_1` (w346076-s1): 남의 형제 중에서 맏이가 되는 사람을 이르는 말.
-- `m346076_2` (w346076-s2): 남의 본부인을 그의 첩에 상대하여 이르는 말.
-
-근거: 남의 맏이와 남의 본부인은 가리키는 관계가 서로 다르다.
 
 ## 큰절
 
