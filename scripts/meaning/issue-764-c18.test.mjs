@@ -90,9 +90,9 @@ test('C18 complete canonical sense coverage and residual audit match the data', 
   }
 
   const audit = readFileSync(path.join(root, 'scripts/meaning/issue-764-c18-audit.md'), 'utf8');
-  assert.ok(audit.includes('| C18 Meaning rows | 15,434 | 14,774 |'), 'C18 row counts');
-  assert.ok(audit.includes('| Lemmas with several Meanings | 2,096 | 1,834 |'), 'multi-Meaning counts');
-  assert.ok(audit.includes('| Rows in the 385 repartitioned lemmas | 1,309 | 649 |'), 'repartition counts');
+  assert.ok(audit.includes('| C18 Meaning rows | 15,434 | 14,776 |'), 'C18 row counts');
+  assert.ok(audit.includes('| Lemmas with several Meanings | 2,096 | 1,836 |'), 'multi-Meaning counts');
+  assert.ok(audit.includes('| Rows in the 385 repartitioned lemmas | 1,309 | 651 |'), 'repartition counts');
   assert.equal(spec.repartitions.length, 385, 'audit scope');
 });
 
@@ -108,6 +108,7 @@ const mustMerge = [
   ['피로 ordinary and material fatigue', ['w500065-s1', 'w500065-s2']],
   ['피모 skin and coat uses', ['w360751-s1', 'w365720-s1']],
   ['피복 physical and topological covering', ['w361935-s1', 'w503877-s1']],
+  ['피아노포르테 full instrument name and matching pf marking', ['w362351-s1', 'w362351-s2']],
   ['필로 writing path, logic, and brush uses', ['w365421-s1', 'w365421-s2', 'w365421-s3']],
   ['필부 ordinary woman senses', ['w366639-s1', 'w366639-s2']],
   ['필부 ordinary man senses', ['w500029-s1', 'w500029-s2']],
@@ -124,6 +125,8 @@ const mustSplit = [
   ['폐기 exhaust gas and disposal/repeal', 'w359259-s1', 'w499273-s1'],
   ['피복 clothing and covering', 'w361934-s1', 'w361935-s1'],
   ['피복선 insulated wire and copper-clad ship', 'w362196-s1', 'w503879-s1'],
+  ['피아노 Italian dynamic marking and English-named instrument', 'w362344-s1', 'w502450-s1'],
+  ['평시 mean solar time and ordinary time', 'w357162-s1', 'w503196-s1'],
   ['포 cannon and janggi 包 piece', 'w359616-s1', 'w497814-s1'],
   ['필로 writing fatigue and writing path', 'w365420-s1', 'w365421-s1'],
   ['필부 woman and man', 'w366639-s1', 'w500029-s1'],
@@ -198,6 +201,63 @@ test('C18 피복선 wire synonyms stay on the wire Meaning and do not leak to th
   }
   assert.equal(relations.some((item) => item.source_meaning_id === ship.id), false,
     'the 被覆船 Meaning must not inherit the 被覆線 direct relations');
+});
+
+test('C18 평시 synonym links stay on the mean-solar-time and ordinary-time Meanings', () => {
+  const adjudications = readAdjudications(path.join(root, 'data/adjudication')).rows;
+  const allMeanings = readdirSync(path.join(root, 'data/meanings')).filter((file) => file.endsWith('.jsonl')).sort()
+    .flatMap((file) => readFileSync(path.join(root, 'data/meanings', file), 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line)));
+  const relevantRecords = readCanonicalEntries(path.join(root, 'data/canonical'))
+    .filter((record) => ['w357162', 'w357862', 'w503196', 'w357670'].includes(record.id));
+  const { relations } = projectMeaningRelations({
+    records: relevantRecords,
+    meanings: allMeanings,
+    adjudications,
+  });
+  const solarTime = rowBySense.get('w357162-s1');
+  const ordinaryTime = rowBySense.get('w503196-s1');
+  const averageSolarTarget = allMeanings.find((row) => row.sense_ids.includes('w357862-s1'));
+  const ordinaryTimeTarget = allMeanings.find((row) => row.sense_ids.includes('w357670-s1'));
+
+  assert.notEqual(solarTime.id, ordinaryTime.id, 'mean solar time and ordinary time must remain distinct');
+  const solarLink = relations.find((item) => item.source_meaning_id === solarTime.id
+    && item.target_meaning_id === averageSolarTarget.id && item.type === 'direct');
+  const ordinaryLink = relations.find((item) => item.source_meaning_id === ordinaryTime.id
+    && item.target_meaning_id === ordinaryTimeTarget.id && item.type === 'direct');
+  assert.ok(solarLink, 'the mean-solar-time source must retain its direct link to 평균 태양시');
+  assert.deepEqual(solarLink.sources.map((source) => source.source_sense_id), ['w357162-s1']);
+  assert.ok(ordinaryLink, 'ordinary time must retain its direct link to 평상시');
+  assert.deepEqual(ordinaryLink.sources.map((source) => source.source_sense_id), ['w503196-s1']);
+  assert.equal(relations.some((item) => item.source_meaning_id === solarTime.id
+    && item.target_meaning_id === ordinaryTimeTarget.id), false,
+  'the mean-solar-time Meaning must not acquire ordinary-time links');
+  assert.equal(relations.some((item) => item.source_meaning_id === ordinaryTime.id
+    && item.target_meaning_id === averageSolarTarget.id), false,
+  'the ordinary-time Meaning must not acquire mean-solar-time links');
+});
+
+test('C18 피아노 instrument synonym stays on the instrument Meaning, not the dynamic marking', () => {
+  const adjudications = readAdjudications(path.join(root, 'data/adjudication')).rows;
+  const allMeanings = readdirSync(path.join(root, 'data/meanings')).filter((file) => file.endsWith('.jsonl')).sort()
+    .flatMap((file) => readFileSync(path.join(root, 'data/meanings', file), 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line)));
+  const relevantRecords = readCanonicalEntries(path.join(root, 'data/canonical'))
+    .filter((record) => ['w362344', 'w502450', 'w9362'].includes(record.id));
+  const { relations } = projectMeaningRelations({
+    records: relevantRecords,
+    meanings: allMeanings,
+    adjudications,
+  });
+  const dynamicMark = rowBySense.get('w362344-s1');
+  const instrument = rowBySense.get('w502450-s1');
+  const target = allMeanings.find((row) => row.sense_ids.includes('w9362-s1'));
+
+  assert.notEqual(dynamicMark.id, instrument.id, 'the p marking and piano instrument must remain distinct');
+  const relation = relations.find((item) => item.source_meaning_id === instrument.id
+    && item.target_meaning_id === target.id && item.type === 'direct');
+  assert.ok(relation, 'the piano instrument must retain its source-bound direct link to 강금');
+  assert.deepEqual(relation.sources.map((source) => source.source_sense_id), ['w502450-s1']);
+  assert.equal(relations.some((item) => item.source_meaning_id === dynamicMark.id), false,
+    'the piano dynamic-marking Meaning must not inherit instrument relations');
 });
 
 test('C18 controls fail on unknown source ids instead of passing vacuously', () => {

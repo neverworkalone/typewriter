@@ -1,6 +1,6 @@
 # Issue #764 C18 residual multi-Meaning audit
 
-Every C18 lemma that still has multiple Meanings after this re-edit (1,833 lemmas) is listed below with each Meaning ID, its bound canonical sense IDs, and the source glosses (truncated at 180 characters where needed). These source-bound contrasts were reviewed as lexical-identity boundaries; a difference in field, POS, source record, or application alone was not treated as proof of a separate word.
+Every C18 lemma that still has multiple Meanings after this re-edit (1,836 lemmas) is listed below with each Meaning ID, its bound canonical sense IDs, and the source glosses (truncated at 180 characters where needed). These source-bound contrasts were reviewed as lexical-identity boundaries; a difference in field, POS, source record, or application alone was not treated as proof of a separate word.
 
 The complete source gloss remains in the canonical JSONL; this index truncates long glosses only for readability.
 
@@ -6286,12 +6286,13 @@ The complete source gloss remains in the canonical JSONL; this index truncates l
 
 경계 근거: 위에 연결된 원본 sense의 대조에서 같은 어휘의 자연스러운 용법 확장이나 공통 명명 원리가 확인되지 않아 독립 Meaning을 유지했다.
 
-## 평시 (2 Meanings)
+## 평시 (3 Meanings)
 
-- **m357162** (`w357162-s1`, `w503196-s1`): `w357162-s1`: 평균 태양의 시각에 따라 계산하는 시간. 평균 태양일의 24분의 1에 해당하며, 우리가 일상생활에서 쓰는 시간을 이른다. / `w503196-s1`: 특별한 일이 없는 보통 때.
+- **m357162** (`w357162-s1`): `w357162-s1`: 평균 태양의 시각에 따라 계산하는 시간. 평균 태양일의 24분의 1에 해당하며, 우리가 일상생활에서 쓰는 시간을 이른다.
 - **m357163_1** (`w357163-s1`, `w357163-s2`): `w357163-s1`: 시 문학 또는 특정 시를 비평하여 읊은 시. / `w357163-s2`: 어떤 시에 대하여 주관적으로 품평함. 또는 그런 글.
+- **m503196** (`w503196-s1`): `w503196-s1`: 특별한 일이 없는 보통 때.
 
-경계 근거: 위에 연결된 원본 sense의 대조에서 같은 어휘의 자연스러운 용법 확장이나 공통 명명 원리가 확인되지 않아 독립 Meaning을 유지했다.
+경계 근거: `w357162-s1` defines 平時 as a mean-solar-time unit and links directly to `평균 태양시`; `w503196-s1` defines 平時 as a time without special events and links to `평상시`. These are different lexical identities, and their source-bound direct links remain on the matching Meanings.
 
 ## 평시조 (2 Meanings)
 
@@ -13312,6 +13313,13 @@ The complete source gloss remains in the canonical JSONL; this index truncates l
 - **m363819** (`w363819-s1`): `w363819-s1`: 벤젠 고리 두 개가 연결된 유기 화합물의 염소 화합물에 대한 총칭. 화학적으로 안정되고 절연성이 뛰어나 절연유, 열매체, 가소제 따위로 널리 쓰였으나 강한 독성과 심각한 환경 오염 때문에 생산이 금지되고 있다.
 
 경계 근거: 위에 연결된 원본 sense의 대조에서 같은 어휘의 자연스러운 용법 확장이나 공통 명명 원리가 확인되지 않아 독립 Meaning을 유지했다.
+
+## 피아노 (2 Meanings)
+
+- **m362344** (`w362344-s1`): `w362344-s1`: 악보에서, 여리게 연주하라는 말. 기호는 ‘p’.
+- **m502450** (`w502450-s1`): `w502450-s1`: 큰 공명 상자 속에 85개 이상의 금속 현을 치고, 이와 연결된 건반을 눌러서 현을 때리게 하는 장치로 소리를 내는 건반 악기. 음역이 넓고 표현력이 풍부하다. 18세기 초 이탈리아에서 크리스토포리(Christofori, B.)가 고안하여 독일에서 완성하였다. `강금` is its source-bound direct synonym.
+
+경계 근거: STDICT records the mark as Italian `피아노02` (`piano`) and the keyboard instrument as English `피아노01` (`piano`), with the latter linked directly to `강금`. Shared music context and historical form alone do not join these separate Korean loans. `피아노포르테` remains one Meaning because its single Italian compound names the original instrument and the corresponding `pf` direction.
 
 ## 피어 (2 Meanings)
 
