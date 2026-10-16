@@ -66,8 +66,11 @@ Skip/dedup/redirect counts are written to `metadata` as `meaning_projection_*`, 
 | `meaning_relations` | `source_meaning_id`, `position`, `target_meaning_id`, `type`, `note`, `relevance`, `origin` |
 | `meaning_relation_sources` | provenance: FK `(source_sense_id, source_position)` to the original `relations` row, plus redirect flags |
 
-Typewriter-authored relations (유의어, 반의어, 말의 결, 연상) are edited on `meaning_relations` with a different `origin`;
-the sense `relations` table stays the STDICT evidence layer. `getMeaningsByLemma` and `getMeaningRelations` in
+`meaning_relations.origin` is one of `stdict-sense-projection` or `typewriter-authored` (CHECK). Projected rows must have
+complete, correctly bound `meaning_relation_sources`; Typewriter-authored relations (유의어, 반의어, 말의 결, 연상) are
+edited on the same table with `origin='typewriter-authored'`, need no STDICT provenance, and may not own provenance rows
+(a projected row relabelled as authored fails the projectable-relation and provenance-ownership checks). The sense
+`relations` table stays the STDICT evidence layer. `getMeaningsByLemma` and `getMeaningRelations` in
 `src/runtime/sqlite-query.js` are the shared meaning-based read helpers. The default canonical build requires the complete
 meaning corpus and fails closed (`INVALID_MEANING_DATA`); builds from other canonical fixtures get an empty meaning layer
 unless a meanings directory is passed.

@@ -12,7 +12,9 @@
  * - `source meaning + target meaning + type` is unique; every contributing sense relation stays as provenance.
  */
 
-export const MEANING_RELATION_ORIGIN = 'stdict-sense-projection';
+import { MEANING_RELATION_ORIGINS } from '../../src/runtime/dictionary-contract.js';
+
+export const MEANING_RELATION_ORIGIN = MEANING_RELATION_ORIGINS.projection;
 
 function resolveEndpoint(senseId, senseToMeaning, dropped) {
   const direct = senseToMeaning.get(senseId);

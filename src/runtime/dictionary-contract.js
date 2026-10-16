@@ -1,6 +1,11 @@
 export const DICTIONARY_VERSION = 'm2-pilot-1';
 export const SQLITE_SCHEMA_VERSION = '4';
 
+export const MEANING_RELATION_ORIGINS = Object.freeze({
+  projection: 'stdict-sense-projection',
+  authored: 'typewriter-authored',
+});
+
 export const DICTIONARY_COUNT_QUERIES = Object.freeze({
   record_count: 'SELECT COUNT(*) FROM records',
   start_count: "SELECT COUNT(*) FROM records WHERE role = 'start'",
@@ -33,10 +38,17 @@ const redirected = (sense) => `(${memberMeaning(sense)} IS NULL)`;
 export const MEANING_INTEGRITY_QUERIES = Object.freeze({
   meaning_relation_without_provenance: `
     SELECT COUNT(*) FROM meaning_relations AS relation
-    WHERE NOT EXISTS (
+    WHERE relation.origin = '${MEANING_RELATION_ORIGINS.projection}' AND NOT EXISTS (
       SELECT 1 FROM meaning_relation_sources AS source
       WHERE source.source_meaning_id = relation.source_meaning_id
         AND source.relation_position = relation.position)`,
+  // Typewriter-authored relations carry no STDICT provenance; provenance may only back projected relations.
+  meaning_relation_provenance_on_non_projection: `
+    SELECT COUNT(*) FROM meaning_relation_sources AS source
+    INNER JOIN meaning_relations AS relation
+      ON relation.source_meaning_id = source.source_meaning_id
+     AND relation.position = source.relation_position
+    WHERE relation.origin <> '${MEANING_RELATION_ORIGINS.projection}'`,
   meaning_relation_source_mismatch: `
     SELECT COUNT(*) FROM meaning_relation_sources AS source
     INNER JOIN meaning_relations AS relation

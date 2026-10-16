@@ -91,6 +91,28 @@ test('meaning relation provenance: valid mapping passes; deleted, mis-bound and 
     });
     assert.ok(misbound.meaning_relation_source_mismatch > 0, JSON.stringify(misbound));
 
+    // Typewriter-authored relation without STDICT provenance is valid; an unknown origin is rejected by the schema.
+    await copyFile(good, copy('authored.sqlite'));
+    assert.deepEqual(violations(copy('authored.sqlite'), (db) => db.exec(
+      "INSERT INTO meaning_relations (source_meaning_id, position, target_meaning_id, type, note, relevance, origin) "
+      + "VALUES ('m002', 0, 'm003', 'near', '작성한 연관', 3, 'typewriter-authored')",
+    )), {});
+    await copyFile(good, copy('origin.sqlite'));
+    assert.throws(() => violations(copy('origin.sqlite'), (db) => db.exec(
+      "UPDATE meaning_relations SET origin = 'other' WHERE source_meaning_id = 'm001' AND position = 0",
+    )), /CHECK/);
+
+    // Relabelling a projected relation as authored does not bypass the source checks.
+    await copyFile(good, copy('relabel.sqlite'));
+    assert.ok(violations(copy('relabel.sqlite'), (db) => db.exec(
+      "UPDATE meaning_relations SET origin = 'typewriter-authored' WHERE source_meaning_id = 'm001' AND position = 0",
+    )).meaning_relation_provenance_on_non_projection > 0);
+    await copyFile(good, copy('relabel-clean.sqlite'));
+    assert.ok(violations(copy('relabel-clean.sqlite'), (db) => db.exec(`
+      DELETE FROM meaning_relation_sources WHERE source_meaning_id = 'm001' AND relation_position = 0;
+      UPDATE meaning_relations SET origin = 'typewriter-authored' WHERE source_meaning_id = 'm001' AND position = 0;
+    `)).projectable_relation_without_provenance > 0);
+
     await copyFile(good, copy('flag.sqlite'));
     assert.ok(violations(copy('flag.sqlite'), (db) => db.exec(
       'UPDATE meaning_relation_sources SET target_redirected = 1',

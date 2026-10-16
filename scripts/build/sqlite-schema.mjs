@@ -1,4 +1,7 @@
-import { SQLITE_SCHEMA_VERSION } from '../../src/runtime/dictionary-contract.js';
+import {
+  MEANING_RELATION_ORIGINS,
+  SQLITE_SCHEMA_VERSION,
+} from '../../src/runtime/dictionary-contract.js';
 
 export { SQLITE_SCHEMA_VERSION };
 
@@ -112,7 +115,10 @@ CREATE TABLE meaning_relations (
   )),
   note TEXT NOT NULL,
   relevance INTEGER CHECK (relevance IS NULL OR relevance BETWEEN 1 AND 9),
-  origin TEXT NOT NULL,
+  origin TEXT NOT NULL CHECK (origin IN (
+    '${MEANING_RELATION_ORIGINS.projection}', '${MEANING_RELATION_ORIGINS.authored}'
+  )),
+  CHECK (length(note) > 0),
   PRIMARY KEY (source_meaning_id, position),
   UNIQUE (source_meaning_id, target_meaning_id, type),
   CHECK (source_meaning_id <> target_meaning_id),
