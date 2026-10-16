@@ -22,16 +22,6 @@ not write or rewrite prose.
   project data license and normal release checks; repository visibility does not
   expand that license to third-party content.
 
-The Chrome Web Store listing above is the target identified in the NIKL
-result-publication application. The owner confirmed on 2026-10-12 that NIKL
-approved the application submitted on 2026-09-27 for the Typewriter result.
-Together with the owner's release decision, this permits distribution of
-the **independently authored result described in that application** under its
-applicable data terms after ordinary release checks; it does not authorize
-raw corpus text, passages, or local indexes. That corpus approval is separate
-from the official STDICT copyright policy governing the planned new dictionary
-baseline. See [Data License](DATA-LICENSE.md).
-
 ## Product philosophy
 
 A conventional dictionary explains a word. A thesaurus lists similar words.
@@ -170,6 +160,7 @@ assets:
   reserved; see [Brand policy](BRAND.md).
 - Third-party components retain their own licenses; see
   [Third-party notices](THIRD-PARTY-NOTICES.txt).
+
 **국립국어원 사전 자료 출처 및 저작권 정책**
 
 - **표준국어대사전:** 국립국어원 『표준국어대사전』
