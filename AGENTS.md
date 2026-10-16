@@ -452,6 +452,36 @@ Normal validators still reject invalid data. Verified append-only `deep-gate-cov
 classified as runner or registry implementation changes. A skipped Deep check must be listed with its reason; it never counts as
 completed Deep evidence.
 
+### Local Normal CI clean-worktree preflight
+
+Before running local `ci:normal` (including `pnpm test`, which invokes it,
+or local `ci:pr`/`ci:all` paths that execute Normal), check the **same
+worktree** with:
+
+```sh
+git status --porcelain=v1 --untracked-files=all
+```
+
+- **Do not start Normal when this output is non-empty.** Finish edits, run
+  focused unit/data checks as appropriate, commit the intended changes, and
+  confirm the status is empty before running Normal against that commit.
+  Include untracked files in the preflight; do not discard unrelated work to
+  make the check pass.
+- Never invoke Normal first while dirty merely to discover its existing
+  `DIRTY_WORKTREE` provenance guard, then commit and rerun the same expensive
+  gate. The preflight must prevent this predictable failure.
+- `TYPEWRITER_ALLOW_DIRTY=true` is only an explicit **local,
+  non-reproducible development** escape hatch, not a replacement for a clean
+  commit-bound Normal gate or exact-HEAD PR evidence. Do not use it to bypass
+  the gate for PR readiness.
+- If a run starts clean but a validator/build leaves the worktree dirty,
+  inspect the generated/changed paths and fix the producing workflow or
+  isolate its output. Do not normalize repeated clean/rerun cycles or silently
+  erase unrelated changes.
+
+Keep the current clean-worktree provenance checks intact. This is a required
+**execution-order preflight**, not a request to weaken the builder or CI gate.
+
 For data changes, validation may include:
 
 - JSON/JSONL schema checks;
