@@ -21,35 +21,41 @@ for (const row of rows) {
 }
 const residualByLemma = new Map([...rowsByLemma].filter(([, list]) => list.length > 1));
 const expectedSenseIds = new Set([...residualByLemma.values()].flatMap((list) => list.flatMap((row) => row.sense_ids)));
+const senseIdsIn = (text) => [...text.matchAll(/`(w\d+-s\d+)`/gu)].map((match) => match[1]);
+const auditPath = path.join(root, 'scripts/meaning/issue-764-c17-residual-audit.md');
+const audit = readFileSync(auditPath, 'utf8');
+const auditRows = audit.split('\n## 후보 검토 후 하나의 Meaning으로 유지한 기존 다중-sense 항목')[0];
+const targetSenseIds = new Set([...auditRows.matchAll(/; resolved — ([^;\n]+); compare — /gu)]
+  .flatMap(([, evidence]) => senseIdsIn(evidence)));
+const expectedEvidenceIds = new Set([...expectedSenseIds, ...targetSenseIds]);
 const sourceGlossBySense = new Map();
 for (const file of readdirSync(canonicalDir).filter((name) => name.startsWith('stdict-') && name.endsWith('.jsonl')).sort()) {
   for (const line of readFileSync(path.join(canonicalDir, file), 'utf8').split('\n')) {
     if (!line) continue;
     const entry = JSON.parse(line);
     for (const sense of entry.senses ?? []) {
-      if (expectedSenseIds.has(sense.id)) sourceGlossBySense.set(sense.id, sense.gloss);
+      if (expectedEvidenceIds.has(sense.id)) sourceGlossBySense.set(sense.id, sense.gloss);
     }
   }
 }
+const expectedReferenceMeaningCount = [...residualByLemma.values()].flat()
+  .filter((row) => row.sense_ids.some((senseId) => sourceGlossBySense.get(senseId)?.includes('→'))).length;
 
-const auditPath = path.join(root, 'scripts/meaning/issue-764-c17-residual-audit.md');
-const audit = readFileSync(auditPath, 'utf8');
-const auditRows = audit.split('\n## 후보 검토 후 하나의 Meaning으로 유지한 기존 다중-sense 항목')[0];
 const short = (value, max) => {
   const text = String(value).replace(/\s+/gu, ' ').trim();
   return text.length > max ? `${text.slice(0, max - 1)}…` : text;
 };
-const senseIdsIn = (text) => [...text.matchAll(/`(w\d+-s\d+)`/gu)].map((match) => match[1]);
 const meaningIdsIn = (text) => [...text.matchAll(/`(m\d+(?:_\d+)?)`/gu)].map((match) => match[1]);
 
 test('C17 residual audit covers every retained Meaning with complete bound-source reasons', () => {
-  assert.equal(sourceGlossBySense.size, expectedSenseIds.size, 'every residual source sense must resolve in canonical');
+  assert.equal(sourceGlossBySense.size, expectedEvidenceIds.size, 'every bound and referenced target sense must resolve in canonical');
   const expectedLemmas = [...residualByLemma.keys()].sort((a, b) => a.localeCompare(b, 'ko'));
   const headings = [...auditRows.matchAll(/^## (.+)$/gmu)].map((match) => match[1]);
   assert.deepEqual(headings, expectedLemmas, 'audit must list every and only residual multi-Meaning lemma');
   assert.match(audit, new RegExp(`최종적으로 여러 Meaning을 유지한 ${residualByLemma.size.toLocaleString('en-US')}개 lemma`));
 
   const seenMeaningIds = [];
+  const referencedMeaningIds = [];
   for (let index = 0; index < headings.length; index += 1) {
     const lemma = headings[index];
     const start = auditRows.indexOf(`## ${lemma}\n`);
@@ -74,17 +80,35 @@ test('C17 residual audit covers every retained Meaning with complete bound-sourc
       const followingLine = section.slice(lineStart + fullLine.length).split('\n')[1];
       assert.ok(followingLine?.startsWith('  - 근거: bound — '), `${lemma}/${meaningId}: reason must immediately follow its Meaning row`);
       const boundMarker = '  - 근거: bound — ';
+      const resolvedMarker = '; resolved — ';
       const compareMarker = '; compare — ';
       const conclusionMarker = '; conclusion — ';
       const compareAt = followingLine.indexOf(compareMarker);
       const conclusionAt = followingLine.indexOf(conclusionMarker);
       assert.ok(compareAt > boundMarker.length && conclusionAt > compareAt, `${lemma}/${meaningId}: reason needs bound, compare, and conclusion sections`);
-      const boundEvidence = followingLine.slice(boundMarker.length, compareAt);
+      const resolvedAt = followingLine.indexOf(resolvedMarker);
+      const boundEnd = resolvedAt >= 0 ? resolvedAt : compareAt;
+      const boundEvidence = followingLine.slice(boundMarker.length, boundEnd);
+      const resolvedEvidence = resolvedAt >= 0 ? followingLine.slice(resolvedAt + resolvedMarker.length, compareAt) : '';
       const compareEvidence = followingLine.slice(compareAt + compareMarker.length, conclusionAt);
       const conclusion = followingLine.slice(conclusionAt + conclusionMarker.length).trim();
       assert.ok(conclusion.length > 0, `${lemma}/${meaningId}: row-specific disposition is required`);
 
       assert.deepEqual(senseIdsIn(boundEvidence), row.sense_ids, `${lemma}/${meaningId}: own bound sources must be complete and ordered`);
+      const hasReferenceGloss = row.sense_ids.some((senseId) => sourceGlossBySense.get(senseId).includes('→'));
+      if (hasReferenceGloss) {
+        referencedMeaningIds.push(meaningId);
+        const resolvedSenseIds = senseIdsIn(resolvedEvidence);
+        assert.ok(resolvedSenseIds.length > 0, `${lemma}/${meaningId}: reference gloss needs resolved canonical target sense evidence`);
+        assert.equal(new Set(resolvedSenseIds).size, resolvedSenseIds.length, `${lemma}/${meaningId}: target senses must not repeat`);
+        for (const senseId of resolvedSenseIds) {
+          const targetGloss = sourceGlossBySense.get(senseId);
+          assert.ok(targetGloss, `${lemma}/${meaningId}: resolved target ${senseId} must exist in canonical`);
+          assert.ok(resolvedEvidence.includes(short(targetGloss, 90)), `${lemma}/${meaningId}: resolved target gloss ${senseId}`);
+        }
+      } else {
+        assert.equal(resolvedAt, -1, `${lemma}/${meaningId}: direct source gloss must not have a reference resolution`);
+      }
       for (const senseId of row.sense_ids) {
         assert.ok(boundEvidence.includes(short(sourceGlossBySense.get(senseId), 90)), `${lemma}/${meaningId}: bound source gloss ${senseId}`);
         boundTextBySense.set(senseId, boundEvidence);
@@ -104,5 +128,6 @@ test('C17 residual audit covers every retained Meaning with complete bound-sourc
     }
   }
   assert.equal(new Set(seenMeaningIds).size, seenMeaningIds.length, 'a retained Meaning must appear only once');
+  assert.equal(referencedMeaningIds.length, expectedReferenceMeaningCount, 'every reference-bound Meaning must have resolved target evidence');
   assert.deepEqual(seenMeaningIds.sort(), [...residualByLemma.values()].flat().map((row) => row.id).sort(), 'audit/output Meaning ID sets');
 });

@@ -4,7 +4,7 @@
 
 C17(ㅌ)의 Meaning 후보 1,607개를 bound STDICT sense gloss와 대조했다: 다중 Meaning lemma 1,423개와 한 Meaning 안에 여러 sense가 이미 묶인 lemma 184개다. 기준은 독립된 어휘적 정체성이다. 같은 어휘의 자연스러운 의미 확장은 한 Meaning으로, 근거가 이어지지 않는 동형 어휘는 별도 Meaning으로 판정했다.
 
-이 기록은 주 에이전트의 **source-bound 자체 점검(agent self-check)**이며 독립 검토나 사람의 승인이 아니다. 외부 사전이나 다른 모델을 사용하지 않았다. 실행 가능한 변경 기록은 issue-764-c17.json이다. 각 변경 lemma는 현재 행의 정확한 before snapshot과 모든 canonical sense를 빠짐없이 나누는 최종 groups를 포함한다. Canonical 및 adjudication은 변경하지 않았다.
+이 기록은 주 에이전트의 **source-bound 자체 점검(agent self-check)**이며 독립 검토나 사람의 승인이 아니다. canonical STDICT gloss가 기본 증거다. 참조형 source gloss의 표제어 번호 22건을 canonical source ID에 연결할 때는 공식 표준국어대사전 검색 결과를 확인했으며, 허용된 STDICT 외의 사전이나 다른 모델은 사용하지 않았다. 실행 가능한 변경 기록은 issue-764-c17.json이다. 각 변경 lemma는 현재 행의 정확한 before snapshot과 모든 canonical sense를 빠짐없이 나누는 최종 groups를 포함한다. Canonical 및 adjudication은 변경하지 않았다.
 
 | Measure | Before | After |
 | --- | ---: | ---: |
@@ -29,9 +29,14 @@ issue-764-c17-residual-audit.md는 결과에 여러 Meaning이 남은 864개 후
 
 이번에 병합한 811개 lemma의 모든 source sense, 최종 Meaning, 판정 근거는 [issue-764-c17-merge-audit.md](issue-764-c17-merge-audit.md)에 개별 기록했다.
 
+## Review follow-up — reference glosses
+
+- 잔존 다중-Meaning 감사의 reference gloss 22건을 공식 STDICT headword numbering으로 canonical target sense IDs에 연결하고, 각 target의 원문 gloss와 같은 lemma의 대안 비교를 residual audit에 기록했다. sense 번호가 원문에서 특정되지 않는 표제어는 그 표제어의 source senses를 모두 열거하고 C17 gloss가 반영하는 용법을 표시했다.
+- `매기09` (`w111437-s1`), `태우다01` (`w494939-s1..s4`), `통09` (`w347596-s1/s2`), `창병02` (`w324047-s1`)의 target을 기존 C17 gloss가 잘못 가리키고 있어 해당 네 Meaning gloss를 수정했다. 재분할 수는 811로 유지되며 canonical과 adjudication은 바뀌지 않았다.
+
 ## Validation and limits
 
-- Replayed `scripts/meaning/issue-764-c17.json` from PR base `5d35c767b9319e0fbb839a559575c91ef5752d25`: all 811 repartitions applied with complete sense coverage, and the 10,297 C17 output rows matched exactly; all 117 adjudications stayed unchanged.
-- `node --test scripts/meaning/issue-764-c17-residual-audit.test.mjs` passed. It checked all 864 residual lemmas and 2,243 retained Meaning rows, including each bound canonical gloss and every competing source ID. The regression checks evidence coverage, not editorial decisions.
+- Replayed `scripts/meaning/issue-764-c17.json` from PR base `5d35c767b9319e0fbb839a559575c91ef5752d25`: all 811 repartitions and two standalone gloss edits applied with complete sense coverage, and the 10,297 C17 output rows matched exactly; all four reference-target gloss corrections were reproduced and all 117 adjudications stayed unchanged.
+- `node --test scripts/meaning/issue-764-c17-residual-audit.test.mjs` passed. It checked all 864 residual lemmas and 2,243 retained Meaning rows, including bound source glosses, every competing source ID, and canonical target ID/gloss evidence for every reference-bound row. The regression checks evidence coverage, not editorial decisions.
 - `node scripts/meaning/validate.mjs` passed: 480,766 meanings, 117 adjudications.
 - This is an agent self-check, not independent review. Closely related senses and lexicalized technical uses remain editorial boundary judgments for the PR reviewer to assess.
