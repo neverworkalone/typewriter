@@ -42,7 +42,6 @@ const mustMerge = [
   ['켤레', ['w493168-s1', 'w493169-s1']], // 일상의 한 쌍 / 수학의 대응 관계
   ['코르사주', ['w339080-s1', 'w339080-s2']], // 의복 부위 / 그 자리에 다는 장식
   ['콱', ['w491758-s1', 'w491758-s2', 'w491758-s3']],
-  ['클럽', ['w345346-s2', 'w345346-s3']],
   ['큰이', ['w346076-s1', 'w346076-s2']], // 남의 맏이 / 남의 본부인: 한 집단의 으뜸
   ['콩팥', ['w340476-s1', 'w492299-s1']], // 콩과 팥 / 그 모양을 딴 장기
 ];
@@ -62,6 +61,9 @@ const mustSplit = [
   ['커버 보호/탁구 모서리 타구', 'w340603-s1', 'w340603-s3'],
   ['커버 방어/탁구 모서리 타구', 'w340603-s2', 'w340603-s3'],
   ['컨버트 럭비/야구', 'w335067-s1', 'w335067-s2'],
+  ['클럽 단체/클로버 무늬', 'w345346-s1', 'w345346-s2'],
+  ['클럽 단체/골프채', 'w345346-s1', 'w345346-s3'],
+  ['클럽 클로버 무늬/골프채', 'w345346-s2', 'w345346-s3'],
   ['카르멘 소설/오페라', 'w342024-s1', 'w342024-s2'],
   ['칼리스토 요정/위성', 'w494515-s1', 'w494515-s2'],
   ['쾌락 즐거움/허락', 'w341534-s1', 'w341535-s1'],
@@ -76,4 +78,14 @@ test('C16 controls fail on unknown sense ids instead of passing vacuously', () =
   assert.equal(known(['w000000-s1']), false);
   for (const [name, ids] of mustMerge) assert.ok(known(ids), `${name}: control sense ids must exist`);
   for (const [name, a, b] of mustSplit) assert.ok(known([a, b]), `${name}: control sense ids must exist`);
+});
+
+test('C16 audit headline counts match the shards and the spec', () => {
+  const audit = readFileSync(path.join(root, 'scripts/meaning/issue-764-c16-audit.md'), 'utf8');
+  const multi = Object.values(Object.groupBy(rows, (row) => row.lemma)).filter((v) => v.length > 1).length;
+  const fmt = (n) => n.toLocaleString('en-US');
+  assert.ok(audit.includes(`| C16 Meaning rows | 5,616 | ${fmt(rows.length)} |`), 'row count');
+  assert.ok(audit.includes(`| Lemmas with several Meanings | 488 | ${multi} |`), 'multi-Meaning lemma count');
+  assert.ok(audit.includes(`${spec.repartitions.length} repartitions`), 'repartition count');
+  assert.ok(audit.includes(`Rows in the ${spec.repartitions.length} repartitioned lemmas | ${spec.repartitions.reduce((a, e) => a + e.before.length, 0)} | ${spec.repartitions.reduce((a, e) => a + e.groups.length, 0)}`), 'repartition rows');
 });

@@ -1,6 +1,6 @@
 # Issue #764 C16 residual multi-Meaning audit
 
-Every C16 lemma that still has more than one Meaning row after the #764 edit (178 lemmas) is listed with each Meaning row's canonical sense IDs, a truncated canonical gloss, and the source-bound reason it is not treated as one lexical identity. Proper-name homonyms (different real people, places, or works that share a name) are the largest group; for them each row is a distinct referent.
+Every C16 lemma that still has more than one Meaning row after the #764 edit (179 lemmas) is listed with each Meaning row's canonical sense IDs, a truncated canonical gloss, and the source-bound reason it is not treated as one lexical identity. Proper-name homonyms (different real people, places, or works that share a name) are the largest group; for them each row is a distinct referent.
 
 ## 카
 
@@ -1182,6 +1182,14 @@ Every C16 lemma that still has more than one Meaning row after the #764 edit (17
 - `m496255` (w496255-s1): 독일의 동양학자·탐험가(1783~1835). 아시아 각지를 여행하고 연구하였다. 저서에 ≪캅카스와 조지아의 …
 
 근거: 서로 다른 실존 인물 또는 지명이 같은 이름을 공유할 뿐 어휘적 정체성이 없다. 각 행은 별개의 지시 대상이다.
+
+## 클럽
+
+- `m345346_1` (w345346-s1): 취미나 친목 따위의 공통된 목적을 가진 사람들이 조직한 단체.
+- `m345346_2` (w345346-s2): 트럼프의 네 가지 무늬 가운데 하나. 검은색의 클로버 잎 모양이다.
+- `m345346_3` (w345346-s3): 골프를 할 때 공을 치는 기구.
+
+근거: 사람들의 모임(단체), 트럼프의 클로버 무늬, 골프채는 서로 다른 지시물이다. 같은 영어 club과 같은 canonical record라는 사실만으로는 하나의 명명 원리가 확인되지 않아 세 행을 모두 분리한다.
 
 ## 클로드
 
