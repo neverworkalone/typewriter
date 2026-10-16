@@ -88,13 +88,15 @@ test('C18 complete canonical sense coverage and residual audit match the data', 
   }
 
   const audit = readFileSync(path.join(root, 'scripts/meaning/issue-764-c18-audit.md'), 'utf8');
-  assert.ok(audit.includes('| C18 Meaning rows | 15,434 | 14,758 |'), 'C18 row counts');
+  assert.ok(audit.includes('| C18 Meaning rows | 15,434 | 14,756 |'), 'C18 row counts');
   assert.ok(audit.includes('| Lemmas with several Meanings | 2,096 | 1,824 |'), 'multi-Meaning counts');
-  assert.ok(audit.includes('| Rows in the 383 repartitioned lemmas | 1,303 | 627 |'), 'repartition counts');
-  assert.equal(spec.repartitions.length, 383, 'audit scope');
+  assert.ok(audit.includes('| Rows in the 385 repartitioned lemmas | 1,309 | 631 |'), 'repartition counts');
+  assert.equal(spec.repartitions.length, 385, 'audit scope');
 });
 
 const mustMerge = [
+  ['파가 house demolition and its Go use', ['w354930-s1', 'w354930-s2']],
+  ['파가하다 house demolition and its Go use', ['w354931-s1', 'w354931-s2']],
   ['프로그램 plan, broadcast, and computer uses', ['w498449-s1', 'w498449-s2', 'w498449-s3']],
   ['파도 physical, social, and psychological waves', ['w499093-s1', 'w499093-s2', 'w499093-s3']],
   ['파닥 bird, fish, and fabric movement', ['w351681-s1', 'w351681-s2', 'w351681-s3']],
