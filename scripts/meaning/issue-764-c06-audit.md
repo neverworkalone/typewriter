@@ -9,7 +9,7 @@ This is the C06 source-bound self-check for Issue #764, based on the current cle
 | Canonical records | 2,891 | 2,891 |
 | Lemmas | 2,673 | 2,673 |
 | Canonical senses | 3,101 | 3,101 |
-| Meaning rows | 3,043 | 2,920 |
+| Meaning rows | 3,043 | 2,917 |
 | Multi-sense lemmas | 254 | 254 |
 | Single-sense lemmas explicitly retained | — | 2,419 |
 | Lemmas whose Meaning count changed | — | 99 |
@@ -171,10 +171,10 @@ The first column lists the complete final source-sense partition for every lemma
 | 로렌체티 | w105321-s1 / w105563-s1 | 분리 |
 | 림 | w105385-s1 / w105386-s1+w105386-s2 | 분리 |
 | 록펠러 | w105413-s1 / w422740-s1 / w423368-s1 | 분리 |
-| 리 | w105465-s1 / w105466-s1 / w105468-s1 / w105469-s1 / w105787-s1 / w105787-s2 / w105787-s3 / w105789-s1 / w105790-s1 / w105791-s1 / w418806-s1 / w418967-s1 / w418968-s1 / w418969-s1 | 분리 |
+| 리 | w105465-s1 / w105466-s1 / w105468-s1 / w105469-s1 / w105787-s1+w105787-s2+w105787-s3 / w105789-s1 / w105790-s1 / w105791-s1 / w418806-s1 / w418967-s1 / w418968-s1 / w418969-s1 | 분리 |
 | 루빈시테인 | w105490-s1 / w417431-s1 | 분리 |
 | 로위 | w105605-s1 / w105606-s1 | 분리 |
-| 로드레이서 | w105637-s1 / w105637-s2 | 분리 |
+| 로드레이서 | w105637-s1+w105637-s2 | 통합 |
 | 로스트 | w105648-s1+w105648-s2+w105648-s3+w105648-s4+w105648-s5 | 통합 |
 | 리저널리즘 | w105773-s1+w105773-s2 | 통합 |
 | 루스 | w105803-s1 / w420255-s1 | 분리 |
@@ -441,8 +441,8 @@ After the Stage 2 review, I parsed the exact reviewed PR HEAD `ff273fad72acfd1be
 | 리브르 (`w104710`) | w104710-s1 / w104710-s2 | 분리: 프랑스의 옛 화폐 단위와 옛 무게 단위는 측정 차원이 달라 유지. |
 | 뢴트겐 (`w422980`) | w422980-s1 / w422980-s2 | 분리: 엑스선 자체와 방사선 노출량·세기의 단위는 물리 대상과 측정 단위가 달라 유지. |
 | 루프 (`w104822`) | w104822-s1+w104822-s2+w104822-s3+w104822-s4+w104822-s5 | 통합: 고리·단춧고리·곡선 경로·곡선 타구·반복 명령은 닫힌 경로 또는 되돌아 반복되는 loop 이미지로 묶음. |
-| 리 (`w105787`) | w105787-s1 / w105787-s2 / w105787-s3 | 분리: 비율, 길이, 무게는 값의 기준과 측정 차원이 서로 달라 각각 유지. |
-| 로드레이서 (`w105637`) | w105637-s1 / w105637-s2 | 분리: 도로 경기의 사람 참가자와 경기용 차량은 경기자와 도구라는 대상 차이로 유지. |
+| 리 (`w105787`) | w105787-s1+w105787-s2+w105787-s3 | 통합: 세 단위 모두 원문에서 `1푼의 10분의 1`로 정의된다. 비율·길이·무게라는 측정량의 차이는 같고 구체적인 분수 하위 단위라는 명명 원리를 나누지 않는다. 세 수치와 실제 풀이를 원문대로 병기한다. |
+| 로드레이서 (`w105637`) | w105637-s1+w105637-s2 | 통합: 도로 경기 참가자와 그 경기에 쓰이는 경기용 자전거·오토바이는 모두 도로 경주(racing)를 바탕으로 한 같은 복합 명칭의 사람·장비 용법이다. 적용 대상의 차이만으로 별도 어휘가 되지 않으며 두 원뜻을 병기한다. |
 | 르포 (`w105812`) | w105812-s1+w105812-s2 | 통합: 현지 취재 보고와 다큐멘터리 문학 형식은 사실을 현장에서 기록·전달하는 르포 의미로 묶음. |
 | 리쿠르고스 (`w105973`) | w105973-s1 / w105973-s2 | 분리: 트라키아 신화의 왕과 스파르타의 전설적 입법자는 서사·시대가 다른 인물로 유지. |
 | 리치 (`w517594`) | w517594-s1+w517594-s2 | 통합: 나무와 그 열매는 원문이 열매를 해당 나무의 결실로 직접 정의하므로 묶음. |
@@ -493,7 +493,7 @@ The review identified three same-record under-merges whose source senses use one
 | 리시버 | w418668-s1+w418668-s2 | 통합: both senses name the receiver of an input, whether electrical signal or served ball; the receiving device and receiving player definitions are retained verbatim together. |
 | 로마 | w417861-s1+w417861-s2+w417861-s3+w417861-s4 | 통합: the historical and modern city senses and the same-named administrative area share the Rome place name; all four source glosses are retained verbatim. |
 
-The bounded same-pattern comparison found `로드` (rod and its length unit) and `릴` (reel device and film-length unit) already grouped, consistent with the direct name-to-measure extension in `람다`. The remaining `리` senses name distinct ratio, length, and weight measures, so they do not share that specific symbol-based naming principle. `로드레이서` remains split: its source distinguishes a person competing in a road race from a vehicle used in the event; sharing the event does not make the vehicle the same receiving or racing role. `로마 조약` remains split because its senses are two separately negotiated international instruments, not a city and its named administrative area. These comparisons are limited to the relevant source-bound patterns, not a new census of all C06 meanings.
+At this review stage, the bounded comparison had found `로드` (rod and its length unit) and `릴` (reel device and film-length unit) already grouped, while it retained the three `리` units and split `로드레이서` by measurement dimension and person/equipment target. Stage 2 review `5545666493` later challenged those two boundaries under Issue #764 §2-2. The follow-up below accepts that feedback after checking the exact canonical definitions: each `리` sense says it is one tenth of a `푼`, and both `로드레이서` senses name a road-racing participant or the vehicle used for that racing. `로마 조약` remains split because its senses are two separately negotiated international instruments, not a city and its named administrative area. These comparisons are limited to the relevant source-bound patterns, not a new census of all C06 meanings.
 
 ## Follow-up to Stage 1 review 5545413031
 
@@ -504,14 +504,26 @@ The Stage 1 reviewer independently accepted the three prior naming-principle cor
 | 라인 아웃 | w99636-s1+w99636-s2+w99636-s3 | 통합: rugby line-out, baseball runner out beyond the base line, and handball ball out across the touchline all use the same line/boundary-out expression. Their distinct event, consequence, and sport details remain in the three verbatim source glosses. |
 | 램 | w99865-s1+w99865-s2 | 통합: lamb hide/fur or lamb-like fabric and lamb meat are named outputs of the same animal lexeme. Both original glosses remain verbatim together; the distinct mechanical ram senses (w418240) and computer RAM (w99867) stay separate. |
 
-The bounded sibling check compared the animal-output disposition with `리치` (tree/fruit already grouped) and `라텍스` (source material/processed material already grouped). For `램`, the mechanical source record and the computer-memory record are negative controls rather than products of the lamb lexeme. The separate `로드레이서` participant/vehicle and `로마 조약` title/document controls remain unchanged for the reasons above. This targeted comparison found no additional same-record split with these two specific naming patterns among the reviewed remainder; it is not a full semantic re-audit of the 2,673 lemmas.
+The bounded sibling check compared the animal-output disposition with `리치` (tree/fruit already grouped) and `라텍스` (source material/processed material already grouped). For `램`, the mechanical source record and the computer-memory record are negative controls rather than products of the lamb lexeme. The earlier Stage 1 pass treated `로드레이서` participant/vehicle as separate; the later Stage 2 review `5545666493` challenged and changed that decision for the shared road-racing naming principle. `로마 조약` remains a separate title/document control. This targeted comparison found no additional same-record split with these specific naming patterns among the reviewed remainder; it is not a full semantic re-audit of the 2,673 lemmas.
+
+## Follow-up to Stage 2 review 5545666493
+
+The review found two additional under-merges by applying Issue #764 §2-2 to concrete source definitions. I independently checked the exact canonical glosses, prior Meaning groups, and the issue's requirement to distinguish the named lexical principle from differences in the target or measurement dimension. Both findings are accepted. Canonical sources and adjudications remain unchanged.
+
+| Lemma | Source senses | Final decision and evidence |
+| --- | --- | --- |
+| 리 | w105787-s1+w105787-s2+w105787-s3 | 통합: all three canonical glosses explicitly define `리` as one tenth of `푼`; only the measured dimension and its stated value differ. The ratio (1/1,000 of a total), length (0.3 mm), and weight (0.0375 g) senses retain their separate complete source glosses in one Meaning. Other `리` senses for mile, nautical mile, the older Korean distance unit, people, and unrelated usages remain separate. |
+| 로드레이서 | w105637-s1+w105637-s2 | 통합: the canonical glosses name a road-race participant and the bicycle/motorcycle prepared for racing on unpaved or rough roads. Person versus equipment is an application-target difference under the same road-racing compound, not evidence of an unrelated homonym. Both original glosses remain verbatim in one Meaning. |
+
+These are bounded decisions on the two source-bound patterns in the review, not a new C06-wide semantic census. The manual regression adds positive controls for the three `리` subunits and the `로드레이서` participant/vehicle pair, removes the now-invalid split assertion, and continues to require source-sense existence, exact spec-to-output membership, verbatim source glosses, and the existing independent-homonym negatives. Against the pre-fix HEAD `5ef56c93`, both new positive assertions fail because each pair is split; they pass after the repartition. The other `리` distance, person, and unrelated senses, plus the independent `로마 조약` instruments, remain negative controls.
 
 The regression now contains positive `same` controls for all five accepted findings on HEAD `620c9aec`, preserves the prior work, title, Luxembourg-person, and rugby controls, checks the lamb/mechanical-ram and lamb/computer-RAM negatives, and verifies every merged source gloss verbatim. All five new merge assertions fail on `620c9aec` and pass on the current repartition. Exact-base replay from `417aaf0fd718c6b1695b177b685348cdd6205729` reproduces all 2,673 repartitions and four C06 shards byte-for-byte, with 3,101 canonical senses represented once and adjudications unchanged.
 
-The manual regression now checks the three positive pairs above, the prior four accepted findings, separate `로드레이서` person/vehicle and `로마 조약` document controls, and distinct named works and the independent Luxembourg revolutionary. A direct comparison confirms the three new merge assertions fail on HEAD `620c9aec` and pass on this repartition. Exact-base replay from `417aaf0fd718c6b1695b177b685348cdd6205729` reproduces all 2,673 repartitions and four C06 shards byte-for-byte, with all 3,101 canonical senses represented once and adjudications unchanged.
+At that stage, the manual regression checked the three positive pairs above, the prior four accepted findings, the then-separate `로드레이서` person/vehicle control and the `로마 조약` document control, plus distinct named works and the independent Luxembourg revolutionary. A direct comparison confirmed the three accepted merge assertions failed on HEAD `620c9aec` and passed after that repartition. Exact-base replay from `417aaf0fd718c6b1695b177b685348cdd6205729` reproduced all 2,673 repartitions and four C06 shards byte-for-byte, with all 3,101 canonical senses represented once and adjudications unchanged.
 
 ## Validation record
 
+- Follow-up for Stage 2 review `5545666493`: replayed the full 2,673-lemma repartition spec from exact base `417aaf0fd718c6b1695b177b685348cdd6205729`; the application produced 2,917 C06 Meaning rows covering all 3,101 canonical senses, with no canonical or adjudication changes. The C06 regression passed 24/24 checks, including both new positive merges and verbatim canonical gloss preservation. Comparing against prior HEAD `5ef56c93` confirms the `리` senses were in three groups and `로드레이서` in two; both assertions now pass as one group. `node scripts/meaning/validate.mjs` passed (494,999 meanings; 117 adjudications), and `git diff --check` passed.
 - Stage 1 follow-up for review `5545413031`: `node scripts/meaning/validate.mjs` passed (495,002 meanings; 117 adjudications); exact-base replay from `417aaf0fd718c6b1695b177b685348cdd6205729` reproduced all 2,673 repartitions and four C06 shards byte-for-byte, preserving all 3,101 canonical senses and all adjudications. The manual C06 boundary regression passed 23/23 checks, including all five new naming-principle merges, verbatim source-gloss preservation, prior review controls, separate works and people, and animal/mechanical/computer negative controls. All five new merge assertions fail on HEAD `620c9aec` and pass on this repartition. `git diff --check` passed.
 - Prior Stage 2 follow-up for review `5545350706` on HEAD `620c9aec`: `node scripts/meaning/validate.mjs` passed (495,004 meanings; 117 adjudications); exact-base replay reproduced all 2,673 repartitions and four C06 shards byte-for-byte. The manual regression passed 19/19 checks.
 - Prior Stage 2 review correction (commit `620c9aec`): `node scripts/meaning/validate.mjs` passed (495,007 meanings; 117 adjudications); exact-base replay reproduced all 2,673 repartitions and four C06 shards byte-for-byte. The manual regression passed 13/13 checks.
