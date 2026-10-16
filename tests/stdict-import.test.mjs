@@ -8,7 +8,11 @@ import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 
 import { buildDictionary } from '../scripts/build/dictionary.mjs';
-import { findRecordsBySearchTerm, getRecord, getSenseRelations } from '../scripts/build/query.mjs';
+import {
+  findRecordsBySearchTerm,
+  getSourceRecord as getRecord,
+  getSourceSenseRelations as getSenseRelations,
+} from '../scripts/build/query.mjs';
 import {
   addToSenseIndex,
   cleanDefinition,
@@ -164,14 +168,16 @@ test('converted fixture passes the schema, dataset gate, SQLite build and homogr
     const canonical = await readCanonicalRecords(canonicalDirectory, { useSharedContext: false });
     validateDatasetRecords(canonical.records, { lexicalQuality: { blocking_finding_count: 0 } });
     const outputPath = path.join(directory, 'dictionary.sqlite');
-    const summary = await buildDictionary({ inputDirectory: canonicalDirectory, outputPath, allowDirty: true });
+    const summary = await buildDictionary({ inputDirectory: canonicalDirectory, outputPath, allowDirty: true, keepStaging: true });
     assert.equal(summary.recordCount, FIXTURE.length - 1);
-    const database = new DatabaseSync(outputPath, { readOnly: true });
+    // Raw source senses/relations are build-time only: the staging database holds them, the product database does not.
+    const database = new DatabaseSync(summary.stagingPath, { readOnly: true });
+    const product = new DatabaseSync(outputPath, { readOnly: true });
     try {
-      const homographs = findRecordsBySearchTerm(database, '각본').matches.map(({ id }) => id).sort();
+      const homographs = findRecordsBySearchTerm(product, '각본').matches.map(({ id }) => id).sort();
       assert.deepEqual(homographs, ['w100', 'w101']);
-      assert.deepEqual(findRecordsBySearchTerm(database, '각설이 타령').matches.map(({ id }) => id), ['w103']);
-      assert.deepEqual(findRecordsBySearchTerm(database, '간').matches, [], 'the affix meaning is not searchable');
+      assert.deepEqual(findRecordsBySearchTerm(product, '각설이 타령').matches.map(({ id }) => id), ['w103']);
+      assert.deepEqual(findRecordsBySearchTerm(product, '간').matches, [], 'the affix meaning is not searchable');
       const record = getRecord(database, 'w100');
       const [direct] = record.senses[0].relations;
       assert.equal(direct.target, 'w101');
@@ -179,6 +185,7 @@ test('converted fixture passes the schema, dataset gate, SQLite build and homogr
       assert.equal(getRecord(database, direct.target).lemma, '각본');
       assert.equal(getRecord(database, 'w106').senses[0].pos, 'unclassified');
     } finally {
+      product.close();
       database.close();
     }
   } finally {
@@ -307,8 +314,9 @@ test('sparse source-order sense ids survive schema, dataset gate, SQLite, search
     const canonical = await readCanonicalRecords(canonicalDirectory, { useSharedContext: false });
     validateDatasetRecords(canonical.records, { lexicalQuality: { blocking_finding_count: 0 } });
     const outputPath = path.join(directory, 'dictionary.sqlite');
-    await buildDictionary({ inputDirectory: canonicalDirectory, outputPath, allowDirty: true });
-    const database = new DatabaseSync(outputPath, { readOnly: true });
+    await buildDictionary({ inputDirectory: canonicalDirectory, outputPath, allowDirty: true, keepStaging: true });
+    // The staging database holds the raw source senses/relations next to the product tables.
+    const database = new DatabaseSync(`${outputPath}.staging`, { readOnly: true });
     try {
       const record = getRecord(database, 'w123');
       assert.deepEqual(record.senses.map(({ id, pos }) => [id, pos]), [['w123-s1', 'noun'], ['w123-s3', 'verb']], 'ids are kept, order is display order');
@@ -355,7 +363,7 @@ test('official links and the sense_code crosswalk bind by original source positi
 
 // Search aliases (`search_forms`) are many-to-many paths into complete records. Synthetic words only: this tests
 // search semantics through the real producer -> SQLite -> consumer route, not any approved STDICT root link.
-const state0 = (database) => { const r = getRecord(database, 'w300'); return [r.lemma, r.senses[0].id, r.senses[0].pos]; };
+const state0 = (source) => { const r = getRecord(source, 'w300'); return [r.lemma, r.senses[0].id, r.senses[0].pos]; };
 
 test('search aliases coexist with exact lemmas, shared targets, same-record matches and generated forms', async () => {
   const word = (id, lemma, pos, searchForms = [lemma]) => ({
@@ -377,8 +385,9 @@ test('search aliases coexist with exact lemmas, shared targets, same-record matc
     await mkdir(canonicalDirectory);
     await writeFile(path.join(canonicalDirectory, 'stdict-0001.jsonl'), `${records.map(serializeRecord).join('\n')}\n`);
     const outputPath = path.join(directory, 'dictionary.sqlite');
-    await buildDictionary({ inputDirectory: canonicalDirectory, outputPath, allowDirty: true });
+    await buildDictionary({ inputDirectory: canonicalDirectory, outputPath, allowDirty: true, keepStaging: true });
     const database = new DatabaseSync(outputPath, { readOnly: true });
+    const source = new DatabaseSync(`${outputPath}.staging`, { readOnly: true });
     try {
       const shape = (term) => findRecordsBySearchTerm(database, term).matches
         .map(({ id, match }) => [id, match.kind, match.field]);
@@ -402,16 +411,16 @@ test('search aliases coexist with exact lemmas, shared targets, same-record matc
 
       // 5: aliases are not records or senses, and identity/gloss survive the response.
       assert.equal(database.prepare('SELECT COUNT(*) AS n FROM records').get().n, records.length);
-      assert.equal(database.prepare('SELECT COUNT(*) AS n FROM senses').get().n, records.length);
-      const alias = getRecord(database, 'w201');
+      assert.equal(source.prepare('SELECT COUNT(*) AS n FROM senses').get().n, records.length);
+      const alias = getRecord(source, 'w201');
       assert.deepEqual([alias.lemma, alias.senses[0].id, alias.senses[0].pos, alias.senses[0].gloss], ['나직하다', 'w201-s1', 'adjective', '나직하다의 뜻풀이.']);
-      assert.deepEqual(state0(database), ['나직', 'w300-s1', 'noun'], 'the exact-lemma record keeps its own identity');
+      assert.deepEqual(state0(source), ['나직', 'w300-s1', 'noun'], 'the exact-lemma record keeps its own identity');
 
       // 4: the runtime consumer keeps every candidate and selects the first (exact lemma) one.
       const session = new SearchSession({
         runtime: {
           search: async (term) => findRecordsBySearchTerm(database, term),
-          getRecord: async (id) => getRecord(database, id),
+          getRecord: async (id) => getRecord(source, id),
         },
       });
       const state = await session.searchExact('나직');
@@ -419,6 +428,7 @@ test('search aliases coexist with exact lemmas, shared targets, same-record matc
       assert.equal(state.selectedRecordId, 'w300');
       assert.deepEqual(state.results.map(({ match }) => match.kind), ['exact-lemma', 'exact-search-form', 'exact-search-form']);
     } finally {
+      source.close();
       database.close();
     }
   } finally {
