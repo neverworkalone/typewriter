@@ -13,7 +13,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { transformSync } from 'esbuild';
+import { parseAst } from 'vite';
 import { isDeepStrictEqual } from 'node:util';
 import { DatabaseSync } from 'node:sqlite';
 import {
@@ -324,23 +324,53 @@ function validateFileModes(packageDir, files) {
   return errors;
 }
 
-// Relative module references in a runtime file: `from '…'` (import/export forms), side-effect `import '…'`,
-// dynamic `import(…)` and `new URL('…', import.meta.url | self.location.href)`. Comments are ignored. Dynamic
-// `import(…)` must take a plain string or template literal without `${}`; any other argument cannot be checked
-// against the package, so it is rejected.
-const RELATIVE_SPECIFIER = '[\'"](\\.{1,2}\\/[^\'"\\n]+)[\'"]';
-const RELATIVE_OR_TEMPLATE = '[\'"`](\\.{1,2}\\/[^\'"`\\n$]+)[\'"`]';
-const MODULE_REFERENCES = [
-  new RegExp(`\\bfrom\\s*${RELATIVE_SPECIFIER}`, 'g'),
-  new RegExp(`\\bimport\\s*${RELATIVE_SPECIFIER}`, 'g'),
-  new RegExp(`\\bimport\\s*\\(\\s*${RELATIVE_OR_TEMPLATE}`, 'g'),
-  new RegExp(`\\bnew\\s+URL\\s*\\(\\s*${RELATIVE_OR_TEMPLATE}\\s*,\\s*(?:import\\.meta\\.url|self\\.location\\.href)`, 'g'),
-];
-const DYNAMIC_IMPORT = /\bimport\s*\(\s*([\s\S]{0,200})/g;
-const STATIC_LITERAL_ARGUMENT = /^(['"`])[^'"`\n$]*\1\s*[,)]/;
-// Comments are removed by a real JavaScript parser (esbuild), so comment markers inside strings, templates and
-// regular expressions are preserved and syntax errors are reported instead of silently hiding references.
-const withoutComments = (source) => transformSync(source, { loader: 'js', legalComments: 'none' }).code;
+// Relative module references of a runtime file, collected from the parsed syntax tree (Vite's `parseAst`), so text
+// in strings, templates, regular expressions and comments is never mistaken for code:
+// import/export declarations with a source, dynamic `import(…)`, and `new URL('…', import.meta.url |
+// self.location.href)`. A dynamic `import(…)` must take a string or a template literal without `${}`; any other
+// argument cannot be checked against the package, so it is reported.
+const isRelativeSpecifier = (value) => typeof value === 'string' && /^\.{1,2}\//.test(value);
+
+function staticString(node) {
+  if (node?.type === 'Literal' && typeof node.value === 'string') return node.value;
+  if (node?.type === 'TemplateLiteral' && node.expressions.length === 0) return node.quasis[0].value.cooked;
+  return null;
+}
+
+function isUrlBase(node) {
+  if (node?.type !== 'MemberExpression' || node.computed) return false;
+  const property = node.property?.name;
+  const object = node.object;
+  return (property === 'url' && object?.type === 'MetaProperty')
+    || (property === 'href' && object?.type === 'MemberExpression' && object.object?.name === 'self'
+      && object.property?.name === 'location');
+}
+
+function collectModuleReferences(source) {
+  const specifiers = new Set();
+  let uncheckable = 0;
+  const visit = (node) => {
+    if (!node || typeof node !== 'object') return;
+    if (Array.isArray(node)) {
+      node.forEach(visit);
+      return;
+    }
+    if (node.source && ['ImportDeclaration', 'ExportAllDeclaration', 'ExportNamedDeclaration'].includes(node.type)) {
+      specifiers.add(staticString(node.source));
+    } else if (node.type === 'ImportExpression') {
+      const specifier = staticString(node.source);
+      if (specifier === null) uncheckable += 1;
+      else specifiers.add(specifier);
+    } else if (node.type === 'NewExpression' && node.callee?.name === 'URL' && isUrlBase(node.arguments?.[1])) {
+      specifiers.add(staticString(node.arguments[0]));
+    }
+    for (const key of Object.keys(node)) {
+      if (key !== 'type' && key !== 'start' && key !== 'end') visit(node[key]);
+    }
+  };
+  visit(parseAst(source));
+  return { specifiers: [...specifiers].filter(isRelativeSpecifier), uncheckable };
+}
 
 // Every runtime module is copied file by file, so each relative import must resolve to a packaged file;
 // otherwise the service worker/worker fails at load time ("Service worker registration failed. Status code: 3").
@@ -355,20 +385,17 @@ export function validateRuntimeImports(packageDir, files) {
     } catch {
       continue;
     }
-    let code;
+    let references;
     try {
-      code = withoutComments(source);
+      references = collectModuleReferences(source);
     } catch (error) {
       errors.push(`Packaged runtime module ${file} could not be parsed: ${String(error.message).split('\n')[0]}`);
       continue;
     }
-    const specifiers = new Set(MODULE_REFERENCES.flatMap((pattern) => [...code.matchAll(pattern)].map((match) => match[1])));
-    for (const match of code.matchAll(DYNAMIC_IMPORT)) {
-      if (!STATIC_LITERAL_ARGUMENT.test(match[1])) {
-        errors.push(`Packaged runtime module ${file} has a dynamic import() whose target cannot be checked statically.`);
-      }
+    if (references.uncheckable > 0) {
+      errors.push(`Packaged runtime module ${file} has a dynamic import() whose target cannot be checked statically.`);
     }
-    for (const specifier of specifiers) {
+    for (const specifier of references.specifiers) {
       const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(file), specifier));
       if (!present.has(resolved)) {
         errors.push(`Packaged runtime module ${file} imports ${specifier}, which is not in the package.`);

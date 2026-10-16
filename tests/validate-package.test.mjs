@@ -669,6 +669,22 @@ test('packaged runtime modules only import packaged files (service worker load f
         name,
       );
     }
+    // Reference-shaped text in strings, templates and regular expressions is not a reference.
+    await writeFile(
+      path.join(temporaryDirectory, 'runtime/sqlite-query.js'),
+      [
+        'const a = "예: import(\'./missing.js\')";',
+        "const b = 'from \"./missing.js\"';",
+        'const c = `import("./missing.js") new URL("./missing.js", import.meta.url)`;',
+        'const d = /import\\(.\\/missing.js.\\)/;',
+        'const e = "// import(\'./missing.js\') /* ./missing.js */";',
+        '',
+      ].join('\n'),
+    );
+    assert.deepEqual(validateRuntimeImports(temporaryDirectory, files), []);
+    // ...while a real reference next to such text is still found.
+    await writeFile(path.join(temporaryDirectory, 'runtime/sqlite-query.js'), 'const a = "import(\'./ok.js\')";\nawait import("./missing.js");\n');
+    assert.ok(validateRuntimeImports(temporaryDirectory, files).some((error) => error.includes('./missing.js')));
     // Unparseable runtime code is reported, not silently skipped.
     await writeFile(path.join(temporaryDirectory, 'runtime/sqlite-query.js'), 'const = ;\n');
     assert.ok(validateRuntimeImports(temporaryDirectory, files).some((error) => error.includes('could not be parsed')));
