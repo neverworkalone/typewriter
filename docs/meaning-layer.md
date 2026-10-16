@@ -56,8 +56,8 @@ contributing relation (canonical order) supplies `note`/`relevance`, verified ex
 Skip/dedup/redirect counts are written to `metadata` as `meaning_projection_*`, so
 `source = projected + deduplicated + skipped`.
 
-`dictionary.sqlite` (schema version 6) ships only the product meaning contract. The STDICT source `senses`, `relations` and
-`meaning_relation_sources` tables exist only in a build-time staging database (Issue #792) and are never packaged:
+The shipped (Lite) `dictionary.sqlite` (schema version 6) carries only the product meaning contract. The STDICT source `senses`, `relations` and
+`meaning_relation_sources` tables exist only in the Full database `artifacts/dictionary.sqlite` (Issue #792, #795) and are never packaged:
 
 | Table | Content |
 | --- | --- |
@@ -70,14 +70,15 @@ Skip/dedup/redirect counts are written to `metadata` as `meaning_projection_*`, 
 `meaning_relations.origin` is one of `stdict-sense-projection` or `typewriter-authored` (CHECK). Typewriter-authored
 relations (유의어, 반의어, 말의 결, 연상) are edited on the same table with `origin='typewriter-authored'`.
 
-`buildDictionary` first writes the staging database (`<output>.staging`, removed after the build unless `keepStaging` is
-set) with the full source tables, and runs there the relation-projection and provenance checks of
-`scripts/build/meaning-source-checks.mjs` (complete, correctly bound and ordered provenance; note/relevance equal to the
-first contributing source relation; the denormalized `meaning_members.record_id`, `meanings.pos`,
-`sense_adjudications.record_id` and `generated_surface_forms.sense_position` equal the source senses'). Only after those
-pass does it copy the product tables, in primary-key order, into the shipped database and verify it again with the
-self-contained `MEANING_INTEGRITY_QUERIES` (ranking, record binding). Package, shared-artifact and runtime validation
-use the same self-contained queries and additionally reject a database that ships any `BUILD_ONLY_TABLES`.
+`buildDictionary` writes the Full database (`artifacts/dictionary.sqlite`) with the source tables and runs there the
+relation-projection and provenance checks of `scripts/build/meaning-source-checks.mjs` (complete, correctly bound and
+ordered provenance; note/relevance equal to the first contributing source relation; the denormalized
+`meaning_members.record_id`, `meanings.pos`, `sense_adjudications.record_id` and
+`generated_surface_forms.sense_position` equal the source senses'). The extension build then re-verifies the Full
+database, copies only the product tables, in primary-key order, into the Lite database (`extractLiteDictionary`) and
+verifies it with the self-contained `MEANING_INTEGRITY_QUERIES` (ranking, record binding). Package and runtime
+validation use the same self-contained queries and additionally reject a database that is not labelled `lite` or ships
+any `BUILD_ONLY_TABLES`; the CI shared artifact validation requires the Full kind.
 `getMeaningsByLemma` and `getMeaningRelations` in `src/runtime/sqlite-query.js` are the shared meaning-based read helpers.
 The default canonical build requires the complete meaning corpus and fails closed (`INVALID_MEANING_DATA`); builds from
 other canonical fixtures get an empty meaning layer unless a meanings directory is passed.

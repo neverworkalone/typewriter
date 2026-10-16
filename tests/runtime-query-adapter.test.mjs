@@ -53,6 +53,7 @@ function seedDatabase(database) {
     source_revision: FIXTURE_SOURCE_REVISION,
     source_revision_source: 'git-head',
     source_revision_verified: 'true',
+    database_kind: 'lite',
   };
   for (const [key, query] of Object.entries(DICTIONARY_COUNT_QUERIES)) {
     const value = typeof database.selectValue === 'function'

@@ -9,7 +9,9 @@ import {
 } from '../validate/canonical-context.mjs';
 import { DEFAULT_CANONICAL_DIRECTORY } from '../validate/canonical-jsonl.mjs';
 import { SQLITE_SCHEMA_VERSION } from '../build/sqlite-schema.mjs';
-import { BUILD_ONLY_TABLES_QUERY, MEANING_INTEGRITY_QUERIES } from '../../src/runtime/dictionary-contract.js';
+import { DATABASE_KINDS, MEANING_INTEGRITY_QUERIES } from '../../src/runtime/dictionary-contract.js';
+import { MEANING_SOURCE_INTEGRITY_QUERIES } from '../build/meaning-source-checks.mjs';
+import { assertDatabaseKind } from '../build/lite-dictionary.mjs';
 import {
   buildOrReuseSurfaceFormProjection,
   loadSurfaceFormExceptionManifest,
@@ -38,11 +40,10 @@ export async function validateSharedDictionary({
     if (foreignKeys.length > 0) {
       throw new Error(`shared SQLite foreign-key check failed: ${JSON.stringify(foreignKeys)}`);
     }
-    const buildOnlyTables = database.prepare(BUILD_ONLY_TABLES_QUERY).all().map(({ name }) => name);
-    if (buildOnlyTables.length > 0) {
-      throw new Error(`shared SQLite ships build-only STDICT source table(s): ${buildOnlyTables.join(', ')}`);
-    }
-    for (const [name, sql] of Object.entries(MEANING_INTEGRITY_QUERIES)) {
+    // The shared CI artifact is the Full database (STDICT source + Meaning + provenance); the Lite product database is
+    // only ever extracted from it, so a Lite database or a mislabeled one is refused here.
+    assertDatabaseKind(database, DATABASE_KINDS.full, 'shared SQLite artifact');
+    for (const [name, sql] of Object.entries({ ...MEANING_INTEGRITY_QUERIES, ...MEANING_SOURCE_INTEGRITY_QUERIES })) {
       const violations = Number(Object.values(database.prepare(sql).get())[0]);
       if (violations !== 0) {
         throw new Error(`shared SQLite meaning layer check ${name} found ${violations} violation(s)`);

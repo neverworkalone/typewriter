@@ -115,7 +115,7 @@ CREATE INDEX idx_meaning_relations_target ON meaning_relations(target_meaning_id
 `;
 
 /**
- * STDICT source tables that exist only in the build-time staging database. The product database never ships them
+ * STDICT source tables that exist only in the Full database (artifacts/dictionary.sqlite). The Lite product database never ships them
  * (Typewriter shows meanings, not raw source senses); they back the sense -> meaning projection checks.
  */
 export const SQLITE_SOURCE_SCHEMA_SQL = `

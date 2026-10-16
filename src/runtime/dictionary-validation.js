@@ -1,5 +1,7 @@
 import {
   BUILD_ONLY_TABLES_QUERY,
+  DATABASE_KIND_KEY,
+  DATABASE_KINDS,
   DICTIONARY_COUNT_QUERIES,
   DICTIONARY_VERSION,
   MEANING_INTEGRITY_QUERIES,
@@ -115,6 +117,32 @@ export function validateRuntimeDictionary(database, {
     );
   }
 
+  if (metadata[DATABASE_KIND_KEY] !== DATABASE_KINDS.lite) {
+    throw validationError(
+      ERROR_CODES.DATABASE_METADATA_INVALID,
+      'The packaged dictionary is not a Lite product database.',
+      { database_kind: metadata[DATABASE_KIND_KEY] ?? null },
+    );
+  }
+
+  let buildOnlyTables;
+  try {
+    buildOnlyTables = selectRows(database, BUILD_ONLY_TABLES_QUERY).map(({ name }) => name);
+  } catch (error) {
+    throw validationError(
+      ERROR_CODES.DATABASE_INTEGRITY_FAILED,
+      'The packaged dictionary schema could not be inspected.',
+      { cause: error?.message || String(error) },
+    );
+  }
+  if (buildOnlyTables.length > 0) {
+    throw validationError(
+      ERROR_CODES.DATABASE_INTEGRITY_FAILED,
+      'The packaged dictionary contains build-only STDICT source tables.',
+      { build_only_tables: buildOnlyTables },
+    );
+  }
+
   return metadata;
 }
 
@@ -155,24 +183,6 @@ export function validatePackagedDictionary(database, options = {}) {
       ERROR_CODES.DATABASE_INTEGRITY_FAILED,
       'The packaged dictionary contains invalid foreign-key references.',
       { foreign_key_violations: foreignKeyViolations },
-    );
-  }
-
-  let buildOnlyTables;
-  try {
-    buildOnlyTables = selectRows(database, BUILD_ONLY_TABLES_QUERY).map(({ name }) => name);
-  } catch (error) {
-    throw validationError(
-      ERROR_CODES.DATABASE_INTEGRITY_FAILED,
-      'The packaged dictionary schema could not be inspected.',
-      { cause: error?.message || String(error) },
-    );
-  }
-  if (buildOnlyTables.length > 0) {
-    throw validationError(
-      ERROR_CODES.DATABASE_INTEGRITY_FAILED,
-      'The packaged dictionary contains build-only STDICT source tables.',
-      { build_only_tables: buildOnlyTables },
     );
   }
 

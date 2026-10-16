@@ -48,6 +48,7 @@ const templates = [
 ];
 const templateIndexById = new Map(templates.map(({ id }, index) => [id, index]));
 const fixtureDigest = 'a'.repeat(64);
+const liteFixtureDigest = 'b'.repeat(64);
 
 function validCliReport() {
   const timingSummary = () => ({
@@ -167,7 +168,8 @@ function validCliReport() {
         package_build_ms: 3,
         runtime_measurement_ms: 4,
         shared_sqlite_sha256: fixtureDigest,
-        product_dictionary_sha256: fixtureDigest,
+        product_dictionary_sha256: liteFixtureDigest,
+        lite_extraction_verified: true,
         package: {
           raw_package_bytes: 5000,
           zip_package_bytes: 3500,
@@ -268,7 +270,7 @@ function validCliReport() {
         deep: { wall_clock_ms: 3, reproducible: true },
       },
       shared_sqlite_sha256: fixtureDigest,
-      product_dictionary_sha256: fixtureDigest,
+      product_dictionary_sha256: liteFixtureDigest,
       reproducible_sqlite_sha256: fixtureDigest,
       reproducible_second_sqlite_sha256: fixtureDigest,
     }],
@@ -705,6 +707,38 @@ test('release benchmark CLI prints diagnostics and fails closed for incomplete s
     assert.equal(await digestCall.runPromise, undefined);
     assert.match(digestCall.printedErrors[0], /missing matching SQLite and product reproducibility digests/u);
     assert.deepEqual(digestCall.exitCodes, [1]);
+  });
+
+  await t.test('Full shared and Lite product digests must be distinct, verified and consistent', async () => {
+    const mutations = {
+      'Lite digest equal to the Full digest': (report) => {
+        report.results[0].product_performance.product_dictionary_sha256 = fixtureDigest;
+        report.results[0].product_dictionary_sha256 = fixtureDigest;
+      },
+      'unverified Lite extraction': (report) => {
+        report.results[0].product_performance.lite_extraction_verified = false;
+      },
+      'missing Lite extraction evidence': (report) => {
+        delete report.results[0].product_performance.lite_extraction_verified;
+      },
+      'result Lite digest differing from the measured Lite': (report) => {
+        report.results[0].product_dictionary_sha256 = 'c'.repeat(64);
+      },
+      'malformed Lite digest': (report) => {
+        report.results[0].product_performance.product_dictionary_sha256 = 'not-a-digest';
+      },
+    };
+    for (const [name, mutate] of Object.entries(mutations)) {
+      const report = validCliReport();
+      mutate(report);
+      const call = invokeBenchmarkCli(report);
+      assert.equal(await call.runPromise, undefined, name);
+      assert.deepEqual(call.exitCodes, [1], name);
+    }
+    // The distinct Full/Lite fixture pair is the accepted shape.
+    const accepted = invokeBenchmarkCli(validCliReport());
+    await accepted.runPromise;
+    assert.deepEqual(accepted.exitCodes, [], 'distinct verified digests must pass');
   });
 
   await t.test('SQLite scales omitted from --sizes are rejected before benchmarking', async () => {

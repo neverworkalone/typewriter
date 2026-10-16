@@ -10,7 +10,7 @@ const redirected = (sense) => `(${memberMeaning(sense)} IS NULL)`;
 
 
 /**
- * Build-time checks of the sense -> meaning relation projection. They run on the staging database that still holds the
+ * Build-time checks of the sense -> meaning relation projection. They run on the Full database, which holds the
  * STDICT source `senses`, `relations` and `meaning_relation_sources` tables (never shipped), and re-derive the
  * expected projection from them, so a deleted, extra or mis-bound provenance row is detected (not only a wrong
  * row count) without a second build or a re-parse of canonical data. Each query counts violations and must return 0.

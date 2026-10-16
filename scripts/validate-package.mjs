@@ -508,6 +508,9 @@ function validateDictionaryMetadata({
     if (expectedGeneratedSurfaceForms && JSON.stringify(generatedSurfaceForms) !== JSON.stringify(expectedGeneratedSurfaceForms)) {
       errors.push('Dictionary generated surface forms do not match the supplied canonical projection.');
     }
+    if (metadata.database_kind !== 'lite') {
+      errors.push(`Dictionary must be a Lite product database, found database_kind ${JSON.stringify(metadata.database_kind ?? null)}.`);
+    }
     const buildOnlyTables = database.prepare(BUILD_ONLY_TABLES_QUERY).all().map(({ name }) => name);
     if (buildOnlyTables.length > 0) {
       errors.push(`Dictionary ships build-only STDICT source table(s): ${buildOnlyTables.join(', ')}.`);
