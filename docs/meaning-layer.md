@@ -7,12 +7,19 @@
 | --- | --- |
 | `data/canonical/` | STDICT normalized source. Never modified by meaning work. |
 | `data/meanings/` | Final meanings: `{ id, lemma, gloss, sense_ids }`. A meaning references one or more canonical senses that all have the meaning's lemma; the senses may belong to different records. |
-| `data/adjudication/` | Editorial verdicts: `{ sense_id, lemma, decision: "drop", reason: "duplicate", duplicate_of }`. |
+| `data/adjudication/` | Editorial verdicts: `DROP duplicate` rows include `duplicate_of`; `DROP out_of_scope` rows omit it. |
 
-Only the `duplicate` drop reason is official; add others per concrete case. Meaning criteria are real meaning
-differences, not part of speech. A dropped sense is never referenced by a meaning, and `duplicate_of` must be an existing canonical sense of the
-same lemma, different from the dropped sense, and not itself dropped. A MERGE (different meanings of one lemma folded into one) and a DROP
-`duplicate` (the same source sense repeated) are separate verdicts.
+The official DROP reasons are `duplicate` and `out_of_scope`. Meaning criteria are real meaning differences, not part
+of speech. A dropped sense is never referenced by a meaning. For `duplicate`, `duplicate_of` must identify a different,
+existing canonical sense of the same lemma that is not itself dropped. `out_of_scope` means the source sense is not part
+of Typewriter's current product Meaning layer; it does not say the source entry lacks meaning or value, and it does not
+remove or change the canonical source. It has no `duplicate_of` target. Every canonical sense remains covered by exactly
+one Meaning or one DROP verdict. The `c20` mapping remains a placement rule, not a blanket exclusion rule; future senses
+are adjudicated individually.
+
+When relation projection is implemented, a `duplicate` target may be redirected through its `duplicate_of` sense.
+An `out_of_scope` sense produces no product Meaning and cannot remain as a product relation endpoint. These rules define
+the contract; relation projection, SQLite, and UI implementation are tracked separately.
 
 ## IDs
 `w0097 -> m0097` for a lone meaning; several meanings use `m0097_1`, `m0097_2`, ... (a lone meaning and suffixed ones
