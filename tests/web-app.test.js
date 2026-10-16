@@ -35,7 +35,7 @@ describe('Typewriter Web static landing page', () => {
 
     expect(web.querySelector('[data-product-surface="web-landing"]')).not.toBeNull();
     expect(web.querySelector('h1').textContent.replace(/\s+/gu, ''))
-      .toBe('작가를위한,말의결을찾는사전.');
+      .toBe('더좋은단어가,더넓은이야기를만듭니다.');
     for (const label of ['유의어', '반의어', '말의 결', '연상']) {
       expect(web.textContent).toContain(label);
     }

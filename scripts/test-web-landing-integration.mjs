@@ -14,9 +14,11 @@ const webOutput = path.resolve(
 const contentTypes = new Map([
   ['.css', 'text/css; charset=utf-8'],
   ['.html', 'text/html; charset=utf-8'],
+  ['.jpg', 'image/jpeg'],
   ['.js', 'text/javascript; charset=utf-8'],
   ['.json', 'application/json; charset=utf-8'],
   ['.md', 'text/markdown; charset=utf-8'],
+  ['.png', 'image/png'],
   ['.txt', 'text/plain; charset=utf-8'],
 ]);
 
@@ -95,7 +97,7 @@ async function main() {
     await webPage.locator('[data-product-surface="web-landing"]').waitFor();
     const headline = (await webPage.getByRole('heading', { level: 1 }).innerText())
       .replace(/\s+/gu, ' ');
-    assert.equal(headline, '작가를 위한, 말의 결을 찾는 사전.');
+    assert.equal(headline, '더 좋은 단어가, 더 넓은 이야기를 만듭니다.');
     assert.equal(await webPage.getByRole('textbox').count(), 0, 'landing must not offer a search box');
     assert.equal(await webPage.locator('[data-dictionary-panel]').count(), 0);
 
@@ -108,7 +110,7 @@ async function main() {
       assert.ok(level - headingLevels[index] <= 1, 'heading levels must not skip');
     });
 
-    const storeLinks = await webPage.getByRole('link', { name: /Chrome/u }).evaluateAll((links) => (
+    const storeLinks = await webPage.getByRole('link', { name: /크롬 웹 스토어/u }).evaluateAll((links) => (
       links.map((link) => link.href)
     ));
     assert.ok(storeLinks.length >= 2);
@@ -124,7 +126,16 @@ async function main() {
     assert.equal(await webPage.evaluate(() => document.activeElement?.className), 'skip-link');
     await webPage.keyboard.press('Enter');
     assert.equal(new URL(webPage.url()).hash, '#main');
-    for (let index = 0; index < 8; index += 1) {
+    // Focus moved to #main, so every remaining link after it must be reachable
+    // and visibly focused.
+    const linksAfterMain = await webPage.evaluate(() => (
+      [...document.querySelectorAll('a[href]')].filter((link) => (
+        document.querySelector('#main').compareDocumentPosition(link)
+          & Node.DOCUMENT_POSITION_FOLLOWING
+      )).length
+    ));
+    assert.ok(linksAfterMain >= 3);
+    for (let index = 0; index < linksAfterMain; index += 1) {
       await webPage.keyboard.press('Tab');
       const outline = await webPage.evaluate(() => (
         getComputedStyle(document.activeElement).outlineStyle
@@ -132,10 +143,49 @@ async function main() {
       assert.notEqual(outline, 'none', 'focused controls must show a focus indicator');
     }
 
-    // In-page navigation lands on the matching section.
-    await webPage.getByRole('link', { name: '철학', exact: true }).click();
-    assert.equal(new URL(webPage.url()).hash, '#philosophy');
+    // The legacy /about/ anchor target still exists on the landing page.
     await webPage.locator('#philosophy').waitFor();
+
+    // Contrast: every visible text node must meet WCAG AA against the nearest
+    // opaque ancestor background (3:1 for large text), at desktop and mobile.
+    for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+      await webPage.setViewportSize(viewport);
+      const failures = await webPage.evaluate(() => {
+        const parse = (value) => value.match(/[\d.]+/gu).map(Number);
+        const channel = (v) => {
+          const c = v / 255;
+          return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+        };
+        const luminance = ([r, g, b]) => 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+        const opaqueBackground = (element) => {
+          for (let node = element; node; node = node.parentElement) {
+            const [r, g, b, a = 1] = parse(getComputedStyle(node).backgroundColor);
+            if (a === 1) return [r, g, b];
+          }
+          return [255, 255, 255];
+        };
+        const found = [];
+        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+        for (let text = walker.nextNode(); text; text = walker.nextNode()) {
+          const element = text.parentElement;
+          if (!text.textContent.trim() || element.closest('[aria-hidden="true"]')) continue;
+          const style = getComputedStyle(element);
+          if (style.display === 'none' || element.getClientRects().length === 0) continue;
+          const [r, g, b, a = 1] = parse(style.color);
+          if (a < 1) continue;
+          const lighter = Math.max(luminance([r, g, b]), luminance(opaqueBackground(element)));
+          const darker = Math.min(luminance([r, g, b]), luminance(opaqueBackground(element)));
+          const ratio = (lighter + 0.05) / (darker + 0.05);
+          const size = parseFloat(style.fontSize);
+          const large = size >= 24 || (size >= 18.66 && Number(style.fontWeight) >= 700);
+          if (ratio < (large ? 3 : 4.5)) {
+            found.push(`${text.textContent.trim().slice(0, 24)} ${ratio.toFixed(2)}`);
+          }
+        }
+        return found;
+      });
+      assert.deepEqual(failures, [], `text contrast at ${viewport.width}px`);
+    }
 
     for (const viewport of [
       { width: 390, height: 844 },

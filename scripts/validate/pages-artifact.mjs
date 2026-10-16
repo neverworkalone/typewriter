@@ -12,6 +12,7 @@ export const PAGES_BASE_PATH = '/typewriter/';
 export const PAGES_BUILD_INFO_FILE = 'pages-build-info.json';
 export const PAGES_BUILD_INFO_SCHEMA = 'typewriter-pages-build-info/1';
 const ASSET_PATTERN = /^assets\/[A-Za-z0-9_-]+-[A-Za-z0-9_-]{8}\.(?:js|css)$/u;
+const IMAGE_ASSET_PATTERN = /^assets\/[A-Za-z0-9_-]+-[A-Za-z0-9_-]{8}\.(?:jpg|png)$/u;
 const CHUNK_PATTERN = /^chunks\/[A-Za-z0-9_-]+-[A-Za-z0-9_-]{8}\.js$/u;
 const ALLOWED_DIRECTORIES = new Set(['about', 'assets', 'chunks']);
 const ALLOWED_FILES = new Set([
@@ -45,6 +46,7 @@ function fail(message, code) {
 function isAllowedFile(relativePath) {
   return ALLOWED_FILES.has(relativePath)
     || ASSET_PATTERN.test(relativePath)
+    || IMAGE_ASSET_PATTERN.test(relativePath)
     || CHUNK_PATTERN.test(relativePath);
 }
 
