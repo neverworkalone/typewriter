@@ -9,18 +9,18 @@ This is the C06 source-bound self-check for Issue #764, based on the current cle
 | Canonical records | 2,891 | 2,891 |
 | Lemmas | 2,673 | 2,673 |
 | Canonical senses | 3,101 | 3,101 |
-| Meaning rows | 3,043 | 2,944 |
-| Multi-sense lemmas | 254 | 164 |
+| Meaning rows | 3,043 | 2,923 |
+| Multi-sense lemmas | 254 | 254 |
 | Single-sense lemmas explicitly retained | — | 2,419 |
-| Lemmas whose Meaning count changed | — | 79 |
-| Lemmas retaining multiple Meanings | — | 164 |
+| Lemmas whose Meaning count changed | — | 94 |
+| Lemmas retaining multiple Meanings | — | 154 |
 | Adjudications | 0 new | 0 new |
 
 Every C06 source sense occurs in exactly one final group. The edit does not drop senses or append adjudications. Canonical JSONL is unchanged. The executable spec contains exact before snapshots and final groups for all 2,673 lemmas, including single-sense lemmas. The apply script checks snapshot equality and complete, non-overlapping source-sense coverage.
 
 ## Repartition decisions
 
-The first column lists the complete final source-sense partition for every multi-sense lemma. Exact STDICT source sense IDs are listed; each can be traced directly to canonical JSONL. Each retained split was checked against the bound canonical gloss; independent named people, places, treaties, works, and materially different technical concepts remain distinct unless the source gives a shared lexical identity. The second table records authored boundary decisions and representative glosses. It includes both newly combined rows and source groups whose membership was already combined on the base but was rechecked or reworded.
+The first column lists the complete final source-sense partition for every lemma with multiple canonical senses. Exact STDICT source sense IDs are listed and can be traced directly to canonical JSONL. The result reflects the current source-bound review: a shared canonical record triggers inspection, not an automatic merge. The next table records authored boundary decisions and representative glosses.
 
 | Lemma | Final source-sense groups | Result |
 | --- | --- | --- |
@@ -34,7 +34,7 @@ The first column lists the complete final source-sense partition for every multi
 | 락티드 | w99057-s1+w99057-s2 | 통합 |
 | 라베 | w99099-s1 / w424298-s1 | 분리 |
 | 라임 | w99107-s1 / w99108-s1 | 분리 |
-| 라틴 | w99138-s1 / w99138-s2 | 분리 |
+| 라틴 | w99138-s1+w99138-s2 | 통합 |
 | 람다 | w99297-s1 / w99297-s2 | 분리 |
 | 라오콘 | w99484-s1+w100020-s1 | 통합 |
 | 라운드 | w99501-s1+w99501-s2 | 통합 |
@@ -42,7 +42,7 @@ The first column lists the complete final source-sense partition for every multi
 | 라인 아웃 | w99636-s1+w99636-s3 / w99636-s2 | 분리 |
 | 라인업 | w99686-s1+w99686-s2 | 통합 |
 | 라마 | w99854-s1 / w99855-s1 / w419172-s1 | 분리 |
-| 램 | w99865-s1 / w99865-s2 / w99866-s1 / w99867-s1 / w418240-s1 / w418240-s2+w418240-s3 | 분리 |
+| 램 | w99865-s1 / w99865-s2 / w418240-s1+w418240-s2+w418240-s3 / w99866-s1 / w99867-s1 | 분리 |
 | 레온 | w99896-s1 / w99897-s1 / w99898-s1 | 분리 |
 | 레이놀즈 | w99899-s1 / w419615-s1 | 분리 |
 | 라살 | w99968-s1 / w99969-s1 / w417462-s1 | 분리 |
@@ -62,10 +62,10 @@ The first column lists the complete final source-sense partition for every multi
 | 라이너 | w100250-s1 / w100250-s2+w100250-s3 / w100250-s4 / w414358-s1 | 분리 |
 | 렌 | w100276-s1 / w421674-s1 / w421675-s1 | 분리 |
 | 렌즈 | w100281-s1+w100281-s2 | 통합 |
-| 러그 | w100287-s1 / w100287-s2 | 분리 |
+| 러그 | w100287-s1+w100287-s2 | 통합 |
 | 레이 | w100339-s1 / w417422-s1 / w419614-s1 | 분리 |
 | 랑 | w100354-s1 / w414862-s1 / w419638-s1 | 분리 |
-| 랑데부 | w100358-s1+w100358-s2 / w100358-s3 | 분리 |
+| 랑데부 | w100358-s1+w100358-s2+w100358-s3 | 통합 |
 | 라발 | w100472-s1 / w418524-s1 | 분리 |
 | 레코드 | w100577-s1 / w414855-s1+w414855-s2 | 분리 |
 | 라인 | w100609-s1+w100609-s2 / w100609-s3 / w420829-s1 | 분리 |
@@ -83,7 +83,7 @@ The first column lists the complete final source-sense partition for every multi
 | 러브 | w101203-s1 / w101868-s1 | 분리 |
 | 레아 | w101204-s1 / w101205-s1 / w421001-s1 | 분리 |
 | 랭커스터 | w101237-s1 / w418988-s1 | 분리 |
-| 라텍스 | w101255-s1 / w101255-s2 | 분리 |
+| 라텍스 | w101255-s1+w101255-s2 | 통합 |
 | 라투르 | w101268-s1 / w421486-s1 | 분리 |
 | 레지스탕스 | w101352-s1+w101352-s2 | 통합 |
 | 라크 | w101393-s1 / w101394-s1 | 분리 |
@@ -93,7 +93,7 @@ The first column lists the complete final source-sense partition for every multi
 | 럭비 | w101604-s1 / w101841-s1 | 분리 |
 | 레이크 | w101613-s1+w101613-s2 / w101614-s1 | 분리 |
 | 러닝 | w101778-s1 / w101778-s2 / w101778-s3 | 분리 |
-| 랙 | w101793-s1 / w421342-s1 / w421342-s2 | 분리 |
+| 랙 | w101793-s1 / w421342-s1+w421342-s2 | 분리 |
 | 레토르트 | w101848-s1+w101848-s2 | 통합 |
 | 래틀 | w101850-s1+w101850-s2 | 통합 |
 | 러셀 | w101873-s1 / w102200-s1 / w102706-s1 / w417962-s1 / w422166-s1 / w422167-s1 | 분리 |
@@ -102,10 +102,10 @@ The first column lists the complete final source-sense partition for every multi
 | 레인 | w101923-s1+w101923-s2 | 통합 |
 | 란 | w101944-s1 / w101945-s1 / w417470-s1 | 분리 |
 | 레오 삼세 | w102011-s1 / w420977-s1 | 분리 |
-| 램프 | w102017-s1 / w102066-s1 / w102066-s2 / w102066-s3 | 분리 |
+| 램프 | w102017-s1 / w102066-s1+w102066-s2+w102066-s3 | 분리 |
 | 램지 | w102065-s1 / w418986-s1 | 분리 |
 | 라벨 | w102076-s1+w102076-s2 / w420572-s1 | 분리 |
-| 랩 | w102081-s1+w102081-s2 / w102081-s3 / w102082-s1 / w102083-s1 / w102083-s2 | 분리 |
+| 랩 | w102081-s1+w102081-s2+w102081-s3 / w102082-s1 / w102083-s1+w102083-s2 | 분리 |
 | 런지 | w102113-s1+w102113-s2 | 통합 |
 | 로맨스 | w102166-s1+w102166-s2 / w102166-s3 | 분리 |
 | 로드 | w102220-s1+w102221-s1 / w421551-s1 | 분리 |
@@ -161,7 +161,7 @@ The first column lists the complete final source-sense partition for every multi
 | 뢴트겐 | w104782-s1 / w422980-s1 / w422980-s2 | 분리 |
 | 로열패밀리 | w104795-s1+w104795-s2 | 통합 |
 | 로켓 | w104816-s1 / w421783-s1 | 분리 |
-| 루프 | w104822-s1 / w104822-s2 / w104822-s3 / w104822-s4 / w104822-s5 | 분리 |
+| 루프 | w104822-s1+w104822-s2+w104822-s3+w104822-s4+w104822-s5 | 통합 |
 | 루 | w105059-s1 / w422731-s1 | 분리 |
 | 룽저우 | w105144-s1 / w422712-s1 | 분리 |
 | 린 | w105236-s1 / w419794-s1 | 분리 |
@@ -179,7 +179,7 @@ The first column lists the complete final source-sense partition for every multi
 | 리저널리즘 | w105773-s1+w105773-s2 | 통합 |
 | 루스 | w105803-s1 / w420255-s1 | 분리 |
 | 루스벨트 | w105804-s1 / w420256-s1 | 분리 |
-| 르포 | w105812-s1 / w105812-s2 | 분리 |
+| 르포 | w105812-s1+w105812-s2 | 통합 |
 | 릴 | w105929-s1+w105929-s2+w105929-s3 / w105930-s1 / w105931-s1 / w106645-s1 | 분리 |
 | 리쿠르고스 | w105973-s1 / w105973-s2 | 분리 |
 | 릴레이 | w105977-s1+w105977-s2 | 통합 |
@@ -189,7 +189,7 @@ The first column lists the complete final source-sense partition for every multi
 | 리처즈 | w106209-s1 / w418442-s1 / w418643-s1 | 분리 |
 | 리셋 | w106219-s1+w106219-s2 | 통합 |
 | 리듬 | w106251-s1+w106251-s2+w106251-s3 | 통합 |
-| 리치 | w106258-s1 / w412148-s1 / w517594-s1 / w517594-s2 | 분리 |
+| 리치 | w106258-s1 / w412148-s1 / w517594-s1+w517594-s2 | 분리 |
 | 리드오프 | w106324-s1+w106324-s2 | 통합 |
 | 링 | w106419-s1 / w422688-s1+w422688-s2+w422688-s3+w422688-s4+w422688-s5 | 분리 |
 | 리만 | w106420-s1 / w106421-s1 | 분리 |
@@ -213,7 +213,7 @@ The first column lists the complete final source-sense partition for every multi
 | 리크 | w107651-s1 / w107652-s1 | 분리 |
 | 리키니우스 | w107653-s1 / w107654-s1 | 분리 |
 | 리골레토 | w107662-s1 / w423751-s1 | 분리 |
-| 림보 | w107749-s1 / w420291-s1 / w420291-s2 | 분리 |
+| 림보 | w107749-s1 / w420291-s1+w420291-s2 | 분리 |
 | 리스 | w107804-s1 / w422667-s1 | 분리 |
 | 리포트 | w107809-s1+w107809-s2 | 통합 |
 | 링커 | w107885-s1+w107886-s1+w107886-s2 | 통합 |
@@ -249,10 +249,10 @@ The first column lists the complete final source-sense partition for every multi
 | 룽가 | w420081-s1+w420081-s2 | 통합 |
 | 레지스터 | w420576-s1 / w533608-s1 | 분리 |
 | 러시아·프랑스 동맹 | w420604-s1 / w420604-s2 | 분리 |
-| 레이블 | w420608-s1 / w420608-s2 | 분리 |
+| 레이블 | w420608-s1+w420608-s2 | 통합 |
 | 라인 크로스 | w420620-s1+w420620-s2+w420620-s3 | 통합 |
 | 라인란트 | w420832-s1+w420832-s2 | 통합 |
-| 러닝메이트 | w420938-s1+w420938-s2+w420938-s4 / w420938-s3 | 분리 |
+| 러닝메이트 | w420938-s1+w420938-s2+w420938-s3+w420938-s4 | 통합 |
 | 량 | w420997-s1 / w421202-s1 | 분리 |
 | 래미네이트 | w420998-s1+w420998-s2 | 통합 |
 | 런던 조약 | w421008-s1 / w421008-s2 / w421008-s3 / w421008-s4 / w421008-s5 / w421008-s6 | 분리 |
@@ -263,10 +263,10 @@ The first column lists the complete final source-sense partition for every multi
 | 로엔그린 | w421601-s1+w421601-s2 | 통합 |
 | 론도 | w421618-s1+w421618-s2 | 통합 |
 | 롱 스트라이드 | w421811-s1+w421811-s2 | 통합 |
-| 롱런하다 | w421848-s1 / w421848-s2 | 분리 |
+| 롱런하다 | w421848-s1+w421848-s2 | 통합 |
 | 로스트비프 | w422050-s1+w422050-s2 | 통합 |
 | 롤 | w422292-s1+w422292-s2 | 통합 |
-| 르포르타주 | w422295-s1 / w422295-s2 | 분리 |
+| 르포르타주 | w422295-s1+w422295-s2 | 통합 |
 | 롤러 | w422311-s1+w422311-s2+w422311-s3+w422311-s4 | 통합 |
 | 리무진 | w422454-s1+w422454-s2 | 통합 |
 | 리프트 | w422647-s1+w422647-s2+w422647-s3 | 통합 |
@@ -278,6 +278,7 @@ The first column lists the complete final source-sense partition for every multi
 | 러거 | w424485-s1 / w424485-s2 | 분리 |
 | 럼버 페이퍼 | w424660-s1+w424660-s2 | 통합 |
 | 락타이드 | w510409-s1+w510409-s2 | 통합 |
+
 ## Coalescence and gloss decisions
 
 | Lemma | Source senses | Source-bound reason |
@@ -286,14 +287,13 @@ The first column lists the complete final source-sense partition for every multi
 | 라디오 | w417571-s1, w417571-s2, w417571-s3 | 방송, 수신기, 무선통신은 라디오 매체의 내용·기기·용법. |
 | 라디에이터 | w100003-s1, w100003-s2 | 난방·냉각은 같은 열 방출 장치의 적용. |
 | 라벨 | w102076-s1, w102076-s2 | 물리 상품표와 파일 표시는 식별 표지의 매체별 쓰임. |
-| 라오콘 | w99484-s1, w100020-s1 | 신화 인물과 그의 군상을 제목·주제로 삼은 저작의 동일 명칭. |
+| 라오콘 | w100020-s1, w99484-s1 | 신화 인물과 그의 군상을 제목·주제로 삼은 저작의 동일 명칭. |
 | 라운드 | w99501-s1, w99501-s2 | 두 종목에서 경기를 나누어 진행하는 한 단위. |
 | 라이너 | w100250-s2, w100250-s3 | 옷·기계 안쪽을 덧대는 보호용 라이닝. |
 | 라이선스 | w100131-s1, w100131-s2, w100131-s3 | 행정 면허, 거래 허가, 기술 사용권은 모두 허가의 범위. |
 | 라인 아웃 | w99636-s1, w99636-s3 | 터치라인 밖으로 공이 나가는 스포츠 상황의 종목별 용법. |
 | 라인란트 | w420832-s1, w420832-s2 | 역사적 행정구역은 라인강 연안 지역의 구체적 범위. |
 | 라인업 | w99686-s1, w99686-s2 | 출전 선수 명단과 정렬은 한 팀의 구성·배치. |
-| 러닝메이트 | w420938-s1, w420938-s2, w420938-s4 | 동행·협업·선거의 공동 후보는 짝이나 동료 관계의 용법. |
 | 러시아 문자 | w102560-s1, w102560-s2 | 현재 러시아 문자와 그 역사적 문자 바탕은 같은 문자 계보. |
 | 러시아인 | w101012-s1, w101012-s2 | 국적 의미와 옛 정치적 통칭은 러시아 관련 사람을 부르는 용법. |
 | 러키세븐 | w100110-s1, w421475-s1 | 행운의 숫자에서 그 의미를 빌린 야구 회차. |
@@ -379,6 +379,24 @@ The first column lists the complete final source-sense partition for every multi
 | 링 | w422688-s1, w422688-s2, w422688-s3, w422688-s4, w422688-s5 | 고리 형태에서 경기 공간·기구·종목·피임 기구로 이어지는 용법. |
 | 링커 | w107885-s1, w107886-s1, w107886-s2 | 경기 선수와 소프트웨어가 담당하는 연결 역할. |
 | 링크 | w107900-s1, w107900-s2 | 프로그램과 웹 자원을 잇는 연결. |
+| 라틴 | w99138-s1, w99138-s2 | 라틴어와 라틴 민족·언어 계통을 가리키는 하나의 라틴 계보 명칭. |
+| 램 | w418240-s1, w418240-s2, w418240-s3 | 말뚝을 치는 망치와 기계의 왕복 램 부품은 힘을 가해 치거나 가공하는 왕복 작동 부재. |
+| 러그 | w100287-s1, w100287-s2 | 같은 거친 직물 덮개를 바닥에 깔거나 무릎에 덮는 용법. |
+| 랑데부 | w100358-s1, w100358-s2, w100358-s3 | 정한 지점으로 모이는 사람·우주선의 만남과 군대·배의 집결. |
+| 라인 | w100609-s1, w100609-s2 | 그어 놓은 선과 경기장 경계선은 표시된 경계의 용법; 기업 부문 sense는 별도. |
+| 라텍스 | w101255-s1, w101255-s2 | 라텍스 원액과 이를 바탕으로 한 탄성 고무 재료의 원료·가공 상태. |
+| 랙 | w421342-s1, w421342-s2 | 랙깍지진디의 수지성 분비물과 그 가공물인 셸락·칠 및 도포 용법. |
+| 램프 | w102066-s1, w102066-s2, w102066-s3 | 빛·열을 내거나 상태를 표시하는 램프 장치의 적용별 쓰임. |
+| 랩 | w102081-s1, w102081-s2, w102081-s3 | 경기 한 순환과 그 순환을 재는 lap time. |
+| 랩 | w102083-s1, w102083-s2 | 몸이나 음식을 감싸는 wrap 의복·포장막 용법. |
+| 루프 | w104822-s1, w104822-s2, w104822-s3, w104822-s4, w104822-s5 | 고리·곡선 경로 또는 되돌아 반복되는 loop 구조. |
+| 르포 | w105812-s1, w105812-s2 | 현지 취재 사실을 기록·전달하는 르포 기사와 다큐멘터리 문학 형식. |
+| 리치 | w517594-s1, w517594-s2 | 원문이 열매를 해당 리치나무의 결실로 직접 정의. |
+| 림보 | w420291-s1, w420291-s2 | 기독교 신학의 서로 다른 거주자가 머무는 같은 중간 사후 거처. |
+| 레이블 | w420608-s1, w420608-s2 | 상품과 파일의 식별·관리 표지라는 같은 라벨 기능. |
+| 러닝메이트 | w420938-s1, w420938-s2, w420938-s3, w420938-s4 | 동행·협업·선거 및 경주마의 연습 상대에 공통된 짝·보조 역할. |
+| 롱런하다 | w421848-s1, w421848-s2 | 공연·영화 흥행과 복싱 선수권이 장기간 지속되는 동사 용법. |
+| 르포르타주 | w422295-s1, w422295-s2 | 현지 보고 기사와 사실을 기록하는 다큐멘터리 문학 형식. |
 
 ## Retained boundary examples
 
@@ -386,14 +404,75 @@ The first column lists the complete final source-sense partition for every multi
 - 라이 retains the favorable position of a golf ball and the angle between a club shaft and head as separate golf terms; shared domain alone does not connect the meanings.
 - 라이트 keeps the distinct Wright brothers, architect, author, and cross-reference sense separate; the matching Roman spelling does not merge people or redirect targets.
 - 라인 아웃 groups rugby and handball uses concerning a ball crossing the touchline, while the baseball runner-out rule stays separate. 라인 크로스 groups the sports infractions because each source sense defines crossing or stepping over a line as the same foul.
-- 랩 keeps athletic lap units and lap time in their track/sport group, while rap music and wrap garment/film senses remain distinct. 리 keeps distance, ratio, length, and weight units separate when their quantities and dimensions differ.
+- 랩 groups athletic lap counts with the time measured for a lap, and wrap clothing with food film as uses that cover a body or food. Rap music remains separate. 리 keeps distance, ratio, length, and weight units separate when their quantities and dimensions differ.
 - 레닌 keeps the kidney enzyme, milk-curdling enzyme, and revolutionary as separate identities. 루트 groups mathematical root/chord root and the computer top directory/administrator account separately from the political figure and route/path senses.
 - Eponymous people and their unrelated namesakes remain distinct throughout (for example, the Ramans, Lavoisiers, Lawrences, Rockefellers, Russells, and Riemanns). Historical agreements with the same city-based title, including 런던 조약 senses, remain separate instruments.
 - Shared visual form or technical field was not by itself treated as sufficient to merge. The exact retained partitions for all remaining multi-Meaning lemmas are listed above and can be replayed from the spec.
 
+## Stage 2 follow-up source-bound review
+
+After the Stage 2 review, I parsed the exact reviewed PR HEAD `ff273fad72acfd1bec0f49b1b48d9edc7dd1ea11` and enumerated every canonical record whose senses occupied more than one final Meaning. The review's count of 48 is the number of lemmas; the corresponding count by canonical record ID is 50. I compared all source senses, their final memberships, and the relevant linked or derived entries. Seventeen records across sixteen lemmas now share one Meaning; the remaining thirty-three record splits across thirty-three lemmas are retained below with their source-bound distinction. This is a primary-context agent self-check, not an independent review or a mechanical string rule.
+
+| Lemma / canonical record | Final source-sense groups | Assessment |
+| --- | --- | --- |
+| 란체라 (`w98782`) | w98782-s1 / w98782-s2 | 분리: 멕시코 시골풍 대중음악과 아르헨티나의 3/4·6/8박 민요·춤은 지역별 장르와 리듬이 달라 유지. |
+| 라틴 (`w99138`) | w99138-s1+w99138-s2 | 통합: 라틴어와 라틴 민족·언어 계통을 가리키는 표현은 하나의 라틴 계보 명칭으로 묶음. |
+| 람다 (`w99297`) | w99297-s1 / w99297-s2 | 분리: 그리스 자모와 그 기호를 쓰는 부피 단위는 글자와 측정 단위라는 지시 대상이 달라 유지. |
+| 라인 아웃 (`w99636`) | w99636-s1+w99636-s3 / w99636-s2 | 분리: 럭비·핸드볼의 터치라인 이탈은 같은 경계 상황으로 묶고, 야구 주자의 주루선 이탈 아웃은 별도 판정으로 유지. |
+| 램 (`w99865`) | w99865-s1 / w99865-s2 | 분리: 어린양의 털가죽·직물과 식용 고기는 산출물과 용도가 달라 유지. |
+| 램 (`w418240`) | w418240-s1+w418240-s2+w418240-s3 | 통합: 말뚝을 치는 망치와 기계의 왕복 램 부품은 힘을 가해 치거나 가공하는 왕복 작동 부재로 묶음. |
+| 라디오그램 (`w100007`) | w100007-s1 / w100007-s2 / w100007-s3 | 분리: 음향 기기, 엑스선 사진, 무선 전보는 매체와 결과물이 달라 각각 유지. |
+| 라이어 (`w100186`) | w100186-s1 / w100186-s2 | 분리: 현악기 리라와 거짓말하는 사람은 동음 표기일 뿐 어휘 의미가 달라 유지. |
+| 라이너 (`w100250`) | w100250-s1 / w100250-s2+w100250-s3 / w100250-s4 | 분리: 정기 운송 수단, 옷·기계의 안쪽 라이닝, 야구 직선 타구는 서로 다른 대상·기능으로 구분; s2/s3만 보호용 안감 의미로 묶음. |
+| 러그 (`w100287`) | w100287-s1+w100287-s2 | 통합: 바닥 깔개와 무릎 덮개는 같은 거친 직물 덮개의 배치 차이로 묶음. |
+| 랑데부 (`w100358`) | w100358-s1+w100358-s2+w100358-s3 | 통합: 정한 시각·장소에서의 만남, 우주선의 조우, 군대·배의 집결은 정해진 지점으로 모이는 만남·집결 의미로 묶음. |
+| 라인 (`w100609`) | w100609-s1+w100609-s2 / w100609-s3 | 분리: 선과 경기장 경계는 표시된 경계선의 용법으로 묶고, 기업의 업무 부문은 조직 단위로 유지. |
+| 레더클로스 (`w100724`) | w100724-s1 / w100724-s2 | 분리: 인조 가죽과 멜턴 가공 면·모직물은 재료 구성·가공이 다른 직물로 유지. |
+| 라텍스 (`w101255`) | w101255-s1+w101255-s2 | 통합: 고무나무의 라텍스 원액과 이를 바탕으로 한 탄성 고무 재료는 원료·가공 상태가 이어지는 재료 의미로 묶음. |
+| 러닝 (`w101778`) | w101778-s1 / w101778-s2 / w101778-s3 | 분리: 운동복 셔츠, 요트의 순풍 항주, 스키 활강은 의복·항해·스키의 독립 용어로 유지. |
+| 랙 (`w421342`) | w421342-s1+w421342-s2 | 통합: 랙깍지진디의 수지성 분비물과 이를 가공한 셸락·칠은 같은 재료의 가공물·도포 용법으로 묶음. |
+| 램프 (`w102066`) | w102066-s1+w102066-s2+w102066-s3 | 통합: 기계 상태 표시등, 석유등, 알코올 가열등은 빛·열을 내거나 표시하는 램프 장치의 용도별 쓰임으로 묶음. |
+| 랩 (`w102081`) | w102081-s1+w102081-s2+w102081-s3 | 통합: 육상 트랙 한 바퀴와 수영 왕복은 경기의 1회 순환이며, 랩 타임은 그 순환을 잰 시간으로 묶음. |
+| 랩 (`w102083`) | w102083-s1+w102083-s2 | 통합: 몸에 두르는 옷과 식품 포장막은 몸·음식을 감싸는 wrap 용법으로 묶음. |
+| 로맨스 (`w102166`) | w102166-s1+w102166-s2 / w102166-s3 | 분리: 연애담과 중세 애정·무용담 서사 장르는 연결된 이야기 유형으로 묶고, 음악 형식은 별도 유지. |
+| 롤링 (`w102549`) | w102549-s1 / w102549-s2 | 분리: 선박·항공기의 좌우 흔들림과 금속 압연 공정은 움직임과 제조 작업이 달라 유지. |
+| 레이저 폭탄 (`w102736`) | w102736-s1 / w102736-s2 | 분리: 레이저 유도 재래식 폭탄과 레이저 핵융합 수소 폭탄은 유도 방식과 폭발 원리가 달라 유지. |
+| 룩셈부르크 (`w103570`) | w103570-s1 / w103570-s2 | 분리: 룩셈부르크 국가와 수도 도시는 같은 지명을 쓰지만 서로 다른 정치·지리 대상이므로 유지. |
+| 리브르 (`w104710`) | w104710-s1 / w104710-s2 | 분리: 프랑스의 옛 화폐 단위와 옛 무게 단위는 측정 차원이 달라 유지. |
+| 뢴트겐 (`w422980`) | w422980-s1 / w422980-s2 | 분리: 엑스선 자체와 방사선 노출량·세기의 단위는 물리 대상과 측정 단위가 달라 유지. |
+| 루프 (`w104822`) | w104822-s1+w104822-s2+w104822-s3+w104822-s4+w104822-s5 | 통합: 고리·단춧고리·곡선 경로·곡선 타구·반복 명령은 닫힌 경로 또는 되돌아 반복되는 loop 이미지로 묶음. |
+| 리 (`w105787`) | w105787-s1 / w105787-s2 / w105787-s3 | 분리: 비율, 길이, 무게는 값의 기준과 측정 차원이 서로 달라 각각 유지. |
+| 로드레이서 (`w105637`) | w105637-s1 / w105637-s2 | 분리: 도로 경기의 사람 참가자와 경기용 차량은 경기자와 도구라는 대상 차이로 유지. |
+| 르포 (`w105812`) | w105812-s1+w105812-s2 | 통합: 현지 취재 보고와 다큐멘터리 문학 형식은 사실을 현장에서 기록·전달하는 르포 의미로 묶음. |
+| 리쿠르고스 (`w105973`) | w105973-s1 / w105973-s2 | 분리: 트라키아 신화의 왕과 스파르타의 전설적 입법자는 서사·시대가 다른 인물로 유지. |
+| 리치 (`w517594`) | w517594-s1+w517594-s2 | 통합: 나무와 그 열매는 원문이 열매를 해당 나무의 결실로 직접 정의하므로 묶음. |
+| 루시퍼 (`w106685`) | w106685-s1 / w106685-s2 | 분리: 사탄의 우두머리와 태양계 행성 수성은 인물·천체라는 지시 대상이 달라 유지. |
+| 림보 (`w420291`) | w420291-s1+w420291-s2 | 통합: 구약 조상과 세례받지 못한 이들이 머무는 림보는 기독교 신학의 같은 중간 사후 거처에 속해 묶음. |
+| 로마 조약 (`w417471`) | w417471-s1 / w417471-s2 | 분리: 1950년 인권 보호 조약과 1957년 EEC 설립 조약은 당사자·목적이 다른 국제 협정으로 유지. |
+| 로테이션 (`w417631`) | w417631-s1+w417631-s2+w417631-s3+w417631-s5 / w417631-s4 | 분리: 교대·윤작·선수 위치 순환은 반복적 배치 변화로 묶고, 스키 상체 회전 동작은 신체 회전으로 유지. |
+| 로마 (`w417861`) | w417861-s1+w417861-s2+w417861-s3 / w417861-s4 | 분리: 고대 도시국가·제국 수도·현대 로마시는 같은 도시의 역사적 용법으로 묶고, 행정 구역인 로마주는 별도 유지. |
+| 라이 (`w418125`) | w418125-s1 / w418125-s2 | 분리: 골프공의 놓인 상태와 클럽 축·헤드의 각도는 각각 공 위치와 도구 기하를 가리켜 유지. |
+| 랠리 (`w418239`) | w418239-s1+w418239-s3 / w418239-s2 | 분리: 라켓·배구의 연속 타구와 권투의 연속 타격은 양편이 주고받는 경기 교환으로 묶고, 자동차 장거리 시간 경주는 유지. |
+| 리시버 (`w418668`) | w418668-s1 / w418668-s2 | 분리: 전기 신호를 소리로 바꾸는 수신 장치와 서브를 받아치는 선수는 기기와 경기 역할의 전문 의미가 달라 유지. |
+| 라디칼 (`w419271`) | w419271-s1 / w419271-s2 | 분리: 근호·근수와 홀전자를 가진 화학종은 수학·화학의 개념이 달라 유지. |
+| 라팔로 조약 (`w419510`) | w419510-s1 / w419510-s2 | 분리: 1920년 이탈리아·유고슬라비아 조약과 1922년 독일·소련 조약은 당사자·쟁점이 다른 협정으로 유지. |
+| 러시아·프랑스 동맹 (`w420604`) | w420604-s1 / w420604-s2 | 분리: 1894년 군사 동맹과 1935년 상호 원조 협정은 시기·정치적 목적·문서 성격이 달라 유지. |
+| 레이블 (`w420608`) | w420608-s1+w420608-s2 | 통합: 상품 식별표와 파일 관리 표시는 같은 정보를 식별·관리하는 라벨의 매체별 용법으로 묶음. |
+| 러닝메이트 (`w420938`) | w420938-s1+w420938-s2+w420938-s3+w420938-s4 | 통합: 동행·협업·선거의 짝과 경주마 연습 상대는 함께 활동을 돕는 러닝메이트 역할로 묶음. |
+| 런던 조약 (`w421008`) | w421008-s1 / w421008-s2 / w421008-s3 / w421008-s4 / w421008-s5 / w421008-s6 | 분리: 1827·1831·1840·1871·1913·1915년 조약은 체결국·쟁점·국제적 효력이 각각 다른 문서로 유지. |
+| 롱런하다 (`w421848`) | w421848-s1+w421848-s2 | 통합: 공연·영화 흥행과 복싱 선수권 방어는 활동·성과가 오래 지속되는 동사 용법으로 묶음. |
+| 르포르타주 (`w422295`) | w422295-s1+w422295-s2 | 통합: 현지 보고 기사와 다큐멘터리 문학 형식은 사실을 현장에서 기록·전달하는 르포르타주 의미로 묶음. |
+| 리사이클링 (`w423746`) | w423746-s1 / w423746-s2 | 분리: 폐기물 재생 이용과 국제 금융 자금 재배치는 대상·작동이 다른 전문 의미로 유지. |
+| 라파엘 (`w424300`) | w424300-s1 / w424300-s2 | 분리: 유대교 대천사와 화가 라파엘로의 영어 이름은 서로 다른 인물 정체성이므로 유지. |
+| 러거 (`w424485`) | w424485-s1 / w424485-s2 | 분리: 럭비 경기와 그 경기를 하는 선수는 종목과 참가자라는 범주가 달라 유지. |
+
+Positive consistency controls: `라벨` and `레이블` now each group the matching product-label and file-label senses; canonical direct links pair those senses. `롱런` and `롱런하다` both preserve the long-duration performance meaning across noun and verb forms. `르포` and `르포르타주` each group field-report and documentary-literary senses, matching their linked lexical usage. These are human source-bound checks, not string-based validation.
+
+Negative controls retained: `라이트` senses denote different people; `라임` distinguishes the citrus tree/fruit from rhyme; `리크` distinguishes electrical leakage from the vegetable; and `레벨` keeps a surveying instrument apart from a degree or standard. The additional same-record candidates were assessed individually: `라인` keeps a corporate work division apart from a boundary line; `로테이션` keeps ski body-turning apart from cyclic reassignment; `루프` is grouped only where the source supports a loop-shaped or repeating path.
+
 ## Validation record
 
-- Baseline node scripts/meaning/validate.mjs passed before editing (495,125 meanings; 117 adjudications). The post-edit validator passed (495,026 meanings; 117 adjudications).
+- Baseline node scripts/meaning/validate.mjs passed before editing (495,125 meanings; 117 adjudications). The post-edit validator passed (495,005 meanings; 117 adjudications).
 - Exact-base replay from 417aaf0fd718c6b1695b177b685348cdd6205729 passed: all 2,673 repartitions reproduced the working Meaning rows, and all four C06 shard files matched replay byte-for-byte.
 - The base-to-HEAD diff contains six paths: the four Meaning data outputs are `data/meanings/c06_001.jsonl` through `c06_004.jsonl`, and the other two added paths are this audit and the executable spec. Canonical JSONL and adjudication data are unchanged.
 - git diff --check passed. Clean-worktree corepack pnpm run ci:normal passed on implementation commit aa7f2c55, covering canonical, lexical, toolchain, batch, product, and artifact scopes with one current-revision SQLite build.
