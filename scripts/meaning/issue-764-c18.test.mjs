@@ -90,9 +90,9 @@ test('C18 complete canonical sense coverage and residual audit match the data', 
   }
 
   const audit = readFileSync(path.join(root, 'scripts/meaning/issue-764-c18-audit.md'), 'utf8');
-  assert.ok(audit.includes('| C18 Meaning rows | 15,434 | 14,773 |'), 'C18 row counts');
-  assert.ok(audit.includes('| Lemmas with several Meanings | 2,096 | 1,833 |'), 'multi-Meaning counts');
-  assert.ok(audit.includes('| Rows in the 385 repartitioned lemmas | 1,309 | 648 |'), 'repartition counts');
+  assert.ok(audit.includes('| C18 Meaning rows | 15,434 | 14,774 |'), 'C18 row counts');
+  assert.ok(audit.includes('| Lemmas with several Meanings | 2,096 | 1,834 |'), 'multi-Meaning counts');
+  assert.ok(audit.includes('| Rows in the 385 repartitioned lemmas | 1,309 | 649 |'), 'repartition counts');
   assert.equal(spec.repartitions.length, 385, 'audit scope');
 });
 
@@ -123,6 +123,7 @@ for (const [name, ids] of mustMerge) {
 const mustSplit = [
   ['폐기 exhaust gas and disposal/repeal', 'w359259-s1', 'w499273-s1'],
   ['피복 clothing and covering', 'w361934-s1', 'w361935-s1'],
+  ['피복선 insulated wire and copper-clad ship', 'w362196-s1', 'w503879-s1'],
   ['포 cannon and janggi 包 piece', 'w359616-s1', 'w497814-s1'],
   ['필로 writing fatigue and writing path', 'w365420-s1', 'w365421-s1'],
   ['필부 woman and man', 'w366639-s1', 'w500029-s1'],
@@ -170,6 +171,33 @@ test('C18 폐기 source relation provenance stays bound to the exhaust sense aft
   assert.deepEqual(relation.sources.map((source) => source.source_sense_id), ['w359259-s1']);
   assert.equal(relations.some((item) => item.source_meaning_id === discarded.id), false,
     'the 폐기(廢棄) meaning must not inherit the 폐기(廢氣) relation');
+});
+
+test('C18 피복선 wire synonyms stay on the wire Meaning and do not leak to the ship Meaning', () => {
+  const adjudications = readAdjudications(path.join(root, 'data/adjudication')).rows;
+  const allMeanings = readdirSync(path.join(root, 'data/meanings')).filter((file) => file.endsWith('.jsonl')).sort()
+    .flatMap((file) => readFileSync(path.join(root, 'data/meanings', file), 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line)));
+  const relevantRecords = readCanonicalEntries(path.join(root, 'data/canonical'))
+    .filter((record) => ['w362196', 'w503879', 'w277609', 'w287249', 'w292217'].includes(record.id));
+  const { relations } = projectMeaningRelations({
+    records: relevantRecords,
+    meanings: allMeanings,
+    adjudications,
+  });
+  const wire = rowBySense.get('w362196-s1');
+  const ship = rowBySense.get('w503879-s1');
+  const targetSenseIds = ['w277609-s1', 'w287249-s1', 'w292217-s1'];
+
+  assert.notEqual(wire.id, ship.id, 'the insulated wire and copper-clad ship must remain independent Meanings');
+  for (const targetSenseId of targetSenseIds) {
+    const target = allMeanings.find((row) => row.sense_ids.includes(targetSenseId));
+    const relation = relations.find((item) => item.source_meaning_id === wire.id
+      && item.target_meaning_id === target.id && item.type === 'direct');
+    assert.ok(relation, `the wire direct link to ${targetSenseId} must be projected`);
+    assert.deepEqual(relation.sources.map((source) => source.source_sense_id), ['w362196-s1']);
+  }
+  assert.equal(relations.some((item) => item.source_meaning_id === ship.id), false,
+    'the 被覆船 Meaning must not inherit the 被覆線 direct relations');
 });
 
 test('C18 controls fail on unknown source ids instead of passing vacuously', () => {
