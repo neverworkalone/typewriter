@@ -80,137 +80,49 @@ Other external APIs, dictionaries, corpora and LLMs remain subject to their
 respective use conditions. No new blanket validator or old-data migration is
 required by this license decision.
 
-## Canonical data and generated artifacts
+## Canonical, Meaning, and generated artifacts
 
-Canonical dictionary data must be reviewable in Git.
-
-The intended architecture is:
+The editable dictionary sources belong in Git. The current product pipeline is:
 
 ```text
-reference material / LLM draft
-        ↓
-normalization · validation · curation
-        ↓
-canonical JSONL
-        ↓
-deterministic build
-        ↓
-dictionary.sqlite
-        ↓
+approved lexical sources
+          ↓
+data/canonical/ (source-preserving lexical projection)
+          ↓
+data/meanings/ + data/adjudication/ (reviewed Meaning decisions)
+          ↓
+artifacts/dictionary.sqlite (Full: source + Meaning + provenance)
+          ↓ verified product projection
+dist/dictionary.sqlite (Lite: Extension dictionary)
+          ↓
 Chrome Extension
 ```
 
 Rules:
 
-- canonical JSONL is the source of truth;
-- generated SQLite is never the primary editable source;
-- do not hand-edit generated database output to make a test pass;
-- the same canonical revision and build inputs should reproduce the same logical database contents;
-- dictionary schema version, dictionary version, and source revision should be traceable in generated output when the active milestone requires them;
-- user data such as recent searches, favorites, and settings must remain separate from the read-only dictionary database.
+- preserve licensed canonical source data and its sense/provenance evidence; edit writer-facing Meaning glosses, grouping, and adjudications in their maintained source files;
+- do not hand-edit generated SQLite to make tests pass;
+- Full is the development/source-audit database; only Lite belongs in the Extension package;
+- the same committed inputs and build contracts must reproduce the same logical database contents;
+- preserve source revision, dictionary/schema versions, and source-bound integrity checks across generated outputs;
+- keep user data (recent searches, favorites, settings) separate from the read-only dictionary.
 
-## Scale discipline
+## Current lexical editing and quality discipline
 
-Do not scale bad assumptions.
+The former **lexical-production factory** (Discovery Stage 1 → Authoring/QA Stage 2 → Admission Stage 3) is retired. Do not start its candidate-batch loops, atomic claim/handoff workflow, stage-specific PR sequence, or autonomous downstream admission based on historical instructions. A future owner-issued task must explicitly define any new production workflow.
 
-The planned progression is deliberately staged:
+Work on the canonical / Meaning / adjudication layers according to the assigned issue. Meaning is a lexical identity, not each individual source dictionary definition: retain genuinely distinct homonyms, consolidate natural usage and figurative extensions when justified, and preserve every source-bound use in the edited gloss. Neither over-merge nor over-split merely to simplify data. An edited Meaning does not authorize rewriting canonical source data.
 
-1. validate the lexical/editorial model on a small pilot set;
-2. validate the JSONL → SQLite toolchain;
-3. validate the end-to-end Chrome experience with the small dataset;
-4. validate writer search UX in actual use;
-5. only then expand to thousands of entries.
+Use two relation quality standards:
 
-### Post-5K production scale mode
+- `gloss`, `direct`, and `antonym` require dictionary-grade lexical accuracy and source-bound identity/sense/POS checks. A direct synonym need not substitute in every sentence; verify a plausible shared meaning axis. A contrasting situation, co-occurrence, or topical similarity alone is insufficient.
+- `near`, `mood`, `scene`, `sensory`, `action`, and `association` support plausible writer-facing exploration. Keep intelligible relationships where possible; evaluate exploratory `relevance: 1..9` against peers of the same source Meaning/UI group rather than imposing synonym-level strictness or quotas.
 
-Once lexical admission, search, deterministic builds, and recurring-defect
-regressions are validated, production throughput should rise. Bounded batches
-are reviewable safety and transaction checkpoints, not a cap on issue-level
-progress. Start corpus production around 200 candidates per batch and allow
-growth toward 500 after consecutive clean batches. Continue through clean,
-low-yield batches until the issue checkpoint is reached; pause only for a new
-systemic defect, exhausted candidate sources, or an explicit product/model/
-licensing blocker. Fix systemic defects in shared rules and resume afterward.
+Relation enrichment is independent of lexical admission. Follow [`docs/relation-editorial-policy.md`](docs/relation-editorial-policy.md) for details.
 
-Use two editorial review modes: gloss, `direct`, and `antonym` require
-**dictionary-grade lexical accuracy**, while `near`, `mood`, `scene`,
-`sensory`, `action`, and `association` prioritize **plausible writer-facing
-exploration**. Preserve the latter unless a link is plainly incoherent or
-wrongly bound; compare exploratory `relevance: 1..9` against the **same
-source sense's existing and proposed peers in the same UI group** and
-adjust display priority instead of reflexively deleting a useful idea.
-A lexical synonym need not substitute in every sentence. Apply this to
-**new Stage 2 and Stage D backfill** production alike; no relation quotas.
-Relation enrichment remains independent of lexical admission. Current
-contract: [`docs/relation-editorial-policy.md`](docs/relation-editorial-policy.md).
+Source-bound semantic QA must be truthful: report evidence actually checked, unresolved judgments, and corrections. Agent self-check is **not** independent or human review; never invent reviewer identities or approval evidence. For lexical authoring or QA, the assigned primary agent must not delegate to other AI models, CLIs, subagents, or agent sessions. Deterministic local tools and source evidence remain available. Do not inspect unrelated agent account identities, authentication, subscription, or usage details.
 
-Before committing each new Stage 2 or Stage D `direct`/`antonym`, critically
-compare the **actual bound source and target meanings** (gloss, sense, POS):
-confirm lexical synonymy or opposition on the same meaning axis, not merely
-topical similarity, a contrasting situation, action, or result. Treat POS/scope
-differences as reasons to inspect, never automatic vetoes. Keep useful but
-non-dictionary links in a fitting exploratory type, or record no relation;
-never invent dictionary relations to fill a quota.
-
-#### No external model delegation for lexical QA — Codex and Claude (owner directive, 2026-10-02)
-
-**Applies to all implementation agents, including Codex and Claude, and to M9
-retrospective B01–B04 as well as new M10 batches.** Perform candidate authoring,
-semantic checks, and historical validation **in the currently assigned primary
-agent context**. Do not start Claude CLI, Codex CLI, another AI model/API,
-subagents, or a separate agent session to author, verify, review, or endorse
-lexical records. Do not invoke a different LLM to satisfy a historical
-`reviewer` label or an obsolete independent-review gate. Existing source
-files and deterministic local validators/tests may be read/run normally.
-
-Do not inspect `claude auth status` or other agent account identity, email,
-subscription, authentication, or usage details to troubleshoot lexical review.
-If a tool reports rate/usage limits, treat the reported execution failure as
-sufficient; do not probe account state. Use only owner-authorized, task-relevant
-diagnostics.
-
-For B01–B04's 1,206 historical records, perform a **new source-bound semantic
-quality audit in the primary Codex context**, recording accurate `AI self-check`
-provenance, candidate-specific findings, unresolved evidence, and necessary
-corrections. Do not relabel it as an independent audit or invent another agent's
-review. A gap in the historical independent-review record must remain labeled as
-such; the owner has explicitly replaced the retrospective requirement with
-source-bound quality assurance. If a legacy validator blocks this truthful
-workflow, adjust the **shared contract and generalized regressions** without
-relaxing semantic admission, and preserve original B05–B09 evidence as-is.
-
-#### Editorial semantic QA and review provenance (owner decision, 2026-10-02)
-
-Typewriter requires **source-bound semantic quality assurance**, not a number
-of Claude instances. A different Claude subagent/context or a distinct
-self-assigned reviewer label does **not** establish substantively independent
-judgment or authenticated human editorial approval. Do not spawn subagents
-for dictionary candidate authoring, semantic QA, or M10 optimization.
-
-For new M10 lexical batches, the main implementation agent may both author
-and check candidate decisions using the bounded source evidence. Record that
-provenance honestly as **agent self-check**, not "independent review", a
-separately authored judgment, or a human decision. Never fabricate historical
-reviews, separate-run outputs, or identities to satisfy a validator.
-
-Keep explicit identity, POS, gloss-fit and sense-boundary checks, candidate-
-specific reasons and evidence, legitimate fail-closed holds, shared admission,
-canonical integrity, and generalized regressions. Implement the contract
-change in the **shared producer/validator/tests** before accepting batches
-under the new self-check label. Historical B05–B09 review artifacts remain
-historical facts; do not rewrite or relabel them. The PR review process's
-Stage 1/2 independence is a **separate code-review rule** in `REVIEW.md`.
-
-This owner decision prioritizes measured token-efficient operation. Do not
-reinstate subagents to meet an obsolete independence label; obtain a new owner
-decision only if changing the underlying trust model beyond this authorization.
-
-When working before the scale milestones:
-
-- do not optimize architecture for 100,000+ entries without demonstrated need;
-- do not bulk-generate thousands of records before the editorial model is validated;
-- do not treat quantity of entries as a substitute for quality;
-- when scale exposes a model or generation problem, fix the process before adding more data.
+Quality and coverage take precedence over throughput. For a recurring defect, fix the common editing, validation, or consumer rule across applicable existing entries and future additions; do not merely patch the example. Keep historical evidence unchanged instead of rewriting it to fit new decisions. PR review Stage 1/2/3 are **separate code-review roles**, defined only in `REVIEW.md`.
 
 ## Search and product priorities
 
@@ -236,8 +148,8 @@ Do not implement work belonging only to a later milestone merely because it is v
 
 In particular:
 
-- do not freeze a large lexical ontology before pilot data validates it;
-- do not begin large-scale dictionary generation before the vertical slice has been used;
+- do not regenerate or bulk rewrite canonical or Meaning data outside the active issue;
+- do not freeze a large lexical ontology without demonstrated writer-facing need;
 - do not add generalized NLP infrastructure, embeddings, vector databases, cloud services, collaborative editing, or multi-language architecture unless current product needs demonstrate them;
 - do not expand Typewriter into a general Korean dictionary or AI writing assistant without an explicit product decision.
 
@@ -273,120 +185,28 @@ one-time online frozen install may replenish the shared store; see the
 
 ### Generalize lexical validation
 
-Lexical quality rules discovered while working on one batch or word should
-normally become shared validation, not batch-specific checks.
+Lexical defects discovered in one word or data partition should normally become shared checks, not example-specific tests.
 
-When a defect represents a general lexical rule:
+When a defect expresses a general rule:
 
-- implement the rule in the common producer, validator, audit, or admission
-  layer;
-- apply it to the complete existing canonical dataset where applicable;
-- ensure every future lexical addition passes the same rule automatically;
-- use minimal synthetic fixtures to prove the rule rather than encoding only
-  the current affected words;
-- keep batch-specific validation only for genuinely batch-specific properties
-  such as scope, counts, ID allocation, timing, or authorization.
+- fix the common producer, validator, editorial audit, or consumer boundary;
+- apply the rule to **all applicable existing canonical and Meaning records**, and enforce it for future additions;
+- verify actual behavior with a minimal failing fixture and an old-fails/new-passes regression;
+- retain local checks only for genuinely local scope or requirements.
 
-Do not fix a recurring lexical defect by adding another batch- or word-specific
-test when a repository-wide invariant can express the rule.
+Do not encode a growing list of individual words as a substitute for a general invariant. Where a distinction is semantic rather than mechanically decidable, require source-bound editorial review instead of a brittle string heuristic.
 
-## Lexical production factory — agent role boundaries
+## Shared lexical defects and PR priority
 
-The factory design is specified only in
-[`docs/lexical-production-factory.md`](docs/lexical-production-factory.md)
-(state machines, claim/recovery, rejection, validation). It is a design until
-implemented; follow it for the stage the owner assigns. *Factory Stage 1/2/3*
-are distinct from the PR-review gates in `REVIEW.md`.
+When a data or implementation PR uncovers a defect in a shared producer, validator, build, or consumer rather than in specific edited records:
 
-- **Stage 1 — Discovery (serial):** use the existing pinned Kiwi/corpus
-  extraction to propose dictionary-form lemmas and POS; preserve observed forms,
-  provenance and ambiguity; submit candidate batches as separate PRs, independent
-  of downstream stages. Do not finalize senses/glosses, do Stage 2 authoring, or
-  change canonical JSONL.
-  - The ordinary selector reuses the sealed morphology store and validates
-    current permission fields plus source, store, index, runtime, schema and
-    completion bindings. Keep the store's historical permission digest as
-    provenance. A prose-only permission-document change does not require a
-    routine full audit, digest rebind, or rebuild. Run the explicit full-audit
-    command only for a concrete integrity, migration, or forensic question;
-    see [`docs/corpus-morphology-slices.md`](docs/corpus-morphology-slices.md#stage-1-sealed-store-consumer-581).
-  - Use **one execution Issue per assigned Stage 1 run**, not one per batch.
-    Reuse an Issue supplied by the owner; otherwise create one when starting
-    the run, and link each batch PR to it.
-  - **Finish the Issue without another owner instruction:** after all planned
-    batch PRs have merged and are confirmed on `master`, post a final result
-    comment (batch/PR list, per-batch and total candidate/observation counts,
-    unresolved/held work, relevant validation/CI outcomes and deviations),
-    then close the Issue as `completed`.
-  - If the run stops early or a PR is blocked/unmerged, record completed work,
-    blockers and remaining batches in the Issue and **leave it open**. Never
-    claim completion merely because a PR was opened or local processing ended.
-- **Stage 2 — Authoring and QA (serial series of batches per agent):** on an
-  instruction such as "Stage 2 진행해", loop without further operator input, with
-  exactly one active batch/PR at a time: re-read merged `master` (rejected reviews
-  first, then `created`), claim one batch via its atomic Git ref *before* creating
-  a tracking Issue (select another if lost), create the Issue and a branch
-  `<claude|codex>/stage2/<issue>-<batch>` (rework reuses the Issue with a later
-  branch), perform the full existing PR-ready lexical authoring, source-bound
-  semantic QA, validation and regression process, and submit the result PR. **Then
-  wait for that PR to merge** (fix CI and reviewer feedback on the same branch;
-  never review or merge it yourself; do not bypass a blocked or closed PR). Only
-  after the merge is confirmed on `master`, release the claim and start the next batch;
-  do not wait for Stage 3 admission. Stop when no eligible work remains,
-  the owner stops you, or a systemic failure blocks progress. Do not edit
-  canonical JSONL or turn Stage 3 into an editorial repair pass. Parallelism comes
-  only from separate owner-launched agents.
-- **Stage 3 — Admission (serial):** take a committed `ready` review that has no
-  live Stage 3 attempt; check against current master, allocate IDs
-  deterministically, open the canonical admission PR, and send lexical/content/
-  evidence blockers back through the documented rejection process. Fix systemic
-  factory defects in the shared pipeline instead of rejecting unchanged batches.
-  Do not write or repair glosses or sense boundaries.
-- **Only the assigned stage:** never silently take over another stage. Do not
-  initiate reviews or merge your own PRs.
-- **Concurrency is owner-controlled.** The owner decides how many independent
-  primary-agent sessions to launch. No agent decides, requests, monitors,
-  coordinates or limits the number of other agents or waits for them. Each Stage 2
-  agent follows the same selection and atomic-claim protocol on its own batch;
-  claim exclusivity, not agent awareness, provides parallel safety.
-- **No delegation remains:** a Stage 2 agent works in its own assigned context and
-  must not launch subagents, other-model CLIs or additional primary-agent
-  sessions for lexical authoring or QA. The owner manually launching several
-  independent Stage 2 agents is not prohibited.
+1. Do not conceal the defect with a word-specific exception, misleading rejection, or weakened check.
+2. Search current issues and PRs for an existing fix or dependency; avoid duplicates.
+3. When a separate shared-code correction is necessary, make its scope and dependency explicit. Prove the fix through the **real production path** and a generalized regression; do not hide unrelated code changes in a data-only PR.
+4. Keep a blocked PR and its evidence truthful until the dependency is resolved; do not bypass validation or silently move on.
+5. Only the owner controls independent agent sessions and task parallelism. Implementation agents do not initiate reviews or merge their own PRs.
 
-### Shared defects found while working a batch
-
-When a batch is blocked by a defect in shared factory, validator or Stage 3 code
-rather than by the batch data:
-
-1. Do not work around it in the batch data: no deferring or rejecting valid
-   records, no per-word exceptions, no weakening of validation.
-2. Do not put shared-code changes into the batch result PR. Record only the
-   dependency there and keep that PR waiting.
-3. Before writing anything, search open issues and PRs for the same defect. If
-   a fix already exists, link it and wait for it; do not open a duplicate.
-4. Otherwise open a separate issue and a separate PR from the latest remote
-   `master` (new worktree) that fixes the shared pipeline with a general
-   regression (no word-specific code), run the issue's CI locally, bind the PR
-   and enable auto-fix. Never merge it yourself. This shared-fix PR is not a
-   second batch: the one-active-batch/one-result-PR rule above is unchanged, and
-   the batch result PR simply waits on it.
-5. A regression for a shared contract must exercise the real production path
-   (real-shaped canonical data and the real validators), not only synthetic
-   inputs that omit the new field.
-6. After the owner merges it, bring the batch PR up to date with `master`, add
-   the data the new contract requires and re-run the prospective Stage 3
-   preflight.
-7. If a tool or the permission layer denies the shared-code change, stop and
-   report; do not retry another way.
-
-### Prioritize PRs that unblock an active Stage
-
-If active Stage 1/2/3 work is blocked until a shared rule, contract, validator,
-or pipeline fix PR merges, label that PR `urgent` (including an existing PR).
-Use `urgent` only for actual blockers, not routine changes or Stage result PRs.
-It prioritizes the next review selection; normal review and merge rules
-still apply.
+A PR that genuinely blocks ongoing work may use the `urgent` label. Do not use it for routine changes; it affects review priority, not review standards.
 
 ## Validation
 
@@ -416,14 +236,14 @@ never selects unrelated Full Deep as a PR gate. Classifier/runner/registry chang
 still require Normal, plus any directly affected registered Deep checks. A registered
 test file has exactly one registry owner; unregistered tests may be run directly.
 
-The pull-request workflow routes only pure Stage 1 candidate artifacts to
+The pull-request workflow routes only legacy pure candidate artifacts to
 `ci:candidates`; mixed, unexpected, and unclassifiable changes run Normal.
 Candidate validation uses the factory contracts without creating a canonical
 session or SQLite database. `ci:fast` is an optional checkpoint inside Normal,
 not the candidate-only gate.
 
 `ci:normal` remains the required gate for ordinary code/data/mixed PRs and must
-retain the complete current-canonical audit, active factory/admission
+retain the complete current-canonical audit, applicable source/admission
 protections, one current-revision SQLite build, direct-search and product
 output checks. A normal run may expose the fast checkpoint inside the same
 session. `ci:all` runs Normal then current-system Deep checks, and `ci:deep`
@@ -439,9 +259,9 @@ Deep data inputs belong in each check's `deepInputs` registry metadata;
 contract. A data file appearing in `deepInputs` does not alone select the
 check. Routine canonical and reviewed relation changes must pass schema/shape
 classification and the existing Normal source-bound validators.
-Stage 1 `data/candidate-trash/T######.jsonl` files use the same principle:
+Legacy `data/candidate-trash/T######.jsonl` files use the same principle:
 strict changed-chunk JSONL and the shared permanent-trash contract must pass
-before selecting Normal. Normal factory validation still checks changed and
+before selecting Normal. Normal archive validation still checks changed and
 historic archive identities and immutability; candidate+trash changes are not
 candidate-only. New or malformed archive paths remain fail-closed. Docs-only
 changes retain the exact-head Normal skip, and pure root candidate artifacts
