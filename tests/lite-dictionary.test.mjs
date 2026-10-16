@@ -12,6 +12,7 @@ import {
   assertDatabaseKind,
   extractLiteDictionary,
   readDatabaseKind,
+  verifyLiteExtraction,
 } from '../scripts/build/lite-dictionary.mjs';
 import {
   findRecordsBySearchTerm,
@@ -156,5 +157,29 @@ test('Full builds in place: no staging file, and the Full output survives a Lite
     assert.equal(existsSync(`${fullPath}.staging`), false);
     assert.ok(existsSync(fullPath));
     assert.deepEqual((await readdir(directory)).sort(), ['full.sqlite', 'lite.sqlite']);
+  });
+});
+
+test('Lite verification passes for a real extraction with different files and fails on tampering', async () => {
+  await withFullAndLite(async ({ directory, fullPath, litePath }) => {
+    const { createHash } = await import('node:crypto');
+    const { readFile } = await import('node:fs/promises');
+    const digest = async (file) => createHash('sha256').update(await readFile(file)).digest('hex');
+    assert.notEqual(await digest(fullPath), await digest(litePath), 'Full and Lite are different files');
+    assert.ok(Object.keys(verifyLiteExtraction({ fullPath, litePath })).includes('meaning_relations'));
+
+    for (const mutation of [
+      "UPDATE records SET lemma = lemma || 'x' WHERE id = (SELECT MIN(id) FROM records)",
+      "UPDATE metadata SET value = 'tampered' WHERE key = 'source_revision'",
+      'DELETE FROM search_forms WHERE rowid = (SELECT MIN(rowid) FROM search_forms)',
+    ]) {
+      const tampered = path.join(directory, 'tampered-lite.sqlite');
+      await copyFile(litePath, tampered);
+      withDatabase(tampered, (db) => db.exec(mutation), {});
+      assert.throws(() => verifyLiteExtraction({ fullPath, litePath: tampered }), /not identical/u, mutation);
+      await rm(tampered, { force: true });
+    }
+    // Swapped roles are refused by kind.
+    assert.throws(() => verifyLiteExtraction({ fullPath: litePath, litePath: fullPath }), /must be a full/u);
   });
 });

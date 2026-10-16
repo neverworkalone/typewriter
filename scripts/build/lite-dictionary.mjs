@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { mkdir, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -130,4 +131,45 @@ export async function extractLiteDictionary({ fullPath, litePath }) {
   }
 
   return { fullPath: resolvedFull, litePath: resolvedLite };
+}
+
+function tableDigest(database, table, columns, order, skipKind) {
+  const hash = createHash('sha256');
+  let rows = 0;
+  for (const row of database.prepare(`SELECT ${columns} FROM ${table} ORDER BY ${order}`).iterate()) {
+    if (skipKind && row.key === DATABASE_KIND_KEY) continue;
+    hash.update(JSON.stringify(Object.values(row)));
+    hash.update('\n');
+    rows += 1;
+  }
+  return { rows, sha256: hash.digest('hex') };
+}
+
+/**
+ * Prove that `litePath` is a Lite extraction of `fullPath`: the kinds are full/lite, and every product table plus all
+ * inherited metadata (everything except `database_kind`) is row-for-row identical. Streams the rows, so it stays
+ * memory-light at release scale. The two files legitimately differ byte-wise (source tables, kind).
+ */
+export function verifyLiteExtraction({ fullPath, litePath }) {
+  const full = openDictionaryOfKind(path.resolve(fullPath), DATABASE_KINDS.full, 'Full dictionary');
+  try {
+    const lite = openDictionaryOfKind(path.resolve(litePath), DATABASE_KINDS.lite, 'Lite dictionary');
+    try {
+      const digests = {};
+      for (const [table, columns, order] of LITE_TABLE_COPIES) {
+        const skipKind = table === 'metadata';
+        const fullDigest = tableDigest(full, table, columns, order, skipKind);
+        const liteDigest = tableDigest(lite, table, columns, order, skipKind);
+        if (fullDigest.rows !== liteDigest.rows || fullDigest.sha256 !== liteDigest.sha256) {
+          throw new BuildError(`Lite ${table} is not identical to the Full dictionary`, 'LITE_EXTRACTION_MISMATCH');
+        }
+        digests[table] = fullDigest;
+      }
+      return digests;
+    } finally {
+      lite.close();
+    }
+  } finally {
+    full.close();
+  }
 }
