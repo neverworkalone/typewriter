@@ -19,7 +19,7 @@ import {
 import { SQLITE_SCHEMA_SQL, SQLITE_SCHEMA_VERSION } from './sqlite-schema.mjs';
 import { loadMeaningData, canonicalSensesFromContext } from '../meaning/contract.mjs';
 import { projectMeaningRelations } from '../meaning/project.mjs';
-import { DICTIONARY_VERSION } from '../../src/runtime/dictionary-contract.js';
+import { DICTIONARY_VERSION, MEANING_INTEGRITY_QUERIES } from '../../src/runtime/dictionary-contract.js';
 import {
   buildOrReuseSurfaceFormProjection,
   loadSurfaceFormExceptionManifest,
@@ -134,6 +134,10 @@ function metadataEntries(model, metadata, surfaceProjection, meaningLayer) {
       0,
     ),
     meaning_relation_count: meaningLayer.relations.length,
+    meaning_relation_source_count: meaningLayer.relations.reduce(
+      (count, relation) => count + relation.sources.length,
+      0,
+    ),
     sense_adjudication_count: meaningLayer.adjudications.length,
     ...Object.fromEntries(
       Object.entries(meaningLayer.stats).map(([key, value]) => [`meaning_projection_${key}`, value]),
@@ -309,6 +313,16 @@ function verifyDatabase(database) {
       `SQLite integrity check failed: ${JSON.stringify(integrity)}`,
       'INTEGRITY_CHECK',
     );
+  }
+
+  for (const [name, sql] of Object.entries(MEANING_INTEGRITY_QUERIES)) {
+    const violations = Number(Object.values(database.prepare(sql).get())[0]);
+    if (violations !== 0) {
+      throw new BuildError(
+        `meaning relation provenance check ${name} found ${violations} violation(s)`,
+        'MEANING_PROVENANCE_CHECK',
+      );
+    }
   }
 }
 

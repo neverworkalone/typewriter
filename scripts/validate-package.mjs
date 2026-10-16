@@ -24,6 +24,7 @@ import {
 import { DEFAULT_CANONICAL_DIRECTORY } from './validate/canonical-jsonl.mjs';
 import {
   DICTIONARY_VERSION,
+  MEANING_INTEGRITY_QUERIES,
   SQLITE_SCHEMA_VERSION,
 } from '../src/runtime/dictionary-contract.js';
 import { readForeignKeyViolations } from '../src/runtime/dictionary-validation.js';
@@ -425,6 +426,12 @@ function validateDictionaryMetadata({
     }
     if (expectedGeneratedSurfaceForms && JSON.stringify(generatedSurfaceForms) !== JSON.stringify(expectedGeneratedSurfaceForms)) {
       errors.push('Dictionary generated surface forms do not match the supplied canonical projection.');
+    }
+    for (const [name, sql] of Object.entries(MEANING_INTEGRITY_QUERIES)) {
+      const violations = Number(Object.values(database.prepare(sql).get())[0]);
+      if (violations !== 0) {
+        errors.push(`Dictionary meaning relation provenance check ${name} found ${violations} violation(s).`);
+      }
     }
     const integrity = database.prepare('PRAGMA integrity_check').get()?.integrity_check;
     if (integrity !== 'ok') {

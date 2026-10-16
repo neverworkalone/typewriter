@@ -168,6 +168,10 @@ const RAW_CI_CATEGORIES = Object.freeze({
         tier: 'normal',
       },
       {
+        ...testCheck('tests/meaning-provenance.test.mjs', 'Test meaning relation provenance completeness and source binding'),
+        tier: 'normal',
+      },
+      {
         ...inProcessCheck('Validate meaning/adjudication references against current canonical', 'meaning-references'),
         tier: 'normal',
       },
