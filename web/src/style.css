@@ -627,7 +627,7 @@ a:focus-visible {
   align-items: flex-start;
   justify-content: space-between;
   gap: 24px;
-  padding: 42px 0 0;
+  padding: 42px 0 36px;
 }
 
 .footer-tagline {
@@ -644,29 +644,6 @@ a:focus-visible {
 .footer-nav a {
   color: #e4d9d4;
   text-decoration: none;
-}
-
-.footer-legal {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 12px 32px;
-  margin-top: 24px;
-  padding: 18px 0 28px;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
-  font-size: 11px;
-  line-height: 1.7;
-}
-
-.footer-legal ul {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 20px;
-}
-
-.footer-legal a {
-  color: #d1c5c0;
 }
 
 /* Tablet */
@@ -1046,12 +1023,6 @@ a:focus-visible {
   .footer-nav {
     margin-top: 23px;
     gap: 22px;
-  }
-
-  .footer-legal {
-    margin-top: 20px;
-    padding-bottom: 24px;
-    font-size: 10px;
   }
 }
 

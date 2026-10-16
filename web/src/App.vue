@@ -6,8 +6,6 @@ import icon48 from './assets/icon48.png';
 import studyPhoto from './assets/study.jpg';
 import { CHROME_WEB_STORE_URL, GITHUB_URL } from './site-links.js';
 
-const baseHref = import.meta.env?.BASE_URL || '/';
-
 const features = [
   {
     number: '01',
@@ -60,12 +58,6 @@ const gallery = [
   },
 ];
 
-const legalLinks = [
-  ['LICENSE.md', '소프트웨어 라이선스'],
-  ['DATA-LICENSE.md', '데이터 라이선스'],
-  ['THIRD-PARTY-NOTICES.txt', '제3자 고지'],
-  ['BRAND.md', '브랜드 정책'],
-];
 </script>
 
 <template>
@@ -221,13 +213,6 @@ const legalLinks = [
           <a :href="CHROME_WEB_STORE_URL" target="_blank" rel="noopener noreferrer">설치하기</a>
           <a :href="GITHUB_URL" target="_blank" rel="noopener noreferrer">GitHub</a>
         </nav>
-      </div>
-      <div class="wrap footer-legal">
-        <ul aria-label="법적 고지">
-          <li v-for="[file, label] in legalLinks" :key="file">
-            <a :href="`${baseHref}${file}`">{{ label }}</a>
-          </li>
-        </ul>
       </div>
     </footer>
   </div>
