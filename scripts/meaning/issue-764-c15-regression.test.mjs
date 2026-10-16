@@ -28,6 +28,7 @@ test('natural polysemy in one STDICT record stays one Meaning', () => {
   assert.ok(same('w336164-s1', 'w336164-s2'), '축양');
   assert.ok(same('w342020-s1', 'w342020-s2'), '침염');
   assert.ok(same('w338650-s1', 'w338650-s2'), '침유');
+  assert.ok(same('w328155-s2', 'w328159-s1'), '천기: the two star-name senses (天璣)');
 });
 
 test('independent words and proper names stay separate Meanings', () => {
@@ -41,6 +42,8 @@ test('independent words and proper names stay separate Meanings', () => {
   assert.ok(!same('w334645-s1', 'w334645-s2'), '칠재: Buddhist rite vs Goryeo school divisions');
   assert.ok(!same('w327465-s1', 'w490799-s1'), '천지 창조: oratorio vs the concept');
   assert.ok(!same('w315324-s1', 'w486341-s1'), '차양: adoption system vs awning');
+  assert.ok(!same('w328155-s1', 'w328155-s2'), '천기: 天紀 (celestial order) vs 天璣 (star name)');
+  assert.ok(!same('w328155-s1', 'w328159-s1'), '천기: 天紀 vs the star 天璣');
   assert.ok(!same('w331985-s1', 'w331985-s2'), '취타수: military band player vs cannon gunner');
   assert.ok(!same('w337342-s1', 'w337342-s2'), '칙찬: king writing himself vs compiling by royal order');
   assert.ok(!same('w337343-s1', 'w337343-s2'), '칙찬하다');
