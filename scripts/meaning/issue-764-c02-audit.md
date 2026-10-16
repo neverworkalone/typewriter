@@ -36,3 +36,7 @@ Merged glosses lead with the shared core (the physical act, sound, or image) and
 ## Provenance and review status
 
 Semantic decisions and this audit were prepared and checked in the primary agent context against the canonical source glosses and current Meaning bindings. This provenance is **agent self-check**. It is not an independent first or second review and does not claim human editorial approval. The independent reviews listed in Issue #764 remain pending; this audit supports a reviewable C02 PR and does not close the overall issue.
+
+## Follow-up
+
+The post-merge boundary audit for this shard is recorded in [`issue-772-c02-audit.md`](issue-772-c02-audit.md); `껍질샘` and `끗` are corrected there.
