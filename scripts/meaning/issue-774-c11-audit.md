@@ -15,7 +15,7 @@ This is a source-bound, primary-agent self-check of the **final merged C11 outpu
 
 The prior `scripts/meaning/issue-764-c11-audit.md` table accidentally carried the count `86` from intermediate PR #766 HEAD `35eff327186ce07c9e571d7a180ff7ff9b20e44d`. At that checkpoint, `싹을 밟다` and `쐐기(를) 박다[치다]` still each had two Meaning rows. Final PR HEAD `9d8585fc364f6f8671c9aec46a58b86e147a0ec2` merged both pairs while preserving all bound senses, yielding 84 multi-Meaning lemmas and 25 same-record splits. The old audit's table and final replay count are corrected; its checkpoint history remains explicitly historical.
 
-The replayable changes are in [`issue-774-c11.json`](issue-774-c11.json). It has exact `before` snapshots for nine affected lemmas: four repartitions merge related senses, and five retain their existing groups while correcting source-bound glosses. All are applied through `node scripts/meaning/apply-edits.mjs scripts/meaning/issue-774-c11.json`. It does not edit canonical records, adjudications, the #766 spec, or other 초성 shards.
+The replayable changes are in [`issue-774-c11.json`](issue-774-c11.json). It has exact `before` snapshots for eleven affected lemmas: six repartitions merge related senses, and five retain their existing groups while correcting source-bound glosses. All are applied through `node scripts/meaning/apply-edits.mjs scripts/meaning/issue-774-c11.json`. It does not edit canonical records, adjudications, the #766 spec, or other 초성 shards.
 
 ## Source-bound audit of all 84 multi-Meaning lemmas
 
@@ -44,8 +44,8 @@ The “source records” column identifies the exact canonical records whose POS
 | `쌍견` | `w214769` a cocoon made by two silkworms vs `w454787` both shoulders. **KEEP 2**: pairedness alone is not an identity. |
 | `쌍계` | `w214779` a two-part historical topknot vs `w214780` twin chicks. **KEEP 2**: hairstyle and animals are unrelated. |
 | `쌍계사` | `w210978`, `w210979` two separately located temples in Hwaseong and Hadong. **KEEP 2**: distinct proper names, not senses of one temple. |
-| `쌍구` | `w451058-s1..s3` contour copying/engraving and double-line painting vs `w451058-s4` a three-finger brush grip. **KEEP 2**: the first are outline techniques; the latter is how the brush is held. |
-| `쌍구법` | `w211795-s1..s3` the same outline techniques vs `w211795-s4` brush grip. **KEEP 2** for the same source-bound technique distinction as `쌍구`. |
+| `쌍구` | `w451058-s1..s3` contour copying/engraving and double-line painting; `w451058-s4` the three-finger brush grip. **MERGE**: the National Institute of Korean Language lists both uses under `雙鉤`; the outline senses name paired contour lines, while the grip sense names hooking the brush with the index and middle fingers. These are applications of the same specific double-hook construction within calligraphy, not merely two unrelated methods in the same field. The gloss preserves the four source uses in separate sentences. |
+| `쌍구법` | `w211795-s1..s3` the same outline techniques; `w211795-s4` brush grip. **MERGE**: the source directly pairs each sense with the corresponding `쌍구` sense, and the same `雙鉤法` construction names both outline work and the two-finger brush grip. The gloss preserves each actual use. |
 | `쌍권총` | `w454634-s1` two pistols held one in each hand; `w454634-s2` student slang for two below-minimum-credit courses in a semester. **MERGE**: this is a conventional graphic metaphor from a pair of F grades (each F likened to a pistol), not a link based only on the numeral. University student-press usage confirms the F-grade slang; the two-sense gloss retains both literal and slang uses. |
 | `쌍글하다` | `w209905` a quiet, affectionate smile vs `w209916` redirect to `쌍그렇다` (desolate/cool). **KEEP 2**: the redirect target is not a smile or a facial expression. |
 | `쌍동` | `w218963` a light, sudden cut vs `w218966` twins born together. **KEEP 2**: shared sound and pair notion do not connect the cutting action to the people. |
@@ -110,13 +110,13 @@ The “source records” column identifies the exact canonical records whose POS
 
 ## Same-record split audit: all 25 at #766 final HEAD
 
-These are all 25 canonical records that had senses distributed across more than one Meaning row before this audit. The reason below is the bound source distinction, never the record boundary by itself. Three of these partitions are merged by the new spec (`쌍권총`, `쑥대머리`, `씨룩`), leaving 22 same-record splits in the audited result. `쌍현` is a separate-record merge and was not part of this count.
+These are all 25 canonical records that had senses distributed across more than one Meaning row before this audit. The reason below is the bound source distinction, never the record boundary by itself. Five of these partitions are merged by the new spec (`쌍구`, `쌍구법`, `쌍권총`, `쑥대머리`, `씨룩`), leaving 20 same-record splits in the audited result. `쌍현` is a separate-record merge and was not part of this count.
 
 | Lemma and record | Decision from the exact source senses |
 | --- | --- |
 | `쌈` — `w212919-s1..s3` | Keep needle/textile bundle counters together; keep the gold mass unit separate because it counts weight, not bundled objects. |
-| `쌍구` — `w451058-s1..s4` | Keep contour copying, inscription, and double-line painting together; separate the three-finger brush grip. |
-| `쌍구법` — `w211795-s1..s4` | Same source distinction as `쌍구`: outline techniques vs brush grip. |
+| `쌍구` — `w451058-s1..s4` | **Merge** outline copying/inscription, double-line painting, and the grip that hooks the brush with the index and middle fingers; all are named by the same specific `雙鉤` construction. |
+| `쌍구법` — `w211795-s1..s4` | **Merge** the corresponding outline, painting, and brush-grip uses under the same `雙鉤法` construction; each sense has a direct source-synonym pairing with `쌍구`. |
 | `쌍권총` — `w454634-s1/s2` | **Merge** literal two pistols and slang for two below-minimum-credit courses: two F marks are conventionally likened to the paired pistols. |
 | `쌍아` — `w209371-s1/s2` | Keep eyebrow appearance separate from bilateral tonsil disease; sharing bilateral anatomy is only a broad category. |
 | `쌔다` — `w213503-s1..s4` | Keep the excretion-causative short form separate from the short forms of cover/envelop/surround; merge the latter uses. |
@@ -154,7 +154,8 @@ These are all 25 canonical records that had senses distributed across more than 
 - The [National Institute of Korean Language answer on `쓱싹`](https://www.korean.go.kr/front/onlineQna/onlineQnaView.do?mn_id=27&pageIndex=1&qna_seq=326892) distinguishes the listed “underhand/incorrect act” use from ordinary finishing something at once. This supports retaining the sound and underhand use as separate rather than generalizing the second gloss to any quick action.
 - The [Yonsei Chunchu article on grades](https://chunchu.yonsei.ac.kr/news/articleView.html?idxno=9539) documents the student use of `쌍권총` for two F grades. A [secondary popular reference](https://readonly.wiki/w/%EC%8C%8D%EA%B6%8C%EC%B4%9D) explains the F-shape/pistol association; I treat that as corroboration of a familiar graphic metaphor, not as official lexicographic authority. The two source senses are retained together in one Meaning with both gloss statements.
 - The [National Gugak Encyclopedia entry for `쑥대머리`](https://www.gugak.go.kr/ency/topic/view/778) explains that the pansori section title comes from its opening lyric. This directly supports the phrase-to-title extension and the merge.
+- The National Institute of Korean Language's [two `쌍구` entries](https://kli.korean.go.kr/term/trgtWord/indexTrgtWord.do?trgtWordNo=2311759) name both outline drawing and the two-finger brush grip with the same `雙鉤` form; its [`쌍구법` entry](https://kli.korean.go.kr/term/trgtWord/indexTrgtWord.do?trgtWordNo=2311764) gives the same grip definition under `雙鉤法`. The Academy of Korean Studies' [calligraphy-method article](https://encykorea.aks.ac.kr/Article/E0027755) identifies the index/middle-finger grip, while its [outline-painting entry](https://encykorea.aks.ac.kr/Article/E0005743) calls the contour method `쌍구법(雙鉤法)`. Together with the canonical cross-sense synonym relations, these support one concrete double-hook naming principle across the uses.
 
 ## Expected result after replay
 
-The four merged lemmas each go from two Meaning rows to one: `쌍권총`, `쑥대머리`, `씨룩`, and `쌍현`. Therefore the replay is expected to produce **2,118 C11 Meaning rows**, **2,006 lemmas**, **80 multi-Meaning lemmas**, **22 same-record splits**, and the same **2,725 bound canonical senses**. All 84 pre-edit multi-Meaning lemmas have a disposition above. Canonical and adjudication data remain unchanged, and all modified rows stay in C11.
+The six merged lemmas each go from two Meaning rows to one: `쌍권총`, `쑥대머리`, `씨룩`, `쌍현`, `쌍구`, and `쌍구법`. Therefore the replay is expected to produce **2,116 C11 Meaning rows**, **2,006 lemmas**, **78 multi-Meaning lemmas**, **20 same-record splits**, and the same **2,725 bound canonical senses**. All 84 pre-edit multi-Meaning lemmas have a disposition above. Canonical and adjudication data remain unchanged, and all modified rows stay in C11.
