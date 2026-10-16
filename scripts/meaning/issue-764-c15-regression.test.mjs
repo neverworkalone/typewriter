@@ -28,6 +28,8 @@ test('natural polysemy in one STDICT record stays one Meaning', () => {
   assert.ok(same('w336164-s1', 'w336164-s2'), '축양');
   assert.ok(same('w342020-s1', 'w342020-s2'), '침염');
   assert.ok(same('w338650-s1', 'w338650-s2'), '침유');
+  assert.ok(same('w494333-s1', 'w494333-s2'), '축류: axial flow in machines and along a valley axis');
+  assert.ok(same('w334658-s1', 'w334658-s2'), '축면: planes defined by crystal axes / fold axes');
   assert.ok(same('w328155-s2', 'w328159-s1'), '천기: the two star-name senses (天璣)');
 });
 
