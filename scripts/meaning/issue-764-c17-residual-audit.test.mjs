@@ -37,6 +37,12 @@ const reviewCases = [
   { lemma: '토성', before: [['w350201-s1'], ['w350202-s1'], ['w350203-s1'], ['w350204-s1'], ['w350204-s2'], ['w350205-s1'], ['w495559-s1']], groups: [['w350201-s1'], ['w350202-s1'], ['w350203-s1'], ['w350204-s1', 'w350204-s2'], ['w350205-s1'], ['w495559-s1']] },
   { lemma: '토제', before: [['w348249-s1'], ['w348250-s1'], ['w348252-s1'], ['w348253-s1'], ['w348254-s1']], groups: [['w348249-s1'], ['w348250-s1'], ['w348252-s1'], ['w348253-s1'], ['w348254-s1']] },
   { lemma: '통상시', before: [['w347118-s1'], ['w517385-s1']], groups: [['w347118-s1'], ['w517385-s1']] },
+  { lemma: '타종', before: [['w341605-s1'], ['w341863-s1'], ['w341864-s1']], priorHeadGroups: [['w341605-s1', 'w341863-s1'], ['w341864-s1']], groups: [['w341605-s1'], ['w341863-s1'], ['w341864-s1']] },
+  { lemma: '탐리', before: [['w341678-s1'], ['w341977-s1'], ['w496829-s1']], priorHeadGroups: [['w341678-s1', 'w496829-s1'], ['w341977-s1']], groups: [['w341678-s1'], ['w341977-s1'], ['w496829-s1']] },
+  { lemma: '탈거', before: [['w344693-s1'], ['w344693-s2'], ['w344732-s1']], priorHeadGroups: [['w344693-s1', 'w344693-s2', 'w344732-s1']], groups: [['w344693-s1', 'w344693-s2'], ['w344732-s1']] },
+  { lemma: '탈거하다', before: [['w344694-s1'], ['w344694-s2'], ['w344733-s1']], priorHeadGroups: [['w344694-s1', 'w344694-s2', 'w344733-s1']], groups: [['w344694-s1', 'w344694-s2'], ['w344733-s1']] },
+  { lemma: '퇴경', before: [['w347986-s1'], ['w347988-s1'], ['w347990-s1'], ['w347991-s1'], ['w347991-s2']], priorHeadGroups: [['w347986-s1', 'w347988-s1', 'w347990-s1'], ['w347991-s1'], ['w347991-s2']], groups: [['w347986-s1', 'w347988-s1'], ['w347990-s1'], ['w347991-s1'], ['w347991-s2']] },
+  { lemma: '토번', before: [['w348517-s1'], ['w495500-s1']], priorHeadGroups: [['w348517-s1', 'w495500-s1']], groups: [['w348517-s1'], ['w495500-s1']] },
   { lemma: '투광', before: [['w348337-s1'], ['w348602-s1'], ['w497774-s1']], groups: [['w348337-s1'], ['w348602-s1'], ['w497774-s1']] },
   { lemma: '투광하다', before: [['w348601-s1'], ['w348603-s1'], ['w348604-s1']], groups: [['w348601-s1'], ['w348603-s1'], ['w348604-s1']] },
   { lemma: '투구', before: [['w348609-s1'], ['w348611-s1'], ['w348612-s1'], ['w348612-s2'], ['w348614-s1'], ['w495016-s1']], groups: [['w348609-s1'], ['w348611-s1'], ['w348612-s1'], ['w348612-s2'], ['w348614-s1'], ['w495016-s1']] },
@@ -48,6 +54,7 @@ const projectionProbeSenseIds = new Set([
   'w335985-s1', 'w340436-s1', 'w342605-s1', 'w343447-s1', 'w342388-s1', 'w346982-s1',
   'w350643-s1', 'w350644-s1', 'w348611-s1', 'w495016-s1', 'w350261-s1', 'w515511-s1', 'w344145-s1', 'w492619-s1',
   'w341954-s1', 'w341956-s1', 'w341955-s1', 'w497023-s1', 'w517385-s1', 'w357670-s1',
+  'w496829-s1', 'w344590-s1',
 ]);
 const meaningFiles = readdirSync(meaningDir).filter((file) => /^c17_\d+\.jsonl$/u.test(file)).sort();
 const rows = meaningFiles.flatMap((file) => readFileSync(path.join(meaningDir, file), 'utf8')
@@ -248,13 +255,17 @@ test('C17 applies naming-principle and distinct-identity boundaries with a one-l
   assert.equal(identitySourceGlossBySense.has('w497369-s1') && identitySourceGlossBySense.has('w497369-s2'), true, 'positive-control source senses exist');
 
   const spec = JSON.parse(readFileSync(path.join(root, 'scripts/meaning/issue-764-c17.json'), 'utf8'));
-  for (const { lemma, before, groups } of reviewCases) {
+  for (const { lemma, before, priorHeadGroups, groups } of reviewCases) {
     const edit = spec.repartitions.find((item) => item.lemma === lemma);
     assert.ok(edit, `${lemma}: the source-bound boundary must replay from the execution spec`);
     assert.deepEqual(edit.before.map((row) => row.sense_ids), before, `${lemma}: record the old split for the regression`);
     assert.deepEqual(edit.groups.map((row) => row.senses), groups, `${lemma}: the revised spec has the expected source-bound groups`);
     const result = rowsByLemma.get(lemma) ?? [];
     assert.deepEqual(result.map((row) => row.sense_ids), groups, `${lemma}: final projection has the reviewed groups`);
+    if (priorHeadGroups) {
+      assert.notDeepEqual(result.map((row) => row.sense_ids), priorHeadGroups,
+        `${lemma}: the erroneous grouping on prior PR HEAD must fail this regression`);
+    }
     for (const [index, group] of groups.entries()) {
       assert.equal(result[index].gloss, edit.groups[index].gloss, `${lemma}: emitted gloss matches the recorded execution edit`);
       for (const senseId of group) assert.ok(identitySourceGlossBySense.has(senseId), `${lemma}/${senseId}: canonical source exists`);
@@ -315,6 +326,7 @@ test('C17 applies naming-principle and distinct-identity boundaries with a one-l
     { lemma: '탕산', source: 'w341956-s1', other: 'w341954-s1', target: 'w343275-s1' },
     { lemma: '탕산하다', source: 'w341955-s1', other: 'w497023-s1', target: 'w342270-s1' },
     { lemma: '탕산하다', source: 'w497023-s1', other: 'w341955-s1', target: 'w343521-s1' },
+    { lemma: '탐리', source: 'w496829-s1', other: 'w341678-s1', target: 'w344590-s1' },
     { lemma: '타살', source: 'w335985-s1', other: 'w336289-s1', target: 'w38107-s1' },
     { lemma: '타상', source: 'w340436-s1', other: 'w497650-s1', target: 'w494681-s1' },
     { lemma: '탁발하다', source: 'w342605-s1', other: 'w345545-s1', target: 'w141693-s1' },
@@ -343,6 +355,37 @@ test('C17 applies naming-principle and distinct-identity boundaries with a one-l
     assert.ok(!result.relations.some((relation) => relation.source_meaning_id === otherMeaningId
       && relation.target_meaning_id === targetMeaningId), `${lemma}/${other}: unrelated meaning does not inherit the source relation`);
   }
+
+  const greedyActMeaning = (rowsByLemma.get('탐리') ?? []).find((row) => row.sense_ids.includes('w341678-s1'));
+  const greedyOfficialMeaning = (rowsByLemma.get('탐리') ?? []).find((row) => row.sense_ids.includes('w496829-s1'));
+  const taxOfficialMeaning = (rowsByLemma.get('탐관') ?? []).find((row) => row.sense_ids.includes('w344590-s1'));
+  const greedyOfficialRecord = projectionSourceRecords.get('w496829');
+  const taxOfficialRecord = projectionSourceRecords.get('w344590');
+  assert.ok(greedyActMeaning && greedyOfficialMeaning && taxOfficialMeaning && greedyOfficialRecord && taxOfficialRecord,
+    '탐리/탐관 source-bound relation endpoints are present');
+  assert.notEqual(greedyActMeaning.id, greedyOfficialMeaning.id,
+    '탐리 “이익을 탐냄” and “탐욕스러운 관리” have distinct Meaning endpoints');
+  const greedyProjection = projectMeaningRelations({
+    records: [greedyOfficialRecord, taxOfficialRecord],
+    meanings: projectionMeanings,
+  });
+  const greedyOfficialToTaxOfficial = greedyProjection.relations.filter((relation) => relation.type === 'direct'
+    && relation.source_meaning_id === greedyOfficialMeaning.id
+    && relation.target_meaning_id === taxOfficialMeaning.id
+    && relation.sources.some((source) => source.source_sense_id === 'w496829-s1'));
+  const taxOfficialToGreedyOfficial = greedyProjection.relations.filter((relation) => relation.type === 'direct'
+    && relation.source_meaning_id === taxOfficialMeaning.id
+    && relation.target_meaning_id === greedyOfficialMeaning.id
+    && relation.sources.some((source) => source.source_sense_id === 'w344590-s1'));
+  assert.equal(greedyOfficialToTaxOfficial.length, 1, '탐리 관리 Meaning retains its canonical direct relation to 탐관');
+  assert.equal(taxOfficialToGreedyOfficial.length, 1, '탐관 retains its reverse canonical direct relation to 탐리 관리 Meaning');
+  assert.deepEqual(greedyOfficialToTaxOfficial[0].sources.map((source) => source.source_sense_id), ['w496829-s1'],
+    '탐리 관리 direct provenance stays on its canonical source sense');
+  assert.deepEqual(taxOfficialToGreedyOfficial[0].sources.map((source) => source.source_sense_id), ['w344590-s1'],
+    '탐관 direct provenance stays on its canonical source sense');
+  assert.ok(!greedyProjection.relations.some((relation) => relation.source_meaning_id === greedyActMeaning.id
+    || relation.target_meaning_id === greedyActMeaning.id),
+  '탐관 direct never leaks onto 탐리 “이익을 탐냄”');
 
   for (const { lemma, source, coGrouped, target } of [
     { lemma: '통발', source: 'w344145-s1', coGrouped: 'w492619-s1', target: 'w228082-s1' },
