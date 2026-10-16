@@ -655,6 +655,23 @@ test('packaged runtime modules only import packaged files (service worker load f
         code,
       );
     }
+    // Comment markers inside strings, templates and regular expressions must not hide real references.
+    for (const [name, code] of Object.entries({
+      'string with /*': 'const marker = "/*";\nawait import("./missing.js");\n/* */\n',
+      'template with /*': 'const marker = `/*`;\nawait import("./missing.js");\n/* */\n',
+      'regex with /*': 'const marker = /\\/\\*/;\nawait import("./missing.js");\n/* */\n',
+      'string with //': 'const url = "https://example.invalid/";\nawait import("./missing.js");\n',
+      'after line comment': '// note\nawait import("./missing.js"); // trailing\n',
+    })) {
+      await writeFile(path.join(temporaryDirectory, 'runtime/sqlite-query.js'), code);
+      assert.ok(
+        validateRuntimeImports(temporaryDirectory, files).some((error) => error.includes('./missing.js')),
+        name,
+      );
+    }
+    // Unparseable runtime code is reported, not silently skipped.
+    await writeFile(path.join(temporaryDirectory, 'runtime/sqlite-query.js'), 'const = ;\n');
+    assert.ok(validateRuntimeImports(temporaryDirectory, files).some((error) => error.includes('could not be parsed')));
     // Commented-out references are ignored.
     await writeFile(path.join(temporaryDirectory, 'runtime/sqlite-query.js'), "// import x from './missing.js';\n/* import('./missing.js') */\n");
     assert.deepEqual(validateRuntimeImports(temporaryDirectory, files), []);

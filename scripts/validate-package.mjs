@@ -13,6 +13,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { transformSync } from 'esbuild';
 import { isDeepStrictEqual } from 'node:util';
 import { DatabaseSync } from 'node:sqlite';
 import {
@@ -324,9 +325,9 @@ function validateFileModes(packageDir, files) {
 }
 
 // Relative module references in a runtime file: `from '…'` (import/export forms), side-effect `import '…'`,
-// dynamic `import(…)` and `new URL('…', import.meta.url | self.location.href)`. Full-line and block comments are
-// ignored. Dynamic `import(…)` must take a plain string or template literal without `${}`; any other argument cannot
-// be checked against the package, so it is rejected.
+// dynamic `import(…)` and `new URL('…', import.meta.url | self.location.href)`. Comments are ignored. Dynamic
+// `import(…)` must take a plain string or template literal without `${}`; any other argument cannot be checked
+// against the package, so it is rejected.
 const RELATIVE_SPECIFIER = '[\'"](\\.{1,2}\\/[^\'"\\n]+)[\'"]';
 const RELATIVE_OR_TEMPLATE = '[\'"`](\\.{1,2}\\/[^\'"`\\n$]+)[\'"`]';
 const MODULE_REFERENCES = [
@@ -337,7 +338,9 @@ const MODULE_REFERENCES = [
 ];
 const DYNAMIC_IMPORT = /\bimport\s*\(\s*([\s\S]{0,200})/g;
 const STATIC_LITERAL_ARGUMENT = /^(['"`])[^'"`\n$]*\1\s*[,)]/;
-const stripComments = (source) => source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+// Comments are removed by a real JavaScript parser (esbuild), so comment markers inside strings, templates and
+// regular expressions are preserved and syntax errors are reported instead of silently hiding references.
+const withoutComments = (source) => transformSync(source, { loader: 'js', legalComments: 'none' }).code;
 
 // Every runtime module is copied file by file, so each relative import must resolve to a packaged file;
 // otherwise the service worker/worker fails at load time ("Service worker registration failed. Status code: 3").
@@ -352,7 +355,13 @@ export function validateRuntimeImports(packageDir, files) {
     } catch {
       continue;
     }
-    const code = stripComments(source);
+    let code;
+    try {
+      code = withoutComments(source);
+    } catch (error) {
+      errors.push(`Packaged runtime module ${file} could not be parsed: ${String(error.message).split('\n')[0]}`);
+      continue;
+    }
     const specifiers = new Set(MODULE_REFERENCES.flatMap((pattern) => [...code.matchAll(pattern)].map((match) => match[1])));
     for (const match of code.matchAll(DYNAMIC_IMPORT)) {
       if (!STATIC_LITERAL_ARGUMENT.test(match[1])) {
