@@ -11,6 +11,10 @@ const rows = readdirSync(dir).filter((file) => /^c06_\d+\.jsonl$/u.test(file)).s
   .flatMap((file) => readFileSync(path.join(dir, file), 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line)));
 const meaningOf = new Map(rows.flatMap((row) => row.sense_ids.map((senseId) => [senseId, row.id])));
 const meaningById = new Map(rows.map((row) => [row.id, row]));
+const canonicalGlossBySense = new Map(readdirSync(path.join(root, 'data/canonical'))
+  .filter((file) => /^stdict-(0076|0077|0328|0329|0333)\.jsonl$/u.test(file))
+  .flatMap((file) => readFileSync(path.join(root, 'data/canonical', file), 'utf8').split('\n').filter(Boolean)
+    .flatMap((line) => JSON.parse(line).senses.map((sense) => [sense.id, sense.gloss]))));
 const spec = JSON.parse(readFileSync(path.join(root, 'scripts/meaning/issue-764-c06.json'), 'utf8'));
 const sameMeaning = (senseIds) => senseIds.every((senseId) => meaningOf.has(senseId)
   && new Set(senseIds.map((senseId) => meaningOf.get(senseId))).size === 1);
@@ -35,10 +39,21 @@ test('C06 repartition spec groups exactly match final Meaning rows', () => {
 const mustMerge = [
   ['룩셈부르크 국가/수도', ['w103570-s1', 'w103570-s2']],
   ['러거 경기/선수', ['w424485-s1', 'w424485-s2']],
+  ['람다 글자/기호를 쓰는 부피 단위', ['w99297-s1', 'w99297-s2']],
+  ['리시버 수신 장치/서브를 받는 선수', ['w418668-s1', 'w418668-s2']],
+  ['로마의 역사적 도시/동명 행정 구역', ['w417861-s1', 'w417861-s2', 'w417861-s3', 'w417861-s4']],
 ];
 for (const [name, senseIds] of mustMerge) {
   test(`C06 under-merge control: ${name} is one Meaning`, () => assert.ok(sameMeaning(senseIds), name));
 }
+
+test('C06 positive controls preserve every original canonical gloss verbatim', () => {
+  for (const [name, senseIds] of mustMerge) {
+    const canonicalGlosses = senseIds.map((senseId) => canonicalGlossBySense.get(senseId));
+    assert.ok(canonicalGlosses.every(Boolean), `${name}: canonical glosses must be present`);
+    assert.equal(meaningById.get(meaningOf.get(senseIds[0])).gloss, canonicalGlosses.join(' '), name);
+  }
+});
 
 // Negative controls: distinct named works remain separate even when they share
 // a title, character, or source narrative.
@@ -52,6 +67,8 @@ const mustSplit = [
   ['로엔그린 서사시/바그너 오페라', 'w421601-s1', 'w421601-s2'],
   ['룩셈부르크 국가/혁명가', 'w103570-s1', 'w419193-s1'],
   ['룩셈부르크 수도/혁명가', 'w103570-s2', 'w419193-s1'],
+  ['로드레이서 경기자/경기용 자전거나 오토바이', 'w105637-s1', 'w105637-s2'],
+  ['로마 조약의 서로 다른 국제 협정', 'w417471-s1', 'w417471-s2'],
 ];
 for (const [name, left, right] of mustSplit) {
   test(`C06 over-merge control: ${name} stays separate`, () => {
