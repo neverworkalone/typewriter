@@ -48,6 +48,14 @@ const reviewCases = [
   { lemma: '투구', before: [['w348609-s1'], ['w348611-s1'], ['w348612-s1'], ['w348612-s2'], ['w348614-s1'], ['w495016-s1']], groups: [['w348609-s1'], ['w348611-s1'], ['w348612-s1'], ['w348612-s2'], ['w348614-s1'], ['w495016-s1']] },
   { lemma: '투전', before: [['w350021-s1'], ['w350261-s1'], ['w350263-s1']], groups: [['w350021-s1'], ['w350261-s1'], ['w350263-s1']] },
   { lemma: '티', before: [['w353023-s1'], ['w353023-s2'], ['w353026-s1'], ['w353027-s1'], ['w495437-s1'], ['w495437-s2'], ['w495451-s1'], ['w515511-s1']], groups: [['w353023-s1', 'w353023-s2'], ['w353026-s1'], ['w353027-s1'], ['w495437-s1', 'w495437-s2'], ['w495451-s1'], ['w515511-s1']] },
+  { lemma: '탄탄하다', before: [['w346529-s1'], ['w346529-s2'], ['w496633-s1'], ['w496633-s2']], priorHeadGroups: [['w346529-s1', 'w346529-s2', 'w496633-s1', 'w496633-s2']], groups: [['w346529-s1', 'w346529-s2'], ['w496633-s1', 'w496633-s2']] },
+  { lemma: '탄탄히', before: [['w346531-s1'], ['w346531-s2'], ['w496632-s1'], ['w496632-s2']], priorHeadGroups: [['w346531-s1', 'w346531-s2', 'w496632-s1', 'w496632-s2']], groups: [['w346531-s1', 'w346531-s2'], ['w496632-s1', 'w496632-s2']] },
+  { lemma: '탐미', before: [['w342237-s1'], ['w342239-s1']], priorHeadGroups: [['w342237-s1', 'w342239-s1']], groups: [['w342237-s1'], ['w342239-s1']] },
+  { lemma: '탐미하다', before: [['w342238-s1'], ['w342240-s1']], priorHeadGroups: [['w342238-s1', 'w342240-s1']], groups: [['w342238-s1'], ['w342240-s1']] },
+  { lemma: '툭탁', before: [['w346931-s1'], ['w347481-s1']], priorHeadGroups: [['w346931-s1', 'w347481-s1']], groups: [['w346931-s1'], ['w347481-s1']] },
+  { lemma: '툭탁하다', before: [['w347480-s1'], ['w517686-s1']], priorHeadGroups: [['w347480-s1', 'w517686-s1']], groups: [['w347480-s1'], ['w517686-s1']] },
+  { lemma: '툭탁툭탁', before: [['w347497-s1'], ['w517689-s1']], priorHeadGroups: [['w347497-s1', 'w517689-s1']], groups: [['w347497-s1'], ['w517689-s1']] },
+  { lemma: '툭탁툭탁하다', before: [['w347498-s1'], ['w517690-s1']], priorHeadGroups: [['w347498-s1', 'w517690-s1']], groups: [['w347498-s1'], ['w517690-s1']] },
 ];
 const reviewSenseIds = new Set(reviewCases.flatMap(({ groups }) => groups.flat()));
 const projectionProbeSenseIds = new Set([
@@ -55,6 +63,7 @@ const projectionProbeSenseIds = new Set([
   'w350643-s1', 'w350644-s1', 'w348611-s1', 'w495016-s1', 'w350261-s1', 'w515511-s1', 'w344145-s1', 'w492619-s1',
   'w341954-s1', 'w341956-s1', 'w341955-s1', 'w497023-s1', 'w517385-s1', 'w357670-s1',
   'w496829-s1', 'w344590-s1',
+  'w342237-s1', 'w342239-s1', 'w342238-s1', 'w342240-s1', 'w257330-s1', 'w473250-s1',
 ]);
 const meaningFiles = readdirSync(meaningDir).filter((file) => /^c17_\d+\.jsonl$/u.test(file)).sort();
 const rows = meaningFiles.flatMap((file) => readFileSync(path.join(meaningDir, file), 'utf8')
@@ -254,6 +263,20 @@ test('C17 applies naming-principle and distinct-identity boundaries with a one-l
   assert.deepEqual(letterMeaning.sense_ids, ['w497369-s1', 'w497369-s2'], 'the letter and its sound are one lexical identity');
   assert.equal(identitySourceGlossBySense.has('w497369-s1') && identitySourceGlossBySense.has('w497369-s2'), true, 'positive-control source senses exist');
 
+  const sturdy = rowsByLemma.get('탄탄하다') ?? [];
+  const flatRoad = sturdy.find((row) => row.sense_ids.includes('w496633-s1'));
+  const solid = sturdy.find((row) => row.sense_ids.includes('w346529-s1'));
+  const sturdyAdverb = rowsByLemma.get('탄탄히') ?? [];
+  const flatRoadAdverb = sturdyAdverb.find((row) => row.sense_ids.includes('w346531-s1'));
+  const solidAdverb = sturdyAdverb.find((row) => row.sense_ids.includes('w496632-s1'));
+  assert.ok(flatRoad && solid && flatRoadAdverb && solidAdverb, '탄탄 adjective and adverb identity groups are present');
+  assert.ok(solid.sense_ids.includes('w346529-s2'), 'the physical-sturdiness to organizational-stability positive control stays merged');
+  assert.ok(flatRoad.sense_ids.includes('w496633-s2'), 'the flat-road to smooth-future positive control stays merged');
+  assert.ok(solidAdverb.sense_ids.includes('w496632-s2'), 'the sturdy to organizational-stability adverb positive control stays merged');
+  assert.ok(flatRoadAdverb.sense_ids.includes('w346531-s2'), 'the flat-road to smooth-future adverb positive control stays merged');
+  assert.notEqual(solid.id, flatRoad.id, 'physical solidity and level terrain have separate adjective identities');
+  assert.notEqual(solidAdverb.id, flatRoadAdverb.id, 'solidity and level terrain have separate adverb identities');
+
   const spec = JSON.parse(readFileSync(path.join(root, 'scripts/meaning/issue-764-c17.json'), 'utf8'));
   for (const { lemma, before, priorHeadGroups, groups } of reviewCases) {
     const edit = spec.repartitions.find((item) => item.lemma === lemma);
@@ -386,6 +409,36 @@ test('C17 applies naming-principle and distinct-identity boundaries with a one-l
   assert.ok(!greedyProjection.relations.some((relation) => relation.source_meaning_id === greedyActMeaning.id
     || relation.target_meaning_id === greedyActMeaning.id),
   '탐관 direct never leaks onto 탐리 “이익을 탐냄”');
+
+  const tasteNoun = (rowsByLemma.get('탐미') ?? []).find((row) => row.sense_ids.includes('w342237-s1'));
+  const beautyNoun = (rowsByLemma.get('탐미') ?? []).find((row) => row.sense_ids.includes('w342239-s1'));
+  const tasteVerb = (rowsByLemma.get('탐미하다') ?? []).find((row) => row.sense_ids.includes('w342238-s1'));
+  const beautyVerb = (rowsByLemma.get('탐미하다') ?? []).find((row) => row.sense_ids.includes('w342240-s1'));
+  const beautyNounSynonym = [...projectionTargetRows.values()].find((row) => row.sense_ids.includes('w257330-s1'));
+  const beautyVerbSynonym = [...projectionTargetRows.values()].find((row) => row.sense_ids.includes('w473250-s1'));
+  const beautyRecords = ['w342239', 'w342240', 'w257330', 'w473250'].map((id) => projectionSourceRecords.get(id));
+  assert.ok(tasteNoun && beautyNoun && tasteVerb && beautyVerb && beautyNounSynonym && beautyVerbSynonym
+    && beautyRecords.every(Boolean), '탐미 taste/beauty and 유미 source-bound relation endpoints are present');
+  assert.notEqual(tasteNoun.id, beautyNoun.id, 'taste and beauty noun identities stay separate');
+  assert.notEqual(tasteVerb.id, beautyVerb.id, 'taste and beauty verb identities stay separate');
+  const beautyProjection = projectMeaningRelations({ records: beautyRecords, meanings: projectionMeanings });
+  for (const { sourceSense, targetSense, sourceMeaning, targetMeaning } of [
+    { sourceSense: 'w342239-s1', targetSense: 'w257330-s1', sourceMeaning: beautyNoun, targetMeaning: beautyNounSynonym },
+    { sourceSense: 'w257330-s1', targetSense: 'w342239-s1', sourceMeaning: beautyNounSynonym, targetMeaning: beautyNoun },
+    { sourceSense: 'w342240-s1', targetSense: 'w473250-s1', sourceMeaning: beautyVerb, targetMeaning: beautyVerbSynonym },
+    { sourceSense: 'w473250-s1', targetSense: 'w342240-s1', sourceMeaning: beautyVerbSynonym, targetMeaning: beautyVerb },
+  ]) {
+    const matching = beautyProjection.relations.filter((relation) => relation.type === 'direct'
+      && relation.source_meaning_id === sourceMeaning.id && relation.target_meaning_id === targetMeaning.id
+      && relation.sources.some((source) => source.source_sense_id === sourceSense));
+    assert.equal(matching.length, 1, `${sourceSense} ↔ ${targetSense}: canonical beauty direct relation projects in both directions`);
+    assert.deepEqual(matching[0].sources.map((source) => source.source_sense_id), [sourceSense],
+      `${sourceSense}: beauty direct relation keeps its original source-sense provenance`);
+    assert.ok(targetMeaning.sense_ids.includes(targetSense), `${targetSense}: beauty relation remains bound to its target Meaning`);
+  }
+  const tasteMeaningIds = new Set([tasteNoun.id, tasteVerb.id]);
+  assert.ok(!beautyProjection.relations.some((relation) => tasteMeaningIds.has(relation.source_meaning_id)
+    || tasteMeaningIds.has(relation.target_meaning_id)), '유미/유미하다 direct relations never leak onto taste-only Meaning identities');
 
   for (const { lemma, source, coGrouped, target } of [
     { lemma: '통발', source: 'w344145-s1', coGrouped: 'w492619-s1', target: 'w228082-s1' },
