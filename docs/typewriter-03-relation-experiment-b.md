@@ -117,7 +117,7 @@ The exact cohort senses were checked in committed `data/canonical/` records. Sen
 | 과거 | w398310 | w398310-s1 | B / scene-first | 유생 | w466040-s1 | association | 4 | keep | A scholar preparing to enter the examination scene. | — |
 | 과거 | w398310 | w398310-s1 | B / scene-first | 답안지 | w78919-s1 | scene | 3 | keep | A concrete object used during the examination. | — |
 | 과거 | w398310 | w398310-s1 | B / scene-first | 문과 | w424599-s1 | association | 3 | keep | A specific examination track within the historical system. | — |
-| 과거 | w398310 | w398310-s1 | B / scene-first | 급제 | w401322-s2 | association | 3 | keep | Passing the historical examination is a distinct outcome associated with the examination system. The source's official `direct` target `과제` (`w31981-s2`) is the examination system; `급제` (`w401322-s2`) means passing it. |
+| 과거 | w398310 | w398310-s1 | B / scene-first | 급제 | w401322-s2 | association | 3 | keep | Passing the historical examination is a distinct outcome associated with the examination system. The source's official `direct` target `과제` (`w31981-s2`) is the examination system; `급제` (`w401322-s2`) means passing it. | — |
 | 과거 | w398310 | w398310-s1 | B / scene-first | 시험장 | w447105-s1 | scene | 3 | keep | The examination setting is a direct scene path. | — |
 | 과거 | w398310 | w398310-s1 | B / scene-first | 급제자 명단 | null | scene | 5 | keep | A plain-text scene target for the later result-search moment. | — |
 
@@ -132,10 +132,10 @@ The exact cohort senses were checked in committed `data/canonical/` records. Sen
 | 흐르다 | 6 | 6 | 0 | 0 | 6 | 0 |
 | 기다리다 | 5 | 5 | 0 | 0 | 3 | 2 |
 | 번지다 | 5 | 5 | 0 | 0 | 4 | 1 |
-| 과거 (科擧) | 6 | 6 | 0 | 0 | 6 | 0 |
-| **Total** | **43** | **43** | **0** | **0** | **36** | **7** |
+| 과거 (科擧) | 6 | 6 | 0 | 0 | 5 | 1 |
+| **Total** | **43** | **43** | **0** | **0** | **35** | **8** |
 
-These are producer-only provisional judgments, not an independent quality score or a claim that all 43 relations should enter the product. No generated row was found to repeat a source-sense `direct` relation. In particular, `급제` is associated with the examination-system sense but is not a duplicate of the source's `direct` target `과제` (`w31981-s2`); the `급제` target's own direct relation is to the distinct passing-the-examination sense `과제` (`w31981-s1`). The exact-meaning audit resolved all 36 ID targets; seven phrases remain text-only. The two `과거` senses were kept separate, and only the 科擧 sense was used.
+These are producer-only provisional judgments, not an independent quality score or a claim that all 43 relations should enter the product. No generated row was found to repeat a source-sense `direct` relation. In particular, `급제` is associated with the examination-system sense but is not a duplicate of the source's `direct` target `과제` (`w31981-s2`); the `급제` target's own direct relation is to the distinct passing-the-examination sense `과제` (`w31981-s1`). The exact-meaning audit resolved all 35 ID targets; eight phrases remain text-only. The two `과거` senses were kept separate, and only the 科擧 sense was used.
 
 Quality notes: no within-source duplicate candidate remained; no candidate used a wrong homograph after inspection; one close synonym-candidate expression was placed in association Tier 1 for each of `나그네`, `문턱`, and `번지다`; scene and sensory candidates were retained where the imagined situation gave a clear writer path. The `그리움` → `사무치다` and `그리움` → `허전하다` judgments are context-sensitive and especially suitable for independent review. No quota was applied; each source yielded five or six of the permitted maximum eight.
 
