@@ -128,3 +128,36 @@ export const MEANING_SOURCE_INTEGRITY_QUERIES = Object.freeze({
         WHERE source.source_sense_id = original.source_sense_id
           AND source.source_position = original.position)`,
 });
+
+/**
+ * Canonical-only product coverage (Issue #822), run on the Full database of the official canonical build: every source
+ * sense is a member of exactly one meaning, that meaning is its own record's (`wN -> mN`), and there is exactly one
+ * meaning per record that has senses. An empty or partial meaning layer fails here, which the member-to-source checks
+ * above cannot see. Each query counts violations and must return 0.
+ */
+export const RECORD_MEANING_COVERAGE_QUERIES = Object.freeze({
+  sense_without_exactly_one_own_record_member: `
+    SELECT COUNT(*) FROM senses
+    WHERE (SELECT COUNT(*) FROM meaning_members WHERE meaning_members.sense_id = senses.id) <> 1
+       OR NOT EXISTS (
+         SELECT 1 FROM meaning_members INNER JOIN meanings ON meanings.id = meaning_members.meaning_id
+         WHERE meaning_members.sense_id = senses.id AND meanings.record_id = senses.record_id
+           AND meanings.id = 'm' || substr(senses.record_id, 2))`,
+  meaning_not_of_one_record: `
+    SELECT COUNT(*) FROM meanings
+    WHERE id <> 'm' || substr(record_id, 2)
+       OR EXISTS (SELECT 1 FROM meaning_members WHERE meaning_members.meaning_id = meanings.id
+                  AND meaning_members.record_id <> meanings.record_id)
+       OR NOT EXISTS (SELECT 1 FROM senses WHERE senses.record_id = meanings.record_id)`,
+  record_with_senses_without_meaning: `
+    SELECT COUNT(*) FROM records
+    WHERE EXISTS (SELECT 1 FROM senses WHERE senses.record_id = records.id)
+      AND NOT EXISTS (SELECT 1 FROM meanings WHERE meanings.record_id = records.id)`,
+});
+
+export function assertRecordMeaningCoverage(database, fail) {
+  for (const [name, sql] of Object.entries(RECORD_MEANING_COVERAGE_QUERIES)) {
+    const violations = Number(Object.values(database.prepare(sql).get())[0]);
+    if (violations !== 0) fail(name, violations);
+  }
+}

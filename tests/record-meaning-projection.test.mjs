@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
+import { DatabaseSync } from 'node:sqlite';
 
 import {
   actualRelationProvenance,
@@ -10,6 +14,7 @@ import {
   recordMeaningId,
 } from '../scripts/build/record-meanings.mjs';
 import { buildDictionary } from '../scripts/build/dictionary.mjs';
+import { RECORD_MEANING_COVERAGE_QUERIES } from '../scripts/build/meaning-source-checks.mjs';
 
 const rel = (target_sense, type = 'direct', note = 'n') => ({ target: target_sense.split('-')[0], target_sense, type, note });
 const rec = (id, lemma, senses) => ({
@@ -82,5 +87,61 @@ test('removed legacy build options are rejected, never silently ignored', async 
       (error) => error.code === 'REMOVED_OPTION',
       option,
     );
+  }
+});
+
+test('official canonical build refuses to opt out of the record meaning projection', async () => {
+  await assert.rejects(
+    buildDictionary({ outputPath: path.join(tmpdir(), 'typewriter-never-built.sqlite'), recordMeanings: false }),
+    (error) => error.code === 'RECORD_MEANINGS_REQUIRED',
+  );
+});
+
+const entry = (id, lemma, glosses) => ({
+  id, record_type: 'entry', role: 'start', candidate_id: id, lemma, search_forms: [lemma], source: 'stdict',
+  senses: glosses.map((gloss, index) => ({ id: `${id}-s${index + 1}`, pos: 'noun', gloss })),
+});
+
+function coverageViolations(database) {
+  return Object.fromEntries(Object.entries(RECORD_MEANING_COVERAGE_QUERIES)
+    .map(([name, sql]) => [name, Number(Object.values(database.prepare(sql).get())[0])])
+    .filter(([, count]) => count !== 0));
+}
+
+test('record meaning coverage queries: complete layer passes; empty, partial and mis-attributed layers fail', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'typewriter-coverage-'));
+  try {
+    const canonicalDirectory = path.join(directory, 'canonical');
+    await mkdir(canonicalDirectory);
+    const records = [entry('w001', '가', ['하나.', '둘.']), entry('w002', '가', ['셋.']), entry('w003', '나', ['넷.'])];
+    await writeFile(path.join(canonicalDirectory, 'part.jsonl'), `${records.map((item) => JSON.stringify(item)).join('\n')}\n`);
+    const mutations = [
+      ['valid layer', () => {}, {}],
+      ['empty layer', (db) => db.exec('DELETE FROM meaning_relation_sources; DELETE FROM meaning_relations; DELETE FROM meaning_members; DELETE FROM meanings;'),
+        { sense_without_exactly_one_own_record_member: 4, record_with_senses_without_meaning: 3 }],
+      ['one sense missing from its meaning', (db) => db.exec("DELETE FROM meaning_members WHERE sense_id = 'w001-s2'"),
+        { sense_without_exactly_one_own_record_member: 1 }],
+      ['sense attributed to another record meaning', (db) => db.exec("UPDATE meaning_members SET meaning_id = 'm002', record_id = 'w002' WHERE sense_id = 'w001-s2'"),
+        { sense_without_exactly_one_own_record_member: 1, meaning_not_of_one_record: 0 }],
+      ['record without meaning', (db) => db.exec("DELETE FROM meaning_members WHERE meaning_id = 'm003'; DELETE FROM meanings WHERE id = 'm003'"),
+        { sense_without_exactly_one_own_record_member: 1, record_with_senses_without_meaning: 1 }],
+    ];
+    for (const [name, mutate, expected] of mutations) {
+      const outputPath = path.join(directory, `${name.replaceAll(' ', '-')}.sqlite`);
+      await buildDictionary({ inputDirectory: canonicalDirectory, outputPath, allowDirty: true, recordMeanings: true });
+      const database = new DatabaseSync(outputPath);
+      try {
+        database.exec('PRAGMA foreign_keys = OFF');
+        mutate(database);
+        const actual = coverageViolations(database);
+        if (Object.keys(expected).length === 0) assert.deepEqual(actual, {}, name);
+        else for (const key of Object.keys(expected)) assert.ok(actual[key] > 0 || expected[key] === 0, `${name}: ${key} ${JSON.stringify(actual)}`);
+        if (Object.keys(expected).length > 0) assert.notDeepEqual(actual, {}, name);
+      } finally {
+        database.close();
+      }
+    }
+  } finally {
+    await rm(directory, { recursive: true, force: true });
   }
 });

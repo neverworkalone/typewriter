@@ -12,7 +12,7 @@ selected candidate. The product (Lite) database ships no part of speech; the sou
 
 Source of truth in code: `scripts/build/record-meanings.mjs` (`wN -> mN` ids, `projectRecordMeanings`,
 `projectMeaningRelations`, and the test oracle for relation provenance). `buildDictionary` takes no meaning input;
-the former `meaningsDirectory` / `adjudicationDirectory` options are rejected with `REMOVED_OPTION`. The removed
+the former `meaningsDirectory` / `adjudicationDirectory` options are rejected with `REMOVED_OPTION`, and the official canonical input rejects `recordMeanings: false` (`RECORD_MEANINGS_REQUIRED`). The projected Full database is checked by `RECORD_MEANING_COVERAGE_QUERIES` (every sense in exactly one meaning of its own record, one meaning per record with senses), at build time and in the shared-artifact validation of the official corpus. The removed
 `data/meanings/`, `data/adjudication/` and `scripts/meaning/` editing layer is inventoried in
 [`legacy-meaning-removal-issue-822.md`](legacy-meaning-removal-issue-822.md); [`canonical-only-db-issue-820.md`](canonical-only-db-issue-820.md)
 records the transition audit.

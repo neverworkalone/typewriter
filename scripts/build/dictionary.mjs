@@ -17,7 +17,7 @@ import {
   resolveBuildProvenance,
 } from './provenance.mjs';
 import { SQLITE_SCHEMA_SQL, SQLITE_SCHEMA_VERSION, SQLITE_SOURCE_SCHEMA_SQL } from './sqlite-schema.mjs';
-import { MEANING_SOURCE_INTEGRITY_QUERIES } from './meaning-source-checks.mjs';
+import { MEANING_SOURCE_INTEGRITY_QUERIES, assertRecordMeaningCoverage } from './meaning-source-checks.mjs';
 import { compareMeaningRank, countMeaningRelations } from '../../src/runtime/meaning-ranking.js';
 import { parseMeaningId, projectMeaningRelations, projectRecordMeanings } from './record-meanings.mjs';
 import {
@@ -43,14 +43,24 @@ export const DEFAULT_DICTIONARY_OUTPUT = path.resolve(
  * holding all of its senses). Fixture inputs (non-`w<number>` record ids) get an empty layer unless `recordMeanings`
  * asks for the projection.
  */
+function assertRecordMeaningsNotDisabled(inputDirectory, recordMeanings) {
+  if (recordMeanings === false && path.resolve(inputDirectory) === path.resolve(DEFAULT_CANONICAL_DIRECTORY)) {
+    throw new BuildError(
+      'the official canonical build always projects record meanings; recordMeanings: false is not allowed',
+      'RECORD_MEANINGS_REQUIRED',
+    );
+  }
+}
+
 function loadMeaningLayer({ model, inputDirectory, recordMeanings }) {
   const isDefault = path.resolve(inputDirectory) === path.resolve(DEFAULT_CANONICAL_DIRECTORY);
+  assertRecordMeaningsNotDisabled(inputDirectory, recordMeanings);
   if (!(recordMeanings ?? isDefault)) {
-    return { meanings: [], relations: [], stats: projectMeaningRelations({ records: [], meanings: [] }).stats };
+    return { projected: false, meanings: [], relations: [], stats: projectMeaningRelations({ records: [], meanings: [] }).stats };
   }
   const meanings = projectRecordMeanings(model.records);
   const projection = projectMeaningRelations({ records: model.records, meanings });
-  return { meanings, relations: projection.relations, stats: projection.stats };
+  return { projected: true, meanings, relations: projection.relations, stats: projection.stats };
 }
 
 const REMOVED_OPTIONS = ['meaningsDirectory', 'adjudicationDirectory'];
@@ -382,6 +392,7 @@ export async function buildDictionary({
   }
   const resolvedOutputPath = path.resolve(outputPath);
   assertOutputIsGeneratedOutsideCanonical(inputDirectory, resolvedOutputPath);
+  assertRecordMeaningsNotDisabled(inputDirectory, recordMeanings);
 
   const context = canonicalContext ?? await loadCanonicalContext({
     directory: inputDirectory,
@@ -446,6 +457,11 @@ export async function buildDictionary({
     insertModel(database, model, generatedMetadata, surfaceFormProjection.rows, meaningLayer);
     database.exec('COMMIT;');
     verifyDatabase(database, { includeSource: true });
+    if (meaningLayer.projected) {
+      assertRecordMeaningCoverage(database, (name, count) => {
+        throw new BuildError(`record meaning coverage check ${name} found ${count} violation(s)`, 'RECORD_MEANING_COVERAGE');
+      });
+    }
   } catch (error) {
     if (database) {
       try {
