@@ -132,6 +132,7 @@ describe('DictionaryResult 뜻풀이 더보기', () => {
   it('shows three of four or more, expands to every definition in order and collapses again', async () => {
     const host = mount(withGlosses(39));
     expect(shown(host)).toEqual(['1. 뜻1', '2. 뜻2', '3. 뜻3']);
+    expect(toggle(host).textContent).toBe('뜻풀이 더보기 (36)');
     toggle(host).click();
     await nextTick();
     expect(shown(host)).toHaveLength(39);
