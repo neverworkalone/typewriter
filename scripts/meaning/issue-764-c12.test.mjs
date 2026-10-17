@@ -183,23 +183,29 @@ test('cross-record merges are limited to lemmas with a documented identity basis
   assert.deepEqual([...lemmas].filter((lemma) => !allowedCrossRecord.has(lemma)).sort(), []);
 });
 
-// 감사 문서의 '같은 record 분리' 추적 목록이 spec 및 산출물과 맞아야 한다.
-test('audit same-record split ledger matches the spec and the shards', () => {
-  const section = audit.split('## 한계와 미검토 범위')[1];
-  const read = (label) => {
-    const line = section.split('\n').find((row) => row.includes(label));
-    assert.ok(line, `audit line missing: ${label}`);
-    return line.split(': ').slice(1).join(': ').split(', ').map((x) => x.trim()).filter(Boolean);
-  };
-  const withRep = read('spec `repartitions`에 기록된 분리');
-  const baseKept = read('base에서 이미 sense별로 분리돼 있어');
+// 감사 문서의 '같은 record 분리 결정' 절은 저장소의 결정 표와 정확히 일치하고, 표의 모든 항목이 spec·산출물과 맞아야 한다.
+const splitTable = JSON.parse(readFileSync(path.join(root, 'scripts/meaning/issue-764-c12-same-record-splits.json'), 'utf8'));
+test('audit same-record split ledger equals the decision table', () => {
+  const section = audit.split('## 같은 record 분리 결정')[1].split('## 한계와 미검토 범위')[0];
+  const listed = section.split('\n').filter((row) => row.startsWith('- **'));
+  const expected = splitTable.map((e) => `- **${e.lemma}** (${e.source === 'spec' ? 'spec repartition' : 'base 유지'}): ${e.groups.map((g) => g.join(', ')).join(' ≠ ')}${e.rest.length ? ` ≠ 나머지 ${e.rest.join(', ')}` : ''}`);
+  assert.deepEqual(listed, expected);
+});
+test('every same-record split in the decision table matches the spec and the shards', () => {
   const specLemmas = new Set(spec.repartitions.map((rep) => rep.lemma));
-  for (const lemma of withRep) assert.ok(specLemmas.has(lemma), `${lemma}: spec repartition expected`);
-  for (const lemma of baseKept) assert.ok(!specLemmas.has(lemma), `${lemma}: no spec repartition expected`);
-  assert.equal(new Set([...withRep, ...baseKept]).size, withRep.length + baseKept.length);
-  // 각 항목의 분리 sense는 실제 산출물에서 서로 다른 Meaning이어야 한다.
   const lemmaOf = new Map(rows.flatMap((row) => row.sense_ids.map((id) => [id, row.lemma])));
-  for (const [lemma, a, b] of separate.filter(([name]) => [...withRep, ...baseKept].includes(name))) {
-    if (lemmaOf.get(a) === lemma && lemmaOf.get(b) === lemma) assert.ok(!same(a, b), `${lemma}: ${a}/${b}`);
+  assert.equal(new Set(splitTable.map((e) => e.lemma)).size, splitTable.length);
+  for (const e of splitTable) {
+    assert.equal(specLemmas.has(e.lemma) ? 'spec' : 'base', e.source, `${e.lemma}: source`);
+    const parts = e.rest.length ? [...e.groups, e.rest] : [...e.groups]; // 나머지 sense는 한 Meaning으로 유지된다
+    for (const id of parts.flat()) assert.equal(lemmaOf.get(id), e.lemma, `${e.lemma}: ${id} belongs to the lemma`);
+    for (const group of parts) {
+      assert.ok(group.every((id) => meaningOf.get(id) === meaningOf.get(group[0])), `${e.lemma}: ${group} stay together`);
+    }
+    for (let i = 0; i < parts.length; i += 1) {
+      for (let j = i + 1; j < parts.length; j += 1) {
+        assert.ok(!same(parts[i][0], parts[j][0]), `${e.lemma}: ${parts[i][0]} and ${parts[j][0]} must not share a Meaning`);
+      }
+    }
   }
 });
