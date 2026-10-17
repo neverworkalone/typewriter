@@ -7,6 +7,7 @@ import { DatabaseSync } from 'node:sqlite';
 
 import { buildDictionary } from '../scripts/build/dictionary.mjs';
 import { MEANING_GLOSS_SEPARATOR, projectRecordMeanings, splitMeaningGloss } from '../scripts/build/record-meanings.mjs';
+import { homographLemmaIndex, productGloss } from '../scripts/build/gloss-homograph-reference.mjs';
 import { projectSearchResults } from '../src/domain/projection.js';
 import { expandExactSearchCandidates } from '../src/domain/exact-search-candidates.js';
 import { findRecordsBySearchTerm, getMeaningRecord } from '../src/runtime/sqlite-query.js';
@@ -62,6 +63,31 @@ function search(database, term) {
   return projectSearchResults(records, response.matches);
 }
 
+// Source and product differ only by deleted two-digit runs; each deletion directly follows a canonical headword inside a
+// ‘…’ quote or the gloss-initial `→ ` reference, and each deleted number is an actual (lemma, homograph_no) of the corpus.
+function productGlossOnlyDropsReferenceDigits(sources, products, evidence) {
+  if (sources.length !== products.length) return false;
+  return sources.every((source, index) => {
+    const product = products[index];
+    let i = 0;
+    let j = 0;
+    while (i < source.length) {
+      if (j < product.length && source[i] === product[j]) { i += 1; j += 1; continue; }
+      if (!/^\d{2}(?!\d)/u.test(source.slice(i))) return false;
+      const before = source.slice(0, i).match(/(-?[가-힣]+)$/u)?.[1];
+      const digits = source.slice(i, i + 2);
+      if (!before || !(evidence.has(`${before}\u0000${digits}`) || evidence.has(`${before.replace(/^-/u, '')}\u0000${digits}`))) return false;
+      // The number must end the reference token (end of span, or a group / sense number / hanja annotation).
+      if (!/^(?:$|[[「(’.])/u.test(source.slice(i + 2))) return false;
+      const open = source.lastIndexOf('‘', i);
+      const inQuote = open !== -1 && !source.slice(open, i).includes('’');
+      if (!inQuote && !source.startsWith('→ ')) return false;
+      i += 2;
+    }
+    return j === product.length;
+  });
+}
+
 test('projectRecordMeanings: table over valid and invalid record shapes', () => {
   const cases = [
     { name: 'single sense', record: entry('w7', 'ㄱ', [sense('w7', 1, '가.')]), id: 'm7', gloss: '가.', senseIds: ['w7-s1'] },
@@ -87,6 +113,7 @@ test('whole canonical corpus: every sense belongs to exactly one record meaning,
   for (const file of (await readdir(directory)).filter((name) => name.endsWith('.jsonl')).sort()) {
     for (const line of (await readFile(path.join(directory, file), 'utf8')).split('\n')) if (line) records.push(JSON.parse(line));
   }
+  const evidence = new Set(records.filter(({ homograph_no: no }) => Number.isInteger(no)).map(({ lemma, homograph_no: no }) => `${lemma}\u0000${String(no).padStart(2, '0')}`));
   const meanings = projectRecordMeanings(records);
   const withSenses = records.filter((item) => item.senses.length > 0);
   assert.equal(meanings.length, withSenses.length, 'one candidate per record');
@@ -98,7 +125,8 @@ test('whole canonical corpus: every sense belongs to exactly one record meaning,
     const source = withSenses[index];
     if (meaning.id !== `m${source.id.slice(1)}` || meaning.lemma !== source.lemma) violations += 1;
     if (meaning.sense_ids.join() !== source.senses.map(({ id }) => id).join()) violations += 1;
-    if (meaning.gloss !== source.senses.map(({ gloss }) => gloss).join(MEANING_GLOSS_SEPARATOR)) violations += 1;
+    // Independent oracle (Issue #797): the product gloss is the source gloss minus homograph digits and nothing else.
+    if (!productGlossOnlyDropsReferenceDigits(source.senses.map(({ gloss }) => gloss), splitMeaningGloss(meaning.gloss), evidence)) violations += 1;
     for (const senseId of meaning.sense_ids) {
       if (owner.has(senseId) || byRecord.get(`w${meaning.id.slice(1)}`) !== source) violations += 1;
       owner.set(senseId, meaning.id);
@@ -160,4 +188,47 @@ test('canonical-only build: candidates per record, all definitions inside one it
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
+});
+
+const homographEvidence = homographLemmaIndex([
+  ['슬슬', 2], ['이', 1], ['본가', 1], ['주다', 1], ['깨다', 1], ['까치발', 2], ['감잡이', 2], ['들', 8], ['지구', 8], ['리넨', 1], ['단독', null],
+].map(([lemma, homograph_no]) => ({ lemma, homograph_no })));
+const counters = () => ({ stripped: 0, unconfirmed: 0 });
+
+test('homograph reference numbers are removed from references only (Issue #797)', () => {
+  const cases = [
+    ['quoted reference', '모양. ‘슬슬02’보다 센 느낌을 준다.', '모양. ‘슬슬’보다 센 느낌을 준다.'],
+    ['quoted single-syllable headword', '‘이01’를 이르는 말.', '‘이’를 이르는 말.'],
+    ['sense number kept', '‘본가01「3」’의 높임.', '‘본가「3」’의 높임.'],
+    ['roman and bracket groups kept', '‘주다01[Ⅰ]「1」’의 / ‘깨다01[1]’의', '‘주다[Ⅰ]「1」’의 / ‘깨다[1]’의'],
+    ['hanja suffix kept', '‘리넨01(linen)’을', '‘리넨(linen)’을'],
+    ['affix headword', '명사에 ‘-들08’이 붙어', '명사에 ‘-들’이 붙어'],
+    ['several quoted references', '‘슬슬02’과 ‘이01’', '‘슬슬’과 ‘이’'],
+    ['arrow reference', '→ 까치발02.', '→ 까치발.'],
+    ['arrow reference with sense number', '→ 감잡이02「2」.', '→ 감잡이「2」.'],
+    ['arrow reference with group and hanja', '→ 지구08(地球).', '→ 지구(地球).'],
+    // valid-but-unusual / fail-closed controls: nothing here is a reference
+    ['year and unit numbers stay', '숙종34년(1708)에 영하102℃, 8분의12 박자', '숙종34년(1708)에 영하102℃, 8분의12 박자'],
+    ['ordinals stay', '제10대 왕, 제427조', '제10대 왕, 제427조'],
+    ['quoted non-headword stays', '‘제10대’를 이르는 말.', '‘제10대’를 이르는 말.'],
+    ['unquoted numbered word stays', '입원01과 퇴원01을 아울러', '입원01과 퇴원01을 아울러'],
+    ['latin and digit mixes stay', '‘M16’ 소총 (M16)', '‘M16’ 소총 (M16)'],
+    ['three-digit stays', '‘슬슬102’', '‘슬슬102’'],
+    ['arrow not at gloss start stays', '뜻. → 까치발02.', '뜻. → 까치발02.'],
+    ['unknown headword stays', '‘없는말02’을', '‘없는말02’을'],
+    ['known lemma, unknown number stays', '‘슬슬99’과 ‘슬슬00’과 ‘슬슬01’', '‘슬슬99’과 ‘슬슬00’과 ‘슬슬01’'],
+    ['lemma without homograph evidence stays', '‘단독01’을', '‘단독01’을'],
+    ['number followed by other text stays', '‘슬슬02형’과 ‘슬슬02 형’', '‘슬슬02형’과 ‘슬슬02 형’'],
+    ['arrow with unknown number or suffix stays', '→ 까치발99.', '→ 까치발99.'],
+    ['arrow number followed by text stays', '→ 까치발02형.', '→ 까치발02형.'],
+    ['mixed: only the confirmed number goes', '‘슬슬02’ ‘슬슬03’', '‘슬슬’ ‘슬슬03’'],
+    ['arrow without number', '→ 할머니_.', '→ 할머니_.'],
+  ];
+  for (const [name, source, expected] of cases) assert.equal(productGloss(source, homographEvidence), expected, name);
+});
+
+test('counters report stripped and unconfirmed references', () => {
+  const c = counters();
+  productGloss('‘슬슬02’ ‘슬슬99’ ‘없는말02’', homographEvidence, c);
+  assert.deepEqual(c, { stripped: 1, unconfirmed: 2 });
 });

@@ -1,11 +1,13 @@
 import { MEANING_RELATION_ORIGINS } from '../../src/runtime/dictionary-contract.js';
+import { homographLemmaIndex, productGloss } from './gloss-homograph-reference.mjs';
 
 /**
  * Canonical-only product meaning layer (Issues #820, #822). One STDICT record is one product meaning (the search
  * candidate), and every sense of that record is a member of it, in canonical order. Nothing is split, merged across
  * records, reworded or dropped; no separately maintained Meaning input exists.
  *
- * The meaning `gloss` carries the record's source glosses verbatim, one per line (`MEANING_GLOSS_SEPARATOR`), so the
+ * The meaning `gloss` carries the record's source glosses, one per line, with only the editorial homograph number of
+ * STDICT cross-references removed (`‘슬슬02’` -> `‘슬슬’`, see gloss-homograph-reference.mjs; Issue #797), one per line (`MEANING_GLOSS_SEPARATOR`), so the
  * shipped tables stay unchanged and the UI can show every definition inside the one selected item.
  */
 export const MEANING_GLOSS_SEPARATOR = '\n';
@@ -35,8 +37,10 @@ export const splitMeaningGloss = (gloss) => (typeof gloss === 'string' ? gloss.s
  * @returns {{ id: string, lemma: string, gloss: string, sense_ids: string[] }[]} one meaning per record with senses
  */
 export function projectRecordMeanings(records) {
+  const all = [...records];
+  const lemmas = homographLemmaIndex(all);
   const meanings = [];
-  for (const record of records) {
+  for (const record of all) {
     if (record.senses.length === 0) continue;
     for (const sense of record.senses) {
       if (typeof sense.gloss !== 'string' || sense.gloss === '' || sense.gloss.includes(MEANING_GLOSS_SEPARATOR)) {
@@ -46,7 +50,7 @@ export function projectRecordMeanings(records) {
     meanings.push({
       id: recordMeaningId(record.id),
       lemma: record.lemma,
-      gloss: record.senses.map((sense) => sense.gloss).join(MEANING_GLOSS_SEPARATOR),
+      gloss: record.senses.map((sense) => productGloss(sense.gloss, lemmas)).join(MEANING_GLOSS_SEPARATOR),
       sense_ids: record.senses.map((sense) => sense.id),
     });
   }

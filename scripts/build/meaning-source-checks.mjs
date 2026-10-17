@@ -103,6 +103,29 @@ export const MEANING_SOURCE_INTEGRITY_QUERIES = Object.freeze({
       ON relation.source_meaning_id = source.source_meaning_id
      AND relation.position = source.relation_position
     WHERE relation.origin <> '${MEANING_RELATION_ORIGINS.projection}'`,
+  // Derived relations (Issue #797): each carries its own provenance kind, never a fake original source position.
+  // Derived reverse relations (Issue #797) carry their own provenance kind, never a fake original source position.
+  reverse_relation_without_provenance: `
+    SELECT COUNT(*) FROM meaning_relations AS relation
+    WHERE relation.origin = '${MEANING_RELATION_ORIGINS.reverse}' AND NOT EXISTS (
+      SELECT 1 FROM meaning_relation_reverse_sources AS source
+      WHERE source.source_meaning_id = relation.source_meaning_id AND source.relation_position = relation.position)`,
+  // A reverse mirrors a forward \`direct\` that is itself not a reverse; note and relevance are inherited, never invented.
+  reverse_relation_mismatch: `
+    SELECT COUNT(*) FROM meaning_relation_reverse_sources AS source
+    INNER JOIN meaning_relations AS reverse
+      ON reverse.source_meaning_id = source.source_meaning_id AND reverse.position = source.relation_position
+    LEFT JOIN meaning_relations AS forward
+      ON forward.source_meaning_id = source.forward_source_meaning_id AND forward.position = source.forward_position
+    WHERE reverse.origin <> '${MEANING_RELATION_ORIGINS.reverse}'
+       OR reverse.type <> 'direct'
+       OR forward.source_meaning_id IS NULL
+       OR forward.type <> 'direct'
+       OR forward.origin = '${MEANING_RELATION_ORIGINS.reverse}'
+       OR forward.source_meaning_id <> reverse.target_meaning_id
+       OR forward.target_meaning_id <> reverse.source_meaning_id
+       OR forward.note IS NOT reverse.note
+       OR forward.relevance IS NOT reverse.relevance`,
   meaning_relation_source_mismatch: `
     SELECT COUNT(*) FROM meaning_relation_sources AS source
     INNER JOIN meaning_relations AS relation

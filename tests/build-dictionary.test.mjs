@@ -65,7 +65,8 @@ test('builds a read-only SQLite dictionary with representative lookups', async (
       assert.deepEqual(
         full.prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name").all().map(({ name }) => name),
         [
-          'generated_surface_forms', 'meaning_members', 'meaning_relation_sources', 'meaning_relations', 'meanings',
+          'generated_surface_forms', 'meaning_members', 'meaning_relation_reverse_sources',
+          'meaning_relation_sources', 'meaning_relations', 'meanings',
           'metadata', 'records', 'relations', 'search_forms', 'sense_adjudications', 'senses',
         ],
       );
@@ -272,8 +273,9 @@ test('builds the canonical-only meaning layer and projected meaning relations wi
       recordMeanings: true,
     });
     assert.equal(summary.meaningCount, 6);
-    assert.equal(summary.meaningRelationCount, 3);
-    assert.equal(summary.metadata.meaning_relation_count, '3');
+    // 3 original direct/antonym projections plus the derived reverse of each verified direct (Issue #797).
+    assert.equal(summary.meaningRelationCount, 4);
+    assert.equal(summary.metadata.meaning_relation_count, '4');
     assert.equal(summary.metadata.meaning_projection_source_relation_count, '3');
 
     const litePath = path.join(path.dirname(outputPath), 'lite.sqlite');
@@ -282,9 +284,9 @@ test('builds the canonical-only meaning layer and projected meaning relations wi
     try {
       assert.equal(countRows(database, 'meanings'), 6);
       assert.equal(countRows(database, 'meaning_members'), 7);
-      assert.equal(countRows(database, 'meaning_relations'), 3);
+      assert.equal(countRows(database, 'meaning_relations'), 4);
       assert.deepEqual(
-        database.prepare("SELECT name FROM sqlite_master WHERE name IN ('senses', 'relations', 'meaning_relation_sources')").all(),
+        database.prepare("SELECT name FROM sqlite_master WHERE name IN ('senses', 'relations', 'meaning_relation_sources', 'meaning_relation_reverse_sources')").all(),
         [],
       );
       assert.deepEqual(
@@ -298,7 +300,7 @@ test('builds the canonical-only meaning layer and projected meaning relations wi
       const relations = getMeaningRelations(database, 'm001');
       assert.ok(relations.length > 0);
       for (const relation of relations) {
-        assert.equal(relation.origin, 'stdict-sense-projection');
+        assert.ok(['stdict-sense-projection', 'direct-reverse-projection'].includes(relation.origin), relation.origin);
         assert.equal(relation.sources, undefined);
       }
       // The only ordering metadata is the source homograph number; the record owner is derived from the ID.

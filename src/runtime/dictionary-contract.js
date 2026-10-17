@@ -1,16 +1,22 @@
 export const DICTIONARY_VERSION = 'm2-pilot-1';
-export const SQLITE_SCHEMA_VERSION = '8';
+export const SQLITE_SCHEMA_VERSION = '9';
 
 export const MEANING_RELATION_ORIGINS = Object.freeze({
   projection: 'stdict-sense-projection',
   authored: 'typewriter-authored',
+  reverse: 'direct-reverse-projection',
 });
 
 /**
  * STDICT source tables that back build-time verification only. The product database must not ship them: users see
  * Typewriter meanings and meaning relations, and the source layer would only add size.
  */
-export const BUILD_ONLY_TABLES = Object.freeze(['senses', 'relations', 'meaning_relation_sources']);
+export const BUILD_ONLY_TABLES = Object.freeze([
+  'senses',
+  'relations',
+  'meaning_relation_sources',
+  'meaning_relation_reverse_sources',
+]);
 
 /**
  * Metadata key that identifies the purpose of a dictionary database. `full` is the development/verification database
@@ -45,4 +51,12 @@ export const MEANING_INTEGRITY_QUERIES = Object.freeze({
   meaning_record_mismatch: `
     SELECT COUNT(*) FROM meanings AS meaning
     WHERE meaning.record_id <> 'w' || substr(meaning.id, 2, instr(meaning.id || '_', '_') - 2)`,
+  // A verified `direct` is shown in both directions (Issue #797); the reverse is a derived row, but it must exist.
+  direct_relation_without_reverse: `
+    SELECT COUNT(*) FROM meaning_relations AS relation
+    WHERE relation.type = 'direct' AND NOT EXISTS (
+      SELECT 1 FROM meaning_relations AS reverse
+      WHERE reverse.source_meaning_id = relation.target_meaning_id
+        AND reverse.target_meaning_id = relation.source_meaning_id
+        AND reverse.type = 'direct')`,
 });
