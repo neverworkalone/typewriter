@@ -1,8 +1,6 @@
-# Canonical JSONL validator
+# Canonical and product validation
 
-## Requirements
-
-Node.js 18 or newer. The validator has no third-party runtime dependencies.
+The approved editable dictionary source is `data/canonical/*.jsonl`. The product pipeline validates those records, builds Full SQLite, projects the Lite extension database, and packages the runtime assets. Canonical records and their source-bound sense order remain the authority; the build does not read the retired Meaning editing shards.
 
 ## Commands
 
@@ -11,91 +9,13 @@ From the repository root:
 ```sh
 node scripts/validate/canonical-jsonl.mjs
 node scripts/validate/dataset-integrity.mjs
-node scripts/validate/lexical-quality.mjs
-node scripts/validate/semantic-audit.mjs
-node --test tests/validate-canonical-jsonl.test.mjs
-node --test tests/validate-dataset-integrity.test.mjs
-node --test tests/lexical-quality.test.mjs
-pnpm run ci:fast
+node scripts/validate/surface-form-projection.mjs
 pnpm run ci:normal
-pnpm run ci:all
+pnpm run ci:deep
 ```
 
-The validator scans only `data/canonical/` and its `.jsonl` files. It does not scan
-drafts, external references, generated output, or test fixtures during the normal
-command. A missing canonical directory is an initial empty state: the command exits
-successfully and reports that it validated zero files and records; this is not a
-claim that the dictionary is complete.
+`ci:normal` runs the complete current Canonical audit, one current-revision SQLite build, applicable relation checks, product tests/builds, and artifact validation. `ci:deep` runs the registered current-system reproducibility checks; `ci:all` runs Normal before Deep. Pull requests run Normal except documentation-only changes, with affected Deep checks added through `ci:pr`.
 
-It validates UTF-8 decoding, JSON parsing, and the row-level shape in
-`schema/canonical-record.schema.json`. Each non-empty line must contain one current
-Editorial Model v1 record. A single final newline is allowed, while blank rows and
-schema errors are rejected with the file path and 1-based line number. Cross-record
-references, relation ownership, dataset completeness, normalization, and SQLite
-building are handled by later M2 commands.
+The canonical validator checks UTF-8, JSON parsing, and the row schema. Dataset integrity checks current record/sense identity and source-bound references. Surface-form validation checks the current projection and search path. Build and package checks protect the Full-to-Lite projection, deterministic metadata, relation targets, offline runtime, and product boundary.
 
-`lexical-quality.mjs` is the shared dictionary-wide semantic gate. It audits the
-complete canonical directory and the same prospective canonical set used by
-reviewed batch importers. It covers expression/POS shape, placeholder glosses,
-and writer-domain sense boundaries. The semantic-audit v3 contract separates
-deterministic content coverage from authored semantic decisions. The durable
-`data/validation/canonical-semantic-decision-source.json` contains the authored
-decision source (a manifest plus size-guided shards in
-`data/validation/canonical-semantic-decision-source.shards/`, read and written
-through `scripts/lib/sharded-json.mjs`), while the current coverage, review, and audit envelope are
-rebuilt deterministically in memory for each validation. Historical audit
-envelopes remain tracked where an immutable replay contract binds their exact
-bytes. Admission consumes the authored decision source and a matching in-memory
-envelope; it never manufactures semantic decisions from the records it is
-admitting. A batch may add scope, reserve, timing, or authorization rules, but
-it cannot bypass this common audit or introduce a batch/ID allowlist.
-Candidate-producing workflows additionally use the batch-neutral
-`scripts/batch/lexical-production.mjs` contract for complete candidate coverage,
-source-bound semantic review, and selection.
-
-## Shared CI context
-
-The CI runner creates one fresh `canonical-context-v1` session for the current
-canonical revision. The session loads and schema-validates canonical JSONL once,
-then shares record/sense/candidate/relation indexes, semantic topic evidence,
-and the lexical audit report as the same in-process context object. Production
-canonical gates run in that process; fixture and unit tests remain isolated
-subprocesses and do not inherit the context transport. A context artifact, when
-used by an external caller, is bound to the canonical directory and revision.
-External context consumers must provide the expected digest in
-`TYPEWRITER_CANONICAL_REVISION`; an unbound context is rejected.
-The global canonical audit remains mandatory; a changed-only check cannot
-replace it.
-
-The public CI levels are nested:
-
-- `ci:fast`: canonical, lexical, and toolchain gates for early pull-request
-  feedback, including the complete global audit and one SQLite build.
-- `ci:normal`: `ci:fast` plus current batch, product, and artifact gates.
-- `ci:all`: `ci:normal` plus independent current-revision SQLite
-  reproducibility over the complete Canonical corpus.
-
-Pull requests run one `ci:normal` process. It emits a `ci:fast` checkpoint
-after the canonical, lexical, and toolchain categories, then continues with
-the remaining normal categories in the same canonical session. This preserves
-the full merge coverage without rerunning the fast work in a second process.
-Master pushes run `ci:normal`; scheduled and manually dispatched runs run
-`ci:all`. Each final level emits `ci-run-evidence-v1`; the nested checkpoint
-emits `ci-run-checkpoint-v1`. Both include wall-clock time, canonical revision,
-scan and SQLite-build metrics, context transport counts, and peak RSS for the
-runner plus its isolated child processes.
-
-The toolchain stage builds SQLite once after the global audit and passes the
-same temporary database to schema, fidelity, query verification, search
-regressions, and the product extension build. The product build copies that
-exact current-revision artifact instead of rebuilding the canonical directory.
-The two-independent-build reproducibility check is intentionally moved to
-the deep portion of `pnpm run ci:all`, which is the manual/scheduled
-deep-validation path. The full M5-12A admission/preflight replay is also deep
-validation; normal CI retains the shared global audit and promoted-canonical
-regressions without replaying admission-time product/package work.
-
-Historical Wave A/Wave B replay is also reserved for the deep/manual level. The
-normal path retains the batch contracts and current-canonical regressions that
-protect merge correctness, while expensive historical/admission replay remains
-available in `ci:deep` and `ci:all`.
+Tests are registered only for durable current product or data/build contracts. See [`docs/review-toolchain.md`](../../docs/review-toolchain.md) for the threshold and [`docs/test-inventory-823.md`](../../docs/test-inventory-823.md) for the file-by-file audit. A one-off check of a UI style or implementation choice is performed for that change and does not become an automatic CI test.

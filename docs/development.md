@@ -165,185 +165,64 @@ external responses, generated databases, or credential files.
 
 ## Local validation
 
-Run validation, normalization, build, and reproducibility checks before opening or
-updating a pull request:
+The CI registry is the source of truth for automatic tests. Use a focused test
+while editing its contract, then run the relevant registered gate from a clean
+checkout before opening or updating a pull request:
 
 ```sh
-node scripts/validate/canonical-jsonl.mjs
-node scripts/validate/dataset-integrity.mjs
 node --test tests/validate-canonical-jsonl.test.mjs
 node --test tests/validate-dataset-integrity.test.mjs
-node scripts/normalize/canonical.mjs
 node --test tests/normalize-canonical.test.mjs
-node scripts/build/dictionary.mjs
 node --test tests/build-dictionary.test.mjs
-node --test tests/reproducibility.test.mjs
+pnpm run ci:normal
 ```
 
-For the complete CI-equivalent sequence, use `pnpm run ci:all` from a clean
-checkout. Focused work can run one responsibility at a time with
-`pnpm run ci:category <category>`; the category runner replaces the old full
-CI test glob and keeps each test file in one declared ownership group.
+`ci:normal` requires an empty worktree and builds the current Canonical revision
+once. `pnpm run ci:all` runs Normal plus the current-system Deep checks, including
+the Full/Lite reproducibility audit. `pnpm run ci:deep` runs those Deep checks on
+the current source. The exact registered files and their callers are listed in
+[`test-inventory-823.md`](test-inventory-823.md).
 
-The one-command M2 audit runs the schema and dataset checks, normalization, two
-logical reproducibility builds, representative queries, and metadata comparisons.
-Use `--allow-dirty` only while developing in a dirty worktree:
-
-```sh
-node scripts/verify/m2-pipeline.mjs --allow-dirty
-```
-
-The default SQLite build requires a clean Git worktree. While developing locally,
-`node scripts/build/dictionary.mjs --allow-dirty` is an explicit non-reproducible
-escape hatch; CI always builds from a clean checkout.
-
-For the M5 reviewed batch workflow, keep the raw draft and reviewed staging JSONL in
-an external temporary workspace. Validate the metadata manifest and staged rows
-before a deliberate canonical import:
-
-```sh
-pnpm run batch:validate \
-  --manifest=/tmp/typewriter-m5-2/batch.json \
-  --staged-records=/tmp/typewriter-m5-2/reviewed.jsonl \
-  --semantic-audit=/tmp/typewriter-m5-2/semantic-audit.json
-pnpm run batch:import \
-  --manifest=/tmp/typewriter-m5-2/batch.json \
-  --staged-records=/tmp/typewriter-m5-2/reviewed.jsonl \
-  --semantic-audit=/tmp/typewriter-m5-2/semantic-audit.json \
-  --output=/tmp/typewriter-m5-2/canonical-import.jsonl
-
-pnpm run batch:process:check
-pnpm run batch:repair:check
-pnpm run batch:m5-10d:contract:check
-# M5-10D keeps its calibration-only proposal separate from canonical data.
-pnpm run batch:m5-10d:calibration:prepare
-# After initial-review judgment rows are complete, freeze the recorder-owned follow-up source.
-pnpm run batch:m5-10d:recovery:contract:check
-pnpm run batch:m5-10d:recovery:check
-pnpm run batch:m5-10d:authorization:check
-# Start and stop each calibration pass explicitly; the command persists its session.
-pnpm run batch:m5-10a:calibration:timing \
-  --action=start --pass=target-preparation --output=/tmp/typewriter-m5-10a-timing-session.json
-pnpm run batch:m5-10a:calibration:timing \
-  --action=stop --pass=target-preparation \
-  --input=/tmp/typewriter-m5-10a-timing-session.json \
-  --output=/tmp/typewriter-m5-10a-timing-session.json
-pnpm run batch:m5-10a:calibration:timing \
-  --action=start --pass=final-audit \
-  --input=/tmp/typewriter-m5-10a-timing-session.json \
-  --output=/tmp/typewriter-m5-10a-timing-session.json
-# Stop final-audit only after reviewing all 20 cases; include the generated raw-proposal digest.
-pnpm run batch:m5-10a:calibration:timing \
-  --action=stop --pass=final-audit \
-  --case-ids=m5-10a-cal-001,...,m5-10a-cal-020 \
-  --raw-proposal-sha256=<sha256> \
-  --input=/tmp/typewriter-m5-10a-timing-session.json \
-  --output=/tmp/typewriter-m5-10a-timing-session.json
-# Commit a separately authored per-case audit input before building. The builder
-# refuses a missing audit and derives counts/rates/gate status from its decisions.
-# The default path is data/batches/m5-10a-relation-calibration-audit.json.
-pnpm run batch:m5-10a:calibration:build
-pnpm run batch:m5-10a:calibration:check
-pnpm run batch:m5-10a:process:check
-pnpm run batch:m5-10a:repair:check
-pnpm run batch:timing:feedback \
-  --manifest=/tmp/typewriter-wave/manifest.json \
-  --output=/tmp/typewriter-wave/feedback.json
-pnpm run batch:timing:start \
-  --manifest=/tmp/typewriter-wave/feedback.json \
-  --output=/tmp/typewriter-wave/audit-started.json \
-  --pass=post-review-audit
-pnpm run batch:timing:stop \
-  --manifest=/tmp/typewriter-wave/audit-started.json \
-  --output=/tmp/typewriter-wave/audit-complete.json \
-  --pass=post-review-audit
-```
-
-The import helper never edits `data/canonical/`; it only emits validated rows outside
-the repository. See [`m5-batch-workflow.md`](m5-batch-workflow.md) for the manifest,
-ID allocation, reference-closure, and reproducibility contract.
-
-When a review event creates a follow-up cycle, run
-`pnpm run batch:timing:feedback` at the event. It records the current UTC clock,
-generates the paired cycle automatically, and writes a new manifest to the
-`--output` path. Use `batch:timing:start` and `batch:timing:stop` around every
-editorial session; stop derives wall-clock and editor seconds from the recorded
-start/stop timestamps. The CLI does not accept user-supplied timestamps or
-durations and does not estimate or backfill work.
-
-The first command scans only `data/canonical/` and recursively visits its `.jsonl`
-files. It does not scan `data/draft/`, the shared `~/.cache/typewriter/` tree, generated output, or test
-fixtures. Each row must also satisfy [`schema/canonical-record.schema.json`](../schema/canonical-record.schema.json).
-A repository with no `data/canonical/` directory is an initial empty state: the
-validator exits successfully and reports zero files and records, but that output does
-not mean the dictionary is complete.
-
-The validator test commands run self-authored fixtures for valid entry/expression
-records, JSON syntax errors after a valid row, blank rows, invalid UTF-8, schema
-omissions and enum errors, expression/part-of-speech mismatches, final-newline
-handling, empty input, and the real CLI's exit status. The dataset validator tests
-cover cross-record references, relation ownership, duplicate/self-reference checks,
-and part-of-speech constraints. The normalization tests cover defaults, ordering,
-meaning preservation, file batching, idempotence, input immutability, and refusal of
-invalid datasets. Invalid fixtures are expected inputs inside assertions; the test
-commands themselves should pass.
+A product build also requires a clean worktree. During local development, an
+explicit dirty build is available with `TYPEWRITER_ALLOW_DIRTY=true pnpm run build`;
+that output is not reproducibility evidence.
 
 ## Continuous integration
 
-`.github/workflows/ci.yml` runs on pull requests and pushes to `master`. It
-checks out the revision under review, installs the pinned dependencies with
-`pnpm install --frozen-lockfile --ignore-scripts`, selects Node.js 24.x, then
-runs `pnpm run ci:normal` in one process. The normal runner emits the `ci:fast`
-checkpoint and then continues with the remaining normal checks; the fast
-checkpoint is not started as a second GitHub Actions workflow.
+`.github/workflows/ci.yml` runs the applicable gate on pull requests and pushes to
+`master`. Ordinary pull requests run `ci:normal`; changes to registered Deep
+dependencies add only those affected checks through `ci:pr`. Documentation-only
+changes may skip Normal and report the skip. Registry, runner, classifier,
+workflow, unknown-path, and missing-diff cases retain the Normal fallback.
 
-`.github/workflows/deep.yml` owns scheduled and manual full validation. Manual
-dispatch validates the selected branch or commit. It runs `pnpm run ci:all`, which
-includes normal validation followed by current-canonical SQLite reproducibility.
-Its weekly schedule is Sunday 22:00 UTC (Monday 07:00 KST). Deep
-CI does not run automatically for pull requests; use the manual dispatch when a PR
-needs the full validation path.
+`.github/workflows/deep.yml` runs `ci:all` on its weekly schedule and supports
+manual dispatch. It runs Normal followed by current-system Deep checks; `ci:deep`
+selects Deep checks only. A skipped check is not passing evidence.
 
-The normal category order is:
+The Normal domains are Canonical validation, the build toolchain, relations,
+product behavior, and generated artifacts. Each registered check has one domain
+owner, one protected contract, one execution tier, and one schedule. The registry
+also binds every Node test file once and shares an explicit list with Vitest.
 
-1. `pnpm run ci:category canonical` — manifest, canonical, dataset, inventory, and rule checks;
-2. `pnpm run ci:category lexical` — shared lexical and semantic validation;
-3. `pnpm run ci:category toolchain` — normalization, SQLite, and integrated M2 checks;
-4. `pnpm run ci:category batch` — batch process, contract, recovery, and authorization checks;
-5. `pnpm run ci:category product` — shared search, unit tests, and extension build;
-6. `pnpm run ci:category artifacts` — package/artifact tests and the final clean-checkout policy.
+## Manual product checks
 
-The deep-only addition is the `deep` category. To run the
-complete sequence locally, use `pnpm run ci:all`.
+These commands exercise current browser or packaged-extension behavior and are
+invoked explicitly when that surface changes:
 
-### Manual one-off tests
-
-Completed-batch, checkpoint and one-time migration tests (M5-8 to M5-12A, M5-15
-pre-admission, Issue #204/#211/#219/#220/#222/#223 checkpoint artifacts and
-their two-build proofs, and the M5-10 wave replays) are not registered in any CI
-level or workflow. Their sources stay in place; run one directly, for example:
-
-```bash
-node --test tests/m5-11-admission.test.mjs
-pnpm run batch:issue-223:check
+```sh
+pnpm run test:web:integration
+pnpm run test:extension:runtime
+pnpm run test:mv3:product --chrome="/path/to/Google Chrome for Testing"
+pnpm run test:mv3:package \
+  --chrome="/path/to/Google Chrome for Testing" \
+  --extension=dist \
+  --zip=/tmp/typewriter-package/generated-package.zip
 ```
 
-The registry in `scripts/ci/registry.mjs` owns only the test files registered as CI
-checks; each registered test file has exactly one owner. Manual tests stay
-unregistered and are run directly. Each declared check is logged by name and has
-its own execution boundary; checks run sequentially and a failure stops the
-category before any later check starts. A new check belongs in the appropriate
-registry category rather than in a workflow file.
-
-Release ZIP creation (`pnpm run package` and `pnpm run package:minify`) and Chrome for
-Testing package verification (`pnpm run test:mv3:package`) are intentionally deferred
-from ordinary pre-1.0 PR/push CI to keep feedback focused and inexpensive. The
-underlying scripts remain available for explicit manual execution and future
-release-oriented automation; this is a scheduling decision, not deprecation. The
-workflows prove that the documented JSONL, dataset, normalization, SQLite,
-integrated-audit, regression, unit-test, and product-build checks run in a clean
-environment. It does not claim that the canonical dictionary has editorial,
-lexical, relation, or coverage quality.
+The Vitest watch command (`pnpm run test:unit:watch`) is a local editor loop, not a
+CI route. The two browser scripts and the CFT package checks protect current web,
+extension, interaction, offline-loading, and package boundaries. Retired task,
+batch, migration, and scale checks are not kept as Manual test files.
 
 ## Failure diagnosis
 

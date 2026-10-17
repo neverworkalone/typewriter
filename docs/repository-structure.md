@@ -1,226 +1,29 @@
 # Typewriter Repository Structure
 
-## Purpose
+This page describes files used by the current product and approved maintenance paths. Older issue reports and task artifacts under `docs/` are historical records; their procedures are not active production instructions.
 
-This document defines where Typewriter materials belong and, more importantly, where
-they do not belong. The repository is intentionally small while the editorial model
-is being validated. A directory is added when a current workflow needs it; future
-work areas are documented here without creating empty scaffolding.
+## Source and generated data
 
-## Source-of-truth boundaries
+| Material | Location | Use |
+| --- | --- | --- |
+| Licensed editable dictionary projection and reviewed Typewriter relations | `data/canonical/*.jsonl` | Source of truth. See [`DATA-LICENSE.md`](../DATA-LICENSE.md) and [`docs/data-policy.md`](data-policy.md). |
+| Canonical source validation and projections | `scripts/validate/`, `scripts/normalize/`, `scripts/build/` | Validate Canonical records and generate Full SQLite, Lite SQLite, and product runtime assets. |
+| Relation packets and correction records | `data/relation-backfill/`, `scripts/relation/` | Current source-bound relation authoring and apply path. |
+| Legacy permanent trash archive | `data/candidate-trash/T######.jsonl` | Historical, text-free unresolved-source archive. Changed chunks remain subject to strict Normal validation; this does not enable new lexical production. |
+| Generated databases and packages | ignored `artifacts/` and `dist/` | Reproducible output only; never hand-edit or treat as source. Only the Lite database is included in the extension. |
+| Extension state | Chrome extension storage | Search history, favorites, settings, and other user data remain outside the read-only dictionary. |
 
-| Material | Responsibility | Location | Repository rule |
-| --- | --- | --- | --- |
-| Canonical dictionary data | Licensed lexical projections from STDICT, KRDICT and 우리말샘, with Typewriter-authored and reviewed 말의 결/연상 enrichment | `data/canonical/*.jsonl` | Tracked in Git under CC BY-SA 2.0 KR; selected canonical content, not raw dictionary downloads, is the editable source of truth. |
-| Stage 1 permanent trash | Globally deduplicated unresolved source observations and their original analysis/batch histories | `data/candidate-trash/T*.jsonl` | Permanent, text-free, at most 500 observations per file; no automatic re-mining. |
-| Stage 1 batch decisions | Normal excluded dispositions and context decisions; no unresolved payloads | `data/candidates/C*/stage1-decisions.json` | Counts and byte digest are bound by the compact manifest; uses the common factory validator. |
-| M5 target inventory | Non-canonical target selection, classification, review-state decisions, and promoted inventory history | `data/inventory/m5-target-seed.json` plus append-only `data/inventory/m5-target-promotions.jsonl` and the on-demand projection builder | The active seed contains planning rows; the promotion ledger contains immutable promoted events. The deterministic inventory projection joins both in memory and is never a canonical or product build input. |
-| M5 batch manifest and measurements | Review metadata, generator identity, decisions, event-level relation diffs, timing passes, and derived calibration measurements; no raw draft body | `data/batches/*.json` when a real batch is committed | Tracked only as an audit record; staging records, raw drafts, and external source text remain outside the repository. |
-| M6 baseline metrics and quality gates | Historical 5K snapshot plus the current role-independent searchable-population snapshot, reproducible metrics, generated reports, shared exact-result candidate projection, search evidence, and predeclared quality-gate contract | `docs/m6-1-quality-baseline.md`, `docs/m6-1-quality-baseline.json`, `docs/m6-1-searchable-lexical-baseline.md`, `docs/m6-1-searchable-lexical-baseline.json`, `scripts/validate/m6-1-quality-baseline.template.md`, and `src/domain/exact-search-candidates.js` | Preserve each canonical digest and gate version as its own snapshot. |
-| M6-4 writer-facing quality audit | Reproducible M6-1 sample selection, tamper rejection, and issue report | `docs/m6-4-quality-audit-sample.json`, `docs/m6-4-quality-audit-report.md`, `scripts/validate/m6-4-quality-audit.mjs`, and `tests/m6-4-quality-audit.test.mjs` | Normal CI verifies the committed snapshot's pinned bytes and source identity without a second canonical/SQLite build. Run `npm run audit:m6-4` manually for full sample re-derivation while issue-start inputs match; the CLI verifies the immutable historical snapshot after later source changes. Preserve the M6-1 seed, sample rules, canonical digest, and `HOLD` while human evidence is missing. |
-| Raw unreviewed draft | LLM output, editor scratch work, or other material that has not passed Typewriter review | A temporary workspace outside this repository | Never a canonical input and never committed. |
-| External raw/reference material | API responses, downloaded source files, or other source material held for research | `~/.cache/typewriter/` only when source terms permit local storage and processing; otherwise a temporary workspace outside the checkout. See [`docs/local-reference-cache.md`](local-reference-cache.md). | Shared by all worktrees for the current user; never committed or read by product builds. Verify source terms before use. |
-| External-material review record | Source terms checked for an editorial or reference role, including unresolved restrictions | `docs/external-material-review-*.md` | Track the decision and scope without copying source text. A pending decision does not authorize local processing. |
-| Local reference evidence index (#192 design, #194 implementation) | Searchable local projection of an approved reference corpus | `~/.cache/typewriter/indexes/` | Not canonical or product input. The corpus SQLite index and its source text remain outside Git and product packages. The indexer refuses corpus access while its permission record is pending. |
-| Local literature TXT pilot index (#332) | Local-only SQLite of selected public-domain poems, novels and essays (TXT only) | `~/.cache/typewriter/indexes/literature-pilot-2026.sqlite`; code in `scripts/reference/literature-index.mjs`; report in `docs/literature-index-pilot-report-issue-332.md` | Separate from the NIKL index; raw text, excerpts and DB never enter Git or product packages. Gated by `docs/external-material-review-public-domain-literature.md`. |
-| Local full literature TXT index (#334) | Local-only SQLite of every ingestable public-domain TXT (poem/novel/essay); errors listed in a local manifest | `~/.cache/typewriter/indexes/public-domain-literature.sqlite` + `.manifest.json`; same module; report in `docs/literature-index-full-report-issue-334.md` | Same restrictions as the pilot; atomic staged replacement; not a canonical or product DB. |
-| Generated dictionary database | SQLite built deterministically from canonical input | Build output such as `dist/` or `artifacts/` | Generated, not hand-edited, and ignored as local output. |
-| User data | Recent searches, favorites, settings, and other runtime state | Browser-managed extension storage | Never stored in the read-only dictionary database or repository. |
-| Application, documentation, and brand assets | Source code, policy documents, and approved Typewriter assets | Repository paths such as `src/`, `docs/`, and `public/` | Tracked unless a file-specific rule says otherwise. Existing `public/` assets remain intact. |
+## Product and CI code
 
-Canonical JSONL is the only editable dictionary source. SQLite is a derived delivery
-artifact and must be regenerated from canonical input. User data is owned by the
-runtime, not by the dictionary build.
+- `src/domain/` contains UI-independent search state and Canonical record/sense projection.
+- `src/runtime/` contains the extension's offline SQLite worker and query boundary.
+- `src/popup/`, `src/options/`, and `web/` contain the extension UI and static web application.
+- `public/` contains the extension manifest and approved product assets. Root `popup.html` and `options.html` are the extension entrypoints.
+- `scripts/ci/registry.mjs` owns automatic checks and their tier/dependency metadata. `scripts/ci/product-unit-test-files.mjs` is the explicit Vitest file set shared with the registry and `vitest.config.js`.
+- `tests/` and the directly invoked `scripts/**.test.mjs` files protect current product, source-integrity, build, relation, and CI contracts. Their current execution and disposition are recorded in [`docs/test-inventory-823.md`](test-inventory-823.md).
 
-## Current and next-needed directories
+## Local-only and historical material
 
-The current repository contains `public/` for product manifest and brand assets,
-`src/popup/` and `src/options/` for the product Vue entrypoints, and `src/domain/`
-for UI-independent search state and Editorial Model v1 projection. The root
-`popup.html` and `options.html` files are the product HTML entrypoints; Vite writes
-their generated assets to ignored `dist/`. The canonical input location used by
-the M2 toolchain is:
+External source files and permitted local indexes belong under `~/.cache/typewriter/` or a temporary location outside the checkout; raw dictionary responses and corpus passages do not belong in Git or product packages. See [`docs/data-policy.md`](data-policy.md) before introducing any source.
 
-```text
-data/canonical/*.jsonl
-```
-
-Only licensed STDICT, KRDICT and 우리말샘-derived records and reviewed
-Typewriter-authored enrichment belong there. Raw dictionary downloads
-remain outside Git. The generated SQLite and packaged extension are built into ignored
-`artifacts/` or `dist/` output and are never edited as canonical data.
-
-These locations are local-only or intentionally deferred:
-
-- `data/draft/` remains a temporary workspace outside the repository for raw
-  unreviewed drafts;
-- `~/.cache/typewriter/` holds approved local-only source references, indexes,
-  evidence, and namespaced run outputs outside every worktree;
-- `scripts/reference/` contains the local-only reference indexer and lookup CLI from #194; it is separate from `scripts/build/` and the canonical product-dictionary build;
-- generated database and package output belongs in ignored build output such as
-  `dist/` or `artifacts/`;
-- user data has no repository directory because it belongs to browser storage.
-
-`data/inventory/` is an M5 exception: it contains reviewable target-selection
-artifacts, not lexical records. The validator joins the active seed and
-append-only promotion ledger to `data/canonical/` and rejects drift. The
-dictionary builder does not discover or read this directory.
-
-`data/batches/` is a second M5 exception used for reviewable manifests, relation
-diff ledgers, and derived calibration measurements. A manifest records the target
-inventory revision, generator/model/prompt identity, review status, record
-decisions, final canonical IDs, required timing passes (five editorial passes
-for the baseline contract plus any batch-specific pass such as A2's distinct
-post-freeze audit), any post-review follow-up passes and their measurement
-status, and the relation-diff artifact digest. A metrics file is generated from
-those sources and canonical records; it
-may record counts, rates, timing totals or measured lower bounds, audit findings,
-and validation outcomes, but neither file may contain raw model responses, draft
-text, confidence scores, secrets, or local staging paths.
-The M5-8 expansion plan and stage-report schema are also process metadata: they
-define the fixed phase/ladder contract and source-bound per-stage results. A
-stage result binds its manifest, derived metrics, relation diff, canonical
-directory, verification artifact, and (after the first stage) previous passed
-stage report by path and digest; it does not contain a candidate batch or
-canonical import rows.
-The M5-9A relation-screen and repair-authorization artifacts are also audit
-metadata. The screen separates source-bound relation proposals, tuple/semantic
-pre-screen decisions, and human admission without storing raw drafts. The same
-screen contract is reused by the M5-10 Wave A relation-screen artifact, which is
-bound to its Wave A relation diff and stage report by path and SHA-256. The
-authorization binds the failed M5-9 report and its regression result by SHA-256
-and permits only the first #96 validation wave; it never changes canonical data.
-The M5-10A process-correction and repair-authorization artifacts extend that audit
-boundary after the failed Wave A result. They bind the six sense-preflight
-boundaries, record-level evidence checkpoints, the noncanonical 20-case
-candidate-generation calibration, historical relation pre-screen denominator,
-separate audit input and derived admission/noise metrics, timing contract,
-and machine verification results by path and SHA-256. The builder requires the
-audit input as a separate source and never treats its own generated output as an
-independent editorial review. The authorization was limited to #96 Wave A2 (+50
-from 578 to 628); the completed A2 execution imported only the zero-blocker
-reviewed result, and its corrected chronological timing gate passed, including
-the measured post-freeze audit. The subsequent #96 Wave B execution has its own
-authorization and stage artifacts. It imported exactly +150 reviewed starts, so
-the M5-10 Wave B snapshot was 778 starts; its Wave B report binds the A2 report,
-authorization, canonical-directory digest, external proposal digest, reviewed
-staging digest, separate decision artifacts, and independent post-freeze audit.
-The A2 stage is ready to create a next task, but the builder keeps the task
-creation and authorization flags false until a real, separately authorized task
-exists.
-The A2 and Wave B structured editorial and audit metadata may be tracked in this directory
-when it contains only target selection, proposal identity/decision state,
-the external proposal artifact digest, structured review state, separate
-decision-artifact bindings, and any measured correction plan; it must not carry
-candidate record bodies, raw draft text, or external source text. An explicitly
-unverified/incomplete input cannot produce a completed import claim. A completed
-input additionally requires a provenance artifact that binds its actor, UUID
-session, subject digest, completion time, and artifact digest. Decision artifacts
-also bind a `finalized_at` timestamp into their complete-file digest; editorial
-finalization must follow the last editorial timing stop and precede completion.
-Wave A2 additionally binds a separate post-freeze audit timing artifact from
-audit start through a stop before audit decision finalization. The actor may be
-human or Codex; a separate audit session and artifact establish independence
-even when the actor is the same Codex. Candidate record bodies and the reviewed
-canonical JSONL passed to the import gate stay in a temporary workspace outside
-the repository.
-
-When a later batch advances `data/canonical/`, a historical canonical directory
-may be retained under `data/batches/` when a source-bound stage report still
-needs to reproduce the earlier gate. Such a snapshot is immutable process
-evidence, not a second editable dictionary source.
-
-Issue #97's M5-11A work is promoted through the owner-authorized automated
-editorial path. The tracked `data/batches/m5-11-base-canonical/` and
-`data/batches/m5-11-base-inventory.json` files freeze the 778-start input used
-by the #115 authorization and earlier M5 contracts. The candidate catalog
-records 550 selection IDs, while candidate bodies and raw external review
-inputs remain outside the repository. The compact review summary plus
-`m5-11-admission.json` and `m5-11-promotion.json` bind those external inputs by
-digest and record the automated generation/verification pass separation. The
-promotion adds exactly 500 starts, reaches 1,278 starts, and records 50
-deferred rows in the seed; `data/canonical/*.jsonl` remains the only editable
-dictionary source. The historical stage snapshot may remain as process
-evidence for the pre-admission 778-start boundary.
-
-Issue #98's historical M5-12 pre-admission boundary is represented by
-`data/batches/m5-12-stage.json`, `data/batches/m5-12-review.json`, the immutable
-`data/batches/m5-12-base-canonical/` snapshot, and the metadata-only
-`scripts/batch/m5-12-catalog.mjs`. The catalog declares 802 selection slots for
-the +722 target and 80-row reserve; it does not claim 802 selected inventory
-targets. It contains no candidate identity, lemma, POS, gloss, relation, or
-candidate record body. The stage remains a retained historical `HOLD PROCESS`
-artifact; it is not the current canonical gate after issue #138.
-
-Issue #138's M5-12A promotion is recorded by
-`data/batches/m5-12a-admission.json`, `data/batches/m5-12a-promotion.json`,
-`data/canonical/m5-12a-expansion.jsonl`, the current target seed,
-`data/inventory/m5-target-promotions.jsonl`, and the current semantic decision
-source. Promoted inventory history is recorded in the append-only ledger; the
-active seed retains non-promoted planning rows. `scripts/batch/m5-12a-pipeline.mjs` binds 802
-Typewriter-authored candidate identities to deterministic slots, runs the
-shared live lexical producer and complete semantic audit, and admits exactly
-722 imported starts. The current authored source records 700 included plus 22
-corrected starts; its held, rejected, and deferred rows remain visible in the
-seed. Admission enforces the 722-import, 80-row reserve, deferred-denominator,
-and correction-rate contracts without requiring those current sub-counts.
-The v2 manifests retain authorization, source/input digests, mutation/output
-events, and compact preflight bindings; recomputable pass matrices, build
-summaries, and temporary paths remain outside the repository. The artifacts
-truthfully identify the work as `agent-generated`, keep generation and
-verification pass IDs separate, make no human-review claim, and record issue
-#7's 2,000-start checkpoint. Candidate bodies and temporary proposal/review
-projections remain outside the repository.
-
-Issue #99's M5-13 pre-admission boundary is recorded by
-`data/batches/m5-13-stage.json` and `data/batches/m5-13-review.json`. Its catalog
-declares 1,100 capacity slots for an exact +1,000 target and 100-row reserve,
-but contains no candidate identity or body. The stage binds the current
-`data/canonical/` authority and its M5-12 checkpoint Git tree by digest; the
-target inventory is reconstructed from that authority and the current seed
-instead of being copied into a batch snapshot. The stage is intentionally
-`HOLD PROCESS` until a separate source-bound candidate and editorial decision
-artifact is supplied; it does not mutate canonical, seed, inventory, or
-promotion history. These two pre-admission artifacts use the versioned closed contracts
-`lexical-batch-pre-admission-review-v1` and
-`lexical-batch-pre-admission-stage-v1`; future batch stage/review JSON cannot
-fall back to the historical untyped exceptions. Durable JSON loading also
-rejects duplicate object keys before schema validation so digest-bound evidence
-cannot hide overwritten values behind `JSON.parse` last-key-wins behavior.
-
-Self-authored regression fixtures for batch tooling live under
-`tests/fixtures/`. They may bind to a tracked manifest or relation-diff event
-for reproducibility, but they do not contain raw drafts, external source text,
-or canonical import rows.
-
-This keeps the repository structure proportional to the workflows that exist today.
-
-## Data flow
-
-```text
-reference material / unreviewed draft (outside repository)
-        ↓ editorial review and Typewriter curation
-data/canonical/*.jsonl
-        ↓ normalize · validate · deterministic build
-generated SQLite (dist/ or artifacts/)
-        ↓ package read-only dictionary
-Chrome extension
-```
-
-External material and unreviewed drafts are inputs to editorial work, not inputs to
-the product build. A source may inform a Typewriter record only after its applicable
-terms have been reviewed and the final record is independently curated. The review
-record format is defined in [`data-policy.md`](data-policy.md).
-
-## Ignore and safety boundary
-
-`.gitignore` excludes common generated databases, local drafts, external references,
-local configuration, and credential files so they are less likely to be added by
-mistake. Ignore rules are a repository convenience, not a security guarantee:
-secrets and restricted source material must be kept outside the repository, checked
-before commits, and handled according to their applicable terms.
-
-Canonical data and required application or brand assets must not be hidden by these
-ignore rules. When a new generated or local path is introduced, classify it first as
-canonical, generated, user-owned, or temporary material and update this document if
-the boundary changes.
+Historical M5 batch reports, old lexical-production instructions, and completed issue evidence may remain for audit history. Do not use their old commands, candidate workflows, or Meaning-editing procedures as active product inputs. Git history and linked issues/PRs preserve detailed task records; the current workflow is defined by the root instructions and current policy documents.

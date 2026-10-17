@@ -64,21 +64,16 @@ or keep search history. See the [extension privacy disclosure](PRIVACY.md).
 
 ### Lexical data and evidence
 
-Lexical additions go through shared production, admission, and validation rules.
-Editorial decisions and evidence make those choices reviewable and help reproduce
-validation. Evidence files do not grant permission to redistribute the lexical
-content they describe.
+Canonical lexical entries are selected projections from approved dictionaries,
+with source identity and licensing recorded. Typewriter's original relation
+enrichment is reviewed separately and remains tied to its Canonical source.
 
 External dictionaries, APIs, corpora, and model output may inform research only
 when their terms allow it. Raw source text and unreviewed drafts do not belong in
 canonical data.
 
-See the [editorial model](docs/editorial-model.md), [lexical quality pipeline](docs/lexical-quality-pipeline.md),
-[lexical production factory design](docs/lexical-production-factory.md),
-[data policy](docs/data-policy.md), [repository structure](docs/repository-structure.md),
-and the [shared local reference cache](docs/local-reference-cache.md).
-The independent [resumable corpus morphology runner](docs/corpus-morphology-slices.md)
-stores verified analysis locally in 20 slices; its real corpus operation is tracked separately in #549.
+See the [editorial model](docs/editorial-model.md), [data policy](docs/data-policy.md),
+and [repository structure](docs/repository-structure.md).
 
 ## Development
 

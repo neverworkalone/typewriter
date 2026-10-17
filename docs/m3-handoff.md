@@ -15,8 +15,9 @@ databases.
 - Canonical JSONL under `data/canonical/` is the editable source of truth. A client
   must not edit `dictionary.sqlite` or treat generated output as canonical data.
 - The required pipeline is schema validation → dataset integrity → in-memory
-  normalization v1 → SQLite schema v1. Use `node scripts/verify/m2-pipeline.mjs` as
-  the local clean-checkout audit.
+  normalization v1 → SQLite schema v1. Current clean-checkout validation is
+  `pnpm run ci:normal`; the current-canonical reproducibility audit is included in
+  `pnpm run ci:all`.
 - SQLite is a read-only dictionary artifact for the client. Exact lemma and
   `search_forms` lookup, record/sense retrieval, and relation target display are
   available through the query shapes in `scripts/build/query.mjs`.

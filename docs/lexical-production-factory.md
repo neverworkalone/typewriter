@@ -1,5 +1,9 @@
 # Typewriter Lexical Production Factory (design specification, issue #257)
 
+> Historical design record from before the retired lexical-production system was
+> implemented. Issue #823 retires that system; references below are not active
+> commands or instructions for current Canonical work.
+
 **Status: design only.** Nothing in this document is implemented. No dispatch
 refs, candidate directories, review directories, schemas or validators described
 here exist yet. Section 12 lists what an implementation issue must still verify.

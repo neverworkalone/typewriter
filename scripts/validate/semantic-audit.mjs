@@ -8,7 +8,7 @@ import {
 } from './canonical-jsonl.mjs';
 import { loadCanonicalContext } from './canonical-context.mjs';
 import { completeRecordInfos, isLicensedSourceRecord, reviewableRecordInfos } from './licensed-source.mjs';
-import { revertRelationCorrections } from '../factory/relation-corrections.mjs';
+import { revertRelationCorrections } from '../relation/relation-corrections.mjs';
 import {
   LEXICAL_TOPIC_EVIDENCE_CONTRACT_VERSION,
   LEXICAL_TOPIC_EVIDENCE_KIND,
@@ -2616,11 +2616,16 @@ export function validateFactoryAdmissionLedger(decisionSource, recordInfos, labe
       const amended = correction.outcome === 'amended';
       if (correction.source_candidate_id !== event.batch_id || !['amended', 'already_applied'].includes(correction.outcome)
         || typeof correction.source_record_id !== 'string' || typeof correction.source_sense_id !== 'string'
+        || !SHA256_PATTERN.test(correction.source_record_sha256 ?? '')
         || !SHA256_PATTERN.test(correction.source_gloss_sha256 ?? '') || !SHA256_PATTERN.test(correction.rationale_sha256 ?? '')
         || !SHA256_PATTERN.test(correction.target_meaning_sha256 ?? '') || typeof correction.previous_relation_id !== 'string' || !correction.previous_relation || typeof correction.previous_relation !== 'object'
         || (correction.relation === null ? correction.relation_id !== null : typeof correction.relation_id !== 'string' || typeof correction.relation !== 'object')
         || (amended ? !Number.isInteger(correction.position) || correction.position < 0 : correction.position !== null)) {
         fail(`${correctionLabel} is not a source-bound relation correction`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
+      }
+      const sourceChange = event.changes?.find((change) => change.entry_id === correction.source_record_id);
+      if (!sourceChange || correction.source_record_sha256 !== sourceChange.before_sha256) {
+        fail(`${correctionLabel}.source_record_sha256 does not bind the pre-correction Canonical record`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');
       }
     }
     if (entries.some((entry) => !seenRecords.has(entry.record_id))) fail(`${eventLabel} has a candidate mapping without a canonical change`, 'SEMANTIC_AUDIT_FACTORY_ADMISSION');

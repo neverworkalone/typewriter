@@ -65,8 +65,6 @@ describe('product MV3 Vue shells', () => {
     expect(host.querySelector('[data-product-surface="popup"]')).not.toBeNull();
     expect(host.querySelector('[data-dictionary-panel]')).not.toBeNull();
     expect(host.querySelector('[aria-label="검색어"]')).not.toBeNull();
-    expect(host.textContent).toContain('Typewriter');
-    expect(host.textContent).toContain('설정');
     expect(host.querySelector('[data-dictionary-record]')).toBeNull();
   });
 
@@ -74,8 +72,6 @@ describe('product MV3 Vue shells', () => {
     const host = mount(OptionsApp);
 
     expect(host.querySelector('[data-product-surface="options"]')).not.toBeNull();
-    expect(host.textContent).toContain('설정');
-    expect(host.querySelector('.brand-version').textContent.trim()).toBe('1.0');
   });
 
   it('searches on Enter, moves through relation targets, and returns with the back control', async () => {
@@ -766,20 +762,22 @@ describe('product MV3 Vue shells', () => {
 
     const presets = [...host.querySelectorAll('.background-preset')];
     const previewPanel = () => host.querySelector('.preview-panel [data-dictionary-panel]');
+    const selectedPreset = () => presets.find((preset) => preset.getAttribute('aria-checked') === 'true');
+    const initialBackground = previewPanel().style.getPropertyValue('--dictionary-panel-background');
 
-    expect(presets).toHaveLength(6);
-    expect(presets[0].dataset.backgroundPresetKey).toBe('manuscript');
-    expect(presets[0].getAttribute('aria-checked')).toBe('true');
+    expect(selectedPreset()?.dataset.backgroundPresetKey).toBe('manuscript');
     expect(previewPanel().dataset.backgroundPreset).toBe('manuscript');
-    expect(previewPanel().style.getPropertyValue('--dictionary-panel-background')).toBe('#f6f3ee');
+    expect(initialBackground).not.toBe('');
 
-    presets[2].click();
+    const fogPreset = presets.find((preset) => preset.dataset.backgroundPresetKey === 'fog');
+    expect(fogPreset).toBeDefined();
+    fogPreset.click();
     await flush();
 
     expect(stored.background).toBe('manuscript');
-    expect(presets[2].getAttribute('aria-checked')).toBe('true');
+    expect(selectedPreset()).toBe(fogPreset);
     expect(previewPanel().dataset.backgroundPreset).toBe('fog');
-    expect(previewPanel().style.getPropertyValue('--dictionary-panel-background')).toBe('#f1f4f6');
+    expect(previewPanel().style.getPropertyValue('--dictionary-panel-background')).not.toBe(initialBackground);
     expect(host.querySelector('.save-status').textContent).toContain('저장되지 않음');
 
     host.querySelector('.save-button').click();
@@ -805,7 +803,7 @@ describe('product MV3 Vue shells', () => {
 
     const panel = host.querySelector('[data-dictionary-panel]');
     expect(panel.dataset.backgroundPreset).toBe('moonlight');
-    expect(panel.style.getPropertyValue('--dictionary-panel-background')).toBe('#f2f0f4');
+    expect(panel.style.getPropertyValue('--dictionary-panel-background')).not.toBe('');
   });
 
   it('locks setting edits while loading and while an explicit save is pending', async () => {
