@@ -19,7 +19,7 @@ import {
 import { SQLITE_SCHEMA_SQL, SQLITE_SCHEMA_VERSION, SQLITE_SOURCE_SCHEMA_SQL } from './sqlite-schema.mjs';
 import { MEANING_SOURCE_INTEGRITY_QUERIES, assertRecordMeaningCoverage } from './meaning-source-checks.mjs';
 import { compareMeaningIds } from '../../src/runtime/meaning-order.js';
-import { projectGlossReferenceDirects } from './gloss-reference-relations.mjs';
+import { projectDirectReverses } from './direct-reverse.mjs';
 import { parseMeaningId, projectMeaningRelations, projectRecordMeanings } from './record-meanings.mjs';
 import {
   DATABASE_KIND_KEY,
@@ -68,7 +68,7 @@ function loadMeaningLayer({ model, inputDirectory, recordMeanings }) {
   }
   const meanings = projectRecordMeanings(model.records);
   const projection = projectMeaningRelations({ records: model.records, meanings });
-  const derived = projectGlossReferenceDirects({ records: model.records, relations: projection.relations });
+  const derived = projectDirectReverses({ relations: projection.relations });
   const relations = [...projection.relations, ...derived.relations];
   return {
     projected: true,
@@ -76,9 +76,8 @@ function loadMeaningLayer({ model, inputDirectory, recordMeanings }) {
     relations,
     stats: {
       ...projection.stats,
-      ...Object.fromEntries(Object.entries(derived.stats).map(([key, value]) => [`gloss_reference_${key}`, value])),
+      ...Object.fromEntries(Object.entries(derived.stats).map(([key, value]) => [`direct_${key}`, value])),
     },
-    holds: derived.holds,
   };
 }
 
@@ -235,12 +234,6 @@ function insertModel(database, model, metadata, surfaceFormRows, meaningLayer) {
       (source_meaning_id, position, target_meaning_id, type, note, relevance, origin)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
   );
-  const insertGlossSource = database.prepare(
-    `INSERT INTO meaning_relation_gloss_sources
-      (source_meaning_id, relation_position, position, source_sense_id, gloss_start, gloss_length,
-       target_record_id, target_sense_position)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-  );
   const insertReverseSource = database.prepare(
     `INSERT INTO meaning_relation_reverse_sources
       (source_meaning_id, relation_position, forward_source_meaning_id, forward_position)
@@ -351,15 +344,7 @@ function insertModel(database, model, metadata, surfaceFormRows, meaningLayer) {
       );
     });
   }
-  // Derived provenance rows follow every meaning relation they reference (forward before reverse).
-  for (const relation of meaningLayer.relations) {
-    (relation.gloss_sources ?? []).forEach((source, position) => {
-      insertGlossSource.run(
-        relation.source_meaning_id, relation.position, position, source.source_sense_id,
-        source.gloss_start, source.gloss_length, source.target_record_id, source.target_sense_position,
-      );
-    });
-  }
+  // Derived reverse provenance follows every meaning relation it references.
   for (const relation of meaningLayer.relations) {
     if (!relation.reverse_of) continue;
     insertReverseSource.run(

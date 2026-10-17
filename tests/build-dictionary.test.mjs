@@ -65,7 +65,7 @@ test('builds a read-only SQLite dictionary with representative lookups', async (
       assert.deepEqual(
         full.prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name").all().map(({ name }) => name),
         [
-          'generated_surface_forms', 'meaning_members', 'meaning_relation_gloss_sources', 'meaning_relation_reverse_sources',
+          'generated_surface_forms', 'meaning_members', 'meaning_relation_reverse_sources',
           'meaning_relation_sources', 'meaning_relations', 'meanings',
           'metadata', 'records', 'relations', 'search_forms', 'sense_adjudications', 'senses',
         ],
@@ -329,7 +329,7 @@ test('builds the canonical-only meaning layer and projected meaning relations wi
       assert.equal(countRows(database, 'meaning_members'), 7);
       assert.equal(countRows(database, 'meaning_relations'), 4);
       assert.deepEqual(
-        database.prepare("SELECT name FROM sqlite_master WHERE name IN ('senses', 'relations', 'meaning_relation_sources', 'meaning_relation_gloss_sources', 'meaning_relation_reverse_sources')").all(),
+        database.prepare("SELECT name FROM sqlite_master WHERE name IN ('senses', 'relations', 'meaning_relation_sources', 'meaning_relation_reverse_sources')").all(),
         [],
       );
       assert.deepEqual(

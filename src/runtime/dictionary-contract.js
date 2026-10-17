@@ -4,7 +4,6 @@ export const SQLITE_SCHEMA_VERSION = '9';
 export const MEANING_RELATION_ORIGINS = Object.freeze({
   projection: 'stdict-sense-projection',
   authored: 'typewriter-authored',
-  glossReference: 'stdict-gloss-reference',
   reverse: 'direct-reverse-projection',
 });
 
@@ -16,7 +15,6 @@ export const BUILD_ONLY_TABLES = Object.freeze([
   'senses',
   'relations',
   'meaning_relation_sources',
-  'meaning_relation_gloss_sources',
   'meaning_relation_reverse_sources',
 ]);
 

@@ -47,20 +47,15 @@ The shipped (Lite) `dictionary.sqlite` (schema version 9) carries only the produ
 | `meaning_relations` | `source_meaning_id`, `position`, `target_meaning_id`, `type`, `note`, `relevance`, `origin` |
 | `generated_surface_forms` | `form`, `record_id`, `sense_id`, `sense_position` (source sense position, for stable ordering), `rule_id` |
 
-`meaning_relations.origin` is one of `stdict-sense-projection` (an original source `relations[]` entry), `typewriter-authored`,
-`stdict-gloss-reference` or `direct-reverse-projection` (CHECK; Issue #797).
+`meaning_relations.origin` is one of `stdict-sense-projection` (an original source `relations[]` entry), `typewriter-authored` or
+`direct-reverse-projection` (CHECK; Issue #797).
 
-**Gloss-reference `direct` (Issue #797, owner-approved).** A STDICT sense whose whole gloss is one `→ 표제어[NN][「n」]` reference becomes a
-product `direct` relation to the exact target record when the rule in `scripts/build/gloss-reference-relations.mjs` holds on the *Canonical*
-form (numbered: exact `(lemma, homograph_no)`; unnumbered: the lemma's only record; designated `「n」` sense exists; same part of speech;
-not a reference chain; not itself). Anything else is HOLD and reported, never guessed. Provenance lives in the Full-only
-`meaning_relation_gloss_sources` (source sense, token offset/length inside the original gloss, target record/sense position); original
-`meaning_relation_sources` rows are never forged for it.
-
-**Bidirectional `direct` (owner-approved exception to "no invented symmetry").** Every verified `direct` (original or gloss-reference) is shown
-in both directions. The missing direction is a derived row with `origin='direct-reverse-projection'` whose Full-only
+**Bidirectional `direct` (owner-approved exception to "no invented symmetry").** Every original `direct` is shown in both directions.
+The missing direction is a derived row with `origin='direct-reverse-projection'` (`scripts/build/direct-reverse.mjs`) whose Full-only
 `meaning_relation_reverse_sources` row names the forward relation it mirrors; it inherits note and relevance, is never created when the
 reverse already exists, and never mirrors a reverse. Other relation types (`antonym`, `near`, `mood`, …) are not symmetrised.
+A STDICT `→` gloss (usually a non-standard form pointing at the standard one) is not evidence of a synonym: it creates no relation, and
+the gloss stays as written. Promoting it to `direct` requires explicit source meaning information or separate verifiable evidence.
 The Lite contract query `direct_relation_without_reverse` proves the symmetry in the shipped database. Typewriter-authored
 relations (유의어, 반의어, 말의 결, 연상) are edited on the same table with `origin='typewriter-authored'`.
 

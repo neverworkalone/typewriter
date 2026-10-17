@@ -171,17 +171,6 @@ export function readLogicalDatabaseSnapshot(database) {
         .all(),
     );
   }
-  if (tables.has('meaning_relation_gloss_sources')) {
-    rows.meaning_relation_gloss_sources = plainRows(
-      database
-        .prepare(
-          `SELECT source_meaning_id, relation_position, position, source_sense_id, gloss_start, gloss_length,
-                  target_record_id, target_sense_position
-           FROM meaning_relation_gloss_sources ORDER BY source_meaning_id, relation_position, position`,
-        )
-        .all(),
-    );
-  }
   if (tables.has('meaning_relation_reverse_sources')) {
     rows.meaning_relation_reverse_sources = plainRows(
       database

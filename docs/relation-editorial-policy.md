@@ -156,7 +156,7 @@ relative order, nor mechanically score or test subjective usefulness.
    validators.
 5. Respect existing authored reverse links and provenance; do not invent
    symmetry (the single owner-approved exception, Issue #797: the product
-   build mirrors every verified `direct` — original or gloss-reference — as a
+   build mirrors every original `direct` as a
    derived `direct-reverse-projection` row; no other type is mirrored), demand equal relevance across different sources, or silently
    rewrite canonical history. Zero relations remain valid; no quotas.
 
