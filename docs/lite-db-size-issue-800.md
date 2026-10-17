@@ -46,3 +46,13 @@ Not pursued (insufficient expected gain versus the invariants, or needs a design
 
 Product tables with composite/TEXT primary keys are declared `WITHOUT ROWID`, and Lite extraction ends with `VACUUM`.
 Logical contents, queries, schema version and all validators are unchanged; nothing in the repository used `rowid`.
+
+## Verification on the real build (current `master` canonical, 427,583 records)
+
+Full built with `node scripts/build/dictionary.mjs`, Lite extracted twice with `extractLiteDictionary`:
+
+- Lite 249,401,344 bytes (237.8 MiB), gzip -6 77.8 MiB; byte-identical (same SHA-1) across both extractions.
+- `verifyLiteExtraction` (row-for-row digests of all 8 product tables against Full) passes; `verifyDatabase` integrity,
+  foreign-key and count checks run inside the extraction.
+- Search / meaning-view latency unchanged (~3 ms open+10 searches, ~0.35 ms per meaning view).
+- Not run: browser/Chrome-for-Testing startup (no manifest, permission or WASM-loading change; same SQLite file format).
