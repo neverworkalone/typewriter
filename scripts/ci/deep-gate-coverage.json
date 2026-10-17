@@ -28,6 +28,35 @@
         "tests/runtime-query-adapter.test.mjs"
       ],
       "protected_contract": "Real SQLite WASM and native query adapter parity and runtime behavior"
+    },
+    {
+      "path": "src/runtime/dictionary-contract.js",
+      "normal_tests": [
+        "tests/dictionary-validation.test.mjs"
+      ],
+      "protected_contract": "Packaged dictionary schema and version contract"
+    },
+    {
+      "path": "src/runtime/sqlite-query.js",
+      "normal_tests": [
+        "tests/runtime-query-adapter.test.mjs"
+      ],
+      "protected_contract": "SQLite native and WASM query adapter behavior"
+    },
+    {
+      "path": "src/runtime/search-query.js",
+      "normal_tests": [
+        "tests/search-query.test.mjs",
+        "tests/runtime-query-adapter.test.mjs"
+      ],
+      "protected_contract": "Search normalization and native/WASM result parity"
+    },
+    {
+      "path": "src/runtime/dictionary-validation.js",
+      "normal_tests": [
+        "tests/dictionary-validation.test.mjs"
+      ],
+      "protected_contract": "Packaged dictionary integrity and startup validation"
     }
   ]
 }

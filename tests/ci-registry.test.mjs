@@ -121,7 +121,7 @@ test('real Git classification reads large routine files and preserves fail-close
   assert.match(oversized.detail, /git "show" .*code=ENOBUFS/u);
   assert.ok(oversized.detail.length < 1000, 'buffer failure diagnostics must not contain file output');
 
-  const mixed = await classify([[inventoryPath, largeJson], ['scripts/benchmark/sqlite-runtime.mjs', '// fixture\n']]);
+  const mixed = await classify([[inventoryPath, largeJson], ['scripts/verify/m2-pipeline.mjs', '// fixture\n']]);
   assert.equal(mixed.result.deepMode, 'selective');
   assert.ok(mixed.result.selectedDeepChecks.length > 0);
   const classifier = await classify([[inventoryPath, largeJson], ['scripts/ci/deep-gate.mjs', '// fixture\n']]);
@@ -1095,7 +1095,7 @@ test('documented Node baseline matches package.json engines', async () => {
 });
 
 
-test('PR gate skips Deep for classifier changes and selects only affected current checks', async () => {
+test('PR gate keeps Normal plus affected Deep for classifier changes', async () => {
   const reproducibility = 'deep/Run current-revision SQLite reproducibility audit';
   const registry = routePrDeepGate(classifyDeepGateDiff('base', 'head', {
     runGit: (args) => {
@@ -1120,9 +1120,9 @@ test('PR gate skips Deep for classifier changes and selects only affected curren
       return Buffer.from('scripts/ci/registry.mjs\0scripts/verify/m2-pipeline.mjs\0');
     },
   }));
-  assert.equal(mixed.deepMode, 'none');
-  assert.deepEqual(mixed.selectedDeepChecks, []);
-  assert.equal(mixed.prFallbackReason, 'classifier-or-ci-contract-path');
+  assert.equal(mixed.deepMode, 'selective');
+  assert.deepEqual(mixed.selectedDeepChecks, [reproducibility]);
+  assert.deepEqual(mixed.matchedTriggers.map(({ path }) => path), ['scripts/verify/m2-pipeline.mjs']);
 
   const runtime = routePrDeepGate(classifyDeepGatePaths(['scripts/benchmark/sqlite-runtime.mjs']));
   assert.equal(runtime.deepMode, 'none');
@@ -1135,8 +1135,8 @@ test('PR gate skips Deep for classifier changes and selects only affected curren
   const unknownWithDeep = routePrDeepGate(classifyDeepGateDiff('base', 'head', {
     runGit: () => Buffer.from('unclassified.file\0scripts/verify/m2-pipeline.mjs\0'),
   }));
-  assert.equal(unknownWithDeep.deepMode, 'none');
-  assert.deepEqual(unknownWithDeep.selectedDeepChecks, []);
+  assert.equal(unknownWithDeep.deepMode, 'selective');
+  assert.deepEqual(unknownWithDeep.selectedDeepChecks, [reproducibility]);
   assert.equal(unknownWithDeep.prFallbackReason, 'unclassified-path');
 
   const missingDiff = routePrDeepGate(classifyDeepGateDiff('base', 'head', {

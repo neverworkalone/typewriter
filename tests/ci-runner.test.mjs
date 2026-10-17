@@ -343,7 +343,7 @@ test('PR workflow routes an affected exact-head Deep gate into ci:pr and only it
     command: () => ({ executable: 'synthetic', args: ['normal'] }),
   }, { owner: 'canonical', tier: 'normal' });
   const selectedDeep = CI_CATEGORIES.deep.checks.find(
-    (check) => check.inProcess === 'deep-m2-reproducibility',
+    (check) => check.testFiles?.includes('tests/reproducibility.test.mjs'),
   );
   const unrelatedDeep = CI_CATEGORIES.batch.checks.find(
     (check) => check.label === 'Test Issue #400/#446 relation enrichment pilot contract, backfill queue and canonical apply',
@@ -355,7 +355,7 @@ test('PR workflow routes an affected exact-head Deep gate into ci:pr and only it
   const baseSha = 'a'.repeat(40);
   const headSha = 'b'.repeat(40);
   const workflow = await readFile(path.resolve(TEST_DIRECTORY, '../.github/workflows/ci.yml'), 'utf8');
-  for (const changedPath of ['scripts/verify/m2-pipeline.mjs']) {
+  for (const changedPath of ['tests/reproducibility.test.mjs']) {
     const scenarioDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-ci-pr-scenario-'));
     t.after(() => rm(scenarioDirectory, { recursive: true, force: true }));
     const ledgerPath = path.join(scenarioDirectory, 'ledger.jsonl');
