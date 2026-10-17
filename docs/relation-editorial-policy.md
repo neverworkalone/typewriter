@@ -5,7 +5,7 @@ This is the **authoritative current editorial contract** for Typewriter
 `direct`/`antonym`. It supersedes contrary M1 pilot-era near/direct
 substitution, broad/narrow exclusion and historical example rules in
 editorial-model.md and other older guidance. The actual canonical graph is not
-rewritten by this policy change. Read the "Typewriter 0.3 scope" section first.
+rewritten by this policy change. Read the "Scope of Issue #838" section first.
 
 The 2026-10-12 owner clarification applies a contextual, writer-facing standard
 to `direct` and `antonym`. A short canonical gloss anchors the bound sense; it
@@ -15,10 +15,10 @@ are not interchangeable in every sentence or their definitions are not
 logically exclusive. This clarification does not turn either relation into a
 general topic or scene association.
 
-## Typewriter 0.3 scope (Issue #838 owner decisions; Issue #839)
+## Scope of Issue #838 (owner decisions; Issue #839)
 
 [Issue #838](https://github.com/neverworkalone/typewriter/issues/838) is the single
-authority for 0.3 말의 결/연상 authoring. Where this document, written for the
+authority for #838 말의 결/연상 authoring. Where this document, written for the
 earlier Stage D / `direct`-first workflow, conflicts with it for **new
 Typewriter-authored 말의 결·연상**, #838 controls. Everything below is split by
 source and scope:
@@ -27,9 +27,9 @@ source and scope:
 | --- | --- |
 | STDICT-provided `direct`/`antonym` and approved explicit `→` reference projections (#834) | Unchanged and authoritative. Not re-judged, re-edited or extended by Typewriter. The `direct` bidirectional contract (#797/#834) stays. |
 | Historical relations and calibrations (M1/M9/M10, Stage D, the `direct`/`antonym` calibration examples below) | Records of past decisions. They are **not** permission to add new Typewriter-authored `direct`/`antonym`, and the data is not rewritten. |
-| New 0.3 Typewriter-authored 말의 결 (`near`, `mood`) and 연상 (`scene`, `sensory`, `action`, `association`) | Governed by this section. |
+| New #838 Typewriter-authored 말의 결 (`near`, `mood`) and 연상 (`scene`, `sensory`, `action`, `association`) | Governed by this section. |
 
-**What changes for new 0.3 authored relations:**
+**What changes for new #838 authored relations:**
 
 - **No `direct`-first step.** Do not ask "why not `direct`?" and do not move a
   close expression out of 연상/말의 결 because it could be called a synonym.
@@ -78,7 +78,7 @@ source and scope:
 
 **Implementation status (not yet implemented).** Text-only targets, a
 Typewriter-authored relation source of truth, and ID↔ID bidirectional
-derivation for 0.3 authored relations do not exist yet. Today
+derivation for #838 authored relations do not exist yet. Today
 `meaning_relations.target_meaning_id` is `NOT NULL`, queries inner-join the
 target, and interactive relations are buttons. Do not produce or review data
 as if the text-only or bidirectional behaviour already worked; reviewers check
@@ -165,7 +165,7 @@ integrity; not a creative-authoring workflow):**
   plausible action (respecting its existing target-POS constraint), and
   association opens another intelligible subject, object, creature, idea
   or imaginative path. A close informal synonym candidate is legitimately
-  연상 Tier 1 (see the 0.3 scope section).
+  연상 Tier 1 (see the Scope of Issue #838 section).
 - For example, 습지 → 축축함 may be sensory, and 습지 → 모기/거머리 may be
   association. 습지 → 원숭이 may also be association in a tropical-habitat
   creative context, at a lower display priority. These are illustrative
@@ -231,7 +231,7 @@ relative order, nor mechanically score or test subjective usefulness.
 5. Reverse links: the product build mirrors every original STDICT `direct`
    (including `direct` derived from an explicit STDICT `→` reference, Issue
    #834) as a derived `direct-reverse-projection` row (Issue #797); this is
-   unchanged and no other STDICT/earlier type is mirrored. New 0.3
+   unchanged and no other STDICT/earlier type is mirrored. New #838
    Typewriter-authored ID↔ID 말의 결/연상 are explorable in both directions
    with independently reviewed type and relevance per direction (once
    implemented); text-only targets have no reverse; earlier exploratory rows

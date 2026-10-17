@@ -10,7 +10,7 @@ Consult `domain-model.md` only if the affected contract needs it.
 **Apply the current owner decision in [relation-editorial-policy.md](relation-editorial-policy.md).**
 It overrides stricter historical near/direct substitution and broader/narrower
 exclusion criteria. These rules apply to Stage 1 focused review and Stage 2
-independent review of Typewriter 0.3 말의 결/연상 and of STDICT-sourced
+independent review of Issue #838 말의 결/연상 and of STDICT-sourced
 `direct`/`antonym` projection changes.
 
 The 2026-10-12 clarification treats short canonical glosses as anchors for the
@@ -22,10 +22,10 @@ substitution is not universal, or opposed qualities can coexist. A reviewer
 should first articulate the plausible context, then decide whether a concrete
 material mismatch remains.
 
-## Typewriter 0.3 말의 결·연상 (Issue #838) — scope split
+## Issue #838 말의 결·연상 — scope split
 
 Applies to new Typewriter-authored `near`/`mood`/`scene`/`sensory`/`action`/
-`association` (see "Typewriter 0.3 scope" in
+`association` (see "Scope of Issue #838" in
 [relation-editorial-policy.md](relation-editorial-policy.md)). The `direct`/
 `antonym` rules below validate STDICT-provided relations and approved `→`
 reference projections; they are not a reason to demand `direct` for, or to
@@ -96,7 +96,7 @@ only* do not apply to the new scope.
   subjective, **not a blocker**. Relevance is ordinal display priority,
   **not** semantic distance or confidence.
 - Reverse links need valid source/target identities and preserved provenance;
-  do not create them for symmetry (except new 0.3 authored ID↔ID relations and
+  do not create them for symmetry (except new #838 authored ID↔ID relations and
   the existing `direct` projection, above) or require identical relevance across
   different source senses. Valid entries with zero relations remain
   admissible and searchable. Avoid mechanical subjective scoring validators.
@@ -136,8 +136,8 @@ association judgment, a broader definition or a slight relevance disagreement
 The Stage 1→2→3 lexical-production factory, its batch hand-off, Stage D packets
 and batch metadata duties are **retired** (historical records are kept, not
 reviewed as current procedure). Current route for data changes: **source**
-(STDICT Canonical, or the 0.3 authored-relation source once it exists) →
-**shared validator** → **build** (Full → Lite) → **runtime/UI**. For 0.3
+(STDICT Canonical, or the #838 authored-relation source once it exists) →
+**shared validator** → **build** (Full → Lite) → **runtime/UI**. For #838
 authored relations, once implemented, sample exact sense/ID binding, Tier 1
 assignments, both directions of ID↔ID relations, and non-clickable
 reverse-less text-only rows through that route.

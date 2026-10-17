@@ -12,10 +12,10 @@ Those examples document past editorial decisions only; **do not apply
 their restrictive tests to new Stage 2 production or Stage D backfill**.
 Historical pilot ledger data is unchanged.
 
-## Typewriter 0.3 (Issue #838, #839)
+## Issue #838 and #839
 
 [Issue #838](https://github.com/neverworkalone/typewriter/issues/838) governs
-new 0.3 말의 결/연상 authoring (see "Typewriter 0.3 scope" in the relation
+new #838 말의 결/연상 authoring (see "Scope of Issue #838" in the relation
 policy). This file is a historical M1 pilot record and is not rewritten.
 
 - The pilot's **Tier 1/2** are *review grades* (dictionary accuracy vs
@@ -24,7 +24,7 @@ policy). This file is a historical M1 pilot record and is not rewritten.
   = close enough to be informally considered a synonym).
 - Examples below such as "dictionary synonyms belong to `direct`" or "move a
   synonym out of association" describe past decisions. Do not apply them to new
-  0.3 Typewriter-authored relations, and do not use them to author new
+  #838 Typewriter-authored relations, and do not use them to author new
   `direct`/`antonym`; official STDICT `direct`/`antonym` stay as provided.
 
 ## Current searchable-start policy (Issue #208, 2026-09-28)
@@ -94,7 +94,7 @@ historical inventory totals only.
 ## Editorial precision tiers (Issue #229) — historical M1 review rules
 
 *Historical record, non-normative.* These former M1 review grades (Tier 1/2)
-are not today's `relevance` 1–9, and they do not govern new Typewriter 0.3
+are not today's `relevance` 1–9, and they do not govern new #838
 authoring; that is [relation-editorial-policy.md](relation-editorial-policy.md)
 and Issue #838. The section is kept as an audit trail and as background for
 validating STDICT-provided `direct`/`antonym`.

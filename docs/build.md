@@ -1,7 +1,7 @@
 # Typewriter build contracts
 
 > **Scope note (#838/#839).** The build described here reads Canonical only.
-> Typewriter 0.3 authored 말의 결/연상 inputs and `data/headword-candidates/`
+> Issue #838 authored 말의 결/연상 inputs and `data/headword-candidates/`
 > JSONL (Schema v1 in #838) are not wired into this build, SQLite schema or CI
 > yet; the implementing PRs must add that wiring and its checks. No current CI
 > gate verifies them.
