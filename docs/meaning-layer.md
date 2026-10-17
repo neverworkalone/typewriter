@@ -36,7 +36,7 @@ contributing relation (canonical order) supplies `note`/`relevance`, verified ex
 Skip/dedup/redirect counts are written to `metadata` as `meaning_projection_*`, so
 `source = projected + deduplicated + skipped`.
 
-The shipped (Lite) `dictionary.sqlite` (schema version 8) carries only the product meaning contract. The STDICT source `senses`, `relations` and
+The shipped (Lite) `dictionary.sqlite` (schema version 9) carries only the product meaning contract. The STDICT source `senses`, `relations` and
 `meaning_relation_sources` tables exist only in the Full database `artifacts/dictionary.sqlite` (Issue #792, #795) and are never packaged:
 
 | Table | Content |
@@ -47,7 +47,21 @@ The shipped (Lite) `dictionary.sqlite` (schema version 8) carries only the produ
 | `meaning_relations` | `source_meaning_id`, `position`, `target_meaning_id`, `type`, `note`, `relevance`, `origin` |
 | `generated_surface_forms` | `form`, `record_id`, `sense_id`, `sense_position` (source sense position, for stable ordering), `rule_id` |
 
-`meaning_relations.origin` is one of `stdict-sense-projection` or `typewriter-authored` (CHECK). Typewriter-authored
+`meaning_relations.origin` is one of `stdict-sense-projection` (an original source `relations[]` entry), `typewriter-authored`,
+`stdict-gloss-reference` or `direct-reverse-projection` (CHECK; Issue #797).
+
+**Gloss-reference `direct` (Issue #797, owner-approved).** A STDICT sense whose whole gloss is one `→ 표제어[NN][「n」]` reference becomes a
+product `direct` relation to the exact target record when the rule in `scripts/build/gloss-reference-relations.mjs` holds on the *Canonical*
+form (numbered: exact `(lemma, homograph_no)`; unnumbered: the lemma's only record; designated `「n」` sense exists; same part of speech;
+not a reference chain; not itself). Anything else is HOLD and reported, never guessed. Provenance lives in the Full-only
+`meaning_relation_gloss_sources` (source sense, token offset/length inside the original gloss, target record/sense position); original
+`meaning_relation_sources` rows are never forged for it.
+
+**Bidirectional `direct` (owner-approved exception to "no invented symmetry").** Every verified `direct` (original or gloss-reference) is shown
+in both directions. The missing direction is a derived row with `origin='direct-reverse-projection'` whose Full-only
+`meaning_relation_reverse_sources` row names the forward relation it mirrors; it inherits note and relevance, is never created when the
+reverse already exists, and never mirrors a reverse. Other relation types (`antonym`, `near`, `mood`, …) are not symmetrised.
+The Lite contract query `direct_relation_without_reverse` proves the symmetry in the shipped database. Typewriter-authored
 relations (유의어, 반의어, 말의 결, 연상) are edited on the same table with `origin='typewriter-authored'`.
 
 `buildDictionary` writes the Full database (`artifacts/dictionary.sqlite`) with the source tables and runs there the

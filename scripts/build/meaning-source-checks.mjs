@@ -103,6 +103,60 @@ export const MEANING_SOURCE_INTEGRITY_QUERIES = Object.freeze({
       ON relation.source_meaning_id = source.source_meaning_id
      AND relation.position = source.relation_position
     WHERE relation.origin <> '${MEANING_RELATION_ORIGINS.projection}'`,
+  // Derived relations (Issue #797): each carries its own provenance kind, never a fake original source position.
+  gloss_reference_relation_without_provenance: `
+    SELECT COUNT(*) FROM meaning_relations AS relation
+    WHERE relation.origin = '${MEANING_RELATION_ORIGINS.glossReference}' AND NOT EXISTS (
+      SELECT 1 FROM meaning_relation_gloss_sources AS source
+      WHERE source.source_meaning_id = relation.source_meaning_id
+        AND source.relation_position = relation.position AND source.position = 0)`,
+  gloss_reference_provenance_on_other_origin: `
+    SELECT COUNT(*) FROM meaning_relation_gloss_sources AS source
+    INNER JOIN meaning_relations AS relation
+      ON relation.source_meaning_id = source.source_meaning_id AND relation.position = source.relation_position
+    WHERE relation.origin <> '${MEANING_RELATION_ORIGINS.glossReference}'`,
+  // The provenance names the source sense inside the source meaning, a gloss that is exactly one \`→ \` reference
+  // whose token (at the stored offset) is the target record's lemma, and a target that is the relation's target.
+  gloss_reference_mismatch: `
+    SELECT COUNT(*) FROM meaning_relation_gloss_sources AS source
+    INNER JOIN meaning_relations AS relation
+      ON relation.source_meaning_id = source.source_meaning_id AND relation.position = source.relation_position
+    INNER JOIN senses ON senses.id = source.source_sense_id
+    INNER JOIN records AS target ON target.id = source.target_record_id
+    WHERE relation.type <> 'direct'
+       OR COALESCE(${memberMeaning('source.source_sense_id')} = relation.source_meaning_id, 0) = 0
+       OR relation.target_meaning_id <> 'm' || substr(source.target_record_id, 2)
+       OR source.gloss_start <> 2
+       OR substr(senses.gloss, 1, 2) <> '→ '
+       OR substr(senses.gloss, source.gloss_start + 1, source.gloss_length) NOT LIKE target.lemma || '%'
+       OR source.gloss_start + source.gloss_length + 1 <> length(senses.gloss)
+       OR substr(senses.gloss, -1) <> '.'
+       OR source.target_record_id = senses.record_id
+       OR NOT EXISTS (
+         SELECT 1 FROM senses AS target_sense
+         WHERE target_sense.record_id = source.target_record_id AND target_sense.pos = senses.pos
+           AND (source.target_sense_position IS NULL OR target_sense.position = source.target_sense_position))`,
+  reverse_relation_without_provenance: `
+    SELECT COUNT(*) FROM meaning_relations AS relation
+    WHERE relation.origin = '${MEANING_RELATION_ORIGINS.reverse}' AND NOT EXISTS (
+      SELECT 1 FROM meaning_relation_reverse_sources AS source
+      WHERE source.source_meaning_id = relation.source_meaning_id AND source.relation_position = relation.position)`,
+  // A reverse mirrors a forward \`direct\` that is itself not a reverse; note and relevance are inherited, never invented.
+  reverse_relation_mismatch: `
+    SELECT COUNT(*) FROM meaning_relation_reverse_sources AS source
+    INNER JOIN meaning_relations AS reverse
+      ON reverse.source_meaning_id = source.source_meaning_id AND reverse.position = source.relation_position
+    LEFT JOIN meaning_relations AS forward
+      ON forward.source_meaning_id = source.forward_source_meaning_id AND forward.position = source.forward_position
+    WHERE reverse.origin <> '${MEANING_RELATION_ORIGINS.reverse}'
+       OR reverse.type <> 'direct'
+       OR forward.source_meaning_id IS NULL
+       OR forward.type <> 'direct'
+       OR forward.origin = '${MEANING_RELATION_ORIGINS.reverse}'
+       OR forward.source_meaning_id <> reverse.target_meaning_id
+       OR forward.target_meaning_id <> reverse.source_meaning_id
+       OR forward.note IS NOT reverse.note
+       OR forward.relevance IS NOT reverse.relevance`,
   meaning_relation_source_mismatch: `
     SELECT COUNT(*) FROM meaning_relation_sources AS source
     INNER JOIN meaning_relations AS relation
