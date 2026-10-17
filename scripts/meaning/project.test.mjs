@@ -111,6 +111,9 @@ test('C10 source-bound Meaning boundaries prevent cross-record homonym relation 
     assert.equal(new Set(rows.map((row) => row.id)).size, rows.length,
       `${senseIds.join(', ')} must remain separate Meanings`);
   };
+  const singleMeaning = (senseId) => {
+    assert.deepEqual(rowFor(senseId).sense_ids, [senseId], `${senseId} must remain a single-sense Meaning`);
+  };
 
   // Six Stage 2 blockers: the source definitions describe independent compounds, not one word's extension.
   for (const [lemma, first, second] of [
@@ -146,6 +149,18 @@ test('C10 source-bound Meaning boundaries prevent cross-record homonym relation 
   distinctMeanings(['w160764-s1', 'w440451-s1']);
   sameMeaning(['w440451-s1', 'w440451-s2']);
 
+  // 사비 distinguishes organization/dormitory outlays and the private purchase act from private expenditure.
+  for (const senseId of ['w170076-s1', 'w170077-s1', 'w440112-s1']) singleMeaning(senseId);
+  sameMeaning(['w440113-s1', 'w440113-s2']);
+  distinctMeanings(['w170076-s1', 'w440113-s1']);
+  distinctMeanings(['w170077-s1', 'w440113-s1']);
+  distinctMeanings(['w440112-s1', 'w440113-s1']);
+
+  // Nearby payment/giving groups were checked and retained because their complete source meanings share the transfer core.
+  sameMeaning(['w166221-s1', 'w166222-s1']);
+  sameMeaning(['w173815-s1', 'w173817-s1']);
+  sameMeaning(['w173816-s1', 'w444519-s1']);
+
   // Positive control: the historical record senses of 사전 are one natural lexical extension.
   sameMeaning(['w173020-s1', 'w173020-s2']);
 
@@ -163,4 +178,23 @@ test('C10 source-bound Meaning boundaries prevent cross-record homonym relation 
   assert.equal(relations.some((relation) => relation.source_meaning_id === buddhistSense.id
     && relation.sources.some((source) => source.source_sense_id === 'w173076-s1')), false,
   'the liquid-leakage relation must not be projected from the Buddhist Meaning');
+
+  const privateCost = rowFor('w440113-s1');
+  const companyCost = rowFor('w170076-s1');
+  const dormitoryPayment = rowFor('w170077-s1');
+  const privateProvision = rowFor('w440112-s1');
+  const expenseRecords = canonical.filter((record) => ['w440113', 'w394427'].includes(record.id));
+  const { relations: expenseRelations } = projectMeaningRelations({ records: expenseRecords, meanings, adjudications });
+  const privateCostAntonym = expenseRelations.find((relation) => relation.type === 'antonym'
+    && relation.sources.some((source) => source.source_sense_id === 'w440113-s1'));
+  assert.ok(privateCostAntonym, 'the canonical private-cost antonym to 공비 must be projected');
+  assert.equal(privateCostAntonym.source_meaning_id, privateCost.id,
+    'the private-cost antonym must originate only from the personal-expenditure Meaning');
+  assert.equal(privateCostAntonym.target_meaning_id, rowFor('w394427-s1').id,
+    'the private-cost antonym must still reach the 공비 Meaning');
+  assert.deepEqual(privateCostAntonym.sources.map((source) => source.source_sense_id), ['w440113-s1']);
+  for (const unrelated of [companyCost, dormitoryPayment, privateProvision]) {
+    assert.notEqual(privateCostAntonym.source_meaning_id, unrelated.id,
+      `${unrelated.sense_ids.join(', ')} must not inherit the 사비↔공비 antonym`);
+  }
 });

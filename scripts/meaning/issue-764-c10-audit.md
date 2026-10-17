@@ -8,16 +8,16 @@ This is the C10 source-bound self-check for Issue #764, first performed against 
 | --- | ---: | ---: |
 | C10 lemmas | 42,288 | 42,288 |
 | C10 canonical senses in Meaning rows | 60,814 | 60,814 |
-| C10 Meaning rows | 60,813 | 56,872 |
+| C10 Meaning rows | 60,813 | 56,875 |
 | C10 lemmas with multiple Meaning rows | 7,525 | 5,985 |
 | Multi-Meaning lemmas re-judged | 7,525 | — |
 | Lemmas whose grouping changed | — | 2,682 |
 | Multi-Meaning lemmas kept unchanged | — | 4,843 |
 | Explicitly held lemmas | — | 1 |
-| Repository Meaning rows | 468,828 | 464,887 |
+| Repository Meaning rows | 468,828 | 464,890 |
 | Repository adjudications | 125 | 125 |
 
-The initial self-check covered all 61 C10 shards and all 7,525 lemmas that had multiple Meaning rows at the base. The remaining 34,763 C10 lemmas each had one Meaning bound to one source sense. After the review corrections below, the result preserves every one of the 60,814 C10 canonical sense IDs exactly once, adds no DROP adjudications, and leaves canonical JSONL unchanged. The spec now contains 3,099 merge groups covering 7,036 source senses (reducing 3,937 rows), plus an exact-snapshot repartition of `사전` from 24 rows to 20 groups (reducing four more rows); the repartition includes the four reviewed merged groups and preserves the other 16 senses. The total C10 reduction is 3,941 rows, from 60,813 to 56,872. Compared with the original PR base, 2,682 multi-Meaning lemmas have a changed grouping and 4,843 retain their prior grouping.
+The initial self-check covered all 61 C10 shards and all 7,525 lemmas that had multiple Meaning rows at the base. The remaining 34,763 C10 lemmas each had one Meaning bound to one source sense. After the review corrections below, the result preserves every one of the 60,814 C10 canonical sense IDs exactly once, adds no DROP adjudications, and leaves canonical JSONL unchanged. The spec now contains 3,099 merge groups covering 7,033 source senses (reducing 3,934 rows), plus an exact-snapshot repartition of `사전` from 24 rows to 20 groups (reducing four more rows); the repartition includes the four reviewed merged groups and preserves the other 16 senses. The total C10 reduction is 3,938 rows, from 60,813 to 56,875. Compared with the original PR base, 2,682 multi-Meaning lemmas have a changed grouping and 4,843 retain their prior grouping.
 
 ## Boundary decisions
 
@@ -37,7 +37,9 @@ The full correction groups and representative glosses are in the executable spec
 
 The Stage 2 review's six proposed splits were confirmed against the canonical glosses: `상민` distinguishes occupation from social status; `삼루` distinguishes Buddhist afflictions from liquid leakage; `상송` and `상송하다` distinguish upward submission from reciprocal sending; and `사육` and `사육하다` distinguish serving/raising people from feeding and raising animals. Those six merge instructions were removed from the spec.
 
-The original spec contained 566 cross-record merge groups. I rechecked ten additional source-bound risk candidates whose combined glosses appeared to share only a broad category or a partial compound: six were split and four were retained after checking the complete source glosses.
+The original spec contained 566 cross-record merge groups. The initial risk pass rechecked ten additional source-bound candidates whose combined glosses appeared to share only a broad category or a partial compound. Stage 2's follow-up identified one incorrect KEEP among those ten: `사비`. Its company expense (`w170076-s1`), dormitory payment (`w170077-s1`), private-money procurement act (`w440112-s1`), and privately borne expenditure (`w440113-s1/s2`) do not share one complete lexical meaning. The last two senses remain together as the private-cost Meaning; the other three are separate. The canonical antonym from `w440113-s1` to public cost `w394427-s1` now projects only from that private-cost Meaning.
+
+As a focused check of nearby monetary-transfer candidates, I also rechecked `사금`, `사여`, and `사여하다`. They remain grouped: the complete `사금` definitions share the core of money bestowed as recompense, while the noun and verb `사여` groups share the act of giving property, with personal/secret and state/official contexts as extensions. These are source-bound editorial decisions, not rules based on Hanja or a broad money keyword.
 
 | Candidate | Decision and source-bound reason |
 | --- | --- |
@@ -49,13 +51,15 @@ The original spec contained 566 cross-record merge groups. I rechecked ten addit
 | `사견` | Split a person's own opinion from a wrong view; keep the general wrong-view and Buddhist technical senses together. A personal opinion need not be wrong. |
 | `사명` | Retain the mission/command group: the source definitions consistently describe assigned duties, orders, waiting for orders, and words carried by an envoy. The separate life/death group remains separate. |
 | `사무` | Retain the work/affairs group: temple, private, company, administrative, and palace-purchasing uses all describe matters handled as work or business. |
-| `사비` | Retain the cost group: company, dormitory, and personally borne expenses, including a shared purchase paid for privately, all preserve the private-cost meaning. |
+| `사비` | Split company expense, dormitory payment, and private-money procurement from personal expenditure. Keep `w440113-s1/s2` together as personal costs; the canonical antonym to `공비` belongs only to this Meaning. |
 | `사영` | Retain shadow, light/image projection, and geometric projection: the source definitions share projecting light or a form onto a surface. |
+| `사금` | Retain the payment group: both definitions describe money bestowed as recompense, either by the state to bereaved families or as a token of thanks. |
+| `사여`, `사여하다` | Retain the noun and verb groups: both personal/secret giving and state/official bestowal preserve the complete transfer-of-property action. |
 
-The added Normal regression in `project.test.mjs` checks all six review splits and all six additional boundary decisions against actual canonical sense IDs and final Meaning rows, verifies complete C10 source coverage, and exercises `projectMeaningRelations` on the real `w173076-s1` → `w341062-s1` direct relation. It also keeps `사전`'s historical-record extension as a positive control. The same regression failed when run against the pre-fix PR data at `35bcf134`; it passes against the corrected rows. This is a focused risk screen, not a source-by-source re-review of all 566 cross-record groups: 16 groups were checked in this response and the other 550 original groups were not individually revisited. The corrected spec now has 556 cross-record groups.
+The added Normal regression in `project.test.mjs` checks all six Stage 2 splits, the risk-focused boundary decisions, and complete C10 source coverage against actual canonical sense IDs and final Meaning rows. It asserts three negative `사비` pairs (company expense, dormitory payment, and procurement act versus personal cost), keeps `w440113-s1/s2` together as a positive control, and verifies through actual `projectMeaningRelations` that the antonym to `공비` originates only from the personal-cost Meaning. It also retains source-supported positive controls for `사금`, `사여`, `사여하다`, `사전`, and checks the `w173076-s1` → `w341062-s1` direct relation. The original cross-record relation regression failed against pre-fix PR data at `35bcf134`; the new `사비` assertions also fail when tested against prior HEAD `3ae10741`. Both pass against the corrected rows. This is a focused risk screen, not a source-by-source re-review of all 566 cross-record groups: 19 original groups were checked and the other 547 were not individually revisited. The corrected spec now has 555 cross-record groups.
 
 ## Hold, validation, and provenance
 
 `싱겅싱겅하다` remains a hold for `w214490-s1`: its committed canonical gloss is the empty redirect `→ .`, and the target cannot be established from the source projection. The two current source-bound meanings remain untouched pending a source-backed target; this is not treated as candidate exhaustion.
 
-`node scripts/meaning/apply-edits.mjs scripts/meaning/issue-764-c10.json` applied 3,099 direct merges and one repartition from the exact PR base snapshot. Final validator, replay, Normal CI, and whitespace results are recorded after they are rerun on the corrected tree. Source-bound semantic decisions and this audit were prepared and checked in the primary agent context. This provenance is **agent self-check**; it is not an independent review or human editorial approval. The overall Issue #764 remains open for review.
+`node scripts/meaning/apply-edits.mjs scripts/meaning/issue-764-c10.json` applied 3,099 direct merges and one repartition from the exact PR base snapshot, producing 464,890 meanings and 125 adjudications. Final validator, replay, Normal CI, and whitespace results are recorded after they are rerun on the corrected tree. Source-bound semantic decisions and this audit were prepared and checked in the primary agent context. This provenance is **agent self-check**; it is not an independent review or human editorial approval. The overall Issue #764 remains open for review.
