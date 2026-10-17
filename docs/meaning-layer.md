@@ -3,6 +3,17 @@
 `data/canonical/` is the untouched STDICT source layer (`record -> sense -> relation`). Typewriter's editorial
 **meaning** layer sits on top of it; this issue only provides the storage/validation foundation, not the bulk edit.
 
+> **Current product build (Issue #820).** The default Full/Lite build no longer reads `data/meanings/` or
+> `data/adjudication/`. It derives the product meanings from `data/canonical/` alone: **one STDICT record is one
+> meaning (search candidate)** and every sense of that record is a member, in canonical order
+> (`scripts/meaning/canonical-record.mjs`, see [`canonical-only-db-issue-820.md`](canonical-only-db-issue-820.md)).
+> The meaning `gloss` holds the record's source glosses verbatim, one per line; the UI shows each as a numbered
+> definition inside the one selected candidate. Same-lemma records remain separate homonym candidates. The sections
+> below describe the stored Meaning data contract (`data/meanings/`, `data/adjudication/`), which is preserved
+> unchanged as a legacy layer: it is still validated by the `meaning-references` check and is only used by a build
+> when a meanings directory is passed explicitly. Where they mention reviewed meanings feeding the product database,
+> read them as that legacy layer.
+
 | Path | Content |
 | --- | --- |
 | `data/canonical/` | STDICT normalized source. Never modified by meaning work. |
@@ -10,7 +21,7 @@
 | `data/adjudication/` | Editorial verdicts: `DROP duplicate` rows include `duplicate_of`; `DROP out_of_scope` rows omit it. |
 
 The official DROP reasons are `duplicate` and `out_of_scope`. Meaning criteria are real meaning differences, not part
-of speech. A dropped sense is never referenced by a meaning. For `duplicate`, `duplicate_of` must identify a different,
+of speech. (The product database carries no part of speech; the source `senses.pos` exists only in Full.) A dropped sense is never referenced by a meaning. For `duplicate`, `duplicate_of` must identify a different,
 existing canonical sense of the same lemma that is not itself dropped. `out_of_scope` means the source sense is not part
 of Typewriter's current product Meaning layer; it does not say the source entry lacks meaning or value, and it does not
 remove or change the canonical source. It has no `duplicate_of` target. Every canonical sense remains covered by exactly
@@ -22,6 +33,7 @@ An `out_of_scope` sense produces no product Meaning and cannot remain as a produ
 the contract; relation projection, SQLite, and UI implementation are tracked separately.
 
 ## IDs
+(Canonical-only build, Issue #820: always `wN -> mN`, one meaning per record regardless of its sense count; the suffixed form below belongs to the legacy `data/meanings/` layer.)
 `w0097 -> m0097` for a lone meaning; several meanings use `m0097_1`, `m0097_2`, ... (a lone meaning and suffixed ones
 never mix; numbers need not be contiguous). The ID's record is only an identifier base, not the sole record of the meaning's senses. When a
 MERGE spans records, the ID's record number must be the lowest record number among the member senses (enforced by the dataset validator; the suffix is free); no new ID sequence is created.
@@ -56,12 +68,12 @@ contributing relation (canonical order) supplies `note`/`relevance`, verified ex
 Skip/dedup/redirect counts are written to `metadata` as `meaning_projection_*`, so
 `source = projected + deduplicated + skipped`.
 
-The shipped (Lite) `dictionary.sqlite` (schema version 6) carries only the product meaning contract. The STDICT source `senses`, `relations` and
+The shipped (Lite) `dictionary.sqlite` (schema version 7) carries only the product meaning contract. The STDICT source `senses`, `relations` and
 `meaning_relation_sources` tables exist only in the Full database `artifacts/dictionary.sqlite` (Issue #792, #795) and are never packaged:
 
 | Table | Content |
 | --- | --- |
-| `meanings` | `id`, `lemma`, `gloss`, `pos` (part of speech of the first member sense), `record_id` (ID-base record), ranking metadata (below) |
+| `meanings` | `id`, `lemma`, `gloss` (one source gloss per line), `record_id` (ID-base record), ranking metadata (below) |
 | `meaning_members` | `meaning_id`, `position`, `sense_id` (unique source sense ID, no FK), `record_id` (owner record of that sense) |
 | `sense_adjudications` | dropped senses with `reason`, owner `record_id` and `duplicate_of_sense_id` (no FK) |
 | `meaning_relations` | `source_meaning_id`, `position`, `target_meaning_id`, `type`, `note`, `relevance`, `origin` |
@@ -73,15 +85,16 @@ relations (유의어, 반의어, 말의 결, 연상) are edited on the same tabl
 `buildDictionary` writes the Full database (`artifacts/dictionary.sqlite`) with the source tables and runs there the
 relation-projection and provenance checks of `scripts/build/meaning-source-checks.mjs` (complete, correctly bound and
 ordered provenance; note/relevance equal to the first contributing source relation; the denormalized
-`meaning_members.record_id`, `meanings.pos`, `sense_adjudications.record_id` and
+`meaning_members.record_id`, `sense_adjudications.record_id` and
 `generated_surface_forms.sense_position` equal the source senses'). The extension build then re-verifies the Full
 database, copies only the product tables, in primary-key order, into the Lite database (`extractLiteDictionary`) and
 verifies it with the self-contained `MEANING_INTEGRITY_QUERIES` (ranking, record binding). Package and runtime
 validation use the same self-contained queries and additionally reject a database that is not labelled `lite` or ships
 any `BUILD_ONLY_TABLES`; the CI shared artifact validation requires the Full kind.
 `getMeaningsByLemma` and `getMeaningRelations` in `src/runtime/sqlite-query.js` are the shared meaning-based read helpers.
-The default canonical build requires the complete meaning corpus and fails closed (`INVALID_MEANING_DATA`); builds from
-other canonical fixtures get an empty meaning layer unless a meanings directory is passed.
+The default canonical build derives the meaning layer from canonical records (Issue #820) and reads no meaning or adjudication data;
+building with an explicitly passed meanings directory uses the legacy layer, which must be complete (`INVALID_MEANING_DATA` otherwise).
+Builds from other canonical fixtures get an empty meaning layer unless a meanings directory is passed or `recordMeanings: true` is set.
 
 ## Search, ranking and 더보기 (Issue #718)
 The search candidate unit is the meaning; raw STDICT senses are never listed or shipped, their IDs stay in
