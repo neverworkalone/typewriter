@@ -82,7 +82,7 @@ or a headword with no suffix) by the numeric meaning ID. The ID order is a stabl
 Default view and 더보기: one search lists its lemmas in the existing match order (match tier, then record order) and each lemma's
 meanings in STDICT order. The first three candidates of the whole search are shown; with four or more, 더보기 reveals all the rest
 and can be collapsed again (`partitionCandidates`). The first selection is the first candidate. A meaning's definitions
-(`gloss`, one source sense per line) are shown the same way: the first three, then 뜻풀이 더보기 for all the others and 뜻풀이 접기; the
+(`gloss`, one source sense per line) are shown the same way: the first three, then 뜻풀이 더보기 (N, the number still hidden) for all the others and 뜻풀이 접기; the
 two states are independent and are dropped when the result or the selected candidate changes. Relation groups keep their own
 relevance order and the 20-per-round (up to 100) paging.
 

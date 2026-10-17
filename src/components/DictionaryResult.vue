@@ -274,7 +274,7 @@ defineExpose({ focusCandidate });
               type="button"
               :aria-expanded="String(isDefinitionExpanded(sense))"
               @click="toggleDefinitions(sense)"
-            >{{ isDefinitionExpanded(sense) ? '뜻풀이 접기' : '뜻풀이 더보기' }}</button>
+            >{{ isDefinitionExpanded(sense) ? '뜻풀이 접기' : `뜻풀이 더보기 (${group.items.length - DEFAULT_DEFINITION_LIMIT})` }}</button>
           </template>
           <div v-else class="relation-list">
             <template
