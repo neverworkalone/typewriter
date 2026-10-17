@@ -319,8 +319,8 @@ test('C19 合洞 antonyms project only to the administrative-dong meanings', () 
   const { relations } = projectMeaningRelations({ records, meanings: [...new Set(allMeaningsBySense.values())], adjudications });
 
   for (const [sourceSense, targetSense, sharedActionSense, label] of [
-    ['w371653-s1', 'w153333-s1', 'w371651-s1', '합동'],
-    ['w502845-s1', 'w436724-s1', 'w502844-s1', '합동하다'],
+    ['w153333-s1', 'w371653-s1', 'w371651-s1', '합동'],
+    ['w436724-s1', 'w502845-s1', 'w502844-s1', '합동하다'],
   ]) {
     const sourceMeaning = allMeaningsBySense.get(sourceSense);
     const targetMeaning = allMeaningsBySense.get(targetSense);
