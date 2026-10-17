@@ -7,7 +7,6 @@ import { DatabaseSync } from 'node:sqlite';
 
 import { extractLiteDictionary } from '../scripts/build/lite-dictionary.mjs';
 import { buildDictionary } from '../scripts/build/dictionary.mjs';
-import { writeAdjudications, writeMeanings } from '../scripts/meaning/contract.mjs';
 import { MEANING_INTEGRITY_QUERIES } from '../src/runtime/dictionary-contract.js';
 import { MEANING_SOURCE_INTEGRITY_QUERIES } from '../scripts/build/meaning-source-checks.mjs';
 import { validatePackagedDictionary } from '../src/runtime/dictionary-validation.js';
@@ -20,31 +19,22 @@ const record = (n, lemma, senses) => ({
 });
 const direct = (target_sense) => ({ target: target_sense.split('-')[0], target_sense, type: 'direct', note: '표준국어대사전 동의어' });
 
-// w001-s1/s2 merge into one meaning; both reach w002-s1 (one deduplicated meaning relation, two sources) and s2 reaches w003-s1.
+// w001's two senses are one record meaning; both reach w002-s1 (one deduplicated meaning relation, two sources) and s2 reaches w003-s1.
 const RECORDS = [
   record(1, '가나', [['첫째 뜻풀이.', [{ ...direct('w002-s1'), type: 'near', note: '첫째 근거', relevance: 2 }]], ['둘째 뜻풀이.', [{ ...direct('w002-s1'), type: 'near', note: '둘째 근거', relevance: 4 }, direct('w003-s1')]]]),
   record(2, '다라', [['다라의 뜻풀이.']]),
   record(3, '마바', [['마바의 뜻풀이.']]),
 ];
-const MEANINGS = [
-  { id: 'm001', lemma: '가나', gloss: '가나의 뜻풀이.', sense_ids: ['w001-s1', 'w001-s2'] },
-  { id: 'm002', lemma: '다라', gloss: '다라의 뜻풀이.', sense_ids: ['w002-s1'] },
-  { id: 'm003', lemma: '마바', gloss: '마바의 뜻풀이.', sense_ids: ['w003-s1'] },
-];
-
 async function buildFixture(directory) {
   const canonicalDirectory = path.join(directory, 'canonical');
   await mkdir(canonicalDirectory);
   await writeFile(path.join(canonicalDirectory, 'part.jsonl'), `${RECORDS.map((item) => JSON.stringify(item)).join('\n')}\n`);
-  writeMeanings(path.join(directory, 'meanings'), MEANINGS);
-  writeAdjudications(path.join(directory, 'adjudication'), []);
   const outputPath = path.join(directory, 'dictionary.sqlite');
   await buildDictionary({
     inputDirectory: canonicalDirectory,
     outputPath,
     allowDirty: true,
-    meaningsDirectory: path.join(directory, 'meanings'),
-    adjudicationDirectory: path.join(directory, 'adjudication'),
+    recordMeanings: true,
   });
   // The source-derived checks run on the Full database; the Lite product database is extracted from it.
   const litePath = path.join(directory, 'lite.sqlite');

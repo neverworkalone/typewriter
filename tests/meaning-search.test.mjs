@@ -7,7 +7,6 @@ import { DatabaseSync } from 'node:sqlite';
 
 import { SQLITE_SCHEMA_SQL } from '../scripts/build/sqlite-schema.mjs';
 import { buildDictionary } from '../scripts/build/dictionary.mjs';
-import { writeAdjudications, writeMeanings } from '../scripts/meaning/contract.mjs';
 import { SearchSession } from '../src/domain/search-session.js';
 import { projectSearchResults } from '../src/domain/projection.js';
 import { expandExactSearchCandidates } from '../src/domain/exact-search-candidates.js';
@@ -15,68 +14,37 @@ import { findRecordsBySearchTerm, getMeaningRecord } from '../src/runtime/sqlite
 
 const wid = (n) => `w${String(n).padStart(3, '0')}`;
 const rel = (n, type) => ({ target: wid(n), target_sense: `${wid(n)}-s1`, type, note: '근거' });
-const GLOSSES = {
-  이동0: '위치를 옮김.', 떠남0: '있던 곳을 벗어남.', 쓸쓸함0: '외롭고 적적한 느낌.',
-  가다0: '어떤 장소로 이동하다.', 가다1: '어떤 상태나 시간이 지나가다.', 가다2: '목적지에 도착하러 떠나다.',
-  가다3: '기계나 물건이 제대로 작동하다.', 가다4: '값이나 무게 따위가 나가다.',
-  오르다0: '높은 데로 옮겨 가다.', 오르다1: '위쪽으로 이동하다.',
-  파0: '한글 자모의 열넷째 글자.',
-  나무0: '줄기가 단단한 여러해살이 식물.', 나무1: '집을 짓거나 가구를 만드는 재료.',
-};
-const record = (n, lemma, senses) => ({
-  id: wid(n), record_type: 'entry', role: 'start', candidate_id: wid(n), lemma, search_forms: [lemma],
-  senses: senses.map((relations, index) => ({
-    id: `${wid(n)}-s${index + 1}`, pos: 'verb', gloss: GLOSSES[`${lemma}${index}`] ?? '뜻풀이', ...(relations.length > 0 ? { relations } : {}),
+const record = (n, lemma, glosses) => ({
+  id: wid(n), record_type: 'entry', role: 'start', candidate_id: wid(n), lemma, search_forms: [lemma], source: 'stdict',
+  senses: glosses.map(([gloss, relations = []], index) => ({
+    id: `${wid(n)}-s${index + 1}`, pos: 'verb', gloss, ...(relations.length > 0 ? { relations } : {}),
   })),
 });
 
-// `가다` (w010, five meanings); targets w002..w004; `나무` (w012) has no relations at all.
+// Candidates are records: `가다` has four homonym records (w010 polysemous, w011, w014, w015); the default list shows the
+// related ones (at most 3) and the rest wait behind 더보기; `나무` is one record with two senses (one candidate, two definitions).
 const RECORDS = [
-  record(2, '이동', [[]]),
-  record(3, '떠남', [[]]),
-  record(4, '쓸쓸함', [[]]),
+  record(2, '이동', [['위치를 옮김.']]),
+  record(3, '떠남', [['있던 곳을 벗어남.']]),
+  record(4, '쓸쓸함', [['외롭고 적적한 느낌.']]),
   record(10, '가다', [
-    [rel(2, 'direct')],
-    [rel(3, 'near'), rel(4, 'mood')],
-    [rel(2, 'direct'), rel(3, 'antonym'), rel(2, 'near')],
-    [],
-    [],
+    ['어떤 장소로 이동하다.', [rel(2, 'direct')]],
+    ['어떤 상태나 시간이 지나가다.', [rel(3, 'near'), rel(4, 'mood')]],
+    ['목적지에 도착하러 떠나다.', [rel(2, 'direct'), rel(3, 'antonym'), rel(2, 'near')]],
   ]),
-  record(12, '나무', [[], []]),
-  record(13, '파', [[]]),
-  record(16, '오르다', [[], []]),
+  record(11, '가다', [['기계나 물건이 제대로 작동하다.', [rel(3, 'mood')]]]),
+  record(14, '가다', [['값이나 무게 따위가 나가다.']]),
+  record(15, '가다', [['금이나 줄이 생기다.']]),
+  record(12, '나무', [['줄기가 단단한 여러해살이 식물.'], ['집을 짓거나 가구를 만드는 재료.']]),
 ];
-const DROPPED = new Set(['w013-s1']);
-const DUPLICATES = { 'w016-s2': 'w016-s1' };
-const MEANINGS = RECORDS.flatMap((item) => item.senses.filter((sense) => !DROPPED.has(sense.id) && !(sense.id in DUPLICATES)).map((sense, index) => ({
-  id: item.senses.length === 1 ? `m${item.id.slice(1)}` : `m${item.id.slice(1)}_${index + 1}`,
-  lemma: item.lemma,
-  gloss: sense.gloss,
-  sense_ids: [sense.id],
-})));
 
 async function buildFixture(directory) {
   const canonicalDirectory = path.join(directory, 'canonical');
   await mkdir(canonicalDirectory);
   await writeFile(path.join(canonicalDirectory, 'part.jsonl'), `${RECORDS.map((item) => JSON.stringify(item)).join('\n')}\n`);
-  writeMeanings(path.join(directory, 'meanings'), MEANINGS);
-  writeAdjudications(path.join(directory, 'adjudication'), [
-    ...[...DROPPED].map((sense_id) => ({ sense_id, lemma: '파', decision: 'drop', reason: 'out_of_scope' })),
-    ...Object.entries(DUPLICATES).map(([sense_id, duplicate_of]) => ({ sense_id, lemma: '오르다', decision: 'drop', reason: 'duplicate', duplicate_of })),
-  ]);
   const outputPath = path.join(directory, 'dictionary.sqlite');
-  await buildDictionary({
-    inputDirectory: canonicalDirectory,
-    outputPath,
-    allowDirty: true,
-    meaningsDirectory: path.join(directory, 'meanings'),
-    adjudicationDirectory: path.join(directory, 'adjudication'),
-  });
+  await buildDictionary({ inputDirectory: canonicalDirectory, outputPath, allowDirty: true, recordMeanings: true });
   return outputPath;
-}
-
-function getMeaningsRecordFor(database, term) {
-  return findRecordsBySearchTerm(database, term).matches.map(({ id }) => getMeaningRecord(database, id));
 }
 
 function search(database, term) {
@@ -85,7 +53,7 @@ function search(database, term) {
   return projectSearchResults(records, response.matches);
 }
 
-test('meaning search: candidates are meanings, ranked by stored counts, at most 3 by default', async () => {
+test('meaning search: candidates are records, ranked by stored counts, at most 3 by default', async () => {
   const directory = await mkdtemp(path.join(tmpdir(), 'typewriter-meaning-search-'));
   try {
     const database = new DatabaseSync(await buildFixture(directory), { readOnly: true });
@@ -93,60 +61,50 @@ test('meaning search: candidates are meanings, ranked by stored counts, at most 
       const stored = database.prepare(
         'SELECT id, lexical_relation_count AS l, exploratory_relation_count AS e FROM meanings WHERE lemma = ? ORDER BY display_rank',
       ).all('가다').map((row) => ({ ...row }));
-      // 유의어+반의어 DESC, then 말의 결+연상 DESC, then ID; duplicate targets count once (m10_3: w002 direct + near).
+      // 유의어+반의어 DESC, then 말의 결+연상 DESC, then ID; distinct targets per group (m010: lexical w002, w003; exploratory w002, w003, w004).
       assert.deepEqual(stored, [
-        { id: 'm010_3', l: 2, e: 1 },
-        { id: 'm010_1', l: 1, e: 0 },
-        { id: 'm010_2', l: 0, e: 2 },
-        { id: 'm010_4', l: 0, e: 0 },
-        { id: 'm010_5', l: 0, e: 0 },
+        { id: 'm010', l: 2, e: 3 },
+        { id: 'm011', l: 0, e: 1 },
+        { id: 'm014', l: 0, e: 0 },
+        { id: 'm015', l: 0, e: 0 },
       ]);
 
-      // One result for the lemma whose candidates are its meanings.
+      // One result for the lemma whose candidates are its records, each holding all of its definitions.
       const [result, ...rest] = search(database, '가다');
       assert.equal(rest.length, 0);
       assert.deepEqual(result.senses.map(({ id }) => id), stored.map(({ id }) => id));
-      assert.deepEqual(result.primarySenseIds, ['m010_3', 'm010_1', 'm010_2']);
-      assert.deepEqual(result.moreSenseIds, ['m010_4', 'm010_5']);
+      assert.deepEqual(result.primarySenseIds, ['m010', 'm011']);
+      assert.deepEqual(result.moreSenseIds, ['m014', 'm015']);
       const candidates = expandExactSearchCandidates([result]);
       assert.deepEqual(candidates.filter(({ isMore }) => !isMore).map(({ senseId }) => senseId), result.primarySenseIds);
-      assert.equal(candidates.length, 5);
+      assert.equal(candidates.length, 4);
 
-      // Relation targets open the target meaning (its ID-base record + meaning ID), not a raw sense.
+      // Relation targets open the target record's meaning, not a raw sense.
       const top = result.senses[0];
       assert.deepEqual(top.relations.map(({ targetId, targetSenseId }) => [targetId, targetSenseId]).sort(), [
-        ['w002', 'm002'], ['w002', 'm002'], ['w003', 'm003'],
+        ['w002', 'm002'], ['w002', 'm002'], ['w003', 'm003'], ['w003', 'm003'], ['w004', 'm004'],
       ]);
 
-      // Without any relation, one meaning (lowest ID) is still shown and the rest wait behind 더보기.
+      // A polysemous record is one candidate: both senses are definitions of it, nothing waits behind 더보기.
       const [plain] = search(database, '나무');
-      assert.deepEqual(plain.primarySenseIds, ['m012_1']);
-      assert.deepEqual(plain.moreSenseIds, ['m012_2']);
+      assert.deepEqual([plain.primarySenseIds, plain.moreSenseIds], [['m012'], []]);
+      const [namu] = getMeaningsRecordFor(database, '나무');
+      assert.deepEqual(namu.senses.map(({ id, sense_ids: ids }) => [id, ids]), [['m012', ['w012-s1', 'w012-s2']]]);
 
-      // A record whose every sense is out_of_scope has no meaning: no candidate and no empty card.
-      assert.deepEqual(search(database, '파'), []);
+      // A single-record lemma has no more list.
+      const [single] = search(database, '이동');
+      assert.deepEqual([single.primarySenseIds, single.moreSenseIds], [['m002'], []]);
+
       const runtime = {
         search: async (term) => findRecordsBySearchTerm(database, term),
         getRecord: async () => { throw new Error('raw record not expected'); },
         getMeaningRecord: async (id) => getMeaningRecord(database, id),
       };
-      const dropped = await new SearchSession({ runtime }).searchExact('파');
-      assert.equal(dropped.status, 'empty');
-      assert.deepEqual(dropped.results, []);
       const kept = await new SearchSession({ runtime }).searchExact('가다');
       assert.equal(kept.status, 'ready');
       assert.equal(kept.results.length, 1);
-
-      // A duplicate sense resolves to the surviving meaning, so a surface match on it still finds the meaning
-      // (and a link to the raw sense opens it).
-      const [oreuda] = getMeaningsRecordFor(database, '오르다');
-      assert.deepEqual(oreuda.senses.map(({ id, sense_ids: ids }) => [id, ids]), [['m016_1', ['w016-s1', 'w016-s2']]]);
-      const viaDuplicate = projectSearchResults([oreuda], [{ id: oreuda.id, match: { kind: 'generated-surface-form', senseIds: ['w016-s2'] } }]);
-      assert.deepEqual(viaDuplicate[0].senses.map(({ id }) => id), ['m016_1']);
-
-      // A single-meaning lemma has no more list.
-      const [single] = search(database, '이동');
-      assert.deepEqual([single.primarySenseIds, single.moreSenseIds], [['m002'], []]);
+      const missing = await new SearchSession({ runtime }).searchExact('없는말');
+      assert.equal(missing.status, 'empty');
     } finally {
       database.close();
     }
@@ -154,6 +112,10 @@ test('meaning search: candidates are meanings, ranked by stored counts, at most 
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+function getMeaningsRecordFor(database, term) {
+  return findRecordsBySearchTerm(database, term).matches.map(({ id }) => getMeaningRecord(database, id));
+}
 
 test('meaning record: a duplicate sense whose survivor is in another record still resolves to that meaning', () => {
   // Canonical fixtures cannot hold two records of one lemma, so the cross-record `duplicate_of` the meaning
