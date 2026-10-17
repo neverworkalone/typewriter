@@ -1,11 +1,11 @@
 # Issue #764 C17 merged-Meaning audit
 
-이 파일은 실행 스펙의 811개 repartition을 모두 기록한다. 현재 C17 source-bound partition에서 782개는 Meaning 행 수가 줄었고 29개는 행 수를 유지했다. 앞선 리뷰에서 검토한 교차-record risk group과 그 후속 경계 수정은 각 lemma 절에 기록한다. 이번 Stage 1 후속에서 이전 88개 candidate group/84개 lemma를 다시 대조해 8개 과병합을 분리하고 80개 group/76개 lemma를 유지했다. 모든 source gloss는 canonical에서 읽었으며 작성은 주 에이전트의 source-bound 자체 점검이다. 독립 검토나 사람의 승인이 아니다.
+이 파일은 실행 스펙의 811개 repartition을 모두 기록한다. 현재 C17 source-bound partition에서 782개는 Meaning 행 수가 줄었고 29개는 행 수를 유지했다. 앞선 리뷰에서 검토한 교차-record risk group과 그 후속 경계 수정은 각 lemma 절에 기록한다. Stage 1 후속에서 이전 88개 candidate group/84개 lemma를 다시 대조해 8개 과병합을 분리하고 80개 group/76개 lemma를 유지했다. 이후 Stage 2의 source-bound 재점검에서 `특이성`의 성질(性)과 항성(星)을 분리해 현재는 총 9개 group을 나누고 79개 group/75개 lemma를 유지한다. 모든 source gloss는 canonical에서 읽었으며 작성은 주 에이전트의 source-bound 자체 점검이다. 독립 검토나 사람의 승인이 아니다.
 
 
 ## Stage 1 follow-up — prior 88 cross-record risk groups
 
-새 Stage 1 리뷰 `5555058430`가 요구한 같은 부분 구성·동음·넓은 상위범주 과병합 유형을 이전 HEAD의 88개 cross-record group/84개 lemma 각각 canonical source sense와 최종 partition에 결속해 다시 대조했다. 아래 8개 후보를 분리했고 나머지 80개 group/76개 lemma는 구체적인 전체 의미 확장·환유·동일 기능/대상 관계가 source gloss에서 이어져 유지했다. 각 row의 sense ID는 이 문서의 해당 lemma 절에 보존한 canonical 원문 gloss와 연결된다. 이는 지정된 risk cohort의 source-bound 자체 점검이지 C17 전체의 독립 전수 리뷰가 아니다.
+새 Stage 1 리뷰 `5555058430`가 요구한 같은 부분 구성·동음·넓은 상위범주 과병합 유형을 이전 HEAD의 88개 cross-record group/84개 lemma 각각 canonical source sense와 최종 partition에 결속해 다시 대조했다. 당시 8개 후보를 분리하고 남은 80개 group/76개 lemma를 source gloss와 대조했다. 이후 Stage 2 집중 재점검에서 아래 `특이성` 한 그룹을 추가 분리했으며, 현재 79개 group/75개 lemma는 각 표의 bound source gloss에 드러나는 전체 의미 확장·환유·동일 기능/대상 관계를 근거로 유지한다. 각 row의 sense ID는 이 문서의 해당 lemma 절에 보존한 canonical 원문 gloss와 연결된다. 이는 지정된 risk cohort의 source-bound 자체 점검이지 C17 전체의 독립 전수 리뷰가 아니다.
 
 | Lemma | Reviewed source group | Decision and source-bound reason |
 | --- | --- | --- |
@@ -95,8 +95,15 @@
 | 튀기다 | `w346812-s1`, `w346812-s2`, `w495716-s1`, `w495716-s2`, `w495716-s3`, `w495716-s4`, `w495716-s5` | KEEP: 기름에서 음식·낟알을 부풀리고, 힘을 튕겨 물체·동물·수판알·액체를 움직이거나 흩뜨리는 것은 열·힘으로 갑자기 튀게 하는 한 동사. |
 | 튜닝 | `w349174-s1`, `w349174-s2`, `w515500-s1` | KEEP: 라디오 수신 주파수, 악기 음정, 자동차·오디오 부품을 조정하는 것은 원하는 성능·음에 맞게 튜닝하는 용법. |
 | 트다 | `w495532-s1`, `w495532-s2`, `w495532-s3`, `w495532-s4`, `w495532-s5`, `w495543-s1`, `w495543-s2`, `w495543-s3` | KEEP: 막힘을 치우고 장·관계를 열며, 갈라지고 싹이 트고 날이 밝는 것은 닫힌 곳·상태가 열리는 의미의 공간·사회·생물·시간 용법으로 묶고, 더 기대할 것이 없게 되는 상태는 별도. |
-| 특이성 | `w351485-s1`, `w351485-s2`, `w351486-s1` | KEEP: 두드러진 차이와 사물에 고유한 성질, 특이 스펙트럼 별은 일반·고유·천문 분야의 특이성을 나타내는 성질. |
+| 특이성 | `w351485-s1`, `w351485-s2`, `w351486-s1` | SPLIT: `w351485-s1/s2`는 성질(性)을 정의하고 `w351486-s1`은 특수한 스펙트럼형을 보이는 항성(星) 자체를 정의한다. 공통 수식어 `특이`만으로 성질과 별을 같은 어휘 정체성으로 묶을 수 없다. |
 | 틔우다 | `w353021-s1`, `w353021-s2`, `w353021-s3`, `w353021-s4`, `w353021-s5`, `w515075-s1` | KEEP: 막힘을 열거나 답답함을 풀고 능력·목소리·관계를 열어 주는 용법과 싹을 틔우는 용법은 ‘열려 나오게 함’의 확장이다. |
+
+
+## Stage 2 follow-up — `특이성` property vs stellar object
+
+리뷰 `5555233634`의 과병합 지적을 source-bound로 확인했다. `w351485-s1/s2`는 각각 두드러지게 다른 성질과 사물에만 있는 특수한 성질을 정의하고, `w351486-s1`은 그런 성질이 아니라 특수한 스펙트럼형을 보이는 항성 자체를 정의한다. 앞의 두 sense는 하나의 성질 Meaning으로 유지하고 항성 sense는 별도 Meaning으로 분리했다. canonical direct `w351485-s2`↔`w348489-s1`(특성)은 성질 sense에만 바인딩되어 있으므로, 실제 projector 회귀에서 양방향 source provenance를 유지하고 항성 Meaning으로 전파되지 않는지 확인한다.
+
+리뷰가 지정한 기존 80개 KEEP 교차-record group을 canonical source gloss와 최종 bound membership에 다시 대조했다. `특이성` 외에는 같은 ‘일부 수식 요소만 공유하면서 핵심 명사가 성질과 대상처럼 달라지는’ 경계가 확인되지 않았다. 해당 한 그룹을 분리한 현재 상태는 79개 KEEP group/75 lemma, 9개 SPLIT group이다. 이 범위는 지정 cohort의 source-bound 자체 점검이며, 나머지 C17에 대한 독립 전수 승인이 아니다.
 
 ## ㅌ
 
@@ -9143,10 +9150,11 @@
 
 ## 특이성
 
-- Before Meaning rows: 3; after: 1.
-- 판정 근거: 두드러진 차이와 사물에 고유한 성질, 특이 스펙트럼 별은 일반·고유·천문 분야의 특이성을 나타내는 성질.
+- Before Meaning rows: 3; after: 2.
+- 판정 근거: `w351485-s1/s2`는 두드러진 차이와 사물에 고유한 성질(性)을 뜻한다. 별도 canonical record의 `w351486-s1`은 특수한 스펙트럼형을 보이는 항성(星) 자체를 정의하므로, 공통 수식어 `특이`만으로 같은 Meaning에 둘 수 없다.
 - 최종 Meaning:
-- m351485_1 (w351485-s1, w351485-s2, w351486-s1): 두드러지게 다른 성질. 일정한 사물에만 있는 특수한 성질. 표준 분광형(分光型)으로는 설명할 수 없는 특수한 스펙트럼형을 보이는 항성. 이들은 분광형 다음에 첨자 피(p)를 붙여 표시한다. Ap 따위가 있다.
+- m351485_1 (w351485-s1, w351485-s2): 두드러지게 다른 성질. 일정한 사물에만 있는 특수한 성질.
+- m351486 (w351486-s1): 표준 분광형(分光型)으로는 설명할 수 없는 특수한 스펙트럼형을 보이는 항성. 이들은 분광형 다음에 첨자 피(p)를 붙여 표시한다. Ap 따위가 있다.
 - Canonical source evidence:
 - w351485-s1: 두드러지게 다른 성질.
 - w351485-s2: 일정한 사물에만 있는 특수한 성질.

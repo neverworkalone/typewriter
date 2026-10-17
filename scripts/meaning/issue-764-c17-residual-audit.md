@@ -1,6 +1,6 @@
 # Issue #764 C17 residual Meaning audit
 
-이 파일은 C17 후보 중 최종적으로 여러 Meaning을 유지한 882개 lemma 전부와, 시작 시 한 Meaning이었던 다중-sense 후보 가운데 그대로 한 Meaning으로 둔 184개를 기록한다. 각 잔여 Meaning ID에는 그 행의 bound canonical sense 원문, 같은 표제어의 모든 대안 Meaning 및 sense ID, 행별 source-bound 판정 근거를 둔다. 작성 provenance는 주 에이전트 자체 점검이며 독립 검토가 아니다.
+이 파일은 C17 후보 중 최종적으로 여러 Meaning을 유지한 883개 lemma 전부와, 시작 시 한 Meaning이었던 다중-sense 후보 가운데 그대로 한 Meaning으로 둔 184개를 기록한다. 각 잔여 Meaning ID에는 그 행의 bound canonical sense 원문, 같은 표제어의 모든 대안 Meaning 및 sense ID, 행별 source-bound 판정 근거를 둔다. 작성 provenance는 주 에이전트 자체 점검이며 독립 검토가 아니다.
 검토 이력 (2026-10-17): 이전 HEAD `cf5090f2`에서는 `태즈메이니아`·`탐라`·`터놓다`를 서로 분리해 기록했다. Stage 2 후속 검토 `5549941029`의 source-bound 지적과 Issue #764 §1·§2-1 재대조에 따라 현재 세 표제어는 하나의 Meaning으로 재분류했으며, 해당 과거 KEEP 사유는 superseded 판정이다.
 
 리뷰 후속 (2026-10-16): 잔존 감사의 참조형 source gloss 22건은 공식 표준국어대사전 표제어 번호를 확인해 canonical target sense ID와 원문 gloss를 각 행에 연결했다. 원문이 표제어까지만 지정해 sense를 특정하지 않는 경우 해당 표제어의 source senses를 모두 적고, C17 해석이 어느 sense에 기대는지 별도로 밝혔다. 이 확인에서 `매기09`, `태우다01`, `통09`, `창병02`의 이전 homonym 해석 오류를 발견해 네 Meaning gloss를 바로잡았다.
@@ -9643,6 +9643,15 @@
 - `m348731_1` (w348731-s1)
   - 근거: bound — `w348731-s1` “특별히 다르다.”; compare — `m348730` (`w348730-s1`, `w348731-s2`); conclusion — 이 bound source 정의는 compare에 열거한 모든 대안과 다른 어휘 용법을 가리킨다. source gloss가 이 행을 대안의 하위 용법이나 자연스러운 확장으로 정의하지 않으므로 별도 유지했다.
 
+
+## 특이성
+
+근거 기준: 주 에이전트 source-bound 자체 점검 — 각 bound canonical gloss를 동일 표제어의 다른 source gloss와 대조했다. 특이성(性)의 두 성질 sense와 별도 record의 특이성(星) 항성 sense를 구별하고, 각 행을 모든 대안 source와 비교했다.
+
+- `m351485_1` (w351485-s1, w351485-s2)
+  - 근거: bound — `w351485-s1` “두드러지게 다른 성질.”; `w351485-s2` “일정한 사물에만 있는 특수한 성질.”; compare — `m351486` (`w351486-s1`); conclusion — 두 bound gloss는 서로 다른 성질 용례지만 모두 성질(性)을 가리킨다. 다른 canonical record의 항성(星) 자체를 정의하는 용법과 핵심 대상이 다르므로, 그 항성 sense와는 별도 Meaning으로 유지했다.
+- `m351486` (w351486-s1)
+  - 근거: bound — `w351486-s1` “표준 분광형(分光型)으로는 설명할 수 없는 특수한 스펙트럼형을 보이는 항성. 이들은 분광형 다음에 첨자 피(p)를 붙여 표시한다. Ap 따위가 있다.”; compare — `m351485_1` (`w351485-s1`, `w351485-s2`); conclusion — bound source는 특수한 스펙트럼형을 보이는 항성(星) 자체를 정의한다. 성질(性)을 뜻하는 두 대안의 일부 수식 요소 `특이`만 공유하며 핵심 명사가 다르고, source gloss에는 하나의 어휘 의미에서 이어지는 관계가 제시되지 않아 별도 유지했다.
 
 ## 특재
 

@@ -56,6 +56,7 @@ const reviewCases = [
   { lemma: '툭탁하다', before: [['w347480-s1'], ['w517686-s1']], priorHeadGroups: [['w347480-s1', 'w517686-s1']], groups: [['w347480-s1'], ['w517686-s1']] },
   { lemma: '툭탁툭탁', before: [['w347497-s1'], ['w517689-s1']], priorHeadGroups: [['w347497-s1', 'w517689-s1']], groups: [['w347497-s1'], ['w517689-s1']] },
   { lemma: '툭탁툭탁하다', before: [['w347498-s1'], ['w517690-s1']], priorHeadGroups: [['w347498-s1', 'w517690-s1']], groups: [['w347498-s1'], ['w517690-s1']] },
+  { lemma: '특이성', before: [['w351485-s1'], ['w351485-s2'], ['w351486-s1']], priorHeadGroups: [['w351485-s1', 'w351485-s2', 'w351486-s1']], groups: [['w351485-s1', 'w351485-s2'], ['w351486-s1']] },
 ];
 const reviewSenseIds = new Set(reviewCases.flatMap(({ groups }) => groups.flat()));
 const projectionProbeSenseIds = new Set([
@@ -64,6 +65,7 @@ const projectionProbeSenseIds = new Set([
   'w341954-s1', 'w341956-s1', 'w341955-s1', 'w497023-s1', 'w517385-s1', 'w357670-s1',
   'w496829-s1', 'w344590-s1',
   'w342237-s1', 'w342239-s1', 'w342238-s1', 'w342240-s1', 'w257330-s1', 'w473250-s1',
+  'w351485-s2', 'w351486-s1', 'w348489-s1',
 ]);
 const meaningFiles = readdirSync(meaningDir).filter((file) => /^c17_\d+\.jsonl$/u.test(file)).sort();
 const rows = meaningFiles.flatMap((file) => readFileSync(path.join(meaningDir, file), 'utf8')
@@ -343,6 +345,34 @@ test('C17 applies naming-principle and distinct-identity boundaries with a one-l
   assert.ok(!ordinaryProjection.relations.some((relation) => relation.source_meaning_id === ordinaryJudgmentMeaning.id
     || relation.target_meaning_id === ordinaryJudgmentMeaning.id),
   'the 평상시 direct relation never reaches the ordinary-judgment Meaning');
+
+  const propertyMeaning = (rowsByLemma.get('특이성') ?? []).find((row) => row.sense_ids.includes('w351485-s2'));
+  const stellarMeaning = (rowsByLemma.get('특이성') ?? []).find((row) => row.sense_ids.includes('w351486-s1'));
+  const characteristicMeaning = [...projectionTargetRows.values()].find((row) => row.sense_ids.includes('w348489-s1'));
+  const propertyRecord = projectionSourceRecords.get('w351485');
+  const characteristicRecord = projectionSourceRecords.get('w348489');
+  assert.ok(propertyMeaning && stellarMeaning && characteristicMeaning && propertyRecord && characteristicRecord,
+    '특이성 property/star and 특성 source-bound relation endpoints are present');
+  assert.notEqual(propertyMeaning.id, stellarMeaning.id,
+    '특이성(性) and 특이성(星) have distinct Meaning identities');
+  const specialnessProjection = projectMeaningRelations({
+    records: [propertyRecord, characteristicRecord],
+    meanings: projectionMeanings,
+  });
+  for (const { sourceMeaning, targetMeaning, sourceSense } of [
+    { sourceMeaning: propertyMeaning, targetMeaning: characteristicMeaning, sourceSense: 'w351485-s2' },
+    { sourceMeaning: characteristicMeaning, targetMeaning: propertyMeaning, sourceSense: 'w348489-s1' },
+  ]) {
+    const direct = specialnessProjection.relations.filter((relation) => relation.type === 'direct'
+      && relation.source_meaning_id === sourceMeaning.id && relation.target_meaning_id === targetMeaning.id
+      && relation.sources.some((source) => source.source_sense_id === sourceSense));
+    assert.equal(direct.length, 1, `${sourceSense}: 특이성(性) ↔ 특성 direct remains projected`);
+    assert.deepEqual(direct[0].sources.map((source) => source.source_sense_id), [sourceSense],
+      `${sourceSense}: 특이성(性) ↔ 특성 provenance remains source-bound`);
+  }
+  assert.ok(!specialnessProjection.relations.some((relation) => relation.source_meaning_id === stellarMeaning.id
+    || relation.target_meaning_id === stellarMeaning.id),
+  '특이성(性) ↔ 특성 direct never leaks onto the 특이성(星) Meaning');
 
   const relationCases = [
     { lemma: '탕산', source: 'w341954-s1', other: 'w341956-s1', target: 'w342269-s1' },
