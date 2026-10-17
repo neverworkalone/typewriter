@@ -10,6 +10,7 @@ import {
 import { parseJsonWithUniqueKeys } from '../scripts/validate/unique-json.mjs';
 
 test('artifact policy classifies current projections and durable inputs', async () => {
+  const generatedAudit = 'data/validation/canonical-semantic-audit.json';
   const policy = await readArtifactPolicy();
   const options = {
     deterministicProjectionPatterns: policy.deterministic_projection_patterns,
@@ -20,9 +21,9 @@ test('artifact policy classifies current projections and durable inputs', async 
   };
 
   assert.deepEqual(
-    classifyTrackedArtifacts(['data/validation/future-semantic-review.json'], options),
+    classifyTrackedArtifacts([generatedAudit], options),
     {
-      generated: ['data/validation/future-semantic-review.json'],
+      generated: [generatedAudit],
       unclassified: [],
     },
   );
@@ -40,7 +41,7 @@ test('artifact policy classifies current projections and durable inputs', async 
 
   await assert.doesNotReject(validateArtifactPolicy());
   await assert.rejects(
-    validateArtifactPolicy({ tracked: ['data/validation/future-semantic-review.json'] }),
+    validateArtifactPolicy({ tracked: [generatedAudit] }),
     (error) => error instanceof ArtifactPolicyError && error.code === 'GENERATED_PROJECTION_TRACKED',
   );
 });
