@@ -113,6 +113,8 @@ export async function extractLiteDictionary({ fullPath, litePath }) {
     lite.exec('DETACH DATABASE full_source;');
     verifyDatabase(lite);
     assertDatabaseKind(lite, DATABASE_KINDS.lite, 'Extracted Lite dictionary');
+    // Bulk inserts leave partially filled pages (~5% of the file at release scale); repack deterministically.
+    lite.exec('VACUUM;');
     lite.close();
     lite = undefined;
   } catch (error) {

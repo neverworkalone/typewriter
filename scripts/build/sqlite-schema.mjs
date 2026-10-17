@@ -17,7 +17,7 @@ CREATE TABLE records (
   role TEXT NOT NULL CHECK (role IN ('start', 'reference-only')),
   candidate_id TEXT,
   lemma TEXT NOT NULL
-);
+) WITHOUT ROWID;
 
 CREATE TABLE search_forms (
   record_id TEXT NOT NULL,
@@ -25,7 +25,7 @@ CREATE TABLE search_forms (
   form TEXT NOT NULL,
   PRIMARY KEY (record_id, position),
   FOREIGN KEY (record_id) REFERENCES records(id) ON DELETE CASCADE
-);
+) WITHOUT ROWID;
 
 CREATE TABLE generated_surface_forms (
   form TEXT NOT NULL,
@@ -47,7 +47,7 @@ CREATE TABLE generated_surface_forms (
   )),
   PRIMARY KEY (form, record_id, sense_id),
   FOREIGN KEY (record_id) REFERENCES records(id) ON DELETE CASCADE
-);
+) WITHOUT ROWID;
 
 CREATE TABLE meanings (
   id TEXT PRIMARY KEY NOT NULL,
@@ -62,7 +62,7 @@ CREATE TABLE meanings (
   exploratory_relation_count INTEGER NOT NULL CHECK (exploratory_relation_count >= 0),
   display_rank INTEGER NOT NULL UNIQUE CHECK (display_rank >= 1),
   FOREIGN KEY (record_id) REFERENCES records(id)
-);
+) WITHOUT ROWID;
 
 CREATE TABLE meaning_members (
   meaning_id TEXT NOT NULL,
@@ -72,7 +72,7 @@ CREATE TABLE meaning_members (
   PRIMARY KEY (meaning_id, position),
   FOREIGN KEY (meaning_id) REFERENCES meanings(id) ON DELETE CASCADE,
   FOREIGN KEY (record_id) REFERENCES records(id)
-);
+) WITHOUT ROWID;
 
 CREATE TABLE sense_adjudications (
   sense_id TEXT PRIMARY KEY NOT NULL,
@@ -102,7 +102,7 @@ CREATE TABLE meaning_relations (
   CHECK (source_meaning_id <> target_meaning_id),
   FOREIGN KEY (source_meaning_id) REFERENCES meanings(id) ON DELETE CASCADE,
   FOREIGN KEY (target_meaning_id) REFERENCES meanings(id)
-);
+) WITHOUT ROWID;
 
 CREATE INDEX idx_records_lemma ON records(lemma);
 CREATE INDEX idx_search_forms_form ON search_forms(form);
