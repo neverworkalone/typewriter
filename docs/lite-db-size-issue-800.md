@@ -47,6 +47,12 @@ Not pursued (insufficient expected gain versus the invariants, or needs a design
 Product tables with composite/TEXT primary keys are declared `WITHOUT ROWID`, and Lite extraction ends with `VACUUM`.
 Logical contents, queries, schema version and all validators are unchanged; nothing in the repository used `rowid`.
 
+Note on figures: the candidate table was measured on copies of the pre-change `dist/dictionary.sqlite` (older
+canonical revision `c03e97079e19`, 427,583 records); the real-build figures below use the current `master` canonical,
+which differs slightly in content. That explains 239.1 MiB (candidate) versus 237.8 MiB (real build). The `VACUUM`
+gain (−14 MiB, 4.9 %) was measured on the baseline file; the unit fixture is too small to show page slack, so its
+compactness assertions are guards, not proof of the repack effect.
+
 ## Verification on the real build (current `master` canonical, 427,583 records)
 
 Full built with `node scripts/build/dictionary.mjs`, Lite extracted twice with `extractLiteDictionary`:

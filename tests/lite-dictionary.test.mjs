@@ -185,7 +185,8 @@ test('Lite verification passes for a real extraction with different files and fa
 });
 
 // Invariant (Issue #800): the shipped Lite database stores every keyed product table clustered on its primary key
-// (no separate rowid table + autoindex) and is repacked, so no free pages are left from the bulk copy.
+// (no separate rowid table + autoindex) and is left compact. The small fixture copies without page slack, so the
+// compactness assertions are a guard; the repack gain itself is measured on the real build (docs/lite-db-size-issue-800.md).
 test('Lite product tables are WITHOUT ROWID and the file is repacked', async () => {
   const CLUSTERED_TABLES = [
     'records', 'search_forms', 'generated_surface_forms', 'meanings', 'meaning_members', 'meaning_relations',
@@ -198,7 +199,11 @@ test('Lite product tables are WITHOUT ROWID and the file is repacked', async () 
         assert.throws(() => lite.prepare(`SELECT rowid FROM ${table} LIMIT 1`).get(), /no such column: rowid/u);
       }
       assert.equal(lite.prepare('PRAGMA freelist_count').get().freelist_count, 0);
+      // Repacked: another VACUUM must not shrink the file, so the page count is already minimal.
+      const pagesBefore = lite.prepare('PRAGMA page_count').get().page_count;
+      lite.exec('VACUUM;');
+      assert.equal(lite.prepare('PRAGMA page_count').get().page_count, pagesBefore);
       assert.doesNotThrow(() => validatePackagedDictionary(lite));
-    });
+    }, {});
   });
 });
