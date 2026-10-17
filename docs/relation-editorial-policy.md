@@ -1,13 +1,11 @@
 # Current relation editorial and review policy (owner decisions, 2026-10-10 and 2026-10-12)
 
-This is the **authoritative current editorial contract** for relation authoring,
-Stage D backfill and PR review. It supersedes contrary M1 pilot-era
-near/direct substitution, broad/narrow exclusion and historical example rules
-in editorial-model.md and other older guidance. The actual canonical graph is
-not rewritten by this policy change. For new Typewriter 0.3 말의 결/연상
-authoring, read the "Typewriter 0.3 scope" section first: it narrows the
-`direct`-first and no-new-symmetry statements below to STDICT-provided and
-historical relations.
+This is the **authoritative current editorial contract** for Typewriter
+말의 결/연상 authoring and PR review, and for validating STDICT-provided
+`direct`/`antonym`. It supersedes contrary M1 pilot-era near/direct
+substitution, broad/narrow exclusion and historical example rules in
+editorial-model.md and other older guidance. The actual canonical graph is not
+rewritten by this policy change. Read the "Typewriter 0.3 scope" section first.
 
 The 2026-10-12 owner clarification applies a contextual, writer-facing standard
 to `direct` and `antonym`. A short canonical gloss anchors the bound sense; it
@@ -99,9 +97,8 @@ that group.
 
 ## Different goals, different review gates
 
-The table and the `direct`/`antonym` rules below describe the STDICT-provided
-and historical relations and how they are validated; they do not authorise new
-Typewriter-authored `direct`/`antonym`.
+The table and the `direct`/`antonym` rules below describe how STDICT-provided
+relations are validated. Typewriter does not author new `direct`/`antonym`.
 
 | UI group | Canonical types | Primary purpose | Reviewer gate |
 | --- | --- | --- | --- |
@@ -110,44 +107,32 @@ Typewriter-authored `direct`/`antonym`.
 | 말의 결 | near, mood | Writer-facing nuance, tone and texture | Creative breadth and relative relevance |
 | 연상 | scene, sensory, action, association | Evocative scenes, senses, actions and ideas | Creative breadth and relative relevance |
 
-**Lexical relationships (`direct` and `antonym`):**
+**Validating STDICT-provided `direct`/`antonym` (existing source and projection
+integrity; not a creative-authoring workflow):**
 - `direct` claims meaningful semantic similarity between the actual bound
-  senses. Conventional synonymy is sufficient, as is a natural, intelligible,
-  recurring usage in which the words function as close writer-facing
-  alternatives. Check the bound lemma, POS, sense and gloss together with that
-  usage. It does **not** require substitution in every sentence, identical
-  gloss breadth, register, intensity or habitual collocations. Do not demote
-  a defensible contextual relation merely because the short glosses emphasize
-  different facets or scopes. 차분하다 ↔ 침착하다 and 늪 ↔ 습지 are positive
-  direct calibrations, as are 자물쇠구멍 ↔ 열쇠구멍, 손길을 보태다 ↔ 손을 보태다,
-  손을 보태다 ↔ 도와주다 (same helper role), 따라오다 ↔ 쫓아오다 and
-  연주회 ↔ 음악회 (same bound meaning, scope or intensity differences only).
-  부활절 ↔ 성탄절 and 찬송 ↔ 자장가 are negative controls: same category,
-  different scene, so they stay near/association. (Historical calibration for validating
-  existing/STDICT `direct`; not a rule to move new 0.3 authored 연상 into
-  `direct`.) 손을 보태다 (giving help) ↔
-  손을 빌리다 (receiving help) is also negative: the participant roles differ,
-  so it stays exploratory. 상상력 (ability) ↔ 상상하다 (the act) is likewise
-  negative because the bound senses name different kinds of thing (ability vs
-  act, person vs result, whole vs part), and an `antonym` needs the same axis
-  (패자 ↔ 승자, not 패자 ↔ 승리). A difference of scope alone is not such a
-  difference: 레슨 ↔ 수업 and 꼭대기 ↔ 산꼭대기 are positive direct
-  calibrations because they remain close alternatives in a recurring natural
-  context. A different kind of thing is not a scope difference. The
-  shared boundary (`scripts/relation/direct-boundary.mjs`, carried by the Stage 2
-  author hand-off and every Stage D packet) names six classes: `scope-only`
-  differences stay `direct`, as do `same-movement` actions that overlap in one
-  reaching movement (손을 뻗다 ↔ 팔을 뻗다); `action-vs-agent` (an action, ability or result
-  vs the person or thing that performs or bears it, e.g. 목격자 → 목격,
-  경비 → 경비원) `narrative-contrast` pairs where a state meets the act that destroys it, or a rise meets a later exit (실재 → 말살, 승진 → 퇴임: causal or career-story contrast, not one axis; 취임 ↔ 퇴임 stays the same-axis antonym), `same-axis-opposition` poles of one axis of change that stay `antonym` (봉하다 ↔ 열리다: sealed shut vs opened for one container), and `different-movement` actions whose bound movements differ (발을 뻗다 →
-  손을 뻗다/팔을 뻗다; the body-part word alone never decides) are not close alternatives and stay `near`/`association`. When validating a
-  `direct` claim, judge these classes; this is not an instruction to author new
-  `direct` rows or to re-route 0.3 authored 말의 결/연상 into `direct`. The
-  classes are an editorial question for the actual bound senses, not a
-  mechanical synonym validator; `data/validation/relation-editorial-controls.json`
-  records sense-id-bound positive and negative controls and
-  `tests/relation-editorial-controls.test.mjs` keeps them, and the hand-off,
-  under the registered lexical checks.
+  senses: conventional synonymy, or a natural, recurring usage in which the
+  words function as close alternatives. Check lemma, POS, sense and gloss
+  together; it does not require substitution in every sentence, identical gloss
+  breadth, register or intensity. Differences of scope or facet alone are not
+  grounds to doubt a source relation.
+- The shared historical boundary (`scripts/relation/direct-boundary.mjs`) names
+  six classes (`scope-only`, `same-movement`, `action-vs-agent`,
+  `narrative-contrast`, `same-axis-opposition`, `different-movement`) used to
+  decide whether a claimed lexical pair connects the bound meanings; it is not
+  a mechanical validator and not an instruction to author `direct` rows.
+  `data/validation/relation-editorial-controls.json` and
+  `tests/relation-editorial-controls.test.mjs` keep sense-id-bound controls as
+  audit history. Historical positive calibrations: 차분하다 ↔ 침착하다, 늪 ↔
+  습지, 레슨 ↔ 수업, 꼭대기 ↔ 산꼭대기; negative: 부활절 ↔ 성탄절, 상상력 ↔
+  상상하다 (kind-of-thing difference).
+- `antonym` claims meaningful semantic opposition between the bound senses in a
+  recognizable natural usage context; definitions need not be logically
+  exclusive. Historical calibrations: 편하다 ↔ 불편하다, 시큼함 ↔ 달다, 실감 ↔
+  환각; an antonym needs the same axis (패자 ↔ 승자, not 패자 ↔ 승리).
+- A topic, co-occurrence, causation, side effect or contrasting scene alone is
+  not lexical similarity/opposition. These types never carry relevance.
+- Block only a materially false sense binding or a relation demonstrably
+  unsupported after considering plausible usage contexts and the controls.
 - `antonym` claims meaningful semantic opposition between the bound senses in
   a recognizable natural usage context. Ordinary, literary, figurative,
   technical, domain-specific and culinary contexts can establish the contrast.
@@ -174,15 +159,13 @@ Typewriter-authored `direct`/`antonym`.
   relevant positive/negative controls.
 
 **Writer-facing exploratory types:**
-- near explores expressive neighboring nuance / a word's texture, mood
-  evokes emotional tone. They are not a fallback bucket for dictionary
-  synonyms and do not require exact lexical substitution.
+- near explores expressive neighboring nuance / a word's texture, and mood
+  evokes emotional tone; neither requires exact lexical substitution.
 - scene opens a situation, sensory opens a sensation, action evokes a
   plausible action (respecting its existing target-POS constraint), and
   association opens another intelligible subject, object, creature, idea
-  or imaginative path. Association is not a trash bin for synonyms that
-  failed an overly strict direct test; for 0.3 authoring, a close informal
-  synonym candidate is legitimately 연상 Tier 1 (see the 0.3 scope section).
+  or imaginative path. A close informal synonym candidate is legitimately
+  연상 Tier 1 (see the 0.3 scope section).
 - For example, 습지 → 축축함 may be sensory, and 습지 → 모기/거머리 may be
   association. 습지 → 원숭이 may also be association in a tropical-habitat
   creative context, at a lower display priority. These are illustrative
@@ -245,15 +228,16 @@ relative order, nor mechanically score or test subjective usefulness.
    Fix genuine shared producer defects and test the applicable current
    and future authoring paths, without mechanical synonym-or-creativity
    validators.
-5. Respect existing authored reverse links and provenance; do not invent
-   symmetry for STDICT or earlier relations (exceptions: new 0.3 authored
-   ID↔ID 말의 결/연상 are bidirectional per the 0.3 scope section, once
-   implemented; and Issue #797: the product
-   build mirrors every `direct` — original or derived from an explicit STDICT `→`
-   reference (Issue #834) — as a derived `direct-reverse-projection` row; no other type is mirrored), demand equal relevance across different sources, or silently
-   rewrite canonical history. Zero relations remain valid; no quotas.
+5. Reverse links: the product build mirrors every original STDICT `direct`
+   (including `direct` derived from an explicit STDICT `→` reference, Issue
+   #834) as a derived `direct-reverse-projection` row (Issue #797); this is
+   unchanged and no other STDICT/earlier type is mirrored. New 0.3
+   Typewriter-authored ID↔ID 말의 결/연상 are explorable in both directions
+   with independently reviewed type and relevance per direction (once
+   implemented); text-only targets have no reverse; earlier exploratory rows
+   are not blindly reprocessed. Do not demand equal relevance across different
+   sources or silently rewrite canonical history. Zero relations remain valid;
+   no quotas.
 
-Apply these principles **both** when producing new Stage 2 senses and when
-enriching existing Stage D backfill senses. Stage 1 and Stage 2 PR
-reviewers use the same semantics but retain their independent review stages,
-exact-HEAD requirements and ordinary confirmed-error gates.
+Stage 1 and Stage 2 PR reviewers apply these principles with their independent
+review stages, exact-HEAD requirements and ordinary confirmed-error gates.

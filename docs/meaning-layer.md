@@ -77,8 +77,9 @@ sense beyond the target's senses, a `[Ⅰ]`/`[Ⅱ]` group (Canonical keeps no gr
 that already exists as an original `direct` keeps its origin and order and only gains evidence. The Full-only
 `meaning_relation_gloss_sources` rows record the source sense, the reference token's offset and text in the gloss, and the target
 record/sense; `glossReferenceViolations()` re-derives the expected set from `senses`/`meanings` and fails on missing, forged or mismatched rows.
-The Lite contract query `direct_relation_without_reverse` proves the symmetry in the shipped database. Typewriter-authored
-relations (유의어, 반의어, 말의 결, 연상) are edited on the same table with `origin='typewriter-authored'`.
+The Lite contract query `direct_relation_without_reverse` proves the symmetry in the shipped database. The `origin` value
+`typewriter-authored` is reserved in the CHECK; the current build produces no such rows, and no Typewriter-authored
+relation source exists yet.
 
 `buildDictionary` writes the Full database (`artifacts/dictionary.sqlite`) with the source tables and runs there the
 relation-projection and provenance checks of `scripts/build/meaning-source-checks.mjs` (complete, correctly bound and

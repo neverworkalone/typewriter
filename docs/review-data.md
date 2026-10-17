@@ -9,8 +9,9 @@ Consult `domain-model.md` only if the affected contract needs it.
 
 **Apply the current owner decision in [relation-editorial-policy.md](relation-editorial-policy.md).**
 It overrides stricter historical near/direct substitution and broader/narrower
-exclusion criteria. These rules apply to new Stage 2 authoring, Stage D backfill,
-Stage 1 focused review and Stage 2 independent review.
+exclusion criteria. These rules apply to Stage 1 focused review and Stage 2
+independent review of Typewriter 0.3 말의 결/연상 and of STDICT-sourced
+`direct`/`antonym` projection changes.
 
 The 2026-10-12 clarification treats short canonical glosses as anchors for the
 bound senses, not exhaustive accounts of every use. Assess the actual bound
@@ -65,7 +66,8 @@ only* do not apply to the new scope.
 
 - Canonical is the source of truth; preserve real source/target sense bindings,
   POS, relation types, directions, source order, provenance and digests.
-- **Lexical: direct (유의어) and antonym (반의어)** are assessed for meaningful
+- **Lexical: direct (유의어) and antonym (반의어)** are STDICT-provided (or
+  approved `→` projections) and are assessed, for source/projection integrity, for meaningful
   semantic similarity or opposition between the bound senses, including
   defensible natural usage contexts. A `direct` relation can be a close
   writer-facing alternative without being interchangeable in every sentence;
@@ -79,9 +81,8 @@ only* do not apply to the new scope.
   (연상)** should enrich a writer's language and imagination. Preserve any
   intelligible creative path, even when figurative, unusual, broader/narrower,
   cross-POS or contextual. A preference for other words or a rigid
-  word-substitution rule is not a veto. Association is not a dumping ground
-  for legitimate dictionary synonyms (*historical/STDICT only*: for 0.3
-  authoring, a close informal synonym candidate may be 연상 Tier 1).
+  word-substitution rule is not a veto. A close informal synonym candidate may
+  be 연상 Tier 1.
 - Reject clear broken sense bindings, plainly incoherent connections without
   a defensible writer path, illegal target-POS/type contracts, or real
   structural/semantic errors. A plausible but marginal link should ordinarily
@@ -130,30 +131,27 @@ association judgment, a broader definition or a slight relevance disagreement
    missing targets, inconsistent fixed metadata) still use shared validators
    and their ordinary CI gate; see [review-toolchain.md](review-toolchain.md).
 
-## Factory hand-off, honesty and fail-closed decisions
+## Review route, honesty and fail-closed decisions
 
-Trace **candidate → source-bound semantic QA → admission → canonical →
-SQLite/direct search** across the changed boundaries. Check original
-lemma/POS/gloss/sense source bindings, candidate and review digests,
-provenance, reference targets, decisions, explicit hold/rejection reasons,
-stable IDs and ordering, and forward/reverse relation effects.
+The Stage 1→2→3 lexical-production factory, its batch hand-off, Stage D packets
+and batch metadata duties are **retired** (historical records are kept, not
+reviewed as current procedure). Current route for data changes: **source**
+(STDICT Canonical, or the 0.3 authored-relation source once it exists) →
+**shared validator** → **build** (Full → Lite) → **runtime/UI**. For 0.3
+authored relations, once implemented, sample exact sense/ID binding, Tier 1
+assignments, both directions of ID↔ID relations, and non-clickable
+reverse-less text-only rows through that route.
 
-- Factory authors and self-checks **do not** independently certify their
-  own decisions as human or independent reviewer approval. M10 B11+ may
-  explicitly report **AI producer self-check without subagents**; that is
-  not Stage 1/2 evidence or human QA.
-- Preserve historical B05–B09 decision/evidence contracts; do not retrofit
-  old reviews, fake provenance, silently rewrite source history or relabel
-  production output as independent work.
-- Holds, unknown input, missing evidence, stale claims or failed admission
-  must stay **fail-closed**; avoid silently deferring/rejecting otherwise
-  valid records as a workaround for a shared producer/validator defect.
-- New or rebuilt batches must have correct batch IDs, allocation, metadata
-  and deterministic provenance. Keep the reviewed batch's decisions tied to
-  their **current source**; imported/canonical outputs must reflect them.
-- Repair systemic defects in the shared producer/validator/admission/search
+- Self-checks and AI producers **do not** certify their own work as human or
+  independent reviewer approval; never accept invented reviewer identities or
+  evidence. Do not retrofit historical reviews, fake provenance or silently
+  rewrite source history.
+- Missing evidence, unknown input or failed validation stay **fail-closed**;
+  do not accept silently dropped valid records as a workaround for a shared
+  defect.
+- Repair systemic defects in the shared producer/validator/build/consumer
   boundary, then check all applicable existing records and future additions,
-  rather than hand-editing generated records or fixing one batch example.
+  rather than hand-editing generated records or fixing one example.
 
 If external materials feed authoring or product artifacts, also load
 `docs/review-licensing.md`. A public research workflow is not permission

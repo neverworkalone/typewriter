@@ -27,8 +27,9 @@ PR descriptions and issue progress comments are not authoritative review evidenc
 4. **Never inspect, retrieve or wait for CI status/logs.** Pending, failed, missing or running CI must never delay a code-clean `+1`; incidentally visible CI must not affect the judgment. CI claims do not belong in Stage 1 evidence.
 5. Submit `-1` for any confirmed new or unfixed earlier blocker (cause, impact, safer fix, shared regression); otherwise submit substantive `+1` immediately and flag uncertain risks for Stage 2. `+1` asserts only that this focused code/fix gate passed, **not CI or merge readiness**. Never merge.
 
-**Risk-first relation sampling:** In Stage 1 reviews of relation data, inspect
-suspicious new `direct`/`antonym` pairs **before easy positive examples**.
+**Risk-first relation sampling (STDICT conversion/projection changes):** Stage 1
+reviews of changes that alter STDICT-sourced `direct`/`antonym` inspect
+suspicious pairs **before easy positive examples**.
 Compare both bound senses, lemma/POS/gloss and plausible usage contexts.
 First try to articulate a natural, recurring ordinary, domain-specific,
 culinary, literary, figurative or technical context that supports the claimed
@@ -40,10 +41,12 @@ semantic similarity/opposition and cannot pass on association alone. The
 positive calibrations in [the relation policy](docs/relation-editorial-policy.md)
 are non-blocking when their bound meanings match the documented context.
 Preserve plausible `near`/`mood`/`scene`/`sensory`/`action`/`association`;
-check relevance against the same source/UI group. Do not ask why a new
-Typewriter 0.3 authored 연상 was not sent to `direct`, and do not instruct the
-author to add or re-judge official STDICT `direct`/`antonym`; those groups are
-validated, not authored (see the 0.3 scope in the relation policy). Expand only around a proven
+check relevance against the same source/UI group. For new Typewriter 0.3
+authored relation PRs, Stage 1 instead samples exact sense/ID binding, Tier 1
+assignments, both directions of ID↔ID relations and text-only behavior (per
+the 0.3 route below, once implemented). Do not ask why a new authored 연상 was
+not sent to `direct`, and do not instruct the author to add or re-judge
+official STDICT `direct`/`antonym`. Expand only around a proven
 defect pattern, and report actual sampling scope rather than implying a census.
 
 ## 3. Stage 2 — independent comprehensive technical gate

@@ -97,7 +97,7 @@ Typewriter uses different quality thresholds for dictionary-like claims and
 writer-facing exploration. This distinction governs editorial review; it is
 not an automatic usefulness score.
 
-For current Tier 2 review, these rules take precedence over contrary M1 pilot
+For current relation review (Tier here is the M1 review grade, not `relevance` 1–9), these rules take precedence over contrary M1 pilot
 relation dispositions recorded later in this document. Those ledgers preserve
 what the pilot decided at the time; they do not automatically exclude a
 plausible exploratory route under the current policy.
@@ -999,7 +999,7 @@ projection 규칙은 다음과 같다.
 있다”는 메모이지, 미검수 데이터를 우회해 수록한 것이 아니다.
 
 이 표는 M1 파일럿 당시의 역사적 처분을 보존한다. Issue #229 이후 현재의
-Tier 2 검수에서는 특정한 writer 탐색 경로, 올바른 sense 결속, 정직한
+관계 검수(M1 검수 등급이며 현재 relevance 1–9 Tier가 아님)에서는 특정한 writer 탐색 경로, 올바른 sense 결속, 정직한
 관계 type을 기준으로 다시 판단한다. 과거의 “즉시 유용성이 확인되지 않음”만으로는
 현재 HOLD/REJECT 근거가 되지 않는다.
 
