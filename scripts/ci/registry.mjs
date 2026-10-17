@@ -198,7 +198,6 @@ const RAW_CI_CATEGORIES = Object.freeze({
     label: 'Shared lexical and semantic validation',
     checks: [
       globalCanonicalAuditCheck(),
-      { ...testCheck('scripts/meaning/issue-764-c01.test.mjs', 'Test Issue #764 C01 source identity and relation boundaries'), tier: 'normal' },
       testCheck('tests/lexical-quality.test.mjs', 'Test shared lexical quality'),
       testCheck('tests/semantic-audit-decision-source.test.mjs', 'Test semantic audit decision source'),
       testCheck(

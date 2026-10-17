@@ -20,7 +20,8 @@ for (const row of rows) {
   }
 }
 const spec = JSON.parse(readFileSync(path.join(root, 'scripts/meaning/issue-764-c01.json'), 'utf8'));
-const canonical = readCanonicalEntries(canonicalDir).filter((record) => initialCodeOf(record.lemma) === 'c01');
+const canonicalRecords = readCanonicalEntries(canonicalDir);
+const canonical = canonicalRecords.filter((record) => initialCodeOf(record.lemma) === 'c01');
 const canonicalSense = new Map();
 for (const record of canonical) {
   for (const sense of record.senses ?? []) canonicalSense.set(sense.id, { lemma: record.lemma, recordId: record.id });
@@ -28,7 +29,7 @@ for (const record of canonical) {
 const sameMeaning = (ids) => ids.every((id) => rowBySense.has(id))
   && new Set(ids.map((id) => rowBySense.get(id).id)).size === 1;
 
- test('C01 repartitions match the source-sense groups and final rows', () => {
+test('C01 repartitions match the source-sense groups and final rows', () => {
   const seenLemmas = new Set();
   for (const edit of spec.repartitions) {
     assert.equal(seenLemmas.has(edit.lemma), false, edit.lemma + ': only one repartition is allowed');
@@ -746,7 +747,7 @@ test('C01 positive identity controls preserve valid cross-record and polysemous 
 });
 
 test('C01 ga-mo relation projection stays on the self-mother address Meaning', () => {
-  const relevantRecords = readCanonicalEntries(canonicalDir)
+  const relevantRecords = canonicalRecords
     .filter((record) => ['w1020', 'w1023', 'w387920', 'w1523', 'w2747'].includes(record.id));
   const adjudications = readAdjudications(path.join(root, 'data/adjudication')).rows
     .filter((item) => initialCodeOf(item.lemma) === 'c01');
@@ -767,4 +768,27 @@ test('C01 ga-mo relation projection stays on the self-mother address Meaning', (
     assert.equal(relations.some((item) => item.source_meaning_id === unrelated.id), false,
       id + ' must not inherit 家母 relations');
   }
+});
+
+test('C01 길다 growth remains separate from adjective extent and keeps adjective-bound antonymy', () => {
+  const growth = rowBySense.get('w48351-s1');
+  const long = rowBySense.get('w401753-s1');
+  const shortRows = readdirSync(meaningDir).filter((file) => file.startsWith(initialCodeOf('짧다') + '_') && file.endsWith('.jsonl')).sort()
+    .flatMap((file) => readFileSync(path.join(meaningDir, file), 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line)));
+  const short = shortRows.find((row) => row.sense_ids.includes('w483382-s1'));
+  assert.ok(short, 'the 짧다 target Meaning must remain live');
+  assert.notEqual(growth.id, long.id,
+    'the verb sense for hair or beard growing is distinct from the adjective for spatial extent');
+  const relevantRecords = canonicalRecords
+    .filter((record) => ['w48351', 'w401753', 'w483382'].includes(record.id));
+  const adjudications = readAdjudications(path.join(root, 'data/adjudication')).rows
+    .filter((item) => initialCodeOf(item.lemma) === 'c01');
+  const { relations } = projectMeaningRelations({ records: relevantRecords, meanings: [...rows, ...shortRows], adjudications });
+  const antonym = relations.find((item) => item.source_meaning_id === long.id
+    && item.target_meaning_id === short.id && item.type === 'antonym');
+  assert.ok(antonym, 'the adjective length sense must retain its source-bound antonym to 짧다');
+  assert.deepEqual(antonym.sources.map((item) => item.source_sense_id).sort(),
+    ['w401753-s1', 'w401753-s2', 'w401753-s3']);
+  assert.equal(relations.some((item) => item.source_meaning_id === growth.id), false,
+    'the adjective-bound 짧다 antonym must not project from the verb growth sense');
 });
