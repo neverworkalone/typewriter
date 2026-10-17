@@ -17,9 +17,10 @@ import {
   resolveBuildProvenance,
 } from './provenance.mjs';
 import { SQLITE_SCHEMA_SQL, SQLITE_SCHEMA_VERSION, SQLITE_SOURCE_SCHEMA_SQL } from './sqlite-schema.mjs';
-import { MEANING_SOURCE_INTEGRITY_QUERIES, assertRecordMeaningCoverage } from './meaning-source-checks.mjs';
+import { MEANING_SOURCE_INTEGRITY_QUERIES, assertRecordMeaningCoverage, glossReferenceViolations } from './meaning-source-checks.mjs';
 import { compareMeaningIds } from '../../src/runtime/meaning-order.js';
 import { projectDirectReverses } from './direct-reverse.mjs';
+import { projectGlossReferences } from './gloss-arrow-reference.mjs';
 import { parseMeaningId, projectMeaningRelations, projectRecordMeanings } from './record-meanings.mjs';
 import {
   DATABASE_KIND_KEY,
@@ -68,14 +69,18 @@ function loadMeaningLayer({ model, inputDirectory, recordMeanings }) {
   }
   const meanings = projectRecordMeanings(model.records);
   const projection = projectMeaningRelations({ records: model.records, meanings });
-  const derived = projectDirectReverses({ relations: projection.relations });
-  const relations = [...projection.relations, ...derived.relations];
+  // Issue #834: STDICT `→` references join the original `direct` relations before every `direct` is mirrored.
+  const glossed = projectGlossReferences({ records: model.records, meanings, relations: projection.relations });
+  const derived = projectDirectReverses({ relations: glossed.relations });
+  const relations = [...glossed.relations, ...derived.relations];
   return {
     projected: true,
     meanings,
     relations,
+    glossHolds: glossed.holds,
     stats: {
       ...projection.stats,
+      ...glossed.stats,
       ...Object.fromEntries(Object.entries(derived.stats).map(([key, value]) => [`direct_${key}`, value])),
     },
   };
@@ -239,6 +244,12 @@ function insertModel(database, model, metadata, surfaceFormRows, meaningLayer) {
       (source_meaning_id, relation_position, forward_source_meaning_id, forward_position)
      VALUES (?, ?, ?, ?)`,
   );
+  const insertGlossSource = database.prepare(
+    `INSERT INTO meaning_relation_gloss_sources
+      (source_meaning_id, relation_position, position, source_sense_id, gloss_offset, reference_text,
+       target_record_id, target_sense_position)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+  );
   const insertMeaningRelationSource = database.prepare(
     `INSERT INTO meaning_relation_sources
       (source_meaning_id, relation_position, position, source_sense_id, source_position,
@@ -344,6 +355,16 @@ function insertModel(database, model, metadata, surfaceFormRows, meaningLayer) {
       );
     });
   }
+  // `→` gloss evidence follows the relations it supports (Issue #834).
+  for (const relation of meaningLayer.relations) {
+    (relation.gloss_sources ?? []).forEach((source, position) => {
+      insertGlossSource.run(
+        relation.source_meaning_id, relation.position, position,
+        source.source_sense_id, source.gloss_offset, source.reference_text,
+        source.target_record_id, source.target_sense_position,
+      );
+    });
+  }
   // Derived reverse provenance follows every meaning relation it references.
   for (const relation of meaningLayer.relations) {
     if (!relation.reverse_of) continue;
@@ -381,6 +402,16 @@ export function verifyDatabase(database, { includeSource = false } = {}) {
         `meaning relation provenance check ${name} found ${violations} violation(s)`,
         'MEANING_PROVENANCE_CHECK',
       );
+    }
+  }
+  if (includeSource) {
+    for (const [name, violations] of Object.entries(glossReferenceViolations(database))) {
+      if (violations !== 0) {
+        throw new BuildError(
+          `meaning relation provenance check ${name} found ${violations} violation(s)`,
+          'MEANING_PROVENANCE_CHECK',
+        );
+      }
     }
   }
 }

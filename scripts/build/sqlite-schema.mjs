@@ -89,7 +89,7 @@ CREATE TABLE meaning_relations (
   relevance INTEGER CHECK (relevance IS NULL OR relevance BETWEEN 1 AND 9),
   origin TEXT NOT NULL CHECK (origin IN (
     '${MEANING_RELATION_ORIGINS.projection}', '${MEANING_RELATION_ORIGINS.authored}',
-    '${MEANING_RELATION_ORIGINS.reverse}'
+    '${MEANING_RELATION_ORIGINS.reverse}', '${MEANING_RELATION_ORIGINS.gloss}'
   )),
   CHECK (length(note) > 0),
   PRIMARY KEY (source_meaning_id, position),
@@ -173,6 +173,24 @@ CREATE TABLE meaning_relation_reverse_sources (
     REFERENCES meaning_relations(source_meaning_id, position) ON DELETE CASCADE,
   FOREIGN KEY (forward_source_meaning_id, forward_position)
     REFERENCES meaning_relations(source_meaning_id, position)
+);
+
+-- Evidence of \`→\` gloss references (Issue #834): the source gloss, where the reference token sits in it and the
+-- Canonical target it names. A pair that is also an original \`direct\` carries both kinds of evidence.
+CREATE TABLE meaning_relation_gloss_sources (
+  source_meaning_id TEXT NOT NULL,
+  relation_position INTEGER NOT NULL,
+  position INTEGER NOT NULL CHECK (position >= 0),
+  source_sense_id TEXT NOT NULL UNIQUE,
+  gloss_offset INTEGER NOT NULL CHECK (gloss_offset >= 0),
+  reference_text TEXT NOT NULL CHECK (length(reference_text) > 0),
+  target_record_id TEXT NOT NULL,
+  target_sense_position INTEGER CHECK (target_sense_position IS NULL OR target_sense_position >= 0),
+  PRIMARY KEY (source_meaning_id, relation_position, position),
+  FOREIGN KEY (source_meaning_id, relation_position)
+    REFERENCES meaning_relations(source_meaning_id, position) ON DELETE CASCADE,
+  FOREIGN KEY (source_sense_id) REFERENCES senses(id),
+  FOREIGN KEY (target_record_id) REFERENCES records(id)
 );
 
 CREATE INDEX idx_senses_record_position ON senses(record_id, position);

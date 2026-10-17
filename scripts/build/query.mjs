@@ -182,6 +182,18 @@ export function readLogicalDatabaseSnapshot(database) {
     );
   }
 
+  if (tables.has('meaning_relation_gloss_sources')) {
+    rows.meaning_relation_gloss_sources = plainRows(
+      database
+        .prepare(
+          `SELECT source_meaning_id, relation_position, position, source_sense_id, gloss_offset, reference_text,
+                  target_record_id, target_sense_position
+           FROM meaning_relation_gloss_sources ORDER BY source_meaning_id, relation_position, position`,
+        )
+        .all(),
+    );
+  }
+
   return {
     schema,
     indexes: schema.filter(({ type }) => type === 'index'),

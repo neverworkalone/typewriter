@@ -156,8 +156,8 @@ relative order, nor mechanically score or test subjective usefulness.
    validators.
 5. Respect existing authored reverse links and provenance; do not invent
    symmetry (the single owner-approved exception, Issue #797: the product
-   build mirrors every original `direct` as a
-   derived `direct-reverse-projection` row; no other type is mirrored), demand equal relevance across different sources, or silently
+   build mirrors every `direct` — original or derived from an explicit STDICT `→`
+   reference (Issue #834) — as a derived `direct-reverse-projection` row; no other type is mirrored), demand equal relevance across different sources, or silently
    rewrite canonical history. Zero relations remain valid; no quotas.
 
 Apply these principles **both** when producing new Stage 2 senses and when
