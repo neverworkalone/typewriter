@@ -274,6 +274,8 @@ test('derived reverse provenance: valid build passes; forged, missing and mismat
     assert.equal((await glossViolations('gloss-target', "UPDATE meaning_relation_gloss_sources SET target_record_id = 'w0014'")).gloss_reference_evidence_mismatch, 1);
     assert.equal((await glossViolations('gloss-relation', "UPDATE meaning_relations SET target_meaning_id = 'm0014' WHERE origin = 'stdict-gloss-reference'")).gloss_reference_evidence_mismatch, 1);
     assert.equal((await glossViolations('gloss-type', "UPDATE meaning_relations SET type = 'near' WHERE origin = 'stdict-gloss-reference'")).gloss_relation_without_evidence, 1);
+    // A gloss-only forward row cannot claim another origin.
+    assert.equal((await glossViolations('gloss-origin', "UPDATE meaning_relations SET origin = 'typewriter-authored' WHERE origin = 'stdict-gloss-reference'")).gloss_only_relation_wrong_origin, 1);
     // Evidence invented for a gloss that is no reference.
     assert.equal((await glossViolations('gloss-forged', "INSERT INTO meaning_relation_gloss_sources VALUES ('m0010', 0, 5, 'w0010-s1', 2, '원본나', 'w0011', NULL)")).gloss_reference_evidence_forged, 1);
   } finally {
