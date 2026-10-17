@@ -63,8 +63,8 @@ function search(database, term) {
 }
 
 // Source and product differ only by deleted two-digit runs; each deletion directly follows a canonical headword inside a
-// ‘…’ quote or the gloss-initial `→ ` reference, and no such quoted/arrow headword+digits is left behind.
-function productGlossOnlyDropsReferenceDigits(sources, products, lemmas) {
+// ‘…’ quote or the gloss-initial `→ ` reference, and each deleted number is an actual (lemma, homograph_no) of the corpus.
+function productGlossOnlyDropsReferenceDigits(sources, products, evidence) {
   if (sources.length !== products.length) return false;
   return sources.every((source, index) => {
     const product = products[index];
@@ -74,7 +74,10 @@ function productGlossOnlyDropsReferenceDigits(sources, products, lemmas) {
       if (j < product.length && source[i] === product[j]) { i += 1; j += 1; continue; }
       if (!/^\d{2}(?!\d)/u.test(source.slice(i))) return false;
       const before = source.slice(0, i).match(/(-?[가-힣]+)$/u)?.[1];
-      if (!before || !lemmas.has(before.replace(/^-/u, ''))) return false;
+      const digits = source.slice(i, i + 2);
+      if (!before || !(evidence.has(`${before}\u0000${digits}`) || evidence.has(`${before.replace(/^-/u, '')}\u0000${digits}`))) return false;
+      // The number must end the reference token (end of span, or a group / sense number / hanja annotation).
+      if (!/^(?:$|[[「(’.])/u.test(source.slice(i + 2))) return false;
       const open = source.lastIndexOf('‘', i);
       const inQuote = open !== -1 && !source.slice(open, i).includes('’');
       if (!inQuote && !source.startsWith('→ ')) return false;
@@ -109,7 +112,7 @@ test('whole canonical corpus: every sense belongs to exactly one record meaning,
   for (const file of (await readdir(directory)).filter((name) => name.endsWith('.jsonl')).sort()) {
     for (const line of (await readFile(path.join(directory, file), 'utf8')).split('\n')) if (line) records.push(JSON.parse(line));
   }
-  const lemmaSet = new Set(records.map(({ lemma }) => lemma));
+  const evidence = new Set(records.filter(({ homograph_no: no }) => Number.isInteger(no)).map(({ lemma, homograph_no: no }) => `${lemma}\u0000${String(no).padStart(2, '0')}`));
   const meanings = projectRecordMeanings(records);
   const withSenses = records.filter((item) => item.senses.length > 0);
   assert.equal(meanings.length, withSenses.length, 'one candidate per record');
@@ -122,7 +125,7 @@ test('whole canonical corpus: every sense belongs to exactly one record meaning,
     if (meaning.id !== `m${source.id.slice(1)}` || meaning.lemma !== source.lemma) violations += 1;
     if (meaning.sense_ids.join() !== source.senses.map(({ id }) => id).join()) violations += 1;
     // Independent oracle (Issue #797): the product gloss is the source gloss minus homograph digits and nothing else.
-    if (!productGlossOnlyDropsReferenceDigits(source.senses.map(({ gloss }) => gloss), splitMeaningGloss(meaning.gloss), lemmaSet)) violations += 1;
+    if (!productGlossOnlyDropsReferenceDigits(source.senses.map(({ gloss }) => gloss), splitMeaningGloss(meaning.gloss), evidence)) violations += 1;
     for (const senseId of meaning.sense_ids) {
       if (owner.has(senseId) || byRecord.get(`w${meaning.id.slice(1)}`) !== source) violations += 1;
       owner.set(senseId, meaning.id);

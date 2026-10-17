@@ -8,25 +8,33 @@
  *   quoted reference : `‘` headword NN [`[`…`]`] [`「`n`」`] [`(`hanja`)`] `’`  — every quote span is scanned
  *   arrow reference  : gloss-initial `→ ` headword NN …
  * headword = optional `-`, Hangul words separated by single spaces; NN = exactly two digits not followed by a digit.
- * A reference is only rewritten when its headword is a lemma of the canonical corpus (affix `-x` matches lemma `x`),
- * so quoted non-reference text such as `‘제10대’` and every unquoted number (years, counts, units) stays untouched.
+ * A reference is only rewritten when `(headword, NN)` is an actual `(lemma, homograph_no)` of the canonical corpus (affix
+ * `-x` matches lemma `x`), so an unknown number (`‘슬슬99’`), a number followed by other text (`‘슬슬02형’`), quoted
+ * non-reference text such as `‘제10대’` and every unquoted number (years, counts, units) stay untouched and are counted.
  */
 const QUOTE = /‘([^’]*)’/gu;
-const REFERENCE = /(?<![가-힣\d])(-?[가-힣]+(?: [가-힣]+)*)(\d{2})(?!\d)/gu;
+// The number must end the token: end of the quoted span or a group `[…]`, sense number `「n」` or hanja `(…)`.
+const REFERENCE = /(?<![가-힣\d])(-?[가-힣]+(?: [가-힣]+)*)(\d{2})(?=$|[[「(])/gu;
 const ARROW_PREFIX = '→ ';
 
-/** Lemma set used to confirm that a numbered headword really is a canonical headword. */
+const pad2 = (value) => String(value).padStart(2, '0');
+const indexKey = (lemma, number) => `${lemma}\u0000${number}`;
+
+/** `(lemma, homograph_no)` evidence of the canonical corpus; a record without a homograph number has no evidence. */
 export function homographLemmaIndex(records) {
-  const lemmas = new Set();
-  for (const record of records) lemmas.add(record.lemma);
-  return lemmas;
+  const index = new Set();
+  for (const record of records) {
+    if (Number.isInteger(record.homograph_no)) index.add(indexKey(record.lemma, pad2(record.homograph_no)));
+  }
+  return index;
 }
 
-const isHeadword = (lemmas, headword) => lemmas.has(headword.startsWith('-') ? headword.slice(1) : headword);
+const isHomograph = (index, headword, number) =>
+  index.has(indexKey(headword, number)) || (headword.startsWith('-') && index.has(indexKey(headword.slice(1), number)));
 
 function stripReferences(span, lemmas, counters) {
-  return span.replace(REFERENCE, (whole, headword) => {
-    if (!isHeadword(lemmas, headword)) {
+  return span.replace(REFERENCE, (whole, headword, number) => {
+    if (!isHomograph(lemmas, headword, number)) {
       counters.unconfirmed += 1;
       return whole;
     }
@@ -37,7 +45,7 @@ function stripReferences(span, lemmas, counters) {
 
 /**
  * @param {string} gloss one source gloss
- * @param {Set<string>} lemmas from {@link homographLemmaIndex}
+ * @param {Set<string>} lemmas homograph evidence from {@link homographLemmaIndex}
  * @param {{ stripped: number, unconfirmed: number }} [counters] optional audit counters
  */
 export function productGloss(gloss, lemmas, counters = { stripped: 0, unconfirmed: 0 }) {
@@ -45,7 +53,7 @@ export function productGloss(gloss, lemmas, counters = { stripped: 0, unconfirme
   let rest = gloss;
   if (gloss.startsWith(ARROW_PREFIX)) {
     // Only the reference token directly after the arrow, up to its terminating period (a trailing `「n」`/`[Ⅰ]`/`(hanja)` is kept).
-    const match = /^→ (-?[가-힣]+(?: [가-힣]+)*\d{2})(?!\d)/u.exec(gloss);
+    const match = /^→ (-?[가-힣]+(?: [가-힣]+)*\d{2})(?=[[「(.]|$)/u.exec(gloss);
     if (match) {
       head = `${ARROW_PREFIX}${stripReferences(match[1], lemmas, counters)}`;
       rest = gloss.slice(match[0].length);

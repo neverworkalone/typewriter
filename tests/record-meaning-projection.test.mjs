@@ -154,7 +154,9 @@ test('record meaning coverage queries: complete layer passes; empty, partial and
   }
 });
 
-const lemmas = homographLemmaIndex(['슬슬', '이', '본가', '주다', '깨다', '까치발', '감잡이', '들', '지구', '리넨'].map((lemma) => ({ lemma })));
+const lemmas = homographLemmaIndex([
+  ['슬슬', 2], ['이', 1], ['본가', 1], ['주다', 1], ['깨다', 1], ['까치발', 2], ['감잡이', 2], ['들', 8], ['지구', 8], ['리넨', 1], ['단독', null],
+].map(([lemma, homograph_no]) => ({ lemma, homograph_no })));
 const counters = () => ({ stripped: 0, unconfirmed: 0 });
 
 test('homograph reference numbers are removed from references only (Issue #797)', () => {
@@ -178,6 +180,12 @@ test('homograph reference numbers are removed from references only (Issue #797)'
     ['three-digit stays', '‘슬슬102’', '‘슬슬102’'],
     ['arrow not at gloss start stays', '뜻. → 까치발02.', '뜻. → 까치발02.'],
     ['unknown headword stays', '‘없는말02’을', '‘없는말02’을'],
+    ['known lemma, unknown number stays', '‘슬슬99’과 ‘슬슬00’과 ‘슬슬01’', '‘슬슬99’과 ‘슬슬00’과 ‘슬슬01’'],
+    ['lemma without homograph evidence stays', '‘단독01’을', '‘단독01’을'],
+    ['number followed by other text stays', '‘슬슬02형’과 ‘슬슬02 형’', '‘슬슬02형’과 ‘슬슬02 형’'],
+    ['arrow with unknown number or suffix stays', '→ 까치발99.', '→ 까치발99.'],
+    ['arrow number followed by text stays', '→ 까치발02형.', '→ 까치발02형.'],
+    ['mixed: only the confirmed number goes', '‘슬슬02’ ‘슬슬03’', '‘슬슬’ ‘슬슬03’'],
     ['arrow without number', '→ 할머니_.', '→ 할머니_.'],
   ];
   for (const [name, source, expected] of cases) assert.equal(productGloss(source, lemmas), expected, name);
@@ -185,6 +193,6 @@ test('homograph reference numbers are removed from references only (Issue #797)'
 
 test('counters report stripped and unconfirmed references', () => {
   const c = counters();
-  productGloss('‘슬슬02’ ‘없는말02’', lemmas, c);
-  assert.deepEqual(c, { stripped: 1, unconfirmed: 1 });
+  productGloss('‘슬슬02’ ‘슬슬99’ ‘없는말02’', lemmas, c);
+  assert.deepEqual(c, { stripped: 1, unconfirmed: 2 });
 });
