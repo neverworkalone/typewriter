@@ -9,8 +9,9 @@ Consult `domain-model.md` only if the affected contract needs it.
 
 **Apply the current owner decision in [relation-editorial-policy.md](relation-editorial-policy.md).**
 It overrides stricter historical near/direct substitution and broader/narrower
-exclusion criteria. These rules apply to new Stage 2 authoring, Stage D backfill,
-Stage 1 focused review and Stage 2 independent review.
+exclusion criteria. These rules apply to Stage 1 focused review and Stage 2
+independent review of Issue #838 말의 결/연상 and of STDICT-sourced
+`direct`/`antonym` projection changes.
 
 The 2026-10-12 clarification treats short canonical glosses as anchors for the
 bound senses, not exhaustive accounts of every use. Assess the actual bound
@@ -21,9 +22,52 @@ substitution is not universal, or opposed qualities can coexist. A reviewer
 should first articulate the plausible context, then decide whether a concrete
 material mismatch remains.
 
+## Issue #838 말의 결·연상 — scope split
+
+Applies to new Typewriter-authored `near`/`mood`/`scene`/`sensory`/`action`/
+`association` (see "Scope of Issue #838" in
+[relation-editorial-policy.md](relation-editorial-policy.md)). The `direct`/
+`antonym` rules below validate STDICT-provided relations and approved `→`
+reference projections; they are not a reason to demand `direct` for, or to
+authorize adding, a new authored synonym. Rules below marked *historical/STDICT
+only* do not apply to the new scope.
+
+- **STDICT immutability:** never ask the author to re-judge, add or remove an
+  official `direct`/`antonym`; the existing `direct` bidirectional projection
+  (#797/#834) is unchanged.
+- **Tier:** 연상 Tier 1 means close enough to be informally considered a
+  synonym and a real alternative expression, not merely vivid or poetic.
+  Relevance is relative within the same source meaning and UI group; no quota,
+  equal Tiers and zero relations are valid. Do not apply the Tier 1 criterion
+  to `mood`/`near` mechanically. Block a wrong sense, wrong homograph target,
+  contradictory type, forced link, or evidenced material inversion; one-band
+  or taste differences are non-blocking.
+- **Targets:** an ID target must bind the exact headword/homograph/sense
+  (never the first string match or a different sense). Otherwise the target is
+  non-empty plain text with no ID: no click action, no reverse relation, no
+  invented record. Reject a fabricated ID or a wrong-meaning link used to
+  avoid text.
+- **Bidirectional:** new authored ID↔ID relations are explorable from both
+  ends, each direction judged for type/Tier from its own source. Do not
+  symmetrise STDICT or earlier exploratory relations.
+- **Not implemented yet:** text-only targets, the authored-relation source of
+  truth and bidirectional derivation. Verify these contracts when the
+  implementing code lands; do not require them, or claim they work, before.
+- **Headword candidates** (`data/headword-candidates/pr-<PR number>.jsonl`,
+  Schema v1 in #838): check only syntax, required/extra fields, a real
+  `source_record_id` matching `source_lemma`, same-PR duplicate
+  `term`+`meaning_hint`, and obvious junk or a candidate whose same meaning is obviously already an existing headword (same spelling with a different meaning is a distinct valid candidate; never reject by spelling alone). Skip
+  promotion merit and detailed QA; this never relaxes review of the PR's actual
+  relations, Tier or product behaviour. The PR relation stays text regardless.
+- Stage 1/2 independence, exact-HEAD verification and shared regressions are
+  unchanged.
+
+## Canonical relation contracts
+
 - Canonical is the source of truth; preserve real source/target sense bindings,
   POS, relation types, directions, source order, provenance and digests.
-- **Lexical: direct (유의어) and antonym (반의어)** are assessed for meaningful
+- **Lexical: direct (유의어) and antonym (반의어)** are STDICT-provided (or
+  approved `→` projections) and are assessed, for source/projection integrity, for meaningful
   semantic similarity or opposition between the bound senses, including
   defensible natural usage contexts. A `direct` relation can be a close
   writer-facing alternative without being interchangeable in every sentence;
@@ -37,8 +81,8 @@ material mismatch remains.
   (연상)** should enrich a writer's language and imagination. Preserve any
   intelligible creative path, even when figurative, unusual, broader/narrower,
   cross-POS or contextual. A preference for other words or a rigid
-  word-substitution rule is not a veto. Association is not a dumping ground
-  for legitimate dictionary synonyms.
+  word-substitution rule is not a veto. A close informal synonym candidate may
+  be 연상 Tier 1.
 - Reject clear broken sense bindings, plainly incoherent connections without
   a defensible writer path, illegal target-POS/type contracts, or real
   structural/semantic errors. A plausible but marginal link should ordinarily
@@ -52,7 +96,8 @@ material mismatch remains.
   subjective, **not a blocker**. Relevance is ordinal display priority,
   **not** semantic distance or confidence.
 - Reverse links need valid source/target identities and preserved provenance;
-  do not create them for symmetry or require identical relevance across
+  do not create them for symmetry (except new #838 authored ID↔ID relations and
+  the existing `direct` projection, above) or require identical relevance across
   different source senses. Valid entries with zero relations remain
   admissible and searchable. Avoid mechanical subjective scoring validators.
 
@@ -70,7 +115,7 @@ association judgment, a broader definition or a slight relevance disagreement
    For relevance errors, demonstrate materially wrong same-source/same-group
    rank comparisons, not an abstract disagreement.
 2. When genuinely shared, fix the relevant producer/policy path and verify
-   the affected existing records and applicable future Stage 2/Stage D paths.
+   the affected existing records and applicable future authoring paths.
    Do not demand a word-specific exception or mechanical creativity validator.
 3. Re-review the demonstrated affected class after the fix; do not inflate
    one questionable association into a mandatory audit of all near relations,
@@ -86,30 +131,27 @@ association judgment, a broader definition or a slight relevance disagreement
    missing targets, inconsistent fixed metadata) still use shared validators
    and their ordinary CI gate; see [review-toolchain.md](review-toolchain.md).
 
-## Factory hand-off, honesty and fail-closed decisions
+## Review route, honesty and fail-closed decisions
 
-Trace **candidate → source-bound semantic QA → admission → canonical →
-SQLite/direct search** across the changed boundaries. Check original
-lemma/POS/gloss/sense source bindings, candidate and review digests,
-provenance, reference targets, decisions, explicit hold/rejection reasons,
-stable IDs and ordering, and forward/reverse relation effects.
+The Stage 1→2→3 lexical-production factory, its batch hand-off, Stage D packets
+and batch metadata duties are **retired** (historical records are kept, not
+reviewed as current procedure). Current route for data changes: **source**
+(STDICT Canonical, or the #838 authored-relation source once it exists) →
+**shared validator** → **build** (Full → Lite) → **runtime/UI**. For #838
+authored relations, once implemented, sample exact sense/ID binding, Tier 1
+assignments, both directions of ID↔ID relations, and non-clickable
+reverse-less text-only rows through that route.
 
-- Factory authors and self-checks **do not** independently certify their
-  own decisions as human or independent reviewer approval. M10 B11+ may
-  explicitly report **AI producer self-check without subagents**; that is
-  not Stage 1/2 evidence or human QA.
-- Preserve historical B05–B09 decision/evidence contracts; do not retrofit
-  old reviews, fake provenance, silently rewrite source history or relabel
-  production output as independent work.
-- Holds, unknown input, missing evidence, stale claims or failed admission
-  must stay **fail-closed**; avoid silently deferring/rejecting otherwise
-  valid records as a workaround for a shared producer/validator defect.
-- New or rebuilt batches must have correct batch IDs, allocation, metadata
-  and deterministic provenance. Keep the reviewed batch's decisions tied to
-  their **current source**; imported/canonical outputs must reflect them.
-- Repair systemic defects in the shared producer/validator/admission/search
+- Self-checks and AI producers **do not** certify their own work as human or
+  independent reviewer approval; never accept invented reviewer identities or
+  evidence. Do not retrofit historical reviews, fake provenance or silently
+  rewrite source history.
+- Missing evidence, unknown input or failed validation stay **fail-closed**;
+  do not accept silently dropped valid records as a workaround for a shared
+  defect.
+- Repair systemic defects in the shared producer/validator/build/consumer
   boundary, then check all applicable existing records and future additions,
-  rather than hand-editing generated records or fixing one batch example.
+  rather than hand-editing generated records or fixing one example.
 
 If external materials feed authoring or product artifacts, also load
 `docs/review-licensing.md`. A public research workflow is not permission

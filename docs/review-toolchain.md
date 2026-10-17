@@ -4,6 +4,8 @@ Use this guidance for canonical validation, database builds, package output, and
 
 ## Current data and product boundary
 
+- Authored relations from Issue #838 and `data/headword-candidates/pr-*.jsonl` have no build or CI validators yet. Until an implementing PR registers them, do not require or claim a passing check for them; the retired lexical factory documents remain historical.
+
 - Canonical JSONL is the editable dictionary source. A record is one search candidate; its ordered senses are the candidate's definitions.
 - Full SQLite, Lite SQLite, and the extension package are generated from Canonical inputs. Never hand-edit generated databases.
 - Mechanical checks protect source shape and provenance, record/sense ownership, relation references, deterministic builds, Full/Lite contents, package boundaries, and actual search/runtime behavior.

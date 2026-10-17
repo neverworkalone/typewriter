@@ -36,8 +36,8 @@ A relationship does not need to be a strict dictionary synonym to be useful, but
 
 For example, a search may surface:
 
-- `direct`: a dictionary-grade lexical synonym of the bound sense, without requiring interchangeability in every sentence;
-- `near`: writer-facing expressive nuance or word texture, not a weaker-synonym fallback or a strict substitution test;
+- `direct`: a dictionary-grade lexical synonym of the bound sense, without requiring interchangeability in every sentence (STDICT-provided, plus approved explicit `→` reference projections; Typewriter does not author new `direct`/`antonym`);
+- `near`: writer-facing expressive nuance or word texture, not a strict substitution test. For Issue #838 authoring, a close informal synonym candidate may be placed in 연상 Tier 1 (see below) instead of being forced into `direct`;
 - `mood`: an emotional or tonal color that enriches expression;
 - `scene`: evokes a related scene or situation;
 - `sensory`: shares a sensory image;
@@ -109,11 +109,13 @@ Rules:
 
 The former **lexical-production factory** (Discovery Stage 1 → Authoring/QA Stage 2 → Admission Stage 3) is retired. Do not start its candidate-batch loops, atomic claim/handoff workflow, stage-specific PR sequence, or autonomous downstream admission based on historical instructions. A future owner-issued task must explicitly define any new production workflow.
 
-Work on the canonical layer according to the assigned issue. A search candidate is a canonical record; polysemy is the several glosses inside it and homonyms are separate records (see `docs/meaning-layer.md`). Do not reintroduce a separately edited Meaning or adjudication layer, and never rewrite canonical source data as a side effect.
+Typewriter 말의 결·연상 authoring is governed by Issue #838 and [`docs/relation-editorial-policy.md`](docs/relation-editorial-policy.md). Official 유의어(`direct`)/반의어(`antonym`) stay as provided by STDICT plus the approved explicit `→` reference projection (#797/#834); do not add new Typewriter-authored `direct`/`antonym` or re-judge STDICT meanings, and do not tell a relation to "go to `direct` first". Typewriter's own editing is 말의 결 (`near`/`mood`) and 연상 (`scene`/`sensory`/`action`/`association`), with `relevance` 1–9 as relative display priority (no quotas; 연상 Tier 1 = close enough to be informally considered a synonym, e.g. 나그네 → 이방인/방랑자). Intended flow: generate candidates → confirm the exact current headword/homograph/sense → link by ID if exact, else plain text with no ID → judge each direction's type/Tier (ID↔ID is explored both ways; text has no reverse) → collect headword-promotion candidates separately in `data/headword-candidates/pr-<PR number>.jsonl` (Schema v1 in #838; the PR's relation stays text; promotion review is batched later). The generation method (A direct vs B scene-based) is still being decided by experiment. **Text-only targets, an authored-relation source of truth and bidirectional derivation are not implemented yet**; do not produce data that depends on them, and do not reactivate the retired lexical factory.
+
+STDICT Canonical (`data/canonical/`) stays untouched by #838 말의 결·연상 enrichment, which gets its own source in a later implementation issue. Work on the canonical layer only as the assigned issue directs. A search candidate is a canonical record; polysemy is the several glosses inside it and homonyms are separate records (see `docs/meaning-layer.md`). Do not reintroduce a separately edited Meaning or adjudication layer, and never rewrite canonical source data as a side effect.
 
 Use two relation quality standards:
 
-- `gloss`, `direct`, and `antonym` require dictionary-grade lexical accuracy and source-bound identity/sense/POS checks. A direct synonym need not substitute in every sentence; verify a plausible shared meaning axis. A contrasting situation, co-occurrence, or topical similarity alone is insufficient.
+- `gloss`, `direct`, and `antonym` (STDICT-provided or approved projections) require dictionary-grade lexical accuracy and source-bound identity/sense/POS checks. A direct synonym need not substitute in every sentence; verify a plausible shared meaning axis. A contrasting situation, co-occurrence, or topical similarity alone is insufficient.
 - `near`, `mood`, `scene`, `sensory`, `action`, and `association` support plausible writer-facing exploration. Keep intelligible relationships where possible; evaluate exploratory `relevance: 1..9` against peers of the same source Meaning/UI group rather than imposing synonym-level strictness or quotas.
 
 Relation enrichment is independent of lexical admission. Follow [`docs/relation-editorial-policy.md`](docs/relation-editorial-policy.md) for details.
