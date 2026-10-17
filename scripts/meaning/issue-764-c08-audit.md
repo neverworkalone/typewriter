@@ -5,8 +5,8 @@
 This is the primary-agent, source-bound self-check for Issue #764's C08 (ㅂ) range. The edit spec re-partitions all **5,982 lemmas that had multiple Meanings** at baseline, covering **17,968 canonical senses**. The companion [`issue-764-c08-audit.jsonl`](issue-764-c08-audit.jsonl) records each lemma’s pre-edit Meaning IDs, bound canonical sense IDs/POS, source record identity, final Meaning IDs/groups, candidate-specific working notes, and the resulting agent self-check decision. The edit spec and generated shard contain the corresponding source and final gloss text. The remaining **24,636 single-Meaning rows** were not repartitioned.
 
 - Baseline head: `6f37ba315daa77a5dfe4974d39721c0919bf7937`.
-- C08 Meaning rows: 42,590 before; 36,461 after.
-- Repartitioned lemmas: 5,982; baseline Meaning rows: 17,954; final groups for them: 11,825.
+- C08 Meaning rows: 42,590 before; 36,482 after.
+- Repartitioned lemmas: 5,982; baseline Meaning rows: 17,954; final groups for them: 11,846.
 - Final output includes 24,636 untouched singleton rows; all 30,618 C08 lemmas remain represented.
 - The final groups contain each of the 17,968 affected canonical sense IDs exactly once. No canonical JSONL, adjudication, or DROP changed.
 - The full C08 canonical source is the committed `data/canonical/` projection. For STDICT headword/Hanja metadata, the self-check also used the local cached snapshot dated 2026-09-06; this was not a live API query. No raw cache/API response is included.
@@ -29,7 +29,9 @@ The initial PR head had 588 repartitioned lemmas with a final Meaning group span
 - Ten additional compound boundaries now remain separate: `방공` (防共/防空), `방패` (方牌 vs 防牌/旁牌), `방화대` (防火帶/防火隊), `방랑기` (放浪氣/放浪記), `보강` (補強/補講), `병기하다` (竝起/竝記), `반류` (反流/伴流), `반심` (叛心/半心), `반주` (伴奏/伴走), and `반항` (反抗/反航).
 - Two Korean-transcription entries also keep distinct named referents separate: the `발렌슈타인` play and historical commander, and the `베크렐` unit and physicist.
 
-The other 573 cross-record groups remain joined on the evidence checked here. Record count or differing Hanja alone was not treated as a split rule. `scripts/meaning/contract.test.mjs` now checks the corrected source-ID negative boundaries, positive controls for valid same-identity extensions, exact spec-to-output replay, audit decisions against group membership, and audit baseline/count parity. This remains author self-check evidence; it does not replace Issue #764's independent review.
+After the initial 15 corrections, 573 cross-record groups remained. A focused sibling-form scan found 29 derived lemma rows across 27 base stems where a `-하다` or `-되다` group crossed source records and the bare lemma separated the corresponding source identities. The scan compared the bound canonical senses and recorded `source_original`; it generated candidates for editorial assessment rather than treating Hanja differences as automatic splits. The follow-up corrected 12 more affected lemmas: the six new Stage 2 cases `반송`, `반송되다`, `반송하다`, `방공하다`, `반항하다`, and `반주하다` (24 source senses); four clear derivative mismatches in `반행하다`, `보강하다`, `복장하다`, and `불사하다`; and the previously recorded KEEP/final-group contradictions in `반상` and `반상하다`. Within each compound family, the final groups preserve the same-record extensions for 伴送/搬送/返送, and tests assert the `반송되다` direct relation projects only to the 返送 Meaning.
+
+The remaining 563 cross-record groups still include plausible same-identity extensions; this follow-up does not claim an independent semantic review of all remaining groups. The checked sibling candidates that remain joined include broad state change in `변성`, recompense in `보상`, and division/scattering uses in `분단` and `분산`, based on their bound glosses rather than Hanja alone. `scripts/meaning/contract.test.mjs` checks corrected source-ID boundaries, same-record positive controls, exact spec-to-output replay, audit decisions against final groups, audit baseline/count parity, and the actual relation projection endpoints and provenance. This is author self-check evidence, not independent review, and the remaining 563 groups stay open to independent review.
 
 ## Limits and review status
 
