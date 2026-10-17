@@ -6,6 +6,7 @@ import test from 'node:test';
 import { initialCodeOf, readAdjudications, readMeanings } from './contract.mjs';
 import { readCanonicalEntries } from './initial.mjs';
 import { projectMeaningRelations } from './project.mjs';
+import { actualRelationProvenance, expectedRelationProvenance } from './projection-oracle.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
@@ -241,5 +242,33 @@ test('C10 source-bound Meaning boundaries prevent cross-record homonym relation 
   for (const unrelated of [companyCost, dormitoryPayment, privateProvision]) {
     assert.notEqual(privateCostAntonym.source_meaning_id, unrelated.id,
       `${unrelated.sense_ids.join(', ')} must not inherit the 사비↔공비 antonym`);
+  }
+});
+
+test('relation provenance groups by (source, target, type) for merged and split Meaning shapes', () => {
+  // Two-way synonym pairs between a two-sense lemma on each side (C08 반송되다 / 환송되다 shape).
+  const records = [
+    rec('wa', [['wa-s1', [rel('wb-s1')]], ['wa-s2', [rel('wb-s2')]]]),
+    rec('wb', [['wb-s1', [rel('wa-s1')]], ['wb-s2', [rel('wa-s2')]]]),
+  ];
+  const shapes = {
+    'merged/merged': [meaning('ma', 'wa-s1', 'wa-s2'), meaning('mb', 'wb-s1', 'wb-s2')],
+    'merged/split': [meaning('ma', 'wa-s1', 'wa-s2'), meaning('mb1', 'wb-s1'), meaning('mb2', 'wb-s2')],
+    'split/merged': [meaning('ma1', 'wa-s1'), meaning('ma2', 'wa-s2'), meaning('mb', 'wb-s1', 'wb-s2')],
+    'split/split': [meaning('ma1', 'wa-s1'), meaning('ma2', 'wa-s2'), meaning('mb1', 'wb-s1'), meaning('mb2', 'wb-s2')],
+  };
+  const expectedGroupCount = { 'merged/merged': 2, 'merged/split': 4, 'split/merged': 4, 'split/split': 4 };
+  for (const [shape, meanings] of Object.entries(shapes)) {
+    const { relations } = projectMeaningRelations({ records, meanings });
+    const actual = actualRelationProvenance(relations);
+    assert.deepEqual(actual, expectedRelationProvenance(records, meanings), shape);
+    assert.equal(Object.keys(actual).length, expectedGroupCount[shape], shape);
+    assert.equal(Object.values(actual).flat().length, 4, `${shape}: every source relation is preserved`);
+
+    // Fail-closed controls: a lost source or a wrong target endpoint must be detected.
+    const lost = relations.map((r) => ({ ...r, sources: r.sources.slice(1) }));
+    assert.notDeepEqual(actualRelationProvenance(lost), actual, `${shape}: dropped provenance is detected`);
+    const wrong = relations.map((r, index) => (index === 0 ? { ...r, target_meaning_id: 'mX' } : r));
+    assert.notDeepEqual(actualRelationProvenance(wrong), actual, `${shape}: wrong endpoint is detected`);
   }
 });
