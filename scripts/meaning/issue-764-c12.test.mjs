@@ -26,6 +26,7 @@ const separate = [
   ['외적', 'w247462-s1', 'w460765-s1'],
   ['용인', 'w242925-s1', 'w242927-s1'],
   ['연소', 'w237114-s1', 'w458107-s1'],
+  ['약년', 'w222900-s1', 'w223419-s1'],
   ['어구', 'w223834-s1', 'w456385-s1'],
   ['이해상반', 'w265853-s1', 'w265854-s1'],
   ['이해상반하다', 'w265855-s1', 'w517159-s1'],
@@ -59,4 +60,26 @@ test('cross-record merge ledger in the audit equals the cross-record groups in t
   const section = audit.split('## record 간 병합 판정 기록')[1].split('## 한계와 미검토 범위')[0];
   const listed = new Set([...section.matchAll(/^- \*\*(.+?)\*\* — /gm)].map((m) => m[1]));
   assert.deepEqual([...listed].sort(), [...lemmas].sort());
+});
+
+// 다른 표제어를 가리키는 풀이('X의 원말/준말', 'X를 달리 이르는 말')는 그 대상의 어휘와 같은 Meaning일 때만 의미가 있다.
+// 포인터 풀이 record가 포인터 아닌 record와 섞인 교차-record 병합은 허용 목록(같은 어휘의 태/변주)으로만 인정한다.
+test('pointer-gloss records are never merged with unrelated-meaning records', () => {
+  const pointer = /[\u2018'][^\u2019']*[\u2019'](?:\S{0,8})?(?:의 (?:원말|준말|본말|센말|여린말|큰말|작은말|사동사|피동사|방언)|[를을] (?:달리|속되게|낮잡아|높여|강조하여) 이르는 말)/;
+  const allowed = new Set(['안기다']); // 피동/사동 형태의 같은 어휘
+  const offenders = [];
+  for (const rep of spec.repartitions) {
+    const gloss = new Map(rep.before.flatMap((row) => row.sense_ids.map((id) => [id, row.gloss.trim()])));
+    for (const group of rep.groups) {
+      const byRecord = new Map();
+      for (const id of group.senses) {
+        const record = id.split('-')[0];
+        byRecord.set(record, [...(byRecord.get(record) ?? []), gloss.get(id)]);
+      }
+      if (byRecord.size < 2) continue;
+      const flags = [...byRecord.values()].map((list) => list.every((g) => pointer.test(g)));
+      if (flags.some(Boolean) && !flags.every(Boolean) && !allowed.has(rep.lemma)) offenders.push(rep.lemma);
+    }
+  }
+  assert.deepEqual(offenders, []);
 });
