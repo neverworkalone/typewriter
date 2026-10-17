@@ -34,8 +34,8 @@ About 60 MiB are `sqlite_autoindex_*` btrees: with rowid tables, every composite
 | further: drop `idx_meanings_record` | −9 MiB more | – | no runtime query uses it | not adopted (FK child index; <4 %) |
 
 Latency is the in-process `node:sqlite` run of `findRecordsBySearchTerm` (10 terms) and `getMeaningRecord` (200
-records × 3); outputs were byte-identical between baseline and variant. Peak memory scales with the fetched/deserialized
-file size, so it falls with the file.
+records × 3); outputs were byte-identical between baseline and variant. Peak memory was **not measured**; that it falls with the
+fetched/deserialized file size is an inference, not a result.
 
 Not pursued (insufficient expected gain versus the invariants, or needs a design decision): removing
 `meaning_members.record_id` (1,739 members differ from `meanings.record_id`, so it is not derivable), merging
@@ -61,4 +61,6 @@ Full built with `node scripts/build/dictionary.mjs`, Lite extracted twice with `
 - `verifyLiteExtraction` (row-for-row digests of all 8 product tables against Full) passes; `verifyDatabase` integrity,
   foreign-key and count checks run inside the extraction.
 - Search / meaning-view latency unchanged (~3 ms open+10 searches, ~0.35 ms per meaning view).
-- Not run: browser/Chrome-for-Testing startup (no manifest, permission or WASM-loading change; same SQLite file format).
+- Not measured: Chrome/SQLite WASM startup time, peak memory, and opening the `WITHOUT ROWID` file in the real extension
+  runtime. The SQLite file format is unchanged and no manifest, permission or loading code changed, so this is expected
+  to behave identically, but it is unverified and should be covered by the release-gate extension check.
