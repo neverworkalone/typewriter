@@ -33,10 +33,10 @@ INSERT INTO search_forms VALUES ('w002', 0, '눈');
 INSERT INTO records VALUES ('w003', 'entry', 'reference-only', NULL, '빛');
 INSERT INTO search_forms VALUES ('w003', 0, '빛'), ('w003', 1, '빛나다');
 INSERT INTO meanings VALUES
-  ('m001', '가다', '합성 뜻', 'w001', 0, 1, 1),
-  ('m002_1', '눈', '첫 번째 뜻', 'w002', 0, 0, 2),
-  ('m002_2', '눈', '두 번째 뜻', 'w002', 0, 0, 3),
-  ('m003', '빛', '밝음', 'w003', 0, 0, 4);
+  ('m001', '가다', '합성 뜻', 'w001', NULL),
+  ('m002_1', '눈', '첫 번째 뜻', 'w002', NULL),
+  ('m002_2', '눈', '두 번째 뜻', 'w002', NULL),
+  ('m003', '빛', '밝음', 'w003', NULL);
 INSERT INTO meaning_members VALUES
   ('m001', 0, 'w001-s1', 'w001'), ('m002_1', 0, 'w002-s1', 'w002'),
   ('m002_2', 0, 'w002-s2', 'w002'), ('m003', 0, 'w003-s1', 'w003');

@@ -18,7 +18,7 @@ const LITE_TABLE_COPIES = [
   ['records', 'id, record_type, role, candidate_id, lemma', 'id'],
   ['search_forms', 'record_id, position, form', 'record_id, position'],
   ['generated_surface_forms', 'form, record_id, sense_id, sense_position, rule_id', 'form, record_id, sense_id'],
-  ['meanings', 'id, lemma, gloss, record_id, lexical_relation_count, exploratory_relation_count, display_rank', 'id'],
+  ['meanings', 'id, lemma, gloss, record_id, homograph_no', 'id'],
   ['meaning_members', 'meaning_id, position, sense_id, record_id', 'meaning_id, position'],
   ['sense_adjudications', 'sense_id, reason, record_id, duplicate_of_sense_id', 'sense_id'],
   ['meaning_relations', 'source_meaning_id, position, target_meaning_id, type, note, relevance, origin', 'source_meaning_id, position'],

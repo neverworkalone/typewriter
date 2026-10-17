@@ -112,6 +112,37 @@ describe('DictionaryResult 더보기', () => {
   });
 });
 
+describe('DictionaryResult 뜻풀이 더보기', () => {
+  const withGlosses = (count) => projectRecord({
+    id: 'w1', record_type: 'entry', role: 'start', lemma: '시험', view: 'meaning',
+    senses: [{
+      id: 'm1', pos: 'noun', sense_ids: ['w1-s1'], relations: [],
+      gloss: Array.from({ length: count }, (_, index) => `뜻${index + 1}`).join('\n'),
+    }],
+  });
+  const shown = (host) => [...host.querySelectorAll('.definition-text')].map((node) => node.textContent.trim());
+  const toggle = (host) => host.querySelector('.definition-more');
+
+  it.each([[1, 1], [2, 2], [3, 3]])('shows all %i definitions without a control', (count, visible) => {
+    const host = mount(withGlosses(count));
+    expect(shown(host)).toHaveLength(visible);
+    expect(toggle(host)).toBeNull();
+  });
+
+  it('shows three of four or more, expands to every definition in order and collapses again', async () => {
+    const host = mount(withGlosses(39));
+    expect(shown(host)).toEqual(['1. 뜻1', '2. 뜻2', '3. 뜻3']);
+    toggle(host).click();
+    await nextTick();
+    expect(shown(host)).toHaveLength(39);
+    expect(shown(host)[38]).toBe('39. 뜻39');
+    expect(toggle(host).textContent).toBe('뜻풀이 접기');
+    toggle(host).click();
+    await nextTick();
+    expect(shown(host)).toHaveLength(3);
+  });
+});
+
 describe('relevance ordering (#396)', () => {
   function relations(specs) {
     return specs.map(([type, relevance], position) => ({

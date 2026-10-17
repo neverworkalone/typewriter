@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { afterEach, describe, expect, it } from 'vitest';
-import { createApp } from 'vue';
+import { createApp, nextTick } from 'vue';
 import { readFileSync } from 'node:fs';
 
 import DictionaryResult from '../src/components/DictionaryResult.vue';
@@ -44,9 +44,12 @@ describe('multi-gloss definition numbering', () => {
     expect(texts(host)).toEqual(['하나']);
   });
 
-  it.each([2, 3, 20, 21, 25])('numbers %i glosses as consecutive "N. " without circled digits', (n) => {
+  it.each([2, 3, 20, 21, 25])('numbers %i glosses as consecutive "N. " without circled digits', async (n) => {
     const glosses = Array.from({ length: n }, (_, i) => `뜻풀이${i + 1}`);
     const host = mountGlosses(glosses);
+    // Beyond three definitions the rest sit behind 뜻풀이 더보기.
+    host.querySelector('.definition-more')?.click();
+    await nextTick();
     expect(numbers(host)).toEqual(glosses.map((_, i) => `${i + 1}.`));
     expect(texts(host)).toEqual(glosses.map((g, i) => `${i + 1}. ${g}`));
     expect(host.textContent).not.toMatch(/[①-⑳]/u);

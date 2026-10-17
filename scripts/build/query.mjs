@@ -104,7 +104,7 @@ export function readLogicalDatabaseSnapshot(database) {
         .all(),
     ),
     meanings: plainRows(
-      database.prepare('SELECT id, lemma, gloss, record_id, lexical_relation_count, exploratory_relation_count, display_rank FROM meanings ORDER BY id').all(),
+      database.prepare('SELECT id, lemma, gloss, record_id, homograph_no FROM meanings ORDER BY id').all(),
     ),
     meaning_members: plainRows(
       database

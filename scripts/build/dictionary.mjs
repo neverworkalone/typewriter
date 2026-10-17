@@ -18,7 +18,7 @@ import {
 } from './provenance.mjs';
 import { SQLITE_SCHEMA_SQL, SQLITE_SCHEMA_VERSION, SQLITE_SOURCE_SCHEMA_SQL } from './sqlite-schema.mjs';
 import { MEANING_SOURCE_INTEGRITY_QUERIES, assertRecordMeaningCoverage } from './meaning-source-checks.mjs';
-import { compareMeaningRank, countMeaningRelations } from '../../src/runtime/meaning-ranking.js';
+import { compareMeaningIds } from '../../src/runtime/meaning-order.js';
 import { parseMeaningId, projectMeaningRelations, projectRecordMeanings } from './record-meanings.mjs';
 import {
   DATABASE_KIND_KEY,
@@ -175,28 +175,17 @@ function metadataEntries(model, metadata, surfaceProjection, meaningLayer) {
 }
 
 /**
- * Precompute the display ranking so the runtime only sorts by `display_rank`: relation counts per meaning
- * (distinct targets) and a dense total order. Returned in rank order so the stored rows are deterministic.
+ * The meanings in stored order, each with its owner record and that record's STDICT homograph number (`null` when the
+ * source headword had none). The number is copied, never derived: display order is decided from it at read time.
  */
-function rankMeanings(meaningLayer) {
-  const relationsBySource = new Map();
-  for (const relation of meaningLayer.relations) {
-    const list = relationsBySource.get(relation.source_meaning_id) ?? [];
-    list.push(relation);
-    relationsBySource.set(relation.source_meaning_id, list);
-  }
+function storedMeanings(meaningLayer, model) {
+  const homographByRecord = new Map(model.records.map((record) => [record.id, record.homograph_no ?? null]));
   return meaningLayer.meanings
     .map((meaning) => {
-      const { lexical, exploratory } = countMeaningRelations(relationsBySource.get(meaning.id) ?? []);
-      return {
-        ...meaning,
-        record_id: parseMeaningId(meaning.id).entryId,
-        lexical_relation_count: lexical,
-        exploratory_relation_count: exploratory,
-      };
+      const recordId = parseMeaningId(meaning.id).entryId;
+      return { ...meaning, record_id: recordId, homograph_no: homographByRecord.get(recordId) ?? null };
     })
-    .sort(compareMeaningRank)
-    .map((meaning, index) => ({ ...meaning, display_rank: index + 1 }));
+    .sort((left, right) => compareMeaningIds(left.id, right.id));
 }
 
 function insertModel(database, model, metadata, surfaceFormRows, meaningLayer) {
@@ -223,8 +212,8 @@ function insertModel(database, model, metadata, surfaceFormRows, meaningLayer) {
 
   const insertMeaning = database.prepare(
     `INSERT INTO meanings
-      (id, lemma, gloss, record_id, lexical_relation_count, exploratory_relation_count, display_rank)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      (id, lemma, gloss, record_id, homograph_no)
+     VALUES (?, ?, ?, ?, ?)`,
   );
   const insertMember = database.prepare(
     'INSERT INTO meaning_members (meaning_id, position, sense_id, record_id) VALUES (?, ?, ?, ?)',
@@ -305,15 +294,13 @@ function insertModel(database, model, metadata, surfaceFormRows, meaningLayer) {
   }
 
   // The meaning layer references senses and the original relation rows, so it follows them.
-  for (const meaning of rankMeanings(meaningLayer)) {
+  for (const meaning of storedMeanings(meaningLayer, model)) {
     insertMeaning.run(
       meaning.id,
       meaning.lemma,
       meaning.gloss,
       meaning.record_id,
-      meaning.lexical_relation_count,
-      meaning.exploratory_relation_count,
-      meaning.display_rank,
+      meaning.homograph_no,
     );
     meaning.sense_ids.forEach((senseId, position) => {
       insertMember.run(meaning.id, position, senseId, sourceSense(senseId).record_id);

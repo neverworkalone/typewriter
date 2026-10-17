@@ -54,9 +54,7 @@ CREATE TABLE meanings (
   lemma TEXT NOT NULL,
   gloss TEXT NOT NULL,
   record_id TEXT NOT NULL,
-  lexical_relation_count INTEGER NOT NULL CHECK (lexical_relation_count >= 0),
-  exploratory_relation_count INTEGER NOT NULL CHECK (exploratory_relation_count >= 0),
-  display_rank INTEGER NOT NULL UNIQUE CHECK (display_rank >= 1),
+  homograph_no INTEGER CHECK (homograph_no IS NULL OR homograph_no BETWEEN 1 AND 99),
   FOREIGN KEY (record_id) REFERENCES records(id)
 ) WITHOUT ROWID;
 

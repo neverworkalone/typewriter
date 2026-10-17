@@ -45,6 +45,7 @@ export function normalizeRecord(recordInfoOrRecord) {
     candidate_id: record.candidate_id ?? null,
     lemma: record.lemma,
     search_forms: [...record.search_forms],
+    homograph_no: record.homograph_no ?? null,
     senses: record.senses.map(normalizeSense),
   };
 }

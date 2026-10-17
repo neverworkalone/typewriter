@@ -16,20 +16,25 @@ import { findRecordsBySearchTerm, getMeaningRecord } from '../src/runtime/sqlite
 const sense = (recordId, index, gloss, relations = []) => ({
   id: `${recordId}-s${index}`, pos: 'adverb', gloss, ...(relations.length > 0 ? { relations } : {}),
 });
-const entry = (id, lemma, senses) => ({
-  id, record_type: 'entry', role: 'start', candidate_id: id, lemma, search_forms: [lemma], senses, source: 'stdict',
+const entry = (id, lemma, senses, homographNo) => ({
+  id, record_type: 'entry', role: 'start', candidate_id: id, lemma, search_forms: [lemma],
+  ...(homographNo === undefined ? {} : { homograph_no: homographNo }), senses, source: 'stdict',
 });
 
 // 가랑가랑 shape: three independent records with 4 / 2 / 1 senses; 배: two records; 눈: one record with a self relation.
 const FIXTURE = [
-  entry('w1582', '가랑가랑', [sense('w1582', 1, '가르랑의 준말.'), sense('w1582', 2, '숨이 가늘게 남은 소리.')]),
+  entry('w1582', '가랑가랑', [sense('w1582', 1, '가르랑의 준말.'), sense('w1582', 2, '숨이 가늘게 남은 소리.')], 2),
   entry('w384774', '가랑가랑', [
     sense('w384774', 1, '액체가 가득한 모양.'), sense('w384774', 2, '눈물이 고인 모양.'),
     sense('w384774', 3, '국물이 많은 모양.'), sense('w384774', 4, '배 속이 찬 느낌.'),
-  ]),
-  entry('w385040', '가랑가랑', [sense('w385040', 1, '쇠붙이가 끌리는 소리.')]),
-  entry('w100', '배', [sense('w100', 1, '배나무의 열매.')]),
-  entry('w101', '배', [sense('w101', 1, '물에 떠다니는 탈것.'), sense('w101', 2, '몸의 한 부분.')]),
+  ], 3),
+  entry('w385040', '가랑가랑', [sense('w385040', 1, '쇠붙이가 끌리는 소리.')], 1),
+  // 배: STDICT order (homograph_no) differs from the ID order; one record carries no number and sorts last.
+  entry('w100', '배', [sense('w100', 1, '배나무의 열매.')], 2),
+  entry('w101', '배', [sense('w101', 1, '물에 떠다니는 탈것.'), sense('w101', 2, '몸의 한 부분.')], 1),
+  entry('w102', '배', [sense('w102', 1, '곱절로 늘린 수.')], 4),
+  entry('w103', '배', [sense('w103', 1, '같은 조상에서 나뉜 줄기.')], 3),
+  entry('w104', '배', [sense('w104', 1, '무리나 떼를 뜻하는 말.')]),
   entry('w200', '글썽글썽', [
     sense('w200', 1, '눈물이 고인 모양.', [
       { target: 'w384774', target_sense: 'w384774-s2', type: 'direct', note: '근거' },
@@ -117,7 +122,8 @@ test('canonical-only build: candidates per record, all definitions inside one it
     try {
       const [gara, ...rest] = search(database, '가랑가랑');
       assert.equal(rest.length, 0);
-      assert.deepEqual(gara.senses.map(({ id }) => id).sort(), ['m1582', 'm384774', 'm385040']);
+      // STDICT homograph order (m385040 = 01, m1582 = 02, m384774 = 03), not ID order and not definition count.
+      assert.deepEqual(gara.senses.map(({ id }) => id), ['m385040', 'm1582', 'm384774']);
       const definitions = Object.fromEntries(gara.senses.map((item) => [item.id, item.groups[0].items.map(({ text }) => text)]));
       assert.deepEqual(definitions.m384774, ['액체가 가득한 모양.', '눈물이 고인 모양.', '국물이 많은 모양.', '배 속이 찬 느낌.']);
       assert.equal(definitions.m1582.length, 2);
@@ -125,12 +131,15 @@ test('canonical-only build: candidates per record, all definitions inside one it
       // Candidate picker: one entry per record (never per sense); all three fit the default view.
       const candidates = expandExactSearchCandidates([gara]);
       assert.equal(candidates.length, 3);
-      // Default/더보기 split is unchanged (relation-less lemma: one default, rest behind 더보기), over records only.
-      assert.deepEqual([...gara.primarySenseIds, ...gara.moreSenseIds].sort(), ['m1582', 'm384774', 'm385040']);
+      // All three records fit the default view (first three candidates, no relation involved).
+      assert.deepEqual([gara.primarySenseIds, gara.moreSenseIds], [['m385040', 'm1582', 'm384774'], []]);
 
-      // 배: two separate candidates; the multi-sense record is still one.
+      // 배: five separate candidates in STDICT order (unnumbered last); the multi-sense record is still one candidate.
+      // Three are shown first; the other two are all reachable behind 더보기.
       const [bae] = search(database, '배');
-      assert.deepEqual(bae.senses.map(({ id }) => id).sort(), ['m100', 'm101']);
+      assert.deepEqual(bae.senses.map(({ id }) => id), ['m101', 'm100', 'm103', 'm102', 'm104']);
+      assert.deepEqual([bae.primarySenseIds, bae.moreSenseIds], [['m101', 'm100', 'm103'], ['m102', 'm104']]);
+      assert.equal(database.prepare("SELECT homograph_no AS n FROM meanings WHERE id = 'm104'").get().n, null);
 
       // Relations: both senses of w200 point at w384774 -> one deduplicated meaning relation with both contributors;
       // canonical forbids a record linking to itself, so no self relation arises; targets open the exact record meaning.

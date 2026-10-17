@@ -20,6 +20,7 @@ import {
   createSenseIndex,
   finalizeSenseIndex,
   flattenSenses,
+  homographNumber,
   inventoryStdictSource,
   readStdictItems,
   mapPos,
@@ -82,6 +83,23 @@ test('surface forms strip homograph numbers and boundary markers consistently', 
   assert.deepEqual(surfaceForms('각설이^타령', '구'), { lemma: '각설이 타령', search_forms: ['각설이 타령', '각설이타령'] });
   assert.deepEqual(surfaceForms('-간16', '단어'), { lemma: '-간', search_forms: ['-간', '간'] });
   assert.deepEqual(surfaceForms('간(에) 바람 들다', '관용구').lemma, '간(에) 바람 들다');
+});
+
+test('the homograph number is the headword suffix that surfaceForms strips, kept as the compilation order', () => {
+  // [source word, number]: every suffix form, boundary values and words that carry none.
+  const table = [
+    ['각본01', 1], ['각본02', 2], ['조사32', 32], ['보다99', 99], ['-간16', 16], ['시민^단체03', 3],
+    ['각설이^타령05', 5], ['각본', null], ['각본00', null], ['각본1', null], ['각본001', null], ['2002', null],
+    ['제2차', null], ['어리-어리', null],
+  ];
+  for (const [word, expected] of table) assert.equal(homographNumber(word), expected, word);
+  const { index, isSelected } = fixtureContext(new Set());
+  const converted = convertItem(item(7001, '배03', '단어', [[1, '배의 뜻.']]), { index, isSelected }).record;
+  assert.equal(converted.homograph_no, 3);
+  assert.equal(JSON.parse(serializeRecord(converted)).homograph_no, 3);
+  const plain = convertItem(item(7002, '배', '단어', [[1, '배의 뜻.']]), { index, isSelected }).record;
+  assert.equal(Object.hasOwn(plain, 'homograph_no'), false);
+  assert.equal(Object.hasOwn(JSON.parse(serializeRecord(plain)), 'homograph_no'), false);
 });
 
 test('definitions are cleaned of embedded markup without hiding what was removed', () => {
@@ -215,6 +233,10 @@ test('committed STDICT shards keep their identity, policy and provenance contrac
     assert.equal(provenance.held_count, 0);
     const records = lines.map((line) => JSON.parse(line));
     assert.equal(new Set(records.map(({ id }) => id)).size, records.length);
+    // The STDICT homograph number is the stored compilation order; it is absent or an integer 1..99.
+    for (const record of records) {
+      if (Object.hasOwn(record, 'homograph_no')) assert.ok(Number.isInteger(record.homograph_no) && record.homograph_no >= 1 && record.homograph_no <= 99, record.id);
+    }
     const codes = records.map(({ id }) => Number(id.slice(1)));
     assert.deepEqual(codes, [...codes].sort((a, b) => a - b));
     provenance.records.forEach((row, position) => {

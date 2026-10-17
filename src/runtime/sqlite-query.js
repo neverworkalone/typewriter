@@ -114,8 +114,8 @@ export function getMeaningRelations(database, meaningId) {
 
 /**
  * Meaning view of a record: the record header plus the meanings its senses resolve to (member or `duplicate` redirect), in place of its raw
- * senses, so the UI candidate unit is the Typewriter meaning. Each meaning carries its precomputed ranking counts,
- * its member sense IDs (source evidence only) and its meaning relations; a relation target is the target
+ * senses, so the UI candidate unit is the Typewriter meaning. Each meaning carries its STDICT homograph number
+ * (`homograph_no`; the caller orders by it), its member sense IDs (source evidence only) and its meaning relations; a relation target is the target
  * meaning's owner record plus the meaning ID, which `getMeaningRecord` can open again.
  */
 export function getMeaningRecord(database, recordId) {
@@ -132,8 +132,7 @@ export function getMeaningRecord(database, recordId) {
   `, [recordId]).map(({ form }) => form);
 
   const senses = allRows(database, `
-    SELECT meanings.id, meanings.gloss, meanings.display_rank,
-           meanings.lexical_relation_count, meanings.exploratory_relation_count
+    SELECT meanings.id, meanings.gloss, meanings.homograph_no
     FROM meanings
     WHERE meanings.id IN (
       SELECT meaning_members.meaning_id FROM meaning_members
@@ -143,7 +142,7 @@ export function getMeaningRecord(database, recordId) {
       SELECT meaning_members.meaning_id FROM sense_adjudications AS adjudication
       INNER JOIN meaning_members ON meaning_members.sense_id = adjudication.duplicate_of_sense_id
       WHERE adjudication.reason = 'duplicate' AND adjudication.record_id = ?)
-    ORDER BY meanings.display_rank
+    ORDER BY meanings.id
   `, [recordId, recordId]).map((meaning) => ({
     ...meaning,
     // Source senses that resolve to this meaning: its members plus the `duplicate` senses redirected to a

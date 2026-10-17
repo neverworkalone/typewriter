@@ -107,6 +107,17 @@ export function recordIdFor(targetCode) {
   return `w${String(targetCode).padStart(3, '0')}`;
 }
 
+/**
+ * The official homograph number STDICT appends to a headword (`각본01` -> 1). It is the dictionary's own compilation
+ * order of same-spelled words and is the only order information the source carries: `target_code` is not ordered by
+ * it. Returns `null` for a word without the two-digit suffix; `surfaceForms` strips the same suffix from the lemma.
+ */
+export function homographNumber(word) {
+  const digits = /(?<=[^\d])(\d{2})$/u.exec(word)?.[1];
+  const number = digits === undefined ? null : Number(digits);
+  return number >= 1 ? number : null;
+}
+
 export function surfaceForms(word, wordUnit) {
   const homographFree = word.replace(/(?<=[^\d])\d{2}$/u, '');
   const lemmaSource = homographFree.normalize('NFC');
@@ -362,6 +373,7 @@ export function convertItem(item, { index, isSelected }) {
   if (senses.length === 0) return { record: null, report };
   const forms = surfaceForms(info.word, info.word_unit);
   const aliases = (index.aliasesByTarget?.get(targetCode) ?? []).filter((alias) => !forms.search_forms.includes(alias));
+  const homographNo = homographNumber(info.word);
   return {
     record: {
       id,
@@ -370,6 +382,7 @@ export function convertItem(item, { index, isSelected }) {
       candidate_id: id,
       lemma: forms.lemma,
       search_forms: [...forms.search_forms, ...aliases],
+      ...(homographNo === null ? {} : { homograph_no: homographNo }),
       senses,
       source: 'stdict',
     },
@@ -379,7 +392,7 @@ export function convertItem(item, { index, isSelected }) {
 
 export function serializeRecord(record) {
   // Stable key order for byte-reproducible shards.
-  const { id, record_type, role, candidate_id, lemma, search_forms, senses, source } = record;
+  const { id, record_type, role, candidate_id, lemma, search_forms, homograph_no, senses, source } = record;
   return JSON.stringify({
     id,
     record_type,
@@ -387,6 +400,7 @@ export function serializeRecord(record) {
     candidate_id,
     lemma,
     search_forms,
+    ...(homograph_no === undefined ? {} : { homograph_no }),
     senses: senses.map(({ id: senseId, pos, gloss, relations }) => ({
       id: senseId,
       pos,

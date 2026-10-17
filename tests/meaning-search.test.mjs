@@ -22,7 +22,7 @@ const record = (n, lemma, glosses) => ({
 });
 
 // Candidates are records: `가다` has four homonym records (w010 polysemous, w011, w014, w015); the default list shows the
-// related ones (at most 3) and the rest wait behind 더보기; `나무` is one record with two senses (one candidate, two definitions).
+// first three and the rest wait behind 더보기; `나무` is one record with two senses (one candidate, two definitions).
 const RECORDS = [
   record(2, '이동', [['위치를 옮김.']]),
   record(3, '떠남', [['있던 곳을 벗어남.']]),
@@ -53,28 +53,17 @@ function search(database, term) {
   return projectSearchResults(records, response.matches);
 }
 
-test('meaning search: candidates are records, ranked by stored counts, at most 3 by default', async () => {
+test('meaning search: candidates are records in STDICT order, at most 3 by default', async () => {
   const directory = await mkdtemp(path.join(tmpdir(), 'typewriter-meaning-search-'));
   try {
     const database = new DatabaseSync(await buildFixture(directory), { readOnly: true });
     try {
-      const stored = database.prepare(
-        'SELECT id, lexical_relation_count AS l, exploratory_relation_count AS e FROM meanings WHERE lemma = ? ORDER BY display_rank',
-      ).all('가다').map((row) => ({ ...row }));
-      // 유의어+반의어 DESC, then 말의 결+연상 DESC, then ID; distinct targets per group (m010: lexical w002, w003; exploratory w002, w003, w004).
-      assert.deepEqual(stored, [
-        { id: 'm010', l: 2, e: 3 },
-        { id: 'm011', l: 0, e: 1 },
-        { id: 'm014', l: 0, e: 0 },
-        { id: 'm015', l: 0, e: 0 },
-      ]);
-
-      // One result for the lemma whose candidates are its records, each holding all of its definitions.
+      // One result for the lemma whose candidates are its records (no source numbers here: ID order), all reachable.
       const [result, ...rest] = search(database, '가다');
       assert.equal(rest.length, 0);
-      assert.deepEqual(result.senses.map(({ id }) => id), stored.map(({ id }) => id));
-      assert.deepEqual(result.primarySenseIds, ['m010', 'm011']);
-      assert.deepEqual(result.moreSenseIds, ['m014', 'm015']);
+      assert.deepEqual(result.senses.map(({ id }) => id), ['m010', 'm011', 'm014', 'm015']);
+      assert.deepEqual(result.primarySenseIds, ['m010', 'm011', 'm014']);
+      assert.deepEqual(result.moreSenseIds, ['m015']);
       const candidates = expandExactSearchCandidates([result]);
       assert.deepEqual(candidates.filter(({ isMore }) => !isMore).map(({ senseId }) => senseId), result.primarySenseIds);
       assert.equal(candidates.length, 4);
@@ -126,8 +115,8 @@ test('meaning record: a duplicate sense whose survivor is in another record stil
     database.exec(SQLITE_SCHEMA_SQL);
     database.exec(`
       INSERT INTO records (id, record_type, role, lemma) VALUES ('w001', 'entry', 'start', '가'), ('w002', 'entry', 'start', '가');
-      INSERT INTO meanings (id, lemma, gloss, record_id, lexical_relation_count, exploratory_relation_count, display_rank)
-        VALUES ('m001', '가', '첫째 뜻풀이.', 'w001', 0, 0, 1);
+      INSERT INTO meanings (id, lemma, gloss, record_id, homograph_no)
+        VALUES ('m001', '가', '첫째 뜻풀이.', 'w001', NULL);
       INSERT INTO meaning_members (meaning_id, position, sense_id, record_id) VALUES ('m001', 0, 'w001-s1', 'w001');
       INSERT INTO sense_adjudications (sense_id, reason, record_id, duplicate_of_sense_id) VALUES ('w002-s1', 'duplicate', 'w002', 'w001-s1');
     `);
