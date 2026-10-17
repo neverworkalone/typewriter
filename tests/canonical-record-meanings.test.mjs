@@ -6,7 +6,7 @@ import test from 'node:test';
 import { DatabaseSync } from 'node:sqlite';
 
 import { buildDictionary } from '../scripts/build/dictionary.mjs';
-import { MEANING_GLOSS_SEPARATOR, projectRecordMeanings, splitMeaningGloss } from '../scripts/meaning/canonical-record.mjs';
+import { MEANING_GLOSS_SEPARATOR, projectRecordMeanings, splitMeaningGloss } from '../scripts/build/record-meanings.mjs';
 import { projectSearchResults } from '../src/domain/projection.js';
 import { expandExactSearchCandidates } from '../src/domain/exact-search-candidates.js';
 import { findRecordsBySearchTerm, getMeaningRecord } from '../src/runtime/sqlite-query.js';

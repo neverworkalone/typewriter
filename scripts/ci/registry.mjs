@@ -147,28 +147,7 @@ const RAW_CI_CATEGORIES = Object.freeze({
       testCheck('tests/stdict-import.test.mjs', 'Test STDICT canonical conversion, licensed-source gate and pilot shard'),
       testCheck('tests/validate-dataset-integrity.test.mjs', 'Test dataset validator'),
       {
-        ...commandCheck(
-          'Test Issue #713 meaning/adjudication data contract (ids, initial codes, shard placement, canonical references)',
-          ['--test', 'scripts/meaning/contract.test.mjs'],
-        ),
-        tier: 'normal',
-      },
-      {
-        ...commandCheck(
-          'Test Issue #715 meaning edit tool (single-sense gloss edits, merge/drop spec validation, duplicate_of targets)',
-          ['--test', 'scripts/meaning/apply-edits.test.mjs'],
-        ),
-        tier: 'normal',
-      },
-      {
-        ...commandCheck(
-          'Test Issue #717 sense-to-meaning relation projection (redirect, dedup, provenance, skips)',
-          ['--test', 'scripts/meaning/project.test.mjs'],
-        ),
-        tier: 'normal',
-      },
-      {
-        ...testCheck('scripts/meaning/issue-764-c19-regression.test.mjs', 'Test Issue #764 C19 source-bound Meaning boundaries and relation projection'),
+        ...testCheck('tests/record-meaning-projection.test.mjs', 'Test Issue #822 record meaning ids, projection table, relation projection oracle and removed legacy build options'),
         tier: 'normal',
       },
       {
@@ -181,10 +160,6 @@ const RAW_CI_CATEGORIES = Object.freeze({
       },
       {
         ...testCheck('tests/meaning-search.test.mjs', 'Test meaning search candidates, stored ranking and 더보기 partition'),
-        tier: 'normal',
-      },
-      {
-        ...inProcessCheck('Validate meaning/adjudication references against current canonical', 'meaning-references'),
         tier: 'normal',
       },
       pnpmCheck('Validate lexical rule inventory', 'validate:rules'),

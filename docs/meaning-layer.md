@@ -1,68 +1,36 @@
-# Meaning layer (Issue #713)
+# Meaning layer (Canonical-only)
 
-`data/canonical/` is the untouched STDICT source layer (`record -> sense -> relation`). Typewriter's editorial
-**meaning** layer sits on top of it; this issue only provides the storage/validation foundation, not the bulk edit.
+`data/canonical/` is the untouched STDICT source layer (`record -> sense -> relation`) and the only input of the product
+dictionary. The product **meaning** tables are generated from it on every build (Issues #820, #822); there is no
+separately maintained, edited or adjudicated Meaning data.
 
-> **Current product build (Issue #820).** The default Full/Lite build no longer reads `data/meanings/` or
-> `data/adjudication/`. It derives the product meanings from `data/canonical/` alone: **one STDICT record is one
-> meaning (search candidate)** and every sense of that record is a member, in canonical order
-> (`scripts/meaning/canonical-record.mjs`, see [`canonical-only-db-issue-820.md`](canonical-only-db-issue-820.md)).
-> The meaning `gloss` holds the record's source glosses verbatim, one per line; the UI shows each as a numbered
-> definition inside the one selected candidate. Same-lemma records remain separate homonym candidates. The sections
-> below describe the stored Meaning data contract (`data/meanings/`, `data/adjudication/`), which is preserved
-> unchanged as a legacy layer: it is still validated by the `meaning-references` check and is only used by a build
-> when a meanings directory is passed explicitly. Where they mention reviewed meanings feeding the product database,
-> read them as that legacy layer.
+**Contract: one STDICT record is one meaning (search candidate); every sense of that record is a member of it, in
+canonical order.** Polysemy is the several glosses inside one record; homonyms are different records of the same
+lemma and are separate candidates. Nothing is split, merged across records, reworded or dropped. The meaning `gloss`
+holds the record's source glosses verbatim, one per line; the UI shows each as a numbered definition inside the one
+selected candidate. The product (Lite) database ships no part of speech; the source `senses.pos` exists only in Full.
 
-| Path | Content |
-| --- | --- |
-| `data/canonical/` | STDICT normalized source. Never modified by meaning work. |
-| `data/meanings/` | Final meanings: `{ id, lemma, gloss, sense_ids }`. A meaning references one or more canonical senses that all have the meaning's lemma; the senses may belong to different records. |
-| `data/adjudication/` | Editorial verdicts: `DROP duplicate` rows include `duplicate_of`; `DROP out_of_scope` rows omit it. |
+Source of truth in code: `scripts/build/record-meanings.mjs` (`wN -> mN` ids, `projectRecordMeanings`,
+`projectMeaningRelations`, and the test oracle for relation provenance). `buildDictionary` takes no meaning input;
+the former `meaningsDirectory` / `adjudicationDirectory` options are rejected with `REMOVED_OPTION`, and the official canonical input rejects `recordMeanings: false` (`RECORD_MEANINGS_REQUIRED`). The projected Full database is checked by `RECORD_MEANING_COVERAGE_QUERIES` (every sense in exactly one meaning of its own record, one meaning per record with senses), at build time and in the shared-artifact validation of the official corpus. The removed
+`data/meanings/`, `data/adjudication/` and `scripts/meaning/` editing layer is inventoried in
+[`legacy-meaning-removal-issue-822.md`](legacy-meaning-removal-issue-822.md); [`canonical-only-db-issue-820.md`](canonical-only-db-issue-820.md)
+records the transition audit.
 
-The official DROP reasons are `duplicate` and `out_of_scope`. Meaning criteria are real meaning differences, not part
-of speech. (The product database carries no part of speech; the source `senses.pos` exists only in Full.) A dropped sense is never referenced by a meaning. For `duplicate`, `duplicate_of` must identify a different,
-existing canonical sense of the same lemma that is not itself dropped. `out_of_scope` means the source sense is not part
-of Typewriter's current product Meaning layer; it does not say the source entry lacks meaning or value, and it does not
-remove or change the canonical source. It has no `duplicate_of` target. Every canonical sense remains covered by exactly
-one Meaning or one DROP verdict. The `c20` mapping remains a placement rule, not a blanket exclusion rule; future senses
-are adjudicated individually.
-
-When relation projection is implemented, a `duplicate` target may be redirected through its `duplicate_of` sense.
-An `out_of_scope` sense produces no product Meaning and cannot remain as a product relation endpoint. These rules define
-the contract; relation projection, SQLite, and UI implementation are tracked separately.
+Shared invariants (Normal CI, applied to the whole canonical corpus and future records):
+`tests/canonical-record-meanings.test.mjs` (every sense in exactly one meaning of its own record, source order and
+gloss round trip, candidates per lemma == records per lemma), `tests/record-meaning-projection.test.mjs` (ids,
+projection table, fail-closed controls, relation projection vs. an independent oracle),
+`tests/meaning-provenance.test.mjs` (relation provenance binding) and `tests/meaning-search.test.mjs` (ranking and 더보기).
 
 ## IDs
-(Canonical-only build, Issue #820: always `wN -> mN`, one meaning per record regardless of its sense count; the suffixed form below belongs to the legacy `data/meanings/` layer.)
-`w0097 -> m0097` for a lone meaning; several meanings use `m0097_1`, `m0097_2`, ... (a lone meaning and suffixed ones
-never mix; numbers need not be contiguous). The ID's record is only an identifier base, not the sole record of the meaning's senses. When a
-MERGE spans records, the ID's record number must be the lowest record number among the member senses (enforced by the dataset validator; the suffix is free); no new ID sequence is created.
-
-## Shards
-Files are `cXX_NNN.jsonl` (`NNN` from `001`, contiguous per `cXX`). `cXX` comes from the lemma's Hangul initial via the
-explicit table in `scripts/meaning/contract.mjs` (`c01` ㄱ … `c19` ㅎ; `c20` for lemmas starting with neither a Hangul syllable nor a bare initial jamo such as `ㄱ`). Shards hold about
-1,000 rows, close only on a lemma boundary, and rows are ordered by lemma then id (enforced by the reader across shards of one `cXX`).
-`cXX` is only a data placement area. `meaning` and `adjudication` use the same naming under their own directories.
-
-## API
-`scripts/meaning/contract.mjs`: `writeMeanings/readMeanings`, `writeAdjudications/readAdjudications`,
-`validateMeaningDataset` (optionally against canonical senses), `loadMeaningData`. Run `node scripts/meaning/validate.mjs`.
-Tests: `node --test scripts/meaning/contract.test.mjs`. The contract test (fixtures and single canonical shards only) and the in-process `meaning-references` check are Normal, always-on CI checks; the latter validates stored meanings against the session's already-loaded canonical context (no extra canonical read), so canonical-only changes are checked against stored meanings. `validate.mjs` is the standalone equivalent and reads canonical only when meaning data exists.
-
-## Initial corpus (Issue #714)
-`data/meanings/` holds the mechanical initial projection of the whole canonical layer: every sense of every record
-(`entry` and `expression`) becomes its own meaning with the canonical gloss and a single `sense_ids` entry. A one-sense
-record maps `wNNN -> mNNN`; a multi-sense record maps `wNNN-sK -> mNNN_K` (K is the sense's own number). No MERGE/DROP
-has been applied and `data/canonical/` is untouched. Generate with `node scripts/meaning/initial.mjs` (fails closed before any write once editing has started — MERGE, edited gloss, adjudication or any divergence; `--force-reset-initial` is the explicit meaning-only recovery override and still refuses while `data/adjudication/` holds decisions)
-(deterministic; a rerun is a no-op) and verify the untouched initial state once with `node scripts/meaning/initial.mjs --check` (a one-off check; it intentionally fails after editing begins). Once editing starts,
-the projection is a historical baseline: `validateMeaningDataset({ complete: true })` (used by `validate.mjs` and the
-`meaning-references` check) requires every canonical sense to be referenced by exactly one meaning or recorded as dropped.
+`w0097 -> m0097`, always, independent of the sense count. The ID's record is the meaning's only record.
 
 ## Relation projection and SQLite (Issue #717)
-`scripts/meaning/project.mjs` projects the untouched STDICT sense relations onto meanings; it is a deterministic
-transformation, not an editorial decision. A sense maps to the meaning listing it in `sense_ids`; a `duplicate` sense
-is redirected through `duplicate_of` to the surviving meaning (as source or target). A relation whose endpoint is
-`out_of_scope` (or has no meaning) is skipped, as is a relation that collapses onto a single meaning. The rest is
+`projectMeaningRelations` (`scripts/build/record-meanings.mjs`) projects the untouched STDICT sense relations onto
+meanings; it is a deterministic transformation, not an editorial decision. A sense maps to the meaning listing it in
+`sense_ids`. A relation whose endpoint has no meaning is skipped, as is a relation that collapses onto a single
+meaning (a self link inside one record). The rest is
 unique per `source meaning + target meaning + type`; every contributing sense relation is kept as provenance. The first
 contributing relation (canonical order) supplies `note`/`relevance`, verified exactly against the first provenance row, whose position is checked against canonical order (record id, sense position, relation position); positions are per source meaning in that order (the first contributors of projected relations of one source meaning must increase with the position).
 Skip/dedup/redirect counts are written to `metadata` as `meaning_projection_*`, so
@@ -75,7 +43,7 @@ The shipped (Lite) `dictionary.sqlite` (schema version 7) carries only the produ
 | --- | --- |
 | `meanings` | `id`, `lemma`, `gloss` (one source gloss per line), `record_id` (ID-base record), `homograph_no` (nullable STDICT homograph number, below) |
 | `meaning_members` | `meaning_id`, `position`, `sense_id` (unique source sense ID, no FK), `record_id` (owner record of that sense) |
-| `sense_adjudications` | dropped senses with `reason`, owner `record_id` and `duplicate_of_sense_id` (no FK) |
+| `sense_adjudications` | legacy table kept for the runtime contract; always empty in the canonical-only build (dropping it is a separate optimisation) |
 | `meaning_relations` | `source_meaning_id`, `position`, `target_meaning_id`, `type`, `note`, `relevance`, `origin` |
 | `generated_surface_forms` | `form`, `record_id`, `sense_id`, `sense_position` (source sense position, for stable ordering), `rule_id` |
 
@@ -92,9 +60,8 @@ verifies it with the self-contained `MEANING_INTEGRITY_QUERIES` (record binding)
 validation use the same self-contained queries and additionally reject a database that is not labelled `lite` or ships
 any `BUILD_ONLY_TABLES`; the CI shared artifact validation requires the Full kind.
 `getMeaningsByLemma` and `getMeaningRelations` in `src/runtime/sqlite-query.js` are the shared meaning-based read helpers.
-The default canonical build derives the meaning layer from canonical records (Issue #820) and reads no meaning or adjudication data;
-building with an explicitly passed meanings directory uses the legacy layer, which must be complete (`INVALID_MEANING_DATA` otherwise).
-Builds from other canonical fixtures get an empty meaning layer unless a meanings directory is passed or `recordMeanings: true` is set.
+The default canonical build derives the meaning layer from canonical records and reads no other meaning input.
+Builds from other canonical fixtures get an empty meaning layer unless `recordMeanings: true` is set.
 
 ## Search order and 더보기 (Issues #718, #828)
 The search candidate unit is the meaning; raw STDICT senses are never listed or shipped, their IDs stay in

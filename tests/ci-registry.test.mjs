@@ -1162,17 +1162,29 @@ test('PR gate never selects Full Deep and preserves affected checks even alongsi
   assert.match(weeklyDeep, /cron: '0 22 \* \* 0'/u);
 });
 
-test('meaning reference integrity is a Normal check selected even when only canonical data changes', () => {
-  const meaningChecks = Object.values(CI_CATEGORIES).flatMap((category) => category.checks)
-    .filter((check) => /meaning\/adjudication/u.test(check.label));
-  assert.equal(meaningChecks.length, 2);
-  assert.ok(meaningChecks.some((check) => check.inProcess === 'meaning-references'), 'references run in-process on the shared canonical context');
+test('canonical-only meaning invariants are Normal checks selected even when only canonical data changes', () => {
+  const required = [
+    'tests/record-meaning-projection.test.mjs',
+    'tests/canonical-record-meanings.test.mjs',
+    'tests/meaning-provenance.test.mjs',
+    'tests/meaning-search.test.mjs',
+  ];
+  const allChecks = Object.values(CI_CATEGORIES).flatMap((category) => category.checks);
+  const meaningChecks = required.map((file) => {
+    const matches = allChecks.filter((check) => (check.testFiles ?? []).includes(file));
+    assert.equal(matches.length, 1, `${file} has exactly one registry owner`);
+    return matches[0];
+  });
   for (const check of meaningChecks) {
     assert.equal(check.tier, 'normal');
     assert.equal(check.schedule, 'always');
   }
-  for (const changedPaths of [['data/canonical/stdict-0001.jsonl'], ['data/meanings/c01_001.jsonl'], []]) {
+  for (const changedPaths of [['data/canonical/stdict-0001.jsonl'], []]) {
     const selected = selectChecksForPolicy(meaningChecks, { tiers: ['normal'], changedPaths });
-    assert.equal(selected.length, 2, JSON.stringify(changedPaths));
+    assert.equal(selected.length, meaningChecks.length, JSON.stringify(changedPaths));
+  }
+  // The removed Meaning editing layer must not be referenced by any registered check (Issue #822).
+  for (const check of allChecks) {
+    assert.doesNotMatch(JSON.stringify(check), /scripts\/meaning|data\/meanings|data\/adjudication|meaning-references/u, check.label);
   }
 });

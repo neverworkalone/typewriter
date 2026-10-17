@@ -10,7 +10,7 @@ import {
 import { DEFAULT_CANONICAL_DIRECTORY } from '../validate/canonical-jsonl.mjs';
 import { SQLITE_SCHEMA_VERSION } from '../build/sqlite-schema.mjs';
 import { DATABASE_KINDS, MEANING_INTEGRITY_QUERIES } from '../../src/runtime/dictionary-contract.js';
-import { MEANING_SOURCE_INTEGRITY_QUERIES } from '../build/meaning-source-checks.mjs';
+import { MEANING_SOURCE_INTEGRITY_QUERIES, assertRecordMeaningCoverage } from '../build/meaning-source-checks.mjs';
 import { assertDatabaseKind } from '../build/lite-dictionary.mjs';
 import {
   buildOrReuseSurfaceFormProjection,
@@ -48,6 +48,12 @@ export async function validateSharedDictionary({
       if (violations !== 0) {
         throw new Error(`shared SQLite meaning layer check ${name} found ${violations} violation(s)`);
       }
+    }
+    // The official canonical input must carry the complete canonical-only meaning layer (Issue #822).
+    if (path.resolve(context.canonicalDirectory) === path.resolve(DEFAULT_CANONICAL_DIRECTORY)) {
+      assertRecordMeaningCoverage(database, (name, count) => {
+        throw new Error(`shared SQLite record meaning coverage check ${name} found ${count} violation(s)`);
+      });
     }
     const userVersion = database.prepare('PRAGMA user_version').get().user_version;
     if (userVersion !== Number.parseInt(SQLITE_SCHEMA_VERSION, 10)) {
