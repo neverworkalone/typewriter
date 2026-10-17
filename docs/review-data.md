@@ -55,7 +55,7 @@ only* do not apply to the new scope.
 - **Headword candidates** (`data/headword-candidates/pr-<PR number>.jsonl`,
   Schema v1 in #838): check only syntax, required/extra fields, a real
   `source_record_id` matching `source_lemma`, same-PR duplicate
-  `term`+`meaning_hint`, and obvious junk or an exact existing headword. Skip
+  `term`+`meaning_hint`, and obvious junk or a candidate whose same meaning is obviously already an existing headword (same spelling with a different meaning is a distinct valid candidate; never reject by spelling alone). Skip
   promotion merit and detailed QA; this never relaxes review of the PR's actual
   relations, Tier or product behaviour. The PR relation stays text regardless.
 - Stage 1/2 independence, exact-HEAD verification and shared regressions are

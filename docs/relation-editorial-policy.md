@@ -70,7 +70,7 @@ source and scope:
   `source_record_id` required; `reason` optional; no status, POS, Tier or
   invented ID). The same PR's product relation is still plain text. A PR
   review checks only JSONL/schema validity, a real `source_record_id`/lemma
-  correspondence and obviously absurd or already-existing entries; promotion
+  correspondence and obviously absurd rows or a candidate whose same meaning is obviously already a headword (same spelling with a different meaning is a distinct, valid candidate); promotion
   merit is deferred to a separate batch review once about 1,000 unique
   candidates accumulate. The relaxed candidate review never relaxes review of
   the relations, Tier or behaviour in the same PR.
