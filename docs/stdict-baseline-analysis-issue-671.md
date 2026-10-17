@@ -1,7 +1,7 @@
 # STDICT 기반 새 사전 baseline 분석 (Issue #671, Task 1)
 
 분석·설계 문서입니다. 데이터 삭제, import, 신규 validator, 대량 생산은 포함하지 않습니다. 원본 JSON은 Git 밖
-`~/.cache/typewriter/dict/stdict`(88개 파일, 789 MB)에 있으며 이 문서에는 집계 수치만 기록합니다.
+`~/.cache/typewriter/reference/dict/stdict`(88개 파일, 789 MB)에 있으며 이 문서에는 집계 수치만 기록합니다.
 집계는 88개 파일 전체를 읽고 계산했습니다(1회성 스크립트, 저장소에 추가하지 않음).
 
 ## 1. 소스 현황 (실측)

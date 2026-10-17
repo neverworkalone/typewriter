@@ -25,7 +25,7 @@
 
 ## 1. 실제 원본 인벤토리
 
-로컬 경로는 이슈 본문의 `~/.cache/typewriter/{krdict,urimalsem}`가 아니라 **`~/.cache/typewriter/dict/{krdict,urimalsem,stdict}`**였다. 디렉터리에는 다른 종류의 JSON이 섞여 있지 않았고(전부 사전 본문 페이지), 키·비밀 파일은 열지 않았다.
+로컬 경로는 이슈 본문에 기록된 경로가 아니라 **`~/.cache/typewriter/reference/dict/{krdict,urimalsem,stdict}`**였다. 디렉터리에는 다른 종류의 JSON이 섞여 있지 않았고(전부 사전 본문 페이지), 키·비밀 파일은 열지 않았다.
 
 | | STDICT (비교용) | KRDICT | 우리말샘 |
 | --- | --- | --- | --- |
@@ -388,7 +388,7 @@ KRDICT에만 있는 큰말·작은말·센말·여린말·본말·준말·높임
 
 ## 8. 재현 방법
 
-모든 집계는 Git 밖(`~/.cache/typewriter/dict/{stdict,krdict,urimalsem}`)의 원본을 읽기 전용으로 읽고, 중간 산출물은 세션 scratchpad에만 두었다. 리포지토리에는 코드를 추가하지 않았다. 같은 수치를 다시 얻는 절차:
+모든 집계는 Git 밖(`~/.cache/typewriter/reference/dict/{stdict,krdict,urimalsem}`)의 원본을 읽기 전용으로 읽고, 중간 산출물은 세션 scratchpad에만 두었다. 리포지토리에는 코드를 추가하지 않았다. 같은 수치를 다시 얻는 절차:
 
 1. **STDICT 기준 집합**: 레포의 `flattenSenses`·`classifySense`·`surfaceForms`·`cleanDefinition`을 임시 스크립트에서 import해 88개 파일을 읽고 entry별 `{word, unit, 표기형, sense별 {pos, include, 정리된 뜻풀이, lexical_info}}`를 한 JSON으로 덤프한다. 합계가 `436,587 / 509,143`이고 허용 집합이 `427,583 / 499,359`이면 정책과 일치한다 (`data/provenance/stdict-settlement.json`).
 2. **KRDICT**: 11개 파일에서 `LexicalResource.Lexicon.LexicalEntry`를 읽는다 (`feat`는 객체/배열을 모두 배열로 정규화, `val` 누락 허용). 센 것: 노드 56,555, `homonym_number` 보유 53,671, 보유하지 않는 관용구·속담 2,884, id 중복 1,160, sense 76,833, `SenseRelation` 32,791.

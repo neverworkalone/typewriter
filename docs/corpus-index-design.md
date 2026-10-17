@@ -2,7 +2,7 @@
 
 ## Decision
 
-Treat the corpus sample and any derived index as local reference evidence. Keep approved raw JSON under `~/.cache/typewriter/corpus/` and generated SQLite under `~/.cache/typewriter/indexes/`. The #194 implementation lives under scripts/reference/ and is separate from scripts/build/, which builds the canonical product dictionary. See [`local-reference-cache.md`](local-reference-cache.md) for migration and path rules.
+Treat the corpus sample and any derived index as local reference evidence. Keep approved raw JSON under `~/.cache/typewriter/reference/corpus/` and generated SQLite under `~/.cache/typewriter/reference/corpus/indexes/`. The #194 implementation lives under scripts/reference/ and is separate from scripts/build/, which builds the canonical product dictionary. See [`local-reference-cache.md`](local-reference-cache.md) for the local data layout.
 
 Use SQLite for source, document, and paragraph records. Build an FTS5 trigram index over paragraph text for literal substring lookup, then join hits back to source and document metadata. This is a text-evidence index, not a Korean tokenizer: it cannot claim lemma frequency, word-token frequency, POS counts, or writer usefulness. A hit must never create or admit a Typewriter candidate automatically.
 
@@ -10,7 +10,7 @@ Issue #192 was the design pilot. Issue #194 implements the local indexer without
 
 ## Pilot file inspected
 
-The authoritative pilot, `~/.cache/typewriter/corpus/WARW2500000880.json`, is about 280 KB. It is a JSON object with three top-level fields: id, metadata, and document.
+The authoritative pilot, `~/.cache/typewriter/reference/corpus/WARW2500000880.json`, is about 280 KB. It is a JSON object with three top-level fields: id, metadata, and document.
 
 | Level | Fields present in this file | Observed contents |
 | --- | --- | --- |
@@ -54,8 +54,8 @@ FTS5 trigram search is character-substring search, not Korean morphological anal
 
 ## Repository and data boundary
 
-- Raw source stays in the shared local area `~/.cache/typewriter/corpus/` (or another approved temporary workspace). It is not added to Git.
-- The generated database path is `~/.cache/typewriter/indexes/written-corpus-2025.sqlite`.
+- Raw source stays in the shared local area `~/.cache/typewriter/reference/corpus/` (or another approved temporary workspace). It is not added to Git.
+- The generated database path is `~/.cache/typewriter/reference/corpus/indexes/written-corpus-2025.sqlite`.
 - The tracked CLI is scripts/reference/build-corpus-index.mjs. It is research/reference tooling, separate from the canonical-to-product build in scripts/build/.
 - The derived index is not canonical JSONL, an inventory projection, a batch manifest, or product output. It must not be read by npm run build, Pages, or package commands.
 - Do not commit corpus text, generated SQLite, candidate dumps, or context snippets. Existing lexical workflows may use source evidence only after its use is authorized; any resulting target decision remains Typewriter-authored and follows the existing inventory, reviewed-batch, validation, and canonical import gates.
@@ -122,6 +122,6 @@ A full rebuild is operationally acceptable for this one-time local snapshot, so 
 - The local builder, reusable literal lookup, and permission check are implemented under scripts/reference/. Deterministic fixture tests are retained at scripts/reference/corpus-index.test.mjs and run manually with `node --test scripts/reference/corpus-index.test.mjs` on an FTS5-capable local runtime.
 - Every build runs the same fail-closed schema validation in a sorted preflight and again while inserting one JSON file at a time. Temporary SQLite output is validated before replacing the active local index.
 - The build and lookup CLIs require a permitted reference decision, explicit permission for local storage, schema scanning and processing, SQLite/FTS indexing, and lexical-reference use, plus completed reviews of distribution/embedding and attribution/notice terms. Missing or pending fields block real-corpus operations. Issue #197 records the owner's site permission confirmation and completed the full-corpus preflight and build.
-- The builder defaults to `~/.cache/typewriter/indexes/` and rejects repository-local database output outside that cache area. The fixture suite is retained for local/manual use and is not wired into normal CI.
+- The builder defaults to `~/.cache/typewriter/reference/corpus/indexes/` and rejects repository-local database output outside that cache area. The fixture suite is retained for local/manual use and is not wired into normal CI.
 - The issue #197 snapshot is summarized in the measurements above. The generated index remains local; no corpus-derived lexical records were admitted.
 - The index remains local reference data outside the repository. Product build, package, Pages, release, and canonical admission paths do not consume scripts/reference/ or the shared cache.

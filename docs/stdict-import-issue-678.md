@@ -1,7 +1,7 @@
 # STDICT 전체 import 기반 (Issue #678, PR A)
 
 이 문서는 #678의 **코드/규칙 PR(PR A)** 결과입니다. 전체 436,587건 중 shard 데이터는 아직 `stdict-0001`만 있으며, 나머지는 후속
-shard PR(약 20~25 shard씩)에서 같은 도구로 추가됩니다. 원본 JSON(`~/.cache/typewriter/dict/stdict`)은 Git 밖에 있고 여기에는 집계만 적습니다.
+shard PR(약 20~25 shard씩)에서 같은 도구로 추가됩니다. 원본 JSON(`~/.cache/typewriter/reference/dict/stdict`)은 Git 밖에 있고 여기에는 집계만 적습니다.
 
 ## 원본 완전성
 

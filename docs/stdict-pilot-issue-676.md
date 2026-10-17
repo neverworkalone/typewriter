@@ -1,7 +1,7 @@
 # STDICT 파일럿 결과 (Issue #676, Task 3)
 
 STDICT 1,000개 항목을 canonical shard 한 개로 변환하고, 기존 SQLite·검색 경로와 relation-only backfill을
-실데이터로 돌려 본 결과입니다. 원본 JSON(`~/.cache/typewriter/dict/stdict`, 88개 파일, 436,587 항목)은 Git 밖에
+실데이터로 돌려 본 결과입니다. 원본 JSON(`~/.cache/typewriter/reference/dict/stdict`, 88개 파일, 436,587 항목)은 Git 밖에
 있으며 여기에는 집계만 적습니다. 이 PR이 전체 사전 import나 제품 릴리스는 아닙니다.
 
 ## 1. 산출물

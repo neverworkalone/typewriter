@@ -7,7 +7,7 @@ extension packaging.
 ## Run locally
 
 The shared Written Corpus index must already exist at
-`~/.cache/typewriter/indexes/written-corpus-2025.sqlite`, and the permission gate in
+`~/.cache/typewriter/reference/corpus/indexes/written-corpus-2025.sqlite`, and the permission gate in
 `docs/external-material-review-written-corpus-2025.md` must permit the stated
 reference use.
 
@@ -78,17 +78,10 @@ separate evidence-bound editorial decision. This handoff defines how a future
 bounded batch should work; it does not authorize a larger corpus batch in Issue
 #212.
 
-## Local outputs and publication gate
+## Publication gate
 
-The default run writes only under `~/.cache/typewriter/runs/issue-201-pilot/`:
-
-- `candidate-analysis.sqlite` stores aggregated sample counts without corpus
-  paragraphs;
-- `candidate-selection.json` records the 100 selected candidate proposals;
-- `pilot-inventory.json` adds bounded local paragraph evidence for review.
-
-Do not add these files, corpus paragraphs, or evidence excerpts to Git. The
-tracked pilot report contains aggregate workflow measurements only. No
+Do not add corpus paragraphs or evidence excerpts to Git. The tracked pilot
+report contains aggregate workflow measurements only. No
 corpus-derived canonical record is admitted or published by this tool. Any
 future admission must use the ordinary lexical production and canonical
 validation workflow. The owner confirmed on 2026-10-12 that NIKL approved the

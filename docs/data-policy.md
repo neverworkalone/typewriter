@@ -97,7 +97,7 @@ Other unapproved third-party materials remain excluded.
 ## Storage and build boundary
 
 Keep raw downloaded reference/dictionary files under the permitted external
-workspace (including `~/.cache/typewriter/`) **outside Git**. Licensed,
+workspace (including `~/.cache/typewriter/reference/`) **outside Git**. Licensed,
 selected, deterministically generated canonical JSONL projections of STDICT,
 KRDICT, and 우리말샘 are approved source content; their raw downloads are
 not tracked or distributed. Keep unreviewed authored drafts outside the
