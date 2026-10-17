@@ -510,3 +510,91 @@ test('initial generator CLI (temp root): --check and default run follow the repo
   assert.equal(fixture.snapshot(), before, 'edited data is byte-identical after both CLI calls');
   assert.equal(run('--check').status, 1);
 });
+
+test('Issue #764 C08: source-ID identity boundaries, replayed rows, and audit decisions stay aligned', () => {
+  const root = path.resolve(import.meta.dirname, '../..');
+  const spec = JSON.parse(readFileSync(path.join(root, 'scripts/meaning/issue-764-c08.json'), 'utf8'));
+  const auditRows = readFileSync(path.join(root, 'scripts/meaning/issue-764-c08-audit.jsonl'), 'utf8')
+    .trimEnd().split('\n').map((line) => JSON.parse(line));
+  const auditByLemma = new Map(auditRows.map((item) => [item.lemma, item]));
+  const c08Rows = readdirSync(path.join(root, 'data/meanings'))
+    .filter((file) => /^c08_\d+\.jsonl$/u.test(file))
+    .flatMap((file) => readFileSync(path.join(root, 'data/meanings', file), 'utf8')
+      .trimEnd().split('\n').map((line) => JSON.parse(line)));
+  const groupKey = (senseIds) => [...senseIds].sort().join(',');
+  const sameGroup = (groups, left, right) => groups.some((group) => group.senses.includes(left) && group.senses.includes(right));
+  const groupsFor = (lemma) => spec.repartitions.find((item) => item.lemma === lemma)?.groups ?? [];
+  const sourceOriginalFor = (lemma, senseId) => {
+    const audit = auditByLemma.get(lemma);
+    const recordId = audit.source_senses.find((sense) => sense.sense_id === senseId)?.record_id;
+    return audit.source_records.find((record) => record.record_id === recordId)?.source_original
+      .filter((original) => original.language_type === '한자')
+      .map((original) => original.original_language) ?? [];
+  };
+
+  for (const repartition of spec.repartitions) {
+    const { lemma, before, groups } = repartition;
+    const audit = auditByLemma.get(lemma);
+    assert.ok(audit, `${lemma}: audit row exists`);
+    const actualRows = c08Rows.filter((item) => item.lemma === lemma);
+    const expected = groups.map((group) => ({ sense_ids: groupKey(group.senses), gloss: group.gloss })).sort((a, b) => a.sense_ids.localeCompare(b.sense_ids));
+    const actual = actualRows.map((item) => ({ sense_ids: groupKey(item.sense_ids), gloss: item.gloss })).sort((a, b) => a.sense_ids.localeCompare(b.sense_ids));
+    assert.deepEqual(actual, expected, `${lemma}: committed Meaning rows replay the edit spec`);
+
+    const expectedAudit = groups.map((group) => {
+      const beforeSenseIds = new Set(before.flatMap((row) => row.sense_ids));
+      assert.equal(group.senses.every((senseId) => beforeSenseIds.has(senseId)), true, `${lemma}: each final sense belongs to its before snapshot`);
+      return {
+        decision: group.senses.length > 1 ? 'merge' : 'keep',
+        sense_ids: groupKey(group.senses),
+      };
+    }).sort((a, b) => a.sense_ids.localeCompare(b.sense_ids));
+    const actualAudit = audit.final_groups.map((group) => ({ decision: group.decision, sense_ids: groupKey(group.sense_ids) }))
+      .sort((a, b) => a.sense_ids.localeCompare(b.sense_ids));
+    assert.deepEqual(actualAudit, expectedAudit, `${lemma}: audit decisions match final groups and baseline membership`);
+
+    const expectedBaseline = before.map((row) => ({ meaning_id: row.id, sense_ids: groupKey(row.sense_ids) }))
+      .sort((a, b) => a.meaning_id.localeCompare(b.meaning_id));
+    const actualBaseline = audit.baseline_meanings.map((row) => ({ meaning_id: row.meaning_id, sense_ids: groupKey(row.sense_ids) }))
+      .sort((a, b) => a.meaning_id.localeCompare(b.meaning_id));
+    assert.deepEqual(actualBaseline, expectedBaseline, `${lemma}: audit before snapshot matches the edit spec`);
+    assert.equal(audit.final_meaning_count, groups.length, `${lemma}: audit final count`);
+    assert.equal(audit.canonical_sense_count, new Set(groups.flatMap((group) => group.senses)).size, `${lemma}: audit source-sense count`);
+  }
+
+  const negativeBoundaries = [
+    ['반납', 'w130653-s1', 'w131928-s1', ['返納'], ['半納']],
+    ['반납하다', 'w130652-s1', 'w130917-s1', ['半納'], ['返納']],
+    ['반과', 'w135304-s1', 'w135305-s1', ['飯果'], ['飯菓']],
+    ['반과', 'w135304-s1', 'w135306-s1', ['飯果'], ['飯顆']],
+    ['반과', 'w135305-s1', 'w135306-s1', ['飯菓'], ['飯顆']],
+    ['방공', 'w134901-s1', 'w135477-s1', ['防共'], ['防空']],
+    ['방패', 'w142836-s1', 'w429499-s1', ['方牌'], ['防牌', '旁牌']],
+    ['방화대', 'w136480-s1', 'w430065-s1', ['防火帶'], ['防火隊']],
+    ['방랑기', 'w136036-s1', 'w434815-s1', ['放浪氣'], ['放浪記']],
+    ['보강', 'w149545-s1', 'w149548-s1', ['補強'], ['補講']],
+    ['병기하다', 'w148049-s1', 'w432654-s1', ['竝起'], ['竝記', '倂記']],
+    ['반류', 'w130587-s1', 'w429580-s1', ['反流'], ['伴流']],
+    ['반심', 'w132441-s1', 'w427368-s1', ['叛心'], ['半心']],
+    ['반주', 'w138094-s1', 'w429930-s1', ['伴奏'], ['伴走']],
+    ['반항', 'w133762-s1', 'w133764-s1', ['反抗'], ['反航']],
+    ['발렌슈타인', 'w134941-s1', 'w426890-s1', [], []], // named play vs historical person
+    ['베크렐', 'w145368-s1', 'w435347-s1', [], []], // named SI unit vs physicist
+  ];
+  for (const [lemma, left, right, leftOriginal, rightOriginal] of negativeBoundaries) {
+    assert.equal(sameGroup(groupsFor(lemma), left, right), false, `${lemma}: ${left} and ${right} remain independent lexical identities`);
+    assert.deepEqual(sourceOriginalFor(lemma, left), leftOriginal, `${left}: source-ID-bound original`);
+    assert.deepEqual(sourceOriginalFor(lemma, right), rightOriginal, `${right}: source-ID-bound original`);
+  }
+
+  for (const [lemma, left, right] of [
+    ['분열하다', 'w152252-s1', 'w152252-s2'], // same 分裂 record, natural literal/group extension
+    ['방패', 'w429499-s1', 'w429499-s2'], // shield and its figurative defender use
+    ['보강', 'w149545-s1', 'w149545-s2'], // same 補強 identity, including its technical use
+    ['반류', 'w130587-s1', 'w130587-s2'], // one 反流 source record
+    ['반심', 'w427368-s1', 'w427368-s2'], // the two 半心 uses
+    ['반항', 'w426742-s1', 'w426742-s2'], // same 班行 source record
+  ]) {
+    assert.equal(sameGroup(groupsFor(lemma), left, right), true, `${lemma}: retain a source-bound positive control`);
+  }
+});
