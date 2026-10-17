@@ -182,3 +182,24 @@ test('cross-record merges are limited to lemmas with a documented identity basis
   }
   assert.deepEqual([...lemmas].filter((lemma) => !allowedCrossRecord.has(lemma)).sort(), []);
 });
+
+// 감사 문서의 '같은 record 분리' 추적 목록이 spec 및 산출물과 맞아야 한다.
+test('audit same-record split ledger matches the spec and the shards', () => {
+  const section = audit.split('## 한계와 미검토 범위')[1];
+  const read = (label) => {
+    const line = section.split('\n').find((row) => row.includes(label));
+    assert.ok(line, `audit line missing: ${label}`);
+    return line.split(': ').slice(1).join(': ').split(', ').map((x) => x.trim()).filter(Boolean);
+  };
+  const withRep = read('spec `repartitions`에 기록된 분리');
+  const baseKept = read('base에서 이미 sense별로 분리돼 있어');
+  const specLemmas = new Set(spec.repartitions.map((rep) => rep.lemma));
+  for (const lemma of withRep) assert.ok(specLemmas.has(lemma), `${lemma}: spec repartition expected`);
+  for (const lemma of baseKept) assert.ok(!specLemmas.has(lemma), `${lemma}: no spec repartition expected`);
+  assert.equal(new Set([...withRep, ...baseKept]).size, withRep.length + baseKept.length);
+  // 각 항목의 분리 sense는 실제 산출물에서 서로 다른 Meaning이어야 한다.
+  const lemmaOf = new Map(rows.flatMap((row) => row.sense_ids.map((id) => [id, row.lemma])));
+  for (const [lemma, a, b] of separate.filter(([name]) => [...withRep, ...baseKept].includes(name))) {
+    if (lemmaOf.get(a) === lemma && lemmaOf.get(b) === lemma) assert.ok(!same(a, b), `${lemma}: ${a}/${b}`);
+  }
+});
