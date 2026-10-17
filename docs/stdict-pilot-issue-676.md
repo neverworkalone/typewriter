@@ -1,7 +1,7 @@
 # STDICT 파일럿 결과 (Issue #676, Task 3)
 
 STDICT 1,000개 항목을 canonical shard 한 개로 변환하고, 기존 SQLite·검색 경로와 relation-only backfill을
-실데이터로 돌려 본 결과입니다. 원본 JSON(`~/.cache/typewriter/dict/stdict`, 88개 파일, 436,587 항목)은 Git 밖에
+실데이터로 돌려 본 결과입니다. 원본 JSON(`~/.cache/typewriter/reference/dict/stdict`, 88개 파일, 436,587 항목)은 Git 밖에
 있으며 여기에는 집계만 적습니다. 이 PR이 전체 사전 import나 제품 릴리스는 아닙니다.
 
 ## 1. 산출물
@@ -11,7 +11,13 @@ STDICT 1,000개 항목을 canonical shard 한 개로 변환하고, 기존 SQLite
 | `data/canonical/stdict-0001.jsonl` | 정확히 **1,000 record / 1,561 sense / 154 relation**, 372,564 bytes |
 | `data/provenance/stdict-0001.json` | 선택 규칙 버전, 항목별 `target_code`·`sense_code`, shard sha256, 종류별 집계 |
 | 변환기 | `scripts/stdict/convert.mjs`(순수 변환), `build-shard.mjs`(결정적 선택·재생성·`--verify`) |
-| 재현 | `node scripts/stdict/build-shard.mjs --verify`가 원본에서 shard와 provenance를 바이트 단위로 재생성해 비교 |
+| 재현 명령 | `node scripts/stdict/build-shard.mjs --source ~/.cache/typewriter/reference/dict/stdict --verify`가 원본에서 shard와 provenance를 바이트 단위로 재생성해 비교 |
+
+현재 상태(2026-10-17): 위 검증 명령에 `--source`로 지정한 디렉터리를 읽지만,
+재생성한 `data/canonical/stdict-0001.jsonl`이 추적 파일과 달라 `--verify`가
+실패합니다. 같은 원본 경로를 지정한 인벤토리와 정산 검증은 통과했습니다.
+따라서 파일럿 당시 결과는 유지하되, 현재 재생성 결과가 다시 일치한다고
+확인된 것은 아닙니다.
 
 **ID 계약(이후 shard도 동일)**: record id = `w` + `target_code`(3자리 미만이면 0 채움), `candidate_id` = id,
 sense id = `<record>-s<n>`(n = 원본 `pos_info → comm_pattern_info → sense_info` 순서의 1부터). `sense_code`는

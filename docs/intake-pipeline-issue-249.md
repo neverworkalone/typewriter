@@ -60,10 +60,7 @@ Frame verdicts are bound to frame text, lemma, POS and analyzer digest.
 
 ## Pilot (C)
 
-`node scripts/intake/run-intake-pilot.mjs` (the #249 report was originally
-written under the old worktree-local `data/reference/pilots/issue-249/`; current
-run output is `~/.cache/typewriter/runs/issue-249-pilot/`). The corpus path took
-the #201 pilot's 100
+`node scripts/intake/run-intake-pilot.mjs`. The corpus path took the #201 pilot's 100
 candidates: 48 already covered by canonical, 10 → `semantic_qa`, 40 held for
 ambiguity (39 of them the pilot's own context-level hold, preserved by the
 adapter rather than overridden by citation-form analysis), 1 unsupported,
@@ -149,16 +146,9 @@ consistency only and cannot re-authenticate the analysis.
 
 ### Real-route smoke (not CI)
 
-```bash
-node scripts/python/bootstrap.mjs   # once per machine / after requirements change
-node scripts/intake/smoke-production-route.mjs \
-  --batch-id=issue-223-m9-e-corpus-batch-15-20261003 \
-  --analysis-directory=runs/issue-247/corpus-batch-15
-```
-
-Needs kiwipiepy 0.24.0 and the shared-cache analysis directory. It copies the
-repository to a temp directory in its pre-B15 state (the working tree is never
-written), builds the hand-off with real Kiwi, binds the tracked self-check, and
+The historical B15 smoke used kiwipiepy 0.24.0. It copied the repository to a
+temp directory in its pre-B15 state (the working tree was never written), built
+the hand-off with real Kiwi, bound the tracked self-check, and
 runs the real `build-issue-223-corpus-batch.mjs --intake-handoff`. Result for
 B15: 500 candidates → 455 `semantic_qa`, 32 `lemma_mismatch`, 13
 `analysis_ambiguous`; the builder imported 397 records, and the candidate review,

@@ -110,8 +110,7 @@ Under the ensemble policy the v2 manifest additionally carries (all text-free):
 
 Rows add, per observation, `ensemble: {category, reasons, alternatives, trace_digest, resolution, [context_decision]}`
 and per row `review`. The full text-free trace (Kiwi ranked N-best paths, Khaiii/MeCab best path, hint and
-holds, per observation digest) is written **only locally** by `--ensemble-trace <file>` under
-`~/.cache/typewriter/runs/<task-id>/`; no raw
+holds, per observation digest) is written **only locally** by `--ensemble-trace <file>`; no raw
 dump, corpus snippet or paragraph text enters Git. Tampering (omitted/reordered/replaced provider, forged
 trace or category, edited decision, dropped queue entry) is rejected by the shared validator (`ci:fast`).
 
@@ -135,16 +134,16 @@ resolve its meaning.
 
 Procedure (all local, no remote API, no network):
 
-1. `npm run factory:stage1 -- --evidence runs/<run-id>/candidate-evidence.json --task-id <task-id> --dry-run --context-review-pack pack.json`
-   writes, to `~/.cache/typewriter/runs/<task-id>/`, each eligible queue entry with its competing hypotheses and a
-   bounded window of the original paragraph (looked up by the exact approved document/paragraph ids from the
+1. `npm run factory:stage1 -- --evidence <candidate-evidence.json> --task-id <task-id> --dry-run --context-review-pack pack.json`
+   places each eligible queue entry with its competing hypotheses and a bounded window of the original paragraph
+   in the context-review pack (looked up by the exact approved document/paragraph ids from the
    ignored corpus index after the corpus permission record is checked; the eojeol must align as an exact,
    whitespace-delimited form, never a substring/prefix). The opened index must also be the evidence's snapshot: the
    source compares its own `index_metadata` (`input_manifest_sha256`, `logical_rows_sha256`) with the evidence
    `source_snapshot` and reports `snapshot_mismatch` otherwise — pack creation, decision recording and
    `verifyDecisionsAgainstSource` all fail closed, so a rebuilt index that reuses paragraph ids is never attributed to the
    old snapshot.
-2. The primary agent reads the pack and writes `~/.cache/typewriter/runs/<task-id>/proposals.json`
+2. The primary agent reads the pack and writes proposals with the shape
    (`{agent, proposals: [{observation_digest, outcome, lemma?, pos?, reason_code?}]}`; `agent` is **required** — the actual authoring agent, e.g. `claude` or `codex` — and is never defaulted), outcome
    `context_confirmed` (names an analyzer hypothesis), `context_reassigned` (a reading no analyzer proposed) or
    `truth_unknown`.

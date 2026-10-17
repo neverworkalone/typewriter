@@ -23,6 +23,6 @@ This page describes files used by the current product and approved maintenance p
 
 ## Local-only and historical material
 
-External source files and permitted local indexes belong under `~/.cache/typewriter/` or a temporary location outside the checkout; raw dictionary responses and corpus passages do not belong in Git or product packages. See [`docs/data-policy.md`](data-policy.md) before introducing any source.
+External source files and permitted local indexes belong under `~/.cache/typewriter/reference/` or a temporary location outside the checkout; raw dictionary responses and corpus passages do not belong in Git or product packages. See [`docs/data-policy.md`](data-policy.md) before introducing any source.
 
 Historical M5 batch reports, old lexical-production instructions, and completed issue evidence may remain for audit history. Do not use their old commands, candidate workflows, or Meaning-editing procedures as active product inputs. Git history and linked issues/PRs preserve detailed task records; the current workflow is defined by the root instructions and current policy documents.
