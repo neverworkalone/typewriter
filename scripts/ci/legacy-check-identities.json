@@ -8,55 +8,9 @@
     "Test shared canonical context",
     "Test STDICT canonical conversion, licensed-source gate and pilot shard",
     "Test dataset validator",
-    "Validate lexical rule inventory",
-    "Test lexical rule inventory",
     "Test CI category runner fail-fast behavior",
     "Test CI check ownership registry",
     "Test one current-revision SQLite build guard (real runner fault injection)"
-  ],
-  "lexical": [
-    "Run single-pass global canonical audit",
-    "Test shared lexical quality",
-    "Test semantic audit decision source",
-    "Test shared admission context equivalence, tamper rejection, and immutable digest reuse",
-    "Test shared lexical selection",
-    "Test source-agnostic intake pipeline",
-    "Test corpus intake to SQLite direct-search path",
-    "Test corpus-free synthetic intake to SQLite direct-search path",
-    "Test production intake hand-off binding at the batch builder boundary",
-    "Test production hand-off to canonical, SQLite and direct search (both adapters)",
-    "Test declared canonical-writer entrypoints and the mandatory intake hand-off policy",
-    "Test shared Kiwi batch service",
-    "Test shared Typewriter Python venv contract, launcher and staleness checks (synthetic interpreter)",
-    "Validate factory candidate/review batch contracts",
-    "Require factory results to be current with the shared factory contract on master",
-    "Test factory contract freshness gate and contract-repair transition",
-    "Test factory contracts, state machines, identity adapter, and typed handoff",
-    "Test factory Stage 1 lemma-centered candidate batch producer",
-    "Test Python corpus extractor and cached selection (factory opt-in keeps canonical lemmas and every POS; default M9 behavior; stale cache rejected)",
-    "Test lemma-centered candidate contract, usage-group decisions, and v1/v2 compatibility",
-    "Test factory Stage 1 analyzer provider boundary and fallback",
-    "Test pinned Khaiii provider contract, lazy fallback and native smoke (synthetic; native skipped without the release; no Docker)",
-    "Test pinned MeCab-ko provider contract, three-way fallback and real runtime smoke (synthetic; real runtime skipped without the pinned venv)",
-    "Test Ensemble Resolver v2: three-provider adjudication, contextual fallback decisions, verification queue, tamper rejection and same-cohort metrics (synthetic)",
-    "Test real three-native-provider ensemble smoke (skipped with the reason where Kiwi, Khaiii native or MeCab-ko is absent; no mock substitute)",
-    "Test Stage 2 atomic claims, merge-gated session loop, and cleanup",
-    "Test Stage 3 serial admission, rejection, recovery, and ID/reference allocation",
-    "Test Stage 3 reverse relation amendments: remapping, staleness, idempotence, semantic authority and audit"
-  ],
-  "batch": [
-    "Test lexical production candidates",
-    "Test lexical production state",
-    "Test shared Typewriter cache paths and explicit local-reference migration",
-    "Test M9 corpus candidate-review disposition regressions",
-    "Test Issues #332 and #334 literature TXT pilot and full index",
-    "Test Issue #391 Stage 2 literature evidence retriever",
-    "Test Issue #392 bounded literature rescue of evidence-insufficiency deferrals",
-    "Test Issue #397 canonical relation candidate retrieval",
-    "Test Issue #400/#446 relation enrichment pilot contract, backfill queue and canonical apply",
-    "Test Issue #223 reviewer run-record binding and raw-output derivation",
-    "Test M10 per-batch stage timing ledger",
-    "Test agent self-check semantic review contract and legacy review workflow"
   ],
   "toolchain": [
     "Run single-pass global canonical audit",
@@ -66,17 +20,12 @@
     "Validate shared SQLite dictionary artifact",
     "Run integrated M2 audit",
     "Verify shared surface-form projection reuse",
-    "Test SQLite dictionary build",
-    "Test exploratory relation relevance",
-    "Test Issue #400 Top-100 window through the production append path",
-    "Test integrated M2 audit"
+    "Test SQLite dictionary build"
   ],
   "product": [
     "Test packaged dictionary runtime guards",
     "Test shared search query contract",
     "Test shared native and WASM SQLite query adapter",
-    "Test role-independent searchable lexical eligibility",
-    "Test deterministic product-shaped scale fixture",
     "Test M6-3 surface-form projection and search",
     "Run product unit tests",
     "Build product extension",
@@ -92,8 +41,10 @@
   ],
   "deep": [
     "Run single-pass global canonical audit",
-    "Run current-revision SQLite reproducibility audit",
-    "Test reproducible dictionary builds",
-    "Run 100K/500K/1M release-shaped performance and scale benchmark"
+    "Run current-revision SQLite reproducibility audit"
+  ],
+  "relations": [
+    "Test Canonical relation backfill queue, apply, and correction paths",
+    "Test exploratory relation relevance contract"
   ]
 }

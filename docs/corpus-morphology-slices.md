@@ -1,5 +1,8 @@
 # Resumable local corpus morphology (#550 → #549)
 
+> Historical task record. Issue #823 retires the morphology and candidate-production
+> toolchain described here; the listed commands are not current maintenance routes.
+
 This is an independent morphology cache, with no dictionary, candidate-selection,
 Stage 1/2/3 or canonical-data dependency. #550 implements the tool and synthetic
 regressions. **The real Written Corpus run belongs to #549.** No real remaining

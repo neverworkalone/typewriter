@@ -44,7 +44,6 @@ jobs:
           git diff --no-renames --name-only -z "${BASE_SHA}...${HEAD_SHA}" > "$paths_file"
           # Read NUL-delimited paths (including whitespace safely); Bash 3.2 compatible.
           docs_only=true
-          stage1_only=true
           saw_file=false
           while IFS= read -r -d '' file; do
             saw_file=true
@@ -52,20 +51,14 @@ jobs:
               docs/*|README.md|REVIEW.md) ;;
               *) docs_only=false ;;
             esac
-            case "$file" in
-              data/candidates/C[0-9][0-9][0-9][0-9][0-9][0-9]/manifest.json|data/candidates/C[0-9][0-9][0-9][0-9][0-9][0-9]/candidates.jsonl|data/candidates/C[0-9][0-9][0-9][0-9][0-9][0-9]/stage1-decisions.json) ;;
-              *) stage1_only=false ;;
-            esac
           done < "$paths_file"
 
-          # Only pure Stage 1 candidate artifacts get the candidate-only gate.
-          # Mixed changes, empty diffs, and all other PRs keep the normal gate.
+          # Only documentation-only changes skip Normal. All other changes,
+          # including retired candidate artifacts and mixed/empty diffs, use Normal.
           if [[ "$saw_file" != true ]]; then
             run_level=normal
           elif [[ "$docs_only" == true ]]; then
             run_level=none
-          elif [[ "$stage1_only" == true ]]; then
-            run_level=candidates
           else
             run_level=normal
           fi
@@ -83,8 +76,6 @@ jobs:
             echo "Running exact-head ci:pr (Normal + affected Deep checks) inside this PR check." >> "$GITHUB_STEP_SUMMARY"
           elif [[ "$run_level" == none ]]; then
             echo "Documentation-only PR: ci:normal skipped; no Deep contract dependency changed." >> "$GITHUB_STEP_SUMMARY"
-          elif [[ "$run_level" == candidates ]]; then
-            echo "Pure Stage 1 candidate artifacts: running ci:candidates." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "Ordinary PR changes: running ci:normal." >> "$GITHUB_STEP_SUMMARY"
           fi
@@ -92,11 +83,6 @@ jobs:
       - name: Install pinned dependencies
         if: ${{ steps.changes.outcome != 'success' || steps.changes.outputs.run_level != 'none' || steps.changes.outputs.run_deep == 'true' }}
         run: pnpm install --frozen-lockfile --ignore-scripts
-
-      - name: Candidate validation (Stage 1 artifacts only)
-        id: candidates
-        if: ${{ steps.changes.outcome == 'success' && steps.changes.outputs.run_level == 'candidates' && steps.changes.outputs.deep_mode == 'none' }}
-        run: pnpm run ci:candidates
 
       - name: Normal validation (fast checkpoint + continuation)
         id: normal
@@ -117,7 +103,6 @@ jobs:
           CLASSIFIER_OUTCOME: ${{ steps.changes.outcome }}
           RUN_LEVEL: ${{ steps.changes.outputs.run_level }}
           DEEP_MODE: ${{ steps.changes.outputs.deep_mode }}
-          CANDIDATE_OUTCOME: ${{ steps.candidates.outcome }}
           NORMAL_OUTCOME: ${{ steps.normal.outcome }}
           SELECTIVE_OUTCOME: ${{ steps.selective.outcome }}
           FINAL_GATE: ${{ job.status }}
@@ -128,7 +113,6 @@ jobs:
             echo "- Classifier: ${CLASSIFIER_OUTCOME:-unknown}"
             echo "- Base gate class: ${RUN_LEVEL:-unknown}"
             echo "- Deep selection mode: ${DEEP_MODE:-Normal fallback}"
-            echo "- Candidate gate outcome: ${CANDIDATE_OUTCOME:-skipped}"
             echo "- Normal-only gate outcome: ${NORMAL_OUTCOME:-skipped}"
             echo "- Selective Deep gate outcome: ${SELECTIVE_OUTCOME:-skipped}"
             echo "- Final gate result: ${FINAL_GATE:-unknown}"

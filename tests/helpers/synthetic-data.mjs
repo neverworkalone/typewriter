@@ -19,6 +19,7 @@ export function syntheticRelationPacket(packetId) {
     relation_corrections: [{
       source_record_id: 'w001',
       source_sense_id: 'w001-s1',
+      source_record_sha256: 'c'.repeat(64),
       source_gloss_sha256: 'a'.repeat(64),
       target_meaning_sha256: 'b'.repeat(64),
       previous_relation: { ...relation, note: '기쁨은 즐거움과 가까우나 중심이 조금 다르다.' },

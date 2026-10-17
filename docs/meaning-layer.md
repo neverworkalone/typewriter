@@ -19,9 +19,9 @@ records the transition audit.
 
 Shared invariants (Normal CI, applied to the whole canonical corpus and future records):
 `tests/canonical-record-meanings.test.mjs` (every sense in exactly one meaning of its own record, source order and
-gloss round trip, candidates per lemma == records per lemma), `tests/record-meaning-projection.test.mjs` (ids,
-projection table, fail-closed controls, relation projection vs. an independent oracle),
-`tests/meaning-provenance.test.mjs` (relation provenance binding) and `tests/meaning-search.test.mjs` (ranking and 더보기).
+gloss round trip, candidates per lemma == records per lemma), `tests/meaning-provenance.test.mjs` (relation provenance
+binding), `tests/meaning-rank-order.test.mjs` (producer/SQLite ordering agreement), and
+`tests/meaning-search.test.mjs` (ranking and 더보기).
 
 ## IDs
 `w0097 -> m0097`, always, independent of the sense count. The ID's record is the meaning's only record.
