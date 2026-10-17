@@ -1,4 +1,5 @@
 import { MEANING_RELATION_ORIGINS } from '../../src/runtime/dictionary-contract.js';
+import { buildTargetIndex, parseArrowReference, resolveArrowTarget } from './gloss-arrow-reference.mjs';
 
 // Meaning of a sense: its own member meaning, else (for a `duplicate` drop) the meaning of `duplicate_of`.
 const memberMeaning = (sense) => `(SELECT meaning_id FROM meaning_members WHERE sense_id = ${sense})`;
@@ -126,6 +127,17 @@ export const MEANING_SOURCE_INTEGRITY_QUERIES = Object.freeze({
        OR forward.target_meaning_id <> reverse.source_meaning_id
        OR forward.note IS NOT reverse.note
        OR forward.relevance IS NOT reverse.relevance`,
+  // Issue #834: a gloss-reference relation is a \`direct\` backed by gloss evidence; evidence never hangs on another type.
+  gloss_relation_without_evidence: `
+    SELECT COUNT(*) FROM meaning_relations AS relation
+    WHERE relation.origin = '${MEANING_RELATION_ORIGINS.gloss}' AND (relation.type <> 'direct' OR NOT EXISTS (
+      SELECT 1 FROM meaning_relation_gloss_sources AS source
+      WHERE source.source_meaning_id = relation.source_meaning_id AND source.relation_position = relation.position))`,
+  gloss_evidence_on_wrong_relation: `
+    SELECT COUNT(*) FROM meaning_relation_gloss_sources AS source
+    INNER JOIN meaning_relations AS relation
+      ON relation.source_meaning_id = source.source_meaning_id AND relation.position = source.relation_position
+    WHERE relation.type <> 'direct' OR relation.origin = '${MEANING_RELATION_ORIGINS.reverse}'`,
   meaning_relation_source_mismatch: `
     SELECT COUNT(*) FROM meaning_relation_sources AS source
     INNER JOIN meaning_relations AS relation
@@ -183,4 +195,75 @@ export function assertRecordMeaningCoverage(database, fail) {
     const violations = Number(Object.values(database.prepare(sql).get())[0]);
     if (violations !== 0) fail(name, violations);
   }
+}
+
+
+/**
+ * Independent re-derivation of the \`→\` gloss references (Issue #834) from the Full database tables alone: the source
+ * \`senses\` glosses, the \`meanings\` and their members. The expected evidence set must equal the stored
+ * \`meaning_relation_gloss_sources\` exactly, so a missing, extra, relocated or mis-targeted row is a violation, and each
+ * evidence row must hang on the \`direct\` relation between the right two meanings. Returns violation counts by check.
+ */
+export function glossReferenceViolations(database) {
+  const meaningOfRecord = new Map(
+    database.prepare('SELECT id, record_id FROM meanings').all().map((row) => [row.record_id, row.id]),
+  );
+  const recordList = [];
+  const senses = database.prepare('SELECT id, record_id, gloss FROM senses ORDER BY record_id, position').all();
+  const byRecord = new Map();
+  for (const sense of senses) {
+    if (!byRecord.has(sense.record_id)) byRecord.set(sense.record_id, []);
+    byRecord.get(sense.record_id).push(sense);
+  }
+  for (const meaning of database.prepare('SELECT lemma, homograph_no, record_id FROM meanings').all()) {
+    recordList.push({
+      id: meaning.record_id, lemma: meaning.lemma, homograph_no: meaning.homograph_no,
+      senses: byRecord.get(meaning.record_id) ?? [],
+    });
+  }
+  const index = buildTargetIndex(recordList, (record) => meaningOfRecord.has(record.id));
+
+  const expected = new Map();
+  for (const sense of senses) {
+    const reference = parseArrowReference(sense.gloss);
+    if (reference === null || !reference.ok) continue;
+    const target = resolveArrowTarget(reference, index);
+    if (target.hold) continue;
+    const source = meaningOfRecord.get(sense.record_id);
+    const targetMeaning = meaningOfRecord.get(target.record.id);
+    if (source === undefined || source === targetMeaning) continue;
+    expected.set(sense.id, {
+      source_meaning_id: source,
+      target_meaning_id: targetMeaning,
+      gloss_offset: reference.offset,
+      reference_text: reference.text,
+      target_record_id: target.record.id,
+      target_sense_position: reference.sense_no === null ? null : reference.sense_no - 1,
+    });
+  }
+  const actual = new Map(
+    database.prepare(
+      `SELECT source.*, relation.target_meaning_id, relation.type
+       FROM meaning_relation_gloss_sources AS source
+       LEFT JOIN meaning_relations AS relation
+         ON relation.source_meaning_id = source.source_meaning_id AND relation.position = source.relation_position`,
+    ).all().map((row) => [row.source_sense_id, row]),
+  );
+  const violations = {
+    gloss_reference_evidence_missing: 0,
+    gloss_reference_evidence_forged: 0,
+    gloss_reference_evidence_mismatch: 0,
+  };
+  for (const [senseId, want] of expected) {
+    const have = actual.get(senseId);
+    if (!have) violations.gloss_reference_evidence_missing += 1;
+    else if (
+      have.source_meaning_id !== want.source_meaning_id || have.target_meaning_id !== want.target_meaning_id
+      || have.type !== 'direct' || have.gloss_offset !== want.gloss_offset
+      || have.reference_text !== want.reference_text || have.target_record_id !== want.target_record_id
+      || have.target_sense_position !== want.target_sense_position
+    ) violations.gloss_reference_evidence_mismatch += 1;
+  }
+  for (const senseId of actual.keys()) if (!expected.has(senseId)) violations.gloss_reference_evidence_forged += 1;
+  return violations;
 }

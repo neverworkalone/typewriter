@@ -1,10 +1,11 @@
 export const DICTIONARY_VERSION = 'm2-pilot-1';
-export const SQLITE_SCHEMA_VERSION = '9';
+export const SQLITE_SCHEMA_VERSION = '10';
 
 export const MEANING_RELATION_ORIGINS = Object.freeze({
   projection: 'stdict-sense-projection',
   authored: 'typewriter-authored',
   reverse: 'direct-reverse-projection',
+  gloss: 'stdict-gloss-reference',
 });
 
 /**
@@ -16,6 +17,7 @@ export const BUILD_ONLY_TABLES = Object.freeze([
   'relations',
   'meaning_relation_sources',
   'meaning_relation_reverse_sources',
+  'meaning_relation_gloss_sources',
 ]);
 
 /**
