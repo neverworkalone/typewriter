@@ -210,12 +210,24 @@ test('every same-record split in the decision table matches the spec and the sha
   }
 });
 
-// 결정표의 출처를 원본 변경 근거와 대조한다: spec 항목은 repartition의 before·groups와, base 항목은 PR base의 행과 같아야 한다.
-test('same-record split decisions are traceable to the spec before/groups or to the PR base rows', () => {
-  const sameSet = (a, b) => a.length === b.length && a.every((id) => b.includes(id));
+// 결정표의 출처를 원본 변경 근거와 sense 단위로 완전히 대조한다.
+// - baseRows의 sense 집합 = groups ∪ rest (중복 없음)
+// - spec 출처: 해당 record들의 before sense 전체가 표에 빠짐없이 있고, 각 repartition 그룹이 가진 그 record sense는 표의 한 묶음과 정확히 같다
+// - base 출처: 해당 record들의 현재 shard sense 전체가 표에 빠짐없이 있고, baseRows가 현재 shard에서 그대로 유지된다
+const recordOf = (id) => id.split('-')[0];
+const sameSet = (a, b) => a.length === b.length && a.every((id) => b.includes(id));
+test('same-record split decisions cover every sense of their records and trace to the spec or the PR base', () => {
+  assert.equal(splitTable.length, 55);
+  const current = new Map(rows.map((row) => [row.id, row]));
   for (const e of splitTable) {
     assert.ok(e.baseRows?.length, `${e.lemma}: base rows recorded`);
     const wanted = [...e.groups, ...(e.rest.length ? [e.rest] : [])];
+    const wantedIds = wanted.flat();
+    assert.equal(new Set(wantedIds).size, wantedIds.length, `${e.lemma}: no sense listed twice`);
+    const baseIds = e.baseRows.flatMap((row) => row.sense_ids);
+    assert.equal(new Set(baseIds).size, baseIds.length, `${e.lemma}: base rows do not overlap`);
+    assert.ok(sameSet(baseIds, wantedIds), `${e.lemma}: base row senses equal groups + rest`);
+    const recs = new Set(wantedIds.map(recordOf));
     if (e.source === 'spec') {
       const reps = spec.repartitions.filter((rep) => rep.lemma === e.lemma);
       assert.equal(reps.length, 1, `${e.lemma}: one repartition`);
@@ -223,15 +235,17 @@ test('same-record split decisions are traceable to the spec before/groups or to 
       for (const row of e.baseRows) {
         assert.ok(rep.before.some((b) => b.id === row.id && sameSet(b.sense_ids, row.sense_ids)), `${e.lemma}: before has ${row.id}`);
       }
-      const specGroups = rep.groups.map((g) => g.senses);
-      const owner = (id) => specGroups.findIndex((g) => g.includes(id));
-      for (const group of wanted) {
-        assert.ok(group.every((id) => owner(id) === owner(group[0]) && owner(id) >= 0), `${e.lemma}: ${group} is one repartition group`);
+      const beforeOfRecords = rep.before.flatMap((b) => b.sense_ids).filter((id) => recs.has(recordOf(id)));
+      assert.ok(sameSet(beforeOfRecords, wantedIds), `${e.lemma}: table covers every before sense of its records`);
+      const perGroup = rep.groups.map((g) => g.senses.filter((id) => recs.has(recordOf(id)))).filter((g) => g.length);
+      assert.equal(perGroup.length, wanted.length, `${e.lemma}: repartition group count for its records`);
+      for (const group of perGroup) {
+        assert.ok(wanted.some((w) => sameSet(w, group)), `${e.lemma}: repartition group ${group} equals a table group`);
       }
-      assert.equal(new Set(wanted.map((g) => owner(g[0]))).size, wanted.length, `${e.lemma}: groups map to distinct repartition groups`);
     } else {
       assert.ok(!spec.repartitions.some((rep) => rep.lemma === e.lemma), `${e.lemma}: no repartition`);
-      const current = new Map(rows.map((row) => [row.id, row]));
+      const nowOfRecords = rows.filter((row) => row.lemma === e.lemma).flatMap((row) => row.sense_ids).filter((id) => recs.has(recordOf(id)));
+      assert.ok(sameSet(nowOfRecords, wantedIds), `${e.lemma}: table covers every current sense of its records`);
       for (const row of e.baseRows) {
         const now = current.get(row.id);
         assert.ok(now && sameSet(now.sense_ids, row.sense_ids), `${e.lemma}: base row ${row.id} kept as in the PR base`);
