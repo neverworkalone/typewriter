@@ -168,6 +168,10 @@ const RAW_CI_CATEGORIES = Object.freeze({
         tier: 'normal',
       },
       {
+        ...testCheck('scripts/meaning/issue-764-c19-regression.test.mjs', 'Test Issue #764 C19 source-bound Meaning boundaries and relation projection'),
+        tier: 'normal',
+      },
+      {
         ...testCheck('tests/meaning-provenance.test.mjs', 'Test meaning relation provenance completeness and source binding'),
         tier: 'normal',
       },
