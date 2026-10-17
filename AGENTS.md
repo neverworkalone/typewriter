@@ -257,13 +257,9 @@ Deep data inputs belong in each check's `deepInputs` registry metadata;
 contract. A data file appearing in `deepInputs` does not alone select the
 check. Routine canonical and reviewed relation changes must pass schema/shape
 classification and the existing Normal source-bound validators.
-Legacy `data/candidate-trash/T######.jsonl` files use the same principle:
-strict changed-chunk JSONL and the shared permanent-trash contract must pass
-before selecting Normal. Normal archive validation still checks changed and
-historic archive identities and immutability; candidate+trash changes are not
-candidate-only. New or malformed archive paths remain fail-closed. Docs-only
-changes retain the exact-head Normal skip, and pure root candidate artifacts
-retain `ci:candidates`. CI runner/registry/workflow/classifier edits, unresolved unknown
+New or malformed paths remain fail-closed. Docs-only changes retain the
+exact-head Normal skip, and pure root candidate artifacts retain `ci:candidates`.
+CI runner/registry/workflow/classifier edits, unresolved unknown
 paths, missing/empty diff evidence and malformed data take Normal on PRs;
 any independently matched Deep dependency adds only its affected checks.
 Normal validators still reject invalid data. Verified append-only `deep-gate-coverage.json` additions are not

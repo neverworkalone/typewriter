@@ -8,55 +8,9 @@
     "Test shared canonical context": "normal",
     "Test STDICT canonical conversion, licensed-source gate and pilot shard": "normal",
     "Test dataset validator": "normal",
-    "Validate lexical rule inventory": "normal",
-    "Test lexical rule inventory": "normal",
     "Test CI category runner fail-fast behavior": "normal",
     "Test CI check ownership registry": "normal",
     "Test one current-revision SQLite build guard (real runner fault injection)": "normal"
-  },
-  "lexical": {
-    "Run single-pass global canonical audit": "normal",
-    "Test shared lexical quality": "normal",
-    "Test semantic audit decision source": "normal",
-    "Test shared admission context equivalence, tamper rejection, and immutable digest reuse": "normal",
-    "Test shared lexical selection": "normal",
-    "Test source-agnostic intake pipeline": "normal",
-    "Test corpus intake to SQLite direct-search path": "normal",
-    "Test corpus-free synthetic intake to SQLite direct-search path": "normal",
-    "Test production intake hand-off binding at the batch builder boundary": "normal",
-    "Test production hand-off to canonical, SQLite and direct search (both adapters)": "normal",
-    "Test declared canonical-writer entrypoints and the mandatory intake hand-off policy": "normal",
-    "Test shared Kiwi batch service": "normal",
-    "Test shared Typewriter Python venv contract, launcher and staleness checks (synthetic interpreter)": "normal",
-    "Validate factory candidate/review batch contracts": "normal",
-    "Require factory results to be current with the shared factory contract on master": "normal",
-    "Test factory contract freshness gate and contract-repair transition": "normal",
-    "Test factory contracts, state machines, identity adapter, and typed handoff": "normal",
-    "Test factory Stage 1 lemma-centered candidate batch producer": "normal",
-    "Test Python corpus extractor and cached selection (factory opt-in keeps canonical lemmas and every POS; default M9 behavior; stale cache rejected)": "normal",
-    "Test lemma-centered candidate contract, usage-group decisions, and v1/v2 compatibility": "normal",
-    "Test factory Stage 1 analyzer provider boundary and fallback": "normal",
-    "Test pinned Khaiii provider contract, lazy fallback and native smoke (synthetic; native skipped without the release; no Docker)": "normal",
-    "Test pinned MeCab-ko provider contract, three-way fallback and real runtime smoke (synthetic; real runtime skipped without the pinned venv)": "normal",
-    "Test Ensemble Resolver v2: three-provider adjudication, contextual fallback decisions, verification queue, tamper rejection and same-cohort metrics (synthetic)": "normal",
-    "Test real three-native-provider ensemble smoke (skipped with the reason where Kiwi, Khaiii native or MeCab-ko is absent; no mock substitute)": "normal",
-    "Test Stage 2 atomic claims, merge-gated session loop, and cleanup": "normal",
-    "Test Stage 3 serial admission, rejection, recovery, and ID/reference allocation": "normal",
-    "Test Stage 3 reverse relation amendments: remapping, staleness, idempotence, semantic authority and audit": "normal"
-  },
-  "batch": {
-    "Test lexical production candidates": "normal",
-    "Test lexical production state": "normal",
-    "Test shared Typewriter cache paths and explicit local-reference migration": "normal",
-    "Test M9 corpus candidate-review disposition regressions": "normal",
-    "Test Issues #332 and #334 literature TXT pilot and full index": "normal",
-    "Test Issue #391 Stage 2 literature evidence retriever": "normal",
-    "Test Issue #392 bounded literature rescue of evidence-insufficiency deferrals": "normal",
-    "Test Issue #397 canonical relation candidate retrieval": "normal",
-    "Test Issue #400/#446 relation enrichment pilot contract, backfill queue and canonical apply": "deep",
-    "Test Issue #223 reviewer run-record binding and raw-output derivation": "normal",
-    "Test M10 per-batch stage timing ledger": "normal",
-    "Test agent self-check semantic review contract and legacy review workflow": "normal"
   },
   "toolchain": {
     "Run single-pass global canonical audit": "normal",
@@ -66,17 +20,12 @@
     "Validate shared SQLite dictionary artifact": "normal",
     "Run integrated M2 audit": "normal",
     "Verify shared surface-form projection reuse": "normal",
-    "Test SQLite dictionary build": "normal",
-    "Test exploratory relation relevance": "normal",
-    "Test Issue #400 Top-100 window through the production append path": "normal",
-    "Test integrated M2 audit": "normal"
+    "Test SQLite dictionary build": "normal"
   },
   "product": {
     "Test packaged dictionary runtime guards": "normal",
     "Test shared search query contract": "normal",
     "Test shared native and WASM SQLite query adapter": "normal",
-    "Test role-independent searchable lexical eligibility": "normal",
-    "Test deterministic product-shaped scale fixture": "normal",
     "Test M6-3 surface-form projection and search": "normal",
     "Run product unit tests": "normal",
     "Build product extension": "normal",
@@ -92,8 +41,10 @@
   },
   "deep": {
     "Run single-pass global canonical audit": "deep",
-    "Run current-revision SQLite reproducibility audit": "deep",
-    "Test reproducible dictionary builds": "deep",
-    "Run 100K/500K/1M release-shaped performance and scale benchmark": "deep"
+    "Run current-revision SQLite reproducibility audit": "deep"
+  },
+  "relations": {
+    "Test Canonical relation backfill queue, apply, and correction paths": "deep",
+    "Test exploratory relation relevance contract": "normal"
   }
 }

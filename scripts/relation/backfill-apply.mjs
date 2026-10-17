@@ -2,14 +2,11 @@ import { readFile, readdir, writeFile, mkdir, rename } from 'node:fs/promises';
 import path from 'node:path';
 
 import { reviewedRelationId } from '../batch/authored-semantic-decision-source.mjs';
-import { canonicalRecordSha256, planRelationBackfill, planRelationCorrections, targetMeaningSha256, writePlannedRecords } from '../factory/admission.mjs';
-import { relationAmendmentErrors } from '../factory/relation-amendments.mjs';
-import { CORRECTION_FIELD, canonicalTuple, correctionSettled, relationCorrectionErrors, revertRelationCorrections, sameTuple } from '../factory/relation-corrections.mjs';
-import { sha256Hex } from '../factory/contract.mjs';
-import { buildStage3SemanticAuthority, AUTHORITY_PATH } from '../factory/semantic-authority.mjs';
-import { refreshStage3ReportCheckpoints } from '../factory/stage3-worker.mjs';
+import { canonicalRecordSha256, planRelationBackfill, planRelationCorrections, sha256Hex, targetMeaningSha256, writePlannedRecords } from './plan.mjs';
+import { relationAmendmentErrors } from './relation-amendments.mjs';
+import { CORRECTION_FIELD, canonicalTuple, correctionSettled, relationCorrectionErrors, revertRelationCorrections, sameTuple } from './relation-corrections.mjs';
+import { buildRelationSemanticAuthority, AUTHORITY_PATH } from './semantic-authority.mjs';
 import { canonicalRecordsSha256, sha256Json } from '../validate/semantic-audit.mjs';
-import { backfillPacketErrors } from '../factory/validate.mjs';
 import { BACKFILL_EXCLUDED_POS, approvalsStillHold } from './backfill-queue.mjs';
 import { buildRelationIndex } from './candidate-retrieval.mjs';
 import { readShardedJson } from '../lib/sharded-json.mjs';
@@ -21,6 +18,16 @@ import { readShardedJson } from '../lib/sharded-json.mjs';
 // already present (no packet claims it) is an exact-tuple no-op, exactly as in Stage 3.
 
 export const BACKFILL_PACKET_DIR = 'data/relation-backfill';
+
+export function backfillPacketErrors(events, packets) {
+  const errors = [];
+  for (const event of events) {
+    const text = packets.get(event.batch_id);
+    if (text === undefined) errors.push(`backfill event ${event.batch_id} has no committed packet file data/relation-backfill/${event.batch_id}.json; restore it from Git`);
+    else if (sha256Hex(text) !== event.semantic_decisions_sha256) errors.push(`backfill packet ${event.batch_id} does not match its semantic authority event digest`);
+  }
+  return errors;
+}
 
 /** Approved tuples of the queue state as source-bound amendments, in deterministic (sense id) order. */
 export function approvedAmendments(state, index) {
@@ -113,6 +120,13 @@ export async function completedPacketId(root) {
 
 const readAuthority = (root) => readShardedJson(path.join(root, AUTHORITY_PATH));
 
+/** Check the current relation packet files against their source-bound canonical authority events. */
+export async function validateBackfillPackets(root) {
+  const source = await readAuthority(root);
+  const events = (source.factory_admissions ?? []).filter((event) => BACKFILL_EVENT.test(event.batch_id));
+  return backfillPacketErrors(events, await readPackets(root));
+}
+
 // Packet first (intent), then canonical, then the authority event; the event is what marks the packet complete.
 // Write beside the target and rename, so an interruption leaves either the old file or the complete new one.
 async function writeAtomic(target, text) {
@@ -124,10 +138,8 @@ async function writeAtomic(target, text) {
 const withoutCorrections = (records, corrections) => records.map((record) => revertRelationCorrections(record,
   corrections.map((item) => ({ ...item, outcome: 'amended' }))));
 
-// Resuming a correction packet rebuilds "the canonical before this packet" from the packet itself. That rebuild is only
-// sound when it lands exactly on the canonical the semantic authority recorded before the packet: any other result (for
-// example the same target relation retyped by someone else since, which the rebuild would paper over by re-inserting the
-// old tuple) is a change the packet never reviewed, so it fails closed instead of being corrected.
+// Resuming a correction packet reconstructs the pre-packet source entries and checks each complete record digest against
+// the review. This also protects licensed-source records, which are intentionally excluded from the semantic-review digest.
 function assertRebuiltBaseIsRecorded(base, source, packetId) {
   if (canonicalRecordsSha256(base.map((record) => ({ record }))) !== source.source?.canonical_records_sha256) {
     throw new Error(`packet ${packetId}: canonical changed after the packet was written (the pre-packet state it rebuilds is not the recorded one); remove the unwritten packet and re-review`);
@@ -141,7 +153,7 @@ async function applyPacket({ root, records, recordPathById, packetId, amendments
     : planRelationBackfill({ packetId, amendments, canonicalRecords: base, recordPathById });
   plan.reviewManifest = { semantic_decisions_sha256: sha256Hex(packetText), admission: {} };
   if (corrections) assertRebuiltBaseIsRecorded(base, await readAuthority(root), packetId);
-  const authority = await buildStage3SemanticAuthority({ root, baseCanonicalRecords: base, plan });
+  const authority = await buildRelationSemanticAuthority({ root, baseCanonicalRecords: base, plan });
   await mkdir(path.join(root, BACKFILL_PACKET_DIR), { recursive: true });
   await writeAtomic(path.join(root, BACKFILL_PACKET_DIR, `${packetId}.json`), packetText);
   await writePlannedRecords(plan, root);
@@ -157,7 +169,7 @@ async function applyPacket({ root, records, recordPathById, packetId, amendments
  * after first finishing any interrupted packet. Returns `nothing-to-apply` when every approved tuple is already
  * present and recorded; otherwise `applied` with the packet ids written or resumed.
  */
-export async function applyBackfill({ root, state, index, refreshReports = true }) {
+export async function applyBackfill({ root, state, index }) {
   const { amendments, stale } = approvedAmendments(state, index);
   const files = async () => ({ ...(await readCanonicalFiles(root)), source: await readAuthority(root) });
   let { records, recordPathById, source } = await files();
@@ -226,7 +238,6 @@ export async function applyBackfill({ root, state, index, refreshReports = true 
     written.push(packetId);
   }
   if (written.length === 0) return { status: 'nothing-to-apply', stale, already_present: amendments.length };
-  if (refreshReports) refreshStage3ReportCheckpoints(root);
   return { status: 'applied', stale, packets: written, relations_appended: pending.length, records_changed: recordsChanged };
 }
 
@@ -265,6 +276,7 @@ export function correctionItemsFor(records, proposals) {
     items.push({
       source_record_id: record.id,
       source_sense_id: sense.id,
+      source_record_sha256: canonicalRecordSha256(record),
       source_gloss_sha256: canonicalRecordSha256(sense.gloss),
       target_meaning_sha256: targetMeaning,
       previous_relation: structuredClone(relations[position]),
@@ -290,22 +302,20 @@ export function relationMeanings(records, senseId) {
  * packet: the committed packet is the intent record, then canonical, then the semantic-authority event, exactly as for
  * an appended backfill. An interrupted packet is finished first; proposals already in effect are a no-op.
  */
-export async function applyRelationCorrections({ root, proposals, refreshReports = true }) {
+export async function applyRelationCorrections({ root, proposals }) {
   // An interrupted appended-relation packet is finished first, and resuming it re-checks its approved target meaning,
   // so the index is the current canonical (the same state a normal backfill apply would resume against).
   const current = await readCanonicalFiles(root);
-  const probe = await applyBackfill({ root, state: { done: {} }, index: buildRelationIndex({ records: current.records }), refreshReports: false });
+  const probe = await applyBackfill({ root, state: { done: {} }, index: buildRelationIndex({ records: current.records }) });
   let { records, recordPathById, source } = { ...(await readCanonicalFiles(root)), source: await readAuthority(root) };
   const items = correctionItemsFor(records, proposals);
   const found = relationCorrectionErrors({ [CORRECTION_FIELD]: items.length ? items : undefined }, 'proposals');
   if (!items.length) {
-    if (probe.status === 'applied' && refreshReports) refreshStage3ReportCheckpoints(root);
     return { status: probe.status === 'applied' ? 'applied' : 'nothing-to-apply', packets: probe.packets ?? [], corrections_applied: 0 };
   }
   if (found.length) throw new Error(found.join('; '));
   const packetId = nextPacketId(source.factory_admissions ?? []);
   const packetText = `${JSON.stringify({ packet_id: packetId, [CORRECTION_FIELD]: items }, null, 1)}\n`;
   const plan = await applyPacket({ root, records, recordPathById, packetId, corrections: items, packetText });
-  if (refreshReports) refreshStage3ReportCheckpoints(root);
   return { status: 'applied', packets: [...(probe.packets ?? []), packetId], corrections_applied: items.length, records_changed: plan.changes.length };
 }

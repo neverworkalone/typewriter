@@ -1,5 +1,9 @@
 # M9 corpus-backed lexical production
 
+> Historical workflow record. The corpus-backed candidate-production path and
+> scripts were retired by Issue #823; current builds consume maintained Canonical
+> data and do not run this process.
+
 ## Boundary
 
 Corpus analysis is a local reference step. It may establish that a surface and analyzer proposal occur in the approved snapshot; it does not establish lexical admission, writer usefulness, sense boundaries, or relations. Every admitted record remains Typewriter-authored and passes the same source-bound semantic decision and shared lexical admission path used by historical recovery. Empty relation lists are valid.

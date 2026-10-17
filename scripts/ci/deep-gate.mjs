@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { appendFileSync } from 'node:fs';
+import { appendFileSync, existsSync } from 'node:fs';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -10,12 +10,12 @@ import {
   REPOSITORY_DIRECTORY,
 } from './registry.mjs';
 import { validateCanonicalRecord } from '../validate/canonical-jsonl.mjs';
-import { relationAmendmentErrors } from '../factory/relation-amendments.mjs';
-import { relationCorrectionErrors } from '../factory/relation-corrections.mjs';
-import { validateTrashChunk } from '../factory/permanent-trash.mjs';
+import { relationAmendmentErrors } from '../relation/relation-amendments.mjs';
+import { relationCorrectionErrors } from '../relation/relation-corrections.mjs';
 import KNOWN_NON_DEEP_PATHS from './deep-gate-known-non-deep-paths.json' with { type: 'json' };
 import NORMAL_COVERAGE from './deep-gate-coverage.json' with { type: 'json' };
-import { GIT_MAX_BUFFER } from '../factory/git-limits.mjs';
+import NORMAL_COVERAGE_RETIREMENTS from './deep-gate-coverage-retirements.json' with { type: 'json' };
+import { GIT_MAX_BUFFER } from './git-limits.mjs';
 
 const SCRIPT_PATH = fileURLToPath(import.meta.url);
 
@@ -106,9 +106,30 @@ const NORMAL_COVERAGE_PATH = 'scripts/ci/deep-gate-coverage.json';
 export function validateNormalCoverage(manifest = NORMAL_COVERAGE, {
   categories = CI_CATEGORIES,
   deepChecks = registeredDeepChecks(),
+  repositoryDirectory = REPOSITORY_DIRECTORY,
+  retirements = NORMAL_COVERAGE_RETIREMENTS,
 } = {}) {
   if (manifest?.version !== 1 || !Array.isArray(manifest.bindings)) {
     throw new TypeError('Normal coverage registry has an unsupported shape.');
+  }
+  if (retirements?.version !== 1 || !Array.isArray(retirements.retirements)) {
+    throw new TypeError('Normal coverage retirement registry has an unsupported shape.');
+  }
+  const retired = new Map();
+  for (const retirement of retirements.retirements) {
+    const tests = retirement?.normal_tests;
+    if (
+      !validRepositoryPath(retirement?.path)
+      || typeof retirement?.reason !== 'string' || !retirement.reason.trim()
+      || !Array.isArray(tests) || tests.length === 0
+      || tests.some((test) => typeof test !== 'string' || !new RegExp('^(?:tests|scripts)/.+[.]test[.]mjs$', 'u').test(test))
+      || new Set(tests).size !== tests.length
+      || retired.has(retirement.path)
+      || existsSync(path.join(repositoryDirectory, retirement.path))
+    ) {
+      throw new TypeError('Invalid or reintroduced Normal coverage retirement: ' + JSON.stringify(retirement));
+    }
+    retired.set(retirement.path, retirement);
   }
   const bindings = new Map();
   for (const binding of manifest.bindings) {
@@ -127,15 +148,28 @@ export function validateNormalCoverage(manifest = NORMAL_COVERAGE, {
     ) {
       throw new TypeError('Unsafe or duplicate Normal coverage binding: ' + JSON.stringify(binding));
     }
-    for (const test of tests) {
-      const covered = Object.values(categories).some((category) => category.checks.some((check) => (
-        check.tier === 'normal'
-        && check.schedule === 'always'
-        && (check.testFiles ?? []).includes(test)
-      )));
-      if (!covered) throw new TypeError('Normal coverage test is not always-on in Normal CI: ' + test);
+    const retirement = retired.get(binding.path);
+    if (retirement) {
+      if (JSON.stringify(retirement.normal_tests) !== JSON.stringify(tests)) {
+        throw new TypeError('Normal coverage retirement does not match its append-only binding: ' + binding.path);
+      }
+    } else {
+      for (const test of tests) {
+        const covered = Object.values(categories).some((category) => category.checks.some((check) => (
+          check.tier === 'normal'
+          && check.schedule === 'always'
+          && (check.testFiles ?? []).includes(test)
+        )));
+        if (!covered) throw new TypeError('Normal coverage test is not always-on in Normal CI: ' + test);
+      }
     }
     bindings.set(binding.path, binding);
+  }
+  for (const [pathValue, retirement] of retired) {
+    const binding = bindings.get(pathValue);
+    if (!binding || JSON.stringify(binding.normal_tests) !== JSON.stringify(retirement.normal_tests)) {
+      throw new TypeError('Retired Normal coverage binding is missing or changed: ' + pathValue);
+    }
   }
   return bindings;
 }
@@ -154,9 +188,6 @@ export function validateAdditiveNormalCoverage(previous, next, options) {
   }
   return after;
 }
-const STAGE1_CANDIDATE_ARTIFACT_PATH = /^data\/candidates\/C\d{6}\/(?:manifest\.json|candidates\.jsonl|stage1-decisions\.json)$/u;
-const STAGE1_TRASH_ARTIFACT_PATH = /^data\/candidate-trash\/T\d{6}\.jsonl$/u;
-const REVIEW_ARTIFACT_PATH = /^data\/reviews\/C\d{6}\/(?:manifest\.json|decisions\.jsonl|semantic-decisions\.json|intake-handoff\.json)$/u;
 const RELATION_BACKFILL_PATH = /^data\/relation-backfill\/(R\d{6})\.json$/u;
 
 function matchesPath(pathValue, rule) {
@@ -179,7 +210,7 @@ function registeredTestTiers() {
       for (const argument of command?.args ?? []) {
         if (
           typeof argument === 'string'
-          && /^(?:tests|scripts)\/.+\.test\.mjs$/u.test(argument)
+          && /^(?:tests|scripts)\/.+\.test\.(?:mjs|js)$/u.test(argument)
         ) files.add(argument);
       }
       for (const file of files) {
@@ -213,9 +244,6 @@ function deepCheckMap(deepChecks) {
 
 function normalDataKind(pathValue) {
   if (/^data\/canonical\/.+\.jsonl$/u.test(pathValue)) return 'canonical-jsonl';
-  if (STAGE1_CANDIDATE_ARTIFACT_PATH.test(pathValue)) return pathValue.endsWith('.jsonl') ? 'jsonl' : 'json';
-  if (STAGE1_TRASH_ARTIFACT_PATH.test(pathValue)) return 'trash-jsonl';
-  if (REVIEW_ARTIFACT_PATH.test(pathValue)) return pathValue.endsWith('.jsonl') ? 'jsonl' : 'json';
   if (RELATION_BACKFILL_PATH.test(pathValue)) return 'relation-backfill';
   if (
     pathValue === 'data/validation/canonical-semantic-decision-source.json'
@@ -312,16 +340,9 @@ function validateRoutineDataFile(pathValue, kind, baseSha, headSha, runGit) {
   }
 
   const text = readFileAtRevision(pathValue, baseSha, headSha, runGit);
-  if (kind === 'jsonl' || kind === 'trash-jsonl') {
+  if (kind === 'jsonl') {
     // Keep the changed-file gate strict even if another consumer tolerates blank lines.
     parseJsonlRecords(text, pathValue);
-    if (kind === 'trash-jsonl') {
-      // Reuse the real Factory contract (identity hashes, variants, occurrences,
-      // bounded chunk size and text-free evidence); Normal additionally checks
-      // new chunks against all changed and historic archive IDs.
-      const errors = validateWithDiagnostic(() => validateTrashChunk(text), pathValue, 'trash-chunk-validation-failed');
-      if (errors.length > 0) throw new SafeDiagnosticError(`${pathValue}: trash-chunk-validation-failed`);
-    }
     return;
   }
 
@@ -394,7 +415,7 @@ export function classifyDeepGatePaths(changedPaths, {
       continue;
     }
 
-    if (changedPath.endsWith('.test.mjs')) {
+    if (/\.test\.(?:mjs|js)$/u.test(changedPath)) {
       const tiers = testTiers.get(changedPath);
       if (!tiers || tiers.has('deep')) {
         return {
@@ -406,13 +427,6 @@ export function classifyDeepGatePaths(changedPaths, {
           selectedDeepChecks: deepChecks.map(checkId),
         };
       }
-      knownNonDeepPaths.push(changedPath);
-      continue;
-    }
-
-    // Root Stage 1 artifacts keep their candidate-only route. The PR diff
-    // classifier still schema-checks their contents before this result is used.
-    if (STAGE1_CANDIDATE_ARTIFACT_PATH.test(changedPath) && !validatedDataPaths.has(changedPath)) {
       knownNonDeepPaths.push(changedPath);
       continue;
     }
@@ -441,7 +455,6 @@ export function classifyDeepGatePaths(changedPaths, {
       || KNOWN_NON_DEEP_PATH_SET.has(changedPath)
       || coverage.has(changedPath)
       || (changedPath === NORMAL_COVERAGE_PATH && coverageChangeValidated)
-      || STAGE1_CANDIDATE_ARTIFACT_PATH.test(changedPath)
     ) {
       knownNonDeepPaths.push(changedPath);
       continue;
@@ -503,11 +516,16 @@ export function classifyDeepGateDiff(baseSha, headSha, {
     const changedPaths = Buffer.from(result).toString('utf8').split('\0').filter(Boolean);
     const validatedDataPaths = new Set();
     let coverageChangeValidated = false;
+    let coverage = validateNormalCoverage();
     if (changedPaths.includes(NORMAL_COVERAGE_PATH)) {
       try {
         const base = decodeUtf8(runGit(['show', baseSha + ':' + NORMAL_COVERAGE_PATH]), NORMAL_COVERAGE_PATH);
         const head = decodeUtf8(runGit(['show', headSha + ':' + NORMAL_COVERAGE_PATH]), NORMAL_COVERAGE_PATH);
-        validateWithDiagnostic(() => validateAdditiveNormalCoverage(JSON.parse(base), JSON.parse(head)), NORMAL_COVERAGE_PATH, 'coverage-registration-validation-failed');
+        coverage = validateWithDiagnostic(
+          () => validateAdditiveNormalCoverage(JSON.parse(base), JSON.parse(head)),
+          NORMAL_COVERAGE_PATH,
+          'coverage-registration-validation-failed',
+        );
         coverageChangeValidated = true;
       } catch (error) {
         return {
@@ -542,7 +560,7 @@ export function classifyDeepGateDiff(baseSha, headSha, {
       validatedDataPaths.add(changedPath);
     }
     return {
-      ...classifyDeepGatePaths(changedPaths, { validatedDataPaths, coverageChangeValidated }),
+      ...classifyDeepGatePaths(changedPaths, { validatedDataPaths, coverage, coverageChangeValidated }),
       changedPaths,
     };
   } catch (error) {
@@ -588,7 +606,7 @@ function main() {
   const runLevel = process.env.TYPEWRITER_CI_RUN_LEVEL ?? 'normal';
   const baseGate = runLevel === 'none'
     ? 'ci:normal skipped (documentation-only)'
-    : runLevel === 'candidates' ? 'ci:candidates' : 'ci:normal';
+    : 'ci:normal';
   const triggerEvidence = (result.matchedTriggers ?? []).length > 0
     ? result.matchedTriggers.map(({ path: changedPath, checks }) => (
       `\`${changedPath}\` -> ${checks.map((id) => `\`${id}\``).join(', ')}`
@@ -617,7 +635,7 @@ function main() {
     `- Matched contract triggers: ${triggerEvidence}`,
     `- Deep checks selected (${selectedLabels.length}/${deepChecks.length}): ${selectedLabels.length > 0 ? selectedLabels.map((value) => `\`${value}\``).join(', ') : 'none'}`,
     `- Deep checks skipped: ${skippedLabels.length > 0 ? skippedLabels.map((value) => `\`${value}\``).join(', ') : 'none'}${skippedLabels.length > 0 ? ` (reason: no registered dependency matched this change; classifier: ${result.reason})` : ''}`,
-    `- PR command: \`${result.deepMode === 'selective' ? 'ci:pr' : 'ci:normal or ci:candidates'}\``,
+    `- PR command: \`${result.deepMode === 'selective' ? 'ci:pr' : 'ci:normal'}\``,
   ].join('\n') + '\n';
   if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary, 'utf8');
   process.stdout.write(`${JSON.stringify({ ...result, base_sha: baseSha ?? null, head_sha: headSha ?? null })}\n`);

@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { EXPLORATORY_RELATION_TYPES, reviewedRelationId } from '../batch/authored-semantic-decision-source.mjs';
-import { relationAmendmentErrors } from '../factory/relation-amendments.mjs';
+import { relationAmendmentErrors } from './relation-amendments.mjs';
 import { sha256Json } from '../validate/semantic-audit.mjs';
 import { buildRelationIndex, retrieveRelationCandidates, validateRelationCandidateArtifact } from './candidate-retrieval.mjs';
 import { DIRECT_BOUNDARY_INSTRUCTION } from './direct-boundary.mjs';

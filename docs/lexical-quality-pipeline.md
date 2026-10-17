@@ -1,5 +1,8 @@
 # Shared lexical-quality admission pipeline
 
+> Historical workflow document. The candidate-production and admission system
+> described below was retired by Issue #823 and is not an active production path.
+
 Typewriter admits words through one dictionary-wide quality boundary. A batch
 identifier only describes scope and arithmetic; it does not select a different
 quality policy.

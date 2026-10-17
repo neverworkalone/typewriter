@@ -81,17 +81,17 @@ must also be explicitly reviewed, even when the tool keeps all material local.
 ## Canonical-data rules
 
 Licensed dictionary data from **STDICT, KRDICT, and 우리말샘** may enter
-canonical through source-specific deterministic mappings without treating
-previously documented official senses as newly authored Stage 1→2→3 senses.
+canonical through source-specific deterministic mappings.
 Preserve each source's identity for imported entries, senses and lexical links,
 and distribute the required attribution and license with the selected data.
 Do not import source-attributed example passages, multimedia, or materials
 with incompatible individual rights.
 
 **Typewriter-authored enrichment** (말의 결 and 연상), independently authored
-new senses, and other original records remain subject to the editorial
-production, review, and admission requirements. Reusing licensed dictionary
-definitions or official links is not a claim of Typewriter authorship.
+new senses, and other original records remain authored editorial decisions
+with source-bound evidence. This policy does not define a general candidate
+production or admission workflow. Reusing licensed dictionary definitions or
+official links is not a claim of Typewriter authorship.
 Other unapproved third-party materials remain excluded.
 
 ## Storage and build boundary
@@ -104,20 +104,8 @@ not tracked or distributed. Keep unreviewed authored drafts outside the
 repository. The dictionary builder reads canonical JSONL and produces
 SQLite reproducibly: it must never silently fetch external services,
 local source downloads, or temporary research files during a product build.
-See [the shared cache contract](local-reference-cache.md).
-
-M5 target-selection files under `data/inventory/` are tracked editorial planning
-artifacts, not canonical input. They may record a candidate, classification, hold,
-duplicate, or inflected-form decision, but they must not contain raw external
-responses or unreviewed drafts. The inventory validator checks its current snapshot
-against canonical data; the dictionary builder ignores the directory.
-
-M5 batch manifests under `data/batches/` are also metadata only. They may record
-generator identity, prompt/template version, timestamps, review decisions, correction
-fields, and final canonical IDs. They must not store raw responses, draft text,
-confidence scores, secrets, or paths into a local workspace. Reviewed canonical rows
-are staged outside the repository and pass the batch import gate before an editor
-copies them into `data/canonical/`.
+Before using a source, check its terms and the applicable source-specific policy
+above. Local research files are not product inputs.
 
 See [`repository-structure.md`](repository-structure.md) for the directory and
 artifact boundaries.

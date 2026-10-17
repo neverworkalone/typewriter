@@ -1,5 +1,8 @@
 # M9 bounded lexical recovery batches
 
+> Historical batch plan. Issue #823 retires the lexical-production workflow and
+> its commands; do not use this plan as a current production instruction.
+
 M9 recovers writer-useful lexical starts from preserved Typewriter candidate material. The recovery inventory guides review order; its prior decisions do not grant admission. Each admitted row must pass fresh, source-bound semantic decisions through the shared candidate producer, complete canonical audit, and ordinary lexical admission path.
 
 ## Review order

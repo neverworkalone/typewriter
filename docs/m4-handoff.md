@@ -44,13 +44,10 @@ expanded as part of this handoff.
 The non-browser handoff gate is:
 
 ```sh
-npm test
-npm run test:unit
-npm run validate:search
-npm run verify:m2
-npm run build
-TYPEWRITER_ZIP_DIR=/tmp/typewriter-package npm run package
-TYPEWRITER_ZIP_DIR=/tmp/typewriter-package-minified npm run package:minify
+pnpm run ci:normal
+pnpm run build
+TYPEWRITER_ZIP_DIR=/tmp/typewriter-package pnpm run package
+TYPEWRITER_ZIP_DIR=/tmp/typewriter-package-minified pnpm run package:minify
 ```
 
 These checks cover the canonical regression corpus, domain/component state
@@ -58,22 +55,3 @@ transitions, deterministic SQLite builds, production asset assembly, and regular
 and minified package contents. Per the current product-owner decision, Chrome for
 Testing is not a required gate for this app; this document therefore does not
 claim a browser E2E result.
-
-## M5 handoff
-
-M5 #7 must begin with evidence collection, not a 5K generation run. Before the
-first larger batch:
-
-1. collect the smallest writer-facing query cases and classify them as supported,
-   no-data, unsupported-policy, or editorial-gap;
-2. measure target-list preparation, draft review, relation review, correction
-   rate, and per-record human review time;
-3. keep external raw responses and unreviewed drafts outside the repository;
-4. commit only reviewed canonical JSONL, then run the existing integrity/build
-   pipeline; and
-5. stop or repair the curation process when direct-relation accuracy, noise, or
-   review cost misses an agreed batch threshold.
-
-No M5 batch implementation or automatic dictionary expansion is started by this
-handoff. The next product decision is whether the collected writing demand and
-editorial cost justify a small reviewed batch.

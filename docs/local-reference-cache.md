@@ -1,5 +1,8 @@
 # Shared local reference cache
 
+> Historical local-tooling guide. Issue #823 retires the corpus/literature cache
+> commands described here; use the current data policy for any new source review.
+
 Typewriter stores machine-local source material, reference indexes, evidence packs, and run outputs outside Git at `~/.cache/typewriter/`. Every worktree for the same user resolves this same location through [`scripts/typewriter-cache.mjs`](../scripts/typewriter-cache.mjs). Set `TYPEWRITER_CACHE_ROOT` to an absolute path only when the machine needs a different cache volume; Python and Node tools use the same override.
 
 ```text

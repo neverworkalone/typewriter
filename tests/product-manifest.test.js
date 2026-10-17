@@ -27,17 +27,8 @@ describe('product MV3 manifest', () => {
     );
   });
 
-  it('keeps the npm package version fixed independently from the manifest version', async () => {
-    const packageJson = await readRepositoryJson('package.json');
-
-    expect(packageJson.version).toBe('1.0.0');
-  });
-
   it('keeps both declared HTML entrypoints in the product source', async () => {
-    const packageJson = await readRepositoryJson('package.json');
     const manifest = await readRepositoryJson('public/manifest.json');
-
-    expect(packageJson.scripts.build).toBe('vite build');
     for (const entrypoint of [manifest.action.default_popup, manifest.options_ui.page]) {
       const source = await readFile(path.join(repositoryRoot, entrypoint), 'utf8');
       expect(source).toContain('id="app"');

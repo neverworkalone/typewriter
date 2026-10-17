@@ -5,22 +5,20 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-import { buildCanonicalSemanticAudit, canonicalRecordsBeforeFactoryAdmissions, sha256Json, validateFactoryAdmissionLedger, validateSemanticAuditCoverage } from '../validate/semantic-audit.mjs';
+import { buildCanonicalSemanticAudit, sha256Json, validateSemanticAuditCoverage } from '../validate/semantic-audit.mjs';
 import { validateDatasetRecords } from '../validate/dataset-integrity.mjs';
 import { loadCanonicalContext as loadCanonicalContextFrom } from '../validate/canonical-context.mjs';
-import { validateFactoryRepository } from '../factory/validate.mjs';
-import { planRelationCorrections, targetMeaningSha256, writePlannedRecords } from '../factory/admission.mjs';
-import { relationCorrectionErrors, revertRelationCorrections } from '../factory/relation-corrections.mjs';
+import { canonicalRecordSha256, planRelationCorrections, targetMeaningSha256, writePlannedRecords } from './plan.mjs';
+import { relationCorrectionErrors, revertRelationCorrections } from './relation-corrections.mjs';
 import { reviewedRelationId } from '../batch/authored-semantic-decision-source.mjs';
-import { planRelationBackfill } from '../factory/admission.mjs';
-import { applyRelationCorrections, approvedAmendments, correctionItemsFor, nextPacketId, packetTextFor } from './backfill-apply.mjs';
+import { planRelationBackfill } from './plan.mjs';
+import { applyRelationCorrections, approvedAmendments, correctionItemsFor, nextPacketId, packetTextFor, validateBackfillPackets } from './backfill-apply.mjs';
 import { newQueueState } from './backfill-queue.mjs';
 import { buildRelationIndex } from './candidate-retrieval.mjs';
 import { copyShardedAuthority, readShardedJson } from '../../tests/helpers/sharded-authority.mjs';
 import { syntheticCanonicalBase } from '../../tests/helpers/synthetic-canonical-base.mjs';
 
-// #501 through the real production path: a synthetic canonical base admitted by the real Stage 3 authority, and the real
-// ledger and audit validators, applied in a scratch copy of the data files (nothing in the repository is written).
+// Exercise current Canonical relation corrections and source-bound authority events in a scratch copy.
 // Nothing here is fixed to a particular word: the senses are picked from whatever the base holds.
 
 const AUTHORITY = 'data/validation/canonical-semantic-decision-source.json';
@@ -33,7 +31,7 @@ async function scratchRoot() {
   await cp(path.join(BASE.root, 'data/canonical'), path.join(root, 'data/canonical'), { recursive: true });
   await copyShardedAuthority(path.join(BASE.root, AUTHORITY), path.join(root, AUTHORITY));
   for (const name of ['m6-2-inflection-exceptions.json', 'm6-3-surface-form-review.json']) await cp(path.join(BASE.root, 'data/validation', name), path.join(root, 'data/validation', name));
-  for (const dir of ['data/candidates', 'data/reviews', 'data/relation-backfill']) await mkdir(path.join(root, dir), { recursive: true });
+  await mkdir(path.join(root, 'data/relation-backfill'), { recursive: true });
   return root;
 }
 
@@ -53,8 +51,14 @@ const recordPaths = async (root) => {
   }
   return map;
 };
-// The records as they were before every factory admission and backfill: a correction must not change that history.
-const rewoundRecords = (records, authority) => canonicalRecordsBeforeFactoryAdmissions(records.map((record) => ({ record })), authority).map(({ record }) => record);
+// Corrections preserve an exact local undo path through their prior tuple and position.
+const rewoundRecords = (records, authority) => {
+  let current = structuredClone(records);
+  for (const event of [...(authority.factory_admissions ?? [])].reverse()) {
+    current = current.map((record) => revertRelationCorrections(record, event.relation_corrections ?? []));
+  }
+  return current;
+};
 const senseOf = (records, senseId) => records.flatMap((record) => record.senses).find((sense) => sense.id === senseId);
 
 // A relation of the live canonical that is exploratory and sits on a sense with more than one relation, so a retype and
@@ -85,9 +89,9 @@ test('a retype is written once as a source-preserving correction event that the 
     const before = await readRecords(root);
     const picked = pick(before);
     // The scratch root lacks some unrelated data files, so compare against its own baseline.
-    const baseline = await validateFactoryRepository({ root });
+    const baseline = await validateBackfillPackets(root);
     const baselineAuthority = await readAuthority(root);
-    const result = await applyRelationCorrections({ root, proposals: [retype(picked)], refreshReports: false });
+    const result = await applyRelationCorrections({ root, proposals: [retype(picked)] });
     assert.equal(result.status, 'applied');
     assert.equal(result.corrections_applied, 1);
     assert.equal(result.records_changed, 1);
@@ -110,24 +114,28 @@ test('a retype is written once as a source-preserving correction event that the 
     assert.deepEqual(event.relation_corrections[0].previous_relation, picked.relation);
     assert.equal(event.relation_corrections[0].position, picked.at);
     assert.equal(event.relation_corrections[0].outcome, 'amended');
+    assert.equal(event.relation_corrections[0].source_record_sha256, canonicalRecordSha256(before.find((record) => record.id === picked.record.id)));
     const packetText = await readFile(path.join(root, `data/relation-backfill/${event.batch_id}.json`), 'utf8');
     assert.equal(JSON.parse(packetText).relation_corrections[0].previous_relation.note, picked.relation.note);
-    validateFactoryAdmissionLedger(authority, after.map((record) => ({ record })), 'correction test');
+    // Licensed STDICT records keep their source projection; the correction ledger binds the record digests and tuple.
+    assert.equal(event.changes[0].previous_semantic_review_sha256, null);
+    assert.equal(event.changes[0].semantic_review_sha256, null);
+    assert.equal(event.changes[0].previous_record, undefined);
+    assert.equal(event.changes[0].before_sha256, canonicalRecordSha256(before.find((record) => record.id === picked.record.id)));
 
-    // Rewinding the ledger lands exactly on the record as it was before the correction.
-    assert.deepEqual(event.changes[0].previous_record, before.find((record) => record.id === picked.record.id));
-    assert.deepEqual(rewoundRecords(after, authority), rewoundRecords(before, baselineAuthority), 'the full rewind is unchanged by the correction');
+    // Rewinding the correction ledger lands exactly on the record as it was before the correction.
+    assert.deepEqual(rewoundRecords(after, authority), rewoundRecords(before, baselineAuthority), 'the relation correction is reversible');
 
     // The shared factory repository validation and the complete-canonical audit both hold.
-    assert.deepEqual(await validateFactoryRepository({ root }), baseline, 'the correction adds no factory finding');
+    assert.deepEqual(await validateBackfillPackets(root), baseline, 'the correction packet stays bound to its authority event');
     const built = await buildCanonicalSemanticAudit({ canonicalDirectory: path.join(root, 'data/canonical'), decisionSourcePath: path.join(root, AUTHORITY) });
     assert.doesNotThrow(() => validateSemanticAuditCoverage(built.canonical.records, built.artifact, { baseRecords: built.canonical.records }));
     assert.doesNotThrow(() => validateDatasetRecords(built.canonical.records, { semanticAudit: built.artifact, requireSemanticAudit: true }));
 
     // Exact replay is idempotent; a different replacement for a relation that was already corrected is stale.
-    assert.equal((await applyRelationCorrections({ root, proposals: [retype(picked)], refreshReports: false })).status, 'nothing-to-apply');
+    assert.equal((await applyRelationCorrections({ root, proposals: [retype(picked)] })).status, 'nothing-to-apply');
     assert.equal((await readAuthority(root)).factory_admissions.length, authority.factory_admissions.length);
-    await assert.rejects(applyRelationCorrections({ root, proposals: [retype(picked, { note: '다른 설명이다.' })], refreshReports: false }), /no longer the reviewed/u);
+    await assert.rejects(applyRelationCorrections({ root, proposals: [retype(picked, { note: '다른 설명이다.' })] }), /no longer the reviewed/u);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -141,18 +149,18 @@ test('removing a relation keeps its position in the ledger and rewinds exactly, 
       const baselineAuthority = await readAuthority(root);
       const picked = pick(before, { sole });
       const proposal = { ...retype(picked), relation: null };
-      assert.equal((await applyRelationCorrections({ root, proposals: [proposal], refreshReports: false })).status, 'applied');
+      assert.equal((await applyRelationCorrections({ root, proposals: [proposal] })).status, 'applied');
       const after = await readRecords(root);
       const sense = senseOf(after, picked.sense.id);
       assert.deepEqual(sense.relations ?? [], picked.sense.relations.filter((_, i) => i !== picked.at));
       assert.equal('relations' in sense, !sole, 'a sense left without relations carries no empty relations array');
       const authority = await readAuthority(root);
       assert.equal(authority.factory_admissions.at(-1).relation_corrections[0].relation, null);
-      assert.deepEqual(authority.factory_admissions.at(-1).changes[0].previous_record, before.find((record) => record.id === picked.record.id));
-      assert.deepEqual(rewoundRecords(after, authority), rewoundRecords(before, baselineAuthority), 'the full rewind is unchanged by the correction');
+      assert.equal(authority.factory_admissions.at(-1).changes[0].previous_record, undefined);
+      assert.deepEqual(rewoundRecords(after, authority), rewoundRecords(before, baselineAuthority), 'the relation correction is reversible');
       const built = await buildCanonicalSemanticAudit({ canonicalDirectory: path.join(root, 'data/canonical'), decisionSourcePath: path.join(root, AUTHORITY) });
       assert.doesNotThrow(() => validateSemanticAuditCoverage(built.canonical.records, built.artifact, { baseRecords: built.canonical.records }));
-      assert.equal((await applyRelationCorrections({ root, proposals: [proposal], refreshReports: false })).status, 'nothing-to-apply');
+      assert.equal((await applyRelationCorrections({ root, proposals: [proposal] })).status, 'nothing-to-apply');
     } finally {
       await rm(root, { recursive: true, force: true });
     }
@@ -175,7 +183,7 @@ test('a run interrupted after the packet (and optionally the canonical write) is
         if (writeCanonical) await writePlannedRecords(planRelationCorrections({ packetId: id, corrections: items, canonicalRecords: before, recordPathById: await recordPaths(root) }), root);
         const events = (await readAuthority(root)).factory_admissions.length;
 
-        const result = await applyRelationCorrections({ root, proposals: [proposal], refreshReports: false });
+        const result = await applyRelationCorrections({ root, proposals: [proposal] });
         assert.equal(result.status, 'applied');
         assert.deepEqual(result.packets, [id]);
         assert.equal((await readAuthority(root)).factory_admissions.length, events + 1);
@@ -202,14 +210,14 @@ test('a stale or unbound correction is rejected before anything is written', asy
       assert.equal((await readAuthority(root)).factory_admissions.length, events);
     };
     // The reviewer saw a different note than canonical holds.
-    await assert.rejects(applyRelationCorrections({ root, proposals: [{ ...retype(picked), previous_relation: { ...picked.relation, note: '검토자가 보지 않은 설명이다.' } }], refreshReports: false }), /no longer the reviewed/u);
+    await assert.rejects(applyRelationCorrections({ root, proposals: [{ ...retype(picked), previous_relation: { ...picked.relation, note: '검토자가 보지 않은 설명이다.' } }] }), /no longer the reviewed/u);
     // The target is part of the relation's identity and cannot move.
-    await assert.rejects(applyRelationCorrections({ root, proposals: [retype(picked, { target_sense: 'w1-s1' })], refreshReports: false }), /keep the target/u);
+    await assert.rejects(applyRelationCorrections({ root, proposals: [retype(picked, { target_sense: 'w1-s1' })] }), /keep the target/u);
     // The rationale must cite the source sense, and a no-op or unsupported replacement is refused.
-    await assert.rejects(applyRelationCorrections({ root, proposals: [{ ...retype(picked), rationale: '근거가 출처를 말하지 않는다.' }], refreshReports: false }), /source-bound/u);
-    await assert.rejects(applyRelationCorrections({ root, proposals: [{ ...retype(picked), relation: picked.relation }], refreshReports: false }), /identical to previous_relation/u);
-    await assert.rejects(applyRelationCorrections({ root, proposals: [retype(picked, { type: 'synonym' })], refreshReports: false }), /not a supported relation type/u);
-    await assert.rejects(applyRelationCorrections({ root, proposals: [{ ...retype(picked), source_sense_id: 'w99999-s1' }], refreshReports: false }), /does not exist/u);
+    await assert.rejects(applyRelationCorrections({ root, proposals: [{ ...retype(picked), rationale: '근거가 출처를 말하지 않는다.' }] }), /source-bound/u);
+    await assert.rejects(applyRelationCorrections({ root, proposals: [{ ...retype(picked), relation: picked.relation }] }), /identical to previous_relation/u);
+    await assert.rejects(applyRelationCorrections({ root, proposals: [retype(picked, { type: 'synonym' })] }), /not a supported relation type/u);
+    await assert.rejects(applyRelationCorrections({ root, proposals: [{ ...retype(picked), source_sense_id: 'w99999-s1' }] }), /does not exist/u);
     await untouched();
 
     // The planner binds the source sense's gloss, so a changed meaning makes an approved item stale.
@@ -296,10 +304,10 @@ test('a correction first finishes an interrupted appended-relation packet while 
       const proposal = retype(pickedBefore);
       const events = (await readAuthority(root)).factory_admissions.length;
       if (targetChanged) {
-        await assert.rejects(applyRelationCorrections({ root, proposals: [proposal], refreshReports: false }), /changed meaning since approval/u);
+        await assert.rejects(applyRelationCorrections({ root, proposals: [proposal] }), /changed meaning since approval/u);
         assert.equal((await readAuthority(root)).factory_admissions.length, events, 'nothing is recorded');
       } else {
-        const result = await applyRelationCorrections({ root, proposals: [proposal], refreshReports: false });
+        const result = await applyRelationCorrections({ root, proposals: [proposal] });
         assert.equal(result.status, 'applied');
         assert.equal(result.packets.length, 2, 'the interrupted packet is finished, then the correction is written');
         assert.equal(result.packets[0], id);
@@ -336,9 +344,9 @@ test('a correction is bound to the reviewed target meaning at first apply and at
     const records = await readRecords(root);
     const picked = pick(records);
     const events = (await readAuthority(root)).factory_admissions.length;
-    await assert.rejects(applyRelationCorrections({ root, proposals: [{ ...retype(picked), target_meaning_sha256: 'b'.repeat(64) }], refreshReports: false }), /does not have the meaning that was reviewed/u);
+    await assert.rejects(applyRelationCorrections({ root, proposals: [{ ...retype(picked), target_meaning_sha256: 'b'.repeat(64) }] }), /does not have the meaning that was reviewed/u);
     await changeTargetGloss(root, picked.relation.target_sense);
-    await assert.rejects(applyRelationCorrections({ root, proposals: [retype(picked)] , refreshReports: false }), /does not have the meaning that was reviewed/u);
+    await assert.rejects(applyRelationCorrections({ root, proposals: [retype(picked)]  }), /does not have the meaning that was reviewed/u);
     assert.equal((await readAuthority(root)).factory_admissions.length, events, 'nothing is recorded');
   } finally {
     await rm(root, { recursive: true, force: true });
@@ -359,11 +367,11 @@ test('a correction is bound to the reviewed target meaning at first apply and at
       if (targetChanged) {
         await changeTargetGloss(resumeRoot, picked.relation.target_sense);
         const before = await readRecords(resumeRoot);
-        await assert.rejects(applyRelationCorrections({ root: resumeRoot, proposals: [proposal], refreshReports: false }), /changed meaning since it was reviewed/u);
+        await assert.rejects(applyRelationCorrections({ root: resumeRoot, proposals: [proposal] }), /changed meaning since it was reviewed/u);
         assert.deepEqual(await readRecords(resumeRoot), before, 'canonical is untouched');
         assert.equal((await readAuthority(resumeRoot)).factory_admissions.length, events);
       } else {
-        assert.equal((await applyRelationCorrections({ root: resumeRoot, proposals: [proposal], refreshReports: false })).status, 'applied');
+        assert.equal((await applyRelationCorrections({ root: resumeRoot, proposals: [proposal] })).status, 'applied');
         const event = (await readAuthority(resumeRoot)).factory_admissions.at(-1);
         assert.equal(event.relation_corrections[0].target_meaning_sha256, picked.meaning, 'the ledger keeps the reviewed meaning digest');
       }
@@ -373,9 +381,8 @@ test('a correction is bound to the reviewed target meaning at first apply and at
   }
 });
 
-// A removal is settled only when the relation is really gone. The same target kept under another type (or with another
-// note) means the reviewed tuple was changed, not removed: the producer and the planner share that judgment.
-test('a removal of a relation that was retyped meanwhile is stale at first apply and in the planner, while a real removal replays as a no-op', async () => {
+// A removal is settled only when the relation is really gone. A source record changed outside its reviewed packet is stale.
+test('a removal is stale when its source record changed meanwhile, while a real removal replays as a no-op', async () => {
   const root = await scratchRoot();
   try {
     const original = await readRecords(root);
@@ -383,29 +390,28 @@ test('a removal of a relation that was retyped meanwhile is stale at first apply
     const removal = { ...retype(picked), relation: null };
     // Positive control: the reviewed tuple is still there, so the removal applies.
     // Negative: another review already retyped the same target relation, then a stale removal of the old tuple arrives.
-    assert.equal((await applyRelationCorrections({ root, proposals: [retype(picked)], refreshReports: false })).status, 'applied');
+    assert.equal((await applyRelationCorrections({ root, proposals: [retype(picked)] })).status, 'applied');
     const events = (await readAuthority(root)).factory_admissions.length;
     const retyped = await readRecords(root);
-    await assert.rejects(applyRelationCorrections({ root, proposals: [removal], refreshReports: false }), /no longer the reviewed/u);
+    await assert.rejects(applyRelationCorrections({ root, proposals: [removal] }), /no longer the reviewed/u);
     assert.equal((await readAuthority(root)).factory_admissions.length, events, 'nothing is recorded');
     assert.deepEqual(await readRecords(root), retyped, 'canonical is untouched');
 
     // The planner (packet resume) reaches the same conclusion from a packet item built before the retype.
     const items = correctionItemsFor(original, [removal]);
-    assert.throws(() => planRelationCorrections({ packetId: 'R999998', corrections: items, canonicalRecords: retyped, recordPathById: new Map() }), /no longer holds the relation it corrects/u);
+    assert.throws(() => planRelationCorrections({ packetId: 'R999998', corrections: items, canonicalRecords: retyped, recordPathById: new Map() }), /source record changed since it was reviewed/u);
 
     // Removing the retyped tuple really removes it; replaying that removal is then an idempotent no-op.
     const current = { ...removal, previous_relation: retyped.flatMap((record) => record.senses).find((sense) => sense.id === picked.sense.id).relations[picked.at] };
-    assert.equal((await applyRelationCorrections({ root, proposals: [current], refreshReports: false })).status, 'applied');
-    assert.equal((await applyRelationCorrections({ root, proposals: [current], refreshReports: false })).status, 'nothing-to-apply');
+    assert.equal((await applyRelationCorrections({ root, proposals: [current] })).status, 'applied');
+    assert.equal((await applyRelationCorrections({ root, proposals: [current] })).status, 'nothing-to-apply');
   } finally {
     await rm(root, { recursive: true, force: true });
   }
 });
 
-// Resuming a stored correction packet rebuilds the pre-packet canonical from the packet, so a record that is neither
-// the pre-packet nor the post-packet state (the same target relation changed in the meantime) must fail closed instead
-// of being "restored" and then corrected. This goes through the on-disk intent packet and the real resume path.
+// Resuming a stored correction packet must reject any source-record changes beyond the recorded correction.
+// This goes through the on-disk intent packet and the real resume path.
 const rewriteRelation = async (root, senseId, at, change) => {
   const dir = path.join(root, 'data/canonical');
   for (const name of await readdir(dir)) {
@@ -421,7 +427,7 @@ const rewriteRelation = async (root, senseId, at, change) => {
   }
 };
 
-test('resuming a stored correction packet fails closed when the same target relation changed since it was written', async () => {
+test('resuming a stored correction packet fails closed when its source Canonical record changed', async () => {
   for (const removal of [true, false]) {
     for (const change of [{ type: 'mood', note: '다른 검토가 바꾼 설명이다.', relevance: 6 }, { note: '같은 유형의 다른 설명이다.' }]) {
       const root = await scratchRoot();
@@ -436,7 +442,7 @@ test('resuming a stored correction packet fails closed when the same target rela
         await rewriteRelation(root, picked.sense.id, picked.at, change);
         const changed = await readRecords(root);
         const events = (await readAuthority(root)).factory_admissions.length;
-        await assert.rejects(applyRelationCorrections({ root, proposals: [proposal], refreshReports: false }), /canonical changed after the packet was written|no longer (holds|the reviewed)/u);
+        await assert.rejects(applyRelationCorrections({ root, proposals: [proposal] }), /source record changed since it was reviewed/u);
         assert.deepEqual(await readRecords(root), changed, 'canonical is untouched');
         assert.equal((await readAuthority(root)).factory_admissions.length, events, 'nothing is recorded');
       } finally {

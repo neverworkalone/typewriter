@@ -125,7 +125,7 @@ test('runner applies tier and schedule policy while preserving one execution con
     registerCheck({
       label: 'manual replay',
       command: () => ({ executable: 'synthetic', args: ['manual'] }),
-    }, { owner: 'batch', tier: 'normal', schedule: 'manual' }),
+    }, { owner: 'relations', tier: 'normal', schedule: 'manual' }),
   ];
   const seen = [];
   const context = { phase: 'normal' };
@@ -154,74 +154,11 @@ test('runner applies tier and schedule policy while preserving one execution con
   }
 });
 
-test('candidate-only CI validates without creating a canonical session or SQLite build', async () => {
-  const productionCandidateCommands = [];
-  await runCli(['candidates'], {
+test('the retired candidate CI level is not selectable', async () => {
+  await assert.rejects(runLevel('candidates', {
     log: () => {},
-    execute: async (command, context) => {
-      productionCandidateCommands.push(command.args);
-      assert.equal(context.canonicalContext.canonicalRevision, 'candidate-only-no-canonical-build');
-      assert.equal(context.sharedDictionaryPath, undefined);
-    },
-  });
-  assert.deepEqual(productionCandidateCommands, [
-    ['scripts/factory/validate.mjs'],
-    ['scripts/factory/freshness.mjs'],
-  ]);
-
-  const candidateCheck = registerCheck({
-    label: 'Synthetic factory candidate validator',
-    command: () => ({ executable: 'synthetic', args: ['factory-candidate-validation'] }),
-  }, { owner: 'factory', tier: 'candidate' });
-  const crossScopeCandidateCheck = registerCheck({
-    label: 'Synthetic lexical candidate semantic validator',
-    command: () => ({ executable: 'synthetic', args: ['lexical-candidate-validation'] }),
-  }, { owner: 'lexical', tier: 'candidate' });
-  const evidence = [];
-  const options = {
-    categories: {
-      factory: { label: 'Candidate artifacts', checks: [candidateCheck] },
-      lexical: { label: 'Lexical candidate contracts', checks: [crossScopeCandidateCheck] },
-    },
-    levels: { candidates: ['factory', 'lexical'] },
-    executionPolicy: { tiers: ['candidate'], includeManual: false },
-    createSession: () => { throw new Error('candidate-only CI must not load the canonical session'); },
-    log: (value) => evidence.push(value),
-  };
-  const seen = [];
-  await runCli(['candidates'], {
-    ...options,
-    execute: async ({ args }, context) => {
-      seen.push(args[0]);
-      assert.equal(context.canonicalContext.canonicalRevision, 'candidate-only-no-canonical-build');
-      assert.equal(context.sharedDictionaryPath, undefined);
-    },
-  });
-  assert.deepEqual(seen, ['factory-candidate-validation', 'lexical-candidate-validation']);
-  const candidateEvidence = evidence
-    .map((value) => { try { return JSON.parse(value); } catch { return null; } })
-    .find((value) => value?.level === 'candidates');
-  assert.deepEqual(candidateEvidence.category_order, ['factory', 'lexical']);
-  assert.equal(candidateEvidence.check_count, 2);
-  assert.equal(candidateEvidence.registered_candidate_check_count, 2);
-  assert.equal(candidateEvidence.current_revision_sqlite_build_count, 0);
-
-  await assert.rejects(
-    runCli(['candidates'], {
-      ...options,
-      execute: async (_command, context) => {
-        await appendFile(context.processMetrics.path, `${JSON.stringify({
-          type: 'sqlite-build',
-          pid: process.pid,
-          count: 1,
-          canonical_revision: context.canonicalContext.canonicalRevision,
-          canonical_directory: '/synthetic/canonical',
-          phase: 'normal',
-        })}\n`);
-      },
-    }),
-    /ci:candidates must not build SQLite/u,
-  );
+    createSession: () => { throw new Error('unknown CI level must fail before creating a session'); },
+  }), /Unknown CI level or category: candidates/u);
 });
 
 test('ci:all completes Normal before Deep checks in the same domain and preserves the one-build gate', async () => {
@@ -342,11 +279,20 @@ test('PR workflow routes an affected exact-head Deep gate into ci:pr and only it
     label: 'synthetic Normal completeness gate',
     command: () => ({ executable: 'synthetic', args: ['normal'] }),
   }, { owner: 'canonical', tier: 'normal' });
-  const selectedDeep = CI_CATEGORIES.deep.checks.find(
-    (check) => check.label === 'Run 100K/500K/1M release-shaped performance and scale benchmark',
+  const selectedDeepDefinition = CI_CATEGORIES.deep.checks.find(
+    (check) => check.inProcess === 'deep-m2-reproducibility',
   );
-  const unrelatedDeep = CI_CATEGORIES.batch.checks.find(
-    (check) => check.label === 'Test Issue #400/#446 relation enrichment pilot contract, backfill queue and canonical apply',
+  const selectedDeep = registerCheck({
+    label: selectedDeepDefinition.label,
+    command: () => ({ executable: 'synthetic', args: ['deep'] }),
+  }, {
+    owner: selectedDeepDefinition.owner,
+    tier: 'deep',
+    schedule: 'affected',
+    paths: ['scripts/verify/m2-pipeline.mjs'],
+  });
+  const unrelatedDeep = CI_CATEGORIES.relations.checks.find(
+    (check) => check.label === 'Test Canonical relation backfill queue, apply, and correction paths',
   );
   const categories = {
     canonical: { label: 'Synthetic canonical gates', checks: [normalCheck, selectedDeep, unrelatedDeep] },
@@ -355,13 +301,7 @@ test('PR workflow routes an affected exact-head Deep gate into ci:pr and only it
   const baseSha = 'a'.repeat(40);
   const headSha = 'b'.repeat(40);
   const workflow = await readFile(path.resolve(TEST_DIRECTORY, '../.github/workflows/ci.yml'), 'utf8');
-  for (const changedPath of [
-    'scripts/benchmark/sqlite-runtime.mjs',
-    'src/runtime/dictionary-contract.js',
-    'src/runtime/sqlite-query.js',
-    'src/runtime/search-query.js',
-    'src/runtime/dictionary-validation.js',
-  ]) {
+  for (const changedPath of ['scripts/verify/m2-pipeline.mjs']) {
     const scenarioDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-ci-pr-scenario-'));
     t.after(() => rm(scenarioDirectory, { recursive: true, force: true }));
     const ledgerPath = path.join(scenarioDirectory, 'ledger.jsonl');
@@ -593,8 +533,8 @@ test('PR workflow uses Normal for classifier fallback and never executes Full De
     changesOutcome: 'success', runLevel: 'none', deepMode: 'none',
   }), undefined);
   assert.equal(workflowStepRun(workflow, name, {
-    changesOutcome: 'success', runLevel: 'candidates', deepMode: 'none',
-  }), undefined);
+    changesOutcome: 'success', runLevel: 'normal', deepMode: 'none',
+  }), 'pnpm run ci:normal');
   assert.equal(workflowStepRun(workflow, name, {
     changesOutcome: 'success', runLevel: 'normal', deepMode: 'selective',
   }), undefined);

@@ -25,6 +25,7 @@ import {
   registerCategory,
   registerCheck,
 } from '../scripts/ci/registry.mjs';
+import { PRODUCT_UNIT_TEST_FILES } from '../scripts/ci/product-unit-test-files.mjs';
 import { selectChecksForPolicy } from '../scripts/ci/run-category.mjs';
 import {
   classifyDeepGateDiff,
@@ -34,9 +35,11 @@ import {
   validateAdditiveNormalCoverage,
 } from '../scripts/ci/deep-gate.mjs';
 import NORMAL_COVERAGE from '../scripts/ci/deep-gate-coverage.json' with { type: 'json' };
-import { chunkText, mergeUnresolved, validateTrashChunk } from '../scripts/factory/permanent-trash.mjs';
+import NORMAL_COVERAGE_RETIREMENTS from '../scripts/ci/deep-gate-coverage-retirements.json' with { type: 'json' };
 import { sampleCanonicalRecordLine, syntheticRelationPacket } from './helpers/synthetic-data.mjs';
+import VITEST_CONFIG from '../vitest.config.js';
 const TEST_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
+const EMPTY_COVERAGE_RETIREMENTS = { version: 1, retirements: [] };
 
 test('real Git classification reads large routine files and preserves fail-closed routing', async (t) => {
   const root = await mkdtemp(path.join(tmpdir(), 'typewriter-large-ci-diff-'));
@@ -121,7 +124,7 @@ test('real Git classification reads large routine files and preserves fail-close
   assert.match(oversized.detail, /git "show" .*code=ENOBUFS/u);
   assert.ok(oversized.detail.length < 1000, 'buffer failure diagnostics must not contain file output');
 
-  const mixed = await classify([[inventoryPath, largeJson], ['scripts/benchmark/sqlite-runtime.mjs', '// fixture\n']]);
+  const mixed = await classify([[inventoryPath, largeJson], ['scripts/verify/m2-pipeline.mjs', '// fixture\n']]);
   assert.equal(mixed.result.deepMode, 'selective');
   assert.ok(mixed.result.selectedDeepChecks.length > 0);
   const classifier = await classify([[inventoryPath, largeJson], ['scripts/ci/deep-gate.mjs', '// fixture\n']]);
@@ -240,7 +243,7 @@ test('new CI checks default to Deep and affected schedules require explicit depe
     /Unknown CI execution tier/u,
   );
   assert.throws(
-    () => registerCheck(check, { owner: 'batch', tier: 'historical' }),
+    () => registerCheck(check, { owner: 'relations', tier: 'historical' }),
     /Unknown CI execution tier/u,
   );
   assert.throws(
@@ -293,8 +296,8 @@ test('new CI checks default to Deep and affected schedules require explicit depe
 test('removing or misspelling a known legacy tier cannot demote required checks to Deep', () => {
   const scenarios = [
     {
-      owner: 'lexical',
-      label: 'Require factory results to be current with the shared factory contract on master',
+      owner: 'canonical',
+      label: 'Validate manifest version',
       replacement: undefined,
     },
     {
@@ -384,18 +387,75 @@ test('registry selects checks by tier and schedule with fail-closed affected-pat
   );
 });
 
-test('normal batch CI owns the shared corpus candidate-review regressions', () => {
-  const batchChecks = CI_CATEGORIES.batch.checks;
-  const commands = batchChecks.map((check) => check.command({}));
+test('automatic Vitest files are explicit, durable, and match their Normal CI registration', async () => {
+  const productCheck = CI_CATEGORIES.product.checks.find((check) => check.label === 'Run product unit tests');
+  const configured = [...(VITEST_CONFIG.test?.include ?? [])].sort();
+  const registered = [...(productCheck?.testFiles ?? [])].sort();
+  const filesOnDisk = (await readdir(TEST_DIRECTORY))
+    .filter((name) => name.endsWith('.test.js'))
+    .map((name) => `tests/${name}`)
+    .sort();
 
-  assert.ok(CI_NORMAL_CATEGORY_ORDER.includes('batch'));
+  assert.deepEqual(registered, [...PRODUCT_UNIT_TEST_FILES].sort());
+  assert.deepEqual(configured, registered, 'Vitest discovery and CI ownership must have one exact file set');
+  assert.deepEqual(filesOnDisk, registered, 'a one-off or unregistered Vitest test must not remain in the repository');
+});
+
+test('every Node test file has one automatic CI owner and no retired manual test remains', async () => {
+  const testFilePattern = /^(?:tests|scripts)\/.+\.test\.(?:mjs|js|py)$/u;
+  const pythonTestPattern = /^(?:tests|scripts)\/.+\/test_[^/]+\.py$/u;
+  const filesOnDisk = [];
+  const visit = async (directory) => {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const absolutePath = path.join(directory, entry.name);
+      if (entry.isDirectory()) await visit(absolutePath);
+      else if (entry.isFile()) {
+        const repositoryPath = path.relative(path.resolve(TEST_DIRECTORY, '..'), absolutePath).split(path.sep).join('/');
+        if (testFilePattern.test(repositoryPath) || pythonTestPattern.test(repositoryPath)) {
+          filesOnDisk.push(repositoryPath);
+        }
+      }
+    }
+  };
+  await Promise.all(['tests', 'scripts'].map((directory) => visit(path.resolve(TEST_DIRECTORY, '..', directory))));
+
+  const owners = new Map();
+  for (const categoryName of CI_ALL_CATEGORY_ORDER) {
+    for (const check of CI_CATEGORIES[categoryName].checks) {
+      const files = new Set(check.testFiles ?? []);
+      const command = check.command({});
+      for (const argument of command.args ?? []) {
+        if (typeof argument === 'string' && (testFilePattern.test(argument) || pythonTestPattern.test(argument))) {
+          files.add(argument);
+        }
+      }
+      for (const file of files) {
+        const previous = owners.get(file) ?? [];
+        previous.push({ categoryName, check });
+        owners.set(file, previous);
+      }
+    }
+  }
+
+  assert.deepEqual([...owners.keys()].sort(), filesOnDisk.sort(), 'on-disk test files and CI registrations must match exactly');
+  for (const [file, registeredOwners] of owners) {
+    assert.equal(registeredOwners.length, 1, `${file} has one owner: ${registeredOwners.map(({ categoryName, check }) => `${categoryName}/${check.label}`).join(', ')}`);
+    const { check } = registeredOwners[0];
+    assert.ok(check && check.schedule !== 'manual', `${file} remains an automatic current-contract check`);
+  }
+});
+
+test('Normal CI owns current relation backfill and correction regressions', () => {
+  const relationChecks = CI_CATEGORIES.relations.checks;
+  const commands = relationChecks.map((check) => check.command({}));
+
+  assert.ok(CI_NORMAL_CATEGORY_ORDER.includes('relations'));
   assert.ok(commands.some(({ executable, args }) => (
-    executable === process.execPath
-    && args.includes('scripts/reference/corpus-candidate-review.test.mjs')
+    executable === process.execPath && args.includes('scripts/relation/backfill-apply.test.mjs')
   )));
 });
 
-test('toolchain builds SQLite only after the shared global audit', () => {
+test('toolchain builds SQLite only after the shared global audit and retains current provenance safeguards', () => {
   const toolchainChecks = CI_CATEGORIES.toolchain.checks;
   assert.equal(toolchainChecks[0].inProcess, 'global-canonical-audit');
   assert.equal(toolchainChecks[1].inProcess, 'normalize-canonical');
@@ -407,11 +467,10 @@ test('toolchain builds SQLite only after the shared global audit', () => {
   assert.ok(projectionReuseIndex < toolchainChecks.findIndex(
     (check) => check.testFiles?.includes('tests/build-dictionary.test.mjs'),
   ));
-  assert.equal(
-    CI_CATEGORIES.deep.checks.find((check) => check.testFiles?.includes('tests/reproducibility.test.mjs'))
-      .testFiles[0],
-    'tests/reproducibility.test.mjs',
-  );
+  assert.ok(toolchainChecks.some((check) => check.testFiles?.includes('tests/build-provenance.test.mjs')));
+  assert.equal(CI_CATEGORIES.deep.checks.some(
+    (check) => check.testFiles?.some((file) => /reproducibility\.test/u.test(file)),
+  ), false, 'the in-process current-canonical Deep audit owns Full/Lite reproducibility');
 });
 
 test('current-canonical surface-form gate runs in-process on the shared projection', () => {
@@ -427,7 +486,7 @@ test('current-canonical surface-form gate runs in-process on the shared projecti
   assert.equal(checks[projectionIndex].command({}).executable, '[in-process]');
 });
 
-test('CI levels are nested and deep owns the scale benchmark', async () => {
+test('CI levels are nested and Deep retains current-canonical reproducibility only', async () => {
   assert.deepEqual(
     CI_NORMAL_CATEGORY_ORDER.slice(0, CI_FAST_CATEGORY_ORDER.length),
     CI_FAST_CATEGORY_ORDER,
@@ -449,67 +508,48 @@ test('CI levels are nested and deep owns the scale benchmark', async () => {
   assert.deepEqual(CI_LEVEL_CATEGORY_ORDER.all, CI_ALL_CATEGORY_ORDER);
   assert.deepEqual(CI_LEVEL_CATEGORY_ORDER.pr, CI_ALL_CATEGORY_ORDER);
   assert.deepEqual(CI_LEVEL_CATEGORY_ORDER.deep, CI_ALL_CATEGORY_ORDER);
-  assert.deepEqual(CI_LEVEL_CATEGORY_ORDER.candidates, CI_ALL_CATEGORY_ORDER);
-  assert.deepEqual(CI_TIER_CATEGORY_ORDER.candidate, CI_ALL_CATEGORY_ORDER);
   assert.deepEqual(CI_TIER_CATEGORY_ORDER.normal, CI_ALL_CATEGORY_ORDER);
   assert.deepEqual(CI_TIER_CATEGORY_ORDER.deep, CI_ALL_CATEGORY_ORDER);
   assert.deepEqual(CI_LEVEL_EXECUTION_POLICY.normal.tiers, ['normal']);
   assert.deepEqual(CI_LEVEL_EXECUTION_POLICY.deep.tiers, ['deep']);
   assert.deepEqual(CI_LEVEL_EXECUTION_POLICY.all.tiers, ['normal', 'deep']);
   assert.deepEqual(CI_LEVEL_EXECUTION_POLICY.pr.tiers, ['normal', 'deep']);
-  assert.deepEqual(CI_LEVEL_EXECUTION_POLICY.candidates.tiers, ['candidate']);
+  assert.equal(Object.hasOwn(CI_LEVEL_CATEGORY_ORDER, 'candidates'), false);
+  assert.equal(CI_EXECUTION_TIERS.includes('candidate'), false);
   const allChecks = CI_ALL_CATEGORY_ORDER.flatMap((categoryName) => CI_CATEGORIES[categoryName].checks);
   const allLevelChecks = selectChecksForPolicy(allChecks, CI_LEVEL_EXECUTION_POLICY.all);
   assert.ok(allLevelChecks.every((check) => ['normal', 'deep'].includes(check.tier)));
-  assert.equal(
-    CI_CATEGORIES.batch.checks.find((check) => check.label === 'Test lexical production state').tier,
-    'normal',
-  );
   assert.equal(CI_NORMAL_CATEGORY_ORDER.includes('product'), true);
-  assert.equal(CI_CATEGORIES.factory.checks.length, 2);
-  assert.ok(CI_CATEGORIES.factory.checks.every((check) => check.tier === 'candidate'));
-  assert.deepEqual(
-    CI_CATEGORIES.factory.checks.map((check) => check.command({}).args),
-    [
-      ['scripts/factory/validate.mjs'],
-      ['scripts/factory/freshness.mjs'],
-    ],
-  );
-  assert.equal(
-    CI_CATEGORIES.product.checks.some(
-      (check) => check.testFiles?.includes('tests/scale-benchmark.test.mjs'),
-    ),
-    true,
-  );
+  assert.equal(Object.hasOwn(CI_CATEGORIES, 'factory'), false);
+  assert.equal(Object.hasOwn(CI_CATEGORIES, 'batch'), false);
+  assert.equal(Object.hasOwn(CI_CATEGORIES, 'lexical'), false);
   assert.deepEqual(CI_DEEP_CATEGORY_ORDER, ['deep']);
-  assert.equal(
-    CI_CATEGORIES.deep.checks.at(-1).label,
-    'Run 100K/500K/1M release-shaped performance and scale benchmark',
-  );
-  assert.deepEqual(
-    CI_CATEGORIES.deep.checks.at(-1).command({}).args,
-    [
-      'run',
-      'benchmark:release',
-      '--sizes=100000,500000,1000000',
-      '--sqlite-scale=100000,500000,1000000',
-      '--fixed-level-evidence=config/ci-level-evidence.json',
-    ],
-  );
+  assert.ok(CI_CATEGORIES.deep.checks.some(
+    (check) => check.inProcess === 'deep-m2-reproducibility',
+  ));
+  assert.equal(CI_CATEGORIES.deep.checks.some(
+    (check) => check.testFiles?.some((file) => /reproducibility\.test/u.test(file)),
+  ), false);
+  assert.ok(CI_CATEGORIES.deep.checks.every(
+    (check) => !/100K|500K|1M|scale benchmark/iu.test(check.label),
+  ));
 });
 
 test('Normal coverage additions bind actual always-on tests without weakening existing Deep coverage', () => {
-  const producer = 'scripts/factory/produce-candidates.mjs';
   const manifestPath = 'scripts/ci/deep-gate-coverage.json';
-  const base = { version: 1, bindings: [] };
-  const current = NORMAL_COVERAGE;
+  const coveredPath = 'scripts/ci/product-unit-test-files.mjs';
+  const base = NORMAL_COVERAGE;
+  const current = {
+    ...NORMAL_COVERAGE,
+    bindings: [...NORMAL_COVERAGE.bindings, {
+      path: coveredPath,
+      normal_tests: ['tests/ci-registry.test.mjs'],
+      protected_contract: 'explicit product unit test enrollment',
+    }],
+  };
   const registered = validateNormalCoverage();
-  assert.equal(registered.get(producer)?.normal_tests[0], 'tests/factory-ensemble.test.mjs');
-
-  const direct = classifyDeepGatePaths([producer]);
-  assert.equal(direct.deepMode, 'none');
-  assert.deepEqual(direct.selectedDeepChecks, []);
-  assert.equal(classifyDeepGatePaths(['scripts/factory/unregistered-future-producer.mjs']).deepMode, 'full');
+  assert.ok(registered.size > 0);
+  assert.equal(classifyDeepGatePaths(['scripts/retired/unregistered-future.mjs']).deepMode, 'full');
   assert.equal(classifyDeepGatePaths([manifestPath]).deepMode, 'full');
   assert.equal(classifyDeepGatePaths(['scripts/validate/canonical-jsonl.mjs']).deepMode, 'selective');
 
@@ -517,23 +557,29 @@ test('Normal coverage additions bind actual always-on tests without weakening ex
   assert.throws(() => validateAdditiveNormalCoverage(current, base), /removes or alters/);
   assert.throws(() => validateAdditiveNormalCoverage(current, {
     ...current,
-    bindings: [{ ...current.bindings[0], protected_contract: 'weakened contract' }],
+    bindings: current.bindings.filter((binding) => binding.path !== coveredPath),
+  }), /removes or alters/);
+  assert.throws(() => validateAdditiveNormalCoverage(current, {
+    ...current,
+    bindings: current.bindings.map((binding) => binding.path === coveredPath
+      ? { ...binding, protected_contract: 'weakened contract' }
+      : binding),
   }), /removes or alters/);
 
   const missingTest = { version: 1, bindings: [
-    { path: 'scripts/factory/future.mjs', normal_tests: ['tests/missing-future.test.mjs'], protected_contract: 'not actually tested' },
+    { path: 'scripts/feature/future.mjs', normal_tests: ['tests/missing-future.test.mjs'], protected_contract: 'not actually tested' },
   ] };
-  assert.throws(() => validateNormalCoverage(missingTest), /not always-on/);
+  assert.throws(() => validateNormalCoverage(missingTest, { retirements: EMPTY_COVERAGE_RETIREMENTS }), /not always-on/);
   const deepOverlap = { version: 1, bindings: [
-    { path: 'scripts/validate/canonical-jsonl.mjs', normal_tests: ['tests/factory-ensemble.test.mjs'], protected_contract: 'unsafe deep override' },
+    { path: 'scripts/validate/canonical-jsonl.mjs', normal_tests: ['tests/ci-registry.test.mjs'], protected_contract: 'unsafe deep override' },
   ] };
-  assert.throws(() => validateNormalCoverage(deepOverlap), /Unsafe or duplicate/);
+  assert.throws(() => validateNormalCoverage(deepOverlap, { retirements: EMPTY_COVERAGE_RETIREMENTS }), /Unsafe or duplicate/);
   const wildcard = { version: 1, bindings: [
-    { path: 'scripts/factory/', normal_tests: ['tests/factory-ensemble.test.mjs'], protected_contract: 'unsafe broad allowlist' },
+    { path: 'scripts/feature/', normal_tests: ['tests/ci-registry.test.mjs'], protected_contract: 'unsafe broad allowlist' },
   ] };
-  assert.throws(() => validateNormalCoverage(wildcard), /Unsafe or duplicate/);
+  assert.throws(() => validateNormalCoverage(wildcard, { retirements: EMPTY_COVERAGE_RETIREMENTS }), /Unsafe or duplicate/);
 
-  const pathBytes = Buffer.from([manifestPath, producer].join('\0') + '\0');
+  const pathBytes = Buffer.from([manifestPath, coveredPath].join('\0') + '\0');
   const runGit = (args) => {
     if (args[0] === 'diff') return pathBytes;
     if (args[0] === 'show' && args[1] === 'base:' + manifestPath) return Buffer.from(JSON.stringify(base));
@@ -545,7 +591,7 @@ test('Normal coverage additions bind actual always-on tests without weakening ex
 
   const invalid = classifyDeepGateDiff('base', 'head', { runGit: (args) => (
     args[0] === 'show' && args[1] === 'head:' + manifestPath
-      ? Buffer.from(JSON.stringify({ ...current, bindings: [] }))
+      ? Buffer.from(JSON.stringify(base))
       : args[0] === 'show' && args[1] === 'base:' + manifestPath
         ? Buffer.from(JSON.stringify(current))
         : runGit(args)
@@ -554,78 +600,38 @@ test('Normal coverage additions bind actual always-on tests without weakening ex
   assert.equal(invalid.reason, 'normal-coverage-registration-unverified');
 });
 
-test('any valid Stage 1 trash chunk takes Normal while tampering and unknown paths fail closed', () => {
-  const unresolved = {
-    surface: '나무',
-    evidence: { kind: 'corpus-paragraph', ref: 'synthetic-ref#1' },
-    holds: ['analysis_missing'],
-  };
-  // Use the real archive producer, not a one-batch or hard-coded archive fixture.
-  const chunks = mergeUnresolved(new Map(), [{
-    batch_id: 'C654321',
-    source_snapshot: 'synthetic-snapshot',
-    unresolved_observations: [unresolved],
-  }]).chunks;
-  const text = chunkText(chunks.get('T000001.jsonl'));
-  assert.deepEqual(validateTrashChunk(text), []);
-  const archivePath = 'data/candidate-trash/T654321.jsonl';
-  const candidatePath = 'data/candidates/C654321';
-  const fixture = new Map([
-    [archivePath, text],
-    [candidatePath + '/manifest.json', '{}\n'],
-    [candidatePath + '/candidates.jsonl', '{}\n'],
-    [candidatePath + '/stage1-decisions.json', '{}\n'],
-  ]);
-  const classify = (paths, replacement = fixture) => classifyDeepGateDiff('base', 'head', {
-    runGit: (args) => {
-      if (args[0] === 'diff' && args.includes('--name-only')) return Buffer.from(paths.join('\0') + '\0');
-      if (args[0] === 'show') {
-        const [revision, ...rest] = args[1].split(':');
-        assert.equal(revision, 'head');
-        const value = replacement.get(rest.join(':'));
-        if (value === undefined) throw new Error('unexpected file at HEAD');
-        return Buffer.from(value);
+test('retired append-only Normal bindings are documented and cannot silently return', async (t) => {
+  const bindings = new Map(NORMAL_COVERAGE.bindings.map((binding) => [binding.path, binding]));
+  for (const retirement of NORMAL_COVERAGE_RETIREMENTS.retirements) {
+    assert.deepEqual(bindings.get(retirement.path)?.normal_tests, retirement.normal_tests);
+    for (const testFile of retirement.normal_tests) {
+      const absolutePath = path.resolve(TEST_DIRECTORY, '..', testFile);
+      try {
+        await readFile(absolutePath);
+        assert.ok(
+          Object.values(CI_CATEGORIES).some((category) => category.checks.some((check) => (
+            (check.testFiles ?? []).includes(testFile)
+          ))),
+          `${testFile} must remain actively registered if it still exists`,
+        );
+      } catch (error) {
+        assert.equal(error.code, 'ENOENT');
       }
-      throw new Error('unexpected Git command: ' + args.join(' '));
-    },
-  });
-
-  assert.equal(classify([archivePath]).deepMode, 'none');
-  const combined = classify([...fixture.keys()]);
-  assert.equal(combined.deepMode, 'none', 'Stage 1 candidates + decisions + trash use Normal only');
-  assert.equal(combined.changeClass, 'routine-data');
-  assert.deepEqual(combined.selectedDeepChecks, []);
-  assert.ok(combined.normalDataPaths.includes(archivePath));
-  assert.equal(classifyDeepGatePaths([archivePath]).reason, 'routine-data-shape-unverified');
-
-  for (const pathValue of [
-    'data/candidate-trash/T65432.jsonl',
-    'data/candidate-trash/T654321.json',
-    'data/candidate-trash/T654321/nested.jsonl',
-    'data/candidate-trash/new-schema.jsonl',
-  ]) assert.equal(classifyDeepGatePaths([pathValue]).deepMode, 'full', pathValue);
-
-  const corrupt = (value) => classify([archivePath], new Map([[archivePath, value]]));
-  const observation = chunks.get('T000001.jsonl')[0];
-  for (const invalid of [
-    'broken jsonl\n',
-    text + '\n',
-    '{}\n',
-    chunkText([{ ...observation, observation_id: '0'.repeat(64) }]),
-    text + text,
-    Array.from({ length: 501 }, () => text.trimEnd()).join('\n') + '\n',
-  ]) {
-    const result = corrupt(invalid);
-    assert.equal(result.deepMode, 'full', result.reason);
-    assert.equal(result.reason, 'routine-data-validation-failed');
-    assert.equal(result.path, archivePath);
+    }
   }
+  assert.equal(validateNormalCoverage().size, bindings.size);
+
+  const repositoryDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-retired-coverage-'));
+  t.after(() => rm(repositoryDirectory, { recursive: true, force: true }));
+  const reintroducedPath = 'scripts/factory/produce-candidates.mjs';
+  await mkdir(path.join(repositoryDirectory, path.dirname(reintroducedPath)), { recursive: true });
+  await writeFile(path.join(repositoryDirectory, reintroducedPath), '// reintroduced\n');
+  assert.throws(() => validateNormalCoverage(NORMAL_COVERAGE, { repositoryDirectory }), /reintroduced/);
 });
 
 test('Deep gate separates validated data from affected contracts and fails closed', async () => {
   const deepCheckIds = (result) => result.selectedDeepChecks ?? [];
-  const benchmarkId = 'deep/Run 100K/500K/1M release-shaped performance and scale benchmark';
-  const relationId = 'batch/Test Issue #400/#446 relation enrichment pilot contract, backfill queue and canonical apply';
+  const relationId = 'relations/Test Canonical relation backfill queue, apply, and correction paths';
   const artifactPolicyId = 'artifacts/Test artifact policy';
 
   for (const pathValue of [
@@ -643,34 +649,30 @@ test('Deep gate separates validated data from affected contracts and fails close
     assert.equal(classifyDeepGatePaths([pathValue]).deepMode, 'full', pathValue);
   }
 
-  assert.deepEqual(deepCheckIds(classifyDeepGatePaths(['scripts/benchmark/sqlite-runtime.mjs'])), [benchmarkId]);
+  const runtimeHelper = classifyDeepGatePaths(['scripts/benchmark/sqlite-runtime.mjs']);
+  assert.equal(runtimeHelper.deepMode, 'none', 'the current WASM runtime helper is covered by Normal, not Deep');
+  assert.equal(routePrDeepGate(runtimeHelper).deepMode, 'none', 'the runtime helper does not select unrelated Deep checks');
   for (const pathValue of [
     'src/runtime/dictionary-contract.js',
     'src/runtime/sqlite-query.js',
     'src/runtime/search-query.js',
     'src/runtime/dictionary-validation.js',
   ]) {
-    assert.deepEqual(deepCheckIds(classifyDeepGatePaths([pathValue])), [benchmarkId], pathValue);
+    assert.deepEqual(deepCheckIds(classifyDeepGatePaths([pathValue])), [], pathValue);
   }
-  assert.deepEqual(deepCheckIds(classifyDeepGatePaths(['config/ci-level-evidence.json'])), [benchmarkId]);
   assert.deepEqual(deepCheckIds(classifyDeepGatePaths(['tests/artifact-policy.test.mjs'])), [artifactPolicyId]);
   assert.deepEqual(deepCheckIds(classifyDeepGatePaths(['scripts/relation/backfill-apply.test.mjs'])), [relationId]);
   assert.deepEqual(
     deepCheckIds(classifyDeepGatePaths(['schema/canonical-record.schema.json'])).sort(),
     [
       'deep/Run current-revision SQLite reproducibility audit',
-      'deep/Run 100K/500K/1M release-shaped performance and scale benchmark',
       'deep/Run single-pass global canonical audit',
-      'deep/Test reproducible dictionary builds',
     ].sort(),
   );
 
   for (const pathValue of [
     'docs/review-toolchain.md',
     'docs/new-deep-gate-contract.md',
-    'data/candidates/C000001/candidates.jsonl',
-    'data/candidates/C000001/manifest.json',
-    'data/candidates/C000001/stage1-decisions.json',
     'src/components/SearchBar.vue',
     'web/src/App.vue',
     'public/favicon.ico',
@@ -701,7 +703,7 @@ test('Deep gate separates validated data from affected contracts and fails close
   );
   assert.equal(
     classifyDeepGateDiff('base', 'head', { runGit: () => Buffer.from('scripts/benchmark/sqlite-runtime.mjs\0') }).deepMode,
-    'selective',
+    'none',
   );
   assert.equal(
     classifyDeepGateDiff('base', 'head', { runGit: () => { throw new Error('git diff failed'); } }).deepMode,
@@ -795,23 +797,20 @@ test('Deep gate separates validated data from affected contracts and fails close
   assert.equal(relationRepair.selectedDeepChecks.length, 0);
 
   const allChecks = CI_ALL_CATEGORY_ORDER.flatMap((categoryName) => CI_CATEGORIES[categoryName].checks);
-  const normalFactoryContract = allChecks.find((check) => (
-    check.tier === 'normal' && check.command({}).args.includes('scripts/factory/validate.mjs')
+  const relationRegression = CI_CATEGORIES.relations.checks.find((check) => (
+    check.tier === 'deep' && check.command({}).args.includes('scripts/relation/backfill-apply.test.mjs')
   ));
-  assert.ok(normalFactoryContract, 'Normal must validate source-bound Stage 3 and relation-backfill history');
-  assert.equal(normalFactoryContract.schedule, 'always');
-  const normalSemanticAuthorityTest = CI_CATEGORIES.lexical.checks.find((check) => (
-    check.tier === 'normal' && check.testFiles?.includes('tests/semantic-audit-decision-source.test.mjs')
-  ));
-  assert.ok(normalSemanticAuthorityTest, 'Normal must retain semantic-authority regressions');
+  assert.ok(relationRegression, 'Deep retains current relation backfill and correction regressions');
   const allDeep = selectChecksForPolicy(allChecks, CI_LEVEL_EXECUTION_POLICY.all).filter((check) => check.tier === 'deep');
-  assert.equal(allDeep.length, 7, 'scheduled/manual ci:all keeps all current-system Deep checks');
-  const affectedBenchmarkChecks = selectChecksForPolicy(allChecks, {
+  assert.equal(allDeep.length, 4, 'ci:all keeps only current-system Deep checks');
+  const runtimeBinding = validateNormalCoverage().get('scripts/benchmark/sqlite-runtime.mjs');
+  assert.deepEqual(runtimeBinding?.normal_tests, ['tests/runtime-query-adapter.test.mjs']);
+  const affectedRuntimeDeepChecks = selectChecksForPolicy(allChecks, {
     tiers: ['deep'],
     changedPaths: ['scripts/benchmark/sqlite-runtime.mjs'],
-    selectedDeepCheckIds: deepCheckIds(classifyDeepGatePaths(['scripts/benchmark/sqlite-runtime.mjs'])),
+    selectedDeepCheckIds: deepCheckIds(runtimeHelper),
   });
-  assert.deepEqual(affectedBenchmarkChecks.map((check) => `${check.owner}/${check.label}`), [benchmarkId]);
+  assert.deepEqual(affectedRuntimeDeepChecks, []);
 
   const workflow = await readFile(path.resolve(TEST_DIRECTORY, '../.github/workflows/ci.yml'), 'utf8');
   assert.match(workflow, /^name: CI$/mu);
@@ -833,8 +832,8 @@ test('Deep gate separates validated data from affected contracts and fails close
 
 
 // Execute the actual inline CI classifier against tiny synthetic Git histories.
-// Candidate-only routing must not mask code, canonical data, mixed files or renames.
-test('CI changed-path gate routes only pure Stage 1 artifacts to the candidate gate', async (t) => {
+// Retired Stage 1 artifact paths and every other non-doc change use Normal.
+test('CI changed-path gate sends all non-doc changes through Normal', async (t) => {
   const workflow = await readFile(path.resolve(TEST_DIRECTORY, '../.github/workflows/ci.yml'), 'utf8');
   const block = workflow.split('      - name: Classify changed files\n')[1]
     ?.split('      - name: Install pinned dependencies\n')[0];
@@ -844,7 +843,7 @@ test('CI changed-path gate routes only pure Stage 1 artifacts to the candidate g
     ?.split('\n').map((line) => line.startsWith('          ') ? line.slice(10) : line).join('\n');
   assert.ok(script?.includes('git diff --no-renames --name-only -z'), 'classification must include both rename sides');
   assert.match(workflow, /node scripts\/ci\/deep-gate\.mjs/u, 'Deep classification must run inside the existing classifier step');
-  assert.match(workflow, /steps\.changes\.outputs\.run_level == 'candidates' && steps\.changes\.outputs\.deep_mode == 'none'/u);
+  assert.doesNotMatch(workflow, /ci:candidates|run_level == 'candidates'/u);
   assert.match(workflow, /steps\.changes\.outcome != 'success' \|\| \(steps\.changes\.outputs\.run_level == 'normal'/u);
 
   const root = await mkdtemp(path.join(tmpdir(), 'typewriter-ci-paths-'));
@@ -887,7 +886,6 @@ test('CI changed-path gate routes only pure Stage 1 artifacts to the candidate g
     assert.equal(await readFile(output, 'utf8'), `run_level=${expectedLevel}\n`, name);
     const expectedSummary = {
       none: /Changed-path classification: none/u,
-      candidates: /Changed-path classification: candidates/u,
       normal: /Changed-path classification: normal/u,
     };
     assert.match(await readFile(summary, 'utf8'), expectedSummary[expectedLevel], name);
@@ -912,27 +910,7 @@ test('CI changed-path gate routes only pure Stage 1 artifacts to the candidate g
     await mkdir(path.join(root, 'docs/reference'), { recursive: true });
     await writeFile(path.join(root, 'docs/reference/data.json'), '{}\n');
   }, 'none');
-  await scenario('stage1-candidates', () => addCandidate(), 'candidates');
-  await scenario('stage1-manifest', () => addCandidate('manifest.json'), 'candidates');
-  await scenario('stage1-decisions', () => addCandidate('stage1-decisions.json'), 'candidates');
-  await scenario('stage1-complete-batch', async () => {
-    await addCandidate();
-    await addCandidate('manifest.json');
-    await addCandidate('stage1-decisions.json');
-  }, 'candidates');
-  await scenario('stage1-mixed-docs', async () => {
-    await addCandidate();
-    await writeFile(path.join(root, 'docs/guide.md'), 'guide v2\n');
-  }, 'normal');
-  await scenario('stage1-mixed-code', async () => {
-    await addCandidate();
-    await writeFile(path.join(root, 'src/main.mjs'), 'export const value = 2;\n');
-  }, 'normal');
-  await scenario('stage1-extra-file', () => addCandidate('extra.json'), 'normal');
-  await scenario('stage1-nonbatch-path', async () => {
-    await mkdir(path.join(root, 'data/candidates/other'), { recursive: true });
-    await writeFile(path.join(root, 'data/candidates/other/candidates.jsonl'), '{}\n');
-  }, 'normal');
+  await scenario('retired candidate path still requires Normal', () => addCandidate('manifest.json'), 'normal');
   await scenario('mixed-docs-code', async () => {
     await writeFile(path.join(root, 'docs/guide.md'), 'guide v2\n');
     await writeFile(path.join(root, 'src/main.mjs'), 'export const value = 2;\n');
@@ -941,7 +919,7 @@ test('CI changed-path gate routes only pure Stage 1 artifacts to the candidate g
     await mkdir(path.join(root, 'data/canonical'), { recursive: true });
     await writeFile(path.join(root, 'data/canonical/records.jsonl'), '{}\n');
   }, 'normal');
-  await scenario('stage2-reviews', async () => {
+  await scenario('unregistered review path still requires Normal', async () => {
     await mkdir(path.join(root, 'data/reviews/C000031'), { recursive: true });
     await writeFile(path.join(root, 'data/reviews/C000031/decisions.jsonl'), '{}\n');
   }, 'normal');
@@ -1006,10 +984,9 @@ test('CI and Pages workflows keep their trigger responsibilities separate', asyn
   assert.match(workflow, /node-version: 24\.x/u);
   assert.doesNotMatch(workflow, /^\s+schedule:/mu);
   assert.doesNotMatch(workflow, /^\s+workflow_dispatch:/mu);
-  assert.match(workflow, /name: Candidate validation \(Stage 1 artifacts only\)/u);
-  assert.equal((workflow.match(/run: pnpm run ci:candidates/gu) ?? []).length, 1);
+  assert.doesNotMatch(workflow, /Candidate validation|ci:candidates/u);
   assert.doesNotMatch(workflow, /run: pnpm run ci:fast/u);
-  assert.equal(packageJson.scripts['ci:candidates'], 'node scripts/ci/run-category.mjs candidates');
+  assert.equal(packageJson.scripts['ci:candidates'], undefined);
   assert.equal(packageJson.scripts['ci:pr'], 'node scripts/ci/run-category.mjs pr');
   assert.equal(packageJson.scripts['ci:historical'], undefined);
   assert.equal((workflow.match(/run: pnpm run ci:all/gu) ?? []).length, 0);
@@ -1092,7 +1069,7 @@ test('documented Node baseline matches package.json engines', async () => {
     assert.deepEqual([...new Set(versions)], [`${major}.x`], `${workflow} must use the Node ${major} baseline only`);
     assert.equal(versions.length, (text.match(/actions\/setup-node/gu) ?? []).length, `${workflow} must pin every setup-node step`);
   }
-  assert.ok(nodeWorkflows >= 4, 'expected every Node workflow to be scanned');
+  assert.ok(nodeWorkflows > 0, 'expected every active Node workflow to be scanned');
   for (const file of ['README.md', 'docs/build.md', 'docs/development.md', 'docs/corpus-index-design.md']) {
     const text = await readFile(path.join(root, file), 'utf8');
     assert.ok(
@@ -1109,8 +1086,8 @@ test('documented Node baseline matches package.json engines', async () => {
 });
 
 
-test('PR gate never selects Full Deep and preserves affected checks even alongside classifier paths', async () => {
-  const benchmark = 'deep/Run 100K/500K/1M release-shaped performance and scale benchmark';
+test('PR gate keeps Normal plus affected Deep for classifier changes', async () => {
+  const reproducibility = 'deep/Run current-revision SQLite reproducibility audit';
   const registry = routePrDeepGate(classifyDeepGateDiff('base', 'head', {
     runGit: (args) => {
       assert.equal(args[0], 'diff');
@@ -1131,22 +1108,26 @@ test('PR gate never selects Full Deep and preserves affected checks even alongsi
   const mixed = routePrDeepGate(classifyDeepGateDiff('base', 'head', {
     runGit: (args) => {
       assert.equal(args[0], 'diff');
-      return Buffer.from('scripts/ci/registry.mjs\0scripts/benchmark/sqlite-runtime.mjs\0');
+      return Buffer.from('scripts/ci/registry.mjs\0scripts/verify/m2-pipeline.mjs\0');
     },
   }));
   assert.equal(mixed.deepMode, 'selective');
-  assert.deepEqual(mixed.selectedDeepChecks, [benchmark]);
-  assert.deepEqual(mixed.matchedTriggers.map(({ path }) => path), ['scripts/benchmark/sqlite-runtime.mjs']);
+  assert.deepEqual(mixed.selectedDeepChecks, [reproducibility]);
+  assert.deepEqual(mixed.matchedTriggers.map(({ path }) => path), ['scripts/verify/m2-pipeline.mjs']);
 
-  const direct = routePrDeepGate(classifyDeepGatePaths(['scripts/benchmark/sqlite-runtime.mjs']));
+  const runtime = routePrDeepGate(classifyDeepGatePaths(['scripts/benchmark/sqlite-runtime.mjs']));
+  assert.equal(runtime.deepMode, 'none');
+  assert.deepEqual(runtime.selectedDeepChecks, []);
+
+  const direct = routePrDeepGate(classifyDeepGatePaths(['scripts/verify/m2-pipeline.mjs']));
   assert.equal(direct.deepMode, 'selective');
-  assert.deepEqual(direct.selectedDeepChecks, [benchmark]);
+  assert.deepEqual(direct.selectedDeepChecks, [reproducibility]);
 
   const unknownWithDeep = routePrDeepGate(classifyDeepGateDiff('base', 'head', {
-    runGit: () => Buffer.from('unclassified.file\0scripts/benchmark/sqlite-runtime.mjs\0'),
+    runGit: () => Buffer.from('unclassified.file\0scripts/verify/m2-pipeline.mjs\0'),
   }));
   assert.equal(unknownWithDeep.deepMode, 'selective');
-  assert.deepEqual(unknownWithDeep.selectedDeepChecks, [benchmark]);
+  assert.deepEqual(unknownWithDeep.selectedDeepChecks, [reproducibility]);
   assert.equal(unknownWithDeep.prFallbackReason, 'unclassified-path');
 
   const missingDiff = routePrDeepGate(classifyDeepGateDiff('base', 'head', {
@@ -1164,7 +1145,6 @@ test('PR gate never selects Full Deep and preserves affected checks even alongsi
 
 test('canonical-only meaning invariants are Normal checks selected even when only canonical data changes', () => {
   const required = [
-    'tests/record-meaning-projection.test.mjs',
     'tests/canonical-record-meanings.test.mjs',
     'tests/meaning-provenance.test.mjs',
     'tests/meaning-search.test.mjs',
