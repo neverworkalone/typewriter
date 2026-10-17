@@ -105,7 +105,7 @@ const showBack = computed(() => (
 ));
 function definitionLabel(record, sense, senseIndex) {
   if (typeof sense?.gloss === 'string' && sense.gloss.length > 0) {
-    return sense.gloss;
+    return sense.gloss.split('\n')[0];
   }
 
   const definitionGroup = sense?.groups?.find(({ kind }) => kind === 'definition');

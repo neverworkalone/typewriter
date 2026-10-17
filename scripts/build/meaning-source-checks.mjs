@@ -21,13 +21,6 @@ export const MEANING_SOURCE_INTEGRITY_QUERIES = Object.freeze({
     SELECT COUNT(*) FROM meaning_members AS member
     WHERE NOT EXISTS (
       SELECT 1 FROM senses WHERE senses.id = member.sense_id AND senses.record_id = member.record_id)`,
-  meaning_pos_mismatch: `
-    SELECT COUNT(*) FROM meanings AS meaning
-    WHERE meaning.pos IS NOT (
-      SELECT senses.pos FROM meaning_members
-      INNER JOIN senses ON senses.id = meaning_members.sense_id
-      WHERE meaning_members.meaning_id = meaning.id
-      ORDER BY meaning_members.position LIMIT 1)`,
   sense_adjudication_mismatch: `
     SELECT COUNT(*) FROM sense_adjudications AS adjudication
     WHERE NOT EXISTS (

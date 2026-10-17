@@ -1,7 +1,7 @@
 import { EXPLORATORY_RELATION_TYPES, LEXICAL_RELATION_TYPES } from './meaning-ranking.js';
 
 export const DICTIONARY_VERSION = 'm2-pilot-1';
-export const SQLITE_SCHEMA_VERSION = '6';
+export const SQLITE_SCHEMA_VERSION = '7';
 
 export const MEANING_RELATION_ORIGINS = Object.freeze({
   projection: 'stdict-sense-projection',

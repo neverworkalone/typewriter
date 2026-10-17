@@ -21,6 +21,7 @@ import { MEANING_SOURCE_INTEGRITY_QUERIES } from './meaning-source-checks.mjs';
 import { loadMeaningData, canonicalSensesFromContext, parseMeaningId } from '../meaning/contract.mjs';
 import { compareMeaningRank, countMeaningRelations } from '../../src/runtime/meaning-ranking.js';
 import { projectMeaningRelations } from '../meaning/project.mjs';
+import { projectRecordMeanings } from '../meaning/canonical-record.mjs';
 import {
   DATABASE_KIND_KEY,
   DATABASE_KINDS,
@@ -39,19 +40,25 @@ export const DEFAULT_DICTIONARY_OUTPUT = path.resolve(
   'artifacts/dictionary.sqlite',
 );
 
-const DEFAULT_MEANINGS_DIRECTORY = path.resolve('data/meanings');
 const DEFAULT_ADJUDICATION_DIRECTORY = path.resolve('data/adjudication');
 
 /**
- * The product meaning layer: the whole `data/meanings` corpus (validated complete against canonical) for the default
- * canonical input; fixture inputs get an empty layer unless a meaning directory is supplied explicitly.
+ * The product meaning layer (Issue #820): by default derived from the canonical records alone (one record = one
+ * meaning holding all of its senses); `data/meanings` and `data/adjudication` are not read. Passing `meaningsDirectory`
+ * explicitly selects the legacy reviewed-Meaning layer (validated complete against canonical).
  */
-function loadMeaningLayer({ model, context, inputDirectory, meaningsDirectory, adjudicationDirectory }) {
+function loadMeaningLayer({ model, context, inputDirectory, meaningsDirectory, adjudicationDirectory, recordMeanings }) {
   const isDefault = path.resolve(inputDirectory) === path.resolve(DEFAULT_CANONICAL_DIRECTORY);
-  const meaningDir = meaningsDirectory ?? (isDefault ? DEFAULT_MEANINGS_DIRECTORY : null);
-  if (!meaningDir) {
-    return { meanings: [], adjudications: [], relations: [], stats: projectMeaningRelations({ records: [], meanings: [] }).stats };
+  if (!meaningsDirectory) {
+    // Fixture inputs (non-`w<number>` record ids) get an empty layer unless `recordMeanings` asks for the projection.
+    if (!(recordMeanings ?? isDefault)) {
+      return { meanings: [], adjudications: [], relations: [], stats: projectMeaningRelations({ records: [], meanings: [] }).stats };
+    }
+    const meanings = projectRecordMeanings(model.records);
+    const projection = projectMeaningRelations({ records: model.records, meanings });
+    return { meanings, adjudications: [], relations: projection.relations, stats: projection.stats };
   }
+  const meaningDir = meaningsDirectory;
   const loaded = loadMeaningData({
     meaningsDirectory: meaningDir,
     adjudicationDirectory: adjudicationDirectory ?? DEFAULT_ADJUDICATION_DIRECTORY,
@@ -228,8 +235,8 @@ function insertModel(database, model, metadata, surfaceFormRows, meaningLayer) {
 
   const insertMeaning = database.prepare(
     `INSERT INTO meanings
-      (id, lemma, gloss, pos, record_id, lexical_relation_count, exploratory_relation_count, display_rank)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      (id, lemma, gloss, record_id, lexical_relation_count, exploratory_relation_count, display_rank)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
   );
   const insertMember = database.prepare(
     'INSERT INTO meaning_members (meaning_id, position, sense_id, record_id) VALUES (?, ?, ?, ?)',
@@ -253,11 +260,11 @@ function insertModel(database, model, metadata, surfaceFormRows, meaningLayer) {
     insertMetadata.run(key, value);
   }
 
-  // The shipped tables keep only what the product reads of a source sense (owner record, position, part of speech).
+  // The shipped tables keep only what the product reads of a source sense (owner record and position; part of speech stays in the Full `senses` table only).
   const sourceSenses = new Map();
   for (const record of model.records) {
     record.senses.forEach((sense, position) => {
-      sourceSenses.set(sense.id, { record_id: record.id, position, pos: sense.pos });
+      sourceSenses.set(sense.id, { record_id: record.id, position });
     });
   }
   const sourceSense = (senseId) => {
@@ -318,7 +325,6 @@ function insertModel(database, model, metadata, surfaceFormRows, meaningLayer) {
       meaning.id,
       meaning.lemma,
       meaning.gloss,
-      sourceSense(meaning.sense_ids[0]).pos,
       meaning.record_id,
       meaning.lexical_relation_count,
       meaning.exploratory_relation_count,
@@ -398,6 +404,7 @@ export async function buildDictionary({
   normalizedModel,
   meaningsDirectory,
   adjudicationDirectory,
+  recordMeanings,
   requireSurfaceFormClassifications,
   requireSurfaceFormCollisionReview,
 } = {}) {
@@ -437,6 +444,7 @@ export async function buildDictionary({
     inputDirectory,
     meaningsDirectory,
     adjudicationDirectory,
+    recordMeanings,
   });
   const provenance = await resolveBuildProvenance({
     repositoryDirectory,

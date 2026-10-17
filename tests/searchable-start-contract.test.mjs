@@ -109,10 +109,10 @@ function seedDatabase(database) {
     INSERT INTO search_forms VALUES ('r003', 0, '다듬다');
     INSERT INTO search_forms VALUES ('w004', 0, '다듬은말'), ('w004', 1, '다듬은');
     INSERT INTO meanings VALUES
-      ('m001', '기준어', '검색 출발점', 'noun', 'w001', 0, 2, 1),
-      ('m002', '공통표제어', '관계 대상이며 관계는 아직 없음', 'noun', 'r002', 0, 0, 2),
-      ('m003', '다듬다', '관계 대상이며 표면형 규칙을 따름', 'verb', 'r003', 0, 0, 3),
-      ('m004', '다듬은말', '정확 검색어와 generated form이 충돌할 때의 precedence 대상', 'noun', 'w004', 0, 0, 4);
+      ('m001', '기준어', '검색 출발점', 'w001', 0, 2, 1),
+      ('m002', '공통표제어', '관계 대상이며 관계는 아직 없음', 'r002', 0, 0, 2),
+      ('m003', '다듬다', '관계 대상이며 표면형 규칙을 따름', 'r003', 0, 0, 3),
+      ('m004', '다듬은말', '정확 검색어와 generated form이 충돌할 때의 precedence 대상', 'w004', 0, 0, 4);
     INSERT INTO meaning_members VALUES
       ('m001', 0, 'w001-s1', 'w001'), ('m002', 0, 'r002-s1', 'r002'),
       ('m003', 0, 'r003-s1', 'r003'), ('m004', 0, 'w004-s1', 'w004');
