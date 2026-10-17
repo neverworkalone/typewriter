@@ -788,6 +788,10 @@ test('C01 positive identity controls preserve valid cross-record and polysemous 
     '견부 gloss must express the body-part and its carrying use together');
   assert.equal(canonicalRecordBySense.get('w17371-s1')?.gloss, '물건을 어깨에 멤.');
   assert.equal(canonicalRecordBySense.get('w17420-s1')?.gloss, '어깨 부분.');
+  assert.ok(sameMeaning(['w17162-s1', 'w392095-s1']),
+    '견사 keeps two source records for the same silk-thread material concept together');
+  assert.equal(canonicalRecordBySense.get('w17162-s1')?.gloss, '누에고치에서 켠 실. 마사, 면사처럼 천연 섬유이다.');
+  assert.equal(canonicalRecordBySense.get('w392095-s1')?.gloss, '깁이나 비단을 짜는 명주실.');
 });
 
 test('C01 Stage 2 source-ID controls separate opposing identities and retain natural extensions', () => {
