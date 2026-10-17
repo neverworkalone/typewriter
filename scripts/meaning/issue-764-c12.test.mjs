@@ -209,3 +209,33 @@ test('every same-record split in the decision table matches the spec and the sha
     }
   }
 });
+
+// 결정표의 출처를 원본 변경 근거와 대조한다: spec 항목은 repartition의 before·groups와, base 항목은 PR base의 행과 같아야 한다.
+test('same-record split decisions are traceable to the spec before/groups or to the PR base rows', () => {
+  const sameSet = (a, b) => a.length === b.length && a.every((id) => b.includes(id));
+  for (const e of splitTable) {
+    assert.ok(e.baseRows?.length, `${e.lemma}: base rows recorded`);
+    const wanted = [...e.groups, ...(e.rest.length ? [e.rest] : [])];
+    if (e.source === 'spec') {
+      const reps = spec.repartitions.filter((rep) => rep.lemma === e.lemma);
+      assert.equal(reps.length, 1, `${e.lemma}: one repartition`);
+      const [rep] = reps;
+      for (const row of e.baseRows) {
+        assert.ok(rep.before.some((b) => b.id === row.id && sameSet(b.sense_ids, row.sense_ids)), `${e.lemma}: before has ${row.id}`);
+      }
+      const specGroups = rep.groups.map((g) => g.senses);
+      const owner = (id) => specGroups.findIndex((g) => g.includes(id));
+      for (const group of wanted) {
+        assert.ok(group.every((id) => owner(id) === owner(group[0]) && owner(id) >= 0), `${e.lemma}: ${group} is one repartition group`);
+      }
+      assert.equal(new Set(wanted.map((g) => owner(g[0]))).size, wanted.length, `${e.lemma}: groups map to distinct repartition groups`);
+    } else {
+      assert.ok(!spec.repartitions.some((rep) => rep.lemma === e.lemma), `${e.lemma}: no repartition`);
+      const current = new Map(rows.map((row) => [row.id, row]));
+      for (const row of e.baseRows) {
+        const now = current.get(row.id);
+        assert.ok(now && sameSet(now.sense_ids, row.sense_ids), `${e.lemma}: base row ${row.id} kept as in the PR base`);
+      }
+    }
+  }
+});
