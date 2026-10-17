@@ -397,4 +397,4 @@ KRDICT에만 있는 큰말·작은말·센말·여린말·본말·준말·높임
 5. **관계 대조**: 출발 표기와 대상 표기(동형이의어 숫자 제거)의 쌍으로 STDICT `동의어`/`반대말`/`비슷한말` 쌍 집합과 비교한다.
 6. **소표본**: 시드 `20261015`로 §3.1은 수준별 4개씩, §3.3은 분야 유무별 6개씩 추출해 사람이 읽는다.
 
-STDICT 쪽 수치는 `node scripts/stdict/inventory.mjs --verify`와 `settle.mjs`가 이미 재현한다.
+STDICT 쪽 수치는 `node scripts/stdict/inventory.mjs --source ~/.cache/typewriter/reference/dict/stdict --verify`와 `node scripts/stdict/settle.mjs --source ~/.cache/typewriter/reference/dict/stdict --verify`가 이미 재현한다.
