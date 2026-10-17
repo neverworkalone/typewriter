@@ -136,6 +136,13 @@ const splitBoundaries = [
 ];
 
 const sameIdentityControls = [
+  ['후방 house rear room and anatomical posterior chamber (後房)', ['w378899-s1', 'w378899-s2']],
+  ['해마 seahorse and its shape-based anatomical extension (海馬)', ['w502078-s1', 'w502078-s2', 'w502078-s4']],
+  ['향군 modern local military roles and historical local soldiers (鄕軍)', ['w373298-s1', 'w373298-s2', 'w373298-s3']],
+  ['화예석 mineral and its Korean-medicine name (花蕊石)', ['w374203-s1', 'w374203-s2']],
+  ['희년 Catholic and biblical jubilee years (禧年)', ['w504915-s1', 'w504915-s2']],
+  ['후위 historical rear guard, rear-defense roles, and sports defender (後衛)', ['w380772-s1', 'w505660-s1', 'w505660-s2', 'w505660-s3']],
+  ['후퇴 backward movement and a building setback (後退)', ['w506500-s1', 'w506500-s2', 'w506500-s3']],
   ['합사묘 combined-spirit shrine and Confucian shrine', ['w368040-s1', 'w368040-s2']],
   ['화원 flower field and flower garden', ['w379310-s1', 'w508714-s1']],
   ['하화 summer flower and summer-retreat offering flower (夏花)', ['w501101-s1', 'w501101-s2']],
@@ -150,6 +157,13 @@ const sameIdentityControls = [
   ['활동 general bodily, productive, biological and volcanic activity (活動)', ['w508962-s1', 'w508962-s2', 'w508962-s3', 'w508962-s4']],
   ['하재 lower-grade materials and their named buffalo-bone kind (下材)', ['w363132-s1', 'w363132-s2']],
   ['해선 edible seafood senses (海鮮)', ['w499128-s1', 'w499128-s2']],
+];
+
+const distinctIdentityControls = [
+  ['후방 房 chambers and 方 rear direction', [['w378899-s1', 'w378899-s2'], ['w506363-s1', 'w506363-s2']]],
+  ['해마 seahorse/anatomical term and walrus (海馬)', [['w502078-s1', 'w502078-s2', 'w502078-s4'], ['w502078-s3']]],
+  ['희년 jubilee and rare age (禧年 / 稀年)', [['w504915-s1', 'w504915-s2'], ['w384992-s1']]],
+  ['허공 empty space and number (虛空)', [['w503026-s1', 'w503026-s2', 'w503026-s3'], ['w503026-s4', 'w503026-s5']]],
 ];
 
 test('C19 recorded pre-fix overmerges are repaired at their source-ID boundaries', () => {
@@ -184,6 +198,19 @@ test('C19 source-ID controls preserve supported same-identity groupings', () => 
   }
 });
 
+test('C19 risk controls retain independently named identities', () => {
+  for (const [label, groups] of distinctIdentityControls) {
+    const ids = groups.flat();
+    assert.ok(known(ids), `${label}: every control sense must resolve`);
+    for (const group of groups) assert.ok(sameMeaning(group), `${label}: each supported group stays intact`);
+    for (let left = 0; left < groups.length; left += 1) {
+      for (let right = left + 1; right < groups.length; right += 1) {
+        assert.equal(sameMeaning([...groups[left], ...groups[right]]), false, `${label}: independent groups stay separate`);
+      }
+    }
+  }
+});
+
 test('C19 corrected lotus and summer-flower source relations project to distinct endpoints', () => {
   const allMeaningsBySense = new Map();
   for (const file of readdirSync(meaningDirectory).filter((name) => name.endsWith('.jsonl'))) {
@@ -215,7 +242,7 @@ test('C19 corrected lotus and summer-flower source relations project to distinct
   }
 });
 
-test('C19 corrected rear-room and later-car source relations project to separate endpoints', () => {
+test('C19 corrected same-record and later-car source relations preserve endpoints', () => {
   const allMeaningsBySense = new Map();
   for (const file of readdirSync(meaningDirectory).filter((name) => name.endsWith('.jsonl'))) {
     for (const line of readFileSync(path.join(meaningDirectory, file), 'utf8').split('\n')) {
@@ -224,7 +251,7 @@ test('C19 corrected rear-room and later-car source relations project to separate
       for (const senseId of meaning.sense_ids) allMeaningsBySense.set(senseId, meaning);
     }
   }
-  const sourceIds = new Set(['w378899', 'w506363', 'w379204', 'w379206']);
+  const sourceIds = new Set(['w378899', 'w506363', 'w379204', 'w379206', 'w502078', 'w505660', 'w506500', 'w374203']);
   const records = readCanonicalEntries(path.join(root, 'data/canonical')).filter((record) => sourceIds.has(record.id));
   const adjudications = readAdjudications(path.join(root, 'data/adjudication')).rows;
   const { relations } = projectMeaningRelations({ records, meanings: [...new Set(allMeaningsBySense.values())], adjudications });
@@ -244,9 +271,25 @@ test('C19 corrected rear-room and later-car source relations project to separate
   };
 
   const rearRoom = assertSourceRelation('rear room', 'w378899-s1', 'w94426-s1', 'direct');
+  const posteriorChamber = assertSourceRelation('posterior chamber', 'w378899-s2', 'w512450-s1', 'direct');
   const rearDirection = endpoint('w506363-s1');
-  assert.notEqual(rearRoom.id, rearDirection.id, 'the 房 room relation must not share the 方 direction Meaning endpoint');
-  assert.notEqual(endpoint('w378899-s2').id, rearRoom.id, 'the eye chamber remains a separate source identity');
+  assert.equal(posteriorChamber.id, rearRoom.id, 'the same 後房 naming principle groups house and anatomical chambers');
+  assert.notEqual(rearRoom.id, rearDirection.id, 'the 房 chambers must not share the 方 direction Meaning endpoint');
+
+  const seahorse = assertSourceRelation('seahorse', 'w502078-s2', 'w449460-s1', 'direct');
+  const hippocampus = assertSourceRelation('hippocampus', 'w502078-s4', 'w457959-s1', 'direct');
+  assert.equal(hippocampus.id, seahorse.id, 'the anatomical 海馬 endpoint stays with the shape-based animal name');
+  assertSourceRelation('walrus', 'w502078-s3', 'w428436-s1', 'direct');
+  assert.notEqual(endpoint('w502078-s3').id, seahorse.id, 'the walrus remains an independent animal identity');
+
+  const rearGuard = assertSourceRelation('military rear guard', 'w505660-s2', 'w380774-s1', 'direct');
+  assertSourceRelation('rear defense antonym', 'w505660-s1', 'w287873-s1', 'antonym');
+  assert.equal(endpoint('w380772-s1').id, rearGuard.id, 'the named rear-guard unit retains the same 後衛 identity');
+  assert.equal(endpoint('w505660-s3').id, rearGuard.id, 'the sports defender shares the rear-defense Meaning');
+  const retreat = assertSourceRelation('retreat', 'w506500-s1', 'w230252-s1', 'direct');
+  const buildingSetback = assertSourceRelation('building setback', 'w506500-s3', 'w94358-s1', 'direct');
+  assert.equal(buildingSetback.id, retreat.id, 'the architectural setback shares the backward-recession Meaning');
+  assertSourceRelation('stone', 'w374203-s1', 'w501984-s1', 'direct');
   assertSourceRelation('later in sequence', 'w379204-s1', 'w448812-s1', 'antonym');
   const nextCar = assertSourceRelation('next vehicle', 'w379206-s1', 'w95438-s1', 'direct');
   assert.notEqual(endpoint('w379204-s1').id, nextCar.id, '次 order and 車 vehicle relations must keep separate source Meaning endpoints');
