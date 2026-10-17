@@ -38,18 +38,21 @@ export function projectRelation(relation, sourceSenseId, sourcePosition) {
   };
 }
 
+// A record-based meaning (Issue #820) stores its source glosses one per line; each is one definition item.
 function projectDefinition(sense) {
+  const glosses = typeof sense.gloss === 'string' ? sense.gloss.split('\n') : [];
+  const items = glosses.map((gloss, index) => ({
+    id: glosses.length === 1 ? sense.id : `${sense.id}:${index}`,
+    sourceSenseId: sense.id,
+    text: gloss,
+    gloss,
+  }));
   return {
     id: UI_GROUP_IDS.definition,
     idKey: UI_GROUP_IDS.definition,
     label: getRelationGroupDefinition(UI_GROUP_IDS.definition).label,
     kind: 'definition',
-    items: [{
-      id: sense.id,
-      sourceSenseId: sense.id,
-      text: sense.gloss,
-      gloss: sense.gloss,
-    }],
+    items,
   };
 }
 

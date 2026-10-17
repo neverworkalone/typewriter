@@ -120,6 +120,11 @@ function visibleGroups(sense) {
   return (sense.groups || []).filter(isGroupVisible);
 }
 
+// Display-only numbering of the source glosses inside one selected record (multi-sense, Issue #820).
+function definitionNumber(index) {
+  return index < 20 ? String.fromCodePoint(0x2460 + index) : `${index + 1}.`;
+}
+
 function relationText(relation) {
   return relation.text || relation.label || relation.targetLemma || relation.targetId;
 }
@@ -229,9 +234,15 @@ defineExpose({ focusCandidate });
           :data-group-id="group.id"
         >
           <h3>{{ group.label }}</h3>
-          <p v-if="group.kind === 'definition'" class="definition-text">
-            {{ group.items[0].text || group.items[0].gloss }}
-          </p>
+          <template v-if="group.kind === 'definition'">
+            <p
+              v-for="(item, itemIndex) in group.items"
+              :key="item.id"
+              class="definition-text"
+            >
+              <span v-if="group.items.length > 1" class="definition-number">{{ definitionNumber(itemIndex) }} </span>{{ item.text || item.gloss }}
+            </p>
+          </template>
           <div v-else class="relation-list">
             <template
               v-for="(relation, relationIndex) in pagedItems(sense, group).items"
