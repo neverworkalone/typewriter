@@ -36,7 +36,7 @@ contributing relation (canonical order) supplies `note`/`relevance`, verified ex
 Skip/dedup/redirect counts are written to `metadata` as `meaning_projection_*`, so
 `source = projected + deduplicated + skipped`.
 
-The shipped (Lite) `dictionary.sqlite` (schema version 7) carries only the product meaning contract. The STDICT source `senses`, `relations` and
+The shipped (Lite) `dictionary.sqlite` (schema version 8) carries only the product meaning contract. The STDICT source `senses`, `relations` and
 `meaning_relation_sources` tables exist only in the Full database `artifacts/dictionary.sqlite` (Issue #792, #795) and are never packaged:
 
 | Table | Content |
