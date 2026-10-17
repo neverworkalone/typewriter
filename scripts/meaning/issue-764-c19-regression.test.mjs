@@ -161,6 +161,7 @@ const sameIdentityControls = [
 
 const distinctIdentityControls = [
   ['후방 房 chambers and 方 rear direction', [['w378899-s1', 'w378899-s2'], ['w506363-s1', 'w506363-s2']]],
+  ['후위 rear-guard meanings and Northern Wei state (後衛 / 後魏)', [['w380772-s1', 'w505660-s1', 'w505660-s2', 'w505660-s3'], ['w380773-s1']]],
   ['해마 seahorse/anatomical term and walrus (海馬)', [['w502078-s1', 'w502078-s2', 'w502078-s4'], ['w502078-s3']]],
   ['희년 jubilee and rare age (禧年 / 稀年)', [['w504915-s1', 'w504915-s2'], ['w384992-s1']]],
   ['허공 empty space and number (虛空)', [['w503026-s1', 'w503026-s2', 'w503026-s3'], ['w503026-s4', 'w503026-s5']]],
