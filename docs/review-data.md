@@ -21,6 +21,48 @@ substitution is not universal, or opposed qualities can coexist. A reviewer
 should first articulate the plausible context, then decide whether a concrete
 material mismatch remains.
 
+## Typewriter 0.3 말의 결·연상 (Issue #838) — scope split
+
+Applies to new Typewriter-authored `near`/`mood`/`scene`/`sensory`/`action`/
+`association` (see "Typewriter 0.3 scope" in
+[relation-editorial-policy.md](relation-editorial-policy.md)). The `direct`/
+`antonym` rules below validate STDICT-provided relations and approved `→`
+reference projections; they are not a reason to demand `direct` for, or to
+authorize adding, a new authored synonym. Rules below marked *historical/STDICT
+only* do not apply to the new scope.
+
+- **STDICT immutability:** never ask the author to re-judge, add or remove an
+  official `direct`/`antonym`; the existing `direct` bidirectional projection
+  (#797/#834) is unchanged.
+- **Tier:** 연상 Tier 1 means close enough to be informally considered a
+  synonym and a real alternative expression, not merely vivid or poetic.
+  Relevance is relative within the same source meaning and UI group; no quota,
+  equal Tiers and zero relations are valid. Do not apply the Tier 1 criterion
+  to `mood`/`near` mechanically. Block a wrong sense, wrong homograph target,
+  contradictory type, forced link, or evidenced material inversion; one-band
+  or taste differences are non-blocking.
+- **Targets:** an ID target must bind the exact headword/homograph/sense
+  (never the first string match or a different sense). Otherwise the target is
+  non-empty plain text with no ID: no click action, no reverse relation, no
+  invented record. Reject a fabricated ID or a wrong-meaning link used to
+  avoid text.
+- **Bidirectional:** new authored ID↔ID relations are explorable from both
+  ends, each direction judged for type/Tier from its own source. Do not
+  symmetrise STDICT or earlier exploratory relations.
+- **Not implemented yet:** text-only targets, the authored-relation source of
+  truth and bidirectional derivation. Verify these contracts when the
+  implementing code lands; do not require them, or claim they work, before.
+- **Headword candidates** (`data/headword-candidates/pr-<PR number>.jsonl`,
+  Schema v1 in #838): check only syntax, required/extra fields, a real
+  `source_record_id` matching `source_lemma`, same-PR duplicate
+  `term`+`meaning_hint`, and obvious junk or an exact existing headword. Skip
+  promotion merit and detailed QA; this never relaxes review of the PR's actual
+  relations, Tier or product behaviour. The PR relation stays text regardless.
+- Stage 1/2 independence, exact-HEAD verification and shared regressions are
+  unchanged.
+
+## Canonical relation contracts
+
 - Canonical is the source of truth; preserve real source/target sense bindings,
   POS, relation types, directions, source order, provenance and digests.
 - **Lexical: direct (유의어) and antonym (반의어)** are assessed for meaningful
@@ -38,7 +80,8 @@ material mismatch remains.
   intelligible creative path, even when figurative, unusual, broader/narrower,
   cross-POS or contextual. A preference for other words or a rigid
   word-substitution rule is not a veto. Association is not a dumping ground
-  for legitimate dictionary synonyms.
+  for legitimate dictionary synonyms (*historical/STDICT only*: for 0.3
+  authoring, a close informal synonym candidate may be 연상 Tier 1).
 - Reject clear broken sense bindings, plainly incoherent connections without
   a defensible writer path, illegal target-POS/type contracts, or real
   structural/semantic errors. A plausible but marginal link should ordinarily
@@ -52,7 +95,8 @@ material mismatch remains.
   subjective, **not a blocker**. Relevance is ordinal display priority,
   **not** semantic distance or confidence.
 - Reverse links need valid source/target identities and preserved provenance;
-  do not create them for symmetry or require identical relevance across
+  do not create them for symmetry (except new 0.3 authored ID↔ID relations and
+  the existing `direct` projection, above) or require identical relevance across
   different source senses. Valid entries with zero relations remain
   admissible and searchable. Avoid mechanical subjective scoring validators.
 

@@ -12,6 +12,21 @@ Those examples document past editorial decisions only; **do not apply
 their restrictive tests to new Stage 2 production or Stage D backfill**.
 Historical pilot ledger data is unchanged.
 
+## Typewriter 0.3 (Issue #838, #839)
+
+[Issue #838](https://github.com/neverworkalone/typewriter/issues/838) governs
+new 0.3 말의 결/연상 authoring (see "Typewriter 0.3 scope" in the relation
+policy). This file is a historical M1 pilot record and is not rewritten.
+
+- The pilot's **Tier 1/2** are *review grades* (dictionary accuracy vs
+  exploration quality). They are unrelated to today's `relevance=1..9`, an
+  ordinal display priority inside one source meaning and UI group (연상 Tier 1
+  = close enough to be informally considered a synonym).
+- Examples below such as "dictionary synonyms belong to `direct`" or "move a
+  synonym out of association" describe past decisions. Do not apply them to new
+  0.3 Typewriter-authored relations, and do not use them to author new
+  `direct`/`antonym`; official STDICT `direct`/`antonym` stay as provided.
+
 ## Current searchable-start policy (Issue #208, 2026-09-28)
 
 This section is the current product contract. The M1 counts, ledgers, and role

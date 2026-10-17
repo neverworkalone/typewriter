@@ -40,7 +40,10 @@ semantic similarity/opposition and cannot pass on association alone. The
 positive calibrations in [the relation policy](docs/relation-editorial-policy.md)
 are non-blocking when their bound meanings match the documented context.
 Preserve plausible `near`/`mood`/`scene`/`sensory`/`action`/`association`;
-check relevance against the same source/UI group. Expand only around a proven
+check relevance against the same source/UI group. Do not ask why a new
+Typewriter 0.3 authored 연상 was not sent to `direct`, and do not instruct the
+author to add or re-judge official STDICT `direct`/`antonym`; those groups are
+validated, not authored (see the 0.3 scope in the relation policy). Expand only around a proven
 defect pattern, and report actual sampling scope rather than implying a census.
 
 ## 3. Stage 2 — independent comprehensive technical gate
@@ -64,6 +67,7 @@ If all gates hold, **squash-merge using the expected exact HEAD SHA**. No new de
 ## 5. Risk routing — load relevant guides, not every guide
 
 - Lexical data, schema, senses, relations, editorial QA, canonical/admission: **read `docs/review-data.md`** and apply **`docs/relation-editorial-policy.md` as the current owner decision**. `direct`/`antonym` require source-bound semantic similarity/opposition, which may be established by a plausible, recurring natural use context; do not require exhaustive gloss equivalence, universal sentence substitutability or logical exclusivity. A reviewer should state the plausible context before deciding a material mismatch remains. Writer-facing `near`/`mood`/`scene`/`sensory`/`action`/`association` are **preserve-first**, judged primarily on same-source/group relevance 1–9, not strict substitutability.
+- **Typewriter 0.3 말의 결/연상 (Issue #838):** `docs/relation-editorial-policy.md` ("Typewriter 0.3 scope") and `docs/review-data.md` define the contract; this file does not require reading any other instruction file. Review the actual relations and Tiers (연상 Tier 1 = informal-synonym-candidate level, relative within the same source/group, no quotas) normally. ID targets must bind the exact headword/homograph/sense; text-only targets must be non-clickable with no reverse and no invented ID; authored ID↔ID relations are explorable both ways with per-direction Tier. Text-only and bidirectional behaviour are contracts to verify **once the code implementing them exists**; do not fail a PR for them before that, and do not accept data that relies on them without it. `data/headword-candidates/pr-<PR number>.jsonl` is checked only for JSONL/Schema v1 conformance, a real `source_record_id`/`source_lemma`, and obvious junk or an already-existing exact headword; promotion merit and deep candidate QA are not `-1` grounds.
 - Search, ranking, normalization, candidate eligibility and ordering: **read `docs/review-search.md`**.
 - CI, validators, factory/build, SQLite, generated artifacts and test policy: **read `docs/review-toolchain.md`**.
 - Extension, UI, Chrome APIs, MV3, storage and WASM: **read `docs/review-extension.md`** when touched.

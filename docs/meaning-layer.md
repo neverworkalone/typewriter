@@ -4,6 +4,19 @@
 dictionary. The product **meaning** tables are generated from it on every build (Issues #820, #822); there is no
 separately maintained, edited or adjudicated Meaning data.
 
+> **Current vs planned (Issue #838/#839).** Everything below describes the
+> implementation **today**: Canonical-only input, `target_meaning_id NOT NULL`,
+> bidirectional `direct` and no symmetry for other types. Typewriter 0.3 plans
+> Typewriter-authored 말의 결/연상 with exact-ID or plain-text targets and ID↔ID
+> bidirectional exploration, and Canonical is then not the only product input.
+> That is **not implemented**: there is no text-only relation table, no
+> authored-relation source of truth and no derived reverse for them yet. The
+> implementing PR must update the tables, queries and provenance here. Editorial
+> rules: [relation-editorial-policy.md](relation-editorial-policy.md). The
+> `origin='typewriter-authored'` value and the sentence that authored 유의어/
+> 반의어 are edited on this table are legacy; new `direct`/`antonym` are not
+> authored in 0.3.
+
 **Contract: one STDICT record is one meaning (search candidate); every sense of that record is a member of it, in
 canonical order.** Polysemy is the several glosses inside one record; homonyms are different records of the same
 lemma and are separate candidates. Nothing is split, merged across records, reworded or dropped. The meaning `gloss`
