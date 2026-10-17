@@ -7,7 +7,7 @@ separately maintained, edited or adjudicated Meaning data.
 **Contract: one STDICT record is one meaning (search candidate); every sense of that record is a member of it, in
 canonical order.** Polysemy is the several glosses inside one record; homonyms are different records of the same
 lemma and are separate candidates. Nothing is split, merged across records, reworded or dropped. The meaning `gloss`
-holds the record's source glosses verbatim, one per line; the UI shows each as a numbered definition inside the one
+holds the record's source glosses, one per line, with only the editorial STDICT homograph number of cross-references removed (`‘슬슬02’` → `‘슬슬’`, `→ 까치발02.` → `→ 까치발.`; `scripts/build/gloss-homograph-reference.mjs`, Issue #797; Canonical and Full `senses.gloss` stay verbatim); the UI shows each as a numbered definition inside the one
 selected candidate. The product (Lite) database ships no part of speech; the source `senses.pos` exists only in Full.
 
 Source of truth in code: `scripts/build/record-meanings.mjs` (`wN -> mN` ids, `projectRecordMeanings`,
