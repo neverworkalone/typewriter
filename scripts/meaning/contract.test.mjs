@@ -17,6 +17,7 @@ import { runChecks } from '../ci/run-category.mjs';
 import { loadMeaningData } from './contract.mjs';
 import { validateMeaningFiles } from './validate.mjs';
 import { MEANING_RELATION_ORIGIN, projectMeaningRelations } from './project.mjs';
+import { actualRelationProvenance, expectedRelationProvenance } from './projection-oracle.mjs';
 
 const tmp = () => mkdtempSync(path.join(tmpdir(), 'meaning-'));
 const row = (id, lemma, senses = [`${id.replace('m', 'w').split('_')[0]}-s1`]) => ({ id, lemma, gloss: `${lemma} 뜻`, sense_ids: senses });
@@ -719,19 +720,31 @@ test('Issue #764 C08: source-ID identity boundaries, replayed rows, and audit de
   assert.equal(transportedVerb.id, 'm131950_1');
   assert.equal(accompaniedVerb.id, 'm426735_1');
   assert.equal(outward.source_meaning_id, 'm131744_1');
-  assert.equal(outward.target_meaning_id, 'm384873_1');
+  assert.equal(outward.target_meaning_id, ordinaryReturn.id);
   assert.equal(outward.type, 'direct');
-  assert.deepEqual(outward.sources, [{
-    source_sense_id: 'w131744-s1', source_position: 0, source_redirected: 0, target_redirected: 0,
-  }]);
-  assert.equal(inward.source_meaning_id, 'm384873_1');
-  assert.equal(inward.target_meaning_id, 'm131744_1');
+  // Provenance is grouped by (source Meaning, target Meaning, type): derive the expected groups
+  // independently from canonical relations, so any merge/split shape of either side stays valid.
+  const returnRecords = [
+    readCanonicalRecord('stdict-0096.jsonl', 'w131744'), standardReturnRecord, transportRecord, accompaniedRecord,
+  ];
+  const returnMeanings = [returnedVerb, transportedVerb, accompaniedVerb, ordinaryReturn, courtRemand];
+  assert.deepEqual(
+    actualRelationProvenance(returnProjection.relations),
+    expectedRelationProvenance(returnRecords, returnMeanings),
+  );
+  assert.equal(inward.source_meaning_id, ordinaryReturn.id);
+  assert.equal(inward.target_meaning_id, returnedVerb.id);
   assert.equal(inward.type, 'direct');
-  assert.deepEqual(inward.sources, [{
-    source_sense_id: 'w384873-s1', source_position: 0, source_redirected: 0, target_redirected: 0,
-  }]);
-  assert.equal(projectedFrom('w131744-s2').target_meaning_id, 'm384873_2');
-  assert.equal(projectedFrom('w384873-s2').target_meaning_id, 'm131744_1');
+  for (const [senseId, meaningRow] of [
+    ['w131744-s1', returnedVerb], ['w131744-s2', returnedVerb],
+    ['w384873-s1', ordinaryReturn], ['w384873-s2', courtRemand],
+  ]) {
+    assert.equal(projectedFrom(senseId).source_meaning_id, meaningRow.id, `${senseId} projects from its own Meaning`);
+  }
+  assert.equal(projectedFrom('w131744-s1').target_meaning_id, ordinaryReturn.id);
+  assert.equal(projectedFrom('w131744-s2').target_meaning_id, courtRemand.id);
+  assert.equal(projectedFrom('w384873-s1').target_meaning_id, returnedVerb.id);
+  assert.equal(projectedFrom('w384873-s2').target_meaning_id, returnedVerb.id);
   assert.equal(returnProjection.relations.some((relation) =>
     [transportedVerb.id, accompaniedVerb.id].includes(relation.source_meaning_id)
     && [ordinaryReturn.id, courtRemand.id].includes(relation.target_meaning_id)), false,
