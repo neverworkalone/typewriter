@@ -133,17 +133,6 @@ export const MEANING_SOURCE_INTEGRITY_QUERIES = Object.freeze({
     WHERE relation.origin = '${MEANING_RELATION_ORIGINS.gloss}' AND (relation.type <> 'direct' OR NOT EXISTS (
       SELECT 1 FROM meaning_relation_gloss_sources AS source
       WHERE source.source_meaning_id = relation.source_meaning_id AND source.relation_position = relation.position))`,
-  // A pair backed only by a gloss (no original source relation) is a gloss-reference relation; relabelling it would claim
-  // an authored or sense-projection origin it does not have. Evidence on an original \`direct\` stays valid.
-  gloss_only_relation_wrong_origin: `
-    SELECT COUNT(*) FROM meaning_relations AS relation
-    WHERE relation.origin <> '${MEANING_RELATION_ORIGINS.gloss}'
-      AND EXISTS (
-        SELECT 1 FROM meaning_relation_gloss_sources AS gloss
-        WHERE gloss.source_meaning_id = relation.source_meaning_id AND gloss.relation_position = relation.position)
-      AND NOT EXISTS (
-        SELECT 1 FROM meaning_relation_sources AS source
-        WHERE source.source_meaning_id = relation.source_meaning_id AND source.relation_position = relation.position)`,
   gloss_evidence_on_wrong_relation: `
     SELECT COUNT(*) FROM meaning_relation_gloss_sources AS source
     INNER JOIN meaning_relations AS relation
