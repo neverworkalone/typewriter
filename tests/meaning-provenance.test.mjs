@@ -349,6 +349,9 @@ test('gloss reference projection: exact targets only, held otherwise, original d
     withHomograph(33, '숫자', 1, [['뜻.']]),
     record(34, '숫자부정', [['→ 숫자.']]),                         // numberless reference naming a numbered record
     record(35, '원본선행', [['→ 희롱질.']]),
+    record(36, '그룹가', [['→ 희롱질[Ⅰ].']]),                       // a group Canonical cannot verify: held, not linked
+    record(37, '그룹나', [['→ 포수03[Ⅱ].']]),                       // also with a homograph number
+    record(38, '그룹다', [['→ 포수03[Ⅰ]「1」.']]),                  // and with a sense number
   ].map((item) => (item.id === 'w0035' ? { ...item, senses: [{ ...item.senses[0], relations: [direct('w0021-s1')] }] } : item)));
   assert.deepEqual(summary(relations.filter((r) => r.origin === 'stdict-gloss-reference')), [
     'm0020>m0021:direct:stdict-gloss-reference',
@@ -368,8 +371,11 @@ test('gloss reference projection: exact targets only, held otherwise, original d
     'w0028-s1': 'sense_out_of_range',
     'w0032-s1': 'malformed',
     'w0034-s1': 'numberless_reference_to_homograph',
+    'w0036-s1': 'group_unsupported',
+    'w0037-s1': 'group_unsupported',
+    'w0038-s1': 'group_unsupported',
   });
-  assert.equal(stats.gloss_reference_count, 13);
+  assert.equal(stats.gloss_reference_count, 16);
   assert.equal(stats.gloss_reference_resolved_count + stats.gloss_reference_held_count, stats.gloss_reference_count);
   assert.equal(stats.gloss_forward_count, 5);
   assert.equal(stats.gloss_forward_existing_direct_count, 1);

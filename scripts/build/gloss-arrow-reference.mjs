@@ -6,7 +6,7 @@ import { MEANING_RELATION_ORIGINS } from '../../src/runtime/dictionary-contract.
  * Invariant: a source gloss that begins `→ <reference>` becomes one product `direct` relation (origin
  * `stdict-gloss-reference`) from the meaning that owns the gloss to the meaning of the ONE Canonical record the
  * reference names; a reference that is malformed or names no record, several records, a missing sense or the record
- * itself is held, never guessed. The editors' `→` is not re-judged semantically. `projectDirectReverses()` then mirrors
+ * itself, or a `[Ⅰ]`-style group Canonical cannot verify, is held, never guessed. The editors' `→` is not re-judged semantically. `projectDirectReverses()` then mirrors
  * the forward row like any other `direct`. Canonical senses and relations are never modified.
  *
  * Grammar (read from the ORIGINAL gloss, before the display-only homograph-number removal of gloss-homograph-reference):
@@ -55,6 +55,7 @@ export const HOLD_REASONS = Object.freeze([
   'ambiguous_target',
   'numberless_reference_to_homograph',
   'sense_out_of_range',
+  'group_unsupported',
   'self_reference',
 ]);
 
@@ -76,6 +77,9 @@ export function buildTargetIndex(records, ownsMeaning) {
  * @returns {{ record: object } | { hold: string }}
  */
 export function resolveArrowTarget(reference, index) {
+  // `[Ⅰ]`/`[Ⅱ]` select a sense group of the target. Canonical keeps no group structure (a record is a flat list of senses),
+  // so which senses a group means cannot be proven from it; such a reference is held, never guessed from part of speech.
+  if (reference.group !== null) return { hold: 'group_unsupported' };
   const candidates = index.get(lemmaOf(reference.headword)) ?? [];
   const matching = reference.homograph_no === null
     ? candidates

@@ -57,10 +57,10 @@ reverse already exists, and never mirrors a reverse. Other relation types (`anto
 **STDICT `→` references (Issue #834, owner decision).** A source gloss that begins `→ <reference>` (non-standard form → standard form
 included) is a `direct` link in the existing 유의어 area, in both directions; the gloss text stays as written. The forward row has
 `origin='stdict-gloss-reference'` (`scripts/build/gloss-arrow-reference.mjs`), then `projectDirectReverses()` mirrors it like any other
-`direct`. Only the *target* is identified (never re-judged semantically): headword, homograph number `NN`, sense `「n」` and group `[Ⅰ]`
+`direct`. Only the *target* is identified (never re-judged semantically): headword, homograph number `NN` and sense `「n」`
 are read from the original gloss (before the display-only number removal) and must name exactly one Canonical record with a meaning;
 a malformed reference, a missing or ambiguous target (several homographs without a number, or a number the headword does not have), a
-sense beyond the target's senses and a self reference are held and counted (`meaning_projection_gloss_reference_hold_*_count`). A pair
+sense beyond the target's senses, a `[Ⅰ]`/`[Ⅱ]` group (Canonical keeps no group structure, so it cannot be verified) and a self reference are held and counted (`meaning_projection_gloss_reference_hold_*_count`). A pair
 that already exists as an original `direct` keeps its origin and order and only gains evidence. The Full-only
 `meaning_relation_gloss_sources` rows record the source sense, the reference token's offset and text in the gloss, and the target
 record/sense; `glossReferenceViolations()` re-derives the expected set from `senses`/`meanings` and fails on missing, forged or mismatched rows.
