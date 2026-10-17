@@ -21,6 +21,20 @@
         "tests/factory-ensemble.test.mjs"
       ],
       "protected_contract": "Stage 1 source-bound canonical dictionary cache identity and immutable SQLite reuse"
+    },
+    {
+      "path": "scripts/validate/meaning-gloss-numbers.mjs",
+      "normal_tests": [
+        "tests/meaning-gloss-numbers.test.mjs"
+      ],
+      "protected_contract": "Issue #797 source homonym number detection and completed-scope enforcement for user-facing Meaning glosses"
+    },
+    {
+      "path": "scripts/validate/meaning-gloss-number-scopes.json",
+      "normal_tests": [
+        "tests/meaning-gloss-numbers.test.mjs"
+      ],
+      "protected_contract": "Issue #797 completed 초성 scope registry that gates the user-facing Meaning gloss number check"
     }
   ]
 }

@@ -187,6 +187,20 @@ const RAW_CI_CATEGORIES = Object.freeze({
         ...inProcessCheck('Validate meaning/adjudication references against current canonical', 'meaning-references'),
         tier: 'normal',
       },
+      {
+        ...commandCheck(
+          'Validate user-facing meaning glosses exclude source dictionary homonym numbers (Issue #797)',
+          ['scripts/validate/meaning-gloss-numbers.mjs'],
+        ),
+        tier: 'normal',
+      },
+      {
+        ...testCheck(
+          'tests/meaning-gloss-numbers.test.mjs',
+          'Test Issue #797 source homonym number removal from user-facing meaning glosses',
+        ),
+        tier: 'normal',
+      },
       pnpmCheck('Validate lexical rule inventory', 'validate:rules'),
       testCheck('tests/lexical-rule-inventory.test.mjs', 'Test lexical rule inventory'),
       testCheck('tests/ci-runner.test.mjs', 'Test CI category runner fail-fast behavior'),

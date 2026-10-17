@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "protected_contract": "User-facing Meaning glosses in a completed Issue #797 초성 scope expose no source dictionary homonym disambiguation number",
+  "completed_scopes": [
+    "c02"
+  ],
+  "notes": "Append the 초성 code once that scope's Issue #797 cleanup is merged. scripts/validate/meaning-gloss-numbers.mjs then fails closed for the completed scope while the remaining scopes stay an informational backlog."
+}

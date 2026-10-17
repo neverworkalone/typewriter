@@ -43,6 +43,14 @@
 - 적용 후 `node scripts/meaning/validate.mjs`(complete)로 모든 canonical sense가 정확히 하나의 meaning에 있거나 DROP 기록이 있음을 확인한다.
 - 스펙 파일은 편집 이력으로 보존한다 (`scripts/meaning/pilot-715.json`).
 
+## 사용자 노출 gloss의 원본 동음이의어 번호 제거 (#797)
+
+- `data/canonical/`은 원본 그대로 보존하고, `data/meanings/` **사용자 노출용 gloss**에서 표준국어대사전 **동음이의어 구분 번호(표제어 뒤 두 자리 숫자)**를 제거한다. `‘슬슬02’`→`‘슬슬’`, `‘이01’`→`‘이’`, `→ 마하01.`→`→ 마하.`처럼 인용 표제어·참조 표현·리다이렉트 뜻풀이에 모두 적용한다. 화면 렌더러나 DB 계층에서 정규식으로 숨기거나 별도 참조 ID를 만들지 않고, 편집된 gloss 텍스트 자체를 고친다.
+- **유효한 숫자는 유지한다.** 연도·수량·단위·순번·작품명·고유명사의 일부 등 실제 수치(`60~90cm`, `9월`, `1.5cm`, `제20대`, `제16회`, `제25품(品)`)는 변경하지 않는다. `문자열+두 자리 숫자` 일괄 치환을 금지하고, 문맥상 모호한 후보는 기계적으로 삭제하지 않고 별도 수동 판정으로 남긴다.
+- **원본 sense 식별용 `「N」` 뜻 번호는 이 이슈의 대상이 아니다.** 이슈가 정의한 대상은 표제어 뒤 두 자리 동음이의어 번호이므로, 번호 제거 후에도 `‘까다「4」’`처럼 뜻 번호가 남아 sense 구별을 유지한다.
+- 편집은 기존 `glosses` 스펙(`{ sense_id, gloss }`)으로만 수행하고 Meaning 그룹·ID·`sense_ids`·관계·canonical·adjudication은 바꾸지 않는다. 스펙과 감사 기록은 `scripts/meaning/issue-797-cXX.json`, `scripts/meaning/issue-797-cXX-audit.md`로 보존한다.
+- **지속적 점검 경로.** `node scripts/validate/meaning-gloss-numbers.mjs`가 전체 corpus를 검사한다. `scripts/validate/meaning-gloss-number-scopes.json`에 정리가 끝난 초성 code를 추가하면 그 scope는 남은 번호가 있을 때 실패하고(완료 scope fail-closed), 아직 끝나지 않은 scope는 backlog 수치로만 보고한다. 이 검사는 `scripts/ci/registry.mjs`의 canonical domain Normal check(`tests/meaning-gloss-numbers.test.mjs` 포함)에 연결되어 있다.
+
 ## #764 전량 재편집용 지침(프롬프트)
 
 > 동일 lemma의 **모든 canonical record와 sense**, 이미 편집된 Meaning을 한 번에 확인한다. gloss 단어 유사도나 기존 #716의 KEEP 목록으로 먼저 후보를 제한하지 않는다.
