@@ -21,6 +21,8 @@ Canonical record_id: {{source_record_id}}
 Canonical 뜻풀이: {{canonical_gloss}}
 
 이 출발 의미의 표제어와 뜻풀이만 사용해 작가용 말의 결·연상 후보를 0–8개 생성한다. 웹, 문학, 말뭉치, 그 밖의 외부 문맥을 검색하거나 입력에 없는 사실처럼 보태지 않는다. 장면을 먼저 구성하는 방식도 사용하지 않는다. `near`, `mood`, `scene`, `sensory`, `action`, `association`만 사용하고 `direct`와 `antonym`은 작성하지 않는다. 연상 Tier 1은 비공식 유의어 후보로도 고려할 만큼 가까운 경우에만 사용한다. 각 후보에 같은 출발 의미/그룹 안의 상대 relevance 1–9와 짧은 비인용 근거를 붙인다. 정확한 기존 Canonical 대상 record/sense를 확인할 수 있을 때만 ID를 쓰고, 아니면 ID 없이 text-only로 남긴다. 개수를 채우려고 후보를 보태지 않는다.
+
+각 후보는 `source_lemma, source_record_id, source_sense, method, target_text, target_record_id_or_null, relation_type, relevance, provisional_decision, reasoning(non-quoted), failure_reason` 공통 컬럼으로 기록한다.
 ```
 
 이 실험은 별도의 모델 API 호출이 아니라 Codex 대화 세션에서 수행했다. 당시의 독립된 per-call 원문 프롬프트 로그는 남아 있지 않으므로, 위 블록은 세션에서 적용한 입력·지시를 복원해 정리한 템플릿이며 원시 대화 로그의 축어 인용은 아니다. `{{canonical_gloss}}`는 실제 입력에 제공된 뜻풀이를 가리키며, 보호 출처 자료를 보고서에 복사하지 않기 위한 자리표시자다.
