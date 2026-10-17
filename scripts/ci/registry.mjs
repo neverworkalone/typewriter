@@ -176,10 +176,6 @@ const RAW_CI_CATEGORIES = Object.freeze({
         tier: 'normal',
       },
       {
-        ...testCheck('tests/meaning-rank-order.test.mjs', 'Test meaning rank order agreement between producer and SQLite validator'),
-        tier: 'normal',
-      },
-      {
         ...testCheck('tests/canonical-record-meanings.test.mjs', 'Test Issue #820 canonical-only record meanings (corpus coverage, no Meaning input, record candidates)'),
         tier: 'normal',
       },

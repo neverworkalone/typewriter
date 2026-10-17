@@ -57,7 +57,7 @@ const REQUIRED_PRODUCT_FILES = Object.freeze([
   'runtime/dictionary-build-info.js',
   'runtime/dictionary-contract.js',
   'runtime/dictionary-validation.js',
-  'runtime/meaning-ranking.js',
+  'runtime/meaning-order.js',
   'runtime/protocol.js',
   'runtime/query-adapter.js',
   'runtime/search-query.js',

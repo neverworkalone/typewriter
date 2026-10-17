@@ -2,6 +2,7 @@
 import { computed, nextTick, ref, watch } from 'vue';
 
 import { pageRelationItems } from '../domain/relation-paging.js';
+import { DEFAULT_DEFINITION_LIMIT } from '../runtime/meaning-order.js';
 import { DEFAULT_SETTINGS } from '../ui/settings.js';
 
 const props = defineProps({
@@ -33,6 +34,10 @@ const props = defineProps({
     type: Number,
     default: 0,
   },
+  candidatesExpanded: {
+    type: Boolean,
+    default: false,
+  },
   selectedRecordId: {
     type: String,
     default: null,
@@ -47,7 +52,7 @@ const emit = defineEmits([
   'relation',
   'back',
   'select-candidate',
-  'show-more-candidates',
+  'toggle-more-candidates',
   'candidate-focus',
   'candidate-keydown',
 ]);
@@ -56,6 +61,9 @@ const senses = computed(() => (Array.isArray(props.record.senses) ? props.record
 const settings = computed(() => props.settings || DEFAULT_SETTINGS);
 const showCandidatePicker = computed(() => (
   props.candidateOptions.length + props.hiddenCandidateCount > 1
+));
+const showCandidateToggle = computed(() => (
+  props.interactive && (props.hiddenCandidateCount > 0 || props.candidatesExpanded)
 ));
 const selectedCandidateKey = computed(() => {
   if (!showCandidatePicker.value) return null;
@@ -95,9 +103,26 @@ function pagedItems(sense, group) {
   return pageRelationItems(group.id, group.items, pagesShown.value[pageKey(sense, group)]);
 }
 
-watch(() => props.record.id, () => {
+// 뜻풀이 더보기: a meaning shows its first three definitions until expanded. The state is per displayed sense and is
+// dropped whenever the result, the selected candidate or the displayed senses change, so it never leaks to another one.
+const expandedDefinitions = ref({});
+const isDefinitionExpanded = (sense) => expandedDefinitions.value[sense.id] === true;
+function visibleDefinitionItems(sense, group) {
+  return isDefinitionExpanded(sense) ? group.items : group.items.slice(0, DEFAULT_DEFINITION_LIMIT);
+}
+const hasHiddenDefinitions = (group) => group.items.length > DEFAULT_DEFINITION_LIMIT;
+function toggleDefinitions(sense) {
+  expandedDefinitions.value = { ...expandedDefinitions.value, [sense.id]: !isDefinitionExpanded(sense) };
+}
+watch(() => props.record, () => {
   pagesShown.value = {};
 });
+watch(
+  () => [props.record, selectedCandidateKey.value],
+  () => {
+    expandedDefinitions.value = {};
+  },
+);
 
 async function showMore(sense, group, event) {
   const key = pageKey(sense, group);
@@ -203,11 +228,12 @@ defineExpose({ focusCandidate });
         <span class="candidate-label">{{ option.label }}</span>
       </button>
       <button
-        v-if="interactive && hiddenCandidateCount > 0"
+        v-if="showCandidateToggle"
         class="relation-more candidate-more"
         type="button"
-        @click="emit('show-more-candidates')"
-      >더보기 ({{ hiddenCandidateCount }})</button>
+        :aria-expanded="String(candidatesExpanded)"
+        @click="emit('toggle-more-candidates')"
+      >{{ candidatesExpanded ? '접기' : `더보기 (${hiddenCandidateCount})` }}</button>
     </div>
 
     <div v-if="senses.length === 0" class="result-no-senses">
@@ -236,12 +262,19 @@ defineExpose({ focusCandidate });
           <h3>{{ group.label }}</h3>
           <template v-if="group.kind === 'definition'">
             <p
-              v-for="(item, itemIndex) in group.items"
+              v-for="(item, itemIndex) in visibleDefinitionItems(sense, group)"
               :key="item.id"
               class="definition-text"
             >
               <span v-if="group.items.length > 1" class="definition-number">{{ definitionNumber(itemIndex) }}</span>{{ group.items.length > 1 ? ' ' : '' }}{{ item.text || item.gloss }}
             </p>
+            <button
+              v-if="interactive && hasHiddenDefinitions(group)"
+              class="relation-more definition-more"
+              type="button"
+              :aria-expanded="String(isDefinitionExpanded(sense))"
+              @click="toggleDefinitions(sense)"
+            >{{ isDefinitionExpanded(sense) ? '뜻풀이 접기' : '뜻풀이 더보기' }}</button>
           </template>
           <div v-else class="relation-list">
             <template

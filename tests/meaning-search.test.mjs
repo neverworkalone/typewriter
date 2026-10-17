@@ -85,43 +85,31 @@ function search(database, term) {
   return projectSearchResults(records, response.matches);
 }
 
-test('meaning search: candidates are meanings, ranked by stored counts, at most 3 by default', async () => {
+test('meaning search: candidates are meanings in STDICT order, at most 3 by default', async () => {
   const directory = await mkdtemp(path.join(tmpdir(), 'typewriter-meaning-search-'));
   try {
     const database = new DatabaseSync(await buildFixture(directory), { readOnly: true });
     try {
-      const stored = database.prepare(
-        'SELECT id, lexical_relation_count AS l, exploratory_relation_count AS e FROM meanings WHERE lemma = ? ORDER BY display_rank',
-      ).all('가다').map((row) => ({ ...row }));
-      // 유의어+반의어 DESC, then 말의 결+연상 DESC, then ID; duplicate targets count once (m10_3: w002 direct + near).
-      assert.deepEqual(stored, [
-        { id: 'm010_3', l: 2, e: 1 },
-        { id: 'm010_1', l: 1, e: 0 },
-        { id: 'm010_2', l: 0, e: 2 },
-        { id: 'm010_4', l: 0, e: 0 },
-        { id: 'm010_5', l: 0, e: 0 },
-      ]);
-
-      // One result for the lemma whose candidates are its meanings.
+      // One result for the lemma whose candidates are its meanings, all reachable.
       const [result, ...rest] = search(database, '가다');
       assert.equal(rest.length, 0);
-      assert.deepEqual(result.senses.map(({ id }) => id), stored.map(({ id }) => id));
-      assert.deepEqual(result.primarySenseIds, ['m010_3', 'm010_1', 'm010_2']);
+      assert.deepEqual(result.senses.map(({ id }) => id), ['m010_1', 'm010_2', 'm010_3', 'm010_4', 'm010_5']);
+      assert.deepEqual(result.primarySenseIds, ['m010_1', 'm010_2', 'm010_3']);
       assert.deepEqual(result.moreSenseIds, ['m010_4', 'm010_5']);
       const candidates = expandExactSearchCandidates([result]);
       assert.deepEqual(candidates.filter(({ isMore }) => !isMore).map(({ senseId }) => senseId), result.primarySenseIds);
       assert.equal(candidates.length, 5);
 
       // Relation targets open the target meaning (its ID-base record + meaning ID), not a raw sense.
-      const top = result.senses[0];
+      const top = result.senses[2];
       assert.deepEqual(top.relations.map(({ targetId, targetSenseId }) => [targetId, targetSenseId]).sort(), [
         ['w002', 'm002'], ['w002', 'm002'], ['w003', 'm003'],
       ]);
 
-      // Without any relation, one meaning (lowest ID) is still shown and the rest wait behind 더보기.
+      // Up to three candidates are all shown, whether or not they have relations.
       const [plain] = search(database, '나무');
-      assert.deepEqual(plain.primarySenseIds, ['m012_1']);
-      assert.deepEqual(plain.moreSenseIds, ['m012_2']);
+      assert.deepEqual(plain.primarySenseIds, ['m012_1', 'm012_2']);
+      assert.deepEqual(plain.moreSenseIds, []);
 
       // A record whose every sense is out_of_scope has no meaning: no candidate and no empty card.
       assert.deepEqual(search(database, '파'), []);
@@ -164,8 +152,8 @@ test('meaning record: a duplicate sense whose survivor is in another record stil
     database.exec(SQLITE_SCHEMA_SQL);
     database.exec(`
       INSERT INTO records (id, record_type, role, lemma) VALUES ('w001', 'entry', 'start', '가'), ('w002', 'entry', 'start', '가');
-      INSERT INTO meanings (id, lemma, gloss, record_id, lexical_relation_count, exploratory_relation_count, display_rank)
-        VALUES ('m001', '가', '첫째 뜻풀이.', 'w001', 0, 0, 1);
+      INSERT INTO meanings (id, lemma, gloss, record_id, homograph_no)
+        VALUES ('m001', '가', '첫째 뜻풀이.', 'w001', NULL);
       INSERT INTO meaning_members (meaning_id, position, sense_id, record_id) VALUES ('m001', 0, 'w001-s1', 'w001');
       INSERT INTO sense_adjudications (sense_id, reason, record_id, duplicate_of_sense_id) VALUES ('w002-s1', 'duplicate', 'w002', 'w001-s1');
     `);

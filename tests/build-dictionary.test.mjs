@@ -368,16 +368,10 @@ test('builds the meaning layer and projected meaning relations with provenance',
         assert.equal(relation.origin, 'stdict-sense-projection');
         assert.equal(relation.sources, undefined);
       }
-      // Ranking metadata is precomputed: dense unique display_rank following counts DESC, then numeric ID.
-      const ranked = database.prepare(
-        'SELECT id, record_id, lexical_relation_count AS l, exploratory_relation_count AS e, display_rank AS r FROM meanings ORDER BY display_rank',
-      ).all().map((row) => ({ ...row }));
-      assert.deepEqual(ranked.map(({ r }) => r), ranked.map((_, index) => index + 1));
-      for (let index = 1; index < ranked.length; index += 1) {
-        const [a, b] = [ranked[index - 1], ranked[index]];
-        assert.ok(a.l > b.l || (a.l === b.l && (a.e > b.e || (a.e === b.e && Number(a.id.slice(1).split('_')[0]) <= Number(b.id.slice(1).split('_')[0])))), `${a.id} before ${b.id}`);
-      }
-      assert.ok(ranked.every(({ id, record_id: recordId }) => recordId === `w${id.slice(1).split('_')[0]}`));
+      // The only ordering metadata is the source homograph number; the record owner is derived from the ID.
+      const stored = database.prepare('SELECT id, record_id, homograph_no FROM meanings').all().map((row) => ({ ...row }));
+      assert.ok(stored.every(({ id, record_id: recordId }) => recordId === `w${id.slice(1).split('_')[0]}`));
+      assert.ok(stored.every(({ homograph_no: no }) => no === null || (Number.isInteger(no) && no >= 1 && no <= 99)));
       assert.deepEqual(database.prepare('PRAGMA foreign_key_check').all(), []);
     } finally {
       database.close();

@@ -48,6 +48,12 @@
         "pattern": "\\S"
       }
     },
+    "homograph_no": {
+      "type": "integer",
+      "description": "The official STDICT homograph number of the headword (the two-digit suffix of 각본01), the dictionary's own compilation order of same-spelled words. Present only when the source headword carries it.",
+      "minimum": 1,
+      "maximum": 99
+    },
     "senses": {
       "type": "array",
       "minItems": 1,

@@ -5,7 +5,7 @@ import {
   UI_GROUP_IDS,
 } from './relation-groups.js';
 import { isPagedRelationGroup } from './relation-paging.js';
-import { compareMeaningRank, partitionMeanings } from '../runtime/meaning-ranking.js';
+import { compareMeaningOrder, partitionCandidates } from '../runtime/meaning-order.js';
 
 function copyNullable(value) {
   return value === undefined ? null : value;
@@ -106,13 +106,9 @@ export function projectSense(sense) {
       .map((group) => [group.id, group]),
   );
 
-  // Meaning view only: precomputed ranking counts and the source senses kept as evidence.
-  const meaningFields = Number.isInteger(sense.lexical_relation_count)
-    ? {
-      lexical_relation_count: sense.lexical_relation_count,
-      exploratory_relation_count: sense.exploratory_relation_count,
-      senseIds: Array.isArray(sense.sense_ids) ? [...sense.sense_ids] : [],
-    }
+  // Meaning view only: the STDICT homograph number (display order) and the source senses kept as evidence.
+  const meaningFields = Array.isArray(sense.sense_ids)
+    ? { homograph_no: sense.homograph_no ?? null, senseIds: [...sense.sense_ids] }
     : {};
 
   return {
@@ -161,11 +157,12 @@ export function projectRecord(record, {
   return projected;
 }
 
-const isMeaningSense = (sense) => Number.isInteger(sense.lexical_relation_count);
+const isMeaningSense = (sense) => Array.isArray(sense.senseIds);
 
 /**
  * Collapse the records of one lemma (homonyms) into a single result whose senses are the lemma's meanings in
- * display order. Raw-sense records (no meaning counts) are returned unchanged.
+ * STDICT compilation order. The result keeps the position of the lemma's first record, so the match order of
+ * different lemmas is unchanged. Raw-sense records (no meaning evidence) are returned unchanged.
  */
 function mergeMeaningRecords(records) {
   const byLemma = new Map();
@@ -186,20 +183,20 @@ function mergeMeaningRecords(records) {
     return [{
       ...group[0],
       searchForms: [...new Set(group.flatMap(({ searchForms }) => searchForms))],
-      senses: [...meanings].sort(compareMeaningRank),
+      senses: [...meanings].sort(compareMeaningOrder),
       hasRelations: meanings.some(({ hasRelations }) => hasRelations),
     }];
   }).flat();
 }
 
 /**
- * One default/더보기 split for the whole search: the default view (`primarySenseIds`, at most 3) and the
- * remainder (`moreSenseIds`) are chosen across every matched record, not per lemma. Record order (match tier)
- * is unchanged.
+ * One default/더보기 split for the whole search: the first three candidates in display order (match order, then
+ * STDICT order within a lemma) are the default view (`primarySenseIds`); all others are `moreSenseIds`. The split is
+ * made across every matched record, not per lemma, and does not depend on any relation.
  */
 function partitionAcrossRecords(records) {
   const meaningRecords = records.filter(({ senses }) => senses.length > 0 && senses.every(isMeaningSense));
-  const { primary } = partitionMeanings(meaningRecords.flatMap(({ senses }) => senses));
+  const { primary } = partitionCandidates(meaningRecords.flatMap(({ senses }) => senses));
   const primaryIds = new Set(primary.map(({ id }) => id));
   return records.map((record) => {
     if (!meaningRecords.includes(record)) return record;

@@ -89,7 +89,7 @@ test('derives dictionary metadata from the supplied canonical directory and reje
       ['runtime/dictionary-build-info.js', 'export const EXPECTED_DICTIONARY_SOURCE_REVISION = "fixture";\n'],
       ['runtime/dictionary-contract.js', '// fixture dictionary contract\n'],
       ['runtime/dictionary-validation.js', '// fixture dictionary validation\n'],
-      ['runtime/meaning-ranking.js', '// fixture meaning ranking\n'],
+      ['runtime/meaning-order.js', '// fixture meaning ranking\n'],
       ['runtime/protocol.js', '// fixture protocol\n'],
       ['runtime/query-adapter.js', '// fixture adapter\n'],
       ['runtime/search-query.js', '// fixture search\n'],
