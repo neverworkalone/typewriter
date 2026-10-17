@@ -1,11 +1,13 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
+import { applyEdits } from './apply-edits.mjs';
 import { initialCodeOf, readAdjudications } from './contract.mjs';
-import { readCanonicalEntries } from './initial.mjs';
-import { projectMeaningRelations } from './project.mjs';
+import { projectInitialMeanings, readCanonicalEntries } from './initial.mjs';
+import { MEANING_RELATION_ORIGIN, projectMeaningRelations } from './project.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const canonicalDir = path.join(root, 'data/canonical');
@@ -23,6 +25,10 @@ const spec = JSON.parse(readFileSync(path.join(root, 'scripts/meaning/issue-764-
 const canonicalRecords = readCanonicalEntries(canonicalDir);
 const canonical = canonicalRecords.filter((record) => initialCodeOf(record.lemma) === 'c01');
 const canonicalSense = new Map();
+const canonicalRecordBySense = new Map();
+for (const record of canonicalRecords) {
+  for (const sense of record.senses ?? []) canonicalRecordBySense.set(sense.id, { ...sense, lemma: record.lemma, recordId: record.id });
+}
 for (const record of canonical) {
   for (const sense of record.senses ?? []) canonicalSense.set(sense.id, { lemma: record.lemma, recordId: record.id });
 }
@@ -71,6 +77,38 @@ test('C01 canonical senses have exactly one Meaning or explicit duplicate adjudi
     assert.equal(canonicalSense.get(item.duplicate_of)?.lemma, item.lemma,
       item.sense_id + ': duplicate target must be a canonical sense of the same lemma');
   }
+});
+
+test('C01 edit spec replays from the recorded baseline meaning state', () => {
+  const initialMeanings = projectInitialMeanings(canonicalRecords);
+  const initialMeaningIds = new Map(initialMeanings.map((row) => [row.sense_ids[0], row.id]));
+  const baseline = '6f37ba315daa77a5dfe4974d39721c0919bf7937';
+  const baselineFiles = execFileSync('git', ['ls-tree', '-r', '--name-only', baseline, 'data/meanings', 'data/adjudication'], {
+    cwd: root,
+    encoding: 'utf8',
+  }).trim().split('\n');
+  const baselineRows = (directory) => baselineFiles
+    .filter((file) => file.startsWith(`${directory}/`) && file.endsWith('.jsonl'))
+    .flatMap((file) => execFileSync('git', ['show', `${baseline}:${file}`], { cwd: root, encoding: 'utf8' })
+      .split('\n').filter(Boolean).map((line) => JSON.parse(line)));
+  const replay = applyEdits({
+    meanings: baselineRows('data/meanings'),
+    adjudications: baselineRows('data/adjudication'),
+    initialMeaningIds,
+  }, spec);
+  const normalized = (items) => items.map((row) => ({
+    id: row.id,
+    lemma: row.lemma,
+    gloss: row.gloss,
+    sense_ids: [...row.sense_ids],
+  })).sort((a, b) => a.id.localeCompare(b.id));
+  const replayC01 = replay.meanings.filter((row) => initialCodeOf(row.lemma) === 'c01');
+  const storedAdjudications = readAdjudications(path.join(root, 'data/adjudication')).rows
+    .filter((item) => initialCodeOf(item.lemma) === 'c01');
+  const replayC01Adjudications = replay.adjudications.filter((item) => initialCodeOf(item.lemma) === 'c01');
+  assert.deepEqual(normalized(replayC01), normalized(rows), 'baseline replay must reproduce every C01 Meaning row');
+  assert.deepEqual(replayC01Adjudications, storedAdjudications,
+    'baseline replay must reproduce every C01 adjudication');
 });
 
 const crossRecordNegativeControls = [
@@ -746,6 +784,48 @@ test('C01 positive identity controls preserve valid cross-record and polysemous 
   assert.ok(sameMeaning(['w27590-s1', 'w27592-s1']), '공로 retains the overlapping public-road definitions');
 });
 
+test('C01 Stage 2 source-ID controls separate opposing identities and retain natural extensions', () => {
+  const separate = [
+    ['강매', 'w9742-s1', 'w9745-s1'],
+    ['강매하다', 'w9744-s1', 'w388639-s1'],
+    ['강매되다', 'w9743-s1', 'w9746-s1'],
+    ['간선', 'w4345-s1', 'w4347-s1'],
+    ['간선', 'w4349-s1', 'w4347-s1'],
+    ['간선하다', 'w4346-s1', 'w387906-s1'],
+    ['간선하다', 'w387907-s1', 'w387906-s1'],
+    ['가봉', 'w1637-s1', 'w384563-s1'],
+    ['가봉하다', 'w1636-s1', 'w384564-s1'],
+    ['가설', 'w2644-s1', 'w2647-s1'],
+    ['가설', 'w2644-s1', 'w2649-s1'],
+    ['가설', 'w2647-s1', 'w2649-s1'],
+    ['가설하다', 'w2646-s1', 'w2648-s1'],
+    ['가설하다', 'w2646-s1', 'w389773-s1'],
+    ['가설하다', 'w2648-s1', 'w389773-s1'],
+    ['가설되다', 'w2645-s1', 'w389763-s1'],
+    ['가설되다', 'w2645-s1', 'w2650-s1'],
+    ['가설되다', 'w389763-s1', 'w2650-s1'],
+  ];
+  for (const [lemma, left, right] of separate) {
+    assert.equal(rowBySense.get(left)?.lemma, lemma, `${lemma}: ${left} belongs to the expected lemma`);
+    assert.equal(rowBySense.get(right)?.lemma, lemma, `${lemma}: ${right} belongs to the expected lemma`);
+    assert.notEqual(rowBySense.get(left)?.id, rowBySense.get(right)?.id,
+      `${lemma}: ${left} and ${right} are separate source-bound identities`);
+  }
+
+  for (const senses of [
+    ['w4345-s1', 'w4349-s1'],
+    ['w4346-s1', 'w387907-s1'],
+    ['w2644-s1', 'w2644-s2'],
+    ['w2649-s1', 'w2649-s2', 'w2651-s1', 'w2651-s2'],
+    ['w2646-s1', 'w2646-s2'],
+    ['w389773-s1', 'w389773-s2'],
+    ['w2645-s1', 'w2645-s2'],
+    ['w2650-s1', 'w2650-s2'],
+  ]) {
+    assert.ok(sameMeaning(senses), `valid same-identity extension remains grouped: ${senses.join(', ')}`);
+  }
+});
+
 test('C01 ga-mo relation projection stays on the self-mother address Meaning', () => {
   const relevantRecords = canonicalRecords
     .filter((record) => ['w1020', 'w1023', 'w387920', 'w1523', 'w2747'].includes(record.id));
@@ -767,6 +847,73 @@ test('C01 ga-mo relation projection stays on the self-mother address Meaning', (
     const unrelated = rowBySense.get(id);
     assert.equal(relations.some((item) => item.source_meaning_id === unrelated.id), false,
       id + ' must not inherit 家母 relations');
+  }
+});
+
+test('C01 Stage 2 source relations retain identity endpoints and projection provenance', () => {
+  const directPairs = [
+    ['w9742-s1', 'w70880-s1'], ['w9742-s1', 'w223619-s1'],
+    ['w9745-s1', 'w70882-s1'], ['w9745-s1', 'w460317-s1'],
+    ['w9743-s1', 'w224518-s1'], ['w9746-s1', 'w224776-s1'],
+    ['w9744-s1', 'w70881-s1'], ['w9744-s1', 'w224775-s1'],
+    ['w388639-s1', 'w71322-s1'], ['w388639-s1', 'w460318-s1'],
+    ['w4349-s1', 'w6230-s1'], ['w387907-s1', 'w6232-s1'],
+    ['w2649-s1', 'w400479-s1'], ['w389773-s1', 'w41604-s1'],
+  ];
+  const antonymPairs = [
+    ['w223619-s1', 'w460317-s1'],
+    ['w224775-s1', 'w460318-s1'],
+    ['w224518-s1', 'w224776-s1'],
+  ];
+  const involvedSenseIds = new Set([...directPairs, ...antonymPairs].flat());
+  const recordIds = new Set([...involvedSenseIds].map((senseId) => canonicalRecordBySense.get(senseId)?.recordId));
+  assert.equal(recordIds.has(undefined), false, 'every relation control must have a canonical source record');
+  const relevantRecords = canonicalRecords.filter((record) => recordIds.has(record.id));
+  const externalCodes = new Set([...involvedSenseIds]
+    .map((senseId) => initialCodeOf(canonicalRecordBySense.get(senseId).lemma))
+    .filter((code) => code !== 'c01'));
+  const externalRows = readdirSync(meaningDir).filter((file) => [...externalCodes].some((code) => file.startsWith(`${code}_`))
+    && file.endsWith('.jsonl')).sort()
+    .flatMap((file) => readFileSync(path.join(meaningDir, file), 'utf8').split('\n').filter(Boolean)
+      .map((line) => JSON.parse(line)))
+    .filter((row) => row.sense_ids.some((senseId) => involvedSenseIds.has(senseId)));
+  const allMeanings = [...rows, ...externalRows];
+  const meaningBySense = new Map(allMeanings.flatMap((row) => row.sense_ids.map((senseId) => [senseId, row])));
+  const adjudications = readAdjudications(path.join(root, 'data/adjudication')).rows;
+  const { relations } = projectMeaningRelations({ records: relevantRecords, meanings: allMeanings, adjudications });
+  const projectedFor = (sourceSenseId, targetSenseId, type) => relations.find((item) =>
+    item.source_meaning_id === meaningBySense.get(sourceSenseId)?.id
+    && item.target_meaning_id === meaningBySense.get(targetSenseId)?.id
+    && item.type === type);
+  const assertProvenance = (sourceSenseId, targetSenseId, type) => {
+    const source = canonicalRecordBySense.get(sourceSenseId);
+    const position = source.relations.findIndex((item) => item.type === type && item.target_sense === targetSenseId);
+    assert.notEqual(position, -1, `${sourceSenseId} must have the canonical ${type} relation to ${targetSenseId}`);
+    const projected = projectedFor(sourceSenseId, targetSenseId, type);
+    assert.ok(projected, `${sourceSenseId} -> ${targetSenseId} must project to distinct Meaning endpoints`);
+    assert.equal(projected.origin, MEANING_RELATION_ORIGIN);
+    const provenance = projected.sources.find((item) => item.source_sense_id === sourceSenseId);
+    assert.ok(provenance, `${sourceSenseId} must remain the projected relation provenance`);
+    assert.deepEqual(provenance, {
+      source_sense_id: sourceSenseId,
+      source_position: position,
+      source_redirected: 0,
+      target_redirected: 0,
+    });
+  };
+  for (const [sourceSenseId, targetSenseId] of directPairs) {
+    assert.notEqual(meaningBySense.get(sourceSenseId)?.id, meaningBySense.get(targetSenseId)?.id,
+      `${sourceSenseId} and ${targetSenseId} must remain distinct relation endpoints`);
+    assertProvenance(sourceSenseId, targetSenseId, 'direct');
+  }
+  for (const [leftSenseId, rightSenseId] of antonymPairs) {
+    assert.notEqual(meaningBySense.get(leftSenseId)?.id, meaningBySense.get(rightSenseId)?.id,
+      `${leftSenseId} and ${rightSenseId} must not collapse an antonym pair into self-relations`);
+    const directions = [[leftSenseId, rightSenseId], [rightSenseId, leftSenseId]]
+      .filter(([sourceSenseId, targetSenseId]) => canonicalRecordBySense.get(sourceSenseId).relations
+        .some((item) => item.type === 'antonym' && item.target_sense === targetSenseId));
+    assert.ok(directions.length > 0, `${leftSenseId}/${rightSenseId} must retain canonical antonym evidence`);
+    for (const [sourceSenseId, targetSenseId] of directions) assertProvenance(sourceSenseId, targetSenseId, 'antonym');
   }
 });
 
