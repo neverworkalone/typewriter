@@ -21,6 +21,13 @@
         "tests/factory-ensemble.test.mjs"
       ],
       "protected_contract": "Stage 1 source-bound canonical dictionary cache identity and immutable SQLite reuse"
+    },
+    {
+      "path": "scripts/benchmark/sqlite-runtime.mjs",
+      "normal_tests": [
+        "tests/runtime-query-adapter.test.mjs"
+      ],
+      "protected_contract": "Real SQLite WASM and native query adapter parity and runtime behavior"
     }
   ]
 }

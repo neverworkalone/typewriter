@@ -299,8 +299,8 @@ checkpoint is not started as a second GitHub Actions workflow.
 
 `.github/workflows/deep.yml` owns scheduled and manual full validation. Manual
 dispatch validates the selected branch or commit. It runs `pnpm run ci:all`, which
-includes normal validation followed by reproducibility and the
-scale benchmark. Its weekly schedule is Sunday 22:00 UTC (Monday 07:00 KST). Deep
+includes normal validation followed by current-canonical SQLite reproducibility.
+Its weekly schedule is Sunday 22:00 UTC (Monday 07:00 KST). Deep
 CI does not run automatically for pull requests; use the manual dispatch when a PR
 needs the full validation path.
 
@@ -327,10 +327,6 @@ level or workflow. Their sources stay in place; run one directly, for example:
 node --test tests/m5-11-admission.test.mjs
 pnpm run batch:issue-223:check
 ```
-
-The M7-1 deep benchmark measures the real 5K release baseline and deterministic
-100K/500K/1M workloads. See the [recorded method and scale results](m7-1-scale-benchmark.md)
-and the [machine-readable report](m7-1-scale-benchmark.json).
 
 The registry in `scripts/ci/registry.mjs` owns only the test files registered as CI
 checks; each registered test file has exactly one owner. Manual tests stay

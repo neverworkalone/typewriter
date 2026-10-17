@@ -343,7 +343,7 @@ test('PR workflow routes an affected exact-head Deep gate into ci:pr and only it
     command: () => ({ executable: 'synthetic', args: ['normal'] }),
   }, { owner: 'canonical', tier: 'normal' });
   const selectedDeep = CI_CATEGORIES.deep.checks.find(
-    (check) => check.label === 'Run 100K/500K/1M release-shaped performance and scale benchmark',
+    (check) => check.inProcess === 'deep-m2-reproducibility',
   );
   const unrelatedDeep = CI_CATEGORIES.batch.checks.find(
     (check) => check.label === 'Test Issue #400/#446 relation enrichment pilot contract, backfill queue and canonical apply',
@@ -355,13 +355,7 @@ test('PR workflow routes an affected exact-head Deep gate into ci:pr and only it
   const baseSha = 'a'.repeat(40);
   const headSha = 'b'.repeat(40);
   const workflow = await readFile(path.resolve(TEST_DIRECTORY, '../.github/workflows/ci.yml'), 'utf8');
-  for (const changedPath of [
-    'scripts/benchmark/sqlite-runtime.mjs',
-    'src/runtime/dictionary-contract.js',
-    'src/runtime/sqlite-query.js',
-    'src/runtime/search-query.js',
-    'src/runtime/dictionary-validation.js',
-  ]) {
+  for (const changedPath of ['scripts/verify/m2-pipeline.mjs']) {
     const scenarioDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-ci-pr-scenario-'));
     t.after(() => rm(scenarioDirectory, { recursive: true, force: true }));
     const ledgerPath = path.join(scenarioDirectory, 'ledger.jsonl');

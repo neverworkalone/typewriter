@@ -19,7 +19,6 @@ node --test tests/lexical-quality.test.mjs
 pnpm run ci:fast
 pnpm run ci:normal
 pnpm run ci:all
-pnpm run benchmark:canonical --sizes=500000,1000000 --sqlite-scale=500000,1000000 --fixed-level-evidence=config/ci-level-evidence.json
 ```
 
 The validator scans only `data/canonical/` and its `.jsonl` files. It does not scan
@@ -73,8 +72,8 @@ The public CI levels are nested:
 - `ci:fast`: canonical, lexical, and toolchain gates for early pull-request
   feedback, including the complete global audit and one SQLite build.
 - `ci:normal`: `ci:fast` plus current batch, product, and artifact gates.
-- `ci:all`: `ci:normal` plus independent current-revision
-  reproducibility, and the 500K/1M synthetic benchmark.
+- `ci:all`: `ci:normal` plus independent current-revision SQLite
+  reproducibility over the complete Canonical corpus.
 
 Pull requests run one `ci:normal` process. It emits a `ci:fast` checkpoint
 after the canonical, lexical, and toolchain categories, then continues with
@@ -100,32 +99,3 @@ Historical Wave A/Wave B replay is also reserved for the deep/manual level. The
 normal path retains the batch contracts and current-canonical regressions that
 protect merge correctness, while expensive historical/admission replay remains
 available in `ci:deep` and `ci:all`.
-
-For scale evidence, the benchmark generates self-authored synthetic JSONL
-without adding a 500K/1M-record corpus to the repository. It runs the real
-current-canonical corpus phases in the synthetic mode: semantic decision
-materialization, topic evidence, complete lexical quality, dataset validation,
-normalization, SQLite construction, shared-database validation, product
-consumption, and two independent deep SQLite rebuilds. Each result records
-wall-clock time, memory, validator result counts, canonical parse/index/scan
-counts, SQLite build count, and context transport counts. These are reported
-as corpus-dependent components, not as complete CI-level timings. Supplying
-`--fixed-level-evidence` reads a checked-in exact-head evidence record. That
-record stores the exact-head level wall-clock, the current-canonical corpus
-baseline, and the derived fixed remainder; the benchmark adds only the fixed
-remainder to each measured scale component so semantic/lexical/SQLite work is
-not counted twice. Batch checks remain against their
-authoritative fixtures and are included in that fixed remainder; they are
-intentionally not synthesized from generated records.
-
-The checked-in evidence records the Actions run used for each level. For the
-deep level, the fixed remainder is taken from the exact-head `ci:all` window
-before the scale benchmark, so the 500K/1M benchmark itself is not counted
-again when its measured corpus component is composed with the fixed work.
-
-Synthetic JSONL generation and construction of the synthetic authored decision
-source are fixture preparation, not CI runner gates, so both are excluded from
-the reported corpus-dependent wall-clock component. The generated shape keeps
-one reference-only noun sense per record and gives 23.8% of non-initial records
-one `near` relation, matching the current canonical relation density closely
-enough for scale measurement without introducing a second editorial corpus.

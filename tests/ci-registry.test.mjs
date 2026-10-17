@@ -427,7 +427,7 @@ test('current-canonical surface-form gate runs in-process on the shared projecti
   assert.equal(checks[projectionIndex].command({}).executable, '[in-process]');
 });
 
-test('CI levels are nested and deep owns the scale benchmark', async () => {
+test('CI levels are nested and Deep retains current-canonical reproducibility only', async () => {
   assert.deepEqual(
     CI_NORMAL_CATEGORY_ORDER.slice(0, CI_FAST_CATEGORY_ORDER.length),
     CI_FAST_CATEGORY_ORDER,
@@ -475,27 +475,16 @@ test('CI levels are nested and deep owns the scale benchmark', async () => {
       ['scripts/factory/freshness.mjs'],
     ],
   );
-  assert.equal(
-    CI_CATEGORIES.product.checks.some(
-      (check) => check.testFiles?.includes('tests/scale-benchmark.test.mjs'),
-    ),
-    true,
-  );
   assert.deepEqual(CI_DEEP_CATEGORY_ORDER, ['deep']);
-  assert.equal(
-    CI_CATEGORIES.deep.checks.at(-1).label,
-    'Run 100K/500K/1M release-shaped performance and scale benchmark',
-  );
-  assert.deepEqual(
-    CI_CATEGORIES.deep.checks.at(-1).command({}).args,
-    [
-      'run',
-      'benchmark:release',
-      '--sizes=100000,500000,1000000',
-      '--sqlite-scale=100000,500000,1000000',
-      '--fixed-level-evidence=config/ci-level-evidence.json',
-    ],
-  );
+  assert.ok(CI_CATEGORIES.deep.checks.some(
+    (check) => check.inProcess === 'deep-m2-reproducibility',
+  ));
+  assert.ok(CI_CATEGORIES.deep.checks.some(
+    (check) => check.testFiles?.includes('tests/reproducibility.test.mjs'),
+  ));
+  assert.ok(CI_CATEGORIES.deep.checks.every(
+    (check) => !/100K|500K|1M|scale benchmark/iu.test(check.label),
+  ));
 });
 
 test('Normal coverage additions bind actual always-on tests without weakening existing Deep coverage', () => {
@@ -624,7 +613,6 @@ test('any valid Stage 1 trash chunk takes Normal while tampering and unknown pat
 
 test('Deep gate separates validated data from affected contracts and fails closed', async () => {
   const deepCheckIds = (result) => result.selectedDeepChecks ?? [];
-  const benchmarkId = 'deep/Run 100K/500K/1M release-shaped performance and scale benchmark';
   const relationId = 'batch/Test Issue #400/#446 relation enrichment pilot contract, backfill queue and canonical apply';
   const artifactPolicyId = 'artifacts/Test artifact policy';
 
@@ -643,23 +631,21 @@ test('Deep gate separates validated data from affected contracts and fails close
     assert.equal(classifyDeepGatePaths([pathValue]).deepMode, 'full', pathValue);
   }
 
-  assert.deepEqual(deepCheckIds(classifyDeepGatePaths(['scripts/benchmark/sqlite-runtime.mjs'])), [benchmarkId]);
+  assert.equal(classifyDeepGatePaths(['scripts/benchmark/sqlite-runtime.mjs']).deepMode, 'none');
   for (const pathValue of [
     'src/runtime/dictionary-contract.js',
     'src/runtime/sqlite-query.js',
     'src/runtime/search-query.js',
     'src/runtime/dictionary-validation.js',
   ]) {
-    assert.deepEqual(deepCheckIds(classifyDeepGatePaths([pathValue])), [benchmarkId], pathValue);
+    assert.deepEqual(deepCheckIds(classifyDeepGatePaths([pathValue])), [], pathValue);
   }
-  assert.deepEqual(deepCheckIds(classifyDeepGatePaths(['config/ci-level-evidence.json'])), [benchmarkId]);
   assert.deepEqual(deepCheckIds(classifyDeepGatePaths(['tests/artifact-policy.test.mjs'])), [artifactPolicyId]);
   assert.deepEqual(deepCheckIds(classifyDeepGatePaths(['scripts/relation/backfill-apply.test.mjs'])), [relationId]);
   assert.deepEqual(
     deepCheckIds(classifyDeepGatePaths(['schema/canonical-record.schema.json'])).sort(),
     [
       'deep/Run current-revision SQLite reproducibility audit',
-      'deep/Run 100K/500K/1M release-shaped performance and scale benchmark',
       'deep/Run single-pass global canonical audit',
       'deep/Test reproducible dictionary builds',
     ].sort(),
@@ -1109,8 +1095,8 @@ test('documented Node baseline matches package.json engines', async () => {
 });
 
 
-test('PR gate never selects Full Deep and preserves affected checks even alongside classifier paths', async () => {
-  const benchmark = 'deep/Run 100K/500K/1M release-shaped performance and scale benchmark';
+test('PR gate skips Deep for classifier changes and selects only affected current checks', async () => {
+  const reproducibility = 'deep/Run current-revision SQLite reproducibility audit';
   const registry = routePrDeepGate(classifyDeepGateDiff('base', 'head', {
     runGit: (args) => {
       assert.equal(args[0], 'diff');
@@ -1131,22 +1117,26 @@ test('PR gate never selects Full Deep and preserves affected checks even alongsi
   const mixed = routePrDeepGate(classifyDeepGateDiff('base', 'head', {
     runGit: (args) => {
       assert.equal(args[0], 'diff');
-      return Buffer.from('scripts/ci/registry.mjs\0scripts/benchmark/sqlite-runtime.mjs\0');
+      return Buffer.from('scripts/ci/registry.mjs\0scripts/verify/m2-pipeline.mjs\0');
     },
   }));
-  assert.equal(mixed.deepMode, 'selective');
-  assert.deepEqual(mixed.selectedDeepChecks, [benchmark]);
-  assert.deepEqual(mixed.matchedTriggers.map(({ path }) => path), ['scripts/benchmark/sqlite-runtime.mjs']);
+  assert.equal(mixed.deepMode, 'none');
+  assert.deepEqual(mixed.selectedDeepChecks, []);
+  assert.equal(mixed.prFallbackReason, 'classifier-or-ci-contract-path');
 
-  const direct = routePrDeepGate(classifyDeepGatePaths(['scripts/benchmark/sqlite-runtime.mjs']));
+  const runtime = routePrDeepGate(classifyDeepGatePaths(['scripts/benchmark/sqlite-runtime.mjs']));
+  assert.equal(runtime.deepMode, 'none');
+  assert.deepEqual(runtime.selectedDeepChecks, []);
+
+  const direct = routePrDeepGate(classifyDeepGatePaths(['scripts/verify/m2-pipeline.mjs']));
   assert.equal(direct.deepMode, 'selective');
-  assert.deepEqual(direct.selectedDeepChecks, [benchmark]);
+  assert.deepEqual(direct.selectedDeepChecks, [reproducibility]);
 
   const unknownWithDeep = routePrDeepGate(classifyDeepGateDiff('base', 'head', {
-    runGit: () => Buffer.from('unclassified.file\0scripts/benchmark/sqlite-runtime.mjs\0'),
+    runGit: () => Buffer.from('unclassified.file\0scripts/verify/m2-pipeline.mjs\0'),
   }));
-  assert.equal(unknownWithDeep.deepMode, 'selective');
-  assert.deepEqual(unknownWithDeep.selectedDeepChecks, [benchmark]);
+  assert.equal(unknownWithDeep.deepMode, 'none');
+  assert.deepEqual(unknownWithDeep.selectedDeepChecks, []);
   assert.equal(unknownWithDeep.prFallbackReason, 'unclassified-path');
 
   const missingDiff = routePrDeepGate(classifyDeepGateDiff('base', 'head', {

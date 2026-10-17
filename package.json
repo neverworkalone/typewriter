@@ -28,8 +28,6 @@
     "validate:corpus-candidate-review": "node scripts/reference/validate-corpus-candidate-review.mjs",
     "normalize": "node scripts/normalize/canonical.mjs",
     "build:dictionary": "node scripts/build/dictionary.mjs",
-    "benchmark:release": "node --max-old-space-size=8192 scripts/benchmark/canonical-validation.mjs --release-performance",
-    "benchmark:canonical": "node --max-old-space-size=8192 scripts/benchmark/canonical-validation.mjs",
     "package": "bash pack.sh",
     "package:minify": "bash pack.sh --minify",
     "validate:package": "node scripts/validate-package.mjs",
