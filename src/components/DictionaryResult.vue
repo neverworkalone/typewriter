@@ -122,7 +122,7 @@ function visibleGroups(sense) {
 
 // Display-only numbering of the source glosses inside one selected record (multi-sense, Issue #820).
 function definitionNumber(index) {
-  return index < 20 ? String.fromCodePoint(0x2460 + index) : `${index + 1}.`;
+  return `${index + 1}.`;
 }
 
 function relationText(relation) {
@@ -240,7 +240,7 @@ defineExpose({ focusCandidate });
               :key="item.id"
               class="definition-text"
             >
-              <span v-if="group.items.length > 1" class="definition-number">{{ definitionNumber(itemIndex) }} </span>{{ item.text || item.gloss }}
+              <span v-if="group.items.length > 1" class="definition-number">{{ definitionNumber(itemIndex) }}</span>{{ group.items.length > 1 ? ' ' : '' }}{{ item.text || item.gloss }}
             </p>
           </template>
           <div v-else class="relation-list">
@@ -453,6 +453,10 @@ defineExpose({ focusCandidate });
   font-size: 14px;
   line-height: 22px;
   overflow-wrap: anywhere;
+}
+
+.definition-number {
+  color: #77716b;
 }
 
 .definition-divider {
