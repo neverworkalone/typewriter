@@ -58,6 +58,37 @@ const reviewCases = [
   { lemma: '툭탁툭탁하다', before: [['w347498-s1'], ['w517690-s1']], priorHeadGroups: [['w347498-s1', 'w517690-s1']], groups: [['w347498-s1'], ['w517690-s1']] },
   { lemma: '특이성', before: [['w351485-s1'], ['w351485-s2'], ['w351486-s1']], priorHeadGroups: [['w351485-s1', 'w351485-s2', 'w351486-s1']], groups: [['w351485-s1', 'w351485-s2'], ['w351486-s1']] },
 ];
+const sameRecordFigurativeCases = [
+  { lemma: '탁방', recordId: 'w342609', recordSenses: ['w342609-s1', 'w342609-s2'], decision: 'merge', reason: 'Exam-pass announcement extends to announcing an outcome or conclusion.', before: [['w342609-s1'], ['w342609-s2']], priorHeadGroups: [['w342609-s1'], ['w342609-s2']], groups: [['w342609-s1', 'w342609-s2']] },
+  { lemma: '탁방하다', recordId: 'w342627', recordSenses: ['w342627-s1', 'w342627-s2'], decision: 'merge', reason: 'Posting successful candidates extends to bringing an affair to a conclusion.', before: [['w342627-s1'], ['w342627-s2']], priorHeadGroups: [['w342627-s1'], ['w342627-s2']], groups: [['w342627-s1', 'w342627-s2']] },
+  { lemma: '탁방내다', recordId: 'w342628', recordSenses: ['w342628-s1', 'w342628-s2'], decision: 'merge', reason: 'Announcing successful candidates extends to settling an affair.', before: [['w342628-s1'], ['w342628-s2']], priorHeadGroups: [['w342628-s1'], ['w342628-s2']], groups: [['w342628-s1', 'w342628-s2']] },
+  { lemma: '탁방나다', recordId: 'w495587', recordSenses: ['w495587-s1', 'w495587-s2'], decision: 'merge', reason: 'The published pass list extends to an affair whose outcome has become clear.', before: [['w495587-s1'], ['w495587-s2']], priorHeadGroups: [['w495587-s1'], ['w495587-s2']], groups: [['w495587-s1', 'w495587-s2']] },
+  { lemma: '턱걸이하다', recordId: 'w343654', recordSenses: ['w343654-s1', 'w343654-s2'], decision: 'keep', reason: 'Barely meeting a threshold and depending on another person describe different situations without a source-bound bridge.', before: [['w343654-s1'], ['w343654-s2']], groups: [['w343654-s1'], ['w343654-s2']] },
+  { lemma: '태풍의 눈', recordId: 'w342952', recordSenses: ['w342952-s1', 'w342952-s2'], decision: 'merge', reason: 'The calm central region extends to the influential core of a situation through the same center image.', before: [['w342952-s1'], ['w342952-s2']], priorHeadGroups: [['w342952-s1'], ['w342952-s2']], groups: [['w342952-s1', 'w342952-s2']] },
+  { lemma: '태산북두', recordId: 'w344356', recordSenses: ['w344356-s1', 'w344356-s2'], decision: 'merge', reason: 'Mount Tai and the Northern Dipper extend metaphorically to a highly respected authority.', before: [['w344356-s1'], ['w344356-s2']], priorHeadGroups: [['w344356-s1'], ['w344356-s2']], groups: [['w344356-s1', 'w344356-s2']] },
+  { lemma: '탐화하다', recordId: 'w344729', recordSenses: ['w344729-s1', 'w344729-s2'], decision: 'merge', reason: 'Seeking flowers extends metaphorically to seeking a beloved woman.', before: [['w344729-s1'], ['w344729-s2']], priorHeadGroups: [['w344729-s1'], ['w344729-s2']], groups: [['w344729-s1', 'w344729-s2']] },
+  { lemma: '태내', recordId: 'w345014', recordSenses: ['w345014-s1', 'w345014-s2'], decision: 'merge', reason: 'A womb extends metaphorically to the basis from which something arises.', before: [['w345014-s1'], ['w345014-s2']], priorHeadGroups: [['w345014-s1'], ['w345014-s2']], groups: [['w345014-s1', 'w345014-s2']] },
+  { lemma: '탄식', recordId: 'w345170', recordSenses: ['w345170-s1', 'w345170-s2'], decision: 'merge', reason: 'Swallowing whole extends to invading and absorbing something; the separate lament homonym remains apart.', before: [['w345170-s1'], ['w345170-s2'], ['w345440-s1']], priorHeadGroups: [['w345170-s1'], ['w345170-s2'], ['w345440-s1']], groups: [['w345170-s1', 'w345170-s2'], ['w345440-s1']] },
+  { lemma: '탄식하다', recordId: 'w496434', recordSenses: ['w496434-s1', 'w496434-s2'], decision: 'merge', reason: 'The verb sense extends from swallowing whole to invading and absorbing; the separate lament homonym remains apart.', before: [['w496434-s1'], ['w496434-s2'], ['w496435-s1']], priorHeadGroups: [['w496434-s1'], ['w496434-s2'], ['w496435-s1']], groups: [['w496434-s1', 'w496434-s2'], ['w496435-s1']] },
+  { lemma: '터럭', recordId: 'w345570', recordSenses: ['w345570-s1', 'w345570-s2'], decision: 'merge', reason: 'A hair extends metaphorically to something very small or trivial.', before: [['w345570-s1'], ['w345570-s2']], priorHeadGroups: [['w345570-s1'], ['w345570-s2']], groups: [['w345570-s1', 'w345570-s2']] },
+  { lemma: '태두', recordId: 'w346110', recordSenses: ['w346110-s1', 'w346110-s2'], decision: 'merge', reason: 'Mount Tai and the Northern Dipper extend metaphorically to a leading authority; the separate kidney homonym remains apart.', before: [['w346109-s1'], ['w346110-s1'], ['w346110-s2']], priorHeadGroups: [['w346109-s1'], ['w346110-s1'], ['w346110-s2']], groups: [['w346109-s1'], ['w346110-s1', 'w346110-s2']] },
+  { lemma: '퇴식', recordId: 'w347603', recordSenses: ['w347603-s1', 'w347603-s2', 'w347603-s3'], decision: 'keep', reason: 'Retiring from public office connects to leaving an office for a meal, but clearing a table after eating is a separate action.', before: [['w347364-s1', 'w347603-s1', 'w347603-s2'], ['w347603-s3']], groups: [['w347364-s1', 'w347603-s1', 'w347603-s2'], ['w347603-s3']] },
+  { lemma: '투영', recordId: 'w492107', recordSenses: ['w492107-s1', 'w492107-s2', 'w492107-s3', 'w492107-s4'], decision: 'merge', reason: 'Optical, geometric, and psychological projection share the source-bound operation of projecting or reflecting an image, form, or state onto another surface or subject.', before: [['w348055-s1', 'w492107-s1'], ['w348319-s1'], ['w348319-s2'], ['w492107-s2', 'w492107-s4'], ['w492107-s3']], priorHeadGroups: [['w348055-s1', 'w348319-s1', 'w348319-s2', 'w492107-s1'], ['w492107-s2', 'w492107-s4'], ['w492107-s3']], groups: [['w348055-s1', 'w348319-s1', 'w348319-s2', 'w492107-s1', 'w492107-s2', 'w492107-s3', 'w492107-s4']] },
+  { lemma: '투영하다', recordId: 'w492108', recordSenses: ['w492108-s1', 'w492108-s2', 'w492108-s3', 'w492108-s4'], decision: 'merge', reason: 'The verb retains the same projection operation across optical, geometric, and psychological uses.', before: [['w348056-s1', 'w492108-s1'], ['w348320-s1'], ['w348320-s2'], ['w492108-s2', 'w492108-s4'], ['w492108-s3']], priorHeadGroups: [['w348056-s1', 'w348320-s1', 'w348320-s2', 'w492108-s1'], ['w492108-s2', 'w492108-s4'], ['w492108-s3']], groups: [['w348056-s1', 'w348320-s1', 'w348320-s2', 'w492108-s1', 'w492108-s2', 'w492108-s3', 'w492108-s4']] },
+  { lemma: '퇴식하다', recordId: 'w495919', recordSenses: ['w495919-s1', 'w495919-s2', 'w495919-s3'], decision: 'keep', reason: 'The verb forms likewise connect official retirement and leaving an office for a meal, while clearing the table remains a separate action.', before: [['w347365-s1', 'w495919-s1', 'w495919-s2'], ['w495919-s3']], groups: [['w347365-s1', 'w495919-s1', 'w495919-s2'], ['w495919-s3']] },
+  { lemma: '통방', recordId: 'w496280', recordSenses: ['w496280-s1', 'w496280-s2'], decision: 'keep', reason: 'Open-plan rooms and indistinguishable mixed-up strokes have no explicit shared image or transition in the source glosses.', before: [['w496264-s1', 'w496280-s1'], ['w496280-s2']], groups: [['w496264-s1', 'w496280-s1'], ['w496280-s2']] },
+  { lemma: '토대', recordId: 'w496366', recordSenses: ['w496366-s1', 'w496366-s2', 'w496366-s3'], decision: 'merge', reason: 'A structural base extends to the metaphorical foundation or resources of a matter.', before: [['w496366-s1', 'w496366-s2'], ['w496366-s3']], priorHeadGroups: [['w496366-s1', 'w496366-s2'], ['w496366-s3']], groups: [['w496366-s1', 'w496366-s2', 'w496366-s3']] },
+  { lemma: '통양', recordId: 'w496452', recordSenses: ['w496452-s1', 'w496452-s2'], decision: 'merge', reason: 'Pain or itching affecting oneself extends metaphorically to a matter directly affecting one’s own interests.', before: [['w496452-s1'], ['w496452-s2']], priorHeadGroups: [['w496452-s1'], ['w496452-s2']], groups: [['w496452-s1', 'w496452-s2']] },
+  { lemma: '토치카', recordId: 'w496463', recordSenses: ['w496463-s1', 'w496463-s2'], decision: 'keep', reason: 'A fortified firing position and an easy-going person have no source-bound identity bridge.', before: [['w496463-s1'], ['w496463-s2']], groups: [['w496463-s1'], ['w496463-s2']] },
+  { lemma: '탄토', recordId: 'w496636', recordSenses: ['w496636-s1', 'w496636-s2'], decision: 'merge', reason: 'Swallowing and spitting extend to accepting and releasing things.', before: [['w496636-s1'], ['w496636-s2']], priorHeadGroups: [['w496636-s1'], ['w496636-s2']], groups: [['w496636-s1', 'w496636-s2']] },
+  { lemma: '탐화', recordId: 'w496858', recordSenses: ['w496858-s1', 'w496858-s2'], decision: 'merge', reason: 'Seeking flowers extends metaphorically to seeking a beloved woman; the separate historical office homonym remains apart.', before: [['w344730-s1'], ['w496858-s1'], ['w496858-s2']], priorHeadGroups: [['w344730-s1'], ['w496858-s1'], ['w496858-s2']], groups: [['w344730-s1'], ['w496858-s1', 'w496858-s2']] },
+  { lemma: '태화탕', recordId: 'w497112', recordSenses: ['w497112-s1', 'w497112-s2', 'w497112-s3'], decision: 'keep', reason: 'The metaphorical carefree state and teasing description of a person share a bridge, but neither is source-bound to boiling water.', before: [['w497112-s1'], ['w497112-s2', 'w497112-s3']], groups: [['w497112-s1'], ['w497112-s2', 'w497112-s3']] },
+  { lemma: '태양', recordId: 'w497906', recordSenses: ['w497906-s1', 'w497906-s2'], decision: 'merge', reason: 'The sun extends metaphorically to a precious or hope-giving presence; other homographic records remain separate.', before: [['w343097-s1'], ['w343097-s2'], ['w343098-s1'], ['w343100-s1'], ['w497906-s1'], ['w497906-s2']], priorHeadGroups: [['w343097-s1'], ['w343097-s2'], ['w343098-s1'], ['w343100-s1'], ['w497906-s1'], ['w497906-s2']], groups: [['w343097-s1'], ['w343097-s2'], ['w343098-s1'], ['w343100-s1'], ['w497906-s1', 'w497906-s2']] },
+  { lemma: '탄토하다', recordId: 'w337989', recordSenses: ['w337989-s1', 'w337989-s2'], decision: 'merge', reason: 'Swallowing or spitting extends to taking goods in and sending them out.', before: [['w337989-s1'], ['w337989-s2']], priorHeadGroups: [['w337989-s1'], ['w337989-s2']], groups: [['w337989-s1', 'w337989-s2']] },
+  { lemma: '태산이 평지 된다', recordId: 'w532602', recordSenses: ['w532602-s1', 'w532602-s2'], decision: 'merge', reason: 'Both proverb glosses describe the same image of radical change, including the transience that follows from it.', before: [['w532602-s1'], ['w532602-s2']], priorHeadGroups: [['w532602-s1'], ['w532602-s2']], groups: [['w532602-s1', 'w532602-s2']] },
+  { lemma: '토끼가 제 방귀에 놀란다', recordId: 'w532626', recordSenses: ['w532626-s1', 'w532626-s2'], decision: 'keep', reason: 'The self-frightened reaction and frivolous speech or behavior are distinct proverb morals.', before: [['w532626-s1'], ['w532626-s2']], groups: [['w532626-s1'], ['w532626-s2']] },
+];
+reviewCases.push(...sameRecordFigurativeCases.filter((item) => item.decision === 'merge'));
 const reviewSenseIds = new Set(reviewCases.flatMap(({ groups }) => groups.flat()));
 const projectionProbeSenseIds = new Set([
   'w335985-s1', 'w340436-s1', 'w342605-s1', 'w343447-s1', 'w342388-s1', 'w346982-s1',
@@ -66,6 +97,8 @@ const projectionProbeSenseIds = new Set([
   'w496829-s1', 'w344590-s1',
   'w342237-s1', 'w342239-s1', 'w342238-s1', 'w342240-s1', 'w257330-s1', 'w473250-s1',
   'w351485-s2', 'w351486-s1', 'w348489-s1',
+  'w492107-s1', 'w492107-s2', 'w492107-s3', 'w492107-s4',
+  'w492108-s1', 'w492108-s2', 'w492108-s3', 'w492108-s4',
 ]);
 const meaningFiles = readdirSync(meaningDir).filter((file) => /^c17_\d+\.jsonl$/u.test(file)).sort();
 const rows = meaningFiles.flatMap((file) => readFileSync(path.join(meaningDir, file), 'utf8')
@@ -95,6 +128,7 @@ const identityRegressionSenseIds = new Set([
   'w496506-s1', 'w496506-s2', 'w496506-s3', 'w497715-s1', 'w296689-s1', 'w347855-s1', 'w347855-s9',
   'w353163-s1', 'w353164-s1',
   ...reviewSenseIds,
+  ...sameRecordFigurativeCases.flatMap(({ recordSenses }) => recordSenses),
 ]);
 const meaningIdBySense = new Map(rows.flatMap((row) => row.sense_ids.map((senseId) => [senseId, row.id])));
 let sameRecordSplitRecordCount = 0;
@@ -103,11 +137,13 @@ const sourceGlossBySense = new Map();
 const identitySourceGlossBySense = new Map();
 let tamnaSourceRecord = null;
 const projectionSourceRecords = new Map();
+const canonicalSourceRecords = new Map();
 const projectionTargetSenseIds = new Set();
 for (const file of readdirSync(canonicalDir).filter((name) => name.startsWith('stdict-') && name.endsWith('.jsonl')).sort()) {
   for (const line of readFileSync(path.join(canonicalDir, file), 'utf8').split('\n')) {
     if (!line) continue;
     const entry = JSON.parse(line);
+    canonicalSourceRecords.set(entry.id, entry);
     if (entry.id === 'w345436') tamnaSourceRecord = entry;
     if ((entry.senses ?? []).some((sense) => projectionProbeSenseIds.has(sense.id))) {
       projectionSourceRecords.set(entry.id, entry);
@@ -295,6 +331,86 @@ test('C17 applies naming-principle and distinct-identity boundaries with a one-l
       assert.equal(result[index].gloss, edit.groups[index].gloss, `${lemma}: emitted gloss matches the recorded execution edit`);
       for (const senseId of group) assert.ok(identitySourceGlossBySense.has(senseId), `${lemma}/${senseId}: canonical source exists`);
     }
+  }
+
+  assert.equal(sameRecordFigurativeCases.length, 28, 'the bounded explicit-figurative same-record cohort stays visible');
+  for (const item of sameRecordFigurativeCases) {
+    const { lemma, recordId, recordSenses, decision, reason, before, priorHeadGroups, groups } = item;
+    const record = canonicalSourceRecords.get(recordId);
+    assert.ok(record, `${lemma}/${recordId}: candidate source record exists`);
+    assert.equal(record.lemma, lemma, `${lemma}/${recordId}: candidate source record matches the lemma`);
+    assert.deepEqual(record.senses.map((sense) => sense.id), recordSenses, `${lemma}/${recordId}: scan records the exact canonical source senses`);
+    assert.ok(record.senses.some((sense) => /비유적/u.test(sense.gloss)), `${lemma}/${recordId}: cohort entry retains its explicit figurative marker`);
+    assert.ok(reason.length > 0, `${lemma}/${recordId}: source-bound decision has a recorded reason`);
+
+    const edit = spec.repartitions.find((candidate) => candidate.lemma === lemma);
+    if (decision === 'merge') {
+      assert.ok(edit, `${lemma}: accepted same-record merge is present in the execution spec`);
+      assert.deepEqual(edit.before.map((row) => row.sense_ids), before, `${lemma}: same-record decision retains its exact baseline snapshot`);
+      assert.deepEqual(edit.groups.map((group) => group.senses), groups, `${lemma}: same-record decision is encoded in the execution spec`);
+    } else if (edit) {
+      const editedRecordGroups = edit.groups.map((group) => group.senses.filter((senseId) => recordSenses.includes(senseId)))
+        .filter((group) => group.length > 0);
+      const expectedRecordGroups = groups.map((group) => group.filter((senseId) => recordSenses.includes(senseId)))
+        .filter((group) => group.length > 0);
+      assert.deepEqual(editedRecordGroups, expectedRecordGroups, `${lemma}: any explicit repartition preserves the reviewed source-record boundary`);
+    }
+    const current = rowsByLemma.get(lemma) ?? [];
+    if (decision === 'merge') {
+      assert.deepEqual(current.map((row) => row.sense_ids), groups, `${lemma}: same-record decision matches current output`);
+    }
+
+    const expectedRecordGroups = groups.map((group) => group.filter((senseId) => recordSenses.includes(senseId))).filter((group) => group.length > 0);
+    const actualRecordGroups = [];
+    for (const row of current) {
+      const group = row.sense_ids.filter((senseId) => recordSenses.includes(senseId));
+      if (group.length > 0) actualRecordGroups.push(group);
+    }
+    assert.deepEqual(actualRecordGroups, expectedRecordGroups, `${lemma}/${recordId}: all record senses follow the reviewed boundary`);
+    if (decision === 'merge') {
+      assert.ok(priorHeadGroups, `${lemma}: accepted merge records its old failing partition`);
+      assert.notDeepEqual(current.map((row) => row.sense_ids), priorHeadGroups, `${lemma}: prior PR partition fails the regression`);
+      const merged = current.find((row) => recordSenses.every((senseId) => row.sense_ids.includes(senseId)));
+      assert.ok(merged, `${lemma}/${recordId}: the complete source record has one Meaning`);
+      assert.equal(merged.gloss, merged.sense_ids.map((senseId) => identitySourceGlossBySense.get(senseId)).join(' '),
+        `${lemma}/${recordId}: merged gloss preserves every bound canonical source gloss`);
+    } else {
+      assert.equal(decision, 'keep', `${lemma}/${recordId}: decision is merge or keep`);
+    }
+  }
+
+  const projectionNoun = (rowsByLemma.get('투영') ?? []).find((row) => row.sense_ids.includes('w492107-s1'));
+  const projectionVerb = (rowsByLemma.get('투영하다') ?? []).find((row) => row.sense_ids.includes('w492108-s1'));
+  const projectionNounRecord = projectionSourceRecords.get('w492107');
+  const projectionVerbRecord = projectionSourceRecords.get('w492108');
+  assert.ok(projectionNoun && projectionVerb && projectionNounRecord && projectionVerbRecord,
+    '투영 noun/verb and their canonical records are present');
+  for (const senseId of ['w492107-s1', 'w492107-s2', 'w492107-s3', 'w492107-s4']) {
+    assert.ok(projectionNoun.sense_ids.includes(senseId), `${senseId}: optical, figurative, geometric and psychological noun uses share one Meaning`);
+  }
+  for (const senseId of ['w492108-s1', 'w492108-s2', 'w492108-s3', 'w492108-s4']) {
+    assert.ok(projectionVerb.sense_ids.includes(senseId), `${senseId}: optical, figurative, geometric and psychological verb uses share one Meaning`);
+  }
+  const projectionTargets = [
+    { record: projectionNounRecord, sourceSense: 'w492107-s1', targetSense: 'w346888-s1', sourceMeaning: projectionNoun },
+    { record: projectionNounRecord, sourceSense: 'w492107-s3', targetSense: 'w168172-s2', sourceMeaning: projectionNoun },
+    { record: projectionNounRecord, sourceSense: 'w492107-s4', targetSense: 'w492398-s4', sourceMeaning: projectionNoun },
+    { record: projectionVerbRecord, sourceSense: 'w492108-s3', targetSense: 'w438577-s2', sourceMeaning: projectionVerb },
+    { record: projectionVerbRecord, sourceSense: 'w492108-s4', targetSense: 'w350958-s4', sourceMeaning: projectionVerb },
+  ];
+  const projectionMeaningRelationResult = projectMeaningRelations({
+    records: [projectionNounRecord, projectionVerbRecord],
+    meanings: projectionMeanings,
+  });
+  for (const { sourceSense, targetSense, sourceMeaning } of projectionTargets) {
+    const targetMeaning = projectionMeanings.find((row) => row.sense_ids.includes(targetSense));
+    assert.ok(targetMeaning, `${targetSense}: direct relation target Meaning exists`);
+    const direct = projectionMeaningRelationResult.relations.filter((relation) => relation.type === 'direct'
+      && relation.source_meaning_id === sourceMeaning.id && relation.target_meaning_id === targetMeaning.id
+      && relation.sources.some((source) => source.source_sense_id === sourceSense));
+    assert.equal(direct.length, 1, `${sourceSense} → ${targetSense}: direct relation reaches the unified Meaning`);
+    assert.deepEqual(direct[0].sources.map((source) => source.source_sense_id), [sourceSense],
+      `${sourceSense} → ${targetSense}: original canonical source-sense provenance is preserved`);
   }
 
   const through = (rowsByLemma.get('통하다') ?? []).find((row) => row.sense_ids.includes('w347855-s1'));
@@ -494,8 +610,8 @@ test('C17 applies naming-principle and distinct-identity boundaries with a one-l
 
 test('C17 tracks the same-record split risk cohort after source-bound corrections', () => {
   // The pre-follow-up baseline had 332 split records across 316 lemmas; this is a candidate count, not an error count.
-  assert.equal(sameRecordSplitRecordCount, 330);
-  assert.equal(sameRecordSplitLemmas.size, 313);
+  assert.equal(sameRecordSplitRecordCount, 309);
+  assert.equal(sameRecordSplitLemmas.size, 293);
   for (const senseId of ['w343346-s1', 'w345436-s1', 'w496506-s1', 'w345148-s1', 'w345148-s2']) {
     assert.ok(meaningIdBySense.has(senseId), `${senseId}: reviewed same-record source sense remains in C17`);
   }
