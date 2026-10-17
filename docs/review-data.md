@@ -115,7 +115,7 @@ association judgment, a broader definition or a slight relevance disagreement
    For relevance errors, demonstrate materially wrong same-source/same-group
    rank comparisons, not an abstract disagreement.
 2. When genuinely shared, fix the relevant producer/policy path and verify
-   the affected existing records and applicable future Stage 2/Stage D paths.
+   the affected existing records and applicable future authoring paths.
    Do not demand a word-specific exception or mechanical creativity validator.
 3. Re-review the demonstrated affected class after the fix; do not inflate
    one questionable association into a mandatory audit of all near relations,
