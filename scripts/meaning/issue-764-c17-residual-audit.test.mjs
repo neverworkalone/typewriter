@@ -63,7 +63,7 @@ const sameRecordFigurativeCases = [
   { lemma: '탁방하다', recordId: 'w342627', recordSenses: ['w342627-s1', 'w342627-s2'], decision: 'merge', reason: 'Posting successful candidates extends to bringing an affair to a conclusion.', before: [['w342627-s1'], ['w342627-s2']], priorHeadGroups: [['w342627-s1'], ['w342627-s2']], groups: [['w342627-s1', 'w342627-s2']] },
   { lemma: '탁방내다', recordId: 'w342628', recordSenses: ['w342628-s1', 'w342628-s2'], decision: 'merge', reason: 'Announcing successful candidates extends to settling an affair.', before: [['w342628-s1'], ['w342628-s2']], priorHeadGroups: [['w342628-s1'], ['w342628-s2']], groups: [['w342628-s1', 'w342628-s2']] },
   { lemma: '탁방나다', recordId: 'w495587', recordSenses: ['w495587-s1', 'w495587-s2'], decision: 'merge', reason: 'The published pass list extends to an affair whose outcome has become clear.', before: [['w495587-s1'], ['w495587-s2']], priorHeadGroups: [['w495587-s1'], ['w495587-s2']], groups: [['w495587-s1', 'w495587-s2']] },
-  { lemma: '턱걸이하다', recordId: 'w343654', recordSenses: ['w343654-s1', 'w343654-s2'], decision: 'keep', reason: 'Barely meeting a threshold and depending on another person describe different situations without a source-bound bridge.', before: [['w343654-s1'], ['w343654-s2']], groups: [['w343654-s1'], ['w343654-s2']] },
+  { lemma: '턱걸이하다', recordId: 'w343654', recordSenses: ['w343654-s1', 'w343654-s2'], decision: 'merge', reason: 'The same-record figurative senses of the paired noun 턱걸이 share the image of barely hanging on, so threshold attainment and depending on another are related uses of one lexical identity.', before: [['w343654-s1'], ['w343654-s2']], priorHeadGroups: [['w343654-s1'], ['w343654-s2']], groups: [['w343654-s1', 'w343654-s2']] },
   { lemma: '태풍의 눈', recordId: 'w342952', recordSenses: ['w342952-s1', 'w342952-s2'], decision: 'merge', reason: 'The calm central region extends to the influential core of a situation through the same center image.', before: [['w342952-s1'], ['w342952-s2']], priorHeadGroups: [['w342952-s1'], ['w342952-s2']], groups: [['w342952-s1', 'w342952-s2']] },
   { lemma: '태산북두', recordId: 'w344356', recordSenses: ['w344356-s1', 'w344356-s2'], decision: 'merge', reason: 'Mount Tai and the Northern Dipper extend metaphorically to a highly respected authority.', before: [['w344356-s1'], ['w344356-s2']], priorHeadGroups: [['w344356-s1'], ['w344356-s2']], groups: [['w344356-s1', 'w344356-s2']] },
   { lemma: '탐화하다', recordId: 'w344729', recordSenses: ['w344729-s1', 'w344729-s2'], decision: 'merge', reason: 'Seeking flowers extends metaphorically to seeking a beloved woman.', before: [['w344729-s1'], ['w344729-s2']], priorHeadGroups: [['w344729-s1'], ['w344729-s2']], groups: [['w344729-s1', 'w344729-s2']] },
@@ -76,7 +76,7 @@ const sameRecordFigurativeCases = [
   { lemma: '투영', recordId: 'w492107', recordSenses: ['w492107-s1', 'w492107-s2', 'w492107-s3', 'w492107-s4'], decision: 'merge', reason: 'Optical, geometric, and psychological projection share the source-bound operation of projecting or reflecting an image, form, or state onto another surface or subject.', before: [['w348055-s1', 'w492107-s1'], ['w348319-s1'], ['w348319-s2'], ['w492107-s2', 'w492107-s4'], ['w492107-s3']], priorHeadGroups: [['w348055-s1', 'w348319-s1', 'w348319-s2', 'w492107-s1'], ['w492107-s2', 'w492107-s4'], ['w492107-s3']], groups: [['w348055-s1', 'w348319-s1', 'w348319-s2', 'w492107-s1', 'w492107-s2', 'w492107-s3', 'w492107-s4']] },
   { lemma: '투영하다', recordId: 'w492108', recordSenses: ['w492108-s1', 'w492108-s2', 'w492108-s3', 'w492108-s4'], decision: 'merge', reason: 'The verb retains the same projection operation across optical, geometric, and psychological uses.', before: [['w348056-s1', 'w492108-s1'], ['w348320-s1'], ['w348320-s2'], ['w492108-s2', 'w492108-s4'], ['w492108-s3']], priorHeadGroups: [['w348056-s1', 'w348320-s1', 'w348320-s2', 'w492108-s1'], ['w492108-s2', 'w492108-s4'], ['w492108-s3']], groups: [['w348056-s1', 'w348320-s1', 'w348320-s2', 'w492108-s1', 'w492108-s2', 'w492108-s3', 'w492108-s4']] },
   { lemma: '퇴식하다', recordId: 'w495919', recordSenses: ['w495919-s1', 'w495919-s2', 'w495919-s3'], decision: 'keep', reason: 'The verb forms likewise connect official retirement and leaving an office for a meal, while clearing the table remains a separate action.', before: [['w347365-s1', 'w495919-s1', 'w495919-s2'], ['w495919-s3']], groups: [['w347365-s1', 'w495919-s1', 'w495919-s2'], ['w495919-s3']] },
-  { lemma: '통방', recordId: 'w496280', recordSenses: ['w496280-s1', 'w496280-s2'], decision: 'keep', reason: 'Open-plan rooms and indistinguishable mixed-up strokes have no explicit shared image or transition in the source glosses.', before: [['w496264-s1', 'w496280-s1'], ['w496280-s2']], groups: [['w496264-s1', 'w496280-s1'], ['w496280-s2']] },
+  { lemma: '통방', recordId: 'w496280', recordSenses: ['w496280-s1', 'w496280-s2'], decision: 'merge', reason: 'Opening rooms into one continuous space extends figuratively to letters or strokes blended into one indistinguishable whole; 통방하다 w344406-s1 independently confirms the room-opening action, while communication and other homonyms remain separate.', before: [['w346060-s1'], ['w350650-s1'], ['w496264-s1'], ['w496265-s1'], ['w496280-s1'], ['w496280-s2']], priorHeadGroups: [['w346060-s1'], ['w350650-s1'], ['w496264-s1', 'w496280-s1'], ['w496265-s1'], ['w496280-s2']], groups: [['w346060-s1'], ['w350650-s1'], ['w496264-s1', 'w496280-s1', 'w496280-s2'], ['w496265-s1']] },
   { lemma: '토대', recordId: 'w496366', recordSenses: ['w496366-s1', 'w496366-s2', 'w496366-s3'], decision: 'merge', reason: 'A structural base extends to the metaphorical foundation or resources of a matter.', before: [['w496366-s1', 'w496366-s2'], ['w496366-s3']], priorHeadGroups: [['w496366-s1', 'w496366-s2'], ['w496366-s3']], groups: [['w496366-s1', 'w496366-s2', 'w496366-s3']] },
   { lemma: '통양', recordId: 'w496452', recordSenses: ['w496452-s1', 'w496452-s2'], decision: 'merge', reason: 'Pain or itching affecting oneself extends metaphorically to a matter directly affecting one’s own interests.', before: [['w496452-s1'], ['w496452-s2']], priorHeadGroups: [['w496452-s1'], ['w496452-s2']], groups: [['w496452-s1', 'w496452-s2']] },
   { lemma: '토치카', recordId: 'w496463', recordSenses: ['w496463-s1', 'w496463-s2'], decision: 'keep', reason: 'A fortified firing position and an easy-going person have no source-bound identity bridge.', before: [['w496463-s1'], ['w496463-s2']], groups: [['w496463-s1'], ['w496463-s2']] },
@@ -86,7 +86,7 @@ const sameRecordFigurativeCases = [
   { lemma: '태양', recordId: 'w497906', recordSenses: ['w497906-s1', 'w497906-s2'], decision: 'merge', reason: 'The sun extends metaphorically to a precious or hope-giving presence; other homographic records remain separate.', before: [['w343097-s1'], ['w343097-s2'], ['w343098-s1'], ['w343100-s1'], ['w497906-s1'], ['w497906-s2']], priorHeadGroups: [['w343097-s1'], ['w343097-s2'], ['w343098-s1'], ['w343100-s1'], ['w497906-s1'], ['w497906-s2']], groups: [['w343097-s1'], ['w343097-s2'], ['w343098-s1'], ['w343100-s1'], ['w497906-s1', 'w497906-s2']] },
   { lemma: '탄토하다', recordId: 'w337989', recordSenses: ['w337989-s1', 'w337989-s2'], decision: 'merge', reason: 'Swallowing or spitting extends to taking goods in and sending them out.', before: [['w337989-s1'], ['w337989-s2']], priorHeadGroups: [['w337989-s1'], ['w337989-s2']], groups: [['w337989-s1', 'w337989-s2']] },
   { lemma: '태산이 평지 된다', recordId: 'w532602', recordSenses: ['w532602-s1', 'w532602-s2'], decision: 'merge', reason: 'Both proverb glosses describe the same image of radical change, including the transience that follows from it.', before: [['w532602-s1'], ['w532602-s2']], priorHeadGroups: [['w532602-s1'], ['w532602-s2']], groups: [['w532602-s1', 'w532602-s2']] },
-  { lemma: '토끼가 제 방귀에 놀란다', recordId: 'w532626', recordSenses: ['w532626-s1', 'w532626-s2'], decision: 'keep', reason: 'The self-frightened reaction and frivolous speech or behavior are distinct proverb morals.', before: [['w532626-s1'], ['w532626-s2']], groups: [['w532626-s1'], ['w532626-s2']] },
+  { lemma: '토끼가 제 방귀에 놀란다', recordId: 'w532626', recordSenses: ['w532626-s1', 'w532626-s2'], decision: 'merge', reason: 'Both figurative glosses are conventional readings of the same fixed proverb image, not separate homonyms; preserve the anxiety and frivolous-behavior uses under one expression identity.', before: [['w532626-s1'], ['w532626-s2']], priorHeadGroups: [['w532626-s1'], ['w532626-s2']], groups: [['w532626-s1', 'w532626-s2']] },
 ];
 reviewCases.push(...sameRecordFigurativeCases.filter((item) => item.decision === 'merge'));
 const reviewSenseIds = new Set(reviewCases.flatMap(({ groups }) => groups.flat()));
@@ -97,6 +97,7 @@ const projectionProbeSenseIds = new Set([
   'w496829-s1', 'w344590-s1',
   'w342237-s1', 'w342239-s1', 'w342238-s1', 'w342240-s1', 'w257330-s1', 'w473250-s1',
   'w351485-s2', 'w351486-s1', 'w348489-s1',
+  'w343677-s1', 'w343677-s2', 'w343677-s3', 'w343677-s4', 'w496264-s1', 'w344406-s1',
   'w492107-s1', 'w492107-s2', 'w492107-s3', 'w492107-s4',
   'w492108-s1', 'w492108-s2', 'w492108-s3', 'w492108-s4',
 ]);
@@ -124,7 +125,8 @@ const identityRegressionSenseIds = new Set([
   'w343081-s1', 'w343082-s1', 'w343083-s1', 'w495379-s1', 'w496287-s1', 'w496488-s1',
   'w350459-s1', 'w350460-s1', 'w494494-s1', 'w342772-s1', 'w342772-s2',
   'w345843-s1', 'w345844-s1', 'w345845-s1', 'w349212-s1', 'w349742-s1', 'w495184-s1',
-  'w497369-s1', 'w497369-s2', 'w343346-s1', 'w343346-s2', 'w345436-s1', 'w345436-s2',
+  'w497369-s1', 'w497369-s2', 'w343677-s1', 'w343677-s2', 'w343677-s3', 'w343677-s4', 'w344406-s1',
+  'w343346-s1', 'w343346-s2', 'w345436-s1', 'w345436-s2',
   'w496506-s1', 'w496506-s2', 'w496506-s3', 'w497715-s1', 'w296689-s1', 'w347855-s1', 'w347855-s9',
   'w353163-s1', 'w353164-s1',
   ...reviewSenseIds,
@@ -610,9 +612,40 @@ test('C17 applies naming-principle and distinct-identity boundaries with a one-l
 
 test('C17 tracks the same-record split risk cohort after source-bound corrections', () => {
   // The pre-follow-up baseline had 332 split records across 316 lemmas; this is a candidate count, not an error count.
-  assert.equal(sameRecordSplitRecordCount, 309);
-  assert.equal(sameRecordSplitLemmas.size, 293);
+  assert.equal(sameRecordSplitRecordCount, 306);
+  assert.equal(sameRecordSplitLemmas.size, 290);
   for (const senseId of ['w343346-s1', 'w345436-s1', 'w496506-s1', 'w345148-s1', 'w345148-s2']) {
     assert.ok(meaningIdBySense.has(senseId), `${senseId}: reviewed same-record source sense remains in C17`);
   }
+});
+
+test('paired figurative forms and the same proverbial expression keep their related uses together', () => {
+  const chinPullNoun = (rowsByLemma.get('턱걸이') ?? []).find((row) => row.sense_ids.includes('w343677-s1'));
+  const chinPullVerb = (rowsByLemma.get('턱걸이하다') ?? []).find((row) => row.sense_ids.includes('w343654-s1'));
+  assert.ok(chinPullNoun && chinPullVerb, '턱걸이 noun and verb source-bound meanings are present');
+  assert.deepEqual(chinPullNoun.sense_ids, ['w343677-s1', 'w343677-s2', 'w343677-s3', 'w343677-s4'],
+    'the paired noun keeps both figurative senses with the physical image');
+  assert.deepEqual(chinPullVerb.sense_ids, ['w343654-s1', 'w343654-s2'],
+    'the paired verb keeps its threshold and dependency uses together');
+  assert.equal(chinPullVerb.gloss, ['w343654-s1', 'w343654-s2'].map((id) => identitySourceGlossBySense.get(id)).join(' '),
+    'the paired verb preserves both exact canonical source glosses');
+  assert.match(identitySourceGlossBySense.get('w343677-s3'), /기준에 겨우 미침/u);
+  assert.match(identitySourceGlossBySense.get('w343677-s4'), /남에게 의지하여 지냄/u);
+
+  const openPlanNoun = (rowsByLemma.get('통방') ?? []).find((row) => row.sense_ids.includes('w496280-s2'));
+  const openPlanVerb = (rowsByLemma.get('통방하다') ?? []).find((row) => row.sense_ids.includes('w344406-s1'));
+  const codedCommunicationVerb = (rowsByLemma.get('통방하다') ?? []).find((row) => row.sense_ids.includes('w344405-s1'));
+  assert.ok(openPlanNoun && openPlanVerb && codedCommunicationVerb, '통방 noun and both verb homonyms are present');
+  assert.deepEqual(openPlanNoun.sense_ids, ['w496264-s1', 'w496280-s1', 'w496280-s2'],
+    'the open-room sense and its figurative blended-glyph extension share one noun Meaning');
+  assert.notEqual(openPlanVerb.id, codedCommunicationVerb.id,
+    'opening rooms remains separate from coded communication between cells');
+  assert.equal(identitySourceGlossBySense.get('w344406-s1'), '두 칸 이상의 방을 터 놓다.');
+
+  const proverb = (rowsByLemma.get('토끼가 제 방귀에 놀란다') ?? []).find((row) => row.sense_ids.includes('w532626-s1'));
+  assert.ok(proverb, 'the canonical proverb Meaning is present');
+  assert.deepEqual(proverb.sense_ids, ['w532626-s1', 'w532626-s2'],
+    'both source gloss readings of the same fixed proverb remain one expression identity');
+  assert.equal(proverb.gloss, ['w532626-s1', 'w532626-s2'].map((id) => identitySourceGlossBySense.get(id)).join(' '),
+    'the proverb Meaning preserves both exact source glosses');
 });
