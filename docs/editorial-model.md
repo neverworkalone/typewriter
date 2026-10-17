@@ -91,16 +91,16 @@ records use direct search when valid and in scope; relation navigation remains a
 separate path. The existing role/count fields preserve editorial provenance and
 historical inventory totals only.
 
-## Editorial precision tiers (Issue #229)
+## Editorial precision tiers (Issue #229) — historical M1 review rules
 
-Typewriter uses different quality thresholds for dictionary-like claims and
-writer-facing exploration. This distinction governs editorial review; it is
-not an automatic usefulness score.
+*Historical record, non-normative.* These former M1 review grades (Tier 1/2)
+are not today's `relevance` 1–9, and they do not govern new Typewriter 0.3
+authoring; that is [relation-editorial-policy.md](relation-editorial-policy.md)
+and Issue #838. The section is kept as an audit trail and as background for
+validating STDICT-provided `direct`/`antonym`.
 
-For current relation review (Tier here is the M1 review grade, not `relevance` 1–9), these rules take precedence over contrary M1 pilot
-relation dispositions recorded later in this document. Those ledgers preserve
-what the pilot decided at the time; they do not automatically exclude a
-plausible exploratory route under the current policy.
+Typewriter used different quality thresholds for dictionary-like claims and
+writer-facing exploration, not an automatic usefulness score.
 
 ### Tier 1 — trust and precision first
 
@@ -123,7 +123,7 @@ and `association`:
   need not suit every writer or be universally useful.
 - Subjectivity, distance, or a reviewer preferring another word is not by
   itself a reason to hold or reject a plausible relation.
-- Preserve plausible exploration with appropriate relevance instead of deleting it for subjective distance; dictionary synonyms belong to `direct` even when usage breadth differs.
+- Preserve plausible exploration with appropriate relevance instead of deleting it for subjective distance.
 - Exclude a relation when it is materially incoherent, bound to the wrong
   sense, or presented as a stronger type than its support allows.
 
@@ -998,8 +998,8 @@ projection 규칙은 다음과 같다.
 다음 후보는 현재 canonical에 넣지 않았다. 이 목록은 “관계가 있을 수
 있다”는 메모이지, 미검수 데이터를 우회해 수록한 것이 아니다.
 
-이 표는 M1 파일럿 당시의 역사적 처분을 보존한다. Issue #229 이후 현재의
-관계 검수(M1 검수 등급이며 현재 relevance 1–9 Tier가 아님)에서는 특정한 writer 탐색 경로, 올바른 sense 결속, 정직한
+이 표는 M1 파일럿 당시의 역사적 처분을 보존한다. Issue #229 이후 당시의
+M1 검수 등급(현재 relevance 1–9 Tier와 무관한 역사적 기준)에서는 특정한 writer 탐색 경로, 올바른 sense 결속, 정직한
 관계 type을 기준으로 다시 판단한다. 과거의 “즉시 유용성이 확인되지 않음”만으로는
 현재 HOLD/REJECT 근거가 되지 않는다.
 
