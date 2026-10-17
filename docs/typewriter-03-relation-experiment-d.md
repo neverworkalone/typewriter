@@ -13,8 +13,9 @@
 ## 이용 허가와 자료 경계
 
 - 프로젝트의 외부 자료 기록은 국립국어원 문어 말뭉치 2025의 로컬 저장, 처리, SQLite/FTS 인덱싱, 어휘 참고 이용 허용을 기록한다. 2026-10-18 이슈 작업 중 소유자는 서명한 이용 약정에 이 목적의 외부 LLM 전송 허용이 명시되어 있다고 확인했다. 국립국어원 [모두의 말뭉치 FAQ](https://kli.korean.go.kr/m/boards/faqList.do)는 말뭉치 이용을 승인 목적에 한정하고, 공개 결과에서 원문을 제외하며 공개 전에 사전 승인을 받도록 안내한다.
+- 공개 결과 권한은 단순한 외부 LLM 전송 허용과 별도로 확인했다. 소유자는 [Issue #570](https://github.com/neverworkalone/typewriter/issues/570)에서 2026-10-12 현재 2026-09-27 제출한 NIKL 결과 공개 신청의 `승인` 상태를 확인했다. 신청은 `인공지능 모델/서비스/제품`으로 분류한 Typewriter의 기존 Chrome Web Store 결과를 대상으로 하며, 승인 결과 범위는 Typewriter가 작성한 표제어·뜻풀이·sense·관계다. #570의 공개 결정은 이 결과를 Typewriter가 통제하는 권리 범위에서 공개하는 것을 허용하고, 원문·발췌문·다운로드 파일·분석 인덱스는 제외한다. [Issue #239](https://github.com/neverworkalone/typewriter/issues/239)는 공개 R&D 저장소에서 Typewriter 작성 어휘 기록과 추적 가능한 편집/배치 산출물을 다루는 기존 운영 결정을 기록한다. 이 보고서는 그 공개 R&D 범위의 편집 산출물로, Typewriter가 작성한 후보 관계와 원문을 재현하지 않는 검색 집계·DB 수준의 설명 및 무결성 메타데이터만 포함한다. 원문 문단, 개별 출처 문서·문단 식별정보, 발췌문, 원본 DB 파일은 포함하지 않는다. 이 참조들은 NIKL에 원문이나 인덱스의 재배포 권한이 있다고 주장하지 않는다.
 - 자료 출처 표기: `국립국어원 문어말뭉치 2025(1.0). 국립국어원 모두의 말뭉치.` 이 출처 표기는 문맥 원문이나 문서별 식별자를 재현하지 않는다.
-- 실제 SQLite는 `/Users/genonfire/.cache/typewriter/reference/corpus/indexes/written-corpus-2025.sqlite`에서 `mode=ro&immutable=1`로 열었다. 재구축·수정·복사하지 않았다.
+- 실제 SQLite는 허용된 로컬 캐시의 문어 말뭉치 인덱스를 `mode=ro&immutable=1`로 열었다. 재구축·수정·복사하지 않았다.
 - 인덱스 메타데이터: 문서 3,410개, 문단 4,988,970개, SQLite 3.53.3. 검색 가능한 자료는 모두 `문어 > 책-상상 > 문학` 범주였으므로 범주 다양성은 1개다.
 - 원본 DB SHA-256: `4c357e83c6ee93a9a1e5e48a8cf53d7dec32c9387aae9f5a1192ce3484e5848b` (3,940,503,552 bytes). 논리 행 digest: `c3b2befa1480804bf6c005cb4a43eb7b2e82d6ad7d77790af4dc82b76f4bd1dd`.
 - PR에는 문단, 발췌문, 제목, 저자, 문서·문단 ID, 원본 DB, evidence pack을 넣지 않는다. 이 보고서에는 출발/후보 표제어, 의미 판정, 텍스트를 재현하지 않는 집계만 둔다.
