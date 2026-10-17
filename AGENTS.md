@@ -206,6 +206,16 @@ When a data or implementation PR uncovers a defect in a shared producer, validat
 
 A PR that genuinely blocks ongoing work may use the `urgent` label. Do not use it for routine changes; it affects review priority, not review standards.
 
+## Test and validator discipline
+
+Tests and validators protect product stability and established product invariants; they are **not code-coverage targets** or a reason to detect every imaginable failure.
+
+- Add or expand checks only for plausible regressions in supported build, input, data, or runtime paths, or for explicitly required security, licensing, or trust boundaries.
+- Invalid fixtures must model those real paths or boundaries. Do not manufacture unreachable states (for example, manually altering a correctly generated, read-only SQLite artifact after the build) and add validation solely because existing checks do not catch them. A generic integrity goal alone does not make unsupported artifact tampering a production path.
+- Reuse existing shared tests and validators first. Avoid redundant test cases, new test files, validators, and CI hooks when current coverage already protects the same invariant.
+- Before retaining a new automated check, identify the concrete regression or invariant it protects, why existing coverage is insufficient, and why that benefit outweighs implementation, recurring CI, maintenance, and review costs. If that cannot be shown, do not add it.
+- For a genuine shared defect, fix the common cause and add only the smallest general old-fails/new-passes regression needed for current and future records. Do not weaken required gates or ignore real product, security, or integrity failures.
+
 ## Validation
 
 Run the validation appropriate to the changed surface.
