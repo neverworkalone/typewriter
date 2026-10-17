@@ -4,8 +4,8 @@
 
 ## 1. 입력과 규모
 
-- 기준 master SHA: `cf73dd4a946af4c0de40c39f62add08ceb6924a2`
-- 데이터 다이제스트(canonical+meanings+adjudication, sha256): `7b521c8c6e4e111bb8c9552fb7c557748c07b24f167303fbf57d1946578b7e27`
+- 기준 master SHA: `8c9a5e17116e1b73a1d814a6da6fa34f906cff7d`
+- 데이터 다이제스트(canonical+meanings+adjudication, sha256): `743dc210581a204748bc40f97530ac61655fa466977cfeb06b9458d03e01079f`
 - Meaning shard (43): `data/meanings/c08_001.jsonl`, `data/meanings/c08_002.jsonl`, `data/meanings/c08_003.jsonl`, `data/meanings/c08_004.jsonl`, `data/meanings/c08_005.jsonl`, `data/meanings/c08_006.jsonl`, `data/meanings/c08_007.jsonl`, `data/meanings/c08_008.jsonl`, `data/meanings/c08_009.jsonl`, `data/meanings/c08_010.jsonl`, `data/meanings/c08_011.jsonl`, `data/meanings/c08_012.jsonl`, `data/meanings/c08_013.jsonl`, `data/meanings/c08_014.jsonl`, `data/meanings/c08_015.jsonl`, `data/meanings/c08_016.jsonl`, `data/meanings/c08_017.jsonl`, `data/meanings/c08_018.jsonl`, `data/meanings/c08_019.jsonl`, `data/meanings/c08_020.jsonl`, `data/meanings/c08_021.jsonl`, `data/meanings/c08_022.jsonl`, `data/meanings/c08_023.jsonl`, `data/meanings/c08_024.jsonl`, `data/meanings/c08_025.jsonl`, `data/meanings/c08_026.jsonl`, `data/meanings/c08_027.jsonl`, `data/meanings/c08_028.jsonl`, `data/meanings/c08_029.jsonl`, `data/meanings/c08_030.jsonl`, `data/meanings/c08_031.jsonl`, `data/meanings/c08_032.jsonl`, `data/meanings/c08_033.jsonl`, `data/meanings/c08_034.jsonl`, `data/meanings/c08_035.jsonl`, `data/meanings/c08_036.jsonl`, `data/meanings/c08_037.jsonl`, `data/meanings/c08_038.jsonl`, `data/meanings/c08_039.jsonl`, `data/meanings/c08_040.jsonl`, `data/meanings/c08_041.jsonl`, `data/meanings/c08_042.jsonl`, `data/meanings/c08_043.jsonl`
 - adjudication shard (0): 없음
 

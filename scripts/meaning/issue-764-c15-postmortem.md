@@ -4,8 +4,8 @@
 
 ## 1. 입력과 규모
 
-- 기준 master SHA: `cf73dd4a946af4c0de40c39f62add08ceb6924a2`
-- 데이터 다이제스트(canonical+meanings+adjudication, sha256): `7b521c8c6e4e111bb8c9552fb7c557748c07b24f167303fbf57d1946578b7e27`
+- 기준 master SHA: `8c9a5e17116e1b73a1d814a6da6fa34f906cff7d`
+- 데이터 다이제스트(canonical+meanings+adjudication, sha256): `743dc210581a204748bc40f97530ac61655fa466977cfeb06b9458d03e01079f`
 - Meaning shard (25): `data/meanings/c15_001.jsonl`, `data/meanings/c15_002.jsonl`, `data/meanings/c15_003.jsonl`, `data/meanings/c15_004.jsonl`, `data/meanings/c15_005.jsonl`, `data/meanings/c15_006.jsonl`, `data/meanings/c15_007.jsonl`, `data/meanings/c15_008.jsonl`, `data/meanings/c15_009.jsonl`, `data/meanings/c15_010.jsonl`, `data/meanings/c15_011.jsonl`, `data/meanings/c15_012.jsonl`, `data/meanings/c15_013.jsonl`, `data/meanings/c15_014.jsonl`, `data/meanings/c15_015.jsonl`, `data/meanings/c15_016.jsonl`, `data/meanings/c15_017.jsonl`, `data/meanings/c15_018.jsonl`, `data/meanings/c15_019.jsonl`, `data/meanings/c15_020.jsonl`, `data/meanings/c15_021.jsonl`, `data/meanings/c15_022.jsonl`, `data/meanings/c15_023.jsonl`, `data/meanings/c15_024.jsonl`, `data/meanings/c15_025.jsonl`
 - adjudication shard (1): `data/adjudication/c15_001.jsonl`
 

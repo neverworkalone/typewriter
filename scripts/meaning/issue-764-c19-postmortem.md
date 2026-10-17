@@ -4,8 +4,8 @@
 
 ## 1. 입력과 규모
 
-- 기준 master SHA: `cf73dd4a946af4c0de40c39f62add08ceb6924a2`
-- 데이터 다이제스트(canonical+meanings+adjudication, sha256): `7b521c8c6e4e111bb8c9552fb7c557748c07b24f167303fbf57d1946578b7e27`
+- 기준 master SHA: `8c9a5e17116e1b73a1d814a6da6fa34f906cff7d`
+- 데이터 다이제스트(canonical+meanings+adjudication, sha256): `743dc210581a204748bc40f97530ac61655fa466977cfeb06b9458d03e01079f`
 - Meaning shard (34): `data/meanings/c19_001.jsonl`, `data/meanings/c19_002.jsonl`, `data/meanings/c19_003.jsonl`, `data/meanings/c19_004.jsonl`, `data/meanings/c19_005.jsonl`, `data/meanings/c19_006.jsonl`, `data/meanings/c19_007.jsonl`, `data/meanings/c19_008.jsonl`, `data/meanings/c19_009.jsonl`, `data/meanings/c19_010.jsonl`, `data/meanings/c19_011.jsonl`, `data/meanings/c19_012.jsonl`, `data/meanings/c19_013.jsonl`, `data/meanings/c19_014.jsonl`, `data/meanings/c19_015.jsonl`, `data/meanings/c19_016.jsonl`, `data/meanings/c19_017.jsonl`, `data/meanings/c19_018.jsonl`, `data/meanings/c19_019.jsonl`, `data/meanings/c19_020.jsonl`, `data/meanings/c19_021.jsonl`, `data/meanings/c19_022.jsonl`, `data/meanings/c19_023.jsonl`, `data/meanings/c19_024.jsonl`, `data/meanings/c19_025.jsonl`, `data/meanings/c19_026.jsonl`, `data/meanings/c19_027.jsonl`, `data/meanings/c19_028.jsonl`, `data/meanings/c19_029.jsonl`, `data/meanings/c19_030.jsonl`, `data/meanings/c19_031.jsonl`, `data/meanings/c19_032.jsonl`, `data/meanings/c19_033.jsonl`, `data/meanings/c19_034.jsonl`
 - adjudication shard (1): `data/adjudication/c19_001.jsonl`
 

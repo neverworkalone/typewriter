@@ -2,12 +2,10 @@
 
 > C01~C19의 **현재 병합/분리 상태를 기록한 읽기 전용 목록**의 목차다. 아래 건수는 구조 집계이며 과병합·과분리 확정 집계나 편집 규칙 제안이 아니다.
 
-- 기준 master SHA: `cf73dd4a946af4c0de40c39f62add08ceb6924a2`
-- 데이터 다이제스트: `7b521c8c6e4e111bb8c9552fb7c557748c07b24f167303fbf57d1946578b7e27`
-- canonical: 428 shard / 427,583 record, Meaning 444,400행, adjudication 133행, 공통 validator 오류 0건
+- 기준 master SHA: `8c9a5e17116e1b73a1d814a6da6fa34f906cff7d`
+- 데이터 다이제스트: `743dc210581a204748bc40f97530ac61655fa466977cfeb06b9458d03e01079f`
+- canonical: 428 shard / 427,583 record, Meaning 434,103행, adjudication 133행, 공통 validator 오류 0건
 - 재생성: `node scripts/meaning/postmortem.mjs --input-sha <SHA>`; 일치 검증: `node scripts/meaning/postmortem.mjs --check`
-
-> ⚠️ c12: **잠정본**: [PR #798](https://github.com/neverworkalone/typewriter/pull/798)이 아직 master에 병합되지 않았다. 이 보고서는 병합 전 master 데이터 기준이며, #798 병합 후 최신 master로 재생성해야 최종본이 된다.
 
 | 초성 | 보고서 | 상세 목록 | Meaning | A: 2+ sense Meaning | B: 2+ Meaning lemma | 검토 lemma (A∪B) | A·B 양쪽 |
 | --- | --- | --- | ---: | ---: | ---: | ---: | ---: |
@@ -22,7 +20,7 @@
 | c09 (ㅃ) | [md](issue-764-c09-postmortem.md) | [jsonl](issue-764-c09-postmortem.jsonl) | 1,913 | 598 | 55 | 617 | 26 |
 | c10 (ㅅ) | [md](issue-764-c10-postmortem.md) | [jsonl](issue-764-c10-postmortem.jsonl) | 56,889 | 3,103 | 5,986 | 7,525 | 1,141 |
 | c11 (ㅆ) | [md](issue-764-c11-postmortem.md) | [jsonl](issue-764-c11-postmortem.jsonl) | 2,116 | 346 | 78 | 373 | 29 |
-| c12 (ㅇ) | [md](issue-764-c12-postmortem.md) | [jsonl](issue-764-c12-postmortem.jsonl) | 79,627 | 286 | 10,329 | 10,533 | 53 |
+| c12 (ㅇ) | [md](issue-764-c12-postmortem.md) | [jsonl](issue-764-c12-postmortem.jsonl) | 69,330 | 7,802 | 5,734 | 10,533 | 2,270 |
 | c13 (ㅈ) | [md](issue-764-c13-postmortem.md) | [jsonl](issue-764-c13-postmortem.jsonl) | 50,309 | 6,213 | 4,425 | 7,787 | 2,001 |
 | c14 (ㅉ) | [md](issue-764-c14-postmortem.md) | [jsonl](issue-764-c14-postmortem.jsonl) | 1,614 | 512 | 131 | 532 | 78 |
 | c15 (ㅊ) | [md](issue-764-c15-postmortem.md) | [jsonl](issue-764-c15-postmortem.jsonl) | 20,907 | 2,715 | 2,061 | 3,723 | 802 |
@@ -30,7 +28,7 @@
 | c17 (ㅌ) | [md](issue-764-c17-postmortem.md) | [jsonl](issue-764-c17-postmortem.jsonl) | 10,316 | 1,069 | 867 | 1,607 | 258 |
 | c18 (ㅍ) | [md](issue-764-c18-postmortem.md) | [jsonl](issue-764-c18-postmortem.jsonl) | 14,776 | 514 | 1,835 | 2,166 | 138 |
 | c19 (ㅎ) | [md](issue-764-c19-postmortem.md) | [jsonl](issue-764-c19-postmortem.jsonl) | 29,258 | 3,155 | 2,654 | 4,825 | 816 |
-| 합계 | | | 444,400 | 39,217 | 42,231 | 67,022 | 10,716 |
+| 합계 | | | 434,103 | 46,733 | 37,636 | 67,022 | 12,933 |
 
 A·B 양쪽 열은 검토 lemma 중 두 집합에 모두 속한 수이며, 합계 검토 lemma는 중복을 한 번만 센다. `c20`(한글 초성이 아닌 표제어)은 이슈 범위(C01~C19) 밖이라 포함하지 않는다.
 

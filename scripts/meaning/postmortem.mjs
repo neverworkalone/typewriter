@@ -30,7 +30,7 @@ export const NO_RECORD = '기록 없음';
 export const reportName = (code) => `issue-764-${code}-postmortem`;
 export const INDEX_NAME = 'issue-764-postmortem.md';
 // Initials whose Meaning data is known to be awaiting a pending PR; drop the entry and regenerate once it merges.
-export const PROVISIONAL = Object.freeze({ c12: '**잠정본**: [PR #798](https://github.com/neverworkalone/typewriter/pull/798)이 아직 master에 병합되지 않았다. 이 보고서는 병합 전 master 데이터 기준이며, #798 병합 후 최신 master로 재생성해야 최종본이 된다.' });
+export const PROVISIONAL = Object.freeze({});
 export const POSTMORTEM_CONTRACT = 'meaning-postmortem-v1';
 
 const HISTORY_FILE = /^issue-(?:716|764|772|774)-.*\.(?:md|jsonl|json)$/u;

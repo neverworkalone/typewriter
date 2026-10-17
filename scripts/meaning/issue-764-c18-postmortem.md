@@ -4,8 +4,8 @@
 
 ## 1. 입력과 규모
 
-- 기준 master SHA: `cf73dd4a946af4c0de40c39f62add08ceb6924a2`
-- 데이터 다이제스트(canonical+meanings+adjudication, sha256): `7b521c8c6e4e111bb8c9552fb7c557748c07b24f167303fbf57d1946578b7e27`
+- 기준 master SHA: `8c9a5e17116e1b73a1d814a6da6fa34f906cff7d`
+- 데이터 다이제스트(canonical+meanings+adjudication, sha256): `743dc210581a204748bc40f97530ac61655fa466977cfeb06b9458d03e01079f`
 - Meaning shard (16): `data/meanings/c18_001.jsonl`, `data/meanings/c18_002.jsonl`, `data/meanings/c18_003.jsonl`, `data/meanings/c18_004.jsonl`, `data/meanings/c18_005.jsonl`, `data/meanings/c18_006.jsonl`, `data/meanings/c18_007.jsonl`, `data/meanings/c18_008.jsonl`, `data/meanings/c18_009.jsonl`, `data/meanings/c18_010.jsonl`, `data/meanings/c18_011.jsonl`, `data/meanings/c18_012.jsonl`, `data/meanings/c18_013.jsonl`, `data/meanings/c18_014.jsonl`, `data/meanings/c18_015.jsonl`, `data/meanings/c18_016.jsonl`
 - adjudication shard (1): `data/adjudication/c18_001.jsonl`
 
