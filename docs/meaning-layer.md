@@ -36,7 +36,7 @@ contributing relation (canonical order) supplies `note`/`relevance`, verified ex
 Skip/dedup/redirect counts are written to `metadata` as `meaning_projection_*`, so
 `source = projected + deduplicated + skipped`.
 
-The shipped (Lite) `dictionary.sqlite` (schema version 8) carries only the product meaning contract. The STDICT source `senses`, `relations` and
+The shipped (Lite) `dictionary.sqlite` (schema version 9) carries only the product meaning contract. The STDICT source `senses`, `relations` and
 `meaning_relation_sources` tables exist only in the Full database `artifacts/dictionary.sqlite` (Issue #792, #795) and are never packaged:
 
 | Table | Content |
@@ -47,7 +47,16 @@ The shipped (Lite) `dictionary.sqlite` (schema version 8) carries only the produ
 | `meaning_relations` | `source_meaning_id`, `position`, `target_meaning_id`, `type`, `note`, `relevance`, `origin` |
 | `generated_surface_forms` | `form`, `record_id`, `sense_id`, `sense_position` (source sense position, for stable ordering), `rule_id` |
 
-`meaning_relations.origin` is one of `stdict-sense-projection` or `typewriter-authored` (CHECK). Typewriter-authored
+`meaning_relations.origin` is one of `stdict-sense-projection` (an original source `relations[]` entry), `typewriter-authored` or
+`direct-reverse-projection` (CHECK; Issue #797).
+
+**Bidirectional `direct` (owner-approved exception to "no invented symmetry").** Every original `direct` is shown in both directions.
+The missing direction is a derived row with `origin='direct-reverse-projection'` (`scripts/build/direct-reverse.mjs`) whose Full-only
+`meaning_relation_reverse_sources` row names the forward relation it mirrors; it inherits note and relevance, is never created when the
+reverse already exists, and never mirrors a reverse. Other relation types (`antonym`, `near`, `mood`, …) are not symmetrised.
+A STDICT `→` gloss (usually a non-standard form pointing at the standard one) is not evidence of a synonym: it creates no relation, and
+the gloss stays as written. Promoting it to `direct` requires explicit source meaning information or separate verifiable evidence.
+The Lite contract query `direct_relation_without_reverse` proves the symmetry in the shipped database. Typewriter-authored
 relations (유의어, 반의어, 말의 결, 연상) are edited on the same table with `origin='typewriter-authored'`.
 
 `buildDictionary` writes the Full database (`artifacts/dictionary.sqlite`) with the source tables and runs there the

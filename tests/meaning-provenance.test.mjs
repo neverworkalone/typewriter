@@ -8,6 +8,8 @@ import { DatabaseSync } from 'node:sqlite';
 import { extractLiteDictionary } from '../scripts/build/lite-dictionary.mjs';
 import { buildDictionary } from '../scripts/build/dictionary.mjs';
 import { MEANING_INTEGRITY_QUERIES } from '../src/runtime/dictionary-contract.js';
+import { projectDirectReverses } from '../scripts/build/direct-reverse.mjs';
+import { projectRecordMeanings, projectMeaningRelations } from '../scripts/build/record-meanings.mjs';
 import { MEANING_SOURCE_INTEGRITY_QUERIES } from '../scripts/build/meaning-source-checks.mjs';
 import { validatePackagedDictionary } from '../src/runtime/dictionary-validation.js';
 
@@ -25,10 +27,10 @@ const RECORDS = [
   record(2, '다라', [['다라의 뜻풀이.']]),
   record(3, '마바', [['마바의 뜻풀이.']]),
 ];
-async function buildFixture(directory) {
+async function buildFixture(directory, records = RECORDS) {
   const canonicalDirectory = path.join(directory, 'canonical');
   await mkdir(canonicalDirectory);
-  await writeFile(path.join(canonicalDirectory, 'part.jsonl'), `${RECORDS.map((item) => JSON.stringify(item)).join('\n')}\n`);
+  await writeFile(path.join(canonicalDirectory, 'part.jsonl'), `${records.map((item) => JSON.stringify(item)).join('\n')}\n`);
   const outputPath = path.join(directory, 'dictionary.sqlite');
   await buildDictionary({
     inputDirectory: canonicalDirectory,
@@ -60,13 +62,13 @@ test('meaning relation provenance: valid mapping passes; deleted, mis-bound and 
   try {
     const { deployed, full: good } = await buildFixture(directory);
     const database = new DatabaseSync(good, { readOnly: true });
-    assert.equal(database.prepare('SELECT COUNT(*) AS c FROM meaning_relations').get().c, 2);
+    assert.equal(database.prepare('SELECT COUNT(*) AS c FROM meaning_relations').get().c, 3);
     assert.equal(database.prepare('SELECT COUNT(*) AS c FROM meaning_relation_sources').get().c, 3);
     database.close();
     const shipped = new DatabaseSync(deployed, { readOnly: true });
-    assert.equal(shipped.prepare('SELECT COUNT(*) AS c FROM meaning_relations').get().c, 2);
+    assert.equal(shipped.prepare('SELECT COUNT(*) AS c FROM meaning_relations').get().c, 3);
     assert.deepEqual(
-      shipped.prepare("SELECT name FROM sqlite_master WHERE name IN ('senses', 'relations', 'meaning_relation_sources')").all(),
+      shipped.prepare("SELECT name FROM sqlite_master WHERE name IN ('senses', 'relations', 'meaning_relation_sources', 'meaning_relation_gloss_sources', 'meaning_relation_reverse_sources')").all(),
       [],
     );
     shipped.close();
@@ -158,7 +160,8 @@ test('meaning relation provenance: valid mapping passes; deleted, mis-bound and 
         UPDATE meaning_relation_sources SET relation_position = 1 WHERE source_meaning_id = 'm001' AND relation_position = 100;
       `);
     });
-    assert.deepEqual(swapped, { meaning_relation_position_order_violation: 1 });
+    // The reverse relation m003 -> m001 points at its forward by position, so the swap breaks that link too.
+    assert.deepEqual(swapped, { meaning_relation_position_order_violation: 1, reverse_relation_mismatch: 1 });
 
     // An authored relation owns its own note/relevance and is not compared with STDICT.
     await copyFile(good, copy('authored-content.sqlite'));
@@ -180,6 +183,71 @@ test('meaning relation provenance: valid mapping passes; deleted, mis-bound and 
     } finally {
       tampered.close();
     }
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+// Issue #797: every original direct is shown in both directions; a `→` gloss is never evidence of a synonym.
+const typed = (n, lemma, gloss, relations) => ({
+  id: `w00${n}`, record_type: 'entry', role: 'start', candidate_id: `w00${n}`, lemma, search_forms: [lemma],
+  senses: [{ id: `w00${n}-s1`, pos: 'noun', gloss, ...(relations ? { relations } : {}) }],
+});
+const DIRECT_RECORDS = [
+  typed(10, '원본가', '원본 뜻 가.', [direct('w0011-s1')]),   // reverse missing -> derived
+  typed(11, '원본나', '원본 뜻 나.'),
+  typed(12, '원본다', '원본 뜻 다.', [direct('w0013-s1')]),   // mirrors each other: no duplicate
+  typed(13, '원본라', '원본 뜻 라.', [direct('w0012-s1')]),
+  typed(14, '원본마', '원본 뜻 마.', [{ ...direct('w0015-s1'), type: 'antonym', note: '반의' }, { ...direct('w0015-s1'), type: 'near', note: '근접', relevance: 3 }]),
+  typed(15, '원본바', '원본 뜻 바.'),
+  typed(16, '비표준', '→ 원본바.'),                              // a reference gloss creates no relation
+];
+
+test('direct reverse projection: only direct is mirrored, never twice, never a gloss arrow', () => {
+  const records = DIRECT_RECORDS.map((item) => ({ ...item, senses: item.senses.map((sense) => ({ relations: [], ...sense })) }));
+  const meanings = projectRecordMeanings(records);
+  const { relations: original } = projectMeaningRelations({ records, meanings });
+  const { relations, stats } = projectDirectReverses({ relations: original });
+  assert.deepEqual(relations.map((r) => `${r.source_meaning_id}>${r.target_meaning_id}:${r.type}:${r.origin}`), [
+    'm0011>m0010:direct:direct-reverse-projection',
+  ]);
+  assert.deepEqual(stats, { reverse_count: 1, reverse_existing_count: 2 });
+  assert.deepEqual(relations[0].reverse_of, { source_meaning_id: 'm0010', position: 0 });
+  assert.equal(relations[0].note, original[0].note);
+  // Idempotent over its own output: a reverse is never mirrored again.
+  assert.deepEqual(projectDirectReverses({ relations: [...original, ...relations] }).relations, []);
+});
+
+test('derived reverse provenance: valid build passes; forged, missing and mismatched reverses fail', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'typewriter-derived-'));
+  try {
+    const { deployed, full: good } = await buildFixture(directory, DIRECT_RECORDS);
+    assert.deepEqual(violations(good), {});
+    const shipped = new DatabaseSync(deployed, { readOnly: true });
+    // The shipped database holds no derivation tables, yet still proves every direct is shown in both directions.
+    assert.deepEqual(Object.entries(MEANING_INTEGRITY_QUERIES).filter(([, sql]) => Number(Object.values(shipped.prepare(sql).get())[0]) !== 0), []);
+    assert.equal(shipped.prepare("SELECT COUNT(*) AS c FROM meaning_relations WHERE origin = 'direct-reverse-projection'").get().c, 1);
+    shipped.close();
+    const database = new DatabaseSync(good, { readOnly: true });
+    assert.equal(Number(database.prepare('SELECT COUNT(*) AS c FROM meaning_relation_reverse_sources').get().c), 1);
+    // Derived rows are never recorded as original source positions; the reference gloss makes no relation.
+    assert.equal(Number(database.prepare(
+      "SELECT COUNT(*) AS c FROM meaning_relation_sources AS s JOIN meaning_relations AS r ON r.source_meaning_id = s.source_meaning_id AND r.position = s.relation_position WHERE r.origin <> 'stdict-sense-projection'",
+    ).get().c), 0);
+    assert.equal(Number(database.prepare("SELECT COUNT(*) AS c FROM meaning_relations WHERE source_meaning_id = 'm0016' OR target_meaning_id = 'm0016'").get().c), 0);
+    database.close();
+
+    const copy = (name) => path.join(directory, name);
+    const mutate = async (name, sql, off = false) => {
+      await copyFile(good, copy(`${name}.sqlite`));
+      return violations(copy(`${name}.sqlite`), (db) => { if (off) db.exec('PRAGMA foreign_keys = OFF'); db.exec(sql); });
+    };
+    assert.equal((await mutate('no-provenance', 'DELETE FROM meaning_relation_reverse_sources')).reverse_relation_without_provenance, 1);
+    assert.ok((await mutate('one-way', "DELETE FROM meaning_relations WHERE origin = 'direct-reverse-projection'")).direct_relation_without_reverse > 0);
+    assert.ok((await mutate('note', "UPDATE meaning_relations SET note = '위조' WHERE origin = 'direct-reverse-projection'")).reverse_relation_mismatch > 0);
+    assert.ok((await mutate('type', "UPDATE meaning_relations SET type = 'near' WHERE origin = 'direct-reverse-projection'")).reverse_relation_mismatch > 0);
+    assert.ok((await mutate('chain', "UPDATE meaning_relation_reverse_sources SET forward_source_meaning_id = 'm0011', forward_position = 0", true)).reverse_relation_mismatch > 0);
+    assert.ok((await mutate('relabel', "UPDATE meaning_relations SET origin = 'typewriter-authored' WHERE origin = 'direct-reverse-projection'", true)).reverse_relation_mismatch > 0);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

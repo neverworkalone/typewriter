@@ -88,7 +88,8 @@ CREATE TABLE meaning_relations (
   note TEXT NOT NULL,
   relevance INTEGER CHECK (relevance IS NULL OR relevance BETWEEN 1 AND 9),
   origin TEXT NOT NULL CHECK (origin IN (
-    '${MEANING_RELATION_ORIGINS.projection}', '${MEANING_RELATION_ORIGINS.authored}'
+    '${MEANING_RELATION_ORIGINS.projection}', '${MEANING_RELATION_ORIGINS.authored}',
+    '${MEANING_RELATION_ORIGINS.reverse}'
   )),
   CHECK (length(note) > 0),
   PRIMARY KEY (source_meaning_id, position),
@@ -159,6 +160,19 @@ CREATE TABLE meaning_relation_sources (
     REFERENCES meaning_relations(source_meaning_id, position) ON DELETE CASCADE,
   FOREIGN KEY (source_sense_id, source_position)
     REFERENCES relations(source_sense_id, position)
+);
+
+-- Provenance of derived reverse \`direct\` relations: the forward relation they mirror (never an original source relation).
+CREATE TABLE meaning_relation_reverse_sources (
+  source_meaning_id TEXT NOT NULL,
+  relation_position INTEGER NOT NULL,
+  forward_source_meaning_id TEXT NOT NULL,
+  forward_position INTEGER NOT NULL,
+  PRIMARY KEY (source_meaning_id, relation_position),
+  FOREIGN KEY (source_meaning_id, relation_position)
+    REFERENCES meaning_relations(source_meaning_id, position) ON DELETE CASCADE,
+  FOREIGN KEY (forward_source_meaning_id, forward_position)
+    REFERENCES meaning_relations(source_meaning_id, position)
 );
 
 CREATE INDEX idx_senses_record_position ON senses(record_id, position);
