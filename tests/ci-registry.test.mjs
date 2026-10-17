@@ -791,13 +791,15 @@ test('Deep gate separates validated data from affected contracts and fails close
   ));
   assert.ok(normalSemanticAuthorityTest, 'Normal must retain semantic-authority regressions');
   const allDeep = selectChecksForPolicy(allChecks, CI_LEVEL_EXECUTION_POLICY.all).filter((check) => check.tier === 'deep');
-  assert.equal(allDeep.length, 7, 'scheduled/manual ci:all keeps all current-system Deep checks');
-  const affectedBenchmarkChecks = selectChecksForPolicy(allChecks, {
+  assert.equal(allDeep.length, 6, 'scheduled/manual ci:all keeps all current-system Deep checks');
+  const runtimeBinding = validateNormalCoverage().get('scripts/benchmark/sqlite-runtime.mjs');
+  assert.deepEqual(runtimeBinding?.normal_tests, ['tests/runtime-query-adapter.test.mjs']);
+  const affectedRuntimeDeepChecks = selectChecksForPolicy(allChecks, {
     tiers: ['deep'],
     changedPaths: ['scripts/benchmark/sqlite-runtime.mjs'],
     selectedDeepCheckIds: deepCheckIds(classifyDeepGatePaths(['scripts/benchmark/sqlite-runtime.mjs'])),
   });
-  assert.deepEqual(affectedBenchmarkChecks.map((check) => `${check.owner}/${check.label}`), [benchmarkId]);
+  assert.deepEqual(affectedRuntimeDeepChecks, []);
 
   const workflow = await readFile(path.resolve(TEST_DIRECTORY, '../.github/workflows/ci.yml'), 'utf8');
   assert.match(workflow, /^name: CI$/mu);
