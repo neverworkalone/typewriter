@@ -29,6 +29,9 @@ const known = (senseIds) => senseIds.every((id) => meaningBySense.has(id));
 // source-bound lexical identity, rather than by the generic shared category/action.
 const historicalOvermerges = [
   ['합사 (合沙 / 合絲 / 合飼)', 'm368033', ['w368033-s1', 'w502178-s1', 'w534893-s1']],
+  ['합동 (合同 / 合洞)', 'm371651_1', ['w371651-s1', 'w371653-s1']],
+  ['합동되다 (合同 / 合洞)', 'm364871', ['w371652-s1', 'w364871-s1']],
+  ['합동하다 (合同 / 合洞)', 'm502844', ['w502844-s1', 'w502845-s1']],
   ['합사하다 (合沙 / 合絲 / 合飼)', 'm368034', ['w368034-s1', 'w368036-s1', 'w534894-s1']],
   ['하화 (荷花 / 夏花)', 'm362827', ['w362827-s1', 'w501101-s1', 'w501101-s2']],
   ['합근 (合根 / 合巹)', 'm365690', ['w365690-s1', 'w502252-s1', 'w502252-s2']],
@@ -83,6 +86,9 @@ const historicalOvermerges = [
 
 const splitBoundaries = [
   ['합사 (合沙 / 合絲 / 合飼)', [['w368033-s1'], ['w502178-s1'], ['w534893-s1']]],
+  ['합동 (合同 / 合洞)', [['w371651-s1'], ['w371653-s1']]],
+  ['합동되다 (合同 / 合洞)', [['w371652-s1'], ['w364871-s1']]],
+  ['합동하다 (合同 / 合洞)', [['w502844-s1'], ['w502845-s1']]],
   ['합사하다 (合沙 / 合絲 / 合飼)', [['w368034-s1'], ['w368036-s1'], ['w534894-s1']]],
   ['하화 lotus versus summer flowers', [['w362827-s1'], ['w501101-s1', 'w501101-s2']]],
   ['합근 (合根 / 合巹)', [['w365690-s1'], ['w502252-s1', 'w502252-s2']]],
@@ -136,6 +142,7 @@ const splitBoundaries = [
 ];
 
 const sameIdentityControls = [
+  ['합가 family as a whole and the joined household (合家 / 闔家)', ['w364444-s1', 'w364444-s2', 'w364457-s1']],
   ['후방 house rear room and anatomical posterior chamber (後房)', ['w378899-s1', 'w378899-s2']],
   ['해마 seahorse and its shape-based anatomical extension (海馬)', ['w502078-s1', 'w502078-s2', 'w502078-s4']],
   ['향군 modern local military roles and historical local soldiers (鄕軍)', ['w373298-s1', 'w373298-s2', 'w373298-s3']],
@@ -294,6 +301,40 @@ test('C19 corrected same-record and later-car source relations preserve endpoint
   assertSourceRelation('later in sequence', 'w379204-s1', 'w448812-s1', 'antonym');
   const nextCar = assertSourceRelation('next vehicle', 'w379206-s1', 'w95438-s1', 'direct');
   assert.notEqual(endpoint('w379204-s1').id, nextCar.id, '次 order and 車 vehicle relations must keep separate source Meaning endpoints');
+});
+
+test('C19 合洞 antonyms project only to the administrative-dong meanings', () => {
+  const allMeaningsBySense = new Map();
+  for (const file of readdirSync(meaningDirectory).filter((name) => name.endsWith('.jsonl'))) {
+    for (const line of readFileSync(path.join(meaningDirectory, file), 'utf8').split('\n')) {
+      if (!line) continue;
+      const meaning = JSON.parse(line);
+      for (const senseId of meaning.sense_ids) allMeaningsBySense.set(senseId, meaning);
+    }
+  }
+  const sourceIds = new Set(['w371653', 'w153333', 'w502845', 'w436724']);
+  const records = readCanonicalEntries(path.join(root, 'data/canonical'))
+    .filter((record) => sourceIds.has(record.id));
+  const adjudications = readAdjudications(path.join(root, 'data/adjudication')).rows;
+  const { relations } = projectMeaningRelations({ records, meanings: [...new Set(allMeaningsBySense.values())], adjudications });
+
+  for (const [sourceSense, targetSense, sharedActionSense, label] of [
+    ['w371653-s1', 'w153333-s1', 'w371651-s1', '합동'],
+    ['w502845-s1', 'w436724-s1', 'w502844-s1', '합동하다'],
+  ]) {
+    const sourceMeaning = allMeaningsBySense.get(sourceSense);
+    const targetMeaning = allMeaningsBySense.get(targetSense);
+    const actionMeaning = allMeaningsBySense.get(sharedActionSense);
+    assert.ok(sourceMeaning && targetMeaning && actionMeaning, `${label}: source and target Meaning endpoints resolve`);
+    assert.notEqual(sourceMeaning.id, actionMeaning.id, `${label}: 合洞 and 合同 remain distinct Meanings`);
+    const projected = relations.find((relation) => relation.source_meaning_id === sourceMeaning.id
+      && relation.target_meaning_id === targetMeaning.id && relation.type === 'antonym');
+    assert.ok(projected, `${label}: the canonical administrative-dong antonym projects`);
+    assert.deepEqual(projected.sources.map((source) => source.source_sense_id), [sourceSense], `${label}: source provenance stays bound`);
+    assert.equal(relations.some((relation) => relation.source_meaning_id === actionMeaning.id
+      && relation.target_meaning_id === targetMeaning.id && relation.type === 'antonym'), false,
+    `${label}: the administrative-dong antonym does not leak to the shared-action Meaning`);
+  }
 });
 
 test('C19 source fixture IDs still resolve to their canonical lemma and source gloss', () => {

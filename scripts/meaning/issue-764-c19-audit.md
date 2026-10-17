@@ -110265,3 +110265,21 @@ The replay from base `6f37ba315daa77a5dfe4974d39721c0919bf7937` applied 4,549 re
 ### Review follow-up — `後魏` identity control (2026-10-17)
 
 Stage 1 review observed that the audit described `w380773-s1` (`後魏`, Northern Wei) as a source-ID-asserted distinct control, while the regression had not encoded that boundary. Added the exact source-ID split to `distinctIdentityControls`: `w380772-s1` and `w505660-s1/s2/s3` remain one `後衛` Meaning, separate from `w380773-s1`. This is coverage for the already-recorded boundary; it does not change Meaning data or the replay result.
+
+## Stage 2 follow-up — `合同` / `合洞` identity and relation endpoints (2026-10-17)
+
+This addendum accepts Stage 1 review `5555502585` on PR #807 HEAD `4a3bac79b56ab8e8a37d5dd381fac7ceaae58d14`. It supersedes the earlier nearby-control KEEP decision for `합동` in this audit: the previous rationale generalized both senses as “joining into one whole,” but that is not a shared lexical identity under Issue #764.
+
+The source page `1595832_415000.json` was checked against the committed STDICT inventory; its SHA-256 `a749ba01f5bcbb19567dadcca0ab7a001de5f09fa61f2ae27da7752f52d1036e` matches. The three distinct `合同`/`合洞` pairs are:
+
+| Lemma | Source identities | Revised Meaning boundary |
+| --- | --- | --- |
+| `합동` | `w371651-s1` `合同`: organizations or people act together; `w371653-s1` `合洞`: multiple administrative dongs are combined into one | Split. Concerted action and administrative consolidation are distinct lexical identities. |
+| `합동되다` | `w371652-s1` `合同`: an action or work is done jointly; `w364871-s1` `合洞`: multiple dongs are merged into one | Split on the same source-bound distinction. |
+| `합동하다` | `w502844-s1` `合同`: organizations or people act together; `w502845-s1` `合洞`: multiple dongs are combined into one | Split on the same source-bound distinction. |
+
+The two canonical antonyms remain unchanged: `w371653-s1 → w153333-s1` and `w502845-s1 → w436724-s1`. The registered regression exercises the real `projectMeaningRelations` path and verifies that each antonym reaches its administrative-dong Meaning with its original `source_sense_id`, while neither relation leaks to the `合同` joint-action Meaning.
+
+As a bounded root-cause screen, I enumerated all six multi-record Meaning groups with lemmas beginning `합` in C19 shard 006: `합가`, the three corrected `합동` forms, `합병`, and `합병하다`. The source Hanja and glosses for these records were checked from the verified page above. I retained `합가` (`合家` family/household uses and `闔家` whole-family use) because the bound senses describe a family or household considered or brought together as a whole. I retained `합병` and `합병하다` (`合兵` military units formed into one unit; `合倂` organizations, groups, or countries joined into one) because both preserve the concrete merger/consolidation axis across a specific military target and broader organizations. This is not a census of C19, all `合` compounds, or all cross-record merges.
+
+Replaying the complete C19 spec from base `6f37ba315daa77a5dfe4974d39721c0919bf7937` still applies 4,549 repartitions and retains 125 adjudications; the three new splits raise the Meaning count from 473,139 to 473,142. All 34 replayed C19 shards match the PR worktree byte-for-byte after updating `c19_006`. The updated source-ID regression fails on prior HEAD `4a3bac79` at the identity boundary and endpoint assertions, then passes 7/7 on the replayed result. `node scripts/meaning/validate.mjs` passes with 473,142 Meanings and 125 adjudications. Canonical and adjudication inputs are unchanged. These are primary-agent source-bound checks, not independent review or human editorial approval; clean-tree `ci:normal` evidence will be recorded after it runs on the signed fix commit.
