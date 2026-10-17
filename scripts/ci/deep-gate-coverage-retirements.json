@@ -21,13 +21,6 @@
         "tests/factory-ensemble.test.mjs"
       ],
       "reason": "The cache only served retired Stage 1 production and has no current caller; Issue #823 removes its source and test."
-    },
-    {
-      "path": "scripts/benchmark/sqlite-runtime.mjs",
-      "normal_tests": [
-        "tests/runtime-query-adapter.test.mjs"
-      ],
-      "reason": "The benchmark helper had no current caller outside its one-off lifecycle measurement; current runtime parity coverage remains in the test file."
     }
   ]
 }

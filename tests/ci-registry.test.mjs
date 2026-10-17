@@ -718,9 +718,9 @@ test('Deep gate separates validated data from affected contracts and fails close
     assert.equal(classifyDeepGatePaths([pathValue]).deepMode, 'full', pathValue);
   }
 
-  const retiredBenchmark = classifyDeepGatePaths(['scripts/benchmark/sqlite-runtime.mjs']);
-  assert.equal(retiredBenchmark.deepMode, 'none', 'the removed helper remains covered by its append-only historical binding');
-  assert.equal(routePrDeepGate(retiredBenchmark).deepMode, 'none', 'the historical binding keeps the deletion on Normal');
+  const runtimeHelper = classifyDeepGatePaths(['scripts/benchmark/sqlite-runtime.mjs']);
+  assert.equal(runtimeHelper.deepMode, 'none', 'the current WASM runtime helper is covered by Normal, not Deep');
+  assert.equal(routePrDeepGate(runtimeHelper).deepMode, 'none', 'the runtime helper does not select unrelated Deep checks');
   for (const pathValue of [
     'src/runtime/dictionary-contract.js',
     'src/runtime/sqlite-query.js',
@@ -877,7 +877,7 @@ test('Deep gate separates validated data from affected contracts and fails close
   const affectedRuntimeDeepChecks = selectChecksForPolicy(allChecks, {
     tiers: ['deep'],
     changedPaths: ['scripts/benchmark/sqlite-runtime.mjs'],
-    selectedDeepCheckIds: deepCheckIds(retiredBenchmark),
+    selectedDeepCheckIds: deepCheckIds(runtimeHelper),
   });
   assert.deepEqual(affectedRuntimeDeepChecks, []);
 
