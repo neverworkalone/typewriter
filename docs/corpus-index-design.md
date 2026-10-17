@@ -1,12 +1,34 @@
 # Written corpus local index design
 
-## Decision
+> **Historical design and implementation record.** Issue #823 retired the
+> corpus ingestion, local indexer, morphology cache, and pilot workflows. The
+> corpus-reference scripts, CLIs, and fixture tests named below are no longer
+> in this checkout.
+> Paths describe retained reference data; they do not define a supported
+> builder default or runnable command. The source permission and publication
+> boundaries remain applicable.
 
-Treat the corpus sample and any derived index as local reference evidence. Keep approved raw JSON under `~/.cache/typewriter/reference/corpus/` and generated SQLite under `~/.cache/typewriter/reference/corpus/indexes/`. The #194 implementation lives under scripts/reference/ and is separate from scripts/build/, which builds the canonical product dictionary. See [`local-reference-cache.md`](local-reference-cache.md) for the local data layout.
+## Historical design decision (#192 and #194)
 
-Use SQLite for source, document, and paragraph records. Build an FTS5 trigram index over paragraph text for literal substring lookup, then join hits back to source and document metadata. This is a text-evidence index, not a Korean tokenizer: it cannot claim lemma frequency, word-token frequency, POS counts, or writer usefulness. A hit must never create or admit a Typewriter candidate automatically.
+The design treated the corpus sample and its derived index as local reference
+evidence. Approved raw JSON was kept under `~/.cache/typewriter/reference/corpus/`;
+the generated SQLite is currently stored under
+`~/.cache/typewriter/reference/corpus/indexes/`. This is the data location,
+not a default of a currently available builder. The #194 indexer was separate
+from `scripts/build/`, which builds the canonical product dictionary. See
+[`local-reference-cache.md`](local-reference-cache.md) for the current local
+data layout.
 
-Issue #192 was the design pilot. Issue #194 implements the local indexer without adding corpus-derived canonical data or product-package inputs.
+The historical design used SQLite for source, document, and paragraph records,
+with an FTS5 trigram index over paragraph text for literal substring lookup.
+Hits joined back to source and document metadata. This text-evidence index was
+not a Korean tokenizer and could not establish lemma frequency, word-token
+frequency, POS counts, or writer usefulness. A hit did not create or admit a
+Typewriter candidate automatically.
+
+Issue #192 was the design pilot. Issue #194 implemented the local indexer
+without adding corpus-derived canonical data or product-package inputs; Issue
+#823 later retired that tooling.
 
 ## Pilot file inspected
 
@@ -36,7 +58,7 @@ These are findings about the requested file only. The shape of every other corpu
 
 The first version should expose literal matches and paragraph-level contexts. It should not silently normalize away source distinctions, split paragraphs into guessed sentences, assign POS, or call raw substring counts “lemma frequency.”
 
-## Local SQLite design
+## Historical local SQLite design
 
 Keep one row per source file, document, and paragraph. Source paths scope the source-provided IDs, so a repeated corpus or paragraph ID in another file cannot overwrite evidence.
 
@@ -50,19 +72,30 @@ Keep one row per source file, document, and paragraph. Source paths scope the so
 
 Use B-tree indexes for (document_rowid, ordinal), a non-unique (document_rowid, paragraph_id) lookup, source category/year, and document fields only where the first indexer demonstrates those filters. Keep the initial set small. The main query is candidate substring → matching paragraph rowids → paragraphs → document metadata → source category/path. A second query groups matching paragraphs by category or year. Results should be ordered by source path, document ordinal, and paragraph ordinal, not by an inferred relevance score. Surrogate row keys and array ordinals preserve separate rows even if source-provided corpus, document, or paragraph IDs repeat.
 
-FTS5 trigram search is character-substring search, not Korean morphological analysis. SQLite documents that trigram full-text searches do not match strings shorter than three Unicode characters. The local Node 24.19.0 / SQLite 3.53.3 runtime successfully created an FTS5 trigram table; a two-character query returned no rows. The repository's declared Node minimum is 24.19.0 (Node 24 LTS), whose SQLite provides FTS5 trigram; FTS5 trigram is therefore a required capability of the supported runtime and the implementation fails with a clear capability error instead of branching or skipping when it is unavailable. For one- and two-character queries, use a correct literal scan fallback initially and measure it. If short queries are too slow in actual use, evaluate a separate short-string index from observed query demand. Do not silently drop those searches. See the [SQLite trigram tokenizer documentation](https://www.sqlite.org/fts5.html#the_trigram_tokenizer).
+FTS5 trigram search is character-substring search, not Korean morphological
+analysis. SQLite documents that trigram full-text searches do not match strings
+shorter than three Unicode characters. The historical Node 24.19.0 / SQLite
+3.53.3 runtime created an FTS5 trigram table; a two-character query returned no
+rows. The then-declared Node minimum was 24.19.0 (Node 24 LTS), whose SQLite
+provided FTS5 trigram. The retired implementation treated this as a required
+runtime capability and reported a clear error when it was unavailable. Its
+one- and two-character fallback used a literal scan. See the [SQLite trigram
+tokenizer documentation](https://www.sqlite.org/fts5.html#the_trigram_tokenizer).
 
 ## Repository and data boundary
 
 - Raw source stays in the shared local area `~/.cache/typewriter/reference/corpus/` (or another approved temporary workspace). It is not added to Git.
 - The generated database path is `~/.cache/typewriter/reference/corpus/indexes/written-corpus-2025.sqlite`.
-- The tracked CLI is scripts/reference/build-corpus-index.mjs. It is research/reference tooling, separate from the canonical-to-product build in scripts/build/.
+- The former CLI was `scripts/reference/build-corpus-index.mjs`, research/reference tooling separate from the canonical-to-product build in `scripts/build/`; it was removed when the workflow was retired in #823.
 - The derived index is not canonical JSONL, an inventory projection, a batch manifest, or product output. It must not be read by npm run build, Pages, or package commands.
-- Do not commit corpus text, generated SQLite, candidate dumps, or context snippets. Existing lexical workflows may use source evidence only after its use is authorized; any resulting target decision remains Typewriter-authored and follows the existing inventory, reviewed-batch, validation, and canonical import gates.
+- Do not commit corpus text, generated SQLite, candidate dumps, or context
+  snippets. The former lexical workflow used source evidence only after its use
+  was authorized and followed the then-existing inventory, reviewed-batch,
+  validation, and canonical import gates; that workflow was retired under #823.
 
-The official [corpus overview](https://kli.korean.go.kr/introduce/corpusIntroduce.do) distinguishes raw corpora from corpora with language-analysis annotations. The [request help](https://kli.korean.go.kr/corpus/request/faqInfo.do?lang=en) says a request is reviewed and approved, after which the user signs a corpus license agreement before downloading. The [2025 corpus listing](https://kli.korean.go.kr/corpus/request/corpusRegist.do) describes the written corpus, but that description is not an individual user's usage agreement. Before a real index build, verify the downloaded file's agreement and that Typewriter's intended local lexical-evidence use is an approved purpose. For issue #197, the owner confirmed the NIKL site showed `permitted` for the requested local reference use; the machine-readable scopes and review date are recorded in [external-material-review-written-corpus-2025.md](external-material-review-written-corpus-2025.md). This approval does not authorize publishing or embedding corpus text or the local index.
+The official [corpus overview](https://kli.korean.go.kr/introduce/corpusIntroduce.do) distinguishes raw corpora from corpora with language-analysis annotations. The [request help](https://kli.korean.go.kr/corpus/request/faqInfo.do?lang=en) says a request is reviewed and approved, after which the user signs a corpus license agreement before downloading. The [2025 corpus listing](https://kli.korean.go.kr/corpus/request/corpusRegist.do) describes the written corpus, but that description is not an individual user's usage agreement. The historical build preflight required checking the downloaded file's agreement and confirming that the intended local lexical-evidence use was an approved purpose. For issue #197, the owner confirmed the NIKL site showed `permitted` for the requested local reference use; the machine-readable scopes and review date are recorded in [external-material-review-written-corpus-2025.md](external-material-review-written-corpus-2025.md). This approval does not authorize publishing or embedding corpus text or the local index.
 
-## Full-corpus implications
+## Historical full-corpus implementation plan
 
 The worktree-local snapshot used for issue #197 contained 3,410 `.json` files totaling 1,906,201,772 bytes (about 1.775 GiB); the largest file was 4,143,019 bytes (about 3.95 MiB). Those files are migrated to the shared cache. This is a measurement of that checkout, not an official complete-corpus size claim. The full-folder schema result and build measurements are recorded below.
 
@@ -72,21 +105,34 @@ The worktree-local snapshot used for issue #197 contained 3,410 `.json` files to
 - **Storage:** paragraph text is the dominant base-table payload. Trigram postings, SQLite pages, and indexes on metadata are the likely additional size drivers; the FTS external-content table avoids another stored text copy. Issue #197 measured the FTS shadow tables, total index size, full rebuild time, and representative lookup latency below. Check free disk space before a staged build because the source, current index, and temporary replacement can coexist.
 - **Update cadence:** the corpus is a local reference snapshot, not product runtime data. Rebuild when an authorized source snapshot changes. A file-hash based incremental path is a later optimization, justified only by observed rebuild cost and source update cadence.
 
-The full-folder schema and FTS storage uncertainties from the pilot were measured in issue #197. The one-character literal fallback is materially slower than the trigram path; keep it correct and measure actual query demand before adding a separate short-query index. The builder still probes FTS5 trigram as a fail-closed check: the supported Node 24.19.0 baseline must provide it, so the probe only catches an unexpected runtime regression with a clear error rather than selecting an alternate path.
+The full-folder schema and FTS storage uncertainties from the pilot were
+measured in issue #197. The one-character literal fallback was materially
+slower than the trigram path. The retired builder also probed FTS5 trigram as a
+fail-closed check; this is not a current runtime contract.
 
-## Bounded search and future corpus tooling
+## Historical bounded-search contract
 
-Every paragraph-returning `searchCorpusIndex()` lookup is limited in SQL before rows are materialized in Node.js. Omitting `limit` returns at most 50 rows; callers may request 1–200 rows, and larger or invalid values fail. The same contract applies to FTS5 trigram and one-/two-character literal fallback searches. There is no unlimited row-returning mode. The CLI accepts the same bounded `--limit` range and does not provide an unlimited option.
+In the retired implementation, every paragraph-returning
+`searchCorpusIndex()` lookup was limited in SQL before rows were materialized
+in Node.js. Omitting `limit` returned at most 50 rows; callers could request
+1–200 rows, and larger or invalid values failed. The same contract applied to
+FTS5 trigram and one-/two-character literal fallback searches. The former CLI
+accepted the same bounded `--limit` range and had no unlimited option.
 
-Use the corpus APIs according to the amount of evidence needed:
+The former implementation used its corpus APIs as follows:
 
-- Use bounded `searchCorpusIndex()` results when actual paragraph evidence is needed.
-- Use `countCorpusMatches()` or the CLI's `--count` mode for exhaustive match counts; both run `COUNT(*)` inside SQLite and return only the aggregate value.
-- Process candidate words incrementally. Handle one query and its bounded result batch at a time, then release those results before continuing; do not collect arrays for many broad queries into one large in-memory structure.
-- Do not read the SQLite index into a `Buffer` or copy the whole database into application memory.
-- Keep corpus/index access out of product runtime, Pages, extension builds, and normal CI. The synthetic corpus reference suite remains local/manual and is not a normal-CI dependency.
+- `searchCorpusIndex()` returned bounded paragraph evidence.
+- `countCorpusMatches()` and the CLI's `--count` mode ran `COUNT(*)` inside
+  SQLite and returned only the aggregate value.
+- Candidate words were processed incrementally, one query and bounded result
+  batch at a time.
+- The SQLite index was not read into a `Buffer` or copied into application
+  memory.
+- Corpus/index access stayed out of product runtime, Pages, extension builds,
+  and normal CI. The synthetic reference suite was local/manual and outside
+  normal CI; it was removed under #823.
 
-## Full-corpus build measurements (#197)
+## Historical full-corpus build measurements (#197)
 
 The owner confirmed the site permission status as `permitted` for this issue's local reference task. The full-corpus preflight and build ran on 2026-09-27 against the local snapshot only. No corpus text or search result excerpts were added to Git.
 
@@ -109,7 +155,7 @@ The audit and build agreed on source/document/paragraph counts and the sorted in
 
 A full rebuild is operationally acceptable for this one-time local snapshot, so the measurements do not justify a separate incremental-index task. Revisit that decision if the authorized snapshot changes frequently or repeated 8-minute rebuilds become a real operational burden. The short-query fallback remains correct but is slower; defer a specialized short-string index until actual query demand justifies it.
 
-## Pilot acceptance summary (#192 design)
+## Historical pilot acceptance summary (#192 design)
 
 - Actual pilot schema and present-versus-absent fields: documented above.
 - Useful lookup boundaries and exact-vs-derived information: documented above.
@@ -117,11 +163,28 @@ A full rebuild is operationally acceptable for this one-time local snapshot, so 
 - Full-corpus measurements and unresolved uncertainties: recorded without claiming a performance benchmark or rights clearance.
 - Production indexer, corpus-wide schema validation, and full-corpus build were deferred to #194; canonical changes remain out of scope.
 
-## Implementation status (#194 and #197)
+## Historical implementation status (#194 and #197; retired by #823)
 
-- The local builder, reusable literal lookup, and permission check are implemented under scripts/reference/. Deterministic fixture tests are retained at scripts/reference/corpus-index.test.mjs and run manually with `node --test scripts/reference/corpus-index.test.mjs` on an FTS5-capable local runtime.
-- Every build runs the same fail-closed schema validation in a sorted preflight and again while inserting one JSON file at a time. Temporary SQLite output is validated before replacing the active local index.
-- The build and lookup CLIs require a permitted reference decision, explicit permission for local storage, schema scanning and processing, SQLite/FTS indexing, and lexical-reference use, plus completed reviews of distribution/embedding and attribution/notice terms. Missing or pending fields block real-corpus operations. Issue #197 records the owner's site permission confirmation and completed the full-corpus preflight and build.
-- The builder defaults to `~/.cache/typewriter/reference/corpus/indexes/` and rejects repository-local database output outside that cache area. The fixture suite is retained for local/manual use and is not wired into normal CI.
-- The issue #197 snapshot is summarized in the measurements above. The generated index remains local; no corpus-derived lexical records were admitted.
-- The index remains local reference data outside the repository. Product build, package, Pages, release, and canonical admission paths do not consume scripts/reference/ or the shared cache.
+- The former local builder, reusable literal lookup, and permission check were
+  implemented under `scripts/reference/`. The deterministic fixture test was
+  `scripts/reference/corpus-index.test.mjs`; the builder and test were removed
+  under #823, so the historical `node --test` command is not runnable from this
+  checkout.
+- Each historical build ran fail-closed schema validation in a sorted
+  preflight and while inserting one JSON file at a time. Temporary SQLite
+  output was validated before replacing the active local index.
+- The former build and lookup CLIs required a permitted reference decision,
+  explicit permission for local storage, schema scanning and processing,
+  SQLite/FTS indexing, and lexical-reference use, plus completed reviews of
+  distribution/embedding and attribution/notice terms. Missing or pending
+  fields blocked real-corpus operations. Issue #197 records the owner's site
+  permission confirmation and completed the full-corpus preflight and build.
+- The database is currently stored under
+  `~/.cache/typewriter/reference/corpus/indexes/`. This describes its storage
+  location only; the retired builder's former default and path checks are not
+  current CLI contracts.
+- The issue #197 snapshot and measurements above remain historical evidence.
+  The generated index remains local; no corpus-derived lexical records were
+  admitted.
+- Product build, package, Pages, release, and canonical admission paths do not
+  consume the retired `scripts/reference/` tools or the shared cache.
