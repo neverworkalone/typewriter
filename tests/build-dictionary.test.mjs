@@ -296,14 +296,11 @@ test('rebuilds from an empty output and protects canonical input', async () => {
   }
 });
 
-test('builds the meaning layer and projected meaning relations with provenance', async () => {
+test('builds the canonical-only meaning layer and projected meaning relations with provenance', async () => {
   const outputDirectory = await createOutputDirectory();
   const outputPath = path.join(outputDirectory, 'dictionary.sqlite');
-  const meaningsDirectory = path.join(outputDirectory, 'meanings');
-  const adjudicationDirectory = path.join(outputDirectory, 'adjudication');
 
   try {
-    const { writeMeanings, writeAdjudications } = await import('../scripts/meaning/contract.mjs');
     // The fixture's reference-only record uses an r-prefixed id; the meaning layer needs canonical w-ids.
     const canonicalDirectory = path.join(outputDirectory, 'canonical');
     await mkdir(canonicalDirectory);
@@ -311,34 +308,13 @@ test('builds the meaning layer and projected meaning relations with provenance',
       const text = (await readFile(path.join(PILOT_DIRECTORY, name), 'utf8')).replaceAll('r001', 'w006');
       await writeFile(path.join(canonicalDirectory, name), text);
     }
-    const canonical = (await readdir(canonicalDirectory)).filter((name) => name.endsWith('.jsonl'));
-    const meanings = [];
-    for (const name of canonical) {
-      for (const line of (await readFile(path.join(canonicalDirectory, name), 'utf8')).split('\n')) {
-        if (!line) continue;
-        const record = JSON.parse(line);
-        record.senses.forEach((sense, index) => {
-          const number = record.id.slice(1);
-          meanings.push({
-            id: record.senses.length === 1 ? `m${number}` : `m${number}_${index + 1}`,
-            lemma: record.lemma,
-            gloss: sense.gloss,
-            sense_ids: [sense.id],
-          });
-        });
-      }
-    }
-    writeMeanings(meaningsDirectory, meanings);
-    writeAdjudications(adjudicationDirectory, []);
-
     const summary = await buildDictionary({
       inputDirectory: canonicalDirectory,
       outputPath,
       allowDirty: true,
-      meaningsDirectory,
-      adjudicationDirectory,
+      recordMeanings: true,
     });
-    assert.equal(summary.meaningCount, 7);
+    assert.equal(summary.meaningCount, 6);
     assert.equal(summary.meaningRelationCount, 3);
     assert.equal(summary.metadata.meaning_relation_count, '3');
     assert.equal(summary.metadata.meaning_projection_source_relation_count, '3');
@@ -347,7 +323,7 @@ test('builds the meaning layer and projected meaning relations with provenance',
     await extractLiteDictionary({ fullPath: outputPath, litePath });
     const database = new DatabaseSync(litePath, { readOnly: true });
     try {
-      assert.equal(countRows(database, 'meanings'), 7);
+      assert.equal(countRows(database, 'meanings'), 6);
       assert.equal(countRows(database, 'meaning_members'), 7);
       assert.equal(countRows(database, 'meaning_relations'), 3);
       assert.deepEqual(
@@ -382,18 +358,6 @@ test('builds the meaning layer and projected meaning relations with provenance',
     } finally {
       database.close();
     }
-
-    await rm(path.join(meaningsDirectory, 'c01_001.jsonl'), { force: true });
-    await assert.rejects(
-      buildDictionary({
-        inputDirectory: canonicalDirectory,
-        outputPath: path.join(outputDirectory, 'broken.sqlite'),
-        allowDirty: true,
-        meaningsDirectory: path.join(outputDirectory, 'missing-meanings'),
-        adjudicationDirectory,
-      }),
-      (error) => error.code === 'INVALID_MEANING_DATA',
-    );
   } finally {
     await rm(outputDirectory, { recursive: true, force: true });
   }

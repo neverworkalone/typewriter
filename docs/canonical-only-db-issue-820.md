@@ -6,18 +6,17 @@ it, in canonical order.** No sense is split off, no record is merged with anothe
 
 ## What changed
 
-- `scripts/meaning/canonical-record.mjs` projects `record -> meaning` (`wN -> mN`, deterministic, independent of the
+- `scripts/build/record-meanings.mjs` (formerly `scripts/meaning/canonical-record.mjs`) projects `record -> meaning` (`wN -> mN`, deterministic, independent of the
   sense count). The meaning `gloss` column stores the record's source glosses verbatim, one per line.
 - `scripts/build/dictionary.mjs` uses that projection for the default canonical input (and for fixtures with
-  `recordMeanings: true`). The legacy reviewed-Meaning layer is only loaded when `meaningsDirectory` is passed
-  explicitly. Relations still go through the shared `projectMeaningRelations` (self-link skip, dedup, provenance).
+  `recordMeanings: true`). The legacy reviewed-Meaning layer that `meaningsDirectory` once selected was removed in Issue #822. Relations still go through the shared `projectMeaningRelations` (self-link skip, dedup, provenance).
 - UI: `projectDefinition` turns the stored lines into one definition item per source gloss; the result card numbers them
   (①②…) when there is more than one, and the candidate picker shows the first gloss. Candidates are records.
 - Schema: `meanings`/`meaning_members` are reused as the record based tables, `sense_adjudications` stays empty.
   Owner decision: **the product (Lite) database carries no part of speech.** `meanings.pos` is removed (schema
   version 7), together with its UI/query consumers; source `senses.pos` stays in the Full database only, and the Full
   integrity checks keep binding every member to its source sense.
-- `data/meanings/`, `data/adjudication/`, #764 specs and the #814/#816 reports are untouched.
+- `data/meanings/`, `data/adjudication/`, #764 specs and the #814/#816 reports were left untouched here; they were removed in Issue #822 ([inventory](legacy-meaning-removal-issue-822.md)). The projection now lives in `scripts/build/record-meanings.mjs`.
 
 ## Contract checks
 

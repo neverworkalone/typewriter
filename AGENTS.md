@@ -80,7 +80,7 @@ Other external APIs, dictionaries, corpora and LLMs remain subject to their
 respective use conditions. No new blanket validator or old-data migration is
 required by this license decision.
 
-## Canonical, Meaning, and generated artifacts
+## Canonical and generated artifacts
 
 The editable dictionary sources belong in Git. The current product pipeline is:
 
@@ -88,10 +88,8 @@ The editable dictionary sources belong in Git. The current product pipeline is:
 approved lexical sources
           ↓
 data/canonical/ (source-preserving lexical projection)
-          ↓
-data/meanings/ + data/adjudication/ (reviewed Meaning decisions)
-          ↓
-artifacts/dictionary.sqlite (Full: source + Meaning + provenance)
+          ↓ generated: one record = one meaning (scripts/build/record-meanings.mjs)
+artifacts/dictionary.sqlite (Full: source + meanings + provenance)
           ↓ verified product projection
 dist/dictionary.sqlite (Lite: Extension dictionary)
           ↓
@@ -100,7 +98,7 @@ Chrome Extension
 
 Rules:
 
-- preserve licensed canonical source data and its sense/provenance evidence; edit writer-facing Meaning glosses, grouping, and adjudications in their maintained source files;
+- preserve licensed canonical source data and its sense/provenance evidence; there is no separate edited Meaning layer (Issue #822): one canonical record is one meaning, derived on every build;
 - do not hand-edit generated SQLite to make tests pass;
 - Full is the development/source-audit database; only Lite belongs in the Extension package;
 - the same committed inputs and build contracts must reproduce the same logical database contents;
@@ -111,7 +109,7 @@ Rules:
 
 The former **lexical-production factory** (Discovery Stage 1 → Authoring/QA Stage 2 → Admission Stage 3) is retired. Do not start its candidate-batch loops, atomic claim/handoff workflow, stage-specific PR sequence, or autonomous downstream admission based on historical instructions. A future owner-issued task must explicitly define any new production workflow.
 
-Work on the canonical / Meaning / adjudication layers according to the assigned issue. Meaning is a lexical identity, not each individual source dictionary definition: retain genuinely distinct homonyms, consolidate natural usage and figurative extensions when justified, and preserve every source-bound use in the edited gloss. Neither over-merge nor over-split merely to simplify data. An edited Meaning does not authorize rewriting canonical source data.
+Work on the canonical layer according to the assigned issue. A search candidate is a canonical record; polysemy is the several glosses inside it and homonyms are separate records (see `docs/meaning-layer.md`). Do not reintroduce a separately edited Meaning or adjudication layer, and never rewrite canonical source data as a side effect.
 
 Use two relation quality standards:
 
@@ -148,7 +146,7 @@ Do not implement work belonging only to a later milestone merely because it is v
 
 In particular:
 
-- do not regenerate or bulk rewrite canonical or Meaning data outside the active issue;
+- do not regenerate or bulk rewrite canonical data outside the active issue;
 - do not freeze a large lexical ontology without demonstrated writer-facing need;
 - do not add generalized NLP infrastructure, embeddings, vector databases, cloud services, collaborative editing, or multi-language architecture unless current product needs demonstrate them;
 - do not expand Typewriter into a general Korean dictionary or AI writing assistant without an explicit product decision.
@@ -190,7 +188,7 @@ Lexical defects discovered in one word or data partition should normally become 
 When a defect expresses a general rule:
 
 - fix the common producer, validator, editorial audit, or consumer boundary;
-- apply the rule to **all applicable existing canonical and Meaning records**, and enforce it for future additions;
+- apply the rule to **all applicable existing canonical records**, and enforce it for future additions;
 - verify actual behavior with a minimal failing fixture and an old-fails/new-passes regression;
 - retain local checks only for genuinely local scope or requirements.
 

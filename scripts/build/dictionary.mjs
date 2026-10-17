@@ -18,10 +18,8 @@ import {
 } from './provenance.mjs';
 import { SQLITE_SCHEMA_SQL, SQLITE_SCHEMA_VERSION, SQLITE_SOURCE_SCHEMA_SQL } from './sqlite-schema.mjs';
 import { MEANING_SOURCE_INTEGRITY_QUERIES } from './meaning-source-checks.mjs';
-import { loadMeaningData, canonicalSensesFromContext, parseMeaningId } from '../meaning/contract.mjs';
 import { compareMeaningRank, countMeaningRelations } from '../../src/runtime/meaning-ranking.js';
-import { projectMeaningRelations } from '../meaning/project.mjs';
-import { projectRecordMeanings } from '../meaning/canonical-record.mjs';
+import { parseMeaningId, projectMeaningRelations, projectRecordMeanings } from './record-meanings.mjs';
 import {
   DATABASE_KIND_KEY,
   DATABASE_KINDS,
@@ -40,49 +38,22 @@ export const DEFAULT_DICTIONARY_OUTPUT = path.resolve(
   'artifacts/dictionary.sqlite',
 );
 
-const DEFAULT_ADJUDICATION_DIRECTORY = path.resolve('data/adjudication');
-
 /**
- * The product meaning layer (Issue #820): by default derived from the canonical records alone (one record = one
- * meaning holding all of its senses); `data/meanings` and `data/adjudication` are not read. Passing `meaningsDirectory`
- * explicitly selects the legacy reviewed-Meaning layer (validated complete against canonical).
+ * The product meaning layer (Issues #820, #822): derived from the canonical records alone (one record = one meaning
+ * holding all of its senses). Fixture inputs (non-`w<number>` record ids) get an empty layer unless `recordMeanings`
+ * asks for the projection.
  */
-function loadMeaningLayer({ model, context, inputDirectory, meaningsDirectory, adjudicationDirectory, recordMeanings }) {
+function loadMeaningLayer({ model, inputDirectory, recordMeanings }) {
   const isDefault = path.resolve(inputDirectory) === path.resolve(DEFAULT_CANONICAL_DIRECTORY);
-  if (!meaningsDirectory) {
-    // Fixture inputs (non-`w<number>` record ids) get an empty layer unless `recordMeanings` asks for the projection.
-    if (!(recordMeanings ?? isDefault)) {
-      return { meanings: [], adjudications: [], relations: [], stats: projectMeaningRelations({ records: [], meanings: [] }).stats };
-    }
-    const meanings = projectRecordMeanings(model.records);
-    const projection = projectMeaningRelations({ records: model.records, meanings });
-    return { meanings, adjudications: [], relations: projection.relations, stats: projection.stats };
+  if (!(recordMeanings ?? isDefault)) {
+    return { meanings: [], relations: [], stats: projectMeaningRelations({ records: [], meanings: [] }).stats };
   }
-  const meaningDir = meaningsDirectory;
-  const loaded = loadMeaningData({
-    meaningsDirectory: meaningDir,
-    adjudicationDirectory: adjudicationDirectory ?? DEFAULT_ADJUDICATION_DIRECTORY,
-    senses: canonicalSensesFromContext(context),
-    complete: true,
-  });
-  if (loaded.errors.length > 0) {
-    throw new BuildError(
-      `meaning data is invalid: ${loaded.errors.slice(0, 10).join('; ')}`,
-      'INVALID_MEANING_DATA',
-    );
-  }
-  const projection = projectMeaningRelations({
-    records: model.records,
-    meanings: loaded.meanings,
-    adjudications: loaded.adjudications,
-  });
-  return {
-    meanings: loaded.meanings,
-    adjudications: loaded.adjudications,
-    relations: projection.relations,
-    stats: projection.stats,
-  };
+  const meanings = projectRecordMeanings(model.records);
+  const projection = projectMeaningRelations({ records: model.records, meanings });
+  return { meanings, relations: projection.relations, stats: projection.stats };
 }
+
+const REMOVED_OPTIONS = ['meaningsDirectory', 'adjudicationDirectory'];
 
 export class BuildError extends Error {
   constructor(message, code = 'BUILD_ERROR') {
@@ -152,7 +123,7 @@ function metadataEntries(model, metadata, surfaceProjection, meaningLayer) {
       (count, relation) => count + relation.sources.length,
       0,
     ),
-    sense_adjudication_count: meaningLayer.adjudications.length,
+    sense_adjudication_count: 0,
     ...Object.fromEntries(
       Object.entries(meaningLayer.stats).map(([key, value]) => [`meaning_projection_${key}`, value]),
     ),
@@ -240,9 +211,6 @@ function insertModel(database, model, metadata, surfaceFormRows, meaningLayer) {
   );
   const insertMember = database.prepare(
     'INSERT INTO meaning_members (meaning_id, position, sense_id, record_id) VALUES (?, ?, ?, ?)',
-  );
-  const insertAdjudication = database.prepare(
-    'INSERT INTO sense_adjudications (sense_id, reason, record_id, duplicate_of_sense_id) VALUES (?, ?, ?, ?)',
   );
   const insertMeaningRelation = database.prepare(
     `INSERT INTO meaning_relations
@@ -334,9 +302,6 @@ function insertModel(database, model, metadata, surfaceFormRows, meaningLayer) {
       insertMember.run(meaning.id, position, senseId, sourceSense(senseId).record_id);
     });
   }
-  for (const item of meaningLayer.adjudications) {
-    insertAdjudication.run(item.sense_id, item.reason, sourceSense(item.sense_id).record_id, item.duplicate_of ?? null);
-  }
   for (const relation of meaningLayer.relations) {
     insertMeaningRelation.run(
       relation.source_meaning_id,
@@ -402,12 +367,19 @@ export async function buildDictionary({
   canonicalContext,
   semanticAudit,
   normalizedModel,
-  meaningsDirectory,
-  adjudicationDirectory,
   recordMeanings,
   requireSurfaceFormClassifications,
   requireSurfaceFormCollisionReview,
+  ...removedOptions
 } = {}) {
+  for (const name of REMOVED_OPTIONS) {
+    if (name in removedOptions) {
+      throw new BuildError(
+        `${name} was removed in Issue #822: the dictionary is built from data/canonical alone`,
+        'REMOVED_OPTION',
+      );
+    }
+  }
   const resolvedOutputPath = path.resolve(outputPath);
   assertOutputIsGeneratedOutsideCanonical(inputDirectory, resolvedOutputPath);
 
@@ -438,14 +410,7 @@ export async function buildDictionary({
     requireClassDispositions,
     requireCollisionReview,
   });
-  const meaningLayer = loadMeaningLayer({
-    model,
-    context,
-    inputDirectory,
-    meaningsDirectory,
-    adjudicationDirectory,
-    recordMeanings,
-  });
+  const meaningLayer = loadMeaningLayer({ model, inputDirectory, recordMeanings });
   const provenance = await resolveBuildProvenance({
     repositoryDirectory,
     sourceRevision,
