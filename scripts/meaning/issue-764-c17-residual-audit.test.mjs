@@ -3,7 +3,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import { projectMeaningRelations } from './project.mjs';
+import { MEANING_RELATION_ORIGIN, projectMeaningRelations } from './project.mjs';
 
 // Manual audit-coverage regression. Run directly with:
 // node --test scripts/meaning/issue-764-c17-residual-audit.test.mjs
@@ -16,6 +16,10 @@ const reviewCases = [
   { lemma: '탐라', before: [['w345436-s1'], ['w345436-s2']], groups: [['w345436-s1', 'w345436-s2']] },
   { lemma: '터놓다', before: [['w496506-s1'], ['w496506-s2'], ['w496506-s3']], groups: [['w496506-s1', 'w496506-s2', 'w496506-s3']] },
   { lemma: '타살', before: [['w335985-s1', 'w336289-s1'], ['w336289-s2']], groups: [['w335985-s1'], ['w336289-s1', 'w336289-s2']] },
+  { lemma: '탈색', before: [['w338157-s1'], ['w489758-s1'], ['w489758-s2']], priorHeadGroups: [['w338157-s1', 'w489758-s1', 'w489758-s2']], groups: [['w338157-s1'], ['w489758-s1', 'w489758-s2']] },
+  { lemma: '탈색하다', before: [['w342130-s1'], ['w493144-s1'], ['w493144-s2']], priorHeadGroups: [['w342130-s1', 'w493144-s1', 'w493144-s2']], groups: [['w342130-s1'], ['w493144-s1', 'w493144-s2']] },
+  { lemma: '탐색', before: [['w335361-s1'], ['w335363-s1'], ['w335365-s1']], priorHeadGroups: [['w335361-s1', 'w335365-s1'], ['w335363-s1']], groups: [['w335361-s1'], ['w335363-s1'], ['w335365-s1']] },
+  { lemma: '탐색하다', before: [['w335362-s1'], ['w335364-s1'], ['w492974-s1']], priorHeadGroups: [['w335362-s1', 'w492974-s1'], ['w335364-s1']], groups: [['w335362-s1'], ['w335364-s1'], ['w492974-s1']] },
   { lemma: '타상', before: [['w340436-s1'], ['w340437-s1'], ['w497650-s1']], groups: [['w340436-s1'], ['w340437-s1'], ['w497650-s1']] },
   { lemma: '타점', before: [['w345148-s1'], ['w345148-s2'], ['w345149-s1'], ['w497740-s1'], ['w497740-s2']], groups: [['w345148-s1'], ['w345148-s2'], ['w345149-s1'], ['w497740-s1'], ['w497740-s2']] },
   { lemma: '탁발하다', before: [['w342605-s1'], ['w345543-s1'], ['w345545-s1']], groups: [['w342605-s1'], ['w345543-s1'], ['w345545-s1']] },
@@ -41,6 +45,7 @@ const reviewCases = [
   { lemma: '탐리', before: [['w341678-s1'], ['w341977-s1'], ['w496829-s1']], priorHeadGroups: [['w341678-s1', 'w496829-s1'], ['w341977-s1']], groups: [['w341678-s1'], ['w341977-s1'], ['w496829-s1']] },
   { lemma: '탈거', before: [['w344693-s1'], ['w344693-s2'], ['w344732-s1']], priorHeadGroups: [['w344693-s1', 'w344693-s2', 'w344732-s1']], groups: [['w344693-s1', 'w344693-s2'], ['w344732-s1']] },
   { lemma: '탈거하다', before: [['w344694-s1'], ['w344694-s2'], ['w344733-s1']], priorHeadGroups: [['w344694-s1', 'w344694-s2', 'w344733-s1']], groups: [['w344694-s1', 'w344694-s2'], ['w344733-s1']] },
+  { lemma: '퇴사', before: [['w349975-s1'], ['w349976-s1', 'w496038-s2'], ['w349976-s2'], ['w349977-s1'], ['w350265-s1'], ['w350265-s2'], ['w350267-s1'], ['w350269-s1'], ['w496038-s1']], priorHeadGroups: [['w349975-s1', 'w349976-s1', 'w496038-s2'], ['w349976-s2', 'w496038-s1'], ['w349977-s1'], ['w350265-s1'], ['w350265-s2'], ['w350267-s1'], ['w350269-s1']], groups: [['w349975-s1'], ['w349976-s1', 'w496038-s2'], ['w349976-s2', 'w496038-s1'], ['w349977-s1'], ['w350265-s1'], ['w350265-s2'], ['w350267-s1'], ['w350269-s1']] },
   { lemma: '퇴경', before: [['w347986-s1'], ['w347988-s1'], ['w347990-s1'], ['w347991-s1'], ['w347991-s2']], priorHeadGroups: [['w347986-s1', 'w347988-s1', 'w347990-s1'], ['w347991-s1'], ['w347991-s2']], groups: [['w347986-s1', 'w347988-s1'], ['w347990-s1'], ['w347991-s1'], ['w347991-s2']] },
   { lemma: '토번', before: [['w348517-s1'], ['w495500-s1']], priorHeadGroups: [['w348517-s1', 'w495500-s1']], groups: [['w348517-s1'], ['w495500-s1']] },
   { lemma: '투광', before: [['w348337-s1'], ['w348602-s1'], ['w497774-s1']], groups: [['w348337-s1'], ['w348602-s1'], ['w497774-s1']] },
@@ -91,7 +96,7 @@ const sameRecordFigurativeCases = [
 reviewCases.push(...sameRecordFigurativeCases.filter((item) => item.decision === 'merge'));
 const reviewSenseIds = new Set(reviewCases.flatMap(({ groups }) => groups.flat()));
 const projectionProbeSenseIds = new Set([
-  'w335985-s1', 'w340436-s1', 'w342605-s1', 'w343447-s1', 'w342388-s1', 'w346982-s1',
+  'w335985-s1', 'w340436-s1', 'w489758-s1', 'w493144-s1', 'w342605-s1', 'w343447-s1', 'w342388-s1', 'w346982-s1',
   'w350643-s1', 'w350644-s1', 'w348611-s1', 'w495016-s1', 'w350261-s1', 'w515511-s1', 'w344145-s1', 'w492619-s1',
   'w341954-s1', 'w341956-s1', 'w341955-s1', 'w497023-s1', 'w517385-s1', 'w357670-s1',
   'w496829-s1', 'w344590-s1',
@@ -617,6 +622,52 @@ test('C17 tracks the same-record split risk cohort after source-bound correction
   for (const senseId of ['w343346-s1', 'w345436-s1', 'w496506-s1', 'w345148-s1', 'w345148-s2']) {
     assert.ok(meaningIdBySense.has(senseId), `${senseId}: reviewed same-record source sense remains in C17`);
   }
+});
+
+test('C17 separates 탈색/탐색 homonyms and keeps 탈색 antonyms on color-removal senses', () => {
+  const pigmentNoun = (rowsByLemma.get('탈색') ?? []).find((row) => row.sense_ids.includes('w489758-s1'));
+  const outshineNoun = (rowsByLemma.get('탈색') ?? []).find((row) => row.sense_ids.includes('w338157-s1'));
+  const pigmentVerb = (rowsByLemma.get('탈색하다') ?? []).find((row) => row.sense_ids.includes('w493144-s1'));
+  const outshineVerb = (rowsByLemma.get('탈색하다') ?? []).find((row) => row.sense_ids.includes('w342130-s1'));
+  const dyeNoun = [...projectionTargetRows.values()].find((row) => row.sense_ids.includes('w459450-s1'));
+  const dyeVerb = [...projectionTargetRows.values()].find((row) => row.sense_ids.includes('w234287-s1'));
+  const nounRecord = projectionSourceRecords.get('w489758');
+  const verbRecord = projectionSourceRecords.get('w493144');
+  assert.ok(pigmentNoun && outshineNoun && pigmentVerb && outshineVerb && dyeNoun && dyeVerb && nounRecord && verbRecord,
+    '탈색 noun/verb source and color-antonym endpoints are present');
+  assert.notEqual(outshineNoun.id, pigmentNoun.id, '奪色 outshining and 脫色 pigment removal have separate noun identities');
+  assert.notEqual(outshineVerb.id, pigmentVerb.id, '奪色 outshining and 脫色 pigment removal have separate verb identities');
+  assert.equal(pigmentNoun.id, meaningIdBySense.get('w489758-s2'), 'pigment removal and fading are one 脫色 noun identity');
+  assert.equal(pigmentVerb.id, meaningIdBySense.get('w493144-s2'), 'pigment removal and fading are one 脫色 verb identity');
+
+  const result = projectMeaningRelations({ records: [nounRecord, verbRecord], meanings: projectionMeanings });
+  for (const { sourceSense, sourceMeaning, rivalMeaning, targetSense, targetMeaning } of [
+    { sourceSense: 'w489758-s1', sourceMeaning: pigmentNoun, rivalMeaning: outshineNoun, targetSense: 'w459450-s1', targetMeaning: dyeNoun },
+    { sourceSense: 'w493144-s1', sourceMeaning: pigmentVerb, rivalMeaning: outshineVerb, targetSense: 'w234287-s1', targetMeaning: dyeVerb },
+  ]) {
+    const matching = result.relations.filter((relation) => relation.type === 'antonym'
+      && relation.source_meaning_id === sourceMeaning.id && relation.target_meaning_id === targetMeaning.id
+      && relation.sources.some((source) => source.source_sense_id === sourceSense));
+    assert.equal(matching.length, 1, `${sourceSense} → ${targetSense}: canonical antonym remains on the pigment-removal Meaning`);
+    assert.equal(matching[0].origin, MEANING_RELATION_ORIGIN, `${sourceSense}: relation origin remains the canonical projection`);
+    assert.equal(matching[0].position, 0, `${sourceSense}: relation keeps its source-Meaning position`);
+    assert.deepEqual(matching[0].sources, [{
+      source_sense_id: sourceSense, source_position: 0, source_redirected: 0, target_redirected: 0,
+    }], `${sourceSense}: source sense and relation position provenance remain exact`);
+    assert.ok(!result.relations.some((relation) => relation.type === 'antonym'
+      && relation.source_meaning_id === rivalMeaning.id && relation.target_meaning_id === targetMeaning.id),
+    `${sourceSense}: the antonym never reaches the unlike same-spelling Meaning`);
+  }
+  assert.deepEqual(
+    (rowsByLemma.get('탐색') ?? []).map((row) => row.sense_ids).filter((ids) => ids.some((id) => ['w335361-s1', 'w335365-s1'].includes(id))),
+    [['w335361-s1'], ['w335365-s1']],
+    'seeking women and strongly liking women remain separate source-bound noun identities',
+  );
+  assert.deepEqual(
+    (rowsByLemma.get('탐색하다') ?? []).map((row) => row.sense_ids).filter((ids) => ids.some((id) => ['w335362-s1', 'w492974-s1'].includes(id))),
+    [['w335362-s1'], ['w492974-s1']],
+    'seeking women and strongly liking women remain separate source-bound verb identities',
+  );
 });
 
 test('paired figurative forms and the same proverbial expression keep their related uses together', () => {

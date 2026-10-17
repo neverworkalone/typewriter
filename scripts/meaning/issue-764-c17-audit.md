@@ -8,12 +8,12 @@ C17(ㅌ)의 Meaning 후보 1,607개를 bound STDICT sense gloss와 대조했다:
 
 | Measure | Before | After |
 | --- | ---: | ---: |
-| C17 Meaning rows | 11,656 | 10,311 |
-| 다중 Meaning lemma | 1,423 | 865 |
+| C17 Meaning rows | 11,656 | 10,316 |
+| 다중 Meaning lemma | 1,423 | 867 |
 | 재분할한 lemma | — | 832 |
-| Meaning 행 감소 | — | 1,345 |
-| 변경 유형 | — | 803 net row reduction / 0 net row increase / 29 same-count regroup |
-| 후보 lemma의 Meaning rows | 4,345 | 3,000 |
+| Meaning 행 감소 | — | 1,340 |
+| 변경 유형 | — | 801 net row reduction / 0 net row increase / 31 same-count regroup |
+| 후보 lemma의 Meaning rows | 4,345 | 3,005 |
 | 후보 중 한 Meaning만 남았고 그 안에 여러 sense가 있는 lemma | 184 | 742 |
 
 ## Boundary decisions
@@ -25,9 +25,9 @@ C17(ㅌ)의 Meaning 후보 1,607개를 bound STDICT sense gloss와 대조했다:
 
 ## Residual audit
 
-issue-764-c17-residual-audit.md는 결과에 여러 Meaning이 남은 865개 후보를 기록한다. 모든 보존 Meaning 행마다 bound canonical gloss를 인용하고 같은 표제어의 모든 대안 Meaning ID와 source sense ID를 대조한다. 각 대안의 bound gloss도 해당 행에 개별 기록했다. 이미 한 Meaning으로 묶인 다중-sense 후보 가운데 이번 스펙에서 바꾸지 않은 항목은 같은 파일의 별도 절에 남긴다. 각 변경 lemma의 원본·최종 partition은 스펙에서 검토할 수 있다.
+issue-764-c17-residual-audit.md는 결과에 여러 Meaning이 남은 867개 후보를 기록한다. 모든 보존 Meaning 행마다 bound canonical gloss를 인용하고 같은 표제어의 모든 대안 Meaning ID와 source sense ID를 대조한다. 각 대안의 bound gloss도 해당 행에 개별 기록했다. 이미 한 Meaning으로 묶인 다중-sense 후보 가운데 이번 스펙에서 바꾸지 않은 항목은 같은 파일의 별도 절에 남긴다. 각 변경 lemma의 원본·최종 partition은 스펙에서 검토할 수 있다.
 
-이번 스펙의 832개 repartition lemma와 1,340개 최종 group의 모든 source sense, 최종 Meaning, 판정 근거는 [issue-764-c17-merge-audit.md](issue-764-c17-merge-audit.md)에 개별 기록했다.
+이번 스펙의 832개 repartition lemma와 1,345개 최종 group의 모든 source sense, 최종 Meaning, 판정 근거는 [issue-764-c17-merge-audit.md](issue-764-c17-merge-audit.md)에 개별 기록했다.
 
 ## Review follow-up
 
@@ -42,13 +42,15 @@ issue-764-c17-residual-audit.md는 결과에 여러 Meaning이 남은 865개 후
 - Stage 2 리뷰 `5552670746` 당시의 차단 세 경계(`토성` 姓/聲, `토제` 제방/제작, `통상시` 판단 행위/시간)를 source-bound로 분리했다. 같은 범위의 잔존 교차-record 100개 group도 다시 대조해 `탕산`·`탕산하다`의 가산 소진/파멸 결과, `투광`·`투광하다`의 조명 행위/투과 현상 네 그룹을 추가 분리했다. 당시 남은 93개 교차-record group은 각 lemma의 canonical gloss를 기준으로 공유 identity·자연스러운 확장 근거가 있는 경우 유지했다. 통상시와 평상시의 실제 양방향 `direct` 투영이 w517385-s1(보통 때) Meaning에만 연결되고 w347118-s1(보통으로 봄)으로 번지지 않는 회귀를 추가했다. `reviewCases`는 30개 source-bound 경계를 검사하고, 네 탕산 관계 사례도 실제 projector의 source-sense provenance를 확인한다. 이는 해당 100개 cross-record 위험 집합 검토이며 전체 C17의 독립 재검토가 아니다.
 - Stage 2 리뷰 `5553014074`에서 확인한 `타종`(종파/종류), `탐리`(이익을 탐내는 행위/탐욕스러운 관리), `탈거`·`탈거하다`(몸의 이탈·탈피/물건의 강제 취득)를 source gloss 경계에 따라 분리했다. 추가 대조에서 `퇴경`은 시골 은퇴의 두 용법을 함께 두고, 경계 밖으로 후퇴하는 sense를 분리했다. 당시 잔여 93개 cross-record group/89개 lemma 중 이 네 과병합을 고친 뒤 89개/85개를 source-bound로 다시 대조했고, `토번`(특정 역사 집단/토착민 일반)은 전체 명명 원리의 근거가 없어 추가 분리했다. 현재는 88개 group/84개 lemma가 남는다. 각 최종 membership과 source gloss를 merge audit에 기록했고, `탐구`는 두 gloss 모두 조사·연구하여 찾는 탐색 행위라 대상·깊이만 달라 유지했다. `퇴경`은 농촌 은퇴를 뜻하는 두 record를 묶고 경계 밖 후퇴는 분리했다. `reviewCases`는 36개 source-bound 경계와 실제 탐관↔탐리 direct 투영의 양방향 provenance 및 누출 부정을 검사한다. 이 source-bound 집중 점검도 전체 C17의 독립 의미 전수 검토를 주장하지 않는다.
 
-- Stage 1 후속 리뷰 `5555058430`의 두 `탄탄하다/탄탄히`·`탐미/탐미하다` 경계를 source-bound로 분리했다. 견고함→조직 안정과 평탄한 길→장래 순탄은 각 source 내부에서 유지하고, 맛을 깊이 즐김과 아름다움 추구는 나눴다. 이전 88개 cross-record risk group/84개 lemma를 source-bound로 대조해 8개 경계를 분리하고 80개 group/76개 lemma를 유지했다. 이어 Stage 2 리뷰 `5555233634`가 지정한 80개 유지 group을 다시 확인해 `특이성`의 성질(性)과 특수한 항성(星)을 분리했다. 현재는 9개 group을 분리하고 79개 group/75개 lemma를 유지한다. `특이성`(性)↔`특성` direct의 양방향 source provenance와 항성 Meaning 누출 부정을 실제 projector 회귀에 추가했다. 총 45개 source-bound partition을 검사한다. 이는 지정 risk cohort의 주 에이전트 자체 점검이며 C17 전체의 독립 재감사를 뜻하지 않는다.
+- Stage 1 후속 리뷰 `5555058430`의 두 `탄탄하다/탄탄히`·`탐미/탐미하다` 경계를 source-bound로 분리했다. 견고함→조직 안정과 평탄한 길→장래 순탄은 각 source 내부에서 유지하고, 맛을 깊이 즐김과 아름다움 추구는 나눴다. 이전 88개 cross-record risk group/84개 lemma를 source-bound로 대조해 8개 경계를 분리하고 80개 group/76개 lemma를 유지했다. 이어 Stage 2 리뷰 `5555233634`가 지정한 80개 유지 group을 다시 확인해 `특이성`의 성질(性)과 특수한 항성(星)을 분리했다. 그 checkpoint에서는 9개 group을 분리하고 79개 group/75개 lemma를 유지했다. `특이성`(性)↔`특성` direct의 양방향 source provenance와 항성 Meaning 누출 부정을 실제 projector 회귀에 추가했다. 총 45개 source-bound partition을 검사한다. 최신 `5555590537` 후속의 추가 점검과 현재 잔여 cohort 수는 아래 항목에 기록했다. 이는 지정 risk cohort의 주 에이전트 자체 점검이며 C17 전체의 독립 재감사를 뜻하지 않는다.
 - Stage 2 리뷰 `5555339457`에 따라 당시 C17에서 같은 canonical record의 명시적 비유 용법이 서로 다른 Meaning으로 갈린 28개 source record를 집중 대조했다. 당시 21개에서 자연스러운 물리·행위·명칭·공간 의미 확장을 묶고 7개는 source gloss에 연결 근거가 없어 유지했다. `투영`·`투영하다`의 광학·심리·기하 용법은 각 1 Meaning이 되었고, 다섯 canonical direct relation은 각 원래 `source_sense_id`를 보존해 통합 Meaning으로 투영된다. `특이성` 성질/항성 분리 및 성질↔`특성` 관계 회귀는 계속 유지한다. 해당 checkpoint 회귀는 66개 exact source-bound partition과 28개 비유 표지 후보 판정을 검사했다. 당시 same-record split risk는 309 record/293 lemma였고 오류 수가 아닌 후보 분모였다. 이 집중 점검은 나머지 위험 후보 전체의 전수 승인이나 독립 검토를 주장하지 않는다.
 - Stage 2 리뷰 `5555477283`이 지적한 paired-form under-merge를 source-bound로 수정했다. `턱걸이하다`의 두 비유 용법은 같은 원천 명사 `턱걸이`의 기준 달성·타인 의지 sense와 같은 Meaning에 두었고, `통방`의 방을 터 연 용법과 글자·획이 하나로 뒤섞이는 비유를 이어 붙였다. 같은 조사에서 `토끼가 제 방귀에 놀란다`의 두 gloss도 하나의 고정된 속담 정체성의 해석으로 묶었다. 28개 explicit-figurative 후보는 현재 24 MERGE / 4 KEEP이며, 대응형 `퇴식`·`퇴식하다`는 상/동사 경계가 일치하고 `토치카`·`태화탕`의 잔여 분리는 source gloss에 연결 근거가 없어 유지했다. 69개 exact source-bound partition 회귀, 28개 후보 판정, 이전 분할 실패 대조를 갱신했다. same-record split-risk 후보는 306 record/290 lemma이며 오류 수가 아닌 잔여 위험 분모다. 이 집중 재검토는 해당 7 KEEP 후보와 관련형만 다루며 나머지 후보 전체의 전수 의미 승인을 주장하지 않는다.
 
 ## Validation and limits
 
-- Replayed `scripts/meaning/issue-764-c17.json` from PR base `5d35c767b9319e0fbb839a559575c91ef5752d25`: all 832 repartitions and two standalone gloss edits applied with complete sense coverage, producing 10,311 C17 rows; all 12 replayed C17 shards match the current output byte-for-byte, all four reference-target gloss corrections were reproduced, and all 117 adjudications stayed unchanged.
-- `node --test scripts/meaning/issue-764-c17-residual-audit.test.mjs` checks all 865 residual lemmas and retained Meaning/source evidence, the pre-follow-up 316/332 and current 306/290 same-record split candidate counts, 69 exact source-bound partition cases, the 28-record explicit-figurative scan, and positive/negative identity and relation-projection controls. It does not infer lexical identity automatically.
+- Replayed `scripts/meaning/issue-764-c17.json` from PR base `5d35c767b9319e0fbb839a559575c91ef5752d25`: all 832 repartitions and two standalone gloss edits applied with complete sense coverage, producing 10,316 C17 rows; all 12 replayed C17 shards match the current output byte-for-byte, all four reference-target gloss corrections were reproduced, and all 117 adjudications stayed unchanged.
+- `node --test scripts/meaning/issue-764-c17-residual-audit.test.mjs` checks all 867 residual lemmas and retained Meaning/source evidence, the pre-follow-up 316/332 and current 306/290 same-record split candidate counts, 74 exact source-bound partition cases, the 28-record explicit-figurative scan, and positive/negative identity and relation-projection controls. It does not infer lexical identity automatically.
 - `node scripts/meaning/validate.mjs` passed after the source-bound follow-up: 480,780 meanings, 117 adjudications.
 - This is an agent self-check, not independent review. Closely related senses and lexicalized technical uses remain editorial boundary judgments for the PR reviewer to assess.
+
+- Stage 2 follow-up `5555590537`의 source-bound blocker에서 `탈색` noun/verb의 outshine(奪色)과 색 제거·퇴색(脫色)을 나누고, 색 제거·퇴색은 함께 유지했다. `탐색`·`탐색하다`의 여색을 찾아다님과 몹시 좋아함도 행위/성향 경계에 따라 분리했다. `퇴사`의 은둔 선비는 사직 사건에서 분리하되 관직·회사 사직 group 및 일일 근무 종료 pair는 각각 보존했다. 직전 79개 retained cross-record group/75개 lemma 중 15개를 제한적으로 대조해 네 group을 추가 분리했고, 10개는 source-bound 근거를 확인해 유지했다. 현재 75개/71개가 남으며 그중 64개/61개는 이 thematic pass의 미검토 분모다. 테스트는 74개 exact partition case와 `탈색` 실제 antonym projector endpoint·provenance/비누출을 검사한다.
