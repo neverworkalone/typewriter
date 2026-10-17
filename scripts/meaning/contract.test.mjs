@@ -719,19 +719,27 @@ test('Issue #764 C08: source-ID identity boundaries, replayed rows, and audit de
   assert.equal(transportedVerb.id, 'm131950_1');
   assert.equal(accompaniedVerb.id, 'm426735_1');
   assert.equal(outward.source_meaning_id, 'm131744_1');
-  assert.equal(outward.target_meaning_id, 'm384873_1');
+  assert.equal(outward.target_meaning_id, ordinaryReturn.id);
   assert.equal(outward.type, 'direct');
-  assert.deepEqual(outward.sources, [{
-    source_sense_id: 'w131744-s1', source_position: 0, source_redirected: 0, target_redirected: 0,
-  }]);
-  assert.equal(inward.source_meaning_id, 'm384873_1');
+  const sourcesOf = (relation) => relation.sources.map((source) => source.source_sense_id);
+  const provenance = (senseId) => ({
+    source_sense_id: senseId, source_position: 0, source_redirected: 0, target_redirected: 0,
+  });
+  // A merged Meaning keeps every source sense as relation provenance, whatever the merge shape.
+  assert.deepEqual(sourcesOf(outward), returnedVerb.sense_ids);
+  assert.deepEqual(outward.sources, returnedVerb.sense_ids.map(provenance));
+  assert.equal(inward.source_meaning_id, ordinaryReturn.id);
   assert.equal(inward.target_meaning_id, 'm131744_1');
   assert.equal(inward.type, 'direct');
-  assert.deepEqual(inward.sources, [{
-    source_sense_id: 'w384873-s1', source_position: 0, source_redirected: 0, target_redirected: 0,
-  }]);
-  assert.equal(projectedFrom('w131744-s2').target_meaning_id, 'm384873_2');
-  assert.equal(projectedFrom('w384873-s2').target_meaning_id, 'm131744_1');
+  assert.deepEqual(sourcesOf(inward), ordinaryReturn.sense_ids);
+  assert.deepEqual(inward.sources, ordinaryReturn.sense_ids.map(provenance));
+  for (const meaning of [returnedVerb, ordinaryReturn]) {
+    for (const senseId of meaning.sense_ids) {
+      assert.equal(projectedFrom(senseId).source_meaning_id, meaning.id, `${senseId} projects from its own Meaning`);
+    }
+  }
+  assert.equal(projectedFrom('w131744-s2').target_meaning_id, courtRemand.id);
+  assert.equal(projectedFrom('w384873-s2').target_meaning_id, returnedVerb.id);
   assert.equal(returnProjection.relations.some((relation) =>
     [transportedVerb.id, accompaniedVerb.id].includes(relation.source_meaning_id)
     && [ordinaryReturn.id, courtRemand.id].includes(relation.target_meaning_id)), false,
