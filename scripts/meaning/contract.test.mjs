@@ -613,6 +613,18 @@ test('Issue #764 C08: source-ID identity boundaries, replayed rows, and audit de
     ['반상하다', 'w132398-s2', 'w132406-s1', ['反上'], ['返喪']],
     ['반상하다', 'w132398-s2', 'w132409-s1', ['反上'], ['返償', '反償']],
     ['반상하다', 'w132406-s1', 'w132409-s1', ['返喪'], ['返償', '反償']],
+    ['반려', 'w132073-s1', 'w132076-s1', ['反戾', '叛戾'], ['返戾']],
+    ['반려', 'w132073-s2', 'w132076-s1', ['反戾', '叛戾'], ['返戾']],
+    ['반려하다', 'w132074-s1', 'w426745-s1', ['反戾', '叛戾'], ['返戾']],
+    ['반려하다', 'w132074-s2', 'w426745-s1', ['反戾', '叛戾'], ['返戾']],
+    ['복벽', 'w147589-s1', 'w147590-s1', ['腹壁'], ['複壁']],
+    ['반송관', 'w131952-s1', 'w132190-s1', ['返送管'], ['搬送管']],
+    ['복성하다', 'w149724-s1', 'w149726-s1', ['復成'], ['復姓']],
+    ['반상하다', 'w132400-s1', 'w132402-s1', ['反常'], ['反想']],
+    ['불고이거', 'w155353-s1', 'w435887-s1', ['不告而去'], ['不顧而去']],
+    ['불고이거하다', 'w155364-s1', 'w155365-s1', ['不告而去'], ['不顧而去']],
+    ['불고이주', 'w155366-s1', 'w435888-s1', ['不告而走'], ['不顧而走']],
+    ['불고이주하다', 'w155367-s1', 'w155368-s1', ['不告而走'], ['不顧而走']],
   ];
   for (const [lemma, left, right, leftOriginal, rightOriginal] of negativeBoundaries) {
     assert.equal(sameGroup(groupsFor(lemma), left, right), false, `${lemma}: ${left} and ${right} remain independent lexical identities`);
@@ -638,9 +650,16 @@ test('Issue #764 C08: source-ID identity boundaries, replayed rows, and audit de
     ['반송하다', 'w426334-s1', 'w426334-s2'],
     ['반상', 'w132397-s1', 'w132397-s2'], // same 反上 source identity
     ['반상하다', 'w132398-s1', 'w132398-s2'], // same 反上 source identity
-    ['반상하다', 'w132400-s1', 'w132402-s1'], // contrary-to-reason and reverse-thinking use
     ['반행하다', 'w430138-s1', 'w430138-s2'], // publication and distribution within 頒行
     ['복장하다', 'w154890-s1', 'w154890-s2'], // both 伏藏 hiding uses
+    ['반려', 'w132073-s1', 'w132073-s2'], // the 反戾/叛戾 normative-deviation senses
+    ['반려하다', 'w132074-s1', 'w132074-s2'], // the corresponding verb senses
+    ['복벽', 'w147615-s1', 'w147615-s2'], // same-record 復辟 restoration senses
+    ['반벽', 'w131265-s1', 'w131267-s2'], // exact shared gift-return sense across 反璧/返璧
+    ['반벽하다', 'w131266-s1', 'w131268-s2'], // corresponding verb sense
+    ['복원', 'w154563-s1', 'w154581-s1'], // restored original form and end-of-eclipse return to normal visibility
+    ['복원', 'w154563-s1', 'w431639-s1'], // restoration and demobilization to the ordinary state
+    ['복원하다', 'w154565-s1', 'w154580-s1'], // corresponding restoring/demobilizing verb uses
   ]) {
     assert.equal(sameGroup(groupsFor(lemma), left, right), true, `${lemma}: retain a source-bound positive control`);
   }
@@ -717,4 +736,40 @@ test('Issue #764 C08: source-ID identity boundaries, replayed rows, and audit de
     [transportedVerb.id, accompaniedVerb.id].includes(relation.source_meaning_id)
     && [ordinaryReturn.id, courtRemand.id].includes(relation.target_meaning_id)), false,
   'direct return relations do not leak into 搬送/伴送 Meaning endpoints');
+
+  const anatomicalWall = meaningFor('w147589-s1');
+  const enclosedWall = meaningFor('w147590-s1');
+  const bellyWall = meaningFor('w137038-s1');
+  assert.equal(anatomicalWall.id, 'm147589');
+  assert.equal(enclosedWall.id, 'm147590');
+  assert.equal(bellyWall.id, 'm137038');
+  const wallProjection = projectMeaningRelations({
+    records: [
+      readCanonicalRecord('stdict-0109.jsonl', 'w147589'),
+      readCanonicalRecord('stdict-0100.jsonl', 'w137038'),
+    ],
+    meanings: [anatomicalWall, enclosedWall, bellyWall],
+  });
+  const wallRelationFrom = (senseId) => wallProjection.relations.find((relation) =>
+    relation.sources.some((source) => source.source_sense_id === senseId));
+  const abdominalToBelly = wallRelationFrom('w147589-s1');
+  const bellyToAbdominal = wallRelationFrom('w137038-s1');
+  assert.equal(abdominalToBelly.source_meaning_id, 'm147589');
+  assert.equal(abdominalToBelly.target_meaning_id, 'm137038');
+  assert.equal(abdominalToBelly.type, 'direct');
+  assert.equal(abdominalToBelly.position, 0);
+  assert.deepEqual(abdominalToBelly.sources, [{
+    source_sense_id: 'w147589-s1', source_position: 0, source_redirected: 0, target_redirected: 0,
+  }]);
+  assert.equal(bellyToAbdominal.source_meaning_id, 'm137038');
+  assert.equal(bellyToAbdominal.target_meaning_id, 'm147589');
+  assert.equal(bellyToAbdominal.type, 'direct');
+  assert.equal(bellyToAbdominal.position, 0);
+  assert.deepEqual(bellyToAbdominal.sources, [{
+    source_sense_id: 'w137038-s1', source_position: 0, source_redirected: 0, target_redirected: 0,
+  }]);
+  assert.equal(wallProjection.relations.some((relation) =>
+    [anatomicalWall.id, bellyWall.id].includes(relation.source_meaning_id)
+    && relation.target_meaning_id === enclosedWall.id), false,
+  'the abdominal-wall direct pair does not project to the hollow double-wall Meaning');
 });
