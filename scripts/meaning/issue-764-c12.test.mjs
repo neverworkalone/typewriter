@@ -27,6 +27,8 @@ const separate = [
   ['용인', 'w242925-s1', 'w242927-s1'],
   ['연소', 'w237114-s1', 'w458107-s1'],
   ['약년', 'w222900-s1', 'w223419-s1'],
+  ['음간', 'w255832-s1', 'w256128-s1'],
+  ['음간하다', 'w256127-s1', 'w256129-s1'],
   ['연좌', 'w463507-s1', 'w463507-s2'],
   ['연좌', 'w463507-s1', 'w237725-s1'],
   ['연좌되다', 'w237447-s1', 'w237447-s2'],
@@ -110,4 +112,24 @@ test('pointer-gloss records are never merged with unrelated-meaning records', ()
     }
   }
   assert.deepEqual(offenders, []);
+});
+
+// 서로 다른 STDICT record는 기본적으로 독립 동음이의어다. 교차-record 병합은 아래 근거가 있는 lemma에만 허용한다:
+// 같은 성(姓) record, 같은 어휘의 피동·사동 형태, 풀이가 거의 같은 중복 record, 그리고 리뷰에서 같은 어휘로 확인된 사례.
+// 목록에 없는 lemma가 교차-record 병합에 나타나면 근거를 추가하기 전까지 실패한다.
+const allowedCrossRecord = new Set([
+  '양', '여', '연', '유', '이', '임',
+  '안기다', '업히다', '읽히다', '옹다물리다', '얼리다',
+  '양월', '약언', '앵순', '연좌', '연좌되다', '연좌하다', '애애하다', '애애히', '애연하다', '애연히', '양양하다',
+  '양명하다', '의기하다', '왜식', '영재', '양찰', '양찰하다', '예람', '예람하다', '예참', '예참하다',
+  '여읍여소', '여읍여소하다', '어선', '양방', '연철', '연수', '연수하다',
+]);
+test('cross-record merges are limited to lemmas with a documented identity basis', () => {
+  const lemmas = new Set();
+  for (const rep of spec.repartitions) {
+    for (const group of rep.groups) {
+      if (new Set(group.senses.map((id) => id.split('-')[0])).size > 1) lemmas.add(rep.lemma);
+    }
+  }
+  assert.deepEqual([...lemmas].filter((lemma) => !allowedCrossRecord.has(lemma)).sort(), []);
 });
