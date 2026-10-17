@@ -225,3 +225,66 @@ test('meaning relation provenance: valid mapping passes; deleted, mis-bound and 
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+test('authored relations authored on a meaning row reach the built Full and Lite dictionaries (Issue #797)', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'typewriter-authored-relations-'));
+  try {
+    const canonicalDirectory = path.join(directory, 'canonical');
+    await mkdir(canonicalDirectory);
+    await writeFile(path.join(canonicalDirectory, 'part.jsonl'), `${RECORDS.map((item) => JSON.stringify(item)).join('\n')}\n`);
+    // A `→` style link authored on the meaning row: it has no canonical source relation, so only the committed
+    // meaning layer can carry it into a clean build.
+    writeMeanings(path.join(directory, 'meanings'), [
+      ...MEANINGS.slice(0, 2),
+      { ...MEANINGS[2], relations: [{ type: 'direct', target: 'm002', note: '표준국어대사전 참조 표제어' }] },
+    ]);
+    writeAdjudications(path.join(directory, 'adjudication'), []);
+    const outputPath = path.join(directory, 'dictionary.sqlite');
+    const summary = await buildDictionary({
+      inputDirectory: canonicalDirectory,
+      outputPath,
+      allowDirty: true,
+      meaningsDirectory: path.join(directory, 'meanings'),
+      adjudicationDirectory: path.join(directory, 'adjudication'),
+    });
+    // Two projected relations (m001 -> m002, m001 -> m003) plus the authored one.
+    assert.equal(summary.meaningRelationCount, 3);
+    assert.equal(summary.metadata.meaning_relation_count, '3');
+    assert.equal(summary.metadata.meaning_projection_authored_relation_count, '1');
+    const full = new DatabaseSync(outputPath, { readOnly: true });
+    try {
+      assert.deepEqual(
+        full.prepare("SELECT target_meaning_id, type, note, origin FROM meaning_relations WHERE source_meaning_id = 'm003'").all()
+          .map((row) => ({ ...row })),
+        [{ target_meaning_id: 'm002', type: 'direct', note: '표준국어대사전 참조 표제어', origin: 'typewriter-authored' }],
+      );
+      // Authoring one is not a provenance claim: the row must not have a source provenance entry.
+      assert.equal(
+        full.prepare("SELECT COUNT(*) AS c FROM meaning_relation_sources WHERE source_meaning_id = 'm003'").get().c,
+        0,
+      );
+    } finally {
+      full.close();
+    }
+    // The build's own source-bound checks accept the authored row (no provenance is required for it).
+    assert.deepEqual(violations(outputPath), {});
+
+    const litePath = path.join(directory, 'lite.sqlite');
+    await extractLiteDictionary({ fullPath: outputPath, litePath });
+    const { getMeaningRelations } = await import('../src/runtime/sqlite-query.js');
+    const shipped = new DatabaseSync(litePath, { readOnly: true });
+    try {
+      assert.deepEqual(
+        getMeaningRelations(shipped, 'm003').map((relation) => ({ ...relation })),
+        [{
+          position: 0, target: 'm002', type: 'direct', note: '표준국어대사전 참조 표제어',
+          relevance: null, origin: 'typewriter-authored', target_lemma: '다라', target_gloss: '다라의 뜻풀이.',
+        }],
+      );
+    } finally {
+      shipped.close();
+    }
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});

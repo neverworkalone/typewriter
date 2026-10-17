@@ -31,6 +31,7 @@ test('projects sense relations onto meanings, deduplicates and keeps provenance'
   assert.deepEqual(stats, {
     source_relation_count: 3, projected_relation_count: 2, redirected_relation_count: 0,
     skipped_out_of_scope_count: 0, skipped_unresolved_count: 0, skipped_self_count: 0, deduplicated_count: 1,
+    authored_relation_count: 0, authored_deduplicated_count: 0,
   });
 });
 
@@ -271,4 +272,36 @@ test('relation provenance groups by (source, target, type) for merged and split 
     const wrong = relations.map((r, index) => (index === 0 ? { ...r, target_meaning_id: 'mX' } : r));
     assert.notDeepEqual(actualRelationProvenance(wrong), actual, `${shape}: wrong endpoint is detected`);
   }
+});
+
+test('authored meaning relations are projected as typewriter-authored without provenance (Issue #797)', () => {
+  const records = [rec('w1', [['w1-s1', [rel('w2-s1')]]]), rec('w2', [['w2-s1']]), rec('w3', [['w3-s1']])];
+  const meanings = [
+    { ...meaning('m1', 'w1-s1'), relations: [{ type: 'direct', target: 'm3', note: '표준국어대사전 참조 표제어' }] },
+    meaning('m2', 'w2-s1'),
+    meaning('m3', 'w3-s1'),
+  ];
+  const { relations, stats } = projectMeaningRelations({ records, meanings });
+  assert.deepEqual(relations.map((r) => [r.source_meaning_id, r.target_meaning_id, r.type, r.position, r.origin]), [
+    ['m1', 'm2', 'direct', 0, 'stdict-sense-projection'],
+    ['m1', 'm3', 'direct', 1, 'typewriter-authored'],
+  ]);
+  // Authored relations carry no STDICT provenance: the product database forbids it for non-projected rows.
+  assert.deepEqual(relations[1].sources, []);
+  assert.equal(relations[1].note, '표준국어대사전 참조 표제어');
+  assert.equal(relations[1].relevance, null);
+  assert.equal(stats.authored_relation_count, 1);
+  assert.equal(stats.projected_relation_count, 2);
+});
+
+test('an authored relation repeating a projected key is dropped, not duplicated', () => {
+  const records = [rec('w1', [['w1-s1', [rel('w2-s1')]]]), rec('w2', [['w2-s1']])];
+  const meanings = [
+    { ...meaning('m1', 'w1-s1'), relations: [{ type: 'direct', target: 'm2', note: '중복' }] },
+    meaning('m2', 'w2-s1'),
+  ];
+  const { relations, stats } = projectMeaningRelations({ records, meanings });
+  assert.deepEqual(relations.map((r) => [r.source_meaning_id, r.target_meaning_id, r.origin]), [['m1', 'm2', 'stdict-sense-projection']]);
+  assert.equal(stats.authored_deduplicated_count, 1);
+  assert.equal(stats.authored_relation_count, 0);
 });

@@ -1,13 +1,24 @@
 import { mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 
+import { EXPLORATORY_RELATION_TYPES, LEXICAL_RELATION_TYPES } from '../../src/runtime/meaning-ranking.js';
+
 /**
  * Meaning editorial layer (Issue #713). `data/canonical/` stays the untouched STDICT source layer; `data/meanings/`
  * holds Typewriter's final meanings (each referencing one or more canonical senses sharing the meaning's lemma, possibly
  * from different records) and
  * `data/adjudication/` records editorial verdicts such as DROP. This module is the shared contract: ID rules,
  * initial -> `cXX` mapping, shard placement, schema validation, and a deterministic writer/loader.
+ *
+ * A meaning may also carry an authored `relations` list (Issue #797): Typewriter-authoritative meaning relations that
+ * are committed with the meaning record instead of being re-derived from the untouched canonical source. They are
+ * projected into `meaning_relations` with `origin = typewriter-authored` (`scripts/meaning/project.mjs`), so a clean
+ * rebuild reproduces them and no generated SQLite is hand-edited. The `→` reference links of Issue #797 are the first
+ * authoring use: the redirected meaning points at the correct target meaning with a `direct` relation.
  */
+
+/** Relation types the product database accepts (`meaning_relations.type` CHECK). */
+export const MEANING_RELATION_TYPES = Object.freeze([...LEXICAL_RELATION_TYPES, ...EXPLORATORY_RELATION_TYPES]);
 
 // Explicit mapping table: Hangul initial consonant (choseong) -> shard group code. `c20` collects lemmas that do not
 // start with a Hangul syllable or a bare initial jamo such as `ㄱ`. Order follows the Unicode choseong index so the table is auditable.
@@ -73,7 +84,7 @@ function checkKeys(row, allowed, errors, where) {
 export function validateMeaningRow(row, where = 'meaning') {
   const errors = [];
   if (!isObject(row)) return [`${where}: not an object`];
-  checkKeys(row, ['id', 'lemma', 'gloss', 'sense_ids'], errors, where);
+  checkKeys(row, ['id', 'lemma', 'gloss', 'sense_ids', 'relations'], errors, where);
   const id = parseMeaningId(row.id);
   if (!id) errors.push(`${where}: invalid id ${JSON.stringify(row.id)}`);
   if (!nonEmpty(row.lemma)) errors.push(`${where}: lemma must be a trimmed non-empty string`);
@@ -87,6 +98,31 @@ export function validateMeaningRow(row, where = 'meaning') {
       if (!entryId) errors.push(`${where}: invalid sense id ${JSON.stringify(senseId)}`);
       if (seen.has(senseId)) errors.push(`${where}: duplicate sense id ${senseId}`);
       seen.add(senseId);
+    }
+  }
+  if (Object.hasOwn(row, 'relations')) {
+    if (!Array.isArray(row.relations)) {
+      errors.push(`${where}: relations must be an array`);
+    } else {
+      const seen = new Set();
+      row.relations.forEach((relation, index) => {
+        const relationWhere = `${where}.relations[${index}]`;
+        if (!isObject(relation)) { errors.push(`${relationWhere}: not an object`); return; }
+        checkKeys(relation, ['type', 'target', 'note'], errors, relationWhere);
+        if (!MEANING_RELATION_TYPES.includes(relation.type)) {
+          errors.push(`${relationWhere}: type must be one of ${MEANING_RELATION_TYPES.join(', ')}`);
+        }
+        if (!parseMeaningId(relation.target)) {
+          errors.push(`${relationWhere}: target must be a meaning id`);
+        } else if (relation.target === row.id) {
+          errors.push(`${relationWhere}: target must differ from the meaning id`);
+        }
+        // The product database requires a non-empty note for every relation, so authoring one is not optional.
+        if (!nonEmpty(relation.note)) errors.push(`${relationWhere}: note must be a trimmed non-empty string`);
+        const key = `${relation.type}\u0000${relation.target}`;
+        if (seen.has(key)) errors.push(`${relationWhere}: duplicate authored relation ${relation.type} ${relation.target}`);
+        seen.add(key);
+      });
     }
   }
   return errors;
@@ -282,6 +318,12 @@ export function validateMeaningDataset({ meanings, adjudications = [], senses = 
   }
   for (const item of adjudications) {
     if (item.reason === 'duplicate' && item.duplicate_of && dropped.has(item.duplicate_of)) errors.push(`${item.sense_id}: duplicate_of ${item.duplicate_of} is itself dropped`);
+  }
+  // Authored meaning relations are committed editorial data (Issue #797), so their target must be a known meaning.
+  for (const meaning of meanings) {
+    for (const relation of meaning.relations ?? []) {
+      if (!ids.has(relation.target)) errors.push(`${meaning.id}: authored relation target ${relation.target} has no meaning`);
+    }
   }
   if (senses) {
     for (const meaning of meanings) {

@@ -35,6 +35,13 @@
         "tests/meaning-gloss-numbers.test.mjs"
       ],
       "protected_contract": "Issue #797 completed 초성 scope registry that gates the user-facing Meaning gloss number check"
+    },
+    {
+      "path": "scripts/validate/meaning-arrow-links.mjs",
+      "normal_tests": [
+        "tests/meaning-arrow-links.test.mjs"
+      ],
+      "protected_contract": "Issue #797 `→` reference resolution to a target Meaning with the referenced lemma through a synonym relation, and no number-removal display collapse of distinct source meanings, in completed 초성 scopes"
     }
   ]
 }

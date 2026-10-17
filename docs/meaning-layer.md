@@ -56,6 +56,14 @@ contributing relation (canonical order) supplies `note`/`relevance`, verified ex
 Skip/dedup/redirect counts are written to `metadata` as `meaning_projection_*`, so
 `source = projected + deduplicated + skipped`.
 
+A meaning row may also carry an authored `relations` list (`{ type, target, note }`). These are committed editorial
+data, not a projection of the source: `project.mjs` adds them after the projected relations with
+`origin = typewriter-authored` and no provenance row, guarding the product database's
+`source meaning + target meaning + type` uniqueness (an authored relation that repeats a projected key is counted as
+`authored_deduplicated_count` instead of being inserted twice). `note` is required because the product database
+requires a non-empty tooltip, and the target must be an existing meaning. Issue #797 uses this path to link a
+`→` reference to the correct target meaning with a `direct` relation.
+
 The shipped (Lite) `dictionary.sqlite` (schema version 6) carries only the product meaning contract. The STDICT source `senses`, `relations` and
 `meaning_relation_sources` tables exist only in the Full database `artifacts/dictionary.sqlite` (Issue #792, #795) and are never packaged:
 
@@ -68,7 +76,9 @@ The shipped (Lite) `dictionary.sqlite` (schema version 6) carries only the produ
 | `generated_surface_forms` | `form`, `record_id`, `sense_id`, `sense_position` (source sense position, for stable ordering), `rule_id` |
 
 `meaning_relations.origin` is one of `stdict-sense-projection` or `typewriter-authored` (CHECK). Typewriter-authored
-relations (유의어, 반의어, 말의 결, 연상) are edited on the same table with `origin='typewriter-authored'`.
+relations are committed on the meaning row (`data/meanings/` `relations`) and projected by `scripts/meaning/project.mjs`
+with `origin='typewriter-authored'`; they are authored through the `apply-edits` `relations` spec, never by editing
+generated SQLite. Exploratory authored relations (유의어, 반의어, 말의 결, 연상) use the same table and the same origin.
 
 `buildDictionary` writes the Full database (`artifacts/dictionary.sqlite`) with the source tables and runs there the
 relation-projection and provenance checks of `scripts/build/meaning-source-checks.mjs` (complete, correctly bound and

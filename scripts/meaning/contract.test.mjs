@@ -71,6 +71,29 @@ test('row schema accepts valid and rejects invalid meanings and adjudications', 
   }
 });
 
+test('authored meaning relations are part of the row schema (Issue #797)', () => {
+  const base = { id: 'm0097_1', lemma: '가다', gloss: '→ 꺾쇠.', sense_ids: ['w0097-s1'] };
+  const withRelation = (relation) => ({ ...base, relations: [relation] });
+  assert.deepEqual(validateMeaningRow(withRelation({ type: 'direct', target: 'm0098', note: '표준국어대사전 참조 표제어' })), []);
+  assert.deepEqual(validateMeaningRow({ ...base, relations: [] }), []);
+  const invalidRelations = [
+    { type: 'made-up', target: 'm0098', note: 'n' },
+    { type: 'direct', target: 'w0098-s1', note: 'n' },
+    { type: 'direct', target: 'm0097_1', note: 'n' },
+    { type: 'direct', target: 'm0098' },
+    { type: 'direct', target: 'm0098', note: '' },
+    { type: 'direct', target: 'm0098', note: 'n', extra: 1 },
+  ];
+  for (const relation of invalidRelations) {
+    assert.notEqual(validateMeaningRow(withRelation(relation)).length, 0, JSON.stringify(relation));
+  }
+  assert.match(validateMeaningRow({ ...base, relations: [invalidRelations[0], invalidRelations[0]] }).join('\n'), /duplicate authored relation/u);
+  assert.notEqual(validateMeaningRow({ ...base, relations: 'direct' }).length, 0);
+  // A committed authored relation must point at a meaning that exists in the same layer.
+  const meanings = [{ ...base, relations: [{ type: 'direct', target: 'm0099', note: 'n' }] }];
+  assert.match(validateMeaningDataset({ meanings }).join('\n'), /authored relation target m0099 has no meaning/u);
+});
+
 test('write -> read round-trips deterministically and removes stale shards', () => {
   const dir = tmp();
   const rows = [row('m0003', '다'), row('m0001_2', '가'), row('m0001_1', '가'), row('m0002', '나')];

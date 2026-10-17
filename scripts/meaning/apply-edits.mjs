@@ -10,15 +10,28 @@ import { projectInitialMeanings, readCanonicalEntries } from './initial.mjs';
 /**
  * Applies an edit spec to the meaning/adjudication rows (Issues #715 and #764).
  *
- * Spec: `{ glosses, merges, repartitions, drops }`.
+ * Spec: `{ glosses, merges, repartitions, drops, relations }`.
  * - A merge replaces the single-sense meanings of `senses` (one or several records of the SAME lemma) with ONE meaning
  *   whose id is the id of the first member in canonical order, whose `sense_ids` list all members in that order and
  *   whose gloss is the authored `gloss`. Members must still be untouched single-sense meanings.
  * - A gloss edit rewrites one untouched single-sense meaning in place, preserving its id and sense binding.
  * - A `duplicate` drop removes the meaning and requires a still-referenced `duplicate_of`; an `out_of_scope` drop
  *   removes the meaning and must omit `duplicate_of`.
+ * - A relation edit (Issue #797) appends authored `{ type, target, note }` relations to the named final meaning, which
+ *   are projected with `origin = typewriter-authored`. Re-running the same spec is a no-op; a merge, repartition or
+ *   drop that would silently discard authored relations is rejected instead. `remove` re-points an authored relation
+ *   whose target meaning id moved (another scope re-partitioned that meaning); it is best effort so a re-run stays a
+ *   no-op, and it never touches a projected relation, which is not stored on the row.
  * Pure: returns new row arrays; the CLI writes them. Throws with every problem found instead of partially applying.
  */
+
+/** The untouched row shape: authored relations are an optional trailing field, not an empty array. */
+function stripRelations(row) {
+  const rest = { ...row };
+  delete rest.relations;
+  return rest;
+}
+
 export function applyEdits({ meanings, adjudications, initialMeaningIds = null }, spec) {
   const errors = [];
   const bySense = new Map();
@@ -42,6 +55,14 @@ export function applyEdits({ meanings, adjudications, initialMeaningIds = null }
     else if (row.sense_ids.length !== 1) errors.push(`${where}: meaning ${row.id} is already merged`);
     return row ?? null;
   };
+  // Authored relations are committed editorial data, so an edit that removes their meaning must fail closed
+  // instead of silently dropping them (re-author them in the same spec after the regroup).
+  const rejectAuthoredRelations = (rows, where, action) => {
+    const carriers = rows.filter((row) => (row?.relations ?? []).length > 0);
+    if (carriers.length === 0) return false;
+    errors.push(`${where}: ${action} would drop the authored relations of ${carriers.map((row) => row.id).join(', ')}`);
+    return true;
+  };
 
   for (const [i, edit] of (spec.glosses ?? []).entries()) {
     const where = `glosses[${i}] (${edit.sense_id})`;
@@ -58,6 +79,7 @@ export function applyEdits({ meanings, adjudications, initialMeaningIds = null }
     const senseIds = [...merge.senses].sort(compareSenseIds);
     const rows = senseIds.map((senseId) => claim(senseId, where));
     if (rows.some((row) => !row)) continue;
+    if (rejectAuthoredRelations(rows, where, 'a merge')) continue;
     const first = rows[0];
     if (rows.some((row) => row.lemma !== first.lemma)) { errors.push(`${where}: senses belong to different lemmas`); continue; }
     const merged = { id: first.id, lemma: first.lemma, gloss: merge.gloss, sense_ids: senseIds };
@@ -84,6 +106,7 @@ export function applyEdits({ meanings, adjudications, initialMeaningIds = null }
       continue;
     }
     const current = meanings.filter((row) => row.lemma === edit.lemma);
+    if (rejectAuthoredRelations(current, where, 'a repartition')) continue;
     const expected = edit.before;
     if (!Array.isArray(expected)) {
       errors.push(`${where}: before must list the exact current meaning rows`);
@@ -153,6 +176,7 @@ export function applyEdits({ meanings, adjudications, initialMeaningIds = null }
     const where = `drops[${i}] (${drop.sense_id})`;
     const row = claim(drop.sense_id, where);
     if (!row) continue;
+    if (rejectAuthoredRelations([row], where, 'a drop')) continue;
     const reason = drop.reason ?? 'duplicate';
     const verdict = { sense_id: drop.sense_id, lemma: row.lemma, decision: 'drop', reason };
     if (reason === 'duplicate' || Object.hasOwn(drop, 'duplicate_of')) verdict.duplicate_of = drop.duplicate_of;
@@ -170,6 +194,52 @@ export function applyEdits({ meanings, adjudications, initialMeaningIds = null }
     meanings: [...meanings.filter((row) => !removed.has(row.id) && !repartitionedMeaningIds.has(row.id)).map((row) => replacements.get(row.id) ?? row), ...added, ...repartitioned],
     adjudications: [...adjudications, ...newAdjudications],
   };
+  // Authored relations are appended to the final rows, so `row.relations` keeps its trailing key order and the
+  // stored shard stays byte-stable when the same spec is applied again.
+  const authoredRelations = new Map();
+  for (const [i, edit] of (spec.relations ?? []).entries()) {
+    const where = `relations[${i}] (${edit.source_meaning_id})`;
+    const row = result.meanings.find((item) => item.id === edit.source_meaning_id);
+    if (!row) { errors.push(`${where}: no final meaning has this id (unknown, merged or dropped)`); continue; }
+    const removals = edit.remove ?? [];
+    const additions = edit.add ?? [];
+    if (!Array.isArray(removals) || !Array.isArray(additions) || (removals.length === 0 && additions.length === 0)) {
+      errors.push(`${where}: needs a non-empty add or remove array`); continue;
+    }
+    const list = authoredRelations.get(row.id) ?? { remove: [], add: [] };
+    for (const [j, relation] of removals.entries()) {
+      const removeWhere = `${where}.remove[${j}]`;
+      if (!relation || typeof relation !== 'object' || Array.isArray(relation)) { errors.push(`${removeWhere}: not an object`); continue; }
+      if (typeof relation.type !== 'string' || typeof relation.target !== 'string') { errors.push(`${removeWhere}: needs a type and a target`); continue; }
+      // Best effort: re-applying the same spec must stay a no-op, so a relation that is already gone is not an error.
+      list.remove.push({ type: relation.type, target: relation.target });
+    }
+    for (const [j, relation] of additions.entries()) {
+      const addWhere = `${where}.add[${j}]`;
+      if (!relation || typeof relation !== 'object' || Array.isArray(relation)) { errors.push(`${addWhere}: not an object`); continue; }
+      if (typeof relation.type !== 'string' || typeof relation.target !== 'string') { errors.push(`${addWhere}: needs a type and a target`); continue; }
+      list.add.push({ type: relation.type, target: relation.target, note: relation.note });
+    }
+    authoredRelations.set(row.id, list);
+  }
+  if (authoredRelations.size > 0) {
+    result.meanings = result.meanings.map((row) => {
+      const edit = authoredRelations.get(row.id);
+      if (!edit) return row;
+      // `remove` re-points an authored relation whose target Meaning id moved when another scope re-partitioned its
+      // meanings (Issue #797 durability); a projected relation is never stored on the row, so it cannot be removed.
+      const relations = (row.relations ?? []).filter((item) => (
+        !edit.remove.some((relation) => relation.type === item.type && relation.target === item.target)
+      ));
+      for (const relation of edit.add) {
+        if (!relations.some((item) => item.type === relation.type && item.target === relation.target)) relations.push(relation);
+      }
+      // A row left with no authored relation returns to its untouched shape instead of keeping an empty array.
+      const updated = relations.length === 0 ? stripRelations(row) : { ...row, relations };
+      errors.push(...validateMeaningRow(updated, `relations (${row.id})`));
+      return updated;
+    });
+  }
   // The produced rows must satisfy the shared dataset contract (ids, representative record, references) before anything is written.
   if (!errors.length) errors.push(...validateMeaningDataset(result));
   if (errors.length) throw new Error([...new Set(errors)].join('\n'));
@@ -232,5 +302,5 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     if (readFileSync(path.join(meaningsDirectory, file), 'utf8') !== text) writeFileSync(path.join(meaningsDirectory, file), text);
   }
   if (next.adjudications.length) writeAdjudications(adjudicationDirectory, next.adjudications);
-  console.log(`applied ${spec.glosses?.length ?? 0} gloss edits, ${spec.merges?.length ?? 0} merges, ${spec.repartitions?.length ?? 0} repartitions and ${spec.drops?.length ?? 0} drops: ${next.meanings.length} meanings, ${next.adjudications.length} adjudications`);
+  console.log(`applied ${spec.glosses?.length ?? 0} gloss edits, ${spec.merges?.length ?? 0} merges, ${spec.repartitions?.length ?? 0} repartitions, ${spec.drops?.length ?? 0} drops and ${spec.relations?.length ?? 0} relation edits: ${next.meanings.length} meanings, ${next.adjudications.length} adjudications`);
 }

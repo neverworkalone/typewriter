@@ -43,13 +43,28 @@
 - 적용 후 `node scripts/meaning/validate.mjs`(complete)로 모든 canonical sense가 정확히 하나의 meaning에 있거나 DROP 기록이 있음을 확인한다.
 - 스펙 파일은 편집 이력으로 보존한다 (`scripts/meaning/pilot-715.json`).
 
-## 사용자 노출 gloss의 원본 동음이의어 번호 제거 (#797)
+## 사용자 노출 gloss의 원본 동음이의어 번호 제거와 `→` 참조 연결 (#797)
 
 - `data/canonical/`은 원본 그대로 보존하고, `data/meanings/` **사용자 노출용 gloss**에서 표준국어대사전 **동음이의어 구분 번호(표제어 뒤 두 자리 숫자)**를 제거한다. `‘슬슬02’`→`‘슬슬’`, `‘이01’`→`‘이’`, `→ 마하01.`→`→ 마하.`처럼 인용 표제어·참조 표현·리다이렉트 뜻풀이에 모두 적용한다. 화면 렌더러나 DB 계층에서 정규식으로 숨기거나 별도 참조 ID를 만들지 않고, 편집된 gloss 텍스트 자체를 고친다.
 - **유효한 숫자는 유지한다.** 연도·수량·단위·순번·작품명·고유명사의 일부 등 실제 수치(`60~90cm`, `9월`, `1.5cm`, `제20대`, `제16회`, `제25품(品)`)는 변경하지 않는다. `문자열+두 자리 숫자` 일괄 치환을 금지하고, 문맥상 모호한 후보는 기계적으로 삭제하지 않고 별도 수동 판정으로 남긴다.
 - **원본 sense 식별용 `「N」` 뜻 번호는 이 이슈의 대상이 아니다.** 이슈가 정의한 대상은 표제어 뒤 두 자리 동음이의어 번호이므로, 번호 제거 후에도 `‘까다「4」’`처럼 뜻 번호가 남아 sense 구별을 유지한다.
-- 편집은 기존 `glosses` 스펙(`{ sense_id, gloss }`)으로만 수행하고 Meaning 그룹·ID·`sense_ids`·관계·canonical·adjudication은 바꾸지 않는다. 스펙과 감사 기록은 `scripts/meaning/issue-797-cXX.json`, `scripts/meaning/issue-797-cXX-audit.md`로 보존한다.
-- **지속적 점검 경로.** `node scripts/validate/meaning-gloss-numbers.mjs`가 전체 corpus를 검사한다. `scripts/validate/meaning-gloss-number-scopes.json`에 정리가 끝난 초성 code를 추가하면 그 scope는 남은 번호가 있을 때 실패하고(완료 scope fail-closed), 아직 끝나지 않은 scope는 backlog 수치로만 보고한다. 이 검사는 `scripts/ci/registry.mjs`의 canonical domain Normal check(`tests/meaning-gloss-numbers.test.mjs` 포함)에 연결되어 있다.
+- **번호 제거가 의미를 지우면 안 된다.** 서로 다른 source record를 가리키는 인용(`‘꾸이다01’의 준말.` / `‘꾸이다02’의 준말.`)은 번호만 지우면 두 Meaning이 같은 gloss가 되어 원본 구별이 사라진다. 이런 경우 번호를 지운 자리에 **대상 source sense의 뜻을 함께 적어** 각 Meaning이 자기 source 용법을 유지하게 한다(예: `남에게 다음에 받기로 하고 돈이나 물건 따위를 빌려주다. ‘꾸이다’의 준말.` / `꿈이 보이다. ‘꾸이다’의 준말.`). canonical의 뜻풀이 문장을 그대로 근거로 쓰고 새 의미를 지어내지 않는다. `node scripts/validate/meaning-arrow-links.mjs`가 같은 lemma·같은 gloss로 표시되면서 서로 다른 source gloss에 결합된 Meaning 그룹을 찾아내고, 모든 구성원이 이미 같은 대상 Meaning 하나로 해석되는 경우(`깨이다`형, 선행 Meaning 정규화)만 허용으로 보고한다.
+- 편집은 기존 `glosses` 스펙(`{ sense_id, gloss }`)으로만 수행하고 Meaning 그룹·ID·`sense_ids`·canonical·adjudication은 바꾸지 않는다. 스펙과 감사 기록은 `scripts/meaning/issue-797-cXX.json`, `scripts/meaning/issue-797-cXX-audit.md`로 보존한다.
+- **`→` 참조는 대상 Meaning에 유의어(`direct`)로 연결한다.** 대상 문자열과 표제어만 맞추는 것이 아니라, 원본 참조가 가리키는 실제 대상 Meaning을 확인해 연결한다. 하나의 표제어에 대상 Meaning이 여럿이면 그중 해당하는 Meaning만 연결하고, `→`가 있다는 이유만으로 관련 없는 Meaning에 기계적으로 연결하지 않는다. 연결은 **지속 가능한 authored relation**으로 만든다(아래). 대상 판정 근거와 보류 항목은 감사 기록에 남긴다.
+
+### authored Meaning relation (지속 가능한 관계 편집 경로)
+
+- 지금까지 `meaning_relations`의 모든 행은 canonical source sense relation에서 **투영**된 것(`origin = stdict-sense-projection`)이었다. `→` 참조 연결처럼 canonical에 근거가 없는 편집 관계를 위해 Meaning row에 선택적 `relations` 필드를 둔다: `{"id","lemma","gloss","sense_ids","relations":[{"type","target","note"}]}`.
+- `relations`는 `data/meanings/`에 커밋되는 편집 데이터이며, `scripts/meaning/project.mjs`가 `origin = typewriter-authored`로 투영하고 provenance 행을 만들지 않는다. `scripts/build/meaning-source-checks.mjs`의 provenance 규칙도 그대로 유지된다. 편집은 기존 `apply-edits` 스펙 키 `relations`(`[{ source_meaning_id, remove?, add? }]`)로만 수행하고, 같은 스펙 재적용은 no-op이다. merge·repartition·drop이 authored relation을 조용히 버리면 실패한다.
+- 대상 Meaning id는 다른 초성 scope의 재편집으로 옮겨질 수 있다(예: C01 재편집이 대상 sense를 새 Meaning으로 병합). 이때 `validate.mjs`가 존재하지 않는 대상에서 fail-closed하므로, 스펙에서 `remove`(이전 대상)와 `add`(새 대상)로 재지정한다. `remove`는 없는 관계를 지워도 오류가 아니어서 재적용이 no-op을 유지하고, row에 저장되지 않는 투영 관계는 지울 수 없다. 남은 authored relation이 없으면 row는 `relations` 키 없는 원래 형태로 돌아간다.
+- `type`은 제품 DB의 관계 유형 8종 중 하나이고 `target`은 존재하는 Meaning ID이며 `note`는 비어 있을 수 없다(툴팁으로 노출). 편집 계약·검증·투영은 `scripts/meaning/contract.mjs`, `scripts/meaning/apply-edits.mjs`, `scripts/meaning/project.mjs`가 담당한다.
+
+### 지속적 점검 경로
+
+- `node scripts/validate/meaning-gloss-numbers.mjs`가 전체 corpus에서 남은 동음이의어 번호를 검사한다.
+- `node scripts/validate/meaning-arrow-links.mjs`가 전체 corpus의 `→` 참조를 검사한다: 완료 scope에서는 참조한 표제어와 같은 lemma를 가진 Meaning으로 `direct` 관계(투영 또는 authored)가 있어야 하고, 관계 대상이 참조 표제어와 다르면 실패한다. 같은 검사가 **번호 제거로 서로 다른 source 의미가 같은 표시로 붕괴했는지**도 감사한다: 같은 lemma·같은 gloss를 표시하는 Meaning들이 서로 다른 canonical gloss에 결합되어 있고 그 gloss가 canonical gloss에서 동음이의어 번호만 지운 결과라면, 모든 구성원이 같은 대상 Meaning으로 해석되는 경우(선행 Meaning 정규화)만 허용하고 나머지는 실패시킨다.
+- `scripts/validate/meaning-gloss-number-scopes.json`에 정리가 끝난 초성 code를 추가하면 두 검사가 그 scope에 대해 fail-closed로 동작하고, 끝나지 않은 scope는 backlog 수치로만 보고한다. 정말로 대상 Meaning을 판정할 수 없는 `→` 참조는 `link_exceptions`에 후보·조사 근거·보류 사유와 함께 등록해 임의 대상에 연결하지 않고 남긴다.
+- 두 검사는 `scripts/ci/registry.mjs`의 canonical domain Normal check(`tests/meaning-gloss-numbers.test.mjs`, `tests/meaning-arrow-links.test.mjs` 포함)에 연결되어 있다.
 
 ## #764 전량 재편집용 지침(프롬프트)
 

@@ -201,6 +201,20 @@ const RAW_CI_CATEGORIES = Object.freeze({
         ),
         tier: 'normal',
       },
+      {
+        ...commandCheck(
+          'Validate user-facing meaning glosses link every `→` reference to its target meaning and never collapse distinct source meanings into one display (Issue #797)',
+          ['scripts/validate/meaning-arrow-links.mjs'],
+        ),
+        tier: 'normal',
+      },
+      {
+        ...testCheck(
+          'tests/meaning-arrow-links.test.mjs',
+          'Test Issue #797 `→` reference linking to the target Meaning and number-removal display collapse detection',
+        ),
+        tier: 'normal',
+      },
       pnpmCheck('Validate lexical rule inventory', 'validate:rules'),
       testCheck('tests/lexical-rule-inventory.test.mjs', 'Test lexical rule inventory'),
       testCheck('tests/ci-runner.test.mjs', 'Test CI category runner fail-fast behavior'),

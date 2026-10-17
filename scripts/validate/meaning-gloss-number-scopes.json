@@ -1,8 +1,9 @@
 {
   "version": 1,
-  "protected_contract": "User-facing Meaning glosses in a completed Issue #797 초성 scope expose no source dictionary homonym disambiguation number",
+  "protected_contract": "For a completed Issue #797 초성 scope, user-facing Meaning glosses expose no source dictionary homonym disambiguation number and every `→` reference is linked to the target Meaning with the referenced lemma through a synonym relation",
   "completed_scopes": [
     "c02"
   ],
-  "notes": "Append the 초성 code once that scope's Issue #797 cleanup is merged. scripts/validate/meaning-gloss-numbers.mjs then fails closed for the completed scope while the remaining scopes stay an informational backlog."
+  "link_exceptions": [],
+  "notes": "Append the 초성 code once that scope's Issue #797 cleanup (homonym number removal and `→` reference linking) is merged. scripts/validate/meaning-gloss-numbers.mjs and scripts/validate/meaning-arrow-links.mjs then fail closed for the completed scope while the remaining scopes stay an informational backlog. A `→` reference that genuinely cannot be resolved to a target Meaning is listed in `link_exceptions` with its investigated candidates and hold reason instead of being linked to an invented target."
 }

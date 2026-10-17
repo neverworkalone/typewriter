@@ -9,6 +9,13 @@ import { applyEdits } from './apply-edits.mjs';
 import { validateMeaningDataset } from './contract.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+// The CLI copies live under a temporary repository root, so the runtime relation vocabulary contract.mjs imports
+// must be copied with them (no symlinks, matching the repository layout).
+const copyRuntimeContract = (tempRoot) => {
+  const runtimeDir = path.join(tempRoot, 'src/runtime');
+  mkdirSync(runtimeDir, { recursive: true });
+  copyFileSync(path.join(root, 'src/runtime/meaning-ranking.js'), path.join(runtimeDir, 'meaning-ranking.js'));
+};
 const senses = (entry, count) => Array.from({ length: count }, (_, i) => `${entry}-s${i + 1}`);
 const initial = (entry, lemma, count) => senses(entry, count).map((id, i) => ({
   id: count === 1 ? entry.replace('w', 'm') : `${entry.replace('w', 'm')}_${i + 1}`, lemma, gloss: `${lemma} 뜻 ${i + 1}`, sense_ids: [id],
@@ -74,6 +81,7 @@ test('CLI writes newly restored initial meaning ids into the lemma shard in cano
   for (const name of ['apply-edits.mjs', 'contract.mjs', 'initial.mjs']) {
     copyFileSync(path.join(root, 'scripts/meaning', name), path.join(scriptDir, name));
   }
+  copyRuntimeContract(tempRoot);
   writeFileSync(path.join(canonicalDir, 'stdict-0001.jsonl'), [
     { id: 'w50', lemma: '싸다', senses: [
       { id: 'w50-s1', pos: 'verb', gloss: '첫 원뜻' },
@@ -166,6 +174,7 @@ test('apply-edits removes a shard when all its meanings are dropped', () => {
   for (const name of ['apply-edits.mjs', 'contract.mjs', 'initial.mjs']) {
     copyFileSync(path.join(root, 'scripts/meaning', name), path.join(scriptDir, name));
   }
+  copyRuntimeContract(tempRoot);
   writeFileSync(path.join(meaningsDir, 'c20_001.jsonl'), [
     { id: 'm20_1', lemma: 'ㅏ', gloss: '글자', sense_ids: ['w20-s1'] },
     { id: 'm21_1', lemma: 'ㅏ', gloss: '소리', sense_ids: ['w21-s1'] },
@@ -258,4 +267,68 @@ test('pilot spec (#715) uses valid sense ids, unique members and never edits awa
     assert.equal(seen.has(drop.sense_id), false);
     assert.equal(seen.has(drop.duplicate_of), false, 'duplicate_of must not be edited away');
   }
+});
+
+test('relation edits append durable authored relations to the final meaning and re-apply as a no-op (Issue #797)', () => {
+  const meanings = [...initial('w10', '가다', 1), ...initial('w11', '오다', 1)];
+  const spec = { relations: [{ source_meaning_id: 'm10', add: [{ type: 'direct', target: 'm11', note: '표준국어대사전 참조 표제어' }] }] };
+  const applied = applyEdits({ meanings, adjudications: [] }, spec);
+  assert.deepEqual(applied.meanings[0].relations, [{ type: 'direct', target: 'm11', note: '표준국어대사전 참조 표제어' }]);
+  // The authored field trails the row, so the stored shard stays byte-stable when the same spec is reapplied.
+  assert.deepEqual(Object.keys(applied.meanings[0]), ['id', 'lemma', 'gloss', 'sense_ids', 'relations']);
+  const rerun = applyEdits(applied, spec);
+  assert.deepEqual(rerun.meanings, applied.meanings);
+  // A missing note or a bad type is rejected before anything is written.
+  assert.throws(() => applyEdits({ meanings, adjudications: [] }, {
+    relations: [{ source_meaning_id: 'm10', add: [{ type: 'direct', target: 'm11' }] }],
+  }), /note must be a trimmed non-empty string/u);
+  assert.throws(() => applyEdits({ meanings, adjudications: [] }, {
+    relations: [{ source_meaning_id: 'm10', add: [{ type: 'made-up', target: 'm11', note: 'n' }] }],
+  }), /type must be one of/u);
+  assert.throws(() => applyEdits({ meanings, adjudications: [] }, {
+    relations: [{ source_meaning_id: 'm10', add: [{ type: 'direct', target: 'm999', note: 'n' }] }],
+  }), /authored relation target m999 has no meaning/u);
+  assert.throws(() => applyEdits({ meanings, adjudications: [] }, {
+    relations: [{ source_meaning_id: 'm10', add: [{ type: 'direct', target: 'm10', note: 'n' }] }],
+  }), /target must differ/u);
+});
+
+test('a relation edit re-points an authored relation whose target meaning id moved (Issue #797)', () => {
+  const meanings = [...initial('w10', '가다', 1), ...initial('w11', '오다', 1), ...initial('w12', '가다', 1)];
+  const first = applyEdits({ meanings, adjudications: [] }, {
+    relations: [{ source_meaning_id: 'm10', add: [{ type: 'direct', target: 'm11', note: '표준국어대사전 참조 표제어' }] }],
+  });
+  assert.deepEqual(first.meanings[0].relations, [{ type: 'direct', target: 'm11', note: '표준국어대사전 참조 표제어' }]);
+  // Another scope re-partitioned the referenced meaning, so its id moved (m11 -> m12): the relation is re-pointed.
+  const retarget = {
+    relations: [{
+      source_meaning_id: 'm10',
+      remove: [{ type: 'direct', target: 'm11' }],
+      add: [{ type: 'direct', target: 'm12', note: '표준국어대사전 참조 표제어' }],
+    }],
+  };
+  const moved = applyEdits(first, retarget);
+  assert.deepEqual(moved.meanings[0].relations, [{ type: 'direct', target: 'm12', note: '표준국어대사전 참조 표제어' }]);
+  // Re-applying stays a no-op even though the removed relation is already gone.
+  assert.deepEqual(applyEdits(moved, retarget).meanings, moved.meanings);
+  // An explicit remove-only edit drops the relation and returns the row to its untouched shape.
+  const removeOnly = { relations: [{ source_meaning_id: 'm10', remove: [{ type: 'direct', target: 'm12' }] }] };
+  const removed = applyEdits(moved, removeOnly);
+  assert.equal('relations' in removed.meanings[0], false);
+  assert.deepEqual(applyEdits(removed, removeOnly).meanings, removed.meanings);
+  assert.throws(() => applyEdits(first, { relations: [{ source_meaning_id: 'm10' }] }), /needs a non-empty add or remove array/u);
+  assert.throws(() => applyEdits(first, { relations: [{ source_meaning_id: 'm10', remove: [{ target: 'm11' }] }] }), /needs a type and a target/u);
+});
+
+test('an edit that would silently drop authored relations is rejected (Issue #797)', () => {
+  const meanings = [...initial('w10', '가다', 2), ...initial('w11', '오다', 1)];
+  const withRelation = applyEdits({ meanings, adjudications: [] }, {
+    relations: [{ source_meaning_id: 'm10_1', add: [{ type: 'direct', target: 'm11', note: 'n' }] }],
+  });
+  assert.throws(() => applyEdits(withRelation, { merges: [{ senses: ['w10-s1', 'w10-s2'], gloss: '합침' }] }), /would drop the authored relations of m10_1/u);
+  assert.throws(() => applyEdits(withRelation, { drops: [{ sense_id: 'w10-s1', reason: 'out_of_scope' }] }), /would drop the authored relations of m10_1/u);
+  assert.throws(() => applyEdits(
+    { ...withRelation, initialMeaningIds: new Map([['w10-s1', 'm10_1'], ['w10-s2', 'm10_2']]) },
+    { repartitions: [{ lemma: '가다', before: [{ id: 'm10_1', gloss: '가다 뜻 1', sense_ids: ['w10-s1'] }, { id: 'm10_2', gloss: '가다 뜻 2', sense_ids: ['w10-s2'] }], groups: [{ senses: ['w10-s1', 'w10-s2'], gloss: '합침' }] }] },
+  ), /would drop the authored relations of m10_1/u);
 });

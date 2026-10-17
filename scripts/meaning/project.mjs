@@ -10,11 +10,18 @@
  * - an `out_of_scope` sense, or a sense without any meaning, has no product endpoint, so its relations are skipped;
  * - relations that collapse onto one meaning (self) are skipped;
  * - `source meaning + target meaning + type` is unique; every contributing sense relation stays as provenance.
+ *
+ * Authored meaning relations (`meaning.relations`, Issue #797) are added after the projected ones with
+ * `origin = typewriter-authored` and no provenance. They are committed editorial data, so they are never re-derived;
+ * an authored relation that repeats a projected `source + target + type` is dropped as a duplicate (the product
+ * database keeps one row per `source + target + type`). Positions are assigned per source meaning over projected
+ * relations first, then authored ones, so the projection stays deterministic.
  */
 
 import { MEANING_RELATION_ORIGINS } from '../../src/runtime/dictionary-contract.js';
 
 export const MEANING_RELATION_ORIGIN = MEANING_RELATION_ORIGINS.projection;
+export const MEANING_RELATION_AUTHORED_ORIGIN = MEANING_RELATION_ORIGINS.authored;
 
 function resolveEndpoint(senseId, senseToMeaning, dropped) {
   const direct = senseToMeaning.get(senseId);
@@ -46,6 +53,8 @@ export function projectMeaningRelations({ records, meanings, adjudications = [] 
     skipped_unresolved_count: 0,
     skipped_self_count: 0,
     deduplicated_count: 0,
+    authored_relation_count: 0,
+    authored_deduplicated_count: 0,
   };
   const byKey = new Map();
   const order = [];
@@ -93,6 +102,33 @@ export function projectMeaningRelations({ records, meanings, adjudications = [] 
         entry.sources.push(provenance);
         if (source.redirected || target.redirected) stats.redirected_relation_count += 1;
       }
+    }
+  }
+
+  // Authored (Typewriter) relations: committed with the meaning record, never re-derived from STDICT.
+  for (const meaning of meanings) {
+    for (const relation of meaning.relations ?? []) {
+      const key = `${meaning.id}\u0000${relation.target}\u0000${relation.type}`;
+      if (byKey.has(key)) {
+        stats.authored_deduplicated_count += 1;
+        continue;
+      }
+      if (meaning.id === relation.target) {
+        stats.skipped_self_count += 1;
+        continue;
+      }
+      const entry = {
+        source_meaning_id: meaning.id,
+        target_meaning_id: relation.target,
+        type: relation.type,
+        note: relation.note,
+        relevance: null,
+        origin: MEANING_RELATION_AUTHORED_ORIGIN,
+        sources: [],
+      };
+      byKey.set(key, entry);
+      order.push(entry);
+      stats.authored_relation_count += 1;
     }
   }
 
