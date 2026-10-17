@@ -129,6 +129,51 @@ test('C10 source-bound Meaning boundaries prevent cross-record homonym relation 
     distinctMeanings([first, second]);
   }
 
+  // Source-bound risk recheck: a shared Korean form or broad topic does not merge independent compounds.
+  distinctMeanings(['w171851-s1', 'w439234-s1']);
+  sameMeaning(['w171851-s1', 'w171851-s2']);
+  sameMeaning(['w439234-s1', 'w439234-s2']);
+
+  distinctMeanings([
+    'w171852-s1', 'w171853-s1', 'w171854-s1', 'w171855-s1', 'w439238-s1',
+  ]);
+  sameMeaning(['w171852-s1', 'w171852-s2']);
+  sameMeaning(['w171854-s1', 'w171854-s2']);
+  sameMeaning(['w439238-s1', 'w439238-s2']);
+  singleMeaning('w171853-s1');
+  singleMeaning('w171855-s1');
+
+  sameMeaning(['w161248-s1', 'w161248-s2']);
+  sameMeaning(['w161249-s1', 'w436738-s1']);
+  const distinctStrengthCompounds = [
+    'w161248-s1', 'w161249-s1', 'w161250-s1', 'w161253-s1',
+  ];
+  distinctMeanings(distinctStrengthCompounds);
+
+  const distinctBuddhistDemonCompounds = ['w163982-s1', 'w163984-s1', 'w164994-s1'];
+  for (const senseId of distinctBuddhistDemonCompounds) singleMeaning(senseId);
+  distinctMeanings(distinctBuddhistDemonCompounds);
+
+  for (const senseId of ['w166126-s1', 'w441026-s1', 'w166127-s1', 'w441027-s1']) singleMeaning(senseId);
+  distinctMeanings(['w166126-s1', 'w441026-s1']);
+  distinctMeanings(['w166127-s1', 'w441027-s1']);
+
+  sameMeaning(['w171890-s1', 'w171892-s1']);
+  singleMeaning('w439492-s1');
+  distinctMeanings(['w171890-s1', 'w439492-s1']);
+  distinctMeanings(['w171892-s1', 'w439492-s1']);
+
+  distinctMeanings(['w165872-s1', 'w165873-s1']);
+
+  // Positive controls: close source-bound uses remain grouped when their complete meanings connect.
+  sameMeaning(['w168814-s1', 'w443545-s1']);
+  sameMeaning(['w168813-s1', 'w443547-s1']);
+  sameMeaning(['w179096-s1', 'w179097-s1']);
+  sameMeaning(['w179098-s1', 'w446170-s1']);
+  sameMeaning(['w183822-s1', 'w184118-s1', 'w439543-s1']);
+  sameMeaning(['w200327-s1', 'w200622-s1']);
+  sameMeaning(['w201283-s2', 'w201284-s2']);
+
   // Risk-focused cross-record recheck: different full meanings had been joined by only a broad category.
   sameMeaning(['w165273-s1', 'w441863-s1']);
   sameMeaning(['w165275-s1', 'w165275-s2']);
