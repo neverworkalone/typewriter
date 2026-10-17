@@ -13,8 +13,10 @@ it, in canonical order.** No sense is split off, no record is merged with anothe
   explicitly. Relations still go through the shared `projectMeaningRelations` (self-link skip, dedup, provenance).
 - UI: `projectDefinition` turns the stored lines into one definition item per source gloss; the result card numbers them
   (①②…) when there is more than one, and the candidate picker shows the first gloss. Candidates are records.
-- Schema, Lite extraction and runtime queries are unchanged: `meanings`/`meaning_members` are reused as the record
-  based tables, `sense_adjudications` stays empty.
+- Schema: `meanings`/`meaning_members` are reused as the record based tables, `sense_adjudications` stays empty.
+  Owner decision: **the product (Lite) database carries no part of speech.** `meanings.pos` is removed (schema
+  version 7), together with its UI/query consumers; source `senses.pos` stays in the Full database only, and the Full
+  integrity checks keep binding every member to its source sense.
 - `data/meanings/`, `data/adjudication/`, #764 specs and the #814/#816 reports are untouched.
 
 ## Contract checks
@@ -42,7 +44,6 @@ the new build unchanged.
 
 Intended differences: multi-sense records are one candidate; the 133 adjudicated (duplicate/out-of-scope) senses are
 now ordinary members; relations that were self links only after Meaning grouping now stay as links between distinct
-records or collapse into one deduplicated relation. Known trade-off to review in the follow-up decision: the meaning
-`pos` is the first sense's part of speech, and 2,582 records have senses with different POS.
+records or collapse into one deduplicated relation. Part of speech (including the 2,582 records whose senses differ) is intentionally not shipped in Lite.
 
 Not verified here: real-browser popup run (component-level and DB-level checks only).

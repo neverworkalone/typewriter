@@ -235,8 +235,8 @@ function insertModel(database, model, metadata, surfaceFormRows, meaningLayer) {
 
   const insertMeaning = database.prepare(
     `INSERT INTO meanings
-      (id, lemma, gloss, pos, record_id, lexical_relation_count, exploratory_relation_count, display_rank)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      (id, lemma, gloss, record_id, lexical_relation_count, exploratory_relation_count, display_rank)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
   );
   const insertMember = database.prepare(
     'INSERT INTO meaning_members (meaning_id, position, sense_id, record_id) VALUES (?, ?, ?, ?)',
@@ -325,7 +325,6 @@ function insertModel(database, model, metadata, surfaceFormRows, meaningLayer) {
       meaning.id,
       meaning.lemma,
       meaning.gloss,
-      sourceSense(meaning.sense_ids[0]).pos,
       meaning.record_id,
       meaning.lexical_relation_count,
       meaning.exploratory_relation_count,

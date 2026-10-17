@@ -355,8 +355,8 @@ test('builds the meaning layer and projected meaning relations with provenance',
         [],
       );
       assert.deepEqual(
-        database.prepare('SELECT id, pos FROM meanings ORDER BY id').all().map((row) => ({ ...row })).slice(0, 1),
-        [{ id: 'm001', pos: 'noun' }],
+        database.prepare('SELECT id FROM meanings ORDER BY id').all().map((row) => ({ ...row })).slice(0, 1),
+        [{ id: 'm001' }],
       );
       assert.deepEqual(database.prepare("SELECT sense_id, record_id FROM meaning_members WHERE meaning_id = 'm001'").all().map((row) => ({ ...row })),
         [{ sense_id: 'w001-s1', record_id: 'w001' }]);

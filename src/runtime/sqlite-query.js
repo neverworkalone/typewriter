@@ -133,8 +133,7 @@ export function getMeaningRecord(database, recordId) {
 
   const senses = allRows(database, `
     SELECT meanings.id, meanings.gloss, meanings.display_rank,
-           meanings.lexical_relation_count, meanings.exploratory_relation_count,
-           meanings.pos
+           meanings.lexical_relation_count, meanings.exploratory_relation_count
     FROM meanings
     WHERE meanings.id IN (
       SELECT meaning_members.meaning_id FROM meaning_members
@@ -166,7 +165,6 @@ export function getMeaningRecord(database, recordId) {
         meaning_relations.note,
         meaning_relations.relevance,
         target_meanings.lemma AS target_lemma,
-        target_meanings.pos AS target_pos,
         target_meanings.gloss AS target_gloss
       FROM meaning_relations
       INNER JOIN meanings AS target_meanings

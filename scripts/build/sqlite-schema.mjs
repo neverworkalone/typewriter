@@ -53,10 +53,6 @@ CREATE TABLE meanings (
   id TEXT PRIMARY KEY NOT NULL,
   lemma TEXT NOT NULL,
   gloss TEXT NOT NULL,
-  pos TEXT NOT NULL CHECK (pos IN (
-    'noun', 'adjective', 'verb', 'adverb', 'determiner', 'interjection',
-    'particle', 'ending', 'affix', 'unclassified', 'expression'
-  )),
   record_id TEXT NOT NULL,
   lexical_relation_count INTEGER NOT NULL CHECK (lexical_relation_count >= 0),
   exploratory_relation_count INTEGER NOT NULL CHECK (exploratory_relation_count >= 0),
