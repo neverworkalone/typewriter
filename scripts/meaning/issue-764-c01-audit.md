@@ -35,6 +35,12 @@ The edit spec is one deterministic apply-edits transaction. It records gloss cha
 - `git diff --check` — passed.
 - Changed paths are limited to the 69 C01 meaning shards, `data/adjudication/c01_001.jsonl`, and this issue spec/audit. `data/canonical/` is unchanged.
 
+## PR review feedback and correction (2026-10-17)
+
+- PR #810 review `5555024718` identified that the integrated `가다` Meaning `m707_1` gloss did not explicitly cover the tilt sense (`w707-s13`) or the shock-related mental-confusion sense (`w707-s22`).
+- Rechecked all 35 bound source senses (`w707-s1`–`w707-s34` and `w708-s1`) against canonical. Confirmed both findings and also found that the prior gloss did not explicitly represent lines/creases/scars appearing (`w707-s14`). Refined the same integrated gloss to cover these, and made machine operation (`w707-s12`, `w707-s21`) and transferred/disappearing objects or rights (`w707-s6`, `w707-s19`) explicit in the source-bound wording.
+- Kept the same Meaning membership and repartition; only its representative gloss changed. The revised wording also retains the movement, transfer, direction, operation, time/place/degree, damage, electricity, death, comprehension, effort, stain removal, wagering, auxiliary, and shortened-form uses recorded by the remaining bound senses. Canonical source data remains unchanged.
+
 ## Shard review log
 
 - c01_001 merge scratch reviewed; known false merges in 가과 and 가공하다 removed; 가다 repartition is in /tmp/meaning-764-c01-repartitions.json
