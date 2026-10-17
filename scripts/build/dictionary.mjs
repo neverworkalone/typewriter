@@ -260,11 +260,11 @@ function insertModel(database, model, metadata, surfaceFormRows, meaningLayer) {
     insertMetadata.run(key, value);
   }
 
-  // The shipped tables keep only what the product reads of a source sense (owner record, position, part of speech).
+  // The shipped tables keep only what the product reads of a source sense (owner record and position; part of speech stays in the Full `senses` table only).
   const sourceSenses = new Map();
   for (const record of model.records) {
     record.senses.forEach((sense, position) => {
-      sourceSenses.set(sense.id, { record_id: record.id, position, pos: sense.pos });
+      sourceSenses.set(sense.id, { record_id: record.id, position });
     });
   }
   const sourceSense = (senseId) => {
