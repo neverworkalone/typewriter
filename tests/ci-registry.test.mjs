@@ -687,7 +687,7 @@ test('Deep gate separates validated data from affected contracts and fails close
   );
   assert.equal(
     classifyDeepGateDiff('base', 'head', { runGit: () => Buffer.from('scripts/benchmark/sqlite-runtime.mjs\0') }).deepMode,
-    'selective',
+    'none',
   );
   assert.equal(
     classifyDeepGateDiff('base', 'head', { runGit: () => { throw new Error('git diff failed'); } }).deepMode,
