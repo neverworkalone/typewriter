@@ -16,6 +16,7 @@ import { createCanonicalContext } from '../validate/canonical-context.mjs';
 import { runChecks } from '../ci/run-category.mjs';
 import { loadMeaningData } from './contract.mjs';
 import { validateMeaningFiles } from './validate.mjs';
+import { MEANING_RELATION_ORIGIN, projectMeaningRelations } from './project.mjs';
 
 const tmp = () => mkdtempSync(path.join(tmpdir(), 'meaning-'));
 const row = (id, lemma, senses = [`${id.replace('m', 'w').split('_')[0]}-s1`]) => ({ id, lemma, gloss: `${lemma} 뜻`, sense_ids: senses });
@@ -597,4 +598,26 @@ test('Issue #764 C08: source-ID identity boundaries, replayed rows, and audit de
   ]) {
     assert.equal(sameGroup(groupsFor(lemma), left, right), true, `${lemma}: retain a source-bound positive control`);
   }
+
+  const halfPaymentMeaning = c08Rows.find((item) => item.sense_ids.includes('w130652-s1'));
+  const returnMeaning = c08Rows.find((item) => item.sense_ids.includes('w130917-s1'));
+  const returnRecord = readFileSync(path.join(root, 'data/canonical/stdict-0096.jsonl'), 'utf8')
+    .trimEnd().split('\n').map((line) => JSON.parse(line)).find((item) => item.id === 'w130917');
+  const targetMeaning = readFileSync(path.join(root, 'data/meanings/c01_045.jsonl'), 'utf8')
+    .trimEnd().split('\n').map((line) => JSON.parse(line)).find((item) => item.sense_ids.includes('w34838-s1'));
+  assert.equal(halfPaymentMeaning.id, 'm130652');
+  assert.equal(returnMeaning.id, 'm130917');
+  assert.notEqual(halfPaymentMeaning.id, returnMeaning.id);
+  const projected = projectMeaningRelations({ records: [returnRecord], meanings: [returnMeaning, targetMeaning] });
+  const returnRelation = projected.relations.find((relation) => relation.sources.some((source) => source.source_sense_id === 'w130917-s1'));
+  assert.deepEqual(returnRelation, {
+    source_meaning_id: 'm130917',
+    target_meaning_id: 'm34838',
+    type: 'direct',
+    note: '표준국어대사전 동의어',
+    relevance: null,
+    origin: MEANING_RELATION_ORIGIN,
+    sources: [{ source_sense_id: 'w130917-s1', source_position: 0, source_redirected: 0, target_redirected: 0 }],
+    position: 0,
+  }, 'the return relation keeps its return Meaning endpoint and source provenance');
 });
