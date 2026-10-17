@@ -110194,3 +110194,50 @@ The negative regression boundaries are the exact source IDs in the table. Positi
 The replay from PR base `6f37ba315daa77a5dfe4974d39721c0919bf7937` applied 4,549 repartitions, with no gloss edits, merges, or drops. The 14 corrected lemmas cover 36 bound source senses and add 17 Meaning rows, producing 473,105 Meaning rows with all 125 adjudications retained. Exactly six generated shards (`c19_002`, `c19_003`, `c19_006`, `c19_021`, `c19_022`, `c19_023`) changed; all 34 replay outputs were byte-for-byte compared with the PR worktree. Canonical and adjudication inputs remain unchanged.
 
 The source-ID boundary regression is registered in the Normal CI tier because it protects the current C19 Meaning identity decisions. Its direct run passed 4/4 tests. `node scripts/meaning/validate.mjs` passed with 473,105 meanings and 125 adjudications. These are primary-agent source-bound self-checks, not independent review or human editorial approval.
+
+## Stage 2 follow-up — partial-compound cross-record rescreen (2026-10-17)
+
+This addendum addresses review `5555115047` on PR #807 HEAD `8b514a0645f5070faf80726bddc465b53abbe948`. It corrects the two confirmed blockers and records a broader focused screen for the same root cause: grouping separate compounds because their Hangul form, one Han character, or an abstract category overlaps. The screen covered 314 cross-record merged Meaning groups across 309 lemmas. Their 655 source word records were read by canonical source ID and Korean gloss; seven cached STDICT source files were checked against the SHA-256 values in `data/provenance/stdict-source-inventory.json`. Of the 314 groups, 272 had different record-level Hanja forms and 42 had the same or no Hanja. This risk-focused screen is not a semantic census of all 24,465 C19 lemmas or all source records.
+
+The 37 corrected lemmas below affect 98 source senses from 81 source word records. The regression stores the exact negative source-sense partitions. Decisions use the complete compound meanings and bound glosses, not a Hanja-string filter. Related senses within a compound remain together where their definitions describe the same lexical identity.
+
+| Lemma | Source-bound decision |
+| --- | --- |
+| `후방` | Separate `後房` (`w378899-s1`, a room at the back of a house) from `後方` (`w506363-s1/s2`, rear direction and military rear area). Keep the two `後方` senses together. |
+| `후차` | Separate `後次` (`w379204-s1`, later in sequence) from `後車` (`w379206-s1`, the next vehicle); preserve their distinct `선차` antonym and `뒤차` direct endpoints. |
+| `하랍` | Separate `夏臘` (`w360069-s1`, a monk’s years since ordination) from `下臘` (`w501770-s1`, a monk with few ordination years). |
+| `하재` | Separate `下材` (`w363132-s1/s2`, low-grade material and its named buffalo-bone kind) from `下才` (`w517360-s1`, poor talent). Keep the two `下材` senses together. |
+| `한길` | Separate a broad, busy road (`w368117-s1`) from one or the same route (`w368118-s1`). |
+| `하향` | Keep `下向` downward direction, decline, and falling water level (`w362015-s1/s2/s3`) together; separate `下鄕` travel to the countryside or home (`w362256-s1/s2`) and `遐鄕` a remote province (`w500423-s1`). Preserve the unrelated summer-rite sense `w517629-s1`. |
+| `항성` | Separate the stars of the second lunar mansion, `亢星` (`w364475-s1`), from fixed stars, `恒星` (`w502074-s1`). |
+| `항속` | Separate vehicle or vessel speed, `航速` (`w363710-s1`), from an unvarying speed, `恒速` (`w365377-s1`). |
+| `항진` | Separate a vessel or aircraft proceeding forward, `航進` (`w367441-s1`), from advancement or intensification, `亢進` (`w503132-s1/s2/s3`). Keep the three `亢進` senses together. |
+| `해낭` | Separate the ceremonial silk pouch, `亥囊` (`w365224-s1`), from the pouch for collected poems or drafts, `奚囊` (`w365225-s1`). |
+| `해선` | Separate the scallop family, `海扇` (`w365575-s1`), from edible marine animals, `海鮮` (`w499128-s1/s2`). Keep the two `海鮮` food senses together. |
+| `행사`, `행사하다` | Separate `行使` using, exercising, or acting (`w364094-s1/s2/s3`; `w502587-s1/s2/s3`) from `行事` carrying out an undertaking (`w502586-s1`; `w364093-s1`). |
+| `헤르츠`, `헨리` | Separate each physicist (`w372446-s1`, `w378109-s1`) from the measurement unit named after that person (`w372448-s1`, `w506212-s1`). |
+| `현상` | Keep celestial `玄象/懸象` (`w370521-s1`, `w503713-s1`) together and keep visible/current state `現狀` with observable phenomenon `現象` (`w370523-s1`, `w503709-s1/s2`) together. Separate perceptual thought, `現想` (`w370524-s1`). |
+| `현연` | Separate a profound place, `玄淵` (`w376022-s1`), from a distant appearance, `懸然` (`w376029-s1`). The source’s poverty and tears senses remain separate. |
+| `현인` | Separate a person whose virtue is manifest, `顯人` (`w373695-s1`), from a wise person below a sage, `賢人` (`w498039-s1`). |
+| `형사` | Separate imitating or describing a form, `形寫` (`w374583-s1`), from resemblance in form, `形似` (`w501565-s1`). |
+| `형지` | Separate pattern paper, `型紙` (`w373430-s1`), from the outline or site of a former shape, `形址` (`w507269-s1`). |
+| `혜사`, `혜사하다` | Separate gracious pardon, `惠赦` (`w371190-s1`; `w508803-s1`), giving by favor, `惠賜` (`w371191-s1`; `w371192-s1`), and benevolent regard, `惠思` (`w508802-s1`; `w371189-s1`). |
+| `호망` | Separate the fox net `狐網` (`w375224-s1`), pot-shaped fish trap `壺網` (`w375494-s1`), and tiger barrier net `虎網` (`w504421-s1`). |
+| `호세` | Separate relying on power, `怙勢` (`w375501-s1`), from strong or influential force, `豪勢` (`w379839-s1`). |
+| `홍하` | Separate a great river, `洪河` (`w381865-s1`), from Vietnam’s named Red River, `紅河` (`w382137-s1`). |
+| `활동` | Separate sliding motion, `滑動` (`w380885-s1`), from bodily, purposeful, biological, and volcanic activity, `活動` (`w508962-s1/s2/s3/s4`). Keep the four `活動` senses together. |
+| `황고` | Separate the source-bound imperial kinship terms `皇姑` (`w389400-s1`) and `皇考` (`w504063-s1`). |
+| `황비` | Separate an emperor’s wife, `皇妃` (`w386855-s1`), from a deceased empress of an earlier generation, `皇妣` (`w386856-s1`). |
+| `회공` | Separate submitting a matter for collective deliberation, `恢公` (`w380618-s1`), from circulating a government document for officials’ review, `回公` (`w508961-s1`). |
+| `회부` | Separate returning or referring a matter to a process, `回附` (`w380061-s1`), from combining and recording it in an account, `會付` (`w506542-s1`). |
+| `훈문` | Separate a lineage distinguished by merit, `勳門` (`w381661-s1`), from a powerful household, `薰門` (`w381662-s1`). |
+| `훈전` | Separate a didactic classic, `訓典` (`w378630-s1`), from a commentary explaining Confucian classics, `訓傳` (`w378631-s1`). |
+| `휴전` | Separate a temporary interruption of electric transmission, `休電` (`w387129-s1`), from a truce, `休戰` (`w387131-s1`). |
+| `흉리` | Separate sinister or harmful inner content, `凶裏` (`w382796-s1`), from the mind or thoughts within the heart, `胸裏` (`w382797-s1`). |
+| `흉심` | Separate evil intent, `凶心/兇心` (`w384227-s1`), from thoughts held deep in the mind, `胸心` (`w384228-s1`). |
+| `흉조` | Separate a bird conventionally believed to bring misfortune, `凶鳥/兇鳥` (`w387834-s1`), from an inauspicious sign, `凶兆` (`w508849-s1`). |
+| `흡기` | Separate the nutrient-absorbing organ of a parasite, `吸器` (`w388311-s1`), from inhalation or drawing gas inward, `吸氣` (`w508426-s1/s2`). Keep the two `吸氣` senses together. |
+
+Positive controls make the boundary explicit: `w506363-s1/s2` (`後方`) remains one direction/rear-area Meaning; `w503132-s1/s2/s3` (`亢進`) remains one advancement/intensification Meaning; `w370521-s1`/`w503713-s1` and `w370523-s1`/`w503709-s1/s2` remain the two coherent `현상` groups; `w370758-s1` with `w370759-s1/s2` (`玄慮/賢慮`) remains one thought Meaning; the three `下向` senses, two `下鄕` senses, and same-compound `下材`, `海鮮`, and `活動` senses stay grouped. These positive and negative boundaries are checked by source ID, not by a Hanja regex.
+
+The full replay from base `6f37ba315daa77a5dfe4974d39721c0919bf7937` applied 4,549 repartitions with no gloss edits, merges, or drops and produced 473,147 meanings with all 125 adjudications. Relative to PR HEAD before this follow-up, the 37 corrected lemmas add 42 Meaning groups and change 19 of 34 C19 shards; all 34 replayed C19 shards were byte-for-byte compared with the worktree. Canonical inputs and adjudications are unchanged. The rear-room `direct`, sequence `antonym`, and next-car `direct` relations project to their separate Meaning endpoints with source-sense provenance intact. On the current worktree, `node scripts/meaning/validate.mjs` passed with 473,147 meanings and 125 adjudications, and the direct source-ID regression passed 5/5. The regression is registered in Normal CI; the required clean-tree `ci:normal` remains the final pre-push validation. This is primary-agent source-bound self-check evidence, not independent review or human editorial approval.

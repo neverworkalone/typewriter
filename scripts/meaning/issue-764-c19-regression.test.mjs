@@ -42,6 +42,43 @@ const historicalOvermerges = [
   ['화인 (禍因 / 火因)', 'm375137', ['w375137-s1', 'w375395-s1']],
   ['화재 (火災 / 禍災)', 'm380401', ['w380401-s1', 'w381532-s1']],
   ['화해 (禍害 / 火海)', 'm376442', ['w376442-s1', 'w376484-s1']],
+  ['후방 (後房 / 後方)', 'pre-fix:후방', ['w378899-s1', 'w506363-s1', 'w506363-s2']],
+  ['후차 (後次 / 後車)', 'pre-fix:후차', ['w379204-s1', 'w379206-s1']],
+  ['하랍 (夏臘 / 下臘)', 'pre-fix:하랍', ['w360069-s1', 'w501770-s1']],
+  ['하재 (下材 / 下才)', 'pre-fix:하재', ['w363132-s1', 'w363132-s2', 'w517360-s1']],
+  ['한길 (wide road / one road)', 'pre-fix:한길', ['w368117-s1', 'w368118-s1']],
+  ['하향 (下向·下鄕 / 遐鄕)', 'pre-fix:하향', ['w362015-s1', 'w362015-s2', 'w362015-s3', 'w362256-s1', 'w362256-s2', 'w500423-s1']],
+  ['항성 (亢星 / 恒星)', 'pre-fix:항성', ['w364475-s1', 'w502074-s1']],
+  ['항속 (航速 / 恒速)', 'pre-fix:항속', ['w363710-s1', 'w365377-s1']],
+  ['항진 (航進 / 亢進)', 'pre-fix:항진', ['w367441-s1', 'w503132-s1', 'w503132-s2', 'w503132-s3']],
+  ['해낭 (亥囊 / 奚囊)', 'pre-fix:해낭', ['w365224-s1', 'w365225-s1']],
+  ['해선 (海扇 / 海鮮)', 'pre-fix:해선', ['w365575-s1', 'w499128-s1', 'w499128-s2']],
+  ['헤르츠 (physicist / unit)', 'pre-fix:헤르츠', ['w372446-s1', 'w372448-s1']],
+  ['헨리 (physicist / unit)', 'pre-fix:헨리', ['w378109-s1', 'w506212-s1']],
+  ['현상 (玄象·懸象 / 現狀·現想·現象)', 'pre-fix:현상', ['w370521-s1', 'w370523-s1', 'w370524-s1', 'w503709-s1', 'w503709-s2', 'w503713-s1']],
+  ['현연 (玄淵 / 懸然)', 'pre-fix:현연', ['w376022-s1', 'w376029-s1']],
+  ['현인 (顯人 / 賢人)', 'pre-fix:현인', ['w373695-s1', 'w498039-s1']],
+  ['형사 (形寫 / 形似)', 'pre-fix:형사', ['w374583-s1', 'w501565-s1']],
+  ['형지 (型紙 / 形址)', 'pre-fix:형지', ['w373430-s1', 'w507269-s1']],
+  ['혜사 (惠赦 / 惠賜 / 惠思)', 'pre-fix:혜사', ['w371190-s1', 'w371191-s1', 'w508802-s1']],
+  ['혜사하다 (惠思 / 惠賜 / 惠赦)', 'pre-fix:혜사하다', ['w371189-s1', 'w371192-s1', 'w508803-s1']],
+  ['호망 (狐網 / 壺網 / 虎網)', 'pre-fix:호망', ['w375224-s1', 'w375494-s1', 'w504421-s1']],
+  ['호세 (怙勢 / 豪勢)', 'pre-fix:호세', ['w375501-s1', 'w379839-s1']],
+  ['홍하 (洪河 / 紅河)', 'pre-fix:홍하', ['w381865-s1', 'w382137-s1']],
+  ['활동 (滑動 / 活動)', 'pre-fix:활동', ['w380885-s1', 'w508962-s1', 'w508962-s2', 'w508962-s3', 'w508962-s4']],
+  ['황고 (皇姑 / 皇考)', 'pre-fix:황고', ['w389400-s1', 'w504063-s1']],
+  ['황비 (皇妃 / 皇妣)', 'pre-fix:황비', ['w386855-s1', 'w386856-s1']],
+  ['회공 (恢公 / 回公)', 'pre-fix:회공', ['w380618-s1', 'w508961-s1']],
+  ['회부 (回附 / 會付)', 'pre-fix:회부', ['w380061-s1', 'w506542-s1']],
+  ['행사 (行使 / 行事)', 'pre-fix:행사', ['w364094-s1', 'w364094-s2', 'w364094-s3', 'w502586-s1']],
+  ['행사하다 (行使 / 行事)', 'pre-fix:행사하다', ['w364093-s1', 'w502587-s1', 'w502587-s2', 'w502587-s3']],
+  ['훈문 (勳門 / 薰門)', 'pre-fix:훈문', ['w381661-s1', 'w381662-s1']],
+  ['훈전 (訓典 / 訓傳)', 'pre-fix:훈전', ['w378630-s1', 'w378631-s1']],
+  ['휴전 (休電 / 休戰)', 'pre-fix:휴전', ['w387129-s1', 'w387131-s1']],
+  ['흉리 (凶裏 / 胸裏)', 'pre-fix:흉리', ['w382796-s1', 'w382797-s1']],
+  ['흉심 (凶心 / 胸心)', 'pre-fix:흉심', ['w384227-s1', 'w384228-s1']],
+  ['흉조 (凶鳥 / 凶兆)', 'pre-fix:흉조', ['w387834-s1', 'w508849-s1']],
+  ['흡기 (吸器 / 吸氣)', 'pre-fix:흡기', ['w388311-s1', 'w508426-s1', 'w508426-s2']],
 ];
 
 const splitBoundaries = [
@@ -59,6 +96,43 @@ const splitBoundaries = [
   ['화인 (禍因 / 火因)', [['w375137-s1'], ['w375395-s1']]],
   ['화재 (火災 / 禍災)', [['w380401-s1'], ['w381532-s1']]],
   ['화해 (禍害 / 火海)', [['w376442-s1'], ['w376484-s1']]],
+  ['후방 (後房 / 後方)', [['w378899-s1'], ['w506363-s1', 'w506363-s2']]],
+  ['후차 (後次 / 後車)', [['w379204-s1'], ['w379206-s1']]],
+  ['하랍 (夏臘 / 下臘)', [['w360069-s1'], ['w501770-s1']]],
+  ['하재 (下材 / 下才)', [['w363132-s1', 'w363132-s2'], ['w517360-s1']]],
+  ['한길 (wide road / one road)', [['w368117-s1'], ['w368118-s1']]],
+  ['하향 (下向 / 下鄕 / 遐鄕)', [['w362015-s1', 'w362015-s2', 'w362015-s3'], ['w362256-s1', 'w362256-s2'], ['w500423-s1']]],
+  ['항성 (亢星 / 恒星)', [['w364475-s1'], ['w502074-s1']]],
+  ['항속 (航速 / 恒速)', [['w363710-s1'], ['w365377-s1']]],
+  ['항진 (航進 / 亢進)', [['w367441-s1'], ['w503132-s1', 'w503132-s2', 'w503132-s3']]],
+  ['해낭 (亥囊 / 奚囊)', [['w365224-s1'], ['w365225-s1']]],
+  ['해선 (海扇 / 海鮮)', [['w365575-s1'], ['w499128-s1', 'w499128-s2']]],
+  ['헤르츠 (physicist / unit)', [['w372446-s1'], ['w372448-s1']]],
+  ['헨리 (physicist / unit)', [['w378109-s1'], ['w506212-s1']]],
+  ['현상 (celestial / present-state and phenomenon / mental image)', [['w370521-s1', 'w503713-s1'], ['w370523-s1', 'w503709-s1', 'w503709-s2'], ['w370524-s1']]],
+  ['현연 (玄淵 / 懸然)', [['w376022-s1'], ['w376029-s1']]],
+  ['현인 (顯人 / 賢人)', [['w373695-s1'], ['w498039-s1']]],
+  ['형사 (形寫 / 形似)', [['w374583-s1'], ['w501565-s1']]],
+  ['형지 (型紙 / 形址)', [['w373430-s1'], ['w507269-s1']]],
+  ['혜사 (惠赦 / 惠賜 / 惠思)', [['w371190-s1'], ['w371191-s1'], ['w508802-s1']]],
+  ['혜사하다 (惠思 / 惠賜 / 惠赦)', [['w371189-s1'], ['w371192-s1'], ['w508803-s1']]],
+  ['호망 (狐網 / 壺網 / 虎網)', [['w375224-s1'], ['w375494-s1'], ['w504421-s1']]],
+  ['호세 (怙勢 / 豪勢)', [['w375501-s1'], ['w379839-s1']]],
+  ['홍하 (洪河 / 紅河)', [['w381865-s1'], ['w382137-s1']]],
+  ['활동 (滑動 / 活動)', [['w380885-s1'], ['w508962-s1', 'w508962-s2', 'w508962-s3', 'w508962-s4']]],
+  ['황고 (皇姑 / 皇考)', [['w389400-s1'], ['w504063-s1']]],
+  ['황비 (皇妃 / 皇妣)', [['w386855-s1'], ['w386856-s1']]],
+  ['회공 (恢公 / 回公)', [['w380618-s1'], ['w508961-s1']]],
+  ['회부 (回附 / 會付)', [['w380061-s1'], ['w506542-s1']]],
+  ['행사 (行使 / 行事)', [['w364094-s1', 'w364094-s2', 'w364094-s3'], ['w502586-s1']]],
+  ['행사하다 (行使 / 行事)', [['w364093-s1'], ['w502587-s1', 'w502587-s2', 'w502587-s3']]],
+  ['훈문 (勳門 / 薰門)', [['w381661-s1'], ['w381662-s1']]],
+  ['훈전 (訓典 / 訓傳)', [['w378630-s1'], ['w378631-s1']]],
+  ['휴전 (休電 / 休戰)', [['w387129-s1'], ['w387131-s1']]],
+  ['흉리 (凶裏 / 胸裏)', [['w382796-s1'], ['w382797-s1']]],
+  ['흉심 (凶心 / 胸心)', [['w384227-s1'], ['w384228-s1']]],
+  ['흉조 (凶鳥 / 凶兆)', [['w387834-s1'], ['w508849-s1']]],
+  ['흡기 (吸器 / 吸氣)', [['w388311-s1'], ['w508426-s1', 'w508426-s2']]],
 ];
 
 const sameIdentityControls = [
@@ -67,6 +141,15 @@ const sameIdentityControls = [
   ['하화 summer flower and summer-retreat offering flower (夏花)', ['w501101-s1', 'w501101-s2']],
   ['합근 wedding cup rite and wedding ceremony (合巹)', ['w502252-s1', 'w502252-s2']],
   ['화원 fire source, hazard source and calamity source', ['w379309-s1', 'w379309-s2', 'w508715-s1']],
+  ['후방 general and military rear directions (後方)', ['w506363-s1', 'w506363-s2']],
+  ['항진 increase in illness and intensity (亢進)', ['w503132-s1', 'w503132-s2', 'w503132-s3']],
+  ['현려 deep consideration and wise thought (玄慮 / 賢慮)', ['w370758-s1', 'w370759-s1', 'w370759-s2']],
+  ['하향 rural trip and return-home senses (下鄕)', ['w362256-s1', 'w362256-s2']],
+  ['현상 celestial images (玄象 / 懸象)', ['w370521-s1', 'w503713-s1']],
+  ['현상 present state and observable phenomenon (現狀 / 現象)', ['w370523-s1', 'w503709-s1', 'w503709-s2']],
+  ['활동 general bodily, productive, biological and volcanic activity (活動)', ['w508962-s1', 'w508962-s2', 'w508962-s3', 'w508962-s4']],
+  ['하재 lower-grade materials and their named buffalo-bone kind (下材)', ['w363132-s1', 'w363132-s2']],
+  ['해선 edible seafood senses (海鮮)', ['w499128-s1', 'w499128-s2']],
 ];
 
 test('C19 recorded pre-fix overmerges are repaired at their source-ID boundaries', () => {
@@ -130,6 +213,43 @@ test('C19 corrected lotus and summer-flower source relations project to distinct
     assert.ok(relation, `${label}: canonical direct relation must project`);
     assert.deepEqual(relation.sources.map((source) => source.source_sense_id), [sourceSense], `${label}: relation provenance stays source-bound`);
   }
+});
+
+test('C19 corrected rear-room and later-car source relations project to separate endpoints', () => {
+  const allMeaningsBySense = new Map();
+  for (const file of readdirSync(meaningDirectory).filter((name) => name.endsWith('.jsonl'))) {
+    for (const line of readFileSync(path.join(meaningDirectory, file), 'utf8').split('\n')) {
+      if (!line) continue;
+      const meaning = JSON.parse(line);
+      for (const senseId of meaning.sense_ids) allMeaningsBySense.set(senseId, meaning);
+    }
+  }
+  const sourceIds = new Set(['w378899', 'w506363', 'w379204', 'w379206']);
+  const records = readCanonicalEntries(path.join(root, 'data/canonical')).filter((record) => sourceIds.has(record.id));
+  const adjudications = readAdjudications(path.join(root, 'data/adjudication')).rows;
+  const { relations } = projectMeaningRelations({ records, meanings: [...new Set(allMeaningsBySense.values())], adjudications });
+  const endpoint = (senseId) => {
+    const meaning = allMeaningsBySense.get(senseId);
+    assert.ok(meaning, `${senseId}: projected Meaning endpoint must resolve`);
+    return meaning;
+  };
+  const assertSourceRelation = (label, sourceSense, targetSense, type) => {
+    const sourceMeaning = endpoint(sourceSense);
+    const targetMeaning = endpoint(targetSense);
+    const relation = relations.find((item) => item.source_meaning_id === sourceMeaning.id
+      && item.target_meaning_id === targetMeaning.id && item.type === type);
+    assert.ok(relation, `${label}: source relation must project to its own Meaning endpoint`);
+    assert.deepEqual(relation.sources.map((source) => source.source_sense_id), [sourceSense], `${label}: provenance remains bound to its canonical sense`);
+    return sourceMeaning;
+  };
+
+  const rearRoom = assertSourceRelation('rear room', 'w378899-s1', 'w94426-s1', 'direct');
+  const rearDirection = endpoint('w506363-s1');
+  assert.notEqual(rearRoom.id, rearDirection.id, 'the 房 room relation must not share the 方 direction Meaning endpoint');
+  assert.notEqual(endpoint('w378899-s2').id, rearRoom.id, 'the eye chamber remains a separate source identity');
+  assertSourceRelation('later in sequence', 'w379204-s1', 'w448812-s1', 'antonym');
+  const nextCar = assertSourceRelation('next vehicle', 'w379206-s1', 'w95438-s1', 'direct');
+  assert.notEqual(endpoint('w379204-s1').id, nextCar.id, '次 order and 車 vehicle relations must keep separate source Meaning endpoints');
 });
 
 test('C19 source fixture IDs still resolve to their canonical lemma and source gloss', () => {
