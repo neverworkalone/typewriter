@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -37,7 +36,6 @@ import {
 } from '../scripts/ci/deep-gate.mjs';
 import NORMAL_COVERAGE from '../scripts/ci/deep-gate-coverage.json' with { type: 'json' };
 import NORMAL_COVERAGE_RETIREMENTS from '../scripts/ci/deep-gate-coverage-retirements.json' with { type: 'json' };
-import { TRASH_CONTRACT, validateTrashChunk } from '../scripts/validate/candidate-trash.mjs';
 import { sampleCanonicalRecordLine, syntheticRelationPacket } from './helpers/synthetic-data.mjs';
 import VITEST_CONFIG from '../vitest.config.js';
 const TEST_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
@@ -629,73 +627,6 @@ test('retired append-only Normal bindings are documented and cannot silently ret
   await mkdir(path.join(repositoryDirectory, path.dirname(reintroducedPath)), { recursive: true });
   await writeFile(path.join(repositoryDirectory, reintroducedPath), '// reintroduced\n');
   assert.throws(() => validateNormalCoverage(NORMAL_COVERAGE, { repositoryDirectory }), /reintroduced/);
-});
-
-test('valid legacy trash chunks take Normal while tampering and unknown paths fail closed', () => {
-  const unresolved = {
-    surface: '나무',
-    evidence: { kind: 'corpus-paragraph', ref: 'synthetic-ref#1' },
-    holds: ['analysis_missing'],
-  };
-  const digest = (value) => createHash('sha256').update(value).digest('hex');
-  const identity = ['synthetic-snapshot', unresolved.surface, unresolved.evidence.kind, unresolved.evidence.ref, null, null];
-  const row = {
-    contract: TRASH_CONTRACT,
-    identity,
-    observation_id: digest(JSON.stringify(identity)),
-    variants: [{
-      analysis_sha256: digest(JSON.stringify(unresolved)),
-      observation: unresolved,
-      occurrences: [{ batch_id: 'C654321', queue_id: null }],
-    }],
-  };
-  const text = `${JSON.stringify(row)}\n`;
-  assert.deepEqual(validateTrashChunk(text), []);
-  const archivePath = 'data/candidate-trash/T654321.jsonl';
-  const fixture = new Map([[archivePath, text]]);
-  const classify = (paths, replacement = fixture) => classifyDeepGateDiff('base', 'head', {
-    runGit: (args) => {
-      if (args[0] === 'diff' && args.includes('--name-only')) return Buffer.from(paths.join('\0') + '\0');
-      if (args[0] === 'show') {
-        const [revision, ...rest] = args[1].split(':');
-        assert.equal(revision, 'head');
-        const value = replacement.get(rest.join(':'));
-        if (value === undefined) throw new Error('unexpected file at HEAD');
-        return Buffer.from(value);
-      }
-      throw new Error('unexpected Git command: ' + args.join(' '));
-    },
-  });
-
-  assert.equal(classify([archivePath]).deepMode, 'none');
-  const combined = classify([...fixture.keys()]);
-  assert.equal(combined.deepMode, 'none', 'valid legacy trash uses the Normal data validator');
-  assert.equal(combined.changeClass, 'routine-data');
-  assert.deepEqual(combined.selectedDeepChecks, []);
-  assert.ok(combined.normalDataPaths.includes(archivePath));
-  assert.equal(classifyDeepGatePaths([archivePath]).reason, 'routine-data-shape-unverified');
-
-  for (const pathValue of [
-    'data/candidate-trash/T65432.jsonl',
-    'data/candidate-trash/T654321.json',
-    'data/candidate-trash/T654321/nested.jsonl',
-    'data/candidate-trash/new-schema.jsonl',
-  ]) assert.equal(classifyDeepGatePaths([pathValue]).deepMode, 'full', pathValue);
-
-  const corrupt = (value) => classify([archivePath], new Map([[archivePath, value]]));
-  for (const invalid of [
-    'broken jsonl\n',
-    text + '\n',
-    '{}\n',
-    `${JSON.stringify({ ...row, observation_id: '0'.repeat(64) })}\n`,
-    text + text,
-    Array.from({ length: 501 }, () => JSON.stringify(row)).join('\n') + '\n',
-  ]) {
-    const result = corrupt(invalid);
-    assert.equal(result.deepMode, 'full', result.reason);
-    assert.equal(result.reason, 'routine-data-validation-failed');
-    assert.equal(result.path, archivePath);
-  }
 });
 
 test('Deep gate separates validated data from affected contracts and fails closed', async () => {

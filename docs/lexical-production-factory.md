@@ -118,13 +118,10 @@ schema. The factory is a work-organization layer around the existing contracts.
      spelling, POS or morphology**; this exclusion is the validated Stage 2
      group disposition `covered` (§5.1), which must cite an existing canonical sense
      and is checked against the canonical snapshot and the search-form projection;
-  5. unresolved lemma/POS analysis → **fail closed**: the observation is preserved
-     (reference and holds) in the permanent observation trash for
-     verification, is not attached to a guessed headword and is not counted among the
-     resolved headwords.
-  Permanent trash, compact manifest v3, migration and restart rules are defined
-  in [Stage 1 permanent trash](stage1-permanent-trash.md). Earlier v2 examples
-  below describe the pre-compaction representation retained in historical Git.
+  5. unresolved lemma/POS analysis → **fail closed**: it is not attached to a
+     guessed headword or counted among resolved headwords.
+  Earlier v2 examples below describe the pre-compaction representation retained
+  in historical Git.
 - **Holds are per observation.** One ambiguous surface never holds the clear
   surfaces of the same lemma and never invalidates the lemma. An initial
   `analysis_ambiguous` is a request for further verification, not a final

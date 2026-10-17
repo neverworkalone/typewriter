@@ -12,7 +12,6 @@ import {
 import { validateCanonicalRecord } from '../validate/canonical-jsonl.mjs';
 import { relationAmendmentErrors } from '../relation/relation-amendments.mjs';
 import { relationCorrectionErrors } from '../relation/relation-corrections.mjs';
-import { validateTrashChunk } from '../validate/candidate-trash.mjs';
 import KNOWN_NON_DEEP_PATHS from './deep-gate-known-non-deep-paths.json' with { type: 'json' };
 import NORMAL_COVERAGE from './deep-gate-coverage.json' with { type: 'json' };
 import NORMAL_COVERAGE_RETIREMENTS from './deep-gate-coverage-retirements.json' with { type: 'json' };
@@ -189,7 +188,6 @@ export function validateAdditiveNormalCoverage(previous, next, options) {
   }
   return after;
 }
-const CANDIDATE_TRASH_ARTIFACT_PATH = /^data\/candidate-trash\/T\d{6}\.jsonl$/u;
 const RELATION_BACKFILL_PATH = /^data\/relation-backfill\/(R\d{6})\.json$/u;
 
 function matchesPath(pathValue, rule) {
@@ -246,7 +244,6 @@ function deepCheckMap(deepChecks) {
 
 function normalDataKind(pathValue) {
   if (/^data\/canonical\/.+\.jsonl$/u.test(pathValue)) return 'canonical-jsonl';
-  if (CANDIDATE_TRASH_ARTIFACT_PATH.test(pathValue)) return 'trash-jsonl';
   if (RELATION_BACKFILL_PATH.test(pathValue)) return 'relation-backfill';
   if (
     pathValue === 'data/validation/canonical-semantic-decision-source.json'
@@ -343,16 +340,9 @@ function validateRoutineDataFile(pathValue, kind, baseSha, headSha, runGit) {
   }
 
   const text = readFileAtRevision(pathValue, baseSha, headSha, runGit);
-  if (kind === 'jsonl' || kind === 'trash-jsonl') {
+  if (kind === 'jsonl') {
     // Keep the changed-file gate strict even if another consumer tolerates blank lines.
     parseJsonlRecords(text, pathValue);
-    if (kind === 'trash-jsonl') {
-      // Reuse the real Factory contract (identity hashes, variants, occurrences,
-      // bounded chunk size and text-free evidence); Normal additionally checks
-      // new chunks against all changed and historic archive IDs.
-      const errors = validateWithDiagnostic(() => validateTrashChunk(text), pathValue, 'trash-chunk-validation-failed');
-      if (errors.length > 0) throw new SafeDiagnosticError(`${pathValue}: trash-chunk-validation-failed`);
-    }
     return;
   }
 

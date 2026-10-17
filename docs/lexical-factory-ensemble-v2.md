@@ -2,8 +2,7 @@
 
 Persisted Stage 1 artifacts now use compact manifest v3 (#526). The full
 ensemble/queue representation described below remains the transient producer
-proof; unresolved observations are archived globally and excluded/context details
-move to batch history. See [permanent trash](stage1-permanent-trash.md).
+proof; excluded/context details move to batch history.
 
 Stage 1 policy `provider-resolution-v2-ensemble` runs **all three pinned analyzers — Kiwi, Khaiii and
 MeCab-ko — on every eligible observation**, adjudicates each observation explicitly, and sends only

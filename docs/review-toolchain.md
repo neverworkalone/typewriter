@@ -17,7 +17,6 @@ Use this guidance for canonical validation, database builds, package output, and
 - Every other change, including candidate artifacts, mixed changes, an empty diff, or an unclassifiable path, runs `ci:normal`.
 - A changed dependency of a registered Deep contract adds only that affected Deep check through `ci:pr`. CI registry, runner, classifier, workflow, or package changes retain Normal and their independently matched Deep checks.
 - `ci:fast` is a checkpoint inside the same Normal session. `ci:all` runs Normal followed by current-system Deep checks; `ci:deep` selects Deep checks only. Full Deep is a weekly/manual audit, not an automatic PR fallback.
-- Changed `data/candidate-trash/T######.jsonl` chunks still receive strict changed-row and shared archive validation in Normal. This data validation does not create a candidate-only CI level.
 
 CI separates a check's domain owner and protected contract from its execution tier and schedule. Each check has one owner, one contract, one tier (`normal` or `deep`), and one schedule (`always`, `affected`, or `manual`). New checks default to Deep. An `affected` check must list normalized repository-relative dependency paths. `deepInputs` describe data consumed by a check and do not alone select it.
 

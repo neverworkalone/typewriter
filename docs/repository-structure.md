@@ -9,7 +9,6 @@ This page describes files used by the current product and approved maintenance p
 | Licensed editable dictionary projection and reviewed Typewriter relations | `data/canonical/*.jsonl` | Source of truth. See [`DATA-LICENSE.md`](../DATA-LICENSE.md) and [`docs/data-policy.md`](data-policy.md). |
 | Canonical source validation and projections | `scripts/validate/`, `scripts/normalize/`, `scripts/build/` | Validate Canonical records and generate Full SQLite, Lite SQLite, and product runtime assets. |
 | Relation packets and correction records | `data/relation-backfill/`, `scripts/relation/` | Current source-bound relation authoring and apply path. |
-| Legacy permanent trash archive | `data/candidate-trash/T######.jsonl` | Historical, text-free unresolved-source archive. Changed chunks remain subject to strict Normal validation; this does not enable new lexical production. |
 | Generated databases and packages | ignored `artifacts/` and `dist/` | Reproducible output only; never hand-edit or treat as source. Only the Lite database is included in the extension. |
 | Extension state | Chrome extension storage | Search history, favorites, settings, and other user data remain outside the read-only dictionary. |
 
