@@ -782,6 +782,12 @@ test('C01 ga-mo separates three identities while preserving the 家母 usage gro
 test('C01 positive identity controls preserve valid cross-record and polysemous groups', () => {
   assert.ok(sameMeaning(['w23298-s1', 'w395675-s1']), '古道 retains its old-path and old-moral-way extensions');
   assert.ok(sameMeaning(['w27590-s1', 'w27592-s1']), '공로 retains the overlapping public-road definitions');
+  assert.ok(sameMeaning(['w17371-s1', 'w17420-s1']),
+    '견부 keeps the shoulder body-part sense with the naturally related act of carrying an object on that shoulder');
+  assert.equal(rowBySense.get('w17371-s1')?.gloss, '어깨 부위와 그곳에 물건을 메는 일.',
+    '견부 gloss must express the body-part and its carrying use together');
+  assert.equal(canonicalRecordBySense.get('w17371-s1')?.gloss, '물건을 어깨에 멤.');
+  assert.equal(canonicalRecordBySense.get('w17420-s1')?.gloss, '어깨 부분.');
 });
 
 test('C01 Stage 2 source-ID controls separate opposing identities and retain natural extensions', () => {
