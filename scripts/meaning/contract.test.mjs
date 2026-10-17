@@ -16,6 +16,7 @@ import { createCanonicalContext } from '../validate/canonical-context.mjs';
 import { runChecks } from '../ci/run-category.mjs';
 import { loadMeaningData } from './contract.mjs';
 import { validateMeaningFiles } from './validate.mjs';
+import { MEANING_RELATION_ORIGIN, projectMeaningRelations } from './project.mjs';
 
 const tmp = () => mkdtempSync(path.join(tmpdir(), 'meaning-'));
 const row = (id, lemma, senses = [`${id.replace('m', 'w').split('_')[0]}-s1`]) => ({ id, lemma, gloss: `${lemma} 뜻`, sense_ids: senses });
@@ -509,4 +510,266 @@ test('initial generator CLI (temp root): --check and default run follow the repo
   assert.match(refused.stderr, /editing has started/);
   assert.equal(fixture.snapshot(), before, 'edited data is byte-identical after both CLI calls');
   assert.equal(run('--check').status, 1);
+});
+
+test('Issue #764 C08: source-ID identity boundaries, replayed rows, and audit decisions stay aligned', () => {
+  const root = path.resolve(import.meta.dirname, '../..');
+  const spec = JSON.parse(readFileSync(path.join(root, 'scripts/meaning/issue-764-c08.json'), 'utf8'));
+  const auditRows = readFileSync(path.join(root, 'scripts/meaning/issue-764-c08-audit.jsonl'), 'utf8')
+    .trimEnd().split('\n').map((line) => JSON.parse(line));
+  const auditByLemma = new Map(auditRows.map((item) => [item.lemma, item]));
+  const c08Rows = readdirSync(path.join(root, 'data/meanings'))
+    .filter((file) => /^c08_\d+\.jsonl$/u.test(file))
+    .flatMap((file) => readFileSync(path.join(root, 'data/meanings', file), 'utf8')
+      .trimEnd().split('\n').map((line) => JSON.parse(line)));
+  const groupKey = (senseIds) => [...senseIds].sort().join(',');
+  const sameGroup = (groups, left, right) => groups.some((group) => group.senses.includes(left) && group.senses.includes(right));
+  const groupsFor = (lemma) => spec.repartitions.find((item) => item.lemma === lemma)?.groups ?? [];
+  const sourceOriginalFor = (lemma, senseId) => {
+    const audit = auditByLemma.get(lemma);
+    const recordId = audit.source_senses.find((sense) => sense.sense_id === senseId)?.record_id;
+    return audit.source_records.find((record) => record.record_id === recordId)?.source_original
+      .filter((original) => original.language_type === '한자')
+      .map((original) => original.original_language) ?? [];
+  };
+
+  for (const repartition of spec.repartitions) {
+    const { lemma, before, groups } = repartition;
+    const audit = auditByLemma.get(lemma);
+    assert.ok(audit, `${lemma}: audit row exists`);
+    const actualRows = c08Rows.filter((item) => item.lemma === lemma);
+    const expected = groups.map((group) => ({ sense_ids: groupKey(group.senses), gloss: group.gloss })).sort((a, b) => a.sense_ids.localeCompare(b.sense_ids));
+    const actual = actualRows.map((item) => ({ sense_ids: groupKey(item.sense_ids), gloss: item.gloss })).sort((a, b) => a.sense_ids.localeCompare(b.sense_ids));
+    assert.deepEqual(actual, expected, `${lemma}: committed Meaning rows replay the edit spec`);
+
+    const expectedAudit = groups.map((group) => {
+      const beforeSenseIds = new Set(before.flatMap((row) => row.sense_ids));
+      assert.equal(group.senses.every((senseId) => beforeSenseIds.has(senseId)), true, `${lemma}: each final sense belongs to its before snapshot`);
+      return {
+        decision: group.senses.length > 1 ? 'merge' : 'keep',
+        sense_ids: groupKey(group.senses),
+      };
+    }).sort((a, b) => a.sense_ids.localeCompare(b.sense_ids));
+    const actualAudit = audit.final_groups.map((group) => ({ decision: group.decision, sense_ids: groupKey(group.sense_ids) }))
+      .sort((a, b) => a.sense_ids.localeCompare(b.sense_ids));
+    assert.deepEqual(actualAudit, expectedAudit, `${lemma}: audit decisions match final groups and baseline membership`);
+
+    const expectedBaseline = before.map((row) => ({ meaning_id: row.id, sense_ids: groupKey(row.sense_ids) }))
+      .sort((a, b) => a.meaning_id.localeCompare(b.meaning_id));
+    const actualBaseline = audit.baseline_meanings.map((row) => ({ meaning_id: row.meaning_id, sense_ids: groupKey(row.sense_ids) }))
+      .sort((a, b) => a.meaning_id.localeCompare(b.meaning_id));
+    assert.deepEqual(actualBaseline, expectedBaseline, `${lemma}: audit before snapshot matches the edit spec`);
+    assert.equal(audit.final_meaning_count, groups.length, `${lemma}: audit final count`);
+    assert.equal(audit.canonical_sense_count, new Set(groups.flatMap((group) => group.senses)).size, `${lemma}: audit source-sense count`);
+  }
+
+  const negativeBoundaries = [
+    ['반납', 'w130653-s1', 'w131928-s1', ['返納'], ['半納']],
+    ['반납하다', 'w130652-s1', 'w130917-s1', ['半納'], ['返納']],
+    ['반과', 'w135304-s1', 'w135305-s1', ['飯果'], ['飯菓']],
+    ['반과', 'w135304-s1', 'w135306-s1', ['飯果'], ['飯顆']],
+    ['반과', 'w135305-s1', 'w135306-s1', ['飯菓'], ['飯顆']],
+    ['방공', 'w134901-s1', 'w135477-s1', ['防共'], ['防空']],
+    ['방패', 'w142836-s1', 'w429499-s1', ['方牌'], ['防牌', '旁牌']],
+    ['방화대', 'w136480-s1', 'w430065-s1', ['防火帶'], ['防火隊']],
+    ['방랑기', 'w136036-s1', 'w434815-s1', ['放浪氣'], ['放浪記']],
+    ['보강', 'w149545-s1', 'w149548-s1', ['補強'], ['補講']],
+    ['병기하다', 'w148049-s1', 'w432654-s1', ['竝起'], ['竝記', '倂記']],
+    ['반류', 'w130587-s1', 'w429580-s1', ['反流'], ['伴流']],
+    ['반심', 'w132441-s1', 'w427368-s1', ['叛心'], ['半心']],
+    ['반주', 'w138094-s1', 'w429930-s1', ['伴奏'], ['伴走']],
+    ['반항', 'w133762-s1', 'w133764-s1', ['反抗'], ['反航']],
+    ['발렌슈타인', 'w134941-s1', 'w426890-s1', [], []], // named play vs historical person
+    ['베크렐', 'w145368-s1', 'w435347-s1', [], []], // named SI unit vs physicist
+    ['반송', 'w131742-s1', 'w131949-s1', ['伴送'], ['搬送']],
+    ['반송', 'w131742-s1', 'w426333-s1', ['伴送'], ['返送']],
+    ['반송', 'w131949-s1', 'w426333-s1', ['搬送'], ['返送']],
+    ['반송되다', 'w131744-s1', 'w131950-s1', ['返送'], ['搬送']],
+    ['반송되다', 'w131744-s1', 'w426735-s1', ['返送'], ['伴送']],
+    ['반송되다', 'w131950-s1', 'w426735-s1', ['搬送'], ['伴送']],
+    ['반송하다', 'w131743-s1', 'w131951-s1', ['伴送'], ['搬送']],
+    ['반송하다', 'w131743-s1', 'w426334-s1', ['伴送'], ['返送']],
+    ['반송하다', 'w131951-s1', 'w426334-s1', ['搬送'], ['返送']],
+    ['방공하다', 'w135476-s1', 'w135478-s1', ['防共'], ['防空']],
+    ['반항하다', 'w133763-s1', 'w133765-s1', ['反抗'], ['反航']],
+    ['반주하다', 'w138093-s1', 'w429931-s1', ['伴走'], ['伴奏']],
+    ['반행하다', 'w130226-s1', 'w430138-s1', ['伴行'], ['頒行']],
+    ['보강하다', 'w149547-s1', 'w149549-s1', ['補強'], ['補講']],
+    ['복장하다', 'w154890-s2', 'w518151-s1', ['伏藏'], ['腹藏']],
+    ['불사하다', 'w157423-s1', 'w158013-s1', ['不仕'], ['不辭']],
+    ['반상', 'w132397-s1', 'w132399-s1', ['反上'], ['反常']],
+    ['반상', 'w132397-s1', 'w132401-s1', ['反上'], ['反想']],
+    ['반상', 'w132397-s1', 'w132410-s1', ['反上'], ['叛狀']],
+    ['반상', 'w132397-s1', 'w430115-s1', ['反上'], ['叛相', '反相']],
+    ['반상', 'w132399-s1', 'w132401-s1', ['反常'], ['反想']],
+    ['반상', 'w132410-s1', 'w430115-s1', ['叛狀'], ['叛相', '反相']],
+    ['반상', 'w132397-s2', 'w132405-s1', ['反上'], ['返喪']],
+    ['반상', 'w132397-s2', 'w132407-s1', ['反上'], ['返償', '反償']],
+    ['반상', 'w132405-s1', 'w132407-s1', ['返喪'], ['返償', '反償']],
+    ['반상', 'w132669-s1', 'w130066-s1', ['飯床'], ['盤上']],
+    ['반상', 'w132669-s1', 'w130067-s1', ['飯床'], ['盤床']],
+    ['반상하다', 'w132398-s1', 'w132400-s1', ['反上'], ['反常']],
+    ['반상하다', 'w132398-s1', 'w132402-s1', ['反上'], ['反想']],
+    ['반상하다', 'w132398-s2', 'w132406-s1', ['反上'], ['返喪']],
+    ['반상하다', 'w132398-s2', 'w132409-s1', ['反上'], ['返償', '反償']],
+    ['반상하다', 'w132406-s1', 'w132409-s1', ['返喪'], ['返償', '反償']],
+    ['반려', 'w132073-s1', 'w132076-s1', ['反戾', '叛戾'], ['返戾']],
+    ['반려', 'w132073-s2', 'w132076-s1', ['反戾', '叛戾'], ['返戾']],
+    ['반려하다', 'w132074-s1', 'w426745-s1', ['反戾', '叛戾'], ['返戾']],
+    ['반려하다', 'w132074-s2', 'w426745-s1', ['反戾', '叛戾'], ['返戾']],
+    ['복벽', 'w147589-s1', 'w147590-s1', ['腹壁'], ['複壁']],
+    ['반송관', 'w131952-s1', 'w132190-s1', ['返送管'], ['搬送管']],
+    ['복성하다', 'w149724-s1', 'w149726-s1', ['復成'], ['復姓']],
+    ['반상하다', 'w132400-s1', 'w132402-s1', ['反常'], ['反想']],
+    ['불고이거', 'w155353-s1', 'w435887-s1', ['不告而去'], ['不顧而去']],
+    ['불고이거하다', 'w155364-s1', 'w155365-s1', ['不告而去'], ['不顧而去']],
+    ['불고이주', 'w155366-s1', 'w435888-s1', ['不告而走'], ['不顧而走']],
+    ['불고이주하다', 'w155367-s1', 'w155368-s1', ['不告而走'], ['不顧而走']],
+  ];
+  for (const [lemma, left, right, leftOriginal, rightOriginal] of negativeBoundaries) {
+    assert.equal(sameGroup(groupsFor(lemma), left, right), false, `${lemma}: ${left} and ${right} remain independent lexical identities`);
+    assert.deepEqual(sourceOriginalFor(lemma, left), leftOriginal, `${left}: source-ID-bound original`);
+    assert.deepEqual(sourceOriginalFor(lemma, right), rightOriginal, `${right}: source-ID-bound original`);
+  }
+
+  for (const [lemma, left, right] of [
+    ['분열하다', 'w152252-s1', 'w152252-s2'], // same 分裂 record, natural literal/group extension
+    ['방패', 'w429499-s1', 'w429499-s2'], // shield and its figurative defender use
+    ['보강', 'w149545-s1', 'w149545-s2'], // same 補強 identity, including its technical use
+    ['반류', 'w130587-s1', 'w130587-s2'], // one 反流 source record
+    ['반심', 'w427368-s1', 'w427368-s2'], // the two 半心 uses
+    ['반항', 'w426742-s1', 'w426742-s2'], // same 班行 source record
+    ['반송', 'w131742-s1', 'w131742-s2'], // both 伴送 contexts remain together
+    ['반송', 'w131949-s1', 'w131949-s2'], // goods and signal 搬送 remain together
+    ['반송', 'w426333-s1', 'w426333-s2'], // ordinary and legal 返送 remain together
+    ['반송되다', 'w131744-s1', 'w131744-s2'],
+    ['반송되다', 'w131950-s1', 'w131950-s2'],
+    ['반송되다', 'w426735-s1', 'w426735-s2'],
+    ['반송하다', 'w131743-s1', 'w131743-s2'],
+    ['반송하다', 'w131951-s1', 'w131951-s2'],
+    ['반송하다', 'w426334-s1', 'w426334-s2'],
+    ['반상', 'w132397-s1', 'w132397-s2'], // same 反上 source identity
+    ['반상하다', 'w132398-s1', 'w132398-s2'], // same 反上 source identity
+    ['반행하다', 'w430138-s1', 'w430138-s2'], // publication and distribution within 頒行
+    ['복장하다', 'w154890-s1', 'w154890-s2'], // both 伏藏 hiding uses
+    ['반려', 'w132073-s1', 'w132073-s2'], // the 反戾/叛戾 normative-deviation senses
+    ['반려하다', 'w132074-s1', 'w132074-s2'], // the corresponding verb senses
+    ['복벽', 'w147615-s1', 'w147615-s2'], // same-record 復辟 restoration senses
+    ['반벽', 'w131265-s1', 'w131267-s2'], // exact shared gift-return sense across 反璧/返璧
+    ['반벽하다', 'w131266-s1', 'w131268-s2'], // corresponding verb sense
+    ['복원', 'w154563-s1', 'w154581-s1'], // restored original form and end-of-eclipse return to normal visibility
+    ['복원', 'w154563-s1', 'w431639-s1'], // restoration and demobilization to the ordinary state
+    ['복원하다', 'w154565-s1', 'w154580-s1'], // corresponding restoring/demobilizing verb uses
+  ]) {
+    assert.equal(sameGroup(groupsFor(lemma), left, right), true, `${lemma}: retain a source-bound positive control`);
+  }
+
+  const halfPaymentMeaning = c08Rows.find((item) => item.sense_ids.includes('w130652-s1'));
+  const returnMeaning = c08Rows.find((item) => item.sense_ids.includes('w130917-s1'));
+  const returnRecord = readFileSync(path.join(root, 'data/canonical/stdict-0096.jsonl'), 'utf8')
+    .trimEnd().split('\n').map((line) => JSON.parse(line)).find((item) => item.id === 'w130917');
+  const targetMeaning = readFileSync(path.join(root, 'data/meanings/c01_045.jsonl'), 'utf8')
+    .trimEnd().split('\n').map((line) => JSON.parse(line)).find((item) => item.sense_ids.includes('w34838-s1'));
+  assert.equal(halfPaymentMeaning.id, 'm130652');
+  assert.equal(returnMeaning.id, 'm130917');
+  assert.notEqual(halfPaymentMeaning.id, returnMeaning.id);
+  const projected = projectMeaningRelations({ records: [returnRecord], meanings: [returnMeaning, targetMeaning] });
+  const returnRelation = projected.relations.find((relation) => relation.sources.some((source) => source.source_sense_id === 'w130917-s1'));
+  assert.deepEqual(returnRelation, {
+    source_meaning_id: 'm130917',
+    target_meaning_id: 'm34838',
+    type: 'direct',
+    note: '표준국어대사전 동의어',
+    relevance: null,
+    origin: MEANING_RELATION_ORIGIN,
+    sources: [{ source_sense_id: 'w130917-s1', source_position: 0, source_redirected: 0, target_redirected: 0 }],
+    position: 0,
+  }, 'the return relation keeps its return Meaning endpoint and source provenance');
+
+  const readCanonicalRecord = (file, id) => readFileSync(path.join(root, 'data/canonical', file), 'utf8')
+    .trimEnd().split('\n').map((line) => JSON.parse(line)).find((item) => item.id === id);
+  const allMeaningRows = readdirSync(path.join(root, 'data/meanings'))
+    .filter((file) => /^c\d+_\d+\.jsonl$/u.test(file))
+    .flatMap((file) => readFileSync(path.join(root, 'data/meanings', file), 'utf8')
+      .trimEnd().split('\n').map((line) => JSON.parse(line)));
+  const meaningFor = (senseId) => allMeaningRows.find((item) => item.sense_ids.includes(senseId));
+  const returnedVerb = meaningFor('w131744-s1');
+  const transportedVerb = meaningFor('w131950-s1');
+  const accompaniedVerb = meaningFor('w426735-s1');
+  const ordinaryReturn = meaningFor('w384873-s1');
+  const courtRemand = meaningFor('w384873-s2');
+  const standardReturnRecord = readCanonicalRecord('stdict-0302.jsonl', 'w384873');
+  const transportRecord = readCanonicalRecord('stdict-0097.jsonl', 'w131950');
+  const accompaniedRecord = readCanonicalRecord('stdict-0334.jsonl', 'w426735');
+  const returnProjection = projectMeaningRelations({
+    records: [
+      readCanonicalRecord('stdict-0096.jsonl', 'w131744'),
+      standardReturnRecord,
+      transportRecord,
+      accompaniedRecord,
+    ],
+    meanings: [returnedVerb, transportedVerb, accompaniedVerb, ordinaryReturn, courtRemand],
+  });
+  const projectedFrom = (senseId) => returnProjection.relations.find((relation) =>
+    relation.sources.some((source) => source.source_sense_id === senseId));
+  const outward = projectedFrom('w131744-s1');
+  const inward = projectedFrom('w384873-s1');
+  assert.equal(returnedVerb.id, 'm131744_1');
+  assert.deepEqual(returnedVerb.sense_ids, ['w131744-s1', 'w131744-s2']);
+  assert.equal(transportedVerb.id, 'm131950_1');
+  assert.equal(accompaniedVerb.id, 'm426735_1');
+  assert.equal(outward.source_meaning_id, 'm131744_1');
+  assert.equal(outward.target_meaning_id, 'm384873_1');
+  assert.equal(outward.type, 'direct');
+  assert.deepEqual(outward.sources, [{
+    source_sense_id: 'w131744-s1', source_position: 0, source_redirected: 0, target_redirected: 0,
+  }]);
+  assert.equal(inward.source_meaning_id, 'm384873_1');
+  assert.equal(inward.target_meaning_id, 'm131744_1');
+  assert.equal(inward.type, 'direct');
+  assert.deepEqual(inward.sources, [{
+    source_sense_id: 'w384873-s1', source_position: 0, source_redirected: 0, target_redirected: 0,
+  }]);
+  assert.equal(projectedFrom('w131744-s2').target_meaning_id, 'm384873_2');
+  assert.equal(projectedFrom('w384873-s2').target_meaning_id, 'm131744_1');
+  assert.equal(returnProjection.relations.some((relation) =>
+    [transportedVerb.id, accompaniedVerb.id].includes(relation.source_meaning_id)
+    && [ordinaryReturn.id, courtRemand.id].includes(relation.target_meaning_id)), false,
+  'direct return relations do not leak into 搬送/伴送 Meaning endpoints');
+
+  const anatomicalWall = meaningFor('w147589-s1');
+  const enclosedWall = meaningFor('w147590-s1');
+  const bellyWall = meaningFor('w137038-s1');
+  assert.equal(anatomicalWall.id, 'm147589');
+  assert.equal(enclosedWall.id, 'm147590');
+  assert.equal(bellyWall.id, 'm137038');
+  const wallProjection = projectMeaningRelations({
+    records: [
+      readCanonicalRecord('stdict-0109.jsonl', 'w147589'),
+      readCanonicalRecord('stdict-0100.jsonl', 'w137038'),
+    ],
+    meanings: [anatomicalWall, enclosedWall, bellyWall],
+  });
+  const wallRelationFrom = (senseId) => wallProjection.relations.find((relation) =>
+    relation.sources.some((source) => source.source_sense_id === senseId));
+  const abdominalToBelly = wallRelationFrom('w147589-s1');
+  const bellyToAbdominal = wallRelationFrom('w137038-s1');
+  assert.equal(abdominalToBelly.source_meaning_id, 'm147589');
+  assert.equal(abdominalToBelly.target_meaning_id, 'm137038');
+  assert.equal(abdominalToBelly.type, 'direct');
+  assert.equal(abdominalToBelly.position, 0);
+  assert.deepEqual(abdominalToBelly.sources, [{
+    source_sense_id: 'w147589-s1', source_position: 0, source_redirected: 0, target_redirected: 0,
+  }]);
+  assert.equal(bellyToAbdominal.source_meaning_id, 'm137038');
+  assert.equal(bellyToAbdominal.target_meaning_id, 'm147589');
+  assert.equal(bellyToAbdominal.type, 'direct');
+  assert.equal(bellyToAbdominal.position, 0);
+  assert.deepEqual(bellyToAbdominal.sources, [{
+    source_sense_id: 'w137038-s1', source_position: 0, source_redirected: 0, target_redirected: 0,
+  }]);
+  assert.equal(wallProjection.relations.some((relation) =>
+    [anatomicalWall.id, bellyWall.id].includes(relation.source_meaning_id)
+    && relation.target_meaning_id === enclosedWall.id), false,
+  'the abdominal-wall direct pair does not project to the hollow double-wall Meaning');
 });
