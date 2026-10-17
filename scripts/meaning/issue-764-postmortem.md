@@ -7,6 +7,8 @@
 - canonical: 428 shard / 427,583 record, Meaning 444,400행, adjudication 133행, 공통 validator 오류 0건
 - 재생성: `node scripts/meaning/postmortem.mjs --input-sha <SHA>`; 일치 검증: `node scripts/meaning/postmortem.mjs --check`
 
+> ⚠️ c12: **잠정본**: [PR #798](https://github.com/neverworkalone/typewriter/pull/798)이 아직 master에 병합되지 않았다. 이 보고서는 병합 전 master 데이터 기준이며, #798 병합 후 최신 master로 재생성해야 최종본이 된다.
+
 | 초성 | 보고서 | 상세 목록 | Meaning | A: 2+ sense Meaning | B: 2+ Meaning lemma | 검토 lemma (A∪B) | A·B 양쪽 |
 | --- | --- | --- | ---: | ---: | ---: | ---: | ---: |
 | c01 (ㄱ) | [md](issue-764-c01-postmortem.md) | [jsonl](issue-764-c01-postmortem.jsonl) | 59,741 | 6,951 | 5,015 | 9,039 | 2,103 |

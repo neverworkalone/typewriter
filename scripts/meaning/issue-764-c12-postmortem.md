@@ -2,6 +2,8 @@
 
 > 이 문서는 **현재 병합/분리 상태와 근거 자료**만 모은 읽기 전용 목록이다. 병합·분리의 옳고 그름, 규칙, 수정안을 판정하지 않는다.
 
+> ⚠️ **잠정본**: [PR #798](https://github.com/neverworkalone/typewriter/pull/798)이 아직 master에 병합되지 않았다. 이 보고서는 병합 전 master 데이터 기준이며, #798 병합 후 최신 master로 재생성해야 최종본이 된다.
+
 ## 1. 입력과 규모
 
 - 기준 master SHA: `cf73dd4a946af4c0de40c39f62add08ceb6924a2`

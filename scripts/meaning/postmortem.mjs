@@ -29,6 +29,8 @@ export const POSTMORTEM_CODES = Object.freeze(Object.values(INITIAL_CODES));
 export const NO_RECORD = '기록 없음';
 export const reportName = (code) => `issue-764-${code}-postmortem`;
 export const INDEX_NAME = 'issue-764-postmortem.md';
+// Initials whose Meaning data is known to be awaiting a pending PR; drop the entry and regenerate once it merges.
+export const PROVISIONAL = Object.freeze({ c12: '**잠정본**: [PR #798](https://github.com/neverworkalone/typewriter/pull/798)이 아직 master에 병합되지 않았다. 이 보고서는 병합 전 master 데이터 기준이며, #798 병합 후 최신 master로 재생성해야 최종본이 된다.' });
 export const POSTMORTEM_CONTRACT = 'meaning-postmortem-v1';
 
 const HISTORY_FILE = /^issue-(?:716|764|772|774)-.*\.(?:md|jsonl|json)$/u;
@@ -288,6 +290,7 @@ export function renderReport(report, { inputSha, dataDigest }) {
   const lines = [];
   lines.push(`# #764 포스트모텀 기초자료 — ${code} (#814)`, '');
   lines.push('> 이 문서는 **현재 병합/분리 상태와 근거 자료**만 모은 읽기 전용 목록이다. 병합·분리의 옳고 그름, 규칙, 수정안을 판정하지 않는다.', '');
+  if (PROVISIONAL[code]) lines.push(`> ⚠️ ${PROVISIONAL[code]}`, '');
   lines.push('## 1. 입력과 규모', '');
   lines.push(`- 기준 master SHA: \`${inputSha}\``);
   lines.push(`- 데이터 다이제스트(canonical+meanings+adjudication, sha256): \`${dataDigest}\``);
@@ -337,6 +340,7 @@ export function renderIndex(reports, { inputSha, dataDigest, validated, canonica
   lines.push(`- 데이터 다이제스트: \`${dataDigest}\``);
   lines.push(`- canonical: ${num(canonical.files)} shard / ${num(canonical.records)} record, Meaning ${num(validated.meanings)}행, adjudication ${num(validated.adjudications)}행, 공통 validator 오류 ${validated.errors}건`);
   lines.push('- 재생성: `node scripts/meaning/postmortem.mjs --input-sha <SHA>`; 일치 검증: `node scripts/meaning/postmortem.mjs --check`', '');
+  for (const [code, note] of Object.entries(PROVISIONAL)) lines.push(`> ⚠️ ${code}: ${note}`, '');
   lines.push('| 초성 | 보고서 | 상세 목록 | Meaning | A: 2+ sense Meaning | B: 2+ Meaning lemma | 검토 lemma (A∪B) | A·B 양쪽 |', '| --- | --- | --- | ---: | ---: | ---: | ---: | ---: |');
   const total = { meanings: 0, a: 0, b: 0, r: 0, both: 0 };
   const initialOf = Object.fromEntries(Object.entries(INITIAL_CODES).map(([k, v]) => [v, k]));
