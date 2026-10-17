@@ -4,8 +4,8 @@
 
 - Scope: all 69 `data/meanings/c01_NNN.jsonl` shards.
 - Baseline: 49,280 distinct lemmas and 69,005 Meaning rows; 9,037 lemmas had multiple Meanings and were reviewed against their bound canonical source senses.
-- Result: 49,280 lemmas and 59,651 Meaning rows across the same 69 shards; 4,990 lemmas retain multiple Meanings.
-- Edit spec: 6,996 MERGE groups (16,322 source-sense references; 9,326 Meaning-row reduction before the other operations), 18 gloss edits, 8 exact duplicate DROP decisions, and 1 explicit repartition (`가다`).
+- Result after PR feedback: 49,280 lemmas and 59,731 Meaning rows across the same 69 shards; 5,012 lemmas retain multiple Meanings.
+- Current edit spec: 6,905 MERGE groups (16,091 source-sense references), 18 gloss edits, 8 exact duplicate DROP decisions, and 62 explicit repartitions (the existing `가다` repartition plus 61 identity-boundary repartitions).
 - Unchanged rows in the reviewed multi-Meaning lemmas are KEEP decisions. The spec preserves all remaining source-sense membership.
 - `data/canonical/` was used as read-only source evidence and is unchanged.
 
@@ -26,14 +26,14 @@ node scripts/meaning/apply-edits.mjs scripts/meaning/issue-764-c01.json
 node scripts/meaning/validate.mjs
 ```
 
-The edit spec is one deterministic apply-edits transaction. It records gloss changes, merges, the `가다` repartition, and duplicate adjudications. A no-write `applyEdits` preflight reproduced the CLI result: repository-wide meanings 476,944 → 467,590 and adjudications 125 → 133.
+The edit spec is one deterministic apply-edits transaction. It records gloss changes, merges, repartitions, and duplicate adjudications. The final replay applied 18 gloss edits, 6,905 merges, 62 repartitions and 8 drops; repository-wide output is 467,670 meanings and 133 adjudications.
 
 ## Validation evidence
 
 - `node scripts/meaning/apply-edits.mjs scripts/meaning/issue-764-c01.json` — applied the spec successfully.
-- `node scripts/meaning/validate.mjs` — passed: 467,590 meanings, 133 adjudications.
+- `node scripts/meaning/validate.mjs` — passed: 467,670 meanings, 133 adjudications.
 - `git diff --check` — passed.
-- Changed paths are limited to the 69 C01 meaning shards, `data/adjudication/c01_001.jsonl`, and this issue spec/audit. `data/canonical/` is unchanged.
+- The registered C01 regression also checks repartition membership, exact canonical-sense coverage, duplicate targets, source-ID identity boundaries and relation projection. `data/canonical/` is unchanged.
 
 ## PR review feedback and correction (2026-10-17)
 
@@ -41,6 +41,15 @@ The edit spec is one deterministic apply-edits transaction. It records gloss cha
 - Rechecked all 35 bound source senses (`w707-s1`–`w707-s34` and `w708-s1`) against canonical. Confirmed both findings and also found that the prior gloss did not explicitly represent lines/creases/scars appearing (`w707-s14`). Refined the same integrated gloss to cover these, and made machine operation (`w707-s12`, `w707-s21`) and transferred/disappearing objects or rights (`w707-s6`, `w707-s19`) explicit in the source-bound wording.
 - Kept the same Meaning membership and repartition; only its representative gloss changed. The revised wording also retains the movement, transfer, direction, operation, time/place/degree, damage, electricity, death, comprehension, effort, stain removal, wagering, auxiliary, and shortened-form uses recorded by the remaining bound senses. Canonical source data remains unchanged.
 - PR #810 follow-up review `5555094445` confirmed those fixes and found that `w708-s1` still needed the actual adverbial use behind its canonical cross-reference to `w710-s1` (“어떤 일을 계속하는 동안에 어쩌다가 이따금”). Replaced the shortened-form-only phrase with an explicit description that the shortened `가다가` indicates something happening occasionally while an activity continues; updated the Meaning row and the `가다` repartition spec together without changing membership. Both canonical records remain unchanged.
+
+## PR review feedback and correction: cross-record identity boundaries (2026-10-17)
+
+- Stage 2 review `5555177902` on HEAD `4a28ddd2a2a9ec45cf38a400a20f0ba1b6542774` identified the false `가모` merge and asked for a source-bound pass over all 839 C01 cross-record merge groups, explicit residual scope, registered source-ID controls, and relation projection verification.
+- Re-read the bound canonical source glosses and available source relations for all 839 groups (795 distinct lemmas). Split 66 formerly merged groups across 62 lemmas where the definitions identify independent lexical referents; retained the other 773 groups after the same gloss/identity screen. The corrected boundaries are recorded by source IDs in `scripts/meaning/issue-764-c01.json` and cover: `가구, 가모, 가문, 가미, 가보, 가전, 각방, 각설, 각설하다, 각지, 간고, 간부, 강수, 강수하다, 강장, 개견하다, 개관, 개관하다, 거사, 격분, 견인하다, 결안, 결의, 결의문, 결의하다, 고가, 고고하다, 고급, 고기, 고래, 고탑, 고평, 공로, 공매, 공매하다, 공보관, 공부, 과자, 관원, 광열, 광혹, 괴괴하다, 괴변, 괴병, 괴사, 교무, 교지, 구료, 구료하다, 구부, 구수, 구수하다, 국세, 국악사, 궁사, 권매, 권매하다, 귀지, 귓불, 극화, 기모, 길다`.
+- `가모` now keeps `w1020-s1` (non-blood mother), `w1023-s1` (mother who remarried), and `w387920-s1/s2` (the 家母 address and household-head uses) in three identities. The two `w387920` senses remain grouped. The `구수` noun merge was removed directly because that lemma already has a duplicate adjudication and cannot use a whole-lemma repartition in the edit contract.
+- Source-metadata boundary: 91 official STDICT headword queries covered 103 of the 839 groups. All 66 corrected groups were source-gloss screened; 65 were also within those queried headwords. The query response did not map 46 `(lemma, record ID)` pairs to a Hanja entry, including records in 11 corrected groups. The remaining 736 groups were not independently checked against returned official Hanja metadata, and one corrected group was outside the queried headwords. These are the unverified Hanja-metadata remainder; they are not presented as independently Hanja-confirmed. The editorial screen used the available canonical definitions and relations and did not treat spelling overlap or a regex as a semantic verdict.
+- Added the registered Normal check `scripts/meaning/issue-764-c01.test.mjs`. Its 129 static source-ID negative pairs cover every pair of identities across the 66 corrected prior merge groups; it separately asserts all three `가모` identities, keeps `w387920-s1/s2` together, and preserves positive `고도` and `공로` cross-record controls. It also checks the exact repartition/source membership, complete C01 canonical sense coverage, all eight live same-lemma duplicate targets, and projected `w387920-s1` antonym/direct links with their source provenance. The `w1020` and `w1023` Meaning endpoints do not inherit either relation.
+- This revision adds 80 C01 Meaning rows relative to the prior PR head: 59,651 → 59,731; multi-Meaning lemmas change from 4,990 → 5,012. The final replay and shared Meaning validator report 467,670 repository-wide Meanings and 133 adjudications. Canonical inputs remain unchanged.
 
 ## Shard review log
 
