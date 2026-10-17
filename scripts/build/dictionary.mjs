@@ -43,7 +43,14 @@ export const DEFAULT_DICTIONARY_OUTPUT = path.resolve(
  * holding all of its senses). Fixture inputs (non-`w<number>` record ids) get an empty layer unless `recordMeanings`
  * asks for the projection.
  */
-function assertRecordMeaningsNotDisabled(inputDirectory, recordMeanings) {
+/**
+ * `recordMeanings` is `undefined | boolean`: any other value is rejected, and the official canonical input accepts only
+ * `undefined` or `true`, so no falsey value can produce an empty product meaning layer there.
+ */
+function assertRecordMeaningsOption(inputDirectory, recordMeanings) {
+  if (recordMeanings !== undefined && typeof recordMeanings !== 'boolean') {
+    throw new BuildError(`recordMeanings must be undefined or a boolean, received ${typeof recordMeanings}`, 'INVALID_OPTION');
+  }
   if (recordMeanings === false && path.resolve(inputDirectory) === path.resolve(DEFAULT_CANONICAL_DIRECTORY)) {
     throw new BuildError(
       'the official canonical build always projects record meanings; recordMeanings: false is not allowed',
@@ -54,7 +61,7 @@ function assertRecordMeaningsNotDisabled(inputDirectory, recordMeanings) {
 
 function loadMeaningLayer({ model, inputDirectory, recordMeanings }) {
   const isDefault = path.resolve(inputDirectory) === path.resolve(DEFAULT_CANONICAL_DIRECTORY);
-  assertRecordMeaningsNotDisabled(inputDirectory, recordMeanings);
+  assertRecordMeaningsOption(inputDirectory, recordMeanings);
   if (!(recordMeanings ?? isDefault)) {
     return { projected: false, meanings: [], relations: [], stats: projectMeaningRelations({ records: [], meanings: [] }).stats };
   }
@@ -392,7 +399,7 @@ export async function buildDictionary({
   }
   const resolvedOutputPath = path.resolve(outputPath);
   assertOutputIsGeneratedOutsideCanonical(inputDirectory, resolvedOutputPath);
-  assertRecordMeaningsNotDisabled(inputDirectory, recordMeanings);
+  assertRecordMeaningsOption(inputDirectory, recordMeanings);
 
   const context = canonicalContext ?? await loadCanonicalContext({
     directory: inputDirectory,

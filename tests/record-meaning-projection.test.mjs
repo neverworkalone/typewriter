@@ -90,11 +90,18 @@ test('removed legacy build options are rejected, never silently ignored', async 
   }
 });
 
-test('official canonical build refuses to opt out of the record meaning projection', async () => {
-  await assert.rejects(
-    buildDictionary({ outputPath: path.join(tmpdir(), 'typewriter-never-built.sqlite'), recordMeanings: false }),
-    (error) => error.code === 'RECORD_MEANINGS_REQUIRED',
-  );
+test('recordMeanings option table: only undefined|boolean; official canonical input rejects every disabling value', async () => {
+  const output = path.join(tmpdir(), 'typewriter-never-built.sqlite');
+  for (const value of [false, 0, null, '', 'false', NaN]) {
+    await assert.rejects(
+      buildDictionary({ outputPath: output, recordMeanings: value }),
+      (error) => ['RECORD_MEANINGS_REQUIRED', 'INVALID_OPTION'].includes(error.code),
+      String(value),
+    );
+  }
+  for (const value of [1, 'true', {}, []]) {
+    await assert.rejects(buildDictionary({ outputPath: output, recordMeanings: value }), (error) => error.code === 'INVALID_OPTION', String(value));
+  }
 });
 
 const entry = (id, lemma, glosses) => ({
