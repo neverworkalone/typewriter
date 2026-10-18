@@ -196,6 +196,7 @@ const RAW_CI_CATEGORIES = Object.freeze({
         ...testCheck('scripts/relation/candidate-contract.test.mjs', 'Test relation Candidate v1 batch contract'),
         tier: 'normal',
       },
+      testCheck('scripts/relation/admission.test.mjs', 'Test Stage 2 Relation Admission preparation and accounting'),
       testCheck('tests/relation-relevance.test.mjs', 'Test exploratory relation relevance contract'),
     ],
   },
