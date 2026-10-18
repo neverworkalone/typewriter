@@ -50,7 +50,7 @@ export function producerOf(fileName) {
  * C and D each have one owner-assigned model per batch, so a second C (or D) file of another model is rejected rather
  * than silently merged under the same producer key.
  */
-export function candidateInventory(fileNames) {
+export function candidateInventory(fileNames, { batches = BATCHES } = {}) {
   const present = new Map();
   for (const name of fileNames) {
     const { batch, key } = producerOf(name);
@@ -61,10 +61,22 @@ export function candidateInventory(fileNames) {
     present.set(slot, name);
   }
   const missing = [];
-  for (const batch of BATCHES) {
+  for (const batch of batches) {
     for (const key of REQUIRED_PRODUCERS) if (!present.has(`${batch}/${key}`)) missing.push(`${batch}/${key}`);
   }
   return { files: [...fileNames].sort(), missing };
+}
+
+/**
+ * Restrict a shard run to one 500-record batch: its Canonical rows and its Candidate files. Relation/Drop rows of the
+ * other batch of the same shard file are outside this run's accounting.
+ */
+export function batchScope(canonicalRows, candidateFiles, batch) {
+  if (!BATCHES.includes(batch)) throw new Error('batch must be 01 or 02');
+  const offset = (Number(batch) - 1) * CANDIDATE_BATCH_SIZE;
+  const scopeRows = canonicalRows.slice(offset, offset + CANDIDATE_BATCH_SIZE);
+  if (scopeRows.length === 0) throw new Error(`shard has no records for batch ${batch}`);
+  return { scopeRows, files: candidateFiles.filter((file) => producerOf(path.basename(file.name)).batch === batch) };
 }
 
 /**
@@ -202,13 +214,13 @@ export function existingCandidateKeys(relationRows, index) {
  * Prepare the editing input of a shard: unique new candidates with the exact source sense/gloss, minus candidates an
  * existing approved Relation already answers. Never an editorial judgement; nothing is dropped here.
  */
-export function prepareShard({ canonicalRows, candidateFiles, approvedRelationRows = [], dropRows = [], index }) {
+export function prepareShard({ canonicalRows, candidateFiles, approvedRelationRows = [], dropRows = [], index, scopeRows = canonicalRows }) {
   const { merged, rawCandidateCount } = mergeCandidates(canonicalRows, candidateFiles);
   const covered = existingCandidateKeys(approvedRelationRows, index);
   const dropped = new Set(dropRows.map((row) => `${row.source_sense_id}\u0000${normalizeCandidate(row.candidate)}`));
   const items = [];
   const stats = { raw: rawCandidateCount, unique: 0, merged_duplicates: 0, skipped_existing: 0, skipped_dropped: 0, to_edit: 0 };
-  for (const record of canonicalRows) {
+  for (const record of scopeRows) {
     for (const sense of record.senses) {
       const entry = merged.get(sense.id);
       if (!entry) continue;
@@ -233,8 +245,11 @@ export function prepareShard({ canonicalRows, candidateFiles, approvedRelationRo
  * Account for every unique candidate: new Relation, real Drop or existing approved Relation (excluding this shard's own
  * rows, which are the result being checked). Throws on a missing, doubly-assigned or unknown candidate.
  */
-export function verifyAccounting({ canonicalRows, candidateFiles, relationRows, dropRows, otherRelationRows, index }) {
+export function verifyAccounting({ canonicalRows, candidateFiles, relationRows: allRelationRows, dropRows: allDropRows, otherRelationRows, index, scopeRows = canonicalRows }) {
   const { merged, rawCandidateCount } = mergeCandidates(canonicalRows, candidateFiles);
+  const scopeSenses = new Set(scopeRows.flatMap((record) => record.senses.map((sense) => sense.id)));
+  const relationRows = allRelationRows.filter((row) => scopeSenses.has(row.source_sense_id));
+  const dropRows = allDropRows.filter((row) => scopeSenses.has(row.source_sense_id));
   const covered = existingCandidateKeys(otherRelationRows, index);
   const errors = [];
   const claimed = new Map();
@@ -256,8 +271,19 @@ export function verifyAccounting({ canonicalRows, candidateFiles, relationRows, 
   });
   dropRows.forEach((row, position) => claim(row.source_sense_id, row.candidate, 'a drop', `drop:${position + 1}`));
 
-  const counts = { unique: 0, relation: relationRows.length, drop: dropRows.length, skipped_existing: 0, missing: 0 };
-  for (const record of canonicalRows) {
+  // An ID pair is stored once. When both senses listed each other as a Stage 1 candidate, the stored row's reverse
+  // direction answers the other candidate, provided the source spelling identifies one Canonical record.
+  const reverseCovered = new Map();
+  for (const row of allRelationRows) {
+    if ('text' in row) continue;
+    const source = index.byId.get(row.source_record_id);
+    if (source && (index.byLemma.get(source.lemma) ?? []).length === 1) {
+      reverseCovered.set(`${row.target_sense_id}\u0000${normalizeCandidate(source.lemma)}`, row.source_sense_id);
+    }
+  }
+
+  const counts = { unique: 0, relation: relationRows.length, drop: dropRows.length, skipped_existing: 0, reverse_covered: 0, missing: 0 };
+  for (const record of scopeRows) {
     for (const sense of record.senses) {
       for (const text of merged.get(sense.id)?.candidates.keys() ?? []) {
         if (text === normalizeCandidate(record.lemma)) throw new Error(`${sense.id}: candidate ${JSON.stringify(text)} repeats the source lemma`);
@@ -265,9 +291,11 @@ export function verifyAccounting({ canonicalRows, candidateFiles, relationRows, 
         const key = `${sense.id}\u0000${text}`;
         if (claimed.has(key)) {
           if (covered.has(key)) errors.push(`${sense.id}: ${JSON.stringify(text)} is already answered by an approved Relation (${covered.get(key)}) and must not be re-authored`);
+          else if (reverseCovered.has(key)) errors.push(`${sense.id}: ${JSON.stringify(text)} is already answered by the reverse of a stored ID pair (${reverseCovered.get(key)}) and cannot also be ${claimed.get(key)}`);
           continue;
         }
         if (covered.has(key)) { counts.skipped_existing += 1; continue; }
+        if (reverseCovered.has(key)) { counts.reverse_covered += 1; continue; }
         counts.missing += 1;
         errors.push(`${sense.id}: candidate ${JSON.stringify(text)} has no relation, drop or existing approved relation`);
       }
@@ -302,19 +330,24 @@ export async function loadApprovedRelations(root = REPOSITORY_DIRECTORY, { excep
   return rows;
 }
 
-export async function loadShardCandidateFiles(shard, root = REPOSITORY_DIRECTORY) {
+/**
+ * With `batch`, files that belong to the other batch are neither inventoried nor parsed: a batch run depends only on its
+ * own Candidate files, so a conflicting or unfinished file of the other batch cannot block it.
+ */
+export async function loadShardCandidateFiles(shard, root = REPOSITORY_DIRECTORY, { batch = null } = {}) {
   const directory = path.join(root, 'data/relation-candidates', shard);
-  const names = existsSync(directory) ? (await readdir(directory)).filter((name) => name.endsWith('.jsonl')).sort() : [];
-  const inventory = candidateInventory(names);
+  const otherBatch = (name) => batch !== null && /^\d{3}_(01|02)_/u.test(name) && !new RegExp(`^\\d{3}_${batch}_`, 'u').test(name);
+  const names = existsSync(directory) ? (await readdir(directory)).filter((name) => name.endsWith('.jsonl') && !otherBatch(name)).sort() : [];
+  const inventory = candidateInventory(names, batch === null ? {} : { batches: [batch] });
   const files = [];
   for (const name of inventory.files) files.push({ name, rows: await readJsonl(path.join(directory, name)) });
   return { files, inventory };
 }
 
-export async function loadShard(shard, root = REPOSITORY_DIRECTORY) {
+export async function loadShard(shard, root = REPOSITORY_DIRECTORY, { batch = null } = {}) {
   assertShard(shard);
   const canonicalRows = await readJsonl(shardCanonicalPath(shard, root));
-  const [{ files, inventory }, allCanonical] = await Promise.all([loadShardCandidateFiles(shard, root), loadAllCanonical(root)]);
+  const [{ files, inventory }, allCanonical] = await Promise.all([loadShardCandidateFiles(shard, root, { batch }), loadAllCanonical(root)]);
   return { canonicalRows, candidateFiles: files, inventory, index: buildCanonicalIndex(allCanonical), batchSize: CANDIDATE_BATCH_SIZE };
 }
 
