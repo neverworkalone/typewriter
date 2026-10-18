@@ -88,8 +88,8 @@ export function validateCandidateBatch(canonicalRows, candidateRows, { batch, so
   };
 }
 
-async function readJsonl(filePath) {
-  const contents = await readFile(filePath, 'utf8');
+export function parseCandidateJsonl(contents, filePath = 'Candidate') {
+  if (typeof contents !== 'string') fail(`${filePath} contents must be text`);
   return contents.split(/\r?\n/u).filter((line) => line.length > 0).map((line, index) => {
     try {
       return JSON.parse(line);
@@ -97,6 +97,10 @@ async function readJsonl(filePath) {
       fail(`${filePath}:${index + 1} is not valid JSON: ${error.message}`);
     }
   });
+}
+
+async function readJsonl(filePath) {
+  return parseCandidateJsonl(await readFile(filePath, 'utf8'), filePath);
 }
 
 export function validateCandidatePaths(canonicalPath, candidatePath, { repositoryDirectory = REPOSITORY_DIRECTORY } = {}) {

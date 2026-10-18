@@ -151,7 +151,7 @@ The #825 baseline Normal run passed all 84 registered checks (18 canonical, 29 l
 | --- | --- | --- |
 | `tests/build-provenance.test.mjs` | Build provenance rejects dirty repositories unless explicitly allowed, rejects a non-HEAD source revision, and marks Git-less injected revisions unverified; called by `scripts/build/provenance.mjs`. | Normal/always; Node `--test`; Test source revision provenance and dirty-build safeguards. |
 | `tests/meaning-order.test.js` | Product search orders same-lemma meanings by the STDICT homograph number with a stable meaning-ID fallback, independent of record input order, and keeps the first three candidates separate from all candidates behind 더보기; called by `src/runtime/meaning-order.js`. | Normal/always; explicit Vitest product list; Run product unit tests. |
-| `scripts/relation/candidate-contract.test.mjs` | Candidate v1 rejects a candidate equal to its source record lemma and accepts distinct candidates; called by `scripts/relation/candidate-contract.mjs` for Stage 1 batch validation. | Normal/always; Node `--test`; Test relation Candidate v1 batch contract. |
+| `scripts/relation/candidate-contract.test.mjs` | Candidate v1 rejects a candidate equal to its source record lemma and accepts distinct candidates; validates an on-disk changed batch through the CI enforcement function and confirms that check is registered as Normal. | Normal/always; Node `--test`; Test relation Candidate v1 batch contract. |
 
 ## Test enrollment rule
 

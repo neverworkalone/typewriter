@@ -202,6 +202,24 @@ test('CI categories are ordered and every category has a descriptive label', () 
   }
 });
 
+test('changed relation Candidate files use an always-on Normal enforcement check', () => {
+  const candidateCheck = CI_CATEGORIES.relations.checks.find(
+    (check) => check.label === 'Validate changed relation Candidate batches',
+  );
+  assert.ok(candidateCheck);
+  assert.equal(candidateCheck.owner, 'relations');
+  assert.equal(candidateCheck.tier, 'normal');
+  assert.equal(candidateCheck.schedule, 'always');
+  assert.deepEqual(candidateCheck.command().args, ['scripts/relation/validate-candidate-changes.mjs']);
+
+  const contractTest = CI_CATEGORIES.relations.checks.find(
+    (check) => check.label === 'Test relation Candidate v1 batch contract',
+  );
+  assert.ok(contractTest);
+  assert.equal(contractTest.tier, 'normal');
+  assert.equal(contractTest.schedule, 'always');
+});
+
 test('legacy tier data stays consistent with registered checks', () => {
   assert.deepEqual(Object.keys(LEGACY_CHECK_TIERS).sort(), Object.keys(LEGACY_CHECK_IDENTITIES).sort());
   for (const owner of Object.keys(LEGACY_CHECK_IDENTITIES)) {
