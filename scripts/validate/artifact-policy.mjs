@@ -58,8 +58,10 @@ function shardReferencePaths(manifestPath, value) {
 
 function patternRegExp(pattern) {
   const escaped = pattern.replace(/[.+?^${}()|[\]\\]/gu, '\\$&');
+  // `[0-9]` is the only supported character class: a fixed-width numeric segment such as a three-digit shard number.
+  const classes = escaped.replaceAll('\\[0-9\\]', '__DIGIT__');
   return new RegExp(
-    `^${escaped.replaceAll('**', '__GLOBSTAR__').replaceAll('*', '[^/]*').replaceAll('__GLOBSTAR__', '.*')}$`,
+    `^${classes.replaceAll('**', '__GLOBSTAR__').replaceAll('*', '[^/]*').replaceAll('__GLOBSTAR__', '.*').replaceAll('__DIGIT__', '[0-9]')}$`,
     'u',
   );
 }
