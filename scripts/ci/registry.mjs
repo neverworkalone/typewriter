@@ -191,7 +191,6 @@ const RAW_CI_CATEGORIES = Object.freeze({
         ...commandCheck('Validate changed relation Candidate batches', ['scripts/relation/validate-candidate-changes.mjs']),
         tier: 'normal',
         schedule: 'always',
-        protectedContract: 'Every added or modified Candidate v1 file is checked against its exact Canonical shard before merge',
       },
       {
         ...testCheck('scripts/relation/candidate-contract.test.mjs', 'Test relation Candidate v1 batch contract'),
