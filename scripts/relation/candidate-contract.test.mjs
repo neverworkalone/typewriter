@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { validateCandidateBatch } from './candidate-contract.mjs';
+import { validateCandidateBatch, validateCandidatePaths } from './candidate-contract.mjs';
 
 function fixture(candidate = '다른 표현') {
   const canonicalRows = Array.from({ length: 500 }, (_, index) => ({
@@ -30,5 +30,23 @@ test('Candidate v1 rejects a candidate identical to its source lemma and accepts
   assert.deepEqual(
     validateCandidateBatch(valid.canonicalRows, valid.candidateRows, { batch: '01' }),
     { recordCount: 500, senseCount: 500, candidateCount: 1, emptySenseCount: 499 },
+  );
+});
+
+test('Candidate v1 requires the shard directory to match the filename', () => {
+  const repositoryDirectory = '/repo';
+  const canonicalPath = '/repo/data/canonical/stdict-0005.jsonl';
+  const validCandidatePath = '/repo/data/relation-candidates/005/005_02_b_codex.jsonl';
+  assert.deepEqual(
+    validateCandidatePaths(canonicalPath, validCandidatePath, { repositoryDirectory }),
+    { shard: '005', batch: '02' },
+  );
+  assert.throws(
+    () => validateCandidatePaths(
+      canonicalPath,
+      '/repo/data/relation-candidates/006/005_02_b_codex.jsonl',
+      { repositoryDirectory },
+    ),
+    /must be stored at data\/relation-candidates\/005\/005_02_b_codex\.jsonl/u,
   );
 });

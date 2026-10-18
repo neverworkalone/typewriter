@@ -1,9 +1,10 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 export const CANDIDATE_BATCH_SIZE = 500;
+const REPOSITORY_DIRECTORY = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
 function fail(message) {
   throw new Error(message);
@@ -98,16 +99,25 @@ async function readJsonl(filePath) {
   });
 }
 
-export async function validateCandidateFiles(canonicalPath, candidatePath) {
+export function validateCandidatePaths(canonicalPath, candidatePath, { repositoryDirectory = REPOSITORY_DIRECTORY } = {}) {
   const candidateName = path.basename(candidatePath);
   const match = /^(\d{3})_(01|02)_[a-d]_[a-z0-9_-]+\.jsonl$/u.exec(candidateName);
   if (!match) fail(`${candidateName} does not follow the Candidate v1 filename contract`);
   const [, shard, batch] = match;
   const canonicalShard = shard.padStart(4, '0');
-  if (path.basename(canonicalPath) !== `stdict-${canonicalShard}.jsonl`) {
-    fail(`${candidateName} must be checked against data/canonical/stdict-${canonicalShard}.jsonl`);
+  const expectedCanonicalPath = path.resolve(repositoryDirectory, 'data/canonical', `stdict-${canonicalShard}.jsonl`);
+  if (path.resolve(canonicalPath) !== expectedCanonicalPath) {
+    fail(`${candidateName} must be checked against ${path.relative(repositoryDirectory, expectedCanonicalPath)}`);
   }
+  const expectedCandidatePath = path.resolve(repositoryDirectory, 'data/relation-candidates', shard, candidateName);
+  if (path.resolve(candidatePath) !== expectedCandidatePath) {
+    fail(`${candidateName} must be stored at ${path.relative(repositoryDirectory, expectedCandidatePath)}`);
+  }
+  return { shard, batch };
+}
 
+export async function validateCandidateFiles(canonicalPath, candidatePath, options = {}) {
+  const { batch } = validateCandidatePaths(canonicalPath, candidatePath, options);
   const [canonicalRows, candidateRows] = await Promise.all([
     readJsonl(canonicalPath),
     readJsonl(candidatePath),
