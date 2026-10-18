@@ -202,11 +202,12 @@ export function existingCandidateKeys(relationRows, index) {
  * Prepare the editing input of a shard: unique new candidates with the exact source sense/gloss, minus candidates an
  * existing approved Relation already answers. Never an editorial judgement; nothing is dropped here.
  */
-export function prepareShard({ canonicalRows, candidateFiles, approvedRelationRows = [], index }) {
+export function prepareShard({ canonicalRows, candidateFiles, approvedRelationRows = [], dropRows = [], index }) {
   const { merged, rawCandidateCount } = mergeCandidates(canonicalRows, candidateFiles);
   const covered = existingCandidateKeys(approvedRelationRows, index);
+  const dropped = new Set(dropRows.map((row) => `${row.source_sense_id}\u0000${normalizeCandidate(row.candidate)}`));
   const items = [];
-  const stats = { raw: rawCandidateCount, unique: 0, merged_duplicates: 0, skipped_existing: 0, to_edit: 0 };
+  const stats = { raw: rawCandidateCount, unique: 0, merged_duplicates: 0, skipped_existing: 0, skipped_dropped: 0, to_edit: 0 };
   for (const record of canonicalRows) {
     for (const sense of record.senses) {
       const entry = merged.get(sense.id);
@@ -216,6 +217,7 @@ export function prepareShard({ canonicalRows, candidateFiles, approvedRelationRo
         stats.unique += 1;
         if (text === normalizeCandidate(record.lemma)) throw new Error(`${sense.id}: candidate ${JSON.stringify(text)} repeats the source lemma`);
         if (covered.has(`${sense.id}\u0000${text}`)) { stats.skipped_existing += 1; continue; }
+        if (dropped.has(`${sense.id}\u0000${text}`)) { stats.skipped_dropped += 1; continue; }
         fresh.push({ text, producers, same_spelling_records: (index.byLemma.get(text) ?? []).map((target) => target.id) });
       }
       if (fresh.length === 0) continue;

@@ -204,6 +204,10 @@ const RAW_CI_CATEGORIES = Object.freeze({
         ...testCheck('tests/authored-relations.test.mjs', 'Test approved Relations build projection and text-only product path'),
         tier: 'normal',
       },
+      {
+        ...testCheck('scripts/relation/admission-cli.test.mjs', 'Test Stage 2 Relation Admission CLI re-run behavior'),
+        tier: 'normal',
+      },
       testCheck('tests/relation-relevance.test.mjs', 'Test exploratory relation relevance contract'),
     ],
   },
