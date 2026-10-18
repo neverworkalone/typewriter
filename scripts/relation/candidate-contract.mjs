@@ -1,0 +1,137 @@
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+import process from 'node:process';
+import { pathToFileURL } from 'node:url';
+
+export const CANDIDATE_BATCH_SIZE = 500;
+
+function fail(message) {
+  throw new Error(message);
+}
+
+function hasExactKeys(value, keys) {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    && Object.keys(value).sort().join('\0') === [...keys].sort().join('\0');
+}
+
+/** Validate one Candidate JSONL batch against its complete Canonical shard. */
+export function validateCandidateBatch(canonicalRows, candidateRows, { batch, sourceName = 'Canonical', candidateName = 'Candidate' } = {}) {
+  const batchNumber = Number(batch);
+  if (!Number.isInteger(batchNumber) || ![1, 2].includes(batchNumber)) {
+    fail('batch must be 01 or 02');
+  }
+  if (!Array.isArray(canonicalRows) || !Array.isArray(candidateRows)) {
+    fail('Canonical and Candidate rows must be arrays');
+  }
+
+  const offset = (batchNumber - 1) * CANDIDATE_BATCH_SIZE;
+  const expectedRows = canonicalRows.slice(offset, offset + CANDIDATE_BATCH_SIZE);
+  if (expectedRows.length === 0) fail(`${sourceName} has no records for batch ${String(batchNumber).padStart(2, '0')}`);
+  if (candidateRows.length !== expectedRows.length) {
+    fail(`${candidateName} has ${candidateRows.length} records; expected ${expectedRows.length} from ${sourceName} batch ${String(batchNumber).padStart(2, '0')}`);
+  }
+
+  let senseCount = 0;
+  let candidateCount = 0;
+  let emptySenseCount = 0;
+
+  for (const [index, source] of expectedRows.entries()) {
+    const row = candidateRows[index];
+    const line = index + 1;
+    if (!hasExactKeys(row, ['record_id', 'senses'])) {
+      fail(`${candidateName}:${line} must contain only record_id and senses`);
+    }
+    if (row.record_id !== source.id) {
+      fail(`${candidateName}:${line} record_id ${JSON.stringify(row.record_id)} does not match ${sourceName} batch record ${JSON.stringify(source.id)}`);
+    }
+    if (!Array.isArray(row.senses) || row.senses.length !== source.senses.length) {
+      fail(`${candidateName}:${line} must preserve all ${source.senses.length} senses of ${source.id}`);
+    }
+
+    for (const [senseIndex, sourceSense] of source.senses.entries()) {
+      const candidateSense = row.senses[senseIndex];
+      const senseLine = `${candidateName}:${line}:${senseIndex + 1}`;
+      if (!hasExactKeys(candidateSense, ['sense_id', 'candidates'])) {
+        fail(`${senseLine} must contain only sense_id and candidates`);
+      }
+      if (candidateSense.sense_id !== sourceSense.id) {
+        fail(`${senseLine} sense_id does not match ${source.id} source sense ${sourceSense.id}`);
+      }
+      if (!Array.isArray(candidateSense.candidates)) {
+        fail(`${senseLine} candidates must be an array`);
+      }
+
+      const seen = new Set();
+      for (const candidate of candidateSense.candidates) {
+        if (typeof candidate !== 'string' || candidate.length === 0 || candidate.trim() !== candidate) {
+          fail(`${senseLine} candidates must be non-empty trimmed strings`);
+        }
+        if (seen.has(candidate)) fail(`${senseLine} contains duplicate candidate ${JSON.stringify(candidate)}`);
+        if (candidate === source.lemma) {
+          fail(`${senseLine} candidate repeats source lemma ${JSON.stringify(source.lemma)}`);
+        }
+        seen.add(candidate);
+      }
+
+      senseCount += 1;
+      candidateCount += candidateSense.candidates.length;
+      if (candidateSense.candidates.length === 0) emptySenseCount += 1;
+    }
+  }
+
+  return {
+    recordCount: expectedRows.length,
+    senseCount,
+    candidateCount,
+    emptySenseCount,
+  };
+}
+
+async function readJsonl(filePath) {
+  const contents = await readFile(filePath, 'utf8');
+  return contents.split(/\r?\n/u).filter((line) => line.length > 0).map((line, index) => {
+    try {
+      return JSON.parse(line);
+    } catch (error) {
+      fail(`${filePath}:${index + 1} is not valid JSON: ${error.message}`);
+    }
+  });
+}
+
+export async function validateCandidateFiles(canonicalPath, candidatePath) {
+  const candidateName = path.basename(candidatePath);
+  const match = /^(\d{3})_(01|02)_[a-d]_[a-z0-9_-]+\.jsonl$/u.exec(candidateName);
+  if (!match) fail(`${candidateName} does not follow the Candidate v1 filename contract`);
+  const [, shard, batch] = match;
+  const canonicalShard = shard.padStart(4, '0');
+  if (path.basename(canonicalPath) !== `stdict-${canonicalShard}.jsonl`) {
+    fail(`${candidateName} must be checked against data/canonical/stdict-${canonicalShard}.jsonl`);
+  }
+
+  const [canonicalRows, candidateRows] = await Promise.all([
+    readJsonl(canonicalPath),
+    readJsonl(candidatePath),
+  ]);
+  return validateCandidateBatch(canonicalRows, candidateRows, {
+    batch,
+    sourceName: canonicalPath,
+    candidateName: candidatePath,
+  });
+}
+
+async function main() {
+  const [, , canonicalPath, candidatePath, ...extra] = process.argv;
+  if (!canonicalPath || !candidatePath || extra.length > 0) {
+    fail('usage: node scripts/relation/candidate-contract.mjs <canonical-shard.jsonl> <candidate-batch.jsonl>');
+  }
+  const result = await validateCandidateFiles(canonicalPath, candidatePath);
+  console.log(`Candidate v1 valid: ${result.recordCount} records, ${result.senseCount} senses, ${result.candidateCount} candidates, ${result.emptySenseCount} empty senses, 0 source-lemma candidates.`);
+}
+
+if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url) {
+  main().catch((error) => {
+    console.error(error.message);
+    process.exitCode = 1;
+  });
+}
+

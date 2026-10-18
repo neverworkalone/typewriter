@@ -70,6 +70,8 @@ C와 D는 출발 `sense_id`와 Canonical 뜻풀이를 먼저 고정하고, **해
 
 **공통 출력:** Stage 1은 `candidates: string[]`만 기록한다. 타입·Tier·대상 ID·채택 판정은 Stage 2가 한다. 후보별 인용문·검색 로그·근거 설명은 Candidate JSONL에 싣지 않는다. 문학·말뭉치 원문과 SQLite는 Git에 올리지 않는다.
 
+**모든 A/B/C/D 공통 규칙:** 후보 문자열이 해당 source record의 Canonical `lemma`와 정확히 같으면 후보에서 제외한다. 표제어 자체를 다시 제시해도 탐색이 확장되지 않으므로, sense별로 독립 평가한 뒤에도 자기 표제어는 남기지 않는다.
+
 ### Candidate JSONL v1
 
 **레코드 하나 = JSONL 한 줄.** Canonical에 있는 모든 source record/sense를 보존하고, 의미별 관계 후보를 **문자열 배열**에 기록한다.
@@ -90,7 +92,15 @@ C와 D는 출발 `sense_id`와 Canonical 뜻풀이를 먼저 고정하고, **해
 
 **Candidate에 포함하지 않음:** `type`, `tier`/`relevance`, 대상 ID, 채택 여부, 평가/확신도, 원본 인용. `lemma`/`gloss`는 Canonical에서 읽고, method/model은 파일명으로 구별한다.
 
-**완료 파일 검증:** JSONL 파싱 및 허용 필드 검사, Canonical 배치와 record 행 수·순서·ID/각 record의 모든 sense 정확히 일치, 후보의 비어 있지 않은 문자열/공백 정리, 같은 파일·source sense 안의 정확한 중복 제거. 후보가 없는 sense는 `candidates: []`로 기록하며, **행 누락 또는 미완료 파일을 정상적인 빈 후보로 취급하지 않는다**. 모델 간 동일 문자열은 Stage 2에서 비교한다.
+**완료 파일 검증:** 다음 명령으로 Candidate v1 계약을 확인한다.
+
+```sh
+node scripts/relation/candidate-contract.mjs \
+  data/canonical/stdict-0005.jsonl \
+  data/relation-candidates/005/005_02_b_codex.jsonl
+```
+
+검증기는 JSONL 파싱 및 허용 필드, Canonical 배치와 record 행 수·순서·ID/각 record의 모든 sense 정확히 일치, 후보의 비어 있지 않은 문자열/공백 정리, 같은 파일·source sense 안의 정확한 중복, source lemma와 같은 후보를 확인한다. 후보가 없는 sense는 `candidates: []`로 기록하며, **행 누락 또는 미완료 파일을 정상적인 빈 후보로 취급하지 않는다**. 모델 간 동일 문자열은 Stage 2에서 비교한다.
 
 ## 3. `#860 A 진행해` — 다음 배치 자동 선택
 
