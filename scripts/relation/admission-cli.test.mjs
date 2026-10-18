@@ -124,7 +124,7 @@ test('a batch with no candidates and no authored rows is complete once verify su
 test('a candidate answered by the reverse of a stored ID pair cannot also be a Drop or a text-only row', async (t) => {
   const root = await mkdtemp(path.join(tmpdir(), 'typewriter-admission-double-'));
   t.after(() => rm(root, { recursive: true, force: true }));
-  const records = Array.from({ length: 501 }, (_, i) => ({ id: `w${i + 1}`, lemma: `표제${i + 1}`, senses: [{ id: `w${i + 1}-s1`, pos: 'noun', gloss: `뜻${i + 1}` }] }));
+  const records = Array.from({ length: 501 }, (_, i) => ({ id: `w${i + 1}`, lemma: `표제${i + 1}`, senses: [{ id: `w${i + 1}-s1`, pos: 'noun', gloss: `뜻${i + 1}` }, ...(i === 500 ? [{ id: 'w501-s2', pos: 'noun', gloss: '다른 뜻' }] : [])] }));
   for (const dir of ['data/canonical', 'data/relation-candidates/001', 'data/relations', 'data/relation-drops']) await mkdir(path.join(root, dir), { recursive: true });
   await writeFile(path.join(root, 'data/canonical/stdict-0001.jsonl'), jsonl(records));
   for (const name of ['a_codex', 'a_claude', 'b_codex', 'b_claude', 'c_codex', 'd_codex']) {
@@ -134,6 +134,7 @@ test('a candidate answered by the reverse of a stored ID pair cannot also be a D
     }))));
   }
   const idRow = { source_record_id: 'w501', source_sense_id: 'w501-s1', target_record_id: 'w1', target_sense_id: 'w1-s1', type: 'near', relevance: 2, reverse_type: 'near', reverse_relevance: 3 };
+  const otherSenseRow = { source_record_id: 'w1', source_sense_id: 'w1-s1', target_record_id: 'w501', target_sense_id: 'w501-s2', type: 'scene', relevance: 4, reverse_type: 'scene', reverse_relevance: 4 };
   const other = { source_record_id: 'w1', source_sense_id: 'w1-s1', text: '다른 말', type: 'scene', relevance: 4 };
   const dropOf = (candidate) => ({ source_record_id: 'w1', source_sense_id: 'w1-s1', candidate, reason: '무관' });
   const verify = async (relations, drops) => {
@@ -146,6 +147,8 @@ test('a candidate answered by the reverse of a stored ID pair cannot also be a D
   // The same candidate also dropped or also authored text-only is a double disposition.
   await assert.rejects(() => verify([idRow, other], [dropOf('표제501')]), /reverse of a stored ID pair .* cannot also be a drop/);
   await assert.rejects(() => verify([idRow, other, { ...other, text: '표제501' }], []), /cannot also be a text-only relation/);
+  // The same candidate also re-attributed as an ID relation to another sense of the target record is a double disposition too.
+  await assert.rejects(() => verify([idRow, otherSenseRow, other], []), /reverse of a stored ID pair .* cannot also be an ID relation/);
   // A different candidate of the same sense may still be dropped normally.
   assert.equal((await verify([idRow], [dropOf('다른 말')])).drop, 1);
 });
