@@ -165,6 +165,8 @@ node scripts/relation/admission-cli.mjs prepare --shard 001 --out <scratch>/p001
 node scripts/relation/admission-cli.mjs verify  --shard 001                           # 스키마·ID 결속·Tier·귀속 완전성
 ```
 
+`--batch 01|02`를 주면 해당 500레코드 배치의 필수 Stage 1 파일 6개·Canonical 행·행 귀속만 대상으로 한다(같은 샤드 파일 `relation-<SSS>.jsonl`에 배치별로 나눠 누적할 때 사용). 다른 배치의 행은 그 실행의 귀속 검사에서 제외되며, 샤드 전체가 끝났는지는 `--batch` 없는 `verify`가 판단한다.
+
 필수 Stage 1 파일(2배치 × A-Codex/A-Claude/B-Codex/B-Claude/C/D)이 하나라도 없으면 두 명령 모두 실패한다. `--allow-partial`은 도구 점검 전용이며 샤드 완료 증거가 아니다. 다른 샤드의 승인 Relations(정·역방향)와 동철 이의어는 위 규칙대로 처리하며, 동철 이의어 철자는 기존 관계로 간주하지 않는다.
 
 **다음 샤드 선택(#927):** `data/relation-candidates/<SSS>/`에 `verify`의 필수 12개 파일이 모두 있고(`prepare`가 `complete: true`), `data/relations/relation-<SSS>.jsonl`이 master에도 열린 PR에도 없는 가장 낮은 샤드를 고른다.

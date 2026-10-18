@@ -50,7 +50,7 @@ export function producerOf(fileName) {
  * C and D each have one owner-assigned model per batch, so a second C (or D) file of another model is rejected rather
  * than silently merged under the same producer key.
  */
-export function candidateInventory(fileNames) {
+export function candidateInventory(fileNames, { batches = BATCHES } = {}) {
   const present = new Map();
   for (const name of fileNames) {
     const { batch, key } = producerOf(name);
@@ -61,10 +61,22 @@ export function candidateInventory(fileNames) {
     present.set(slot, name);
   }
   const missing = [];
-  for (const batch of BATCHES) {
+  for (const batch of batches) {
     for (const key of REQUIRED_PRODUCERS) if (!present.has(`${batch}/${key}`)) missing.push(`${batch}/${key}`);
   }
   return { files: [...fileNames].sort(), missing };
+}
+
+/**
+ * Restrict a shard run to one 500-record batch: its Canonical rows and its Candidate files. Relation/Drop rows of the
+ * other batch of the same shard file are outside this run's accounting.
+ */
+export function batchScope(canonicalRows, candidateFiles, batch) {
+  if (!BATCHES.includes(batch)) throw new Error('batch must be 01 or 02');
+  const offset = (Number(batch) - 1) * CANDIDATE_BATCH_SIZE;
+  const scopeRows = canonicalRows.slice(offset, offset + CANDIDATE_BATCH_SIZE);
+  if (scopeRows.length === 0) throw new Error(`shard has no records for batch ${batch}`);
+  return { scopeRows, files: candidateFiles.filter((file) => producerOf(path.basename(file.name)).batch === batch) };
 }
 
 /**
@@ -202,13 +214,13 @@ export function existingCandidateKeys(relationRows, index) {
  * Prepare the editing input of a shard: unique new candidates with the exact source sense/gloss, minus candidates an
  * existing approved Relation already answers. Never an editorial judgement; nothing is dropped here.
  */
-export function prepareShard({ canonicalRows, candidateFiles, approvedRelationRows = [], dropRows = [], index }) {
+export function prepareShard({ canonicalRows, candidateFiles, approvedRelationRows = [], dropRows = [], index, scopeRows = canonicalRows }) {
   const { merged, rawCandidateCount } = mergeCandidates(canonicalRows, candidateFiles);
   const covered = existingCandidateKeys(approvedRelationRows, index);
   const dropped = new Set(dropRows.map((row) => `${row.source_sense_id}\u0000${normalizeCandidate(row.candidate)}`));
   const items = [];
   const stats = { raw: rawCandidateCount, unique: 0, merged_duplicates: 0, skipped_existing: 0, skipped_dropped: 0, to_edit: 0 };
-  for (const record of canonicalRows) {
+  for (const record of scopeRows) {
     for (const sense of record.senses) {
       const entry = merged.get(sense.id);
       if (!entry) continue;
@@ -233,8 +245,11 @@ export function prepareShard({ canonicalRows, candidateFiles, approvedRelationRo
  * Account for every unique candidate: new Relation, real Drop or existing approved Relation (excluding this shard's own
  * rows, which are the result being checked). Throws on a missing, doubly-assigned or unknown candidate.
  */
-export function verifyAccounting({ canonicalRows, candidateFiles, relationRows, dropRows, otherRelationRows, index }) {
+export function verifyAccounting({ canonicalRows, candidateFiles, relationRows: allRelationRows, dropRows: allDropRows, otherRelationRows, index, scopeRows = canonicalRows }) {
   const { merged, rawCandidateCount } = mergeCandidates(canonicalRows, candidateFiles);
+  const scopeSenses = new Set(scopeRows.flatMap((record) => record.senses.map((sense) => sense.id)));
+  const relationRows = allRelationRows.filter((row) => scopeSenses.has(row.source_sense_id));
+  const dropRows = allDropRows.filter((row) => scopeSenses.has(row.source_sense_id));
   const covered = existingCandidateKeys(otherRelationRows, index);
   const errors = [];
   const claimed = new Map();
@@ -257,7 +272,7 @@ export function verifyAccounting({ canonicalRows, candidateFiles, relationRows, 
   dropRows.forEach((row, position) => claim(row.source_sense_id, row.candidate, 'a drop', `drop:${position + 1}`));
 
   const counts = { unique: 0, relation: relationRows.length, drop: dropRows.length, skipped_existing: 0, missing: 0 };
-  for (const record of canonicalRows) {
+  for (const record of scopeRows) {
     for (const sense of record.senses) {
       for (const text of merged.get(sense.id)?.candidates.keys() ?? []) {
         if (text === normalizeCandidate(record.lemma)) throw new Error(`${sense.id}: candidate ${JSON.stringify(text)} repeats the source lemma`);

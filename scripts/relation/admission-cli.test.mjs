@@ -55,3 +55,34 @@ test('prepare re-run offers only undecided candidates: this shard\'s own approve
   assert.equal(again.stats.skipped_existing, 2);
   assert.equal(again.stats.skipped_dropped, 1);
 });
+
+test('--batch scopes prepare/verify to one 500-record batch: its own producers, records and rows', async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), 'typewriter-admission-batch-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const records = Array.from({ length: 501 }, (_, i) => ({ id: `w${i + 1}`, lemma: `표제${i + 1}`, senses: [{ id: `w${i + 1}-s1`, pos: 'noun', gloss: `뜻${i + 1}` }] }));
+  for (const dir of ['data/canonical', 'data/relation-candidates/001', 'data/relations']) await mkdir(path.join(root, dir), { recursive: true });
+  await writeFile(path.join(root, 'data/canonical/stdict-0001.jsonl'), jsonl(records));
+  const batchRows = (rows, extra = {}) => rows.map((record) => ({ record_id: record.id, senses: [{ sense_id: record.senses[0].id, candidates: extra[record.id] ?? [] }] }));
+  for (const name of ['a_codex', 'a_claude', 'b_codex', 'b_claude', 'c_codex', 'd_codex']) {
+    await writeFile(path.join(root, `data/relation-candidates/001/001_01_${name}.jsonl`), jsonl(batchRows(records.slice(0, 500), name === 'a_codex' ? { w1: ['새 말'] } : {})));
+  }
+  const args = (command, ...more) => [command, '--shard', '001', '--batch', '01', ...more];
+
+  // Batch 02 has no producers yet: shard-wide runs refuse, the batch-01 run is complete.
+  await assert.rejects(() => quiet(() => run(['prepare', '--shard', '001'], { root })), /incomplete/);
+  const prepared = await quiet(() => run(args('prepare'), { root }));
+  assert.equal(prepared.complete, true);
+  assert.deepEqual(texts(prepared), ['새 말']);
+  await assert.rejects(() => quiet(() => run(['prepare', '--shard', '001', '--batch', '02'], { root })), /incomplete/);
+  await assert.rejects(() => quiet(() => run(['prepare', '--shard', '001', '--batch', '03'], { root })), /--batch must be 01 or 02/);
+
+  // Nothing authored yet: the candidate is unaccounted. A row for it makes batch 01 valid; a batch-02 row is not this run's concern.
+  await assert.rejects(() => quiet(() => run(args('verify'), { root })), /has no relation, drop or existing/);
+  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), jsonl([
+    { source_record_id: 'w1', source_sense_id: 'w1-s1', text: '새 말', type: 'scene', relevance: 4 },
+    { source_record_id: 'w501', source_sense_id: 'w501-s1', text: '이월 말', type: 'scene', relevance: 4 },
+  ]));
+  const counts = await quiet(() => run(args('verify'), { root }));
+  assert.equal(counts.relation, 1);
+  assert.equal(counts.missing, 0);
+});
