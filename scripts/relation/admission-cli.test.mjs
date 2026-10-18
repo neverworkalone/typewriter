@@ -76,6 +76,14 @@ test('--batch scopes prepare/verify to one 500-record batch: its own producers, 
   await assert.rejects(() => quiet(() => run(['prepare', '--shard', '001', '--batch', '02'], { root })), /incomplete/);
   await assert.rejects(() => quiet(() => run(['prepare', '--shard', '001', '--batch', '03'], { root })), /--batch must be 01 or 02/);
 
+  // A conflicting (two C producers) or unparseable batch-02 file never blocks batch 01, but a shard-wide run still refuses it.
+  await writeFile(path.join(root, 'data/relation-candidates/001/001_02_c_codex.jsonl'), '{not json');
+  await writeFile(path.join(root, 'data/relation-candidates/001/001_02_c_claude.jsonl'), '');
+  assert.deepEqual(texts(await quiet(() => run(args('prepare'), { root }))), ['새 말']);
+  await assert.rejects(() => quiet(() => run(['prepare', '--shard', '001'], { root })), /more than one C producer/);
+  await rm(path.join(root, 'data/relation-candidates/001/001_02_c_codex.jsonl'));
+  await rm(path.join(root, 'data/relation-candidates/001/001_02_c_claude.jsonl'));
+
   // Nothing authored yet: the candidate is unaccounted. A row for it makes batch 01 valid; a batch-02 row is not this run's concern.
   await assert.rejects(() => quiet(() => run(args('verify'), { root })), /has no relation, drop or existing/);
   await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), jsonl([

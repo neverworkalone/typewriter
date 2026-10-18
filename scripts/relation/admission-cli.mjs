@@ -47,7 +47,7 @@ function requireComplete(inventory, allowPartial) {
 
 export async function run(argv, { root } = {}) {
   const options = parseArgs(argv);
-  const loaded = await loadShard(options.shard, root);
+  const loaded = await loadShard(options.shard, root, { batch: options.batch });
   const { canonicalRows, index } = loaded;
   // `--batch NN` works on one 500-record batch of the shard (its Candidate files and Canonical rows only).
   const scoped = options.batch ? batchScope(canonicalRows, loaded.candidateFiles, options.batch) : { scopeRows: canonicalRows, files: loaded.candidateFiles };

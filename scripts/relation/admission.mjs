@@ -330,19 +330,24 @@ export async function loadApprovedRelations(root = REPOSITORY_DIRECTORY, { excep
   return rows;
 }
 
-export async function loadShardCandidateFiles(shard, root = REPOSITORY_DIRECTORY) {
+/**
+ * With `batch`, files that belong to the other batch are neither inventoried nor parsed: a batch run depends only on its
+ * own Candidate files, so a conflicting or unfinished file of the other batch cannot block it.
+ */
+export async function loadShardCandidateFiles(shard, root = REPOSITORY_DIRECTORY, { batch = null } = {}) {
   const directory = path.join(root, 'data/relation-candidates', shard);
-  const names = existsSync(directory) ? (await readdir(directory)).filter((name) => name.endsWith('.jsonl')).sort() : [];
-  const inventory = candidateInventory(names);
+  const otherBatch = (name) => batch !== null && /^\d{3}_(01|02)_/u.test(name) && !new RegExp(`^\\d{3}_${batch}_`, 'u').test(name);
+  const names = existsSync(directory) ? (await readdir(directory)).filter((name) => name.endsWith('.jsonl') && !otherBatch(name)).sort() : [];
+  const inventory = candidateInventory(names, batch === null ? {} : { batches: [batch] });
   const files = [];
   for (const name of inventory.files) files.push({ name, rows: await readJsonl(path.join(directory, name)) });
   return { files, inventory };
 }
 
-export async function loadShard(shard, root = REPOSITORY_DIRECTORY) {
+export async function loadShard(shard, root = REPOSITORY_DIRECTORY, { batch = null } = {}) {
   assertShard(shard);
   const canonicalRows = await readJsonl(shardCanonicalPath(shard, root));
-  const [{ files, inventory }, allCanonical] = await Promise.all([loadShardCandidateFiles(shard, root), loadAllCanonical(root)]);
+  const [{ files, inventory }, allCanonical] = await Promise.all([loadShardCandidateFiles(shard, root, { batch }), loadAllCanonical(root)]);
   return { canonicalRows, candidateFiles: files, inventory, index: buildCanonicalIndex(allCanonical), batchSize: CANDIDATE_BATCH_SIZE };
 }
 
