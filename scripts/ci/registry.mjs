@@ -187,6 +187,15 @@ const RAW_CI_CATEGORIES = Object.freeze({
           'data/validation/canonical-semantic-decision-source.shards/',
         ],
       },
+      {
+        ...commandCheck('Validate changed relation Candidate batches', ['scripts/relation/validate-candidate-changes.mjs']),
+        tier: 'normal',
+        schedule: 'always',
+      },
+      {
+        ...testCheck('scripts/relation/candidate-contract.test.mjs', 'Test relation Candidate v1 batch contract'),
+        tier: 'normal',
+      },
       testCheck('tests/relation-relevance.test.mjs', 'Test exploratory relation relevance contract'),
     ],
   },

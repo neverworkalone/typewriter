@@ -87,6 +87,9 @@ jobs:
       - name: Normal validation (fast checkpoint + continuation)
         id: normal
         if: ${{ steps.changes.outcome != 'success' || (steps.changes.outputs.run_level == 'normal' && steps.changes.outputs.deep_mode != 'selective') }}
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: pnpm run ci:normal
 
       - name: Selective Deep validation (Normal + affected current Deep)
