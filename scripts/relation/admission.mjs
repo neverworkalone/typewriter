@@ -270,6 +270,11 @@ export function verifyAccounting({ canonicalRows, candidateFiles, relationRows: 
     }
   });
   dropRows.forEach((row, position) => claim(row.source_sense_id, row.candidate, 'a drop', `drop:${position + 1}`));
+  // A Drop says the candidate is unrelated to the source meaning; the source's own gloss naming it is direct counter-evidence.
+  const glossOf = new Map(scopeRows.flatMap((record) => record.senses.map((sense) => [sense.id, sense.gloss])));
+  dropRows.forEach((row, position) => {
+    if (normalizeCandidate(glossOf.get(row.source_sense_id) ?? '').includes(row.candidate)) errors.push(`drop:${position + 1}: ${JSON.stringify(row.candidate)} is named by the gloss of ${row.source_sense_id} and cannot be dropped as unrelated`);
+  });
 
   // An ID pair is stored once. When both senses listed each other as a Stage 1 candidate, the stored row's reverse
   // direction answers the other candidate, provided the source spelling identifies one Canonical record.
