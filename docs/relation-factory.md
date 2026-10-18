@@ -16,7 +16,7 @@ pnpm run build: Canonical + 승인 Relations → Full / Lite SQLite
 
 기존 `data/canonical/stdict-0001.jsonl` ~ `stdict-0428.jsonl`의 **428개 샤드, 427,583레코드**를 그대로 사용한다. 샤드마다 Canonical **500레코드(행)씩** 배치로 분할한다. sense 500개 단위가 아니다. 동음이의어 record는 구분하고, 한 record의 모든 sense는 함께 처리한다.
 
-- 샤드 001 ~ 427: 각각 1,000레코드 → 배치 `01`~`10`.
+- 샤드 001~427: 각각 1,000레코드 → 배치 `01`(Canonical 1~500행), `02`(501~1000행).
 - 샤드 428: 583레코드 → 배치 `01`(500레코드), `02`(마지막 83레코드).
 - 총 **856개 배치**. 순서는 샤드 번호 → 샤드 내 Canonical 행 위치다. record ID가 연속된다는 가정은 하지 않는다.
 
