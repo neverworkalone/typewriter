@@ -6,6 +6,13 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 export const CANDIDATE_BATCH_SIZE = 500;
 const REPOSITORY_DIRECTORY = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
+/**
+ * Candidate comparison form shared by Stage 1 validation and Stage 2 admission: NFC, trimmed, internal whitespace
+ * collapsed. Exact-duplicate and source-lemma checks must use it so a candidate that Stage 2 would treat as the same
+ * string can never pass Stage 1 as a different one.
+ */
+export const normalizeCandidate = (text) => text.normalize('NFC').trim().replace(/\s+/gu, ' ');
+
 function fail(message) {
   throw new Error(message);
 }
@@ -63,15 +70,17 @@ export function validateCandidateBatch(canonicalRows, candidateRows, { batch, so
       }
 
       const seen = new Set();
+      const normalizedLemma = normalizeCandidate(source.lemma ?? '');
       for (const candidate of candidateSense.candidates) {
         if (typeof candidate !== 'string' || candidate.length === 0 || candidate.trim() !== candidate) {
           fail(`${senseLine} candidates must be non-empty trimmed strings`);
         }
-        if (seen.has(candidate)) fail(`${senseLine} contains duplicate candidate ${JSON.stringify(candidate)}`);
-        if (candidate === source.lemma) {
+        const normalized = normalizeCandidate(candidate);
+        if (seen.has(normalized)) fail(`${senseLine} contains duplicate candidate ${JSON.stringify(candidate)}`);
+        if (normalized === normalizedLemma) {
           fail(`${senseLine} candidate repeats source lemma ${JSON.stringify(source.lemma)}`);
         }
-        seen.add(candidate);
+        seen.add(normalized);
       }
 
       senseCount += 1;

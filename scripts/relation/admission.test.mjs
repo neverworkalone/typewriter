@@ -130,3 +130,13 @@ test('accounting: every unique candidate is exactly one of relation, drop or exi
   assert.equal(answer(full.relations.slice(1), full.drops, existing).skipped_existing, 1);
   assert.throws(() => answer(full.relations, full.drops, existing), /already answered by an approved Relation/);
 });
+
+test('a decomposed spelling of the source lemma is rejected, never silently skipped as a merge', () => {
+  const lemma = '가'.normalize('NFC');
+  const local = [{ id: 'w1', lemma, senses: [{ id: 'w1-s1', pos: 'noun', gloss: 'g' }] }];
+  const localIndex = buildCanonicalIndex(local);
+  const decomposedFile = { name: '001_01_a_codex.jsonl', rows: [{ record_id: 'w1', senses: [{ sense_id: 'w1-s1', candidates: [lemma.normalize('NFD')] }] }] };
+  assert.throws(() => prepareShard({ canonicalRows: local, candidateFiles: [decomposedFile], index: localIndex }), /repeats source lemma/);
+  assert.throws(() => verifyAccounting({ canonicalRows: local, candidateFiles: [decomposedFile], relationRows: [], dropRows: [], otherRelationRows: [], index: localIndex }), /repeats source lemma/);
+  assert.throws(() => validateRelationRows({ relationRows: [{ source_record_id: 'w1', source_sense_id: 'w1-s1', text: lemma, type: 'near', relevance: 1 }], index: localIndex, shardSenseIds: new Set(['w1-s1']) }), /source lemma/);
+});
