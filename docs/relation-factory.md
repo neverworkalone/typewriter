@@ -138,7 +138,36 @@ PR의 Normal 검사는 추가·수정된 `data/relation-candidates/` 파일마�
 5. 정확한 Canonical target record/sense가 확인되면 ID 링크, 아니면 text-only로 확정한다. 같은 이름의 다른 의미에 연결하지 않는다.
 6. Typewriter-authored ID↔ID는 양방향 탐색을 제공하되 **반대 방향의 타입/Tier도 별도 편집 판단**이 필요하다. text-only는 역방향이 없다. 샤드 경계를 넘는 역방향 저장/빌드 투영의 소유권은 구현 시 확정한다.
 
-**출력:** 승인된 Relations JSONL. `data/relations/<SSS>.jsonl`은 제안 경로이며 최종 스키마·경로·양방향 투영 규약은 구현 시 확정한다. 재실행 때 중복 관계를 누적하거나 기존 결정을 임의로 삭제하지 않는다.
+**출력:** 승인된 Relations JSONL(샤드당 한 파일). 재실행 때 중복 관계를 누적하거나 기존 결정을 임의로 삭제하지 않는다.
+
+### Relations / Drops JSONL v1 (Issue #928)
+
+한 줄 = 관계 하나. 스키마는 `scripts/relation/admission.mjs`가 한 번만 정의한다.
+
+```jsonl
+# data/relations/relation-001.jsonl — ID 링크(양방향 한 행)
+{"source_record_id":"w1","source_sense_id":"w1-s1","target_record_id":"w9","target_sense_id":"w9-s1","type":"near","relevance":2,"reverse_type":"mood","reverse_relevance":5}
+# text-only (reverse 없음, 클릭 불가)
+{"source_record_id":"w1","source_sense_id":"w1-s1","text":"새 말","type":"scene","relevance":4}
+# data/relation-drops/drop-001.jsonl — 실제 Drop만 (없으면 빈 파일/부재 허용)
+{"source_record_id":"w2","source_sense_id":"w2-s1","candidate":"버릴말","reason":"출발 의미와 무관"}
+```
+
+- `type`/`reverse_type`: `near|mood|scene|sensory|action|association`. `relevance`/`reverse_relevance`: 정수 1..9. 방향별로 달라도 같아도 된다.
+- ID 링크의 target은 후보 문자열과 철자가 정확히 같은 Canonical record의 실제 sense여야 한다. 동철 이의어는 `same_spelling_records`로 확인해 올바른 record를 고른다. 일치하는 target이 없으면 text-only이며 가짜 ID를 쓰지 않는다.
+- 소유 샤드 = 출발(source) sense가 속한 샤드. 한 쌍(A↔B)은 한 행에만 저장하며, 다른 샤드에 이미 같은 쌍(정·역 모두)이나 같은 text-only가 있으면 거부한다. 빌드는 ID 행마다 방향별 2개 탐색 행을 만든다(빌드 구현은 별도 PR).
+- 모든 고유 후보는 **신규 관계 / Drop / 정확한 중복 병합 / 기존 승인 관계 제외** 중 정확히 하나로 귀속되어야 한다.
+
+**도구** (`pnpm run relation:admission -- <command>`, 샤드 번호만 바꿔 재사용):
+
+```sh
+node scripts/relation/admission-cli.mjs prepare --shard 001 --out <scratch>/p001.json  # 편집 입력: 고유 신규 후보 + 출발 sense/뜻풀이
+node scripts/relation/admission-cli.mjs verify  --shard 001                           # 스키마·ID 결속·Tier·귀속 완전성
+```
+
+필수 Stage 1 파일(2배치 × A-Codex/A-Claude/B-Codex/B-Claude/C/D)이 하나라도 없으면 두 명령 모두 실패한다. `--allow-partial`은 도구 점검 전용이며 샤드 완료 증거가 아니다. 다른 샤드의 승인 Relations(정·역방향)와 동철 이의어는 위 규칙대로 처리하며, 동철 이의어 철자는 기존 관계로 간주하지 않는다.
+
+**다음 샤드 선택(#927):** `data/relation-candidates/<SSS>/`에 `verify`의 필수 12개 파일이 모두 있고(`prepare`가 `complete: true`), `data/relations/relation-<SSS>.jsonl`이 master에도 열린 PR에도 없는 가장 낮은 샤드를 고른다.
 
 ## 5. Build와 검증 경계
 

@@ -30,6 +30,7 @@
     "validate:package": "node scripts/validate-package.mjs",
     "validate:release": "node scripts/validate-release.mjs",
     "relation:correct": "node scripts/relation/correct-cli.mjs",
+    "relation:admission": "node scripts/relation/admission-cli.mjs",
     "test:mv3:product": "node scripts/extension/run-cft-product.mjs",
     "test:mv3:package": "node scripts/extension/run-cft-package.mjs",
     "ci:category": "node scripts/ci/run-category.mjs",
