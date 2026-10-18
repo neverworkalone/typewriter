@@ -107,3 +107,16 @@ test('an ID row owned by the other batch also answers this batch\'s reverse cand
   const counts = await quiet(() => run(args('verify'), { root }));
   assert.equal(counts.missing, 0);
 });
+
+test('a batch with no candidates and no authored rows is complete once verify succeeds', async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), 'typewriter-admission-empty-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const records = Array.from({ length: 3 }, (_, i) => ({ id: `w${i + 1}`, lemma: `표제${i + 1}`, senses: [{ id: `w${i + 1}-s1`, pos: 'noun', gloss: `뜻${i + 1}` }] }));
+  for (const dir of ['data/canonical', 'data/relation-candidates/001']) await mkdir(path.join(root, dir), { recursive: true });
+  await writeFile(path.join(root, 'data/canonical/stdict-0001.jsonl'), jsonl(records));
+  for (const name of ['a_codex', 'a_claude', 'b_codex', 'b_claude', 'c_codex', 'd_codex']) {
+    await writeFile(path.join(root, `data/relation-candidates/001/001_01_${name}.jsonl`), jsonl(records.map((record) => ({ record_id: record.id, senses: [{ sense_id: record.senses[0].id, candidates: [] }] }))));
+  }
+  const counts = await quiet(() => run(['verify', '--shard', '001', '--batch', '01'], { root }));
+  assert.deepEqual([counts.unique, counts.relation, counts.drop, counts.missing], [0, 0, 0, 0]);
+});
