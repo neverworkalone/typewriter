@@ -152,6 +152,20 @@ export const MEANING_SOURCE_INTEGRITY_QUERIES = Object.freeze({
        OR original.type <> relation.type
        OR source.source_redirected <> ${redirected('original.source_sense_id')}
        OR source.target_redirected <> ${redirected('original.target_sense_id')}`,
+  // Issue #928: an authored relation row is bound to its approved Relations JSONL line and to the Canonical senses it names.
+  authored_relation_without_provenance: `
+    SELECT COUNT(*) FROM meaning_relations AS relation
+    WHERE relation.origin IN ('${MEANING_RELATION_ORIGINS.authored}', '${MEANING_RELATION_ORIGINS.authoredReverse}') AND NOT EXISTS (
+      SELECT 1 FROM meaning_relation_authored_sources AS source
+      WHERE source.source_meaning_id = relation.source_meaning_id AND source.relation_position = relation.position)`,
+  authored_provenance_mismatch: `
+    SELECT COUNT(*) FROM meaning_relation_authored_sources AS source
+    INNER JOIN meaning_relations AS relation
+      ON relation.source_meaning_id = source.source_meaning_id AND relation.position = source.relation_position
+    WHERE relation.origin <> CASE source.direction WHEN 'forward' THEN '${MEANING_RELATION_ORIGINS.authored}'
+                                                   ELSE '${MEANING_RELATION_ORIGINS.authoredReverse}' END
+       OR COALESCE(${memberMeaning('CASE source.direction WHEN \'forward\' THEN source.source_sense_id ELSE source.target_sense_id END')} = relation.source_meaning_id, 0) = 0
+       OR COALESCE(${memberMeaning('CASE source.direction WHEN \'forward\' THEN source.target_sense_id ELSE source.source_sense_id END')} = relation.target_meaning_id, 0) = 0`,
   projectable_relation_without_provenance: `
     SELECT COUNT(*) FROM relations AS original
     WHERE original.target_sense_id IS NOT NULL

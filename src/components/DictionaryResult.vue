@@ -282,7 +282,7 @@ defineExpose({ focusCandidate });
               :key="relation.id"
             >
               <button
-                v-if="interactive"
+                v-if="interactive && relationTargetId(relation)"
                 class="relation-link"
                 type="button"
                 :data-target-record-id="relationTargetId(relation)"

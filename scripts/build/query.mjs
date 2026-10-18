@@ -124,6 +124,14 @@ export function readLogicalDatabaseSnapshot(database) {
         )
         .all(),
     ),
+    meaning_text_relations: plainRows(
+      database
+        .prepare(
+          `SELECT source_meaning_id, position, text, type, relevance
+           FROM meaning_text_relations ORDER BY source_meaning_id, position`,
+        )
+        .all(),
+    ),
     generated_surface_forms: plainRows(
       database
         .prepare(

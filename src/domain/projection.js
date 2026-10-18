@@ -19,7 +19,7 @@ export function projectRelation(relation, sourceSenseId, sourcePosition) {
     id: `${sourceSenseId}:${sourcePosition}`,
     sourceSenseId,
     sourcePosition,
-    targetId: relation.target,
+    targetId: copyNullable(relation.target),
     targetSenseId: copyNullable(relation.target_sense),
     targetLemma: copyNullable(relation.target_lemma),
     targetPos: copyNullable(relation.target_pos),
@@ -31,10 +31,13 @@ export function projectRelation(relation, sourceSenseId, sourcePosition) {
     groupId,
     note: copyNullable(relation.note),
     relevance: copyNullable(relation.relevance),
-    action: {
-      type: 'open-relation-target',
-      targetRecordId: relation.target,
-    },
+    // A text-only authored relation has no Canonical target: shown as text, no action and no reverse.
+    action: relation.target === null || relation.target === undefined
+      ? null
+      : {
+        type: 'open-relation-target',
+        targetRecordId: relation.target,
+      },
   };
 }
 

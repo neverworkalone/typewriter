@@ -171,4 +171,11 @@ node scripts/relation/admission-cli.mjs verify  --shard 001                     
 
 `pnpm run build`는 **Canonical JSONL + 승인된 Relations JSONL**을 읽어 Full/Lite SQLite를 결정적으로 생성한다. **Candidate 파일을 직접 읽어 DB를 만들지 않는다.** STDICT 원본 및 공식 `direct/antonym`은 보존하고, text-only/양방향 관계/방향별 Tier/UI 그룹·정렬을 공통 검증한다.
 
-**현재 상태:** Typewriter-authored 승인 Relations 소스, text-only 타깃, authored ID↔ID 역방향 빌드가 아직 구현되지 않았다. 이 문서는 **생산·구현 계약**이며 이미 빌드가 동작한다는 의미가 아니다. 은퇴한 Lexical Factory와 별도의 Meaning 편집 계층을 되살리지 않는다.
+**현재 상태 (Issue #928):** 승인 Relations JSONL(`data/relations/relation-<SSS>.jsonl`)은 공식 Canonical 빌드에서 자동으로 읽힌다(고정 입력 디렉터리, 픽스처는 `relationsDirectory` 옵션). Candidate와 Drop은 빌드 입력이 아니다.
+
+- ID 행 하나 → `meaning_relations` 두 행: 정방향(`origin=typewriter-authored`, `type/relevance`)과 역방향(`typewriter-authored-reverse`, `reverse_type/reverse_relevance`). 둘 다 기존 `source_meaning_id` 조회·정렬 경로와 `idx_meaning_relations_target`를 그대로 쓰며, 같은 한 쌍은 한 행에서만 만들어져 중복 투영되지 않는다. 같은 두 meaning·같은 type에 여러 sense가 닿으면 가장 앞선 Tier 하나만 남긴다.
+- text-only 행 → `meaning_text_relations`(Full/Lite 공통). 결과에는 텍스트로만 나오고 target이 없어 클릭·역방향이 생기지 않는다.
+- authored 행은 STDICT `note` 대신 빈 note를 가지며 `direct/antonym`을 쓸 수 없다. 기존 STDICT 관계와 같은 쌍·type이면 조용히 병합하지 않고 빌드가 실패한다.
+- Full에는 승인 파일 샤드·행 번호와 Canonical sense를 묶는 `meaning_relation_authored_sources`가 있고 Lite에는 싣지 않는다. 빌드 검증이 쌍 존재, 출처 존재, sense→meaning 결속을 확인한다. SQLite 스키마 버전 11.
+
+은퇴한 Lexical Factory와 별도의 Meaning 편집 계층을 되살리지 않는다.

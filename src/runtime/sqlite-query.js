@@ -171,7 +171,23 @@ export function getMeaningRecord(database, recordId) {
       WHERE meaning_relations.source_meaning_id = ?
       ORDER BY meaning_relations.position
     `, [meaning.id]),
-  }));
+  })).map((meaning) => {
+    // Text-only authored relations (Issue #928) have no target record: plain text after the linked relations, never a link.
+    const textRelations = allRows(database, `
+      SELECT position, text, type, relevance FROM meaning_text_relations
+      WHERE source_meaning_id = ? ORDER BY position
+    `, [meaning.id]).map((row) => ({
+      position: meaning.relations.length + row.position,
+      target: null,
+      target_sense: null,
+      type: row.type,
+      note: null,
+      relevance: row.relevance,
+      target_lemma: row.text,
+      target_gloss: null,
+    }));
+    return { ...meaning, relations: [...meaning.relations, ...textRelations] };
+  });
 
   return { ...record, view: 'meaning', search_forms: searchForms, senses };
 }
