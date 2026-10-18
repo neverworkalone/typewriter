@@ -1,6 +1,6 @@
 # Relation Factory v1
 
-Typewriter 0.3 관계 제작은 **후보 발굴 → 관계 편집 → DB 빌드**로 분리한다. STDICT Canonical JSONL처럼 생성한 **Candidate JSONL을 영구 보관**하고, 이후 원본 문학·말뭉치 DB를 다시 검색하지 않고 Relations를 편집한다. 편집 기준은 [relation-editorial-policy.md](relation-editorial-policy.md)를 따른다.
+Typewriter 관계 제작은 **후보 발굴 → 관계 편집 → DB 빌드**로 분리한다. STDICT Canonical JSONL처럼 생성한 **Candidate JSONL을 영구 보관**하고, 이후 원본 문학·말뭉치 DB를 다시 검색하지 않고 Relations를 편집한다. 편집 기준은 [relation-editorial-policy.md](relation-editorial-policy.md)를 따른다.
 
 ```text
 Stage 1 — Candidate Generation: A / B / C / D 독립 병렬 생산
@@ -16,7 +16,7 @@ pnpm run build: Canonical + 승인 Relations → Full / Lite SQLite
 
 기존 `data/canonical/stdict-0001.jsonl` ~ `stdict-0428.jsonl`의 **428개 샤드, 427,583레코드**를 그대로 사용한다. 샤드마다 Canonical **100레코드(행)씩** 배치로 분할한다. sense 100개 단위가 아니다. 동음이의어 record는 구분하고, 한 record의 모든 sense는 함께 처리한다.
 
-- 샤드 001~427: 각각 1,000레코드 → 배치 `01`~`10`.
+- 샤드 001 ~ 427: 각각 1,000레코드 → 배치 `01`~`10`.
 - 샤드 428: 583레코드 → 배치 `01`~`06`(마지막 83레코드).
 - 총 **4,276개 배치**. 순서는 샤드 번호 → 샤드 내 Canonical 행 위치다. record ID가 연속된다는 가정은 하지 않는다.
 
