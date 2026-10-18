@@ -20,7 +20,7 @@ import { SQLITE_SCHEMA_SQL, SQLITE_SCHEMA_VERSION, SQLITE_SOURCE_SCHEMA_SQL } fr
 import { MEANING_SOURCE_INTEGRITY_QUERIES, assertRecordMeaningCoverage, glossReferenceViolations } from './meaning-source-checks.mjs';
 import { compareMeaningIds } from '../../src/runtime/meaning-order.js';
 import { projectDirectReverses } from './direct-reverse.mjs';
-import { DEFAULT_RELATIONS_DIRECTORY, loadApprovedRelationFiles, projectAuthoredRelations } from './authored-relations.mjs';
+import { DEFAULT_RELATIONS_DIRECTORY, loadApprovedRelationFiles, loadShardSenseIds, projectAuthoredRelations } from './authored-relations.mjs';
 import { projectGlossReferences } from './gloss-arrow-reference.mjs';
 import { parseMeaningId, projectMeaningRelations, projectRecordMeanings } from './record-meanings.mjs';
 import {
@@ -62,7 +62,7 @@ function assertRecordMeaningsOption(inputDirectory, recordMeanings) {
   }
 }
 
-function loadMeaningLayer({ model, inputDirectory, recordMeanings, authoredFiles = [] }) {
+function loadMeaningLayer({ model, inputDirectory, recordMeanings, authoredFiles = [], shardSenseIds }) {
   const isDefault = path.resolve(inputDirectory) === path.resolve(DEFAULT_CANONICAL_DIRECTORY);
   assertRecordMeaningsOption(inputDirectory, recordMeanings);
   if (!(recordMeanings ?? isDefault)) {
@@ -74,7 +74,7 @@ function loadMeaningLayer({ model, inputDirectory, recordMeanings, authoredFiles
   const glossed = projectGlossReferences({ records: model.records, meanings, relations: projection.relations });
   const derived = projectDirectReverses({ relations: glossed.relations });
   const stdictRelations = [...glossed.relations, ...derived.relations];
-  const authored = projectAuthoredRelations({ files: authoredFiles, records: model.records, meanings, existing: stdictRelations });
+  const authored = projectAuthoredRelations({ files: authoredFiles, records: model.records, meanings, existing: stdictRelations, shardSenseIds });
   const relations = [...stdictRelations, ...authored.relations];
   return {
     projected: true,
@@ -501,7 +501,8 @@ export async function buildDictionary({
   // Approved Relations JSONL feeds the official canonical build; fixture inputs opt in with `relationsDirectory`.
   const authoredFiles = await loadApprovedRelationFiles(relationsDirectory
     ?? (requireExceptionTargets ? DEFAULT_RELATIONS_DIRECTORY : undefined));
-  const meaningLayer = loadMeaningLayer({ model, inputDirectory, recordMeanings, authoredFiles });
+  const shardSenseIds = authoredFiles.length > 0 ? await loadShardSenseIds(inputDirectory) : undefined;
+  const meaningLayer = loadMeaningLayer({ model, inputDirectory, recordMeanings, authoredFiles, shardSenseIds });
   const provenance = await resolveBuildProvenance({
     repositoryDirectory,
     sourceRevision,

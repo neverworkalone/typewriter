@@ -29,15 +29,22 @@ const idRow = (over = {}) => ({
 });
 const textRow = (over = {}) => ({ source_record_id: 'w001', source_sense_id: 'w001-s1', text: '새 말', type: 'scene', relevance: 4, ...over });
 
-async function build(rows, { extra = [] } = {}) {
+// Shard 001 holds w001..w003 and shard 002 holds w004: a relation file may only name sources its own shard stores.
+const SHARDS = { '001': RECORDS.slice(0, 3), '002': RECORDS.slice(3) };
+
+async function build(rows, { files = {}, shards = SHARDS } = {}) {
   const directory = await mkdtemp(path.join(tmpdir(), 'typewriter-authored-'));
   const canonical = path.join(directory, 'canonical');
   const relations = path.join(directory, 'relations');
   await mkdir(canonical);
   await mkdir(relations);
-  await writeFile(path.join(canonical, 'part.jsonl'), `${RECORDS.map((item) => JSON.stringify(item)).join('\n')}\n`);
-  await writeFile(path.join(relations, 'relation-001.jsonl'), rows.map((row) => `${JSON.stringify(row)}\n`).join(''));
-  for (const [name, list] of extra) await writeFile(path.join(relations, name), list.map((row) => `${JSON.stringify(row)}\n`).join(''));
+  for (const [shard, records] of Object.entries(shards)) {
+    await writeFile(path.join(canonical, `stdict-0${shard}.jsonl`), `${records.map((item) => JSON.stringify(item)).join('\n')}\n`);
+  }
+  const all = { ...(rows.length > 0 ? { '001': rows } : {}), ...files };
+  for (const [shard, list] of Object.entries(all)) {
+    await writeFile(path.join(relations, `relation-${shard}.jsonl`), list.map((row) => `${JSON.stringify(row)}\n`).join(''));
+  }
   const full = path.join(directory, 'dictionary.sqlite');
   try {
     await buildDictionary({ inputDirectory: canonical, outputPath: full, relationsDirectory: relations, allowDirty: true, recordMeanings: true });
@@ -87,9 +94,10 @@ test('an authored ID relation becomes two navigable rows with their own type/tie
 });
 
 test('the same approved Relations reproduce the same relation rows', async () => {
-  const rows = [textRow(), idRow(), idRow({ source_sense_id: 'w004-s2', source_record_id: 'w004', target_record_id: 'w002', target_sense_id: 'w002-s1', type: 'sensory', relevance: 3 })];
+  const rows = [textRow(), idRow()];
+  const files = { '002': [idRow({ source_sense_id: 'w004-s2', source_record_id: 'w004', target_record_id: 'w002', target_sense_id: 'w002-s1', type: 'sensory', relevance: 3 })] };
   const dump = async () => {
-    const built = await build(rows);
+    const built = await build(rows, { files });
     try {
       const db = new DatabaseSync(built.lite, { readOnly: true });
       const value = JSON.stringify([
@@ -106,11 +114,10 @@ test('the same approved Relations reproduce the same relation rows', async () =>
 });
 
 test('a second sense of the same meaning reaching the same pair/type keeps the best tier once', async () => {
-  const built = await build([
-    idRow({ relevance: 5 }),
+  const built = await build([idRow({ relevance: 5 })], { files: { '002': [
     idRow({ source_record_id: 'w004', source_sense_id: 'w004-s1', target_record_id: 'w003', target_sense_id: 'w003-s1', relevance: 2 }),
     idRow({ source_record_id: 'w004', source_sense_id: 'w004-s2', target_record_id: 'w003', target_sense_id: 'w003-s1', relevance: 1 }),
-  ]);
+  ] } });
   try {
     const db = new DatabaseSync(built.lite, { readOnly: true });
     const rows = db.prepare("SELECT relevance FROM meaning_relations WHERE source_meaning_id = 'm004' AND origin = 'typewriter-authored'").all();
@@ -143,5 +150,29 @@ test('invalid approved Relations fail the build (no row is silently dropped)', a
     }
     await assert.rejects(() => build(rows), pattern, JSON.stringify(rows));
   }
-  await assert.rejects(() => build([idRow()], { extra: [['relation-002.jsonl', [idRow()]]] }), /duplicate/);
+  // A file owns only the sources its Canonical shard stores, whichever way the wrong file is reached.
+  await assert.rejects(() => build([], { files: { '002': [idRow()] } }), /outside this shard/);
+  await assert.rejects(() => build([idRow({ source_record_id: 'w004', source_sense_id: 'w004-s1', target_record_id: 'w003', target_sense_id: 'w003-s1' })]), /outside this shard/);
+  await assert.rejects(() => build([textRow({ source_record_id: 'w004', source_sense_id: 'w004-s1' })]), /outside this shard/);
+  await assert.rejects(() => build([idRow()], { files: { '009': [textRow()] } }), /no Canonical shard/);
+});
+
+test('the same text reached with different types by senses of one meaning keeps each type', async () => {
+  const built = await build([], { files: { '002': [
+    textRow({ source_record_id: 'w004', source_sense_id: 'w004-s1', text: '공통 말', type: 'near', relevance: 3 }),
+    textRow({ source_record_id: 'w004', source_sense_id: 'w004-s2', text: '공통 말', type: 'scene', relevance: 5 }),
+    textRow({ source_record_id: 'w004', source_sense_id: 'w004-s2', text: '다른 말', type: 'mood', relevance: 4 }),
+  ] } });
+  try {
+    const db = new DatabaseSync(built.lite, { readOnly: true });
+    assert.deepEqual(
+      db.prepare("SELECT text, type, relevance FROM meaning_text_relations WHERE source_meaning_id = 'm004' ORDER BY text, type").all().map((row) => ({ ...row })),
+      [{ text: '공통 말', type: 'near', relevance: 3 }, { text: '공통 말', type: 'scene', relevance: 5 }, { text: '다른 말', type: 'mood', relevance: 4 }],
+    );
+    const groups = getMeaningRecord(db, 'w004').senses[0].relations.filter((r) => r.target === null).map((r) => r.type).sort();
+    assert.deepEqual(groups, ['mood', 'near', 'scene']);
+    db.close();
+  } finally {
+    await rm(built.directory, { recursive: true, force: true });
+  }
 });

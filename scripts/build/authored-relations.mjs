@@ -36,6 +36,20 @@ export async function loadApprovedRelationFiles(directory) {
   return files;
 }
 
+/** Sense IDs owned by each Canonical shard file (`stdict-NNNN.jsonl` -> `NNN`); a source sense belongs to the shard that stores it. */
+export async function loadShardSenseIds(canonicalDirectory) {
+  const owners = new Map();
+  for (const name of (await readdir(canonicalDirectory)).filter((item) => /^stdict-\d{4}\.jsonl$/u.test(item)).sort()) {
+    const senseIds = new Set();
+    for (const line of (await readFile(path.join(canonicalDirectory, name), 'utf8')).split(/\r?\n/u)) {
+      if (line.length === 0) continue;
+      for (const sense of JSON.parse(line).senses ?? []) senseIds.add(sense.id);
+    }
+    owners.set(name.slice('stdict-0'.length, -'.jsonl'.length), senseIds);
+  }
+  return owners;
+}
+
 const keyOf = (source, target, type) => `${source}\u0000${target}\u0000${type}`;
 
 /**
@@ -43,15 +57,15 @@ const keyOf = (source, target, type) => `${source}\u0000${target}\u0000${type}`;
  * @param {object[]} records normalized Canonical records
  * @param {{ id: string, sense_ids: string[] }[]} meanings record meanings
  * @param {object[]} existing meaning relations already projected (STDICT projection, gloss, direct reverse)
+ * @param {Map<string, Set<string>>} shardSenseIds Canonical shard -> its sense IDs; a file may only hold relations whose source sense it owns
  */
-export function projectAuthoredRelations({ files, records, meanings, existing }) {
+export function projectAuthoredRelations({ files, records, meanings, existing, shardSenseIds }) {
   const stats = { authored_file_count: files.length, authored_row_count: 0, authored_id_relation_count: 0, authored_text_relation_count: 0, authored_deduplicated_count: 0 };
   if (files.length === 0) return { relations: [], textRelations: [], stats };
 
   const index = buildCanonicalIndex(records);
   const senseToMeaning = new Map();
   for (const meaning of meanings) for (const senseId of meaning.sense_ids) senseToMeaning.set(senseId, meaning.id);
-  const allSenseIds = new Set(index.senses.keys());
 
   const previous = [];
   const idEntries = [];
@@ -59,8 +73,10 @@ export function projectAuthoredRelations({ files, records, meanings, existing })
   let order = 0;
   for (const { shard, rows } of files) {
     const plain = rows.map(({ row }) => row);
+    const owned = shardSenseIds?.get(shard);
+    if (!owned) throw new Error(`relation-${shard}.jsonl: no Canonical shard stdict-0${shard}.jsonl owns this file`);
     try {
-      validateRelationRows({ relationRows: plain, index, shardSenseIds: allSenseIds, otherRelationRows: previous });
+      validateRelationRows({ relationRows: plain, index, shardSenseIds: owned, otherRelationRows: previous });
     } catch (error) {
       throw new Error(`relation-${shard}.jsonl: ${error.message}`);
     }
@@ -125,7 +141,7 @@ export function projectAuthoredRelations({ files, records, meanings, existing })
   const textPosition = new Map();
   const textRelations = [];
   for (const entry of [...textEntries].sort(byTier)) {
-    const key = `${entry.source_meaning_id}\u0000${entry.text}`;
+    const key = `${entry.source_meaning_id}\u0000${entry.text}\u0000${entry.type}`;
     if (textTaken.has(key)) { stats.authored_deduplicated_count += 1; continue; }
     textTaken.add(key);
     const position = textPosition.get(entry.source_meaning_id) ?? 0;

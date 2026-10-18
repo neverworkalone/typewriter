@@ -110,7 +110,7 @@ CREATE TABLE meaning_text_relations (
   type TEXT NOT NULL CHECK (type IN ('near', 'mood', 'scene', 'sensory', 'action', 'association')),
   relevance INTEGER NOT NULL CHECK (relevance BETWEEN 1 AND 9),
   PRIMARY KEY (source_meaning_id, position),
-  UNIQUE (source_meaning_id, text),
+  UNIQUE (source_meaning_id, text, type),
   FOREIGN KEY (source_meaning_id) REFERENCES meanings(id) ON DELETE CASCADE
 ) WITHOUT ROWID;
 
