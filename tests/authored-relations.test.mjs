@@ -22,6 +22,7 @@ const RECORDS = [
   record(2, '다라', [['다라의 뜻.']]),
   record(3, '마바', [['마바의 뜻.']]),
   record(4, '사아', [['사아의 첫째 뜻.'], ['사아의 둘째 뜻.']]),
+  record(5, '자차', [['자차의 첫째 뜻.'], ['자차의 둘째 뜻.']]),
 ];
 const idRow = (over = {}) => ({
   source_record_id: 'w001', source_sense_id: 'w001-s1', target_record_id: 'w003', target_sense_id: 'w003-s1',
@@ -172,6 +173,41 @@ test('the same text reached with different types by senses of one meaning keeps 
     const groups = getMeaningRecord(db, 'w004').senses[0].relations.filter((r) => r.target === null).map((r) => r.type).sort();
     assert.deepEqual(groups, ['mood', 'near', 'scene']);
     db.close();
+  } finally {
+    await rm(built.directory, { recursive: true, force: true });
+  }
+});
+
+test('independent approved rows in opposite directions between different senses of the same two meanings build and keep every contributor', async () => {
+  // Row 1 (w004-s1 -> w005-s1) and row 2 (w005-s2 -> w004-s2) reach the same two meanings from opposite sides.
+  const built = await build([], { files: { '002': [
+    { source_record_id: 'w004', source_sense_id: 'w004-s1', target_record_id: 'w005', target_sense_id: 'w005-s1', type: 'near', relevance: 1, reverse_type: 'mood', reverse_relevance: 9 },
+    { source_record_id: 'w005', source_sense_id: 'w005-s2', target_record_id: 'w004', target_sense_id: 'w004-s2', type: 'mood', relevance: 1, reverse_type: 'near', reverse_relevance: 9 },
+  ] } });
+  try {
+    const lite = new DatabaseSync(built.lite, { readOnly: true });
+    assert.deepEqual(
+      lite.prepare("SELECT source_meaning_id, target_meaning_id, type, relevance, origin FROM meaning_relations WHERE origin LIKE 'typewriter-authored%' ORDER BY source_meaning_id").all().map((row) => ({ ...row })),
+      [
+        { source_meaning_id: 'm004', target_meaning_id: 'm005', type: 'near', relevance: 1, origin: 'typewriter-authored' },
+        { source_meaning_id: 'm005', target_meaning_id: 'm004', type: 'mood', relevance: 1, origin: 'typewriter-authored' },
+      ],
+    );
+    assert.ok(getMeaningRecord(lite, 'w004').senses[0].relations.some((r) => r.target === 'w005' && r.type === 'near'));
+    assert.ok(getMeaningRecord(lite, 'w005').senses[0].relations.some((r) => r.target === 'w004' && r.type === 'mood'));
+    lite.close();
+    const full = new DatabaseSync(built.full, { readOnly: true });
+    // The lower-tier contributor of each shown row stays traceable.
+    assert.deepEqual(
+      full.prepare('SELECT source_meaning_id, position, source_sense_id, target_sense_id, line FROM meaning_relation_authored_sources ORDER BY source_meaning_id, position').all().map((row) => ({ ...row })),
+      [
+        { source_meaning_id: 'm004', position: 0, source_sense_id: 'w004-s1', target_sense_id: 'w005-s1', line: 1 },
+        { source_meaning_id: 'm004', position: 1, source_sense_id: 'w005-s2', target_sense_id: 'w004-s2', line: 2 },
+        { source_meaning_id: 'm005', position: 0, source_sense_id: 'w005-s2', target_sense_id: 'w004-s2', line: 2 },
+        { source_meaning_id: 'm005', position: 1, source_sense_id: 'w004-s1', target_sense_id: 'w005-s1', line: 1 },
+      ],
+    );
+    full.close();
   } finally {
     await rm(built.directory, { recursive: true, force: true });
   }

@@ -162,8 +162,8 @@ export const MEANING_SOURCE_INTEGRITY_QUERIES = Object.freeze({
     SELECT COUNT(*) FROM meaning_relation_authored_sources AS source
     INNER JOIN meaning_relations AS relation
       ON relation.source_meaning_id = source.source_meaning_id AND relation.position = source.relation_position
-    WHERE relation.origin <> CASE source.direction WHEN 'forward' THEN '${MEANING_RELATION_ORIGINS.authored}'
-                                                   ELSE '${MEANING_RELATION_ORIGINS.authoredReverse}' END
+    WHERE (source.position = 0 AND relation.origin <> CASE source.direction WHEN 'forward' THEN '${MEANING_RELATION_ORIGINS.authored}'
+                                                                          ELSE '${MEANING_RELATION_ORIGINS.authoredReverse}' END)
        OR COALESCE(${memberMeaning('CASE source.direction WHEN \'forward\' THEN source.source_sense_id ELSE source.target_sense_id END')} = relation.source_meaning_id, 0) = 0
        OR COALESCE(${memberMeaning('CASE source.direction WHEN \'forward\' THEN source.target_sense_id ELSE source.source_sense_id END')} = relation.target_meaning_id, 0) = 0`,
   projectable_relation_without_provenance: `

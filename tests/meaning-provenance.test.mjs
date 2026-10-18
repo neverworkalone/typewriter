@@ -106,9 +106,9 @@ test('meaning relation provenance: valid mapping passes; deleted, mis-bound and 
       INSERT INTO meaning_relations (source_meaning_id, position, target_meaning_id, type, note, relevance, origin)
         VALUES ('m002', 50, 'm003', 'near', '', 3, 'typewriter-authored'),
                ('m003', 50, 'm002', 'mood', '', 5, 'typewriter-authored-reverse');
-      INSERT INTO meaning_relation_authored_sources (source_meaning_id, relation_position, direction, source_sense_id, target_sense_id, shard, line)
-        VALUES ('m002', 50, 'forward', 'w002-s1', 'w003-s1', '001', 1),
-               ('m003', 50, 'reverse', 'w002-s1', 'w003-s1', '001', 1);
+      INSERT INTO meaning_relation_authored_sources (source_meaning_id, relation_position, position, direction, source_sense_id, target_sense_id, shard, line)
+        VALUES ('m002', 50, 0, 'forward', 'w002-s1', 'w003-s1', '001', 1),
+               ('m003', 50, 0, 'reverse', 'w002-s1', 'w003-s1', '001', 1);
     `)), {});
     // An authored row without its pair or without approved-file provenance is a violation.
     await copyFile(good, copy('authored-unpaired.sqlite'));
@@ -180,9 +180,9 @@ test('meaning relation provenance: valid mapping passes; deleted, mis-bound and 
       INSERT INTO meaning_relations (source_meaning_id, position, target_meaning_id, type, note, relevance, origin)
         VALUES ('m002', 50, 'm001', 'mood', '자체 근거', 9, 'typewriter-authored'),
                ('m001', 50, 'm002', 'mood', '자체 근거', 9, 'typewriter-authored-reverse');
-      INSERT INTO meaning_relation_authored_sources (source_meaning_id, relation_position, direction, source_sense_id, target_sense_id, shard, line)
-        VALUES ('m002', 50, 'forward', 'w002-s1', 'w001-s1', '001', 2),
-               ('m001', 50, 'reverse', 'w002-s1', 'w001-s1', '001', 2);
+      INSERT INTO meaning_relation_authored_sources (source_meaning_id, relation_position, position, direction, source_sense_id, target_sense_id, shard, line)
+        VALUES ('m002', 50, 0, 'forward', 'w002-s1', 'w001-s1', '001', 2),
+               ('m001', 50, 0, 'reverse', 'w002-s1', 'w001-s1', '001', 2);
     `)), {});
 
     await copyFile(good, copy('flag.sqlite'));

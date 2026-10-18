@@ -262,8 +262,8 @@ function insertModel(database, model, metadata, surfaceFormRows, meaningLayer) {
   );
   const insertAuthoredSource = database.prepare(
     `INSERT INTO meaning_relation_authored_sources
-      (source_meaning_id, relation_position, direction, source_sense_id, target_sense_id, shard, line)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      (source_meaning_id, relation_position, position, direction, source_sense_id, target_sense_id, shard, line)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   );
   const insertMeaningRelationSource = database.prepare(
     `INSERT INTO meaning_relation_sources
@@ -385,12 +385,12 @@ function insertModel(database, model, metadata, surfaceFormRows, meaningLayer) {
     insertTextRelation.run(relation.source_meaning_id, relation.position, relation.text, relation.type, relation.relevance);
   }
   for (const relation of meaningLayer.relations) {
-    if (!relation.authored_source) continue;
-    const source = relation.authored_source;
-    insertAuthoredSource.run(
-      relation.source_meaning_id, relation.position, source.direction,
-      source.source_sense_id, source.target_sense_id, source.shard, source.line,
-    );
+    (relation.authored_sources ?? []).forEach((source, position) => {
+      insertAuthoredSource.run(
+        relation.source_meaning_id, relation.position, position, source.direction,
+        source.source_sense_id, source.target_sense_id, source.shard, source.line,
+      );
+    });
   }
   // Derived reverse provenance follows every meaning relation it references.
   for (const relation of meaningLayer.relations) {

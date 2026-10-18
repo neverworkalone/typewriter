@@ -208,16 +208,18 @@ CREATE TABLE meaning_relation_gloss_sources (
   FOREIGN KEY (target_record_id) REFERENCES records(id)
 );
 
--- Source of every authored relation row: which approved Relations JSONL line and which Canonical senses it binds.
+-- Every approved Relations JSONL line (and the Canonical senses it binds) that contributed to an authored relation row;
+-- position 0 is the contributor whose type and tier the row shows.
 CREATE TABLE meaning_relation_authored_sources (
   source_meaning_id TEXT NOT NULL,
   relation_position INTEGER NOT NULL,
+  position INTEGER NOT NULL CHECK (position >= 0),
   direction TEXT NOT NULL CHECK (direction IN ('forward', 'reverse')),
   source_sense_id TEXT NOT NULL,
   target_sense_id TEXT NOT NULL,
   shard TEXT NOT NULL,
   line INTEGER NOT NULL CHECK (line >= 1),
-  PRIMARY KEY (source_meaning_id, relation_position),
+  PRIMARY KEY (source_meaning_id, relation_position, position),
   FOREIGN KEY (source_meaning_id, relation_position)
     REFERENCES meaning_relations(source_meaning_id, position) ON DELETE CASCADE,
   FOREIGN KEY (source_sense_id) REFERENCES senses(id),

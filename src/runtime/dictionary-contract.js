@@ -64,15 +64,15 @@ export const MEANING_INTEGRITY_QUERIES = Object.freeze({
       WHERE reverse.source_meaning_id = relation.target_meaning_id
         AND reverse.target_meaning_id = relation.source_meaning_id
         AND reverse.type = 'direct')`,
-  // Issue #928: an authored ID<->ID relation is shown in both directions, each with its own type and relevance.
+  // Issue #928: an authored ID<->ID relation is shown in both directions, each with its own type and relevance. Several
+  // approved rows can reach the same two meanings, so a direction only needs some authored row (either origin) back.
   authored_relation_without_pair: `
     SELECT COUNT(*) FROM meaning_relations AS relation
     WHERE relation.origin IN ('typewriter-authored', 'typewriter-authored-reverse') AND NOT EXISTS (
       SELECT 1 FROM meaning_relations AS pair
       WHERE pair.source_meaning_id = relation.target_meaning_id
         AND pair.target_meaning_id = relation.source_meaning_id
-        AND pair.origin = CASE relation.origin WHEN 'typewriter-authored' THEN 'typewriter-authored-reverse'
-                                               ELSE 'typewriter-authored' END)`,
+        AND pair.origin IN ('typewriter-authored', 'typewriter-authored-reverse'))`,
   // Authored and reverse rows are exploratory (never direct/antonym) and always carry an editorial tier.
   authored_relation_invalid: `
     SELECT COUNT(*) FROM meaning_relations

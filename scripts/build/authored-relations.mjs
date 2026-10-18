@@ -114,17 +114,20 @@ export function projectAuthoredRelations({ files, records, meanings, existing, s
   const side = (entry) => (entry.authored_source?.direction === 'reverse' ? 1 : 0);
   const byTier = (left, right) => left.relevance - right.relevance || left.order - right.order || side(left) - side(right);
   const relations = [];
+  const kept = new Map();
   for (const entry of [...idEntries].sort(byTier)) {
     const key = keyOf(entry.source_meaning_id, entry.target_meaning_id, entry.type);
     if (taken.has(key)) {
       if (existingKeys.has(key)) throw new Error(`authored ${entry.type} ${entry.authored_source.source_sense_id} -> ${entry.authored_source.target_sense_id} duplicates an existing relation of the same pair and type`);
       stats.authored_deduplicated_count += 1;
+      // The lower-tier row still contributed: the kept row records every approved row that reached it.
+      kept.get(key)?.authored_sources.push(entry.authored_source);
       continue;
     }
     taken.add(key);
     const position = nextPosition.get(entry.source_meaning_id) ?? 0;
     nextPosition.set(entry.source_meaning_id, position + 1);
-    relations.push({
+    const relation = {
       source_meaning_id: entry.source_meaning_id,
       target_meaning_id: entry.target_meaning_id,
       type: entry.type,
@@ -133,8 +136,10 @@ export function projectAuthoredRelations({ files, records, meanings, existing, s
       origin: entry.origin,
       position,
       sources: [],
-      authored_source: entry.authored_source,
-    });
+      authored_sources: [entry.authored_source],
+    };
+    kept.set(key, relation);
+    relations.push(relation);
   }
 
   const textTaken = new Set();
