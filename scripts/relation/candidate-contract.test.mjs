@@ -102,3 +102,22 @@ test('the changed-file validator rejects the source lemma and accepts a correcte
     [{ path: candidateRelativePath, recordCount: 500, senseCount: 500, candidateCount: 1, emptySenseCount: 499 }],
   );
 });
+
+test('Candidate v1 compares candidates with the Stage 2 normal form (NFC, collapsed whitespace)', () => {
+  const lemma = '가'.normalize('NFC');
+  const decomposed = lemma.normalize('NFD');
+  assert.notEqual(decomposed, lemma);
+  const invalid = [
+    [decomposed, /repeats source lemma/],
+    ['다 라'.replace(' ', '  '), null],
+  ];
+  const run = (candidates, sourceLemma = lemma) => {
+    const canonicalRows = [{ id: 'w1', lemma: sourceLemma, senses: [{ id: 'w1-s1' }] }];
+    const rows = [{ record_id: 'w1', senses: [{ sense_id: 'w1-s1', candidates }] }];
+    return () => validateCandidateBatch(canonicalRows, rows, { batch: '01' });
+  };
+  assert.throws(run([invalid[0][0]]), invalid[0][1]);
+  assert.throws(run(['다 라', '다  라'], '표제'), /duplicate candidate/);
+  assert.throws(run(['가 나'.replace(' ', '  ')], '가 나'), /repeats source lemma/);
+  assert.doesNotThrow(run(['다 라'], '표제'));
+});

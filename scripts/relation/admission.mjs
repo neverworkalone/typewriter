@@ -3,7 +3,9 @@ import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { CANDIDATE_BATCH_SIZE, parseCandidateJsonl, validateCandidateBatch } from './candidate-contract.mjs';
+import { CANDIDATE_BATCH_SIZE, normalizeCandidate, parseCandidateJsonl, validateCandidateBatch } from './candidate-contract.mjs';
+
+export { normalizeCandidate };
 
 /**
  * Stage 2 Relation Admission tooling (Issue #928). Rule it guarantees: every unique Stage 1 candidate of a shard ends
@@ -26,9 +28,6 @@ const keysOf = (row) => Object.keys(row).sort().join(',');
 const isPlainObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 const isTier = (value) => Number.isInteger(value) && value >= 1 && value <= 9;
 const isText = (value) => typeof value === 'string' && value.trim().length > 0;
-
-/** Candidate comparison form: NFC, trimmed, internal whitespace collapsed. Anything else stays distinct (no fuzzy merge). */
-export const normalizeCandidate = (text) => text.normalize('NFC').trim().replace(/\s+/gu, ' ');
 
 export const shardCanonicalPath = (shard, root = REPOSITORY_DIRECTORY) => path.join(root, 'data/canonical', `stdict-${shard.padStart(4, '0')}.jsonl`);
 export const shardRelationPath = (shard, root = REPOSITORY_DIRECTORY) => path.join(root, 'data/relations', `relation-${shard}.jsonl`);
@@ -138,7 +137,7 @@ export function validateRelationRows({ relationRows, dropRows = [], index, shard
     if (isText_) {
       if (!isText(row.text) || row.text !== normalizeCandidate(row.text)) errors.push(`${at}: text must be a non-empty normalized string`);
       else {
-        if (source && row.text === source.record.lemma) errors.push(`${at}: text repeats the source lemma`);
+        if (source && row.text === normalizeCandidate(source.record.lemma)) errors.push(`${at}: text repeats the source lemma`);
         const key = textKey(row.source_sense_id, row.text);
         if (seenPairs.has(key)) errors.push(`${at}: duplicate text relation ${row.source_sense_id} -> ${row.text} (${seenPairs.get(key)})`);
         seenPairs.set(key, 'this shard');
@@ -207,7 +206,7 @@ export function prepareShard({ canonicalRows, candidateFiles, approvedRelationRo
       const fresh = [];
       for (const [text, producers] of entry.candidates) {
         stats.unique += 1;
-        if (text === record.lemma) continue;
+        if (text === normalizeCandidate(record.lemma)) throw new Error(`${sense.id}: candidate ${JSON.stringify(text)} repeats the source lemma`);
         if (covered.has(`${sense.id}\u0000${text}`)) { stats.skipped_existing += 1; continue; }
         fresh.push({ text, producers, same_spelling_records: (index.byLemma.get(text) ?? []).map((target) => target.id) });
       }
@@ -251,7 +250,7 @@ export function verifyAccounting({ canonicalRows, candidateFiles, relationRows, 
   for (const record of canonicalRows) {
     for (const sense of record.senses) {
       for (const text of merged.get(sense.id)?.candidates.keys() ?? []) {
-        if (text === record.lemma) continue;
+        if (text === normalizeCandidate(record.lemma)) throw new Error(`${sense.id}: candidate ${JSON.stringify(text)} repeats the source lemma`);
         counts.unique += 1;
         const key = `${sense.id}\u0000${text}`;
         if (claimed.has(key)) {
