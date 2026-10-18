@@ -86,3 +86,24 @@ test('--batch scopes prepare/verify to one 500-record batch: its own producers, 
   assert.equal(counts.relation, 1);
   assert.equal(counts.missing, 0);
 });
+
+test('an ID row owned by the other batch also answers this batch\'s reverse candidate in both prepare and verify', async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), 'typewriter-admission-xbatch-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const records = Array.from({ length: 501 }, (_, i) => ({ id: `w${i + 1}`, lemma: `표제${i + 1}`, senses: [{ id: `w${i + 1}-s1`, pos: 'noun', gloss: `뜻${i + 1}` }] }));
+  for (const dir of ['data/canonical', 'data/relation-candidates/001', 'data/relations']) await mkdir(path.join(root, dir), { recursive: true });
+  await writeFile(path.join(root, 'data/canonical/stdict-0001.jsonl'), jsonl(records));
+  for (const name of ['a_codex', 'a_claude', 'b_codex', 'b_claude', 'c_codex', 'd_codex']) {
+    await writeFile(path.join(root, `data/relation-candidates/001/001_01_${name}.jsonl`), jsonl(records.slice(0, 500).map((record) => ({ record_id: record.id, senses: [{ sense_id: record.senses[0].id, candidates: name === 'a_codex' && record.id === 'w1' ? ['표제501'] : [] }] }))));
+  }
+  // The valid ID link is owned by batch 02 (w501 -> w1); its reverse is batch 01's candidate.
+  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), jsonl([
+    { source_record_id: 'w501', source_sense_id: 'w501-s1', target_record_id: 'w1', target_sense_id: 'w1-s1', type: 'near', relevance: 2, reverse_type: 'near', reverse_relevance: 3 },
+  ]));
+  const args = (command) => [command, '--shard', '001', '--batch', '01'];
+  const prepared = await quiet(() => run(args('prepare'), { root }));
+  assert.deepEqual(texts(prepared), []);
+  assert.equal(prepared.stats.skipped_existing, 1);
+  const counts = await quiet(() => run(args('verify'), { root }));
+  assert.equal(counts.missing, 0);
+});

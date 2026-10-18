@@ -167,9 +167,9 @@ node scripts/relation/admission-cli.mjs verify  --shard 001                     
 
 `--batch 01|02`를 주면 해당 500레코드 배치의 필수 Stage 1 파일 6개·Canonical 행·행 귀속만 대상으로 한다(같은 샤드 파일 `relation-<SSS>.jsonl`에 배치별로 나눠 누적할 때 사용). 다른 배치의 행은 그 실행의 귀속 검사에서 제외되며, 샤드 전체가 끝났는지는 `--batch` 없는 `verify`가 판단한다.
 
-필수 Stage 1 파일(2배치 × A-Codex/A-Claude/B-Codex/B-Claude/C/D)이 하나라도 없으면 두 명령 모두 실패한다. `--allow-partial`은 도구 점검 전용이며 샤드 완료 증거가 아니다. 다른 샤드의 승인 Relations(정·역방향)와 동철 이의어는 위 규칙대로 처리하며, 동철 이의어 철자는 기존 관계로 간주하지 않는다.
+`--batch` 없이 실행하면 필수 Stage 1 파일(2배치 × A-Codex/A-Claude/B-Codex/B-Claude/C/D 12개)이 하나라도 없을 때 실패한다. `--batch BB`는 **해당 배치의 필수 생산자 6개만** 요구하므로 다른 배치 입력이 없어도 착수·검증할 수 있다. 같은 샤드의 다른 배치가 소유한 ID 관계의 역방향도 `prepare`와 `verify` 모두 기존 승인 관계로 계산한다. `--allow-partial`은 도구 점검 전용이며 샤드 완료 증거가 아니다. 다른 샤드의 승인 Relations(정·역방향)와 동철 이의어는 위 규칙대로 처리하며, 동철 이의어 철자는 기존 관계로 간주하지 않는다.
 
-**다음 샤드 선택(#927):** `data/relation-candidates/<SSS>/`에 `verify`의 필수 12개 파일이 모두 있고(`prepare`가 `complete: true`), `data/relations/relation-<SSS>.jsonl`이 master에도 열린 PR에도 없는 가장 낮은 샤드를 고른다.
+**다음 작업 선택(#927):** 완료 단위는 (샤드, 배치)다. 샤드 001부터 01→02 순서로, 해당 배치의 필수 Stage 1 파일 6개가 master에 있고 `verify --shard <SSS> --batch <BB>`가 아직 성공하지 못하는(또는 그 배치 행이 master에 없는) 첫 배치를 고른다. 같은 샤드의 열린 PR이 있으면 그 PR이 머지될 때까지 같은 `relation-<SSS>.jsonl`을 수정하는 다음 배치를 시작하지 않는다(순차 머지). 두 배치가 모두 끝난 뒤 `verify --shard <SSS>`로 샤드 전체를 확인한다. 파일 존재만으로 샤드 완료를 판단하지 않는다.
 
 ## 5. Build와 검증 경계
 
