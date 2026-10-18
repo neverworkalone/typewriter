@@ -41,14 +41,17 @@ function requireComplete(inventory, allowPartial) {
   console.error(`PARTIAL: ${message}`);
 }
 
-export async function run(argv) {
+export async function run(argv, { root } = {}) {
   const options = parseArgs(argv);
-  const { canonicalRows, candidateFiles, inventory, index } = await loadShard(options.shard);
+  const { canonicalRows, candidateFiles, inventory, index } = await loadShard(options.shard, root);
   requireComplete(inventory, options.allowPartial);
-  const others = await loadApprovedRelations(undefined, { exceptShard: options.shard });
+  const others = await loadApprovedRelations(root, { exceptShard: options.shard });
 
   if (options.command === 'prepare') {
-    const result = prepareShard({ canonicalRows, candidateFiles, approvedRelationRows: others, index });
+    // A re-run must not re-offer what is already decided: this shard's own approved rows and real Drops count too.
+    const own = await loadOptionalJsonl(shardRelationPath(options.shard, root));
+    const ownDrops = await loadOptionalJsonl(shardDropPath(options.shard, root));
+    const result = prepareShard({ canonicalRows, candidateFiles, approvedRelationRows: [...others, ...own], dropRows: ownDrops, index });
     const payload = { shard: options.shard, complete: inventory.missing.length === 0, missing: inventory.missing, stats: result.stats, items: result.items };
     if (options.out) {
       await mkdir(path.dirname(path.resolve(options.out)), { recursive: true });
@@ -58,8 +61,8 @@ export async function run(argv) {
     return payload;
   }
 
-  const relationRows = await loadOptionalJsonl(shardRelationPath(options.shard));
-  const dropRows = await loadOptionalJsonl(shardDropPath(options.shard));
+  const relationRows = await loadOptionalJsonl(shardRelationPath(options.shard, root));
+  const dropRows = await loadOptionalJsonl(shardDropPath(options.shard, root));
   const shardSenseIds = new Set(canonicalRows.flatMap((record) => record.senses.map((sense) => sense.id)));
   validateRelationRows({ relationRows, dropRows, index, shardSenseIds, otherRelationRows: others });
   const counts = verifyAccounting({ canonicalRows, candidateFiles, relationRows, dropRows, otherRelationRows: others, index });
