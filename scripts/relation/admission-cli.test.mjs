@@ -120,3 +120,32 @@ test('a batch with no candidates and no authored rows is complete once verify su
   const counts = await quiet(() => run(['verify', '--shard', '001', '--batch', '01'], { root }));
   assert.deepEqual([counts.unique, counts.relation, counts.drop, counts.missing], [0, 0, 0, 0]);
 });
+
+test('a candidate answered by the reverse of a stored ID pair cannot also be a Drop or a text-only row', async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), 'typewriter-admission-double-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const records = Array.from({ length: 501 }, (_, i) => ({ id: `w${i + 1}`, lemma: `표제${i + 1}`, senses: [{ id: `w${i + 1}-s1`, pos: 'noun', gloss: `뜻${i + 1}` }] }));
+  for (const dir of ['data/canonical', 'data/relation-candidates/001', 'data/relations', 'data/relation-drops']) await mkdir(path.join(root, dir), { recursive: true });
+  await writeFile(path.join(root, 'data/canonical/stdict-0001.jsonl'), jsonl(records));
+  for (const name of ['a_codex', 'a_claude', 'b_codex', 'b_claude', 'c_codex', 'd_codex']) {
+    await writeFile(path.join(root, `data/relation-candidates/001/001_01_${name}.jsonl`), jsonl(records.slice(0, 500).map((record) => ({
+      record_id: record.id,
+      senses: [{ sense_id: record.senses[0].id, candidates: name === 'a_codex' && record.id === 'w1' ? ['표제501', '다른 말'] : [] }],
+    }))));
+  }
+  const idRow = { source_record_id: 'w501', source_sense_id: 'w501-s1', target_record_id: 'w1', target_sense_id: 'w1-s1', type: 'near', relevance: 2, reverse_type: 'near', reverse_relevance: 3 };
+  const other = { source_record_id: 'w1', source_sense_id: 'w1-s1', text: '다른 말', type: 'scene', relevance: 4 };
+  const dropOf = (candidate) => ({ source_record_id: 'w1', source_sense_id: 'w1-s1', candidate, reason: '무관' });
+  const verify = async (relations, drops) => {
+    await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), jsonl(relations));
+    await writeFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), drops.length ? jsonl(drops) : '');
+    return quiet(() => run(['verify', '--shard', '001', '--batch', '01'], { root }));
+  };
+  // Positive control: the reverse answers 표제501; 다른 말 is authored once.
+  assert.equal((await verify([idRow, other], [])).reverse_covered, 1);
+  // The same candidate also dropped or also authored text-only is a double disposition.
+  await assert.rejects(() => verify([idRow, other], [dropOf('표제501')]), /reverse of a stored ID pair .* cannot also be a drop/);
+  await assert.rejects(() => verify([idRow, other, { ...other, text: '표제501' }], []), /cannot also be a text-only relation/);
+  // A different candidate of the same sense may still be dropped normally.
+  assert.equal((await verify([idRow], [dropOf('다른 말')])).drop, 1);
+});

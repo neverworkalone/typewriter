@@ -291,6 +291,7 @@ export function verifyAccounting({ canonicalRows, candidateFiles, relationRows: 
         const key = `${sense.id}\u0000${text}`;
         if (claimed.has(key)) {
           if (covered.has(key)) errors.push(`${sense.id}: ${JSON.stringify(text)} is already answered by an approved Relation (${covered.get(key)}) and must not be re-authored`);
+          else if (reverseCovered.has(key) && claimed.get(key) !== 'an ID relation') errors.push(`${sense.id}: ${JSON.stringify(text)} is already answered by the reverse of a stored ID pair (${reverseCovered.get(key)}) and cannot also be ${claimed.get(key)}`);
           continue;
         }
         if (covered.has(key)) { counts.skipped_existing += 1; continue; }
