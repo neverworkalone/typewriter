@@ -36,6 +36,14 @@ test('artifact policy classifies current projections and durable inputs', async 
     { generated: [], unclassified: [] },
   );
   assert.deepEqual(
+    classifyTrackedArtifacts(['data/relations/relation-001.jsonl', 'data/relation-drops/drop-001.jsonl'], options),
+    { generated: [], unclassified: [] },
+  );
+  assert.deepEqual(
+    classifyTrackedArtifacts(['data/relations/notes.jsonl', 'data/relation-drops/other.jsonl'], options),
+    { generated: [], unclassified: ['data/relations/notes.jsonl', 'data/relation-drops/other.jsonl'] },
+  );
+  assert.deepEqual(
     classifyTrackedArtifacts(['data/validation/future-derived-envelope.json'], options),
     {
       generated: [],
