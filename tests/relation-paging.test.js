@@ -196,3 +196,25 @@ describe('relevance ordering (#396)', () => {
       .toEqual(['a', 'b']);
   });
 });
+
+describe('text-only authored relation', () => {
+  it('renders as plain text without a click target while linked relations stay buttons', () => {
+    const record = projectRecord({
+      id: 'w1', record_type: 'entry', role: 'start', lemma: '시험',
+      senses: [{
+        id: 'w1-s1', pos: 'noun', gloss: '뜻',
+        relations: [
+          { position: 0, target: 't0', type: 'near', relevance: 2, target_lemma: '연결' },
+          { position: 1, target: null, target_sense: null, type: 'near', relevance: 3, target_lemma: '글자뿐' },
+        ],
+      }],
+    });
+    const host = mount(record);
+    const group = host.querySelector('[data-group-id="near"]') ?? host;
+    const buttons = [...group.querySelectorAll('button.relation-link')].map((el) => el.textContent);
+    const statics = [...group.querySelectorAll('.relation-link.is-static')].map((el) => el.textContent);
+    expect(buttons).toContain('연결');
+    expect(buttons).not.toContain('글자뿐');
+    expect(statics).toContain('글자뿐');
+  });
+});

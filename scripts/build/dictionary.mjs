@@ -20,6 +20,7 @@ import { SQLITE_SCHEMA_SQL, SQLITE_SCHEMA_VERSION, SQLITE_SOURCE_SCHEMA_SQL } fr
 import { MEANING_SOURCE_INTEGRITY_QUERIES, assertRecordMeaningCoverage, glossReferenceViolations } from './meaning-source-checks.mjs';
 import { compareMeaningIds } from '../../src/runtime/meaning-order.js';
 import { projectDirectReverses } from './direct-reverse.mjs';
+import { DEFAULT_RELATIONS_DIRECTORY, loadApprovedRelationFiles, loadShardSenseIds, projectAuthoredRelations } from './authored-relations.mjs';
 import { projectGlossReferences } from './gloss-arrow-reference.mjs';
 import { parseMeaningId, projectMeaningRelations, projectRecordMeanings } from './record-meanings.mjs';
 import {
@@ -61,27 +62,31 @@ function assertRecordMeaningsOption(inputDirectory, recordMeanings) {
   }
 }
 
-function loadMeaningLayer({ model, inputDirectory, recordMeanings }) {
+function loadMeaningLayer({ model, inputDirectory, recordMeanings, authoredFiles = [], shardSenseIds }) {
   const isDefault = path.resolve(inputDirectory) === path.resolve(DEFAULT_CANONICAL_DIRECTORY);
   assertRecordMeaningsOption(inputDirectory, recordMeanings);
   if (!(recordMeanings ?? isDefault)) {
-    return { projected: false, meanings: [], relations: [], stats: projectMeaningRelations({ records: [], meanings: [] }).stats };
+    return { projected: false, meanings: [], relations: [], textRelations: [], stats: projectMeaningRelations({ records: [], meanings: [] }).stats };
   }
   const meanings = projectRecordMeanings(model.records);
   const projection = projectMeaningRelations({ records: model.records, meanings });
   // Issue #834: STDICT `→` references join the original `direct` relations before every `direct` is mirrored.
   const glossed = projectGlossReferences({ records: model.records, meanings, relations: projection.relations });
   const derived = projectDirectReverses({ relations: glossed.relations });
-  const relations = [...glossed.relations, ...derived.relations];
+  const stdictRelations = [...glossed.relations, ...derived.relations];
+  const authored = projectAuthoredRelations({ files: authoredFiles, records: model.records, meanings, existing: stdictRelations, shardSenseIds });
+  const relations = [...stdictRelations, ...authored.relations];
   return {
     projected: true,
     meanings,
     relations,
+    textRelations: authored.textRelations,
     glossHolds: glossed.holds,
     stats: {
       ...projection.stats,
       ...glossed.stats,
       ...Object.fromEntries(Object.entries(derived.stats).map(([key, value]) => [`direct_${key}`, value])),
+      ...authored.stats,
     },
   };
 }
@@ -152,6 +157,7 @@ function metadataEntries(model, metadata, surfaceProjection, meaningLayer) {
       0,
     ),
     meaning_relation_count: meaningLayer.relations.length,
+    meaning_text_relation_count: meaningLayer.textRelations.length,
     meaning_relation_source_count: meaningLayer.relations.reduce(
       (count, relation) => count + relation.sources.length,
       0,
@@ -248,6 +254,15 @@ function insertModel(database, model, metadata, surfaceFormRows, meaningLayer) {
     `INSERT INTO meaning_relation_gloss_sources
       (source_meaning_id, relation_position, position, source_sense_id, gloss_offset, reference_text,
        target_record_id, target_sense_position)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+  );
+  const insertTextRelation = database.prepare(
+    `INSERT INTO meaning_text_relations (source_meaning_id, position, text, type, relevance)
+     VALUES (?, ?, ?, ?, ?)`,
+  );
+  const insertAuthoredSource = database.prepare(
+    `INSERT INTO meaning_relation_authored_sources
+      (source_meaning_id, relation_position, position, direction, source_sense_id, target_sense_id, shard, line)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   );
   const insertMeaningRelationSource = database.prepare(
@@ -365,6 +380,18 @@ function insertModel(database, model, metadata, surfaceFormRows, meaningLayer) {
       );
     });
   }
+  // Authored Relations (Issue #928): text-only rows and the approved-file provenance of every authored row.
+  for (const relation of meaningLayer.textRelations) {
+    insertTextRelation.run(relation.source_meaning_id, relation.position, relation.text, relation.type, relation.relevance);
+  }
+  for (const relation of meaningLayer.relations) {
+    (relation.authored_sources ?? []).forEach((source, position) => {
+      insertAuthoredSource.run(
+        relation.source_meaning_id, relation.position, position, source.direction,
+        source.source_sense_id, source.target_sense_id, source.shard, source.line,
+      );
+    });
+  }
   // Derived reverse provenance follows every meaning relation it references.
   for (const relation of meaningLayer.relations) {
     if (!relation.reverse_of) continue;
@@ -427,6 +454,7 @@ export async function buildDictionary({
   semanticAudit,
   normalizedModel,
   recordMeanings,
+  relationsDirectory,
   requireSurfaceFormClassifications,
   requireSurfaceFormCollisionReview,
   ...removedOptions
@@ -470,7 +498,11 @@ export async function buildDictionary({
     requireClassDispositions,
     requireCollisionReview,
   });
-  const meaningLayer = loadMeaningLayer({ model, inputDirectory, recordMeanings });
+  // Approved Relations JSONL feeds the official canonical build; fixture inputs opt in with `relationsDirectory`.
+  const authoredFiles = await loadApprovedRelationFiles(relationsDirectory
+    ?? (requireExceptionTargets ? DEFAULT_RELATIONS_DIRECTORY : undefined));
+  const shardSenseIds = authoredFiles.length > 0 ? await loadShardSenseIds(inputDirectory) : undefined;
+  const meaningLayer = loadMeaningLayer({ model, inputDirectory, recordMeanings, authoredFiles, shardSenseIds });
   const provenance = await resolveBuildProvenance({
     repositoryDirectory,
     sourceRevision,

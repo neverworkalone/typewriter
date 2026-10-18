@@ -22,6 +22,7 @@ const LITE_TABLE_COPIES = [
   ['meaning_members', 'meaning_id, position, sense_id, record_id', 'meaning_id, position'],
   ['sense_adjudications', 'sense_id, reason, record_id, duplicate_of_sense_id', 'sense_id'],
   ['meaning_relations', 'source_meaning_id, position, target_meaning_id, type, note, relevance, origin', 'source_meaning_id, position'],
+  ['meaning_text_relations', 'source_meaning_id, position, text, type, relevance', 'source_meaning_id, position'],
 ];
 
 /**

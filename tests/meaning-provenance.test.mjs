@@ -100,12 +100,22 @@ test('meaning relation provenance: valid mapping passes; deleted, mis-bound and 
     });
     assert.ok(misbound.meaning_relation_source_mismatch > 0, JSON.stringify(misbound));
 
-    // Typewriter-authored relation without STDICT provenance is valid; an unknown origin is rejected by the schema.
+    // A Typewriter-authored pair (forward + reverse, bound to approved-file lines) needs no STDICT provenance; an unknown origin is rejected by the schema.
     await copyFile(good, copy('authored.sqlite'));
-    assert.deepEqual(violations(copy('authored.sqlite'), (db) => db.exec(
+    assert.deepEqual(violations(copy('authored.sqlite'), (db) => db.exec(`
+      INSERT INTO meaning_relations (source_meaning_id, position, target_meaning_id, type, note, relevance, origin)
+        VALUES ('m002', 50, 'm003', 'near', '', 3, 'typewriter-authored'),
+               ('m003', 50, 'm002', 'mood', '', 5, 'typewriter-authored-reverse');
+      INSERT INTO meaning_relation_authored_sources (source_meaning_id, relation_position, position, direction, source_sense_id, target_sense_id, shard, line)
+        VALUES ('m002', 50, 0, 'forward', 'w002-s1', 'w003-s1', '001', 1),
+               ('m003', 50, 0, 'reverse', 'w002-s1', 'w003-s1', '001', 1);
+    `)), {});
+    // An authored row without its pair or without approved-file provenance is a violation.
+    await copyFile(good, copy('authored-unpaired.sqlite'));
+    assert.deepEqual(violations(copy('authored-unpaired.sqlite'), (db) => db.exec(
       "INSERT INTO meaning_relations (source_meaning_id, position, target_meaning_id, type, note, relevance, origin) "
-      + "VALUES ('m002', 0, 'm003', 'near', '작성한 연관', 3, 'typewriter-authored')",
-    )), {});
+      + "VALUES ('m002', 50, 'm003', 'near', '', 3, 'typewriter-authored')",
+    )), { authored_relation_without_pair: 1, authored_relation_without_provenance: 1 });
     await copyFile(good, copy('origin.sqlite'));
     assert.throws(() => violations(copy('origin.sqlite'), (db) => db.exec(
       "UPDATE meaning_relations SET origin = 'other' WHERE source_meaning_id = 'm001' AND position = 0",
@@ -166,10 +176,14 @@ test('meaning relation provenance: valid mapping passes; deleted, mis-bound and 
 
     // An authored relation owns its own note/relevance and is not compared with STDICT.
     await copyFile(good, copy('authored-content.sqlite'));
-    assert.deepEqual(violations(copy('authored-content.sqlite'), (db) => db.exec(
-      "INSERT INTO meaning_relations (source_meaning_id, position, target_meaning_id, type, note, relevance, origin) "
-      + "VALUES ('m002', 0, 'm001', 'mood', '자체 근거', 9, 'typewriter-authored')",
-    )), {});
+    assert.deepEqual(violations(copy('authored-content.sqlite'), (db) => db.exec(`
+      INSERT INTO meaning_relations (source_meaning_id, position, target_meaning_id, type, note, relevance, origin)
+        VALUES ('m002', 50, 'm001', 'mood', '자체 근거', 9, 'typewriter-authored'),
+               ('m001', 50, 'm002', 'mood', '자체 근거', 9, 'typewriter-authored-reverse');
+      INSERT INTO meaning_relation_authored_sources (source_meaning_id, relation_position, position, direction, source_sense_id, target_sense_id, shard, line)
+        VALUES ('m002', 50, 0, 'forward', 'w002-s1', 'w001-s1', '001', 2),
+               ('m001', 50, 0, 'reverse', 'w002-s1', 'w001-s1', '001', 2);
+    `)), {});
 
     await copyFile(good, copy('flag.sqlite'));
     assert.ok(violations(copy('flag.sqlite'), (db) => db.exec(

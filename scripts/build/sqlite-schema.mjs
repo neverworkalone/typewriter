@@ -89,14 +89,29 @@ CREATE TABLE meaning_relations (
   relevance INTEGER CHECK (relevance IS NULL OR relevance BETWEEN 1 AND 9),
   origin TEXT NOT NULL CHECK (origin IN (
     '${MEANING_RELATION_ORIGINS.projection}', '${MEANING_RELATION_ORIGINS.authored}',
-    '${MEANING_RELATION_ORIGINS.reverse}', '${MEANING_RELATION_ORIGINS.gloss}'
+    '${MEANING_RELATION_ORIGINS.reverse}', '${MEANING_RELATION_ORIGINS.gloss}',
+    '${MEANING_RELATION_ORIGINS.authoredReverse}'
   )),
-  CHECK (length(note) > 0),
+  -- Typewriter-authored relations carry an editorial type and tier but no source note (Issue #928).
+  CHECK (length(note) > 0 OR origin IN ('${MEANING_RELATION_ORIGINS.authored}', '${MEANING_RELATION_ORIGINS.authoredReverse}')),
   PRIMARY KEY (source_meaning_id, position),
   UNIQUE (source_meaning_id, target_meaning_id, type),
   CHECK (source_meaning_id <> target_meaning_id),
   FOREIGN KEY (source_meaning_id) REFERENCES meanings(id) ON DELETE CASCADE,
   FOREIGN KEY (target_meaning_id) REFERENCES meanings(id)
+) WITHOUT ROWID;
+
+-- Authored relations whose target has no exact Canonical record/sense (Issue #928): shown as plain text, never a link,
+-- and never mirrored.
+CREATE TABLE meaning_text_relations (
+  source_meaning_id TEXT NOT NULL,
+  position INTEGER NOT NULL CHECK (position >= 0),
+  text TEXT NOT NULL CHECK (length(text) > 0),
+  type TEXT NOT NULL CHECK (type IN ('near', 'mood', 'scene', 'sensory', 'action', 'association')),
+  relevance INTEGER NOT NULL CHECK (relevance BETWEEN 1 AND 9),
+  PRIMARY KEY (source_meaning_id, position),
+  UNIQUE (source_meaning_id, text, type),
+  FOREIGN KEY (source_meaning_id) REFERENCES meanings(id) ON DELETE CASCADE
 ) WITHOUT ROWID;
 
 CREATE INDEX idx_records_lemma ON records(lemma);
@@ -191,6 +206,24 @@ CREATE TABLE meaning_relation_gloss_sources (
     REFERENCES meaning_relations(source_meaning_id, position) ON DELETE CASCADE,
   FOREIGN KEY (source_sense_id) REFERENCES senses(id),
   FOREIGN KEY (target_record_id) REFERENCES records(id)
+);
+
+-- Every approved Relations JSONL line (and the Canonical senses it binds) that contributed to an authored relation row;
+-- position 0 is the contributor whose type and tier the row shows.
+CREATE TABLE meaning_relation_authored_sources (
+  source_meaning_id TEXT NOT NULL,
+  relation_position INTEGER NOT NULL,
+  position INTEGER NOT NULL CHECK (position >= 0),
+  direction TEXT NOT NULL CHECK (direction IN ('forward', 'reverse')),
+  source_sense_id TEXT NOT NULL,
+  target_sense_id TEXT NOT NULL,
+  shard TEXT NOT NULL,
+  line INTEGER NOT NULL CHECK (line >= 1),
+  PRIMARY KEY (source_meaning_id, relation_position, position),
+  FOREIGN KEY (source_meaning_id, relation_position)
+    REFERENCES meaning_relations(source_meaning_id, position) ON DELETE CASCADE,
+  FOREIGN KEY (source_sense_id) REFERENCES senses(id),
+  FOREIGN KEY (target_sense_id) REFERENCES senses(id)
 );
 
 CREATE INDEX idx_senses_record_position ON senses(record_id, position);

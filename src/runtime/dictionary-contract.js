@@ -1,11 +1,12 @@
 export const DICTIONARY_VERSION = 'm2-pilot-1';
-export const SQLITE_SCHEMA_VERSION = '10';
+export const SQLITE_SCHEMA_VERSION = '11';
 
 export const MEANING_RELATION_ORIGINS = Object.freeze({
   projection: 'stdict-sense-projection',
   authored: 'typewriter-authored',
   reverse: 'direct-reverse-projection',
   gloss: 'stdict-gloss-reference',
+  authoredReverse: 'typewriter-authored-reverse',
 });
 
 /**
@@ -18,6 +19,7 @@ export const BUILD_ONLY_TABLES = Object.freeze([
   'meaning_relation_sources',
   'meaning_relation_reverse_sources',
   'meaning_relation_gloss_sources',
+  'meaning_relation_authored_sources',
 ]);
 
 /**
@@ -41,6 +43,7 @@ export const DICTIONARY_COUNT_QUERIES = Object.freeze({
   meaning_count: 'SELECT COUNT(*) FROM meanings',
   meaning_member_count: 'SELECT COUNT(*) FROM meaning_members',
   meaning_relation_count: 'SELECT COUNT(*) FROM meaning_relations',
+  meaning_text_relation_count: 'SELECT COUNT(*) FROM meaning_text_relations',
   expression_count: "SELECT COUNT(*) FROM records WHERE record_type = 'expression'",
 });
 
@@ -61,4 +64,18 @@ export const MEANING_INTEGRITY_QUERIES = Object.freeze({
       WHERE reverse.source_meaning_id = relation.target_meaning_id
         AND reverse.target_meaning_id = relation.source_meaning_id
         AND reverse.type = 'direct')`,
+  // Issue #928: an authored ID<->ID relation is shown in both directions, each with its own type and relevance. Several
+  // approved rows can reach the same two meanings, so a direction only needs some authored row (either origin) back.
+  authored_relation_without_pair: `
+    SELECT COUNT(*) FROM meaning_relations AS relation
+    WHERE relation.origin IN ('typewriter-authored', 'typewriter-authored-reverse') AND NOT EXISTS (
+      SELECT 1 FROM meaning_relations AS pair
+      WHERE pair.source_meaning_id = relation.target_meaning_id
+        AND pair.target_meaning_id = relation.source_meaning_id
+        AND pair.origin IN ('typewriter-authored', 'typewriter-authored-reverse'))`,
+  // Authored and reverse rows are exploratory (never direct/antonym) and always carry an editorial tier.
+  authored_relation_invalid: `
+    SELECT COUNT(*) FROM meaning_relations
+    WHERE origin IN ('typewriter-authored', 'typewriter-authored-reverse')
+      AND (type IN ('direct', 'antonym') OR relevance IS NULL)`,
 });
