@@ -45,12 +45,20 @@ export function producerOf(fileName) {
   return { batch, method, model, key: method === 'c' || method === 'd' ? method : `${method}_${model}` };
 }
 
-/** Which required (batch, producer) Candidate files are present; optional files (e.g. DeepSeek) are carried along. */
+/**
+ * Which required (batch, producer) Candidate files are present; optional files (e.g. DeepSeek) are carried along.
+ * C and D each have one owner-assigned model per batch, so a second C (or D) file of another model is rejected rather
+ * than silently merged under the same producer key.
+ */
 export function candidateInventory(fileNames) {
   const present = new Map();
   for (const name of fileNames) {
     const { batch, key } = producerOf(name);
-    present.set(`${batch}/${key}`, name);
+    const slot = `${batch}/${key}`;
+    if (present.has(slot) && (key === 'c' || key === 'd')) {
+      throw new Error(`batch ${batch} has more than one ${key.toUpperCase()} producer file (${present.get(slot)}, ${name}); C and D allow exactly one owner-assigned model`);
+    }
+    present.set(slot, name);
   }
   const missing = [];
   for (const batch of BATCHES) {

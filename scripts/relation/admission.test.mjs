@@ -140,3 +140,16 @@ test('a decomposed spelling of the source lemma is rejected, never silently skip
   assert.throws(() => verifyAccounting({ canonicalRows: local, candidateFiles: [decomposedFile], relationRows: [], dropRows: [], otherRelationRows: [], index: localIndex }), /repeats source lemma/);
   assert.throws(() => validateRelationRows({ relationRows: [{ source_record_id: 'w1', source_sense_id: 'w1-s1', text: lemma, type: 'near', relevance: 1 }], index: localIndex, shardSenseIds: new Set(['w1-s1']) }), /source lemma/);
 });
+
+test('inventory allows exactly one C and one D model per batch and rejects a second one', () => {
+  const full = ['01', '02'].flatMap((batch) => ['a_codex', 'a_claude', 'b_codex', 'b_claude', 'c_codex', 'd_codex'].map((key) => {
+    const [method, model] = key.split('_');
+    return `001_${batch}_${method}_${model}.jsonl`;
+  }));
+  assert.deepEqual(candidateInventory(full).missing, []);
+  assert.deepEqual(candidateInventory([...full, '001_01_a_deepseek.jsonl']).missing, []);
+  assert.throws(() => candidateInventory([...full, '001_01_c_claude.jsonl']), /more than one C producer/);
+  assert.throws(() => candidateInventory([...full, '001_02_d_deepseek.jsonl']), /more than one D producer/);
+  // The same model name in the other batch is a different slot.
+  assert.doesNotThrow(() => candidateInventory(full.map((name) => name.replace('_c_codex', '_c_claude').replace('001_02_c_claude', '001_02_c_codex'))));
+});
