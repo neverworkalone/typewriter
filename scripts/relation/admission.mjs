@@ -271,7 +271,18 @@ export function verifyAccounting({ canonicalRows, candidateFiles, relationRows: 
   });
   dropRows.forEach((row, position) => claim(row.source_sense_id, row.candidate, 'a drop', `drop:${position + 1}`));
 
-  const counts = { unique: 0, relation: relationRows.length, drop: dropRows.length, skipped_existing: 0, missing: 0 };
+  // An ID pair is stored once. When both senses listed each other as a Stage 1 candidate, the stored row's reverse
+  // direction answers the other candidate, provided the source spelling identifies one Canonical record.
+  const reverseCovered = new Map();
+  for (const row of allRelationRows) {
+    if ('text' in row) continue;
+    const source = index.byId.get(row.source_record_id);
+    if (source && (index.byLemma.get(source.lemma) ?? []).length === 1) {
+      reverseCovered.set(`${row.target_sense_id}\u0000${normalizeCandidate(source.lemma)}`, row.source_sense_id);
+    }
+  }
+
+  const counts = { unique: 0, relation: relationRows.length, drop: dropRows.length, skipped_existing: 0, reverse_covered: 0, missing: 0 };
   for (const record of scopeRows) {
     for (const sense of record.senses) {
       for (const text of merged.get(sense.id)?.candidates.keys() ?? []) {
@@ -283,6 +294,7 @@ export function verifyAccounting({ canonicalRows, candidateFiles, relationRows: 
           continue;
         }
         if (covered.has(key)) { counts.skipped_existing += 1; continue; }
+        if (reverseCovered.has(key)) { counts.reverse_covered += 1; continue; }
         counts.missing += 1;
         errors.push(`${sense.id}: candidate ${JSON.stringify(text)} has no relation, drop or existing approved relation`);
       }
