@@ -141,3 +141,25 @@ test('Candidate v1 rejects pieces of a thousands-comma number and keeps the whol
   assert.doesNotThrow(run(['460미터'], '460미터와 12,000'));
   assert.doesNotThrow(run(['7', '460미터'], '높이는 7 460미터'));
 });
+
+test('Candidate v1 thousands-comma check ignores digits inside other numbers and non-thousands comma lists', () => {
+  const run = (candidates, gloss) => () => {
+    const canonicalRows = [{ id: 'w1', lemma: '가짓과', senses: [{ id: 'w1-s1', gloss }] }];
+    const candidateRows = [{ record_id: 'w1', senses: [{ sense_id: 'w1-s1', candidates }] }];
+    return validateCandidateBatch(canonicalRows, candidateRows, { batch: '01' });
+  };
+  const fragment = /is a fragment of a number written with a thousands comma/;
+  // real pattern (w4461): the "1" inside "15속" must not count as an intact occurrence of "1"
+  const solanaceae = '82속 1,700여 종 가운데 15속 30여 종이 있다.';
+  for (const invalid of [['1'], ['700여 종'], ['82속', '1']]) assert.throws(run(invalid, solanaceae), fragment, JSON.stringify(invalid));
+  for (const valid of [['1,700여 종'], ['15속'], ['30여 종'], ['82속', '1,700여 종']]) assert.doesNotThrow(run(valid, solanaceae), JSON.stringify(valid));
+  // repeated digits inside one thousands group cannot make a fragment look intact
+  for (const invalid of [['1'], ['111미터'], ['11']]) assert.throws(run(invalid, '높이는 1,111미터.'), fragment, JSON.stringify(invalid));
+  assert.doesNotThrow(run(['1,111미터'], '높이는 1,111미터.'));
+  // a genuinely separate "1" elsewhere in the gloss keeps the candidate valid
+  assert.doesNotThrow(run(['1'], '높이는 1,155미터이며 1개가 있다.'));
+  // digit lists that are not thousands groups (locants, plain pairs) are never fragments
+  for (const gloss of ['1,2,3-트리클로로벤젠', '2,3 번 위치', '12,34']) {
+    for (const candidate of ['1', '2', '3', '34']) assert.doesNotThrow(run([candidate], gloss), `${gloss} ${candidate}`);
+  }
+});
