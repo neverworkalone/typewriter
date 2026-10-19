@@ -17,6 +17,25 @@ function fail(message) {
   throw new Error(message);
 }
 
+/**
+ * True when a candidate is only a piece of a digit group the source gloss writes with a thousands comma
+ * ("7,460미터" cut into "7" and "460미터"). It is a fragment when every occurrence of the candidate in the gloss sits
+ * on a `digit,digit` boundary; a candidate that also appears intact elsewhere is not treated as a fragment.
+ */
+export function isThousandsCommaFragment(candidate, gloss) {
+  if (typeof gloss !== 'string' || !/\d,\d/u.test(gloss) || !/^\d|\d$/u.test(candidate)) return false;
+  let occurrences = 0;
+  let fragments = 0;
+  for (let at = gloss.indexOf(candidate); at !== -1; at = gloss.indexOf(candidate, at + 1)) {
+    occurrences += 1;
+    const end = at + candidate.length;
+    const cutBefore = /^\d/u.test(candidate) && /\d,$/u.test(gloss.slice(Math.max(0, at - 2), at));
+    const cutAfter = /\d$/u.test(candidate) && /^,\d{3}/u.test(gloss.slice(end, end + 4));
+    if (cutBefore || cutAfter) fragments += 1;
+  }
+  return occurrences > 0 && fragments === occurrences;
+}
+
 function hasExactKeys(value, keys) {
   return value && typeof value === 'object' && !Array.isArray(value)
     && Object.keys(value).sort().join('\0') === [...keys].sort().join('\0');
@@ -79,6 +98,9 @@ export function validateCandidateBatch(canonicalRows, candidateRows, { batch, so
         if (seen.has(normalized)) fail(`${senseLine} contains duplicate candidate ${JSON.stringify(candidate)}`);
         if (normalized === normalizedLemma) {
           fail(`${senseLine} candidate repeats source lemma ${JSON.stringify(source.lemma)}`);
+        }
+        if (isThousandsCommaFragment(candidate, sourceSense.gloss)) {
+          fail(`${senseLine} candidate ${JSON.stringify(candidate)} is a fragment of a number written with a thousands comma in the source gloss`);
         }
         seen.add(normalized);
       }

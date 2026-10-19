@@ -121,3 +121,23 @@ test('Candidate v1 compares candidates with the Stage 2 normal form (NFC, collap
   assert.throws(run(['가 나'.replace(' ', '  ')], '가 나'), /repeats source lemma/);
   assert.doesNotThrow(run(['다 라'], '표제'));
 });
+
+test('Candidate v1 rejects pieces of a thousands-comma number and keeps the whole number', () => {
+  const gloss = '높이는 7,460미터. 1,155미터와 1,155미터.';
+  const run = (candidates, sourceGloss = gloss) => () => {
+    const canonicalRows = [{ id: 'w1', lemma: '산', senses: [{ id: 'w1-s1', gloss: sourceGloss }] }];
+    const candidateRows = [{ record_id: 'w1', senses: [{ sense_id: 'w1-s1', candidates }] }];
+    return validateCandidateBatch(canonicalRows, candidateRows, { batch: '01', sourceName: 'Canonical' });
+  };
+  const fragment = /is a fragment of a number written with a thousands comma/;
+  for (const invalid of [['7'], ['460미터'], ['460'], ['히말라야', '7', '460미터'], ['1'], ['155미터']]) {
+    assert.throws(run(invalid), fragment, JSON.stringify(invalid));
+  }
+  for (const valid of [['7,460미터'], ['460미터를 넘는'], ['2,000kg 이하'], ['높이'], []]) {
+    assert.doesNotThrow(run(valid), JSON.stringify(valid));
+  }
+  // a number that also appears intact in the gloss is not a fragment; glosses without a thousands comma never match
+  assert.doesNotThrow(run(['7'], '7개 중 7,460미터'));
+  assert.doesNotThrow(run(['460미터'], '460미터와 12,000'));
+  assert.doesNotThrow(run(['7', '460미터'], '높이는 7 460미터'));
+});
