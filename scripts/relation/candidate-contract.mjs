@@ -17,6 +17,35 @@ function fail(message) {
   throw new Error(message);
 }
 
+/**
+ * True when a candidate is only a piece of a number the source gloss writes with thousands commas ("7,460미터" cut
+ * into "7" and "460미터"). Every occurrence of the candidate in the gloss is classified by its digit-side boundaries:
+ * cut (it starts right after, or ends right before, a comma inside a thousands group), inside (it starts or ends in the
+ * middle of a longer digit run, e.g. "1" in "15속"; ignored), or intact (clean token boundaries). The candidate is a
+ * fragment when at least one occurrence is cut and none is intact.
+ */
+export function isThousandsCommaFragment(candidate, gloss) {
+  if (typeof gloss !== 'string' || candidate.length === 0 || !/^\d|\d$/u.test(candidate)) return false;
+  const groups = [...gloss.matchAll(/(?<![\d,])\d{1,3}(?:,\d{3})+(?!\d)/gu)]
+    .map((match) => ({ start: match.index, end: match.index + match[0].length }));
+  if (groups.length === 0) return false;
+  const commaInsideGroup = (at) => groups.some((group) => at > group.start && at < group.end - 1) && gloss[at] === ',';
+  const isDigit = (at) => at >= 0 && at < gloss.length && /\d/u.test(gloss[at]);
+
+  let cut = 0;
+  let intact = 0;
+  for (let at = gloss.indexOf(candidate); at !== -1; at = gloss.indexOf(candidate, at + 1)) {
+    const end = at + candidate.length;
+    const sides = [];
+    if (/^\d/u.test(candidate)) sides.push(commaInsideGroup(at - 1) ? 'cut' : isDigit(at - 1) ? 'inside' : 'intact');
+    if (/\d$/u.test(candidate)) sides.push(commaInsideGroup(end) ? 'cut' : isDigit(end) ? 'inside' : 'intact');
+    const state = sides.includes('cut') ? 'cut' : sides.includes('inside') ? 'inside' : 'intact';
+    if (state === 'cut') cut += 1;
+    else if (state === 'intact') intact += 1;
+  }
+  return cut > 0 && intact === 0;
+}
+
 function hasExactKeys(value, keys) {
   return value && typeof value === 'object' && !Array.isArray(value)
     && Object.keys(value).sort().join('\0') === [...keys].sort().join('\0');
@@ -79,6 +108,9 @@ export function validateCandidateBatch(canonicalRows, candidateRows, { batch, so
         if (seen.has(normalized)) fail(`${senseLine} contains duplicate candidate ${JSON.stringify(candidate)}`);
         if (normalized === normalizedLemma) {
           fail(`${senseLine} candidate repeats source lemma ${JSON.stringify(source.lemma)}`);
+        }
+        if (isThousandsCommaFragment(candidate, sourceSense.gloss)) {
+          fail(`${senseLine} candidate ${JSON.stringify(candidate)} is a fragment of a number written with a thousands comma in the source gloss`);
         }
         seen.add(normalized);
       }
