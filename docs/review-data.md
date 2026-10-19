@@ -62,6 +62,17 @@ only* do not apply to the new scope.
 - Stage 1/2 independence, exact-HEAD verification and shared regressions are
   unchanged.
 
+## Canonical relation contracts## Stage 1 Candidate production-form audit (A/B/C/D)
+
+The root `REVIEW.md` **Stage 1 Candidate form gate** is the review authority for new/changed `data/relation-candidates/` batches and experimental producer outputs. This check is **distinct from Stage 2's `near/mood/scene/sensory/action/association` choice or relevance 1–9**. The source sense remains the semantic anchor; word associations may be loose, indirect, ordinary or surprising.
+
+**Risk-first checks:** inspect the source's exact Canonical `lemma` and bound `sense_id/gloss` together with output candidates. Confirm the producer checked every submitted string for narrative form. Start with suspicious clauses, gloss paraphrases, compound/derived forms containing the lemma, and multiword expressions. Use ordinary independent word candidates as positive controls. Look for recurring failure classes across changed records rather than imposing arbitrary lexical preferences.
+
+- **PASS-leaning:** `건축 → 건축가` is a different lexical item even though it contains `건축`; `검사하다 → 차표/흉기/결산` can be valid word associations when the actual source sense/context supports them. Source-substring overlap alone does not disqualify a word.
+- **Reject:** `공탁 → 공탁(供托)` repeats the source with only annotation; `걸음걸이 → 느린 걸음걸이` is a merely modified source rather than a new discovery; `검지기 → 누전이 되면 경보가 울린다` is a full sentence; `격벽 → 격벽을 여는 데 에너지가 필요하다` is a declarative explanation; `겅중 → 긴 다리로 뜀` is a narrated action compressed into a nominal phrase. Illustrations are **generalized form classes**, not an exception/blacklist of individual words.
+- **Judgment boundary:** real standalone multiword lexical units exist, and verbs ending in `-다` can be standalone headwords. Neither whitespace nor punctuation nor literal `lemma` inclusion decides eligibility. Retain defensible weak associations as Stage 1 inputs; apply a **strict independent-expression requirement** to phrases and a **zero-tolerance narrative ban**. Keep confirmed recurring defects at the producer/shared review boundary, not as one-off patches to the example.
+- **Evidence and disposition:** record the inspected extent and contrast true failing examples with positive controls. If a forbidden sentence or repeated lemma survives, `-1` even if the JSONL schema passes. If repeated gloss paraphrases/routine modified-lemma phrases are proven, `-1` with a shared production remedy. Don't demand Stage 2-type qualitative perfection or reject all sense-bound words due to subjective taste. Changes to already merged historical batches are separate scoped work.
+
 ## Canonical relation contracts
 
 - Canonical is the source of truth; preserve real source/target sense bindings,
