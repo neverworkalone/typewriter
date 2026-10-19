@@ -13,6 +13,22 @@ const REPOSITORY_DIRECTORY = path.resolve(path.dirname(fileURLToPath(import.meta
  */
 export const normalizeCandidate = (text) => text.normalize('NFC').trim().replace(/\s+/gu, ' ');
 
+/**
+ * A source lemma followed by a single parenthetical gloss ("공탁(供托)", "공안 위원회(1960)") is still the source
+ * headword with an annotation, not a distinct writer-facing expression. A candidate with further text after the
+ * parenthetical ("공탁(供托) 금액") is a real phrase and stays allowed.
+ */
+const TRAILING_PARENTHETICAL = /^\s*\([^()]*\)$/u;
+
+export function isSourceLemmaProjection(candidate, lemma) {
+  const normalized = normalizeCandidate(candidate);
+  const normalizedLemma = normalizeCandidate(lemma ?? '');
+  if (!normalizedLemma) return false;
+  if (normalized === normalizedLemma) return true;
+  if (!normalized.startsWith(normalizedLemma)) return false;
+  return TRAILING_PARENTHETICAL.test(normalized.slice(normalizedLemma.length));
+}
+
 function fail(message) {
   throw new Error(message);
 }
@@ -108,6 +124,9 @@ export function validateCandidateBatch(canonicalRows, candidateRows, { batch, so
         if (seen.has(normalized)) fail(`${senseLine} contains duplicate candidate ${JSON.stringify(candidate)}`);
         if (normalized === normalizedLemma) {
           fail(`${senseLine} candidate repeats source lemma ${JSON.stringify(source.lemma)}`);
+        }
+        if (isSourceLemmaProjection(candidate, source.lemma)) {
+          fail(`${senseLine} candidate ${JSON.stringify(candidate)} repeats source lemma ${JSON.stringify(source.lemma)} with a parenthetical annotation`);
         }
         if (isThousandsCommaFragment(candidate, sourceSense.gloss)) {
           fail(`${senseLine} candidate ${JSON.stringify(candidate)} is a fragment of a number written with a thousands comma in the source gloss`);
