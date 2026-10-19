@@ -38,6 +38,25 @@ test('Candidate v1 rejects a candidate identical to its source lemma and accepts
   );
 });
 
+test('Candidate v1 rejects the source lemma with a trailing parenthetical and accepts distinct expressions', () => {
+  const run = (candidates, sourceLemma = '공탁') => () => {
+    const canonicalRows = [{ id: 'w1', lemma: sourceLemma, senses: [{ id: 'w1-s1' }] }];
+    const candidateRows = [{ record_id: 'w1', senses: [{ sense_id: 'w1-s1', candidates }] }];
+    return validateCandidateBatch(canonicalRows, candidateRows, { batch: '01' });
+  };
+  const projection = /repeats source lemma "공탁" with a parenthetical annotation/u;
+  for (const invalid of [['공탁(供托)'], ['공탁 (供託)']]) {
+    assert.throws(run(invalid), projection, JSON.stringify(invalid));
+  }
+  assert.throws(
+    run(['공안 위원회(1960)'], '공안 위원회'),
+    /repeats source lemma "공안 위원회" with a parenthetical annotation/u,
+  );
+  for (const valid of [['공탁금'], ['공탁(供托) 금액'], ['보관 위탁'], ['과급기']]) {
+    assert.doesNotThrow(run(valid), JSON.stringify(valid));
+  }
+});
+
 test('Candidate v1 requires the shard directory to match the filename', () => {
   const repositoryDirectory = '/repo';
   const canonicalPath = '/repo/data/canonical/stdict-0005.jsonl';
