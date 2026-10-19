@@ -9,7 +9,7 @@
 | Model | DeepSeek (opencode-go, `deepseek-v4.1-flash`) |
 | RUN ID | `c-v8-013-01-deepseek-20261019` |
 | Output | `experiments/1061/v8/013_01_c_deepseek.jsonl` |
-| Candidate file SHA-256 | `9001d97b3bc97a90d3ec016daef778f67f731a31556116853c33880092fd085e` |
+| Candidate file SHA-256 | `0bd3046f55a93b06d17c1ef3c5e365d9e69fb65669933c4c71fa53940ce0c436` |
 | Procedure | `experiments/1061/v8/C_PROCEDURE.md` SHA-256 `42fd8d0b49e562943f46eaeed87ce115e89558d1e2f18d3eef9e3763eadc38ac` |
 | Git base HEAD | `796c2bcfc9aab3d5bea8d1547f73a1365ade3d48` (`master`) |
 | Canonical | `data/canonical/stdict-0013.jsonl` SHA-256 `d7d1534437da8db369c0d65eade1e63e45d73e96892aea81a4a420020114192e`, rows 1–500, 500 records / 560 senses |
@@ -40,13 +40,13 @@
 
 ## 2. PASS B — 7관점 2회 sweep
 
-- 371 VERIFIED 문맥(1차 369 + 2차 보강 6 senses의 문맥 포함)에 7관점
+- **388 VERIFIED 문맥**(1차 369 + 2차 활용형 보강으로 새로 확인한 6 senses의 19문맥)에 7관점
   (Image/Action/Emotion/Sensation/Scene/Causality/Metaphor·Contrast)을 적용.
-- **1차 sweep 236, 2차 독립 sweep 38 = 신규 274 후보.** 1차 결과를 답안으로 두지 않고
+- **1차 sweep 236, 2차 독립 sweep 37 = 신규 273 후보.** 1차 결과를 답안으로 두지 않고
   두 번째 sweep에서 정서·장면·인과·감각 관점을 다시 훑어 누락을 추가했다.
-- 신규 후보 관점 분포: image 72, action 67, association 50, sensation 22,
+- 신규 후보 관점 분포: image 71, action 67, association 50, sensation 22,
   scene 15, situation 15, metaphor 13, emotion 11, causality 9.
-- 신규 후보 도출: 문맥 표현(exact) 262, 문맥 유도(inferred) 12.
+- 신규 후보 도출: 문맥 표현(exact) 261, 문맥 유도(inferred) 12.
 - 실제 문맥에서 관찰한 표현을 그대로 살린 후보와, 그 장면에서 자연스럽게 떠오르는
   선택지를 함께 남겼다. `source + 동사/수식어`로 개수를 채운 기계적 생성은 하지 않았고,
   `건설적`·`건너오다`처럼 원문 결합이 반복되는 항목은 대표적인 것만 남겼다.
@@ -64,7 +64,7 @@
 - V5-only 후보 50개 중 27개 유지. 버린 23개는 `STILL_UNVERIFIED_SOURCE`(해당 sense의
   실제 용례에서 확인 불가)로 로컬 ledger에만 기록했고, 편집상 품질 DROP이 아니다.
 - lineage 합계(로컬 ledger): RECOVERED 222(v5 42 / v6 158 / v7 22),
-  NEW 274, EXACT_DUPLICATE 204, STILL_UNVERIFIED_SOURCE 23, TECHNICAL_EXCLUDED 3.
+  NEW 273, EXACT_DUPLICATE 204, STILL_UNVERIFIED_SOURCE 23, TECHNICAL_EXCLUDED 3.
 
 ## 4. PASS D — 최소 hygiene / 기술적 제외
 
@@ -76,12 +76,12 @@
 
 ## 5. 최종 산출
 
-- `013_01_c_deepseek.jsonl`: **500 records / 560 senses / 496 candidates /
+- `013_01_c_deepseek.jsonl`: **500 records / 560 senses / 495 candidates /
   463 empty senses / 97 active senses**.
 - 후보가 가장 많은 senses: `검은빛(w14521-s1) 22`, `검사하다(w14823-s1) 19`,
   `건넛산(w14860-s1) 14`, `건망증(w14951-s1) 13`, `걷히다(w14645-s1) 12`,
   `걸음걸이(w14864-s1) 12`, `검사국(w15076-s1) 12`.
-- 후보 문자열에 출발 lemma가 부분 포함된 비율 21%(97/496). 문맥에서 실제로 쓰인
+- 후보 문자열에 출발 lemma가 부분 포함된 비율 21%(96/495). 문맥에서 실제로 쓰인
   결합 표현(예: `검도 이단의 실력`, `검사국으로 넘어가다`)과 표제어 재제시를 구분하지
   않고 개수만으로 판단하지 않는다.
 - Stage 1에 type/Tier/admission/target을 넣지 않았고, Candidate v1 계약을 통과했다.
@@ -93,7 +93,7 @@
   비어 있지 않은 trim 문자열, 같은 sense 내 정규화 정확 중복 0, 출발 lemma와 정확히
   같은 후보 0, 천 단위 쉼표 숫자 파편 0.
 - 계약 검사: `scripts/relation/candidate-contract.mjs`의 `validateCandidateBatch`를
-  직접 호출 → `{recordCount:500, senseCount:560, candidateCount:496, emptySenseCount:463}`.
+  직접 호출 → `{recordCount:500, senseCount:560, candidateCount:495, emptySenseCount:463}`.
   실험 경로(`experiments/1061/v8/`)에 두는 calibration 산출물이므로 파일명 경로 검사
   (`validateCandidatePaths`)는 적용하지 않았고, batch 검증(레코드·sense·중복·lemma·
   숫자 파편)은 그대로 통과했다. 이 파일은 정식 `data/relation-candidates/` 커서를
