@@ -84,12 +84,17 @@ export function batchScope(canonicalRows, candidateFiles, batch) {
  * for its batch. Exact duplicates (after `normalizeCandidate`) merge; the producer list is kept as evidence.
  * @param {{ name: string, rows: object[] }[]} candidateFiles
  */
-export function mergeCandidates(canonicalRows, candidateFiles) {
+export function mergeCandidates(canonicalRows, candidateFiles, { canonicalLemmaForms } = {}) {
   const merged = new Map();
   let raw = 0;
+  const independentLemmaForms = canonicalLemmaForms ?? new Set(canonicalRows.map((row) => normalizeCandidate(row.lemma ?? '')));
   for (const file of candidateFiles) {
     const { batch, key } = producerOf(path.basename(file.name));
-    validateCandidateBatch(canonicalRows, file.rows, { batch, candidateName: file.name });
+    validateCandidateBatch(canonicalRows, file.rows, {
+      batch,
+      candidateName: file.name,
+      canonicalLemmaForms: independentLemmaForms,
+    });
     for (const row of file.rows) {
       for (const sense of row.senses) {
         const bySense = merged.get(sense.sense_id) ?? { record_id: row.record_id, candidates: new Map() };
@@ -215,7 +220,8 @@ export function existingCandidateKeys(relationRows, index) {
  * existing approved Relation already answers. Never an editorial judgement; nothing is dropped here.
  */
 export function prepareShard({ canonicalRows, candidateFiles, approvedRelationRows = [], dropRows = [], index, scopeRows = canonicalRows }) {
-  const { merged, rawCandidateCount } = mergeCandidates(canonicalRows, candidateFiles);
+  const canonicalLemmaForms = new Set([...index.byLemma.keys()].map(normalizeCandidate));
+  const { merged, rawCandidateCount } = mergeCandidates(canonicalRows, candidateFiles, { canonicalLemmaForms });
   const covered = existingCandidateKeys(approvedRelationRows, index);
   const dropped = new Set(dropRows.map((row) => `${row.source_sense_id}\u0000${normalizeCandidate(row.candidate)}`));
   const items = [];
@@ -246,7 +252,8 @@ export function prepareShard({ canonicalRows, candidateFiles, approvedRelationRo
  * rows, which are the result being checked). Throws on a missing, doubly-assigned or unknown candidate.
  */
 export function verifyAccounting({ canonicalRows, candidateFiles, relationRows: allRelationRows, dropRows: allDropRows, otherRelationRows, index, scopeRows = canonicalRows }) {
-  const { merged, rawCandidateCount } = mergeCandidates(canonicalRows, candidateFiles);
+  const canonicalLemmaForms = new Set([...index.byLemma.keys()].map(normalizeCandidate));
+  const { merged, rawCandidateCount } = mergeCandidates(canonicalRows, candidateFiles, { canonicalLemmaForms });
   const scopeSenses = new Set(scopeRows.flatMap((record) => record.senses.map((sense) => sense.id)));
   const relationRows = allRelationRows.filter((row) => scopeSenses.has(row.source_sense_id));
   const dropRows = allDropRows.filter((row) => scopeSenses.has(row.source_sense_id));

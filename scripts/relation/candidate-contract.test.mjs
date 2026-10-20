@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 import { validateCandidateBatch, validateCandidatePaths } from './candidate-contract.mjs';
 import { validateChangedCandidateFiles } from './validate-candidate-changes.mjs';
@@ -83,7 +84,7 @@ test('Candidate v1 requires the shard directory to match the filename', () => {
   );
 });
 
-test('the changed-file validator rejects the source lemma and accepts a corrected on-disk batch', async (t) => {
+test('the changed-file validator rejects source spelling aliases but preserves distinct words found in search forms', async (t) => {
   const repositoryDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-candidate-change-'));
   t.after(() => rm(repositoryDirectory, { recursive: true, force: true }));
 
@@ -119,6 +120,112 @@ test('the changed-file validator rejects the source lemma and accepts a correcte
   assert.deepEqual(
     await validateChangedCandidateFiles(baseSha, headSha, { repositoryDirectory, runGit }),
     [{ path: candidateRelativePath, recordCount: 500, senseCount: 500, candidateCount: 1, emptySenseCount: 499 }],
+  );
+
+  const selfSearchForm = fixture('감자차손', '02');
+  selfSearchForm.canonicalRows[500].lemma = '감자 차손';
+  selfSearchForm.canonicalRows[500].search_forms = ['감자 차손', '감자차손'];
+  await writeFile(canonicalPath, `${selfSearchForm.canonicalRows.map((row) => JSON.stringify(row)).join('\n')}\n`);
+  await writeBatch(selfSearchForm.candidateRows);
+  await assert.rejects(
+    validateChangedCandidateFiles(baseSha, headSha, { repositoryDirectory, runGit }),
+    /repeats source lemma "감자 차손" in orthographic search form "감자차손"/u,
+  );
+
+  const independentSearchForm = fixture('강경', '02');
+  independentSearchForm.canonicalRows[500] = {
+    id: 'w7732',
+    lemma: '강경하다',
+    search_forms: ['강경하다', '강경'],
+    senses: [{ id: 'w7732-s1', pos: 'adjective', gloss: '성격이나 기질이 꿋꿋하고 굳세다.' }],
+  };
+  independentSearchForm.candidateRows[0] = {
+    record_id: 'w7732',
+    senses: [{ sense_id: 'w7732-s1', candidates: ['강경'] }],
+  };
+  independentSearchForm.canonicalRows[501] = {
+    id: 'w7736',
+    lemma: '강경',
+    search_forms: ['강경'],
+    senses: [{ id: 'w7736-s1', pos: 'noun', gloss: '굳세게 버티어 굽히지 않음.' }],
+  };
+  independentSearchForm.candidateRows[1] = {
+    record_id: 'w7736',
+    senses: [{ sense_id: 'w7736-s1', candidates: [] }],
+  };
+  await writeFile(canonicalPath, `${independentSearchForm.canonicalRows.map((row) => JSON.stringify(row)).join('\n')}\n`);
+  await writeBatch(independentSearchForm.candidateRows);
+  assert.deepEqual(
+    await validateChangedCandidateFiles(baseSha, headSha, { repositoryDirectory, runGit }),
+    [{ path: candidateRelativePath, recordCount: 500, senseCount: 500, candidateCount: 1, emptySenseCount: 499 }],
+  );
+
+  const distinctCompound = fixture('건축가', '02');
+  distinctCompound.canonicalRows[500].lemma = '건축';
+  distinctCompound.canonicalRows[500].search_forms = ['건축'];
+  await writeFile(canonicalPath, `${distinctCompound.canonicalRows.map((row) => JSON.stringify(row)).join('\n')}\n`);
+  await writeBatch(distinctCompound.candidateRows);
+  assert.deepEqual(
+    await validateChangedCandidateFiles(baseSha, headSha, { repositoryDirectory, runGit }),
+    [{ path: candidateRelativePath, recordCount: 500, senseCount: 500, candidateCount: 1, emptySenseCount: 499 }],
+  );
+});
+
+test('the changed-file validator preserves a search spelling that is another Canonical lemma', async (t) => {
+  const repositoryDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-candidate-alias-'));
+  t.after(() => rm(repositoryDirectory, { recursive: true, force: true }));
+
+  const sourcePath = path.join(repositoryDirectory, 'data/canonical/stdict-0090.jsonl');
+  const targetPath = path.join(repositoryDirectory, 'data/canonical/stdict-0335.jsonl');
+  const candidatePath = path.join(repositoryDirectory, 'data/relation-candidates/090/090_02_b_codex.jsonl');
+  await mkdir(path.dirname(sourcePath), { recursive: true });
+  await mkdir(path.dirname(candidatePath), { recursive: true });
+
+  const canonicalDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../data/canonical');
+  const readCanonicalRecord = async (shard, recordId) => {
+    const contents = await readFile(path.join(canonicalDirectory, `stdict-${shard}.jsonl`), 'utf8');
+    for (const line of contents.split(/\r?\n/u)) {
+      if (line.length === 0) continue;
+      const record = JSON.parse(line);
+      if (record.id === recordId) return record;
+    }
+    assert.fail(`Canonical ${recordId} was not found in shard ${shard}`);
+  };
+  const source = await readCanonicalRecord('0090', 'w122481');
+  const target = await readCanonicalRecord('0335', 'w427808');
+  assert.equal(source.lemma, '무릎 치기');
+  assert.ok(source.search_forms.includes('무릎치기'));
+  assert.equal(target.lemma, '무릎치기');
+
+  const batch = fixture('무릎치기', '02');
+  batch.canonicalRows[500] = source;
+  batch.candidateRows[0] = {
+    record_id: source.id,
+    senses: [{ sense_id: source.senses[0].id, candidates: ['무릎치기'] }],
+  };
+  await writeFile(sourcePath, `${batch.canonicalRows.map((row) => JSON.stringify(row)).join('\n')}\n`);
+  await writeFile(targetPath, `${JSON.stringify(target)}\n`);
+  await writeFile(candidatePath, `${batch.candidateRows.map((row) => JSON.stringify(row)).join('\n')}\n`);
+
+  const baseSha = 'a'.repeat(40);
+  const headSha = 'b'.repeat(40);
+  const runGit = (args) => {
+    assert.deepEqual(args, [
+      'diff', '--no-renames', '--diff-filter=ACMRT', '--name-only', '-z',
+      `${baseSha}...${headSha}`, '--', 'data/relation-candidates/',
+    ]);
+    return Buffer.from('data/relation-candidates/090/090_02_b_codex.jsonl\0');
+  };
+
+  assert.deepEqual(
+    await validateChangedCandidateFiles(baseSha, headSha, { repositoryDirectory, runGit }),
+    [{ path: 'data/relation-candidates/090/090_02_b_codex.jsonl', recordCount: 500, senseCount: 500, candidateCount: 1, emptySenseCount: 499 }],
+  );
+
+  await writeFile(targetPath, `${JSON.stringify({ id: 'w999999', lemma: '다른 표제어', senses: [] })}\n`);
+  await assert.rejects(
+    validateChangedCandidateFiles(baseSha, headSha, { repositoryDirectory, runGit }),
+    /repeats source lemma "무릎 치기" in orthographic search form "무릎치기"/u,
   );
 });
 

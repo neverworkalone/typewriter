@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -8,7 +8,7 @@ const REPOSITORY_DIRECTORY = path.resolve(path.dirname(fileURLToPath(import.meta
 
 /**
  * Candidate comparison form shared by Stage 1 validation and Stage 2 admission: NFC, trimmed, internal whitespace
- * collapsed. Exact-duplicate and source-lemma checks must use it so a candidate that Stage 2 would treat as the same
+ * collapsed. Exact-duplicate and source lemma checks must use it so a candidate that Stage 2 would treat as the same
  * string can never pass Stage 1 as a different one.
  */
 export const normalizeCandidate = (text) => text.normalize('NFC').trim().replace(/\s+/gu, ' ');
@@ -27,6 +27,51 @@ export function isSourceLemmaProjection(candidate, lemma) {
   if (normalized === normalizedLemma) return true;
   if (!normalized.startsWith(normalizedLemma)) return false;
   return TRAILING_PARENTHETICAL.test(normalized.slice(normalizedLemma.length));
+}
+
+/**
+ * Canonical search_forms is an index, not an identity list: it can contain a linked root headword that is a distinct
+ * lexical item (for example, 강경 for the adjective 강경하다). Reject a search form as a self-projection only when it
+ * differs from the lemma by surface spacing or hyphenation, the variants emitted by the STDICT converter, and it is
+ * not the exact lemma of a separate Canonical entry.
+ */
+function matchingSourceOrthographicForm(candidate, lemma, searchForms, canonicalLemmaForms) {
+  if (!Array.isArray(searchForms)) return undefined;
+  const normalized = normalizeCandidate(candidate);
+  const sourceSurface = normalizeCandidate(lemma ?? '').replace(/[\s-]/gu, '');
+  if (!sourceSurface || normalized.replace(/[\s-]/gu, '') !== sourceSurface) return undefined;
+  // A search spelling can also be the exact lemma of a separate Canonical entry (including in another shard).
+  // Preserve that independent lexical target; Stage 2 can bind it to its own record/sense.
+  if (canonicalLemmaForms.has(normalized)) return undefined;
+  return searchForms.find((searchForm) => typeof searchForm === 'string'
+    && normalizeCandidate(searchForm) === normalized);
+}
+
+/** Read the exact Canonical lemmas used to distinguish independent lexical targets from source spelling aliases. */
+export async function loadCanonicalLemmaForms(repositoryDirectory = REPOSITORY_DIRECTORY) {
+  const canonicalDirectory = path.resolve(repositoryDirectory, 'data/canonical');
+  const names = (await readdir(canonicalDirectory))
+    .filter((name) => /^stdict-\d{4}\.jsonl$/u.test(name))
+    .sort();
+  if (names.length === 0) fail(`${canonicalDirectory} contains no Canonical shards`);
+
+  const forms = new Set();
+  for (const name of names) {
+    const filePath = path.join(canonicalDirectory, name);
+    const contents = await readFile(filePath, 'utf8');
+    for (const [index, line] of contents.split(/\r?\n/u).entries()) {
+      if (line.length === 0) continue;
+      let row;
+      try {
+        row = JSON.parse(line);
+      } catch (error) {
+        fail(`${filePath}:${index + 1} is not valid Canonical JSON: ${error.message}`);
+      }
+      if (typeof row?.lemma !== 'string') fail(`${filePath}:${index + 1} has no string Canonical lemma`);
+      forms.add(normalizeCandidate(row.lemma));
+    }
+  }
+  return forms;
 }
 
 function fail(message) {
@@ -68,7 +113,12 @@ function hasExactKeys(value, keys) {
 }
 
 /** Validate one Candidate JSONL batch against its complete Canonical shard. */
-export function validateCandidateBatch(canonicalRows, candidateRows, { batch, sourceName = 'Canonical', candidateName = 'Candidate' } = {}) {
+export function validateCandidateBatch(canonicalRows, candidateRows, {
+  batch,
+  sourceName = 'Canonical',
+  candidateName = 'Candidate',
+  canonicalLemmaForms,
+} = {}) {
   const batchNumber = Number(batch);
   if (!Number.isInteger(batchNumber) || ![1, 2].includes(batchNumber)) {
     fail('batch must be 01 or 02');
@@ -76,6 +126,8 @@ export function validateCandidateBatch(canonicalRows, candidateRows, { batch, so
   if (!Array.isArray(canonicalRows) || !Array.isArray(candidateRows)) {
     fail('Canonical and Candidate rows must be arrays');
   }
+  const independentLemmaForms = canonicalLemmaForms
+    ?? new Set(canonicalRows.map((row) => normalizeCandidate(row.lemma ?? '')));
 
   const offset = (batchNumber - 1) * CANDIDATE_BATCH_SIZE;
   const expectedRows = canonicalRows.slice(offset, offset + CANDIDATE_BATCH_SIZE);
@@ -127,6 +179,10 @@ export function validateCandidateBatch(canonicalRows, candidateRows, { batch, so
         }
         if (isSourceLemmaProjection(candidate, source.lemma)) {
           fail(`${senseLine} candidate ${JSON.stringify(candidate)} repeats source lemma ${JSON.stringify(source.lemma)} with a parenthetical annotation`);
+        }
+        const sourceSearchForm = matchingSourceOrthographicForm(candidate, source.lemma, source.search_forms, independentLemmaForms);
+        if (sourceSearchForm !== undefined) {
+          fail(`${senseLine} candidate ${JSON.stringify(candidate)} repeats source lemma ${JSON.stringify(source.lemma)} in orthographic search form ${JSON.stringify(sourceSearchForm)}`);
         }
         if (isThousandsCommaFragment(candidate, sourceSense.gloss)) {
           fail(`${senseLine} candidate ${JSON.stringify(candidate)} is a fragment of a number written with a thousands comma in the source gloss`);
@@ -182,12 +238,15 @@ export function validateCandidatePaths(canonicalPath, candidatePath, { repositor
 
 export async function validateCandidateFiles(canonicalPath, candidatePath, options = {}) {
   const { batch } = validateCandidatePaths(canonicalPath, candidatePath, options);
+  const { repositoryDirectory = REPOSITORY_DIRECTORY, canonicalLemmaForms } = options;
   const [canonicalRows, candidateRows] = await Promise.all([
     readJsonl(canonicalPath),
     readJsonl(candidatePath),
   ]);
+  const independentLemmaForms = canonicalLemmaForms ?? await loadCanonicalLemmaForms(repositoryDirectory);
   return validateCandidateBatch(canonicalRows, candidateRows, {
     batch,
+    canonicalLemmaForms: independentLemmaForms,
     sourceName: canonicalPath,
     candidateName: candidatePath,
   });
