@@ -1,0 +1,54 @@
+name: Reopen Closed Task Issues
+
+on:
+  issues:
+    types: [closed]
+
+permissions:
+  issues: write
+
+jobs:
+  reopen-task:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reopen Task issues silently
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          set -euo pipefail
+
+          QUERY='
+            query($owner: String!, $repo: String!, $number: Int!) {
+              repository(owner: $owner, name: $repo) {
+                issue(number: $number) {
+                  number
+                  state
+                  issueType {
+                    name
+                  }
+                }
+              }
+            }
+          '
+
+          # Query the live issue type, not the event snapshot. Removing
+          # the Task type before closing permits an intentional closure.
+          REOPEN_NUMBER="$(gh api graphql \
+            -f query="$QUERY" \
+            -f owner="$OWNER" \
+            -f repo="$REPO" \
+            -F number="$ISSUE_NUMBER" \
+            --jq '.data.repository.issue | select(.state == "CLOSED" and .issueType.name == "Task") | .number')"
+
+          if [[ "$REOPEN_NUMBER" != "$ISSUE_NUMBER" ]]; then
+            exit 0
+          fi
+
+          # No comment, no PR status check, and no review interaction.
+          gh api --method PATCH "repos/$GH_REPO/issues/$ISSUE_NUMBER" \
+            -f state=open >/dev/null
