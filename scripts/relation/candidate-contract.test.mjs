@@ -83,7 +83,7 @@ test('Candidate v1 requires the shard directory to match the filename', () => {
   );
 });
 
-test('the changed-file validator rejects exact source lemmas and search forms but accepts corrected candidates', async (t) => {
+test('the changed-file validator rejects source spelling aliases but preserves distinct words found in search forms', async (t) => {
   const repositoryDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-candidate-change-'));
   t.after(() => rm(repositoryDirectory, { recursive: true, force: true }));
 
@@ -128,7 +128,35 @@ test('the changed-file validator rejects exact source lemmas and search forms bu
   await writeBatch(selfSearchForm.candidateRows);
   await assert.rejects(
     validateChangedCandidateFiles(baseSha, headSha, { repositoryDirectory, runGit }),
-    /repeats source search form "감자차손"/u,
+    /repeats source lemma "감자 차손" in orthographic search form "감자차손"/u,
+  );
+
+  const independentSearchForm = fixture('강경', '02');
+  independentSearchForm.canonicalRows[500] = {
+    id: 'w7732',
+    lemma: '강경하다',
+    search_forms: ['강경하다', '강경'],
+    senses: [{ id: 'w7732-s1', pos: 'adjective', gloss: '성격이나 기질이 꿋꿋하고 굳세다.' }],
+  };
+  independentSearchForm.candidateRows[0] = {
+    record_id: 'w7732',
+    senses: [{ sense_id: 'w7732-s1', candidates: ['강경'] }],
+  };
+  independentSearchForm.canonicalRows[501] = {
+    id: 'w7736',
+    lemma: '강경',
+    search_forms: ['강경'],
+    senses: [{ id: 'w7736-s1', pos: 'noun', gloss: '굳세게 버티어 굽히지 않음.' }],
+  };
+  independentSearchForm.candidateRows[1] = {
+    record_id: 'w7736',
+    senses: [{ sense_id: 'w7736-s1', candidates: [] }],
+  };
+  await writeFile(canonicalPath, `${independentSearchForm.canonicalRows.map((row) => JSON.stringify(row)).join('\n')}\n`);
+  await writeBatch(independentSearchForm.candidateRows);
+  assert.deepEqual(
+    await validateChangedCandidateFiles(baseSha, headSha, { repositoryDirectory, runGit }),
+    [{ path: candidateRelativePath, recordCount: 500, senseCount: 500, candidateCount: 1, emptySenseCount: 499 }],
   );
 
   const distinctCompound = fixture('건축가', '02');
