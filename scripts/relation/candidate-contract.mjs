@@ -8,7 +8,7 @@ const REPOSITORY_DIRECTORY = path.resolve(path.dirname(fileURLToPath(import.meta
 
 /**
  * Candidate comparison form shared by Stage 1 validation and Stage 2 admission: NFC, trimmed, internal whitespace
- * collapsed. Exact-duplicate and source-lemma checks must use it so a candidate that Stage 2 would treat as the same
+ * collapsed. Exact-duplicate and source lemma/search-form checks must use it so a candidate that Stage 2 would treat as the same
  * string can never pass Stage 1 as a different one.
  */
 export const normalizeCandidate = (text) => text.normalize('NFC').trim().replace(/\s+/gu, ' ');
@@ -27,6 +27,13 @@ export function isSourceLemmaProjection(candidate, lemma) {
   if (normalized === normalizedLemma) return true;
   if (!normalized.startsWith(normalizedLemma)) return false;
   return TRAILING_PARENTHETICAL.test(normalized.slice(normalizedLemma.length));
+}
+
+function matchingSourceSearchForm(candidate, searchForms) {
+  if (!Array.isArray(searchForms)) return undefined;
+  const normalized = normalizeCandidate(candidate);
+  return searchForms.find((searchForm) => typeof searchForm === 'string'
+    && normalizeCandidate(searchForm) === normalized);
 }
 
 function fail(message) {
@@ -127,6 +134,10 @@ export function validateCandidateBatch(canonicalRows, candidateRows, { batch, so
         }
         if (isSourceLemmaProjection(candidate, source.lemma)) {
           fail(`${senseLine} candidate ${JSON.stringify(candidate)} repeats source lemma ${JSON.stringify(source.lemma)} with a parenthetical annotation`);
+        }
+        const sourceSearchForm = matchingSourceSearchForm(candidate, source.search_forms);
+        if (sourceSearchForm !== undefined) {
+          fail(`${senseLine} candidate ${JSON.stringify(candidate)} repeats source search form ${JSON.stringify(sourceSearchForm)}`);
         }
         if (isThousandsCommaFragment(candidate, sourceSense.gloss)) {
           fail(`${senseLine} candidate ${JSON.stringify(candidate)} is a fragment of a number written with a thousands comma in the source gloss`);

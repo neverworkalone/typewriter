@@ -123,9 +123,9 @@ node scripts/relation/candidate-contract.mjs \
   data/relation-candidates/005/005_02_b_codex.jsonl
 ```
 
-검증기는 JSONL 파싱 및 허용 필드, Canonical 배치와 record 행 수·순서·ID/각 record의 모든 sense 정확히 일치, 후보의 비어 있지 않은 문자열/공백 정리, 같은 파일·source sense 안의 정확한 중복, source lemma와 같은 후보, source 뜻풀이의 천 단위 쉼표 숫자(`7,460미터`)를 쪼갠 조각 후보(`7`, `460미터`)를 확인한다. 후보가 없는 sense는 `candidates: []`로 기록하며, **행 누락 또는 미완료 파일을 정상적인 빈 후보로 취급하지 않는다**. 모델 간 동일 문자열은 Stage 2에서 비교한다.
+검증기는 JSONL 파싱 및 허용 필드, Canonical 배치와 record 행 수·순서·ID/각 record의 모든 sense 정확히 일치, 후보의 비어 있지 않은 문자열/공백 정리, 같은 파일·source sense 안의 정확한 중복, source lemma·lemma 주석형 및 Canonical `search_forms`와 정확히 같은 후보, source 뜻풀이의 천 단위 쉼표 숫자(`7,460미터`)를 쪼갠 조각 후보(`7`, `460미터`)를 확인한다. Canonical 검색형은 NFC/공백 정규화 후 정확히 일치할 때만 자기 반복으로 본다. 후보가 없는 sense는 `candidates: []`로 기록하며, **행 누락 또는 미완료 파일을 정상적인 빈 후보로 취급하지 않는다**. 모델 간 동일 문자열은 Stage 2에서 비교한다.
 
-PR의 Normal 검사는 추가·수정된 `data/relation-candidates/` 파일마다 이 계약을 자동 적용하고, 파일명에 지정된 Canonical shard와 대조해 전체 record/sense 커버리지, 허용 필드, 중복 후보와 source lemma 재등장을 검사한다. 문서 전용 PR은 Candidate 검사를 실행하지 않는다.
+PR의 Normal 검사는 추가·수정된 `data/relation-candidates/` 파일마다 이 계약을 자동 적용하고, 파일명에 지정된 Canonical shard와 대조해 전체 record/sense 커버리지, 허용 필드, 중복 후보와 source lemma/search form 재등장을 검사한다. 문서 전용 PR은 Candidate 검사를 실행하지 않는다.
 
 ## 3. `#860 A 진행해` — 다음 배치 자동 선택
 

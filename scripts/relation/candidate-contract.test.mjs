@@ -83,7 +83,7 @@ test('Candidate v1 requires the shard directory to match the filename', () => {
   );
 });
 
-test('the changed-file validator rejects the source lemma and accepts a corrected on-disk batch', async (t) => {
+test('the changed-file validator rejects exact source lemmas and search forms but accepts corrected candidates', async (t) => {
   const repositoryDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-candidate-change-'));
   t.after(() => rm(repositoryDirectory, { recursive: true, force: true }));
 
@@ -116,6 +116,26 @@ test('the changed-file validator rejects the source lemma and accepts a correcte
 
   const corrected = fixture('가짜 미끼를 물다', '02');
   await writeBatch(corrected.candidateRows);
+  assert.deepEqual(
+    await validateChangedCandidateFiles(baseSha, headSha, { repositoryDirectory, runGit }),
+    [{ path: candidateRelativePath, recordCount: 500, senseCount: 500, candidateCount: 1, emptySenseCount: 499 }],
+  );
+
+  const selfSearchForm = fixture('감자차손', '02');
+  selfSearchForm.canonicalRows[500].lemma = '감자 차손';
+  selfSearchForm.canonicalRows[500].search_forms = ['감자 차손', '감자차손'];
+  await writeFile(canonicalPath, `${selfSearchForm.canonicalRows.map((row) => JSON.stringify(row)).join('\n')}\n`);
+  await writeBatch(selfSearchForm.candidateRows);
+  await assert.rejects(
+    validateChangedCandidateFiles(baseSha, headSha, { repositoryDirectory, runGit }),
+    /repeats source search form "감자차손"/u,
+  );
+
+  const distinctCompound = fixture('건축가', '02');
+  distinctCompound.canonicalRows[500].lemma = '건축';
+  distinctCompound.canonicalRows[500].search_forms = ['건축'];
+  await writeFile(canonicalPath, `${distinctCompound.canonicalRows.map((row) => JSON.stringify(row)).join('\n')}\n`);
+  await writeBatch(distinctCompound.candidateRows);
   assert.deepEqual(
     await validateChangedCandidateFiles(baseSha, headSha, { repositoryDirectory, runGit }),
     [{ path: candidateRelativePath, recordCount: 500, senseCount: 500, candidateCount: 1, emptySenseCount: 499 }],
