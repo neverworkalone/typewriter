@@ -57,6 +57,39 @@ test('prepare merges exact duplicates, keeps homograph ambiguity visible and ski
   assert.equal(stats.merged_duplicates, 1);
 });
 
+test('Stage 2 retains an orthographic search form that is another Canonical lemma', () => {
+  const canonicalRows = canonical(1000);
+  const source = {
+    id: 'w122481', lemma: '무릎 치기', search_forms: ['무릎 치기', '무릎치기'],
+    senses: [{ id: 'w122481-s1', pos: 'expression', gloss: '상대편의 무릎 뒤쪽을 치면서 끌어당겨 넘기는 씨름 기술.' }],
+  };
+  const target = {
+    id: 'w427808', lemma: '무릎치기', search_forms: ['무릎치기'],
+    senses: [{ id: 'w427808-s1', pos: 'noun', gloss: '무릎까지 내려오는 짧은 바지.' }],
+  };
+  canonicalRows[500] = source;
+  const file = {
+    name: '090_02_b_codex.jsonl',
+    rows: canonicalRows.slice(500).map((record, indexInBatch) => ({
+      record_id: record.id,
+      senses: [{ sense_id: record.senses[0].id, candidates: indexInBatch === 0 ? ['무릎치기'] : [] }],
+    })),
+  };
+  const scopeRows = canonicalRows.slice(500);
+
+  assert.throws(
+    () => prepareShard({ canonicalRows, candidateFiles: [file], index: buildCanonicalIndex(canonicalRows), scopeRows }),
+    /repeats source lemma "무릎 치기" in orthographic search form "무릎치기"/u,
+  );
+
+  const indexWithIndependentLemma = buildCanonicalIndex([...canonicalRows, target]);
+  const { items } = prepareShard({ canonicalRows, candidateFiles: [file], index: indexWithIndependentLemma, scopeRows });
+  assert.deepEqual(
+    items.find((item) => item.sense_id === 'w122481-s1').candidates.map((candidate) => candidate.text),
+    ['무릎치기'],
+  );
+});
+
 test('an existing ID relation also answers the reverse direction, but an ambiguous homograph spelling is never assumed covered', () => {
   const approved = [{ source_record_id: 'w900', source_sense_id: 'w900-s1', target_record_id: 'w1', target_sense_id: 'w1-s1', type: 'near', relevance: 3, reverse_type: 'near', reverse_relevance: 3 }];
   const { items } = prepareShard({ canonicalRows: shardRows, candidateFiles: files, approvedRelationRows: approved, index });
