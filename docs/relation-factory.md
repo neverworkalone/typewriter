@@ -2,6 +2,8 @@
 
 Typewriter 관계 제작은 **후보 발굴 → 관계 편집 → DB 빌드**로 분리한다. STDICT Canonical JSONL처럼 생성한 **Candidate JSONL을 영구 보관**하고, 이후 원본 문학·말뭉치 DB를 다시 검색하지 않고 Relations를 편집한다. 편집 기준은 [relation-editorial-policy.md](relation-editorial-policy.md)를 따른다.
 
+**1회성 전체 초기화 (오너 결정, Issue #1154):** 영구 보관·소급 수정 금지 원칙의 유일한 예외로, 오너가 기존 생산 데이터를 `candidate` 브랜치(2af4d21a)에 보관한 뒤 구형 A/B/C/D 정식 Candidate 236개, 승인 authored Relation, Drop 판정을 모두 삭제했다. A/B/C/D 모든 방식의 진행 위치는 `001_01`부터 재시작하며(A/B는 모델별, C/D는 방식별 공유 진행 위치 유지), 구형 Relation/Drop은 새 후보 생산 후 Stage 2에서 다시 판정한다. 초기화 이후 머지된 Candidate에는 영구 보관 원칙이 다시 적용된다.
+
 ```text
 Stage 1 — Candidate Generation: A / B / C / D 독립 병렬 생산
     → data/relation-candidates/<shard>/<shard>_<batch>_<method>_<model>.jsonl
