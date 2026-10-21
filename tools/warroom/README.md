@@ -1,0 +1,61 @@
+# War Room
+
+Typewriter production supervisor MVP (Issue #1338). `./war` at the repository root opens a
+terminal situation board (Textual) over a persistent **Supervisor** that runs an AI producer
+(OpenCode / DeepSeek / #860 **A**), watches its PR (review → fix → `merged=true`) and removes
+only the worktree and branch it owns afterwards.
+
+```text
+./war  ──tmux session "warroom"──▶ TUI (view + commands, writes SQLite only)
+                                   tmux session "warroom-supervisor" ──▶ Supervisor loop
+                                        ├─ OpenCode subprocess (detached, own process group)
+                                        ├─ gh (isolated GH_CONFIG_DIR), git worktrees
+                                        └─ SQLite state: tools/warroom/.local/warroom.db
+```
+
+Closing the TUI or detaching tmux never stops the Supervisor or the AI. If tmux dies, `./war`
+restarts the Supervisor, which resumes from SQLite + GitHub + git worktrees; it never
+re-produces or opens a second PR when the situation is unclear (state `ERROR`, everything kept).
+
+## Setup
+
+1. `brew install tmux` and have `opencode` installed. `./war` creates `.local/venv` (Textual) on first run.
+2. Log the producer account in **without touching your own gh/git setup**:
+   `GH_CONFIG_DIR=tools/warroom/.local/gh gh auth login` (expected account `neverworkalone-agent`).
+3. Optional `tools/warroom/.local/config.json` (see `config.example.json`): model IDs
+   (`models.free`, `models.go`), git author for the producer, quota patterns, polling.
+   Empty `models.free` uses OpenCode's default; empty `models.go` disables the Go switch.
+
+`.local/` (config, DB, logs, auth, worktrees, venv) is git-ignored; never commit tokens/logs.
+
+## State machine (one batch = one atomic unit)
+
+`PREPARE → PRODUCING → WAITING_REVIEW ⇄ FIXING → MERGED → CLEANUP → COMPLETE`, plus
+`PAUSED` (recoverable, operator Retry) and `ERROR` (safety stop; worktree/PR preserved).
+
+- **Batch choice** (`batches.py`): earliest A/DeepSeek batch whose Candidate file is absent on
+  `origin/master`, not claimed by an open PR (same method+model) and not owned by War Room. A
+  master file with the wrong record count is reported, never skipped or regenerated.
+- **Fix trigger** (`reviews.py`): a `-1` review (or `-1` general comment) for the *current* HEAD
+  (`HEAD: <sha>` marker, else the review's `commit_id`), not authored by the producer account.
+  Inline comments anchored to the current HEAD ride along with such a `-1` but never trigger alone.
+  Handled once per `(PR, HEAD, event id)`; a review of an older HEAD is ignored.
+- **Merge** is only `merged=true` from the GitHub API (not `+1/+2`, CI or `closed`).
+- **Cleanup** removes a worktree only if it is under `.local/worktrees`, registered to the recorded
+  branch, clean (incl. untracked), the AI process is gone and local HEAD equals the merged PR HEAD.
+- **Model policy**: only a failure matching `quota_patterns` while on the free tier switches to the
+  Go model. 429/network → backoff retry; auth → `PAUSED`; anything unrecognised → `PAUSED`
+  (never a silent paid fallback).
+- **Auth isolation** (`auth.py`): children get `GH_CONFIG_DIR`, scrubbed `GH_TOKEN`/`GITHUB_TOKEN`
+  and env-scoped git config (`gh auth git-credential`, SSH→HTTPS). Start is blocked unless
+  `gh api user` equals the expected account with push permission. No `gh auth switch`, no global git config.
+
+## Tests
+
+```sh
+cd tools/warroom
+PYTHONPATH=. .local/venv/bin/python -m unittest discover -s tests -t .
+```
+
+Core tests use only the standard library (the TUI smoke test is skipped without Textual).
+They fake GitHub/OpenCode/git and also exercise real `git worktree` and a real detached process.

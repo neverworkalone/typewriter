@@ -1,0 +1,14 @@
+{
+  "repo": "neverworkalone/typewriter",
+  "base_branch": "master",
+  "expected_account": "neverworkalone-agent",
+  "git_name": "",
+  "git_email": "",
+  "worker": {"adapter": "opencode", "method": "a", "producer": "deepseek"},
+  "opencode_bin": "opencode",
+  "models": {"free": "", "go": ""},
+  "quota_patterns": ["FreeUsageLimit", "free (usage|tier|quota).{0,40}(exhaust|exceed|limit)"],
+  "poll_seconds": 300,
+  "rate_limit_retries": 3,
+  "rate_limit_backoff_seconds": 120
+}
