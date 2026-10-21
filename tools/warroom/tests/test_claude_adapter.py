@@ -16,9 +16,11 @@ QUOTA = DEFAULTS["quota_patterns"]
 PIN = RunSpec("sonnet", "medium")
 SESSION = "3bbf1f2a-27f9-4a7e-a8ec-400dc799c0f3"
 HEAD1 = "a" * 40
+HELP_NO_PERMISSION_FLAGS = "  --model <model>  --effort <level>  --output-format <format> stream-json\n  -r, --resume  -n, --name <name>  --verbose\n"
 BRANCH = "a-claude-001-01"
-FORBIDDEN = ("--dangerously-skip-permissions", "--allow-dangerously-skip-permissions", "--permission-mode=bypassPermissions",
-             "bypassPermissions", "--yolo")
+# War Room passes no permission option at all: the local Claude settings decide, never a flag from here.
+FORBIDDEN = ("--dangerously-skip-permissions", "--allow-dangerously-skip-permissions", "--permission-mode",
+             "bypassPermissions", "dontAsk", "--allowedTools", "--disallowedTools", "--yolo")
 
 
 def stream(*events) -> str:
@@ -52,9 +54,9 @@ class Argv(unittest.TestCase):
                 for argv in (start, resume):
                     self.assertEqual(argv[argv.index("--model") + 1], run.model)
                     self.assertEqual(argv[argv.index("--effort") + 1], run.effort)
-                    self.assertEqual(argv[argv.index("--permission-mode") + 1], "dontAsk")
                     for bad in FORBIDDEN:
-                        self.assertNotIn(bad, " ".join(argv))
+                        self.assertNotIn(bad, argv)                   # never a permission option from War Room
+                    self.assertEqual(argv[:2], [argv[0], "-p"])
                 self.assertEqual(start[1:3], ["-p", "prompt body"])          # prompt is the -p argument
                 self.assertEqual(resume[resume.index("--resume") + 1], SESSION)
                 self.assertNotIn("--resume", start)
@@ -66,12 +68,10 @@ class Argv(unittest.TestCase):
                 a.start("p", ".", {}, run, "t", "l.log", "l.exit")
         self.assertFalse(hasattr(a, "cmd"))
 
-    def test_allowlist_is_explicit_and_merge_is_denied(self):
-        from warroom.adapters import CLAUDE_ALLOWED_TOOLS, CLAUDE_DISALLOWED_TOOLS
-        self.assertIn("Bash(gh pr create *)", CLAUDE_ALLOWED_TOOLS)
-        self.assertFalse(any(t.startswith("Bash(gh *)") for t in CLAUDE_ALLOWED_TOOLS))
-        self.assertIn("Bash(gh pr merge *)", CLAUDE_DISALLOWED_TOOLS)
-        self.assertIn("Bash(git push --force *)", CLAUDE_DISALLOWED_TOOLS)
+    def test_no_war_room_allowlist_exists(self):
+        import warroom.adapters as adapters
+        for name in ("CLAUDE_ALLOWED_TOOLS", "CLAUDE_DISALLOWED_TOOLS"):
+            self.assertFalse(hasattr(adapters, name), name)
 
 
 HELP = ("  --model <model>  --effort <level>  --output-format <format> stream-json\n"
@@ -99,6 +99,7 @@ class Preflight(unittest.TestCase):
             ("all good", {}, {}, None),
             ("version fails", {"version_ok": False}, {}, "--version"),
             ("help lacks flag", {"help_text": HELP.replace("--effort", "")}, {}, "--effort"),
+            ("no permission options needed from the CLI help", {"help_text": HELP_NO_PERMISSION_FLAGS}, {}, None),
             ("not logged in", {"login": False}, {}, "로그인"),
             ("env model override differs", {}, {"ANTHROPIC_MODEL": "opus"}, "ANTHROPIC_MODEL"),
             ("env effort override differs", {}, {"CLAUDE_CODE_EFFORT_LEVEL": "high"}, "CLAUDE_CODE_EFFORT_LEVEL"),
@@ -151,6 +152,8 @@ class RunProblem(unittest.TestCase):
     def test_denied_tool_names_are_reported(self):
         problem = self.check([init(), result(denials=[{"tool_name": "Bash"}, {"tool_name": "Bash"}])])
         self.assertIn("Bash", problem[1])
+        self.assertIn("로컬 CLI 권한 정책상 거부", problem[1])          # the local settings decided, not a War Room list
+        self.assertNotIn("허용 목록", problem[1])
 
 
 class Classification(unittest.TestCase):
@@ -233,7 +236,7 @@ class RealProcessLaunch(unittest.TestCase):
                 time.sleep(0.05)
             text = h.log_file.read_text()
             self.assertIn("--model sonnet --effort medium", text)
-            self.assertIn("--permission-mode dontAsk", text)
+            self.assertNotIn("--permission-mode", text)              # the local settings decide, not War Room
             self.assertEqual(a.session_id(h.log_file), SESSION)
             self.assertIsNone(a.run_problem(h.log_file, PIN, SESSION))
 

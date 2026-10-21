@@ -273,14 +273,11 @@ class OpenCodeAdapter(ProcessAdapter):
                 "검증되지 않은 설정으로 실행하지 않습니다.")
 
 
-# Permission surface of non-interactive Claude runs: an explicit allowlist (`dontAsk` denies everything else),
-# never a bypass flag. Merge and force-push are denied even where a broader pattern would allow them.
-CLAUDE_ALLOWED_TOOLS = ("Read", "Edit", "Write", "Glob", "Grep", "Bash(git *)", "Bash(gh pr create *)",
-                        "Bash(gh pr view *)", "Bash(gh pr list *)", "Bash(gh issue view *)",
-                        "Bash(node *)", "Bash(pnpm *)", "Bash(corepack *)")
-CLAUDE_DISALLOWED_TOOLS = ("Bash(gh pr merge *)", "Bash(git push --force *)", "Bash(git push -f *)")
-CLAUDE_REQUIRED_FLAGS = ("--model", "--effort", "--resume", "--name", "--output-format", "stream-json",
-                         "--permission-mode", "dontAsk", "--allowedTools", "--disallowedTools")
+# Permissions are the operator's own local Claude settings (~/.claude/settings.json, project settings), applied by
+# the CLI's own precedence. War Room passes no permission option: no allowlist, no permission mode, no bypass.
+# A tool the local settings do not allow is denied by the CLI and reported in `permission_denials`, which stops
+# the run in PAUSED (see run_problem). Model, effort and the session are the only things War Room pins.
+CLAUDE_REQUIRED_FLAGS = ("--model", "--effort", "--resume", "--name", "--output-format", "stream-json")
 _CLAUDE_EFFORT_FALLBACK = "ignoring it and using the default effort"   # the CLI's own warning for an unknown --effort
 
 
@@ -304,9 +301,7 @@ class ClaudeCodeAdapter(ProcessAdapter):
 
     @staticmethod
     def _pins(run: RunSpec) -> list[str]:
-        return ["--model", run.model, "--effort", run.effort, "--output-format", "stream-json", "--verbose",
-                "--permission-mode", "dontAsk", "--allowedTools", ",".join(CLAUDE_ALLOWED_TOOLS),
-                "--disallowedTools", ",".join(CLAUDE_DISALLOWED_TOOLS)]
+        return ["--model", run.model, "--effort", run.effort, "--output-format", "stream-json", "--verbose"]
 
     def start(self, prompt, cwd, env, run, title, log_file, exit_file):
         cmd = [self.binary, "-p", prompt, *self._pins(_pinned(run)), "--name", title]
@@ -364,8 +359,9 @@ class ClaudeCodeAdapter(ProcessAdapter):
             return ("ERROR", f"CLI가 보고한 모델 {reported!r}이 요청한 {run.model!r}과 다릅니다 — 중지합니다.")
         if result is not None and result.get("permission_denials"):
             names = sorted({str(d.get("tool_name")) for d in result["permission_denials"] if isinstance(d, dict)})
-            return ("PAUSED", f"권한 거부로 실행이 불완전합니다 (허용 목록 밖 도구: {', '.join(names)}). "
-                              "허용 목록 확대는 오너 승인이 필요합니다.")
+            return ("PAUSED", f"로컬 CLI 권한 정책상 거부되어 실행이 불완전합니다 (도구: {', '.join(names)}). "
+                              "자동 권한 상승 없이 중지합니다. 로컬 Claude 설정을 직접 확인한 뒤 Retry 하세요 "
+                              "(worktree·PR·세션 보존).")
         return None
 
 
