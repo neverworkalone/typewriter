@@ -394,7 +394,7 @@ class WarRoom(App):
     RichLog { border: round $primary; height: 1fr; }
     """
     BINDINGS = [("q", "quit", "Quit (워커는 계속 실행)"), ("s", "settings", "Settings"),
-                ("f", "toggle_tier", "Free/Go 전환"),
+                ("f", "toggle_tier", "Free/Go 전환"), ("r", "reload_config", "설정 리로드"),
                 ("left", "control_move(-1)", ""), ("right", "control_move(1)", ""),
                 Binding("tab", "switch_region", "", priority=True),
                 Binding("shift+tab", "switch_region", "", show=False, priority=True)]
@@ -407,6 +407,8 @@ class WarRoom(App):
         self.store = Store(self.paths.db)
         self.problem = ensure_supervisor(self.paths)
         self._auth: dict | None = None
+        self._reload_token: str | None = None
+        self._reload_fail = ""
         self._t0 = time.time()
         self.models = ordered_models(self.cfg)   # board order: adapter label, never config order
         self.methods = methods(self.cfg)
@@ -455,6 +457,32 @@ class WarRoom(App):
             return self._apply_tier(True, "free")
         self.push_screen(Confirm("DeepSeek 라인을 Go(유료) 모델로 전환합니다. 실행 중인 AI는 그대로이고 다음 실행부터 적용됩니다."),
                          lambda yes: self._apply_tier(yes, "go"))
+
+    def action_reload_config(self) -> None:
+        """r: ask the Supervisor to re-read config.json; the answer arrives through the shared DB (refresh_view)."""
+        if self.screen is not self.screen_stack[0]:
+            return
+        if not control.supervisor_alive(self.store):
+            return self.notify("Supervisor가 실행 중이 아닙니다. 시작 시 설정을 읽으므로 ./war 를 다시 실행하세요.", severity="warning")
+        self._reload_token = control.request_reload(self.store)
+        self.notify("설정 리로드를 요청했습니다.")
+
+    def _poll_reload(self) -> None:
+        res = control.reload_result(self.store)
+        if res is None or res[0] != self._reload_token:
+            return
+        self._reload_token = None
+        token, ok, msg = res
+        self._reload_fail = "" if ok else msg
+        if not ok:
+            return self.notify(msg, severity="error")
+        try:   # the Supervisor accepted it, so the TUI's own copy follows (columns need a TUI restart)
+            self.cfg = load_config(self.paths)
+        except (OSError, ValueError):
+            return
+        if ordered_models(self.cfg) != self.models or methods(self.cfg) != self.methods:
+            msg += " — 새 열/Method는 TUI를 다시 열면 표시됩니다."
+        self.notify(msg)
 
     def _apply_tier(self, yes: bool | None, tier: str) -> None:
         if yes:
@@ -554,6 +582,7 @@ class WarRoom(App):
 
     def refresh_view(self) -> None:
         store = self.store
+        self._poll_reload()
         root = self.screen_stack[0]   # the board, even while Detail/Settings is on top
         gd = control.global_drain(store)
         alive = control.supervisor_alive(store)
@@ -580,6 +609,8 @@ class WarRoom(App):
             notes += ["! GitHub 인증: " + "; ".join(a["problems"]) + "  ('s' Settings)"]
         notes += [f"! {s['model']}/{s['method'].upper()} BLOCKED: {s['blocked']}"
                   for s in statuses.values() if s["blocked"]]
+        if self._reload_fail:
+            notes.append(f"! {self._reload_fail}")
         if self.problem:
             notes.append(f"! {self.problem}")
         elif not alive and time.time() - self._t0 > 20:   # grace: the Supervisor's first heartbeat

@@ -81,6 +81,8 @@ def load_config(paths: Paths) -> dict:
     cfg = json.loads(json.dumps(DEFAULTS))
     if paths.config_file.exists():
         user = json.loads(paths.config_file.read_text("utf-8"))
+        if not isinstance(user, dict):
+            raise ValueError("config.json의 최상위 값은 JSON 객체여야 합니다.")
         for key, value in user.items():
             if isinstance(value, dict) and isinstance(cfg.get(key), dict):
                 cfg[key].update(value)
@@ -153,6 +155,32 @@ def registry_problems(cfg: dict) -> dict[str, str]:
                 bad[pid] = f"엔드포인트 {ep!r}가 {endpoints[ep]!r}와 중복 — 같은 논리 모델의 중복 등록입니다."
                 bad.setdefault(endpoints[ep], bad[pid])
     return bad
+
+
+# Wired once at Supervisor start (CLI binaries, GitHub client, git identity): a reload cannot change them.
+RESTART_KEYS = ("repo", "opencode_bin", "claude_bin", "codex_bin", "git_name", "git_email")
+
+
+def reload_problem(old: dict, new: dict, in_use: set[str]) -> str | None:
+    """Why `new` must not replace the running `old` config (None = safe). `in_use` = producers of unfinished batches.
+
+    Fail-closed: any registry problem, a changed start-time-only key, or a producer that still owns an
+    unfinished batch disappearing rejects the whole reload; nothing is partially applied.
+    """
+    try:
+        reg, bad = registry(new), registry_problems(new)
+        methods(new)
+    except Exception as e:   # a wrongly typed section (producers: [], ...) is a config error, not a crash
+        return f"설정 구조 오류: {type(e).__name__}: {e}"
+    if bad:
+        return "; ".join(f"{pid}: {why}" for pid, why in bad.items())
+    changed = [k for k in RESTART_KEYS if old.get(k) != new.get(k)]
+    if changed:
+        return f"{', '.join(changed)} 변경은 Supervisor 재시작이 필요합니다 (리로드로 적용 불가)."
+    gone = sorted(in_use - set(reg))
+    if gone:
+        return f"미완료 배치가 있는 모델 {', '.join(gone)}를 설정에서 제거할 수 없습니다."
+    return None
 
 
 def methods(cfg: dict) -> list[str]:

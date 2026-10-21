@@ -13,6 +13,14 @@ only the worktree and branch it owns afterwards.
                                         └─ SQLite state: tools/warroom/.local/warroom.db
 ```
 
+The Supervisor reads `config.json` at start and again on **`r`** (Board): it re-runs `load_config`, and the new
+config replaces the running one only if the whole registry validates (JSON, model/effort pins, duplicate IDs). A
+rejected reload keeps the old config and shows the reason in the event log and on the Board. A reload that removes a
+model with an unfinished batch, or changes `repo`, `*_bin`, `git_name` or `git_email` (wired once at start), is
+rejected: restart the Supervisor for those. A successful reload clears `시작 차단:` messages (Start re-checks them).
+Unfinished batches keep their recorded model + effort pin; a changed pin still stops them at relaunch. New columns
+appear after reopening the TUI.
+
 Closing the TUI or detaching tmux never stops the Supervisor or the AI. If tmux dies, `./war`
 restarts the Supervisor, which resumes from SQLite + GitHub + git worktrees; it never
 re-produces or opens a second PR when the situation is unclear (state `ERROR`, everything kept).
@@ -84,7 +92,7 @@ Rules (fail closed):
 - Every relaunch of a batch (resume, recovery after a lost session, fix) runs on the pin of its last recorded run.
   A changed effort stops the batch in ERROR, and so does any changed model, with no process started. The one exception
   is OpenCode's own Free → Go switch of its configured IDs. Another ID in the same tier, or a Go → Free change, stops
-  the batch. To continue, restore the config, restart the Supervisor, then Retry (config is read at start).
+  the batch. To continue, restore the config, press `r` on the board (reload), then Retry.
 - OpenCode's reasoning variant is the `#variant` suffix of `--model`. The installed CLI rejects `--variant`
   (`Unrecognized flag`). Before any batch or worktree exists, every model+variant pair (Free, and Go when configured)
   is proven by a short probe: one `opencode run` from an empty temporary directory outside the repository, without
