@@ -94,6 +94,36 @@ class TuiSmoke(unittest.TestCase):
         asyncio.run(go())
         w.tmp.cleanup()
 
+    def test_f_toggles_tier_only_after_paid_confirmation(self):
+        from warroom import tui
+        w = World()
+
+        async def go():
+            app = make_app(w)
+            async with app.run_test(size=(160, 50)) as pilot:
+                await pilot.pause(0.2)
+                await pilot.click("#card-deepseek-a")
+                await pilot.pause(0.1)
+                self.assertIsInstance(app.screen, tui.LineDetail)
+                self.assertEqual(w.store.peek_line("deepseek", "a")["model_tier"], "free")
+                await pilot.press("f")
+                await pilot.pause(0.1)
+                self.assertIsInstance(app.screen, tui.Confirm)
+                await pilot.press("n")
+                await pilot.pause(0.1)
+                self.assertEqual(w.store.peek_line("deepseek", "a")["model_tier"], "free")
+                await pilot.press("f")
+                await pilot.pause(0.1)
+                await pilot.press("y")
+                await pilot.pause(0.1)
+                self.assertEqual(w.store.peek_line("deepseek", "a")["model_tier"], "go")
+                await pilot.press("f")  # Switching back to Free is not chargeable.
+                await pilot.pause(0.1)
+                self.assertEqual(w.store.peek_line("deepseek", "a")["model_tier"], "free")
+
+        asyncio.run(go())
+        w.tmp.cleanup()
+
     def test_detail_tails_log_incrementally_and_follow(self):
         from warroom import tui
         w = World()
@@ -121,7 +151,7 @@ class TuiSmoke(unittest.TestCase):
                 self.assertEqual(len(scr.log_w.lines), 3)   # only the increment was appended
                 await pilot.press("up")
                 self.assertFalse(scr.log_w.auto_scroll)
-                await pilot.press("f")
+                await pilot.press("end")  # f now switches Free/Go; End still follows live logs
                 self.assertTrue(scr.log_w.auto_scroll)
                 # Stop is gated by the confirm modal and scoped to this Line.
                 await pilot.click("#stop")
