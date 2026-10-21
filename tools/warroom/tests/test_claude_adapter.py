@@ -137,7 +137,11 @@ class CompletionGate(unittest.TestCase):
             ("result error subtype without is_error", stream(init(), result(subtype="error_during_execution")), "ERROR"),
             ("result without is_error", stream(init(), {"type": "result", "subtype": "success", "session_id": SESSION}), "ERROR"),
             ("result of another session", stream(init(), {**result(), "session_id": "11111111-2222-4333-8444-555555555555"}), "ERROR"),
-            ("result without a session id", stream(init(), {k: v for k, v in result().items() if k != "session_id"}), None),
+            ("result without a session id", stream(init(), {k: v for k, v in result().items() if k != "session_id"}), "ERROR"),
+            ("result with a null session id", stream(init(), {**result(), "session_id": None}), "ERROR"),
+            ("result with an empty session id", stream(init(), {**result(), "session_id": ""}), "ERROR"),
+            ("result with a blank session id", stream(init(), {**result(), "session_id": "  "}), "ERROR"),
+            ("result with a non-string session id", stream(init(), {**result(), "session_id": 7}), "ERROR"),
             ("success with denials pauses", stream(init(), result(denials=[{"tool_name": "Bash"}])), "PAUSED"),
         ]
         for name, raw, want in cases:
@@ -318,7 +322,9 @@ class SupervisorStopsOnContradiction(unittest.TestCase):
         # Review (post-merge, #1380): init alone, or an error result, must not reach WAITING_REVIEW.
         cases = [("init only", stream(init())),
                  ("error_max_turns", stream(init(), result(subtype="error_max_turns", is_error=True))),
-                 ("is_error", stream(init(), result(is_error=True)))]
+                 ("is_error", stream(init(), result(is_error=True))),
+                 ("result without session_id", stream(init(), {k: v for k, v in result().items() if k != "session_id"})),
+                 ("result with null session_id", stream(init(), {**result(), "session_id": None}))]
         for name, text in cases:
             with self.subTest(name):
                 self.tearDown()

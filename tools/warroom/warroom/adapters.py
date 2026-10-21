@@ -399,9 +399,9 @@ class ClaudeCodeAdapter(ProcessAdapter):
         if result.get("is_error") is not False or result.get("subtype") != "success":
             return ("ERROR", f"CLI가 실패 결과로 종료되었습니다 (subtype={result.get('subtype')!r}, "
                              f"is_error={result.get('is_error')!r}) — PR을 인정하지 않고 보존합니다.")
-        reported = result.get("session_id")
-        if reported is not None and reported != init.get("session_id"):
-            return ("ERROR", f"최종 result의 세션 ID {reported!r}가 init의 {init.get('session_id')!r}와 다릅니다 — 중지하고 보존합니다.")
+        reported = result.get("session_id")   # required by the result schema: absent/null/empty cannot prove the match
+        if not isinstance(reported, str) or not reported.strip() or reported != init.get("session_id"):
+            return ("ERROR", f"최종 result의 세션 ID {reported!r}가 없거나 init의 {init.get('session_id')!r}와 다릅니다 — 중지하고 보존합니다.")
         return None
 
 
