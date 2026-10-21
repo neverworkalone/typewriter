@@ -17,7 +17,7 @@ import time
 import traceback
 from pathlib import Path
 
-from . import auth, batches, control, reviews
+from . import auth, batches, control, prompts, reviews
 from .adapters import classify_failure
 from .config import registry, registry_problems
 from .gitops import CleanupBlocked, GitError
@@ -42,43 +42,6 @@ def acquire_lock(path: Path):
     f.write(str(os.getpid()))
     f.flush()
     return f
-
-
-def produce_prompt(cfg, b) -> str:
-    m, p = b["method"].upper(), b["producer"]
-    return (
-        f"#860 {m} 진행해\n\n"
-        f"War Room(생산 Supervisor)이 이미 배치를 선정했다. 이번 작업 대상은 정확히 "
-        f"`{b['shard']}_{b['batch']}` ({m}/{p}) 하나이며 다른 배치를 고르지 않는다.\n"
-        f"- 현재 디렉터리는 이 배치 전용 git worktree이고 브랜치 `{b['branch']}`가 이미 "
-        f"체크아웃되어 있다. 브랜치를 바꾸거나 새로 만들지 않는다.\n"
-        f"- 반드시 이 저장소의 AGENTS.md와 docs/relation-factory.md의 {m} 생산 규칙을 따르고, "
-        f"정식 Candidate v1 검증 후 커밋·push하고 `batch` 라벨의 PR을 만든다.\n"
-        f"- PR 생성 직전 같은 배치를 점유한 열린 PR이 없는지 다시 확인한다. 있으면 PR을 만들지 말고 "
-        f"종료하며 사유를 출력한다.\n"
-        f"- PR을 만든 뒤에는 리뷰·CI·머지를 기다리지 말고 종료한다. 감시는 War Room이 한다.\n"
-        f"- 다른 모델/CLI/서브에이전트를 실행하지 않는다.")
-
-
-def fix_prompt(b, events, resumed: bool) -> str:
-    lines = [f"PR #{b['pr_number']} (브랜치 `{b['branch']}`, 현재 HEAD {b['head_sha']})에 새 리뷰가 달렸다.",
-             "아래 리뷰/코멘트를 현재 HEAD 기준으로 검토하고, 동의하는 지적은 수정·검증한 뒤 "
-             "같은 브랜치에만 커밋·push한다. 동의하지 않으면 근거를 PR 코멘트로 남긴다. "
-             "새 PR을 만들지 않고, 리뷰를 요청하거나 머지하지 않는다. 끝나면 종료한다. "
-             "이전 실행이 중단되며 worktree에 미커밋 변경이 남아 있을 수 있으니 먼저 git status로 확인하라.", ""]
-    if not resumed:
-        lines += ["(이전 AI 세션을 이어받지 못한 새 세션이다. AGENTS.md와 이 worktree의 git 상태, "
-                  "PR 내용을 먼저 파악하라.)", ""]
-    for e in events:
-        loc = f" {e['path']}:{e.get('line')}" if e.get("path") else ""
-        lines.append(f"--- {e['kind']} by {e['author']}{loc} [{e['key']}]\n{e['body']}\n")
-    return "\n".join(lines)
-
-
-def recovery_prompt(b) -> str:
-    return (f"이전 AI 실행이 중단되어 같은 worktree에서 이어서 진행한다 (배치 {b['shard']}_{b['batch']}, "
-            f"브랜치 `{b['branch']}`). worktree의 현재 상태와 기존 산출물을 확인하고, 이미 있는 "
-            "산출물·PR을 버리거나 중복 PR을 만들지 말고 남은 작업만 완료하라. 이후 지침은 AGENTS.md를 따른다.")
 
 
 class Supervisor:
@@ -184,7 +147,8 @@ class Supervisor:
             nb = batches.next_batch(
                 self.runner, self.paths.repo_root, self.env,
                 ref=f"origin/{self.cfg['base_branch']}", method=method, producer=model,
-                open_prs=self.gh.open_prs(), owned=self.store.claimed_keys(method, model))
+                open_prs=self.gh.open_prs(),
+                owned=self.store.claimed_keys(method, None if batches.is_shared_queue(method) else model))
         except Exception as e:  # BatchError, GitError, GhError
             return self._blocked(ln, f"배치 선정 실패: {e}")
         if nb is None:
@@ -247,18 +211,20 @@ class Supervisor:
             return self._fail(b, "ERROR", f"{b['model_tier']} 모델 ID가 설정되지 않아 실행하지 않습니다.")
         try:
             if kind == "produce":
-                h = ad.start(produce_prompt(self.cfg, b), wt, self.env, model,
+                h = ad.start(prompts.produce(b), wt, self.env, model,
                                        f"{b['method'].upper()} {b['shard']}_{b['batch']}", log, ex)
             elif kind == "produce_resume":
-                h = ad.resume(sid, recovery_prompt(b), wt, self.env, model, log, ex)
+                h = ad.resume(sid, prompts.recovery(b), wt, self.env, model, log, ex)
             elif kind == "produce_recover":
-                h = ad.start(recovery_prompt(b), wt, self.env, model,
+                h = ad.start(prompts.recovery(b), wt, self.env, model,
                                        f"{b['method'].upper()} {b['shard']}_{b['batch']} recover", log, ex)
             elif kind == "fix_resume":
-                h = ad.resume(sid, fix_prompt(b, events, True), wt, self.env, model, log, ex)
+                h = ad.resume(sid, prompts.fix(b, events, True), wt, self.env, model, log, ex)
             else:  # fix_new
-                h = ad.start(fix_prompt(b, events, False), wt, self.env, model,
+                h = ad.start(prompts.fix(b, events, False), wt, self.env, model,
                                        f"PR {b['pr_number']} fix", log, ex)
+        except prompts.PromptError as e:   # rendered before any process is started
+            return self._fail(b, "ERROR", f"프롬프트 오류로 AI를 시작하지 않았습니다: {e}")
         except Exception as e:
             return self._fail(b, "ERROR", f"AI 실행 시작 실패: {e}")
         state = "FIXING" if kind.startswith("fix") else "PRODUCING"
@@ -375,10 +341,18 @@ class Supervisor:
         self.store.log(b["id"], f"AI 실행 중이지만 PR #{info['number']} 감지 → 리뷰 감시로 인계")
 
     def _duplicate_claim(self, b, my_pr: int) -> int | None:
-        stem = f"data/relation-candidates/{b['shard']}/{b['shard']}_{b['batch']}_{b['method']}_{b['producer']}.jsonl"
+        """A rival open PR on the same batch file: same model for A/B, any model for the shared C/D queue."""
+        shared = batches.is_shared_queue(b["method"])
         for pr in self.gh.open_prs():
-            if pr["number"] != my_pr and any(f.get("path") == stem for f in pr.get("files") or []):
-                return pr["number"]
+            if pr["number"] == my_pr:
+                continue
+            try:
+                claims = batches.pr_candidates(pr)
+            except batches.BatchError as e:   # unknown file list: a duplicate cannot be ruled out -> stop
+                raise DuplicateClaim(f"{e} — 중복 방지로 중단") from e
+            for shard, batch, method, who in claims:
+                if (shard, batch, method) == (b["shard"], b["batch"], b["method"]) and (shared or who == b["producer"]):
+                    return pr["number"]
         return None
 
     def _run_failed(self, b, code: int) -> None:

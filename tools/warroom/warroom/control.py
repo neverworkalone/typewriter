@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import time
 
+from .config import registry
 from .store import Store
 
 STATES_HELP = ("PREPARE", "PRODUCING", "WAITING_REVIEW", "FIXING", "MERGED", "CLEANUP",
@@ -74,16 +75,21 @@ def line_status(store: Store, model: str, method: str) -> dict:
            "session": None, "error": None, "progress": None, "worktree": None, "branch": None,
            "mode": ln["mode"], "run": bool(ln["run"]), "line_drain": bool(ln["drain"]),
            "global_drain": global_drain(store), "blocked": ln["blocked"] or "", "tier": ln["model_tier"],
-           "batch_id": None, "activity": None, "occupied": False, "updated": None, "records_total": None}
+           "batch_id": None, "activity": None, "occupied": False, "updated": None, "records_total": None,
+           "records_done": None, "elapsed": None}
     out["drain"] = out["line_drain"] or out["global_drain"]
     if b is not None:
         out.update(state=b["state"], batch=f"{b['shard']}_{b['batch']}", branch=b["branch"],
                    pr=b["pr_number"], head=b["head_sha"], session=b["session_id"],
                    error=b["error"], worktree=b["worktree"], batch_id=b["id"], updated=b["updated_at"],
-                   records_total=b["records_total"],
+                   records_total=b["records_total"], records_done=b["records_done"],
                    occupied=b["state"] != "COMPLETE")
         if b["records_done"] is not None and b["records_total"]:
             out["progress"] = f"{b['records_done']}/{b['records_total']}"  # recorded only
+        runs = store.runs(b["id"])
+        if runs:   # real execution time: the sum of recorded runs, an unfinished one counted up to now
+            now = time.time()
+            out["elapsed"] = sum(max(0.0, (r["ended_at"] or now) - r["started_at"]) for r in runs)
         ev = store.last_event(b["id"])
         if ev:
             out["activity"] = (ev["ts"], ev["msg"])
@@ -99,3 +105,48 @@ def line_status(store: Store, model: str, method: str) -> dict:
 def can_stop_all(store: Store, lines) -> bool:
     """Stop All has a target while any Line has an unfinished batch (incl. PAUSED/ERROR) or a run flag."""
     return any(line_status(store, m, me)["stoppable"] for m, me in lines)
+
+
+# --- Free/Go model tier (operator switch; the automatic Free->Go switch on quota exhaustion is separate) ---
+TIER_SWITCH_MODELS = ("deepseek",)   # the operator Free/Go switch applies to DeepSeek only
+
+
+def go_models(cfg: dict) -> list[str]:
+    """Models the tier switch may touch: DeepSeek, run through OpenCode (the only CLI with a free tier),
+    and only when it has a Go model configured."""
+    return [pid for pid, p in registry(cfg).items()
+            if pid in TIER_SWITCH_MODELS and p["adapter"] == "opencode" and p["models"].get("go")]
+
+
+def tier_state(store: Store, cfg: dict, methods) -> str:
+    """'free' | 'go' | 'mixed' over every Line of the models that have a Go model; 'none' if DeepSeek has no Go model."""
+    tiers = {store.peek_line(m, me)["model_tier"] for m in go_models(cfg) for me in methods}
+    if not tiers:
+        return "none"
+    return tiers.pop() if len(tiers) == 1 else "mixed"
+
+
+def next_tier(state: str) -> str | None:
+    """f: Free -> Go; Go or a mixed board -> Free (never silently towards paid when unsure); none -> nothing."""
+    return {"free": "go", "go": "free", "mixed": "free"}.get(state)
+
+
+def set_tier(store: Store, cfg: dict, methods, tier: str) -> int:
+    """Apply `tier` to every DeepSeek Line (and its unfinished batch).
+
+    A running AI keeps its model; the next launch (new batch, fix, recovery) uses the new tier.
+    """
+    if tier not in ("free", "go"):
+        raise ValueError(tier)
+    models = go_models(cfg)
+    for m in models:
+        for me in methods:
+            store.set_line(m, me, model_tier=tier)
+    n = 0
+    for b in store.incomplete_batches():
+        if b["producer"] in models and b["model_tier"] != tier:
+            store.update(b["id"], model_tier=tier)
+            store.log(b["id"], f"운영자가 모델 단계를 {tier.upper()}로 전환 (다음 실행부터 적용)")
+            n += 1
+    store.log(None, f"운영자 모델 단계 전환 → {tier.upper()} ({len(models)}개 모델)")
+    return n

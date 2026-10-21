@@ -5,7 +5,9 @@ import os
 import subprocess
 import sys
 
+from textual.actions import SkipAction
 from textual.app import App, ComposeResult
+from textual.binding import Binding
 from textual.containers import Horizontal, HorizontalScroll, Vertical
 from textual.screen import ModalScreen, Screen
 from textual.css.scalar import Unit
@@ -16,7 +18,7 @@ import time
 from . import auth, control
 from .config import Paths, adapter_label, adapters, load_config, methods, registry
 from .logrender import render_line
-from .views import _hhmm, _when, control_columns, select_width, card_text, detail_header, detail_meta  # noqa: F401  (CARD_W/ICON re-exported for tests)
+from .views import _hhmm, _when, control_columns, select_width, card_text, detail_header, model_title, tier_bar, detail_meta  # noqa: F401  (CARD_W/ICON re-exported for tests)
 from .logtail import LogTail, redact
 from .store import Store
 
@@ -40,10 +42,32 @@ def ensure_supervisor(paths: Paths) -> str | None:
     return None if r.returncode == 0 else f"supervisor tmux 시작 실패: {r.stderr.strip()}"
 
 
+def in_open_select(widget) -> bool:
+    return widget is not None and any(isinstance(a, Select) and a.expanded for a in widget.ancestors_with_self)
+
+
+def switch_region(screen, focused, regions: dict, memory: dict, default: dict) -> None:
+    """Tab / Shift+Tab: jump between two focus regions (arrow keys move inside one), remembering the last stop.
+
+    regions: name -> predicate(widget) that says a widget belongs to it; default: name -> widget to land on first.
+    """
+    here = next((n for n, inside in regions.items() if focused is not None and inside(focused)), None)
+    if here is not None:
+        memory[here] = focused
+    names = list(regions)
+    target = names[(names.index(here) + 1) % len(names)] if here else names[0]
+    dest = memory.get(target)
+    if dest is None or not dest.focusable or dest.screen is not screen:
+        dest = default[target]()
+    if dest is not None:
+        dest.focus()
+
+
 class Confirm(ModalScreen[bool]):
     """y/N confirmation. Enter, N and Esc all mean No."""
     BINDINGS = [("y", "answer(True)", "Yes"), ("n", "answer(False)", "No"),
-                ("escape", "answer(False)", "Cancel")]
+                ("escape", "answer(False)", "Cancel"),
+                ("left", "focus_button('no')", ""), ("right", "focus_button('yes')", "")]
 
     def __init__(self, text: str):
         super().__init__()
@@ -53,14 +77,18 @@ class Confirm(ModalScreen[bool]):
         with Vertical(id="confirm"):
             yield Static(self.text)
             with Horizontal():
-                yield Button("Yes (Y)", id="yes", variant="error")
                 yield Button("No (N)", id="no", variant="primary")
+                yield Button("Yes (Y)", id="yes", variant="error")
 
     def on_mount(self) -> None:
         self.query_one("#no", Button).focus()
 
     def action_answer(self, yes: bool) -> None:
         self.dismiss(yes)
+
+    def action_focus_button(self, which: str) -> None:
+        """Left/Right pick No (left) / Yes (right); Enter still answers the focused button."""
+        self.query_one(f"#{which}", Button).focus()
 
     def on_button_pressed(self, e: Button.Pressed) -> None:
         e.stop()
@@ -69,7 +97,8 @@ class Confirm(ModalScreen[bool]):
 
 class Card(Static, can_focus=True):
     """One Line. Clicking (or Enter) only opens its detail; it never starts or changes work."""
-    BINDINGS = [("enter", "open", "Open")]
+    BINDINGS = [("enter", "open", "Open"), ("left", "move(0,-1)", ""), ("right", "move(0,1)", ""),
+                ("up", "move(-1,0)", ""), ("down", "move(1,0)", "")]
 
     def __init__(self, model: str, method: str):
         super().__init__("", id=f"card-{model}-{method}", classes="card")
@@ -80,6 +109,21 @@ class Card(Static, can_focus=True):
 
     def action_open(self) -> None:
         self.app.push_screen(LineDetail(self.model, self.method))
+
+    def action_move(self, drow: int, dcol: int) -> None:
+        """Arrow keys walk the Line grid (columns = models, rows = methods); up from the top row returns to the controls."""
+        cards = list(self.app.query(Card))
+        models = list(dict.fromkeys(c.model for c in cards))
+        methods = list(dict.fromkeys(c.method for c in cards))
+        row = methods.index(self.method) + drow
+        col = models.index(self.model) + dcol
+        if row < 0:
+            self.app.query_one("#start").focus()
+            return
+        for c in cards:
+            if 0 <= col < len(models) and 0 <= row < len(methods) and (c.model, c.method) == (models[col], methods[row]):
+                c.focus()
+                return
 
 
 class SettingsScreen(Screen):
@@ -108,12 +152,16 @@ class SettingsScreen(Screen):
 
 class LineDetail(Screen):
     """Batch Detail for one Line: controls, live Agent Log (tail -f), Run History, Audit Log."""
-    BINDINGS = [("escape", "back", "Back"), ("f", "follow", "Auto-scroll"), ("up", "scroll_up", ""),
-                ("pageup", "page_up", ""), ("home", "top", ""), ("end", "follow", "")]
+    BINDINGS = [("escape", "back", "Back"), ("up", "scroll_up", ""),
+                ("pageup", "page_up", ""), ("home", "top", ""), ("end", "follow", ""),
+                ("left", "control_move(-1)", ""), ("right", "control_move(1)", ""),
+                Binding("tab", "switch_region", "", priority=True),
+                Binding("shift+tab", "switch_region", "", show=False, priority=True)]
 
     def __init__(self, model: str, method: str):
         super().__init__()
         self.model, self.method = model, method
+        self._region_memory: dict = {}
         self.tail = LogTail(None)
         self.audit_seen = 0
         self.source = "latest"      # latest | audit | run:<id>
@@ -177,6 +225,28 @@ class LineDetail(Screen):
 
     def on_mouse_scroll_up(self, event) -> None:
         self._manual_scroll()
+
+    def action_control_move(self, step: int) -> None:
+        """Left/Right walk the buttons and the source Select like Tab/Shift+Tab (not inside an open Select)."""
+        order = [w for w in (*self.query_one("#line-controls").children, self.query_one("#source"))
+                 if w.display and w.focusable]
+        if self.focused in order:
+            order[(order.index(self.focused) + step) % len(order)].focus()
+
+    def _top_controls(self) -> list:
+        return [w for w in (*self.query_one("#line-controls").children, self.query_one("#source"))
+                if w.display and w.focusable]
+
+    def action_switch_region(self) -> None:
+        """Tab: buttons + source Select  <->  log. Arrows move inside the button row."""
+        if in_open_select(self.focused):
+            return
+        top = self._top_controls()
+        in_top = lambda w: w in top or any(a is self.query_one("#source") for a in w.ancestors_with_self)
+        switch_region(self, self.focused,
+                      {"top": in_top, "log": lambda w: w is self.log_w},
+                      self._region_memory,
+                      {"top": lambda: top[0] if top else None, "log": lambda: self.log_w})
 
     def action_back(self) -> None:
         self.app.pop_screen()
@@ -286,9 +356,7 @@ class LineDetail(Screen):
             control.retry(store, m, me)
         elif e.button.id == "stop":
             self.app.push_screen(Confirm(
-                f"{m} / Method {me.upper()} 라인만 AI 실행을 즉시 중지합니다.\n"
-                "다른 라인은 영향 없음. worktree·브랜치·PR은 보존되며 Retry로 재개할 수 있습니다.\n"
-                "중지하시겠습니까? (Y/N, 기본 N)"), self._stopped)
+                f"{m} / Method {me.upper()} 라인의 AI 실행을 즉시 중지합니다."), self._stopped)
 
     def _stopped(self, yes: bool | None) -> None:
         if yes:
@@ -298,7 +366,9 @@ class LineDetail(Screen):
 class WarRoom(App):
     TITLE = "WAR ROOM / TYPEWRITER"
     CSS = """
-    #confirm { width: 70; height: auto; padding: 1 2; border: thick $error; background: $surface; margin: 4 8; }
+    Confirm { align: center middle; }
+    #confirm { width: 60; height: auto; padding: 0 2; border: thick $error; background: $surface; }
+    #confirm > Horizontal { height: auto; align-horizontal: center; margin-top: 1; }
     #banner, #drain-note { height: auto; }
     #banner { color: $error; }
     #drain-note { color: $warning; }
@@ -306,20 +376,26 @@ class WarRoom(App):
     #controls > Button { width: 14; min-width: 14; max-width: 14; }
     #line-controls > Button { min-width: 8; width: auto; }
     #controls.narrow { layout: grid; grid-size: 3; grid-rows: auto; }
-    #columns { height: 1fr; }
+    #columns { height: 1fr; margin-top: 1; }
+    #tier-bar { height: 1; padding: 0 1; }
     .col { width: 38; height: auto; margin: 0 1; }
-    .coltitle { text-style: bold; }
-    .card { border: round $primary; height: 5; padding: 0 1; }
+    .coltitle { text-style: bold; color: $accent; width: 100%; text-align: center; margin-bottom: 1; }
+    .card { border: round $primary; height: 7; padding: 0 1; }
     .card:focus { border: heavy $accent; }
     .card.ERROR, .card.PAUSED { border: round $error; }
     .card.COMPLETE { border: round $success; }
     .card.empty { border: round #444444; color: #777777; }
     .card.empty:focus { border: round #888888; }
+    .card.ERROR:focus, .card.PAUSED:focus, .card.COMPLETE:focus { border: heavy $accent; }
     #info { border: round $accent; padding: 0 1; height: auto; }
     #settings-body { padding: 1 2; }
     RichLog { border: round $primary; height: 1fr; }
     """
-    BINDINGS = [("q", "quit", "Quit (워커는 계속 실행)"), ("s", "settings", "Settings")]
+    BINDINGS = [("q", "quit", "Quit (워커는 계속 실행)"), ("s", "settings", "Settings"),
+                ("f", "toggle_tier", "Free/Go 전환"),
+                ("left", "control_move(-1)", ""), ("right", "control_move(1)", ""),
+                Binding("tab", "switch_region", "", priority=True),
+                Binding("shift+tab", "switch_region", "", show=False, priority=True)]
 
     def __init__(self):
         super().__init__()
@@ -360,10 +436,53 @@ class WarRoom(App):
         with HorizontalScroll(id="columns"):
             for model in self._lines():
                 with Vertical(classes="col", id=f"col-{model}"):
-                    yield Static(model, classes="coltitle", id=f"title-{model}")
+                    yield Static(model_title(registry(self.cfg).get(model, {}).get("label", model)), classes="coltitle", id=f"title-{model}")
                     for me in self.methods:
                         yield Card(model, me)
+        yield Static(id="tier-bar")
         yield Footer()
+
+    def action_toggle_tier(self) -> None:
+        """f: Free <-> Go for DeepSeek. Going to the paid tier asks first."""
+        if self.screen is not self.screen_stack[0]:
+            return
+        state = control.tier_state(self.store, self.cfg, self.methods)
+        target = control.next_tier(state)
+        if target is None:
+            return self.notify("DeepSeek의 Go 모델이 설정되어 있지 않습니다 (config의 models.go).", severity="warning")
+        if target == "free":
+            return self._apply_tier(True, "free")
+        self.push_screen(Confirm("DeepSeek 라인을 Go(유료) 모델로 전환합니다. 실행 중인 AI는 그대로이고 다음 실행부터 적용됩니다."),
+                         lambda yes: self._apply_tier(yes, "go"))
+
+    def _apply_tier(self, yes: bool | None, tier: str) -> None:
+        if yes:
+            control.set_tier(self.store, self.cfg, self.methods, tier)
+            self.refresh_view()
+
+    def action_switch_region(self) -> None:
+        """Tab: top control bar  <->  Line cards. Arrows move inside either one."""
+        if self.screen is not self.screen_stack[0]:
+            raise SkipAction()          # Detail/Settings/Confirm keep their own Tab
+        if in_open_select(self.focused):
+            return
+        mem = self.__dict__.setdefault("_region_memory", {})
+        switch_region(self.screen, self.focused,
+                      {"controls": lambda w: any(a.id == "controls" for a in w.ancestors_with_self),
+                       "cards": lambda w: isinstance(w, Card)},
+                      mem,
+                      {"controls": lambda: self.query_one("#start"), "cards": lambda: next(iter(self.query(Card)), None)})
+
+    def action_control_move(self, step: int) -> None:
+        """Left/Right move between the top-bar controls like Shift+Tab/Tab (up/down stay with an open Select)."""
+        focused = self.focused
+        if focused is None or not any(a.id == "controls" for a in focused.ancestors):
+            return
+        if isinstance(focused, Select) and focused.expanded:
+            return
+        order = [w for w in self.query_one("#controls").children if w.display and w.focusable]
+        if focused in order:
+            order[(order.index(focused) + step) % len(order)].focus()
 
     def _model_options(self, adapter: str):
         return [(f"{p['label']} ({pid})", pid) for pid, p in registry(self.cfg).items()
@@ -446,6 +565,7 @@ class WarRoom(App):
                     continue
                 card.update(card_text(st))
                 card.set_classes("card " + (st["state"] if st["batch"] else "empty"))
+        root.query_one("#tier-bar", Static).update(tier_bar(control.tier_state(store, self.cfg, self.methods)))
         root.query_one("#drain-note", Static).update("DRAIN ALL: 모든 라인 신규 배치 중지" if gd else "")
         root.query_one("#drain-note", Static).display = gd
         b = root.query_one("#drain-all", Button)
@@ -480,9 +600,7 @@ class WarRoom(App):
         elif e.button.id == "stop-all":
             n = len(self.store.incomplete_batches())
             self.push_screen(Confirm(
-                f"모든 라인({len(self._lines()) * len(self.methods)}개 중 미완료 배치 {n}개)의 AI 실행을 즉시 "
-                "중지합니다. 모든 라인의 예약 실행이 해제되며 worktree·브랜치·PR은 보존됩니다(Retry로 재개).\n"
-                "중지하시겠습니까? (Y/N, 기본 N)"), self._stopped_all)
+                f"모든 라인(미완료 배치 {n}개)을 즉시 중지합니다."), self._stopped_all)
 
     def _stopped_all(self, yes: bool | None) -> None:
         if yes:

@@ -63,12 +63,19 @@ logical model twice (duplicate id or shared endpoint ID) is blocked.
   legacy single-worker `kv` controls become the controls of that Line and old `batch-<id>-<ts>.log`
   files are imported as runs. No row or log is deleted or rewritten.
 
+## Prompts
+
+What the AI is told lives in `tools/warroom/prompts/` (`a.md` `b.md` `c.md` `d.md` `fix.md` `recovery.md`), checked in and
+resolved from the repository, not the cwd. Placeholders (`{{batch}}`, `{{branch}}`, and for `fix.md` `{{pr}}` `{{head}}`
+`{{review_events}}` `{{session_note}}`) are filled once when a run starts, so editing a file never changes a running AI.
+A missing/empty/unreadable file or an unknown/unfilled placeholder stops the batch in `ERROR` without starting any AI.
+
 ## State machine (one batch = one atomic unit)
 
 `PREPARE → PRODUCING → WAITING_REVIEW ⇄ FIXING → MERGED → CLEANUP → COMPLETE`, plus
 `PAUSED` (recoverable, operator Retry) and `ERROR` (safety stop; worktree/PR preserved).
 
-- **Batch choice** (`batches.py`): earliest A/DeepSeek batch whose Candidate file is absent on
+- **Batch choice** (`batches.py`): A/B keep one queue per (method, model); **C/D share one queue per method across all models** (a Candidate file or open PR of any model completes/claims the batch; local unfinished batches of any model occupy it; two models' files for one C/D batch is an error, and `create_batch` refuses a second model's reservation inside one `BEGIN IMMEDIATE` transaction). Earliest A/DeepSeek batch whose Candidate file is absent on
   `origin/master`, not claimed by an open PR (same method+model) and not owned by War Room. A
   master file with the wrong record count is reported, never skipped or regenerated.
 - **Fix trigger** (`reviews.py`): only accounts in `trusted_reviewers` (default `genonfire`; empty = nothing

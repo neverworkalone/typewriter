@@ -88,6 +88,9 @@ def load_config(paths: Paths) -> dict:
 _PRODUCER_ID = re.compile(r"^[a-z0-9-]+$")
 
 
+KNOWN_LABELS = {"deepseek": "DeepSeek"}   # display names for producer ids that have no configured `label`
+
+
 def registry(cfg: dict) -> dict[str, dict]:
     """Logical model id -> {label, adapter, models}. Legacy `worker`/`models` is one entry."""
     prods = cfg.get("producers") or {}
@@ -96,7 +99,7 @@ def registry(cfg: dict) -> dict[str, dict]:
         prods = {w["producer"]: {"adapter": w.get("adapter", "opencode"), "models": cfg.get("models", {})}}
     out = {}
     for pid, p in prods.items():
-        out[pid] = {"label": p.get("label") or pid, "adapter": p.get("adapter", "opencode"),
+        out[pid] = {"label": p.get("label") or KNOWN_LABELS.get(pid, pid), "adapter": p.get("adapter", "opencode"),
                     "models": {"free": "", "go": "", **(p.get("models") or {})}}
     return out
 

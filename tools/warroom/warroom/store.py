@@ -65,6 +65,13 @@ class LineBusy(Exception):
     """A Line owns at most one unfinished batch."""
 
 
+class DuplicateBatch(LineBusy):
+    """Another model already holds this (method, shard, batch) of a shared (C/D) queue."""
+
+
+SHARED_QUEUE_METHODS = ("c", "d")   # one queue across all models; A/B keep a queue per model
+
+
 class Store:
     def __init__(self, path: Path):
         self.path = Path(path)
@@ -146,9 +153,16 @@ class Store:
     def create_batch(self, **f) -> int:
         now = time.time()
         with self._conn() as c:
+            c.execute("BEGIN IMMEDIATE")   # check + insert under one write lock: concurrent Starts cannot both claim
             if c.execute("SELECT 1 FROM batches WHERE method=? AND producer=? AND state!='COMPLETE'",
                          (f["method"], f["producer"])).fetchone():
                 raise LineBusy(f"{f['producer']}/{f['method']} 라인에 미완료 배치가 있습니다.")
+            if f["method"] in SHARED_QUEUE_METHODS:
+                other = c.execute("SELECT producer, state FROM batches WHERE method=? AND shard=? AND batch=? "
+                                  "AND producer!=?", (f["method"], f["shard"], f["batch"], f["producer"])).fetchone()
+                if other:
+                    raise DuplicateBatch(f"{f['method'].upper()} {f['shard']}_{f['batch']} 배치는 이미 "
+                                         f"{other['producer']}({other['state']})가 점유 중입니다.")
             cur = c.execute(
                 "INSERT INTO batches(method,producer,shard,batch,branch,worktree,state,"
                 "model_tier,records_total,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
@@ -249,11 +263,14 @@ class Store:
                              "WHERE b.producer=? AND b.method=? ORDER BY r.id DESC LIMIT ?",
                              (model, method, limit)).fetchall()
 
-    def claimed_keys(self, method: str, producer: str) -> set[tuple[str, str]]:
-        """Batches this worker already owns (including finished ones)."""
+    def claimed_keys(self, method: str, producer: str | None) -> set[tuple[str, str]]:
+        """Batches already owned here, finished ones included. producer=None: every model (shared C/D queue)."""
         with self._conn() as c:
-            rows = c.execute("SELECT shard,batch FROM batches WHERE method=? AND producer=?",
-                             (method, producer)).fetchall()
+            if producer is None:
+                rows = c.execute("SELECT shard,batch FROM batches WHERE method=?", (method,)).fetchall()
+            else:
+                rows = c.execute("SELECT shard,batch FROM batches WHERE method=? AND producer=?",
+                                 (method, producer)).fetchall()
         return {(r["shard"], r["batch"]) for r in rows}
 
     def all_batches(self):
