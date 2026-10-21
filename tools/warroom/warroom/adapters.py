@@ -132,12 +132,16 @@ def _pinned(run: RunSpec) -> RunSpec:
     return run
 
 
+PREFLIGHT_PROMPT = "Reply with exactly: OK"
+
+
 class OpenCodeAdapter(ProcessAdapter):
     name = "opencode"
     capabilities = {"resume": True, "stop": True}
 
     def __init__(self, binary: str = "opencode"):
         self.binary = binary
+        self._proven: set[str] = set()   # model#variant pairs the CLI accepted during this Supervisor's life
 
     @staticmethod
     def model_arg(run: RunSpec) -> str:
@@ -163,7 +167,41 @@ class OpenCodeAdapter(ProcessAdapter):
         missing = [r.model for r in runs if r.model not in known]
         if missing:
             return f"OpenCode가 지원하지 않는 모델 ID: {', '.join(missing)}"
+        for run in runs:
+            problem = self._variant_problem(runner, env, run)
+            if problem:
+                return problem
         return None
+
+    def _variant_problem(self, runner, env, run) -> str | None:
+        """Start-time proof that this model accepts this variant (`--model <id>#<effort>`).
+
+        The CLI validates the variant before it calls the provider: an unknown one returns `Variant unavailable`
+        even while the provider is out of quota, so any provider answer, quota errors included, proves the variant.
+        A refusal blocks; so does a result with neither an answer nor a provider error (fail closed).
+        """
+        key = self.model_arg(run)
+        if key in self._proven:
+            return None
+        res = runner.run([self.binary, "run", "--format", "json", "--auto", "--title", "WR preflight",
+                          "--model", key, PREFLIGHT_PROMPT], env=env, timeout=120)
+        if "Variant unavailable" in (res.out + res.err):
+            return f"OpenCode가 {run.model}에서 추론 수준(variant) {run.effort!r}를 지원하지 않습니다 — Start를 차단합니다."
+        events = []
+        for line in res.out.splitlines():
+            try:
+                events.append(json.loads(line))
+            except ValueError:
+                continue
+        answered = any(isinstance(e, dict) and e.get("type") == "text" for e in events)
+        provider_reached = any(isinstance(e, dict) and e.get("type") == "error"
+                               and str((e.get("error") or {}).get("type", "")).startswith("provider.") for e in events)
+        if answered or provider_reached:
+            self._proven.add(key)
+            return None
+        detail = (res.err or res.out).strip()[:200]
+        return (f"OpenCode가 {key}의 추론 수준을 확인하지 못했습니다 (exit {res.code}: {detail}) — "
+                "검증되지 않은 설정으로 실행하지 않습니다.")
 
 
 # --- failure classification: free-quota exhaustion is the ONLY trigger for Go ---

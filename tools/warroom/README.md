@@ -84,8 +84,12 @@ Rules (fail closed):
 - A resumed session continues only on the model and effort that started it (for single-model CLIs); a different
   pin stops the batch in ERROR. OpenCode may still switch Free → Go mid-batch: only its effort is compared.
 - OpenCode's reasoning variant is the `#variant` suffix of `--model`. The installed CLI rejects `--variant`
-  (`Unrecognized flag`). An unknown variant or model fails the run and stops the batch; nothing is substituted.
-  A DeepSeek entry without `effort` runs at `high`, the owner-fixed value (configs written before #1373).
+  (`Unrecognized flag`). Start proves every model+variant pair (Free, and Go when configured) with one short probe
+  before any batch or worktree exists: a variant the CLI refuses (`Variant unavailable`) blocks Start with that
+  reason. Proof is cached per Supervisor run, and a refused pair is probed again next time. The probe is one
+  `opencode run` per tier and effort, so it may cost a few tokens and create a session titled `WR preflight`.
+  A variant refused later still stops the batch in ERROR, with nothing substituted. A DeepSeek entry without
+  `effort` runs at `high`, the owner-fixed value (configs written before #1373).
 - Run History and the Audit Log record the model ID and effort each launch was pinned to.
 
 ## Prompts
