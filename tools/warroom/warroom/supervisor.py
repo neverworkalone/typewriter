@@ -19,7 +19,8 @@ from pathlib import Path
 
 from . import auth, batches, control, prompts, reviews
 from .adapters import PREFLIGHT_PENDING, RunSpec, classify_failure
-from .config import TIERED_ADAPTERS, adapter_label, registry, registry_problems, run_spec
+from .config import (TIERED_ADAPTERS, adapter_label, config_problem, load_config, registry, registry_problems,
+                     reload_problem, run_spec)
 from .gitops import CleanupBlocked, GitError
 from .store import LineBusy
 
@@ -62,6 +63,7 @@ class Supervisor:
     # ---- control -------------------------------------------------------
     def tick(self) -> None:
         self.store.set("heartbeat", str(self.clock()))
+        self._handle_reload()
         for b in self.store.incomplete_batches():  # a Line row always exists for a live batch
             self.store.line(b["producer"], b["method"])
         for ln in self.store.lines():
@@ -70,6 +72,32 @@ class Supervisor:
             except Exception:  # one Line's failure never stalls the others
                 self.store.log(None, f"line {ln['model']}/{ln['method']} 예외:\n"
                                + traceback.format_exc()[-800:], "error", line=f"{ln['model']}/{ln['method']}")
+
+    def _handle_reload(self) -> None:
+        """Operator `r`: re-read config.json. The new config replaces `self.cfg` only if it passes every check."""
+        token = self.store.get("reload_req")
+        if token is None or token == self.store.get("reload_done"):
+            return
+        self.store.set("reload_done", token)   # one request is answered once, whatever the outcome
+        try:
+            new = load_config(self.paths)
+            problem = reload_problem(self.cfg, new, {b["producer"] for b in self.store.incomplete_batches()})
+        except (OSError, ValueError) as e:   # unreadable file or invalid JSON (JSONDecodeError is a ValueError)
+            new, problem = None, f"config.json을 읽을 수 없습니다: {e}"
+        if problem:
+            msg = f"설정 리로드 거부 (기존 설정 유지): {problem}"
+            self.store.log(None, msg, "error")
+            self.store.set("reload_result", f"{token}\tfail\t{msg}")
+            return
+        self.cfg = new
+        cleared = 0
+        for ln in self.store.lines():   # a config-caused Start block is re-evaluated by the next Start
+            if (ln["blocked"] or "").startswith("시작 차단:"):
+                self.store.set_line(ln["model"], ln["method"], blocked="")
+                cleared += 1
+        msg = f"설정 리로드 완료: 모델 {', '.join(registry(new))}" + (f" · 차단 메시지 {cleared}건 정리" if cleared else "")
+        self.store.log(None, msg)
+        self.store.set("reload_result", f"{token}\tok\t{msg}")
 
     def _tick_line(self, model: str, method: str) -> None:
         ln = self.store.line(model, method)
@@ -244,7 +272,7 @@ class Supervisor:
             free_to_go = bool(free and go) and prev["model"] == free and run.model == go
         if prev["effort"] != run.effort or (not same_model and not (tiered and free_to_go)):
             return (f"실행 설정 변경 차단: 기록된 실행 설정 {prev['model']} / {prev['effort']} 과 현재 설정 "
-                    f"{run.model} / {run.effort} 이 다릅니다. 설정을 되돌리고 Supervisor를 재시작한 뒤 Retry 하세요.")
+                    f"{run.model} / {run.effort} 이 다릅니다. 설정을 되돌리고 Board에서 r(설정 리로드) 후 Retry 하세요.")
         return None
 
     def _launch(self, b, kind: str, events=None) -> None:
@@ -595,6 +623,9 @@ def build(paths=None):
     paths = paths or Paths()
     paths.ensure()
     cfg = load_config(paths)
+    problem = config_problem(cfg)   # the same check a reload applies: never start on a config a reload would refuse
+    if problem:
+        raise SystemExit(f"config.json 오류: {problem}")
     env = auth.build_env(dict(_os.environ), paths.gh_config, cfg["git_name"], cfg["git_email"])
     runner = Runner()
     adapters = {"opencode": OpenCodeAdapter(cfg["opencode_bin"]), "claude": ClaudeCodeAdapter(cfg["claude_bin"]),

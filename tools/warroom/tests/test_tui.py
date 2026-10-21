@@ -1,4 +1,5 @@
 import asyncio
+import time
 import unittest
 
 try:
@@ -349,6 +350,36 @@ class TuiSmoke(unittest.TestCase):
                 await pilot.press("escape")
                 await pilot.pause(0.1)
                 self.assertNotIsInstance(app.screen, tui.LineDetail)
+
+        asyncio.run(go())
+        w.tmp.cleanup()
+
+    def test_r_reloads_config_through_the_supervisor_and_shows_a_rejection(self):
+        import json
+        from textual.widgets import Static
+        from warroom import control
+        w = World()
+        ds = {"label": "DeepSeek", "adapter": "opencode", "effort": "high",
+              "models": {"free": "p/free-x-free", "go": "p/go"}}
+
+        async def go():
+            app = make_app(w)
+            async with app.run_test(size=(200, 60)) as pilot:
+                await pilot.pause(0.3)
+                await pilot.press("r")                       # no heartbeat yet: nothing is requested
+                self.assertIsNone(w.store.get("reload_req"))
+                w.sup.clock = time.time                      # alive: the heartbeat is stamped with real time
+                w.sup.tick()
+                for text, ok in [(json.dumps({"producers": {"deepseek": ds}}), True),
+                                 ('{"producers": ', False)]:
+                    w.paths.config_file.write_text(text, "utf-8")
+                    await pilot.press("r")
+                    self.assertIsNotNone(w.store.get("reload_req"))
+                    w.sup.tick()
+                    await pilot.pause(1.3)
+                    banner = str(app.query_one("#banner", Static).render())
+                    self.assertEqual("리로드 거부" in banner, not ok, banner)
+                self.assertEqual(control.reload_result(w.store)[1], False)
 
         asyncio.run(go())
         w.tmp.cleanup()

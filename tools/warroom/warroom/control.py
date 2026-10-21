@@ -62,6 +62,22 @@ def retry(store: Store, model: str, method: str) -> bool:
     return False
 
 
+def request_reload(store: Store) -> str:
+    """TUI -> Supervisor: re-read config.json. Same shared-DB channel as every other command (kv, no new channel)."""
+    token = f"{time.time():.6f}"
+    store.set("reload_req", token)
+    return token
+
+
+def reload_result(store: Store) -> tuple[str, bool, str] | None:
+    """(token, ok, message) of the Supervisor's last handled reload request, or None if none was handled yet."""
+    raw = store.get("reload_result")
+    if not raw:
+        return None
+    token, ok, msg = raw.split("\t", 2)
+    return token, ok == "ok", msg
+
+
 def supervisor_alive(store: Store, now: float | None = None, max_age: float = 30) -> bool:
     hb = store.get("heartbeat")
     return hb is not None and (now or time.time()) - float(hb) < max_age

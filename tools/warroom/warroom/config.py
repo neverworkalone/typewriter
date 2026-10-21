@@ -81,6 +81,8 @@ def load_config(paths: Paths) -> dict:
     cfg = json.loads(json.dumps(DEFAULTS))
     if paths.config_file.exists():
         user = json.loads(paths.config_file.read_text("utf-8"))
+        if not isinstance(user, dict):
+            raise ValueError("config.json의 최상위 값은 JSON 객체여야 합니다.")
         for key, value in user.items():
             if isinstance(value, dict) and isinstance(cfg.get(key), dict):
                 cfg[key].update(value)
@@ -153,6 +155,114 @@ def registry_problems(cfg: dict) -> dict[str, str]:
                 bad[pid] = f"엔드포인트 {ep!r}가 {endpoints[ep]!r}와 중복 — 같은 논리 모델의 중복 등록입니다."
                 bad.setdefault(endpoints[ep], bad[pid])
     return bad
+
+
+# Wired once at Supervisor start (CLI binaries, GitHub client, git identity): a reload cannot change them.
+RESTART_KEYS = ("repo", "opencode_bin", "claude_bin", "codex_bin", "git_name", "git_email")
+
+
+def _number(v) -> bool:
+    return isinstance(v, (int, float)) and not isinstance(v, bool) and v == v and v not in (float("inf"),)
+
+
+def _strings(v, *, patterns=False, nonempty=False) -> bool:
+    if not isinstance(v, list) or (nonempty and not v):
+        return False
+    for x in v:
+        if not isinstance(x, str) or (nonempty and not x.strip()):
+            return False
+        if patterns:
+            try:
+                re.compile(x)
+            except re.error:
+                return False
+    return True
+
+
+def _entry_problems(name: str, p: dict, fields: tuple[str, ...]) -> list[str]:
+    """Type problems of one producer-like entry: its scalar fields and its `models` tiers must be strings."""
+    bad = [f"{name}.{k}는 문자열이어야 합니다" for k in fields if k in p and not isinstance(p[k], str)]
+    m = p.get("models")
+    if m is not None and not isinstance(m, dict):
+        bad.append(f"{name}.models는 객체여야 합니다")
+    elif isinstance(m, dict):
+        bad += [f"{name}.models.{k}는 문자열이어야 합니다" for k, v in m.items() if not isinstance(v, str)]
+    return bad
+
+
+def config_problem(cfg: dict) -> str | None:
+    """Why a loaded config cannot run (None = every value has the type its consumers need). Shared by start and reload.
+
+    Each runtime consumer compares or iterates these values (poll_seconds/retries/backoff in the Supervisor loop,
+    patterns in failure classification, ...): a wrongly typed one would raise inside a tick, not at load time.
+    """
+    bad = []
+    for key in ("poll_seconds", "rate_limit_backoff_seconds"):
+        if not _number(cfg.get(key)) or cfg[key] < 0:
+            bad.append(f"{key}는 0 이상의 숫자여야 합니다")
+    r = cfg.get("rate_limit_retries")
+    if not isinstance(r, int) or isinstance(r, bool) or r < 0:
+        bad.append("rate_limit_retries는 0 이상의 정수여야 합니다")
+    for key in ("repo", "base_branch", "expected_account", "opencode_bin", "claude_bin", "codex_bin"):
+        if not isinstance(cfg.get(key), str) or not cfg[key].strip():
+            bad.append(f"{key}는 비어 있지 않은 문자열이어야 합니다")
+    for key in ("git_name", "git_email", "free_model_pattern"):
+        if not isinstance(cfg.get(key), str):
+            bad.append(f"{key}는 문자열이어야 합니다")
+    if isinstance(cfg.get("free_model_pattern"), str):
+        try:
+            re.compile(cfg["free_model_pattern"])
+        except re.error:
+            bad.append("free_model_pattern이 올바른 정규식이 아닙니다")
+    if not _strings(cfg.get("quota_patterns"), patterns=True):
+        bad.append("quota_patterns는 정규식 문자열 목록이어야 합니다")
+    if not _strings(cfg.get("trusted_reviewers")):
+        bad.append("trusted_reviewers는 문자열 목록이어야 합니다")
+    if not _strings(cfg.get("methods"), nonempty=True):
+        bad.append("methods는 비어 있지 않은 문자열 목록이어야 합니다")
+    if not isinstance(cfg.get("producers"), dict) or not all(isinstance(p, dict) for p in cfg["producers"].values()):
+        bad.append("producers는 {모델 ID: 객체} 형태여야 합니다")
+    for key in ("models", "worker"):
+        if not isinstance(cfg.get(key), dict):
+            bad.append(f"{key}는 객체여야 합니다")
+    if isinstance(cfg.get("models"), dict):   # legacy tiers: values are model IDs
+        bad += [f"models.{k}는 문자열이어야 합니다" for k, v in cfg["models"].items() if not isinstance(v, str)]
+    if isinstance(cfg.get("worker"), dict):
+        bad += _entry_problems("worker", cfg["worker"], ("adapter", "producer"))
+    if isinstance(cfg.get("producers"), dict):
+        for pid, p in cfg["producers"].items():
+            if isinstance(p, dict):
+                bad += _entry_problems(f"producers.{pid}", p, ("label", "adapter", "model", "effort"))
+    return "; ".join(bad) or None
+
+
+def reload_problem(old: dict, new: dict, in_use: set[str]) -> str | None:
+    """Why `new` must not replace the running `old` config (None = safe). `in_use` = producers of unfinished batches.
+
+    Fail-closed: any registry problem, a changed start-time-only key, or a producer that still owns an
+    unfinished batch disappearing rejects the whole reload; nothing is partially applied.
+    """
+    problem = config_problem(new)
+    if problem:
+        return f"설정 값 오류: {problem}"
+    try:
+        reg, bad = registry(new), registry_problems(new)
+        methods(new)
+    except Exception as e:   # a wrongly typed section (producers: [], ...) is a config error, not a crash
+        return f"설정 구조 오류: {type(e).__name__}: {e}"
+    if bad:
+        return "; ".join(f"{pid}: {why}" for pid, why in bad.items())
+    changed = [k for k in RESTART_KEYS if old.get(k) != new.get(k)]
+    if changed:
+        return f"{', '.join(changed)} 변경은 Supervisor 재시작이 필요합니다 (리로드로 적용 불가)."
+    gone = sorted(in_use - set(reg))
+    if gone:
+        return f"미완료 배치가 있는 모델 {', '.join(gone)}를 설정에서 제거할 수 없습니다."
+    old_reg = registry(old)
+    swapped = sorted(pid for pid in in_use if pid in old_reg and old_reg[pid]["adapter"] != reg[pid]["adapter"])
+    if swapped:   # the running process and its log belong to the old CLI: another adapter would misread them
+        return f"미완료 배치가 있는 모델 {', '.join(swapped)}의 adapter를 바꿀 수 없습니다 (배치 완료 후 변경)."
+    return None
 
 
 def methods(cfg: dict) -> list[str]:
