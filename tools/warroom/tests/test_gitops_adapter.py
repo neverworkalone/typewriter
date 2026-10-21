@@ -99,6 +99,31 @@ class RealProcess(unittest.TestCase):
             self.assertIn("--session ses_abc123", h2.log_file.read_text())
             self.assertNotIn("--model", h2.log_file.read_text())
 
+    def test_alive_while_child_outlives_wrapper(self):
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            fake = d / "opencode"
+            fake.write_text("#!/bin/sh\nsleep 30 &\nexit 0\n")   # launcher exits, worker stays
+            fake.chmod(fake.stat().st_mode | stat.S_IEXEC)
+            a = OpenCodeAdapter(str(fake))
+            h = a.start("p", d, dict(os.environ), "", "t", d / "c.log", d / "c.exit")
+            try:
+                for _ in range(100):
+                    if a.exit_code(h.exit_file) == 0:   # wrapper finished
+                        break
+                    time.sleep(0.05)
+                time.sleep(0.2)
+                self.assertEqual(a.exit_code(h.exit_file), 0)
+                self.assertTrue(a.alive(h.pid))          # group still has the worker
+                a.stop(h.pid)
+                for _ in range(100):
+                    if not a.alive(h.pid):
+                        break
+                    time.sleep(0.05)
+                self.assertFalse(a.alive(h.pid))
+            finally:
+                a.stop(h.pid)
+
 
 if __name__ == "__main__":
     unittest.main()
