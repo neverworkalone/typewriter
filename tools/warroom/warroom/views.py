@@ -102,11 +102,9 @@ def _activity(msg: str) -> str:
     return msg
 
 
-def model_title(model: str, width: int = CARD_W + 2) -> str:
-    """Column heading: the model name itself, upper-case and letter-spaced while it fits the column."""
-    name = model.upper()
-    spaced = " ".join(name)
-    return spaced if cell_len(spaced) <= width else _fit(name, width)
+def model_title(label: str, width: int = CARD_W + 2) -> str:
+    """Column heading: the model's display name as written (cut with an ellipsis only if it overflows)."""
+    return _fit(label, width)
 
 
 def progress_bar(done: int, total: int, width: int = CARD_W) -> str:

@@ -51,7 +51,7 @@ class TuiSmoke(unittest.TestCase):
                 self.assertEqual({c.region.height for c in cards}, {7})          # A-D and empty cards share a height
                 col = app.query_one("#col-deepseek").region
                 title = app.query_one("#title-deepseek")
-                self.assertEqual(str(title.render()), "D E E P S E E K")
+                self.assertEqual(str(title.render()), "DeepSeek")
                 self.assertEqual(title.region.width, col.width)
                 self.assertGreaterEqual(app.query_one("#columns").region.y, app.query_one("#controls").region.bottom + 1)
                 first = app.query_one("#card-deepseek-a").region

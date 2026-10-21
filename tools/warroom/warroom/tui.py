@@ -385,7 +385,7 @@ class WarRoom(App):
         with HorizontalScroll(id="columns"):
             for model in self._lines():
                 with Vertical(classes="col", id=f"col-{model}"):
-                    yield Static(model_title(model), classes="coltitle", id=f"title-{model}")
+                    yield Static(model_title(registry(self.cfg).get(model, {}).get("label", model)), classes="coltitle", id=f"title-{model}")
                     for me in self.methods:
                         yield Card(model, me)
         yield Footer()
