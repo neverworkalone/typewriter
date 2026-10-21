@@ -15,6 +15,8 @@ from warroom.shell import Result
 QUOTA = DEFAULTS["quota_patterns"]
 PIN = RunSpec("sonnet", "medium")
 SESSION = "3bbf1f2a-27f9-4a7e-a8ec-400dc799c0f3"
+HEAD1 = "a" * 40
+BRANCH = "a-claude-001-01"
 FORBIDDEN = ("--dangerously-skip-permissions", "--allow-dangerously-skip-permissions", "--permission-mode=bypassPermissions",
              "bypassPermissions", "--yolo")
 
@@ -128,6 +130,11 @@ class RunProblem(unittest.TestCase):
             ("session changed by the CLI", [init(session="11111111-2222-4333-8444-555555555555")], "ERROR"),
             ("denied tool at the end", [init(), result(denials=[{"tool_name": "Bash"}])], "PAUSED"),
             ("clean result", [init(), result()], None),
+            ("session id absent from the init event", [{k: v for k, v in init().items() if k != "session_id"}], "ERROR"),
+            ("session id empty", [init(session="")], "ERROR"),
+            ("session id whitespace only", [init(session="   ")], "ERROR"),
+            ("session id not a string", [init(session=7)], "ERROR"),
+            ("run ended without any init event", [result()], "ERROR"),
         ]
         for name, events, want in cases:
             with self.subTest(name):
@@ -187,6 +194,18 @@ class SupervisorStopsOnContradiction(unittest.TestCase):
         self.assertEqual(row["state"], "ERROR")
         self.assertIn("다릅니다", row["error"])
         self.assertIsNone(w.adapter.running.get(w.adapter.launches[-1]["pid"]))   # the run was stopped
+
+    def test_finished_run_without_a_session_is_not_accepted_even_with_a_pr(self):
+        w = self.w
+        w.start("single", "claude", "a")
+        w.pr_info(7, HEAD1)
+        w.gh.by_branch[BRANCH] = [{"number": 7, "state": "OPEN", "headRefOid": HEAD1}]
+        w.adapter.plan.append({"code": 0, "text": stream(result())})     # exits 0, never reported its session
+        w.tick()
+        w.adapter.finish(w.adapter.launches[-1]["pid"])
+        w.tick()
+        self.assertEqual(w.row("claude", "a")["state"], "ERROR")
+        self.assertIn("세션", w.row("claude", "a")["error"])
 
     def test_denial_pauses_for_the_operator(self):
         w = self.w

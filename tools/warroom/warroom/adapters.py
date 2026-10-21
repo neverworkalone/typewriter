@@ -348,10 +348,15 @@ class ClaudeCodeAdapter(ProcessAdapter):
                 init = o
             elif o.get("type") == "result":
                 result = o
-        if init is None:   # not started yet
-            return None
-        if expected_session and init.get("session_id") != expected_session:
-            return ("ERROR", f"세션 ID 불일치: 요청 {expected_session}, 실제 {init.get('session_id')} — 중지하고 보존합니다.")
+        if init is None:
+            if result is not None:   # the run ended without ever reporting its session: nothing to verify it by
+                return ("ERROR", "CLI가 세션 ID를 보고하지 않고 끝났습니다 — 세션을 확인하지 못해 PR을 인정하지 않습니다.")
+            return None   # not started yet
+        session = init.get("session_id")
+        if not isinstance(session, str) or not session.strip():   # absent, empty or not a string: fail closed
+            return ("ERROR", "CLI가 세션 ID를 보고하지 않았습니다(없음·빈 값·형식 오류) — 중지하고 보존합니다.")
+        if expected_session and session != expected_session:
+            return ("ERROR", f"세션 ID 불일치: 요청 {expected_session}, 실제 {session} — 중지하고 보존합니다.")
         reported = str(init.get("model") or "")
         if not reported:
             return ("ERROR", "CLI가 실행 모델을 보고하지 않아 요청한 모델로 실행됐는지 확인할 수 없습니다.")
