@@ -156,7 +156,7 @@ class Supervisor:
         ad = self._adapter(b["producer"])
         if b["pid"] and ad.alive(b["pid"]):
             ad.stop(b["pid"])   # keep the PID: it is cleared only after exit is confirmed
-        self.store.set_line(b["producer"], b["method"], run=0)
+        self.store.set_line(b["producer"], b["method"], run=0, retry_batch=None)  # Stop wins over Retry
         self.store.update(b["id"], retry_after=None)
         self._fail(b, "PAUSED", "강제 중지됨. worktree·브랜치·PR은 보존됨 (프로세스 종료 확인 후 Retry로 재개).")
         self._reap_stopped(self.store.batch(b["id"]))

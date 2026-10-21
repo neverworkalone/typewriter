@@ -244,6 +244,41 @@ class DrainAndStop(unittest.TestCase):
         w.tick()
         self.assertEqual(len(w.store.all_batches()), 2)
 
+    def test_stop_wins_over_queued_retry(self):
+        def paused_world():
+            w = self.w
+            w.start("single", "deepseek", "a")
+            w.start("single", "sonnet", "a")
+            w.tick()
+            control.stop_all(w.store)
+            w.tick(2)
+            for m in ("deepseek", "sonnet"):
+                self.assertEqual(w.row(m, "a")["state"], "PAUSED")
+            return w
+        # (1)(2) Retry queued on both Lines, then Stop All before the Supervisor ticks
+        w = paused_world()
+        n = len(w.adapter.launches)
+        self.assertTrue(control.retry(w.store, "deepseek", "a"))
+        self.assertTrue(control.retry(w.store, "sonnet", "a"))
+        control.stop_all(w.store)
+        w.tick(5)
+        self.assertEqual(len(w.adapter.launches), n)
+        for m in ("deepseek", "sonnet"):
+            self.assertEqual((w.row(m, "a")["state"], w.store.line(m, "a")["run"]), ("PAUSED", 0))
+        # (3) a single-Line Stop cancels only its own queued Retry
+        control.retry(w.store, "deepseek", "a")
+        control.retry(w.store, "sonnet", "a")
+        control.stop_line(w.store, "deepseek", "a")
+        w.adapter.plan.append({"code": 0})
+        w.tick(3)
+        self.assertEqual(w.row("deepseek", "a")["state"], "PAUSED")
+        self.assertEqual(w.row("sonnet", "a")["state"], "PRODUCING")
+        # (4) a plain Retry still resumes
+        self.assertTrue(control.retry(w.store, "deepseek", "a"))
+        w.adapter.plan.append({"code": 0})
+        w.tick(3)
+        self.assertEqual(w.row("deepseek", "a")["state"], "PRODUCING")
+
     def test_stop_all(self):
         w = self.w
         w.start("continuous", "deepseek", "a")
@@ -326,6 +361,7 @@ class Migration(unittest.TestCase):
             ("stale retry for other batch", {"retry": "9"}, "PAUSED", (0, 0, 0, None)),
             ("processed values", {"run": "1", "force_stop": "0", "retry": "", "stop_after": "0"},
              "PRODUCING", (1, 0, 0, None)),
+            ("stop beats queued retry", {"force_stop": "1", "retry": "1"}, "PAUSED", (0, 0, 1, None)),
             ("stop on finished batch is moot", {"run": "1", "force_stop": "1"}, "COMPLETE", (0, 0, 0, None)),
         ]
         for name, kv, state, want in cases:

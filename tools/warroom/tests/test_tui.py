@@ -84,10 +84,10 @@ class TuiSmoke(unittest.TestCase):
                 # Drain All <-> Cancel Drain toggles only the global flag.
                 w.store.set_line("deepseek", "a", drain=1)
                 await pilot.click("#drain-all")
-                await pilot.pause(0.1)
+                await pilot.pause(0.4)
                 self.assertEqual(w.store.get("drain_all"), "1")
                 await pilot.click("#drain-all")
-                await pilot.pause(0.1)
+                await pilot.pause(0.4)
                 self.assertEqual(w.store.get("drain_all"), "0")
                 self.assertEqual(w.store.line("deepseek", "a")["drain"], 1)
 

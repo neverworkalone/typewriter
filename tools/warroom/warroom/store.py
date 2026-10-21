@@ -93,7 +93,8 @@ class Store:
                  1 if busy and legacy.get("run") == "1" else 0, 1 if legacy.get("stop_after") == "1" else 0,
                  # A pending (unprocessed) Stop / Retry belongs to the Line owning the unfinished batch.
                  1 if busy and legacy.get("force_stop") == "1" else 0,
-                 int(retry) if busy and retry == str(latest["id"]) else None,
+                 # Stop wins over a Retry that was queued alongside it.
+                 int(retry) if busy and retry == str(latest["id"]) and legacy.get("force_stop") != "1" else None,
                  legacy.get("blocked", "") if busy or legacy.get("run") == "1" else "",
                  latest["model_tier"], time.time()))
         # Run history from the logs the old Supervisor kept: batch-<id>-<ts>.log/.exit
@@ -218,7 +219,7 @@ class Store:
         """Request stop for one Line (or every Line): no new run is allowed until Start/Retry."""
         where, args = ("WHERE model=? AND method=?", (model, method)) if model else ("", ())
         with self._conn() as c:
-            c.execute(f"UPDATE lines SET run=0, force_stop=1, updated_at=? {where}", (time.time(), *args))
+            c.execute(f"UPDATE lines SET run=0, force_stop=1, retry_batch=NULL, updated_at=? {where}", (time.time(), *args))
 
     # --- run history ---
     def add_run(self, batch_id: int, kind: str, session_id, pid, log_file, exit_file) -> int:
