@@ -108,7 +108,7 @@ class SettingsScreen(Screen):
 
 class LineDetail(Screen):
     """Batch Detail for one Line: controls, live Agent Log (tail -f), Run History, Audit Log."""
-    BINDINGS = [("escape", "back", "Back"), ("f", "follow", "Auto-scroll"), ("up", "scroll_up", ""),
+    BINDINGS = [("escape", "back", "Back"), ("f", "toggle_model_tier", "Free/Go"), ("up", "scroll_up", ""),
                 ("pageup", "page_up", ""), ("home", "top", ""), ("end", "follow", "")]
 
     def __init__(self, model: str, method: str):
@@ -289,6 +289,40 @@ class LineDetail(Screen):
                 f"{m} / Method {me.upper()} 라인만 AI 실행을 즉시 중지합니다.\n"
                 "다른 라인은 영향 없음. worktree·브랜치·PR은 보존되며 Retry로 재개할 수 있습니다.\n"
                 "중지하시겠습니까? (Y/N, 기본 N)"), self._stopped)
+
+    def action_toggle_model_tier(self) -> None:
+        """f: select the model for this Line's next AI launch (not a live swap)."""
+        store = self.app.store
+        ln = store.peek_line(self.model, self.method)
+        b = store.active_batch(self.model, self.method)
+        if b and (b["pid"] is not None or b["state"] not in ("PAUSED", "ERROR", "WAITING_REVIEW")):
+            self.app.notify("실행 중인 AI 모델은 바꿀 수 없습니다. 일시정지 또는 리뷰 대기 후 전환하세요.",
+                            severity="warning")
+            return
+        if not b and ln["run"]:
+            self.app.notify("새 배치 시작이 예약되어 있습니다. 시작 후 다시 시도하세요.", severity="warning")
+            return
+        target = "go" if ln["model_tier"] == "free" else "free"
+        if not registry(self.app.cfg).get(self.model, {}).get("models", {}).get(target):
+            self.app.notify(f"{target.upper()} 모델이 config.json에 없습니다.", severity="warning")
+            return
+        if target == "go":
+            self.app.push_screen(Confirm(
+                f"{self.model} / {self.method.upper()} 라인을 유료 Go 모델로 전환합니다.\n"
+                "실행 중인 프로세스는 변경하지 않으며, 다음 AI 실행부터 과금될 수 있습니다.\n"
+                "PAUSED 배치는 별도로 Retry를 눌러 재개해야 합니다.\n"
+                "유료 모델을 선택하시겠습니까? (Y/N, 기본 N)"),
+                lambda yes: self._set_tier("go") if yes else None)
+        else:
+            self._set_tier("free")
+
+    def _set_tier(self, tier: str) -> None:
+        ok, msg = control.set_model_tier(self.app.store, self.app.cfg,
+                                         self.model, self.method, tier)
+        self.app.notify(msg + (" · Retry를 눌러 재개하세요." if ok and
+                              control.line_status(self.app.store, self.model, self.method)["can_retry"]
+                              else ""), severity="information" if ok else "warning")
+        self.refresh_view()
 
     def _stopped(self, yes: bool | None) -> None:
         if yes:
