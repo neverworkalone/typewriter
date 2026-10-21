@@ -104,7 +104,7 @@ def detail_header(st: dict, reg: dict, model: str) -> str:
     if st["progress"]:
         head.append(st["progress"])
     lines = ["   ".join(head)]
-    second = [control.MODES.get(st["mode"], "Single")]
+    second = [control.MODES.get(st["mode"], "Single"), f"모델 {st['tier'].upper()}"]
     if st["state"] == "COMPLETE":
         second.append(f"완료 {_when(st['updated'])}")
     elif st["activity"]:
