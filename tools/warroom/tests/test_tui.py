@@ -71,6 +71,34 @@ class TuiSmoke(unittest.TestCase):
         asyncio.run(go())
         w.tmp.cleanup()
 
+    def test_focus_border_shows_on_every_card_state(self):
+        from warroom import tui
+        w = World()
+        for i, state in enumerate(("PRODUCING", "ERROR", "PAUSED", "COMPLETE"), 1):
+            bid = w.store.create_batch(method="abcd"[i - 1], producer="deepseek", shard="001", batch="01",
+                                       branch=f"b{i}", worktree=f"/x{i}")
+            w.store.update(bid, state=state)
+
+        async def go():
+            app = make_app(w, PRODUCERS)
+            async with app.run_test(size=(200, 60)) as pilot:
+                await pilot.pause(1.3)
+                seen = {}
+                for me, state in zip("abcd", ("PRODUCING", "ERROR", "PAUSED", "COMPLETE")):
+                    card = app.query_one(f"#card-deepseek-{me}")
+                    self.assertTrue(card.has_class(state), (me, state))
+                    before = card.styles.border_top
+                    card.focus()
+                    await pilot.pause(0.1)
+                    seen[state] = (before, card.styles.border_top)
+                focused = {v[1] for v in seen.values()}
+                self.assertEqual(len(focused), 1, seen)                       # one focus look for all states
+                for state, (before, after) in seen.items():
+                    self.assertNotEqual(before, after, state)                  # and it differs from the resting border
+
+        asyncio.run(go())
+        w.tmp.cleanup()
+
     def test_tab_switches_between_regions_and_remembers_last_stop(self):
         from warroom import tui
         w = World()

@@ -380,6 +380,7 @@ class WarRoom(App):
     .card.COMPLETE { border: round $success; }
     .card.empty { border: round #444444; color: #777777; }
     .card.empty:focus { border: round #888888; }
+    .card.ERROR:focus, .card.PAUSED:focus, .card.COMPLETE:focus { border: heavy $accent; }
     #info { border: round $accent; padding: 0 1; height: auto; }
     #settings-body { padding: 1 2; }
     RichLog { border: round $primary; height: 1fr; }
