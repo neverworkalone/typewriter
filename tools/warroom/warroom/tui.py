@@ -12,11 +12,10 @@ from textual.widgets import Button, Collapsible, Footer, Header, RichLog, Select
 
 import time
 
-from rich.cells import cell_len, set_cell_size
-
 from . import auth, control
 from .config import Paths, adapter_label, adapters, load_config, methods, registry
 from .logrender import render_line
+from .views import _hhmm, _when, card_text, detail_header, detail_meta  # noqa: F401  (CARD_W/ICON re-exported for tests)
 from .logtail import LogTail, redact
 from .store import Store
 
@@ -38,50 +37,6 @@ def ensure_supervisor(paths: Paths) -> str | None:
     r = subprocess.run(["tmux", "new-session", "-d", "-s", TMUX_SUP, "-c", str(paths.repo_root),
                         f"env PYTHONPATH={wr} {py} -m warroom.supervisor"], capture_output=True, text=True)
     return None if r.returncode == 0 else f"supervisor tmux 시작 실패: {r.stderr.strip()}"
-
-
-def _hhmm(ts) -> str:
-    return time.strftime("%H:%M:%S", time.localtime(ts)) if ts else "-"
-
-
-def _when(ts) -> str:
-    """Time of day for today, date + time otherwise."""
-    if not ts:
-        return "-"
-    t = time.localtime(ts)
-    return time.strftime("%H:%M" if t[:3] == time.localtime()[:3] else "%m-%d %H:%M", t)
-
-
-CARD_W = 34   # content cells of a card (column 38 - border - padding): every line is fit to it
-PHASE = {"WAITING_REVIEW": "REVIEW"}
-ICON = {"PREPARE": "…", "PRODUCING": "▶", "WAITING_REVIEW": "◔", "FIXING": "✎", "MERGED": "⇄",
-        "CLEANUP": "⌫", "COMPLETE": "✓", "PAUSED": "‖", "ERROR": "✖"}
-
-
-def _fit(text: str, width: int = CARD_W) -> str:
-    text = " ".join(text.split())
-    return text if cell_len(text) <= width else set_cell_size(text, width - 1).rstrip() + "…"
-
-
-def card_text(st: dict) -> str:
-    """Card = Line summary in a fixed 3-line layout (title / phase + progress / PR + activity).
-
-    DRAIN is spelled out (never colour-only); every line is fit to the card so it never grows.
-    """
-    m = st["method"].upper()
-    if st["batch"] is None:
-        return "\n".join([_fit(m), _fit("—  실행 이력 없음"), _fit("")])
-    icon = ICON.get(st["state"], "?")
-    title = _fit(f"{m} · {st['batch']}", CARD_W - 2)
-    phase = PHASE.get(st["state"], st["state"]) + (" + DRAIN" if st["drain"] else "")
-    if st["progress"]:
-        phase += f"  {st['progress']}"
-    last = []
-    if st["pr"]:
-        last.append(f"PR #{st['pr']}")
-    if st["activity"]:
-        last.append(f"{_when(st['activity'][0])} {st['activity'][1]}")
-    return "\n".join([title + " " + icon.rjust(CARD_W - cell_len(title) - 1), _fit(phase), _fit(" · ".join(last))])
 
 
 class Confirm(ModalScreen[bool]):
@@ -148,50 +103,6 @@ class SettingsScreen(Screen):
             lines.append(f"{p['label']} ({pid})  adapter={p['adapter']}  free={p['models']['free'] or '(미설정)'}  "
                          f"go={p['models']['go'] or '(미설정)'}")
         self.query_one("#settings-body", Static).update("\n".join(lines))
-
-
-def detail_header(st: dict, reg: dict, model: str) -> str:
-    """Short operating header; ids, SHAs and paths live in `detail_meta`."""
-    who = f"{adapter_label(reg.get('adapter', '?'))} / {st['method'].upper()}"
-    if st["batch"] is None:
-        return f"{who}  (실행 이력 없음)"
-    head = [f"{who} · {st['batch']}", PHASE.get(st["state"], st["state"]) + (" + DRAIN" if st["drain"] else "")]
-    if st["pr"]:
-        head.append(f"PR #{st['pr']}")
-    if st["progress"]:
-        head.append(st["progress"])
-    lines = ["   ".join(head)]
-    second = [control.MODES.get(st["mode"], "Single")]
-    if st["state"] == "COMPLETE":
-        second.append(f"완료 {_when(st['updated'])}")
-    elif st["activity"]:
-        second.append(f"최근 활동 {_when(st['activity'][0])} {st['activity'][1]}")
-    if st["run"]:
-        second.append("실행 예약 중")
-    if st["global_drain"]:
-        second.append("전역 Drain")
-    lines.append("  ·  ".join(second))
-    if st["error"]:
-        lines.append(f"ERROR/PAUSED 사유: {st['error']}")
-    if st["blocked"]:
-        lines.append(f"BLOCKED: {st['blocked']}")
-    return "\n".join(lines)
-
-
-def detail_meta(st: dict, reg: dict, model: str) -> str:
-    """Metadata / Details: what the header leaves out. A cleaned-up worktree is history, not a live path."""
-    wt = st["worktree"]
-    if not wt:
-        wt_line = "worktree: -"
-    elif st["state"] == "COMPLETE":
-        wt_line = f"worktree (과거 사용 경로 · 정리 완료, 현재 존재하지 않음): {wt}"
-    elif not os.path.exists(wt):
-        wt_line = f"worktree (경로 없음): {wt}"
-    else:
-        wt_line = f"worktree: {wt}"
-    return "\n".join([
-        f"model: {reg.get('label', model)} ({model})   adapter: {reg.get('adapter', '?')}   tier: {st['tier']}",
-        f"branch: {st['branch'] or '-'}", f"HEAD: {st['head'] or '-'}", f"session: {st['session'] or '-'}", wt_line])
 
 
 class LineDetail(Screen):

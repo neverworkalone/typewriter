@@ -62,8 +62,8 @@ class CardsAndControl(unittest.TestCase):
         return {**base, **kw}
 
     def test_card_is_three_fixed_lines_for_every_phase_and_text_length(self):
-        from warroom.tui import CARD_W, ICON, card_text
-        from rich.cells import cell_len
+        from warroom.views import CARD_W, ICON, card_text
+        from warroom.views import cell_len
         long_ko = "아주 긴 활동 메시지 " * 20
         for state in list(ICON) + ["UNKNOWN"]:
             for kw in ({}, {"pr": 1349, "progress": "500/500", "drain": True,
@@ -98,7 +98,7 @@ class CardsAndControl(unittest.TestCase):
         self.assertEqual(control.MODES, {"single": "Single", "continuous": "Continuous"})
 
     def test_detail_header_is_short_and_cleaned_worktree_is_history(self):
-        from warroom.tui import detail_header, detail_meta
+        from warroom.views import detail_header, detail_meta
         w = World()
         bid = w.store.create_batch(method="a", producer="deepseek", shard="009", batch="02",
                                    branch="br", worktree="/gone/wt")
