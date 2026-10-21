@@ -363,7 +363,8 @@ class Supervisor:
             head_sha=info["head_sha"], head_pushed_at=self.gh.commit_time(info["head_sha"]),
             self_login=self.cfg["expected_account"],
             reviews=self.gh.reviews(b["pr_number"]), inline=self.gh.inline_comments(b["pr_number"]),
-            issue=self.gh.issue_comments(b["pr_number"]))
+            issue=self.gh.issue_comments(b["pr_number"]),
+            trusted=self.cfg["trusted_reviewers"])
         return info, evs
 
     def _all_events(self, b):

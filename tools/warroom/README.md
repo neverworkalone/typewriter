@@ -38,7 +38,8 @@ re-produces or opens a second PR when the situation is unclear (state `ERROR`, e
 - **Batch choice** (`batches.py`): earliest A/DeepSeek batch whose Candidate file is absent on
   `origin/master`, not claimed by an open PR (same method+model) and not owned by War Room. A
   master file with the wrong record count is reported, never skipped or regenerated.
-- **Fix trigger** (`reviews.py`): a `-1` review (or `-1` general comment) for the *current* HEAD
+- **Fix trigger** (`reviews.py`): only accounts in `trusted_reviewers` (default `genonfire`; empty = nothing
+  triggers) can produce events — other users' text never reaches the AI. A `-1` review (or `-1` general comment) for the *current* HEAD
   (`HEAD: <sha>` marker, else the review's `commit_id`), not authored by the producer account.
   Inline comments anchored to the current HEAD ride along with such a `-1` but never trigger alone.
   Handled once per `(PR, HEAD, event id)`; a review of an older HEAD is ignored.

@@ -22,6 +22,7 @@ DEFAULTS = {
         "FreeUsageLimit",
         "free (usage|tier|quota).{0,40}(exhaust|exceed|limit)",
     ],
+    "trusted_reviewers": ["genonfire"],
     "poll_seconds": 300,
     "rate_limit_retries": 3,
     "rate_limit_backoff_seconds": 120,

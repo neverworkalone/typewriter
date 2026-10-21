@@ -30,9 +30,12 @@ def _ts(s: str | None) -> float:
 
 
 def fix_events(*, head_sha: str, head_pushed_at: float, self_login: str,
-               reviews: list[dict], inline: list[dict], issue: list[dict]) -> list[dict]:
+               reviews: list[dict], inline: list[dict], issue: list[dict],
+               trusted: list[str] | tuple[str, ...]) -> list[dict]:
     """Return the *currently effective* blocking events for head_sha, oldest first.
 
+    Trust boundary: only accounts in `trusted` (explicit reviewer allowlist,
+    case-insensitive) can produce events; anyone else's text never reaches the AI.
     Invariant: a `-1` blocks only while no later same-HEAD PASS (`+1`/`+2`) exists;
     DISMISSED reviews never count; verdicts are ordered by time (then id). A `-1`
     review applies to head_sha when its HEAD marker (or, lacking one, its
@@ -42,15 +45,17 @@ def fix_events(*, head_sha: str, head_pushed_at: float, self_login: str,
     marker or, without one, a timestamp after the HEAD push.
     """
     head = head_sha.lower()
+    allow = {t.lower() for t in trusted}
 
     def author(x):
-        return ((x.get("user") or {}).get("login") or "")
+        login = ((x.get("user") or {}).get("login") or "")
+        return login if login.lower() in allow else ""  # untrusted == no author
 
     # (ts, id, verdict, event) for every applicable verdict on this HEAD
     verdicts: list[tuple[float, int, str, dict]] = []
     for r in reviews:
         v = verdict(r.get("body"))
-        if v is None or author(r) == self_login or (r.get("state") or "").upper() == "DISMISSED":
+        if v is None or not author(r) or author(r) == self_login or (r.get("state") or "").upper() == "DISMISSED":
             continue
         marker = head_marker(r.get("body")) or (r.get("commit_id") or "").lower()
         if marker != head:
@@ -60,7 +65,7 @@ def fix_events(*, head_sha: str, head_pushed_at: float, self_login: str,
         verdicts.append((ev["ts"], r["id"], v, ev))
     for c in issue:
         v = verdict(c.get("body"))
-        if v is None or author(c) == self_login:
+        if v is None or not author(c) or author(c) == self_login:
             continue
         marker = head_marker(c.get("body"))
         ts = _ts(c.get("created_at"))
@@ -81,7 +86,7 @@ def fix_events(*, head_sha: str, head_pushed_at: float, self_login: str,
     active_reviews = {e["review_id"] for e in active if e["kind"] == "review"}
     out = list(active)
     for c in inline:
-        if author(c) == self_login or (c.get("commit_id") or "").lower() != head:
+        if not author(c) or author(c) == self_login or (c.get("commit_id") or "").lower() != head:
             continue
         if not (c.get("body") or "").strip():
             continue
