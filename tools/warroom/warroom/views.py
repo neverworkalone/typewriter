@@ -7,7 +7,7 @@ import time
 import unicodedata
 
 from . import control
-from .config import adapter_label
+from .config import TIERED_ADAPTERS, adapter_label
 
 
 def _hhmm(ts) -> str:
@@ -180,6 +180,13 @@ def detail_header(st: dict, reg: dict, model: str) -> str:
     return "\n".join(lines)
 
 
+def _pins(reg: dict, st: dict) -> str:
+    """The Free/Go tier for OpenCode; the fixed model ID and effort for the single-model CLIs (no tiers there)."""
+    if reg.get("adapter") in TIERED_ADAPTERS:
+        return f"tier: {st['tier']}   effort: {reg.get('effort') or '-'}"
+    return f"model id: {reg.get('model') or '-'}   effort: {reg.get('effort') or '-'}"
+
+
 def detail_meta(st: dict, reg: dict, model: str) -> str:
     """Metadata / Details: what the header leaves out. A cleaned-up worktree is history, not a live path."""
     wt = st["worktree"]
@@ -192,5 +199,5 @@ def detail_meta(st: dict, reg: dict, model: str) -> str:
     else:
         wt_line = f"worktree: {wt}"
     return "\n".join([
-        f"model: {reg.get('label', model)} ({model})   adapter: {reg.get('adapter', '?')}   tier: {st['tier']}",
+        f"model: {reg.get('label', model)} ({model})   adapter: {reg.get('adapter', '?')}   {_pins(reg, st)}",
         f"branch: {st['branch'] or '-'}", f"HEAD: {st['head'] or '-'}", f"session: {st['session'] or '-'}", wt_line])

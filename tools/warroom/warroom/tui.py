@@ -16,7 +16,7 @@ from textual.widgets import Button, Collapsible, Footer, Header, RichLog, Select
 import time
 
 from . import auth, control
-from .config import Paths, adapter_label, adapters, load_config, methods, registry
+from .config import Paths, adapter_label, adapters, load_config, methods, ordered_models, pin_summary, registry
 from .logrender import render_line
 from .views import _hhmm, _when, control_columns, select_width, card_text, detail_header, model_title, tier_bar, detail_meta  # noqa: F401  (CARD_W/ICON re-exported for tests)
 from .logtail import LogTail, redact
@@ -144,9 +144,10 @@ class SettingsScreen(Screen):
         probs = "" if not a or a["ok"] else "\n  " + "\n  ".join(a["problems"])
         lines = [f"Settings — GitHub: {acct} (기대: {app.cfg['expected_account']}){probs}",
                  f"  로그인: GH_CONFIG_DIR={app.paths.gh_config} gh auth login   설정: {app.paths.config_file}", ""]
-        for pid, p in registry(app.cfg).items():
-            lines.append(f"{p['label']} ({pid})  adapter={p['adapter']}  free={p['models']['free'] or '(미설정)'}  "
-                         f"go={p['models']['go'] or '(미설정)'}")
+        reg = registry(app.cfg)
+        for pid in ordered_models(app.cfg):
+            p = reg[pid]
+            lines.append(f"{p['label']} ({pid})  adapter={p['adapter']}  {pin_summary(p)}")
         self.query_one("#settings-body", Static).update("\n".join(lines))
 
 
@@ -282,7 +283,8 @@ class LineDetail(Screen):
         opts = [("Agent Log — 최신 실행", "latest"), ("Audit Log", "audit")]
         for r in runs:
             st = r["exit_status"] if r["ended_at"] else "running"
-            opts.append((f"#{r['id']} {r['shard']}_{r['batch']} {r['kind']} {_hhmm(r['started_at'])} exit={st}",
+            pin = f" {r['model']}/{r['effort']}" if r["model"] else ""   # the CLI model ID and effort it ran with
+            opts.append((f"#{r['id']} {r['shard']}_{r['batch']} {r['kind']}{pin} {_hhmm(r['started_at'])} exit={st}",
                          f"run:{r['id']}"))
         sel = self.query_one("#source", Select)
         with sel.prevent(Select.Changed):
@@ -406,8 +408,7 @@ class WarRoom(App):
         self.problem = ensure_supervisor(self.paths)
         self._auth: dict | None = None
         self._t0 = time.time()
-        reg = registry(self.cfg)
-        self.models = list(reg)
+        self.models = ordered_models(self.cfg)   # board order: adapter label, never config order
         self.methods = methods(self.cfg)
 
     def _lines(self):
@@ -485,8 +486,9 @@ class WarRoom(App):
             order[(order.index(focused) + step) % len(order)].focus()
 
     def _model_options(self, adapter: str):
-        return [(f"{p['label']} ({pid})", pid) for pid, p in registry(self.cfg).items()
-                if p["adapter"] == adapter]
+        reg = registry(self.cfg)
+        return [(f"{reg[pid]['label']} ({pid})", pid) for pid in ordered_models(self.cfg)
+                if reg[pid]["adapter"] == adapter]
 
     def _selected_model(self) -> str | None:
         """The logical model a Start applies to: the model Select, or the adapter's only model."""

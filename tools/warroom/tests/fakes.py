@@ -5,7 +5,7 @@ import tempfile
 from pathlib import Path
 
 from warroom import control
-from warroom.adapters import AgentAdapter, Handle
+from warroom.adapters import AgentAdapter, Handle, OpenCodeAdapter
 from warroom.config import DEFAULTS, Paths
 from warroom.gitops import CleanupBlocked
 from warroom.shell import Result
@@ -35,11 +35,17 @@ class FakeAdapter(AgentAdapter):
             Path(log).write_text(json.dumps({"sessionID": self.running[pid]["session"]}) + "\n")
         return Handle(pid, Path(ex), Path(log))
 
-    def start(self, prompt, cwd, env, model, title, log_file, exit_file):
-        return self._go("start", cwd, log_file, exit_file, prompt=prompt, model=model)
+    def start(self, prompt, cwd, env, run, title, log_file, exit_file):
+        return self._go("start", cwd, log_file, exit_file, prompt=prompt, model=run.model, effort=run.effort)
 
-    def resume(self, session_id, prompt, cwd, env, model, log_file, exit_file):
-        return self._go("resume", cwd, log_file, exit_file, prompt=prompt, model=model, session=session_id)
+    def resume(self, session_id, prompt, cwd, env, run, log_file, exit_file):
+        return self._go("resume", cwd, log_file, exit_file, prompt=prompt, model=run.model, effort=run.effort,
+                        session=session_id)
+
+    def preflight(self, runner, env, runs):
+        """Stands in for OpenCode: the provider-qualified (p/...) IDs get the real `opencode models` check."""
+        opencode_runs = [r for r in runs if "/" in r.model]
+        return OpenCodeAdapter("opencode").preflight(runner, env, opencode_runs) if opencode_runs else None
 
     def finish(self, pid):
         """Simulate the AI process ending (writes log + exit file, runs side effects)."""
