@@ -4,6 +4,7 @@ import itertools
 import tempfile
 from pathlib import Path
 
+from warroom import control
 from warroom.adapters import AgentAdapter, Handle
 from warroom.config import DEFAULTS, Paths
 from warroom.gitops import CleanupBlocked
@@ -168,5 +169,9 @@ class World:
         for _ in range(n):
             self.sup.tick()
 
-    def row(self):
-        return self.store.active_batch() or self.store.all_batches()[-1]
+    def start(self, mode="single", model="deepseek", method="a"):
+        ok, msg = control.start(self.store, model, method, mode)
+        assert ok, msg
+
+    def row(self, model="deepseek", method="a"):
+        return self.store.active_batch(model, method) or self.store.latest_batch(model, method)

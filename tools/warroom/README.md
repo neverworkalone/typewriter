@@ -30,6 +30,32 @@ re-produces or opens a second PR when the situation is unclear (state `ERROR`, e
 
 `.local/` (config, DB, logs, auth, worktrees, venv) is git-ignored; never commit tokens/logs.
 
+## Factory Board · Production Lines (Issue #1353)
+
+A **Line** = (logical model, method A/B/C/D). `Factory → Model → Line → Batch history → Run history`.
+The model registry is config (`producers` in `config.json`, any number of models, see
+`config.example.json`; without it the legacy `worker`/`models` is one entry). Each Line owns at most
+**one** unfinished batch (`Store.create_batch` refuses a second one; Start on an occupied Line is
+rejected). Lines are independent: batch/PR/HEAD/session/PID/worktree/runs/errors/retry/tier/drain are
+per Line, and an exception or a long review wait in one Line never stalls another. Registering the same
+logical model twice (duplicate id or shared endpoint ID) is blocked.
+
+- **Board**: one column per registered model, fixed A/B/C/D slots, COMPLETE cards stay. Clicking any
+  card (even an empty slot) only opens its Batch Detail. New work starts only from the top bar
+  (Agent | Model | Method | Single/Multi | Start). **Single** = one batch then stop; **Multi** =
+  consecutive batches in the *same* Line (never parallel batches in one Line).
+- **Drain** (Line) / **Drain All** (Factory): stop assigning new batches, the current batch continues
+  through review/merge/cleanup. Either one blocks a Line; Cancel Drain (All) leaves Line drains alone.
+- **Stop** / **Stop All**: red, y/N modal (Enter/Esc = No). Stops the AI of the scope, preserves
+  worktree/branch/PR, clears the run flag so nothing restarts; **Retry** (PAUSED/ERROR only) reuses
+  the same batch.
+- **Batch Detail**: live Agent Log (incremental `tail -f` by byte offset, Follow/scroll, secrets
+  redacted), Run History (`runs` table: kind, session, PID, log/exit file, times, exit status) and a
+  separate Audit Log. Esc returns to the board. `s` opens Settings (the board shows only auth/model errors).
+- **SQLite**: additive migration (`PRAGMA user_version=2`) adds `lines`, `runs`, `events.line`; the
+  legacy single-worker `kv` controls become the controls of that Line and old `batch-<id>-<ts>.log`
+  files are imported as runs. No row or log is deleted or rewritten.
+
 ## State machine (one batch = one atomic unit)
 
 `PREPARE → PRODUCING → WAITING_REVIEW ⇄ FIXING → MERGED → CLEANUP → COMPLETE`, plus

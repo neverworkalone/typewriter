@@ -1,4 +1,8 @@
-"""Operator commands (TUI -> Supervisor) and status views, via the shared DB only."""
+"""Operator commands (TUI -> Supervisor) and status views, via the shared DB only.
+
+Every command is scoped to one Line (model, method) or, for the `*_all` variants, to the
+whole Factory. A Line never reads or writes another Line's controls.
+"""
 from __future__ import annotations
 
 import time
@@ -7,27 +11,52 @@ from .store import Store
 
 STATES_HELP = ("PREPARE", "PRODUCING", "WAITING_REVIEW", "FIXING", "MERGED", "CLEANUP",
                "COMPLETE", "PAUSED", "ERROR")
+MODES = {"single": "Single", "continuous": "Multi"}   # Multi = sequential batches in ONE Line
 
 
-def start(store: Store, mode: str) -> None:
-    store.set("mode", "continuous" if mode == "continuous" else "single")
-    store.set("stop_after", "0")
-    store.set("blocked", "")
-    store.set("run", "1")
+def start(store: Store, model: str, method: str, mode: str) -> tuple[bool, str]:
+    """Request production on a Line. Never creates a second batch for an occupied Line."""
+    b = store.active_batch(model, method)
+    if b is not None:
+        return False, f"{model}/{method.upper()} 라인은 이미 미완료 배치 {b['shard']}_{b['batch']}({b['state']})를 소유 중입니다."
+    if global_drain(store):
+        return False, "Drain All 상태입니다. Cancel Drain 후 시작하세요."
+    store.set_line(model, method, mode="continuous" if mode == "continuous" else "single",
+                   drain=0, force_stop=0, blocked="", run=1)
+    return True, ""
 
 
-def stop_after_current(store: Store) -> None:
-    store.set("stop_after", "1")
+def global_drain(store: Store) -> bool:
+    return store.get("drain_all") == "1"
 
 
-def force_stop(store: Store) -> None:
-    store.set("force_stop", "1")
+def set_drain_all(store: Store, on: bool) -> None:
+    store.set("drain_all", "1" if on else "0")   # per-Line drains are untouched
 
 
-def retry(store: Store) -> None:
-    b = store.active_batch()
+def set_drain(store: Store, model: str, method: str, on: bool) -> None:
+    store.set_line(model, method, drain=1 if on else 0)
+
+
+def drained(store: Store, ln) -> bool:
+    """Either the Line drain or Drain All blocks assigning a new batch."""
+    return bool(ln["drain"]) or global_drain(store)
+
+
+def stop_line(store: Store, model: str, method: str) -> None:
+    store.stop_lines(model, method)
+
+
+def stop_all(store: Store) -> None:
+    store.stop_lines()
+
+
+def retry(store: Store, model: str, method: str) -> bool:
+    b = store.active_batch(model, method)
     if b is not None and b["state"] in ("PAUSED", "ERROR"):
-        store.set("retry", str(b["id"]))
+        store.set_line(model, method, retry_batch=b["id"])
+        return True
+    return False
 
 
 def supervisor_alive(store: Store, now: float | None = None, max_age: float = 30) -> bool:
@@ -35,16 +64,29 @@ def supervisor_alive(store: Store, now: float | None = None, max_age: float = 30
     return hb is not None and (now or time.time()) - float(hb) < max_age
 
 
-def status(store: Store) -> dict:
-    b = store.active_batch()
-    out = {"state": "IDLE", "mode": store.get("mode", "single"),
-           "run": store.get("run") == "1", "stop_after": store.get("stop_after") == "1",
-           "blocked": store.get("blocked") or "", "supervisor": supervisor_alive(store),
-           "tier": store.get("model_tier", "free"), "error": None}
+def line_status(store: Store, model: str, method: str) -> dict:
+    """Card/detail view of one Line: latest batch (kept after COMPLETE) + controls."""
+    ln = store.peek_line(model, method)
+    b = store.latest_batch(model, method)
+    out = {"model": model, "method": method, "state": "IDLE", "batch": None, "pr": None, "head": None,
+           "session": None, "error": None, "progress": None, "worktree": None, "branch": None,
+           "mode": ln["mode"], "run": bool(ln["run"]), "line_drain": bool(ln["drain"]),
+           "global_drain": global_drain(store), "blocked": ln["blocked"] or "", "tier": ln["model_tier"],
+           "batch_id": None, "activity": None, "occupied": False}
+    out["drain"] = out["line_drain"] or out["global_drain"]
     if b is not None:
         out.update(state=b["state"], batch=f"{b['shard']}_{b['batch']}", branch=b["branch"],
                    pr=b["pr_number"], head=b["head_sha"], session=b["session_id"],
-                   error=b["error"], worktree=b["worktree"])
+                   error=b["error"], worktree=b["worktree"], batch_id=b["id"],
+                   occupied=b["state"] != "COMPLETE")
         if b["records_done"] is not None and b["records_total"]:
             out["progress"] = f"{b['records_done']}/{b['records_total']}"  # recorded only
+        ev = store.last_event(b["id"])
+        if ev:
+            out["activity"] = (ev["ts"], ev["msg"])
+    # Buttons: only meaningful commands are enabled.
+    st = out["state"]
+    out["can_drain"] = out["occupied"] or out["run"]
+    out["can_stop"] = out["occupied"] and st not in ("PAUSED", "ERROR") or out["run"]
+    out["can_retry"] = st in ("PAUSED", "ERROR")
     return out

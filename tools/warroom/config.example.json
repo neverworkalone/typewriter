@@ -9,6 +9,17 @@
     "method": "a",
     "producer": "deepseek"
   },
+  "producers": {
+    "deepseek": {
+      "label": "DeepSeek",
+      "adapter": "opencode",
+      "models": {
+        "free": "opencode/deepseek-v4.1-flash-free",
+        "go": "opencode-go/deepseek-v4.1-flash"
+      }
+    }
+  },
+  "methods": ["a", "b", "c", "d"],
   "opencode_bin": "opencode",
   "models": {
     "free": "opencode/deepseek-v4.1-flash-free",

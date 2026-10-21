@@ -22,7 +22,7 @@ class Lifecycle(unittest.TestCase):
 
     def produce_to_review(self, session="ses_1"):
         w = self.w
-        control.start(w.store, "single")
+        w.start("single")
         w.adapter.plan.append({"code": 0, "session": session, "effect": self.open_pr})
         w.tick()
         self.assertEqual(w.row()["state"], "PRODUCING")
@@ -72,7 +72,7 @@ class Lifecycle(unittest.TestCase):
         w.tick(3)
         self.assertEqual(w.row()["state"], "COMPLETE")
         self.assertEqual(w.git.removed[0][1], BRANCH)
-        self.assertEqual(w.store.get("run"), "0")  # single-batch mode stops here
+        self.assertEqual(w.store.line("deepseek", "a")["run"], 0)  # single-batch mode stops here
         w.tick(2)
         self.assertEqual(len(w.adapter.launches), 2)
 
@@ -109,7 +109,7 @@ class Lifecycle(unittest.TestCase):
 
     def test_restart_recovery_no_duplicates(self):
         w = self.w
-        control.start(w.store, "single")
+        w.start("single")
         w.adapter.plan.append({"code": 0, "session": "ses_1", "effect": self.open_pr})
         w.tick()
         # Supervisor dies while the AI runs; a new one adopts the persisted batch.
@@ -131,7 +131,7 @@ class Lifecycle(unittest.TestCase):
 
     def test_lost_process_without_exit_status_is_not_reproduced(self):
         w = self.w
-        control.start(w.store, "single")
+        w.start("single")
         w.adapter.plan.append({"code": 0})
         w.tick()
         w.adapter.running.clear()  # vanished, no exit file
@@ -142,12 +142,12 @@ class Lifecycle(unittest.TestCase):
 
     def test_pr_missing_after_clean_exit_and_duplicate_pr(self):
         w = self.w
-        control.start(w.store, "single")
+        w.start("single")
         w.adapter.plan.append({"code": 0})
         w.tick(); w.adapter.finish(w.adapter.launches[-1]["pid"]); w.tick()
         self.assertEqual(w.row()["state"], "ERROR")  # no PR found
         w2 = World()
-        control.start(w2.store, "single")
+        w2.start("single")
         w2.adapter.plan.append({"code": 0, "effect": lambda: (
             w2.pr_info(7, HEAD1),
             w2.gh.by_branch.update({BRANCH: [{"number": 7, "state": "OPEN", "headRefOid": HEAD1}]}),
@@ -164,7 +164,7 @@ class LiveAiHandover(unittest.TestCase):
 
     def test_pr_detected_while_ai_alive_then_ai_stopped_before_fix(self):
         w = World()
-        control.start(w.store, "single")
+        w.start("single")
         w.adapter.plan.append({"code": 0, "session": "ses_1"})
         w.tick()
         pid = w.adapter.launches[-1]["pid"]
@@ -195,7 +195,7 @@ class LiveAiHandover(unittest.TestCase):
 
     def test_merge_while_ai_alive_stops_ai_before_cleanup(self):
         w = World()
-        control.start(w.store, "single")
+        w.start("single")
         w.adapter.plan.append({"code": 0})
         w.tick()
         w.pr_info(7, HEAD1)
@@ -213,7 +213,7 @@ class ReviewReversal(unittest.TestCase):
 
     def test_retracted_minus_one_never_triggers_even_after_restart(self):
         w = World()
-        control.start(w.store, "single")
+        w.start("single")
         w.adapter.plan.append({"code": 0, "session": "ses_1", "effect": lambda: (
             w.pr_info(7, HEAD1),
             w.gh.by_branch.update({BRANCH: [{"number": 7, "state": "OPEN", "headRefOid": HEAD1}]}))})
@@ -248,17 +248,17 @@ class ModelPolicy(unittest.TestCase):
                 w = World(models)
                 if mutate:
                     mutate(w.runner)
-                control.start(w.store, "single")
+                w.start("single")
                 w.tick()
-                self.assertIsNone(w.store.active_batch())
+                self.assertIsNone(w.store.active_batch("deepseek", "a"))
                 self.assertEqual(w.adapter.launches, [])
-                self.assertIn(expect, w.store.get("blocked"))
+                self.assertIn(expect, w.store.line("deepseek", "a")["blocked"])
                 w.tmp.cleanup()
 
 
     def run_failure(self, text, models=None, retries=0):
         w = World(models)
-        control.start(w.store, "single")
+        w.start("single")
         w.adapter.plan.append({"code": 1, "text": text})
         w.tick(); w.adapter.finish(w.adapter.launches[-1]["pid"]); w.tick()
         return w
@@ -297,16 +297,16 @@ class Operations(unittest.TestCase):
     def test_blocked_on_wrong_account(self):
         w = World()
         w.runner.account = "genonfire"
-        control.start(w.store, "single")
+        w.start("single")
         w.tick()
-        self.assertIsNone(w.store.active_batch())
+        self.assertIsNone(w.store.active_batch("deepseek", "a"))
         self.assertEqual(w.adapter.launches, [])
-        self.assertIn("계정 불일치", w.store.get("blocked"))
+        self.assertIn("계정 불일치", w.store.line("deepseek", "a")["blocked"])
         w.tmp.cleanup()
 
     def test_continuous_starts_next_batch_fresh_after_cleanup(self):
         w = World()
-        control.start(w.store, "continuous")
+        w.start("continuous")
         w.adapter.plan.append({"code": 0, "session": "ses_1", "effect": lambda: (
             w.pr_info(7, HEAD1),
             w.gh.by_branch.update({BRANCH: [{"number": 7, "state": "OPEN", "headRefOid": HEAD1}]}))})
@@ -325,12 +325,13 @@ class Operations(unittest.TestCase):
 
     def test_stop_after_current_prevents_next_batch(self):
         w = World()
-        control.start(w.store, "continuous")
-        control.stop_after_current(w.store)
+        w.start("continuous")
         w.adapter.plan.append({"code": 0, "effect": lambda: (
             w.pr_info(7, HEAD1),
             w.gh.by_branch.update({BRANCH: [{"number": 7, "state": "OPEN", "headRefOid": HEAD1}]}))})
-        w.tick(); w.adapter.finish(w.adapter.launches[-1]["pid"]); w.tick()
+        w.tick()
+        control.set_drain(w.store, "deepseek", "a", True)  # current batch continues, no next one
+        w.adapter.finish(w.adapter.launches[-1]["pid"]); w.tick()
         w.pr_info(7, HEAD1, state="closed", merged=True)
         w.tick(6)
         self.assertEqual(len(w.store.all_batches()), 1)
@@ -338,14 +339,14 @@ class Operations(unittest.TestCase):
 
     def test_force_stop_preserves_and_retry_resumes(self):
         w = World()
-        control.start(w.store, "single")
+        w.start("single")
         w.adapter.plan.append({"code": 0})
         w.tick()
-        control.force_stop(w.store)
+        control.stop_line(w.store, "deepseek", "a")
         w.tick()
         self.assertEqual(w.row()["state"], "PAUSED")
         self.assertTrue(Path(w.row()["worktree"]).exists())
-        control.retry(w.store)
+        control.retry(w.store, "deepseek", "a")
         w.adapter.plan.append({"code": 0})
         w.tick(2)
         self.assertEqual(w.row()["state"], "PRODUCING")
@@ -354,14 +355,14 @@ class Operations(unittest.TestCase):
 
     def test_progress_only_when_recorded(self):
         w = World()
-        control.start(w.store, "single")
+        w.start("single")
         w.adapter.plan.append({"code": 0})
         w.tick()
-        self.assertNotIn("progress", control.status(w.store))
+        self.assertIsNone(control.line_status(w.store, "deepseek", "a")["progress"])
         f = Path(w.row()["worktree"]) / "data/relation-candidates/001/001_01_a_deepseek.jsonl"
         f.parent.mkdir(parents=True); f.write_text("{}\n" * 120)
         w.tick()
-        self.assertEqual(control.status(w.store)["progress"], "120/500")
+        self.assertEqual(control.line_status(w.store, "deepseek", "a")["progress"], "120/500")
         w.tmp.cleanup()
 
     def test_single_instance_lock(self):
