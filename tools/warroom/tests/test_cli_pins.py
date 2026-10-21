@@ -192,22 +192,35 @@ class EffortRejection(unittest.TestCase):
 
 
 class PinDrift(unittest.TestCase):
-    """A resumed session must continue on the model and effort that started it (non-tiered CLIs)."""
+    """Every relaunch keeps the pin of the last recorded run. Only a tiered CLI's own Free -> Go switch may change the model."""
+
+    FREE, GO = "opencode/deepseek-v4.1-flash-free", "opencode-go/deepseek-v4.1-flash"
 
     def test_table(self):
+        F, G = self.FREE, self.GO
         cases = [  # prev (model, effort), now (model, effort), tiered, drift?
             (("sonnet", "medium"), ("sonnet", "medium"), False, False),
-            (("sonnet", "medium"), ("sonnet", "high"), False, True),
-            (("sonnet", "medium"), ("opus", "medium"), False, True),
-            (("p/free", "high"), ("p/go", "high"), True, False),       # Free -> Go keeps effort: allowed
-            (("p/free", "high"), ("p/free", "low"), True, True),       # effort drift always blocks
-            ((None, None), ("sonnet", "medium"), False, False),        # legacy run: nothing recorded
+            (("sonnet", "medium"), ("sonnet", "high"), False, True),        # effort drift
+            (("sonnet", "medium"), ("opus", "medium"), False, True),        # model drift, single-model CLI
+            ((F, "high"), (G, "high"), True, False),                         # Free -> Go of the configured IDs: allowed
+            ((F, "high"), (F, "high"), True, False),                         # same tier, same ID: fine
+            ((F, "high"), (F + "-v2", "high"), True, True),                  # same tier, another Free ID: drift
+            ((G, "high"), (G + "-v2", "high"), True, True),                  # same tier, another Go ID: drift
+            ((G, "high"), (F, "high"), True, True),                          # Go -> Free is not a silent switch
+            ((F, "high"), (G, "low"), True, True),                           # effort drift always blocks
+            ((F, "high"), ("p/other", "high"), True, True),                  # a model that is not a configured tier
+            ((None, None), ("sonnet", "medium"), False, False),              # legacy run: nothing recorded
         ]
         for (pm, pe), (m, e), tiered, drift in cases:
             with self.subTest(prev=(pm, pe), now=(m, e), tiered=tiered):
                 runs = [{"model": pm, "effort": pe}] if pe is not None else [{"model": None, "effort": None}]
-                reason = Supervisor._pin_drift({"id": 1}, RunSpec(m, e), tiered, runs)
+                reason = Supervisor._pin_drift({"id": 1}, RunSpec(m, e), tiered, runs, (F, G) if tiered else None)
                 self.assertEqual(reason is not None, drift)
+
+    def test_tiered_without_configured_ids_never_allows_a_model_change(self):
+        reason = Supervisor._pin_drift({"id": 1}, RunSpec(self.GO, "high"), True,
+                                       [{"model": self.FREE, "effort": "high"}], None)
+        self.assertIsNotNone(reason)
 
 
 class PinnedLaunches(unittest.TestCase):
@@ -340,6 +353,23 @@ class RelaunchPins(unittest.TestCase):
         self.assertEqual(len(w.adapter.launches), 2)
         self.assertEqual((w.adapter.launches[-1]["model"], w.adapter.launches[-1]["effort"]), ("p/free-x-free", "high"))
         w.tmp.cleanup()
+
+    def test_a_same_tier_model_id_change_stops_the_relaunch(self):
+        for tier, changed in (("free", "opencode/other-free"), ("go", "opencode-go/other-go")):
+            with self.subTest(tier=tier):
+                w = World()
+                w.cfg["producers"] = {"deepseek": {"adapter": "opencode", "effort": "high",
+                                                   "models": {"free": "p/free-x-free", "go": "p/go"}}}
+                w.start("single", "deepseek", "a")
+                w.store.set_line("deepseek", "a", model_tier=tier)   # the recorded run is on this tier
+                w.tick()
+                launched = len(w.adapter.launches)
+                w.cfg["producers"]["deepseek"]["models"][tier] = changed   # same effort, another ID in the same tier
+                w.sup._launch(self.batch(w), "produce_recover", [])
+                self.assertEqual(len(w.adapter.launches), launched)
+                self.assertEqual(w.row("deepseek", "a")["state"], "ERROR")
+                self.assertIn("실행 설정 변경 차단", w.row("deepseek", "a")["error"])
+                w.tmp.cleanup()
 
     def test_free_to_go_keeps_the_effort_and_relaunches(self):
         w = self.fresh()

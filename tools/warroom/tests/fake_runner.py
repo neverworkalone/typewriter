@@ -23,6 +23,7 @@ class ScriptedRunner(Runner):
         self.probes: list[str] = []
         self.probe_calls: list[dict] = []         # argv + cwd of every `opencode run` (the probe)
         self.probe_gate = None                    # threading.Event: when set, a probe waits until it is released
+        self.models_gate = None                   # threading.Event: `opencode models` waits until it is released
 
     def ok_auth(self, account):
         self.account = account
@@ -39,6 +40,8 @@ class ScriptedRunner(Runner):
         if argv[:3] == ["gh", "auth", "git-credential"]:
             return Result(0, "username=x\npassword=SECRET\n") if self.cred_ok else Result(1, "", "no")
         if argv[1:] == ["models"]:
+            if self.models_gate is not None:
+                self.models_gate.wait(timeout=10)
             return Result(0, "\n".join(self.models)) if self.models_ok else Result(1, "", "boom")
         if argv[1:2] == ["run"]:   # OpenCode start-time probe: model#variant, then the provider
             spec = argv[argv.index("--model") + 1]

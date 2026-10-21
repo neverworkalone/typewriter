@@ -223,16 +223,21 @@ class Supervisor:
         return run_spec(self.cfg, b["producer"], b["model_tier"])
 
     @staticmethod
-    def _pin_drift(b, run: RunSpec, tiered: bool, runs) -> str | None:
+    def _pin_drift(b, run: RunSpec, tiered: bool, runs, tier_models=None) -> str | None:
         """Every relaunch of a batch (resume, recovery, fix) runs on the pin its last recorded run used.
 
-        Applies to all relaunch kinds, including a fresh session after a lost session id. OpenCode may legitimately
-        change its model (Free -> Go) mid-batch, so only its effort is compared there.
+        The only model change allowed is a tiered CLI's Free -> Go switch of its own configured IDs (`tier_models` is
+        (free, go)). Any other model change, and any effort change, stops the batch before a process starts.
         """
         prev = next((r for r in runs if r["effort"]), None)
         if prev is None:   # a run from before pins were recorded: nothing to compare with
             return None
-        if prev["effort"] != run.effort or (not tiered and prev["model"] != run.model):
+        same_model = prev["model"] == run.model
+        free_to_go = False
+        if tiered and tier_models:
+            free, go = tier_models
+            free_to_go = bool(free and go) and prev["model"] == free and run.model == go
+        if prev["effort"] != run.effort or (not same_model and not (tiered and free_to_go)):
             return (f"실행 설정 변경 차단: 기록된 실행 설정 {prev['model']} / {prev['effort']} 과 현재 설정 "
                     f"{run.model} / {run.effort} 이 다릅니다. 설정을 되돌리고 Supervisor를 재시작한 뒤 Retry 하세요.")
         return None
@@ -248,7 +253,9 @@ class Supervisor:
             run = self._run(b)
         except ValueError as e:
             return self._fail(b, "ERROR", f"실행 설정 오류로 AI를 시작하지 않았습니다: {e}")
-        drift = self._pin_drift(b, run, self._tiered(b["producer"]), self.store.runs(b["id"]))
+        p = registry(self.cfg)[b["producer"]]
+        tier_models = (p["models"].get("free", ""), p["models"].get("go", "")) if self._tiered(b["producer"]) else None
+        drift = self._pin_drift(b, run, self._tiered(b["producer"]), self.store.runs(b["id"]), tier_models)
         if drift:
             return self._fail(b, "ERROR", drift)
         problem = self._preflight(b["producer"])   # every launch proves the CLI again (cached once proven)

@@ -5,7 +5,7 @@ from pathlib import Path
 
 from tests.fake_runner import ScriptedRunner
 from tests.fakes import World
-from warroom.adapters import PREFLIGHT_PENDING, OpenCodeAdapter, RunSpec
+from warroom.adapters import PREFLIGHT_PENDING, PROBE_PERMISSIONS, OpenCodeAdapter, RunSpec
 
 FREE, GO = "p/free-x-free", "p/go"
 REPO = Path(__file__).resolve().parents[3]   # the checkout: a probe must never run here
@@ -45,14 +45,17 @@ class VariantPreflight(unittest.TestCase):
         class Recording(ScriptedRunner):
             def run(self, argv, cwd=None, env=None, input=None, timeout=120):
                 if argv[1:2] == ["run"]:
-                    seen.append((list(argv), cwd, Path(cwd).exists()))
+                    seen.append((list(argv), cwd, Path(cwd).exists(), dict(env or {})))
                 return super().run(argv, cwd=cwd, env=env, input=input, timeout=timeout)
 
         OpenCodeAdapter("opencode", probe_async=False).preflight(Recording(), {}, runs_for("high"))
         self.assertEqual(len(seen), 2)
-        for argv, cwd, existed in seen:
+        for argv, cwd, existed, env in seen:
             self.assertNotIn("--auto", argv)                                  # no permission grant
             self.assertNotIn("--session", argv)                               # never a real session
+            self.assertIn("--standalone", argv)                               # the probe's private server reads the deny rule
+            self.assertEqual(env.get("OPENCODE_CONFIG_CONTENT"), PROBE_PERMISSIONS)   # every tool denied for the probe
+            self.assertEqual(PROBE_PERMISSIONS, '{"permission":{"*":"deny"}}')
             self.assertTrue(Path(cwd).name.startswith("wr-variant-probe-"))   # a fresh throwaway directory
             self.assertTrue(existed)
             self.assertFalse(Path(cwd).exists())                             # removed after the probe
@@ -88,6 +91,39 @@ class BackgroundProbe(unittest.TestCase):
         runner.probe_gate.set()
         self.assertTrue(adapter._probes[f"{FREE}#high"]["done"].wait(timeout=10))
         self.assertIsNone(adapter.preflight(runner, {}, [RunSpec(FREE, "high")]))
+
+
+class SlowListing(unittest.TestCase):
+    """#1379 blocker 3: a slow `opencode models` must not hold up the tick for the other Lines."""
+
+    def test_a_slow_listing_does_not_block_other_lines(self):
+        import time
+        w = World()
+        w.cfg["producers"] = {"deepseek": {"adapter": "opencode", "effort": "high",
+                                           "models": {"free": FREE, "go": GO}}}
+        w.adapter._opencode = OpenCodeAdapter("opencode", probe_async=True)
+        w.runner.models_gate = threading.Event()                 # the listing does not finish until released
+        try:
+            w.start("single", "deepseek", "a")
+            w.store.set_line("deepseek", "c", run=1, force_stop=1)   # another Line with a stop request
+            t0 = time.monotonic()
+            w.tick()
+            self.assertLess(time.monotonic() - t0, 5)              # the tick returned at once
+            self.assertEqual(w.store.peek_line("deepseek", "c")["run"], 0)   # the other Line's stop was processed
+            self.assertIsNone(w.store.active_batch("deepseek", "a"))        # the waiting Line selected nothing
+            self.assertEqual(w.store.line("deepseek", "a")["blocked"], "")  # and is waiting, not blocked
+            w.runner.models_gate.set()
+            listing = w.adapter._opencode._listing
+            self.assertTrue(listing["done"].wait(timeout=10))
+            for _ in range(10):
+                w.tick()
+                if w.store.active_batch("deepseek", "a") is not None:
+                    break
+                for probe in list(w.adapter._opencode._probes.values()):
+                    probe["done"].wait(timeout=10)
+            self.assertIsNotNone(w.store.active_batch("deepseek", "a"))
+        finally:
+            w.tmp.cleanup()
 
 
 class StartGate(unittest.TestCase):

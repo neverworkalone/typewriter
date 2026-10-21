@@ -82,15 +82,18 @@ Rules (fail closed):
   Start with the reason shown in the Line's BLOCKED field.
 - A CLI that is not wired into this build blocks Start. It is never redirected to another CLI.
 - Every relaunch of a batch (resume, recovery after a lost session, fix) runs on the pin of its last recorded run.
-  A changed model (single-model CLIs) or effort stops the batch in ERROR, and no process starts. OpenCode may still
-  switch Free → Go mid-batch: only its effort is compared. To continue, restore the config, restart the Supervisor,
-  then Retry (config is read at start).
+  A changed effort stops the batch in ERROR, and so does any changed model, with no process started. The one exception
+  is OpenCode's own Free → Go switch of its configured IDs. Another ID in the same tier, or a Go → Free change, stops
+  the batch. To continue, restore the config, restart the Supervisor, then Retry (config is read at start).
 - OpenCode's reasoning variant is the `#variant` suffix of `--model`. The installed CLI rejects `--variant`
   (`Unrecognized flag`). Before any batch or worktree exists, every model+variant pair (Free, and Go when configured)
   is proven by a short probe: one `opencode run` from an empty temporary directory outside the repository, without
   `--auto` and without tools, in the background. While a probe runs, the Line waits (it is not blocked and the other
-  Lines keep moving). A variant the CLI refuses (`Variant unavailable`) blocks Start with that reason. Any provider
-  answer, quota errors included, proves the variant. Silence, a timeout, or unreadable output does not, and blocks.
+  Lines keep moving). The probe denies every tool (`OPENCODE_CONFIG_CONTENT={"permission":{"*":"deny"}}`, run with
+  `--standalone`, which was verified to stop a shell call on the installed CLI). `opencode models` is listed once per
+  Supervisor life, also in the background; until it finishes Start waits. A variant the CLI refuses (`Variant
+  unavailable`) blocks Start with that reason. Any provider answer, quota errors included, proves the variant. Silence,
+  a timeout, or unreadable output does not, and blocks.
   A proven pair is kept for this Supervisor run. A refused pair stays refused until the Supervisor restarts. The probe
   may cost a few tokens and creates one session titled `WR preflight`. A variant refused later still stops the batch
   in ERROR, with nothing substituted. A DeepSeek entry without `effort` runs at `high`, the owner-fixed value
