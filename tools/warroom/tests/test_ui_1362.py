@@ -61,23 +61,61 @@ class CardsAndControl(unittest.TestCase):
                 "pr": None, "activity": None}
         return {**base, **kw}
 
-    def test_card_is_three_fixed_lines_for_every_phase_and_text_length(self):
-        from warroom.views import CARD_W, ICON, card_text
+    def test_card_is_five_fixed_lines_for_every_phase_and_text_length(self):
+        from warroom.views import CARD_LINES, CARD_W, ICON, card_text
         from warroom.views import cell_len
         long_ko = "아주 긴 활동 메시지 " * 20
         for state in list(ICON) + ["UNKNOWN"]:
-            for kw in ({}, {"pr": 1349, "progress": "500/500", "drain": True,
-                            "activity": (time.time(), long_ko)}):
+            for kw in ({}, {"pr": 1349, "records_done": 500, "records_total": 500, "drain": True,
+                            "elapsed": 99999, "activity": (time.time(), long_ko)}):
                 lines = card_text(self.status(state=state, **kw)).split("\n")
-                self.assertEqual(len(lines), 3, (state, kw))
+                self.assertEqual(len(lines), CARD_LINES, (state, kw))
                 self.assertTrue(all(cell_len(l) <= CARD_W for l in lines), (state, lines))
         empty = card_text(self.status(batch=None)).split("\n")
-        self.assertEqual(len(empty), 3)
-        full = card_text(self.status(state="WAITING_REVIEW", pr=7, progress="500/500", drain=True)).split("\n")
-        self.assertTrue(full[0].startswith("A · 009_02"))
-        self.assertEqual(full[1], "REVIEW + DRAIN 500/500")
-        self.assertEqual(full[2], "PR #7")
-        self.assertNotIn("500", card_text(self.status()))   # progress only when observed
+        self.assertEqual(len(empty), CARD_LINES)
+
+    def test_card_shows_only_observed_progress_and_real_elapsed(self):
+        from warroom.views import CARD_W, card_text, cell_len, fmt_elapsed
+        act = (time.mktime(time.strptime(time.strftime("%Y-%m-%d") + " 18:47", "%Y-%m-%d %H:%M")),
+               "PRODUCING 시작 (produce, model tier=free)")
+        # (status overrides, records line, bar shown, ops line, recent line)
+        table = [
+            (dict(), "진행량 확인 중", False, "PR 생성 전", ""),
+            (dict(elapsed=312, activity=act), "진행량 확인 중", False, "PR 생성 전 경과 5분 12초", "최근: 18:47 생산 시작"),
+            (dict(records_done=127, records_total=500, elapsed=312), "127 / 500 records 25.4%", True,
+             "PR 생성 전 경과 5분 12초", ""),
+            (dict(state="COMPLETE", records_done=83, records_total=83, pr=1349, elapsed=3900),
+             "83 / 83 records 100.0%", True, "PR #1349 경과 1시간 05분", ""),
+            (dict(records_done=None, records_total=500), "진행량 확인 중", False, "PR 생성 전", ""),
+            (dict(records_done=0, records_total=500), "0 / 500 records 0.0%", True, "PR 생성 전", ""),
+        ]
+        for kw, records, bar, ops, recent in table:
+            lines = card_text(self.status(**kw)).split("\n")
+            self.assertEqual(" ".join(lines[1].split()), records, kw)
+            self.assertEqual(bool(lines[2]), bar, kw)
+            self.assertEqual(" ".join(lines[3].split()), ops, kw)
+            self.assertEqual(lines[4], recent, kw)
+            if bar:
+                self.assertEqual(cell_len(lines[2]), CARD_W)
+        half = card_text(self.status(records_done=250, records_total=500)).split("\n")[2]
+        self.assertEqual((half.count("█"), half.count("░")), (CARD_W // 2, CARD_W // 2))
+        # State, batch and PR number appear once; the first line carries Method, batch, state and icon.
+        full = card_text(self.status(state="WAITING_REVIEW", pr=7, drain=True)).split("\n")
+        self.assertTrue(full[0].startswith("A · 009_02") and full[0].endswith("REVIEW + DRAIN ◔"))
+        self.assertEqual(sum(l.count("REVIEW") for l in full), 1)
+        self.assertEqual([fmt_elapsed(x) for x in (0, 59, 60, 312, 3599, 3900)],
+                         ["0초", "59초", "1분 00초", "5분 12초", "59분 59초", "1시간 05분"])
+
+    def test_elapsed_is_the_sum_of_recorded_runs(self):
+        w = World()
+        bid = w.store.create_batch(method="a", producer="deepseek", shard="009", batch="02",
+                                   branch="b", worktree="/x")
+        self.assertIsNone(control.line_status(w.store, "deepseek", "a")["elapsed"])   # no run yet: nothing shown
+        with w.store._conn() as c:
+            c.execute("INSERT INTO runs(batch_id,kind,started_at,ended_at) VALUES(?,?,?,?)", (bid, "produce", 100.0, 160.0))
+            c.execute("INSERT INTO runs(batch_id,kind,started_at,ended_at) VALUES(?,?,?,?)", (bid, "fix", 500.0, 530.0))
+        self.assertEqual(control.line_status(w.store, "deepseek", "a")["elapsed"], 90.0)   # waiting time is not counted
+        w.tmp.cleanup()
 
     def test_empty_line_shows_pending_start_and_drain_via_real_commands(self):
         from warroom.views import card_text, detail_header
@@ -98,7 +136,7 @@ class CardsAndControl(unittest.TestCase):
         self.assertEqual(mid(), "— 실행 이력 없음")
         control.set_drain_all(w.store, True)                            # Drain All reaches empty cards too
         self.assertEqual(mid(), "비어 있음 + DRAIN")
-        self.assertEqual(len(card_text(cell()).split("\n")), 3)
+        self.assertEqual(len(card_text(cell()).split("\n")), 5)
         w.tmp.cleanup()
 
     def test_stop_all_target_matches_what_stop_lines_controls(self):

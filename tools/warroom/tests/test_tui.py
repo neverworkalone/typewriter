@@ -38,6 +38,39 @@ PRODUCERS = {
 
 @unittest.skipIf(textual is None, "textual not installed")
 class TuiSmoke(unittest.TestCase):
+    def test_board_layout_and_stop_dialog(self):
+        from textual.widgets import Button
+        from warroom import tui
+        w = World()
+
+        async def go():
+            app = make_app(w, PRODUCERS)
+            async with app.run_test(size=(180, 50)) as pilot:
+                await pilot.pause(0.3)
+                cards = list(app.query(tui.Card))
+                self.assertEqual({c.region.height for c in cards}, {7})          # A-D and empty cards share a height
+                col = app.query_one("#col-deepseek").region
+                title = app.query_one("#title-deepseek")
+                self.assertEqual(str(title.render()), "D E E P S E E K")
+                self.assertEqual(title.region.width, col.width)
+                self.assertGreaterEqual(app.query_one("#columns").region.y, app.query_one("#controls").region.bottom + 1)
+                first = app.query_one("#card-deepseek-a").region
+                self.assertGreaterEqual(first.y, title.region.bottom + 1)        # gap under the heading
+                # Columns keep their order and widths with several models.
+                self.assertEqual(len({c.region.width for c in cards}), 1)
+                app.push_screen(tui.Confirm("deepseek / Method A 라인의 AI 실행을 즉시 중지합니다."))
+                await pilot.pause(0.2)
+                no, yes = app.screen.query_one("#no", Button), app.screen.query_one("#yes", Button)
+                self.assertIs(app.focused, no)                                   # default is No ...
+                self.assertLess(no.region.x, yes.region.x)                       # ... on the left
+                box = app.screen.query_one("#confirm").region
+                self.assertLessEqual(box.height, 8)                              # no empty space under the buttons
+                self.assertLessEqual(box.bottom - yes.region.bottom, 3)
+                await pilot.press("escape")
+
+        asyncio.run(go())
+        w.tmp.cleanup()
+
     def test_arrow_keys_move_between_controls_and_cards(self):
         from warroom import tui
         w = World()

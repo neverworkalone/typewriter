@@ -74,16 +74,21 @@ def line_status(store: Store, model: str, method: str) -> dict:
            "session": None, "error": None, "progress": None, "worktree": None, "branch": None,
            "mode": ln["mode"], "run": bool(ln["run"]), "line_drain": bool(ln["drain"]),
            "global_drain": global_drain(store), "blocked": ln["blocked"] or "", "tier": ln["model_tier"],
-           "batch_id": None, "activity": None, "occupied": False, "updated": None, "records_total": None}
+           "batch_id": None, "activity": None, "occupied": False, "updated": None, "records_total": None,
+           "records_done": None, "elapsed": None}
     out["drain"] = out["line_drain"] or out["global_drain"]
     if b is not None:
         out.update(state=b["state"], batch=f"{b['shard']}_{b['batch']}", branch=b["branch"],
                    pr=b["pr_number"], head=b["head_sha"], session=b["session_id"],
                    error=b["error"], worktree=b["worktree"], batch_id=b["id"], updated=b["updated_at"],
-                   records_total=b["records_total"],
+                   records_total=b["records_total"], records_done=b["records_done"],
                    occupied=b["state"] != "COMPLETE")
         if b["records_done"] is not None and b["records_total"]:
             out["progress"] = f"{b['records_done']}/{b['records_total']}"  # recorded only
+        runs = store.runs(b["id"])
+        if runs:   # real execution time: the sum of recorded runs, an unfinished one counted up to now
+            now = time.time()
+            out["elapsed"] = sum(max(0.0, (r["ended_at"] or now) - r["started_at"]) for r in runs)
         ev = store.last_event(b["id"])
         if ev:
             out["activity"] = (ev["ts"], ev["msg"])

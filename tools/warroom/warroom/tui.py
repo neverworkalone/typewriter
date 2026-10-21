@@ -16,7 +16,7 @@ import time
 from . import auth, control
 from .config import Paths, adapter_label, adapters, load_config, methods, registry
 from .logrender import render_line
-from .views import _hhmm, _when, control_columns, select_width, card_text, detail_header, detail_meta  # noqa: F401  (CARD_W/ICON re-exported for tests)
+from .views import _hhmm, _when, control_columns, select_width, card_text, detail_header, model_title, detail_meta  # noqa: F401  (CARD_W/ICON re-exported for tests)
 from .logtail import LogTail, redact
 from .store import Store
 
@@ -53,8 +53,8 @@ class Confirm(ModalScreen[bool]):
         with Vertical(id="confirm"):
             yield Static(self.text)
             with Horizontal():
-                yield Button("Yes (Y)", id="yes", variant="error")
                 yield Button("No (N)", id="no", variant="primary")
+                yield Button("Yes (Y)", id="yes", variant="error")
 
     def on_mount(self) -> None:
         self.query_one("#no", Button).focus()
@@ -310,9 +310,7 @@ class LineDetail(Screen):
             control.retry(store, m, me)
         elif e.button.id == "stop":
             self.app.push_screen(Confirm(
-                f"{m} / Method {me.upper()} 라인만 AI 실행을 즉시 중지합니다.\n"
-                "다른 라인은 영향 없음. worktree·브랜치·PR은 보존되며 Retry로 재개할 수 있습니다.\n"
-                "중지하시겠습니까? (Y/N, 기본 N)"), self._stopped)
+                f"{m} / Method {me.upper()} 라인의 AI 실행을 즉시 중지합니다."), self._stopped)
 
     def _stopped(self, yes: bool | None) -> None:
         if yes:
@@ -322,7 +320,9 @@ class LineDetail(Screen):
 class WarRoom(App):
     TITLE = "WAR ROOM / TYPEWRITER"
     CSS = """
-    #confirm { width: 70; height: auto; padding: 1 2; border: thick $error; background: $surface; margin: 4 8; }
+    Confirm { align: center middle; }
+    #confirm { width: 60; height: auto; padding: 0 2; border: thick $error; background: $surface; }
+    #confirm > Horizontal { height: auto; align-horizontal: center; margin-top: 1; }
     #banner, #drain-note { height: auto; }
     #banner { color: $error; }
     #drain-note { color: $warning; }
@@ -330,10 +330,10 @@ class WarRoom(App):
     #controls > Button { width: 14; min-width: 14; max-width: 14; }
     #line-controls > Button { min-width: 8; width: auto; }
     #controls.narrow { layout: grid; grid-size: 3; grid-rows: auto; }
-    #columns { height: 1fr; }
+    #columns { height: 1fr; margin-top: 1; }
     .col { width: 38; height: auto; margin: 0 1; }
-    .coltitle { text-style: bold; }
-    .card { border: round $primary; height: 5; padding: 0 1; }
+    .coltitle { text-style: bold; color: $accent; width: 100%; text-align: center; margin-bottom: 1; }
+    .card { border: round $primary; height: 7; padding: 0 1; }
     .card:focus { border: heavy $accent; }
     .card.ERROR, .card.PAUSED { border: round $error; }
     .card.COMPLETE { border: round $success; }
@@ -385,7 +385,7 @@ class WarRoom(App):
         with HorizontalScroll(id="columns"):
             for model in self._lines():
                 with Vertical(classes="col", id=f"col-{model}"):
-                    yield Static(model, classes="coltitle", id=f"title-{model}")
+                    yield Static(model_title(model), classes="coltitle", id=f"title-{model}")
                     for me in self.methods:
                         yield Card(model, me)
         yield Footer()
@@ -516,9 +516,7 @@ class WarRoom(App):
         elif e.button.id == "stop-all":
             n = len(self.store.incomplete_batches())
             self.push_screen(Confirm(
-                f"모든 라인({len(self._lines()) * len(self.methods)}개 중 미완료 배치 {n}개)의 AI 실행을 즉시 "
-                "중지합니다. 모든 라인의 예약 실행이 해제되며 worktree·브랜치·PR은 보존됩니다(Retry로 재개).\n"
-                "중지하시겠습니까? (Y/N, 기본 N)"), self._stopped_all)
+                f"모든 라인(미완료 배치 {n}개)의 AI 실행을 즉시 중지합니다."), self._stopped_all)
 
     def _stopped_all(self, yes: bool | None) -> None:
         if yes:
