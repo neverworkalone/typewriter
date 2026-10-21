@@ -396,7 +396,10 @@ class Supervisor:
         even if the AI keeps running (e.g. waiting for merge); the process is
         coordinated/stopped before any fix run (see _watch). A CLI with requires_session_for_pr (Claude, Codex) is not
         taken over from before it reported its session, so a run without its own evidence is not adopted."""
-        if self._adapter(b["producer"]).requires_session_for_pr and not b["session_id"]:
+        ad = self._adapter(b["producer"])
+        if ad.requires_final_result_for_pr:   # the run is not verified until it exits: no review, merge or cleanup yet
+            return
+        if ad.requires_session_for_pr and not b["session_id"]:
             return
         last = float(self.store.get(f"last_poll_{b['id']}", "0"))
         if self.clock() - last < self.cfg["poll_seconds"]:

@@ -36,6 +36,7 @@ class AgentAdapter:
     name = "base"
     capabilities: dict = {}
     requires_session_for_pr = False   # True: a PR is taken over from a live run only after the CLI reported its session
+    requires_final_result_for_pr = False   # True: a PR is taken over only after the run exited and its result was verified
 
     def start(self, prompt, cwd, env, run: RunSpec, title, log_file, exit_file) -> Handle: ...
     def resume(self, session_id, prompt, cwd, env, run: RunSpec, log_file, exit_file) -> Handle: ...
@@ -303,6 +304,7 @@ class ClaudeCodeAdapter(ProcessAdapter):
     name = "claude"
     capabilities = {"resume": True, "stop": True}
     requires_session_for_pr = True
+    requires_final_result_for_pr = True   # its final denials and session are verified only at exit (run_problem/completion)
 
     def __init__(self, binary: str = "claude"):
         self.binary = binary

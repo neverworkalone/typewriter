@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 
 from tests.fakes import FakeAdapter, World
-from warroom.adapters import ClaudeCodeAdapter, Handle, RunSpec, classify_failure
+from warroom.adapters import ClaudeCodeAdapter, Handle, ProcessAdapter, RunSpec, classify_failure
 from warroom.config import DEFAULTS
 from warroom.shell import Result
 
@@ -210,6 +210,8 @@ class SupervisorStopsOnContradiction(unittest.TestCase):
         run_problem = ClaudeCodeAdapter.run_problem
         completion_problem = ClaudeCodeAdapter.completion_problem
         requires_session_for_pr = ClaudeCodeAdapter.requires_session_for_pr
+        requires_final_result_for_pr = ClaudeCodeAdapter.requires_final_result_for_pr
+        session_id = ProcessAdapter.session_id   # the stream carries "session_id" on every event
 
     def setUp(self):
         self.w = World()
@@ -264,6 +266,70 @@ class SupervisorStopsOnContradiction(unittest.TestCase):
         w.tick()                                                  # launched, nothing reported yet
         w.tick()
         self.assertEqual(w.row("claude", "a")["state"], "PRODUCING")
+
+    # Review (Stage 2, #1380): a PR that appears while the run is still alive is not a verified result. It is taken
+    # over only after the run exited and its final denials, session and model were checked.
+
+    def live_log(self, pid, text):
+        Path(self.w.adapter.running[pid]["log"]).write_text(text)   # what the CLI has written so far
+
+    def test_early_pr_with_a_session_is_not_taken_over_before_the_final_result(self):
+        w = self.w
+        w.start("single", "claude", "a")
+        w.pr_info(7, HEAD1)
+        w.gh.by_branch[BRANCH] = [{"number": 7, "state": "OPEN", "headRefOid": HEAD1}]
+        w.adapter.plan.append({"code": 0, "text": stream(init(), result(denials=[{"tool_name": "Bash"}]))})
+        w.tick()
+        pid = w.adapter.launches[-1]["pid"]
+        self.live_log(pid, stream(init()))                       # session and model known, PR already open
+        w.tick()
+        self.assertEqual(w.row("claude", "a")["state"], "PRODUCING")
+        self.assertIsNone(w.row("claude", "a")["pr_number"])
+        w.adapter.finish(pid)                                    # the final result: a denial, exit 0
+        w.tick()
+        self.assertEqual(w.row("claude", "a")["state"], "PAUSED")
+        self.assertNotIn(w.row("claude", "a")["state"], ("COMPLETE", "CLEANUP", "MERGED"))
+
+    def test_early_pr_with_a_normal_final_result_reaches_review(self):
+        w = self.w
+        w.start("single", "claude", "a")
+        w.pr_info(7, HEAD1)
+        w.gh.by_branch[BRANCH] = [{"number": 7, "state": "OPEN", "headRefOid": HEAD1}]
+        w.adapter.plan.append({"code": 0, "text": stream(init(), result())})
+        w.tick()
+        pid = w.adapter.launches[-1]["pid"]
+        self.live_log(pid, stream(init()))
+        w.tick()
+        self.assertEqual(w.row("claude", "a")["state"], "PRODUCING")
+        w.adapter.finish(pid)
+        w.tick()
+        self.assertEqual(w.row("claude", "a")["state"], "WAITING_REVIEW")
+        self.assertEqual(w.row("claude", "a")["pr_number"], 7)
+
+    def test_a_denial_without_any_pr_pauses(self):
+        w = self.w
+        w.start("single", "claude", "a")
+        w.adapter.plan.append({"code": 0, "text": stream(init(), result(denials=[{"tool_name": "Bash"}]))})
+        w.tick()
+        w.adapter.finish(w.adapter.launches[-1]["pid"])
+        w.tick()
+        self.assertEqual(w.row("claude", "a")["state"], "PAUSED")
+
+    def test_merged_pr_seen_while_the_run_is_alive_does_not_clean_up_early(self):
+        w = self.w
+        w.start("single", "claude", "a")
+        w.pr_info(7, HEAD1, state="closed", merged=True)
+        w.gh.by_branch[BRANCH] = [{"number": 7, "state": "CLOSED", "headRefOid": HEAD1}]
+        w.adapter.plan.append({"code": 0, "text": stream(init(), result())})
+        w.tick()
+        pid = w.adapter.launches[-1]["pid"]
+        self.live_log(pid, stream(init()))
+        w.tick(3)
+        self.assertEqual(w.row("claude", "a")["state"], "PRODUCING")     # not MERGED, not CLEANUP, not COMPLETE
+        self.assertTrue(w.adapter.alive(pid))                           # the run was not stopped for cleanup
+        w.adapter.finish(pid)
+        w.tick()
+        self.assertEqual(w.row("claude", "a")["state"], "WAITING_REVIEW")  # verified at exit, then watched for merge
 
     def test_denial_pauses_for_the_operator(self):
         w = self.w
