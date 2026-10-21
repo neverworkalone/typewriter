@@ -8,15 +8,19 @@ import unittest
 from pathlib import Path
 
 from tests.fakes import FakeAdapter, World
-from warroom.adapters import ClaudeCodeAdapter, Handle, RunSpec, classify_failure
+from warroom.adapters import ClaudeCodeAdapter, Handle, ProcessAdapter, RunSpec, classify_failure
 from warroom.config import DEFAULTS
 from warroom.shell import Result
 
 QUOTA = DEFAULTS["quota_patterns"]
 PIN = RunSpec("sonnet", "medium")
 SESSION = "3bbf1f2a-27f9-4a7e-a8ec-400dc799c0f3"
-FORBIDDEN = ("--dangerously-skip-permissions", "--allow-dangerously-skip-permissions", "--permission-mode=bypassPermissions",
-             "bypassPermissions", "--yolo")
+HEAD1 = "a" * 40
+HELP_NO_PERMISSION_FLAGS = "  --model <model>  --effort <level>  --output-format <format> stream-json\n  -r, --resume  -n, --name <name>  --verbose\n"
+BRANCH = "a-claude-001-01"
+# War Room passes no permission option at all: the local Claude settings decide, never a flag from here.
+FORBIDDEN = ("--dangerously-skip-permissions", "--allow-dangerously-skip-permissions", "--permission-mode",
+             "bypassPermissions", "dontAsk", "--allowedTools", "--disallowedTools", "--yolo")
 
 
 def stream(*events) -> str:
@@ -50,9 +54,9 @@ class Argv(unittest.TestCase):
                 for argv in (start, resume):
                     self.assertEqual(argv[argv.index("--model") + 1], run.model)
                     self.assertEqual(argv[argv.index("--effort") + 1], run.effort)
-                    self.assertEqual(argv[argv.index("--permission-mode") + 1], "dontAsk")
                     for bad in FORBIDDEN:
-                        self.assertNotIn(bad, " ".join(argv))
+                        self.assertNotIn(bad, argv)                   # never a permission option from War Room
+                    self.assertEqual(argv[:2], [argv[0], "-p"])
                 self.assertEqual(start[1:3], ["-p", "prompt body"])          # prompt is the -p argument
                 self.assertEqual(resume[resume.index("--resume") + 1], SESSION)
                 self.assertNotIn("--resume", start)
@@ -64,12 +68,10 @@ class Argv(unittest.TestCase):
                 a.start("p", ".", {}, run, "t", "l.log", "l.exit")
         self.assertFalse(hasattr(a, "cmd"))
 
-    def test_allowlist_is_explicit_and_merge_is_denied(self):
-        from warroom.adapters import CLAUDE_ALLOWED_TOOLS, CLAUDE_DISALLOWED_TOOLS
-        self.assertIn("Bash(gh pr create *)", CLAUDE_ALLOWED_TOOLS)
-        self.assertFalse(any(t.startswith("Bash(gh *)") for t in CLAUDE_ALLOWED_TOOLS))
-        self.assertIn("Bash(gh pr merge *)", CLAUDE_DISALLOWED_TOOLS)
-        self.assertIn("Bash(git push --force *)", CLAUDE_DISALLOWED_TOOLS)
+    def test_no_war_room_allowlist_exists(self):
+        import warroom.adapters as adapters
+        for name in ("CLAUDE_ALLOWED_TOOLS", "CLAUDE_DISALLOWED_TOOLS"):
+            self.assertFalse(hasattr(adapters, name), name)
 
 
 HELP = ("  --model <model>  --effort <level>  --output-format <format> stream-json\n"
@@ -97,6 +99,7 @@ class Preflight(unittest.TestCase):
             ("all good", {}, {}, None),
             ("version fails", {"version_ok": False}, {}, "--version"),
             ("help lacks flag", {"help_text": HELP.replace("--effort", "")}, {}, "--effort"),
+            ("no permission options needed from the CLI help", {"help_text": HELP_NO_PERMISSION_FLAGS}, {}, None),
             ("not logged in", {"login": False}, {}, "로그인"),
             ("env model override differs", {}, {"ANTHROPIC_MODEL": "opus"}, "ANTHROPIC_MODEL"),
             ("env effort override differs", {}, {"CLAUDE_CODE_EFFORT_LEVEL": "high"}, "CLAUDE_CODE_EFFORT_LEVEL"),
@@ -109,6 +112,38 @@ class Preflight(unittest.TestCase):
                     self.assertIsNone(reason)
                 else:
                     self.assertIn(want, reason)
+
+
+class CompletionGate(unittest.TestCase):
+    """An exited run is accepted only with the session its own init event reported."""
+
+    def check(self, raw, expected=SESSION):
+        with tempfile.TemporaryDirectory() as d:
+            log = Path(d) / "l.log"
+            log.write_text(raw)
+            return ClaudeCodeAdapter().completion_problem(log, PIN, expected)
+
+    def test_table(self):
+        cases = [  # name, raw log, expected state or None
+            ("empty log", "", "ERROR"),
+            ("only non-JSON output", "something went wrong\nno events here\n", "ERROR"),
+            ("result but no init", stream(result()), "ERROR"),
+            ("init with the session, then a clean result", stream(init(), result()), None),
+            ("init with another session than requested", stream(init(session="11111111-2222-4333-8444-555555555555")), "ERROR"),
+            ("init with an empty session", stream(init(session="")), "ERROR"),
+        ]
+        for name, raw, want in cases:
+            with self.subTest(name):
+                problem = self.check(raw)
+                self.assertEqual(problem[0] if problem else None, want)
+
+    def test_an_empty_log_is_still_waiting_mid_run_but_refused_at_completion(self):
+        # run_problem keeps waiting for a live run; the completion gate refuses the same empty log once the process exited 0
+        with tempfile.TemporaryDirectory() as d:
+            log = Path(d) / "l.log"
+            log.write_text("")
+            self.assertIsNone(ClaudeCodeAdapter().run_problem(log, PIN, SESSION))
+            self.assertEqual(ClaudeCodeAdapter().completion_problem(log, PIN, SESSION)[0], "ERROR")
 
 
 class RunProblem(unittest.TestCase):
@@ -128,6 +163,11 @@ class RunProblem(unittest.TestCase):
             ("session changed by the CLI", [init(session="11111111-2222-4333-8444-555555555555")], "ERROR"),
             ("denied tool at the end", [init(), result(denials=[{"tool_name": "Bash"}])], "PAUSED"),
             ("clean result", [init(), result()], None),
+            ("session id absent from the init event", [{k: v for k, v in init().items() if k != "session_id"}], "ERROR"),
+            ("session id empty", [init(session="")], "ERROR"),
+            ("session id whitespace only", [init(session="   ")], "ERROR"),
+            ("session id not a string", [init(session=7)], "ERROR"),
+            ("run ended without any init event", [result()], "ERROR"),
         ]
         for name, events, want in cases:
             with self.subTest(name):
@@ -144,6 +184,8 @@ class RunProblem(unittest.TestCase):
     def test_denied_tool_names_are_reported(self):
         problem = self.check([init(), result(denials=[{"tool_name": "Bash"}, {"tool_name": "Bash"}])])
         self.assertIn("Bash", problem[1])
+        self.assertIn("로컬 CLI 권한 정책상 거부", problem[1])          # the local settings decided, not a War Room list
+        self.assertNotIn("허용 목록", problem[1])
 
 
 class Classification(unittest.TestCase):
@@ -166,6 +208,10 @@ class Classification(unittest.TestCase):
 class SupervisorStopsOnContradiction(unittest.TestCase):
     class Reporting(FakeAdapter):
         run_problem = ClaudeCodeAdapter.run_problem
+        completion_problem = ClaudeCodeAdapter.completion_problem
+        requires_session_for_pr = ClaudeCodeAdapter.requires_session_for_pr
+        requires_final_result_for_pr = ClaudeCodeAdapter.requires_final_result_for_pr
+        session_id = ProcessAdapter.session_id   # the stream carries "session_id" on every event
 
     def setUp(self):
         self.w = World()
@@ -187,6 +233,103 @@ class SupervisorStopsOnContradiction(unittest.TestCase):
         self.assertEqual(row["state"], "ERROR")
         self.assertIn("다릅니다", row["error"])
         self.assertIsNone(w.adapter.running.get(w.adapter.launches[-1]["pid"]))   # the run was stopped
+
+    def test_finished_run_without_a_session_is_not_accepted_even_with_a_pr(self):
+        w = self.w
+        w.start("single", "claude", "a")
+        w.pr_info(7, HEAD1)
+        w.gh.by_branch[BRANCH] = [{"number": 7, "state": "OPEN", "headRefOid": HEAD1}]
+        w.adapter.plan.append({"code": 0, "text": stream(result())})     # exits 0, never reported its session
+        w.tick()
+        w.adapter.finish(w.adapter.launches[-1]["pid"])
+        w.tick()
+        self.assertEqual(w.row("claude", "a")["state"], "ERROR")
+        self.assertIn("세션", w.row("claude", "a")["error"])
+
+    def test_exit0_with_an_empty_log_and_a_pr_is_not_accepted(self):
+        w = self.w
+        w.start("single", "claude", "a")
+        w.pr_info(7, HEAD1)
+        w.gh.by_branch[BRANCH] = [{"number": 7, "state": "OPEN", "headRefOid": HEAD1}]
+        w.adapter.plan.append({"code": 0, "text": ""})            # exits 0 having written nothing parsable
+        w.tick()
+        w.adapter.finish(w.adapter.launches[-1]["pid"])
+        w.tick()
+        self.assertEqual(w.row("claude", "a")["state"], "ERROR")
+        self.assertIn("세션", w.row("claude", "a")["error"])
+
+    def test_a_pr_is_not_adopted_from_a_live_run_before_its_session(self):
+        w = self.w
+        w.start("single", "claude", "a")
+        w.pr_info(7, HEAD1)
+        w.gh.by_branch[BRANCH] = [{"number": 7, "state": "OPEN", "headRefOid": HEAD1}]
+        w.tick()                                                  # launched, nothing reported yet
+        w.tick()
+        self.assertEqual(w.row("claude", "a")["state"], "PRODUCING")
+
+    # Review (Stage 2, #1380): a PR that appears while the run is still alive is not a verified result. It is taken
+    # over only after the run exited and its final denials, session and model were checked.
+
+    def live_log(self, pid, text):
+        Path(self.w.adapter.running[pid]["log"]).write_text(text)   # what the CLI has written so far
+
+    def test_early_pr_with_a_session_is_not_taken_over_before_the_final_result(self):
+        w = self.w
+        w.start("single", "claude", "a")
+        w.pr_info(7, HEAD1)
+        w.gh.by_branch[BRANCH] = [{"number": 7, "state": "OPEN", "headRefOid": HEAD1}]
+        w.adapter.plan.append({"code": 0, "text": stream(init(), result(denials=[{"tool_name": "Bash"}]))})
+        w.tick()
+        pid = w.adapter.launches[-1]["pid"]
+        self.live_log(pid, stream(init()))                       # session and model known, PR already open
+        w.tick()
+        self.assertEqual(w.row("claude", "a")["state"], "PRODUCING")
+        self.assertIsNone(w.row("claude", "a")["pr_number"])
+        w.adapter.finish(pid)                                    # the final result: a denial, exit 0
+        w.tick()
+        self.assertEqual(w.row("claude", "a")["state"], "PAUSED")
+        self.assertNotIn(w.row("claude", "a")["state"], ("COMPLETE", "CLEANUP", "MERGED"))
+
+    def test_early_pr_with_a_normal_final_result_reaches_review(self):
+        w = self.w
+        w.start("single", "claude", "a")
+        w.pr_info(7, HEAD1)
+        w.gh.by_branch[BRANCH] = [{"number": 7, "state": "OPEN", "headRefOid": HEAD1}]
+        w.adapter.plan.append({"code": 0, "text": stream(init(), result())})
+        w.tick()
+        pid = w.adapter.launches[-1]["pid"]
+        self.live_log(pid, stream(init()))
+        w.tick()
+        self.assertEqual(w.row("claude", "a")["state"], "PRODUCING")
+        w.adapter.finish(pid)
+        w.tick()
+        self.assertEqual(w.row("claude", "a")["state"], "WAITING_REVIEW")
+        self.assertEqual(w.row("claude", "a")["pr_number"], 7)
+
+    def test_a_denial_without_any_pr_pauses(self):
+        w = self.w
+        w.start("single", "claude", "a")
+        w.adapter.plan.append({"code": 0, "text": stream(init(), result(denials=[{"tool_name": "Bash"}]))})
+        w.tick()
+        w.adapter.finish(w.adapter.launches[-1]["pid"])
+        w.tick()
+        self.assertEqual(w.row("claude", "a")["state"], "PAUSED")
+
+    def test_merged_pr_seen_while_the_run_is_alive_does_not_clean_up_early(self):
+        w = self.w
+        w.start("single", "claude", "a")
+        w.pr_info(7, HEAD1, state="closed", merged=True)
+        w.gh.by_branch[BRANCH] = [{"number": 7, "state": "CLOSED", "headRefOid": HEAD1}]
+        w.adapter.plan.append({"code": 0, "text": stream(init(), result())})
+        w.tick()
+        pid = w.adapter.launches[-1]["pid"]
+        self.live_log(pid, stream(init()))
+        w.tick(3)
+        self.assertEqual(w.row("claude", "a")["state"], "PRODUCING")     # not MERGED, not CLEANUP, not COMPLETE
+        self.assertTrue(w.adapter.alive(pid))                           # the run was not stopped for cleanup
+        w.adapter.finish(pid)
+        w.tick()
+        self.assertEqual(w.row("claude", "a")["state"], "WAITING_REVIEW")  # verified at exit, then watched for merge
 
     def test_denial_pauses_for_the_operator(self):
         w = self.w
@@ -214,7 +357,7 @@ class RealProcessLaunch(unittest.TestCase):
                 time.sleep(0.05)
             text = h.log_file.read_text()
             self.assertIn("--model sonnet --effort medium", text)
-            self.assertIn("--permission-mode dontAsk", text)
+            self.assertNotIn("--permission-mode", text)              # the local settings decide, not War Room
             self.assertEqual(a.session_id(h.log_file), SESSION)
             self.assertIsNone(a.run_problem(h.log_file, PIN, SESSION))
 

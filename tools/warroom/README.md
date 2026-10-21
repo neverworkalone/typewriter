@@ -81,24 +81,40 @@ Rules (fail closed):
 - A producer with an unset, flag-like (`--…`) or malformed model, or an effort its CLI does not accept, blocks
   Start with the reason shown in the Line's BLOCKED field.
 - A CLI that is not wired into this build blocks Start. It is never redirected to another CLI.
-- A resumed session continues only on the model and effort that started it (for single-model CLIs); a different
-  pin stops the batch in ERROR. OpenCode may still switch Free → Go mid-batch: only its effort is compared.
+- Every relaunch of a batch (resume, recovery after a lost session, fix) runs on the pin of its last recorded run.
+  A changed effort stops the batch in ERROR, and so does any changed model, with no process started. The one exception
+  is OpenCode's own Free → Go switch of its configured IDs. Another ID in the same tier, or a Go → Free change, stops
+  the batch. To continue, restore the config, restart the Supervisor, then Retry (config is read at start).
 - OpenCode's reasoning variant is the `#variant` suffix of `--model`. The installed CLI rejects `--variant`
-  (`Unrecognized flag`). An unknown variant or model fails the run and stops the batch; nothing is substituted.
-  A DeepSeek entry without `effort` runs at `high`, the owner-fixed value (configs written before #1373).
+  (`Unrecognized flag`). Before any batch or worktree exists, every model+variant pair (Free, and Go when configured)
+  is proven by a short probe: one `opencode run` from an empty temporary directory outside the repository, without
+  `--auto` and without tools, in the background. While a probe runs, the Line waits (it is not blocked and the other
+  Lines keep moving). The probe denies every tool (`OPENCODE_CONFIG_CONTENT={"permission":{"*":"deny"}}`, run with
+  `--standalone`, which was verified to stop a shell call on the installed CLI). `opencode models` is listed once per
+  Supervisor life, also in the background; until it finishes Start waits. A variant the CLI refuses (`Variant
+  unavailable`) blocks Start with that reason. Any provider answer, quota errors included, proves the variant. Silence,
+  a timeout, or unreadable output does not, and blocks.
+  A proven pair is kept for this Supervisor run. A refused pair stays refused until the Supervisor restarts. The probe
+  may cost a few tokens and creates one session titled `WR preflight`. A variant refused later still stops the batch
+  in ERROR, with nothing substituted. A DeepSeek entry without `effort` runs at `high`, the owner-fixed value
+  (configs written before #1373).
 - Run History and the Audit Log record the model ID and effort each launch was pinned to.
 
 ### Claude Code (`claude`) setup
 
 - Install Claude Code and log in with the operator's own account: `claude auth login`. `claude auth status`
   must report `loggedIn: true`; Start checks it. Unlike GitHub, this login is not isolated per War Room.
-- Every run: `claude -p <prompt> --model <model> --effort <effort> --output-format stream-json --verbose
-  --permission-mode dontAsk --allowedTools … --disallowedTools …`. Resume uses `--resume <session id>` with the same pins.
-- Permissions: `dontAsk` with an explicit allowlist (Read, Edit, Write, Glob, Grep, `git`, `gh pr create|view|list`,
-  `gh issue view`, `node`, `pnpm`, `corepack`). `gh pr merge` and force pushes are denied. A denied tool stops the
-  batch in PAUSED; nothing continues silently. Widening the allowlist needs owner approval.
+- Every run pins only the model and the reasoning effort: `claude -p <prompt> --model <model> --effort <effort>
+  --output-format stream-json --verbose`. Resume uses `--resume <session id>` with the same pins.
+- **Permissions are the operator's local Claude settings** (`~/.claude/settings.json`, project settings), applied by
+  the CLI's own precedence. War Room passes no permission option: no allowlist, no `--permission-mode`, no bypass.
+  A tool the local settings do not allow is denied by the CLI and listed in `permission_denials`; the run then stops
+  in **PAUSED** with the denied tool named, and nothing is widened automatically. Worktree, PR and session are kept.
+  To allow such a tool, the operator edits the local Claude settings directly and then retries.
 - Start refuses when `ANTHROPIC_MODEL` or `CLAUDE_CODE_EFFORT_LEVEL` is set to anything other than the pin, because
   it would decide the effective value.
+- A session that is not reported (absent, empty or not a string) stops the run, and so does a run that ends without
+  any init event: a PR is accepted only with its own session.
 - The stream reports the model it ran (`system/init`); a different model stops the batch. The CLI does not print the
   effort it used, so an unknown effort (the CLI's "ignoring it and using the default effort") is treated as a stop.
 

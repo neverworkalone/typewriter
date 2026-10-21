@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from warroom.shell import Result, Runner
 
 
@@ -16,6 +18,12 @@ class ScriptedRunner(Runner):
         self.done: dict[str, int] = {}
         self.models = ["p/free-x-free", "p/go"]
         self.models_ok = True
+        self.variant_rejected: set[str] = set()   # model#variant the fake OpenCode refuses before the provider call
+        self.probe_answer = "text"                # what an accepted probe returns: text | quota | silent | garbage
+        self.probes: list[str] = []
+        self.probe_calls: list[dict] = []         # argv + cwd of every `opencode run` (the probe)
+        self.probe_gate = None                    # threading.Event: when set, a probe waits until it is released
+        self.models_gate = None                   # threading.Event: `opencode models` waits until it is released
 
     def ok_auth(self, account):
         self.account = account
@@ -32,7 +40,26 @@ class ScriptedRunner(Runner):
         if argv[:3] == ["gh", "auth", "git-credential"]:
             return Result(0, "username=x\npassword=SECRET\n") if self.cred_ok else Result(1, "", "no")
         if argv[1:] == ["models"]:
+            if self.models_gate is not None:
+                self.models_gate.wait(timeout=10)
             return Result(0, "\n".join(self.models)) if self.models_ok else Result(1, "", "boom")
+        if argv[1:2] == ["run"]:   # OpenCode start-time probe: model#variant, then the provider
+            spec = argv[argv.index("--model") + 1]
+            self.probes.append(spec)
+            self.probe_calls.append({"argv": list(argv), "cwd": cwd})
+            if self.probe_gate is not None:
+                self.probe_gate.wait(timeout=10)
+            if spec in self.variant_rejected:
+                return Result(1, json.dumps({"type": "error", "error": {"type": "provider.no-route",
+                              "message": f"Variant unavailable for {spec}"}}) + "\n")
+            if self.probe_answer == "quota":
+                return Result(1, json.dumps({"type": "error", "error": {"type": "provider.quota",
+                              "message": "Rate limit exceeded"}}) + "\n")
+            if self.probe_answer == "silent":
+                return Result(124, "", "timeout: opencode")
+            if self.probe_answer == "garbage":
+                return Result(0, "not json at all\n")
+            return Result(0, json.dumps({"type": "text", "part": {"text": "OK"}}) + "\n")
         if argv[:2] == ["git", "ls-tree"]:
             return Result(0, "".join(f"{p}\n" for p in self.done))      # existence, including 0-byte files
         if argv[:2] == ["git", "grep"]:

@@ -162,8 +162,8 @@ def methods(cfg: dict) -> list[str]:
 ADAPTER_LABELS = {"claude": "Claude", "codex": "Codex", "opencode": "OpenCode"}   # display names only
 TIERED_ADAPTERS = ("opencode",)   # the only CLI with a Free and a Go model per logical model
 # Reasoning effort each CLI accepts. Claude: its `--effort` choices; Codex: the values the API reports for
-# gpt-6-luna (rejected with "Supported values are ..." otherwise). OpenCode variants are model-specific,
-# so the CLI decides at run time (`Variant unavailable` -> fail closed).
+# gpt-6-luna (rejected with "Supported values are ..." otherwise). OpenCode variants are model-specific:
+# only their format is checked here, and the OpenCode adapter proves each model+variant at Start (preflight).
 ADAPTER_EFFORTS = {
     "claude": ("low", "medium", "high", "xhigh", "max"),
     "codex": ("none", "low", "medium", "high", "xhigh", "max"),

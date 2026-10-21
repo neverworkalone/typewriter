@@ -21,6 +21,7 @@ from warroom.shell import Result
 QUOTA = DEFAULTS["quota_patterns"]
 PIN = RunSpec("gpt-6-luna", "xhigh")
 THREAD = "01a15e50-8832-7502-9680-0e4fdbf5fcb0"
+HEAD1 = "a" * 40
 # Options War Room never passes: the local CLI policy decides sandbox and approval, and bypass flags are never used.
 NEVER_PASSED = ("--dangerously-bypass-approvals-and-sandbox", "--dangerously-bypass-hook-trust", "--yolo",
                 "--full-auto", "--worktree", "--last", "--all", "--ignore-user-config", "--ignore-rules",
@@ -71,9 +72,9 @@ class Argv(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             d = Path(d)
             a = Recording("codex")
-            a.start("prompt body", d, {"GH_CONFIG_DIR": str(d / "gh")}, PIN, "A 009_02", "l.log", "l.exit")
+            a.start("prompt body", d, {"GH_CONFIG_DIR": str(d / "gh")}, PIN, "A 009_02", d / "l.log", d / "l.exit")
             start = a.cmd
-            a.resume(THREAD, "again", d, {}, PIN, "l.log", "l.exit")
+            a.resume(THREAD, "again", d, {}, PIN, d / "l.log", d / "l.exit")
             resume = a.cmd
         self.assertEqual(start[1], "exec")
         self.assertEqual(start[start.index("-m") + 1], "gpt-6-luna")
@@ -208,6 +209,8 @@ class PolicyRefusal(unittest.TestCase):
             ("Exit code: 128 — fatal: Unable to create index.lock: Operation not permitted", True),
             ("the command was denied by the sandbox policy", False),
             ("all checks passed", False),
+            ("Operation not permitted was printed by the test; the check passed with exit code 0", False),
+            ("I did not run it. Operation not permitted is the error text from the docs", False),
         ]
         for text, refused in cases:
             with self.subTest(text=text), tempfile.TemporaryDirectory() as d:
@@ -215,7 +218,21 @@ class PolicyRefusal(unittest.TestCase):
                 log.write_text(lines(started(), {"type": "item.completed",
                                                  "item": {"type": "agent_message", "text": text}}, completed()))
                 reason = CodexCLIAdapter().policy_refusal(log)
-                self.assertEqual(reason is not None, refused or "Operation not permitted" in text)
+                self.assertEqual(reason is not None, refused)
+
+    def test_a_structured_refusal_needs_a_failed_command(self):
+        def log_with(item):
+            with tempfile.TemporaryDirectory() as d:
+                log = Path(d) / "l.log"
+                log.write_text(lines(started(), {"type": "item.completed", "item": item}, completed()))
+                return CodexCLIAdapter().policy_refusal(log)
+
+        self.assertIsNotNone(log_with({"type": "command_execution", "command": "git commit",
+                                       "aggregated_output": "index.lock: Operation not permitted", "exit_code": 128}))
+        self.assertIsNone(log_with({"type": "command_execution", "command": "echo",
+                                    "aggregated_output": "Operation not permitted (handled)", "exit_code": 0}))
+        self.assertIsNone(log_with({"type": "command_execution", "command": "git status",
+                                    "aggregated_output": "clean", "exit_code": 0}))
 
     def test_other_adapters_never_report_a_refusal(self):
         from warroom.adapters import ClaudeCodeAdapter, OpenCodeAdapter
@@ -230,6 +247,7 @@ class SupervisorStopsOnRecordedDrift(unittest.TestCase):
     class Reporting(FakeAdapter):
         run_problem = CodexCLIAdapter.run_problem
         policy_refusal = CodexCLIAdapter.policy_refusal
+        completion_problem = CodexCLIAdapter.completion_problem
 
     def world(self):
         w = World()
@@ -295,6 +313,141 @@ class SupervisorStopsOnRecordedDrift(unittest.TestCase):
             self.assertEqual(row["state"], "PAUSED")
             self.assertIsNotNone(row["worktree"])                  # worktree, branch and session are kept
             self.assertEqual(len(w.adapter.launches), 1)           # no automatic retry
+        finally:
+            w.tmp.cleanup()
+
+
+
+class CompletionGate(unittest.TestCase):
+    """#1381 blocker 1: a run that exits 0 is accepted only with its own thread id and its own turn record."""
+
+    def check(self, events, contexts=None, run=PIN, expected=THREAD, baseline=None):
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            log = d / "l.log"
+            log.write_text(lines(*events))
+            if baseline is not None:   # a resume: the turns recorded before this run
+                from warroom.adapters import _baseline_path
+                _baseline_path(log).write_text(json.dumps({"thread": THREAD, "turns": baseline}))
+            home = rollout_home(d / "codex", THREAD, contexts or []) if contexts is not None else d / "empty"
+            with mock.patch.dict(os.environ, {"CODEX_HOME": str(home)}):
+                return CodexCLIAdapter().completion_problem(log, run, expected)
+
+    def test_table(self):
+        cases = [  # name, events, contexts, baseline turns, expected state
+            ("no thread id recorded: no PR intake", [completed()], [context()], None, "ERROR"),
+            ("thread but no turn record of this run", [started(), completed()], None, None, "ERROR"),
+            ("only a past turn's record (resume, no new record)", [started(), completed()], [context()], 1, "ERROR"),
+            ("this run's record matches the pins", [started(), completed()], [context()], None, None),
+            ("this run's record after a baseline matches", [started(), completed()], [context(), context()], 1, None),
+            ("this run's record has another model", [started(), completed()], [context(model="gpt-5")], None, "ERROR"),
+            ("this run's record has another effort", [started(), completed()], [context(effort="high")], None, "ERROR"),
+            ("another thread than the requested one", [started("99999999-0000-4000-8000-000000000000"), completed()],
+             [context()], None, "ERROR"),
+        ]
+        for name, events, contexts, baseline, want in cases:
+            with self.subTest(name):
+                problem = self.check(events, contexts=contexts, baseline=baseline)
+                self.assertEqual(problem[0] if problem else None, want)
+
+    def test_a_resume_that_switched_threads_is_refused(self):
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            log = d / "l.log"
+            log.write_text(lines(started("99999999-0000-4000-8000-000000000000"), completed()))
+            from warroom.adapters import _baseline_path
+            _baseline_path(log).write_text(json.dumps({"thread": THREAD, "turns": 0}))
+            problem = CodexCLIAdapter().completion_problem(log, PIN, None)
+            self.assertEqual(problem[0], "ERROR")
+
+    def test_resume_records_the_turn_baseline_of_its_session(self):
+        class Spy(CodexCLIAdapter):
+            def _spawn(self, cmd, cwd, env, log_file, exit_file):
+                return Handle(0, Path(exit_file), Path(log_file))
+
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            home = rollout_home(d / "codex", THREAD, [context(), context()])
+            log = d / "r.log"
+            with mock.patch.dict(os.environ, {"CODEX_HOME": str(home)}):
+                Spy("codex").resume(THREAD, "again", d, {}, PIN, log, d / "r.exit")
+            from warroom.adapters import _baseline
+            self.assertEqual(_baseline(log), (THREAD, 2))
+
+
+class PrIntake(unittest.TestCase):
+    """#1381 blocker 1 at the Supervisor: a PR is taken over only from a run whose own evidence was recorded."""
+
+    class Reporting(FakeAdapter):
+        run_problem = CodexCLIAdapter.run_problem
+        policy_refusal = CodexCLIAdapter.policy_refusal
+        completion_problem = CodexCLIAdapter.completion_problem
+        requires_session_for_pr = CodexCLIAdapter.requires_session_for_pr
+        requires_final_result_for_pr = CodexCLIAdapter.requires_final_result_for_pr
+
+    def world(self):
+        w = World()
+        w.cfg["producers"] = {"codex": {"label": "Luna", "adapter": "codex", "model": "gpt-6-luna", "effort": "xhigh"}}
+        w.adapter = self.Reporting()
+        w.sup.adapter = w.adapter
+        w.pr_info(7, HEAD1)
+        w.gh.by_branch["a-codex-001-01"] = [{"number": 7, "state": "OPEN", "headRefOid": HEAD1}]
+        return w
+
+    def test_exit0_with_a_pr_but_no_thread_is_not_accepted(self):
+        w = self.world()
+        try:
+            with tempfile.TemporaryDirectory() as home, mock.patch.dict(os.environ, {"CODEX_HOME": home}):
+                w.start("single", "codex", "a")
+                w.adapter.plan.append({"code": 0, "text": lines(completed())})   # a finished turn, no thread id
+                w.tick()
+                w.adapter.finish(w.adapter.launches[-1]["pid"])
+                w.tick()
+            self.assertEqual(w.row("codex", "a")["state"], "ERROR")
+            self.assertIn("세션", w.row("codex", "a")["error"])
+        finally:
+            w.tmp.cleanup()
+
+    def test_success_output_with_a_refusal_word_and_no_pr_is_an_error(self):
+        w = self.world()
+        w.gh.by_branch = {}                                    # no PR on the branch
+        try:
+            with tempfile.TemporaryDirectory() as home, mock.patch.dict(os.environ, {"CODEX_HOME": home}):
+                rollout_home(Path(home), THREAD, [context()])
+                w.start("single", "codex", "a")
+                w.adapter.plan.append({"code": 0, "text": lines(started(), command(
+                    "Operation not permitted (printed and handled)", exit_code=0), completed())})
+                w.tick()
+                w.adapter.finish(w.adapter.launches[-1]["pid"])
+                w.tick()
+            self.assertEqual(w.row("codex", "a")["state"], "ERROR")
+            self.assertIn("PR을 찾지 못했습니다", w.row("codex", "a")["error"])
+        finally:
+            w.tmp.cleanup()
+
+    def test_a_pr_is_not_adopted_while_the_run_has_no_session(self):
+        w = self.world()
+        try:
+            with tempfile.TemporaryDirectory() as home, mock.patch.dict(os.environ, {"CODEX_HOME": home}):
+                w.start("single", "codex", "a")
+                w.tick()                       # launched; nothing recorded yet, the PR already exists
+                w.tick()
+            self.assertEqual(w.row("codex", "a")["state"], "PRODUCING")
+        finally:
+            w.tmp.cleanup()
+
+    def test_a_recorded_turn_with_its_pr_reaches_review(self):
+        w = self.world()
+        try:
+            with tempfile.TemporaryDirectory() as home, mock.patch.dict(os.environ, {"CODEX_HOME": home}):
+                rollout_home(Path(home), THREAD, [context()])          # the turn was recorded, as Codex does
+                w.start("single", "codex", "a")
+                w.adapter.plan.append({"code": 0, "text": lines(started(), completed())})
+                w.tick()
+                w.adapter.finish(w.adapter.launches[-1]["pid"])
+                w.tick()
+            self.assertEqual(w.row("codex", "a")["state"], "WAITING_REVIEW")
+            self.assertEqual(w.row("codex", "a")["pr_number"], 7)
         finally:
             w.tmp.cleanup()
 

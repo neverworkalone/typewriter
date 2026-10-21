@@ -9,8 +9,11 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
 import signal
 import subprocess
+import tempfile
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -32,6 +35,8 @@ class Handle:
 class AgentAdapter:
     name = "base"
     capabilities: dict = {}
+    requires_session_for_pr = False   # True: a PR is taken over from a live run only after the CLI reported its session
+    requires_final_result_for_pr = False   # True: a PR is taken over only after the run exited and its result was verified
 
     def start(self, prompt, cwd, env, run: RunSpec, title, log_file, exit_file) -> Handle: ...
     def resume(self, session_id, prompt, cwd, env, run: RunSpec, log_file, exit_file) -> Handle: ...
@@ -44,6 +49,15 @@ class AgentAdapter:
         """What the CLI reports about this run contradicts its pins: (state, reason), or None.
 
         Checked on every poll, so a wrong model or session is stopped before it can open a PR.
+        """
+        return None
+
+    def completion_problem(self, log_file: Path, run: RunSpec | None, expected_session: str | None,
+                           cwd=None, env=None) -> tuple[str, str] | None:
+        """Why a run that exited 0 must not be accepted as finished (no PR intake), or None.
+
+        Checked once the process has exited successfully, before its result is used. The mid-run check is
+        `run_problem`; this one requires the evidence that the run's own work was recorded.
         """
         return None
 
@@ -144,12 +158,23 @@ def _pinned(run: RunSpec) -> RunSpec:
     return run
 
 
+PREFLIGHT_PROMPT = "Reply with exactly: OK"
+# Every tool is denied for the probe. Verified on opencode 2.0.32 with --standalone: the model gets no tool and nothing runs.
+PROBE_PERMISSIONS = '{"permission":{"*":"deny"}}'
+PREFLIGHT_PENDING = "추론 수준 확인 중"   # a reason that means "not yet known", not "refused"
+PROBE_TIMEOUT = 90
+
+
 class OpenCodeAdapter(ProcessAdapter):
     name = "opencode"
     capabilities = {"resume": True, "stop": True}
 
-    def __init__(self, binary: str = "opencode"):
+    def __init__(self, binary: str = "opencode", probe_async: bool = True):
         self.binary = binary
+        self.probe_async = probe_async   # True: probes and the model listing run in the background, never blocking a tick
+        self._probes: dict[str, dict] = {}   # model#variant -> {"done": Event, "problem": str | None}
+        self._listing: dict | None = None    # `opencode models`, listed once per Supervisor life
+        self._probe_lock = threading.Lock()
 
     @staticmethod
     def model_arg(run: RunSpec) -> str:
@@ -168,24 +193,107 @@ class OpenCodeAdapter(ProcessAdapter):
         return self._spawn(cmd + [prompt], cwd, env, log_file, exit_file)
 
     def preflight(self, runner, env, runs):
-        res = runner.run([self.binary, "models"], env=env, timeout=60)
-        if not res.ok:
-            return f"`{self.binary} models` 실행 실패: {res.err.strip()[:200]}"
-        known = set(res.out.split())
-        missing = [r.model for r in runs if r.model not in known]
+        listing = self._model_listing(runner, env)
+        if not listing["done"].is_set():
+            return f"{PREFLIGHT_PENDING} 모델 목록"
+        if listing["problem"]:
+            return listing["problem"]
+        missing = [r.model for r in runs if r.model not in listing["ids"]]
         if missing:
             return f"OpenCode가 지원하지 않는 모델 ID: {', '.join(missing)}"
+        for run in runs:
+            problem = self._variant_problem(runner, env, run)
+            if problem:
+                return problem
         return None
 
+    def _model_listing(self, runner, env) -> dict:
+        """`opencode models`, listed once per Supervisor life. A slow listing runs in the background, so it never
+        holds up a tick; until it finishes the caller gets PREFLIGHT_PENDING."""
+        with self._probe_lock:
+            if self._listing is None:
+                self._listing = {"done": threading.Event(), "ids": set(), "problem": None}
+                if self.probe_async:
+                    threading.Thread(target=self._list_models, args=(runner, env, self._listing), daemon=True).start()
+                else:
+                    self._list_models(runner, env, self._listing)
+        return self._listing
 
-# Permission surface of non-interactive Claude runs: an explicit allowlist (`dontAsk` denies everything else),
-# never a bypass flag. Merge and force-push are denied even where a broader pattern would allow them.
-CLAUDE_ALLOWED_TOOLS = ("Read", "Edit", "Write", "Glob", "Grep", "Bash(git *)", "Bash(gh pr create *)",
-                        "Bash(gh pr view *)", "Bash(gh pr list *)", "Bash(gh issue view *)",
-                        "Bash(node *)", "Bash(pnpm *)", "Bash(corepack *)")
-CLAUDE_DISALLOWED_TOOLS = ("Bash(gh pr merge *)", "Bash(git push --force *)", "Bash(git push -f *)")
-CLAUDE_REQUIRED_FLAGS = ("--model", "--effort", "--resume", "--name", "--output-format", "stream-json",
-                         "--permission-mode", "dontAsk", "--allowedTools", "--disallowedTools")
+    def _list_models(self, runner, env, listing) -> None:
+        try:
+            res = runner.run([self.binary, "models"], env=env, timeout=60)
+            if res.ok:
+                listing["ids"] = set(res.out.split())
+            else:
+                listing["problem"] = f"`{self.binary} models` 실행 실패: {res.err.strip()[:200]}"
+        except Exception as e:   # any failure is fail-closed
+            listing["problem"] = f"`{self.binary} models` 실행 실패: {e}"
+        finally:
+            listing["done"].set()
+
+    def _variant_problem(self, runner, env, run) -> str | None:
+        """Start-time proof that the CLI accepts this model+variant (`--model <id>#<effort>`).
+
+        Each pair is probed once per Supervisor life. While its probe runs this returns a PREFLIGHT_PENDING reason,
+        so the caller waits for it on a later tick and the other Lines keep moving.
+        """
+        key = self.model_arg(run)
+        with self._probe_lock:
+            probe = self._probes.get(key)
+            if probe is None:
+                probe = self._probes[key] = {"done": threading.Event(), "problem": None}
+                if self.probe_async:
+                    threading.Thread(target=self._probe, args=(runner, env, run, probe), daemon=True).start()
+                else:
+                    self._probe(runner, env, run, probe)
+        if not probe["done"].is_set():
+            return f"{PREFLIGHT_PENDING} {key}"
+        return probe["problem"]
+
+    def _probe(self, runner, env, run, probe) -> None:
+        """One short request from an empty directory outside the repository, without `--auto` and without tools.
+
+        The CLI validates the variant before it calls the provider: `Variant unavailable` refuses; an answer or a
+        provider error proves it. Anything else (silence, timeout, unreadable output) is not proof and blocks.
+        """
+        work = Path(tempfile.mkdtemp(prefix="wr-variant-probe-"))
+        try:
+            res = runner.run([self.binary, "run", "--standalone", "--format", "json", "--title", "WR preflight",
+                              "--model", self.model_arg(run), PREFLIGHT_PROMPT],
+                             cwd=work, env={**env, "OPENCODE_CONFIG_CONTENT": PROBE_PERMISSIONS},
+                             input="", timeout=PROBE_TIMEOUT)
+            probe["problem"] = self._probe_outcome(res, run)
+        except Exception as e:   # any failure is "not proven"
+            probe["problem"] = f"OpenCode가 {run.model}의 추론 수준을 확인하지 못했습니다 ({e}) — 실행하지 않습니다."
+        finally:
+            shutil.rmtree(work, ignore_errors=True)
+            probe["done"].set()
+
+    @staticmethod
+    def _probe_outcome(res, run) -> str | None:
+        if "Variant unavailable" in (res.out + res.err):
+            return f"OpenCode가 {run.model}에서 추론 수준(variant) {run.effort!r}를 지원하지 않습니다 — Start를 차단합니다."
+        events = []
+        for line in res.out.splitlines():
+            try:
+                events.append(json.loads(line))
+            except ValueError:
+                continue
+        answered = any(isinstance(e, dict) and e.get("type") == "text" for e in events)
+        provider_reached = any(isinstance(e, dict) and e.get("type") == "error"
+                               and str((e.get("error") or {}).get("type", "")).startswith("provider.") for e in events)
+        if answered or provider_reached:
+            return None
+        detail = (res.err or res.out).strip()[:200]
+        return (f"OpenCode가 {run.model}#{run.effort}의 추론 수준을 확인하지 못했습니다 (exit {res.code}: {detail}) — "
+                "검증되지 않은 설정으로 실행하지 않습니다.")
+
+
+# Permissions are the operator's own local Claude settings (~/.claude/settings.json, project settings), applied by
+# the CLI's own precedence. War Room passes no permission option: no allowlist, no permission mode, no bypass.
+# A tool the local settings do not allow is denied by the CLI and reported in `permission_denials`, which stops
+# the run in PAUSED (see run_problem). Model, effort and the session are the only things War Room pins.
+CLAUDE_REQUIRED_FLAGS = ("--model", "--effort", "--resume", "--name", "--output-format", "stream-json")
 _CLAUDE_EFFORT_FALLBACK = "ignoring it and using the default effort"   # the CLI's own warning for an unknown --effort
 
 
@@ -203,15 +311,15 @@ class ClaudeCodeAdapter(ProcessAdapter):
     """Claude Code (`claude -p --output-format stream-json`). Model and effort are passed on every launch."""
     name = "claude"
     capabilities = {"resume": True, "stop": True}
+    requires_session_for_pr = True
+    requires_final_result_for_pr = True   # its final denials and session are verified only at exit (run_problem/completion)
 
     def __init__(self, binary: str = "claude"):
         self.binary = binary
 
     @staticmethod
     def _pins(run: RunSpec) -> list[str]:
-        return ["--model", run.model, "--effort", run.effort, "--output-format", "stream-json", "--verbose",
-                "--permission-mode", "dontAsk", "--allowedTools", ",".join(CLAUDE_ALLOWED_TOOLS),
-                "--disallowedTools", ",".join(CLAUDE_DISALLOWED_TOOLS)]
+        return ["--model", run.model, "--effort", run.effort, "--output-format", "stream-json", "--verbose"]
 
     def start(self, prompt, cwd, env, run, title, log_file, exit_file):
         cmd = [self.binary, "-p", prompt, *self._pins(_pinned(run)), "--name", title]
@@ -253,10 +361,15 @@ class ClaudeCodeAdapter(ProcessAdapter):
                 init = o
             elif o.get("type") == "result":
                 result = o
-        if init is None:   # not started yet
-            return None
-        if expected_session and init.get("session_id") != expected_session:
-            return ("ERROR", f"세션 ID 불일치: 요청 {expected_session}, 실제 {init.get('session_id')} — 중지하고 보존합니다.")
+        if init is None:
+            if result is not None:   # the run ended without ever reporting its session: nothing to verify it by
+                return ("ERROR", "CLI가 세션 ID를 보고하지 않고 끝났습니다 — 세션을 확인하지 못해 PR을 인정하지 않습니다.")
+            return None   # not started yet
+        session = init.get("session_id")
+        if not isinstance(session, str) or not session.strip():   # absent, empty or not a string: fail closed
+            return ("ERROR", "CLI가 세션 ID를 보고하지 않았습니다(없음·빈 값·형식 오류) — 중지하고 보존합니다.")
+        if expected_session and session != expected_session:
+            return ("ERROR", f"세션 ID 불일치: 요청 {expected_session}, 실제 {session} — 중지하고 보존합니다.")
         reported = str(init.get("model") or "")
         if not reported:
             return ("ERROR", "CLI가 실행 모델을 보고하지 않아 요청한 모델로 실행됐는지 확인할 수 없습니다.")
@@ -264,8 +377,24 @@ class ClaudeCodeAdapter(ProcessAdapter):
             return ("ERROR", f"CLI가 보고한 모델 {reported!r}이 요청한 {run.model!r}과 다릅니다 — 중지합니다.")
         if result is not None and result.get("permission_denials"):
             names = sorted({str(d.get("tool_name")) for d in result["permission_denials"] if isinstance(d, dict)})
-            return ("PAUSED", f"권한 거부로 실행이 불완전합니다 (허용 목록 밖 도구: {', '.join(names)}). "
-                              "허용 목록 확대는 오너 승인이 필요합니다.")
+            return ("PAUSED", f"로컬 CLI 권한 정책상 거부되어 실행이 불완전합니다 (도구: {', '.join(names)}). "
+                              "자동 권한 상승 없이 중지합니다. 로컬 Claude 설정을 직접 확인한 뒤 Retry 하세요 "
+                              "(worktree·PR·세션 보존).")
+        return None
+
+    def completion_problem(self, log_file, run, expected_session, cwd=None, env=None):
+        """An exited run is accepted only if its init event reported its own session. An empty log, or one with no
+        parsable event, has no session and is refused (run_problem alone treats a run with no events as not started)."""
+        problem = self.run_problem(log_file, run, expected_session)
+        if problem:
+            return problem
+        try:
+            text = Path(log_file).read_text("utf-8", errors="replace")
+        except OSError:
+            return ("ERROR", "실행 로그를 읽을 수 없어 완료를 확인하지 못했습니다.")
+        init = next((o for o in _json_objects(text) if o.get("type") == "system" and o.get("subtype") == "init"), None)
+        if init is None:
+            return ("ERROR", "CLI가 세션 ID를 보고하지 않고 끝났습니다 — 세션을 확인하지 못해 PR을 인정하지 않습니다.")
         return None
 
 
@@ -292,10 +421,34 @@ def _turn_contexts(thread_id: str) -> list[dict]:
     return out
 
 
+def _baseline_path(log_file) -> Path:
+    return Path(str(log_file) + ".baseline.json")
+
+
+def _baseline(log_file) -> tuple[str | None, int]:
+    """(thread, turns) recorded when a resume started; (None, 0) for a fresh start (every turn is then this run's)."""
+    try:
+        data = json.loads(_baseline_path(log_file).read_text("utf-8"))
+        return str(data["thread"]), int(data["turns"])
+    except (OSError, ValueError, KeyError, TypeError):
+        return None, 0
+
+
+def _run_contexts(log_file, thread: str) -> list[dict]:
+    """The turn records written by this run only: the thread's records after the baseline."""
+    _, turns = _baseline(log_file)
+    return _turn_contexts(thread)[turns:]
+
+
+_NONZERO_EXIT = re.compile(r"exit\s*code\D{0,12}?[1-9]\d*|exit\s+[1-9]\d*", re.I)
+
+
 class CodexCLIAdapter(ProcessAdapter):
     """Codex CLI (`codex exec --json`, `codex exec resume <thread id>`). Model and effort pinned on every launch."""
     name = "codex"
     capabilities = {"resume": True, "stop": True}
+    requires_session_for_pr = True
+    requires_final_result_for_pr = True   # a PR is taken over only after the run exited and its final result was checked
 
     def __init__(self, binary: str = "codex"):
         self.binary = binary
@@ -310,6 +463,10 @@ class CodexCLIAdapter(ProcessAdapter):
 
     def resume(self, session_id, prompt, cwd, env, run, log_file, exit_file):
         cmd = [self.binary, "exec", "resume", session_id, *self._pins(_pinned(run)), prompt]
+        # The turns recorded before this run: only turns after this baseline belong to this run.
+        Path(log_file).parent.mkdir(parents=True, exist_ok=True)
+        _baseline_path(log_file).write_text(json.dumps({"thread": session_id,
+                                                         "turns": len(_turn_contexts(session_id))}))
         return self._spawn(cmd, cwd, env, log_file, exit_file)
 
     def session_id(self, log_file):
@@ -342,12 +499,50 @@ class CodexCLIAdapter(ProcessAdapter):
         return None
 
     def policy_refusal(self, log_file):
+        """A refusal the local policy actually produced: a command that failed with a refusal message, or the agent
+        reporting such a failure with a non-zero exit. Output of a command that succeeded never counts."""
         try:
             text = Path(log_file).read_text("utf-8", errors="replace")
         except OSError:
             return None
-        m = _CODEX_DENIED.search(text)
-        return f"로컬 Codex 정책이 명령을 거부한 흔적이 있습니다 ({m.group(0)})" if m else None
+        for e in _json_objects(text):
+            item = e.get("item") if isinstance(e.get("item"), dict) else {}
+            if e.get("type") != "item.completed":
+                continue
+            if item.get("type") == "command_execution" and item.get("exit_code") not in (0, None):
+                if _CODEX_DENIED.search(str(item.get("aggregated_output") or "")):
+                    return f"로컬 Codex 정책이 명령을 거부했습니다 ({str(item.get('command') or 'command')[:160]})"
+            if item.get("type") == "agent_message":
+                msg = str(item.get("text") or "")
+                if _CODEX_DENIED.search(msg) and _NONZERO_EXIT.search(msg):
+                    return "로컬 Codex 정책이 명령을 거부한 것으로 보고되었습니다"
+        return None
+
+    def completion_problem(self, log_file, run, expected_session, cwd=None, env=None):
+        """A run that exited 0 is accepted only with its own thread id and the turn record of this run."""
+        try:
+            text = Path(log_file).read_text("utf-8", errors="replace")
+        except OSError:
+            return ("ERROR", "실행 로그를 읽을 수 없어 완료를 확인하지 못했습니다.")
+        started = next((e for e in _json_objects(text) if e.get("type") == "thread.started"), None)
+        if started is None:
+            return ("ERROR", "세션(thread) ID가 기록되지 않은 실행은 완료로 인정하지 않습니다 — PR이 있어도 중지하고 보존합니다.")
+        thread = str(started.get("thread_id") or "")
+        if expected_session and thread != expected_session:
+            return ("ERROR", f"세션 ID 불일치: 요청 {expected_session}, 실제 {thread} — 중지하고 보존합니다.")
+        base_thread, _ = _baseline(log_file)
+        if base_thread and thread != base_thread:
+            return ("ERROR", f"재개가 다른 세션 {thread}으로 진행되었습니다 (요청 {base_thread}) — 중지합니다.")
+        new = _run_contexts(log_file, thread)
+        if not new:
+            return ("ERROR", "이번 실행의 턴 기록(turn_context)이 없어 실제 모델·추론 수준을 확인할 수 없습니다 "
+                             "(과거 턴 기록으로 대신하지 않음).")
+        for ctx in new:
+            if run is not None and ctx.get("model") != run.model:
+                return ("ERROR", f"Codex가 실행한 모델 {ctx.get('model')!r}이 요청한 {run.model!r}과 다릅니다 — 중지합니다.")
+            if run is not None and ctx.get("effort") != run.effort:
+                return ("ERROR", f"Codex가 실행한 추론 수준 {ctx.get('effort')!r}이 요청한 {run.effort!r}과 다릅니다 — 중지합니다.")
+        return None
 
     def run_problem(self, log_file, run, expected_session, cwd=None, env=None):
         try:
@@ -366,8 +561,11 @@ class CodexCLIAdapter(ProcessAdapter):
         if denied:   # the local policy refused a command (or asked for approval): stop, keep everything, wait for the operator
             return ("PAUSED", f"로컬 Codex 정책이 명령을 거부했습니다 ({denied}). 자동 권한 상승 없이 중지합니다. "
                               "로컬 설정을 확인한 뒤 Retry 하세요 (worktree·브랜치·PR·세션 보존).")
+        base_thread, _ = _baseline(log_file)
+        if base_thread and thread != base_thread:
+            return ("ERROR", f"재개가 다른 세션 {thread}으로 진행되었습니다 (요청 {base_thread}) — 중지합니다.")
         finished = any(e.get("type") in ("turn.completed", "turn.failed") for e in events)
-        contexts = _turn_contexts(thread)
+        contexts = _run_contexts(log_file, thread)
         if not contexts:
             if finished:
                 return ("ERROR", "Codex가 실행 설정 기록(turn_context)을 남기지 않아 실제 모델·추론 수준을 확인할 수 없습니다.")

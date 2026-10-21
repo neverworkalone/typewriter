@@ -18,12 +18,10 @@ import traceback
 from pathlib import Path
 
 from . import auth, batches, control, prompts, reviews
-from .adapters import RunSpec, classify_failure
+from .adapters import PREFLIGHT_PENDING, RunSpec, classify_failure
 from .config import TIERED_ADAPTERS, adapter_label, registry, registry_problems, run_spec
 from .gitops import CleanupBlocked, GitError
 from .store import LineBusy
-
-RESUME_KINDS = ("produce_resume", "fix_resume")
 
 
 class DuplicateClaim(Exception):
@@ -142,6 +140,8 @@ class Supervisor:
         if not d["ok"]:
             return self._blocked(ln, "시작 차단: " + "; ".join(d["problems"]))
         problem = self._preflight(model)
+        if problem and problem.startswith(PREFLIGHT_PENDING):
+            return   # the CLI check runs in the background: this Line waits here, the others keep moving
         if problem:
             return self._blocked(ln, "시작 차단: " + problem)
         try:
@@ -228,17 +228,23 @@ class Supervisor:
         return RunSpec(r["model"], r["effort"]) if r else None
 
     @staticmethod
-    def _pin_drift(b, run: RunSpec, tiered: bool, runs) -> str | None:
-        """A resumed session continues only on the model and effort that started it; any drift stops the batch.
+    def _pin_drift(b, run: RunSpec, tiered: bool, runs, tier_models=None) -> str | None:
+        """Every relaunch of a batch (resume, recovery, fix) runs on the pin its last recorded run used.
 
-        OpenCode may legitimately change its model (Free -> Go) mid-batch, so only its effort is compared.
+        The only model change allowed is a tiered CLI's Free -> Go switch of its own configured IDs (`tier_models` is
+        (free, go)). Any other model change, and any effort change, stops the batch before a process starts.
         """
         prev = next((r for r in runs if r["effort"]), None)
         if prev is None:   # a run from before pins were recorded: nothing to compare with
             return None
-        if prev["effort"] != run.effort or (not tiered and prev["model"] != run.model):
-            return (f"세션 재개 차단: 기록된 실행 설정 {prev['model']} / {prev['effort']} 과 현재 설정 "
-                    f"{run.model} / {run.effort} 이 다릅니다. 설정을 되돌린 뒤 Retry 하세요.")
+        same_model = prev["model"] == run.model
+        free_to_go = False
+        if tiered and tier_models:
+            free, go = tier_models
+            free_to_go = bool(free and go) and prev["model"] == free and run.model == go
+        if prev["effort"] != run.effort or (not same_model and not (tiered and free_to_go)):
+            return (f"실행 설정 변경 차단: 기록된 실행 설정 {prev['model']} / {prev['effort']} 과 현재 설정 "
+                    f"{run.model} / {run.effort} 이 다릅니다. 설정을 되돌리고 Supervisor를 재시작한 뒤 Retry 하세요.")
         return None
 
     def _launch(self, b, kind: str, events=None) -> None:
@@ -252,10 +258,16 @@ class Supervisor:
             run = self._run(b)
         except ValueError as e:
             return self._fail(b, "ERROR", f"실행 설정 오류로 AI를 시작하지 않았습니다: {e}")
-        if kind in RESUME_KINDS:
-            drift = self._pin_drift(b, run, self._tiered(b["producer"]), self.store.runs(b["id"]))
-            if drift:
-                return self._fail(b, "ERROR", drift)
+        p = registry(self.cfg)[b["producer"]]
+        tier_models = (p["models"].get("free", ""), p["models"].get("go", "")) if self._tiered(b["producer"]) else None
+        drift = self._pin_drift(b, run, self._tiered(b["producer"]), self.store.runs(b["id"]), tier_models)
+        if drift:
+            return self._fail(b, "ERROR", drift)
+        problem = self._preflight(b["producer"])   # every launch proves the CLI again (cached once proven)
+        if problem and problem.startswith(PREFLIGHT_PENDING):
+            return   # still proving the pin in the background; the next tick retries this relaunch
+        if problem:
+            return self._fail(b, "ERROR", f"실행 전 확인 실패: {problem}")
         try:
             if kind == "produce":
                 h = ad.start(prompts.produce(b), wt, self.env, run,
@@ -325,6 +337,12 @@ class Supervisor:
             return self._fail(b, "ERROR", "AI 프로세스가 종료 상태 기록 없이 사라졌습니다. "
                               "자동 재생산하지 않음 — worktree/PR 확인 후 Retry.")
         if code == 0:
+            # Accept the result only with the run's own evidence (for Claude: the session its init event reported;
+            # for Codex: its thread id and its turn record).
+            problem = ad.completion_problem(Path(b["log_file"]), self._recorded_run(b), b["session_id"],
+                                            b["worktree"], self.env)
+            if problem:
+                return self._fail(b, problem[0], problem[1])
             return self._run_ok(b)
         self._run_failed(b, code)
 
@@ -381,7 +399,13 @@ class Supervisor:
     def _adopt_pr_while_running(self, b) -> None:
         """PR existence is independent of AI liveness: hand over to review watching
         even if the AI keeps running (e.g. waiting for merge); the process is
-        coordinated/stopped before any fix run (see _watch)."""
+        coordinated/stopped before any fix run (see _watch). A CLI with requires_session_for_pr (Claude, Codex) is not
+        taken over from before it reported its session, so a run without its own evidence is not adopted."""
+        ad = self._adapter(b["producer"])
+        if ad.requires_final_result_for_pr:   # the run is not verified until it exits: no review, merge or cleanup yet
+            return
+        if ad.requires_session_for_pr and not b["session_id"]:
+            return
         last = float(self.store.get(f"last_poll_{b['id']}", "0"))
         if self.clock() - last < self.cfg["poll_seconds"]:
             return
