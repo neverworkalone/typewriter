@@ -820,7 +820,7 @@ test('Deep gate separates validated data from affected contracts and fails close
   ));
   assert.ok(relationRegression, 'Deep retains current relation backfill and correction regressions');
   const allDeep = selectChecksForPolicy(allChecks, CI_LEVEL_EXECUTION_POLICY.all).filter((check) => check.tier === 'deep');
-  assert.equal(allDeep.length, 4, 'ci:all keeps only current-system Deep checks');
+  assert.equal(allDeep.length, 5, 'ci:all keeps only current-system Deep checks');
   const runtimeBinding = validateNormalCoverage().get('scripts/benchmark/sqlite-runtime.mjs');
   assert.deepEqual(runtimeBinding?.normal_tests, ['tests/runtime-query-adapter.test.mjs']);
   const affectedRuntimeDeepChecks = selectChecksForPolicy(allChecks, {
@@ -1185,4 +1185,19 @@ test('canonical-only meaning invariants are Normal checks selected even when onl
   for (const check of allChecks) {
     assert.doesNotMatch(JSON.stringify(check), /scripts\/meaning|data\/meanings|data\/adjudication|meaning-references/u, check.label);
   }
+});
+
+test('War Room supervisor tests are a Deep affected check selected by tools/warroom and the war launcher', () => {
+  const label = 'Test War Room production supervisor';
+  const check = CI_CATEGORIES.toolchain.checks.find((candidate) => candidate.label === label);
+  assert.ok(check, 'War Room check is registered');
+  assert.equal(check.schedule, 'affected');
+  assert.notEqual(check.tier, 'normal');
+  assert.deepEqual(check.command({}).args, ['tools/warroom/run-tests.mjs']);
+  for (const changed of ['tools/warroom/warroom/supervisor.py', 'tools/warroom/tests/test_core.py', 'war']) {
+    const selected = classifyDeepGatePaths([changed]).selectedDeepChecks.map((item) => item.label ?? item.id ?? item);
+    assert.ok(selected.some((item) => String(item).includes(label)), `${changed} selects the War Room check`);
+  }
+  assert.ok(!JSON.stringify(NORMAL_COVERAGE).includes('warroom'),
+    'Deep War Room tests are not bound as Normal always-on coverage');
 });

@@ -17,6 +17,7 @@ DEFAULTS = {
     "worker": {"adapter": "opencode", "method": "a", "producer": "deepseek"},
     "opencode_bin": "opencode",
     "models": {"free": "", "go": ""},
+    "free_model_pattern": "-free$",
     "quota_patterns": [
         "FreeUsageLimit",
         "free (usage|tier|quota).{0,40}(exhaust|exceed|limit)",

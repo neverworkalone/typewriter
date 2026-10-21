@@ -14,6 +14,8 @@ class ScriptedRunner(Runner):
         self.api_ok = True
         self.canon: dict[int, int] = {}
         self.done: dict[str, int] = {}
+        self.models = ["p/free-x-free", "p/go"]
+        self.models_ok = True
 
     def ok_auth(self, account):
         self.account = account
@@ -29,6 +31,8 @@ class ScriptedRunner(Runner):
             return Result(0, self.push + "\n")
         if argv[:3] == ["gh", "auth", "git-credential"]:
             return Result(0, "username=x\npassword=SECRET\n") if self.cred_ok else Result(1, "", "no")
+        if argv[1:] == ["models"]:
+            return Result(0, "\n".join(self.models)) if self.models_ok else Result(1, "", "boom")
         if argv[:2] == ["git", "grep"]:
             ref = argv[4]
             spec = argv[-1]

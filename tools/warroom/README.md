@@ -24,7 +24,9 @@ re-produces or opens a second PR when the situation is unclear (state `ERROR`, e
    `GH_CONFIG_DIR=tools/warroom/.local/gh gh auth login` (expected account `neverworkalone-agent`).
 3. Optional `tools/warroom/.local/config.json` (see `config.example.json`): model IDs
    (`models.free`, `models.go`), git author for the producer, quota patterns, polling.
-   Empty `models.free` uses OpenCode's default; empty `models.go` disables the Go switch.
+   `models.free` is **required**: Start is blocked unless it is installed (`opencode models`) and
+   matches `free_model_pattern` (default `-free$`); OpenCode's implicit default model is never used.
+   An empty `models.go` disables the Go switch (quota exhaustion then pauses).
 
 `.local/` (config, DB, logs, auth, worktrees, venv) is git-ignored; never commit tokens/logs.
 
@@ -40,6 +42,9 @@ re-produces or opens a second PR when the situation is unclear (state `ERROR`, e
   (`HEAD: <sha>` marker, else the review's `commit_id`), not authored by the producer account.
   Inline comments anchored to the current HEAD ride along with such a `-1` but never trigger alone.
   Handled once per `(PR, HEAD, event id)`; a review of an older HEAD is ignored.
+- **Live AI:** a PR is detected even while the AI is still running (e.g. waiting for merge) and
+  review watching takes over; before a fix run the old process is stopped and its exit confirmed.
+- **Effective verdict:** a `-1` blocks only until a later same-HEAD `+1`/`+2` (dismissed reviews ignored).
 - **Merge** is only `merged=true` from the GitHub API (not `+1/+2`, CI or `closed`).
 - **Cleanup** removes a worktree only if it is under `.local/worktrees`, registered to the recorded
   branch, clean (incl. untracked), the AI process is gone and local HEAD equals the merged PR HEAD.
@@ -57,5 +62,6 @@ cd tools/warroom
 PYTHONPATH=. .local/venv/bin/python -m unittest discover -s tests -t .
 ```
 
+CI runs it as a Deep+affected check (`tools/warroom/run-tests.mjs`, paths `tools/warroom`, `war`).
 Core tests use only the standard library (the TUI smoke test is skipped without Textual).
 They fake GitHub/OpenCode/git and also exercise real `git worktree` and a real detached process.

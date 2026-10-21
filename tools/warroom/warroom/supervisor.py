@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import fcntl
 import os
+import re
 import time
 import traceback
 from pathlib import Path
@@ -15,6 +16,10 @@ from pathlib import Path
 from . import auth, batches, reviews
 from .adapters import classify_failure
 from .gitops import CleanupBlocked, GitError
+
+
+class DuplicateClaim(Exception):
+    pass
 
 
 def acquire_lock(path: Path):
@@ -53,7 +58,8 @@ def fix_prompt(b, events, resumed: bool) -> str:
     lines = [f"PR #{b['pr_number']} (브랜치 `{b['branch']}`, 현재 HEAD {b['head_sha']})에 새 리뷰가 달렸다.",
              "아래 리뷰/코멘트를 현재 HEAD 기준으로 검토하고, 동의하는 지적은 수정·검증한 뒤 "
              "같은 브랜치에만 커밋·push한다. 동의하지 않으면 근거를 PR 코멘트로 남긴다. "
-             "새 PR을 만들지 않고, 리뷰를 요청하거나 머지하지 않는다. 끝나면 종료한다.", ""]
+             "새 PR을 만들지 않고, 리뷰를 요청하거나 머지하지 않는다. 끝나면 종료한다. "
+             "이전 실행이 중단되며 worktree에 미커밋 변경이 남아 있을 수 있으니 먼저 git status로 확인하라.", ""]
     if not resumed:
         lines += ["(이전 AI 세션을 이어받지 못한 새 세션이다. AGENTS.md와 이 worktree의 git 상태, "
                   "PR 내용을 먼저 파악하라.)", ""]
@@ -125,6 +131,9 @@ class Supervisor:
         d = auth.diagnose(self.runner, self.env, self.cfg["repo"], self.cfg["expected_account"])
         if not d["ok"]:
             return self._blocked("시작 차단: " + "; ".join(d["problems"]))
+        problem = self._model_problem()
+        if problem:
+            return self._blocked("시작 차단: " + problem)
         try:
             self.git.fetch_base(self.cfg["base_branch"])
             nb = batches.next_batch(
@@ -145,6 +154,23 @@ class Supervisor:
                                       model_tier=tier, records_total=nb.records)
         self.store.log(bid, f"배치 {nb.stem} 선정, worktree 준비")
         self._prepare_existing(self.store.batch(bid))
+
+    def _model_problem(self) -> str | None:
+        """Fail closed: the free tier must be an explicit, installed, recognisably free model."""
+        free, go = self.cfg["models"].get("free", ""), self.cfg["models"].get("go", "")
+        if not free:
+            return ("models.free 미설정 — OpenCode 기본 모델이 무료라는 보장이 없어 실행하지 않습니다 "
+                    f"({self.paths.config_file}).")
+        if not re.search(self.cfg.get("free_model_pattern", r"-free$"), free):
+            return f"models.free={free!r} 는 무료 모델 ID로 확인되지 않습니다 (패턴 {self.cfg.get('free_model_pattern', '-free$')})."
+        res = self.runner.run([self.cfg["opencode_bin"], "models"], env=self.env, timeout=60)
+        if not res.ok:
+            return f"`{self.cfg['opencode_bin']} models` 실행 실패: {res.err.strip()[:200]}"
+        known = set(res.out.split())
+        missing = [m for m in (free, go) if m and m not in known]
+        if missing:
+            return f"OpenCode가 지원하지 않는 모델 ID: {', '.join(missing)}"
+        return None
 
     def _prepare_existing(self, b) -> None:
         wt = Path(b["worktree"])
@@ -168,6 +194,8 @@ class Supervisor:
         log, ex = self.paths.logs / f"batch-{b['id']}-{ts}.log", self.paths.logs / f"batch-{b['id']}-{ts}.exit"
         wt, model = b["worktree"], self._model(b)
         sid = b["session_id"]
+        if not model:  # never run with OpenCode's implicit default model
+            return self._fail(b, "ERROR", f"{b['model_tier']} 모델 ID가 설정되지 않아 실행하지 않습니다.")
         try:
             if kind == "produce":
                 h = self.adapter.start(produce_prompt(self.cfg, b), wt, self.env, model,
@@ -213,6 +241,8 @@ class Supervisor:
             b = self.store.batch(b["id"])
         self._record_progress(b)
         if self.adapter.alive(b["pid"]):
+            if b["state"] == "PRODUCING":
+                self._adopt_pr_while_running(b)
             return
         code = self.adapter.exit_code(Path(b["exit_file"]))
         self.store.update(b["id"], pid=None)
@@ -237,18 +267,15 @@ class Supervisor:
 
     def _run_ok(self, b) -> None:
         try:
-            prs = [p for p in self.gh.prs_for_branch(b["branch"])]
             if b["state"] == "PRODUCING":
-                if not prs:
+                info = self._find_pr(b)
+                if info is None:
                     return self._fail(b, "ERROR", "AI가 정상 종료했지만 PR을 찾지 못했습니다 "
                                       "(자동 재생산 안 함, 로그 확인 후 Retry).")
-                pr = sorted(prs, key=lambda p: p["number"])[-1]
-                dup = self._duplicate_claim(b, pr["number"])
-                if dup:
-                    return self._fail(b, "ERROR", f"같은 배치를 다른 열린 PR #{dup}이 점유 — 중복 방지로 중단")
-                info = self.gh.pull(pr["number"])
             else:
                 info = self.gh.pull(b["pr_number"])
+        except DuplicateClaim as e:
+            return self._fail(b, "ERROR", str(e))
         except Exception as e:
             return self._fail(b, "ERROR", f"GitHub 조회 실패: {e}")
         if b["state"] == "FIXING":
@@ -261,6 +288,38 @@ class Supervisor:
         self.store.update(b["id"], state="WAITING_REVIEW", pr_number=info["number"],
                           head_sha=info["head_sha"], error=None, retries=0)
         self.store.log(b["id"], f"PR #{info['number']} HEAD {info['head_sha'][:10]} 리뷰 대기")
+
+    def _find_pr(self, b):
+        """The batch's PR (by its owned branch) or None; raises DuplicateClaim on a rival PR."""
+        prs = self.gh.prs_for_branch(b["branch"])
+        if not prs:
+            return None
+        pr = sorted(prs, key=lambda p: p["number"])[-1]
+        dup = self._duplicate_claim(b, pr["number"])
+        if dup:
+            raise DuplicateClaim(f"같은 배치를 다른 열린 PR #{dup}이 점유 — 중복 방지로 중단")
+        return self.gh.pull(pr["number"])
+
+    def _adopt_pr_while_running(self, b) -> None:
+        """PR existence is independent of AI liveness: hand over to review watching
+        even if the AI keeps running (e.g. waiting for merge); the process is
+        coordinated/stopped before any fix run (see _watch)."""
+        last = float(self.store.get(f"last_poll_{b['id']}", "0"))
+        if self.clock() - last < self.cfg["poll_seconds"]:
+            return
+        self.store.set(f"last_poll_{b['id']}", str(self.clock()))
+        try:
+            info = self._find_pr(b)
+        except DuplicateClaim as e:
+            return self._fail(b, "ERROR", str(e))
+        except Exception as e:
+            return self.store.log(b["id"], f"PR 조회 실패(재시도 예정): {e}", "warn")
+        if info is None:
+            return
+        self.store.update(b["id"], state="WAITING_REVIEW", pr_number=info["number"],
+                          head_sha=info["head_sha"], error=None, retries=0)
+        self.store.set(f"last_poll_{b['id']}", "0")
+        self.store.log(b["id"], f"AI 실행 중이지만 PR #{info['number']} 감지 → 리뷰 감시로 인계")
 
     def _duplicate_claim(self, b, my_pr: int) -> int | None:
         stem = f"data/relation-candidates/{b['shard']}/{b['shard']}_{b['batch']}_{b['method']}_{b['producer']}.jsonl"
@@ -313,7 +372,18 @@ class Supervisor:
         except Exception:
             return []
 
+    def _reap(self, b):
+        """Clear a finished AI pid; returns (batch, still_alive)."""
+        if b["pid"] is None:
+            return b, False
+        if self.adapter.alive(b["pid"]):
+            return b, True
+        self.store.update(b["id"], pid=None)
+        self.store.log(b["id"], "AI 프로세스 종료 확인")
+        return self.store.batch(b["id"]), False
+
     def _watch(self, b) -> None:
+        b, live = self._reap(b)
         last = float(self.store.get(f"last_poll_{b['id']}", "0"))
         if self.clock() - last < self.cfg["poll_seconds"]:
             return
@@ -326,12 +396,20 @@ class Supervisor:
             self.store.update(b["id"], state="MERGED", merged=1, head_sha=info["head_sha"])
             return self.store.log(b["id"], f"PR #{b['pr_number']} merged=true 확인")
         if info["state"] != "open":
+            if live:
+                self.adapter.stop(b["pid"])
             return self._fail(b, "ERROR", f"PR #{b['pr_number']}이 머지 없이 닫혔습니다. worktree 보존, 수동 조치 필요.")
         if info["head_sha"] != b["head_sha"]:
             self.store.update(b["id"], head_sha=info["head_sha"])
             b = self.store.batch(b["id"])
             self.store.log(b["id"], f"HEAD 변경 감지 → {info['head_sha'][:10]}")
         fresh = [e for e in evs if not self.store.is_handled(b["id"], b["pr_number"], info["head_sha"], e["key"])]
+        if fresh and live:
+            # Never run two AI processes in one worktree: stop the old one, confirm exit
+            # on a following tick, then start the fix run.
+            self.adapter.stop(b["pid"])
+            self.store.set(f"last_poll_{b['id']}", "0")
+            return self.store.log(b["id"], "새 리뷰 이벤트 — 실행 중인 AI 종료 요청, 종료 확인 후 수정 실행")
         if fresh:
             self.store.log(b["id"], f"새 리뷰 이벤트 {len(fresh)}건 → 수정 실행")
             self._launch(b, "fix_resume" if b["session_id"] else "fix_new", fresh)

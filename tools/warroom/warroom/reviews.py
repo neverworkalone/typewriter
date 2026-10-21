@@ -31,50 +31,65 @@ def _ts(s: str | None) -> float:
 
 def fix_events(*, head_sha: str, head_pushed_at: float, self_login: str,
                reviews: list[dict], inline: list[dict], issue: list[dict]) -> list[dict]:
-    """Return applicable events: [{key, kind, author, body, path?}] oldest first.
+    """Return the *currently effective* blocking events for head_sha, oldest first.
 
-    A `-1` review is applicable when its HEAD marker (or, lacking one, its
-    commit_id) equals head_sha. Inline comments are applicable when anchored to
-    head_sha. General comments need an explicit `-1` verdict and either a
-    matching HEAD marker or, with no marker, a timestamp after the HEAD push.
+    Invariant: a `-1` blocks only while no later same-HEAD PASS (`+1`/`+2`) exists;
+    DISMISSED reviews never count; verdicts are ordered by time (then id). A `-1`
+    review applies to head_sha when its HEAD marker (or, lacking one, its
+    commit_id) equals it. Inline comments are context of an effective `-1` review
+    (or standalone, anchored to head_sha and newer than the latest PASS) and never
+    trigger alone. General comments need an explicit verdict and a matching HEAD
+    marker or, without one, a timestamp after the HEAD push.
     """
     head = head_sha.lower()
-    out: list[dict] = []
 
     def author(x):
         return ((x.get("user") or {}).get("login") or "")
 
-    live_review_ids = set()
+    # (ts, id, verdict, event) for every applicable verdict on this HEAD
+    verdicts: list[tuple[float, int, str, dict]] = []
     for r in reviews:
-        if author(r) == self_login or verdict(r.get("body")) != "-1":
+        v = verdict(r.get("body"))
+        if v is None or author(r) == self_login or (r.get("state") or "").upper() == "DISMISSED":
             continue
         marker = head_marker(r.get("body")) or (r.get("commit_id") or "").lower()
         if marker != head:
             continue
-        live_review_ids.add(r["id"])
-        out.append({"key": f"review:{r['id']}", "kind": "review", "author": author(r),
-                    "body": r.get("body") or "", "ts": _ts(r.get("submitted_at"))})
+        ev = {"key": f"review:{r['id']}", "kind": "review", "author": author(r),
+              "body": r.get("body") or "", "ts": _ts(r.get("submitted_at")), "review_id": r["id"]}
+        verdicts.append((ev["ts"], r["id"], v, ev))
+    for c in issue:
+        v = verdict(c.get("body"))
+        if v is None or author(c) == self_login:
+            continue
+        marker = head_marker(c.get("body"))
+        ts = _ts(c.get("created_at"))
+        if marker is not None:
+            if marker != head:
+                continue
+        elif ts < head_pushed_at:
+            continue
+        ev = {"key": f"issue:{c['id']}", "kind": "comment", "author": author(c),
+              "body": c.get("body") or "", "ts": ts}
+        verdicts.append((ts, c["id"], v, ev))
+    verdicts.sort(key=lambda t: (t[0], t[1]))
+    last_pass = max((t[0] for t in verdicts if t[2] != "-1"), default=None)
+    active = [t[3] for t in verdicts
+              if t[2] == "-1" and (last_pass is None or t[0] > last_pass)]
+    if not active:
+        return []
+    active_reviews = {e["review_id"] for e in active if e["kind"] == "review"}
+    out = list(active)
     for c in inline:
         if author(c) == self_login or (c.get("commit_id") or "").lower() != head:
             continue
         if not (c.get("body") or "").strip():
             continue
+        rid, ts = c.get("pull_request_review_id"), _ts(c.get("created_at"))
+        if rid is not None and rid not in active_reviews:
+            continue  # belongs to a PASS / superseded / dismissed review
+        if rid is None and last_pass is not None and ts <= last_pass:
+            continue
         out.append({"key": f"inline:{c['id']}", "kind": "inline", "author": author(c),
-                    "body": c["body"], "path": c.get("path"), "line": c.get("line"),
-                    "ts": _ts(c.get("created_at"))})
-    for c in issue:
-        if author(c) == self_login or verdict(c.get("body")) != "-1":
-            continue
-        marker = head_marker(c.get("body"))
-        if marker is not None:
-            if marker != head:
-                continue
-        elif _ts(c.get("created_at")) < head_pushed_at:
-            continue
-        out.append({"key": f"issue:{c['id']}", "kind": "comment", "author": author(c),
-                    "body": c.get("body") or "", "ts": _ts(c.get("created_at"))})
-    # Inline comments alone never start a fix: they must accompany a -1 verdict
-    # (review or comment) on this HEAD, otherwise approvals with nits would loop.
-    if not any(e["kind"] in ("review", "comment") for e in out):
-        return []
-    return sorted(out, key=lambda e: e["ts"])
+                    "body": c["body"], "path": c.get("path"), "line": c.get("line"), "ts": ts})
+    return sorted(out, key=lambda e: (e["ts"], e["kind"] == "inline", e["key"]))

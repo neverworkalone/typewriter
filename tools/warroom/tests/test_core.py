@@ -50,6 +50,34 @@ class ReviewEventTable(unittest.TestCase):
                 self.assertEqual([e["key"] for e in ev(**kw)], want)
 
 
+class EffectiveVerdict(unittest.TestCase):
+    def test_table(self):
+        def r(i, v, ts, **kw):
+            x = rv(i, f"{v}\nHEAD: {H}", ts=f"2026-10-21T10:{ts}:00Z")
+            x.update(kw)
+            return x
+        cases = [
+            ("-1 then +1 same HEAD: retracted", [r(1, "-1", "00"), r(2, "+1", "05")], []),
+            ("-1 then +2: retracted", [r(1, "-1", "00"), r(2, "+2", "05")], []),
+            ("+1 then -1: blocks", [r(1, "+1", "00"), r(2, "-1", "05")], ["review:2"]),
+            ("-1 +1 -1: only last", [r(1, "-1", "00"), r(2, "+1", "05"), r(3, "-1", "09")], ["review:3"]),
+            ("two open -1", [r(1, "-1", "00"), r(2, "-1", "05")], ["review:1", "review:2"]),
+            ("dismissed -1", [r(1, "-1", "00", state="DISMISSED")], []),
+            ("input order irrelevant", [r(2, "+1", "05"), r(1, "-1", "00")], []),
+        ]
+        for name, revs, want in cases:
+            with self.subTest(name):
+                self.assertEqual([e["key"] for e in ev(reviews=revs)], want)
+
+    def test_inline_follows_its_review(self):
+        m = rv(1, f"-1\nHEAD: {H}", ts="2026-10-21T10:00:00Z")
+        p = rv(2, f"+1\nHEAD: {H}", ts="2026-10-21T10:05:00Z")
+        old = {**ic(5), "pull_request_review_id": 1}
+        other = {**ic(6), "pull_request_review_id": 2}
+        self.assertEqual([e["key"] for e in ev(reviews=[m], inline=[old, other])], ["review:1", "inline:5"])
+        self.assertEqual(ev(reviews=[m, p], inline=[old, other]), [])
+
+
 class Failures(unittest.TestCase):
     def test_classification_table(self):
         pats = ["FreeUsageLimit"]

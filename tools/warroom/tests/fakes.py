@@ -29,6 +29,9 @@ class FakeAdapter(AgentAdapter):
         pid = next(self._pid)
         self.launches.append({"kind": kind, "cwd": str(cwd), "pid": pid, **kw})
         self.running[pid] = (self.plan.pop(0) if self.plan else {"code": 0}) | {"log": Path(log), "ex": Path(ex)}
+        if self.running[pid].get("session"):  # a real run prints its session id early
+            Path(log).parent.mkdir(parents=True, exist_ok=True)
+            Path(log).write_text(json.dumps({"sessionID": self.running[pid]["session"]}) + "\n")
         return Handle(pid, Path(ex), Path(log))
 
     def start(self, prompt, cwd, env, model, title, log_file, exit_file):
@@ -41,7 +44,7 @@ class FakeAdapter(AgentAdapter):
         """Simulate the AI process ending (writes log + exit file, runs side effects)."""
         r = self.running.pop(pid)
         r["log"].parent.mkdir(parents=True, exist_ok=True)
-        r["log"].write_text(r.get("text", "") + (json.dumps({"sessionID": r["session"]}) if r.get("session") else ""))
+        r["log"].write_text((json.dumps({"sessionID": r["session"]}) + "\n" if r.get("session") else "") + r.get("text", ""))
         r["ex"].write_text(str(r["code"]))
         if r.get("effect"):
             r["effect"]()
@@ -136,7 +139,7 @@ class World:
         self.paths.ensure()
         self.cfg = json.loads(json.dumps(DEFAULTS))
         self.cfg["poll_seconds"] = 0
-        self.cfg["models"] = models or {"free": "p/free", "go": "p/go"}
+        self.cfg["models"] = models or {"free": "p/free-x-free", "go": "p/go"}
         self.cfg["rate_limit_backoff_seconds"] = 10
         self.store = Store(self.paths.db)
         self.adapter, self.git, self.gh = FakeAdapter(), FakeGit(self.paths.worktrees), FakeGh()
