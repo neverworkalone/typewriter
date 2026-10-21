@@ -180,6 +180,10 @@ def reload_problem(old: dict, new: dict, in_use: set[str]) -> str | None:
     gone = sorted(in_use - set(reg))
     if gone:
         return f"미완료 배치가 있는 모델 {', '.join(gone)}를 설정에서 제거할 수 없습니다."
+    old_reg = registry(old)
+    swapped = sorted(pid for pid in in_use if pid in old_reg and old_reg[pid]["adapter"] != reg[pid]["adapter"])
+    if swapped:   # the running process and its log belong to the old CLI: another adapter would misread them
+        return f"미완료 배치가 있는 모델 {', '.join(swapped)}의 adapter를 바꿀 수 없습니다 (배치 완료 후 변경)."
     return None
 
 

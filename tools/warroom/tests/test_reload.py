@@ -52,6 +52,8 @@ class ReloadTable(unittest.TestCase):
             ("unknown adapter", json.dumps({"producers": {"deepseek": DS, "x": {**SONNET, "adapter": "nope"}}}), False, "adapter"),
             ("repo change needs restart", json.dumps({"producers": {"deepseek": DS}, "repo": "o/other"}), False, "repo"),
             ("claude_bin change needs restart", json.dumps({"producers": {"deepseek": DS}, "claude_bin": "/x/claude"}), False, "claude_bin"),
+            ("in-use producer adapter swapped, same model+effort",
+             json.dumps({"producers": {"deepseek": {**DS, "adapter": "claude", "model": "sonnet", "effort": "medium"}}}), False, "adapter를 바꿀"),
             ("in-use producer removed", json.dumps({"producers": {"claude": SONNET}}), False, "미완료"),
         ]
         self.w.start("single", "deepseek")   # deepseek owns an unfinished batch for the whole table
@@ -79,6 +81,10 @@ class ReloadTable(unittest.TestCase):
             with self.subTest(key):
                 self.assertIn(key, reload_problem(base, {**base, key: "changed"}, set()))
         self.assertIsNone(reload_problem(base, {**base, "poll_seconds": 1}, {"deepseek"}))
+        c = {**base, "producers": {"c": SONNET}}
+        swapped = {**base, "producers": {"c": {**SONNET, "adapter": "codex", "effort": "high"}}}
+        self.assertIn("adapter", reload_problem(c, swapped, {"c"}))
+        self.assertIsNone(reload_problem(c, swapped, set()))   # idle producer: adapter may change
 
     def test_one_request_is_answered_once(self):
         self.w.tick(3)
