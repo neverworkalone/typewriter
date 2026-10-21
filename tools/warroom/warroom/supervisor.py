@@ -337,6 +337,11 @@ class Supervisor:
             return self._fail(b, "ERROR", "AI 프로세스가 종료 상태 기록 없이 사라졌습니다. "
                               "자동 재생산하지 않음 — worktree/PR 확인 후 Retry.")
         if code == 0:
+            # Accept the result only with the run's own evidence (for Claude: the session its init event reported).
+            problem = ad.completion_problem(Path(b["log_file"]), self._recorded_run(b), b["session_id"],
+                                            b["worktree"], self.env)
+            if problem:
+                return self._fail(b, problem[0], problem[1])
             return self._run_ok(b)
         self._run_failed(b, code)
 
@@ -389,7 +394,10 @@ class Supervisor:
     def _adopt_pr_while_running(self, b) -> None:
         """PR existence is independent of AI liveness: hand over to review watching
         even if the AI keeps running (e.g. waiting for merge); the process is
-        coordinated/stopped before any fix run (see _watch)."""
+        coordinated/stopped before any fix run (see _watch). A CLI with requires_session_for_pr (Claude, Codex) is not
+        taken over from before it reported its session, so a run without its own evidence is not adopted."""
+        if self._adapter(b["producer"]).requires_session_for_pr and not b["session_id"]:
+            return
         last = float(self.store.get(f"last_poll_{b['id']}", "0"))
         if self.clock() - last < self.cfg["poll_seconds"]:
             return

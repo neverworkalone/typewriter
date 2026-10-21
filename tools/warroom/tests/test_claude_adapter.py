@@ -114,6 +114,38 @@ class Preflight(unittest.TestCase):
                     self.assertIn(want, reason)
 
 
+class CompletionGate(unittest.TestCase):
+    """An exited run is accepted only with the session its own init event reported."""
+
+    def check(self, raw, expected=SESSION):
+        with tempfile.TemporaryDirectory() as d:
+            log = Path(d) / "l.log"
+            log.write_text(raw)
+            return ClaudeCodeAdapter().completion_problem(log, PIN, expected)
+
+    def test_table(self):
+        cases = [  # name, raw log, expected state or None
+            ("empty log", "", "ERROR"),
+            ("only non-JSON output", "something went wrong\nno events here\n", "ERROR"),
+            ("result but no init", stream(result()), "ERROR"),
+            ("init with the session, then a clean result", stream(init(), result()), None),
+            ("init with another session than requested", stream(init(session="11111111-2222-4333-8444-555555555555")), "ERROR"),
+            ("init with an empty session", stream(init(session="")), "ERROR"),
+        ]
+        for name, raw, want in cases:
+            with self.subTest(name):
+                problem = self.check(raw)
+                self.assertEqual(problem[0] if problem else None, want)
+
+    def test_an_empty_log_is_still_waiting_mid_run_but_refused_at_completion(self):
+        # run_problem keeps waiting for a live run; the completion gate refuses the same empty log once the process exited 0
+        with tempfile.TemporaryDirectory() as d:
+            log = Path(d) / "l.log"
+            log.write_text("")
+            self.assertIsNone(ClaudeCodeAdapter().run_problem(log, PIN, SESSION))
+            self.assertEqual(ClaudeCodeAdapter().completion_problem(log, PIN, SESSION)[0], "ERROR")
+
+
 class RunProblem(unittest.TestCase):
     def check(self, events, run=PIN, expected=SESSION, raw=None):
         with tempfile.TemporaryDirectory() as d:
@@ -176,6 +208,8 @@ class Classification(unittest.TestCase):
 class SupervisorStopsOnContradiction(unittest.TestCase):
     class Reporting(FakeAdapter):
         run_problem = ClaudeCodeAdapter.run_problem
+        completion_problem = ClaudeCodeAdapter.completion_problem
+        requires_session_for_pr = ClaudeCodeAdapter.requires_session_for_pr
 
     def setUp(self):
         self.w = World()
@@ -209,6 +243,27 @@ class SupervisorStopsOnContradiction(unittest.TestCase):
         w.tick()
         self.assertEqual(w.row("claude", "a")["state"], "ERROR")
         self.assertIn("세션", w.row("claude", "a")["error"])
+
+    def test_exit0_with_an_empty_log_and_a_pr_is_not_accepted(self):
+        w = self.w
+        w.start("single", "claude", "a")
+        w.pr_info(7, HEAD1)
+        w.gh.by_branch[BRANCH] = [{"number": 7, "state": "OPEN", "headRefOid": HEAD1}]
+        w.adapter.plan.append({"code": 0, "text": ""})            # exits 0 having written nothing parsable
+        w.tick()
+        w.adapter.finish(w.adapter.launches[-1]["pid"])
+        w.tick()
+        self.assertEqual(w.row("claude", "a")["state"], "ERROR")
+        self.assertIn("세션", w.row("claude", "a")["error"])
+
+    def test_a_pr_is_not_adopted_from_a_live_run_before_its_session(self):
+        w = self.w
+        w.start("single", "claude", "a")
+        w.pr_info(7, HEAD1)
+        w.gh.by_branch[BRANCH] = [{"number": 7, "state": "OPEN", "headRefOid": HEAD1}]
+        w.tick()                                                  # launched, nothing reported yet
+        w.tick()
+        self.assertEqual(w.row("claude", "a")["state"], "PRODUCING")
 
     def test_denial_pauses_for_the_operator(self):
         w = self.w

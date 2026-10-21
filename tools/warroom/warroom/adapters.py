@@ -35,6 +35,7 @@ class Handle:
 class AgentAdapter:
     name = "base"
     capabilities: dict = {}
+    requires_session_for_pr = False   # True: a PR is taken over from a live run only after the CLI reported its session
 
     def start(self, prompt, cwd, env, run: RunSpec, title, log_file, exit_file) -> Handle: ...
     def resume(self, session_id, prompt, cwd, env, run: RunSpec, log_file, exit_file) -> Handle: ...
@@ -48,6 +49,12 @@ class AgentAdapter:
 
         Checked on every poll, so a wrong model or session is stopped before it can open a PR.
         """
+        return None
+
+    def completion_problem(self, log_file: Path, run: RunSpec | None, expected_session: str | None,
+                           cwd=None, env=None) -> tuple[str, str] | None:
+        """Why a run that exited 0 must not be accepted as finished (no PR intake), or None. Checked once the process
+        exited successfully, before its result is used."""
         return None
 
     def stop(self, pid: int) -> None: ...
@@ -295,6 +302,7 @@ class ClaudeCodeAdapter(ProcessAdapter):
     """Claude Code (`claude -p --output-format stream-json`). Model and effort are passed on every launch."""
     name = "claude"
     capabilities = {"resume": True, "stop": True}
+    requires_session_for_pr = True
 
     def __init__(self, binary: str = "claude"):
         self.binary = binary
@@ -362,6 +370,21 @@ class ClaudeCodeAdapter(ProcessAdapter):
             return ("PAUSED", f"로컬 CLI 권한 정책상 거부되어 실행이 불완전합니다 (도구: {', '.join(names)}). "
                               "자동 권한 상승 없이 중지합니다. 로컬 Claude 설정을 직접 확인한 뒤 Retry 하세요 "
                               "(worktree·PR·세션 보존).")
+        return None
+
+    def completion_problem(self, log_file, run, expected_session, cwd=None, env=None):
+        """An exited run is accepted only if its init event reported its own session. An empty log, or one with no
+        parsable event, has no session and is refused (run_problem alone treats a run with no events as not started)."""
+        problem = self.run_problem(log_file, run, expected_session)
+        if problem:
+            return problem
+        try:
+            text = Path(log_file).read_text("utf-8", errors="replace")
+        except OSError:
+            return ("ERROR", "실행 로그를 읽을 수 없어 완료를 확인하지 못했습니다.")
+        init = next((o for o in _json_objects(text) if o.get("type") == "system" and o.get("subtype") == "init"), None)
+        if init is None:
+            return ("ERROR", "CLI가 세션 ID를 보고하지 않고 끝났습니다 — 세션을 확인하지 못해 PR을 인정하지 않습니다.")
         return None
 
 
