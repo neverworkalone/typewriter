@@ -85,10 +85,13 @@ class ManualTierSwitchTests(unittest.TestCase):
         w = self.w
         w.start()
         self.assertFalse(self.switch("go")[0])  # pending new batch
-        w.tick()
         w.adapter.plan.append({"code": 1, "text": "unclassified failure"})
-        # An active process remains guarded regardless of next retry request.
-        self.assertFalse(self.switch("go")[0])
+        w.tick()
+        w.adapter.finish(w.adapter.launches[-1]["pid"])
+        w.tick()
+        self.assertEqual(w.row()["state"], "PAUSED")
+        self.assertTrue(control.retry(w.store, "deepseek", "a"))
+        self.assertFalse(self.switch("go")[0])  # pending Retry
 
     def test_changes_do_not_leak_to_another_method(self):
         self.assertTrue(self.switch("go", "a")[0])
