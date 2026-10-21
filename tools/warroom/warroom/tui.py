@@ -228,8 +228,8 @@ class LineDetail(Screen):
 
     def _pump_log(self, runs, st) -> None:
         run = self._run(runs)
-        if self.source == "audit":
-            self.live, key = st["occupied"], ("audit", None)
+        if self.source == "audit":     # live only while some Run of this Line is actually still running
+            self.live, key = any(r["ended_at"] is None for r in runs), ("audit", None)
         else:
             self.live, key = run is not None and run["ended_at"] is None, (self.source, run["id"] if run else None)
         if key != self._view_key:           # another log: Auto-scroll starts ON

@@ -79,6 +79,28 @@ class CardsAndControl(unittest.TestCase):
         self.assertEqual(full[2], "PR #7")
         self.assertNotIn("500", card_text(self.status()))   # progress only when observed
 
+    def test_empty_line_shows_pending_start_and_drain_via_real_commands(self):
+        from warroom.views import card_text, detail_header
+        w = World()
+        cell = lambda: control.line_status(w.store, "deepseek", "a")
+        mid = lambda: card_text(cell()).split("\n")[1]
+        reg = {"adapter": "opencode"}
+        self.assertEqual(mid(), "— 실행 이력 없음")
+        ok, _ = control.start(w.store, "deepseek", "a", "single")      # reserved, no batch yet
+        self.assertTrue(ok)
+        self.assertEqual(mid(), "— 시작 예약 중")
+        control.set_drain(w.store, "deepseek", "a", True)               # blocks the new batch
+        self.assertEqual(mid(), "비어 있음 + DRAIN 시작 예약")
+        self.assertIn("DRAIN", detail_header(cell(), reg, "deepseek"))
+        control.set_drain(w.store, "deepseek", "a", False)              # Cancel Drain
+        self.assertEqual(mid(), "— 시작 예약 중")
+        control.stop_line(w.store, "deepseek", "a")
+        self.assertEqual(mid(), "— 실행 이력 없음")
+        control.set_drain_all(w.store, True)                            # Drain All reaches empty cards too
+        self.assertEqual(mid(), "비어 있음 + DRAIN")
+        self.assertEqual(len(card_text(cell()).split("\n")), 3)
+        w.tmp.cleanup()
+
     def test_stop_all_target_matches_what_stop_lines_controls(self):
         w = World()
         lines = [("deepseek", m) for m in "abcd"]
@@ -220,6 +242,22 @@ class BoardAndDetail(unittest.TestCase):
                 w.store.finish_runs(b["id"], 0)
                 scr.refresh_view()
                 self.assertFalse(scr.query_one("#follow", Button).display)
+                # Audit Log of an unfinished batch (PAUSED, every Run ended): no live Run -> hidden.
+                w.store.update(b["id"], state="PAUSED", pid=None)
+                scr._switch("audit")
+                scr.refresh_view()
+                self.assertFalse(scr.query_one("#follow", Button).display)
+                # A Run that is still running makes Audit (and its Run) live again; manual scroll / resume.
+                rid = w.store.add_run(b["id"], "fix_resume", None, None, log, log.with_suffix(".exit"))
+                scr.refresh_view()
+                self.assertTrue(scr.query_one("#follow", Button).display)
+                scr._manual_scroll()
+                self.assertFalse(scr.log_w.auto_scroll)
+                scr.action_follow()
+                self.assertTrue(scr.log_w.auto_scroll)
+                scr._switch(f"run:{rid}")
+                scr.refresh_view()
+                self.assertTrue(scr.query_one("#follow", Button).display)
 
         asyncio.run(go())
         w.tmp.cleanup()

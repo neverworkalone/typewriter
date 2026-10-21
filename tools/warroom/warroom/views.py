@@ -49,6 +49,13 @@ def _fit(text: str, width: int = CARD_W) -> str:
     return text if cell_len(text) <= width else set_cell_size(text, width - 1).rstrip() + "…"
 
 
+def _idle_phase(st: dict) -> str:
+    """A Line without a batch: a pending Start or a Drain that will block it is still operator-relevant."""
+    if st["drain"]:
+        return "비어 있음 + DRAIN" + ("  시작 예약" if st.get("run") else "")
+    return "—  시작 예약 중" if st.get("run") else "—  실행 이력 없음"
+
+
 def card_text(st: dict) -> str:
     """Card = Line summary in a fixed 3-line layout (title / phase + progress / PR + activity).
 
@@ -56,7 +63,7 @@ def card_text(st: dict) -> str:
     """
     m = st["method"].upper()
     if st["batch"] is None:
-        return "\n".join([_fit(m), _fit("—  실행 이력 없음"), _fit("")])
+        return "\n".join([_fit(m), _fit(_idle_phase(st)), _fit("")])
     icon = ICON.get(st["state"], "?")
     title = _fit(f"{m} · {st['batch']}", CARD_W - 2)
     phase = PHASE.get(st["state"], st["state"]) + (" + DRAIN" if st["drain"] else "")
@@ -74,7 +81,7 @@ def detail_header(st: dict, reg: dict, model: str) -> str:
     """Short operating header; ids, SHAs and paths live in `detail_meta`."""
     who = f"{adapter_label(reg.get('adapter', '?'))} / {st['method'].upper()}"
     if st["batch"] is None:
-        return f"{who}  (실행 이력 없음)"
+        return f"{who}  ({_idle_phase(st).lstrip('— ')})"
     head = [f"{who} · {st['batch']}", PHASE.get(st["state"], st["state"]) + (" + DRAIN" if st["drain"] else "")]
     if st["pr"]:
         head.append(f"PR #{st['pr']}")
