@@ -21,8 +21,10 @@ def start(store: Store, model: str, method: str, mode: str) -> tuple[bool, str]:
         return False, f"{model}/{method.upper()} 라인은 이미 미완료 배치 {b['shard']}_{b['batch']}({b['state']})를 소유 중입니다."
     if global_drain(store):
         return False, "Drain All 상태입니다. Cancel Drain 후 시작하세요."
+    if store.peek_line(model, method)["drain"]:
+        return False, f"{model}/{method.upper()} 라인이 Drain 중입니다. 해당 라인의 Cancel Drain 후 시작하세요."
     store.set_line(model, method, mode="continuous" if mode == "continuous" else "single",
-                   drain=0, force_stop=0, blocked="", run=1)
+                   force_stop=0, blocked="", run=1)
     return True, ""
 
 

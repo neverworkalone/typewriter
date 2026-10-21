@@ -229,6 +229,21 @@ class DrainAndStop(unittest.TestCase):
         w.tick(2)
         self.assertEqual(len(w.adapter.launches), 2)
 
+    def test_start_cannot_bypass_line_drain(self):
+        w = self.w
+        w.start("single", "deepseek", "a")                  # reserved, no batch yet
+        control.set_drain(w.store, "deepseek", "a", True)
+        ok, msg = control.start(w.store, "deepseek", "a", "single")
+        self.assertFalse(ok)
+        self.assertIn("Cancel Drain", msg)
+        w.tick(3)
+        self.assertEqual(w.store.all_batches(), [])        # drained Line assigns nothing
+        self.assertTrue(w.store.line("deepseek", "a")["drain"])
+        self.assertTrue(control.start(w.store, "sonnet", "a", "single")[0])  # other Line unaffected
+        control.set_drain(w.store, "deepseek", "a", False)  # only Cancel Drain releases it
+        w.tick()
+        self.assertEqual(len(w.store.all_batches()), 2)
+
     def test_stop_all(self):
         w = self.w
         w.start("continuous", "deepseek", "a")
@@ -290,6 +305,51 @@ CREATE TABLE handled_events (batch_id INTEGER NOT NULL, pr INTEGER NOT NULL, hea
 
 
 class Migration(unittest.TestCase):
+    @staticmethod
+    def legacy_db(d, kv, batches):
+        db = d / "warroom.db"
+        c = sqlite3.connect(db)
+        c.executescript(LEGACY_SCHEMA)
+        for state, extra in batches:
+            c.execute("INSERT INTO batches(method,producer,shard,batch,branch,worktree,state,pid,model_tier,"
+                      "created_at,updated_at) VALUES('a','deepseek','001',?,?,?,?,?,'free',1,2)",
+                      (extra, f"b{extra}", f"/w{extra}", state, 4242 if state == "PRODUCING" else None))
+        c.executemany("INSERT INTO kv VALUES(?,?)", list(kv.items()))
+        c.commit()
+        c.close()
+        return db
+
+    def test_pending_legacy_controls_follow_the_unfinished_batch(self):
+        cases = [  # name, kv, batch state, expected (run, drain, force_stop, retry_batch)
+            ("pending stop", {"run": "1", "force_stop": "1"}, "PRODUCING", (1, 0, 1, None)),
+            ("pending retry", {"retry": "1"}, "PAUSED", (0, 0, 0, 1)),
+            ("stale retry for other batch", {"retry": "9"}, "PAUSED", (0, 0, 0, None)),
+            ("processed values", {"run": "1", "force_stop": "0", "retry": "", "stop_after": "0"},
+             "PRODUCING", (1, 0, 0, None)),
+            ("stop on finished batch is moot", {"run": "1", "force_stop": "1"}, "COMPLETE", (0, 0, 0, None)),
+        ]
+        for name, kv, state, want in cases:
+            with self.subTest(name), tempfile.TemporaryDirectory() as d:
+                db = self.legacy_db(Path(d), kv, [(state, "01")])
+                for _ in range(2):                              # idempotent re-open
+                    ln = Store(db).line("deepseek", "a")
+                    self.assertEqual((ln["run"], ln["drain"], ln["force_stop"], ln["retry_batch"]), want)
+
+    def test_migrated_pending_stop_is_executed_and_pid_kept_until_exit(self):
+        w = multi_world()
+        w.tmp.cleanup()
+        w = multi_world()
+        w.start("single", "deepseek", "a")
+        w.tick()
+        pid = w.row()["pid"]
+        w.store.set_line("deepseek", "a", force_stop=1)          # what migration yields for a pending Stop
+        w.adapter.stop = lambda p: None                         # AI lingers
+        w.tick(2)
+        b = w.row()
+        self.assertEqual((b["state"], b["pid"]), ("PAUSED", pid))
+        self.assertEqual(len(w.adapter.launches), 1)
+        w.tmp.cleanup()
+
     def test_legacy_db_is_migrated_without_loss_and_idempotently(self):
         with tempfile.TemporaryDirectory() as d:
             d = Path(d)

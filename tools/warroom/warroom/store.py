@@ -85,11 +85,16 @@ class Store:
         for key in sorted({(r["producer"], r["method"]) for r in rows}):
             latest = [r for r in rows if (r["producer"], r["method"]) == key][-1]
             busy = latest["state"] != "COMPLETE"
+            retry = legacy.get("retry", "")
             c.execute(
-                "INSERT OR IGNORE INTO lines(model,method,mode,run,drain,model_tier,updated_at) "
-                "VALUES(?,?,?,?,?,?,?)",
-                (key[0], key[1], legacy.get("mode", "single") if legacy.get("mode") == "continuous" else "single",
+                "INSERT OR IGNORE INTO lines(model,method,mode,run,drain,force_stop,retry_batch,blocked,"
+                "model_tier,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)",
+                (key[0], key[1], "continuous" if legacy.get("mode") == "continuous" else "single",
                  1 if busy and legacy.get("run") == "1" else 0, 1 if legacy.get("stop_after") == "1" else 0,
+                 # A pending (unprocessed) Stop / Retry belongs to the Line owning the unfinished batch.
+                 1 if busy and legacy.get("force_stop") == "1" else 0,
+                 int(retry) if busy and retry == str(latest["id"]) else None,
+                 legacy.get("blocked", "") if busy or legacy.get("run") == "1" else "",
                  latest["model_tier"], time.time()))
         # Run history from the logs the old Supervisor kept: batch-<id>-<ts>.log/.exit
         for r in rows:

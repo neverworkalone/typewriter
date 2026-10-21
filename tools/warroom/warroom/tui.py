@@ -377,6 +377,7 @@ class WarRoom(App):
 
     def refresh_view(self) -> None:
         store = self.store
+        root = self.screen_stack[0]   # the board, even while Detail/Settings is on top
         gd = control.global_drain(store)
         alive = control.supervisor_alive(store)
         statuses = {}
@@ -384,16 +385,16 @@ class WarRoom(App):
             for me in self.methods:
                 st = statuses[(model, me)] = control.line_status(store, model, me)
                 try:
-                    card = self.query_one(f"#card-{model}-{me}", Card)
+                    card = root.query_one(f"#card-{model}-{me}", Card)
                 except Exception:
                     continue
                 card.update(card_text(st))
                 card.set_classes("card " + (st["state"] if st["batch"] else "empty"))
         active = [s for s in statuses.values() if s["occupied"]]
-        self.query_one("#factory-status", Static).update(
+        root.query_one("#factory-status", Static).update(
             f"Supervisor: {'running' if alive else 'NOT RUNNING'}   진행 라인 {len(active)}/{len(statuses)}   "
             f"{'DRAIN ALL: 모든 라인 신규 배치 중지' if gd else ''}")
-        b = self.query_one("#drain-all", Button)
+        b = root.query_one("#drain-all", Button)
         b.label = "Cancel Drain" if gd else "Drain All"
         # Only auth/model problems surface on the board.
         a, notes = self._auth, []
@@ -403,7 +404,7 @@ class WarRoom(App):
                   for s in statuses.values() if s["blocked"]]
         if self.problem:
             notes.append(f"! {self.problem}")
-        self.query_one("#banner", Static).update("\n".join(notes))
+        root.query_one("#banner", Static).update("\n".join(notes))
 
     def on_button_pressed(self, e: Button.Pressed) -> None:
         if e.button.id == "start":
