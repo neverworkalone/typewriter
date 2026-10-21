@@ -371,7 +371,7 @@ class WarRoom(App):
     #controls > Button { width: 14; min-width: 14; max-width: 14; }
     #line-controls > Button { min-width: 8; width: auto; }
     #controls.narrow { layout: grid; grid-size: 3; grid-rows: auto; }
-    #columns { height: 1fr; margin-top: 1; }
+    #columns { height: 1fr; margin-top: 2; }
     .col { width: 38; height: auto; margin: 0 1; }
     .coltitle { text-style: bold; color: $accent; width: 100%; text-align: center; margin-bottom: 1; }
     .card { border: round $primary; height: 7; padding: 0 1; }
