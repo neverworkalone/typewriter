@@ -98,7 +98,7 @@ class ProcessAdapter(AgentAdapter):
         # learn how the (detached) child ended.
         wrapper = ['"$@"', "echo $? > \"$WARROOM_EXIT_FILE\""]
         env = {**env, "WARROOM_EXIT_FILE": str(exit_file)}
-        with open(log_file, "ab") as log:
+        with open(log_file, "wb") as log:   # a launch's log is its own: never continued behind an earlier run's events
             p = subprocess.Popen(["/bin/sh", "-c", "; ".join(wrapper), "sh", *cmd],
                                  cwd=cwd, env=env, stdin=subprocess.DEVNULL,
                                  stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
@@ -469,6 +469,7 @@ class CodexCLIAdapter(ProcessAdapter):
 
     def start(self, prompt, cwd, env, run, title, log_file, exit_file):
         cmd = [self.binary, "exec", *self._pins(_pinned(run)), prompt]
+        _baseline_path(log_file).unlink(missing_ok=True)   # a fresh start has no baseline: every turn is its own
         return self._spawn(cmd, cwd, env, log_file, exit_file)
 
     def resume(self, session_id, prompt, cwd, env, run, log_file, exit_file):

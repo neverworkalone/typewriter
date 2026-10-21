@@ -250,6 +250,8 @@ class Supervisor:
     def _launch(self, b, kind: str, events=None) -> None:
         """kind: produce | fix_resume | fix_new | produce_resume | produce_recover"""
         ts = int(self.clock())
+        while any((self.paths.logs / f"batch-{b['id']}-{ts}.{x}").exists() for x in ("log", "exit")):
+            ts += 1   # one launch per log: a launch in the same second must not reuse (and append to) an earlier log
         log, ex = self.paths.logs / f"batch-{b['id']}-{ts}.log", self.paths.logs / f"batch-{b['id']}-{ts}.exit"
         wt = b["worktree"]
         sid = b["session_id"]

@@ -558,6 +558,73 @@ class PrIntake(unittest.TestCase):
             w.tmp.cleanup()
 
 
+class LaunchLogIsOwn(unittest.TestCase):
+    """#1381 Stage 1: a launch's completion evidence comes from its own log, never from an earlier run's events."""
+
+    def fake_codex(self, d, body):
+        fake = d / "codex"
+        fake.write_text("#!/bin/sh\n" + body)
+        fake.chmod(fake.stat().st_mode | stat.S_IEXEC)
+        return CodexCLIAdapter(str(fake))
+
+    def wait(self, a, h):
+        for _ in range(100):
+            if not a.alive(h.pid):
+                break
+            time.sleep(0.05)
+
+    def test_a_launch_never_continues_an_earlier_log(self):
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            wt = d / "wt"
+            wt.mkdir()
+            a = self.fake_codex(d, 'echo \'{"type":"thread.started","thread_id":"' + THREAD + '"}\'\nexit 0\n')
+            log = d / "l.log"
+            log.write_text(lines(started(), completed()))               # an earlier run's events at the same path
+            home = rollout_home(d / "codex-home", THREAD, [context()])
+            with mock.patch.dict(os.environ, {"CODEX_HOME": str(home)}):
+                h = a.resume(THREAD, "p", wt, dict(os.environ), PIN, log, d / "l.exit")
+                self.wait(a, h)
+                rollout_home_files = list((home / "sessions").glob("*/*/*/rollout-*.jsonl"))
+                rollout_home_files[0].write_text(lines(
+                    {"type": "turn_context", "payload": context()}, {"type": "turn_context", "payload": context()}))
+                # this run recorded its own pinned turn and exited 0, but never reported turn.completed
+                problem = a.completion_problem(log, PIN, THREAD)
+            self.assertNotIn("turn.completed", log.read_text())
+            self.assertEqual(problem[0] if problem else None, "ERROR")
+
+    def test_a_fresh_start_drops_a_stale_resume_baseline(self):
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            wt = d / "wt"
+            wt.mkdir()
+            a = self.fake_codex(d, "exit 0\n")
+            log = d / "l.log"
+            from warroom.adapters import _baseline_path
+            _baseline_path(log).write_text(json.dumps({"thread": THREAD, "turns": 5}))
+            h = a.start("p", wt, dict(os.environ), PIN, "t", log, d / "l.exit")
+            self.wait(a, h)
+            self.assertFalse(_baseline_path(log).exists())
+
+    def test_launches_in_the_same_second_get_distinct_logs(self):
+        for kind in ("produce_resume", "produce_recover"):
+            with self.subTest(kind):
+                w = World()
+                try:
+                    w.start("single", "deepseek", "a")
+                    w.tick()
+                    b = w.row("deepseek", "a")
+                    first = Path(b["log_file"])
+                    first.write_text("earlier run\n")
+                    first.with_suffix(".exit").write_text("0")
+                    w.sup._launch(w.sup.store.batch(b["id"]), kind)    # the clock has not moved
+                    second = Path(w.sup.store.batch(b["id"])["log_file"])
+                    self.assertNotEqual(first, second)
+                    self.assertEqual(first.read_text(), "earlier run\n")
+                finally:
+                    w.tmp.cleanup()
+
+
 class RealProcessLaunch(unittest.TestCase):
     def test_pins_reach_the_real_child_process(self):
         with tempfile.TemporaryDirectory() as d:
