@@ -556,7 +556,7 @@ def build(paths=None):
     """Wire the production Supervisor."""
     import os as _os
 
-    from .adapters import ClaudeCodeAdapter, OpenCodeAdapter
+    from .adapters import ClaudeCodeAdapter, CodexCLIAdapter, OpenCodeAdapter
     from .config import Paths, load_config
     from .gitops import Git
     from .github import GhClient
@@ -567,7 +567,8 @@ def build(paths=None):
     cfg = load_config(paths)
     env = auth.build_env(dict(_os.environ), paths.gh_config, cfg["git_name"], cfg["git_email"])
     runner = Runner()
-    adapters = {"opencode": OpenCodeAdapter(cfg["opencode_bin"]), "claude": ClaudeCodeAdapter(cfg["claude_bin"])}
+    adapters = {"opencode": OpenCodeAdapter(cfg["opencode_bin"]), "claude": ClaudeCodeAdapter(cfg["claude_bin"]),
+                "codex": CodexCLIAdapter(cfg["codex_bin"])}
     return Supervisor(paths, cfg, Store(paths.db), runner, adapters,
                       GhClient(runner, env, cfg["repo"]),
                       Git(runner, paths.repo_root, env, paths.worktrees), env)

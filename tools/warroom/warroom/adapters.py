@@ -264,6 +264,126 @@ class ClaudeCodeAdapter(ProcessAdapter):
         return None
 
 
+# Codex runs are non-interactive and sandboxed. The sandbox is pinned on every launch (`exec resume` takes no
+# --sandbox flag, so it is a config override on both paths), user config and rules are ignored, and the default
+# workspace-write sandbox is widened only as far as a commit and a PR need: the worktree's git admin directory and
+# the repository's objects/refs/logs, plus network. Full access and approval bypass are never used.
+CODEX_REQUIRED_EXEC_FLAGS = ("--json", "--model", "--config", "--ignore-user-config", "--ignore-rules", "--sandbox")
+CODEX_REQUIRED_RESUME_FLAGS = ("resume", "--json", "--model", "--ignore-user-config", "--ignore-rules")
+
+
+def _git_dir(cwd, *args: str) -> Path:
+    out = subprocess.run(["git", "rev-parse", *args], cwd=cwd, capture_output=True, text=True)
+    if out.returncode:
+        raise RuntimeError(f"git 디렉터리를 확인할 수 없습니다 ({' '.join(args)}): {out.stderr.strip()[:200]}")
+    return (Path(cwd) / out.stdout.strip()).resolve()
+
+
+def _writable_roots(cwd, env) -> list[str]:
+    """The worktree's admin dir and the shared objects/refs/logs; the .git directory itself stays read-only."""
+    git_dir, common = _git_dir(cwd, "--git-dir"), _git_dir(cwd, "--git-common-dir")
+    roots = [git_dir, common / "objects", common / "refs", common / "logs"]
+    if env.get("GH_CONFIG_DIR"):   # the producer's own gh login must be writable for `gh pr create`
+        roots.append(Path(env["GH_CONFIG_DIR"]).resolve())
+    return [str(r) for r in roots]
+
+
+def _turn_contexts(thread_id: str) -> list[dict]:
+    """What Codex recorded for each turn of a thread: the effective model, effort and sandbox (rollout file)."""
+    home = Path(os.environ.get("CODEX_HOME") or Path.home() / ".codex")
+    files = list((home / "sessions").glob(f"*/*/*/rollout-*{thread_id}.jsonl"))
+    if not files:
+        return []
+    out = []
+    for o in _json_objects(files[0].read_text("utf-8", errors="replace")):
+        if o.get("type") == "turn_context" and isinstance(o.get("payload"), dict):
+            out.append(o["payload"])
+    return out
+
+
+class CodexCLIAdapter(ProcessAdapter):
+    """Codex CLI (`codex exec --json`, `codex exec resume <thread id>`). Model, effort and sandbox on every launch."""
+    name = "codex"
+    capabilities = {"resume": True, "stop": True}
+
+    def __init__(self, binary: str = "codex"):
+        self.binary = binary
+
+    def _pins(self, run: RunSpec, cwd, env) -> list[str]:
+        return ["--json", "--ignore-user-config", "--ignore-rules", "-m", run.model,
+                "-c", f"model_reasoning_effort={run.effort}",
+                "-c", 'sandbox_mode="workspace-write"', "-c", 'approval_policy="never"',
+                "-c", "sandbox_workspace_write.network_access=true",
+                "-c", f"sandbox_workspace_write.writable_roots={json.dumps(_writable_roots(cwd, env))}"]
+
+    def start(self, prompt, cwd, env, run, title, log_file, exit_file):
+        cmd = [self.binary, "exec", *self._pins(_pinned(run), cwd, env), prompt]
+        return self._spawn(cmd, cwd, env, log_file, exit_file)
+
+    def resume(self, session_id, prompt, cwd, env, run, log_file, exit_file):
+        cmd = [self.binary, "exec", "resume", session_id, *self._pins(_pinned(run), cwd, env), prompt]
+        return self._spawn(cmd, cwd, env, log_file, exit_file)
+
+    def session_id(self, log_file):
+        try:
+            text = Path(log_file).read_text("utf-8", errors="replace")
+        except OSError:
+            return None
+        for o in _json_objects(text):
+            if o.get("type") == "thread.started" and isinstance(o.get("thread_id"), str):
+                return o["thread_id"]
+        return None
+
+    def preflight(self, runner, env, runs):
+        v = runner.run([self.binary, "--version"], env=env, timeout=60)
+        if not v.ok:
+            return f"`{self.binary} --version` 실행 실패: {v.err.strip()[:200]}"
+        h = runner.run([self.binary, "exec", "--help"], env=env, timeout=60)
+        if not h.ok:
+            return f"`{self.binary} exec --help` 실행 실패: {h.err.strip()[:200]}"
+        missing = [f for f in CODEX_REQUIRED_EXEC_FLAGS if f not in h.out]
+        r = runner.run([self.binary, "exec", "resume", "--help"], env=env, timeout=60)
+        if not r.ok:
+            return f"`{self.binary} exec resume --help` 실행 실패: {r.err.strip()[:200]}"
+        missing += [f for f in CODEX_REQUIRED_RESUME_FLAGS if f not in r.out]
+        if missing:
+            return f"설치된 Codex CLI({v.out.strip()})가 필요한 옵션을 지원하지 않습니다: {', '.join(sorted(set(missing)))}"
+        lg = runner.run([self.binary, "login", "status"], env=env, timeout=60)
+        if not lg.ok or not (lg.out + lg.err).strip().lower().startswith("logged in"):
+            return "Codex CLI가 로그인되어 있지 않습니다 (`codex login`)."
+        return None
+
+    def run_problem(self, log_file, run, expected_session):
+        try:
+            text = Path(log_file).read_text("utf-8", errors="replace")
+        except OSError:
+            return None
+        events = list(_json_objects(text))
+        started = next((e for e in events if e.get("type") == "thread.started"), None)
+        if started is None:   # not started yet
+            return None
+        thread = str(started.get("thread_id") or "")
+        if expected_session and thread != expected_session:
+            return ("ERROR", f"세션 ID 불일치: 요청 {expected_session}, 실제 {thread or '(없음)'} — "
+                             "새 세션으로 진행된 것으로 보고 중지합니다.")
+        finished = any(e.get("type") in ("turn.completed", "turn.failed") for e in events)
+        contexts = _turn_contexts(thread)
+        if not contexts:
+            if finished:
+                return ("ERROR", "Codex가 실행 설정 기록(turn_context)을 남기지 않아 실제 모델·추론 수준을 확인할 수 없습니다.")
+            return None
+        for ctx in contexts:
+            if run is not None and ctx.get("model") != run.model:
+                return ("ERROR", f"Codex가 실행한 모델 {ctx.get('model')!r}이 요청한 {run.model!r}과 다릅니다 — 중지합니다.")
+            if run is not None and ctx.get("effort") != run.effort:
+                return ("ERROR", f"Codex가 실행한 추론 수준 {ctx.get('effort')!r}이 요청한 {run.effort!r}과 다릅니다 — 중지합니다.")
+            if (ctx.get("sandbox_policy") or {}).get("type") != "workspace-write":
+                return ("ERROR", "Codex 샌드박스가 workspace-write가 아닙니다 — 무제한 권한으로 실행하지 않습니다.")
+            if ctx.get("approval_policy") != "never":
+                return ("ERROR", f"Codex 승인 정책 {ctx.get('approval_policy')!r}은 비대화형 실행과 맞지 않습니다.")
+        return None
+
+
 def _logged_in(out: str) -> bool:
     try:
         return json.loads(out).get("loggedIn") is True

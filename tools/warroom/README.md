@@ -72,7 +72,7 @@ then the model label; the order of `producers` in the file does not matter.
 | Producer (label) | Adapter (CLI) | Model | Effort | Status |
 |---|---|---|---|---|
 | `claude` (Sonnet) | `claude` (Claude Code) | `model: sonnet` → `--model sonnet` | `effort: medium` → `--effort medium` | Runs (#1375) |
-| `codex` (Luna) | `codex` (Codex CLI) | `model: gpt-6-luna` → `-m gpt-6-luna` | `effort: xhigh` → `-c model_reasoning_effort=xhigh` | Adapter #1376 |
+| `codex` (Luna) | `codex` (Codex CLI) | `model: gpt-6-luna` → `-m gpt-6-luna` | `effort: xhigh` → `-c model_reasoning_effort=xhigh` | Runs (#1376) |
 | `deepseek` (DeepSeek) | `opencode` | `models.free` / `models.go` | `effort: high` → `--model <id>#high` | Runs now |
 
 Rules (fail closed):
@@ -101,6 +101,24 @@ Rules (fail closed):
   it would decide the effective value.
 - The stream reports the model it ran (`system/init`); a different model stops the batch. The CLI does not print the
   effort it used, so an unknown effort (the CLI's "ignoring it and using the default effort") is treated as a stop.
+
+### Codex CLI (`codex`) setup
+
+- Install the Codex CLI and log in with the operator's own account: `codex login`. `codex login status` must
+  report `Logged in`; Start checks it. Like Claude, this login is not isolated per War Room.
+- Every run passes the pins and the sandbox as options: `codex exec --json --ignore-user-config --ignore-rules
+  -m <model> -c model_reasoning_effort=<effort> -c sandbox_mode="workspace-write" -c approval_policy="never"
+  -c sandbox_workspace_write.network_access=true -c sandbox_workspace_write.writable_roots=[…] <prompt>`.
+  Resume is `codex exec resume <thread id>` with the same options; `exec resume` has no `--sandbox` flag, so the
+  sandbox is a config override on both paths. `--worktree`, `--last`, `--full-auto`, `danger-full-access` and any
+  approval bypass are never used.
+- The default `workspace-write` sandbox denies writes to `.git`, so a commit inside a worktree fails. War Room adds
+  only the worktree's git admin directory, the repository's `objects`, `refs` and `logs`, and the producer's
+  `GH_CONFIG_DIR` as writable roots, and enables network for push and PR creation.
+- Effective values are checked, not assumed: the `thread.started` thread id must equal the requested session, and
+  the model, effort, sandbox and approval policy come from the rollout's `turn_context`. A finished turn with no
+  recorded context stops the batch.
+- Start refuses unless `codex exec --help` and `codex exec resume --help` list the required options.
 
 ## Prompts
 
