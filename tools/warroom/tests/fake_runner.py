@@ -33,12 +33,14 @@ class ScriptedRunner(Runner):
             return Result(0, "username=x\npassword=SECRET\n") if self.cred_ok else Result(1, "", "no")
         if argv[1:] == ["models"]:
             return Result(0, "\n".join(self.models)) if self.models_ok else Result(1, "", "boom")
+        if argv[:2] == ["git", "ls-tree"]:
+            return Result(0, "".join(f"{p}\n" for p in self.done))      # existence, including 0-byte files
         if argv[:2] == ["git", "grep"]:
             ref = argv[4]
             spec = argv[-1]
             if "canonical" in spec:
                 rows = {f"data/canonical/stdict-{k:04d}.jsonl": v for k, v in self.canon.items()}
             else:
-                rows = self.done
+                rows = {p: n for p, n in self.done.items() if n}   # git grep -c prints nothing for empty files
             return Result(0 if rows else 1, "".join(f"{ref}:{p}:{n}\n" for p, n in rows.items()))
         return Result(0, "")

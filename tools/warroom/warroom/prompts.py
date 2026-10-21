@@ -30,6 +30,10 @@ def render(name: str, values: dict, directory: Path | None = None) -> str:
         raise PromptError(f"프롬프트 파일을 읽을 수 없습니다: {path} ({e})") from e
     if not text.strip():
         raise PromptError(f"프롬프트 파일이 비어 있습니다: {path}")
+    # Any `{{`/`}}` left once the valid tokens are removed is a malformed placeholder ({{batch-name}}, {{a.b}} ...).
+    stray = _PLACEHOLDER.sub("", text)
+    if "{{" in stray or "}}" in stray:
+        raise PromptError(f"{path.name}: 허용되지 않는 이중 중괄호 구문이 있습니다 (placeholder는 {{{{name}}}} 형태만 가능)")
     used = {m.group(1) for m in _PLACEHOLDER.finditer(text)}
     unknown = used - ALLOWED[name]
     if unknown:

@@ -16,7 +16,8 @@ from .store import SHARED_QUEUE_METHODS
 
 SHARDS = 428
 BATCH_SIZE = 500
-_CAND = re.compile(r"data/relation-candidates/(\d{3})/\1_(\d{2})_([a-d])_([a-z0-9-]+)\.jsonl$")
+# Repo-root, whole-path match: `experiments/.../data/relation-candidates/...` is not a production Candidate.
+_CAND = re.compile(r"data/relation-candidates/(\d{3})/\1_(\d{2})_([a-d])_([a-z0-9-]+)\.jsonl")
 
 
 class BatchError(Exception):
@@ -45,7 +46,7 @@ def pr_candidates(pr: dict) -> list[tuple[str, str, str, str]]:
         raise BatchError(f"열린 PR #{pr.get('number')}의 파일 목록을 알 수 없어 중복 점유를 배제할 수 없습니다")
     out = []
     for f in files:
-        m = _CAND.search((f or {}).get("path", ""))
+        m = _CAND.fullmatch((f or {}).get("path", ""))
         if m:
             out.append((m.group(1), m.group(2), m.group(3), m.group(4)))
     return out
@@ -67,6 +68,20 @@ def _counts(runner: Runner, root, env, ref: str, pathspec: str) -> dict[str, int
     return out
 
 
+def _candidate_counts(runner: Runner, root, env, ref: str) -> dict[str, int]:
+    """Every Candidate file that exists on `ref` -> its line count.
+
+    Existence comes from `git ls-tree`, counts from `git grep -c ''`: grep prints nothing for a committed
+    0-byte file, so a file missing from the grep output counts as 0 records (corrupt), never as absent.
+    """
+    res = runner.run(["git", "ls-tree", "-r", "--name-only", ref, "--", "data/relation-candidates"],
+                     cwd=root, env=env, timeout=120)
+    if not res.ok:
+        raise BatchError(f"git ls-tree data/relation-candidates: {res.err.strip()}")
+    counts = _counts(runner, root, env, ref, "data/relation-candidates/*/*.jsonl")
+    return {p: counts.get(p, 0) for p in res.out.splitlines() if _CAND.fullmatch(p)}
+
+
 def expected_records(canon: dict[str, int], shard: int, batch: int) -> int:
     total = canon.get(f"data/canonical/stdict-{shard:04d}.jsonl")
     if total is None:
@@ -82,11 +97,9 @@ def next_batch(runner: Runner, root, env, *, ref: str, method: str, producer: st
     """
     shared = is_shared_queue(method)
     canon = _counts(runner, root, env, ref, "data/canonical/stdict-*.jsonl")
-    done_files = _counts(runner, root, env, ref,
-                         f"data/relation-candidates/*/*_{method}_{'*' if shared else producer}.jsonl")
     done: dict[tuple[str, str], list[tuple[str, int]]] = {}
-    for path, n in done_files.items():
-        m = _CAND.search(path)
+    for path, n in _candidate_counts(runner, root, env, ref).items():
+        m = _CAND.fullmatch(path)
         if m and m.group(3) == method and (shared or m.group(4) == producer):
             done.setdefault((m.group(1), m.group(2)), []).append((path, n))
     for key, files in done.items():

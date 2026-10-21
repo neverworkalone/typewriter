@@ -1,5 +1,6 @@
 """#1367: Method prompt files and the C/D model-shared batch queue."""
 import os
+import subprocess
 import tempfile
 import threading
 import unittest
@@ -11,6 +12,7 @@ from tests.fakes import HEAD1, HEAD2, World
 from tests.test_lines import multi_world
 from tests.test_supervisor import review
 from warroom import batches, control, prompts
+from warroom.shell import Runner
 from warroom.store import DuplicateBatch, LineBusy
 from warroom.supervisor import DuplicateClaim
 
@@ -311,6 +313,153 @@ class UnknownPrFileLists(unittest.TestCase):
     def _open_pr(w):
         w.pr_info(7, HEAD1)
         w.gh.by_branch["c-deepseek-001-01"] = [{"number": 7, "state": "OPEN", "headRefOid": HEAD1}]
+
+
+class RealGitMaster(unittest.TestCase):
+    """Real Git objects: `git grep -c ''` prints nothing for a committed 0-byte file, so scripted counts cannot cover it."""
+
+    def master(self, files: dict) -> Path:
+        d = Path(self._tmp.name) / f"repo{len(list(Path(self._tmp.name).iterdir()))}"
+        d.mkdir()
+        env = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t",
+               "GIT_COMMITTER_EMAIL": "t@t"}
+        git = lambda *a: subprocess.run(["git", *a], cwd=d, env=env, check=True, capture_output=True)
+        git("init", "-q")
+        files = {"data/canonical/stdict-0001.jsonl": 1000, "data/canonical/stdict-0002.jsonl": 600, **files}
+        for rel, lines in files.items():
+            f = d / rel
+            f.parent.mkdir(parents=True, exist_ok=True)
+            f.write_text("x\n" * lines)
+        git("add", "-A")
+        git("commit", "-q", "-m", "m")
+        return d
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+
+    def pick(self, files, method, producer="deepseek"):
+        root = self.master(files)
+        return batches.next_batch(Runner(), root, dict(os.environ), ref="HEAD", method=method, producer=producer,
+                                  open_prs=[], owned=set())
+
+    def test_git_grep_really_omits_a_committed_empty_file(self):
+        root = self.master({cand(1, 1, "c", "codex"): 0, cand(1, 2, "c", "codex"): 2})
+        out = subprocess.run(["git", "grep", "-c", "", "HEAD", "--", "data/relation-candidates/*/*_c_*.jsonl"],
+                             cwd=root, capture_output=True, text=True).stdout
+        self.assertNotIn("001_01_c_codex", out)       # the premise of the finding
+        self.assertIn("001_02_c_codex", out)
+
+    def test_table(self):
+        none = None
+        for name, files, method, producer, want in [
+            ("C: 500 lines by another model = done", {cand(1, 1, "c", "codex"): 500}, "c", "deepseek", ("001", "02")),
+            ("C: nothing on master", {}, "c", "deepseek", ("001", "01")),
+            ("C: 0-byte file", {cand(1, 1, "c", "codex"): 0}, "c", "deepseek", batches.BatchError),
+            ("D: 0-byte file", {cand(1, 1, "d", "claude"): 0}, "d", "deepseek", batches.BatchError),
+            ("C: 0-byte beside a good one", {cand(1, 1, "c", "claude"): 0, cand(1, 2, "c", "codex"): 500}, "c", "deepseek",
+             batches.BatchError),
+            ("C: 499 lines", {cand(1, 1, "c", "codex"): 499}, "c", "deepseek", batches.BatchError),
+            ("C: 501 lines", {cand(1, 1, "c", "codex"): 501}, "c", "deepseek", batches.BatchError),
+            ("C: two models, one batch", {cand(1, 1, "c", "codex"): 500, cand(1, 1, "c", "claude"): 500}, "c", "deepseek",
+             batches.BatchError),
+            ("C: next after three done is the short 100-record batch", {cand(1, 1, "c", "codex"): 500,
+                                                                        cand(1, 2, "c", "codex"): 500,
+                                                                        cand(2, 1, "c", "claude"): 500},
+             "c", "deepseek", ("002", "02")),
+            ("C: short last batch 99 lines", {cand(1, 1, "c", "codex"): 500, cand(1, 2, "c", "codex"): 500,
+                                              cand(2, 1, "c", "codex"): 500, cand(2, 2, "c", "claude"): 99},
+             "c", "deepseek", batches.BatchError),
+            ("A: other model's 0-byte file does not touch deepseek", {cand(1, 1, "a", "codex"): 0}, "a", "deepseek",
+             ("001", "01")),
+            ("A: own 0-byte file", {cand(1, 1, "a", "deepseek"): 0}, "a", "deepseek", batches.BatchError),
+            ("A: other model's 500 lines does not complete", {cand(1, 1, "a", "codex"): 500}, "a", "deepseek",
+             ("001", "01")),
+            ("B: own 500 lines done", {cand(1, 1, "b", "deepseek"): 500}, "b", "deepseek", ("001", "02")),
+            ("D independent of a corrupt C file", {cand(1, 1, "c", "codex"): 0}, "d", "deepseek", ("001", "01")),
+            ("experiments/ copy is no Candidate", {"experiments/x/" + cand(1, 1, "c", "codex"): 0}, "c", "deepseek",
+             ("001", "01")),
+        ]:
+            with self.subTest(name):
+                if want is batches.BatchError:
+                    with self.assertRaises(batches.BatchError):
+                        self.pick(files, method, producer)
+                else:
+                    b = self.pick(files, method, producer)
+                    self.assertEqual(None if b is None else (b.shard, b.batch), want)
+
+
+class CandidatePathBoundary(unittest.TestCase):
+    def test_only_repo_root_candidate_paths_count(self):
+        good = cand(1, 1, "c", "codex")
+        for name, path, want in [
+            ("production path", good, [("001", "01", "c", "codex")]),
+            ("experiments copy", "experiments/sample/" + good, []),
+            ("nested copy", "docs/" + good, []),
+            ("leading slash", "/" + good, []),
+            ("backup suffix", good + ".bak", []),
+            ("shard prefix mismatch", "data/relation-candidates/001/002_01_c_codex.jsonl", []),
+            ("unknown method", "data/relation-candidates/001/001_01_e_codex.jsonl", []),
+            ("trailing newline", good + "\n", []),
+        ]:
+            with self.subTest(name):
+                self.assertEqual(batches.pr_candidates({"number": 1, "files": [{"path": path}]}), want)
+        runner = ScriptedRunner()
+        runner.set_batches({1: 1000}, {})
+        claimed = batches.next_batch(runner, ".", {}, ref="r", method="c", producer="deepseek",
+                                     open_prs=[{"number": 5, "files": [{"path": "experiments/sample/" + good}]}],
+                                     owned=set())
+        self.assertEqual((claimed.shard, claimed.batch), ("001", "01"))      # an experiment PR claims nothing
+
+
+class MalformedPlaceholders(unittest.TestCase):
+    def test_every_non_token_double_brace_is_rejected_but_values_are_data(self):
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            vals = {"batch": "001_01", "branch": "b"}
+            for name, text, ok in [
+                ("valid", "x {{batch}} {{ branch }}", True),
+                ("hyphen", "x {{batch-name}} {{branch}}", False),
+                ("dotted", "x {{batch.id}} {{branch}}", False),
+                ("digit first", "{{1batch}} {{batch}}", False),
+                ("empty", "{{}} {{batch}}", False),
+                ("blank", "{{ }} {{batch}}", False),
+                ("unterminated", "{{batch {{branch}}", False),
+                ("closing only", "{{batch}} }} {{branch}}", False),
+                ("opening only", "{{ {{batch}}", False),
+                ("single braces are plain text", "{\"a\": 1} {{batch}} {{branch}}", True),
+            ]:
+                with self.subTest(name):
+                    (d / "a.md").write_text(text)
+                    if ok:
+                        out = prompts.render("a", vals, d)
+                        self.assertNotIn("{{", out)
+                    else:
+                        with self.assertRaises(prompts.PromptError):
+                            prompts.render("a", vals, d)
+            (d / "fix.md").write_text("{{pr}} {{head}} {{branch}} {{review_events}} {{session_note}}")
+            out = prompts.render("fix", {"pr": 7, "head": "h", "branch": "b", "session_note": "",
+                                         "review_events": "-1 {{batch-name}} }} {{"}, d)
+            self.assertIn("{{batch-name}} }} {{", out)           # reviewer text is data, never validated as a template
+
+    def test_launch_starts_no_ai_for_a_malformed_template(self):
+        with tempfile.TemporaryDirectory() as d:
+            for n in prompts.ALLOWED:
+                (Path(d) / f"{n}.md").write_text("[ok] " + " ".join("{{%s}}" % k for k in sorted(prompts.ALLOWED[n])))
+            (Path(d) / "c.md").write_text("배치 {{batch-name}} / 브랜치 {{branch}}")
+            with mock.patch.object(prompts, "PROMPT_DIR", Path(d)):
+                w = multi_world()
+                w.start("single", "deepseek", "c")
+                w.tick(2)
+                self.assertEqual(w.adapter.launches, [])
+                b = w.row("deepseek", "c")
+                self.assertEqual(b["state"], "ERROR")
+                self.assertIn("이중 중괄호", b["error"])
+                self.assertTrue(any("이중 중괄호" in e["msg"] for e in w.store.recent_events(20)))
+                w.start("single", "deepseek", "a")                # a healthy template still runs
+                w.tick()
+                self.assertEqual(len(w.adapter.launches), 1)
+                w.tmp.cleanup()
 
 
 class AtomicClaim(unittest.TestCase):
