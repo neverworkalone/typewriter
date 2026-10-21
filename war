@@ -1,0 +1,23 @@
+#!/bin/sh
+# War Room launcher: enter the TUI inside a persistent tmux session.
+set -e
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+WR="$ROOT/tools/warroom"
+VENV="$WR/.local/venv"
+
+if ! command -v tmux >/dev/null 2>&1; then
+  echo "tmux가 필요합니다: brew install tmux" >&2; exit 1
+fi
+if [ ! -x "$VENV/bin/python" ]; then
+  echo "[war] 최초 실행: $VENV 를 만들고 Textual을 설치합니다…"
+  python3 -m venv "$VENV"
+  "$VENV/bin/pip" install -q -r "$WR/requirements.txt"
+fi
+
+CMD="cd '$ROOT' && env PYTHONPATH='$WR' '$VENV/bin/python' -m warroom.tui"
+if [ -n "$TMUX" ] && [ "$(tmux display-message -p '#S')" = "warroom" ]; then
+  eval "$CMD"
+else
+  # -A: attach if the session exists (re-entry after detach), else create it.
+  exec tmux new-session -A -s warroom "$CMD"
+fi

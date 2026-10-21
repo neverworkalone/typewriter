@@ -1,0 +1,5 @@
+# Everything machine-local: config, DB, logs, auth, worktrees, venv.
+.local/
+.venv/
+__pycache__/
+*.pyc
