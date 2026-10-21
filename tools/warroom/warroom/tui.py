@@ -295,6 +295,9 @@ class LineDetail(Screen):
         store = self.app.store
         ln = store.peek_line(self.model, self.method)
         b = store.active_batch(self.model, self.method)
+        if ln["retry_batch"] is not None:
+            self.app.notify("Retry가 이미 예약됐습니다. 재개 후 다시 전환하세요.", severity="warning")
+            return
         if b and (b["pid"] is not None or b["state"] not in ("PAUSED", "ERROR", "WAITING_REVIEW")):
             self.app.notify("실행 중인 AI 모델은 바꿀 수 없습니다. 일시정지 또는 리뷰 대기 후 전환하세요.",
                             severity="warning")
