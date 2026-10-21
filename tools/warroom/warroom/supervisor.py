@@ -1,5 +1,9 @@
 """Supervisor: persistent per-batch state machine, independent of the TUI.
 
+One Supervisor drives many independent Production Lines: a Line is (logical model, method)
+and owns at most one unfinished batch. Every state transition, poll, stop and drain below is
+scoped to that Line; no Line reads another Line's controls or batch.
+
 PREPARE -> PRODUCING -> WAITING_REVIEW <-> FIXING -> MERGED -> CLEANUP -> COMPLETE
 with PAUSED (recoverable, needs operator) and ERROR (safety stop, everything kept).
 The AI process exiting never completes a batch; only GitHub `merged=true` does.
@@ -13,9 +17,11 @@ import time
 import traceback
 from pathlib import Path
 
-from . import auth, batches, reviews
+from . import auth, batches, control, reviews
 from .adapters import classify_failure
+from .config import registry, registry_problems
 from .gitops import CleanupBlocked, GitError
+from .store import LineBusy
 
 
 class DuplicateClaim(Exception):
@@ -81,18 +87,36 @@ class Supervisor:
         self.runner, self.adapter, self.gh, self.git, self.env = runner, adapter, gh, git, env
         self.clock = clock
 
+    def _adapter(self, producer: str):
+        """`adapter` is one AgentAdapter, or a {name: adapter} map resolved via the registry."""
+        if not isinstance(self.adapter, dict):
+            return self.adapter
+        name = registry(self.cfg).get(producer, {}).get("adapter", "opencode")
+        if name not in self.adapter:
+            raise RuntimeError(f"adapter {name!r} 미지원")
+        return self.adapter[name]
+
     # ---- control -------------------------------------------------------
     def tick(self) -> None:
         self.store.set("heartbeat", str(self.clock()))
-        b = self.store.active_batch()
-        if self.store.get("force_stop") == "1":
-            self.store.set("force_stop", "0")
-            if b is not None:
-                self._force_stop(b)
-            return
+        for b in self.store.incomplete_batches():  # a Line row always exists for a live batch
+            self.store.line(b["producer"], b["method"])
+        for ln in self.store.lines():
+            try:
+                self._tick_line(ln["model"], ln["method"])
+            except Exception:  # one Line's failure never stalls the others
+                self.store.log(None, f"line {ln['model']}/{ln['method']} 예외:\n"
+                               + traceback.format_exc()[-800:], "error", line=f"{ln['model']}/{ln['method']}")
+
+    def _tick_line(self, model: str, method: str) -> None:
+        ln = self.store.line(model, method)
+        b = self.store.active_batch(model, method)
+        if ln["force_stop"]:
+            self.store.set_line(model, method, force_stop=0)
+            return self._force_stop(b) if b is not None else self.store.set_line(model, method, run=0)
         if b is None:
-            if self.store.get("run") == "1":
-                self._prepare_new()
+            if ln["run"] and not control.drained(self.store, ln):
+                self._prepare_new(ln)
             return
         handler = {"PREPARE": self._prepare_existing, "PRODUCING": self._poll_run,
                    "FIXING": self._poll_run, "WAITING_REVIEW": self._watch,
@@ -105,61 +129,85 @@ class Supervisor:
         self.store.update(b["id"], state=state, paused_from=prev, error=msg)
         self.store.log(b["id"], msg, "error")
 
+    def _reap_stopped(self, b) -> bool:
+        """Clear the PID of a stop-requested run only once the process is really gone."""
+        if b["pid"] is None:
+            return True
+        if self._adapter(b["producer"]).alive(b["pid"]):
+            return False
+        self.store.update(b["id"], pid=None)
+        self.store.finish_runs(b["id"], "stopped")
+        return True
+
     def _wait_operator(self, b) -> None:
-        if self.store.get("retry") == str(b["id"]):
-            self.store.set("retry", "")
+        ln = self.store.line(b["producer"], b["method"])
+        if not self._reap_stopped(b):
+            # Stop is pending: Retry is not honoured (and not remembered) while the old AI lives.
+            if ln["retry_batch"] is not None:
+                self.store.set_line(b["producer"], b["method"], retry_batch=None)
+            return
+        if ln["retry_batch"] == b["id"]:
+            self.store.set_line(b["producer"], b["method"], retry_batch=None, run=1)
             self.store.update(b["id"], state=b["paused_from"] or "PRODUCING", error=None,
                               retries=0, retry_after=None)
-            self.store.set("run", "1")
             self.store.log(b["id"], f"운영자 재시도: {b['paused_from']}로 복귀")
 
     def _force_stop(self, b) -> None:
-        if b["pid"] and self.adapter.alive(b["pid"]):
-            self.adapter.stop(b["pid"])
-        self.store.set("run", "0")
-        self.store.update(b["id"], pid=None, retry_after=None)
-        self._fail(b, "PAUSED", "강제 중지됨. worktree·브랜치·PR은 보존됨 (Retry로 재개).")
+        ad = self._adapter(b["producer"])
+        if b["pid"] and ad.alive(b["pid"]):
+            ad.stop(b["pid"])   # keep the PID: it is cleared only after exit is confirmed
+        self.store.set_line(b["producer"], b["method"], run=0, retry_batch=None)  # Stop wins over Retry
+        self.store.update(b["id"], retry_after=None)
+        self._fail(b, "PAUSED", "강제 중지됨. worktree·브랜치·PR은 보존됨 (프로세스 종료 확인 후 Retry로 재개).")
+        self._reap_stopped(self.store.batch(b["id"]))
 
     # ---- PREPARE -------------------------------------------------------
-    def _blocked(self, msg: str) -> None:
-        self.store.set("blocked", msg)
-        self.store.set("run", "0")
-        self.store.log(None, msg, "error")
+    def _blocked(self, ln, msg: str) -> None:
+        self.store.set_line(ln["model"], ln["method"], blocked=msg, run=0)
+        self.store.log(None, msg, "error", line=f"{ln['model']}/{ln['method']}")
 
-    def _prepare_new(self) -> None:
-        w = self.cfg["worker"]
+    def _prepare_new(self, ln) -> None:
+        model, method = ln["model"], ln["method"]
+        reg = registry(self.cfg)
+        if model not in reg:
+            return self._blocked(ln, f"시작 차단: 등록되지 않은 모델 {model!r}")
+        if model in registry_problems(self.cfg):
+            return self._blocked(ln, "시작 차단: " + registry_problems(self.cfg)[model])
         d = auth.diagnose(self.runner, self.env, self.cfg["repo"], self.cfg["expected_account"])
         if not d["ok"]:
-            return self._blocked("시작 차단: " + "; ".join(d["problems"]))
-        problem = self._model_problem()
+            return self._blocked(ln, "시작 차단: " + "; ".join(d["problems"]))
+        problem = self._model_problem(model)
         if problem:
-            return self._blocked("시작 차단: " + problem)
+            return self._blocked(ln, "시작 차단: " + problem)
         try:
             self.git.fetch_base(self.cfg["base_branch"])
             nb = batches.next_batch(
                 self.runner, self.paths.repo_root, self.env,
-                ref=f"origin/{self.cfg['base_branch']}", method=w["method"], producer=w["producer"],
-                open_prs=self.gh.open_prs(), owned=self.store.claimed_keys(w["method"], w["producer"]))
+                ref=f"origin/{self.cfg['base_branch']}", method=method, producer=model,
+                open_prs=self.gh.open_prs(), owned=self.store.claimed_keys(method, model))
         except Exception as e:  # BatchError, GitError, GhError
-            return self._blocked(f"배치 선정 실패: {e}")
+            return self._blocked(ln, f"배치 선정 실패: {e}")
         if nb is None:
-            self.store.set("run", "0")
-            return self.store.log(None, "더 이상 생산할 미점유 배치가 없습니다.")
-        self.store.set("blocked", "")
-        branch = f"{w['method']}-{w['producer']}-{nb.shard}-{nb.batch}"
-        wt = self.paths.worktrees / f"{w['method']}-{w['producer']}-{nb.stem}"
-        tier = self.store.get("model_tier", "free")
-        bid = self.store.create_batch(method=w["method"], producer=w["producer"], shard=nb.shard,
-                                      batch=nb.batch, branch=branch, worktree=str(wt),
-                                      model_tier=tier, records_total=nb.records)
+            self.store.set_line(model, method, run=0)
+            return self.store.log(None, "더 이상 생산할 미점유 배치가 없습니다.", line=f"{model}/{method}")
+        branch = f"{method}-{model}-{nb.shard}-{nb.batch}"
+        wt = self.paths.worktrees / f"{method}-{model}-{nb.stem}"
+        try:
+            bid = self.store.create_batch(method=method, producer=model, shard=nb.shard,
+                                          batch=nb.batch, branch=branch, worktree=str(wt),
+                                          model_tier=ln["model_tier"], records_total=nb.records)
+        except LineBusy as e:
+            return self.store.log(None, str(e), "warn", line=f"{model}/{method}")
+        self.store.set_line(model, method, blocked="")
         self.store.log(bid, f"배치 {nb.stem} 선정, worktree 준비")
         self._prepare_existing(self.store.batch(bid))
 
-    def _model_problem(self) -> str | None:
+    def _model_problem(self, producer: str) -> str | None:
         """Fail closed: the free tier must be an explicit, installed, recognisably free model."""
-        free, go = self.cfg["models"].get("free", ""), self.cfg["models"].get("go", "")
+        models = registry(self.cfg)[producer]["models"]
+        free, go = models.get("free", ""), models.get("go", "")
         if not free:
-            return ("models.free 미설정 — OpenCode 기본 모델이 무료라는 보장이 없어 실행하지 않습니다 "
+            return (f"{producer}: models.free 미설정 — OpenCode 기본 모델이 무료라는 보장이 없어 실행하지 않습니다 "
                     f"({self.paths.config_file}).")
         if not re.search(self.cfg.get("free_model_pattern", r"-free$"), free):
             return f"models.free={free!r} 는 무료 모델 ID로 확인되지 않습니다 (패턴 {self.cfg.get('free_model_pattern', '-free$')})."
@@ -186,7 +234,7 @@ class Supervisor:
 
     # ---- launching runs ------------------------------------------------
     def _model(self, b) -> str:
-        return self.cfg["models"].get(b["model_tier"], "")
+        return registry(self.cfg).get(b["producer"], {}).get("models", {}).get(b["model_tier"], "")
 
     def _launch(self, b, kind: str, events=None) -> None:
         """kind: produce | fix_resume | fix_new | produce_resume | produce_recover"""
@@ -194,21 +242,22 @@ class Supervisor:
         log, ex = self.paths.logs / f"batch-{b['id']}-{ts}.log", self.paths.logs / f"batch-{b['id']}-{ts}.exit"
         wt, model = b["worktree"], self._model(b)
         sid = b["session_id"]
+        ad = self._adapter(b["producer"])
         if not model:  # never run with OpenCode's implicit default model
             return self._fail(b, "ERROR", f"{b['model_tier']} 모델 ID가 설정되지 않아 실행하지 않습니다.")
         try:
             if kind == "produce":
-                h = self.adapter.start(produce_prompt(self.cfg, b), wt, self.env, model,
+                h = ad.start(produce_prompt(self.cfg, b), wt, self.env, model,
                                        f"{b['method'].upper()} {b['shard']}_{b['batch']}", log, ex)
             elif kind == "produce_resume":
-                h = self.adapter.resume(sid, recovery_prompt(b), wt, self.env, model, log, ex)
+                h = ad.resume(sid, recovery_prompt(b), wt, self.env, model, log, ex)
             elif kind == "produce_recover":
-                h = self.adapter.start(recovery_prompt(b), wt, self.env, model,
+                h = ad.start(recovery_prompt(b), wt, self.env, model,
                                        f"{b['method'].upper()} {b['shard']}_{b['batch']} recover", log, ex)
             elif kind == "fix_resume":
-                h = self.adapter.resume(sid, fix_prompt(b, events, True), wt, self.env, model, log, ex)
+                h = ad.resume(sid, fix_prompt(b, events, True), wt, self.env, model, log, ex)
             else:  # fix_new
-                h = self.adapter.start(fix_prompt(b, events, False), wt, self.env, model,
+                h = ad.start(fix_prompt(b, events, False), wt, self.env, model,
                                        f"PR {b['pr_number']} fix", log, ex)
         except Exception as e:
             return self._fail(b, "ERROR", f"AI 실행 시작 실패: {e}")
@@ -218,6 +267,7 @@ class Supervisor:
         if kind == "fix_new" or kind in ("produce", "produce_recover"):
             fields["session_id"] = None  # captured from the new run's log
         self.store.update(b["id"], **fields)
+        self.store.add_run(b["id"], kind, fields.get("session_id", sid), h.pid, log, ex)
         if events:  # claim only after the run really started
             self.store.mark_handled(b["id"], b["pr_number"], b["head_sha"], [e["key"] for e in events])
         self.store.log(b["id"], f"{state} 시작 ({kind}, model tier={b['model_tier']})")
@@ -235,17 +285,20 @@ class Supervisor:
             if b["retry_after"] is None or self.clock() >= b["retry_after"]:
                 self._relaunch(b)
             return
-        sid = b["session_id"] or self.adapter.session_id(Path(b["log_file"]))
+        ad = self._adapter(b["producer"])
+        sid = b["session_id"] or ad.session_id(Path(b["log_file"]))
         if sid and sid != b["session_id"]:
             self.store.update(b["id"], session_id=sid)
+            self.store.set_run_session(b["id"], sid)
             b = self.store.batch(b["id"])
         self._record_progress(b)
-        if self.adapter.alive(b["pid"]):
+        if ad.alive(b["pid"]):
             if b["state"] == "PRODUCING":
                 self._adopt_pr_while_running(b)
             return
-        code = self.adapter.exit_code(Path(b["exit_file"]))
+        code = ad.exit_code(Path(b["exit_file"]))
         self.store.update(b["id"], pid=None)
+        self.store.finish_runs(b["id"], code)
         b = self.store.batch(b["id"])
         if code is None:
             return self._fail(b, "ERROR", "AI 프로세스가 종료 상태 기록 없이 사라졌습니다. "
@@ -336,9 +389,9 @@ class Supervisor:
         cls = classify_failure(text, self.cfg["quota_patterns"])
         self.store.log(b["id"], f"AI 종료 코드 {code}, 분류={cls}", "warn")
         if cls == "free_quota":
-            go = self.cfg["models"].get("go")
+            go = registry(self.cfg).get(b["producer"], {}).get("models", {}).get("go")
             if b["model_tier"] == "free" and go:
-                self.store.set("model_tier", "go")
+                self.store.set_line(b["producer"], b["method"], model_tier="go")
                 self.store.update(b["id"], model_tier="go")
                 self.store.log(b["id"], "무료 한도 소진 확인 → Go 모델로 전환")
                 return self._relaunch(self.store.batch(b["id"]))
@@ -377,9 +430,11 @@ class Supervisor:
         """Clear a finished AI pid; returns (batch, still_alive)."""
         if b["pid"] is None:
             return b, False
-        if self.adapter.alive(b["pid"]):
+        ad = self._adapter(b["producer"])
+        if ad.alive(b["pid"]):
             return b, True
         self.store.update(b["id"], pid=None)
+        self.store.finish_runs(b["id"], ad.exit_code(Path(b["exit_file"])) if b["exit_file"] else None)
         self.store.log(b["id"], "AI 프로세스 종료 확인")
         return self.store.batch(b["id"]), False
 
@@ -398,7 +453,7 @@ class Supervisor:
             return self.store.log(b["id"], f"PR #{b['pr_number']} merged=true 확인")
         if info["state"] != "open":
             if live:
-                self.adapter.stop(b["pid"])
+                self._adapter(b["producer"]).stop(b["pid"])
             return self._fail(b, "ERROR", f"PR #{b['pr_number']}이 머지 없이 닫혔습니다. worktree 보존, 수동 조치 필요.")
         if info["head_sha"] != b["head_sha"]:
             self.store.update(b["id"], head_sha=info["head_sha"])
@@ -408,7 +463,7 @@ class Supervisor:
         if fresh and live:
             # Never run two AI processes in one worktree: stop the old one, confirm exit
             # on a following tick, then start the fix run.
-            self.adapter.stop(b["pid"])
+            self._adapter(b["producer"]).stop(b["pid"])
             self.store.set(f"last_poll_{b['id']}", "0")
             return self.store.log(b["id"], "새 리뷰 이벤트 — 실행 중인 AI 종료 요청, 종료 확인 후 수정 실행")
         if fresh:
@@ -426,8 +481,9 @@ class Supervisor:
         self.store.update(b["id"], state="CLEANUP", head_sha=info["head_sha"])
 
     def _cleanup(self, b) -> None:
-        if b["pid"] and self.adapter.alive(b["pid"]):
-            self.adapter.stop(b["pid"])
+        ad = self._adapter(b["producer"])
+        if b["pid"] and ad.alive(b["pid"]):
+            ad.stop(b["pid"])
             return self.store.log(b["id"], "남은 AI 프로세스 정지 요청, 종료 확인 대기")
         try:
             info = self.gh.pull(b["pr_number"])
@@ -439,10 +495,12 @@ class Supervisor:
         except Exception as e:
             return self._fail(b, "ERROR", f"정리 실패(보존): {e}")
         self.store.update(b["id"], state="COMPLETE", error=None)
+        self.store.finish_runs(b["id"], None)
         self.store.log(b["id"], f"배치 {b['shard']}_{b['batch']} 정리 완료")
-        if self.store.get("mode") != "continuous" or self.store.get("stop_after") == "1":
-            self.store.set("run", "0")
-            self.store.set("stop_after", "0")
+        ln = self.store.line(b["producer"], b["method"])
+        if ln["mode"] != "continuous" or ln["drain"]:
+            # Single batch done, or this Line's Drain took effect (Drain All stays global).
+            self.store.set_line(b["producer"], b["method"], run=0, drain=0)
 
     # ---- daemon --------------------------------------------------------
     def run_forever(self, interval: float = 5.0) -> None:
@@ -469,7 +527,7 @@ def build(paths=None):
     cfg = load_config(paths)
     env = auth.build_env(dict(_os.environ), paths.gh_config, cfg["git_name"], cfg["git_email"])
     runner = Runner()
-    return Supervisor(paths, cfg, Store(paths.db), runner, OpenCodeAdapter(cfg["opencode_bin"]),
+    return Supervisor(paths, cfg, Store(paths.db), runner, {"opencode": OpenCodeAdapter(cfg["opencode_bin"])},
                       GhClient(runner, env, cfg["repo"]),
                       Git(runner, paths.repo_root, env, paths.worktrees), env)
 

@@ -84,15 +84,23 @@ class OpenCodeAdapter(AgentAdapter):
             pass
 
     def alive(self, pid: int) -> bool:
+        """True while ANY non-zombie process is left in the run's dedicated process group.
+
+        `pid` is the sh wrapper's PID and also the group id; the wrapper can exit while the
+        AI child it launched keeps running, which must still count as alive.
+        """
         try:
-            os.kill(pid, 0)
+            os.killpg(pid, 0)
         except ProcessLookupError:
             return False
         except PermissionError:
-            return True
-        # A zombie child of this process is not alive.
-        r = subprocess.run(["ps", "-o", "stat=", "-p", str(pid)], capture_output=True, text=True)
-        return bool(r.stdout.strip()) and not r.stdout.strip().startswith("Z")
+            pass  # macOS: a group holding only a zombie reports EPERM; the ps scan decides
+        r = subprocess.run(["ps", "-A", "-o", "pgid=,stat="], capture_output=True, text=True)
+        for line in r.stdout.splitlines():
+            parts = line.split()
+            if len(parts) == 2 and parts[0] == str(pid) and not parts[1].startswith("Z"):
+                return True
+        return False
 
     def session_id(self, log_file: Path) -> str | None:
         try:
