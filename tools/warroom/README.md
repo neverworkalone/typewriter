@@ -81,15 +81,20 @@ Rules (fail closed):
 - A producer with an unset, flag-like (`--…`) or malformed model, or an effort its CLI does not accept, blocks
   Start with the reason shown in the Line's BLOCKED field.
 - A CLI that is not wired into this build blocks Start. It is never redirected to another CLI.
-- A resumed session continues only on the model and effort that started it (for single-model CLIs); a different
-  pin stops the batch in ERROR. OpenCode may still switch Free → Go mid-batch: only its effort is compared.
+- Every relaunch of a batch (resume, recovery after a lost session, fix) runs on the pin of its last recorded run.
+  A changed model (single-model CLIs) or effort stops the batch in ERROR, and no process starts. OpenCode may still
+  switch Free → Go mid-batch: only its effort is compared. To continue, restore the config, restart the Supervisor,
+  then Retry (config is read at start).
 - OpenCode's reasoning variant is the `#variant` suffix of `--model`. The installed CLI rejects `--variant`
-  (`Unrecognized flag`). Start proves every model+variant pair (Free, and Go when configured) with one short probe
-  before any batch or worktree exists: a variant the CLI refuses (`Variant unavailable`) blocks Start with that
-  reason. Proof is cached per Supervisor run, and a refused pair is probed again next time. The probe is one
-  `opencode run` per tier and effort, so it may cost a few tokens and create a session titled `WR preflight`.
-  A variant refused later still stops the batch in ERROR, with nothing substituted. A DeepSeek entry without
-  `effort` runs at `high`, the owner-fixed value (configs written before #1373).
+  (`Unrecognized flag`). Before any batch or worktree exists, every model+variant pair (Free, and Go when configured)
+  is proven by a short probe: one `opencode run` from an empty temporary directory outside the repository, without
+  `--auto` and without tools, in the background. While a probe runs, the Line waits (it is not blocked and the other
+  Lines keep moving). A variant the CLI refuses (`Variant unavailable`) blocks Start with that reason. Any provider
+  answer, quota errors included, proves the variant. Silence, a timeout, or unreadable output does not, and blocks.
+  A proven pair is kept for this Supervisor run. A refused pair stays refused until the Supervisor restarts. The probe
+  may cost a few tokens and creates one session titled `WR preflight`. A variant refused later still stops the batch
+  in ERROR, with nothing substituted. A DeepSeek entry without `effort` runs at `high`, the owner-fixed value
+  (configs written before #1373).
 - Run History and the Audit Log record the model ID and effort each launch was pinned to.
 
 ## Prompts

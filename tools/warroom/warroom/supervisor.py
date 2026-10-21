@@ -18,12 +18,10 @@ import traceback
 from pathlib import Path
 
 from . import auth, batches, control, prompts, reviews
-from .adapters import RunSpec, classify_failure
+from .adapters import PREFLIGHT_PENDING, RunSpec, classify_failure
 from .config import TIERED_ADAPTERS, adapter_label, registry, registry_problems, run_spec
 from .gitops import CleanupBlocked, GitError
 from .store import LineBusy
-
-RESUME_KINDS = ("produce_resume", "fix_resume")
 
 
 class DuplicateClaim(Exception):
@@ -142,6 +140,8 @@ class Supervisor:
         if not d["ok"]:
             return self._blocked(ln, "시작 차단: " + "; ".join(d["problems"]))
         problem = self._preflight(model)
+        if problem and problem.startswith(PREFLIGHT_PENDING):
+            return   # the CLI check runs in the background: this Line waits here, the others keep moving
         if problem:
             return self._blocked(ln, "시작 차단: " + problem)
         try:
@@ -224,16 +224,17 @@ class Supervisor:
 
     @staticmethod
     def _pin_drift(b, run: RunSpec, tiered: bool, runs) -> str | None:
-        """A resumed session continues only on the model and effort that started it; any drift stops the batch.
+        """Every relaunch of a batch (resume, recovery, fix) runs on the pin its last recorded run used.
 
-        OpenCode may legitimately change its model (Free -> Go) mid-batch, so only its effort is compared.
+        Applies to all relaunch kinds, including a fresh session after a lost session id. OpenCode may legitimately
+        change its model (Free -> Go) mid-batch, so only its effort is compared there.
         """
         prev = next((r for r in runs if r["effort"]), None)
         if prev is None:   # a run from before pins were recorded: nothing to compare with
             return None
         if prev["effort"] != run.effort or (not tiered and prev["model"] != run.model):
-            return (f"세션 재개 차단: 기록된 실행 설정 {prev['model']} / {prev['effort']} 과 현재 설정 "
-                    f"{run.model} / {run.effort} 이 다릅니다. 설정을 되돌린 뒤 Retry 하세요.")
+            return (f"실행 설정 변경 차단: 기록된 실행 설정 {prev['model']} / {prev['effort']} 과 현재 설정 "
+                    f"{run.model} / {run.effort} 이 다릅니다. 설정을 되돌리고 Supervisor를 재시작한 뒤 Retry 하세요.")
         return None
 
     def _launch(self, b, kind: str, events=None) -> None:
@@ -247,10 +248,14 @@ class Supervisor:
             run = self._run(b)
         except ValueError as e:
             return self._fail(b, "ERROR", f"실행 설정 오류로 AI를 시작하지 않았습니다: {e}")
-        if kind in RESUME_KINDS:
-            drift = self._pin_drift(b, run, self._tiered(b["producer"]), self.store.runs(b["id"]))
-            if drift:
-                return self._fail(b, "ERROR", drift)
+        drift = self._pin_drift(b, run, self._tiered(b["producer"]), self.store.runs(b["id"]))
+        if drift:
+            return self._fail(b, "ERROR", drift)
+        problem = self._preflight(b["producer"])   # every launch proves the CLI again (cached once proven)
+        if problem and problem.startswith(PREFLIGHT_PENDING):
+            return   # still proving the pin in the background; the next tick retries this relaunch
+        if problem:
+            return self._fail(b, "ERROR", f"실행 전 확인 실패: {problem}")
         try:
             if kind == "produce":
                 h = ad.start(prompts.produce(b), wt, self.env, run,

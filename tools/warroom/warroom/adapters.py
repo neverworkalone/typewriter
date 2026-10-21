@@ -9,8 +9,11 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
 import signal
 import subprocess
+import tempfile
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -133,15 +136,19 @@ def _pinned(run: RunSpec) -> RunSpec:
 
 
 PREFLIGHT_PROMPT = "Reply with exactly: OK"
+PREFLIGHT_PENDING = "추론 수준 확인 중"   # a reason that means "not yet known", not "refused"
+PROBE_TIMEOUT = 90
 
 
 class OpenCodeAdapter(ProcessAdapter):
     name = "opencode"
     capabilities = {"resume": True, "stop": True}
 
-    def __init__(self, binary: str = "opencode"):
+    def __init__(self, binary: str = "opencode", probe_async: bool = True):
         self.binary = binary
-        self._proven: set[str] = set()   # model#variant pairs the CLI accepted during this Supervisor's life
+        self.probe_async = probe_async   # True: probes run in the background and never block a tick
+        self._probes: dict[str, dict] = {}   # model#variant -> {"done": Event, "problem": str | None}
+        self._probe_lock = threading.Lock()
 
     @staticmethod
     def model_arg(run: RunSpec) -> str:
@@ -174,17 +181,44 @@ class OpenCodeAdapter(ProcessAdapter):
         return None
 
     def _variant_problem(self, runner, env, run) -> str | None:
-        """Start-time proof that this model accepts this variant (`--model <id>#<effort>`).
+        """Start-time proof that the CLI accepts this model+variant (`--model <id>#<effort>`).
 
-        The CLI validates the variant before it calls the provider: an unknown one returns `Variant unavailable`
-        even while the provider is out of quota, so any provider answer, quota errors included, proves the variant.
-        A refusal blocks; so does a result with neither an answer nor a provider error (fail closed).
+        Each pair is probed once per Supervisor life. While its probe runs this returns a PREFLIGHT_PENDING reason,
+        so the caller waits for it on a later tick and the other Lines keep moving.
         """
         key = self.model_arg(run)
-        if key in self._proven:
-            return None
-        res = runner.run([self.binary, "run", "--format", "json", "--auto", "--title", "WR preflight",
-                          "--model", key, PREFLIGHT_PROMPT], env=env, timeout=120)
+        with self._probe_lock:
+            probe = self._probes.get(key)
+            if probe is None:
+                probe = self._probes[key] = {"done": threading.Event(), "problem": None}
+                if self.probe_async:
+                    threading.Thread(target=self._probe, args=(runner, env, run, probe), daemon=True).start()
+                else:
+                    self._probe(runner, env, run, probe)
+        if not probe["done"].is_set():
+            return f"{PREFLIGHT_PENDING} {key}"
+        return probe["problem"]
+
+    def _probe(self, runner, env, run, probe) -> None:
+        """One short request from an empty directory outside the repository, without `--auto` and without tools.
+
+        The CLI validates the variant before it calls the provider: `Variant unavailable` refuses; an answer or a
+        provider error proves it. Anything else (silence, timeout, unreadable output) is not proof and blocks.
+        """
+        work = Path(tempfile.mkdtemp(prefix="wr-variant-probe-"))
+        try:
+            res = runner.run([self.binary, "run", "--format", "json", "--title", "WR preflight",
+                              "--model", self.model_arg(run), PREFLIGHT_PROMPT],
+                             cwd=work, env=env, input="", timeout=PROBE_TIMEOUT)
+            probe["problem"] = self._probe_outcome(res, run)
+        except Exception as e:   # any failure is "not proven"
+            probe["problem"] = f"OpenCode가 {run.model}의 추론 수준을 확인하지 못했습니다 ({e}) — 실행하지 않습니다."
+        finally:
+            shutil.rmtree(work, ignore_errors=True)
+            probe["done"].set()
+
+    @staticmethod
+    def _probe_outcome(res, run) -> str | None:
         if "Variant unavailable" in (res.out + res.err):
             return f"OpenCode가 {run.model}에서 추론 수준(variant) {run.effort!r}를 지원하지 않습니다 — Start를 차단합니다."
         events = []
@@ -197,10 +231,9 @@ class OpenCodeAdapter(ProcessAdapter):
         provider_reached = any(isinstance(e, dict) and e.get("type") == "error"
                                and str((e.get("error") or {}).get("type", "")).startswith("provider.") for e in events)
         if answered or provider_reached:
-            self._proven.add(key)
             return None
         detail = (res.err or res.out).strip()[:200]
-        return (f"OpenCode가 {key}의 추론 수준을 확인하지 못했습니다 (exit {res.code}: {detail}) — "
+        return (f"OpenCode가 {run.model}#{run.effort}의 추론 수준을 확인하지 못했습니다 (exit {res.code}: {detail}) — "
                 "검증되지 않은 설정으로 실행하지 않습니다.")
 
 

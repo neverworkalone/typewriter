@@ -8,6 +8,7 @@ from pathlib import Path
 from unittest import mock
 
 from tests.fakes import World
+from warroom import control
 from warroom.adapters import Handle, OpenCodeAdapter, RunSpec, classify_failure
 from warroom.config import (DEFAULTS, adapters, effort_problem, ordered_models, pin_summary, registry,
                             registry_problems, run_spec)
@@ -252,7 +253,7 @@ class PinnedLaunches(unittest.TestCase):
         w.sup._launch(b, "produce_resume")
         self.assertEqual(len(w.adapter.launches), 1)                 # never resumed on the new pin
         self.assertEqual(w.row("claude", "a")["state"], "ERROR")
-        self.assertIn("세션 재개 차단", w.row("claude", "a")["error"])
+        self.assertIn("실행 설정 변경 차단", w.row("claude", "a")["error"])
 
 
 @unittest.skipIf(textual is None, "textual not installed")
@@ -300,6 +301,64 @@ class StoreV3(unittest.TestCase):
             store.add_run(bid, "produce", None, 1, "l.log", "l.exit", model="sonnet", effort="medium")
             run = store.runs(bid)[0]
             self.assertEqual((run["model"], run["effort"]), ("sonnet", "medium"))
+
+
+class RelaunchPins(unittest.TestCase):
+    """#1379 blocker 1: every relaunch is pinned to the last recorded run, not to the current config."""
+
+    def fresh(self, effort="high", plan=None):
+        w = World()
+        w.cfg["producers"] = {"deepseek": {"adapter": "opencode", "effort": effort,
+                                           "models": {"free": "p/free-x-free", "go": "p/go"}}}
+        w.start("single", "deepseek", "a")
+        if plan:
+            w.adapter.plan.append(plan)                # the outcome of launch #1 must be queued before it runs
+        w.tick()                                       # launch #1 at the recorded pin
+        return w
+
+    def batch(self, w):
+        return w.store.batch(w.row("deepseek", "a")["id"])
+
+    def test_a_changed_effort_stops_every_relaunch_kind_without_launching(self):
+        for kind in ("produce_recover", "produce_resume", "fix_new", "fix_resume"):
+            with self.subTest(kind=kind):
+                w = self.fresh()
+                launched = len(w.adapter.launches)
+                w.cfg["producers"]["deepseek"]["effort"] = "low"     # operator changed the pin mid-batch
+                w.sup._launch(self.batch(w), kind, [])
+                self.assertEqual(len(w.adapter.launches), launched)
+                self.assertEqual(w.row("deepseek", "a")["state"], "ERROR")
+                self.assertIn("실행 설정 변경 차단", w.row("deepseek", "a")["error"])
+                w.tmp.cleanup()
+
+    def test_retry_after_a_lost_session_relaunches_on_the_same_pin(self):
+        w = self.fresh(plan={"code": 1, "text": "something unrecognised"})   # no session id was ever captured
+        w.adapter.finish(w.adapter.launches[-1]["pid"]); w.tick()
+        self.assertEqual(w.row("deepseek", "a")["state"], "PAUSED")
+        self.assertTrue(control.retry(w.store, "deepseek", "a"))
+        w.tick(); w.tick()                             # operator Retry -> produce_recover on the same pin
+        self.assertEqual(len(w.adapter.launches), 2)
+        self.assertEqual((w.adapter.launches[-1]["model"], w.adapter.launches[-1]["effort"]), ("p/free-x-free", "high"))
+        w.tmp.cleanup()
+
+    def test_free_to_go_keeps_the_effort_and_relaunches(self):
+        w = self.fresh()
+        w.store.update(self.batch(w)["id"], model_tier="go")
+        w.sup._launch(self.batch(w), "produce_recover", [])
+        self.assertEqual((w.adapter.launches[-1]["model"], w.adapter.launches[-1]["effort"]), ("p/go", "high"))
+        w.tmp.cleanup()
+
+    def test_a_restarted_supervisor_re_proves_the_pin_before_relaunching(self):
+        from warroom.adapters import OpenCodeAdapter
+        w = self.fresh()
+        launched = len(w.adapter.launches)
+        w.adapter._opencode = OpenCodeAdapter("opencode", probe_async=False)   # restart: nothing is proven yet
+        w.runner.variant_rejected = {"p/free-x-free#high"}                       # the CLI now refuses the variant
+        w.sup._launch(self.batch(w), "produce_recover", [])
+        self.assertEqual(len(w.adapter.launches), launched)
+        self.assertEqual(w.row("deepseek", "a")["state"], "ERROR")
+        self.assertIn("지원하지 않습니다", w.row("deepseek", "a")["error"])
+        w.tmp.cleanup()
 
 
 if __name__ == "__main__":

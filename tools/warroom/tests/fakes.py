@@ -25,6 +25,7 @@ class FakeAdapter(AgentAdapter):
         self.plan: list[dict] = []   # {code, log, session, on_finish(callable)}
         self.running: dict[int, dict] = {}
         self._pid = itertools.count(1000)
+        self._opencode = OpenCodeAdapter("opencode", probe_async=False)   # probes inline in the fake world
 
     def _go(self, kind, cwd, log, ex, **kw):
         pid = next(self._pid)
@@ -45,7 +46,7 @@ class FakeAdapter(AgentAdapter):
     def preflight(self, runner, env, runs):
         """Stands in for OpenCode: the provider-qualified (p/...) IDs get the real `opencode models` check."""
         opencode_runs = [r for r in runs if "/" in r.model]
-        return OpenCodeAdapter("opencode").preflight(runner, env, opencode_runs) if opencode_runs else None
+        return self._opencode.preflight(runner, env, opencode_runs) if opencode_runs else None
 
     def finish(self, pid):
         """Simulate the AI process ending (writes log + exit file, runs side effects)."""
