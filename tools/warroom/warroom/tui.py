@@ -8,6 +8,7 @@ import sys
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, HorizontalScroll, Vertical
 from textual.screen import ModalScreen, Screen
+from textual.css.scalar import Unit
 from textual.widgets import Button, Collapsible, Footer, Header, RichLog, Select, Static
 
 import time
@@ -15,7 +16,7 @@ import time
 from . import auth, control
 from .config import Paths, adapter_label, adapters, load_config, methods, registry
 from .logrender import render_line
-from .views import _hhmm, _when, card_text, detail_header, detail_meta  # noqa: F401  (CARD_W/ICON re-exported for tests)
+from .views import _hhmm, _when, control_columns, select_width, card_text, detail_header, detail_meta  # noqa: F401  (CARD_W/ICON re-exported for tests)
 from .logtail import LogTail, redact
 from .store import Store
 
@@ -302,12 +303,9 @@ class WarRoom(App):
     #banner { color: $error; }
     #drain-note { color: $warning; }
     #controls, #line-controls { height: auto; }
-    #controls > Select { width: 14; }
-    #controls > #method { width: 9; }
-    #controls > #mode { width: 17; }
-    #controls > Button, #line-controls > Button { min-width: 8; width: auto; }
+    #controls > Button { width: 14; min-width: 14; max-width: 14; }
+    #line-controls > Button { min-width: 8; width: auto; }
     #controls.narrow { layout: grid; grid-size: 3; grid-rows: auto; }
-    #controls.narrow > Select, #controls.narrow > Button { width: 100%; }
     #columns { height: 1fr; }
     .col { width: 38; height: auto; margin: 0 1; }
     .coltitle { text-style: bold; }
@@ -381,14 +379,33 @@ class WarRoom(App):
         opts = self._model_options(adapter)
         sel.set_options(opts)
         sel.display = len(opts) > 1
+        sel.styles.width = select_width(label for label, _ in opts)
         self._fit_controls()
+        self.call_after_refresh(self._fit_controls)
+
+    def _size_selects(self) -> None:
+        """Static top-bar Selects get a width from their longest label (no mid-word wrap)."""
+        for sid, labels in (("adapter", [adapter_label(a) for a in adapters(self.cfg)]),
+                            ("method", [m.upper() for m in self.methods]),
+                            ("mode", ["Single", "Continuous"])):
+            self.query_one(f"#{sid}", Select).styles.width = select_width(labels)
+
+    @staticmethod
+    def _declared_width(w) -> int:
+        width = w.styles.width
+        if width is not None and width.unit == Unit.CELLS:
+            return int(width.value)
+        return w.outer_size.width or 0
 
     def _fit_controls(self) -> None:
         """One row when it fits; otherwise a grid, so no control is ever clipped."""
         c = self.query_one("#controls")
         c.remove_class("narrow")
-        need = sum(w.outer_size.width or 0 for w in c.children if w.display)
-        if need > self.size.width - 2:
+        # Declared widths, not outer_size: that is the previous layout and is stale right after a Select changes.
+        widths = [self._declared_width(w) for w in c.children if w.display]
+        if sum(widths) > self.size.width - 2:
+            # Equal grid cells, each wide enough for the widest control (inline Select widths beat CSS).
+            c.styles.grid_size_columns = control_columns(widths, self.size.width - 2)
             c.add_class("narrow")
 
     def on_resize(self, event) -> None:
@@ -397,6 +414,7 @@ class WarRoom(App):
     def on_mount(self) -> None:
         self.set_interval(1.0, self.refresh_view)
         self.run_worker(self.check_auth, thread=True)
+        self._size_selects()
         self._sync_model_select(str(self.query_one("#adapter", Select).value))
         self.refresh_view()
 

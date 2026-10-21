@@ -139,6 +139,19 @@ class CardsAndControl(unittest.TestCase):
         w.tmp.cleanup()
 
 
+class SelectWidth(unittest.TestCase):
+    def test_width_fits_longest_label(self):
+        from warroom.views import select_width
+        cases = [(["OpenCode", "Codex"], 18), (["Single", "Continuous"], 20), (["A"], 18), ([], 18),
+                 (["한글라벨"], 18), (["가" * 6], 22)]
+        from warroom.views import control_columns
+        for widths, total, want in [([18, 29, 12, 20, 14, 14, 14], 58, 2), ([18, 12, 14], 98, 3), ([30], 10, 1), ([], 5, 1),
+                                    ([10, 10, 10, 10], 100, 4)]:
+            self.assertEqual(control_columns(widths, total), want, (widths, total))
+        for labels, want in cases:
+            self.assertEqual(select_width(labels), want, labels)
+
+
 @unittest.skipIf(textual is None, "textual not installed")
 class BoardAndDetail(unittest.TestCase):
     def test_controls_one_row_no_supervisor_text_and_model_select_hidden(self):
@@ -170,6 +183,28 @@ class BoardAndDetail(unittest.TestCase):
         asyncio.run(go())
         w.tmp.cleanup()
 
+    def test_control_bar_labels_one_line_and_buttons_equal_width(self):
+        w = World()
+
+        async def go():
+            for width in (100, 120):
+                app = make_app(w)
+                async with app.run_test(size=(width, 40)) as pilot:
+                    await pilot.pause(0.3)
+                    sel = {i: app.query_one(f"#{i}").region for i in ("adapter", "method", "mode")}
+                    btn = {i: app.query_one(f"#{i}").region for i in ("start", "drain-all", "stop-all")}
+                    self.assertEqual({r.height for r in sel.values()}, {3}, sel)   # border + one text line
+                    for i, labels in (("adapter", ["OpenCode"]), ("mode", ["Continuous"])):
+                        self.assertGreaterEqual(sel[i].width - 10, max(map(len, labels)))
+                    self.assertEqual(len({r.width for r in btn.values()}), 1, btn)
+                    self.assertGreaterEqual(btn["start"].width, 14)
+                    allr = [*sel.values(), *btn.values()]
+                    self.assertEqual(len({r.y for r in allr}), 1, allr)
+                    self.assertTrue(all(r.right <= width for r in allr))
+
+        asyncio.run(go())
+        w.tmp.cleanup()
+
     def test_narrow_terminal_does_not_clip_controls(self):
         w = World()
 
@@ -180,6 +215,62 @@ class BoardAndDetail(unittest.TestCase):
                 for i in ["adapter", "model", "method", "mode", "start", "drain-all", "stop-all"]:
                     r = app.query_one(f"#{i}").region
                     self.assertTrue(app.query_one(f"#{i}").display and r.right <= 60 and r.width > 0, (i, r))
+
+        asyncio.run(go())
+        w.tmp.cleanup()
+
+    def test_narrow_multi_model_selects_keep_full_label_and_do_not_overlap(self):
+        w = World()
+
+        async def go():
+            app = make_app(w, PRODUCERS)
+            ids = ["adapter", "model", "method", "mode", "start", "drain-all", "stop-all"]
+            async with app.run_test(size=(120, 40)) as pilot:
+                for width in (60, 40, 120, 60):      # shrink, shrink further, grow back, shrink again
+                    await pilot.resize_terminal(width, 40)
+                    await pilot.pause(0.4)
+                    rs = {i: app.query_one(f"#{i}").region for i in ids}
+                    for i in ("adapter", "model", "method", "mode"):
+                        sel = app.query_one(f"#{i}")
+                        want = sel.styles.width.value      # width the label needs (select_width)
+                        self.assertEqual(rs[i].width, want, (width, i, rs[i]))
+                        self.assertEqual(rs[i].height, 3, (width, i, rs[i]))
+                    self.assertEqual(len({rs[i].width for i in ("start", "drain-all", "stop-all")}), 1, rs)
+                    self.assertTrue(all(r.right <= width for r in rs.values()), (width, rs))
+                    for a in ids:
+                        for b in ids:
+                            if a < b:
+                                self.assertFalse(rs[a].intersection(rs[b]).area, (width, a, b, rs))
+
+        asyncio.run(go())
+        w.tmp.cleanup()
+
+    def test_adapter_switch_without_resize_refits_controls(self):
+        w = World()
+        short = {"a": {"adapter": "codex", "models": {"free": "p/a", "go": "p/a2"}},
+                 "b": {"adapter": "codex", "models": {"free": "p/b", "go": "p/b2"}},
+                 "deepseek-long-label": {"adapter": "opencode", "models": {"free": "p/d", "go": "p/d2"}},
+                 "sonnet-long-label": {"adapter": "opencode", "models": {"free": "p/s", "go": "p/s2"}}}
+        ids = ["adapter", "model", "method", "mode", "start", "drain-all", "stop-all"]
+
+        async def go():
+            from textual.widgets import Select
+            app = make_app(w, short)
+            async with app.run_test(size=(100, 40)) as pilot:
+                await pilot.pause(0.4)
+                for target in ("opencode", "codex", "opencode", "codex"):   # terminal size never changes
+                    app.query_one("#adapter", Select).value = target
+                    await pilot.pause(0.5)
+                    rs = {i: app.query_one(f"#{i}").region for i in ids if app.query_one(f"#{i}").display}
+                    for i in ("adapter", "model", "method", "mode"):
+                        self.assertEqual(rs[i].width, app.query_one(f"#{i}").styles.width.value, (target, i, rs[i]))
+                        self.assertEqual(rs[i].height, 3, (target, i, rs[i]))
+                    self.assertEqual(len({rs[i].width for i in ("start", "drain-all", "stop-all")}), 1, rs)
+                    names = sorted(rs)
+                    for a in names:
+                        for b in names:
+                            if a < b:
+                                self.assertFalse(rs[a].intersection(rs[b]).area, (target, a, b, rs))
 
         asyncio.run(go())
         w.tmp.cleanup()
