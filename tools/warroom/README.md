@@ -40,18 +40,25 @@ rejected). Lines are independent: batch/PR/HEAD/session/PID/worktree/runs/errors
 per Line, and an exception or a long review wait in one Line never stalls another. Registering the same
 logical model twice (duplicate id or shared endpoint ID) is blocked.
 
-- **Board**: one column per registered model, fixed A/B/C/D slots, COMPLETE cards stay. Clicking any
-  card (even an empty slot) only opens its Batch Detail. New work starts only from the top bar
-  (Agent | Model | Method | Single/Multi | Start). **Single** = one batch then stop; **Multi** =
-  consecutive batches in the *same* Line (never parallel batches in one Line).
+- **Board**: one column per registered model, fixed A/B/C/D slots (3-line fixed-size cards: `Method · batch`
+  + phase icon / phase + observed `N/500` / `PR #n` + last activity; empty slots are dim grey, COMPLETE cards
+  stay). Clicking any card (even an empty slot) only opens its Batch Detail. New work starts only from the
+  one-row top bar `[CLI] [Method] [Single|Continuous] [Start] [Drain All] [Stop All]` (narrow terminals wrap it into
+  a grid). The CLI/Adapter list comes from the registry (Codex, Claude, OpenCode first); the model Select appears
+  only when one CLI hosts several logical models, so Start never guesses a model. **Single** = one batch
+  then stop; **Continuous** = consecutive batches in the *same* Line (never parallel batches in one Line).
+  The board shows no always-on Supervisor status; a stopped Supervisor, auth/model problems and Drain All stay visible.
 - **Drain** (Line) / **Drain All** (Factory): stop assigning new batches, the current batch continues
   through review/merge/cleanup. Either one blocks a Line; Cancel Drain (All) leaves Line drains alone.
-- **Stop** / **Stop All**: red, y/N modal (Enter/Esc = No). Stops the AI of the scope, preserves
+- **Stop** / **Stop All**: red (Stop All is disabled while no Line has an unfinished batch or run flag), y/N modal (Enter/Esc = No). Stops the AI of the scope, preserves
   worktree/branch/PR, clears the run flag so nothing restarts; **Retry** (PAUSED/ERROR only) reuses
   the same batch.
-- **Batch Detail**: live Agent Log (incremental `tail -f` by byte offset, Follow/scroll, secrets
-  redacted), Run History (`runs` table: kind, session, PID, log/exit file, times, exit status) and a
-  separate Audit Log. Esc returns to the board. `s` opens Settings (the board shows only auth/model errors).
+- **Batch Detail**: short header (`OpenCode / A · 009_02`, phase, PR, observed progress, time); SHA, session,
+  tier and worktree (a cleaned-up one is labelled as a past path) are under *Metadata / Details*. The Agent Log is
+  a readable rendering of OpenCode JSON Lines (`logrender.py`, per line, so the incremental `tail -f` read by byte
+  offset is kept; unknown events and non-JSON lines are shown as-is); **Raw Log** switches to the verbatim file.
+  Secrets are redacted in both. Run History (`runs` table) and a separate Audit Log stay. **Auto-scroll**
+  (default ON, off on manual scroll-up) is shown only for a still-running log. Esc returns to the board. `s` opens Settings.
 - **SQLite**: additive migration (`PRAGMA user_version=2`) adds `lines`, `runs`, `events.line`; the
   legacy single-worker `kv` controls become the controls of that Line and old `batch-<id>-<ts>.log`
   files are imported as runs. No row or log is deleted or rewritten.

@@ -121,3 +121,17 @@ def registry_problems(cfg: dict) -> dict[str, str]:
 
 def methods(cfg: dict) -> list[str]:
     return [m.lower() for m in cfg.get("methods") or ["a", "b", "c", "d"]]
+
+
+ADAPTER_LABELS = {"codex": "Codex", "claude": "Claude", "opencode": "OpenCode"}   # display order too
+
+
+def adapter_label(adapter: str) -> str:
+    return ADAPTER_LABELS.get(adapter, adapter)
+
+
+def adapters(cfg: dict) -> list[str]:
+    """Adapters that have at least one registered logical model (Codex, Claude, OpenCode first)."""
+    found = {p["adapter"] for p in registry(cfg).values()}
+    order = list(ADAPTER_LABELS)
+    return sorted(found, key=lambda a: (order.index(a) if a in order else len(order), a))
