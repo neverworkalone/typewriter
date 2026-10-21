@@ -375,8 +375,9 @@ class ClaudeCodeAdapter(ProcessAdapter):
         return None
 
     def completion_problem(self, log_file, run, expected_session, cwd=None, env=None):
-        """An exited run is accepted only if its init event reported its own session. An empty log, or one with no
-        parsable event, has no session and is refused (run_problem alone treats a run with no events as not started)."""
+        """An exited run is accepted only with its own evidence: the session its init event reported AND a final
+        successful `result` event for that session. An init alone proves the run started, not that it succeeded; an
+        empty log or one with no parsable event is refused (run_problem alone treats it as not started)."""
         problem = self.run_problem(log_file, run, expected_session)
         if problem:
             return problem
@@ -384,9 +385,23 @@ class ClaudeCodeAdapter(ProcessAdapter):
             text = Path(log_file).read_text("utf-8", errors="replace")
         except OSError:
             return ("ERROR", "실행 로그를 읽을 수 없어 완료를 확인하지 못했습니다.")
-        init = next((o for o in _json_objects(text) if o.get("type") == "system" and o.get("subtype") == "init"), None)
+        init = result = None
+        for o in _json_objects(text):
+            if o.get("type") == "system" and o.get("subtype") == "init" and init is None:
+                init = o
+            elif o.get("type") == "result":
+                result = o
         if init is None:
             return ("ERROR", "CLI가 세션 ID를 보고하지 않고 끝났습니다 — 세션을 확인하지 못해 PR을 인정하지 않습니다.")
+        if result is None:
+            return ("ERROR", "CLI가 최종 result 이벤트 없이 종료되었습니다 — 성공을 확인하지 못해 PR을 인정하지 않습니다 "
+                             "(worktree·PR·세션 보존).")
+        if result.get("is_error") is not False or result.get("subtype") != "success":
+            return ("ERROR", f"CLI가 실패 결과로 종료되었습니다 (subtype={result.get('subtype')!r}, "
+                             f"is_error={result.get('is_error')!r}) — PR을 인정하지 않고 보존합니다.")
+        reported = result.get("session_id")
+        if reported is not None and reported != init.get("session_id"):
+            return ("ERROR", f"최종 result의 세션 ID {reported!r}가 init의 {init.get('session_id')!r}와 다릅니다 — 중지하고 보존합니다.")
         return None
 
 

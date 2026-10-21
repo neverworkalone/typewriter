@@ -131,6 +131,14 @@ class CompletionGate(unittest.TestCase):
             ("init with the session, then a clean result", stream(init(), result()), None),
             ("init with another session than requested", stream(init(session="11111111-2222-4333-8444-555555555555")), "ERROR"),
             ("init with an empty session", stream(init(session="")), "ERROR"),
+            ("init only, no final result", stream(init()), "ERROR"),
+            ("result is_error with subtype success", stream(init(), result(is_error=True)), "ERROR"),
+            ("result error_max_turns", stream(init(), result(subtype="error_max_turns", is_error=True)), "ERROR"),
+            ("result error subtype without is_error", stream(init(), result(subtype="error_during_execution")), "ERROR"),
+            ("result without is_error", stream(init(), {"type": "result", "subtype": "success", "session_id": SESSION}), "ERROR"),
+            ("result of another session", stream(init(), {**result(), "session_id": "11111111-2222-4333-8444-555555555555"}), "ERROR"),
+            ("result without a session id", stream(init(), {k: v for k, v in result().items() if k != "session_id"}), None),
+            ("success with denials pauses", stream(init(), result(denials=[{"tool_name": "Bash"}])), "PAUSED"),
         ]
         for name, raw, want in cases:
             with self.subTest(name):
@@ -305,6 +313,26 @@ class SupervisorStopsOnContradiction(unittest.TestCase):
         w.tick()
         self.assertEqual(w.row("claude", "a")["state"], "WAITING_REVIEW")
         self.assertEqual(w.row("claude", "a")["pr_number"], 7)
+
+    def test_exit0_without_a_success_result_is_not_accepted_even_with_a_pr(self):
+        # Review (post-merge, #1380): init alone, or an error result, must not reach WAITING_REVIEW.
+        cases = [("init only", stream(init())),
+                 ("error_max_turns", stream(init(), result(subtype="error_max_turns", is_error=True))),
+                 ("is_error", stream(init(), result(is_error=True)))]
+        for name, text in cases:
+            with self.subTest(name):
+                self.tearDown()
+                self.setUp()
+                w = self.w
+                w.start("single", "claude", "a")
+                w.pr_info(7, HEAD1)
+                w.gh.by_branch[BRANCH] = [{"number": 7, "state": "OPEN", "headRefOid": HEAD1}]
+                w.adapter.plan.append({"code": 0, "text": text})
+                w.tick()
+                w.adapter.finish(w.adapter.launches[-1]["pid"])
+                w.tick()
+                self.assertEqual(w.row("claude", "a")["state"], "ERROR")
+                self.assertIsNone(w.row("claude", "a")["pr_number"])
 
     def test_a_denial_without_any_pr_pauses(self):
         w = self.w
