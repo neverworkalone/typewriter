@@ -63,7 +63,7 @@ class TierSwitch(unittest.TestCase):
         self.assertEqual(control.set_tier(w.store, w.cfg, METHODS, "go"), 1)
         self.assertEqual(w.store.batch(a)["model_tier"], "go")
         self.assertEqual(w.store.batch(done)["model_tier"], "free")
-        self.assertEqual(w.sup._model(w.store.batch(a)), "p/go")            # fix/recovery launches read this
+        self.assertEqual(w.sup._run(w.store.batch(a)).model, "p/go")        # fix/recovery launches read this
         w.tmp.cleanup()
 
     def test_bar_text_is_colour_coded_per_state(self):

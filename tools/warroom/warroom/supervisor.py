@@ -18,8 +18,8 @@ import traceback
 from pathlib import Path
 
 from . import auth, batches, control, prompts, reviews
-from .adapters import classify_failure
-from .config import registry, registry_problems
+from .adapters import PREFLIGHT_PENDING, RunSpec, classify_failure
+from .config import TIERED_ADAPTERS, adapter_label, registry, registry_problems, run_spec
 from .gitops import CleanupBlocked, GitError
 from .store import LineBusy
 
@@ -139,7 +139,9 @@ class Supervisor:
         d = auth.diagnose(self.runner, self.env, self.cfg["repo"], self.cfg["expected_account"])
         if not d["ok"]:
             return self._blocked(ln, "시작 차단: " + "; ".join(d["problems"]))
-        problem = self._model_problem(model)
+        problem = self._preflight(model)
+        if problem and problem.startswith(PREFLIGHT_PENDING):
+            return   # the CLI check runs in the background: this Line waits here, the others keep moving
         if problem:
             return self._blocked(ln, "시작 차단: " + problem)
         try:
@@ -166,23 +168,42 @@ class Supervisor:
         self.store.log(bid, f"배치 {nb.stem} 선정, worktree 준비")
         self._prepare_existing(self.store.batch(bid))
 
-    def _model_problem(self, producer: str) -> str | None:
-        """Fail closed: the free tier must be an explicit, installed, recognisably free model."""
-        models = registry(self.cfg)[producer]["models"]
-        free, go = models.get("free", ""), models.get("go", "")
-        if not free:
-            return (f"{producer}: models.free 미설정 — OpenCode 기본 모델이 무료라는 보장이 없어 실행하지 않습니다 "
-                    f"({self.paths.config_file}).")
-        if not re.search(self.cfg.get("free_model_pattern", r"-free$"), free):
-            return f"models.free={free!r} 는 무료 모델 ID로 확인되지 않습니다 (패턴 {self.cfg.get('free_model_pattern', '-free$')})."
-        res = self.runner.run([self.cfg["opencode_bin"], "models"], env=self.env, timeout=60)
-        if not res.ok:
-            return f"`{self.cfg['opencode_bin']} models` 실행 실패: {res.err.strip()[:200]}"
-        known = set(res.out.split())
-        missing = [m for m in (free, go) if m and m not in known]
-        if missing:
-            return f"OpenCode가 지원하지 않는 모델 ID: {', '.join(missing)}"
+    def _tiered(self, producer: str) -> bool:
+        """Free/Go tiers and the automatic quota switch belong to the producer's CLI (OpenCode only)."""
+        return registry(self.cfg)[producer]["adapter"] in TIERED_ADAPTERS
+
+    def _adapter_problem(self, producer: str) -> str | None:
+        """Start is refused, never redirected, when this build has no adapter for the producer's CLI."""
+        name = registry(self.cfg)[producer]["adapter"]
+        if isinstance(self.adapter, dict) and name not in self.adapter:
+            return f"{adapter_label(name)} CLI 어댑터가 이 War Room 빌드에 없습니다 — 다른 CLI로 대신 실행하지 않습니다."
         return None
+
+    def _preflight(self, producer: str) -> str | None:
+        """Fail closed before any process starts: the CLI must be able to run exactly the pinned model and effort."""
+        problem = self._adapter_problem(producer)
+        if problem:
+            return problem
+        ad = self._adapter(producer)
+        if self._tiered(producer):   # OpenCode/DeepSeek: the free tier must be an explicit, recognisably free model
+            free = registry(self.cfg)[producer]["models"].get("free", "")
+            if not free:
+                return (f"{producer}: models.free 미설정 — OpenCode 기본 모델이 무료라는 보장이 없어 실행하지 않습니다 "
+                        f"({self.paths.config_file}).")
+            if not re.search(self.cfg.get("free_model_pattern", r"-free$"), free):
+                return f"models.free={free!r} 는 무료 모델 ID로 확인되지 않습니다 (패턴 {self.cfg.get('free_model_pattern', '-free$')})."
+        try:
+            runs = self._pinned_runs(producer)
+        except ValueError as e:
+            return str(e)
+        return ad.preflight(self.runner, self.env, runs)
+
+    def _pinned_runs(self, producer: str):
+        """Every model/effort this producer may run with: both tiers of a tiered CLI (a configured Go model too)."""
+        if not self._tiered(producer):
+            return [run_spec(self.cfg, producer)]
+        go = registry(self.cfg)[producer]["models"].get("go")
+        return [run_spec(self.cfg, producer, "free")] + ([run_spec(self.cfg, producer, "go")] if go else [])
 
     def _prepare_existing(self, b) -> None:
         wt = Path(b["worktree"])
@@ -197,31 +218,64 @@ class Supervisor:
         self._launch(b, "produce")
 
     # ---- launching runs ------------------------------------------------
-    def _model(self, b) -> str:
-        return registry(self.cfg).get(b["producer"], {}).get("models", {}).get(b["model_tier"], "")
+    def _run(self, b) -> RunSpec:
+        """The model and effort this batch's next run is pinned to (the current tier for OpenCode)."""
+        return run_spec(self.cfg, b["producer"], b["model_tier"])
+
+    @staticmethod
+    def _pin_drift(b, run: RunSpec, tiered: bool, runs, tier_models=None) -> str | None:
+        """Every relaunch of a batch (resume, recovery, fix) runs on the pin its last recorded run used.
+
+        The only model change allowed is a tiered CLI's Free -> Go switch of its own configured IDs (`tier_models` is
+        (free, go)). Any other model change, and any effort change, stops the batch before a process starts.
+        """
+        prev = next((r for r in runs if r["effort"]), None)
+        if prev is None:   # a run from before pins were recorded: nothing to compare with
+            return None
+        same_model = prev["model"] == run.model
+        free_to_go = False
+        if tiered and tier_models:
+            free, go = tier_models
+            free_to_go = bool(free and go) and prev["model"] == free and run.model == go
+        if prev["effort"] != run.effort or (not same_model and not (tiered and free_to_go)):
+            return (f"실행 설정 변경 차단: 기록된 실행 설정 {prev['model']} / {prev['effort']} 과 현재 설정 "
+                    f"{run.model} / {run.effort} 이 다릅니다. 설정을 되돌리고 Supervisor를 재시작한 뒤 Retry 하세요.")
+        return None
 
     def _launch(self, b, kind: str, events=None) -> None:
         """kind: produce | fix_resume | fix_new | produce_resume | produce_recover"""
         ts = int(self.clock())
         log, ex = self.paths.logs / f"batch-{b['id']}-{ts}.log", self.paths.logs / f"batch-{b['id']}-{ts}.exit"
-        wt, model = b["worktree"], self._model(b)
+        wt = b["worktree"]
         sid = b["session_id"]
         ad = self._adapter(b["producer"])
-        if not model:  # never run with OpenCode's implicit default model
-            return self._fail(b, "ERROR", f"{b['model_tier']} 모델 ID가 설정되지 않아 실행하지 않습니다.")
+        try:   # never run with a CLI default model or effort
+            run = self._run(b)
+        except ValueError as e:
+            return self._fail(b, "ERROR", f"실행 설정 오류로 AI를 시작하지 않았습니다: {e}")
+        p = registry(self.cfg)[b["producer"]]
+        tier_models = (p["models"].get("free", ""), p["models"].get("go", "")) if self._tiered(b["producer"]) else None
+        drift = self._pin_drift(b, run, self._tiered(b["producer"]), self.store.runs(b["id"]), tier_models)
+        if drift:
+            return self._fail(b, "ERROR", drift)
+        problem = self._preflight(b["producer"])   # every launch proves the CLI again (cached once proven)
+        if problem and problem.startswith(PREFLIGHT_PENDING):
+            return   # still proving the pin in the background; the next tick retries this relaunch
+        if problem:
+            return self._fail(b, "ERROR", f"실행 전 확인 실패: {problem}")
         try:
             if kind == "produce":
-                h = ad.start(prompts.produce(b), wt, self.env, model,
+                h = ad.start(prompts.produce(b), wt, self.env, run,
                                        f"{b['method'].upper()} {b['shard']}_{b['batch']}", log, ex)
             elif kind == "produce_resume":
-                h = ad.resume(sid, prompts.recovery(b), wt, self.env, model, log, ex)
+                h = ad.resume(sid, prompts.recovery(b), wt, self.env, run, log, ex)
             elif kind == "produce_recover":
-                h = ad.start(prompts.recovery(b), wt, self.env, model,
+                h = ad.start(prompts.recovery(b), wt, self.env, run,
                                        f"{b['method'].upper()} {b['shard']}_{b['batch']} recover", log, ex)
             elif kind == "fix_resume":
-                h = ad.resume(sid, prompts.fix(b, events, True), wt, self.env, model, log, ex)
+                h = ad.resume(sid, prompts.fix(b, events, True), wt, self.env, run, log, ex)
             else:  # fix_new
-                h = ad.start(prompts.fix(b, events, False), wt, self.env, model,
+                h = ad.start(prompts.fix(b, events, False), wt, self.env, run,
                                        f"PR {b['pr_number']} fix", log, ex)
         except prompts.PromptError as e:   # rendered before any process is started
             return self._fail(b, "ERROR", f"프롬프트 오류로 AI를 시작하지 않았습니다: {e}")
@@ -233,10 +287,12 @@ class Supervisor:
         if kind == "fix_new" or kind in ("produce", "produce_recover"):
             fields["session_id"] = None  # captured from the new run's log
         self.store.update(b["id"], **fields)
-        self.store.add_run(b["id"], kind, fields.get("session_id", sid), h.pid, log, ex)
+        self.store.add_run(b["id"], kind, fields.get("session_id", sid), h.pid, log, ex,
+                           model=run.model, effort=run.effort)
         if events:  # claim only after the run really started
             self.store.mark_handled(b["id"], b["pr_number"], b["head_sha"], [e["key"] for e in events])
-        self.store.log(b["id"], f"{state} 시작 ({kind}, model tier={b['model_tier']})")
+        tier = f", tier={b['model_tier']}" if self._tiered(b["producer"]) else ""
+        self.store.log(b["id"], f"{state} 시작 ({kind}, model={run.model}, effort={run.effort}{tier})")
 
     def _relaunch(self, b) -> None:
         kind = b["run_kind"] or "produce"
@@ -362,7 +418,13 @@ class Supervisor:
             text = ""
         cls = classify_failure(text, self.cfg["quota_patterns"])
         self.store.log(b["id"], f"AI 종료 코드 {code}, 분류={cls}", "warn")
+        if cls == "effort":
+            return self._fail(b, "ERROR", "CLI가 요청한 모델 또는 추론 수준을 받아들이지 않았습니다 — 다른 값으로 "
+                              f"대체하지 않습니다. 로그 확인 후 설정을 고치세요: {b['log_file']}")
         if cls == "free_quota":
+            if not self._tiered(b["producer"]):
+                return self._fail(b, "PAUSED", "사용량 한도 도달로 보입니다. 이 CLI는 자동 모델 전환을 하지 않습니다 "
+                                  "(로그 확인 후 Retry).")
             go = registry(self.cfg).get(b["producer"], {}).get("models", {}).get("go")
             if b["model_tier"] == "free" and go:
                 self.store.set_line(b["producer"], b["method"], model_tier="go")

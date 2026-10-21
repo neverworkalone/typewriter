@@ -44,7 +44,7 @@ logical model twice (duplicate id or shared endpoint ID) is blocked.
   + phase icon / phase + observed `N/500` / `PR #n` + last activity; empty slots are dim grey, COMPLETE cards
   stay). Clicking any card (even an empty slot) only opens its Batch Detail. New work starts only from the
   one-row top bar `[CLI] [Method] [Single|Continuous] [Start] [Drain All] [Stop All]` (Selects are sized to their longest label, the three buttons share one fixed width; narrow terminals wrap it into
-  a grid). The CLI/Adapter list comes from the registry (Codex, Claude, OpenCode first); the model Select appears
+  a grid). The CLI/Adapter list comes from the registry (Claude, Codex, OpenCode by label); the model Select appears
   only when one CLI hosts several logical models, so Start never guesses a model. **Single** = one batch
   then stop; **Continuous** = consecutive batches in the *same* Line (never parallel batches in one Line).
   The board shows no always-on Supervisor status; a stopped Supervisor, auth/model problems and Drain All stay visible.
@@ -62,6 +62,43 @@ logical model twice (duplicate id or shared endpoint ID) is blocked.
 - **SQLite**: additive migration (`PRAGMA user_version=2`) adds `lines`, `runs`, `events.line`; the
   legacy single-worker `kv` controls become the controls of that Line and old `batch-<id>-<ts>.log`
   files are imported as runs. No row or log is deleted or rewritten.
+
+## Producer CLIs and pinned models (Issue #1373)
+
+Each logical model (`producers` in `config.json`, see `config.example.json`) runs on one CLI adapter.
+The Factory Board columns and the top CLI Select follow the adapter label, **Claude → Codex → OpenCode**,
+then the model label; the order of `producers` in the file does not matter.
+
+| Producer (label) | Adapter (CLI) | Model | Effort | Status |
+|---|---|---|---|---|
+| `claude` (Sonnet) | `claude` (Claude Code) | `model: sonnet` → `--model sonnet` | `effort: medium` → `--effort medium` | Adapter #1375 |
+| `codex` (Luna) | `codex` (Codex CLI) | `model: gpt-6-luna` → `-m gpt-6-luna` | `effort: xhigh` → `-c model_reasoning_effort=xhigh` | Adapter #1376 |
+| `deepseek` (DeepSeek) | `opencode` | `models.free` / `models.go` | `effort: high` → `--model <id>#high` | Runs now |
+
+Rules (fail closed):
+
+- Every start, edit, recovery and resume passes the model and effort explicitly. Nothing falls back to a CLI default.
+- A producer with an unset, flag-like (`--…`) or malformed model, or an effort its CLI does not accept, blocks
+  Start with the reason shown in the Line's BLOCKED field.
+- A CLI that is not wired into this build blocks Start. It is never redirected to another CLI.
+- Every relaunch of a batch (resume, recovery after a lost session, fix) runs on the pin of its last recorded run.
+  A changed effort stops the batch in ERROR, and so does any changed model, with no process started. The one exception
+  is OpenCode's own Free → Go switch of its configured IDs. Another ID in the same tier, or a Go → Free change, stops
+  the batch. To continue, restore the config, restart the Supervisor, then Retry (config is read at start).
+- OpenCode's reasoning variant is the `#variant` suffix of `--model`. The installed CLI rejects `--variant`
+  (`Unrecognized flag`). Before any batch or worktree exists, every model+variant pair (Free, and Go when configured)
+  is proven by a short probe: one `opencode run` from an empty temporary directory outside the repository, without
+  `--auto` and without tools, in the background. While a probe runs, the Line waits (it is not blocked and the other
+  Lines keep moving). The probe denies every tool (`OPENCODE_CONFIG_CONTENT={"permission":{"*":"deny"}}`, run with
+  `--standalone`, which was verified to stop a shell call on the installed CLI). `opencode models` is listed once per
+  Supervisor life, also in the background; until it finishes Start waits. A variant the CLI refuses (`Variant
+  unavailable`) blocks Start with that reason. Any provider answer, quota errors included, proves the variant. Silence,
+  a timeout, or unreadable output does not, and blocks.
+  A proven pair is kept for this Supervisor run. A refused pair stays refused until the Supervisor restarts. The probe
+  may cost a few tokens and creates one session titled `WR preflight`. A variant refused later still stops the batch
+  in ERROR, with nothing substituted. A DeepSeek entry without `effort` runs at `high`, the owner-fixed value
+  (configs written before #1373).
+- Run History and the Audit Log record the model ID and effort each launch was pinned to.
 
 ## Prompts
 

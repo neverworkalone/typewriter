@@ -4,27 +4,31 @@
   "expected_account": "neverworkalone-agent",
   "git_name": "",
   "git_email": "",
-  "worker": {
-    "adapter": "opencode",
-    "method": "a",
-    "producer": "deepseek"
-  },
   "producers": {
+    "claude": {
+      "label": "Sonnet",
+      "adapter": "claude",
+      "model": "sonnet",
+      "effort": "medium"
+    },
+    "codex": {
+      "label": "Luna",
+      "adapter": "codex",
+      "model": "gpt-6-luna",
+      "effort": "xhigh"
+    },
     "deepseek": {
       "label": "DeepSeek",
       "adapter": "opencode",
       "models": {
         "free": "opencode/deepseek-v4.1-flash-free",
         "go": "opencode-go/deepseek-v4.1-flash"
-      }
+      },
+      "effort": "high"
     }
   },
   "methods": ["a", "b", "c", "d"],
   "opencode_bin": "opencode",
-  "models": {
-    "free": "opencode/deepseek-v4.1-flash-free",
-    "go": "opencode-go/deepseek-v4.1-flash"
-  },
   "quota_patterns": [
     "FreeUsageLimit",
     "free (usage|tier|quota).{0,40}(exhaust|exceed|limit)"

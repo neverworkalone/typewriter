@@ -6,7 +6,7 @@ import time
 import unittest
 from pathlib import Path
 
-from warroom.adapters import OpenCodeAdapter
+from warroom.adapters import OpenCodeAdapter, RunSpec
 from warroom.gitops import CleanupBlocked, Git, GitError
 from warroom.shell import Runner
 
@@ -82,7 +82,7 @@ class RealProcess(unittest.TestCase):
                             'echo "args: $@" >&2\nexit 3\n')
             fake.chmod(fake.stat().st_mode | stat.S_IEXEC)
             a = OpenCodeAdapter(str(fake))
-            h = a.start("prompt text", d, dict(os.environ), "p/m", "title", d / "l.log", d / "l.exit")
+            h = a.start("prompt text", d, dict(os.environ), RunSpec("p/m", "high"), "title", d / "l.log", d / "l.exit")
             for _ in range(100):
                 if not a.alive(h.pid):
                     break
@@ -90,14 +90,15 @@ class RealProcess(unittest.TestCase):
             self.assertFalse(a.alive(h.pid))
             self.assertEqual(a.exit_code(h.exit_file), 3)
             self.assertEqual(a.session_id(h.log_file), "ses_abc123")
-            self.assertIn("--model p/m", h.log_file.read_text())
-            h2 = a.resume("ses_abc123", "again", d, dict(os.environ), "", d / "r.log", d / "r.exit")
+            self.assertIn("--model p/m#high", h.log_file.read_text())   # variant rides on --model (no --variant flag)
+            self.assertNotIn("--variant", h.log_file.read_text())
+            h2 = a.resume("ses_abc123", "again", d, dict(os.environ), RunSpec("p/m", "high"), d / "r.log", d / "r.exit")
             for _ in range(100):
                 if not a.alive(h2.pid):
                     break
                 time.sleep(0.05)
             self.assertIn("--session ses_abc123", h2.log_file.read_text())
-            self.assertNotIn("--model", h2.log_file.read_text())
+            self.assertIn("--model p/m#high", h2.log_file.read_text())   # resume is pinned too
 
     def test_alive_while_child_outlives_wrapper(self):
         with tempfile.TemporaryDirectory() as d:
@@ -106,7 +107,7 @@ class RealProcess(unittest.TestCase):
             fake.write_text("#!/bin/sh\nsleep 30 &\nexit 0\n")   # launcher exits, worker stays
             fake.chmod(fake.stat().st_mode | stat.S_IEXEC)
             a = OpenCodeAdapter(str(fake))
-            h = a.start("p", d, dict(os.environ), "", "t", d / "c.log", d / "c.exit")
+            h = a.start("p", d, dict(os.environ), RunSpec("p/m", "high"), "t", d / "c.log", d / "c.exit")
             try:
                 for _ in range(100):
                     if a.exit_code(h.exit_file) == 0:   # wrapper finished

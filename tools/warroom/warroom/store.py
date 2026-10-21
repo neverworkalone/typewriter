@@ -55,7 +55,10 @@ CREATE TABLE IF NOT EXISTS runs (
 CREATE INDEX IF NOT EXISTS runs_batch ON runs(batch_id);
 CREATE INDEX IF NOT EXISTS events_line ON events(batch_id);
 """
-SCHEMA_VERSION = 2
+# Additive migration (user_version 3): every run records the CLI model ID and reasoning effort it was pinned to.
+# Old runs keep NULL; nothing is rewritten.
+RUN_COLUMNS_V3 = ("model", "effort")
+SCHEMA_VERSION = 3
 
 ACTIVE_STATES = ("PREPARE", "PRODUCING", "WAITING_REVIEW", "FIXING", "MERGED",
                  "CLEANUP", "PAUSED", "ERROR")
@@ -86,6 +89,10 @@ class Store:
         c.executescript(SCHEMA_V2)
         if "line" not in {r["name"] for r in c.execute("PRAGMA table_info(events)")}:
             c.execute("ALTER TABLE events ADD COLUMN line TEXT")
+        have = {r["name"] for r in c.execute("PRAGMA table_info(runs)")}
+        for col in RUN_COLUMNS_V3:
+            if col not in have:
+                c.execute(f"ALTER TABLE runs ADD COLUMN {col} TEXT")
         # Legacy single-worker controls become the controls of that batch's Line.
         legacy = {r["key"]: r["value"] for r in c.execute("SELECT key,value FROM kv")}
         rows = c.execute("SELECT * FROM batches ORDER BY id").fetchall()
@@ -236,11 +243,14 @@ class Store:
             c.execute(f"UPDATE lines SET run=0, force_stop=1, retry_batch=NULL, updated_at=? {where}", (time.time(), *args))
 
     # --- run history ---
-    def add_run(self, batch_id: int, kind: str, session_id, pid, log_file, exit_file) -> int:
+    def add_run(self, batch_id: int, kind: str, session_id, pid, log_file, exit_file,
+                model: str | None = None, effort: str | None = None) -> int:
+        """Record a launch with the model ID and effort it was pinned to (what the CLI was asked for)."""
         with self._conn() as c:
-            return c.execute("INSERT INTO runs(batch_id,kind,session_id,pid,log_file,exit_file,started_at) "
-                             "VALUES(?,?,?,?,?,?,?)",
-                             (batch_id, kind, session_id, pid, str(log_file), str(exit_file), time.time())).lastrowid
+            return c.execute("INSERT INTO runs(batch_id,kind,session_id,pid,log_file,exit_file,started_at,model,effort) "
+                             "VALUES(?,?,?,?,?,?,?,?,?)",
+                             (batch_id, kind, session_id, pid, str(log_file), str(exit_file), time.time(),
+                              model, effort)).lastrowid
 
     def set_run_session(self, batch_id: int, session_id: str) -> None:
         with self._conn() as c:
