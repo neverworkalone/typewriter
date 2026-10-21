@@ -199,6 +199,36 @@ class DrainAndStop(unittest.TestCase):
         self.assertEqual(w.row("deepseek", "a")["state"], "PRODUCING")
         self.assertEqual(len(w.store.line_batches("deepseek", "a")), 1)
 
+    def test_retry_waits_for_confirmed_exit_after_stop(self):
+        w = self.w
+        w.start("single", "deepseek", "a")
+        w.tick()
+        pid = w.row()["pid"]
+        stubborn = {"left": 2}          # the AI survives SIGTERM for two more polls
+        orig_alive = w.adapter.alive
+        w.adapter.stop = lambda p: None
+        w.adapter.alive = lambda p: True if stubborn["left"] > 0 else orig_alive(p)
+        control.stop_line(w.store, "deepseek", "a")
+        w.tick()
+        b = w.row()
+        self.assertEqual((b["state"], b["pid"]), ("PAUSED", pid))
+        self.assertFalse(control.line_status(w.store, "deepseek", "a")["can_retry"])
+        self.assertFalse(control.retry(w.store, "deepseek", "a"))
+        w.store.set_line("deepseek", "a", retry_batch=b["id"])   # even a forced request is ignored
+        w.tick()
+        self.assertEqual(len(w.adapter.launches), 1)
+        self.assertEqual(w.row()["state"], "PAUSED")
+        stubborn["left"] = 0
+        w.adapter.running.pop(pid)       # the process finally exits
+        w.tick()
+        self.assertIsNone(w.row()["pid"])
+        self.assertEqual(w.store.runs(b["id"])[0]["exit_status"], "stopped")
+        self.assertEqual(len(w.adapter.launches), 1)
+        self.assertTrue(control.retry(w.store, "deepseek", "a"))
+        w.adapter.plan.append({"code": 0})
+        w.tick(2)
+        self.assertEqual(len(w.adapter.launches), 2)
+
     def test_stop_all(self):
         w = self.w
         w.start("continuous", "deepseek", "a")

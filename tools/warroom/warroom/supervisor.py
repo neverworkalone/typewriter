@@ -129,8 +129,23 @@ class Supervisor:
         self.store.update(b["id"], state=state, paused_from=prev, error=msg)
         self.store.log(b["id"], msg, "error")
 
+    def _reap_stopped(self, b) -> bool:
+        """Clear the PID of a stop-requested run only once the process is really gone."""
+        if b["pid"] is None:
+            return True
+        if self._adapter(b["producer"]).alive(b["pid"]):
+            return False
+        self.store.update(b["id"], pid=None)
+        self.store.finish_runs(b["id"], "stopped")
+        return True
+
     def _wait_operator(self, b) -> None:
         ln = self.store.line(b["producer"], b["method"])
+        if not self._reap_stopped(b):
+            # Stop is pending: Retry is not honoured (and not remembered) while the old AI lives.
+            if ln["retry_batch"] is not None:
+                self.store.set_line(b["producer"], b["method"], retry_batch=None)
+            return
         if ln["retry_batch"] == b["id"]:
             self.store.set_line(b["producer"], b["method"], retry_batch=None, run=1)
             self.store.update(b["id"], state=b["paused_from"] or "PRODUCING", error=None,
@@ -140,11 +155,11 @@ class Supervisor:
     def _force_stop(self, b) -> None:
         ad = self._adapter(b["producer"])
         if b["pid"] and ad.alive(b["pid"]):
-            ad.stop(b["pid"])
+            ad.stop(b["pid"])   # keep the PID: it is cleared only after exit is confirmed
         self.store.set_line(b["producer"], b["method"], run=0)
-        self.store.update(b["id"], pid=None, retry_after=None)
-        self.store.finish_runs(b["id"], "stopped")
-        self._fail(b, "PAUSED", "강제 중지됨. worktree·브랜치·PR은 보존됨 (Retry로 재개).")
+        self.store.update(b["id"], retry_after=None)
+        self._fail(b, "PAUSED", "강제 중지됨. worktree·브랜치·PR은 보존됨 (프로세스 종료 확인 후 Retry로 재개).")
+        self._reap_stopped(self.store.batch(b["id"]))
 
     # ---- PREPARE -------------------------------------------------------
     def _blocked(self, ln, msg: str) -> None:

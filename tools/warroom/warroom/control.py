@@ -53,7 +53,7 @@ def stop_all(store: Store) -> None:
 
 def retry(store: Store, model: str, method: str) -> bool:
     b = store.active_batch(model, method)
-    if b is not None and b["state"] in ("PAUSED", "ERROR"):
+    if b is not None and b["state"] in ("PAUSED", "ERROR") and b["pid"] is None:
         store.set_line(model, method, retry_batch=b["id"])
         return True
     return False
@@ -88,5 +88,5 @@ def line_status(store: Store, model: str, method: str) -> dict:
     st = out["state"]
     out["can_drain"] = out["occupied"] or out["run"]
     out["can_stop"] = out["occupied"] and st not in ("PAUSED", "ERROR") or out["run"]
-    out["can_retry"] = st in ("PAUSED", "ERROR")
+    out["can_retry"] = st in ("PAUSED", "ERROR") and b["pid"] is None
     return out
