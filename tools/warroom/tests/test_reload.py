@@ -175,6 +175,8 @@ NUMERIC = [  # key, value, accepted
     ("trusted_reviewers", ["genonfire"], True), ("trusted_reviewers", "genonfire", False),
     ("free_model_pattern", "-free$", True), ("free_model_pattern", "(", False), ("free_model_pattern", 1, False),
     ("methods", ["a", "b"], True), ("methods", [], False), ("methods", "a", False), ("methods", [1], False),
+    ("models", {"free": 123}, False), ("models", {"free": "p/x-free", "go": None}, False), ("models", {"free": "p/x-free", "go": ""}, True),
+    ("worker", {"adapter": 1}, False), ("worker", {"producer": None}, False),
     ("base_branch", "", False), ("expected_account", None, False), ("models", "x", False),
 ]
 
@@ -198,6 +200,32 @@ class RuntimeValueTypes(unittest.TestCase):
                 got, msg = reload(self.w)
                 self.assertEqual(got, ok, msg)
                 self.assertEqual(self.w.sup.cfg[key] == value, ok) if ok else self.assertEqual(self.w.sup.cfg, before)
+                write(self.w, {"deepseek": DS, "claude": SONNET})
+                reload(self.w)
+
+    def test_nested_producer_entries(self):
+        cases = [  # name, producers, accepted
+            ("valid", {"deepseek": DS, "claude": SONNET}, True),
+            ("free is a number", {"deepseek": {**DS, "models": {"free": 123, "go": "p/go"}}}, False),
+            ("go is null", {"deepseek": {**DS, "models": {"free": "p/free-x-free", "go": None}}}, False),
+            ("go is a list", {"deepseek": {**DS, "models": {"free": "p/free-x-free", "go": ["x"]}}}, False),
+            ("models is a string", {"deepseek": {**DS, "models": "x"}}, False),
+            ("model is a number", {"deepseek": DS, "claude": {**SONNET, "model": 5}}, False),
+            ("effort is a number", {"deepseek": DS, "claude": {**SONNET, "effort": 3}}, False),
+            ("label is a number", {"deepseek": DS, "claude": {**SONNET, "label": 1}}, False),
+            ("adapter is a number", {"deepseek": DS, "claude": {**SONNET, "adapter": 1}}, False),
+            ("entry is a string", {"deepseek": DS, "claude": "sonnet"}, False),
+        ]
+        for name, prods, ok in cases:
+            with self.subTest(name):
+                before = json.loads(json.dumps(self.w.sup.cfg))
+                write(self.w, prods)
+                got, msg = reload(self.w)
+                self.assertEqual(got, ok, msg)
+                if not ok:
+                    self.assertEqual(self.w.sup.cfg, before)
+                    from warroom.config import config_problem
+                    self.assertIsNotNone(config_problem(load_config(self.w.paths)))   # Start refuses it too
                 write(self.w, {"deepseek": DS, "claude": SONNET})
                 reload(self.w)
 

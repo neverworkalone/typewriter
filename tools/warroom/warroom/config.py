@@ -179,6 +179,17 @@ def _strings(v, *, patterns=False, nonempty=False) -> bool:
     return True
 
 
+def _entry_problems(name: str, p: dict, fields: tuple[str, ...]) -> list[str]:
+    """Type problems of one producer-like entry: its scalar fields and its `models` tiers must be strings."""
+    bad = [f"{name}.{k}는 문자열이어야 합니다" for k in fields if k in p and not isinstance(p[k], str)]
+    m = p.get("models")
+    if m is not None and not isinstance(m, dict):
+        bad.append(f"{name}.models는 객체여야 합니다")
+    elif isinstance(m, dict):
+        bad += [f"{name}.models.{k}는 문자열이어야 합니다" for k, v in m.items() if not isinstance(v, str)]
+    return bad
+
+
 def config_problem(cfg: dict) -> str | None:
     """Why a loaded config cannot run (None = every value has the type its consumers need). Shared by start and reload.
 
@@ -214,6 +225,14 @@ def config_problem(cfg: dict) -> str | None:
     for key in ("models", "worker"):
         if not isinstance(cfg.get(key), dict):
             bad.append(f"{key}는 객체여야 합니다")
+    if isinstance(cfg.get("models"), dict):   # legacy tiers: values are model IDs
+        bad += [f"models.{k}는 문자열이어야 합니다" for k, v in cfg["models"].items() if not isinstance(v, str)]
+    if isinstance(cfg.get("worker"), dict):
+        bad += _entry_problems("worker", cfg["worker"], ("adapter", "producer"))
+    if isinstance(cfg.get("producers"), dict):
+        for pid, p in cfg["producers"].items():
+            if isinstance(p, dict):
+                bad += _entry_problems(f"producers.{pid}", p, ("label", "adapter", "model", "effort"))
     return "; ".join(bad) or None
 
 
