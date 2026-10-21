@@ -8,6 +8,7 @@ from pathlib import Path
 from unittest import mock
 
 from tests.fakes import World
+from warroom import control
 from warroom.adapters import Handle, OpenCodeAdapter, RunSpec, classify_failure
 from warroom.config import (DEFAULTS, adapters, effort_problem, ordered_models, pin_summary, registry,
                             registry_problems, run_spec)
@@ -191,22 +192,35 @@ class EffortRejection(unittest.TestCase):
 
 
 class PinDrift(unittest.TestCase):
-    """A resumed session must continue on the model and effort that started it (non-tiered CLIs)."""
+    """Every relaunch keeps the pin of the last recorded run. Only a tiered CLI's own Free -> Go switch may change the model."""
+
+    FREE, GO = "opencode/deepseek-v4.1-flash-free", "opencode-go/deepseek-v4.1-flash"
 
     def test_table(self):
+        F, G = self.FREE, self.GO
         cases = [  # prev (model, effort), now (model, effort), tiered, drift?
             (("sonnet", "medium"), ("sonnet", "medium"), False, False),
-            (("sonnet", "medium"), ("sonnet", "high"), False, True),
-            (("sonnet", "medium"), ("opus", "medium"), False, True),
-            (("p/free", "high"), ("p/go", "high"), True, False),       # Free -> Go keeps effort: allowed
-            (("p/free", "high"), ("p/free", "low"), True, True),       # effort drift always blocks
-            ((None, None), ("sonnet", "medium"), False, False),        # legacy run: nothing recorded
+            (("sonnet", "medium"), ("sonnet", "high"), False, True),        # effort drift
+            (("sonnet", "medium"), ("opus", "medium"), False, True),        # model drift, single-model CLI
+            ((F, "high"), (G, "high"), True, False),                         # Free -> Go of the configured IDs: allowed
+            ((F, "high"), (F, "high"), True, False),                         # same tier, same ID: fine
+            ((F, "high"), (F + "-v2", "high"), True, True),                  # same tier, another Free ID: drift
+            ((G, "high"), (G + "-v2", "high"), True, True),                  # same tier, another Go ID: drift
+            ((G, "high"), (F, "high"), True, True),                          # Go -> Free is not a silent switch
+            ((F, "high"), (G, "low"), True, True),                           # effort drift always blocks
+            ((F, "high"), ("p/other", "high"), True, True),                  # a model that is not a configured tier
+            ((None, None), ("sonnet", "medium"), False, False),              # legacy run: nothing recorded
         ]
         for (pm, pe), (m, e), tiered, drift in cases:
             with self.subTest(prev=(pm, pe), now=(m, e), tiered=tiered):
                 runs = [{"model": pm, "effort": pe}] if pe is not None else [{"model": None, "effort": None}]
-                reason = Supervisor._pin_drift({"id": 1}, RunSpec(m, e), tiered, runs)
+                reason = Supervisor._pin_drift({"id": 1}, RunSpec(m, e), tiered, runs, (F, G) if tiered else None)
                 self.assertEqual(reason is not None, drift)
+
+    def test_tiered_without_configured_ids_never_allows_a_model_change(self):
+        reason = Supervisor._pin_drift({"id": 1}, RunSpec(self.GO, "high"), True,
+                                       [{"model": self.FREE, "effort": "high"}], None)
+        self.assertIsNotNone(reason)
 
 
 class PinnedLaunches(unittest.TestCase):
@@ -252,7 +266,7 @@ class PinnedLaunches(unittest.TestCase):
         w.sup._launch(b, "produce_resume")
         self.assertEqual(len(w.adapter.launches), 1)                 # never resumed on the new pin
         self.assertEqual(w.row("claude", "a")["state"], "ERROR")
-        self.assertIn("세션 재개 차단", w.row("claude", "a")["error"])
+        self.assertIn("실행 설정 변경 차단", w.row("claude", "a")["error"])
 
 
 @unittest.skipIf(textual is None, "textual not installed")
@@ -300,6 +314,81 @@ class StoreV3(unittest.TestCase):
             store.add_run(bid, "produce", None, 1, "l.log", "l.exit", model="sonnet", effort="medium")
             run = store.runs(bid)[0]
             self.assertEqual((run["model"], run["effort"]), ("sonnet", "medium"))
+
+
+class RelaunchPins(unittest.TestCase):
+    """#1379 blocker 1: every relaunch is pinned to the last recorded run, not to the current config."""
+
+    def fresh(self, effort="high", plan=None):
+        w = World()
+        w.cfg["producers"] = {"deepseek": {"adapter": "opencode", "effort": effort,
+                                           "models": {"free": "p/free-x-free", "go": "p/go"}}}
+        w.start("single", "deepseek", "a")
+        if plan:
+            w.adapter.plan.append(plan)                # the outcome of launch #1 must be queued before it runs
+        w.tick()                                       # launch #1 at the recorded pin
+        return w
+
+    def batch(self, w):
+        return w.store.batch(w.row("deepseek", "a")["id"])
+
+    def test_a_changed_effort_stops_every_relaunch_kind_without_launching(self):
+        for kind in ("produce_recover", "produce_resume", "fix_new", "fix_resume"):
+            with self.subTest(kind=kind):
+                w = self.fresh()
+                launched = len(w.adapter.launches)
+                w.cfg["producers"]["deepseek"]["effort"] = "low"     # operator changed the pin mid-batch
+                w.sup._launch(self.batch(w), kind, [])
+                self.assertEqual(len(w.adapter.launches), launched)
+                self.assertEqual(w.row("deepseek", "a")["state"], "ERROR")
+                self.assertIn("실행 설정 변경 차단", w.row("deepseek", "a")["error"])
+                w.tmp.cleanup()
+
+    def test_retry_after_a_lost_session_relaunches_on_the_same_pin(self):
+        w = self.fresh(plan={"code": 1, "text": "something unrecognised"})   # no session id was ever captured
+        w.adapter.finish(w.adapter.launches[-1]["pid"]); w.tick()
+        self.assertEqual(w.row("deepseek", "a")["state"], "PAUSED")
+        self.assertTrue(control.retry(w.store, "deepseek", "a"))
+        w.tick(); w.tick()                             # operator Retry -> produce_recover on the same pin
+        self.assertEqual(len(w.adapter.launches), 2)
+        self.assertEqual((w.adapter.launches[-1]["model"], w.adapter.launches[-1]["effort"]), ("p/free-x-free", "high"))
+        w.tmp.cleanup()
+
+    def test_a_same_tier_model_id_change_stops_the_relaunch(self):
+        for tier, changed in (("free", "opencode/other-free"), ("go", "opencode-go/other-go")):
+            with self.subTest(tier=tier):
+                w = World()
+                w.cfg["producers"] = {"deepseek": {"adapter": "opencode", "effort": "high",
+                                                   "models": {"free": "p/free-x-free", "go": "p/go"}}}
+                w.start("single", "deepseek", "a")
+                w.store.set_line("deepseek", "a", model_tier=tier)   # the recorded run is on this tier
+                w.tick()
+                launched = len(w.adapter.launches)
+                w.cfg["producers"]["deepseek"]["models"][tier] = changed   # same effort, another ID in the same tier
+                w.sup._launch(self.batch(w), "produce_recover", [])
+                self.assertEqual(len(w.adapter.launches), launched)
+                self.assertEqual(w.row("deepseek", "a")["state"], "ERROR")
+                self.assertIn("실행 설정 변경 차단", w.row("deepseek", "a")["error"])
+                w.tmp.cleanup()
+
+    def test_free_to_go_keeps_the_effort_and_relaunches(self):
+        w = self.fresh()
+        w.store.update(self.batch(w)["id"], model_tier="go")
+        w.sup._launch(self.batch(w), "produce_recover", [])
+        self.assertEqual((w.adapter.launches[-1]["model"], w.adapter.launches[-1]["effort"]), ("p/go", "high"))
+        w.tmp.cleanup()
+
+    def test_a_restarted_supervisor_re_proves_the_pin_before_relaunching(self):
+        from warroom.adapters import OpenCodeAdapter
+        w = self.fresh()
+        launched = len(w.adapter.launches)
+        w.adapter._opencode = OpenCodeAdapter("opencode", probe_async=False)   # restart: nothing is proven yet
+        w.runner.variant_rejected = {"p/free-x-free#high"}                       # the CLI now refuses the variant
+        w.sup._launch(self.batch(w), "produce_recover", [])
+        self.assertEqual(len(w.adapter.launches), launched)
+        self.assertEqual(w.row("deepseek", "a")["state"], "ERROR")
+        self.assertIn("지원하지 않습니다", w.row("deepseek", "a")["error"])
+        w.tmp.cleanup()
 
 
 if __name__ == "__main__":
