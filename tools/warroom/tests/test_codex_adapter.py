@@ -40,6 +40,10 @@ def completed():
     return {"type": "turn.completed", "usage": {}}
 
 
+def failed(message="provider failure"):
+    return {"type": "turn.failed", "error": {"message": message}}
+
+
 def command(text, exit_code=1, cmd="git commit -q -m x"):
     return {"type": "item.completed", "item": {"id": "i1", "type": "command_execution", "command": cmd,
                                                "aggregated_output": text, "exit_code": exit_code,
@@ -388,6 +392,15 @@ class CompletionGate(unittest.TestCase):
             ("this run's record has another effort", [started(), completed()], [context(effort="high")], None, "ERROR"),
             ("another thread than the requested one", [started("99999999-0000-4000-8000-000000000000"), completed()],
              [context()], None, "ERROR"),
+            ("turn.failed with a matching record", [started(), failed()], [context()], None, "ERROR"),
+            ("turn.failed with a string error", [started(), {"type": "turn.failed", "error": "boom"}], [context()], None, "ERROR"),
+            ("turn.failed without an error", [started(), {"type": "turn.failed"}], [context()], None, "ERROR"),
+            ("completed and then failed", [started(), completed(), failed()], [context()], None, "ERROR"),
+            ("failed and then completed (retry inside the run)", [started(), failed(), completed()], [context()], None, "ERROR"),
+            ("no terminal event (truncated log)", [started()], [context()], None, "ERROR"),
+            ("a command ran but the turn never completed", [started(), command("ok", exit_code=0)], [context()], None, "ERROR"),
+            ("resume: only the past turn completed, none now", [started()], [context(), context()], 1, "ERROR"),
+            ("resume: this run completed", [started(), completed()], [context(), context()], 1, None),
         ]
         for name, events, contexts, baseline, want in cases:
             with self.subTest(name):
@@ -449,6 +462,38 @@ class PrIntake(unittest.TestCase):
                 w.tick()
             self.assertEqual(w.row("codex", "a")["state"], "ERROR")
             self.assertIn("세션", w.row("codex", "a")["error"])
+        finally:
+            w.tmp.cleanup()
+
+    def test_exit0_with_a_pr_but_no_successful_turn_is_not_accepted(self):
+        runs = {"turn.failed": [started(), failed()], "no terminal event": [started()],
+                "completed then failed": [started(), completed(), failed()]}
+        for name, events in runs.items():
+            with self.subTest(name):
+                w = self.world()
+                try:
+                    with tempfile.TemporaryDirectory() as home, mock.patch.dict(os.environ, {"CODEX_HOME": home}):
+                        rollout_home(Path(home), THREAD, [context()])   # pin-matching record, owned PR, exit 0
+                        w.start("single", "codex", "a")
+                        w.adapter.plan.append({"code": 0, "text": lines(*events)})
+                        w.tick()
+                        w.adapter.finish(w.adapter.launches[-1]["pid"])
+                        w.tick()
+                    self.assertEqual(w.row("codex", "a")["state"], "ERROR")
+                finally:
+                    w.tmp.cleanup()
+
+    def test_exit0_with_a_pr_and_a_completed_turn_reaches_review(self):
+        w = self.world()
+        try:
+            with tempfile.TemporaryDirectory() as home, mock.patch.dict(os.environ, {"CODEX_HOME": home}):
+                rollout_home(Path(home), THREAD, [context()])
+                w.start("single", "codex", "a")
+                w.adapter.plan.append({"code": 0, "text": lines(started(), completed())})
+                w.tick()
+                w.adapter.finish(w.adapter.launches[-1]["pid"])
+                w.tick()
+            self.assertEqual(w.row("codex", "a")["state"], "WAITING_REVIEW")
         finally:
             w.tmp.cleanup()
 

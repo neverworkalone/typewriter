@@ -534,7 +534,8 @@ class CodexCLIAdapter(ProcessAdapter):
             text = Path(log_file).read_text("utf-8", errors="replace")
         except OSError:
             return ("ERROR", "실행 로그를 읽을 수 없어 완료를 확인하지 못했습니다.")
-        started = next((e for e in _json_objects(text) if e.get("type") == "thread.started"), None)
+        events = list(_json_objects(text))
+        started = next((e for e in events if e.get("type") == "thread.started"), None)
         if started is None:
             return ("ERROR", "세션(thread) ID가 기록되지 않은 실행은 완료로 인정하지 않습니다 — PR이 있어도 중지하고 보존합니다.")
         thread = started.get("thread_id")
@@ -545,6 +546,16 @@ class CodexCLIAdapter(ProcessAdapter):
         base_thread, _ = _baseline(log_file)
         if base_thread and thread != base_thread:
             return ("ERROR", f"재개가 다른 세션 {thread}으로 진행되었습니다 (요청 {base_thread}) — 중지합니다.")
+        # The log belongs to this run alone (one file per launch), so its terminal events are this run's result.
+        failed = next((e for e in events if e.get("type") == "turn.failed"), None)
+        if failed is not None:
+            err = failed.get("error")
+            err = err.get("message") if isinstance(err, dict) else err
+            return ("ERROR", f"Codex 턴이 실패로 끝났습니다 (turn.failed: {str(err or '사유 없음')[:200]}) — "
+                             "exit 0이어도 완료로 인정하지 않고 보존합니다.")
+        if not any(e.get("type") == "turn.completed" for e in events):
+            return ("ERROR", "이번 실행의 turn.completed가 기록되지 않았습니다 (중단되었거나 잘린 로그) — "
+                             "exit 0이어도 완료로 인정하지 않고 보존합니다.")
         new = _run_contexts(log_file, thread)
         if not new:
             return ("ERROR", "이번 실행의 턴 기록(turn_context)이 없어 실제 모델·추론 수준을 확인할 수 없습니다 "
