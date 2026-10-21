@@ -346,10 +346,12 @@ class Supervisor:
         for pr in self.gh.open_prs():
             if pr["number"] == my_pr:
                 continue
-            for f in pr.get("files") or []:
-                m = batches._CAND.search(f.get("path", ""))
-                if (m and (m.group(1), m.group(2), m.group(3)) == (b["shard"], b["batch"], b["method"])
-                        and (shared or m.group(4) == b["producer"])):
+            try:
+                claims = batches.pr_candidates(pr)
+            except batches.BatchError as e:   # unknown file list: a duplicate cannot be ruled out -> stop
+                raise DuplicateClaim(f"{e} — 중복 방지로 중단") from e
+            for shard, batch, method, who in claims:
+                if (shard, batch, method) == (b["shard"], b["batch"], b["method"]) and (shared or who == b["producer"]):
                     return pr["number"]
         return None
 

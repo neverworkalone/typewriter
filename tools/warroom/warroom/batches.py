@@ -34,6 +34,23 @@ class Batch:
         return f"{self.shard}_{self.batch}"
 
 
+def pr_candidates(pr: dict) -> list[tuple[str, str, str, str]]:
+    """(shard, batch, method, producer) of every Candidate file an open PR touches.
+
+    The single reader of a PR's file list: a missing/None list is *unknown*, never "no files", so a
+    caller cannot conclude "no duplicate" from it. Only a known list (possibly `[]`) is trusted.
+    """
+    files = pr.get("files")
+    if not isinstance(files, list):
+        raise BatchError(f"열린 PR #{pr.get('number')}의 파일 목록을 알 수 없어 중복 점유를 배제할 수 없습니다")
+    out = []
+    for f in files:
+        m = _CAND.search((f or {}).get("path", ""))
+        if m:
+            out.append((m.group(1), m.group(2), m.group(3), m.group(4)))
+    return out
+
+
 def is_shared_queue(method: str) -> bool:
     return method in SHARED_QUEUE_METHODS
 
@@ -78,13 +95,9 @@ def next_batch(runner: Runner, root, env, *, ref: str, method: str, producer: st
                              f"({', '.join(sorted(p for p, _ in files))}): 오너 확인 필요")
     claimed = set(owned)
     for pr in open_prs:
-        files = pr.get("files")
-        if files is None:   # cannot rule out a duplicate claim
-            raise BatchError(f"열린 PR #{pr.get('number')}의 파일 목록을 알 수 없어 중복 점유를 배제할 수 없습니다")
-        for f in files:
-            m = _CAND.search(f.get("path", ""))
-            if m and m.group(3) == method and (shared or m.group(4) == producer):
-                claimed.add((m.group(1), m.group(2)))
+        for shard, batch, m, who in pr_candidates(pr):
+            if m == method and (shared or who == producer):
+                claimed.add((shard, batch))
     for s in range(1, SHARDS + 1):
         for b in (1, 2):
             n = expected_records(canon, s, b)

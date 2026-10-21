@@ -12,6 +12,7 @@ from tests.test_lines import multi_world
 from tests.test_supervisor import review
 from warroom import batches, control, prompts
 from warroom.store import DuplicateBatch, LineBusy
+from warroom.supervisor import DuplicateClaim
 
 ROW = {"shard": "001", "batch": "01", "branch": "a-deepseek-001-01", "pr_number": 7, "head_sha": HEAD1}
 
@@ -257,6 +258,59 @@ class SharedQueueInSupervisor(unittest.TestCase):
             self.assertEqual(w.sup._duplicate_claim(w.store.batch(bid), 7), 9 if shared else None, method)
             w.gh.open = [{"number": 7, "files": [{"path": cand(1, 1, method, "sonnet")}]}]
             self.assertIsNone(w.sup._duplicate_claim(w.store.batch(bid), 7))     # my own PR is not a rival
+
+
+class UnknownPrFileLists(unittest.TestCase):
+    """A PR's file list that is missing/None is unknown on EVERY path that reads it, never "no files"."""
+
+    def test_both_readers_fail_closed_and_trust_only_a_known_list(self):
+        w = multi_world()
+        bid = w.store.create_batch(method="c", producer="deepseek", shard="001", batch="01",
+                                   branch="c-deepseek-001-01", worktree="/x")
+        b = w.store.batch(bid)
+        mine = {"number": 7, "files": [{"path": cand(1, 1, "c", "deepseek")}]}
+        for name, other, want in [
+            ("known empty list", {"number": 9, "files": []}, "none"),
+            ("known unrelated files", {"number": 9, "files": [{"path": "README.md"}, {}]}, "none"),
+            ("rival C file of another model", {"number": 9, "files": [{"path": cand(1, 1, "c", "sonnet")}]}, "rival"),
+            ("files key missing", {"number": 9}, "unknown"),
+            ("files None", {"number": 9, "files": None}, "unknown"),
+            ("files not a list", {"number": 9, "files": "x"}, "unknown"),
+        ]:
+            with self.subTest(name):
+                w.gh.open = [mine, other]
+                if want == "unknown":
+                    with self.assertRaises(DuplicateClaim):
+                        w.sup._duplicate_claim(b, 7)
+                    with self.assertRaises(batches.BatchError):
+                        batches.pr_candidates(other)
+                    with self.assertRaises(batches.BatchError):
+                        batches.next_batch(ScriptedRunner(), ".", {}, ref="r", method="c", producer="deepseek",
+                                           open_prs=[other], owned=set())
+                else:
+                    self.assertEqual(w.sup._duplicate_claim(b, 7), 9 if want == "rival" else None)
+        w.gh.open = [{"number": 7}]                       # my own PR's list is irrelevant to the rival check
+        self.assertIsNone(w.sup._duplicate_claim(b, 7))
+        w.tmp.cleanup()
+
+    def test_supervisor_stops_in_error_when_a_rival_pr_list_is_unknown_after_pr_creation(self):
+        w = multi_world()
+        w.runner.set_batches({1: 1000}, {})
+        w.start("single", "deepseek", "c")
+        w.adapter.plan.append({"code": 0, "session": "ses_1", "effect": lambda: self._open_pr(w)})
+        w.tick()
+        w.gh.open = [{"number": 7, "files": [{"path": cand(1, 1, "c", "deepseek")}]}, {"number": 9, "files": None}]
+        w.adapter.finish(w.adapter.launches[-1]["pid"])
+        w.tick()
+        b = w.row("deepseek", "c")
+        self.assertEqual(b["state"], "ERROR")
+        self.assertIn("파일 목록을 알 수 없", b["error"])
+        w.tmp.cleanup()
+
+    @staticmethod
+    def _open_pr(w):
+        w.pr_info(7, HEAD1)
+        w.gh.by_branch["c-deepseek-001-01"] = [{"number": 7, "state": "OPEN", "headRefOid": HEAD1}]
 
 
 class AtomicClaim(unittest.TestCase):
