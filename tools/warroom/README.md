@@ -72,7 +72,7 @@ then the model label; the order of `producers` in the file does not matter.
 | Producer (label) | Adapter (CLI) | Model | Effort | Status |
 |---|---|---|---|---|
 | `claude` (Sonnet) | `claude` (Claude Code) | `model: sonnet` → `--model sonnet` | `effort: medium` → `--effort medium` | Runs (#1375) |
-| `codex` (Luna) | `codex` (Codex CLI) | `model: gpt-6-luna` → `-m gpt-6-luna` | `effort: xhigh` → `-c model_reasoning_effort=xhigh` | Adapter #1376 |
+| `codex` (Luna) | `codex` (Codex CLI) | `model: gpt-6-luna` → `-m gpt-6-luna` | `effort: xhigh` → `-c model_reasoning_effort=xhigh` | Runs (#1376) |
 | `deepseek` (DeepSeek) | `opencode` | `models.free` / `models.go` | `effort: high` → `--model <id>#high` | Runs now |
 
 Rules (fail closed):
@@ -117,6 +117,22 @@ Rules (fail closed):
   any init event: a PR is accepted only with its own session.
 - The stream reports the model it ran (`system/init`); a different model stops the batch. The CLI does not print the
   effort it used, so an unknown effort (the CLI's "ignoring it and using the default effort") is treated as a stop.
+
+### Codex CLI (`codex`) setup
+
+- Install the Codex CLI and log in with the operator's own account: `codex login`. `codex login status` must
+  report `Logged in`; Start checks it. Like Claude, this login is not isolated per War Room.
+- Codex runs under the operator's **local CLI policy**: `~/.codex/config.toml`, its sandbox, approval and execpolicy
+  rules, and the project settings are used as they are. War Room does not add sandbox, approval, network or
+  writable-root options, and it never uses `--ignore-user-config`, `--ignore-rules`, `--full-auto` or bypass flags.
+- Every run pins only the model and the reasoning effort: `codex exec --json -m <model> -c model_reasoning_effort=<effort> <prompt>`.
+  Resume is `codex exec resume <thread id>` with the same pins. `--worktree`, `--last` and `--all` are never used.
+- Checked, not assumed: the `thread.started` thread id must equal the requested session, and the model and effort in
+  the rollout's `turn_context` must equal the pins. A finished turn with no recorded context stops the batch.
+- A command the local policy refuses (`Operation not permitted`, `Permission denied`, an approval request) stops the
+  run in **PAUSED**. The worktree, branch, PR and session are kept and nothing is retried automatically. Permission
+  is never raised by War Room; the operator changes the local CLI settings and then retries.
+- Start refuses unless `codex exec --help` and `codex exec resume --help` list the required options.
 
 ## Prompts
 

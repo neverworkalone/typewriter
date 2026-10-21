@@ -250,6 +250,8 @@ class Supervisor:
     def _launch(self, b, kind: str, events=None) -> None:
         """kind: produce | fix_resume | fix_new | produce_resume | produce_recover"""
         ts = int(self.clock())
+        while any((self.paths.logs / f"batch-{b['id']}-{ts}.{x}").exists() for x in ("log", "exit")):
+            ts += 1   # one launch per log: a launch in the same second must not reuse (and append to) an earlier log
         log, ex = self.paths.logs / f"batch-{b['id']}-{ts}.log", self.paths.logs / f"batch-{b['id']}-{ts}.exit"
         wt = b["worktree"]
         sid = b["session_id"]
@@ -337,7 +339,8 @@ class Supervisor:
             return self._fail(b, "ERROR", "AI 프로세스가 종료 상태 기록 없이 사라졌습니다. "
                               "자동 재생산하지 않음 — worktree/PR 확인 후 Retry.")
         if code == 0:
-            # Accept the result only with the run's own evidence (for Claude: the session its init event reported).
+            # Accept the result only with the run's own evidence (for Claude: the session its init event reported;
+            # for Codex: its thread id and its turn record).
             problem = ad.completion_problem(Path(b["log_file"]), self._recorded_run(b), b["session_id"],
                                             b["worktree"], self.env)
             if problem:
@@ -361,6 +364,10 @@ class Supervisor:
             if b["state"] == "PRODUCING":
                 info = self._find_pr(b)
                 if info is None:
+                    refusal = self._adapter(b["producer"]).policy_refusal(Path(b["log_file"]))
+                    if refusal:   # the local CLI policy stopped the PR step: keep everything, wait for the operator
+                        return self._fail(b, "PAUSED", f"{refusal}. PR이 만들어지지 않았습니다. 로컬 설정을 확인한 뒤 "
+                                          "Retry 하세요 (worktree·브랜치·세션 보존).")
                     return self._fail(b, "ERROR", "AI가 정상 종료했지만 PR을 찾지 못했습니다 "
                                       "(자동 재생산 안 함, 로그 확인 후 Retry).")
             else:
@@ -579,7 +586,7 @@ def build(paths=None):
     """Wire the production Supervisor."""
     import os as _os
 
-    from .adapters import ClaudeCodeAdapter, OpenCodeAdapter
+    from .adapters import ClaudeCodeAdapter, CodexCLIAdapter, OpenCodeAdapter
     from .config import Paths, load_config
     from .gitops import Git
     from .github import GhClient
@@ -590,7 +597,8 @@ def build(paths=None):
     cfg = load_config(paths)
     env = auth.build_env(dict(_os.environ), paths.gh_config, cfg["git_name"], cfg["git_email"])
     runner = Runner()
-    adapters = {"opencode": OpenCodeAdapter(cfg["opencode_bin"]), "claude": ClaudeCodeAdapter(cfg["claude_bin"])}
+    adapters = {"opencode": OpenCodeAdapter(cfg["opencode_bin"]), "claude": ClaudeCodeAdapter(cfg["claude_bin"]),
+                "codex": CodexCLIAdapter(cfg["codex_bin"])}
     return Supervisor(paths, cfg, Store(paths.db), runner, adapters,
                       GhClient(runner, env, cfg["repo"]),
                       Git(runner, paths.repo_root, env, paths.worktrees), env)

@@ -25,6 +25,7 @@ DEFAULTS = {
     "methods": ["a", "b", "c", "d"],
     "opencode_bin": "opencode",
     "claude_bin": "claude",
+    "codex_bin": "codex",
     "models": {"free": "", "go": ""},
     "free_model_pattern": "-free$",
     "quota_patterns": [

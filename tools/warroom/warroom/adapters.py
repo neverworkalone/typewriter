@@ -54,8 +54,16 @@ class AgentAdapter:
 
     def completion_problem(self, log_file: Path, run: RunSpec | None, expected_session: str | None,
                            cwd=None, env=None) -> tuple[str, str] | None:
-        """Why a run that exited 0 must not be accepted as finished (no PR intake), or None. Checked once the process
-        exited successfully, before its result is used."""
+        """Why a run that exited 0 must not be accepted as finished (no PR intake), or None.
+
+        Checked once the process has exited successfully, before its result is used. The mid-run check is
+        `run_problem`; this one requires the evidence that the run's own work was recorded.
+        """
+        return None
+
+    def policy_refusal(self, log_file: Path) -> str | None:
+        """A reason when the CLI's own policy refused an action (seen in the log), or None. Used when a run ended
+        without its result (no PR): such a run is PAUSED for the operator instead of counted as a plain error."""
         return None
 
     def stop(self, pid: int) -> None: ...
@@ -90,7 +98,7 @@ class ProcessAdapter(AgentAdapter):
         # learn how the (detached) child ended.
         wrapper = ['"$@"', "echo $? > \"$WARROOM_EXIT_FILE\""]
         env = {**env, "WARROOM_EXIT_FILE": str(exit_file)}
-        with open(log_file, "ab") as log:
+        with open(log_file, "wb") as log:   # a launch's log is its own: never continued behind an earlier run's events
             p = subprocess.Popen(["/bin/sh", "-c", "; ".join(wrapper), "sh", *cmd],
                                  cwd=cwd, env=env, stdin=subprocess.DEVNULL,
                                  stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
@@ -403,6 +411,225 @@ class ClaudeCodeAdapter(ProcessAdapter):
         if not isinstance(reported, str) or not reported.strip() or reported != init.get("session_id"):
             return ("ERROR", f"최종 result의 세션 ID {reported!r}가 없거나 init의 {init.get('session_id')!r}와 다릅니다 — 중지하고 보존합니다.")
         return None
+
+
+# Codex runs under the operator's own local CLI policy: its config, sandbox, approval and execpolicy rules are used
+# as they are. War Room pins only the model and the reasoning effort (on every launch, first run and resume alike)
+# and checks what Codex actually did: the thread id, the recorded model and effort. It never overrides sandbox,
+# approval, network or writable roots. A command the local policy denies stops the run in PAUSED, nothing is retried.
+CODEX_REQUIRED_EXEC_FLAGS = ("--json", "--model", "--config")
+CODEX_REQUIRED_RESUME_FLAGS = ("resume", "--json", "--model")
+_CODEX_DENIED = re.compile(r"operation not permitted|permission denied|requires approval|approval required|"
+                           r"blocked by (the )?(sandbox|policy)|not allowed by (the )?(sandbox|policy)", re.I)
+
+
+_THREAD_ID = re.compile(r"[0-9A-Za-z][0-9A-Za-z_-]*")
+
+
+def _valid_thread(value) -> bool:
+    """A usable Codex thread id: a non-empty plain token (never empty, non-string or containing glob/path characters)."""
+    return isinstance(value, str) and _THREAD_ID.fullmatch(value) is not None
+
+
+def _turn_contexts(thread_id: str) -> list[dict]:
+    """What Codex recorded for each turn of a thread: the effective model, effort and policy (rollout file)."""
+    if not _valid_thread(thread_id):   # an empty/odd id must never widen the rollout search to other sessions
+        return []
+    home = Path(os.environ.get("CODEX_HOME") or Path.home() / ".codex")
+    files = list((home / "sessions").glob(f"*/*/*/rollout-*{thread_id}.jsonl"))
+    if not files:
+        return []
+    out = []
+    for o in _json_objects(files[0].read_text("utf-8", errors="replace")):
+        if o.get("type") == "turn_context" and isinstance(o.get("payload"), dict):
+            out.append(o["payload"])
+    return out
+
+
+def _baseline_path(log_file) -> Path:
+    return Path(str(log_file) + ".baseline.json")
+
+
+def _baseline(log_file) -> tuple[str | None, int]:
+    """(thread, turns) recorded when a resume started; (None, 0) for a fresh start (every turn is then this run's)."""
+    try:
+        data = json.loads(_baseline_path(log_file).read_text("utf-8"))
+        return str(data["thread"]), int(data["turns"])
+    except (OSError, ValueError, KeyError, TypeError):
+        return None, 0
+
+
+def _run_contexts(log_file, thread: str) -> list[dict]:
+    """The turn records written by this run only: the thread's records after the baseline."""
+    _, turns = _baseline(log_file)
+    return _turn_contexts(thread)[turns:]
+
+
+_NONZERO_EXIT = re.compile(r"exit\s*code\D{0,12}?[1-9]\d*|exit\s+[1-9]\d*", re.I)
+
+
+class CodexCLIAdapter(ProcessAdapter):
+    """Codex CLI (`codex exec --json`, `codex exec resume <thread id>`). Model and effort pinned on every launch."""
+    name = "codex"
+    capabilities = {"resume": True, "stop": True}
+    requires_session_for_pr = True
+    requires_final_result_for_pr = True   # a PR is taken over only after the run exited and its final result was checked
+
+    def __init__(self, binary: str = "codex"):
+        self.binary = binary
+
+    @staticmethod
+    def _pins(run: RunSpec) -> list[str]:
+        return ["--json", "-m", run.model, "-c", f"model_reasoning_effort={run.effort}"]
+
+    def start(self, prompt, cwd, env, run, title, log_file, exit_file):
+        cmd = [self.binary, "exec", *self._pins(_pinned(run)), prompt]
+        _baseline_path(log_file).unlink(missing_ok=True)   # a fresh start has no baseline: every turn is its own
+        return self._spawn(cmd, cwd, env, log_file, exit_file)
+
+    def resume(self, session_id, prompt, cwd, env, run, log_file, exit_file):
+        cmd = [self.binary, "exec", "resume", session_id, *self._pins(_pinned(run)), prompt]
+        # The turns recorded before this run: only turns after this baseline belong to this run.
+        Path(log_file).parent.mkdir(parents=True, exist_ok=True)
+        _baseline_path(log_file).write_text(json.dumps({"thread": session_id,
+                                                         "turns": len(_turn_contexts(session_id))}))
+        return self._spawn(cmd, cwd, env, log_file, exit_file)
+
+    def session_id(self, log_file):
+        try:
+            text = Path(log_file).read_text("utf-8", errors="replace")
+        except OSError:
+            return None
+        for o in _json_objects(text):
+            if o.get("type") == "thread.started" and _valid_thread(o.get("thread_id")):
+                return o["thread_id"]
+        return None
+
+    def preflight(self, runner, env, runs):
+        v = runner.run([self.binary, "--version"], env=env, timeout=60)
+        if not v.ok:
+            return f"`{self.binary} --version` 실행 실패: {v.err.strip()[:200]}"
+        h = runner.run([self.binary, "exec", "--help"], env=env, timeout=60)
+        if not h.ok:
+            return f"`{self.binary} exec --help` 실행 실패: {h.err.strip()[:200]}"
+        missing = [f for f in CODEX_REQUIRED_EXEC_FLAGS if f not in h.out]
+        r = runner.run([self.binary, "exec", "resume", "--help"], env=env, timeout=60)
+        if not r.ok:
+            return f"`{self.binary} exec resume --help` 실행 실패: {r.err.strip()[:200]}"
+        missing += [f for f in CODEX_REQUIRED_RESUME_FLAGS if f not in r.out]
+        if missing:
+            return f"설치된 Codex CLI({v.out.strip()})가 필요한 옵션을 지원하지 않습니다: {', '.join(sorted(set(missing)))}"
+        lg = runner.run([self.binary, "login", "status"], env=env, timeout=60)
+        if not lg.ok or not (lg.out + lg.err).strip().lower().startswith("logged in"):
+            return "Codex CLI가 로그인되어 있지 않습니다 (`codex login`)."
+        return None
+
+    def policy_refusal(self, log_file):
+        """A refusal the local policy actually produced: a command that failed with a refusal message, or the agent
+        reporting such a failure with a non-zero exit. Output of a command that succeeded never counts."""
+        try:
+            text = Path(log_file).read_text("utf-8", errors="replace")
+        except OSError:
+            return None
+        for e in _json_objects(text):
+            item = e.get("item") if isinstance(e.get("item"), dict) else {}
+            if e.get("type") != "item.completed":
+                continue
+            if item.get("type") == "command_execution" and item.get("exit_code") not in (0, None):
+                if _CODEX_DENIED.search(str(item.get("aggregated_output") or "")):
+                    return f"로컬 Codex 정책이 명령을 거부했습니다 ({str(item.get('command') or 'command')[:160]})"
+            if item.get("type") == "agent_message":
+                msg = str(item.get("text") or "")
+                if _CODEX_DENIED.search(msg) and _NONZERO_EXIT.search(msg):
+                    return "로컬 Codex 정책이 명령을 거부한 것으로 보고되었습니다"
+        return None
+
+    def completion_problem(self, log_file, run, expected_session, cwd=None, env=None):
+        """A run that exited 0 is accepted only with its own thread id and the turn record of this run."""
+        try:
+            text = Path(log_file).read_text("utf-8", errors="replace")
+        except OSError:
+            return ("ERROR", "실행 로그를 읽을 수 없어 완료를 확인하지 못했습니다.")
+        events = list(_json_objects(text))
+        started = next((e for e in events if e.get("type") == "thread.started"), None)
+        if started is None:
+            return ("ERROR", "세션(thread) ID가 기록되지 않은 실행은 완료로 인정하지 않습니다 — PR이 있어도 중지하고 보존합니다.")
+        thread = started.get("thread_id")
+        if not _valid_thread(thread):
+            return ("ERROR", "thread.started의 thread_id가 없거나 비어 있거나 형식이 올바르지 않습니다 — 중지하고 보존합니다.")
+        if expected_session and thread != expected_session:
+            return ("ERROR", f"세션 ID 불일치: 요청 {expected_session}, 실제 {thread} — 중지하고 보존합니다.")
+        base_thread, _ = _baseline(log_file)
+        if base_thread and thread != base_thread:
+            return ("ERROR", f"재개가 다른 세션 {thread}으로 진행되었습니다 (요청 {base_thread}) — 중지합니다.")
+        # The log belongs to this run alone (one file per launch), so its terminal events are this run's result.
+        failed = next((e for e in events if e.get("type") == "turn.failed"), None)
+        if failed is not None:
+            err = failed.get("error")
+            err = err.get("message") if isinstance(err, dict) else err
+            return ("ERROR", f"Codex 턴이 실패로 끝났습니다 (turn.failed: {str(err or '사유 없음')[:200]}) — "
+                             "exit 0이어도 완료로 인정하지 않고 보존합니다.")
+        if not any(e.get("type") == "turn.completed" for e in events):
+            return ("ERROR", "이번 실행의 turn.completed가 기록되지 않았습니다 (중단되었거나 잘린 로그) — "
+                             "exit 0이어도 완료로 인정하지 않고 보존합니다.")
+        new = _run_contexts(log_file, thread)
+        if not new:
+            return ("ERROR", "이번 실행의 턴 기록(turn_context)이 없어 실제 모델·추론 수준을 확인할 수 없습니다 "
+                             "(과거 턴 기록으로 대신하지 않음).")
+        for ctx in new:
+            if run is not None and ctx.get("model") != run.model:
+                return ("ERROR", f"Codex가 실행한 모델 {ctx.get('model')!r}이 요청한 {run.model!r}과 다릅니다 — 중지합니다.")
+            if run is not None and ctx.get("effort") != run.effort:
+                return ("ERROR", f"Codex가 실행한 추론 수준 {ctx.get('effort')!r}이 요청한 {run.effort!r}과 다릅니다 — 중지합니다.")
+        return None
+
+    def run_problem(self, log_file, run, expected_session, cwd=None, env=None):
+        try:
+            text = Path(log_file).read_text("utf-8", errors="replace")
+        except OSError:
+            return None
+        events = list(_json_objects(text))
+        started = next((e for e in events if e.get("type") == "thread.started"), None)
+        if started is None:   # not started yet
+            return None
+        thread = started.get("thread_id")
+        if not _valid_thread(thread):
+            return ("ERROR", "thread.started의 thread_id가 없거나 비어 있거나 형식이 올바르지 않습니다 — 중지하고 보존합니다.")
+        if expected_session and thread != expected_session:
+            return ("ERROR", f"세션 ID 불일치: 요청 {expected_session}, 실제 {thread} — "
+                             "새 세션으로 진행된 것으로 보고 중지합니다.")
+        denied = _denied_command(events)
+        if denied:   # the local policy refused a command (or asked for approval): stop, keep everything, wait for the operator
+            return ("PAUSED", f"로컬 Codex 정책이 명령을 거부했습니다 ({denied}). 자동 권한 상승 없이 중지합니다. "
+                              "로컬 설정을 확인한 뒤 Retry 하세요 (worktree·브랜치·PR·세션 보존).")
+        base_thread, _ = _baseline(log_file)
+        if base_thread and thread != base_thread:
+            return ("ERROR", f"재개가 다른 세션 {thread}으로 진행되었습니다 (요청 {base_thread}) — 중지합니다.")
+        finished = any(e.get("type") in ("turn.completed", "turn.failed") for e in events)
+        contexts = _run_contexts(log_file, thread)
+        if not contexts:
+            if finished:
+                return ("ERROR", "Codex가 실행 설정 기록(turn_context)을 남기지 않아 실제 모델·추론 수준을 확인할 수 없습니다.")
+            return None
+        for ctx in contexts:
+            if run is not None and ctx.get("model") != run.model:
+                return ("ERROR", f"Codex가 실행한 모델 {ctx.get('model')!r}이 요청한 {run.model!r}과 다릅니다 — 중지합니다.")
+            if run is not None and ctx.get("effort") != run.effort:
+                return ("ERROR", f"Codex가 실행한 추론 수준 {ctx.get('effort')!r}이 요청한 {run.effort!r}과 다릅니다 — 중지합니다.")
+        return None
+
+
+def _denied_command(events: list[dict]) -> str | None:
+    """The first command that failed with a policy refusal (`Operation not permitted`, an approval request, ...)."""
+    for e in events:
+        item = e.get("item") if isinstance(e.get("item"), dict) else {}
+        if e.get("type") != "item.completed" or item.get("type") != "command_execution":
+            continue
+        if item.get("exit_code") in (0, None):
+            continue
+        if _CODEX_DENIED.search(str(item.get("aggregated_output") or "")):
+            return str(item.get("command") or "command")[:160]
+    return None
 
 
 def _logged_in(out: str) -> bool:
