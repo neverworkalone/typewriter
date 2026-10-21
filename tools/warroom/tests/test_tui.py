@@ -71,6 +71,53 @@ class TuiSmoke(unittest.TestCase):
         asyncio.run(go())
         w.tmp.cleanup()
 
+    def test_tab_switches_between_regions_and_remembers_last_stop(self):
+        from warroom import tui
+        w = World()
+
+        async def go():
+            app = make_app(w, PRODUCERS)
+            async with app.run_test(size=(200, 60)) as pilot:
+                await pilot.pause(0.2)
+                app.query_one("#method").focus()
+                await pilot.press("tab")
+                self.assertEqual(app.focused.id, "card-deepseek-a")          # first visit: first card
+                await pilot.press("down", "right")
+                self.assertEqual(app.focused.id, "card-sonnet-b")
+                await pilot.press("tab")
+                self.assertEqual(app.focused.id, "method")                   # back to where the bar was left
+                await pilot.press("tab")
+                self.assertEqual(app.focused.id, "card-sonnet-b")            # and to the card that was left
+                await pilot.press("shift+tab")
+                self.assertEqual(app.focused.id, "method")
+                # Open Select: Tab does not move focus out of the dropdown.
+                await pilot.press("enter")
+                await pilot.pause(0.1)
+                before = app.focused
+                await pilot.press("tab")
+                self.assertIs(app.focused, before)
+                await pilot.press("escape")
+                # Detail: buttons/source <-> log, remembering the button.
+                app.query_one("#card-deepseek-a").focus()
+                await pilot.press("enter")
+                await pilot.pause(0.3)
+                d = app.screen
+                self.assertIsInstance(d, tui.LineDetail)
+                d.query_one("#raw").focus()
+                await pilot.press("tab")
+                self.assertIs(app.focused, d.log_w)
+                await pilot.press("tab")
+                self.assertEqual(app.focused.id, "raw")
+                await pilot.press("right", "right")
+                self.assertEqual(app.focused.id, "source")
+                await pilot.press("tab")
+                self.assertIs(app.focused, d.log_w)
+                await pilot.press("tab")
+                self.assertEqual(app.focused.id, "source")
+
+        asyncio.run(go())
+        w.tmp.cleanup()
+
     def test_arrow_keys_move_between_controls_and_cards(self):
         from warroom import tui
         w = World()

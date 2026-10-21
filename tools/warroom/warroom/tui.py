@@ -5,7 +5,9 @@ import os
 import subprocess
 import sys
 
+from textual.actions import SkipAction
 from textual.app import App, ComposeResult
+from textual.binding import Binding
 from textual.containers import Horizontal, HorizontalScroll, Vertical
 from textual.screen import ModalScreen, Screen
 from textual.css.scalar import Unit
@@ -38,6 +40,27 @@ def ensure_supervisor(paths: Paths) -> str | None:
     r = subprocess.run(["tmux", "new-session", "-d", "-s", TMUX_SUP, "-c", str(paths.repo_root),
                         f"env PYTHONPATH={wr} {py} -m warroom.supervisor"], capture_output=True, text=True)
     return None if r.returncode == 0 else f"supervisor tmux 시작 실패: {r.stderr.strip()}"
+
+
+def in_open_select(widget) -> bool:
+    return widget is not None and any(isinstance(a, Select) and a.expanded for a in widget.ancestors_with_self)
+
+
+def switch_region(screen, focused, regions: dict, memory: dict, default: dict) -> None:
+    """Tab / Shift+Tab: jump between two focus regions (arrow keys move inside one), remembering the last stop.
+
+    regions: name -> predicate(widget) that says a widget belongs to it; default: name -> widget to land on first.
+    """
+    here = next((n for n, inside in regions.items() if focused is not None and inside(focused)), None)
+    if here is not None:
+        memory[here] = focused
+    names = list(regions)
+    target = names[(names.index(here) + 1) % len(names)] if here else names[0]
+    dest = memory.get(target)
+    if dest is None or not dest.focusable or dest.screen is not screen:
+        dest = default[target]()
+    if dest is not None:
+        dest.focus()
 
 
 class Confirm(ModalScreen[bool]):
@@ -126,11 +149,14 @@ class LineDetail(Screen):
     """Batch Detail for one Line: controls, live Agent Log (tail -f), Run History, Audit Log."""
     BINDINGS = [("escape", "back", "Back"), ("f", "follow", "Auto-scroll"), ("up", "scroll_up", ""),
                 ("pageup", "page_up", ""), ("home", "top", ""), ("end", "follow", ""),
-                ("left", "control_move(-1)", ""), ("right", "control_move(1)", "")]
+                ("left", "control_move(-1)", ""), ("right", "control_move(1)", ""),
+                Binding("tab", "switch_region", "", priority=True),
+                Binding("shift+tab", "switch_region", "", show=False, priority=True)]
 
     def __init__(self, model: str, method: str):
         super().__init__()
         self.model, self.method = model, method
+        self._region_memory: dict = {}
         self.tail = LogTail(None)
         self.audit_seen = 0
         self.source = "latest"      # latest | audit | run:<id>
@@ -201,6 +227,21 @@ class LineDetail(Screen):
                  if w.display and w.focusable]
         if self.focused in order:
             order[(order.index(self.focused) + step) % len(order)].focus()
+
+    def _top_controls(self) -> list:
+        return [w for w in (*self.query_one("#line-controls").children, self.query_one("#source"))
+                if w.display and w.focusable]
+
+    def action_switch_region(self) -> None:
+        """Tab: buttons + source Select  <->  log. Arrows move inside the button row."""
+        if in_open_select(self.focused):
+            return
+        top = self._top_controls()
+        in_top = lambda w: w in top or any(a is self.query_one("#source") for a in w.ancestors_with_self)
+        switch_region(self, self.focused,
+                      {"top": in_top, "log": lambda w: w is self.log_w},
+                      self._region_memory,
+                      {"top": lambda: top[0] if top else None, "log": lambda: self.log_w})
 
     def action_back(self) -> None:
         self.app.pop_screen()
@@ -344,7 +385,9 @@ class WarRoom(App):
     RichLog { border: round $primary; height: 1fr; }
     """
     BINDINGS = [("q", "quit", "Quit (워커는 계속 실행)"), ("s", "settings", "Settings"),
-                ("left", "control_move(-1)", ""), ("right", "control_move(1)", "")]
+                ("left", "control_move(-1)", ""), ("right", "control_move(1)", ""),
+                Binding("tab", "switch_region", "", priority=True),
+                Binding("shift+tab", "switch_region", "", show=False, priority=True)]
 
     def __init__(self):
         super().__init__()
@@ -389,6 +432,19 @@ class WarRoom(App):
                     for me in self.methods:
                         yield Card(model, me)
         yield Footer()
+
+    def action_switch_region(self) -> None:
+        """Tab: top control bar  <->  Line cards. Arrows move inside either one."""
+        if self.screen is not self.screen_stack[0]:
+            raise SkipAction()          # Detail/Settings/Confirm keep their own Tab
+        if in_open_select(self.focused):
+            return
+        mem = self.__dict__.setdefault("_region_memory", {})
+        switch_region(self.screen, self.focused,
+                      {"controls": lambda w: any(a.id == "controls" for a in w.ancestors_with_self),
+                       "cards": lambda w: isinstance(w, Card)},
+                      mem,
+                      {"controls": lambda: self.query_one("#start"), "cards": lambda: next(iter(self.query(Card)), None)})
 
     def action_control_move(self, step: int) -> None:
         """Left/Right move between the top-bar controls like Shift+Tab/Tab (up/down stay with an open Select)."""
