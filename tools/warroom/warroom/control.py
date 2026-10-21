@@ -61,6 +61,19 @@ def retry(store: Store, model: str, method: str) -> bool:
     return False
 
 
+def set_model_tier(store: Store, cfg: dict, model: str, method: str, tier: str) -> tuple[bool, str]:
+    """Operator-initiated Free/Go switch, never an implicit paid fallback."""
+    from .config import registry
+
+    models = registry(cfg).get(model, {}).get("models", {})
+    if tier not in ("free", "go") or not models.get(tier):
+        return False, f"{model}: {tier.upper()} 모델이 config.json에 등록되어 있지 않습니다."
+    ok, msg, batch_id = store.change_model_tier(model, method, tier)
+    if ok:
+        store.log(batch_id, f"운영자 모델 전환: {tier.upper()}", line=f"{model}/{method}")
+    return ok, msg
+
+
 def supervisor_alive(store: Store, now: float | None = None, max_age: float = 30) -> bool:
     hb = store.get("heartbeat")
     return hb is not None and (now or time.time()) - float(hb) < max_age
