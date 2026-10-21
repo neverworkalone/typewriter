@@ -125,7 +125,8 @@ class SettingsScreen(Screen):
 class LineDetail(Screen):
     """Batch Detail for one Line: controls, live Agent Log (tail -f), Run History, Audit Log."""
     BINDINGS = [("escape", "back", "Back"), ("f", "follow", "Auto-scroll"), ("up", "scroll_up", ""),
-                ("pageup", "page_up", ""), ("home", "top", ""), ("end", "follow", "")]
+                ("pageup", "page_up", ""), ("home", "top", ""), ("end", "follow", ""),
+                ("left", "control_move(-1)", ""), ("right", "control_move(1)", "")]
 
     def __init__(self, model: str, method: str):
         super().__init__()
@@ -193,6 +194,13 @@ class LineDetail(Screen):
 
     def on_mouse_scroll_up(self, event) -> None:
         self._manual_scroll()
+
+    def action_control_move(self, step: int) -> None:
+        """Left/Right walk the buttons and the source Select like Tab/Shift+Tab (not inside an open Select)."""
+        order = [w for w in (*self.query_one("#line-controls").children, self.query_one("#source"))
+                 if w.display and w.focusable]
+        if self.focused in order:
+            order[(order.index(self.focused) + step) % len(order)].focus()
 
     def action_back(self) -> None:
         self.app.pop_screen()

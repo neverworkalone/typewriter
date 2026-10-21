@@ -71,6 +71,23 @@ class TuiSmoke(unittest.TestCase):
                 before = app.focused
                 await pilot.press("right")
                 self.assertIs(app.focused, before)
+                await pilot.press("escape")
+                # Detail screen: Left/Right walk its buttons and the source Select.
+                app.query_one("#card-deepseek-a").focus()
+                await pilot.press("enter")
+                await pilot.pause(0.3)
+                self.assertIsInstance(app.screen, tui.LineDetail)
+                app.screen.query_one("#raw").focus()
+                await pilot.press("right")
+                self.assertEqual(app.focused.id, "back")
+                await pilot.press("right")
+                self.assertEqual(app.focused.id, "source")
+                first = next(b for b in app.screen.query_one("#line-controls").children
+                             if b.display and b.focusable)
+                await pilot.press("right")          # wraps to the first enabled button
+                self.assertIs(app.focused, first)
+                await pilot.press("left")
+                self.assertEqual(app.focused.id, "source")
 
         asyncio.run(go())
         w.tmp.cleanup()
