@@ -190,6 +190,50 @@ class RunProblem(unittest.TestCase):
             self.assertEqual(CodexCLIAdapter().session_id(log), THREAD)
 
 
+BAD_THREADS = [None, "", " ", 7, ["x"], "*", "a/b", "../x", "ab*", "a b"]   # missing/empty/non-string/glob/path forms
+
+
+class MalformedThreadId(unittest.TestCase):
+    """#1381 Stage 1: a thread.started without a usable thread_id is never a session; no rollout search runs for it."""
+
+    def check(self, method, thread, expected):
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            log = d / "l.log"
+            log.write_text(lines({"type": "thread.started", "thread_id": thread}, completed()))
+            # an unrelated past session whose pinned record would pass if the search widened to it
+            home = rollout_home(d / "codex", THREAD, [context()])
+            with mock.patch.dict(os.environ, {"CODEX_HOME": str(home)}):
+                a = CodexCLIAdapter()
+                if method == "session_id":
+                    return a.session_id(log)
+                return getattr(a, method)(log, PIN, expected)
+
+    def test_table(self):
+        for thread in BAD_THREADS:
+            for expected in (None, THREAD):
+                for method in ("completion_problem", "run_problem"):
+                    with self.subTest(thread=thread, expected=expected, method=method):
+                        problem = self.check(method, thread, expected)
+                        self.assertEqual(problem[0] if problem else None, "ERROR")
+            with self.subTest(thread=thread, method="session_id"):
+                self.assertIsNone(self.check("session_id", thread, None))
+
+    def test_a_valid_thread_still_passes(self):
+        self.assertIsNone(self.check("completion_problem", THREAD, None))
+        self.assertIsNone(self.check("run_problem", THREAD, THREAD))
+        self.assertEqual(self.check("session_id", THREAD, None), THREAD)
+
+    def test_no_rollout_is_searched_for_an_unusable_id(self):
+        from warroom.adapters import _turn_contexts
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.dict(os.environ, {"CODEX_HOME": str(rollout_home(Path(d), THREAD, [context()]))}):
+                for bad in ("", "*", "a/b", None):
+                    with self.subTest(bad=bad):
+                        self.assertEqual(_turn_contexts(bad), [])
+                self.assertEqual(len(_turn_contexts(THREAD)), 1)
+
+
 class Classification(unittest.TestCase):
     def test_table(self):
         cases = [
@@ -407,6 +451,23 @@ class PrIntake(unittest.TestCase):
             self.assertIn("세션", w.row("codex", "a")["error"])
         finally:
             w.tmp.cleanup()
+
+    def test_exit0_with_a_pr_and_a_malformed_thread_id_is_not_accepted(self):
+        for thread in BAD_THREADS:
+            with self.subTest(thread=thread):
+                w = self.world()
+                try:
+                    with tempfile.TemporaryDirectory() as home, mock.patch.dict(os.environ, {"CODEX_HOME": home}):
+                        rollout_home(Path(home), THREAD, [context()])   # an unrelated, pin-matching session
+                        w.start("single", "codex", "a")
+                        w.adapter.plan.append({"code": 0, "text": lines(
+                            {"type": "thread.started", "thread_id": thread}, completed())})
+                        w.tick()
+                        w.adapter.finish(w.adapter.launches[-1]["pid"])
+                        w.tick()
+                    self.assertEqual(w.row("codex", "a")["state"], "ERROR")
+                finally:
+                    w.tmp.cleanup()
 
     def test_success_output_with_a_refusal_word_and_no_pr_is_an_error(self):
         w = self.world()

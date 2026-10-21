@@ -408,8 +408,18 @@ _CODEX_DENIED = re.compile(r"operation not permitted|permission denied|requires 
                            r"blocked by (the )?(sandbox|policy)|not allowed by (the )?(sandbox|policy)", re.I)
 
 
+_THREAD_ID = re.compile(r"[0-9A-Za-z][0-9A-Za-z_-]*")
+
+
+def _valid_thread(value) -> bool:
+    """A usable Codex thread id: a non-empty plain token (never empty, non-string or containing glob/path characters)."""
+    return isinstance(value, str) and _THREAD_ID.fullmatch(value) is not None
+
+
 def _turn_contexts(thread_id: str) -> list[dict]:
     """What Codex recorded for each turn of a thread: the effective model, effort and policy (rollout file)."""
+    if not _valid_thread(thread_id):   # an empty/odd id must never widen the rollout search to other sessions
+        return []
     home = Path(os.environ.get("CODEX_HOME") or Path.home() / ".codex")
     files = list((home / "sessions").glob(f"*/*/*/rollout-*{thread_id}.jsonl"))
     if not files:
@@ -475,7 +485,7 @@ class CodexCLIAdapter(ProcessAdapter):
         except OSError:
             return None
         for o in _json_objects(text):
-            if o.get("type") == "thread.started" and isinstance(o.get("thread_id"), str):
+            if o.get("type") == "thread.started" and _valid_thread(o.get("thread_id")):
                 return o["thread_id"]
         return None
 
@@ -527,7 +537,9 @@ class CodexCLIAdapter(ProcessAdapter):
         started = next((e for e in _json_objects(text) if e.get("type") == "thread.started"), None)
         if started is None:
             return ("ERROR", "세션(thread) ID가 기록되지 않은 실행은 완료로 인정하지 않습니다 — PR이 있어도 중지하고 보존합니다.")
-        thread = str(started.get("thread_id") or "")
+        thread = started.get("thread_id")
+        if not _valid_thread(thread):
+            return ("ERROR", "thread.started의 thread_id가 없거나 비어 있거나 형식이 올바르지 않습니다 — 중지하고 보존합니다.")
         if expected_session and thread != expected_session:
             return ("ERROR", f"세션 ID 불일치: 요청 {expected_session}, 실제 {thread} — 중지하고 보존합니다.")
         base_thread, _ = _baseline(log_file)
@@ -553,9 +565,11 @@ class CodexCLIAdapter(ProcessAdapter):
         started = next((e for e in events if e.get("type") == "thread.started"), None)
         if started is None:   # not started yet
             return None
-        thread = str(started.get("thread_id") or "")
+        thread = started.get("thread_id")
+        if not _valid_thread(thread):
+            return ("ERROR", "thread.started의 thread_id가 없거나 비어 있거나 형식이 올바르지 않습니다 — 중지하고 보존합니다.")
         if expected_session and thread != expected_session:
-            return ("ERROR", f"세션 ID 불일치: 요청 {expected_session}, 실제 {thread or '(없음)'} — "
+            return ("ERROR", f"세션 ID 불일치: 요청 {expected_session}, 실제 {thread} — "
                              "새 세션으로 진행된 것으로 보고 중지합니다.")
         denied = _denied_command(events)
         if denied:   # the local policy refused a command (or asked for approval): stop, keep everything, wait for the operator
