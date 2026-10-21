@@ -47,6 +47,11 @@ class AgentAdapter:
         """
         return None
 
+    def policy_refusal(self, log_file: Path) -> str | None:
+        """A reason when the CLI's own policy refused an action (seen in the log), or None. Used when a run ended
+        without its result (no PR): such a run is PAUSED for the operator instead of counted as a plain error."""
+        return None
+
     def stop(self, pid: int) -> None: ...
     def alive(self, pid: int) -> bool: ...
     def session_id(self, log_file: Path) -> str | None: ...
@@ -264,32 +269,18 @@ class ClaudeCodeAdapter(ProcessAdapter):
         return None
 
 
-# Codex runs are non-interactive and sandboxed. The sandbox is pinned on every launch (`exec resume` takes no
-# --sandbox flag, so it is a config override on both paths), user config and rules are ignored, and the default
-# workspace-write sandbox is widened only as far as a commit and a PR need: the worktree's git admin directory and
-# the repository's objects/refs/logs, plus network. Full access and approval bypass are never used.
-CODEX_REQUIRED_EXEC_FLAGS = ("--json", "--model", "--config", "--ignore-user-config", "--ignore-rules", "--sandbox")
-CODEX_REQUIRED_RESUME_FLAGS = ("resume", "--json", "--model", "--ignore-user-config", "--ignore-rules")
-
-
-def _git_dir(cwd, *args: str) -> Path:
-    out = subprocess.run(["git", "rev-parse", *args], cwd=cwd, capture_output=True, text=True)
-    if out.returncode:
-        raise RuntimeError(f"git 디렉터리를 확인할 수 없습니다 ({' '.join(args)}): {out.stderr.strip()[:200]}")
-    return (Path(cwd) / out.stdout.strip()).resolve()
-
-
-def _writable_roots(cwd, env) -> list[str]:
-    """The worktree's admin dir and the shared objects/refs/logs; the .git directory itself stays read-only."""
-    git_dir, common = _git_dir(cwd, "--git-dir"), _git_dir(cwd, "--git-common-dir")
-    roots = [git_dir, common / "objects", common / "refs", common / "logs"]
-    if env.get("GH_CONFIG_DIR"):   # the producer's own gh login must be writable for `gh pr create`
-        roots.append(Path(env["GH_CONFIG_DIR"]).resolve())
-    return [str(r) for r in roots]
+# Codex runs under the operator's own local CLI policy: its config, sandbox, approval and execpolicy rules are used
+# as they are. War Room pins only the model and the reasoning effort (on every launch, first run and resume alike)
+# and checks what Codex actually did: the thread id, the recorded model and effort. It never overrides sandbox,
+# approval, network or writable roots. A command the local policy denies stops the run in PAUSED, nothing is retried.
+CODEX_REQUIRED_EXEC_FLAGS = ("--json", "--model", "--config")
+CODEX_REQUIRED_RESUME_FLAGS = ("resume", "--json", "--model")
+_CODEX_DENIED = re.compile(r"operation not permitted|permission denied|requires approval|approval required|"
+                           r"blocked by (the )?(sandbox|policy)|not allowed by (the )?(sandbox|policy)", re.I)
 
 
 def _turn_contexts(thread_id: str) -> list[dict]:
-    """What Codex recorded for each turn of a thread: the effective model, effort and sandbox (rollout file)."""
+    """What Codex recorded for each turn of a thread: the effective model, effort and policy (rollout file)."""
     home = Path(os.environ.get("CODEX_HOME") or Path.home() / ".codex")
     files = list((home / "sessions").glob(f"*/*/*/rollout-*{thread_id}.jsonl"))
     if not files:
@@ -302,26 +293,23 @@ def _turn_contexts(thread_id: str) -> list[dict]:
 
 
 class CodexCLIAdapter(ProcessAdapter):
-    """Codex CLI (`codex exec --json`, `codex exec resume <thread id>`). Model, effort and sandbox on every launch."""
+    """Codex CLI (`codex exec --json`, `codex exec resume <thread id>`). Model and effort pinned on every launch."""
     name = "codex"
     capabilities = {"resume": True, "stop": True}
 
     def __init__(self, binary: str = "codex"):
         self.binary = binary
 
-    def _pins(self, run: RunSpec, cwd, env) -> list[str]:
-        return ["--json", "--ignore-user-config", "--ignore-rules", "-m", run.model,
-                "-c", f"model_reasoning_effort={run.effort}",
-                "-c", 'sandbox_mode="workspace-write"', "-c", 'approval_policy="never"',
-                "-c", "sandbox_workspace_write.network_access=true",
-                "-c", f"sandbox_workspace_write.writable_roots={json.dumps(_writable_roots(cwd, env))}"]
+    @staticmethod
+    def _pins(run: RunSpec) -> list[str]:
+        return ["--json", "-m", run.model, "-c", f"model_reasoning_effort={run.effort}"]
 
     def start(self, prompt, cwd, env, run, title, log_file, exit_file):
-        cmd = [self.binary, "exec", *self._pins(_pinned(run), cwd, env), prompt]
+        cmd = [self.binary, "exec", *self._pins(_pinned(run)), prompt]
         return self._spawn(cmd, cwd, env, log_file, exit_file)
 
     def resume(self, session_id, prompt, cwd, env, run, log_file, exit_file):
-        cmd = [self.binary, "exec", "resume", session_id, *self._pins(_pinned(run), cwd, env), prompt]
+        cmd = [self.binary, "exec", "resume", session_id, *self._pins(_pinned(run)), prompt]
         return self._spawn(cmd, cwd, env, log_file, exit_file)
 
     def session_id(self, log_file):
@@ -353,7 +341,15 @@ class CodexCLIAdapter(ProcessAdapter):
             return "Codex CLI가 로그인되어 있지 않습니다 (`codex login`)."
         return None
 
-    def run_problem(self, log_file, run, expected_session):
+    def policy_refusal(self, log_file):
+        try:
+            text = Path(log_file).read_text("utf-8", errors="replace")
+        except OSError:
+            return None
+        m = _CODEX_DENIED.search(text)
+        return f"로컬 Codex 정책이 명령을 거부한 흔적이 있습니다 ({m.group(0)})" if m else None
+
+    def run_problem(self, log_file, run, expected_session, cwd=None, env=None):
         try:
             text = Path(log_file).read_text("utf-8", errors="replace")
         except OSError:
@@ -366,6 +362,10 @@ class CodexCLIAdapter(ProcessAdapter):
         if expected_session and thread != expected_session:
             return ("ERROR", f"세션 ID 불일치: 요청 {expected_session}, 실제 {thread or '(없음)'} — "
                              "새 세션으로 진행된 것으로 보고 중지합니다.")
+        denied = _denied_command(events)
+        if denied:   # the local policy refused a command (or asked for approval): stop, keep everything, wait for the operator
+            return ("PAUSED", f"로컬 Codex 정책이 명령을 거부했습니다 ({denied}). 자동 권한 상승 없이 중지합니다. "
+                              "로컬 설정을 확인한 뒤 Retry 하세요 (worktree·브랜치·PR·세션 보존).")
         finished = any(e.get("type") in ("turn.completed", "turn.failed") for e in events)
         contexts = _turn_contexts(thread)
         if not contexts:
@@ -377,11 +377,20 @@ class CodexCLIAdapter(ProcessAdapter):
                 return ("ERROR", f"Codex가 실행한 모델 {ctx.get('model')!r}이 요청한 {run.model!r}과 다릅니다 — 중지합니다.")
             if run is not None and ctx.get("effort") != run.effort:
                 return ("ERROR", f"Codex가 실행한 추론 수준 {ctx.get('effort')!r}이 요청한 {run.effort!r}과 다릅니다 — 중지합니다.")
-            if (ctx.get("sandbox_policy") or {}).get("type") != "workspace-write":
-                return ("ERROR", "Codex 샌드박스가 workspace-write가 아닙니다 — 무제한 권한으로 실행하지 않습니다.")
-            if ctx.get("approval_policy") != "never":
-                return ("ERROR", f"Codex 승인 정책 {ctx.get('approval_policy')!r}은 비대화형 실행과 맞지 않습니다.")
         return None
+
+
+def _denied_command(events: list[dict]) -> str | None:
+    """The first command that failed with a policy refusal (`Operation not permitted`, an approval request, ...)."""
+    for e in events:
+        item = e.get("item") if isinstance(e.get("item"), dict) else {}
+        if e.get("type") != "item.completed" or item.get("type") != "command_execution":
+            continue
+        if item.get("exit_code") in (0, None):
+            continue
+        if _CODEX_DENIED.search(str(item.get("aggregated_output") or "")):
+            return str(item.get("command") or "command")[:160]
+    return None
 
 
 def _logged_in(out: str) -> bool:

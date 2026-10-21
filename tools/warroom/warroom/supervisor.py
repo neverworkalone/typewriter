@@ -344,6 +344,10 @@ class Supervisor:
             if b["state"] == "PRODUCING":
                 info = self._find_pr(b)
                 if info is None:
+                    refusal = self._adapter(b["producer"]).policy_refusal(Path(b["log_file"]))
+                    if refusal:   # the local CLI policy stopped the PR step: keep everything, wait for the operator
+                        return self._fail(b, "PAUSED", f"{refusal}. PR이 만들어지지 않았습니다. 로컬 설정을 확인한 뒤 "
+                                          "Retry 하세요 (worktree·브랜치·세션 보존).")
                     return self._fail(b, "ERROR", "AI가 정상 종료했지만 PR을 찾지 못했습니다 "
                                       "(자동 재생산 안 함, 로그 확인 후 Retry).")
             else:

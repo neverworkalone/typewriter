@@ -1,8 +1,12 @@
-"""Issue #1376: Codex CLI adapter. Pins and sandbox on every launch, real git roots, rollout-verified effective values."""
+"""Issue #1376 (mediator decision on #1381): Codex runs under the operator's local CLI policy.
+
+War Room pins the model and effort on every launch and verifies the thread id and the recorded model and effort.
+It never adds sandbox, approval, network or writable-root options, and a command the local policy refuses stops
+the run in PAUSED.
+"""
 import json
 import os
 import stat
-import subprocess
 import tempfile
 import time
 import unittest
@@ -17,8 +21,10 @@ from warroom.shell import Result
 QUOTA = DEFAULTS["quota_patterns"]
 PIN = RunSpec("gpt-6-luna", "xhigh")
 THREAD = "01a15e50-8832-7502-9680-0e4fdbf5fcb0"
-FORBIDDEN = ("--dangerously-bypass-approvals-and-sandbox", "--dangerously-bypass-hook-trust", "--yolo",
-             "danger-full-access", "--worktree", "--last", "--all", "--full-auto")
+# Options War Room never passes: the local CLI policy decides sandbox and approval, and bypass flags are never used.
+NEVER_PASSED = ("--dangerously-bypass-approvals-and-sandbox", "--dangerously-bypass-hook-trust", "--yolo",
+                "--full-auto", "--worktree", "--last", "--all", "--ignore-user-config", "--ignore-rules",
+                "sandbox_mode", "approval_policy", "sandbox_workspace_write", "writable_roots", "danger-full-access")
 
 
 def lines(*events) -> str:
@@ -31,6 +37,12 @@ def started(thread=THREAD):
 
 def completed():
     return {"type": "turn.completed", "usage": {}}
+
+
+def command(text, exit_code=1, cmd="git commit -q -m x"):
+    return {"type": "item.completed", "item": {"id": "i1", "type": "command_execution", "command": cmd,
+                                               "aggregated_output": text, "exit_code": exit_code,
+                                               "status": "completed" if exit_code == 0 else "failed"}}
 
 
 def rollout_home(tmp: Path, thread: str, contexts: list[dict]) -> Path:
@@ -55,31 +67,25 @@ class Recording(CodexCLIAdapter):
 
 
 class Argv(unittest.TestCase):
-    def test_start_and_resume_pin_model_effort_and_sandbox(self):
+    def test_start_and_resume_pin_only_model_and_effort(self):
         with tempfile.TemporaryDirectory() as d:
             d = Path(d)
-            env = {"GH_CONFIG_DIR": str(d / "gh")}
             a = Recording("codex")
-            with mock.patch("warroom.adapters._writable_roots", return_value=["/w/admin", "/w/objects"]):
-                a.start("prompt body", d, env, PIN, "A 009_02", "l.log", "l.exit")
-                start = a.cmd
-                a.resume(THREAD, "again", d, env, PIN, "l.log", "l.exit")
-                resume = a.cmd
+            a.start("prompt body", d, {"GH_CONFIG_DIR": str(d / "gh")}, PIN, "A 009_02", "l.log", "l.exit")
+            start = a.cmd
+            a.resume(THREAD, "again", d, {}, PIN, "l.log", "l.exit")
+            resume = a.cmd
         self.assertEqual(start[1], "exec")
         self.assertEqual(start[start.index("-m") + 1], "gpt-6-luna")
         self.assertIn("model_reasoning_effort=xhigh", start)
-        self.assertIn('sandbox_mode="workspace-write"', start)
-        self.assertIn('approval_policy="never"', start)
-        self.assertIn("sandbox_workspace_write.network_access=true", start)
-        self.assertIn("--ignore-user-config", start)
-        self.assertIn("--ignore-rules", start)
         self.assertEqual(start[-1], "prompt body")
         self.assertEqual(resume[1:4], ["exec", "resume", THREAD])
         self.assertIn("model_reasoning_effort=xhigh", resume)
         self.assertEqual(resume[-1], "again")
         for argv in (start, resume):
-            for bad in FORBIDDEN:
-                self.assertNotIn(bad, " ".join(argv))
+            joined = " ".join(argv)
+            for bad in NEVER_PASSED:
+                self.assertNotIn(bad, joined)
 
     def test_unpinned_run_is_refused_before_any_process(self):
         a = Recording("codex")
@@ -89,38 +95,9 @@ class Argv(unittest.TestCase):
         self.assertFalse(hasattr(a, "cmd"))
 
 
-class WritableRootsRealGit(unittest.TestCase):
-    """Against a real repository and worktree: the .git directory itself is never a writable root."""
-
-    def test_worktree_roots_are_admin_dir_and_shared_stores_only(self):
-        with tempfile.TemporaryDirectory() as d:
-            d = Path(d)
-            repo = d / "repo"
-            repo.mkdir()
-            run = lambda *a, cwd=repo: subprocess.run(["git", *a], cwd=cwd, check=True, capture_output=True)
-            run("init", "-q")
-            run("-c", "user.email=p@x", "-c", "user.name=p", "commit", "-q", "--allow-empty", "-m", "init")
-            wt = d / "wt"
-            run("worktree", "add", "-q", "-b", "probe", str(wt))
-            roots = [Path(r) for r in __import__("warroom.adapters", fromlist=["_writable_roots"])._writable_roots(
-                wt, {"GH_CONFIG_DIR": str(d / "gh")})]
-            common = (repo / ".git").resolve()
-            self.assertIn(common / "worktrees" / "wt", roots)
-            self.assertIn(common / "objects", roots)
-            self.assertIn(common / "refs", roots)
-            self.assertIn(common / "logs", roots)
-            self.assertNotIn(common, roots)                       # the .git directory itself stays read-only
-            self.assertIn((d / "gh").resolve(), roots)
-
-    def test_not_a_git_directory_is_an_error_not_an_empty_list(self):
-        with tempfile.TemporaryDirectory() as d:
-            with self.assertRaises(RuntimeError):
-                __import__("warroom.adapters", fromlist=["_writable_roots"])._writable_roots(d, {})
-
-
 class Preflight(unittest.TestCase):
-    EXEC = ("--json --model -m --config -c --ignore-user-config --ignore-rules --sandbox ")
-    RESUME = ("resume --json --model -m --ignore-user-config --ignore-rules ")
+    EXEC = "--json --model -m --config -c "
+    RESUME = "resume --json --model -m "
 
     class Fake:
         def __init__(self, exec_help=None, resume_help=None, login="Logged in using ChatGPT", version_ok=True):
@@ -143,7 +120,7 @@ class Preflight(unittest.TestCase):
         cases = [
             ("all good", {}, None),
             ("version fails", {"version_ok": False}, "--version"),
-            ("exec lacks --ignore-rules", {"exec_help": self.EXEC.replace("--ignore-rules", "")}, "--ignore-rules"),
+            ("exec lacks --config", {"exec_help": self.EXEC.replace("--config", "")}, "--config"),
             ("resume lacks --json", {"resume_help": self.RESUME.replace("--json", "")}, "--json"),
             ("not logged in", {"login": "Not logged in"}, "로그인"),
         ]
@@ -174,15 +151,36 @@ class RunProblem(unittest.TestCase):
             ("finished but no record", [started(), completed()], None, PIN, THREAD, "ERROR"),
             ("model drift", [started(), completed()], [context(model="gpt-5")], PIN, THREAD, "ERROR"),
             ("effort drift", [started(), completed()], [context(effort="high")], PIN, THREAD, "ERROR"),
-            ("full access sandbox", [started(), completed()], [context(sandbox="danger-full-access")], PIN, THREAD, "ERROR"),
-            ("approval not never", [started(), completed()], [context(approval="on-request")], PIN, THREAD, "ERROR"),
             ("a different thread id", [started("99999999-0000-4000-8000-000000000000")], [context()], PIN, THREAD, "ERROR"),
-            ("legacy run without pin: sandbox still checked", [started()], [context(model="x", effort="y")], None, THREAD, None),
+            ("legacy run without pin: nothing to compare", [started()], [context(model="x", effort="y")], None, THREAD, None),
         ]
         for name, events, contexts, run, expected, want in cases:
             with self.subTest(name):
                 problem = self.check(events, run=run, expected=expected, contexts=contexts)
                 self.assertEqual(problem[0] if problem else None, want)
+
+    def test_local_sandbox_and_approval_are_observed_not_enforced(self):
+        # The local CLI policy decides these; a different value is not a War Room failure.
+        for sandbox, approval in [("workspace-write", "never"), ("danger-full-access", "never"),
+                                  ("workspace-write", "on-request"), ("read-only", "untrusted")]:
+            with self.subTest(sandbox=sandbox, approval=approval):
+                self.assertIsNone(self.check([started(), completed()], contexts=[context(sandbox=sandbox, approval=approval)]))
+
+    def test_a_command_refused_by_the_local_policy_pauses_the_run(self):
+        refused = [
+            [started(), command("error: Unable to create index.lock: Operation not permitted")],
+            [started(), command("fatal: could not write: Permission denied", cmd="gh pr create")],
+            [started(), command("action requires approval before running", cmd="git push")],
+        ]
+        for events in refused:
+            with self.subTest(events=events[-1]["item"]["command"]):
+                problem = self.check(events, contexts=[context()])
+                self.assertEqual(problem[0], "PAUSED")
+                self.assertIn("로컬 Codex 정책이 명령을 거부했습니다", problem[1])
+
+    def test_policy_text_in_a_successful_command_is_not_a_refusal(self):
+        events = [started(), command("Operation not permitted (printed and handled)", exit_code=0), completed()]
+        self.assertIsNone(self.check(events, contexts=[context()]))
 
     def test_session_id_comes_from_thread_started(self):
         with tempfile.TemporaryDirectory() as d:
@@ -204,15 +202,44 @@ class Classification(unittest.TestCase):
                 self.assertEqual(classify_failure(text, QUOTA), want)
 
 
+class PolicyRefusal(unittest.TestCase):
+    def test_table(self):
+        cases = [  # the refusal shows in agent text too (not only in a command item)
+            ("Exit code: 128 — fatal: Unable to create index.lock: Operation not permitted", True),
+            ("the command was denied by the sandbox policy", False),
+            ("all checks passed", False),
+        ]
+        for text, refused in cases:
+            with self.subTest(text=text), tempfile.TemporaryDirectory() as d:
+                log = Path(d) / "l.log"
+                log.write_text(lines(started(), {"type": "item.completed",
+                                                 "item": {"type": "agent_message", "text": text}}, completed()))
+                reason = CodexCLIAdapter().policy_refusal(log)
+                self.assertEqual(reason is not None, refused or "Operation not permitted" in text)
+
+    def test_other_adapters_never_report_a_refusal(self):
+        from warroom.adapters import ClaudeCodeAdapter, OpenCodeAdapter
+        with tempfile.TemporaryDirectory() as d:
+            log = Path(d) / "l.log"
+            log.write_text("Operation not permitted\n")
+            self.assertIsNone(OpenCodeAdapter().policy_refusal(log))
+            self.assertIsNone(ClaudeCodeAdapter().policy_refusal(log))
+
+
 class SupervisorStopsOnRecordedDrift(unittest.TestCase):
     class Reporting(FakeAdapter):
         run_problem = CodexCLIAdapter.run_problem
+        policy_refusal = CodexCLIAdapter.policy_refusal
 
-    def test_finished_run_without_a_record_is_an_error_not_a_pr(self):
+    def world(self):
         w = World()
         w.cfg["producers"] = {"codex": {"label": "Luna", "adapter": "codex", "model": "gpt-6-luna", "effort": "xhigh"}}
         w.adapter = self.Reporting()
         w.sup.adapter = w.adapter
+        return w
+
+    def test_finished_run_without_a_record_is_an_error_not_a_pr(self):
+        w = self.world()
         try:
             with tempfile.TemporaryDirectory() as home, mock.patch.dict(os.environ, {"CODEX_HOME": home}):
                 w.start("single", "codex", "a")
@@ -220,9 +247,54 @@ class SupervisorStopsOnRecordedDrift(unittest.TestCase):
                 w.tick()
                 w.adapter.finish(w.adapter.launches[-1]["pid"])
                 w.tick()
+            self.assertEqual(w.row("codex", "a")["state"], "ERROR")
+            self.assertIn("turn_context", w.row("codex", "a")["error"])
+        finally:
+            w.tmp.cleanup()
+
+    def test_no_pr_after_a_policy_refusal_pauses_instead_of_erroring(self):
+        w = self.world()
+        try:
+            with tempfile.TemporaryDirectory() as home, mock.patch.dict(os.environ, {"CODEX_HOME": home}):
+                rollout_home(Path(home), THREAD, [context()])          # the turn was recorded, as Codex does
+                w.start("single", "codex", "a")
+                w.adapter.plan.append({"code": 0, "text": lines(started(), {"type": "item.completed", "item": {
+                    "type": "agent_message", "text": "Exit code: 128 Operation not permitted"}}, completed())})
+                w.tick()
+                w.adapter.finish(w.adapter.launches[-1]["pid"])
+                w.tick()
+            self.assertEqual(w.row("codex", "a")["state"], "PAUSED")
+        finally:
+            w.tmp.cleanup()
+
+    def test_no_pr_without_a_refusal_stays_an_error(self):
+        w = self.world()
+        try:
+            with tempfile.TemporaryDirectory() as home, mock.patch.dict(os.environ, {"CODEX_HOME": home}):
+                rollout_home(Path(home), THREAD, [context()])
+                w.start("single", "codex", "a")
+                w.adapter.plan.append({"code": 0, "text": lines(started(), completed())})
+                w.tick()
+                w.adapter.finish(w.adapter.launches[-1]["pid"])
+                w.tick()
+            self.assertEqual(w.row("codex", "a")["state"], "ERROR")
+            self.assertIn("PR을 찾지 못했습니다", w.row("codex", "a")["error"])
+        finally:
+            w.tmp.cleanup()
+
+    def test_refused_command_pauses_and_keeps_the_batch(self):
+        w = self.world()
+        try:
+            with tempfile.TemporaryDirectory() as home, mock.patch.dict(os.environ, {"CODEX_HOME": home}):
+                w.start("single", "codex", "a")
+                w.adapter.plan.append({"code": 0, "text": lines(started(), command("Operation not permitted"))})
+                w.tick()
+                w.adapter.finish(w.adapter.launches[-1]["pid"])
+                w.tick()
             row = w.row("codex", "a")
-            self.assertEqual(row["state"], "ERROR")
-            self.assertIn("turn_context", row["error"])
+            self.assertEqual(row["state"], "PAUSED")
+            self.assertIsNotNone(row["worktree"])                  # worktree, branch and session are kept
+            self.assertEqual(len(w.adapter.launches), 1)           # no automatic retry
         finally:
             w.tmp.cleanup()
 
@@ -238,8 +310,7 @@ class RealProcessLaunch(unittest.TestCase):
                             + '"}\'\nexit 0\n')
             fake.chmod(fake.stat().st_mode | stat.S_IEXEC)
             a = CodexCLIAdapter(str(fake))
-            with mock.patch("warroom.adapters._writable_roots", return_value=["/w/admin"]):
-                h = a.start("prompt text", wt, dict(os.environ), PIN, "A 009_02", d / "l.log", d / "l.exit")
+            h = a.start("prompt text", wt, dict(os.environ), PIN, "A 009_02", d / "l.log", d / "l.exit")
             for _ in range(100):
                 if not a.alive(h.pid):
                     break
@@ -247,7 +318,7 @@ class RealProcessLaunch(unittest.TestCase):
             text = h.log_file.read_text()
             self.assertIn("-m gpt-6-luna", text)
             self.assertIn("model_reasoning_effort=xhigh", text)
-            self.assertIn("--ignore-rules", text)
+            self.assertNotIn("--ignore-rules", text)
             self.assertEqual(a.session_id(h.log_file), THREAD)
 
 

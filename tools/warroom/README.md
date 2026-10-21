@@ -106,18 +106,16 @@ Rules (fail closed):
 
 - Install the Codex CLI and log in with the operator's own account: `codex login`. `codex login status` must
   report `Logged in`; Start checks it. Like Claude, this login is not isolated per War Room.
-- Every run passes the pins and the sandbox as options: `codex exec --json --ignore-user-config --ignore-rules
-  -m <model> -c model_reasoning_effort=<effort> -c sandbox_mode="workspace-write" -c approval_policy="never"
-  -c sandbox_workspace_write.network_access=true -c sandbox_workspace_write.writable_roots=[…] <prompt>`.
-  Resume is `codex exec resume <thread id>` with the same options; `exec resume` has no `--sandbox` flag, so the
-  sandbox is a config override on both paths. `--worktree`, `--last`, `--full-auto`, `danger-full-access` and any
-  approval bypass are never used.
-- The default `workspace-write` sandbox denies writes to `.git`, so a commit inside a worktree fails. War Room adds
-  only the worktree's git admin directory, the repository's `objects`, `refs` and `logs`, and the producer's
-  `GH_CONFIG_DIR` as writable roots, and enables network for push and PR creation.
-- Effective values are checked, not assumed: the `thread.started` thread id must equal the requested session, and
-  the model, effort, sandbox and approval policy come from the rollout's `turn_context`. A finished turn with no
-  recorded context stops the batch.
+- Codex runs under the operator's **local CLI policy**: `~/.codex/config.toml`, its sandbox, approval and execpolicy
+  rules, and the project settings are used as they are. War Room does not add sandbox, approval, network or
+  writable-root options, and it never uses `--ignore-user-config`, `--ignore-rules`, `--full-auto` or bypass flags.
+- Every run pins only the model and the reasoning effort: `codex exec --json -m <model> -c model_reasoning_effort=<effort> <prompt>`.
+  Resume is `codex exec resume <thread id>` with the same pins. `--worktree`, `--last` and `--all` are never used.
+- Checked, not assumed: the `thread.started` thread id must equal the requested session, and the model and effort in
+  the rollout's `turn_context` must equal the pins. A finished turn with no recorded context stops the batch.
+- A command the local policy refuses (`Operation not permitted`, `Permission denied`, an approval request) stops the
+  run in **PAUSED**. The worktree, branch, PR and session are kept and nothing is retried automatically. Permission
+  is never raised by War Room; the operator changes the local CLI settings and then retries.
 - Start refuses unless `codex exec --help` and `codex exec resume --help` list the required options.
 
 ## Prompts
