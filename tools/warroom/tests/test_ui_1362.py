@@ -139,6 +139,15 @@ class CardsAndControl(unittest.TestCase):
         w.tmp.cleanup()
 
 
+class SelectWidth(unittest.TestCase):
+    def test_width_fits_longest_label(self):
+        from warroom.views import select_width
+        cases = [(["OpenCode", "Codex"], 18), (["Single", "Continuous"], 20), (["A"], 18), ([], 18),
+                 (["한글라벨"], 18), (["가" * 6], 22)]
+        for labels, want in cases:
+            self.assertEqual(select_width(labels), want, labels)
+
+
 @unittest.skipIf(textual is None, "textual not installed")
 class BoardAndDetail(unittest.TestCase):
     def test_controls_one_row_no_supervisor_text_and_model_select_hidden(self):
@@ -166,6 +175,28 @@ class BoardAndDetail(unittest.TestCase):
                 await pilot.pause(1.3)
                 self.assertEqual(w.store.line("deepseek", "a")["run"], 1)
                 self.assertFalse(app.query_one("#stop-all", Button).disabled)
+
+        asyncio.run(go())
+        w.tmp.cleanup()
+
+    def test_control_bar_labels_one_line_and_buttons_equal_width(self):
+        w = World()
+
+        async def go():
+            for width in (100, 120):
+                app = make_app(w)
+                async with app.run_test(size=(width, 40)) as pilot:
+                    await pilot.pause(0.3)
+                    sel = {i: app.query_one(f"#{i}").region for i in ("adapter", "method", "mode")}
+                    btn = {i: app.query_one(f"#{i}").region for i in ("start", "drain-all", "stop-all")}
+                    self.assertEqual({r.height for r in sel.values()}, {3}, sel)   # border + one text line
+                    for i, labels in (("adapter", ["OpenCode"]), ("mode", ["Continuous"])):
+                        self.assertGreaterEqual(sel[i].width - 10, max(map(len, labels)))
+                    self.assertEqual(len({r.width for r in btn.values()}), 1, btn)
+                    self.assertGreaterEqual(btn["start"].width, 14)
+                    allr = [*sel.values(), *btn.values()]
+                    self.assertEqual(len({r.y for r in allr}), 1, allr)
+                    self.assertTrue(all(r.right <= width for r in allr))
 
         asyncio.run(go())
         w.tmp.cleanup()

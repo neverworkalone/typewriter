@@ -15,7 +15,7 @@ import time
 from . import auth, control
 from .config import Paths, adapter_label, adapters, load_config, methods, registry
 from .logrender import render_line
-from .views import _hhmm, _when, card_text, detail_header, detail_meta  # noqa: F401  (CARD_W/ICON re-exported for tests)
+from .views import _hhmm, _when, select_width, card_text, detail_header, detail_meta  # noqa: F401  (CARD_W/ICON re-exported for tests)
 from .logtail import LogTail, redact
 from .store import Store
 
@@ -302,10 +302,8 @@ class WarRoom(App):
     #banner { color: $error; }
     #drain-note { color: $warning; }
     #controls, #line-controls { height: auto; }
-    #controls > Select { width: 14; }
-    #controls > #method { width: 9; }
-    #controls > #mode { width: 17; }
-    #controls > Button, #line-controls > Button { min-width: 8; width: auto; }
+    #controls > Button { width: 14; min-width: 14; max-width: 14; }
+    #line-controls > Button { min-width: 8; width: auto; }
     #controls.narrow { layout: grid; grid-size: 3; grid-rows: auto; }
     #controls.narrow > Select, #controls.narrow > Button { width: 100%; }
     #columns { height: 1fr; }
@@ -381,7 +379,15 @@ class WarRoom(App):
         opts = self._model_options(adapter)
         sel.set_options(opts)
         sel.display = len(opts) > 1
+        sel.styles.width = select_width(label for label, _ in opts)
         self._fit_controls()
+
+    def _size_selects(self) -> None:
+        """Static top-bar Selects get a width from their longest label (no mid-word wrap)."""
+        for sid, labels in (("adapter", [adapter_label(a) for a in adapters(self.cfg)]),
+                            ("method", [m.upper() for m in self.methods]),
+                            ("mode", ["Single", "Continuous"])):
+            self.query_one(f"#{sid}", Select).styles.width = select_width(labels)
 
     def _fit_controls(self) -> None:
         """One row when it fits; otherwise a grid, so no control is ever clipped."""
@@ -397,6 +403,7 @@ class WarRoom(App):
     def on_mount(self) -> None:
         self.set_interval(1.0, self.refresh_view)
         self.run_worker(self.check_auth, thread=True)
+        self._size_selects()
         self._sync_model_select(str(self.query_one("#adapter", Select).value))
         self.refresh_view()
 

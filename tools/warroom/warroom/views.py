@@ -44,6 +44,16 @@ def set_cell_size(text: str, width: int) -> str:
     return "".join(out)
 
 
+SELECT_CHROME = 10    # border 2 + padding 4 + arrow/gap 4: a label of N cells needs N + 10 columns on one line
+BUTTON_W = 14         # Start / Drain All / Stop All share one width
+CONTROLS_MIN_W = 8
+
+
+def select_width(labels, minimum: int = CONTROLS_MIN_W) -> int:
+    """Width of a top-bar Select so its longest option label stays on one line."""
+    return max([cell_len(str(x)) for x in labels] + [minimum]) + SELECT_CHROME
+
+
 def _fit(text: str, width: int = CARD_W) -> str:
     text = " ".join(text.split())
     return text if cell_len(text) <= width else set_cell_size(text, width - 1).rstrip() + "…"

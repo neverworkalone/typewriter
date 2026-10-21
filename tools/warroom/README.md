@@ -43,7 +43,7 @@ logical model twice (duplicate id or shared endpoint ID) is blocked.
 - **Board**: one column per registered model, fixed A/B/C/D slots (3-line fixed-size cards: `Method · batch`
   + phase icon / phase + observed `N/500` / `PR #n` + last activity; empty slots are dim grey, COMPLETE cards
   stay). Clicking any card (even an empty slot) only opens its Batch Detail. New work starts only from the
-  one-row top bar `[CLI] [Method] [Single|Continuous] [Start] [Drain All] [Stop All]` (narrow terminals wrap it into
+  one-row top bar `[CLI] [Method] [Single|Continuous] [Start] [Drain All] [Stop All]` (Selects are sized to their longest label, the three buttons share one fixed width; narrow terminals wrap it into
   a grid). The CLI/Adapter list comes from the registry (Codex, Claude, OpenCode first); the model Select appears
   only when one CLI hosts several logical models, so Start never guesses a model. **Single** = one batch
   then stop; **Continuous** = consecutive batches in the *same* Line (never parallel batches in one Line).
