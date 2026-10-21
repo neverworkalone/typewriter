@@ -516,7 +516,7 @@ class WarRoom(App):
         elif e.button.id == "stop-all":
             n = len(self.store.incomplete_batches())
             self.push_screen(Confirm(
-                f"모든 라인(미완료 배치 {n}개)의 AI 실행을 즉시 중지합니다."), self._stopped_all)
+                f"모든 라인(미완료 배치 {n}개)을 즉시 중지합니다."), self._stopped_all)
 
     def _stopped_all(self, yes: bool | None) -> None:
         if yes:
