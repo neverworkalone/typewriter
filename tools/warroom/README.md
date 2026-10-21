@@ -71,7 +71,7 @@ then the model label; the order of `producers` in the file does not matter.
 
 | Producer (label) | Adapter (CLI) | Model | Effort | Status |
 |---|---|---|---|---|
-| `claude` (Sonnet) | `claude` (Claude Code) | `model: sonnet` → `--model sonnet` | `effort: medium` → `--effort medium` | Adapter #1375 |
+| `claude` (Sonnet) | `claude` (Claude Code) | `model: sonnet` → `--model sonnet` | `effort: medium` → `--effort medium` | Runs (#1375) |
 | `codex` (Luna) | `codex` (Codex CLI) | `model: gpt-6-luna` → `-m gpt-6-luna` | `effort: xhigh` → `-c model_reasoning_effort=xhigh` | Adapter #1376 |
 | `deepseek` (DeepSeek) | `opencode` | `models.free` / `models.go` | `effort: high` → `--model <id>#high` | Runs now |
 
@@ -87,6 +87,20 @@ Rules (fail closed):
   (`Unrecognized flag`). An unknown variant or model fails the run and stops the batch; nothing is substituted.
   A DeepSeek entry without `effort` runs at `high`, the owner-fixed value (configs written before #1373).
 - Run History and the Audit Log record the model ID and effort each launch was pinned to.
+
+### Claude Code (`claude`) setup
+
+- Install Claude Code and log in with the operator's own account: `claude auth login`. `claude auth status`
+  must report `loggedIn: true`; Start checks it. Unlike GitHub, this login is not isolated per War Room.
+- Every run: `claude -p <prompt> --model <model> --effort <effort> --output-format stream-json --verbose
+  --permission-mode dontAsk --allowedTools … --disallowedTools …`. Resume uses `--resume <session id>` with the same pins.
+- Permissions: `dontAsk` with an explicit allowlist (Read, Edit, Write, Glob, Grep, `git`, `gh pr create|view|list`,
+  `gh issue view`, `node`, `pnpm`, `corepack`). `gh pr merge` and force pushes are denied. A denied tool stops the
+  batch in PAUSED; nothing continues silently. Widening the allowlist needs owner approval.
+- Start refuses when `ANTHROPIC_MODEL` or `CLAUDE_CODE_EFFORT_LEVEL` is set to anything other than the pin, because
+  it would decide the effective value.
+- The stream reports the model it ran (`system/init`); a different model stops the batch. The CLI does not print the
+  effort it used, so an unknown effort (the CLI's "ignoring it and using the default effort") is treated as a stop.
 
 ## Prompts
 

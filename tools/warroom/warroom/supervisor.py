@@ -222,6 +222,11 @@ class Supervisor:
         """The model and effort this batch's next run is pinned to (the current tier for OpenCode)."""
         return run_spec(self.cfg, b["producer"], b["model_tier"])
 
+    def _recorded_run(self, b) -> RunSpec | None:
+        """The model and effort the batch's current run was launched with (the store is the source of truth)."""
+        r = next((r for r in self.store.runs(b["id"]) if r["model"]), None)
+        return RunSpec(r["model"], r["effort"]) if r else None
+
     @staticmethod
     def _pin_drift(b, run: RunSpec, tiered: bool, runs) -> str | None:
         """A resumed session continues only on the model and effort that started it; any drift stops the batch.
@@ -302,6 +307,12 @@ class Supervisor:
             self.store.set_run_session(b["id"], sid)
             b = self.store.batch(b["id"])
         self._record_progress(b)
+        problem = ad.run_problem(Path(b["log_file"]), self._recorded_run(b), b["session_id"])
+        if problem:   # the CLI contradicts its pins: stop it, keep worktree/PR, wait for the operator
+            state, msg = problem
+            if ad.alive(b["pid"]):
+                ad.stop(b["pid"])
+            return self._fail(b, state, msg)
         if ad.alive(b["pid"]):
             if b["state"] == "PRODUCING":
                 self._adopt_pr_while_running(b)
@@ -409,6 +420,11 @@ class Supervisor:
         if cls == "effort":
             return self._fail(b, "ERROR", "CLI가 요청한 모델 또는 추론 수준을 받아들이지 않았습니다 — 다른 값으로 "
                               f"대체하지 않습니다. 로그 확인 후 설정을 고치세요: {b['log_file']}")
+        if cls == "session_missing":
+            return self._fail(b, "PAUSED", "세션 ID를 찾지 못했습니다 — 새 세션을 만들지 않고 worktree·PR을 보존합니다. "
+                              "원인 확인 후 Retry.")
+        if cls == "usage_limit":
+            return self._fail(b, "PAUSED", "CLI 사용량 한도에 도달했습니다 — 자동 전환·재시도 없이 중지합니다. 한도 해제 후 Retry.")
         if cls == "free_quota":
             if not self._tiered(b["producer"]):
                 return self._fail(b, "PAUSED", "사용량 한도 도달로 보입니다. 이 CLI는 자동 모델 전환을 하지 않습니다 "
@@ -540,7 +556,7 @@ def build(paths=None):
     """Wire the production Supervisor."""
     import os as _os
 
-    from .adapters import OpenCodeAdapter
+    from .adapters import ClaudeCodeAdapter, OpenCodeAdapter
     from .config import Paths, load_config
     from .gitops import Git
     from .github import GhClient
@@ -551,7 +567,8 @@ def build(paths=None):
     cfg = load_config(paths)
     env = auth.build_env(dict(_os.environ), paths.gh_config, cfg["git_name"], cfg["git_email"])
     runner = Runner()
-    return Supervisor(paths, cfg, Store(paths.db), runner, {"opencode": OpenCodeAdapter(cfg["opencode_bin"])},
+    adapters = {"opencode": OpenCodeAdapter(cfg["opencode_bin"]), "claude": ClaudeCodeAdapter(cfg["claude_bin"])}
+    return Supervisor(paths, cfg, Store(paths.db), runner, adapters,
                       GhClient(runner, env, cfg["repo"]),
                       Git(runner, paths.repo_root, env, paths.worktrees), env)
 

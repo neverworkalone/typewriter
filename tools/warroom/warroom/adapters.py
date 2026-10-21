@@ -40,6 +40,13 @@ class AgentAdapter:
         """Why this CLI cannot honour these pinned runs as requested, or None. Checked before any process starts."""
         return None
 
+    def run_problem(self, log_file: Path, run: RunSpec | None, expected_session: str | None) -> tuple[str, str] | None:
+        """What the CLI reports about this run contradicts its pins: (state, reason), or None.
+
+        Checked on every poll, so a wrong model or session is stopped before it can open a PR.
+        """
+        return None
+
     def stop(self, pid: int) -> None: ...
     def alive(self, pid: int) -> bool: ...
     def session_id(self, log_file: Path) -> str | None: ...
@@ -166,6 +173,104 @@ class OpenCodeAdapter(ProcessAdapter):
         return None
 
 
+# Permission surface of non-interactive Claude runs: an explicit allowlist (`dontAsk` denies everything else),
+# never a bypass flag. Merge and force-push are denied even where a broader pattern would allow them.
+CLAUDE_ALLOWED_TOOLS = ("Read", "Edit", "Write", "Glob", "Grep", "Bash(git *)", "Bash(gh pr create *)",
+                        "Bash(gh pr view *)", "Bash(gh pr list *)", "Bash(gh issue view *)",
+                        "Bash(node *)", "Bash(pnpm *)", "Bash(corepack *)")
+CLAUDE_DISALLOWED_TOOLS = ("Bash(gh pr merge *)", "Bash(git push --force *)", "Bash(git push -f *)")
+CLAUDE_REQUIRED_FLAGS = ("--model", "--effort", "--resume", "--name", "--output-format", "stream-json",
+                         "--permission-mode", "dontAsk", "--allowedTools", "--disallowedTools")
+_CLAUDE_EFFORT_FALLBACK = "ignoring it and using the default effort"   # the CLI's own warning for an unknown --effort
+
+
+def _json_objects(text: str):
+    for line in text.splitlines():
+        try:
+            o = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(o, dict):
+            yield o
+
+
+class ClaudeCodeAdapter(ProcessAdapter):
+    """Claude Code (`claude -p --output-format stream-json`). Model and effort are passed on every launch."""
+    name = "claude"
+    capabilities = {"resume": True, "stop": True}
+
+    def __init__(self, binary: str = "claude"):
+        self.binary = binary
+
+    @staticmethod
+    def _pins(run: RunSpec) -> list[str]:
+        return ["--model", run.model, "--effort", run.effort, "--output-format", "stream-json", "--verbose",
+                "--permission-mode", "dontAsk", "--allowedTools", ",".join(CLAUDE_ALLOWED_TOOLS),
+                "--disallowedTools", ",".join(CLAUDE_DISALLOWED_TOOLS)]
+
+    def start(self, prompt, cwd, env, run, title, log_file, exit_file):
+        cmd = [self.binary, "-p", prompt, *self._pins(_pinned(run)), "--name", title]
+        return self._spawn(cmd, cwd, env, log_file, exit_file)
+
+    def resume(self, session_id, prompt, cwd, env, run, log_file, exit_file):
+        cmd = [self.binary, "-p", prompt, "--resume", session_id, *self._pins(_pinned(run))]
+        return self._spawn(cmd, cwd, env, log_file, exit_file)
+
+    def preflight(self, runner, env, runs):
+        v = runner.run([self.binary, "--version"], env=env, timeout=60)
+        if not v.ok:
+            return f"`{self.binary} --version` 실행 실패: {v.err.strip()[:200]}"
+        h = runner.run([self.binary, "--help"], env=env, timeout=60)
+        if not h.ok:
+            return f"`{self.binary} --help` 실행 실패: {h.err.strip()[:200]}"
+        missing = [f for f in CLAUDE_REQUIRED_FLAGS if f not in h.out]
+        if missing:
+            return f"설치된 Claude Code CLI({v.out.strip()})가 필요한 옵션을 지원하지 않습니다: {', '.join(missing)}"
+        a = runner.run([self.binary, "auth", "status"], env=env, timeout=60)
+        if not a.ok or not _logged_in(a.out):
+            return "Claude CLI가 로그인되어 있지 않습니다 (`claude auth login`)."
+        for run in runs:   # an environment override would decide the effective value instead of the pin
+            for name, value in (("ANTHROPIC_MODEL", run.model), ("CLAUDE_CODE_EFFORT_LEVEL", run.effort)):
+                if env.get(name) and env[name] != value:
+                    return f"환경 변수 {name}={env[name]!r}가 실행 설정 {value!r}을 덮어씁니다 — 해제한 뒤 실행하세요."
+        return None
+
+    def run_problem(self, log_file, run, expected_session):
+        try:
+            text = Path(log_file).read_text("utf-8", errors="replace")
+        except OSError:
+            return None
+        if _CLAUDE_EFFORT_FALLBACK in text:   # the CLI would run at its default effort: never accept that
+            return ("ERROR", "CLI가 추론 수준을 인식하지 못해 기본값으로 실행하려 했습니다 — 다른 값으로 대체하지 않습니다.")
+        init = result = None
+        for o in _json_objects(text):
+            if o.get("type") == "system" and o.get("subtype") == "init" and init is None:
+                init = o
+            elif o.get("type") == "result":
+                result = o
+        if init is None:   # not started yet
+            return None
+        if expected_session and init.get("session_id") != expected_session:
+            return ("ERROR", f"세션 ID 불일치: 요청 {expected_session}, 실제 {init.get('session_id')} — 중지하고 보존합니다.")
+        reported = str(init.get("model") or "")
+        if not reported:
+            return ("ERROR", "CLI가 실행 모델을 보고하지 않아 요청한 모델로 실행됐는지 확인할 수 없습니다.")
+        if run and run.model.lower() not in reported.lower():
+            return ("ERROR", f"CLI가 보고한 모델 {reported!r}이 요청한 {run.model!r}과 다릅니다 — 중지합니다.")
+        if result is not None and result.get("permission_denials"):
+            names = sorted({str(d.get("tool_name")) for d in result["permission_denials"] if isinstance(d, dict)})
+            return ("PAUSED", f"권한 거부로 실행이 불완전합니다 (허용 목록 밖 도구: {', '.join(names)}). "
+                              "허용 목록 확대는 오너 승인이 필요합니다.")
+        return None
+
+
+def _logged_in(out: str) -> bool:
+    try:
+        return json.loads(out).get("loggedIn") is True
+    except (ValueError, AttributeError):
+        return False
+
+
 # --- failure classification: free-quota exhaustion is the ONLY trigger for Go ---
 def classify_failure(log_text: str, quota_patterns: list[str]) -> str:
     """'free_quota' | 'effort' | 'rate_limit' | 'auth' | 'network' | 'unknown'.
@@ -179,11 +284,16 @@ def classify_failure(log_text: str, quota_patterns: list[str]) -> str:
         if re.search(pat, log_text, re.I):
             return "free_quota"
     low = log_text.lower()
-    if re.search(r"variant unavailable|unsupported value|supported values are|unsupported (reasoning )?effort", low):
+    if re.search(r"variant unavailable|unsupported value|supported values are|unsupported (reasoning )?effort|"
+                 r"unknown --effort value", low):
         return "effort"
+    if re.search(r"no conversation found with session id|no rollout found for thread id|thread/resume failed", low):
+        return "session_missing"   # never answered by a silent new session: the worktree and PR are kept
+    if re.search(r"usage limit|5-hour limit|weekly limit", low):
+        return "usage_limit"       # a plan limit is not retried or switched automatically
     if re.search(r"\b429\b|rate.?limit|too many requests", low):
         return "rate_limit"
-    if re.search(r"\b401\b|\b403\b|unauthori[sz]ed|invalid api key|authentication", low):
+    if re.search(r"\b401\b|\b403\b|unauthori[sz]ed|invalid api key|authentication|not logged in|please run /login", low):
         return "auth"
     if re.search(r"econnreset|etimedout|enotfound|network|socket hang up|connection (refused|reset)", low):
         return "network"

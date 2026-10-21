@@ -24,6 +24,7 @@ DEFAULTS = {
     "producers": {},
     "methods": ["a", "b", "c", "d"],
     "opencode_bin": "opencode",
+    "claude_bin": "claude",
     "models": {"free": "", "go": ""},
     "free_model_pattern": "-free$",
     "quota_patterns": [
