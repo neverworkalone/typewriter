@@ -144,6 +144,10 @@ class SelectWidth(unittest.TestCase):
         from warroom.views import select_width
         cases = [(["OpenCode", "Codex"], 18), (["Single", "Continuous"], 20), (["A"], 18), ([], 18),
                  (["한글라벨"], 18), (["가" * 6], 22)]
+        from warroom.views import control_columns
+        for widths, total, want in [([18, 29, 12, 20, 14, 14, 14], 58, 2), ([18, 12, 14], 98, 3), ([30], 10, 1), ([], 5, 1),
+                                    ([10, 10, 10, 10], 100, 4)]:
+            self.assertEqual(control_columns(widths, total), want, (widths, total))
         for labels, want in cases:
             self.assertEqual(select_width(labels), want, labels)
 
@@ -211,6 +215,32 @@ class BoardAndDetail(unittest.TestCase):
                 for i in ["adapter", "model", "method", "mode", "start", "drain-all", "stop-all"]:
                     r = app.query_one(f"#{i}").region
                     self.assertTrue(app.query_one(f"#{i}").display and r.right <= 60 and r.width > 0, (i, r))
+
+        asyncio.run(go())
+        w.tmp.cleanup()
+
+    def test_narrow_multi_model_selects_keep_full_label_and_do_not_overlap(self):
+        w = World()
+
+        async def go():
+            app = make_app(w, PRODUCERS)
+            ids = ["adapter", "model", "method", "mode", "start", "drain-all", "stop-all"]
+            async with app.run_test(size=(120, 40)) as pilot:
+                for width in (60, 40, 120, 60):      # shrink, shrink further, grow back, shrink again
+                    await pilot.resize_terminal(width, 40)
+                    await pilot.pause(0.4)
+                    rs = {i: app.query_one(f"#{i}").region for i in ids}
+                    for i in ("adapter", "model", "method", "mode"):
+                        sel = app.query_one(f"#{i}")
+                        want = sel.styles.width.value      # width the label needs (select_width)
+                        self.assertEqual(rs[i].width, want, (width, i, rs[i]))
+                        self.assertEqual(rs[i].height, 3, (width, i, rs[i]))
+                    self.assertEqual(len({rs[i].width for i in ("start", "drain-all", "stop-all")}), 1, rs)
+                    self.assertTrue(all(r.right <= width for r in rs.values()), (width, rs))
+                    for a in ids:
+                        for b in ids:
+                            if a < b:
+                                self.assertFalse(rs[a].intersection(rs[b]).area, (width, a, b, rs))
 
         asyncio.run(go())
         w.tmp.cleanup()

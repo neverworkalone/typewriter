@@ -15,7 +15,7 @@ import time
 from . import auth, control
 from .config import Paths, adapter_label, adapters, load_config, methods, registry
 from .logrender import render_line
-from .views import _hhmm, _when, select_width, card_text, detail_header, detail_meta  # noqa: F401  (CARD_W/ICON re-exported for tests)
+from .views import _hhmm, _when, control_columns, select_width, card_text, detail_header, detail_meta  # noqa: F401  (CARD_W/ICON re-exported for tests)
 from .logtail import LogTail, redact
 from .store import Store
 
@@ -305,7 +305,6 @@ class WarRoom(App):
     #controls > Button { width: 14; min-width: 14; max-width: 14; }
     #line-controls > Button { min-width: 8; width: auto; }
     #controls.narrow { layout: grid; grid-size: 3; grid-rows: auto; }
-    #controls.narrow > Select, #controls.narrow > Button { width: 100%; }
     #columns { height: 1fr; }
     .col { width: 38; height: auto; margin: 0 1; }
     .coltitle { text-style: bold; }
@@ -393,8 +392,10 @@ class WarRoom(App):
         """One row when it fits; otherwise a grid, so no control is ever clipped."""
         c = self.query_one("#controls")
         c.remove_class("narrow")
-        need = sum(w.outer_size.width or 0 for w in c.children if w.display)
-        if need > self.size.width - 2:
+        widths = [w.outer_size.width or 0 for w in c.children if w.display]
+        if sum(widths) > self.size.width - 2:
+            # Equal grid cells, each wide enough for the widest control (inline Select widths beat CSS).
+            c.styles.grid_size_columns = control_columns(widths, self.size.width - 2)
             c.add_class("narrow")
 
     def on_resize(self, event) -> None:
