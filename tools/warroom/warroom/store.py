@@ -211,6 +211,39 @@ class Store:
         with self._conn() as c:
             c.execute(f"UPDATE lines SET {cols} WHERE model=? AND method=?", (*fields.values(), model, method))
 
+    def change_model_tier(self, model: str, method: str, tier: str) -> tuple[bool, str, int | None]:
+        """Atomically change a Line's tier and its parked batch (if any).
+
+        A running subprocess is never switched mid-run. A paused or review-waiting
+        batch uses the new tier on its next launch; a completed Line uses it on
+        the next batch. Persist both values so Retry and Supervisor restart agree.
+        """
+        if tier not in ("free", "go"):
+            return False, "지원하지 않는 모델 등급입니다.", None
+        with self._conn() as c:
+            c.execute("BEGIN IMMEDIATE")
+            ln = c.execute("SELECT * FROM lines WHERE model=? AND method=?", (model, method)).fetchone()
+            b = c.execute(
+                "SELECT * FROM batches WHERE producer=? AND method=? AND state!='COMPLETE' "
+                "ORDER BY id DESC LIMIT 1", (model, method)).fetchone()
+            if ln and ln["retry_batch"] is not None:
+                return False, "이미 Retry가 예약되어 있습니다. 재시도 처리 후 전환하세요.", None
+            if b is not None:
+                if b["pid"] is not None or b["state"] not in ("PAUSED", "ERROR", "WAITING_REVIEW"):
+                    return False, "실행 중인 배치는 전환할 수 없습니다. 중지 후 재시도하거나 리뷰 대기를 기다리세요.", None
+            elif ln and ln["run"]:
+                return False, "새 배치가 이미 예약되었습니다. 시작 전환을 마친 후 다시 시도하세요.", None
+            now = time.time()
+            c.execute(
+                "INSERT INTO lines(model,method,model_tier,updated_at) VALUES(?,?,?,?) "
+                "ON CONFLICT(model,method) DO UPDATE SET "
+                "model_tier=excluded.model_tier,updated_at=excluded.updated_at",
+                (model, method, tier, now))
+            if b is not None:
+                c.execute("UPDATE batches SET model_tier=?,updated_at=? WHERE id=?",
+                          (tier, now, b["id"]))
+            return True, f"{model}/{method.upper()} 모델 → {tier.upper()} 전환됨", b["id"] if b else None
+
     def lines(self):
         with self._conn() as c:
             return c.execute("SELECT * FROM lines ORDER BY model, method").fetchall()
