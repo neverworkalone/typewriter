@@ -42,8 +42,9 @@ class ReloadTable(unittest.TestCase):
             ("same config again", json.dumps({"producers": {"deepseek": DS}}), True, "deepseek"),
             ("broken JSON", '{"producers": {', False, "읽을 수 없습니다"),
             ("top level is a list", "[]", False, "JSON 객체"),
-            ("producers is a list", '{"producers": []}', True, "deepseek"),   # empty -> legacy single entry
-            ("producers wrong type", '{"producers": [1]}', False, "설정 구조 오류"),
+            ("producers is an empty list", '{"producers": []}', False, "producers"),
+            ("producers empty object is the legacy single entry", '{"producers": {}}', True, "deepseek"),
+            ("producers wrong type", '{"producers": [1]}', False, "producers|설정 구조"),
             ("unset effort", json.dumps({"producers": {"deepseek": DS, "claude": {**SONNET, "effort": ""}}}), False, "effort"),
             ("unsupported effort", json.dumps({"producers": {"deepseek": DS, "claude": {**SONNET, "effort": "turbo"}}}), False, "turbo"),
             ("unset model", json.dumps({"producers": {"deepseek": DS, "claude": {**SONNET, "model": ""}}}), False, "model"),
@@ -158,6 +159,69 @@ class ReloadUnblocksAndPins(unittest.TestCase):
                 self.assertEqual(b["state"], "PRODUCING", name)
                 self.assertEqual((self.w.adapter.launches[-1]["model"], self.w.adapter.launches[-1]["effort"]),
                                  ("sonnet", "medium"))
+
+NUMERIC = [  # key, value, accepted
+    ("poll_seconds", 0, True), ("poll_seconds", 300, True), ("poll_seconds", 2.5, True),
+    ("poll_seconds", "300", False), ("poll_seconds", None, False), ("poll_seconds", -1, False),
+    ("poll_seconds", True, False), ("poll_seconds", [1], False),
+    ("rate_limit_retries", 0, True), ("rate_limit_retries", 3, True), ("rate_limit_retries", "3", False),
+    ("rate_limit_retries", 2.5, False), ("rate_limit_retries", -1, False), ("rate_limit_retries", True, False),
+    ("rate_limit_retries", None, False),
+    ("rate_limit_backoff_seconds", 0, True), ("rate_limit_backoff_seconds", 120, True),
+    ("rate_limit_backoff_seconds", "120", False), ("rate_limit_backoff_seconds", None, False),
+    ("rate_limit_backoff_seconds", -5, False),
+    ("quota_patterns", ["x"], True), ("quota_patterns", "x", False), ("quota_patterns", ["("], False),
+    ("quota_patterns", [1], False),
+    ("trusted_reviewers", ["genonfire"], True), ("trusted_reviewers", "genonfire", False),
+    ("free_model_pattern", "-free$", True), ("free_model_pattern", "(", False), ("free_model_pattern", 1, False),
+    ("methods", ["a", "b"], True), ("methods", [], False), ("methods", "a", False), ("methods", [1], False),
+    ("base_branch", "", False), ("expected_account", None, False), ("models", "x", False),
+]
+
+
+class RuntimeValueTypes(unittest.TestCase):
+    """Every runtime consumer needs its value in the right type; a wrong one is refused before it replaces cfg."""
+
+    def setUp(self):
+        self.w = World()
+        write(self.w, {"deepseek": DS, "claude": SONNET})
+        self.assertTrue(reload(self.w)[0])
+
+    def tearDown(self):
+        self.w.tmp.cleanup()
+
+    def test_table(self):
+        for key, value, ok in NUMERIC:
+            with self.subTest(key=key, value=value):
+                before = json.loads(json.dumps(self.w.sup.cfg))
+                write(self.w, {"deepseek": DS, "claude": SONNET}, **{key: value})
+                got, msg = reload(self.w)
+                self.assertEqual(got, ok, msg)
+                self.assertEqual(self.w.sup.cfg[key] == value, ok) if ok else self.assertEqual(self.w.sup.cfg, before)
+                write(self.w, {"deepseek": DS, "claude": SONNET})
+                reload(self.w)
+
+    def test_consumers_keep_working_after_a_rejected_reload(self):
+        # (a) WAITING_REVIEW keeps being watched; (c) a rate-limit failure keeps its bounded backoff
+        self.w.start("single", "claude")
+        self.w.tick()
+        b = self.w.store.active_batch("claude", "a")
+        self.w.store.update(b["id"], state="WAITING_REVIEW", pid=None, pr_number=7, head_sha="h")
+        self.w.pr_info(7, "h")
+        for key, value in [("poll_seconds", "300"), ("rate_limit_retries", "3"), ("rate_limit_backoff_seconds", None)]:
+            write(self.w, {"deepseek": DS, "claude": SONNET}, **{key: value})
+            self.assertFalse(reload(self.w)[0])
+        self.w.tick(2)
+        self.assertEqual(self.w.store.active_batch("claude", "a")["state"], "WAITING_REVIEW")
+        self.assertFalse(any(e["level"] == "error" and "예외" in e["msg"] for e in self.w.store.recent_events(50)))
+        self.assertEqual(self.w.sup.cfg["rate_limit_retries"], 3)
+
+    def test_start_applies_the_same_check(self):
+        from warroom.config import config_problem
+        for key, value, ok in NUMERIC:
+            with self.subTest(key=key, value=value):
+                cfg = {**load_config(self.w.paths), key: value}
+                self.assertEqual(config_problem(cfg) is None, ok)
 
 
 if __name__ == "__main__":

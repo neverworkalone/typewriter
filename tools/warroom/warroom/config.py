@@ -161,12 +161,71 @@ def registry_problems(cfg: dict) -> dict[str, str]:
 RESTART_KEYS = ("repo", "opencode_bin", "claude_bin", "codex_bin", "git_name", "git_email")
 
 
+def _number(v) -> bool:
+    return isinstance(v, (int, float)) and not isinstance(v, bool) and v == v and v not in (float("inf"),)
+
+
+def _strings(v, *, patterns=False, nonempty=False) -> bool:
+    if not isinstance(v, list) or (nonempty and not v):
+        return False
+    for x in v:
+        if not isinstance(x, str) or (nonempty and not x.strip()):
+            return False
+        if patterns:
+            try:
+                re.compile(x)
+            except re.error:
+                return False
+    return True
+
+
+def config_problem(cfg: dict) -> str | None:
+    """Why a loaded config cannot run (None = every value has the type its consumers need). Shared by start and reload.
+
+    Each runtime consumer compares or iterates these values (poll_seconds/retries/backoff in the Supervisor loop,
+    patterns in failure classification, ...): a wrongly typed one would raise inside a tick, not at load time.
+    """
+    bad = []
+    for key in ("poll_seconds", "rate_limit_backoff_seconds"):
+        if not _number(cfg.get(key)) or cfg[key] < 0:
+            bad.append(f"{key}는 0 이상의 숫자여야 합니다")
+    r = cfg.get("rate_limit_retries")
+    if not isinstance(r, int) or isinstance(r, bool) or r < 0:
+        bad.append("rate_limit_retries는 0 이상의 정수여야 합니다")
+    for key in ("repo", "base_branch", "expected_account", "opencode_bin", "claude_bin", "codex_bin"):
+        if not isinstance(cfg.get(key), str) or not cfg[key].strip():
+            bad.append(f"{key}는 비어 있지 않은 문자열이어야 합니다")
+    for key in ("git_name", "git_email", "free_model_pattern"):
+        if not isinstance(cfg.get(key), str):
+            bad.append(f"{key}는 문자열이어야 합니다")
+    if isinstance(cfg.get("free_model_pattern"), str):
+        try:
+            re.compile(cfg["free_model_pattern"])
+        except re.error:
+            bad.append("free_model_pattern이 올바른 정규식이 아닙니다")
+    if not _strings(cfg.get("quota_patterns"), patterns=True):
+        bad.append("quota_patterns는 정규식 문자열 목록이어야 합니다")
+    if not _strings(cfg.get("trusted_reviewers")):
+        bad.append("trusted_reviewers는 문자열 목록이어야 합니다")
+    if not _strings(cfg.get("methods"), nonempty=True):
+        bad.append("methods는 비어 있지 않은 문자열 목록이어야 합니다")
+    if not isinstance(cfg.get("producers"), dict) or not all(isinstance(p, dict) for p in cfg["producers"].values()):
+        bad.append("producers는 {모델 ID: 객체} 형태여야 합니다")
+    for key in ("models", "worker"):
+        if not isinstance(cfg.get(key), dict):
+            bad.append(f"{key}는 객체여야 합니다")
+    return "; ".join(bad) or None
+
+
 def reload_problem(old: dict, new: dict, in_use: set[str]) -> str | None:
     """Why `new` must not replace the running `old` config (None = safe). `in_use` = producers of unfinished batches.
 
     Fail-closed: any registry problem, a changed start-time-only key, or a producer that still owns an
     unfinished batch disappearing rejects the whole reload; nothing is partially applied.
     """
+    problem = config_problem(new)
+    if problem:
+        return f"설정 값 오류: {problem}"
     try:
         reg, bad = registry(new), registry_problems(new)
         methods(new)

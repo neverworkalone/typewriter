@@ -19,8 +19,8 @@ from pathlib import Path
 
 from . import auth, batches, control, prompts, reviews
 from .adapters import PREFLIGHT_PENDING, RunSpec, classify_failure
-from .config import (TIERED_ADAPTERS, adapter_label, load_config, registry, registry_problems, reload_problem,
-                     run_spec)
+from .config import (TIERED_ADAPTERS, adapter_label, config_problem, load_config, registry, registry_problems,
+                     reload_problem, run_spec)
 from .gitops import CleanupBlocked, GitError
 from .store import LineBusy
 
@@ -623,6 +623,9 @@ def build(paths=None):
     paths = paths or Paths()
     paths.ensure()
     cfg = load_config(paths)
+    problem = config_problem(cfg)   # the same check a reload applies: never start on a config a reload would refuse
+    if problem:
+        raise SystemExit(f"config.json 오류: {problem}")
     env = auth.build_env(dict(_os.environ), paths.gh_config, cfg["git_name"], cfg["git_email"])
     runner = Runner()
     adapters = {"opencode": OpenCodeAdapter(cfg["opencode_bin"]), "claude": ClaudeCodeAdapter(cfg["claude_bin"]),

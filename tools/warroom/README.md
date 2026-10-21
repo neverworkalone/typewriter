@@ -14,7 +14,8 @@ only the worktree and branch it owns afterwards.
 ```
 
 The Supervisor reads `config.json` at start and again on **`r`** (Board): it re-runs `load_config`, and the new
-config replaces the running one only if the whole registry validates (JSON, model/effort pins, duplicate IDs). A
+config replaces the running one only if the whole config validates (JSON, the type and range of every runtime value such as
+`poll_seconds` and `rate_limit_retries`, model/effort pins, duplicate IDs). Start runs the same check. A
 rejected reload keeps the old config and shows the reason in the event log and on the Board. A reload that removes a
 model with an unfinished batch, changes its CLI adapter, or changes `repo`, `*_bin`, `git_name` or `git_email` (wired once at start), is
 rejected: restart the Supervisor for those. A successful reload clears `시작 차단:` messages (Start re-checks them).
