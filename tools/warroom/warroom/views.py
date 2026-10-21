@@ -139,6 +139,19 @@ def card_text(st: dict) -> str:
     return "\n".join([title, records, bar, ops, recent])
 
 
+TIER_BAR = {
+    "free": "[b green]● Free[/]  [dim]○ Go[/]",
+    "go": "[dim]○ Free[/]  [b #ffa500]● Go (유료)[/]",
+    "mixed": "[b yellow]◐ 혼합[/] [dim](Free/Go가 섞여 있음 — f: 모두 Free)[/]",
+    "none": "[dim]Go 모델이 설정된 모델 없음[/]",
+}
+
+
+def tier_bar(state: str) -> str:
+    """Board status line for the f key: the current model tier, colour-coded (markup)."""
+    return f"모델 단계  {TIER_BAR.get(state, TIER_BAR['none'])}   [dim]f 전환[/]"
+
+
 def detail_header(st: dict, reg: dict, model: str) -> str:
     """Short operating header; ids, SHAs and paths live in `detail_meta`."""
     who = f"{adapter_label(reg.get('adapter', '?'))} / {st['method'].upper()}"

@@ -71,6 +71,45 @@ class TuiSmoke(unittest.TestCase):
         asyncio.run(go())
         w.tmp.cleanup()
 
+    def test_f_toggles_free_go_with_confirmation_and_colour_state(self):
+        from textual.widgets import Static
+        from warroom import control, tui
+        w = World()
+        methods = ["a", "b", "c", "d"]
+        bid = w.store.create_batch(method="a", producer="deepseek", shard="001", batch="01", branch="b", worktree="/x")
+        w.store.update(bid, state="PRODUCING")
+        bar = lambda app: str(app.query_one("#tier-bar", Static).render())
+
+        async def go():
+            app = make_app(w, PRODUCERS)
+            async with app.run_test(size=(200, 60)) as pilot:
+                await pilot.pause(1.3)
+                self.assertIn("● Free", bar(app))
+                self.assertEqual(control.tier_state(w.store, app.cfg, methods), "free")
+                await pilot.press("f")                                       # -> Go asks first; default is No
+                await pilot.pause(0.2)
+                self.assertIsInstance(app.screen, tui.Confirm)
+                await pilot.press("enter")
+                await pilot.pause(0.2)
+                self.assertEqual(control.tier_state(w.store, app.cfg, methods), "free")
+                await pilot.press("f", "y")
+                await pilot.pause(1.3)
+                self.assertEqual(control.tier_state(w.store, app.cfg, methods), "go")
+                self.assertIn("● Go", bar(app))
+                self.assertEqual(w.store.batch(bid)["model_tier"], "go")     # the unfinished batch follows
+                await pilot.press("f")                                       # back to Free needs no confirmation
+                await pilot.pause(1.3)
+                self.assertEqual(control.tier_state(w.store, app.cfg, methods), "free")
+                self.assertEqual(w.store.batch(bid)["model_tier"], "free")
+                # f is not the board's key inside Detail (Auto-scroll there) and ignored on top of other screens.
+                await pilot.click("#card-deepseek-a")
+                await pilot.pause(0.3)
+                await pilot.press("f")
+                self.assertEqual(control.tier_state(w.store, app.cfg, methods), "free")
+
+        asyncio.run(go())
+        w.tmp.cleanup()
+
     def test_focus_border_shows_on_every_card_state(self):
         from warroom import tui
         w = World()
@@ -283,7 +322,9 @@ class TuiSmoke(unittest.TestCase):
                 self.assertEqual(len(scr.log_w.lines), 3)   # only the increment was appended
                 await pilot.press("up")
                 self.assertFalse(scr.log_w.auto_scroll)
-                await pilot.press("f")
+                await pilot.press("f")                       # no shortcut of its own: neither Auto-scroll nor the tier switch
+                self.assertFalse(scr.log_w.auto_scroll)
+                await pilot.press("end")
                 self.assertTrue(scr.log_w.auto_scroll)
                 # Stop is gated by the confirm modal and scoped to this Line.
                 await pilot.click("#stop")

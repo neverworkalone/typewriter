@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import time
 
+from .config import registry
 from .store import Store
 
 STATES_HELP = ("PREPARE", "PRODUCING", "WAITING_REVIEW", "FIXING", "MERGED", "CLEANUP",
@@ -104,3 +105,43 @@ def line_status(store: Store, model: str, method: str) -> dict:
 def can_stop_all(store: Store, lines) -> bool:
     """Stop All has a target while any Line has an unfinished batch (incl. PAUSED/ERROR) or a run flag."""
     return any(line_status(store, m, me)["stoppable"] for m, me in lines)
+
+
+# --- Free/Go model tier (operator switch; the automatic Free->Go switch on quota exhaustion is separate) ---
+def go_models(cfg: dict) -> list[str]:
+    """Registered models that have a Go model configured: the only ones a tier switch can touch."""
+    return [pid for pid, p in registry(cfg).items() if p["models"].get("go")]
+
+
+def tier_state(store: Store, cfg: dict, methods) -> str:
+    """'free' | 'go' | 'mixed' over every Line of the models that have a Go model; 'none' if no model has one."""
+    tiers = {store.peek_line(m, me)["model_tier"] for m in go_models(cfg) for me in methods}
+    if not tiers:
+        return "none"
+    return tiers.pop() if len(tiers) == 1 else "mixed"
+
+
+def next_tier(state: str) -> str | None:
+    """f: Free -> Go; Go or a mixed board -> Free (never silently towards paid when unsure); none -> nothing."""
+    return {"free": "go", "go": "free", "mixed": "free"}.get(state)
+
+
+def set_tier(store: Store, cfg: dict, methods, tier: str) -> int:
+    """Apply `tier` to every Line (and its unfinished batch) of the models that have a Go model.
+
+    A running AI keeps its model; the next launch (new batch, fix, recovery) uses the new tier.
+    """
+    if tier not in ("free", "go"):
+        raise ValueError(tier)
+    models = go_models(cfg)
+    for m in models:
+        for me in methods:
+            store.set_line(m, me, model_tier=tier)
+    n = 0
+    for b in store.incomplete_batches():
+        if b["producer"] in models and b["model_tier"] != tier:
+            store.update(b["id"], model_tier=tier)
+            store.log(b["id"], f"운영자가 모델 단계를 {tier.upper()}로 전환 (다음 실행부터 적용)")
+            n += 1
+    store.log(None, f"운영자 모델 단계 전환 → {tier.upper()} ({len(models)}개 모델)")
+    return n

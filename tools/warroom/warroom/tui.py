@@ -18,7 +18,7 @@ import time
 from . import auth, control
 from .config import Paths, adapter_label, adapters, load_config, methods, registry
 from .logrender import render_line
-from .views import _hhmm, _when, control_columns, select_width, card_text, detail_header, model_title, detail_meta  # noqa: F401  (CARD_W/ICON re-exported for tests)
+from .views import _hhmm, _when, control_columns, select_width, card_text, detail_header, model_title, tier_bar, detail_meta  # noqa: F401  (CARD_W/ICON re-exported for tests)
 from .logtail import LogTail, redact
 from .store import Store
 
@@ -147,7 +147,7 @@ class SettingsScreen(Screen):
 
 class LineDetail(Screen):
     """Batch Detail for one Line: controls, live Agent Log (tail -f), Run History, Audit Log."""
-    BINDINGS = [("escape", "back", "Back"), ("f", "follow", "Auto-scroll"), ("up", "scroll_up", ""),
+    BINDINGS = [("escape", "back", "Back"), ("up", "scroll_up", ""),
                 ("pageup", "page_up", ""), ("home", "top", ""), ("end", "follow", ""),
                 ("left", "control_move(-1)", ""), ("right", "control_move(1)", ""),
                 Binding("tab", "switch_region", "", priority=True),
@@ -372,6 +372,7 @@ class WarRoom(App):
     #line-controls > Button { min-width: 8; width: auto; }
     #controls.narrow { layout: grid; grid-size: 3; grid-rows: auto; }
     #columns { height: 1fr; margin-top: 1; }
+    #tier-bar { height: 1; padding: 0 1; }
     .col { width: 38; height: auto; margin: 0 1; }
     .coltitle { text-style: bold; color: $accent; width: 100%; text-align: center; margin-bottom: 1; }
     .card { border: round $primary; height: 7; padding: 0 1; }
@@ -386,6 +387,7 @@ class WarRoom(App):
     RichLog { border: round $primary; height: 1fr; }
     """
     BINDINGS = [("q", "quit", "Quit (워커는 계속 실행)"), ("s", "settings", "Settings"),
+                ("f", "toggle_tier", "Free/Go 전환"),
                 ("left", "control_move(-1)", ""), ("right", "control_move(1)", ""),
                 Binding("tab", "switch_region", "", priority=True),
                 Binding("shift+tab", "switch_region", "", show=False, priority=True)]
@@ -432,7 +434,26 @@ class WarRoom(App):
                     yield Static(model_title(registry(self.cfg).get(model, {}).get("label", model)), classes="coltitle", id=f"title-{model}")
                     for me in self.methods:
                         yield Card(model, me)
+        yield Static(id="tier-bar")
         yield Footer()
+
+    def action_toggle_tier(self) -> None:
+        """f: Free <-> Go for every model that has a Go model. Going to the paid tier asks first."""
+        if self.screen is not self.screen_stack[0]:
+            return
+        state = control.tier_state(self.store, self.cfg, self.methods)
+        target = control.next_tier(state)
+        if target is None:
+            return self.notify("Go 모델이 설정된 모델이 없습니다 (config의 models.go).", severity="warning")
+        if target == "free":
+            return self._apply_tier(True, "free")
+        self.push_screen(Confirm("모든 라인을 Go(유료) 모델로 전환합니다. 실행 중인 AI는 그대로이고 다음 실행부터 적용됩니다."),
+                         lambda yes: self._apply_tier(yes, "go"))
+
+    def _apply_tier(self, yes: bool | None, tier: str) -> None:
+        if yes:
+            control.set_tier(self.store, self.cfg, self.methods, tier)
+            self.refresh_view()
 
     def action_switch_region(self) -> None:
         """Tab: top control bar  <->  Line cards. Arrows move inside either one."""
@@ -539,6 +560,7 @@ class WarRoom(App):
                     continue
                 card.update(card_text(st))
                 card.set_classes("card " + (st["state"] if st["batch"] else "empty"))
+        root.query_one("#tier-bar", Static).update(tier_bar(control.tier_state(store, self.cfg, self.methods)))
         root.query_one("#drain-note", Static).update("DRAIN ALL: 모든 라인 신규 배치 중지" if gd else "")
         root.query_one("#drain-note", Static).display = gd
         b = root.query_one("#drain-all", Button)
