@@ -71,7 +71,7 @@ then the model label; the order of `producers` in the file does not matter.
 
 | Producer (label) | Adapter (CLI) | Model | Effort | Status |
 |---|---|---|---|---|
-| `claude` (Sonnet) | `claude` (Claude Code) | `model: sonnet` → `--model sonnet` | `effort: medium` → `--effort medium` | Adapter #1375 |
+| `claude` (Sonnet) | `claude` (Claude Code) | `model: sonnet` → `--model sonnet` | `effort: medium` → `--effort medium` | Runs (#1375) |
 | `codex` (Luna) | `codex` (Codex CLI) | `model: gpt-6-luna` → `-m gpt-6-luna` | `effort: xhigh` → `-c model_reasoning_effort=xhigh` | Adapter #1376 |
 | `deepseek` (DeepSeek) | `opencode` | `models.free` / `models.go` | `effort: high` → `--model <id>#high` | Runs now |
 
@@ -99,6 +99,24 @@ Rules (fail closed):
   in ERROR, with nothing substituted. A DeepSeek entry without `effort` runs at `high`, the owner-fixed value
   (configs written before #1373).
 - Run History and the Audit Log record the model ID and effort each launch was pinned to.
+
+### Claude Code (`claude`) setup
+
+- Install Claude Code and log in with the operator's own account: `claude auth login`. `claude auth status`
+  must report `loggedIn: true`; Start checks it. Unlike GitHub, this login is not isolated per War Room.
+- Every run pins only the model and the reasoning effort: `claude -p <prompt> --model <model> --effort <effort>
+  --output-format stream-json --verbose`. Resume uses `--resume <session id>` with the same pins.
+- **Permissions are the operator's local Claude settings** (`~/.claude/settings.json`, project settings), applied by
+  the CLI's own precedence. War Room passes no permission option: no allowlist, no `--permission-mode`, no bypass.
+  A tool the local settings do not allow is denied by the CLI and listed in `permission_denials`; the run then stops
+  in **PAUSED** with the denied tool named, and nothing is widened automatically. Worktree, PR and session are kept.
+  To allow such a tool, the operator edits the local Claude settings directly and then retries.
+- Start refuses when `ANTHROPIC_MODEL` or `CLAUDE_CODE_EFFORT_LEVEL` is set to anything other than the pin, because
+  it would decide the effective value.
+- A session that is not reported (absent, empty or not a string) stops the run, and so does a run that ends without
+  any init event: a PR is accepted only with its own session.
+- The stream reports the model it ran (`system/init`); a different model stops the batch. The CLI does not print the
+  effort it used, so an unknown effort (the CLI's "ignoring it and using the default effort") is treated as a stop.
 
 ## Prompts
 

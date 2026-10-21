@@ -35,12 +35,27 @@ class Handle:
 class AgentAdapter:
     name = "base"
     capabilities: dict = {}
+    requires_session_for_pr = False   # True: a PR is taken over from a live run only after the CLI reported its session
+    requires_final_result_for_pr = False   # True: a PR is taken over only after the run exited and its result was verified
 
     def start(self, prompt, cwd, env, run: RunSpec, title, log_file, exit_file) -> Handle: ...
     def resume(self, session_id, prompt, cwd, env, run: RunSpec, log_file, exit_file) -> Handle: ...
 
     def preflight(self, runner, env, runs: list[RunSpec]) -> str | None:
         """Why this CLI cannot honour these pinned runs as requested, or None. Checked before any process starts."""
+        return None
+
+    def run_problem(self, log_file: Path, run: RunSpec | None, expected_session: str | None) -> tuple[str, str] | None:
+        """What the CLI reports about this run contradicts its pins: (state, reason), or None.
+
+        Checked on every poll, so a wrong model or session is stopped before it can open a PR.
+        """
+        return None
+
+    def completion_problem(self, log_file: Path, run: RunSpec | None, expected_session: str | None,
+                           cwd=None, env=None) -> tuple[str, str] | None:
+        """Why a run that exited 0 must not be accepted as finished (no PR intake), or None. Checked once the process
+        exited successfully, before its result is used."""
         return None
 
     def stop(self, pid: int) -> None: ...
@@ -266,6 +281,122 @@ class OpenCodeAdapter(ProcessAdapter):
                 "검증되지 않은 설정으로 실행하지 않습니다.")
 
 
+# Permissions are the operator's own local Claude settings (~/.claude/settings.json, project settings), applied by
+# the CLI's own precedence. War Room passes no permission option: no allowlist, no permission mode, no bypass.
+# A tool the local settings do not allow is denied by the CLI and reported in `permission_denials`, which stops
+# the run in PAUSED (see run_problem). Model, effort and the session are the only things War Room pins.
+CLAUDE_REQUIRED_FLAGS = ("--model", "--effort", "--resume", "--name", "--output-format", "stream-json")
+_CLAUDE_EFFORT_FALLBACK = "ignoring it and using the default effort"   # the CLI's own warning for an unknown --effort
+
+
+def _json_objects(text: str):
+    for line in text.splitlines():
+        try:
+            o = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(o, dict):
+            yield o
+
+
+class ClaudeCodeAdapter(ProcessAdapter):
+    """Claude Code (`claude -p --output-format stream-json`). Model and effort are passed on every launch."""
+    name = "claude"
+    capabilities = {"resume": True, "stop": True}
+    requires_session_for_pr = True
+    requires_final_result_for_pr = True   # its final denials and session are verified only at exit (run_problem/completion)
+
+    def __init__(self, binary: str = "claude"):
+        self.binary = binary
+
+    @staticmethod
+    def _pins(run: RunSpec) -> list[str]:
+        return ["--model", run.model, "--effort", run.effort, "--output-format", "stream-json", "--verbose"]
+
+    def start(self, prompt, cwd, env, run, title, log_file, exit_file):
+        cmd = [self.binary, "-p", prompt, *self._pins(_pinned(run)), "--name", title]
+        return self._spawn(cmd, cwd, env, log_file, exit_file)
+
+    def resume(self, session_id, prompt, cwd, env, run, log_file, exit_file):
+        cmd = [self.binary, "-p", prompt, "--resume", session_id, *self._pins(_pinned(run))]
+        return self._spawn(cmd, cwd, env, log_file, exit_file)
+
+    def preflight(self, runner, env, runs):
+        v = runner.run([self.binary, "--version"], env=env, timeout=60)
+        if not v.ok:
+            return f"`{self.binary} --version` 실행 실패: {v.err.strip()[:200]}"
+        h = runner.run([self.binary, "--help"], env=env, timeout=60)
+        if not h.ok:
+            return f"`{self.binary} --help` 실행 실패: {h.err.strip()[:200]}"
+        missing = [f for f in CLAUDE_REQUIRED_FLAGS if f not in h.out]
+        if missing:
+            return f"설치된 Claude Code CLI({v.out.strip()})가 필요한 옵션을 지원하지 않습니다: {', '.join(missing)}"
+        a = runner.run([self.binary, "auth", "status"], env=env, timeout=60)
+        if not a.ok or not _logged_in(a.out):
+            return "Claude CLI가 로그인되어 있지 않습니다 (`claude auth login`)."
+        for run in runs:   # an environment override would decide the effective value instead of the pin
+            for name, value in (("ANTHROPIC_MODEL", run.model), ("CLAUDE_CODE_EFFORT_LEVEL", run.effort)):
+                if env.get(name) and env[name] != value:
+                    return f"환경 변수 {name}={env[name]!r}가 실행 설정 {value!r}을 덮어씁니다 — 해제한 뒤 실행하세요."
+        return None
+
+    def run_problem(self, log_file, run, expected_session):
+        try:
+            text = Path(log_file).read_text("utf-8", errors="replace")
+        except OSError:
+            return None
+        if _CLAUDE_EFFORT_FALLBACK in text:   # the CLI would run at its default effort: never accept that
+            return ("ERROR", "CLI가 추론 수준을 인식하지 못해 기본값으로 실행하려 했습니다 — 다른 값으로 대체하지 않습니다.")
+        init = result = None
+        for o in _json_objects(text):
+            if o.get("type") == "system" and o.get("subtype") == "init" and init is None:
+                init = o
+            elif o.get("type") == "result":
+                result = o
+        if init is None:
+            if result is not None:   # the run ended without ever reporting its session: nothing to verify it by
+                return ("ERROR", "CLI가 세션 ID를 보고하지 않고 끝났습니다 — 세션을 확인하지 못해 PR을 인정하지 않습니다.")
+            return None   # not started yet
+        session = init.get("session_id")
+        if not isinstance(session, str) or not session.strip():   # absent, empty or not a string: fail closed
+            return ("ERROR", "CLI가 세션 ID를 보고하지 않았습니다(없음·빈 값·형식 오류) — 중지하고 보존합니다.")
+        if expected_session and session != expected_session:
+            return ("ERROR", f"세션 ID 불일치: 요청 {expected_session}, 실제 {session} — 중지하고 보존합니다.")
+        reported = str(init.get("model") or "")
+        if not reported:
+            return ("ERROR", "CLI가 실행 모델을 보고하지 않아 요청한 모델로 실행됐는지 확인할 수 없습니다.")
+        if run and run.model.lower() not in reported.lower():
+            return ("ERROR", f"CLI가 보고한 모델 {reported!r}이 요청한 {run.model!r}과 다릅니다 — 중지합니다.")
+        if result is not None and result.get("permission_denials"):
+            names = sorted({str(d.get("tool_name")) for d in result["permission_denials"] if isinstance(d, dict)})
+            return ("PAUSED", f"로컬 CLI 권한 정책상 거부되어 실행이 불완전합니다 (도구: {', '.join(names)}). "
+                              "자동 권한 상승 없이 중지합니다. 로컬 Claude 설정을 직접 확인한 뒤 Retry 하세요 "
+                              "(worktree·PR·세션 보존).")
+        return None
+
+    def completion_problem(self, log_file, run, expected_session, cwd=None, env=None):
+        """An exited run is accepted only if its init event reported its own session. An empty log, or one with no
+        parsable event, has no session and is refused (run_problem alone treats a run with no events as not started)."""
+        problem = self.run_problem(log_file, run, expected_session)
+        if problem:
+            return problem
+        try:
+            text = Path(log_file).read_text("utf-8", errors="replace")
+        except OSError:
+            return ("ERROR", "실행 로그를 읽을 수 없어 완료를 확인하지 못했습니다.")
+        init = next((o for o in _json_objects(text) if o.get("type") == "system" and o.get("subtype") == "init"), None)
+        if init is None:
+            return ("ERROR", "CLI가 세션 ID를 보고하지 않고 끝났습니다 — 세션을 확인하지 못해 PR을 인정하지 않습니다.")
+        return None
+
+
+def _logged_in(out: str) -> bool:
+    try:
+        return json.loads(out).get("loggedIn") is True
+    except (ValueError, AttributeError):
+        return False
+
+
 # --- failure classification: free-quota exhaustion is the ONLY trigger for Go ---
 def classify_failure(log_text: str, quota_patterns: list[str]) -> str:
     """'free_quota' | 'effort' | 'rate_limit' | 'auth' | 'network' | 'unknown'.
@@ -279,11 +410,16 @@ def classify_failure(log_text: str, quota_patterns: list[str]) -> str:
         if re.search(pat, log_text, re.I):
             return "free_quota"
     low = log_text.lower()
-    if re.search(r"variant unavailable|unsupported value|supported values are|unsupported (reasoning )?effort", low):
+    if re.search(r"variant unavailable|unsupported value|supported values are|unsupported (reasoning )?effort|"
+                 r"unknown --effort value", low):
         return "effort"
+    if re.search(r"no conversation found with session id|no rollout found for thread id|thread/resume failed", low):
+        return "session_missing"   # never answered by a silent new session: the worktree and PR are kept
+    if re.search(r"usage limit|5-hour limit|weekly limit", low):
+        return "usage_limit"       # a plan limit is not retried or switched automatically
     if re.search(r"\b429\b|rate.?limit|too many requests", low):
         return "rate_limit"
-    if re.search(r"\b401\b|\b403\b|unauthori[sz]ed|invalid api key|authentication", low):
+    if re.search(r"\b401\b|\b403\b|unauthori[sz]ed|invalid api key|authentication|not logged in|please run /login", low):
         return "auth"
     if re.search(r"econnreset|etimedout|enotfound|network|socket hang up|connection (refused|reset)", low):
         return "network"
