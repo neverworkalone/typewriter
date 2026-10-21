@@ -245,6 +245,36 @@ class BoardAndDetail(unittest.TestCase):
         asyncio.run(go())
         w.tmp.cleanup()
 
+    def test_adapter_switch_without_resize_refits_controls(self):
+        w = World()
+        short = {"a": {"adapter": "codex", "models": {"free": "p/a", "go": "p/a2"}},
+                 "b": {"adapter": "codex", "models": {"free": "p/b", "go": "p/b2"}},
+                 "deepseek-long-label": {"adapter": "opencode", "models": {"free": "p/d", "go": "p/d2"}},
+                 "sonnet-long-label": {"adapter": "opencode", "models": {"free": "p/s", "go": "p/s2"}}}
+        ids = ["adapter", "model", "method", "mode", "start", "drain-all", "stop-all"]
+
+        async def go():
+            from textual.widgets import Select
+            app = make_app(w, short)
+            async with app.run_test(size=(100, 40)) as pilot:
+                await pilot.pause(0.4)
+                for target in ("opencode", "codex", "opencode", "codex"):   # terminal size never changes
+                    app.query_one("#adapter", Select).value = target
+                    await pilot.pause(0.5)
+                    rs = {i: app.query_one(f"#{i}").region for i in ids if app.query_one(f"#{i}").display}
+                    for i in ("adapter", "model", "method", "mode"):
+                        self.assertEqual(rs[i].width, app.query_one(f"#{i}").styles.width.value, (target, i, rs[i]))
+                        self.assertEqual(rs[i].height, 3, (target, i, rs[i]))
+                    self.assertEqual(len({rs[i].width for i in ("start", "drain-all", "stop-all")}), 1, rs)
+                    names = sorted(rs)
+                    for a in names:
+                        for b in names:
+                            if a < b:
+                                self.assertFalse(rs[a].intersection(rs[b]).area, (target, a, b, rs))
+
+        asyncio.run(go())
+        w.tmp.cleanup()
+
     def test_supervisor_failure_stays_visible(self):
         w = World()
 
