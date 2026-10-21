@@ -11,7 +11,7 @@ from .store import Store
 
 STATES_HELP = ("PREPARE", "PRODUCING", "WAITING_REVIEW", "FIXING", "MERGED", "CLEANUP",
                "COMPLETE", "PAUSED", "ERROR")
-MODES = {"single": "Single", "continuous": "Multi"}   # Multi = sequential batches in ONE Line
+MODES = {"single": "Single", "continuous": "Continuous"}   # Continuous = sequential batches in ONE Line
 
 
 def start(store: Store, model: str, method: str, mode: str) -> tuple[bool, str]:
@@ -74,12 +74,13 @@ def line_status(store: Store, model: str, method: str) -> dict:
            "session": None, "error": None, "progress": None, "worktree": None, "branch": None,
            "mode": ln["mode"], "run": bool(ln["run"]), "line_drain": bool(ln["drain"]),
            "global_drain": global_drain(store), "blocked": ln["blocked"] or "", "tier": ln["model_tier"],
-           "batch_id": None, "activity": None, "occupied": False}
+           "batch_id": None, "activity": None, "occupied": False, "updated": None, "records_total": None}
     out["drain"] = out["line_drain"] or out["global_drain"]
     if b is not None:
         out.update(state=b["state"], batch=f"{b['shard']}_{b['batch']}", branch=b["branch"],
                    pr=b["pr_number"], head=b["head_sha"], session=b["session_id"],
-                   error=b["error"], worktree=b["worktree"], batch_id=b["id"],
+                   error=b["error"], worktree=b["worktree"], batch_id=b["id"], updated=b["updated_at"],
+                   records_total=b["records_total"],
                    occupied=b["state"] != "COMPLETE")
         if b["records_done"] is not None and b["records_total"]:
             out["progress"] = f"{b['records_done']}/{b['records_total']}"  # recorded only
@@ -90,5 +91,11 @@ def line_status(store: Store, model: str, method: str) -> dict:
     st = out["state"]
     out["can_drain"] = out["occupied"] or out["run"]
     out["can_stop"] = out["occupied"] and st not in ("PAUSED", "ERROR") or out["run"]
+    out["stoppable"] = out["occupied"] or out["run"]   # what `stop_lines` can actually affect
     out["can_retry"] = st in ("PAUSED", "ERROR") and b["pid"] is None
     return out
+
+
+def can_stop_all(store: Store, lines) -> bool:
+    """Stop All has a target while any Line has an unfinished batch (incl. PAUSED/ERROR) or a run flag."""
+    return any(line_status(store, m, me)["stoppable"] for m, me in lines)

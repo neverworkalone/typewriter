@@ -8,12 +8,14 @@ import sys
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, HorizontalScroll, Vertical
 from textual.screen import ModalScreen, Screen
-from textual.widgets import Button, Footer, Header, RichLog, Select, Static
+from textual.widgets import Button, Collapsible, Footer, Header, RichLog, Select, Static
 
 import time
 
 from . import auth, control
-from .config import Paths, load_config, methods, registry
+from .config import Paths, adapter_label, adapters, load_config, methods, registry
+from .logrender import render_line
+from .views import _hhmm, _when, card_text, detail_header, detail_meta  # noqa: F401  (CARD_W/ICON re-exported for tests)
 from .logtail import LogTail, redact
 from .store import Store
 
@@ -35,24 +37,6 @@ def ensure_supervisor(paths: Paths) -> str | None:
     r = subprocess.run(["tmux", "new-session", "-d", "-s", TMUX_SUP, "-c", str(paths.repo_root),
                         f"env PYTHONPATH={wr} {py} -m warroom.supervisor"], capture_output=True, text=True)
     return None if r.returncode == 0 else f"supervisor tmux 시작 실패: {r.stderr.strip()}"
-
-
-def _hhmm(ts) -> str:
-    return time.strftime("%H:%M:%S", time.localtime(ts)) if ts else "-"
-
-
-def card_text(st: dict) -> str:
-    """Card = Line summary; DRAIN is spelled out (never colour-only)."""
-    m = st["method"].upper()
-    if st["batch"] is None:
-        return f"{m}  (비어 있음)"
-    phase = st["state"] + (" + DRAIN" if st["drain"] else "")
-    prog = st["progress"] or (f"PR #{st['pr']}" if st["pr"] else "진행량 미확인")
-    if st["progress"] and st["pr"]:
-        prog += f"  PR #{st['pr']}"
-    act = f"{_hhmm(st['activity'][0])} {st['activity'][1]}"[:48] if st["activity"] else "-"
-    mode = "Multi" if st["mode"] == "continuous" else "Single"
-    return f"{m}  {st['batch']}  [{mode}]\n{phase}\n{prog}\n{act}"
 
 
 class Confirm(ModalScreen[bool]):
@@ -123,7 +107,7 @@ class SettingsScreen(Screen):
 
 class LineDetail(Screen):
     """Batch Detail for one Line: controls, live Agent Log (tail -f), Run History, Audit Log."""
-    BINDINGS = [("escape", "back", "Back"), ("f", "follow", "Follow"), ("up", "scroll_up", ""),
+    BINDINGS = [("escape", "back", "Back"), ("f", "follow", "Auto-scroll"), ("up", "scroll_up", ""),
                 ("pageup", "page_up", ""), ("home", "top", ""), ("end", "follow", "")]
 
     def __init__(self, model: str, method: str):
@@ -132,17 +116,23 @@ class LineDetail(Screen):
         self.tail = LogTail(None)
         self.audit_seen = 0
         self.source = "latest"      # latest | audit | run:<id>
+        self.raw = False            # Raw Log vs. human-readable view of the same file
+        self.live = False           # the displayed log is still being written
         self._run_ids: tuple = ()
         self._shown_path = None
+        self._view_key = None
 
     def compose(self) -> ComposeResult:
         yield Header()
         yield Static(id="info")
+        with Collapsible(title="Metadata / Details", collapsed=True):
+            yield Static(id="meta")
         with Horizontal(id="line-controls"):
             yield Button("Drain", id="drain")
             yield Button("Stop", id="stop", variant="error")
             yield Button("Retry", id="retry")
-            yield Button("Follow: ON", id="follow")
+            yield Button("Auto-scroll: ON", id="follow")
+            yield Button("Raw Log", id="raw")
             yield Button("Back (Esc)", id="back")
         yield Select([("Agent Log — 최신 실행", "latest"), ("Audit Log", "audit")], value="latest",
                      allow_blank=False, id="source")
@@ -157,30 +147,35 @@ class LineDetail(Screen):
     def log_w(self) -> RichLog:
         return self.query_one("#agentlog", RichLog)
 
-    # --- log following ---
+    # --- log following (only meaningful while the displayed log is live) ---
     def _set_follow(self, on: bool) -> None:
         self.log_w.auto_scroll = on
-        self.query_one("#follow", Button).label = f"Follow: {'ON' if on else 'OFF'}"
+        self.query_one("#follow", Button).label = f"Auto-scroll: {'ON' if on else 'OFF'}"
         if on:
             self.log_w.scroll_end(animate=False)
 
     def action_follow(self) -> None:
-        self._set_follow(True)
+        if self.live:
+            self._set_follow(True)
+
+    def _manual_scroll(self) -> None:
+        if self.live:
+            self._set_follow(False)
 
     def action_scroll_up(self) -> None:
-        self._set_follow(False)
+        self._manual_scroll()
         self.log_w.scroll_up()
 
     def action_page_up(self) -> None:
-        self._set_follow(False)
+        self._manual_scroll()
         self.log_w.scroll_page_up()
 
     def action_top(self) -> None:
-        self._set_follow(False)
+        self._manual_scroll()
         self.log_w.scroll_home(animate=False)
 
     def on_mouse_scroll_up(self, event) -> None:
-        self._set_follow(False)
+        self._manual_scroll()
 
     def action_back(self) -> None:
         self.app.pop_screen()
@@ -189,14 +184,17 @@ class LineDetail(Screen):
     def _runs(self):
         return self.app.store.line_runs(self.model, self.method)
 
-    def _run_path(self, runs):
+    def _run(self, runs):
         if self.source.startswith("run:"):
             rid = int(self.source[4:])
-            return next((r["log_file"] for r in runs if r["id"] == rid), None)
-        return runs[0]["log_file"] if runs else None
+            return next((r for r in runs if r["id"] == rid), None)
+        return runs[0] if runs else None
 
     def _switch(self, source: str) -> None:
         self.source = source
+        self._reload()
+
+    def _reload(self) -> None:
         self.log_w.clear()
         self.audit_seen, self._shown_path = 0, None
         self.tail = LogTail(None)
@@ -206,7 +204,7 @@ class LineDetail(Screen):
             self._switch(str(e.value))
 
     def _sync_sources(self, runs) -> None:
-        ids = tuple(r["id"] for r in runs)
+        ids = tuple((r["id"], r["ended_at"] is None) for r in runs)
         if ids == self._run_ids:
             return
         self._run_ids = ids
@@ -220,42 +218,47 @@ class LineDetail(Screen):
             sel.set_options(opts)
             sel.value = self.source if any(o[1] == self.source for o in opts) else "latest"
 
-    def _pump_log(self, runs) -> None:
+    def _emit(self, line: str) -> None:
+        log = self.log_w
+        if self.raw:
+            log.write(line)
+        else:
+            for out in render_line(line):
+                log.write(out)
+
+    def _pump_log(self, runs, st) -> None:
+        run = self._run(runs)
+        if self.source == "audit":     # live only while some Run of this Line is actually still running
+            self.live, key = any(r["ended_at"] is None for r in runs), ("audit", None)
+        else:
+            self.live, key = run is not None and run["ended_at"] is None, (self.source, run["id"] if run else None)
+        if key != self._view_key:           # another log: Auto-scroll starts ON
+            self._view_key = key
+            self._set_follow(True)
+        btn = self.query_one("#follow", Button)
+        btn.display = self.live
+        self.query_one("#raw", Button).display = self.source != "audit"
         log = self.log_w
         if self.source == "audit":
             for ev in self.app.store.line_events(self.model, self.method, self.audit_seen):
                 self.audit_seen = ev["id"]
                 log.write(f"{_hhmm(ev['ts'])} {ev['level'].upper():5} {redact(ev['msg'])}")
             return
-        path = self._run_path(runs)
+        path = run["log_file"] if run else None
         if path != self._shown_path:        # new latest run (or none yet): follow it from its start
             self._shown_path = path
             self.tail = LogTail(path)
             if path and self.source == "latest":
                 log.clear()
         for line in self.tail.read():
-            log.write(line)
+            self._emit(line)
 
     # --- view ---
     def refresh_view(self) -> None:
         st = control.line_status(self.app.store, self.model, self.method)
         reg = registry(self.app.cfg).get(self.model, {})
-        info = [f"{reg.get('label', self.model)} ({self.model}) / adapter={reg.get('adapter', '?')} / "
-                f"Method {self.method.upper()} / tier={st['tier']}",
-                f"Batch: {st['batch'] or '-'}  phase: {st['state']}{' + DRAIN' if st['drain'] else ''}"
-                f"{' (전역 Drain)' if st['global_drain'] else ''}  "
-                f"mode: {'Multi' if st['mode'] == 'continuous' else 'Single'}  "
-                f"예약 실행: {'on' if st['run'] else 'off'}",
-                f"PR: {st['pr'] or '-'}  HEAD: {(st['head'] or '-')[:12]}  session: {st['session'] or '-'}  "
-                f"progress: {st['progress'] or '미확인'}",
-                f"worktree: {st['worktree'] or '-'}"]
-        if st["activity"]:
-            info.append(f"직전 활동: {_hhmm(st['activity'][0])} {st['activity'][1]}")
-        if st["error"]:
-            info.append(f"ERROR/PAUSED 사유: {st['error']}")
-        if st["blocked"]:
-            info.append(f"BLOCKED: {st['blocked']}")
-        self.query_one("#info", Static).update("\n".join(info))
+        self.query_one("#info", Static).update(detail_header(st, reg, self.model))
+        self.query_one("#meta", Static).update(detail_meta(st, reg, self.model))
         d = self.query_one("#drain", Button)
         d.label = "Cancel Drain" if st["line_drain"] else "Drain"
         d.disabled = not (st["can_drain"] or st["line_drain"])
@@ -263,7 +266,7 @@ class LineDetail(Screen):
         self.query_one("#retry", Button).disabled = not st["can_retry"]
         runs = self._runs()
         self._sync_sources(runs)
-        self._pump_log(runs)
+        self._pump_log(runs, st)
 
     def on_button_pressed(self, e: Button.Pressed) -> None:
         e.stop()
@@ -272,6 +275,10 @@ class LineDetail(Screen):
             self.action_back()
         elif e.button.id == "follow":
             self._set_follow(not self.log_w.auto_scroll)
+        elif e.button.id == "raw":
+            self.raw = not self.raw
+            e.button.label = "Readable Log" if self.raw else "Raw Log"
+            self._reload()
         elif e.button.id == "drain":
             control.set_drain(store, m, me, not bool(store.line(m, me)["drain"]))
         elif e.button.id == "retry":
@@ -291,17 +298,25 @@ class WarRoom(App):
     TITLE = "WAR ROOM / TYPEWRITER"
     CSS = """
     #confirm { width: 70; height: auto; padding: 1 2; border: thick $error; background: $surface; margin: 4 8; }
-    #banner { height: auto; color: $error; }
-    #factory-status { height: auto; }
-    #controls, #factory, #line-controls { height: auto; }
+    #banner, #drain-note { height: auto; }
+    #banner { color: $error; }
+    #drain-note { color: $warning; }
+    #controls, #line-controls { height: auto; }
+    #controls > Select { width: 14; }
+    #controls > #method { width: 9; }
+    #controls > #mode { width: 17; }
+    #controls > Button, #line-controls > Button { min-width: 8; width: auto; }
+    #controls.narrow { layout: grid; grid-size: 3; grid-rows: auto; }
+    #controls.narrow > Select, #controls.narrow > Button { width: 100%; }
     #columns { height: 1fr; }
-    .col { width: 38; min-width: 30; height: auto; margin: 0 1; }
+    .col { width: 38; height: auto; margin: 0 1; }
     .coltitle { text-style: bold; }
-    .card { border: round $primary; height: 6; padding: 0 1; }
+    .card { border: round $primary; height: 5; padding: 0 1; }
     .card:focus { border: heavy $accent; }
     .card.ERROR, .card.PAUSED { border: round $error; }
     .card.COMPLETE { border: round $success; }
-    .card.empty { border: dashed $primary-darken-2; color: $text-muted; }
+    .card.empty { border: round #444444; color: #777777; }
+    .card.empty:focus { border: round #888888; }
     #info { border: round $accent; padding: 0 1; height: auto; }
     #settings-body { padding: 1 2; }
     RichLog { border: round $primary; height: 1fr; }
@@ -316,6 +331,7 @@ class WarRoom(App):
         self.store = Store(self.paths.db)
         self.problem = ensure_supervisor(self.paths)
         self._auth: dict | None = None
+        self._t0 = time.time()
         reg = registry(self.cfg)
         self.models = list(reg)
         self.methods = methods(self.cfg)
@@ -328,22 +344,21 @@ class WarRoom(App):
 
     def compose(self) -> ComposeResult:
         reg = registry(self.cfg)
-        adapters = sorted({p["adapter"] for p in reg.values()})
-        first = next(iter(reg.values()), {"adapter": "opencode"})
+        kinds = adapters(self.cfg)
+        first = kinds[0] if kinds else "opencode"
         yield Header()
         yield Static(id="banner")
+        yield Static(id="drain-note")
         with Horizontal(id="controls"):
-            yield Select([(a, a) for a in adapters], value=first["adapter"], allow_blank=False, id="adapter")
-            yield Select(self._model_options(first["adapter"]), allow_blank=False, id="model")
+            yield Select([(adapter_label(a), a) for a in kinds], value=first, allow_blank=False, id="adapter")
+            # Only shown when one CLI/Adapter hosts several logical models: never guess which one to start.
+            yield Select(self._model_options(first), allow_blank=False, id="model")
             yield Select([(m.upper(), m) for m in self.methods], allow_blank=False, id="method")
-            yield Select([("Single — 배치 1개 후 종료", "single"),
-                          ("Multi — 같은 라인 배치를 순차 연속", "continuous")],
+            yield Select([("Single", "single"), ("Continuous", "continuous")],
                          value="single", allow_blank=False, id="mode")
             yield Button("Start", id="start", variant="success")
-        with Horizontal(id="factory"):
             yield Button("Drain All", id="drain-all")
             yield Button("Stop All", id="stop-all", variant="error")
-            yield Static(id="factory-status")
         with HorizontalScroll(id="columns"):
             for model in self._lines():
                 with Vertical(classes="col", id=f"col-{model}"):
@@ -356,15 +371,38 @@ class WarRoom(App):
         return [(f"{p['label']} ({pid})", pid) for pid, p in registry(self.cfg).items()
                 if p["adapter"] == adapter]
 
+    def _selected_model(self) -> str | None:
+        """The logical model a Start applies to: the model Select, or the adapter's only model."""
+        sel = self.query_one("#model", Select)
+        return None if sel.value is Select.BLANK else str(sel.value)
+
+    def _sync_model_select(self, adapter: str) -> None:
+        sel = self.query_one("#model", Select)
+        opts = self._model_options(adapter)
+        sel.set_options(opts)
+        sel.display = len(opts) > 1
+        self._fit_controls()
+
+    def _fit_controls(self) -> None:
+        """One row when it fits; otherwise a grid, so no control is ever clipped."""
+        c = self.query_one("#controls")
+        c.remove_class("narrow")
+        need = sum(w.outer_size.width or 0 for w in c.children if w.display)
+        if need > self.size.width - 2:
+            c.add_class("narrow")
+
+    def on_resize(self, event) -> None:
+        self.call_after_refresh(self._fit_controls)
+
     def on_mount(self) -> None:
         self.set_interval(1.0, self.refresh_view)
         self.run_worker(self.check_auth, thread=True)
+        self._sync_model_select(str(self.query_one("#adapter", Select).value))
         self.refresh_view()
 
     def on_select_changed(self, e: Select.Changed) -> None:
         if e.select.id == "adapter" and e.value is not Select.BLANK:
-            sel = self.query_one("#model", Select)
-            sel.set_options(self._model_options(str(e.value)))
+            self._sync_model_select(str(e.value))
 
     def check_auth(self) -> None:
         from .shell import Runner
@@ -390,12 +428,12 @@ class WarRoom(App):
                     continue
                 card.update(card_text(st))
                 card.set_classes("card " + (st["state"] if st["batch"] else "empty"))
-        active = [s for s in statuses.values() if s["occupied"]]
-        root.query_one("#factory-status", Static).update(
-            f"Supervisor: {'running' if alive else 'NOT RUNNING'}   진행 라인 {len(active)}/{len(statuses)}   "
-            f"{'DRAIN ALL: 모든 라인 신규 배치 중지' if gd else ''}")
+        root.query_one("#drain-note", Static).update("DRAIN ALL: 모든 라인 신규 배치 중지" if gd else "")
+        root.query_one("#drain-note", Static).display = gd
         b = root.query_one("#drain-all", Button)
         b.label = "Cancel Drain" if gd else "Drain All"
+        root.query_one("#stop-all", Button).disabled = not control.can_stop_all(
+            store, [(m, me) for m in self._lines() for me in self.methods])
         # Only auth/model problems surface on the board.
         a, notes = self._auth, []
         if a is not None and not a["ok"]:
@@ -404,14 +442,18 @@ class WarRoom(App):
                   for s in statuses.values() if s["blocked"]]
         if self.problem:
             notes.append(f"! {self.problem}")
-        root.query_one("#banner", Static).update("\n".join(notes))
+        elif not alive and time.time() - self._t0 > 20:   # grace: the Supervisor's first heartbeat
+            notes.append("! Supervisor가 실행 중이 아닙니다. ./war 를 다시 실행하세요.")
+        banner = root.query_one("#banner", Static)
+        banner.update("\n".join(notes))
+        banner.display = bool(notes)
 
     def on_button_pressed(self, e: Button.Pressed) -> None:
         if e.button.id == "start":
-            model, me = self.query_one("#model", Select).value, self.query_one("#method", Select).value
-            if Select.BLANK in (model, me):
+            model, me = self._selected_model(), self.query_one("#method", Select).value
+            if model is None or me is Select.BLANK:
                 return self.notify("모델과 Method를 선택하세요.", severity="warning")
-            ok, msg = control.start(self.store, str(model), str(me),
+            ok, msg = control.start(self.store, model, str(me),
                                     str(self.query_one("#mode", Select).value))
             if not ok:
                 self.notify(msg, severity="warning")
