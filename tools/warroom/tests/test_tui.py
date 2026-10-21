@@ -58,7 +58,8 @@ class TuiSmoke(unittest.TestCase):
                 self.assertGreaterEqual(first.y, title.region.bottom + 1)        # gap under the heading
                 # Columns keep their order and widths with several models.
                 self.assertEqual(len({c.region.width for c in cards}), 1)
-                app.push_screen(tui.Confirm("deepseek / Method A 라인의 AI 실행을 즉시 중지합니다."))
+                answers = []
+                app.push_screen(tui.Confirm("deepseek / Method A 라인의 AI 실행을 즉시 중지합니다."), answers.append)
                 await pilot.pause(0.2)
                 no, yes = app.screen.query_one("#no", Button), app.screen.query_one("#yes", Button)
                 self.assertIs(app.focused, no)                                   # default is No ...
@@ -66,7 +67,20 @@ class TuiSmoke(unittest.TestCase):
                 box = app.screen.query_one("#confirm").region
                 self.assertLessEqual(box.height, 8)                              # no empty space under the buttons
                 self.assertLessEqual(box.bottom - yes.region.bottom, 3)
-                await pilot.press("escape")
+                await pilot.press("right")                                       # arrows pick the answer
+                self.assertIs(app.focused, yes)
+                await pilot.press("right")
+                self.assertIs(app.focused, yes)
+                await pilot.press("left")
+                self.assertIs(app.focused, no)
+                await pilot.press("enter")                                       # Enter on No answers No
+                await pilot.pause(0.2)
+                self.assertEqual(answers, [False])
+                app.push_screen(tui.Confirm("again"), answers.append)
+                await pilot.pause(0.2)
+                await pilot.press("right", "enter")                              # right + Enter answers Yes
+                await pilot.pause(0.2)
+                self.assertEqual(answers, [False, True])
 
         asyncio.run(go())
         w.tmp.cleanup()

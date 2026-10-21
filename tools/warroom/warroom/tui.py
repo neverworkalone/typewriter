@@ -66,7 +66,8 @@ def switch_region(screen, focused, regions: dict, memory: dict, default: dict) -
 class Confirm(ModalScreen[bool]):
     """y/N confirmation. Enter, N and Esc all mean No."""
     BINDINGS = [("y", "answer(True)", "Yes"), ("n", "answer(False)", "No"),
-                ("escape", "answer(False)", "Cancel")]
+                ("escape", "answer(False)", "Cancel"),
+                ("left", "focus_button('no')", ""), ("right", "focus_button('yes')", "")]
 
     def __init__(self, text: str):
         super().__init__()
@@ -84,6 +85,10 @@ class Confirm(ModalScreen[bool]):
 
     def action_answer(self, yes: bool) -> None:
         self.dismiss(yes)
+
+    def action_focus_button(self, which: str) -> None:
+        """Left/Right pick No (left) / Yes (right); Enter still answers the focused button."""
+        self.query_one(f"#{which}", Button).focus()
 
     def on_button_pressed(self, e: Button.Pressed) -> None:
         e.stop()
