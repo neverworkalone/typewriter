@@ -438,16 +438,16 @@ class WarRoom(App):
         yield Footer()
 
     def action_toggle_tier(self) -> None:
-        """f: Free <-> Go for every model that has a Go model. Going to the paid tier asks first."""
+        """f: Free <-> Go for DeepSeek. Going to the paid tier asks first."""
         if self.screen is not self.screen_stack[0]:
             return
         state = control.tier_state(self.store, self.cfg, self.methods)
         target = control.next_tier(state)
         if target is None:
-            return self.notify("Go 모델이 설정된 모델이 없습니다 (config의 models.go).", severity="warning")
+            return self.notify("DeepSeek의 Go 모델이 설정되어 있지 않습니다 (config의 models.go).", severity="warning")
         if target == "free":
             return self._apply_tier(True, "free")
-        self.push_screen(Confirm("모든 라인을 Go(유료) 모델로 전환합니다. 실행 중인 AI는 그대로이고 다음 실행부터 적용됩니다."),
+        self.push_screen(Confirm("DeepSeek 라인을 Go(유료) 모델로 전환합니다. 실행 중인 AI는 그대로이고 다음 실행부터 적용됩니다."),
                          lambda yes: self._apply_tier(yes, "go"))
 
     def _apply_tier(self, yes: bool | None, tier: str) -> None:

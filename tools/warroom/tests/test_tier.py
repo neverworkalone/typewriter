@@ -29,6 +29,26 @@ class TierSwitch(unittest.TestCase):
             control.set_tier(st, cfg, METHODS, "paid")
         w.tmp.cleanup()
 
+    def test_only_deepseek_is_switched_even_if_another_model_has_a_go_model(self):
+        w = multi_world()
+        w.cfg["producers"] = {**w.cfg["producers"], "sonnet": {"adapter": "opencode",
+                              "models": {"free": "p/sonnet-free", "go": "p/sonnet-go"}}}
+        self.assertEqual(control.go_models(w.cfg), ["deepseek"])
+        bid = w.store.create_batch(method="a", producer="sonnet", shard="001", batch="01", branch="b", worktree="/s")
+        control.set_tier(w.store, w.cfg, METHODS, "go")
+        self.assertEqual(w.store.peek_line("sonnet", "a")["model_tier"], "free")
+        self.assertEqual(w.store.batch(bid)["model_tier"], "free")
+        self.assertEqual(control.tier_state(w.store, w.cfg, METHODS), "go")
+        w.tmp.cleanup()
+
+    def test_free_tier_is_opencode_only(self):
+        w = multi_world()
+        w.cfg["producers"] = {**w.cfg["producers"], "deepseek": {**w.cfg["producers"]["deepseek"], "adapter": "codex"}}
+        # (not run through OpenCode: no free/go tiers; the shared PRODUCERS fixture stays untouched)
+        self.assertEqual(control.go_models(w.cfg), [])
+        self.assertEqual(control.tier_state(w.store, w.cfg, METHODS), "none")
+        w.tmp.cleanup()
+
     def test_none_when_no_model_has_go(self):
         w = World(models={"free": "p/free-x-free", "go": ""})
         self.assertEqual(control.tier_state(w.store, w.cfg, METHODS), "none")

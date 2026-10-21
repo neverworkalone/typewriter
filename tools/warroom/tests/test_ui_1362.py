@@ -106,6 +106,15 @@ class CardsAndControl(unittest.TestCase):
         self.assertEqual([fmt_elapsed(x) for x in (0, 59, 60, 312, 3599, 3900)],
                          ["0초", "59초", "1분 00초", "5분 12초", "59분 59초", "1시간 05분"])
 
+    def test_producing_is_shown_as_working_but_stays_producing_in_the_state_machine(self):
+        from warroom.views import card_text, detail_header
+        st = self.status(state="PRODUCING", mode="single", run=False, global_drain=False, error=None, blocked="")
+        self.assertIn("WORKING ▶", card_text(st).split("\n")[0])
+        self.assertNotIn("PRODUCING", card_text(st))
+        self.assertIn("WORKING", detail_header(st, {"adapter": "opencode"}, "deepseek"))
+        self.assertNotIn("PRODUCING", detail_header(st, {"adapter": "opencode"}, "deepseek"))
+        self.assertIn("PRODUCING", control.STATES_HELP)      # stored/supervisor state names are unchanged
+
     def test_elapsed_is_the_sum_of_recorded_runs(self):
         w = World()
         bid = w.store.create_batch(method="a", producer="deepseek", shard="009", batch="02",

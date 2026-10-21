@@ -108,13 +108,18 @@ def can_stop_all(store: Store, lines) -> bool:
 
 
 # --- Free/Go model tier (operator switch; the automatic Free->Go switch on quota exhaustion is separate) ---
+TIER_SWITCH_MODELS = ("deepseek",)   # the operator Free/Go switch applies to DeepSeek only
+
+
 def go_models(cfg: dict) -> list[str]:
-    """Registered models that have a Go model configured: the only ones a tier switch can touch."""
-    return [pid for pid, p in registry(cfg).items() if p["models"].get("go")]
+    """Models the tier switch may touch: DeepSeek, run through OpenCode (the only CLI with a free tier),
+    and only when it has a Go model configured."""
+    return [pid for pid, p in registry(cfg).items()
+            if pid in TIER_SWITCH_MODELS and p["adapter"] == "opencode" and p["models"].get("go")]
 
 
 def tier_state(store: Store, cfg: dict, methods) -> str:
-    """'free' | 'go' | 'mixed' over every Line of the models that have a Go model; 'none' if no model has one."""
+    """'free' | 'go' | 'mixed' over every Line of the models that have a Go model; 'none' if DeepSeek has no Go model."""
     tiers = {store.peek_line(m, me)["model_tier"] for m in go_models(cfg) for me in methods}
     if not tiers:
         return "none"
@@ -127,7 +132,7 @@ def next_tier(state: str) -> str | None:
 
 
 def set_tier(store: Store, cfg: dict, methods, tier: str) -> int:
-    """Apply `tier` to every Line (and its unfinished batch) of the models that have a Go model.
+    """Apply `tier` to every DeepSeek Line (and its unfinished batch).
 
     A running AI keeps its model; the next launch (new batch, fix, recovery) uses the new tier.
     """

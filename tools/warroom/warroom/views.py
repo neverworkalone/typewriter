@@ -23,7 +23,7 @@ def _when(ts) -> str:
 
 
 CARD_W = 34   # content cells of a card (column 38 - border - padding): every line is fit to it
-PHASE = {"WAITING_REVIEW": "REVIEW"}
+PHASE = {"WAITING_REVIEW": "REVIEW", "PRODUCING": "WORKING"}   # display names; the stored state stays PRODUCING
 ICON = {"PREPARE": "…", "PRODUCING": "▶", "WAITING_REVIEW": "◔", "FIXING": "✎", "MERGED": "⇄",
         "CLEANUP": "⌫", "COMPLETE": "✓", "PAUSED": "‖", "ERROR": "✖"}
 
@@ -143,13 +143,13 @@ TIER_BAR = {
     "free": "[b green]● Free[/]  [dim]○ Go[/]",
     "go": "[dim]○ Free[/]  [b #ffa500]● Go (유료)[/]",
     "mixed": "[b yellow]◐ 혼합[/] [dim](Free/Go가 섞여 있음 — f: 모두 Free)[/]",
-    "none": "[dim]Go 모델이 설정된 모델 없음[/]",
+    "none": "[dim]DeepSeek Go 모델 미설정[/]",
 }
 
 
 def tier_bar(state: str) -> str:
     """Board status line for the f key: the current model tier, colour-coded (markup)."""
-    return f"모델 단계  {TIER_BAR.get(state, TIER_BAR['none'])}   [dim]f 전환[/]"
+    return f"DeepSeek 모델 단계  {TIER_BAR.get(state, TIER_BAR['none'])}   [dim]f 전환[/]"
 
 
 def detail_header(st: dict, reg: dict, model: str) -> str:
