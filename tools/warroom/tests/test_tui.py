@@ -38,6 +38,43 @@ PRODUCERS = {
 
 @unittest.skipIf(textual is None, "textual not installed")
 class TuiSmoke(unittest.TestCase):
+    def test_arrow_keys_move_between_controls_and_cards(self):
+        from warroom import tui
+        w = World()
+
+        async def go():
+            app = make_app(w, PRODUCERS)
+            async with app.run_test(size=(200, 60)) as pilot:
+                await pilot.pause(0.2)
+                app.query_one("#adapter").focus()
+                await pilot.press("right")
+                self.assertEqual(app.focused.id, "model")
+                await pilot.press("left")
+                self.assertEqual(app.focused.id, "adapter")
+                await pilot.press("left")          # wraps to the last enabled control
+                self.assertEqual(app.focused.id, "drain-all")
+                app.query_one("#card-deepseek-a").focus()
+                await pilot.press("down")
+                self.assertEqual(app.focused.id, "card-deepseek-b")
+                await pilot.press("right")
+                self.assertEqual(app.focused.id, "card-sonnet-b")
+                await pilot.press("left", "up")
+                self.assertEqual(app.focused.id, "card-deepseek-a")
+                await pilot.press("left")          # edge: stays put
+                self.assertEqual(app.focused.id, "card-deepseek-a")
+                await pilot.press("up")            # top row returns to the controls
+                self.assertEqual(app.focused.id, "start")
+                # An open Select keeps Left/Right out of focus movement.
+                app.query_one("#adapter").focus()
+                await pilot.press("enter")
+                await pilot.pause(0.1)
+                before = app.focused
+                await pilot.press("right")
+                self.assertIs(app.focused, before)
+
+        asyncio.run(go())
+        w.tmp.cleanup()
+
     def test_board_dynamic_columns_start_and_confirmations(self):
         from warroom import tui
         w = World()

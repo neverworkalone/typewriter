@@ -69,7 +69,8 @@ class Confirm(ModalScreen[bool]):
 
 class Card(Static, can_focus=True):
     """One Line. Clicking (or Enter) only opens its detail; it never starts or changes work."""
-    BINDINGS = [("enter", "open", "Open")]
+    BINDINGS = [("enter", "open", "Open"), ("left", "move(0,-1)", ""), ("right", "move(0,1)", ""),
+                ("up", "move(-1,0)", ""), ("down", "move(1,0)", "")]
 
     def __init__(self, model: str, method: str):
         super().__init__("", id=f"card-{model}-{method}", classes="card")
@@ -80,6 +81,21 @@ class Card(Static, can_focus=True):
 
     def action_open(self) -> None:
         self.app.push_screen(LineDetail(self.model, self.method))
+
+    def action_move(self, drow: int, dcol: int) -> None:
+        """Arrow keys walk the Line grid (columns = models, rows = methods); up from the top row returns to the controls."""
+        cards = list(self.app.query(Card))
+        models = list(dict.fromkeys(c.model for c in cards))
+        methods = list(dict.fromkeys(c.method for c in cards))
+        row = methods.index(self.method) + drow
+        col = models.index(self.model) + dcol
+        if row < 0:
+            self.app.query_one("#start").focus()
+            return
+        for c in cards:
+            if 0 <= col < len(models) and 0 <= row < len(methods) and (c.model, c.method) == (models[col], methods[row]):
+                c.focus()
+                return
 
 
 class SettingsScreen(Screen):
@@ -319,7 +335,8 @@ class WarRoom(App):
     #settings-body { padding: 1 2; }
     RichLog { border: round $primary; height: 1fr; }
     """
-    BINDINGS = [("q", "quit", "Quit (워커는 계속 실행)"), ("s", "settings", "Settings")]
+    BINDINGS = [("q", "quit", "Quit (워커는 계속 실행)"), ("s", "settings", "Settings"),
+                ("left", "control_move(-1)", ""), ("right", "control_move(1)", "")]
 
     def __init__(self):
         super().__init__()
@@ -364,6 +381,17 @@ class WarRoom(App):
                     for me in self.methods:
                         yield Card(model, me)
         yield Footer()
+
+    def action_control_move(self, step: int) -> None:
+        """Left/Right move between the top-bar controls like Shift+Tab/Tab (up/down stay with an open Select)."""
+        focused = self.focused
+        if focused is None or not any(a.id == "controls" for a in focused.ancestors):
+            return
+        if isinstance(focused, Select) and focused.expanded:
+            return
+        order = [w for w in self.query_one("#controls").children if w.display and w.focusable]
+        if focused in order:
+            order[(order.index(focused) + step) % len(order)].focus()
 
     def _model_options(self, adapter: str):
         return [(f"{p['label']} ({pid})", pid) for pid, p in registry(self.cfg).items()
