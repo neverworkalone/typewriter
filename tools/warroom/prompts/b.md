@@ -3,6 +3,8 @@
 War Room이 지정한 배치 {{batch}}를 생산한다.
 현재 worktree와 브랜치 {{branch}}를 그대로 사용한다.
 배치를 다시 선정하거나 브랜치를 변경하지 않는다.
+War Room이 준비한 HEAD를 기준으로 작업하며, 
+생산 도중 master가 갱신되어도 현재 브랜치를 merge/rebase/reset하지 않는다.
 
 Issue #860과 AGENTS.md의 B 생산 계약을 읽고 준수한다.
 
