@@ -107,6 +107,21 @@ class Lifecycle(unittest.TestCase):
         self.assertEqual(w.git.removed, [])
         self.assertTrue(Path(w.row()["worktree"]).exists())
 
+    def test_retry_after_cleanup_error_resumes_cleanup_without_rerunning_ai(self):
+        w = self.w
+        self.produce_to_review()
+        w.pr_info(7, HEAD2, state="closed", merged=True)
+        w.git.local_head = "9" * 40            # blocked by the fake: not synced
+        w.tick(3)
+        self.assertEqual(w.row()["state"], "ERROR")
+        self.assertEqual(w.row()["paused_from"], "CLEANUP")
+        launches = len(w.adapter.launches)
+        w.git.local_head = HEAD2               # the operator/War Room made HEAD match
+        self.assertTrue(control.retry(w.store, "deepseek", "a"))
+        w.tick(3)
+        self.assertEqual(w.row()["state"], "COMPLETE")
+        self.assertEqual(len(w.adapter.launches), launches)
+
     def test_restart_recovery_no_duplicates(self):
         w = self.w
         w.start("single")

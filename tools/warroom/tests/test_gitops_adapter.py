@@ -61,6 +61,53 @@ class RealGit(unittest.TestCase):
         self.assertNotEqual(subprocess.run(["git", "rev-parse", "--verify", "-q", "a-x-001-01"],
                                            cwd=self.repo, env=ENV).returncode, 0)
 
+    def _pr_branch_advanced_remotely(self, branch):
+        """Worktree commits+pushes `branch`; a second clone then adds commits on top (GitHub 'Update branch')."""
+        self.git.fetch_base("master")
+        self.git.create_worktree(self.wt, branch, "master")
+        (self.wt / "n").write_text("1")
+        sh("git", "add", "n", cwd=self.wt)
+        sh("git", "commit", "-qm", "work", cwd=self.wt)
+        sh("git", "push", "-q", "origin", f"HEAD:refs/heads/{branch}", cwd=self.wt)
+        old = self.git.head(self.wt)
+        other = Path(self.tmp.name) / "other"
+        sh("git", "clone", "-q", "-b", branch, str(Path(self.tmp.name) / "origin.git"), "other", cwd=self.tmp.name)
+        for i in (1, 2):                                    # more than one new commit
+            (other / f"u{i}").write_text("u")
+            sh("git", "add", f"u{i}", cwd=other)
+            sh("git", "commit", "-qm", f"update {i}", cwd=other)
+        sh("git", "push", "-q", "origin", f"HEAD:refs/heads/{branch}", cwd=other)
+        new = subprocess.run(["git", "rev-parse", "HEAD"], cwd=other, env=ENV, check=True,
+                             capture_output=True, text=True).stdout.strip()
+        return old, new
+
+    def test_behind_clean_worktree_is_fast_forwarded_then_removed(self):
+        old, new = self._pr_branch_advanced_remotely("a-x-001-01")
+        self.assertNotEqual(old, new)
+        self.git.remove_owned(self.wt, "a-x-001-01", new)
+        self.assertFalse(self.wt.exists())
+
+    def test_unsafe_head_mismatch_is_preserved_untouched(self):
+        old, new = self._pr_branch_advanced_remotely("a-x-001-01")
+        # dirty: not synced, not removed
+        (self.wt / "u").write_text("untracked")
+        with self.assertRaises(CleanupBlocked):
+            self.git.remove_owned(self.wt, "a-x-001-01", new)
+        self.assertEqual(self.git.head(self.wt), old)
+        (self.wt / "u").unlink()
+        # diverged: local commit not in the PR history -> blocked, HEAD kept
+        (self.wt / "local").write_text("l")
+        sh("git", "add", "local", cwd=self.wt)
+        sh("git", "commit", "-qm", "local only", cwd=self.wt)
+        mine = self.git.head(self.wt)
+        with self.assertRaises(CleanupBlocked):
+            self.git.remove_owned(self.wt, "a-x-001-01", new)
+        self.assertEqual(self.git.head(self.wt), mine)
+        # unreachable PR head: blocked
+        with self.assertRaises(CleanupBlocked):
+            self.git.remove_owned(self.wt, "a-x-001-01", "0" * 40)
+        self.assertTrue(self.wt.exists())
+
     def test_scratch_dir_is_ignored_but_other_untracked_files_still_block(self):
         from warroom.gitops import SCRATCH_DIR
         self.git.fetch_base("master")

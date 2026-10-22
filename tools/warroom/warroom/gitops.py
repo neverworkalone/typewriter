@@ -81,11 +81,29 @@ class Git:
                 cur = None
         return None
 
+    def _sync_to_pr_head(self, path: Path, local: str, pr_head_sha: str) -> None:
+        """Fast-forward a clean worktree to the merged PR HEAD (e.g. GitHub "Update branch" added commits).
+
+        Only a fast-forward is ever done: a local HEAD that is not an ancestor of the PR HEAD is
+        preserved and blocks cleanup. No reset, rebase or force.
+        """
+        desc = f"local HEAD {local[:10]} != merged PR HEAD {pr_head_sha[:10]}"
+        have = self._git("cat-file", "-e", f"{pr_head_sha}^{{commit}}", cwd=path, check=False).ok
+        if not have and not self._git("fetch", "origin", pr_head_sha, cwd=path, check=False).ok:
+            raise CleanupBlocked(f"{desc} (merged PR HEAD를 가져올 수 없음)")
+        if not self._git("merge-base", "--is-ancestor", local, pr_head_sha, cwd=path, check=False).ok:
+            raise CleanupBlocked(f"{desc} (local HEAD가 PR HEAD의 조상이 아님)")
+        if not self._git("merge", "--ff-only", pr_head_sha, cwd=path, check=False).ok:
+            raise CleanupBlocked(f"{desc} (fast-forward 실패)")
+        if self.head(path) != pr_head_sha:
+            raise CleanupBlocked(f"{desc} (동기화 후에도 불일치)")
+
     def remove_owned(self, path: Path, branch: str, pr_head_sha: str) -> None:
         """Remove worktree + local branch only if provably ours, clean and fully merged.
 
         `pr_head_sha` is the merged PR's final HEAD; squash merges make ancestry
         checks unreliable, so the invariant is local HEAD == the HEAD GitHub merged.
+        A local HEAD that is a strict ancestor of it is fast-forwarded first.
         """
         path = Path(path)
         try:
@@ -100,6 +118,6 @@ class Git:
             raise CleanupBlocked(f"uncommitted changes in worktree:\n{d.strip()[:400]}")
         local = self.head(path)
         if local != pr_head_sha:
-            raise CleanupBlocked(f"local HEAD {local[:10]} != merged PR HEAD {pr_head_sha[:10]}")
+            self._sync_to_pr_head(path, local, pr_head_sha)
         self._git("worktree", "remove", str(path))  # no --force
         self._git("branch", "-D", branch)

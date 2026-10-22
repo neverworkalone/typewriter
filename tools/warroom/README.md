@@ -170,6 +170,9 @@ A missing/empty/unreadable file or an unknown/unfilled placeholder stops the bat
 - **Merge** is only `merged=true` from the GitHub API (not `+1/+2`, CI or `closed`).
 - **Cleanup** removes a worktree only if it is under `.local/worktrees`, registered to the recorded
   branch, clean (incl. untracked), the AI process is gone and local HEAD equals the merged PR HEAD.
+  If local HEAD is merely behind (e.g. GitHub "Update branch" added commits), the merged PR HEAD is
+  fetched and fast-forwarded (`merge --ff-only`) first; a non-ancestor HEAD or a dirty tree stays
+  `ERROR` and preserved (never reset/rebase/force). Retry of such an `ERROR` resumes at CLEANUP, no AI rerun.
 - **Model policy**: only a failure matching `quota_patterns` while on the free tier switches to the
   Go model. 429/network → backoff retry; auth → `PAUSED`; anything unrecognised → `PAUSED`
   (never a silent paid fallback).
