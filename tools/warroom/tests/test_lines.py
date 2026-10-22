@@ -165,6 +165,24 @@ class DrainAndStop(unittest.TestCase):
         self.assertEqual(len(w.store.all_batches()), 2)
         self.assertEqual(w.store.peek_line("deepseek", "a")["run"], 0)
 
+    def test_drain_all_landing_after_completion_still_ends_the_run(self):
+        """Race: the batch is COMPLETE and the Line still has run=1 (Continuous) when drain_once is written."""
+        w = self.w
+        w.start("single", "deepseek", "a")
+        w.tick()
+        self._finish_batch(w)                      # COMPLETE, no unfinished batch
+        # the state a Continuous Line is left in when the completing tick saw drain_once=0 and Drain All's
+        # write then landed: run still set, flag set, nothing active
+        w.store.set_line("deepseek", "a", mode="continuous", run=1, drain_once=1)
+        for _ in range(3):
+            w.tick(2)
+        self.assertEqual(len(w.store.all_batches()), 1)         # no batch started
+        ln = w.store.peek_line("deepseek", "a")
+        self.assertEqual((ln["run"], ln["drain_once"]), (0, 0))
+        self.assertTrue(control.start(w.store, "deepseek", "a", "continuous")[0])   # a later Start is unaffected
+        w.tick()
+        self.assertEqual(len(w.store.all_batches()), 2)
+
     def test_drain_all_cancels_reservation_and_survives_pause_and_restart(self):
         w = self.w
         w.start("continuous", "sonnet", "a")                    # reserved, no batch yet

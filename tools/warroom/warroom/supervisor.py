@@ -106,6 +106,11 @@ class Supervisor:
             self.store.set_line(model, method, force_stop=0)
             return self._force_stop(b) if b is not None else self.store.set_line(model, method, run=0)
         if b is None:
+            if ln["drain_once"]:
+                # Drain All landed after this Line's last batch completed (or with only a reservation): the
+                # request is consumed here, whatever the interleaving, so no further batch is assigned.
+                self.store.set_line(model, method, run=0, drain_once=0)
+                return
             if ln["run"] and not control.drained(self.store, ln):
                 self._prepare_new(ln)
             return
