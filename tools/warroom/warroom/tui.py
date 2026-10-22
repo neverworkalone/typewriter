@@ -164,6 +164,7 @@ class LineDetail(Screen):
         self.model, self.method = model, method
         self._region_memory: dict = {}
         self.tail = LogTail(None)
+        self._announced: set = set()      # Codex command ids already shown, per displayed log
         self.audit_seen = 0
         self.source = "latest"      # latest | audit | run:<id>
         self.raw = False            # Raw Log vs. human-readable view of the same file
@@ -269,7 +270,7 @@ class LineDetail(Screen):
     def _reload(self) -> None:
         self.log_w.clear()
         self.audit_seen, self._shown_path = 0, None
-        self.tail = LogTail(None)
+        self.tail, self._announced = LogTail(None), set()
 
     def on_select_changed(self, e: Select.Changed) -> None:
         if e.select.id == "source" and e.value != self.source and e.value is not Select.BLANK:
@@ -296,7 +297,7 @@ class LineDetail(Screen):
         if self.raw:
             log.write(line)
         else:
-            for out in render_line(line):
+            for out in render_line(line, self._announced):
                 log.write(out)
 
     def _pump_log(self, runs, st) -> None:
@@ -320,7 +321,7 @@ class LineDetail(Screen):
         path = run["log_file"] if run else None
         if path != self._shown_path:        # new latest run (or none yet): follow it from its start
             self._shown_path = path
-            self.tail = LogTail(path)
+            self.tail, self._announced = LogTail(path), set()
             if path and self.source == "latest":
                 log.clear()
         for line in self.tail.read():
