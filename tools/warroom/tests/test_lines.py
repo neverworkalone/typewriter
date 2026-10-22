@@ -479,3 +479,20 @@ class TailTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DrainOnceMigration(unittest.TestCase):
+    def test_v3_database_gains_drain_once_without_losing_lines(self):
+        import sqlite3, tempfile
+        from pathlib import Path
+        from warroom.store import Store
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "w.db"
+            Store(path)
+            with sqlite3.connect(path) as c:      # a database written by the previous version
+                c.execute("ALTER TABLE lines DROP COLUMN drain_once")
+                c.execute("INSERT INTO lines(model,method,drain) VALUES('m','a',1)")
+                c.execute("PRAGMA user_version=3")
+            s = Store(path)
+            ln = s.line("m", "a")
+            self.assertEqual((ln["drain"], ln["drain_once"]), (1, 0))

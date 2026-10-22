@@ -58,7 +58,9 @@ CREATE INDEX IF NOT EXISTS events_line ON events(batch_id);
 # Additive migration (user_version 3): every run records the CLI model ID and reasoning effort it was pinned to.
 # Old runs keep NULL; nothing is rewritten.
 RUN_COLUMNS_V3 = ("model", "effort")
-SCHEMA_VERSION = 3
+# Additive migration (user_version 4): a one-shot "finish this batch, then stop" request set by Drain All.
+# It is separate from the per-Line `drain` setting, which Drain All never touches.
+SCHEMA_VERSION = 4
 
 ACTIVE_STATES = ("PREPARE", "PRODUCING", "WAITING_REVIEW", "FIXING", "MERGED",
                  "CLEANUP", "PAUSED", "ERROR")
