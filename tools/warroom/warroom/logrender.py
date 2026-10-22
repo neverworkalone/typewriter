@@ -1,4 +1,4 @@
-"""Human-readable view of an agent log line (OpenCode `run --format json` and Claude `stream-json` JSON Lines).
+"""Human-readable view of an agent log line (OpenCode `run --format json`, Claude `stream-json` and Codex `exec --json` JSON Lines).
 
 Stateless and per line, so the incremental `tail -f` reader never re-parses the whole log. Only what
 the line actually contains is shown (no invented timestamps, progress or results); long strings are
@@ -130,6 +130,96 @@ def _claude(ev: dict) -> list[str] | None:
     return None
 
 
+def _text_lines(text: str, first: str) -> list[str]:
+    return _indent(_clip(text.strip(), MAX_TEXT).splitlines() or [""], first, "  ")
+
+
+def _codex_item(phase: str, item: dict) -> list[str]:
+    """One Codex `item.*` event. A command is announced on `item.started` and its result shown on
+    `item.completed`; `item.updated` and an already-announced start add nothing, so an item is not repeated."""
+    kind = item.get("type")
+    status = item.get("status")
+    if kind == "agent_message" and isinstance(item.get("text"), str):
+        return _text_lines(item["text"], "● ") if phase == "completed" and item["text"].strip() else []
+    if kind == "reasoning" and isinstance(item.get("text"), str):
+        return _text_lines(item["text"], "… ") if phase == "completed" and item["text"].strip() else []
+    if kind == "command_execution":
+        cmd = item.get("command") if isinstance(item.get("command"), str) else ""
+        if phase == "started":
+            return ["▸ command"] + _indent(_block(cmd, MAX_COMMAND_LINES, MAX_OUTPUT_CHARS), "  $ ", "    ")
+        if phase != "completed":
+            return []
+        out: list[str] = []
+        code = item.get("exit_code")
+        bad = status in ("failed", "declined") or (code not in (None, 0))
+        if status == "declined":
+            out.append("✖ command declined (정책/승인 거부)")
+        elif bad:
+            out.append(f"✖ command failed{f' (exit={code})' if code is not None else ''}")
+        elif code is not None:
+            out.append(f"  exit={code}")
+        if bad and cmd:
+            out += _indent(_block(cmd, MAX_COMMAND_LINES, MAX_OUTPUT_CHARS), "  $ ", "    ")
+        output = item.get("aggregated_output")
+        if isinstance(output, str) and output.strip():
+            out += _indent(_block(output.rstrip(), MAX_OUTPUT_LINES, MAX_OUTPUT_CHARS), "  → ", "    ")
+        return out
+    if phase != "completed":
+        return []
+    if kind == "file_change":
+        changes = [c for c in item.get("changes") or [] if isinstance(c, dict)]
+        head = "✖ file_change failed" if status == "failed" else "▸ file_change"
+        out = [head] + [f"  {c.get('kind', '?')} {_clip(str(c.get('path', '?')), MAX_INLINE)}" for c in changes[:MAX_OUTPUT_LINES]]
+        if len(changes) > MAX_OUTPUT_LINES:
+            out.append(f"… (+{len(changes) - MAX_OUTPUT_LINES}건 생략, Raw Log에서 전체 확인)")
+        return out
+    if kind == "mcp_tool_call":
+        out = [f"▸ {item.get('server', '?')}.{item.get('tool', '?')}"]
+        if item.get("arguments") not in (None, "", {}):
+            out.append("  " + _clip(json.dumps(item["arguments"], ensure_ascii=False), MAX_INLINE))
+        err = item.get("error")
+        if err:
+            msg = err.get("message") if isinstance(err, dict) else err
+            out += _indent(_block(str(msg), MAX_OUTPUT_LINES, MAX_OUTPUT_CHARS), "  ✖ ", "    ")
+        elif status == "failed":
+            out.append("  ✖ failed")
+        res = item.get("result")
+        blocks = res.get("content") if isinstance(res, dict) else None
+        text = "\n".join(b["text"] for b in blocks if isinstance(b, dict) and isinstance(b.get("text"), str)) \
+            if isinstance(blocks, list) else ""
+        if text.strip():
+            out += _indent(_block(text.rstrip(), MAX_OUTPUT_LINES, MAX_OUTPUT_CHARS), "  → ", "    ")
+        return out
+    if kind == "web_search":
+        return [f"▸ web_search {_clip(str(item.get('query', '')), MAX_INLINE)}".rstrip()]
+    if kind == "todo_list" and isinstance(item.get("items"), list):
+        return ["▸ todo"] + [f"  [{'x' if i.get('completed') else ' '}] {_clip(str(i.get('text', '')), MAX_INLINE)}"
+                             for i in item["items"] if isinstance(i, dict)]
+    if kind == "error":
+        return _indent(_block(str(item.get("message") or "error"), 20, 4000), "✖ ERROR: ", "    ")
+    return [f"? {phase} item {kind or '?'}: " + _clip(json.dumps(item, ensure_ascii=False), MAX_INLINE)]
+
+
+def _codex(ev: dict) -> list[str] | None:
+    """Codex `exec --json` events; None when the line is not one of them."""
+    kind = ev.get("type")
+    if kind == "thread.started" and isinstance(ev.get("thread_id"), str):
+        return [f"── session {ev['thread_id']} ──"]
+    if kind == "turn.started":
+        return ["── turn 시작 ──"]
+    if kind == "turn.completed":
+        return ["■ turn 완료"]
+    if kind == "turn.failed":
+        err = ev.get("error")
+        msg = err.get("message") if isinstance(err, dict) else err
+        return _indent(_block(str(msg or "turn failed"), 20, 4000), "✖ turn 실패: ", "    ")
+    if kind in ("item.started", "item.updated", "item.completed") and isinstance(ev.get("item"), dict):
+        return _codex_item(kind.split(".", 1)[1], ev["item"])
+    if kind == "error" and isinstance(ev.get("message"), str):
+        return _indent(_block(ev["message"], 20, 4000), "✖ ERROR: ", "    ")
+    return None
+
+
 def render_line(raw: str) -> list[str]:
     """Readable display lines for one raw log line (plain text, already redacted)."""
     stripped = raw.strip()
@@ -146,6 +236,9 @@ def render_line(raw: str) -> list[str]:
     claude = _claude(ev)
     if claude is not None:
         return [redact(l) for l in claude]
+    codex = _codex(ev)
+    if codex is not None:
+        return [redact(l) for l in codex]
     part = ev.get("part") if isinstance(ev.get("part"), dict) else {}
     kind = ev.get("type")
     if kind == "text" and isinstance(part.get("text"), str):
