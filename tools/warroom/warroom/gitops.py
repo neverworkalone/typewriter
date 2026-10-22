@@ -14,6 +14,9 @@ class CleanupBlocked(Exception):
     """Removal would risk data loss or touch something War Room does not own."""
 
 
+SCRATCH_DIR = ".warroom-scratch"   # the AI's throw-away files; never part of a batch and never blocks a worktree check
+
+
 class Git:
     def __init__(self, runner: Runner, repo_root: Path, env: dict, worktrees_dir: Path):
         self.r, self.root, self.env = runner, Path(repo_root), env
@@ -40,12 +43,27 @@ class Git:
                      check=False).ok:
             raise GitError(f"remote branch already exists: {branch}")
         path.parent.mkdir(parents=True, exist_ok=True)
+        self.ignore_scratch()
         self._git("worktree", "add", "-b", branch, str(path), f"origin/{base}")
 
     def head(self, path: Path) -> str:
         return self._git("rev-parse", "HEAD", cwd=path).out.strip()
 
+    def ignore_scratch(self) -> None:
+        """Keep SCRATCH_DIR out of `git status` in every worktree (shared info/exclude); idempotent."""
+        exclude = Path(self._git("rev-parse", "--path-format=absolute", "--git-path", "info/exclude").out.strip())
+        line = f"/{SCRATCH_DIR}/"
+        try:
+            have = exclude.read_text("utf-8").splitlines() if exclude.exists() else []
+            if line not in have:
+                exclude.parent.mkdir(parents=True, exist_ok=True)
+                with exclude.open("a", encoding="utf-8") as fh:
+                    fh.write(("" if not have or exclude.read_text("utf-8").endswith("\n") else "\n") + line + "\n")
+        except OSError as e:
+            raise GitError(f"info/exclude를 갱신할 수 없습니다: {e}")
+
     def dirty(self, path: Path) -> str:
+        self.ignore_scratch()
         return self._git("status", "--porcelain=v1", "--untracked-files=all", cwd=path).out
 
     def registered(self, path: Path) -> str | None:

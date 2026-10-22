@@ -58,7 +58,9 @@ CREATE INDEX IF NOT EXISTS events_line ON events(batch_id);
 # Additive migration (user_version 3): every run records the CLI model ID and reasoning effort it was pinned to.
 # Old runs keep NULL; nothing is rewritten.
 RUN_COLUMNS_V3 = ("model", "effort")
-SCHEMA_VERSION = 3
+# Additive migration (user_version 4): a one-shot "finish this batch, then stop" request set by Drain All.
+# It is separate from the per-Line `drain` setting, which Drain All never touches.
+SCHEMA_VERSION = 4
 
 ACTIVE_STATES = ("PREPARE", "PRODUCING", "WAITING_REVIEW", "FIXING", "MERGED",
                  "CLEANUP", "PAUSED", "ERROR")
@@ -66,6 +68,10 @@ ACTIVE_STATES = ("PREPARE", "PRODUCING", "WAITING_REVIEW", "FIXING", "MERGED",
 
 class LineBusy(Exception):
     """A Line owns at most one unfinished batch."""
+
+
+class LineNotRunnable(Exception):
+    """The Line's controls no longer allow a new batch (run cancelled, Drain, Drain All) at insert time."""
 
 
 class DuplicateBatch(LineBusy):
@@ -87,6 +93,8 @@ class Store:
     @staticmethod
     def _migrate(c) -> None:
         c.executescript(SCHEMA_V2)
+        if "drain_once" not in {r["name"] for r in c.execute("PRAGMA table_info(lines)")}:
+            c.execute("ALTER TABLE lines ADD COLUMN drain_once INTEGER NOT NULL DEFAULT 0")
         if "line" not in {r["name"] for r in c.execute("PRAGMA table_info(events)")}:
             c.execute("ALTER TABLE events ADD COLUMN line TEXT")
         have = {r["name"] for r in c.execute("PRAGMA table_info(runs)")}
@@ -157,10 +165,18 @@ class Store:
                       "ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, value))
 
     # --- batches ---
-    def create_batch(self, **f) -> int:
+    def create_batch(self, from_run: bool = False, **f) -> int:
+        """Insert a PREPARE batch. `from_run`: the Supervisor assigns it on behalf of a run reservation, so the
+        Line's *current* controls (read under the same write lock) must still allow it: a Stop, Drain or
+        Drain All that landed after the tick read the Line cannot be overtaken."""
         now = time.time()
         with self._conn() as c:
             c.execute("BEGIN IMMEDIATE")   # check + insert under one write lock: concurrent Starts cannot both claim
+            if from_run:
+                ln = c.execute("SELECT run, drain, drain_once, force_stop FROM lines WHERE model=? AND method=?",
+                               (f["producer"], f["method"])).fetchone()
+                if ln is None or not ln["run"] or ln["drain"] or ln["drain_once"] or ln["force_stop"]:
+                    raise LineNotRunnable(f"{f['producer']}/{f['method']} 라인이 신규 배치를 받을 수 없는 상태입니다.")
             if c.execute("SELECT 1 FROM batches WHERE method=? AND producer=? AND state!='COMPLETE'",
                          (f["method"], f["producer"])).fetchone():
                 raise LineBusy(f"{f['producer']}/{f['method']} 라인에 미완료 배치가 있습니다.")
@@ -222,7 +238,7 @@ class Store:
         with self._conn() as c:
             row = c.execute("SELECT * FROM lines WHERE model=? AND method=?", (model, method)).fetchone()
         return dict(row) if row else {"model": model, "method": method, "mode": "single", "run": 0,
-                                      "drain": 0, "force_stop": 0, "retry_batch": None, "blocked": "",
+                                      "drain": 0, "drain_once": 0, "force_stop": 0, "retry_batch": None, "blocked": "",
                                       "model_tier": "free"}
 
     def set_line(self, model: str, method: str, **fields) -> None:
@@ -236,11 +252,31 @@ class Store:
         with self._conn() as c:
             return c.execute("SELECT * FROM lines ORDER BY model, method").fetchall()
 
+    def request_drain_all(self, lines) -> int:
+        """Drain All as ONE write transaction (shared with `create_batch`): a Line with an unfinished batch gets
+        `drain_once`, a Line with only a run reservation loses it. Returns the number of Lines affected."""
+        n, now = 0, time.time()
+        with self._conn() as c:
+            c.execute("BEGIN IMMEDIATE")
+            for model, method in lines:
+                busy = c.execute("SELECT 1 FROM batches WHERE producer=? AND method=? AND state!='COMPLETE'",
+                                 (model, method)).fetchone()
+                ln = c.execute("SELECT run FROM lines WHERE model=? AND method=?", (model, method)).fetchone()
+                if busy:
+                    c.execute("INSERT OR IGNORE INTO lines(model,method,updated_at) VALUES(?,?,?)", (model, method, now))
+                    c.execute("UPDATE lines SET drain_once=1, updated_at=? WHERE model=? AND method=?",
+                              (now, model, method))
+                    n += 1
+                elif ln is not None and ln["run"]:
+                    c.execute("UPDATE lines SET run=0, updated_at=? WHERE model=? AND method=?", (now, model, method))
+                    n += 1
+        return n
+
     def stop_lines(self, model: str | None = None, method: str | None = None) -> None:
         """Request stop for one Line (or every Line): no new run is allowed until Start/Retry."""
         where, args = ("WHERE model=? AND method=?", (model, method)) if model else ("", ())
         with self._conn() as c:
-            c.execute(f"UPDATE lines SET run=0, force_stop=1, retry_batch=NULL, updated_at=? {where}", (time.time(), *args))
+            c.execute(f"UPDATE lines SET run=0, drain_once=0, force_stop=1, retry_batch=NULL, updated_at=? {where}", (time.time(), *args))
 
     # --- run history ---
     def add_run(self, batch_id: int, kind: str, session_id, pid, log_file, exit_file,

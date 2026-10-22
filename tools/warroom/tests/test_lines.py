@@ -132,35 +132,98 @@ class DrainAndStop(unittest.TestCase):
     def tearDown(self):
         self.w.tmp.cleanup()
 
-    def test_drain_scopes_and_priority(self):
-        w = self.w
-        w.start("continuous", "deepseek", "a")
-        w.tick()                                   # batch 001_01 running
-        control.set_drain(w.store, "deepseek", "a", True)
-        control.set_drain_all(w.store, True)
-        control.set_drain_all(w.store, False)      # Cancel Drain (All) keeps the Line drain
-        self.assertTrue(control.line_status(w.store, "deepseek", "a")["drain"])
-        control.set_drain_all(w.store, True)
-        control.set_drain(w.store, "deepseek", "a", False)
-        st = control.line_status(w.store, "deepseek", "a")
-        self.assertTrue(st["drain"] and not st["line_drain"])   # Drain All alone still blocks
-        # the current batch still finishes through review/merge/cleanup
+    def _finish_batch(self, w, model="deepseek", pr=7):
         w.adapter.finish(w.adapter.launches[-1]["pid"])
-        open_pr(w, "a", "deepseek", 7)
+        open_pr(w, "a", model, pr)
         w.tick(2)
         self.assertEqual(w.row()["state"], "WAITING_REVIEW")
-        w.pr_info(7, HEAD1, state="closed", merged=True)
+        w.pr_info(pr, HEAD1, state="closed", merged=True)
         w.tick(4)
         self.assertEqual(w.row()["state"], "COMPLETE")
-        w.tick(4)
-        self.assertEqual(len(w.store.all_batches()), 1)         # no next batch under Drain All
-        control.set_drain_all(w.store, False)
+
+    def test_drain_all_is_one_shot_and_does_not_block_other_lines(self):
+        w = self.w
+        lines = [(m, "a") for m in ("deepseek", "sonnet")]
         w.start("continuous", "deepseek", "a")
+        w.tick()                                   # batch 001_01 running
+        control.set_drain(w.store, "sonnet", "a", True)          # a per-Line drain Drain All must not change
+        control.drain_all(w.store, lines)
+        self.assertTrue(w.store.peek_line("sonnet", "a")["drain"])
+        self.assertTrue(control.line_status(w.store, "deepseek", "a")["drain_once"])
+        self._finish_batch(w)
+        w.tick(4)
+        self.assertEqual(len(w.store.all_batches()), 1)         # no next batch after the current one
+        ln = w.store.peek_line("deepseek", "a")
+        self.assertEqual((ln["run"], ln["drain_once"]), (0, 0))
+        st = control.line_status(w.store, "deepseek", "a")
+        self.assertEqual((st["state"], st["batch"]), ("IDLE", None))   # EMPTY
+        # another Line can Start right after Drain All; the drained Line is not restarted
+        self.assertTrue(control.start(w.store, "sonnet", "a", "single")[0] is False)   # its own Line drain still applies
+        control.set_drain(w.store, "sonnet", "a", False)
+        self.assertTrue(control.start(w.store, "sonnet", "a", "single")[0])
+        w.tick(3)
+        self.assertEqual(len(w.store.all_batches()), 2)
+        self.assertEqual(w.store.peek_line("deepseek", "a")["run"], 0)
+
+    def test_drain_all_landing_after_completion_still_ends_the_run(self):
+        """Race: the batch is COMPLETE and the Line still has run=1 (Continuous) when drain_once is written."""
+        w = self.w
+        w.start("single", "deepseek", "a")
+        w.tick()
+        self._finish_batch(w)                      # COMPLETE, no unfinished batch
+        # the state a Continuous Line is left in when the completing tick saw drain_once=0 and Drain All's
+        # write then landed: run still set, flag set, nothing active
+        w.store.set_line("deepseek", "a", mode="continuous", run=1, drain_once=1)
+        for _ in range(3):
+            w.tick(2)
+        self.assertEqual(len(w.store.all_batches()), 1)         # no batch started
+        ln = w.store.peek_line("deepseek", "a")
+        self.assertEqual((ln["run"], ln["drain_once"]), (0, 0))
+        self.assertTrue(control.start(w.store, "deepseek", "a", "continuous")[0])   # a later Start is unaffected
         w.tick()
         self.assertEqual(len(w.store.all_batches()), 2)
-        # drain refused on start
-        control.set_drain_all(w.store, True)
-        self.assertFalse(control.start(w.store, "sonnet", "a", "single")[0])
+
+    def test_controls_landing_between_the_tick_read_and_batch_creation_win(self):
+        """Race: the Supervisor read run=1, then Drain All / a Line drain / Stop lands before the batch insert."""
+        from unittest import mock
+        from warroom import batches
+        real = batches.next_batch
+        cases = {
+            "drain_all": lambda w: control.drain_all(w.store, [("deepseek", "a")]),
+            "line_drain": lambda w: control.set_drain(w.store, "deepseek", "a", True),
+            "stop": lambda w: control.stop_line(w.store, "deepseek", "a"),
+        }
+        for name, act in cases.items():
+            for mode in ("single", "continuous"):    # a reservation, and Continuous between two batches
+                w = multi_world()
+                w.start(mode, "deepseek", "a")
+
+                def landing(*a, _w=w, _act=act, **k):
+                    out = real(*a, **k)
+                    _act(_w)
+                    return out
+                with mock.patch.object(batches, "next_batch", landing):
+                    w.tick(2)
+                self.assertEqual(w.store.all_batches(), [], (name, mode))
+                self.assertEqual(len(w.adapter.launches), 0, (name, mode))
+                w.tick(3)
+                self.assertEqual(w.store.all_batches(), [], (name, mode))
+                w.tmp.cleanup()
+
+    def test_drain_all_cancels_reservation_and_survives_pause_and_restart(self):
+        w = self.w
+        w.start("continuous", "sonnet", "a")                    # reserved, no batch yet
+        control.drain_all(w.store, [("sonnet", "a")])
+        self.assertEqual(w.store.peek_line("sonnet", "a")["run"], 0)
+        w.tick()
+        self.assertEqual(w.store.all_batches(), [])
+        w.start("continuous", "deepseek", "a")
+        w.tick()
+        control.drain_all(w.store, [("deepseek", "a")])
+        w.store.update(w.row()["id"], state="ERROR", paused_from="PRODUCING", error="x")
+        self.assertEqual(w.store.peek_line("deepseek", "a")["drain_once"], 1)   # PAUSED/ERROR keeps the request
+        control.stop_line(w.store, "deepseek", "a")
+        self.assertEqual(w.store.peek_line("deepseek", "a")["drain_once"], 0)   # Stop supersedes it
 
     def test_line_drain_takes_effect_after_complete_in_continuous_mode(self):
         w = self.w
@@ -461,3 +524,20 @@ class TailTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DrainOnceMigration(unittest.TestCase):
+    def test_v3_database_gains_drain_once_without_losing_lines(self):
+        import sqlite3, tempfile
+        from pathlib import Path
+        from warroom.store import Store
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "w.db"
+            Store(path)
+            with sqlite3.connect(path) as c:      # a database written by the previous version
+                c.execute("ALTER TABLE lines DROP COLUMN drain_once")
+                c.execute("INSERT INTO lines(model,method,drain) VALUES('m','a',1)")
+                c.execute("PRAGMA user_version=3")
+            s = Store(path)
+            ln = s.line("m", "a")
+            self.assertEqual((ln["drain"], ln["drain_once"]), (1, 0))

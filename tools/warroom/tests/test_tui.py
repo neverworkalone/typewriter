@@ -128,17 +128,20 @@ class TuiSmoke(unittest.TestCase):
     def test_focus_border_shows_on_every_card_state(self):
         from warroom import tui
         w = World()
-        for i, state in enumerate(("PRODUCING", "ERROR", "PAUSED", "COMPLETE"), 1):
+        for i, state in enumerate(("PRODUCING", "ERROR", "PAUSED"), 1):
             bid = w.store.create_batch(method="abcd"[i - 1], producer="deepseek", shard="001", batch="01",
                                        branch=f"b{i}", worktree=f"/x{i}")
             w.store.update(bid, state=state)
+        w.store.update(w.store.create_batch(method="d", producer="deepseek", shard="001", batch="01",
+                                            branch="b4", worktree="/x4"), state="COMPLETE")   # shown as an EMPTY slot
 
         async def go():
             app = make_app(w, PRODUCERS)
             async with app.run_test(size=(200, 60)) as pilot:
                 await pilot.pause(1.3)
+                self.assertTrue(app.query_one("#card-deepseek-d").has_class("empty"))
                 seen = {}
-                for me, state in zip("abcd", ("PRODUCING", "ERROR", "PAUSED", "COMPLETE")):
+                for me, state in zip("abcd", ("PRODUCING", "ERROR", "PAUSED")):
                     card = app.query_one(f"#card-deepseek-{me}")
                     self.assertTrue(card.has_class(state), (me, state))
                     before = card.styles.border_top
@@ -297,15 +300,12 @@ class TuiSmoke(unittest.TestCase):
                 await pilot.pause(0.1)
                 ln = w.store.line("deepseek", "a")
                 self.assertEqual((ln["force_stop"], ln["run"]), (1, 0))
-                # Drain All <-> Cancel Drain toggles only the global flag.
-                w.store.set_line("deepseek", "a", drain=1)
+                # Drain All is a one-shot: it cancels a pending run and leaves the Line's own drain alone.
+                w.store.set_line("deepseek", "a", drain=1, run=1)
                 await pilot.click("#drain-all")
                 await pilot.pause(0.4)
-                self.assertEqual(w.store.get("drain_all"), "1")
-                await pilot.click("#drain-all")
-                await pilot.pause(0.4)
-                self.assertEqual(w.store.get("drain_all"), "0")
-                self.assertEqual(w.store.line("deepseek", "a")["drain"], 1)
+                ln = w.store.line("deepseek", "a")
+                self.assertEqual((ln["run"], ln["drain"]), (0, 1))
 
         asyncio.run(go())
         w.tmp.cleanup()
