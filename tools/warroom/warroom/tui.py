@@ -584,7 +584,6 @@ class WarRoom(App):
         store = self.store
         self._poll_reload()
         root = self.screen_stack[0]   # the board, even while Detail/Settings is on top
-        gd = control.global_drain(store)
         alive = control.supervisor_alive(store)
         statuses = {}
         for model in self._lines():
@@ -597,10 +596,9 @@ class WarRoom(App):
                 card.update(card_text(st))
                 card.set_classes("card " + (st["state"] if st["batch"] else "empty"))
         root.query_one("#tier-bar", Static).update(tier_bar(control.tier_state(store, self.cfg, self.methods)))
-        root.query_one("#drain-note", Static).update("DRAIN ALL: 모든 라인 신규 배치 중지" if gd else "")
-        root.query_one("#drain-note", Static).display = gd
-        b = root.query_one("#drain-all", Button)
-        b.label = "Cancel Drain" if gd else "Drain All"
+        draining = [f"{s['model']}/{s['method'].upper()}" for s in statuses.values() if s["drain_once"]]
+        root.query_one("#drain-note", Static).update("DRAIN ALL: 현재 배치 후 종료 — " + ", ".join(draining) if draining else "")
+        root.query_one("#drain-note", Static).display = bool(draining)
         root.query_one("#stop-all", Button).disabled = not control.can_stop_all(
             store, [(m, me) for m in self._lines() for me in self.methods])
         # Only auth/model problems surface on the board.
@@ -629,7 +627,7 @@ class WarRoom(App):
             if not ok:
                 self.notify(msg, severity="warning")
         elif e.button.id == "drain-all":
-            control.set_drain_all(self.store, not control.global_drain(self.store))
+            control.drain_all(self.store, [(m, me) for m in self._lines() for me in self.methods])
         elif e.button.id == "stop-all":
             n = len(self.store.incomplete_batches())
             self.push_screen(Confirm(

@@ -87,6 +87,8 @@ class Store:
     @staticmethod
     def _migrate(c) -> None:
         c.executescript(SCHEMA_V2)
+        if "drain_once" not in {r["name"] for r in c.execute("PRAGMA table_info(lines)")}:
+            c.execute("ALTER TABLE lines ADD COLUMN drain_once INTEGER NOT NULL DEFAULT 0")
         if "line" not in {r["name"] for r in c.execute("PRAGMA table_info(events)")}:
             c.execute("ALTER TABLE events ADD COLUMN line TEXT")
         have = {r["name"] for r in c.execute("PRAGMA table_info(runs)")}
@@ -222,7 +224,7 @@ class Store:
         with self._conn() as c:
             row = c.execute("SELECT * FROM lines WHERE model=? AND method=?", (model, method)).fetchone()
         return dict(row) if row else {"model": model, "method": method, "mode": "single", "run": 0,
-                                      "drain": 0, "force_stop": 0, "retry_batch": None, "blocked": "",
+                                      "drain": 0, "drain_once": 0, "force_stop": 0, "retry_batch": None, "blocked": "",
                                       "model_tier": "free"}
 
     def set_line(self, model: str, method: str, **fields) -> None:
@@ -240,7 +242,7 @@ class Store:
         """Request stop for one Line (or every Line): no new run is allowed until Start/Retry."""
         where, args = ("WHERE model=? AND method=?", (model, method)) if model else ("", ())
         with self._conn() as c:
-            c.execute(f"UPDATE lines SET run=0, force_stop=1, retry_batch=NULL, updated_at=? {where}", (time.time(), *args))
+            c.execute(f"UPDATE lines SET run=0, drain_once=0, force_stop=1, retry_batch=NULL, updated_at=? {where}", (time.time(), *args))
 
     # --- run history ---
     def add_run(self, batch_id: int, kind: str, session_id, pid, log_file, exit_file,

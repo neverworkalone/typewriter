@@ -50,15 +50,16 @@ per Line, and an exception or a long review wait in one Line never stalls anothe
 logical model twice (duplicate id or shared endpoint ID) is blocked.
 
 - **Board**: one column per registered model, fixed A/B/C/D slots (3-line fixed-size cards: `Method · batch`
-  + phase icon / phase + observed `N/500` / `PR #n` + last activity; empty slots are dim grey, COMPLETE cards
-  stay). Clicking any card (even an empty slot) only opens its Batch Detail. New work starts only from the
+  + phase icon / phase + observed `N/500` / `PR #n` + last activity; empty slots are dim grey, a finished (COMPLETE) batch leaves its slot EMPTY and stays in Batch/Run History). Clicking any card (even an empty slot) only opens its Batch Detail. New work starts only from the
   one-row top bar `[CLI] [Method] [Single|Continuous] [Start] [Drain All] [Stop All]` (Selects are sized to their longest label, the three buttons share one fixed width; narrow terminals wrap it into
   a grid). The CLI/Adapter list comes from the registry (Claude, Codex, OpenCode by label); the model Select appears
   only when one CLI hosts several logical models, so Start never guesses a model. **Single** = one batch
   then stop; **Continuous** = consecutive batches in the *same* Line (never parallel batches in one Line).
   The board shows no always-on Supervisor status; a stopped Supervisor, auth/model problems and Drain All stay visible.
-- **Drain** (Line) / **Drain All** (Factory): stop assigning new batches, the current batch continues
-  through review/merge/cleanup. Either one blocks a Line; Cancel Drain (All) leaves Line drains alone.
+- **Drain** (Line): stop assigning new batches; the current batch continues through review/merge/cleanup.
+- **Drain All**: a one-shot request to the Lines running now. Each finishes its current batch (review/fix/merge/
+  cleanup, kept across PAUSED/ERROR/Retry and Supervisor restarts), then ends its Continuous run; a reservation
+  without a batch is cancelled. Other Lines can Start afterwards; Line drains are untouched.
 - **Stop** / **Stop All**: red (Stop All is disabled while no Line has an unfinished batch or run flag), y/N modal (Enter/Esc = No). Stops the AI of the scope, preserves
   worktree/branch/PR, clears the run flag so nothing restarts; **Retry** (PAUSED/ERROR only) reuses
   the same batch.

@@ -108,7 +108,7 @@ class CardsAndControl(unittest.TestCase):
 
     def test_producing_is_shown_as_working_but_stays_producing_in_the_state_machine(self):
         from warroom.views import card_text, detail_header
-        st = self.status(state="PRODUCING", mode="single", run=False, global_drain=False, error=None, blocked="")
+        st = self.status(state="PRODUCING", mode="single", run=False, drain_once=False, error=None, blocked="")
         self.assertIn("WORKING ▶", card_text(st).split("\n")[0])
         self.assertNotIn("PRODUCING", card_text(st))
         self.assertIn("WORKING", detail_header(st, {"adapter": "opencode"}, "deepseek"))
@@ -143,8 +143,9 @@ class CardsAndControl(unittest.TestCase):
         self.assertEqual(mid(), "— 시작 예약 중")
         control.stop_line(w.store, "deepseek", "a")
         self.assertEqual(mid(), "— 실행 이력 없음")
-        control.set_drain_all(w.store, True)                            # Drain All reaches empty cards too
-        self.assertEqual(mid(), "비어 있음 + DRAIN")
+        control.start(w.store, "deepseek", "a", "single")
+        control.drain_all(w.store, [("deepseek", m) for m in "abcd"])   # a reservation without a batch is cancelled
+        self.assertEqual(mid(), "— 실행 이력 없음")
         self.assertEqual(len(card_text(cell()).split("\n")), 5)
         w.tmp.cleanup()
 
@@ -174,6 +175,10 @@ class CardsAndControl(unittest.TestCase):
         w.store.update(bid, state="COMPLETE", pr_number=1349, head_sha="f" * 40, session_id="ses_abc",
                        records_done=500, records_total=500)
         st = control.line_status(w.store, "deepseek", "a")
+        self.assertEqual((st["state"], st["batch"], st["occupied"]), ("IDLE", None, False))   # COMPLETE -> EMPTY
+        self.assertEqual(len(w.store.line_batches("deepseek", "a")), 1)                        # history is kept
+        st.update(state="COMPLETE", batch="009_02", pr=1349, head="f" * 40, session="ses_abc",
+                  worktree="/gone/wt", progress="500/500", updated=0)
         reg = {"label": "DeepSeek", "adapter": "opencode", "models": {}}
         head = detail_header(st, reg, "deepseek")
         self.assertTrue(head.startswith("OpenCode / A · 009_02   COMPLETE   PR #1349   500/500"))

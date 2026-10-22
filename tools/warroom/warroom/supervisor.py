@@ -596,9 +596,9 @@ class Supervisor:
         self.store.finish_runs(b["id"], None)
         self.store.log(b["id"], f"배치 {b['shard']}_{b['batch']} 정리 완료")
         ln = self.store.line(b["producer"], b["method"])
-        if ln["mode"] != "continuous" or ln["drain"]:
-            # Single batch done, or this Line's Drain took effect (Drain All stays global).
-            self.store.set_line(b["producer"], b["method"], run=0, drain=0)
+        if ln["mode"] != "continuous" or ln["drain"] or ln["drain_once"]:
+            # Single batch done, this Line's Drain took effect, or Drain All asked this Line to finish.
+            self.store.set_line(b["producer"], b["method"], run=0, drain=0, drain_once=0)
 
     # ---- daemon --------------------------------------------------------
     def run_forever(self, interval: float = 5.0) -> None:
