@@ -4155,7 +4155,7 @@
 {"source_record_id":"w269","source_sense_id":"w269-s1","text":"과료","type":"association","relevance":4}
 {"source_record_id":"w269","source_sense_id":"w269-s1","text":"추징","type":"association","relevance":4}
 {"source_record_id":"w269","source_sense_id":"w269-s1","target_record_id":"w407225","target_sense_id":"w407225-s1","type":"action","relevance":3,"reverse_type":"action","reverse_relevance":3}
-{"source_record_id":"w269","source_sense_id":"w269-s1","text":"명령","type":"near","relevance":1}
+{"source_record_id":"w269","source_sense_id":"w269-s1","text":"명령","type":"action","relevance":3}
 {"source_record_id":"w269","source_sense_id":"w269-s1","text":"재판","type":"near","relevance":2}
 {"source_record_id":"w269","source_sense_id":"w269-s1","text":"집행","type":"action","relevance":4}
 {"source_record_id":"w269","source_sense_id":"w269-s1","text":"확정","type":"association","relevance":3}
@@ -4176,7 +4176,7 @@
 {"source_record_id":"w270","source_sense_id":"w270-s1","text":"과료","type":"association","relevance":4}
 {"source_record_id":"w270","source_sense_id":"w270-s1","text":"추징","type":"association","relevance":4}
 {"source_record_id":"w270","source_sense_id":"w270-s1","target_record_id":"w407225","target_sense_id":"w407225-s1","type":"action","relevance":3,"reverse_type":"action","reverse_relevance":3}
-{"source_record_id":"w270","source_sense_id":"w270-s1","text":"명령","type":"near","relevance":1}
+{"source_record_id":"w270","source_sense_id":"w270-s1","text":"명령","type":"action","relevance":3}
 {"source_record_id":"w270","source_sense_id":"w270-s1","text":"재판","type":"near","relevance":2}
 {"source_record_id":"w270","source_sense_id":"w270-s1","text":"집행","type":"action","relevance":4}
 {"source_record_id":"w270","source_sense_id":"w270-s1","text":"확정","type":"association","relevance":3}
@@ -4270,7 +4270,7 @@
 {"source_record_id":"w273","source_sense_id":"w273-s1","text":"건강","type":"association","relevance":4}
 {"source_record_id":"w273","source_sense_id":"w273-s1","text":"안정","type":"association","relevance":4}
 {"source_record_id":"w273","source_sense_id":"w273-s1","text":"기원","type":"mood","relevance":3}
-{"source_record_id":"w273","source_sense_id":"w273-s1","text":"집안","type":"mood","relevance":1}
+{"source_record_id":"w273","source_sense_id":"w273-s1","text":"집안","type":"scene","relevance":3}
 {"source_record_id":"w273","source_sense_id":"w273-s1","target_record_id":"w415159","target_sense_id":"w415159-s1","type":"association","relevance":4,"reverse_type":"association","reverse_relevance":4}
 {"source_record_id":"w274","source_sense_id":"w274-s1","text":"노동","type":"association","relevance":4}
 {"source_record_id":"w274","source_sense_id":"w274-s1","target_record_id":"w084","target_sense_id":"w084-s1","type":"association","relevance":4,"reverse_type":"association","reverse_relevance":4}
@@ -4442,13 +4442,13 @@
 {"source_record_id":"w280","source_sense_id":"w280-s1","text":"용량","type":"association","relevance":4}
 {"source_record_id":"w280","source_sense_id":"w280-s1","target_record_id":"w493739","target_sense_id":"w493739-s1","type":"near","relevance":1,"reverse_type":"near","reverse_relevance":1}
 {"source_record_id":"w280","source_sense_id":"w280-s1","text":"라디오","type":"association","relevance":4}
-{"source_record_id":"w280","source_sense_id":"w280-s1","text":"수신기","type":"near","relevance":1}
+{"source_record_id":"w280","source_sense_id":"w280-s1","text":"수신기","type":"association","relevance":4}
 {"source_record_id":"w280","source_sense_id":"w280-s1","text":"측정","type":"association","relevance":4}
 {"source_record_id":"w280","source_sense_id":"w280-s1","text":"표준기","type":"association","relevance":4}
 {"source_record_id":"w280","source_sense_id":"w280-s1","text":"콘덴서","type":"near","relevance":2}
 {"source_record_id":"w280","source_sense_id":"w280-s1","text":"가변","type":"action","relevance":4}
 {"source_record_id":"w280","source_sense_id":"w280-s1","text":"튜닝","type":"association","relevance":4}
-{"source_record_id":"w280","source_sense_id":"w280-s1","text":"전기","type":"near","relevance":1}
+{"source_record_id":"w280","source_sense_id":"w280-s1","text":"전기","type":"association","relevance":5}
 {"source_record_id":"w280","source_sense_id":"w280-s1","text":"가변축전기","type":"near","relevance":2}
 {"source_record_id":"w280","source_sense_id":"w280-s1","text":"정전용량","type":"near","relevance":2}
 {"source_record_id":"w280","source_sense_id":"w280-s1","target_record_id":"w348935","target_sense_id":"w348935-s1","type":"near","relevance":2,"reverse_type":"near","reverse_relevance":2}
@@ -15472,7 +15472,7 @@
 {"source_record_id":"w708","source_sense_id":"w708-s1","target_record_id":"w387722","target_sense_id":"w387722-s1","type":"near","relevance":2,"reverse_type":"near","reverse_relevance":2}
 {"source_record_id":"w708","source_sense_id":"w708-s1","target_record_id":"w151951","target_sense_id":"w151951-s1","type":"association","relevance":3,"reverse_type":"association","reverse_relevance":3}
 {"source_record_id":"w708","source_sense_id":"w708-s1","text":"산발","type":"association","relevance":3}
-{"source_record_id":"w709","source_sense_id":"w709-s1","text":"어깨","type":"near","relevance":2}
+{"source_record_id":"w709","source_sense_id":"w709-s1","target_record_id":"w455915","target_sense_id":"w455915-s1","type":"near","relevance":2,"reverse_type":"near","reverse_relevance":2}
 {"source_record_id":"w709","source_sense_id":"w709-s1","text":"옛말","type":"association","relevance":3}
 {"source_record_id":"w709","source_sense_id":"w709-s1","text":"견갑","type":"near","relevance":2}
 {"source_record_id":"w709","source_sense_id":"w709-s1","target_record_id":"w232075","target_sense_id":"w232075-s1","type":"near","relevance":2,"reverse_type":"near","reverse_relevance":2}
