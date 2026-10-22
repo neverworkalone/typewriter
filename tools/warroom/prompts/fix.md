@@ -5,5 +5,7 @@ PR #{{pr}} (브랜치 `{{branch}}`, 현재 HEAD {{head}})에 새 리뷰가 달�
 끝나면 종료한다.
 이전 실행이 중단되며 worktree에 미커밋 변경이 남아 있을 수 있으니 먼저 git status로 확인하라.
 세부 생산 규칙은 해당 Method의 정본 이슈(A/B #860, C #1155, D #1156)와 AGENTS.md를 따른다.
+임시·스크래치 파일(검증용 스크립트, 청크, probe 결과 등)은 worktree 안의 `.warroom-scratch/` 에만 만든다. 이 디렉터리는 git에서 무시되며 커밋하지 않는다.
+산출물이 아닌 파일을 worktree의 다른 경로에 남기지 않는다.
 {{session_note}}
 {{review_events}}
