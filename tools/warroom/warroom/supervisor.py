@@ -22,7 +22,7 @@ from .adapters import PREFLIGHT_PENDING, RunSpec, classify_failure
 from .config import (TIERED_ADAPTERS, adapter_label, config_problem, load_config, registry, registry_problems,
                      reload_problem, run_spec)
 from .gitops import CleanupBlocked, GitError
-from .store import LineBusy
+from .store import LineBusy, LineNotRunnable
 
 
 class DuplicateClaim(Exception):
@@ -194,7 +194,9 @@ class Supervisor:
         try:
             bid = self.store.create_batch(method=method, producer=model, shard=nb.shard,
                                           batch=nb.batch, branch=branch, worktree=str(wt),
-                                          model_tier=ln["model_tier"], records_total=nb.records)
+                                          model_tier=ln["model_tier"], records_total=nb.records, from_run=True)
+        except LineNotRunnable:   # Stop / Drain / Drain All landed after this tick read the Line: nothing is created
+            return
         except LineBusy as e:
             return self.store.log(None, str(e), "warn", line=f"{model}/{method}")
         self.store.set_line(model, method, blocked="")

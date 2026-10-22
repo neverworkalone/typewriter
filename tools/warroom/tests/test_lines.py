@@ -183,6 +183,33 @@ class DrainAndStop(unittest.TestCase):
         w.tick()
         self.assertEqual(len(w.store.all_batches()), 2)
 
+    def test_controls_landing_between_the_tick_read_and_batch_creation_win(self):
+        """Race: the Supervisor read run=1, then Drain All / a Line drain / Stop lands before the batch insert."""
+        from unittest import mock
+        from warroom import batches
+        real = batches.next_batch
+        cases = {
+            "drain_all": lambda w: control.drain_all(w.store, [("deepseek", "a")]),
+            "line_drain": lambda w: control.set_drain(w.store, "deepseek", "a", True),
+            "stop": lambda w: control.stop_line(w.store, "deepseek", "a"),
+        }
+        for name, act in cases.items():
+            for mode in ("single", "continuous"):    # a reservation, and Continuous between two batches
+                w = multi_world()
+                w.start(mode, "deepseek", "a")
+
+                def landing(*a, _w=w, _act=act, **k):
+                    out = real(*a, **k)
+                    _act(_w)
+                    return out
+                with mock.patch.object(batches, "next_batch", landing):
+                    w.tick(2)
+                self.assertEqual(w.store.all_batches(), [], (name, mode))
+                self.assertEqual(len(w.adapter.launches), 0, (name, mode))
+                w.tick(3)
+                self.assertEqual(w.store.all_batches(), [], (name, mode))
+                w.tmp.cleanup()
+
     def test_drain_all_cancels_reservation_and_survives_pause_and_restart(self):
         w = self.w
         w.start("continuous", "sonnet", "a")                    # reserved, no batch yet

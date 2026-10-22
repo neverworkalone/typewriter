@@ -33,15 +33,7 @@ def drain_all(store: Store, lines) -> int:
     A Line with an unfinished batch gets `drain_once` (kept across PAUSED/ERROR/Retry and Supervisor restarts);
     a Line with only a pending run reservation loses it. Later Starts and per-Line `drain` are untouched.
     """
-    n = 0
-    for m, me in lines:
-        ln = store.peek_line(m, me)
-        if store.active_batch(m, me) is not None:
-            store.set_line(m, me, drain_once=1)
-            n += 1
-        elif ln["run"]:
-            store.set_line(m, me, run=0)
-            n += 1
+    n = store.request_drain_all(lines)
     store.log(None, f"Drain All: {n}개 라인 종료 요청")
     return n
 
