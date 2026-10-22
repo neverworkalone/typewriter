@@ -20,21 +20,22 @@ def start(store: Store, model: str, method: str, mode: str) -> tuple[bool, str]:
     b = store.active_batch(model, method)
     if b is not None:
         return False, f"{model}/{method.upper()} 라인은 이미 미완료 배치 {b['shard']}_{b['batch']}({b['state']})를 소유 중입니다."
-    if global_drain(store):
-        return False, "Drain All 상태입니다. Cancel Drain 후 시작하세요."
     if store.peek_line(model, method)["drain"]:
         return False, f"{model}/{method.upper()} 라인이 Drain 중입니다. 해당 라인의 Cancel Drain 후 시작하세요."
     store.set_line(model, method, mode="continuous" if mode == "continuous" else "single",
-                   force_stop=0, blocked="", run=1)
+                   force_stop=0, blocked="", run=1, drain_once=0)
     return True, ""
 
 
-def global_drain(store: Store) -> bool:
-    return store.get("drain_all") == "1"
+def drain_all(store: Store, lines) -> int:
+    """One-shot request: every Line that is running finishes its current batch and then stops.
 
-
-def set_drain_all(store: Store, on: bool) -> None:
-    store.set("drain_all", "1" if on else "0")   # per-Line drains are untouched
+    A Line with an unfinished batch gets `drain_once` (kept across PAUSED/ERROR/Retry and Supervisor restarts);
+    a Line with only a pending run reservation loses it. Later Starts and per-Line `drain` are untouched.
+    """
+    n = store.request_drain_all(lines)
+    store.log(None, f"Drain All: {n}개 라인 종료 요청")
+    return n
 
 
 def set_drain(store: Store, model: str, method: str, on: bool) -> None:
@@ -42,8 +43,8 @@ def set_drain(store: Store, model: str, method: str, on: bool) -> None:
 
 
 def drained(store: Store, ln) -> bool:
-    """Either the Line drain or Drain All blocks assigning a new batch."""
-    return bool(ln["drain"]) or global_drain(store)
+    """Only the Line's own drain blocks assigning a new batch (Drain All ends the run instead)."""
+    return bool(ln["drain"])
 
 
 def stop_line(store: Store, model: str, method: str) -> None:
@@ -84,22 +85,22 @@ def supervisor_alive(store: Store, now: float | None = None, max_age: float = 30
 
 
 def line_status(store: Store, model: str, method: str) -> dict:
-    """Card/detail view of one Line: latest batch (kept after COMPLETE) + controls."""
+    """Card/detail view of one Line: current unfinished batch (COMPLETE -> empty slot, history kept) + controls."""
     ln = store.peek_line(model, method)
     b = store.latest_batch(model, method)
     out = {"model": model, "method": method, "state": "IDLE", "batch": None, "pr": None, "head": None,
            "session": None, "error": None, "progress": None, "worktree": None, "branch": None,
            "mode": ln["mode"], "run": bool(ln["run"]), "line_drain": bool(ln["drain"]),
-           "global_drain": global_drain(store), "blocked": ln["blocked"] or "", "tier": ln["model_tier"],
+           "drain_once": bool(ln["drain_once"]), "blocked": ln["blocked"] or "", "tier": ln["model_tier"],
            "batch_id": None, "activity": None, "occupied": False, "updated": None, "records_total": None,
            "records_done": None, "elapsed": None}
-    out["drain"] = out["line_drain"] or out["global_drain"]
-    if b is not None:
+    out["drain"] = out["line_drain"] or out["drain_once"]
+    if b is not None and b["state"] != "COMPLETE":   # a finished batch leaves the slot EMPTY; it stays in history
         out.update(state=b["state"], batch=f"{b['shard']}_{b['batch']}", branch=b["branch"],
                    pr=b["pr_number"], head=b["head_sha"], session=b["session_id"],
                    error=b["error"], worktree=b["worktree"], batch_id=b["id"], updated=b["updated_at"],
                    records_total=b["records_total"], records_done=b["records_done"],
-                   occupied=b["state"] != "COMPLETE")
+                   occupied=True)
         if b["records_done"] is not None and b["records_total"]:
             out["progress"] = f"{b['records_done']}/{b['records_total']}"  # recorded only
         runs = store.runs(b["id"])

@@ -22,7 +22,7 @@ from .adapters import PREFLIGHT_PENDING, RunSpec, classify_failure
 from .config import (TIERED_ADAPTERS, adapter_label, config_problem, load_config, registry, registry_problems,
                      reload_problem, run_spec)
 from .gitops import CleanupBlocked, GitError
-from .store import LineBusy
+from .store import LineBusy, LineNotRunnable
 
 
 class DuplicateClaim(Exception):
@@ -106,6 +106,11 @@ class Supervisor:
             self.store.set_line(model, method, force_stop=0)
             return self._force_stop(b) if b is not None else self.store.set_line(model, method, run=0)
         if b is None:
+            if ln["drain_once"]:
+                # Drain All landed after this Line's last batch completed (or with only a reservation): the
+                # request is consumed here, whatever the interleaving, so no further batch is assigned.
+                self.store.set_line(model, method, run=0, drain_once=0)
+                return
             if ln["run"] and not control.drained(self.store, ln):
                 self._prepare_new(ln)
             return
@@ -189,7 +194,9 @@ class Supervisor:
         try:
             bid = self.store.create_batch(method=method, producer=model, shard=nb.shard,
                                           batch=nb.batch, branch=branch, worktree=str(wt),
-                                          model_tier=ln["model_tier"], records_total=nb.records)
+                                          model_tier=ln["model_tier"], records_total=nb.records, from_run=True)
+        except LineNotRunnable:   # Stop / Drain / Drain All landed after this tick read the Line: nothing is created
+            return
         except LineBusy as e:
             return self.store.log(None, str(e), "warn", line=f"{model}/{method}")
         self.store.set_line(model, method, blocked="")
@@ -596,9 +603,9 @@ class Supervisor:
         self.store.finish_runs(b["id"], None)
         self.store.log(b["id"], f"배치 {b['shard']}_{b['batch']} 정리 완료")
         ln = self.store.line(b["producer"], b["method"])
-        if ln["mode"] != "continuous" or ln["drain"]:
-            # Single batch done, or this Line's Drain took effect (Drain All stays global).
-            self.store.set_line(b["producer"], b["method"], run=0, drain=0)
+        if ln["mode"] != "continuous" or ln["drain"] or ln["drain_once"]:
+            # Single batch done, this Line's Drain took effect, or Drain All asked this Line to finish.
+            self.store.set_line(b["producer"], b["method"], run=0, drain=0, drain_once=0)
 
     # ---- daemon --------------------------------------------------------
     def run_forever(self, interval: float = 5.0) -> None:

@@ -61,6 +61,32 @@ class RealGit(unittest.TestCase):
         self.assertNotEqual(subprocess.run(["git", "rev-parse", "--verify", "-q", "a-x-001-01"],
                                            cwd=self.repo, env=ENV).returncode, 0)
 
+    def test_scratch_dir_is_ignored_but_other_untracked_files_still_block(self):
+        from warroom.gitops import SCRATCH_DIR
+        self.git.fetch_base("master")
+        self.git.create_worktree(self.wt, "a-x-001-01", "master")
+        self.git.ignore_scratch()
+        self.git.ignore_scratch()                                 # idempotent
+        exclude = (self.repo / ".git/info/exclude").read_text().splitlines()
+        self.assertEqual(exclude.count(f"/{SCRATCH_DIR}/"), 1)
+        head = self.git.head(self.wt)
+        rows = [(f"{SCRATCH_DIR}/a.txt", False), (f"{SCRATCH_DIR}/sub/b.mjs", False),    # scratch: ignored
+                ("data/new.jsonl", True), (".scratch-a003/c1.txt", True),               # anything else: dirty
+                (f"x{SCRATCH_DIR}/a.txt", True), (f"sub/{SCRATCH_DIR}/a.txt", True)]    # only the root dir is exempt
+        for rel, dirty in rows:
+            f = self.wt / rel
+            f.parent.mkdir(parents=True, exist_ok=True)
+            f.write_text("t")
+            self.assertEqual(bool(self.git.dirty(self.wt).strip()), dirty, rel)
+            if dirty:
+                with self.assertRaises(CleanupBlocked):
+                    self.git.remove_owned(self.wt, "a-x-001-01", head)
+            f.unlink()
+        (self.wt / SCRATCH_DIR).mkdir(exist_ok=True)
+        (self.wt / SCRATCH_DIR / "left.txt").write_text("t")
+        self.git.remove_owned(self.wt, "a-x-001-01", head)        # leftover scratch does not block cleanup
+        self.assertFalse(self.wt.exists())
+
     def test_refuses_existing_branch_or_path(self):
         self.git.fetch_base("master")
         self.git.create_worktree(self.wt, "b1", "master")
