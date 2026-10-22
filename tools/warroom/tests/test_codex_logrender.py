@@ -33,11 +33,11 @@ class CodexReadable(unittest.TestCase):
             (cmd("started"), ["▸ command", "  $ git status"]),
             (cmd("updated"), []),
             (item("completed", id="i1", type="command_execution", command="git status", aggregated_output="clean\nok",
-                  exit_code=0, status="completed"), ["  exit=0", "  → clean", "    ok"]),
+                  exit_code=0, status="completed"), ["▸ command", "  $ git status", "  exit=0", "  → clean", "    ok"]),
             (item("completed", id="i1", type="command_execution", command="false", aggregated_output="boom",
-                  exit_code=2, status="failed"), ["✖ command failed (exit=2)", "  $ false", "  → boom"]),
+                  exit_code=2, status="failed"), ["▸ command", "  $ false", "✖ command failed (exit=2)", "  → boom"]),
             (item("completed", id="i1", type="command_execution", command="rm -rf x", aggregated_output="",
-                  exit_code=None, status="declined"), ["✖ command declined (정책/승인 거부)", "  $ rm -rf x"]),
+                  exit_code=None, status="declined"), ["▸ command", "  $ rm -rf x", "✖ command declined (정책/승인 거부)"]),
             (item("completed", id="f", type="file_change", status="completed",
                   changes=[{"path": "a.py", "kind": "update"}, {"path": "b.py", "kind": "add"}]),
              ["▸ file_change", "  update a.py", "  add b.py"]),
@@ -64,11 +64,34 @@ class CodexReadable(unittest.TestCase):
         self.assertLess(sum(map(len, big)), 2000)
         self.assertNotIn("? ", "".join(big))
 
-    def test_started_plus_completed_does_not_repeat_the_command(self):
-        shown = render_line(cmd("started")) + render_line(cmd("updated")) + render_line(item(
-            "completed", id="i1", type="command_execution", command="git status", aggregated_output="x",
-            exit_code=0, status="completed"))
-        self.assertEqual(sum(l.startswith("  $ ") for l in shown), 1)
+    def test_started_then_completed_shows_the_command_once(self):
+        def done(**kw):
+            return item("completed", id="i1", type="command_execution", command="git status",
+                        aggregated_output="x", **kw)
+        for kw in ({"exit_code": 0, "status": "completed"}, {"exit_code": 2, "status": "failed"},
+                   {"exit_code": None, "status": "declined"}):
+            seen: set = set()
+            shown = [l for raw in (cmd("started"), cmd("updated"), done(**kw)) for l in render_line(raw, seen)]
+            self.assertEqual(sum(l.startswith("  $ ") for l in shown), 1, kw)
+            self.assertEqual(shown[:2], ["▸ command", "  $ git status"], kw)
+            self.assertEqual(seen, set(), kw)
+
+    def test_completed_without_seen_start_still_shows_the_command(self):
+        for kw in ({"exit_code": 0, "status": "completed"}, {"exit_code": 2, "status": "failed"},
+                   {"exit_code": None, "status": "declined"}):
+            out = render_line(item("completed", id="i9", type="command_execution", command="git status",
+                                   aggregated_output="", **kw), set())
+            self.assertEqual(out[:2], ["▸ command", "  $ git status"], kw)
+
+    def test_interleaved_items_are_tracked_by_id(self):
+        seen: set = set()
+        a, b = ("command_execution",) * 2
+        render_line(item("started", id="1", type=a, command="one", status="in_progress"), seen)
+        render_line(item("started", id="2", type=b, command="two", status="in_progress"), seen)
+        out = render_line(item("completed", id="2", type=b, command="two", aggregated_output="", exit_code=0,
+                               status="completed"), seen)
+        self.assertEqual(out, ["  exit=0"])
+        self.assertEqual(seen, {"1"})
 
     def test_long_command_and_output_are_shortened_with_raw_pointer(self):
         big = "\n".join(f"row {i}" for i in range(100))

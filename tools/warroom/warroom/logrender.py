@@ -134,9 +134,10 @@ def _text_lines(text: str, first: str) -> list[str]:
     return _indent(_clip(text.strip(), MAX_TEXT).splitlines() or [""], first, "  ")
 
 
-def _codex_item(phase: str, item: dict) -> list[str]:
+def _codex_item(phase: str, item: dict, seen: set | None) -> list[str]:
     """One Codex `item.*` event. A command is announced on `item.started` and its result shown on
-    `item.completed`; `item.updated` and an already-announced start add nothing, so an item is not repeated."""
+    `item.completed`; `item.updated` adds nothing. `seen` holds the ids of commands already announced, so the
+    completion repeats the command only when its start was never shown (e.g. a log tail that began mid-item)."""
     kind = item.get("type")
     status = item.get("status")
     if kind == "agent_message" and isinstance(item.get("text"), str):
@@ -145,11 +146,18 @@ def _codex_item(phase: str, item: dict) -> list[str]:
         return _text_lines(item["text"], "… ") if phase == "completed" and item["text"].strip() else []
     if kind == "command_execution":
         cmd = item.get("command") if isinstance(item.get("command"), str) else ""
+        announced = seen is not None and item.get("id") in seen
         if phase == "started":
+            if seen is not None and item.get("id") is not None:
+                seen.add(item["id"])
             return ["▸ command"] + _indent(_block(cmd, MAX_COMMAND_LINES, MAX_OUTPUT_CHARS), "  $ ", "    ")
         if phase != "completed":
             return []
         out: list[str] = []
+        if seen is not None:
+            seen.discard(item.get("id"))
+        if cmd and not announced:
+            out = ["▸ command"] + _indent(_block(cmd, MAX_COMMAND_LINES, MAX_OUTPUT_CHARS), "  $ ", "    ")
         code = item.get("exit_code")
         bad = status in ("failed", "declined") or (code not in (None, 0))
         if status == "declined":
@@ -158,8 +166,6 @@ def _codex_item(phase: str, item: dict) -> list[str]:
             out.append(f"✖ command failed{f' (exit={code})' if code is not None else ''}")
         elif code is not None:
             out.append(f"  exit={code}")
-        if bad and cmd:
-            out += _indent(_block(cmd, MAX_COMMAND_LINES, MAX_OUTPUT_CHARS), "  $ ", "    ")
         output = item.get("aggregated_output")
         if isinstance(output, str) and output.strip():
             out += _indent(_block(output.rstrip(), MAX_OUTPUT_LINES, MAX_OUTPUT_CHARS), "  → ", "    ")
@@ -200,7 +206,7 @@ def _codex_item(phase: str, item: dict) -> list[str]:
     return [f"? {phase} item {kind or '?'}: " + _clip(json.dumps(item, ensure_ascii=False), MAX_INLINE)]
 
 
-def _codex(ev: dict) -> list[str] | None:
+def _codex(ev: dict, seen: set | None) -> list[str] | None:
     """Codex `exec --json` events; None when the line is not one of them."""
     kind = ev.get("type")
     if kind == "thread.started" and isinstance(ev.get("thread_id"), str):
@@ -214,14 +220,16 @@ def _codex(ev: dict) -> list[str] | None:
         msg = err.get("message") if isinstance(err, dict) else err
         return _indent(_block(str(msg or "turn failed"), 20, 4000), "✖ turn 실패: ", "    ")
     if kind in ("item.started", "item.updated", "item.completed") and isinstance(ev.get("item"), dict):
-        return _codex_item(kind.split(".", 1)[1], ev["item"])
+        return _codex_item(kind.split(".", 1)[1], ev["item"], seen)
     if kind == "error" and isinstance(ev.get("message"), str):
         return _indent(_block(ev["message"], 20, 4000), "✖ ERROR: ", "    ")
     return None
 
 
-def render_line(raw: str) -> list[str]:
-    """Readable display lines for one raw log line (plain text, already redacted)."""
+def render_line(raw: str, seen: set | None = None) -> list[str]:
+    """Readable display lines for one raw log line (plain text, already redacted).
+
+    `seen` is an optional per-log set of announced Codex command ids; the caller resets it with the log."""
     stripped = raw.strip()
     if not stripped:
         return []
@@ -236,7 +244,7 @@ def render_line(raw: str) -> list[str]:
     claude = _claude(ev)
     if claude is not None:
         return [redact(l) for l in claude]
-    codex = _codex(ev)
+    codex = _codex(ev, seen)
     if codex is not None:
         return [redact(l) for l in codex]
     part = ev.get("part") if isinstance(ev.get("part"), dict) else {}
