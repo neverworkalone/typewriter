@@ -132,7 +132,7 @@ class SettingsScreen(Screen):
     def compose(self) -> ComposeResult:
         yield Header()
         yield Static(id="settings-body")
-        yield Footer()
+        yield Footer(show_command_palette=False)
 
     def on_mount(self) -> None:
         self.set_interval(1.0, self.refresh_view)
@@ -187,7 +187,7 @@ class LineDetail(Screen):
         yield Select([("Agent Log — 최신 실행", "latest"), ("Audit Log", "audit")], value="latest",
                      allow_blank=False, id="source")
         yield RichLog(id="agentlog", wrap=True, markup=False, highlight=False, max_lines=5000)
-        yield Footer()
+        yield Footer(show_command_palette=False)
 
     def on_mount(self) -> None:
         self.set_interval(1.0, self.refresh_view)
@@ -443,7 +443,7 @@ class WarRoom(App):
                     for me in self.methods:
                         yield Card(model, me)
         yield Static(id="tier-bar")
-        yield Footer()
+        yield Footer(show_command_palette=False)
 
     def action_toggle_tier(self) -> None:
         """f: Free <-> Go for DeepSeek. Going to the paid tier asks first."""
