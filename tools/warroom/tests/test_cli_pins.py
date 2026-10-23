@@ -22,7 +22,7 @@ except ImportError:  # pragma: no cover - the TUI check needs Textual (installed
 
 QUOTA = DEFAULTS["quota_patterns"]
 SONNET = {"label": "Sonnet", "adapter": "claude", "model": "sonnet", "effort": "medium"}
-LUNA = {"label": "Luna", "adapter": "codex", "model": "gpt-6-luna", "effort": "xhigh"}
+LUNA = {"label": "Luna", "adapter": "codex", "model": "gpt-6-luna", "effort": "xhigh", "permission_profile": "worktree"}
 DEEPSEEK = {"label": "DeepSeek", "adapter": "opencode", "effort": "high",
             "models": {"free": "opencode/deepseek-v4.1-flash-free", "go": "opencode-go/deepseek-v4.1-flash"}}
 FORBIDDEN_FLAGS = ("--yolo", "--dangerously-skip-permissions", "--allow-dangerously-skip-permissions",
@@ -104,7 +104,7 @@ class RegistryValidation(unittest.TestCase):
         self.assertEqual(registry_problems(DEFAULTS), {})
 
     def test_permission_profile_table(self):
-        cases = [("codex", "worktree", None), ("codex", "", None), ("codex", "a_b-1", None),
+        cases = [("codex", "worktree", None), ("codex", "", "설정되지 않았"), ("codex", "a_b-1", None),
                  ("codex", "-c", "형식"), ("codex", "a b", "형식"), ("codex", "a=b", "형식"), ("codex", "a/b", "형식"),
                  ("claude", "worktree", "Codex"), ("opencode", "worktree", "Codex")]
         for adapter, profile, want in cases:
@@ -115,7 +115,9 @@ class RegistryValidation(unittest.TestCase):
                 self.assertTrue(problem is None if want is None else want in problem, problem)
         self.assertEqual(run_spec(cfg_with({"m": {**LUNA, "permission_profile": "worktree"}}), "m"),
                          RunSpec("gpt-6-luna", "xhigh", "worktree"))
-        self.assertEqual(run_spec(cfg_with({"m": LUNA}), "m").permission_profile, "")
+        no_profile = {k: v for k, v in LUNA.items() if k != "permission_profile"}   # key omitted entirely
+        self.assertIn("설정되지 않았", registry_problems(cfg_with({"m": no_profile}))["m"])
+        self.assertEqual(run_spec(cfg_with({"c": SONNET}), "c").permission_profile, "")   # other CLIs need none
 
     def test_effort_problem_table(self):
         for adapter, effort, ok in [("claude", "medium", True), ("claude", "", False), ("claude", "none", False),
@@ -129,7 +131,7 @@ class RunPins(unittest.TestCase):
     def test_every_run_carries_its_model_and_effort(self):
         cfg = cfg_with({"claude": SONNET, "codex": LUNA, "deepseek": DEEPSEEK})
         self.assertEqual(run_spec(cfg, "claude"), RunSpec("sonnet", "medium"))
-        self.assertEqual(run_spec(cfg, "codex"), RunSpec("gpt-6-luna", "xhigh"))
+        self.assertEqual(run_spec(cfg, "codex"), RunSpec("gpt-6-luna", "xhigh", "worktree"))
         self.assertEqual(run_spec(cfg, "deepseek", "free"), RunSpec("opencode/deepseek-v4.1-flash-free", "high"))
         self.assertEqual(run_spec(cfg, "deepseek", "go"), RunSpec("opencode-go/deepseek-v4.1-flash", "high"))
 
