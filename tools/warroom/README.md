@@ -48,8 +48,6 @@ Prefer a time when no producer is actively working; the Supervisor and TUI sessi
 replaced, but the persistent database, producer worktrees and PRs are not deleted.
 
 ```sh
-cd /path/to/typewriter
-git pull --ff-only
 tmux kill-session -t warroom-supervisor 2>/dev/null || true
 tmux kill-session -t warroom 2>/dev/null || true
 ./war
