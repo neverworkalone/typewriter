@@ -179,7 +179,7 @@ PR의 Normal 검사는 추가·수정된 `data/relation-candidates/` 파일마�
 - `type`/`reverse_type`: `near|mood|scene|sensory|action|association`. `relevance`/`reverse_relevance`: 정수 1..9. 방향별로 달라도 같아도 된다.
 - ID 링크의 target은 후보 문자열과 철자가 정확히 같은 Canonical record의 실제 sense여야 한다. 동철 이의어는 `same_spelling_records`로 확인해 올바른 record를 고른다. 일치하는 target이 없으면 text-only이며 가짜 ID를 쓰지 않는다.
 - 소유 샤드 = 출발(source) sense가 속한 샤드. 한 쌍(A↔B)은 한 행에만 저장하며, 다른 샤드에 이미 같은 쌍(정·역 모두)이나 같은 text-only가 있으면 거부한다. 빌드는 ID 행마다 방향별 2개 탐색 행을 만든다(빌드 구현은 별도 PR).
-- 모든 고유 후보는 **신규 관계 / Drop / 정확한 중복 병합 / 기존 승인 관계 제외** 중 정확히 하나로 귀속되어야 한다.
+- 모든 고유 후보는 **신규 관계 / Drop / 정확한 중복 병합 / 기존 승인 관계 제외**로 설명되어야 한다. 같은 후보 표기에 ID 관계가 여러 개 있으면 실제 target sense가 서로 다를 때 허용하며, 동일 source/target sense 쌍은 한 번만 저장한다. 같은 후보에 대한 text-only 관계나 Drop은 다른 처리와 중복할 수 없다.
 - Drop은 출발 의미와 명백히 무관한 후보에만 쓴다. 출발 sense의 뜻풀이가 그 후보를 직접 언급하면 Drop할 수 없으며(`verify`가 거부), 같은 sense의 승인 peer와 모순되는 Drop도 금지다. 약한 연상은 낮은 Tier의 관계로 보존한다.
 
 **도구** (`pnpm run relation:admission -- <command>`, 샤드 번호만 바꿔 재사용):
@@ -191,7 +191,7 @@ node scripts/relation/admission-cli.mjs verify  --shard 001                     
 
 `--batch 01|02`를 주면 해당 500레코드 배치의 필수 Stage 1 파일 6개·Canonical 행·행 귀속만 대상으로 한다(같은 샤드 파일 `relation-<SSS>.jsonl`에 배치별로 나눠 누적할 때 사용). 다른 배치의 행은 그 실행의 귀속 검사에서 제외되며, 샤드 전체가 끝났는지는 `--batch` 없는 `verify`가 판단한다.
 
-`--batch` 없이 실행하면 필수 Stage 1 파일(2배치 × A-Codex/A-Claude/B-Codex/B-Claude/C/D 12개)이 하나라도 없을 때 실패한다. `--batch BB`는 **해당 배치의 필수 생산자 6개만** 요구하므로 다른 배치 입력이 없어도 착수·검증할 수 있다(다른 배치의 Candidate 파일은 목록 검사·파싱 대상이 아니므로 충돌하거나 미완성이어도 이 실행을 막지 않는다). 같은 샤드의 다른 배치가 소유한 ID 관계의 역방향도 `prepare`와 `verify` 모두 기존 승인 관계로 계산한다. `--allow-partial`은 도구 점검 전용이며 샤드 완료 증거가 아니다. 다른 샤드의 승인 Relations(정·역방향)와 동철 이의어는 위 규칙대로 처리하며, 동철 이의어 철자는 기존 관계로 간주하지 않는다.
+`--batch` 없이 실행하면 필수 Stage 1 파일(2배치 × A-Codex/A-Claude/B-Codex/B-Claude/C/D 12개)이 하나라도 없을 때 실패한다. `--batch BB`는 **해당 배치의 필수 생산자 6개만** 요구하므로 다른 배치 입력이 없어도 착수·검증할 수 있다(다른 배치의 Candidate 파일은 목록 검사·파싱 대상이 아니므로 충돌하거나 미완성이어도 이 실행을 막지 않는다). 다른 배치나 샤드의 ID 관계는 `prepare`와 `verify`에서 실제 target sense별로 계산한다. 고유 표제어가 여러 sense를 가지면 일부 sense만 기존 관계로 연결된 후보는 나머지 sense 편집을 위해 `prepare`에 남고, 모든 sense가 연결되면 제외한다. text-only 승인 관계는 후보 전체를 처리한 것으로 본다. `--allow-partial`은 도구 점검 전용이며 샤드 완료 증거가 아니다. 다른 샤드의 승인 Relations(정·역방향)와 동철 이의어는 위 규칙대로 처리하며, 동철 이의어 철자는 기존 관계로 간주하지 않는다.
 
 **다음 작업 선택(#927):** 완료 단위는 (샤드, 배치)다. 샤드 001부터 01→02 순서로, 해당 배치의 필수 Stage 1 파일 6개가 master에 있고 현재 master에서 `verify --shard <SSS> --batch <BB>`가 아직 성공하지 못하는 첫 배치를 고른다. 관계·Drop 행의 존재 여부는 완료 기준이 아니다(후보가 비었거나 모두 기존 승인 관계로 처리된 배치는 행이 없어도 verify 성공으로 완료된다). 같은 샤드의 열린 PR이 있으면 그 PR이 머지될 때까지 같은 `relation-<SSS>.jsonl`을 수정하는 다음 배치를 시작하지 않는다(순차 머지). 두 배치가 모두 끝난 뒤 `verify --shard <SSS>`로 샤드 전체를 확인한다. 파일 존재만으로 샤드 완료를 판단하지 않는다.
 
