@@ -7,7 +7,7 @@ from pathlib import Path
 from warroom import control
 from warroom.adapters import AgentAdapter, Handle, OpenCodeAdapter
 from warroom.config import DEFAULTS, Paths
-from warroom.gitops import CleanupBlocked
+from warroom.gitops import CleanupBlocked, GitError
 from warroom.shell import Result
 from warroom.store import Store
 from warroom.supervisor import Supervisor
@@ -86,6 +86,7 @@ class FakeGit:
         self.wt_root = wt_root
         self.created, self.removed = [], []
         self.dirty_text, self.local_head, self.block = "", HEAD1, None
+        self.gitdir_error = ""
         self.reg: dict[str, str] = {}
         self.remote: dict[str, str | Exception | None] = {}   # branch -> origin SHA, None (absent) or an error to raise
 
@@ -99,6 +100,11 @@ class FakeGit:
 
     def registered(self, path):
         return self.reg.get(str(path))
+
+    def worktree_gitdir(self, path):
+        if self.gitdir_error:
+            raise GitError(self.gitdir_error)
+        return Path("/repo/.git/worktrees") / Path(path).name
 
     def dirty(self, path):
         return self.dirty_text

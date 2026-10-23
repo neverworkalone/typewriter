@@ -337,20 +337,26 @@ class Supervisor:
             return   # still proving the pin in the background; the next tick retries this relaunch
         if problem:
             return self._fail(b, "ERROR", f"실행 전 확인 실패: {problem}")
+        extra = {}
+        if getattr(ad, "needs_git_dir", False):   # one rule for every launch kind: the owned worktree's Git admin dir
+            try:
+                extra["git_dir"] = self.git.worktree_gitdir(Path(wt))
+            except Exception as e:
+                return self._fail(b, "ERROR", f"worktree의 Git 관리 디렉터리를 확인할 수 없어 AI를 시작하지 않았습니다: {e}")
         try:
             if kind == "produce":
                 h = ad.start(prompts.produce(b), wt, self.env, run,
-                                       f"{b['method'].upper()} {b['shard']}_{b['batch']}", log, ex)
+                                       f"{b['method'].upper()} {b['shard']}_{b['batch']}", log, ex, **extra)
             elif kind == "produce_resume":
-                h = ad.resume(sid, prompts.recovery(b), wt, self.env, run, log, ex)
+                h = ad.resume(sid, prompts.recovery(b), wt, self.env, run, log, ex, **extra)
             elif kind == "produce_recover":
                 h = ad.start(prompts.recovery(b), wt, self.env, run,
-                                       f"{b['method'].upper()} {b['shard']}_{b['batch']} recover", log, ex)
+                                       f"{b['method'].upper()} {b['shard']}_{b['batch']} recover", log, ex, **extra)
             elif kind == "fix_resume":
-                h = ad.resume(sid, prompts.fix(b, events, True), wt, self.env, run, log, ex)
+                h = ad.resume(sid, prompts.fix(b, events, True), wt, self.env, run, log, ex, **extra)
             else:  # fix_new
                 h = ad.start(prompts.fix(b, events, False), wt, self.env, run,
-                                       f"PR {b['pr_number']} fix", log, ex)
+                                       f"PR {b['pr_number']} fix", log, ex, **extra)
         except prompts.PromptError as e:   # rendered before any process is started
             return self._fail(b, "ERROR", f"프롬프트 오류로 AI를 시작하지 않았습니다: {e}")
         except Exception as e:

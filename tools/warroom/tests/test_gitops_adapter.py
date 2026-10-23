@@ -36,6 +36,30 @@ class RealGit(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
+    def test_worktree_gitdir_is_the_owned_linked_entry_and_fails_closed(self):
+        """#1543 (real git): the Git admin dir comes from git for a War Room worktree; anything else is refused."""
+        self.git.fetch_base("master")
+        self.git.create_worktree(self.wt, "b1", "master")
+        gitdir = self.git.worktree_gitdir(self.wt)
+        self.assertEqual(gitdir, (self.repo / ".git" / "worktrees" / "w1").resolve())
+        self.git.create_worktree(self.wts / "has space", "b2", "master")
+        spaced = self.git.worktree_gitdir(self.wts / "has space")
+        self.assertEqual(spaced.parent, (self.repo / ".git" / "worktrees").resolve())
+        self.assertNotEqual(spaced, gitdir)
+        # not ours: the main checkout, a plain directory, a path outside War Room's directory, a missing path
+        plain = self.wts / "plain"
+        plain.mkdir()
+        outside = Path(self.tmp.name) / "outside"
+        sh("git", "worktree", "add", "-q", "-b", "b3", str(outside), "origin/master", cwd=self.repo)
+        for name, bad in [("main checkout", self.repo), ("plain dir", plain), ("outside", outside),
+                          ("missing", self.wts / "nope")]:
+            with self.subTest(name), self.assertRaises(GitError):
+                self.git.worktree_gitdir(bad)
+        # a worktree whose entry no longer points back at it is refused
+        (gitdir / "gitdir").write_text(str(self.wts / "other" / ".git") + "\n")
+        with self.assertRaises(GitError):
+            self.git.worktree_gitdir(self.wt)
+
     def test_remote_head_is_the_exact_origin_branch_sha(self):
         self.git.fetch_base("master")
         self.git.create_worktree(self.wt, "a-x-001-01", "master")

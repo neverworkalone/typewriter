@@ -159,6 +159,13 @@ Rules (fail closed):
 - Every run pins the model, reasoning effort and (when configured) permission profile:
   `codex exec --json -m <model> -c model_reasoning_effort=<effort> [-c default_permissions=<profile>] <prompt>`.
   Resume is `codex exec resume <thread id>` with the same pins. `--worktree`, `--last` and `--all` are never used.
+- Git needs `index.lock` in the run's own linked-worktree admin directory, which the profile may not cover. Before every
+  launch (start, resume, recovery, fix) War Room asks git for `git rev-parse --absolute-git-dir` of the worktree it
+  owns and checks it is exactly `<repo common dir>/worktrees/<entry>` pointing back at that worktree; otherwise the
+  batch stops in ERROR and no AI starts. Start passes only that directory as `--add-dir <dir>`. `codex exec resume`
+  has no `--add-dir`, so resume passes `-c 'permissions.<profile>.filesystem={"<dir>"="write"}'`, which merges into the
+  operator's profile (other entries are kept) and therefore needs `permission_profile`. The operator's config is
+  never edited and the repository's whole `.git` is never opened.
 - Each run records its permission profile next to model and effort. A relaunch (resume, recovery, fix) whose configured
   profile differs from the batch's last recorded run, including adding or removing one, stops in ERROR before any CLI
   starts; runs recorded before profiles were tracked are not compared.
