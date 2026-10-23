@@ -112,17 +112,45 @@ export function mergeCandidates(canonicalRows, candidateFiles, { canonicalLemmaF
   return { merged, rawCandidateCount: raw };
 }
 
-/** Lemma -> records and id lookups over the full Canonical (all shards). */
+/** Orthographic variants emitted by the Canonical converter: only spacing/hyphenation variants of the lemma. */
+function canonicalOrthographicForms(record) {
+  const lemma = normalizeCandidate(record.lemma ?? '');
+  const foldedLemma = lemma.replace(/[\s-]/gu, '');
+  if (!foldedLemma) return [];
+  return [...new Set([record.lemma, ...(Array.isArray(record.search_forms) ? record.search_forms : [])]
+    .filter((form) => typeof form === 'string')
+    .map(normalizeCandidate)
+    .filter((form) => form.replace(/[\s-]/gu, '') === foldedLemma))];
+}
+
+function canonicalRecordsForOrthographicForm(index, form) {
+  const normalized = normalizeCandidate(form);
+  return index.byOrthographicForm?.get(normalized) ?? index.byLemma.get(normalized) ?? [];
+}
+
+function uniquelyIdentifyingOrthographicForms(record, index) {
+  return canonicalOrthographicForms(record).filter((form) => {
+    const matches = canonicalRecordsForOrthographicForm(index, form);
+    return matches.length === 1 && matches[0].id === record.id;
+  });
+}
+
+/** Lemma, orthographic search-form, and id lookups over the full Canonical (all shards). */
 export function buildCanonicalIndex(rows) {
   const byId = new Map();
   const byLemma = new Map();
+  const byOrthographicForm = new Map();
   const senses = new Map();
   for (const row of rows) {
     byId.set(row.id, row);
     byLemma.set(row.lemma, [...(byLemma.get(row.lemma) ?? []), row]);
+    for (const form of canonicalOrthographicForms(row)) {
+      const matches = byOrthographicForm.get(form) ?? [];
+      if (!matches.some((match) => match.id === row.id)) byOrthographicForm.set(form, [...matches, row]);
+    }
     for (const sense of row.senses) senses.set(sense.id, { record: row, sense });
   }
-  return { byId, byLemma, senses };
+  return { byId, byLemma, byOrthographicForm, senses };
 }
 
 /**
@@ -218,11 +246,15 @@ function existingCandidateLinks(relationRows, index) {
     if ('text' in row) { add(row.source_sense_id, row.text, { kind: 'text', why: 'text-only' }); continue; }
     const target = index.byId.get(row.target_record_id);
     const source = index.byId.get(row.source_record_id);
-    if (target && (index.byLemma.get(target.lemma) ?? []).length === 1) {
-      add(row.source_sense_id, target.lemma, { kind: 'id', targetSenseId: row.target_sense_id, why: 'id-forward' });
+    if (target) {
+      for (const form of uniquelyIdentifyingOrthographicForms(target, index)) {
+        add(row.source_sense_id, form, { kind: 'id', targetSenseId: row.target_sense_id, why: 'id-forward' });
+      }
     }
-    if (source && (index.byLemma.get(source.lemma) ?? []).length === 1) {
-      add(row.target_sense_id, source.lemma, { kind: 'id', targetSenseId: row.source_sense_id, why: 'id-reverse' });
+    if (source) {
+      for (const form of uniquelyIdentifyingOrthographicForms(source, index)) {
+        add(row.target_sense_id, form, { kind: 'id', targetSenseId: row.source_sense_id, why: 'id-reverse' });
+      }
     }
   }
   return links;
@@ -250,13 +282,13 @@ export function prepareShard({ canonicalRows, candidateFiles, approvedRelationRo
         if (text === normalizeCandidate(record.lemma)) throw new Error(`${sense.id}: candidate ${JSON.stringify(text)} repeats the source lemma`);
         const links = covered.get(`${sense.id}\u0000${text}`) ?? [];
         const nonIdLink = links.some((link) => link.kind !== 'id');
-        const targetRecords = index.byLemma.get(text) ?? [];
+        const targetRecords = canonicalRecordsForOrthographicForm(index, text);
         const targetSenseIds = targetRecords.length === 1 ? targetRecords[0].senses.map((targetSense) => targetSense.id) : [];
         const allTargetSensesCovered = targetSenseIds.length > 0 && targetSenseIds.every((targetSenseId) =>
           links.some((link) => link.kind === 'id' && link.targetSenseId === targetSenseId));
         if (nonIdLink || allTargetSensesCovered) { stats.skipped_existing += 1; continue; }
         if (dropped.has(`${sense.id}\u0000${text}`)) { stats.skipped_dropped += 1; continue; }
-        fresh.push({ text, producers, same_spelling_records: (index.byLemma.get(text) ?? []).map((target) => target.id) });
+        fresh.push({ text, producers, same_spelling_records: targetRecords.map((target) => target.id) });
       }
       if (fresh.length === 0) continue;
       stats.to_edit += fresh.length;
@@ -297,7 +329,7 @@ function endsAtGlossWordBoundary(text, { allowNumericUnit = false, depth = 0 } =
  * Recognize grammatical suffixes at a word boundary, and numeric units only after a numeric candidate, so `소` inside
  * `소년` is not a match.
  */
-function glossNamesCandidate(gloss, candidate) {
+function glossNamesExactCandidate(gloss, candidate) {
   const normalizedGloss = normalizeCandidate(gloss);
   const normalizedCandidate = normalizeCandidate(candidate);
   if (!normalizedCandidate) return false;
@@ -310,6 +342,15 @@ function glossNamesCandidate(gloss, candidate) {
     offset = normalizedGloss.indexOf(normalizedCandidate, offset + 1);
   }
   return false;
+}
+
+function glossNamesCandidate(gloss, candidate, index) {
+  const normalized = normalizeCandidate(candidate);
+  const forms = new Set([normalized]);
+  for (const record of canonicalRecordsForOrthographicForm(index, normalized)) {
+    for (const form of canonicalOrthographicForms(record)) forms.add(form);
+  }
+  return [...forms].some((form) => glossNamesExactCandidate(gloss, form));
 }
 
 /**
@@ -341,16 +382,19 @@ export function verifyAccounting({ canonicalRows, candidateFiles, relationRows: 
     const at = `relation:${position + 1}`;
     if ('text' in row) claim(row.source_sense_id, row.text, 'a text-only relation', { kind: 'text' }, at);
     else {
-      const lemma = index.byId.get(row.target_record_id)?.lemma;
-      if (lemma === undefined) return;
-      claim(row.source_sense_id, lemma, 'an ID relation', { kind: 'id', targetSenseId: row.target_sense_id }, at);
+      const target = index.byId.get(row.target_record_id);
+      if (!target) return;
+      const sourceCandidates = merged.get(row.source_sense_id)?.candidates;
+      const matchingForms = canonicalOrthographicForms(target).filter((form) => sourceCandidates?.has(form));
+      const formsToClaim = matchingForms.length > 0 ? matchingForms : [normalizeCandidate(target.lemma)];
+      for (const form of formsToClaim) claim(row.source_sense_id, form, 'an ID relation', { kind: 'id', targetSenseId: row.target_sense_id }, at);
     }
   });
   dropRows.forEach((row, position) => claim(row.source_sense_id, row.candidate, 'a drop', { kind: 'drop' }, `drop:${position + 1}`));
   // A Drop says the candidate is unrelated to the source meaning; the source's own gloss naming it is direct counter-evidence.
   const glossOf = new Map(scopeRows.flatMap((record) => record.senses.map((sense) => [sense.id, sense.gloss])));
   dropRows.forEach((row, position) => {
-    if (glossNamesCandidate(glossOf.get(row.source_sense_id) ?? '', row.candidate)) errors.push(`drop:${position + 1}: ${JSON.stringify(row.candidate)} is named by the gloss of ${row.source_sense_id} and cannot be dropped as unrelated`);
+    if (glossNamesCandidate(glossOf.get(row.source_sense_id) ?? '', row.candidate, index)) errors.push(`drop:${position + 1}: ${JSON.stringify(row.candidate)} is named by the gloss of ${row.source_sense_id} and cannot be dropped as unrelated`);
   });
 
   // An ID pair is stored once. When both senses listed each other as a Stage 1 candidate, the stored row's reverse
@@ -359,9 +403,11 @@ export function verifyAccounting({ canonicalRows, candidateFiles, relationRows: 
   for (const row of allRelationRows) {
     if ('text' in row) continue;
     const source = index.byId.get(row.source_record_id);
-    if (source && (index.byLemma.get(source.lemma) ?? []).length === 1) {
-      const key = `${row.target_sense_id}\u0000${normalizeCandidate(source.lemma)}`;
-      reverseCovered.set(key, [...(reverseCovered.get(key) ?? []), { kind: 'id', targetSenseId: row.source_sense_id }]);
+    if (source) {
+      for (const form of uniquelyIdentifyingOrthographicForms(source, index)) {
+        const key = `${row.target_sense_id}\u0000${form}`;
+        reverseCovered.set(key, [...(reverseCovered.get(key) ?? []), { kind: 'id', targetSenseId: row.source_sense_id }]);
+      }
     }
   }
 
