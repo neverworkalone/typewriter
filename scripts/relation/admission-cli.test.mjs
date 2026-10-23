@@ -152,6 +152,9 @@ test('a reverse candidate cannot also be a Drop or a text-only row, but may targ
     await writeFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), drops.length ? jsonl(drops) : '');
     return quiet(() => run(['verify', '--shard', '001', '--batch', '01'], { root }));
   };
+  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), jsonl([idRow]));
+  const prepared = await quiet(() => run(['prepare', '--shard', '001', '--batch', '01'], { root }));
+  assert.ok(texts(prepared).includes('표제501'), 'an existing link to sense 1 must leave the candidate available for sense 2');
   // Positive control: the reverse answers 표제501; 다른 말 is authored once.
   assert.equal((await verify([idRow, other, named], [])).reverse_covered, 1);
   // The same candidate also dropped or also authored text-only is a double disposition.
@@ -159,6 +162,7 @@ test('a reverse candidate cannot also be a Drop or a text-only row, but may targ
   await assert.rejects(() => verify([idRow, other, named, { ...other, text: '표제501' }], []), /cannot also be a text-only relation/);
   // The same spelling may have a separate ID relation to another sense; only the actual sense pair is duplicate.
   assert.equal((await verify([idRow, otherSenseRow, other, named], [])).missing, 0);
+  await assert.rejects(() => verify([idRow, { ...otherSenseRow, target_sense_id: 'w501-s1' }, other, named], []), /duplicate or reverse-duplicate ID relation/);
   // A different candidate of the same sense may still be dropped normally.
   assert.equal((await verify([idRow, named], [dropOf('다른 말')])).drop, 1);
   // A candidate the source gloss itself names is evidence of relevance, so it cannot be dropped as unrelated.
