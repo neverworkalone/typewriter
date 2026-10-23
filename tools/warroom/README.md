@@ -1,14 +1,13 @@
 # War Room
 
-Typewriter production supervisor MVP (Issue #1338). `./war` at the repository root opens a
-terminal situation board (Textual) over a persistent **Supervisor** that runs an AI producer
-(OpenCode / DeepSeek / #860 **A**), watches its PR (review → fix → `merged=true`) and removes
-only the worktree and branch it owns afterwards.
+Typewriter's production supervisor. `./war` opens a terminal situation board (Textual) over a
+persistent **Supervisor** that runs configured Claude, Codex or OpenCode producers, watches each PR
+(review → fix → `merged=true`) and removes only the worktree and branch it owns afterwards.
 
 ```text
 ./war  ──tmux session "warroom"──▶ TUI (view + commands, writes SQLite only)
                                    tmux session "warroom-supervisor" ──▶ Supervisor loop
-                                        ├─ OpenCode subprocess (detached, own process group)
+                                        ├─ AI producer subprocesses (detached, own process group)
                                         ├─ gh (isolated GH_CONFIG_DIR), git worktrees
                                         └─ SQLite state: tools/warroom/.local/warroom.db
 ```
@@ -28,7 +27,7 @@ re-produces or opens a second PR when the situation is unclear (state `ERROR`, e
 
 ## Setup
 
-1. `brew install tmux` and have `opencode` installed. `./war` creates `.local/venv` (Textual) on first run.
+1. `brew install tmux` and install the CLI(s) for the configured producers. `./war` creates `.local/venv` (Textual) on first run.
 2. Log the producer account in **without touching your own gh/git setup**:
    `GH_CONFIG_DIR=tools/warroom/.local/gh gh auth login` (expected account `neverworkalone-agent`).
 3. Optional `tools/warroom/.local/config.json` (see `config.example.json`): model IDs
@@ -39,7 +38,28 @@ re-produces or opens a second PR when the situation is unclear (state `ERROR`, e
 
 `.local/` (config, DB, logs, auth, worktrees, venv) is git-ignored; never commit tokens/logs.
 
-## Factory Board · Production Lines (Issue #1353)
+## Restarting after code updates
+
+Updating files with `git pull` does not reload Python code already running in the Supervisor.
+The Board's `r` key reloads `config.json` only; it does **not** restart the Supervisor.
+After updating War Room's Python code, restart **both** tmux sessions from a separate,
+ordinary terminal (not from inside either War Room tmux session).
+Prefer a time when no producer is actively working; the Supervisor and TUI sessions are
+replaced, but the persistent database, producer worktrees and PRs are not deleted.
+
+```sh
+cd /path/to/typewriter
+git pull --ff-only
+tmux kill-session -t warroom-supervisor 2>/dev/null || true
+tmux kill-session -t warroom 2>/dev/null || true
+./war
+```
+
+`./war` creates or reattaches the TUI and starts a fresh Supervisor if none holds its lock.
+The Supervisor recovers existing batches using the persisted state and running processes;
+do not delete `tools/warroom/.local/`, manually reset worktrees or press Retry just to reload code.
+
+## Factory Board · Production Lines
 
 A **Line** = (logical model, method A/B/C/D). `Factory → Model → Line → Batch history → Run history`.
 The model registry is config (`producers` in `config.json`, any number of models, see
@@ -69,21 +89,20 @@ logical model twice (duplicate id or shared endpoint ID) is blocked.
   offset is kept; unknown events and non-JSON lines are shown as-is); **Raw Log** switches to the verbatim file.
   Secrets are redacted in both. Run History (`runs` table) and a separate Audit Log stay. **Auto-scroll**
   (default ON, off on manual scroll-up) is shown only for a still-running log. Esc returns to the board. `s` opens Settings.
-- **SQLite**: additive migration (`PRAGMA user_version=2`) adds `lines`, `runs`, `events.line`; the
-  legacy single-worker `kv` controls become the controls of that Line and old `batch-<id>-<ts>.log`
-  files are imported as runs. No row or log is deleted or rewritten.
+- **SQLite**: per-Line controls, batch history, run history and audit events persist in
+  `tools/warroom/.local/warroom.db`. Schema migrations are additive; existing batch and run records are preserved.
 
-## Producer CLIs and pinned models (Issue #1373)
+## Producer CLIs and pinned models
 
 Each logical model (`producers` in `config.json`, see `config.example.json`) runs on one CLI adapter.
 The Factory Board columns and the top CLI Select follow the adapter label, **Claude → Codex → OpenCode**,
 then the model label; the order of `producers` in the file does not matter.
 
-| Producer (label) | Adapter (CLI) | Model | Effort | Status |
-|---|---|---|---|---|
-| `claude` (Sonnet) | `claude` (Claude Code) | `model: sonnet` → `--model sonnet` | `effort: medium` → `--effort medium` | Runs (#1375) |
-| `codex` (Luna) | `codex` (Codex CLI) | `model: gpt-6-luna` → `-m gpt-6-luna` | `effort: xhigh` → `-c model_reasoning_effort=xhigh` | Runs (#1376) |
-| `deepseek` (DeepSeek) | `opencode` | `models.free` / `models.go` | `effort: high` → `--model <id>#high` | Runs now |
+| Producer (example label) | Adapter (CLI) | Model | Effort |
+|---|---|---|---|
+| `claude` (Sonnet) | `claude` (Claude Code) | `model: sonnet` → `--model sonnet` | `effort: medium` → `--effort medium` |
+| `codex` (Luna) | `codex` (Codex CLI) | `model: gpt-6-luna` → `-m gpt-6-luna` | `effort: xhigh` → `-c model_reasoning_effort=xhigh` |
+| `deepseek` (DeepSeek) | `opencode` | `models.free` / `models.go` | `effort: high` → `--model <id>#high` |
 
 Rules (fail closed):
 
@@ -107,7 +126,7 @@ Rules (fail closed):
   A proven pair is kept for this Supervisor run. A refused pair stays refused until the Supervisor restarts. The probe
   may cost a few tokens and creates one session titled `WR preflight`. A variant refused later still stops the batch
   in ERROR, with nothing substituted. A DeepSeek entry without `effort` runs at `high`, the owner-fixed value
-  (configs written before #1373).
+  (also the default when `effort` is omitted).
 - Run History and the Audit Log record the model ID and effort each launch was pinned to.
 
 ### Claude Code (`claude`) setup
@@ -156,9 +175,9 @@ A missing/empty/unreadable file or an unknown/unfilled placeholder stops the bat
 `PREPARE → PRODUCING → WAITING_REVIEW ⇄ FIXING → MERGED → CLEANUP → COMPLETE`, plus
 `PAUSED` (recoverable, operator Retry) and `ERROR` (safety stop; worktree/PR preserved).
 
-- **Batch choice** (`batches.py`): A/B keep one queue per (method, model); **C/D share one queue per method across all models** (a Candidate file or open PR of any model completes/claims the batch; local unfinished batches of any model occupy it; two models' files for one C/D batch is an error, and `create_batch` refuses a second model's reservation inside one `BEGIN IMMEDIATE` transaction). Earliest A/DeepSeek batch whose Candidate file is absent on
-  `origin/master`, not claimed by an open PR (same method+model) and not owned by War Room. A
-  master file with the wrong record count is reported, never skipped or regenerated.
+- **Batch choice** (`batches.py`): A/B keep one queue per (method, model); **C/D share one queue per method across all models** (a Candidate file or open PR of any model completes/claims the batch; local unfinished batches of any model occupy it; two models' files for one C/D batch is an error, and `create_batch` refuses a second model's reservation inside one `BEGIN IMMEDIATE` transaction). Each Line selects its earliest batch whose Candidate file is absent on
+  `origin/master`, not claimed by an open PR under its queue key and not owned by War Room.
+  A master file with the wrong record count is reported, never skipped or regenerated.
 - **Fix trigger** (`reviews.py`): only accounts in `trusted_reviewers` (default `genonfire`; empty = nothing
   triggers) can produce events — other users' text never reaches the AI. A `-1` review (or `-1` general comment) for the *current* HEAD
   (`HEAD: <sha>` marker, else the review's `commit_id`), not authored by the producer account.
@@ -173,6 +192,15 @@ A missing/empty/unreadable file or an unknown/unfilled placeholder stops the bat
   If local HEAD is merely behind (e.g. GitHub "Update branch" added commits), the merged PR HEAD is
   fetched and fast-forwarded (`merge --ff-only`) first; a non-ancestor HEAD or a dirty tree stays
   `ERROR` and preserved (never reset/rebase/force). Retry of such an `ERROR` resumes at CLEANUP, no AI rerun.
+- **PR HEAD synchronization**: after a fix, a clean local HEAD that matches the remote branch but is ahead of
+  GitHub's PR `head.sha` is treated as PR metadata lag rather than an unpushed change. The Supervisor rechecks
+  at `poll_seconds` intervals without restarting the AI. If the lag exceeds `pr_head_lag_timeout_seconds`
+  (default 1800 seconds), the batch stops with the reason and keeps its worktree; Retry rechecks without an AI run.
+  A missing or divergent remote branch, wrong PR branch or failed lookup is not treated as metadata lag.
+- **Merged error recovery**: for ERROR/PAUSED batches with an existing PR, the Supervisor checks `merged=true`
+  at `poll_seconds` intervals (at least 60 seconds). A merged PR proceeds through MERGED → CLEANUP → COMPLETE
+  without launching the AI. A cleanup safety failure preserves the worktree and requires operator attention;
+  no unmerged PR is marked complete.
 - **Model policy**: only a failure matching `quota_patterns` while on the free tier switches to the
   Go model. 429/network → backoff retry; auth → `PAUSED`; anything unrecognised → `PAUSED`
   (never a silent paid fallback).
@@ -191,12 +219,3 @@ CI runs it as a Deep+affected check (`tools/warroom/run-tests.mjs`, paths `tools
 Core tests use only the standard library (the TUI smoke test is skipped without Textual).
 They fake GitHub/OpenCode/git and also exercise real `git worktree` and a real detached process.
 
-## PR HEAD 지연과 머지된 오류 배치 회복 (#1515)
-
-- FIXING 완료 시 로컬 HEAD ≠ PR API `head.sha`이면 원격 브랜치 ref(`git ls-remote`)를 따로 확인한다. 원격이 로컬 HEAD와
-  같고 PR API만 뒤처졌다면 ERROR가 아니라 `poll_seconds` 간격으로 재조회하며 대기한다(AI 재실행 없음,
-  `pr_head_lag_timeout_seconds` 초과 시 사유를 밝혀 ERROR로 보존, Retry는 재검증만 한다). 원격에 없음 / 원격 SHA 불일치 /
-  다른 브랜치 PR / 조회 실패는 각각 별도 사유로 즉시 보존한다.
-- ERROR/PAUSED 배치의 PR이 나중에 `merged=true`가 되면 `poll_seconds`(최소 60초) 주기로 감지해 AI 없이
-  MERGED → CLEANUP → COMPLETE로 복구한다. 정리는 기존 `remove_owned()` 게이트(clean, HEAD 일치 또는 fast-forward)를
-  그대로 통과해야 하며, 정리 차단으로 멈춘 배치는 자동 재시도하지 않는다.
