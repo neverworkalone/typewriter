@@ -164,6 +164,34 @@ test('accounting: every unique candidate is exactly one of relation, drop or exi
   assert.throws(() => answer(full.relations, full.drops, existing), /already answered by an approved Relation/);
 });
 
+test('accounting treats complete gloss words as mentions, not substrings inside other words', () => {
+  const verifyDrop = (gloss, candidate) => {
+    const canonicalRows = canonical();
+    canonicalRows[0].senses[0].gloss = gloss;
+    const candidateFile = {
+      name: '001_01_a_codex.jsonl',
+      rows: canonicalRows.map((record) => ({
+        record_id: record.id,
+        senses: [{ sense_id: record.senses[0].id, candidates: record.id === 'w1' ? [candidate] : [] }],
+      })),
+    };
+    const localIndex = buildCanonicalIndex(canonicalRows);
+    return verifyAccounting({
+      canonicalRows,
+      candidateFiles: [candidateFile],
+      relationRows: [],
+      dropRows: [{ source_record_id: 'w1', source_sense_id: 'w1-s1', candidate, reason: '무관' }],
+      otherRelationRows: [],
+      index: localIndex,
+    });
+  };
+
+  assert.equal(verifyDrop('떡갈나무에 잎이 넓다.', '떡').drop, 1, 'a shared syllable inside a different compound is not a gloss mention');
+  assert.throws(() => verifyDrop('가로에 사는 민족.', '가로'), /named by the gloss/, 'a candidate followed by a grammatical particle is a complete gloss word');
+  assert.equal(verifyDrop('가로에 사는 민족.', '가로수').drop, 1, 'a longer candidate is not a mention of its prefix');
+  assert.throws(() => verifyDrop('떡갈나무에 잎이 넓다.', '떡갈나무'), /named by the gloss/, 'a complete candidate phrase remains protected from Drop');
+});
+
 test('accounting allows an approved reverse candidate for a different target sense, but rejects the same sense pair twice', () => {
   const local = [
     { id: 'w398821', lemma: '근근이', senses: [{ id: 'w398821-s1', pos: 'adverb', gloss: '어렵사리 겨우.' }] },
