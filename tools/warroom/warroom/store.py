@@ -60,7 +60,10 @@ CREATE INDEX IF NOT EXISTS events_line ON events(batch_id);
 RUN_COLUMNS_V3 = ("model", "effort")
 # Additive migration (user_version 4): a one-shot "finish this batch, then stop" request set by Drain All.
 # It is separate from the per-Line `drain` setting, which Drain All never touches.
-SCHEMA_VERSION = 4
+# Additive migration (user_version 5): every run also records the Codex permission profile it was pinned to
+# ('' = none configured). Old runs keep NULL, which the pin-drift check treats as "not recorded".
+RUN_COLUMNS_V5 = ("permission_profile",)
+SCHEMA_VERSION = 5
 
 ACTIVE_STATES = ("PREPARE", "PRODUCING", "WAITING_REVIEW", "FIXING", "MERGED",
                  "CLEANUP", "PAUSED", "ERROR")
@@ -98,7 +101,7 @@ class Store:
         if "line" not in {r["name"] for r in c.execute("PRAGMA table_info(events)")}:
             c.execute("ALTER TABLE events ADD COLUMN line TEXT")
         have = {r["name"] for r in c.execute("PRAGMA table_info(runs)")}
-        for col in RUN_COLUMNS_V3:
+        for col in RUN_COLUMNS_V3 + RUN_COLUMNS_V5:
             if col not in have:
                 c.execute(f"ALTER TABLE runs ADD COLUMN {col} TEXT")
         # Legacy single-worker controls become the controls of that batch's Line.
@@ -280,13 +283,14 @@ class Store:
 
     # --- run history ---
     def add_run(self, batch_id: int, kind: str, session_id, pid, log_file, exit_file,
-                model: str | None = None, effort: str | None = None) -> int:
+                model: str | None = None, effort: str | None = None,
+                permission_profile: str | None = None) -> int:
         """Record a launch with the model ID and effort it was pinned to (what the CLI was asked for)."""
         with self._conn() as c:
-            return c.execute("INSERT INTO runs(batch_id,kind,session_id,pid,log_file,exit_file,started_at,model,effort) "
-                             "VALUES(?,?,?,?,?,?,?,?,?)",
+            return c.execute("INSERT INTO runs(batch_id,kind,session_id,pid,log_file,exit_file,started_at,model,effort,"
+                             "permission_profile) VALUES(?,?,?,?,?,?,?,?,?,?)",
                              (batch_id, kind, session_id, pid, str(log_file), str(exit_file), time.time(),
-                              model, effort)).lastrowid
+                              model, effort, permission_profile)).lastrowid
 
     def set_run_session(self, batch_id: int, session_id: str) -> None:
         with self._conn() as c:

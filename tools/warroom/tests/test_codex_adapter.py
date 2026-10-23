@@ -1,8 +1,8 @@
-"""Issue #1376 (mediator decision on #1381): Codex runs under the operator's local CLI policy.
+"""Codex runs with War Room's pinned worktree permission profile and operator-defined rules.
 
-War Room pins the model and effort on every launch and verifies the thread id and the recorded model and effort.
-It never adds sandbox, approval, network or writable-root options, and a command the local policy refuses stops
-the run in PAUSED.
+War Room pins model, effort, and the worktree permission selection on every launch, while the
+profile's filesystem/network rules and approval policy still come from the operator's CLI config.
+A command the resulting policy refuses stops the run in PAUSED.
 """
 import json
 import os
@@ -22,7 +22,7 @@ QUOTA = DEFAULTS["quota_patterns"]
 PIN = RunSpec("gpt-6-luna", "xhigh")
 THREAD = "01a15e50-8832-7502-9680-0e4fdbf5fcb0"
 HEAD1 = "a" * 40
-# Options War Room never passes: the local CLI policy decides sandbox and approval, and bypass flags are never used.
+# Options War Room never passes: approval and legacy sandbox remain local, and bypass flags are never used.
 NEVER_PASSED = ("--dangerously-bypass-approvals-and-sandbox", "--dangerously-bypass-hook-trust", "--yolo",
                 "--full-auto", "--worktree", "--last", "--all", "--ignore-user-config", "--ignore-rules",
                 "sandbox_mode", "approval_policy", "sandbox_workspace_write", "writable_roots", "danger-full-access")
@@ -72,25 +72,41 @@ class Recording(CodexCLIAdapter):
 
 
 class Argv(unittest.TestCase):
-    def test_start_and_resume_pin_only_model_and_effort(self):
+    def test_start_and_resume_pin_model_effort_and_configured_permission_profile(self):
         with tempfile.TemporaryDirectory() as d:
             d = Path(d)
             a = Recording("codex")
-            a.start("prompt body", d, {"GH_CONFIG_DIR": str(d / "gh")}, PIN, "A 009_02", d / "l.log", d / "l.exit")
+            run = RunSpec("gpt-6-luna", "xhigh", "worktree")
+            a.start("prompt body", d, {"GH_CONFIG_DIR": str(d / "gh")}, run, "A 009_02", d / "l.log", d / "l.exit")
             start = a.cmd
-            a.resume(THREAD, "again", d, {}, PIN, d / "l.log", d / "l.exit")
+            a.resume(THREAD, "again", d, {}, run, d / "l.log", d / "l.exit")
             resume = a.cmd
         self.assertEqual(start[1], "exec")
         self.assertEqual(start[start.index("-m") + 1], "gpt-6-luna")
         self.assertIn("model_reasoning_effort=xhigh", start)
+        self.assertEqual(start.count("default_permissions=worktree"), 1)
         self.assertEqual(start[-1], "prompt body")
         self.assertEqual(resume[1:4], ["exec", "resume", THREAD])
         self.assertIn("model_reasoning_effort=xhigh", resume)
+        self.assertEqual(resume.count("default_permissions=worktree"), 1)
         self.assertEqual(resume[-1], "again")
         for argv in (start, resume):
             joined = " ".join(argv)
             for bad in NEVER_PASSED:
                 self.assertNotIn(bad, joined)
+
+    def test_permission_profile_is_exactly_the_configured_name_or_absent(self):
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            for profile, want in [("worktree", ["default_permissions=worktree"]), ("other-1", ["default_permissions=other-1"]),
+                                  ("", [])]:
+                with self.subTest(profile=profile):
+                    a = Recording("codex")
+                    run = RunSpec("gpt-6-luna", "xhigh", profile)
+                    for call in (lambda: a.start("p", d, {}, run, "t", d / "l.log", d / "l.exit"),
+                                 lambda: a.resume(THREAD, "p", d, {}, run, d / "l.log", d / "l.exit")):
+                        call()
+                        self.assertEqual([x for x in a.cmd if x.startswith("default_permissions=")], want)
 
     def test_unpinned_run_is_refused_before_any_process(self):
         a = Recording("codex")

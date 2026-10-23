@@ -23,6 +23,7 @@ class RunSpec:
     """The model and reasoning effort one run is pinned to; passed explicitly on every launch."""
     model: str
     effort: str
+    permission_profile: str = ""   # Codex only: named `[permissions.<name>]` profile; empty = leave the CLI default
 
 
 @dataclass
@@ -480,7 +481,11 @@ class CodexCLIAdapter(ProcessAdapter):
 
     @staticmethod
     def _pins(run: RunSpec) -> list[str]:
-        return ["--json", "-m", run.model, "-c", f"model_reasoning_effort={run.effort}"]
+        # The profile is selected by name only (`permission_profile` in the producer config); its rules stay in local config.
+        pins = ["--json", "-m", run.model, "-c", f"model_reasoning_effort={run.effort}"]
+        if run.permission_profile:
+            pins += ["-c", f"default_permissions={run.permission_profile}"]
+        return pins
 
     def start(self, prompt, cwd, env, run, title, log_file, exit_file):
         cmd = [self.binary, "exec", *self._pins(_pinned(run)), prompt]

@@ -149,11 +149,21 @@ Rules (fail closed):
 
 - Install the Codex CLI and log in with the operator's own account: `codex login`. `codex login status` must
   report `Logged in`; Start checks it. Like Claude, this login is not isolated per War Room.
-- Codex runs under the operator's **local CLI policy**: `~/.codex/config.toml`, its sandbox, approval and execpolicy
-  rules, and the project settings are used as they are. War Room does not add sandbox, approval, network or
-  writable-root options, and it never uses `--ignore-user-config`, `--ignore-rules`, `--full-auto` or bypass flags.
-- Every run pins only the model and the reasoning effort: `codex exec --json -m <model> -c model_reasoning_effort=<effort> <prompt>`.
+- Codex runs under the operator's **local CLI policy** (`~/.codex/config.toml`, approval and execpolicy rules, project
+  settings). The permission profile is configured per producer with `permission_profile` in `config.json`, like
+  `model` and `effort`: `"permission_profile": "worktree"` passes `-c default_permissions=worktree` on every start and
+  resume. Without it nothing is passed and the CLI default applies. The name must be a plain profile name
+  (`[A-Za-z0-9_-]`) and is accepted only for Codex producers. The profile's rules live in the operator's own
+  `[permissions.<name>]` table; War Room never defines them. War Room adds no legacy sandbox, approval, network or
+  writable-root options and never uses `--ignore-user-config`, `--ignore-rules`, `--full-auto` or bypass flags.
+- Every run pins the model, reasoning effort and (when configured) permission profile:
+  `codex exec --json -m <model> -c model_reasoning_effort=<effort> [-c default_permissions=<profile>] <prompt>`.
   Resume is `codex exec resume <thread id>` with the same pins. `--worktree`, `--last` and `--all` are never used.
+- Each run records its permission profile next to model and effort. A relaunch (resume, recovery, fix) whose configured
+  profile differs from the batch's last recorded run, including adding or removing one, stops in ERROR before any CLI
+  starts; runs recorded before profiles were tracked are not compared.
+- Legacy `sandbox_mode` in any active config layer takes precedence over permission profiles. Do not combine
+  `sandbox_mode` / `sandbox_workspace_write` with a configured `permission_profile`.
 - Checked, not assumed: the `thread.started` thread id must equal the requested session, and the model and effort in
   the rollout's `turn_context` must equal the pins. A finished turn with no recorded context stops the batch.
 - A command the local policy refuses (`Operation not permitted`, `Permission denied`, an approval request) stops the

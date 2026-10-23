@@ -103,6 +103,20 @@ class RegistryValidation(unittest.TestCase):
         self.assertEqual(reg["deepseek"]["effort"], "high")
         self.assertEqual(registry_problems(DEFAULTS), {})
 
+    def test_permission_profile_table(self):
+        cases = [("codex", "worktree", None), ("codex", "", None), ("codex", "a_b-1", None),
+                 ("codex", "-c", "형식"), ("codex", "a b", "형식"), ("codex", "a=b", "형식"), ("codex", "a/b", "형식"),
+                 ("claude", "worktree", "Codex"), ("opencode", "worktree", "Codex")]
+        for adapter, profile, want in cases:
+            with self.subTest(adapter=adapter, profile=profile):
+                base = {"claude": SONNET, "codex": LUNA, "opencode": DEEPSEEK}[adapter]
+                cfg = cfg_with({"m": {**base, "permission_profile": profile}})
+                problem = registry_problems(cfg).get("m")
+                self.assertTrue(problem is None if want is None else want in problem, problem)
+        self.assertEqual(run_spec(cfg_with({"m": {**LUNA, "permission_profile": "worktree"}}), "m"),
+                         RunSpec("gpt-6-luna", "xhigh", "worktree"))
+        self.assertEqual(run_spec(cfg_with({"m": LUNA}), "m").permission_profile, "")
+
     def test_effort_problem_table(self):
         for adapter, effort, ok in [("claude", "medium", True), ("claude", "", False), ("claude", "none", False),
                                     ("codex", "xhigh", True), ("codex", "minimal", False),
@@ -213,14 +227,31 @@ class PinDrift(unittest.TestCase):
         ]
         for (pm, pe), (m, e), tiered, drift in cases:
             with self.subTest(prev=(pm, pe), now=(m, e), tiered=tiered):
-                runs = [{"model": pm, "effort": pe}] if pe is not None else [{"model": None, "effort": None}]
+                runs = ([{"model": pm, "effort": pe, "permission_profile": ""}] if pe is not None
+                        else [{"model": None, "effort": None, "permission_profile": None}])
                 reason = Supervisor._pin_drift({"id": 1}, RunSpec(m, e), tiered, runs, (F, G) if tiered else None)
                 self.assertEqual(reason is not None, drift)
 
     def test_tiered_without_configured_ids_never_allows_a_model_change(self):
         reason = Supervisor._pin_drift({"id": 1}, RunSpec(self.GO, "high"), True,
-                                       [{"model": self.FREE, "effort": "high"}], None)
+                                       [{"model": self.FREE, "effort": "high", "permission_profile": ""}], None)
         self.assertIsNotNone(reason)
+
+    def test_permission_profile_table(self):
+        cases = [  # recorded profile (None = recorded before profiles existed), current profile, drift?
+            ("worktree", "worktree", False),   # same profile
+            ("worktree", "other", True),       # another profile
+            ("worktree", "", True),            # profile removed: would fall back to the CLI default
+            ("", "worktree", True),            # profile added to a batch that started without one
+            ("", "", False),                   # never configured
+            (None, "worktree", False),         # legacy record: nothing to compare with
+            (None, "", False),
+        ]
+        for prev, now, drift in cases:
+            with self.subTest(prev=prev, now=now):
+                runs = [{"model": "gpt-6-luna", "effort": "xhigh", "permission_profile": prev}]
+                reason = Supervisor._pin_drift({"id": 1}, RunSpec("gpt-6-luna", "xhigh", now), False, runs, None)
+                self.assertEqual(reason is not None, drift)
 
 
 class PinnedLaunches(unittest.TestCase):
@@ -256,6 +287,25 @@ class PinnedLaunches(unittest.TestCase):
         self.assertEqual(w.adapter.launches, [])
         self.assertIsNone(w.store.active_batch("claude", "a"))
         self.assertIn("CLI 어댑터가 이 War Room 빌드에 없습니다", w.store.line("claude", "a")["blocked"])
+
+    def test_every_relaunch_kind_refuses_a_changed_permission_profile(self):
+        for kind in ("produce_resume", "produce_recover", "fix_resume", "fix_new"):
+            for now in ("other", ""):
+                with self.subTest(kind=kind, now=now):
+                    w = World()
+                    try:
+                        w.cfg["producers"] = {"codex": {**LUNA, "permission_profile": "worktree"}}
+                        w.start("single", "codex", "a")
+                        w.tick()
+                        self.assertEqual(w.store.runs(w.row("codex", "a")["id"])[0]["permission_profile"], "worktree")
+                        b = w.store.batch(w.row("codex", "a")["id"])
+                        w.cfg["producers"]["codex"] = {**LUNA, "permission_profile": now}
+                        w.sup._launch(b, kind)
+                        self.assertEqual(len(w.adapter.launches), 1)
+                        self.assertEqual(w.row("codex", "a")["state"], "ERROR")
+                        self.assertIn("실행 설정 변경 차단", w.row("codex", "a")["error"])
+                    finally:
+                        w.tmp.cleanup()
 
     def test_resume_with_a_different_effort_is_refused(self):
         w = self.w

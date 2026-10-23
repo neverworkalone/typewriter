@@ -114,6 +114,7 @@ def registry(cfg: dict) -> dict[str, dict]:
         out[pid] = {"label": p.get("label") or KNOWN_LABELS.get(pid, pid), "adapter": adapter,
                     "model": p.get("model") or "",
                     "effort": p["effort"] if "effort" in p else LEGACY_EFFORT.get(adapter, ""),
+                    "permission_profile": p.get("permission_profile") or "",
                     "models": {"free": "", "go": "", **(p.get("models") or {})}}
     return out
 
@@ -136,6 +137,11 @@ def _producer_problem(pid: str, p: dict) -> str | None:
             return "모델 ID가 설정되지 않았습니다 — CLI 기본 모델에 맡기지 않고 `model`을 명시해야 합니다."
         if not _MODEL_ID.match(p["model"]):
             return f"모델 ID {p['model']!r}는 허용되지 않는 형식입니다 (플래그처럼 보이거나 공백이 있음)."
+    profile = p["permission_profile"]
+    if profile and p["adapter"] != "codex":
+        return f"permission_profile은 Codex 모델에만 지정할 수 있습니다 (adapter: {p['adapter']})."
+    if profile and not _PROFILE_ID.match(profile):
+        return f"permission_profile {profile!r}는 허용되지 않는 형식입니다 ([A-Za-z0-9_-]만 허용)."
     return effort_problem(p["adapter"], p["effort"])
 
 
@@ -233,7 +239,7 @@ def config_problem(cfg: dict) -> str | None:
     if isinstance(cfg.get("producers"), dict):
         for pid, p in cfg["producers"].items():
             if isinstance(p, dict):
-                bad += _entry_problems(f"producers.{pid}", p, ("label", "adapter", "model", "effort"))
+                bad += _entry_problems(f"producers.{pid}", p, ("label", "adapter", "model", "effort", "permission_profile"))
     return "; ".join(bad) or None
 
 
@@ -284,6 +290,7 @@ ADAPTER_EFFORTS = {
 LEGACY_EFFORT = {"opencode": "high"}
 _MODEL_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/:-]*$")   # never a flag ("-x") and never whitespace
 _EFFORT_ID = re.compile(r"^[a-z0-9-]+$")
+_PROFILE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]*$")   # a TOML bare key: never a flag, whitespace, `=` or a path
 
 
 def adapter_label(adapter: str) -> str:
@@ -315,7 +322,7 @@ def run_spec(cfg: dict, producer: str, tier: str = "free") -> RunSpec:
     problem = effort_problem(p["adapter"], p["effort"])
     if problem:
         raise ValueError(f"{producer}: {problem}")
-    return RunSpec(model=model, effort=p["effort"])
+    return RunSpec(model=model, effort=p["effort"], permission_profile=p["permission_profile"])
 
 
 def pin_summary(p: dict) -> str:
@@ -323,7 +330,8 @@ def pin_summary(p: dict) -> str:
     effort = p["effort"] or "(미설정)"
     if p["adapter"] in TIERED_ADAPTERS:
         return f"free={p['models']['free'] or '(미설정)'}  go={p['models']['go'] or '(미설정)'}  effort={effort}"
-    return f"model={p['model'] or '(미설정)'}  effort={effort}"
+    profile = f"  permission_profile={p['permission_profile']}" if p["permission_profile"] else ""
+    return f"model={p['model'] or '(미설정)'}  effort={effort}{profile}"
 
 
 def ordered_models(cfg: dict) -> list[str]:
