@@ -149,11 +149,17 @@ Rules (fail closed):
 
 - Install the Codex CLI and log in with the operator's own account: `codex login`. `codex login status` must
   report `Logged in`; Start checks it. Like Claude, this login is not isolated per War Room.
-- Codex runs under the operator's **local CLI policy**: `~/.codex/config.toml`, its sandbox, approval and execpolicy
-  rules, and the project settings are used as they are. War Room does not add sandbox, approval, network or
-  writable-root options, and it never uses `--ignore-user-config`, `--ignore-rules`, `--full-auto` or bypass flags.
-- Every run pins only the model and the reasoning effort: `codex exec --json -m <model> -c model_reasoning_effort=<effort> <prompt>`.
+- Codex uses the operator-defined `worktree` permission profile in `~/.codex/config.toml`. War Room selects it
+  explicitly with `-c default_permissions=worktree` for every start and resume; the profile's filesystem/network
+  rules, approval and execpolicy still come from local CLI/project settings. Configure `[permissions.worktree]`
+  before running War Room. War Room does not add legacy sandbox, approval, network or writable-root options and
+  never uses `--ignore-user-config`, `--ignore-rules`, `--full-auto` or bypass flags.
+- Every run pins the model, reasoning effort and worktree permission selection:
+  `codex exec --json -m <model> -c model_reasoning_effort=<effort> -c default_permissions=worktree <prompt>`.
   Resume is `codex exec resume <thread id>` with the same pins. `--worktree`, `--last` and `--all` are never used.
+- Legacy `sandbox_mode` in any active config layer takes precedence over permission profiles. Do not combine
+  `sandbox_mode` / `sandbox_workspace_write` with this custom permission setup; a named profile alone cannot
+  override an active legacy sandbox.
 - Checked, not assumed: the `thread.started` thread id must equal the requested session, and the model and effort in
   the rollout's `turn_context` must equal the pins. A finished turn with no recorded context stops the batch.
 - A command the local policy refuses (`Operation not permitted`, `Permission denied`, an approval request) stops the
