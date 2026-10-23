@@ -480,7 +480,9 @@ class CodexCLIAdapter(ProcessAdapter):
 
     @staticmethod
     def _pins(run: RunSpec) -> list[str]:
-        return ["--json", "-m", run.model, "-c", f"model_reasoning_effort={run.effort}"]
+        # War Room always selects the operator-defined worktree profile; its rules remain in local Codex config.
+        return ["--json", "-m", run.model, "-c", f"model_reasoning_effort={run.effort}",
+                "-c", "default_permissions=worktree"]
 
     def start(self, prompt, cwd, env, run, title, log_file, exit_file):
         cmd = [self.binary, "exec", *self._pins(_pinned(run)), prompt]
