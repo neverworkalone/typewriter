@@ -164,6 +164,49 @@ test('accounting: every unique candidate is exactly one of relation, drop or exi
   assert.throws(() => answer(full.relations, full.drops, existing), /already answered by an approved Relation/);
 });
 
+test('accounting allows an approved reverse candidate for a different target sense, but rejects the same sense pair twice', () => {
+  const local = [
+    { id: 'w398821', lemma: '근근이', senses: [{ id: 'w398821-s1', pos: 'adverb', gloss: '어렵사리 겨우.' }] },
+    { id: 'w183', lemma: '가까스로', senses: [
+      { id: 'w183-s1', pos: 'adverb', gloss: '애를 써서 매우 힘들게.' },
+      { id: 'w183-s2', pos: 'adverb', gloss: '겨우 빠듯하게.' },
+    ] },
+  ];
+  const localIndex = buildCanonicalIndex(local);
+  const candidateFile = {
+    name: '001_01_a_codex.jsonl',
+    rows: [
+      { record_id: 'w398821', senses: [{ sense_id: 'w398821-s1', candidates: ['가까스로'] }] },
+      { record_id: 'w183', senses: [
+        { sense_id: 'w183-s1', candidates: [] },
+        { sense_id: 'w183-s2', candidates: ['근근이'] },
+      ] },
+    ],
+  };
+  const pair = (sourceSense, targetSense) => ({
+    source_record_id: sourceSense.split('-s')[0],
+    source_sense_id: sourceSense,
+    target_record_id: targetSense.split('-s')[0],
+    target_sense_id: targetSense,
+    type: 'near', relevance: 1, reverse_type: 'near', reverse_relevance: 2,
+  });
+  const verify = (relationRows, otherRelationRows) => verifyAccounting({
+    canonicalRows: local,
+    candidateFiles: [candidateFile],
+    relationRows,
+    dropRows: [],
+    otherRelationRows,
+    index: localIndex,
+  });
+
+  // The two rows both surface “가까스로” from w398821-s1, but bind to different senses of w183.
+  assert.equal(verify([pair('w398821-s1', 'w183-s1')], [pair('w183-s2', 'w398821-s1')]).missing, 0);
+  assert.throws(
+    () => verify([pair('w398821-s1', 'w183-s1')], [pair('w183-s1', 'w398821-s1')]),
+    /already answered by an approved Relation/,
+  );
+});
+
 test('a decomposed spelling of the source lemma is rejected, never silently skipped as a merge', () => {
   const lemma = '가'.normalize('NFC');
   const local = [{ id: 'w1', lemma, senses: [{ id: 'w1-s1', pos: 'noun', gloss: 'g' }] }];

@@ -257,26 +257,49 @@ export function verifyAccounting({ canonicalRows, candidateFiles, relationRows: 
   const scopeSenses = new Set(scopeRows.flatMap((record) => record.senses.map((sense) => sense.id)));
   const relationRows = allRelationRows.filter((row) => scopeSenses.has(row.source_sense_id));
   const dropRows = allDropRows.filter((row) => scopeSenses.has(row.source_sense_id));
-  const covered = existingCandidateKeys(otherRelationRows, index);
+  // Keep the bound sense as well as the candidate spelling. A single lexical candidate can point to distinct senses
+  // of a polysemous lemma; only a repeated sense pair is a duplicate disposition.
+  const approvedLinks = new Map();
+  const addLink = (map, senseId, text, link) => {
+    const key = `${senseId}\u0000${normalizeCandidate(text)}`;
+    map.set(key, [...(map.get(key) ?? []), link]);
+  };
+  for (const row of otherRelationRows) {
+    if ('text' in row) {
+      addLink(approvedLinks, row.source_sense_id, row.text, { kind: 'text', why: 'text-only' });
+      continue;
+    }
+    const target = index.byId.get(row.target_record_id);
+    const source = index.byId.get(row.source_record_id);
+    if (target && (index.byLemma.get(target.lemma) ?? []).length === 1) {
+      addLink(approvedLinks, row.source_sense_id, target.lemma, { kind: 'id', targetSenseId: row.target_sense_id, why: 'id-forward' });
+    }
+    if (source && (index.byLemma.get(source.lemma) ?? []).length === 1) {
+      addLink(approvedLinks, row.target_sense_id, source.lemma, { kind: 'id', targetSenseId: row.source_sense_id, why: 'id-reverse' });
+    }
+  }
   const errors = [];
   const claimed = new Map();
-  const claim = (senseId, text, how, at) => {
+  const canShareCandidate = (left, right) => left.kind === 'id' && right.kind === 'id' && left.targetSenseId !== right.targetSenseId;
+  const claim = (senseId, text, how, link, at) => {
     const key = `${senseId}\u0000${text}`;
-    if (claimed.has(key)) errors.push(`${at}: candidate ${JSON.stringify(text)} of ${senseId} is already ${claimed.get(key)}`);
-    claimed.set(key, how);
+    const priorClaims = claimed.get(key) ?? [];
+    const conflict = priorClaims.find((prior) => !canShareCandidate(prior.link, link));
+    if (conflict) errors.push(`${at}: candidate ${JSON.stringify(text)} of ${senseId} is already ${conflict.how}`);
+    claimed.set(key, [...priorClaims, { how, link }]);
     const entry = merged.get(senseId);
     if (!entry || !entry.candidates.has(text)) errors.push(`${at}: ${JSON.stringify(text)} is not a Stage 1 candidate of ${senseId}`);
   };
   relationRows.forEach((row, position) => {
     const at = `relation:${position + 1}`;
-    if ('text' in row) claim(row.source_sense_id, row.text, 'a text-only relation', at);
+    if ('text' in row) claim(row.source_sense_id, row.text, 'a text-only relation', { kind: 'text' }, at);
     else {
       const lemma = index.byId.get(row.target_record_id)?.lemma;
       if (lemma === undefined) return;
-      claim(row.source_sense_id, lemma, 'an ID relation', at);
+      claim(row.source_sense_id, lemma, 'an ID relation', { kind: 'id', targetSenseId: row.target_sense_id }, at);
     }
   });
-  dropRows.forEach((row, position) => claim(row.source_sense_id, row.candidate, 'a drop', `drop:${position + 1}`));
+  dropRows.forEach((row, position) => claim(row.source_sense_id, row.candidate, 'a drop', { kind: 'drop' }, `drop:${position + 1}`));
   // A Drop says the candidate is unrelated to the source meaning; the source's own gloss naming it is direct counter-evidence.
   const glossOf = new Map(scopeRows.flatMap((record) => record.senses.map((sense) => [sense.id, sense.gloss])));
   dropRows.forEach((row, position) => {
@@ -290,7 +313,7 @@ export function verifyAccounting({ canonicalRows, candidateFiles, relationRows: 
     if ('text' in row) continue;
     const source = index.byId.get(row.source_record_id);
     if (source && (index.byLemma.get(source.lemma) ?? []).length === 1) {
-      reverseCovered.set(`${row.target_sense_id}\u0000${normalizeCandidate(source.lemma)}`, row.source_sense_id);
+      addLink(reverseCovered, row.target_sense_id, source.lemma, { kind: 'id', targetSenseId: row.source_sense_id });
     }
   }
 
@@ -301,13 +324,21 @@ export function verifyAccounting({ canonicalRows, candidateFiles, relationRows: 
         if (text === normalizeCandidate(record.lemma)) throw new Error(`${sense.id}: candidate ${JSON.stringify(text)} repeats the source lemma`);
         counts.unique += 1;
         const key = `${sense.id}\u0000${text}`;
-        if (claimed.has(key)) {
-          if (covered.has(key)) errors.push(`${sense.id}: ${JSON.stringify(text)} is already answered by an approved Relation (${covered.get(key)}) and must not be re-authored`);
-          else if (reverseCovered.has(key)) errors.push(`${sense.id}: ${JSON.stringify(text)} is already answered by the reverse of a stored ID pair (${reverseCovered.get(key)}) and cannot also be ${claimed.get(key)}`);
+        const claims = claimed.get(key) ?? [];
+        const approved = approvedLinks.get(key) ?? [];
+        const reverse = reverseCovered.get(key) ?? [];
+        if (claims.length > 0) {
+          const priorApproval = approved.find((link) => claims.some((claim_) => !canShareCandidate(claim_.link, link)));
+          if (priorApproval) errors.push(`${sense.id}: ${JSON.stringify(text)} is already answered by an approved Relation (${priorApproval.why}) and must not be re-authored`);
+          const priorReverse = reverse.find((link) => claims.some((claim_) => !canShareCandidate(claim_.link, link)));
+          if (priorReverse) {
+            const conflictingClaim = claims.find((claim_) => !canShareCandidate(claim_.link, priorReverse));
+            errors.push(`${sense.id}: ${JSON.stringify(text)} is already answered by the reverse of a stored ID pair (${priorReverse.targetSenseId}) and cannot also be ${conflictingClaim.how}`);
+          }
           continue;
         }
-        if (covered.has(key)) { counts.skipped_existing += 1; continue; }
-        if (reverseCovered.has(key)) { counts.reverse_covered += 1; continue; }
+        if (approved.length > 0) { counts.skipped_existing += 1; continue; }
+        if (reverse.length > 0) { counts.reverse_covered += 1; continue; }
         counts.missing += 1;
         errors.push(`${sense.id}: candidate ${JSON.stringify(text)} has no relation, drop or existing approved relation`);
       }

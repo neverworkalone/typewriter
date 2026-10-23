@@ -179,7 +179,7 @@ PR의 Normal 검사는 추가·수정된 `data/relation-candidates/` 파일마�
 - `type`/`reverse_type`: `near|mood|scene|sensory|action|association`. `relevance`/`reverse_relevance`: 정수 1..9. 방향별로 달라도 같아도 된다.
 - ID 링크의 target은 후보 문자열과 철자가 정확히 같은 Canonical record의 실제 sense여야 한다. 동철 이의어는 `same_spelling_records`로 확인해 올바른 record를 고른다. 일치하는 target이 없으면 text-only이며 가짜 ID를 쓰지 않는다.
 - 소유 샤드 = 출발(source) sense가 속한 샤드. 한 쌍(A↔B)은 한 행에만 저장하며, 다른 샤드에 이미 같은 쌍(정·역 모두)이나 같은 text-only가 있으면 거부한다. 빌드는 ID 행마다 방향별 2개 탐색 행을 만든다(빌드 구현은 별도 PR).
-- 모든 고유 후보는 **신규 관계 / Drop / 정확한 중복 병합 / 기존 승인 관계 제외** 중 정확히 하나로 귀속되어야 한다.
+- 모든 고유 후보는 **신규 관계 / Drop / 정확한 중복 병합 / 기존 승인 관계 제외**로 설명되어야 한다. 같은 후보 표기에 ID 관계가 여러 개 있으면 실제 target sense가 서로 다를 때 허용하며, 동일 source/target sense 쌍은 한 번만 저장한다. 같은 후보에 대한 text-only 관계나 Drop은 다른 처리와 중복할 수 없다.
 - Drop은 출발 의미와 명백히 무관한 후보에만 쓴다. 출발 sense의 뜻풀이가 그 후보를 직접 언급하면 Drop할 수 없으며(`verify`가 거부), 같은 sense의 승인 peer와 모순되는 Drop도 금지다. 약한 연상은 낮은 Tier의 관계로 보존한다.
 
 **도구** (`pnpm run relation:admission -- <command>`, 샤드 번호만 바꿔 재사용):
