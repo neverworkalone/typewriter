@@ -190,6 +190,9 @@ test('accounting treats complete gloss words as mentions, not substrings inside 
   assert.throws(() => verifyDrop('가로에 사는 민족.', '가로'), /named by the gloss/, 'a candidate followed by a grammatical particle is a complete gloss word');
   assert.equal(verifyDrop('소년이 나타났다.', '소').drop, 1, 'a year unit is not stripped from inside a different word');
   assert.throws(() => verifyDrop('1971년에 서울이 내려다보인다.', '1971'), /named by the gloss/, 'a numeric year followed by a particle is a complete gloss mention');
+  assert.throws(() => verifyDrop('좌표를 구성하는 수들 가운데에서 가로 방향으로 어떤 점의 위치를 지시하는 좌표.', '수'), /named by the gloss/, 'the current shard-002 gloss names 수 in its plural form 수들');
+  assert.throws(() => verifyDrop('창고나 부두 따위에서, 인부들이 쌀가마니 따위의 무거운 짐을 갈고리로 찍어 당겨서 어깨에 메고 나르는 일. 또는 그 짐.', '인부'), /named by the gloss/, 'the current shard-002 gloss names 인부 in its plural form 인부들이');
+  assert.equal(verifyDrop('들판과 떡갈나무가 보인다.', '들').drop, 1, 'a plural marker inside a different compound is not a gloss mention');
   assert.equal(verifyDrop('가로에 사는 민족.', '가로수').drop, 1, 'a longer candidate is not a mention of its prefix');
   assert.throws(() => verifyDrop('떡갈나무에 잎이 넓다.', '떡갈나무'), /named by the gloss/, 'a complete candidate phrase remains protected from Drop');
 });

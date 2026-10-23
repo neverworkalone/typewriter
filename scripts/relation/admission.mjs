@@ -271,7 +271,7 @@ const GLOSS_GRAMMATICAL_SUFFIXES = [
   '으로부터', '에서부터', '에게서', '한테서', '은커녕', '는커녕', '이라도', '이든지', '으로', '에서',
   '에게', '한테', '께서', '까지', '부터', '보다', '처럼', '만큼', '조차', '마저', '밖에', '마다', '든지',
   '이라', '이랑', '이며', '이고', '이라서', '인데', '이면', '이라면', '으로는', '에서는', '에게는',
-  '은', '는', '이', '가', '을', '를', '의', '에', '와', '과', '도', '만', '로', '나', '야', '요', '든',
+  '은', '는', '이', '가', '을', '를', '의', '에', '와', '과', '도', '만', '로', '나', '야', '요', '든', '들',
 ].sort((left, right) => right.length - left.length);
 
 const GLOSS_NUMERIC_UNITS = [
@@ -293,8 +293,9 @@ function endsAtGlossWordBoundary(text, { allowNumericUnit = false, depth = 0 } =
 /**
  * A gloss names a candidate only when the occurrence has lexical boundaries. Plain substring matching mistakes a
  * short word inside a different compound (for example, `떡` inside `떡갈나무`) for a direct mention. A candidate may
- * still be named with an attached Korean particle or a numeric unit (`가로에`, `1971년에`). Recognize grammatical
- * suffixes at a word boundary, and numeric units only after a numeric candidate, so `소` inside `소년` is not a match.
+ * still be named with an attached Korean particle/plural marker or a numeric unit (`가로에`, `수들`, `1971년에`).
+ * Recognize grammatical suffixes at a word boundary, and numeric units only after a numeric candidate, so `소` inside
+ * `소년` is not a match.
  */
 function glossNamesCandidate(gloss, candidate) {
   const normalizedGloss = normalizeCandidate(gloss);

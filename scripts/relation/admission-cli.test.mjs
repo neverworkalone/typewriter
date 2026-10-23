@@ -168,3 +168,36 @@ test('a reverse candidate cannot also be a Drop or a text-only row, but may targ
   // A candidate the source gloss itself names is evidence of relevance, so it cannot be dropped as unrelated.
   await assert.rejects(() => verify([idRow, other], [dropOf('무관 말')]), /named by the gloss of w1-s1 and cannot be dropped/);
 });
+
+test('verify CLI rejects direct plural mentions in current shard-002 glosses but allows compound substrings', async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), 'typewriter-admission-plural-gloss-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const records = [
+    { id: 'w828', lemma: '가로 자리표', senses: [{ id: 'w828-s1', pos: 'expression', gloss: '좌표를 구성하는 수들 가운데에서 가로 방향으로 어떤 점의 위치를 지시하는 좌표.' }] },
+    { id: 'w933', lemma: '가대기', senses: [{ id: 'w933-s1', pos: 'noun', gloss: '창고나 부두 따위에서, 인부들이 쌀가마니 따위의 무거운 짐을 갈고리로 찍어 당겨서 어깨에 메고 나르는 일. 또는 그 짐.' }] },
+    { id: 'w999', lemma: '나무', senses: [{ id: 'w999-s1', pos: 'noun', gloss: '들판과 떡갈나무가 보인다.' }] },
+  ];
+  for (const dir of ['data/canonical', 'data/relation-candidates/001', 'data/relation-drops']) {
+    await mkdir(path.join(root, dir), { recursive: true });
+  }
+  await writeFile(path.join(root, 'data/canonical/stdict-0001.jsonl'), jsonl(records));
+  await writeFile(path.join(root, 'data/relation-candidates/001/001_01_a_codex.jsonl'), jsonl([
+    { record_id: 'w828', senses: [{ sense_id: 'w828-s1', candidates: ['수'] }] },
+    { record_id: 'w933', senses: [{ sense_id: 'w933-s1', candidates: ['인부'] }] },
+    { record_id: 'w999', senses: [{ sense_id: 'w999-s1', candidates: ['들', '떡'] }] },
+  ]));
+  await writeFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), jsonl([
+    { source_record_id: 'w828', source_sense_id: 'w828-s1', candidate: '수', reason: '무관' },
+    { source_record_id: 'w933', source_sense_id: 'w933-s1', candidate: '인부', reason: '무관' },
+    { source_record_id: 'w999', source_sense_id: 'w999-s1', candidate: '들', reason: '무관' },
+    { source_record_id: 'w999', source_sense_id: 'w999-s1', candidate: '떡', reason: '무관' },
+  ]));
+
+  await assert.rejects(() => quiet(() => run(['verify', '--shard', '001', '--allow-partial'], { root })), (error) => {
+    assert.match(error.message, /"수" is named by the gloss of w828-s1/);
+    assert.match(error.message, /"인부" is named by the gloss of w933-s1/);
+    assert.doesNotMatch(error.message, /"들" is named by the gloss of w999-s1/);
+    assert.doesNotMatch(error.message, /"떡" is named by the gloss of w999-s1/);
+    return true;
+  });
+});
