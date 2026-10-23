@@ -1,8 +1,8 @@
-"""Issue #1376 (mediator decision on #1381): Codex runs under the operator's local CLI policy.
+"""Codex runs with War Room's pinned worktree permission profile and operator-defined rules.
 
-War Room pins the model and effort on every launch and verifies the thread id and the recorded model and effort.
-It never adds sandbox, approval, network or writable-root options, and a command the local policy refuses stops
-the run in PAUSED.
+War Room pins model, effort, and the worktree permission selection on every launch, while the
+profile's filesystem/network rules and approval policy still come from the operator's CLI config.
+A command the resulting policy refuses stops the run in PAUSED.
 """
 import json
 import os
@@ -22,7 +22,7 @@ QUOTA = DEFAULTS["quota_patterns"]
 PIN = RunSpec("gpt-6-luna", "xhigh")
 THREAD = "01a15e50-8832-7502-9680-0e4fdbf5fcb0"
 HEAD1 = "a" * 40
-# Options War Room never passes: the local CLI policy decides sandbox and approval, and bypass flags are never used.
+# Options War Room never passes: approval and legacy sandbox remain local, and bypass flags are never used.
 NEVER_PASSED = ("--dangerously-bypass-approvals-and-sandbox", "--dangerously-bypass-hook-trust", "--yolo",
                 "--full-auto", "--worktree", "--last", "--all", "--ignore-user-config", "--ignore-rules",
                 "sandbox_mode", "approval_policy", "sandbox_workspace_write", "writable_roots", "danger-full-access")
@@ -72,7 +72,7 @@ class Recording(CodexCLIAdapter):
 
 
 class Argv(unittest.TestCase):
-    def test_start_and_resume_pin_only_model_and_effort(self):
+    def test_start_and_resume_pin_model_effort_and_worktree_permissions(self):
         with tempfile.TemporaryDirectory() as d:
             d = Path(d)
             a = Recording("codex")
@@ -83,9 +83,11 @@ class Argv(unittest.TestCase):
         self.assertEqual(start[1], "exec")
         self.assertEqual(start[start.index("-m") + 1], "gpt-6-luna")
         self.assertIn("model_reasoning_effort=xhigh", start)
+        self.assertEqual(start.count("default_permissions=worktree"), 1)
         self.assertEqual(start[-1], "prompt body")
         self.assertEqual(resume[1:4], ["exec", "resume", THREAD])
         self.assertIn("model_reasoning_effort=xhigh", resume)
+        self.assertEqual(resume.count("default_permissions=worktree"), 1)
         self.assertEqual(resume[-1], "again")
         for argv in (start, resume):
             joined = " ".join(argv)
