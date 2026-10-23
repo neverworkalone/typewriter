@@ -201,3 +201,44 @@ test('verify CLI rejects direct plural mentions in current shard-002 glosses but
     return true;
   });
 });
+
+test('verify and prepare resolve Canonical orthographic search forms without closing partially linked targets', async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), 'typewriter-admission-search-form-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const records = [
+    { id: 'w1', lemma: '가감 저항기', search_forms: ['가감 저항기', '가감저항기'], senses: [{ id: 'w1-s1', pos: 'expression', gloss: '저항값을 변화하게 한다. 미끄럼 저항기가 있다.' }] },
+    { id: 'w2', lemma: '미끄럼 저항기', search_forms: ['미끄럼 저항기', '미끄럼저항기'], senses: [
+      { id: 'w2-s1', pos: 'expression', gloss: '저항을 조절하는 기기.' },
+      { id: 'w2-s2', pos: 'expression', gloss: '별도 sense.' },
+    ] },
+  ];
+  for (const dir of ['data/canonical', 'data/relation-candidates/001', 'data/relations', 'data/relation-drops']) {
+    await mkdir(path.join(root, dir), { recursive: true });
+  }
+  await writeFile(path.join(root, 'data/canonical/stdict-0001.jsonl'), jsonl(records));
+  await writeFile(path.join(root, 'data/relation-candidates/001/001_01_a_codex.jsonl'), jsonl([
+    { record_id: 'w1', senses: [{ sense_id: 'w1-s1', candidates: ['미끄럼저항기'] }] },
+    { record_id: 'w2', senses: [{ sense_id: 'w2-s1', candidates: [] }, { sense_id: 'w2-s2', candidates: [] }] },
+  ]));
+  const link = (targetSense) => ({
+    source_record_id: 'w1', source_sense_id: 'w1-s1', target_record_id: 'w2', target_sense_id: targetSense,
+    type: 'near', relevance: 3, reverse_type: 'near', reverse_relevance: 3,
+  });
+  const args = (command) => [command, '--shard', '001', '--allow-partial'];
+  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), jsonl([link('w2-s1')]));
+
+  const partiallyLinked = await quiet(() => run(args('prepare'), { root }));
+  assert.deepEqual(texts(partiallyLinked), ['미끄럼저항기'], 'the target stays editable until every sense is linked');
+  assert.equal((await quiet(() => run(args('verify'), { root }))).missing, 0, 'the ID relation answers its orthographic alias');
+
+  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), jsonl([link('w2-s1'), link('w2-s2')]));
+  const fullyLinked = await quiet(() => run(args('prepare'), { root }));
+  assert.deepEqual(texts(fullyLinked), [], 'a unique target with all senses linked is existing coverage');
+  assert.equal(fullyLinked.stats.skipped_existing, 1);
+
+  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), '');
+  await writeFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), jsonl([
+    { source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '미끄럼저항기', reason: '출발 의미와 무관' },
+  ]));
+  await assert.rejects(() => quiet(() => run(args('verify'), { root })), /"미끄럼저항기" is named by the gloss of w1-s1 and cannot be dropped as unrelated/);
+});
