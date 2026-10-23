@@ -72,13 +72,14 @@ class Recording(CodexCLIAdapter):
 
 
 class Argv(unittest.TestCase):
-    def test_start_and_resume_pin_model_effort_and_worktree_permissions(self):
+    def test_start_and_resume_pin_model_effort_and_configured_permission_profile(self):
         with tempfile.TemporaryDirectory() as d:
             d = Path(d)
             a = Recording("codex")
-            a.start("prompt body", d, {"GH_CONFIG_DIR": str(d / "gh")}, PIN, "A 009_02", d / "l.log", d / "l.exit")
+            run = RunSpec("gpt-6-luna", "xhigh", "worktree")
+            a.start("prompt body", d, {"GH_CONFIG_DIR": str(d / "gh")}, run, "A 009_02", d / "l.log", d / "l.exit")
             start = a.cmd
-            a.resume(THREAD, "again", d, {}, PIN, d / "l.log", d / "l.exit")
+            a.resume(THREAD, "again", d, {}, run, d / "l.log", d / "l.exit")
             resume = a.cmd
         self.assertEqual(start[1], "exec")
         self.assertEqual(start[start.index("-m") + 1], "gpt-6-luna")
@@ -93,6 +94,19 @@ class Argv(unittest.TestCase):
             joined = " ".join(argv)
             for bad in NEVER_PASSED:
                 self.assertNotIn(bad, joined)
+
+    def test_permission_profile_is_exactly_the_configured_name_or_absent(self):
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            for profile, want in [("worktree", ["default_permissions=worktree"]), ("other-1", ["default_permissions=other-1"]),
+                                  ("", [])]:
+                with self.subTest(profile=profile):
+                    a = Recording("codex")
+                    run = RunSpec("gpt-6-luna", "xhigh", profile)
+                    for call in (lambda: a.start("p", d, {}, run, "t", d / "l.log", d / "l.exit"),
+                                 lambda: a.resume(THREAD, "p", d, {}, run, d / "l.log", d / "l.exit")):
+                        call()
+                        self.assertEqual([x for x in a.cmd if x.startswith("default_permissions=")], want)
 
     def test_unpinned_run_is_refused_before_any_process(self):
         a = Recording("codex")

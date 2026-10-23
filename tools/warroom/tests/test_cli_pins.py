@@ -103,6 +103,20 @@ class RegistryValidation(unittest.TestCase):
         self.assertEqual(reg["deepseek"]["effort"], "high")
         self.assertEqual(registry_problems(DEFAULTS), {})
 
+    def test_permission_profile_table(self):
+        cases = [("codex", "worktree", None), ("codex", "", None), ("codex", "a_b-1", None),
+                 ("codex", "-c", "형식"), ("codex", "a b", "형식"), ("codex", "a=b", "형식"), ("codex", "a/b", "형식"),
+                 ("claude", "worktree", "Codex"), ("opencode", "worktree", "Codex")]
+        for adapter, profile, want in cases:
+            with self.subTest(adapter=adapter, profile=profile):
+                base = {"claude": SONNET, "codex": LUNA, "opencode": DEEPSEEK}[adapter]
+                cfg = cfg_with({"m": {**base, "permission_profile": profile}})
+                problem = registry_problems(cfg).get("m")
+                self.assertTrue(problem is None if want is None else want in problem, problem)
+        self.assertEqual(run_spec(cfg_with({"m": {**LUNA, "permission_profile": "worktree"}}), "m"),
+                         RunSpec("gpt-6-luna", "xhigh", "worktree"))
+        self.assertEqual(run_spec(cfg_with({"m": LUNA}), "m").permission_profile, "")
+
     def test_effort_problem_table(self):
         for adapter, effort, ok in [("claude", "medium", True), ("claude", "", False), ("claude", "none", False),
                                     ("codex", "xhigh", True), ("codex", "minimal", False),
