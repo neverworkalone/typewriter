@@ -125,7 +125,9 @@ function canonicalOrthographicForms(record) {
 
 function canonicalRecordsForOrthographicForm(index, form) {
   const normalized = normalizeCandidate(form);
-  return index.byOrthographicForm?.get(normalized) ?? index.byLemma.get(normalized) ?? [];
+  // An exact Canonical lemma owns its spelling. Do not make that target ambiguous merely because
+  // another record lists the same spelling as an orthographic search form.
+  return index.byNormalizedLemma?.get(normalized) ?? index.byOrthographicForm?.get(normalized) ?? index.byLemma.get(normalized) ?? [];
 }
 
 function uniquelyIdentifyingOrthographicForms(record, index) {
@@ -139,18 +141,21 @@ function uniquelyIdentifyingOrthographicForms(record, index) {
 export function buildCanonicalIndex(rows) {
   const byId = new Map();
   const byLemma = new Map();
+  const byNormalizedLemma = new Map();
   const byOrthographicForm = new Map();
   const senses = new Map();
   for (const row of rows) {
     byId.set(row.id, row);
     byLemma.set(row.lemma, [...(byLemma.get(row.lemma) ?? []), row]);
+    const normalizedLemma = normalizeCandidate(row.lemma);
+    byNormalizedLemma.set(normalizedLemma, [...(byNormalizedLemma.get(normalizedLemma) ?? []), row]);
     for (const form of canonicalOrthographicForms(row)) {
       const matches = byOrthographicForm.get(form) ?? [];
       if (!matches.some((match) => match.id === row.id)) byOrthographicForm.set(form, [...matches, row]);
     }
     for (const sense of row.senses) senses.set(sense.id, { record: row, sense });
   }
-  return { byId, byLemma, byOrthographicForm, senses };
+  return { byId, byLemma, byNormalizedLemma, byOrthographicForm, senses };
 }
 
 /**
@@ -385,7 +390,7 @@ export function verifyAccounting({ canonicalRows, candidateFiles, relationRows: 
       const target = index.byId.get(row.target_record_id);
       if (!target) return;
       const sourceCandidates = merged.get(row.source_sense_id)?.candidates;
-      const matchingForms = canonicalOrthographicForms(target).filter((form) => sourceCandidates?.has(form));
+      const matchingForms = uniquelyIdentifyingOrthographicForms(target, index).filter((form) => sourceCandidates?.has(form));
       const formsToClaim = matchingForms.length > 0 ? matchingForms : [normalizeCandidate(target.lemma)];
       for (const form of formsToClaim) claim(row.source_sense_id, form, 'an ID relation', { kind: 'id', targetSenseId: row.target_sense_id }, at);
     }
