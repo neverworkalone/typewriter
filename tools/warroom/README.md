@@ -190,3 +190,13 @@ PYTHONPATH=. .local/venv/bin/python -m unittest discover -s tests -t .
 CI runs it as a Deep+affected check (`tools/warroom/run-tests.mjs`, paths `tools/warroom`, `war`).
 Core tests use only the standard library (the TUI smoke test is skipped without Textual).
 They fake GitHub/OpenCode/git and also exercise real `git worktree` and a real detached process.
+
+## PR HEAD 지연과 머지된 오류 배치 회복 (#1515)
+
+- FIXING 완료 시 로컬 HEAD ≠ PR API `head.sha`이면 원격 브랜치 ref(`git ls-remote`)를 따로 확인한다. 원격이 로컬 HEAD와
+  같고 PR API만 뒤처졌다면 ERROR가 아니라 `poll_seconds` 간격으로 재조회하며 대기한다(AI 재실행 없음,
+  `pr_head_lag_timeout_seconds` 초과 시 사유를 밝혀 ERROR로 보존, Retry는 재검증만 한다). 원격에 없음 / 원격 SHA 불일치 /
+  다른 브랜치 PR / 조회 실패는 각각 별도 사유로 즉시 보존한다.
+- ERROR/PAUSED 배치의 PR이 나중에 `merged=true`가 되면 `poll_seconds`(최소 60초) 주기로 감지해 AI 없이
+  MERGED → CLEANUP → COMPLETE로 복구한다. 정리는 기존 `remove_owned()` 게이트(clean, HEAD 일치 또는 fast-forward)를
+  그대로 통과해야 하며, 정리 차단으로 멈춘 배치는 자동 재시도하지 않는다.

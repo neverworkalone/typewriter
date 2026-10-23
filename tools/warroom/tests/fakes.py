@@ -87,6 +87,7 @@ class FakeGit:
         self.created, self.removed = [], []
         self.dirty_text, self.local_head, self.block = "", HEAD1, None
         self.reg: dict[str, str] = {}
+        self.remote: dict[str, str | Exception | None] = {}   # branch -> origin SHA, None (absent) or an error to raise
 
     def fetch_base(self, base):
         return "m" * 40
@@ -104,6 +105,12 @@ class FakeGit:
 
     def head(self, path):
         return self.local_head
+
+    def remote_head(self, branch):
+        v = self.remote.get(branch)
+        if isinstance(v, Exception):
+            raise v
+        return v
 
     def remove_owned(self, path, branch, pr_head):
         if self.block:
@@ -168,9 +175,9 @@ class World:
         self.runner.ok_auth(self.cfg["expected_account"])
         self.runner.set_batches(canon={1: 1000}, done={})
 
-    def pr_info(self, n=7, head=HEAD1, state="open", merged=False):
+    def pr_info(self, n=7, head=HEAD1, state="open", merged=False, head_ref="x"):
         self.gh.prs[n] = {"number": n, "state": state, "merged": merged, "head_sha": head,
-                          "head_ref": "x", "url": ""}
+                          "head_ref": head_ref, "url": ""}
 
     def tick(self, n=1):
         for _ in range(n):

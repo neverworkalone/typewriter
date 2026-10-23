@@ -49,6 +49,15 @@ class Git:
     def head(self, path: Path) -> str:
         return self._git("rev-parse", "HEAD", cwd=path).out.strip()
 
+    def remote_head(self, branch: str) -> str | None:
+        """Actual SHA of origin's `branch` (None: no such remote branch); raises GitError if it cannot be queried."""
+        res = self._git("ls-remote", "--heads", "origin", f"refs/heads/{branch}")
+        for line in res.out.splitlines():
+            sha, _, ref = line.partition("\t")
+            if ref.strip() == f"refs/heads/{branch}":
+                return sha.strip()
+        return None
+
     def ignore_scratch(self) -> None:
         """Keep SCRATCH_DIR out of `git status` in every worktree (shared info/exclude); idempotent."""
         exclude = Path(self._git("rev-parse", "--path-format=absolute", "--git-path", "info/exclude").out.strip())

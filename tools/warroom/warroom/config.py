@@ -34,6 +34,7 @@ DEFAULTS = {
     ],
     "trusted_reviewers": ["genonfire"],
     "poll_seconds": 300,
+    "pr_head_lag_timeout_seconds": 1800,
     "rate_limit_retries": 3,
     "rate_limit_backoff_seconds": 120,
 }
@@ -197,7 +198,7 @@ def config_problem(cfg: dict) -> str | None:
     patterns in failure classification, ...): a wrongly typed one would raise inside a tick, not at load time.
     """
     bad = []
-    for key in ("poll_seconds", "rate_limit_backoff_seconds"):
+    for key in ("poll_seconds", "rate_limit_backoff_seconds", "pr_head_lag_timeout_seconds"):
         if not _number(cfg.get(key)) or cfg[key] < 0:
             bad.append(f"{key}는 0 이상의 숫자여야 합니다")
     r = cfg.get("rate_limit_retries")
