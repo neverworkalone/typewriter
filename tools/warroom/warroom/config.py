@@ -138,8 +138,6 @@ def _producer_problem(pid: str, p: dict) -> str | None:
         if not _MODEL_ID.match(p["model"]):
             return f"모델 ID {p['model']!r}는 허용되지 않는 형식입니다 (플래그처럼 보이거나 공백이 있음)."
     profile = p["permission_profile"]
-    if p["adapter"] == "codex" and not profile:
-        return "권한 프로필(permission_profile)이 설정되지 않았습니다 — CLI 기본 권한에 맡기지 않고 명시해야 합니다."
     if profile and p["adapter"] != "codex":
         return f"permission_profile은 Codex 모델에만 지정할 수 있습니다 (adapter: {p['adapter']})."
     if profile and not _PROFILE_ID.match(profile):

@@ -19,7 +19,7 @@ from warroom.config import DEFAULTS
 from warroom.shell import Result
 
 QUOTA = DEFAULTS["quota_patterns"]
-PIN = RunSpec("gpt-6-luna", "xhigh", "worktree")
+PIN = RunSpec("gpt-6-luna", "xhigh")
 THREAD = "01a15e50-8832-7502-9680-0e4fdbf5fcb0"
 HEAD1 = "a" * 40
 # Options War Room never passes: approval and legacy sandbox remain local, and bypass flags are never used.
@@ -95,10 +95,11 @@ class Argv(unittest.TestCase):
             for bad in NEVER_PASSED:
                 self.assertNotIn(bad, joined)
 
-    def test_permission_profile_is_exactly_the_configured_name(self):
+    def test_permission_profile_is_exactly_the_configured_name_or_absent(self):
         with tempfile.TemporaryDirectory() as d:
             d = Path(d)
-            for profile, want in [("worktree", ["default_permissions=worktree"]), ("other-1", ["default_permissions=other-1"])]:
+            for profile, want in [("worktree", ["default_permissions=worktree"]), ("other-1", ["default_permissions=other-1"]),
+                                  ("", [])]:
                 with self.subTest(profile=profile):
                     a = Recording("codex")
                     run = RunSpec("gpt-6-luna", "xhigh", profile)
@@ -109,8 +110,7 @@ class Argv(unittest.TestCase):
 
     def test_unpinned_run_is_refused_before_any_process(self):
         a = Recording("codex")
-        for run in [RunSpec("", "xhigh", "worktree"), RunSpec("gpt-6-luna", "", "worktree"),
-                    RunSpec("gpt-6-luna", "xhigh", "")]:
+        for run in [RunSpec("", "xhigh"), RunSpec("gpt-6-luna", "")]:
             with self.subTest(run=run), self.assertRaises(ValueError):
                 a.start("p", ".", {}, run, "t", "l.log", "l.exit")
         self.assertFalse(hasattr(a, "cmd"))
@@ -315,7 +315,7 @@ class SupervisorStopsOnRecordedDrift(unittest.TestCase):
 
     def world(self):
         w = World()
-        w.cfg["producers"] = {"codex": {"label": "Luna", "adapter": "codex", "model": "gpt-6-luna", "effort": "xhigh", "permission_profile": "worktree"}}
+        w.cfg["producers"] = {"codex": {"label": "Luna", "adapter": "codex", "model": "gpt-6-luna", "effort": "xhigh"}}
         w.adapter = self.Reporting()
         w.sup.adapter = w.adapter
         return w
@@ -460,7 +460,7 @@ class PrIntake(unittest.TestCase):
 
     def world(self):
         w = World()
-        w.cfg["producers"] = {"codex": {"label": "Luna", "adapter": "codex", "model": "gpt-6-luna", "effort": "xhigh", "permission_profile": "worktree"}}
+        w.cfg["producers"] = {"codex": {"label": "Luna", "adapter": "codex", "model": "gpt-6-luna", "effort": "xhigh"}}
         w.adapter = self.Reporting()
         w.sup.adapter = w.adapter
         w.pr_info(7, HEAD1)

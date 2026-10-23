@@ -83,7 +83,7 @@ class ReloadTable(unittest.TestCase):
                 self.assertIn(key, reload_problem(base, {**base, key: "changed"}, set()))
         self.assertIsNone(reload_problem(base, {**base, "poll_seconds": 1}, {"deepseek"}))
         c = {**base, "producers": {"c": SONNET}}
-        swapped = {**base, "producers": {"c": {**SONNET, "adapter": "codex", "effort": "high", "permission_profile": "worktree"}}}
+        swapped = {**base, "producers": {"c": {**SONNET, "adapter": "codex", "effort": "high"}}}
         self.assertIn("adapter", reload_problem(c, swapped, {"c"}))
         self.assertIsNone(reload_problem(c, swapped, set()))   # idle producer: adapter may change
 

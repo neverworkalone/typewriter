@@ -152,13 +152,12 @@ Rules (fail closed):
 - Codex runs under the operator's **local CLI policy** (`~/.codex/config.toml`, approval and execpolicy rules, project
   settings). The permission profile is configured per producer with `permission_profile` in `config.json`, like
   `model` and `effort`: `"permission_profile": "worktree"` passes `-c default_permissions=worktree` on every start and
-  resume. It is **required** for every Codex producer: a missing or empty value blocks the producer before any
-  process starts (never the CLI's effective default). The name must be a plain profile name (`[A-Za-z0-9_-]`) and
-  is accepted only for Codex producers. The profile's rules live in the operator's own
+  resume. Without it nothing is passed and the CLI default applies. The name must be a plain profile name
+  (`[A-Za-z0-9_-]`) and is accepted only for Codex producers. The profile's rules live in the operator's own
   `[permissions.<name>]` table; War Room never defines them. War Room adds no legacy sandbox, approval, network or
   writable-root options and never uses `--ignore-user-config`, `--ignore-rules`, `--full-auto` or bypass flags.
-- Every run pins the model, reasoning effort and permission profile:
-  `codex exec --json -m <model> -c model_reasoning_effort=<effort> -c default_permissions=<profile> <prompt>`.
+- Every run pins the model, reasoning effort and (when configured) permission profile:
+  `codex exec --json -m <model> -c model_reasoning_effort=<effort> [-c default_permissions=<profile>] <prompt>`.
   Resume is `codex exec resume <thread id>` with the same pins. `--worktree`, `--last` and `--all` are never used.
 - Each run records its permission profile next to model and effort. A relaunch (resume, recovery, fix) whose configured
   profile differs from the batch's last recorded run, including adding or removing one, stops in ERROR before any CLI
