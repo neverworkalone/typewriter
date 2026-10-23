@@ -159,6 +159,9 @@ Rules (fail closed):
 - Every run pins the model, reasoning effort and (when configured) permission profile:
   `codex exec --json -m <model> -c model_reasoning_effort=<effort> [-c default_permissions=<profile>] <prompt>`.
   Resume is `codex exec resume <thread id>` with the same pins. `--worktree`, `--last` and `--all` are never used.
+- Each run records its permission profile next to model and effort. A relaunch (resume, recovery, fix) whose configured
+  profile differs from the batch's last recorded run, including adding or removing one, stops in ERROR before any CLI
+  starts; runs recorded before profiles were tracked are not compared.
 - Legacy `sandbox_mode` in any active config layer takes precedence over permission profiles. Do not combine
   `sandbox_mode` / `sandbox_workspace_write` with a configured `permission_profile`.
 - Checked, not assumed: the `thread.started` thread id must equal the requested session, and the model and effort in

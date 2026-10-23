@@ -287,7 +287,7 @@ class Supervisor:
     def _recorded_run(self, b) -> RunSpec | None:
         """The model and effort the batch's current run was launched with (the store is the source of truth)."""
         r = next((r for r in self.store.runs(b["id"]) if r["model"]), None)
-        return RunSpec(r["model"], r["effort"]) if r else None
+        return RunSpec(r["model"], r["effort"], r["permission_profile"] or "") if r else None
 
     @staticmethod
     def _pin_drift(b, run: RunSpec, tiered: bool, runs, tier_models=None) -> str | None:
@@ -304,9 +304,14 @@ class Supervisor:
         if tiered and tier_models:
             free, go = tier_models
             free_to_go = bool(free and go) and prev["model"] == free and run.model == go
-        if prev["effort"] != run.effort or (not same_model and not (tiered and free_to_go)):
-            return (f"실행 설정 변경 차단: 기록된 실행 설정 {prev['model']} / {prev['effort']} 과 현재 설정 "
-                    f"{run.model} / {run.effort} 이 다릅니다. 설정을 되돌리고 Board에서 r(설정 리로드) 후 Retry 하세요.")
+        # NULL = recorded before profiles were tracked: nothing to compare. '' = recorded with no profile.
+        prev_profile = prev["permission_profile"]
+        profile_drift = prev_profile is not None and prev_profile != run.permission_profile
+        if prev["effort"] != run.effort or profile_drift or (not same_model and not (tiered and free_to_go)):
+            was = f"{prev['model']} / {prev['effort']}" + (f" / {prev_profile or '(프로필 없음)'}" if prev_profile is not None else "")
+            now = f"{run.model} / {run.effort}" + (f" / {run.permission_profile or '(프로필 없음)'}" if prev_profile is not None else "")
+            return (f"실행 설정 변경 차단: 기록된 실행 설정 {was} 과 현재 설정 "
+                    f"{now} 이 다릅니다. 설정을 되돌리고 Board에서 r(설정 리로드) 후 Retry 하세요.")
         return None
 
     def _launch(self, b, kind: str, events=None) -> None:
@@ -358,7 +363,7 @@ class Supervisor:
             fields["session_id"] = None  # captured from the new run's log
         self.store.update(b["id"], **fields)
         self.store.add_run(b["id"], kind, fields.get("session_id", sid), h.pid, log, ex,
-                           model=run.model, effort=run.effort)
+                           model=run.model, effort=run.effort, permission_profile=run.permission_profile)
         if events:  # claim only after the run really started
             self.store.mark_handled(b["id"], b["pr_number"], b["head_sha"], [e["key"] for e in events])
         tier = f", tier={b['model_tier']}" if self._tiered(b["producer"]) else ""
