@@ -46,6 +46,39 @@ class Git:
         self.ignore_scratch()
         self._git("worktree", "add", "-b", branch, str(path), f"origin/{base}")
 
+    def worktree_gitdir(self, path: Path) -> Path:
+        """Absolute Git admin directory of the War Room-owned linked worktree at `path`, or GitError (fail closed).
+
+        Invariant: the result is exactly `<repo common dir>/worktrees/<entry>` of a worktree War Room created, asked
+        of git itself and confirmed by the entry's back-pointer to `path`; never the repo's `.git`, never a guess.
+        """
+        path = Path(path)
+        try:
+            path.resolve().relative_to(self.worktrees_dir.resolve())
+        except ValueError:
+            raise GitError(f"worktree가 War Room 디렉터리 밖에 있습니다: {path}")
+        if not path.is_dir() or self.registered(path) is None:
+            raise GitError(f"War Room이 등록한 worktree가 아닙니다: {path}")
+        out = self._git("rev-parse", "--absolute-git-dir", cwd=path, check=False)
+        text = out.out.strip()
+        if not out.ok or not text or "\n" in text or any(ord(c) < 32 for c in text):
+            raise GitError(f"worktree의 Git 관리 디렉터리를 조회할 수 없습니다: {path}: {out.err.strip()[:200]}")
+        gitdir = Path(text)
+        common = self._git("rev-parse", "--path-format=absolute", "--git-common-dir", check=False)
+        if not gitdir.is_absolute() or not common.ok or not common.out.strip():
+            raise GitError(f"Git 관리 디렉터리 경로가 절대 경로가 아닙니다: {text}")
+        worktrees = Path(common.out.strip()).resolve() / "worktrees"
+        resolved = gitdir.resolve()
+        if resolved.parent != worktrees or not resolved.is_dir():
+            raise GitError(f"Git 관리 디렉터리가 저장소의 linked worktree 항목이 아닙니다: {text}")
+        try:
+            owner = Path((resolved / "gitdir").read_text("utf-8").strip()).resolve()
+        except OSError as e:
+            raise GitError(f"worktree 항목의 소유 경로를 확인할 수 없습니다: {resolved}: {e}")
+        if owner != (path.resolve() / ".git"):
+            raise GitError(f"Git 관리 디렉터리({resolved})가 이 worktree({path})의 것이 아닙니다.")
+        return resolved
+
     def head(self, path: Path) -> str:
         return self._git("rev-parse", "HEAD", cwd=path).out.strip()
 

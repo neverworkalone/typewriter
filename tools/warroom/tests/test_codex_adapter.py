@@ -20,6 +20,8 @@ from warroom.shell import Result
 
 QUOTA = DEFAULTS["quota_patterns"]
 PIN = RunSpec("gpt-6-luna", "xhigh")
+LAUNCH = RunSpec("gpt-6-luna", "xhigh", "worktree")   # resume can only open the Git dir through a named profile
+GIT_DIR = "/repo with space/.git/worktrees/wt 1"
 THREAD = "01a15e50-8832-7502-9680-0e4fdbf5fcb0"
 HEAD1 = "a" * 40
 # Options War Room never passes: approval and legacy sandbox remain local, and bypass flags are never used.
@@ -77,9 +79,9 @@ class Argv(unittest.TestCase):
             d = Path(d)
             a = Recording("codex")
             run = RunSpec("gpt-6-luna", "xhigh", "worktree")
-            a.start("prompt body", d, {"GH_CONFIG_DIR": str(d / "gh")}, run, "A 009_02", d / "l.log", d / "l.exit")
+            a.start("prompt body", d, {"GH_CONFIG_DIR": str(d / "gh")}, run, "A 009_02", d / "l.log", d / "l.exit", git_dir=GIT_DIR)
             start = a.cmd
-            a.resume(THREAD, "again", d, {}, run, d / "l.log", d / "l.exit")
+            a.resume(THREAD, "again", d, {}, run, d / "l.log", d / "l.exit", git_dir=GIT_DIR)
             resume = a.cmd
         self.assertEqual(start[1], "exec")
         self.assertEqual(start[start.index("-m") + 1], "gpt-6-luna")
@@ -103,10 +105,54 @@ class Argv(unittest.TestCase):
                 with self.subTest(profile=profile):
                     a = Recording("codex")
                     run = RunSpec("gpt-6-luna", "xhigh", profile)
-                    for call in (lambda: a.start("p", d, {}, run, "t", d / "l.log", d / "l.exit"),
-                                 lambda: a.resume(THREAD, "p", d, {}, run, d / "l.log", d / "l.exit")):
+                    calls = [lambda: a.start("p", d, {}, run, "t", d / "l.log", d / "l.exit", git_dir=GIT_DIR)]
+                    if profile:   # resume opens the Git dir through the named profile, so it needs one
+                        calls.append(lambda: a.resume(THREAD, "p", d, {}, run, d / "l.log", d / "l.exit", git_dir=GIT_DIR))
+                    for call in calls:
                         call()
                         self.assertEqual([x for x in a.cmd if x.startswith("default_permissions=")], want)
+
+    def test_git_dir_is_opened_for_exactly_one_directory_on_start_and_resume(self):
+        """#1543 (argv only, no real sandbox): index.lock lives in the worktree's Git admin dir; open that dir alone."""
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            a = Recording("codex")
+            run = RunSpec("gpt-6-luna", "xhigh", "worktree")
+            a.start("p", d, {}, run, "t", d / "l.log", d / "l.exit", git_dir=GIT_DIR)
+            start = a.cmd
+            a.resume(THREAD, "p", d, {}, run, d / "l.log", d / "l.exit", git_dir=GIT_DIR)
+            resume = a.cmd
+        self.assertEqual(start.count("--add-dir"), 1)
+        self.assertEqual(start[start.index("--add-dir") + 1], GIT_DIR)     # one argv element: spaces stay safe
+        self.assertNotIn("--add-dir", resume)                              # `exec resume` has no such flag
+        grants = [x for x in resume if x.startswith("permissions.")]
+        self.assertEqual(grants, ['permissions.worktree.filesystem={"%s"="write"}' % GIT_DIR])
+        for argv in (start, resume):
+            self.assertEqual(argv[-1], "p")
+            self.assertEqual(argv.count("default_permissions=worktree"), 1)
+            self.assertNotIn("/.git\"", " ".join(argv))                    # never the repository's whole .git
+
+    def test_launch_is_refused_without_a_usable_git_dir_or_profile(self):
+        cases = [
+            ("no git dir", "start", RunSpec("m", "e", "worktree"), None),
+            ("empty git dir", "start", RunSpec("m", "e", "worktree"), ""),
+            ("relative git dir", "start", RunSpec("m", "e", "worktree"), ".git/worktrees/x"),
+            ("newline in git dir", "start", RunSpec("m", "e", "worktree"), "/r/.git/worktrees/x\n/etc"),
+            ("no git dir on resume", "resume", RunSpec("m", "e", "worktree"), None),
+            ("resume without a profile", "resume", RunSpec("m", "e", ""), GIT_DIR),
+            ("resume with a table-breaking profile", "resume", RunSpec("m", "e", 'w.x="y'), GIT_DIR),
+        ]
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            for name, kind, run, git_dir in cases:
+                with self.subTest(name):
+                    a = Recording("codex")
+                    call = (a.start if kind == "start" else lambda *x, **k: a.resume(THREAD, *x, **k))
+                    args = ("p", d, {}, run, "t", d / "l.log", d / "l.exit") if kind == "start" else \
+                        ("p", d, {}, run, d / "l.log", d / "l.exit")
+                    with self.assertRaises(ValueError):
+                        call(*args, git_dir=git_dir)
+                    self.assertFalse(hasattr(a, "cmd"))
 
     def test_unpinned_run_is_refused_before_any_process(self):
         a = Recording("codex")
@@ -117,8 +163,8 @@ class Argv(unittest.TestCase):
 
 
 class Preflight(unittest.TestCase):
-    EXEC = "--json --model -m --config -c "
-    RESUME = "resume --json --model -m "
+    EXEC = "--json --model -m --config -c --add-dir "
+    RESUME = "resume --json --model -m --config -c "
 
     class Fake:
         def __init__(self, exec_help=None, resume_help=None, login="Logged in using ChatGPT", version_ok=True):
@@ -382,6 +428,70 @@ class SupervisorStopsOnRecordedDrift(unittest.TestCase):
 
 
 
+class SupervisorGitDir(unittest.TestCase):
+    """#1543 (fake adapter and git, no real sandbox): every launch kind gets the owned worktree's Git dir, or no AI runs."""
+
+    class Adapter(FakeAdapter):
+        needs_git_dir = True
+
+        def start(self, prompt, cwd, env, run, title, log_file, exit_file, git_dir=None):
+            h = super().start(prompt, cwd, env, run, title, log_file, exit_file)
+            self.launches[-1]["git_dir"] = git_dir
+            return h
+
+        def resume(self, session_id, prompt, cwd, env, run, log_file, exit_file, git_dir=None):
+            h = super().resume(session_id, prompt, cwd, env, run, log_file, exit_file)
+            self.launches[-1]["git_dir"] = git_dir
+            return h
+
+    def world(self):
+        w = World()
+        w.cfg["producers"] = {"codex": {"label": "Luna", "adapter": "codex", "model": "gpt-6-luna", "effort": "xhigh",
+                                        "permission_profile": "worktree"}}
+        w.adapter = self.Adapter()
+        w.sup.adapter = w.adapter
+        return w
+
+    def test_start_and_resume_launches_receive_the_worktree_gitdir(self):
+        w = self.world()
+        try:
+            w.start("single", "codex", "a")
+            w.tick()
+            row = w.row("codex", "a")
+            first = w.adapter.launches[-1]
+            self.assertEqual(first["kind"], "start")
+            self.assertEqual(Path(first["git_dir"]), Path("/repo/.git/worktrees") / Path(row["worktree"]).name)
+            for kind, want in [("produce_resume", "resume"), ("produce_recover", "start")]:
+                with self.subTest(kind):
+                    w.store.update(row["id"], session_id="s-1")
+                    w.sup._launch(w.store.batch(row["id"]), kind)
+                    last = w.adapter.launches[-1]
+                    self.assertEqual(last["kind"], want)
+                    self.assertEqual(Path(last["git_dir"]), Path(first["git_dir"]))
+        finally:
+            w.tmp.cleanup()
+
+    def test_unresolvable_gitdir_starts_no_ai_and_retry_recovers(self):
+        from warroom import control
+        w = self.world()
+        try:
+            w.git.gitdir_error = "not a War Room worktree"
+            w.start("single", "codex", "a")
+            w.tick()
+            row = w.row("codex", "a")
+            self.assertEqual(row["state"], "ERROR")
+            self.assertIn("Git 관리 디렉터리", row["error"])
+            self.assertIn("not a War Room worktree", row["error"])
+            self.assertEqual(w.adapter.launches, [])             # the AI never started
+            self.assertIsNotNone(row["worktree"])                 # worktree and branch are kept
+            w.git.gitdir_error = ""
+            self.assertTrue(control.retry(w.store, "codex", "a"))
+            w.tick(); w.tick()
+            self.assertEqual(len(w.adapter.launches), 1)
+        finally:
+            w.tmp.cleanup()
+
+
 class CompletionGate(unittest.TestCase):
     """#1381 blocker 1: a run that exits 0 is accepted only with its own thread id and its own turn record."""
 
@@ -443,7 +553,7 @@ class CompletionGate(unittest.TestCase):
             home = rollout_home(d / "codex", THREAD, [context(), context()])
             log = d / "r.log"
             with mock.patch.dict(os.environ, {"CODEX_HOME": str(home)}):
-                Spy("codex").resume(THREAD, "again", d, {}, PIN, log, d / "r.exit")
+                Spy("codex").resume(THREAD, "again", d, {}, LAUNCH, log, d / "r.exit", git_dir=GIT_DIR)
             from warroom.adapters import _baseline
             self.assertEqual(_baseline(log), (THREAD, 2))
 
@@ -599,7 +709,7 @@ class LaunchLogIsOwn(unittest.TestCase):
             log.write_text(lines(started(), completed()))               # an earlier run's events at the same path
             home = rollout_home(d / "codex-home", THREAD, [context()])
             with mock.patch.dict(os.environ, {"CODEX_HOME": str(home)}):
-                h = a.resume(THREAD, "p", wt, dict(os.environ), PIN, log, d / "l.exit")
+                h = a.resume(THREAD, "p", wt, dict(os.environ), LAUNCH, log, d / "l.exit", git_dir=GIT_DIR)
                 self.wait(a, h)
                 rollout_home_files = list((home / "sessions").glob("*/*/*/rollout-*.jsonl"))
                 rollout_home_files[0].write_text(lines(
@@ -618,7 +728,7 @@ class LaunchLogIsOwn(unittest.TestCase):
             log = d / "l.log"
             from warroom.adapters import _baseline_path
             _baseline_path(log).write_text(json.dumps({"thread": THREAD, "turns": 5}))
-            h = a.start("p", wt, dict(os.environ), PIN, "t", log, d / "l.exit")
+            h = a.start("p", wt, dict(os.environ), PIN, "t", log, d / "l.exit", git_dir=GIT_DIR)
             self.wait(a, h)
             self.assertFalse(_baseline_path(log).exists())
 
@@ -652,7 +762,7 @@ class RealProcessLaunch(unittest.TestCase):
                             + '"}\'\nexit 0\n')
             fake.chmod(fake.stat().st_mode | stat.S_IEXEC)
             a = CodexCLIAdapter(str(fake))
-            h = a.start("prompt text", wt, dict(os.environ), PIN, "A 009_02", d / "l.log", d / "l.exit")
+            h = a.start("prompt text", wt, dict(os.environ), PIN, "A 009_02", d / "l.log", d / "l.exit", git_dir=GIT_DIR)
             for _ in range(100):
                 if not a.alive(h.pid):
                     break

@@ -38,6 +38,7 @@ class AgentAdapter:
     capabilities: dict = {}
     requires_session_for_pr = False   # True: a PR is taken over from a live run only after the CLI reported its session
     requires_final_result_for_pr = False   # True: a PR is taken over only after the run exited and its result was verified
+    needs_git_dir = False   # True: start/resume also receive `git_dir`, the owned linked worktree's Git admin directory
 
     def start(self, prompt, cwd, env, run: RunSpec, title, log_file, exit_file) -> Handle: ...
     def resume(self, session_id, prompt, cwd, env, run: RunSpec, log_file, exit_file) -> Handle: ...
@@ -418,8 +419,12 @@ class ClaudeCodeAdapter(ProcessAdapter):
 # as they are. War Room pins only the model and the reasoning effort (on every launch, first run and resume alike)
 # and checks what Codex actually did: the thread id, the recorded model and effort. It never overrides sandbox,
 # approval, network or writable roots. A command the local policy denies stops the run in PAUSED, nothing is retried.
-CODEX_REQUIRED_EXEC_FLAGS = ("--json", "--model", "--config")
-CODEX_REQUIRED_RESUME_FLAGS = ("resume", "--json", "--model")
+# The one exception is the run's own linked-worktree Git admin directory (`git_dir`): the sandbox otherwise denies
+# `index.lock` there. It is added for that exact directory only (`--add-dir` on start; `exec resume` has no such flag, so a
+# `-c permissions.<profile>.filesystem` entry for the same directory, merged into the profile). Never the repo's `.git`.
+CODEX_REQUIRED_EXEC_FLAGS = ("--json", "--model", "--config", "--add-dir")
+CODEX_REQUIRED_RESUME_FLAGS = ("resume", "--json", "--model", "--config")
+_PROFILE_NAME = re.compile(r"[A-Za-z0-9_-]+")
 _CODEX_DENIED = re.compile(r"operation not permitted|permission denied|requires approval|approval required|"
                            r"blocked by (the )?(sandbox|policy)|not allowed by (the )?(sandbox|policy)", re.I)
 
@@ -475,6 +480,7 @@ class CodexCLIAdapter(ProcessAdapter):
     capabilities = {"resume": True, "stop": True}
     requires_session_for_pr = True
     requires_final_result_for_pr = True   # a PR is taken over only after the run exited and its final result was checked
+    needs_git_dir = True
 
     def __init__(self, binary: str = "codex"):
         self.binary = binary
@@ -487,13 +493,26 @@ class CodexCLIAdapter(ProcessAdapter):
             pins += ["-c", f"default_permissions={run.permission_profile}"]
         return pins
 
-    def start(self, prompt, cwd, env, run, title, log_file, exit_file):
-        cmd = [self.binary, "exec", *self._pins(_pinned(run)), prompt]
+    @staticmethod
+    def _git_dir(git_dir) -> str:
+        """The absolute Git admin directory to open for writing; a missing or unusable one refuses the launch."""
+        text = str(git_dir) if git_dir else ""
+        if not text or not os.path.isabs(text) or any(ord(c) < 32 for c in text):
+            raise ValueError("worktree의 Git 관리 디렉터리를 알 수 없어 Codex를 시작하지 않았습니다.")
+        return text
+
+    def start(self, prompt, cwd, env, run, title, log_file, exit_file, git_dir=None):
+        cmd = [self.binary, "exec", *self._pins(_pinned(run)), "--add-dir", self._git_dir(git_dir), prompt]
         _baseline_path(log_file).unlink(missing_ok=True)   # a fresh start has no baseline: every turn is its own
         return self._spawn(cmd, cwd, env, log_file, exit_file)
 
-    def resume(self, session_id, prompt, cwd, env, run, log_file, exit_file):
-        cmd = [self.binary, "exec", "resume", session_id, *self._pins(_pinned(run)), prompt]
+    def resume(self, session_id, prompt, cwd, env, run, log_file, exit_file, git_dir=None):
+        run = _pinned(run)
+        if not _PROFILE_NAME.fullmatch(run.permission_profile or ""):
+            raise ValueError("`codex exec resume`에는 --add-dir이 없어 permission_profile 없이는 Git 관리 디렉터리를 "
+                             "열 수 없습니다. producer 설정에 permission_profile을 지정하세요.")
+        grant = f"permissions.{run.permission_profile}.filesystem={{{json.dumps(self._git_dir(git_dir))}=\"write\"}}"
+        cmd = [self.binary, "exec", "resume", session_id, *self._pins(run), "-c", grant, prompt]
         # The turns recorded before this run: only turns after this baseline belong to this run.
         Path(log_file).parent.mkdir(parents=True, exist_ok=True)
         _baseline_path(log_file).write_text(json.dumps({"thread": session_id,
