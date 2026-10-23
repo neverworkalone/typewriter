@@ -267,6 +267,51 @@ export function prepareShard({ canonicalRows, candidateFiles, approvedRelationRo
   return { items, stats };
 }
 
+const GLOSS_GRAMMATICAL_SUFFIXES = [
+  '으로부터', '에서부터', '에게서', '한테서', '은커녕', '는커녕', '이라도', '이든지', '으로', '에서',
+  '에게', '한테', '께서', '까지', '부터', '보다', '처럼', '만큼', '조차', '마저', '밖에', '마다', '든지',
+  '이라', '이랑', '이며', '이고', '이라서', '인데', '이면', '이라면', '으로는', '에서는', '에게는',
+  '은', '는', '이', '가', '을', '를', '의', '에', '와', '과', '도', '만', '로', '나', '야', '요', '든', '들',
+].sort((left, right) => right.length - left.length);
+
+const GLOSS_NUMERIC_UNITS = [
+  '센티미터', '킬로미터', '세기', '단계', '미터', '년', '월', '일', 'cm', 'mm', 'km',
+].sort((left, right) => right.length - left.length);
+
+const isWordCharacter = (character) => Boolean(character) && /[\p{L}\p{N}]/u.test(character);
+
+function endsAtGlossWordBoundary(text, { allowNumericUnit = false, depth = 0 } = {}) {
+  const firstCharacter = Array.from(text)[0] ?? '';
+  if (!isWordCharacter(firstCharacter)) return true;
+  if (depth >= 3) return false;
+  const hasNumericUnit = allowNumericUnit && GLOSS_NUMERIC_UNITS.some((unit) => text.startsWith(unit)
+    && endsAtGlossWordBoundary(text.slice(unit.length), { depth: depth + 1 }));
+  return hasNumericUnit || GLOSS_GRAMMATICAL_SUFFIXES.some((suffix) => text.startsWith(suffix)
+    && endsAtGlossWordBoundary(text.slice(suffix.length), { depth: depth + 1 }));
+}
+
+/**
+ * A gloss names a candidate only when the occurrence has lexical boundaries. Plain substring matching mistakes a
+ * short word inside a different compound (for example, `떡` inside `떡갈나무`) for a direct mention. A candidate may
+ * still be named with an attached Korean particle/plural marker or a numeric unit (`가로에`, `수들`, `1971년에`).
+ * Recognize grammatical suffixes at a word boundary, and numeric units only after a numeric candidate, so `소` inside
+ * `소년` is not a match.
+ */
+function glossNamesCandidate(gloss, candidate) {
+  const normalizedGloss = normalizeCandidate(gloss);
+  const normalizedCandidate = normalizeCandidate(candidate);
+  if (!normalizedCandidate) return false;
+  let offset = normalizedGloss.indexOf(normalizedCandidate);
+  const isNumericCandidate = /^\d+(?:[,.]\d+)*$/u.test(normalizedCandidate);
+  while (offset !== -1) {
+    const before = Array.from(normalizedGloss.slice(0, offset)).at(-1) ?? '';
+    const afterText = normalizedGloss.slice(offset + normalizedCandidate.length);
+    if (!isWordCharacter(before) && endsAtGlossWordBoundary(afterText, { allowNumericUnit: isNumericCandidate })) return true;
+    offset = normalizedGloss.indexOf(normalizedCandidate, offset + 1);
+  }
+  return false;
+}
+
 /**
  * Account for every unique candidate: new Relation, real Drop or existing approved Relation (excluding this shard's own
  * rows, which are the result being checked). Throws on a missing, doubly-assigned or unknown candidate.
@@ -305,7 +350,7 @@ export function verifyAccounting({ canonicalRows, candidateFiles, relationRows: 
   // A Drop says the candidate is unrelated to the source meaning; the source's own gloss naming it is direct counter-evidence.
   const glossOf = new Map(scopeRows.flatMap((record) => record.senses.map((sense) => [sense.id, sense.gloss])));
   dropRows.forEach((row, position) => {
-    if (normalizeCandidate(glossOf.get(row.source_sense_id) ?? '').includes(row.candidate)) errors.push(`drop:${position + 1}: ${JSON.stringify(row.candidate)} is named by the gloss of ${row.source_sense_id} and cannot be dropped as unrelated`);
+    if (glossNamesCandidate(glossOf.get(row.source_sense_id) ?? '', row.candidate)) errors.push(`drop:${position + 1}: ${JSON.stringify(row.candidate)} is named by the gloss of ${row.source_sense_id} and cannot be dropped as unrelated`);
   });
 
   // An ID pair is stored once. When both senses listed each other as a Stage 1 candidate, the stored row's reverse
