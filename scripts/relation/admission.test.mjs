@@ -188,6 +188,8 @@ test('accounting treats complete gloss words as mentions, not substrings inside 
 
   assert.equal(verifyDrop('떡갈나무에 잎이 넓다.', '떡').drop, 1, 'a shared syllable inside a different compound is not a gloss mention');
   assert.throws(() => verifyDrop('가로에 사는 민족.', '가로'), /named by the gloss/, 'a candidate followed by a grammatical particle is a complete gloss word');
+  assert.equal(verifyDrop('소년이 나타났다.', '소').drop, 1, 'a year unit is not stripped from inside a different word');
+  assert.throws(() => verifyDrop('1971년에 서울이 내려다보인다.', '1971'), /named by the gloss/, 'a numeric year followed by a particle is a complete gloss mention');
   assert.equal(verifyDrop('가로에 사는 민족.', '가로수').drop, 1, 'a longer candidate is not a mention of its prefix');
   assert.throws(() => verifyDrop('떡갈나무에 잎이 넓다.', '떡갈나무'), /named by the gloss/, 'a complete candidate phrase remains protected from Drop');
 });
