@@ -197,32 +197,46 @@ export function validateRelationRows({ relationRows, dropRows = [], index, shard
 }
 
 /**
- * Existing approved Relations (other shards, forward and reverse) mapped to the Stage 1 candidate they already
- * answer, as `sourceSenseId\0normalizedCandidate`. An ID relation answers a candidate only when the candidate equals the
- * counterpart lemma AND that lemma identifies a single Canonical record; an ambiguous homograph spelling is never
- * silently treated as covered.
+ * Coarse existing approved Relation coverage mapped to `sourceSenseId\0normalizedCandidate`, without retaining the
+ * target sense. Target-sensitive preparation and accounting use existingCandidateLinks instead. An ID relation is
+ * mapped only when the candidate equals the counterpart lemma AND that lemma identifies one Canonical record.
  */
 export function existingCandidateKeys(relationRows, index) {
   const covered = new Map();
-  const add = (senseId, text, why) => covered.set(`${senseId}\u0000${normalizeCandidate(text)}`, why);
-  for (const row of relationRows) {
-    if ('text' in row) { add(row.source_sense_id, row.text, 'text-only'); continue; }
-    const target = index.byId.get(row.target_record_id);
-    const source = index.byId.get(row.source_record_id);
-    if (target && (index.byLemma.get(target.lemma) ?? []).length === 1) add(row.source_sense_id, target.lemma, 'id-forward');
-    if (source && (index.byLemma.get(source.lemma) ?? []).length === 1) add(row.target_sense_id, source.lemma, 'id-reverse');
-  }
+  for (const [key, links] of existingCandidateLinks(relationRows, index)) covered.set(key, links.at(-1).why);
   return covered;
 }
 
+/** Existing approved candidate links, retaining the exact target sense for ID relations. */
+function existingCandidateLinks(relationRows, index) {
+  const links = new Map();
+  const add = (senseId, text, link) => {
+    const key = `${senseId}\u0000${normalizeCandidate(text)}`;
+    links.set(key, [...(links.get(key) ?? []), link]);
+  };
+  for (const row of relationRows) {
+    if ('text' in row) { add(row.source_sense_id, row.text, { kind: 'text', why: 'text-only' }); continue; }
+    const target = index.byId.get(row.target_record_id);
+    const source = index.byId.get(row.source_record_id);
+    if (target && (index.byLemma.get(target.lemma) ?? []).length === 1) {
+      add(row.source_sense_id, target.lemma, { kind: 'id', targetSenseId: row.target_sense_id, why: 'id-forward' });
+    }
+    if (source && (index.byLemma.get(source.lemma) ?? []).length === 1) {
+      add(row.target_sense_id, source.lemma, { kind: 'id', targetSenseId: row.source_sense_id, why: 'id-reverse' });
+    }
+  }
+  return links;
+}
+
 /**
- * Prepare the editing input of a shard: unique new candidates with the exact source sense/gloss, minus candidates an
- * existing approved Relation already answers. Never an editorial judgement; nothing is dropped here.
+ * Prepare the editing input of a shard: unique candidates with the exact source sense/gloss, minus candidates already
+ * fully covered by text-only approval or by ID links to every sense of the unique target record. Never an editorial
+ * judgement; nothing is dropped here.
  */
 export function prepareShard({ canonicalRows, candidateFiles, approvedRelationRows = [], dropRows = [], index, scopeRows = canonicalRows }) {
   const canonicalLemmaForms = new Set([...index.byLemma.keys()].map(normalizeCandidate));
   const { merged, rawCandidateCount } = mergeCandidates(canonicalRows, candidateFiles, { canonicalLemmaForms });
-  const covered = existingCandidateKeys(approvedRelationRows, index);
+  const covered = existingCandidateLinks(approvedRelationRows, index);
   const dropped = new Set(dropRows.map((row) => `${row.source_sense_id}\u0000${normalizeCandidate(row.candidate)}`));
   const items = [];
   const stats = { raw: rawCandidateCount, unique: 0, merged_duplicates: 0, skipped_existing: 0, skipped_dropped: 0, to_edit: 0 };
@@ -234,7 +248,13 @@ export function prepareShard({ canonicalRows, candidateFiles, approvedRelationRo
       for (const [text, producers] of entry.candidates) {
         stats.unique += 1;
         if (text === normalizeCandidate(record.lemma)) throw new Error(`${sense.id}: candidate ${JSON.stringify(text)} repeats the source lemma`);
-        if (covered.has(`${sense.id}\u0000${text}`)) { stats.skipped_existing += 1; continue; }
+        const links = covered.get(`${sense.id}\u0000${text}`) ?? [];
+        const nonIdLink = links.some((link) => link.kind !== 'id');
+        const targetRecords = index.byLemma.get(text) ?? [];
+        const targetSenseIds = targetRecords.length === 1 ? targetRecords[0].senses.map((targetSense) => targetSense.id) : [];
+        const allTargetSensesCovered = targetSenseIds.length > 0 && targetSenseIds.every((targetSenseId) =>
+          links.some((link) => link.kind === 'id' && link.targetSenseId === targetSenseId));
+        if (nonIdLink || allTargetSensesCovered) { stats.skipped_existing += 1; continue; }
         if (dropped.has(`${sense.id}\u0000${text}`)) { stats.skipped_dropped += 1; continue; }
         fresh.push({ text, producers, same_spelling_records: (index.byLemma.get(text) ?? []).map((target) => target.id) });
       }
@@ -257,26 +277,31 @@ export function verifyAccounting({ canonicalRows, candidateFiles, relationRows: 
   const scopeSenses = new Set(scopeRows.flatMap((record) => record.senses.map((sense) => sense.id)));
   const relationRows = allRelationRows.filter((row) => scopeSenses.has(row.source_sense_id));
   const dropRows = allDropRows.filter((row) => scopeSenses.has(row.source_sense_id));
-  const covered = existingCandidateKeys(otherRelationRows, index);
+  // Keep the bound sense as well as the candidate spelling. A single lexical candidate can point to distinct senses
+  // of a polysemous lemma; only a repeated sense pair is a duplicate disposition.
+  const approvedLinks = existingCandidateLinks(otherRelationRows, index);
   const errors = [];
   const claimed = new Map();
-  const claim = (senseId, text, how, at) => {
+  const canShareCandidate = (left, right) => left.kind === 'id' && right.kind === 'id' && left.targetSenseId !== right.targetSenseId;
+  const claim = (senseId, text, how, link, at) => {
     const key = `${senseId}\u0000${text}`;
-    if (claimed.has(key)) errors.push(`${at}: candidate ${JSON.stringify(text)} of ${senseId} is already ${claimed.get(key)}`);
-    claimed.set(key, how);
+    const priorClaims = claimed.get(key) ?? [];
+    const conflict = priorClaims.find((prior) => !canShareCandidate(prior.link, link));
+    if (conflict) errors.push(`${at}: candidate ${JSON.stringify(text)} of ${senseId} is already ${conflict.how}`);
+    claimed.set(key, [...priorClaims, { how, link }]);
     const entry = merged.get(senseId);
     if (!entry || !entry.candidates.has(text)) errors.push(`${at}: ${JSON.stringify(text)} is not a Stage 1 candidate of ${senseId}`);
   };
   relationRows.forEach((row, position) => {
     const at = `relation:${position + 1}`;
-    if ('text' in row) claim(row.source_sense_id, row.text, 'a text-only relation', at);
+    if ('text' in row) claim(row.source_sense_id, row.text, 'a text-only relation', { kind: 'text' }, at);
     else {
       const lemma = index.byId.get(row.target_record_id)?.lemma;
       if (lemma === undefined) return;
-      claim(row.source_sense_id, lemma, 'an ID relation', at);
+      claim(row.source_sense_id, lemma, 'an ID relation', { kind: 'id', targetSenseId: row.target_sense_id }, at);
     }
   });
-  dropRows.forEach((row, position) => claim(row.source_sense_id, row.candidate, 'a drop', `drop:${position + 1}`));
+  dropRows.forEach((row, position) => claim(row.source_sense_id, row.candidate, 'a drop', { kind: 'drop' }, `drop:${position + 1}`));
   // A Drop says the candidate is unrelated to the source meaning; the source's own gloss naming it is direct counter-evidence.
   const glossOf = new Map(scopeRows.flatMap((record) => record.senses.map((sense) => [sense.id, sense.gloss])));
   dropRows.forEach((row, position) => {
@@ -290,7 +315,8 @@ export function verifyAccounting({ canonicalRows, candidateFiles, relationRows: 
     if ('text' in row) continue;
     const source = index.byId.get(row.source_record_id);
     if (source && (index.byLemma.get(source.lemma) ?? []).length === 1) {
-      reverseCovered.set(`${row.target_sense_id}\u0000${normalizeCandidate(source.lemma)}`, row.source_sense_id);
+      const key = `${row.target_sense_id}\u0000${normalizeCandidate(source.lemma)}`;
+      reverseCovered.set(key, [...(reverseCovered.get(key) ?? []), { kind: 'id', targetSenseId: row.source_sense_id }]);
     }
   }
 
@@ -301,13 +327,21 @@ export function verifyAccounting({ canonicalRows, candidateFiles, relationRows: 
         if (text === normalizeCandidate(record.lemma)) throw new Error(`${sense.id}: candidate ${JSON.stringify(text)} repeats the source lemma`);
         counts.unique += 1;
         const key = `${sense.id}\u0000${text}`;
-        if (claimed.has(key)) {
-          if (covered.has(key)) errors.push(`${sense.id}: ${JSON.stringify(text)} is already answered by an approved Relation (${covered.get(key)}) and must not be re-authored`);
-          else if (reverseCovered.has(key)) errors.push(`${sense.id}: ${JSON.stringify(text)} is already answered by the reverse of a stored ID pair (${reverseCovered.get(key)}) and cannot also be ${claimed.get(key)}`);
+        const claims = claimed.get(key) ?? [];
+        const approved = approvedLinks.get(key) ?? [];
+        const reverse = reverseCovered.get(key) ?? [];
+        if (claims.length > 0) {
+          const priorApproval = approved.find((link) => claims.some((claim_) => !canShareCandidate(claim_.link, link)));
+          if (priorApproval) errors.push(`${sense.id}: ${JSON.stringify(text)} is already answered by an approved Relation (${priorApproval.why}) and must not be re-authored`);
+          const priorReverse = reverse.find((link) => claims.some((claim_) => !canShareCandidate(claim_.link, link)));
+          if (priorReverse) {
+            const conflictingClaim = claims.find((claim_) => !canShareCandidate(claim_.link, priorReverse));
+            errors.push(`${sense.id}: ${JSON.stringify(text)} is already answered by the reverse of a stored ID pair (${priorReverse.targetSenseId}) and cannot also be ${conflictingClaim.how}`);
+          }
           continue;
         }
-        if (covered.has(key)) { counts.skipped_existing += 1; continue; }
-        if (reverseCovered.has(key)) { counts.reverse_covered += 1; continue; }
+        if (approved.length > 0) { counts.skipped_existing += 1; continue; }
+        if (reverse.length > 0) { counts.reverse_covered += 1; continue; }
         counts.missing += 1;
         errors.push(`${sense.id}: candidate ${JSON.stringify(text)} has no relation, drop or existing approved relation`);
       }

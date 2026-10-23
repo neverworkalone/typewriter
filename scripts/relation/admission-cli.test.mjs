@@ -129,7 +129,7 @@ test('a batch with no candidates and no authored rows is complete once verify su
   assert.deepEqual([counts.unique, counts.relation, counts.drop, counts.missing], [0, 0, 0, 0]);
 });
 
-test('a candidate answered by the reverse of a stored ID pair cannot also be a Drop or a text-only row', async (t) => {
+test('a reverse candidate cannot also be a Drop or a text-only row, but may target a different sense', async (t) => {
   const root = await mkdtemp(path.join(tmpdir(), 'typewriter-admission-double-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   const records = Array.from({ length: 501 }, (_, i) => ({ id: `w${i + 1}`, lemma: `표제${i + 1}`, senses: [{ id: `w${i + 1}-s1`, pos: 'noun', gloss: `뜻${i + 1}` }, ...(i === 500 ? [{ id: 'w501-s2', pos: 'noun', gloss: '다른 뜻' }] : [])] }));
@@ -152,13 +152,17 @@ test('a candidate answered by the reverse of a stored ID pair cannot also be a D
     await writeFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), drops.length ? jsonl(drops) : '');
     return quiet(() => run(['verify', '--shard', '001', '--batch', '01'], { root }));
   };
+  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), jsonl([idRow]));
+  const prepared = await quiet(() => run(['prepare', '--shard', '001', '--batch', '01'], { root }));
+  assert.ok(texts(prepared).includes('표제501'), 'an existing link to sense 1 must leave the candidate available for sense 2');
   // Positive control: the reverse answers 표제501; 다른 말 is authored once.
   assert.equal((await verify([idRow, other, named], [])).reverse_covered, 1);
   // The same candidate also dropped or also authored text-only is a double disposition.
   await assert.rejects(() => verify([idRow, other, named], [dropOf('표제501')]), /reverse of a stored ID pair .* cannot also be a drop/);
   await assert.rejects(() => verify([idRow, other, named, { ...other, text: '표제501' }], []), /cannot also be a text-only relation/);
-  // The same candidate also re-attributed as an ID relation to another sense of the target record is a double disposition too.
-  await assert.rejects(() => verify([idRow, otherSenseRow, other, named], []), /reverse of a stored ID pair .* cannot also be an ID relation/);
+  // The same spelling may have a separate ID relation to another sense; only the actual sense pair is duplicate.
+  assert.equal((await verify([idRow, otherSenseRow, other, named], [])).missing, 0);
+  await assert.rejects(() => verify([idRow, { ...otherSenseRow, target_sense_id: 'w501-s1' }, other, named], []), /duplicate or reverse-duplicate ID relation/);
   // A different candidate of the same sense may still be dropped normally.
   assert.equal((await verify([idRow, named], [dropOf('다른 말')])).drop, 1);
   // A candidate the source gloss itself names is evidence of relevance, so it cannot be dropped as unrelated.
