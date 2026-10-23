@@ -142,11 +142,38 @@ class Supervisor:
             if ln["retry_batch"] is not None:
                 self.store.set_line(b["producer"], b["method"], retry_batch=None)
             return
+        if ln["retry_batch"] != b["id"] and self._recover_if_merged(b):
+            return
         if ln["retry_batch"] == b["id"]:
             self.store.set_line(b["producer"], b["method"], retry_batch=None, run=1)
             self.store.update(b["id"], state=b["paused_from"] or "PRODUCING", error=None,
                               retries=0, retry_after=None)
             self.store.log(b["id"], f"운영자 재시도: {b['paused_from']}로 복귀")
+
+    def _recover_if_merged(self, b) -> bool:
+        """ERROR/PAUSED batch whose PR was merged later: resume at MERGED (no AI run); cleanup keeps every safety gate.
+
+        Only GitHub `merged=true` recovers; any other error is untouched. A batch that already failed in CLEANUP is not
+        retried automatically (its worktree needs the operator), and lookups are limited to one per
+        poll_seconds (at least 60s) so errored batches do not burn GitHub rate limit.
+        """
+        if not b["pr_number"] or b["paused_from"] == "CLEANUP" or b["pid"] is not None:
+            return False
+        key = f"last_merge_check_{b['id']}"
+        if self.clock() - float(self.store.get(key, "0")) < max(self.cfg["poll_seconds"], 60):
+            return False
+        self.store.set(key, str(self.clock()))
+        try:
+            info = self.gh.pull(b["pr_number"])
+        except Exception as e:
+            self.store.log(b["id"], f"오류 배치 머지 재확인 실패(재시도 예정): {e}", "warn")
+            return False
+        if not info["merged"]:
+            return False
+        self.store.update(b["id"], state="MERGED", merged=1, head_sha=info["head_sha"], error=None, retries=0,
+                          retry_after=None)
+        self.store.log(b["id"], f"{b['state']} 상태였으나 PR #{b['pr_number']} merged=true 확인 → 정리 단계로 자동 복구 (AI 재실행 없음)")
+        return True
 
     def _force_stop(self, b) -> None:
         ad = self._adapter(b["producer"])
@@ -323,6 +350,7 @@ class Supervisor:
             return self._fail(b, "ERROR", f"프롬프트 오류로 AI를 시작하지 않았습니다: {e}")
         except Exception as e:
             return self._fail(b, "ERROR", f"AI 실행 시작 실패: {e}")
+        self.store.set(f"headlag_{b['id']}", "")   # a new run supersedes any earlier push verification
         state = "FIXING" if kind.startswith("fix") else "PRODUCING"
         fields = dict(state=state, pid=h.pid, exit_file=str(ex), log_file=str(log),
                       run_kind=kind, retry_after=None, error=None)
@@ -346,6 +374,8 @@ class Supervisor:
     # ---- PRODUCING / FIXING -------------------------------------------
     def _poll_run(self, b) -> None:
         if b["pid"] is None:  # backoff elapsed, or operator Retry after PAUSED/ERROR
+            if b["state"] == "FIXING" and self.store.get(f"headlag_{b['id']}"):
+                return self._recheck_fix_head(b)   # the fix already ran: only verify its push, never re-run the AI
             if b["retry_after"] is None or self.clock() >= b["retry_after"]:
                 self._relaunch(b)
             return
@@ -412,15 +442,93 @@ class Supervisor:
         except Exception as e:
             return self._fail(b, "ERROR", f"GitHub 조회 실패: {e}")
         if b["state"] == "FIXING":
-            if self.git.dirty(Path(b["worktree"])).strip():
-                return self._fail(b, "ERROR", "수정 후 worktree에 미커밋 변경이 있어 보존합니다.")
-            if self.git.head(Path(b["worktree"])) != info["head_sha"]:
-                return self._fail(b, "ERROR", "로컬 HEAD가 PR HEAD와 다릅니다 (push되지 않은 수정). 보존.")
+            if self._check_fix_head(b, info) != "ok":
+                return
             if info["head_sha"] == b["head_sha"]:
                 self.store.log(b["id"], "수정 실행이 끝났지만 새 HEAD 없음 (코멘트로만 응답했을 수 있음)", "warn")
+        self._to_review(b, info)
+
+    def _to_review(self, b, info) -> None:
         self.store.update(b["id"], state="WAITING_REVIEW", pr_number=info["number"],
                           head_sha=info["head_sha"], error=None, retries=0)
         self.store.log(b["id"], f"PR #{info['number']} HEAD {info['head_sha'][:10]} 리뷰 대기")
+
+    # ---- FIXING: is the fix really on the PR? ------------------------------
+    def _check_fix_head(self, b, info) -> str:
+        """After a fix run: "ok" (clean, local HEAD == PR HEAD), "wait" (only the PR API lags) or "stop" (handled).
+
+        Invariant: a fix is accepted only if its commit is on the PR. A PR API `head.sha` that differs from the local
+        HEAD is "not pushed" only when origin's own branch ref says so; if origin already holds the local HEAD, the
+        PR metadata is merely late and is re-polled for a bounded time. Nothing is ever forced, reset or re-created.
+        """
+        key, wt = f"headlag_{b['id']}", Path(b["worktree"])
+        if self.git.dirty(wt).strip():
+            self.store.set(key, "")
+            self._fail(b, "ERROR", "수정 후 worktree에 미커밋 변경이 있어 보존합니다.")
+            return "stop"
+        local = self.git.head(wt)
+        if local == info["head_sha"]:
+            self.store.set(key, "")
+            return "ok"
+        short = f"로컬 HEAD {local[:10]} / PR HEAD {info['head_sha'][:10]}"
+        if info["merged"]:   # merged meanwhile: cleanup's own gates (clean, same HEAD or fast-forward) decide what is removed
+            self.store.set(key, "")
+            self.store.update(b["id"], state="MERGED", merged=1, head_sha=info["head_sha"], error=None)
+            self.store.log(b["id"], f"PR #{info['number']} merged=true 확인 ({short}) — 정리 단계에서 검증")
+            return "stop"
+        stop = None
+        if info["state"] != "open":
+            stop = f"PR #{info['number']}이 머지 없이 닫혔습니다 ({short}). worktree 보존, 수동 조치 필요."
+        elif info["head_ref"] != b["branch"]:
+            stop = (f"PR #{info['number']}의 head 브랜치 {info['head_ref']!r}가 소유 브랜치 {b['branch']!r}와 다릅니다 "
+                    "(잘못된 PR/브랜치). 보존.")
+        else:
+            try:
+                remote = self.git.remote_head(b["branch"])
+            except Exception as e:
+                stop = f"원격 브랜치 조회 실패 — push 여부를 확인할 수 없어 보존합니다 ({short}): {e}"
+            else:
+                if remote is None:
+                    stop = f"실제 미push: 원격에 브랜치 {b['branch']}가 없습니다 ({short}). 보존."
+                elif remote != local:
+                    stop = (f"원격 ref와 로컬 HEAD 불일치: 원격 {remote[:10]} / 로컬 {local[:10]} "
+                            f"(미push 또는 분기, PR HEAD {info['head_sha'][:10]}). 보존.")
+        if stop:
+            self.store.set(key, "")
+            self._fail(b, "ERROR", stop)
+            return "stop"
+        return self._head_lag_wait(b, key, f"원격 브랜치는 로컬 HEAD {local[:10]}인데 PR API HEAD는 {info['head_sha'][:10]}")
+
+    def _head_lag_wait(self, b, key: str, what: str) -> str:
+        """PR metadata lag: wait (bounded by pr_head_lag_timeout_seconds) instead of declaring an unpushed fix."""
+        now, first = self.clock(), self.store.get(key) or ""
+        if first in ("", "expired"):
+            self.store.set(key, str(now))
+            self.store.log(b["id"], f"PR 메타데이터 지연: {what} — poll_seconds 간격으로 재확인 (AI 재실행 없음)", "warn")
+            return "wait"
+        if now - float(first) >= self.cfg["pr_head_lag_timeout_seconds"]:
+            self.store.set(key, "expired")   # Retry re-verifies (no AI run) with a fresh window
+            self._fail(b, "ERROR", f"PR HEAD 메타데이터 반영 지연 시간 초과({self.cfg['pr_head_lag_timeout_seconds']}s): {what}. "
+                       "worktree·원격 브랜치 보존, 수동 확인 후 Retry(AI 재실행 없이 재확인).")
+            return "stop"
+        return "wait"
+
+    def _recheck_fix_head(self, b) -> None:
+        """FIXING with the AI finished and PR metadata lagging: re-poll the PR (rate-limited by poll_seconds)."""
+        pk, key = f"last_poll_fixhead_{b['id']}", f"headlag_{b['id']}"
+        if self.store.get(key) == "expired":   # operator Retry: a fresh window
+            self.store.set(key, str(self.clock()))
+        elif self.clock() - float(self.store.get(pk, "0")) < self.cfg["poll_seconds"]:
+            return
+        self.store.set(pk, str(self.clock()))
+        try:
+            info = self.gh.pull(b["pr_number"])
+        except Exception as e:
+            if self._head_lag_wait(b, key, f"GitHub 조회 실패({e})") == "wait":
+                self.store.log(b["id"], f"PR 재조회 실패(재시도 예정): {e}", "warn")
+            return
+        if self._check_fix_head(b, info) == "ok":
+            self._to_review(b, info)
 
     def _find_pr(self, b):
         """The batch's PR (by its owned branch) or None; raises DuplicateClaim on a rival PR."""

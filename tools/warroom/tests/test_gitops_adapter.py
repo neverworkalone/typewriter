@@ -36,6 +36,15 @@ class RealGit(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
+    def test_remote_head_is_the_exact_origin_branch_sha(self):
+        self.git.fetch_base("master")
+        self.git.create_worktree(self.wt, "a-x-001-01", "master")
+        self.assertIsNone(self.git.remote_head("a-x-001-01"))           # not pushed
+        sh("git", "push", "-q", "origin", "a-x-001-01", cwd=self.wt)
+        self.assertEqual(self.git.remote_head("a-x-001-01"), self.git.head(self.wt))
+        sh("git", "push", "-q", "origin", "HEAD:refs/heads/a-x-001-01-longer", cwd=self.wt)
+        self.assertIsNone(self.git.remote_head("a-x-001"))              # prefix of another branch is not a match
+
     def test_create_and_safe_remove(self):
         self.git.fetch_base("master")
         self.git.create_worktree(self.wt, "a-x-001-01", "master")
