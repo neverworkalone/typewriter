@@ -39,6 +39,7 @@
     "ci:all": "node scripts/ci/run-category.mjs all",
     "ci:pr": "node scripts/ci/run-category.mjs pr",
     "ci:deep": "node scripts/ci/run-category.mjs deep",
+    "ci:schema": "node scripts/ci/schema-build-gate.mjs",
     "test": "pnpm run ci:normal",
     "test:unit": "vitest run",
     "test:unit:watch": "vitest"

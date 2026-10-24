@@ -10,16 +10,12 @@
     "Test dataset validator",
     "Test CI category runner fail-fast behavior",
     "Test CI check ownership registry",
-    "Test one current-revision SQLite build guard (real runner fault injection)"
+    "Test zero current-revision SQLite builds in automatic CI (real runner fault injection)"
   ],
   "toolchain": [
     "Run single-pass global canonical audit",
     "Normalize canonical data",
     "Test canonical normalization",
-    "Build shared SQLite dictionary artifact",
-    "Validate shared SQLite dictionary artifact",
-    "Run integrated M2 audit",
-    "Verify shared surface-form projection reuse",
     "Test SQLite dictionary build"
   ],
   "product": [
@@ -28,10 +24,8 @@
     "Test shared native and WASM SQLite query adapter",
     "Test M6-3 surface-form projection and search",
     "Run product unit tests",
-    "Build product extension",
     "Build Typewriter Web",
-    "Validate static Pages artifact",
-    "Validate built product output contracts"
+    "Validate static Pages artifact"
   ],
   "artifacts": [
     "Test artifact policy",
@@ -40,8 +34,7 @@
     "Enforce generated-artifact policy and clean checkout"
   ],
   "deep": [
-    "Run single-pass global canonical audit",
-    "Run current-revision SQLite reproducibility audit"
+    "Run single-pass global canonical audit"
   ],
   "relations": [
     "Test Canonical relation backfill queue, apply, and correction paths",
