@@ -74,8 +74,9 @@ editorial quality or review independence. Require the matching
 `verify --shard SSS --batch BB --part PP` evidence for that Part, while
 preserving shard-wide stored Relation/Drop validation and cross-Part reverse
 conflict checks. Do not require unfinished sibling Parts to pass accounting in
-the same PR. After five Part PRs in a Batch, run the existing 500-record Batch
-verify; after ten Parts, run shard verify. These Stage 2 admission work units
+the same PR. After all valid Part PRs in a Batch have been merged and verified, run
+Batch-wide verify; after all valid Parts in the shard are complete, run
+shard-wide verify (shard 428 has six valid Parts, not ten). These Stage 2 admission work units
 are distinct from the independent technical review roles in Sections 1–4.
 
 ## 3. Stage 2 — independent comprehensive technical gate
