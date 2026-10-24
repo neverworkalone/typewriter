@@ -663,7 +663,7 @@ defineExpose({ focusCandidate });
 .relation-page-glyph {
   position: relative;
   display: inline-block;
-  transform: translateY(9.5px);
+  transform: translateY(7.5px);
 }
 
 .relation-list.has-inline-pagination .relation-separator {
@@ -698,7 +698,7 @@ defineExpose({ focusCandidate });
 }
 
 .dictionary-result.is-compact .relation-page-glyph {
-  transform: translateY(10.5px);
+  transform: translateY(8.5px);
 }
 
 .relation-link.is-static {
