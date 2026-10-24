@@ -582,7 +582,7 @@ defineExpose({ focusCandidate });
 }
 
 .relation-list.has-inline-pagination .relation-entry.has-previous-page {
-  padding-left: 32px;
+  padding-left: 28px;
 }
 
 .relation-list.has-inline-pagination .relation-entry.has-next-page {
@@ -653,7 +653,7 @@ defineExpose({ focusCandidate });
 }
 
 .relation-entry.has-previous-page > .relation-page-button {
-  left: 0;
+  left: -4px;
 }
 
 .relation-entry.has-next-page > .relation-page-button {
