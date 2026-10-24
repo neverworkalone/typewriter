@@ -8,8 +8,8 @@ import { CANDIDATE_BATCH_SIZE, normalizeCandidate, parseCandidateJsonl, validate
 export { normalizeCandidate };
 
 /**
- * Stage 2 Relation Admission tooling (Issue #928). Rule it guarantees: every unique Stage 1 candidate of a shard ends
- * in exactly one of {new Relation, real Drop, exact-duplicate merge, existing approved Relation}, and every approved
+ * Stage 2 Relation Admission tooling (Issues #928/#1665). Rule it guarantees: every unique Stage 1 candidate of a shard
+ * ends in exactly one of {new Relation, real Drop, exact-duplicate merge, existing approved Relation}, and every approved
  * Relation names a real Canonical source sense (and, for an ID link, a real target record/sense of the same spelling).
  * It never creates candidates, never rescoring existing Relations and never reads Stage 1 files other than as input.
  */
@@ -19,6 +19,8 @@ export const ADMISSION_TYPES = Object.freeze(['near', 'mood', 'scene', 'sensory'
 /** Required Stage 1 producers per batch: A/B by Codex and Claude, C and D by one owner-assigned model each. */
 export const REQUIRED_PRODUCERS = Object.freeze(['a_codex', 'a_claude', 'b_codex', 'b_claude', 'c', 'd']);
 export const BATCHES = Object.freeze(['01', '02']);
+export const STAGE2_PART_SIZE = 100;
+export const PARTS = Object.freeze(['01', '02', '03', '04', '05']);
 
 const ID_ROW_KEYS = 'relevance,reverse_relevance,reverse_type,source_record_id,source_sense_id,target_record_id,target_sense_id,type';
 const TEXT_ROW_KEYS = 'relevance,source_record_id,source_sense_id,text,type';
@@ -79,6 +81,16 @@ export function batchScope(canonicalRows, candidateFiles, batch) {
   return { scopeRows, files: candidateFiles.filter((file) => producerOf(path.basename(file.name)).batch === batch) };
 }
 
+/** Restrict Stage 2 editing within one complete Stage 1 batch to a 100-record part. */
+export function partScope(canonicalRows, candidateFiles, batch, part) {
+  if (!PARTS.includes(part)) throw new Error('part must be 01, 02, 03, 04 or 05');
+  const batchResult = batchScope(canonicalRows, candidateFiles, batch);
+  const offset = (Number(part) - 1) * STAGE2_PART_SIZE;
+  const scopeRows = batchResult.scopeRows.slice(offset, offset + STAGE2_PART_SIZE);
+  if (scopeRows.length === 0) throw new Error(`shard batch ${batch} has no records for part ${part}`);
+  return { scopeRows, files: batchResult.files };
+}
+
 /**
  * Merge Stage 1 Candidate rows into unique candidates per source sense. Each file must already satisfy Candidate v1
  * for its batch. Exact duplicates (after `normalizeCandidate`) merge; the producer list is kept as evidence.
@@ -87,6 +99,7 @@ export function batchScope(canonicalRows, candidateFiles, batch) {
 export function mergeCandidates(canonicalRows, candidateFiles, { canonicalLemmaForms } = {}) {
   const merged = new Map();
   let raw = 0;
+  const rawBySense = new Map();
   const independentLemmaForms = canonicalLemmaForms ?? new Set(canonicalRows.map((row) => normalizeCandidate(row.lemma ?? '')));
   for (const file of candidateFiles) {
     const { batch, key } = producerOf(path.basename(file.name));
@@ -101,6 +114,7 @@ export function mergeCandidates(canonicalRows, candidateFiles, { canonicalLemmaF
         merged.set(sense.sense_id, bySense);
         for (const text of sense.candidates) {
           raw += 1;
+          rawBySense.set(sense.sense_id, (rawBySense.get(sense.sense_id) ?? 0) + 1);
           const normalized = normalizeCandidate(text);
           const producers = bySense.candidates.get(normalized) ?? [];
           if (!producers.includes(key)) producers.push(key);
@@ -109,7 +123,13 @@ export function mergeCandidates(canonicalRows, candidateFiles, { canonicalLemmaF
       }
     }
   }
-  return { merged, rawCandidateCount: raw };
+  return { merged, rawCandidateCount: raw, rawCandidateCountBySense: rawBySense };
+}
+
+function rawCandidateCountForScope(rawCandidateCountBySense, scopeRows) {
+  return scopeRows.reduce((count, record) => count + record.senses.reduce(
+    (senseCount, sense) => senseCount + (rawCandidateCountBySense.get(sense.id) ?? 0), 0,
+  ), 0);
 }
 
 /** Orthographic variants emitted by the Canonical converter: only spacing/hyphenation variants of the lemma. */
@@ -272,7 +292,8 @@ function existingCandidateLinks(relationRows, index) {
  */
 export function prepareShard({ canonicalRows, candidateFiles, approvedRelationRows = [], dropRows = [], index, scopeRows = canonicalRows }) {
   const canonicalLemmaForms = new Set([...index.byLemma.keys()].map(normalizeCandidate));
-  const { merged, rawCandidateCount } = mergeCandidates(canonicalRows, candidateFiles, { canonicalLemmaForms });
+  const { merged, rawCandidateCountBySense } = mergeCandidates(canonicalRows, candidateFiles, { canonicalLemmaForms });
+  const rawCandidateCount = rawCandidateCountForScope(rawCandidateCountBySense, scopeRows);
   const covered = existingCandidateLinks(approvedRelationRows, index);
   const dropped = new Set(dropRows.map((row) => `${row.source_sense_id}\u0000${normalizeCandidate(row.candidate)}`));
   const items = [];
@@ -364,7 +385,8 @@ function glossNamesCandidate(gloss, candidate, index) {
  */
 export function verifyAccounting({ canonicalRows, candidateFiles, relationRows: allRelationRows, dropRows: allDropRows, otherRelationRows, index, scopeRows = canonicalRows }) {
   const canonicalLemmaForms = new Set([...index.byLemma.keys()].map(normalizeCandidate));
-  const { merged, rawCandidateCount } = mergeCandidates(canonicalRows, candidateFiles, { canonicalLemmaForms });
+  const { merged, rawCandidateCountBySense } = mergeCandidates(canonicalRows, candidateFiles, { canonicalLemmaForms });
+  const rawCandidateCount = rawCandidateCountForScope(rawCandidateCountBySense, scopeRows);
   const scopeSenses = new Set(scopeRows.flatMap((record) => record.senses.map((sense) => sense.id)));
   const relationRows = allRelationRows.filter((row) => scopeSenses.has(row.source_sense_id));
   const dropRows = allDropRows.filter((row) => scopeSenses.has(row.source_sense_id));
