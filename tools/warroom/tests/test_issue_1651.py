@@ -38,6 +38,29 @@ class MissingPrRecovery(unittest.TestCase):
         w.tick()
         return w, w.row(method=method)
 
+    def successful_producer_with_transient_pr_lookup(self, failures=1):
+        w = World()
+        self.addCleanup(w.tmp.cleanup)
+        w.adapter.plan.append({"code": 0})
+        w.start("single", method="b")
+        w.tick()
+        b = w.row(method="b")
+        self.install_pr(w, b, state="open", merged=False)
+        original = w.gh.prs_for_branch
+        remaining = {"count": failures}
+
+        def flaky_lookup(branch):
+            if remaining["count"]:
+                remaining["count"] -= 1
+                w.gh.branch_queries += 1
+                raise RuntimeError("GitHub API unavailable")
+            return original(branch)
+
+        w.gh.prs_for_branch = flaky_lookup
+        w.adapter.finish(b["pid"])
+        w.tick()
+        return w, w.row(method="b")
+
     @staticmethod
     def install_pr(w, b, number=1594, state="closed", merged=True, head=HEAD1, file_path=None):
         branch = b["branch"]
@@ -95,6 +118,50 @@ class MissingPrRecovery(unittest.TestCase):
 
         self.assertEqual(w.row(method="b")["state"], "COMPLETE")
         self.assertEqual(w.row(method="b")["pr_number"], 1594)
+        self.assertEqual(len(w.adapter.launches), 1)
+
+    def test_verified_zero_exit_survives_later_github_error_text_and_recovers(self):
+        w, b = self.successful_producer_with_transient_pr_lookup(failures=2)
+        self.assertEqual((b["state"], b["paused_from"]), ("ERROR", "PRODUCING"))
+        self.assertIn("조회 실패", b["error"])
+
+        w.tick()  # first bounded recovery attempt fails and replaces the visible error
+        self.assertIn("재발견/머지 확인이 불명확", w.row(method="b")["error"])
+        w.now += 60
+        w.tick()
+
+        row = w.row(method="b")
+        self.assertEqual((row["state"], row["pr_number"]), ("WAITING_REVIEW", 1594))
+        self.assertEqual(len(w.adapter.launches), 1)
+
+    def test_retry_checks_for_existing_pr_before_relaunching_verified_zero_exit(self):
+        from warroom import control
+
+        w, b = self.successful_producer_with_transient_pr_lookup()
+        self.assertIsNone(b["pr_number"])
+        self.assertTrue(control.retry(w.store, "deepseek", "b"))
+
+        w.tick(2)  # operator Retry first restores PRODUCING, then performs the pre-relaunch PR check
+
+        row = w.row(method="b")
+        self.assertEqual((row["state"], row["pr_number"]), ("WAITING_REVIEW", 1594))
+        self.assertEqual(len(w.adapter.launches), 1)
+
+    def test_retry_with_unverified_zero_exit_and_existing_pr_fails_closed(self):
+        from warroom import control
+
+        w, b = self.failed_producer()
+        self.install_pr(w, b, state="open", merged=False)
+        with w.store._conn() as c:
+            c.execute("UPDATE runs SET exit_status='0' WHERE batch_id=?", (b["id"],))
+        self.assertTrue(control.retry(w.store, "deepseek", "b"))
+
+        w.tick(2)  # operator Retry first restores PRODUCING, then performs the pre-relaunch PR check
+
+        row = w.row(method="b")
+        self.assertEqual(row["state"], "ERROR")
+        self.assertIsNone(row["pr_number"])
+        self.assertIn("완료 증거가 없어", row["error"])
         self.assertEqual(len(w.adapter.launches), 1)
 
     def test_recovery_poll_is_rate_limited(self):

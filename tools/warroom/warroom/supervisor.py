@@ -188,23 +188,28 @@ class Supervisor:
                 self.store.set(f"no_pr_recovery_{b['id']}", "1")
             return False
         if not b["pr_number"]:
-            self.store.update(b["id"], pr_number=info["number"], head_sha=info["head_sha"])
-            self.store.log(b["id"], f"누락 PR #{info['number']} 재발견 및 소유권 확인 완료 (브랜치 {b['branch']})", "warn")
-            b = self.store.batch(b["id"])
-            if info["state"] == "open" and not info["merged"]:
-                self._to_review(b, info, recovery_note=f"PAUSED/ERROR 상태에서 기존 PR #{info['number']} 재발견; "
-                                "기존 리뷰·검증 게이트로 복귀했습니다 (AI 재실행 없음).")
-                return True
-            if not info["merged"]:
-                # Keep the closed PR attached so an operator retry cannot relaunch production and create a duplicate.
-                self.store.update(b["id"], state="ERROR", paused_from="WAITING_REVIEW",
-                                  error=f"PR #{info['number']}이 머지 없이 닫혀 있어 자동 복구하지 않습니다. "
-                                  "worktree·브랜치를 보존합니다.")
-                self.store.log(b["id"], f"재발견한 PR #{info['number']}은 머지 없이 닫힘; 안전 정지", "error")
-                return True
+            return self._handoff_recovered_pr(b, info, "PAUSED/ERROR 상태에서")
         if not info["merged"]:
             return False
         return self._enter_merged(b, info, f"{b['state']} 상태에서")
+
+    def _handoff_recovered_pr(self, b, info, context: str) -> bool:
+        """Attach a previously untracked, fully ownership-checked PR without rerunning production."""
+        self.store.update(b["id"], pr_number=info["number"], head_sha=info["head_sha"])
+        self.store.log(b["id"], f"누락 PR #{info['number']} 재발견 및 소유권 확인 완료 (브랜치 {b['branch']})", "warn")
+        b = self.store.batch(b["id"])
+        if info["state"] == "open" and not info["merged"]:
+            self._to_review(b, info, recovery_note=f"{context} 기존 PR #{info['number']} 재발견; "
+                            "기존 리뷰·검증 게이트로 복귀했습니다 (AI 재실행 없음).")
+            return True
+        if not info["merged"]:
+            # Keep the closed PR attached so an operator retry cannot relaunch production and create a duplicate.
+            self.store.update(b["id"], state="ERROR", paused_from="WAITING_REVIEW",
+                              error=f"PR #{info['number']}이 머지 없이 닫혀 있어 자동 복구하지 않습니다. "
+                              "worktree·브랜치를 보존합니다.")
+            self.store.log(b["id"], f"재발견한 PR #{info['number']}은 머지 없이 닫힘; 안전 정지", "error")
+            return True
+        return self._enter_merged(b, info, f"{context} 기존 PR #{info['number']} 확인 후")
 
     def _verified_late_producer_exit(self, b) -> bool:
         """Only inspect PRs after a terminal producer result, never after a stop or unverified success."""
@@ -222,9 +227,9 @@ class Supervisor:
             return False
         if code != 0:
             return True
-        # A zero exit is eligible only after the existing completion gate passed and PR intake was the failure.
-        error = b["error"] or ""
-        return error.startswith(("AI가 정상 종료했지만 PR을 찾지 못했습니다", "GitHub 조회 실패:"))
+        # Keep completion evidence separate from mutable operator-facing error text. A later GitHub failure can
+        # replace that text, but must not revoke proof that this exact producer run passed its completion gate.
+        return self.store.get(f"verified_completion_run_{b['id']}") == str(run["id"])
 
     def _verified_current_producer_exit(self, b, code: int) -> bool:
         if b["pid"] is not None:
@@ -509,15 +514,33 @@ class Supervisor:
                 try:
                     failed_code = int(runs[0]["exit_status"])
                 except (TypeError, ValueError):
-                    failed_code = 0
-                if (failed_code != 0 and isinstance(runs[0]["kind"], str)
-                        and runs[0]["kind"].startswith("produce")):
+                    failed_code = None
+                is_terminal_producer = (isinstance(runs[0]["kind"], str)
+                                        and runs[0]["kind"].startswith("produce")
+                                        and runs[0]["ended_at"] is not None)
+                if is_terminal_producer and failed_code is not None and failed_code != 0:
                     try:
                         text = Path(runs[0]["log_file"]).read_text("utf-8", errors="replace")[-30000:]
                     except OSError:
                         text = ""
                     cls = classify_failure(text, self.cfg["quota_patterns"])
                     if self._handoff_failed_pr(b, failed_code, cls):
+                        return
+                elif is_terminal_producer and failed_code == 0:
+                    # Retry is an explicit request to relaunch, but it must first rule out a PR from the prior run.
+                    # Only a run that passed its completion gate can be adopted; an unverified zero exit is fail-closed.
+                    try:
+                        info = self._find_recovery_pr(b)
+                    except Exception as e:
+                        self._fail(b, "ERROR", f"Retry 전 기존 PR 조회/검증 실패: {e}. "
+                                   "worktree를 보존하고 AI를 재실행하지 않습니다.")
+                        return
+                    if info is not None:
+                        if not self._verified_late_producer_exit(b):
+                            self._fail(b, "ERROR", f"기존 소유 PR #{info['number']}을 확인했지만 종료 실행의 완료 증거가 "
+                                       "없어 인계하거나 AI를 재실행하지 않습니다. worktree와 PR을 보존합니다.")
+                            return
+                        self._handoff_recovered_pr(b, info, "운영자 Retry 직전")
                         return
         self._launch(b, "produce_resume" if b["session_id"] else "produce_recover")
 
@@ -560,6 +583,9 @@ class Supervisor:
                                             b["worktree"], self.env)
             if problem:
                 return self._fail(b, problem[0], problem[1])
+            runs = self.store.runs(b["id"])
+            if runs:
+                self.store.set(f"verified_completion_run_{b['id']}", str(runs[0]["id"]))
             return self._run_ok(b)
         self._run_failed(b, code)
 
