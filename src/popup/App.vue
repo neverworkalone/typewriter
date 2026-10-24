@@ -49,6 +49,9 @@ const records = computed(() => (
       ? lastRecords.value
       : []
 ));
+const activeRelationPages = computed(() => (
+  relationPages.value[searchState.value.historyId] || {}
+));
 
 function applyState(nextState) {
   searchState.value = nextState;
@@ -97,7 +100,14 @@ async function search(value = query.value) {
 }
 
 function updateRelationPage({ key, page }) {
-  relationPages.value = { ...relationPages.value, [key]: page };
+  const historyId = searchState.value.historyId || 'current';
+  relationPages.value = {
+    ...relationPages.value,
+    [historyId]: {
+      ...relationPages.value[historyId],
+      [key]: page,
+    },
+  };
 }
 
 function clearSearch() {
@@ -197,7 +207,7 @@ onBeforeUnmount(() => {
       :can-go-back="searchState.canGoBack"
       :selected-record-id="searchState.selectedRecordId"
       :selected-sense-id="searchState.selectedSenseId"
-      :relation-pages="relationPages"
+      :relation-pages="activeRelationPages"
       :settings="settings"
       autofocus
       @update:query="query = $event"

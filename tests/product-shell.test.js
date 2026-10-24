@@ -162,7 +162,15 @@ describe('product MV3 Vue shells', () => {
       },
     ];
     const source = makeRecord('source', '첫말', 'start', sourceRelations);
-    const target = makeRecord('linked', '연결어', 'reference-only');
+    const target = makeRecord('linked', '연결어', 'reference-only', [{
+      position: 0,
+      target: 'source',
+      target_sense: 'source-s1',
+      type: 'direct',
+      target_lemma: '첫말',
+      target_pos: 'adjective',
+      target_gloss: '첫말 뜻풀이',
+    }]);
     const runtime = {
       search: async () => [{ id: source.id }],
       getRecord: async (id) => ({ source, linked: target })[id] || null,
@@ -198,6 +206,20 @@ describe('product MV3 Vue shells', () => {
     expect(firstItem('association')).toBe('연상20');
 
     host.querySelector('[data-target-record-id="linked"]').click();
+    await flush();
+    expect(host.querySelector('[data-record-id="linked"]')).not.toBeNull();
+    host.querySelector('[data-target-record-id="source"]').click();
+    await flush();
+    expect(host.querySelector('[data-record-id="source"]')).not.toBeNull();
+    expect(firstItem('texture')).toBe('결0');
+
+    nextPage('texture').click();
+    await flush();
+    nextPage('texture').click();
+    await flush();
+    expect(firstItem('texture')).toBe('결40');
+
+    host.querySelector('.back-button').click();
     await flush();
     expect(host.querySelector('[data-record-id="linked"]')).not.toBeNull();
     host.querySelector('.back-button').click();

@@ -436,6 +436,7 @@ export class SearchSession {
     this._state = withHistoryFlags(state, {
       canGoBack: this._historyIndex > 0,
       canGoForward: this._historyIndex < this._history.length - 1,
+      historyId: this._history[this._historyIndex].id,
     });
     if (recordHistory) {
       this._history[this._historyIndex].snapshot = this._state;
