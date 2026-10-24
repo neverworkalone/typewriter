@@ -38,6 +38,7 @@ const searchState = ref(session.state);
 const settings = ref({ ...DEFAULT_SETTINGS });
 const runtimeStatus = ref(null);
 const lastRecords = ref([]);
+const relationPages = ref({});
 const dictionaryPanel = ref(null);
 let unsubscribe = null;
 
@@ -88,10 +89,15 @@ async function search(value = query.value) {
   const term = typeof value === 'string' ? value : '';
   if (!term.trim()) return;
 
+  relationPages.value = {};
   query.value = term;
   await session.searchExact(term);
   await nextTick();
   dictionaryPanel.value?.focusSearch?.();
+}
+
+function updateRelationPage({ key, page }) {
+  relationPages.value = { ...relationPages.value, [key]: page };
 }
 
 function clearSearch() {
@@ -191,12 +197,14 @@ onBeforeUnmount(() => {
       :can-go-back="searchState.canGoBack"
       :selected-record-id="searchState.selectedRecordId"
       :selected-sense-id="searchState.selectedSenseId"
+      :relation-pages="relationPages"
       :settings="settings"
       autofocus
       @update:query="query = $event"
       @submit="search"
       @clear="clearSearch"
       @relation="openRelation"
+      @relation-page="updateRelationPage"
       @back="goBack"
       @select-candidate="selectCandidate"
       @retry="retry"

@@ -66,6 +66,10 @@ const props = defineProps({
     type: String,
     default: null,
   },
+  relationPages: {
+    type: Object,
+    default: null,
+  },
 });
 
 const emit = defineEmits([
@@ -77,6 +81,7 @@ const emit = defineEmits([
   'retry',
   'open-settings',
   'select-candidate',
+  'relation-page',
 ]);
 
 const searchBar = ref(null);
@@ -385,7 +390,9 @@ defineExpose({ focusSearch });
         :candidates-expanded="showAllCandidates"
         :selected-record-id="selectedCandidateRecordId"
         :selected-sense-id="selectedCandidateSenseId"
+        :relation-pages="relationPages"
         @relation="emit('relation', $event)"
+        @relation-page="emit('relation-page', $event)"
         @back="emit('back')"
         @select-candidate="emit('select-candidate', $event)"
         @toggle-more-candidates="showAllCandidates = !showAllCandidates"
