@@ -1,423 +1,102 @@
 # Typewriter — Agent Guidelines
 
-## Project purpose
+This file contains **current operating instructions**, not a project history. Read the active issue, the relevant current contracts, and the latest repository state before acting. A completed migration, pilot, reset, archived decision, or historical issue comment is **context, not a command to repeat**. The history remains in Git and GitHub Issues/PRs; do not carry one-time instructions forward.
 
-This repository builds **Typewriter**, a writer-focused Korean lexical and imagery dictionary.
+## 1. Purpose and operating principles
 
-Typewriter is not a general Korean dictionary, a generic thesaurus, a linguistic ontology, or an AI writing assistant.
+Typewriter is an **offline-first Korean dictionary for writers**: "작가를 위한, 말의 결을 찾는 사전." Help writers discover lexical alternatives, imagery, mood, sensation, action and associations, not automatically write sentences. The Chrome extension is a consumer of the data, not the canonical source.
 
-Its purpose is to help writers find another word, expression, image, mood, sensation, action, or association that preserves or deliberately shifts the texture of a sentence.
+- Work **only within the owner's active issue** and current product decisions. Do not implement later roadmap work or change scope because an obsolete document says to.
+- Prefer the smallest design justified by real lexical records, the current writer workflow, or a demonstrated failure. Avoid speculative universal ontologies, generalized NLP infrastructure, new runtime services and premature schema expansion.
+- Never delegate lexical authoring/QA to another AI, CLI, subagent or session without the owner's authorization. An authorized War Room job follows its assigned model/adapter and worker boundaries. Do not self-initiate PR reviews or merges.
+- Distinguish observed evidence from inference. Report actual validation, unresolved risks and errors; never claim unrun checks, fabricated source verification, human approval or independent QA.
+- For a recurring defect, correct the **shared** producer, validator, admission or consumer boundary for applicable existing and future records; do not patch only an example word.
+- Preserve unrelated work, current policies, canonical provenance and accepted data. Neither a reviewer comment nor an agent hypothesis automatically authorizes broad deletion.
 
-The product principle is:
+## 2. Authoritative references
 
-> **Typewriter — 작가를 위한, 말의 결을 찾는 사전.**
+Follow the **current** scoped contract, not a historical implementation narrative:
 
-The canonical dictionary data is a long-term product asset and must remain independent of any one client. The Chrome extension is the first consumer, not the data model itself.
+| Surface | Source of truth |
+| --- | --- |
+| Stage 1 Candidate factory and per-method queue | [Issue #860](https://github.com/neverworkalone/typewriter/issues/860), `docs/relation-factory.md` |
+| C literary production | [Issue #1155](https://github.com/neverworkalone/typewriter/issues/1155) |
+| D corpus production | [Issue #1156](https://github.com/neverworkalone/typewriter/issues/1156) |
+| Stage 2 Relation Admission / Part selection | [Issue #927](https://github.com/neverworkalone/typewriter/issues/927), `docs/relation-factory.md` |
+| Meaning and Relation editorial policy | `docs/relation-editorial-policy.md`, `docs/meaning-layer.md` |
+| Licensing and source policy | `DATA-LICENSE.md`, `docs/data-policy.md` |
+| CI / tests / build gates | `docs/review-toolchain.md`, `scripts/ci/registry.mjs` |
+| PR reviewer duties (independent of this file) | `REVIEW.md` |
 
-## Core working principle
+These links define ongoing contracts. Historical "restart", "reset", "after implementation", pilot, or superseded instructions are **not actionable** merely because they appear in an issue, an old PR, or Git history. When documents conflict, check the latest applicable owner decision and current code/data; surface a real conflict rather than guessing.
 
-**Derive the lexical model from real writer-facing data and demonstrated product needs. Do not design a universal language model in advance.**
+## 3. Lexical data and source boundaries
 
-When working on schemas, relation types, ranking rules, validation, search, or documentation:
+- Approved lexical sources: **STDICT (표준국어대사전), KRDICT (한국어기초사전), 우리말샘**. Follow applicable **CC BY-SA 2.0 Korea**, source attribution and provenance under the licensing documents. External corpora, APIs, dictionaries and LLM outputs require their own usage-right checks.
+- Commit only authorized **selected canonical projections**, not raw downloaded dictionary dumps, bulk API responses, scraped pages, restricted corpus passages/examples or multimedia. Never infer redistribution permission from public research access.
+- `data/canonical/` is the source-preserving lexical projection. One canonical record contains its senses; generated one-meaning records are built from that data. Do **not** introduce a separately hand-edited Meaning or adjudication layer.
+- Do not rewrite Canonical as a side effect of Relation enrichment. STDICT-provided `direct`/`antonym` and authorized projections remain source-bound; Typewriter does **not** invent new dictionary-grade `direct`/`antonym` pairs.
+- Canonical and approved authored Relation/Drop JSONL are Git-owned. Generated `artifacts/dictionary.sqlite` (Full) and `dist/dictionary.sqlite` (Lite) are reproducible products, **never hand-edited inputs**. Only Lite is packaged with the extension; recent searches/settings are separate from the read-only dictionary.
+- Typewriter-authored `near`, `mood`, `scene`, `sensory`, `action` and `association` represent writer-facing exploration. These need plausible source-sense paths, not strict synonym substitutability. Assess `relevance: 1..9` relative to peers of the same source sense/UI group; no admission quota. Relation admission cannot determine whether a lexical entry itself exists.
+- Preserve headword/homograph/sense identity. An authored ID target must bind the exact existing sense and obey bidirectional relation semantics; text-only targets have no invented ID, reverse link or click action.
 
-- add fields, relation types, controlled vocabularies, and abstractions only when justified by real Typewriter records, an explicit issue requirement, or a demonstrated near-term workflow;
-- prefer the smallest model that preserves the distinction writers actually need;
-- do not generalize merely because a hypothetical future word, language, client, or corpus could require it;
-- when a plausible future requirement is not yet demonstrated, document or defer it instead of implementing it;
-- allow the editorial model to evolve through the pilot data and real writing use.
+## 4. Relation Factory Stage 1 — Candidate Generation
 
-A technically elegant lexical ontology is not automatically an improvement.
+**Stage 1 produces candidates, not editorial judgments.** These are *factory stages*, not the Stage 1/2/3 independent **PR review roles** in `REVIEW.md`.
 
-## Writer-facing editorial priorities
+### Units and methods
 
-Typewriter is optimized for **usefulness in writing**, not for reproducing a traditional dictionary.
+- Canonical has **428 shards**, two **500-record batches** per shard (last shard Batch 02: **83 records**), **856 batches** total.
+- **A:** from each exact Canonical source sense, explore directly related words, then **return to the original source sense** and independently explore a second semantic direction; do not merely expand from first-pass candidates.
+- **B:** explore **two substantially different imagined scenes/perspectives**, independently source-sense-bound; combine their word discoveries. Do not force filler from a scene that yields no new suitable word.
+- **C:** use the verified literary-context and independent **seven-lens/two-sweep** procedure in #1155. A coincidental co-occurrence is not sufficient.
+- **D:** use the verified corpus procedure in #1156. A coincidental co-occurrence is not sufficient.
+- A/B have separate progress queues per **(method, model)** (Claude, Codex and owner-assigned DeepSeek). C/D each have **one shared queue per method**, irrespective of producer model; a C or D batch has one actual producer and one formal output file.
+- Methods remain independent. Do not feed other producers' candidates into Stage 1 discovery or make one method wait for another method unless the current contract expressly requires it.
 
-A relationship does not need to be a strict dictionary synonym to be useful, but its type must be represented honestly.
+### Output and quality
 
-For example, a search may surface:
+Formal output is exactly `data/relation-candidates/<SSS>/<SSS>_<BB>_<method>_<model>.jsonl`. One JSONL row per source record, including **all** its senses, in Canonical order; `candidates: []` is valid. The Candidate v1 payload contains `record_id`, `senses[].sense_id`, `senses[].candidates: string[]` only: **no type, relevance/Tier, target ID, admission/Drop, gloss quotation or explanation metadata**. Validate count, identity, order, duplicates and structure.
 
-- `direct`: a dictionary-grade lexical synonym of the bound sense, without requiring interchangeability in every sentence (STDICT-provided, plus approved explicit `→` reference projections; Typewriter does not author new `direct`/`antonym`);
-- `near`: writer-facing expressive nuance or word texture, not a strict substitution test. For Issue #838 authoring, a close informal synonym candidate may be placed in 연상 Tier 1 (see below) instead of being forced into `direct`;
-- `mood`: an emotional or tonal color that enriches expression;
-- `scene`: evokes a related scene or situation;
-- `sensory`: shares a sensory image;
-- `action`: an action naturally associated with the source mood or situation;
-- `association`: a broader writer-useful association.
+- Preserve intelligible, sense-bound **independent words** and concise associations/images/sensations/emotions/actions, even when indirect, ordinary, cross-POS, unfamiliar or weak. Stage 1 has **no fixed/minimum/maximum candidate quota** and must not prejudge Stage 2 merit.
+- Reject **sentences, predicative clauses, narrated actions/events/procedures, disguised nominalizations, mechanical gloss paraphrases and bare source-lemma repetitions**. Removing spaces or punctuation does not legitimize a disguised clause.
+- Words/compounds **containing** the source lemma are not automatically invalid (`건축 → 건축가` may be a distinct word); mere inflection, annotation or mechanical modifier+lemma (`걸음걸이 → 느린 걸음걸이`) is not an independent discovery. Assess the exact sense and lexical contribution.
+- Keep compact meaningful expressions (`산뜩 → 가슴 철렁`) where they open a scene/image, not simply restate the gloss (`가는소금 → 하얀 소금`). Inspect **every final string for forbidden forms**; preserve borderline but plausible writer-facing associations for Stage 2 instead of imposing subjective exclusions.
+- On a blocker fix, compare the pre-fix and new `(record_id, sense_id, candidate)` sets, preserve eligible discoveries, and remove only actual Stage 1-ineligible items. Do not silently purge whole word classes or regenerate unrelated already accepted data.
 
-These relation types are current working categories, not immutable ontology. Preserve, merge, rename, or split them only when pilot data demonstrates the need.
+### Next batch and PR
 
-Prefer:
+1. Start from the **latest remote master**. Inspect the exact formal Candidate paths on that ref and currently open PRs; do **not** use a directory count or a past reset instruction as a progress cursor.
+2. Scan from `001_01` onward **to find the first unfinished and unclaimed batch**. For A/B, completion/claim is scoped by **(method, model, shard, batch)**; for C/D by **(method, shard, batch)** across all model suffixes. The scan starting at `001_01` does **not** instruct rewriting completed files.
+3. A valid master file with the expected records/senses is complete; a corrupt/partial file is an error to resolve, not something to skip. A same-key open PR is occupied. A closed-unmerged PR is neither completed nor reserved.
+4. Verify the selected batch and recheck PR ownership before submission. Commit the **one full formal batch** in its proper path, then open a PR with correct method/model/shard/batch. Preserve immutable accepted Candidate history; never silently overwrite already merged batches.
+5. On review feedback, reuse the same branch/PR, evaluate the reviewer evidence, and address confirmed defects rather than blindly deleting candidates.
 
-- Writer usefulness, vividness, generality, and relation richness may guide enrichment or prioritization, but must never be used to admit, hold, reject, or exclude an otherwise valid in-scope lexical entry;
-- explicit relation type over a flat undifferentiated synonym list;
-- sense-aware relations when the distinction matters in actual use;
-- concise, evocative records over encyclopedic definitions;
-- prioritize enrichment of high-quality writing vocabulary without using writer usefulness as lexical-admission authority;
-- human editorial judgment over automated confidence treated as truth.
+## 5. Relation Factory Stage 2 — Admission
 
-Do not turn Typewriter into sentence generation. The writer writes the sentence; Typewriter helps the writer find words.
+**Stage 2 evaluates completed Stage 1 candidates; it does not run new Candidate discovery.** Follow #927 and the current editorial policy.
 
-## Data source and licensing discipline
+- Keep Stage 1's **500-record batches** intact. Stage 2 divides each into **100-record Parts**: **5 Parts per Batch / 10 Parts per shard**; final shard 428 has **6 Parts** (Batch 02 Part 01 = 83 records).
+- **One Part = one editing session = one PR**. Invoke `prepare/verify --shard SSS --batch BB --part PP` using the actual Stage 2 commands documented in `docs/relation-factory.md`/#927. The six required Stage 1 Candidate inputs for the parent Batch must be integrated and verified; admission edits/accounting are scoped to the selected Part.
+- Select the earliest Canonical-order Part with **all required Stage 1 inputs merged on latest master** and **no successful exact-Part verification on master**. Existing active Stage 2 PRs in the same shard block another Part there. Never equate PR creation, worktree contents or a partial report with completion.
+- In source-sense context, deduplicate appropriately and decide admission vs. actual Drop, the allowed relation `type`, relative `relevance: 1..9`, and **exact target sense ID** vs. text-only. Preserve writer-useful indirect links where justified, distinguish source-grade `direct/antonym` from authored exploratory types, and respect each direction of an ID↔ID link.
+- Add to the existing per-shard `data/relations/relation-<SSS>.jsonl` and `data/relation-drops/drop-<SSS>.jsonl` without overwriting prior admitted Parts. Preserve canonical/STDICT relations.
+- **Do not start the next Part until the preceding PR is actually merged and the exact Part is verified on updated master**. Then perform Batch-wide verification after all valid Parts, and shard-wide verification after the entire shard. A missing/failed prerequisite, open conflicting PR or verification failure must hold work, not be bypassed.
+- When resuming after a failure/restart, reconcile existing PR, branch, Part evidence and latest master before doing any new work. Never create duplicate Part PRs or run two Stage 2 editors concurrently.
 
-Typewriter's approved lexical sources are the National Institute of Korean
-Language's **표준국어대사전 (STDICT)**, **한국어기초사전 (KRDICT)**, and
-**우리말샘**. Selected, licensed headwords, definitions, and lexical links
-from these dictionaries may enter canonical under **CC BY-SA 2.0 Korea**,
-with attribution to the applicable source. Typewriter's original
-**말의 결 / 연상** enrichment uses the same license. See `DATA-LICENSE.md`
-and `docs/data-policy.md`.
+## 6. Implementation and PR workflow
 
-- Do not commit raw downloaded dictionary JSON, bulk API responses, scraped
-  pages, raw corpus passages, protected source-attributed examples or multimedia.
-  Selected licensed canonical **projections** are distinct from raw source dumps.
-- Do not copy restricted content from unrelated dictionaries or assume that
-  transforming it removes licensing conditions.
-- Maintain source IDs/provenance, attribution and license applicability.
-- Typewriter-specific creative relation classifications, notes, and relevance
-  remain authored/reviewed editorial decisions, not automatic dictionary judgments.
+1. **New issues:** start from current remote `master` (`git ls-remote`, then fetch as needed), not a stale local checkout or previous PR branch. Continuing/review-fixing an existing PR uses its current branch and HEAD. Protect unrelated changes and worktrees.
+2. **Worktree dependencies:** when required packages are missing, use the project-local frozen/offline install in [README development setup](README.md#development). Do not link another worktree's `node_modules`; report cache misses rather than silently making online/install-script changes.
+3. **Preflight:** verify the affected production path, run relevant shared validators/tests, and only add a test for a plausible regression on a supported path. Prefer one general **old-fails/new-passes** regression to word/batch-specific memorization. Don't invent unreachable corruptions just to enlarge test coverage.
+4. **CI ownership:** `scripts/ci/registry.mjs` and `docs/review-toolchain.md` define Normal/Deep/affected/manual registration, exact-HEAD gates, the zero-current-Canonical-SQLite-build invariant, and the separate SQL schema gate. Normal is required for ordinary code/data; selected affected Deep checks for owned dependencies; full Deep is scheduled/manual. Keep automatic CI database-free except the explicitly separate schema-owner gate. Do not weaken registration/coverage to make a PR green.
+5. **Local Normal CI:** commit intended work and require clean `git status --porcelain=v1 --untracked-files=all` before `ci:normal`, `ci:pr`, `ci:all` or `pnpm test`. Do not use a dirty-worktree override as PR evidence.
+6. **Browser:** do not launch Chrome/CFT by default. Use it only for a genuinely Chrome-specific MV3/CSP, packaged WASM/SQLite, API/storage or untestable browser-keyboard boundary; otherwise prefer deterministic tests.
+7. **Labels:** just before creating a PR, read the linked issue's **current** labels, apply those appropriate to the PR, honor explicit overrides (e.g. `urgent` instead of `batch`), and verify applied labels. **Documentation-only process/policy PRs carry `no-review`.**
+8. **After PR creation:** monitor review/inline/issue comments when the environment supports periodic checks (5-minute cadence). Never claim unsupported background monitoring. Fix confirmed problems on the **same PR** after validation; rebut erroneous blockers with concrete evidence and request reconsideration. Do not initiate a review, merge, or abandon a blocked PR because of a disagreement; escalate unresolved evidence conflicts to the owner. Do not post repetitive status updates.
+9. **Reviewer separation:** reviewers use the root `REVIEW.md`, **not these implementer instructions**. An implementation agent does not perform its own independent Stage 1/2 review or merge unless the owner explicitly assigns that distinct role.
 
-Other external APIs, dictionaries, corpora and LLMs remain subject to their
-respective use conditions. No new blanket validator or old-data migration is
-required by this license decision.
+## 7. Keep instructions operational
 
-## Canonical and generated artifacts
+Keep this file and `REVIEW.md` focused on **present-tense invariants and actionable procedures**. Preserve experiment outcomes, one-time resets, migrations, archived branches, old implementation status, and rationale in the original issues/PRs, not as live commands. Add a current rule here only if agents must repeatedly apply it; otherwise link the dedicated contract. When borrowing changes from a different branch, reconcile policy files against the latest master rather than replacing them with older text.
 
-The editable dictionary sources belong in Git. The current product pipeline is:
-
-```text
-approved lexical sources
-          ↓
-data/canonical/ (source-preserving lexical projection)
-          ↓ generated: one record = one meaning (scripts/build/record-meanings.mjs)
-artifacts/dictionary.sqlite (Full: source + meanings + provenance)
-          ↓ verified product projection
-dist/dictionary.sqlite (Lite: Extension dictionary)
-          ↓
-Chrome Extension
-```
-
-Rules:
-
-- preserve licensed canonical source data and its sense/provenance evidence; there is no separate edited Meaning layer (Issue #822): one canonical record is one meaning, derived on every build;
-- do not hand-edit generated SQLite to make tests pass;
-- Full is the development/source-audit database; only Lite belongs in the Extension package;
-- the same committed inputs and build contracts must reproduce the same logical database contents;
-- preserve source revision, dictionary/schema versions, and source-bound integrity checks across generated outputs;
-- keep user data (recent searches, favorites, settings) separate from the read-only dictionary.
-
-## Current lexical editing and quality discipline
-
-The former **lexical-production factory** remains retired. Do not restore its old worker handoffs or deleted Meaning/adjudication layer.
-
-**Relation Factory:** Follow [`docs/relation-factory.md`](docs/relation-factory.md) and the active shared production issue **#860** for the 500-record batch contract, candidate schema, and shared next-batch queue. **C follows the owner-approved literary procedure in #1155; D follows the corpus procedure in #1156.** These method-specific procedures supplement, rather than override, the shared output and queue contracts. Ignore obsolete cumulative A+B→C→D instructions.
-
-- **Stage 1 — candidates only:** Maintain 428 Canonical shards, **500 records per batch** (two batches per shard; the last shard's second batch has 83 records), for **856 total batches**. Run A, B, C, D as **independent** producer jobs. A/B use separately assigned Codex and Claude runs plus optional owner-assigned DeepSeek; C/D each use one owner-assigned Codex, Claude, or DeepSeek model **per batch**, sharing one progress cursor per method across models. Do not read or change other producers' outputs. Store only source record/sense IDs and `candidates: string[]` in `data/relation-candidates/<SSS>/<SSS>_<BB>_<method>_<model>.jsonl`; never store type, relevance/Tier, target IDs or admission decisions. Keep unselected candidate data permanently (sole exception: the owner-approved one-time full reset of Issue #1154, archived on the `candidate` branch; all methods restart at `001_01`). **For C, use #1155's verified literary-context and independent seven-lens/two-sweep procedure; for D, use #1156. The factory document retains shared sense, form, and Candidate v1 rules; mere co-occurrence is insufficient.**
-- **All Stage 1 A/B/C/D candidate forms (mandatory):** Final candidates are **independent words/lexical items first**; preserve weak but intelligible, sense-bound word associations for Stage 2. **Never output complete sentences, predicative clauses, narrated actions/events/procedures, or their disguised nominalizations**; an attested corpus sentence or simulated B scene is source material to extract from, **not** a candidate string. Multiword or concatenated candidates are checked to prevent **mechanical gloss restatements, space-stripped clauses and arbitrary `lemma + modifier` constructions**; a compact, sense-bound scene, image, sensation, emotion or action association is allowed even if familiar or ordinary (e.g. `수괘` [frost] → `겨울 아침`). Do **not** demand exceptional originality or preselect creative merit at Stage 1: Stage 2 owns candidate worth, admission and Tier. Exclude exact source lemma and lemma-with-parenthetical-only variants. **Do not blanket-reject compounds or other words containing the source lemma**: `건축 → 건축가` can be a distinct lexical candidate, while `걸음걸이 → 느린 걸음걸이` is a mechanical source-lemma expansion. Judge every source-lemma-containing lexical item individually by actual source sense and independent lexical/expressive contribution. The *producer* must check every nonempty output candidate's form before submitting, and Stage 1 PR review applies the asymmetric form gate in `REVIEW.md`. Do not stop exploration at a convenient candidate count, add filler to reach one, or delete eligible candidates to reduce one. On regeneration and blocker fixes, retain previously discovered source-sense-bound eligible candidates, add genuinely new discoveries, and remove only confirmed Stage 1-ineligible output. No per-sense quotas, automatic phrase-length cutoff, substring blacklist, or Stage 2 Tier/Drop decisions.
-
-- **Stage 2 — admission (#927):** Use the completed Candidate files to decide selection, `near/mood/scene/sensory/action/association`, relative `relevance: 1..9` and exact target ID vs text-only. Do not perform new candidate discovery. Stage 1 remains two 500-record batches per shard; Stage 2 uses five 100-record Parts within each batch (ten Parts per shard, except shard 428 Batch 02 has only Part 01 with 83 records). One editing session = one Part = one PR. Run `prepare/verify --shard SSS --batch BB --part PP`; the full six Candidate inputs for that 500-record batch remain validated and integrated, while edit items and admission accounting are limited to the selected Part. Existing per-shard Relation/Drop files, schema and build remain unchanged. Choose the earliest Canonical-order Part whose Stage 1 inputs are on latest master and whose exact Part `verify` has not succeeded on latest master. An open Stage 2 PR blocks another Part in the same shard; after merge, continue from latest master. After every valid Part of a Batch is complete, verify that full Batch; after every valid Part of the shard is complete, verify the shard (shard 428 has only six Parts in total, with 83 records in Batch 02 Part 01). Existing `direct/antonym` remain untouched. Handle bidirectional authored ID↔ID judgments independently.
-- **Build (after implementation):** `pnpm run build` consumes Canonical plus approved Relations JSONL; candidate files are **not** Build inputs. Preserve Full/Lite and reproducibility contracts.
-- **Owner commands:** `#860 A 진행해` / `#860 B 진행해`; `#1155 C 진행해`; `#1156 D 진행해` (the shared #860 C/D queue rules still apply). The assigned model selects the earliest not-yet-completed/unclaimed **500-record batch**: A/B by `(method, model)`; C/D by **method alone** across all producer model suffixes, inspecting verified master files and open PRs. Do not regenerate a C/D batch already produced or claimed by the other model. Fix existing review blockers first. Start the first formal 500-record batch from scratch using the current production prompt. Only merged formal 500-record Candidate files are durably preserved. Closed/unmerged historical pilot PRs do not claim the new batch. Do not submit only local cache files: commit the verified Candidate JSONL and open a PR.
-
-**Implementation status:** Authored Relations source, text-only runtime presentation and authored reverse Build remain planned; independent Candidate generation does not require those features. Agents must not initiate other AI model/CLI/subagent runs without owner authorization. Follow [`docs/relation-editorial-policy.md`](docs/relation-editorial-policy.md) for editorial decisions.
-
-STDICT Canonical (`data/canonical/`) stays untouched by #838 말의 결·연상 enrichment, which gets its own source in a later implementation issue. Work on the canonical layer only as the assigned issue directs. A search candidate is a canonical record; polysemy is the several glosses inside it and homonyms are separate records (see `docs/meaning-layer.md`). Do not reintroduce a separately edited Meaning or adjudication layer, and never rewrite canonical source data as a side effect.
-
-Use two relation quality standards:
-
-- `gloss`, `direct`, and `antonym` (STDICT-provided or approved projections) require dictionary-grade lexical accuracy and source-bound identity/sense/POS checks. A direct synonym need not substitute in every sentence; verify a plausible shared meaning axis. A contrasting situation, co-occurrence, or topical similarity alone is insufficient.
-- `near`, `mood`, `scene`, `sensory`, `action`, and `association` support plausible writer-facing exploration. Keep intelligible relationships where possible; evaluate exploratory `relevance: 1..9` against peers of the same source Meaning/UI group rather than imposing synonym-level strictness or quotas.
-
-Relation enrichment is independent of lexical admission. Follow [`docs/relation-editorial-policy.md`](docs/relation-editorial-policy.md) for details.
-
-Source-bound semantic QA must be truthful: report evidence actually checked, unresolved judgments, and corrections. Agent self-check is **not** independent or human review; never invent reviewer identities or approval evidence. For lexical authoring or QA, the assigned primary agent must not delegate to other AI models, CLIs, subagents, or agent sessions. Deterministic local tools and source evidence remain available. Do not inspect unrelated agent account identities, authentication, subscription, or usage details.
-
-Quality and coverage take precedence over throughput. For a recurring defect, fix the common editing, validation, or consumer rule across applicable existing entries and future additions; do not merely patch the example. Keep historical evidence unchanged instead of rewriting it to fit new decisions. PR review Stage 1/2/3 are **separate code-review roles**, defined only in `REVIEW.md`.
-
-## Search and product priorities
-
-Search should support a writer who is already in the middle of writing.
-
-Prefer:
-
-- fast local lookup;
-- keyboard-first interaction;
-- low-friction exploration from one word to another;
-- clear separation between direct alternatives and wider imagery/association;
-- stable, predictable ranking;
-- offline behavior after installation;
-- restrained UI that feels like a writing tool, not an AI chat product.
-
-Do not add runtime dependency on an external dictionary or AI service unless an active issue explicitly changes the product architecture.
-
-## Scope discipline
-
-Work within the active issue and milestone.
-
-Do not implement work belonging only to a later milestone merely because it is visible in the roadmap.
-
-In particular:
-
-- do not regenerate or bulk rewrite canonical data outside the active issue;
-- do not freeze a large lexical ontology without demonstrated writer-facing need;
-- do not add generalized NLP infrastructure, embeddings, vector databases, cloud services, collaborative editing, or multi-language architecture unless current product needs demonstrate them;
-- do not expand Typewriter into a general Korean dictionary or AI writing assistant without an explicit product decision.
-
-When current data and current requirements are fully represented by a simpler design, choose the simpler design.
-
-## Starting a new issue
-
-Unless the user explicitly requests another base, start every new issue implementation from the latest remote `master` head.
-
-Check remote `master` with `git ls-remote`; run `git fetch` only if that commit is not available locally. Do not base new issue work on a stale local `master`, a previous issue branch, or an existing PR branch.
-
-Preserve unrelated local changes. Use a separate worktree when necessary.
-
-This rule applies when starting a new issue, not when continuing an existing issue or addressing feedback on its PR.
-
-## Local worktree dependencies
-
-For a newly created Codex worktree that does not already have the required
-dependencies, run this from the repository root:
-
-```sh
-corepack pnpm install --offline --frozen-lockfile --ignore-scripts \
-  --store-dir "$HOME/.cache/typewriter/pnpm-store"
-```
-
-The shared store is machine-local and already contains the current lockfile's
-packages. Skip the install when the worktree already has the required
-dependencies. Each worktree keeps its own `node_modules`; do not symlink another
-worktree's directory. If a lockfile change causes an offline cache miss, report
-the specific missing artifact. Only the owner or an explicitly authorized
-one-time online frozen install may replenish the shared store; see the
-[development setup](README.md#development) for its command.
-
-### Generalize lexical validation
-
-Lexical defects discovered in one word or data partition should normally become shared checks, not example-specific tests.
-
-When a defect expresses a general rule:
-
-- fix the common producer, validator, editorial audit, or consumer boundary;
-- apply the rule to **all applicable existing canonical records**, and enforce it for future additions;
-- verify actual behavior with a minimal failing fixture and an old-fails/new-passes regression;
-- retain local checks only for genuinely local scope or requirements.
-
-Do not encode a growing list of individual words as a substitute for a general invariant. Where a distinction is semantic rather than mechanically decidable, require source-bound editorial review instead of a brittle string heuristic.
-
-## Shared lexical defects and PR priority
-
-When a data or implementation PR uncovers a defect in a shared producer, validator, build, or consumer rather than in specific edited records:
-
-1. Do not conceal the defect with a word-specific exception, misleading rejection, or weakened check.
-2. Search current issues and PRs for an existing fix or dependency; avoid duplicates.
-3. When a separate shared-code correction is necessary, make its scope and dependency explicit. Prove the fix through the **real production path** and a generalized regression; do not hide unrelated code changes in a data-only PR.
-4. Keep a blocked PR and its evidence truthful until the dependency is resolved; do not bypass validation or silently move on.
-5. Only the owner controls independent agent sessions and task parallelism. Implementation agents do not initiate reviews or merge their own PRs.
-
-A PR that genuinely blocks ongoing work may use the `urgent` label. Do not use it for routine changes; it affects review priority, not review standards.
-
-## Test and validator discipline
-
-Tests and validators protect product stability and established product invariants; they are **not code-coverage targets** or a reason to detect every imaginable failure.
-
-- Add or expand checks only for plausible regressions in supported build, input, data, or runtime paths, or for explicitly required security, licensing, or trust boundaries.
-- Invalid fixtures must model those real paths or boundaries. Do not manufacture unreachable states (for example, manually altering a correctly generated, read-only SQLite artifact after the build) and add validation solely because existing checks do not catch them. A generic integrity goal alone does not make unsupported artifact tampering a production path.
-- Reuse existing shared tests and validators first. Avoid redundant test cases, new test files, validators, and CI hooks when current coverage already protects the same invariant.
-- Before retaining a new automated check, identify the concrete regression or invariant it protects, why existing coverage is insufficient, and why that benefit outweighs implementation, recurring CI, maintenance, and review costs. If that cannot be shown, do not add it.
-- For a genuine shared defect, fix the common cause and add only the smallest general old-fails/new-passes regression needed for current and future records. Do not weaken required gates or ignore real product, security, or integrity failures.
-
-## Validation
-
-Run the validation appropriate to the changed surface.
-
-### CI registration and execution tiers
-
-CI scope identifies the domain a check protects; execution tier identifies when
-the check runs. Keep these separate in `scripts/ci/registry.mjs`. Register each
-check with one domain owner, one protected contract, one tier (`candidate`,
-`normal`, or `deep`), and one schedule (`always`, `affected`, or
-`manual`). New checks default to `deep`; promote a check into `normal` only when
-it protects a current-revision, admission, or product invariant that must block
-the same PR. An `affected` check must list normalized repository-relative
-dependency paths. Missing path evidence, an empty/unclassifiable diff, or an
-unknown or renamed path must retain the Normal gate and a visible diagnostic; they do not justify Full Deep on a PR.
-Before relying on that fallback for a newly encountered source path, identify
-its protected contract and register the actual regression coverage. An existing
-always-on Normal test may be bound to the exact path in
-`scripts/ci/deep-gate-coverage.json` without running unrelated Deep checks;
-that registry is append-only and independently checked against the PR base.
-If existing Deep contracts are affected, connect all affected Deep dependency
-paths; if a required check is missing, add a reusable old-fails/new-passes
-Normal or Deep regression, not an exemption or batch-specific fixture.
-Never remove/replace an earlier binding to lower the gate. Unresolved coverage must be corrected with actual regression ownership; it
-never selects unrelated Full Deep as a PR gate. Classifier/runner/registry changes
-still require Normal, plus any directly affected registered Deep checks. A registered
-test file has exactly one registry owner; unregistered tests may be run directly.
-
-The pull-request workflow runs Normal for every non-documentation change,
-including Candidate, Relation, Canonical and product-code changes. Candidate
-validation uses the factory contracts; automatic CI does not create a
-current-Canonical SQLite database. `ci:fast` is an optional checkpoint inside
-Normal.
-
-`ci:normal` remains the required gate for ordinary code/data/mixed PRs and must
-retain the complete current-canonical audit and applicable source/admission
-protections. Fast, Normal, Deep, All, PR and selective-Deep automatic paths must
-generate zero current-Canonical Full/Lite SQLite databases, including through
-nested tests, product builds or Vite fallbacks. The build ledger records and
-fails on any such generation. The database-free UI build and unit contracts do
-not claim to validate built product output. `ci:fast` is a checkpoint inside
-the same Normal session. `ci:all` runs Normal then current-system Deep data
-checks, and `ci:deep` selects Deep checks across every domain scope.
-
-The exact `BASE_SHA...HEAD_SHA` SQL schema classifier controls the separate
-`ci:schema` PR gate. Its registered SQL DDL owner is
-`scripts/build/sqlite-schema.mjs`; that file contains Full and Lite schema
-definitions. Owner deletion or movement remains visible because rename
-detection is disabled. An SQL DDL definition outside the registered owner list
-fails classification until the owner list is updated. Only an owner-path change
-runs the product Full/Lite build, integrity and reproducibility checks. The
-gate reports its exact HEAD and stage timings. Normal product/code changes do
-not trigger it. The normal `pnpm run build`, packaging and release contracts
-remain available and unchanged.
-
-Completed-batch and one-off
-checkpoint tests are Manual: they stay in the repository, are registered in no
-CI level or workflow, and are run directly (`node --test <file>`). The existing `Validate and test Typewriter` PR check
-always runs the applicable Normal gate and uses `ci:pr` to run only affected
-Deep checks at the exact PR HEAD. `ci:all` retains full current-system Deep
-coverage for weekly scheduled/manual audits, never automatic PR classification. The path
-classifier is not a separate PR check.
-Deep data inputs belong in each check's `deepInputs` registry metadata;
-`dependency_paths` separately name changes that invalidate that check's
-contract. A data file appearing in `deepInputs` does not alone select the
-check. Routine canonical and reviewed relation changes must pass schema/shape
-classification and the existing Normal source-bound validators.
-New or malformed paths remain fail-closed. Docs-only changes retain the
-exact-head Normal skip, and pure root candidate artifacts retain `ci:candidates`.
-CI runner/registry/workflow/classifier edits, unresolved unknown
-paths, missing/empty diff evidence and malformed data take Normal on PRs;
-any independently matched Deep dependency adds only its affected checks.
-Normal validators still reject invalid data. Verified append-only `deep-gate-coverage.json` additions are not
-classified as runner or registry implementation changes. A skipped Deep check must be listed with its reason; it never counts as
-completed Deep evidence.
-
-### Local Normal CI preflight
-
-Before local Normal CI (`ci:normal`, `pnpm test`, `ci:pr`/`ci:all`), require an empty `git status --porcelain=v1 --untracked-files=all`; otherwise commit intended changes first. Do not run dirty just to trigger `DIRTY_WORKTREE` and retry. `TYPEWRITER_ALLOW_DIRTY=true` is development-only, not PR gate evidence. If CI itself dirties the worktree, fix that producer; retain existing provenance guards.
-
-For data changes, validation may include:
-
-- JSON/JSONL schema checks;
-- reference integrity;
-- duplicate records or relations;
-- self-reference;
-- invalid or missing lemma/sense targets;
-- part-of-speech conflicts;
-- impossible or contradictory relation metadata;
-- deterministic build checks;
-- representative editorial regression cases.
-
-For build/database changes, validation may include:
-
-- canonical input → SQLite build;
-- schema/index verification;
-- metadata/version verification;
-- representative lookup queries;
-- reproducibility checks.
-
-For Chrome-extension changes, validation may include:
-
-- Manifest V3/CSP compatibility;
-- packaged SQLite/WASM loading;
-- local search correctness;
-- keyboard interaction;
-- startup/search latency;
-- extension install/update behavior relevant to the issue.
-
-Do not substitute broad unrelated testing for the validation that demonstrates the active issue is correct.
-
-## Browser validation
-
-Do not launch Chrome or Chrome for Testing by default.
-
-Prefer deterministic Node, schema, SQLite, validator, and component-level
-tests for Typewriter.
-
-Use real Chrome validation only when the change specifically affects a
-browser-only boundary, such as:
-
-- extension manifest, permissions, or CSP;
-- packaged WASM/SQLite loading in the extension runtime;
-- Chrome extension APIs or storage behavior;
-- keyboard/runtime behavior that cannot be validated reliably without Chrome.
-
-Data, search, schema, validator, build-tooling, and ordinary UI implementation
-changes do not require CFT merely for additional confidence.
-
-Do not add or run browser automation when existing deterministic tests can
-validate the affected behavior.
-
-## PR label inheritance
-
-Immediately before opening a PR, read the linked Issue's current labels
-(`gh issue view <number> --json labels`) and copy them to the PR.
-Explicit PR label instructions replace conflicting inherited labels (e.g.,
-`urgent` instead of `batch`); retain unrelated labels.
-Verify the PR's labels after creation. Never rely on labels remembered at issue start.
-## Monitoring after PR creation
-
-After creating and pushing the implementation PR, automatically begin monitoring that PR every 5 minutes when the execution environment supports it.
-
-On each check:
-
-1. Check whether the PR is still open. Stop monitoring when it is merged or closed.
-2. Check for new or updated review submissions, inline review comments, and PR conversation comments. Track what has already been processed to avoid duplicate work.
-3. Evaluate all new actionable feedback together against the current head, active issue, canonical data rules, and product requirements. Do not accept feedback blindly.
-4. For accepted feedback, implement the appropriate fixes, run relevant validation, commit, and push to the same PR branch. Explain rejected or deferred feedback in the relevant thread.
-5. If there is no new actionable feedback, make no changes and post no repetitive status comments.
-
-**Resolve blocking reviews through dialogue:** respond to each new substantive `-1` in the PR conversation (or its relevant inline thread), not solely in a linked Issue or by silently editing PR metadata. Independently assess each finding against the current HEAD and requirements. If correct, fix it and point to the change/evidence; if incorrect or already resolved, explain the counterevidence and specifically ask for reconsideration through the ordinary PR discussion (do not invoke the reviewer yourself). A metadata-only correction may need no code change. Address the reviewer's next response in turn: acknowledge valid points, revise your own position where warranted, and narrow any remaining dispute to verifiable facts and an actionable next step. Neither blind compliance nor repeating the same rebuttal without engaging the reviewer's answer is sufficient.
-
-**Dependency Wait:** When resolving a PR blocker depends on another issue or PR, wait for that dependency to complete. Do not post repetitive replies or status comments while waiting; respond only to a new independent issue or an explicit owner instruction.
-
-**Do not abandon a blocked line:** distinguish a legitimate unresolved defect from a disagreement about evidence or requirements. If further exchanges offer no substantive progress, report the agreed facts, competing arguments, outstanding risk and decision needed to the owner; keep the PR/Issue status truthful and do not silently abandon the batch, declare completion or start unrelated downstream work. No fixed number of exchanges limits a productive discussion. This obligation does not authorize the author to perform, trigger or merge its own review.
-
-Continue monitoring after each feedback batch until the PR is merged or closed, or the user asks you to stop.
-
-Monitoring does not authorize starting, requesting, repeating, or performing a PR review, posting `@codex review`, or merging the PR.
-
-If the execution environment cannot sustain periodic monitoring, report that limitation explicitly rather than claiming monitoring is active.
-
-## Review boundary
-
-Implementation agents do not initiate, perform, or repeat PR reviews unless the user explicitly requests review work.
-
-PR review policy is defined exclusively by `REVIEW.md`.
-
-Do not apply `AGENTS.md` as review guidance.
-
-## Documentation
-
-`README.md` is the repository entry point.
-
-Detailed rules should live in dedicated documents as they are introduced by the roadmap. Consult the applicable source of truth before changing an area, including, once present:
-
-- editorial-model guidance;
-- canonical data schema documentation;
-- data-source/licensing policy;
-- repository structure documentation;
-- build/reproducibility documentation.
-
-Do not duplicate dedicated documents in `AGENTS.md`.
-
-When reusing work from another branch, copy only needed changes; never replace a policy/contract file wholesale with an older version. **Only if that transfer changes a policy/contract file**, compare it once against current `master` and reconcile any regression. Ordinary pushes need no extra check.
-
-## Decision rule
-
-When choosing between a more general design and a simpler design that fully represents the current Typewriter data and demonstrated writer workflow:
-
-**choose the simpler design.**
-
-Typewriter should become more sophisticated because real words, real relations, and real writing use demand it—not because the architecture can imagine it.
