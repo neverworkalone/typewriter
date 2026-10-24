@@ -582,11 +582,11 @@ defineExpose({ focusCandidate });
 }
 
 .relation-list.has-inline-pagination .relation-entry.has-previous-page {
-  padding-left: 34px;
+  padding-left: 32px;
 }
 
 .relation-list.has-inline-pagination .relation-entry.has-next-page {
-  padding-right: 34px;
+  padding-right: 32px;
 }
 
 .result-section.has-inline-pagination > h3,
@@ -654,12 +654,10 @@ defineExpose({ focusCandidate });
 
 .relation-entry.has-previous-page > .relation-page-button {
   left: 0;
-  justify-content: flex-start;
 }
 
 .relation-entry.has-next-page > .relation-page-button {
   right: 0;
-  justify-content: flex-start;
 }
 
 .relation-page-glyph {
@@ -668,8 +666,12 @@ defineExpose({ focusCandidate });
   transform: translateY(7.5px);
 }
 
-.relation-entry.has-next-page > .relation-page-button .relation-page-glyph {
+.relation-entry.has-previous-page > .relation-page-button .relation-page-glyph {
   transform: translate(2px, 7.5px);
+}
+
+.relation-entry.has-next-page > .relation-page-button .relation-page-glyph {
+  transform: translate(-2px, 7.5px);
 }
 
 .relation-list.has-inline-pagination .relation-separator {
@@ -707,8 +709,12 @@ defineExpose({ focusCandidate });
   transform: translateY(8.5px);
 }
 
-.dictionary-result.is-compact .relation-entry.has-next-page > .relation-page-button .relation-page-glyph {
+.dictionary-result.is-compact .relation-entry.has-previous-page > .relation-page-button .relation-page-glyph {
   transform: translate(2px, 8.5px);
+}
+
+.dictionary-result.is-compact .relation-entry.has-next-page > .relation-page-button .relation-page-glyph {
+  transform: translate(-2px, 8.5px);
 }
 
 .relation-link.is-static {
