@@ -295,7 +295,7 @@ describe('text-only authored relation', () => {
     expect(statics).toContain('글자뿐');
 
     const preview = mount(record, { interactive: false });
-    const previewGroup = preview.querySelector('[data-group-id="near"]');
+    const previewGroup = preview.querySelector('[data-group-id="texture"]');
     expect(previewGroup.querySelector('.relation-link.is-disabled')?.textContent).toBe('연결');
     expect(previewGroup.querySelector('.relation-link.is-disabled.is-static')).toBeNull();
     expect(previewGroup.querySelector('.relation-link.is-static')?.textContent).toBe('글자뿐');
