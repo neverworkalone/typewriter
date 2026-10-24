@@ -155,6 +155,24 @@ class Lifecycle(unittest.TestCase):
         w.tick(3)
         self.assertEqual(len(w.adapter.launches), 1)
 
+        # An explicit Retry must still check the producer-owned branch before launching again.
+        b = w.row()
+        w.pr_info(7, HEAD1, state="open", merged=False, head_ref=b["branch"])
+        w.gh.by_branch[b["branch"]] = [{"number": 7, "state": "OPEN", "headRefOid": HEAD1}]
+        w.gh.files[7] = [{"path": "data/relation-candidates/001/001_01_a_deepseek.jsonl"}]
+        w.git.remote[b["branch"]] = HEAD1
+        self.assertTrue(control.retry(w.store, "deepseek", "a"))
+
+        w.tick(2)  # Retry restores PRODUCING, then checks the owned PR before any new launch.
+
+        b = w.row()
+        self.assertEqual((b["state"], b["paused_from"]), ("ERROR", "PRODUCING"))
+        self.assertIsNone(b["pr_number"])  # unknown completion is not adopted as a successful PR run
+        self.assertIn("기존 소유 PR #7", b["error"])
+        self.assertEqual(len(w.adapter.launches), 1)
+        self.assertTrue(Path(b["worktree"]).exists())
+        self.assertEqual(w.git.removed, [])
+
     def test_pr_missing_after_clean_exit_and_duplicate_pr(self):
         w = self.w
         w.start("single")

@@ -542,6 +542,20 @@ class Supervisor:
                             return
                         self._handoff_recovered_pr(b, info, "운영자 Retry 직전")
                         return
+                elif is_terminal_producer and failed_code is None:
+                    # An unknown exit status is not proof that production failed before creating a PR. Resolve the
+                    # owned branch before an operator Retry; without completion evidence, never adopt a discovered PR.
+                    try:
+                        info = self._find_recovery_pr(b)
+                    except Exception as e:
+                        self._fail(b, "ERROR", f"Retry 전 종료 상태가 불명확하고 기존 PR 조회/검증도 실패했습니다: {e}. "
+                                   "worktree를 보존하고 AI를 재실행하지 않습니다.")
+                        return
+                    if info is not None:
+                        self._fail(b, "ERROR", f"종료 상태를 확인할 수 없고 기존 소유 PR #{info['number']}이 있습니다. "
+                                   "완료 증거가 없어 PR을 인계하거나 AI를 재실행하지 않습니다. "
+                                   "worktree와 PR을 보존합니다.")
+                        return
         self._launch(b, "produce_resume" if b["session_id"] else "produce_recover")
 
     # ---- PRODUCING / FIXING -------------------------------------------
