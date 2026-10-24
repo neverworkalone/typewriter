@@ -37,14 +37,14 @@ A relationship does not need to be a strict dictionary synonym to be useful, but
 For example, a search may surface:
 
 - `direct`: a dictionary-grade lexical synonym of the bound sense, without requiring interchangeability in every sentence (STDICT-provided, plus approved explicit `→` reference projections; Typewriter does not author new `direct`/`antonym`);
-- `near`: writer-facing expressive nuance or word texture, not a strict substitution test. For Issue #838 authoring, a close informal synonym candidate may be placed in 연상 Tier 1 (see below) instead of being forced into `direct`;
+- `near`: writer-facing expressive nuance or word texture, not a strict substitution test. A close informal synonym candidate may be placed in 연상 Tier 1 (see below) instead of being forced into `direct`;
 - `mood`: an emotional or tonal color that enriches expression;
 - `scene`: evokes a related scene or situation;
 - `sensory`: shares a sensory image;
 - `action`: an action naturally associated with the source mood or situation;
 - `association`: a broader writer-useful association.
 
-These relation types are current working categories, not immutable ontology. Preserve, merge, rename, or split them only when pilot data demonstrates the need.
+These relation types are current working categories, not immutable ontology. Preserve, merge, rename, or split them only when current lexical data and product needs demonstrate the need.
 
 Prefer:
 
@@ -77,8 +77,7 @@ and `docs/data-policy.md`.
   remain authored/reviewed editorial decisions, not automatic dictionary judgments.
 
 Other external APIs, dictionaries, corpora and LLMs remain subject to their
-respective use conditions. No new blanket validator or old-data migration is
-required by this license decision.
+respective use conditions.
 
 ## Canonical and generated artifacts
 
@@ -98,7 +97,7 @@ Chrome Extension
 
 Rules:
 
-- preserve licensed canonical source data and its sense/provenance evidence; there is no separate edited Meaning layer (Issue #822): one canonical record is one meaning, derived on every build;
+- preserve licensed canonical source data and its sense/provenance evidence; there is no separate edited Meaning layer: one canonical record is one meaning, derived on every build;
 - do not hand-edit generated SQLite to make tests pass;
 - Full is the development/source-audit database; only Lite belongs in the Extension package;
 - the same committed inputs and build contracts must reproduce the same logical database contents;
@@ -107,20 +106,20 @@ Rules:
 
 ## Current lexical editing and quality discipline
 
-The former **lexical-production factory** remains retired. Do not restore its old worker handoffs or deleted Meaning/adjudication layer.
+Do not restore obsolete worker handoffs or a separately edited Meaning/adjudication layer.
 
 **Relation Factory:** Follow [`docs/relation-factory.md`](docs/relation-factory.md) and the active shared production issue **#860** for the 500-record batch contract, candidate schema, and shared next-batch queue. **C follows the owner-approved literary procedure in #1155; D follows the corpus procedure in #1156.** These method-specific procedures supplement, rather than override, the shared output and queue contracts. Ignore obsolete cumulative A+B→C→D instructions.
 
-- **Stage 1 — candidates only:** Maintain 428 Canonical shards, **500 records per batch** (two batches per shard; the last shard's second batch has 83 records), for **856 total batches**. Run A, B, C, D as **independent** producer jobs. A/B use separately assigned Codex and Claude runs plus optional owner-assigned DeepSeek; C/D each use one owner-assigned Codex, Claude, or DeepSeek model **per batch**, sharing one progress cursor per method across models. Do not read or change other producers' outputs. Store only source record/sense IDs and `candidates: string[]` in `data/relation-candidates/<SSS>/<SSS>_<BB>_<method>_<model>.jsonl`; never store type, relevance/Tier, target IDs or admission decisions. Keep unselected candidate data permanently (sole exception: the owner-approved one-time full reset of Issue #1154, archived on the `candidate` branch; all methods restart at `001_01`). **For C, use #1155's verified literary-context and independent seven-lens/two-sweep procedure; for D, use #1156. The factory document retains shared sense, form, and Candidate v1 rules; mere co-occurrence is insufficient.**
+- **Stage 1 — candidates only:** Maintain 428 Canonical shards, **500 records per batch** (two batches per shard; the last shard's second batch has 83 records), for **856 total batches**. Run A, B, C, D as **independent** producer jobs. A/B use separately assigned Codex and Claude runs plus optional owner-assigned DeepSeek; C/D each use one owner-assigned Codex, Claude, or DeepSeek model **per batch**, sharing one progress cursor per method across models. Do not read or change other producers' outputs. Store only source record/sense IDs and `candidates: string[]` in `data/relation-candidates/<SSS>/<SSS>_<BB>_<method>_<model>.jsonl`; never store type, relevance/Tier, target IDs or admission decisions. Keep unselected candidate data permanently. **For C, use #1155's verified literary-context and independent seven-lens/two-sweep procedure; for D, use #1156. The factory document retains shared sense, form, and Candidate v1 rules; mere co-occurrence is insufficient.**
 - **All Stage 1 A/B/C/D candidate forms (mandatory):** Final candidates are **independent words/lexical items first**; preserve weak but intelligible, sense-bound word associations for Stage 2. **Never output complete sentences, predicative clauses, narrated actions/events/procedures, or their disguised nominalizations**; an attested corpus sentence or simulated B scene is source material to extract from, **not** a candidate string. Multiword or concatenated candidates are checked to prevent **mechanical gloss restatements, space-stripped clauses and arbitrary `lemma + modifier` constructions**; a compact, sense-bound scene, image, sensation, emotion or action association is allowed even if familiar or ordinary (e.g. `수괘` [frost] → `겨울 아침`). Do **not** demand exceptional originality or preselect creative merit at Stage 1: Stage 2 owns candidate worth, admission and Tier. Exclude exact source lemma and lemma-with-parenthetical-only variants. **Do not blanket-reject compounds or other words containing the source lemma**: `건축 → 건축가` can be a distinct lexical candidate, while `걸음걸이 → 느린 걸음걸이` is a mechanical source-lemma expansion. Judge every source-lemma-containing lexical item individually by actual source sense and independent lexical/expressive contribution. The *producer* must check every nonempty output candidate's form before submitting, and Stage 1 PR review applies the asymmetric form gate in `REVIEW.md`. Do not stop exploration at a convenient candidate count, add filler to reach one, or delete eligible candidates to reduce one. On regeneration and blocker fixes, retain previously discovered source-sense-bound eligible candidates, add genuinely new discoveries, and remove only confirmed Stage 1-ineligible output. No per-sense quotas, automatic phrase-length cutoff, substring blacklist, or Stage 2 Tier/Drop decisions.
 
 - **Stage 2 — admission (#927):** Use the completed Candidate files to decide selection, `near/mood/scene/sensory/action/association`, relative `relevance: 1..9` and exact target ID vs text-only. Do not perform new candidate discovery. Stage 1 remains two 500-record batches per shard; Stage 2 uses five 100-record Parts within each batch (ten Parts per shard, except shard 428 Batch 02 has only Part 01 with 83 records). One editing session = one Part = one PR. Run `prepare/verify --shard SSS --batch BB --part PP`; the full six Candidate inputs for that 500-record batch remain validated and integrated, while edit items and admission accounting are limited to the selected Part. Existing per-shard Relation/Drop files, schema and build remain unchanged. Choose the earliest Canonical-order Part whose Stage 1 inputs are on latest master and whose exact Part `verify` has not succeeded on latest master. An open Stage 2 PR blocks another Part in the same shard; after merge, continue from latest master. After every valid Part of a Batch is complete, verify that full Batch; after every valid Part of the shard is complete, verify the shard (shard 428 has only six Parts in total, with 83 records in Batch 02 Part 01). Existing `direct/antonym` remain untouched. Handle bidirectional authored ID↔ID judgments independently.
-- **Build (after implementation):** `pnpm run build` consumes Canonical plus approved Relations JSONL; candidate files are **not** Build inputs. Preserve Full/Lite and reproducibility contracts.
-- **Owner commands:** `#860 A 진행해` / `#860 B 진행해`; `#1155 C 진행해`; `#1156 D 진행해` (the shared #860 C/D queue rules still apply). The assigned model selects the earliest not-yet-completed/unclaimed **500-record batch**: A/B by `(method, model)`; C/D by **method alone** across all producer model suffixes, inspecting verified master files and open PRs. Do not regenerate a C/D batch already produced or claimed by the other model. Fix existing review blockers first. Start the first formal 500-record batch from scratch using the current production prompt. Only merged formal 500-record Candidate files are durably preserved. Closed/unmerged historical pilot PRs do not claim the new batch. Do not submit only local cache files: commit the verified Candidate JSONL and open a PR.
+- **Build:** `pnpm run build` consumes Canonical plus approved Relations JSONL; candidate files are **not** Build inputs. Preserve Full/Lite and reproducibility contracts.
+- **Owner commands:** `#860 A 진행해` / `#860 B 진행해`; `#1155 C 진행해`; `#1156 D 진행해` (the shared #860 C/D queue rules still apply). The assigned model selects the earliest not-yet-completed/unclaimed **500-record batch**: A/B by `(method, model)`; C/D by **method alone** across all producer model suffixes, inspecting verified master files and open PRs. Do not regenerate a C/D batch already produced or claimed by the other model. Fix existing review blockers first. Only merged formal 500-record Candidate files are durably preserved. Closed/unmerged historical pilot PRs do not claim the new batch. Do not submit only local cache files: commit the verified Candidate JSONL and open a PR.
 
-**Implementation status:** Authored Relations source, text-only runtime presentation and authored reverse Build remain planned; independent Candidate generation does not require those features. Agents must not initiate other AI model/CLI/subagent runs without owner authorization. Follow [`docs/relation-editorial-policy.md`](docs/relation-editorial-policy.md) for editorial decisions.
+Agents must not initiate other AI model/CLI/subagent runs without owner authorization. Follow [`docs/relation-editorial-policy.md`](docs/relation-editorial-policy.md) for editorial decisions.
 
-STDICT Canonical (`data/canonical/`) stays untouched by #838 말의 결·연상 enrichment, which gets its own source in a later implementation issue. Work on the canonical layer only as the assigned issue directs. A search candidate is a canonical record; polysemy is the several glosses inside it and homonyms are separate records (see `docs/meaning-layer.md`). Do not reintroduce a separately edited Meaning or adjudication layer, and never rewrite canonical source data as a side effect.
+STDICT Canonical (`data/canonical/`) stays untouched by #838 말의 결·연상 enrichment. Work on the canonical layer only as the assigned issue directs. A search candidate is a canonical record; polysemy is the several glosses inside it and homonyms are separate records (see `docs/meaning-layer.md`). Do not reintroduce a separately edited Meaning or adjudication layer, and never rewrite canonical source data as a side effect.
 
 Use two relation quality standards:
 
@@ -282,9 +281,7 @@ gate reports its exact HEAD and stage timings. Normal product/code changes do
 not trigger it. The normal `pnpm run build`, packaging and release contracts
 remain available and unchanged.
 
-Completed-batch and one-off
-checkpoint tests are Manual: they stay in the repository, are registered in no
-CI level or workflow, and are run directly (`node --test <file>`). The existing `Validate and test Typewriter` PR check
+The existing `Validate and test Typewriter` PR check
 always runs the applicable Normal gate and uses `ci:pr` to run only affected
 Deep checks at the exact PR HEAD. `ci:all` retains full current-system Deep
 coverage for weekly scheduled/manual audits, never automatic PR classification. The path
