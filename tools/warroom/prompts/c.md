@@ -8,6 +8,8 @@ War Room이 준비한 HEAD를 기준으로 작업하며,
 
 Issue #1155의 C 생산 계약을 읽고 준수한다.
 
+셸 명령은 개별로 실행해 각 종료 코드와 출력을 확인한다. `gh api` 경로에 `?` 또는 `&`가 있으면 경로 인수 전체를 작은따옴표로 감싼다. 예: `gh api 'repos/neverworkalone/typewriter/contents/data/relation-candidates/031?ref=master'`, `gh api 'repos/neverworkalone/typewriter/pulls?state=open&per_page=100' --jq 'length'`.
+
 Codex 샌드박스에서 차단되는 `ps`·`pgrep`에 의존하지 말고, 작업의 실행 결과와 기존 기록으로 상태를 확인한다.
 
 Candidate v1 검증 후 커밋·push하고 `batch` 라벨의 PR을 제출한다.

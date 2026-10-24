@@ -245,6 +245,51 @@ class RunProblem(unittest.TestCase):
                 self.assertEqual(problem[0], "PAUSED")
                 self.assertIn("로컬 Codex 정책이 명령을 거부했습니다", problem[1])
 
+    def test_shell_globbing_errors_and_nice_diagnostic_do_not_pause(self):
+        logs = [
+            ("/bin/zsh -lc 'git ls-remote origin refs/heads/master && gh api "
+             "repos/neverworkalone/typewriter/contents/data/relation-candidates/031?ref=master'", 1,
+             "8cd23808f6f353241cc131e2d1e00f41761a5671\trefs/heads/master\n"
+             "zsh:1: no matches found: repos/neverworkalone/typewriter/contents/data/relation-candidates/031?ref=master"),
+            ('/bin/zsh -lc "git check-ignore -v --no-index .warroom-scratch/probe.txt || true; '
+             'gh api repos/neverworkalone/typewriter/pulls?state=open&per_page=100 --jq \'length\'"', 127,
+             ".../.git/info/exclude:27:.warroom-scratch/  .warroom-scratch/probe.txt\n"
+             "zsh:1: nice(5) failed: operation not permitted\n"
+             "zsh:1: no matches found: repos/neverworkalone/typewriter/pulls?state=open\n"
+             "zsh:1: command not found: --jq"),
+        ]
+        for command_text, exit_code, output in logs:
+            with self.subTest(exit_code=exit_code), tempfile.TemporaryDirectory() as d:
+                log = Path(d) / "l.log"
+                log.write_text(lines(started(), command(output, exit_code, command_text)))
+                with mock.patch.dict(os.environ, {"CODEX_HOME": str(Path(d) / "empty")}):
+                    self.assertIsNone(CodexCLIAdapter().policy_refusal(log))
+                    problem = CodexCLIAdapter().run_problem(log, PIN, THREAD)
+                self.assertIsNone(problem)
+
+    def test_zsh_reported_ps_execution_denial_still_pauses(self):
+        output = "zsh:1: operation not permitted: ps"
+        shell_command = ('/bin/zsh -lc "ps -axo pid,etime,command | rg '
+                         "'search_literature\\\\.py' | rg -v 'rg search_literature'\"")
+        events = [started(), command(output, 1, shell_command)]
+        problem = self.check(events)
+        self.assertEqual(problem[0], "PAUSED")
+        for evidence in ("ps -axo", "exit=1", output):
+            self.assertIn(evidence, problem[1])
+        with tempfile.TemporaryDirectory() as d:
+            log = Path(d) / "l.log"
+            log.write_text(lines(*events))
+            self.assertIn("정책이 명령을 거부했습니다", CodexCLIAdapter().policy_refusal(log))
+
+    def test_real_denial_is_retained_alongside_zsh_diagnostics_with_evidence(self):
+        output = ("zsh:1: nice(5) failed: operation not permitted\n"
+                  "zsh:1: no matches found: repos/example?state=open\n"
+                  "fatal: Unable to create '/repo/.git/worktrees/wt/index.lock': Operation not permitted")
+        problem = self.check([started(), command(output, 128, "git add -- data/file.jsonl")])
+        self.assertEqual(problem[0], "PAUSED")
+        for evidence in ("git add -- data/file.jsonl", "exit=128", "index.lock': Operation not permitted"):
+            self.assertIn(evidence, problem[1])
+
     def test_policy_text_in_a_successful_command_is_not_a_refusal(self):
         events = [started(), command("Operation not permitted (printed and handled)", exit_code=0), completed()]
         self.assertIsNone(self.check(events, contexts=[context()]))
@@ -337,12 +382,33 @@ class PolicyRefusal(unittest.TestCase):
                 log.write_text(lines(started(), {"type": "item.completed", "item": item}, completed()))
                 return CodexCLIAdapter().policy_refusal(log)
 
-        self.assertIsNotNone(log_with({"type": "command_execution", "command": "git commit",
-                                       "aggregated_output": "index.lock: Operation not permitted", "exit_code": 128}))
+        reason = log_with({"type": "command_execution", "command": "git commit",
+                           "aggregated_output": "index.lock: Operation not permitted", "exit_code": 128})
+        self.assertIsNotNone(reason)
+        for evidence in ("git commit", "exit=128", "index.lock: Operation not permitted"):
+            self.assertIn(evidence, reason)
         self.assertIsNone(log_with({"type": "command_execution", "command": "echo",
                                     "aggregated_output": "Operation not permitted (handled)", "exit_code": 0}))
         self.assertIsNone(log_with({"type": "command_execution", "command": "git status",
                                     "aggregated_output": "clean", "exit_code": 0}))
+
+    def test_nice_operation_not_permitted_is_not_a_policy_refusal(self):
+        with tempfile.TemporaryDirectory() as d:
+            log = Path(d) / "l.log"
+            log.write_text(lines(started(), {"type": "item.completed", "item": {
+                "type": "agent_message", "text": "Exit code: 127\nzsh:1: nice(5) failed: operation not permitted\n"
+                "zsh:1: no matches found: repos/example?state=open"}}, completed()))
+            self.assertIsNone(CodexCLIAdapter().policy_refusal(log))
+
+    def test_agent_reported_refusal_keeps_exit_and_cause(self):
+        with tempfile.TemporaryDirectory() as d:
+            log = Path(d) / "l.log"
+            log.write_text(lines(started(), {"type": "item.completed", "item": {
+                "type": "agent_message", "text": "Exit code: 128\nfatal: index.lock: Operation not permitted"}}, completed()))
+            reason = CodexCLIAdapter().policy_refusal(log)
+            self.assertIsNotNone(reason)
+            for evidence in ("exit=128", "fatal: index.lock: Operation not permitted"):
+                self.assertIn(evidence, reason)
 
     def test_other_adapters_never_report_a_refusal(self):
         from warroom.adapters import ClaudeCodeAdapter, OpenCodeAdapter
