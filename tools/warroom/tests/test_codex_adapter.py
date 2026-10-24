@@ -267,6 +267,20 @@ class RunProblem(unittest.TestCase):
                     problem = CodexCLIAdapter().run_problem(log, PIN, THREAD)
                 self.assertIsNone(problem)
 
+    def test_zsh_reported_ps_execution_denial_still_pauses(self):
+        output = "zsh:1: operation not permitted: ps"
+        shell_command = ('/bin/zsh -lc "ps -axo pid,etime,command | rg '
+                         "'search_literature\\\\.py' | rg -v 'rg search_literature'\"")
+        events = [started(), command(output, 1, shell_command)]
+        problem = self.check(events)
+        self.assertEqual(problem[0], "PAUSED")
+        for evidence in ("ps -axo", "exit=1", output):
+            self.assertIn(evidence, problem[1])
+        with tempfile.TemporaryDirectory() as d:
+            log = Path(d) / "l.log"
+            log.write_text(lines(*events))
+            self.assertIn("정책이 명령을 거부했습니다", CodexCLIAdapter().policy_refusal(log))
+
     def test_real_denial_is_retained_alongside_zsh_diagnostics_with_evidence(self):
         output = ("zsh:1: nice(5) failed: operation not permitted\n"
                   "zsh:1: no matches found: repos/example?state=open\n"
