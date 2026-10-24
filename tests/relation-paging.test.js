@@ -164,6 +164,25 @@ describe('DictionaryResult relation pagination', () => {
     expect(count(host, 'synonyms')).toBe(1);
   });
 
+  it('keeps previous and next glyphs separate from their accessible buttons', () => {
+    const host = mount(makeRecord(45), { relationPages: { 'w1:w1-s1:texture': 2 } });
+    const section = host.querySelector('[data-group-id="texture"]');
+    const buttons = section.querySelectorAll('.relation-page-button');
+
+    expect(section.classList.contains('has-inline-pagination')).toBe(true);
+    expect(buttons).toHaveLength(2);
+    expect([...buttons].map((button) => [
+      button.type,
+      button.dataset.pageDirection,
+      button.getAttribute('aria-label'),
+      button.querySelector('.relation-page-glyph')?.textContent,
+      button.querySelector('.relation-page-glyph')?.getAttribute('aria-hidden'),
+    ])).toEqual([
+      ['button', 'previous', '말의 결 이전 20개', '←', 'true'],
+      ['button', 'next', '말의 결 다음 20개', '→', 'true'],
+    ]);
+  });
+
   it('pages 연상 independently and keeps compact pages bounded to 20 items', async () => {
     const host = mount(makeRecord(45, 'scene'), { compact: true });
     expect(host.querySelector('.dictionary-result').classList.contains('is-compact')).toBe(true);

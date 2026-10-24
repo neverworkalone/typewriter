@@ -280,7 +280,10 @@ defineExpose({ focusCandidate });
           v-for="(group, groupIndex) in visibleGroups(sense)"
           :key="`${sense.id}-${group.id}`"
           class="result-section"
-          :class="{ 'is-definition': group.kind === 'definition' }"
+          :class="{
+            'is-definition': group.kind === 'definition',
+            'has-inline-pagination': hasInlinePagination(group, pagedItems(sense, group)),
+          }"
           :data-group-id="group.id"
         >
           <h3>{{ group.label }}</h3>
@@ -323,7 +326,7 @@ defineExpose({ focusCandidate });
                   data-page-direction="previous"
                   :aria-label="`${group.label} 이전 20개`"
                   @click="changeRelationPage(sense, group, page.page - 1, $event)"
-                >←</button>
+                ><span class="relation-page-glyph" aria-hidden="true">←</span></button>
                 <component
                   :is="relationLinkTag(relation)"
                   class="relation-link"
@@ -348,7 +351,7 @@ defineExpose({ focusCandidate });
                   data-page-direction="next"
                   :aria-label="`${group.label} 다음 20개`"
                   @click="changeRelationPage(sense, group, page.page + 1, $event)"
-                >→</button>
+                ><span class="relation-page-glyph" aria-hidden="true">→</span></button>
               </span>
               <span
                 v-if="hasInlinePagination(group, page)"
@@ -566,19 +569,31 @@ defineExpose({ focusCandidate });
 }
 
 .relation-list.has-inline-pagination {
-  align-items: center;
+  align-items: baseline;
   column-gap: 0;
   row-gap: 0;
+  overflow: visible;
 }
 
 .relation-list.has-inline-pagination .relation-entry {
   display: inline-flex;
-  align-items: center;
+  position: relative;
+  align-items: baseline;
 }
 
-.relation-list.has-inline-pagination .relation-entry.has-previous-page,
+.relation-list.has-inline-pagination .relation-entry.has-previous-page {
+  padding-left: 34px;
+}
+
 .relation-list.has-inline-pagination .relation-entry.has-next-page {
-  column-gap: 2px;
+  padding-right: 34px;
+}
+
+.result-section.has-inline-pagination > h3,
+.relation-list.has-inline-pagination .relation-link,
+.relation-list.has-inline-pagination .relation-separator {
+  position: relative;
+  z-index: 1;
 }
 
 .relation-link {
@@ -618,6 +633,9 @@ defineExpose({ focusCandidate });
 
 .relation-page-button {
   display: inline-flex;
+  position: absolute;
+  z-index: 0;
+  bottom: 0;
   flex: 0 0 32px;
   width: 32px;
   height: 32px;
@@ -634,15 +652,36 @@ defineExpose({ focusCandidate });
   line-height: normal;
 }
 
+.relation-entry.has-previous-page > .relation-page-button {
+  left: 0;
+}
+
+.relation-entry.has-next-page > .relation-page-button {
+  right: 0;
+}
+
+.relation-page-glyph {
+  position: relative;
+  display: inline-block;
+  transform: translateY(9.5px);
+}
+
 .relation-list.has-inline-pagination .relation-separator {
   margin-right: 8px;
   margin-left: 4px;
 }
 
 .relation-page-button:focus-visible {
-  outline: 2px solid #7e433e;
-  outline-offset: 2px;
+  outline: none;
+}
+
+.relation-page-button:focus-visible .relation-page-glyph::after {
+  position: absolute;
+  inset: -4px;
+  border: 2px solid #7e433e;
   border-radius: 2px;
+  content: '';
+  pointer-events: none;
 }
 
 .dictionary-result.is-compact .relation-more {
@@ -652,6 +691,14 @@ defineExpose({ focusCandidate });
 .dictionary-result.is-compact .relation-list.has-inline-pagination {
   column-gap: 0;
   row-gap: 0;
+}
+
+.dictionary-result.is-compact .result-section.has-inline-pagination {
+  padding-top: 2px;
+}
+
+.dictionary-result.is-compact .relation-page-glyph {
+  transform: translateY(10.5px);
 }
 
 .relation-link.is-static {
