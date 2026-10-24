@@ -29,6 +29,10 @@ class DuplicateClaim(Exception):
     pass
 
 
+class RecoveryBlocked(Exception):
+    """A discovered PR cannot be tied safely to this batch's completed producer run."""
+
+
 def acquire_lock(path: Path):
     """Single War Room instance: returns an open locked file, or None if held."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -151,28 +155,147 @@ class Supervisor:
             self.store.log(b["id"], f"운영자 재시도: {b['paused_from']}로 복귀")
 
     def _recover_if_merged(self, b) -> bool:
-        """ERROR/PAUSED batch whose PR was merged later: resume at MERGED (no AI run); cleanup keeps every safety gate.
+        """Recover a failed producer batch from its owned PR without starting another AI run.
 
-        Only GitHub `merged=true` recovers; any other error is untouched. A batch that already failed in CLEANUP is not
-        retried automatically (its worktree needs the operator), and lookups are limited to one per
-        poll_seconds (at least 60s) so errored batches do not burn GitHub rate limit.
+        Known PRs keep the existing merged-only recovery. A missing PR number is rediscovered only for a completed
+        producer run with usable exit evidence; open PRs return to normal review monitoring. Cleanup still rechecks
+        merged=true and applies the regular worktree safety gates.
         """
-        if not b["pr_number"] or b["paused_from"] == "CLEANUP" or b["pid"] is not None:
+        if b["paused_from"] == "CLEANUP" or b["pid"] is not None:
+            return False
+        if not b["pr_number"] and not self._verified_late_producer_exit(b):
             return False
         key = f"last_merge_check_{b['id']}"
         if self.clock() - float(self.store.get(key, "0")) < max(self.cfg["poll_seconds"], 60):
             return False
         self.store.set(key, str(self.clock()))
         try:
-            info = self.gh.pull(b["pr_number"])
+            if b["pr_number"]:
+                info = self.gh.pull(b["pr_number"])
+            else:
+                info = self._find_recovery_pr(b)
         except Exception as e:
-            self.store.log(b["id"], f"오류 배치 머지 재확인 실패(재시도 예정): {e}", "warn")
+            if b["pr_number"]:
+                self.store.log(b["id"], f"오류 배치 머지 재확인 실패(재시도 예정): {e}", "warn")
+            else:
+                self._fail(b, "ERROR", f"실패 배치의 기존 PR 재발견/머지 확인이 불명확합니다: {e}. "
+                           "worktree와 실행 상태를 보존하며 AI를 재실행하지 않습니다.")
             return False
+        if info is None:
+            if self.store.get(f"no_pr_recovery_{b['id']}") != "1":
+                self.store.log(b["id"], "종료된 생산 실행의 소유 브랜치에서 기존 PR을 찾지 못했습니다. "
+                               "AI 재실행 없이 다음 제한 폴링에서 다시 확인합니다.", "warn")
+                self.store.set(f"no_pr_recovery_{b['id']}", "1")
+            return False
+        if not b["pr_number"]:
+            self.store.update(b["id"], pr_number=info["number"], head_sha=info["head_sha"])
+            self.store.log(b["id"], f"누락 PR #{info['number']} 재발견 및 소유권 확인 완료 (브랜치 {b['branch']})", "warn")
+            b = self.store.batch(b["id"])
+            if info["state"] == "open" and not info["merged"]:
+                self._to_review(b, info, recovery_note=f"PAUSED/ERROR 상태에서 기존 PR #{info['number']} 재발견; "
+                                "기존 리뷰·검증 게이트로 복귀했습니다 (AI 재실행 없음).")
+                return True
+            if not info["merged"]:
+                # Keep the closed PR attached so an operator retry cannot relaunch production and create a duplicate.
+                self.store.update(b["id"], state="ERROR", paused_from="WAITING_REVIEW",
+                                  error=f"PR #{info['number']}이 머지 없이 닫혀 있어 자동 복구하지 않습니다. "
+                                  "worktree·브랜치를 보존합니다.")
+                self.store.log(b["id"], f"재발견한 PR #{info['number']}은 머지 없이 닫힘; 안전 정지", "error")
+                return True
         if not info["merged"]:
             return False
-        self.store.update(b["id"], state="MERGED", merged=1, head_sha=info["head_sha"], error=None, retries=0,
-                          retry_after=None)
-        self.store.log(b["id"], f"{b['state']} 상태였으나 PR #{b['pr_number']} merged=true 확인 → 정리 단계로 자동 복구 (AI 재실행 없음)")
+        return self._enter_merged(b, info, f"{b['state']} 상태에서")
+
+    def _verified_late_producer_exit(self, b) -> bool:
+        """Only inspect PRs after a terminal producer result, never after a stop or unverified success."""
+        if b["pid"] is not None or b["paused_from"] != "PRODUCING":
+            return False
+        runs = self.store.runs(b["id"])
+        if not runs:
+            return False
+        run = runs[0]
+        if not isinstance(run["kind"], str) or not run["kind"].startswith("produce") or run["ended_at"] is None:
+            return False
+        try:
+            code = int(run["exit_status"])
+        except (TypeError, ValueError):
+            return False
+        if code != 0:
+            return True
+        # A zero exit is eligible only after the existing completion gate passed and PR intake was the failure.
+        error = b["error"] or ""
+        return error.startswith(("AI가 정상 종료했지만 PR을 찾지 못했습니다", "GitHub 조회 실패:"))
+
+    def _verified_current_producer_exit(self, b, code: int) -> bool:
+        if b["pid"] is not None:
+            return False
+        runs = self.store.runs(b["id"])
+        if not runs:
+            return False
+        run = runs[0]
+        try:
+            recorded = int(run["exit_status"])
+        except (TypeError, ValueError):
+            return False
+        return (isinstance(run["kind"], str) and run["kind"].startswith("produce")
+                and run["ended_at"] is not None and recorded == code)
+
+    def _find_recovery_pr(self, b):
+        """Find one existing PR and prove it belongs to this finished batch before handing it off."""
+        prs = self.gh.prs_for_branch(b["branch"])
+        if not isinstance(prs, list):
+            raise RecoveryBlocked("소유 브랜치 PR 조회 결과 형식이 잘못되었습니다")
+        if not prs:
+            return None
+        if len(prs) != 1:
+            numbers = ", ".join(str(pr.get("number", "?")) for pr in prs)
+            raise RecoveryBlocked(f"소유 브랜치에 PR이 여러 개 있습니다: #{numbers}")
+        number = prs[0].get("number")
+        if not isinstance(number, int):
+            raise RecoveryBlocked("소유 브랜치 PR 번호가 없습니다")
+        info = self.gh.pull(number)
+        if info.get("number") != number or info.get("head_ref") != b["branch"]:
+            raise RecoveryBlocked(f"PR #{number}의 head 브랜치가 배치 소유 브랜치와 다릅니다")
+        files = self.gh.pull_files(number)
+        candidates = batches.pr_candidates({"number": number, "files": files})
+        expected = (b["shard"], b["batch"], b["method"], b["producer"])
+        if candidates.count(expected) != 1 or any(item != expected for item in candidates):
+            raise RecoveryBlocked(f"PR #{number}의 Candidate 파일 소유권이 배치와 일치하지 않습니다 "
+                                  f"(기대 {expected}, 확인 {candidates})")
+        dup = self._duplicate_claim(b, number)
+        if dup:
+            raise RecoveryBlocked(f"같은 배치를 다른 열린 PR #{dup}이 점유 — 복구를 중단합니다")
+        wt = Path(b["worktree"])
+        if self.git.registered(wt) != b["branch"]:
+            raise RecoveryBlocked(f"worktree가 소유 브랜치 {b['branch']}로 등록되어 있지 않습니다")
+        self.git.worktree_gitdir(wt)
+        local = self.git.head(wt)
+        if info.get("merged"):
+            if info.get("state") != "closed":
+                raise RecoveryBlocked(f"PR #{number}의 merged/state 값이 상충합니다")
+            # _cleanup performs the clean check and permits only a safe fast-forward to the merged PR HEAD.
+        elif info.get("state") == "open":
+            if local != info.get("head_sha"):
+                raise RecoveryBlocked(f"PR #{number} HEAD와 로컬 worktree HEAD가 다릅니다 "
+                                      f"({info.get('head_sha')} / {local})")
+            remote = self.git.remote_head(b["branch"])
+            if remote != local:
+                raise RecoveryBlocked(f"PR #{number} HEAD와 원격 소유 브랜치가 다릅니다 "
+                                      f"({info.get('head_sha')} / {remote})")
+        elif info.get("state") == "closed":
+            # Return the owned but unmerged PR so the caller can attach it and prevent a production Retry.
+            if local != info.get("head_sha"):
+                raise RecoveryBlocked(f"닫힌 PR #{number} HEAD와 로컬 worktree HEAD가 다릅니다 "
+                                      f"({info.get('head_sha')} / {local})")
+        else:
+            raise RecoveryBlocked(f"PR #{number}의 GitHub 상태가 불명확합니다: {info.get('state')!r}")
+        return info
+
+    def _enter_merged(self, b, info, reason: str) -> bool:
+        self.store.update(b["id"], state="MERGED", pr_number=info["number"], merged=1,
+                          head_sha=info["head_sha"], error=None, retries=0, retry_after=None)
+        self.store.log(b["id"], f"{reason} PR #{info['number']} merged=true 확인 → MERGED "
+                       "(기존 cleanup worktree 검증으로 인계, AI 재실행 없음)")
         return True
 
     def _force_stop(self, b) -> None:
@@ -380,6 +503,22 @@ class Supervisor:
         base = "fix" if kind.startswith("fix") else "produce"
         if base == "fix":
             return self._launch(b, "fix_resume" if b["session_id"] else "fix_new", self._all_events(b))
+        if not b["pr_number"]:
+            runs = self.store.runs(b["id"])
+            if runs:
+                try:
+                    failed_code = int(runs[0]["exit_status"])
+                except (TypeError, ValueError):
+                    failed_code = 0
+                if (failed_code != 0 and isinstance(runs[0]["kind"], str)
+                        and runs[0]["kind"].startswith("produce")):
+                    try:
+                        text = Path(runs[0]["log_file"]).read_text("utf-8", errors="replace")[-30000:]
+                    except OSError:
+                        text = ""
+                    cls = classify_failure(text, self.cfg["quota_patterns"])
+                    if self._handoff_failed_pr(b, failed_code, cls):
+                        return
         self._launch(b, "produce_resume" if b["session_id"] else "produce_recover")
 
     # ---- PRODUCING / FIXING -------------------------------------------
@@ -459,9 +598,9 @@ class Supervisor:
                 self.store.log(b["id"], "수정 실행이 끝났지만 새 HEAD 없음 (코멘트로만 응답했을 수 있음)", "warn")
         self._to_review(b, info)
 
-    def _to_review(self, b, info) -> None:
+    def _to_review(self, b, info, recovery_note: str | None = None) -> None:
         self.store.update(b["id"], state="WAITING_REVIEW", pr_number=info["number"],
-                          head_sha=info["head_sha"], error=None, retries=0)
+                          head_sha=info["head_sha"], error=recovery_note, retries=0)
         self.store.log(b["id"], f"PR #{info['number']} HEAD {info['head_sha'][:10]} 리뷰 대기")
 
     # ---- FIXING: is the fix really on the PR? ------------------------------
@@ -594,6 +733,38 @@ class Supervisor:
                     return pr["number"]
         return None
 
+    def _handoff_failed_pr(self, b, code: int, cls: str) -> bool:
+        """A failed producer may still have submitted its batch PR immediately before exiting."""
+        if not self._verified_current_producer_exit(b, code):
+            self._fail(b, "ERROR", f"AI 종료 코드 {code} 뒤 PR 인계를 검증할 종료 실행 증거가 없습니다. "
+                       "worktree를 보존하고 AI를 재실행하지 않습니다.")
+            return True
+        try:
+            info = self._find_recovery_pr(b)
+        except Exception as e:
+            self._fail(b, "ERROR", f"AI 종료 코드 {code}, 분류={cls}; 실패 직후 소유 PR 조회/검증 실패: {e}. "
+                       "worktree를 보존하고 AI를 재실행하지 않습니다.")
+            return True
+        if info is None:
+            self.store.log(b["id"], f"AI 종료 코드 {code}, 분류={cls}; 소유 브랜치 PR 미발견 "
+                           "(확인된 미발견이며 기존 실패 분류를 계속 적용합니다).", "warn")
+            return False
+        self.store.log(b["id"], f"AI 종료 코드 {code}, 분류={cls}; 기존 소유 PR #{info['number']} 인계 "
+                       f"(state={info['state']}, merged={info['merged']}, HEAD {info['head_sha'][:10]}) — "
+                       "AI 재실행 없이 기존 검증 절차를 유지합니다.", "warn")
+        if info["merged"]:
+            return self._enter_merged(b, info, f"AI 종료 코드 {code} 확인 후")
+        if info["state"] == "open":
+            self._to_review(b, info, recovery_note=f"AI 종료 코드 {code} (분류={cls}) 후 소유 PR "
+                            f"#{info['number']} 인계; 기존 리뷰·검증 게이트를 계속합니다.")
+            return True
+        self.store.update(b["id"], state="ERROR", paused_from="WAITING_REVIEW", pr_number=info["number"],
+                          head_sha=info["head_sha"], error=f"PR #{info['number']}이 머지 없이 닫혀 있어 "
+                          "자동 복구하지 않습니다. worktree·브랜치를 보존합니다.")
+        self.store.log(b["id"], f"AI 종료 코드 {code} 이후 발견한 PR #{info['number']}이 머지 없이 닫힘; "
+                       "재생산을 막고 수동 확인을 요청합니다.", "error")
+        return True
+
     def _run_failed(self, b, code: int) -> None:
         try:
             text = Path(b["log_file"]).read_text("utf-8", errors="replace")[-30000:]
@@ -601,6 +772,9 @@ class Supervisor:
             text = ""
         cls = classify_failure(text, self.cfg["quota_patterns"])
         self.store.log(b["id"], f"AI 종료 코드 {code}, 분류={cls}", "warn")
+        if b["state"] == "PRODUCING" and not b["pr_number"]:
+            if self._handoff_failed_pr(b, code, cls):
+                return
         if cls == "effort":
             return self._fail(b, "ERROR", "CLI가 요청한 모델 또는 추론 수준을 받아들이지 않았습니다 — 다른 값으로 "
                               f"대체하지 않습니다. 로그 확인 후 설정을 고치세요: {b['log_file']}")
@@ -703,6 +877,8 @@ class Supervisor:
         if not info["merged"]:
             return self._fail(b, "ERROR", "merged=true가 재확인되지 않아 정리하지 않습니다.")
         self.store.update(b["id"], state="CLEANUP", head_sha=info["head_sha"])
+        self.store.log(b["id"], f"PR #{b['pr_number']} merged=true 재확인 → MERGED→CLEANUP "
+                       "(clean/HEAD/소유 worktree 검증)")
 
     def _cleanup(self, b) -> None:
         ad = self._adapter(b["producer"])

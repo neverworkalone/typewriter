@@ -134,6 +134,9 @@ class FakeGh:
         self.open: list[dict] = []
         self.prs: dict[int, dict] = {}
         self.by_branch: dict[str, list] = {}
+        self.branch_errors: dict[str, Exception] = {}
+        self.files: dict[int, list | Exception] = {}
+        self.branch_queries = 0
         self.reviews_, self.inline_, self.issue_ = [], [], []
         self.commit_ts = 0.0
 
@@ -141,10 +144,19 @@ class FakeGh:
         return self.open
 
     def prs_for_branch(self, branch):
+        self.branch_queries += 1
+        if branch in self.branch_errors:
+            raise self.branch_errors[branch]
         return self.by_branch.get(branch, [])
 
     def pull(self, n):
         return self.prs[n]
+
+    def pull_files(self, n):
+        files = self.files.get(n, [])
+        if isinstance(files, Exception):
+            raise files
+        return files
 
     def reviews(self, n): return self.reviews_
     def inline_comments(self, n): return self.inline_

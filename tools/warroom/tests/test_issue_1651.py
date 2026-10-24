@@ -1,0 +1,232 @@
+import json
+import unittest
+from pathlib import Path
+
+from tests.fakes import HEAD1, HEAD2, World
+from warroom.github import GhClient
+from warroom.shell import Result
+
+
+class PullRequestFiles(unittest.TestCase):
+    def test_rest_filename_fields_are_normalized_for_candidate_ownership(self):
+        class Runner:
+            def run(self, argv, **kwargs):
+                pages = [[{"filename": "data/relation-candidates/024/024_02_b_deepseek.jsonl"}],
+                         [{"filename": "README.md"}]]
+                return Result(0, json.dumps(pages))
+
+        gh = GhClient(Runner(), {}, "neverworkalone/typewriter")
+
+        self.assertEqual(gh.pull_files(1594), [
+            {"path": "data/relation-candidates/024/024_02_b_deepseek.jsonl"},
+            {"path": "README.md"},
+        ])
+
+
+class MissingPrRecovery(unittest.TestCase):
+    def running_producer(self, method="b", text="unclassified provider failure"):
+        w = World()
+        self.addCleanup(w.tmp.cleanup)
+        w.adapter.plan.append({"code": 1, "text": text})
+        w.start("single", method=method)
+        w.tick()
+        return w, w.row(method=method)
+
+    def failed_producer(self, method="b", text="unclassified provider failure"):
+        w, b = self.running_producer(method, text)
+        w.adapter.finish(b["pid"])
+        w.tick()
+        return w, w.row(method=method)
+
+    @staticmethod
+    def install_pr(w, b, number=1594, state="closed", merged=True, head=HEAD1, file_path=None):
+        branch = b["branch"]
+        w.pr_info(number, head, state=state, merged=merged, head_ref=branch)
+        w.gh.by_branch[branch] = [{"number": number, "state": state.upper(), "headRefOid": head}]
+        path = file_path or (
+            f"data/relation-candidates/{b['shard']}/"
+            f"{b['shard']}_{b['batch']}_{b['method']}_{b['producer']}.jsonl"
+        )
+        w.gh.files[number] = [{"path": path}]
+        if state == "open":
+            w.git.remote[branch] = head
+
+    def test_batch_198_exit_1_merged_pr_reaches_complete_without_rerunning_ai(self):
+        w, b = self.running_producer()
+        branch = "b-deepseek-024-02"
+        w.store.update(b["id"], shard="024", batch="02", branch=branch)
+        w.git.reg[b["worktree"]] = branch
+        b = w.row(method="b")
+        self.install_pr(w, b)
+        w.adapter.finish(b["pid"])
+        w.tick()
+
+        w.tick(2)
+
+        self.assertEqual(w.row(method="b")["state"], "COMPLETE")
+        self.assertEqual(w.row(method="b")["pr_number"], 1594)
+        self.assertEqual(len(w.adapter.launches), 1)
+        self.assertEqual(w.store.runs(b["id"])[0]["exit_status"], "1")
+        self.assertEqual(w.git.removed[0][1], branch)
+        events = "\n".join(e["msg"] for e in w.store.events_after())
+        self.assertIn("AI 종료 코드 1", events)
+        self.assertIn("PR #1594", events)
+        self.assertIn("MERGED→CLEANUP", events)
+
+    def test_failed_run_with_open_pr_returns_to_normal_review_gate(self):
+        w, b = self.running_producer()
+        self.install_pr(w, b, state="open", merged=False)
+        w.adapter.finish(b["pid"])
+
+        w.tick()
+
+        b = w.row(method="b")
+        self.assertEqual((b["state"], b["pr_number"]), ("WAITING_REVIEW", 1594))
+        self.assertIn("종료 코드 1", b["error"])
+        self.assertEqual(len(w.adapter.launches), 1)
+        self.assertEqual(w.git.removed, [])
+
+    def test_paused_missing_pr_is_rediscovered_after_the_run_finishes(self):
+        w, b = self.failed_producer()
+        self.assertEqual(b["state"], "PAUSED")
+        self.install_pr(w, b)
+
+        w.tick(3)
+
+        self.assertEqual(w.row(method="b")["state"], "COMPLETE")
+        self.assertEqual(w.row(method="b")["pr_number"], 1594)
+        self.assertEqual(len(w.adapter.launches), 1)
+
+    def test_recovery_poll_is_rate_limited(self):
+        w, b = self.failed_producer()
+        initial = w.gh.branch_queries
+        w.tick(3)
+        self.assertEqual(w.gh.branch_queries, initial + 1)
+        w.now += 59
+        w.tick(2)
+        self.assertEqual(w.gh.branch_queries, initial + 1)
+        w.now += 1
+        w.tick()
+        self.assertEqual(w.gh.branch_queries, initial + 2)
+
+    def test_existing_pr_is_checked_before_a_scheduled_failure_retry(self):
+        w, b = self.failed_producer(text="HTTP 429 Too Many Requests")
+        self.assertEqual(b["state"], "PRODUCING")
+        self.install_pr(w, b)
+
+        w.now += 11
+        w.tick()
+        w.tick(2)
+
+        self.assertEqual(w.row(method="b")["state"], "COMPLETE")
+        self.assertEqual(len(w.adapter.launches), 1)
+
+    def test_ambiguous_or_mismatched_pr_fails_closed(self):
+        cases = ("multiple", "candidate", "head", "local_head", "branch_api", "files_api", "open_claim")
+        for case in cases:
+            with self.subTest(case=case):
+                w, b = self.failed_producer()
+                self.install_pr(w, b, state="open", merged=False,
+                                file_path="data/relation-candidates/001/001_02_b_deepseek.jsonl"
+                                if case == "candidate" else None)
+                if case == "multiple":
+                    w.gh.by_branch[b["branch"]].append({"number": 1595, "state": "CLOSED", "headRefOid": HEAD1})
+                elif case == "head":
+                    w.gh.prs[1594]["head_ref"] = "other-owned-branch"
+                elif case == "local_head":
+                    w.git.local_head = HEAD2
+                elif case == "branch_api":
+                    w.gh.branch_errors[b["branch"]] = RuntimeError("GitHub API unavailable")
+                elif case == "files_api":
+                    w.gh.files[1594] = RuntimeError("GitHub API unavailable")
+                elif case == "open_claim":
+                    w.gh.open.append({"number": 8, "files": [{
+                        "path": f"data/relation-candidates/{b['shard']}/"
+                        f"{b['shard']}_{b['batch']}_{b['method']}_{b['producer']}.jsonl"
+                    }]})
+
+                w.tick()
+
+                row = w.row(method="b")
+                self.assertEqual(row["state"], "ERROR")
+                self.assertIsNone(row["pr_number"])
+                self.assertEqual(len(w.adapter.launches), 1)
+                self.assertTrue(Path(row["worktree"]).exists())
+                self.assertEqual(w.git.removed, [])
+
+    def test_unverified_zero_exit_does_not_trigger_missing_pr_recovery(self):
+        w, b = self.failed_producer()
+        queries = w.gh.branch_queries
+        w.store.update(b["id"], state="ERROR", paused_from="PRODUCING", error="completion evidence rejected")
+        with w.store._conn() as c:
+            c.execute("UPDATE runs SET exit_status='0' WHERE batch_id=?", (b["id"],))
+
+        w.tick()
+
+        self.assertEqual(w.gh.branch_queries, queries)
+        self.assertEqual(w.row(method="b")["state"], "ERROR")
+        self.assertEqual(w.git.removed, [])
+
+    def test_unmerged_closed_pr_is_attached_without_production_retry(self):
+        w, b = self.failed_producer()
+        self.install_pr(w, b, state="closed", merged=False)
+
+        w.tick(4)
+
+        row = w.row(method="b")
+        self.assertEqual((row["state"], row["paused_from"], row["pr_number"]),
+                         ("ERROR", "WAITING_REVIEW", 1594))
+        self.assertEqual(len(w.adapter.launches), 1)
+        self.assertEqual(w.git.removed, [])
+
+    def test_dirty_or_inconsistent_worktree_is_never_removed_after_merge(self):
+        for kind in ("dirty", "head"):
+            with self.subTest(kind=kind):
+                w, b = self.failed_producer()
+                self.install_pr(w, b)
+                if kind == "dirty":
+                    w.git.dirty_text = " M data/relation-candidates/001/001_01_b_deepseek.jsonl"
+                else:
+                    w.git.local_head = HEAD2
+
+                w.tick(3)
+
+                row = w.row(method="b")
+                self.assertEqual((row["state"], row["paused_from"]), ("ERROR", "CLEANUP"))
+                self.assertEqual(w.git.removed, [])
+                self.assertEqual(len(w.adapter.launches), 1)
+
+    def test_unregistered_worktree_blocks_pr_adoption(self):
+        w, b = self.failed_producer()
+        self.install_pr(w, b)
+        del w.git.reg[b["worktree"]]
+
+        w.tick()
+
+        self.assertEqual(w.row(method="b")["state"], "ERROR")
+        self.assertIsNone(w.row(method="b")["pr_number"])
+        self.assertEqual(w.git.removed, [])
+        self.assertEqual(len(w.adapter.launches), 1)
+
+    def test_existing_pr_number_paused_merge_recovery_still_uses_cleanup(self):
+        w = World()
+        self.addCleanup(w.tmp.cleanup)
+        w.start("single", method="b")
+        w.adapter.plan.append({"code": 0, "effect": lambda: self.install_pr(
+            w, w.row(method="b"), state="open", merged=False)})
+        w.tick()
+        w.adapter.finish(w.adapter.launches[-1]["pid"])
+        w.tick()
+        b = w.row(method="b")
+        w.store.update(b["id"], state="PAUSED", paused_from="PRODUCING", error="prior stop")
+        w.pr_info(1594, HEAD1, state="closed", merged=True, head_ref=b["branch"])
+
+        w.tick(3)
+
+        self.assertEqual(w.row(method="b")["state"], "COMPLETE")
+        self.assertEqual(len(w.adapter.launches), 1)
+
+
+
+if __name__ == "__main__":
+    unittest.main()
