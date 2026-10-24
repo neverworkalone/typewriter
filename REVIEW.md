@@ -66,6 +66,18 @@ not sent to `direct`, and do not instruct the author to add or re-judge
 official STDICT `direct`/`antonym`. Expand only around a proven
 defect pattern, and report actual sampling scope rather than implying a census.
 
+**Relation Admission data PRs (#927, implemented by #1665):** one PR covers one
+100-record Stage 2 Part within a 500-record Stage 1 Candidate batch. Review the
+Part's actual source-sense decisions, relation type/relevance, exact ID target
+or text-only choice, and every real Drop; the smaller PR scope does not relax
+editorial quality or review independence. Require the matching
+`verify --shard SSS --batch BB --part PP` evidence for that Part, while
+preserving shard-wide stored Relation/Drop validation and cross-Part reverse
+conflict checks. Do not require unfinished sibling Parts to pass accounting in
+the same PR. After five Part PRs in a Batch, run the existing 500-record Batch
+verify; after ten Parts, run shard verify. These Stage 2 admission work units
+are distinct from the independent technical review roles in Sections 1–4.
+
 ## 3. Stage 2 — independent comprehensive technical gate
 
 Stage 2 owns the **entire material approach and affected risk surface**, previous blocker closure and at least one adversarial challenge; it does not inspect CI or merge.

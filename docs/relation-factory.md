@@ -187,13 +187,19 @@ PR의 Normal 검사는 추가·수정된 `data/relation-candidates/` 파일마�
 ```sh
 node scripts/relation/admission-cli.mjs prepare --shard 001 --out <scratch>/p001.json  # 편집 입력: 고유 신규 후보 + 출발 sense/뜻풀이
 node scripts/relation/admission-cli.mjs verify  --shard 001                           # 스키마·ID 결속·Tier·귀속 완전성
+node scripts/relation/admission-cli.mjs prepare --shard 003 --batch 01 --part 01 --out <scratch>/003_01_01.json
+node scripts/relation/admission-cli.mjs verify  --shard 003 --batch 01 --part 01
 ```
 
 `--batch 01|02`를 주면 해당 500레코드 배치의 필수 Stage 1 파일 6개·Canonical 행·행 귀속만 대상으로 한다(같은 샤드 파일 `relation-<SSS>.jsonl`에 배치별로 나눠 누적할 때 사용). 다른 배치의 행은 그 실행의 귀속 검사에서 제외되며, 샤드 전체가 끝났는지는 `--batch` 없는 `verify`가 판단한다.
 
+`--part 01|02|03|04|05`는 반드시 `--batch`와 함께 사용하며, 선택한 Stage 1 배치 안에서 Stage 2의 Canonical 순서 100개만 편집·통계·귀속 검사한다. Batch 01의 Part 01–05는 shard record 1–100, 101–200, 201–300, 301–400, 401–500이고 Batch 02는 501–600, 601–700, 701–800, 801–900, 901–1000이다. 마지막 샤드의 Batch 02는 83개이므로 Part 01만 유효하다. 비어 있는 Part와 `--part` 단독 지정은 실패한다. Part별 `prepare` 항목과 `raw`, `unique`, `merged_duplicates`, `skipped_existing`, `skipped_dropped`, `to_edit`, `relation`, `drop`, `reverse_covered`, `missing` 통계는 모두 해당 Part의 source senses만 센다.
+
+Part 모드는 선택한 Stage 1 Batch의 필수 후보 파일 6개를 기존 v1 계약대로 전부 검증·통합한다. Candidate 입력을 Part별로 자르거나 100개 밖의 후보를 생략하지 않는다. 저장된 Relation/Drop 파일은 기존 샤드 파일을 계속 누적 사용한다. `verify --batch BB --part PP`는 그 Part의 Candidate 귀속 완전성을 판단하지만, 같은 샤드의 모든 저장 Relation/Drop 스키마·ID 결속·중복·역방향 충돌도 계속 검사한다. 같은 샤드 다른 Part의 미처리 후보는 이 호출을 실패시키지 않으며, 해당 Part가 끝난 뒤 그 Part의 정확한 `verify`를 별도로 실행한다. `--part`가 없는 기존 Batch 및 샤드 전체 호출은 이전 범위와 의미를 유지한다.
+
 `--batch` 없이 실행하면 필수 Stage 1 파일(2배치 × A-Codex/A-Claude/B-Codex/B-Claude/C/D 12개)이 하나라도 없을 때 실패한다. `--batch BB`는 **해당 배치의 필수 생산자 6개만** 요구하므로 다른 배치 입력이 없어도 착수·검증할 수 있다(다른 배치의 Candidate 파일은 목록 검사·파싱 대상이 아니므로 충돌하거나 미완성이어도 이 실행을 막지 않는다). 다른 배치나 샤드의 ID 관계는 `prepare`와 `verify`에서 실제 target sense별로 계산한다. 고유 표제어가 여러 sense를 가지면 일부 sense만 기존 관계로 연결된 후보는 나머지 sense 편집을 위해 `prepare`에 남고, 모든 sense가 연결되면 제외한다. text-only 승인 관계는 후보 전체를 처리한 것으로 본다. `--allow-partial`은 도구 점검 전용이며 샤드 완료 증거가 아니다. 다른 샤드의 승인 Relations(정·역방향)와 동철 이의어는 위 규칙대로 처리하며, 동철 이의어 철자는 기존 관계로 간주하지 않는다.
 
-**다음 작업 선택(#927):** 완료 단위는 (샤드, 배치)다. 샤드 001부터 01→02 순서로, 해당 배치의 필수 Stage 1 파일 6개가 master에 있고 현재 master에서 `verify --shard <SSS> --batch <BB>`가 아직 성공하지 못하는 첫 배치를 고른다. 관계·Drop 행의 존재 여부는 완료 기준이 아니다(후보가 비었거나 모두 기존 승인 관계로 처리된 배치는 행이 없어도 verify 성공으로 완료된다). 같은 샤드의 열린 PR이 있으면 그 PR이 머지될 때까지 같은 `relation-<SSS>.jsonl`을 수정하는 다음 배치를 시작하지 않는다(순차 머지). 두 배치가 모두 끝난 뒤 `verify --shard <SSS>`로 샤드 전체를 확인한다. 파일 존재만으로 샤드 완료를 판단하지 않는다.
+**Stage 2 다음 작업 선택(#927):** 완료 단위는 `(shard, batch, part)`다. 샤드 001부터 Batch 01→02, 각 Batch 안에서 Part 01→05의 Canonical 순서로, 필수 Stage 1 파일 6개가 최신 master에 있고 그 master의 정확한 `verify --shard <SSS> --batch <BB> --part <PP>`가 아직 성공하지 못하는 가장 이른 Part를 고른다. 파일이나 이전 PR의 존재·머지만으로 완료를 판단하지 않는다. 해당 Part의 편집 세션 하나가 PR 하나다. 같은 샤드의 열린 Stage 2 PR이 있으면 누적 `relation-<SSS>.jsonl`/`drop-<SSS>.jsonl`의 충돌을 막기 위해 다음 Part를 시작하지 않는다. PR 머지 후 최신 master를 기준으로 다음 Part를 준비한다. Batch의 Part 5개가 모두 성공적으로 검증된 뒤 `verify --shard <SSS> --batch <BB>`를 실행하고, 두 Batch의 Part 10개가 끝난 뒤 `verify --shard <SSS>`를 실행한다. 후보가 없거나 전부 다른 승인 관계로 처리된 범위도 `verify` 성공으로 완료될 수 있다. #927은 이 순차 생산·검증 계약을 계속 소유하며, 구현 이슈 #1665만 구현 완료 후 닫는다.
 
 ## 5. Build와 검증 경계
 

@@ -95,6 +95,140 @@ test('--batch scopes prepare/verify to one 500-record batch: its own producers, 
   assert.equal(counts.missing, 0);
 });
 
+test('--part selects 100-record Stage 2 scopes, reports scoped stats, and keeps full batch validation/accounting', async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), 'typewriter-admission-parts-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const records = Array.from({ length: 1000 }, (_, i) => ({
+    id: `w${i + 1}`,
+    lemma: `표제${i + 1}`,
+    senses: [{ id: `w${i + 1}-s1`, pos: 'noun', gloss: `뜻${i + 1}` }],
+  }));
+  for (const dir of ['data/canonical', 'data/relation-candidates/001', 'data/relations', 'data/relation-drops']) {
+    await mkdir(path.join(root, dir), { recursive: true });
+  }
+  await writeFile(path.join(root, 'data/canonical/stdict-0001.jsonl'), jsonl(records));
+
+  const candidatesById = new Map();
+  for (let first = 1; first <= 1000; first += 100) {
+    candidatesById.set(`w${first}`, [`후보${first}`]);
+    candidatesById.set(`w${first + 99}`, [`후보${first + 99}`]);
+  }
+  candidatesById.set('w1', ['표제101', '후보1']);
+  candidatesById.set('w101', ['표제1', '후보101']);
+
+  for (const batch of ['01', '02']) {
+    const offset = (Number(batch) - 1) * 500;
+    const batchRecords = records.slice(offset, offset + 500);
+    for (const producer of ['a_codex', 'a_claude', 'b_codex', 'b_claude', 'c_codex', 'd_codex']) {
+      const candidateRows = batchRecords.map((record) => {
+        let candidates = producer === 'a_codex' ? candidatesById.get(record.id) ?? [] : [];
+        if (batch === '01' && producer === 'a_claude' && record.id === 'w1') candidates = ['후보1'];
+        return { record_id: record.id, senses: [{ sense_id: record.senses[0].id, candidates }] };
+      });
+      await writeFile(path.join(root, `data/relation-candidates/001/001_${batch}_${producer}.jsonl`), jsonl(candidateRows));
+    }
+  }
+
+  for (const batch of ['01', '02']) {
+    const batchOffset = (Number(batch) - 1) * 500;
+    for (let part = 1; part <= 5; part += 1) {
+      const first = batchOffset + (part - 1) * 100 + 1;
+      const last = Math.min(first + 99, records.length);
+      const prepared = await quiet(() => run(['prepare', '--shard', '001', '--batch', batch, '--part', String(part).padStart(2, '0')], { root }));
+      assert.equal(prepared.complete, true);
+      assert.equal(prepared.batch, batch);
+      assert.equal(prepared.part, String(part).padStart(2, '0'));
+      assert.deepEqual(prepared.items.map((item) => item.record_id), [`w${first}`, `w${last}`]);
+      assert.deepEqual(texts(prepared), [...(candidatesById.get(`w${first}`) ?? []), ...(candidatesById.get(`w${last}`) ?? [])].sort());
+      const duplicates = batch === '01' && part === 1 ? 1 : 0;
+      const raw = (candidatesById.get(`w${first}`)?.length ?? 0) + (candidatesById.get(`w${last}`)?.length ?? 0) + duplicates;
+      assert.equal(prepared.stats.raw, raw);
+      assert.equal(prepared.stats.unique, raw - duplicates);
+      assert.equal(prepared.stats.merged_duplicates, duplicates);
+    }
+  }
+
+  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), jsonl([
+    { source_record_id: 'w1', source_sense_id: 'w1-s1', text: '후보1', type: 'scene', relevance: 4 },
+    { source_record_id: 'w101', source_sense_id: 'w101-s1', target_record_id: 'w1', target_sense_id: 'w1-s1', type: 'near', relevance: 3, reverse_type: 'near', reverse_relevance: 3 },
+    { source_record_id: 'w200', source_sense_id: 'w200-s1', text: '후보200', type: 'scene', relevance: 4 },
+  ]));
+  await writeFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), jsonl([
+    { source_record_id: 'w100', source_sense_id: 'w100-s1', candidate: '후보100', reason: '출발 의미와 무관' },
+    { source_record_id: 'w101', source_sense_id: 'w101-s1', candidate: '후보101', reason: '출발 의미와 무관' },
+  ]));
+
+  const firstPart = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  assert.deepEqual(
+    [firstPart.raw, firstPart.unique, firstPart.merged_duplicates, firstPart.relation, firstPart.drop, firstPart.reverse_covered, firstPart.missing],
+    [4, 3, 1, 1, 1, 1, 0],
+    'Part 01 completes without requiring unrelated candidates in Parts 02–05 to be accounted',
+  );
+  const secondPart = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '02'], { root }));
+  assert.deepEqual(
+    [secondPart.raw, secondPart.unique, secondPart.merged_duplicates, secondPart.relation, secondPart.drop, secondPart.missing],
+    [3, 3, 0, 2, 1, 0],
+  );
+  const preparedAgain = await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  assert.deepEqual(preparedAgain.items, [], 'an approved ID pair, text-only Relation and Drop remain decided on re-run');
+  assert.deepEqual(
+    [preparedAgain.stats.raw, preparedAgain.stats.unique, preparedAgain.stats.merged_duplicates, preparedAgain.stats.skipped_existing, preparedAgain.stats.skipped_dropped],
+    [4, 3, 1, 2, 1],
+  );
+
+  const initialRelations = [
+    { source_record_id: 'w1', source_sense_id: 'w1-s1', text: '후보1', type: 'scene', relevance: 4 },
+    { source_record_id: 'w101', source_sense_id: 'w101-s1', target_record_id: 'w1', target_sense_id: 'w1-s1', type: 'near', relevance: 3, reverse_type: 'near', reverse_relevance: 3 },
+    { source_record_id: 'w200', source_sense_id: 'w200-s1', text: '후보200', type: 'scene', relevance: 4 },
+  ];
+  const laterRelations = [];
+  for (const recordId of ['w201', 'w300', 'w301', 'w400', 'w401', 'w500', 'w501', 'w600', 'w601', 'w700', 'w701', 'w800', 'w801', 'w900', 'w901', 'w1000']) {
+    laterRelations.push({ source_record_id: recordId, source_sense_id: `${recordId}-s1`, text: `후보${recordId.slice(1)}`, type: 'scene', relevance: 4 });
+  }
+  const reverseConflict = {
+    source_record_id: 'w1', source_sense_id: 'w1-s1', target_record_id: 'w101', target_sense_id: 'w101-s1',
+    type: 'near', relevance: 3, reverse_type: 'near', reverse_relevance: 3,
+  };
+  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), jsonl([...initialRelations, reverseConflict, ...laterRelations]));
+  await assert.rejects(
+    () => quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '03'], { root })),
+    /reverse-duplicate ID relation/,
+    'Part verification keeps shard-wide reverse-duplicate checks',
+  );
+  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), jsonl([...initialRelations, ...laterRelations]));
+
+  const wholeBatch = await quiet(() => run(['verify', '--shard', '001', '--batch', '01'], { root }));
+  assert.deepEqual([wholeBatch.unique, wholeBatch.relation, wholeBatch.drop, wholeBatch.reverse_covered, wholeBatch.missing], [12, 9, 2, 1, 0]);
+  const wholeShard = await quiet(() => run(['verify', '--shard', '001'], { root }));
+  assert.deepEqual([wholeShard.unique, wholeShard.relation, wholeShard.drop, wholeShard.reverse_covered, wholeShard.missing], [22, 19, 2, 1, 0]);
+});
+
+test('--part requires a batch, rejects out-of-range parts, and allows the final 83-record Stage 1 batch only as Part 01', async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), 'typewriter-admission-final-part-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const records = Array.from({ length: 583 }, (_, i) => ({
+    id: `w${i + 1}`,
+    lemma: `표제${i + 1}`,
+    senses: [{ id: `w${i + 1}-s1`, pos: 'noun', gloss: `뜻${i + 1}` }],
+  }));
+  for (const dir of ['data/canonical', 'data/relation-candidates/001']) await mkdir(path.join(root, dir), { recursive: true });
+  await writeFile(path.join(root, 'data/canonical/stdict-0001.jsonl'), jsonl(records));
+  const finalBatchRows = records.slice(500).map((record) => ({
+    record_id: record.id,
+    senses: [{ sense_id: record.senses[0].id, candidates: record.id === 'w583' ? ['끝배치후보'] : [] }],
+  }));
+  for (const producer of ['a_codex', 'a_claude', 'b_codex', 'b_claude', 'c_codex', 'd_codex']) {
+    await writeFile(path.join(root, `data/relation-candidates/001/001_02_${producer}.jsonl`), jsonl(finalBatchRows));
+  }
+
+  const finalPart = await quiet(() => run(['prepare', '--shard', '001', '--batch', '02', '--part', '01'], { root }));
+  assert.equal(finalPart.complete, true);
+  assert.deepEqual(finalPart.items.map((item) => item.record_id), ['w583']);
+  await assert.rejects(() => quiet(() => run(['prepare', '--shard', '001', '--batch', '02', '--part', '02'], { root })), /batch 02 has no records for part 02/);
+  await assert.rejects(() => quiet(() => run(['prepare', '--shard', '001', '--part', '01'], { root })), /--part requires --batch/);
+  await assert.rejects(() => quiet(() => run(['verify', '--shard', '001', '--batch', '02', '--part', '06'], { root })), /--part must be 01, 02, 03, 04 or 05/);
+});
+
 test('an ID row owned by the other batch also answers this batch\'s reverse candidate in both prepare and verify', async (t) => {
   const root = await mkdtemp(path.join(tmpdir(), 'typewriter-admission-xbatch-'));
   t.after(() => rm(root, { recursive: true, force: true }));
