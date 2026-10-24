@@ -129,13 +129,13 @@ PR의 Normal 검사는 추가·수정된 `data/relation-candidates/` 파일마�
 
 ## 3. `#860 A 진행해` — 다음 배치 자동 선택
 
-`#860 A 진행해`, `#860 B 진행해`, `#1155 C 진행해`, `#1156 D 진행해` 등은 **현재 실행 중인 모델이 지정된 방법으로 다음 미완료 배치를 생산하고 PR을 올리라는 명령**이다. 다른 모델/CLI를 대신 실행하지 않는다. 기준은 [#860](https://github.com/neverworkalone/typewriter/issues/860)이다.
+`#860 A 진행해`, `#860 B 진행해`, `#1155 C 진행해`, `#1156 D 진행해` 등은 **현재 실행 중인 모델이 지정된 방법으로 다음 미완료 배치를 생산하고 PR을 올리라는 명령**이다. 다른 모델/CLI를 대신 실행하지 않는다. 실행 기준은 **A/B: [#860](https://github.com/neverworkalone/typewriter/issues/860), C: [#1155](https://github.com/neverworkalone/typewriter/issues/1155), D: [#1156](https://github.com/neverworkalone/typewriter/issues/1156)**이다.
 
 **진행 위치 키가 방식마다 다르다.**
 
 - **A/B: `(method, model)`별 독립 진행.** Codex-A, Claude-A, Codex-B, Claude-B, 오너가 추가한 DeepSeek A/B 각각 자신의 다음 배치를 진행한다.
 - **C/D: `method`별 공유 진행.** Codex·Claude·DeepSeek는 C의 완료/점유 배치를 함께 확인하고 D도 별도로 함께 확인한다. 한 배치의 C 결과 또는 D 결과는 실제 생산자 모델이 무엇이든 **각 방식당 정확히 하나**만 만든다. 파일명에는 실제 생산 모델을 기록한다.
-- 예를 들어 `001_01_c_codex.jsonl`이 완료된 상황에서 Claude가 `#860 C 진행해`를 받으면 `001_01_c_claude.jsonl`을 새로 만들지 않고 `001_02_c_claude.jsonl`부터 진행한다. 다음 Codex C 작업은 다시 C의 다음 미완료 배치를 선택한다. D도 동일하다.
+- 예를 들어 `001_01_c_codex.jsonl`이 완료된 상황에서 Claude가 `#1155 C 진행해`를 받으면 `001_01_c_claude.jsonl`을 새로 만들지 않고 `001_02_c_claude.jsonl`부터 진행한다. 다음 Codex C 작업은 다시 C의 다음 미완료 배치를 선택한다. D도 동일하다.
 
 명령을 받은 생산자는 다음 순서로 실행한다.
 
