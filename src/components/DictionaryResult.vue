@@ -1,7 +1,7 @@
 <script setup>
 import { computed, nextTick, ref, watch } from 'vue';
 
-import { pageRelationItems } from '../domain/relation-paging.js';
+import { isPagedRelationGroup, pageRelationItems } from '../domain/relation-paging.js';
 import { DEFAULT_DEFINITION_LIMIT } from '../runtime/meaning-order.js';
 import { DEFAULT_SETTINGS } from '../ui/settings.js';
 
@@ -46,6 +46,10 @@ const props = defineProps({
     type: String,
     default: null,
   },
+  relationPages: {
+    type: Object,
+    default: null,
+  },
 });
 
 const emit = defineEmits([
@@ -55,6 +59,7 @@ const emit = defineEmits([
   'toggle-more-candidates',
   'candidate-focus',
   'candidate-keydown',
+  'relation-page',
 ]);
 
 const senses = computed(() => (Array.isArray(props.record.senses) ? props.record.senses : []));
@@ -93,14 +98,16 @@ const hasVisibleSenseRelations = computed(() => (
   visibleSenses.value.some((sense) => sense.hasRelations)
 ));
 const candidateRefs = new Map();
-const pagesShown = ref({});
+const localRelationPages = ref({});
 
 function pageKey(sense, group) {
-  return `${sense.id}:${group.id}`;
+  return `${props.record.id}:${sense.id}:${group.id}`;
 }
 
 function pagedItems(sense, group) {
-  return pageRelationItems(group.id, group.items, pagesShown.value[pageKey(sense, group)]);
+  const key = pageKey(sense, group);
+  const page = props.relationPages?.[key] ?? localRelationPages.value[key] ?? 1;
+  return pageRelationItems(group.id, group.items, page);
 }
 
 // 뜻풀이 더보기: a meaning shows its first three definitions until expanded. The state is per displayed sense and is
@@ -114,9 +121,6 @@ const hasHiddenDefinitions = (group) => group.items.length > DEFAULT_DEFINITION_
 function toggleDefinitions(sense) {
   expandedDefinitions.value = { ...expandedDefinitions.value, [sense.id]: !isDefinitionExpanded(sense) };
 }
-watch(() => props.record, () => {
-  pagesShown.value = {};
-});
 watch(
   () => [props.record, selectedCandidateKey.value],
   () => {
@@ -124,17 +128,33 @@ watch(
   },
 );
 
-async function showMore(sense, group, event) {
+async function changeRelationPage(sense, group, page, event) {
   const key = pageKey(sense, group);
   const section = event.currentTarget.closest('.result-section');
-  const hadMoreAfter = () => pagedItems(sense, group).hasMore;
-  pagesShown.value = { ...pagesShown.value, [key]: (pagesShown.value[key] || 1) + 1 };
-  if (hadMoreAfter()) return;
+  const scrollRegion = section?.closest('.dictionary-scroll-region');
+  const sectionTop = section?.getBoundingClientRect().top;
+  const direction = event.currentTarget.dataset.pageDirection;
+  const nextPage = pageRelationItems(group.id, group.items, page);
+  if (nextPage.page === pagedItems(sense, group).page) return;
 
-  // The control is removed once the list is exhausted; keep keyboard focus in the list.
+  if (!props.relationPages) {
+    localRelationPages.value = { ...localRelationPages.value, [key]: nextPage.page };
+  }
+  emit('relation-page', { key, page: nextPage.page });
+
   await nextTick();
-  const links = section?.querySelectorAll('.relation-link');
-  links?.[links.length - 1]?.focus?.();
+  if (section && scrollRegion && Number.isFinite(sectionTop)) {
+    scrollRegion.scrollTop += section.getBoundingClientRect().top - sectionTop;
+  }
+
+  if (
+    (direction === 'next' && !nextPage.hasNext)
+    || (direction === 'previous' && !nextPage.hasPrevious)
+  ) {
+    section?.querySelector(
+      direction === 'next' ? '[data-page-direction="previous"]' : '[data-page-direction="next"]',
+    )?.focus?.();
+  }
 }
 
 function isGroupVisible(group) {
@@ -289,7 +309,14 @@ defineExpose({ focusCandidate });
                 :title="relation.note || undefined"
                 @click="openRelation(relation)"
               >{{ relationText(relation) }}</button>
-              <span v-else class="relation-link is-static">{{ relationText(relation) }}</span>
+              <span
+                v-else
+                class="relation-link"
+                :class="{
+                  'is-static': !relationTargetId(relation),
+                  'is-disabled': !interactive && relationTargetId(relation),
+                }"
+              >{{ relationText(relation) }}</span>
               <span
                 v-if="relationIndex < pagedItems(sense, group).items.length - 1"
                 class="relation-separator"
@@ -297,13 +324,32 @@ defineExpose({ focusCandidate });
               >·</span>
             </template>
           </div>
-          <button
-            v-if="interactive && group.kind !== 'definition' && pagedItems(sense, group).hasMore"
-            class="relation-more"
-            type="button"
-            :aria-label="`${group.label} 더보기`"
-            @click="showMore(sense, group, $event)"
-          >더보기</button>
+          <div
+            v-if="interactive && isPagedRelationGroup(group.id) && pagedItems(sense, group).pageCount > 1"
+            class="relation-pagination"
+            role="group"
+            :aria-label="`${group.label} 페이지 탐색`"
+          >
+            <button
+              class="relation-page-button"
+              type="button"
+              data-page-direction="previous"
+              :disabled="!pagedItems(sense, group).hasPrevious"
+              :aria-label="`${group.label} 이전 페이지`"
+              @click="changeRelationPage(sense, group, pagedItems(sense, group).page - 1, $event)"
+            >〈 이전</button>
+            <span aria-live="polite" aria-atomic="true">
+              {{ pagedItems(sense, group).start }}–{{ pagedItems(sense, group).end }} / 전체 {{ pagedItems(sense, group).total }}개
+            </span>
+            <button
+              class="relation-page-button"
+              type="button"
+              data-page-direction="next"
+              :disabled="!pagedItems(sense, group).hasNext"
+              :aria-label="`${group.label} 다음 페이지`"
+              @click="changeRelationPage(sense, group, pagedItems(sense, group).page + 1, $event)"
+            >다음 〉</button>
+          </div>
           <div
             v-if="groupIndex === 0 && group.kind === 'definition'"
             class="definition-divider"
@@ -541,11 +587,59 @@ defineExpose({ focusCandidate });
   border-radius: 2px;
 }
 
+.relation-pagination {
+  display: flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 8px;
+  color: #5f5955;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.relation-page-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #5f5955;
+  cursor: pointer;
+  font: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.relation-page-button:disabled {
+  color: #968f89;
+  cursor: default;
+}
+
+.relation-page-button:not(:disabled):hover {
+  color: #7e433e;
+}
+
+.relation-page-button:focus-visible {
+  outline: 2px solid #7e433e;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
 .dictionary-result.is-compact .relation-more {
   font-size: 10.5px;
 }
 
+.dictionary-result.is-compact .relation-pagination {
+  gap: 7px;
+  font-size: 10.5px;
+  line-height: 14px;
+}
+
 .relation-link.is-static {
+  color: #2b2927;
+  cursor: default;
+  font-weight: 400;
+}
+
+.relation-link.is-disabled {
   cursor: default;
 }
 

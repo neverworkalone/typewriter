@@ -140,6 +140,103 @@ describe('product MV3 Vue shells', () => {
     expect(document.activeElement).toBe(input);
   });
 
+  it('restores per-group relation pages after relation navigation and resets them on a new search', async () => {
+    const sourceRelations = [
+      ...Array.from({ length: 45 }, (_, position) => ({
+        position,
+        target: null,
+        type: 'near',
+        target_lemma: `결${position}`,
+      })),
+      ...Array.from({ length: 45 }, (_, offset) => ({
+        position: offset + 45,
+        target: null,
+        type: 'scene',
+        target_lemma: `연상${offset}`,
+      })),
+      {
+        position: 90,
+        target: 'linked',
+        type: 'direct',
+        target_lemma: '연결어',
+      },
+    ];
+    const source = makeRecord('source', '첫말', 'start', sourceRelations);
+    const target = makeRecord('linked', '연결어', 'reference-only', [{
+      position: 0,
+      target: 'source',
+      target_sense: 'source-s1',
+      type: 'direct',
+      target_lemma: '첫말',
+      target_pos: 'adjective',
+      target_gloss: '첫말 뜻풀이',
+    }]);
+    const runtime = {
+      search: async () => [{ id: source.id }],
+      getRecord: async (id) => ({ source, linked: target })[id] || null,
+    };
+    const host = mountWithProps(PopupApp, {
+      runtime,
+      settingsStore: { load: async () => ({ ...DEFAULT_SETTINGS, association: true }) },
+    });
+    const input = host.querySelector('[aria-label="검색어"]');
+    const submitSearch = async () => {
+      const form = host.querySelector('.search-row');
+      input.value = source.lemma;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      await flush();
+    };
+    const nextPage = (groupId) => host.querySelector(
+      `[data-group-id="${groupId}"] [data-page-direction="next"]`,
+    );
+    const firstItem = (groupId) => host.querySelector(
+      `[data-group-id="${groupId}"] .relation-link`,
+    )?.textContent;
+    const range = (groupId) => host.querySelector(
+      `[data-group-id="${groupId}"] .relation-pagination`,
+    )?.textContent;
+
+    await submitSearch();
+    nextPage('texture').click();
+    await flush();
+    nextPage('association').click();
+    await flush();
+    expect(firstItem('texture')).toBe('결20');
+    expect(firstItem('association')).toBe('연상20');
+
+    host.querySelector('[data-target-record-id="linked"]').click();
+    await flush();
+    expect(host.querySelector('[data-record-id="linked"]')).not.toBeNull();
+    host.querySelector('[data-target-record-id="source"]').click();
+    await flush();
+    expect(host.querySelector('[data-record-id="source"]')).not.toBeNull();
+    expect(firstItem('texture')).toBe('결0');
+
+    nextPage('texture').click();
+    await flush();
+    nextPage('texture').click();
+    await flush();
+    expect(firstItem('texture')).toBe('결40');
+
+    host.querySelector('.back-button').click();
+    await flush();
+    expect(host.querySelector('[data-record-id="linked"]')).not.toBeNull();
+    host.querySelector('.back-button').click();
+    await flush();
+
+    expect(firstItem('texture')).toBe('결20');
+    expect(range('texture')).toContain('21–40 / 전체 45개');
+    expect(firstItem('association')).toBe('연상20');
+    expect(range('association')).toContain('21–40 / 전체 45개');
+
+    await submitSearch();
+    expect(firstItem('texture')).toBe('결0');
+    expect(range('texture')).toContain('1–20 / 전체 45개');
+    expect(firstItem('association')).toBe('연상0');
+    expect(range('association')).toContain('1–20 / 전체 45개');
+  });
+
   it('does not submit during Korean IME composition and submits once after compositionend', async () => {
     const record = makeRecord('w026', '담담하다');
     const calls = [];

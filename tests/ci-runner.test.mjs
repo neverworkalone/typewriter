@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { appendFile, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
@@ -161,15 +161,46 @@ test('the retired candidate CI level is not selectable', async () => {
   }), /Unknown CI level or category: candidates/u);
 });
 
-test('ci:all completes Normal before Deep checks in the same domain and preserves the one-build gate', async () => {
+test('automatic CI child checks do not inherit a shared production database path', async (t) => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'typewriter-ci-database-env-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const outputPath = path.join(directory, 'child-env.json');
+  const keys = [
+    'TYPEWRITER_SHARED_DICTIONARY_PATH',
+    'TYPEWRITER_SEARCH_REGRESSION_DATABASE',
+  ];
+  const previous = keys.map((key) => process.env[key]);
+  try {
+    for (const key of keys) process.env[key] = '/stale/current-canonical.sqlite';
+    await runChecks([{
+      label: 'inspect database handoff boundary',
+      command: () => ({
+        executable: process.execPath,
+        args: [
+          '-e',
+          'require("node:fs").writeFileSync(process.argv[1], JSON.stringify([process.env.TYPEWRITER_SHARED_DICTIONARY_PATH ?? null, process.env.TYPEWRITER_SEARCH_REGRESSION_DATABASE ?? null]))',
+          outputPath,
+        ],
+      }),
+    }], {}, { log: () => {} });
+    assert.deepEqual(JSON.parse(await readFile(outputPath, 'utf8')), [null, null]);
+  } finally {
+    keys.forEach((key, index) => {
+      if (previous[index] === undefined) delete process.env[key];
+      else process.env[key] = previous[index];
+    });
+  }
+});
+
+test('ci:all completes Normal before Deep checks in the same domain with zero current-canonical builds', async () => {
   const state = { normalComplete: false, order: [] };
   const deepCheck = registerCheck({
-    label: 'synthetic independent Deep build',
-    command: () => ({ executable: 'synthetic', args: ['deep-build'] }),
+    label: 'synthetic Deep data projection',
+    command: () => ({ executable: 'synthetic', args: ['deep-data'] }),
   }, { owner: 'canonical', tier: 'deep' });
   const normalCheck = registerCheck({
-    label: 'synthetic current-revision Normal build',
-    command: () => ({ executable: 'synthetic', args: ['normal-build'] }),
+    label: 'synthetic Normal data audit',
+    command: () => ({ executable: 'synthetic', args: ['normal-data'] }),
   }, { owner: 'canonical', tier: 'normal' });
   const checks = [deepCheck, normalCheck];
 
@@ -181,13 +212,13 @@ test('ci:all completes Normal before Deep checks in the same domain and preserve
       },
       log: () => {},
       execute: async ({ args }) => {
-        if (args[0] === 'deep-build' && !state.normalComplete) {
-          throw new Error('independent Deep build started before Normal completed');
+        if (args[0] === 'deep-data' && !state.normalComplete) {
+          throw new Error('Deep data validation started before Normal completed');
         }
       },
     }),
     /before Normal completed/u,
-    'the adversarial fixture must reject an early independent build',
+    'the adversarial fixture must reject a Deep check before Normal completes',
   );
 
   const temporaryDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-tier-order-'));
@@ -226,40 +257,17 @@ test('ci:all completes Normal before Deep checks in the same domain and preserve
       createSession,
       log: () => {},
       execute: async ({ args }, context) => {
-        if (args[0] === 'normal-build') {
+        if (args[0] === 'normal-data') {
           assert.equal(context.phase, 'normal');
-          await appendFile(ledgerPath, `${JSON.stringify({
-            type: 'sqlite-build',
-            pid: process.pid,
-            count: 1,
-            canonical_revision: revision,
-            canonical_directory: canonicalDirectory,
-            phase: 'normal',
-          })}\n`);
-          context.canonicalContext.metrics.sqlite_build_count += 1;
           state.normalComplete = true;
           state.order.push('normal');
           return;
         }
-        assert.equal(args[0], 'deep-build');
+        assert.equal(args[0], 'deep-data');
         assert.equal(state.normalComplete, true);
         assert.equal(context.phase, 'deep');
         const ledger = (await readFile(ledgerPath, 'utf8')).split('\n').filter(Boolean).map(JSON.parse);
-        assert.equal(ledger.filter((event) => event.phase === 'normal').length, 1);
-        const deepPid = process.pid + 1;
-        await appendFile(ledgerPath, `${JSON.stringify({
-          type: 'process',
-          pid: deepPid,
-          peak_rss_kb: 0,
-        })}\n`);
-        await appendFile(ledgerPath, `${JSON.stringify({
-          type: 'sqlite-build',
-          pid: deepPid,
-          count: 1,
-          canonical_revision: revision,
-          canonical_directory: canonicalDirectory,
-          phase: 'deep',
-        })}\n`);
+        assert.equal(ledger.filter((event) => event.type === 'sqlite-build').length, 0);
         state.order.push('deep');
       },
     });
@@ -280,7 +288,7 @@ test('PR workflow routes an affected exact-head Deep gate into ci:pr and only it
     command: () => ({ executable: 'synthetic', args: ['normal'] }),
   }, { owner: 'canonical', tier: 'normal' });
   const selectedDeepDefinition = CI_CATEGORIES.deep.checks.find(
-    (check) => check.inProcess === 'deep-m2-reproducibility',
+    (check) => check.inProcess === 'deep-data-projection-reproducibility',
   );
   const selectedDeep = registerCheck({
     label: selectedDeepDefinition.label,
@@ -289,7 +297,7 @@ test('PR workflow routes an affected exact-head Deep gate into ci:pr and only it
     owner: selectedDeepDefinition.owner,
     tier: 'deep',
     schedule: 'affected',
-    paths: ['scripts/verify/m2-pipeline.mjs'],
+    paths: ['scripts/normalize'],
   });
   const unrelatedDeep = CI_CATEGORIES.relations.checks.find(
     (check) => check.label === 'Test Canonical relation backfill queue, apply, and correction paths',
@@ -301,7 +309,7 @@ test('PR workflow routes an affected exact-head Deep gate into ci:pr and only it
   const baseSha = 'a'.repeat(40);
   const headSha = 'b'.repeat(40);
   const workflow = await readFile(path.resolve(TEST_DIRECTORY, '../.github/workflows/ci.yml'), 'utf8');
-  for (const changedPath of ['scripts/verify/m2-pipeline.mjs']) {
+  for (const changedPath of ['scripts/normalize/canonical.mjs']) {
     const scenarioDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-ci-pr-scenario-'));
     t.after(() => rm(scenarioDirectory, { recursive: true, force: true }));
     const ledgerPath = path.join(scenarioDirectory, 'ledger.jsonl');
@@ -362,17 +370,7 @@ test('PR workflow routes an affected exact-head Deep gate into ci:pr and only it
       log: () => {},
       execute: async (command, context, check) => {
         executed.push(`${context.phase}:${check.label}`);
-        if (check === normalCheck) {
-          await appendFile(ledgerPath, `${JSON.stringify({
-            type: 'sqlite-build',
-            pid: process.pid,
-            count: 1,
-            canonical_revision: canonicalRevision,
-            canonical_directory: canonicalDirectory,
-            phase: 'normal',
-          })}\n`);
-          context.canonicalContext.metrics.sqlite_build_count += 1;
-        }
+        assert.equal(context.canonicalContext.metrics.sqlite_build_count, 0);
         assert.ok(command.args.length > 0);
       },
     });

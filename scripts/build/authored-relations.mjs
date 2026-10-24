@@ -50,6 +50,21 @@ export async function loadShardSenseIds(canonicalDirectory) {
   return owners;
 }
 
+/** Build source-shard ownership from the already loaded Canonical record infos. */
+export function buildShardSenseIdsFromCanonicalRecords(recordInfos) {
+  const owners = new Map();
+  for (const recordInfo of recordInfos) {
+    const record = recordInfo.record ?? recordInfo;
+    const fileName = path.basename(recordInfo.filePath ?? '');
+    const match = /^stdict-0(\d{3})\.jsonl$/u.exec(fileName);
+    if (!match) throw new Error(`Canonical record ${record.id} has no recognized source shard file.`);
+    const senseIds = owners.get(match[1]) ?? new Set();
+    for (const sense of record.senses ?? []) senseIds.add(sense.id);
+    owners.set(match[1], senseIds);
+  }
+  return owners;
+}
+
 const keyOf = (source, target, type) => `${source}\u0000${target}\u0000${type}`;
 
 /**
@@ -63,24 +78,14 @@ export function projectAuthoredRelations({ files, records, meanings, existing, s
   const stats = { authored_file_count: files.length, authored_row_count: 0, authored_id_relation_count: 0, authored_text_relation_count: 0, authored_deduplicated_count: 0 };
   if (files.length === 0) return { relations: [], textRelations: [], stats };
 
-  const index = buildCanonicalIndex(records);
+  const { index } = validateApprovedRelationRows({ files, records, shardSenseIds });
   const senseToMeaning = new Map();
   for (const meaning of meanings) for (const senseId of meaning.sense_ids) senseToMeaning.set(senseId, meaning.id);
 
-  const previous = [];
   const idEntries = [];
   const textEntries = [];
   let order = 0;
   for (const { shard, rows } of files) {
-    const plain = rows.map(({ row }) => row);
-    const owned = shardSenseIds?.get(shard);
-    if (!owned) throw new Error(`relation-${shard}.jsonl: no Canonical shard stdict-0${shard}.jsonl owns this file`);
-    try {
-      validateRelationRows({ relationRows: plain, index, shardSenseIds: owned, otherRelationRows: previous });
-    } catch (error) {
-      throw new Error(`relation-${shard}.jsonl: ${error.message}`);
-    }
-    previous.push(...plain);
     for (const { row, line } of rows) {
       stats.authored_row_count += 1;
       const source = senseToMeaning.get(row.source_sense_id);
@@ -157,4 +162,24 @@ export function projectAuthoredRelations({ files, records, meanings, existing, s
   stats.authored_id_relation_count = relations.length;
   stats.authored_text_relation_count = textRelations.length;
   return { relations, textRelations, stats };
+}
+
+/** Validate all approved files against one complete Canonical index and the full cross-shard input set. */
+export function validateApprovedRelationRows({ files, records = [], shardSenseIds, canonicalIndex }) {
+  const index = canonicalIndex ?? buildCanonicalIndex(records);
+  const previous = [];
+  let rowCount = 0;
+  for (const { shard, rows } of files) {
+    const owned = shardSenseIds?.get(shard);
+    if (!owned) throw new Error(`relation-${shard}.jsonl: no Canonical shard stdict-0${shard}.jsonl owns this file`);
+    const relationRows = rows.map(({ row }) => row);
+    try {
+      validateRelationRows({ relationRows, index, shardSenseIds: owned, otherRelationRows: previous });
+    } catch (error) {
+      throw new Error(`relation-${shard}.jsonl: ${error.message}`);
+    }
+    previous.push(...relationRows);
+    rowCount += relationRows.length;
+  }
+  return { fileCount: files.length, rowCount, index };
 }

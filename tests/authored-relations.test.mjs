@@ -7,6 +7,12 @@ import { DatabaseSync } from 'node:sqlite';
 
 import { buildDictionary } from '../scripts/build/dictionary.mjs';
 import { extractLiteDictionary } from '../scripts/build/lite-dictionary.mjs';
+import {
+  buildShardSenseIdsFromCanonicalRecords,
+  loadApprovedRelationFiles,
+  validateApprovedRelationRows,
+} from '../scripts/build/authored-relations.mjs';
+import { normalizeRecords } from '../scripts/normalize/canonical.mjs';
 import { projectRelation } from '../src/domain/projection.js';
 import { getMeaningRecord } from '../src/runtime/sqlite-query.js';
 import { validatePackagedDictionary } from '../src/runtime/dictionary-validation.js';
@@ -29,6 +35,82 @@ const idRow = (over = {}) => ({
   type: 'near', relevance: 2, reverse_type: 'mood', reverse_relevance: 6, ...over,
 });
 const textRow = (over = {}) => ({ source_record_id: 'w001', source_sense_id: 'w001-s1', text: '새 말', type: 'scene', relevance: 4, ...over });
+
+test('the product loader reads exact approved Relation filenames and ignores Stage 2 backups', async (t) => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'typewriter-relation-backup-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  await writeFile(path.join(directory, 'relation-001.jsonl'), `${JSON.stringify(idRow())}\n`);
+  await writeFile(path.join(directory, 'relation-001-backup.jsonl'), '{historical backup is not JSON');
+  await writeFile(path.join(directory, 'relation-001.jsonl.bak'), '{not a Relation input');
+
+  const files = await loadApprovedRelationFiles(directory);
+  assert.deepEqual(files.map((file) => file.shard), ['001']);
+  assert.deepEqual(files[0].rows.map(({ row }) => row), [idRow()]);
+});
+
+test('DB-free approved Relation validation reads all exact files against the Canonical index', async (t) => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'typewriter-relation-validation-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const canonical = path.join(directory, 'canonical');
+  const relations = path.join(directory, 'relations');
+  await mkdir(canonical);
+  await mkdir(relations);
+  const recordInfos = [];
+  for (const [shard, records] of Object.entries(SHARDS)) {
+    const filePath = path.join(canonical, `stdict-0${shard}.jsonl`);
+    await writeFile(filePath, `${records.map((item) => JSON.stringify(item)).join('\n')}\n`);
+    recordInfos.push(...records.map((record) => ({ record, filePath })));
+  }
+
+  const link = idRow({ target_record_id: 'w004', target_sense_id: 'w004-s1' });
+  const text = textRow({ source_record_id: 'w004', source_sense_id: 'w004-s1', text: '겨울 장면' });
+  const writeRelations = async (shard, rows) => writeFile(
+    path.join(relations, `relation-${shard}.jsonl`),
+    rows.map((row) => `${JSON.stringify(row)}\n`).join(''),
+  );
+  await writeRelations('001', [link]);
+  await writeRelations('002', [text]);
+  await writeFile(path.join(relations, 'relation-001-backup.jsonl'), '{historical backup is not JSON');
+
+  const canonicalModel = normalizeRecords(RECORDS);
+  const shardSenseIds = buildShardSenseIdsFromCanonicalRecords(recordInfos);
+  const validateSavedFiles = async () => validateApprovedRelationRows({
+    files: await loadApprovedRelationFiles(relations),
+    records: canonicalModel.records,
+    shardSenseIds,
+  });
+  assert.deepEqual(await loadApprovedRelationFiles(relations).then((files) => files.map((file) => file.shard)), ['001', '002']);
+  const accepted = await validateSavedFiles();
+  assert.deepEqual({ fileCount: accepted.fileCount, rowCount: accepted.rowCount }, { fileCount: 2, rowCount: 2 });
+
+  await writeRelations('001', [textRow({ source_record_id: 'missing', source_sense_id: 'missing-s1' })]);
+  await assert.rejects(validateSavedFiles, /source_sense_id missing-s1 is not a sense of missing/u);
+
+  await writeRelations('001', [idRow({ target_sense_id: 'missing-s1' })]);
+  await assert.rejects(validateSavedFiles, /target_sense_id missing-s1 is not a sense/u);
+
+  await writeRelations('001', [link]);
+  await writeRelations('002', [textRow()]);
+  await assert.rejects(validateSavedFiles, /source sense w001-s1 is outside this shard/u);
+
+  await writeRelations('001', [link]);
+  await writeRelations('002', [idRow({
+    source_record_id: 'w004', source_sense_id: 'w004-s1',
+    target_record_id: 'w001', target_sense_id: 'w001-s1',
+    type: 'mood', reverse_type: 'near',
+  })]);
+  await assert.rejects(validateSavedFiles, /duplicate or reverse-duplicate ID relation/u);
+
+  await writeRelations('002', [textRow({
+    source_record_id: 'w004', source_sense_id: 'w004-s1', type: 'direct',
+  })]);
+  await assert.rejects(validateSavedFiles, /type "direct" is not one of/u);
+
+  await writeRelations('002', [textRow({
+    source_record_id: 'w004', source_sense_id: 'w004-s1', relevance: 10,
+  })]);
+  await assert.rejects(validateSavedFiles, /relevance must be an integer 1\.\.9/u);
+});
 
 // Shard 001 holds w001..w003 and shard 002 holds w004: a relation file may only name sources its own shard stores.
 const SHARDS = { '001': RECORDS.slice(0, 3), '002': RECORDS.slice(3) };
