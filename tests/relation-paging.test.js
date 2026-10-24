@@ -27,12 +27,13 @@ function makeRecord(count, type = 'near') {
   });
 }
 
-function mount(record) {
+function mount(record, options = {}) {
   const host = document.createElement('div');
   document.body.append(host);
   const app = createApp(DictionaryResult, {
     record,
     settings: { ...DEFAULT_SETTINGS, association: true },
+    ...options,
   });
   app.mount(host);
   mounted.push({ app, host });
@@ -42,7 +43,10 @@ function mount(record) {
 const count = (host, groupId) => host.querySelectorAll(
   `[data-group-id="${groupId}"] .relation-link`,
 ).length;
-const more = (host, groupId) => host.querySelector(`[data-group-id="${groupId}"] .relation-more`);
+const pageStatus = (host, groupId) => host.querySelector(`[data-group-id="${groupId}"] .relation-page-status`);
+const pageButton = (host, groupId, direction) => host.querySelector(
+  `[data-group-id="${groupId}"] [data-page-direction="${direction}"]`,
+);
 
 afterEach(() => {
   while (mounted.length) {
@@ -55,60 +59,175 @@ afterEach(() => {
 describe('pageRelationItems', () => {
   it('leaves non-exploratory groups untouched', () => {
     const items = Array.from({ length: 50 }, (_, i) => i);
-    expect(pageRelationItems('synonyms', items, 1)).toEqual({ items, hasMore: false });
+    expect(pageRelationItems('synonyms', items, 1)).toEqual({
+      items,
+      page: 1,
+      pageCount: 1,
+      total: 50,
+      start: 1,
+      end: 50,
+      hasPrevious: false,
+      hasNext: false,
+    });
   });
 
   it.each([
-    [1, 20, true],
-    [2, 40, true],
-    [3, 60, true],
-    [4, 80, true],
-    [5, 100, false],
-    [9, 100, false],
-  ])('shows %i page(s) as %i items of 130', (pages, shown, hasMore) => {
-    const items = Array.from({ length: 130 }, (_, i) => i);
-    const result = pageRelationItems('texture', items, pages);
-    expect(result.items).toEqual(items.slice(0, shown));
-    expect(result.hasMore).toBe(hasMore);
+    [0, 1, 0, 0],
+    [1, 1, 1, 1],
+    [20, 1, 1, 20],
+    [21, 2, 21, 21],
+    [100, 5, 81, 100],
+    [101, 6, 101, 101],
+    [130, 7, 121, 130],
+  ])('pages a %i-item pool through its final item', (total, pageCount, start, end) => {
+    const items = Array.from({ length: total }, (_, i) => i);
+    const result = pageRelationItems('texture', items, pageCount);
+    expect(result.page).toBe(pageCount);
+    expect(result.pageCount).toBe(Math.max(1, Math.ceil(total / 20)));
+    expect(result.total).toBe(total);
+    expect(result.start).toBe(start);
+    expect(result.end).toBe(end);
+    expect(result.items).toEqual(items.slice(start - 1, end));
+    expect(result.hasPrevious).toBe(pageCount > 1);
+    expect(result.hasNext).toBe(false);
   });
 
-  it('reports no more when the pool fits exactly or is smaller', () => {
-    const items = Array.from({ length: 20 }, (_, i) => i);
-    expect(pageRelationItems('association', items, 1).hasMore).toBe(false);
-    expect(pageRelationItems('association', items.slice(0, 5), 1).hasMore).toBe(false);
+  it('returns only the requested page and clamps page boundaries to the live item count', () => {
+    const items = Array.from({ length: 130 }, (_, i) => i);
+    const second = pageRelationItems('texture', items, 2);
+    expect(second.items).toEqual(items.slice(20, 40));
+    expect(second).toMatchObject({ page: 2, pageCount: 7, start: 21, end: 40, hasPrevious: true, hasNext: true });
+    expect(pageRelationItems('texture', items, 0).page).toBe(1);
+    expect(pageRelationItems('texture', items, 99).page).toBe(7);
+    expect(pageRelationItems('texture', items.slice(0, 21), 7)).toMatchObject({
+      page: 2, pageCount: 2, start: 21, end: 21, hasPrevious: true, hasNext: false,
+    });
   });
 });
 
-describe('DictionaryResult 더보기', () => {
-  it('reveals 20 more per activation up to 100 and then removes the control', async () => {
+describe('DictionaryResult relation pagination', () => {
+  it('replaces the visible page, announces its range and hides boundary arrows', async () => {
     const host = mount(makeRecord(130));
     expect(count(host, 'texture')).toBe(20);
+    expect(pageStatus(host, 'texture').textContent).toContain('1–20 / 전체 130개');
+    expect(pageStatus(host, 'texture').getAttribute('role')).toBe('status');
+    expect(pageStatus(host, 'texture').getAttribute('aria-live')).toBe('polite');
+    expect(pageButton(host, 'texture', 'previous')).toBeNull();
+    expect(pageButton(host, 'texture', 'next').getAttribute('aria-label')).toBe('말의 결 다음 20개');
+    expect(pageButton(host, 'texture', 'next').type).toBe('button');
+    expect(host.querySelector('[data-group-id="texture"] .relation-pagination')).toBeNull();
 
-    for (const expected of [40, 60, 80, 100]) {
-      more(host, 'texture').click();
+    pageButton(host, 'texture', 'next').focus();
+    pageButton(host, 'texture', 'next').click();
+    await nextTick();
+    expect(count(host, 'texture')).toBe(20);
+    expect(host.querySelector('[data-group-id="texture"] .relation-link').textContent).toBe('단어20');
+    expect(pageStatus(host, 'texture').textContent).toContain('21–40 / 전체 130개');
+    expect(pageButton(host, 'texture', 'previous').textContent).toBe('←');
+    expect(pageButton(host, 'texture', 'previous').getAttribute('aria-label')).toBe('말의 결 이전 20개');
+    expect(host.querySelector('[data-group-id="texture"] .relation-entry.has-previous-page .relation-link').textContent)
+      .toBe('단어20');
+    expect(host.querySelector('[data-group-id="texture"] .relation-entry.has-next-page .relation-link').textContent)
+      .toBe('단어39');
+    expect(document.activeElement.dataset.pageDirection).toBe('next');
+
+    pageButton(host, 'texture', 'previous').click();
+    await nextTick();
+    expect(pageStatus(host, 'texture').textContent).toContain('1–20 / 전체 130개');
+    expect(pageButton(host, 'texture', 'previous')).toBeNull();
+    expect(document.activeElement.dataset.pageDirection).toBe('next');
+    pageButton(host, 'texture', 'next').click();
+    await nextTick();
+    expect(document.activeElement.dataset.pageDirection).toBe('next');
+
+    for (let page = 3; page <= 7; page += 1) {
+      pageButton(host, 'texture', 'next').click();
       await nextTick();
-      expect(count(host, 'texture')).toBe(expected);
     }
-    expect(more(host, 'texture')).toBeNull();
-    expect(document.activeElement.classList.contains('relation-link')).toBe(true);
-    expect(host.querySelector('[data-group-id="texture"] .relation-link').textContent).toBe('단어0');
+    expect(count(host, 'texture')).toBe(10);
+    expect(host.querySelector('[data-group-id="texture"] .relation-link').textContent).toBe('단어120');
+    expect(pageStatus(host, 'texture').textContent).toContain('121–130 / 전체 130개');
+    expect(pageButton(host, 'texture', 'next')).toBeNull();
+    expect(host.querySelector('[data-group-id="texture"] .relation-entry.has-next-page')).toBeNull();
+    expect(document.activeElement.dataset.pageDirection).toBe('previous');
+
+    pageButton(host, 'texture', 'previous').click();
+    await nextTick();
+    expect(host.querySelector('[data-group-id="texture"] .relation-link').textContent).toBe('단어100');
+    expect(pageStatus(host, 'texture').textContent).toContain('101–120 / 전체 130개');
   });
 
   it('shows no control when 20 or fewer exist and leaves 유의어 unpaged', async () => {
     const host = mount(makeRecord(20));
-    expect(more(host, 'texture')).toBeNull();
+    expect(pageStatus(host, 'texture')).toBeNull();
+    expect(host.querySelector('[data-group-id="texture"] .relation-page-button')).toBeNull();
     expect(count(host, 'synonyms')).toBe(1);
   });
 
-  it('pages 연상 independently', async () => {
-    const host = mount(makeRecord(45, 'scene'));
+  it('pages 연상 independently and keeps compact pages bounded to 20 items', async () => {
+    const host = mount(makeRecord(45, 'scene'), { compact: true });
+    expect(host.querySelector('.dictionary-result').classList.contains('is-compact')).toBe(true);
     expect(count(host, 'association')).toBe(20);
-    more(host, 'association').click();
+    pageButton(host, 'association', 'next').click();
     await nextTick();
-    more(host, 'association').click();
+    expect(host.querySelector('[data-group-id="association"] .relation-link').textContent).toBe('단어20');
+    pageButton(host, 'association', 'next').click();
     await nextTick();
-    expect(count(host, 'association')).toBe(45);
-    expect(more(host, 'association')).toBeNull();
+    expect(count(host, 'association')).toBe(5);
+    expect(pageStatus(host, 'association').textContent).toContain('41–45 / 전체 45개');
+    expect(pageButton(host, 'association', 'previous')).not.toBeNull();
+    expect(pageButton(host, 'association', 'next')).toBeNull();
+  });
+
+  it('keeps text-only relations static beside inline page controls', async () => {
+    const record = makeRecord(45);
+    const textOnly = record.senses[0].relationGroups.texture.items[20];
+    textOnly.targetId = null;
+    textOnly.action = null;
+    const host = mount(record);
+
+    pageButton(host, 'texture', 'next').click();
+    await nextTick();
+
+    const first = host.querySelector('[data-group-id="texture"] .relation-link');
+    expect(first.textContent).toBe('단어20');
+    expect(first.tagName).toBe('SPAN');
+    expect(first.classList.contains('is-static')).toBe(true);
+    expect(first.hasAttribute('data-target-record-id')).toBe(false);
+    expect(host.querySelector('[data-group-id="texture"] .relation-entry.has-previous-page .relation-page-button'))
+      .not.toBeNull();
+  });
+
+  it('keeps page positions independent for each sense in the same record', async () => {
+    const relations = (prefix) => Array.from({ length: 45 }, (_, position) => ({
+      position,
+      target: `${prefix}-${position}`,
+      type: 'near',
+      target_lemma: `${prefix}${position}`,
+    }));
+    const record = projectRecord({
+      id: 'w1', record_type: 'entry', role: 'start', lemma: '시험',
+      senses: [
+        { id: 'w1-s1', pos: 'noun', gloss: '첫 뜻', relations: relations('첫') },
+        { id: 'w1-s2', pos: 'noun', gloss: '둘째 뜻', relations: relations('둘') },
+      ],
+    });
+    const host = mount(record);
+    const sense = (id) => host.querySelector(`.sense-block[data-sense-id="${id}"]`);
+    const firstItem = (id) => sense(id).querySelector('.relation-link').textContent;
+    const next = (id) => sense(id).querySelector('[data-page-direction="next"]');
+
+    expect(firstItem('w1-s1')).toBe('첫0');
+    expect(firstItem('w1-s2')).toBe('둘0');
+    next('w1-s1').click();
+    await nextTick();
+    expect(firstItem('w1-s1')).toBe('첫20');
+    expect(firstItem('w1-s2')).toBe('둘0');
+
+    next('w1-s2').click();
+    await nextTick();
+    expect(firstItem('w1-s1')).toBe('첫20');
+    expect(firstItem('w1-s2')).toBe('둘20');
   });
 });
 
@@ -168,13 +287,14 @@ describe('relevance ordering (#396)', () => {
     expect(items.map(({ targetId }) => targetId)).toEqual(['t1', 't3', 't0', 't2']);
   });
 
-  it('keeps all 101+ relations in the projection while paging exposes the first 100', () => {
+  it('keeps all 101+ relations in the projection and pages to the final item', () => {
     const specs = Array.from({ length: 105 }, (_, i) => ['scene', (i % 9) + 1]);
     const items = group(specs, 'association');
     expect(items).toHaveLength(105);
-    const page = pageRelationItems('association', items, 5);
-    expect(page.items).toHaveLength(100);
-    expect(page.hasMore).toBe(false);
+    const page = pageRelationItems('association', items, 6);
+    expect(page.items).toHaveLength(5);
+    expect(page.items.at(-1)).toEqual(items.at(-1));
+    expect(page).toMatchObject({ page: 6, pageCount: 6, start: 101, end: 105, hasNext: false });
     // a later relevance-1 addition re-enters the visible window
     const later = group([...specs, ['sensory', 1]], 'association');
     expect(pageRelationItems('association', later, 1).items.map(({ targetId }) => targetId))
@@ -216,5 +336,11 @@ describe('text-only authored relation', () => {
     expect(buttons).toContain('연결');
     expect(buttons).not.toContain('글자뿐');
     expect(statics).toContain('글자뿐');
+
+    const preview = mount(record, { interactive: false });
+    const previewGroup = preview.querySelector('[data-group-id="texture"]');
+    expect(previewGroup.querySelector('.relation-link.is-disabled')?.textContent).toBe('연결');
+    expect(previewGroup.querySelector('.relation-link.is-disabled.is-static')).toBeNull();
+    expect(previewGroup.querySelector('.relation-link.is-static')?.textContent).toBe('글자뿐');
   });
 });

@@ -13,6 +13,17 @@ schema validator and dataset-integrity validator have succeeded. It returns a
 logical model in memory for the next build step. It does not write a normalized
 dataset and never overwrites `data/canonical/`.
 
+## Approved Stage 2 Relations
+
+Normal CI reads only the exact approved inputs `data/relations/relation-<SSS>.jsonl` and validates them without creating a
+SQLite database. The DB-free check uses the complete normalized Canonical index and each source shard's sense ownership
+to enforce the same `validateRelationRows()` contract used by the product projection: source and target IDs/senses,
+allowed relation types, relevance tiers, exact row shape, and duplicate/reverse-duplicate relations across all approved
+shard files. The exact filename loader ignores the four historical `*-backup.jsonl` files and other non-approved names.
+
+This check belongs to the Normal `relations` category. It preserves data validation for Relation-only changes while the
+automatic Full/Lite build remains reserved for SQL schema changes.
+
 The normalization contract is intentionally small:
 
 - canonical `.jsonl` files are discovered recursively and read in lexical path
@@ -166,8 +177,9 @@ without any SQLite file present and never creates one.
   byte for byte, as is `artifacts/dictionary.sqlite`.
 - The result is **not** an installable or distributable package. To search the dictionary, `dist/` must already hold a
   database from a normal `pnpm run build`. If canonical data changed, `build:ui` does not refresh it (intended).
-- `pnpm run build`, `build:dictionary`, `pnpm run package`/`./pack.sh`, CI and release builds are unchanged and never
-  use this mode.
+- Production commands (`pnpm run build`, `build:dictionary`, `pnpm run package`/`./pack.sh`) never use this mode.
+  Normal PR CI uses it only to check the UI bundle without a dictionary database; the schema-only CI gate and product
+  release flow use the regular Full/Lite build and output checks.
 
 ## GitHub Pages build and deployment
 

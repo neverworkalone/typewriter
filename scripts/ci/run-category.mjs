@@ -1,3 +1,5 @@
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { execFileSync, spawn } from 'node:child_process';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { performance } from 'node:perf_hooks';
@@ -15,7 +17,6 @@ import {
   CI_LEVEL_CATEGORY_ORDER,
   REPOSITORY_DIRECTORY,
 } from './registry.mjs';
-import { buildDictionary } from '../build/dictionary.mjs';
 import {
   contextSummary,
   loadCanonicalContext,
@@ -26,15 +27,18 @@ import {
   buildSemanticTopicEvidence,
 } from '../validate/semantic-audit.mjs';
 import { normalizeCanonicalDirectory } from '../normalize/canonical.mjs';
+import {
+  buildShardSenseIdsFromCanonicalRecords,
+  loadApprovedRelationFiles,
+  validateApprovedRelationRows,
+} from '../build/authored-relations.mjs';
 import { runGlobalCanonicalAudit } from './global-canonical-audit.mjs';
-import { validateSharedDictionary } from './validate-shared-dictionary.mjs';
 import { runM2Pipeline } from '../verify/m2-pipeline.mjs';
 import { classifyDeepGateDiff, routePrDeepGate } from './deep-gate.mjs';
 import {
   assertBuildEventsMatchPhase,
   assertChildEvidenceAdvanced,
-  assertNoChildCurrentRevisionBuild,
-  assertSingleCurrentRevisionBuild,
+  assertNoCurrentRevisionBuild,
   buildCountEvidence,
   CI_PHASE_ENV,
   DEEP_PHASE,
@@ -75,15 +79,8 @@ function processMemorySummary(summary) {
   };
 }
 
-// The normal-level invariant applies to every run whose categories include the
-// whole fast prefix (fast, normal, all). Single-category and deep-only runs are
-// diagnostic and are not normal merge gates.
-function enforcesNormalBuildInvariant(requestedCategory) {
-  return ['fast', 'normal', 'all', 'pr'].includes(requestedCategory);
-}
-
-function assertNormalBuildInvariant(session, stage) {
-  assertSingleCurrentRevisionBuild(ledgerSummary(session), {
+function assertDatabaseFreeInvariant(session, stage) {
+  assertNoCurrentRevisionBuild(ledgerSummary(session), {
     stage,
     parentContextBuildCount: session.canonicalContext.metrics.sqlite_build_count ?? 0,
   });
@@ -109,11 +106,16 @@ function printEvidence({
     record_count: summary.recordCount,
     metrics: {
       ...contextMetrics,
-      // The shared context only counts builds made through that one object, so it
-      // is reported under an explicit name; the scoped, ledger-derived counters
-      // below are authoritative and cover parent, child and deep builds.
+      // The context counter and process ledger independently establish that
+      // automatic CI did not build the current Canonical revision.
       parent_context_sqlite_build_count: sqliteBuildCount ?? 0,
       ...buildCountEvidence(ledger),
+    },
+    sqlite_build_policy: {
+      current_canonical_full_lite_builds_allowed: 0,
+      current_canonical_full_lite_builds_observed:
+        (ledger.current_revision_sqlite_build_count ?? 0)
+        + (ledger.deep_current_revision_sqlite_build_count ?? 0),
     },
     context_transport: {
       serialize_count: summary.metrics.canonical_context_serialize_count ?? 0,
@@ -163,14 +165,10 @@ async function runCommand({ executable, args }, context = {}, check = {}) {
         `--import=${metricsModule}`,
       ].filter(Boolean).join(' ');
     }
-    if (context.sharedDictionaryPath && !check.independentCurrentRevisionBuilds) {
-      childEnvironment.TYPEWRITER_SHARED_DICTIONARY_PATH = context.sharedDictionaryPath;
-      childEnvironment.TYPEWRITER_SEARCH_REGRESSION_DATABASE = context.sharedDictionaryPath;
-    } else if (check.independentCurrentRevisionBuilds) {
-      // Deep/manual reproducibility proofs build independently by design.
-      delete childEnvironment.TYPEWRITER_SHARED_DICTIONARY_PATH;
-      delete childEnvironment.TYPEWRITER_SEARCH_REGRESSION_DATABASE;
-    }
+    // Automatic CI must never inherit a cached production database. Fixture
+    // database tests may still build their own small databases.
+    delete childEnvironment.TYPEWRITER_SHARED_DICTIONARY_PATH;
+    delete childEnvironment.TYPEWRITER_SEARCH_REGRESSION_DATABASE;
     const child = spawn(executable, args, {
       cwd: REPOSITORY_DIRECTORY,
       env: childEnvironment,
@@ -200,9 +198,7 @@ async function runCommand({ executable, args }, context = {}, check = {}) {
       commandLabel,
     );
     assertChildEvidenceAdvanced(ledgerBefore.summary, ledgerAfter.summary, commandLabel);
-    if (phase === NORMAL_PHASE) {
-      assertNoChildCurrentRevisionBuild(ledgerAfter.summary, commandLabel);
-    }
+    assertNoCurrentRevisionBuild(ledgerAfter.summary, { stage: commandLabel });
   }
 }
 
@@ -387,31 +383,8 @@ export async function createCanonicalSession({
     temporaryDirectory,
     phase: NORMAL_PHASE,
     processMetrics: { path: metricsPath },
-    sharedDictionaryPath: undefined,
     normalizedModel: undefined,
   };
-}
-
-async function ensureSharedDictionary(session) {
-  if (session.sharedDictionaryPath) {
-    return session.sharedDictionaryPath;
-  }
-
-  const outputPath = path.join(session.temporaryDirectory, 'dictionary.sqlite');
-  const summary = await buildDictionary({
-    inputDirectory: session.canonicalContext.canonicalDirectory,
-    outputPath,
-    repositoryDirectory: REPOSITORY_DIRECTORY,
-    allowDirty: process.env.TYPEWRITER_ALLOW_DIRTY === 'true',
-    canonicalContext: session.canonicalContext,
-    semanticAudit: session.canonicalContext.semanticAudit,
-    normalizedModel: session.normalizedModel,
-  });
-  session.sharedDictionaryPath = summary.outputPath;
-  console.log(
-    `Prepared shared SQLite artifact ${summary.outputPath} (build count ${session.canonicalContext.metrics.sqlite_build_count}).`,
-  );
-  return summary.outputPath;
 }
 
 async function runInProcessCheck(name, context) {
@@ -461,11 +434,11 @@ async function runInProcessCheck(name, context) {
 
   if (name === 'surface-form-projection-reuse') {
     if (!canonicalContext.derived.surfaceFormProjection) {
-      throw new Error('SQLite and M2 validation lost the shared surface-form projection.');
+      throw new Error('Current-canonical checks lost the shared surface-form projection.');
     }
     if (canonicalContext.metrics.surface_form_projection_build_count !== 1) {
       throw new Error(
-        'SQLite build, SQLite validation, and M2 audit must reuse the single canonical projection.',
+        'Current-canonical checks must reuse the single surface-form projection.',
       );
     }
     console.log(JSON.stringify({
@@ -501,45 +474,71 @@ async function runInProcessCheck(name, context) {
     return;
   }
 
-  if (name === 'shared-dictionary-build') {
-    await ensureSharedDictionary(context);
-    return;
-  }
-
-  if (name === 'shared-dictionary-validation') {
-    console.log(JSON.stringify(await validateSharedDictionary({
-      databasePath: context.sharedDictionaryPath,
-      canonicalContext,
-    }), null, 2));
-    return;
-  }
-
-  if (name === 'm2-audit') {
-    const summary = await runM2Pipeline({
-      inputDirectory: canonicalContext.canonicalDirectory,
-      repositoryDirectory: REPOSITORY_DIRECTORY,
-      allowDirty: process.env.TYPEWRITER_ALLOW_DIRTY === 'true',
-      canonicalContext,
-      databasePath: context.sharedDictionaryPath,
-      model: context.normalizedModel,
+  if (name === 'approved-relations') {
+    const files = await loadApprovedRelationFiles(path.join(REPOSITORY_DIRECTORY, 'data/relations'));
+    const shardSenseIds = buildShardSenseIdsFromCanonicalRecords(canonicalContext.records);
+    const canonicalIndex = {
+      senses: {
+        get(senseId) {
+          const found = canonicalContext.indexes.sensesById.get(senseId);
+          if (!found) return undefined;
+          const sourceRecord = found.recordInfo.record ?? found.recordInfo;
+          return { record: sourceRecord, sense: found.sense };
+        },
+      },
+    };
+    const result = validateApprovedRelationRows({
+      files,
+      shardSenseIds,
+      canonicalIndex,
     });
-    console.log(
-      `M2 audit passed: ${summary.fileCount} canonical file(s) / ${summary.recordCount} record(s) / ${summary.senseCount} sense(s) / ${summary.relationCount} relation(s), with ${summary.databaseBuilds} reproducible SQLite builds.`,
-    );
+    console.log(`Validated ${result.rowCount} approved Relation row(s) across ${result.fileCount} file(s) against the full Canonical index without SQLite.`);
     return;
   }
 
-  if (name === 'deep-m2-reproducibility') {
+  if (name === 'm2-data-audit') {
     const summary = await runM2Pipeline({
       inputDirectory: canonicalContext.canonicalDirectory,
       repositoryDirectory: REPOSITORY_DIRECTORY,
       allowDirty: process.env.TYPEWRITER_ALLOW_DIRTY === 'true',
       canonicalContext,
       model: context.normalizedModel,
+      databaseMode: 'data-only',
     });
     console.log(
-      `Deep current-revision reproducibility passed: ${summary.databaseBuilds} independent SQLite builds.`,
+      `Database-free M2 source/model audit passed: ${summary.fileCount} canonical file(s) / ${summary.recordCount} record(s) / ${summary.senseCount} sense(s) / ${summary.relationCount} relation(s). SQLite generation, database integrity and Full/Lite verification were not run.`,
     );
+    return;
+  }
+
+  if (name === 'deep-data-projection-reproducibility') {
+    const normalizeOptions = {
+      canonicalContext,
+      semanticAudit: canonicalContext.semanticAudit,
+    };
+    const first = await normalizeCanonicalDirectory(
+      canonicalContext.canonicalDirectory,
+      normalizeOptions,
+    );
+    const second = await normalizeCanonicalDirectory(
+      canonicalContext.canonicalDirectory,
+      normalizeOptions,
+    );
+    assert.deepStrictEqual(
+      second,
+      first,
+      'canonical normalization must reproduce the same in-memory model',
+    );
+    console.log(JSON.stringify({
+      canonical_revision: canonicalContext.canonicalRevision,
+      normalization_version: first.normalization_version,
+      normalized_record_count: first.records.length,
+      normalized_model_sha256: createHash('sha256')
+        .update(JSON.stringify(first))
+        .digest('hex'),
+      current_canonical_sqlite_build_count: 0,
+      database_verification: 'not-run',
+    }, null, 2));
     return;
   }
 
@@ -580,10 +579,7 @@ async function runCategory(
     console.log(`\n=== ${categoryName} passed ===`);
   } finally {
     process.env[CI_PHASE_ENV] = NORMAL_PHASE;
-    if (sharedCanonicalSession) {
-      sharedCanonicalSession.sharedDictionaryPath = context.sharedDictionaryPath;
-      sharedCanonicalSession.normalizedModel = context.normalizedModel;
-    }
+    if (sharedCanonicalSession) sharedCanonicalSession.normalizedModel = context.normalizedModel;
     if (ownsCanonicalSession && context.temporaryDirectory) {
       await rm(context.temporaryDirectory, { recursive: true, force: true });
     }
@@ -617,7 +613,6 @@ export async function runLevel(requestedCategory, {
     ...policy,
     changedPaths,
   } : undefined;
-  const enforceNormalInvariant = enforcesNormalBuildInvariant(requestedCategory);
   const splitNormalAndDeep = ['all', 'pr'].includes(requestedCategory)
     && runPolicy?.tiers.includes('normal')
     && runPolicy.tiers.some((tier) => tier !== 'normal');
@@ -643,13 +638,9 @@ export async function runLevel(requestedCategory, {
         executedCategoryNames.push(categoryName);
         const completed = index + 1;
         if (!fastCheckpointPrinted && isFastPrefix(passCategoryNames, completed, levels.fast)) {
-          // Fast includes the one shared build; the normal continuation must
-          // reuse it, so the invariant is already exact at this checkpoint.
-          if (enforceNormalInvariant) {
-            assertNormalBuildInvariant(session, 'fast checkpoint');
-          }
+          assertDatabaseFreeInvariant(session, 'fast checkpoint');
           printEvidence({
-            contractVersion: 'ci-run-checkpoint-v1',
+            contractVersion: 'ci-run-checkpoint-v2',
             level: 'fast',
             categoryNames: levels.fast,
             startedAt,
@@ -659,23 +650,17 @@ export async function runLevel(requestedCategory, {
         }
         const nextIsDeep = CI_DEEP_PHASE_CATEGORIES.has(passCategoryNames[completed])
           && !CI_DEEP_PHASE_CATEGORIES.has(categoryName);
-        if (!splitNormalAndDeep && enforceNormalInvariant && nextIsDeep) {
-          // Compatibility levels without tier metadata still prove Normal
-          // before their explicitly ordered Deep categories.
-          assertNormalBuildInvariant(session, 'normal phase completion');
+        if (!splitNormalAndDeep && nextIsDeep) {
+          assertDatabaseFreeInvariant(session, 'normal phase completion');
         }
       }
-      if (splitNormalAndDeep && passIndex === 0 && enforceNormalInvariant) {
-        // All Normal checks finish before any Deep check is entered,
-        // even when both tiers share one domain scope.
-        assertNormalBuildInvariant(session, 'normal phase completion');
+      if (splitNormalAndDeep && passIndex === 0) {
+        assertDatabaseFreeInvariant(session, 'normal phase completion');
       }
     }
-    if (enforceNormalInvariant) {
-      assertNormalBuildInvariant(session, 'final exit');
-    }
+    assertDatabaseFreeInvariant(session, 'final exit');
     printEvidence({
-      contractVersion: 'ci-run-evidence-v1',
+      contractVersion: 'ci-run-evidence-v2',
       level: requestedCategory,
       categoryNames: executedCategoryNames,
       startedAt,

@@ -177,11 +177,22 @@ node --test tests/build-dictionary.test.mjs
 pnpm run ci:normal
 ```
 
-`ci:normal` requires an empty worktree and builds the current Canonical revision
-once. `pnpm run ci:all` runs Normal plus the current-system Deep checks, including
-the Full/Lite reproducibility audit. `pnpm run ci:deep` runs those Deep checks on
+`ci:normal` requires an empty worktree and creates no current-Canonical SQLite
+database. Its registry keeps Canonical, Candidate, Relation, fixture-database,
+product-unit, database-free UI, and Pages checks. Fast, Normal, Deep, All, PR
+and selective-Deep automatic paths enforce the zero-current-Canonical-build
+contract. `pnpm run ci:all` runs Normal plus the current-system Deep data
+projection reproducibility checks; `pnpm run ci:deep` runs those Deep checks on
 the current source. The exact registered files and their callers are listed in
 [`test-inventory-823.md`](test-inventory-823.md).
+
+The PR workflow classifies the exact `BASE_SHA...HEAD_SHA` diff for SQL schema
+owners. Changes to `scripts/build/sqlite-schema.mjs` alone select the separate
+`pnpm run ci:schema` gate, which creates and checks Full/Lite databases, runs
+logical reproducibility, and validates packaged product outputs. DDL added to
+an unregistered path fails classification until the schema owner list is
+updated. The normal `pnpm run build` and release/package paths remain the
+product build.
 
 A product build also requires a clean worktree. During local development, an
 explicit dirty build is available with `TYPEWRITER_ALLOW_DIRTY=true pnpm run build`;

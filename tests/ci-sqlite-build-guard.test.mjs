@@ -7,16 +7,11 @@ import { fileURLToPath } from 'node:url';
 import {
   assertBuildEventsMatchPhase,
   assertChildEvidenceAdvanced,
-  assertNoChildCurrentRevisionBuild,
-  assertSingleCurrentRevisionBuild,
+  assertNoCurrentRevisionBuild,
   BuildLedgerError,
   readBuildLedger,
   summarizeBuildLedger,
 } from '../scripts/ci/sqlite-build-ledger.mjs';
-import {
-  prepareCurrentRevisionDatabases,
-  SharedDatabaseError,
-} from '../scripts/ci/current-revision-database.mjs';
 import { CI_CATEGORIES, CI_NORMAL_CATEGORY_ORDER } from '../scripts/ci/registry.mjs';
 import { runChecks } from '../scripts/ci/run-category.mjs';
 
@@ -36,56 +31,55 @@ const summarize = (events) => summarizeBuildLedger(events, {
   canonicalRevision: REVISION,
   parentPid: PARENT,
 });
-const gate = (events) => assertSingleCurrentRevisionBuild(summarize(events), { stage: 'test' });
+const gate = (events, parentContextBuildCount) => assertNoCurrentRevisionBuild(summarize(events), {
+  stage: 'test',
+  parentContextBuildCount,
+});
 
-test('guard passes one parent build; other-revision fixture builds do not count', () => {
-  gate([build(PARENT, REVISION)]);
-  gate([build(PARENT, REVISION), build(CHILD, OTHER_REVISION), build(CHILD, OTHER_REVISION)]);
-  const summary = summarize([build(PARENT, REVISION), build(CHILD, OTHER_REVISION)]);
-  assert.equal(summary.other_revision_sqlite_build_count, 1);
+test('guard accepts zero current-canonical builds and permits independent fixture database tests', () => {
+  gate([]);
+  gate([build(CHILD, OTHER_REVISION), build(CHILD + 1, OTHER_REVISION)]);
+  const summary = summarize([build(CHILD, OTHER_REVISION), build(CHILD + 1, OTHER_REVISION)]);
+  assert.equal(summary.other_revision_sqlite_build_count, 2);
   assert.equal(summary.all_sqlite_build_count, 2);
   assert.equal(summary.child_current_revision_sqlite_build_count, 0);
+  assert.equal(summary.current_revision_sqlite_build_count, 0);
+  assert.equal(summary.deep_current_revision_sqlite_build_count, 0);
 });
 
-test('guard fails zero, duplicate parent, and parent plus child current-revision builds', () => {
-  assert.throws(() => gate([]), /parent_current_revision_sqlite_build_count=0/u);
-  assert.throws(() => gate([build(CHILD, OTHER_REVISION)]), /expected 1/u);
-  assert.throws(() => gate([build(PARENT, REVISION), build(PARENT, REVISION)]), /=2 \(expected 1\)/u);
-  assert.throws(() => gate([build(PARENT, REVISION, 'normal', 2)]), /=2 \(expected 1\)/u);
+test('guard rejects any current-canonical build in Normal or Deep', () => {
+  assert.throws(() => gate([build(PARENT, REVISION)], 1), /current_canonical_full_lite_build_count=1/u);
+  assert.throws(() => gate([build(PARENT, REVISION, 'normal', 2)], 2), /current_canonical_full_lite_build_count=2/u);
   assert.throws(
-    () => gate([build(PARENT, REVISION), build(CHILD, REVISION)]),
-    /child_current_revision_sqlite_build_count=1/u,
+    () => gate([build(CHILD, REVISION)]),
+    /current_canonical_full_lite_build_count=1/u,
   );
   assert.throws(
-    () => gate([build(PARENT, REVISION), build(CHILD, REVISION), build(CHILD + 1, REVISION)]),
-    /child_current_revision_sqlite_build_count=2/u,
+    () => gate([build(CHILD, REVISION, 'deep')]),
+    /current_canonical_full_lite_build_count=1/u,
   );
 });
 
-test('deep-phase builds are accounted separately and never relax the normal gate', () => {
-  gate([build(PARENT, REVISION), build(CHILD, REVISION, 'deep'), build(CHILD + 1, REVISION, 'deep')]);
-  const summary = summarize([build(PARENT, REVISION), build(CHILD, REVISION, 'deep')]);
+test('ledger reports any Deep current-canonical build against the zero-build contract', () => {
+  const summary = summarize([build(CHILD, REVISION, 'deep')]);
   assert.equal(summary.deep_current_revision_sqlite_build_count, 1);
-  assert.equal(summary.current_revision_sqlite_build_count, 1);
-  assert.throws(() => gate([build(CHILD, REVISION, 'deep')]), /expected 1/u);
+  assert.equal(summary.current_revision_sqlite_build_count, 0);
+  assert.throws(() => gate([build(CHILD, REVISION, 'deep')]), /current_canonical_full_lite_build_count=1/u);
 });
 
-test('guard fails when the shared context and the ledger disagree on parent builds', () => {
+test('guard fails when the build function counter and ledger disagree', () => {
   assert.throws(
-    () => assertSingleCurrentRevisionBuild(summarize([build(PARENT, REVISION)]), {
-      stage: 'test',
-      parentContextBuildCount: 0,
-    }),
-    /shared context counted 0 parent build/u,
+    () => gate([], 1),
+    /shared context counted 1 parent build/u,
   );
 });
 
-test('per-command guard rejects a child current-revision build and a missing metrics hook', () => {
+test('per-command guard rejects a current-revision build and a missing metrics hook', () => {
   assert.throws(
-    () => assertNoChildCurrentRevisionBuild(summarize([build(CHILD, REVISION)]), 'cmd'),
-    /cmd: a child process built the exact current canonical revision/u,
+    () => assertNoCurrentRevisionBuild(summarize([build(CHILD, REVISION)]), { stage: 'cmd' }),
+    /Automatic CI must not build Full or Lite SQLite for the exact current canonical revision \(cmd\)/u,
   );
-  assertNoChildCurrentRevisionBuild(summarize([build(CHILD, OTHER_REVISION)]), 'cmd');
+  assertNoCurrentRevisionBuild(summarize([build(CHILD, OTHER_REVISION)]), { stage: 'cmd' });
   const before = summarize([{ type: 'process', pid: CHILD, peak_rss_kb: 1 }]);
   assert.throws(() => assertChildEvidenceAdvanced(before, before, 'cmd'), /hook was omitted/u);
 });
@@ -114,67 +108,6 @@ test('malformed or unreadable ledgers fail closed instead of reporting zero buil
       () => readBuildLedger(path.join(directory, 'missing.jsonl')),
       /unreadable/u,
     );
-  } finally {
-    await rm(directory, { recursive: true, force: true });
-  }
-});
-
-test('shared artifact reuse is bound to the revision the validator read from canonical bytes', async () => {
-  await assert.rejects(
-    prepareCurrentRevisionDatabases({
-      canonicalRevision: REVISION,
-      temporaryDirectory: '/unused',
-      repositoryDirectory: '/unused',
-      sharedDatabasePath: '/nonexistent/dictionary.sqlite',
-    }),
-    SharedDatabaseError,
-  );
-  await assert.rejects(
-    prepareCurrentRevisionDatabases({
-      canonicalRevision: '',
-      temporaryDirectory: '/unused',
-      repositoryDirectory: '/unused',
-    }),
-    /canonical revision is required/u,
-  );
-});
-
-test('a shared artifact of another revision fails closed unless the run targets another canonical', async () => {
-  const { mkdtemp, rm } = await import('node:fs/promises');
-  const { tmpdir } = await import('node:os');
-  const { DatabaseSync } = await import('node:sqlite');
-  const directory = await mkdtemp(path.join(tmpdir(), 'typewriter-shared-revision-test-'));
-  try {
-    const sharedPath = path.join(directory, 'shared.sqlite');
-    const database = new DatabaseSync(sharedPath);
-    database.exec('CREATE TABLE metadata (key TEXT PRIMARY KEY, value TEXT)');
-    database.prepare('INSERT INTO metadata VALUES (?, ?)').run('canonical_revision', OTHER_REVISION);
-    database.close();
-    const common = {
-      canonicalRevision: REVISION,
-      temporaryDirectory: directory,
-      repositoryDirectory: directory,
-      sharedDatabasePath: sharedPath,
-    };
-    await assert.rejects(prepareCurrentRevisionDatabases(common), /does not match/u);
-    const built = [];
-    const result = await prepareCurrentRevisionDatabases({
-      ...common,
-      independentBuilds: 1,
-      onRevisionMismatch: 'build',
-      build: async ({ outputPath }) => { built.push(outputPath); },
-    });
-    assert.equal(result.reusedSharedArtifact, false);
-    assert.equal(built.length, 1);
-    const matching = new DatabaseSync(sharedPath);
-    matching.prepare('UPDATE metadata SET value = ?').run(REVISION);
-    matching.close();
-    const reused = await prepareCurrentRevisionDatabases({
-      ...common,
-      onRevisionMismatch: 'build',
-      build: async () => { throw new Error('must reuse the matching shared artifact'); },
-    });
-    assert.deepEqual(reused, { databasePaths: [sharedPath], reusedSharedArtifact: true });
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
@@ -226,56 +159,49 @@ function runFixture(scenario, level = 'normal') {
   return { status: result.status, stdout: result.stdout, stderr: result.stderr, evidence };
 }
 
-test('real normal run: one shared build passes and other-revision fixture builds are allowed', () => {
-  const result = runFixture('one-build');
+test('real normal run: zero current-canonical builds passes and fixture database tests are counted separately', () => {
+  const result = runFixture('zero-build');
   assert.equal(result.status, 0, result.stderr);
   const final = result.evidence.at(-1).metrics;
-  assert.equal(final.parent_current_revision_sqlite_build_count, 1);
+  assert.equal(final.parent_current_revision_sqlite_build_count, 0);
   assert.equal(final.child_current_revision_sqlite_build_count, 0);
-  assert.equal(final.current_revision_sqlite_build_count, 1);
+  assert.equal(final.current_revision_sqlite_build_count, 0);
+  assert.equal(final.deep_current_revision_sqlite_build_count, 0);
+  assert.equal(final.automatic_ci_current_canonical_sqlite_build_count, 0);
   assert.equal(final.other_revision_sqlite_build_count, 1);
-  assert.equal(final.all_sqlite_build_count, 2);
-  assert.equal(result.evidence[0].level, 'fast', 'fast checkpoint reports the shared build');
-  assert.equal(result.evidence[0].metrics.current_revision_sqlite_build_count, 1);
+  assert.equal(final.all_sqlite_build_count, 1);
+  assert.equal(result.evidence[0].level, 'fast', 'fast checkpoint records the zero-build contract');
+  assert.equal(result.evidence[0].sqlite_build_policy.current_canonical_full_lite_builds_observed, 0);
 });
 
 const FAILURES = [
-  ['zero-build', /parent_current_revision_sqlite_build_count=0/u],
-  ['two-parent-builds', /parent_current_revision_sqlite_build_count=2/u],
-  ['parent-and-child', /child process built the exact current canonical revision/u],
-  ['two-child-builds', /2 child build\(s\)/u],
-  ['child-without-parent', /child process built the exact current canonical revision/u],
+  ['current-normal', /current_canonical_full_lite_build_count=1/u],
+  ['current-twice', /current_canonical_full_lite_build_count=2/u],
+  ['current-without-normal-prior', /current_canonical_full_lite_build_count=1/u],
   ['hook-omitted', /no child process metrics were recorded/u],
   ['mislabeled-as-deep', /recorded as phase deep .* while the runner was in the normal phase/u],
-  ['nested-normal', /child process built the exact current canonical revision/u],
+  ['nested-normal', /current_canonical_full_lite_build_count=1/u],
   ['malformed-ledger', /not valid JSON/u],
   ['deleted-ledger', /ledger is unreadable/u],
 ];
 for (const [scenario, pattern] of FAILURES) {
-  test(`real normal run exits nonzero even though every command succeeds: ${scenario}`, () => {
+  test(`real normal run rejects a current-canonical database build or missing evidence: ${scenario}`, () => {
     const result = runFixture(scenario);
-    assert.notEqual(result.status, 0, 'a violated one-build invariant must fail normal CI');
+    assert.notEqual(result.status, 0, 'a violated zero-build invariant must fail automatic CI');
     assert.match(result.stderr, pattern);
   });
 }
 
-test('real all run: independent deep rebuilds are allowed and normal stays one-build', () => {
+test('real all run: current-canonical Deep rebuilds fail the zero-build contract', () => {
   const result = runFixture('deep-independent', 'all');
-  assert.equal(result.status, 0, result.stderr);
-  const final = result.evidence.at(-1).metrics;
-  assert.equal(final.current_revision_sqlite_build_count, 1);
-  assert.equal(final.child_current_revision_sqlite_build_count, 0);
-  assert.equal(final.deep_current_revision_sqlite_build_count, 2);
-  assert.equal(final.all_sqlite_build_count, 3);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /current_canonical_full_lite_build_count=2/u);
 });
 
-test('real all run: a nested validator build in the deep phase is allowed', () => {
+test('real all run: a nested validator build in the Deep phase fails', () => {
   const result = runFixture('nested-deep', 'all');
-  assert.equal(result.status, 0, result.stderr);
-  const final = result.evidence.at(-1).metrics;
-  assert.equal(final.current_revision_sqlite_build_count, 1);
-  assert.equal(final.deep_current_revision_sqlite_build_count, 1);
-  assert.equal(final.child_current_revision_sqlite_build_count, 0);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /current_canonical_full_lite_build_count=1/u);
 });
 
 test('phase of a build event must match the phase the runner executes', () => {
@@ -287,10 +213,10 @@ test('phase of a build event must match the phase the runner executes', () => {
   assert.throws(() => assertBuildEventsMatchPhase([{ ...event, phase: 'normal' }], 'deep', 'cmd'), /phase normal/u);
 });
 
-test('registry: normal never carries independent two-build proofs', () => {
+test('registry: no automatic CI check opts out of the zero current-canonical build guard', () => {
   const independent = (categoryName) => CI_CATEGORIES[categoryName].checks
     .filter((check) => check.independentCurrentRevisionBuilds);
   for (const categoryName of CI_NORMAL_CATEGORY_ORDER) {
-    assert.deepEqual(independent(categoryName), [], `${categoryName} must reuse the shared artifact`);
+    assert.deepEqual(independent(categoryName), [], `${categoryName} must not build or reuse a current-canonical database`);
   }
 });

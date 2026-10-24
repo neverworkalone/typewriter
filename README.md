@@ -107,11 +107,14 @@ the store, run this one-time command:
 Do not use that online command as the standard worktree setup path.
 
 The default test command runs the normal CI gate, including repository
-validation, regression and unit tests, product builds, and product output
-contract checks. It is equivalent to `pnpm run ci:normal`. The build command creates
-extension files in dist/, and the package command creates and validates an
-extension ZIP. For the clean-checkout release candidate flow, install Chrome for
-Testing and run `pnpm run validate:release`; see [Build and reproducibility](docs/build.md).
+validation, regression and unit tests, a database-free extension UI build, and
+the static Pages artifact checks. It is equivalent to `pnpm run ci:normal` and
+does not build the current Canonical SQLite databases. A PR that changes the
+registered SQL schema owner runs the separate `pnpm run ci:schema` gate, which
+builds and validates the Full/Lite product databases. The regular product build
+and package commands still create and validate distributable extension files.
+For the clean-checkout release candidate flow, install Chrome for Testing
+and run `pnpm run validate:release`; see [Build and reproducibility](docs/build.md).
 
 GitHub Pages is a static product landing page for the Chrome Extension; it has no
 dictionary demo. To build it locally, run `pnpm run build:web`. It writes `dist-web/`

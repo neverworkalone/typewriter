@@ -49,14 +49,17 @@ class TuiSmoke(unittest.TestCase):
             async with app.run_test(size=(180, 50)) as pilot:
                 await pilot.pause(0.3)
                 cards = list(app.query(tui.Card))
-                self.assertEqual({c.region.height for c in cards}, {7})          # A-D and empty cards share a height
+                self.assertEqual({c.region.height for c in cards}, {6})          # A-D and empty cards share a height
                 col = app.query_one("#col-deepseek").region
                 title = app.query_one("#title-deepseek")
                 self.assertEqual(str(title.render()), "DeepSeek")
                 self.assertEqual(title.region.width, col.width)
                 self.assertGreaterEqual(app.query_one("#columns").region.y, app.query_one("#controls").region.bottom + 1)
                 first = app.query_one("#card-deepseek-a").region
-                self.assertGreaterEqual(first.y, title.region.bottom + 1)        # gap under the heading
+                self.assertEqual(first.y, title.region.bottom)                   # no blank row under the heading
+                self.assertEqual(list(app.query("#tier-bar")), [])
+                self.assertEqual(str(app.query_one("#board-footer").render()).split(" (")[0],
+                                 "q Quit · s Settings · r 설정 리로드 · f Free/Go 전환")
                 # Columns keep their order and widths with several models.
                 self.assertEqual(len({c.region.width for c in cards}), 1)
                 answers = []
@@ -93,13 +96,13 @@ class TuiSmoke(unittest.TestCase):
         methods = ["a", "b", "c", "d"]
         bid = w.store.create_batch(method="a", producer="deepseek", shard="001", batch="01", branch="b", worktree="/x")
         w.store.update(bid, state="PRODUCING")
-        bar = lambda app: str(app.query_one("#tier-bar", Static).render())
+        footer = lambda app: str(app.query_one("#board-footer", Static).render())
 
         async def go():
             app = make_app(w, PRODUCERS)
             async with app.run_test(size=(200, 60)) as pilot:
                 await pilot.pause(1.3)
-                self.assertIn("● Free", bar(app))
+                self.assertIn("(Free)", footer(app))
                 self.assertEqual(control.tier_state(w.store, app.cfg, methods), "free")
                 await pilot.press("f")                                       # -> Go asks first; default is No
                 await pilot.pause(0.2)
@@ -110,11 +113,15 @@ class TuiSmoke(unittest.TestCase):
                 await pilot.press("f", "y")
                 await pilot.pause(1.3)
                 self.assertEqual(control.tier_state(w.store, app.cfg, methods), "go")
-                self.assertIn("● Go", bar(app))
+                self.assertIn("(Go)", footer(app))
                 self.assertEqual(w.store.batch(bid)["model_tier"], "go")     # the unfinished batch follows
-                await pilot.press("f")                                       # back to Free needs no confirmation
+                w.store.set_line("deepseek", "b", model_tier="free")      # background quota change produces a mixed state
+                await pilot.pause(1.3)
+                self.assertIn("(혼합)", footer(app))
+                await pilot.press("f")                                       # mixed -> Free needs no confirmation
                 await pilot.pause(1.3)
                 self.assertEqual(control.tier_state(w.store, app.cfg, methods), "free")
+                self.assertIn("(Free)", footer(app))
                 self.assertEqual(w.store.batch(bid)["model_tier"], "free")
                 # f is not the board's key inside Detail (Auto-scroll there) and ignored on top of other screens.
                 await pilot.click("#card-deepseek-a")

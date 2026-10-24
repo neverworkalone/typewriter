@@ -43,11 +43,23 @@ test('artifact policy classifies current projections and durable inputs', async 
     classifyTrackedArtifacts(['data/relations/relation-099.jsonl', 'data/relation-drops/drop-100.jsonl'], options),
     { generated: [], unclassified: [] },
   );
+  const historicalStage2Backups = [
+    'data/relations/relation-001-backup.jsonl',
+    'data/relations/relation-002-backup.jsonl',
+    'data/relation-drops/drop-001-backup.jsonl',
+    'data/relation-drops/drop-002-backup.jsonl',
+  ];
+  assert.deepEqual(
+    classifyTrackedArtifacts(historicalStage2Backups, options),
+    { generated: [], unclassified: [] },
+  );
   const wrongNames = [
     'data/relations/notes.jsonl', 'data/relation-drops/other.jsonl',
     'data/relations/relation-notes.jsonl', 'data/relation-drops/drop-notes.jsonl',
     'data/relations/relation-01.jsonl', 'data/relation-drops/drop-0001.jsonl',
     'data/relations/relation-001.json', 'data/relations/relation-00a.jsonl',
+    'data/relations/relation-003-backup.jsonl', 'data/relations/relation-001-backup.bak',
+    'data/relation-drops/drop-003-backup.jsonl', 'data/relation-drops/drop-002-backup.jsonl.bak',
     'data/relations/sub/relation-001.jsonl', 'data/relation-drops/drop-001.jsonl.bak',
   ];
   assert.deepEqual(

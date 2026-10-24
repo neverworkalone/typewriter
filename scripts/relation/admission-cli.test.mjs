@@ -8,7 +8,7 @@ import { run } from './admission-cli.mjs';
 
 const jsonl = (rows) => `${rows.map((row) => JSON.stringify(row)).join('\n')}\n`;
 
-async function repository(t, { relations = [], drops = [] } = {}) {
+async function repository(t, { relations = [], drops = [], malformedBackups = false } = {}) {
   const root = await mkdtemp(path.join(tmpdir(), 'typewriter-admission-cli-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   const records = [
@@ -28,6 +28,10 @@ async function repository(t, { relations = [], drops = [] } = {}) {
   ]));
   if (relations.length > 0) await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), jsonl(relations));
   if (drops.length > 0) await writeFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), jsonl(drops));
+  if (malformedBackups) {
+    await writeFile(path.join(root, 'data/relations/relation-001-backup.jsonl'), '{historical Relation backup');
+    await writeFile(path.join(root, 'data/relation-drops/drop-001-backup.jsonl'), '{historical Drop backup');
+  }
   return root;
 }
 
@@ -54,6 +58,12 @@ test('prepare re-run offers only undecided candidates: this shard\'s own approve
   assert.deepEqual(texts(again), ['새 말']);
   assert.equal(again.stats.skipped_existing, 2);
   assert.equal(again.stats.skipped_dropped, 1);
+});
+
+test('Stage 2 loaders ignore malformed historical Relation and Drop backups', async (t) => {
+  const root = await repository(t, { malformedBackups: true });
+  const prepared = await quiet(() => run(['prepare', '--shard', '001', '--allow-partial'], { root }));
+  assert.deepEqual(texts(prepared), ['버릴말', '새 말', '유일', '텍스트']);
 });
 
 test('--batch scopes prepare/verify to one 500-record batch: its own producers, records and rows', async (t) => {
