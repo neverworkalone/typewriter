@@ -59,9 +59,10 @@ test('exact PR diffs for Candidate, Relation, Canonical and product-code changes
       ['Canonical-only', 'data/canonical/stdict-0001.jsonl'],
       ['product-code-only', 'src/runtime/popup.js'],
       ['test-fixture-only', 'tests/build-dictionary.test.mjs'],
+      ['script-test-fixture-only', 'scripts/build/sqlite-fixture.test.mjs'],
     ];
     for (const [label, filePath] of cases) {
-      const contents = label === 'test-fixture-only'
+      const contents = label.endsWith('test-fixture-only')
         ? `const fixtureSql = '${createTableKeyword} test_fixture (id TEXT PRIMARY KEY);';\n`
         : '{"fixture":true}\n';
       const result = await classifyChange(fixture, { [filePath]: contents });
@@ -105,12 +106,41 @@ test('SQL schema edits, mixed changes, deletions and exact registered paths sele
 test('an added or moved SQL schema definition without a registered owner fails closed', async () => {
   const fixture = await makeRepository();
   try {
-    await assert.rejects(
-      classifyChange(fixture, {
-        'scripts/build/sqlite-extra.mjs': `export const sql = \`${createTableKeyword} extra (id TEXT);\`;\n`,
-      }),
-      /Unregistered SQL schema owner in HEAD: scripts\/build\/sqlite-extra\.mjs/u,
-    );
+    const unregisteredDdl = [
+      [
+        'scripts/build/sqlite-extra.mjs',
+        `CREATE UNIQUE INDEX extra_by_id ON extra(id);`,
+        /Unregistered SQL schema owner in HEAD: scripts\/build\/sqlite-extra\.mjs/u,
+      ],
+      [
+        'scripts/build/sqlite-extra.mjs',
+        `ALTER TABLE extra ADD COLUMN label TEXT;`,
+        /Unregistered SQL schema owner in HEAD: scripts\/build\/sqlite-extra\.mjs/u,
+      ],
+      [
+        'scripts/build/sqlite-extra.mjs',
+        `DROP TABLE extra;`,
+        /Unregistered SQL schema owner in HEAD: scripts\/build\/sqlite-extra\.mjs/u,
+      ],
+      [
+        'scripts/build/sqlite-extra.mjs',
+        `UPDATE sqlite_schema SET sql = 'CREATE TABLE extra (id TEXT)' WHERE name = 'extra';`,
+        /Unregistered SQL schema owner in HEAD: scripts\/build\/sqlite-extra\.mjs/u,
+      ],
+      [
+        'tools/db/sqlite-extra.mjs',
+        `CREATE UNIQUE INDEX extra_by_id ON extra(id);`,
+        /Changed SQL schema definition has no registered owner: tools\/db\/sqlite-extra\.mjs/u,
+      ],
+    ];
+    for (const [filePath, sql, expected] of unregisteredDdl) {
+      await assert.rejects(
+        classifyChange(fixture, {
+          [filePath]: `export const sql = \`${sql}\`;\n`,
+        }),
+        expected,
+      );
+    }
 
     git(fixture.directory, ['reset', '--hard', fixture.baseSha]);
     git(fixture.directory, ['mv', 'scripts/build/sqlite-schema.mjs', 'scripts/build/sqlite-renamed.mjs']);

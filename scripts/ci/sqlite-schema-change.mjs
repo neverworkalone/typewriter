@@ -14,8 +14,8 @@ export const SQLITE_SCHEMA_OWNER_PATHS = Object.freeze([
   'scripts/build/sqlite-schema.mjs',
 ]);
 
-const SQL_SCHEMA_DEFINITION_PATTERN = /\bCREATE\s+(?:(?:TEMP|TEMPORARY)\s+)?(?:VIRTUAL\s+TABLE|TABLE|INDEX|VIEW|TRIGGER)\b/iu;
-const SQL_SCHEMA_GREP_PATTERN = 'CREATE[[:space:]]+((TEMP|TEMPORARY)[[:space:]]+)?(VIRTUAL[[:space:]]+TABLE|TABLE|INDEX|VIEW|TRIGGER)';
+const SQL_SCHEMA_DEFINITION_PATTERN = /\b(?:CREATE\s+(?:(?:TEMP|TEMPORARY)\s+)?(?:VIRTUAL\s+TABLE|(?:UNIQUE\s+)?(?:TABLE|INDEX|VIEW|TRIGGER))|ALTER\s+TABLE|DROP\s+(?:TABLE|INDEX|VIEW|TRIGGER)|UPDATE\s+(?:(?:main)\s*\.\s*)?sqlite_(?:schema|master))\b/iu;
+const SQL_SCHEMA_GREP_PATTERN = '(CREATE[[:space:]]+((TEMP|TEMPORARY)[[:space:]]+)?(VIRTUAL[[:space:]]+TABLE|((UNIQUE)[[:space:]]+)?(TABLE|INDEX|VIEW|TRIGGER))|ALTER[[:space:]]+TABLE|DROP[[:space:]]+(TABLE|INDEX|VIEW|TRIGGER)|UPDATE[[:space:]]+((main)[[:space:]]*\.[[:space:]]*)?sqlite_(schema|master))';
 
 function decodeGitText(value, label) {
   const bytes = Buffer.isBuffer(value) ? value : Buffer.from(String(value));
@@ -60,6 +60,8 @@ function schemaPathsAtRevision(revision, repositoryDirectory) {
   const output = runGit([
     'grep', '-I', '-l', '-z', '-E', SQL_SCHEMA_GREP_PATTERN,
     revision, '--', 'scripts', 'src',
+    ':(exclude,glob)**/*.test.*',
+    ':(exclude,glob)**/*.spec.*',
   ], repositoryDirectory, { allowNoMatch: true });
   return nulPaths(output, `SQL schema owner scan at ${revision}`)
     .map((value) => value.startsWith(`${revision}:`) ? value.slice(revision.length + 1) : value)
