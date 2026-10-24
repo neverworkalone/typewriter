@@ -471,7 +471,40 @@ def _run_contexts(log_file, thread: str) -> list[dict]:
     return _turn_contexts(thread)[turns:]
 
 
-_NONZERO_EXIT = re.compile(r"exit\s*code\D{0,12}?[1-9]\d*|exit\s+[1-9]\d*", re.I)
+_NONZERO_EXIT_CODE = re.compile(r"exit\s*code\D{0,12}?([1-9]\d*)|exit\s+([1-9]\d*)", re.I)
+_ZSH_NICE_FAILURE = re.compile(r"^\s*(?:zsh:\d+:\s*)?nice(?:\(\d+\))?\s+failed:\s*operation not permitted\s*$", re.I)
+
+
+def _codex_denial_evidence(output) -> str | None:
+    """Return a policy-denial line, ignoring zsh's OS-level nice diagnostic.
+
+    `nice(5) failed: operation not permitted` is emitted by zsh when it cannot
+    apply its scheduling hint; it does not say the requested command was denied
+    by Codex's sandbox. Keep all other denial evidence, including a real denial
+    reported alongside this shell diagnostic.
+    """
+    lines = [line.strip() for line in str(output or "").splitlines()
+             if line.strip() and not _ZSH_NICE_FAILURE.fullmatch(line)]
+    for line in lines:
+        if _CODEX_DENIED.search(line):
+            return line[:240]
+    # Keep matching multi-line output observable without treating the known
+    # standalone zsh diagnostic as a refusal.
+    text = "\n".join(lines)
+    if _CODEX_DENIED.search(text):
+        match = _CODEX_DENIED.search(text)
+        return text[max(0, match.start() - 100):match.end() + 100].replace("\n", " ")[:240]
+    return None
+
+
+def _command_denial(item: dict) -> str | None:
+    if item.get("exit_code") in (0, None):
+        return None
+    evidence = _codex_denial_evidence(item.get("aggregated_output"))
+    if evidence is None:
+        return None
+    command = str(item.get("command") or "command")[:160]
+    return f"{command} (exit={item.get('exit_code')}; 출력: {evidence})"
 
 
 class CodexCLIAdapter(ProcessAdapter):
@@ -559,13 +592,17 @@ class CodexCLIAdapter(ProcessAdapter):
             item = e.get("item") if isinstance(e.get("item"), dict) else {}
             if e.get("type") != "item.completed":
                 continue
-            if item.get("type") == "command_execution" and item.get("exit_code") not in (0, None):
-                if _CODEX_DENIED.search(str(item.get("aggregated_output") or "")):
-                    return f"로컬 Codex 정책이 명령을 거부했습니다 ({str(item.get('command') or 'command')[:160]})"
+            if item.get("type") == "command_execution":
+                detail = _command_denial(item)
+                if detail:
+                    return f"로컬 Codex 정책이 명령을 거부했습니다 ({detail})"
             if item.get("type") == "agent_message":
                 msg = str(item.get("text") or "")
-                if _CODEX_DENIED.search(msg) and _NONZERO_EXIT.search(msg):
-                    return "로컬 Codex 정책이 명령을 거부한 것으로 보고되었습니다"
+                exit_match = _NONZERO_EXIT_CODE.search(msg)
+                evidence = _codex_denial_evidence(msg)
+                if evidence and exit_match:
+                    exit_code = next(group for group in exit_match.groups() if group)
+                    return f"로컬 Codex 정책 거부가 보고되었습니다 (exit={exit_code}; 출력: {evidence})"
         return None
 
     def completion_problem(self, log_file, run, expected_session, cwd=None, env=None):
@@ -644,15 +681,14 @@ class CodexCLIAdapter(ProcessAdapter):
 
 
 def _denied_command(events: list[dict]) -> str | None:
-    """The first command that failed with a policy refusal (`Operation not permitted`, an approval request, ...)."""
+    """The first failed command with actual denial evidence, with its exit and output retained."""
     for e in events:
         item = e.get("item") if isinstance(e.get("item"), dict) else {}
         if e.get("type") != "item.completed" or item.get("type") != "command_execution":
             continue
-        if item.get("exit_code") in (0, None):
-            continue
-        if _CODEX_DENIED.search(str(item.get("aggregated_output") or "")):
-            return str(item.get("command") or "command")[:160]
+        detail = _command_denial(item)
+        if detail:
+            return detail
     return None
 
 

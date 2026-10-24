@@ -173,9 +173,11 @@ Rules (fail closed):
   `sandbox_mode` / `sandbox_workspace_write` with a configured `permission_profile`.
 - Checked, not assumed: the `thread.started` thread id must equal the requested session, and the model and effort in
   the rollout's `turn_context` must equal the pins. A finished turn with no recorded context stops the batch.
-- A command the local policy refuses (`Operation not permitted`, `Permission denied`, an approval request) stops the
-  run in **PAUSED**. The worktree, branch, PR and session are kept and nothing is retried automatically. Permission
-  is never raised by War Room; the operator changes the local CLI settings and then retries.
+- A failed command with actual local-policy denial evidence (for example, `index.lock: Operation not permitted`,
+  `Permission denied`, or an approval request) stops the run in **PAUSED**. Shell syntax/globbing failures and zsh's
+  `nice(5) failed: operation not permitted` diagnostic are ordinary command failures, not policy refusals. The
+  worktree, branch, PR and session are kept and nothing is retried automatically. Permission is never raised by War
+  Room; the operator changes the local CLI settings and then retries.
 - Start refuses unless `codex exec --help` and `codex exec resume --help` list the required options.
 
 ## Prompts

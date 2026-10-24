@@ -8,6 +8,8 @@ War Room이 준비한 HEAD를 기준으로 작업하며,
 
 Issue #1156의 D 생산 계약을 읽고 준수한다.
 
+셸 명령은 개별로 실행해 각 종료 코드와 출력을 확인한다. `gh api` 경로에 `?` 또는 `&`가 있으면 경로 인수 전체를 작은따옴표로 감싼다. 예: `gh api 'repos/neverworkalone/typewriter/contents/data/relation-candidates/031?ref=master'`, `gh api 'repos/neverworkalone/typewriter/pulls?state=open&per_page=100' --jq 'length'`.
+
 Candidate v1 검증 후 커밋·push하고 `batch` 라벨의 PR을 제출한다.
 PR 생성 직전 다른 모델을 포함한 동일 D 배치의 중복 점유를 확인한다.
 PR 본문에는 `Refs #1156`만 사용한다.
