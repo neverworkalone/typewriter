@@ -27,6 +27,14 @@ jobs:
           node-version: 24.x
           cache: pnpm
 
+      - name: Classify exact SQL schema diff
+        id: schema
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/ci/sqlite-schema-change.mjs "$BASE_SHA" "$HEAD_SHA"
+
       - name: Classify changed files
         id: changes
         continue-on-error: true
@@ -81,7 +89,7 @@ jobs:
           fi
 
       - name: Install pinned dependencies
-        if: ${{ steps.changes.outcome != 'success' || steps.changes.outputs.run_level != 'none' || steps.changes.outputs.run_deep == 'true' }}
+        if: ${{ steps.changes.outcome != 'success' || steps.changes.outputs.run_level != 'none' || steps.changes.outputs.run_deep == 'true' || steps.schema.outputs.schema_changed == 'true' }}
         run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Normal validation (fast checkpoint + continuation)
@@ -100,12 +108,19 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: pnpm run ci:pr -- --base "$BASE_SHA" --head "$HEAD_SHA"
 
+      - name: SQL schema-only Full/Lite build and validation
+        id: schema-build
+        if: ${{ steps.schema.outputs.schema_changed == 'true' }}
+        run: pnpm run ci:schema
+
       - name: Record executed CI gate
         if: always()
         env:
           CLASSIFIER_OUTCOME: ${{ steps.changes.outcome }}
           RUN_LEVEL: ${{ steps.changes.outputs.run_level }}
           DEEP_MODE: ${{ steps.changes.outputs.deep_mode }}
+          SCHEMA_GATE: ${{ steps.schema.outputs.schema_changed }}
+          SCHEMA_OUTCOME: ${{ steps.schema-build.outcome }}
           NORMAL_OUTCOME: ${{ steps.normal.outcome }}
           SELECTIVE_OUTCOME: ${{ steps.selective.outcome }}
           FINAL_GATE: ${{ job.status }}
@@ -116,6 +131,8 @@ jobs:
             echo "- Classifier: ${CLASSIFIER_OUTCOME:-unknown}"
             echo "- Base gate class: ${RUN_LEVEL:-unknown}"
             echo "- Deep selection mode: ${DEEP_MODE:-Normal fallback}"
+            echo "- SQL schema build gate required: ${SCHEMA_GATE:-unknown}"
+            echo "- SQL schema build gate outcome: ${SCHEMA_OUTCOME:-skipped}"
             echo "- Normal-only gate outcome: ${NORMAL_OUTCOME:-skipped}"
             echo "- Selective Deep gate outcome: ${SELECTIVE_OUTCOME:-skipped}"
             echo "- Final gate result: ${FINAL_GATE:-unknown}"

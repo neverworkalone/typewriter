@@ -74,9 +74,8 @@ export function readBuildLedger(ledgerPath) {
   return events;
 }
 
-// Scoped counters. `current_revision_*` counts normal-phase builds of the exact
-// current canonical revision (the gated quantity). Deep/historical-phase builds
-// and builds of other (fixture) revisions are accounted for separately.
+// Scoped counters distinguish current-canonical Full/Lite builds from fixture
+// builds. Automatic CI forbids current-canonical builds in both phases.
 export function summarizeBuildLedger(events, { canonicalRevision, parentPid }) {
   if (typeof canonicalRevision !== 'string' || canonicalRevision.length === 0) {
     fail('SQLite build accounting requires the current canonical revision');
@@ -146,36 +145,18 @@ export function assertBuildEventsMatchPhase(events, expectedPhase, commandLabel)
   }
 }
 
-export function assertNoChildCurrentRevisionBuild(summary, commandLabel) {
-  if (summary.child_current_revision_sqlite_build_count > 0) {
-    fail(
-      `${commandLabel}: a child process built the exact current canonical revision `
-      + `(${summary.child_current_revision_sqlite_build_count} child build(s)); normal CI `
-      + 'must reuse the single shared current-revision SQLite artifact',
-    );
-  }
-}
-
-// Central normal-level invariant. `parentContextBuildCount` is the in-memory
-// counter of the shared canonical context and must agree with the ledger.
-export function assertSingleCurrentRevisionBuild(summary, {
+// Central automatic-CI invariant. `parentContextBuildCount` is the in-memory
+// counter from the build function and must agree with the process ledger.
+export function assertNoCurrentRevisionBuild(summary, {
   stage,
   parentContextBuildCount,
 }) {
   const problems = [];
-  if (summary.parent_current_revision_sqlite_build_count !== 1) {
+  const currentCanonicalBuildCount = summary.current_revision_sqlite_build_count
+    + summary.deep_current_revision_sqlite_build_count;
+  if (currentCanonicalBuildCount !== 0) {
     problems.push(
-      `parent_current_revision_sqlite_build_count=${summary.parent_current_revision_sqlite_build_count} (expected 1)`,
-    );
-  }
-  if (summary.child_current_revision_sqlite_build_count !== 0) {
-    problems.push(
-      `child_current_revision_sqlite_build_count=${summary.child_current_revision_sqlite_build_count} (expected 0)`,
-    );
-  }
-  if (summary.current_revision_sqlite_build_count !== 1) {
-    problems.push(
-      `current_revision_sqlite_build_count=${summary.current_revision_sqlite_build_count} (expected 1)`,
+      `current_canonical_full_lite_build_count=${currentCanonicalBuildCount} (expected 0)`,
     );
   }
   if (
@@ -189,7 +170,7 @@ export function assertSingleCurrentRevisionBuild(summary, {
   }
   if (problems.length > 0) {
     fail(
-      `Normal CI must build SQLite for the exact current canonical revision exactly once `
+      `Automatic CI must not build Full or Lite SQLite for the exact current canonical revision `
       + `(${stage}): ${problems.join('; ')}`,
     );
   }
@@ -204,6 +185,8 @@ export function buildCountEvidence(summary) {
     current_revision_sqlite_build_count: summary.current_revision_sqlite_build_count,
     deep_current_revision_sqlite_build_count:
       summary.deep_current_revision_sqlite_build_count,
+    automatic_ci_current_canonical_sqlite_build_count:
+      summary.current_revision_sqlite_build_count + summary.deep_current_revision_sqlite_build_count,
     other_revision_sqlite_build_count: summary.other_revision_sqlite_build_count,
     all_sqlite_build_count: summary.all_sqlite_build_count,
     child_sqlite_build_count: summary.child_sqlite_build_count,

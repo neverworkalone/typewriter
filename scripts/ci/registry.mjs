@@ -155,8 +155,15 @@ const RAW_CI_CATEGORIES = Object.freeze({
       { ...testCheck('tests/sharded-json.test.mjs', 'Test shared sharded source writer'), tier: 'normal' },
       testCheck(
         'tests/ci-sqlite-build-guard.test.mjs',
-        'Test one current-revision SQLite build guard (real runner fault injection)',
+        'Test zero current-revision SQLite builds in automatic CI (real runner fault injection)',
       ),
+      {
+        ...testCheck(
+          'scripts/ci/sqlite-schema-change.test.mjs',
+          'Test exact SQL schema change classification and fail-closed owner detection',
+        ),
+        tier: 'normal',
+      },
     ],
   },
 
@@ -193,6 +200,10 @@ const RAW_CI_CATEGORIES = Object.freeze({
         schedule: 'always',
       },
       {
+        ...inProcessCheck('Validate approved Relation files against the full Canonical index', 'approved-relations'),
+        tier: 'normal',
+      },
+      {
         ...testCheck('scripts/relation/candidate-contract.test.mjs', 'Test relation Candidate v1 batch contract'),
         tier: 'normal',
       },
@@ -213,19 +224,19 @@ const RAW_CI_CATEGORIES = Object.freeze({
   },
 
   toolchain: {
-    label: 'Normalization, dictionary build, and integrated audit',
+    label: 'Normalization and integrated data audit',
     checks: [
       globalCanonicalAuditCheck(),
       inProcessCheck('Normalize canonical data', 'normalize-canonical'),
       testCheck('tests/normalize-canonical.test.mjs', 'Test canonical normalization'),
       {
-        ...inProcessCheck('Build shared SQLite dictionary artifact', 'shared-dictionary-build'),
+        ...inProcessCheck('Run database-free M2 source and model audit', 'm2-data-audit'),
+        tier: 'normal',
       },
       {
-        ...inProcessCheck('Validate shared SQLite dictionary artifact', 'shared-dictionary-validation'),
+        ...inProcessCheck('Verify current surface-form projection reuse', 'surface-form-projection-reuse'),
+        tier: 'normal',
       },
-      inProcessCheck('Run integrated M2 audit', 'm2-audit'),
-      inProcessCheck('Verify shared surface-form projection reuse', 'surface-form-projection-reuse'),
       testCheck('tests/build-dictionary.test.mjs', 'Test SQLite dictionary build'),
       {
         ...testCheck('tests/lite-dictionary.test.mjs', 'Test Full dictionary to Lite product extraction'),
@@ -246,17 +257,19 @@ const RAW_CI_CATEGORIES = Object.freeze({
   },
 
   product: {
-    label: 'Product tests and extension build',
+    label: 'Product tests and database-free UI builds',
     checks: [
       testCheck('tests/dictionary-validation.test.mjs', 'Test packaged dictionary runtime guards'),
       testCheck('tests/search-query.test.mjs', 'Test shared search query contract'),
       testCheck('tests/runtime-query-adapter.test.mjs', 'Test shared native and WASM SQLite query adapter'),
       testCheck('tests/surface-form-projection.test.mjs', 'Test M6-3 surface-form projection and search'),
       pnpmCheck('Run product unit tests', 'test:unit', [], PRODUCT_UNIT_TEST_FILES),
-      pnpmCheck('Build product extension', 'build'),
+      {
+        ...pnpmCheck('Build extension UI assets without a dictionary database', 'build:ui'),
+        tier: 'normal',
+      },
       pnpmCheck('Build Typewriter Web', 'build:web'),
       pnpmCheck('Validate static Pages artifact', 'validate:pages-artifact'),
-      pnpmCheck('Validate built product output contracts', 'validate:product-outputs'),
     ],
   },
 
@@ -286,7 +299,7 @@ const RAW_CI_CATEGORIES = Object.freeze({
   },
 
   deep: {
-    label: 'Manual deep current-revision reproducibility validation',
+    label: 'Manual deep current-revision data reproducibility validation',
     checks: [
       {
         ...globalCanonicalAuditCheck(),
@@ -308,13 +321,12 @@ const RAW_CI_CATEGORIES = Object.freeze({
         ],
       },
       {
-        ...inProcessCheck('Run current-revision SQLite reproducibility audit', 'deep-m2-reproducibility'),
+        ...inProcessCheck('Run canonical data projection reproducibility audit', 'deep-data-projection-reproducibility'),
         schedule: 'affected',
         paths: [
-          'scripts/verify/m2-pipeline.mjs',
-          'scripts/build',
           'scripts/normalize',
-          'schema',
+          'scripts/build/record-meanings.mjs',
+          'scripts/validate/canonical-context.mjs',
           'scripts/validate/canonical-jsonl.mjs',
         ],
         deepInputs: ['data/canonical/'],

@@ -299,6 +299,7 @@ export async function runM2Pipeline({
   canonicalContext,
   databasePath,
   model: suppliedModel,
+  databaseMode = databasePath ? 'verify-existing' : 'reproducible',
   requireSurfaceFormClassifications,
   requireSurfaceFormCollisionReview,
 } = {}) {
@@ -362,7 +363,39 @@ export async function runM2Pipeline({
   }
   assertCanonicalModelMatchesRaw(canonical.records, model, surfaceProjection.rows);
 
-  if (databasePath) {
+  if (!['data-only', 'verify-existing', 'reproducible'].includes(databaseMode)) {
+    throw new TypeError(`Unknown M2 database mode: ${databaseMode}`);
+  }
+  if (databaseMode === 'data-only' && databasePath) {
+    throw new TypeError('M2 data-only mode cannot receive a database path.');
+  }
+  if (databaseMode === 'verify-existing' && !databasePath) {
+    throw new TypeError('M2 verify-existing mode requires a database path.');
+  }
+  if (databaseMode === 'reproducible' && databasePath) {
+    throw new TypeError('M2 reproducible mode creates its own databases and cannot receive a database path.');
+  }
+
+  if (databaseMode === 'data-only') {
+    return {
+      ...dataset,
+      startCount: model.records.filter((record) => record.role === 'start').length,
+      referenceOnlyCount: model.records.filter(
+        (record) => record.role === 'reference-only',
+      ).length,
+      searchFormCount: countSearchForms(model.records),
+      expressionCount: model.records.filter(
+        (record) => record.record_type === 'expression',
+      ).length,
+      normalizationVersion: model.normalization_version,
+      databaseBuilds: 0,
+      databaseVerification: 'not-run',
+      sourceRevision: undefined,
+      worktreeState: undefined,
+    };
+  }
+
+  if (databaseMode === 'verify-existing') {
     const verified = verifyDictionaryArtifact({
       databasePath,
       model,
@@ -381,6 +414,7 @@ export async function runM2Pipeline({
       ).length,
       normalizationVersion: model.normalization_version,
       databaseBuilds: 0,
+      databaseVerification: 'verified-existing',
       sourceRevision: verified.metadata.source_revision,
       worktreeState: verified.metadata.worktree_state,
     };
@@ -456,6 +490,7 @@ export async function runM2Pipeline({
       ).length,
       normalizationVersion: model.normalization_version,
       databaseBuilds: 2,
+      databaseVerification: 'full-lite-reproducible',
       sourceRevision: first.metadata.source_revision,
       worktreeState: first.metadata.worktree_state,
     };
