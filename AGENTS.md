@@ -255,18 +255,34 @@ never selects unrelated Full Deep as a PR gate. Classifier/runner/registry chang
 still require Normal, plus any directly affected registered Deep checks. A registered
 test file has exactly one registry owner; unregistered tests may be run directly.
 
-The pull-request workflow routes only legacy pure candidate artifacts to
-`ci:candidates`; mixed, unexpected, and unclassifiable changes run Normal.
-Candidate validation uses the factory contracts without creating a canonical
-session or SQLite database. `ci:fast` is an optional checkpoint inside Normal,
-not the candidate-only gate.
+The pull-request workflow runs Normal for every non-documentation change,
+including Candidate, Relation, Canonical and product-code changes. Candidate
+validation uses the factory contracts; automatic CI does not create a
+current-Canonical SQLite database. `ci:fast` is an optional checkpoint inside
+Normal.
 
 `ci:normal` remains the required gate for ordinary code/data/mixed PRs and must
-retain the complete current-canonical audit, applicable source/admission
-protections, one current-revision SQLite build, direct-search and product
-output checks. A normal run may expose the fast checkpoint inside the same
-session. `ci:all` runs Normal then current-system Deep checks, and `ci:deep`
-selects Deep checks across every domain scope. Completed-batch and one-off
+retain the complete current-canonical audit and applicable source/admission
+protections. Fast, Normal, Deep, All, PR and selective-Deep automatic paths must
+generate zero current-Canonical Full/Lite SQLite databases, including through
+nested tests, product builds or Vite fallbacks. The build ledger records and
+fails on any such generation. The database-free UI build and unit contracts do
+not claim to validate built product output. `ci:fast` is a checkpoint inside
+the same Normal session. `ci:all` runs Normal then current-system Deep data
+checks, and `ci:deep` selects Deep checks across every domain scope.
+
+The exact `BASE_SHA...HEAD_SHA` SQL schema classifier controls the separate
+`ci:schema` PR gate. Its registered SQL DDL owner is
+`scripts/build/sqlite-schema.mjs`; that file contains Full and Lite schema
+definitions. Owner deletion or movement remains visible because rename
+detection is disabled. An SQL DDL definition outside the registered owner list
+fails classification until the owner list is updated. Only an owner-path change
+runs the product Full/Lite build, integrity and reproducibility checks. The
+gate reports its exact HEAD and stage timings. Normal product/code changes do
+not trigger it. The normal `pnpm run build`, packaging and release contracts
+remain available and unchanged.
+
+Completed-batch and one-off
 checkpoint tests are Manual: they stay in the repository, are registered in no
 CI level or workflow, and are run directly (`node --test <file>`). The existing `Validate and test Typewriter` PR check
 always runs the applicable Normal gate and uses `ci:pr` to run only affected

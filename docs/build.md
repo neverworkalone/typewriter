@@ -166,8 +166,9 @@ without any SQLite file present and never creates one.
   byte for byte, as is `artifacts/dictionary.sqlite`.
 - The result is **not** an installable or distributable package. To search the dictionary, `dist/` must already hold a
   database from a normal `pnpm run build`. If canonical data changed, `build:ui` does not refresh it (intended).
-- `pnpm run build`, `build:dictionary`, `pnpm run package`/`./pack.sh`, CI and release builds are unchanged and never
-  use this mode.
+- Production commands (`pnpm run build`, `build:dictionary`, `pnpm run package`/`./pack.sh`) never use this mode.
+  Normal PR CI uses it only to check the UI bundle without a dictionary database; the schema-only CI gate and product
+  release flow use the regular Full/Lite build and output checks.
 
 ## GitHub Pages build and deployment
 

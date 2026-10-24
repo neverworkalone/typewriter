@@ -7,6 +7,7 @@ import { DatabaseSync } from 'node:sqlite';
 
 import { buildDictionary } from '../scripts/build/dictionary.mjs';
 import { extractLiteDictionary } from '../scripts/build/lite-dictionary.mjs';
+import { loadApprovedRelationFiles } from '../scripts/build/authored-relations.mjs';
 import { projectRelation } from '../src/domain/projection.js';
 import { getMeaningRecord } from '../src/runtime/sqlite-query.js';
 import { validatePackagedDictionary } from '../src/runtime/dictionary-validation.js';
@@ -29,6 +30,18 @@ const idRow = (over = {}) => ({
   type: 'near', relevance: 2, reverse_type: 'mood', reverse_relevance: 6, ...over,
 });
 const textRow = (over = {}) => ({ source_record_id: 'w001', source_sense_id: 'w001-s1', text: '새 말', type: 'scene', relevance: 4, ...over });
+
+test('the product loader reads exact approved Relation filenames and ignores Stage 2 backups', async (t) => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'typewriter-relation-backup-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  await writeFile(path.join(directory, 'relation-001.jsonl'), `${JSON.stringify(idRow())}\n`);
+  await writeFile(path.join(directory, 'relation-001-backup.jsonl'), '{historical backup is not JSON');
+  await writeFile(path.join(directory, 'relation-001.jsonl.bak'), '{not a Relation input');
+
+  const files = await loadApprovedRelationFiles(directory);
+  assert.deepEqual(files.map((file) => file.shard), ['001']);
+  assert.deepEqual(files[0].rows.map(({ row }) => row), [idRow()]);
+});
 
 // Shard 001 holds w001..w003 and shard 002 holds w004: a relation file may only name sources its own shard stores.
 const SHARDS = { '001': RECORDS.slice(0, 3), '002': RECORDS.slice(3) };

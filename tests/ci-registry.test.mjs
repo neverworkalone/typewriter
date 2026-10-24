@@ -124,7 +124,7 @@ test('real Git classification reads large routine files and preserves fail-close
   assert.match(oversized.detail, /git "show" .*code=ENOBUFS/u);
   assert.ok(oversized.detail.length < 1000, 'buffer failure diagnostics must not contain file output');
 
-  const mixed = await classify([[inventoryPath, largeJson], ['scripts/verify/m2-pipeline.mjs', '// fixture\n']]);
+  const mixed = await classify([[inventoryPath, largeJson], ['scripts/normalize/canonical.mjs', '// fixture\n']]);
   assert.equal(mixed.result.deepMode, 'selective');
   assert.ok(mixed.result.selectedDeepChecks.length > 0);
   const classifier = await classify([[inventoryPath, largeJson], ['scripts/ci/deep-gate.mjs', '// fixture\n']]);
@@ -473,22 +473,41 @@ test('Normal CI owns current relation backfill and correction regressions', () =
   )));
 });
 
-test('toolchain builds SQLite only after the shared global audit and retains current provenance safeguards', () => {
+test('automatic toolchain checks preserve data validation and never build current-canonical SQLite', () => {
   const toolchainChecks = CI_CATEGORIES.toolchain.checks;
   assert.equal(toolchainChecks[0].inProcess, 'global-canonical-audit');
   assert.equal(toolchainChecks[1].inProcess, 'normalize-canonical');
-  assert.equal(toolchainChecks[3].inProcess, 'shared-dictionary-build');
+  assert.equal(toolchainChecks[3].inProcess, 'm2-data-audit');
   const projectionReuseIndex = toolchainChecks.findIndex(
     (check) => check.inProcess === 'surface-form-projection-reuse',
   );
-  assert.ok(projectionReuseIndex > 3);
+  assert.ok(projectionReuseIndex > 2);
   assert.ok(projectionReuseIndex < toolchainChecks.findIndex(
     (check) => check.testFiles?.includes('tests/build-dictionary.test.mjs'),
   ));
   assert.ok(toolchainChecks.some((check) => check.testFiles?.includes('tests/build-provenance.test.mjs')));
+  const productScripts = CI_CATEGORIES.product.checks
+    .flatMap((check) => check.command({}).args ?? [])
+    .filter((argument) => typeof argument === 'string');
+  assert.ok(productScripts.includes('build:ui'));
+  assert.equal(productScripts.includes('build'), false);
+  assert.equal(productScripts.includes('validate:product-outputs'), false);
   assert.equal(CI_CATEGORIES.deep.checks.some(
     (check) => check.testFiles?.some((file) => /reproducibility\.test/u.test(file)),
-  ), false, 'the in-process current-canonical Deep audit owns Full/Lite reproducibility');
+  ), false, 'the in-process Deep data projection audit has no DB-dependent test module');
+});
+
+test('the SQL schema-only workflow is the only automatic path to the current-canonical Full/Lite build', async () => {
+  const packageJson = JSON.parse(await readFile(path.resolve(TEST_DIRECTORY, '../package.json'), 'utf8'));
+  const workflow = await readFile(path.resolve(TEST_DIRECTORY, '../.github/workflows/ci.yml'), 'utf8');
+  assert.equal(packageJson.scripts['ci:schema'], 'node scripts/ci/schema-build-gate.mjs');
+  assert.match(workflow, /Classify exact SQL schema diff/u);
+  assert.match(workflow, /steps\.schema\.outputs\.schema_changed == 'true'/u);
+  assert.match(workflow, /pnpm run ci:schema/u);
+  assert.ok(
+    workflow.indexOf('name: Set up Node.js') < workflow.indexOf('name: Classify exact SQL schema diff'),
+    'the schema classifier must use the repository-supported Node version',
+  );
 });
 
 test('current-canonical surface-form gate runs in-process on the shared projection', () => {
@@ -504,7 +523,7 @@ test('current-canonical surface-form gate runs in-process on the shared projecti
   assert.equal(checks[projectionIndex].command({}).executable, '[in-process]');
 });
 
-test('CI levels are nested and Deep retains current-canonical reproducibility only', async () => {
+test('CI levels are nested and Deep reproducibility stays on the data projection', async () => {
   assert.deepEqual(
     CI_NORMAL_CATEGORY_ORDER.slice(0, CI_FAST_CATEGORY_ORDER.length),
     CI_FAST_CATEGORY_ORDER,
@@ -543,7 +562,7 @@ test('CI levels are nested and Deep retains current-canonical reproducibility on
   assert.equal(Object.hasOwn(CI_CATEGORIES, 'lexical'), false);
   assert.deepEqual(CI_DEEP_CATEGORY_ORDER, ['deep']);
   assert.ok(CI_CATEGORIES.deep.checks.some(
-    (check) => check.inProcess === 'deep-m2-reproducibility',
+    (check) => check.inProcess === 'deep-data-projection-reproducibility',
   ));
   assert.equal(CI_CATEGORIES.deep.checks.some(
     (check) => check.testFiles?.some((file) => /reproducibility\.test/u.test(file)),
@@ -683,7 +702,6 @@ test('Deep gate separates validated data from affected contracts and fails close
   assert.deepEqual(
     deepCheckIds(classifyDeepGatePaths(['schema/canonical-record.schema.json'])).sort(),
     [
-      'deep/Run current-revision SQLite reproducibility audit',
       'deep/Run single-pass global canonical audit',
     ].sort(),
   );
@@ -1105,7 +1123,7 @@ test('documented Node baseline matches package.json engines', async () => {
 
 
 test('PR gate keeps Normal plus affected Deep for classifier changes', async () => {
-  const reproducibility = 'deep/Run current-revision SQLite reproducibility audit';
+  const reproducibility = 'deep/Run canonical data projection reproducibility audit';
   const registry = routePrDeepGate(classifyDeepGateDiff('base', 'head', {
     runGit: (args) => {
       assert.equal(args[0], 'diff');
@@ -1126,23 +1144,23 @@ test('PR gate keeps Normal plus affected Deep for classifier changes', async () 
   const mixed = routePrDeepGate(classifyDeepGateDiff('base', 'head', {
     runGit: (args) => {
       assert.equal(args[0], 'diff');
-      return Buffer.from('scripts/ci/registry.mjs\0scripts/verify/m2-pipeline.mjs\0');
+      return Buffer.from('scripts/ci/registry.mjs\0scripts/normalize/canonical.mjs\0');
     },
   }));
   assert.equal(mixed.deepMode, 'selective');
   assert.deepEqual(mixed.selectedDeepChecks, [reproducibility]);
-  assert.deepEqual(mixed.matchedTriggers.map(({ path }) => path), ['scripts/verify/m2-pipeline.mjs']);
+  assert.deepEqual(mixed.matchedTriggers.map(({ path }) => path), ['scripts/normalize/canonical.mjs']);
 
   const runtime = routePrDeepGate(classifyDeepGatePaths(['scripts/benchmark/sqlite-runtime.mjs']));
   assert.equal(runtime.deepMode, 'none');
   assert.deepEqual(runtime.selectedDeepChecks, []);
 
-  const direct = routePrDeepGate(classifyDeepGatePaths(['scripts/verify/m2-pipeline.mjs']));
+  const direct = routePrDeepGate(classifyDeepGatePaths(['scripts/normalize/canonical.mjs']));
   assert.equal(direct.deepMode, 'selective');
   assert.deepEqual(direct.selectedDeepChecks, [reproducibility]);
 
   const unknownWithDeep = routePrDeepGate(classifyDeepGateDiff('base', 'head', {
-    runGit: () => Buffer.from('unclassified.file\0scripts/verify/m2-pipeline.mjs\0'),
+    runGit: () => Buffer.from('unclassified.file\0scripts/normalize/canonical.mjs\0'),
   }));
   assert.equal(unknownWithDeep.deepMode, 'selective');
   assert.deepEqual(unknownWithDeep.selectedDeepChecks, [reproducibility]);
