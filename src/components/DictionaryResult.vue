@@ -667,7 +667,7 @@ defineExpose({ focusCandidate });
 }
 
 .relation-entry.has-previous-page > .relation-page-button .relation-page-glyph {
-  transform: translate(2px, 7.5px) scaleX(1.11);
+  transform: translate(1px, 7.5px) scaleX(1.167);
   transform-origin: right center;
 }
 
@@ -711,7 +711,7 @@ defineExpose({ focusCandidate });
 }
 
 .dictionary-result.is-compact .relation-entry.has-previous-page > .relation-page-button .relation-page-glyph {
-  transform: translate(2px, 8.5px) scaleX(1.11);
+  transform: translate(1px, 8.5px) scaleX(1.167);
   transform-origin: right center;
 }
 
