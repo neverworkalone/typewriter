@@ -654,7 +654,7 @@ defineExpose({ focusCandidate });
 
 .relation-entry.has-previous-page > .relation-page-button {
   left: 0;
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 .relation-entry.has-next-page > .relation-page-button {
@@ -666,6 +666,10 @@ defineExpose({ focusCandidate });
   position: relative;
   display: inline-block;
   transform: translateY(7.5px);
+}
+
+.relation-entry.has-next-page > .relation-page-button .relation-page-glyph {
+  transform: translate(2px, 7.5px);
 }
 
 .relation-list.has-inline-pagination .relation-separator {
@@ -701,6 +705,10 @@ defineExpose({ focusCandidate });
 
 .dictionary-result.is-compact .relation-page-glyph {
   transform: translateY(8.5px);
+}
+
+.dictionary-result.is-compact .relation-entry.has-next-page > .relation-page-button .relation-page-glyph {
+  transform: translate(2px, 8.5px);
 }
 
 .relation-link.is-static {
