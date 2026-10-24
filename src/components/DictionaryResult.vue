@@ -110,6 +110,10 @@ function pagedItems(sense, group) {
   return pageRelationItems(group.id, group.items, page);
 }
 
+function hasInlinePagination(group, page) {
+  return props.interactive && isPagedRelationGroup(group.id) && page.pageCount > 1;
+}
+
 // 뜻풀이 더보기: a meaning shows its first three definitions until expanded. The state is per displayed sense and is
 // dropped whenever the result, the selected candidate or the displayed senses change, so it never leaks to another one.
 const expandedDefinitions = ref({});
@@ -147,14 +151,10 @@ async function changeRelationPage(sense, group, page, event) {
     scrollRegion.scrollTop += section.getBoundingClientRect().top - sectionTop;
   }
 
-  if (
-    (direction === 'next' && !nextPage.hasNext)
-    || (direction === 'previous' && !nextPage.hasPrevious)
-  ) {
-    section?.querySelector(
-      direction === 'next' ? '[data-page-direction="previous"]' : '[data-page-direction="next"]',
-    )?.focus?.();
-  }
+  const focusDirection = direction === 'next'
+    ? (nextPage.hasNext ? 'next' : 'previous')
+    : (nextPage.hasPrevious ? 'previous' : 'next');
+  section?.querySelector(`[data-page-direction="${focusDirection}"]`)?.focus?.({ preventScroll: true });
 }
 
 function isGroupVisible(group) {
@@ -176,6 +176,10 @@ function relationText(relation) {
 
 function relationTargetId(relation) {
   return relation.action?.targetRecordId || relation.targetId;
+}
+
+function relationLinkTag(relation) {
+  return props.interactive && relationTargetId(relation) ? 'button' : 'span';
 }
 
 function openRelation(relation) {
@@ -296,60 +300,65 @@ defineExpose({ focusCandidate });
               @click="toggleDefinitions(sense)"
             >{{ isDefinitionExpanded(sense) ? '뜻풀이 접기' : `뜻풀이 더보기 (${group.items.length - DEFAULT_DEFINITION_LIMIT})` }}</button>
           </template>
-          <div v-else class="relation-list">
-            <template
-              v-for="(relation, relationIndex) in pagedItems(sense, group).items"
-              :key="relation.id"
+          <template v-else>
+            <div
+              v-for="page in [pagedItems(sense, group)]"
+              :key="`${sense.id}-${group.id}-relation-page`"
+              class="relation-list"
+              :class="{ 'has-inline-pagination': hasInlinePagination(group, page) }"
             >
-              <button
-                v-if="interactive && relationTargetId(relation)"
-                class="relation-link"
-                type="button"
-                :data-target-record-id="relationTargetId(relation)"
-                :title="relation.note || undefined"
-                @click="openRelation(relation)"
-              >{{ relationText(relation) }}</button>
               <span
-                v-else
-                class="relation-link"
+                v-for="(relation, relationIndex) in page.items"
+                :key="relation.id"
+                class="relation-entry"
                 :class="{
-                  'is-static': !relationTargetId(relation),
-                  'is-disabled': !interactive && relationTargetId(relation),
+                  'has-previous-page': hasInlinePagination(group, page) && page.hasPrevious && relationIndex === 0,
+                  'has-next-page': hasInlinePagination(group, page) && page.hasNext && relationIndex === page.items.length - 1,
                 }"
-              >{{ relationText(relation) }}</span>
+              >
+                <button
+                  v-if="hasInlinePagination(group, page) && page.hasPrevious && relationIndex === 0"
+                  class="relation-page-button"
+                  type="button"
+                  data-page-direction="previous"
+                  :aria-label="`${group.label} 이전 20개`"
+                  @click="changeRelationPage(sense, group, page.page - 1, $event)"
+                >←</button>
+                <component
+                  :is="relationLinkTag(relation)"
+                  class="relation-link"
+                  :class="{
+                    'is-static': !relationTargetId(relation),
+                    'is-disabled': !interactive && relationTargetId(relation),
+                  }"
+                  :type="relationLinkTag(relation) === 'button' ? 'button' : undefined"
+                  :data-target-record-id="relationTargetId(relation) || undefined"
+                  :title="relation.note || undefined"
+                  @click="relationTargetId(relation) && openRelation(relation)"
+                >{{ relationText(relation) }}</component>
+                <span
+                  v-if="relationIndex < page.items.length - 1"
+                  class="relation-separator"
+                  aria-hidden="true"
+                >·</span>
+                <button
+                  v-if="hasInlinePagination(group, page) && page.hasNext && relationIndex === page.items.length - 1"
+                  class="relation-page-button"
+                  type="button"
+                  data-page-direction="next"
+                  :aria-label="`${group.label} 다음 20개`"
+                  @click="changeRelationPage(sense, group, page.page + 1, $event)"
+                >→</button>
+              </span>
               <span
-                v-if="relationIndex < pagedItems(sense, group).items.length - 1"
-                class="relation-separator"
-                aria-hidden="true"
-              >·</span>
-            </template>
-          </div>
-          <div
-            v-if="interactive && isPagedRelationGroup(group.id) && pagedItems(sense, group).pageCount > 1"
-            class="relation-pagination"
-            role="group"
-            :aria-label="`${group.label} 페이지 탐색`"
-          >
-            <button
-              class="relation-page-button"
-              type="button"
-              data-page-direction="previous"
-              :disabled="!pagedItems(sense, group).hasPrevious"
-              :aria-label="`${group.label} 이전 페이지`"
-              @click="changeRelationPage(sense, group, pagedItems(sense, group).page - 1, $event)"
-            >〈 이전</button>
-            <span aria-live="polite" aria-atomic="true">
-              {{ pagedItems(sense, group).start }}–{{ pagedItems(sense, group).end }} / 전체 {{ pagedItems(sense, group).total }}개
-            </span>
-            <button
-              class="relation-page-button"
-              type="button"
-              data-page-direction="next"
-              :disabled="!pagedItems(sense, group).hasNext"
-              :aria-label="`${group.label} 다음 페이지`"
-              @click="changeRelationPage(sense, group, pagedItems(sense, group).page + 1, $event)"
-            >다음 〉</button>
-          </div>
+                v-if="hasInlinePagination(group, page)"
+                class="relation-page-status sr-only"
+                role="status"
+                aria-live="polite"
+                aria-atomic="true"
+              >{{ group.label }} {{ page.start }}–{{ page.end }} / 전체 {{ page.total }}개</span>
+            </div>
+          </template>
           <div
             v-if="groupIndex === 0 && group.kind === 'definition'"
             class="definition-divider"
@@ -552,6 +561,26 @@ defineExpose({ focusCandidate });
   white-space: normal;
 }
 
+.relation-list .relation-entry {
+  display: contents;
+}
+
+.relation-list.has-inline-pagination {
+  align-items: center;
+  column-gap: 0;
+  row-gap: 0;
+}
+
+.relation-list.has-inline-pagination .relation-entry {
+  display: inline-flex;
+  align-items: center;
+}
+
+.relation-list.has-inline-pagination .relation-entry.has-previous-page,
+.relation-list.has-inline-pagination .relation-entry.has-next-page {
+  column-gap: 2px;
+}
+
 .relation-link {
   padding: 0;
   border: 0;
@@ -587,34 +616,27 @@ defineExpose({ focusCandidate });
   border-radius: 2px;
 }
 
-.relation-pagination {
-  display: flex;
-  align-items: center;
-  align-self: flex-start;
-  gap: 8px;
-  color: #5f5955;
-  font-size: 12px;
-  line-height: 16px;
-}
-
 .relation-page-button {
+  display: inline-flex;
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
   padding: 0;
   border: 0;
   background: transparent;
-  color: #5f5955;
+  color: #7e433e;
   cursor: pointer;
   font: inherit;
-  font-size: inherit;
-  line-height: inherit;
+  font-size: 18px;
+  font-weight: 500;
+  line-height: normal;
 }
 
-.relation-page-button:disabled {
-  color: #968f89;
-  cursor: default;
-}
-
-.relation-page-button:not(:disabled):hover {
-  color: #7e433e;
+.relation-list.has-inline-pagination .relation-separator {
+  margin-right: 8px;
+  margin-left: 4px;
 }
 
 .relation-page-button:focus-visible {
@@ -627,10 +649,9 @@ defineExpose({ focusCandidate });
   font-size: 10.5px;
 }
 
-.dictionary-result.is-compact .relation-pagination {
-  gap: 7px;
-  font-size: 10.5px;
-  line-height: 14px;
+.dictionary-result.is-compact .relation-list.has-inline-pagination {
+  column-gap: 0;
+  row-gap: 0;
 }
 
 .relation-link.is-static {

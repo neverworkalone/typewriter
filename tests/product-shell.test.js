@@ -194,7 +194,7 @@ describe('product MV3 Vue shells', () => {
       `[data-group-id="${groupId}"] .relation-link`,
     )?.textContent;
     const range = (groupId) => host.querySelector(
-      `[data-group-id="${groupId}"] .relation-pagination`,
+      `[data-group-id="${groupId}"] .relation-page-status`,
     )?.textContent;
 
     await submitSearch();
