@@ -202,7 +202,7 @@ test('CI categories are ordered and every category has a descriptive label', () 
   }
 });
 
-test('changed relation Candidate files use an always-on Normal enforcement check', () => {
+test('changed Candidates and approved Relations have always-on Normal validation', () => {
   const candidateCheck = CI_CATEGORIES.relations.checks.find(
     (check) => check.label === 'Validate changed relation Candidate batches',
   );
@@ -218,6 +218,17 @@ test('changed relation Candidate files use an always-on Normal enforcement check
   assert.ok(contractTest);
   assert.equal(contractTest.tier, 'normal');
   assert.equal(contractTest.schedule, 'always');
+
+  const approvedRelationCheck = CI_CATEGORIES.relations.checks.find(
+    (check) => check.inProcess === 'approved-relations',
+  );
+  assert.ok(approvedRelationCheck);
+  assert.equal(approvedRelationCheck.label, 'Validate approved Relation files against the full Canonical index');
+  assert.equal(approvedRelationCheck.owner, 'relations');
+  assert.equal(approvedRelationCheck.tier, 'normal');
+  assert.equal(approvedRelationCheck.schedule, 'always');
+  assert.ok(CI_NORMAL_CATEGORY_ORDER.includes('relations'));
+  assert.ok(!CI_FAST_CATEGORY_ORDER.includes('relations'));
 });
 
 test('legacy tier data stays consistent with registered checks', () => {

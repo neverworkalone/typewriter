@@ -200,6 +200,10 @@ const RAW_CI_CATEGORIES = Object.freeze({
         schedule: 'always',
       },
       {
+        ...inProcessCheck('Validate approved Relation files against the full Canonical index', 'approved-relations'),
+        tier: 'normal',
+      },
+      {
         ...testCheck('scripts/relation/candidate-contract.test.mjs', 'Test relation Candidate v1 batch contract'),
         tier: 'normal',
       },

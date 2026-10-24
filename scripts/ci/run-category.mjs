@@ -27,6 +27,11 @@ import {
   buildSemanticTopicEvidence,
 } from '../validate/semantic-audit.mjs';
 import { normalizeCanonicalDirectory } from '../normalize/canonical.mjs';
+import {
+  buildShardSenseIdsFromCanonicalRecords,
+  loadApprovedRelationFiles,
+  validateApprovedRelationRows,
+} from '../build/authored-relations.mjs';
 import { runGlobalCanonicalAudit } from './global-canonical-audit.mjs';
 import { runM2Pipeline } from '../verify/m2-pipeline.mjs';
 import { classifyDeepGateDiff, routePrDeepGate } from './deep-gate.mjs';
@@ -466,6 +471,28 @@ async function runInProcessCheck(name, context) {
     console.log(
       `Normalized ${context.normalizedModel.records.length} record(s) / ${senseCount} sense(s) / ${relationCount} relation(s) in memory (normalization v${context.normalizedModel.normalization_version}).`,
     );
+    return;
+  }
+
+  if (name === 'approved-relations') {
+    const files = await loadApprovedRelationFiles(path.join(REPOSITORY_DIRECTORY, 'data/relations'));
+    const shardSenseIds = buildShardSenseIdsFromCanonicalRecords(canonicalContext.records);
+    const canonicalIndex = {
+      senses: {
+        get(senseId) {
+          const found = canonicalContext.indexes.sensesById.get(senseId);
+          if (!found) return undefined;
+          const sourceRecord = found.recordInfo.record ?? found.recordInfo;
+          return { record: sourceRecord, sense: found.sense };
+        },
+      },
+    };
+    const result = validateApprovedRelationRows({
+      files,
+      shardSenseIds,
+      canonicalIndex,
+    });
+    console.log(`Validated ${result.rowCount} approved Relation row(s) across ${result.fileCount} file(s) against the full Canonical index without SQLite.`);
     return;
   }
 
