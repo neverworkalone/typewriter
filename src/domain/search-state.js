@@ -134,10 +134,11 @@ export function createErrorSearchState(request, error) {
   };
 }
 
-export function withHistoryFlags(state, { canGoBack, canGoForward }) {
+export function withHistoryFlags(state, { canGoBack, canGoForward, historyId = null }) {
   return {
     ...state,
     canGoBack,
     canGoForward,
+    historyId,
   };
 }
