@@ -113,6 +113,11 @@ test('an added or moved SQL schema definition without a registered owner fails c
         /Unregistered SQL schema owner in HEAD: scripts\/build\/sqlite-extra\.mjs/u,
       ],
       [
+        'scripts/build/sqlite-commented.mjs',
+        `CREATE /* comment between SQL tokens */ TABLE extra (id TEXT);`,
+        /Unregistered SQL schema owner in HEAD: scripts\/build\/sqlite-commented\.mjs/u,
+      ],
+      [
         'scripts/build/sqlite-extra.mjs',
         `ALTER TABLE extra ADD COLUMN label TEXT;`,
         /Unregistered SQL schema owner in HEAD: scripts\/build\/sqlite-extra\.mjs/u,
@@ -131,6 +136,12 @@ test('an added or moved SQL schema definition without a registered owner fails c
         'tools/db/sqlite-extra.mjs',
         `CREATE UNIQUE INDEX extra_by_id ON extra(id);`,
         /Changed SQL schema definition has no registered owner: tools\/db\/sqlite-extra\.mjs/u,
+      ],
+      [
+        'tools/db/sqlite-commented.mjs',
+        `CREATE -- comment between SQL tokens
+ TABLE extra (id TEXT);`,
+        /Changed SQL schema definition has no registered owner: tools\/db\/sqlite-commented\.mjs/u,
       ],
     ];
     for (const [filePath, sql, expected] of unregisteredDdl) {

@@ -14,8 +14,23 @@ export const SQLITE_SCHEMA_OWNER_PATHS = Object.freeze([
   'scripts/build/sqlite-schema.mjs',
 ]);
 
-const SQL_SCHEMA_DEFINITION_PATTERN = /\b(?:CREATE\s+(?:(?:TEMP|TEMPORARY)\s+)?(?:VIRTUAL\s+TABLE|(?:UNIQUE\s+)?(?:TABLE|INDEX|VIEW|TRIGGER))|ALTER\s+TABLE|DROP\s+(?:TABLE|INDEX|VIEW|TRIGGER)|UPDATE\s+(?:(?:main)\s*\.\s*)?sqlite_(?:schema|master))\b/iu;
-const SQL_SCHEMA_GREP_PATTERN = '(CREATE[[:space:]]+((TEMP|TEMPORARY)[[:space:]]+)?(VIRTUAL[[:space:]]+TABLE|((UNIQUE)[[:space:]]+)?(TABLE|INDEX|VIEW|TRIGGER))|ALTER[[:space:]]+TABLE|DROP[[:space:]]+(TABLE|INDEX|VIEW|TRIGGER)|UPDATE[[:space:]]+((main)[[:space:]]*\.[[:space:]]*)?sqlite_(schema|master))';
+const SQL_COMMENT_PATTERN = '(?:/\\*[\\s\\S]*?\\*/|--[^\\r\\n]*(?:\\r?\\n|$))';
+const SQL_TOKEN_GAP_PATTERN = '(?:\\s|' + SQL_COMMENT_PATTERN + ')+';
+const SQL_SCHEMA_DEFINITION_PATTERN = new RegExp(
+  '\\b(?:CREATE' + SQL_TOKEN_GAP_PATTERN
+    + '(?:(?:TEMP|TEMPORARY)' + SQL_TOKEN_GAP_PATTERN + ')?(?:VIRTUAL'
+    + SQL_TOKEN_GAP_PATTERN + 'TABLE|(?:UNIQUE' + SQL_TOKEN_GAP_PATTERN
+    + ')?(?:TABLE|INDEX|VIEW|TRIGGER))|ALTER' + SQL_TOKEN_GAP_PATTERN
+    + 'TABLE|DROP' + SQL_TOKEN_GAP_PATTERN + '(?:TABLE|INDEX|VIEW|TRIGGER)|UPDATE'
+    + SQL_TOKEN_GAP_PATTERN + '(?:(?:main)' + SQL_TOKEN_GAP_PATTERN + '\\.'
+    + SQL_TOKEN_GAP_PATTERN + ')?sqlite_(?:schema|master))\\b',
+  'iu',
+);
+const SQL_SCHEMA_GREP_PATTERN = '(CREATE|ALTER|DROP|UPDATE)';
+
+function containsSqlSchemaMutation(text) {
+  return SQL_SCHEMA_DEFINITION_PATTERN.test(text);
+}
 
 function decodeGitText(value, label) {
   const bytes = Buffer.isBuffer(value) ? value : Buffer.from(String(value));
@@ -58,14 +73,18 @@ function nulPaths(bytes, label) {
 
 function schemaPathsAtRevision(revision, repositoryDirectory) {
   const output = runGit([
-    'grep', '-I', '-l', '-z', '-E', SQL_SCHEMA_GREP_PATTERN,
+    'grep', '-I', '-l', '-z', '-i', '-E', SQL_SCHEMA_GREP_PATTERN,
     revision, '--', 'scripts', 'src',
     ':(exclude,glob)**/*.test.*',
     ':(exclude,glob)**/*.spec.*',
   ], repositoryDirectory, { allowNoMatch: true });
-  return nulPaths(output, `SQL schema owner scan at ${revision}`)
+  const candidates = nulPaths(output, `SQL schema owner scan at ${revision}`)
     .map((value) => value.startsWith(`${revision}:`) ? value.slice(revision.length + 1) : value)
     .sort();
+  return candidates.filter((filePath) => {
+    const bytes = runGit(['show', `${revision}:${filePath}`], repositoryDirectory);
+    return containsSqlSchemaMutation(decodeGitText(bytes, `${revision}:${filePath}`));
+  });
 }
 
 function changedFileContainsSchemaSql(filePath, revision, repositoryDirectory) {
@@ -74,7 +93,7 @@ function changedFileContainsSchemaSql(filePath, revision, repositoryDirectory) {
   if (/\.(?:test|spec)\.[cm]?[jt]sx?$/u.test(filePath)) return false;
   try {
     const bytes = runGit(['show', `${revision}:${filePath}`], repositoryDirectory);
-    return SQL_SCHEMA_DEFINITION_PATTERN.test(decodeGitText(bytes, `${revision}:${filePath}`));
+    return containsSqlSchemaMutation(decodeGitText(bytes, `${revision}:${filePath}`));
   } catch (error) {
     // A path absent at a revision is expected for additions and deletions. The
     // exact diff already validates both revisions and the other side is checked.
