@@ -61,7 +61,7 @@ class CardsAndControl(unittest.TestCase):
                 "pr": None, "activity": None}
         return {**base, **kw}
 
-    def test_card_is_five_fixed_lines_for_every_phase_and_text_length(self):
+    def test_card_is_four_fixed_lines_for_every_phase_and_text_length(self):
         from warroom.views import CARD_LINES, CARD_W, ICON, card_text
         from warroom.views import cell_len
         long_ko = "아주 긴 활동 메시지 " * 20
@@ -74,27 +74,27 @@ class CardsAndControl(unittest.TestCase):
         empty = card_text(self.status(batch=None)).split("\n")
         self.assertEqual(len(empty), CARD_LINES)
 
-    def test_card_shows_only_observed_progress_and_real_elapsed(self):
+    def test_card_shows_only_observed_progress_and_real_elapsed_without_activity(self):
         from warroom.views import CARD_W, card_text, cell_len, fmt_elapsed
         act = (time.mktime(time.strptime(time.strftime("%Y-%m-%d") + " 18:47", "%Y-%m-%d %H:%M")),
                "PRODUCING 시작 (produce, model tier=free)")
-        # (status overrides, records line, bar shown, ops line, recent line)
+        # (status overrides, records line, bar shown, ops line)
         table = [
-            (dict(), "진행량 확인 중", False, "PR 생성 전", ""),
-            (dict(elapsed=312, activity=act), "진행량 확인 중", False, "PR 생성 전 경과 5분 12초", "최근: 18:47 생산 시작"),
+            (dict(), "진행량 확인 중", False, "PR 생성 전"),
+            (dict(elapsed=312, activity=act), "진행량 확인 중", False, "PR 생성 전 경과 5분 12초"),
             (dict(records_done=127, records_total=500, elapsed=312), "127 / 500 records 25.4%", True,
-             "PR 생성 전 경과 5분 12초", ""),
+             "PR 생성 전 경과 5분 12초"),
             (dict(state="COMPLETE", records_done=83, records_total=83, pr=1349, elapsed=3900),
-             "83 / 83 records 100.0%", True, "PR #1349 경과 1시간 05분", ""),
-            (dict(records_done=None, records_total=500), "진행량 확인 중", False, "PR 생성 전", ""),
-            (dict(records_done=0, records_total=500), "0 / 500 records 0.0%", True, "PR 생성 전", ""),
+             "83 / 83 records 100.0%", True, "PR #1349 경과 1시간 05분"),
+            (dict(records_done=None, records_total=500), "진행량 확인 중", False, "PR 생성 전"),
+            (dict(records_done=0, records_total=500), "0 / 500 records 0.0%", True, "PR 생성 전"),
         ]
-        for kw, records, bar, ops, recent in table:
+        for kw, records, bar, ops in table:
             lines = card_text(self.status(**kw)).split("\n")
             self.assertEqual(" ".join(lines[1].split()), records, kw)
             self.assertEqual(bool(lines[2]), bar, kw)
             self.assertEqual(" ".join(lines[3].split()), ops, kw)
-            self.assertEqual(lines[4], recent, kw)
+            self.assertNotIn("최근:", "\n".join(lines), kw)
             if bar:
                 self.assertEqual(cell_len(lines[2]), CARD_W)
         half = card_text(self.status(records_done=250, records_total=500)).split("\n")[2]
@@ -108,11 +108,15 @@ class CardsAndControl(unittest.TestCase):
 
     def test_producing_is_shown_as_working_but_stays_producing_in_the_state_machine(self):
         from warroom.views import card_text, detail_header
-        st = self.status(state="PRODUCING", mode="single", run=False, drain_once=False, error=None, blocked="")
+        st = self.status(state="PRODUCING", mode="single", run=False, drain_once=False, error=None, blocked="",
+                         activity=(time.time(), "PRODUCING 시작"))
         self.assertIn("WORKING ▶", card_text(st).split("\n")[0])
         self.assertNotIn("PRODUCING", card_text(st))
-        self.assertIn("WORKING", detail_header(st, {"adapter": "opencode"}, "deepseek"))
-        self.assertNotIn("PRODUCING", detail_header(st, {"adapter": "opencode"}, "deepseek"))
+        header = detail_header(st, {"adapter": "opencode"}, "deepseek")
+        self.assertIn("WORKING", header)
+        self.assertNotIn("PRODUCING", header.splitlines()[0])
+        self.assertIn("최근 활동", header)
+        self.assertIn("PRODUCING 시작", header)        # detail keeps the recent event hidden from the card
         self.assertIn("PRODUCING", control.STATES_HELP)      # stored/supervisor state names are unchanged
 
     def test_elapsed_is_the_sum_of_recorded_runs(self):
@@ -146,7 +150,7 @@ class CardsAndControl(unittest.TestCase):
         control.start(w.store, "deepseek", "a", "single")
         control.drain_all(w.store, [("deepseek", m) for m in "abcd"])   # a reservation without a batch is cancelled
         self.assertEqual(mid(), "— 실행 이력 없음")
-        self.assertEqual(len(card_text(cell()).split("\n")), 5)
+        self.assertEqual(len(card_text(cell()).split("\n")), 4)
         w.tmp.cleanup()
 
     def test_stop_all_target_matches_what_stop_lines_controls(self):

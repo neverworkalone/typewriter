@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import os
-import re
 import time
 import unicodedata
 
@@ -73,8 +72,7 @@ def _idle_phase(st: dict) -> str:
     return "—  시작 예약 중" if st.get("run") else "—  실행 이력 없음"
 
 
-CARD_LINES = 5   # every card has exactly these content lines (empty ones stay blank) so all cards share one height
-_ACTIVITY = (("PRODUCING 시작", "생산 시작"), ("FIXING 시작", "수정 시작"), ("PREPARE", "준비"))
+CARD_LINES = 4   # every card has exactly these content lines (empty ones stay blank) so all cards share one height
 
 
 def fmt_elapsed(seconds) -> str:
@@ -94,14 +92,6 @@ def _two_sided(left: str, right: str, width: int = CARD_W) -> str:
     return left + " " * (width - cell_len(left) - cell_len(right)) + right
 
 
-def _activity(msg: str) -> str:
-    """Short human sentence: no parenthesised run arguments (model tier, session ...), state names in Korean."""
-    msg = " ".join(re.sub(r"\([^)]*\)", " ", msg).split())
-    for src, dst in _ACTIVITY:
-        msg = msg.replace(src, dst)
-    return msg
-
-
 def model_title(label: str, width: int = CARD_W + 2) -> str:
     """Column heading: the model's display name as written (cut with an ellipsis only if it overflows)."""
     return _fit(label, width)
@@ -113,10 +103,10 @@ def progress_bar(done: int, total: int, width: int = CARD_W) -> str:
 
 
 def card_text(st: dict) -> str:
-    """Card = Line summary in a fixed 5-line layout (title / records / bar / PR + elapsed / recent).
+    """Card = Line summary in a fixed 4-line layout (title / records / bar / PR + elapsed).
 
     Only observed values are shown: no records -> `진행량 확인 중` and no bar, never an estimate. DRAIN is
-    spelled out (never colour-only); every line is fit to the card so it never grows.
+    spelled out (never colour-only); every line is fit to the card so it never grows. Activity stays in Detail.
     """
     m = st["method"].upper()
     if st["batch"] is None:
@@ -133,23 +123,22 @@ def card_text(st: dict) -> str:
         records, bar = "진행량 확인 중", ""
     ops = _two_sided(f"PR #{st['pr']}" if st["pr"] else "PR 생성 전",
                      f"경과 {fmt_elapsed(st['elapsed'])}" if st.get("elapsed") is not None else "")
-    recent = ""
-    if st["activity"]:
-        recent = _fit(f"최근: {_when(st['activity'][0])} {_activity(st['activity'][1])}")
-    return "\n".join([title, records, bar, ops, recent])
+    return "\n".join([title, records, bar, ops])
 
 
-TIER_BAR = {
-    "free": "[b green]● Free[/]  [dim]○ Go[/]",
-    "go": "[dim]○ Free[/]  [b #ffa500]● Go (유료)[/]",
-    "mixed": "[b yellow]◐ 혼합[/] [dim](Free/Go가 섞여 있음 — f: 모두 Free)[/]",
-    "none": "[dim]DeepSeek Go 모델 미설정[/]",
+TIER_FOOTER = {
+    "free": ("Free", "b green"),
+    "go": ("Go", "b #ffa500"),
+    "mixed": ("혼합", "b yellow"),
+    "none": ("DeepSeek Go 모델 미설정", "dim"),
 }
 
 
-def tier_bar(state: str) -> str:
-    """Board status line for the f key: the current model tier, colour-coded (markup)."""
-    return f"DeepSeek 모델 단계  {TIER_BAR.get(state, TIER_BAR['none'])}   [dim]f 전환[/]"
+def tier_footer(state: str) -> str:
+    """One-line board footer with the current tier nested under f; values are Rich markup."""
+    label, style = TIER_FOOTER.get(state, TIER_FOOTER["none"])
+    return (f"[b]q[/] Quit · [b]s[/] Settings · [b]r[/] 설정 리로드 · "
+            f"[b]f[/] Free/Go 전환 ([{style}]{label}[/])")
 
 
 def detail_header(st: dict, reg: dict, model: str) -> str:

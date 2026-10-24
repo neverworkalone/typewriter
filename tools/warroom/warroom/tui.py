@@ -18,7 +18,7 @@ import time
 from . import auth, control
 from .config import Paths, adapter_label, adapters, load_config, methods, ordered_models, pin_summary, registry
 from .logrender import render_line
-from .views import _hhmm, _when, control_columns, select_width, card_text, detail_header, model_title, tier_bar, detail_meta  # noqa: F401  (CARD_W/ICON re-exported for tests)
+from .views import _hhmm, _when, control_columns, select_width, card_text, detail_header, model_title, tier_footer, detail_meta  # noqa: F401  (CARD_W/ICON re-exported for tests)
 from .logtail import LogTail, redact
 from .store import Store
 
@@ -124,6 +124,17 @@ class Card(Static, can_focus=True):
             if 0 <= col < len(models) and 0 <= row < len(methods) and (c.model, c.method) == (models[col], methods[row]):
                 c.focus()
                 return
+
+
+class BoardFooter(Footer):
+    """Keep Textual's docked Footer layout while rendering the board's stateful key legend."""
+
+    def compose(self) -> ComposeResult:
+        yield Static(tier_footer(control.tier_state(self.app.store, self.app.cfg, self.app.methods)),
+                     id="board-footer")
+
+    def bindings_changed(self, screen) -> None:
+        """The static legend is independent of the active screen's binding set."""
 
 
 class SettingsScreen(Screen):
@@ -380,10 +391,10 @@ class WarRoom(App):
     #line-controls > Button { min-width: 8; width: auto; }
     #controls.narrow { layout: grid; grid-size: 3; grid-rows: auto; }
     #columns { height: 1fr; margin-top: 1; }
-    #tier-bar { height: 1; padding: 0 1; }
+    #board-footer { height: 1; padding: 0 1; }
     .col { width: 38; height: auto; margin: 0 1; }
-    .coltitle { text-style: bold; color: $accent; width: 100%; text-align: center; margin-bottom: 1; }
-    .card { border: round $primary; height: 7; padding: 0 1; }
+    .coltitle { text-style: bold; color: $accent; width: 100%; text-align: center; margin-bottom: 0; }
+    .card { border: round $primary; height: 6; padding: 0 1; }
     .card:focus { border: heavy $accent; }
     .card.ERROR, .card.PAUSED { border: round $error; }
     .card.COMPLETE { border: round $success; }
@@ -394,8 +405,8 @@ class WarRoom(App):
     #settings-body { padding: 1 2; }
     RichLog { border: round $primary; height: 1fr; }
     """
-    BINDINGS = [("q", "quit", "Quit (워커는 계속 실행)"), ("s", "settings", "Settings"),
-                ("f", "toggle_tier", "Free/Go 전환"), ("r", "reload_config", "설정 리로드"),
+    BINDINGS = [("q", "quit", "Quit"), ("s", "settings", "Settings"),
+                ("r", "reload_config", "설정 리로드"), ("f", "toggle_tier", "Free/Go 전환"),
                 ("left", "control_move(-1)", ""), ("right", "control_move(1)", ""),
                 Binding("tab", "switch_region", "", priority=True),
                 Binding("shift+tab", "switch_region", "", show=False, priority=True)]
@@ -443,8 +454,7 @@ class WarRoom(App):
                     yield Static(model_title(registry(self.cfg).get(model, {}).get("label", model)), classes="coltitle", id=f"title-{model}")
                     for me in self.methods:
                         yield Card(model, me)
-        yield Static(id="tier-bar")
-        yield Footer(show_command_palette=False)
+        yield BoardFooter(show_command_palette=False)
 
     def action_toggle_tier(self) -> None:
         """f: Free <-> Go for DeepSeek. Going to the paid tier asks first."""
@@ -596,7 +606,7 @@ class WarRoom(App):
                     continue
                 card.update(card_text(st))
                 card.set_classes("card " + (st["state"] if st["batch"] else "empty"))
-        root.query_one("#tier-bar", Static).update(tier_bar(control.tier_state(store, self.cfg, self.methods)))
+        root.query_one("#board-footer", Static).update(tier_footer(control.tier_state(store, self.cfg, self.methods)))
         draining = [f"{s['model']}/{s['method'].upper()}" for s in statuses.values() if s["drain_once"]]
         root.query_one("#drain-note", Static).update("DRAIN ALL: 현재 배치 후 종료 — " + ", ".join(draining) if draining else "")
         root.query_one("#drain-note", Static).display = bool(draining)
