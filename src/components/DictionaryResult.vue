@@ -654,10 +654,12 @@ defineExpose({ focusCandidate });
 
 .relation-entry.has-previous-page > .relation-page-button {
   left: 0;
+  justify-content: flex-end;
 }
 
 .relation-entry.has-next-page > .relation-page-button {
   right: 0;
+  justify-content: flex-start;
 }
 
 .relation-page-glyph {
