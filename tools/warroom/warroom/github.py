@@ -48,6 +48,11 @@ class GhClient:
                 "head_sha": d["head"]["sha"], "head_ref": d["head"]["ref"],
                 "url": d.get("html_url", "")}
 
+    def pull_files(self, n: int) -> list[dict]:
+        """All files changed by a PR, including closed and merged PRs."""
+        return [{"path": f.get("filename")} for f in
+                self._api(f"repos/{self.repo}/pulls/{n}/files", paginate=True)]
+
     def reviews(self, n: int) -> list[dict]:
         return self._api(f"repos/{self.repo}/pulls/{n}/reviews", paginate=True)
 
