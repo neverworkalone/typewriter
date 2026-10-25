@@ -266,6 +266,34 @@ class ClearDrain(ClearBase):
                 self.assertEqual(w.row()["batch"], "01")
 
 
+class ClearVsStop(ClearBase):
+    def test_stop_all_never_leaves_a_flag_on_a_clearing_line(self):
+        w = self.w
+        b = self.producing()
+        w.adapter.running.clear()
+        w.store.update(b["id"], state="ERROR", pid=None)
+        self.clear(b)
+        w.store.pin_clear("deepseek", "a")
+        self.assertFalse(control.can_stop_all(w.store, [("deepseek", "a")]))
+        control.stop_all(w.store)
+        control.stop_line(w.store, "deepseek", "a")
+        self.assertEqual(w.store.peek_line("deepseek", "a")["force_stop"], 0)
+
+    def test_merged_pr_found_during_clear_is_not_force_stopped_afterwards(self):
+        w = self.w
+        b = self.producing()
+        w.adapter.running.clear()
+        self.with_pr(state="closed", merged=True)
+        w.store.update(b["id"], state="ERROR", pid=None, pr_number=7)
+        self.clear(b)
+        w.store.pin_clear("deepseek", "a")
+        w.store.set_line("deepseek", "a", force_stop=1, retry_batch=b["id"])   # a flag that raced in while CLEARING
+        w.tick()                                                     # reconcile -> MERGED, stale flags dropped
+        self.assertEqual(w.store.batch(b["id"])["state"], "MERGED")
+        w.tick()
+        self.assertEqual(w.store.batch(b["id"])["state"], "CLEANUP")  # regular merged path, not PAUSED by a stale Stop
+
+
 class ClearRequestRules(ClearBase):
     def test_stale_and_repeated_requests(self):
         w = self.w

@@ -7,8 +7,8 @@ from __future__ import annotations
 
 import time
 
-from .config import registry
-from .store import Store
+from .config import maintainer_problem, registry
+from .store import MAINTENANCE_METHOD, Store
 
 STATES_HELP = ("PREPARE", "PRODUCING", "WAITING_REVIEW", "FIXING", "MERGED", "CLEANUP",
                "COMPLETE", "PAUSED", "ERROR", "CLEARING")
@@ -63,11 +63,26 @@ def request_clear(store: Store, model: str, method: str, batch_id: int) -> tuple
     return store.request_clear(model, method, batch_id)
 
 
+def defect_locked(store: Store, b) -> bool:
+    """A batch paused for a shared defect resumes only through the automatic release; an operator can override it
+    only after an explicit Stop (which sets the hold), so a plain Retry never skips the fix."""
+    return b["pause_reason"] == "shared_defect" and not store.get(f"defect_hold_{b['id']}")
+
+
 def retry(store: Store, model: str, method: str) -> bool:
     b = store.active_batch(model, method)
-    if b is not None and store.clear_request(model, method) is None and b["state"] in ("PAUSED", "ERROR") and b["pid"] is None:
+    if (b is not None and store.clear_request(model, method) is None and b["state"] in ("PAUSED", "ERROR")
+            and b["pid"] is None and not defect_locked(store, b)):
         store.set_line(model, method, retry_batch=b["id"])
         return True
+    return False
+
+
+def retry_maintainer(store: Store) -> bool:
+    """Retry the hidden Maintainer's PAUSED/ERROR execution (it is not on the Board, so it has no card)."""
+    for b in store.incomplete_batches():
+        if b["method"] == MAINTENANCE_METHOD:
+            return retry(store, b["producer"], MAINTENANCE_METHOD)
     return False
 
 
@@ -122,8 +137,8 @@ def line_status(store: Store, model: str, method: str) -> dict:
     st = out["state"]
     out["can_drain"] = (out["occupied"] and st != "CLEARING") or out["run"]
     out["can_stop"] = out["occupied"] and st not in ("PAUSED", "ERROR", "CLEARING") or out["run"]
-    out["stoppable"] = out["occupied"] or out["run"]   # what `stop_lines` can actually affect
-    out["can_retry"] = st in ("PAUSED", "ERROR") and b["pid"] is None
+    out["stoppable"] = (out["occupied"] and st != "CLEARING") or out["run"]   # what `stop_lines` can actually affect
+    out["can_retry"] = st in ("PAUSED", "ERROR") and b["pid"] is None and not defect_locked(store, b)
     req = store.clear_request(model, method) if out["occupied"] else None
     out["clear"] = None if req is None else {"status": req["status"], "error": req["error"]}
     # Clear needs a specific unfinished batch; once started it can only be re-armed after a BLOCKED teardown.
@@ -179,3 +194,58 @@ def set_tier(store: Store, cfg: dict, methods, tier: str) -> int:
             n += 1
     store.log(None, f"운영자 모델 단계 전환 → {tier.upper()} ({len(models)}개 모델)")
     return n
+
+
+# --- the single "urgent" status line (Issue #1555) ---------------------------------------------------------------------
+def _short(text: str | None, n: int = 70) -> str:
+    t = " ".join((text or "").split())
+    return t if len(t) <= n else t[: n - 1] + "…"
+
+
+def _maintainer_text(store: Store, cfg: dict, m, deps) -> str:
+    """What one urgent Issue is doing right now, read only from persisted state (no invented progress)."""
+    st = m["state"]
+    held = [d for d in deps if d["state"] == "HELD"]
+    if held:
+        return f"보류: {_short(held[0]['hold_reason'])}"
+    if st == "HELD":
+        return f"보류: {_short(m['hold_reason'])}"
+    if st == "QUEUED":
+        if cfg.get("maintainer") is None:
+            return "Maintainer 미설정 · 대기"
+        problem = maintainer_problem(cfg)
+        return f"Maintainer 설정 오류 · {_short(problem)}" if problem else "Maintainer 대기 중"
+    if st == "DONE":
+        return "머지·Cleanup 완료 · 종속 배치 수정 반영 중"
+    b = store.batch(m["batch_id"]) if m["batch_id"] else None
+    if b is None:
+        return "Maintainer 준비 중"
+    pr = f"PR #{b['pr_number']} · " if b["pr_number"] else ""
+    return {"PREPARE": "Maintainer WORKING >> 수정 중 · PR 생성 전" if not b["pr_number"] else f"{pr}수정 중",
+            "PRODUCING": "Maintainer WORKING >> 수정 중 · PR 생성 전" if not b["pr_number"] else f"{pr}수정 중",
+            "WAITING_REVIEW": f"{pr}리뷰 대기", "FIXING": f"{pr}수정 중",
+            "MERGED": f"{pr}머지됨 · Cleanup 중", "CLEANUP": f"{pr}머지됨 · Cleanup 중",
+            "PAUSED": f"{pr}Maintainer PAUSED · {_short(b['error'])} (m: Retry)",
+            "ERROR": f"{pr}Maintainer ERROR · {_short(b['error'])} (m: Retry)"}.get(b["state"], b["state"])
+
+
+def urgent_line(store: Store, cfg: dict) -> str:
+    """One line for the top yellow area: the current urgent Issue (+ how many others wait); "" when nothing is open.
+
+    An Issue disappears only after its PR is merged, the Maintainer is cleaned up and every batch that depended on
+    it was released (or deliberately resumed by the operator). Held and failed states stay visible.
+    """
+    deps_by_issue: dict[int, list] = {}
+    for d in store.defects(("LINKED", "FIX_MERGED", "HELD")):
+        deps_by_issue.setdefault(d["issue_number"], []).append(d)
+    items = []
+    for d in store.defects(("REPORTED",)):
+        items.append(f"urgent · 공통 결함 `{d['defect_class']}` · Issue 등록 대기")
+    for m in store.maintenance_rows():
+        deps = deps_by_issue.get(m["issue_number"], [])
+        if m["state"] in ("DONE", "HELD") and not deps:   # nothing depends on it any more (all released/overridden)
+            continue
+        items.append(f"urgent issue #{m['issue_number']} · {_maintainer_text(store, cfg, m, deps)}")
+    if not items:
+        return ""
+    return items[0] + (f" (+{len(items) - 1}건 대기)" if len(items) > 1 else "")

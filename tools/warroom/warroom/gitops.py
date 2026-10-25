@@ -14,6 +14,10 @@ class CleanupBlocked(Exception):
     """Removal would risk data loss or touch something War Room does not own."""
 
 
+class IntegrationBlocked(Exception):
+    """A shared fix cannot be brought into a batch worktree safely (conflict, wrong state); nothing was changed."""
+
+
 SCRATCH_DIR = ".warroom-scratch"   # the AI's throw-away files; never part of a batch and never blocks a worktree check
 
 
@@ -199,3 +203,53 @@ class Git:
             self._git("worktree", "remove", "--force", str(path))
         if self._git("rev-parse", "--verify", "--quiet", f"refs/heads/{branch}", check=False).ok:
             self._git("branch", "-D", branch)
+
+    # ---- applying a merged shared fix to a paused batch (Issue #1555) -----------------------------------------------
+    def _owned(self, path: Path) -> Path:
+        path = Path(path)
+        try:
+            path.resolve().relative_to(self.worktrees_dir.resolve())
+        except ValueError:
+            raise IntegrationBlocked(f"worktree가 War Room 디렉터리 밖에 있습니다: {path}")
+        if not path.is_dir():
+            raise IntegrationBlocked(f"worktree 경로가 없습니다: {path}")
+        return path
+
+    def contains(self, path: Path, sha: str) -> bool:
+        """True iff commit `sha` is an ancestor of (or equal to) the worktree's HEAD."""
+        return self._git("merge-base", "--is-ancestor", sha, "HEAD", cwd=path, check=False).ok
+
+    def changed_files(self, sha: str) -> list[str]:
+        """Paths a merged PR changed (first-parent diff of its merge/squash commit on the base branch)."""
+        out = self._git("diff", "--name-only", f"{sha}^1", sha).out
+        return [p for p in out.splitlines() if p]
+
+    def integrate(self, path: Path, branch: str, base: str, sha: str) -> str:
+        """Bring the merged shared fix `sha` into the paused batch worktree and return the resulting HEAD.
+
+        Invariant: only a commit that is already on `origin/<base>` is merged, as a plain merge into a worktree that
+        War Room owns and that is on its own branch. No reset, rebase, force, stash or checkout. Uncommitted and
+        partial output files stay as they are (git refuses a merge that would touch them). Any conflict or refusal
+        aborts the merge, leaves the worktree exactly as it was, and raises IntegrationBlocked. Idempotent: a HEAD
+        that already contains `sha` is returned unchanged.
+        """
+        path = self._owned(path)
+        if self.registered(path) != branch:
+            raise IntegrationBlocked(f"worktree가 브랜치 {branch}에 등록되어 있지 않습니다")
+        self._git("fetch", "origin", base)   # a network/auth failure is a GitError: transient, caller retries
+        if not self._git("merge-base", "--is-ancestor", sha, f"origin/{base}", check=False).ok:
+            raise IntegrationBlocked(f"{sha[:10]}이 origin/{base}에 포함되어 있지 않습니다")
+        if self._git("rev-parse", "-q", "--verify", "MERGE_HEAD", cwd=path, check=False).ok:
+            raise IntegrationBlocked("worktree에 진행 중인 merge가 있습니다")
+        if self.contains(path, sha):
+            return self.head(path)
+        before = self.head(path)
+        res = self._git("merge", "--no-edit", sha, cwd=path, check=False)
+        if not res.ok:
+            self._git("merge", "--abort", cwd=path, check=False)
+            if self.head(path) != before:   # defensive: an aborted merge must leave HEAD untouched
+                raise IntegrationBlocked(f"merge 실패 후 HEAD가 변경되어 있습니다: {before[:10]} → {self.head(path)[:10]}")
+            raise IntegrationBlocked(f"merge 충돌 또는 거부: {(res.err or res.out).strip()[:300]}")
+        if not self.contains(path, sha):
+            raise IntegrationBlocked("merge 후에도 수정 commit이 HEAD에 포함되지 않았습니다")
+        return self.head(path)

@@ -190,6 +190,51 @@ Rules (fail closed):
   Room; the operator changes the local CLI settings and then retries.
 - Start refuses unless `codex exec --help` and `codex exec resume --help` list the required options.
 
+## Shared defects and the hidden Maintainer (Issue #1555)
+
+A batch (or its PR review) that finds a *repeatable defect of a shared layer* reports it in a structured way — never by
+keywords in free text. Format and rules: [`prompts/shared-defect.md`](prompts/shared-defect.md). A producer writes
+`.warroom-scratch/shared-defect.json` in its worktree; a trusted reviewer's `-1` may carry the same JSON in a
+```` ```warroom-shared-defect ```` block. Required: `defect_class`, `summary`, at least one really failing case, a `reproduction` and the `suspected_layer`
+(root cause, scope, fix and regression design are optional hints — the Maintainer does that work). A disputed single
+candidate has no reproducible shared-layer failure, so it fails this bar; anything weaker (that, CLI/auth/network
+trouble, malformed JSON, a blank field) pauses only that batch as
+`pause_reason=defect_unverified` with everything kept, creates **no** Issue, and an ordinary Retry resumes it.
+
+```text
+valid report → that batch PAUSED (pause_reason=shared_defect; worktree/branch/PR/session kept, AI stopped)
+  → one `urgent` Issue (event marker + defect-class marker; GitHub is searched first, so duplicates, restarts and
+    a crash right after creation never make a second Issue; a failed create is retried, the report is never lost;
+    an open Issue of the same class is reused and the batch only joins it)
+  → ONE Maintainer at a time (`maint-<issue>` worktree off the latest base branch; an ordinary hidden `batches` row
+    with method `m` — no Board card, no new state machine; PR review/fix/merge/cleanup are the existing code)
+  → exact Maintainer PR merged=true AND the Maintainer's worktree cleanup succeeded (`Issue closed`, PR created or
+    green checks release nothing)
+  → the PR's merge commit is merged into each dependent batch worktree (plain merge of a commit already on the base
+    branch: uncommitted/partial output and commits stay; conflict → merge aborted, nothing changed),
+    proven by `HEAD contains merge commit`, and verified (the PR's changed `tests/*.test.mjs` via `node --test`,
+    plus `shared_defect_verify`)
+  → the batch returns to the phase it was paused in, exactly once (single DB transaction)
+```
+
+Fail closed (batch stays PAUSED, reason on the yellow line, no automatic Retry): conflict, PR HEAD mismatch, closed/merged
+batch PR, failed verification, Issue closed without a fix, Maintainer PR closed unmerged, cleanup failure. A transient
+git/GitHub error is retried. A shared-defect pause is **not** resumed by a plain Retry: `Stop` then `Retry` on that Line is
+the operator's explicit override (no fix applied). `m` retries a PAUSED/ERROR Maintainer. `Stop All`/`Drain All` are
+production controls and never touch the Maintainer.
+
+`config.json` (one top-level line enables it; absent = no Maintainer runs, reports/Issues/pauses still happen):
+
+```json
+{ "maintainer": "claude", "shared_defect_verify": [] }
+```
+
+`maintainer` must be a key of `producers`; its model/effort/permission profile/adapter and the existing pin-drift,
+preflight and session rules apply unchanged. A non-string or unregistered value is a config error, an invalid producer
+entry blocks the Maintainer (never another model). A started task keeps the producer it started with.
+The top yellow line shows the current urgent Issue (`urgent issue #N · PR #M · 리뷰 대기`, `(+k건 대기)`) from persisted
+state only, and disappears once the PR is merged, the Maintainer cleaned up and every dependent batch released.
+
 ## Prompts
 
 What the AI is told lives in `tools/warroom/prompts/` (`a.md` `b.md` `c.md` `d.md` `fix.md` `recovery.md`), checked in and

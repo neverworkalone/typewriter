@@ -69,13 +69,33 @@ RUN_COLUMNS_V3 = ("model", "effort")
 # Additive migration (user_version 5): every run also records the Codex permission profile it was pinned to
 # ('' = none configured). Old runs keep NULL, which the pin-drift check treats as "not recorded".
 RUN_COLUMNS_V5 = ("permission_profile",)
-SCHEMA_VERSION = 5
+# Additive migration (user_version 6, Issue #1555): shared-defect reports (`defects`), the issue-scoped Maintainer
+# task record (`maintenance`), and the pause reason / defect link of a batch. Nothing existing is rewritten.
+SCHEMA_V6 = """
+CREATE TABLE IF NOT EXISTS defects (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  event_key TEXT NOT NULL UNIQUE, batch_id INTEGER NOT NULL, source TEXT NOT NULL,
+  defect_class TEXT NOT NULL DEFAULT '', state TEXT NOT NULL, report TEXT NOT NULL,
+  issue_number INTEGER, hold_reason TEXT, merge_sha TEXT, integrated_sha TEXT,
+  created_at REAL NOT NULL, updated_at REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS defects_issue ON defects(issue_number);
+CREATE TABLE IF NOT EXISTS maintenance (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  issue_number INTEGER NOT NULL UNIQUE, state TEXT NOT NULL,
+  batch_id INTEGER, pr_number INTEGER, merge_sha TEXT, hold_reason TEXT,
+  created_at REAL NOT NULL, updated_at REAL NOT NULL
+);
+"""
+SCHEMA_VERSION = 6
+
+MAINTENANCE_METHOD = "m"   # the hidden Maintainer's execution record lives in `batches` under this method
 
 ACTIVE_STATES = ("PREPARE", "PRODUCING", "WAITING_REVIEW", "FIXING", "MERGED",
                  "CLEANUP", "PAUSED", "ERROR", "CLEARING")
 # Per-batch kv keys the Supervisor writes; removed with the batch by Clear.
 BATCH_KV_PREFIXES = ("last_poll_", "last_poll_fixhead_", "headlag_", "last_merge_check_", "no_pr_recovery_",
-                     "verified_completion_run_")
+                     "verified_completion_run_", "defect_hold_")
 
 
 class LineBusy(Exception):
@@ -152,6 +172,12 @@ class Store:
                            r["session_id"] if last else None, r["pid"] if last and status is None else None,
                            str(f), str(ex), float(m.group(1)),
                            ex.stat().st_mtime if status is not None else None, status))
+        c.executescript(SCHEMA_V6)
+        have = {r["name"] for r in c.execute("PRAGMA table_info(batches)")}
+        if "pause_reason" not in have:
+            c.execute("ALTER TABLE batches ADD COLUMN pause_reason TEXT NOT NULL DEFAULT ''")
+        if "defect_id" not in have:
+            c.execute("ALTER TABLE batches ADD COLUMN defect_id INTEGER")
         c.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
 
     @contextmanager
@@ -286,7 +312,12 @@ class Store:
 
     def stop_lines(self, model: str | None = None, method: str | None = None) -> None:
         """Request stop for one Line (or every Line): no new run is allowed until Start/Retry."""
-        where, args = ("WHERE model=? AND method=?", (model, method)) if model else ("", ())
+        where, args = (("WHERE model=? AND method=?", (model, method)) if model
+                       else ("WHERE method!=?", (MAINTENANCE_METHOD,)))   # Stop All is a production control
+        # A Line whose batch is CLEARING is pinned by the Clear: a Stop (All) must not leave a flag behind that the
+        # Supervisor would consume after the Clear ends (e.g. when it hands a merged PR to the regular cleanup).
+        where += (" AND NOT EXISTS (SELECT 1 FROM batches b WHERE b.producer=lines.model AND b.method=lines.method "
+                  "AND b.state='CLEARING')")
         with self._conn() as c:
             c.execute(f"UPDATE lines SET run=0, drain_once=0, force_stop=1, retry_batch=NULL, updated_at=? {where}", (time.time(), *args))
 
@@ -321,6 +352,9 @@ class Store:
     def drop_clear(self, batch_id: int) -> None:
         with self._conn() as c:
             c.execute("DELETE FROM clear_requests WHERE batch_id=?", (batch_id,))
+            # Clear ended without removing the batch: no control written meanwhile may act on it afterwards.
+            c.execute("UPDATE lines SET force_stop=0, retry_batch=NULL, drain=0, drain_once=0 "
+                      "WHERE (model, method) IN (SELECT producer, method FROM batches WHERE id=?)", (batch_id,))
 
     def pin_clear(self, model: str, method: str):
         """Supervisor: atomically pin the requested batch ID as CLEARING and switch off everything that could start,
@@ -446,3 +480,120 @@ class Store:
             for key in keys:
                 c.execute("INSERT OR IGNORE INTO handled_events VALUES(?,?,?,?,?)",
                           (batch_id, pr, head, key, time.time()))
+
+    # --- shared defects (Issue #1555) ---
+    def report_defect(self, batch_id: int, event_key: str, source: str, defect_class: str, state: str,
+                      report: str, pause_reason: str, error: str) -> int | None:
+        """Record one defect event and pause its batch in ONE transaction. A repeated event_key changes nothing (None).
+
+        The batch keeps its worktree, branch, PR and session; only its state moves to PAUSED (`paused_from` = where it
+        was) so a duplicate event, a restart or a crash between the two writes can never leave a half-paused batch.
+        """
+        now = time.time()
+        with self._conn() as c:
+            c.execute("BEGIN IMMEDIATE")
+            if c.execute("SELECT 1 FROM defects WHERE event_key=?", (event_key,)).fetchone():
+                return None
+            b = c.execute("SELECT state, paused_from FROM batches WHERE id=?", (batch_id,)).fetchone()
+            if b is None or b["state"] in ("COMPLETE", "MERGED", "CLEANUP"):
+                return None
+            prev = b["paused_from"] if b["state"] in ("PAUSED", "ERROR") else b["state"]
+            did = c.execute("INSERT INTO defects(event_key,batch_id,source,defect_class,state,report,created_at,updated_at)"
+                            " VALUES(?,?,?,?,?,?,?,?)", (event_key, batch_id, source, defect_class, state, report,
+                                                         now, now)).lastrowid
+            c.execute("UPDATE batches SET state='PAUSED', paused_from=?, pause_reason=?, defect_id=?, error=?, "
+                      "retry_after=NULL, updated_at=? WHERE id=?", (prev, pause_reason, did, error, now, batch_id))
+            return did
+
+    def defect(self, defect_id: int):
+        with self._conn() as c:
+            return c.execute("SELECT * FROM defects WHERE id=?", (defect_id,)).fetchone()
+
+    def defect_by_event(self, event_key: str):
+        with self._conn() as c:
+            return c.execute("SELECT * FROM defects WHERE event_key=?", (event_key,)).fetchone()
+
+    def defects(self, states=None):
+        with self._conn() as c:
+            rows = c.execute("SELECT * FROM defects ORDER BY id").fetchall()
+        return [r for r in rows if states is None or r["state"] in states]
+
+    def update_defect(self, defect_id: int, **fields) -> None:
+        fields["updated_at"] = time.time()
+        cols = ", ".join(f"{k}=?" for k in fields)
+        with self._conn() as c:
+            c.execute(f"UPDATE defects SET {cols} WHERE id=?", (*fields.values(), defect_id))
+
+    def release_defect(self, defect_id: int, batch_id: int, integrated_sha: str) -> bool:
+        """The ONE automatic Retry: batch back to the phase it was paused in, defect RELEASED, in one transaction.
+
+        False (nothing changed) unless the batch is still paused for exactly this defect and the defect is still
+        FIX_MERGED, so a repeated poll or a restart can never retry twice.
+        """
+        now = time.time()
+        with self._conn() as c:
+            c.execute("BEGIN IMMEDIATE")
+            d = c.execute("SELECT state FROM defects WHERE id=?", (defect_id,)).fetchone()
+            b = c.execute("SELECT * FROM batches WHERE id=?", (batch_id,)).fetchone()
+            if (d is None or d["state"] != "FIX_MERGED" or b is None or b["state"] != "PAUSED"
+                    or b["pause_reason"] != "shared_defect" or b["defect_id"] != defect_id or b["pid"] is not None):
+                return False
+            c.execute("UPDATE batches SET state=?, pause_reason='', defect_id=NULL, error=NULL, retries=0, "
+                      "retry_after=NULL, updated_at=? WHERE id=?", (b["paused_from"] or "PRODUCING", now, batch_id))
+            c.execute("INSERT OR IGNORE INTO lines(model,method,updated_at) VALUES(?,?,?)",
+                      (b["producer"], b["method"], now))
+            c.execute("UPDATE lines SET run=1, retry_batch=NULL, updated_at=? WHERE model=? AND method=?",
+                      (now, b["producer"], b["method"]))
+            c.execute("UPDATE defects SET state='RELEASED', integrated_sha=?, hold_reason=NULL, updated_at=? WHERE id=?",
+                      (integrated_sha, now, defect_id))
+            return True
+
+    # --- Maintainer task record: one row per urgent Issue ---
+    def ensure_maintenance(self, issue_number: int):
+        now = time.time()
+        with self._conn() as c:
+            c.execute("INSERT OR IGNORE INTO maintenance(issue_number,state,created_at,updated_at) VALUES(?,?,?,?)",
+                      (issue_number, "QUEUED", now, now))
+            return c.execute("SELECT * FROM maintenance WHERE issue_number=?", (issue_number,)).fetchone()
+
+    def maintenance(self, issue_number: int):
+        with self._conn() as c:
+            return c.execute("SELECT * FROM maintenance WHERE issue_number=?", (issue_number,)).fetchone()
+
+    def maintenance_rows(self):
+        with self._conn() as c:
+            return c.execute("SELECT * FROM maintenance ORDER BY id").fetchall()
+
+    def update_maintenance(self, issue_number: int, **fields) -> None:
+        fields["updated_at"] = time.time()
+        cols = ", ".join(f"{k}=?" for k in fields)
+        with self._conn() as c:
+            c.execute(f"UPDATE maintenance SET {cols} WHERE issue_number=?", (*fields.values(), issue_number))
+
+    def maintenance_batch_open(self) -> bool:
+        """The single Maintainer slot: any unfinished Maintainer execution, whichever producer it runs on."""
+        with self._conn() as c:
+            return c.execute("SELECT 1 FROM batches WHERE method=? AND state!='COMPLETE'",
+                             (MAINTENANCE_METHOD,)).fetchone() is not None
+
+    def claim_maintenance(self, issue_number: int, producer: str, branch: str, worktree: str) -> int | None:
+        """Create the issue's execution record and link it to its task row in one transaction (None: not claimable).
+
+        An Issue is claimed once (its row leaves QUEUED), and only one Maintainer execution exists at a time.
+        """
+        now = time.time()
+        with self._conn() as c:
+            c.execute("BEGIN IMMEDIATE")
+            m = c.execute("SELECT * FROM maintenance WHERE issue_number=?", (issue_number,)).fetchone()
+            if m is None or m["state"] != "QUEUED" or m["batch_id"] is not None:
+                return None
+            if c.execute("SELECT 1 FROM batches WHERE method=? AND state!='COMPLETE'",
+                         (MAINTENANCE_METHOD,)).fetchone():
+                return None
+            bid = c.execute(
+                "INSERT INTO batches(method,producer,shard,batch,branch,worktree,state,model_tier,created_at,updated_at)"
+                " VALUES(?,?,?,?,?,?,?,?,?,?)", (MAINTENANCE_METHOD, producer, "issue", str(issue_number), branch,
+                                                 worktree, "PREPARE", "free", now, now)).lastrowid
+            c.execute("UPDATE maintenance SET state='ACTIVE', batch_id=?, updated_at=? WHERE issue_number=?",
+                      (bid, now, issue_number))
+            return bid
