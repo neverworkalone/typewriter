@@ -21,7 +21,7 @@ prepare → read-chunk → explore & edit candidates in place → save-chunk (pe
 node scripts/relation/candidate-workbench.mjs prepare \
   --shard 001 --batch 01 --method a --model codex \
   --scratch-dir .warroom-scratch/001_01_a_codex --chunk-size 25
-# B: --chunk-size 50 (10 chunks per batch, each readable in one page)
+# B: use --method b, a B scratch directory and --chunk-size 50 (10 chunks for a full 500-record batch); read-chunk may paginate at output limits
 
 node scripts/relation/candidate-workbench.mjs read-chunk \
   --scratch-dir .warroom-scratch/001_01_a_codex --chunk 1
@@ -43,7 +43,7 @@ node scripts/relation/candidate-workbench.mjs merge \
 
 ## Input formats
 
-- `save-chunk` (JSONL, one row per record): `{"record_id":"w001","senses":[{"sense_id":"w001-s1","candidates":["별빛"]}]}`. IDs must match the chunk exactly: no missing, extra, duplicate, or cross-mapped record or sense. Candidates must be non-empty trimmed strings without normalized duplicates, and must not exactly repeat the chunk's own source lemma (also with a lone parenthetical annotation, or as a spacing/hyphen variant listed in its `search_forms`) — the same rule the final `merge` validator applies, reported here at the failing record/sense. Finish editing (dedupe, self-repeats, sentence-like phrases, gloss restatements) **before** writing the array; save the complete 25-record chunk once, and use `patch` only for clear local fixes to candidates that are actually in the saved chunk.
+- `save-chunk` (JSONL, one row per record): `{"record_id":"w001","senses":[{"sense_id":"w001-s1","candidates":["별빛"]}]}`. IDs must match the chunk exactly: no missing, extra, duplicate, or cross-mapped record or sense. Candidates must be non-empty trimmed strings without normalized duplicates, and must not exactly repeat the chunk's own source lemma (also with a lone parenthetical annotation, or as a spacing/hyphen variant listed in its `search_forms`) — the same rule the final `merge` validator applies, reported here at the failing record/sense. Finish editing (dedupe, self-repeats, sentence-like phrases, gloss restatements) **before** writing the array; save the complete configured chunk (A: usually 25 records; B: 50 records for a new full batch, potentially shorter for the final chunk) once, and use `patch` only for clear local fixes to candidates that are actually in the saved chunk.
 - `patch` (JSONL, one row per sense): `{"record_id":"w001","sense_id":"w001-s1","remove":["은하수"],"add":["달무리"]}`. `remove` must match an existing candidate exactly; unknown IDs fail the whole patch and nothing is written. Other senses and candidates are untouched.
 
 ## Files and resuming
