@@ -8,13 +8,13 @@ War Room이 준비한 HEAD를 기준으로 작업하며,
 
 Issue #1155의 C 생산 계약을 읽고 준수한다.
 
-C 생산의 검색·증거·체크포인트·집계·Candidate 출력에는 scripts/relation/literary-context-cli.mjs를 반드시 사용한다. 구체적인 실행 절차는 docs/relation-literary-context.md를 따른다. 배치마다 동일 기능의 임시 스크립트를 새로 작성하지 않는다.
+C 생산의 검색·체크포인트·Candidate 출력에는 scripts/relation/literary-context-cli.mjs를 반드시 사용한다. 절차는 docs/relation-literary-context.md의 `init → chunk/submit 반복 → export`를 따른다. 문맥·후보·Sense별 개별 명령, 관점별 빈 배열, KEEP/REMOVE 장부, 반복 `validate`는 쓰지 않는다. 승인 인덱스의 전체 SHA/FTS 재구축은 하지 않는다. 배치마다 동일 기능의 임시 스크립트를 새로 작성하지 않는다.
 
 셸 명령은 개별로 실행해 각 종료 코드와 출력을 확인한다. `gh api` 경로에 `?` 또는 `&`가 있으면 경로 인수 전체를 작은따옴표로 감싼다. 예: `gh api 'repos/neverworkalone/typewriter/contents/data/relation-candidates/031?ref=master'`, `gh api 'repos/neverworkalone/typewriter/pulls?state=open&per_page=100' --jq 'length'`.
 
 Codex 샌드박스에서 차단되는 `ps`·`pgrep`에 의존하지 말고, 작업의 실행 결과와 기존 기록으로 상태를 확인한다.
 
-Candidate v1 검증 후 커밋·push하고 `batch` 라벨의 PR을 제출한다. PR 생성 직전 다른 모델을 포함한 동일 C 배치의 중복 점유를 확인한다. PR 본문에서 #1155를 참조하거나 닫지 않는다.
+export가 실행한 Candidate v1 검증(1회)로 충분하다. 커밋·push하고 `batch` 라벨의 PR을 제출한다. PR 생성 직전 다른 모델을 포함한 동일 C 배치의 중복 점유를 확인한다. PR 본문에서 #1155를 참조하거나 닫지 않는다.
 
 PR 제출 후 종료한다. 리뷰·머지 감시와 다음 배치 실행은 War Room이 담당한다. 다른 모델·CLI·서브에이전트를 실행하지 않는다.
 
