@@ -21,6 +21,7 @@ prepare → read-chunk → explore & edit candidates in place → save-chunk (pe
 node scripts/relation/candidate-workbench.mjs prepare \
   --shard 001 --batch 01 --method a --model codex \
   --scratch-dir .warroom-scratch/001_01_a_codex --chunk-size 25
+# B: --chunk-size 50 (10 chunks per batch, each readable in one page)
 
 node scripts/relation/candidate-workbench.mjs read-chunk \
   --scratch-dir .warroom-scratch/001_01_a_codex --chunk 1

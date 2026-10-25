@@ -697,7 +697,7 @@ function usage() {
   return [
     'usage:',
     '  node scripts/relation/candidate-workbench.mjs prepare --shard SSS --batch BB --method a|b --model <id> --scratch-dir .warroom-scratch/<batch> [--chunk-size 25..50]',
-    '  node scripts/relation/candidate-workbench.mjs read-chunk --scratch-dir <dir> --chunk N [--offset N] [--limit 1..25] [--max-bytes N] [--max-chars N]',
+    '  node scripts/relation/candidate-workbench.mjs read-chunk --scratch-dir <dir> --chunk N [--offset N] [--limit 1..50] [--max-bytes N] [--max-chars N]',
     '  node scripts/relation/candidate-workbench.mjs save-chunk --scratch-dir <dir> --chunk N --input <candidate-chunk.jsonl>',
     '  node scripts/relation/candidate-workbench.mjs patch --scratch-dir <dir> --input <patches.jsonl>',
     '  node scripts/relation/candidate-workbench.mjs status --scratch-dir <dir>',
