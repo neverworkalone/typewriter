@@ -423,10 +423,10 @@ class WarRoom(App):
     #controls.narrow { layout: grid; grid-size: 3; grid-rows: auto; }
     #columns { height: 1fr; margin-top: 1; }
     #board-footer { height: 1; padding: 0 1; }
-    .col { width: 38; height: auto; margin: 0 1; }
+    .col { width: 40; height: auto; margin: 0; }
     .coltitle { text-style: bold; color: $accent; width: 100%; text-align: center; margin-bottom: 0; }
     .stage-divider { margin: 0; color: #666666; }
-    .card { border: round $primary; height: 6; padding: 0 1; }
+    .card { border: round $primary; height: 6; padding: 0 1; margin: 0 1; }
     .card:focus { border: heavy $accent; }
     .card.ERROR, .card.PAUSED { border: round $error; }
     .card.COMPLETE { border: round $success; }
