@@ -193,6 +193,7 @@ class LineDetail(Screen):
             yield Button("Drain", id="drain")
             yield Button("Stop", id="stop", variant="error")
             yield Button("Retry", id="retry")
+            yield Button("Clear", id="clear", variant="error")
             yield Button("Auto-scroll: ON", id="follow")
             yield Button("Raw Log", id="raw")
             yield Button("Back (Esc)", id="back")
@@ -349,6 +350,7 @@ class LineDetail(Screen):
         d.disabled = not (st["can_drain"] or st["line_drain"])
         self.query_one("#stop", Button).disabled = not st["can_stop"]
         self.query_one("#retry", Button).disabled = not st["can_retry"]
+        self.query_one("#clear", Button).disabled = not st["can_clear"]
         runs = self._runs()
         self._sync_sources(runs)
         self._pump_log(runs, st)
@@ -372,9 +374,27 @@ class LineDetail(Screen):
             self.app.push_screen(Confirm(
                 f"{m} / Method {me.upper()} 라인의 AI 실행을 즉시 중지합니다."), self._stopped)
 
+        elif e.button.id == "clear":
+            st = control.line_status(store, m, me)
+            if st["batch_id"] is None:
+                return
+            pr = f"PR #{st['pr']}" if st["pr"] else "PR 없음 (소유 브랜치의 PR은 정리 시 조회)"
+            self.app.push_screen(Confirm(
+                f"[b]Clear[/b] — 미완료 배치를 포기합니다.\n"
+                f"producer: {m} · method: {me.upper()} · batch: {st['batch']} (id {st['batch_id']}) · {pr}\n"
+                "AI를 중지하고 커밋되지 않은 변경, 소유 worktree·로컬 브랜치·실행 상태/이력·실행 파일을 삭제합니다. "
+                "소유가 확인된 열린 PR은 머지 없이 닫고, 안전이 확인된 소유 원격 브랜치도 삭제합니다. "
+                "머지된 PR이 있으면 포기하지 않고 정상 정리 경로로 넘깁니다."),
+                lambda yes, bid=st["batch_id"]: self._cleared(yes, bid))
+
     def _stopped(self, yes: bool | None) -> None:
         if yes:
             control.stop_line(self.app.store, self.model, self.method)
+
+    def _cleared(self, yes: bool | None, batch_id: int) -> None:
+        if yes:
+            ok, msg = control.request_clear(self.app.store, self.model, self.method, batch_id)
+            self.notify("Clear 요청됨 — 정리 진행 중" if ok else msg, severity="information" if ok else "error")
 
 
 class WarRoom(App):

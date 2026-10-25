@@ -24,7 +24,7 @@ def _when(ts) -> str:
 CARD_W = 34   # content cells of a card (column 38 - border - padding): every line is fit to it
 PHASE = {"WAITING_REVIEW": "REVIEW", "PRODUCING": "WORKING"}   # display names; the stored state stays PRODUCING
 ICON = {"PREPARE": "…", "PRODUCING": "▶", "WAITING_REVIEW": "◔", "FIXING": "✎", "MERGED": "⇄",
-        "CLEANUP": "⌫", "COMPLETE": "✓", "PAUSED": "‖", "ERROR": "✖"}
+        "CLEANUP": "⌫", "COMPLETE": "✓", "PAUSED": "‖", "ERROR": "✖", "CLEARING": "⌦"}
 
 
 def cell_len(text: str) -> int:
@@ -162,6 +162,9 @@ def detail_header(st: dict, reg: dict, model: str) -> str:
     if st["drain_once"]:
         second.append("Drain All: 현재 배치 후 종료")
     lines.append("  ·  ".join(second))
+    if st.get("clear"):
+        lines.append("Clear 진행 중: AI 중지 → PR·원격/로컬 브랜치·worktree 정리" if st["clear"]["status"] == "REQUESTED"
+                     else "Clear 중단됨 (보존됨) — Clear 버튼으로 이어서 재시도할 수 있습니다")
     if st["error"]:
         lines.append(f"ERROR/PAUSED 사유: {st['error']}")
     if st["blocked"]:

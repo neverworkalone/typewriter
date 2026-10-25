@@ -87,6 +87,7 @@ class FakeGit:
         self.created, self.removed = [], []
         self.dirty_text, self.local_head, self.block = "", HEAD1, None
         self.gitdir_error = ""
+        self.push_error, self.remote_deleted, self.discarded = "", [], []
         self.reg: dict[str, str] = {}
         self.remote: dict[str, str | Exception | None] = {}   # branch -> origin SHA, None (absent) or an error to raise
 
@@ -118,6 +119,34 @@ class FakeGit:
             raise v
         return v
 
+    def verify_owned(self, path, branch):
+        try:
+            Path(path).resolve().relative_to(self.wt_root.resolve())
+        except ValueError:
+            raise CleanupBlocked("outside worktrees dir")
+        reg = self.reg.get(str(path))
+        if not Path(path).exists():
+            if reg is not None:
+                raise CleanupBlocked("registered but missing")
+            return False
+        if reg != branch:
+            raise CleanupBlocked(f"not registered with {branch}")
+        return True
+
+    def delete_remote_branch(self, branch, expected_sha):
+        if self.push_error:
+            raise GitError(self.push_error)
+        assert self.remote.get(branch) == expected_sha
+        self.remote[branch] = None
+        self.remote_deleted.append(branch)
+
+    def discard_owned(self, path, branch):
+        import shutil
+        if self.verify_owned(path, branch):
+            shutil.rmtree(path)
+            self.reg.pop(str(path), None)
+        self.discarded.append((str(path), branch))
+
     def remove_owned(self, path, branch, pr_head):
         if self.block:
             raise CleanupBlocked(self.block)
@@ -137,6 +166,7 @@ class FakeGh:
         self.branch_errors: dict[str, Exception] = {}
         self.files: dict[int, list | Exception] = {}
         self.branch_queries = 0
+        self.closed, self.close_error = [], None
         self.reviews_, self.inline_, self.issue_ = [], [], []
         self.commit_ts = 0.0
 
@@ -151,6 +181,12 @@ class FakeGh:
 
     def pull(self, n):
         return self.prs[n]
+
+    def close_pr(self, n):
+        if self.close_error:
+            raise self.close_error
+        self.prs[n] = self.prs[n] | {"state": "closed"}
+        self.closed.append(n)
 
     def pull_files(self, n):
         files = self.files.get(n, [])

@@ -81,6 +81,16 @@ logical model twice (duplicate id or shared endpoint ID) is blocked.
 - **Stop** / **Stop All**: red (Stop All is disabled while no Line has an unfinished batch or run flag), y/N modal (Enter/Esc = No). Stops the AI of the scope, preserves
   worktree/branch/PR, clears the run flag so nothing restarts; **Retry** (PAUSED/ERROR only) reuses
   the same batch.
+- **Clear** (Batch Detail, red, y/N modal naming producer · method · batch ID · PR): explicitly **abandons** the selected
+  unfinished batch, unlike Stop. The TUI only writes a batch-ID-specific request (`clear_requests`); the Supervisor pins
+  the batch as `CLEARING` (run/retry/drain/reservations off), stops the AI and confirms its exit, then verifies the owned
+  worktree (inside `.local/worktrees`, registered to the recorded branch), every PR on the owned branch (head branch +
+  candidate-file ownership; an open PR is closed **without merge**, a merged PR is never abandoned and goes to the normal
+  MERGED cleanup instead) and the remote branch (head must match a known PR/local HEAD; deleted with a lease). Only then
+  the worktree (dirty/untracked included), local branch and this batch's run files go, and the batch row, runs, review
+  dedupe and events are deleted in one transaction, so the Line is IDLE and the batch is unclaimed and schedulable
+  again; one line-level audit event remains. Any failed check leaves the batch `CLEARING` + BLOCKED with the reason and
+  deletes nothing; pressing Clear again resumes teardown (never relaunches the producer).
 - **Batch Detail**: short header (`OpenCode / A · 009_02`, phase, PR, observed progress, time); SHA, session,
   tier and worktree (a cleaned-up one is labelled as a past path) are under *Metadata / Details*. The Agent Log is
   a readable rendering of OpenCode JSON Lines (`logrender.py`, per line, so the incremental `tail -f` read by byte

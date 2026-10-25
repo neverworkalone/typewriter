@@ -28,7 +28,7 @@ class GhClient:
 
     def open_prs(self) -> list[dict]:
         r = self.runner.run(["gh", "pr", "list", "--repo", self.repo, "--state", "open",
-                             "--limit", "300", "--json", "number,headRefName,files,title"],
+                             "--limit", "300", "--json", "number,headRefName,baseRefName,files,title"],
                             env=self.env, timeout=60)
         if not r.ok:
             raise GhError(f"gh pr list: {r.err.strip()}")
@@ -41,6 +41,12 @@ class GhClient:
         if not r.ok:
             raise GhError(f"gh pr list --head: {r.err.strip()}")
         return json.loads(r.out or "[]")
+
+    def close_pr(self, n: int) -> None:
+        """Close without merging; the branch is left alone (deleted separately, after verification)."""
+        r = self.runner.run(["gh", "pr", "close", str(n), "--repo", self.repo], env=self.env, timeout=60)
+        if not r.ok:
+            raise GhError(f"gh pr close {n}: {r.err.strip() or r.out.strip()}")
 
     def pull(self, n: int) -> dict:
         d = self._api(f"repos/{self.repo}/pulls/{n}")
