@@ -57,6 +57,48 @@ data/relation-candidates/
 - 출발 sense를 정확하게 결속하고, 문학/말뭉치 검색은 해당 자료 이용 조건에 맞게 읽기 전용으로 수행한다. C/D는 원문·발췌문·SQLite를 Git/PR/제품에 포함하지 않는다.
 - 생성 단계에는 채택 개수 목표가 없다. 적합한 후보가 없으면 빈 목록을 그대로 기록한다. **500레코드는 내부적으로 나눠 처리해도 되지만, 최종 후보 파일은 해당 배치 전체를 포함하는 한 파일**이어야 한다.
 
+### B batch mechanics
+
+Use [`scripts/relation/candidate-workbench.mjs`](../scripts/relation/candidate-workbench.mjs) for B batch preparation, explicit record/sense mapping, checkpointed chunk saves, review-state tracking, and final assembly. It handles data mechanics only; the producer still performs B's scene exploration and all meaning/form judgments.
+
+```sh
+node scripts/relation/candidate-workbench.mjs prepare \
+  --shard 001 --batch 01 --method b --model codex \
+  --scratch-dir .warroom-scratch/001_01_b_codex --chunk-size 25
+node scripts/relation/candidate-workbench.mjs save-chunk \
+  --scratch-dir .warroom-scratch/001_01_b_codex --chunk 1 \
+  --input .warroom-scratch/001_01_b_codex/chunk-001-candidates.jsonl
+node scripts/relation/candidate-workbench.mjs patch-sense \
+  --scratch-dir .warroom-scratch/001_01_b_codex \
+  --input .warroom-scratch/001_01_b_codex/w001-w001-s1-candidates.json
+node scripts/relation/candidate-workbench.mjs exploration-pending \
+  --scratch-dir .warroom-scratch/001_01_b_codex \
+  --out .warroom-scratch/001_01_b_codex/exploration-pending.jsonl
+node scripts/relation/candidate-workbench.mjs mark-explored \
+  --scratch-dir .warroom-scratch/001_01_b_codex \
+  --input .warroom-scratch/001_01_b_codex/explored-senses.jsonl
+node scripts/relation/candidate-workbench.mjs review-pending \
+  --scratch-dir .warroom-scratch/001_01_b_codex \
+  --out .warroom-scratch/001_01_b_codex/review-pending.jsonl
+node scripts/relation/candidate-workbench.mjs mark-reviewed \
+  --scratch-dir .warroom-scratch/001_01_b_codex \
+  --input .warroom-scratch/001_01_b_codex/review-receipts.jsonl
+node scripts/relation/candidate-workbench.mjs remove-candidate \
+  --scratch-dir .warroom-scratch/001_01_b_codex \
+  --input .warroom-scratch/001_01_b_codex/confirmed-ineligible.json
+node scripts/relation/candidate-workbench.mjs merge \
+  --scratch-dir .warroom-scratch/001_01_b_codex \
+  --out data/relation-candidates/001/001_01_b_codex.jsonl
+```
+
+`prepare` stores complete Canonical records in 25–50-record source chunks and prints each chunk's record/sense counts and source range. Read the full current chunk file; if a display reports truncation, the chunk is not complete. Chunk input names every `record_id` and `sense_id`; the tool rejects missing, unexpected, duplicated, or cross-record IDs instead of attaching candidates by array position. Each complete `save-chunk` marks that chunk submitted, including senses with empty candidate arrays, and adds discoveries to its checkpoint without dropping earlier candidates. For a short interruption, `patch-sense` saves only one sense. `merge` refuses unsaved chunks and any sense that has not completed its two B scenes for the current Canonical meaning.
+
+When Canonical sense meaning changes, `exploration-pending` exports only the affected source senses and existing candidates; after completing both scenes, record those exact `record_id`/`sense_id` pairs with `mark-explored`. `review-pending` similarly includes the exact Canonical record/sense for every unchecked or invalidated candidate. After the AI completes its meaning and form check, `mark-reviewed` records only the explicitly listed candidate strings. Candidate edits or source lemma/sense meaning changes invalidate the affected review state. `patch-sense` only adds candidates or preserves existing ones. Removal requires a current candidate review and a separate explicit ineligible judgment through `remove-candidate`. A Canonical record/sense ID membership change stops and preserves the checkpoint for explicit reconciliation. `merge` refuses pending/stale exploration and reviews, assembles in Canonical order, and runs the full Candidate v1 batch contract. Keep checkpoints and chunk files under `.warroom-scratch/`; run the existing `candidate-contract.mjs` against the final path before submission.
+
+For a local correction, `patch-sense` accepts one JSON object such as `{"record_id":"w001","sense_id":"w001-s1","candidates":["별빛","달빛"]}`. It changes that sense only; unchanged candidates and peer senses keep their review state. `mark-reviewed` input is JSONL with one object per reviewed sense, for example `{"record_id":"w001","sense_id":"w001-s1","reviewed_candidates":["별빛","달빛"]}`. These receipts record that the producer has completed the required AI inspection; the CLI cannot make or validate semantic judgments.
+
+`mark-explored` input is JSONL with exact source identity only, such as `{"record_id":"w001","sense_id":"w001-s1"}`. Call it only after actually completing both distinct B scenes for that sense; no scene narrative is stored. `remove-candidate` input is one JSON object with `record_id`, `sense_id`, exact `candidate`, and `confirmed_ineligible: true`; it also requires a current meaning/form review receipt for that exact source sense.
+
 ### A/B/C/D 공통 후보 표현 단위 — Stage 1 필수 생산 계약
 
 **가능한 연상은 넓게 보존하고, 뜻풀이 복사·위장 서술구만 엄격히 차단한다.** Stage 1은 작가가 연상할 수 있는 **독립 단어·어휘와 출발 의미에서 확장된 짧은 장면·심상·감각 표현**을 수집한다. 출발 sense에 설명 가능한 연결이 있다면 익숙한 단어, 느슨한 간접 연상, 다른 품사, 의외의 사물·감각·행동을 후보로 남겨 Stage 2가 가치를 판단하도록 한다. 반대로 단어 몇 개로 후보 수를 맞추는 할당량도 없고, 후보 수를 줄이는 것이 목표도 아니다.
