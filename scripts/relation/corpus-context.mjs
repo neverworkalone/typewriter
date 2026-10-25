@@ -92,9 +92,8 @@ function isNiklDistributor(value) {
 }
 
 function isWrittenCorpusProfile(profile) {
-  const title = String(profile.title ?? '');
-  const category = String(profile.category ?? '');
-  return /문어|written corpus/iu.test(`${title}\n${category}`);
+  const category = String(profile.category ?? '').trim();
+  return /^(?:문어|written corpus)(?:\s|>|$)/iu.test(category);
 }
 
 function inspectShortIndex(database) {
@@ -122,12 +121,16 @@ export async function inspectWrittenCorpusIndex(databasePath, { scratchDirectory
   let profileCount = 0;
   let bigram;
   try {
-    const profiles = database.prepare('SELECT DISTINCT title, distributor, category FROM source_files LIMIT 65').all();
-    if (profiles.length === 0 || profiles.length > 64) fail('source profile count must be within [1, 64]');
-    if (profiles.some((profile) => !isNiklDistributor(profile.distributor) || !isWrittenCorpusProfile(profile))) {
-      fail('corpus source metadata does not identify only NIKL written-corpus material');
+    const sourceRows = database.prepare('SELECT title, distributor, category FROM source_files').all();
+    if (sourceRows.length === 0) fail('source profile count must be at least 1');
+    const profiles = new Set();
+    for (const source of sourceRows) {
+      if (!isNiklDistributor(source.distributor) || !isWrittenCorpusProfile(source)) {
+        fail('corpus source metadata does not identify only NIKL written-corpus material');
+      }
+      profiles.add(JSON.stringify([source.title, source.distributor, source.category]));
     }
-    profileCount = profiles.length;
+    profileCount = profiles.size;
     bigram = inspectShortIndex(database);
   } finally {
     database.close();

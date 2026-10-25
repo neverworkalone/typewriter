@@ -17,11 +17,13 @@ from textual.widgets import Button, Collapsible, Footer, Header, RichLog, Select
 import time
 
 from . import auth, control
-from .config import Paths, adapter_label, adapters, load_config, methods, ordered_models, pin_summary, registry
+from .config import (Paths, adapter_label, adapters, load_config, methods, ordered_models, pin_summary, registry,
+                     stage2_models, STAGE2_ADAPTERS)
 from .logrender import render_line
-from .views import _hhmm, _when, control_columns, select_width, card_text, detail_header, model_title, tier_footer, detail_meta  # noqa: F401  (CARD_W/ICON re-exported for tests)
+from .views import (_hhmm, _when, control_columns, select_width, card_text, detail_header, maintainer_card_text,  # noqa: F401  (CARD_W/ICON re-exported for tests)
+                    model_title, tier_footer, detail_meta)
 from .logtail import LogTail, redact
-from .store import Store
+from .store import STAGE2_METHOD, Store
 
 TMUX_SUP = "warroom-supervisor"
 
@@ -102,7 +104,8 @@ class Card(Static, can_focus=True):
                 ("up", "move(-1,0)", ""), ("down", "move(1,0)", "")]
 
     def __init__(self, model: str, method: str):
-        super().__init__("", id=f"card-{model}-{method}", classes="card")
+        # Stage 2 cards start neutral: colour belongs to a task that exists, never to an idle slot.
+        super().__init__("", id=f"card-{model}-{method}", classes="card empty" if method == STAGE2_METHOD else "card")
         self.model, self.method = model, method
 
     def on_click(self) -> None:
@@ -125,6 +128,13 @@ class Card(Static, can_focus=True):
             if 0 <= col < len(models) and 0 <= row < len(methods) and (c.model, c.method) == (models[col], methods[row]):
                 c.focus()
                 return
+
+
+class MaintainerCard(Static):
+    """Status-only card for the hidden #1555 Maintainer (always in the DeepSeek column). It starts and opens nothing."""
+
+    def __init__(self):
+        super().__init__("", id="card-maintainer", classes="card empty")
 
 
 class BoardFooter(Footer):
@@ -373,7 +383,7 @@ class LineDetail(Screen):
             control.retry(store, m, me)
         elif e.button.id == "stop":
             self.app.push_screen(Confirm(
-                f"{m} / Method {me.upper()} 라인의 AI 실행을 즉시 중지합니다."), self._stopped)
+                f"{m} / {control.method_label(me)} 라인의 AI 실행을 즉시 중지합니다."), self._stopped)
 
         elif e.button.id == "clear":
             st = control.line_status(store, m, me)
@@ -382,7 +392,7 @@ class LineDetail(Screen):
             pr = f"PR #{st['pr']}" if st["pr"] else "PR 없음 (소유 브랜치의 PR은 정리 시 조회)"
             self.app.push_screen(Confirm(
                 f"[b]Clear[/b] — 미완료 배치를 포기합니다.\n"
-                f"producer: {m} · method: {me.upper()} · batch: {st['batch']} (id {st['batch_id']}) · {pr}\n"
+                f"producer: {m} · method: {control.method_label(me)} · batch: {st['batch']} (id {st['batch_id']}) · {pr}\n"
                 "AI를 중지하고 커밋되지 않은 변경, 소유 worktree·로컬 브랜치·실행 상태/이력·실행 파일을 삭제합니다. "
                 "소유가 확인된 열린 PR은 머지 없이 닫고, 안전이 확인된 소유 원격 브랜치도 삭제합니다. "
                 "머지된 PR이 있으면 포기하지 않고 정상 정리 경로로 넘깁니다."),
@@ -447,6 +457,23 @@ class WarRoom(App):
         self.models = ordered_models(self.cfg)   # board order: adapter label, never config order
         self.methods = methods(self.cfg)
 
+    @property
+    def stage2_capable(self) -> set:
+        """Row 5, Claude / Codex columns: Stage 2 (never DeepSeek/OpenCode)."""
+        return set(stage2_models(self.cfg))
+
+    @property
+    def maintainer_col(self):
+        """Row 5, the first registered column that cannot run Stage 2 (DeepSeek): the Maintainer's status, whichever
+        model actually runs the Maintainer."""
+        capable = self.stage2_capable
+        return next((m for m in self.models if m not in capable), None)
+
+    def _line_keys(self):
+        """Every Line of the Board: Methods A-D for each model plus Stage 2 for the models that may run it."""
+        return [(m, me) for m in self._lines() for me in self.methods] + \
+               [(m, STAGE2_METHOD) for m in self._lines() if m in self.stage2_capable]
+
     def _lines(self):
         """Columns come from the registry (+ models that still own history), never a fixed 3."""
         known = set(self.models)
@@ -464,7 +491,7 @@ class WarRoom(App):
             yield Select([(adapter_label(a), a) for a in kinds], value=first, allow_blank=False, id="adapter")
             # Only shown when one CLI/Adapter hosts several logical models: never guess which one to start.
             yield Select(self._model_options(first), allow_blank=False, id="model")
-            yield Select([(m.upper(), m) for m in self.methods], allow_blank=False, id="method")
+            yield Select(self._method_options(first), value=self.methods[0], allow_blank=False, id="method")
             yield Select([("Single", "single"), ("Continuous", "continuous")],
                          value="single", allow_blank=False, id="mode")
             yield Button("Start", id="start", variant="success")
@@ -476,6 +503,10 @@ class WarRoom(App):
                     yield Static(model_title(registry(self.cfg).get(model, {}).get("label", model)), classes="coltitle", id=f"title-{model}")
                     for me in self.methods:
                         yield Card(model, me)
+                    if model in self.stage2_capable:   # row 5: Claude / Codex Stage 2 ...
+                        yield Card(model, STAGE2_METHOD)
+                    elif model == self.maintainer_col:   # ... and the Maintainer status in the DeepSeek column
+                        yield MaintainerCard()
         yield BoardFooter(show_command_palette=False)
 
     def action_toggle_tier(self) -> None:
@@ -558,6 +589,22 @@ class WarRoom(App):
         return [(f"{reg[pid]['label']} ({pid})", pid) for pid in ordered_models(self.cfg)
                 if reg[pid]["adapter"] == adapter]
 
+    def _method_options(self, adapter: str):
+        """Stage 1 Methods; `Stage 2` only for a CLI that may run it (Claude, Codex)."""
+        opts = [(m.upper(), m) for m in self.methods]
+        return opts + [("Stage 2", STAGE2_METHOD)] if adapter in STAGE2_ADAPTERS else opts
+
+    def _sync_method_select(self, adapter: str) -> None:
+        """Offer Stage 2 only for Claude/Codex; a Stage 2 choice left over from there falls back to the first Method."""
+        sel = self.query_one("#method", Select)
+        cur = sel.value
+        opts = self._method_options(adapter)
+        with sel.prevent(Select.Changed):
+            sel.set_options(opts)
+            sel.value = cur if any(v == cur for _, v in opts) else self.methods[0]
+        sel.styles.width = select_width(label for label, _ in self._method_options("claude"))
+        self._fit_controls()
+
     def _selected_model(self) -> str | None:
         """The logical model a Start applies to: the model Select, or the adapter's only model."""
         sel = self.query_one("#model", Select)
@@ -575,7 +622,7 @@ class WarRoom(App):
     def _size_selects(self) -> None:
         """Static top-bar Selects get a width from their longest label (no mid-word wrap)."""
         for sid, labels in (("adapter", [adapter_label(a) for a in adapters(self.cfg)]),
-                            ("method", [m.upper() for m in self.methods]),
+                            ("method", [label for label, _ in self._method_options("claude")]),
                             ("mode", ["Single", "Continuous"])):
             self.query_one(f"#{sid}", Select).styles.width = select_width(labels)
 
@@ -605,11 +652,13 @@ class WarRoom(App):
         self.run_worker(self.check_auth, thread=True)
         self._size_selects()
         self._sync_model_select(str(self.query_one("#adapter", Select).value))
+        self._sync_method_select(str(self.query_one("#adapter", Select).value))
         self.refresh_view()
 
     def on_select_changed(self, e: Select.Changed) -> None:
         if e.select.id == "adapter" and e.value is not Select.BLANK:
             self._sync_model_select(str(e.value))
+            self._sync_method_select(str(e.value))
 
     def check_auth(self) -> None:
         from .shell import Runner
@@ -626,29 +675,34 @@ class WarRoom(App):
         root = self.screen_stack[0]   # the board, even while Detail/Settings is on top
         alive = control.supervisor_alive(store)
         statuses = {}
-        for model in self._lines():
-            for me in self.methods:
-                st = statuses[(model, me)] = control.line_status(store, model, me)
-                try:
-                    card = root.query_one(f"#card-{model}-{me}", Card)
-                except Exception:
-                    continue
-                card.update(card_text(st))
-                card.set_classes("card " + (st["state"] if st["batch"] else "empty"))
+        for model, me in self._line_keys():
+            st = statuses[(model, me)] = control.line_status(store, model, me)
+            try:
+                card = root.query_one(f"#card-{model}-{me}", Card)
+            except Exception:
+                continue
+            card.update(Text(card_text(st)) if me == STAGE2_METHOD else card_text(st))   # a wait reason may hold [brackets]
+            card.set_classes("card " + (st["state"] if st["batch"] else "empty"))
+        maint = control.maintainer_card(store, self.cfg)
+        has_maint_card = bool(list(root.query("#card-maintainer")))
+        if has_maint_card:
+            mc = root.query_one("#card-maintainer", MaintainerCard)
+            mc.update(Text(maintainer_card_text(maint)))   # hold reasons may hold [brackets]: text, never markup
+            mc.set_classes("card " + {"IDLE": "empty", "WORKING": "PRODUCING", "ERROR": "ERROR"}[maint["state"]])
         root.query_one("#board-footer", Static).update(tier_footer(control.tier_state(store, self.cfg, self.methods)))
-        draining = [f"{s['model']}/{s['method'].upper()}" for s in statuses.values() if s["drain_once"]]
-        # The yellow area stays ONE line: the urgent Issue (Issue #1555) first, then the Drain note when both exist.
-        yellow = [x for x in (control.urgent_line(store, self.cfg),
+        draining = [f"{s['model']}/{control.method_label(s['method'])}" for s in statuses.values() if s["drain_once"]]
+        # The yellow area stays ONE line: the Drain note. The Maintainer's progress (Issue #1555) lives in its Board card
+        # (Issue #1684); only a Board without that card (no DeepSeek column) keeps it here.
+        yellow = [x for x in (control.urgent_line(store, self.cfg) if not has_maint_card else "",
                               "DRAIN ALL: 현재 배치 후 종료 — " + ", ".join(draining) if draining else "") if x]
         root.query_one("#drain-note", Static).update(Text(" │ ".join(yellow)))   # Text: hold reasons may hold [brackets], never markup
         root.query_one("#drain-note", Static).display = bool(yellow)
-        root.query_one("#stop-all", Button).disabled = not control.can_stop_all(
-            store, [(m, me) for m in self._lines() for me in self.methods])
+        root.query_one("#stop-all", Button).disabled = not control.can_stop_all(store, self._line_keys())
         # Only auth/model problems surface on the board.
         a, notes = self._auth, []
         if a is not None and not a["ok"]:
             notes += ["! GitHub 인증: " + "; ".join(a["problems"]) + "  ('s' Settings)"]
-        notes += [f"! {s['model']}/{s['method'].upper()} BLOCKED: {s['blocked']}"
+        notes += [f"! {s['model']}/{control.method_label(s['method'])} BLOCKED: {s['blocked']}"
                   for s in statuses.values() if s["blocked"]]
         if self._reload_fail:
             notes.append(f"! {self._reload_fail}")
@@ -666,11 +720,11 @@ class WarRoom(App):
             if model is None or me is Select.BLANK:
                 return self.notify("모델과 Method를 선택하세요.", severity="warning")
             ok, msg = control.start(self.store, model, str(me),
-                                    str(self.query_one("#mode", Select).value))
+                                    str(self.query_one("#mode", Select).value), cfg=self.cfg)
             if not ok:
                 self.notify(msg, severity="warning")
         elif e.button.id == "drain-all":
-            control.drain_all(self.store, [(m, me) for m in self._lines() for me in self.methods])
+            control.drain_all(self.store, self._line_keys())
         elif e.button.id == "stop-all":
             n = len(self.store.incomplete_batches())
             self.push_screen(Confirm(

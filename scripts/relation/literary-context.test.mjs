@@ -241,6 +241,26 @@ test('literal search does not join matches across physical lines; zero-hit sense
   }
 });
 
+test('context excerpts prefer the canonical lemma when an earlier shorter search form also hits', async () => {
+  const fixture = await makeFixture({
+    unitCount: 1,
+    firstForm: '교이',
+    unitText: `교${'앞'.repeat(180)}교이가 문장에 나타났다.`,
+  });
+  try {
+    const checkpoint = await load(fixture);
+    checkpoint.records[0].senses[0].added_forms.push({ form: '교', basis: 'fixture supplemental form', added_at: '2026-01-01T00:00:00.000Z' });
+    await writeFile(fixture.checkpointPath, JSON.stringify(checkpoint));
+
+    const [item] = (await chunk(fixture, { contexts: 1, snippetChars: 100 })).items;
+    assert.equal(item.total_hits, 1);
+    assert.equal(item.contexts.length, 1);
+    assert.ok(item.contexts[0].x.includes('교이'), 'the excerpt should retain the canonical lemma hit instead of centering an earlier shorter form');
+  } finally {
+    await cleanup(fixture);
+  }
+});
+
 test('one chunk read, one submit and one export produce a Candidate v1 file bound to cited contexts', async () => {
   const fixture = await makeFixture({ unitCount: 6, workCount: 3 });
   try {

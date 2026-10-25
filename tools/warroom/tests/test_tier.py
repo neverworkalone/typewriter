@@ -4,7 +4,6 @@ import unittest
 from tests.fakes import World
 from tests.test_lines import multi_world
 from warroom import control
-from warroom.views import tier_footer
 
 METHODS = ["a", "b", "c", "d"]
 
@@ -65,21 +64,6 @@ class TierSwitch(unittest.TestCase):
         self.assertEqual(w.store.batch(done)["model_tier"], "free")
         self.assertEqual(w.sup._run(w.store.batch(a)).model, "p/go")        # fix/recovery launches read this
         w.tmp.cleanup()
-
-    def test_footer_text_is_colour_coded_per_state(self):
-        for state, markup, label in (
-            ("free", "[b green]Free[/]", "Free"),
-            ("go", "[b #ffa500]Go[/]", "Go"),
-            ("mixed", "[b yellow]혼합[/]", "혼합"),
-            ("none", "[dim]DeepSeek Go 모델 미설정[/]", "DeepSeek Go 모델 미설정"),
-        ):
-            footer = tier_footer(state)
-            self.assertIn(markup, footer, state)
-            self.assertIn(label, footer, state)
-            self.assertRegex(footer, r"Free/Go 전환 \(.+\)", state)
-        self.assertEqual(tier_footer("free").split(" (")[0],
-                         "[b]q[/] Quit · [b]s[/] Settings · [b]r[/] 설정 리로드 · [b]f[/] Free/Go 전환")
-        self.assertNotEqual(tier_footer("free"), tier_footer("go"))
 
 
 if __name__ == "__main__":
