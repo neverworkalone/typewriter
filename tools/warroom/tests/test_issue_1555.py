@@ -25,7 +25,8 @@ MERGE = "c" * 40
 def report(**over):
     r = {"version": 1, "defect_class": "span-in-jsonl-form", "summary": "validator accepts clause-like candidates",
          "failing_cases": ["C000123 → 걸음을 옮기며 걷는다", "C000456 → 말을 건네며 웃는다"],
-         "reproduction": "node scripts/validate/candidate-form.mjs <file>", "root_cause": "form gate ignores predicates",
+         "reproduction": "node scripts/validate/candidate-form.mjs <file>", "suspected_layer": "scripts/validate/candidate-form.mjs",
+         "root_cause": "form gate ignores predicates",
          "scope": "all existing and future A/B batches", "proposed_fix": "reject predicate endings",
          "regression": "table over predicate endings"}
     r.update(over)
@@ -243,10 +244,13 @@ class ReportEvidence(unittest.TestCase):
     CASES = [
         ("plain text", dict(raw="이건 공통 결함인 것 같다 shared defect")),
         ("not an object", dict(raw="[1, 2]")),
-        ("one failing case only", dict(data=report(failing_cases=["only one"]))),
-        ("duplicate failing cases", dict(data=report(failing_cases=["same", "same"]))),
+        ("no failing case", dict(data=report(failing_cases=[]))),
+        ("blank failing case", dict(data=report(failing_cases=["  "]))),
         ("missing reproduction", dict(data=report(reproduction=None))),
-        ("blank root cause", dict(data=report(root_cause="  "))),
+        ("missing suspected layer", dict(data=report(suspected_layer=None))),
+        ("blank suspected layer", dict(data=report(suspected_layer="  "))),
+        ("blank optional root cause", dict(data=report(root_cause="  "))),
+        ("blank optional regression", dict(data=report(regression=""))),
         ("bad class slug", dict(data=report(defect_class="Bad Class"))),
         ("unknown field", dict(data={**report(), "note": "x"})),
         ("wrong version", dict(data=report(version=2))),
@@ -273,7 +277,10 @@ class ReportEvidence(unittest.TestCase):
                 w.tmp.cleanup()
 
     def test_valid_but_unusual_reports_are_accepted(self):
+        minimal = {k: v for k, v in report().items() if k not in ("root_cause", "scope", "proposed_fix", "regression")}
         for name, data in [("max cases", report(failing_cases=[f"c{i}" for i in range(20)])),
+                           ("one real case, cheap report", report(failing_cases=["C000123 → 걸음을 옮기며 걷는다"])),
+                           ("only the required fields", minimal),
                            ("unicode and markers in text", report(summary="`--> <!-- warroom-defect-class:x --> 한글 ✓")),
                            ("minimal slug", report(defect_class="abc"))]:
             with self.subTest(name):
@@ -281,6 +288,9 @@ class ReportEvidence(unittest.TestCase):
                 b = produce_and_report(w, data=data)
                 self.assertEqual(b["pause_reason"], "shared_defect")
                 body = w.gh.issues[101]["body"]
+                if name == "only the required fields":
+                    self.assertIn("Maintainer가 조사", body)         # unreported analysis is left to the Maintainer
+                    self.assertIn("scripts/validate/candidate-form.mjs", body)
                 # report text can neither forge nor end an identity marker
                 self.assertEqual({v for k, v in defects.markers(body) if k == defects.CLASS_MARK}, {data["defect_class"]})
                 w.tmp.cleanup()

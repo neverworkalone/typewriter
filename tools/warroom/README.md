@@ -185,8 +185,10 @@ Rules (fail closed):
 A batch (or its PR review) that finds a *repeatable defect of a shared layer* reports it in a structured way — never by
 keywords in free text. Format and rules: [`prompts/shared-defect.md`](prompts/shared-defect.md). A producer writes
 `.warroom-scratch/shared-defect.json` in its worktree; a trusted reviewer's `-1` may carry the same JSON in a
-```` ```warroom-shared-defect ```` block. At least two distinct real failing cases and every field are required;
-anything weaker (one bad candidate, CLI/auth/network trouble, malformed JSON) pauses only that batch as
+```` ```warroom-shared-defect ```` block. Required: `defect_class`, `summary`, at least one really failing case, a `reproduction` and the `suspected_layer`
+(root cause, scope, fix and regression design are optional hints — the Maintainer does that work). A disputed single
+candidate has no reproducible shared-layer failure, so it fails this bar; anything weaker (that, CLI/auth/network
+trouble, malformed JSON, a blank field) pauses only that batch as
 `pause_reason=defect_unverified` with everything kept, creates **no** Issue, and an ordinary Retry resumes it.
 
 ```text

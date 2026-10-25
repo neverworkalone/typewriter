@@ -17,10 +17,15 @@ import re
 REPORT_FILE = ".warroom-scratch/shared-defect.json"   # inside the batch worktree; git-ignored scratch
 FENCE = "warroom-shared-defect"
 VERSION = 1
-MIN_FAILING_CASES = 2   # one failing candidate is a dispute about that candidate, not a repeatable defect class
+# The producer reports cheaply: one really failing case, how to reproduce it and the shared layer it suspects.
+# Root cause, scope, fix and regression design are the Maintainer's work, so they are optional hints. What keeps a single
+# disputed candidate out is not a case count but the pair "reproducible command + suspected shared layer".
+REQUIRED_TEXT = ("summary", "reproduction", "suspected_layer")
+OPTIONAL_TEXT = ("root_cause", "scope", "proposed_fix", "regression")
+TEXT_FIELDS = REQUIRED_TEXT + OPTIONAL_TEXT
+MIN_FAILING_CASES = 1
 MAX_FAILING_CASES = 20
 MAX_TEXT = 4000
-TEXT_FIELDS = ("summary", "reproduction", "root_cause", "scope", "proposed_fix", "regression")
 _CLASS = re.compile(r"^[a-z0-9][a-z0-9-]{2,63}$")
 _KEYS = {"version", "defect_class", "failing_cases", *TEXT_FIELDS}
 
@@ -47,9 +52,11 @@ def parse(text: str) -> dict:
         raise ReportProblem("defect_class는 소문자·숫자·하이픈으로 된 3~64자 slug여야 합니다.")
     out: dict = {"version": VERSION, "defect_class": cls}
     for key in TEXT_FIELDS:
+        if key not in data and key in OPTIONAL_TEXT:
+            continue
         v = data.get(key)
         if not isinstance(v, str) or not v.strip():
-            raise ReportProblem(f"{key}가 비어 있습니다 (실제 근거가 필요합니다).")
+            raise ReportProblem(f"{key}가 비어 있습니다 (필수: {', '.join(REQUIRED_TEXT)}; 선택 항목은 생략하거나 내용을 채우세요).")
         if len(v) > MAX_TEXT:
             raise ReportProblem(f"{key}가 너무 깁니다 (최대 {MAX_TEXT}자).")
         out[key] = v.strip()
@@ -58,8 +65,7 @@ def parse(text: str) -> dict:
         raise ReportProblem("failing_cases는 비어 있지 않은 문자열 목록이어야 합니다.")
     cases = [c.strip() for c in cases]
     if len(set(cases)) < MIN_FAILING_CASES:
-        raise ReportProblem(f"서로 다른 실제 실패 사례가 {MIN_FAILING_CASES}건 이상 필요합니다 "
-                            "(후보 1건의 오류·논쟁은 공통 결함이 아닙니다).")
+        raise ReportProblem(f"실제로 재현되는 실패 사례가 {MIN_FAILING_CASES}건 이상 필요합니다.")
     if len(cases) > MAX_FAILING_CASES or any(len(c) > MAX_TEXT for c in cases):
         raise ReportProblem(f"failing_cases는 최대 {MAX_FAILING_CASES}건, 각 {MAX_TEXT}자 이하여야 합니다.")
     out["failing_cases"] = cases
@@ -135,6 +141,8 @@ def batch_facts(b, pr: dict | None) -> str:
 
 def issue_body(report: dict, event_key: str, facts: str, source: str) -> str:
     cases = "\n".join(f"- {_safe(c)}" for c in report["failing_cases"])
+    pending = "(보고자가 제시하지 않음 — Maintainer가 조사)"
+    opt = lambda key: _safe(report[key]) if key in report else pending
     return "\n".join([
         "## 공통 결함 (War Room 자동 등록)",
         "",
@@ -148,10 +156,11 @@ def issue_body(report: dict, event_key: str, facts: str, source: str) -> str:
         f"### 요약\n{_safe(report['summary'])}",
         f"### 실제 실패 사례\n{cases}",
         f"### 재현\n{_safe(report['reproduction'])}",
-        f"### 원인 / 공통 계층\n{_safe(report['root_cause'])}",
-        f"### 적용 범위 (기존 및 향후 배치)\n{_safe(report['scope'])}",
-        f"### 제안 수정\n{_safe(report['proposed_fix'])}",
-        f"### 회귀 검증\n{_safe(report['regression'])}",
+        f"### 의심되는 공유 계층\n{_safe(report['suspected_layer'])}",
+        f"### 원인 (보고자 추정)\n{opt('root_cause')}",
+        f"### 적용 범위 (기존 및 향후 배치)\n{opt('scope')}",
+        f"### 제안 수정\n{opt('proposed_fix')}",
+        f"### 회귀 검증\n{opt('regression')}",
         "",
         marker(EVENT_MARK, event_key),
         marker(CLASS_MARK, report["defect_class"]),
