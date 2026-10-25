@@ -231,6 +231,49 @@ test('long source metadata is explicitly bounded without dropping contexts from 
   }
 });
 
+test('a failed later context page resumes from its checkpoint after the corpus lock clears', async () => {
+  const fixture = await makeFixture({ paragraphCount: 20 });
+  let lock;
+  try {
+    await initialize(fixture);
+    const initialScan = await scanCorpusBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
+    assert.equal(initialScan.status, 'SEARCHED');
+    const first = await searchCorpusSense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'w1-s1', pageSize: 4, scratchDirectory: fixture.scratchDirectory });
+    assert.equal(first.returned, 4);
+
+    lock = new DatabaseSync(fixture.databasePath);
+    lock.exec('BEGIN EXCLUSIVE');
+    await assert.rejects(searchCorpusSense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'w1-s1', pageSize: 4, cursor: first.next_cursor, scratchDirectory: fixture.scratchDirectory }), /locked|busy/iu);
+    lock.exec('ROLLBACK');
+    lock.close();
+    lock = null;
+
+    let { checkpoint } = await loadCorpusCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory });
+    assert.equal(checkpoint.records[0].senses[0].search.status, 'SEARCH_FAILED');
+    assert.equal(checkpoint.records[0].senses[0].contexts.length, 4);
+    assert.equal(checkpoint.records[0].senses[0].search.next_cursor, first.next_cursor);
+
+    const retryScan = await scanCorpusBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
+    assert.equal(retryScan.status, 'SEARCHED');
+    assert.equal(retryScan.query_calls, 0, 'recovery reuses the successful batch count cache');
+    const resumed = await searchCorpusSense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'w1-s1', pageSize: 4, scratchDirectory: fixture.scratchDirectory });
+    assert.equal(resumed.returned, 4);
+    assert.equal(resumed.inspected_contexts, 8);
+    assert.ok(resumed.results.every((result) => !first.results.some((prior) => prior.locator_key === result.locator_key)));
+    assert.ok(resumed.next_cursor);
+
+    ({ checkpoint } = await loadCorpusCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory }));
+    assert.equal(checkpoint.records[0].senses[0].contexts.length, 8);
+    assert.equal(checkpoint.records[0].senses[0].search.status, 'COUNTED');
+  } finally {
+    if (lock) {
+      try { lock.exec('ROLLBACK'); } catch {}
+      lock.close();
+    }
+    await cleanup(fixture);
+  }
+});
+
 test('zero hits, ambiguity, exact mismatch, and incomplete samples remain distinct', async () => {
   const fixture = await makeFixture({ paragraphCount: 20 });
   try {

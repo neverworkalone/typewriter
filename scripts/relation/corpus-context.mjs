@@ -621,7 +621,11 @@ export async function scanCorpusBatch({ databasePath, checkpointPath, scratchDir
         }
         if (!querySets.some((item) => item.key === queryKey)) chunkCacheHits += 1;
         const totalHits = cached?.total_hits ?? counts.get(queryKey) ?? 0;
-        sense.search = { status: totalHits === 0 ? 'ZERO_HITS' : 'COUNTED', forms_sha256: sha256(JSON.stringify(forms)), total_hits: totalHits, query_key: queryKey, searched_at: new Date().toISOString(), failure: null };
+        const savedContextCount = sense.contexts.length;
+        const nextCursor = totalHits > savedContextCount && savedContextCount > 0 && savedContextCount < CORPUS_CONTEXT_LIMIT
+          ? encodeCursor({ cache_key: queryKey, offset: savedContextCount })
+          : null;
+        sense.search = { status: totalHits === 0 ? 'ZERO_HITS' : 'COUNTED', forms_sha256: sha256(JSON.stringify(forms)), total_hits: totalHits, query_key: queryKey, searched_at: new Date().toISOString(), next_cursor: nextCursor, failure: null };
         sense.status = totalHits === 0 ? 'ZERO_HITS' : 'SEARCHED';
       }
       cacheHits += chunkCacheHits;
@@ -664,7 +668,8 @@ export async function searchCorpusSense({ databasePath, checkpointPath, senseId,
   if (sense.contexts.length >= CORPUS_CONTEXT_LIMIT) fail(`the ${CORPUS_CONTEXT_LIMIT}-context per-sense cap is reached; record an explicit sample stop`);
   const size = parsePageSize(pageSize);
   const cacheKey = sense.search.query_key;
-  const startOffset = cursor ? decodeCursor(cursor, cacheKey) : (sense.contexts.length === 0 ? 0 : fail('provide the next_cursor returned by the previous context page'));
+  const savedCursor = cursor ?? (sense.contexts.length > 0 ? sense.search.next_cursor : null);
+  const startOffset = savedCursor ? decodeCursor(savedCursor, cacheKey) : (sense.contexts.length === 0 ? 0 : fail('checkpoint has no resumable context cursor; preserve it and re-run scan'));
   if (cursor && sense.search.next_cursor !== cursor) fail('page cursor is stale or does not match the saved checkpoint');
   if (startOffset !== sense.contexts.length) fail('page cursor does not continue after the saved contexts');
 
@@ -724,6 +729,8 @@ export async function searchCorpusSense({ databasePath, checkpointPath, senseId,
     const nextOffset = startOffset + results.length;
     const contextCeiling = Math.min(sense.search.total_hits, CORPUS_CONTEXT_LIMIT);
     const hasMore = nextOffset < contextCeiling;
+    sense.search.status = 'COUNTED';
+    sense.search.failure = null;
     sense.search.pages = (sense.search.pages ?? 0) + 1;
     sense.search.returned_contexts = sense.contexts.length;
     sense.search.next_cursor = hasMore ? encodeCursor({ cache_key: cacheKey, offset: nextOffset }) : null;
@@ -749,7 +756,8 @@ export async function searchCorpusSense({ databasePath, checkpointPath, senseId,
     if (error.message.startsWith('no further context')) throw error;
     const failure = safeSqliteFailure(error);
     sense.search.status = 'SEARCH_FAILED';
-    sense.search.failure = failure;
+    sense.search.next_cursor = encodeCursor({ cache_key: cacheKey, offset: startOffset });
+    sense.search.failure = { ...failure, stage: 'context_page' };
     sense.status = 'SEARCH_FAILED';
     await writeJsonAtomic(checkpointFile, checkpoint);
     throw error;

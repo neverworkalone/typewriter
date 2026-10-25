@@ -70,6 +70,11 @@ boundaries, source-sense identity, POS, or a relation. It returns `ZERO_HITS`,
 as `SEARCH_FAILED` with `failure.kind: "timeout"`; other SQLite failures keep a
 separate error kind. Neither state becomes an empty Candidate.
 
+If a context-page lookup fails after earlier pages were saved, rerun `scan` after
+the index is available. The successful count cache is reused and the next cursor
+is rebuilt from the saved context count. Then rerun `search`; when contexts are
+already saved, omitting `--cursor` resumes from that checkpoint position.
+
 ## Verify sense and explore
 
 Each returned context starts `PENDING`. Compare it with the exact Canonical
