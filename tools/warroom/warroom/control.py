@@ -11,7 +11,7 @@ from .config import maintainer_problem, registry
 from .store import MAINTENANCE_METHOD, Store
 
 STATES_HELP = ("PREPARE", "PRODUCING", "WAITING_REVIEW", "FIXING", "MERGED", "CLEANUP",
-               "COMPLETE", "PAUSED", "ERROR")
+               "COMPLETE", "PAUSED", "ERROR", "CLEARING")
 MODES = {"single": "Single", "continuous": "Continuous"}   # Continuous = sequential batches in ONE Line
 
 
@@ -39,6 +39,9 @@ def drain_all(store: Store, lines) -> int:
 
 
 def set_drain(store: Store, model: str, method: str, on: bool) -> None:
+    b = store.active_batch(model, method)
+    if on and b is not None and b["state"] == "CLEARING":   # a Clear leaves the Line IDLE: no Drain may outlive it
+        return
     store.set_line(model, method, drain=1 if on else 0)
 
 
@@ -55,6 +58,11 @@ def stop_all(store: Store) -> None:
     store.stop_lines()
 
 
+def request_clear(store: Store, model: str, method: str, batch_id: int) -> tuple[bool, str]:
+    """Operator Clear of ONE unfinished batch: only writes the batch-ID-specific request (the Supervisor tears down)."""
+    return store.request_clear(model, method, batch_id)
+
+
 def defect_locked(store: Store, b) -> bool:
     """A batch paused for a shared defect resumes only through the automatic release; an operator can override it
     only after an explicit Stop (which sets the hold), so a plain Retry never skips the fix."""
@@ -63,7 +71,8 @@ def defect_locked(store: Store, b) -> bool:
 
 def retry(store: Store, model: str, method: str) -> bool:
     b = store.active_batch(model, method)
-    if b is not None and b["state"] in ("PAUSED", "ERROR") and b["pid"] is None and not defect_locked(store, b):
+    if (b is not None and store.clear_request(model, method) is None and b["state"] in ("PAUSED", "ERROR")
+            and b["pid"] is None and not defect_locked(store, b)):
         store.set_line(model, method, retry_batch=b["id"])
         return True
     return False
@@ -126,10 +135,14 @@ def line_status(store: Store, model: str, method: str) -> dict:
             out["activity"] = (ev["ts"], ev["msg"])
     # Buttons: only meaningful commands are enabled.
     st = out["state"]
-    out["can_drain"] = out["occupied"] or out["run"]
-    out["can_stop"] = out["occupied"] and st not in ("PAUSED", "ERROR") or out["run"]
-    out["stoppable"] = out["occupied"] or out["run"]   # what `stop_lines` can actually affect
+    out["can_drain"] = (out["occupied"] and st != "CLEARING") or out["run"]
+    out["can_stop"] = out["occupied"] and st not in ("PAUSED", "ERROR", "CLEARING") or out["run"]
+    out["stoppable"] = (out["occupied"] and st != "CLEARING") or out["run"]   # what `stop_lines` can actually affect
     out["can_retry"] = st in ("PAUSED", "ERROR") and b["pid"] is None and not defect_locked(store, b)
+    req = store.clear_request(model, method) if out["occupied"] else None
+    out["clear"] = None if req is None else {"status": req["status"], "error": req["error"]}
+    # Clear needs a specific unfinished batch; once started it can only be re-armed after a BLOCKED teardown.
+    out["can_clear"] = out["occupied"] and (req is None or req["status"] == "BLOCKED")
     return out
 
 

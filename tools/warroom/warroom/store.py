@@ -33,6 +33,12 @@ CREATE TABLE IF NOT EXISTS handled_events (
   event_key TEXT NOT NULL, ts REAL NOT NULL,
   PRIMARY KEY (batch_id, pr, head_sha, event_key)
 );
+-- Operator Clear: one batch-ID-specific request per unfinished batch; the Supervisor owns the teardown.
+CREATE TABLE IF NOT EXISTS clear_requests (
+  batch_id INTEGER PRIMARY KEY, model TEXT NOT NULL, method TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'REQUESTED',   -- REQUESTED (teardown runs) | BLOCKED (waits for an operator retry)
+  error TEXT, note TEXT NOT NULL DEFAULT '', prior_state TEXT, requested_at REAL NOT NULL
+);
 """
 
 # Additive migration (user_version 2): per-Line controls and run history. Existing tables/rows
@@ -86,7 +92,10 @@ SCHEMA_VERSION = 6
 MAINTENANCE_METHOD = "m"   # the hidden Maintainer's execution record lives in `batches` under this method
 
 ACTIVE_STATES = ("PREPARE", "PRODUCING", "WAITING_REVIEW", "FIXING", "MERGED",
-                 "CLEANUP", "PAUSED", "ERROR")
+                 "CLEANUP", "PAUSED", "ERROR", "CLEARING")
+# Per-batch kv keys the Supervisor writes; removed with the batch by Clear.
+BATCH_KV_PREFIXES = ("last_poll_", "last_poll_fixhead_", "headlag_", "last_merge_check_", "no_pr_recovery_",
+                     "verified_completion_run_", "defect_hold_")
 
 
 class LineBusy(Exception):
@@ -305,8 +314,89 @@ class Store:
         """Request stop for one Line (or every Line): no new run is allowed until Start/Retry."""
         where, args = (("WHERE model=? AND method=?", (model, method)) if model
                        else ("WHERE method!=?", (MAINTENANCE_METHOD,)))   # Stop All is a production control
+        # A Line whose batch is CLEARING is pinned by the Clear: a Stop (All) must not leave a flag behind that the
+        # Supervisor would consume after the Clear ends (e.g. when it hands a merged PR to the regular cleanup).
+        where += (" AND NOT EXISTS (SELECT 1 FROM batches b WHERE b.producer=lines.model AND b.method=lines.method "
+                  "AND b.state='CLEARING')")
         with self._conn() as c:
             c.execute(f"UPDATE lines SET run=0, drain_once=0, force_stop=1, retry_batch=NULL, updated_at=? {where}", (time.time(), *args))
+
+    # --- Clear: abandon one unfinished batch (Supervisor-owned teardown) ---
+    def request_clear(self, model: str, method: str, batch_id: int) -> tuple[bool, str]:
+        """TUI -> Supervisor. Writes only the batch-ID-specific request; a stale ID is refused, a BLOCKED one is re-armed."""
+        now = time.time()
+        with self._conn() as c:
+            c.execute("BEGIN IMMEDIATE")
+            if method == MAINTENANCE_METHOD:
+                return False, "Maintainer 실행 기록은 Clear 대상이 아닙니다."
+            b = c.execute("SELECT state FROM batches WHERE id=? AND producer=? AND method=? AND state!='COMPLETE'",
+                          (batch_id, model, method)).fetchone()
+            if b is None:
+                return False, "대상 배치가 이미 끝났거나 이 라인의 미완료 배치가 아닙니다 (화면을 새로 고치세요)."
+            c.execute("INSERT OR IGNORE INTO clear_requests(batch_id,model,method,prior_state,requested_at) "
+                      "VALUES(?,?,?,?,?)", (batch_id, model, method, b["state"], now))
+            c.execute("UPDATE clear_requests SET status='REQUESTED', error=NULL WHERE batch_id=?", (batch_id,))
+        return True, ""
+
+    def clear_request(self, model: str, method: str):
+        with self._conn() as c:
+            return c.execute("SELECT * FROM clear_requests WHERE model=? AND method=?", (model, method)).fetchone()
+
+    def set_clear(self, batch_id: int, **fields) -> None:
+        cols = ", ".join(f"{k}=?" for k in fields)
+        with self._conn() as c:
+            c.execute(f"UPDATE clear_requests SET {cols} WHERE batch_id=?", (*fields.values(), batch_id))
+
+    def add_clear_note(self, batch_id: int, text: str) -> None:
+        with self._conn() as c:
+            c.execute("UPDATE clear_requests SET note=note||? WHERE batch_id=?", (text, batch_id))
+
+    def drop_clear(self, batch_id: int) -> None:
+        with self._conn() as c:
+            c.execute("DELETE FROM clear_requests WHERE batch_id=?", (batch_id,))
+            # Clear ended without removing the batch: no control written meanwhile may act on it afterwards.
+            c.execute("UPDATE lines SET force_stop=0, retry_batch=NULL, drain=0, drain_once=0 "
+                      "WHERE (model, method) IN (SELECT producer, method FROM batches WHERE id=?)", (batch_id,))
+
+    def pin_clear(self, model: str, method: str):
+        """Supervisor: atomically pin the requested batch ID as CLEARING and switch off everything that could start,
+        retry or recover this Line. Returns the request, or None (no request / stale one dropped)."""
+        with self._conn() as c:
+            c.execute("BEGIN IMMEDIATE")
+            req = c.execute("SELECT * FROM clear_requests WHERE model=? AND method=?", (model, method)).fetchone()
+            if req is None:
+                return None
+            b = c.execute("SELECT state FROM batches WHERE id=? AND producer=? AND method=?",
+                          (req["batch_id"], model, method)).fetchone()
+            if b is None or b["state"] == "COMPLETE":
+                c.execute("DELETE FROM clear_requests WHERE batch_id=?", (req["batch_id"],))
+                return None
+            if b["state"] != "CLEARING":
+                c.execute("UPDATE batches SET state='CLEARING', error=NULL, updated_at=? WHERE id=?",
+                          (time.time(), req["batch_id"]))
+                c.execute("UPDATE lines SET run=0, drain=0, drain_once=0, force_stop=0, retry_batch=NULL, blocked='', "
+                          "updated_at=? WHERE model=? AND method=?", (time.time(), model, method))
+            return req
+
+    def finish_clear(self, b, audit: str) -> None:
+        """One transaction: the batch row (so nothing stays claimed), its runs, review dedupe, events, request and
+        per-batch kv go; the Line is IDLE; a line-level audit event remains."""
+        bid, now = b["id"], time.time()
+        with self._conn() as c:
+            c.execute("BEGIN IMMEDIATE")
+            for table in ("runs", "handled_events", "events", "clear_requests"):
+                c.execute(f"DELETE FROM {table} WHERE batch_id=?", (bid,))
+            for prefix in BATCH_KV_PREFIXES:
+                c.execute("DELETE FROM kv WHERE key=?", (f"{prefix}{bid}",))
+            # The batch is gone for good: its shared-defect reports must leave the publish/release loops (other
+            # batches linked to the same Issue keep their own defect rows untouched).
+            c.execute("UPDATE defects SET state='OVERRIDDEN', hold_reason='운영자가 배치를 Clear함', updated_at=? "
+                      "WHERE batch_id=? AND state NOT IN ('RELEASED','OVERRIDDEN')", (now, bid))
+            c.execute("DELETE FROM batches WHERE id=?", (bid,))
+            c.execute("UPDATE lines SET run=0, drain=0, drain_once=0, force_stop=0, retry_batch=NULL, blocked='', updated_at=? "
+                      "WHERE model=? AND method=?", (now, b["producer"], b["method"]))
+            c.execute("INSERT INTO events(batch_id,ts,level,msg,line) VALUES(NULL,?,?,?,?)",
+                      (now, "info", audit, f"{b['producer']}/{b['method']}"))
 
     # --- run history ---
     def add_run(self, batch_id: int, kind: str, session_id, pid, log_file, exit_file,

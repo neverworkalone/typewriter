@@ -132,6 +132,9 @@ function changedFileContainsSchemaSql(filePath, revision, repositoryDirectory) {
   // Test suites may create temporary SQLite fixture tables. Those fixtures
   // are not production schema owners and must not select the product build.
   if (/\.(?:test|spec)\.[cm]?[jt]sx?$/u.test(filePath)) return false;
+  // War Room keeps its own local operator-control SQLite database (tools/warroom/.local); it is never part of the
+  // Full/Lite product schema, so its DDL must not select the product build. Product paths stay fail-closed.
+  if (filePath.startsWith('tools/warroom/')) return false;
   try {
     const bytes = runGit(['show', `${revision}:${filePath}`], repositoryDirectory);
     return containsSqlSchemaMutation(decodeGitText(bytes, `${revision}:${filePath}`));

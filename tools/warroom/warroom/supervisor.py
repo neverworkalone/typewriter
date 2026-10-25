@@ -108,6 +108,10 @@ class Supervisor:
 
     def _tick_line(self, model: str, method: str) -> None:
         ln = self.store.line(model, method)
+        if self.store.pin_clear(model, method) is not None:   # a Clear pins its batch before anything else can act
+            b = self.store.active_batch(model, method)
+            if b is not None and b["state"] == "CLEARING":
+                return self._clear(b)
         b = self.store.active_batch(model, method)
         if ln["force_stop"]:
             self.store.set_line(model, method, force_stop=0)
@@ -332,6 +336,100 @@ class Supervisor:
         self.store.update(b["id"], retry_after=None)
         self._fail(b, "PAUSED", "강제 중지됨. worktree·브랜치·PR은 보존됨 (프로세스 종료 확인 후 Retry로 재개).")
         self._reap_stopped(self.store.batch(b["id"]))
+
+    # ---- CLEARING: operator-confirmed abandon of one batch ------------------
+    def _clear_block(self, b, msg: str) -> None:
+        """Teardown stopped safely: keep the CLEARING pin (nothing relaunches) until the operator re-arms Clear."""
+        self.store.set_clear(b["id"], status="BLOCKED", error=msg)
+        self.store.update(b["id"], error=msg)
+        self.store.log(b["id"], f"Clear 중단(보존, 재시도 가능): {msg}", "error")
+
+    def _clear(self, b) -> None:
+        """Invariant: nothing is deleted before the AI process is gone and ownership of the worktree, every PR on the
+        branch and the remote branch is proven; every step is idempotent, so a restart or retry resumes teardown."""
+        req = self.store.clear_request(b["producer"], b["method"])
+        if req is None or req["batch_id"] != b["id"]:
+            return self._fail(b, "ERROR", "Clear 요청 기록을 찾을 수 없어 보존합니다.")
+        if req["status"] == "BLOCKED":
+            return
+        ad = self._adapter(b["producer"])
+        if b["pid"] is not None:
+            if ad.alive(b["pid"]):
+                ad.stop(b["pid"])
+                return self.store.log(b["id"], "Clear: AI 프로세스 종료 요청, 종료 확인 대기")
+            self.store.update(b["id"], pid=None)
+            self.store.finish_runs(b["id"], "cleared")
+            b = self.store.batch(b["id"])
+        try:
+            merged = self._clear_teardown(b, req)
+        except (CleanupBlocked, GitError, RecoveryBlocked) as e:
+            return self._clear_block(b, str(e))
+        except Exception as e:
+            return self._clear_block(b, f"{type(e).__name__}: {e}")
+        if merged is not None:   # merged work is never abandoned: hand it to the regular merged cleanup path
+            self.store.drop_clear(b["id"])
+            self._enter_merged(b, merged, "Clear 중단: 머지된")
+
+    def _clear_teardown(self, b, req):
+        branch, wt = b["branch"], Path(b["worktree"])
+        if branch != f"{b['method']}-{b['producer']}-{b['shard']}-{b['batch']}":
+            raise RecoveryBlocked(f"브랜치 {branch!r}가 War Room 소유 이름이 아닙니다")
+        exists = self.git.verify_owned(wt, branch)
+        nums = {p["number"] for p in self.gh.prs_for_branch(branch)} | ({b["pr_number"]} if b["pr_number"] else set())
+        for pr in self.gh.open_prs():
+            if pr.get("baseRefName") == branch and pr["number"] not in nums:
+                raise RecoveryBlocked(f"열린 PR #{pr['number']}이 이 브랜치를 base로 사용합니다")
+        infos = []
+        for n in sorted(nums):
+            info = self.gh.pull(n)
+            if info.get("head_ref") != branch:
+                raise RecoveryBlocked(f"PR #{n}의 head 브랜치 {info.get('head_ref')!r}가 소유 브랜치와 다릅니다")
+            if info["merged"]:
+                return info
+            infos.append(info)
+        expected = (b["shard"], b["batch"], b["method"], b["producer"])
+        open_prs = [i for i in infos if i["state"] == "open"]
+        for i in open_prs:
+            cands = batches.pr_candidates({"number": i["number"], "files": self.gh.pull_files(i["number"])})
+            if cands != [expected]:
+                raise RecoveryBlocked(f"PR #{i['number']}의 Candidate 파일 소유권이 배치와 일치하지 않습니다 "
+                                      f"(기대 {expected}, 확인 {cands})")
+        # Every ownership proof comes BEFORE the first irreversible step: a failing check must never leave a closed PR.
+        remote = self.git.remote_head(branch)
+        if remote is not None:
+            allowed = {i["head_sha"] for i in infos} | ({self.git.head(wt)} if exists else set())
+            if remote not in allowed:
+                raise RecoveryBlocked(f"원격 브랜치 HEAD {remote[:10]}가 확인된 PR/로컬 HEAD와 다릅니다")
+        for i in open_prs:
+            self.gh.close_pr(i["number"])
+            after = self.gh.pull(i["number"])
+            if after["merged"]:
+                return after
+            if after["state"] == "open":
+                raise RecoveryBlocked(f"PR #{i['number']}을 닫지 못했습니다")
+            self.store.add_clear_note(b["id"], f"PR #{i['number']} 머지 없이 닫음; ")
+            self.store.log(b["id"], f"Clear: PR #{i['number']} 머지 없이 닫음")
+        if remote is not None:
+            self.git.delete_remote_branch(branch, remote)   # lease: refused if origin moved since the proof above
+            if self.git.remote_head(branch) is not None:
+                raise RecoveryBlocked("원격 브랜치 삭제를 확인하지 못했습니다")
+            self.store.add_clear_note(b["id"], "원격 브랜치 삭제; ")
+        self.git.discard_owned(wt, branch)
+        self._remove_run_files(b)
+        note = self.store.clear_request(b["producer"], b["method"])["note"]
+        self.store.finish_clear(b, f"Clear 완료: {b['producer']}/{b['method'].upper()} 배치 {b['shard']}_{b['batch']} "
+                                   f"(이전 상태 {req['prior_state']}, 기록 PR {('#' + str(b['pr_number'])) if b['pr_number'] else '없음'}); "
+                                   f"{note}worktree·로컬 브랜치·실행 파일 정리")
+        return None
+
+    def _remove_run_files(self, b) -> None:
+        logs = self.paths.logs.resolve()
+        files = {Path(f) for r in self.store.runs(b["id"]) for f in (r["log_file"], r["exit_file"]) if f}
+        files |= {Path(f) for f in (b["log_file"], b["exit_file"]) if f}
+        files |= set(logs.glob(f"batch-{b['id']}-*.log")) | set(logs.glob(f"batch-{b['id']}-*.exit"))
+        for f in files:
+            if f.parent.resolve() == logs and f.name.startswith(f"batch-{b['id']}-"):
+                f.unlink(missing_ok=True)
 
     # ---- PREPARE -------------------------------------------------------
     def _blocked(self, ln, msg: str) -> None:

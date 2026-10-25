@@ -60,9 +60,10 @@ test('exact PR diffs for Candidate, Relation, Canonical and product-code changes
       ['product-code-only', 'src/runtime/popup.js'],
       ['test-fixture-only', 'tests/build-dictionary.test.mjs'],
       ['script-test-fixture-only', 'scripts/build/sqlite-fixture.test.mjs'],
+      ['war-room-local-db-only', 'tools/warroom/warroom/store.py'],
     ];
     for (const [label, filePath] of cases) {
-      const contents = label.endsWith('test-fixture-only')
+      const contents = label.endsWith('test-fixture-only') || label === 'war-room-local-db-only'
         ? `const fixtureSql = '${createTableKeyword} test_fixture (id TEXT PRIMARY KEY);';\n`
         : '{"fixture":true}\n';
       const result = await classifyChange(fixture, { [filePath]: contents });

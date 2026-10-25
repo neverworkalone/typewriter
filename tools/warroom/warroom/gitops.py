@@ -168,6 +168,42 @@ class Git:
         self._git("worktree", "remove", str(path))  # no --force
         self._git("branch", "-D", branch)
 
+    # ---- operator Clear: discard ONE owned batch (explicitly confirmed, unlike post-merge cleanup) ----
+    def verify_owned(self, path: Path, branch: str) -> bool:
+        """Fail closed unless `path` is this batch's War Room worktree. True: it exists and is verified; False: it is
+        already gone and git no longer registers it (a resumed Clear). Anything else raises CleanupBlocked."""
+        path = Path(path)
+        try:
+            rel = path.resolve().relative_to(self.worktrees_dir.resolve())
+        except ValueError:
+            raise CleanupBlocked(f"worktree가 War Room 디렉터리 밖에 있습니다: {path}")
+        if not rel.parts:
+            raise CleanupBlocked(f"War Room worktree 루트 자체는 대상이 아닙니다: {path}")
+        reg = self.registered(path)
+        if not path.exists():
+            if reg is not None:
+                raise CleanupBlocked(f"worktree 경로는 없지만 git에 등록되어 있습니다(수동 확인 필요): {path}")
+            return False
+        if reg != branch:
+            raise CleanupBlocked(f"worktree가 소유 브랜치 {branch}로 등록되어 있지 않습니다 (등록: {reg!r})")
+        try:
+            self.worktree_gitdir(path)
+        except GitError as e:
+            raise CleanupBlocked(str(e))
+        return True
+
+    def delete_remote_branch(self, branch: str, expected_sha: str) -> None:
+        """Delete origin's `branch` only if it still points at `expected_sha` (lease)."""
+        self._git("push", "origin", f"--force-with-lease=refs/heads/{branch}:{expected_sha}",
+                  "--delete", f"refs/heads/{branch}")
+
+    def discard_owned(self, path: Path, branch: str) -> None:
+        """Remove the verified worktree (tracked-dirty and untracked files included) and its local branch; only these."""
+        if self.verify_owned(path, branch):
+            self._git("worktree", "remove", "--force", str(path))
+        if self._git("rev-parse", "--verify", "--quiet", f"refs/heads/{branch}", check=False).ok:
+            self._git("branch", "-D", branch)
+
     # ---- applying a merged shared fix to a paused batch (Issue #1555) -----------------------------------------------
     def _owned(self, path: Path) -> Path:
         path = Path(path)

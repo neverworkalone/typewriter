@@ -208,6 +208,9 @@ class Maintenance:
     def _release(self) -> None:
         for d in self.store.defects(("FIX_MERGED",)):
             b = self.store.batch(d["batch_id"])
+            if b is None:   # the batch no longer exists: this defect can never be applied, and must not block the others
+                self.store.update_defect(d["id"], state="OVERRIDDEN", hold_reason="배치가 더 이상 존재하지 않음")
+                continue
             if b["state"] != "PAUSED" or b["pause_reason"] != "shared_defect" or b["defect_id"] != d["id"]:
                 # the operator already resumed (Stop + Retry) or the batch moved on: this fix is no longer ours to apply
                 self.store.update_defect(d["id"], state="OVERRIDDEN", hold_reason="운영자가 배치를 직접 재개함")
