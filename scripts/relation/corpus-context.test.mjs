@@ -8,23 +8,16 @@ import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 
 import {
-  addCorpusSearchForm,
   APPROVED_WRITTEN_CORPUS,
   exportCorpusCandidates,
-  finishCorpusSearch,
   initializeCorpusCheckpoint,
   inspectWrittenCorpusIndex,
   loadCorpusCheckpoint,
   patchCorpusCandidateFile,
-  recordCorpusExploration,
-  reviewCorpusCandidate,
-  reviewCorpusContext,
+  readCorpusContexts,
   scanCorpusBatch,
-  searchCorpusSense,
-  validateCorpusExport,
-  validateExistingCorpusCandidates,
+  submitCorpusResults,
   CORPUS_RESPONSE_LIMIT,
-  CORPUS_SWEEP_LENSES,
 } from './corpus-context.mjs';
 
 async function makeFixture({ paragraphCount = 1, withBigram = true, approvedDigests = true, longMetadata = false } = {}) {
@@ -88,8 +81,6 @@ async function makeFixture({ paragraphCount = 1, withBigram = true, approvedDige
   const insertMetadata = database.prepare('INSERT INTO index_metadata VALUES (?, ?)');
   for (const [key, value] of Object.entries({
     schema_version: 'fixture-schema-v1',
-    builder_version: 'fixture-builder-v1',
-    index_version: 'written-corpus-2025-1.0',
     sqlite_version: database.prepare('SELECT sqlite_version() AS version').get().version,
     input_manifest_sha256: metadataDigest.source_manifest_sha256,
     logical_row_digest: metadataDigest.logical_row_sha256,
@@ -127,45 +118,38 @@ async function initialize(fixture) {
 async function cleanup(fixture) {
   await rm(fixture.root, { recursive: true, force: true });
 }
+const CLI = fileURLToPath(new URL('./corpus-context-cli.mjs', import.meta.url));
+const SENSES = ['w1-s1', 'w2-s1', 'w3-s1', 'w4-s1', 'w26-s1'];
 
-const emptyFiveLenses = () => Object.fromEntries(CORPUS_SWEEP_LENSES.map((lens) => [lens, []]));
-const CORPUS_CLI_PATH = fileURLToPath(new URL('./corpus-context-cli.mjs', import.meta.url));
-
-function runExploreCli(fixture, { senseId, locatorKey, pass = 1, inputName, independentRead = false, note }) {
-  const args = [
-    CORPUS_CLI_PATH,
-    'explore',
-    '--checkpoint', '.warroom-scratch/001_01_d_codex.checkpoint.json',
-    '--sense-id', senseId,
-    '--locator-key', locatorKey,
-    '--pass', String(pass),
-    '--results', `.warroom-scratch/${inputName}`,
-  ];
-  if (independentRead) args.push('--independent-read');
-  if (note) args.push('--note', note);
-  return JSON.parse(execFileSync(process.execPath, args, { cwd: fixture.repositoryDirectory, encoding: 'utf8' }));
+function scanOptions(fixture) {
+  return { databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory };
 }
 
-test('preflight binds the approved NIKL index, validates read-only schema, and never prints local paths', async () => {
+async function scanAndRead(fixture, extra = {}) {
+  await initialize(fixture);
+  await scanCorpusBatch(scanOptions(fixture));
+  return readCorpusContexts({ ...scanOptions(fixture), ...extra });
+}
+
+const discovered = (senseId, ids, candidates = []) => ({ sense_id: senseId, status: 'discovered', verified: ids, candidates });
+
+test('preflight accepts the existing schema_version-only index without hashing the database', async () => {
   const fixture = await makeFixture();
   try {
-    const first = await inspectWrittenCorpusIndex(fixture.databasePath, { scratchDirectory: fixture.scratchDirectory });
-    const second = await inspectWrittenCorpusIndex(fixture.databasePath, { scratchDirectory: fixture.scratchDirectory });
-    assert.equal(first.status, 'READY');
-    assert.equal(first.source.name, 'NIKL Written Corpus 2025 (1.0)');
-    assert.equal(first.search.bigram_index, true);
-    assert.equal(first.search.read_only, true);
-    assert.match(first.database.sha256, /^[a-f0-9]{64}$/u);
-    assert.equal(first.database.sha256_cached, false);
-    assert.equal(second.database.sha256_cached, true);
-    assert.equal(JSON.stringify(first).includes(fixture.databasePath), false);
-    assert.equal(JSON.stringify(first).includes(fixture.sourcePath), false);
+    const routine = await inspectWrittenCorpusIndex(fixture.databasePath, { scratchDirectory: fixture.scratchDirectory });
+    assert.equal(routine.status, 'READY');
+    assert.equal(routine.index.index_version, null);
+    assert.equal(routine.database.sha256, null);
+    assert.equal(routine.search.read_only, true);
+    assert.equal(JSON.stringify(routine).includes(fixture.databasePath), false);
+    const explicit = await inspectWrittenCorpusIndex(fixture.databasePath, { scratchDirectory: fixture.scratchDirectory, verifyBinary: true });
+    assert.match(explicit.database.sha256, /^[a-f0-9]{64}$/u);
   } finally {
     await cleanup(fixture);
   }
 });
 
-test('preflight fails closed for the wrong snapshot and reports the bounded literal short-form fallback', async () => {
+test('preflight fails closed for the wrong snapshot and reports the literal short-form fallback', async () => {
   const wrong = await makeFixture({ approvedDigests: false });
   try {
     await assert.rejects(inspectWrittenCorpusIndex(wrong.databasePath, { scratchDirectory: wrong.scratchDirectory }), /approved NIKL Written Corpus/u);
@@ -174,412 +158,156 @@ test('preflight fails closed for the wrong snapshot and reports the bounded lite
   }
   const fallback = await makeFixture({ withBigram: false });
   try {
-    const result = await inspectWrittenCorpusIndex(fallback.databasePath, { scratchDirectory: fallback.scratchDirectory });
-    assert.equal(result.search.bigram_index, false);
-    assert.match(result.search.two_character_forms, /literal instr\(\) fallback/u);
+    assert.equal((await inspectWrittenCorpusIndex(fallback.databasePath, { scratchDirectory: fallback.scratchDirectory })).search.bigram_index, false);
   } finally {
     await cleanup(fallback);
   }
 });
 
-test('one read-only batch query per 25 records reuses duplicate form-set counts without sharing sense decisions', async () => {
+test('chunk scan, one read, one submit and a single Candidate v1 export complete a batch', async () => {
   const fixture = await makeFixture();
   try {
     await initialize(fixture);
-    const scan = await scanCorpusBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
+    const scan = await scanCorpusBatch(scanOptions(fixture));
     assert.equal(scan.status, 'SEARCHED');
     assert.equal(scan.query_calls, 20);
-    assert.ok(scan.cache_hits >= 1);
-    assert.equal(scan.checkpoint.records, 500);
-    const { checkpoint } = await loadCorpusCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory });
-    assert.equal(checkpoint.records[0].senses[0].search.status, 'COUNTED');
-    assert.equal(checkpoint.records[1].senses[0].search.total_hits, 1, 'one-character fallback finds a literal match');
-    assert.equal(checkpoint.records[2].senses[0].search.total_hits, 1, 'short-bigram index finds a literal match');
-    assert.equal(checkpoint.records[3].senses[0].search.total_hits, 1, 'trigram FTS finds a literal match');
-    assert.equal(checkpoint.records[25].senses[0].search.total_hits, 1, 'duplicate spelling reuses its raw count');
-    assert.equal(checkpoint.records[25].senses[0].contexts.length, 0, 'a cached query does not share context or source-sense judgment');
-    assert.equal(checkpoint.records[4].senses[0].status, 'ZERO_HITS');
-    assert.equal(checkpoint.records[4].senses[0].search.status, 'ZERO_HITS');
-  } finally {
-    await cleanup(fixture);
-  }
-});
+    assert.equal(scan.cache_hits, 1);
+    assert.equal(scan.checkpoint.statuses.SEARCHED, 5);
+    assert.equal(scan.checkpoint.statuses.ZERO_HITS, 495);
 
-test('paged contexts are bounded, resumable, exact-sense scoped, and do not imply verification', async () => {
-  const fixture = await makeFixture({ paragraphCount: 20 });
-  try {
-    await initialize(fixture);
-    await scanCorpusBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
-    const first = await searchCorpusSense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'w1-s1', pageSize: 4, scratchDirectory: fixture.scratchDirectory });
-    assert.equal(first.total_hits, 20);
-    assert.equal(first.returned, 4);
-    assert.equal(first.truncated, true);
-    assert.equal(first.results[0].judgment, undefined);
-    assert.ok([...first.results[0].excerpt].length <= 700);
-    assert.equal(JSON.stringify(first).includes(fixture.sourcePath), false);
-    assert.ok(first.next_cursor);
-    await assert.rejects(searchCorpusSense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'w26-s1', pageSize: 4, cursor: first.next_cursor, scratchDirectory: fixture.scratchDirectory }), /cursor/u);
-    const second = await searchCorpusSense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'w1-s1', pageSize: 4, cursor: first.next_cursor, scratchDirectory: fixture.scratchDirectory });
-    assert.equal(second.returned, 4);
-    assert.notEqual(second.results[0].locator_key, first.results[0].locator_key);
-    const { checkpoint } = await loadCorpusCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory });
-    assert.equal(checkpoint.records[0].senses[0].contexts[0].judgment, 'PENDING');
-    assert.equal(checkpoint.records[25].senses[0].contexts.length, 0);
-  } finally {
-    await cleanup(fixture);
-  }
-});
+    const read = await readCorpusContexts(scanOptions(fixture));
+    assert.equal(read.returned, 5);
+    assert.equal(read.remaining_searched, 0);
+    assert.deepEqual(read.senses.map((item) => item.sense_id), SENSES);
+    assert.ok(JSON.stringify(read).length < CORPUS_RESPONSE_LIMIT);
+    assert.match(read.senses[0].gloss, /의 뜻/u);
+    const ids = Object.fromEntries(read.senses.map((item) => [item.sense_id, item.contexts.map((context) => context.id)]));
 
-test('long source metadata is explicitly bounded without dropping contexts from a saved page', async () => {
-  const fixture = await makeFixture({ paragraphCount: 20, longMetadata: true });
-  try {
-    await initialize(fixture);
-    await scanCorpusBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
-    const page = await searchCorpusSense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'w1-s1', pageSize: 4, scratchDirectory: fixture.scratchDirectory });
-    assert.equal(page.returned, 4);
-    assert.equal(page.results.length, 4);
-    assert.ok(JSON.stringify(page).length < CORPUS_RESPONSE_LIMIT);
-    assert.equal(page.results[0].metadata_truncated.document_title, true);
-    assert.equal(page.results[0].metadata_truncated.document_author, true);
-    assert.equal(page.results[0].metadata_truncated.paragraph_id, true);
-    assert.ok(page.next_cursor);
-    const { checkpoint } = await loadCorpusCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory });
-    assert.equal(checkpoint.records[0].senses[0].contexts.length, 4);
-  } finally {
-    await cleanup(fixture);
-  }
-});
-
-test('a failed later context page resumes from its checkpoint after the corpus lock clears', async () => {
-  const fixture = await makeFixture({ paragraphCount: 20 });
-  let lock;
-  try {
-    await initialize(fixture);
-    const initialScan = await scanCorpusBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
-    assert.equal(initialScan.status, 'SEARCHED');
-    const first = await searchCorpusSense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'w1-s1', pageSize: 4, scratchDirectory: fixture.scratchDirectory });
-    assert.equal(first.returned, 4);
-
-    lock = new DatabaseSync(fixture.databasePath);
-    lock.exec('BEGIN EXCLUSIVE');
-    await assert.rejects(searchCorpusSense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'w1-s1', pageSize: 4, cursor: first.next_cursor, scratchDirectory: fixture.scratchDirectory }), /locked|busy/iu);
-    lock.exec('ROLLBACK');
-    lock.close();
-    lock = null;
-
-    let { checkpoint } = await loadCorpusCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory });
-    assert.equal(checkpoint.records[0].senses[0].search.status, 'SEARCH_FAILED');
-    assert.equal(checkpoint.records[0].senses[0].contexts.length, 4);
-    assert.equal(checkpoint.records[0].senses[0].search.next_cursor, first.next_cursor);
-
-    const retryScan = await scanCorpusBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
-    assert.equal(retryScan.status, 'SEARCHED');
-    assert.equal(retryScan.query_calls, 0, 'recovery reuses the successful batch count cache');
-    const resumed = await searchCorpusSense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'w1-s1', pageSize: 4, scratchDirectory: fixture.scratchDirectory });
-    assert.equal(resumed.returned, 4);
-    assert.equal(resumed.inspected_contexts, 8);
-    assert.ok(resumed.results.every((result) => !first.results.some((prior) => prior.locator_key === result.locator_key)));
-    assert.ok(resumed.next_cursor);
-
-    ({ checkpoint } = await loadCorpusCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory }));
-    assert.equal(checkpoint.records[0].senses[0].contexts.length, 8);
-    assert.equal(checkpoint.records[0].senses[0].search.status, 'COUNTED');
-  } finally {
-    if (lock) {
-      try { lock.exec('ROLLBACK'); } catch {}
-      lock.close();
-    }
-    await cleanup(fixture);
-  }
-});
-
-test('checkpoint scan retry preserves completed senses and keeps the full Candidate output eligible', async () => {
-  const fixture = await makeFixture({ paragraphCount: 20 });
-  let lock;
-  try {
-    await initialize(fixture);
-    const firstScan = await scanCorpusBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
-    assert.equal(firstScan.status, 'SEARCHED');
-
-    const discoveredPage = await searchCorpusSense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'w1-s1', pageSize: 1, scratchDirectory: fixture.scratchDirectory });
-    await reviewCorpusContext(fixture.checkpointPath, { senseId: 'w1-s1', locatorKey: discoveredPage.results[0].locator_key, judgment: 'VERIFIED', note: '문맥의 쓰임이 출발 sense와 일치함' }, { scratchDirectory: fixture.scratchDirectory });
-    const exploration = emptyFiveLenses();
-    exploration.lexical.push('문맥연상');
-    await recordCorpusExploration(fixture.checkpointPath, { senseId: 'w1-s1', locatorKey: discoveredPage.results[0].locator_key, pass: 1, results: exploration }, { scratchDirectory: fixture.scratchDirectory });
-    await reviewCorpusCandidate(fixture.checkpointPath, { senseId: 'w1-s1', candidate: '문맥연상', decision: 'KEEP', note: '독립된 표현 단어로 Stage 1 형식에 맞음' }, { scratchDirectory: fixture.scratchDirectory });
-    await finishCorpusSearch(fixture.checkpointPath, { senseId: 'w1-s1', note: '첫 VERIFIED 문맥의 통합 PASS B 검토를 마침' }, { scratchDirectory: fixture.scratchDirectory });
-
-    const rejectedPage = await searchCorpusSense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'w2-s1', pageSize: 4, scratchDirectory: fixture.scratchDirectory });
-    assert.equal(rejectedPage.total_hits, 1);
-    await reviewCorpusContext(fixture.checkpointPath, { senseId: 'w2-s1', locatorKey: rejectedPage.results[0].locator_key, judgment: 'REJECTED', mismatchConfirmed: true, note: '이 문맥은 정확한 source sense와 불일치함' }, { scratchDirectory: fixture.scratchDirectory });
-    await finishCorpusSearch(fixture.checkpointPath, { senseId: 'w2-s1', note: '유일한 hit를 정확히 판독함' }, { scratchDirectory: fixture.scratchDirectory });
-
-    const interruptedPage = await searchCorpusSense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'w26-s1', pageSize: 4, scratchDirectory: fixture.scratchDirectory });
-    assert.equal(interruptedPage.returned, 4);
-    lock = new DatabaseSync(fixture.databasePath);
-    lock.exec('BEGIN EXCLUSIVE');
-    await assert.rejects(searchCorpusSense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'w26-s1', pageSize: 4, cursor: interruptedPage.next_cursor, scratchDirectory: fixture.scratchDirectory }), /locked|busy/iu);
-    lock.exec('ROLLBACK');
-    lock.close();
-    lock = null;
-
-    const retryScan = await scanCorpusBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
-    assert.equal(retryScan.status, 'SEARCHED');
-    assert.equal(retryScan.query_calls, 0);
-    let { checkpoint } = await loadCorpusCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory });
-    assert.equal(checkpoint.records[0].senses[0].status, 'DISCOVERED');
-    assert.equal(checkpoint.records[0].senses[0].sample_complete, true);
-    assert.deepEqual(checkpoint.records[0].senses[0].candidate_reviews.map((item) => item.decision), ['KEEP']);
-    assert.equal(checkpoint.records[1].senses[0].status, 'NO_VERIFIED');
-    assert.equal(checkpoint.records[1].senses[0].contexts[0].mismatch_confirmed, true);
-
-    const resumedPage = await searchCorpusSense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'w26-s1', pageSize: 4, scratchDirectory: fixture.scratchDirectory });
-    assert.equal(resumedPage.returned, 4);
-    assert.equal(resumedPage.inspected_contexts, 8);
-    assert.ok(resumedPage.results.every((result) => !interruptedPage.results.some((prior) => prior.locator_key === result.locator_key)));
-    for (const context of [...interruptedPage.results, ...resumedPage.results]) {
-      await reviewCorpusContext(fixture.checkpointPath, { senseId: 'w26-s1', locatorKey: context.locator_key, judgment: 'REJECTED', mismatchConfirmed: true, note: '합성 fixture의 이 문맥은 source sense와 불일치함' }, { scratchDirectory: fixture.scratchDirectory });
-    }
-    await finishCorpusSearch(fixture.checkpointPath, { senseId: 'w26-s1', note: '8개 문맥을 판독한 뒤 적응적 표본을 종료함' }, { scratchDirectory: fixture.scratchDirectory });
-
-    for (const senseId of ['w3-s1', 'w4-s1']) {
-      const page = await searchCorpusSense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId, pageSize: 4, scratchDirectory: fixture.scratchDirectory });
-      assert.equal(page.total_hits, 1);
-      await reviewCorpusContext(fixture.checkpointPath, { senseId, locatorKey: page.results[0].locator_key, judgment: 'REJECTED', mismatchConfirmed: true, note: '이 문맥은 정확한 source sense와 불일치함' }, { scratchDirectory: fixture.scratchDirectory });
-      await finishCorpusSearch(fixture.checkpointPath, { senseId, note: '유일한 hit를 정확히 판독함' }, { scratchDirectory: fixture.scratchDirectory });
-    }
+    const submitted = await submitCorpusResults(fixture.checkpointPath, SENSES.map((id) => discovered(id, ids[id], id === 'w4-s1' ? ['바람'] : [])), { scratchDirectory: fixture.scratchDirectory });
+    assert.deepEqual({ status: submitted.status, recorded: submitted.recorded, remaining: submitted.remaining_searched }, { status: 'RECORDED', recorded: 5, remaining: 0 });
 
     const candidatePath = path.join(fixture.scratchDirectory, '001_01_d_codex.jsonl');
     const exported = await exportCorpusCandidates({ checkpointPath: fixture.checkpointPath, canonicalPath: fixture.canonicalPath, outputPath: candidatePath, repositoryDirectory: fixture.repositoryDirectory, scratchDirectory: fixture.scratchDirectory });
-    assert.equal(exported.status, 'OUTPUT');
-    const validation = await validateExistingCorpusCandidates({ checkpointPath: fixture.checkpointPath, canonicalPath: fixture.canonicalPath, candidatePath, repositoryDirectory: fixture.repositoryDirectory, scratchDirectory: fixture.scratchDirectory });
-    assert.equal(validation.status, 'VALID');
-    const outputRows = (await readFile(candidatePath, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
-    assert.deepEqual(outputRows[0].senses[0].candidates, ['문맥연상']);
-  } finally {
-    if (lock) {
-      try { lock.exec('ROLLBACK'); } catch {}
-      lock.close();
-    }
-    await cleanup(fixture);
-  }
-});
+    assert.deepEqual(exported.coverage, { records: 500, senses: 500, candidates: 1, empty_senses: 499 });
+    const rows = (await readFile(candidatePath, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
+    assert.deepEqual(rows[3].senses[0].candidates, ['바람']);
 
-test('zero hits, ambiguity, exact mismatch, and incomplete samples remain distinct', async () => {
-  const fixture = await makeFixture({ paragraphCount: 20 });
-  try {
-    await initialize(fixture);
-    await scanCorpusBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
-    const ambiguous = await searchCorpusSense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'w1-s1', pageSize: 1, scratchDirectory: fixture.scratchDirectory });
-    await reviewCorpusContext(fixture.checkpointPath, { senseId: 'w1-s1', locatorKey: ambiguous.results[0].locator_key, judgment: 'AMBIGUOUS', note: '문맥 의미를 단정하기 어려움' }, { scratchDirectory: fixture.scratchDirectory });
-    await finishCorpusSearch(fixture.checkpointPath, { senseId: 'w1-s1', note: '추가 검색보다 source 의미 검토가 필요함' }, { scratchDirectory: fixture.scratchDirectory });
-    let { checkpoint } = await loadCorpusCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory });
-    assert.equal(checkpoint.records[0].senses[0].status, 'INCOMPLETE');
-
-    const mismatch = await searchCorpusSense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'w2-s1', pageSize: 1, scratchDirectory: fixture.scratchDirectory });
-    await assert.rejects(reviewCorpusContext(fixture.checkpointPath, { senseId: 'w2-s1', locatorKey: mismatch.results[0].locator_key, judgment: 'REJECTED', note: '의미 불일치' }, { scratchDirectory: fixture.scratchDirectory }), /mismatch/u);
-    await reviewCorpusContext(fixture.checkpointPath, { senseId: 'w2-s1', locatorKey: mismatch.results[0].locator_key, judgment: 'REJECTED', mismatchConfirmed: true, note: '이 문맥은 다른 sense의 용례임' }, { scratchDirectory: fixture.scratchDirectory });
-    await finishCorpusSearch(fixture.checkpointPath, { senseId: 'w2-s1', note: '유일한 hit를 정확히 판독함' }, { scratchDirectory: fixture.scratchDirectory });
-    ({ checkpoint } = await loadCorpusCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory }));
-    assert.equal(checkpoint.records[1].senses[0].status, 'NO_VERIFIED');
-    assert.equal(checkpoint.records[1].senses[0].search.status, 'COUNTED');
-    assert.equal(checkpoint.records[2].senses[0].status, 'SEARCHED', 'a remaining positive search is not a zero result');
-    assert.equal(checkpoint.records[4].senses[0].status, 'ZERO_HITS');
-  } finally {
-    await cleanup(fixture);
-  }
-});
-
-test('five-lens exploration, independent candidate review, full Candidate v1 export, and local tuple patch', async () => {
-  const fixture = await makeFixture();
-  try {
-    await initialize(fixture);
-    const legacyCheckpoint = JSON.parse(await readFile(fixture.checkpointPath, 'utf8'));
-    legacyCheckpoint.batch.procedure_sha256 = '89a2ec2e7a3bef33ec230e8eb76ef43900aea0d6e3feaa0c4537635d19595ae5';
-    await writeFile(fixture.checkpointPath, JSON.stringify(legacyCheckpoint));
-    assert.equal((await loadCorpusCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory })).checkpoint.batch.procedure_sha256, legacyCheckpoint.batch.procedure_sha256);
-    legacyCheckpoint.batch.procedure_sha256 = '51073e8b8bd1a642accc1c5ea0f6edf68589b4ad116e237c1edf3fbdb97f2928';
-    await writeFile(fixture.checkpointPath, JSON.stringify(legacyCheckpoint));
-    assert.equal((await loadCorpusCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory })).checkpoint.batch.procedure_sha256, legacyCheckpoint.batch.procedure_sha256);
-    const staleCheckpoint = { ...legacyCheckpoint, batch: { ...legacyCheckpoint.batch, procedure_sha256: 'f'.repeat(64) } };
-    await writeFile(fixture.checkpointPath, JSON.stringify(staleCheckpoint));
-    await assert.rejects(loadCorpusCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory }), /procedure files changed/u);
-    legacyCheckpoint.batch.procedure_sha256 = '89a2ec2e7a3bef33ec230e8eb76ef43900aea0d6e3feaa0c4537635d19595ae5';
-    await writeFile(fixture.checkpointPath, JSON.stringify(legacyCheckpoint));
-    await scanCorpusBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
-    const activeSenseIds = ['w1-s1', 'w2-s1', 'w3-s1', 'w4-s1', 'w26-s1'];
-    for (const senseId of activeSenseIds) {
-      const page = await searchCorpusSense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId, scratchDirectory: fixture.scratchDirectory });
-      const locatorKey = page.results[0].locator_key;
-      await reviewCorpusContext(fixture.checkpointPath, { senseId, locatorKey, judgment: 'VERIFIED', note: '합성 fixture에서 정확한 source sense 확인' }, { scratchDirectory: fixture.scratchDirectory });
-      const lenses = emptyFiveLenses();
-      if (senseId === 'w4-s1') lenses.scene_time_environment = ['바람'];
-      await recordCorpusExploration(fixture.checkpointPath, { senseId, locatorKey, pass: 1, results: lenses }, { scratchDirectory: fixture.scratchDirectory });
-      if (senseId === 'w4-s1') await reviewCorpusCandidate(fixture.checkpointPath, { senseId, candidate: '바람', decision: 'KEEP', kind: 'word', note: '독립 어휘이며 VERIFIED 문맥에 결속됨' }, { scratchDirectory: fixture.scratchDirectory });
-    }
-    const validationRows = (await loadCorpusCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory })).checkpoint.records.map((record) => ({
-      record_id: record.record_id,
-      senses: record.senses.map((sense) => ({ sense_id: sense.sense_id, candidates: sense.sense_id === 'w4-s1' ? ['바람'] : [] })),
-    }));
-    const valid = await validateCorpusExport({ checkpointPath: fixture.checkpointPath, canonicalPath: fixture.canonicalPath, candidateRows: validationRows, repositoryDirectory: fixture.repositoryDirectory, scratchDirectory: fixture.scratchDirectory });
-    assert.equal(valid.status, 'VALID');
-    assert.equal(valid.recordCount, 500);
-    assert.equal(valid.candidateCount, 1);
-
-    const checkpointFile = await readFile(fixture.checkpointPath, 'utf8');
-    const damaged = JSON.parse(checkpointFile);
-    damaged.records[3].senses[0].discoveries[0].locator_key = 'foreign-sense-locator';
-    await writeFile(fixture.checkpointPath, JSON.stringify(damaged));
-    const wrongLocator = await validateCorpusExport({ checkpointPath: fixture.checkpointPath, canonicalPath: fixture.canonicalPath, candidateRows: validationRows, repositoryDirectory: fixture.repositoryDirectory, scratchDirectory: fixture.scratchDirectory });
-    assert.equal(wrongLocator.status, 'INVALID');
-    assert.match(wrongLocator.message, /locator that does not bind/u);
-    await writeFile(fixture.checkpointPath, checkpointFile);
-
-    const candidatePath = path.join(fixture.scratchDirectory, '001_01_d_codex.jsonl');
-    const exported = await exportCorpusCandidates({ checkpointPath: fixture.checkpointPath, canonicalPath: fixture.canonicalPath, outputPath: candidatePath, repositoryDirectory: fixture.repositoryDirectory, scratchDirectory: fixture.scratchDirectory });
-    assert.equal(exported.status, 'OUTPUT');
-    assert.equal(exported.coverage.candidates, 1);
-    const outputRows = (await readFile(candidatePath, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
-    assert.deepEqual(outputRows[3].senses[0].candidates, ['바람']);
-    assert.deepEqual(outputRows[0].senses[0].candidates, []);
-
-    await reviewCorpusCandidate(fixture.checkpointPath, { senseId: 'w4-s1', candidate: '바람', decision: 'REMOVE', note: '후보 표현 검사에서 출력 제외' }, { scratchDirectory: fixture.scratchDirectory });
-    const patched = await patchCorpusCandidateFile({ checkpointPath: fixture.checkpointPath, canonicalPath: fixture.canonicalPath, candidatePath, recordId: 'w4', senseId: 'w4-s1', action: 'remove', candidate: '바람', reason: 'remove only the reviewed Candidate tuple', repositoryDirectory: fixture.repositoryDirectory, scratchDirectory: fixture.scratchDirectory });
+    const patched = await patchCorpusCandidateFile({ checkpointPath: fixture.checkpointPath, canonicalPath: fixture.canonicalPath, candidatePath, recordId: 'w4', senseId: 'w4-s1', action: 'remove', candidate: '바람', reason: 'remove one tuple', repositoryDirectory: fixture.repositoryDirectory, scratchDirectory: fixture.scratchDirectory });
     assert.equal(patched.status, 'VALID');
-    const afterRows = (await readFile(candidatePath, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
-    assert.deepEqual(afterRows[3].senses[0].candidates, []);
-    assert.deepEqual(afterRows.slice(4), outputRows.slice(4));
+    assert.deepEqual(JSON.parse((await readFile(candidatePath, 'utf8')).split('\n')[3]).senses[0].candidates, []);
   } finally {
     await cleanup(fixture);
   }
 });
 
-test('integrated PASS B CLI records empty, multiple and tagged discoveries, and export requires each explicit PASS 1', async () => {
-  const fixture = await makeFixture();
+test('unread, unverified, or inconsistent senses are rejected without becoming empty candidates', async () => {
+  const fixture = await makeFixture({ paragraphCount: 20 });
   try {
-    await initialize(fixture);
-    await scanCorpusBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
+    const read = await scanAndRead(fixture);
+    const w26 = read.senses.find((item) => item.sense_id === 'w26-s1');
+    assert.equal(w26.contexts.length, 4);
+    assert.equal(w26.more, true);
+    const more = await readCorpusContexts({ ...scanOptions(fixture), senseId: 'w26-s1', offset: 4 });
+    assert.equal(more.senses[0].contexts.length, 4);
+    assert.notEqual(more.senses[0].contexts[0].id, w26.contexts[0].id);
 
-    const locators = new Map();
-    for (const senseId of ['w1-s1', 'w2-s1', 'w3-s1', 'w4-s1', 'w26-s1']) {
-      const page = await searchCorpusSense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId, scratchDirectory: fixture.scratchDirectory });
-      assert.ok(page.results.length > 0, `${senseId} fixture has a matching context`);
-      const locatorKey = page.results[0].locator_key;
-      locators.set(senseId, locatorKey);
-      await reviewCorpusContext(fixture.checkpointPath, { senseId, locatorKey, judgment: 'VERIFIED', note: '합성 fixture에서 정확한 source sense 확인' }, { scratchDirectory: fixture.scratchDirectory });
+    const submit = (entries) => submitCorpusResults(fixture.checkpointPath, entries, { scratchDirectory: fixture.scratchDirectory });
+    const foreign = more.senses[0].contexts[0].id;
+    for (const [entry, pattern] of [
+      [{ sense_id: 'w1-s1', status: 'discovered', verified: [] }, /at least one verified/u],
+      [{ sense_id: 'w1-s1', status: 'incomplete', candidates: ['바람'] }, /candidates require/u],
+      [{ sense_id: 'w1-s1', status: 'no_verified', verified: [1], rejected: [] }, /no_verified requires/u],
+      [{ sense_id: 'w1-s1', status: 'discovered', verified: [999999] }, /context ids returned/u],
+      [{ sense_id: 'w1-s1', status: 'discovered', verified: [foreign, foreign] }, /distinct context ids/u],
+      [{ sense_id: 'w5-s1', status: 'discovered', verified: [1] }, /no successful search/u],
+      [{ sense_id: 'w1-s1', status: 'discovered', verified: [1], extra: true }, /unsupported field/u],
+      ...['바람', null, 7, { 0: '바람' }].map((candidates) => [{ sense_id: 'w1-s1', status: 'discovered', verified: [1], candidates }, /array of strings/u]),
+      ...['1', null, 1, { 0: 1 }].map((verified) => [{ sense_id: 'w1-s1', status: 'discovered', verified }, /context ids returned/u]),
+      ...['rejected', 'ambiguous'].map((key) => [{ sense_id: 'w1-s1', status: 'incomplete', [key]: '1' }, /context ids returned/u]),
+      [{ sense_id: 'w1-s1', status: 'discovered', verified: [1], candidates: ['바람', 3] }, /non-empty trimmed strings/u],
+    ]) {
+      const result = await submit([entry]);
+      assert.equal(result.status, 'REJECTED');
+      assert.match(result.errors[0], pattern);
     }
+    const mixed = await submit([discovered('w2-s1', [w26.contexts[0].id]), { sense_id: 'w3-s1', status: 'discovered', verified: [] }]);
+    assert.equal(mixed.status, 'REJECTED');
+    assert.equal((await loadCorpusCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory })).checkpoint.records[1].senses[0].status, 'SEARCHED');
 
-    await writeFile(path.join(fixture.scratchDirectory, 'empty-pass-b.json'), '[]\n');
-    const zero = runExploreCli(fixture, { senseId: 'w1-s1', locatorKey: locators.get('w1-s1'), inputName: 'empty-pass-b.json' });
-    assert.equal(zero.candidates_recorded, 0);
-    const duplicateLemmaZero = runExploreCli(fixture, { senseId: 'w26-s1', locatorKey: locators.get('w26-s1'), inputName: 'empty-pass-b.json' });
-    assert.equal(duplicateLemmaZero.candidates_recorded, 0);
-
-    await writeFile(path.join(fixture.scratchDirectory, 'tagged-pass-b.json'), JSON.stringify([
-      { candidate: '잔향', lenses: ['scene_time_environment', 'contrast_sensation_metaphor'] },
-    ]));
-    const tagged = runExploreCli(fixture, { senseId: 'w2-s1', locatorKey: locators.get('w2-s1'), inputName: 'tagged-pass-b.json' });
-    assert.equal(tagged.candidates_recorded, 1);
-
-    await writeFile(path.join(fixture.scratchDirectory, 'multiple-pass-b.json'), JSON.stringify([
-      '바람',
-      { candidate: '바람', lenses: ['action_role_tool'] },
-      { candidate: '흐름', lenses: ['contrast_sensation_metaphor'] },
-    ]));
-    const multiple = runExploreCli(fixture, { senseId: 'w4-s1', locatorKey: locators.get('w4-s1'), inputName: 'multiple-pass-b.json' });
-    assert.equal(multiple.candidates_recorded, 2, 'normalized duplicates are stored once');
-
-    for (const [senseId, candidates] of [['w2-s1', ['잔향']], ['w4-s1', ['바람', '흐름']]]) {
-      for (const candidate of candidates) {
-        await reviewCorpusCandidate(fixture.checkpointPath, { senseId, candidate, decision: 'KEEP', note: '합성 fixture의 독립 후보 형식 확인' }, { scratchDirectory: fixture.scratchDirectory });
-      }
-    }
-    for (const senseId of ['w1-s1', 'w2-s1', 'w3-s1', 'w4-s1', 'w26-s1']) {
-      await finishCorpusSearch(fixture.checkpointPath, { senseId, note: '검토한 표본의 PASS B 상태를 기록함' }, { scratchDirectory: fixture.scratchDirectory });
-    }
-
-    const candidateRows = (await loadCorpusCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory })).checkpoint.records.map((record) => ({
-      record_id: record.record_id,
-      senses: record.senses.map((sense) => ({
-        sense_id: sense.sense_id,
-        candidates: sense.sense_id === 'w2-s1' ? ['잔향'] : sense.sense_id === 'w4-s1' ? ['바람', '흐름'] : [],
-      })),
-    }));
-    const missingPass = await validateCorpusExport({ checkpointPath: fixture.checkpointPath, canonicalPath: fixture.canonicalPath, candidateRows, repositoryDirectory: fixture.repositoryDirectory, scratchDirectory: fixture.scratchDirectory });
-    assert.equal(missingPass.status, 'INVALID');
-    assert.match(missingPass.message, /lacks an explicit integrated PASS 1 record/u);
-    await assert.rejects(exportCorpusCandidates({
-      checkpointPath: fixture.checkpointPath,
-      canonicalPath: fixture.canonicalPath,
-      outputPath: path.join(fixture.scratchDirectory, '001_01_d_codex.jsonl'),
-      repositoryDirectory: fixture.repositoryDirectory,
-      scratchDirectory: fixture.scratchDirectory,
-    }), /lacks an explicit integrated PASS 1 record/u);
-
-    await writeFile(path.join(fixture.scratchDirectory, 'empty-resumed-pass-b.json'), '[]\n');
-    const resumedZero = runExploreCli(fixture, { senseId: 'w3-s1', locatorKey: locators.get('w3-s1'), inputName: 'empty-resumed-pass-b.json' });
-    assert.equal(resumedZero.candidates_recorded, 0);
-
-    const passTwoInput = path.join(fixture.scratchDirectory, 'optional-pass-b.json');
-    await writeFile(passTwoInput, '[]\n');
-    const cliArgs = [CORPUS_CLI_PATH, 'explore', '--checkpoint', '.warroom-scratch/001_01_d_codex.checkpoint.json', '--sense-id', 'w1-s1', '--locator-key', locators.get('w1-s1'), '--pass', '2', '--results', '.warroom-scratch/optional-pass-b.json'];
-    assert.throws(() => execFileSync(process.execPath, cliArgs, { cwd: fixture.repositoryDirectory, encoding: 'utf8', stdio: 'pipe' }), (error) => {
-      assert.match(String(error.stderr), /independent-read/u);
-      return true;
-    });
-    assert.throws(() => execFileSync(process.execPath, [...cliArgs, '--independent-read'], { cwd: fixture.repositoryDirectory, encoding: 'utf8', stdio: 'pipe' }), (error) => {
-      assert.match(String(error.stderr), /brief reason for re-reading/u);
-      return true;
-    });
-    const secondPass = runExploreCli(fixture, { senseId: 'w1-s1', locatorKey: locators.get('w1-s1'), pass: 2, inputName: 'optional-pass-b.json', independentRead: true, note: '첫 통합 탐색 뒤 문맥을 독립적으로 다시 읽음' });
-    assert.equal(secondPass.pass, 2);
-
-    const { checkpoint } = await loadCorpusCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory });
-    assert.equal(checkpoint.records[0].senses[0].status, 'DISCOVERED');
-    assert.deepEqual(checkpoint.records[0].senses[0].contexts[0].explorations['1'].results, []);
-    assert.equal(checkpoint.records[0].senses[0].discoveries.length, 0);
-    assert.deepEqual(checkpoint.records[3].senses[0].contexts[0].explorations['1'].results, [
-      { candidate: '바람', lenses: ['action_role_tool'] },
-      { candidate: '흐름', lenses: ['contrast_sensation_metaphor'] },
-    ]);
-    assert.equal(checkpoint.records[3].senses[0].candidate_reviews.length, 2);
-
-    const valid = await validateCorpusExport({ checkpointPath: fixture.checkpointPath, canonicalPath: fixture.canonicalPath, candidateRows, repositoryDirectory: fixture.repositoryDirectory, scratchDirectory: fixture.scratchDirectory });
-    assert.equal(valid.status, 'VALID', JSON.stringify(valid));
-    assert.equal(valid.candidateCount, 3);
-    const exported = await exportCorpusCandidates({
-      checkpointPath: fixture.checkpointPath,
-      canonicalPath: fixture.canonicalPath,
-      outputPath: path.join(fixture.scratchDirectory, '001_01_d_codex.jsonl'),
-      repositoryDirectory: fixture.repositoryDirectory,
-      scratchDirectory: fixture.scratchDirectory,
-    });
-    assert.equal(exported.status, 'OUTPUT');
-    assert.equal(exported.coverage.candidates, 3);
+    assert.equal((await submit([{ sense_id: 'w2-s1', status: 'no_verified', rejected: [read.senses.find((item) => item.sense_id === 'w2-s1').contexts[0].id] }])).status, 'RECORDED');
+    await assert.rejects(exportCorpusCandidates({ checkpointPath: fixture.checkpointPath, canonicalPath: fixture.canonicalPath, outputPath: path.join(fixture.scratchDirectory, '001_01_d_codex.jsonl'), repositoryDirectory: fixture.repositoryDirectory, scratchDirectory: fixture.scratchDirectory }), /is SEARCHED/u);
   } finally {
     await cleanup(fixture);
   }
 });
 
-test('search failures remain explicit instead of becoming ZERO_HITS', async () => {
+test('search failures stay explicit and a rescan retries them while preserving submitted senses', async () => {
   const fixture = await makeFixture();
   let writer;
   try {
     await initialize(fixture);
     writer = new DatabaseSync(fixture.databasePath);
     writer.exec('BEGIN EXCLUSIVE');
-    const scan = await scanCorpusBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
-    assert.equal(scan.status, 'INCOMPLETE');
-    assert.ok(scan.failed_queries > 0);
+    const failed = await scanCorpusBatch(scanOptions(fixture));
+    assert.equal(failed.status, 'INCOMPLETE');
+    assert.ok(failed.failed_queries > 0);
     writer.exec('ROLLBACK');
     writer.close();
     writer = null;
-    const { checkpoint } = await loadCorpusCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory });
+    let { checkpoint } = await loadCorpusCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory });
     assert.equal(checkpoint.records[0].senses[0].status, 'SEARCH_FAILED');
-    assert.ok(['timeout', 'sqlite'].includes(checkpoint.records[0].senses[0].search.failure.kind));
+    await assert.rejects(readCorpusContexts({ ...scanOptions(fixture), senseId: 'w1-s1' }), /no countable search result/u);
+    assert.equal((await scanCorpusBatch(scanOptions(fixture))).status, 'SEARCHED');
+    const read = await readCorpusContexts(scanOptions(fixture));
+    await submitCorpusResults(fixture.checkpointPath, [discovered('w1-s1', [read.senses[0].contexts[0].id])], { scratchDirectory: fixture.scratchDirectory });
+    assert.equal((await scanCorpusBatch(scanOptions(fixture))).query_calls, 0);
+    ({ checkpoint } = await loadCorpusCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory }));
+    assert.equal(checkpoint.records[0].senses[0].status, 'DISCOVERED');
+    assert.equal(checkpoint.records[1].senses[0].status, 'SEARCHED');
   } finally {
     try { writer?.exec('ROLLBACK'); } catch {}
     writer?.close();
+    await cleanup(fixture);
+  }
+});
+
+test('an earlier-format checkpoint resumes: procedure edits do not block it and its KEEP decisions export', async () => {
+  const fixture = await makeFixture();
+  try {
+    await initialize(fixture);
+    const legacy = JSON.parse(await readFile(fixture.checkpointPath, 'utf8'));
+    legacy.batch.procedure_sha256 = 'f'.repeat(64);
+    legacy.index.database_sha256 = 'a'.repeat(64);
+    const sense = legacy.records[3].senses[0];
+    delete sense.verified; delete sense.rejected; delete sense.ambiguous; delete sense.candidates;
+    sense.status = 'DISCOVERED';
+    sense.contexts = [{ locator_key: 'k', judgment: 'VERIFIED', paragraph_text: '사람', explorations: {} }];
+    sense.candidate_reviews = [{ candidate: '바람', normalized: '바람', decision: 'KEEP', kind: 'word' }, { candidate: '구름', normalized: '구름', decision: 'REMOVE' }];
+    for (const other of legacy.records.flatMap((record) => record.senses)) if (other !== sense) other.status = 'ZERO_HITS';
+    await writeFile(fixture.checkpointPath, JSON.stringify(legacy));
+    const exported = await exportCorpusCandidates({ checkpointPath: fixture.checkpointPath, canonicalPath: fixture.canonicalPath, outputPath: path.join(fixture.scratchDirectory, '001_01_d_codex.jsonl'), repositoryDirectory: fixture.repositoryDirectory, scratchDirectory: fixture.scratchDirectory });
+    assert.equal(exported.coverage.candidates, 1);
+  } finally {
+    await cleanup(fixture);
+  }
+});
+
+test('the CLI reads and submits a chunk of senses with no per-context commands', async () => {
+  const fixture = await makeFixture();
+  try {
+    await initialize(fixture);
+    await scanCorpusBatch(scanOptions(fixture));
+    const run = (...args) => JSON.parse(execFileSync(process.execPath, [CLI, ...args], { cwd: fixture.repositoryDirectory, encoding: 'utf8' }));
+    const checkpoint = '.warroom-scratch/001_01_d_codex.checkpoint.json';
+    const read = run('read', '--db', fixture.databasePath, '--checkpoint', checkpoint);
+    assert.equal(read.returned, 5);
+    await writeFile(path.join(fixture.scratchDirectory, 'results.json'), JSON.stringify(read.senses.map((item) => discovered(item.sense_id, [item.contexts[0].id]))));
+    assert.equal(run('submit', '--checkpoint', checkpoint, '--results', '.warroom-scratch/results.json').recorded, 5);
+    assert.equal(run('report', '--checkpoint', checkpoint).checkpoint.statuses.DISCOVERED, 5);
+    for (const retired of ['review-context', 'explore', 'review-candidate', 'finish-search']) {
+      assert.throws(() => execFileSync(process.execPath, [CLI, retired], { cwd: fixture.repositoryDirectory, stdio: 'pipe' }), /unknown command/u);
+    }
+  } finally {
     await cleanup(fixture);
   }
 });

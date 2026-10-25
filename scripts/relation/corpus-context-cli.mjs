@@ -7,22 +7,20 @@ import process from 'node:process';
 import {
   addCorpusSearchForm,
   exportCorpusCandidates,
-  finishCorpusSearch,
   initializeCorpusCheckpoint,
   inspectWrittenCorpusIndex,
   patchCorpusCandidateFile,
-  recordCorpusExploration,
+  readCorpusContexts,
   reportCorpusCheckpoint,
-  reviewCorpusCandidate,
-  reviewCorpusContext,
   scanCorpusBatch,
-  searchCorpusSense,
+  submitCorpusResults,
   validateExistingCorpusCandidates,
   CORPUS_RESPONSE_LIMIT,
+  CORPUS_SUBMIT_LIMIT,
 } from './corpus-context.mjs';
 
 const SCRATCH_DIRECTORY = path.resolve('.warroom-scratch');
-const FLAGS = new Set(['independent-read', 'mismatch-confirmed']);
+const FLAGS = new Set(['verify-binary']);
 
 function fail(message) {
   throw new Error(message);
@@ -58,18 +56,18 @@ function only(options, ...allowed) {
   if (unexpected.length > 0) fail(`unsupported option(s): ${unexpected.map((key) => `--${key}`).join(', ')}`);
 }
 
-async function readResults(filePath) {
+async function readSubmission(filePath) {
   const resolved = path.resolve(filePath);
   const relative = path.relative(SCRATCH_DIRECTORY, resolved);
-  if (!relative || relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) fail('exploration input JSON must stay under .warroom-scratch/');
-  if ((await stat(resolved)).size > 64_000) fail('exploration input JSON exceeds the 64 KB limit');
+  if (!relative || relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) fail('submission JSON must stay under .warroom-scratch/');
+  if ((await stat(resolved)).size > CORPUS_SUBMIT_LIMIT) fail('submission JSON exceeds the 256 KB limit');
   return JSON.parse(await readFile(resolved, 'utf8'));
 }
 
 function print(payload) {
   const serialized = JSON.stringify(payload);
   if (serialized.length > CORPUS_RESPONSE_LIMIT) {
-    process.stderr.write(`${JSON.stringify({ status: 'OUTPUT_LIMIT', max_chars: CORPUS_RESPONSE_LIMIT, actual_chars: serialized.length, message: 'Retry with a smaller page. The response was not silently truncated.' })}\n`);
+    process.stderr.write(`${JSON.stringify({ status: 'OUTPUT_LIMIT', max_chars: CORPUS_RESPONSE_LIMIT, actual_chars: serialized.length, message: 'Request fewer senses or contexts. The response was not silently truncated.' })}\n`);
     process.exitCode = 1;
     return;
   }
@@ -79,8 +77,8 @@ function print(payload) {
 function usage() {
   return [
     'Usage: node scripts/relation/corpus-context-cli.mjs <command> [options]',
-    'Commands: preflight, init, scan, queue, search, add-form, review-context, explore, review-candidate, finish-search, report, export, validate, patch',
-    'Private checkpoints and exploration JSON must remain under .warroom-scratch/.',
+    'Commands: preflight, init, scan, read, submit, add-form, report, export, validate, patch',
+    'Private checkpoints and submission JSON must remain under .warroom-scratch/.',
   ].join('\n');
 }
 
@@ -94,9 +92,9 @@ async function main() {
   let result;
   switch (command) {
     case 'preflight': {
-      only(options, 'db');
+      only(options, 'db', 'verify-binary');
       required(options, 'db');
-      result = await inspectWrittenCorpusIndex(options.db, { scratchDirectory: SCRATCH_DIRECTORY });
+      result = await inspectWrittenCorpusIndex(options.db, { scratchDirectory: SCRATCH_DIRECTORY, verifyBinary: options['verify-binary'] === true });
       break;
     }
     case 'init': {
@@ -111,46 +109,23 @@ async function main() {
       result = await scanCorpusBatch({ databasePath: options.db, checkpointPath: options.checkpoint, scratchDirectory: SCRATCH_DIRECTORY });
       break;
     }
-    case 'queue': {
-      only(options, 'checkpoint', 'status', 'offset', 'limit');
-      required(options, 'checkpoint', 'status');
-      result = await reportCorpusCheckpoint(options.checkpoint, { status: options.status, offset: options.offset ?? 0, limit: options.limit ?? 50 }, { scratchDirectory: SCRATCH_DIRECTORY });
+    case 'read': {
+      only(options, 'db', 'checkpoint', 'sense-id', 'offset', 'count');
+      required(options, 'db', 'checkpoint');
+      result = await readCorpusContexts({ databasePath: options.db, checkpointPath: options.checkpoint, senseId: options['sense-id'], offset: options.offset, count: options.count, scratchDirectory: SCRATCH_DIRECTORY });
       break;
     }
-    case 'search': {
-      only(options, 'db', 'checkpoint', 'sense-id', 'page-size', 'cursor');
-      required(options, 'db', 'checkpoint', 'sense-id');
-      result = await searchCorpusSense({ databasePath: options.db, checkpointPath: options.checkpoint, senseId: options['sense-id'], pageSize: options['page-size'], cursor: options.cursor, scratchDirectory: SCRATCH_DIRECTORY });
+    case 'submit': {
+      only(options, 'checkpoint', 'results');
+      required(options, 'checkpoint', 'results');
+      result = await submitCorpusResults(options.checkpoint, await readSubmission(options.results), { scratchDirectory: SCRATCH_DIRECTORY });
+      if (result.status === 'REJECTED') process.exitCode = 1;
       break;
     }
     case 'add-form': {
       only(options, 'checkpoint', 'sense-id', 'form', 'basis');
       required(options, 'checkpoint', 'sense-id', 'form', 'basis');
       result = await addCorpusSearchForm(options.checkpoint, { senseId: options['sense-id'], form: options.form, basis: options.basis }, { scratchDirectory: SCRATCH_DIRECTORY });
-      break;
-    }
-    case 'review-context': {
-      only(options, 'checkpoint', 'sense-id', 'locator-key', 'judgment', 'note', 'mismatch-confirmed');
-      required(options, 'checkpoint', 'sense-id', 'locator-key', 'judgment', 'note');
-      result = await reviewCorpusContext(options.checkpoint, { senseId: options['sense-id'], locatorKey: options['locator-key'], judgment: options.judgment, note: options.note, mismatchConfirmed: options['mismatch-confirmed'] === true }, { scratchDirectory: SCRATCH_DIRECTORY });
-      break;
-    }
-    case 'explore': {
-      only(options, 'checkpoint', 'sense-id', 'locator-key', 'pass', 'results', 'independent-read', 'note');
-      required(options, 'checkpoint', 'sense-id', 'locator-key', 'pass', 'results');
-      result = await recordCorpusExploration(options.checkpoint, { senseId: options['sense-id'], locatorKey: options['locator-key'], pass: options.pass, results: await readResults(options.results), independentRead: options['independent-read'] === true, note: options.note ?? '' }, { scratchDirectory: SCRATCH_DIRECTORY });
-      break;
-    }
-    case 'review-candidate': {
-      only(options, 'checkpoint', 'sense-id', 'candidate', 'decision', 'kind', 'note');
-      required(options, 'checkpoint', 'sense-id', 'candidate', 'decision', 'note');
-      result = await reviewCorpusCandidate(options.checkpoint, { senseId: options['sense-id'], candidate: options.candidate, decision: options.decision, kind: options.kind ?? 'word', note: options.note }, { scratchDirectory: SCRATCH_DIRECTORY });
-      break;
-    }
-    case 'finish-search': {
-      only(options, 'checkpoint', 'sense-id', 'note');
-      required(options, 'checkpoint', 'sense-id', 'note');
-      result = await finishCorpusSearch(options.checkpoint, { senseId: options['sense-id'], note: options.note }, { scratchDirectory: SCRATCH_DIRECTORY });
       break;
     }
     case 'report': {

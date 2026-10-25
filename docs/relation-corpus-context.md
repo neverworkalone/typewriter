@@ -5,20 +5,22 @@
 used by the product build or runtime. The D editorial and production contract
 remains [Issue #1156](https://github.com/neverworkalone/typewriter/issues/1156).
 
-The CLI reuses the shared paragraph-index check and Candidate v1 validator. It
-requires the approved source-manifest and logical-row digests recorded in
-[`corpus-index-design.md`](corpus-index-design.md), confirms NIKL/written-corpus
-source metadata, schema and software versions, and opens SQLite read-only with
-`query_only`. The first preflight hashes the database; `.warroom-scratch/`
-reuses that digest only while the file identity remains unchanged. A local
-checkpoint also binds to the exact database identity, Canonical shard digest,
-and procedure files. No index path or source path is printed.
+The CLI reuses the shared paragraph-index check and Candidate v1 validator.
+`preflight` follows the shared index metadata contract (`schema_version` or
+`index_version`), requires the approved source-manifest and logical-row digests
+recorded in [`corpus-index-design.md`](corpus-index-design.md), confirms
+NIKL/written-corpus source metadata, and opens SQLite read-only with
+`query_only`. It does not hash the database file: the file size/mtime identity
+bound at `init` is enough for routine batches. Use `preflight --verify-binary`
+only for an initial approval or a suspected change. No index path or source path
+is printed. A checkpoint is bound to the index identity and the Canonical shard
+digest; editing code or documents never invalidates it.
 
-## Start and search
+## One batch
 
-Run commands from the repository root. Replace the database path with the
-owner-approved local path; no local index, source file, or corpus passage is
-part of the repository.
+Run commands from the repository root with the owner-approved local database
+path. Checkpoints, submission files and corpus text stay under the ignored
+`.warroom-scratch/`; no corpus text enters Git.
 
 ```sh
 pnpm run relation:corpus -- preflight --db /path/to/approved-written-corpus.sqlite
@@ -30,165 +32,76 @@ pnpm run relation:corpus -- init \
 pnpm run relation:corpus -- scan \
   --db /path/to/approved-written-corpus.sqlite \
   --checkpoint .warroom-scratch/001_01_d_codex.checkpoint.json
-pnpm run relation:corpus -- queue \
-  --checkpoint .warroom-scratch/001_01_d_codex.checkpoint.json \
-  --status SEARCHED --limit 50
-pnpm run relation:corpus -- search \
-  --db /path/to/approved-written-corpus.sqlite \
-  --checkpoint .warroom-scratch/001_01_d_codex.checkpoint.json \
-  --sense-id SENSE_ID --page-size 4
 ```
 
-`preflight`, `scan`, and `report` emit compact JSON summaries. Queue pages are
-limited to 100 rows. Context pages return at most four excerpts of 700 Unicode
-characters each, with total hits, returned count, truncation, and a cursor.
-Document metadata and matched forms have their own character/count bounds; the
-response flags any such display truncation in `metadata_truncated`. The CLI
-never trims a returned context array after advancing its saved cursor.
-Use the returned `--cursor` for the next page; the adaptive context cap is 16
-per sense. When that cap is reached, or the producer has a specific reason to
-stop sooner, first judge every returned context and then record a short stop
-reason with `finish-search`. Truncation or an unvisited page is `INCOMPLETE`,
-never a successful zero-hit search.
+`scan` counts literal substring matches for every sense in 25-record aggregate
+queries on one read-only connection (repeated form sets are cached) and saves
+once. Each sense becomes `ZERO_HITS`, `UNSEARCHABLE`, `SEARCH_FAILED`, or
+`SEARCHED`. A zero-hit sense needs no further work. `SEARCH_FAILED` (for
+example a locked database) is never an empty result; rerun `scan`. Add a
+human-selected query form before scanning with `add-form --sense-id ID --form F
+--basis '...'`.
 
-The shared read-only adapter searches three-or-more-character forms through
-quoted FTS5 trigram literals and confirms exact substrings with `instr()`. If
-the index has a `paragraph_bigrams(gram, paragraph_rowid)` table, two-character
-forms use it as a prefilter and still pass the exact literal check. Without
-that optional table, one- and two-character forms use the bounded-output
-literal fallback. The adapter prepares batch SQL once per operation and reuses
-one SQLite connection. It scans and checkpoints every 25 Canonical records,
-combines the forms for one 25-record chunk into one aggregate count query, and
-caches repeated normalized form sets across chunks. Cache keys include the
-database and source digests, query forms, and search options. Shared cache rows
-contain only raw hit counts and paragraph locators; source-sense judgments,
-exploration, and candidate decisions remain independent for every sense.
-
-The scan only counts literal substring matches. It does not establish word
-boundaries, source-sense identity, POS, or a relation. It returns `ZERO_HITS`,
-`UNSEARCHABLE`, or `SEARCH_FAILED` distinctly. A busy/locked timeout is recorded
-as `SEARCH_FAILED` with `failure.kind: "timeout"`; other SQLite failures keep a
-separate error kind. Neither state becomes an empty Candidate.
-
-If a context-page lookup fails after earlier pages were saved, rerun `scan` after
-the index is available. The successful count cache is reused and the next cursor
-is rebuilt from the saved context count. Then rerun `search`; when contexts are
-already saved, omitting `--cursor` resumes from that checkpoint position.
-The scan also recomputes statuses from saved source-sense and Candidate evidence,
-so completed senses stay eligible for final batch output.
-
-## Verify sense and explore
-
-Each returned context starts `PENDING`. Compare it with the exact Canonical
-sense and record the real decision:
+## Read, judge, submit
 
 ```sh
-pnpm run relation:corpus -- review-context \
-  --checkpoint .warroom-scratch/001_01_d_codex.checkpoint.json \
-  --sense-id SENSE_ID --locator-key LOCATOR_KEY \
-  --judgment VERIFIED --note '문맥의 쓰임이 출발 sense와 일치'
+pnpm run relation:corpus -- read --db ... --checkpoint ...
 ```
 
-Use `AMBIGUOUS` when the context cannot establish a precise match. Use
-`REJECTED --mismatch-confirmed` only when the exact source-sense mismatch was
-actually checked. A missing judgment is never treated as a rejection. `NO_VERIFIED`
-is possible only after a completed sample where every inspected context has an
-explicitly confirmed mismatch. `ZERO_HITS` remains a separate state.
+`read` prints, once per sense, the Canonical gloss and the first four contexts
+(`id` + excerpt) for as many `SEARCHED` senses as fit in one response. It is
+stateless: until a sense is submitted, `read` shows it again. Read the contexts,
+decide for each which actually uses the exact source sense, use the verified
+ones to discover real words (the five guides lexical / action-role-tool /
+scene-time-environment / cause-effect-response / contrast-sensation-metaphor
+are prompts for that one integrated reading, not cells to fill), and edit the
+final `candidates`. Stop as soon as trustworthy VERIFIED contexts give enough
+discovery; `--sense-id ID --offset 4` pages more contexts (at most 16) only
+when needed.
 
-For each `VERIFIED` context, actually read the context and make one integrated
-PASS B exploration. Use the five guides `lexical`, `action_role_tool`,
-`scene_time_environment`, `cause_effect_response`, and
-`contrast_sensation_metaphor` together; the guides do not require separate
-zero-result entries. Put only the discoveries in a JSON list under
-`.warroom-scratch/`. Use strings for untagged candidates and objects when a
-perspective tag helps preserve how a candidate was found:
+Write one JSON list for the whole chunk and submit it once:
 
 ```json
 [
-  "겨울 아침",
-  {"candidate": "잔향", "lenses": ["scene_time_environment", "contrast_sensation_metaphor"]}
+  {"sense_id": "SENSE_ID", "status": "discovered", "verified": [101, 102], "candidates": ["겨울 아침", "잔향"]},
+  {"sense_id": "SENSE_ID_2", "status": "no_verified", "rejected": [201, 202, 203, 204]},
+  {"sense_id": "SENSE_ID_3", "status": "incomplete", "ambiguous": [301]}
 ]
 ```
 
-An empty list `[]` means the integrated exploration found no candidate. It is
-valid only when submitted as an explicit PASS 1 for that exact `VERIFIED`
-context; an absent result file, missing `results`, or an unrecorded `[]` does
-not complete PASS B. Keep the guides as prompts for a real context read, not as
-required ledger cells. Existing checkpoints with the legacy five-key object
-remain readable; new input should use the concise candidate list. Record PASS 1:
-
 ```sh
-pnpm run relation:corpus -- explore \
-  --checkpoint .warroom-scratch/001_01_d_codex.checkpoint.json \
-  --sense-id SENSE_ID --locator-key LOCATOR_KEY --pass 1 \
-  --results .warroom-scratch/sense-pass-b.json
+pnpm run relation:corpus -- submit --checkpoint ... --results .warroom-scratch/chunk.json
 ```
 
-A second pass is optional and does not have to cover every context. If a
-concrete reason warrants independently rereading one verified context, record
-that pass with `--pass 2 --independent-read --note '...'`. PASS 2 requires PASS 1,
-the independent-read flag, and a reason; omitting it is valid. If work is
-interrupted before PASS 1 is recorded, resume from the same checkpoint and
-record the integrated exploration after rereading the exact verified context.
-An already-recorded PASS 1 is preserved and must not be repeated. The tool does
-not judge the sense or invent candidates. Candidate strings remain separate
-from source-sense decisions. The CLI reports the number of unique candidates
-recorded and the current discovery total; the recorded strings remain in the
-private checkpoint instead of being echoed back as a potentially large response.
+- `verified` / `rejected` / `ambiguous` list context ids returned for that
+  sense; an id belongs to only one list. Contexts you did not judge are left out.
+- `discovered` needs at least one verified context; `candidates` may be empty
+  after a real reading. Ineligible candidates are simply omitted.
+- `no_verified` needs rejected contexts (exact source-sense mismatch) and nothing
+  verified, ambiguous, or discovered.
+- `incomplete` records that the reading is unfinished; the sense blocks export.
+- A submission is all-or-nothing: errors name each `sense_id` and nothing is
+  saved. Resubmitting a sense replaces its earlier result.
 
-Review every unique discovery for its Stage 1 form. The decision records
-whether it is an independent word or a concise phrase; it does not assign a
-relation type, Tier, or admission status:
-
-```sh
-pnpm run relation:corpus -- review-candidate \
-  --checkpoint .warroom-scratch/001_01_d_codex.checkpoint.json \
-  --sense-id SENSE_ID --candidate '겨울 아침' --decision KEEP \
-  --kind phrase --note 'VERIFIED 문맥의 장면을 압축한 짧은 표현'
-```
-
-Use `--decision REMOVE` with a note for a discovered string that fails the
-Candidate form gate. The tool preserves weak but intelligible source-sense
-associations for Stage 2 and does not apply candidate-count targets. A sense
-reaches `DISCOVERED` only after all verified contexts in its completed sample
-have an integrated PASS B and every unique discovery has a form decision.
-
-`report` prints batch totals and status counts only. Add a human-selected
-search form with `add-form` before `scan`; its source-bound basis is stored in
-the private checkpoint. Do not add forms after context retrieval.
-
-## Export, validation, and local repair
-
-`export` writes only Candidate v1 fields, preserves all Canonical records and
-senses in order, and runs both the source-sense evidence check and the shared
-full-batch Candidate validator before creating output:
+## Export
 
 ```sh
 pnpm run relation:corpus -- export \
-  --checkpoint .warroom-scratch/001_01_d_codex.checkpoint.json \
-  --canonical data/canonical/stdict-0001.jsonl \
+  --checkpoint ... --canonical data/canonical/stdict-0001.jsonl \
   --output data/relation-candidates/001/001_01_d_codex.jsonl
-pnpm run relation:corpus -- validate \
-  --checkpoint .warroom-scratch/001_01_d_codex.checkpoint.json \
-  --canonical data/canonical/stdict-0001.jsonl \
-  --candidate data/relation-candidates/001/001_01_d_codex.jsonl
 ```
 
-Only `ZERO_HITS`, fully checked `NO_VERIFIED`, and `DISCOVERED` senses can be
-exported. Failed, unsearchable, ambiguous-without-verification, and unfinished
-senses remain blocked. The final validator checks every record and sense,
-canonical order, Candidate v1 shape, normalized duplicates, and source-lemma
-conditions. A partial repair never replaces this final check.
+`export` is the single full Candidate v1 validation. Only `ZERO_HITS`,
+`NO_VERIFIED`, and `DISCOVERED` senses can be exported; unfinished, failed, and
+unsearchable senses block it. On an error, fix only the reported `sense_id`
+(resubmit it) and export again. `validate` and `patch` remain for an existing
+Candidate file (for example a review fix): `patch` removes or replaces one
+exact candidate tuple and reruns the whole validator.
 
-If a validation error identifies one item, first correct the corresponding
-form-gate decision in the private checkpoint, then run `patch` for that exact
-`record_id`/`sense_id`/candidate. `patch` preserves all other rows and senses
-and reruns the whole Candidate validator. A locator must belong to the exact
-source sense that contains the discovery; mismatched or stale locator evidence
-fails validation. Never re-run discovery to repair a one-row serialization
-error.
+`report [--status STATUS]` prints status counts or a queue page.
 
-All checkpoint JSON, paragraph text, context locators, and PASS B input files
-stay under the ignored `.warroom-scratch/` directory. Never commit those files,
-corpus SQLite, source paths, or paragraph text. Do not execute a formal 500-
-record D batch merely to benchmark this implementation.
+Checkpoints from the earlier per-context format stay readable: finished
+`DISCOVERED`/`NO_VERIFIED`/`ZERO_HITS` senses export from their saved `KEEP`
+decisions, and unfinished senses are read and submitted like new ones. Never
+commit checkpoint JSON, corpus SQLite, source paths, or paragraph text. Do not
+execute a formal 500-record D batch merely to benchmark this implementation.
