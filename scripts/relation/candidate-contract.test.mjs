@@ -305,3 +305,35 @@ test('Candidate v1 thousands-comma check ignores digits inside other numbers and
     for (const candidate of ['1', '2', '3', '34']) assert.doesNotThrow(run([candidate], gloss), `${gloss} ${candidate}`);
   }
 });
+
+test('Candidate v1 reports every source-lemma repetition in one run and keeps independent words', () => {
+  const canonicalRows = [
+    { id: 'w1', lemma: '기회비용', search_forms: ['기회비용', '기회 비용'], senses: [{ id: 'w1-s1' }, { id: 'w1-s2' }] },
+    { id: 'w2', lemma: '기상', search_forms: ['기상'], senses: [{ id: 'w2-s1' }] },
+    { id: 'w3', lemma: '기업 공개', search_forms: ['기업 공개', '기업-공개'], senses: [{ id: 'w3-s1' }] },
+    { id: 'w4', lemma: '기업공개(IPO)', search_forms: ['기업공개'], senses: [{ id: 'w4-s1' }] },
+    { id: 'w5', lemma: '기회', senses: [{ id: 'w5-s1' }] },
+  ];
+  const sense = (id, candidates) => ({ sense_id: id, candidates });
+  const rows = (w3, w4) => [
+    { record_id: 'w1', senses: [sense('w1-s1', ['기회 비용', '기회비용을 따지다']), sense('w1-s2', ['기회비용'])] },
+    { record_id: 'w2', senses: [sense('w2-s1', ['기상(氣象)', '기상 캐스터', '기상청'])] },
+    { record_id: 'w3', senses: [sense('w3-s1', w3)] },
+    { record_id: 'w4', senses: [sense('w4-s1', w4)] },
+    { record_id: 'w5', senses: [sense('w5-s1', [])] },
+  ];
+  assert.throws(
+    () => validateCandidateBatch(canonicalRows, rows(['기업-공개', '기업공개'], ['기업공개']), { batch: '01' }),
+    (error) => {
+      for (const expected of ['Candidate:1:1 ', 'Candidate:1:2 ', 'Candidate:2:1 ', 'Candidate:3:1 ']) {
+        assert.ok(error.message.includes(expected), `${expected} missing from ${error.message}`);
+      }
+      return true;
+    },
+  );
+  // Independent compounds, annotated-only look-alikes and another record's lemma stay valid.
+  const valid = rows(['기업 공개 시장', '공모주'], ['기업공개를 앞두다']);
+  valid[0].senses = [sense('w1-s1', ['기회']), sense('w1-s2', ['기회비용 계산'])];
+  valid[1].senses = [sense('w2-s1', ['기상 캐스터', '기상청'])];
+  assert.equal(validateCandidateBatch(canonicalRows, valid, { batch: '01' }).candidateCount, 7);
+});

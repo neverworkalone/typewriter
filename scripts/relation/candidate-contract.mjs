@@ -113,6 +113,21 @@ function hasExactKeys(value, keys) {
 }
 
 /** Validate one Candidate JSONL batch against its complete Canonical shard. */
+/** Why a candidate repeats its own source lemma (exact, parenthetical or spacing/hyphen search form), if it does. */
+function sourceLemmaRepeatMessage(candidate, source, independentLemmaForms) {
+  if (normalizeCandidate(candidate) === normalizeCandidate(source.lemma ?? '')) {
+    return `candidate repeats source lemma ${JSON.stringify(source.lemma)}`;
+  }
+  if (isSourceLemmaProjection(candidate, source.lemma)) {
+    return `candidate ${JSON.stringify(candidate)} repeats source lemma ${JSON.stringify(source.lemma)} with a parenthetical annotation`;
+  }
+  const sourceSearchForm = matchingSourceOrthographicForm(candidate, source.lemma, source.search_forms, independentLemmaForms);
+  if (sourceSearchForm !== undefined) {
+    return `candidate ${JSON.stringify(candidate)} repeats source lemma ${JSON.stringify(source.lemma)} in orthographic search form ${JSON.stringify(sourceSearchForm)}`;
+  }
+  return undefined;
+}
+
 export function validateCandidateBatch(canonicalRows, candidateRows, {
   batch,
   sourceName = 'Canonical',
@@ -139,6 +154,7 @@ export function validateCandidateBatch(canonicalRows, candidateRows, {
   let senseCount = 0;
   let candidateCount = 0;
   let emptySenseCount = 0;
+  const selfRepeats = [];
 
   for (const [index, source] of expectedRows.entries()) {
     const row = candidateRows[index];
@@ -167,22 +183,18 @@ export function validateCandidateBatch(canonicalRows, candidateRows, {
       }
 
       const seen = new Set();
-      const normalizedLemma = normalizeCandidate(source.lemma ?? '');
       for (const candidate of candidateSense.candidates) {
         if (typeof candidate !== 'string' || candidate.length === 0 || candidate.trim() !== candidate) {
           fail(`${senseLine} candidates must be non-empty trimmed strings`);
         }
         const normalized = normalizeCandidate(candidate);
         if (seen.has(normalized)) fail(`${senseLine} contains duplicate candidate ${JSON.stringify(candidate)}`);
-        if (normalized === normalizedLemma) {
-          fail(`${senseLine} candidate repeats source lemma ${JSON.stringify(source.lemma)}`);
-        }
-        if (isSourceLemmaProjection(candidate, source.lemma)) {
-          fail(`${senseLine} candidate ${JSON.stringify(candidate)} repeats source lemma ${JSON.stringify(source.lemma)} with a parenthetical annotation`);
-        }
-        const sourceSearchForm = matchingSourceOrthographicForm(candidate, source.lemma, source.search_forms, independentLemmaForms);
-        if (sourceSearchForm !== undefined) {
-          fail(`${senseLine} candidate ${JSON.stringify(candidate)} repeats source lemma ${JSON.stringify(source.lemma)} in orthographic search form ${JSON.stringify(sourceSearchForm)}`);
+        const repeat = sourceLemmaRepeatMessage(candidate, source, independentLemmaForms);
+        if (repeat !== undefined) {
+          // Collect every self-repetition so one validation run reports the whole class, not one per retry.
+          selfRepeats.push(`${senseLine} ${repeat}`);
+          seen.add(normalized);
+          continue;
         }
         if (isThousandsCommaFragment(candidate, sourceSense.gloss)) {
           fail(`${senseLine} candidate ${JSON.stringify(candidate)} is a fragment of a number written with a thousands comma in the source gloss`);
@@ -195,6 +207,8 @@ export function validateCandidateBatch(canonicalRows, candidateRows, {
       if (candidateSense.candidates.length === 0) emptySenseCount += 1;
     }
   }
+
+  if (selfRepeats.length > 0) fail(selfRepeats.join('\n'));
 
   return {
     recordCount: expectedRows.length,
