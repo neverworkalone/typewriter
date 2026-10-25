@@ -135,6 +135,8 @@ async function cleanup(fixture) {
 async function makeRetiredParagraphIndex() {
   const root = await mkdtemp(path.join(os.tmpdir(), 'typewriter-retired-literary-index-'));
   const databasePath = path.join(root, 'retired.sqlite');
+  const scratchDirectory = path.join(root, '.warroom-scratch');
+  await mkdir(scratchDirectory, { recursive: true });
   const database = new DatabaseSync(databasePath);
   database.exec(`
     CREATE TABLE source_files (source_path TEXT PRIMARY KEY);
@@ -144,7 +146,7 @@ async function makeRetiredParagraphIndex() {
     CREATE TABLE index_metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL);
   `);
   database.close();
-  return { root, databasePath };
+  return { root, databasePath, scratchDirectory };
 }
 
 const sevenEmptyLenses = () => ({
