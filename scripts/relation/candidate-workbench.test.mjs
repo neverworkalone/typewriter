@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { createHash } from 'node:crypto';
 import test from 'node:test';
 
 import {
@@ -193,32 +192,6 @@ test('resume reuses the checkpoint and saved chunks; merge needs every chunk and
   await writeFile(path.join(context.repositoryDirectory, 'data/canonical/stdict-0001.jsonl'), `${context.canonicalRows.map((row) => JSON.stringify(row)).join('\n')}\n`);
   await assert.rejects(mergeCandidateBatch({ scratchDirectory: context.scratchDirectory, outPath, repositoryDirectory: context.repositoryDirectory }), /Canonical batch changed since prepare/u);
   await assert.rejects(readFile(outPath, 'utf8'), { code: 'ENOENT' });
-});
-
-test('v1 checkpoints keep their saved candidates when prepared again', async (t) => {
-  const context = await setup(t);
-  await mkdir(context.scratchDirectory, { recursive: true });
-  const records = context.canonicalRows.slice(0, 500).map((record) => ({
-    record_id: record.id, source_index: 0, lemma: record.lemma,
-    senses: record.senses.map((sense) => ({ sense_id: sense.id, candidates: sense.id === 'w001-s1' ? ['별빛'] : [], reviewed: [], explored_fingerprint: null })),
-  }));
-  const chunks = Array.from({ length: 20 }, (_, index) => ({ number: index + 1, candidate_sha256: index === 0 ? 'f'.repeat(64) : null }));
-  await writeFile(path.join(context.scratchDirectory, 'checkpoint.json'), JSON.stringify({
-    contract: 'candidate-workbench-v1', batch: { shard: '001', batch: '01', method: 'b', model: 'codex' }, source: { chunk_size: 25, canonical_sha256: createHash('sha256').update(`${context.canonicalRows.map((row) => JSON.stringify(row)).join('\n')}\n`).digest('hex') }, chunks, records,
-  }));
-  await assert.rejects(readCandidateStatus({ scratchDirectory: context.scratchDirectory, repositoryDirectory: context.repositoryDirectory }), /v1 workbench checkpoint/u);
-  const changed = structuredClone(context.canonicalRows);
-  changed[0].senses[0].gloss = '바뀐 뜻.';
-  const canonicalPath = path.join(context.repositoryDirectory, 'data/canonical/stdict-0001.jsonl');
-  await writeFile(canonicalPath, `${changed.map((row) => JSON.stringify(row)).join('\n')}\n`);
-  await assert.rejects(prepare(context), /Canonical batch changed since this v1 checkpoint/u);
-  await assert.rejects(readFile(path.join(context.scratchDirectory, 'candidates/chunk-001.jsonl'), 'utf8'), { code: 'ENOENT' });
-  assert.equal(JSON.parse(await readFile(path.join(context.scratchDirectory, 'checkpoint.json'), 'utf8')).contract, 'candidate-workbench-v1');
-  await writeFile(canonicalPath, `${context.canonicalRows.map((row) => JSON.stringify(row)).join('\n')}\n`);
-  const migrated = await prepare(context);
-  assert.deepEqual(migrated.chunks.filter((chunk) => chunk.saved).map((chunk) => chunk.number), [1]);
-  const page = await readCandidateChunkPage({ scratchDirectory: context.scratchDirectory, chunk: 1, limit: 1, repositoryDirectory: context.repositoryDirectory });
-  assert.deepEqual(page.items[0].canonical_record.senses[0].candidates, ['별빛']);
 });
 
 test('partial final-shard batch keeps its 83-record boundary and merges', async (t) => {

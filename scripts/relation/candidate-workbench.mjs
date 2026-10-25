@@ -7,7 +7,6 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { loadCanonicalLemmaForms, normalizeCandidate, validateCandidateBatch } from './candidate-contract.mjs';
 
 export const CANDIDATE_WORKBENCH_CONTRACT = 'candidate-workbench-v2';
-const LEGACY_CONTRACT = 'candidate-workbench-v1';
 export const DEFAULT_CANDIDATE_CHUNK_SIZE = 25;
 export const MIN_CANDIDATE_CHUNK_SIZE = 25;
 export const MAX_CANDIDATE_CHUNK_SIZE = 50;
@@ -282,9 +281,6 @@ function makeChunks(records, chunkSize) {
 }
 
 function assertCheckpointShape(checkpoint) {
-  if (checkpoint?.contract === LEGACY_CONTRACT) {
-    fail('this scratch directory holds a v1 workbench checkpoint; run prepare again with the same arguments to migrate its saved candidates');
-  }
   if (checkpoint?.contract !== CANDIDATE_WORKBENCH_CONTRACT
     || !hasExactKeys(checkpoint, ['contract', 'batch', 'source', 'chunks'])
     || !hasExactKeys(checkpoint.batch, ['shard', 'batch', 'method', 'model'])
@@ -347,7 +343,7 @@ function chunkSummary(checkpoint, chunk, saved) {
   };
 }
 
-/** Prepare a batch once; an existing v2 checkpoint is reused as-is, and a v1 checkpoint's saved candidates are carried over. */
+/** Prepare a batch once; an existing checkpoint is reused as-is. */
 export async function prepareCandidateBatch({
   shard: requestedShard,
   batch: requestedBatch,
@@ -364,39 +360,27 @@ export async function prepareCandidateBatch({
   const scratchDirectory = assertScratchPath(repositoryDirectory, requestedScratchDirectory, 'scratch-dir');
   const checkpointPath = path.join(scratchDirectory, 'checkpoint.json');
 
-  let legacy = null;
   const existing = await readOptional(checkpointPath);
   if (existing !== null) {
     const parsed = JSON.parse(existing);
-    if (parsed?.contract !== LEGACY_CONTRACT) {
-      assertCheckpointShape(parsed);
-      const same = parsed.batch.shard === shard && parsed.batch.batch === batch
-        && parsed.batch.method === method && parsed.batch.model === model;
-      if (!same) fail('checkpoint shard/batch/method/model does not match the requested Candidate queue');
-      if (requestedChunkSize !== undefined && requestedChunkSize !== parsed.source.chunk_size) {
-        fail(`checkpoint uses ${parsed.source.chunk_size}-record chunks; resume with that size or use a separate scratch directory`);
-      }
-      return describePrepared(scratchDirectory, parsed, checkpointPath, true);
+    assertCheckpointShape(parsed);
+    const same = parsed.batch.shard === shard && parsed.batch.batch === batch
+      && parsed.batch.method === method && parsed.batch.model === model;
+    if (!same) fail('checkpoint shard/batch/method/model does not match the requested Candidate queue');
+    if (requestedChunkSize !== undefined && requestedChunkSize !== parsed.source.chunk_size) {
+      fail(`checkpoint uses ${parsed.source.chunk_size}-record chunks; resume with that size or use a separate scratch directory`);
     }
-    if (parsed.batch?.shard !== shard || parsed.batch?.batch !== batch
-      || parsed.batch?.method !== method || parsed.batch?.model !== model) {
-      fail('checkpoint shard/batch/method/model does not match the requested Candidate queue');
-    }
-    legacy = parsed;
+    return describePrepared(scratchDirectory, parsed, checkpointPath, true);
   }
 
   const { canonicalPath, rows: canonicalRows } = await readCanonicalShard(shard, repositoryDirectory);
   const { rows: sourceRows, firstRecordIndex } = selectCanonicalBatch(canonicalRows, batch, canonicalPath);
-  const chunkSize = requestedChunkSize ?? legacy?.source.chunk_size ?? DEFAULT_CANDIDATE_CHUNK_SIZE;
+  const chunkSize = requestedChunkSize ?? DEFAULT_CANDIDATE_CHUNK_SIZE;
   const chunks = makeChunks(sourceRows, chunkSize);
   const sourceHash = sha256(serializeJsonl(sourceRows));
-  if (legacy && legacy.source?.canonical_sha256 !== sourceHash) {
-    fail('Canonical batch changed since this v1 checkpoint was prepared; its candidates were preserved in place and not migrated. Re-explore against the current source in a new scratch directory.');
-  }
   for (const chunk of chunks) {
     await writeFileAtomic(sourcePathOf(scratchDirectory, chunk), serializeJsonl(sourceRows.slice(chunk.start_index, chunk.start_index + chunk.record_ids.length)));
   }
-  if (legacy) await migrateLegacyCandidates(scratchDirectory, legacy, sourceRows, chunks);
 
   const checkpoint = {
     contract: CANDIDATE_WORKBENCH_CONTRACT,
@@ -411,22 +395,8 @@ export async function prepareCandidateBatch({
     },
     chunks,
   };
-  if (legacy) await rename(checkpointPath, path.join(scratchDirectory, 'checkpoint.v1.json'));
   await writeFileAtomic(checkpointPath, `${JSON.stringify(checkpoint, null, 2)}\n`);
   return describePrepared(scratchDirectory, checkpoint, checkpointPath, false);
-}
-
-async function migrateLegacyCandidates(scratchDirectory, legacy, sourceRows, chunks) {
-  const oldRecords = new Map(legacy.records.map((record) => [record.record_id, record]));
-  const savedOld = new Set(legacy.chunks.filter((chunk) => chunk.candidate_sha256 !== null).map((chunk) => chunk.number));
-  for (const chunk of chunks) {
-    if (!savedOld.has(chunk.number)) continue;
-    const rows = sourceRows.slice(chunk.start_index, chunk.start_index + chunk.record_ids.length).map((source) => {
-      const old = new Map((oldRecords.get(source.id)?.senses ?? []).map((sense) => [sense.sense_id, sense.candidates]));
-      return { record_id: source.id, senses: source.senses.map((sense) => ({ sense_id: sense.id, candidates: old.get(sense.id) ?? [] })) };
-    });
-    await writeFileAtomic(candidatePathOf(scratchDirectory, chunk), serializeJsonl(rows));
-  }
 }
 
 async function describePrepared(scratchDirectory, checkpoint, checkpointPath, resumed) {

@@ -48,5 +48,3 @@ node scripts/relation/candidate-workbench.mjs merge \
 ## Files and resuming
 
 All scratch data lives in `.warroom-scratch/<batch>/`: `checkpoint.json` (written once), `source/chunk-NNN.jsonl`, and `candidates/chunk-NNN.jsonl` (existence = saved). Commit only the formal Candidate JSONL. Output is capped (25 items, 32,768 characters, 64 KiB per command); use the returned `next_offset`. If the Canonical batch changes after `prepare`, `merge` stops and the saved candidates stay in place.
-
-A scratch directory prepared with the former v1 workbench (receipts, fingerprints) is migrated by running `prepare` again with the same arguments: saved candidates are kept, the old checkpoint is renamed `checkpoint.v1.json`, and the exploration/review receipts are dropped.
