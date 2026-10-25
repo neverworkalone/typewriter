@@ -25,6 +25,30 @@ Closing the TUI or detaching tmux never stops the Supervisor or the AI. If tmux 
 restarts the Supervisor, which resumes from SQLite + GitHub + git worktrees; it never
 re-produces or opens a second PR when the situation is unclear (state `ERROR`, everything kept).
 
+## Stage 2 (Relation Admission, Issue #1684)
+
+Stage 2 is one serial process under the Stage 1 A/B/C/D lines, shown as **row 5** of the Board: column 1 (Claude) and
+column 2 (Codex) hold a `Stage 2` card, column 3 (DeepSeek) the status-only **Maintainer** card (#1555 progress,
+whichever model runs the Maintainer; the top yellow area keeps only the Drain note and real errors). Idle cards use the
+neutral empty style; colour appears only while a task exists.
+
+- **Start:** pick Claude or Codex, then Method `Stage 2` (not offered for DeepSeek; switching to DeepSeek falls back to
+  `A`). The model uses the already registered producer pin; there is no separate Stage 2 model config. Start is also
+  refused in `control.start` and the Supervisor for any other model.
+- **One occupancy:** Stage 2 holds at most one Part for the whole factory (SQLite, one write transaction shared by
+  Start and batch creation). Another model's Start is refused while a Part is unfinished or reserved; a restart with
+  another model after Stop/Drain must Retry (or Clear) the owner's Part. Stage 1 lines keep running beside it.
+- **Unit:** one Part (100 records, `Shard SSS · Batch BB · Part PP`) = one AI run = one PR. It is an ordinary `batches`
+  row with method `s2` and `batch = "BB-PP"`, so PR review, fixes, Stop/Drain/Retry/Clear and recovery are unchanged.
+- **Next Part:** the earliest Part whose six Stage 1 inputs are on the latest master, whose shard has no open Stage 2
+  PR, and whose exact `admission-cli verify --shard S --batch B --part P` fails on a detached checkout of
+  `origin/master` (`worktrees/s2-verify`). Successes are cached, so a finished Part is never redone and a PR or file alone
+  never counts. After a Part's PR is merged, its exact verify must pass on the latest master (else `ERROR`, worktree
+  kept, Retry re-verifies) before cleanup and the next Part. Batch and shard verify run when their last Part is done.
+- **Single** binds to the shard of its first Part and waits there if inputs are missing; **Continuous** moves on. With
+  nothing runnable the line waits and re-checks every `poll_seconds`.
+- `s2` and `m` are reserved names and cannot be listed in `methods`.
+
 ## Setup
 
 1. `brew install tmux` and install the CLI(s) for the configured producers. `./war` creates `.local/venv` (Textual) on first run.

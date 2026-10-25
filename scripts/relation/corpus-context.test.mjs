@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { DatabaseSync } from 'node:sqlite';
@@ -20,8 +19,10 @@ import {
   CORPUS_RESPONSE_LIMIT,
 } from './corpus-context.mjs';
 
-async function makeFixture({ paragraphCount = 1, withBigram = true, approvedDigests = true, longMetadata = false } = {}) {
-  const root = await mkdtemp(path.join(tmpdir(), 'typewriter-d-corpus-'));
+async function makeFixture({ paragraphCount = 1, withBigram = true, approvedDigests = true, longMetadata = false, sourceProfileCount = 1, invalidDistributorAt = null, invalidCategoryAt = null } = {}) {
+  const scratchRoot = path.join(process.cwd(), '.warroom-scratch');
+  await mkdir(scratchRoot, { recursive: true });
+  const root = await mkdtemp(path.join(scratchRoot, 'typewriter-d-corpus-'));
   const repositoryDirectory = path.join(root, 'repo');
   const scratchDirectory = path.join(repositoryDirectory, '.warroom-scratch');
   const canonicalDirectory = path.join(repositoryDirectory, 'data', 'canonical');
@@ -59,7 +60,21 @@ async function makeFixture({ paragraphCount = 1, withBigram = true, approvedDige
   `);
   const sourcePath = path.join(root, 'personal', 'must-not-print.json');
   const insertSource = database.prepare('INSERT INTO source_files VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-  insertSource.run(sourcePath, 'NIKL-WRITTEN-2025', '국립국어원 문어 말뭉치 2025 (1.0)', '국립국어원', '국립국어원 모두의 말뭉치', '2025', '문어 > 책-상상 > 문학', '[]', '본문 전체', 'f'.repeat(64), 1234);
+  for (let index = 1; index <= sourceProfileCount; index += 1) {
+    insertSource.run(
+      index === 1 ? sourcePath : path.join(root, 'personal', `source-${index}.json`),
+      'NIKL-WRITTEN-2025',
+      index === invalidCategoryAt ? '국립국어원 문어 말뭉치 2025 (1.0)' : `문서 제목 ${index}`,
+      '국립국어원',
+      index === invalidDistributorAt ? 'unapproved distributor' : '국립국어원 모두의 말뭉치',
+      '2025',
+      index === invalidCategoryAt ? '구어 > 일상 대화' : '문어 > 책-상상 > 문학',
+      '[]',
+      '본문 전체',
+      'f'.repeat(64),
+      1234,
+    );
+  }
   const paragraphs = paragraphCount === 20
     ? [...Array.from({ length: 20 }, (_, index) => `사람이 등장하는 문맥 ${index + 1}`), '두자 빛과 연결어를 보고 바람이 분다.']
     : ['사람은 두자 빛과 연결어를 보고 바람이 분다.'];
@@ -84,7 +99,7 @@ async function makeFixture({ paragraphCount = 1, withBigram = true, approvedDige
     sqlite_version: database.prepare('SELECT sqlite_version() AS version').get().version,
     input_manifest_sha256: metadataDigest.source_manifest_sha256,
     logical_row_digest: metadataDigest.logical_row_sha256,
-    source_count: '1',
+    source_count: String(sourceProfileCount),
     document_count: String(paragraphs.length),
     paragraph_count: String(paragraphs.length),
   })) insertMetadata.run(key, value);
@@ -161,6 +176,32 @@ test('preflight fails closed for the wrong snapshot and reports the literal shor
     assert.equal((await inspectWrittenCorpusIndex(fallback.databasePath, { scratchDirectory: fallback.scratchDirectory })).search.bigram_index, false);
   } finally {
     await cleanup(fallback);
+  }
+});
+
+test('preflight accepts every valid source profile and checks invalid metadata after profile 64', async () => {
+  const valid = await makeFixture({ sourceProfileCount: 65 });
+  try {
+    const inspected = await inspectWrittenCorpusIndex(valid.databasePath, { scratchDirectory: valid.scratchDirectory });
+    assert.equal(inspected.status, 'READY');
+    assert.equal(inspected.source.profile_count, 65);
+  } finally {
+    await cleanup(valid);
+  }
+
+  for (const invalid of [
+    { invalidDistributorAt: 66 },
+    { invalidCategoryAt: 66 },
+  ]) {
+    const fixture = await makeFixture({ sourceProfileCount: 66, ...invalid });
+    try {
+      await assert.rejects(
+        inspectWrittenCorpusIndex(fixture.databasePath, { scratchDirectory: fixture.scratchDirectory }),
+        /corpus source metadata does not identify only NIKL written-corpus material/u,
+      );
+    } finally {
+      await cleanup(fixture);
+    }
   }
 });
 

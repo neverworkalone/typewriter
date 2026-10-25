@@ -253,3 +253,35 @@ class Git:
         if not self.contains(path, sha):
             raise IntegrationBlocked("merge 후에도 수정 commit이 HEAD에 포함되지 않았습니다")
         return self.head(path)
+
+    # ---- Stage 2 verification on the latest master (Issue #1684) -------------------------------------------------
+    VERIFY_DIR = "s2-verify"   # War Room's own detached checkout; it holds no work, only the exact commit being verified
+
+    def contains_on_base(self, sha: str, base: str) -> bool:
+        """True iff commit `sha` is on (an ancestor of) the fetched origin/<base>."""
+        return self._git("merge-base", "--is-ancestor", sha, f"origin/{base}", check=False).ok
+
+    def _verify_checkout(self, sha: str) -> Path:
+        """The detached verification worktree at exactly `sha` (created once, then only moved between master commits)."""
+        path = self.worktrees_dir / self.VERIFY_DIR
+        if not path.exists():
+            self.worktrees_dir.mkdir(parents=True, exist_ok=True)
+            self._git("worktree", "add", "--detach", str(path), sha)
+        elif self.registered(path) != "":   # detached = registered with no branch; anything else is not ours to move
+            raise GitError(f"Stage 2 검증 worktree가 War Room의 분리된 체크아웃으로 등록되어 있지 않습니다: {path}")
+        else:
+            self._git("checkout", "--detach", "--force", sha, cwd=path)
+            self._git("clean", "-fdq", cwd=path)
+        return path
+
+    def verify_stage2(self, sha: str, kind: str, shard: str, batch: str | None, part: str | None,
+                      timeout: int = 900) -> tuple[bool, str]:
+        """Run the exact `admission-cli verify` for a Part / Batch / shard on commit `sha` (the latest master)."""
+        args = ["--shard", shard] + (["--batch", batch] if batch else []) + (["--part", part] if part else [])
+        if kind not in ("part", "batch", "shard") or (kind == "part") != bool(part) or (kind != "shard") != bool(batch):
+            raise GitError(f"잘못된 Stage 2 verify 범위: {kind} {shard} {batch} {part}")
+        path = self._verify_checkout(sha)
+        res = self.r.run(["node", "scripts/relation/admission-cli.mjs", "verify", *args], cwd=path, env=self.env,
+                         timeout=timeout)
+        tail = " ".join((res.err or res.out).split())[-300:]
+        return res.ok, tail
