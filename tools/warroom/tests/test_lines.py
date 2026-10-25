@@ -1,15 +1,18 @@
 """Multi-Line isolation, scoped commands, drain/stop semantics, SQLite migration, log tail."""
 import sqlite3
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 
+from tests.fake_runner import ScriptedRunner
 from tests.fakes import HEAD1, HEAD2, World
 from tests.test_supervisor import review
-from warroom import control
+from warroom import batches, control
 from warroom.config import DEFAULTS, registry, registry_problems
 from warroom.logtail import INITIAL_BYTES, LogTail, redact
-from warroom.store import LineBusy, Store
+from warroom.store import DuplicateBatch, LineBusy, Store
+from warroom.supervisor import DuplicateClaim
 
 PRODUCERS = {
     "deepseek": {"adapter": "opencode", "models": {"free": "p/free-x-free", "go": "p/go"}},
@@ -38,6 +41,96 @@ def to_review(w, model, method, n):
     w.adapter.finish(w.adapter.launches[-1]["pid"])
     w.tick()
     assert w.row(model, method)["state"] == "WAITING_REVIEW"
+
+
+def cand(s, b, method, model):
+    return f"data/relation-candidates/{s:03d}/{s:03d}_{b:02d}_{method}_{model}.jsonl"
+
+
+class SharedCdQueue(unittest.TestCase):
+    """C/D share one batch queue across models; A/B stay per model."""
+
+    def test_other_models_work_occupies_c_d_but_not_a(self):
+        w = multi_world()
+        w.runner.set_batches({1: 1000}, {cand(1, 1, "c", "sonnet"): 500, cand(1, 1, "a", "sonnet"): 500})
+        w.gh.open = [{"number": 9, "files": [{"path": cand(1, 1, "d", "sonnet")}]}]
+        for model, method, want in (("deepseek", "c", "02"), ("deepseek", "a", "01"), ("deepseek", "d", "02")):
+            w.start("single", model, method)
+            w.tick()
+            self.assertEqual(w.row(model, method)["batch"], want, method)
+        w.tmp.cleanup()
+
+    def test_every_unfinished_state_of_another_model_occupies_the_batch(self):
+        for state in ("PREPARE", "PRODUCING", "WAITING_REVIEW", "FIXING", "MERGED", "CLEANUP", "PAUSED", "ERROR", "COMPLETE"):
+            with self.subTest(state):
+                w = multi_world()
+                bid = w.store.create_batch(method="c", producer="sonnet", shard="001", batch="01",
+                                           branch="c-sonnet-001-01", worktree=str(w.paths.worktrees / "x"))
+                w.store.update(bid, state=state)
+                w.start("single", "deepseek", "c")
+                w.tick()
+                self.assertEqual(w.row("deepseek", "c")["batch"], "02")
+                w.tmp.cleanup()
+
+    def test_conflicting_master_files_block_without_launch(self):
+        w = multi_world()
+        w.runner.set_batches({1: 1000}, {cand(1, 1, "c", "codex"): 500, cand(1, 1, "c", "claude"): 500})
+        w.start("single", "deepseek", "c")
+        w.tick()
+        self.assertIsNone(w.row("deepseek", "c"))
+        self.assertIn("배치 선정 실패", control.line_status(w.store, "deepseek", "c")["blocked"])
+        self.assertEqual(w.adapter.launches, [])
+        w.tmp.cleanup()
+
+    def test_same_batch_cannot_be_reserved_by_two_models_for_c_d_only(self):
+        models = ["deepseek", "sonnet", "codex", "claude"]
+        for method, shared in (("c", True), ("d", True), ("a", False), ("b", False)):
+            with self.subTest(method):
+                w = World()
+                results, barrier = [], threading.Barrier(len(models))
+
+                def reserve(model):
+                    barrier.wait()
+                    try:
+                        w.store.create_batch(method=method, producer=model, shard="001", batch="01",
+                                             branch=f"{method}-{model}-001-01", worktree=f"/x/{model}")
+                        results.append("ok")
+                    except DuplicateBatch:
+                        results.append("dup")
+
+                ts = [threading.Thread(target=reserve, args=(m,)) for m in models]
+                [t.start() for t in ts]
+                [t.join() for t in ts]
+                self.assertEqual(results.count("ok"), 1 if shared else len(models), results)
+                w.tmp.cleanup()
+
+    def test_rival_pr_and_unknown_file_list_fail_closed(self):
+        w = multi_world()
+        mine = {"number": 7, "files": [{"path": cand(1, 1, "c", "deepseek")}]}
+        rows = {m: w.store.batch(w.store.create_batch(method=m, producer="deepseek", shard="001", batch="01",
+                                                      branch=f"{m}-deepseek-001-01", worktree="/x"))
+                for m in "acd"}
+        for method, name, other, want in [
+            ("c", "unrelated files", {"number": 9, "files": [{"path": "README.md"}, {}]}, "none"),
+            ("c", "rival C of another model", {"number": 9, "files": [{"path": cand(1, 1, "c", "sonnet")}]}, "rival"),
+            ("d", "rival D of another model", {"number": 9, "files": [{"path": cand(1, 1, "d", "sonnet")}]}, "rival"),
+            ("a", "A of another model is no rival", {"number": 9, "files": [{"path": cand(1, 1, "a", "sonnet")}]}, "none"),
+            ("c", "files missing", {"number": 9}, "unknown"),
+            ("c", "files None", {"number": 9, "files": None}, "unknown"),
+            ("c", "files not a list", {"number": 9, "files": "x"}, "unknown"),
+        ]:
+            with self.subTest(name):
+                b = rows[method]
+                w.gh.open = [mine, other]
+                if want == "unknown":
+                    with self.assertRaises(DuplicateClaim):
+                        w.sup._duplicate_claim(b, 7)
+                    with self.assertRaises(batches.BatchError):
+                        batches.next_batch(ScriptedRunner(), ".", {}, ref="r", method="c", producer="deepseek",
+                                           open_prs=[other], owned=set())
+                else:
+                    self.assertEqual(w.sup._duplicate_claim(b, 7), 9 if want == "rival" else None)
+        w.tmp.cleanup()
 
 
 class LineIsolation(unittest.TestCase):
