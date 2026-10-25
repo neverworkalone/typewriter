@@ -20,6 +20,7 @@ import {
   scanCorpusBatch,
   searchCorpusSense,
   validateCorpusExport,
+  validateExistingCorpusCandidates,
   CORPUS_RESPONSE_LIMIT,
   CORPUS_SWEEP_LENSES,
 } from './corpus-context.mjs';
@@ -265,6 +266,78 @@ test('a failed later context page resumes from its checkpoint after the corpus l
     ({ checkpoint } = await loadCorpusCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory }));
     assert.equal(checkpoint.records[0].senses[0].contexts.length, 8);
     assert.equal(checkpoint.records[0].senses[0].search.status, 'COUNTED');
+  } finally {
+    if (lock) {
+      try { lock.exec('ROLLBACK'); } catch {}
+      lock.close();
+    }
+    await cleanup(fixture);
+  }
+});
+
+test('checkpoint scan retry preserves completed senses and keeps the full Candidate output eligible', async () => {
+  const fixture = await makeFixture({ paragraphCount: 20 });
+  let lock;
+  try {
+    await initialize(fixture);
+    const firstScan = await scanCorpusBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
+    assert.equal(firstScan.status, 'SEARCHED');
+
+    const discoveredPage = await searchCorpusSense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'w1-s1', pageSize: 1, scratchDirectory: fixture.scratchDirectory });
+    await reviewCorpusContext(fixture.checkpointPath, { senseId: 'w1-s1', locatorKey: discoveredPage.results[0].locator_key, judgment: 'VERIFIED', note: '문맥의 쓰임이 출발 sense와 일치함' }, { scratchDirectory: fixture.scratchDirectory });
+    const exploration = emptyFiveLenses();
+    exploration.lexical.push('문맥연상');
+    await recordCorpusExploration(fixture.checkpointPath, { senseId: 'w1-s1', locatorKey: discoveredPage.results[0].locator_key, pass: 1, results: exploration }, { scratchDirectory: fixture.scratchDirectory });
+    await reviewCorpusCandidate(fixture.checkpointPath, { senseId: 'w1-s1', candidate: '문맥연상', decision: 'KEEP', note: '독립된 표현 단어로 Stage 1 형식에 맞음' }, { scratchDirectory: fixture.scratchDirectory });
+    await finishCorpusSearch(fixture.checkpointPath, { senseId: 'w1-s1', note: '첫 VERIFIED 문맥의 통합 PASS B 검토를 마침' }, { scratchDirectory: fixture.scratchDirectory });
+
+    const rejectedPage = await searchCorpusSense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'w2-s1', pageSize: 4, scratchDirectory: fixture.scratchDirectory });
+    assert.equal(rejectedPage.total_hits, 1);
+    await reviewCorpusContext(fixture.checkpointPath, { senseId: 'w2-s1', locatorKey: rejectedPage.results[0].locator_key, judgment: 'REJECTED', mismatchConfirmed: true, note: '이 문맥은 정확한 source sense와 불일치함' }, { scratchDirectory: fixture.scratchDirectory });
+    await finishCorpusSearch(fixture.checkpointPath, { senseId: 'w2-s1', note: '유일한 hit를 정확히 판독함' }, { scratchDirectory: fixture.scratchDirectory });
+
+    const interruptedPage = await searchCorpusSense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'w26-s1', pageSize: 4, scratchDirectory: fixture.scratchDirectory });
+    assert.equal(interruptedPage.returned, 4);
+    lock = new DatabaseSync(fixture.databasePath);
+    lock.exec('BEGIN EXCLUSIVE');
+    await assert.rejects(searchCorpusSense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'w26-s1', pageSize: 4, cursor: interruptedPage.next_cursor, scratchDirectory: fixture.scratchDirectory }), /locked|busy/iu);
+    lock.exec('ROLLBACK');
+    lock.close();
+    lock = null;
+
+    const retryScan = await scanCorpusBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
+    assert.equal(retryScan.status, 'SEARCHED');
+    assert.equal(retryScan.query_calls, 0);
+    let { checkpoint } = await loadCorpusCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory });
+    assert.equal(checkpoint.records[0].senses[0].status, 'DISCOVERED');
+    assert.equal(checkpoint.records[0].senses[0].sample_complete, true);
+    assert.deepEqual(checkpoint.records[0].senses[0].candidate_reviews.map((item) => item.decision), ['KEEP']);
+    assert.equal(checkpoint.records[1].senses[0].status, 'NO_VERIFIED');
+    assert.equal(checkpoint.records[1].senses[0].contexts[0].mismatch_confirmed, true);
+
+    const resumedPage = await searchCorpusSense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'w26-s1', pageSize: 4, scratchDirectory: fixture.scratchDirectory });
+    assert.equal(resumedPage.returned, 4);
+    assert.equal(resumedPage.inspected_contexts, 8);
+    assert.ok(resumedPage.results.every((result) => !interruptedPage.results.some((prior) => prior.locator_key === result.locator_key)));
+    for (const context of [...interruptedPage.results, ...resumedPage.results]) {
+      await reviewCorpusContext(fixture.checkpointPath, { senseId: 'w26-s1', locatorKey: context.locator_key, judgment: 'REJECTED', mismatchConfirmed: true, note: '합성 fixture의 이 문맥은 source sense와 불일치함' }, { scratchDirectory: fixture.scratchDirectory });
+    }
+    await finishCorpusSearch(fixture.checkpointPath, { senseId: 'w26-s1', note: '8개 문맥을 판독한 뒤 적응적 표본을 종료함' }, { scratchDirectory: fixture.scratchDirectory });
+
+    for (const senseId of ['w3-s1', 'w4-s1']) {
+      const page = await searchCorpusSense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId, pageSize: 4, scratchDirectory: fixture.scratchDirectory });
+      assert.equal(page.total_hits, 1);
+      await reviewCorpusContext(fixture.checkpointPath, { senseId, locatorKey: page.results[0].locator_key, judgment: 'REJECTED', mismatchConfirmed: true, note: '이 문맥은 정확한 source sense와 불일치함' }, { scratchDirectory: fixture.scratchDirectory });
+      await finishCorpusSearch(fixture.checkpointPath, { senseId, note: '유일한 hit를 정확히 판독함' }, { scratchDirectory: fixture.scratchDirectory });
+    }
+
+    const candidatePath = path.join(fixture.scratchDirectory, '001_01_d_codex.jsonl');
+    const exported = await exportCorpusCandidates({ checkpointPath: fixture.checkpointPath, canonicalPath: fixture.canonicalPath, outputPath: candidatePath, repositoryDirectory: fixture.repositoryDirectory, scratchDirectory: fixture.scratchDirectory });
+    assert.equal(exported.status, 'OUTPUT');
+    const validation = await validateExistingCorpusCandidates({ checkpointPath: fixture.checkpointPath, canonicalPath: fixture.canonicalPath, candidatePath, repositoryDirectory: fixture.repositoryDirectory, scratchDirectory: fixture.scratchDirectory });
+    assert.equal(validation.status, 'VALID');
+    const outputRows = (await readFile(candidatePath, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
+    assert.deepEqual(outputRows[0].senses[0].candidates, ['문맥연상']);
   } finally {
     if (lock) {
       try { lock.exec('ROLLBACK'); } catch {}

@@ -74,6 +74,8 @@ If a context-page lookup fails after earlier pages were saved, rerun `scan` afte
 the index is available. The successful count cache is reused and the next cursor
 is rebuilt from the saved context count. Then rerun `search`; when contexts are
 already saved, omitting `--cursor` resumes from that checkpoint position.
+The scan also recomputes statuses from saved source-sense and Candidate evidence,
+so completed senses stay eligible for final batch output.
 
 ## Verify sense and explore
 

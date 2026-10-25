@@ -621,12 +621,20 @@ export async function scanCorpusBatch({ databasePath, checkpointPath, scratchDir
         }
         if (!querySets.some((item) => item.key === queryKey)) chunkCacheHits += 1;
         const totalHits = cached?.total_hits ?? counts.get(queryKey) ?? 0;
+        const formsDigest = sha256(JSON.stringify(forms));
+        const hasPriorEvidence = sense.contexts.length > 0 || sense.sample_complete || sense.discoveries.length > 0 || sense.candidate_reviews.length > 0;
+        if (hasPriorEvidence && sense.search
+          && (sense.search.query_key !== queryKey || sense.search.forms_sha256 !== formsDigest)) {
+          fail(`search forms changed after source-sense evidence was recorded for ${sense.sense_id}; preserve the checkpoint and initialize a new one`);
+        }
         const savedContextCount = sense.contexts.length;
         const nextCursor = totalHits > savedContextCount && savedContextCount > 0 && savedContextCount < CORPUS_CONTEXT_LIMIT
           ? encodeCursor({ cache_key: queryKey, offset: savedContextCount })
           : null;
-        sense.search = { status: totalHits === 0 ? 'ZERO_HITS' : 'COUNTED', forms_sha256: sha256(JSON.stringify(forms)), total_hits: totalHits, query_key: queryKey, searched_at: new Date().toISOString(), next_cursor: nextCursor, failure: null };
-        sense.status = totalHits === 0 ? 'ZERO_HITS' : 'SEARCHED';
+        sense.search = { status: totalHits === 0 ? 'ZERO_HITS' : 'COUNTED', forms_sha256: formsDigest, total_hits: totalHits, query_key: queryKey, searched_at: new Date().toISOString(), next_cursor: nextCursor, failure: null };
+        if (totalHits === 0) sense.status = 'ZERO_HITS';
+        else if (hasPriorEvidence) refreshSenseState(sense);
+        else sense.status = 'SEARCHED';
       }
       cacheHits += chunkCacheHits;
       checkpoint.stats.cache_hits += chunkCacheHits;
