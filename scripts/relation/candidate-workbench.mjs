@@ -4,7 +4,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-import { loadCanonicalLemmaForms, normalizeCandidate, validateCandidateBatch } from './candidate-contract.mjs';
+import { isSourceLemmaProjection, loadCanonicalLemmaForms, matchingSourceOrthographicForm, normalizeCandidate, validateCandidateBatch } from './candidate-contract.mjs';
 
 export const CANDIDATE_WORKBENCH_CONTRACT = 'candidate-workbench-v2';
 export const DEFAULT_CANDIDATE_CHUNK_SIZE = 25;
@@ -463,6 +463,26 @@ export async function readCandidateChunkPage({ scratchDirectory, chunk: requeste
   });
 }
 
+/**
+ * Exact self-repeat of the chunk's own source lemma, using the same rules as the final Candidate v1 validator so the
+ * failure surfaces at save-chunk instead of at merge. A spelling variant that matches a source search_form is returned
+ * as a suspect: it is only an error when it is not the lemma of another Canonical entry, which needs the all-Canonical
+ * lemma set, loaded lazily by the caller for these rare cases only.
+ */
+function findSourceSelfRepeats(candidates, source, location) {
+  const lemma = normalizeCandidate(source.lemma ?? '');
+  const suspects = [];
+  for (const candidate of candidates) {
+    if (normalizeCandidate(candidate) === lemma || isSourceLemmaProjection(candidate, source.lemma)) {
+      fail(`${location} candidate ${JSON.stringify(candidate)} repeats source lemma ${JSON.stringify(source.lemma)}`);
+    }
+    if (matchingSourceOrthographicForm(candidate, source.lemma, source.search_forms, new Set()) !== undefined) {
+      suspects.push({ candidate, source, location });
+    }
+  }
+  return suspects;
+}
+
 function assertCandidateList(candidates, location) {
   if (!Array.isArray(candidates)) fail(`${location} candidates must be an array`);
   const seen = new Set();
@@ -478,6 +498,7 @@ function assertCandidateList(candidates, location) {
 
 /** Check a complete chunk's rows against its own source records: exact record/sense IDs and candidate format. */
 function validateChunkRows(inputRows, sourceRows, chunkNumber) {
+  const suspects = [];
   const label = `chunk ${String(chunkNumber).padStart(3, '0')}`;
   const sourceById = new Map(sourceRows.map((row) => [row.id, row]));
   const seen = new Set();
@@ -497,7 +518,9 @@ function validateChunkRows(inputRows, sourceRows, chunkNumber) {
       }
       if (senseIds.has(sense.sense_id)) fail(`${location} repeats sense_id ${sense.sense_id}`);
       senseIds.add(sense.sense_id);
-      assertCandidateList(sense.candidates, `${location} record_id ${row.record_id} sense_id ${sense.sense_id}`);
+      const senseLocation = `${location} record_id ${row.record_id} sense_id ${sense.sense_id}`;
+      assertCandidateList(sense.candidates, senseLocation);
+      suspects.push(...findSourceSelfRepeats(sense.candidates, source, senseLocation));
     }
     const expected = source.senses.map((sense) => sense.id);
     const missing = expected.filter((id) => !senseIds.has(id));
@@ -508,6 +531,7 @@ function validateChunkRows(inputRows, sourceRows, chunkNumber) {
   }
   const missingRecords = sourceRows.map((row) => row.id).filter((id) => !seen.has(id));
   if (missingRecords.length) fail(`${label} is missing record_id(s): ${missingRecords.join(', ')}`);
+  return suspects;
 }
 
 /** Write one complete chunk (replacing any earlier save of it), in Canonical order. */
@@ -517,7 +541,16 @@ export async function saveCandidateChunk({ scratchDirectory, chunk: requestedChu
   const sourceRows = await readSourceChunk(workspace.scratchDirectory, chunk);
   const resolvedInput = assertScratchPath(repositoryDirectory, inputPath, 'input');
   const inputRows = parseJsonl(await readFile(resolvedInput, 'utf8'), resolvedInput);
-  validateChunkRows(inputRows, sourceRows, chunk.number);
+  const suspects = validateChunkRows(inputRows, sourceRows, chunk.number);
+  if (suspects.length > 0) {
+    const lemmaForms = await loadCanonicalLemmaForms(repositoryDirectory);
+    for (const { candidate, source, location } of suspects) {
+      const searchForm = matchingSourceOrthographicForm(candidate, source.lemma, source.search_forms, lemmaForms);
+      if (searchForm !== undefined) {
+        fail(`${location} candidate ${JSON.stringify(candidate)} repeats source lemma ${JSON.stringify(source.lemma)} in orthographic search form ${JSON.stringify(searchForm)}`);
+      }
+    }
+  }
   const inputById = new Map(inputRows.map((row) => [row.record_id, row]));
   const rows = sourceRows.map((source) => {
     const input = inputById.get(source.id);

@@ -35,7 +35,7 @@ export function isSourceLemmaProjection(candidate, lemma) {
  * differs from the lemma by surface spacing or hyphenation, the variants emitted by the STDICT converter, and it is
  * not the exact lemma of a separate Canonical entry.
  */
-function matchingSourceOrthographicForm(candidate, lemma, searchForms, canonicalLemmaForms) {
+export function matchingSourceOrthographicForm(candidate, lemma, searchForms, canonicalLemmaForms) {
   if (!Array.isArray(searchForms)) return undefined;
   const normalized = normalizeCandidate(candidate);
   const sourceSurface = normalizeCandidate(lemma ?? '').replace(/[\s-]/gu, '');
