@@ -28,6 +28,14 @@ When working on schemas, relation types, ranking rules, validation, search, or d
 
 A technically elegant lexical ontology is not automatically an improvement.
 
+## Production efficiency
+
+**For thousands of repeated batches, prioritize production speed and AI token cost over extra safeguards and bookkeeping.**
+
+- Keep required semantic quality, source binding, and the existing final validator; **do not add redundant checks, hashes, receipts, or tests** without a demonstrated production risk.
+- Read once, process by sense/chunk, and write once; avoid per-item CLI calls and repeated full-state work.
+- An optimization must beat the **previous working production path** in actual time and token use. Otherwise simplify or revert it.
+
 ## Writer-facing editorial priorities
 
 Typewriter is optimized for **usefulness in writing**, not for reproducing a traditional dictionary.
@@ -130,7 +138,7 @@ Relation enrichment is independent of lexical admission. Follow [`docs/relation-
 
 Source-bound semantic QA must be truthful: report evidence actually checked, unresolved judgments, and corrections. Agent self-check is **not** independent or human review; never invent reviewer identities or approval evidence. For lexical authoring or QA, the assigned primary agent must not delegate to other AI models, CLIs, subagents, or agent sessions. Deterministic local tools and source evidence remain available. Do not inspect unrelated agent account identities, authentication, subscription, or usage details.
 
-Quality and coverage take precedence over throughput. For a recurring defect, fix the common editing, validation, or consumer rule across applicable existing entries and future additions; do not merely patch the example. Keep historical evidence unchanged instead of rewriting it to fit new decisions. PR review Stage 1/2/3 are **separate code-review roles**, defined only in `REVIEW.md`.
+Required lexical quality and actual source/output coverage are non-negotiable; **once those are met, production speed and AI token efficiency outrank speculative extra checks and bookkeeping**. For a recurring demonstrated defect, fix the common editing, validation, or consumer rule across applicable existing entries and future additions; do not merely patch the example. Keep historical evidence unchanged instead of rewriting it to fit new decisions. PR review Stage 1/2/3 are **separate code-review roles**, defined only in `REVIEW.md`.
 
 ## Search and product priorities
 

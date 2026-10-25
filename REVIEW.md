@@ -1,6 +1,10 @@
 # Typewriter PR Review
 
-This root `REVIEW.md` is the **authoritative gate policy**. Read it from the **latest PR HEAD** before every review; never read `AGENTS.md`, personal/global `MEMORY.md`, agent memories or implementation instructions while reviewing. Review the reported problem **and the validity of the approach**. Use the smallest sufficient evidence; correctness outranks speed.
+This root `REVIEW.md` is the **authoritative gate policy**. Read it from the **latest PR HEAD** before every review; never read `AGENTS.md`, personal/global `MEMORY.md`, agent memories or implementation instructions while reviewing. Review the reported problem **and the validity of the approach**. Use the smallest sufficient evidence; required correctness is non-negotiable, **but speculative safeguards must not override recurring production speed and AI token efficiency**.
+
+## Production efficiency review
+
+**For repeated production, speed and AI token cost are first-class review criteria.** Reject unnecessary checks, receipts, per-item CLI calls, and repeated reads/hashes/writes unless they prevent a demonstrated defect. Preserve required semantic quality and existing final validation/CI. Judge optimizations against the **previous working path** using actual production time and tokens; more safeguards alone are not an improvement.
 
 ## 1. Enter and select exactly one stage
 
