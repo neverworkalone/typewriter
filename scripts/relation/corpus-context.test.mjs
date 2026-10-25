@@ -395,12 +395,16 @@ test('five-lens exploration, independent candidate review, full Candidate v1 exp
   try {
     await initialize(fixture);
     const legacyCheckpoint = JSON.parse(await readFile(fixture.checkpointPath, 'utf8'));
+    legacyCheckpoint.batch.procedure_sha256 = '89a2ec2e7a3bef33ec230e8eb76ef43900aea0d6e3feaa0c4537635d19595ae5';
+    await writeFile(fixture.checkpointPath, JSON.stringify(legacyCheckpoint));
+    assert.equal((await loadCorpusCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory })).checkpoint.batch.procedure_sha256, legacyCheckpoint.batch.procedure_sha256);
     legacyCheckpoint.batch.procedure_sha256 = '51073e8b8bd1a642accc1c5ea0f6edf68589b4ad116e237c1edf3fbdb97f2928';
     await writeFile(fixture.checkpointPath, JSON.stringify(legacyCheckpoint));
     assert.equal((await loadCorpusCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory })).checkpoint.batch.procedure_sha256, legacyCheckpoint.batch.procedure_sha256);
     const staleCheckpoint = { ...legacyCheckpoint, batch: { ...legacyCheckpoint.batch, procedure_sha256: 'f'.repeat(64) } };
     await writeFile(fixture.checkpointPath, JSON.stringify(staleCheckpoint));
     await assert.rejects(loadCorpusCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory }), /procedure files changed/u);
+    legacyCheckpoint.batch.procedure_sha256 = '89a2ec2e7a3bef33ec230e8eb76ef43900aea0d6e3feaa0c4537635d19595ae5';
     await writeFile(fixture.checkpointPath, JSON.stringify(legacyCheckpoint));
     await scanCorpusBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
     const activeSenseIds = ['w1-s1', 'w2-s1', 'w3-s1', 'w4-s1', 'w26-s1'];

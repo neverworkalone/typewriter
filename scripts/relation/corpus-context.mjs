@@ -25,10 +25,13 @@ export const CORPUS_CONTEXT_PAGE_SIZE = 4;
 export const CORPUS_CONTEXT_LIMIT = 16;
 export const CORPUS_SNIPPET_CHARS = 700;
 const CORPUS_DISPLAY_LIMITS = Object.freeze({ paragraph_id: 100, title: 160, author: 100, category: 80, year: 40, form: 80, matched_forms: 8 });
-// PR #1762 checkpoints used the five-key D exploration format. Its PASS B
-// evidence remains valid under the compact input format, so keep this one
-// exact procedure digest readable without accepting arbitrary stale versions.
-const LEGACY_D_PROCEDURE_SHA256 = '51073e8b8bd1a642accc1c5ea0f6edf68589b4ad116e237c1edf3fbdb97f2928';
+// PR #1762 checkpoints used the five-key D exploration format. Checkpoints
+// created at its PR head or merge commit remain readable under the compact
+// input format; do not accept arbitrary older procedure digests.
+const LEGACY_D_PROCEDURE_SHA256S = Object.freeze([
+  '89a2ec2e7a3bef33ec230e8eb76ef43900aea0d6e3feaa0c4537635d19595ae5', // PR #1762 head
+  '51073e8b8bd1a642accc1c5ea0f6edf68589b4ad116e237c1edf3fbdb97f2928', // PR #1762 merge commit
+]);
 export const CORPUS_SWEEP_LENSES = Object.freeze([
   'lexical',
   'action_role_tool',
@@ -291,7 +294,7 @@ export async function loadCorpusCheckpoint(checkpointPath, { scratchDirectory = 
   const checkpoint = JSON.parse(await readFile(resolvedPath, 'utf8'));
   if (checkpoint?.contract !== CORPUS_CHECKPOINT_CONTRACT || !Array.isArray(checkpoint.records) || !checkpoint.index?.path) fail('unsupported D corpus checkpoint contract');
   if (checkpoint.batch.procedure_sha256 !== await procedureDigest()
-    && checkpoint.batch.procedure_sha256 !== LEGACY_D_PROCEDURE_SHA256) {
+    && !LEGACY_D_PROCEDURE_SHA256S.includes(checkpoint.batch.procedure_sha256)) {
     fail('D procedure files changed since checkpoint initialization; preserve the checkpoint and initialize a new batch checkpoint');
   }
   return { checkpoint, path: resolvedPath };
