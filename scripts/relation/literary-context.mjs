@@ -550,7 +550,7 @@ function countMatches(database, forms) {
   return database.prepare(`${query.cte} SELECT COUNT(DISTINCT unit_rowid) AS total_hits FROM raw_hits`).get(...query.parameters).total_hits;
 }
 
-function readUnitWindow(database, { file_id: fileId, ordinal }, radius = CONTEXT_WINDOW_UNITS) {
+function readUnitWindow(database, { file_id: fileId, ordinal, unit_rowid: unitRowId }, radius = CONTEXT_WINDOW_UNITS) {
   const start = ordinal - radius;
   const end = ordinal + radius;
   const units = database.prepare(`
@@ -559,9 +559,9 @@ function readUnitWindow(database, { file_id: fileId, ordinal }, radius = CONTEXT
     WHERE file_id = ? AND ordinal BETWEEN ? AND ?
     ORDER BY ordinal, unit_rowid
   `).all(fileId, start, end);
-  if (!units.some((unit) => unit.ordinal === ordinal)) fail('literary context locator no longer resolves to its exact text unit');
+  const hitIndex = units.findIndex((unit) => unit.unit_rowid === unitRowId);
+  if (hitIndex < 0 || units[hitIndex].ordinal !== ordinal) fail('literary context locator no longer resolves to its exact text unit');
   const text = units.map((unit) => `${unit.text}${unit.eol}`).join('');
-  const hitIndex = units.findIndex((unit) => unit.ordinal === ordinal);
   const hitStart = units.slice(0, hitIndex).reduce((length, unit) => length + unit.text.length + unit.eol.length, 0);
   return {
     units: units.map(({ unit_rowid, ordinal: unitOrdinal, kind, block_ordinal, eol }) => ({ unit_rowid, ordinal: unitOrdinal, kind, block_ordinal, eol })),
@@ -614,8 +614,12 @@ function makeLocatorKey(row) {
   return sha256(JSON.stringify([row.file_id, row.work_id, row.unit_rowid, row.ordinal, row.source_sha256]));
 }
 
-function excerptAround(text, forms, maxChars, hitStart = 0) {
-  const matchAt = forms.map((form) => text.indexOf(form, hitStart)).filter((at) => at >= 0).sort((a, b) => a - b)[0] ?? hitStart;
+export function excerptAround(text, forms, maxChars, hitStart = 0, preferredForm = null) {
+  const matches = forms.map((form) => ({ form, at: text.indexOf(form, hitStart) })).filter(({ at }) => at >= 0);
+  const preferredMatch = preferredForm ? matches.find(({ form }) => form === preferredForm) : null;
+  const selectedMatch = preferredMatch ?? matches.sort((left, right) => codePointLength(right.form) - codePointLength(left.form) || left.at - right.at)[0];
+  if (!selectedMatch) fail('literal search hit is absent from its context window');
+  const matchAt = selectedMatch.at;
   const length = codePointLength(text);
   if (length <= maxChars) return { text, truncated: false };
   const chars = [...text];
@@ -623,8 +627,10 @@ function excerptAround(text, forms, maxChars, hitStart = 0) {
   const contentLimit = maxChars - 2;
   const start = Math.max(0, Math.min(length - contentLimit, matchCodePointAt - Math.floor(contentLimit / 2)));
   const end = Math.min(length, start + contentLimit);
+  const excerpt = `${start > 0 ? '…' : ''}${chars.slice(start, end).join('')}${end < length ? '…' : ''}`;
+  if (!excerpt.includes(selectedMatch.form)) fail('literal search hit was excluded from its context excerpt');
   return {
-    text: `${start > 0 ? '…' : ''}${chars.slice(start, end).join('')}${end < length ? '…' : ''}`,
+    text: excerpt,
     truncated: true,
   };
 }
@@ -635,7 +641,7 @@ function validateSnippetChars(value, defaultValue = DEFAULT_SNIPPET_CHARS) {
   return parsed;
 }
 
-function runSearch(database, forms, { pageSize, cursor, snippetChars }) {
+function runSearch(database, forms, { pageSize, cursor, snippetChars, preferredForm }) {
   const query = matchesSql(forms);
   if (!query) return { status: 'UNSEARCHABLE', total_hits: 0, returned: 0, has_more: false, next_cursor: null, results: [] };
   const fingerprint = sha256(JSON.stringify(forms));
@@ -673,7 +679,7 @@ function runSearch(database, forms, { pageSize, cursor, snippetChars }) {
   const results = included.map((row) => {
     const matchedForms = String(row.matched_forms ?? '').split('\u001f').filter(Boolean).sort((a, b) => codePointLength(b) - codePointLength(a) || compare(a, b));
     const window = readUnitWindow(database, row);
-    const excerpt = excerptAround(window.text, matchedForms, snippetChars, window.hit_start);
+    const excerpt = excerptAround(window.text, matchedForms, snippetChars, window.hit_start, preferredForm);
     return {
       locator_key: makeLocatorKey(row),
       source: {
@@ -937,7 +943,7 @@ export async function readLiteraryChunk({ databasePath, checkpointPath, senseIds
       }
       let result;
       try {
-        result = runSearch(database, forms, { pageSize: contextLimit, cursor: null, snippetChars: snippetLimit });
+        result = runSearch(database, forms, { pageSize: contextLimit, cursor: null, snippetChars: snippetLimit, preferredForm: record.lemma.normalize('NFC').trim() });
       } catch {
         items.push({ sense_id: sense.sense_id, status: 'SEARCH_FAILED' });
         continue;
@@ -1017,10 +1023,10 @@ export async function submitLiteraryChunk({ databasePath, checkpointPath, submis
   try {
     await assertCheckpointIndexUnchanged(checkpoint, databasePath, metadata);
     for (const entry of submission.senses) {
-      const { sense } = findSense(checkpoint, entry.sense_id);
+      const { record, sense } = findSense(checkpoint, entry.sense_id);
       const forms = senseForms(sense);
       if (forms.length === 0) fail(`${entry.sense_id} has no search forms and cannot be submitted`);
-      const result = runSearch(database, forms, { pageSize: MAX_CONTEXTS_PER_SENSE, cursor: null, snippetChars: DEFAULT_SNIPPET_CHARS });
+      const result = runSearch(database, forms, { pageSize: MAX_CONTEXTS_PER_SENSE, cursor: null, snippetChars: DEFAULT_SNIPPET_CHARS, preferredForm: record.lemma.normalize('NFC').trim() });
       if (result.total_hits === 0 && (entry.verified.length > 0 || entry.candidates.length > 0)) fail(`${entry.sense_id} has no literary hits, so it cannot have verified contexts or candidates`);
       const verified = entry.verified.map((key) => {
         if (key.length < SHORT_KEY_LENGTH) fail(`context key ${JSON.stringify(key)} on ${entry.sense_id} is shorter than ${SHORT_KEY_LENGTH} characters`);

@@ -93,9 +93,23 @@ class FakeGit:
         self.integrated: list[tuple[str, str]] = []           # (worktree, sha) of every shared fix merged in
         self.integrate_error: Exception | None = None         # raised by integrate (IntegrationBlocked / GitError)
         self.changed: dict[str, list[str]] = {}               # merge sha -> files the merged PR changed
+        self.verified: set[tuple] = set()                     # (kind, shard, batch, part) Stage 2 verifies that succeed on master
+        self.verify_calls: list[tuple] = []
+        self.verify_error: Exception | None = None
+        self.on_base = True                                   # is a merge commit already on origin/<base>
 
     def fetch_base(self, base):
         return "m" * 40
+
+    def verify_stage2(self, sha, kind, shard, batch, part, timeout=900):
+        self.verify_calls.append((kind, shard, batch, part))
+        if self.verify_error:
+            raise self.verify_error
+        ok = (kind, shard, batch, part) in self.verified
+        return ok, "" if ok else "Relation Admission accounting failed: candidate has no relation"
+
+    def contains_on_base(self, sha, base):
+        return self.on_base
 
     def create_worktree(self, path, branch, base):
         Path(path).mkdir(parents=True)
@@ -283,8 +297,9 @@ class World:
             self.sup.tick()
 
     def start(self, mode="single", model="deepseek", method="a"):
-        ok, msg = control.start(self.store, model, method, mode)
+        ok, msg = control.start(self.store, model, method, mode, cfg=self.cfg)
         assert ok, msg
 
     def row(self, model="deepseek", method="a"):
         return self.store.active_batch(model, method) or self.store.latest_batch(model, method)
+

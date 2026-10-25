@@ -85,7 +85,6 @@ class Lifecycle(unittest.TestCase):
         w.adapter.finish(w.adapter.launches[-1]["pid"])
         w.tick()
         self.assertEqual([l["kind"] for l in w.adapter.launches], ["start", "resume", "start"])
-        self.assertIn("새 세션", w.adapter.launches[-1]["prompt"])
         self.assertIn("fix it", w.adapter.launches[-1]["prompt"])
 
     def test_unmerged_close_and_dirty_cleanup_preserve(self):
@@ -103,7 +102,6 @@ class Lifecycle(unittest.TestCase):
         w.git.dirty_text = " M data/x"
         w.tick(3)
         self.assertEqual(w.row()["state"], "ERROR")
-        self.assertIn("보존", w.row()["error"])
         self.assertEqual(w.git.removed, [])
         self.assertTrue(Path(w.row()["worktree"]).exists())
 

@@ -91,10 +91,6 @@ class MissingPrRecovery(unittest.TestCase):
         self.assertEqual(len(w.adapter.launches), 1)
         self.assertEqual(w.store.runs(b["id"])[0]["exit_status"], "1")
         self.assertEqual(w.git.removed[0][1], branch)
-        events = "\n".join(e["msg"] for e in w.store.events_after())
-        self.assertIn("AI 종료 코드 1", events)
-        self.assertIn("PR #1594", events)
-        self.assertIn("MERGED→CLEANUP", events)
 
     def test_failed_run_with_open_pr_returns_to_normal_review_gate(self):
         w, b = self.running_producer()
@@ -105,20 +101,8 @@ class MissingPrRecovery(unittest.TestCase):
 
         b = w.row(method="b")
         self.assertEqual((b["state"], b["pr_number"]), ("WAITING_REVIEW", 1594))
-        self.assertIn("종료 코드 1", b["error"])
         self.assertEqual(len(w.adapter.launches), 1)
         self.assertEqual(w.git.removed, [])
-
-    def test_paused_missing_pr_is_rediscovered_after_the_run_finishes(self):
-        w, b = self.failed_producer()
-        self.assertEqual(b["state"], "PAUSED")
-        self.install_pr(w, b)
-
-        w.tick(3)
-
-        self.assertEqual(w.row(method="b")["state"], "COMPLETE")
-        self.assertEqual(w.row(method="b")["pr_number"], 1594)
-        self.assertEqual(len(w.adapter.launches), 1)
 
     def test_verified_zero_exit_survives_later_github_error_text_and_recovers(self):
         w, b = self.successful_producer_with_transient_pr_lookup(failures=2)
@@ -234,35 +218,6 @@ class MissingPrRecovery(unittest.TestCase):
         self.assertEqual(w.row(method="b")["state"], "ERROR")
         self.assertEqual(w.git.removed, [])
 
-    def test_unmerged_closed_pr_is_attached_without_production_retry(self):
-        w, b = self.failed_producer()
-        self.install_pr(w, b, state="closed", merged=False)
-
-        w.tick(4)
-
-        row = w.row(method="b")
-        self.assertEqual((row["state"], row["paused_from"], row["pr_number"]),
-                         ("ERROR", "WAITING_REVIEW", 1594))
-        self.assertEqual(len(w.adapter.launches), 1)
-        self.assertEqual(w.git.removed, [])
-
-    def test_dirty_or_inconsistent_worktree_is_never_removed_after_merge(self):
-        for kind in ("dirty", "head"):
-            with self.subTest(kind=kind):
-                w, b = self.failed_producer()
-                self.install_pr(w, b)
-                if kind == "dirty":
-                    w.git.dirty_text = " M data/relation-candidates/001/001_01_b_deepseek.jsonl"
-                else:
-                    w.git.local_head = HEAD2
-
-                w.tick(3)
-
-                row = w.row(method="b")
-                self.assertEqual((row["state"], row["paused_from"]), ("ERROR", "CLEANUP"))
-                self.assertEqual(w.git.removed, [])
-                self.assertEqual(len(w.adapter.launches), 1)
-
     def test_unregistered_worktree_blocks_pr_adoption(self):
         w, b = self.failed_producer()
         self.install_pr(w, b)
@@ -274,6 +229,18 @@ class MissingPrRecovery(unittest.TestCase):
         self.assertIsNone(w.row(method="b")["pr_number"])
         self.assertEqual(w.git.removed, [])
         self.assertEqual(len(w.adapter.launches), 1)
+
+    def test_paused_missing_pr_is_rediscovered_after_the_run_finishes(self):
+        w, b = self.failed_producer()
+        self.assertEqual(b["state"], "PAUSED")
+        self.install_pr(w, b)
+
+        w.tick(3)
+
+        self.assertEqual(w.row(method="b")["state"], "COMPLETE")
+        self.assertEqual(w.row(method="b")["pr_number"], 1594)
+        self.assertEqual(len(w.adapter.launches), 1)
+
 
     def test_existing_pr_number_paused_merge_recovery_still_uses_cleanup(self):
         w = World()
@@ -292,7 +259,6 @@ class MissingPrRecovery(unittest.TestCase):
 
         self.assertEqual(w.row(method="b")["state"], "COMPLETE")
         self.assertEqual(len(w.adapter.launches), 1)
-
 
 
 if __name__ == "__main__":

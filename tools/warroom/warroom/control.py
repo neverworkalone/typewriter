@@ -7,16 +7,24 @@ from __future__ import annotations
 
 import time
 
-from .config import maintainer_problem, registry
-from .store import MAINTENANCE_METHOD, Store
+from . import stage2
+from .config import maintainer_problem, registry, stage2_problem
+from .store import MAINTENANCE_METHOD, STAGE2_METHOD, Store
 
 STATES_HELP = ("PREPARE", "PRODUCING", "WAITING_REVIEW", "FIXING", "MERGED", "CLEANUP",
                "COMPLETE", "PAUSED", "ERROR", "CLEARING")
 MODES = {"single": "Single", "continuous": "Continuous"}   # Continuous = sequential batches in ONE Line
 
 
-def start(store: Store, model: str, method: str, mode: str) -> tuple[bool, str]:
-    """Request production on a Line. Never creates a second batch for an occupied Line."""
+def start(store: Store, model: str, method: str, mode: str, cfg: dict | None = None) -> tuple[bool, str]:
+    """Request production on a Line. Never creates a second batch for an occupied Line.
+
+    Stage 2 (`s2`) is one serial process for the whole factory and runs on Claude/Codex only: it needs `cfg` to prove
+    the model, and its occupancy is reserved atomically in the store (a missing `cfg` fails closed).
+    """
+    if method == STAGE2_METHOD:
+        problem = "설정을 확인할 수 없어 Stage 2를 시작하지 않습니다" if cfg is None else stage2_problem(cfg, model)
+        return (False, problem) if problem else store.start_stage2(model, mode)
     b = store.active_batch(model, method)
     if b is not None:
         return False, f"{model}/{method.upper()} 라인은 이미 미완료 배치 {b['shard']}_{b['batch']}({b['state']})를 소유 중입니다."
@@ -36,6 +44,11 @@ def drain_all(store: Store, lines) -> int:
     n = store.request_drain_all(lines)
     store.log(None, f"Drain All: {n}개 라인 종료 요청")
     return n
+
+
+def method_label(method: str) -> str:
+    """Board/Detail name of a Line's method: `A`-`D`, or `Stage 2`."""
+    return "Stage 2" if method == STAGE2_METHOD else method.upper()
 
 
 def set_drain(store: Store, model: str, method: str, on: bool) -> None:
@@ -116,7 +129,9 @@ def line_status(store: Store, model: str, method: str) -> dict:
            "mode": ln["mode"], "run": bool(ln["run"]), "line_drain": bool(ln["drain"]),
            "drain_once": bool(ln["drain_once"]), "blocked": ln["blocked"] or "", "tier": ln["model_tier"],
            "batch_id": None, "activity": None, "occupied": False, "updated": None, "records_total": None,
-           "records_done": None, "elapsed": None}
+           "records_done": None, "elapsed": None, "stage2": None, "wait": ""}
+    if method == STAGE2_METHOD:
+        out["wait"] = store.get(f"s2_wait_{model}") or ""
     out["drain"] = out["line_drain"] or out["drain_once"]
     if b is not None and b["state"] != "COMPLETE":   # a finished batch leaves the slot EMPTY; it stays in history
         out.update(state=b["state"], batch=f"{b['shard']}_{b['batch']}", branch=b["branch"],
@@ -124,6 +139,9 @@ def line_status(store: Store, model: str, method: str) -> dict:
                    error=b["error"], worktree=b["worktree"], batch_id=b["id"], updated=b["updated_at"],
                    records_total=b["records_total"], records_done=b["records_done"],
                    occupied=True)
+        if method == STAGE2_METHOD:   # the Part's identity replaces the record counters
+            batch, part = stage2.split_key(b["batch"])
+            out["stage2"] = {"shard": b["shard"], "batch": batch, "part": part}
         if b["records_done"] is not None and b["records_total"]:
             out["progress"] = f"{b['records_done']}/{b['records_total']}"  # recorded only
         runs = store.runs(b["id"])
@@ -229,8 +247,11 @@ def _maintainer_text(store: Store, cfg: dict, m, deps) -> str:
             "ERROR": f"{pr}Maintainer ERROR · {_short(b['error'])} (m: Retry)"}.get(b["state"], b["state"])
 
 
-def urgent_line(store: Store, cfg: dict) -> str:
-    """One line for the top yellow area: the current urgent Issue (+ how many others wait); "" when nothing is open.
+_BAD_PREFIXES = ("보류", "Maintainer 설정 오류", "Maintainer 미설정")
+
+
+def urgent_items(store: Store, cfg: dict) -> list[tuple[str, bool]]:
+    """(text, needs_attention) of every open urgent Issue, oldest first; [] when nothing is open.
 
     An Issue disappears only after its PR is merged, the Maintainer is cleaned up and every batch that depended on
     it was released (or deliberately resumed by the operator). Held and failed states stay visible.
@@ -240,12 +261,33 @@ def urgent_line(store: Store, cfg: dict) -> str:
         deps_by_issue.setdefault(d["issue_number"], []).append(d)
     items = []
     for d in store.defects(("REPORTED",)):
-        items.append(f"urgent · 공통 결함 `{d['defect_class']}` · Issue 등록 대기")
+        items.append((f"urgent · 공통 결함 `{d['defect_class']}` · Issue 등록 대기", False))
     for m in store.maintenance_rows():
         deps = deps_by_issue.get(m["issue_number"], [])
         if m["state"] in ("DONE", "HELD") and not deps:   # nothing depends on it any more (all released/overridden)
             continue
-        items.append(f"urgent issue #{m['issue_number']} · {_maintainer_text(store, cfg, m, deps)}")
+        text = _maintainer_text(store, cfg, m, deps)
+        bad = text.startswith(_BAD_PREFIXES) or "PAUSED" in text or "ERROR" in text
+        items.append((f"urgent issue #{m['issue_number']} · {text}", bad))
+    return items
+
+
+def urgent_line(store: Store, cfg: dict) -> str:
+    """One line for the current urgent Issue (+ how many others wait); "" when nothing is open."""
+    items = urgent_items(store, cfg)
     if not items:
         return ""
-    return items[0] + (f" (+{len(items) - 1}건 대기)" if len(items) > 1 else "")
+    return items[0][0] + (f" (+{len(items) - 1}건 대기)" if len(items) > 1 else "")
+
+
+def maintainer_card(store: Store, cfg: dict) -> dict:
+    """Status-only content of the Board's Maintainer card (Issue #1684): {"state": IDLE|WORKING|ERROR, "text": str}.
+
+    It shows the #1555 Maintainer's persisted progress whichever model runs it; it starts nothing. Colour is meant
+    only while a task exists: IDLE (no open urgent Issue) is the neutral empty card.
+    """
+    items = urgent_items(store, cfg)
+    if not items:
+        return {"state": "IDLE", "text": ""}
+    text = items[0][0] + (f" (+{len(items) - 1}건 대기)" if len(items) > 1 else "")
+    return {"state": "ERROR" if any(bad for _, bad in items[:1]) else "WORKING", "text": text}
