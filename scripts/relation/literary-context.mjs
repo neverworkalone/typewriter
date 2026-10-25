@@ -273,16 +273,21 @@ export function openCorpusIndex(databasePath) {
   }
 }
 
-/** Inspect the paragraph-corpus index without returning its local path. */
-export async function inspectCorpusIndex(databasePath, { scratchDirectory = path.resolve(CHECKPOINT_SCRATCH_DIRECTORY) } = {}) {
+/**
+ * Inspect the paragraph-corpus index without returning its local path.
+ * The whole-file SHA-256 is read only with `verifyBinary` (first approval or a suspected change);
+ * routine checks use the schema, the logical metadata digests and the file size/mtime identity.
+ */
+export async function inspectCorpusIndex(databasePath, { scratchDirectory = path.resolve(CHECKPOINT_SCRATCH_DIRECTORY), verifyBinary = false } = {}) {
   const { database, metadata } = openCorpusIndex(databasePath);
   try {
     const sqliteVersion = database.prepare('SELECT sqlite_version() AS version').get().version;
-    const digest = await cachedDatabaseDigest(databasePath, scratchDirectory);
+    const identity = await databaseIdentity(databasePath);
+    const digest = verifyBinary ? await cachedDatabaseDigest(databasePath, scratchDirectory) : null;
     return {
       contract: 'corpus-index-v1',
       status: 'READY',
-      database: { bytes: digest.bytes, sha256: digest.sha256, sha256_cached: digest.cached },
+      database: { bytes: identity.bytes, sha256: digest?.sha256 ?? null, sha256_cached: digest?.cached ?? null },
       index: { ...metadata, runtime_sqlite_version: sqliteVersion },
     };
   } finally {
