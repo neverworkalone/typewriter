@@ -457,13 +457,18 @@ class FailClosed(unittest.TestCase):
         """A fix PR whose regression cannot be run must not release the batch (review: Python-only tests passed vacuously)."""
         from warroom.shell import Result
         wt = Path(self.b["worktree"])
-        for rel in ("tools/warroom/tests/test_x.py", "tests/y.test.mjs", "tests/z.test.js", "scripts/v.mjs", "docs/n.md"):
+        for rel in ("tools/warroom/tests/test_x.py", "tests/y.test.mjs", "tests/z.test.js", "scripts/v.mjs", "docs/n.md",
+                    "scripts/relation/candidate-workbench.mjs", "scripts/relation/candidate-workbench.test.mjs"):
             (wt / rel).parent.mkdir(parents=True, exist_ok=True)
             (wt / rel).write_text("")
         ok = lambda: None
         cases = [   # (name, changed files, configured, expected command prefix or None, verified?)
             ("python tests run War Room's suite", ["tools/warroom/warroom/s.py", "tools/warroom/tests/test_x.py"], [], ["node", "tools/warroom/run-tests.mjs"], True),
             ("node tests run node --test", ["scripts/v.mjs", "tests/y.test.mjs"], [], ["node", "--test", "tests/y.test.mjs"], True),
+            ("shared producer fix beside its scripts/** node test", ["scripts/relation/candidate-workbench.mjs", "scripts/relation/candidate-workbench.test.mjs"], [],
+             ["node", "--test", "scripts/relation/candidate-workbench.test.mjs"], True),
+            ("unsupported test but the operator configured verification", ["scripts/v.mjs", "tests/z.test.js"], [["python3", "-c", "pass"]],
+             ["python3", "-c", "pass"], True),
             ("code only, nothing runnable", ["scripts/v.mjs"], [], None, False),
             ("unsupported vitest file", ["scripts/v.mjs", "tests/z.test.js"], [], None, False),
             ("unsupported test beside a runnable one", ["tests/y.test.mjs", "tests/z.test.js"], [], None, False),   # refused before anything runs
@@ -482,6 +487,19 @@ class FailClosed(unittest.TestCase):
                 problem = w.sup.maint._verify(d, wt)
                 self.assertEqual(problem is None, verified, problem)
                 self.assertEqual(any(a[:len(prefix)] == prefix for a in seen) if prefix else not seen, True, seen)
+
+    def test_failing_scripts_node_test_holds_the_batch(self):
+        from warroom.shell import Result
+        w = self.w
+        wt = Path(self.b["worktree"])
+        (wt / "scripts" / "relation").mkdir(parents=True)
+        (wt / "scripts" / "relation" / "w.test.mjs").write_text("")
+        w.git.changed[MERGE] = ["scripts/relation/w.mjs", "scripts/relation/w.test.mjs"]
+        orig = w.runner.run
+        w.runner.run = lambda argv, cwd=None, **kw: Result(1, "", "not ok") if argv[:2] == ["node", "--test"] else orig(argv, cwd=cwd, **kw)
+        self.merged_and_cleaned()
+        self.assert_still_paused("HELD")
+        self.assertIn("필수 검증 실패", w.row()["error"])
 
     def test_configured_verification_commands_must_pass(self):
         w = self.w

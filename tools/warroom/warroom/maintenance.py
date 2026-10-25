@@ -21,7 +21,7 @@ from .config import maintainer_id, maintainer_problem
 from .gitops import GitError, IntegrationBlocked
 from .store import MAINTENANCE_METHOD
 
-_NODE_TEST = re.compile(r"tests/[^/]+\.test\.mjs")   # the repo's `node --test <file>` regression files (AGENTS.md)
+_NODE_TEST = re.compile(r"(?:.+/)?[^/]+\.test\.mjs")   # `node --test <file>` regression files wherever they live (AGENTS.md)
 _PY_TEST = re.compile(r"tools/warroom/tests/test_[^/]+\.py")
 _TESTISH = re.compile(r"(?:^|/)(?:tests?|__tests__)/|\.(?:test|spec)\.|(?:^|/)test_[^/]+\.py$")
 _SUPPORT_FILE = re.compile(r"(?:^|/)(?:fixtures?|helpers?)/|(?:^|/)(?:fakes|fake_runner|__init__)\.py$")   # test support, not a test
@@ -252,10 +252,10 @@ class Maintenance:
     def _verify(self, d, wt: Path) -> str | None:
         """Required verification of the merged fix, derived from what its PR changed. None = verified.
 
-        Supported regression files run: `tests/*.test.mjs` (`node --test`) and War Room's Python suite
+        Supported regression files run: every changed `*.test.mjs` (`node --test`) and War Room's Python suite
         (`tools/warroom/tests/*.py` -> `node tools/warroom/run-tests.mjs`). Configured `shared_defect_verify` commands
-        always run. Fail closed: a fix that changed a test of a kind this cannot run, or code with no runnable
-        verification at all, is NOT verified (documentation/prompt-only fixes need only the ancestry proof).
+        always run. Fail closed: a fix that changed a test of a kind this cannot run (and no configured command covers
+        it), or code with no runnable verification at all, is NOT verified (documentation/prompt-only fixes need only the ancestry proof).
         """
         files = self.sup.git.changed_files(d["merge_sha"])
         if not files:
@@ -267,7 +267,7 @@ class Maintenance:
         cmds += [list(c) for c in self.cfg["shared_defect_verify"]]
         unsupported = [f for f in files if _TESTISH.search(f) and f not in node_tests and f not in py_tests
                        and not _SUPPORT_FILE.search(f)]
-        if unsupported:
+        if unsupported and not self.cfg["shared_defect_verify"]:   # configured commands are the operator's own verification
             return f"지원하지 않는 종류의 회귀 테스트가 변경되어 검증할 수 없습니다: {', '.join(unsupported[:5])} (shared_defect_verify 설정 필요)"
         if not cmds and not all(_DOC.search(f) for f in files):
             return ("수정 PR이 코드를 바꿨지만 실행할 수 있는 필수 검증이 없습니다 "
