@@ -84,7 +84,9 @@ class Observe(unittest.TestCase):
                              ("empty source", lambda d: d.update(source={})),
                              ("extra source key", lambda d: d["source"].update(extra=1)),
                              ("missing source key", lambda d: d["source"].pop("chunk_size")),
-                             ("source not an object", lambda d: d.update(source=[]))]:
+                             ("source not an object", lambda d: d.update(source=[])),
+                             ("source is a list of the key names", lambda d: d.update(source=sorted(progress._AB_SOURCE_KEYS))),
+                             ("batch is a list of the key names", lambda d: d.update(batch=["shard", "batch", "method", "model"]))]:
             with self.subTest(name):
                 bad = json.loads(json.dumps(good))
                 mutate(bad)

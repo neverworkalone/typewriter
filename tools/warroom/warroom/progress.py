@@ -47,6 +47,11 @@ def _load_json(path: Path):
     return data
 
 
+def _exact(obj, keys) -> bool:
+    """A JSON object with exactly these keys (producer's hasExactKeys): a list of the key names is not one."""
+    return isinstance(obj, dict) and set(obj) == keys
+
+
 def _norm(text: str) -> str:
     return " ".join(unicodedata.normalize("NFC", text).split())
 
@@ -103,9 +108,8 @@ def _ab(worktree: Path, shard: str, batch: str, method: str, model: str):
         try:
             data = _load_json(cp)
             b, chunks = data["batch"], data["chunks"]
-            if data.get("contract") != AB_CONTRACT or set(data) != _AB_KEYS or set(b) != _AB_BATCH_KEYS \
-                    or set(data["source"]) != _AB_SOURCE_KEYS \
-                    or not isinstance(chunks, list):
+            if data.get("contract") != AB_CONTRACT or not _exact(data, _AB_KEYS) or not _exact(b, _AB_BATCH_KEYS) \
+                    or not _exact(data["source"], _AB_SOURCE_KEYS) or not isinstance(chunks, list):
                 continue
             if (b["shard"], b["batch"], b["method"], str(b["model"]).lower()) != (shard, batch, method, model):
                 continue
