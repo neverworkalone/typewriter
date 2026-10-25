@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { DatabaseSync } from 'node:sqlite';
+import { fileURLToPath } from 'node:url';
 
 import {
   addCorpusSearchForm,
@@ -127,6 +129,22 @@ async function cleanup(fixture) {
 }
 
 const emptyFiveLenses = () => Object.fromEntries(CORPUS_SWEEP_LENSES.map((lens) => [lens, []]));
+const CORPUS_CLI_PATH = fileURLToPath(new URL('./corpus-context-cli.mjs', import.meta.url));
+
+function runExploreCli(fixture, { senseId, locatorKey, pass = 1, inputName, independentRead = false, note }) {
+  const args = [
+    CORPUS_CLI_PATH,
+    'explore',
+    '--checkpoint', '.warroom-scratch/001_01_d_codex.checkpoint.json',
+    '--sense-id', senseId,
+    '--locator-key', locatorKey,
+    '--pass', String(pass),
+    '--results', `.warroom-scratch/${inputName}`,
+  ];
+  if (independentRead) args.push('--independent-read');
+  if (note) args.push('--note', note);
+  return JSON.parse(execFileSync(process.execPath, args, { cwd: fixture.repositoryDirectory, encoding: 'utf8' }));
+}
 
 test('preflight binds the approved NIKL index, validates read-only schema, and never prints local paths', async () => {
   const fixture = await makeFixture();
@@ -376,6 +394,14 @@ test('five-lens exploration, independent candidate review, full Candidate v1 exp
   const fixture = await makeFixture();
   try {
     await initialize(fixture);
+    const legacyCheckpoint = JSON.parse(await readFile(fixture.checkpointPath, 'utf8'));
+    legacyCheckpoint.batch.procedure_sha256 = '51073e8b8bd1a642accc1c5ea0f6edf68589b4ad116e237c1edf3fbdb97f2928';
+    await writeFile(fixture.checkpointPath, JSON.stringify(legacyCheckpoint));
+    assert.equal((await loadCorpusCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory })).checkpoint.batch.procedure_sha256, legacyCheckpoint.batch.procedure_sha256);
+    const staleCheckpoint = { ...legacyCheckpoint, batch: { ...legacyCheckpoint.batch, procedure_sha256: 'f'.repeat(64) } };
+    await writeFile(fixture.checkpointPath, JSON.stringify(staleCheckpoint));
+    await assert.rejects(loadCorpusCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory }), /procedure files changed/u);
+    await writeFile(fixture.checkpointPath, JSON.stringify(legacyCheckpoint));
     await scanCorpusBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
     const activeSenseIds = ['w1-s1', 'w2-s1', 'w3-s1', 'w4-s1', 'w26-s1'];
     for (const senseId of activeSenseIds) {
@@ -419,6 +445,113 @@ test('five-lens exploration, independent candidate review, full Candidate v1 exp
     const afterRows = (await readFile(candidatePath, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
     assert.deepEqual(afterRows[3].senses[0].candidates, []);
     assert.deepEqual(afterRows.slice(4), outputRows.slice(4));
+  } finally {
+    await cleanup(fixture);
+  }
+});
+
+test('integrated PASS B CLI records empty, multiple and tagged discoveries, and export requires each explicit PASS 1', async () => {
+  const fixture = await makeFixture();
+  try {
+    await initialize(fixture);
+    await scanCorpusBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
+
+    const locators = new Map();
+    for (const senseId of ['w1-s1', 'w2-s1', 'w3-s1', 'w4-s1', 'w26-s1']) {
+      const page = await searchCorpusSense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId, scratchDirectory: fixture.scratchDirectory });
+      assert.ok(page.results.length > 0, `${senseId} fixture has a matching context`);
+      const locatorKey = page.results[0].locator_key;
+      locators.set(senseId, locatorKey);
+      await reviewCorpusContext(fixture.checkpointPath, { senseId, locatorKey, judgment: 'VERIFIED', note: '합성 fixture에서 정확한 source sense 확인' }, { scratchDirectory: fixture.scratchDirectory });
+    }
+
+    await writeFile(path.join(fixture.scratchDirectory, 'empty-pass-b.json'), '[]\n');
+    const zero = runExploreCli(fixture, { senseId: 'w1-s1', locatorKey: locators.get('w1-s1'), inputName: 'empty-pass-b.json' });
+    assert.equal(zero.candidates_recorded, 0);
+    const duplicateLemmaZero = runExploreCli(fixture, { senseId: 'w26-s1', locatorKey: locators.get('w26-s1'), inputName: 'empty-pass-b.json' });
+    assert.equal(duplicateLemmaZero.candidates_recorded, 0);
+
+    await writeFile(path.join(fixture.scratchDirectory, 'tagged-pass-b.json'), JSON.stringify([
+      { candidate: '잔향', lenses: ['scene_time_environment', 'contrast_sensation_metaphor'] },
+    ]));
+    const tagged = runExploreCli(fixture, { senseId: 'w2-s1', locatorKey: locators.get('w2-s1'), inputName: 'tagged-pass-b.json' });
+    assert.equal(tagged.candidates_recorded, 1);
+
+    await writeFile(path.join(fixture.scratchDirectory, 'multiple-pass-b.json'), JSON.stringify([
+      '바람',
+      { candidate: '바람', lenses: ['action_role_tool'] },
+      { candidate: '흐름', lenses: ['contrast_sensation_metaphor'] },
+    ]));
+    const multiple = runExploreCli(fixture, { senseId: 'w4-s1', locatorKey: locators.get('w4-s1'), inputName: 'multiple-pass-b.json' });
+    assert.equal(multiple.candidates_recorded, 2, 'normalized duplicates are stored once');
+
+    for (const [senseId, candidates] of [['w2-s1', ['잔향']], ['w4-s1', ['바람', '흐름']]]) {
+      for (const candidate of candidates) {
+        await reviewCorpusCandidate(fixture.checkpointPath, { senseId, candidate, decision: 'KEEP', note: '합성 fixture의 독립 후보 형식 확인' }, { scratchDirectory: fixture.scratchDirectory });
+      }
+    }
+    for (const senseId of ['w1-s1', 'w2-s1', 'w3-s1', 'w4-s1', 'w26-s1']) {
+      await finishCorpusSearch(fixture.checkpointPath, { senseId, note: '검토한 표본의 PASS B 상태를 기록함' }, { scratchDirectory: fixture.scratchDirectory });
+    }
+
+    const candidateRows = (await loadCorpusCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory })).checkpoint.records.map((record) => ({
+      record_id: record.record_id,
+      senses: record.senses.map((sense) => ({
+        sense_id: sense.sense_id,
+        candidates: sense.sense_id === 'w2-s1' ? ['잔향'] : sense.sense_id === 'w4-s1' ? ['바람', '흐름'] : [],
+      })),
+    }));
+    const missingPass = await validateCorpusExport({ checkpointPath: fixture.checkpointPath, canonicalPath: fixture.canonicalPath, candidateRows, repositoryDirectory: fixture.repositoryDirectory, scratchDirectory: fixture.scratchDirectory });
+    assert.equal(missingPass.status, 'INVALID');
+    assert.match(missingPass.message, /lacks an explicit integrated PASS 1 record/u);
+    await assert.rejects(exportCorpusCandidates({
+      checkpointPath: fixture.checkpointPath,
+      canonicalPath: fixture.canonicalPath,
+      outputPath: path.join(fixture.scratchDirectory, '001_01_d_codex.jsonl'),
+      repositoryDirectory: fixture.repositoryDirectory,
+      scratchDirectory: fixture.scratchDirectory,
+    }), /lacks an explicit integrated PASS 1 record/u);
+
+    await writeFile(path.join(fixture.scratchDirectory, 'empty-resumed-pass-b.json'), '[]\n');
+    const resumedZero = runExploreCli(fixture, { senseId: 'w3-s1', locatorKey: locators.get('w3-s1'), inputName: 'empty-resumed-pass-b.json' });
+    assert.equal(resumedZero.candidates_recorded, 0);
+
+    const passTwoInput = path.join(fixture.scratchDirectory, 'optional-pass-b.json');
+    await writeFile(passTwoInput, '[]\n');
+    const cliArgs = [CORPUS_CLI_PATH, 'explore', '--checkpoint', '.warroom-scratch/001_01_d_codex.checkpoint.json', '--sense-id', 'w1-s1', '--locator-key', locators.get('w1-s1'), '--pass', '2', '--results', '.warroom-scratch/optional-pass-b.json'];
+    assert.throws(() => execFileSync(process.execPath, cliArgs, { cwd: fixture.repositoryDirectory, encoding: 'utf8', stdio: 'pipe' }), (error) => {
+      assert.match(String(error.stderr), /independent-read/u);
+      return true;
+    });
+    assert.throws(() => execFileSync(process.execPath, [...cliArgs, '--independent-read'], { cwd: fixture.repositoryDirectory, encoding: 'utf8', stdio: 'pipe' }), (error) => {
+      assert.match(String(error.stderr), /brief reason for re-reading/u);
+      return true;
+    });
+    const secondPass = runExploreCli(fixture, { senseId: 'w1-s1', locatorKey: locators.get('w1-s1'), pass: 2, inputName: 'optional-pass-b.json', independentRead: true, note: '첫 통합 탐색 뒤 문맥을 독립적으로 다시 읽음' });
+    assert.equal(secondPass.pass, 2);
+
+    const { checkpoint } = await loadCorpusCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory });
+    assert.equal(checkpoint.records[0].senses[0].status, 'DISCOVERED');
+    assert.deepEqual(checkpoint.records[0].senses[0].contexts[0].explorations['1'].results, []);
+    assert.equal(checkpoint.records[0].senses[0].discoveries.length, 0);
+    assert.deepEqual(checkpoint.records[3].senses[0].contexts[0].explorations['1'].results, [
+      { candidate: '바람', lenses: ['action_role_tool'] },
+      { candidate: '흐름', lenses: ['contrast_sensation_metaphor'] },
+    ]);
+    assert.equal(checkpoint.records[3].senses[0].candidate_reviews.length, 2);
+
+    const valid = await validateCorpusExport({ checkpointPath: fixture.checkpointPath, canonicalPath: fixture.canonicalPath, candidateRows, repositoryDirectory: fixture.repositoryDirectory, scratchDirectory: fixture.scratchDirectory });
+    assert.equal(valid.status, 'VALID', JSON.stringify(valid));
+    assert.equal(valid.candidateCount, 3);
+    const exported = await exportCorpusCandidates({
+      checkpointPath: fixture.checkpointPath,
+      canonicalPath: fixture.canonicalPath,
+      outputPath: path.join(fixture.scratchDirectory, '001_01_d_codex.jsonl'),
+      repositoryDirectory: fixture.repositoryDirectory,
+      scratchDirectory: fixture.scratchDirectory,
+    });
+    assert.equal(exported.status, 'OUTPUT');
+    assert.equal(exported.coverage.candidates, 3);
   } finally {
     await cleanup(fixture);
   }

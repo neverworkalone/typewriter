@@ -25,6 +25,10 @@ export const CORPUS_CONTEXT_PAGE_SIZE = 4;
 export const CORPUS_CONTEXT_LIMIT = 16;
 export const CORPUS_SNIPPET_CHARS = 700;
 const CORPUS_DISPLAY_LIMITS = Object.freeze({ paragraph_id: 100, title: 160, author: 100, category: 80, year: 40, form: 80, matched_forms: 8 });
+// PR #1762 checkpoints used the five-key D exploration format. Its PASS B
+// evidence remains valid under the compact input format, so keep this one
+// exact procedure digest readable without accepting arbitrary stale versions.
+const LEGACY_D_PROCEDURE_SHA256 = '51073e8b8bd1a642accc1c5ea0f6edf68589b4ad116e237c1edf3fbdb97f2928';
 export const CORPUS_SWEEP_LENSES = Object.freeze([
   'lexical',
   'action_role_tool',
@@ -286,7 +290,10 @@ export async function loadCorpusCheckpoint(checkpointPath, { scratchDirectory = 
   const resolvedPath = assertScratchPath(checkpointPath, scratchDirectory);
   const checkpoint = JSON.parse(await readFile(resolvedPath, 'utf8'));
   if (checkpoint?.contract !== CORPUS_CHECKPOINT_CONTRACT || !Array.isArray(checkpoint.records) || !checkpoint.index?.path) fail('unsupported D corpus checkpoint contract');
-  if (checkpoint.batch.procedure_sha256 !== await procedureDigest()) fail('D procedure files changed since checkpoint initialization; preserve the checkpoint and initialize a new batch checkpoint');
+  if (checkpoint.batch.procedure_sha256 !== await procedureDigest()
+    && checkpoint.batch.procedure_sha256 !== LEGACY_D_PROCEDURE_SHA256) {
+    fail('D procedure files changed since checkpoint initialization; preserve the checkpoint and initialize a new batch checkpoint');
+  }
   return { checkpoint, path: resolvedPath };
 }
 
@@ -493,19 +500,20 @@ function refreshSenseState(sense) {
   if (verified.length === 0) {
     const staleDiscovery = sense.discoveries.some((item) => {
       const context = sense.contexts.find((entry) => entry.locator_key === item.locator_key);
-      return !context || context.judgment !== 'VERIFIED' || !context.explorations[String(item.pass)]?.results?.[item.lens]?.some((candidate) => normalizeCandidate(candidate) === normalizeCandidate(item.candidate));
+      return !context || context.judgment !== 'VERIFIED' || !explorationHasDiscovery(context.explorations?.[String(item.pass)], item);
     });
     if (staleDiscovery) return sense.status = 'INCOMPLETE';
     const allConfirmedMismatches = sense.contexts.length > 0
       && sense.contexts.every((context) => context.judgment === 'REJECTED' && context.mismatch_confirmed === true);
     return sense.status = allConfirmedMismatches ? 'NO_VERIFIED' : 'INCOMPLETE';
   }
-  if (verified.some((context) => !context.explorations['1'])) return sense.status = 'INSPECTED';
+  if (verified.some((context) => !isValidStoredExploration(context.explorations?.['1'], 1))) return sense.status = 'INSPECTED';
+  if (verified.some((context) => context.explorations?.['2'] && !isValidStoredExploration(context.explorations['2'], 2))) return sense.status = 'INCOMPLETE';
   if (verified.some((context) => context.explorations['2']?.incomplete)) return sense.status = 'INCOMPLETE';
   const discoveries = sense.discoveries;
   if (discoveries.some((item) => {
     const context = sense.contexts.find((entry) => entry.locator_key === item.locator_key);
-    return !context || context.judgment !== 'VERIFIED' || !context.explorations[String(item.pass)]?.results?.[item.lens]?.some((candidate) => normalizeCandidate(candidate) === normalizeCandidate(item.candidate));
+    return !context || context.judgment !== 'VERIFIED' || !explorationHasDiscovery(context.explorations?.[String(item.pass)], item);
   })) return sense.status = 'INSPECTED';
   if (discoveries.some((item) => !sense.candidate_reviews.some((review) => review.normalized === normalizeCandidate(item.candidate)))) {
     return sense.status = 'INSPECTED';
@@ -813,21 +821,100 @@ export async function reviewCorpusContext(checkpointPath, { senseId, locatorKey,
   return { status: sense.status, record_id: findSense(checkpoint, senseId).record.record_id, sense_id: senseId, locator_key: locatorKey, judgment };
 }
 
-function validateSweepResults(results) {
-  if (!results || typeof results !== 'object' || Array.isArray(results)) fail('exploration results must be a JSON object');
-  if (Object.keys(results).sort().join('\0') !== [...CORPUS_SWEEP_LENSES].sort().join('\0')) fail(`exploration must contain exactly these five lenses: ${CORPUS_SWEEP_LENSES.join(', ')}`);
+function validateExplorationResults(results) {
+  if (Array.isArray(results)) {
+    const byNormalized = new Map();
+    for (const [index, entry] of results.entries()) {
+      let candidate;
+      let lenses = [];
+      if (typeof entry === 'string') {
+        candidate = entry;
+      } else if (entry && typeof entry === 'object' && !Array.isArray(entry)) {
+        const keys = Object.keys(entry).sort();
+        if (!Object.hasOwn(entry, 'candidate') || keys.some((key) => !['candidate', 'lenses'].includes(key))) {
+          fail(`exploration item ${index + 1} must contain candidate and optional lenses only`);
+        }
+        candidate = entry.candidate;
+        if (Object.hasOwn(entry, 'lenses')) {
+          if (!Array.isArray(entry.lenses) || entry.lenses.length === 0
+            || entry.lenses.some((lens) => !CORPUS_SWEEP_LENSES.includes(lens))
+            || new Set(entry.lenses).size !== entry.lenses.length) {
+            fail(`exploration item ${index + 1} lenses must be a non-empty list of distinct PASS B guide keys`);
+          }
+          lenses = entry.lenses;
+        }
+      } else {
+        fail(`exploration item ${index + 1} must be a candidate string or tagged candidate object`);
+      }
+      if (typeof candidate !== 'string' || candidate.trim() !== candidate || candidate.length === 0) {
+        fail(`exploration item ${index + 1} candidate must be a non-empty trimmed string`);
+      }
+      const normalized = normalizeCandidate(candidate);
+      const prior = byNormalized.get(normalized);
+      const normalizedLenses = [...new Set([...(prior?.lenses ?? []), ...lenses])];
+      normalizedLenses.sort((left, right) => CORPUS_SWEEP_LENSES.indexOf(left) - CORPUS_SWEEP_LENSES.indexOf(right));
+      byNormalized.set(normalized, {
+        candidate: prior?.candidate ?? candidate.normalize('NFC').trim(),
+        ...(normalizedLenses.length > 0 ? { lenses: normalizedLenses } : {}),
+      });
+    }
+    const normalizedResults = [...byNormalized.values()];
+    return {
+      results: normalizedResults,
+      discoveries: normalizedResults.map((entry) => ({ ...entry })),
+    };
+  }
+
+  if (!results || typeof results !== 'object') fail('exploration results must be a candidate list or a legacy five-lens object');
+  if (Object.keys(results).sort().join('\0') !== [...CORPUS_SWEEP_LENSES].sort().join('\0')) {
+    fail(`legacy exploration results must contain exactly these five lenses: ${CORPUS_SWEEP_LENSES.join(', ')}`);
+  }
   for (const lens of CORPUS_SWEEP_LENSES) {
     if (!Array.isArray(results[lens]) || results[lens].some((candidate) => typeof candidate !== 'string' || candidate.trim() !== candidate || candidate.length === 0)) {
-      fail(`${lens} must be an array of non-empty trimmed candidate strings`);
+      fail(`legacy ${lens} results must be an array of non-empty trimmed candidate strings`);
     }
   }
+  const normalizedResults = Object.fromEntries(CORPUS_SWEEP_LENSES.map((lens) => [lens, [...new Set(results[lens].map((candidate) => candidate.normalize('NFC').trim()))]]));
+  const discoveries = CORPUS_SWEEP_LENSES.flatMap((lens) => normalizedResults[lens].map((candidate) => ({ lens, candidate })));
+  return { results: normalizedResults, discoveries };
 }
 
-/** Record one integrated five-lens pass and optional independently reread second pass. */
+function isValidStoredExploration(exploration, pass) {
+  if (!exploration || typeof exploration !== 'object' || typeof exploration.recorded_at !== 'string') return false;
+  try {
+    validateExplorationResults(exploration.results);
+  } catch {
+    return false;
+  }
+  if (pass === 2 && (exploration.independent_read !== true || typeof exploration.note !== 'string' || exploration.note.trim().length < 5)) return false;
+  return true;
+}
+
+function explorationHasDiscovery(exploration, discovery) {
+  if (!exploration || !isValidStoredExploration(exploration, discovery.pass)) return false;
+  const results = exploration.results;
+  const normalized = normalizeCandidate(discovery.candidate);
+  if (Array.isArray(results)) {
+    const match = results.find((entry) => normalizeCandidate(typeof entry === 'string' ? entry : entry.candidate) === normalized);
+    if (!match) return false;
+    const recordedLenses = typeof match === 'string' ? [] : (match.lenses ?? []);
+    const discoveryLenses = discovery.lenses ?? [];
+    return recordedLenses.length === discoveryLenses.length
+      && recordedLenses.every((lens, index) => lens === discoveryLenses[index]);
+  }
+  if (typeof discovery.lens === 'string') {
+    return Array.isArray(results[discovery.lens])
+      && results[discovery.lens].some((candidate) => normalizeCandidate(candidate) === normalized);
+  }
+  const lenses = discovery.lenses?.length ? discovery.lenses : CORPUS_SWEEP_LENSES;
+  return lenses.every((lens) => results[lens]?.some((candidate) => normalizeCandidate(candidate) === normalized));
+}
+
+/** Record one integrated PASS B exploration and optional independently reread second pass. */
 export async function recordCorpusExploration(checkpointPath, { senseId, locatorKey, pass, results, independentRead = false, note = '' }, { scratchDirectory = path.resolve(DEFAULT_SCRATCH_DIRECTORY) } = {}) {
   if (![1, 2].includes(Number(pass))) fail('pass must be 1 or 2');
   const passNumber = Number(pass);
-  validateSweepResults(results);
+  const normalizedExploration = validateExplorationResults(results);
   const { checkpoint, path: checkpointFile } = await loadCorpusCheckpoint(checkpointPath, { scratchDirectory });
   const { sense } = findSense(checkpoint, senseId);
   const context = findContext(sense, locatorKey);
@@ -837,19 +924,18 @@ export async function recordCorpusExploration(checkpointPath, { senseId, locator
   if (passNumber === 2 && context.explorations['2']) fail('optional pass 2 is already recorded; preserve the checkpoint');
   if (passNumber === 2 && independentRead !== true) fail('optional pass 2 requires an independent-read attestation');
   if (passNumber === 2 && (typeof note !== 'string' || note.trim().length < 5)) fail('optional pass 2 needs a brief reason for re-reading this context');
-  const normalizedResults = Object.fromEntries(CORPUS_SWEEP_LENSES.map((lens) => [lens, [...new Set(results[lens].map((candidate) => candidate.normalize('NFC').trim()))]]));
   context.explorations[String(passNumber)] = {
-    results: normalizedResults,
+    results: normalizedExploration.results,
     independent_read: passNumber === 2,
     note: passNumber === 2 ? note.trim() : null,
     recorded_at: new Date().toISOString(),
   };
-  for (const lens of CORPUS_SWEEP_LENSES) {
-    for (const candidate of normalizedResults[lens]) {
-      if (!sense.discoveries.some((item) => item.locator_key === locatorKey && item.pass === passNumber && item.lens === lens && normalizeCandidate(item.candidate) === normalizeCandidate(candidate))) {
-        sense.discoveries.push({ locator_key: locatorKey, pass: passNumber, lens, candidate });
-      }
-    }
+  for (const discovery of normalizedExploration.discoveries) {
+    const sameDiscovery = sense.discoveries.some((item) => item.locator_key === locatorKey
+      && item.pass === passNumber
+      && item.lens === discovery.lens
+      && normalizeCandidate(item.candidate) === normalizeCandidate(discovery.candidate));
+    if (!sameDiscovery) sense.discoveries.push({ locator_key: locatorKey, pass: passNumber, ...discovery });
   }
   refreshSenseState(sense);
   await writeJsonAtomic(checkpointFile, checkpoint);
@@ -858,8 +944,8 @@ export async function recordCorpusExploration(checkpointPath, { senseId, locator
     sense_id: senseId,
     locator_key: locatorKey,
     pass: passNumber,
-    lens_counts: Object.fromEntries(CORPUS_SWEEP_LENSES.map((lens) => [lens, normalizedResults[lens].length])),
-    candidates_discovered: sense.discoveries.length,
+    candidates_recorded: new Set(normalizedExploration.discoveries.map((item) => normalizeCandidate(item.candidate))).size,
+    candidates_discovered: uniqueDiscovered(sense).length,
   };
 }
 
@@ -885,7 +971,7 @@ export async function reviewCorpusCandidate(checkpointPath, { senseId, candidate
   if (discoveries.length === 0) fail('candidate was not found in an integrated exploration of this exact source sense');
   for (const discovery of discoveries) {
     const context = findContext(sense, discovery.locator_key);
-    if (context.judgment !== 'VERIFIED' || !context.explorations[String(discovery.pass)]?.results?.[discovery.lens]?.some((value) => normalizeCandidate(value) === normalized)) {
+    if (context.judgment !== 'VERIFIED' || !explorationHasDiscovery(context.explorations?.[String(discovery.pass)], discovery)) {
       fail('candidate evidence does not point to its current VERIFIED context and recorded exploration');
     }
   }
@@ -939,8 +1025,29 @@ function validateEvidence(checkpoint, rows, canonicalRows) {
       if (!canonical.senses.some((item) => item.id === sense.sense_id)) return { message: `checkpoint sense ${sense.sense_id} is not a sense of ${record.record_id}`, record_id: record.record_id, sense_id: sense.sense_id, candidate: null };
       const candidateSense = row.senses?.find((item) => item.sense_id === sense.sense_id);
       if (!candidateSense) return { message: `Candidate output is missing sense ${sense.sense_id}`, record_id: record.record_id, sense_id: sense.sense_id, candidate: null };
+      for (const context of sense.contexts) {
+        if (context.judgment !== 'VERIFIED') continue;
+        if (!isValidStoredExploration(context.explorations?.['1'], 1)) {
+          return { message: `VERIFIED context ${context.locator_key} on ${sense.sense_id} lacks an explicit integrated PASS 1 record`, record_id: record.record_id, sense_id: sense.sense_id, candidate: null };
+        }
+        if (context.explorations?.['2'] && !isValidStoredExploration(context.explorations['2'], 2)) {
+          return { message: `VERIFIED context ${context.locator_key} on ${sense.sense_id} has invalid optional PASS 2 evidence`, record_id: record.record_id, sense_id: sense.sense_id, candidate: null };
+        }
+      }
       if (!['ZERO_HITS', 'NO_VERIFIED', 'DISCOVERED', 'OUTPUT'].includes(sense.status)) {
         return { message: `sense ${sense.sense_id} is ${sense.status}; finish search, exact source-sense review, exploration and form decisions before output`, record_id: record.record_id, sense_id: sense.sense_id, candidate: null };
+      }
+      for (const discovery of sense.discoveries) {
+        const context = sense.contexts.find((entry) => entry.locator_key === discovery.locator_key);
+        if (!context || context.judgment !== 'VERIFIED' || !explorationHasDiscovery(context.explorations?.[String(discovery.pass)], discovery)) {
+          return { message: `candidate ${JSON.stringify(discovery.candidate)} on ${sense.sense_id} has a locator that does not bind to current VERIFIED exploration evidence`, record_id: record.record_id, sense_id: sense.sense_id, candidate: discovery.candidate };
+        }
+      }
+      for (const discovery of uniqueDiscovered(sense)) {
+        const review = sense.candidate_reviews.find((item) => item.normalized === discovery.normalized);
+        if (!review || !['KEEP', 'REMOVE'].includes(review.decision)) {
+          return { message: `candidate ${JSON.stringify(discovery.candidate)} on ${sense.sense_id} is missing its KEEP/REMOVE form-gate decision`, record_id: record.record_id, sense_id: sense.sense_id, candidate: discovery.candidate };
+        }
       }
       const expected = sense.candidate_reviews.filter((item) => item.decision === 'KEEP');
       const expectedByForm = new Map(expected.map((item) => [item.normalized, item]));
@@ -950,10 +1057,7 @@ function validateEvidence(checkpoint, rows, canonicalRows) {
         const review = expectedByForm.get(normalized);
         if (!review || review.candidate !== value) return { message: `candidate ${JSON.stringify(value)} on ${sense.sense_id} has no exact current KEEP disposition`, record_id: record.record_id, sense_id: sense.sense_id, candidate: value };
         const discoveries = sense.discoveries.filter((item) => normalizeCandidate(item.candidate) === normalized);
-        if (discoveries.length === 0 || discoveries.some((item) => {
-          const context = sense.contexts.find((entry) => entry.locator_key === item.locator_key);
-          return !context || context.judgment !== 'VERIFIED' || !context.explorations[String(item.pass)]?.results?.[item.lens]?.some((candidate) => normalizeCandidate(candidate) === normalized);
-        })) return { message: `candidate ${JSON.stringify(value)} on ${sense.sense_id} has a locator that does not bind to its VERIFIED source sense`, record_id: record.record_id, sense_id: sense.sense_id, candidate: value };
+        if (discoveries.length === 0) return { message: `candidate ${JSON.stringify(value)} on ${sense.sense_id} has no VERIFIED source-sense discovery`, record_id: record.record_id, sense_id: sense.sense_id, candidate: value };
         expectedByForm.delete(normalized);
       }
       if (expectedByForm.size > 0) {
