@@ -8,7 +8,7 @@ War Room이 준비한 HEAD를 기준으로 작업하며,
 
 Issue #1155의 C 생산 계약을 읽고 준수한다.
 
-C 생산의 검색·증거·체크포인트·집계·Candidate 출력에는 `scripts/relation/literary-context-cli.mjs`를 반드시 사용한다. 구체적인 실행 절차는 `docs/relation-literary-context.md`를 따른다. 배치마다 동일 기능의 임시 스크립트를 새로 작성하지 않는다.
+C 생산의 검색·증거·체크포인트·집계·Candidate 출력에는 scripts/relation/literary-context-cli.mjs를 반드시 사용한다. 구체적인 실행 절차는 docs/relation-literary-context.md를 따른다. 배치마다 동일 기능의 임시 스크립트를 새로 작성하지 않는다.
 
 셸 명령은 개별로 실행해 각 종료 코드와 출력을 확인한다. `gh api` 경로에 `?` 또는 `&`가 있으면 경로 인수 전체를 작은따옴표로 감싼다. 예: `gh api 'repos/neverworkalone/typewriter/contents/data/relation-candidates/031?ref=master'`, `gh api 'repos/neverworkalone/typewriter/pulls?state=open&per_page=100' --jq 'length'`.
 
