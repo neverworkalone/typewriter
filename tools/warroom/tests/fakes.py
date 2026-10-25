@@ -132,7 +132,7 @@ class FakeGit:
         return (str(path), sha) in self.integrated
 
     def changed_files(self, sha):
-        return self.changed.get(sha, [])
+        return self.changed.get(sha, ["README.md"])   # default: a documentation-only fix
 
     def remove_owned(self, path, branch, pr_head):
         if self.block:

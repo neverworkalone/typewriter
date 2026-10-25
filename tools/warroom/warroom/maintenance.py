@@ -21,7 +21,11 @@ from .config import maintainer_id, maintainer_problem
 from .gitops import GitError, IntegrationBlocked
 from .store import MAINTENANCE_METHOD
 
-_TEST = re.compile(r"tests/[^/]+\.test\.mjs")   # the repo's `node --test <file>` regression files (AGENTS.md)
+_NODE_TEST = re.compile(r"tests/[^/]+\.test\.mjs")   # the repo's `node --test <file>` regression files (AGENTS.md)
+_PY_TEST = re.compile(r"tools/warroom/tests/test_[^/]+\.py")
+_TESTISH = re.compile(r"(?:^|/)(?:tests?|__tests__)/|\.(?:test|spec)\.|(?:^|/)test_[^/]+\.py$")
+_SUPPORT_FILE = re.compile(r"(?:^|/)(?:fixtures?|helpers?)/|(?:^|/)(?:fakes|fake_runner|__init__)\.py$")   # test support, not a test
+_DOC = re.compile(r"\.md$|^docs/|^tools/warroom/prompts/")
 VERIFY_TIMEOUT = 900
 OPEN_DEFECT = ("REPORTED", "LINKED", "FIX_MERGED", "HELD")
 
@@ -246,9 +250,28 @@ class Maintenance:
         return head
 
     def _verify(self, d, wt: Path) -> str | None:
-        """Regression files the merged fix PR added/changed (`node --test`) plus any configured commands."""
-        files = [f for f in self.sup.git.changed_files(d["merge_sha"]) if _TEST.fullmatch(f) and (wt / f).is_file()]
-        cmds = ([["node", "--test", *sorted(files)]] if files else []) + [list(c) for c in self.cfg["shared_defect_verify"]]
+        """Required verification of the merged fix, derived from what its PR changed. None = verified.
+
+        Supported regression files run: `tests/*.test.mjs` (`node --test`) and War Room's Python suite
+        (`tools/warroom/tests/*.py` -> `node tools/warroom/run-tests.mjs`). Configured `shared_defect_verify` commands
+        always run. Fail closed: a fix that changed a test of a kind this cannot run, or code with no runnable
+        verification at all, is NOT verified (documentation/prompt-only fixes need only the ancestry proof).
+        """
+        files = self.sup.git.changed_files(d["merge_sha"])
+        if not files:
+            return "수정 PR의 변경 파일을 확인할 수 없어 필수 검증을 정할 수 없습니다"
+        node_tests = sorted(f for f in files if _NODE_TEST.fullmatch(f) and (wt / f).is_file())
+        py_tests = [f for f in files if _PY_TEST.fullmatch(f) and (wt / f).is_file()]
+        cmds = ([["node", "--test", *node_tests]] if node_tests else [])
+        cmds += ([["node", "tools/warroom/run-tests.mjs"]] if py_tests else [])
+        cmds += [list(c) for c in self.cfg["shared_defect_verify"]]
+        unsupported = [f for f in files if _TESTISH.search(f) and f not in node_tests and f not in py_tests
+                       and not _SUPPORT_FILE.search(f)]
+        if unsupported:
+            return f"지원하지 않는 종류의 회귀 테스트가 변경되어 검증할 수 없습니다: {', '.join(unsupported[:5])} (shared_defect_verify 설정 필요)"
+        if not cmds and not all(_DOC.search(f) for f in files):
+            return ("수정 PR이 코드를 바꿨지만 실행할 수 있는 필수 검증이 없습니다 "
+                    "(변경된 tests/*.test.mjs 또는 tools/warroom/tests/*.py 없음, shared_defect_verify 미설정)")
         for argv in cmds:
             r = self.sup.runner.run(argv, cwd=wt, env=self.sup.env, timeout=VERIFY_TIMEOUT)
             if not r.ok:

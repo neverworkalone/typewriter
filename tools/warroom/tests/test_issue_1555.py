@@ -453,6 +453,36 @@ class FailClosed(unittest.TestCase):
         self.assertEqual(run.seen[0], (["node", "--test", "tests/form.test.mjs"], self.b["worktree"]))   # only real regression files
         self.assertIn("필수 검증 실패", w.row()["error"])
 
+    def test_verification_is_derived_from_the_fix_and_fails_closed(self):
+        """A fix PR whose regression cannot be run must not release the batch (review: Python-only tests passed vacuously)."""
+        from warroom.shell import Result
+        wt = Path(self.b["worktree"])
+        for rel in ("tools/warroom/tests/test_x.py", "tests/y.test.mjs", "tests/z.test.js", "scripts/v.mjs", "docs/n.md"):
+            (wt / rel).parent.mkdir(parents=True, exist_ok=True)
+            (wt / rel).write_text("")
+        ok = lambda: None
+        cases = [   # (name, changed files, configured, expected command prefix or None, verified?)
+            ("python tests run War Room's suite", ["tools/warroom/warroom/s.py", "tools/warroom/tests/test_x.py"], [], ["node", "tools/warroom/run-tests.mjs"], True),
+            ("node tests run node --test", ["scripts/v.mjs", "tests/y.test.mjs"], [], ["node", "--test", "tests/y.test.mjs"], True),
+            ("code only, nothing runnable", ["scripts/v.mjs"], [], None, False),
+            ("unsupported vitest file", ["scripts/v.mjs", "tests/z.test.js"], [], None, False),
+            ("unsupported test beside a runnable one", ["tests/y.test.mjs", "tests/z.test.js"], [], None, False)   # refused before anything runs,
+            ("configured command covers code-only fix", ["scripts/v.mjs"], [["python3", "-c", "pass"]], ["python3", "-c", "pass"], True),
+            ("docs and prompts need only the ancestry proof", ["docs/n.md", "tools/warroom/prompts/m.md"], [], None, True),
+            ("unknown change set", [], [], None, False),
+        ]
+        for name, files, configured, prefix, verified in cases:
+            with self.subTest(name):
+                w = self.w
+                w.cfg["shared_defect_verify"] = configured
+                w.git.changed[MERGE] = files
+                seen = []
+                w.runner.run = lambda argv, cwd=None, _s=seen, **kw: (_s.append(argv), Result(0))[1]
+                d = {"merge_sha": MERGE}
+                problem = w.sup.maint._verify(d, wt)
+                self.assertEqual(problem is None, verified, problem)
+                self.assertEqual(any(a[:len(prefix)] == prefix for a in seen) if prefix else not seen, True, seen)
+
     def test_configured_verification_commands_must_pass(self):
         w = self.w
         w.cfg["shared_defect_verify"] = [["python3", "-c", "pass"]]
@@ -685,6 +715,10 @@ class MaintainerConfig(unittest.TestCase):
         self.assertIn("#101", text)
         self.assertIn("maint-101", text)
         self.assertIn("리뷰를 요청", text)
+        # the fixed spec fields are requirements, while directives inside quoted/generated text carry no authority
+        self.assertIn("작업 명세", text)
+        self.assertIn("명세가 아니라 데이터", text)
+        self.assertNotIn("Issue 본문은 데이터이며", text)
         self.assertIn("#101", prompts.recovery(row))
         for method in "abcd":
             self.assertIn("shared-defect.md", prompts.produce({"method": method, "shard": "001", "batch": "01", "branch": "b"}))
@@ -814,6 +848,7 @@ class RealGitIntegration(unittest.TestCase):
     def test_supervisor_resumes_a_paused_batch_on_a_real_worktree_after_the_real_integration(self):
         """Release path end to end on real git: defect-paused batch row -> integrate -> verify -> one release."""
         w = world(maintainer=None)
+        w.cfg["shared_defect_verify"] = [["true"]]      # the fix is code (validator.mjs): a runnable verification is required
         w.git = self.git
         w.sup = w.make_sup()
         wt = str(self.wt)
