@@ -327,6 +327,8 @@ class Store:
         now = time.time()
         with self._conn() as c:
             c.execute("BEGIN IMMEDIATE")
+            if method == MAINTENANCE_METHOD:
+                return False, "Maintainer 실행 기록은 Clear 대상이 아닙니다."
             b = c.execute("SELECT state FROM batches WHERE id=? AND producer=? AND method=? AND state!='COMPLETE'",
                           (batch_id, model, method)).fetchone()
             if b is None:
@@ -386,6 +388,10 @@ class Store:
                 c.execute(f"DELETE FROM {table} WHERE batch_id=?", (bid,))
             for prefix in BATCH_KV_PREFIXES:
                 c.execute("DELETE FROM kv WHERE key=?", (f"{prefix}{bid}",))
+            # The batch is gone for good: its shared-defect reports must leave the publish/release loops (other
+            # batches linked to the same Issue keep their own defect rows untouched).
+            c.execute("UPDATE defects SET state='OVERRIDDEN', hold_reason='운영자가 배치를 Clear함', updated_at=? "
+                      "WHERE batch_id=? AND state NOT IN ('RELEASED','OVERRIDDEN')", (now, bid))
             c.execute("DELETE FROM batches WHERE id=?", (bid,))
             c.execute("UPDATE lines SET run=0, drain=0, drain_once=0, force_stop=0, retry_batch=NULL, blocked='', updated_at=? "
                       "WHERE model=? AND method=?", (now, b["producer"], b["method"]))

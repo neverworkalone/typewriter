@@ -345,6 +345,62 @@ class PullHeadOwnership(unittest.TestCase):
                 self.assertEqual(info["head_ref"] == BRANCH, owned, info["head_ref"])
 
 
+class ClearVsSharedDefects(ClearBase):
+    """A Clear must not strand its shared-defect rows (#1555): other batches on the same Issue keep working."""
+
+    def two_paused(self):
+        w = self.w
+        a = self.producing()
+        w.adapter.running.clear()
+        w.store.update(a["id"], pid=None)
+        w.start("single", "deepseek", "b")
+        w.tick()
+        b = w.row("deepseek", "b")
+        w.adapter.running.clear()
+        w.store.update(b["id"], pid=None)
+        ids = {}
+        for key, row in (("a", a), ("b", b)):
+            ids[key] = w.store.report_defect(row["id"], f"ev-{key}", "ai", "cls", "LINKED", "r", "shared_defect", "paused")
+            w.store.update_defect(ids[key], issue_number=200)
+        return a, b, ids
+
+    def test_cleared_batchs_defect_leaves_the_loops_and_the_sibling_batch_still_releases(self):
+        w = self.w
+        a, b, ids = self.two_paused()
+        self.clear(a)
+        w.tick(2)
+        self.assert_idle_and_reusable()
+        self.assertEqual(w.store.defect(ids["a"])["state"], "OVERRIDDEN")
+        self.assertEqual(w.store.defect(ids["b"])["state"], "LINKED")      # the sibling is untouched
+        w.store.update_defect(ids["b"], state="FIX_MERGED", merge_sha="c" * 40)
+        w.sup.maint._release()                                              # used to raise TypeError on the missing batch
+        self.assertEqual(w.store.defect(ids["a"])["state"], "OVERRIDDEN")
+        self.assertNotEqual(w.store.defect(ids["b"])["state"], "FIX_MERGED")   # b was processed (released/held), not stuck
+
+    def test_release_skips_a_defect_whose_batch_row_is_gone(self):
+        w = self.w
+        a, b, ids = self.two_paused()
+        w.store.update_defect(ids["a"], state="FIX_MERGED", merge_sha="c" * 40)
+        with w.store._conn() as c:
+            c.execute("DELETE FROM batches WHERE id=?", (a["id"],))
+        w.sup.maint._release()
+        self.assertEqual(w.store.defect(ids["a"])["state"], "OVERRIDDEN")
+
+    def test_unpublished_report_of_a_cleared_batch_creates_no_issue(self):
+        w = self.w
+        a = self.producing()
+        w.adapter.running.clear()
+        w.store.update(a["id"], pid=None)
+        did = w.store.report_defect(a["id"], "ev", "ai", "cls", "REPORTED", "r\nfacts", "shared_defect", "paused")
+        self.clear(a)
+        w.tick(2)
+        self.assertEqual(w.store.defect(did)["state"], "OVERRIDDEN")
+        self.assertEqual(w.store.defects(("REPORTED",)), [])
+
+    def test_maintainer_records_are_not_clearable(self):
+        self.assertFalse(control.request_clear(self.w.store, "deepseek", "m", 1)[0])
+
+
 class ClearRequestRules(ClearBase):
     def test_stale_and_repeated_requests(self):
         w = self.w
