@@ -901,7 +901,8 @@ except ImportError:  # pragma: no cover
 
 @unittest.skipIf(textual is None, "textual not installed")
 class UrgentLineInTui(unittest.TestCase):
-    def test_one_yellow_line_shows_the_issue_beside_drain_and_vanishes_when_done(self):
+    def test_issue_progress_lives_in_the_maintainer_card_not_the_top_area(self):
+        """Issue #1684 moved the #1555 progress from the one yellow line to the Board's Maintainer card (DeepSeek column)."""
         import asyncio
         from textual.widgets import Static
         from tests.test_tui import PRODUCERS as TUI_PRODUCERS, make_app
@@ -914,25 +915,25 @@ class UrgentLineInTui(unittest.TestCase):
             app = make_app(w, PRODUCERS)
             async with app.run_test(size=(200, 60)) as pilot:
                 await pilot.pause(0.3)
-                note = app.query_one("#drain-note", Static)
-                text = str(note.render())
-                self.assertTrue(note.display)
-                self.assertEqual(len(text.splitlines()), 1)
-                self.assertIn("urgent issue #101", text)
+                note, card = app.query_one("#drain-note", Static), app.query_one("#card-maintainer", Static)
+                self.assertFalse(note.display)                              # nothing but the Drain note belongs up there
+                self.assertIn("urgent issue #101", str(card.render()))
+                self.assertFalse(card.has_class("empty"))
                 control.drain_all(w.store, [("sonnet", "a")] + [("deepseek", "a")])
                 await pilot.pause(1.3)
                 text = str(note.render())
                 self.assertEqual(len(text.splitlines()), 1)
-                self.assertIn("urgent issue #101", text)
                 self.assertIn("DRAIN ALL", text)
-                self.assertEqual(text.index("urgent"), 0)              # the urgent Issue comes first
+                self.assertNotIn("urgent", text)                            # not duplicated
                 # [brackets] in a hold reason are text, not markup
                 w.store.update_maintenance(101, state="HELD", hold_reason="merge [CONFLICT] in a.mjs")
                 await pilot.pause(1.3)
-                self.assertIn("[CONFLICT]", str(note.render()))
+                self.assertIn("[CONFLICT]", "".join(str(card.render()).split()))   # the card wraps long text
+                self.assertTrue(card.has_class("ERROR"))                    # a held task stays visibly unresolved
                 w.store.update_defect(w.store.defects()[0]["id"], state="RELEASED")
                 w.store.update_maintenance(101, state="DONE")
                 await pilot.pause(1.3)
-                self.assertNotIn("urgent", str(note.render()))
+                self.assertNotIn("urgent", str(card.render()))
+                self.assertTrue(card.has_class("empty"))                    # finished: back to the neutral empty card
         asyncio.run(go())
         w.tmp.cleanup()
