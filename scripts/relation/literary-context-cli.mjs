@@ -7,19 +7,12 @@ import process from 'node:process';
 import {
   addSearchForm,
   exportLiteraryCandidates,
-  finishLiterarySearch,
-  getLiteraryContextPage,
   initializeLiteraryCheckpoint,
   inspectLiteraryIndex,
-  listLiterarySearchQueue,
   loadLiteraryCheckpoint,
   MAX_RESPONSE_CHARS,
-  patchLiteraryCandidateFile,
-  recordLiterarySweep,
-  reviewLiteraryCandidate,
-  reviewLiteraryContext,
-  scanLiteraryBatch,
-  searchLiterarySense,
+  readLiteraryChunk,
+  submitLiteraryChunk,
   summarizeLiteraryCheckpoint,
   validateExistingLiteraryCandidates,
 } from './literary-context.mjs';
@@ -33,7 +26,7 @@ function fail(message) {
 
 function parseArguments(args) {
   const options = {};
-  const flags = new Set(['independent-read']);
+  const flags = new Set(['deep']);
   for (let index = 0; index < args.length; index += 1) {
     const item = args[index];
     if (!item.startsWith('--')) fail(`unexpected argument ${JSON.stringify(item)}`);
@@ -85,10 +78,10 @@ function print(payload) {
   process.stdout.write(`${serialized}\n`);
 }
 
-async function readResults(filePath) {
+async function readSubmission(filePath) {
   const resolved = path.resolve(filePath);
   const relative = path.relative(SCRATCH_DIRECTORY, resolved);
-  if (!relative || relative.startsWith(`..${path.sep}`) || relative === '..' || path.isAbsolute(relative)) fail('sweep input JSON must remain under .warroom-scratch/');
+  if (!relative || relative.startsWith(`..${path.sep}`) || relative === '..' || path.isAbsolute(relative)) fail('submission JSON must remain under .warroom-scratch/');
   const fileStat = await stat(filePath);
   if (fileStat.size > 64_000) fail('sweep results JSON exceeds the 64 KB input limit');
   const parsed = JSON.parse(await readFile(filePath, 'utf8'));
@@ -98,8 +91,8 @@ async function readResults(filePath) {
 function usage() {
   return [
     'Usage: node scripts/relation/literary-context-cli.mjs <command> [options]',
-    'Commands: preflight, init, scan, queue, search, finish-search, context, add-form, review-context, sweep, review-candidate, report, export, validate, patch',
-    'All checkpoint, excerpt, locator, and digest-cache files must remain under .warroom-scratch/.',
+    'Commands: preflight [--deep], init, chunk, submit, add-form, report, export, validate',
+    'All checkpoint, submission, and digest-cache files must remain under .warroom-scratch/.',
     'Run with --help for this compact command list.',
   ].join('\n');
 }
@@ -114,9 +107,9 @@ async function main() {
   let result;
   switch (command) {
     case 'preflight': {
-      only(options, 'db');
+      only(options, 'db', 'deep');
       const { db } = required(options, 'db');
-      result = await inspectLiteraryIndex(db, { scratchDirectory: SCRATCH_DIRECTORY });
+      result = await inspectLiteraryIndex(db, { scratchDirectory: SCRATCH_DIRECTORY, deep: options.deep === true });
       break;
     }
     case 'init': {
@@ -134,80 +127,35 @@ async function main() {
       result = { status: 'READY', index: initialized.index_summary, summary: initialized.summary };
       break;
     }
-    case 'scan': {
-      only(options, 'db', 'checkpoint');
+    case 'chunk': {
+      only(options, 'db', 'checkpoint', 'limit', 'contexts', 'snippet-chars', 'sense-ids');
       required(options, 'db', 'checkpoint');
-      result = await scanLiteraryBatch({ databasePath: options.db, checkpointPath: options.checkpoint, scratchDirectory: SCRATCH_DIRECTORY });
-      break;
-    }
-    case 'queue': {
-      only(options, 'checkpoint', 'status', 'offset', 'limit');
-      required(options, 'checkpoint', 'status');
-      result = await listLiterarySearchQueue(options.checkpoint, { status: options.status, offset: options.offset ?? 0, limit: options.limit ?? 50 }, { scratchDirectory: SCRATCH_DIRECTORY });
-      break;
-    }
-    case 'search': {
-      only(options, 'db', 'checkpoint', 'sense-id', 'page-size', 'snippet-chars', 'cursor');
-      required(options, 'db', 'checkpoint', 'sense-id');
-      result = await searchLiterarySense({
+      result = await readLiteraryChunk({
         databasePath: options.db,
         checkpointPath: options.checkpoint,
-        senseId: options['sense-id'],
-        pageSize: options['page-size'],
+        senseIds: options['sense-ids'],
+        limit: options.limit,
+        contexts: options.contexts,
         snippetChars: options['snippet-chars'],
-        cursor: options.cursor,
         scratchDirectory: SCRATCH_DIRECTORY,
       });
       break;
     }
-    case 'finish-search': {
-      only(options, 'checkpoint', 'sense-id', 'note');
-      required(options, 'checkpoint', 'sense-id', 'note');
-      result = await finishLiterarySearch(options.checkpoint, { senseId: options['sense-id'], note: options.note }, { scratchDirectory: SCRATCH_DIRECTORY });
-      break;
-    }
-    case 'context': {
-      only(options, 'db', 'checkpoint', 'sense-id', 'locator-key', 'offset', 'chars');
-      required(options, 'db', 'checkpoint', 'sense-id', 'locator-key');
-      result = await getLiteraryContextPage(options.db, options.checkpoint, {
-        senseId: options['sense-id'],
-        locatorKey: options['locator-key'],
-        offset: options.offset ?? 0,
-        chars: options.chars ?? 1000,
-      }, { scratchDirectory: SCRATCH_DIRECTORY });
+    case 'submit': {
+      only(options, 'db', 'checkpoint', 'input');
+      required(options, 'db', 'checkpoint', 'input');
+      result = await submitLiteraryChunk({
+        databasePath: options.db,
+        checkpointPath: options.checkpoint,
+        submission: await readSubmission(options.input),
+        scratchDirectory: SCRATCH_DIRECTORY,
+      });
       break;
     }
     case 'add-form': {
       only(options, 'checkpoint', 'sense-id', 'form', 'basis');
       required(options, 'checkpoint', 'sense-id', 'form', 'basis');
       result = await addSearchForm(options.checkpoint, options['sense-id'], options.form, options.basis, { scratchDirectory: SCRATCH_DIRECTORY });
-      break;
-    }
-    case 'review-context': {
-      only(options, 'checkpoint', 'sense-id', 'locator-key', 'judgment', 'note');
-      required(options, 'checkpoint', 'sense-id', 'locator-key', 'judgment', 'note');
-      result = await reviewLiteraryContext(options.checkpoint, {
-        senseId: options['sense-id'], locatorKey: options['locator-key'], judgment: options.judgment, note: options.note,
-      }, { scratchDirectory: SCRATCH_DIRECTORY });
-      break;
-    }
-    case 'sweep': {
-      only(options, 'checkpoint', 'sense-id', 'locator-key', 'sweep', 'results', 'independent-read');
-      required(options, 'checkpoint', 'sense-id', 'locator-key', 'sweep', 'results');
-      result = await recordLiterarySweep(options.checkpoint, {
-        senseId: options['sense-id'], locatorKey: options['locator-key'], sweep: options.sweep,
-        results: await readResults(options.results), independentRead: options['independent-read'] === true,
-      }, { scratchDirectory: SCRATCH_DIRECTORY });
-      break;
-    }
-    case 'review-candidate': {
-      only(options, 'checkpoint', 'sense-id', 'candidate', 'decision', 'kind', 'note');
-      required(options, 'checkpoint', 'sense-id', 'candidate', 'decision', 'note');
-      if (options.decision === 'KEEP') required(options, 'kind');
-      result = await reviewLiteraryCandidate(options.checkpoint, {
-        senseId: options['sense-id'], candidate: options.candidate, decision: options.decision,
-        kind: options.kind, note: options.note,
-      }, { scratchDirectory: SCRATCH_DIRECTORY });
       break;
     }
     case 'report': {
@@ -235,26 +183,6 @@ async function main() {
         checkpointPath: options.checkpoint,
         canonicalPath: options.canonical,
         candidatePath: options.candidate,
-        repositoryDirectory: process.cwd(),
-        scratchDirectory: SCRATCH_DIRECTORY,
-      });
-      if (result.status !== 'VALID') process.exitCode = 1;
-      break;
-    }
-    case 'patch': {
-      only(options, 'checkpoint', 'canonical', 'candidate-file', 'record-id', 'sense-id', 'action', 'candidate', 'replacement', 'reason');
-      required(options, 'checkpoint', 'canonical', 'candidate-file', 'record-id', 'sense-id', 'action', 'candidate', 'reason');
-      if (options.action === 'replace') required(options, 'replacement');
-      result = await patchLiteraryCandidateFile({
-        checkpointPath: options.checkpoint,
-        canonicalPath: options.canonical,
-        candidatePath: options['candidate-file'],
-        recordId: options['record-id'],
-        senseId: options['sense-id'],
-        action: options.action,
-        candidate: options.candidate,
-        replacement: options.replacement,
-        reason: options.reason,
         repositoryDirectory: process.cwd(),
         scratchDirectory: SCRATCH_DIRECTORY,
       });

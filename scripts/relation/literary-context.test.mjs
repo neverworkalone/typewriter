@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
@@ -9,21 +9,13 @@ import { DatabaseSync } from 'node:sqlite';
 import {
   addSearchForm,
   exportLiteraryCandidates,
-  finishLiterarySearch,
-  getLiteraryContextPage,
   initializeLiteraryCheckpoint,
   inspectLiteraryIndex,
-  listLiterarySearchQueue,
   loadLiteraryCheckpoint,
-  patchLiteraryCandidateFile,
-  recordLiterarySweep,
-  reviewLiteraryCandidate,
-  reviewLiteraryContext,
-  scanLiteraryBatch,
-  searchLiterarySense,
+  readLiteraryChunk,
+  submitLiteraryChunk,
   summarizeLiteraryCheckpoint,
   validateExistingLiteraryCandidates,
-  validateLiteraryExport,
 } from './literary-context.mjs';
 
 const jsonl = (items) => `${items.map((item) => JSON.stringify(item)).join('\n')}\n`;
@@ -149,35 +141,34 @@ async function makeRetiredParagraphIndex() {
   return { root, databasePath, scratchDirectory };
 }
 
-const sevenEmptyLenses = () => ({
-  image: [],
-  action: [],
-  emotion: [],
-  sensation: [],
-  scene_situation: [],
-  causality: [],
-  metaphor_contrast: [],
+
+const chunk = (fixture, extra = {}) => readLiteraryChunk({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory, ...extra });
+const submit = (fixture, senses) => submitLiteraryChunk({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, submission: { senses }, scratchDirectory: fixture.scratchDirectory });
+const load = async (fixture) => (await loadLiteraryCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory })).checkpoint;
+const exportOutput = (fixture) => exportLiteraryCandidates({
+  checkpointPath: fixture.checkpointPath,
+  canonicalPath: fixture.canonicalPath,
+  outputPath: path.join(fixture.scratchDirectory, '001_01_c_codex.jsonl'),
+  repositoryDirectory: fixture.root,
+  scratchDirectory: fixture.scratchDirectory,
 });
 
-test('read-only preflight validates the approved schema and omits private database identity', async () => {
+test('default preflight is read-only and does not hash the database or rebuild the FTS index', async () => {
   const fixture = await makeFixture({ unitCount: 1 });
   try {
     const bytesBefore = await readFile(fixture.databasePath);
     const first = await inspectLiteraryIndex(fixture.databasePath, { scratchDirectory: fixture.scratchDirectory });
     assert.equal(first.status, 'READY');
-    assert.equal(first.contract, 'literary-context-v2');
-    assert.equal(first.index.schema_version, '1');
-    assert.equal(first.index.builder_version, '1');
+    assert.equal(first.contract, 'literary-context-v3');
     assert.equal(first.index.schema_contract, 'works/text_units/unit_fts-v1');
-    assert.equal(first.index.source_file_count, 1);
-    assert.equal(first.index.work_count, 1);
     assert.equal(first.index.text_unit_count, 1);
-    assert.equal(first.index.manifest_digest, 'sha256-format-valid');
-    assert.equal(first.index.logical_row_digest, 'sha256-format-valid');
+    assert.equal(first.index.fts_index_validation, 'approved-index-not-rebuilt');
     assert.equal(first.search.read_only, true);
-    assert.equal('database' in first, false);
     assert.equal(JSON.stringify(first).includes(fixture.databasePath), false);
     assert.deepEqual(await readFile(fixture.databasePath), bytesBefore);
+    await assert.rejects(stat(path.join(fixture.scratchDirectory, 'literary-index-digests.json')), { code: 'ENOENT' });
+    const checkpoint = await load(fixture);
+    assert.equal(checkpoint.index.sha256, null);
   } finally {
     await cleanup(fixture);
   }
@@ -186,66 +177,42 @@ test('read-only preflight validates the approved schema and omits private databa
 test('retired and incomplete literary index schemas fail closed', async () => {
   const retired = await makeRetiredParagraphIndex();
   try {
-    await assert.rejects(
-      inspectLiteraryIndex(retired.databasePath, { scratchDirectory: retired.scratchDirectory }),
-      /retired paragraph-index tables are not accepted/u,
-    );
+    await assert.rejects(inspectLiteraryIndex(retired.databasePath, { scratchDirectory: retired.scratchDirectory }), /retired paragraph-index tables are not accepted/u);
   } finally {
     await rm(retired.root, { recursive: true, force: true });
   }
-
   const fixture = await makeFixture({ unitCount: 1 });
   try {
     const database = new DatabaseSync(fixture.databasePath);
     database.exec('ALTER TABLE text_units RENAME COLUMN eol TO line_ending');
     database.close();
-    await assert.rejects(
-      inspectLiteraryIndex(fixture.databasePath, { scratchDirectory: fixture.scratchDirectory }),
-      /text_units is missing eol/u,
-    );
+    await assert.rejects(inspectLiteraryIndex(fixture.databasePath, { scratchDirectory: fixture.scratchDirectory }), /text_units is missing eol/u);
   } finally {
     await cleanup(fixture);
   }
 });
 
-test('read-only preflight rejects missing postings in an external-content FTS index', async () => {
+test('deep preflight (first approval) still rejects missing and wrong FTS postings that the lean path does not rebuild', async () => {
   const fixture = await makeFixture({ unitCount: 1 });
   try {
     const database = new DatabaseSync(fixture.databasePath);
     const text = database.prepare('SELECT text FROM text_units WHERE unit_rowid = 1').get().text;
     database.prepare("INSERT INTO unit_fts(unit_fts, rowid, text) VALUES ('delete', 1, ?)").run(text);
-    assert.equal(database.prepare('SELECT count(*) AS count FROM unit_fts').get().count, 1);
-    assert.equal(database.prepare('SELECT count(*) AS count FROM unit_fts WHERE unit_fts MATCH ?').get('"가나다"').count, 0);
     database.close();
-    await assert.rejects(
-      inspectLiteraryIndex(fixture.databasePath, { scratchDirectory: fixture.scratchDirectory }),
-      /FTS trigram token coverage does not match text_units/u,
-    );
+    await inspectLiteraryIndex(fixture.databasePath, { scratchDirectory: fixture.scratchDirectory });
+    await assert.rejects(inspectLiteraryIndex(fixture.databasePath, { scratchDirectory: fixture.scratchDirectory, deep: true }), /FTS trigram token coverage does not match text_units/u);
   } finally {
     await cleanup(fixture);
   }
-});
-
-test('read-only preflight rejects wrong FTS term-to-row postings when the total token count is unchanged', async () => {
-  const fixture = await makeFixture({ unitCount: 1, unitText: '가나다' });
+  const wrong = await makeFixture({ unitCount: 1, unitText: '가나다' });
   try {
-    const database = new DatabaseSync(fixture.databasePath);
-    const text = database.prepare('SELECT text FROM text_units WHERE unit_rowid = 1').get().text;
-    database.prepare("INSERT INTO unit_fts(unit_fts, rowid, text) VALUES ('delete', 1, ?)").run(text);
+    const database = new DatabaseSync(wrong.databasePath);
+    database.prepare("INSERT INTO unit_fts(unit_fts, rowid, text) VALUES ('delete', 1, ?)").run('가나다');
     database.prepare('INSERT INTO unit_fts(rowid, text) VALUES (1, ?)').run('나가다');
-    database.exec('CREATE VIRTUAL TABLE temp.fixture_fts_vocab USING fts5vocab(main, unit_fts, row)');
-    const actualTrigramTokens = database.prepare('SELECT coalesce(sum(cnt), 0) AS count FROM temp.fixture_fts_vocab').get().count;
-    const expectedTrigramTokens = database.prepare('SELECT coalesce(sum(length(text) - 2), 0) AS count FROM text_units').get().count;
-    assert.equal(actualTrigramTokens, expectedTrigramTokens);
-    assert.equal(database.prepare('SELECT count(*) AS count FROM unit_fts').get().count, 1);
-    assert.equal(database.prepare('SELECT count(*) AS count FROM unit_fts WHERE unit_fts MATCH ?').get('"가나다"').count, 0);
     database.close();
-    await assert.rejects(
-      inspectLiteraryIndex(fixture.databasePath, { scratchDirectory: fixture.scratchDirectory }),
-      /FTS trigram term and row postings do not match text_units/u,
-    );
+    await assert.rejects(inspectLiteraryIndex(wrong.databasePath, { scratchDirectory: wrong.scratchDirectory, deep: true }), /FTS trigram term and row postings do not match text_units/u);
   } finally {
-    await cleanup(fixture);
+    await cleanup(wrong);
   }
 });
 
@@ -254,472 +221,204 @@ test('CLI failures suppress local database paths and environment values', () => 
   const tokenMarker = 'synthetic-secret-marker';
   const result = spawnSync(process.execPath, [
     'scripts/relation/literary-context-cli.mjs', 'preflight', '--db', path.join(os.tmpdir(), marker, 'missing.sqlite'),
-  ], {
-    cwd: process.cwd(),
-    encoding: 'utf8',
-    env: { ...process.env, TYPEWRITER_TEST_SECRET: tokenMarker },
-  });
+  ], { cwd: process.cwd(), encoding: 'utf8', env: { ...process.env, TYPEWRITER_TEST_SECRET: tokenMarker } });
   assert.equal(result.status, 1);
   assert.equal(`${result.stdout}${result.stderr}`.includes(marker), false);
   assert.equal(`${result.stdout}${result.stderr}`.includes(tokenMarker), false);
   assert.match(result.stderr, /local paths, source text, and secret details were suppressed/u);
 });
 
-test('literal search does not join matches across physical line boundaries', async () => {
+test('literal search does not join matches across physical lines; zero-hit senses are recorded in the chunk write', async () => {
   const fixture = await makeFixture({ unitCount: 2, unitTexts: ['가나', '다'] });
   try {
-    const scan = await scanLiteraryBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
-    assert.equal(scan.hit_senses, 0);
-    assert.equal(scan.zero_hit_senses, 500);
-    const { checkpoint } = await loadLiteraryCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory });
-    assert.equal(checkpoint.records[0].senses[0].search.status, 'ZERO_HITS');
-  } finally {
-    await cleanup(fixture);
-  }
-});
-test('batch scan returns counts only; paginated exact-sense search resumes without treating truncation as zero', async () => {
-  const fixture = await makeFixture({ unitCount: 6, unitText: `${'앞 문맥 '.repeat(30)}가나다가 정확한 장면에 있다.${' 뒤 문맥'.repeat(30)}` });
-  try {
-    const scan = await scanLiteraryBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
-    assert.equal(scan.total_senses, 500);
-    assert.equal(scan.hit_senses, 1);
-    assert.equal(scan.zero_hit_senses, 499);
-    assert.equal(scan.failed_senses, 0);
-    assert.equal('text_units' in scan, false);
-
-    const resumed = await scanLiteraryBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
-    assert.equal(resumed.hit_senses, 1);
-    assert.equal(resumed.zero_hit_senses, 499);
-    assert.equal(resumed.query_performance_ms.median_sense_query, null);
-
-    const queue = await listLiterarySearchQueue(fixture.checkpointPath, { status: 'COUNTED', limit: 10 }, { scratchDirectory: fixture.scratchDirectory });
-    assert.equal(queue.total_count, 1);
-    assert.equal(queue.items[0].sense_id, 'sense-000001');
-
-    const first = await searchLiterarySense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'sense-000001', pageSize: 2, scratchDirectory: fixture.scratchDirectory });
-    assert.equal(first.status, 'INCOMPLETE');
-    assert.equal(first.total_hits, 6);
-    assert.equal(first.returned, 2);
-    assert.equal(first.truncated, true);
-    assert.deepEqual(first.work_diversity, { distinct_works: 1, max_contexts_per_work: 2 });
-    assert.ok(first.next_cursor, JSON.stringify(first));
-    assert.ok(first.results.every((item) => item.excerpt.length <= 700));
-    assert.equal(first.results[0].context_window.physical_line_endings_preserved, true);
-    assert.ok(first.results.every((item) => !('unit_rowid' in item) && !('relative_path' in item) && !('context_sha256' in item)));
-
-    const scanWhileSearchIsIncomplete = await scanLiteraryBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
-    assert.equal(scanWhileSearchIsIncomplete.query_performance_ms.median_sense_query, null);
-    const { checkpoint: afterResumeScan } = await loadLiteraryCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory });
-    assert.equal(afterResumeScan.records[0].senses[0].search.status, 'INCOMPLETE');
-    assert.equal(afterResumeScan.records[0].senses[0].search.next_cursor, first.next_cursor);
-
-    const second = await searchLiterarySense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'sense-000001', pageSize: 2, cursor: first.next_cursor, scratchDirectory: fixture.scratchDirectory });
-    assert.equal(second.status, 'INCOMPLETE');
-    assert.equal(second.total_hits, 6);
-    assert.equal(second.returned, 2);
-    const third = await searchLiterarySense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'sense-000001', pageSize: 2, cursor: second.next_cursor, scratchDirectory: fixture.scratchDirectory });
-    assert.equal(third.status, 'SEARCHED');
-    assert.equal(third.has_more, false);
-
-    const { checkpoint } = await loadLiteraryCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory });
-    assert.equal(checkpoint.records[0].senses[0].contexts.length, 6);
-    assert.ok(checkpoint.records[0].senses[0].contexts.every((context) => context.judgment === 'PENDING'));
-    assert.equal(summarizeLiteraryCheckpoint(checkpoint).coverage.context_judgments.PENDING, 6);
-
-    await assert.rejects(searchLiterarySense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'sense-000001', cursor: 'stale-cursor', scratchDirectory: fixture.scratchDirectory }), /stale/u);
-    const afterBadCursor = await loadLiteraryCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory });
-    assert.equal(afterBadCursor.checkpoint.records[0].senses[0].search.status, 'SEARCHED');
+    const result = await chunk(fixture);
+    assert.equal(result.items.length, 0);
+    assert.equal(result.zero_hit_recorded, 500);
+    assert.equal(result.done_senses, 500);
+    assert.equal(summarizeLiteraryCheckpoint(await load(fixture)).coverage.sense_statuses.ZERO_HITS, 500);
   } finally {
     await cleanup(fixture);
   }
 });
 
-test('failed later page keeps its continuation and sample counts use distinct locators', async () => {
-  const fixture = await makeFixture({ unitCount: 20 });
-  try {
-    await scanLiteraryBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
-    const first = await searchLiterarySense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'sense-000001', scratchDirectory: fixture.scratchDirectory });
-    assert.equal(first.returned, 4);
-    await assert.rejects(searchLiterarySense({
-      databasePath: path.join(fixture.root, 'unavailable.sqlite'),
-      checkpointPath: fixture.checkpointPath,
-      senseId: 'sense-000001',
-      cursor: first.next_cursor,
-      scratchDirectory: fixture.scratchDirectory,
-    }), /database|open/iu);
-
-    let { checkpoint } = await loadLiteraryCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory });
-    let sense = checkpoint.records[0].senses[0];
-    assert.equal(sense.search.status, 'SEARCH_FAILED');
-    assert.equal(sense.search.total_hits, 20);
-    assert.equal(sense.search.returned_contexts, 4);
-    assert.equal(sense.search.next_cursor, first.next_cursor);
-
-    const resumedScan = await scanLiteraryBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
-    assert.equal(resumedScan.query_performance_ms.median_sense_query, null);
-    ({ checkpoint } = await loadLiteraryCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory }));
-    sense = checkpoint.records[0].senses[0];
-    assert.equal(sense.search.status, 'SEARCH_FAILED');
-    assert.equal(sense.search.next_cursor, first.next_cursor);
-
-    let page = await searchLiterarySense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'sense-000001', scratchDirectory: fixture.scratchDirectory });
-    while (page.next_cursor && page.returned > 0) {
-      ({ checkpoint } = await loadLiteraryCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory }));
-      sense = checkpoint.records[0].senses[0];
-      if (sense.contexts.length >= 16) break;
-      page = await searchLiterarySense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'sense-000001', cursor: page.next_cursor, scratchDirectory: fixture.scratchDirectory });
-    }
-
-    ({ checkpoint } = await loadLiteraryCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory }));
-    sense = checkpoint.records[0].senses[0];
-    assert.equal(sense.contexts.length, 16);
-    assert.equal(sense.search.returned_contexts, 16);
-    assert.equal(sense.search.total_hits, 20);
-    assert.equal(sense.search.status, 'INCOMPLETE');
-    assert.ok(sense.search.next_cursor);
-
-    for (const context of sense.contexts) {
-      await reviewLiteraryContext(fixture.checkpointPath, {
-        senseId: 'sense-000001',
-        locatorKey: context.locator_key,
-        judgment: 'REJECTED',
-        note: 'fixture context does not match the bound sense',
-      }, { scratchDirectory: fixture.scratchDirectory });
-    }
-    const finished = await finishLiterarySearch(fixture.checkpointPath, { senseId: 'sense-000001', note: 'sixteen unique contexts were reached after retry' }, { scratchDirectory: fixture.scratchDirectory });
-    assert.equal(finished.inspected_contexts, 16);
-    assert.equal(finished.remaining_hit_count, 4);
-    assert.equal(finished.truncated, true);
-  } finally {
-    await cleanup(fixture);
-  }
-});
-
-test('search pages interleave works before returning second contexts from the same work', async () => {
+test('one chunk read, one submit and one export produce a Candidate v1 file bound to cited contexts', async () => {
   const fixture = await makeFixture({ unitCount: 6, workCount: 3 });
   try {
-    await scanLiteraryBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
-    const first = await searchLiterarySense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'sense-000001', pageSize: 3, scratchDirectory: fixture.scratchDirectory });
-    assert.deepEqual(first.work_diversity, { distinct_works: 3, max_contexts_per_work: 1 });
-    const second = await searchLiterarySense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'sense-000001', pageSize: 3, cursor: first.next_cursor, scratchDirectory: fixture.scratchDirectory });
-    assert.deepEqual(second.work_diversity, { distinct_works: 3, max_contexts_per_work: 1 });
-    const { checkpoint } = await loadLiteraryCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory });
-    assert.equal(checkpoint.records[0].senses[0].contexts.length, 6);
-    assert.deepEqual(summarizeLiteraryCheckpoint(checkpoint).coverage.work_diversity, { distinct_works: 3, max_contexts_per_work: 2 });
+    const read = await chunk(fixture, { contexts: 3 });
+    assert.equal(read.zero_hit_recorded, 499);
+    assert.equal(read.items.length, 1);
+    const [item] = read.items;
+    assert.equal(item.sense_id, 'sense-000001');
+    assert.equal(item.total_hits, 6);
+    assert.equal(item.unseen_hits, 3);
+    assert.equal(item.contexts.length, 3);
+    assert.ok(item.contexts.every((context) => context.k.length === 12 && context.x.length <= 700));
+    assert.equal(new Set(item.contexts.map((context) => context.src)).size, 3, 'works are interleaved before a second context from one work');
+    const afterRead = await load(fixture);
+    assert.equal(afterRead.records[0].senses[0].submission, null, 'senses with hits are not recorded until submitted');
+    await assert.rejects(exportOutput(fixture), /1 sense\(s\) are not read and submitted yet/u);
+
+    const saved = await submit(fixture, [{ sense_id: 'sense-000001', verified: [item.contexts[0].k, item.contexts[2].k], candidates: ['서리', ' 서리 ', '겨울 아침'] }]);
+    assert.deepEqual({ senses: saved.senses, verified: saved.verified_contexts, candidates: saved.candidates, pending: saved.pending_senses }, { senses: 1, verified: 2, candidates: 2, pending: 0 });
+    const checkpoint = await load(fixture);
+    const sense = checkpoint.records[0].senses[0];
+    assert.equal(sense.submission.verified.length, 2);
+    assert.equal('context_text' in sense.submission.verified[0], false);
+    assert.equal(sense.submission.total_hits, 6);
+
+    const output = await exportOutput(fixture);
+    assert.equal(output.status, 'OUTPUT');
+    assert.equal(output.coverage.candidates, 2);
+    const rows = (await readFile(path.join(fixture.scratchDirectory, '001_01_c_codex.jsonl'), 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
+    assert.equal(rows.length, 500);
+    assert.deepEqual(rows[0].senses[0].candidates, ['서리', '겨울 아침']);
+    assert.equal(summarizeLiteraryCheckpoint(await load(fixture)).batch.state, 'OUTPUT');
+    assert.equal((await chunk(fixture)).items.length, 0, 'finished batch has nothing left to read');
   } finally {
     await cleanup(fixture);
   }
 });
 
-test('long text-unit context reads remain character bounded and report total length and continuation', async () => {
-  const fixture = await makeFixture({ unitCount: 1, unitText: `${'문학 문맥 '.repeat(180)}가나다${' 뒤 문맥'.repeat(180)}` });
-  try {
-    await scanLiteraryBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
-    const search = await searchLiterarySense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'sense-000001', scratchDirectory: fixture.scratchDirectory });
-    const first = await getLiteraryContextPage(fixture.databasePath, fixture.checkpointPath, { senseId: 'sense-000001', locatorKey: search.results[0].locator_key, offset: 0, chars: 100 }, { scratchDirectory: fixture.scratchDirectory });
-    assert.equal(first.chars_returned, 100);
-    assert.ok(first.total_chars > first.chars_returned);
-    assert.equal(first.truncated, true);
-    const second = await getLiteraryContextPage(fixture.databasePath, fixture.checkpointPath, { senseId: 'sense-000001', locatorKey: search.results[0].locator_key, offset: first.next_offset, chars: 100 }, { scratchDirectory: fixture.scratchDirectory });
-    assert.equal(second.total_chars, first.total_chars);
-    assert.equal(second.offset, first.next_offset);
-    assert.equal(second.chars_returned, 100);
-  } finally {
-    await cleanup(fixture);
-  }
-});
-
-test('bounded context requery preserves the exact physical EOLs around a hit', async () => {
+test('submission fails closed and writes nothing for uncited, duplicate or unknown contexts', async () => {
   const fixture = await makeFixture({ unitCount: 3 });
   try {
-    await scanLiteraryBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
-    const search = await searchLiterarySense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'sense-000001', scratchDirectory: fixture.scratchDirectory });
-    const page = await getLiteraryContextPage(fixture.databasePath, fixture.checkpointPath, {
-      senseId: 'sense-000001', locatorKey: search.results[0].locator_key, offset: 0, chars: 1000,
-    }, { scratchDirectory: fixture.scratchDirectory });
-    assert.match(page.text, /\r\n/u);
-    assert.equal(page.unit_window.physical_line_endings_preserved, true);
-    assert.equal(page.unit_window.included_units, 3);
+    const [item] = (await chunk(fixture)).items;
+    const key = item.contexts[0].k;
+    const before = await readFile(fixture.checkpointPath, 'utf8');
+    await assert.rejects(submit(fixture, [{ sense_id: 'sense-000001', verified: [], candidates: ['서리'] }]), /no VERIFIED source-sense context/u);
+    await assert.rejects(submit(fixture, [{ sense_id: 'sense-000001', verified: ['0'.repeat(12)], candidates: [] }]), /does not identify exactly one indexed context/u);
+    await assert.rejects(submit(fixture, [{ sense_id: 'sense-000001', verified: [key, key], candidates: [] }]), /same verified context twice/u);
+    await assert.rejects(submit(fixture, [{ sense_id: 'sense-000001', verified: [key.slice(0, 4)], candidates: [] }]), /shorter than 12/u);
+    await assert.rejects(submit(fixture, [{ sense_id: 'sense-000001', verified: [key], candidates: [] }, { sense_id: 'sense-000001', verified: [], candidates: [] }]), /more than once/u);
+    await assert.rejects(submit(fixture, [{ sense_id: 'sense-000001', verified: [key], candidates: [], note: 'extra' }]), /exactly sense_id, verified\[\], candidates\[\]/u);
+    await assert.rejects(submit(fixture, [{ sense_id: 'sense-000001', verified: [key], candidates: [] }, { sense_id: 'sense-999999', verified: [], candidates: [] }]), /not in this checkpoint/u);
+    assert.equal(await readFile(fixture.checkpointPath, 'utf8'), before);
+    // A sense with hits but no VERIFIED context is a real result, not a missing one.
+    await submit(fixture, [{ sense_id: 'sense-000001', verified: [], candidates: [] }]);
+    assert.equal((await load(fixture)).records[0].senses[0].submission.status, 'SUBMITTED');
   } finally {
     await cleanup(fixture);
   }
 });
 
-test('multiple exact forms deduplicate one physical unit and retain all matched forms', async () => {
+test('contexts per sense are capped at 16, unseen hits stay explicit and any shown context can be cited', async () => {
+  const fixture = await makeFixture({ unitCount: 20 });
+  try {
+    const first = (await chunk(fixture)).items[0];
+    assert.equal(first.contexts.length, 8);
+    assert.equal(first.unseen_hits, 12);
+    const wide = (await chunk(fixture, { senseIds: 'sense-000001', contexts: 16 })).items[0];
+    assert.equal(wide.contexts.length, 16);
+    assert.equal(wide.unseen_hits, 4);
+    assert.deepEqual(wide.contexts.slice(0, 8).map((context) => context.k), first.contexts.map((context) => context.k));
+    await submit(fixture, [{ sense_id: 'sense-000001', verified: [wide.contexts[15].k], candidates: ['서리'] }]);
+    assert.equal((await load(fixture)).records[0].senses[0].submission.remaining_hit_count, 4);
+    await assert.rejects(chunk(fixture, { contexts: 17 }), /contexts per sense/u);
+  } finally {
+    await cleanup(fixture);
+  }
+});
+
+test('a search failure is neither a zero-hit result nor a recorded sense', async () => {
+  const fixture = await makeFixture({ unitCount: 1 });
+  try {
+    const before = await readFile(fixture.checkpointPath, 'utf8');
+    await assert.rejects(readLiteraryChunk({ databasePath: path.join(fixture.root, 'missing.sqlite'), checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory }));
+    await assert.rejects(submitLiteraryChunk({ databasePath: path.join(fixture.root, 'missing.sqlite'), checkpointPath: fixture.checkpointPath, submission: { senses: [{ sense_id: 'sense-000001', verified: [], candidates: [] }] }, scratchDirectory: fixture.scratchDirectory }));
+    assert.equal(await readFile(fixture.checkpointPath, 'utf8'), before);
+  } finally {
+    await cleanup(fixture);
+  }
+});
+
+test('added forms: multi-form units are deduplicated, short forms are searched, and only unsubmitted senses accept new forms', async () => {
   const fixture = await makeFixture({ unitCount: 3 });
   try {
     await addSearchForm(fixture.checkpointPath, 'sense-000001', '나다', 'Synthetic overlapping literal form', { scratchDirectory: fixture.scratchDirectory });
-    const scan = await scanLiteraryBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
-    assert.equal(scan.hit_senses, 1);
-    const search = await searchLiterarySense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'sense-000001', scratchDirectory: fixture.scratchDirectory });
-    assert.equal(search.total_hits, 3);
-    assert.equal(search.returned, 3);
-    assert.equal(new Set(search.results.map((item) => item.locator_key)).size, 3);
-    assert.ok(search.results.every((item) => item.matched_form_count === 2));
+    const [item] = (await chunk(fixture)).items;
+    assert.equal(item.total_hits, 3);
+    assert.equal(new Set(item.contexts.map((context) => context.k)).size, 3);
+    assert.deepEqual(item.forms, ['가나다', '나다']);
+    await submit(fixture, [{ sense_id: 'sense-000001', verified: [], candidates: [] }]);
+    await assert.rejects(addSearchForm(fixture.checkpointPath, 'sense-000001', '새형', 'late form', { scratchDirectory: fixture.scratchDirectory }), /before reading and submitting/u);
   } finally {
     await cleanup(fixture);
   }
+  const zero = await makeFixture({ unitCount: 1, unitText: '짧은 두자 검색 예시' });
+  try {
+    assert.equal((await chunk(zero)).zero_hit_recorded, 500);
+    await addSearchForm(zero.checkpointPath, 'sense-000001', '두자', 'Canonical search form', { scratchDirectory: zero.scratchDirectory });
+    const [item] = (await chunk(zero)).items;
+    assert.equal(item.total_hits, 1);
+    assert.equal(item.contexts.length, 1);
+  } finally {
+    await cleanup(zero);
+  }
 });
 
-test('legacy checkpoint contracts cannot resume against the unit index', async () => {
+test('checkpoint contracts: v1 is rejected, a v2 checkpoint remains readable and resumable', async () => {
   const fixture = await makeFixture({ unitCount: 1 });
   try {
     const checkpoint = JSON.parse(await readFile(fixture.checkpointPath, 'utf8'));
     checkpoint.contract = 'literary-checkpoint-v1';
     await writeFile(fixture.checkpointPath, JSON.stringify(checkpoint));
     await assert.rejects(loadLiteraryCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory }), /unsupported literary checkpoint contract/u);
+    checkpoint.contract = 'literary-checkpoint-v2';
+    await writeFile(fixture.checkpointPath, JSON.stringify(checkpoint));
+    assert.equal((await chunk(fixture)).items.length, 1);
   } finally {
     await cleanup(fixture);
   }
 });
 
-test('short literal search forms use the bounded page path and invalidate stale zero-hit summaries', async () => {
-  const fixture = await makeFixture({ unitCount: 1, unitText: '짧은 두자 검색 예시' });
-  try {
-    const scan = await scanLiteraryBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
-    assert.equal(scan.zero_hit_senses, 500);
-    await addSearchForm(fixture.checkpointPath, 'sense-000001', '두자', 'Canonical search form', { scratchDirectory: fixture.scratchDirectory });
-    const researched = await scanLiteraryBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
-    assert.equal(researched.hit_senses, 1);
-    const page = await searchLiterarySense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'sense-000001', scratchDirectory: fixture.scratchDirectory });
-    assert.equal(page.total_hits, 1);
-    assert.equal(page.status, 'SEARCHED');
-    assert.equal(page.results[0].matched_forms.includes('두자'), true);
-    await addSearchForm(fixture.checkpointPath, 'sense-000001', '두자', 'already recorded form', { scratchDirectory: fixture.scratchDirectory });
-    await assert.rejects(addSearchForm(fixture.checkpointPath, 'sense-000001', '새형', 'late form', { scratchDirectory: fixture.scratchDirectory }), /before retrieving contexts/u);
-    const { checkpoint } = await loadLiteraryCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory });
-    assert.equal(checkpoint.records[0].senses[0].search.status, 'SEARCHED');
-  } finally {
-    await cleanup(fixture);
-  }
-});
-
-test('each context needs an explicit source-sense judgment; ambiguous contexts cannot be swept', async () => {
+test('a complete v2 evidence checkpoint exports its KEEP candidates without the retired ledger commands', async () => {
   const fixture = await makeFixture({ unitCount: 1 });
   try {
-    await scanLiteraryBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
-    const page = await searchLiterarySense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'sense-000001', scratchDirectory: fixture.scratchDirectory });
-    const locatorKey = page.results[0].locator_key;
-    let { checkpoint } = await loadLiteraryCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory });
-    assert.equal(checkpoint.records[0].senses[0].contexts[0].judgment, 'PENDING');
-    await assert.rejects(recordLiterarySweep(fixture.checkpointPath, { senseId: 'sense-000001', locatorKey, sweep: 1, results: sevenEmptyLenses() }, { scratchDirectory: fixture.scratchDirectory }), /VERIFIED/u);
-    const result = await reviewLiteraryContext(fixture.checkpointPath, { senseId: 'sense-000001', locatorKey, judgment: 'AMBIGUOUS', note: '문맥의 다른 의미 가능성' }, { scratchDirectory: fixture.scratchDirectory });
-    assert.equal(result.sense_status, 'NO_VERIFIED');
-    await assert.rejects(recordLiterarySweep(fixture.checkpointPath, { senseId: 'sense-000001', locatorKey, sweep: 1, results: sevenEmptyLenses() }, { scratchDirectory: fixture.scratchDirectory }), /VERIFIED/u);
-    ({ checkpoint } = await loadLiteraryCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory }));
-    assert.equal(checkpoint.records[0].senses[0].contexts[0].judgment, 'AMBIGUOUS');
-  } finally {
-    await cleanup(fixture);
-  }
-});
-
-test('adaptive stopping preserves remaining-hit counts and enforces the 16-context ceiling', async () => {
-  const fixture = await makeFixture({ unitCount: 20 });
-  try {
-    await scanLiteraryBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
-    let page = await searchLiterarySense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'sense-000001', scratchDirectory: fixture.scratchDirectory });
-    let inspected = 0;
-    while (page) {
-      for (const context of page.results) {
-        await reviewLiteraryContext(fixture.checkpointPath, {
-          senseId: 'sense-000001',
-          locatorKey: context.locator_key,
-          judgment: 'REJECTED',
-          note: 'sample context does not express the Canonical sense',
-        }, { scratchDirectory: fixture.scratchDirectory });
-        inspected += 1;
+    const checkpoint = JSON.parse(await readFile(fixture.checkpointPath, 'utf8'));
+    checkpoint.contract = 'literary-checkpoint-v2';
+    const sweep = { results: { image: ['서리'], action: [], emotion: [], sensation: [], scene_situation: [], causality: [], metaphor_contrast: [] } };
+    for (const record of checkpoint.records) {
+      for (const sense of record.senses) {
+        const first = sense.sense_id === 'sense-000001';
+        Object.assign(sense, {
+          search: { status: first ? 'SEARCHED' : 'ZERO_HITS', total_hits: first ? 1 : 0 },
+          contexts: first ? [{ locator_key: 'k', judgment: 'VERIFIED', sweeps: { 1: sweep, 2: { ...sweep, independent_read_attested: true } } }] : [],
+          candidate_reviews: first ? [{ normalized: '서리', candidate: '서리', decision: 'KEEP', kind: 'word' }] : [],
+        });
+        delete sense.submission;
       }
-      if (!page.next_cursor || inspected === 16) break;
-      page = await searchLiterarySense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'sense-000001', cursor: page.next_cursor, scratchDirectory: fixture.scratchDirectory });
     }
-    assert.equal(inspected, 16);
-    assert.equal(page.status, 'INCOMPLETE');
-    await assert.rejects(searchLiterarySense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'sense-000001', cursor: page.next_cursor, scratchDirectory: fixture.scratchDirectory }), /16 inspected contexts/u);
-
-    const finished = await finishLiterarySearch(fixture.checkpointPath, { senseId: 'sense-000001', note: 'sixteen contexts reached the documented cap; no more may be inspected' }, { scratchDirectory: fixture.scratchDirectory });
-    assert.equal(finished.status, 'SAMPLED_NO_VERIFIED');
-    assert.equal(finished.total_hits, 20);
-    assert.equal(finished.remaining_hit_count, 4);
-    assert.equal(finished.truncated, true);
-
-    const queue = await listLiterarySearchQueue(fixture.checkpointPath, { status: 'SAMPLED_NO_VERIFIED', limit: 10 }, { scratchDirectory: fixture.scratchDirectory });
-    assert.equal(queue.total_count, 1);
-    const outputPath = path.join(fixture.scratchDirectory, '001_01_c_codex.jsonl');
-    const exported = await exportLiteraryCandidates({ checkpointPath: fixture.checkpointPath, canonicalPath: fixture.canonicalPath, outputPath, repositoryDirectory: fixture.root, scratchDirectory: fixture.scratchDirectory });
-    assert.equal(exported.status, 'OUTPUT');
+    await writeFile(fixture.checkpointPath, JSON.stringify(checkpoint));
+    const output = await exportOutput(fixture);
+    assert.equal(output.coverage.candidates, 1);
   } finally {
     await cleanup(fixture);
   }
 });
 
-test('seven lenses and two distinct sweeps are recorded; pass two requires independent rereading', async () => {
+test('Candidate v1 runs once at export: an ineligible candidate is reported with its row, and one resubmit fixes it', async () => {
   const fixture = await makeFixture({ unitCount: 1 });
   try {
-    await scanLiteraryBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
-    const page = await searchLiterarySense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'sense-000001', scratchDirectory: fixture.scratchDirectory });
-    const locatorKey = page.results[0].locator_key;
-    await reviewLiteraryContext(fixture.checkpointPath, { senseId: 'sense-000001', locatorKey, judgment: 'VERIFIED', note: '제시 뜻과 문맥 의미 일치' }, { scratchDirectory: fixture.scratchDirectory });
-    const first = sevenEmptyLenses();
-    first.image = ['바람'];
-    await recordLiterarySweep(fixture.checkpointPath, { senseId: 'sense-000001', locatorKey, sweep: 1, results: first }, { scratchDirectory: fixture.scratchDirectory });
-    const second = sevenEmptyLenses();
-    second.image = ['바람', '그늘'];
-    await assert.rejects(recordLiterarySweep(fixture.checkpointPath, { senseId: 'sense-000001', locatorKey, sweep: 2, results: second }, { scratchDirectory: fixture.scratchDirectory }), /independent-read/u);
-    await recordLiterarySweep(fixture.checkpointPath, { senseId: 'sense-000001', locatorKey, sweep: 2, results: second, independentRead: true }, { scratchDirectory: fixture.scratchDirectory });
-    await reviewLiteraryCandidate(fixture.checkpointPath, { senseId: 'sense-000001', candidate: '바람', decision: 'KEEP', kind: 'word', note: '독립 어휘로 연결 확인' }, { scratchDirectory: fixture.scratchDirectory });
-    await reviewLiteraryCandidate(fixture.checkpointPath, { senseId: 'sense-000001', candidate: '그늘', decision: 'KEEP', kind: 'word', note: '짧은 심상 확장' }, { scratchDirectory: fixture.scratchDirectory });
-    let { checkpoint } = await loadLiteraryCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory });
-    const summary = summarizeLiteraryCheckpoint(checkpoint);
-    assert.equal(summary.sweeps.per_sweep_lens_totals['1'].image.contexts, 1);
-    assert.equal(summary.sweeps.per_sweep_lens_totals['1'].image.candidates, 1);
-    assert.equal(summary.sweeps.per_sweep_lens_totals['1'].action.zero, 1);
-    assert.equal(summary.sweeps.raw_discoveries, 3);
-    assert.equal(summary.sweeps.duplicate_discoveries, 1);
-    assert.equal(summary.sweeps.sweep2_new_against_sweep1, 1);
-    assert.equal(summary.final_candidates.kept, 2);
-    assert.equal(summary.final_candidates.kinds.word, 2);
-
-    const outputPath = path.join(fixture.scratchDirectory, '001_01_c_codex.jsonl');
-    const exported = await exportLiteraryCandidates({ checkpointPath: fixture.checkpointPath, canonicalPath: fixture.canonicalPath, outputPath, repositoryDirectory: fixture.root, scratchDirectory: fixture.scratchDirectory });
-    assert.equal(exported.status, 'OUTPUT');
-    assert.equal(exported.coverage.records, 500);
-    assert.equal(exported.coverage.candidates, 2);
-    const outputRows = (await readFile(outputPath, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
-    assert.equal(outputRows.length, 500);
-    assert.deepEqual(outputRows[0].senses[0].candidates, ['바람', '그늘']);
-    assert.deepEqual(Object.keys(outputRows[0]).sort(), ['record_id', 'senses']);
-
-    const validateOutput = () => validateExistingLiteraryCandidates({
-      checkpointPath: fixture.checkpointPath,
-      canonicalPath: fixture.canonicalPath,
-      candidatePath: outputPath,
-      repositoryDirectory: fixture.root,
-      scratchDirectory: fixture.scratchDirectory,
-    });
-    const initialValidation = await validateOutput();
-    assert.equal(initialValidation.status, 'VALID');
-    ({ checkpoint } = await loadLiteraryCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory }));
-    assert.equal(checkpoint.output.stale, false);
-
-    await reviewLiteraryContext(fixture.checkpointPath, { senseId: 'sense-000001', locatorKey, judgment: 'REJECTED', note: 'rechecked context belongs to another sense' }, { scratchDirectory: fixture.scratchDirectory });
-    const rejectedEvidence = await validateOutput();
-    assert.equal(rejectedEvidence.status, 'INVALID');
-    assert.match(rejectedEvidence.message, /no current VERIFIED sweep and KEEP disposition/u);
-    ({ checkpoint } = await loadLiteraryCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory }));
-    assert.equal(checkpoint.output.stale, true);
-
-    await reviewLiteraryContext(fixture.checkpointPath, { senseId: 'sense-000001', locatorKey, judgment: 'VERIFIED', note: 'rechecked context matches the source sense' }, { scratchDirectory: fixture.scratchDirectory });
-    assert.equal((await validateOutput()).status, 'VALID');
-    ({ checkpoint } = await loadLiteraryCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory }));
-    assert.equal(checkpoint.output.stale, false);
-
-    await reviewLiteraryCandidate(fixture.checkpointPath, { senseId: 'sense-000001', candidate: '그늘', decision: 'REMOVE', note: '최종 형태 검사에서 독립성 불충분' }, { scratchDirectory: fixture.scratchDirectory });
-    const removedDisposition = await validateOutput();
-    assert.equal(removedDisposition.status, 'INVALID');
-    assert.match(removedDisposition.message, /current VERIFIED sweep and KEEP disposition/u);
-    ({ checkpoint } = await loadLiteraryCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory }));
-    assert.equal(checkpoint.output.stale, true);
-
-    const patched = await patchLiteraryCandidateFile({
-      checkpointPath: fixture.checkpointPath,
-      canonicalPath: fixture.canonicalPath,
-      candidatePath: outputPath,
-      recordId: 'record-000001',
-      senseId: 'sense-000001',
-      action: 'remove',
-      candidate: '그늘',
-      reason: 'remove the one explicitly reviewed candidate only',
-      repositoryDirectory: fixture.root,
-      scratchDirectory: fixture.scratchDirectory,
-    });
-    assert.equal(patched.status, 'VALID');
-    assert.equal((await validateOutput()).status, 'VALID');
-    ({ checkpoint } = await loadLiteraryCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory }));
-    assert.equal(checkpoint.output.stale, false);
-    const patchedRows = (await readFile(outputPath, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
-    assert.deepEqual(patchedRows[0].senses[0].candidates, ['바람']);
-    assert.deepEqual(patchedRows.slice(1), outputRows.slice(1));
-  } finally {
-    await cleanup(fixture);
-  }
-});
-
-test('search failures remain distinct from zero hits and do not reject uninspected contexts', async () => {
-  const fixture = await makeFixture({ unitCount: 1 });
-  try {
-    await assert.rejects(searchLiterarySense({ databasePath: path.join(fixture.root, 'missing.sqlite'), checkpointPath: fixture.checkpointPath, senseId: 'sense-000001', scratchDirectory: fixture.scratchDirectory }));
-    const { checkpoint } = await loadLiteraryCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory });
-    const sense = checkpoint.records[0].senses[0];
-    assert.equal(sense.search.status, 'SEARCH_FAILED');
-    assert.equal(summarizeLiteraryCheckpoint(checkpoint).coverage.sense_statuses.SEARCH_FAILED, 1);
-    assert.equal(sense.contexts.length, 0);
-  } finally {
-    await cleanup(fixture);
-  }
-});
-
-test('Candidate v1 failure reports a minimal affected row and does not mutate the batch', async () => {
-  const fixture = await makeFixture({ unitCount: 1 });
-  try {
-    const rows = fixture.records.map((record) => ({ record_id: record.id, senses: [{ sense_id: record.senses[0].id, candidates: [] }] }));
-    rows[0].record_id = 'wrong-record';
-    const result = await validateLiteraryExport({ checkpointPath: fixture.checkpointPath, canonicalPath: fixture.canonicalPath, candidateRows: rows, repositoryDirectory: fixture.root, scratchDirectory: fixture.scratchDirectory });
-    assert.equal(result.status, 'INVALID');
-    assert.equal(result.affected.record_id, 'wrong-record');
-    assert.equal(result.affected.canonical_record_id, 'record-000001');
-    assert.equal(result.affected.candidate_line, 1);
-    assert.match(result.repair_scope, /reported Candidate row/u);
-  } finally {
-    await cleanup(fixture);
-  }
-});
-
-test('one reviewed Candidate defect is patched in place and the complete batch is revalidated', async () => {
-  const fixture = await makeFixture({ unitCount: 1 });
-  try {
-    await scanLiteraryBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
-    const page = await searchLiterarySense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'sense-000001', scratchDirectory: fixture.scratchDirectory });
-    const locatorKey = page.results[0].locator_key;
-    await reviewLiteraryContext(fixture.checkpointPath, { senseId: 'sense-000001', locatorKey, judgment: 'VERIFIED', note: 'fixture source sense matches' }, { scratchDirectory: fixture.scratchDirectory });
-    const first = sevenEmptyLenses();
-    first.image = ['가나다'];
-    await recordLiterarySweep(fixture.checkpointPath, { senseId: 'sense-000001', locatorKey, sweep: 1, results: first }, { scratchDirectory: fixture.scratchDirectory });
-    await recordLiterarySweep(fixture.checkpointPath, { senseId: 'sense-000001', locatorKey, sweep: 2, independentRead: true, results: first }, { scratchDirectory: fixture.scratchDirectory });
-    await reviewLiteraryCandidate(fixture.checkpointPath, { senseId: 'sense-000001', candidate: '가나다', decision: 'REMOVE', note: 'exact source lemma repeats the prompt' }, { scratchDirectory: fixture.scratchDirectory });
-
+    const [item] = (await chunk(fixture)).items;
+    await submit(fixture, [{ sense_id: 'sense-000001', verified: [item.contexts[0].k], candidates: ['가나다'] }]);
+    await assert.rejects(exportOutput(fixture), /record-000001|가나다/u);
+    await submit(fixture, [{ sense_id: 'sense-000001', verified: [item.contexts[0].k], candidates: ['서리'] }]);
+    const output = await exportOutput(fixture);
+    assert.equal(output.coverage.candidates, 1);
+    // Re-export of the checkpoint's own output after a later correction overwrites that file, nothing else.
+    await submit(fixture, [{ sense_id: 'sense-000001', verified: [item.contexts[0].k], candidates: ['서리', '겨울 아침'] }]);
+    assert.equal(summarizeLiteraryCheckpoint(await load(fixture)).batch.state, 'OUTPUT_STALE');
+    assert.equal((await exportOutput(fixture)).coverage.candidates, 2);
     const candidatePath = path.join(fixture.scratchDirectory, '001_01_c_codex.jsonl');
-    const invalidRows = fixture.records.map((record) => ({
-      record_id: record.id,
-      senses: record.senses.map((sense) => ({ sense_id: sense.id, candidates: record.id === 'record-000001' ? ['가나다'] : [] })),
-    }));
-    await writeFile(candidatePath, jsonl(invalidRows));
-    const before = await validateExistingLiteraryCandidates({
-      checkpointPath: fixture.checkpointPath,
-      canonicalPath: fixture.canonicalPath,
-      candidatePath,
-      repositoryDirectory: fixture.root,
-      scratchDirectory: fixture.scratchDirectory,
-    });
-    assert.equal(before.status, 'INVALID');
-    assert.equal(before.affected.record_id, 'record-000001');
-
-    const repaired = await patchLiteraryCandidateFile({
-      checkpointPath: fixture.checkpointPath,
-      canonicalPath: fixture.canonicalPath,
-      candidatePath,
-      recordId: 'record-000001',
-      senseId: 'sense-000001',
-      action: 'remove',
-      candidate: '가나다',
-      reason: 'remove exact source lemma only',
-      repositoryDirectory: fixture.root,
-      scratchDirectory: fixture.scratchDirectory,
-    });
-    assert.equal(repaired.status, 'VALID');
-    assert.equal(repaired.validation.recordCount, 500);
-    const afterRows = (await readFile(candidatePath, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
-    assert.deepEqual(afterRows[0].senses[0].candidates, []);
-    assert.deepEqual(afterRows.slice(1), invalidRows.slice(1));
+    const valid = await validateExistingLiteraryCandidates({ checkpointPath: fixture.checkpointPath, canonicalPath: fixture.canonicalPath, candidatePath, repositoryDirectory: fixture.root, scratchDirectory: fixture.scratchDirectory });
+    assert.equal(valid.status, 'VALID');
+    const rows = (await readFile(candidatePath, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
+    rows[0].record_id = 'wrong-record';
+    await writeFile(candidatePath, `${rows.map((row) => JSON.stringify(row)).join('\n')}\n`);
+    const invalid = await validateExistingLiteraryCandidates({ checkpointPath: fixture.checkpointPath, canonicalPath: fixture.canonicalPath, candidatePath, repositoryDirectory: fixture.root, scratchDirectory: fixture.scratchDirectory });
+    assert.equal(invalid.status, 'INVALID');
+    assert.equal(invalid.affected.record_id, 'wrong-record');
+    assert.equal(invalid.affected.candidate_line, 1);
   } finally {
     await cleanup(fixture);
   }
