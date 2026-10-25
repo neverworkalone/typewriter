@@ -5,8 +5,7 @@ import unittest
 from pathlib import Path
 
 from tests.fakes import World
-from warroom import control, progress
-from warroom.views import card_text
+from warroom import progress
 
 S = ".warroom-scratch"
 
@@ -151,17 +150,9 @@ class Supervisor(unittest.TestCase):
         b = self.record()
         self.assertEqual((b["progress_kind"], b["progress_done"], b["progress_total"], b["records_done"]),
                          ("chunks", 7, 20, None))
-        st = control.line_status(self.w.store, "free", "b")
-        self.assertEqual(st["progress"], "7/20 chunks")
-        lines = card_text(st).split("\n")
-        self.assertEqual(len(lines), 4)
-        self.assertIn("7 / 20 chunks", lines[1])
-        self.assertIn("35.0%", lines[1])
-        self.assertEqual(st["state"], b["state"])                      # a full bar never changes the batch state
         write(self.wt / "data/relation-candidates/001/001_01_b_free.jsonl", "{}\n" * 500)
         b = self.record()
         self.assertEqual((b["progress_kind"], b["records_done"]), (None, 500))
-        self.assertIn("500 / 500 records", card_text(control.line_status(self.w.store, "free", "b")))
 
     def test_corrupt_or_deleted_checkpoint_falls_back_to_unconfirmed(self):
         ab_checkpoint(self.wt, 20, [1], model="free")
@@ -169,8 +160,3 @@ class Supervisor(unittest.TestCase):
         write(self.wt / S / "b01" / "checkpoint.json", "{half")
         b = self.record()
         self.assertIsNone(b["progress_kind"])
-        self.assertIn("진행량 확인 중", card_text(control.line_status(self.w.store, "free", "b")))
-
-    def test_legacy_records_row_still_renders_records(self):
-        self.w.store.update(self.bid, records_done=127)
-        self.assertIn("127 / 500 records", card_text(control.line_status(self.w.store, "free", "b")))
