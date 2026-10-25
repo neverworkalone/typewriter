@@ -74,6 +74,29 @@ test('exact PR diffs for Candidate, Relation, Canonical and product-code changes
   }
 });
 
+test('connection-local temporary tables do not select the persistent product schema gate', async () => {
+  const fixture = await makeRepository();
+  try {
+    const cases = [
+      [
+        'scripts/relation/literary-context.mjs',
+        `database.exec('CREATE VIRTUAL TABLE temp.unit_vocab USING fts5vocab(main, unit_fts, row)');\n`,
+      ],
+      [
+        'scripts/runtime/sqlite-scratch.mjs',
+        `database.exec('CREATE TEMPORARY TABLE scratch (id TEXT PRIMARY KEY)');\n`,
+      ],
+    ];
+    for (const [filePath, contents] of cases) {
+      const result = await classifyChange(fixture, { [filePath]: contents });
+      assert.equal(result.schemaChanged, false, filePath);
+      assert.deepEqual(result.changedSchemaOwnerPaths, [], filePath);
+    }
+  } finally {
+    await rm(fixture.directory, { recursive: true, force: true });
+  }
+});
+
 test('SQL schema edits, mixed changes, deletions and exact registered paths select the schema gate', async () => {
   const fixture = await makeRepository();
   try {
