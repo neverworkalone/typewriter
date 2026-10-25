@@ -667,7 +667,9 @@ export async function scanLiteraryBatch({ databasePath, checkpointPath, scratchD
       for (const sense of record.senses) {
         const forms = [...new Set([...sense.search_forms, ...sense.added_forms.map((item) => item.form)])].sort(compare);
         const fingerprint = sha256(JSON.stringify(forms));
-        if (['COUNTED', 'INCOMPLETE', 'SEARCHED', 'ZERO_HITS'].includes(sense.search?.status) && sense.search.query_sha256 === fingerprint) {
+        const reusableCount = ['COUNTED', 'INCOMPLETE', 'SEARCHED', 'ZERO_HITS'].includes(sense.search?.status)
+          || sense.search?.status === 'SEARCH_FAILED' && Number.isInteger(sense.search.total_hits);
+        if (reusableCount && sense.search.query_sha256 === fingerprint) {
           searched += 1;
           if (sense.search.total_hits > 0) hitSenses += 1;
           else zeroHitSenses += 1;
@@ -782,22 +784,25 @@ export async function searchLiterarySense({ databasePath, checkpointPath, senseI
   if (sense.search && !['COUNTED', 'INCOMPLETE', 'SEARCH_FAILED'].includes(sense.search.status) && !cursor) fail('this sense search is already complete; preserve the checkpoint or initialize a new batch');
   if (cursor && sense.search?.next_cursor !== cursor) fail('page cursor is stale or does not match this checkpoint');
   if (cursor) cursorDecode(cursor, sha256(JSON.stringify(currentForms)));
+  const priorSearch = sense.search ? { ...sense.search } : null;
+  const attemptCursor = cursor ?? priorSearch?.next_cursor ?? null;
+  let attemptTotalHits = priorSearch?.total_hits ?? null;
   let opened;
   try {
     opened = openLiteraryIndex(databasePath);
     await assertCheckpointIndexUnchanged(checkpoint, databasePath);
-    const nextCursor = cursor ?? sense.search?.next_cursor ?? null;
-    const results = runSearch(opened.database, currentForms, { pageSize: page, cursor: nextCursor, snippetChars: snippetLimit });
+    const results = runSearch(opened.database, currentForms, { pageSize: page, cursor: attemptCursor, snippetChars: snippetLimit });
+    attemptTotalHits = results.total_hits;
     const queryHash = sha256(JSON.stringify(currentForms));
     sense.search_history ??= [];
-    if (sense.search && sense.search.status === 'COUNTED') sense.search_history.push({ ...sense.search });
+    if (priorSearch && ['COUNTED', 'SEARCH_FAILED'].includes(priorSearch.status)) sense.search_history.push(priorSearch);
     sense.search = {
       status: results.status,
       query_sha256: queryHash,
       query_form_count: currentForms.length,
       total_hits: results.total_hits,
-      pages: (sense.search?.pages ?? 0) + 1,
-      returned_contexts: (sense.search?.returned_contexts ?? 0) + results.returned,
+      pages: (priorSearch?.pages ?? 0) + 1,
+      returned_contexts: sense.contexts.length,
       next_cursor: results.next_cursor,
       searched_at: new Date().toISOString(),
       error: null,
@@ -825,6 +830,7 @@ export async function searchLiterarySense({ databasePath, checkpointPath, senseI
         });
       }
     }
+    sense.search.returned_contexts = sense.contexts.length;
     await saveCheckpoint(resolvedCheckpoint, checkpoint);
     return {
       contract: LITERARY_CONTEXT_CONTRACT,
@@ -841,15 +847,15 @@ export async function searchLiterarySense({ databasePath, checkpointPath, senseI
     };
   } catch (error) {
     sense.search_history ??= [];
-    if (sense.search) sense.search_history.push({ ...sense.search });
+    if (priorSearch) sense.search_history.push(priorSearch);
     sense.search = {
       status: 'SEARCH_FAILED',
       query_sha256: sha256(JSON.stringify(currentForms)),
       query_form_count: currentForms.length,
-      total_hits: null,
-      pages: sense.search?.pages ?? 0,
+      total_hits: attemptTotalHits,
+      pages: priorSearch?.pages ?? 0,
       returned_contexts: sense.contexts.length,
-      next_cursor: null,
+      next_cursor: attemptCursor,
       searched_at: new Date().toISOString(),
       error: error.name === 'Error' ? error.message.slice(0, 300) : error.name,
     };
@@ -868,20 +874,21 @@ export async function finishLiterarySearch(checkpointPath, { senseId, note }, op
   const { sense } = findSense(checkpoint, senseId);
   if (sense.search?.status !== 'INCOMPLETE' || !sense.search.next_cursor) fail('finish-search is only for a search with remaining paginated contexts');
   if (sense.contexts.some((context) => context.judgment === 'PENDING')) fail('review every returned context before finishing the search sample');
-  if (sense.search.returned_contexts < 1 || sense.search.returned_contexts > MAX_CONTEXTS_PER_SENSE) fail('context sample size is outside the #1155 limit');
+  const inspectedContexts = sense.contexts.length;
+  if (inspectedContexts < 1 || inspectedContexts > MAX_CONTEXTS_PER_SENSE) fail('context sample size is outside the #1155 limit');
   sense.search.sampling_history ??= [];
   sense.search.sampling_history.push({
     stopped_at: new Date().toISOString(),
     note: note.trim(),
-    inspected_contexts: sense.search.returned_contexts,
+    inspected_contexts: inspectedContexts,
     total_hits: sense.search.total_hits,
-    remaining_hit_count: Math.max(0, sense.search.total_hits - sense.search.returned_contexts),
+    remaining_hit_count: Math.max(0, sense.search.total_hits - inspectedContexts),
     continuation_cursor: sense.search.next_cursor,
   });
   sense.search.status = 'SEARCHED';
   sense.search.sampling_complete = true;
   sense.search.sampling_stop_note = note.trim();
-  sense.search.remaining_hit_count = Math.max(0, sense.search.total_hits - sense.search.returned_contexts);
+  sense.search.remaining_hit_count = Math.max(0, sense.search.total_hits - inspectedContexts);
   sense.search.next_cursor = null;
   sense.search.searched_at = new Date().toISOString();
   await saveCheckpoint(resolvedPath, checkpoint);
@@ -889,7 +896,7 @@ export async function finishLiterarySearch(checkpointPath, { senseId, note }, op
     sense_id: senseId,
     status: currentSenseStatus(sense),
     sampling_complete: true,
-    inspected_contexts: sense.search.returned_contexts,
+    inspected_contexts: inspectedContexts,
     total_hits: sense.search.total_hits,
     remaining_hit_count: sense.search.remaining_hit_count,
     truncated: sense.search.remaining_hit_count > 0,

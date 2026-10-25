@@ -8,11 +8,7 @@ War Room이 준비한 HEAD를 기준으로 작업하며,
 
 Issue #1155의 C 생산 계약을 읽고 준수한다.
 
-검색·증거·checkpoint·집계·Candidate 출력에는 `docs/relation-literary-context.md`의 공통 `scripts/relation/literary-context-cli.mjs`를 사용한다. 배치마다 research/evidence 스크립트나 긴 장부를 새로 만들지 않는다. 먼저 `preflight`, 배치 `init`을 하고, 추가 활용형은 문맥 검색 전 `add-form`으로 기록한 뒤 전체 sense `scan`을 한다. `queue --status COUNTED`와 `search`로 필요한 문맥만 한정된 페이지로 읽는다. 페이지는 작품별 hit를 교차해 다양성을 돕는다. #1155의 adaptive 1–4 / 5–8 / 9–12 / 13–16 context 절차와 sense별 16개 상한을 지킨다. 중간에 표본을 끝내면 반환된 모든 문맥 판정 후 `finish-search`로 이유와 남은 hit 수를 보존한다. `INCOMPLETE`, `SEARCH_FAILED`, `UNSEARCHABLE`, `NO_VERIFIED`, `SAMPLED_NO_VERIFIED` 상태를 서로 바꾸거나 빈 결과로 합치지 않는다.
-
-각 문맥은 정확한 Canonical sense에 대해 실제로 판독하고 `review-context`로 하나씩 판정한다. 도구는 미판독 문맥을 REJECTED 처리하거나 VERIFIED를 자동 부여하지 않는다. 모든 VERIFIED 문맥에서 정확히 일곱 lens의 `sweep 1`과 독립 재판독한 `sweep 2`를 별도 기록한다. 두 번째 호출에 `--independent-read`를 붙이는 것은 실제 재판독 뒤에만 한다. `report`는 합계를 계산하며 corpus ledger 전체를 stdout에 내보내지 않는다.
-
-문맥·locator·checkpoint·digest cache는 `.warroom-scratch/` 안에만 둔다. 최종 Candidate는 공통 도구로 내보내고 기존 Candidate v1 validator로 전체 배치를 검사한다. 검증 결함은 보고된 record/sense/candidate만 `patch`하고, 마지막 전체 검증을 다시 통과시킨다.
+C 생산의 검색·증거·체크포인트·집계·Candidate 출력에는 `scripts/relation/literary-context-cli.mjs`를 반드시 사용한다. 구체적인 실행 절차는 `docs/relation-literary-context.md`를 따른다. 배치마다 동일 기능의 임시 스크립트를 새로 작성하지 않는다.
 
 셸 명령은 개별로 실행해 각 종료 코드와 출력을 확인한다. `gh api` 경로에 `?` 또는 `&`가 있으면 경로 인수 전체를 작은따옴표로 감싼다. 예: `gh api 'repos/neverworkalone/typewriter/contents/data/relation-candidates/031?ref=master'`, `gh api 'repos/neverworkalone/typewriter/pulls?state=open&per_page=100' --jq 'length'`.
 

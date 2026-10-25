@@ -55,6 +55,12 @@ distinct work count and maximum contexts from one work; there is no relevance
 score. Pages return at most four rows; the separate
 `context` command reads one locator in bounded 1,000-character pages.
 
+If a page lookup fails, the checkpoint records `SEARCH_FAILED` while retaining
+the last known hit total and continuation cursor. Retry `search` for that sense
+without `--cursor` to resume the saved page. The inspected-context count is the
+number of distinct stored locator keys, so a retry cannot inflate the sample or
+hide remaining hits.
+
 Three-character and longer forms use a quoted FTS5 trigram literal query;
 one- and two-character forms use `instr()` literal matching. Those short
 fallbacks may be slower and still require word-boundary and sense review.

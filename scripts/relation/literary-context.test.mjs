@@ -187,6 +187,67 @@ test('batch scan returns counts only; paginated exact-sense search resumes witho
   }
 });
 
+test('failed later page keeps its continuation and sample counts use distinct locators', async () => {
+  const fixture = await makeFixture({ paragraphCount: 20 });
+  try {
+    await scanLiteraryBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
+    const first = await searchLiterarySense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'sense-000001', scratchDirectory: fixture.scratchDirectory });
+    assert.equal(first.returned, 4);
+    await assert.rejects(searchLiterarySense({
+      databasePath: path.join(fixture.root, 'unavailable.sqlite'),
+      checkpointPath: fixture.checkpointPath,
+      senseId: 'sense-000001',
+      cursor: first.next_cursor,
+      scratchDirectory: fixture.scratchDirectory,
+    }), /database|open/iu);
+
+    let { checkpoint } = await loadLiteraryCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory });
+    let sense = checkpoint.records[0].senses[0];
+    assert.equal(sense.search.status, 'SEARCH_FAILED');
+    assert.equal(sense.search.total_hits, 20);
+    assert.equal(sense.search.returned_contexts, 4);
+    assert.equal(sense.search.next_cursor, first.next_cursor);
+
+    const resumedScan = await scanLiteraryBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
+    assert.equal(resumedScan.query_performance_ms.median_sense_query, null);
+    ({ checkpoint } = await loadLiteraryCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory }));
+    sense = checkpoint.records[0].senses[0];
+    assert.equal(sense.search.status, 'SEARCH_FAILED');
+    assert.equal(sense.search.next_cursor, first.next_cursor);
+
+    let page = await searchLiterarySense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'sense-000001', scratchDirectory: fixture.scratchDirectory });
+    while (page.next_cursor && page.returned > 0) {
+      ({ checkpoint } = await loadLiteraryCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory }));
+      sense = checkpoint.records[0].senses[0];
+      if (sense.contexts.length >= 16) break;
+      page = await searchLiterarySense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'sense-000001', cursor: page.next_cursor, scratchDirectory: fixture.scratchDirectory });
+    }
+
+    ({ checkpoint } = await loadLiteraryCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory }));
+    sense = checkpoint.records[0].senses[0];
+    assert.equal(sense.contexts.length, 16);
+    assert.equal(sense.search.returned_contexts, 16);
+    assert.equal(sense.search.total_hits, 20);
+    assert.equal(sense.search.status, 'INCOMPLETE');
+    assert.ok(sense.search.next_cursor);
+
+    for (const context of sense.contexts) {
+      await reviewLiteraryContext(fixture.checkpointPath, {
+        senseId: 'sense-000001',
+        locatorKey: context.locator_key,
+        judgment: 'REJECTED',
+        note: 'fixture context does not match the bound sense',
+      }, { scratchDirectory: fixture.scratchDirectory });
+    }
+    const finished = await finishLiterarySearch(fixture.checkpointPath, { senseId: 'sense-000001', note: 'sixteen unique contexts were reached after retry' }, { scratchDirectory: fixture.scratchDirectory });
+    assert.equal(finished.inspected_contexts, 16);
+    assert.equal(finished.remaining_hit_count, 4);
+    assert.equal(finished.truncated, true);
+  } finally {
+    await cleanup(fixture);
+  }
+});
+
 test('search pages interleave works before returning second contexts from the same work', async () => {
   const fixture = await makeFixture({ paragraphCount: 6, documentCount: 3 });
   try {
