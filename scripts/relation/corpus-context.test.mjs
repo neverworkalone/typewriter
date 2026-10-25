@@ -64,7 +64,7 @@ async function makeFixture({ paragraphCount = 1, withBigram = true, approvedDige
     insertSource.run(
       index === 1 ? sourcePath : path.join(root, 'personal', `source-${index}.json`),
       'NIKL-WRITTEN-2025',
-      `문서 제목 ${index}`,
+      index === invalidCategoryAt ? '국립국어원 문어 말뭉치 2025 (1.0)' : `문서 제목 ${index}`,
       '국립국어원',
       index === invalidDistributorAt ? 'unapproved distributor' : '국립국어원 모두의 말뭉치',
       '2025',

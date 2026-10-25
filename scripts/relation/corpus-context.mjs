@@ -92,9 +92,8 @@ function isNiklDistributor(value) {
 }
 
 function isWrittenCorpusProfile(profile) {
-  const title = String(profile.title ?? '');
-  const category = String(profile.category ?? '');
-  return /문어|written corpus/iu.test(`${title}\n${category}`);
+  const category = String(profile.category ?? '').trim();
+  return /^(?:문어|written corpus)(?:\s|>|$)/iu.test(category);
 }
 
 function inspectShortIndex(database) {
