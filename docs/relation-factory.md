@@ -41,7 +41,7 @@ data/relation-candidates/
     ...
 ```
 
-경로 계약: `data/relation-candidates/<SSS>/<SSS>_<BB>_<method>_<model>.jsonl`. 샤드 3자리, 배치 2자리(`01`/`02`), method는 `a|b|c|d`, model은 실행한 모델 이름의 소문자 식별자. **A/B는 500레코드 배치·방식·모델당 하나의 파일**, **C/D는 모델을 가리지 않고 500레코드 배치·방식당 하나의 파일**을 허용한다. 실제 생산 모델은 파일명에 남긴다. 배치별 하위 폴더는 만들지 않으며 파일마다 PR을 하나씩 만들 필요는 없다.
+경로 계약: `data/relation-candidates/<SSS>/<SSS>_<BB>_<method>_<model>.jsonl`. 샤드 3자리, 배치 2자리(`01`/`02`), method는 `a|b|c|d`, model은 실행한 모델 이름의 소문자 식별자. **A/B는 500레코드 배치·방식·모델당 하나의 파일**, **C/D는 모델을 가리지 않고 500레코드 배치·방식당 하나의 파일**을 허용한다. 실제 생산 모델은 파일명에 남긴다. 배치별 하위 폴더는 만들지 않는다. **War Room 정식 Stage 1 생산은 지정된 배치·방식·모델의 Candidate 파일 하나를 PR 하나로 제출**하고, Stage 2는 `(shard, batch, part)`마다 PR 하나를 제출한다. 이는 기존 파일 형식이나 별도 수정 PR의 범위를 바꾸지 않는다.
 
 ## 2. Stage 1 — Candidate Generation
 
@@ -123,12 +123,12 @@ D는 전용 Workbench 없이 #1156의 25-record 청크 직접 검색 → AI 판�
 
 **Candidate에 포함하지 않음:** `type`, `tier`/`relevance`, 대상 ID, 채택 여부, 평가/확신도, 원본 인용. `lemma`/`gloss`는 Canonical에서 읽고, method/model은 파일명으로 구별한다.
 
-**완료 파일 검증:** PR을 올리기 전에 다음 명령으로 Candidate v1 계약을 확인한다.
+**완료 파일 검증:** 신규 배치를 PR로 제출하기 전에 Candidate v1을 **한 번** 검증한다. **A/B는 Workbench `merge`, C는 literary-context `export`가 이 최종 검증을 이미 실행**하므로 별도로 아래 명령을 반복하지 않는다. **D는 전용 Workbench가 없으므로** 최종 JSONL을 조립한 뒤 아래 공통 validator를 직접 한 번 실행한다(실패를 수정한 경우에만 재검증). 아래는 D 실행 예시다.
 
 ```sh
 node scripts/relation/candidate-contract.mjs \
   data/canonical/stdict-0005.jsonl \
-  data/relation-candidates/005/005_02_b_codex.jsonl
+  data/relation-candidates/005/005_02_d_codex.jsonl
 ```
 
 검증기는 JSONL 파싱 및 허용 필드, Canonical 배치와 record 행 수·순서·ID/각 record의 모든 sense 정확히 일치, 후보의 비어 있지 않은 문자열/공백 정리, 같은 파일·source sense 안의 정확한 중복, source lemma·lemma 주석형 및 동일 표제어의 띄어쓰기/하이픈 표기형, source 뜻풀이의 천 단위 쉼표 숫자(`7,460미터`)를 쪼갠 조각 후보(`7`, `460미터`)를 확인한다. `search_forms`는 검색용 색인이므로 그 값과 후보가 일치한다는 사실만으로 자기 반복이라고 판정하지 않는다. lemma와 검색형의 차이가 띄어쓰기/하이픈 표기뿐일 때만 해당 검색형을 같은 표제어의 반복으로 보고, 그 검색형이 다른 Canonical 표제어와 정확히 일치하면 별도 어휘 후보로 보존한다. 표제어와 다른 독립 어휘인 검색 별칭(예: `강경하다`의 검색형 `강경`)도 후보에서 보존한다. 후보가 없는 sense는 `candidates: []`로 기록하며, **행 누락 또는 미완료 파일을 정상적인 빈 후보로 취급하지 않는다**. 모델 간 동일 문자열은 Stage 2에서 비교한다.
@@ -145,7 +145,7 @@ PR의 Normal 검사는 추가·수정된 `data/relation-candidates/` 파일마�
 - **C/D: `method`별 공유 진행.** Codex·Claude·DeepSeek는 C의 완료/점유 배치를 함께 확인하고 D도 별도로 함께 확인한다. 한 배치의 C 결과 또는 D 결과는 실제 생산자 모델이 무엇이든 **각 방식당 정확히 하나**만 만든다. 파일명에는 실제 생산 모델을 기록한다.
 - 예를 들어 `001_01_c_codex.jsonl`이 완료된 상황에서 Claude가 `#1155 C 진행해`를 받으면 `001_01_c_claude.jsonl`을 새로 만들지 않고 `001_02_c_claude.jsonl`부터 진행한다. 다음 Codex C 작업은 다시 C의 다음 미완료 배치를 선택한다. D도 동일하다.
 
-**War Room 지정 실행(D 포함):** War Room이 `(method,model,shard,batch)`·worktree·branch·HEAD를 지정한 실행은 아래 선택 절차를 수행하지 않는다. 지정 배치를 그대로 생산하고 재선정·반복 재검증하지 않으며, 점유·중복 충돌이 있으면 다른 배치로 넘어가지 않고 보고한다. 아래 순서는 배치 지정 없는 직접 호출에만 적용한다.
+**War Room 지정 실행(A/B/C/D):** War Room이 `(method,model,shard,batch)`·worktree·branch·HEAD를 지정한 실행은 아래 선택 절차를 수행하지 않는다. 지정 배치를 그대로 생산하고 재선정·반복 재검증하지 않으며, 점유·중복 충돌이 있으면 다른 배치로 넘어가지 않고 보고한다. 아래 순서는 배치 지정 없는 직접 호출에만 적용한다.
 
 명령을 받은 생산자는 다음 순서로 실행한다.
 

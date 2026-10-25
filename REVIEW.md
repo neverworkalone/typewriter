@@ -80,7 +80,7 @@ preserving shard-wide stored Relation/Drop validation and cross-Part reverse
 conflict checks. Do not require unfinished sibling Parts to pass accounting in
 the same PR. After all valid Part PRs in a Batch have been merged and verified, run
 Batch-wide verify; after all valid Parts in the shard are complete, run
-shard-wide verify (shard 428 has six valid Parts, not ten). These Stage 2 admission work units
+shard-wide verify (shard 428 has six valid Parts, not ten). For these #927 Relation Admission Part PRs, follow [#927 §4.0–4.2](https://github.com/neverworkalone/typewriter/issues/927) for risk-first Tier/Type sampling: the independent PR **second reviewer** records its own Tier-audit evidence and the non-blocking Part score in the same `+2` review (not on `-1`), without making score thresholds into blockers or adding a review stage. These Stage 2 admission work units
 are distinct from the independent technical review roles in Sections 1–4.
 
 ## 3. Stage 2 — independent comprehensive technical gate
