@@ -574,6 +574,7 @@ function parseSubmission(entry, index, checkpoint) {
     lists[key] = list;
   }
   if (new Set([...lists.verified, ...lists.rejected, ...lists.ambiguous]).size !== lists.verified.length + lists.rejected.length + lists.ambiguous.length) return problem('a context id may appear in only one of verified, rejected, ambiguous');
+  if (entry.candidates !== undefined && !Array.isArray(entry.candidates)) return problem('candidates must be an array of strings');
   const candidates = [];
   const seen = new Set();
   for (const candidate of entry.candidates ?? []) {

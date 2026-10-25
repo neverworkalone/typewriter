@@ -221,6 +221,10 @@ test('unread, unverified, or inconsistent senses are rejected without becoming e
       [{ sense_id: 'w1-s1', status: 'discovered', verified: [foreign, foreign] }, /distinct context ids/u],
       [{ sense_id: 'w5-s1', status: 'discovered', verified: [1] }, /no successful search/u],
       [{ sense_id: 'w1-s1', status: 'discovered', verified: [1], extra: true }, /unsupported field/u],
+      ...['바람', null, 7, { 0: '바람' }].map((candidates) => [{ sense_id: 'w1-s1', status: 'discovered', verified: [1], candidates }, /array of strings/u]),
+      ...['1', null, 1, { 0: 1 }].map((verified) => [{ sense_id: 'w1-s1', status: 'discovered', verified }, /context ids returned/u]),
+      ...['rejected', 'ambiguous'].map((key) => [{ sense_id: 'w1-s1', status: 'incomplete', [key]: '1' }, /context ids returned/u]),
+      [{ sense_id: 'w1-s1', status: 'discovered', verified: [1], candidates: ['바람', 3] }, /non-empty trimmed strings/u],
     ]) {
       const result = await submit([entry]);
       assert.equal(result.status, 'REJECTED');
