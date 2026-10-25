@@ -28,18 +28,13 @@ When working on schemas, relation types, ranking rules, validation, search, or d
 
 A technically elegant lexical ontology is not automatically an improvement.
 
-## Production-scale efficiency — core operating principle
+## Production efficiency
 
-**Optimize repeated production for wall-clock time and AI token cost, not for the number of validations, receipts, tests, or audit records.** Relation Factory runs thousands of producer jobs; even small per-batch overhead compounds. A working, simpler production path is the baseline. A proposed optimization must **remove more work than it adds** and ultimately outperform that baseline, not merely introduce a more elaborate workbench.
+**For thousands of repeated batches, prioritize production speed and AI token cost over extra safeguards and bookkeeping.**
 
-- Preserve actual output quality, source-sense correctness, licensed-data boundaries, required exploration and editorial decisions, and the **existing final output contract**. Do not reduce candidate discovery, omit genuinely required corpus reading, fabricate completion, or turn failed/unperformed work into valid empty output to save time.
-- **Trust work already completed within the production flow.** Read approved inputs at the boundary, check the changed record/sense/chunk when saving, and run the established final validator once. Do not repeatedly reload or hash unchanged Canonical data, immutable corpus indexes, completed chunks, procedure files, or whole checkpoints on every CLI call without a demonstrated need.
-- **Do not turn AI judgments into per-item administrative work.** Avoid mandatory exploration/review receipts, KEEP/REMOVE entries, repeated proof-of-work notes, full-status recomputation, or elaborate checkpoint state machines unless the governing production contract explicitly requires that evidence. The AI must still perform the required exploration and source-bound semantic/form review.
-- Prefer **one bounded read → substantive AI work → one batched write**, grouped by sense or chunk. Eliminate per-candidate/per-context subprocesses, repeated gloss or corpus output, duplicate local validation, and redundant full-checkpoint rewrites. Keep only the minimum durable state needed to resume interrupted work.
-- **New gates have a burden of proof:** identify the *observed or credible supported-path failure*, why existing source/output checks and PR review do not cover it, and its recurring time/token/maintenance cost. If the additional check cannot justify that cost, **do not add it**. Do not create synthetic corruption scenarios or new frameworks simply to justify more validation.
-- For a performance/optimization issue, compare against the **pre-optimization working path** using actual production wall-clock, AI input/output tokens (distinguish cached from uncached input), tool calls, and output scale. Small synthetic tests may verify a changed function but are **not** evidence of token or throughput improvement. If real production is slower or more expensive without an owner-approved tradeoff, simplify or revert the added machinery.
-
-This is a **cost-of-production design rule**, not permission to bypass demonstrated blockers, established CI/PR gates, privacy/licensing restrictions, or required final validation.
+- Keep required semantic quality, source binding, and the existing final validator; **do not add redundant checks, hashes, receipts, or tests** without a demonstrated production risk.
+- Read once, process by sense/chunk, and write once; avoid per-item CLI calls and repeated full-state work.
+- An optimization must beat the **previous working production path** in actual time and token use. Otherwise simplify or revert it.
 
 ## Writer-facing editorial priorities
 
