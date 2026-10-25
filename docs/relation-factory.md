@@ -87,7 +87,7 @@ C와 D는 출발 `sense_id`와 Canonical 뜻풀이를 먼저 고정하고, **해
 
 C의 정식 생산 실행 계약은 **[#1155](https://github.com/neverworkalone/typewriter/issues/1155)**이다. 실제 source-sense 문맥 VERIFIED, 일곱 관점의 독립 두 차례 탐색, 비공개 로컬 ledger와 후보 전수 형태 검사는 필수다. 아래는 발굴 원칙을 요약한 것이며 #1155의 상세 탐색 절차를 대체하지 않는다.
 
-Issue #1750의 공통 read-only 조회·checkpoint·집계·Candidate 출력 도구를 C 생산 절차에서 사용한다. 배치마다 검색/증거/집계 스크립트를 다시 작성하지 않는다. CLI와 재개·실패·국소 수정 절차는 [`docs/relation-literary-context.md`](relation-literary-context.md)에 있으며, 도구는 검색 결과를 VERIFIED로 판정하거나 lens 후보를 발명하지 않는다.
+Issue #1750/#1761의 공통 read-only 조회·checkpoint·집계·Candidate 출력 도구를 C 생산 절차에서 사용한다. 배치마다 검색/증거/집계 스크립트를 다시 작성하지 않는다. 승인 문학 인덱스의 실제 v1 schema와 CLI·재개·실패·국소 수정 절차는 [`docs/relation-literary-context.md`](relation-literary-context.md)에 있으며, 도구는 검색 결과를 VERIFIED로 판정하거나 lens 후보를 발명하지 않는다.
 
 > 정확한 출발 sense가 쓰인 작품 문맥에서 장면, 감정, 감각, 행동, 이미지와 비유를 살핀다. 작가가 출발어를 쓰면서 연상하거나 표현을 확장할 수 있는 연결만 제안한다. **같은 문장·문단에 같이 있었다는 사실은 관계의 근거가 아니다.** 예를 들어 `가끔가다 → 냉면/무지개`, `가계부 → 넥타이/소독약`처럼 문맥에 우연히 함께 나온 사물을 나열하지 않는다. 다만 단 한 작품에서만 발견한 비유라도 **출발 의미와 장면·정서 사이에 설명 가능한 연결**이 있으면 남길 수 있다. 동음이의어 또는 다른 단어의 문맥을 출발 sense에 잘못 연결하지 않는다. 유용한 후보가 없으면 빈 배열을 반환한다.
 

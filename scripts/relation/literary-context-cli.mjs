@@ -131,7 +131,7 @@ async function main() {
         checkpointPath: options.checkpoint,
         scratchDirectory: SCRATCH_DIRECTORY,
       });
-      result = { status: 'READY', checkpoint: initialized.path, index: initialized.checkpoint.index, summary: initialized.summary };
+      result = { status: 'READY', index: initialized.index_summary, summary: initialized.summary };
       break;
     }
     case 'scan': {
@@ -167,9 +167,9 @@ async function main() {
       break;
     }
     case 'context': {
-      only(options, 'checkpoint', 'sense-id', 'locator-key', 'offset', 'chars');
-      required(options, 'checkpoint', 'sense-id', 'locator-key');
-      result = await getLiteraryContextPage(options.checkpoint, {
+      only(options, 'db', 'checkpoint', 'sense-id', 'locator-key', 'offset', 'chars');
+      required(options, 'db', 'checkpoint', 'sense-id', 'locator-key');
+      result = await getLiteraryContextPage(options.db, options.checkpoint, {
         senseId: options['sense-id'],
         locatorKey: options['locator-key'],
         offset: options.offset ?? 0,
@@ -268,6 +268,20 @@ async function main() {
 }
 
 main().catch((error) => {
-  process.stderr.write(`${JSON.stringify({ status: 'FAILED', error_type: error.name, message: error.message.slice(0, 1000) })}\n`);
+  const message = typeof error?.message === 'string' ? error.message : '';
+  const errorType = typeof error?.name === 'string' && /^[A-Za-z][A-Za-z0-9]*$/u.test(error.name) ? error.name : 'Error';
+  let diagnostic = 'operation';
+  let safeMessage = 'C literary context operation failed; local paths, source text, and secret details were suppressed.';
+  if (/^unsupported literary index schema/iu.test(message)) {
+    diagnostic = 'index_schema';
+    safeMessage = 'Unsupported literary index schema; only the approved works/text_units/unit_fts schema version 1 is supported.';
+  } else if (/literary index metadata|provenance digest|index inventory/iu.test(message)) {
+    diagnostic = 'index_metadata';
+    safeMessage = 'Literary index metadata or provenance validation failed.';
+  } else if (/FTS|trigram|literal substring/iu.test(message)) {
+    diagnostic = 'index_search';
+    safeMessage = 'The approved literary index search contract is unavailable or inconsistent.';
+  }
+  process.stderr.write(`${JSON.stringify({ status: 'FAILED', diagnostic, error_type: errorType, message: safeMessage })}\n`);
   process.exitCode = 1;
 });

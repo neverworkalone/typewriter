@@ -15,8 +15,8 @@ import {
   validateCandidateBatch,
 } from './candidate-contract.mjs';
 
-export const LITERARY_CONTEXT_CONTRACT = 'literary-context-v1';
-export const CHECKPOINT_CONTRACT = 'literary-checkpoint-v1';
+export const LITERARY_CONTEXT_CONTRACT = 'literary-context-v2';
+export const CHECKPOINT_CONTRACT = 'literary-checkpoint-v2';
 export const MAX_RESPONSE_CHARS = 40_000;
 export const SWEEP_LENSES = Object.freeze([
   'image',
@@ -34,7 +34,10 @@ const MAX_CONTEXTS_PER_SENSE = 16;
 const DEFAULT_SNIPPET_CHARS = 700;
 const MAX_SNIPPET_CHARS = 700;
 const MAX_CONTEXT_PAGE_CHARS = 1000;
-const INDEX_REQUIRED_TABLES = ['source_files', 'documents', 'paragraphs', 'paragraph_fts', 'index_metadata'];
+const INDEX_REQUIRED_TABLES = ['source_files', 'works', 'text_units', 'unit_fts', 'index_metadata'];
+const LEGACY_INDEX_TABLES = ['documents', 'paragraphs', 'paragraph_fts'];
+const CONTEXT_WINDOW_UNITS = 2;
+const FTS_INDEX_VALIDATION_CONTRACT = 'unit-fts-trigram-token-coverage-v1';
 const CHECKPOINT_SCRATCH_DIRECTORY = '.warroom-scratch';
 
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');
@@ -91,84 +94,144 @@ async function writeJsonAtomic(filePath, value) {
   await rename(temporary, filePath);
 }
 
+function tableColumns(database, table) {
+  return database.prepare(`PRAGMA table_info(${table})`).all();
+}
+
+function assertColumns(database, table, expected) {
+  const columns = tableColumns(database, table);
+  const names = new Set(columns.map((row) => row.name));
+  const missing = expected.filter((column) => !names.has(column));
+  if (missing.length > 0) fail(`unsupported literary index schema; ${table} is missing ${missing.join(', ')}`);
+  return columns;
+}
+
+function assertForeignKey(database, table, targetTable, from, to) {
+  const found = database.prepare(`PRAGMA foreign_key_list(${table})`).all()
+    .some((row) => row.table === targetTable && row.from === from && row.to === to);
+  if (!found) fail(`unsupported literary index schema; ${table}.${from} must reference ${targetTable}.${to}`);
+}
+
+function assertUniqueIndex(database, table, expectedColumns) {
+  const indexes = database.prepare(`PRAGMA index_list(${table})`).all();
+  const found = indexes.some((index) => index.unique && database.prepare(`PRAGMA index_info(${index.name})`).all()
+    .map((row) => row.name).join('\0') === expectedColumns.join('\0'));
+  if (!found) fail(`unsupported literary index schema; ${table} needs a unique ${expectedColumns.join(', ')} key`);
+}
+
 function readIndexMetadata(database) {
-  const columns = database.prepare('PRAGMA table_info(index_metadata)').all().map((row) => row.name);
-  if (columns.length === 0) fail('literary index is missing index_metadata columns');
-  if (columns.includes('key') && columns.includes('value')) {
-    const rows = database.prepare('SELECT key, value FROM index_metadata LIMIT 65').all();
-    if (rows.length === 0) fail('literary index index_metadata is empty');
-    if (rows.length > 64) fail('literary index metadata exceeds the 64-row summary limit');
-    const metadata = {};
-    for (const row of rows) if (typeof row.key === 'string') metadata[row.key] = row.value;
-    return metadata;
-  }
-  const rows = database.prepare('SELECT * FROM index_metadata LIMIT 2').all();
-  if (rows.length === 0) fail('literary index index_metadata is empty');
-  if (rows.length !== 1) fail('literary index index_metadata must be a key/value table or a single-row metadata table');
-  return Object.fromEntries(columns.map((column) => [column, rows[0][column]]));
+  const columns = tableColumns(database, 'index_metadata').map((row) => row.name);
+  if (columns.join('\0') !== 'key\0value') fail('unsupported literary index metadata schema; expected key/value rows');
+  const rows = database.prepare('SELECT key, value FROM index_metadata ORDER BY key LIMIT 65').all();
+  if (rows.length === 0) fail('literary index metadata is empty');
+  if (rows.length > 64) fail('literary index metadata exceeds the 64-row contract');
+  return Object.fromEntries(rows.map((row) => [row.key, row.value]));
 }
 
 function normalizeMetadata(metadata) {
-  const read = (...keys) => {
-    for (const key of keys) {
-      const value = metadata[key];
-      if (value !== null && value !== undefined && String(value) !== '') return String(value);
-    }
-    return null;
-  };
-  const sourceManifestDigest = read('input_manifest_sha256', 'source_manifest_sha256', 'manifest_sha256');
-  const logicalRowDigest = read('logical_row_digest', 'logical_rows_sha256', 'row_digest_sha256');
-  if (!sourceManifestDigest && !logicalRowDigest) {
-    fail('literary index metadata must expose an input-manifest or logical-row SHA-256 digest');
+  const required = [
+    'schema_version', 'builder_version', 'build_kind', 'search_layer', 'sqlite_version', 'tool_identity',
+    'input_manifest_sha256', 'logical_rows_sha256', 'inventory_file_count', 'excluded_file_count',
+    'file_count', 'work_count', 'unit_count',
+  ];
+  const missing = required.filter((key) => typeof metadata[key] !== 'string' || metadata[key] === '');
+  if (missing.length > 0) fail(`literary index metadata is missing ${missing.join(', ')}`);
+  if (metadata.schema_version !== '1' || metadata.builder_version !== '1' || metadata.build_kind !== 'full') {
+    fail('unsupported literary index metadata version or build kind');
   }
-  if ((sourceManifestDigest && !/^[a-f0-9]{64}$/iu.test(sourceManifestDigest)) || (logicalRowDigest && !/^[a-f0-9]{64}$/iu.test(logicalRowDigest))) {
-    fail('literary index metadata contains a malformed SHA-256 digest');
+  if (!/FTS5 trigram/iu.test(metadata.search_layer) || !/instr\(\)/iu.test(metadata.search_layer) || !/no norm/iu.test(metadata.search_layer)) {
+    fail('literary index metadata does not describe the supported literal unit search');
   }
-  const schemaVersion = read('schema_version', 'schemaVersion');
-  const indexVersion = read('index_version', 'version');
-  if (!schemaVersion && !indexVersion) fail('literary index metadata must expose schema_version or index_version');
-  return {
-    index_id: read('index_id', 'index_name', 'name'),
-    schema_version: schemaVersion,
-    builder_version: read('builder_version', 'builderVersion'),
-    index_version: indexVersion,
-    sqlite_version: read('sqlite_version', 'sqliteVersion'),
-    source_manifest_sha256: sourceManifestDigest,
-    logical_row_sha256: logicalRowDigest,
-    source_count: read('source_count', 'sources'),
-    document_count: read('document_count', 'documents'),
-    paragraph_count: read('paragraph_count', 'paragraphs'),
-  };
+  if (!/^[a-f0-9]{64}$/iu.test(metadata.input_manifest_sha256) || !/^[a-f0-9]{64}$/iu.test(metadata.logical_rows_sha256)) {
+    fail('literary index provenance digests are malformed');
+  }
+  const countKeys = ['inventory_file_count', 'excluded_file_count', 'file_count', 'work_count', 'unit_count'];
+  const counts = Object.fromEntries(countKeys.map((key) => {
+    if (!/^\d+$/u.test(metadata[key])) fail(`literary index metadata ${key} is not a non-negative integer`);
+    return [key, Number(metadata[key])];
+  }));
+  if (counts.inventory_file_count !== counts.file_count + counts.excluded_file_count) {
+    fail('literary index inventory and included/excluded file counts do not agree');
+  }
+  return { ...metadata, ...counts };
 }
 
 function assertIndexSchema(database) {
-  const objects = database.prepare("SELECT name, type FROM sqlite_schema WHERE type IN ('table', 'view')").all();
+  const objects = database.prepare("SELECT name, type, sql FROM sqlite_schema WHERE type IN ('table', 'view')").all();
   const names = new Set(objects.map((row) => row.name));
+  if (LEGACY_INDEX_TABLES.some((name) => names.has(name))) {
+    fail('unsupported literary index schema; retired paragraph-index tables are not accepted');
+  }
   const missing = INDEX_REQUIRED_TABLES.filter((name) => !names.has(name));
   if (missing.length > 0) fail(`unsupported literary index schema; missing ${missing.join(', ')}`);
 
   const requiredColumns = {
-    source_files: ['source_path', 'title', 'creator', 'year', 'category'],
-    documents: ['document_rowid', 'source_path', 'document_id', 'document_ordinal', 'title', 'author'],
-    paragraphs: ['paragraph_rowid', 'document_rowid', 'paragraph_id', 'ordinal', 'form'],
-    paragraph_fts: ['form'],
+    source_files: ['file_id', 'genre', 'relative_path', 'source_sha256', 'source_bytes', 'encoding', 'has_bom', 'newline_convention', 'final_newline', 'nfc', 'char_count', 'unit_count', 'status', 'warnings'],
+    works: ['work_id', 'genre', 'file_id', 'source_id', 'title', 'author', 'metadata_origin', 'title_in_first_unit'],
+    text_units: ['unit_rowid', 'file_id', 'ordinal', 'kind', 'block_ordinal', 'text', 'eol'],
+    unit_fts: ['text'],
+    index_metadata: ['key', 'value'],
   };
-  for (const [table, required] of Object.entries(requiredColumns)) {
-    const columns = new Set(database.prepare(`PRAGMA table_info(${table})`).all().map((row) => row.name));
-    const absent = required.filter((column) => !columns.has(column));
-    if (absent.length > 0) fail(`unsupported literary index schema; ${table} is missing ${absent.join(', ')}`);
-  }
+  for (const [table, required] of Object.entries(requiredColumns)) assertColumns(database, table, required);
 
-  // Exercise the trigram path without returning corpus text. This fails clearly when FTS5/trigram is unavailable.
-  database.prepare('SELECT rowid FROM paragraph_fts WHERE paragraph_fts MATCH ? LIMIT 1').all('"아무"');
+  assertForeignKey(database, 'works', 'source_files', 'file_id', 'file_id');
+  assertForeignKey(database, 'text_units', 'source_files', 'file_id', 'file_id');
+  assertUniqueIndex(database, 'works', ['file_id']);
+  assertUniqueIndex(database, 'text_units', ['file_id', 'ordinal']);
+
+  const ftsSql = objects.find((row) => row.name === 'unit_fts')?.sql ?? '';
+  const normalizedFtsSql = ftsSql.toLowerCase().replace(/[\s"'`]/gu, '');
+  const expectedFtsSql = 'createvirtualtableunit_ftsusingfts5(text,content=text_units,content_rowid=unit_rowid,tokenize=trigram)';
+  if (normalizedFtsSql !== expectedFtsSql) fail('unsupported literary index FTS definition; expected unit_fts over text_units.unit_rowid with trigram');
+
+  // Exercise FTS5 trigram and literal substring support without returning indexed text.
+  database.prepare('SELECT rowid FROM unit_fts WHERE unit_fts MATCH ? LIMIT 1').all('"preflight"');
   if (database.prepare("SELECT instr('abc', 'b') AS found").get().found !== 2) fail('SQLite literal substring search is unavailable');
 }
 
-function openLiteraryIndex(databasePath) {
+function assertIndexData(database, metadata) {
+  const counts = {
+    file_count: database.prepare('SELECT count(*) AS count FROM source_files').get().count,
+    work_count: database.prepare('SELECT count(*) AS count FROM works').get().count,
+    unit_count: database.prepare('SELECT count(*) AS count FROM text_units').get().count,
+  };
+  for (const key of Object.keys(counts)) if (counts[key] !== metadata[key]) fail(`literary index ${key} does not match index_metadata`);
+  if (database.prepare('SELECT count(*) AS count FROM unit_fts').get().count !== counts.unit_count) fail('literary index FTS content count does not match text_units');
+  const actualTrigramTokens = database.prepare('SELECT coalesce(sum(cnt), 0) AS count FROM temp.literary_unit_fts_vocab').get().count;
+  const expectedTrigramTokens = database.prepare(`SELECT coalesce(sum(CASE WHEN length(text) > 2 THEN length(text) - 2 ELSE 0 END), 0) AS count FROM text_units`).get().count;
+  if (actualTrigramTokens !== expectedTrigramTokens) fail('literary index FTS trigram token coverage does not match text_units');
+  if (database.prepare(`SELECT count(*) AS count FROM source_files s
+      LEFT JOIN text_units u ON u.file_id = s.file_id
+      GROUP BY s.file_id HAVING s.unit_count != count(u.unit_rowid)`).all().length !== 0) {
+    fail('literary index source-file unit counts do not match text_units');
+  }
+  if (database.prepare(`SELECT count(*) AS count FROM source_files s
+      LEFT JOIN works w ON w.file_id = s.file_id
+      WHERE w.work_id IS NULL OR w.genre != s.genre`).get().count !== 0) {
+    fail('literary index work-to-file mapping or genre is inconsistent');
+  }
+  if (database.prepare("SELECT count(*) AS count FROM (SELECT file_id FROM works GROUP BY file_id HAVING count(*) != 1)").get().count !== 0) {
+    fail('literary index work-to-file relation is ambiguous');
+  }
+  if (database.prepare(`SELECT count(*) AS count FROM (
+      SELECT file_id FROM text_units GROUP BY file_id
+      HAVING min(ordinal) != 0 OR max(ordinal) != count(*) - 1
+    )`).get().count !== 0) fail('literary index unit ordinals are not zero-based and contiguous within each source file');
+  if (database.prepare("SELECT count(*) AS count FROM text_units WHERE kind NOT IN ('blank', 'text') OR eol NOT IN ('', char(10), char(13), char(13, 10))").get().count !== 0) {
+    fail('literary index contains an unsupported physical-unit kind or line ending');
+  }
+  if (database.prepare('PRAGMA foreign_key_check').all().length !== 0) fail('literary index has broken source-file references');
+}
+
+function openLiteraryIndex(databasePath, { prepareFtsVocabulary = false } = {}) {
   const database = new DatabaseSync(databasePath, { readOnly: true });
   try {
-    database.exec('PRAGMA query_only = ON');
     assertIndexSchema(database);
+    if (prepareFtsVocabulary) {
+      database.exec('CREATE VIRTUAL TABLE temp.literary_unit_fts_vocab USING fts5vocab(main, unit_fts, row)');
+    }
+    database.exec('PRAGMA query_only = ON');
+    if (database.prepare('PRAGMA query_only').get().query_only !== 1) fail('literary index could not be opened query-only');
     const metadata = normalizeMetadata(readIndexMetadata(database));
     return { database, metadata };
   } catch (error) {
@@ -190,36 +253,78 @@ async function cachedDatabaseDigest(databasePath, scratchDirectory) {
   const fingerprint = [String(fileStat.dev), String(fileStat.ino), String(fileStat.size), String(fileStat.mtimeNs), String(fileStat.ctimeNs)].join(':');
   const previous = cache[absolutePath];
   if (previous?.fingerprint === fingerprint && /^[a-f0-9]{64}$/u.test(previous.sha256 ?? '')) {
-    return { sha256: previous.sha256, bytes: Number(fileStat.size), cached: true, path: absolutePath };
+    return {
+      sha256: previous.sha256,
+      bytes: Number(fileStat.size),
+      cached: true,
+      path: absolutePath,
+      fingerprint,
+      validation_contract: previous.validation_contract ?? null,
+    };
   }
   const digest = await hashFile(absolutePath);
-  cache[absolutePath] = { fingerprint, sha256: digest };
+  cache[absolutePath] = { fingerprint, sha256: digest, validation_contract: null };
   await writeJsonAtomic(cachePath, cache);
-  return { sha256: digest, bytes: Number(fileStat.size), cached: false, path: absolutePath };
+  return { sha256: digest, bytes: Number(fileStat.size), cached: false, path: absolutePath, fingerprint, validation_contract: null };
 }
 
-/** Read-only preflight. The full-file digest is cached locally against device/inode/size/mtime/ctime. */
-export async function inspectLiteraryIndex(databasePath, { scratchDirectory = path.resolve(CHECKPOINT_SCRATCH_DIRECTORY) } = {}) {
-  const { database, metadata } = openLiteraryIndex(databasePath);
+async function markDatabaseDigestValidated(identity, scratchDirectory) {
+  const cachePath = path.join(scratchDirectory, 'literary-index-digests.json');
+  const fileStat = await stat(identity.path, { bigint: true });
+  const fingerprint = [String(fileStat.dev), String(fileStat.ino), String(fileStat.size), String(fileStat.mtimeNs), String(fileStat.ctimeNs)].join(':');
+  if (fingerprint !== identity.fingerprint) fail('literary index changed while its read-only preflight was running');
+  const cache = JSON.parse(await readFile(cachePath, 'utf8'));
+  const entry = cache[identity.path];
+  if (entry?.fingerprint !== identity.fingerprint || entry?.sha256 !== identity.sha256) {
+    fail('literary index changed while its read-only preflight was running');
+  }
+  entry.validation_contract = FTS_INDEX_VALIDATION_CONTRACT;
+  await writeJsonAtomic(cachePath, cache);
+}
+
+async function inspectLiteraryIndexInternal(databasePath, scratchDirectory) {
+  const { database, metadata } = openLiteraryIndex(databasePath, { prepareFtsVocabulary: true });
   try {
-    const sqliteVersion = database.prepare('SELECT sqlite_version() AS version').get().version;
     const digest = await cachedDatabaseDigest(databasePath, scratchDirectory);
+    if (digest.validation_contract !== FTS_INDEX_VALIDATION_CONTRACT) {
+      assertIndexData(database, metadata);
+      await markDatabaseDigestValidated(digest, scratchDirectory);
+    }
+    const runtimeSqliteVersion = database.prepare('SELECT sqlite_version() AS version').get().version;
     return {
-      contract: LITERARY_CONTEXT_CONTRACT,
-      status: 'READY',
-      database: {
-        path: digest.path,
-        bytes: digest.bytes,
-        sha256: digest.sha256,
-        sha256_cached: digest.cached,
+      identity: digest,
+      metadata,
+      summary: {
+        schema_contract: 'works/text_units/unit_fts-v1',
+        schema_version: metadata.schema_version,
+        builder_version: metadata.builder_version,
+        runtime_sqlite_version: runtimeSqliteVersion,
+        source_file_count: metadata.file_count,
+        work_count: metadata.work_count,
+        text_unit_count: metadata.unit_count,
+        inventory_file_count: metadata.inventory_file_count,
+        excluded_file_count: metadata.excluded_file_count,
+        fts_index_validation: 'trigram-token-count-verified',
+        manifest_digest: 'sha256-format-valid',
+        logical_row_digest: 'sha256-format-valid',
+        status: 'READY',
       },
-      index: { ...metadata, runtime_sqlite_version: sqliteVersion },
-      search: { long_forms: 'FTS5 trigram literal substring', short_forms: 'instr() literal substring scan', read_only: true },
-      output_limits: { max_response_chars: MAX_RESPONSE_CHARS, default_page_size: DEFAULT_PAGE_SIZE, max_page_size: MAX_PAGE_SIZE, max_contexts_per_sense: MAX_CONTEXTS_PER_SENSE, default_snippet_chars: DEFAULT_SNIPPET_CHARS, max_snippet_chars: MAX_SNIPPET_CHARS },
     };
   } finally {
     database.close();
   }
+}
+
+/** Read-only preflight. Private DB identity is retained only in the local checkpoint. */
+export async function inspectLiteraryIndex(databasePath, { scratchDirectory = path.resolve(CHECKPOINT_SCRATCH_DIRECTORY) } = {}) {
+  const inspected = await inspectLiteraryIndexInternal(databasePath, scratchDirectory);
+  return {
+    contract: LITERARY_CONTEXT_CONTRACT,
+    status: inspected.summary.status,
+    index: inspected.summary,
+    search: { long_forms: 'FTS5 trigram with instr() re-verification', short_forms: 'instr() literal unit scan', context_window: `${CONTEXT_WINDOW_UNITS} adjacent physical units per side`, read_only: true },
+    output_limits: { max_response_chars: MAX_RESPONSE_CHARS, default_page_size: DEFAULT_PAGE_SIZE, max_page_size: MAX_PAGE_SIZE, max_contexts_per_sense: MAX_CONTEXTS_PER_SENSE, default_snippet_chars: DEFAULT_SNIPPET_CHARS, max_snippet_chars: MAX_SNIPPET_CHARS },
+  };
 }
 
 function parseCanonicalShard(contents, label) {
@@ -294,10 +399,12 @@ function matchesSql(forms) {
   const parameters = [];
   for (const form of forms) {
     if (codePointLength(form) >= 3) {
-      terms.push('SELECT rowid AS paragraph_rowid, ? AS matched_form FROM paragraph_fts WHERE paragraph_fts MATCH ?');
-      parameters.push(form, literalFtsQuery(form));
+      terms.push(`SELECT u.unit_rowid AS unit_rowid, ? AS matched_form
+        FROM unit_fts JOIN text_units u ON u.unit_rowid = unit_fts.rowid
+        WHERE unit_fts MATCH ? AND instr(u.text, ?) > 0`);
+      parameters.push(form, literalFtsQuery(form), form);
     } else {
-      terms.push('SELECT paragraph_rowid, ? AS matched_form FROM paragraphs WHERE instr(form, ?) > 0');
+      terms.push('SELECT unit_rowid AS unit_rowid, ? AS matched_form FROM text_units WHERE instr(text, ?) > 0');
       parameters.push(form, form);
     }
   }
@@ -311,21 +418,50 @@ function matchesSql(forms) {
 function countMatches(database, forms) {
   const query = matchesSql(forms);
   if (!query) return null;
-  return database.prepare(`${query.cte} SELECT COUNT(DISTINCT paragraph_rowid) AS total_hits FROM raw_hits`).get(...query.parameters).total_hits;
+  return database.prepare(`${query.cte} SELECT COUNT(DISTINCT unit_rowid) AS total_hits FROM raw_hits`).get(...query.parameters).total_hits;
 }
 
-async function assertCheckpointIndexUnchanged(checkpoint, databasePath) {
+function readUnitWindow(database, { file_id: fileId, ordinal }, radius = CONTEXT_WINDOW_UNITS) {
+  const start = ordinal - radius;
+  const end = ordinal + radius;
+  const units = database.prepare(`
+    SELECT unit_rowid, ordinal, kind, block_ordinal, text, eol
+    FROM text_units
+    WHERE file_id = ? AND ordinal BETWEEN ? AND ?
+    ORDER BY ordinal, unit_rowid
+  `).all(fileId, start, end);
+  if (!units.some((unit) => unit.ordinal === ordinal)) fail('literary context locator no longer resolves to its exact text unit');
+  const text = units.map((unit) => `${unit.text}${unit.eol}`).join('');
+  const hitIndex = units.findIndex((unit) => unit.ordinal === ordinal);
+  const hitStart = units.slice(0, hitIndex).reduce((length, unit) => length + unit.text.length + unit.eol.length, 0);
+  return {
+    units: units.map(({ unit_rowid, ordinal: unitOrdinal, kind, block_ordinal, eol }) => ({ unit_rowid, ordinal: unitOrdinal, kind, block_ordinal, eol })),
+    start_ordinal: units[0].ordinal,
+    end_ordinal: units.at(-1).ordinal,
+    hit_ordinal: ordinal,
+    hit_start: hitStart,
+    text,
+    sha256: sha256(text),
+  };
+}
+
+async function assertCheckpointIndexUnchanged(checkpoint, databasePath, metadata) {
   const databaseRealPath = await realpath(databasePath);
   const [current, recorded] = await Promise.all([
     stat(databaseRealPath, { bigint: true }),
     stat(checkpoint.index.path, { bigint: true }),
   ]);
+  const fingerprint = [String(current.dev), String(current.ino), String(current.size), String(current.mtimeNs), String(current.ctimeNs)].join(':');
   const unchanged = String(current.dev) === String(recorded.dev)
     && String(current.ino) === String(recorded.ino)
     && String(current.size) === String(recorded.size)
     && String(current.mtimeNs) === String(recorded.mtimeNs)
-    && String(current.ctimeNs) === String(recorded.ctimeNs);
-  if (!unchanged) fail('literary index identity changed after checkpoint initialization; re-run preflight and start a new checkpoint');
+    && String(current.ctimeNs) === String(recorded.ctimeNs)
+    && fingerprint === checkpoint.index.fingerprint
+    && checkpoint.index.schema_version === metadata.schema_version
+    && checkpoint.index.input_manifest_sha256 === metadata.input_manifest_sha256
+    && checkpoint.index.logical_rows_sha256 === metadata.logical_rows_sha256;
+  if (!unchanged) fail('literary index identity or schema provenance changed after checkpoint initialization; re-run preflight and start a new checkpoint');
 }
 
 function cursorEncode(value) {
@@ -346,17 +482,18 @@ function cursorDecode(cursor, fingerprint) {
 }
 
 function makeLocatorKey(row) {
-  return sha256(JSON.stringify([row.source_path, row.document_id, row.document_ordinal, row.paragraph_id, row.ordinal]));
+  return sha256(JSON.stringify([row.file_id, row.work_id, row.unit_rowid, row.ordinal, row.source_sha256]));
 }
 
-function excerptAround(text, forms, maxChars) {
-  const matchAt = forms.map((form) => text.indexOf(form)).filter((at) => at >= 0).sort((a, b) => a - b)[0] ?? 0;
+function excerptAround(text, forms, maxChars, hitStart = 0) {
+  const matchAt = forms.map((form) => text.indexOf(form, hitStart)).filter((at) => at >= 0).sort((a, b) => a - b)[0] ?? hitStart;
   const length = codePointLength(text);
   if (length <= maxChars) return { text, truncated: false };
   const chars = [...text];
-  const matchCodePointAt = codePointLength(chars.slice(0, matchAt).join(''));
-  const start = Math.max(0, Math.min(length - maxChars, matchCodePointAt - Math.floor(maxChars / 2)));
-  const end = Math.min(length, start + maxChars);
+  const matchCodePointAt = codePointLength(text.slice(0, matchAt));
+  const contentLimit = maxChars - 2;
+  const start = Math.max(0, Math.min(length - contentLimit, matchCodePointAt - Math.floor(contentLimit / 2)));
+  const end = Math.min(length, start + contentLimit);
   return {
     text: `${start > 0 ? '…' : ''}${chars.slice(start, end).join('')}${end < length ? '…' : ''}`,
     truncated: true,
@@ -381,62 +518,76 @@ function runSearch(database, forms, { pageSize, cursor, snippetChars }) {
   const fingerprint = sha256(JSON.stringify(forms));
   const after = cursor ? cursorDecode(cursor, fingerprint) : null;
   const rawHitsCte = query.cte;
-  const countSql = `${rawHitsCte} SELECT COUNT(DISTINCT paragraph_rowid) AS total_hits FROM raw_hits`;
+  const countSql = `${rawHitsCte} SELECT COUNT(DISTINCT unit_rowid) AS total_hits FROM raw_hits`;
   const totalHits = database.prepare(countSql).get(...query.parameters).total_hits;
   const pageParams = [...query.parameters];
-  const afterClause = after ? 'WHERE (m.work_hit_ordinal, s.source_path, d.document_ordinal, p.ordinal, p.paragraph_rowid) > (?, ?, ?, ?, ?)' : '';
+  const afterClause = after ? 'WHERE (m.work_hit_ordinal, w.genre, w.work_id, u.ordinal, u.unit_rowid) > (?, ?, ?, ?, ?)' : '';
   if (after) pageParams.push(...after);
   pageParams.push(pageSize + 1);
   const pageSql = `${rawHitsCte}, matched AS (
-      SELECT paragraph_rowid, group_concat(matched_form, char(31)) AS matched_forms
-      FROM raw_hits GROUP BY paragraph_rowid
+      SELECT unit_rowid, group_concat(matched_form, char(31)) AS matched_forms
+      FROM raw_hits GROUP BY unit_rowid
     ), ranked AS (
-      SELECT m.paragraph_rowid, m.matched_forms,
-        ROW_NUMBER() OVER (PARTITION BY p.document_rowid ORDER BY p.ordinal, p.paragraph_rowid) AS work_hit_ordinal
-      FROM matched m JOIN paragraphs p ON p.paragraph_rowid = m.paragraph_rowid
+      SELECT m.unit_rowid, m.matched_forms,
+        ROW_NUMBER() OVER (PARTITION BY w.work_id ORDER BY u.ordinal, u.unit_rowid) AS work_hit_ordinal
+      FROM matched m
+      JOIN text_units u ON u.unit_rowid = m.unit_rowid
+      JOIN works w ON w.file_id = u.file_id
     )
-    SELECT p.paragraph_rowid, p.form, p.paragraph_id, p.ordinal, m.work_hit_ordinal,
-      d.document_id, d.document_ordinal, d.title AS document_title, d.author,
-      s.source_path, s.title AS source_title, s.creator, s.year, s.category, m.matched_forms
+    SELECT u.unit_rowid, u.file_id, u.ordinal, u.kind, u.block_ordinal,
+      w.work_id, w.genre, w.source_id, w.title, w.author, w.metadata_origin, w.title_in_first_unit,
+      s.relative_path, s.source_sha256, m.work_hit_ordinal, m.matched_forms
     FROM ranked m
-    JOIN paragraphs p ON p.paragraph_rowid = m.paragraph_rowid
-    JOIN documents d ON d.document_rowid = p.document_rowid
-    JOIN source_files s ON s.source_path = d.source_path
+    JOIN text_units u ON u.unit_rowid = m.unit_rowid
+    JOIN works w ON w.file_id = u.file_id
+    JOIN source_files s ON s.file_id = u.file_id
     ${afterClause}
-    ORDER BY m.work_hit_ordinal, s.source_path, d.document_ordinal, p.ordinal, p.paragraph_rowid
+    ORDER BY m.work_hit_ordinal, w.genre, w.work_id, u.ordinal, u.unit_rowid
     LIMIT ?`;
   const pageRows = database.prepare(pageSql).all(...pageParams);
   const hasMore = pageRows.length > pageSize;
   const included = pageRows.slice(0, pageSize);
   const results = included.map((row) => {
     const matchedForms = String(row.matched_forms ?? '').split('\u001f').filter(Boolean).sort((a, b) => codePointLength(b) - codePointLength(a) || compare(a, b));
-    const excerpt = excerptAround(row.form, matchedForms, snippetChars);
+    const window = readUnitWindow(database, row);
+    const excerpt = excerptAround(window.text, matchedForms, snippetChars, window.hit_start);
     return {
       locator_key: makeLocatorKey(row),
       source: {
-        document_title: (row.document_title ?? row.source_title ?? '').slice(0, 80) || null,
-        author: (row.author ?? row.creator ?? '').slice(0, 80) || null,
-      year: row.year === null || row.year === undefined ? null : String(row.year).slice(0, 20),
-        category: (row.category ?? '').slice(0, 60) || null,
+        title: (row.title ?? '').slice(0, 80) || null,
+        author: (row.author ?? '').slice(0, 80) || null,
+        genre: (row.genre ?? '').slice(0, 40) || null,
+        metadata_origin: (row.metadata_origin ?? '').slice(0, 40) || null,
       },
-      paragraph_id: String(row.paragraph_id ?? '').slice(0, 80),
+      unit_ordinal: row.ordinal,
+      unit_kind: row.kind,
+      context_window: {
+        first_unit_ordinal: window.start_ordinal,
+        last_unit_ordinal: window.end_ordinal,
+        included_units: window.units.length,
+        units_before: row.ordinal - window.start_ordinal,
+        units_after: window.end_ordinal - row.ordinal,
+        physical_line_endings_preserved: true,
+      },
       matched_forms: matchedForms.slice(0, 3).map((form) => form.slice(0, 30)),
       matched_form_count: matchedForms.length,
       excerpt: excerpt.text,
       excerpt_truncated: excerpt.truncated,
-      paragraph_sha256: sha256(row.form),
+      context_sha256: window.sha256,
       // Private fields are included for checkpoint persistence only and removed by the CLI serializer.
       _private: {
         locator: {
-          source_path: row.source_path,
-          document_id: row.document_id,
-          document_ordinal: row.document_ordinal,
-          paragraph_id: row.paragraph_id,
-          paragraph_ordinal: row.ordinal,
+          relative_path: row.relative_path,
+          source_sha256: row.source_sha256,
+          file_id: row.file_id,
+          work_id: row.work_id,
+          unit_rowid: row.unit_rowid,
+          ordinal: row.ordinal,
         },
-        paragraph_text: row.form,
-        work_key: JSON.stringify([row.source_path, row.document_id, row.document_ordinal]),
-        order: [row.work_hit_ordinal, row.source_path, row.document_ordinal, row.ordinal, row.paragraph_rowid],
+        unit_window: window.units,
+        context_text: window.text,
+        work_key: String(row.work_id),
+        order: [row.work_hit_ordinal, row.genre, row.work_id, row.ordinal, row.unit_rowid],
       },
     };
   });
@@ -479,7 +630,7 @@ function checkpointSummary(checkpoint) {
       const secondSweep = new Set();
       for (const context of sense.contexts) {
         totalContexts += 1;
-        const workKey = JSON.stringify([context.locator?.source_path, context.locator?.document_id, context.locator?.document_ordinal]);
+        const workKey = String(context.locator?.work_id ?? context.locator?.file_id ?? 'unknown-work');
         contextCountByWork.set(workKey, (contextCountByWork.get(workKey) ?? 0) + 1);
         contextJudgments[context.judgment] = (contextJudgments[context.judgment] ?? 0) + 1;
         for (const sweepNumber of [1, 2]) {
@@ -574,7 +725,7 @@ export async function initializeLiteraryCheckpoint({ canonicalPath, shard, batch
   }
   if (!['codex', 'claude', 'deepseek'].includes(String(model).toLowerCase())) fail('model must be codex, claude, or deepseek');
 
-  const index = await inspectLiteraryIndex(databasePath, { scratchDirectory });
+  const inspectedIndex = await inspectLiteraryIndexInternal(databasePath, scratchDirectory);
   const head = gitHead();
   const checkpoint = {
     contract: CHECKPOINT_CONTRACT,
@@ -590,8 +741,13 @@ export async function initializeLiteraryCheckpoint({ canonicalPath, shard, batch
       git_head: head,
       initialized_at: new Date().toISOString(),
     },
-    index: index.database,
-    index_metadata: index.index,
+    index: {
+      ...inspectedIndex.identity,
+      schema_version: inspectedIndex.metadata.schema_version,
+      input_manifest_sha256: inspectedIndex.metadata.input_manifest_sha256,
+      logical_rows_sha256: inspectedIndex.metadata.logical_rows_sha256,
+    },
+    index_metadata: inspectedIndex.metadata,
     records: selected.map((record) => ({
       record_id: record.id,
       lemma: record.lemma,
@@ -610,7 +766,7 @@ export async function initializeLiteraryCheckpoint({ canonicalPath, shard, batch
     output: null,
   };
   await writeJsonAtomic(resolvedCheckpoint, checkpoint);
-  return { checkpoint, summary: checkpointSummary(checkpoint), path: resolvedCheckpoint };
+  return { checkpoint, summary: checkpointSummary(checkpoint), index_summary: inspectedIndex.summary, path: resolvedCheckpoint };
 }
 
 export async function loadLiteraryCheckpoint(checkpointPath, { scratchDirectory = path.resolve(CHECKPOINT_SCRATCH_DIRECTORY) } = {}) {
@@ -650,12 +806,12 @@ export async function addSearchForm(checkpointPath, senseId, form, basis, option
   return { sense_id: senseId, query_form_count: new Set([...sense.search_forms, ...sense.added_forms.map((item) => item.form)]).size };
 }
 
-/** Count all source-sense hits in a batch without returning paragraphs or a sense ledger. */
+/** Count all source-sense hits in a batch without returning source text or a sense ledger. */
 export async function scanLiteraryBatch({ databasePath, checkpointPath, scratchDirectory = path.resolve(CHECKPOINT_SCRATCH_DIRECTORY) }) {
   const { checkpoint, path: resolvedCheckpoint } = await loadLiteraryCheckpoint(checkpointPath, { scratchDirectory });
-  const { database } = openLiteraryIndex(databasePath);
+  const { database, metadata } = openLiteraryIndex(databasePath);
   try {
-    await assertCheckpointIndexUnchanged(checkpoint, databasePath);
+    await assertCheckpointIndexUnchanged(checkpoint, databasePath, metadata);
     const started = performance.now();
     const queryDurations = [];
     const failures = [];
@@ -706,7 +862,7 @@ export async function scanLiteraryBatch({ databasePath, checkpointPath, scratchD
           queryDurations.push(performance.now() - queryStarted);
           sense.search_history ??= [];
           if (sense.search) sense.search_history.push({ ...sense.search });
-          sense.search = { status: 'SEARCH_FAILED', query_sha256: fingerprint, query_form_count: forms.length, total_hits: null, pages: 0, returned_contexts: sense.contexts.length, next_cursor: null, searched_at: new Date().toISOString(), error: error.name === 'Error' ? error.message.slice(0, 300) : error.name };
+          sense.search = { status: 'SEARCH_FAILED', query_sha256: fingerprint, query_form_count: forms.length, total_hits: null, pages: 0, returned_contexts: sense.contexts.length, next_cursor: null, searched_at: new Date().toISOString(), error: 'literary unit query failed' };
           failures.push({ sense_id: sense.sense_id, error_type: error.name });
         }
       }
@@ -790,7 +946,7 @@ export async function searchLiterarySense({ databasePath, checkpointPath, senseI
   let opened;
   try {
     opened = openLiteraryIndex(databasePath);
-    await assertCheckpointIndexUnchanged(checkpoint, databasePath);
+    await assertCheckpointIndexUnchanged(checkpoint, databasePath, opened.metadata);
     const results = runSearch(opened.database, currentForms, { pageSize: page, cursor: attemptCursor, snippetChars: snippetLimit });
     attemptTotalHits = results.total_hits;
     const queryHash = sha256(JSON.stringify(currentForms));
@@ -811,17 +967,21 @@ export async function searchLiterarySense({ databasePath, checkpointPath, senseI
       const existing = sense.contexts.find((context) => context.locator_key === result.locator_key);
       if (existing) {
         existing.matched_forms = [...new Set([...existing.matched_forms, ...result.matched_forms])].sort(compare);
-        existing.paragraph_sha256 = result.paragraph_sha256;
-        existing.paragraph_text = result._private.paragraph_text;
+        existing.context_sha256 = result.context_sha256;
+        existing.context_text = result._private.context_text;
+        existing.unit_window = result._private.unit_window;
       } else {
         sense.contexts.push({
           locator_key: result.locator_key,
           locator: result._private.locator,
           source: result.source,
-          paragraph_id: result.paragraph_id,
+          unit_ordinal: result.unit_ordinal,
+          unit_kind: result.unit_kind,
           matched_forms: result.matched_forms,
-          paragraph_sha256: result.paragraph_sha256,
-          paragraph_text: result._private.paragraph_text,
+          context_sha256: result.context_sha256,
+          context_text: result._private.context_text,
+          unit_window: result._private.unit_window,
+          context_window: result.context_window,
           excerpt: result.excerpt,
           excerpt_truncated: result.excerpt_truncated,
           judgment: 'PENDING',
@@ -843,7 +1003,7 @@ export async function searchLiterarySense({ databasePath, checkpointPath, senseI
       truncated: results.has_more,
       work_diversity: results.work_diversity,
       query_form_count: currentForms.length,
-      results: results.results.map(({ _private, paragraph_id, paragraph_sha256, ...publicResult }) => publicResult),
+      results: results.results.map(({ _private, context_sha256: _contextDigest, ...publicResult }) => publicResult),
     };
   } catch (error) {
     sense.search_history ??= [];
@@ -857,7 +1017,7 @@ export async function searchLiterarySense({ databasePath, checkpointPath, senseI
       returned_contexts: sense.contexts.length,
       next_cursor: attemptCursor,
       searched_at: new Date().toISOString(),
-      error: error.name === 'Error' ? error.message.slice(0, 300) : error.name,
+      error: 'literary unit query failed',
     };
     await saveCheckpoint(resolvedCheckpoint, checkpoint);
     throw error;
@@ -903,7 +1063,7 @@ export async function finishLiterarySearch(checkpointPath, { senseId, note }, op
   };
 }
 
-/** Record an explicit human/AI source-sense disposition for exactly one returned paragraph. */
+/** Record an explicit human/AI source-sense disposition for exactly one returned physical text unit. */
 export async function reviewLiteraryContext(checkpointPath, { senseId, locatorKey, judgment, note }, options = {}) {
   if (!['VERIFIED', 'AMBIGUOUS', 'REJECTED'].includes(judgment)) fail('judgment must be VERIFIED, AMBIGUOUS, or REJECTED');
   if (typeof note !== 'string' || note.trim().length < 3) fail('a concise source-sense review note is required');
@@ -1004,7 +1164,7 @@ export async function reviewLiteraryCandidate(checkpointPath, { senseId, candida
   return { sense_id: senseId, candidate: review.candidate, decision, kind: review.kind, status: currentSenseStatus(sense) };
 }
 
-export async function getLiteraryContextPage(checkpointPath, { senseId, locatorKey, offset = 0, chars = MAX_CONTEXT_PAGE_CHARS }, options = {}) {
+export async function getLiteraryContextPage(databasePath, checkpointPath, { senseId, locatorKey, offset = 0, chars = MAX_CONTEXT_PAGE_CHARS }, options = {}) {
   const parsedOffset = Number(offset);
   const parsedChars = Number(chars);
   if (!Number.isInteger(parsedOffset) || parsedOffset < 0) fail('context offset must be a non-negative integer');
@@ -1012,21 +1172,32 @@ export async function getLiteraryContextPage(checkpointPath, { senseId, locatorK
   const { checkpoint } = await loadLiteraryCheckpoint(checkpointPath, options);
   const { sense } = findSense(checkpoint, senseId);
   const context = getContext(sense, locatorKey);
-  const charsArray = [...context.paragraph_text];
-  const slice = charsArray.slice(parsedOffset, parsedOffset + parsedChars);
-  const nextOffset = parsedOffset + slice.length;
-  return {
-    sense_id: senseId,
-    locator_key: locatorKey,
-    judgment: context.judgment,
-    total_chars: charsArray.length,
-    offset: parsedOffset,
-    chars_returned: slice.length,
-    has_more: nextOffset < charsArray.length,
-    next_offset: nextOffset < charsArray.length ? nextOffset : null,
-    truncated: nextOffset < charsArray.length,
-    text: slice.join(''),
-  };
+  const { database, metadata } = openLiteraryIndex(databasePath);
+  try {
+    await assertCheckpointIndexUnchanged(checkpoint, databasePath, metadata);
+    const window = readUnitWindow(database, context.locator);
+    if (window.sha256 !== context.context_sha256 || JSON.stringify(window.units) !== JSON.stringify(context.unit_window)) {
+      fail('literary context locator changed after search; start a new checkpoint from the verified index');
+    }
+    const charsArray = [...window.text];
+    const slice = charsArray.slice(parsedOffset, parsedOffset + parsedChars);
+    const nextOffset = parsedOffset + slice.length;
+    return {
+      sense_id: senseId,
+      locator_key: locatorKey,
+      judgment: context.judgment,
+      unit_window: context.context_window,
+      total_chars: charsArray.length,
+      offset: parsedOffset,
+      chars_returned: slice.length,
+      has_more: nextOffset < charsArray.length,
+      next_offset: nextOffset < charsArray.length ? nextOffset : null,
+      truncated: nextOffset < charsArray.length,
+      text: slice.join(''),
+    };
+  } finally {
+    database.close();
+  }
 }
 
 export function summarizeLiteraryCheckpoint(checkpoint) {

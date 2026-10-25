@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { spawnSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -27,7 +28,7 @@ import {
 
 const jsonl = (items) => `${items.map((item) => JSON.stringify(item)).join('\n')}\n`;
 
-async function makeFixture({ paragraphCount = 2, paragraphText, firstForm = '가나다', documentCount = 1 } = {}) {
+async function makeFixture({ unitCount = 2, unitText, unitTexts, firstForm = '가나다', workCount = 1 } = {}) {
   const root = await mkdtemp(path.join(os.tmpdir(), 'typewriter-literary-context-'));
   const canonicalDirectory = path.join(root, 'data/canonical');
   const scratchDirectory = path.join(root, '.warroom-scratch');
@@ -50,41 +51,68 @@ async function makeFixture({ paragraphCount = 2, paragraphText, firstForm = '가
   const database = new DatabaseSync(databasePath);
   database.exec(`
     CREATE TABLE source_files (
-      source_path TEXT PRIMARY KEY, corpus_id TEXT, title TEXT, creator TEXT,
-      year TEXT, category TEXT, annotation_level_json TEXT, sampling TEXT,
-      source_sha256 TEXT, source_bytes INTEGER
+      file_id INTEGER PRIMARY KEY, genre TEXT NOT NULL, relative_path TEXT NOT NULL UNIQUE,
+      source_sha256 TEXT NOT NULL, source_bytes INTEGER NOT NULL, encoding TEXT NOT NULL,
+      has_bom INTEGER NOT NULL, newline_convention TEXT NOT NULL, final_newline INTEGER NOT NULL,
+      nfc INTEGER NOT NULL, char_count INTEGER NOT NULL, unit_count INTEGER NOT NULL,
+      status TEXT NOT NULL, warnings TEXT NOT NULL
     );
-    CREATE TABLE documents (
-      document_rowid INTEGER PRIMARY KEY, source_path TEXT NOT NULL, document_id TEXT,
-      document_ordinal INTEGER NOT NULL, title TEXT, author TEXT, publisher TEXT,
-      document_date TEXT
+    CREATE TABLE works (
+      work_id INTEGER PRIMARY KEY, genre TEXT NOT NULL,
+      file_id INTEGER NOT NULL UNIQUE REFERENCES source_files(file_id),
+      source_id TEXT, title TEXT, author TEXT, metadata_origin TEXT NOT NULL,
+      title_in_first_unit INTEGER NOT NULL
     );
-    CREATE TABLE paragraphs (
-      paragraph_rowid INTEGER PRIMARY KEY, document_rowid INTEGER NOT NULL,
-      paragraph_id TEXT NOT NULL, ordinal INTEGER NOT NULL, form TEXT NOT NULL
+    CREATE TABLE text_units (
+      unit_rowid INTEGER PRIMARY KEY, file_id INTEGER NOT NULL REFERENCES source_files(file_id),
+      ordinal INTEGER NOT NULL, kind TEXT NOT NULL, block_ordinal INTEGER,
+      text TEXT NOT NULL, eol TEXT NOT NULL, UNIQUE(file_id, ordinal)
     );
-    CREATE VIRTUAL TABLE paragraph_fts USING fts5(form, content='paragraphs', content_rowid='paragraph_rowid', tokenize='trigram');
+    CREATE VIRTUAL TABLE unit_fts USING fts5(
+      text, content='text_units', content_rowid='unit_rowid', tokenize='trigram'
+    );
     CREATE TABLE index_metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL);
   `);
-  database.prepare('INSERT INTO source_files (source_path, corpus_id, title, creator, year, category) VALUES (?, ?, ?, ?, ?, ?)')
-    .run('local/source-001.json', 'source-001', 'Fixture Literary Source', 'Test Author', '2025', 'literary');
-  const insertDocument = database.prepare('INSERT INTO documents (document_rowid, source_path, document_id, document_ordinal, title, author) VALUES (?, ?, ?, ?, ?, ?)');
-  for (let index = 1; index <= documentCount; index += 1) {
-    insertDocument.run(index, 'local/source-001.json', `document-${String(index).padStart(3, '0')}`, index, `Fixture Document ${index}`, `Test Author ${index}`);
+  const insertSource = database.prepare(`INSERT INTO source_files
+    (file_id, genre, relative_path, source_sha256, source_bytes, encoding, has_bom, newline_convention,
+     final_newline, nfc, char_count, unit_count, status, warnings)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+  const insertWork = database.prepare(`INSERT INTO works
+    (work_id, genre, file_id, source_id, title, author, metadata_origin, title_in_first_unit)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
+  const insertUnit = database.prepare(`INSERT INTO text_units
+    (unit_rowid, file_id, ordinal, kind, block_ordinal, text, eol)
+    VALUES (?, ?, ?, ?, ?, ?, ?)`);
+  const unitCounts = Array.from({ length: workCount }, (_, index) => Math.floor((unitCount + workCount - index - 1) / workCount));
+  let unitRowId = 0;
+  for (let workId = 1; workId <= workCount; workId += 1) {
+    insertSource.run(workId, 'poem', `fixture/work-${workId}.txt`, String(workId).padStart(64, 'a'), 100, 'UTF-8', 0, 'CRLF', 1, 1, unitCounts[workId - 1] * 10, unitCounts[workId - 1], 'ok', '[]');
+    insertWork.run(workId, 'poem', workId, `work-${workId}`, `Fixture Work ${workId}`, `Test Author ${workId}`, 'fixture', 0);
   }
-  const insertParagraph = database.prepare('INSERT INTO paragraphs (paragraph_rowid, document_rowid, paragraph_id, ordinal, form) VALUES (?, ?, ?, ?, ?)');
-  for (let index = 1; index <= paragraphCount; index += 1) {
-    const text = paragraphText ?? `앞 문맥. ${firstForm}가 문학 장면에서 쓰였다. 뒤 문맥 ${index}.`;
-    const documentOrdinal = ((index - 1) % documentCount) + 1;
-    const paragraphOrdinal = Math.floor((index - 1) / documentCount) + 1;
-    insertParagraph.run(index, documentOrdinal, `paragraph-${String(index).padStart(3, '0')}`, paragraphOrdinal, text);
-    database.prepare('INSERT INTO paragraph_fts (rowid, form) VALUES (?, ?)').run(index, text);
+  const insertFts = database.prepare('INSERT INTO unit_fts (rowid, text) VALUES (?, ?)');
+  for (let workId = 1; workId <= workCount; workId += 1) {
+    for (let ordinal = 0; ordinal < unitCounts[workId - 1]; ordinal += 1) {
+      unitRowId += 1;
+      const text = unitTexts?.[unitRowId - 1] ?? unitText ?? `앞 문맥 ${ordinal}. ${firstForm}가 문학 장면에서 쓰였다. 뒤 문맥 ${ordinal}.`;
+      const eol = ordinal === unitCounts[workId - 1] - 1 ? '' : '\r\n';
+      insertUnit.run(unitRowId, workId, ordinal, text.length === 0 ? 'blank' : 'text', Math.floor(ordinal / 5), text, eol);
+      insertFts.run(unitRowId, text);
+    }
   }
   const insertMetadata = database.prepare('INSERT INTO index_metadata (key, value) VALUES (?, ?)');
-  insertMetadata.run('schema_version', 'fixture-v1');
-  insertMetadata.run('builder_version', 'test-builder');
+  insertMetadata.run('schema_version', '1');
+  insertMetadata.run('builder_version', '1');
+  insertMetadata.run('build_kind', 'full');
+  insertMetadata.run('search_layer', 'FTS5 trigram over faithful text; matches re-verified with instr(); no normalization');
+  insertMetadata.run('sqlite_version', '3.53.3');
+  insertMetadata.run('tool_identity', 'project-authored synthetic fixture');
   insertMetadata.run('input_manifest_sha256', 'a'.repeat(64));
-  insertMetadata.run('paragraph_count', String(paragraphCount));
+  insertMetadata.run('logical_rows_sha256', 'b'.repeat(64));
+  insertMetadata.run('inventory_file_count', String(workCount));
+  insertMetadata.run('excluded_file_count', '0');
+  insertMetadata.run('file_count', String(workCount));
+  insertMetadata.run('work_count', String(workCount));
+  insertMetadata.run('unit_count', String(unitCount));
   database.close();
 
   const checkpointPath = path.join(scratchDirectory, '001_01_c_codex.checkpoint.json');
@@ -104,6 +132,21 @@ async function cleanup(fixture) {
   await rm(fixture.root, { recursive: true, force: true });
 }
 
+async function makeRetiredParagraphIndex() {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'typewriter-retired-literary-index-'));
+  const databasePath = path.join(root, 'retired.sqlite');
+  const database = new DatabaseSync(databasePath);
+  database.exec(`
+    CREATE TABLE source_files (source_path TEXT PRIMARY KEY);
+    CREATE TABLE documents (document_rowid INTEGER PRIMARY KEY, source_path TEXT);
+    CREATE TABLE paragraphs (paragraph_rowid INTEGER PRIMARY KEY, document_rowid INTEGER, form TEXT);
+    CREATE VIRTUAL TABLE paragraph_fts USING fts5(form, content='paragraphs', content_rowid='paragraph_rowid', tokenize='trigram');
+    CREATE TABLE index_metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+  `);
+  database.close();
+  return { root, databasePath };
+}
+
 const sevenEmptyLenses = () => ({
   image: [],
   action: [],
@@ -114,32 +157,104 @@ const sevenEmptyLenses = () => ({
   metaphor_contrast: [],
 });
 
-test('read-only preflight identifies a bounded index and reuses its local exact-file digest', async () => {
-  const fixture = await makeFixture({ paragraphCount: 1 });
+test('read-only preflight validates the approved schema and omits private database identity', async () => {
+  const fixture = await makeFixture({ unitCount: 1 });
   try {
-    await rm(path.join(fixture.scratchDirectory, 'literary-index-digests.json'), { force: true });
+    const bytesBefore = await readFile(fixture.databasePath);
     const first = await inspectLiteraryIndex(fixture.databasePath, { scratchDirectory: fixture.scratchDirectory });
-    const second = await inspectLiteraryIndex(fixture.databasePath, { scratchDirectory: fixture.scratchDirectory });
     assert.equal(first.status, 'READY');
-    assert.equal(first.index.schema_version, 'fixture-v1');
-    assert.match(first.database.sha256, /^[a-f0-9]{64}$/u);
+    assert.equal(first.contract, 'literary-context-v2');
+    assert.equal(first.index.schema_version, '1');
+    assert.equal(first.index.builder_version, '1');
+    assert.equal(first.index.schema_contract, 'works/text_units/unit_fts-v1');
+    assert.equal(first.index.source_file_count, 1);
+    assert.equal(first.index.work_count, 1);
+    assert.equal(first.index.text_unit_count, 1);
+    assert.equal(first.index.manifest_digest, 'sha256-format-valid');
+    assert.equal(first.index.logical_row_digest, 'sha256-format-valid');
     assert.equal(first.search.read_only, true);
-    assert.equal(first.database.sha256_cached, false);
-    assert.equal(second.database.sha256_cached, true);
-    assert.equal(second.database.sha256, first.database.sha256);
+    assert.equal('database' in first, false);
+    assert.equal(JSON.stringify(first).includes(fixture.databasePath), false);
+    assert.deepEqual(await readFile(fixture.databasePath), bytesBefore);
+  } finally {
+    await cleanup(fixture);
+  }
+});
+
+test('retired and incomplete literary index schemas fail closed', async () => {
+  const retired = await makeRetiredParagraphIndex();
+  try {
+    await assert.rejects(inspectLiteraryIndex(retired.databasePath), /retired paragraph-index tables are not accepted/u);
+  } finally {
+    await rm(retired.root, { recursive: true, force: true });
+  }
+
+  const fixture = await makeFixture({ unitCount: 1 });
+  try {
+    const database = new DatabaseSync(fixture.databasePath);
+    database.exec('ALTER TABLE text_units RENAME COLUMN eol TO line_ending');
+    database.close();
+    await assert.rejects(inspectLiteraryIndex(fixture.databasePath), /text_units is missing eol/u);
+  } finally {
+    await cleanup(fixture);
+  }
+});
+
+test('read-only preflight rejects missing postings in an external-content FTS index', async () => {
+  const fixture = await makeFixture({ unitCount: 1 });
+  try {
+    const database = new DatabaseSync(fixture.databasePath);
+    const text = database.prepare('SELECT text FROM text_units WHERE unit_rowid = 1').get().text;
+    database.prepare("INSERT INTO unit_fts(unit_fts, rowid, text) VALUES ('delete', 1, ?)").run(text);
+    assert.equal(database.prepare('SELECT count(*) AS count FROM unit_fts').get().count, 1);
+    assert.equal(database.prepare('SELECT count(*) AS count FROM unit_fts WHERE unit_fts MATCH ?').get('"가나다"').count, 0);
+    database.close();
+    await assert.rejects(
+      inspectLiteraryIndex(fixture.databasePath, { scratchDirectory: fixture.scratchDirectory }),
+      /FTS trigram token coverage does not match text_units/u,
+    );
+  } finally {
+    await cleanup(fixture);
+  }
+});
+
+test('CLI failures suppress local database paths and environment values', () => {
+  const marker = 'private-probe-path-marker';
+  const tokenMarker = 'synthetic-secret-marker';
+  const result = spawnSync(process.execPath, [
+    'scripts/relation/literary-context-cli.mjs', 'preflight', '--db', path.join(os.tmpdir(), marker, 'missing.sqlite'),
+  ], {
+    cwd: process.cwd(),
+    encoding: 'utf8',
+    env: { ...process.env, TYPEWRITER_TEST_SECRET: tokenMarker },
+  });
+  assert.equal(result.status, 1);
+  assert.equal(`${result.stdout}${result.stderr}`.includes(marker), false);
+  assert.equal(`${result.stdout}${result.stderr}`.includes(tokenMarker), false);
+  assert.match(result.stderr, /local paths, source text, and secret details were suppressed/u);
+});
+
+test('literal search does not join matches across physical line boundaries', async () => {
+  const fixture = await makeFixture({ unitCount: 2, unitTexts: ['가나', '다'] });
+  try {
+    const scan = await scanLiteraryBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
+    assert.equal(scan.hit_senses, 0);
+    assert.equal(scan.zero_hit_senses, 500);
+    const { checkpoint } = await loadLiteraryCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory });
+    assert.equal(checkpoint.records[0].senses[0].search.status, 'ZERO_HITS');
   } finally {
     await cleanup(fixture);
   }
 });
 test('batch scan returns counts only; paginated exact-sense search resumes without treating truncation as zero', async () => {
-  const fixture = await makeFixture({ paragraphCount: 6, paragraphText: `${'앞 문맥 '.repeat(30)}가나다가 정확한 장면에 있다.${' 뒤 문맥'.repeat(30)}` });
+  const fixture = await makeFixture({ unitCount: 6, unitText: `${'앞 문맥 '.repeat(30)}가나다가 정확한 장면에 있다.${' 뒤 문맥'.repeat(30)}` });
   try {
     const scan = await scanLiteraryBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
     assert.equal(scan.total_senses, 500);
     assert.equal(scan.hit_senses, 1);
     assert.equal(scan.zero_hit_senses, 499);
     assert.equal(scan.failed_senses, 0);
-    assert.equal('paragraphs' in scan, false);
+    assert.equal('text_units' in scan, false);
 
     const resumed = await scanLiteraryBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
     assert.equal(resumed.hit_senses, 1);
@@ -158,7 +273,8 @@ test('batch scan returns counts only; paginated exact-sense search resumes witho
     assert.deepEqual(first.work_diversity, { distinct_works: 1, max_contexts_per_work: 2 });
     assert.ok(first.next_cursor, JSON.stringify(first));
     assert.ok(first.results.every((item) => item.excerpt.length <= 700));
-    assert.ok(first.results.every((item) => !('paragraph_id' in item) && !('paragraph_sha256' in item)));
+    assert.equal(first.results[0].context_window.physical_line_endings_preserved, true);
+    assert.ok(first.results.every((item) => !('unit_rowid' in item) && !('relative_path' in item) && !('context_sha256' in item)));
 
     const scanWhileSearchIsIncomplete = await scanLiteraryBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
     assert.equal(scanWhileSearchIsIncomplete.query_performance_ms.median_sense_query, null);
@@ -188,7 +304,7 @@ test('batch scan returns counts only; paginated exact-sense search resumes witho
 });
 
 test('failed later page keeps its continuation and sample counts use distinct locators', async () => {
-  const fixture = await makeFixture({ paragraphCount: 20 });
+  const fixture = await makeFixture({ unitCount: 20 });
   try {
     await scanLiteraryBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
     const first = await searchLiterarySense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'sense-000001', scratchDirectory: fixture.scratchDirectory });
@@ -249,7 +365,7 @@ test('failed later page keeps its continuation and sample counts use distinct lo
 });
 
 test('search pages interleave works before returning second contexts from the same work', async () => {
-  const fixture = await makeFixture({ paragraphCount: 6, documentCount: 3 });
+  const fixture = await makeFixture({ unitCount: 6, workCount: 3 });
   try {
     await scanLiteraryBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
     const first = await searchLiterarySense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'sense-000001', pageSize: 3, scratchDirectory: fixture.scratchDirectory });
@@ -264,16 +380,16 @@ test('search pages interleave works before returning second contexts from the sa
   }
 });
 
-test('long paragraph reads remain character bounded and report total length and continuation', async () => {
-  const fixture = await makeFixture({ paragraphCount: 1, paragraphText: `${'문학 문맥 '.repeat(180)}가나다${' 뒤 문맥'.repeat(180)}` });
+test('long text-unit context reads remain character bounded and report total length and continuation', async () => {
+  const fixture = await makeFixture({ unitCount: 1, unitText: `${'문학 문맥 '.repeat(180)}가나다${' 뒤 문맥'.repeat(180)}` });
   try {
     await scanLiteraryBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
     const search = await searchLiterarySense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'sense-000001', scratchDirectory: fixture.scratchDirectory });
-    const first = await getLiteraryContextPage(fixture.checkpointPath, { senseId: 'sense-000001', locatorKey: search.results[0].locator_key, offset: 0, chars: 100 }, { scratchDirectory: fixture.scratchDirectory });
+    const first = await getLiteraryContextPage(fixture.databasePath, fixture.checkpointPath, { senseId: 'sense-000001', locatorKey: search.results[0].locator_key, offset: 0, chars: 100 }, { scratchDirectory: fixture.scratchDirectory });
     assert.equal(first.chars_returned, 100);
     assert.ok(first.total_chars > first.chars_returned);
     assert.equal(first.truncated, true);
-    const second = await getLiteraryContextPage(fixture.checkpointPath, { senseId: 'sense-000001', locatorKey: search.results[0].locator_key, offset: first.next_offset, chars: 100 }, { scratchDirectory: fixture.scratchDirectory });
+    const second = await getLiteraryContextPage(fixture.databasePath, fixture.checkpointPath, { senseId: 'sense-000001', locatorKey: search.results[0].locator_key, offset: first.next_offset, chars: 100 }, { scratchDirectory: fixture.scratchDirectory });
     assert.equal(second.total_chars, first.total_chars);
     assert.equal(second.offset, first.next_offset);
     assert.equal(second.chars_returned, 100);
@@ -282,8 +398,52 @@ test('long paragraph reads remain character bounded and report total length and 
   }
 });
 
+test('bounded context requery preserves the exact physical EOLs around a hit', async () => {
+  const fixture = await makeFixture({ unitCount: 3 });
+  try {
+    await scanLiteraryBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
+    const search = await searchLiterarySense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'sense-000001', scratchDirectory: fixture.scratchDirectory });
+    const page = await getLiteraryContextPage(fixture.databasePath, fixture.checkpointPath, {
+      senseId: 'sense-000001', locatorKey: search.results[0].locator_key, offset: 0, chars: 1000,
+    }, { scratchDirectory: fixture.scratchDirectory });
+    assert.match(page.text, /\r\n/u);
+    assert.equal(page.unit_window.physical_line_endings_preserved, true);
+    assert.equal(page.unit_window.included_units, 3);
+  } finally {
+    await cleanup(fixture);
+  }
+});
+
+test('multiple exact forms deduplicate one physical unit and retain all matched forms', async () => {
+  const fixture = await makeFixture({ unitCount: 3 });
+  try {
+    await addSearchForm(fixture.checkpointPath, 'sense-000001', '나다', 'Synthetic overlapping literal form', { scratchDirectory: fixture.scratchDirectory });
+    const scan = await scanLiteraryBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
+    assert.equal(scan.hit_senses, 1);
+    const search = await searchLiterarySense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'sense-000001', scratchDirectory: fixture.scratchDirectory });
+    assert.equal(search.total_hits, 3);
+    assert.equal(search.returned, 3);
+    assert.equal(new Set(search.results.map((item) => item.locator_key)).size, 3);
+    assert.ok(search.results.every((item) => item.matched_form_count === 2));
+  } finally {
+    await cleanup(fixture);
+  }
+});
+
+test('legacy checkpoint contracts cannot resume against the unit index', async () => {
+  const fixture = await makeFixture({ unitCount: 1 });
+  try {
+    const checkpoint = JSON.parse(await readFile(fixture.checkpointPath, 'utf8'));
+    checkpoint.contract = 'literary-checkpoint-v1';
+    await writeFile(fixture.checkpointPath, JSON.stringify(checkpoint));
+    await assert.rejects(loadLiteraryCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory }), /unsupported literary checkpoint contract/u);
+  } finally {
+    await cleanup(fixture);
+  }
+});
+
 test('short literal search forms use the bounded page path and invalidate stale zero-hit summaries', async () => {
-  const fixture = await makeFixture({ paragraphCount: 1, paragraphText: '짧은 두자 검색 예시' });
+  const fixture = await makeFixture({ unitCount: 1, unitText: '짧은 두자 검색 예시' });
   try {
     const scan = await scanLiteraryBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
     assert.equal(scan.zero_hit_senses, 500);
@@ -304,7 +464,7 @@ test('short literal search forms use the bounded page path and invalidate stale 
 });
 
 test('each context needs an explicit source-sense judgment; ambiguous contexts cannot be swept', async () => {
-  const fixture = await makeFixture({ paragraphCount: 1 });
+  const fixture = await makeFixture({ unitCount: 1 });
   try {
     await scanLiteraryBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
     const page = await searchLiterarySense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'sense-000001', scratchDirectory: fixture.scratchDirectory });
@@ -323,7 +483,7 @@ test('each context needs an explicit source-sense judgment; ambiguous contexts c
 });
 
 test('adaptive stopping preserves remaining-hit counts and enforces the 16-context ceiling', async () => {
-  const fixture = await makeFixture({ paragraphCount: 20 });
+  const fixture = await makeFixture({ unitCount: 20 });
   try {
     await scanLiteraryBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
     let page = await searchLiterarySense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'sense-000001', scratchDirectory: fixture.scratchDirectory });
@@ -362,7 +522,7 @@ test('adaptive stopping preserves remaining-hit counts and enforces the 16-conte
 });
 
 test('seven lenses and two distinct sweeps are recorded; pass two requires independent rereading', async () => {
-  const fixture = await makeFixture({ paragraphCount: 1 });
+  const fixture = await makeFixture({ unitCount: 1 });
   try {
     await scanLiteraryBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
     const page = await searchLiterarySense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'sense-000001', scratchDirectory: fixture.scratchDirectory });
@@ -454,7 +614,7 @@ test('seven lenses and two distinct sweeps are recorded; pass two requires indep
 });
 
 test('search failures remain distinct from zero hits and do not reject uninspected contexts', async () => {
-  const fixture = await makeFixture({ paragraphCount: 1 });
+  const fixture = await makeFixture({ unitCount: 1 });
   try {
     await assert.rejects(searchLiterarySense({ databasePath: path.join(fixture.root, 'missing.sqlite'), checkpointPath: fixture.checkpointPath, senseId: 'sense-000001', scratchDirectory: fixture.scratchDirectory }));
     const { checkpoint } = await loadLiteraryCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory });
@@ -468,7 +628,7 @@ test('search failures remain distinct from zero hits and do not reject uninspect
 });
 
 test('Candidate v1 failure reports a minimal affected row and does not mutate the batch', async () => {
-  const fixture = await makeFixture({ paragraphCount: 1 });
+  const fixture = await makeFixture({ unitCount: 1 });
   try {
     const rows = fixture.records.map((record) => ({ record_id: record.id, senses: [{ sense_id: record.senses[0].id, candidates: [] }] }));
     rows[0].record_id = 'wrong-record';
@@ -484,7 +644,7 @@ test('Candidate v1 failure reports a minimal affected row and does not mutate th
 });
 
 test('one reviewed Candidate defect is patched in place and the complete batch is revalidated', async () => {
-  const fixture = await makeFixture({ paragraphCount: 1 });
+  const fixture = await makeFixture({ unitCount: 1 });
   try {
     await scanLiteraryBatch({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory });
     const page = await searchLiterarySense({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, senseId: 'sense-000001', scratchDirectory: fixture.scratchDirectory });
