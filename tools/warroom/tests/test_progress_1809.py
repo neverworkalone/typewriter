@@ -187,6 +187,12 @@ class Supervisor(unittest.TestCase):
         write(self.wt / "data/relation-candidates/001/001_01_b_free.jsonl", "{}\n" * 500)
         b = self.record()
         self.assertEqual((b["progress_kind"], b["records_done"]), (None, 500))
+        (self.wt / "data/relation-candidates/001/001_01_b_free.jsonl").unlink()   # removed: back to the saved chunks
+        b = self.record()
+        self.assertEqual((b["progress_kind"], b["progress_done"], b["records_done"]), ("chunks", 7, None))
+        (self.wt / S / "w" / "checkpoint.json").unlink()                       # nothing confirmable is left
+        b = self.record()
+        self.assertEqual((b["progress_kind"], b["records_done"]), (None, None))
 
     def test_corrupt_or_deleted_checkpoint_falls_back_to_unconfirmed(self):
         ab_checkpoint(self.wt, 20, [1], model="free")

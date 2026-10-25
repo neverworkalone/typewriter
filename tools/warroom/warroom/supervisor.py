@@ -812,7 +812,7 @@ class Supervisor:
             obs, fields = None, {"records_done": n}
         except OSError:
             obs = progress.observe(b["worktree"], b["shard"], b["batch"], b["method"], b["producer"])
-            fields = {}
+            fields = {"records_done": None}   # the final file is not there (any more): a past count is not evidence
         fields.update(progress_kind=obs[0] if obs else None, progress_done=obs[1] if obs else None,
                       progress_total=obs[2] if obs else None)
         changed = {k: v for k, v in fields.items() if v != b[k]}
