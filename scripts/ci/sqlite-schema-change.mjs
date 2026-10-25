@@ -35,6 +35,20 @@ const SQL_TEMP_SCHEMA_DDL_PREFIX_PATTERN = new RegExp(
     + '(?:temp|"temp"|`temp`|\\[temp\\])' + SQL_TOKEN_GAP_OPTIONAL_PATTERN + '\\.[^\\s(;,]+',
   'giu',
 );
+const SQL_TEMP_QUALIFIED_ALTER_PREFIX_PATTERN = new RegExp(
+  '\\bALTER' + SQL_TOKEN_GAP_PATTERN + 'TABLE' + SQL_TOKEN_GAP_PATTERN
+    + '(?:temp|"temp"|`temp`|\\[temp\\])' + SQL_TOKEN_GAP_OPTIONAL_PATTERN
+    + '\\.' + SQL_TOKEN_GAP_OPTIONAL_PATTERN + '[^\\s(;,]+',
+  'giu',
+);
+const SQL_TEMP_QUALIFIED_DROP_PREFIX_PATTERN = new RegExp(
+  '\\bDROP' + SQL_TOKEN_GAP_PATTERN + '(?:TABLE|INDEX|VIEW|TRIGGER)'
+    + SQL_TOKEN_GAP_PATTERN
+    + '(?:IF' + SQL_TOKEN_GAP_PATTERN + 'EXISTS' + SQL_TOKEN_GAP_PATTERN + ')?'
+    + '(?:temp|"temp"|`temp`|\\[temp\\])' + SQL_TOKEN_GAP_OPTIONAL_PATTERN
+    + '\\.' + SQL_TOKEN_GAP_OPTIONAL_PATTERN + '[^\\s(;,]+',
+  'giu',
+);
 const SQL_SCHEMA_DEFINITION_PATTERN = new RegExp(
   '\\b(?:CREATE' + SQL_TOKEN_GAP_PATTERN
     + '(?:VIRTUAL' + SQL_TOKEN_GAP_PATTERN + 'TABLE|(?:UNIQUE' + SQL_TOKEN_GAP_PATTERN
@@ -49,7 +63,9 @@ const SQL_SCHEMA_GREP_PATTERN = '(CREATE|ALTER|DROP|UPDATE)';
 function containsSqlSchemaMutation(text) {
   const persistentSchemaText = text
     .replace(SQL_TEMP_KEYWORD_DDL_PREFIX_PATTERN, '')
-    .replace(SQL_TEMP_SCHEMA_DDL_PREFIX_PATTERN, '');
+    .replace(SQL_TEMP_SCHEMA_DDL_PREFIX_PATTERN, '')
+    .replace(SQL_TEMP_QUALIFIED_ALTER_PREFIX_PATTERN, '')
+    .replace(SQL_TEMP_QUALIFIED_DROP_PREFIX_PATTERN, '');
   return SQL_SCHEMA_DEFINITION_PATTERN.test(persistentSchemaText);
 }
 
