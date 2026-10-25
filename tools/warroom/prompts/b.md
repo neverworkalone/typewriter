@@ -6,7 +6,11 @@ War Room이 지정한 배치 {{batch}}를 생산한다.
 War Room이 준비한 HEAD를 기준으로 작업하며, 
 생산 도중 master가 갱신되어도 현재 브랜치를 merge/rebase/reset하지 않는다.
 
-Issue #860과 AGENTS.md의 B 생산 계약을 읽고 준수한다.
+Issue #860과 `AGENTS.md`의 B 생산 계약을 읽고 준수한다.
+
+모든 정확한 source sense마다 두 개의 실질적으로 다른 가상 장면을 실제로 탐색한다. 두 번째 장면을 첫 장면의 재서술이나 직접 연관어 나열로 대신하지 않고, 후보 수 할당량이나 조기 종료를 만들지 않는다. 모든 최종 후보를 원본 Canonical 뜻풀이와 나란히 비교하는 AI 의미·형태 전수 검사를 유지한다.
+
+B 생산의 Canonical 청크·후보 저장, Sense 연결, checkpoint, 편집 검사 상태 및 Candidate 결합에는 `scripts/relation/candidate-workbench.mjs`를 반드시 사용한다. 구체적인 실행 절차는 전용 도구 매뉴얼을 따른다. 배치마다 동일 기능의 임시 스크립트를 새로 작성하지 않는다.
 
 셸 명령은 개별로 실행해 각 종료 코드와 출력을 확인한다. `gh api` 경로에 `?` 또는 `&`가 있으면 경로 인수 전체를 작은따옴표로 감싼다. 예: `gh api 'repos/neverworkalone/typewriter/contents/data/relation-candidates/031?ref=master'`, `gh api 'repos/neverworkalone/typewriter/pulls?state=open&per_page=100' --jq 'length'`.
 
