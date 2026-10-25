@@ -48,10 +48,20 @@ class GhClient:
         if not r.ok:
             raise GhError(f"gh pr close {n}: {r.err.strip() or r.out.strip()}")
 
+    def _owned_ref(self, head: dict) -> str:
+        """The PR's head branch name, but only for a PR whose head lives in THIS repository.
+
+        A fork can use the same branch name (`gh pr list --head` filters by name only). Every caller proves ownership by
+        comparing this value with the batch's branch, so a foreign or unknown (deleted fork) head is returned as
+        `owner/repo:branch`, which can never equal an owned branch name: all those checks then fail closed.
+        """
+        repo = (head.get("repo") or {}).get("full_name") or "?"
+        return head["ref"] if repo.lower() == self.repo.lower() else f"{repo}:{head['ref']}"
+
     def pull(self, n: int) -> dict:
         d = self._api(f"repos/{self.repo}/pulls/{n}")
         return {"number": n, "state": d["state"], "merged": bool(d.get("merged")),
-                "head_sha": d["head"]["sha"], "head_ref": d["head"]["ref"],
+                "head_sha": d["head"]["sha"], "head_ref": self._owned_ref(d["head"]),
                 "url": d.get("html_url", ""), "merge_commit_sha": d.get("merge_commit_sha") or ""}
 
     # ---- Issues (Issue #1555: shared-defect urgent Issues) --------------------------------------------------------

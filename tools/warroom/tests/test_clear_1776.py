@@ -180,6 +180,8 @@ class ClearFailClosed(ClearBase):
             "remote lookup fails": lambda b: self.w.git.remote.__setitem__(BRANCH, RuntimeError("net")),
             "pr for other candidate file": lambda b: self.w.gh.files.__setitem__(7, [{"path": "data/relation-candidates/002/002_01_a_deepseek.jsonl"}]),
             "pr head branch mismatch": lambda b: self.w.pr_info(7, HEAD1, head_ref="other"),
+            "fork pr with the same branch name": lambda b: self.w.pr_info(7, HEAD1, head_ref=f"someone/typewriter:{BRANCH}"),
+            "merged fork pr with the same branch name": lambda b: self.w.pr_info(7, HEAD1, state="closed", merged=True, head_ref=f"someone/typewriter:{BRANCH}"),
             "worktree registered to other branch": lambda b: self.w.git.reg.__setitem__(b["worktree"], "other"),
             "stacked pr depends on branch": lambda b: self.w.gh.open.append({"number": 9, "headRefName": "z", "baseRefName": BRANCH, "files": []}),
         }
@@ -320,6 +322,27 @@ class ClearVsStop(ClearBase):
         self.assertEqual(w.store.batch(b["id"])["state"], "MERGED")
         w.tick()
         self.assertEqual(w.store.batch(b["id"])["state"], "CLEANUP")  # regular merged path, not PAUSED by a stale Stop
+
+
+class PullHeadOwnership(unittest.TestCase):
+    """`head_ref` is the branch name only for a head in this repository; forks/unknown heads never match an owned branch."""
+
+    def test_foreign_and_unknown_head_repos_never_equal_the_owned_branch(self):
+        import json
+        from tests.fake_runner import ScriptedRunner
+        from warroom.github import GhClient
+        table = [({"full_name": "neverworkalone/typewriter"}, BRANCH, True),
+                 ({"full_name": "NeverWorkAlone/Typewriter"}, BRANCH, True),
+                 ({"full_name": "someone/typewriter"}, BRANCH, False),
+                 ({"full_name": "someone/typewriter-fork"}, BRANCH, False),
+                 (None, BRANCH, False)]                              # head repository deleted
+        for repo, ref, owned in table:
+            with self.subTest(repo=repo):
+                runner = ScriptedRunner()
+                runner.run = lambda argv, **kw: __import__("warroom.shell").shell.Result(0, json.dumps(
+                    {"state": "open", "merged": False, "head": {"sha": HEAD1, "ref": ref, "repo": repo}}))
+                info = GhClient(runner, {}, "neverworkalone/typewriter").pull(7)
+                self.assertEqual(info["head_ref"] == BRANCH, owned, info["head_ref"])
 
 
 class ClearRequestRules(ClearBase):
