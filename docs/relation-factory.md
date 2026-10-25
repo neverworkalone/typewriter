@@ -59,7 +59,7 @@ data/relation-candidates/
 
 ### A/B batch workbench
 
-A and B producers must use [`scripts/relation/candidate-workbench.mjs`](../scripts/relation/candidate-workbench.mjs) for Canonical chunk reads, whole-chunk Candidate saves, local correction, and the final Candidate v1 validation. It keeps no exploration/review receipts and does not perform semantic discovery or judgment: A follows #860's one comprehensive meaning exploration with an optional second exploration only for a worthwhile unexplored semantic direction, while B follows its separate two-scene procedure. Use the [A/B Candidate workbench manual](relation-candidate-workbench.md) for the shortest CLI path. C production uses its method-specific literary-context CLI; D follows #1156's read-only 25-record chunk direct-search workflow without a dedicated Workbench CLI.
+A and B producers must use [`scripts/relation/candidate-workbench.mjs`](../scripts/relation/candidate-workbench.mjs) for Canonical chunk reads, whole-chunk Candidate saves, local correction, and the final Candidate v1 validation. It keeps no exploration/review receipts and does not perform semantic discovery or judgment: A follows #860's one comprehensive meaning exploration with an optional second exploration only for a worthwhile unexplored semantic direction, while B follows #860's single-scene exploration procedure. Use the [A/B Candidate workbench manual](relation-candidate-workbench.md) for the shortest CLI path. C production uses its method-specific literary-context CLI; D follows #1156's read-only 25-record chunk direct-search workflow without a dedicated Workbench CLI.
 
 ### A/B/C/D 공통 후보 표현 단위 — Stage 1 필수 생산 계약
 
