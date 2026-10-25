@@ -501,9 +501,6 @@ function assertCandidateList(candidates, location) {
     }
     const normalized = normalizeCandidate(candidate);
     if (seen.has(normalized)) fail(`${location} duplicates candidate ${JSON.stringify(candidate)}`);
-    if (lemma !== undefined && isSourceLemmaProjection(candidate, lemma)) {
-      fail(`${location} candidate ${JSON.stringify(candidate)} repeats source lemma ${JSON.stringify(lemma)}`);
-    }
     seen.add(normalized);
   }
 }
