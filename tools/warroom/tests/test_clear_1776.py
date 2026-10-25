@@ -241,6 +241,31 @@ class ClearFailClosed(ClearBase):
         self.assert_idle_and_reusable()
 
 
+class ClearDrain(ClearBase):
+    def test_drain_state_does_not_survive_clear_and_cannot_be_set_while_clearing(self):
+        for flags in ({"drain": 1}, {"drain_once": 1}, {"drain": 1, "drain_once": 1}):
+            with self.subTest(flags):
+                self.tearDown()
+                self.setUp()
+                w = self.w
+                b = self.producing()
+                w.adapter.running.clear()
+                w.store.update(b["id"], state="ERROR", pid=None)
+                w.store.set_line("deepseek", "a", **flags)
+                self.clear(b)
+                w.store.pin_clear("deepseek", "a")
+                control.set_drain(w.store, "deepseek", "a", True)       # ignored while CLEARING
+                self.assertFalse(control.line_status(w.store, "deepseek", "a")["can_drain"])
+                w.store.set_line("deepseek", "a", drain=1)               # even a racing write is cleared at the end
+                w.tick(2)
+                self.assert_idle_and_reusable()
+                ln = w.store.peek_line("deepseek", "a")
+                self.assertEqual((ln["drain"], ln["drain_once"]), (0, 0))
+                w.start("single")                                         # schedulable again
+                w.tick()
+                self.assertEqual(w.row()["batch"], "01")
+
+
 class ClearRequestRules(ClearBase):
     def test_stale_and_repeated_requests(self):
         w = self.w

@@ -338,7 +338,7 @@ class Store:
             if b["state"] != "CLEARING":
                 c.execute("UPDATE batches SET state='CLEARING', error=NULL, updated_at=? WHERE id=?",
                           (time.time(), req["batch_id"]))
-                c.execute("UPDATE lines SET run=0, drain_once=0, force_stop=0, retry_batch=NULL, blocked='', "
+                c.execute("UPDATE lines SET run=0, drain=0, drain_once=0, force_stop=0, retry_batch=NULL, blocked='', "
                           "updated_at=? WHERE model=? AND method=?", (time.time(), model, method))
             return req
 
@@ -353,7 +353,7 @@ class Store:
             for prefix in BATCH_KV_PREFIXES:
                 c.execute("DELETE FROM kv WHERE key=?", (f"{prefix}{bid}",))
             c.execute("DELETE FROM batches WHERE id=?", (bid,))
-            c.execute("UPDATE lines SET run=0, drain_once=0, force_stop=0, retry_batch=NULL, blocked='', updated_at=? "
+            c.execute("UPDATE lines SET run=0, drain=0, drain_once=0, force_stop=0, retry_batch=NULL, blocked='', updated_at=? "
                       "WHERE model=? AND method=?", (now, b["producer"], b["method"]))
             c.execute("INSERT INTO events(batch_id,ts,level,msg,line) VALUES(NULL,?,?,?,?)",
                       (now, "info", audit, f"{b['producer']}/{b['method']}"))

@@ -39,6 +39,9 @@ def drain_all(store: Store, lines) -> int:
 
 
 def set_drain(store: Store, model: str, method: str, on: bool) -> None:
+    b = store.active_batch(model, method)
+    if on and b is not None and b["state"] == "CLEARING":   # a Clear leaves the Line IDLE: no Drain may outlive it
+        return
     store.set_line(model, method, drain=1 if on else 0)
 
 
@@ -117,7 +120,7 @@ def line_status(store: Store, model: str, method: str) -> dict:
             out["activity"] = (ev["ts"], ev["msg"])
     # Buttons: only meaningful commands are enabled.
     st = out["state"]
-    out["can_drain"] = out["occupied"] or out["run"]
+    out["can_drain"] = (out["occupied"] and st != "CLEARING") or out["run"]
     out["can_stop"] = out["occupied"] and st not in ("PAUSED", "ERROR", "CLEARING") or out["run"]
     out["stoppable"] = out["occupied"] or out["run"]   # what `stop_lines` can actually affect
     out["can_retry"] = st in ("PAUSED", "ERROR") and b["pid"] is None
