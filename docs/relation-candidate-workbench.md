@@ -1,6 +1,6 @@
 # A/B Candidate workbench
 
-`scripts/relation/candidate-workbench.mjs` is the shared A/B tool for reading Canonical chunks, saving complete chunks of Candidate output, making local corrections, and assembling the final file. It does only mechanical work: the AI exploration and final candidate editing remain governed by [#860](https://github.com/neverworkalone/typewriter/issues/860) (A: direct + independent second exploration per source sense; B: two distinct scenes). The tool keeps no exploration or review receipts and does not claim that any semantic work happened.
+`scripts/relation/candidate-workbench.mjs` is the shared A/B tool for reading Canonical chunks, saving complete chunks of Candidate output, making local corrections, and assembling the final file. It does only mechanical work: the AI exploration and final candidate editing remain governed by [#860](https://github.com/neverworkalone/typewriter/issues/860) (A: one sufficient integrated exploration per source sense, with a second one only for a meaningful unexplored direction; B: two distinct scenes). The tool keeps no exploration or review receipts and does not claim that any semantic work happened.
 
 ## Normal path
 
