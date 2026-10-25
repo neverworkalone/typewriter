@@ -97,6 +97,28 @@ test('connection-local temporary tables do not select the persistent product sch
   }
 });
 
+test('War Room operational SQLite DDL does not select the product schema gate, product paths stay fail-closed', async () => {
+  const fixture = await makeRepository();
+  try {
+    const ddl = `${createTableKeyword} defects (id INTEGER PRIMARY KEY);\n`;
+    for (const filePath of ['tools/warroom/warroom/store.py', 'tools/warroom/tests/test_store.py']) {
+      const result = await classifyChange(fixture, { [filePath]: `SCHEMA = """${ddl}"""\n` });
+      assert.equal(result.schemaChanged, false, filePath);
+      assert.deepEqual(result.changedSchemaOwnerPaths, [], filePath);
+    }
+    await assert.rejects(
+      classifyChange(fixture, { 'tools/other/store.py': ddl }),
+      /no registered owner: tools\/other\/store\.py/u,
+    );
+    await assert.rejects(
+      classifyChange(fixture, { 'scripts/runtime/store.mjs': ddl }),
+      /no registered owner|Unregistered SQL schema owner/u,
+    );
+  } finally {
+    await rm(fixture.directory, { recursive: true, force: true });
+  }
+});
+
 test('persistent ALTER and DROP remain fail-closed beside temporary schema operations', async () => {
   const fixture = await makeRepository();
   try {

@@ -124,7 +124,11 @@ function schemaPathsAtRevision(revision, repositoryDirectory) {
   });
 }
 
+// War Room's own operational SQLite (tools/warroom/.local/warroom.db) is not the product dictionary schema.
+const NON_PRODUCT_SQLITE_PREFIXES = Object.freeze(['tools/warroom/']);
+
 function changedFileContainsSchemaSql(filePath, revision, repositoryDirectory) {
+  if (NON_PRODUCT_SQLITE_PREFIXES.some((prefix) => filePath.startsWith(prefix))) return false;
   // Test suites may create temporary SQLite fixture tables. Those fixtures
   // are not production schema owners and must not select the product build.
   if (/\.(?:test|spec)\.[cm]?[jt]sx?$/u.test(filePath)) return false;

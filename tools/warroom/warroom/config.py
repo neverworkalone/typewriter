@@ -23,6 +23,10 @@ DEFAULTS = {
     # {"label", "adapter", "models": {"free", "go"}}. No count limit.
     "producers": {},
     "methods": ["a", "b", "c", "d"],
+    # Issue #1555: the logical producer ID (a key of `producers`) that runs the hidden Maintainer; None = disabled.
+    "maintainer": None,
+    # Extra argv lists run in a paused batch worktree after a shared fix was merged into it (all must pass).
+    "shared_defect_verify": [],
     "opencode_bin": "opencode",
     "claude_bin": "claude",
     "codex_bin": "codex",
@@ -240,7 +244,36 @@ def config_problem(cfg: dict) -> str | None:
         for pid, p in cfg["producers"].items():
             if isinstance(p, dict):
                 bad += _entry_problems(f"producers.{pid}", p, ("label", "adapter", "model", "effort", "permission_profile"))
+    bad += _maintainer_config_problems(cfg)
     return "; ".join(bad) or None
+
+
+def _maintainer_config_problems(cfg: dict) -> list[str]:
+    """`maintainer` is absent (disabled) or the ID of a registered producer; anything else fails closed, never falls back."""
+    bad = []
+    m = cfg.get("maintainer")
+    if m is not None:
+        if not isinstance(m, str):
+            bad.append("maintainer는 producers에 등록된 모델 ID 문자열이어야 합니다")
+        elif isinstance(cfg.get("producers"), dict) and m not in registry(cfg):
+            bad.append(f"maintainer {m!r}는 등록된 모델이 아닙니다 (producers: {', '.join(registry(cfg)) or '없음'})")
+    v = cfg.get("shared_defect_verify")
+    if not isinstance(v, list) or not all(_strings(a, nonempty=True) for a in v):
+        bad.append("shared_defect_verify는 비어 있지 않은 문자열 argv 목록의 목록이어야 합니다")
+    return bad
+
+
+def maintainer_id(cfg: dict) -> str | None:
+    """The configured Maintainer producer ID (None: not configured). Call only on a config that passed config_problem."""
+    return cfg.get("maintainer")
+
+
+def maintainer_problem(cfg: dict) -> str | None:
+    """Why the configured Maintainer must not run (None = it may). Its producer entry must be a valid one."""
+    m = maintainer_id(cfg)
+    if m is None:
+        return "maintainer가 설정되지 않았습니다"
+    return registry_problems(cfg).get(m)
 
 
 def reload_problem(old: dict, new: dict, in_use: set[str]) -> str | None:

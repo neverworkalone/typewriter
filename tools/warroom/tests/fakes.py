@@ -7,7 +7,7 @@ from pathlib import Path
 from warroom import control
 from warroom.adapters import AgentAdapter, Handle, OpenCodeAdapter
 from warroom.config import DEFAULTS, Paths
-from warroom.gitops import CleanupBlocked, GitError
+from warroom.gitops import CleanupBlocked, GitError, IntegrationBlocked
 from warroom.shell import Result
 from warroom.store import Store
 from warroom.supervisor import Supervisor
@@ -89,6 +89,9 @@ class FakeGit:
         self.gitdir_error = ""
         self.reg: dict[str, str] = {}
         self.remote: dict[str, str | Exception | None] = {}   # branch -> origin SHA, None (absent) or an error to raise
+        self.integrated: list[tuple[str, str]] = []           # (worktree, sha) of every shared fix merged in
+        self.integrate_error: Exception | None = None         # raised by integrate (IntegrationBlocked / GitError)
+        self.changed: dict[str, list[str]] = {}               # merge sha -> files the merged PR changed
 
     def fetch_base(self, base):
         return "m" * 40
@@ -118,6 +121,19 @@ class FakeGit:
             raise v
         return v
 
+    def integrate(self, path, branch, base, sha):
+        if self.integrate_error:
+            raise self.integrate_error
+        if (str(path), sha) not in self.integrated:
+            self.integrated.append((str(path), sha))
+        return self.local_head
+
+    def contains(self, path, sha):
+        return (str(path), sha) in self.integrated
+
+    def changed_files(self, sha):
+        return self.changed.get(sha, ["README.md"])   # default: a documentation-only fix
+
     def remove_owned(self, path, branch, pr_head):
         if self.block:
             raise CleanupBlocked(self.block)
@@ -139,6 +155,11 @@ class FakeGh:
         self.branch_queries = 0
         self.reviews_, self.inline_, self.issue_ = [], [], []
         self.commit_ts = 0.0
+        self.issues: dict[int, dict] = {}        # urgent Issues: number -> {state, labels, title, body}
+        self.issue_comments_: dict[int, list] = {}
+        self.created: list[int] = []
+        self.fail_create = self.fail_list = False
+        self.fail_pull = False
 
     def open_prs(self):
         return self.open
@@ -150,7 +171,31 @@ class FakeGh:
         return self.by_branch.get(branch, [])
 
     def pull(self, n):
+        if self.fail_pull:
+            raise RuntimeError("pull failed")
         return self.prs[n]
+
+    # ---- Issues (Issue #1555) ----
+    def urgent_issues(self):
+        if self.fail_list:
+            raise RuntimeError("issue list failed")
+        return [{"number": n, "state": i["state"], "title": i["title"], "body": i["body"]}
+                for n, i in sorted(self.issues.items()) if "urgent" in i["labels"]]
+
+    def create_issue(self, title, body, labels):
+        if self.fail_create:
+            raise RuntimeError("issue create failed")
+        n = 100 + len(self.issues) + 1
+        self.issues[n] = {"state": "open", "labels": list(labels), "title": title, "body": body}
+        self.created.append(n)
+        return n
+
+    def issue(self, n):
+        i = self.issues[n]
+        return {"number": n, "state": i["state"], "labels": i["labels"], "pull_request": False, "body": i["body"]}
+
+    def comment_issue(self, n, body):
+        self.issue_comments_.setdefault(n, []).append({"body": body})
 
     def pull_files(self, n):
         files = self.files.get(n, [])
@@ -160,7 +205,7 @@ class FakeGh:
 
     def reviews(self, n): return self.reviews_
     def inline_comments(self, n): return self.inline_
-    def issue_comments(self, n): return self.issue_
+    def issue_comments(self, n): return self.issue_comments_.get(n, self.issue_)
     def commit_time(self, sha): return self.commit_ts
 
 
@@ -193,9 +238,9 @@ class World:
         self.runner.ok_auth(self.cfg["expected_account"])
         self.runner.set_batches(canon={1: 1000}, done={})
 
-    def pr_info(self, n=7, head=HEAD1, state="open", merged=False, head_ref="x"):
+    def pr_info(self, n=7, head=HEAD1, state="open", merged=False, head_ref="x", merge_sha=""):
         self.gh.prs[n] = {"number": n, "state": state, "merged": merged, "head_sha": head,
-                          "head_ref": head_ref, "url": ""}
+                          "head_ref": head_ref, "url": "", "merge_commit_sha": merge_sha}
 
     def tick(self, n=1):
         for _ in range(n):

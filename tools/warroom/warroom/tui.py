@@ -7,6 +7,7 @@ import sys
 
 from textual.actions import SkipAction
 from textual.app import App, ComposeResult
+from rich.text import Text
 from textual.binding import Binding
 from textual.containers import Horizontal, HorizontalScroll, Vertical
 from textual.screen import ModalScreen, Screen
@@ -407,6 +408,7 @@ class WarRoom(App):
     """
     BINDINGS = [("q", "quit", "Quit"), ("s", "settings", "Settings"),
                 ("r", "reload_config", "설정 리로드"), ("f", "toggle_tier", "Free/Go 전환"),
+                ("m", "retry_maintainer", "Maintainer Retry"),
                 ("left", "control_move(-1)", ""), ("right", "control_move(1)", ""),
                 Binding("tab", "switch_region", "", priority=True),
                 Binding("shift+tab", "switch_region", "", show=False, priority=True)]
@@ -477,6 +479,13 @@ class WarRoom(App):
             return self.notify("Supervisor가 실행 중이 아닙니다. 시작 시 설정을 읽으므로 ./war 를 다시 실행하세요.", severity="warning")
         self._reload_token = control.request_reload(self.store)
         self.notify("설정 리로드를 요청했습니다.")
+
+    def action_retry_maintainer(self) -> None:
+        """m: retry the hidden Maintainer when it is PAUSED/ERROR (it has no card on the Board)."""
+        if self.screen is not self.screen_stack[0]:
+            return
+        if not control.retry_maintainer(self.store):
+            self.notify("재시도할 Maintainer 작업(PAUSED/ERROR)이 없습니다.", severity="warning")
 
     def _poll_reload(self) -> None:
         res = control.reload_result(self.store)
@@ -608,8 +617,11 @@ class WarRoom(App):
                 card.set_classes("card " + (st["state"] if st["batch"] else "empty"))
         root.query_one("#board-footer", Static).update(tier_footer(control.tier_state(store, self.cfg, self.methods)))
         draining = [f"{s['model']}/{s['method'].upper()}" for s in statuses.values() if s["drain_once"]]
-        root.query_one("#drain-note", Static).update("DRAIN ALL: 현재 배치 후 종료 — " + ", ".join(draining) if draining else "")
-        root.query_one("#drain-note", Static).display = bool(draining)
+        # The yellow area stays ONE line: the urgent Issue (Issue #1555) first, then the Drain note when both exist.
+        yellow = [x for x in (control.urgent_line(store, self.cfg),
+                              "DRAIN ALL: 현재 배치 후 종료 — " + ", ".join(draining) if draining else "") if x]
+        root.query_one("#drain-note", Static).update(Text(" │ ".join(yellow)))   # Text: hold reasons may hold [brackets], never markup
+        root.query_one("#drain-note", Static).display = bool(yellow)
         root.query_one("#stop-all", Button).disabled = not control.can_stop_all(
             store, [(m, me) for m in self._lines() for me in self.methods])
         # Only auth/model problems surface on the board.
