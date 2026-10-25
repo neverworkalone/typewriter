@@ -17,7 +17,7 @@ import time
 import traceback
 from pathlib import Path
 
-from . import auth, batches, control, defects, prompts, reviews, stage2
+from . import auth, batches, control, defects, progress, prompts, reviews, stage2
 from .adapters import PREFLIGHT_PENDING, RunSpec, classify_failure
 from .config import (TIERED_ADAPTERS, adapter_label, config_problem, load_config, registry, registry_problems,
                      reload_problem, run_spec, stage2_problem)
@@ -803,15 +803,21 @@ class Supervisor:
         return True
 
     def _record_progress(self, b) -> None:
+        """Observed progress of the current worktree only: the final file's records, else saved chunks/senses."""
         f = Path(b["worktree"]) / "data/relation-candidates" / b["shard"] / \
             f"{b['shard']}_{b['batch']}_{b['method']}_{b['producer']}.jsonl"
         try:
             with open(f, "rb") as fh:
                 n = sum(1 for _ in fh)
+            obs, fields = None, {"records_done": n}
         except OSError:
-            return
-        if n != b["records_done"]:
-            self.store.update(b["id"], records_done=n)
+            obs = progress.observe(b["worktree"], b["shard"], b["batch"], b["method"], b["producer"])
+            fields = {"records_done": None}   # the final file is not there (any more): a past count is not evidence
+        fields.update(progress_kind=obs[0] if obs else None, progress_done=obs[1] if obs else None,
+                      progress_total=obs[2] if obs else None)
+        changed = {k: v for k, v in fields.items() if v != b[k]}
+        if changed:
+            self.store.update(b["id"], **changed)
 
     def _run_ok(self, b) -> None:
         try:

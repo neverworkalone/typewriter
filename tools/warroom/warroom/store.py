@@ -88,7 +88,8 @@ CREATE TABLE IF NOT EXISTS maintenance (
 );
 """
 # Additive migration (user_version 7, Issue #1684): `lines.shard_pin` is the shard a Single-mode Stage 2 run is bound to.
-SCHEMA_VERSION = 7
+# Additive migration (user_version 8, Issue #1809): the observed unit of intermediate progress (chunks/senses).
+SCHEMA_VERSION = 8
 
 MAINTENANCE_METHOD = "m"   # the hidden Maintainer's execution record lives in `batches` under this method
 STAGE2_METHOD = "s2"       # Stage 2 Relation Admission: ONE Part at a time across all models, not a Stage 1 queue method
@@ -182,6 +183,9 @@ class Store:
             c.execute("ALTER TABLE batches ADD COLUMN defect_id INTEGER")
         if "shard_pin" not in {r["name"] for r in c.execute("PRAGMA table_info(lines)")}:
             c.execute("ALTER TABLE lines ADD COLUMN shard_pin TEXT NOT NULL DEFAULT ''")
+        for col in ("progress_kind TEXT", "progress_done INTEGER", "progress_total INTEGER"):
+            if col.split()[0] not in have:
+                c.execute(f"ALTER TABLE batches ADD COLUMN {col}")
         c.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
 
     @contextmanager

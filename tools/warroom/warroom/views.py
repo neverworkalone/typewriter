@@ -108,6 +108,13 @@ def progress_bar(done: int, total: int, width: int = CARD_W) -> str:
     return "█" * n + "░" * (width - n)
 
 
+def progress_of(st: dict) -> tuple:
+    """(done, total, unit) of the observed progress: saved chunks/senses while producing, else the final file's records."""
+    if st.get("progress_kind") and st.get("progress_done") is not None and st.get("progress_total"):
+        return st["progress_done"], st["progress_total"], st["progress_kind"]
+    return st.get("records_done"), st.get("records_total"), "records"
+
+
 def card_text(st: dict) -> str:
     """Card = Line summary in a fixed 4-line layout (title / records / bar / PR + elapsed).
 
@@ -125,10 +132,10 @@ def card_text(st: dict) -> str:
         ops = _two_sided(f"PR #{st['pr']}" if st["pr"] else "PR 생성 전",
                          f"경과 {fmt_elapsed(st['elapsed'])}" if st.get("elapsed") is not None else "")
         return "\n".join([title, _fit(f"Shard {s2['shard']} · Batch {s2['batch']} · Part {s2['part']}"), "", ops])
-    done, total = st.get("records_done"), st.get("records_total")
+    done, total, unit = progress_of(st)
     observed = done is not None and bool(total)
     if observed:
-        records = _two_sided(f"{done} / {total} records", f"{done / total * 100:.1f}%")
+        records = _two_sided(f"{done} / {total} {unit}", f"{done / total * 100:.1f}%")
         bar = progress_bar(done, total)
     else:
         records, bar = "진행량 확인 중", ""

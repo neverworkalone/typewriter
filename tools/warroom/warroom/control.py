@@ -129,7 +129,8 @@ def line_status(store: Store, model: str, method: str) -> dict:
            "mode": ln["mode"], "run": bool(ln["run"]), "line_drain": bool(ln["drain"]),
            "drain_once": bool(ln["drain_once"]), "blocked": ln["blocked"] or "", "tier": ln["model_tier"],
            "batch_id": None, "activity": None, "occupied": False, "updated": None, "records_total": None,
-           "records_done": None, "elapsed": None, "stage2": None, "wait": ""}
+           "records_done": None, "progress_kind": None, "progress_done": None, "progress_total": None,
+           "elapsed": None, "stage2": None, "wait": ""}
     if method == STAGE2_METHOD:
         out["wait"] = store.get(f"s2_wait_{model}") or ""
     out["drain"] = out["line_drain"] or out["drain_once"]
@@ -138,11 +139,15 @@ def line_status(store: Store, model: str, method: str) -> dict:
                    pr=b["pr_number"], head=b["head_sha"], session=b["session_id"],
                    error=b["error"], worktree=b["worktree"], batch_id=b["id"], updated=b["updated_at"],
                    records_total=b["records_total"], records_done=b["records_done"],
+                   progress_kind=b["progress_kind"], progress_done=b["progress_done"],
+                   progress_total=b["progress_total"],
                    occupied=True)
         if method == STAGE2_METHOD:   # the Part's identity replaces the record counters
             batch, part = stage2.split_key(b["batch"])
             out["stage2"] = {"shard": b["shard"], "batch": batch, "part": part}
-        if b["records_done"] is not None and b["records_total"]:
+        if b["progress_kind"] and b["progress_done"] is not None and b["progress_total"]:
+            out["progress"] = f"{b['progress_done']}/{b['progress_total']} {b['progress_kind']}"
+        elif b["records_done"] is not None and b["records_total"]:
             out["progress"] = f"{b['records_done']}/{b['records_total']}"  # recorded only
         runs = store.runs(b["id"])
         if runs:   # real execution time: the sum of recorded runs, an unfinished one counted up to now
