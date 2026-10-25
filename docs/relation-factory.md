@@ -59,7 +59,7 @@ data/relation-candidates/
 
 ### A/B batch workbench
 
-A and B producers must use [`scripts/relation/candidate-workbench.mjs`](../scripts/relation/candidate-workbench.mjs) for Canonical chunk reads, explicit-ID Candidate saves, local correction, exploration/review progress receipts, and final Candidate v1 validation. It does not perform semantic discovery or judgment: A follows #860's two independent meaning explorations, and B follows its separate two-scene procedure. Use the [A/B Candidate workbench manual](relation-candidate-workbench.md) for the method-specific CLI workflow and page/continuation rules. C/D production remains on their method-specific tools.
+A and B producers must use [`scripts/relation/candidate-workbench.mjs`](../scripts/relation/candidate-workbench.mjs) for Canonical chunk reads, whole-chunk Candidate saves, local correction, and the final Candidate v1 validation. It keeps no exploration/review receipts and does not perform semantic discovery or judgment: A follows #860's two independent meaning explorations, and B follows its separate two-scene procedure. Use the [A/B Candidate workbench manual](relation-candidate-workbench.md) for the shortest CLI path. C/D production remains on their method-specific tools.
 
 ### A/B/C/D 공통 후보 표현 단위 — Stage 1 필수 생산 계약
 

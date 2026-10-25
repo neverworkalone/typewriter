@@ -5,39 +5,25 @@ import path from 'node:path';
 import test from 'node:test';
 
 import {
-  exportPendingCandidateReviews,
-  exportPendingCandidateExploration,
   createCandidateWorkbenchStdoutWriter,
   inspectCanonicalRecord,
-  MAX_CANDIDATE_WORKBENCH_STDOUT_BYTES,
-  MAX_CANDIDATE_WORKBENCH_STDOUT_CHARS,
-  markCandidateSensesExplored,
-  markCandidateReviews,
   mergeCandidateBatch,
-  paginateCandidateWorkbenchItems,
+  patchCandidateSenses,
   prepareCandidateBatch,
   readCandidateChunkPage,
-  readPendingCandidateExplorationPage,
-  readPendingCandidateReviewPage,
-  removeCandidate,
+  readCandidateStatus,
   saveCandidateChunk,
   serializeWorkbenchOutput,
-  updateCandidateSense,
 } from './candidate-workbench.mjs';
 
 async function setup(t, method = 'b') {
   const repositoryDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-candidate-workbench-'));
   t.after(() => rm(repositoryDirectory, { recursive: true, force: true }));
-  const canonicalDirectory = path.join(repositoryDirectory, 'data/canonical');
   const scratchDirectory = path.join(repositoryDirectory, `.warroom-scratch/001_01_${method}_codex`);
-  await mkdir(canonicalDirectory, { recursive: true });
-  const canonicalPath = path.join(canonicalDirectory, 'stdict-0001.jsonl');
+  await mkdir(path.join(repositoryDirectory, 'data/canonical'), { recursive: true });
   const canonicalRows = Array.from({ length: 500 }, (_, index) => ({
     id: `w${String(index + 1).padStart(3, '0')}`,
-    record_type: 'entry',
-    role: 'start',
     lemma: `표제어 ${index + 1}`,
-    search_forms: [`표제어 ${index + 1}`],
     senses: index === 0
       ? [
           { id: 'w001-s1', pos: 'noun', gloss: '첫 번째 뜻.' },
@@ -46,820 +32,220 @@ async function setup(t, method = 'b') {
       : [{ id: `w${String(index + 1).padStart(3, '0')}-s1`, pos: 'noun', gloss: `뜻 ${index + 1}.` }],
     source: 'stdict',
   }));
-  const writeCanonical = async () => writeFile(canonicalPath, `${canonicalRows.map((row) => JSON.stringify(row)).join('\n')}\n`);
-  await writeCanonical();
-  return { repositoryDirectory, scratchDirectory, canonicalPath, canonicalRows, writeCanonical };
+  await writeFile(path.join(repositoryDirectory, 'data/canonical/stdict-0001.jsonl'), `${canonicalRows.map((row) => JSON.stringify(row)).join('\n')}\n`);
+  return { repositoryDirectory, scratchDirectory, canonicalRows, method };
 }
 
-async function prepare(context, chunkSize = 25, method = 'b') {
-  return prepareCandidateBatch({
-    shard: '001',
-    batch: '01',
-    method,
-    model: 'codex',
-    scratchDirectory: context.scratchDirectory,
-    chunkSize,
-    repositoryDirectory: context.repositoryDirectory,
-  });
-}
+const prepare = (context, chunkSize = 25) => prepareCandidateBatch({
+  shard: '001', batch: '01', method: context.method, model: 'codex',
+  scratchDirectory: context.scratchDirectory, chunkSize, repositoryDirectory: context.repositoryDirectory,
+});
 
-function candidateRows(sourceRows, candidatesBySense = {}) {
-  return sourceRows.map((record) => ({
+function rowsFor(canonicalRows, start, end, bySense = {}) {
+  return canonicalRows.slice(start, end).map((record) => ({
     record_id: record.id,
-    senses: record.senses.map((sense) => ({
-      sense_id: sense.id,
-      candidates: candidatesBySense[sense.id] ?? [],
-    })),
+    senses: record.senses.map((sense) => ({ sense_id: sense.id, candidates: bySense[sense.id] ?? [] })),
   }));
 }
 
-async function saveInput(context, rows, name = 'chunk-result.jsonl') {
+async function writeInput(context, rows, name) {
   const inputPath = path.join(context.scratchDirectory, name);
   await mkdir(context.scratchDirectory, { recursive: true });
   await writeFile(inputPath, `${rows.map((row) => JSON.stringify(row)).join('\n')}\n`);
   return inputPath;
 }
 
-async function markAllPending(context, status, name = 'review-receipts.jsonl') {
-  const outPath = path.join(context.scratchDirectory, 'review-pending.jsonl');
-  await exportPendingCandidateReviews({
-    scratchDirectory: context.scratchDirectory,
-    outPath,
-    replace: true,
-    repositoryDirectory: context.repositoryDirectory,
-  });
-  const exported = (await readFile(outPath, 'utf8')).trim().split('\n').filter(Boolean).map((line) => JSON.parse(line));
-  const receipts = exported.flatMap((row) => row.review.map((sense) => ({
-    record_id: row.canonical_record.id,
-    sense_id: sense.sense_id,
-    reviewed_candidates: sense.candidates,
-  })));
-  const inputPath = await saveInput(context, receipts, name);
-  const result = await markCandidateReviews({ scratchDirectory: context.scratchDirectory, inputPath, repositoryDirectory: context.repositoryDirectory });
-  assert.equal(result.status.reviewedCount, status.candidateCount);
-  assert.equal(result.status.pendingReviewCount, 0);
-  return result.status;
+async function saveChunk(context, number, bySense = {}) {
+  const start = (number - 1) * 25;
+  const inputPath = await writeInput(context, rowsFor(context.canonicalRows, start, start + 25, bySense), `in-${number}.jsonl`);
+  return saveCandidateChunk({ scratchDirectory: context.scratchDirectory, chunk: number, inputPath, repositoryDirectory: context.repositoryDirectory });
 }
 
-async function saveEmptyChunks(context, prepared, completedChunkNumbers = []) {
-  const completed = new Set(completedChunkNumbers);
-  let status;
-  for (const chunk of prepared.chunks) {
-    if (completed.has(chunk.number)) continue;
-    const sourcePath = path.join(prepared.chunkDirectory, chunk.file);
-    const sourceRows = (await readFile(sourcePath, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
-    const inputPath = await saveInput(context, candidateRows(sourceRows), `empty-chunk-${chunk.number}.jsonl`);
-    const saved = await saveCandidateChunk({
+const saveAll = async (context, bySenseByChunk = {}) => {
+  for (let number = 1; number <= 20; number += 1) await saveChunk(context, number, bySenseByChunk[number]);
+};
+
+const readLines = async (file) => (await readFile(file, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
+
+for (const method of ['a', 'b']) {
+  test(`${method.toUpperCase()}: prepare, save, local patch and merge need no receipts`, async (t) => {
+    const context = await setup(t, method);
+    const prepared = await prepare(context);
+    assert.equal(prepared.recordCount, 500);
+    assert.equal(prepared.senseCount, 501);
+    assert.equal(prepared.chunks.length, 20);
+    assert.ok(prepared.chunks.every((chunk) => chunk.saved === false));
+
+    await saveAll(context, { 1: { 'w001-s1': ['별빛', '은하수'], 'w002-s1': ['산들바람'] } });
+    await patchCandidateSenses({
       scratchDirectory: context.scratchDirectory,
-      chunk: chunk.number,
-      inputPath,
+      inputPath: await writeInput(context, [
+        { record_id: 'w001', sense_id: 'w001-s1', remove: ['은하수'], add: ['달무리'] },
+        { record_id: 'w002', sense_id: 'w002-s1', add: ['소슬바람'] },
+      ], 'patch.jsonl'),
       repositoryDirectory: context.repositoryDirectory,
     });
-    status = saved.status;
-  }
-  return status;
+
+    const outPath = path.join(context.scratchDirectory, 'merged.jsonl');
+    const merged = await mergeCandidateBatch({ scratchDirectory: context.scratchDirectory, outPath, repositoryDirectory: context.repositoryDirectory });
+    assert.deepEqual(merged.validation, { recordCount: 500, senseCount: 501, candidateCount: 4, emptySenseCount: 499 });
+    const output = await readLines(outPath);
+    assert.deepEqual(output.slice(0, 2).map((row) => row.record_id), ['w001', 'w002']);
+    assert.deepEqual(output[0].senses[0].candidates, ['별빛', '달무리']);
+    assert.deepEqual(output[0].senses[1].candidates, []);
+    assert.deepEqual(output[1].senses[0].candidates, ['산들바람', '소슬바람']);
+  });
 }
 
-async function completeEmptyChunks(context, prepared, completedChunkNumbers = []) {
-  await saveEmptyChunks(context, prepared, completedChunkNumbers);
-  const explored = [];
-  for (const chunk of prepared.chunks) {
-    const sourcePath = path.join(prepared.chunkDirectory, chunk.file);
-    const sourceRows = (await readFile(sourcePath, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
-    explored.push(...sourceRows.flatMap((record) => record.senses.map((sense) => ({ record_id: record.id, sense_id: sense.id }))));
-  }
-  const inputPath = await saveInput(context, explored, 'explored-senses.jsonl');
-  await markCandidateSensesExplored({ scratchDirectory: context.scratchDirectory, inputPath, repositoryDirectory: context.repositoryDirectory });
-}
-
-test('prepare preserves full Canonical rows and creates bounded chunks with explicit IDs', async (t) => {
+test('read-chunk shows each record once with all senses and its saved candidates', async (t) => {
   const context = await setup(t);
-  const prepared = await prepare(context, 25);
-  assert.equal(prepared.status.recordCount, 500);
-  assert.equal(prepared.status.senseCount, 501);
-  assert.equal(prepared.status.chunkCount, 20);
-  assert.equal(prepared.status.incompleteSenseCount, 501);
-  assert.equal(prepared.status.incompleteChunkCount, 20);
-  assert.equal(prepared.chunks[0].firstRecord, 1);
-  assert.equal(prepared.chunks[0].lastRecord, 25);
-  assert.equal(prepared.chunks[0].recordCount, 25);
-  assert.equal(prepared.chunks[0].senseCount, 26);
+  await prepare(context);
+  const before = await readCandidateChunkPage({ scratchDirectory: context.scratchDirectory, chunk: 1, repositoryDirectory: context.repositoryDirectory });
+  assert.equal(before.total, 25);
+  assert.equal(before.saved, false);
+  assert.deepEqual(before.items[0].canonical_record.senses, context.canonicalRows[0].senses);
 
-  const chunkPath = path.join(prepared.chunkDirectory, prepared.chunks[0].file);
-  const savedSourceRows = (await readFile(chunkPath, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
-  assert.deepEqual(savedSourceRows, context.canonicalRows.slice(0, 25));
-  assert.equal(savedSourceRows[0].senses[1].semantic_note, '전체 원문 필드 보존');
-  assert.equal(savedSourceRows[0].source, 'stdict');
-
-  const resumed = await prepare(context, 25);
-  assert.equal(resumed.sourceChanged, false);
-  assert.equal(resumed.status.candidateCount, 0);
-  await assert.rejects(
-    mergeCandidateBatch({ scratchDirectory: context.scratchDirectory, outPath: path.join(context.scratchDirectory, 'incomplete.jsonl'), repositoryDirectory: context.repositoryDirectory }),
-    /candidate output is not saved for chunk\(s\) 001/u,
-  );
-  await assert.rejects(prepare(context, 24), /checkpoint uses 25-record chunks/u);
-  const invalidSizeContext = await setup(t);
-  await assert.rejects(prepare(invalidSizeContext, 24), /chunk-size must be an integer from 25 to 50/u);
+  await saveChunk(context, 1, { 'w001-s2': ['밤하늘'] });
+  const after = await readCandidateChunkPage({ scratchDirectory: context.scratchDirectory, chunk: 1, limit: 1, repositoryDirectory: context.repositoryDirectory });
+  assert.equal(after.saved, true);
+  assert.equal(after.next_offset, 1);
+  assert.deepEqual(after.items[0].canonical_record.senses.map((sense) => sense.candidates), [[], ['밤하늘']]);
+  assert.equal(after.items[0].canonical_record.senses[1].semantic_note, '전체 원문 필드 보존');
 });
 
-test('Candidate workbench accepts A and B while rejecting corpus-specific methods', async (t) => {
+test('an oversized record is split by sense without losing any sense, and caps stay hard', async (t) => {
   const context = await setup(t);
-  for (const method of ['c', 'd']) {
-    await assert.rejects(
-      prepareCandidateBatch({
-        shard: '001', batch: '01', method, model: 'codex',
-        scratchDirectory: context.scratchDirectory,
-        repositoryDirectory: context.repositoryDirectory,
-      }),
-      /Candidate workbench supports method a or b only/u,
-    );
+  context.canonicalRows[0].senses = Array.from({ length: 12 }, (_, index) => ({ id: `w001-s${index + 1}`, pos: 'noun', gloss: '길다. '.repeat(400) }));
+  await writeFile(path.join(context.repositoryDirectory, 'data/canonical/stdict-0001.jsonl'), `${context.canonicalRows.map((row) => JSON.stringify(row)).join('\n')}\n`);
+  await prepare(context);
+  const ids = [];
+  for (let offset = 0, more = true; more;) {
+    const page = await readCandidateChunkPage({ scratchDirectory: context.scratchDirectory, chunk: 1, offset, repositoryDirectory: context.repositoryDirectory });
+    ids.push(...page.items.filter((item) => item.record_id === 'w001').flatMap((item) => item.canonical_record.senses.map((sense) => sense.id)));
+    more = page.has_more;
+    offset = page.next_offset;
   }
-  const aContext = await setup(t, 'a');
-  const prepared = await prepare(aContext, 25, 'a');
-  assert.equal(prepared.status.incompletePrimarySenseCount, 501);
-  assert.equal(prepared.status.incompleteSecondarySenseCount, 501);
+  assert.deepEqual(ids, context.canonicalRows[0].senses.map((sense) => sense.id));
+  assert.throws(() => serializeWorkbenchOutput({ text: 'x'.repeat(40000) }), /safety cap exceeded/u);
+  const write = createCandidateWorkbenchStdoutWriter({ maxBytes: 100, maxChars: 100, write() {} });
+  write({ a: 1 });
+  assert.throws(() => write({ b: 'y'.repeat(100) }), /safety cap exceeded/u);
 });
 
-test('A workbench records primary and independent secondary exploration separately', async (t) => {
-  const context = await setup(t, 'a');
-  const prepared = await prepare(context, 25, 'a');
-  await saveEmptyChunks(context, prepared);
-
-  const firstChunk = (await readFile(path.join(prepared.chunkDirectory, prepared.chunks[0].file), 'utf8'))
-    .trim().split('\n').map((line) => JSON.parse(line));
-  const firstSense = [{ record_id: firstChunk[0].id, sense_id: firstChunk[0].senses[0].id }];
-  const prematureSecondary = await saveInput(context, firstSense, 'premature-secondary.jsonl');
-  await assert.rejects(
-    markCandidateSensesExplored({
-      scratchDirectory: context.scratchDirectory,
-      inputPath: prematureSecondary,
-      pass: 'secondary',
-      repositoryDirectory: context.repositoryDirectory,
-    }),
-    /cannot mark the A secondary pass before the current source sense has a primary pass/u,
-  );
-
-  const allSenses = [];
-  for (const chunk of prepared.chunks) {
-    const rows = (await readFile(path.join(prepared.chunkDirectory, chunk.file), 'utf8'))
-      .trim().split('\n').map((line) => JSON.parse(line));
-    allSenses.push(...rows.flatMap((record) => record.senses.map((sense) => ({ record_id: record.id, sense_id: sense.id }))));
-  }
-  const primaryPath = await saveInput(context, allSenses, 'primary-explored.jsonl');
-  const primary = await markCandidateSensesExplored({
-    scratchDirectory: context.scratchDirectory,
-    inputPath: primaryPath,
-    pass: 'primary',
-    repositoryDirectory: context.repositoryDirectory,
-  });
-  assert.equal(primary.status.primaryExploredSenseCount, 501);
-  assert.equal(primary.status.secondaryExploredSenseCount, 0);
-  assert.equal(primary.status.incompleteSecondarySenseCount, 501);
-
-  const pendingSecondary = await readPendingCandidateExplorationPage({
-    scratchDirectory: context.scratchDirectory,
-    limit: 25,
-    repositoryDirectory: context.repositoryDirectory,
-  });
-  assert.equal(pendingSecondary.total, 501);
-  assert.equal(pendingSecondary.returned, 25);
-  assert.equal(pendingSecondary.items[0].pass, 'secondary');
-  assert.equal(pendingSecondary.items[0].canonical_record.senses[0].id, 'w001-s1');
-  assert.equal(pendingSecondary.has_more, true);
-  assert.ok(pendingSecondary.next_cursor);
-  const seenSecondary = new Set();
-  let secondaryPage = pendingSecondary;
-  let secondaryPageIndex = 0;
-  while (true) {
-    for (const item of secondaryPage.items) {
-      const key = `${item.record_id}/${item.sense_id}`;
-      assert.equal(seenSecondary.has(key), false);
-      seenSecondary.add(key);
-    }
-    const secondaryReceiptPath = await saveInput(context, secondaryPage.items.map(({ record_id, sense_id }) => ({ record_id, sense_id })), `secondary-page-${secondaryPageIndex}.jsonl`);
-    await markCandidateSensesExplored({
-      scratchDirectory: context.scratchDirectory,
-      inputPath: secondaryReceiptPath,
-      pass: 'secondary',
-      repositoryDirectory: context.repositoryDirectory,
-    });
-    if (secondaryPageIndex === 0) {
-      const beforeSecondaryMerge = path.join(context.scratchDirectory, 'before-secondary.jsonl');
-      await assert.rejects(
-        mergeCandidateBatch({ scratchDirectory: context.scratchDirectory, outPath: beforeSecondaryMerge, repositoryDirectory: context.repositoryDirectory }),
-        /complete A's independent primary and secondary exploration/u,
-      );
-    }
-    if (!secondaryPage.has_more) break;
-    secondaryPage = await readPendingCandidateExplorationPage({
-      scratchDirectory: context.scratchDirectory,
-      after: secondaryPage.next_cursor,
-      limit: 25,
-      repositoryDirectory: context.repositoryDirectory,
-    });
-    secondaryPageIndex += 1;
-  }
-  assert.equal(seenSecondary.size, 501);
-  assert.equal(secondaryPage.has_more, false);
-  assert.equal(secondaryPage.next_cursor, null);
-  const noSecondaryPending = await readPendingCandidateExplorationPage({
-    scratchDirectory: context.scratchDirectory,
-    repositoryDirectory: context.repositoryDirectory,
-  });
-  assert.equal(noSecondaryPending.total, 0);
-  assert.equal(noSecondaryPending.has_more, false);
-
-  const secondaryPath = await saveInput(context, allSenses, 'secondary-explored.jsonl');
-  const secondary = await markCandidateSensesExplored({
-    scratchDirectory: context.scratchDirectory,
-    inputPath: secondaryPath,
-    pass: 'secondary',
-    repositoryDirectory: context.repositoryDirectory,
-  });
-  assert.equal(secondary.status.incompletePrimarySenseCount, 0);
-  assert.equal(secondary.status.incompleteSecondarySenseCount, 0);
-  assert.equal(secondary.status.incompleteSenseCount, 0);
-  assert.equal(secondary.status.exploredSenseCount, 501);
-
-  const merged = await mergeCandidateBatch({
-    scratchDirectory: context.scratchDirectory,
-    outPath: path.join(context.scratchDirectory, 'complete-a-candidates.jsonl'),
-    repositoryDirectory: context.repositoryDirectory,
-  });
-  assert.equal(merged.validation.recordCount, 500);
-  assert.equal(merged.validation.senseCount, 501);
-  assert.equal(merged.validation.candidateCount, 0);
-});
-
-test('A source edits stale both pass receipts and require primary before renewed secondary exploration', async (t) => {
-  const context = await setup(t, 'a');
-  await prepare(context, 25, 'a');
-  const inputPath = await saveInput(context, [{ record_id: 'w001', sense_id: 'w001-s1' }], 'one-sense.jsonl');
-  await markCandidateSensesExplored({
-    scratchDirectory: context.scratchDirectory,
-    inputPath,
-    pass: 'primary',
-    repositoryDirectory: context.repositoryDirectory,
-  });
-  await markCandidateSensesExplored({
-    scratchDirectory: context.scratchDirectory,
-    inputPath,
-    pass: 'secondary',
-    repositoryDirectory: context.repositoryDirectory,
-  });
-
-  context.canonicalRows[0].senses[0].gloss = '갱신된 첫 번째 뜻.';
-  await context.writeCanonical();
-  const refreshed = await prepare(context, 25, 'a');
-  assert.equal(refreshed.sourceChanged, true);
-  assert.equal(refreshed.status.incompletePrimarySenseCount, 501);
-  assert.equal(refreshed.status.stalePrimarySenseCount, 1);
-  assert.equal(refreshed.status.incompleteSecondarySenseCount, 501);
-  assert.equal(refreshed.status.staleSecondarySenseCount, 1);
-
-  await assert.rejects(
-    markCandidateSensesExplored({
-      scratchDirectory: context.scratchDirectory,
-      inputPath,
-      pass: 'secondary',
-      repositoryDirectory: context.repositoryDirectory,
-    }),
-    /cannot mark the A secondary pass before the current source sense has a primary pass/u,
-  );
-  await markCandidateSensesExplored({
-    scratchDirectory: context.scratchDirectory,
-    inputPath,
-    pass: 'primary',
-    repositoryDirectory: context.repositoryDirectory,
-  });
-  const rechecked = await markCandidateSensesExplored({
-    scratchDirectory: context.scratchDirectory,
-    inputPath,
-    pass: 'secondary',
-    repositoryDirectory: context.repositoryDirectory,
-  });
-  assert.equal(rechecked.status.stalePrimarySenseCount, 0);
-  assert.equal(rechecked.status.staleSecondarySenseCount, 0);
-});
-
-test('paged source and review reads preserve every item while enforcing row and byte caps', async (t) => {
+test('save-chunk rejects wrong IDs and bad candidates without touching saved data', async (t) => {
   const context = await setup(t);
-  const prepared = await prepare(context, 25);
-  const sourcePage = await readCandidateChunkPage({
-    scratchDirectory: context.scratchDirectory,
-    chunk: 1,
-    limit: 1,
-    repositoryDirectory: context.repositoryDirectory,
-  });
-  assert.equal(sourcePage.total, 26);
-  assert.equal(sourcePage.returned, 1);
-  assert.equal(sourcePage.truncated, true);
-  assert.equal(sourcePage.next_offset, 1);
-  assert.equal(sourcePage.items[0].canonical_record.lemma, '표제어 1');
-  assert.deepEqual(sourcePage.items[0].canonical_record.senses, [context.canonicalRows[0].senses[0]]);
-  const nextSourcePage = await readCandidateChunkPage({
-    scratchDirectory: context.scratchDirectory,
-    chunk: 1,
-    offset: sourcePage.next_offset,
-    limit: 1,
-    repositoryDirectory: context.repositoryDirectory,
-  });
-  assert.equal(nextSourcePage.items[0].sense_id, 'w001-s2');
-  assert.equal(nextSourcePage.items[0].canonical_record.senses[0].semantic_note, '전체 원문 필드 보존');
-
-  const sourceRows = (await readFile(path.join(prepared.chunkDirectory, prepared.chunks[0].file), 'utf8'))
-    .trim().split('\n').map((line) => JSON.parse(line));
-  const inputPath = await saveInput(context, candidateRows(sourceRows, {
-    'w001-s1': ['별빛', '은하수'],
-    'w001-s2': ['밤하늘'],
-  }), 'paged-candidates.jsonl');
-  await saveCandidateChunk({
-    scratchDirectory: context.scratchDirectory,
-    chunk: 1,
-    inputPath,
-    repositoryDirectory: context.repositoryDirectory,
-  });
-  const reviewPage = await readPendingCandidateReviewPage({
-    scratchDirectory: context.scratchDirectory,
-    limit: 1,
-    repositoryDirectory: context.repositoryDirectory,
-  });
-  assert.equal(reviewPage.total, 3);
-  assert.equal(reviewPage.items[0].candidate, '별빛');
-  assert.equal(reviewPage.items[0].canonical_record.senses[0].id, 'w001-s1');
-
-  const markReviewedItem = async (item, name) => {
-    const receiptPath = await saveInput(context, [{
-      record_id: item.record_id,
-      sense_id: item.sense_id,
-      reviewed_candidates: [item.candidate],
-    }], name);
-    await markCandidateReviews({
-      scratchDirectory: context.scratchDirectory,
-      inputPath: receiptPath,
-      repositoryDirectory: context.repositoryDirectory,
-    });
-  };
-  await markReviewedItem(reviewPage.items[0], 'first-review-receipt.jsonl');
-  const nextReviewPage = await readPendingCandidateReviewPage({
-    scratchDirectory: context.scratchDirectory,
-    after: reviewPage.next_cursor,
-    limit: 1,
-    repositoryDirectory: context.repositoryDirectory,
-  });
-  assert.equal(nextReviewPage.items[0].candidate, '은하수');
-  await markReviewedItem(nextReviewPage.items[0], 'second-review-receipt.jsonl');
-  const lastReviewPage = await readPendingCandidateReviewPage({
-    scratchDirectory: context.scratchDirectory,
-    after: nextReviewPage.next_cursor,
-    limit: 1,
-    repositoryDirectory: context.repositoryDirectory,
-  });
-  assert.equal(lastReviewPage.items[0].candidate, '밤하늘');
-  assert.equal(lastReviewPage.has_more, false);
-  assert.equal(lastReviewPage.next_cursor, null);
-  await markReviewedItem(lastReviewPage.items[0], 'last-review-receipt.jsonl');
-  const noReviewsPending = await readPendingCandidateReviewPage({
-    scratchDirectory: context.scratchDirectory,
-    repositoryDirectory: context.repositoryDirectory,
-  });
-  assert.equal(noReviewsPending.total, 0);
-  await updateCandidateSense({
-    scratchDirectory: context.scratchDirectory,
-    recordId: 'w001',
-    senseId: 'w001-s2',
-    candidates: ['밤하늘', '새벽'],
-    repositoryDirectory: context.repositoryDirectory,
-  });
-  await assert.rejects(
-    readPendingCandidateReviewPage({
-      scratchDirectory: context.scratchDirectory,
-      after: reviewPage.next_cursor,
-      limit: 1,
-      repositoryDirectory: context.repositoryDirectory,
-    }),
-    /pending Candidate inventory changed after this cursor was issued/u,
-  );
-
-  const byteBounded = paginateCandidateWorkbenchItems(
-    Array.from({ length: 20 }, (_, index) => ({ index, text: 'x'.repeat(2500) })),
-    { limit: 25, maxBytes: 6000 },
-  );
-  assert.ok(byteBounded.returned > 0 && byteBounded.returned < 20);
-  assert.equal(byteBounded.has_more, true);
-  assert.equal(byteBounded.next_offset, byteBounded.returned);
-  assert.ok(Buffer.byteLength(serializeWorkbenchOutput(byteBounded), 'utf8') <= 6000);
-
-  const characterBounded = paginateCandidateWorkbenchItems(
-    Array.from({ length: 20 }, (_, index) => ({ index, text: 'a'.repeat(2500) })),
-    { limit: 25, maxBytes: 10_000, maxChars: 3000 },
-  );
-  const characterOutput = serializeWorkbenchOutput(characterBounded, 10_000, 3000);
-  assert.ok(Array.from(characterOutput).length <= 3000);
-  assert.ok(characterBounded.returned > 0 && characterBounded.returned < 20);
-  assert.throws(
-    () => paginateCandidateWorkbenchItems([{ text: 'x'.repeat(5000) }], { maxBytes: 3000 }),
-    /exceeds the configured output limits/u,
-  );
-  assert.throws(
-    () => paginateCandidateWorkbenchItems([], { limit: 26 }),
-    /limit must be an integer from 1 to 25/u,
-  );
-
-  const callbackMisusePayload = [
-    { value: 'a'.repeat(1000) },
-    0,
-    Array.from({ length: 100 }, () => ({ value: 'b'.repeat(1000) })),
+  await prepare(context);
+  await saveChunk(context, 1, { 'w001-s1': ['별빛'] });
+  const good = rowsFor(context.canonicalRows, 0, 25, { 'w001-s1': ['달빛'] });
+  const cases = [
+    ['missing record', good.slice(1), /missing record_id\(s\): w001/u],
+    ['extra record', [...good, ...rowsFor(context.canonicalRows, 25, 26)], /outside chunk 001/u],
+    ['duplicate record', [...good, good[0]], /repeats record_id w001/u],
+    ['missing sense', good.map((row, index) => (index === 0 ? { ...row, senses: row.senses.slice(0, 1) } : row)), /sense_id mismatch for record_id w001/u],
+    ['cross-mapped sense', good.map((row, index) => (index === 1 ? { ...row, senses: [{ sense_id: 'w001-s1', candidates: [] }] } : row)), /sense_id mismatch for record_id w002/u],
+    ['untrimmed candidate', rowsFor(context.canonicalRows, 0, 25, { 'w001-s1': [' 달빛'] }), /non-empty trimmed string/u],
+    ['duplicate candidate', rowsFor(context.canonicalRows, 0, 25, { 'w001-s1': ['달빛', '달빛'] }), /duplicates candidate/u],
   ];
-  assert.throws(
-    () => serializeWorkbenchOutput(callbackMisusePayload),
-    /stdout safety cap exceeded/u,
-  );
-  const emitted = [];
-  const writeBounded = createCandidateWorkbenchStdoutWriter({
-    maxBytes: 6000,
-    write: (value) => emitted.push(value),
-  });
-  writeBounded({ status: 'ready' });
-  assert.throws(() => writeBounded(callbackMisusePayload), /stdout safety cap exceeded/u);
-  assert.equal(emitted.length, 1);
-  assert.ok(Buffer.byteLength(emitted[0], 'utf8') < 6000);
-  assert.ok(MAX_CANDIDATE_WORKBENCH_STDOUT_BYTES <= 100 * 1024);
-  assert.ok(MAX_CANDIDATE_WORKBENCH_STDOUT_CHARS <= 50 * 1024);
-});
-
-test('empty chunk saves do not complete B scene exploration; explicit marks unlock merge', async (t) => {
-  const context = await setup(t);
-  const prepared = await prepare(context);
-  const saved = await saveEmptyChunks(context, prepared);
-
-  const checkpoint = JSON.parse(await readFile(prepared.checkpointPath, 'utf8'));
-  assert.ok(checkpoint.records.every((record) => record.senses.every((sense) => sense.explored_fingerprint === null)));
-  assert.equal(saved.incompleteSenseCount, 501);
-
-  const outputPath = path.join(context.scratchDirectory, 'empty-without-exploration.jsonl');
-  await assert.rejects(
-    mergeCandidateBatch({ scratchDirectory: context.scratchDirectory, outPath: outputPath, repositoryDirectory: context.repositoryDirectory }),
-    /complete both B scenes for the pending source sense\(s\)/u,
-  );
-
-  const explored = [];
-  for (const chunk of prepared.chunks) {
-    const sourcePath = path.join(prepared.chunkDirectory, chunk.file);
-    const sourceRows = (await readFile(sourcePath, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
-    explored.push(...sourceRows.flatMap((record) => record.senses.map((sense) => ({ record_id: record.id, sense_id: sense.id }))));
+  for (const [name, rows, expected] of cases) {
+    const inputPath = await writeInput(context, rows, 'bad.jsonl');
+    await assert.rejects(saveCandidateChunk({ scratchDirectory: context.scratchDirectory, chunk: 1, inputPath, repositoryDirectory: context.repositoryDirectory }), expected, name);
   }
-  const inputPath = await saveInput(context, explored, 'explicitly-explored-senses.jsonl');
-  const marked = await markCandidateSensesExplored({ scratchDirectory: context.scratchDirectory, inputPath, repositoryDirectory: context.repositoryDirectory });
-  assert.equal(marked.status.exploredSenseCount, 501);
-  assert.equal(marked.status.incompleteSenseCount, 0);
-
-  const merged = await mergeCandidateBatch({ scratchDirectory: context.scratchDirectory, outPath: outputPath, repositoryDirectory: context.repositoryDirectory });
-  assert.equal(merged.validation.candidateCount, 0);
+  await assert.rejects(saveCandidateChunk({ scratchDirectory: context.scratchDirectory, chunk: 21, inputPath: await writeInput(context, good, 'good.jsonl'), repositoryDirectory: context.repositoryDirectory }), /outside this batch/u);
+  const page = await readCandidateChunkPage({ scratchDirectory: context.scratchDirectory, chunk: 1, limit: 1, repositoryDirectory: context.repositoryDirectory });
+  assert.deepEqual(page.items[0].canonical_record.senses[0].candidates, ['별빛']);
 });
 
-test('save-chunk rejects cross-record/sense attachment and incomplete boundaries without changing checkpoint', async (t) => {
+test('patch rejects unknown IDs and absent removals, and writes nothing on failure', async (t) => {
   const context = await setup(t);
-  const prepared = await prepare(context);
-  const checkpointPath = prepared.checkpointPath;
-  const originalCheckpoint = await readFile(checkpointPath, 'utf8');
-  const firstChunkPath = path.join(prepared.chunkDirectory, prepared.chunks[0].file);
-  const firstRows = (await readFile(firstChunkPath, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
-
-  const wrongSense = candidateRows(firstRows);
-  wrongSense[1].senses[0].sense_id = 'w001-s1';
-  const wrongSensePath = await saveInput(context, wrongSense, 'wrong-sense.jsonl');
-  await assert.rejects(
-    saveCandidateChunk({ scratchDirectory: context.scratchDirectory, chunk: 1, inputPath: wrongSensePath, repositoryDirectory: context.repositoryDirectory }),
-    /sense_id mismatch for record_id w002; missing: w002-s1; unexpected: w001-s1/u,
-  );
-  assert.equal(await readFile(checkpointPath, 'utf8'), originalCheckpoint);
-
-  const missingRecordPath = await saveInput(context, candidateRows(firstRows.slice(0, 24)), 'missing-record.jsonl');
-  await assert.rejects(
-    saveCandidateChunk({ scratchDirectory: context.scratchDirectory, chunk: 1, inputPath: missingRecordPath, repositoryDirectory: context.repositoryDirectory }),
-    /record_id mismatch; missing: w025/u,
-  );
-  assert.equal(await readFile(checkpointPath, 'utf8'), originalCheckpoint);
-
-  const missingSense = candidateRows(firstRows);
-  missingSense[0].senses.pop();
-  const missingSensePath = await saveInput(context, missingSense, 'missing-sense.jsonl');
-  await assert.rejects(
-    saveCandidateChunk({ scratchDirectory: context.scratchDirectory, chunk: 1, inputPath: missingSensePath, repositoryDirectory: context.repositoryDirectory }),
-    /sense_id mismatch for record_id w001; missing: w001-s2; unexpected: none/u,
-  );
-  assert.equal(await readFile(checkpointPath, 'utf8'), originalCheckpoint);
-
-  const duplicateCandidate = candidateRows(firstRows, { 'w001-s1': ['별빛', '별빛'] });
-  const duplicatePath = await saveInput(context, duplicateCandidate, 'duplicate-candidate.jsonl');
-  await assert.rejects(
-    saveCandidateChunk({ scratchDirectory: context.scratchDirectory, chunk: 1, inputPath: duplicatePath, repositoryDirectory: context.repositoryDirectory }),
-    /duplicates candidate "별빛" for record_id w001 sense_id w001-s1/u,
-  );
-  assert.equal(await readFile(checkpointPath, 'utf8'), originalCheckpoint);
+  await prepare(context);
+  const patch = (rows) => patchCandidateSenses({ scratchDirectory: context.scratchDirectory, inputPath: rows, repositoryDirectory: context.repositoryDirectory });
+  await assert.rejects(patch(await writeInput(context, [{ record_id: 'w001', sense_id: 'w001-s1', add: ['별빛'] }], 'p.jsonl')), /has not been saved/u);
+  await saveChunk(context, 1, { 'w001-s1': ['별빛'] });
+  await assert.rejects(patch(await writeInput(context, [{ record_id: 'w999', sense_id: 'x', add: ['a'] }], 'p.jsonl')), /not in this batch/u);
+  await assert.rejects(patch(await writeInput(context, [{ record_id: 'w001', sense_id: 'w002-s1', add: ['a'] }], 'p.jsonl')), /unknown record_id w001 \/ sense_id w002-s1/u);
+  await assert.rejects(patch(await writeInput(context, [
+    { record_id: 'w002', sense_id: 'w002-s1', add: ['산들바람'] },
+    { record_id: 'w001', sense_id: 'w001-s1', remove: ['없는말'] },
+  ], 'p.jsonl')), /is not present/u);
+  await assert.rejects(patch(await writeInput(context, [{ record_id: 'w001', sense_id: 'w001-s1', add: ['별빛'] }], 'p.jsonl')), /duplicates candidate/u);
+  const page = await readCandidateChunkPage({ scratchDirectory: context.scratchDirectory, chunk: 1, repositoryDirectory: context.repositoryDirectory });
+  assert.deepEqual(page.items.map((item) => item.canonical_record.senses.flatMap((sense) => sense.candidates)).flat(), ['별빛']);
 });
 
-test('saving a resumed chunk adds discoveries without dropping previously saved candidates', async (t) => {
+test('resume reuses the checkpoint and saved chunks; merge needs every chunk and the unchanged source', async (t) => {
   const context = await setup(t);
-  const prepared = await prepare(context);
-  const chunkPath = path.join(prepared.chunkDirectory, prepared.chunks[0].file);
-  const sourceRows = (await readFile(chunkPath, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
-
-  const firstInput = await saveInput(context, candidateRows(sourceRows, { 'w001-s1': ['별빛'] }), 'first-pass.jsonl');
-  await saveCandidateChunk({ scratchDirectory: context.scratchDirectory, chunk: 1, inputPath: firstInput, repositoryDirectory: context.repositoryDirectory });
-  const resumedInput = await saveInput(context, candidateRows(sourceRows, { 'w001-s1': ['달빛'] }), 'resumed-pass.jsonl');
-  const resumed = await saveCandidateChunk({ scratchDirectory: context.scratchDirectory, chunk: 1, inputPath: resumedInput, repositoryDirectory: context.repositoryDirectory });
-  assert.equal(resumed.status.candidateCount, 2);
-  assert.equal(resumed.status.incompleteChunkCount, 19);
-
-  const checkpoint = JSON.parse(await readFile(prepared.checkpointPath, 'utf8'));
-  assert.deepEqual(checkpoint.records[0].senses[0].candidates, ['별빛', '달빛']);
-  assert.equal(checkpoint.records[0].senses[0].explored_fingerprint, null);
-});
-
-test('prepare stops on Canonical sense membership changes and preserves the old checkpoint', async (t) => {
-  const context = await setup(t);
-  const prepared = await prepare(context);
-  const chunkPath = path.join(prepared.chunkDirectory, prepared.chunks[0].file);
-  const sourceRows = (await readFile(chunkPath, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
-  const inputPath = await saveInput(context, candidateRows(sourceRows, { 'w001-s1': ['별빛'] }), 'membership-seed.jsonl');
-  await saveCandidateChunk({ scratchDirectory: context.scratchDirectory, chunk: 1, inputPath, repositoryDirectory: context.repositoryDirectory });
-  const checkpointBefore = await readFile(prepared.checkpointPath, 'utf8');
-  const chunkBefore = await readFile(chunkPath, 'utf8');
-
-  context.canonicalRows[0].senses.push({ id: 'w001-s3', pos: 'noun', gloss: '새로운 뜻.' });
-  await context.writeCanonical();
-  await assert.rejects(
-    prepare(context),
-    /Canonical sense membership changed for record_id w001; missing sense_id\(s\): none; new sense_id\(s\): w001-s3/u,
-  );
-  assert.equal(await readFile(prepared.checkpointPath, 'utf8'), checkpointBefore);
-  assert.equal(await readFile(chunkPath, 'utf8'), chunkBefore);
-});
-
-test('review receipts are tied to exact candidate and source sense; only changed meaning becomes stale', async (t) => {
-  const context = await setup(t);
-  const prepared = await prepare(context);
-  const firstChunkPath = path.join(prepared.chunkDirectory, prepared.chunks[0].file);
-  const firstRows = (await readFile(firstChunkPath, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
-  const inputPath = await saveInput(context, candidateRows(firstRows, { 'w001-s1': ['별빛', '은하수'] }), 'initial-candidates.jsonl');
-  const saved = await saveCandidateChunk({ scratchDirectory: context.scratchDirectory, chunk: 1, inputPath, repositoryDirectory: context.repositoryDirectory });
-  assert.equal(saved.status.candidateCount, 2);
-  assert.equal(saved.status.pendingReviewCount, 2);
-  await completeEmptyChunks(context, prepared, [1]);
-
+  await prepare(context);
+  await saveChunk(context, 1, { 'w001-s1': ['별빛'] });
   const resumed = await prepare(context);
-  assert.equal(resumed.status.candidateCount, 2);
-  assert.equal(resumed.status.pendingReviewCount, 2);
-  assert.equal(resumed.status.incompleteChunkCount, 0);
+  assert.equal(resumed.resumed, true);
+  assert.deepEqual(resumed.chunks.filter((chunk) => chunk.saved).map((chunk) => chunk.number), [1]);
+  await assert.rejects(prepare(context, 50), /checkpoint uses 25-record chunks/u);
+  assert.deepEqual((await readCandidateStatus({ scratchDirectory: context.scratchDirectory, repositoryDirectory: context.repositoryDirectory })).unsavedChunks, Array.from({ length: 19 }, (_, index) => index + 2));
 
-  await assert.rejects(
-    mergeCandidateBatch({ scratchDirectory: context.scratchDirectory, outPath: path.join(context.scratchDirectory, 'not-ready.jsonl'), repositoryDirectory: context.repositoryDirectory }),
-    /2 candidate\(s\) need AI meaning\/form review/u,
-  );
-
-  const pendingPath = path.join(context.scratchDirectory, 'pending.jsonl');
-  const pending = await exportPendingCandidateReviews({ scratchDirectory: context.scratchDirectory, outPath: pendingPath, repositoryDirectory: context.repositoryDirectory });
-  assert.equal(pending.candidateCount, 2);
-  const exportedRows = (await readFile(pendingPath, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
-  assert.equal(exportedRows.length, 1);
-  assert.deepEqual(exportedRows[0].canonical_record.senses, [context.canonicalRows[0].senses[0]]);
-
-  let status = await markAllPending(context, saved.status);
-  assert.equal(status.reviewedCount, 2);
-  assert.equal(status.staleReviewCount, 0);
-
-  const editedInput = await saveInput(context, candidateRows(firstRows, { 'w001-s1': ['별빛', '은하수빛'] }), 'edited-candidates.jsonl');
-  const edited = await saveCandidateChunk({ scratchDirectory: context.scratchDirectory, chunk: 1, inputPath: editedInput, repositoryDirectory: context.repositoryDirectory });
-  assert.equal(edited.status.candidateCount, 3);
-  assert.equal(edited.status.reviewedCount, 2);
-  assert.equal(edited.status.pendingReviewCount, 1);
-
-  context.canonicalRows[0].senses[0].gloss = '밤하늘의 빛나는 별.';
-  context.canonicalRows[0].senses[1].gloss = '두 번째 뜻의 갱신.';
-  await context.writeCanonical();
-  const refreshed = await prepare(context);
-  assert.equal(refreshed.sourceChanged, true);
-  assert.equal(refreshed.status.candidateCount, 3);
-  assert.equal(refreshed.status.staleReviewCount, 2);
-  assert.equal(refreshed.status.pendingReviewCount, 1);
-  assert.equal(refreshed.status.reviewedCount, 0);
-  assert.equal(refreshed.status.staleSenseCount, 2);
-
-  const refreshedPendingPath = path.join(context.scratchDirectory, 'pending-after-source-change.jsonl');
-  await exportPendingCandidateReviews({ scratchDirectory: context.scratchDirectory, outPath: refreshedPendingPath, repositoryDirectory: context.repositoryDirectory });
-  const refreshedPending = (await readFile(refreshedPendingPath, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
-  assert.deepEqual(refreshedPending[0].review[0].candidates, ['별빛', '은하수', '은하수빛']);
-  status = await markAllPending(context, refreshed.status, 'refreshed-receipts.jsonl');
-  assert.equal(status.reviewedCount, 3);
-  assert.equal(status.pendingReviewCount, 0);
-  assert.equal(status.staleReviewCount, 0);
-
-  const explorationPath = path.join(context.scratchDirectory, 'exploration-pending.jsonl');
-  const exploration = await exportPendingCandidateExploration({
-    scratchDirectory: context.scratchDirectory,
-    outPath: explorationPath,
-    repositoryDirectory: context.repositoryDirectory,
-  });
-  assert.equal(exploration.senseCount, 2);
-  const explorationRows = (await readFile(explorationPath, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
-  assert.equal(explorationRows[0].senses[0].status, 'STALE');
-  assert.deepEqual(explorationRows[0].senses[0].current_candidates, ['별빛', '은하수', '은하수빛']);
-  assert.equal(explorationRows[0].senses[1].status, 'STALE');
-  assert.deepEqual(explorationRows[0].senses[1].current_candidates, []);
-  const exploredPath = await saveInput(context, [
-    { record_id: 'w001', sense_id: 'w001-s1' },
-    { record_id: 'w001', sense_id: 'w001-s2' },
-  ], 're-explored-sense.jsonl');
-  const markedExplored = await markCandidateSensesExplored({ scratchDirectory: context.scratchDirectory, inputPath: exploredPath, repositoryDirectory: context.repositoryDirectory });
-  assert.equal(markedExplored.status.staleSenseCount, 0);
-  assert.equal(markedExplored.status.incompleteSenseCount, 0);
+  const outPath = path.join(context.scratchDirectory, 'merged.jsonl');
+  await assert.rejects(mergeCandidateBatch({ scratchDirectory: context.scratchDirectory, outPath, repositoryDirectory: context.repositoryDirectory }), /not saved for chunk\(s\) 002, 003/u);
+  for (let number = 2; number <= 20; number += 1) await saveChunk(context, number);
+  context.canonicalRows[3].senses[0].gloss = '바뀐 뜻.';
+  await writeFile(path.join(context.repositoryDirectory, 'data/canonical/stdict-0001.jsonl'), `${context.canonicalRows.map((row) => JSON.stringify(row)).join('\n')}\n`);
+  await assert.rejects(mergeCandidateBatch({ scratchDirectory: context.scratchDirectory, outPath, repositoryDirectory: context.repositoryDirectory }), /Canonical batch changed since prepare/u);
+  await assert.rejects(readFile(outPath, 'utf8'), { code: 'ENOENT' });
 });
 
-test('patch-sense rechecks only changed candidates and preserves peer senses and records', async (t) => {
+test('v1 checkpoints keep their saved candidates when prepared again', async (t) => {
   const context = await setup(t);
-  const prepared = await prepare(context);
-  const firstChunkPath = path.join(prepared.chunkDirectory, prepared.chunks[0].file);
-  const firstRows = (await readFile(firstChunkPath, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
-  const inputPath = await saveInput(context, candidateRows(firstRows, {
-    'w001-s1': ['별빛'],
-    'w001-s2': ['밤공기'],
-    'w002-s1': ['산들바람'],
-  }), 'patch-seed.jsonl');
-  const saved = await saveCandidateChunk({ scratchDirectory: context.scratchDirectory, chunk: 1, inputPath, repositoryDirectory: context.repositoryDirectory });
-  await markAllPending(context, saved.status);
-  await completeEmptyChunks(context, prepared, [1]);
-
-  const patched = await updateCandidateSense({
-    scratchDirectory: context.scratchDirectory,
-    recordId: 'w001',
-    senseId: 'w001-s1',
-    candidates: ['별빛', '달빛'],
-    repositoryDirectory: context.repositoryDirectory,
-  });
-  assert.equal(patched.status.candidateCount, 4);
-  assert.equal(patched.status.reviewedCount, 3);
-  assert.equal(patched.status.pendingReviewCount, 1);
-  assert.deepEqual(patched.status, {
-    shard: '001', batch: '01', recordCount: 500, senseCount: 501,
-    candidateCount: 4, emptySenseCount: 498, reviewedCount: 3,
-    pendingReviewCount: 1, staleReviewCount: 0, chunkCount: 20,
-    exploredSenseCount: 501, incompleteSenseCount: 0, staleSenseCount: 0,
-    completedChunkCount: 20, incompleteChunkCount: 0,
-  });
-
-  const pendingPath = path.join(context.scratchDirectory, 'patch-pending.jsonl');
-  const pending = await exportPendingCandidateReviews({ scratchDirectory: context.scratchDirectory, outPath: pendingPath, repositoryDirectory: context.repositoryDirectory });
-  assert.equal(pending.candidateCount, 1);
-  const pendingRows = (await readFile(pendingPath, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
-  assert.deepEqual(pendingRows[0].review, [{ sense_id: 'w001-s1', candidates: ['달빛'] }]);
-
-  const checkpointPath = prepared.checkpointPath;
-  const beforeInvalidPatch = await readFile(checkpointPath, 'utf8');
-  await assert.rejects(
-    updateCandidateSense({
-      scratchDirectory: context.scratchDirectory,
-      recordId: 'w002',
-      senseId: 'w001-s1',
-      candidates: ['잘못된 매핑'],
-      repositoryDirectory: context.repositoryDirectory,
-    }),
-    /unknown record_id w002 \/ sense_id w001-s1/u,
-  );
-  assert.equal(await readFile(checkpointPath, 'utf8'), beforeInvalidPatch);
+  await mkdir(context.scratchDirectory, { recursive: true });
+  const records = context.canonicalRows.slice(0, 500).map((record) => ({
+    record_id: record.id, source_index: 0, lemma: record.lemma,
+    senses: record.senses.map((sense) => ({ sense_id: sense.id, candidates: sense.id === 'w001-s1' ? ['별빛'] : [], reviewed: [], explored_fingerprint: null })),
+  }));
+  const chunks = Array.from({ length: 20 }, (_, index) => ({ number: index + 1, candidate_sha256: index === 0 ? 'f'.repeat(64) : null }));
+  await writeFile(path.join(context.scratchDirectory, 'checkpoint.json'), JSON.stringify({
+    contract: 'candidate-workbench-v1', batch: { shard: '001', batch: '01', method: 'b', model: 'codex' }, source: { chunk_size: 25 }, chunks, records,
+  }));
+  await assert.rejects(readCandidateStatus({ scratchDirectory: context.scratchDirectory, repositoryDirectory: context.repositoryDirectory }), /v1 workbench checkpoint/u);
+  const migrated = await prepare(context);
+  assert.deepEqual(migrated.chunks.filter((chunk) => chunk.saved).map((chunk) => chunk.number), [1]);
+  const page = await readCandidateChunkPage({ scratchDirectory: context.scratchDirectory, chunk: 1, limit: 1, repositoryDirectory: context.repositoryDirectory });
+  assert.deepEqual(page.items[0].canonical_record.senses[0].candidates, ['별빛']);
 });
 
-test('candidate removal requires a current review and an explicit ineligible judgment', async (t) => {
-  const context = await setup(t);
-  const prepared = await prepare(context);
-  const firstChunkPath = path.join(prepared.chunkDirectory, prepared.chunks[0].file);
-  const firstRows = (await readFile(firstChunkPath, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
-  const inputPath = await saveInput(context, candidateRows(firstRows, { 'w001-s1': ['별빛'] }), 'removal-candidate.jsonl');
-  const saved = await saveCandidateChunk({ scratchDirectory: context.scratchDirectory, chunk: 1, inputPath, repositoryDirectory: context.repositoryDirectory });
-  await completeEmptyChunks(context, prepared, [1]);
-
-  await assert.rejects(
-    removeCandidate({ scratchDirectory: context.scratchDirectory, recordId: 'w001', senseId: 'w001-s1', candidate: '별빛', confirmedIneligible: true, repositoryDirectory: context.repositoryDirectory }),
-    /needs a current AI meaning\/form review before removal/u,
-  );
-  await markAllPending(context, saved.status);
-  await assert.rejects(
-    removeCandidate({ scratchDirectory: context.scratchDirectory, recordId: 'w001', senseId: 'w001-s1', candidate: '별빛', confirmedIneligible: false, repositoryDirectory: context.repositoryDirectory }),
-    /requires confirmedIneligible=true/u,
-  );
-
-  const removed = await removeCandidate({
-    scratchDirectory: context.scratchDirectory,
-    recordId: 'w001',
-    senseId: 'w001-s1',
-    candidate: '별빛',
-    confirmedIneligible: true,
-    repositoryDirectory: context.repositoryDirectory,
-  });
-  assert.equal(removed.removed, '별빛');
-  assert.equal(removed.status.candidateCount, 0);
-  assert.equal(removed.status.completedChunkCount, 20);
-  const outputPath = path.join(context.scratchDirectory, 'after-removal.jsonl');
-  const merged = await mergeCandidateBatch({ scratchDirectory: context.scratchDirectory, outPath: outputPath, repositoryDirectory: context.repositoryDirectory });
-  assert.equal(merged.validation.candidateCount, 0);
-});
-
-test('merge emits canonical record/sense order and validates the complete Candidate v1 batch', async (t) => {
-  const context = await setup(t);
-  const prepared = await prepare(context, 25);
-  const firstChunkPath = path.join(prepared.chunkDirectory, prepared.chunks[0].file);
-  const firstRows = (await readFile(firstChunkPath, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
-  const inputPath = await saveInput(context, candidateRows(firstRows, { 'w001-s1': ['별빛'], 'w002-s1': ['산들바람'] }), 'merge-input.jsonl');
-  const saved = await saveCandidateChunk({ scratchDirectory: context.scratchDirectory, chunk: 1, inputPath, repositoryDirectory: context.repositoryDirectory });
-  await completeEmptyChunks(context, prepared, [1]);
-  await markAllPending(context, saved.status);
-
-  const outPath = path.join(context.scratchDirectory, 'merged-candidates.jsonl');
-  const merged = await mergeCandidateBatch({ scratchDirectory: context.scratchDirectory, outPath, repositoryDirectory: context.repositoryDirectory });
-  assert.deepEqual(merged.validation, {
-    recordCount: 500,
-    senseCount: 501,
-    candidateCount: 2,
-    emptySenseCount: 499,
-  });
-  const outputRows = (await readFile(outPath, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
-  assert.equal(outputRows.length, 500);
-  assert.deepEqual(outputRows.slice(0, 2).map((row) => row.record_id), ['w001', 'w002']);
-  assert.deepEqual(outputRows[0].senses.map((sense) => sense.sense_id), ['w001-s1', 'w001-s2']);
-  assert.deepEqual(outputRows[0].senses[0].candidates, ['별빛']);
-  assert.deepEqual(outputRows[1].senses[0].candidates, ['산들바람']);
-});
-
-test('partial final-shard batch keeps its 83-record boundary and can be fully merged', async (t) => {
+test('partial final-shard batch keeps its 83-record boundary and merges', async (t) => {
   const repositoryDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-candidate-workbench-tail-'));
   t.after(() => rm(repositoryDirectory, { recursive: true, force: true }));
-  const canonicalDirectory = path.join(repositoryDirectory, 'data/canonical');
   const scratchDirectory = path.join(repositoryDirectory, '.warroom-scratch/428_02_b_codex');
-  await mkdir(canonicalDirectory, { recursive: true });
-  const canonicalRows = Array.from({ length: 583 }, (_, index) => ({
-    id: `tail-${index + 1}`,
-    lemma: `꼬리 표제어 ${index + 1}`,
-    senses: [{ id: `tail-${index + 1}-s1`, pos: 'noun', gloss: `꼬리 뜻 ${index + 1}.` }],
-    source: 'stdict',
+  await mkdir(path.join(repositoryDirectory, 'data/canonical'), { recursive: true });
+  const rows = Array.from({ length: 583 }, (_, index) => ({
+    id: `tail-${index + 1}`, lemma: `꼬리 표제어 ${index + 1}`,
+    senses: [{ id: `tail-${index + 1}-s1`, pos: 'noun', gloss: `꼬리 뜻 ${index + 1}.` }], source: 'stdict',
   }));
-  await writeFile(path.join(canonicalDirectory, 'stdict-0428.jsonl'), `${canonicalRows.map((row) => JSON.stringify(row)).join('\n')}\n`);
-  const prepared = await prepareCandidateBatch({
-    shard: '428', batch: '02', method: 'b', model: 'codex', scratchDirectory, repositoryDirectory,
-  });
-  assert.equal(prepared.status.recordCount, 83);
-  assert.equal(prepared.status.chunkCount, 4);
-  assert.equal(prepared.chunks[0].firstRecord, 501);
+  await writeFile(path.join(repositoryDirectory, 'data/canonical/stdict-0428.jsonl'), `${rows.map((row) => JSON.stringify(row)).join('\n')}\n`);
+  const prepared = await prepareCandidateBatch({ shard: '428', batch: '02', method: 'b', model: 'codex', scratchDirectory, repositoryDirectory });
+  assert.equal(prepared.recordCount, 83);
+  assert.equal(prepared.chunks.length, 4);
   assert.equal(prepared.chunks.at(-1).firstRecord, 576);
   assert.equal(prepared.chunks.at(-1).lastRecord, 583);
-  assert.equal(prepared.chunks.at(-1).senseCount, 8);
-
-  const finalChunk = prepared.chunks.at(-1);
-  const finalChunkPath = path.join(prepared.chunkDirectory, finalChunk.file);
-  const finalChunkRows = (await readFile(finalChunkPath, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
-  const inputPath = path.join(scratchDirectory, 'tail-candidates.jsonl');
-  await writeFile(inputPath, `${candidateRows(finalChunkRows, { 'tail-576-s1': ['별빛'] }).map((row) => JSON.stringify(row)).join('\n')}\n`);
-  const saved = await saveCandidateChunk({ scratchDirectory, chunk: finalChunk.number, inputPath, repositoryDirectory });
-  await completeEmptyChunks({ scratchDirectory, repositoryDirectory }, prepared, [finalChunk.number]);
-  const receipts = [{ record_id: 'tail-576', sense_id: 'tail-576-s1', reviewed_candidates: ['별빛'] }];
-  const receiptPath = path.join(scratchDirectory, 'tail-receipts.jsonl');
-  await writeFile(receiptPath, `${JSON.stringify(receipts[0])}\n`);
-  const marked = await markCandidateReviews({ scratchDirectory, inputPath: receiptPath, repositoryDirectory });
-  assert.equal(marked.status.reviewedCount, 1);
-  assert.equal(saved.status.pendingReviewCount, 1);
-
-  const outputPath = path.join(scratchDirectory, 'tail-final.jsonl');
-  const merged = await mergeCandidateBatch({ scratchDirectory, outPath: outputPath, repositoryDirectory });
+  for (const chunk of prepared.chunks) {
+    const batchRows = rows.slice(500).slice((chunk.number - 1) * 25, chunk.number * 25);
+    const input = path.join(scratchDirectory, `in-${chunk.number}.jsonl`);
+    const candidates = batchRows.map((row) => ({ record_id: row.id, senses: [{ sense_id: row.senses[0].id, candidates: row.id === 'tail-576' ? ['별빛'] : [] }] }));
+    await writeFile(input, `${candidates.map((row) => JSON.stringify(row)).join('\n')}\n`);
+    await saveCandidateChunk({ scratchDirectory, chunk: chunk.number, inputPath: input, repositoryDirectory });
+  }
+  const outPath = path.join(scratchDirectory, 'tail.jsonl');
+  const merged = await mergeCandidateBatch({ scratchDirectory, outPath, repositoryDirectory });
   assert.deepEqual(merged.validation, { recordCount: 83, senseCount: 83, candidateCount: 1, emptySenseCount: 82 });
-  const mergedRows = (await readFile(outputPath, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
-  assert.equal(mergedRows[0].record_id, 'tail-501');
-  assert.equal(mergedRows.at(-1).record_id, 'tail-583');
-  assert.deepEqual(mergedRows[75].senses[0].candidates, ['별빛']);
+  const output = await readLines(outPath);
+  assert.equal(output[0].record_id, 'tail-501');
+  assert.deepEqual(output[75].senses[0].candidates, ['별빛']);
 });
 
-test('inspect returns the complete Canonical record without truncating its senses', async (t) => {
+test('merge runs the Candidate v1 validator and leaves no partial output; inspect returns the full record', async (t) => {
   const context = await setup(t);
+  await prepare(context);
+  await saveAll(context, { 1: { 'w001-s1': ['표제어 1'] } });
+  const outPath = path.join(context.scratchDirectory, 'must-not-exist.jsonl');
+  await assert.rejects(mergeCandidateBatch({ scratchDirectory: context.scratchDirectory, outPath, repositoryDirectory: context.repositoryDirectory }), /candidate repeats source lemma "표제어 1"/u);
+  await assert.rejects(readFile(outPath, 'utf8'), { code: 'ENOENT' });
   const inspected = await inspectCanonicalRecord({ shard: '001', recordId: 'w001', repositoryDirectory: context.repositoryDirectory });
-  assert.equal(inspected.record.id, 'w001');
   assert.deepEqual(inspected.record.senses, context.canonicalRows[0].senses);
-  assert.equal(inspected.record.senses[1].semantic_note, '전체 원문 필드 보존');
-});
-
-test('merge rejects Candidate v1 violations and does not create a partial output', async (t) => {
-  const context = await setup(t);
-  const prepared = await prepare(context);
-  const firstChunkPath = path.join(prepared.chunkDirectory, prepared.chunks[0].file);
-  const firstRows = (await readFile(firstChunkPath, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
-  const inputPath = await saveInput(context, candidateRows(firstRows, { 'w001-s1': ['표제어 1'] }), 'invalid-self-lemma.jsonl');
-  const saved = await saveCandidateChunk({ scratchDirectory: context.scratchDirectory, chunk: 1, inputPath, repositoryDirectory: context.repositoryDirectory });
-  await completeEmptyChunks(context, prepared, [1]);
-  await markAllPending(context, saved.status);
-
-  const outputPath = path.join(context.scratchDirectory, 'must-not-exist.jsonl');
-  await assert.rejects(
-    mergeCandidateBatch({ scratchDirectory: context.scratchDirectory, outPath: outputPath, repositoryDirectory: context.repositoryDirectory }),
-    /candidate repeats source lemma "표제어 1"/u,
-  );
-  await assert.rejects(readFile(outputPath, 'utf8'), { code: 'ENOENT' });
 });
