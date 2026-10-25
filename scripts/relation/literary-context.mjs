@@ -614,8 +614,11 @@ function makeLocatorKey(row) {
   return sha256(JSON.stringify([row.file_id, row.work_id, row.unit_rowid, row.ordinal, row.source_sha256]));
 }
 
-function excerptAround(text, forms, maxChars, hitStart = 0) {
-  const matchAt = forms.map((form) => text.indexOf(form, hitStart)).filter((at) => at >= 0).sort((a, b) => a - b)[0] ?? hitStart;
+function excerptAround(text, forms, maxChars, hitStart = 0, preferredForm = null) {
+  const matches = forms.map((form) => ({ form, at: text.indexOf(form, hitStart) })).filter(({ at }) => at >= 0);
+  const preferredMatch = preferredForm ? matches.find(({ form }) => form === preferredForm) : null;
+  const selectedMatch = preferredMatch ?? matches.sort((left, right) => codePointLength(right.form) - codePointLength(left.form) || left.at - right.at)[0];
+  const matchAt = selectedMatch?.at ?? hitStart;
   const length = codePointLength(text);
   if (length <= maxChars) return { text, truncated: false };
   const chars = [...text];
@@ -635,7 +638,7 @@ function validateSnippetChars(value, defaultValue = DEFAULT_SNIPPET_CHARS) {
   return parsed;
 }
 
-function runSearch(database, forms, { pageSize, cursor, snippetChars }) {
+function runSearch(database, forms, { pageSize, cursor, snippetChars, preferredForm }) {
   const query = matchesSql(forms);
   if (!query) return { status: 'UNSEARCHABLE', total_hits: 0, returned: 0, has_more: false, next_cursor: null, results: [] };
   const fingerprint = sha256(JSON.stringify(forms));
@@ -673,7 +676,7 @@ function runSearch(database, forms, { pageSize, cursor, snippetChars }) {
   const results = included.map((row) => {
     const matchedForms = String(row.matched_forms ?? '').split('\u001f').filter(Boolean).sort((a, b) => codePointLength(b) - codePointLength(a) || compare(a, b));
     const window = readUnitWindow(database, row);
-    const excerpt = excerptAround(window.text, matchedForms, snippetChars, window.hit_start);
+    const excerpt = excerptAround(window.text, matchedForms, snippetChars, window.hit_start, preferredForm);
     return {
       locator_key: makeLocatorKey(row),
       source: {
@@ -937,7 +940,7 @@ export async function readLiteraryChunk({ databasePath, checkpointPath, senseIds
       }
       let result;
       try {
-        result = runSearch(database, forms, { pageSize: contextLimit, cursor: null, snippetChars: snippetLimit });
+        result = runSearch(database, forms, { pageSize: contextLimit, cursor: null, snippetChars: snippetLimit, preferredForm: record.lemma.normalize('NFC').trim() });
       } catch {
         items.push({ sense_id: sense.sense_id, status: 'SEARCH_FAILED' });
         continue;
@@ -1017,10 +1020,10 @@ export async function submitLiteraryChunk({ databasePath, checkpointPath, submis
   try {
     await assertCheckpointIndexUnchanged(checkpoint, databasePath, metadata);
     for (const entry of submission.senses) {
-      const { sense } = findSense(checkpoint, entry.sense_id);
+      const { record, sense } = findSense(checkpoint, entry.sense_id);
       const forms = senseForms(sense);
       if (forms.length === 0) fail(`${entry.sense_id} has no search forms and cannot be submitted`);
-      const result = runSearch(database, forms, { pageSize: MAX_CONTEXTS_PER_SENSE, cursor: null, snippetChars: DEFAULT_SNIPPET_CHARS });
+      const result = runSearch(database, forms, { pageSize: MAX_CONTEXTS_PER_SENSE, cursor: null, snippetChars: DEFAULT_SNIPPET_CHARS, preferredForm: record.lemma.normalize('NFC').trim() });
       if (result.total_hits === 0 && (entry.verified.length > 0 || entry.candidates.length > 0)) fail(`${entry.sense_id} has no literary hits, so it cannot have verified contexts or candidates`);
       const verified = entry.verified.map((key) => {
         if (key.length < SHORT_KEY_LENGTH) fail(`context key ${JSON.stringify(key)} on ${entry.sense_id} is shorter than ${SHORT_KEY_LENGTH} characters`);
