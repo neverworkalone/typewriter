@@ -57,9 +57,9 @@ data/relation-candidates/
 - 출발 sense를 정확하게 결속하고, 문학/말뭉치 검색은 해당 자료 이용 조건에 맞게 읽기 전용으로 수행한다. C/D는 원문·발췌문·SQLite를 Git/PR/제품에 포함하지 않는다.
 - 생성 단계에는 채택 개수 목표가 없다. 적합한 후보가 없으면 빈 목록을 그대로 기록한다. **500레코드는 내부적으로 나눠 처리해도 되지만, 최종 후보 파일은 해당 배치 전체를 포함하는 한 파일**이어야 한다.
 
-### B batch workbench
+### A/B batch workbench
 
-B producers must use [`scripts/relation/candidate-workbench.mjs`](../scripts/relation/candidate-workbench.mjs) for Candidate data mechanics; it supports only B and does not define or change A/C/D production. It reuses the shared Candidate v1 validator; see the [B Candidate workbench manual](relation-candidate-workbench.md) for the CLI sequence and explicit exploration and review receipts.
+A and B producers must use [`scripts/relation/candidate-workbench.mjs`](../scripts/relation/candidate-workbench.mjs) for Canonical chunk reads, explicit-ID Candidate saves, local correction, exploration/review progress receipts, and final Candidate v1 validation. It does not perform semantic discovery or judgment: A follows #860's two independent meaning explorations, and B follows its separate two-scene procedure. Use the [A/B Candidate workbench manual](relation-candidate-workbench.md) for the method-specific CLI workflow and page/continuation rules. C/D production remains on their method-specific tools.
 
 ### A/B/C/D 공통 후보 표현 단위 — Stage 1 필수 생산 계약
 
@@ -92,6 +92,8 @@ Issue #1750/#1761의 공통 read-only 조회·checkpoint·집계·Candidate 출�
 > 정확한 출발 sense가 쓰인 작품 문맥에서 장면, 감정, 감각, 행동, 이미지와 비유를 살핀다. 작가가 출발어를 쓰면서 연상하거나 표현을 확장할 수 있는 연결만 제안한다. **같은 문장·문단에 같이 있었다는 사실은 관계의 근거가 아니다.** 예를 들어 `가끔가다 → 냉면/무지개`, `가계부 → 넥타이/소독약`처럼 문맥에 우연히 함께 나온 사물을 나열하지 않는다. 다만 단 한 작품에서만 발견한 비유라도 **출발 의미와 장면·정서 사이에 설명 가능한 연결**이 있으면 남길 수 있다. 동음이의어 또는 다른 단어의 문맥을 출발 sense에 잘못 연결하지 않는다. 유용한 후보가 없으면 빈 배열을 반환한다.
 
 **D — 말뭉치의 실제 쓰임과 표현적 연결**
+
+D 검색·증거·체크포인트·Candidate 조립은 [`relation-corpus-context.md`](relation-corpus-context.md)의 공통 CLI를 사용한다. 실행 절차와 상태 복구는 그 문서에 두며 아래의 편집 계약을 대체하지 않는다.
 
 > 정확한 출발 sense가 쓰인 문맥에서 자연스러운 연관 표현, 사용 상황, 함께 발생하는 행동, 의미상 가까운 말, 글쓰기에 도움이 되는 연상을 찾는다. 같은 문서의 주제어, 가까이에 나온 명사, 단순 공출현 빈도만으로 후보를 선택하지 않는다. 후보와 출발 sense 사이의 **구체적인 쓰임·의미 연결**이 실제 문맥에 있어야 한다. `가계도 → 가계도`처럼 출발 표제어 자신은 제외하고, 동음이의어·부분 문자열 검색 오탐을 구별한다. 검색 자료가 문학 분야에 치우친 경우 이를 일반 문어 전체의 대표 용례로 간주하지 않는다. 적절한 후보가 없으면 빈 배열을 반환한다.
 

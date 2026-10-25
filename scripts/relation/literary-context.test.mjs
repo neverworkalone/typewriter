@@ -218,6 +218,29 @@ test('read-only preflight rejects missing postings in an external-content FTS in
   }
 });
 
+test('read-only preflight rejects wrong FTS term-to-row postings when the total token count is unchanged', async () => {
+  const fixture = await makeFixture({ unitCount: 1, unitText: '가나다' });
+  try {
+    const database = new DatabaseSync(fixture.databasePath);
+    const text = database.prepare('SELECT text FROM text_units WHERE unit_rowid = 1').get().text;
+    database.prepare("INSERT INTO unit_fts(unit_fts, rowid, text) VALUES ('delete', 1, ?)").run(text);
+    database.prepare('INSERT INTO unit_fts(rowid, text) VALUES (1, ?)').run('나가다');
+    database.exec('CREATE VIRTUAL TABLE temp.fixture_fts_vocab USING fts5vocab(main, unit_fts, row)');
+    const actualTrigramTokens = database.prepare('SELECT coalesce(sum(cnt), 0) AS count FROM temp.fixture_fts_vocab').get().count;
+    const expectedTrigramTokens = database.prepare('SELECT coalesce(sum(length(text) - 2), 0) AS count FROM text_units').get().count;
+    assert.equal(actualTrigramTokens, expectedTrigramTokens);
+    assert.equal(database.prepare('SELECT count(*) AS count FROM unit_fts').get().count, 1);
+    assert.equal(database.prepare('SELECT count(*) AS count FROM unit_fts WHERE unit_fts MATCH ?').get('"가나다"').count, 0);
+    database.close();
+    await assert.rejects(
+      inspectLiteraryIndex(fixture.databasePath, { scratchDirectory: fixture.scratchDirectory }),
+      /FTS trigram term and row postings do not match text_units/u,
+    );
+  } finally {
+    await cleanup(fixture);
+  }
+});
+
 test('CLI failures suppress local database paths and environment values', () => {
   const marker = 'private-probe-path-marker';
   const tokenMarker = 'synthetic-secret-marker';

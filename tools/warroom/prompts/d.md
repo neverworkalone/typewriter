@@ -8,6 +8,8 @@ War Room이 준비한 HEAD를 기준으로 작업하며,
 
 Issue #1156의 D 생산 계약을 읽고 준수한다.
 
+D 검색·문맥 증거·체크포인트·Candidate 출력에는 `scripts/relation/corpus-context-cli.mjs`를 사용한다. 구체적 절차는 `docs/relation-corpus-context.md`를 따른다.
+
 셸 명령은 개별로 실행해 각 종료 코드와 출력을 확인한다. `gh api` 경로에 `?` 또는 `&`가 있으면 경로 인수 전체를 작은따옴표로 감싼다. 예: `gh api 'repos/neverworkalone/typewriter/contents/data/relation-candidates/031?ref=master'`, `gh api 'repos/neverworkalone/typewriter/pulls?state=open&per_page=100' --jq 'length'`.
 
 Candidate v1 검증 후 커밋·push하고 `batch` 라벨의 PR을 제출한다. PR 생성 직전 다른 모델을 포함한 동일 D 배치의 중복 점유를 확인한다. PR 본문에서 #1156을 참조하거나 닫지 않는다.

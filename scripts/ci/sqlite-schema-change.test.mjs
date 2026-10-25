@@ -27,7 +27,7 @@ async function makeRepository() {
   await writeRepoFile(
     directory,
     'scripts/build/sqlite-schema.mjs',
-    `export const schema = \`${createTableKeyword} records (id TEXT PRIMARY KEY);\`;\n`,
+    `export const schema = \`${createTableKeyword} records (id TEXT PRIMARY KEY); CREATE TABLE main.persisted (id TEXT PRIMARY KEY);\`;\n`,
   );
   await writeRepoFile(directory, 'scripts/ci/registry.mjs', 'export const checks = [];\n');
   await writeRepoFile(directory, 'src/popup.js', 'export const popup = true;\n');
@@ -68,6 +68,49 @@ test('exact PR diffs for Candidate, Relation, Canonical and product-code changes
       const result = await classifyChange(fixture, { [filePath]: contents });
       assert.equal(result.schemaChanged, false, label);
       assert.deepEqual(result.changedSchemaOwnerPaths, [], label);
+    }
+  } finally {
+    await rm(fixture.directory, { recursive: true, force: true });
+  }
+});
+
+test('connection-local temporary tables do not select the persistent product schema gate', async () => {
+  const fixture = await makeRepository();
+  try {
+    const cases = [
+      [
+        'scripts/relation/literary-context.mjs',
+        `database.exec('CREATE VIRTUAL TABLE temp.unit_vocab USING fts5vocab(main, unit_fts, row); DROP TABLE IF EXISTS temp.unit_vocab');\n`,
+      ],
+      [
+        'scripts/runtime/sqlite-scratch.mjs',
+        `database.exec('CREATE TEMPORARY TABLE scratch (id TEXT PRIMARY KEY); ALTER TABLE temp.scratch ADD COLUMN label TEXT; DROP TABLE IF EXISTS temp.scratch');\n`,
+      ],
+    ];
+    for (const [filePath, contents] of cases) {
+      const result = await classifyChange(fixture, { [filePath]: contents });
+      assert.equal(result.schemaChanged, false, filePath);
+      assert.deepEqual(result.changedSchemaOwnerPaths, [], filePath);
+    }
+  } finally {
+    await rm(fixture.directory, { recursive: true, force: true });
+  }
+});
+
+test('persistent ALTER and DROP remain fail-closed beside temporary schema operations', async () => {
+  const fixture = await makeRepository();
+  try {
+    const statements = [
+      'CREATE TEMP TABLE scratch (id TEXT); ALTER TABLE temp.scratch ADD COLUMN label TEXT; ALTER TABLE main.persisted ADD COLUMN label TEXT;',
+      'CREATE VIRTUAL TABLE temp.unit_vocab USING fts5vocab(main, unit_fts, row); DROP TABLE IF EXISTS temp.unit_vocab; DROP TABLE main.persisted;',
+    ];
+    for (const [index, sql] of statements.entries()) {
+      await assert.rejects(
+        classifyChange(fixture, {
+          [`scripts/runtime/sqlite-scratch-${index}.mjs`]: `export const sql = '${sql}';\n`,
+        }),
+        /Unregistered SQL schema owner in HEAD: scripts\/runtime\/sqlite-scratch-/u,
+      );
     }
   } finally {
     await rm(fixture.directory, { recursive: true, force: true });

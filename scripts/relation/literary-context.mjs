@@ -36,8 +36,9 @@ const MAX_SNIPPET_CHARS = 700;
 const MAX_CONTEXT_PAGE_CHARS = 1000;
 const INDEX_REQUIRED_TABLES = ['source_files', 'works', 'text_units', 'unit_fts', 'index_metadata'];
 const LEGACY_INDEX_TABLES = ['documents', 'paragraphs', 'paragraph_fts'];
+const CORPUS_INDEX_REQUIRED_TABLES = ['source_files', 'documents', 'paragraphs', 'paragraph_fts', 'index_metadata'];
 const CONTEXT_WINDOW_UNITS = 2;
-const FTS_INDEX_VALIDATION_CONTRACT = 'unit-fts-trigram-token-coverage-v1';
+const FTS_INDEX_VALIDATION_CONTRACT = 'unit-fts-trigram-posting-map-v2';
 const CHECKPOINT_SCRATCH_DIRECTORY = '.warroom-scratch';
 
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');
@@ -189,6 +190,106 @@ function assertIndexSchema(database) {
   if (database.prepare("SELECT instr('abc', 'b') AS found").get().found !== 2) fail('SQLite literal substring search is unavailable');
 }
 
+function readCorpusIndexMetadata(database) {
+  const columns = database.prepare('PRAGMA table_info(index_metadata)').all().map((row) => row.name);
+  if (columns.length === 0) fail('corpus index is missing index_metadata columns');
+  if (columns.includes('key') && columns.includes('value')) {
+    const rows = database.prepare('SELECT key, value FROM index_metadata LIMIT 65').all();
+    if (rows.length === 0) fail('corpus index index_metadata is empty');
+    if (rows.length > 64) fail('corpus index metadata exceeds the 64-row summary limit');
+    return Object.fromEntries(rows.filter((row) => typeof row.key === 'string').map((row) => [row.key, row.value]));
+  }
+  const rows = database.prepare('SELECT * FROM index_metadata LIMIT 2').all();
+  if (rows.length === 0) fail('corpus index index_metadata is empty');
+  if (rows.length !== 1) fail('corpus index index_metadata must be key/value rows or a single-row metadata table');
+  return Object.fromEntries(columns.map((column) => [column, rows[0][column]]));
+}
+
+function normalizeCorpusIndexMetadata(metadata) {
+  const read = (...keys) => {
+    for (const key of keys) {
+      const value = metadata[key];
+      if (value !== null && value !== undefined && String(value) !== '') return String(value);
+    }
+    return null;
+  };
+  const sourceManifestDigest = read('input_manifest_sha256', 'source_manifest_sha256', 'manifest_sha256');
+  const logicalRowDigest = read('logical_row_digest', 'logical_rows_sha256', 'row_digest_sha256');
+  if (!sourceManifestDigest && !logicalRowDigest) {
+    fail('corpus index metadata must expose an input-manifest or logical-row SHA-256 digest');
+  }
+  if ((sourceManifestDigest && !/^[a-f0-9]{64}$/iu.test(sourceManifestDigest)) || (logicalRowDigest && !/^[a-f0-9]{64}$/iu.test(logicalRowDigest))) {
+    fail('corpus index metadata contains a malformed SHA-256 digest');
+  }
+  const schemaVersion = read('schema_version', 'schemaVersion');
+  const indexVersion = read('index_version', 'version');
+  if (!schemaVersion && !indexVersion) fail('corpus index metadata must expose schema_version or index_version');
+  return {
+    index_id: read('index_id', 'index_name', 'name'),
+    schema_version: schemaVersion,
+    builder_version: read('builder_version', 'builderVersion'),
+    index_version: indexVersion,
+    sqlite_version: read('sqlite_version', 'sqliteVersion'),
+    source_manifest_sha256: sourceManifestDigest,
+    logical_row_sha256: logicalRowDigest,
+    source_count: read('source_count', 'sources'),
+    document_count: read('document_count', 'documents'),
+    paragraph_count: read('paragraph_count', 'paragraphs'),
+  };
+}
+
+function assertCorpusIndexSchema(database) {
+  const objects = database.prepare("SELECT name, type FROM sqlite_schema WHERE type IN ('table', 'view')").all();
+  const names = new Set(objects.map((row) => row.name));
+  const missing = CORPUS_INDEX_REQUIRED_TABLES.filter((name) => !names.has(name));
+  if (missing.length > 0) fail(`unsupported paragraph corpus index schema; missing ${missing.join(', ')}`);
+
+  const requiredColumns = {
+    source_files: ['source_path', 'title', 'creator', 'year', 'category'],
+    documents: ['document_rowid', 'source_path', 'document_id', 'document_ordinal', 'title', 'author'],
+    paragraphs: ['paragraph_rowid', 'document_rowid', 'paragraph_id', 'ordinal', 'form'],
+    paragraph_fts: ['form'],
+  };
+  for (const [table, required] of Object.entries(requiredColumns)) {
+    const columns = new Set(database.prepare(`PRAGMA table_info(${table})`).all().map((row) => row.name));
+    const absent = required.filter((column) => !columns.has(column));
+    if (absent.length > 0) fail(`unsupported paragraph corpus index schema; ${table} is missing ${absent.join(', ')}`);
+  }
+  database.prepare('SELECT rowid FROM paragraph_fts WHERE paragraph_fts MATCH ? LIMIT 1').all('"아무"');
+  if (database.prepare("SELECT instr('abc', 'b') AS found").get().found !== 2) fail('SQLite literal substring search is unavailable');
+}
+
+/** Read the paragraph-corpus index used by the independent D workflow. */
+export function openCorpusIndex(databasePath) {
+  const database = new DatabaseSync(databasePath, { readOnly: true });
+  try {
+    database.exec('PRAGMA query_only = ON');
+    assertCorpusIndexSchema(database);
+    const metadata = normalizeCorpusIndexMetadata(readCorpusIndexMetadata(database));
+    return { database, metadata };
+  } catch (error) {
+    database.close();
+    throw error;
+  }
+}
+
+/** Inspect the paragraph-corpus index without returning its local path. */
+export async function inspectCorpusIndex(databasePath, { scratchDirectory = path.resolve(CHECKPOINT_SCRATCH_DIRECTORY) } = {}) {
+  const { database, metadata } = openCorpusIndex(databasePath);
+  try {
+    const sqliteVersion = database.prepare('SELECT sqlite_version() AS version').get().version;
+    const digest = await cachedDatabaseDigest(databasePath, scratchDirectory);
+    return {
+      contract: 'corpus-index-v1',
+      status: 'READY',
+      database: { bytes: digest.bytes, sha256: digest.sha256, sha256_cached: digest.cached },
+      index: { ...metadata, runtime_sqlite_version: sqliteVersion },
+    };
+  } finally {
+    database.close();
+  }
+}
+
 function assertIndexData(database, metadata) {
   const counts = {
     file_count: database.prepare('SELECT count(*) AS count FROM source_files').get().count,
@@ -197,9 +298,27 @@ function assertIndexData(database, metadata) {
   };
   for (const key of Object.keys(counts)) if (counts[key] !== metadata[key]) fail(`literary index ${key} does not match index_metadata`);
   if (database.prepare('SELECT count(*) AS count FROM unit_fts').get().count !== counts.unit_count) fail('literary index FTS content count does not match text_units');
-  const actualTrigramTokens = database.prepare('SELECT coalesce(sum(cnt), 0) AS count FROM temp.literary_unit_fts_vocab').get().count;
+  const actualTrigramTokens = database.prepare('SELECT count(*) AS count FROM temp.literary_unit_fts_vocab').get().count;
   const expectedTrigramTokens = database.prepare(`SELECT coalesce(sum(CASE WHEN length(text) > 2 THEN length(text) - 2 ELSE 0 END), 0) AS count FROM text_units`).get().count;
   if (actualTrigramTokens !== expectedTrigramTokens) fail('literary index FTS trigram token coverage does not match text_units');
+  const postingMismatch = database.prepare(`SELECT
+      EXISTS(
+        SELECT 1 FROM (
+          SELECT term, doc, col, offset FROM temp.literary_unit_fts_vocab
+          EXCEPT
+          SELECT term, doc, col, offset FROM temp.literary_expected_fts_vocab
+        )
+      ) AS unexpected_posting,
+      EXISTS(
+        SELECT 1 FROM (
+          SELECT term, doc, col, offset FROM temp.literary_expected_fts_vocab
+          EXCEPT
+          SELECT term, doc, col, offset FROM temp.literary_unit_fts_vocab
+        )
+      ) AS missing_posting`).get();
+  if (postingMismatch.unexpected_posting || postingMismatch.missing_posting) {
+    fail('literary index FTS trigram term and row postings do not match text_units');
+  }
   if (database.prepare(`SELECT count(*) AS count FROM source_files s
       LEFT JOIN text_units u ON u.file_id = s.file_id
       GROUP BY s.file_id HAVING s.unit_count != count(u.unit_rowid)`).all().length !== 0) {
@@ -228,7 +347,21 @@ function openLiteraryIndex(databasePath, { prepareFtsVocabulary = false } = {}) 
   try {
     assertIndexSchema(database);
     if (prepareFtsVocabulary) {
-      database.exec('CREATE VIRTUAL TABLE temp.literary_unit_fts_vocab USING fts5vocab(main, unit_fts, row)');
+      // Rebuild an exact, connection-local reference index from source units, then compare its posting tuples.
+      // The approved database remains read-only; only the temporary schema is written during preflight.
+      database.exec(`
+        PRAGMA temp_store = FILE;
+        CREATE VIRTUAL TABLE temp.literary_unit_fts_vocab USING fts5vocab(main, unit_fts, instance);
+        CREATE TEMP VIEW literary_expected_units AS SELECT unit_rowid, text FROM main.text_units;
+        CREATE VIRTUAL TABLE temp.literary_expected_unit_fts USING fts5(
+          text,
+          content='literary_expected_units',
+          content_rowid='unit_rowid',
+          tokenize='trigram'
+        );
+        INSERT INTO literary_expected_unit_fts(literary_expected_unit_fts) VALUES ('rebuild');
+        CREATE VIRTUAL TABLE temp.literary_expected_fts_vocab USING fts5vocab(temp, literary_expected_unit_fts, instance);
+      `);
     }
     database.exec('PRAGMA query_only = ON');
     if (database.prepare('PRAGMA query_only').get().query_only !== 1) fail('literary index could not be opened query-only');
@@ -282,17 +415,25 @@ async function markDatabaseDigestValidated(identity, scratchDirectory) {
   await writeJsonAtomic(cachePath, cache);
 }
 
+async function assertDatabaseDigestUnchanged(identity) {
+  const fileStat = await stat(identity.path, { bigint: true });
+  const fingerprint = [String(fileStat.dev), String(fileStat.ino), String(fileStat.size), String(fileStat.mtimeNs), String(fileStat.ctimeNs)].join(':');
+  if (fingerprint !== identity.fingerprint) fail('literary index changed while its read-only preflight was running');
+}
+
 async function inspectLiteraryIndexInternal(databasePath, scratchDirectory) {
-  const { database, metadata } = openLiteraryIndex(databasePath, { prepareFtsVocabulary: true });
+  const identity = await cachedDatabaseDigest(databasePath, scratchDirectory);
+  const needsFullValidation = identity.validation_contract !== FTS_INDEX_VALIDATION_CONTRACT;
+  const { database, metadata } = openLiteraryIndex(databasePath, { prepareFtsVocabulary: needsFullValidation });
   try {
-    const digest = await cachedDatabaseDigest(databasePath, scratchDirectory);
-    if (digest.validation_contract !== FTS_INDEX_VALIDATION_CONTRACT) {
+    if (needsFullValidation) {
       assertIndexData(database, metadata);
-      await markDatabaseDigestValidated(digest, scratchDirectory);
+      await markDatabaseDigestValidated(identity, scratchDirectory);
     }
+    await assertDatabaseDigestUnchanged(identity);
     const runtimeSqliteVersion = database.prepare('SELECT sqlite_version() AS version').get().version;
     return {
-      identity: digest,
+      identity,
       metadata,
       summary: {
         schema_contract: 'works/text_units/unit_fts-v1',
@@ -304,7 +445,7 @@ async function inspectLiteraryIndexInternal(databasePath, scratchDirectory) {
         text_unit_count: metadata.unit_count,
         inventory_file_count: metadata.inventory_file_count,
         excluded_file_count: metadata.excluded_file_count,
-        fts_index_validation: 'trigram-token-count-verified',
+        fts_index_validation: 'trigram-term-row-posting-map-verified',
         manifest_digest: 'sha256-format-valid',
         logical_row_digest: 'sha256-format-valid',
         status: 'READY',

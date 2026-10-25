@@ -16,10 +16,42 @@ export const SQLITE_SCHEMA_OWNER_PATHS = Object.freeze([
 
 const SQL_COMMENT_PATTERN = '(?:/\\*[\\s\\S]*?\\*/|--[^\\r\\n]*(?:\\r?\\n|$))';
 const SQL_TOKEN_GAP_PATTERN = '(?:\\s|' + SQL_COMMENT_PATTERN + ')+';
+const SQL_TOKEN_GAP_OPTIONAL_PATTERN = '(?:\\s|' + SQL_COMMENT_PATTERN + ')*';
+const SQL_CREATE_OBJECT_PATTERN = '(?:VIRTUAL' + SQL_TOKEN_GAP_PATTERN
+  + 'TABLE|(?:UNIQUE' + SQL_TOKEN_GAP_PATTERN + ')?(?:TABLE|INDEX|VIEW|TRIGGER))';
+const SQL_TEMP_KEYWORD_DDL_PREFIX_PATTERN = new RegExp(
+  '\\bCREATE' + SQL_TOKEN_GAP_PATTERN
+    + '(?:TEMP|TEMPORARY)' + SQL_TOKEN_GAP_PATTERN
+    + SQL_CREATE_OBJECT_PATTERN + SQL_TOKEN_GAP_PATTERN
+    + '(?:IF' + SQL_TOKEN_GAP_PATTERN + 'NOT' + SQL_TOKEN_GAP_PATTERN
+    + 'EXISTS' + SQL_TOKEN_GAP_PATTERN + ')?[^\\s(;,]+',
+  'giu',
+);
+const SQL_TEMP_SCHEMA_DDL_PREFIX_PATTERN = new RegExp(
+  '\\bCREATE' + SQL_TOKEN_GAP_PATTERN
+    + SQL_CREATE_OBJECT_PATTERN + SQL_TOKEN_GAP_PATTERN
+    + '(?:IF' + SQL_TOKEN_GAP_PATTERN + 'NOT' + SQL_TOKEN_GAP_PATTERN
+    + 'EXISTS' + SQL_TOKEN_GAP_PATTERN + ')?'
+    + '(?:temp|"temp"|`temp`|\\[temp\\])' + SQL_TOKEN_GAP_OPTIONAL_PATTERN + '\\.[^\\s(;,]+',
+  'giu',
+);
+const SQL_TEMP_QUALIFIED_ALTER_PREFIX_PATTERN = new RegExp(
+  '\\bALTER' + SQL_TOKEN_GAP_PATTERN + 'TABLE' + SQL_TOKEN_GAP_PATTERN
+    + '(?:temp|"temp"|`temp`|\\[temp\\])' + SQL_TOKEN_GAP_OPTIONAL_PATTERN
+    + '\\.' + SQL_TOKEN_GAP_OPTIONAL_PATTERN + '[^\\s(;,]+',
+  'giu',
+);
+const SQL_TEMP_QUALIFIED_DROP_PREFIX_PATTERN = new RegExp(
+  '\\bDROP' + SQL_TOKEN_GAP_PATTERN + '(?:TABLE|INDEX|VIEW|TRIGGER)'
+    + SQL_TOKEN_GAP_PATTERN
+    + '(?:IF' + SQL_TOKEN_GAP_PATTERN + 'EXISTS' + SQL_TOKEN_GAP_PATTERN + ')?'
+    + '(?:temp|"temp"|`temp`|\\[temp\\])' + SQL_TOKEN_GAP_OPTIONAL_PATTERN
+    + '\\.' + SQL_TOKEN_GAP_OPTIONAL_PATTERN + '[^\\s(;,]+',
+  'giu',
+);
 const SQL_SCHEMA_DEFINITION_PATTERN = new RegExp(
   '\\b(?:CREATE' + SQL_TOKEN_GAP_PATTERN
-    + '(?:(?:TEMP|TEMPORARY)' + SQL_TOKEN_GAP_PATTERN + ')?(?:VIRTUAL'
-    + SQL_TOKEN_GAP_PATTERN + 'TABLE|(?:UNIQUE' + SQL_TOKEN_GAP_PATTERN
+    + '(?:VIRTUAL' + SQL_TOKEN_GAP_PATTERN + 'TABLE|(?:UNIQUE' + SQL_TOKEN_GAP_PATTERN
     + ')?(?:TABLE|INDEX|VIEW|TRIGGER))|ALTER' + SQL_TOKEN_GAP_PATTERN
     + 'TABLE|DROP' + SQL_TOKEN_GAP_PATTERN + '(?:TABLE|INDEX|VIEW|TRIGGER)|UPDATE'
     + SQL_TOKEN_GAP_PATTERN + '(?:(?:main)' + SQL_TOKEN_GAP_PATTERN + '\\.'
@@ -29,7 +61,12 @@ const SQL_SCHEMA_DEFINITION_PATTERN = new RegExp(
 const SQL_SCHEMA_GREP_PATTERN = '(CREATE|ALTER|DROP|UPDATE)';
 
 function containsSqlSchemaMutation(text) {
-  return SQL_SCHEMA_DEFINITION_PATTERN.test(text);
+  const persistentSchemaText = text
+    .replace(SQL_TEMP_KEYWORD_DDL_PREFIX_PATTERN, '')
+    .replace(SQL_TEMP_SCHEMA_DDL_PREFIX_PATTERN, '')
+    .replace(SQL_TEMP_QUALIFIED_ALTER_PREFIX_PATTERN, '')
+    .replace(SQL_TEMP_QUALIFIED_DROP_PREFIX_PATTERN, '');
+  return SQL_SCHEMA_DEFINITION_PATTERN.test(persistentSchemaText);
 }
 
 function decodeGitText(value, label) {
