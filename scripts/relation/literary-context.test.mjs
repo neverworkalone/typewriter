@@ -8,6 +8,7 @@ import { DatabaseSync } from 'node:sqlite';
 
 import {
   addSearchForm,
+  excerptAround,
   exportLiteraryCandidates,
   initializeLiteraryCheckpoint,
   inspectLiteraryIndex,
@@ -259,6 +260,32 @@ test('context excerpts prefer the canonical lemma when an earlier shorter search
   } finally {
     await cleanup(fixture);
   }
+});
+
+test('literal-hit excerpts stay anchored to the exact unit row when work ordinals repeat', async () => {
+  const fixture = await makeFixture({
+    unitCount: 2,
+    workCount: 2,
+    firstForm: '교이',
+    unitTexts: ['이 문장에는 검색형이 없다.', `${'앞'.repeat(180)}교이가 문장에 나타났다.`],
+  });
+  try {
+    const [item] = (await chunk(fixture, { contexts: 1, snippetChars: 100 })).items;
+    assert.equal(item.total_hits, 1);
+    assert.equal(item.contexts.length, 1);
+    assert.equal(item.contexts[0].src, 'Fixture Work 2 / Test Author 2');
+    assert.ok(item.contexts[0].x.includes(item.lemma), 'the excerpt must include the literal form from its exact hit unit');
+  } finally {
+    await cleanup(fixture);
+  }
+});
+
+test('excerpt mapping fails closed when the locator offset has no literal hit', () => {
+  const context = `교이${'앞'.repeat(180)} 문맥`;
+  assert.throws(
+    () => excerptAround(context, ['교이'], 100, context.length + 1, '교이'),
+    /literal search hit is absent from its context window/u,
+  );
 });
 
 test('one chunk read, one submit and one export produce a Candidate v1 file bound to cited contexts', async () => {

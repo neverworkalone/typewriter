@@ -550,7 +550,7 @@ function countMatches(database, forms) {
   return database.prepare(`${query.cte} SELECT COUNT(DISTINCT unit_rowid) AS total_hits FROM raw_hits`).get(...query.parameters).total_hits;
 }
 
-function readUnitWindow(database, { file_id: fileId, ordinal }, radius = CONTEXT_WINDOW_UNITS) {
+function readUnitWindow(database, { file_id: fileId, ordinal, unit_rowid: unitRowId }, radius = CONTEXT_WINDOW_UNITS) {
   const start = ordinal - radius;
   const end = ordinal + radius;
   const units = database.prepare(`
@@ -559,9 +559,9 @@ function readUnitWindow(database, { file_id: fileId, ordinal }, radius = CONTEXT
     WHERE file_id = ? AND ordinal BETWEEN ? AND ?
     ORDER BY ordinal, unit_rowid
   `).all(fileId, start, end);
-  if (!units.some((unit) => unit.ordinal === ordinal)) fail('literary context locator no longer resolves to its exact text unit');
+  const hitIndex = units.findIndex((unit) => unit.unit_rowid === unitRowId);
+  if (hitIndex < 0 || units[hitIndex].ordinal !== ordinal) fail('literary context locator no longer resolves to its exact text unit');
   const text = units.map((unit) => `${unit.text}${unit.eol}`).join('');
-  const hitIndex = units.findIndex((unit) => unit.ordinal === ordinal);
   const hitStart = units.slice(0, hitIndex).reduce((length, unit) => length + unit.text.length + unit.eol.length, 0);
   return {
     units: units.map(({ unit_rowid, ordinal: unitOrdinal, kind, block_ordinal, eol }) => ({ unit_rowid, ordinal: unitOrdinal, kind, block_ordinal, eol })),
@@ -614,11 +614,12 @@ function makeLocatorKey(row) {
   return sha256(JSON.stringify([row.file_id, row.work_id, row.unit_rowid, row.ordinal, row.source_sha256]));
 }
 
-function excerptAround(text, forms, maxChars, hitStart = 0, preferredForm = null) {
+export function excerptAround(text, forms, maxChars, hitStart = 0, preferredForm = null) {
   const matches = forms.map((form) => ({ form, at: text.indexOf(form, hitStart) })).filter(({ at }) => at >= 0);
   const preferredMatch = preferredForm ? matches.find(({ form }) => form === preferredForm) : null;
   const selectedMatch = preferredMatch ?? matches.sort((left, right) => codePointLength(right.form) - codePointLength(left.form) || left.at - right.at)[0];
-  const matchAt = selectedMatch?.at ?? hitStart;
+  if (!selectedMatch) fail('literal search hit is absent from its context window');
+  const matchAt = selectedMatch.at;
   const length = codePointLength(text);
   if (length <= maxChars) return { text, truncated: false };
   const chars = [...text];
@@ -626,8 +627,10 @@ function excerptAround(text, forms, maxChars, hitStart = 0, preferredForm = null
   const contentLimit = maxChars - 2;
   const start = Math.max(0, Math.min(length - contentLimit, matchCodePointAt - Math.floor(contentLimit / 2)));
   const end = Math.min(length, start + contentLimit);
+  const excerpt = `${start > 0 ? '…' : ''}${chars.slice(start, end).join('')}${end < length ? '…' : ''}`;
+  if (!excerpt.includes(selectedMatch.form)) fail('literal search hit was excluded from its context excerpt');
   return {
-    text: `${start > 0 ? '…' : ''}${chars.slice(start, end).join('')}${end < length ? '…' : ''}`,
+    text: excerpt,
     truncated: true,
   };
 }
