@@ -59,7 +59,7 @@ data/relation-candidates/
 
 ### A/B batch workbench
 
-A and B producers must use [`scripts/relation/candidate-workbench.mjs`](../scripts/relation/candidate-workbench.mjs) for Canonical chunk reads, whole-chunk Candidate saves, local correction, and the final Candidate v1 validation. It keeps no exploration/review receipts and does not perform semantic discovery or judgment: A follows #860's two independent meaning explorations, and B follows its separate two-scene procedure. Use the [A/B Candidate workbench manual](relation-candidate-workbench.md) for the shortest CLI path. C/D production remains on their method-specific tools.
+A and B producers must use [`scripts/relation/candidate-workbench.mjs`](../scripts/relation/candidate-workbench.mjs) for Canonical chunk reads, whole-chunk Candidate saves, local correction, and the final Candidate v1 validation. It keeps no exploration/review receipts and does not perform semantic discovery or judgment: A follows #860's two independent meaning explorations, and B follows its separate two-scene procedure. Use the [A/B Candidate workbench manual](relation-candidate-workbench.md) for the shortest CLI path. C production uses its method-specific literary-context CLI; D follows #1156's read-only 25-record chunk direct-search workflow without a dedicated Workbench CLI.
 
 ### A/B/C/D 공통 후보 표현 단위 — Stage 1 필수 생산 계약
 
@@ -97,7 +97,7 @@ D는 전용 Workbench 없이 #1156의 25-record 청크 직접 검색 → AI 판�
 
 > 정확한 출발 sense가 쓰인 문맥에서 자연스러운 연관 표현, 사용 상황, 함께 발생하는 행동, 의미상 가까운 말, 글쓰기에 도움이 되는 연상을 찾는다. 같은 문서의 주제어, 가까이에 나온 명사, 단순 공출현 빈도만으로 후보를 선택하지 않는다. 후보와 출발 sense 사이의 **구체적인 쓰임·의미 연결**이 실제 문맥에 있어야 한다. `가계도 → 가계도`처럼 출발 표제어 자신은 제외하고, 동음이의어·부분 문자열 검색 오탐을 구별한다. 검색 자료가 문학 분야에 치우친 경우 이를 일반 문어 전체의 대표 용례로 간주하지 않는다. 적절한 후보가 없으면 빈 배열을 반환한다.
 
-**실행 기록과 공개 PR 보고:** C/D는 실제 수행한 탐색과 source-sense 검증을 내부 기록으로 남긴다. C의 로컬 관점별/회차별 실측 검산은 #1155에 따라 필수이며, 그 상세 분포를 PR 본문에 전부 옮길 필요는 없다. **C의 공개 PR 본문은 #1155 §4의 여섯 항목(Method, Model, Shard, Batch, Coverage, Candidates)만 기록한다.** 공통 안내의 활성/빈 sense, 문맥 검증 요약, 탐색 수행 여부, 절차 식별·한계 보고를 C PR 본문의 추가 의무로 적용하지 않는다. D의 PR 보고에는 기존 규칙을 유지한다. 결과물의 record/sense·활성/빈 sense·후보 수, 기본 문맥 검증 요약, 요구한 탐색 수행 여부, 절차 식별과 한계를 간결하게 기록한다. 단순 표기·전사 오류는 실제 데이터·필수 실행에 영향을 주지 않는다면 PR 본문만 정정할 수 있다. 반면 검증 문맥 날조, 다른 sense 결속, 탐색 누락, 허위 수행 보고는 기술 차단 사항이다. 보고된 합계만으로 비공개 문맥을 독립 확인했다고 주장하지 않는다.
+**실행 기록과 공개 PR 보고:** C/D는 실제 수행한 탐색과 source-sense 검증을 내부 기록으로 남긴다. C의 로컬 관점별/회차별 실측 검산은 #1155에 따라 필수이며, 그 상세 분포를 PR 본문에 전부 옮길 필요는 없다. **C의 공개 PR 본문은 #1155 §4의 여섯 항목(Method, Model, Shard, Batch, Coverage, Candidates)만 기록한다.** 공통 안내의 활성/빈 sense, 문맥 검증 요약, 탐색 수행 여부, 절차 식별·한계 보고를 C PR 본문의 추가 의무로 적용하지 않는다. D의 공개 PR 본문에는 #1156의 최소 실행 요약(실제 모델, shard/batch, 후보 수, 승인 문어 원문 검색·source-sense 확인·Candidate v1 검증 수행 여부, 주요 한계)만 간결히 기록한다. 활성/빈 sense 수, 별도 절차 식별자, PASS별 세부 통계·영수증·장부를 추가 의무로 요구하지 않는다. 단순 표기·전사 오류는 실제 데이터·필수 실행에 영향을 주지 않는다면 PR 본문만 정정할 수 있다. 반면 검증 문맥 날조, 다른 sense 결속, 탐색 누락, 허위 수행 보고는 기술 차단 사항이다. 보고된 합계만으로 비공개 문맥을 독립 확인했다고 주장하지 않는다.
 
 **공통 출력:** Stage 1은 `candidates: string[]`만 기록한다. 타입·Tier·대상 ID·채택 판정은 Stage 2가 한다. 후보별 인용문·검색 로그·근거 설명은 Candidate JSONL에 싣지 않는다. 문학·말뭉치 원문과 SQLite는 Git에 올리지 않는다.
 
