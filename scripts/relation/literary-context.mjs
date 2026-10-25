@@ -1172,7 +1172,13 @@ export async function exportLiteraryCandidates({ checkpointPath, canonicalPath, 
   if (unfinished.length > 0) fail(`${unfinished.length} sense(s) are not read and submitted yet (first: ${unfinished.slice(0, 5).join(', ')}); run chunk/submit until none remain`);
   const candidateRows = candidateRowsFromCheckpoint(checkpoint);
   const validation = await validateCandidateRows({ checkpoint, canonicalPath, candidateRows, repositoryDirectory });
-  if (validation.status !== 'VALID') fail(`${validation.message}${validation.affected ? ` (affected ${JSON.stringify(validation.affected)})` : ''}`);
+  if (validation.status !== 'VALID') {
+    const error = new Error(`${validation.message}${validation.affected ? ` (affected ${JSON.stringify(validation.affected)})` : ''}`);
+    error.code = 'CANDIDATE_V1_VALIDATION';
+    error.affected = validation.affected;
+    error.repair_scope = validation.repair_scope;
+    throw error;
+  }
   const resolvedOutput = path.resolve(outputPath);
   const expectedRepositoryPath = path.resolve(repositoryDirectory, 'data/relation-candidates', checkpoint.batch.shard, expectedName);
   try {

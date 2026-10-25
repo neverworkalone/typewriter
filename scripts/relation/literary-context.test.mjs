@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
@@ -227,6 +227,41 @@ test('CLI failures suppress local database paths and environment values', () => 
   assert.equal(`${result.stdout}${result.stderr}`.includes(marker), false);
   assert.equal(`${result.stdout}${result.stderr}`.includes(tokenMarker), false);
   assert.match(result.stderr, /local paths, source text, and secret details were suppressed/u);
+});
+
+test('CLI export preserves the affected Candidate v1 row when the shared validator rejects it', async () => {
+  const fixture = await makeFixture({ unitCount: 1 });
+  try {
+    const [item] = (await chunk(fixture)).items;
+    await submit(fixture, [{ sense_id: 'sense-000001', verified: [item.contexts[0].k], candidates: ['가나다'] }]);
+    const fixtureRoot = await realpath(fixture.root);
+    const outputPath = path.join(fixtureRoot, 'data/relation-candidates/001/001_01_c_codex.jsonl');
+    const cliPath = path.resolve('scripts/relation/literary-context-cli.mjs');
+    const result = spawnSync(process.execPath, [
+      cliPath, 'export', '--checkpoint', path.join(fixtureRoot, '.warroom-scratch/001_01_c_codex.checkpoint.json'),
+      '--canonical', path.join(fixtureRoot, 'data/canonical/stdict-0001.jsonl'), '--output', outputPath,
+    ], { cwd: fixtureRoot, encoding: 'utf8' });
+
+    assert.equal(result.status, 1);
+    const diagnostic = JSON.parse(result.stderr);
+    assert.equal(diagnostic.status, 'FAILED');
+    assert.equal(diagnostic.diagnostic, 'candidate_validation', result.stderr);
+    assert.equal(diagnostic.error_type, 'Error');
+    assert.deepEqual(diagnostic.affected, {
+      record_id: 'record-000001',
+      canonical_record_id: 'record-000001',
+      sense_ids: ['sense-000001'],
+      candidate: '가나다',
+      candidate_line: 1,
+    });
+    assert.match(diagnostic.repair_scope, /Resubmit only the affected sense/u);
+    assert.equal(JSON.stringify(diagnostic).includes(fixture.root), false);
+    assert.equal(JSON.stringify(diagnostic).includes('fixture gloss'), false);
+    assert.equal((await load(fixture)).output, null);
+    await assert.rejects(stat(outputPath), { code: 'ENOENT' });
+  } finally {
+    await cleanup(fixture);
+  }
 });
 
 test('literal search does not join matches across physical lines; zero-hit senses are recorded in the chunk write', async () => {

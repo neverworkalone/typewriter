@@ -198,6 +198,19 @@ async function main() {
 main().catch((error) => {
   const message = typeof error?.message === 'string' ? error.message : '';
   const errorType = typeof error?.name === 'string' && /^[A-Za-z][A-Za-z0-9]*$/u.test(error.name) ? error.name : 'Error';
+  if (error?.code === 'CANDIDATE_V1_VALIDATION') {
+    process.stderr.write(`${JSON.stringify({
+      status: 'FAILED',
+      diagnostic: 'candidate_validation',
+      error_type: errorType,
+      message: 'Candidate v1 validation failed; inspect the affected row and resubmit the affected sense.',
+      affected: error.affected ?? null,
+      repair_scope: error.repair_scope ?? null,
+    })}\n`);
+    process.exitCode = 1;
+    return;
+  }
+
   let diagnostic = 'operation';
   let safeMessage = 'C literary context operation failed; local paths, source text, and secret details were suppressed.';
   if (/^unsupported literary index schema/iu.test(message)) {
