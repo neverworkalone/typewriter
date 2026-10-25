@@ -173,6 +173,34 @@ class ClearFailClosed(ClearBase):
         self.assertEqual(w.git.remote_deleted, [])
         return b
 
+    def test_ownership_proofs_precede_closing_the_pr(self):
+        """A failed proof (any of these) must leave the reviewable PR open."""
+        cases = {
+            "remote branch moved": lambda b: self.w.git.remote.__setitem__(BRANCH, HEAD2),
+            "remote lookup fails": lambda b: self.w.git.remote.__setitem__(BRANCH, RuntimeError("net")),
+            "pr for other candidate file": lambda b: self.w.gh.files.__setitem__(7, [{"path": "data/relation-candidates/002/002_01_a_deepseek.jsonl"}]),
+            "pr head branch mismatch": lambda b: self.w.pr_info(7, HEAD1, head_ref="other"),
+            "worktree registered to other branch": lambda b: self.w.git.reg.__setitem__(b["worktree"], "other"),
+            "stacked pr depends on branch": lambda b: self.w.gh.open.append({"number": 9, "headRefName": "z", "baseRefName": BRANCH, "files": []}),
+        }
+        for name, mutate in cases.items():
+            with self.subTest(name):
+                self.tearDown()
+                self.setUp()
+                self.blocked_case(mutate)
+                self.assertEqual(self.w.gh.closed, [])
+
+    def test_origin_moving_after_the_proof_is_refused_by_the_lease_without_losing_state(self):
+        w = self.w
+        orig = w.git.delete_remote_branch
+        def moved(branch, sha):
+            from warroom.gitops import GitError
+            raise GitError("stale info (lease)")
+        w.git.delete_remote_branch = moved
+        self.blocked_case(lambda b: None)
+        self.assertEqual(w.gh.closed, [7])                           # closed only after every proof passed
+        w.git.delete_remote_branch = orig
+
     def test_unsafe_conditions_block_and_preserve(self):
         cases = {
             "pr for other candidate file": lambda b: self.w.gh.files.__setitem__(7, [{"path": "data/relation-candidates/002/002_01_a_deepseek.jsonl"}]),

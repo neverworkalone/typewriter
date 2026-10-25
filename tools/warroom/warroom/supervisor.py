@@ -394,6 +394,12 @@ class Supervisor:
             if cands != [expected]:
                 raise RecoveryBlocked(f"PR #{i['number']}의 Candidate 파일 소유권이 배치와 일치하지 않습니다 "
                                       f"(기대 {expected}, 확인 {cands})")
+        # Every ownership proof comes BEFORE the first irreversible step: a failing check must never leave a closed PR.
+        remote = self.git.remote_head(branch)
+        if remote is not None:
+            allowed = {i["head_sha"] for i in infos} | ({self.git.head(wt)} if exists else set())
+            if remote not in allowed:
+                raise RecoveryBlocked(f"원격 브랜치 HEAD {remote[:10]}가 확인된 PR/로컬 HEAD와 다릅니다")
         for i in open_prs:
             self.gh.close_pr(i["number"])
             after = self.gh.pull(i["number"])
@@ -403,12 +409,8 @@ class Supervisor:
                 raise RecoveryBlocked(f"PR #{i['number']}을 닫지 못했습니다")
             self.store.add_clear_note(b["id"], f"PR #{i['number']} 머지 없이 닫음; ")
             self.store.log(b["id"], f"Clear: PR #{i['number']} 머지 없이 닫음")
-        remote = self.git.remote_head(branch)
         if remote is not None:
-            allowed = {i["head_sha"] for i in infos} | ({self.git.head(wt)} if exists else set())
-            if remote not in allowed:
-                raise RecoveryBlocked(f"원격 브랜치 HEAD {remote[:10]}가 확인된 PR/로컬 HEAD와 다릅니다")
-            self.git.delete_remote_branch(branch, remote)
+            self.git.delete_remote_branch(branch, remote)   # lease: refused if origin moved since the proof above
             if self.git.remote_head(branch) is not None:
                 raise RecoveryBlocked("원격 브랜치 삭제를 확인하지 못했습니다")
             self.store.add_clear_note(b["id"], "원격 브랜치 삭제; ")
