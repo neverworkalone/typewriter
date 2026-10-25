@@ -230,6 +230,36 @@ class MissingPrRecovery(unittest.TestCase):
         self.assertEqual(w.git.removed, [])
         self.assertEqual(len(w.adapter.launches), 1)
 
+    def test_paused_missing_pr_is_rediscovered_after_the_run_finishes(self):
+        w, b = self.failed_producer()
+        self.assertEqual(b["state"], "PAUSED")
+        self.install_pr(w, b)
+
+        w.tick(3)
+
+        self.assertEqual(w.row(method="b")["state"], "COMPLETE")
+        self.assertEqual(w.row(method="b")["pr_number"], 1594)
+        self.assertEqual(len(w.adapter.launches), 1)
+
+
+    def test_existing_pr_number_paused_merge_recovery_still_uses_cleanup(self):
+        w = World()
+        self.addCleanup(w.tmp.cleanup)
+        w.start("single", method="b")
+        w.adapter.plan.append({"code": 0, "effect": lambda: self.install_pr(
+            w, w.row(method="b"), state="open", merged=False)})
+        w.tick()
+        w.adapter.finish(w.adapter.launches[-1]["pid"])
+        w.tick()
+        b = w.row(method="b")
+        w.store.update(b["id"], state="PAUSED", paused_from="PRODUCING", error="prior stop")
+        w.pr_info(1594, HEAD1, state="closed", merged=True, head_ref=b["branch"])
+
+        w.tick(3)
+
+        self.assertEqual(w.row(method="b")["state"], "COMPLETE")
+        self.assertEqual(len(w.adapter.launches), 1)
+
 
 if __name__ == "__main__":
     unittest.main()
