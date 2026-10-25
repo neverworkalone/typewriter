@@ -72,6 +72,12 @@ def _idle_phase(st: dict) -> str:
     return "—  시작 예약 중" if st.get("run") else "—  실행 이력 없음"
 
 
+def _idle_card(st: dict, title: str) -> str:
+    """Neutral empty card: its title, the idle phase and (Stage 2) why a reserved run is waiting."""
+    wait = _fit("대기: " + st["wait"]) if st.get("wait") and st.get("run") else ""
+    return "\n".join([_fit(title), _fit(_idle_phase(st)), wait] + [""] * (CARD_LINES - 3))
+
+
 CARD_LINES = 4   # every card has exactly these content lines (empty ones stay blank) so all cards share one height
 
 
@@ -108,12 +114,17 @@ def card_text(st: dict) -> str:
     Only observed values are shown: no records -> `진행량 확인 중` and no bar, never an estimate. DRAIN is
     spelled out (never colour-only); every line is fit to the card so it never grows. Activity stays in Detail.
     """
-    m = st["method"].upper()
+    m = control.method_label(st["method"])
     if st["batch"] is None:
-        return "\n".join([_fit(m), _fit(_idle_phase(st))] + [""] * (CARD_LINES - 2))
+        return _idle_card(st, m)
     icon = ICON.get(st["state"], "?")
     phase = PHASE.get(st["state"], st["state"]) + (" + DRAIN" if st["drain"] else "")
-    title = _two_sided(f"{m} · {st['batch']}", f"{phase}  {icon}")
+    s2 = st.get("stage2")
+    title = _two_sided(m if s2 else f"{m} · {st['batch']}", f"{phase}  {icon}")
+    if s2:   # Stage 2 has no record counter: the Part's identity, then PR and elapsed time as on every card
+        ops = _two_sided(f"PR #{st['pr']}" if st["pr"] else "PR 생성 전",
+                         f"경과 {fmt_elapsed(st['elapsed'])}" if st.get("elapsed") is not None else "")
+        return "\n".join([title, _fit(f"Shard {s2['shard']} · Batch {s2['batch']} · Part {s2['part']}"), "", ops])
     done, total = st.get("records_done"), st.get("records_total")
     observed = done is not None and bool(total)
     if observed:
@@ -124,6 +135,21 @@ def card_text(st: dict) -> str:
     ops = _two_sided(f"PR #{st['pr']}" if st["pr"] else "PR 생성 전",
                      f"경과 {fmt_elapsed(st['elapsed'])}" if st.get("elapsed") is not None else "")
     return "\n".join([title, records, bar, ops])
+
+
+def maintainer_card_text(card: dict) -> str:
+    """Status-only Maintainer card (Issue #1555 progress moved off the top area): 4 fixed lines, neutral when idle."""
+    if card["state"] == "IDLE":
+        return "\n".join([_fit("Maintainer"), _fit("—  진행 중인 작업 없음")] + [""] * (CARD_LINES - 2))
+    text, lines = " ".join(card["text"].split()), []
+    while text and len(lines) < CARD_LINES - 1:   # wrap by terminal cells; the last line is cut with an ellipsis
+        head = set_cell_size(text, CARD_W)
+        if len(lines) == CARD_LINES - 2 and head != text:
+            head = _fit(text)
+        lines.append(head)
+        text = text[len(head):].lstrip()
+    return "\n".join([_two_sided("Maintainer", "ERROR  ✖" if card["state"] == "ERROR" else "WORKING  ▶")]
+                      + lines + [""] * (CARD_LINES - 1 - len(lines)))
 
 
 TIER_FOOTER = {
@@ -143,7 +169,7 @@ def tier_footer(state: str) -> str:
 
 def detail_header(st: dict, reg: dict, model: str) -> str:
     """Short operating header; ids, SHAs and paths live in `detail_meta`."""
-    who = f"{adapter_label(reg.get('adapter', '?'))} / {st['method'].upper()}"
+    who = f"{adapter_label(reg.get('adapter', '?'))} / {control.method_label(st['method'])}"
     if st["batch"] is None:
         return f"{who}  ({_idle_phase(st).lstrip('— ')})"
     head = [f"{who} · {st['batch']}", PHASE.get(st["state"], st["state"]) + (" + DRAIN" if st["drain"] else "")]

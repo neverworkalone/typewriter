@@ -12,7 +12,7 @@ import re
 from dataclasses import dataclass
 
 from .shell import Runner
-from .store import SHARED_QUEUE_METHODS
+from .store import SHARED_QUEUE_METHODS, STAGE2_METHOD
 
 SHARDS = 428
 BATCH_SIZE = 500
@@ -50,6 +50,31 @@ def pr_candidates(pr: dict) -> list[tuple[str, str, str, str]]:
         if m:
             out.append((m.group(1), m.group(2), m.group(3), m.group(4)))
     return out
+
+
+# Stage 2 writes only the shard's cumulative Relation/Drop files (#927): a PR touching them occupies that shard.
+_STAGE2_FILE = re.compile(r"data/(?:relations/relation|relation-drops/drop)-(\d{3})\.jsonl")
+
+
+def pr_stage2_shards(pr: dict) -> set[str]:
+    """Shards whose Stage 2 Relation/Drop files an open PR touches (same unknown-list rule as `pr_candidates`)."""
+    files = pr.get("files")
+    if not isinstance(files, list):
+        raise BatchError(f"열린 PR #{pr.get('number')}의 파일 목록을 알 수 없어 중복 점유를 배제할 수 없습니다")
+    return {m.group(1) for f in files if (m := _STAGE2_FILE.fullmatch((f or {}).get("path", "")))}
+
+
+def pr_claims(b, pr: dict) -> list:
+    """What an open PR claims, in the shape `expected_claim(b)` uses: Candidate keys for A-D, shard keys for Stage 2."""
+    if b["method"] == STAGE2_METHOD:
+        return [(STAGE2_METHOD, s) for s in sorted(pr_stage2_shards(pr))]
+    return pr_candidates(pr)
+
+
+def expected_claim(b) -> tuple:
+    if b["method"] == STAGE2_METHOD:
+        return (STAGE2_METHOD, b["shard"])
+    return (b["shard"], b["batch"], b["method"], b["producer"])
 
 
 def is_shared_queue(method: str) -> bool:

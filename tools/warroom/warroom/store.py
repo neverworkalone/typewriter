@@ -87,9 +87,11 @@ CREATE TABLE IF NOT EXISTS maintenance (
   created_at REAL NOT NULL, updated_at REAL NOT NULL
 );
 """
-SCHEMA_VERSION = 6
+# Additive migration (user_version 7, Issue #1684): `lines.shard_pin` is the shard a Single-mode Stage 2 run is bound to.
+SCHEMA_VERSION = 7
 
 MAINTENANCE_METHOD = "m"   # the hidden Maintainer's execution record lives in `batches` under this method
+STAGE2_METHOD = "s2"       # Stage 2 Relation Admission: ONE Part at a time across all models, not a Stage 1 queue method
 
 ACTIVE_STATES = ("PREPARE", "PRODUCING", "WAITING_REVIEW", "FIXING", "MERGED",
                  "CLEANUP", "PAUSED", "ERROR", "CLEARING")
@@ -178,6 +180,8 @@ class Store:
             c.execute("ALTER TABLE batches ADD COLUMN pause_reason TEXT NOT NULL DEFAULT ''")
         if "defect_id" not in have:
             c.execute("ALTER TABLE batches ADD COLUMN defect_id INTEGER")
+        if "shard_pin" not in {r["name"] for r in c.execute("PRAGMA table_info(lines)")}:
+            c.execute("ALTER TABLE lines ADD COLUMN shard_pin TEXT NOT NULL DEFAULT ''")
         c.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
 
     @contextmanager
@@ -218,6 +222,12 @@ class Store:
             if c.execute("SELECT 1 FROM batches WHERE method=? AND producer=? AND state!='COMPLETE'",
                          (f["method"], f["producer"])).fetchone():
                 raise LineBusy(f"{f['producer']}/{f['method']} 라인에 미완료 배치가 있습니다.")
+            if f["method"] == STAGE2_METHOD:   # Stage 2 owns ONE Part for the whole factory, whichever model holds it
+                held = c.execute("SELECT producer, shard, batch, state FROM batches WHERE method=? AND state!='COMPLETE'",
+                                 (STAGE2_METHOD,)).fetchone()
+                if held:
+                    raise LineBusy(f"Stage 2는 전체에서 한 Part만 점유합니다: {held['producer']}가 "
+                                   f"{held['shard']}_{held['batch']}({held['state']})를 소유 중입니다.")
             if f["method"] in SHARED_QUEUE_METHODS:
                 other = c.execute("SELECT producer, state FROM batches WHERE method=? AND shard=? AND batch=? "
                                   "AND producer!=?", (f["method"], f["shard"], f["batch"], f["producer"])).fetchone()
@@ -277,7 +287,7 @@ class Store:
             row = c.execute("SELECT * FROM lines WHERE model=? AND method=?", (model, method)).fetchone()
         return dict(row) if row else {"model": model, "method": method, "mode": "single", "run": 0,
                                       "drain": 0, "drain_once": 0, "force_stop": 0, "retry_batch": None, "blocked": "",
-                                      "model_tier": "free"}
+                                      "model_tier": "free", "shard_pin": ""}
 
     def set_line(self, model: str, method: str, **fields) -> None:
         self.line(model, method)
@@ -289,6 +299,34 @@ class Store:
     def lines(self):
         with self._conn() as c:
             return c.execute("SELECT * FROM lines ORDER BY model, method").fetchall()
+
+    def start_stage2(self, model: str, mode: str) -> tuple[bool, str]:
+        """Reserve the single Stage 2 occupancy for `model` in ONE write transaction (shared with `create_batch`).
+
+        Refused while any model owns an unfinished Stage 2 Part (a restart with another model must recover that Part
+        through its owner) or another model already holds a run reservation, so two Starts can never both win.
+        """
+        now = time.time()
+        with self._conn() as c:
+            c.execute("BEGIN IMMEDIATE")
+            held = c.execute("SELECT producer, shard, batch, state FROM batches WHERE method=? AND state!='COMPLETE'",
+                             (STAGE2_METHOD,)).fetchone()
+            if held:
+                return False, (f"Stage 2는 전체에서 한 Part만 점유합니다: {held['producer']}가 미완료 Part "
+                               f"{held['shard']}_{held['batch']}({held['state']})를 소유 중입니다. "
+                               "같은 모델로 Retry하거나 Batch Detail에서 Clear하세요.")
+            other = c.execute("SELECT model FROM lines WHERE method=? AND run=1 AND model!=?",
+                              (STAGE2_METHOD, model)).fetchone()
+            if other:
+                return False, f"Stage 2는 이미 {other['model']}가 시작 예약 중입니다 (전체에서 한 작업만 허용)."
+            ln = c.execute("SELECT drain FROM lines WHERE model=? AND method=?", (model, STAGE2_METHOD)).fetchone()
+            if ln is not None and ln["drain"]:
+                return False, f"{model}/S2 라인이 Drain 중입니다. 해당 라인의 Cancel Drain 후 시작하세요."
+            c.execute("INSERT OR IGNORE INTO lines(model,method,updated_at) VALUES(?,?,?)", (model, STAGE2_METHOD, now))
+            c.execute("UPDATE lines SET mode=?, force_stop=0, blocked='', run=1, drain_once=0, shard_pin='', updated_at=? "
+                      "WHERE model=? AND method=?", ("continuous" if mode == "continuous" else "single", now, model,
+                                                    STAGE2_METHOD))
+        return True, ""
 
     def request_drain_all(self, lines) -> int:
         """Drain All as ONE write transaction (shared with `create_batch`): a Line with an unfinished batch gets
@@ -393,8 +431,8 @@ class Store:
             c.execute("UPDATE defects SET state='OVERRIDDEN', hold_reason='운영자가 배치를 Clear함', updated_at=? "
                       "WHERE batch_id=? AND state NOT IN ('RELEASED','OVERRIDDEN')", (now, bid))
             c.execute("DELETE FROM batches WHERE id=?", (bid,))
-            c.execute("UPDATE lines SET run=0, drain=0, drain_once=0, force_stop=0, retry_batch=NULL, blocked='', updated_at=? "
-                      "WHERE model=? AND method=?", (now, b["producer"], b["method"]))
+            c.execute("UPDATE lines SET run=0, drain=0, drain_once=0, force_stop=0, retry_batch=NULL, blocked='', "
+                      "shard_pin='', updated_at=? WHERE model=? AND method=?", (now, b["producer"], b["method"]))
             c.execute("INSERT INTO events(batch_id,ts,level,msg,line) VALUES(NULL,?,?,?,?)",
                       (now, "info", audit, f"{b['producer']}/{b['method']}"))
 

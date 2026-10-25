@@ -17,13 +17,13 @@ import time
 import traceback
 from pathlib import Path
 
-from . import auth, batches, control, defects, prompts, reviews
+from . import auth, batches, control, defects, prompts, reviews, stage2
 from .adapters import PREFLIGHT_PENDING, RunSpec, classify_failure
 from .config import (TIERED_ADAPTERS, adapter_label, config_problem, load_config, registry, registry_problems,
-                     reload_problem, run_spec)
+                     reload_problem, run_spec, stage2_problem)
 from .gitops import CleanupBlocked, GitError
 from .maintenance import Maintenance
-from .store import MAINTENANCE_METHOD, LineBusy, LineNotRunnable
+from .store import MAINTENANCE_METHOD, STAGE2_METHOD, LineBusy, LineNotRunnable
 
 
 class DuplicateClaim(Exception):
@@ -284,8 +284,8 @@ class Supervisor:
         if info.get("number") != number or info.get("head_ref") != b["branch"]:
             raise RecoveryBlocked(f"PR #{number}의 head 브랜치가 배치 소유 브랜치와 다릅니다")
         files = self.gh.pull_files(number)
-        candidates = batches.pr_candidates({"number": number, "files": files})
-        expected = (b["shard"], b["batch"], b["method"], b["producer"])
+        candidates = batches.pr_claims(b, {"number": number, "files": files})
+        expected = batches.expected_claim(b)
         if candidates.count(expected) != 1 or any(item != expected for item in candidates):
             raise RecoveryBlocked(f"PR #{number}의 Candidate 파일 소유권이 배치와 일치하지 않습니다 "
                                   f"(기대 {expected}, 확인 {candidates})")
@@ -387,10 +387,10 @@ class Supervisor:
             if info["merged"]:
                 return info
             infos.append(info)
-        expected = (b["shard"], b["batch"], b["method"], b["producer"])
+        expected = batches.expected_claim(b)
         open_prs = [i for i in infos if i["state"] == "open"]
         for i in open_prs:
-            cands = batches.pr_candidates({"number": i["number"], "files": self.gh.pull_files(i["number"])})
+            cands = batches.pr_claims(b, {"number": i["number"], "files": self.gh.pull_files(i["number"])})
             if cands != [expected]:
                 raise RecoveryBlocked(f"PR #{i['number']}의 Candidate 파일 소유권이 배치와 일치하지 않습니다 "
                                       f"(기대 {expected}, 확인 {cands})")
@@ -443,6 +443,8 @@ class Supervisor:
             return self._blocked(ln, f"시작 차단: 등록되지 않은 모델 {model!r}")
         if model in registry_problems(self.cfg):
             return self._blocked(ln, "시작 차단: " + registry_problems(self.cfg)[model])
+        if method == STAGE2_METHOD and (why := stage2_problem(self.cfg, model)):   # fail closed here too, not only in Start
+            return self._blocked(ln, "시작 차단: " + why)
         d = auth.diagnose(self.runner, self.env, self.cfg["repo"], self.cfg["expected_account"])
         if not d["ok"]:
             return self._blocked(ln, "시작 차단: " + "; ".join(d["problems"]))
@@ -451,6 +453,8 @@ class Supervisor:
             return   # the CLI check runs in the background: this Line waits here, the others keep moving
         if problem:
             return self._blocked(ln, "시작 차단: " + problem)
+        if method == STAGE2_METHOD:
+            return self._prepare_new_stage2(ln)
         try:
             self.git.fetch_base(self.cfg["base_branch"])
             nb = batches.next_batch(
@@ -475,6 +479,50 @@ class Supervisor:
             return self.store.log(None, str(e), "warn", line=f"{model}/{method}")
         self.store.set_line(model, method, blocked="")
         self.store.log(bid, f"배치 {nb.stem} 선정, worktree 준비")
+        self._prepare_existing(self.store.batch(bid))
+
+    def _prepare_new_stage2(self, ln) -> None:
+        """Assign the next Stage 2 Part: the earliest ready Part whose exact verify has not yet succeeded on master.
+
+        Single stays on the shard chosen at its first Part (waiting there rather than moving on); Continuous goes on to
+        the next shard. With nothing runnable it waits and re-checks at poll_seconds instead of re-running or
+        opening a duplicate PR.
+        """
+        model, method, base = ln["model"], STAGE2_METHOD, self.cfg["base_branch"]
+        wait_key, poll_key, line = f"s2_wait_{model}", f"s2_poll_{model}", f"{model}/{method}"
+        if self.store.get(wait_key) and self.clock() - float(self.store.get(poll_key, "0")) < self.cfg["poll_seconds"]:
+            return
+        pin = ln["shard_pin"] if ln["mode"] == "single" else ""
+        try:
+            sha = self.git.fetch_base(base)
+            choice = stage2.choose(self.runner, self.paths.repo_root, self.env, ref=f"origin/{base}", sha=sha,
+                                   open_prs=self.gh.open_prs(), kv=self.store, pin=pin,
+                                   verify=lambda *a: self.git.verify_stage2(sha, *a))
+        except Exception as e:   # BatchError, GitError, GhError
+            return self._blocked(ln, f"Stage 2 Part 선정 실패: {e}")
+        if choice.status == "stop":
+            return self._blocked(ln, choice.note)
+        if choice.status == "wait":
+            if self.store.get(wait_key) != choice.note:
+                self.store.log(None, f"Stage 2 대기: {choice.note}", line=line)
+            self.store.set(wait_key, choice.note)
+            return self.store.set(poll_key, str(self.clock()))
+        self.store.set(wait_key, "")
+        if choice.status == "done":
+            self.store.set_line(model, method, run=0, shard_pin="")
+            return self.store.log(None, choice.note, line=line)
+        part = choice.part
+        branch = f"{method}-{model}-{part.shard}-{part.key}"
+        wt = self.paths.worktrees / f"{method}-{model}-{part.shard}_{part.key}"
+        try:
+            bid = self.store.create_batch(method=method, producer=model, shard=part.shard, batch=part.key,
+                                          branch=branch, worktree=str(wt), model_tier=ln["model_tier"], from_run=True)
+        except LineNotRunnable:
+            return
+        except LineBusy as e:   # another model already holds the one Stage 2 occupancy
+            return self.store.log(None, str(e), "warn", line=line)
+        self.store.set_line(model, method, blocked="", shard_pin=part.shard if ln["mode"] == "single" else "")
+        self.store.log(bid, f"Stage 2 {stage2.label(part.shard, part.key)} 선정, worktree 준비")
         self._prepare_existing(self.store.batch(bid))
 
     def _tiered(self, producer: str) -> bool:
@@ -918,9 +966,13 @@ class Supervisor:
             if pr["number"] == my_pr:
                 continue
             try:
-                claims = batches.pr_candidates(pr)
+                claims = batches.pr_claims(b, pr)
             except batches.BatchError as e:   # unknown file list: a duplicate cannot be ruled out -> stop
                 raise DuplicateClaim(f"{e} — 중복 방지로 중단") from e
+            if b["method"] == STAGE2_METHOD:   # one open Stage 2 PR per shard: the cumulative Relation/Drop files collide
+                if batches.expected_claim(b) in claims:
+                    return pr["number"]
+                continue
             for shard, batch, method, who in claims:
                 if (shard, batch, method) == (b["shard"], b["batch"], b["method"]) and (shared or who == b["producer"]):
                     return pr["number"]
@@ -1089,6 +1141,8 @@ class Supervisor:
             info = self.gh.pull(b["pr_number"])
             if not info["merged"]:
                 return self._fail(b, "ERROR", "merged=true 아님 — 정리하지 않음")
+            if b["method"] == STAGE2_METHOD and not self._stage2_merged_verify(b, info):
+                return
             self.git.remove_owned(Path(b["worktree"]), b["branch"], info["head_sha"])
         except CleanupBlocked as e:
             return self._fail(b, "ERROR", f"정리 차단(보존): {e}")
@@ -1098,9 +1152,44 @@ class Supervisor:
         self.store.finish_runs(b["id"], None)
         self.store.log(b["id"], f"배치 {b['shard']}_{b['batch']} 정리 완료")
         ln = self.store.line(b["producer"], b["method"])
+        if b["method"] == STAGE2_METHOD:   # Single ends when its shard is complete (next pick), not after every Part
+            if ln["drain"] or ln["drain_once"]:
+                self.store.set_line(b["producer"], b["method"], run=0, drain=0, drain_once=0, shard_pin="")
+            return
         if ln["mode"] != "continuous" or ln["drain"] or ln["drain_once"]:
             # Single batch done, this Line's Drain took effect, or Drain All asked this Line to finish.
             self.store.set_line(b["producer"], b["method"], run=0, drain=0, drain_once=0)
+
+    def _stage2_merged_verify(self, b, info) -> bool:
+        """A merged Part counts only after its exact verify succeeds on the latest master, BEFORE its worktree is removed
+        and before the next Part may start. False: waiting (merge commit not on master yet / GitHub or git trouble) or
+        stopped in ERROR (verify failed); the worktree, PR and session stay and Retry re-verifies without any AI run."""
+        bb, pp = stage2.split_key(b["batch"])
+        ok_key, gate = stage2.ok_key(b["shard"], bb, pp), f"s2_merge_wait_{b['id']}"
+        if self.store.get(ok_key):
+            return True
+        if self.clock() - float(self.store.get(gate, "0")) < self.cfg["poll_seconds"]:
+            return False
+        self.store.set(gate, str(self.clock()))
+        base = self.cfg["base_branch"]
+        try:
+            sha = self.git.fetch_base(base)
+            merged = info.get("merge_commit_sha")
+            if merged and not self.git.contains_on_base(merged, base):
+                self.store.log(b["id"], f"머지 커밋 {merged[:10]}이 아직 origin/{base}에 보이지 않습니다 — 재확인 예정", "warn")
+                return False
+            ok, tail = self.git.verify_stage2(sha, "part", b["shard"], bb, pp)
+        except Exception as e:
+            self.store.log(b["id"], f"머지 후 Part verify 준비 실패(재시도 예정): {e}", "warn")
+            return False
+        if not ok:
+            self._fail(b, "ERROR", f"PR #{info['number']} 머지 후 최신 master에서 {stage2.label(b['shard'], b['batch'])} "
+                       f"verify가 실패했습니다: {tail}. worktree를 보존하고 다음 Part를 시작하지 않습니다 (확인 후 Retry).")
+            self.store.set(gate, "0")
+            return False
+        self.store.set(ok_key, sha)
+        self.store.log(b["id"], f"최신 master {sha[:10]}에서 {stage2.label(b['shard'], b['batch'])} verify 통과")
+        return True
 
     # ---- daemon --------------------------------------------------------
     def run_forever(self, interval: float = 5.0) -> None:

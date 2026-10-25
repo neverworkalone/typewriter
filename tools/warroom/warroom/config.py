@@ -231,6 +231,8 @@ def config_problem(cfg: dict) -> str | None:
         bad.append("trusted_reviewers는 문자열 목록이어야 합니다")
     if not _strings(cfg.get("methods"), nonempty=True):
         bad.append("methods는 비어 있지 않은 문자열 목록이어야 합니다")
+    elif {m.lower() for m in cfg["methods"]} & RESERVED_METHODS:   # Stage 2 / Maintainer are not Stage 1 Methods
+        bad.append(f"methods에 예약된 이름 {sorted({m.lower() for m in cfg['methods']} & RESERVED_METHODS)}을 쓸 수 없습니다")
     if not isinstance(cfg.get("producers"), dict) or not all(isinstance(p, dict) for p in cfg["producers"].values()):
         bad.append("producers는 {모델 ID: 객체} 형태여야 합니다")
     for key in ("models", "worker"):
@@ -307,6 +309,27 @@ def reload_problem(old: dict, new: dict, in_use: set[str]) -> str | None:
 
 def methods(cfg: dict) -> list[str]:
     return [m.lower() for m in cfg.get("methods") or ["a", "b", "c", "d"]]
+
+
+RESERVED_METHODS = {"m", "s2"}   # the hidden Maintainer's and Stage 2's execution methods (never a Stage 1 Method)
+STAGE2_ADAPTERS = ("claude", "codex")   # Issue #1684: Stage 2 runs on Claude or Codex only, never DeepSeek/OpenCode
+
+
+def stage2_problem(cfg: dict, model: str) -> str | None:
+    """Why `model` must not run Stage 2 (None = it may). Fail closed on the server side, not just in the UI."""
+    reg = registry(cfg)
+    if model not in reg:
+        return f"등록되지 않은 모델 {model!r}"
+    if reg[model]["adapter"] not in STAGE2_ADAPTERS:
+        return (f"Stage 2는 Claude 또는 Codex에서만 실행할 수 있습니다 "
+                f"({reg[model]['label']}: {adapter_label(reg[model]['adapter'])})")
+    return None
+
+
+def stage2_models(cfg: dict) -> list[str]:
+    """Registered models that may run Stage 2, in board order."""
+    reg = registry(cfg)
+    return [pid for pid in ordered_models(cfg) if reg[pid]["adapter"] in STAGE2_ADAPTERS]
 
 
 ADAPTER_LABELS = {"claude": "Claude", "codex": "Codex", "opencode": "OpenCode"}   # display names only

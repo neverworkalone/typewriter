@@ -13,10 +13,12 @@ PROMPT_DIR = Path(__file__).resolve().parent.parent / "prompts"   # independent 
 _PLACEHOLDER = re.compile(r"\{\{\s*([A-Za-z_]\w*)\s*\}\}")
 _PRODUCE = {"batch", "branch"}
 _MAINTAIN = {"issue", "branch"}
+_STAGE2 = {"shard", "batch", "part", "branch"}
 ALLOWED = {"a": _PRODUCE, "b": _PRODUCE, "c": _PRODUCE, "d": _PRODUCE, "recovery": _PRODUCE,
            "fix": {"pr", "head", "branch", "review_events", "session_note"},
-           "m": _MAINTAIN, "m_recovery": _MAINTAIN}
+           "m": _MAINTAIN, "m_recovery": _MAINTAIN, "s2": _STAGE2, "s2_recovery": _STAGE2}
 MAINTENANCE_METHOD = "m"
+STAGE2_METHOD = "s2"
 
 
 class PromptError(Exception):
@@ -50,15 +52,27 @@ def render(name: str, values: dict, directory: Path | None = None) -> str:
     return out
 
 
+def _stage2_values(b) -> dict:
+    try:
+        batch, part = b["batch"].split("-")
+    except ValueError as e:
+        raise PromptError(f"Stage 2 배치 키 {b['batch']!r}는 'BB-PP' 형식이어야 합니다") from e
+    return {"shard": b["shard"], "batch": batch, "part": part, "branch": b["branch"]}
+
+
 def produce(b, directory: Path | None = None) -> str:
     if b["method"] == MAINTENANCE_METHOD:
         return render("m", {"issue": b["batch"], "branch": b["branch"]}, directory)
+    if b["method"] == STAGE2_METHOD:
+        return render("s2", _stage2_values(b), directory)
     return render(b["method"], {"batch": f"{b['shard']}_{b['batch']}", "branch": b["branch"]}, directory)
 
 
 def recovery(b, directory: Path | None = None) -> str:
     if b["method"] == MAINTENANCE_METHOD:
         return render("m_recovery", {"issue": b["batch"], "branch": b["branch"]}, directory)
+    if b["method"] == STAGE2_METHOD:
+        return render("s2_recovery", _stage2_values(b), directory)
     return render("recovery", {"batch": f"{b['shard']}_{b['batch']}", "branch": b["branch"]}, directory)
 
 
