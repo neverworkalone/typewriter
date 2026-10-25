@@ -12,7 +12,7 @@ export const MIN_CANDIDATE_CHUNK_SIZE = 25;
 export const MAX_CANDIDATE_CHUNK_SIZE = 50;
 export const MAX_CANDIDATE_WORKBENCH_STDOUT_BYTES = 64 * 1024;
 export const MAX_CANDIDATE_WORKBENCH_STDOUT_CHARS = 32 * 1024;
-export const MAX_CANDIDATE_WORKBENCH_PAGE_SIZE = 25;
+export const MAX_CANDIDATE_WORKBENCH_PAGE_SIZE = 50;
 export const DEFAULT_CANDIDATE_WORKBENCH_PAGE_SIZE = MAX_CANDIDATE_WORKBENCH_PAGE_SIZE;
 const BATCH_SIZE = 500;
 // A single read item (one record) larger than this is split by sense so it still fits one stdout page.
@@ -58,7 +58,7 @@ export function serializeWorkbenchOutput(
   }
   let serialized;
   try {
-    serialized = JSON.stringify(value, null, 2);
+    serialized = JSON.stringify(value);
   } catch (error) {
     fail(`cannot serialize workbench stdout safely: ${error.message}`);
   }
@@ -109,7 +109,7 @@ export function paginateCandidateWorkbenchItems(items, { offset, limit, maxBytes
     };
   };
   const fits = (candidatePage) => {
-    const output = `${JSON.stringify(candidatePage, null, 2)}\n`;
+    const output = `${JSON.stringify(candidatePage)}\n`;
     return Buffer.byteLength(output, 'utf8') <= page.maxBytes && Array.from(output).length <= page.maxChars;
   };
   if (!fits(build([]))) fail('workbench page metadata exceeds the output limit; increase --max-bytes or --max-chars');
@@ -421,13 +421,24 @@ export async function readCandidateStatus({ scratchDirectory, repositoryDirector
   return { ...workspace.checkpoint.batch, recordCount: prepared.recordCount, senseCount: prepared.senseCount, chunkCount: prepared.chunks.length, unsavedChunks: unsaved };
 }
 
+/**
+ * Light read view of one Canonical record: only what exact sense binding needs (ids, lemma, homograph number,
+ * pos, full gloss). Search forms appear only when they differ from the lemma. The stored Canonical record is untouched.
+ */
 function splitSenses(record, senses, candidatesBySense) {
   const item = {
-    record_id: record.id,
-    canonical_record: {
-      ...record,
-      senses: candidatesBySense ? senses.map((sense) => ({ ...sense, candidates: candidatesBySense.get(sense.id) ?? [] })) : senses,
-    },
+    id: record.id,
+    lemma: record.lemma,
+    ...(record.homograph_no === undefined ? {} : { homograph_no: record.homograph_no }),
+    ...(Array.isArray(record.search_forms) && !(record.search_forms.length === 1 && record.search_forms[0] === record.lemma)
+      ? { search_forms: record.search_forms }
+      : {}),
+    senses: senses.map((sense) => ({
+      id: sense.id,
+      pos: sense.pos,
+      gloss: sense.gloss,
+      ...(candidatesBySense ? { candidates: candidatesBySense.get(sense.id) ?? [] } : {}),
+    })),
   };
   if (senses.length === 1 || JSON.stringify(item).length <= MAX_ITEM_CHARS) return [item];
   const middle = Math.ceil(senses.length / 2);
@@ -444,9 +455,7 @@ export async function readCandidateChunkPage({ scratchDirectory, chunk: requeste
   const sourceRows = await readSourceChunk(workspace.scratchDirectory, chunk);
   const saved = await readSavedChunk(workspace.scratchDirectory, chunk);
   const savedByRecord = new Map((saved ?? []).map((row) => [row.record_id, new Map(row.senses.map((sense) => [sense.sense_id, sense.candidates]))]));
-  const firstRecord = workspace.checkpoint.source.first_record_index + chunk.start_index;
-  const items = sourceRows.flatMap((record, index) => splitSenses(record, record.senses, saved ? savedByRecord.get(record.id) : null)
-    .map((item) => ({ record_index: firstRecord + index, ...item })));
+  const items = sourceRows.flatMap((record) => splitSenses(record, record.senses, saved ? savedByRecord.get(record.id) : null));
   return paginateCandidateWorkbenchItems(items, {
     offset,
     limit,
@@ -492,6 +501,9 @@ function assertCandidateList(candidates, location) {
     }
     const normalized = normalizeCandidate(candidate);
     if (seen.has(normalized)) fail(`${location} duplicates candidate ${JSON.stringify(candidate)}`);
+    if (lemma !== undefined && isSourceLemmaProjection(candidate, lemma)) {
+      fail(`${location} candidate ${JSON.stringify(candidate)} repeats source lemma ${JSON.stringify(lemma)}`);
+    }
     seen.add(normalized);
   }
 }
