@@ -1100,6 +1100,13 @@ test('CI and Pages workflows keep their trigger responsibilities separate', asyn
   assert.match(workflow, /actions\/checkout@v7/u);
   assert.match(workflow, /actions\/setup-node@v7/u);
   assert.match(workflow, /node-version: 24\.x/u);
+  // Docs-only runs skip install, so the pnpm store never exists: the cache post-step
+  // must only be registered by the setup-node step that shares the install condition.
+  const nodeSteps = workflow.split('      - name: ').filter((step) => step.includes('actions/setup-node'));
+  const cached = nodeSteps.filter((step) => /cache: pnpm/u.test(step));
+  assert.equal(cached.length, 1);
+  assert.match(cached[0], /\n        if: .*run_level != 'none'/u);
+  assert.ok(nodeSteps.every((step) => step === cached[0] || /package-manager-cache: false/u.test(step)));
   assert.doesNotMatch(workflow, /^\s+schedule:/mu);
   assert.doesNotMatch(workflow, /^\s+workflow_dispatch:/mu);
   assert.doesNotMatch(workflow, /Candidate validation|ci:candidates/u);

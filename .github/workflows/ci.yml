@@ -25,7 +25,8 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 24.x
-          cache: pnpm
+          # Dependency cache is configured below, only when dependencies install.
+          package-manager-cache: false
 
       - name: Classify exact SQL schema diff
         id: schema
@@ -96,6 +97,13 @@ jobs:
           else
             echo "Ordinary PR changes: running ci:normal." >> "$GITHUB_STEP_SUMMARY"
           fi
+
+      - name: Set up pnpm dependency cache
+        if: ${{ steps.changes.outcome != 'success' || steps.changes.outputs.run_level != 'none' || steps.changes.outputs.run_deep == 'true' || steps.schema.outputs.schema_changed == 'true' }}
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.x
+          cache: pnpm
 
       - name: Install pinned dependencies
         if: ${{ steps.changes.outcome != 'success' || steps.changes.outputs.run_level != 'none' || steps.changes.outputs.run_deep == 'true' || steps.schema.outputs.schema_changed == 'true' }}
