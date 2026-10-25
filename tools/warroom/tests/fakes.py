@@ -302,3 +302,4 @@ class World:
 
     def row(self, model="deepseek", method="a"):
         return self.store.active_batch(model, method) or self.store.latest_batch(model, method)
+

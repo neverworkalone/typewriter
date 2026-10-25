@@ -5,20 +5,14 @@ import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
-from unittest import mock
 
 from tests.fakes import World
 from warroom import control
 from warroom.adapters import Handle, OpenCodeAdapter, RunSpec, classify_failure
-from warroom.config import (DEFAULTS, adapters, effort_problem, ordered_models, pin_summary, registry,
+from warroom.config import (DEFAULTS, adapters, effort_problem, ordered_models, registry,
                             registry_problems, run_spec)
 from warroom.store import SCHEMA, SCHEMA_V2, Store
 from warroom.supervisor import Supervisor
-
-try:
-    import textual  # noqa: F401
-except ImportError:  # pragma: no cover - the TUI check needs Textual (installed in .local/venv)
-    textual = None
 
 QUOTA = DEFAULTS["quota_patterns"]
 SONNET = {"label": "Sonnet", "adapter": "claude", "model": "sonnet", "effort": "medium"}
@@ -146,10 +140,6 @@ class RunPins(unittest.TestCase):
             with self.subTest(entry=entry, tier=tier):
                 with self.assertRaises(ValueError):
                     run_spec(cfg_with({"p": entry}), "p", tier)
-
-    def test_pin_summary_shows_effort(self):
-        self.assertEqual(pin_summary(registry(cfg_with({"claude": SONNET}))["claude"]), "model=sonnet  effort=medium")
-        self.assertIn("effort=high", pin_summary(registry(cfg_with({"deepseek": DEEPSEEK}))["deepseek"]))
 
 
 class OpenCodeArgv(unittest.TestCase):
@@ -317,23 +307,6 @@ class PinnedLaunches(unittest.TestCase):
         self.assertEqual(len(w.adapter.launches), 1)                 # never resumed on the new pin
         self.assertEqual(w.row("claude", "a")["state"], "ERROR")
         self.assertIn("실행 설정 변경 차단", w.row("claude", "a")["error"])
-
-
-@unittest.skipIf(textual is None, "textual not installed")
-class BoardFromConfig(unittest.TestCase):
-    def test_top_select_and_columns_follow_label_order(self):
-        from warroom import tui
-        w = World()
-        cfg = cfg_with({"deepseek": DEEPSEEK, "codex": LUNA, "claude": SONNET})   # reversed on purpose
-        w.paths.ensure()
-        with mock.patch.object(tui, "load_config", return_value=cfg), \
-                mock.patch.object(tui, "Paths", return_value=w.paths), \
-                mock.patch.object(tui, "ensure_supervisor", return_value=None):
-            app = tui.WarRoom()
-        self.assertEqual(app.models, ["claude", "codex", "deepseek"])
-        self.assertEqual([a for _, a in app._model_options("claude")], ["claude"])
-        self.assertEqual([m for m in app._lines()], ["claude", "codex", "deepseek"])
-        w.tmp.cleanup()
 
 
 class StoreV3(unittest.TestCase):

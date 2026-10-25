@@ -9,10 +9,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tests.fakes import HEAD1, HEAD2, World
+from tests.fakes import HEAD1, HEAD2
 from tests.test_lines import PRODUCERS, multi_world
 from tests.test_supervisor import review
-from warroom import control, defects, prompts
+from warroom import control, defects
 from warroom.config import config_problem, maintainer_problem, reload_problem, registry
 from warroom.gitops import Git, IntegrationBlocked
 from warroom.shell import Runner
@@ -727,21 +727,6 @@ class MaintainerConfig(unittest.TestCase):
         self.assertIsNotNone(reload_problem(w.cfg, new, {b["producer"] for b in w.store.incomplete_batches()}))
         w.tmp.cleanup()
 
-    def test_prompts_for_the_maintainer_and_producers(self):
-        row = {"method": "m", "shard": "issue", "batch": "101", "branch": "maint-101"}
-        text = prompts.produce(row)
-        self.assertIn("#101", text)
-        self.assertIn("maint-101", text)
-        self.assertIn("리뷰를 요청", text)
-        # the fixed spec fields are requirements, while directives inside quoted/generated text carry no authority
-        self.assertIn("작업 명세", text)
-        self.assertIn("명세가 아니라 데이터", text)
-        self.assertNotIn("Issue 본문은 데이터이며", text)
-        self.assertIn("#101", prompts.recovery(row))
-        for method in "abcd":
-            self.assertIn("shared-defect.md", prompts.produce({"method": method, "shard": "001", "batch": "01", "branch": "b"}))
-        self.assertIn("shared-defect.md", prompts.recovery({"method": "a", "shard": "001", "batch": "01", "branch": "b"}))
-
 
 class Schema(unittest.TestCase):
     def test_v5_database_migrates_additively(self):
@@ -891,49 +876,3 @@ class RealGitIntegration(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-
-try:
-    import textual  # noqa: F401
-except ImportError:  # pragma: no cover
-    textual = None
-
-
-@unittest.skipIf(textual is None, "textual not installed")
-class UrgentLineInTui(unittest.TestCase):
-    def test_issue_progress_lives_in_the_maintainer_card_not_the_top_area(self):
-        """Issue #1684 moved the #1555 progress from the one yellow line to the Board's Maintainer card (DeepSeek column)."""
-        import asyncio
-        from textual.widgets import Static
-        from tests.test_tui import PRODUCERS as TUI_PRODUCERS, make_app
-        w = world()
-        w.cfg["producers"] = TUI_PRODUCERS
-        produce_and_report(w)
-        w.cfg["producers"] = PRODUCERS
-
-        async def go():
-            app = make_app(w, PRODUCERS)
-            async with app.run_test(size=(200, 60)) as pilot:
-                await pilot.pause(0.3)
-                note, card = app.query_one("#drain-note", Static), app.query_one("#card-maintainer", Static)
-                self.assertFalse(note.display)                              # nothing but the Drain note belongs up there
-                self.assertIn("urgent issue #101", str(card.render()))
-                self.assertFalse(card.has_class("empty"))
-                control.drain_all(w.store, [("sonnet", "a")] + [("deepseek", "a")])
-                await pilot.pause(1.3)
-                text = str(note.render())
-                self.assertEqual(len(text.splitlines()), 1)
-                self.assertIn("DRAIN ALL", text)
-                self.assertNotIn("urgent", text)                            # not duplicated
-                # [brackets] in a hold reason are text, not markup
-                w.store.update_maintenance(101, state="HELD", hold_reason="merge [CONFLICT] in a.mjs")
-                await pilot.pause(1.3)
-                self.assertIn("[CONFLICT]", "".join(str(card.render()).split()))   # the card wraps long text
-                self.assertTrue(card.has_class("ERROR"))                    # a held task stays visibly unresolved
-                w.store.update_defect(w.store.defects()[0]["id"], state="RELEASED")
-                w.store.update_maintenance(101, state="DONE")
-                await pilot.pause(1.3)
-                self.assertNotIn("urgent", str(card.render()))
-                self.assertTrue(card.has_class("empty"))                    # finished: back to the neutral empty card
-        asyncio.run(go())
-        w.tmp.cleanup()

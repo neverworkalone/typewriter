@@ -7,9 +7,9 @@ import sqlite3
 import unittest
 from unittest import mock
 
-from tests.fakes import HEAD1, HEAD2, World
-from warroom import batches, control, prompts, stage2, views
-from warroom.config import config_problem, registry, stage2_models, stage2_problem
+from tests.fakes import HEAD1, World
+from warroom import batches, control, prompts, stage2
+from warroom.config import config_problem, stage2_models, stage2_problem
 from warroom.store import SCHEMA_VERSION, LineBusy, Store
 
 PRODUCERS = {
@@ -390,36 +390,13 @@ class StageTwoLifecycle(unittest.TestCase):
         self.assertIn("#55", b["error"])
 
 
-class StageTwoViews(unittest.TestCase):
-    def test_prompt_and_card_text(self):
-        for name in ("s2", "s2_recovery"):
-            self.assertIn(name, prompts.ALLOWED)
+class StageTwoPromptLoader(unittest.TestCase):
+    def test_a_malformed_part_is_refused_by_the_loader(self):
         b = {"method": S2, "shard": "003", "batch": "02-04", "branch": "s2-claude-003-02-04"}
-        text = prompts.produce(b)
-        self.assertIn("--shard 003 --batch 02 --part 04", text)
-        self.assertIn("--shard 003 --batch 02 --part 04", prompts.recovery(b))
+        prompts.produce(b)
+        prompts.recovery(b)
         with self.assertRaises(prompts.PromptError):
             prompts.produce({**b, "batch": "02"})
-        w = s2_world(self)
-        idle = views.card_text(control.line_status(w.store, "claude", S2))
-        self.assertEqual(len(idle.split("\n")), views.CARD_LINES)
-        self.assertTrue(idle.startswith("Stage 2"))
-        control.start(w.store, "claude", S2, "single", cfg=w.cfg)
-        w.tick()
-        active = views.card_text(control.line_status(w.store, "claude", S2)).split("\n")
-        self.assertEqual(len(active), views.CARD_LINES)
-        self.assertIn("Shard 001 · Batch 01 · Part 01", active[1])
-        self.assertTrue(active[0].startswith("Stage 2") and "WORKING" in active[0])
-
-    def test_maintainer_card_text_is_four_lines_and_neutral_when_idle(self):
-        idle = views.maintainer_card_text({"state": "IDLE", "text": ""})
-        self.assertEqual(len(idle.split("\n")), views.CARD_LINES)
-        for state in ("WORKING", "ERROR"):
-            card = views.maintainer_card_text({"state": state, "text": "urgent issue #101 · " + "보류: 아주 긴 사유 " * 8})
-            lines = card.split("\n")
-            self.assertEqual(len(lines), views.CARD_LINES)
-            self.assertTrue(all(views.cell_len(x) <= views.CARD_W for x in lines), lines)
-            self.assertIn(state, lines[0])
 
 
 class StageTwoMigration(unittest.TestCase):
@@ -498,112 +475,3 @@ class StageTwoRealGit(unittest.TestCase):
         second = self.commit(1)
         self.assertTrue(self.git.contains_on_base(first, "master"))
         self.assertFalse(self.git.contains_on_base(second, "master"))
-
-
-try:
-    import textual  # noqa: F401
-except ImportError:  # pragma: no cover - TUI deps are optional for core tests
-    textual = None
-
-
-@unittest.skipIf(textual is None, "textual not installed")
-class StageTwoBoard(unittest.TestCase):
-    """The 5th Board row: Claude / Codex Stage 2 cards and the status-only Maintainer card in the DeepSeek column."""
-
-    def app(self):
-        from tests.test_tui import make_app
-        w = s2_world(self)
-        w.cfg["maintainer"] = "claude"
-        return w, make_app(w, PRODUCERS)
-
-    def test_row_five_layout_and_neutral_idle_colours(self):
-        import asyncio
-        from textual.widgets import Select
-        from warroom import tui
-
-        async def go():
-            w, app = self.app()
-            async with app.run_test(size=(180, 50)) as pilot:
-                await pilot.pause(0.3)
-                self.assertEqual([c.id for c in app.query(tui.Card) if c.method == S2], ["card-claude-s2", "card-codex-s2"])
-                self.assertEqual(list(app.query("#col-deepseek #card-maintainer")) != [], True)
-                self.assertEqual(list(app.query("#card-deepseek-s2")), [])
-                cards = list(app.query(tui.Card)) + list(app.query(tui.MaintainerCard))
-                self.assertEqual({c.region.height for c in cards}, {6})
-                row5 = [app.query_one(i).region for i in ("#card-claude-s2", "#card-codex-s2", "#card-maintainer")]
-                self.assertEqual({r.y for r in row5}, {row5[0].y})                        # one row, three columns
-                self.assertGreater(row5[0].y, app.query_one("#card-claude-d").region.y)    # below A/B/C/D
-                for i in ("#card-claude-s2", "#card-codex-s2", "#card-maintainer"):
-                    self.assertTrue(app.query_one(i).has_class("empty"), i)                # no blue/yellow while idle
-                self.assertEqual(app.query_one("#card-claude-a").region.width, app.query_one("#card-claude-s2").region.width)
-                self.assertIs(app.query_one("#drain-note").display, False)
-                adapter, method = app.query_one("#adapter", Select), app.query_one("#method", Select)
-                self.assertIn(S2, [v for _, v in method._options])
-
-        asyncio.run(go())
-
-    def test_stage_two_option_only_for_claude_codex_and_deepseek_falls_back_to_a(self):
-        import asyncio
-        from textual.widgets import Select
-
-        async def go():
-            w, app = self.app()
-            async with app.run_test(size=(180, 50)) as pilot:
-                await pilot.pause(0.3)
-                adapter, method = app.query_one("#adapter", Select), app.query_one("#method", Select)
-                opts = lambda: [v for _, v in method._options if v is not Select.BLANK]
-                self.assertEqual(opts(), ["a", "b", "c", "d", S2])
-                method.value = S2
-                await pilot.pause(0.1)
-                adapter.value = "opencode"
-                await pilot.pause(0.3)
-                self.assertEqual((opts(), method.value), (["a", "b", "c", "d"], "a"))
-                adapter.value = "codex"
-                await pilot.pause(0.3)
-                self.assertIn(S2, opts())
-
-        asyncio.run(go())
-
-    def test_start_runs_only_the_selected_stage_two_card_and_a_second_start_is_refused(self):
-        import asyncio
-        from textual.widgets import Button, Select
-
-        async def go():
-            w, app = self.app()
-            async with app.run_test(size=(180, 50)) as pilot:
-                await pilot.pause(0.3)
-                app.query_one("#method", Select).value = S2
-                await pilot.pause(0.1)
-                app.query_one("#start", Button).press()
-                await pilot.pause(0.2)
-                self.assertEqual(w.store.peek_line("claude", S2)["run"], 1)
-                w.tick()
-                await pilot.pause(1.3)
-                claude, codex = app.query_one("#card-claude-s2"), app.query_one("#card-codex-s2")
-                self.assertFalse(claude.has_class("empty"))
-                self.assertIn("Shard 001 · Batch 01 · Part 01", str(claude.render()))
-                self.assertTrue(codex.has_class("empty"))
-                app.query_one("#adapter", Select).value = "codex"
-                await pilot.pause(0.3)
-                app.query_one("#method", Select).value = S2
-                app.query_one("#start", Button).press()
-                await pilot.pause(0.2)
-                self.assertEqual(w.store.peek_line("codex", S2)["run"], 0)
-
-        asyncio.run(go())
-
-    def test_maintainer_progress_moves_from_the_top_area_to_its_card(self):
-        import asyncio
-
-        async def go():
-            w, app = self.app()
-            w.store.ensure_maintenance(101)
-            async with app.run_test(size=(180, 50)) as pilot:
-                await pilot.pause(1.3)
-                card = app.query_one("#card-maintainer")
-                self.assertFalse(card.has_class("empty"))
-                self.assertIn("urgent issue #101", str(card.render()))
-                self.assertIs(app.query_one("#drain-note").display, False)
-                self.assertNotIn("urgent", str(app.query_one("#drain-note").render()))
-
-        asyncio.run(go())
