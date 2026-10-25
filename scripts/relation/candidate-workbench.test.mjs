@@ -155,6 +155,20 @@ test('prepare preserves full Canonical rows and creates bounded chunks with expl
   await assert.rejects(prepare(invalidSizeContext, 24), /chunk-size must be an integer from 25 to 50/u);
 });
 
+test('B candidate workbench rejects other producer methods', async (t) => {
+  const context = await setup(t);
+  for (const method of ['a', 'c', 'd']) {
+    await assert.rejects(
+      prepareCandidateBatch({
+        shard: '001', batch: '01', method, model: 'codex',
+        scratchDirectory: context.scratchDirectory,
+        repositoryDirectory: context.repositoryDirectory,
+      }),
+      /B candidate workbench only supports method b/u,
+    );
+  }
+});
+
 test('empty chunk saves do not complete B scene exploration; explicit marks unlock merge', async (t) => {
   const context = await setup(t);
   const prepared = await prepare(context);

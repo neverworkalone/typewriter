@@ -61,7 +61,7 @@ function normalizeBatch(value) {
 }
 
 function normalizeMethod(value) {
-  if (!/^[a-d]$/u.test(String(value ?? ''))) fail('method must be a, b, c, or d');
+  if (String(value ?? '') !== 'b') fail('B candidate workbench only supports method b');
   return String(value);
 }
 
@@ -266,7 +266,7 @@ function assertCheckpointShape(checkpoint) {
     fail('unsupported or malformed Candidate workbench checkpoint');
   }
   if (!/^\d{3}$/u.test(checkpoint.batch.shard ?? '') || !['01', '02'].includes(checkpoint.batch.batch)
-    || !/^[a-d]$/u.test(checkpoint.batch.method ?? '') || !/^[a-z0-9_-]+$/u.test(checkpoint.batch.model ?? '')) {
+    || checkpoint.batch.method !== 'b' || !/^[a-z0-9_-]+$/u.test(checkpoint.batch.model ?? '')) {
     fail('checkpoint batch metadata is malformed');
   }
   if (typeof checkpoint.source.canonical_path !== 'string'
@@ -951,7 +951,7 @@ function parseArguments(argv) {
 function usage() {
   return [
     'usage:',
-    '  node scripts/relation/candidate-workbench.mjs prepare --shard SSS --batch BB --method a|b|c|d --model <id> --scratch-dir .warroom-scratch/<batch> [--chunk-size 25..50]',
+    '  node scripts/relation/candidate-workbench.mjs prepare --shard SSS --batch BB --method b --model <id> --scratch-dir .warroom-scratch/<batch> [--chunk-size 25..50]',
     '  node scripts/relation/candidate-workbench.mjs save-chunk --scratch-dir <dir> --chunk N --input <candidate-chunk.jsonl>',
     '  node scripts/relation/candidate-workbench.mjs patch-sense --scratch-dir <dir> --input <sense-candidates.json>',
     '  node scripts/relation/candidate-workbench.mjs remove-candidate --scratch-dir <dir> --input <confirmed-ineligible.json>',
