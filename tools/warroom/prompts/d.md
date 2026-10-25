@@ -8,7 +8,7 @@ War Room이 준비한 HEAD를 기준으로 작업하며,
 
 Issue #1156의 D 생산 계약을 읽고 준수한다.
 
-D 검색·문맥 증거·체크포인트·Candidate 출력에는 `scripts/relation/corpus-context-cli.mjs`를 사용한다. 구체적 절차는 `docs/relation-corpus-context.md`를 따른다.
+D는 전용 CLI·전수 사전 `scan`·문맥/후보별 영수증 없이 #1156의 간단한 경로로 생산한다. 25-record 청크마다 승인 문어 SQLite를 read-only로 직접 검색하고(필요한 검색어만 요구 시 조회), 읽은 문맥을 직접 판독해 후보를 만들고, 청크 단위 scratch(`.warroom-scratch/`)에 중간 결과만 남겨 재개한다. 마지막에 Candidate JSONL을 조립해 `scripts/relation/candidate-contract.mjs` 검증만 실행한다.
 
 셸 명령은 개별로 실행해 각 종료 코드와 출력을 확인한다. `gh api` 경로에 `?` 또는 `&`가 있으면 경로 인수 전체를 작은따옴표로 감싼다. 예: `gh api 'repos/neverworkalone/typewriter/contents/data/relation-candidates/031?ref=master'`, `gh api 'repos/neverworkalone/typewriter/pulls?state=open&per_page=100' --jq 'length'`.
 
