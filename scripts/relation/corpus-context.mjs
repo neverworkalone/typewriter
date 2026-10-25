@@ -569,7 +569,7 @@ function parseSubmission(entry, index, checkpoint) {
   const allowed = new Set(refs.slice(0, CORPUS_CONTEXT_LIMIT).map((ref) => ref.paragraph_rowid));
   const lists = {};
   for (const key of ['verified', 'rejected', 'ambiguous']) {
-    const list = entry[key] ?? [];
+    const list = entry[key] === undefined ? [] : entry[key];
     if (!Array.isArray(list) || list.some((id) => !allowed.has(id)) || new Set(list).size !== list.length) return problem(`${key} must list distinct context ids returned for this sense`);
     lists[key] = list;
   }
