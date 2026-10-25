@@ -95,11 +95,27 @@ actually checked. A missing judgment is never treated as a rejection. `NO_VERIFI
 is possible only after a completed sample where every inspected context has an
 explicitly confirmed mismatch. `ZERO_HITS` remains a separate state.
 
-For each `VERIFIED` context, make one integrated PASS B exploration covering
-the five lenses `lexical`, `action_role_tool`, `scene_time_environment`,
-`cause_effect_response`, and `contrast_sensation_metaphor`. Put the result in a
-small JSON file under `.warroom-scratch/` with exactly those keys and string
-arrays; `[]` means the lens was considered and yielded nothing. Record it:
+For each `VERIFIED` context, actually read the context and make one integrated
+PASS B exploration. Use the five guides `lexical`, `action_role_tool`,
+`scene_time_environment`, `cause_effect_response`, and
+`contrast_sensation_metaphor` together; the guides do not require separate
+zero-result entries. Put only the discoveries in a JSON list under
+`.warroom-scratch/`. Use strings for untagged candidates and objects when a
+perspective tag helps preserve how a candidate was found:
+
+```json
+[
+  "겨울 아침",
+  {"candidate": "잔향", "lenses": ["scene_time_environment", "contrast_sensation_metaphor"]}
+]
+```
+
+An empty list `[]` means the integrated exploration found no candidate. It is
+valid only when submitted as an explicit PASS 1 for that exact `VERIFIED`
+context; an absent result file, missing `results`, or an unrecorded `[]` does
+not complete PASS B. Keep the guides as prompts for a real context read, not as
+required ledger cells. Existing checkpoints with the legacy five-key object
+remain readable; new input should use the concise candidate list. Record PASS 1:
 
 ```sh
 pnpm run relation:corpus -- explore \
@@ -108,13 +124,17 @@ pnpm run relation:corpus -- explore \
   --results .warroom-scratch/sense-pass-b.json
 ```
 
-A second pass is optional and does not have to cover every context. If there is
-a concrete reason to reread one verified context, record the independent-read
-attestation and reason with `--pass 2 --independent-read --note '...'`. The tool
-does not judge the sense or invent candidates. Candidate strings remain
-separate from source-sense decisions. The CLI reports lens counts and the new
-discovery total; the recorded strings remain in the private checkpoint instead
-of being echoed back as a potentially large response.
+A second pass is optional and does not have to cover every context. If a
+concrete reason warrants independently rereading one verified context, record
+that pass with `--pass 2 --independent-read --note '...'`. PASS 2 requires PASS 1,
+the independent-read flag, and a reason; omitting it is valid. If work is
+interrupted before PASS 1 is recorded, resume from the same checkpoint and
+record the integrated exploration after rereading the exact verified context.
+An already-recorded PASS 1 is preserved and must not be repeated. The tool does
+not judge the sense or invent candidates. Candidate strings remain separate
+from source-sense decisions. The CLI reports the number of unique candidates
+recorded and the current discovery total; the recorded strings remain in the
+private checkpoint instead of being echoed back as a potentially large response.
 
 Review every unique discovery for its Stage 1 form. The decision records
 whether it is an independent word or a concise phrase; it does not assign a
