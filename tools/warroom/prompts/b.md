@@ -14,7 +14,7 @@ War Room이 준비한 HEAD를 기준으로 작업하며,
 
 오류가 난 경우 영향받은 record/sense만 고치고 다시 검사한다. 이미 확정된 다른 청크나 sense를 재생산하지 않는다. 한 sense의 국소 수정은 `patch-sense`를 사용하고, 마지막에 전체 배치를 `merge`한 뒤 정식 Candidate v1 validator를 실행한다.
 
-각 완성 청크는 빈 후보 sense까지 포함해 `save-chunk`로 제출하고, 제출 전에 모든 sense의 서로 다른 두 장면 탐색을 마친다. 중단 전 단일 sense를 저장할 때는 `patch-sense` 후 실제 두 장면을 마친 경우에만 `mark-explored`를 기록한다. 기존 후보 삭제는 해당 source sense의 현재 뜻에 맞춰 의미·형태 검토를 마치고 후보를 명백한 Stage 1 부적격으로 판단한 경우에만 `remove-candidate`를 사용한다.
+각 source sense의 서로 다른 두 장면을 실제로 탐색하고 후보를 확정한 청크는 빈 후보 sense까지 포함해 `save-chunk`로 제출한다. `save-chunk`는 후보 저장만 완료하며 장면 탐색 완료를 표시하지 않는다. 청크의 모든 sense에서 두 장면 탐색을 마친 뒤 각 `record_id`/`sense_id`를 `mark-explored`에 별도로 명시한다. 후보가 없는 sense도 동일하게 탐색하고 명시적으로 표시한다. 중단 전 단일 sense를 저장할 때는 `patch-sense`를 사용하며, 실제 두 장면을 마친 경우에만 `mark-explored`를 기록한다. 기존 후보 삭제는 해당 source sense의 현재 뜻에 맞춰 의미·형태 검토를 마치고 후보를 명백한 Stage 1 부적격으로 판단한 경우에만 `remove-candidate`를 사용한다.
 
 셸 명령은 개별로 실행해 각 종료 코드와 출력을 확인한다. `gh api` 경로에 `?` 또는 `&`가 있으면 경로 인수 전체를 작은따옴표로 감싼다. 예: `gh api 'repos/neverworkalone/typewriter/contents/data/relation-candidates/031?ref=master'`, `gh api 'repos/neverworkalone/typewriter/pulls?state=open&per_page=100' --jq 'length'`.
 

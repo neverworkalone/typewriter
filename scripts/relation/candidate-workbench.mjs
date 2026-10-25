@@ -652,9 +652,6 @@ export async function saveCandidateChunk({ scratchDirectory, chunk: requestedChu
       }
       const candidateSet = new Set(senseState.candidates);
       senseState.reviewed = senseState.reviewed.filter((review) => candidateSet.has(review.candidate));
-      if (senseState.explored_fingerprint === null) {
-        senseState.explored_fingerprint = canonicalSenseFingerprint(source, sourceSense);
-      }
     }
   }
 

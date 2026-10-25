@@ -93,20 +93,35 @@ async function markAllPending(context, status, name = 'review-receipts.jsonl') {
   return result.status;
 }
 
-async function completeEmptyChunks(context, prepared, completedChunkNumbers = []) {
+async function saveEmptyChunks(context, prepared, completedChunkNumbers = []) {
   const completed = new Set(completedChunkNumbers);
+  let status;
   for (const chunk of prepared.chunks) {
     if (completed.has(chunk.number)) continue;
     const sourcePath = path.join(prepared.chunkDirectory, chunk.file);
     const sourceRows = (await readFile(sourcePath, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
     const inputPath = await saveInput(context, candidateRows(sourceRows), `empty-chunk-${chunk.number}.jsonl`);
-    await saveCandidateChunk({
+    const saved = await saveCandidateChunk({
       scratchDirectory: context.scratchDirectory,
       chunk: chunk.number,
       inputPath,
       repositoryDirectory: context.repositoryDirectory,
     });
+    status = saved.status;
   }
+  return status;
+}
+
+async function completeEmptyChunks(context, prepared, completedChunkNumbers = []) {
+  await saveEmptyChunks(context, prepared, completedChunkNumbers);
+  const explored = [];
+  for (const chunk of prepared.chunks) {
+    const sourcePath = path.join(prepared.chunkDirectory, chunk.file);
+    const sourceRows = (await readFile(sourcePath, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
+    explored.push(...sourceRows.flatMap((record) => record.senses.map((sense) => ({ record_id: record.id, sense_id: sense.id }))));
+  }
+  const inputPath = await saveInput(context, explored, 'explored-senses.jsonl');
+  await markCandidateSensesExplored({ scratchDirectory: context.scratchDirectory, inputPath, repositoryDirectory: context.repositoryDirectory });
 }
 
 test('prepare preserves full Canonical rows and creates bounded chunks with explicit IDs', async (t) => {
@@ -138,6 +153,36 @@ test('prepare preserves full Canonical rows and creates bounded chunks with expl
   await assert.rejects(prepare(context, 24), /checkpoint uses 25-record chunks/u);
   const invalidSizeContext = await setup(t);
   await assert.rejects(prepare(invalidSizeContext, 24), /chunk-size must be an integer from 25 to 50/u);
+});
+
+test('empty chunk saves do not complete B scene exploration; explicit marks unlock merge', async (t) => {
+  const context = await setup(t);
+  const prepared = await prepare(context);
+  const saved = await saveEmptyChunks(context, prepared);
+
+  const checkpoint = JSON.parse(await readFile(prepared.checkpointPath, 'utf8'));
+  assert.ok(checkpoint.records.every((record) => record.senses.every((sense) => sense.explored_fingerprint === null)));
+  assert.equal(saved.incompleteSenseCount, 501);
+
+  const outputPath = path.join(context.scratchDirectory, 'empty-without-exploration.jsonl');
+  await assert.rejects(
+    mergeCandidateBatch({ scratchDirectory: context.scratchDirectory, outPath: outputPath, repositoryDirectory: context.repositoryDirectory }),
+    /complete both B scenes for the pending source sense\(s\)/u,
+  );
+
+  const explored = [];
+  for (const chunk of prepared.chunks) {
+    const sourcePath = path.join(prepared.chunkDirectory, chunk.file);
+    const sourceRows = (await readFile(sourcePath, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
+    explored.push(...sourceRows.flatMap((record) => record.senses.map((sense) => ({ record_id: record.id, sense_id: sense.id }))));
+  }
+  const inputPath = await saveInput(context, explored, 'explicitly-explored-senses.jsonl');
+  const marked = await markCandidateSensesExplored({ scratchDirectory: context.scratchDirectory, inputPath, repositoryDirectory: context.repositoryDirectory });
+  assert.equal(marked.status.exploredSenseCount, 501);
+  assert.equal(marked.status.incompleteSenseCount, 0);
+
+  const merged = await mergeCandidateBatch({ scratchDirectory: context.scratchDirectory, outPath: outputPath, repositoryDirectory: context.repositoryDirectory });
+  assert.equal(merged.validation.candidateCount, 0);
 });
 
 test('save-chunk rejects cross-record/sense attachment and incomplete boundaries without changing checkpoint', async (t) => {
@@ -197,7 +242,7 @@ test('saving a resumed chunk adds discoveries without dropping previously saved 
 
   const checkpoint = JSON.parse(await readFile(prepared.checkpointPath, 'utf8'));
   assert.deepEqual(checkpoint.records[0].senses[0].candidates, ['별빛', '달빛']);
-  assert.equal(checkpoint.records[0].senses[0].explored_fingerprint.length, 64);
+  assert.equal(checkpoint.records[0].senses[0].explored_fingerprint, null);
 });
 
 test('prepare stops on Canonical sense membership changes and preserves the old checkpoint', async (t) => {

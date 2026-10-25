@@ -68,6 +68,9 @@ node scripts/relation/candidate-workbench.mjs prepare \
 node scripts/relation/candidate-workbench.mjs save-chunk \
   --scratch-dir .warroom-scratch/001_01_b_codex --chunk 1 \
   --input .warroom-scratch/001_01_b_codex/chunk-001-candidates.jsonl
+node scripts/relation/candidate-workbench.mjs mark-explored \
+  --scratch-dir .warroom-scratch/001_01_b_codex \
+  --input .warroom-scratch/001_01_b_codex/chunk-001-explored-senses.jsonl
 node scripts/relation/candidate-workbench.mjs patch-sense \
   --scratch-dir .warroom-scratch/001_01_b_codex \
   --input .warroom-scratch/001_01_b_codex/w001-w001-s1-candidates.json
@@ -91,7 +94,7 @@ node scripts/relation/candidate-workbench.mjs merge \
   --out data/relation-candidates/001/001_01_b_codex.jsonl
 ```
 
-`prepare` stores complete Canonical records in 25–50-record source chunks and prints each chunk's record/sense counts and source range. Read the full current chunk file; if a display reports truncation, the chunk is not complete. Chunk input names every `record_id` and `sense_id`; the tool rejects missing, unexpected, duplicated, or cross-record IDs instead of attaching candidates by array position. Each complete `save-chunk` marks that chunk submitted, including senses with empty candidate arrays, and adds discoveries to its checkpoint without dropping earlier candidates. For a short interruption, `patch-sense` saves only one sense. `merge` refuses unsaved chunks and any sense that has not completed its two B scenes for the current Canonical meaning.
+`prepare` stores complete Canonical records in 25–50-record source chunks and prints each chunk's record/sense counts and source range. Read the full current chunk file; if a display reports truncation, the chunk is not complete. Chunk input names every `record_id` and `sense_id`; the tool rejects missing, unexpected, duplicated, or cross-record IDs instead of attaching candidates by array position. After finishing both distinct B scenes for each sense, `save-chunk` records only candidate output, including empty candidate arrays, and adds discoveries to its checkpoint without dropping earlier candidates. It does not mark scene exploration complete. Separately, after actually completing both scenes for every sense in that chunk, write each exact `record_id`/`sense_id` pair—including senses with no candidates—to a scratch JSONL file and call `mark-explored`. A saved chunk alone is not sufficient. For a short interruption, `patch-sense` saves only one sense; it also does not mark exploration complete. `merge` refuses unsaved chunks and any sense that has not completed its two B scenes for the current Canonical meaning.
 
 When Canonical sense meaning changes, `exploration-pending` exports only the affected source senses and existing candidates; after completing both scenes, record those exact `record_id`/`sense_id` pairs with `mark-explored`. `review-pending` similarly includes the exact Canonical record/sense for every unchecked or invalidated candidate. After the AI completes its meaning and form check, `mark-reviewed` records only the explicitly listed candidate strings. Candidate edits or source lemma/sense meaning changes invalidate the affected review state. `patch-sense` only adds candidates or preserves existing ones. Removal requires a current candidate review and a separate explicit ineligible judgment through `remove-candidate`. A Canonical record/sense ID membership change stops and preserves the checkpoint for explicit reconciliation. `merge` refuses pending/stale exploration and reviews, assembles in Canonical order, and runs the full Candidate v1 batch contract. Keep checkpoints and chunk files under `.warroom-scratch/`; run the existing `candidate-contract.mjs` against the final path before submission.
 
