@@ -32,6 +32,7 @@
     "relation:correct": "node scripts/relation/correct-cli.mjs",
     "relation:admission": "node scripts/relation/admission-cli.mjs",
     "relation:literary": "node scripts/relation/literary-context-cli.mjs",
+    "relation:corpus": "node scripts/relation/corpus-context-cli.mjs",
     "test:mv3:product": "node scripts/extension/run-cft-product.mjs",
     "test:mv3:package": "node scripts/extension/run-cft-package.mjs",
     "ci:category": "node scripts/ci/run-category.mjs",

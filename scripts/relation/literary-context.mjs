@@ -11,7 +11,9 @@ import {
   CANDIDATE_BATCH_SIZE,
   loadCanonicalLemmaForms,
   normalizeCandidate,
+  patchCandidateRows,
   parseCandidateJsonl,
+  serializeCandidateJsonl,
   validateCandidateBatch,
 } from './candidate-contract.mjs';
 
@@ -164,7 +166,8 @@ function assertIndexSchema(database) {
   if (database.prepare("SELECT instr('abc', 'b') AS found").get().found !== 2) fail('SQLite literal substring search is unavailable');
 }
 
-function openLiteraryIndex(databasePath) {
+/** Open the shared paragraph corpus index read-only for a method-specific adapter. */
+export function openCorpusIndex(databasePath) {
   const database = new DatabaseSync(databasePath, { readOnly: true });
   try {
     database.exec('PRAGMA query_only = ON');
@@ -174,6 +177,27 @@ function openLiteraryIndex(databasePath) {
   } catch (error) {
     database.close();
     throw error;
+  }
+}
+
+/** Inspect the shared paragraph corpus index without returning its local path. */
+export async function inspectCorpusIndex(databasePath, { scratchDirectory = path.resolve(CHECKPOINT_SCRATCH_DIRECTORY) } = {}) {
+  const { database, metadata } = openCorpusIndex(databasePath);
+  try {
+    const sqliteVersion = database.prepare('SELECT sqlite_version() AS version').get().version;
+    const digest = await cachedDatabaseDigest(databasePath, scratchDirectory);
+    return {
+      contract: 'corpus-index-v1',
+      status: 'READY',
+      database: {
+        bytes: digest.bytes,
+        sha256: digest.sha256,
+        sha256_cached: digest.cached,
+      },
+      index: { ...metadata, runtime_sqlite_version: sqliteVersion },
+    };
+  } finally {
+    database.close();
   }
 }
 
@@ -200,26 +224,13 @@ async function cachedDatabaseDigest(databasePath, scratchDirectory) {
 
 /** Read-only preflight. The full-file digest is cached locally against device/inode/size/mtime/ctime. */
 export async function inspectLiteraryIndex(databasePath, { scratchDirectory = path.resolve(CHECKPOINT_SCRATCH_DIRECTORY) } = {}) {
-  const { database, metadata } = openLiteraryIndex(databasePath);
-  try {
-    const sqliteVersion = database.prepare('SELECT sqlite_version() AS version').get().version;
-    const digest = await cachedDatabaseDigest(databasePath, scratchDirectory);
-    return {
-      contract: LITERARY_CONTEXT_CONTRACT,
-      status: 'READY',
-      database: {
-        path: digest.path,
-        bytes: digest.bytes,
-        sha256: digest.sha256,
-        sha256_cached: digest.cached,
-      },
-      index: { ...metadata, runtime_sqlite_version: sqliteVersion },
-      search: { long_forms: 'FTS5 trigram literal substring', short_forms: 'instr() literal substring scan', read_only: true },
-      output_limits: { max_response_chars: MAX_RESPONSE_CHARS, default_page_size: DEFAULT_PAGE_SIZE, max_page_size: MAX_PAGE_SIZE, max_contexts_per_sense: MAX_CONTEXTS_PER_SENSE, default_snippet_chars: DEFAULT_SNIPPET_CHARS, max_snippet_chars: MAX_SNIPPET_CHARS },
-    };
-  } finally {
-    database.close();
-  }
+  const inspected = await inspectCorpusIndex(databasePath, { scratchDirectory });
+  return {
+    ...inspected,
+    contract: LITERARY_CONTEXT_CONTRACT,
+    search: { long_forms: 'FTS5 trigram literal substring', short_forms: 'instr() literal substring scan', read_only: true },
+    output_limits: { max_response_chars: MAX_RESPONSE_CHARS, default_page_size: DEFAULT_PAGE_SIZE, max_page_size: MAX_PAGE_SIZE, max_contexts_per_sense: MAX_CONTEXTS_PER_SENSE, default_snippet_chars: DEFAULT_SNIPPET_CHARS, max_snippet_chars: MAX_SNIPPET_CHARS },
+  };
 }
 
 function parseCanonicalShard(contents, label) {
@@ -590,7 +601,8 @@ export async function initializeLiteraryCheckpoint({ canonicalPath, shard, batch
       git_head: head,
       initialized_at: new Date().toISOString(),
     },
-    index: index.database,
+    // Keep the exact local path only in the private checkpoint for stat identity checks.
+    index: { ...index.database, path: path.resolve(databasePath) },
     index_metadata: index.index,
     records: selected.map((record) => ({
       record_id: record.id,
@@ -653,7 +665,7 @@ export async function addSearchForm(checkpointPath, senseId, form, basis, option
 /** Count all source-sense hits in a batch without returning paragraphs or a sense ledger. */
 export async function scanLiteraryBatch({ databasePath, checkpointPath, scratchDirectory = path.resolve(CHECKPOINT_SCRATCH_DIRECTORY) }) {
   const { checkpoint, path: resolvedCheckpoint } = await loadLiteraryCheckpoint(checkpointPath, { scratchDirectory });
-  const { database } = openLiteraryIndex(databasePath);
+  const { database } = openCorpusIndex(databasePath);
   try {
     await assertCheckpointIndexUnchanged(checkpoint, databasePath);
     const started = performance.now();
@@ -789,7 +801,7 @@ export async function searchLiterarySense({ databasePath, checkpointPath, senseI
   let attemptTotalHits = priorSearch?.total_hits ?? null;
   let opened;
   try {
-    opened = openLiteraryIndex(databasePath);
+    opened = openCorpusIndex(databasePath);
     await assertCheckpointIndexUnchanged(checkpoint, databasePath);
     const results = runSearch(opened.database, currentForms, { pageSize: page, cursor: attemptCursor, snippetChars: snippetLimit });
     attemptTotalHits = results.total_hits;
@@ -1195,7 +1207,7 @@ export async function exportLiteraryCandidates({ checkpointPath, canonicalPath, 
     if (error.code !== 'ENOENT') throw error;
   }
   await mkdir(path.dirname(resolvedOutput), { recursive: true });
-  const serialized = `${candidateRows.map((row) => JSON.stringify(row)).join('\n')}\n`;
+  const serialized = serializeCandidateJsonl(candidateRows);
   const temporary = `${resolvedOutput}.${process.pid}.tmp`;
   await writeFile(temporary, serialized, { mode: 0o644 });
   await rename(temporary, resolvedOutput);
@@ -1260,27 +1272,19 @@ export async function patchLiteraryCandidateFile({ checkpointPath, canonicalPath
   const oldReview = sense.candidate_reviews.find((item) => item.normalized === normalizedCandidate);
   if (!oldReview || oldReview.decision !== 'REMOVE') fail('patch target must have an explicit REMOVE decision in the local form-review checkpoint');
   const text = await readFile(resolvedCandidate, 'utf8');
-  const rows = parseCandidateJsonl(text, resolvedCandidate);
-  const rowIndex = rows.findIndex((row) => row.record_id === recordId);
-  if (rowIndex < 0) fail(`record_id ${JSON.stringify(recordId)} is not in the Candidate file`);
-  const candidateSense = rows[rowIndex].senses?.find((item) => item.sense_id === senseId);
-  if (!candidateSense) fail(`sense_id ${JSON.stringify(senseId)} is not in Candidate record ${recordId}`);
-  const oldIndex = candidateSense.candidates.indexOf(candidate);
-  if (oldIndex < 0) fail('exact patch candidate is not present in the specified record and sense');
-  if (candidateSense.candidates.lastIndexOf(candidate) !== oldIndex) fail('patch target occurs more than once; resolve the duplicate explicitly before applying this one-candidate patch');
+  let rows = parseCandidateJsonl(text, resolvedCandidate);
 
   if (action === 'replace') {
     const normalizedReplacement = normalizeCandidate(replacement);
     const replacementReview = sense.candidate_reviews.find((item) => item.normalized === normalizedReplacement);
     if (!replacementReview || replacementReview.decision !== 'KEEP') fail('replacement must have an explicit KEEP decision and verified sweep evidence in this checkpoint');
-    if (candidateSense.candidates.some((item) => normalizeCandidate(item) === normalizedReplacement)) fail('replacement already exists in the same source sense');
-    candidateSense.candidates[oldIndex] = replacementReview.candidate;
-  } else {
-    candidateSense.candidates.splice(oldIndex, 1);
+    replacement = replacementReview.candidate;
   }
 
+  rows = patchCandidateRows(rows, { recordId, senseId, action, candidate, replacement }).rows;
+
   const validation = await validateLiteraryExport({ checkpointPath: resolvedCheckpoint, canonicalPath, candidateRows: rows, repositoryDirectory, scratchDirectory });
-  const serialized = `${rows.map((row) => JSON.stringify(row)).join('\n')}\n`;
+  const serialized = serializeCandidateJsonl(rows);
   const currentStat = await stat(resolvedCandidate);
   const temporary = `${resolvedCandidate}.${process.pid}.tmp`;
   await writeFile(temporary, serialized, { mode: currentStat.mode & 0o777 });

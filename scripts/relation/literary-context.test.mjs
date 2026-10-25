@@ -123,6 +123,8 @@ test('read-only preflight identifies a bounded index and reuses its local exact-
     assert.equal(first.status, 'READY');
     assert.equal(first.index.schema_version, 'fixture-v1');
     assert.match(first.database.sha256, /^[a-f0-9]{64}$/u);
+    assert.equal(first.database.path, undefined);
+    assert.equal(JSON.stringify(first).includes(fixture.databasePath), false);
     assert.equal(first.search.read_only, true);
     assert.equal(first.database.sha256_cached, false);
     assert.equal(second.database.sha256_cached, true);

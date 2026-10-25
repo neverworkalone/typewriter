@@ -5,7 +5,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-import { validateCandidateBatch, validateCandidatePaths } from './candidate-contract.mjs';
+import { patchCandidateRows, serializeCandidateJsonl, validateCandidateBatch, validateCandidatePaths } from './candidate-contract.mjs';
 import { validateChangedCandidateFiles } from './validate-candidate-changes.mjs';
 
 function fixture(candidate = '다른 표현', batch = '01') {
@@ -24,6 +24,22 @@ function fixture(candidate = '다른 표현', batch = '01') {
   }));
   return { canonicalRows, candidateRows };
 }
+
+test('shared Candidate patch changes only one exact record and sense, then serializes stable JSONL', () => {
+  const rows = [
+    { record_id: 'w1', senses: [{ sense_id: 'w1-s1', candidates: ['첫 후보', '둘 후보'] }, { sense_id: 'w1-s2', candidates: ['유지'] }] },
+    { record_id: 'w2', senses: [{ sense_id: 'w2-s1', candidates: ['그대로'] }] },
+  ];
+  const result = patchCandidateRows(rows, { recordId: 'w1', senseId: 'w1-s1', action: 'replace', candidate: '둘 후보', replacement: '새 후보' });
+  assert.deepEqual(result.patched, { record_id: 'w1', sense_id: 'w1-s1', action: 'replace', candidate: '둘 후보', replacement: '새 후보' });
+  assert.deepEqual(result.rows[0].senses[0].candidates, ['첫 후보', '새 후보']);
+  assert.deepEqual(result.rows[0].senses[1], rows[0].senses[1]);
+  assert.deepEqual(result.rows[1], rows[1]);
+  assert.deepEqual(rows[0].senses[0].candidates, ['첫 후보', '둘 후보'], 'the input rows remain unchanged');
+  assert.equal(serializeCandidateJsonl(result.rows), `${JSON.stringify(result.rows[0])}\n${JSON.stringify(result.rows[1])}\n`);
+  assert.throws(() => patchCandidateRows(rows, { recordId: 'w1', senseId: 'w1-s2', action: 'remove', candidate: 'missing' }), /exact Candidate text must occur exactly once/u);
+  assert.throws(() => patchCandidateRows(rows, { recordId: 'w1', senseId: 'w1-s1', action: 'replace', candidate: '첫 후보', replacement: '둘 후보' }), /already exists/u);
+});
 
 test('Candidate v1 rejects a candidate identical to its source lemma and accepts distinct candidates', () => {
   const invalid = fixture('가짜 미끼');
