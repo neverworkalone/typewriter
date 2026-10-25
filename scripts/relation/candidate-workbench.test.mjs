@@ -7,21 +7,29 @@ import test from 'node:test';
 import {
   exportPendingCandidateReviews,
   exportPendingCandidateExploration,
+  createCandidateWorkbenchStdoutWriter,
   inspectCanonicalRecord,
+  MAX_CANDIDATE_WORKBENCH_STDOUT_BYTES,
+  MAX_CANDIDATE_WORKBENCH_STDOUT_CHARS,
   markCandidateSensesExplored,
   markCandidateReviews,
   mergeCandidateBatch,
+  paginateCandidateWorkbenchItems,
   prepareCandidateBatch,
+  readCandidateChunkPage,
+  readPendingCandidateExplorationPage,
+  readPendingCandidateReviewPage,
   removeCandidate,
   saveCandidateChunk,
+  serializeWorkbenchOutput,
   updateCandidateSense,
 } from './candidate-workbench.mjs';
 
-async function setup(t) {
+async function setup(t, method = 'b') {
   const repositoryDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-candidate-workbench-'));
   t.after(() => rm(repositoryDirectory, { recursive: true, force: true }));
   const canonicalDirectory = path.join(repositoryDirectory, 'data/canonical');
-  const scratchDirectory = path.join(repositoryDirectory, '.warroom-scratch/001_01_b_codex');
+  const scratchDirectory = path.join(repositoryDirectory, `.warroom-scratch/001_01_${method}_codex`);
   await mkdir(canonicalDirectory, { recursive: true });
   const canonicalPath = path.join(canonicalDirectory, 'stdict-0001.jsonl');
   const canonicalRows = Array.from({ length: 500 }, (_, index) => ({
@@ -43,11 +51,11 @@ async function setup(t) {
   return { repositoryDirectory, scratchDirectory, canonicalPath, canonicalRows, writeCanonical };
 }
 
-async function prepare(context, chunkSize = 25) {
+async function prepare(context, chunkSize = 25, method = 'b') {
   return prepareCandidateBatch({
     shard: '001',
     batch: '01',
-    method: 'b',
+    method,
     model: 'codex',
     scratchDirectory: context.scratchDirectory,
     chunkSize,
@@ -155,18 +163,330 @@ test('prepare preserves full Canonical rows and creates bounded chunks with expl
   await assert.rejects(prepare(invalidSizeContext, 24), /chunk-size must be an integer from 25 to 50/u);
 });
 
-test('B candidate workbench rejects other producer methods', async (t) => {
+test('Candidate workbench accepts A and B while rejecting corpus-specific methods', async (t) => {
   const context = await setup(t);
-  for (const method of ['a', 'c', 'd']) {
+  for (const method of ['c', 'd']) {
     await assert.rejects(
       prepareCandidateBatch({
         shard: '001', batch: '01', method, model: 'codex',
         scratchDirectory: context.scratchDirectory,
         repositoryDirectory: context.repositoryDirectory,
       }),
-      /B candidate workbench only supports method b/u,
+      /Candidate workbench supports method a or b only/u,
     );
   }
+  const aContext = await setup(t, 'a');
+  const prepared = await prepare(aContext, 25, 'a');
+  assert.equal(prepared.status.incompletePrimarySenseCount, 501);
+  assert.equal(prepared.status.incompleteSecondarySenseCount, 501);
+});
+
+test('A workbench records primary and independent secondary exploration separately', async (t) => {
+  const context = await setup(t, 'a');
+  const prepared = await prepare(context, 25, 'a');
+  await saveEmptyChunks(context, prepared);
+
+  const firstChunk = (await readFile(path.join(prepared.chunkDirectory, prepared.chunks[0].file), 'utf8'))
+    .trim().split('\n').map((line) => JSON.parse(line));
+  const firstSense = [{ record_id: firstChunk[0].id, sense_id: firstChunk[0].senses[0].id }];
+  const prematureSecondary = await saveInput(context, firstSense, 'premature-secondary.jsonl');
+  await assert.rejects(
+    markCandidateSensesExplored({
+      scratchDirectory: context.scratchDirectory,
+      inputPath: prematureSecondary,
+      pass: 'secondary',
+      repositoryDirectory: context.repositoryDirectory,
+    }),
+    /cannot mark the A secondary pass before the current source sense has a primary pass/u,
+  );
+
+  const allSenses = [];
+  for (const chunk of prepared.chunks) {
+    const rows = (await readFile(path.join(prepared.chunkDirectory, chunk.file), 'utf8'))
+      .trim().split('\n').map((line) => JSON.parse(line));
+    allSenses.push(...rows.flatMap((record) => record.senses.map((sense) => ({ record_id: record.id, sense_id: sense.id }))));
+  }
+  const primaryPath = await saveInput(context, allSenses, 'primary-explored.jsonl');
+  const primary = await markCandidateSensesExplored({
+    scratchDirectory: context.scratchDirectory,
+    inputPath: primaryPath,
+    pass: 'primary',
+    repositoryDirectory: context.repositoryDirectory,
+  });
+  assert.equal(primary.status.primaryExploredSenseCount, 501);
+  assert.equal(primary.status.secondaryExploredSenseCount, 0);
+  assert.equal(primary.status.incompleteSecondarySenseCount, 501);
+
+  const pendingSecondary = await readPendingCandidateExplorationPage({
+    scratchDirectory: context.scratchDirectory,
+    limit: 25,
+    repositoryDirectory: context.repositoryDirectory,
+  });
+  assert.equal(pendingSecondary.total, 501);
+  assert.equal(pendingSecondary.returned, 25);
+  assert.equal(pendingSecondary.items[0].pass, 'secondary');
+  assert.equal(pendingSecondary.items[0].canonical_record.senses[0].id, 'w001-s1');
+  assert.equal(pendingSecondary.has_more, true);
+  assert.ok(pendingSecondary.next_cursor);
+  const seenSecondary = new Set();
+  let secondaryPage = pendingSecondary;
+  let secondaryPageIndex = 0;
+  while (true) {
+    for (const item of secondaryPage.items) {
+      const key = `${item.record_id}/${item.sense_id}`;
+      assert.equal(seenSecondary.has(key), false);
+      seenSecondary.add(key);
+    }
+    const secondaryReceiptPath = await saveInput(context, secondaryPage.items.map(({ record_id, sense_id }) => ({ record_id, sense_id })), `secondary-page-${secondaryPageIndex}.jsonl`);
+    await markCandidateSensesExplored({
+      scratchDirectory: context.scratchDirectory,
+      inputPath: secondaryReceiptPath,
+      pass: 'secondary',
+      repositoryDirectory: context.repositoryDirectory,
+    });
+    if (secondaryPageIndex === 0) {
+      const beforeSecondaryMerge = path.join(context.scratchDirectory, 'before-secondary.jsonl');
+      await assert.rejects(
+        mergeCandidateBatch({ scratchDirectory: context.scratchDirectory, outPath: beforeSecondaryMerge, repositoryDirectory: context.repositoryDirectory }),
+        /complete A's independent primary and secondary exploration/u,
+      );
+    }
+    if (!secondaryPage.has_more) break;
+    secondaryPage = await readPendingCandidateExplorationPage({
+      scratchDirectory: context.scratchDirectory,
+      after: secondaryPage.next_cursor,
+      limit: 25,
+      repositoryDirectory: context.repositoryDirectory,
+    });
+    secondaryPageIndex += 1;
+  }
+  assert.equal(seenSecondary.size, 501);
+  assert.equal(secondaryPage.has_more, false);
+  assert.equal(secondaryPage.next_cursor, null);
+  const noSecondaryPending = await readPendingCandidateExplorationPage({
+    scratchDirectory: context.scratchDirectory,
+    repositoryDirectory: context.repositoryDirectory,
+  });
+  assert.equal(noSecondaryPending.total, 0);
+  assert.equal(noSecondaryPending.has_more, false);
+
+  const secondaryPath = await saveInput(context, allSenses, 'secondary-explored.jsonl');
+  const secondary = await markCandidateSensesExplored({
+    scratchDirectory: context.scratchDirectory,
+    inputPath: secondaryPath,
+    pass: 'secondary',
+    repositoryDirectory: context.repositoryDirectory,
+  });
+  assert.equal(secondary.status.incompletePrimarySenseCount, 0);
+  assert.equal(secondary.status.incompleteSecondarySenseCount, 0);
+  assert.equal(secondary.status.incompleteSenseCount, 0);
+  assert.equal(secondary.status.exploredSenseCount, 501);
+
+  const merged = await mergeCandidateBatch({
+    scratchDirectory: context.scratchDirectory,
+    outPath: path.join(context.scratchDirectory, 'complete-a-candidates.jsonl'),
+    repositoryDirectory: context.repositoryDirectory,
+  });
+  assert.equal(merged.validation.recordCount, 500);
+  assert.equal(merged.validation.senseCount, 501);
+  assert.equal(merged.validation.candidateCount, 0);
+});
+
+test('A source edits stale both pass receipts and require primary before renewed secondary exploration', async (t) => {
+  const context = await setup(t, 'a');
+  await prepare(context, 25, 'a');
+  const inputPath = await saveInput(context, [{ record_id: 'w001', sense_id: 'w001-s1' }], 'one-sense.jsonl');
+  await markCandidateSensesExplored({
+    scratchDirectory: context.scratchDirectory,
+    inputPath,
+    pass: 'primary',
+    repositoryDirectory: context.repositoryDirectory,
+  });
+  await markCandidateSensesExplored({
+    scratchDirectory: context.scratchDirectory,
+    inputPath,
+    pass: 'secondary',
+    repositoryDirectory: context.repositoryDirectory,
+  });
+
+  context.canonicalRows[0].senses[0].gloss = '갱신된 첫 번째 뜻.';
+  await context.writeCanonical();
+  const refreshed = await prepare(context, 25, 'a');
+  assert.equal(refreshed.sourceChanged, true);
+  assert.equal(refreshed.status.incompletePrimarySenseCount, 501);
+  assert.equal(refreshed.status.stalePrimarySenseCount, 1);
+  assert.equal(refreshed.status.incompleteSecondarySenseCount, 501);
+  assert.equal(refreshed.status.staleSecondarySenseCount, 1);
+
+  await assert.rejects(
+    markCandidateSensesExplored({
+      scratchDirectory: context.scratchDirectory,
+      inputPath,
+      pass: 'secondary',
+      repositoryDirectory: context.repositoryDirectory,
+    }),
+    /cannot mark the A secondary pass before the current source sense has a primary pass/u,
+  );
+  await markCandidateSensesExplored({
+    scratchDirectory: context.scratchDirectory,
+    inputPath,
+    pass: 'primary',
+    repositoryDirectory: context.repositoryDirectory,
+  });
+  const rechecked = await markCandidateSensesExplored({
+    scratchDirectory: context.scratchDirectory,
+    inputPath,
+    pass: 'secondary',
+    repositoryDirectory: context.repositoryDirectory,
+  });
+  assert.equal(rechecked.status.stalePrimarySenseCount, 0);
+  assert.equal(rechecked.status.staleSecondarySenseCount, 0);
+});
+
+test('paged source and review reads preserve every item while enforcing row and byte caps', async (t) => {
+  const context = await setup(t);
+  const prepared = await prepare(context, 25);
+  const sourcePage = await readCandidateChunkPage({
+    scratchDirectory: context.scratchDirectory,
+    chunk: 1,
+    limit: 1,
+    repositoryDirectory: context.repositoryDirectory,
+  });
+  assert.equal(sourcePage.total, 26);
+  assert.equal(sourcePage.returned, 1);
+  assert.equal(sourcePage.truncated, true);
+  assert.equal(sourcePage.next_offset, 1);
+  assert.equal(sourcePage.items[0].canonical_record.lemma, '표제어 1');
+  assert.deepEqual(sourcePage.items[0].canonical_record.senses, [context.canonicalRows[0].senses[0]]);
+  const nextSourcePage = await readCandidateChunkPage({
+    scratchDirectory: context.scratchDirectory,
+    chunk: 1,
+    offset: sourcePage.next_offset,
+    limit: 1,
+    repositoryDirectory: context.repositoryDirectory,
+  });
+  assert.equal(nextSourcePage.items[0].sense_id, 'w001-s2');
+  assert.equal(nextSourcePage.items[0].canonical_record.senses[0].semantic_note, '전체 원문 필드 보존');
+
+  const sourceRows = (await readFile(path.join(prepared.chunkDirectory, prepared.chunks[0].file), 'utf8'))
+    .trim().split('\n').map((line) => JSON.parse(line));
+  const inputPath = await saveInput(context, candidateRows(sourceRows, {
+    'w001-s1': ['별빛', '은하수'],
+    'w001-s2': ['밤하늘'],
+  }), 'paged-candidates.jsonl');
+  await saveCandidateChunk({
+    scratchDirectory: context.scratchDirectory,
+    chunk: 1,
+    inputPath,
+    repositoryDirectory: context.repositoryDirectory,
+  });
+  const reviewPage = await readPendingCandidateReviewPage({
+    scratchDirectory: context.scratchDirectory,
+    limit: 1,
+    repositoryDirectory: context.repositoryDirectory,
+  });
+  assert.equal(reviewPage.total, 3);
+  assert.equal(reviewPage.items[0].candidate, '별빛');
+  assert.equal(reviewPage.items[0].canonical_record.senses[0].id, 'w001-s1');
+
+  const markReviewedItem = async (item, name) => {
+    const receiptPath = await saveInput(context, [{
+      record_id: item.record_id,
+      sense_id: item.sense_id,
+      reviewed_candidates: [item.candidate],
+    }], name);
+    await markCandidateReviews({
+      scratchDirectory: context.scratchDirectory,
+      inputPath: receiptPath,
+      repositoryDirectory: context.repositoryDirectory,
+    });
+  };
+  await markReviewedItem(reviewPage.items[0], 'first-review-receipt.jsonl');
+  const nextReviewPage = await readPendingCandidateReviewPage({
+    scratchDirectory: context.scratchDirectory,
+    after: reviewPage.next_cursor,
+    limit: 1,
+    repositoryDirectory: context.repositoryDirectory,
+  });
+  assert.equal(nextReviewPage.items[0].candidate, '은하수');
+  await markReviewedItem(nextReviewPage.items[0], 'second-review-receipt.jsonl');
+  const lastReviewPage = await readPendingCandidateReviewPage({
+    scratchDirectory: context.scratchDirectory,
+    after: nextReviewPage.next_cursor,
+    limit: 1,
+    repositoryDirectory: context.repositoryDirectory,
+  });
+  assert.equal(lastReviewPage.items[0].candidate, '밤하늘');
+  assert.equal(lastReviewPage.has_more, false);
+  assert.equal(lastReviewPage.next_cursor, null);
+  await markReviewedItem(lastReviewPage.items[0], 'last-review-receipt.jsonl');
+  const noReviewsPending = await readPendingCandidateReviewPage({
+    scratchDirectory: context.scratchDirectory,
+    repositoryDirectory: context.repositoryDirectory,
+  });
+  assert.equal(noReviewsPending.total, 0);
+  await updateCandidateSense({
+    scratchDirectory: context.scratchDirectory,
+    recordId: 'w001',
+    senseId: 'w001-s2',
+    candidates: ['밤하늘', '새벽'],
+    repositoryDirectory: context.repositoryDirectory,
+  });
+  await assert.rejects(
+    readPendingCandidateReviewPage({
+      scratchDirectory: context.scratchDirectory,
+      after: reviewPage.next_cursor,
+      limit: 1,
+      repositoryDirectory: context.repositoryDirectory,
+    }),
+    /pending Candidate inventory changed after this cursor was issued/u,
+  );
+
+  const byteBounded = paginateCandidateWorkbenchItems(
+    Array.from({ length: 20 }, (_, index) => ({ index, text: 'x'.repeat(2500) })),
+    { limit: 25, maxBytes: 6000 },
+  );
+  assert.ok(byteBounded.returned > 0 && byteBounded.returned < 20);
+  assert.equal(byteBounded.has_more, true);
+  assert.equal(byteBounded.next_offset, byteBounded.returned);
+  assert.ok(Buffer.byteLength(serializeWorkbenchOutput(byteBounded), 'utf8') <= 6000);
+
+  const characterBounded = paginateCandidateWorkbenchItems(
+    Array.from({ length: 20 }, (_, index) => ({ index, text: 'a'.repeat(2500) })),
+    { limit: 25, maxBytes: 10_000, maxChars: 3000 },
+  );
+  const characterOutput = serializeWorkbenchOutput(characterBounded, 10_000, 3000);
+  assert.ok(Array.from(characterOutput).length <= 3000);
+  assert.ok(characterBounded.returned > 0 && characterBounded.returned < 20);
+  assert.throws(
+    () => paginateCandidateWorkbenchItems([{ text: 'x'.repeat(5000) }], { maxBytes: 3000 }),
+    /exceeds the configured output limits/u,
+  );
+  assert.throws(
+    () => paginateCandidateWorkbenchItems([], { limit: 26 }),
+    /limit must be an integer from 1 to 25/u,
+  );
+
+  const callbackMisusePayload = [
+    { value: 'a'.repeat(1000) },
+    0,
+    Array.from({ length: 100 }, () => ({ value: 'b'.repeat(1000) })),
+  ];
+  assert.throws(
+    () => serializeWorkbenchOutput(callbackMisusePayload),
+    /stdout safety cap exceeded/u,
+  );
+  const emitted = [];
+  const writeBounded = createCandidateWorkbenchStdoutWriter({
+    maxBytes: 6000,
+    write: (value) => emitted.push(value),
+  });
+  writeBounded({ status: 'ready' });
+  assert.throws(() => writeBounded(callbackMisusePayload), /stdout safety cap exceeded/u);
+  assert.equal(emitted.length, 1);
+  assert.ok(Buffer.byteLength(emitted[0], 'utf8') < 6000);
+  assert.ok(MAX_CANDIDATE_WORKBENCH_STDOUT_BYTES <= 100 * 1024);
+  assert.ok(MAX_CANDIDATE_WORKBENCH_STDOUT_CHARS <= 50 * 1024);
 });
 
 test('empty chunk saves do not complete B scene exploration; explicit marks unlock merge', async (t) => {
