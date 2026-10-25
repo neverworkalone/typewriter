@@ -7,6 +7,9 @@
 > Paths describe retained reference data; they do not define a supported
 > builder default or runnable command. The source permission and publication
 > boundaries remain applicable.
+> Issue #1750 adds a separate read-only C retrieval consumer at
+> [`docs/relation-literary-context.md`](relation-literary-context.md); it does
+> not restore the retired ingestion, builder, or index-maintenance workflow.
 
 ## Historical design decision (#192 and #194)
 
