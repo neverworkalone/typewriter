@@ -103,14 +103,34 @@ test('read-chunk shows each record once with all senses and its saved candidates
   const before = await readCandidateChunkPage({ scratchDirectory: context.scratchDirectory, chunk: 1, repositoryDirectory: context.repositoryDirectory });
   assert.equal(before.total, 25);
   assert.equal(before.saved, false);
-  assert.deepEqual(before.items[0].canonical_record.senses, context.canonicalRows[0].senses);
+  assert.deepEqual(before.items[0], {
+    id: 'w001',
+    lemma: '표제어 1',
+    senses: [
+      { id: 'w001-s1', pos: 'noun', gloss: '첫 번째 뜻.' },
+      { id: 'w001-s2', pos: 'noun', gloss: '두 번째 뜻.' },
+    ],
+  });
+  assert.equal(before.returned, 25);
+  assert.equal(before.has_more, false);
 
   await saveChunk(context, 1, { 'w001-s2': ['밤하늘'] });
   const after = await readCandidateChunkPage({ scratchDirectory: context.scratchDirectory, chunk: 1, limit: 1, repositoryDirectory: context.repositoryDirectory });
   assert.equal(after.saved, true);
   assert.equal(after.next_offset, 1);
-  assert.deepEqual(after.items[0].canonical_record.senses.map((sense) => sense.candidates), [[], ['밤하늘']]);
-  assert.equal(after.items[0].canonical_record.senses[1].semantic_note, '전체 원문 필드 보존');
+  assert.deepEqual(after.items[0].senses.map((sense) => sense.candidates), [[], ['밤하늘']]);
+  assert.equal(after.items[0].senses[1].semantic_note, undefined);
+});
+
+test('a 50-record chunk reads in one page and keeps homograph and distinct search forms', async (t) => {
+  const context = await setup(t);
+  Object.assign(context.canonicalRows[1], { homograph_no: 2, search_forms: ['표제어 2', '표제어2'], relations: [{ type: 'direct' }] });
+  await writeFile(path.join(context.repositoryDirectory, 'data/canonical/stdict-0001.jsonl'), `${context.canonicalRows.map((row) => JSON.stringify(row)).join('\n')}\n`);
+  await prepare(context, 50);
+  const page = await readCandidateChunkPage({ scratchDirectory: context.scratchDirectory, chunk: 1, repositoryDirectory: context.repositoryDirectory });
+  assert.equal(page.returned, 50);
+  assert.equal(page.has_more, false);
+  assert.deepEqual(page.items[1], { id: 'w002', lemma: '표제어 2', homograph_no: 2, search_forms: ['표제어 2', '표제어2'], senses: [{ id: 'w002-s1', pos: 'noun', gloss: '뜻 2.' }] });
 });
 
 test('an oversized record is split by sense without losing any sense, and caps stay hard', async (t) => {
@@ -121,7 +141,7 @@ test('an oversized record is split by sense without losing any sense, and caps s
   const ids = [];
   for (let offset = 0, more = true; more;) {
     const page = await readCandidateChunkPage({ scratchDirectory: context.scratchDirectory, chunk: 1, offset, repositoryDirectory: context.repositoryDirectory });
-    ids.push(...page.items.filter((item) => item.record_id === 'w001').flatMap((item) => item.canonical_record.senses.map((sense) => sense.id)));
+    ids.push(...page.items.filter((item) => item.id === 'w001').flatMap((item) => item.senses.map((sense) => sense.id)));
     more = page.has_more;
     offset = page.next_offset;
   }
@@ -144,6 +164,8 @@ test('save-chunk rejects wrong IDs and bad candidates without touching saved dat
     ['missing sense', good.map((row, index) => (index === 0 ? { ...row, senses: row.senses.slice(0, 1) } : row)), /sense_id mismatch for record_id w001/u],
     ['cross-mapped sense', good.map((row, index) => (index === 1 ? { ...row, senses: [{ sense_id: 'w001-s1', candidates: [] }] } : row)), /sense_id mismatch for record_id w002/u],
     ['untrimmed candidate', rowsFor(context.canonicalRows, 0, 25, { 'w001-s1': [' 달빛'] }), /non-empty trimmed string/u],
+    ['exact source lemma', rowsFor(context.canonicalRows, 0, 25, { 'w001-s1': ['표제어 1'] }), /repeats source lemma/u],
+    ['source lemma with parenthetical', rowsFor(context.canonicalRows, 0, 25, { 'w001-s1': ['표제어 1(標題語)'] }), /repeats source lemma/u],
     ['duplicate candidate', rowsFor(context.canonicalRows, 0, 25, { 'w001-s1': ['달빛', '달빛'] }), /duplicates candidate/u],
   ];
   for (const [name, rows, expected] of cases) {
@@ -152,7 +174,7 @@ test('save-chunk rejects wrong IDs and bad candidates without touching saved dat
   }
   await assert.rejects(saveCandidateChunk({ scratchDirectory: context.scratchDirectory, chunk: 21, inputPath: await writeInput(context, good, 'good.jsonl'), repositoryDirectory: context.repositoryDirectory }), /outside this batch/u);
   const page = await readCandidateChunkPage({ scratchDirectory: context.scratchDirectory, chunk: 1, limit: 1, repositoryDirectory: context.repositoryDirectory });
-  assert.deepEqual(page.items[0].canonical_record.senses[0].candidates, ['별빛']);
+  assert.deepEqual(page.items[0].senses[0].candidates, ['별빛']);
 });
 
 test('save-chunk rejects exact source lemma self-repeats that the final validator would reject at merge', async (t) => {
@@ -198,7 +220,7 @@ test('patch rejects unknown IDs and absent removals, and writes nothing on failu
     await assert.rejects(patch(await writeInput(context, [{ record_id: 'w001', sense_id: 'w001-s1', ...bad }], 'p.jsonl')), /must be an array of strings/u);
   }
   const page = await readCandidateChunkPage({ scratchDirectory: context.scratchDirectory, chunk: 1, repositoryDirectory: context.repositoryDirectory });
-  assert.deepEqual(page.items.map((item) => item.canonical_record.senses.flatMap((sense) => sense.candidates)).flat(), ['별빛']);
+  assert.deepEqual(page.items.map((item) => item.senses.flatMap((sense) => sense.candidates)).flat(), ['별빛']);
 });
 
 test('resume reuses the checkpoint and saved chunks; merge needs every chunk and the unchanged source', async (t) => {

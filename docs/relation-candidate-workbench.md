@@ -1,6 +1,6 @@
 # A/B Candidate workbench
 
-`scripts/relation/candidate-workbench.mjs` is the shared A/B tool for reading Canonical chunks, saving complete chunks of Candidate output, making local corrections, and assembling the final file. It does only mechanical work: the AI exploration and final candidate editing remain governed by [#860](https://github.com/neverworkalone/typewriter/issues/860) (A: one sufficient integrated exploration per source sense, with a second one only for a meaningful unexplored direction; B: two distinct scenes). The tool keeps no exploration or review receipts and does not claim that any semantic work happened.
+`scripts/relation/candidate-workbench.mjs` is the shared A/B tool for reading Canonical chunks, saving complete chunks of Candidate output, making local corrections, and assembling the final file. It does only mechanical work: the AI exploration and final candidate editing remain governed by [#860](https://github.com/neverworkalone/typewriter/issues/860) (A: one sufficient integrated exploration per source sense, with a second one only for a meaningful unexplored direction; B: one hypothetical scene per exact source sense, explored fully). The tool keeps no exploration or review receipts and does not claim that any semantic work happened.
 
 ## Normal path
 
@@ -9,9 +9,9 @@ prepare → read-chunk → explore & edit candidates in place → save-chunk (pe
 ```
 
 1. `prepare` reads the Canonical shard once, fixes the batch, and writes source chunks (25–50 records). Re-running it on an existing scratch directory just reuses the checkpoint and reports which chunks are saved; it does not re-read or re-verify anything.
-2. `read-chunk` returns each Canonical record once, with all its senses (original fields and gloss) and, once saved, each sense's current `candidates`. Continue with `--offset <next_offset>` while `has_more` is true. A record too large for one page is split by sense, never clipped.
+2. `read-chunk` returns a light, compact-JSON view of each Canonical record once: `id`, `lemma`, `homograph_no` (if any), `search_forms` (only when they differ from the lemma), and every sense's `id`, `pos` and full `gloss`, plus each sense's current `candidates` once saved. Stored Canonical data, the checkpoint and the final validator are unchanged. A 50-record chunk normally fits one page (limit 50); continue with `--offset <next_offset>` only while `has_more` is true. A record too large for one page is split by sense, never clipped.
 3. Explore per #860 and finalize the candidates for that exact source sense and gloss right away. Do not re-read the chunk to re-confirm each candidate.
-4. `save-chunk` writes the **complete chunk** (every `record_id` and `sense_id`, empty arrays included), replacing any earlier save of that chunk. That chunk's IDs, candidate format and exact source-lemma self-repeats are checked.
+4. `save-chunk` writes the **complete chunk** (every `record_id` and `sense_id`, empty arrays included), replacing any earlier save of that chunk. That chunk's IDs, candidate format and exact source-lemma self-repeats are checked. Edit while exploring and save each finished chunk once; `status`, `inspect` and `patch` are for errors and resuming only.
 5. Fix several bad candidates in one `patch` call (below), or re-save the chunk.
 6. `merge` assembles the saved chunks in Canonical order, compares the batch against the Canonical SHA fixed at `prepare` (only here), and runs the full Candidate v1 validator once. Then open the PR; CI and PR review are unchanged.
 
@@ -21,6 +21,7 @@ prepare → read-chunk → explore & edit candidates in place → save-chunk (pe
 node scripts/relation/candidate-workbench.mjs prepare \
   --shard 001 --batch 01 --method a --model codex \
   --scratch-dir .warroom-scratch/001_01_a_codex --chunk-size 25
+# B: --chunk-size 50 (10 chunks per batch, each readable in one page)
 
 node scripts/relation/candidate-workbench.mjs read-chunk \
   --scratch-dir .warroom-scratch/001_01_a_codex --chunk 1
@@ -47,4 +48,4 @@ node scripts/relation/candidate-workbench.mjs merge \
 
 ## Files and resuming
 
-All scratch data lives in `.warroom-scratch/<batch>/`: `checkpoint.json` (written once), `source/chunk-NNN.jsonl`, and `candidates/chunk-NNN.jsonl` (existence = saved). Commit only the formal Candidate JSONL. Output is capped (25 items, 32,768 characters, 64 KiB per command); use the returned `next_offset`. If the Canonical batch changes after `prepare`, `merge` stops and the saved candidates stay in place.
+All scratch data lives in `.warroom-scratch/<batch>/`: `checkpoint.json` (written once), `source/chunk-NNN.jsonl`, and `candidates/chunk-NNN.jsonl` (existence = saved). Commit only the formal Candidate JSONL. Output is compact JSON, capped (50 items, 32,768 characters, 64 KiB per command); use the returned `next_offset`. If the Canonical batch changes after `prepare`, `merge` stops and the saved candidates stay in place.
