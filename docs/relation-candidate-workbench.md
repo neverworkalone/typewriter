@@ -11,7 +11,7 @@ Follow [#860's A production contract](https://github.com/neverworkalone/typewrit
 1. Prepare only the owner-assigned A batch and read the complete source sense pages using `read-chunk`. Each item includes the full Canonical record fields with one exact source sense, including its `record_id`, `sense_id`, POS, and unmodified gloss. Continue from the returned `next_offset` until `has_more` is false.
 2. For every source sense, perform A's first broad direct-association exploration, then return to that exact Canonical sense for the required independent second exploration in a new meaning direction. Preserve intelligible direct and indirect discoveries; do not impose candidate quotas, early stopping, or automatic semantic filtering. The workbench records the two passes separately and blocks the second-pass receipt until the current first pass is recorded.
 3. Save complete chunks by explicit `record_id`/`sense_id`, including empty arrays. Chunk saves are additive and validate the full source mapping immediately; they do not create exploration or semantic-review receipts.
-4. After both explorations are complete, page through `read-review-page` until every final candidate has been compared by the producer with its exact source sense and gloss. Mark only the candidates actually reviewed with `mark-reviewed`. Any new candidate remains pending; a Canonical meaning change makes its review stale.
+4. After both explorations are complete, page through `read-review-page` until every final candidate has been compared by the producer with its exact source sense and gloss. Mark only the candidates actually reviewed with `mark-reviewed`, then continue with that page's `next_cursor`. Receipt updates do not invalidate the cursor. Any candidate or Canonical inventory change invalidates it; restart paging from the beginning. Any new candidate remains pending, and a Canonical meaning change makes its review stale.
 5. Remove a candidate only after the explicit Stage 1 ineligible judgment required by `remove-candidate`. Preserve other eligible discoveries; do not use the workbench to make Stage 2 admission or Tier decisions.
 6. Run `merge` only after all chunks are saved, every source sense has current primary and secondary exploration receipts, and all active candidates have current meaning/form review receipts. The workbench rebuilds in Canonical order and runs the full Candidate v1 validator.
 
@@ -30,7 +30,7 @@ node scripts/relation/candidate-workbench.mjs save-chunk \
   --input .warroom-scratch/001_01_a_codex/chunk-001-candidates.jsonl
 
 node scripts/relation/candidate-workbench.mjs read-exploration-page \
-  --scratch-dir .warroom-scratch/001_01_a_codex --offset 0 --limit 10
+  --scratch-dir .warroom-scratch/001_01_a_codex --limit 10
 
 node scripts/relation/candidate-workbench.mjs mark-explored \
   --scratch-dir .warroom-scratch/001_01_a_codex \
@@ -41,7 +41,7 @@ node scripts/relation/candidate-workbench.mjs mark-explored \
   --input .warroom-scratch/001_01_a_codex/secondary-explored.jsonl --pass secondary
 
 node scripts/relation/candidate-workbench.mjs read-review-page \
-  --scratch-dir .warroom-scratch/001_01_a_codex --offset 0 --limit 10
+  --scratch-dir .warroom-scratch/001_01_a_codex --limit 10
 
 node scripts/relation/candidate-workbench.mjs mark-reviewed \
   --scratch-dir .warroom-scratch/001_01_a_codex \
@@ -123,6 +123,6 @@ node scripts/relation/candidate-workbench.mjs inspect \
 - `remove-candidate` accepts one JSON object with `record_id`, `sense_id`, exact `candidate`, and `confirmed_ineligible: true`; it also requires a current AI meaning/form review receipt for that candidate.
 - `merge` writes either under `.warroom-scratch/` or to a correctly named A/B Candidate path. It refuses incomplete chunks, missing/stale exploration, and pending/stale candidate reviews before writing output.
 
-`read-chunk`, `read-review-page`, and `read-exploration-page` return `total`, `returned`, `truncated`, `has_more`, and `next_offset`. Continue from the exact returned offset; pages contain complete source-sense or candidate items, never clipped items. The shared CLI caps a page at 25 items, 32,768 Unicode characters, and 64 KiB of UTF-8 stdout, shrinking the returned item count when needed. A single item that cannot fit fails without partial output. Use these commands instead of printing whole Canonical chunks, candidate lists, or review exports. Do not use `forEach(console.log)` or write per-batch `node -e` scripts for workbench operations.
+`read-chunk` returns `next_offset`; the mutable pending queues returned by `read-review-page` and `read-exploration-page` return an opaque `next_cursor`. Continue from that exact cursor after recording the current page's receipts. Its position is bound to the queue's stable Canonical/candidate inventory, so receipt updates do not skip remaining work. If that inventory changes, the cursor is rejected and paging must restart from the beginning. Pages contain complete source-sense or candidate items, never clipped items. The shared CLI caps a page at 25 items, 32,768 Unicode characters, and 64 KiB of UTF-8 stdout, shrinking the returned item count when needed. A single item that cannot fit fails without partial output. Use these commands instead of printing whole Canonical chunks, candidate lists, or review exports. Do not use `forEach(console.log)` or write per-batch `node -e` scripts for workbench operations.
 
 The saved checkpoint is the recovery source after interruption. Resume with `prepare` and `status`; do not rebuild a correct chunk or discard previously saved candidates to recover from a local error.

@@ -219,21 +219,56 @@ test('A workbench records primary and independent secondary exploration separate
 
   const pendingSecondary = await readPendingCandidateExplorationPage({
     scratchDirectory: context.scratchDirectory,
-    limit: 1,
+    limit: 25,
     repositoryDirectory: context.repositoryDirectory,
   });
   assert.equal(pendingSecondary.total, 501);
-  assert.equal(pendingSecondary.returned, 1);
+  assert.equal(pendingSecondary.returned, 25);
   assert.equal(pendingSecondary.items[0].pass, 'secondary');
   assert.equal(pendingSecondary.items[0].canonical_record.senses[0].id, 'w001-s1');
   assert.equal(pendingSecondary.has_more, true);
-  assert.equal(pendingSecondary.next_offset, 1);
-
-  const beforeSecondaryMerge = path.join(context.scratchDirectory, 'before-secondary.jsonl');
-  await assert.rejects(
-    mergeCandidateBatch({ scratchDirectory: context.scratchDirectory, outPath: beforeSecondaryMerge, repositoryDirectory: context.repositoryDirectory }),
-    /complete A's independent primary and secondary exploration/u,
-  );
+  assert.ok(pendingSecondary.next_cursor);
+  const seenSecondary = new Set();
+  let secondaryPage = pendingSecondary;
+  let secondaryPageIndex = 0;
+  while (true) {
+    for (const item of secondaryPage.items) {
+      const key = `${item.record_id}/${item.sense_id}`;
+      assert.equal(seenSecondary.has(key), false);
+      seenSecondary.add(key);
+    }
+    const secondaryReceiptPath = await saveInput(context, secondaryPage.items.map(({ record_id, sense_id }) => ({ record_id, sense_id })), `secondary-page-${secondaryPageIndex}.jsonl`);
+    await markCandidateSensesExplored({
+      scratchDirectory: context.scratchDirectory,
+      inputPath: secondaryReceiptPath,
+      pass: 'secondary',
+      repositoryDirectory: context.repositoryDirectory,
+    });
+    if (secondaryPageIndex === 0) {
+      const beforeSecondaryMerge = path.join(context.scratchDirectory, 'before-secondary.jsonl');
+      await assert.rejects(
+        mergeCandidateBatch({ scratchDirectory: context.scratchDirectory, outPath: beforeSecondaryMerge, repositoryDirectory: context.repositoryDirectory }),
+        /complete A's independent primary and secondary exploration/u,
+      );
+    }
+    if (!secondaryPage.has_more) break;
+    secondaryPage = await readPendingCandidateExplorationPage({
+      scratchDirectory: context.scratchDirectory,
+      after: secondaryPage.next_cursor,
+      limit: 25,
+      repositoryDirectory: context.repositoryDirectory,
+    });
+    secondaryPageIndex += 1;
+  }
+  assert.equal(seenSecondary.size, 501);
+  assert.equal(secondaryPage.has_more, false);
+  assert.equal(secondaryPage.next_cursor, null);
+  const noSecondaryPending = await readPendingCandidateExplorationPage({
+    scratchDirectory: context.scratchDirectory,
+    repositoryDirectory: context.repositoryDirectory,
+  });
+  assert.equal(noSecondaryPending.total, 0);
+  assert.equal(noSecondaryPending.has_more, false);
 
   const secondaryPath = await saveInput(context, allSenses, 'secondary-explored.jsonl');
   const secondary = await markCandidateSensesExplored({
@@ -353,13 +388,59 @@ test('paged source and review reads preserve every item while enforcing row and 
   assert.equal(reviewPage.total, 3);
   assert.equal(reviewPage.items[0].candidate, '별빛');
   assert.equal(reviewPage.items[0].canonical_record.senses[0].id, 'w001-s1');
+
+  const markReviewedItem = async (item, name) => {
+    const receiptPath = await saveInput(context, [{
+      record_id: item.record_id,
+      sense_id: item.sense_id,
+      reviewed_candidates: [item.candidate],
+    }], name);
+    await markCandidateReviews({
+      scratchDirectory: context.scratchDirectory,
+      inputPath: receiptPath,
+      repositoryDirectory: context.repositoryDirectory,
+    });
+  };
+  await markReviewedItem(reviewPage.items[0], 'first-review-receipt.jsonl');
   const nextReviewPage = await readPendingCandidateReviewPage({
     scratchDirectory: context.scratchDirectory,
-    offset: reviewPage.next_offset,
+    after: reviewPage.next_cursor,
     limit: 1,
     repositoryDirectory: context.repositoryDirectory,
   });
   assert.equal(nextReviewPage.items[0].candidate, '은하수');
+  await markReviewedItem(nextReviewPage.items[0], 'second-review-receipt.jsonl');
+  const lastReviewPage = await readPendingCandidateReviewPage({
+    scratchDirectory: context.scratchDirectory,
+    after: nextReviewPage.next_cursor,
+    limit: 1,
+    repositoryDirectory: context.repositoryDirectory,
+  });
+  assert.equal(lastReviewPage.items[0].candidate, '밤하늘');
+  assert.equal(lastReviewPage.has_more, false);
+  assert.equal(lastReviewPage.next_cursor, null);
+  await markReviewedItem(lastReviewPage.items[0], 'last-review-receipt.jsonl');
+  const noReviewsPending = await readPendingCandidateReviewPage({
+    scratchDirectory: context.scratchDirectory,
+    repositoryDirectory: context.repositoryDirectory,
+  });
+  assert.equal(noReviewsPending.total, 0);
+  await updateCandidateSense({
+    scratchDirectory: context.scratchDirectory,
+    recordId: 'w001',
+    senseId: 'w001-s2',
+    candidates: ['밤하늘', '새벽'],
+    repositoryDirectory: context.repositoryDirectory,
+  });
+  await assert.rejects(
+    readPendingCandidateReviewPage({
+      scratchDirectory: context.scratchDirectory,
+      after: reviewPage.next_cursor,
+      limit: 1,
+      repositoryDirectory: context.repositoryDirectory,
+    }),
+    /pending Candidate inventory changed after this cursor was issued/u,
+  );
 
   const byteBounded = paginateCandidateWorkbenchItems(
     Array.from({ length: 20 }, (_, index) => ({ index, text: 'x'.repeat(2500) })),

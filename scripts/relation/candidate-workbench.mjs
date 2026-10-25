@@ -68,7 +68,7 @@ export function serializeWorkbenchOutput(
   const byteCount = Buffer.byteLength(output, 'utf8');
   const characterCount = Array.from(output).length;
   if (byteCount > maxBytes || characterCount > maxChars) {
-    fail(`workbench stdout safety cap exceeded (${byteCount}/${maxBytes} bytes, ${characterCount}/${maxChars} characters); use a paginated read command and continue with next_offset`);
+    fail(`workbench stdout safety cap exceeded (${byteCount}/${maxBytes} bytes, ${characterCount}/${maxChars} characters); use a paginated read command and continue with its returned cursor`);
   }
   return output;
 }
@@ -147,6 +147,144 @@ export function paginateCandidateWorkbenchItems(items, { offset, limit, maxBytes
     truncated: nextOffset < items.length,
     has_more: nextOffset < items.length,
     next_offset: nextOffset < items.length ? nextOffset : null,
+    items: pageItems,
+  };
+}
+
+const PENDING_PAGE_CURSOR_CONTRACT = 'candidate-workbench-pending-page-v1';
+
+function encodePendingPageCursor({ kind, batch, inventoryHash, inventoryCount, nextIndex }) {
+  return Buffer.from(JSON.stringify({
+    contract: PENDING_PAGE_CURSOR_CONTRACT,
+    kind,
+    shard: batch.shard,
+    batch: batch.batch,
+    method: batch.method,
+    model: batch.model,
+    inventory_sha256: inventoryHash,
+    inventory_count: inventoryCount,
+    next_index: nextIndex,
+  }), 'utf8').toString('base64url');
+}
+
+function readPendingPageCursor(after, { kind, batch, inventoryHash, inventoryCount }) {
+  if (after === undefined || after === null || after === '') return 0;
+  if (typeof after !== 'string' || after.length > 4096 || !/^[A-Za-z0-9_-]+$/u.test(after)) {
+    fail('after must be the opaque next_cursor returned by the preceding pending page');
+  }
+  let cursor;
+  try {
+    cursor = JSON.parse(Buffer.from(after, 'base64url').toString('utf8'));
+  } catch {
+    fail('after is not a valid pending-page cursor');
+  }
+  if (!hasExactKeys(cursor, [
+    'contract', 'kind', 'shard', 'batch', 'method', 'model',
+    'inventory_sha256', 'inventory_count', 'next_index',
+  ]) || cursor.contract !== PENDING_PAGE_CURSOR_CONTRACT) {
+    fail('after is not a supported pending-page cursor');
+  }
+  if (cursor.kind !== kind || cursor.shard !== batch.shard || cursor.batch !== batch.batch
+    || cursor.method !== batch.method || cursor.model !== batch.model) {
+    fail('after belongs to a different Candidate workbench queue');
+  }
+  if (cursor.inventory_sha256 !== inventoryHash || cursor.inventory_count !== inventoryCount) {
+    fail('pending Candidate inventory changed after this cursor was issued; restart paging from the beginning');
+  }
+  if (!Number.isSafeInteger(cursor.next_index) || cursor.next_index < 0 || cursor.next_index >= inventoryCount) {
+    fail('after contains an invalid pending-page position');
+  }
+  return cursor.next_index;
+}
+
+/** Continue through a mutable pending view using positions in its immutable, fingerprinted inventory. */
+export function paginateCandidateWorkbenchPendingItems(items, {
+  after,
+  limit,
+  maxBytes,
+  maxChars,
+  kind,
+  batch,
+  inventoryHash,
+  inventoryCount,
+  metadata = {},
+} = {}) {
+  if (!Array.isArray(items)) fail('pending workbench items must be an array');
+  if (!['review', 'exploration'].includes(kind)) fail('pending page kind must be review or exploration');
+  if (!batch || !/^[a-f0-9]{64}$/u.test(inventoryHash ?? '') || !Number.isSafeInteger(inventoryCount) || inventoryCount < 0) {
+    fail('pending page inventory metadata is malformed');
+  }
+  if (items.some((item) => !Number.isSafeInteger(item.cursor_index) || item.cursor_index < 0 || item.cursor_index >= inventoryCount)) {
+    fail('pending items contain an invalid stable cursor position');
+  }
+  const page = normalizePageOptions(0, limit, maxBytes, maxChars);
+  const nextIndex = readPendingPageCursor(after, { kind, batch, inventoryHash, inventoryCount });
+  const remainingItems = items.filter((item) => item.cursor_index >= nextIndex);
+  const basePage = {
+    ...metadata,
+    total: items.length,
+    remaining: remainingItems.length,
+    limit: page.limit,
+    returned: 0,
+    truncated: remainingItems.length > 0,
+    has_more: remainingItems.length > 0,
+    next_cursor: remainingItems.length > 0 ? after ?? null : null,
+    items: [],
+  };
+  const baseOutput = `${JSON.stringify(basePage, null, 2)}\n`;
+  if (Buffer.byteLength(baseOutput, 'utf8') > page.maxBytes || Array.from(baseOutput).length > page.maxChars) {
+    fail('pending page metadata exceeds the output limit; increase --max-bytes or --max-chars');
+  }
+  const pageItems = [];
+  const eligible = remainingItems.slice(0, page.limit);
+  for (const item of eligible) {
+    const candidateItems = [...pageItems, item];
+    const hasMore = remainingItems.length > candidateItems.length;
+    const nextCursor = hasMore
+      ? encodePendingPageCursor({
+          kind,
+          batch,
+          inventoryHash,
+          inventoryCount,
+          nextIndex: candidateItems.at(-1).cursor_index + 1,
+        })
+      : null;
+    const candidatePage = {
+      ...metadata,
+      total: items.length,
+      remaining: remainingItems.length,
+      limit: page.limit,
+      returned: candidateItems.length,
+      truncated: hasMore,
+      has_more: hasMore,
+      next_cursor: nextCursor,
+      items: candidateItems,
+    };
+    const output = `${JSON.stringify(candidatePage, null, 2)}\n`;
+    if (Buffer.byteLength(output, 'utf8') > page.maxBytes || Array.from(output).length > page.maxChars) {
+      if (pageItems.length === 0) fail('pending page item exceeds the configured output limits; no partial item was returned');
+      break;
+    }
+    pageItems.push(item);
+  }
+  const hasMore = remainingItems.length > pageItems.length;
+  return {
+    ...metadata,
+    total: items.length,
+    remaining: remainingItems.length,
+    limit: page.limit,
+    returned: pageItems.length,
+    truncated: hasMore,
+    has_more: hasMore,
+    next_cursor: hasMore
+      ? encodePendingPageCursor({
+          kind,
+          batch,
+          inventoryHash,
+          inventoryCount,
+          nextIndex: pageItems.at(-1).cursor_index + 1,
+        })
+      : null,
     items: pageItems,
   };
 }
@@ -1011,41 +1149,54 @@ function pendingReviewRows(workspace) {
 }
 
 /** Page through unchecked candidates as separate sense-bound items; never dump a whole review ledger. */
-export async function readPendingCandidateReviewPage({ scratchDirectory, offset = 0, limit, maxBytes, maxChars, repositoryDirectory = REPOSITORY_DIRECTORY } = {}) {
+export async function readPendingCandidateReviewPage({ scratchDirectory, after, limit, maxBytes, maxChars, repositoryDirectory = REPOSITORY_DIRECTORY } = {}) {
   const workspace = await loadWorkspace(scratchDirectory, repositoryDirectory);
   const sourceById = new Map(workspace.sourceRows.map((record) => [record.id, record]));
   const items = [];
+  const inventory = [];
+  let cursorIndex = 0;
   for (const stateRecord of workspace.checkpoint.records) {
     const sourceRecord = sourceById.get(stateRecord.record_id);
     for (const stateSense of stateRecord.senses) {
       const sourceSense = sourceRecord.senses.find((sense) => sense.id === stateSense.sense_id);
-      const pending = stateSense.candidates.filter((candidate) => {
+      for (const [candidateIndex, candidate] of stateSense.candidates.entries()) {
+        const stableIndex = cursorIndex;
+        cursorIndex += 1;
+        inventory.push([stateRecord.record_id, stateSense.sense_id, candidate]);
         const fingerprint = candidateContextFingerprint(sourceRecord, sourceSense, candidate);
-        return !stateSense.reviewed.some((review) => review.candidate === candidate && review.fingerprint === fingerprint);
-      });
-      for (const [candidateIndex, candidate] of pending.entries()) {
+        if (stateSense.reviewed.some((review) => review.candidate === candidate && review.fingerprint === fingerprint)) continue;
         items.push({
+          cursor_index: stableIndex,
           record_id: sourceRecord.id,
           lemma: sourceRecord.lemma,
           sense_id: sourceSense.id,
           candidate,
-          pending_index: candidateIndex + 1,
-          pending_count_for_sense: pending.length,
+          candidate_index: candidateIndex + 1,
+          candidate_count_for_sense: stateSense.candidates.length,
           canonical_record: { ...sourceRecord, senses: [sourceSense] },
         });
       }
     }
   }
-  return paginateCandidateWorkbenchItems(items, {
-    offset,
+  const batch = workspace.checkpoint.batch;
+  const inventoryHash = sha256(stableJson({
+    canonical_sha256: workspace.checkpoint.source.canonical_sha256,
+    candidates: inventory,
+  }));
+  return paginateCandidateWorkbenchPendingItems(items, {
+    after,
     limit,
     maxBytes,
     maxChars,
+    kind: 'review',
+    batch,
+    inventoryHash,
+    inventoryCount: cursorIndex,
     metadata: {
-      shard: workspace.checkpoint.batch.shard,
-      batch: workspace.checkpoint.batch.batch,
-      method: workspace.checkpoint.batch.method,
-      model: workspace.checkpoint.batch.model,
+      shard: batch.shard,
+      batch: batch.batch,
+      method: batch.method,
+      model: batch.model,
     },
   });
 }
@@ -1103,31 +1254,46 @@ export async function exportPendingCandidateExploration({ scratchDirectory, outP
 }
 
 /** Page through exact source senses that still need an exploration pass. */
-export async function readPendingCandidateExplorationPage({ scratchDirectory, offset = 0, limit, maxBytes, maxChars, repositoryDirectory = REPOSITORY_DIRECTORY } = {}) {
+export async function readPendingCandidateExplorationPage({ scratchDirectory, after, limit, maxBytes, maxChars, repositoryDirectory = REPOSITORY_DIRECTORY } = {}) {
   const workspace = await loadWorkspace(scratchDirectory, repositoryDirectory);
   const stateById = new Map(workspace.checkpoint.records.map((record) => [record.record_id, record]));
   const items = [];
+  const method = workspace.checkpoint.batch.method;
+  const totalSenseCount = workspace.checkpoint.source.sense_count;
+  const inventoryCount = method === 'a' ? totalSenseCount * 2 : totalSenseCount;
+  const inventory = [];
+  let senseIndex = 0;
   for (const sourceRecord of workspace.sourceRows) {
     const stateRecord = stateById.get(sourceRecord.id);
     for (const sourceSense of sourceRecord.senses) {
       const stateSense = stateRecord.senses.find((sense) => sense.sense_id === sourceSense.id);
       const fingerprint = canonicalSenseFingerprint(sourceRecord, sourceSense);
+      inventory.push([sourceRecord.id, sourceSense.id, fingerprint]);
       let pass;
       let status;
+      let cursorIndex;
       if (workspace.checkpoint.batch.method === 'b') {
-        if (stateSense.explored_fingerprint === fingerprint) continue;
+        cursorIndex = senseIndex;
+        if (stateSense.explored_fingerprint === fingerprint) {
+          senseIndex += 1;
+          continue;
+        }
         pass = 'both-scenes';
         status = stateSense.explored_fingerprint === null ? 'PENDING' : 'STALE';
       } else if (stateSense.explored_passes.primary_fingerprint !== fingerprint) {
+        cursorIndex = senseIndex;
         pass = 'primary';
         status = stateSense.explored_passes.primary_fingerprint === null ? 'PENDING' : 'STALE';
       } else if (stateSense.explored_passes.secondary_fingerprint !== fingerprint) {
+        cursorIndex = totalSenseCount + senseIndex;
         pass = 'secondary';
         status = stateSense.explored_passes.secondary_fingerprint === null ? 'PENDING' : 'STALE';
       } else {
+        senseIndex += 1;
         continue;
       }
       items.push({
+        cursor_index: cursorIndex,
         record_id: sourceRecord.id,
         lemma: sourceRecord.lemma,
         sense_id: sourceSense.id,
@@ -1136,18 +1302,31 @@ export async function readPendingCandidateExplorationPage({ scratchDirectory, of
         current_candidate_count: stateSense.candidates.length,
         canonical_record: { ...sourceRecord, senses: [sourceSense] },
       });
+      senseIndex += 1;
     }
   }
-  return paginateCandidateWorkbenchItems(items, {
-    offset,
+  items.sort((left, right) => left.cursor_index - right.cursor_index);
+  const batch = workspace.checkpoint.batch;
+  const inventoryHash = sha256(stableJson({
+    canonical_sha256: workspace.checkpoint.source.canonical_sha256,
+    method,
+    inventory_count: inventoryCount,
+    senses: inventory,
+  }));
+  return paginateCandidateWorkbenchPendingItems(items, {
+    after,
     limit,
     maxBytes,
     maxChars,
+    kind: 'exploration',
+    batch,
+    inventoryHash,
+    inventoryCount,
     metadata: {
-      shard: workspace.checkpoint.batch.shard,
-      batch: workspace.checkpoint.batch.batch,
-      method: workspace.checkpoint.batch.method,
-      model: workspace.checkpoint.batch.model,
+      shard: batch.shard,
+      batch: batch.batch,
+      method: batch.method,
+      model: batch.model,
     },
   });
 }
@@ -1296,8 +1475,8 @@ function usage() {
     'usage:',
     '  node scripts/relation/candidate-workbench.mjs prepare --shard SSS --batch BB --method a|b --model <id> --scratch-dir .warroom-scratch/<batch> [--chunk-size 25..50]',
     '  node scripts/relation/candidate-workbench.mjs read-chunk --scratch-dir <dir> --chunk N [--offset N] [--limit 1..25] [--max-bytes N] [--max-chars N]',
-    '  node scripts/relation/candidate-workbench.mjs read-review-page --scratch-dir <dir> [--offset N] [--limit 1..25] [--max-bytes N] [--max-chars N]',
-    '  node scripts/relation/candidate-workbench.mjs read-exploration-page --scratch-dir <dir> [--offset N] [--limit 1..25] [--max-bytes N] [--max-chars N]',
+    '  node scripts/relation/candidate-workbench.mjs read-review-page --scratch-dir <dir> [--after <next_cursor>] [--limit 1..25] [--max-bytes N] [--max-chars N]',
+    '  node scripts/relation/candidate-workbench.mjs read-exploration-page --scratch-dir <dir> [--after <next_cursor>] [--limit 1..25] [--max-bytes N] [--max-chars N]',
     '  node scripts/relation/candidate-workbench.mjs save-chunk --scratch-dir <dir> --chunk N --input <candidate-chunk.jsonl>',
     '  node scripts/relation/candidate-workbench.mjs patch-sense --scratch-dir <dir> --input <sense-candidates.json>',
     '  node scripts/relation/candidate-workbench.mjs remove-candidate --scratch-dir <dir> --input <confirmed-ineligible.json>',
@@ -1349,9 +1528,10 @@ async function main() {
     return;
   }
   if (command === 'read-review-page') {
+    if (options.offset !== undefined) fail('pending review pages use --after with the returned next_cursor; numeric offsets are not stable');
     const result = await readPendingCandidateReviewPage({
       scratchDirectory: requireOption(options, 'scratch-dir'),
-      offset: options.offset === undefined ? 0 : Number(options.offset),
+      after: options.after,
       limit: options.limit === undefined ? undefined : Number(options.limit),
       maxBytes: options['max-bytes'] === undefined ? undefined : Number(options['max-bytes']),
       maxChars: options['max-chars'] === undefined ? undefined : Number(options['max-chars']),
@@ -1360,9 +1540,10 @@ async function main() {
     return;
   }
   if (command === 'read-exploration-page') {
+    if (options.offset !== undefined) fail('pending exploration pages use --after with the returned next_cursor; numeric offsets are not stable');
     const result = await readPendingCandidateExplorationPage({
       scratchDirectory: requireOption(options, 'scratch-dir'),
-      offset: options.offset === undefined ? 0 : Number(options.offset),
+      after: options.after,
       limit: options.limit === undefined ? undefined : Number(options.limit),
       maxBytes: options['max-bytes'] === undefined ? undefined : Number(options['max-bytes']),
       maxChars: options['max-chars'] === undefined ? undefined : Number(options['max-chars']),

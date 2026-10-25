@@ -1,6 +1,6 @@
 #860 A 진행해
 
-War Room이 지정한 배치 `{{batch}}`, worktree, 브랜치, 준비된 HEAD를 그대로 사용한다. 배치를 다시 선정하거나 브랜치를 변경하지 않는다.
+War Room이 지정한 배치 `{{batch}}`와 현재 worktree 및 브랜치 `{{branch}}`, 준비된 HEAD를 유지하며, 생산 중 `master`가 갱신돼도 현재 브랜치를 merge/rebase/reset하지 않는다. 배치를 다시 선정하거나 브랜치를 변경하지 않는다.
 
 [#860의 A Stage 1 생산 계약](https://github.com/neverworkalone/typewriter/issues/860)과 `AGENTS.md`를 따른다. 모든 정확한 source sense에서 1차 직접 연관 어휘 탐색을 수행한 뒤 같은 Canonical sense로 돌아와 새로운 의미 방향을 독립적으로 2차 탐색한다. 폭넓은 유효 후보와 간접 연상을 보존하고, quota·조기 중단·자동 의미 필터를 적용하지 않는다.
 
