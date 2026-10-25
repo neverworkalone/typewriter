@@ -12,7 +12,7 @@ from textual.binding import Binding
 from textual.containers import Horizontal, HorizontalScroll, Vertical
 from textual.screen import ModalScreen, Screen
 from textual.css.scalar import Unit
-from textual.widgets import Button, Collapsible, Footer, Header, RichLog, Select, Static
+from textual.widgets import Button, Collapsible, Footer, Header, RichLog, Rule, Select, Static
 
 import time
 
@@ -425,6 +425,7 @@ class WarRoom(App):
     #board-footer { height: 1; padding: 0 1; }
     .col { width: 38; height: auto; margin: 0 1; }
     .coltitle { text-style: bold; color: $accent; width: 100%; text-align: center; margin-bottom: 0; }
+    .stage-divider { margin: 0; color: #666666; }
     .card { border: round $primary; height: 6; padding: 0 1; }
     .card:focus { border: heavy $accent; }
     .card.ERROR, .card.PAUSED { border: round $error; }
@@ -503,6 +504,8 @@ class WarRoom(App):
                     yield Static(model_title(registry(self.cfg).get(model, {}).get("label", model)), classes="coltitle", id=f"title-{model}")
                     for me in self.methods:
                         yield Card(model, me)
+                    if model in self.stage2_capable or model == self.maintainer_col:
+                        yield Rule(classes="stage-divider")   # separates Stage 1 Methods A-D from row 5 (not a Card: arrows skip it)
                     if model in self.stage2_capable:   # row 5: Claude / Codex Stage 2 ...
                         yield Card(model, STAGE2_METHOD)
                     elif model == self.maintainer_col:   # ... and the Maintainer status in the DeepSeek column
