@@ -10,6 +10,10 @@ export const CANDIDATE_WORKBENCH_CONTRACT = 'candidate-workbench-v1';
 export const DEFAULT_CANDIDATE_CHUNK_SIZE = 25;
 export const MIN_CANDIDATE_CHUNK_SIZE = 25;
 export const MAX_CANDIDATE_CHUNK_SIZE = 50;
+export const MAX_CANDIDATE_WORKBENCH_STDOUT_BYTES = 64 * 1024;
+export const MAX_CANDIDATE_WORKBENCH_STDOUT_CHARS = 32 * 1024;
+export const DEFAULT_CANDIDATE_WORKBENCH_PAGE_SIZE = 10;
+export const MAX_CANDIDATE_WORKBENCH_PAGE_SIZE = 25;
 const BATCH_SIZE = 500;
 const REPOSITORY_DIRECTORY = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
@@ -43,6 +47,139 @@ function serializeJsonl(rows) {
   return rows.map((row) => JSON.stringify(row)).join('\n') + (rows.length ? '\n' : '');
 }
 
+export function serializeWorkbenchOutput(
+  value,
+  maxBytes = MAX_CANDIDATE_WORKBENCH_STDOUT_BYTES,
+  maxChars = MAX_CANDIDATE_WORKBENCH_STDOUT_CHARS,
+) {
+  if (!Number.isSafeInteger(maxBytes) || maxBytes < 1 || maxBytes > MAX_CANDIDATE_WORKBENCH_STDOUT_BYTES) {
+    fail(`stdout maxBytes must be an integer from 1 to ${MAX_CANDIDATE_WORKBENCH_STDOUT_BYTES}`);
+  }
+  if (!Number.isSafeInteger(maxChars) || maxChars < 1 || maxChars > MAX_CANDIDATE_WORKBENCH_STDOUT_CHARS) {
+    fail(`stdout maxChars must be an integer from 1 to ${MAX_CANDIDATE_WORKBENCH_STDOUT_CHARS}`);
+  }
+  let serialized;
+  try {
+    serialized = JSON.stringify(value, null, 2);
+  } catch (error) {
+    fail(`cannot serialize workbench stdout safely: ${error.message}`);
+  }
+  const output = `${serialized}\n`;
+  const byteCount = Buffer.byteLength(output, 'utf8');
+  const characterCount = Array.from(output).length;
+  if (byteCount > maxBytes || characterCount > maxChars) {
+    fail(`workbench stdout safety cap exceeded (${byteCount}/${maxBytes} bytes, ${characterCount}/${maxChars} characters); use a paginated read command and continue with next_offset`);
+  }
+  return output;
+}
+
+function normalizePageOptions(offset, limit, maxBytes, maxChars) {
+  const pageOffset = Number(offset ?? 0);
+  const pageLimit = Number(limit ?? DEFAULT_CANDIDATE_WORKBENCH_PAGE_SIZE);
+  const outputLimit = Number(maxBytes ?? MAX_CANDIDATE_WORKBENCH_STDOUT_BYTES);
+  const characterLimit = Number(maxChars ?? MAX_CANDIDATE_WORKBENCH_STDOUT_CHARS);
+  if (!Number.isSafeInteger(pageOffset) || pageOffset < 0) fail('offset must be a non-negative integer');
+  if (!Number.isSafeInteger(pageLimit) || pageLimit < 1 || pageLimit > MAX_CANDIDATE_WORKBENCH_PAGE_SIZE) {
+    fail(`limit must be an integer from 1 to ${MAX_CANDIDATE_WORKBENCH_PAGE_SIZE}`);
+  }
+  if (!Number.isSafeInteger(outputLimit) || outputLimit < 256 || outputLimit > MAX_CANDIDATE_WORKBENCH_STDOUT_BYTES) {
+    fail(`maxBytes must be an integer from 256 to ${MAX_CANDIDATE_WORKBENCH_STDOUT_BYTES}`);
+  }
+  if (!Number.isSafeInteger(characterLimit) || characterLimit < 256 || characterLimit > MAX_CANDIDATE_WORKBENCH_STDOUT_CHARS) {
+    fail(`maxChars must be an integer from 256 to ${MAX_CANDIDATE_WORKBENCH_STDOUT_CHARS}`);
+  }
+  return { offset: pageOffset, limit: pageLimit, maxBytes: outputLimit, maxChars: characterLimit };
+}
+
+/** Return a complete-item page with stable offset continuation and hard stdout byte/character caps. */
+export function paginateCandidateWorkbenchItems(items, { offset, limit, maxBytes, maxChars, metadata = {} } = {}) {
+  if (!Array.isArray(items)) fail('paginated workbench items must be an array');
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) fail('page metadata must be an object');
+  const page = normalizePageOptions(offset, limit, maxBytes, maxChars);
+  if (page.offset > items.length) fail(`offset ${page.offset} is beyond total ${items.length}`);
+  const emptyPage = {
+    ...metadata,
+    total: items.length,
+    offset: page.offset,
+    limit: page.limit,
+    returned: 0,
+    truncated: page.offset < items.length,
+    has_more: page.offset < items.length,
+    next_offset: page.offset < items.length ? page.offset : null,
+    items: [],
+  };
+  const emptyPageOutput = `${JSON.stringify(emptyPage, null, 2)}\n`;
+  if (Buffer.byteLength(emptyPageOutput, 'utf8') > page.maxBytes || Array.from(emptyPageOutput).length > page.maxChars) {
+    fail('workbench page metadata exceeds the output limit; increase --max-bytes or --max-chars');
+  }
+  const pageItems = [];
+  const requestedEnd = Math.min(page.offset + page.limit, items.length);
+  for (let index = page.offset; index < requestedEnd; index += 1) {
+    const candidateItems = [...pageItems, items[index]];
+    const nextOffset = page.offset + candidateItems.length;
+    const candidatePage = {
+      ...metadata,
+      total: items.length,
+      offset: page.offset,
+      limit: page.limit,
+      returned: candidateItems.length,
+      truncated: nextOffset < items.length,
+      has_more: nextOffset < items.length,
+      next_offset: nextOffset < items.length ? nextOffset : null,
+      items: candidateItems,
+    };
+    const candidateOutput = `${JSON.stringify(candidatePage, null, 2)}\n`;
+    if (Buffer.byteLength(candidateOutput, 'utf8') > page.maxBytes || Array.from(candidateOutput).length > page.maxChars) {
+      if (pageItems.length === 0) {
+        fail(`workbench page item ${index} exceeds the configured output limits; no partial item was returned`);
+      }
+      break;
+    }
+    pageItems.push(items[index]);
+  }
+  const nextOffset = page.offset + pageItems.length;
+  return {
+    ...metadata,
+    total: items.length,
+    offset: page.offset,
+    limit: page.limit,
+    returned: pageItems.length,
+    truncated: nextOffset < items.length,
+    has_more: nextOffset < items.length,
+    next_offset: nextOffset < items.length ? nextOffset : null,
+    items: pageItems,
+  };
+}
+
+function emitJson(value) {
+  writeWorkbenchStdout(value);
+}
+
+/** Create a per-process stdout writer that bounds both one call and the full command. */
+export function createCandidateWorkbenchStdoutWriter({
+  maxBytes = MAX_CANDIDATE_WORKBENCH_STDOUT_BYTES,
+  maxChars = MAX_CANDIDATE_WORKBENCH_STDOUT_CHARS,
+  write,
+} = {}) {
+  const writeChunk = write ?? ((output) => process.stdout.write(output));
+  let writtenBytes = 0;
+  let writtenChars = 0;
+  return (value) => {
+    const output = serializeWorkbenchOutput(value, maxBytes, maxChars);
+    const nextBytes = writtenBytes + Buffer.byteLength(output, 'utf8');
+    const nextChars = writtenChars + Array.from(output).length;
+    if (nextBytes > maxBytes || nextChars > maxChars) {
+      fail(`workbench stdout safety cap exceeded (${nextBytes}/${maxBytes} bytes, ${nextChars}/${maxChars} characters); no additional output was written`);
+    }
+    writeChunk(output);
+    writtenBytes = nextBytes;
+    writtenChars = nextChars;
+    return { writtenBytes, writtenChars };
+  };
+}
+
+const writeWorkbenchStdout = createCandidateWorkbenchStdoutWriter();
+
 function hasExactKeys(value, keys) {
   return value && typeof value === 'object' && !Array.isArray(value)
     && Object.keys(value).sort().join('\0') === [...keys].sort().join('\0');
@@ -61,8 +198,9 @@ function normalizeBatch(value) {
 }
 
 function normalizeMethod(value) {
-  if (String(value ?? '') !== 'b') fail('B candidate workbench only supports method b');
-  return String(value);
+  const method = String(value ?? '');
+  if (!['a', 'b'].includes(method)) fail('Candidate workbench supports method a or b only');
+  return method;
 }
 
 function normalizeModel(value) {
@@ -221,7 +359,7 @@ function compareBatchIdentity(previous, currentRecords, shard, batch, method, mo
   }
 }
 
-function freshRecords(sourceRows, firstRecordIndex, previousRecords = []) {
+function freshRecords(sourceRows, firstRecordIndex, method, previousRecords = []) {
   const previousByRecord = new Map(previousRecords.map((record) => [record.record_id, record]));
   return sourceRows.map((source, index) => {
     const previous = previousByRecord.get(source.id);
@@ -234,12 +372,20 @@ function freshRecords(sourceRows, firstRecordIndex, previousRecords = []) {
         const prior = previousSenses.get(sourceSense.id);
         const candidates = prior?.candidates ?? [];
         const candidateSet = new Set(candidates.map(normalizeCandidate));
-        return {
+        const state = {
           sense_id: sourceSense.id,
           candidates,
           reviewed: (prior?.reviewed ?? []).filter((review) => candidateSet.has(normalizeCandidate(review.candidate))),
-          explored_fingerprint: prior?.explored_fingerprint ?? null,
         };
+        if (method === 'b') {
+          state.explored_fingerprint = prior?.explored_fingerprint ?? null;
+        } else {
+          state.explored_passes = {
+            primary_fingerprint: prior?.explored_passes?.primary_fingerprint ?? null,
+            secondary_fingerprint: prior?.explored_passes?.secondary_fingerprint ?? null,
+          };
+        }
+        return state;
       }),
     };
   });
@@ -266,7 +412,7 @@ function assertCheckpointShape(checkpoint) {
     fail('unsupported or malformed Candidate workbench checkpoint');
   }
   if (!/^\d{3}$/u.test(checkpoint.batch.shard ?? '') || !['01', '02'].includes(checkpoint.batch.batch)
-    || checkpoint.batch.method !== 'b' || !/^[a-z0-9_-]+$/u.test(checkpoint.batch.model ?? '')) {
+    || !['a', 'b'].includes(checkpoint.batch.method) || !/^[a-z0-9_-]+$/u.test(checkpoint.batch.model ?? '')) {
     fail('checkpoint batch metadata is malformed');
   }
   if (typeof checkpoint.source.canonical_path !== 'string'
@@ -289,9 +435,17 @@ function assertCheckpointShape(checkpoint) {
     recordIds.add(record.record_id);
     const senseIds = new Set();
     for (const [senseIndex, sense] of record.senses.entries()) {
-      if (!hasExactKeys(sense, ['sense_id', 'candidates', 'reviewed', 'explored_fingerprint'])
+      const expectedSenseKeys = checkpoint.batch.method === 'b'
+        ? ['sense_id', 'candidates', 'reviewed', 'explored_fingerprint']
+        : ['sense_id', 'candidates', 'reviewed', 'explored_passes'];
+      if (!hasExactKeys(sense, expectedSenseKeys)
         || typeof sense.sense_id !== 'string' || !Array.isArray(sense.candidates) || !Array.isArray(sense.reviewed)
-        || (sense.explored_fingerprint !== null && !/^[a-f0-9]{64}$/u.test(sense.explored_fingerprint ?? ''))) {
+        || (checkpoint.batch.method === 'b'
+          ? (sense.explored_fingerprint !== null && !/^[a-f0-9]{64}$/u.test(sense.explored_fingerprint ?? ''))
+          : (!hasExactKeys(sense.explored_passes, ['primary_fingerprint', 'secondary_fingerprint'])
+            || ['primary_fingerprint', 'secondary_fingerprint'].some((pass) => (
+              sense.explored_passes[pass] !== null && !/^[a-f0-9]{64}$/u.test(sense.explored_passes[pass] ?? '')
+            ))))) {
         fail(`checkpoint record_id ${record.record_id} sense ${senseIndex + 1} is malformed`);
       }
       if (senseIds.has(sense.sense_id)) fail(`checkpoint record_id ${record.record_id} repeats sense_id ${sense.sense_id}`);
@@ -377,6 +531,12 @@ function buildStatus(checkpoint, canonicalRows) {
   let exploredSenseCount = 0;
   let incompleteSenseCount = 0;
   let staleSenseCount = 0;
+  let primaryExploredSenseCount = 0;
+  let secondaryExploredSenseCount = 0;
+  let incompletePrimarySenseCount = 0;
+  let stalePrimarySenseCount = 0;
+  let incompleteSecondarySenseCount = 0;
+  let staleSecondarySenseCount = 0;
   for (const recordState of checkpoint.records) {
     const source = sourceById.get(recordState.record_id);
     if (!source) fail(`checkpoint record_id ${recordState.record_id} is absent from current Canonical input`);
@@ -385,9 +545,29 @@ function buildStatus(checkpoint, canonicalRows) {
       const sourceSense = sourceSenses.get(senseState.sense_id);
       if (!sourceSense) fail(`checkpoint record_id ${source.id} has stale sense_id ${senseState.sense_id}`);
       const sourceFingerprint = canonicalSenseFingerprint(source, sourceSense);
-      if (senseState.explored_fingerprint === sourceFingerprint) exploredSenseCount += 1;
-      else if (senseState.explored_fingerprint !== null) staleSenseCount += 1;
-      else incompleteSenseCount += 1;
+      if (checkpoint.batch.method === 'b') {
+        if (senseState.explored_fingerprint === sourceFingerprint) exploredSenseCount += 1;
+        else if (senseState.explored_fingerprint !== null) staleSenseCount += 1;
+        else incompleteSenseCount += 1;
+      } else {
+        const primary = senseState.explored_passes.primary_fingerprint;
+        const secondary = senseState.explored_passes.secondary_fingerprint;
+        const primaryCurrent = primary === sourceFingerprint;
+        const secondaryCurrent = secondary === sourceFingerprint;
+        if (primaryCurrent) primaryExploredSenseCount += 1;
+        else {
+          incompletePrimarySenseCount += 1;
+          if (primary !== null) stalePrimarySenseCount += 1;
+        }
+        if (secondaryCurrent) secondaryExploredSenseCount += 1;
+        else {
+          incompleteSecondarySenseCount += 1;
+          if (secondary !== null) staleSecondarySenseCount += 1;
+        }
+        if (!primaryCurrent || !secondaryCurrent) incompleteSenseCount += 1;
+        if (primaryCurrent && secondaryCurrent) exploredSenseCount += 1;
+        if ((primary !== null && !primaryCurrent) || (secondary !== null && !secondaryCurrent)) staleSenseCount += 1;
+      }
       if (senseState.candidates.length === 0) emptySenseCount += 1;
       for (const candidate of senseState.candidates) {
         candidateCount += 1;
@@ -402,7 +582,7 @@ function buildStatus(checkpoint, canonicalRows) {
   const recordCount = checkpoint.records.length;
   const senseCount = checkpoint.records.reduce((count, record) => count + record.senses.length, 0);
   const completedChunkCount = checkpoint.chunks.filter((chunk) => chunk.candidate_sha256 !== null).length;
-  return {
+  const status = {
     shard: checkpoint.batch.shard,
     batch: checkpoint.batch.batch,
     recordCount,
@@ -419,6 +599,15 @@ function buildStatus(checkpoint, canonicalRows) {
     completedChunkCount,
     incompleteChunkCount: checkpoint.chunks.length - completedChunkCount,
   };
+  if (checkpoint.batch.method === 'a') {
+    status.primaryExploredSenseCount = primaryExploredSenseCount;
+    status.secondaryExploredSenseCount = secondaryExploredSenseCount;
+    status.incompletePrimarySenseCount = incompletePrimarySenseCount;
+    status.stalePrimarySenseCount = stalePrimarySenseCount;
+    status.incompleteSecondarySenseCount = incompleteSecondarySenseCount;
+    status.staleSecondarySenseCount = staleSecondarySenseCount;
+  }
+  return status;
 }
 
 function chunkGenerationName(sourceHash, chunkSize) {
@@ -459,7 +648,7 @@ export async function prepareCandidateBatch({
   }
   const chunks = makeChunks(sourceRows, chunkSize);
 
-  const mergedRecords = freshRecords(sourceRows, firstRecordIndex, previousCheckpoint?.records ?? []);
+  const mergedRecords = freshRecords(sourceRows, firstRecordIndex, method, previousCheckpoint?.records ?? []);
   if (previousCheckpoint) {
     const oldChunkDirectory = assertScratchPath(
       repositoryDirectory,
@@ -572,6 +761,36 @@ function expectedChunkSource(workspace, chunkNumber, repositoryDirectory) {
   const chunkPath = path.join(chunkDirectory, chunk.file);
   const chunkRows = workspace.sourceRows.slice(chunk.start_index, chunk.end_index);
   return { chunk, chunkPath, chunkRows };
+}
+
+/** Read Canonical source material one exact sense at a time without losing source fields. */
+export async function readCandidateChunkPage({ scratchDirectory, chunk: requestedChunk, offset = 0, limit, maxBytes, maxChars, repositoryDirectory = REPOSITORY_DIRECTORY } = {}) {
+  const workspace = await loadWorkspace(scratchDirectory, repositoryDirectory);
+  const chunkNumber = Number(requestedChunk);
+  const { chunk, chunkPath, chunkRows } = expectedChunkSource(workspace, chunkNumber, repositoryDirectory);
+  const recordedChunk = await readFile(chunkPath, 'utf8').catch((error) => fail(`cannot read source chunk ${chunkPath}: ${error.message}`));
+  if (sha256(recordedChunk) !== chunk.sha256) fail(`source chunk ${chunkPath} changed after prepare; no source output was returned`);
+  const items = chunkRows.flatMap((record, recordOffset) => record.senses.map((sense, senseOffset) => ({
+    record_index: workspace.firstRecordIndex + chunk.start_index + recordOffset,
+    record_id: record.id,
+    sense_index: senseOffset + 1,
+    sense_count: record.senses.length,
+    sense_id: sense.id,
+    canonical_record: { ...record, senses: [sense] },
+  })));
+  return paginateCandidateWorkbenchItems(items, {
+    offset,
+    limit,
+    maxBytes,
+    maxChars,
+    metadata: {
+      shard: workspace.checkpoint.batch.shard,
+      batch: workspace.checkpoint.batch.batch,
+      chunk: chunk.number,
+      recordCount: chunkRows.length,
+      senseCount: chunk.sense_count,
+    },
+  });
 }
 
 function candidateInputIndex(inputRows, chunkRows, chunkNumber) {
@@ -701,8 +920,13 @@ export async function updateCandidateSense({ scratchDirectory, recordId, senseId
 }
 
 /** Mark one or more senses explored after both B scenes have actually been completed for their current source. */
-export async function markCandidateSensesExplored({ scratchDirectory, inputPath, repositoryDirectory = REPOSITORY_DIRECTORY } = {}) {
+export async function markCandidateSensesExplored({ scratchDirectory, inputPath, pass, repositoryDirectory = REPOSITORY_DIRECTORY } = {}) {
   const workspace = await loadWorkspace(scratchDirectory, repositoryDirectory);
+  const method = workspace.checkpoint.batch.method;
+  if (method === 'a' && !['primary', 'secondary'].includes(pass)) {
+    fail('A exploration receipt requires pass=primary or pass=secondary');
+  }
+  if (method === 'b' && pass !== undefined) fail('B exploration uses its existing two-scene receipt; --pass is only for method a');
   const resolvedInput = assertScratchPath(repositoryDirectory, inputPath, 'input');
   const rows = parseJsonl(await readFile(resolvedInput, 'utf8'), resolvedInput);
   const seen = new Set();
@@ -722,7 +946,15 @@ export async function markCandidateSensesExplored({ scratchDirectory, inputPath,
     const sourceRecord = sourceByRecord.get(row.record_id);
     const sourceSense = sourceRecord?.senses.find((sense) => sense.id === row.sense_id);
     if (!stateSense || !sourceSense) fail(`${location} references unknown record_id ${row.record_id} / sense_id ${row.sense_id}`);
-    stateSense.explored_fingerprint = canonicalSenseFingerprint(sourceRecord, sourceSense);
+    const fingerprint = canonicalSenseFingerprint(sourceRecord, sourceSense);
+    if (method === 'b') {
+      stateSense.explored_fingerprint = fingerprint;
+    } else {
+      if (pass === 'secondary' && stateSense.explored_passes.primary_fingerprint !== fingerprint) {
+        fail(`${location} cannot mark the A secondary pass before the current source sense has a primary pass`);
+      }
+      stateSense.explored_passes[`${pass}_fingerprint`] = fingerprint;
+    }
     markedCount += 1;
   }
   await writeFileAtomic(workspace.checkpointPath, `${JSON.stringify(workspace.checkpoint, null, 2)}\n`);
@@ -778,6 +1010,46 @@ function pendingReviewRows(workspace) {
   return result;
 }
 
+/** Page through unchecked candidates as separate sense-bound items; never dump a whole review ledger. */
+export async function readPendingCandidateReviewPage({ scratchDirectory, offset = 0, limit, maxBytes, maxChars, repositoryDirectory = REPOSITORY_DIRECTORY } = {}) {
+  const workspace = await loadWorkspace(scratchDirectory, repositoryDirectory);
+  const sourceById = new Map(workspace.sourceRows.map((record) => [record.id, record]));
+  const items = [];
+  for (const stateRecord of workspace.checkpoint.records) {
+    const sourceRecord = sourceById.get(stateRecord.record_id);
+    for (const stateSense of stateRecord.senses) {
+      const sourceSense = sourceRecord.senses.find((sense) => sense.id === stateSense.sense_id);
+      const pending = stateSense.candidates.filter((candidate) => {
+        const fingerprint = candidateContextFingerprint(sourceRecord, sourceSense, candidate);
+        return !stateSense.reviewed.some((review) => review.candidate === candidate && review.fingerprint === fingerprint);
+      });
+      for (const [candidateIndex, candidate] of pending.entries()) {
+        items.push({
+          record_id: sourceRecord.id,
+          lemma: sourceRecord.lemma,
+          sense_id: sourceSense.id,
+          candidate,
+          pending_index: candidateIndex + 1,
+          pending_count_for_sense: pending.length,
+          canonical_record: { ...sourceRecord, senses: [sourceSense] },
+        });
+      }
+    }
+  }
+  return paginateCandidateWorkbenchItems(items, {
+    offset,
+    limit,
+    maxBytes,
+    maxChars,
+    metadata: {
+      shard: workspace.checkpoint.batch.shard,
+      batch: workspace.checkpoint.batch.batch,
+      method: workspace.checkpoint.batch.method,
+      model: workspace.checkpoint.batch.model,
+    },
+  });
+}
+
 /** Export only unchecked/invalidated candidates, with their complete source sense rows. */
 export async function exportPendingCandidateReviews({ scratchDirectory, outPath, replace = false, repositoryDirectory = REPOSITORY_DIRECTORY } = {}) {
   const workspace = await loadWorkspace(scratchDirectory, repositoryDirectory);
@@ -789,7 +1061,7 @@ export async function exportPendingCandidateReviews({ scratchDirectory, outPath,
   return { path: resolvedOutput, rows: pending.length, candidateCount: status.pendingReviewCount + status.staleReviewCount, changed: write.changed };
 }
 
-/** Export only source senses that still need their required two-scene B exploration. */
+/** Export only source senses that still need their required method-specific exploration. */
 export async function exportPendingCandidateExploration({ scratchDirectory, outPath, replace = false, repositoryDirectory = REPOSITORY_DIRECTORY } = {}) {
   const workspace = await loadWorkspace(scratchDirectory, repositoryDirectory);
   const resolvedOutput = assertScratchPath(repositoryDirectory, outPath, 'out');
@@ -801,12 +1073,22 @@ export async function exportPendingCandidateExploration({ scratchDirectory, outP
     for (const sourceSense of sourceRecord.senses) {
       const stateSense = stateRecord.senses.find((sense) => sense.sense_id === sourceSense.id);
       const fingerprint = canonicalSenseFingerprint(sourceRecord, sourceSense);
-      if (stateSense.explored_fingerprint === fingerprint) continue;
-      senses.push({
-        sense_id: sourceSense.id,
-        current_candidates: stateSense.candidates,
-        status: stateSense.explored_fingerprint === null ? 'PENDING' : 'STALE',
-      });
+      if (workspace.checkpoint.batch.method === 'b') {
+        if (stateSense.explored_fingerprint === fingerprint) continue;
+        senses.push({
+          sense_id: sourceSense.id,
+          current_candidates: stateSense.candidates,
+          status: stateSense.explored_fingerprint === null ? 'PENDING' : 'STALE',
+        });
+      } else {
+        const primary = stateSense.explored_passes.primary_fingerprint;
+        const secondary = stateSense.explored_passes.secondary_fingerprint;
+        if (primary !== fingerprint) {
+          senses.push({ sense_id: sourceSense.id, pass: 'primary', status: primary === null ? 'PENDING' : 'STALE' });
+        } else if (secondary !== fingerprint) {
+          senses.push({ sense_id: sourceSense.id, pass: 'secondary', status: secondary === null ? 'PENDING' : 'STALE' });
+        }
+      }
     }
     if (senses.length > 0) {
       pending.push({
@@ -818,6 +1100,56 @@ export async function exportPendingCandidateExploration({ scratchDirectory, outP
   const contents = serializeJsonl(pending);
   const write = await writeFileAtomic(resolvedOutput, contents, { replace });
   return { path: resolvedOutput, recordCount: pending.length, senseCount: pending.reduce((count, row) => count + row.senses.length, 0), changed: write.changed };
+}
+
+/** Page through exact source senses that still need an exploration pass. */
+export async function readPendingCandidateExplorationPage({ scratchDirectory, offset = 0, limit, maxBytes, maxChars, repositoryDirectory = REPOSITORY_DIRECTORY } = {}) {
+  const workspace = await loadWorkspace(scratchDirectory, repositoryDirectory);
+  const stateById = new Map(workspace.checkpoint.records.map((record) => [record.record_id, record]));
+  const items = [];
+  for (const sourceRecord of workspace.sourceRows) {
+    const stateRecord = stateById.get(sourceRecord.id);
+    for (const sourceSense of sourceRecord.senses) {
+      const stateSense = stateRecord.senses.find((sense) => sense.sense_id === sourceSense.id);
+      const fingerprint = canonicalSenseFingerprint(sourceRecord, sourceSense);
+      let pass;
+      let status;
+      if (workspace.checkpoint.batch.method === 'b') {
+        if (stateSense.explored_fingerprint === fingerprint) continue;
+        pass = 'both-scenes';
+        status = stateSense.explored_fingerprint === null ? 'PENDING' : 'STALE';
+      } else if (stateSense.explored_passes.primary_fingerprint !== fingerprint) {
+        pass = 'primary';
+        status = stateSense.explored_passes.primary_fingerprint === null ? 'PENDING' : 'STALE';
+      } else if (stateSense.explored_passes.secondary_fingerprint !== fingerprint) {
+        pass = 'secondary';
+        status = stateSense.explored_passes.secondary_fingerprint === null ? 'PENDING' : 'STALE';
+      } else {
+        continue;
+      }
+      items.push({
+        record_id: sourceRecord.id,
+        lemma: sourceRecord.lemma,
+        sense_id: sourceSense.id,
+        pass,
+        status,
+        current_candidate_count: stateSense.candidates.length,
+        canonical_record: { ...sourceRecord, senses: [sourceSense] },
+      });
+    }
+  }
+  return paginateCandidateWorkbenchItems(items, {
+    offset,
+    limit,
+    maxBytes,
+    maxChars,
+    metadata: {
+      shard: workspace.checkpoint.batch.shard,
+      batch: workspace.checkpoint.batch.batch,
+      method: workspace.checkpoint.batch.method,
+      model: workspace.checkpoint.batch.model,
+    },
+  });
 }
 
 /** Record an explicit editorial pass for a subset of currently active candidates. */
@@ -871,14 +1203,25 @@ export async function mergeCandidateBatch({ scratchDirectory, outPath, replace =
   }
   if (status.incompleteSenseCount > 0 || status.staleSenseCount > 0) {
     const sourceById = new Map(workspace.sourceRows.map((record) => [record.id, record]));
+    if (workspace.checkpoint.batch.method === 'b') {
+      const needsExploration = workspace.checkpoint.records.flatMap((record) => record.senses.flatMap((sense) => {
+        const sourceRecord = sourceById.get(record.record_id);
+        const sourceSense = sourceRecord.senses.find((item) => item.id === sense.sense_id);
+        return sense.explored_fingerprint === canonicalSenseFingerprint(sourceRecord, sourceSense)
+          ? []
+          : [`${record.record_id}/${sense.sense_id}`];
+      }));
+      fail(`cannot merge: complete both B scenes for the pending source sense(s) ${needsExploration.join(', ')}; then mark-explored`);
+    }
     const needsExploration = workspace.checkpoint.records.flatMap((record) => record.senses.flatMap((sense) => {
       const sourceRecord = sourceById.get(record.record_id);
       const sourceSense = sourceRecord.senses.find((item) => item.id === sense.sense_id);
-      return sense.explored_fingerprint === canonicalSenseFingerprint(sourceRecord, sourceSense)
-        ? []
-        : [`${record.record_id}/${sense.sense_id}`];
+      const fingerprint = canonicalSenseFingerprint(sourceRecord, sourceSense);
+      if (sense.explored_passes.primary_fingerprint !== fingerprint) return [`${record.record_id}/${sense.sense_id}:primary`];
+      if (sense.explored_passes.secondary_fingerprint !== fingerprint) return [`${record.record_id}/${sense.sense_id}:secondary`];
+      return [];
     }));
-    fail(`cannot merge: complete both B scenes for the pending source sense(s) ${needsExploration.join(', ')}; then mark-explored`);
+    fail(`cannot merge: complete A's independent primary and secondary exploration for the pending source sense(s) ${needsExploration.join(', ')}; use mark-explored --pass primary, then --pass secondary`);
   }
   if (status.pendingReviewCount > 0 || status.staleReviewCount > 0) {
     fail(`cannot merge: ${status.pendingReviewCount} candidate(s) need AI meaning/form review and ${status.staleReviewCount} have stale review state; use review-pending, then mark-reviewed`);
@@ -951,14 +1294,17 @@ function parseArguments(argv) {
 function usage() {
   return [
     'usage:',
-    '  node scripts/relation/candidate-workbench.mjs prepare --shard SSS --batch BB --method b --model <id> --scratch-dir .warroom-scratch/<batch> [--chunk-size 25..50]',
+    '  node scripts/relation/candidate-workbench.mjs prepare --shard SSS --batch BB --method a|b --model <id> --scratch-dir .warroom-scratch/<batch> [--chunk-size 25..50]',
+    '  node scripts/relation/candidate-workbench.mjs read-chunk --scratch-dir <dir> --chunk N [--offset N] [--limit 1..25] [--max-bytes N] [--max-chars N]',
+    '  node scripts/relation/candidate-workbench.mjs read-review-page --scratch-dir <dir> [--offset N] [--limit 1..25] [--max-bytes N] [--max-chars N]',
+    '  node scripts/relation/candidate-workbench.mjs read-exploration-page --scratch-dir <dir> [--offset N] [--limit 1..25] [--max-bytes N] [--max-chars N]',
     '  node scripts/relation/candidate-workbench.mjs save-chunk --scratch-dir <dir> --chunk N --input <candidate-chunk.jsonl>',
     '  node scripts/relation/candidate-workbench.mjs patch-sense --scratch-dir <dir> --input <sense-candidates.json>',
     '  node scripts/relation/candidate-workbench.mjs remove-candidate --scratch-dir <dir> --input <confirmed-ineligible.json>',
     '  node scripts/relation/candidate-workbench.mjs review-pending --scratch-dir <dir> --out <review.jsonl> [--replace]',
     '  node scripts/relation/candidate-workbench.mjs exploration-pending --scratch-dir <dir> --out <exploration.jsonl> [--replace]',
     '  node scripts/relation/candidate-workbench.mjs mark-reviewed --scratch-dir <dir> --input <review-receipts.jsonl>',
-    '  node scripts/relation/candidate-workbench.mjs mark-explored --scratch-dir <dir> --input <explored-senses.jsonl>',
+    '  node scripts/relation/candidate-workbench.mjs mark-explored --scratch-dir <dir> --input <explored-senses.jsonl> [--pass primary|secondary for A]',
     '  node scripts/relation/candidate-workbench.mjs status --scratch-dir <dir>',
     '  node scripts/relation/candidate-workbench.mjs merge --scratch-dir <dir> --out <candidate.jsonl> [--replace]',
     '  node scripts/relation/candidate-workbench.mjs inspect --shard SSS --record-id <id>',
@@ -981,18 +1327,52 @@ async function main() {
       scratchDirectory: requireOption(options, 'scratch-dir'),
       chunkSize: options['chunk-size'] === undefined ? undefined : Number(options['chunk-size']),
     });
-    console.log(JSON.stringify({
+    emitJson({
       checkpoint: result.checkpointPath,
       chunk_directory: result.chunkDirectory,
       source_changed: result.sourceChanged,
       status: result.status,
       chunks: result.chunks,
-    }, null, 2));
+    });
+    return;
+  }
+  if (command === 'read-chunk') {
+    const result = await readCandidateChunkPage({
+      scratchDirectory: requireOption(options, 'scratch-dir'),
+      chunk: Number(requireOption(options, 'chunk')),
+      offset: options.offset === undefined ? 0 : Number(options.offset),
+      limit: options.limit === undefined ? undefined : Number(options.limit),
+      maxBytes: options['max-bytes'] === undefined ? undefined : Number(options['max-bytes']),
+      maxChars: options['max-chars'] === undefined ? undefined : Number(options['max-chars']),
+    });
+    emitJson(result);
+    return;
+  }
+  if (command === 'read-review-page') {
+    const result = await readPendingCandidateReviewPage({
+      scratchDirectory: requireOption(options, 'scratch-dir'),
+      offset: options.offset === undefined ? 0 : Number(options.offset),
+      limit: options.limit === undefined ? undefined : Number(options.limit),
+      maxBytes: options['max-bytes'] === undefined ? undefined : Number(options['max-bytes']),
+      maxChars: options['max-chars'] === undefined ? undefined : Number(options['max-chars']),
+    });
+    emitJson(result);
+    return;
+  }
+  if (command === 'read-exploration-page') {
+    const result = await readPendingCandidateExplorationPage({
+      scratchDirectory: requireOption(options, 'scratch-dir'),
+      offset: options.offset === undefined ? 0 : Number(options.offset),
+      limit: options.limit === undefined ? undefined : Number(options.limit),
+      maxBytes: options['max-bytes'] === undefined ? undefined : Number(options['max-bytes']),
+      maxChars: options['max-chars'] === undefined ? undefined : Number(options['max-chars']),
+    });
+    emitJson(result);
     return;
   }
   if (command === 'save-chunk') {
     const result = await saveCandidateChunk({ scratchDirectory: requireOption(options, 'scratch-dir'), chunk: Number(requireOption(options, 'chunk')), inputPath: requireOption(options, 'input') });
-    console.log(JSON.stringify(result, null, 2));
+    emitJson(result);
     return;
   }
   if (command === 'patch-sense') {
@@ -1005,7 +1385,7 @@ async function main() {
     }
     if (!hasExactKeys(input, ['record_id', 'sense_id', 'candidates'])) fail(`${inputPath} must contain only record_id, sense_id, and candidates`);
     const result = await updateCandidateSense({ scratchDirectory: requireOption(options, 'scratch-dir'), recordId: input.record_id, senseId: input.sense_id, candidates: input.candidates });
-    console.log(JSON.stringify(result, null, 2));
+    emitJson(result);
     return;
   }
   if (command === 'remove-candidate') {
@@ -1024,50 +1404,51 @@ async function main() {
       candidate: input.candidate,
       confirmedIneligible: input.confirmed_ineligible,
     });
-    console.log(JSON.stringify(result, null, 2));
+    emitJson(result);
     return;
   }
   if (command === 'review-pending') {
     const result = await exportPendingCandidateReviews({ scratchDirectory: requireOption(options, 'scratch-dir'), outPath: requireOption(options, 'out'), replace: options.replace });
-    console.log(JSON.stringify(result, null, 2));
+    emitJson(result);
     return;
   }
   if (command === 'exploration-pending') {
     const result = await exportPendingCandidateExploration({ scratchDirectory: requireOption(options, 'scratch-dir'), outPath: requireOption(options, 'out'), replace: options.replace });
-    console.log(JSON.stringify(result, null, 2));
+    emitJson(result);
     return;
   }
   if (command === 'mark-reviewed') {
     const result = await markCandidateReviews({ scratchDirectory: requireOption(options, 'scratch-dir'), inputPath: requireOption(options, 'input') });
-    console.log(JSON.stringify(result, null, 2));
+    emitJson(result);
     return;
   }
   if (command === 'mark-explored') {
-    const result = await markCandidateSensesExplored({ scratchDirectory: requireOption(options, 'scratch-dir'), inputPath: requireOption(options, 'input') });
-    console.log(JSON.stringify(result, null, 2));
+    const result = await markCandidateSensesExplored({ scratchDirectory: requireOption(options, 'scratch-dir'), inputPath: requireOption(options, 'input'), pass: options.pass });
+    emitJson(result);
     return;
   }
   if (command === 'status') {
     const workspace = await loadWorkspace(requireOption(options, 'scratch-dir'));
-    console.log(JSON.stringify(buildStatus(workspace.checkpoint, workspace.sourceRows), null, 2));
+    emitJson(buildStatus(workspace.checkpoint, workspace.sourceRows));
     return;
   }
   if (command === 'merge') {
     const result = await mergeCandidateBatch({ scratchDirectory: requireOption(options, 'scratch-dir'), outPath: requireOption(options, 'out'), replace: options.replace });
-    console.log(JSON.stringify({ path: result.path, changed: result.changed, validation: result.validation }, null, 2));
+    emitJson({ path: result.path, changed: result.changed, validation: result.validation });
     return;
   }
   if (command === 'inspect') {
     const result = await inspectCanonicalRecord({ shard: requireOption(options, 'shard'), recordId: requireOption(options, 'record-id') });
-    console.log(JSON.stringify(result.record));
+    emitJson(result.record);
     return;
   }
   fail(`${usage()}\nunknown command: ${command ?? '(missing)'}`);
 }
 
 if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url) {
+  console.log = (...args) => emitJson(args.length === 1 ? args[0] : args);
   main().catch((error) => {
-    console.error(error.message);
+    process.stderr.write(`${error.message}\n`);
     process.exitCode = 1;
   });
 }

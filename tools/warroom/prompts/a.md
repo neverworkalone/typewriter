@@ -1,24 +1,11 @@
 #860 A 진행해
 
-War Room이 지정한 배치 {{batch}}를 생산한다.
-현재 worktree와 브랜치 {{branch}}를 그대로 사용한다.
-배치를 다시 선정하거나 브랜치를 변경하지 않는다.
-War Room이 준비한 HEAD를 기준으로 작업하며,
-생산 도중 master가 갱신되어도 현재 브랜치를 merge/rebase/reset하지 않는다.
+War Room이 지정한 배치 `{{batch}}`, worktree, 브랜치, 준비된 HEAD를 그대로 사용한다. 배치를 다시 선정하거나 브랜치를 변경하지 않는다.
 
-Issue #860과 AGENTS.md의 A 생산 계약을 읽고 준수한다.
+[#860의 A Stage 1 생산 계약](https://github.com/neverworkalone/typewriter/issues/860)과 `AGENTS.md`를 따른다. 모든 정확한 source sense에서 1차 직접 연관 어휘 탐색을 수행한 뒤 같은 Canonical sense로 돌아와 새로운 의미 방향을 독립적으로 2차 탐색한다. 폭넓은 유효 후보와 간접 연상을 보존하고, quota·조기 중단·자동 의미 필터를 적용하지 않는다.
 
-셸 명령은 개별로 실행해 각 종료 코드와 출력을 확인한다. `gh api` 경로에 `?` 또는 `&`가 있으면 경로 인수 전체를 작은따옴표로 감싼다. 예: `gh api 'repos/neverworkalone/typewriter/contents/data/relation-candidates/031?ref=master'`, `gh api 'repos/neverworkalone/typewriter/pulls?state=open&per_page=100' --jq 'length'`.
+Candidate 청크 읽기·저장·수정·결합에는 공통 CLI를 사용한다. 상세 절차는 [A/B Candidate workbench 매뉴얼](../../../docs/relation-candidate-workbench.md)을 따른다. 제출 전 모든 최종 후보를 정확한 source sense·뜻풀이와 대조해 형태를 검사하고, 전체 Candidate v1 validator를 통과시킨다.
 
-A 생산 제출 전에는 각 source sense의 Canonical 뜻풀이와 해당 후보의 실제 표현을 나란히 대조하는 형태 검사를 모든 후보에 적용한다. 다어절·붙여 쓴 표현뿐 아니라 뜻풀이를 줄여 쓴 듯한 후보도 확인하고, 정의의 속성·범주를 그대로 바꾸어 말했을 뿐 독립된 어휘 경로나 의미 확장이 없는 후보는 제거한다. 뜻풀이에 나온 단어라는 이유만으로 독립 어휘 후보를 제외하거나, 익숙하고 간결한 장면·심상·감각 확장을 제거하지 않는다(예: `수괘` → `겨울 아침`). 이 판단은 정확한 source sense와 표현의 의미를 비교하는 편집 검사이며, 문자열 포함·길이·공백만으로 허용하거나 차단하는 필터가 아니다. Candidate v1 검증은 구조와 범위를 확인할 뿐 이 형태 검사를 대신하지 않는다.
+PR 생성 직전에 동일 `(method, model, shard, batch)` 점유를 다시 확인하고 `batch` 라벨을 붙인다. PR에는 방식·실제 모델·샤드·배치와 record/sense 수를 기록하되 #860을 링크하거나 닫지 않는다. 제출 후 해당 생산 실행을 종료한다.
 
-Candidate v1 검증 후 커밋·push하고 `batch` 라벨의 PR을 제출한다.
-PR 생성 직전 동일 배치의 중복 점유를 확인한다.
-PR 본문에서 #860을 참조하거나 닫지 않는다.
-
-PR 제출 후 종료한다.
-리뷰·머지 감시와 다음 배치 실행은 War Room이 담당한다.
-다른 모델·CLI·서브에이전트를 실행하지 않는다.
-
-임시·스크래치 파일(검증용 스크립트, 청크, probe 결과 등)은 worktree 안의 `.warroom-scratch/` 에만 만든다. 이 디렉터리는 git에서 무시되며 커밋하지 않는다.
-산출물이 아닌 파일을 worktree의 다른 경로에 남기지 않는다.
+임시·스크래치 파일은 worktree의 `.warroom-scratch/`에만 둔다. 다른 방식·모델의 산출물이나 AI·CLI·서브에이전트를 임의로 실행하지 않는다.
