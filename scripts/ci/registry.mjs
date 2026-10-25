@@ -208,6 +208,10 @@ const RAW_CI_CATEGORIES = Object.freeze({
         tier: 'normal',
       },
       {
+        ...testCheck('scripts/relation/literary-context.test.mjs', 'Test C literary search, evidence checkpoints and local Candidate repair'),
+        tier: 'normal',
+      },
+      {
         ...testCheck('scripts/relation/admission.test.mjs', 'Test Stage 2 Relation Admission preparation and accounting'),
         tier: 'normal',
       },
