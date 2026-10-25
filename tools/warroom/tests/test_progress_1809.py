@@ -19,7 +19,7 @@ def ab_checkpoint(wt: Path, n: int, saved=(), method="b", model="Codex", shard="
     chunks = [{"number": i + 1, "file": f"chunk-{i + 1:03d}.jsonl"} for i in range(n)]
     write(wt / S / sub / "checkpoint.json", json.dumps(
         {"contract": "candidate-workbench-v2", "batch": {"shard": shard, "batch": batch, "method": method, "model": model},
-         "source": {}, "chunks": chunks}))
+         "source": dict.fromkeys(progress._AB_SOURCE_KEYS, 1), "chunks": chunks}))
     for i in saved:
         write(wt / S / sub / "candidates" / f"chunk-{i:03d}.jsonl", "{}\n")
 
@@ -80,7 +80,11 @@ class Observe(unittest.TestCase):
         for name, mutate in [("v3", lambda d: d.update(contract="candidate-workbench-v3")),
                              ("suffix", lambda d: d.update(contract="candidate-workbench-v2-extra")),
                              ("extra key", lambda d: d.update(extra=1)),
-                             ("extra batch key", lambda d: d["batch"].update(extra=1))]:
+                             ("extra batch key", lambda d: d["batch"].update(extra=1)),
+                             ("empty source", lambda d: d.update(source={})),
+                             ("extra source key", lambda d: d["source"].update(extra=1)),
+                             ("missing source key", lambda d: d["source"].pop("chunk_size")),
+                             ("source not an object", lambda d: d.update(source=[]))]:
             with self.subTest(name):
                 bad = json.loads(json.dumps(good))
                 mutate(bad)

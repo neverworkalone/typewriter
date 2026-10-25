@@ -24,6 +24,7 @@ BATCH_RECORDS = 500
 AB_CONTRACT = "candidate-workbench-v2"   # the only workbench contract the producer accepts
 _AB_KEYS = {"contract", "batch", "source", "chunks"}
 _AB_BATCH_KEYS = {"shard", "batch", "method", "model"}
+_AB_SOURCE_KEYS = {"canonical_path", "canonical_sha256", "first_record_index", "record_count", "sense_count", "chunk_size"}
 C_CONTRACTS = ("literary-checkpoint-v3", "literary-checkpoint-v2")
 _SWEEPS = ("1", "2")
 _LENSES = ("image", "action", "emotion", "sensation", "scene_situation", "causality", "metaphor_contrast")
@@ -103,6 +104,7 @@ def _ab(worktree: Path, shard: str, batch: str, method: str, model: str):
             data = _load_json(cp)
             b, chunks = data["batch"], data["chunks"]
             if data.get("contract") != AB_CONTRACT or set(data) != _AB_KEYS or set(b) != _AB_BATCH_KEYS \
+                    or set(data["source"]) != _AB_SOURCE_KEYS \
                     or not isinstance(chunks, list):
                 continue
             if (b["shard"], b["batch"], b["method"], str(b["model"]).lower()) != (shard, batch, method, model):
