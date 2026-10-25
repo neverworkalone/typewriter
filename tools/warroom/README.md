@@ -121,6 +121,14 @@ logical model twice (duplicate id or shared endpoint ID) is blocked.
   offset is kept; unknown events and non-JSON lines are shown as-is); **Raw Log** switches to the verbatim file.
   Secrets are redacted in both. Run History (`runs` table) and a separate Audit Log stay. **Auto-scroll**
   (default ON, off on manual scroll-up) is shown only for a still-running log. Esc returns to the board. `s` opens Settings.
+- **Progress (Issue #1809)**: the Supervisor's existing poll reads the *saved* intermediate state of the batch's own
+  worktree (no producer reporting, no new CLI/ledger): A/B `n / N chunks` = saved `candidates/chunk-NNN.jsonl` files of
+  the workbench `checkpoint.json` (existence only); C `n / N senses` = Senses done under `senseDone()` semantics in the
+  literary checkpoint (v2/v3; parsed again only when its mtime/size changes); D `n / N chunks` = complete
+  `.warroom-scratch/d-<SSS>_<BB>/chunk-NNN.jsonl` files (exact record count, unique ids; see `prompts/d.md`). Once the
+  final Candidate file exists its row count (`records`) takes over. Unreadable/unsupported/other-batch data is shown as
+  `진행량 확인 중`, never estimated. 100 % does not change the batch state (merge/validation/PR still follow).
+  DB: `batches.progress_kind/progress_done/progress_total` (additive v8); `records_done/total` stay for the final file.
 - **SQLite**: per-Line controls, batch history, run history and audit events persist in
   `tools/warroom/.local/warroom.db`. Schema migrations are additive; existing batch and run records are preserved.
 
