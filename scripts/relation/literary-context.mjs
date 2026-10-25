@@ -1045,6 +1045,99 @@ function candidateRowsFromCheckpoint(checkpoint) {
   }));
 }
 
+function validateLiteraryEvidence(checkpoint, candidateRows, canonicalRows) {
+  const expectedRows = candidateRowsFromCheckpoint(checkpoint);
+  const acceptableStatuses = new Set(['NO_VERIFIED', 'SAMPLED_NO_VERIFIED', 'DISCOVERED']);
+  const invalid = (message, record, sense = null, candidate = null) => ({
+    status: 'INVALID',
+    error_type: 'LiteraryEvidenceValidationError',
+    message,
+    affected: {
+      record_id: record.record_id,
+      sense_id: sense?.sense_id ?? null,
+      candidate,
+    },
+    repair_scope: 'Reconcile this Candidate row with the current completed source-sense evidence and KEEP/REMOVE disposition, then validate the complete batch again.',
+  });
+
+  const batchOffset = (Number(checkpoint.batch.batch) - 1) * CANDIDATE_BATCH_SIZE;
+  const expectedCanonicalRecords = canonicalRows.slice(batchOffset, batchOffset + CANDIDATE_BATCH_SIZE);
+  if (checkpoint.records.length !== expectedCanonicalRecords.length) {
+    return invalid(`checkpoint has ${checkpoint.records.length} records; expected ${expectedCanonicalRecords.length} from the current Canonical batch`, checkpoint.records[0] ?? { record_id: null });
+  }
+
+  for (const [recordIndex, record] of checkpoint.records.entries()) {
+    const candidateRecord = candidateRows[recordIndex];
+    const expectedRecord = expectedRows[recordIndex];
+    const sourceRecord = expectedCanonicalRecords[recordIndex];
+    if (record.record_id !== sourceRecord.id || record.lemma !== sourceRecord.lemma
+      || JSON.stringify(record.search_forms) !== JSON.stringify(Array.isArray(sourceRecord.search_forms) ? sourceRecord.search_forms : [])) {
+      return invalid(`checkpoint record ${record.record_id} is not bound to current Canonical record ${sourceRecord.id}`, record);
+    }
+    if (record.senses.length !== sourceRecord.senses.length) {
+      return invalid(`checkpoint has ${record.senses.length} senses for ${sourceRecord.id}; expected ${sourceRecord.senses.length} from Canonical`, record);
+    }
+    for (const [senseIndex, sense] of record.senses.entries()) {
+      const sourceSense = sourceRecord.senses[senseIndex];
+      if (sense.sense_id !== sourceSense.id || sense.pos !== sourceSense.pos || sense.gloss !== (sourceSense.gloss ?? '')
+        || JSON.stringify(sense.search_forms) !== JSON.stringify(formsForSense(sourceRecord, sourceSense))) {
+        return invalid(`checkpoint sense ${sense.sense_id} is not bound to current Canonical sense ${sourceSense.id}`, record, sense);
+      }
+      const status = currentSenseStatus(sense);
+      if (!acceptableStatuses.has(status)) {
+        return invalid(`cannot validate current literary evidence: ${sense.sense_id} is ${status}`, record, sense);
+      }
+
+      for (const context of sense.contexts) {
+        if (context.judgment !== 'VERIFIED') continue;
+        const firstSweep = context.sweeps?.['1'];
+        const secondSweep = context.sweeps?.['2'];
+        if (!firstSweep || !secondSweep || secondSweep.independent_read_attested !== true) {
+          return invalid(`verified context ${context.locator_key} on ${sense.sense_id} lacks two complete independent sweeps`, record, sense);
+        }
+        try {
+          validateSweepResults(firstSweep.results);
+          validateSweepResults(secondSweep.results);
+        } catch (error) {
+          return invalid(`verified context ${context.locator_key} on ${sense.sense_id} has invalid sweep evidence: ${error.message}`, record, sense);
+        }
+      }
+
+      const discovered = candidatesForSense(sense);
+      for (const [normalized, candidate] of discovered) {
+        const review = sense.candidate_reviews.find((item) => item.normalized === normalized);
+        if (!review || !['KEEP', 'REMOVE'].includes(review.decision)) {
+          return invalid(`discovered candidate ${JSON.stringify(candidate)} on ${sense.sense_id} has no current form-gate disposition`, record, sense, candidate);
+        }
+        if (review.decision === 'KEEP' && !['word', 'condensed_phrase', 'fixed_expression'].includes(review.kind)) {
+          return invalid(`kept candidate ${JSON.stringify(candidate)} on ${sense.sense_id} has no valid expression classification`, record, sense, candidate);
+        }
+      }
+
+      const expected = new Map(expectedRecord.senses[senseIndex].candidates.map((candidate) => [normalizeCandidate(candidate), candidate]));
+      const actual = candidateRecord.senses[senseIndex].candidates;
+      const seen = new Set();
+      for (const candidate of actual) {
+        const normalized = normalizeCandidate(candidate);
+        const evidenceCandidate = expected.get(normalized);
+        if (!evidenceCandidate) {
+          return invalid(`candidate ${JSON.stringify(candidate)} on ${sense.sense_id} has no current VERIFIED sweep and KEEP disposition`, record, sense, candidate);
+        }
+        if (candidate !== evidenceCandidate) {
+          return invalid(`candidate ${JSON.stringify(candidate)} on ${sense.sense_id} differs from its reviewed evidence form ${JSON.stringify(evidenceCandidate)}`, record, sense, candidate);
+        }
+        seen.add(normalized);
+      }
+      for (const [normalized, candidate] of expected) {
+        if (!seen.has(normalized)) {
+          return invalid(`current KEEP candidate ${JSON.stringify(candidate)} on ${sense.sense_id} is missing from the Candidate file`, record, sense, candidate);
+        }
+      }
+    }
+  }
+  return null;
+}
+
 /** Validate the full candidate batch with the common Candidate v1 validator and scope a failure to its row. */
 export async function validateLiteraryExport({ checkpointPath, canonicalPath, candidateRows, repositoryDirectory = process.cwd(), scratchDirectory = path.resolve(CHECKPOINT_SCRATCH_DIRECTORY) }) {
   const { checkpoint } = await loadLiteraryCheckpoint(checkpointPath, { scratchDirectory });
@@ -1060,6 +1153,8 @@ export async function validateLiteraryExport({ checkpointPath, canonicalPath, ca
       sourceName: canonicalPath,
       candidateName: `${checkpoint.batch.shard}_${checkpoint.batch.batch}_c_${checkpoint.batch.model}.jsonl`,
     });
+    const evidenceFailure = validateLiteraryEvidence(checkpoint, candidateRows, canonicalRows);
+    if (evidenceFailure) return evidenceFailure;
     return { status: 'VALID', ...summary };
   } catch (error) {
     const lineMatch = error.message.match(/(?:^|\s)(?:[^\s:]+\.jsonl|Candidate):(\d+)(?::|\s)/u);
@@ -1083,16 +1178,6 @@ export async function exportLiteraryCandidates({ checkpointPath, canonicalPath, 
   if (checkpoint.output) fail('this checkpoint already has an exported output; preserve it and use a new checkpoint for a new output');
   const expectedName = `${checkpoint.batch.shard}_${checkpoint.batch.batch}_c_${checkpoint.batch.model}.jsonl`;
   if (path.basename(outputPath) !== expectedName) fail(`output filename must be ${expectedName}`);
-  for (const record of checkpoint.records) {
-    for (const sense of record.senses) {
-      const status = currentSenseStatus(sense);
-      if (!['NO_VERIFIED', 'SAMPLED_NO_VERIFIED', 'DISCOVERED'].includes(status)) fail(`cannot export: ${sense.sense_id} is ${status}`);
-      const candidates = candidatesForSense(sense);
-      const missingReview = [...candidates.keys()].find((normalized) => !sense.candidate_reviews.some((review) => review.normalized === normalized));
-      if (missingReview) fail(`cannot export: candidate ${JSON.stringify(candidates.get(missingReview))} on ${sense.sense_id} has no form-gate disposition`);
-      if (sense.candidate_reviews.some((review) => review.decision === 'KEEP' && !['word', 'condensed_phrase', 'fixed_expression'].includes(review.kind))) fail(`cannot export: kept candidate on ${sense.sense_id} has no expression classification`);
-    }
-  }
   const candidateRows = candidateRowsFromCheckpoint(checkpoint);
   const validation = await validateLiteraryExport({ checkpointPath: resolvedCheckpoint, canonicalPath, candidateRows, repositoryDirectory, scratchDirectory });
   if (validation.status !== 'VALID') fail(`${validation.message}${validation.affected ? ` (affected ${JSON.stringify(validation.affected)})` : ''}`);
@@ -1129,14 +1214,15 @@ export async function validateExistingLiteraryCandidates({ checkpointPath, canon
   const { checkpoint, path: resolvedCheckpoint } = await loadLiteraryCheckpoint(checkpointPath, { scratchDirectory });
   const candidateText = await readFile(candidatePath, 'utf8');
   let candidateRows;
+  let validation;
   try {
     candidateRows = candidateText.split(/\r?\n/u).filter(Boolean).map((line) => JSON.parse(line));
   } catch (error) {
-    return { status: 'INVALID', error_type: error.name, message: `Candidate JSONL parse failed: ${error.message}`, affected: null };
+    validation = { status: 'INVALID', error_type: error.name, message: `Candidate JSONL parse failed: ${error.message}`, affected: null };
   }
   const expectedName = `${checkpoint.batch.shard}_${checkpoint.batch.batch}_c_${checkpoint.batch.model}.jsonl`;
   if (path.basename(candidatePath) !== expectedName) fail(`candidate filename must be ${expectedName}`);
-  const validation = await validateLiteraryExport({ checkpointPath, canonicalPath, candidateRows, repositoryDirectory, scratchDirectory });
+  validation ??= await validateLiteraryExport({ checkpointPath, canonicalPath, candidateRows, repositoryDirectory, scratchDirectory });
   checkpoint.output = {
     ...(checkpoint.output ?? {}),
     path: path.relative(process.cwd(), path.resolve(candidatePath)),
@@ -1209,6 +1295,8 @@ export async function patchLiteraryCandidateFile({ checkpointPath, canonicalPath
       { record_id: recordId, sense_id: senseId, action, candidate, replacement: action === 'replace' ? replacement : null, reason: reason.trim(), applied_at: new Date().toISOString() },
     ],
     validation: { status: validation.status, message: validation.status === 'INVALID' ? validation.message : null },
+    stale: validation.status !== 'VALID',
+    stale_reason: validation.status === 'VALID' ? null : validation.message,
   };
   await saveCheckpoint(resolvedCheckpoint, checkpoint);
   return {

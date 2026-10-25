@@ -377,7 +377,7 @@ test('seven lenses and two distinct sweeps are recorded; pass two requires indep
     await recordLiterarySweep(fixture.checkpointPath, { senseId: 'sense-000001', locatorKey, sweep: 2, results: second, independentRead: true }, { scratchDirectory: fixture.scratchDirectory });
     await reviewLiteraryCandidate(fixture.checkpointPath, { senseId: 'sense-000001', candidate: '바람', decision: 'KEEP', kind: 'word', note: '독립 어휘로 연결 확인' }, { scratchDirectory: fixture.scratchDirectory });
     await reviewLiteraryCandidate(fixture.checkpointPath, { senseId: 'sense-000001', candidate: '그늘', decision: 'KEEP', kind: 'word', note: '짧은 심상 확장' }, { scratchDirectory: fixture.scratchDirectory });
-    const { checkpoint } = await loadLiteraryCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory });
+    let { checkpoint } = await loadLiteraryCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory });
     const summary = summarizeLiteraryCheckpoint(checkpoint);
     assert.equal(summary.sweeps.per_sweep_lens_totals['1'].image.contexts, 1);
     assert.equal(summary.sweeps.per_sweep_lens_totals['1'].image.candidates, 1);
@@ -398,7 +398,37 @@ test('seven lenses and two distinct sweeps are recorded; pass two requires indep
     assert.deepEqual(outputRows[0].senses[0].candidates, ['바람', '그늘']);
     assert.deepEqual(Object.keys(outputRows[0]).sort(), ['record_id', 'senses']);
 
+    const validateOutput = () => validateExistingLiteraryCandidates({
+      checkpointPath: fixture.checkpointPath,
+      canonicalPath: fixture.canonicalPath,
+      candidatePath: outputPath,
+      repositoryDirectory: fixture.root,
+      scratchDirectory: fixture.scratchDirectory,
+    });
+    const initialValidation = await validateOutput();
+    assert.equal(initialValidation.status, 'VALID');
+    ({ checkpoint } = await loadLiteraryCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory }));
+    assert.equal(checkpoint.output.stale, false);
+
+    await reviewLiteraryContext(fixture.checkpointPath, { senseId: 'sense-000001', locatorKey, judgment: 'REJECTED', note: 'rechecked context belongs to another sense' }, { scratchDirectory: fixture.scratchDirectory });
+    const rejectedEvidence = await validateOutput();
+    assert.equal(rejectedEvidence.status, 'INVALID');
+    assert.match(rejectedEvidence.message, /no current VERIFIED sweep and KEEP disposition/u);
+    ({ checkpoint } = await loadLiteraryCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory }));
+    assert.equal(checkpoint.output.stale, true);
+
+    await reviewLiteraryContext(fixture.checkpointPath, { senseId: 'sense-000001', locatorKey, judgment: 'VERIFIED', note: 'rechecked context matches the source sense' }, { scratchDirectory: fixture.scratchDirectory });
+    assert.equal((await validateOutput()).status, 'VALID');
+    ({ checkpoint } = await loadLiteraryCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory }));
+    assert.equal(checkpoint.output.stale, false);
+
     await reviewLiteraryCandidate(fixture.checkpointPath, { senseId: 'sense-000001', candidate: '그늘', decision: 'REMOVE', note: '최종 형태 검사에서 독립성 불충분' }, { scratchDirectory: fixture.scratchDirectory });
+    const removedDisposition = await validateOutput();
+    assert.equal(removedDisposition.status, 'INVALID');
+    assert.match(removedDisposition.message, /current VERIFIED sweep and KEEP disposition/u);
+    ({ checkpoint } = await loadLiteraryCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory }));
+    assert.equal(checkpoint.output.stale, true);
+
     const patched = await patchLiteraryCandidateFile({
       checkpointPath: fixture.checkpointPath,
       canonicalPath: fixture.canonicalPath,
@@ -412,6 +442,9 @@ test('seven lenses and two distinct sweeps are recorded; pass two requires indep
       scratchDirectory: fixture.scratchDirectory,
     });
     assert.equal(patched.status, 'VALID');
+    assert.equal((await validateOutput()).status, 'VALID');
+    ({ checkpoint } = await loadLiteraryCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory }));
+    assert.equal(checkpoint.output.stale, false);
     const patchedRows = (await readFile(outputPath, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
     assert.deepEqual(patchedRows[0].senses[0].candidates, ['바람']);
     assert.deepEqual(patchedRows.slice(1), outputRows.slice(1));

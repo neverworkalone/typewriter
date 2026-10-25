@@ -157,16 +157,20 @@ creating the output:
 node scripts/relation/literary-context-cli.mjs export \
   --checkpoint .warroom-scratch/001_01_c_codex.checkpoint.json \
   --canonical data/canonical/stdict-0001.jsonl \
-  --output .warroom-scratch/001_01_c_codex.jsonl
+  --output data/relation-candidates/001/001_01_c_codex.jsonl
 ```
 
-For the final repository path, run the standard validator against the complete
-shard and candidate file:
+`export` writes directly to the final repository path only after the complete
+Candidate v1 batch check and the checkpoint's current source-sense evidence,
+sweeps, and KEEP dispositions agree. Run `validate` against that final file
+after any later edit or local repair; it repeats both checks for the whole
+batch:
 
 ```sh
-node scripts/relation/candidate-contract.mjs \
-  data/canonical/stdict-0001.jsonl \
-  data/relation-candidates/001/001_01_c_codex.jsonl
+node scripts/relation/literary-context-cli.mjs validate \
+  --checkpoint .warroom-scratch/001_01_c_codex.checkpoint.json \
+  --canonical data/canonical/stdict-0001.jsonl \
+  --candidate data/relation-candidates/001/001_01_c_codex.jsonl
 ```
 
 If validation identifies a local defect, change only the reviewed
