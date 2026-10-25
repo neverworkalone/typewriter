@@ -88,6 +88,13 @@ const KNOWN_NON_DEEP_ROOT_PATHS = Object.freeze([
   'pack.sh',
 ]);
 
+// Prompt files are operator-authored instructions, not executable code or a
+// product validation dependency. Keep this narrow so nearby War Room files
+// still require the ordinary PR gate.
+const KNOWN_NON_DEEP_PREFIXES = Object.freeze([
+  'tools/warroom/prompts/',
+]);
+
 if (KNOWN_NON_DEEP_PATHS.version !== 1 || !Array.isArray(KNOWN_NON_DEEP_PATHS.paths)) {
   throw new TypeError('Deep Gate known non-Deep path contract has an unsupported shape.');
 }
@@ -457,6 +464,7 @@ export function classifyDeepGatePaths(changedPaths, {
     }
     if (
       changedPath.startsWith('docs/')
+      || KNOWN_NON_DEEP_PREFIXES.some((prefix) => changedPath.startsWith(prefix))
       || KNOWN_NON_DEEP_PATH_SET.has(changedPath)
       || coverage.has(changedPath)
       || (changedPath === NORMAL_COVERAGE_PATH && coverageChangeValidated)

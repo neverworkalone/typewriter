@@ -246,13 +246,6 @@ const RAW_CI_CATEGORIES = Object.freeze({
         ...testCheck('tests/build-provenance.test.mjs', 'Test source revision provenance and dirty-build safeguards'),
         tier: 'normal',
       },
-      {
-        // Protects the War Room supervisor contract (merged=true completion, current-HEAD review
-        // triggers, owned-clean worktree cleanup, auth isolation, fail-closed model policy).
-        ...commandCheck('Test War Room production supervisor', ['tools/warroom/run-tests.mjs']),
-        schedule: 'affected',
-        paths: ['tools/warroom', 'war'],
-      },
     ],
   },
 

@@ -849,7 +849,7 @@ test('Deep gate separates validated data from affected contracts and fails close
   ));
   assert.ok(relationRegression, 'Deep retains current relation backfill and correction regressions');
   const allDeep = selectChecksForPolicy(allChecks, CI_LEVEL_EXECUTION_POLICY.all).filter((check) => check.tier === 'deep');
-  assert.equal(allDeep.length, 5, 'ci:all keeps only current-system Deep checks');
+  assert.equal(allDeep.length, 4, 'ci:all keeps only current-system Deep checks and excludes War Room');
   const runtimeBinding = validateNormalCoverage().get('scripts/benchmark/sqlite-runtime.mjs');
   assert.deepEqual(runtimeBinding?.normal_tests, ['tests/runtime-query-adapter.test.mjs']);
   const affectedRuntimeDeepChecks = selectChecksForPolicy(allChecks, {
@@ -892,21 +892,42 @@ test('CI changed-path gate sends all non-doc changes through Normal', async (t) 
   assert.match(workflow, /node scripts\/ci\/deep-gate\.mjs/u, 'Deep classification must run inside the existing classifier step');
   assert.doesNotMatch(workflow, /ci:candidates|run_level == 'candidates'/u);
   assert.match(workflow, /steps\.changes\.outcome != 'success' \|\| \(steps\.changes\.outputs\.run_level == 'normal'/u);
+  const warRoomStep = workflow.split('      - name: War Room Python unit tests\n')[1]
+    ?.split('\n      - name: ')[0];
+  assert.ok(warRoomStep);
+  assert.match(warRoomStep, /if: \$\{\{ always\(\) && steps\.changes\.outcome == 'success' && steps\.changes\.outputs\.run_warroom_tests == 'true' \}\}/u);
+  assert.match(warRoomStep, /run: node tools\/warroom\/run-tests\.mjs/u);
+  const evidenceStep = workflow.split('      - name: Require complete changed-path evidence\n')[1]
+    ?.split('\n      - name: ')[0];
+  assert.ok(evidenceStep);
+  const evidenceScript = evidenceStep.split('        run: |\n')[1]
+    ?.split('\n').map((line) => line.startsWith('          ') ? line.slice(10) : line).join('\n');
+  assert.ok(evidenceScript?.includes('CHANGED_PATHS_COMPLETE'));
 
   const root = await mkdtemp(path.join(tmpdir(), 'typewriter-ci-paths-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   const git = (args) => execFileSync('git', args, { cwd: root, stdio: 'pipe', encoding: 'utf8' }).trim();
   await mkdir(path.join(root, 'docs'), { recursive: true });
   await mkdir(path.join(root, 'src'), { recursive: true });
+  await mkdir(path.join(root, 'tools/warroom/prompts'), { recursive: true });
+  await mkdir(path.join(root, 'tools/warroom/warroom'), { recursive: true });
+  await mkdir(path.join(root, 'tools/warroom/tests'), { recursive: true });
   await writeFile(path.join(root, 'docs/guide.md'), 'guide v1\n');
   await writeFile(path.join(root, 'src/main.mjs'), 'export const value = 1;\n');
+  await writeFile(path.join(root, 'tools/warroom/prompts/c.md'), 'prompt v1\n');
+  await writeFile(path.join(root, 'tools/warroom/warroom/supervisor.py'), 'supervisor v1\n');
+  await writeFile(path.join(root, 'tools/warroom/tests/test_core.py'), 'test v1\n');
+  await writeFile(path.join(root, 'tools/warroom/README.md'), 'readme v1\n');
+  await writeFile(path.join(root, 'tools/warroom/requirements.txt'), 'textual>=0.80,<9\n');
+  await writeFile(path.join(root, 'tools/warroom/run-tests.mjs'), 'runner v1\n');
+  await writeFile(path.join(root, 'war'), 'launcher v1\n');
   git(['init', '-q']);
   git(['add', '-A']);
   git(['-c', 'user.name=CI Test', '-c', 'user.email=ci@example.invalid', 'commit', '-qm', 'base']);
   const base = git(['rev-parse', 'HEAD']);
 
   let count = 0;
-  const scenario = async (name, edit, expectedLevel) => {
+  const scenario = async (name, edit, expectedLevel, expectedWarRoom = false, expectedPathsComplete = true) => {
     git(['checkout', '-q', '-B', `fixture-${++count}`, base]);
     if (edit) {
       await edit();
@@ -930,7 +951,33 @@ test('CI changed-path gate sends all non-doc changes through Normal', async (t) 
         GITHUB_STEP_SUMMARY: summary,
       },
     });
-    assert.equal(await readFile(output, 'utf8'), `run_level=${expectedLevel}\n`, name);
+    assert.equal(await readFile(output, 'utf8'), [
+      `run_level=${expectedLevel}`,
+      `run_warroom_tests=${expectedWarRoom}`,
+      `changed_paths_complete=${expectedPathsComplete}`,
+      '',
+    ].join('\n'), name);
+    const runEvidenceGate = (classifierOutcome, pathsComplete) => {
+      try {
+        execFileSync('bash', ['-c', evidenceScript], {
+          cwd: root,
+          stdio: 'pipe',
+          env: {
+            ...process.env,
+            CLASSIFIER_OUTCOME: classifierOutcome,
+            CHANGED_PATHS_COMPLETE: pathsComplete,
+            GITHUB_STEP_SUMMARY: summary,
+          },
+        });
+        return 0;
+      } catch (error) {
+        return error.status ?? 1;
+      }
+    };
+    assert.equal(runEvidenceGate('success', String(expectedPathsComplete)), expectedPathsComplete ? 0 : 1, name);
+    if (expectedPathsComplete) {
+      assert.equal(runEvidenceGate('failure', ''), 1, `${name}: classifier failure must fail closed`);
+    }
     const expectedSummary = {
       none: /Changed-path classification: none/u,
       normal: /Changed-path classification: normal/u,
@@ -944,6 +991,11 @@ test('CI changed-path gate sends all non-doc changes through Normal', async (t) 
     await writeFile(path.join(candidateDir, file), '{}\n');
   };
   await scenario('docs-only', () => writeFile(path.join(root, 'docs/guide.md'), 'guide v2\n'), 'none');
+  await scenario('prompt-only', () => writeFile(path.join(root, 'tools/warroom/prompts/c.md'), 'prompt v2\n'), 'none');
+  await scenario('prompt-only with ordinary documentation', async () => {
+    await writeFile(path.join(root, 'tools/warroom/prompts/c.md'), 'prompt v3\n');
+    await writeFile(path.join(root, 'docs/guide.md'), 'guide v3\n');
+  }, 'none');
   await scenario('root-docs', async () => {
     await writeFile(path.join(root, 'README.md'), 'readme\n');
     await writeFile(path.join(root, 'REVIEW.md'), 'review\n');
@@ -962,6 +1014,25 @@ test('CI changed-path gate sends all non-doc changes through Normal', async (t) 
     await writeFile(path.join(root, 'docs/guide.md'), 'guide v2\n');
     await writeFile(path.join(root, 'src/main.mjs'), 'export const value = 2;\n');
   }, 'normal');
+  await scenario('prompt plus War Room code', async () => {
+    await writeFile(path.join(root, 'tools/warroom/prompts/c.md'), 'prompt v4\n');
+    await writeFile(path.join(root, 'tools/warroom/warroom/supervisor.py'), 'supervisor v2\n');
+  }, 'normal', true);
+  await scenario('prompt plus ordinary product code', async () => {
+    await writeFile(path.join(root, 'tools/warroom/prompts/c.md'), 'prompt v5\n');
+    await writeFile(path.join(root, 'src/main.mjs'), 'export const value = 2;\n');
+  }, 'normal');
+  await scenario('War Room code moved into prompts', async () => {
+    await rename(
+      path.join(root, 'tools/warroom/warroom/supervisor.py'),
+      path.join(root, 'tools/warroom/prompts/supervisor.py'),
+    );
+  }, 'normal', true);
+  await scenario('War Room test source', () => writeFile(path.join(root, 'tools/warroom/tests/test_core.py'), 'test v2\n'), 'normal', true);
+  await scenario('War Room test launcher', () => writeFile(path.join(root, 'tools/warroom/run-tests.mjs'), 'runner v2\n'), 'normal', true);
+  await scenario('War Room dependency settings', () => writeFile(path.join(root, 'tools/warroom/requirements.txt'), 'textual>=0.81,<9\n'), 'normal', true);
+  await scenario('War Room root launcher', () => writeFile(path.join(root, 'war'), 'launcher v2\n'), 'normal', true);
+  await scenario('War Room documentation outside prompts', () => writeFile(path.join(root, 'tools/warroom/README.md'), 'readme v2\n'), 'normal');
   await scenario('canonical-data', async () => {
     await mkdir(path.join(root, 'data/canonical'), { recursive: true });
     await writeFile(path.join(root, 'data/canonical/records.jsonl'), '{}\n');
@@ -977,7 +1048,7 @@ test('CI changed-path gate sends all non-doc changes through Normal', async (t) 
   await scenario('docs-nonmarkdown', () => writeFile(path.join(root, 'docs/data.json'), '{}\n'), 'none');
   await scenario('other-markdown', () => writeFile(path.join(root, 'UNCLASSIFIED.md'), 'new\n'), 'normal');
   await scenario('source-to-doc-rename', () => rename(path.join(root, 'src/main.mjs'), path.join(root, 'docs/moved.mjs')), 'normal');
-  await scenario('no-changed-files', null, 'normal');
+  await scenario('no-changed-files', null, 'normal', false, false);
 });
 
 test('CI and Pages workflows keep their trigger responsibilities separate', async () => {
@@ -1216,17 +1287,25 @@ test('canonical-only meaning invariants are Normal checks selected even when onl
   }
 });
 
-test('War Room supervisor tests are a Deep affected check selected by tools/warroom and the war launcher', () => {
-  const label = 'Test War Room production supervisor';
-  const check = CI_CATEGORIES.toolchain.checks.find((candidate) => candidate.label === label);
-  assert.ok(check, 'War Room check is registered');
-  assert.equal(check.schedule, 'affected');
-  assert.notEqual(check.tier, 'normal');
-  assert.deepEqual(check.command({}).args, ['tools/warroom/run-tests.mjs']);
-  for (const changed of ['tools/warroom/warroom/supervisor.py', 'tools/warroom/tests/test_core.py', 'war']) {
-    const selected = classifyDeepGatePaths([changed]).selectedDeepChecks.map((item) => item.label ?? item.id ?? item);
-    assert.ok(selected.some((item) => String(item).includes(label)), `${changed} selects the War Room check`);
-  }
+test('War Room Python tests are outside every CI registry tier and prompts are Deep non-dependencies', () => {
+  const allChecks = Object.values(CI_CATEGORIES).flatMap((category) => category.checks);
+  assert.ok(!allChecks.some((check) => (
+    check.label.includes('War Room')
+    || JSON.stringify(check.command({})).includes('tools/warroom/run-tests.mjs')
+  )), 'War Room tests must not be registered in Normal or Deep CI');
   assert.ok(!JSON.stringify(NORMAL_COVERAGE).includes('warroom'),
-    'Deep War Room tests are not bound as Normal always-on coverage');
+    'War Room tests are not bound as Normal always-on coverage');
+
+  const promptOnly = classifyDeepGatePaths(['tools/warroom/prompts/c.md']);
+  assert.equal(promptOnly.runDeep, false);
+  assert.equal(promptOnly.deepMode, 'none');
+  assert.deepEqual(promptOnly.knownNonDeepPaths, ['tools/warroom/prompts/c.md']);
+  const promptAndCode = classifyDeepGatePaths([
+    'tools/warroom/prompts/c.md',
+    'tools/warroom/warroom/supervisor.py',
+  ]);
+  assert.equal(promptAndCode.reason, 'unclassified-path');
+  assert.equal(promptAndCode.runDeep, true, 'code plus prompt cannot take the prompt-only shortcut');
+  const nearbyPath = classifyDeepGatePaths(['tools/warroom/prompts-old/c.md']);
+  assert.equal(nearbyPath.reason, 'unclassified-path', 'the prompt exemption must stay prefix-bounded');
 });

@@ -53,11 +53,17 @@ jobs:
           # Read NUL-delimited paths (including whitespace safely); Bash 3.2 compatible.
           docs_only=true
           saw_file=false
+          run_warroom_tests=false
           while IFS= read -r -d '' file; do
             saw_file=true
             case "$file" in
-              docs/*|README.md|REVIEW.md) ;;
+              docs/*|README.md|REVIEW.md|tools/warroom/prompts/*) ;;
               *) docs_only=false ;;
+            esac
+            case "$file" in
+              tools/warroom/warroom/*|tools/warroom/tests/*|tools/warroom/run-tests.mjs|tools/warroom/requirements.txt|war)
+                run_warroom_tests=true
+                ;;
             esac
           done < "$paths_file"
 
@@ -72,7 +78,10 @@ jobs:
           fi
 
           echo "run_level=$run_level" >> "$GITHUB_OUTPUT"
+          echo "run_warroom_tests=$run_warroom_tests" >> "$GITHUB_OUTPUT"
+          echo "changed_paths_complete=$saw_file" >> "$GITHUB_OUTPUT"
           echo "Changed-path classification: $run_level." >> "$GITHUB_STEP_SUMMARY"
+          echo "War Room Python tests selected: $run_warroom_tests." >> "$GITHUB_STEP_SUMMARY"
           # Deep impact and exact-check selection stay inside this PR check.
           if ! TYPEWRITER_CI_RUN_LEVEL="$run_level" node scripts/ci/deep-gate.mjs "$BASE_SHA" "$HEAD_SHA"; then
             echo "Deep path classification failed; running ci:normal fallback." >> "$GITHUB_STEP_SUMMARY"
@@ -91,6 +100,10 @@ jobs:
       - name: Install pinned dependencies
         if: ${{ steps.changes.outcome != 'success' || steps.changes.outputs.run_level != 'none' || steps.changes.outputs.run_deep == 'true' || steps.schema.outputs.schema_changed == 'true' }}
         run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: War Room Python unit tests
+        if: ${{ always() && steps.changes.outcome == 'success' && steps.changes.outputs.run_warroom_tests == 'true' }}
+        run: node tools/warroom/run-tests.mjs
 
       - name: Normal validation (fast checkpoint + continuation)
         id: normal
@@ -112,6 +125,18 @@ jobs:
         id: schema-build
         if: ${{ steps.schema.outputs.schema_changed == 'true' }}
         run: pnpm run ci:schema
+
+      - name: Require complete changed-path evidence
+        if: always()
+        env:
+          CLASSIFIER_OUTCOME: ${{ steps.changes.outcome }}
+          CHANGED_PATHS_COMPLETE: ${{ steps.changes.outputs.changed_paths_complete }}
+        shell: bash
+        run: |
+          if [[ "$CLASSIFIER_OUTCOME" != success || "$CHANGED_PATHS_COMPLETE" != true ]]; then
+            echo "Changed-path evidence is incomplete; Normal fallback ran, but this PR check cannot pass." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
 
       - name: Record executed CI gate
         if: always()
