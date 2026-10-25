@@ -33,9 +33,9 @@ class PromptFiles(unittest.TestCase):
             self.assertRegex(text, "브랜치 `?a-deepseek-001-01`?", method)   # A (#1765) quotes the branch in backticks, B/C/D do not
             self.assertNotIn("{{", text)
             self.assertLess(len(text.splitlines()), 40, method)       # still a pointer to the issue, not a copy of its rules (B/C already exceeded 25 on master)
-        self.assertIn("Refs #1155", prompts.produce({**ROW, "method": "c"}))
-        self.assertIn("Refs #1156", prompts.produce({**ROW, "method": "d"}))
-        self.assertIn("참조하거나 닫지 않는다", prompts.produce({**ROW, "method": "a"}))
+        self.assertIn("#1155를 참조하거나 닫지 않는다", prompts.produce({**ROW, "method": "c"}))   # prompts no longer ask for `Refs`
+        self.assertIn("#1156을 참조하거나 닫지 않는다", prompts.produce({**ROW, "method": "d"}))
+        self.assertIn("#860을 링크하거나 닫지 않는다", prompts.produce({**ROW, "method": "a"}))
         self.assertFalse((prompts.PROMPT_DIR / "common.md").exists())
 
     def test_every_shipped_template_renders_with_its_declared_values(self):
