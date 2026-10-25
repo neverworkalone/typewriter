@@ -739,6 +739,27 @@ function runSearch(database, forms, { pageSize, cursor, snippetChars, preferredF
 }
 
 
+const formsDigest = (forms) => sha256(JSON.stringify(forms));
+
+/**
+ * Re-resolve one context that `chunk` already showed, by its unit row id: the locator key is recomputed from the
+ * live index row and the unit must still literally contain a search form, so a shown key stays exactly bound to the
+ * index without repeating the COUNT/ranking search.
+ */
+function resolveShownContext(database, unitRowId, forms) {
+  const row = database.prepare(`
+    SELECT u.unit_rowid, u.file_id, u.ordinal, u.text, w.work_id, w.title, w.author, w.genre, w.metadata_origin, s.relative_path, s.source_sha256
+    FROM text_units u JOIN works w ON w.file_id = u.file_id JOIN source_files s ON s.file_id = u.file_id
+    WHERE u.unit_rowid = ?`).get(unitRowId);
+  if (!row || !forms.some((form) => row.text.includes(form))) fail('a context shown by chunk no longer matches its source sense search in the index');
+  return {
+    locator_key: makeLocatorKey(row),
+    source: { title: (row.title ?? '').slice(0, 80) || null, author: (row.author ?? '').slice(0, 80) || null, genre: (row.genre ?? '').slice(0, 40) || null, metadata_origin: (row.metadata_origin ?? '').slice(0, 40) || null },
+    context_sha256: readUnitWindow(database, row).sha256,
+    _private: { locator: { relative_path: row.relative_path, source_sha256: row.source_sha256, file_id: row.file_id, work_id: row.work_id, unit_rowid: row.unit_rowid, ordinal: row.ordinal } },
+  };
+}
+
 function senseForms(sense) {
   return [...new Set([...sense.search_forms, ...sense.added_forms.map((item) => item.form)])].sort(compare);
 }
@@ -896,6 +917,7 @@ export async function addSearchForm(checkpointPath, senseId, form, basis, option
     sense.added_forms.sort((left, right) => compare(left.form, right.form));
     sense.submission = null;
     sense.search = null;
+    sense.shown = null;
     await saveCheckpoint(resolvedPath, checkpoint);
   }
   return { sense_id: senseId, query_form_count: senseForms(sense).length };
@@ -929,6 +951,7 @@ export async function readLiteraryChunk({ databasePath, checkpointPath, senseIds
     const items = [];
     let usedChars = 0;
     let zeroHitRecorded = 0;
+    let shownRecorded = 0;
     let unqueried = 0;
     let full = false;
     for (const { record, sense } of targets) {
@@ -973,8 +996,13 @@ export async function readLiteraryChunk({ databasePath, checkpointPath, senseIds
       }
       usedChars += size;
       items.push(item);
+      // Remember only which units were shown (not text), so `submit` need not repeat this search.
+      const digest = formsDigest(forms);
+      const earlier = sense.shown?.forms_sha256 === digest ? sense.shown.unit_rowids : [];
+      sense.shown = { forms_sha256: digest, total_hits: result.total_hits, unit_rowids: [...new Set([...earlier, ...result.results.map((row) => row._private.locator.unit_rowid)])] };
+      shownRecorded += 1;
     }
-    if (zeroHitRecorded > 0) await saveCheckpoint(resolvedCheckpoint, checkpoint);
+    if (zeroHitRecorded > 0 || shownRecorded > 0) await saveCheckpoint(resolvedCheckpoint, checkpoint);
     const progress = checkpointSummary(checkpoint).coverage;
     return {
       contract: LITERARY_CONTEXT_CONTRACT,
@@ -1026,7 +1054,11 @@ export async function submitLiteraryChunk({ databasePath, checkpointPath, submis
       const { record, sense } = findSense(checkpoint, entry.sense_id);
       const forms = senseForms(sense);
       if (forms.length === 0) fail(`${entry.sense_id} has no search forms and cannot be submitted`);
-      const result = runSearch(database, forms, { pageSize: MAX_CONTEXTS_PER_SENSE, cursor: null, snippetChars: DEFAULT_SNIPPET_CHARS, preferredForm: record.lemma.normalize('NFC').trim() });
+      // Normal path: re-resolve the few contexts `chunk` showed. A sense never read by `chunk` (or whose forms changed) keeps the full search.
+      const digest = formsDigest(forms);
+      const result = sense.shown?.forms_sha256 === digest
+        ? { total_hits: sense.shown.total_hits, results: sense.shown.unit_rowids.map((unitRowId) => resolveShownContext(database, unitRowId, forms)) }
+        : runSearch(database, forms, { pageSize: MAX_CONTEXTS_PER_SENSE, cursor: null, snippetChars: DEFAULT_SNIPPET_CHARS, preferredForm: record.lemma.normalize('NFC').trim() });
       if (result.total_hits === 0 && (entry.verified.length > 0 || entry.candidates.length > 0)) fail(`${entry.sense_id} has no literary hits, so it cannot have verified contexts or candidates`);
       const verified = entry.verified.map((key) => {
         if (key.length < SHORT_KEY_LENGTH) fail(`context key ${JSON.stringify(key)} on ${entry.sense_id} is shorter than ${SHORT_KEY_LENGTH} characters`);
