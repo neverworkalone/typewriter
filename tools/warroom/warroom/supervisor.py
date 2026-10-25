@@ -811,8 +811,7 @@ class Supervisor:
                 n = sum(1 for _ in fh)
             obs, fields = None, {"records_done": n}
         except OSError:
-            obs = progress.observe(b["worktree"], b["shard"], b["batch"], b["method"], b["producer"],
-                                   b["records_total"])
+            obs = progress.observe(b["worktree"], b["shard"], b["batch"], b["method"], b["producer"])
             fields = {}
         fields.update(progress_kind=obs[0] if obs else None, progress_done=obs[1] if obs else None,
                       progress_total=obs[2] if obs else None)

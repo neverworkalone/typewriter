@@ -34,8 +34,13 @@ def c_checkpoint(wt: Path, senses_per_record, contract="literary-checkpoint-v3",
                                      "records": records}))
 
 
-def d_chunk(wt: Path, n: int, rows: int, ids=None, name=None):
-    ids = ids or [f"r{n}-{i}" for i in range(rows)]
+def canonical(wt: Path, n: int):
+    ids = [f"w{i:04d}" for i in range(n)]
+    write(wt / "data/canonical/stdict-0001.jsonl", "".join(json.dumps({"id": i}) + "\n" for i in ids))
+    return ids
+
+
+def d_chunk(wt: Path, n: int, ids, name=None):
     write(wt / S / "d-001_01" / (name or f"chunk-{n:03d}.jsonl"),
           "".join(json.dumps({"record_id": i, "senses": []}) + "\n" for i in ids))
 
@@ -46,8 +51,8 @@ class Observe(unittest.TestCase):
         self.wt = Path(self.tmp.name)
         progress._cache.clear()
 
-    def obs(self, method, model="codex", total=500):
-        return progress.observe(self.wt, "001", "01", method, model, total)
+    def obs(self, method, model="codex", batch="01"):
+        return progress.observe(self.wt, "001", batch, method, model)
 
     def test_ab_chunks_use_the_real_checkpoint_size(self):
         for n, saved, want in [(20, (), 0), (20, range(1, 8), 7), (20, range(1, 21), 20), (10, (1, 2), 2), (4, (4,), 1)]:
@@ -67,6 +72,22 @@ class Observe(unittest.TestCase):
         write(self.wt / S / "old" / "checkpoint.json", json.dumps({"contract": "other", "batch": {}, "chunks": []}))
         self.assertIsNone(self.obs("b"))
         self.assertEqual(self.obs("a", "Codex"), ("chunks", 1, 20))   # model matched case-insensitively
+
+    def test_ab_requires_the_exact_supported_checkpoint_contract(self):
+        ab_checkpoint(self.wt, 4, [1])
+        path = self.wt / S / "b01" / "checkpoint.json"
+        good = json.loads(path.read_text())
+        for name, mutate in [("v3", lambda d: d.update(contract="candidate-workbench-v3")),
+                             ("suffix", lambda d: d.update(contract="candidate-workbench-v2-extra")),
+                             ("extra key", lambda d: d.update(extra=1)),
+                             ("extra batch key", lambda d: d["batch"].update(extra=1))]:
+            with self.subTest(name):
+                bad = json.loads(json.dumps(good))
+                mutate(bad)
+                write(path, json.dumps(bad))
+                self.assertIsNone(self.obs("b"))
+        write(path, json.dumps(good))
+        self.assertEqual(self.obs("b"), ("chunks", 1, 4))
 
     def test_ab_overwritten_chunk_counts_once_and_missing_file_uncounts(self):
         ab_checkpoint(self.wt, 4, [1, 2])
@@ -109,21 +130,28 @@ class Observe(unittest.TestCase):
         c_checkpoint(self.wt, [[sense(submission={"status": "SUBMITTED"}), sense()]])
         self.assertEqual(self.obs("c"), ("senses", 1, 2))
 
-    def test_d_counts_only_complete_chunks(self):
-        d_chunk(self.wt, 1, 25)
-        d_chunk(self.wt, 2, 24)                                   # incomplete
-        d_chunk(self.wt, 3, 25, ids=["x"] * 25)                   # duplicate ids
-        d_chunk(self.wt, 4, 25, name="chunk-004.jsonl.tmp")       # not yet renamed
-        d_chunk(self.wt, 21, 25)                                  # outside 1..20
-        write(self.wt / S / "d-001_01" / "chunk-005.jsonl", '{"record_id": "a", "senses": []}\n{broken')
-        self.assertEqual(self.obs("d"), ("chunks", 1, 20))
-        self.assertIsNone(self.obs("d", total=None))              # no known record total: unconfirmed
+    def test_d_counts_only_chunks_bound_to_their_canonical_ids(self):
+        ids = canonical(self.wt, 500)
+        d_chunk(self.wt, 1, ids[:25])
+        d_chunk(self.wt, 2, ids[25:49])                           # incomplete
+        d_chunk(self.wt, 3, ids[:25])                             # right size, another chunk's ids
+        d_chunk(self.wt, 4, [f"zz{i}" for i in range(25)])        # unique ids outside the batch
+        d_chunk(self.wt, 5, list(reversed(ids[100:125])))         # right ids, wrong order
+        d_chunk(self.wt, 6, ids[125:150], name="chunk-006.jsonl.tmp")   # not yet renamed
+        d_chunk(self.wt, 21, ids[:25])                            # outside 1..20
+        write(self.wt / S / "d-001_01" / "chunk-007.jsonl", '{"record_id": "a", "senses": []}\n{broken')
+        d_chunk(self.wt, 8, ids[175:200])
+        self.assertEqual(self.obs("d"), ("chunks", 2, 20))
 
-    def test_d_short_last_chunk_and_no_marker(self):
-        self.assertIsNone(self.obs("d"))                          # legacy run without the marker folder
-        d_chunk(self.wt, 4, 8)                                    # 83 records -> chunks of 25,25,25,8
-        d_chunk(self.wt, 3, 8)                                    # wrong size for a full chunk
-        self.assertEqual(self.obs("d", total=83), ("chunks", 1, 4))
+    def test_d_short_last_batch_second_batch_and_unconfirmed(self):
+        self.assertIsNone(self.obs("d"))                          # no canonical shard / marker folder
+        ids = canonical(self.wt, 583)                             # batch 02 = rows 500..582 (83 records)
+        self.assertIsNone(self.obs("d", batch="03"))
+        write(self.wt / S / "d-001_02" / "chunk-004.jsonl", "".join(json.dumps({"record_id": i, "senses": []}) + "\n" for i in ids[575:583]))
+        write(self.wt / S / "d-001_02" / "chunk-003.jsonl", "".join(json.dumps({"record_id": i, "senses": []}) + "\n" for i in ids[550:558]))
+        self.assertEqual(self.obs("d", batch="02"), ("chunks", 1, 4))
+        canonical(self.wt, 10)                                    # changed shard: expectation is re-read
+        self.assertIsNone(self.obs("d", batch="02"))
 
     def test_other_methods_are_not_observed(self):
         self.assertIsNone(self.obs("s2"))

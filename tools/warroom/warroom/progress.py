@@ -7,7 +7,7 @@ worktree's own (method, model, shard, batch) artifacts and only counted once its
   `<scratch>/candidates/<chunk.file>` exists (`save-chunk` validates, then renames into place). Existence only.
 * C: a `literary-checkpoint-v2/v3` file; a Sense is done under literary-context.mjs `senseDone()` semantics.
 * D: `<scratch>/d-<SSS>_<BB>/chunk-NNN.jsonl`, renamed into place by the producer once the whole chunk is
-  assembled (see prompts/d.md); a file only counts when it holds exactly that chunk's records.
+  assembled (see prompts/d.md); a file only counts when its record ids equal that chunk's Canonical ids, in order.
 
 Anything unreadable, unsupported or belonging to another batch/model yields None (shown as unconfirmed), never an estimate.
 """
@@ -20,7 +20,10 @@ from pathlib import Path
 
 SCRATCH = ".warroom-scratch"
 D_CHUNK_RECORDS = 25
-AB_CONTRACT = "candidate-workbench"   # prefix of the workbench contract id
+BATCH_RECORDS = 500
+AB_CONTRACT = "candidate-workbench-v2"   # the only workbench contract the producer accepts
+_AB_KEYS = {"contract", "batch", "source", "chunks"}
+_AB_BATCH_KEYS = {"shard", "batch", "method", "model"}
 C_CONTRACTS = ("literary-checkpoint-v3", "literary-checkpoint-v2")
 _SWEEPS = ("1", "2")
 _LENSES = ("image", "action", "emotion", "sensation", "scene_situation", "causality", "metaphor_contrast")
@@ -99,7 +102,8 @@ def _ab(worktree: Path, shard: str, batch: str, method: str, model: str):
         try:
             data = _load_json(cp)
             b, chunks = data["batch"], data["chunks"]
-            if not str(data.get("contract", "")).startswith(AB_CONTRACT) or not isinstance(chunks, list):
+            if data.get("contract") != AB_CONTRACT or set(data) != _AB_KEYS or set(b) != _AB_BATCH_KEYS \
+                    or not isinstance(chunks, list):
                 continue
             if (b["shard"], b["batch"], b["method"], str(b["model"]).lower()) != (shard, batch, method, model):
                 continue
@@ -132,10 +136,36 @@ def _c(worktree: Path, shard: str, batch: str, model: str):
     return None
 
 
-def _d(worktree: Path, shard: str, batch: str, records_total):
-    if not records_total or records_total < 1:
+def _expected_ids(worktree: Path, shard: str, batch: str):
+    """Canonical record ids of this batch (rows[(batch-1)*500:+500] of its shard), read again only if the shard changed."""
+    f = worktree / "data/canonical" / f"stdict-{int(shard):04d}.jsonl"
+    st = f.stat()
+    key, sig = (f, batch), (st.st_mtime_ns, st.st_size)
+    hit = _cache.get(key)
+    if hit and hit[0] == sig:
+        return hit[1]
+    start = (int(batch) - 1) * BATCH_RECORDS
+    ids = []
+    with open(f, "rb") as fh:
+        for i, line in enumerate(fh):
+            if i >= start + BATCH_RECORDS:
+                break
+            if i >= start:
+                ids.append(json.loads(line)["id"])
+    if len(_cache) > 64:
+        _cache.clear()
+    _cache[key] = (sig, ids)
+    return ids
+
+
+def _d(worktree: Path, shard: str, batch: str):
+    try:
+        ids = _expected_ids(worktree, shard, batch)
+    except (OSError, ValueError, KeyError, TypeError):
         return None
-    total = -(-records_total // D_CHUNK_RECORDS)
+    if not ids:
+        return None
+    total = -(-len(ids) // D_CHUNK_RECORDS)
     folder = worktree / SCRATCH / f"d-{shard}_{batch}"
     done = 0
     try:
@@ -146,23 +176,23 @@ def _d(worktree: Path, shard: str, batch: str, records_total):
         n = int(_D_CHUNK.fullmatch(p.name).group(1))
         if not 1 <= n <= total:
             continue
-        want = min(D_CHUNK_RECORDS, records_total - (n - 1) * D_CHUNK_RECORDS)
+        want = ids[(n - 1) * D_CHUNK_RECORDS:n * D_CHUNK_RECORDS]
         try:
-            ids = []
             with open(p, "rb") as fh:
+                got = []
                 for line in fh:
                     row = json.loads(line)
-                    if not isinstance(row.get("record_id"), str) or not isinstance(row.get("senses"), list):
+                    if not isinstance(row.get("senses"), list):
                         raise ValueError
-                    ids.append(row["record_id"])
-        except (OSError, ValueError, AttributeError):
+                    got.append(row["record_id"])
+        except (OSError, ValueError, AttributeError, KeyError):
             continue
-        if len(ids) == want and len(set(ids)) == want:
+        if got == want:   # exactly this chunk's Canonical records, in order
             done += 1
     return "chunks", done, total
 
 
-def observe(worktree, shard: str, batch: str, method: str, model: str, records_total=None):
+def observe(worktree, shard: str, batch: str, method: str, model: str):
     """(kind, done, total) of the saved intermediate progress, or None when it cannot be confirmed."""
     wt, model = Path(worktree), str(model).lower()
     try:
@@ -171,7 +201,7 @@ def observe(worktree, shard: str, batch: str, method: str, model: str, records_t
         if method == "c":
             return _c(wt, shard, batch, model)
         if method == "d":
-            return _d(wt, shard, batch, records_total)
+            return _d(wt, shard, batch)
     except OSError:
         pass
     return None
