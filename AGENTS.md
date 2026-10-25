@@ -163,6 +163,15 @@ In particular:
 
 When current data and current requirements are fully represented by a simpler design, choose the simpler design.
 
+## Credentials and diagnostic output safety
+
+Treat GitHub personal access tokens (including `GITHUB_PERSONAL_ACCESS_TOKEN` used for MCP authentication), `GH_TOKEN`/`GITHUB_TOKEN`, API keys, cookies, credentials, and secret file contents as **sensitive even in local-only agent runs**.
+
+- **Never dump the full environment or shell state** for debugging: do not run `env`, bare `printenv`, `export -p`, `set`, shell tracing (`set -x`), `gh auth token`, or equivalents that print or serialize credentials. Do not print a named secret variable either, or echo/cat secret/config files.
+- Diagnose with **allowlisted, non-sensitive fields only** (e.g. schema/table names, process exit status, whether a required variable is configured). Check secret presence without emitting its value; avoid diagnostics that include request authorization headers, process environment objects or unredacted exception payloads.
+- **Never put token values, environment dumps, private key material or credential-bearing output** into terminal/tool output, AI context, persisted logs, Git commits, PRs, issues or screenshots. Limit and sanitize both stdout and stderr **before** a diagnostic is emitted; redacting only the final report does not undo an earlier leak.
+- If a credential may have been exposed, **stop printing/forwarding it**, report the affected credential type and exposure channel **without its value**, and alert the owner to revoke/rotate it and inspect accessible logs. Do not claim rotation or log cleanup is complete unless it was actually verified.
+
 ## Starting a new issue
 
 Unless the user explicitly requests another base, start every new issue implementation from the latest remote `master` head.
