@@ -215,6 +215,49 @@ export function parseCandidateJsonl(contents, filePath = 'Candidate') {
   });
 }
 
+/** Serialize only Candidate v1 rows, with one stable JSON object per line. */
+export function serializeCandidateJsonl(candidateRows) {
+  if (!Array.isArray(candidateRows)) fail('Candidate rows must be an array');
+  return `${candidateRows.map((row) => JSON.stringify(row)).join('\n')}\n`;
+}
+
+/** Patch one exact Candidate tuple while preserving every other row and sense. */
+export function patchCandidateRows(candidateRows, { recordId, senseId, action, candidate, replacement } = {}) {
+  if (!Array.isArray(candidateRows)) fail('Candidate rows must be an array');
+  if (typeof recordId !== 'string' || recordId.length === 0 || typeof senseId !== 'string' || senseId.length === 0) {
+    fail('record_id and sense_id are required for a Candidate patch');
+  }
+  if (!['remove', 'replace'].includes(action)) fail('Candidate patch action must be remove or replace');
+  if (typeof candidate !== 'string' || candidate.length === 0) fail('exact Candidate text is required for a patch');
+  if (action === 'replace' && (typeof replacement !== 'string' || replacement.length === 0)) fail('replacement Candidate text is required');
+  if (action === 'replace' && candidateRows.some((row) => row?.record_id === recordId
+    && row.senses?.some((sense) => sense?.sense_id === senseId
+    && sense.candidates?.some((value) => normalizeCandidate(value) === normalizeCandidate(replacement))))) {
+    fail('replacement Candidate already exists in the same source sense');
+  }
+
+  const rowIndexes = candidateRows.flatMap((row, index) => row?.record_id === recordId ? [index] : []);
+  if (rowIndexes.length !== 1) fail(`record_id ${JSON.stringify(recordId)} must identify exactly one Candidate row`);
+  const rowIndex = rowIndexes[0];
+  const row = candidateRows[rowIndex];
+  const senses = Array.isArray(row?.senses) ? row.senses : [];
+  const senseIndexes = senses.flatMap((sense, index) => sense?.sense_id === senseId ? [index] : []);
+  if (senseIndexes.length !== 1) fail(`sense_id ${JSON.stringify(senseId)} must identify exactly one Candidate sense in ${JSON.stringify(recordId)}`);
+  const senseIndex = senseIndexes[0];
+  const candidates = Array.isArray(senses[senseIndex]?.candidates) ? senses[senseIndex].candidates : [];
+  const exactIndexes = candidates.flatMap((value, index) => value === candidate ? [index] : []);
+  if (exactIndexes.length !== 1) fail('exact Candidate text must occur exactly once in the specified record and sense');
+
+  const patchedRows = candidateRows.map((item, index) => index === rowIndex
+    ? { ...item, senses: item.senses.map((sense, currentSenseIndex) => currentSenseIndex === senseIndex
+      ? { ...sense, candidates: action === 'remove'
+        ? sense.candidates.filter((value, currentIndex) => currentIndex !== exactIndexes[0])
+        : sense.candidates.map((value, currentIndex) => currentIndex === exactIndexes[0] ? replacement : value) }
+      : sense) }
+    : item);
+  return { rows: patchedRows, patched: { record_id: recordId, sense_id: senseId, action, candidate, replacement: action === 'replace' ? replacement : null } };
+}
+
 async function readJsonl(filePath) {
   return parseCandidateJsonl(await readFile(filePath, 'utf8'), filePath);
 }

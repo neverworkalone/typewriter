@@ -131,7 +131,8 @@ async function main() {
         checkpointPath: options.checkpoint,
         scratchDirectory: SCRATCH_DIRECTORY,
       });
-      result = { status: 'READY', checkpoint: initialized.path, index: initialized.checkpoint.index, summary: initialized.summary };
+      const { path: _privateDatabasePath, ...index } = initialized.checkpoint.index;
+      result = { status: 'READY', checkpoint: path.relative(process.cwd(), initialized.path), index, summary: initialized.summary };
       break;
     }
     case 'scan': {
