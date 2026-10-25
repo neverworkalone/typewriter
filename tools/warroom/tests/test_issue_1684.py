@@ -221,6 +221,21 @@ class StageTwoSelection(unittest.TestCase):
         self.assertEqual((w.store.incomplete_batches(), w.store.peek_line("claude", S2)["run"]), ([], 0))   # shard 002 untouched
         self.assertEqual(w.store.claimed_keys(S2, "claude"), {("001", "01-01")})
 
+    def test_pin_is_stored_with_the_part_so_a_restart_stays_in_the_shard(self):
+        self.w = w = s2_world(self, canon={1: 100, 2: 100})
+        real = w.store.set_line
+        w.store.set_line = lambda *a, **k: (_ for _ in ()).throw(RuntimeError("crash after create_batch")) if "shard_pin" in k else real(*a, **k)
+        control.start(w.store, "claude", S2, "single", cfg=w.cfg)
+        w.tick()   # any later write is lost; the Part and its pin were one transaction
+        w.store.set_line = real
+        self.assertEqual(w.store.active_batch("claude", S2)["shard"], "001")
+        self.assertEqual(w.store.peek_line("claude", S2)["shard_pin"], "001")
+        w.sup = w.make_sup()   # restarted Supervisor
+        self.finish_part(w, "claude", "001", "01", "01")
+        w.git.verified |= {("batch", "001", "01", None), ("shard", "001", None, None)}
+        w.tick(2)
+        self.assertEqual((w.store.incomplete_batches(), w.store.peek_line("claude", S2)["run"]), ([], 0))
+
     def test_continuous_goes_on_to_the_next_shard(self):
         self.w = w = s2_world(self, canon={1: 100, 2: 100})
         self.pick(w, mode="continuous")

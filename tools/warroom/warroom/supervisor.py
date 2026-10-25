@@ -516,12 +516,12 @@ class Supervisor:
         wt = self.paths.worktrees / f"{method}-{model}-{part.shard}_{part.key}"
         try:
             bid = self.store.create_batch(method=method, producer=model, shard=part.shard, batch=part.key,
-                                          branch=branch, worktree=str(wt), model_tier=ln["model_tier"], from_run=True)
+                                          branch=branch, worktree=str(wt), model_tier=ln["model_tier"], from_run=True,
+                                          shard_pin=part.shard if ln["mode"] == "single" else "")
         except LineNotRunnable:
             return
         except LineBusy as e:   # another model already holds the one Stage 2 occupancy
             return self.store.log(None, str(e), "warn", line=line)
-        self.store.set_line(model, method, blocked="", shard_pin=part.shard if ln["mode"] == "single" else "")
         self.store.log(bid, f"Stage 2 {stage2.label(part.shard, part.key)} 선정, worktree 준비")
         self._prepare_existing(self.store.batch(bid))
 

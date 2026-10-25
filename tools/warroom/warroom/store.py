@@ -240,6 +240,10 @@ class Store:
                 (f["method"], f["producer"], f["shard"], f["batch"], f["branch"],
                  f["worktree"], "PREPARE", f.get("model_tier", "free"),
                  f.get("records_total"), now, now))
+            if f.get("shard_pin") is not None:   # the Single shard binding commits WITH the Part: a crash cannot split them
+                c.execute("INSERT OR IGNORE INTO lines(model,method,updated_at) VALUES(?,?,?)", (f["producer"], f["method"], now))
+                c.execute("UPDATE lines SET shard_pin=?, blocked='', updated_at=? WHERE model=? AND method=?",
+                          (f["shard_pin"], now, f["producer"], f["method"]))
             return cur.lastrowid
 
     def update(self, batch_id: int, **fields) -> None:
