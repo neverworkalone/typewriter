@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import test from 'node:test';
 
 import {
@@ -168,6 +169,9 @@ test('patch rejects unknown IDs and absent removals, and writes nothing on failu
     { record_id: 'w001', sense_id: 'w001-s1', remove: ['없는말'] },
   ], 'p.jsonl')), /is not present/u);
   await assert.rejects(patch(await writeInput(context, [{ record_id: 'w001', sense_id: 'w001-s1', add: ['별빛'] }], 'p.jsonl')), /duplicates candidate/u);
+  for (const bad of [{ add: '달빛' }, { remove: '별빛' }, { add: [1] }, { remove: [null] }, { add: {} }]) {
+    await assert.rejects(patch(await writeInput(context, [{ record_id: 'w001', sense_id: 'w001-s1', ...bad }], 'p.jsonl')), /must be an array of strings/u);
+  }
   const page = await readCandidateChunkPage({ scratchDirectory: context.scratchDirectory, chunk: 1, repositoryDirectory: context.repositoryDirectory });
   assert.deepEqual(page.items.map((item) => item.canonical_record.senses.flatMap((sense) => sense.candidates)).flat(), ['별빛']);
 });
@@ -200,9 +204,17 @@ test('v1 checkpoints keep their saved candidates when prepared again', async (t)
   }));
   const chunks = Array.from({ length: 20 }, (_, index) => ({ number: index + 1, candidate_sha256: index === 0 ? 'f'.repeat(64) : null }));
   await writeFile(path.join(context.scratchDirectory, 'checkpoint.json'), JSON.stringify({
-    contract: 'candidate-workbench-v1', batch: { shard: '001', batch: '01', method: 'b', model: 'codex' }, source: { chunk_size: 25 }, chunks, records,
+    contract: 'candidate-workbench-v1', batch: { shard: '001', batch: '01', method: 'b', model: 'codex' }, source: { chunk_size: 25, canonical_sha256: createHash('sha256').update(`${context.canonicalRows.map((row) => JSON.stringify(row)).join('\n')}\n`).digest('hex') }, chunks, records,
   }));
   await assert.rejects(readCandidateStatus({ scratchDirectory: context.scratchDirectory, repositoryDirectory: context.repositoryDirectory }), /v1 workbench checkpoint/u);
+  const changed = structuredClone(context.canonicalRows);
+  changed[0].senses[0].gloss = '바뀐 뜻.';
+  const canonicalPath = path.join(context.repositoryDirectory, 'data/canonical/stdict-0001.jsonl');
+  await writeFile(canonicalPath, `${changed.map((row) => JSON.stringify(row)).join('\n')}\n`);
+  await assert.rejects(prepare(context), /Canonical batch changed since this v1 checkpoint/u);
+  await assert.rejects(readFile(path.join(context.scratchDirectory, 'candidates/chunk-001.jsonl'), 'utf8'), { code: 'ENOENT' });
+  assert.equal(JSON.parse(await readFile(path.join(context.scratchDirectory, 'checkpoint.json'), 'utf8')).contract, 'candidate-workbench-v1');
+  await writeFile(canonicalPath, `${context.canonicalRows.map((row) => JSON.stringify(row)).join('\n')}\n`);
   const migrated = await prepare(context);
   assert.deepEqual(migrated.chunks.filter((chunk) => chunk.saved).map((chunk) => chunk.number), [1]);
   const page = await readCandidateChunkPage({ scratchDirectory: context.scratchDirectory, chunk: 1, limit: 1, repositoryDirectory: context.repositoryDirectory });

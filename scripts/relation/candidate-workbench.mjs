@@ -389,6 +389,10 @@ export async function prepareCandidateBatch({
   const { rows: sourceRows, firstRecordIndex } = selectCanonicalBatch(canonicalRows, batch, canonicalPath);
   const chunkSize = requestedChunkSize ?? legacy?.source.chunk_size ?? DEFAULT_CANDIDATE_CHUNK_SIZE;
   const chunks = makeChunks(sourceRows, chunkSize);
+  const sourceHash = sha256(serializeJsonl(sourceRows));
+  if (legacy && legacy.source?.canonical_sha256 !== sourceHash) {
+    fail('Canonical batch changed since this v1 checkpoint was prepared; its candidates were preserved in place and not migrated. Re-explore against the current source in a new scratch directory.');
+  }
   for (const chunk of chunks) {
     await writeFileAtomic(sourcePathOf(scratchDirectory, chunk), serializeJsonl(sourceRows.slice(chunk.start_index, chunk.start_index + chunk.record_ids.length)));
   }
@@ -399,7 +403,7 @@ export async function prepareCandidateBatch({
     batch: { shard, batch, method, model },
     source: {
       canonical_path: path.relative(repositoryDirectory, canonicalPath).split(path.sep).join('/'),
-      canonical_sha256: sha256(serializeJsonl(sourceRows)),
+      canonical_sha256: sourceHash,
       first_record_index: firstRecordIndex,
       record_count: sourceRows.length,
       sense_count: sourceRows.reduce((count, record) => count + record.senses.length, 0),
@@ -576,6 +580,11 @@ export async function patchCandidateSenses({ scratchDirectory, inputPath, reposi
       || Object.keys(patch).some((key) => !['record_id', 'sense_id', 'remove', 'add'].includes(key))
       || typeof patch.record_id !== 'string' || typeof patch.sense_id !== 'string') {
       fail(`${location} must contain a string record_id and sense_id plus optional remove/add arrays`);
+    }
+    for (const field of ['remove', 'add']) {
+      if (patch[field] !== undefined && (!Array.isArray(patch[field]) || patch[field].some((item) => typeof item !== 'string'))) {
+        fail(`${location} ${field} must be an array of strings`);
+      }
     }
     const chunk = workspace.checkpoint.chunks.find((item) => item.record_ids.includes(patch.record_id));
     if (!chunk) fail(`${location} record_id ${patch.record_id} is not in this batch`);
