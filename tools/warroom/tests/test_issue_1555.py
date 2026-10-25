@@ -466,7 +466,7 @@ class FailClosed(unittest.TestCase):
             ("node tests run node --test", ["scripts/v.mjs", "tests/y.test.mjs"], [], ["node", "--test", "tests/y.test.mjs"], True),
             ("code only, nothing runnable", ["scripts/v.mjs"], [], None, False),
             ("unsupported vitest file", ["scripts/v.mjs", "tests/z.test.js"], [], None, False),
-            ("unsupported test beside a runnable one", ["tests/y.test.mjs", "tests/z.test.js"], [], None, False)   # refused before anything runs,
+            ("unsupported test beside a runnable one", ["tests/y.test.mjs", "tests/z.test.js"], [], None, False),   # refused before anything runs
             ("configured command covers code-only fix", ["scripts/v.mjs"], [["python3", "-c", "pass"]], ["python3", "-c", "pass"], True),
             ("docs and prompts need only the ancestry proof", ["docs/n.md", "tools/warroom/prompts/m.md"], [], None, True),
             ("unknown change set", [], [], None, False),
