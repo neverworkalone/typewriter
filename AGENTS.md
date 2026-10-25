@@ -163,6 +163,11 @@ In particular:
 
 When current data and current requirements are fully represented by a simpler design, choose the simpler design.
 
+## Secret-safe diagnostics
+
+- Never print credentials (e.g. `GITHUB_PERSONAL_ACCESS_TOKEN`, API keys) or dump the environment (`env`, `printenv`, `set`, `set -x`, `gh auth token`). Diagnose using only non-secret status/presence, not values.
+- Never expose secrets in tool output, logs or GitHub. If exposed, do not repeat them; notify the owner to revoke/rotate the credential and check logs.
+
 ## Starting a new issue
 
 Unless the user explicitly requests another base, start every new issue implementation from the latest remote `master` head.
