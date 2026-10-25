@@ -155,6 +155,32 @@ test('save-chunk rejects wrong IDs and bad candidates without touching saved dat
   assert.deepEqual(page.items[0].canonical_record.senses[0].candidates, ['별빛']);
 });
 
+test('save-chunk rejects exact source lemma self-repeats that the final validator would reject at merge', async (t) => {
+  const context = await setup(t);
+  context.canonicalRows[0].lemma = '단 수';
+  context.canonicalRows[0].search_forms = ['단 수', '단수', '단수가', '단순'];
+  context.canonicalRows[1].lemma = '단순';
+  await writeFile(path.join(context.repositoryDirectory, 'data/canonical/stdict-0001.jsonl'), `${context.canonicalRows.map((row) => JSON.stringify(row)).join('\n')}\n`);
+  await prepare(context);
+  const save = async (bySense) => saveCandidateChunk({
+    scratchDirectory: context.scratchDirectory,
+    chunk: 1,
+    inputPath: await writeInput(context, rowsFor(context.canonicalRows, 0, 25, bySense), 'repeat.jsonl'),
+    repositoryDirectory: context.repositoryDirectory,
+  });
+  for (const [name, candidate, expected] of [
+    ['exact lemma', '단 수', /repeats source lemma/u],
+    ['whitespace variant', '단  수', /repeats source lemma/u],
+    ['parenthetical annotation', '단 수(單數)', /repeats source lemma/u],
+    ['spacing-stripped search form', '단수', /orthographic search form/u],
+  ]) {
+    await assert.rejects(save({ 'w001-s1': ['별빛', candidate] }), expected, name);
+  }
+  // Valid-but-unusual: a compound containing the lemma, a longer search form, and another entry's lemma stay allowed.
+  const saved = await save({ 'w001-s1': ['단 수 조절', '단수가', '단순', '별빛'] });
+  assert.equal(saved.candidateCount, 4);
+});
+
 test('patch rejects unknown IDs and absent removals, and writes nothing on failure', async (t) => {
   const context = await setup(t);
   await prepare(context);
@@ -227,7 +253,12 @@ test('partial final-shard batch keeps its 83-record boundary and merges', async 
 test('merge runs the Candidate v1 validator and leaves no partial output; inspect returns the full record', async (t) => {
   const context = await setup(t);
   await prepare(context);
-  await saveAll(context, { 1: { 'w001-s1': ['표제어 1'] } });
+  await saveAll(context);
+  await patchCandidateSenses({
+    scratchDirectory: context.scratchDirectory,
+    inputPath: await writeInput(context, [{ record_id: 'w001', sense_id: 'w001-s1', add: ['표제어 1'] }], 'patch.jsonl'),
+    repositoryDirectory: context.repositoryDirectory,
+  });
   const outPath = path.join(context.scratchDirectory, 'must-not-exist.jsonl');
   await assert.rejects(mergeCandidateBatch({ scratchDirectory: context.scratchDirectory, outPath, repositoryDirectory: context.repositoryDirectory }), /candidate repeats source lemma "표제어 1"/u);
   await assert.rejects(readFile(outPath, 'utf8'), { code: 'ENOENT' });
