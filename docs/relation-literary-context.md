@@ -47,8 +47,11 @@ Run the CLI from the repository root with the batch assigned to the current C
 producer. The normal path is: **init once, then `chunk` → `submit` per chunk, then
 `export` once.** There is no per-context, per-candidate or per-sense command.
 
+`init` runs the same lean read-only index check once itself, so a separate
+`preflight` is **not** a per-batch step; run `preflight` (or `preflight --deep`)
+only for explicit diagnosis, first approval of an index, or a suspected change.
+
 ```sh
-node scripts/relation/literary-context-cli.mjs preflight --db /path/to/approved-literary.sqlite
 node scripts/relation/literary-context-cli.mjs init \
   --canonical data/canonical/stdict-0001.jsonl \
   --shard 001 --batch 01 --model codex \
@@ -104,6 +107,13 @@ shared Stage 1 form rules. If the sample is not enough, read more with
 lens, per context or per discarded candidate**: no empty lens arrays, no
 KEEP/REMOVE ledger, no per-context receipt. Ineligible discoveries simply are
 not listed.
+
+`chunk` records which units it showed for each sense (unit row ids and the hit
+count, no text). `submit` re-resolves exactly those units by row id, recomputes
+each locator key from the live index row and requires the unit to still contain a
+search form, instead of repeating the full hit COUNT, ranking and excerpt search.
+Keys must identify exactly one shown context. A sense never read by `chunk`, a
+legacy checkpoint, or a sense whose forms changed falls back to the full search.
 
 `submit` takes one JSON file under `.warroom-scratch/` for the whole chunk and
 saves it in one checkpoint write:

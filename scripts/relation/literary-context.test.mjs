@@ -470,3 +470,44 @@ test('Candidate v1 runs once at export: an ineligible candidate is reported with
     await cleanup(fixture);
   }
 });
+
+test('submit re-resolves only the contexts chunk showed: shown units stay bound to the index, and unread or re-formed senses fall back to a full search', async () => {
+  const fixture = await makeFixture({ unitCount: 20 });
+  try {
+    const [item] = (await chunk(fixture)).items;
+    const key = item.contexts[0].k;
+    const shown = (await load(fixture)).records[0].senses[0].shown;
+    assert.equal(shown.total_hits, 20);
+    assert.equal(shown.unit_rowids.length, 8);
+    // A shown unit that no longer contains a search form is rejected and nothing is written.
+    const checkpoint = await load(fixture);
+    const original = JSON.stringify(checkpoint);
+    checkpoint.records[0].senses[0].shown.unit_rowids[0] = 999999;
+    await writeFile(fixture.checkpointPath, JSON.stringify(checkpoint));
+    const tampered = await readFile(fixture.checkpointPath, 'utf8');
+    await assert.rejects(submit(fixture, [{ sense_id: 'sense-000001', verified: [key], candidates: [] }]), /no longer matches/u);
+    assert.equal(await readFile(fixture.checkpointPath, 'utf8'), tampered);
+    // Without recorded reads (legacy checkpoint) the original full search still binds the key.
+    const legacy = JSON.parse(original);
+    delete legacy.records[0].senses[0].shown;
+    await writeFile(fixture.checkpointPath, JSON.stringify(legacy));
+    await submit(fixture, [{ sense_id: 'sense-000001', verified: [key], candidates: [] }]);
+    const saved = (await load(fixture)).records[0].senses[0].submission;
+    assert.equal(saved.verified[0].locator_key.startsWith(key), true);
+    assert.equal(saved.total_hits, 20);
+  } finally {
+    await cleanup(fixture);
+  }
+});
+
+test('adding a search form after chunk drops the shown contexts so the changed form set is searched afresh', async () => {
+  const fixture = await makeFixture({ unitCount: 3 });
+  try {
+    await chunk(fixture);
+    assert.ok((await load(fixture)).records[0].senses[0].shown);
+    await addSearchForm(fixture.checkpointPath, 'sense-000001', '서릿발', 'reviewed form', { scratchDirectory: fixture.scratchDirectory });
+    assert.equal((await load(fixture)).records[0].senses[0].shown, null);
+  } finally {
+    await cleanup(fixture);
+  }
+});
