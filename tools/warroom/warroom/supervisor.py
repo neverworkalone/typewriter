@@ -17,12 +17,13 @@ import time
 import traceback
 from pathlib import Path
 
-from . import auth, batches, control, prompts, reviews
+from . import auth, batches, control, defects, prompts, reviews
 from .adapters import PREFLIGHT_PENDING, RunSpec, classify_failure
 from .config import (TIERED_ADAPTERS, adapter_label, config_problem, load_config, registry, registry_problems,
                      reload_problem, run_spec)
 from .gitops import CleanupBlocked, GitError
-from .store import LineBusy, LineNotRunnable
+from .maintenance import Maintenance
+from .store import MAINTENANCE_METHOD, LineBusy, LineNotRunnable
 
 
 class DuplicateClaim(Exception):
@@ -54,6 +55,7 @@ class Supervisor:
         self.paths, self.cfg, self.store = paths, cfg, store
         self.runner, self.adapter, self.gh, self.git, self.env = runner, adapter, gh, git, env
         self.clock = clock
+        self.maint = Maintenance(self)   # shared-defect Issues, the hidden Maintainer and applying its merged fix
 
     def _adapter(self, producer: str):
         """`adapter` is one AgentAdapter, or a {name: adapter} map resolved via the registry."""
@@ -76,6 +78,7 @@ class Supervisor:
             except Exception:  # one Line's failure never stalls the others
                 self.store.log(None, f"line {ln['model']}/{ln['method']} 예외:\n"
                                + traceback.format_exc()[-800:], "error", line=f"{ln['model']}/{ln['method']}")
+        self.maint.step()   # after the Lines: it reads the batch states they just advanced
 
     def _handle_reload(self) -> None:
         """Operator `r`: re-read config.json. The new config replaces `self.cfg` only if it passes every check."""
@@ -146,13 +149,28 @@ class Supervisor:
             if ln["retry_batch"] is not None:
                 self.store.set_line(b["producer"], b["method"], retry_batch=None)
             return
-        if ln["retry_batch"] != b["id"] and self._recover_if_merged(b):
+        if b["pause_reason"] == "shared_defect":
+            # Paused for a shared defect: only Maintenance._release resumes it (once, after the fix is applied and
+            # verified). An operator Retry counts only after an explicit Stop (the hold), as a deliberate override.
+            if ln["retry_batch"] != b["id"]:
+                return
+            if not self.store.get(f"defect_hold_{b['id']}"):
+                return self.store.set_line(b["producer"], b["method"], retry_batch=None)
+            self._override_defect(b)
+        elif ln["retry_batch"] != b["id"] and self._recover_if_merged(b):
             return
         if ln["retry_batch"] == b["id"]:
             self.store.set_line(b["producer"], b["method"], retry_batch=None, run=1)
             self.store.update(b["id"], state=b["paused_from"] or "PRODUCING", error=None,
-                              retries=0, retry_after=None)
+                              retries=0, retry_after=None, pause_reason="", defect_id=None)
             self.store.log(b["id"], f"운영자 재시도: {b['paused_from']}로 복귀")
+
+    def _override_defect(self, b) -> None:
+        if b["defect_id"] is not None:
+            self.store.update_defect(b["defect_id"], state="OVERRIDDEN",
+                                     hold_reason="운영자가 Stop 후 Retry로 수정 반영 없이 직접 재개함")
+        self.store.set(f"defect_hold_{b['id']}", "")
+        self.store.log(b["id"], "공통 결함 PAUSED를 운영자가 직접 해제 (수정 반영 없음)", "warn")
 
     def _recover_if_merged(self, b) -> bool:
         """Recover a failed producer batch from its owned PR without starting another AI run.
@@ -298,7 +316,8 @@ class Supervisor:
 
     def _enter_merged(self, b, info, reason: str) -> bool:
         self.store.update(b["id"], state="MERGED", pr_number=info["number"], merged=1,
-                          head_sha=info["head_sha"], error=None, retries=0, retry_after=None)
+                          head_sha=info["head_sha"], error=None, retries=0, retry_after=None,
+                          pause_reason="", defect_id=None)
         self.store.log(b["id"], f"{reason} PR #{info['number']} merged=true 확인 → MERGED "
                        "(기존 cleanup worktree 검증으로 인계, AI 재실행 없음)")
         return True
@@ -308,6 +327,8 @@ class Supervisor:
         if b["pid"] and ad.alive(b["pid"]):
             ad.stop(b["pid"])   # keep the PID: it is cleared only after exit is confirmed
         self.store.set_line(b["producer"], b["method"], run=0, retry_batch=None)  # Stop wins over Retry
+        if b["pause_reason"] == "shared_defect":   # the operator took over: no automatic release until a deliberate Retry
+            self.store.set(f"defect_hold_{b['id']}", "1")
         self.store.update(b["id"], retry_after=None)
         self._fail(b, "PAUSED", "강제 중지됨. worktree·브랜치·PR은 보존됨 (프로세스 종료 확인 후 Retry로 재개).")
         self._reap_stopped(self.store.batch(b["id"]))
@@ -560,6 +581,8 @@ class Supervisor:
 
     # ---- PRODUCING / FIXING -------------------------------------------
     def _poll_run(self, b) -> None:
+        if self._scan_report(b):
+            return
         if b["pid"] is None:  # backoff elapsed, or operator Retry after PAUSED/ERROR
             if b["state"] == "FIXING" and self.store.get(f"headlag_{b['id']}"):
                 return self._recheck_fix_head(b)   # the fix already ran: only verify its push, never re-run the AI
@@ -602,6 +625,36 @@ class Supervisor:
                 self.store.set(f"verified_completion_run_{b['id']}", str(runs[0]["id"]))
             return self._run_ok(b)
         self._run_failed(b, code)
+
+    def _scan_report(self, b) -> bool:
+        """A producer's structured shared-defect report (its own worktree scratch file) pauses its batch. True: handled.
+
+        The file must be unchanged since the previous tick while the AI still runs (it may be mid-write); the Maintainer
+        itself never reports. The same content is the same event, so it is processed once.
+        """
+        if b["method"] == MAINTENANCE_METHOD:
+            return False
+        f = Path(b["worktree"]) / defects.REPORT_FILE
+        try:
+            st = f.stat()
+            raw = f.read_text("utf-8", errors="replace")
+        except OSError:
+            return False
+        if not raw.strip():
+            return False
+        key = defects.report_event_key(b["id"], raw)
+        if self.store.defect_by_event(key):
+            return False
+        ad = self._adapter(b["producer"])
+        live = bool(b["pid"]) and ad.alive(b["pid"])
+        sig, sig_key = f"{st.st_mtime_ns}:{st.st_size}", f"defect_file_{b['id']}"
+        if live and self.store.get(sig_key) != sig:
+            self.store.set(sig_key, sig)
+            return False
+        if live:
+            ad.stop(b["pid"])   # the PID is cleared only once the exit is confirmed (_reap_stopped)
+        self.maint.report(b, "report", key, raw)
+        return True
 
     def _record_progress(self, b) -> None:
         f = Path(b["worktree"]) / "data/relation-candidates" / b["shard"] / \
@@ -760,6 +813,8 @@ class Supervisor:
 
     def _duplicate_claim(self, b, my_pr: int) -> int | None:
         """A rival open PR on the same batch file: same model for A/B, any model for the shared C/D queue."""
+        if b["method"] == MAINTENANCE_METHOD:   # an Issue-scoped PR, not a Candidate batch: the Issue claim is the guard
+            return None
         shared = batches.is_shared_queue(b["method"])
         for pr in self.gh.open_prs():
             if pr["number"] == my_pr:
@@ -897,6 +952,13 @@ class Supervisor:
             self.store.update(b["id"], head_sha=info["head_sha"])
             b = self.store.batch(b["id"])
             self.store.log(b["id"], f"HEAD 변경 감지 → {info['head_sha'][:10]}")
+        for e in ([] if b["method"] == MAINTENANCE_METHOD else evs):   # a trusted reviewer's explicit shared-defect
+            raw = defects.review_block(e["body"])                      # block pauses the batch instead of a fix run
+            key = defects.review_event_key(b["id"], b["pr_number"], e["key"])
+            if raw is not None and not self.store.defect_by_event(key):
+                if live:
+                    self._adapter(b["producer"]).stop(b["pid"])
+                return self.maint.report(b, "review", key, raw, info)
         fresh = [e for e in evs if not self.store.is_handled(b["id"], b["pr_number"], info["head_sha"], e["key"])]
         if fresh and live:
             # Never run two AI processes in one worktree: stop the old one, confirm exit

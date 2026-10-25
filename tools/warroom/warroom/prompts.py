@@ -12,8 +12,11 @@ from pathlib import Path
 PROMPT_DIR = Path(__file__).resolve().parent.parent / "prompts"   # independent of the process cwd
 _PLACEHOLDER = re.compile(r"\{\{\s*([A-Za-z_]\w*)\s*\}\}")
 _PRODUCE = {"batch", "branch"}
+_MAINTAIN = {"issue", "branch"}
 ALLOWED = {"a": _PRODUCE, "b": _PRODUCE, "c": _PRODUCE, "d": _PRODUCE, "recovery": _PRODUCE,
-           "fix": {"pr", "head", "branch", "review_events", "session_note"}}
+           "fix": {"pr", "head", "branch", "review_events", "session_note"},
+           "m": _MAINTAIN, "m_recovery": _MAINTAIN}
+MAINTENANCE_METHOD = "m"
 
 
 class PromptError(Exception):
@@ -48,10 +51,14 @@ def render(name: str, values: dict, directory: Path | None = None) -> str:
 
 
 def produce(b, directory: Path | None = None) -> str:
+    if b["method"] == MAINTENANCE_METHOD:
+        return render("m", {"issue": b["batch"], "branch": b["branch"]}, directory)
     return render(b["method"], {"batch": f"{b['shard']}_{b['batch']}", "branch": b["branch"]}, directory)
 
 
 def recovery(b, directory: Path | None = None) -> str:
+    if b["method"] == MAINTENANCE_METHOD:
+        return render("m_recovery", {"issue": b["batch"], "branch": b["branch"]}, directory)
     return render("recovery", {"batch": f"{b['shard']}_{b['batch']}", "branch": b["branch"]}, directory)
 
 

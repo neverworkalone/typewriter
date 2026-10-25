@@ -9,3 +9,5 @@ Candidate 청크 읽기·저장·수정·결합에는 공통 CLI를 사용한다
 PR 생성 직전에 동일 `(method, model, shard, batch)` 점유를 다시 확인하고 `batch` 라벨을 붙인다. PR에는 방식·실제 모델·샤드·배치와 record/sense 수를 기록하되 #860을 링크하거나 닫지 않는다. 제출 후 해당 생산 실행을 종료한다.
 
 임시·스크래치 파일은 worktree의 `.warroom-scratch/`에만 둔다. 다른 방식·모델의 산출물이나 AI·CLI·서브에이전트를 임의로 실행하지 않는다.
+
+공통 결함(반복 가능한 공유 계층 결함)을 확인하면 `tools/warroom/prompts/shared-defect.md` 형식으로 `.warroom-scratch/shared-defect.json` 에 보고하고 멈춘다.
