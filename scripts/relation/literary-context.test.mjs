@@ -184,7 +184,10 @@ test('read-only preflight validates the approved schema and omits private databa
 test('retired and incomplete literary index schemas fail closed', async () => {
   const retired = await makeRetiredParagraphIndex();
   try {
-    await assert.rejects(inspectLiteraryIndex(retired.databasePath), /retired paragraph-index tables are not accepted/u);
+    await assert.rejects(
+      inspectLiteraryIndex(retired.databasePath, { scratchDirectory: retired.scratchDirectory }),
+      /retired paragraph-index tables are not accepted/u,
+    );
   } finally {
     await rm(retired.root, { recursive: true, force: true });
   }
@@ -194,7 +197,10 @@ test('retired and incomplete literary index schemas fail closed', async () => {
     const database = new DatabaseSync(fixture.databasePath);
     database.exec('ALTER TABLE text_units RENAME COLUMN eol TO line_ending');
     database.close();
-    await assert.rejects(inspectLiteraryIndex(fixture.databasePath), /text_units is missing eol/u);
+    await assert.rejects(
+      inspectLiteraryIndex(fixture.databasePath, { scratchDirectory: fixture.scratchDirectory }),
+      /text_units is missing eol/u,
+    );
   } finally {
     await cleanup(fixture);
   }
