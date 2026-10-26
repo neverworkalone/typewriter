@@ -15,6 +15,7 @@ import math
 from dataclasses import dataclass
 
 from . import batches
+from . import progress
 from .store import STAGE2_METHOD
 
 METHOD = STAGE2_METHOD
@@ -56,6 +57,47 @@ def split_key(key: str) -> tuple[str, str]:
 def label(shard: str, key: str) -> str:
     batch, part = split_key(key)
     return f"Shard {shard} · Batch {batch} · Part {part}"
+
+
+def checkpoint(worktree, shard: str, key: str):
+    """The current Part's validated local checkpoint summary, or None before prepare."""
+    return progress.stage2_checkpoint(worktree, shard, key)
+
+
+def next_action(state: dict | None) -> str:
+    """Choose the next independent run from persisted Stage 2 state."""
+    if state is None:
+        return "chunk"
+    if not state["complete"]:
+        raise ValueError("Stage 2 checkpoint does not contain the complete Candidate input set")
+    if state["pending_chunk"] is not None:
+        return "finalize" if state["pending_revision"] else "chunk"
+    if state["decided"] < state["total"]:
+        return "chunk"
+    return "finalize"
+
+
+def chunk_saved_since(before: dict | None, after: dict | None) -> bool:
+    """True only for one fully saved checkpoint chunk since that AI run started.
+
+    A first run may only prepare an already-accounted or empty Part; otherwise `save-chunk` advances the cursor by
+    exactly one. Pending work, incomplete inputs, a merged checkpoint, a changed candidate inventory or a skipped
+    cursor fail closed.
+    """
+    if after is None or not after["complete"] or after["merged"] or after["pending_chunk"] is not None:
+        return False
+    if before is None:
+        return (after["next_chunk_number"] == 2 or
+                (after["next_chunk_number"] == 1 and after["decided"] == after["total"]))
+    if any(before[k] != after[k] for k in ("shard", "batch", "part", "total")) or \
+            not before["complete"] or before["merged"]:
+        return False
+    return (after["next_chunk_number"] == before["next_chunk_number"] + 1
+            and after["decided"] >= before["decided"])
+
+
+def run_start_key(batch_id: int) -> str:
+    return f"s2_run_start_{batch_id}"
 
 
 def part_count(records: int) -> int:

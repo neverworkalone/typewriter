@@ -13,7 +13,7 @@ PROMPT_DIR = Path(__file__).resolve().parent.parent / "prompts"   # independent 
 _PLACEHOLDER = re.compile(r"\{\{\s*([A-Za-z_]\w*)\s*\}\}")
 _PRODUCE = {"batch", "branch"}
 _MAINTAIN = {"issue", "branch"}
-_STAGE2 = {"shard", "batch", "part", "branch"}
+_STAGE2 = {"shard", "batch", "part", "branch", "phase", "checkpoint", "session_note"}
 ALLOWED = {"a": _PRODUCE, "b": _PRODUCE, "c": _PRODUCE, "d": _PRODUCE, "recovery": _PRODUCE | {"resolved_defects"},
            "fix": {"pr", "head", "branch", "review_events", "session_note"},
            "m": _MAINTAIN, "m_recovery": _MAINTAIN, "s2": _STAGE2, "s2_recovery": _STAGE2}
@@ -69,7 +69,7 @@ def produce(b, directory: Path | None = None) -> str:
     if b["method"] == MAINTENANCE_METHOD:
         return render("m", {"issue": b["batch"], "branch": b["branch"]}, directory)
     if b["method"] == STAGE2_METHOD:
-        return render("s2", _stage2_values(b), directory)
+        return stage2(b, "chunk", None, directory=directory)
     out = render(b["method"], {"batch": f"{b['shard']}_{b['batch']}", "branch": b["branch"]}, directory)
     return out.rstrip() + PRODUCER_HANDOFF if b["method"] in {"a", "b", "c", "d"} else out
 
@@ -82,6 +82,27 @@ def recovery(b, directory: Path | None = None, resolved_defects: str = "") -> st
     out = render("recovery", {"batch": f"{b['shard']}_{b['batch']}", "branch": b["branch"],
                               "resolved_defects": resolved_defects}, directory)
     return out.rstrip() + PRODUCER_HANDOFF if b["method"] in {"a", "b", "c", "d"} else out
+
+
+def stage2(b, phase: str, checkpoint: dict | None, *, resumed: bool = False,
+           directory: Path | None = None) -> str:
+    """One bounded Stage 2 chunk run or the separate finalization run."""
+    if phase not in ("chunk", "finalize"):
+        raise PromptError(f"알 수 없는 Stage 2 실행 단계: {phase!r}")
+    values = _stage2_values(b)
+    batch, part = values["batch"], values["part"]
+    if checkpoint is None:
+        chunk = f"checkpoint 미준비; 다음 청크 ID는 {b['shard']}-{batch}-{part}-001"
+    else:
+        pending = checkpoint["pending_chunk"] or \
+            f"{b['shard']}-{batch}-{part}-{checkpoint['next_chunk_number']:03d}"
+        chunk = (f"checkpoint {checkpoint['decided']}/{checkpoint['total']} 후보 판정 저장; "
+                 f"next_chunk_number={checkpoint['next_chunk_number']}; 다음 청크 ID={pending}; "
+                 f"pending_chunk={'없음' if checkpoint['pending_chunk'] is None else checkpoint['pending_chunk']}")
+    values.update(phase="chunk" if phase == "chunk" else "finalize", checkpoint=chunk,
+                  session_note=("중단된 같은 청크를 이어간다. 이미 checkpoint에 저장된 결정을 다시 만들지 않는다.\n"
+                                if resumed else ""))
+    return render("s2", values, directory)
 
 
 def fix(b, events, resumed: bool, directory: Path | None = None) -> str:

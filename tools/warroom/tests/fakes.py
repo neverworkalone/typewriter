@@ -96,6 +96,7 @@ class FakeGit:
         self.integrate_error: Exception | None = None         # raised by integrate (IntegrationBlocked / GitError)
         self.changed: dict[str, list[str]] = {}               # merge sha -> files the merged PR changed
         self.verified: set[tuple] = set()                     # (kind, shard, batch, part) Stage 2 verifies that succeed on master
+        self.verify_heads: set[tuple] = set()                 # (sha, kind, shard, batch, part) exact non-master verification
         self.verify_calls: list[tuple] = []
         self.verify_error: Exception | None = None
         self.on_base = True                                   # is a merge commit already on origin/<base>
@@ -107,7 +108,7 @@ class FakeGit:
         self.verify_calls.append((kind, shard, batch, part))
         if self.verify_error:
             raise self.verify_error
-        ok = (kind, shard, batch, part) in self.verified
+        ok = (kind, shard, batch, part) in self.verified or (sha, kind, shard, batch, part) in self.verify_heads
         return ok, "" if ok else "Relation Admission accounting failed: candidate has no relation"
 
     def contains_on_base(self, sha, base):
@@ -193,7 +194,8 @@ class FakeGit:
         if on_verified is not None:
             on_verified()
         self.removed.append((str(path), branch))
-        Path(path).rmdir()
+        import shutil
+        shutil.rmtree(path)
 
 
 class FakeGh:

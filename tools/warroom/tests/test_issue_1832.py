@@ -6,7 +6,7 @@ import unittest
 
 from tests.fakes import HEAD1, FakeAdapter
 from tests.test_claude_adapter import SESSION, init, result, stream
-from tests.test_issue_1684 import S2, merge_part, s2_world
+from tests.test_issue_1684 import S2, merge_part, s2_world, write_checkpoint
 from warroom import control
 from warroom.adapters import ClaudeCodeAdapter, ProcessAdapter
 
@@ -36,9 +36,16 @@ class DeniedButCompleted(unittest.TestCase):
 
     def run_part(self, text, pr=True, verified=True, remote=HEAD1, dirty="", head_ref=BRANCH):
         w = self.w
-        w.adapter.plan.append({"code": 0, "text": text})
+        # Drive one independently saved chunk, then exercise PR handling in the separate finalizer run.
+        w.adapter.plan.extend([{"code": 0, "text": stream(init("claude-x"), result())},
+                               {"code": 0, "text": text}])
+        w.tick()
+        write_checkpoint(w, merged=False)
+        w.adapter.finish(w.adapter.launches[-1]["pid"])
         w.tick()
         if pr:
+            # The simulated finalizer merge is reflected in the checkpoint before it opens its PR.
+            write_checkpoint(w, merged=True)
             merge_part(w, "claude", "001", "01", "01")
             w.gh.prs[7]["head_ref"] = head_ref
         w.git.remote[BRANCH] = remote
@@ -52,7 +59,7 @@ class DeniedButCompleted(unittest.TestCase):
     def test_success_with_a_denial_and_proven_work_reaches_review_without_rerun(self):
         b = self.run_part(final())
         self.assertEqual((b["state"], b["pr_number"]), ("WAITING_REVIEW", 7))
-        self.assertEqual(len(self.w.adapter.launches), 1)
+        self.assertEqual(len(self.w.adapter.launches), 2)
         self.assertEqual(self.w.git.verify_calls[0], ("part", "001", "01", "01"))
 
     def test_clean_success_is_unchanged(self):
@@ -87,7 +94,7 @@ class DeniedButCompleted(unittest.TestCase):
         w.tick(2)
         b = w.store.active_batch("claude", S2)
         self.assertEqual((b["state"], b["pr_number"]), ("WAITING_REVIEW", 7))
-        self.assertEqual(len(w.adapter.launches), 1)      # never re-produced
+        self.assertEqual(len(w.adapter.launches), 2)      # no chunk or finalizer is duplicated
 
     def test_fixing_with_a_denial_is_never_cleared(self):
         # #1828: Part verify passes whether or not the review blocker was fixed, so even a really pushed new HEAD
@@ -109,11 +116,11 @@ class DeniedButCompleted(unittest.TestCase):
         b = self.run_part(final(), pr=False)                  # gh pr create was denied: success result, no PR
         self.assertEqual(b["state"], "PAUSED")
         w.tick(3)
-        self.assertEqual(len(w.adapter.launches), 1)           # nothing restarts before the operator's Retry
+        self.assertEqual(len(w.adapter.launches), 2)           # nothing restarts before the operator's Retry
         self.assertTrue(control.retry(w.store, "claude", S2))
         w.tick(2)
         b = w.store.active_batch("claude", S2)
-        self.assertEqual((b["state"], len(w.adapter.launches)), ("PRODUCING", 2))
+        self.assertEqual((b["state"], len(w.adapter.launches)), ("PRODUCING", 3))
         self.assertIn(w.adapter.launches[-1]["kind"], ("resume", "start"))
         self.assertEqual(b["branch"], BRANCH)
 
@@ -123,7 +130,7 @@ class DeniedButCompleted(unittest.TestCase):
         self.assertEqual(b["state"], "PAUSED")
         self.assertTrue(control.retry(w.store, "claude", S2))
         w.tick(2)
-        self.assertEqual(len(w.adapter.launches), 1)           # an existing PR is never duplicated by a new run
+        self.assertEqual(len(w.adapter.launches), 2)           # an existing PR is never duplicated by a new run
         self.assertIn(w.store.active_batch("claude", S2)["state"], ("PAUSED", "ERROR"))
 
     def test_retry_with_a_lost_exit_status_uses_the_log_and_pr_evidence(self):
@@ -143,7 +150,7 @@ class DeniedButCompleted(unittest.TestCase):
                 self.assertTrue(control.retry(w.store, "claude", S2))
                 w.tick(2)
                 state = w.store.active_batch("claude", S2)["state"]
-                self.assertEqual(len(w.adapter.launches), 1)       # never re-produced, never a duplicate PR
+                self.assertEqual(len(w.adapter.launches), 2)       # neither chunk nor finalizer is duplicated
                 self.assertEqual(state, want) if want else self.assertIn(state, ("PAUSED", "ERROR"))
 
     def test_retry_of_a_fixing_denial_is_not_swallowed(self):
@@ -178,7 +185,7 @@ class DeniedButCompleted(unittest.TestCase):
                 self.assertEqual(w.sup._denied_run_problem(b) is None, ok)
                 self.assertEqual(w.sup._retry_denied_success(b), ok)
                 self.assertEqual(w.store.batch(b["id"])["state"], "WAITING_REVIEW" if ok else "PRODUCING")
-                self.assertEqual(len(w.adapter.launches), 1)
+                self.assertEqual(len(w.adapter.launches), 2)
 
 if __name__ == "__main__":
     unittest.main()

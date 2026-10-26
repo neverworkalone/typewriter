@@ -67,8 +67,9 @@ function card(l) {
   }
   const bar = h("div", { class: "bar2" }, h("i"));
   bar.firstChild.style.width = (l.progress_pct || 0) + "%";
+  const batch = l.stage2 ? `S${l.stage2.shard} B${l.stage2.batch} P${l.stage2.part}` : l.batch;
   return h("button", { class: "card " + l.state, onclick: go },
-    h("div", { class: "t" }, h("span", {}, (mobile.matches ? l.model + " · " : "") + l.label + " · " + l.batch),
+    h("div", { class: "t" }, h("span", {}, (mobile.matches ? l.model + " · " : "") + l.label + " · " + batch),
       h("span", {}, l.phase + (l.drain ? " + DRAIN" : "") + "  " + l.icon)),
     h("div", { class: "s" }, l.progress_text ? `${l.progress_text}  ${l.progress_pct}%` : "진행량 확인 중"),
     l.progress_text ? bar : null,

@@ -181,6 +181,19 @@ class ReadTests(unittest.TestCase):
         self.assertIn("[REDACTED]", line["error"])
         self.assertEqual(b["maintainer"]["column"], "deepseek")
 
+    def test_stage2_saved_candidate_progress_uses_the_shared_board_and_detail_view(self):
+        self.e.store.line("claude", "s2")
+        bid = self.e.store.create_batch(method="s2", producer="claude", shard="001", batch="01-03",
+                                        branch="s2-claude-001-01-03", worktree=str(self.e.paths.worktrees / "part"))
+        self.e.store.update(bid, state="PAUSED", progress_kind="candidates", progress_done=0, progress_total=100)
+        board = api.board(self.e.store, self.e.cfg)
+        line = next(item for item in board["lines"] if item["method"] == "s2")
+        self.assertEqual((line["progress_text"], line["progress_pct"], line["stage2"]),
+                         ("0 / 100 candidates", 0.0, {"shard": "001", "batch": "01", "part": "03"}))
+        detail = api.line_detail(self.e.store, self.e.cfg, self.e.paths, "claude", "s2")
+        self.assertIn("Shard 001 · Batch 01 · Part 03", detail["header"])
+        self.assertEqual(detail["line"]["progress_text"], "0 / 100 candidates")
+
     def test_unknown_line_is_404(self):
         for model, method in [("nobody", "a"), ("claude", "m"), ("deepseek", "s2"), ("claude", "z")]:
             with self.subTest(line=(model, method)), self.assertRaises(api.ApiError) as cm:
