@@ -126,6 +126,24 @@ class DeniedButCompleted(unittest.TestCase):
         self.assertEqual(len(w.adapter.launches), 1)           # an existing PR is never duplicated by a new run
         self.assertIn(w.store.active_batch("claude", S2)["state"], ("PAUSED", "ERROR"))
 
+    def test_retry_with_a_lost_exit_status_uses_the_log_and_pr_evidence(self):
+        # Real #1828: the run's exit status was recorded as 'unknown' (lost exit file) although its log ends in success.
+        for name, verified, want in [("verified", True, "WAITING_REVIEW"), ("verify fails", False, None)]:
+            with self.subTest(name):
+                self.tearDown()
+                self.setUp()
+                w = self.w
+                b = self.run_part(final(), verified=False)
+                with w.store._conn() as c:
+                    c.execute("UPDATE runs SET exit_status='unknown' WHERE batch_id=?", (b["id"],))
+                if verified:
+                    w.git.verified.add(("part", "001", "01", "01"))
+                self.assertTrue(control.retry(w.store, "claude", S2))
+                w.tick(2)
+                state = w.store.active_batch("claude", S2)["state"]
+                self.assertEqual(len(w.adapter.launches), 1)       # never re-produced, never a duplicate PR
+                self.assertEqual(state, want) if want else self.assertIn(state, ("PAUSED", "ERROR"))
+
     def test_retry_of_a_fixing_denial_is_not_swallowed(self):
         w = self.w
         b = self.run_part(final())
