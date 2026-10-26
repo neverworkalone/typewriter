@@ -95,6 +95,25 @@ node scripts/relation/literary-context-cli.mjs add-form \
   --sense-id SENSE_ID --form INFLECTED_FORM --basis 'reviewed irregular form'
 ```
 
+### Reading a chunk without noisy output
+
+Use the paths, settings and checkpoint you were given; do not list the cache root
+(`rg --files`, `find`) to locate them, and when a path is unknown narrow it by
+directory, filename pattern and `| head`. Use `report` for checkpoint status;
+otherwise query only the fields or counts you need, never the whole checkpoint or
+ledger. Normal literary excerpts and sense-reading contexts are never trimmed.
+
+Save the `chunk` response once, then reuse these two filters (items with only
+`sense_id` and `status`, such as `SEARCH_FAILED`, have no `contexts`):
+
+```sh
+node scripts/relation/literary-context-cli.mjs chunk --db DB --checkpoint CP > .warroom-scratch/chunk-01.read.json
+# Overview: one line per sense
+jq -r '.items[] | [.sense_id, (.lemma // "-"), (.pos // "-"), (.gloss // .status), "hits=\(.total_hits // 0)", "unseen=\(.unseen_hits // 0)", "shown=\((.contexts // []) | length)"] | @tsv' .warroom-scratch/chunk-01.read.json
+# Contexts: only the selected sense, full excerpts
+jq -r --arg id SENSE_ID '.items[] | select(.sense_id == $id) | (.contexts // [])[] | "[\(.k)] \(.src)\n\(.x)\n"' .warroom-scratch/chunk-01.read.json
+```
+
 ## What you still do for every sense with hits
 
 The semantic work is unchanged: compare each context with the exact Canonical
