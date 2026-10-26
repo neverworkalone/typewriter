@@ -25,8 +25,8 @@ import { openReadonlyDb, searchContexts, renderContexts, saveChunk } from '<work
 const db = openReadonlyDb('<승인 문어 SQLite 경로>');            // read-only
 let r = searchContexts(db, ['김구'], { maxSamples: 8 });      // 전체 호출에 걸친 표본·문자 상한, 짧은 형태는 양쪽 경계(boundary: 'left'|'none'으로 조정)
 console.log(renderContexts(r));                                // 상태 + 짧은 발췌 + next_cursor
-r = searchContexts(db, ['김구'], { cursor: r.next_cursor });  // 같은 형태 목록으로 다음 문맥(중복·누락 없음)
-await saveChunk('.warroom-scratch/d-{{batch}}', 3, rows, chunkRecordIds);  // chunk-003.jsonl.tmp → mv
+if (r.next_cursor) r = searchContexts(db, ['김구'], { cursor: r.next_cursor });  // 같은 형태 목록·boundary·DB로만 다음 문맥(null이면 끝, 다시 호출하면 처음부터)
+await saveChunk('.warroom-scratch/d-{{batch}}', 3, rows, chunk);  // chunk = [{record_id, sense_ids}] Canonical 순서; 하나라도 빠지면 쓰지 않고 실패
 ```
 
 상태: `ZERO_HITS`(완전 탐색 후 없음) / `COMPLETE` / `LIMITED`(상한에서 멈춤, `next_cursor`로 계속) / `SEARCH_FAILED`. 이 도구는 검색·출력 상한만 담당하며 source sense 판독(VERIFIED)과 후보 편집은 AI가 직접 한다. `LIMITED` 표본에 출발 sense가 없다고 `ZERO_HITS`/`NO_VERIFIED`로 확정하지 않고, 필요하면 `next_cursor`나 다른 승인 검색형으로 더 조회한다.

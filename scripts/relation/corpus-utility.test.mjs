@@ -97,16 +97,75 @@ test('short forms keep both-side boundaries and homonym hits are left to the rea
   }
 });
 
-test('saveChunk exposes only a complete chunk file and rejects a wrong record set', async () => {
+test('saveChunk publishes only a chunk that matches every Canonical record and sense', async () => {
   const root = await mkdtemp(path.join(await (async () => { await mkdir(path.resolve('.warroom-scratch'), { recursive: true }); return path.resolve('.warroom-scratch'); })(), 'corpus-utility-chunk-'));
   try {
-    const rows = [{ record_id: 'r1', senses: [] }, { record_id: 'r2', senses: [] }];
-    await assert.rejects(saveChunk(root, 1, rows, ['r2', 'r1']), /Canonical order/);
+    const expected = [{ record_id: 'r1', sense_ids: ['s1', 's2'] }, { record_id: 'r2', sense_ids: ['s3'] }];
+    const good = [
+      { record_id: 'r1', senses: [{ sense_id: 's1', candidates: ['가'] }, { sense_id: 's2', candidates: [] }] },
+      { record_id: 'r2', senses: [{ sense_id: 's3', candidates: [] }] },
+    ];
+    const bad = {
+      'missing record': good.slice(0, 1),
+      'wrong order': [good[1], good[0]],
+      'missing sense': [{ record_id: 'r1', senses: [good[0].senses[0]] }, good[1]],
+      'empty senses': [{ record_id: 'r1', senses: [] }, good[1]],
+      'swapped senses': [{ record_id: 'r1', senses: [good[0].senses[1], good[0].senses[0]] }, good[1]],
+      'candidates not an array': [{ record_id: 'r1', senses: [{ sense_id: 's1' }, good[0].senses[1]] }, good[1]],
+    };
+    for (const [label, rows] of Object.entries(bad)) {
+      await assert.rejects(saveChunk(root, 1, rows, expected), /./, label);
+    }
+    await assert.rejects(saveChunk(root, 1, good), /expected chunk records/);
     assert.deepEqual(await readdir(root), []);
-    const target = await saveChunk(root, 1, rows, ['r1', 'r2']);
+    const target = await saveChunk(root, 1, good, expected);
     assert.equal(path.basename(target), 'chunk-001.jsonl');
     assert.deepEqual(await readdir(root), ['chunk-001.jsonl']);
     assert.equal((await readFile(target, 'utf8')).trim().split('\n').length, 2);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('a short form examines a bounded paragraph span per call and reaches later matches through the cursor', async () => {
+  const { root, databasePath } = await makeCorpus([...Array.from({ length: 95 }, () => '아무 일도 없는 문단이다.'), '그 기현, 낯설다.', '다시 기현 이다.']);
+  try {
+    const database = openReadonlyDb(databasePath);
+    const traced = [];
+    const spy = new Proxy(database, { get: (target, key) => (key === 'prepare' ? (sql) => { const statement = target.prepare(sql); return { all: (...args) => { traced.push(args); return statement.all(...args); }, get: (...args) => statement.get(...args) }; } : target[key].bind?.(target) ?? target[key]) });
+    const first = searchContexts(spy, ['기현'], { scanRows: 40 });
+    assert.deepEqual([first.status, first.items.length], ['LIMITED', 0]);
+    assert.ok(first.next_cursor);
+    // Every instr query was confined to a rowid window no larger than the scan bound.
+    for (const [after, end] of traced.filter((args) => args.length === 3)) assert.ok(end - after <= 40);
+    const pages = drain(database, ['기현'], { scanRows: 40 });
+    assert.deepEqual(pages.flatMap((page) => page.items.map((item) => item.paragraph_rowid)), [96, 97]);
+    assert.ok(pages.length >= 3);
+    assert.equal(pages.at(-1).status, 'COMPLETE');
+    database.close();
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('a cursor is rejected when its options, corpus or position differ', async () => {
+  const { root, databasePath } = await makeCorpus(Array.from({ length: 10 }, () => '기현 이 말했다. 기현, 또.'));
+  try {
+    const database = openReadonlyDb(databasePath);
+    const first = searchContexts(database, ['기현'], { maxSamples: 2 });
+    assert.equal(searchContexts(database, ['기현'], { cursor: first.next_cursor, maxSamples: 20 }).status, 'COMPLETE');
+    assert.equal(searchContexts(database, ['기현'], { cursor: first.next_cursor, boundary: 'none' }).status, 'SEARCH_FAILED');
+    const forged = (state) => Buffer.from(JSON.stringify(state)).toString('base64url');
+    const id = JSON.parse(Buffer.from(first.next_cursor, 'base64url').toString()).id;
+    for (const state of [{ id, form: 5, after: 1 }, { id, form: 0, after: -1 }, { id, form: 0, after: 9999 }, { id, form: 0, after: 1.5 }]) {
+      assert.equal(searchContexts(database, ['기현'], { cursor: forged(state) }).status, 'SEARCH_FAILED');
+    }
+    database.close();
+    const other = await makeCorpus(Array.from({ length: 11 }, () => '기현 이 말했다.'));
+    const otherDb = openReadonlyDb(other.databasePath);
+    assert.equal(searchContexts(otherDb, ['기현'], { cursor: first.next_cursor }).status, 'SEARCH_FAILED');
+    otherDb.close();
+    await rm(other.root, { recursive: true, force: true });
   } finally {
     await rm(root, { recursive: true, force: true });
   }
