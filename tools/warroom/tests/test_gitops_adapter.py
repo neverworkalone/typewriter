@@ -191,6 +191,120 @@ class RealGit(unittest.TestCase):
         self.assertTrue(self.wt.exists())
         return head
 
+    def _simulate_registered_partial_remove(self, branch, on_verified=None):
+        """Delete one tracked path but leave Git's worktree registration/admin entry intact."""
+        self.git.fetch_base("master")
+        self.git.create_worktree(self.wt, branch, "master")
+        (self.wt / "g").write_text("y")
+        sh("git", "add", "g", cwd=self.wt)
+        sh("git", "commit", "-qm", "add second tracked file", cwd=self.wt)
+        head = self.git.head(self.wt)
+        original = self.git._git
+
+        def partial_remove(*args, **kwargs):
+            if args[:2] == ("worktree", "remove"):
+                (self.wt / "f").unlink()   # checkout removal failed after deleting one tracked file
+                return Result(255, "", "failed to delete checkout: Operation not permitted")
+            return original(*args, **kwargs)
+
+        self.git._git = partial_remove
+        try:
+            with self.assertRaises(GitError):
+                self.git.remove_owned(self.wt, branch, head, on_verified=on_verified)
+        finally:
+            self.git._git = original
+        self.assertEqual(self.git.registered(self.wt), branch)
+        self.assertIn("D f", self.git.dirty(self.wt))
+        self.assertTrue(self.wt.exists())
+        return head
+
+    def test_registered_partial_tracked_deletion_restores_then_retries_normal_remove(self):
+        branch = "a-x-001-01"
+        proofs = []
+        head = self._simulate_registered_partial_remove(branch, lambda: proofs.append({
+            "version": 1, "path": str(self.wt.resolve()), "branch": branch, "head_sha": self.git.head(self.wt),
+            "remove_started": True,
+        }))
+        proof = proofs[0]
+        proof["head_sha"] = head
+        observed = {"restored_before_remove": False}
+        original = self.git._git
+
+        def observe_restore(*args, **kwargs):
+            if args[:2] == ("worktree", "remove"):
+                observed["restored_before_remove"] = (self.wt / "f").read_text() == "x"
+                self.assertEqual(self.git.registered(self.wt), branch)
+            return original(*args, **kwargs)
+
+        self.git._git = observe_restore
+        try:
+            self.git.remove_owned(self.wt, branch, head, cleanup_proof=proof)
+        finally:
+            self.git._git = original
+
+        self.assertTrue(observed["restored_before_remove"])
+        self.assertFalse(self.wt.exists())
+        self.assertIsNone(self.git.registered(self.wt))
+        self.assertNotEqual(subprocess.run(["git", "rev-parse", "--verify", "-q", branch], cwd=self.repo,
+                                           env=ENV).returncode, 0)
+
+    def test_registered_partial_deletion_needs_proof_and_preserves_other_changes(self):
+        branch = "a-x-001-01"
+        proofs = []
+        head = self._simulate_registered_partial_remove(branch, lambda: proofs.append({
+            "version": 1, "path": str(self.wt.resolve()), "branch": branch, "head_sha": self.git.head(self.wt),
+            "remove_started": True,
+        }))
+        proof = proofs[0]
+        proof["head_sha"] = head
+
+        with self.assertRaisesRegex(CleanupBlocked, "without matching cleanup proof"):
+            self.git.remove_owned(self.wt, branch, head)
+        self.assertFalse((self.wt / "f").exists())
+
+        (self.wt / "g").write_text("owner edit")
+        with self.assertRaisesRegex(CleanupBlocked, "changes outside partial deletion"):
+            self.git.remove_owned(self.wt, branch, head, cleanup_proof=proof)
+        self.assertEqual((self.wt / "g").read_text(), "owner edit")
+        self.assertFalse((self.wt / "f").exists())
+
+        (self.wt / "g").write_text("y")
+        untracked = self.wt / "owner-new.txt"
+        untracked.write_text("keep this too")
+        with self.assertRaisesRegex(CleanupBlocked, "untracked/ignored data"):
+            self.git.remove_owned(self.wt, branch, head, cleanup_proof=proof)
+        self.assertEqual(untracked.read_text(), "keep this too")
+        untracked.unlink()
+
+        ignored = self.wt / "owner-private.txt"
+        ignored.write_text("keep me")
+        exclude = self.repo / ".git" / "info" / "exclude"
+        exclude.write_text(exclude.read_text() + "\n/owner-private.txt\n")
+        with self.assertRaisesRegex(CleanupBlocked, "untracked/ignored data"):
+            self.git.remove_owned(self.wt, branch, head, cleanup_proof=proof)
+        self.assertEqual(ignored.read_text(), "keep me")
+        self.assertFalse((self.wt / "f").exists())
+        self.assertEqual(self.git.registered(self.wt), branch)
+
+    def test_registered_partial_deletion_blocks_when_branch_head_moved(self):
+        branch = "a-x-001-01"
+        proofs = []
+        head = self._simulate_registered_partial_remove(branch, lambda: proofs.append({
+            "version": 1, "path": str(self.wt.resolve()), "branch": branch, "head_sha": self.git.head(self.wt),
+            "remove_started": True,
+        }))
+        proof = proofs[0]
+        proof["head_sha"] = head
+        (self.wt / "moved").write_text("new head")
+        sh("git", "add", "moved", cwd=self.wt)
+        sh("git", "commit", "-qm", "move branch after cleanup proof", cwd=self.wt)
+
+        with self.assertRaisesRegex(CleanupBlocked, "HEAD moved"):
+            self.git.remove_owned(self.wt, branch, head, cleanup_proof=proof)
+        self.assertFalse((self.wt / "f").exists())
+        self.assertTrue((self.wt / "moved").exists())
+        self.assertEqual(self.git.registered(self.wt), branch)
+
     def test_partial_remove_persists_proof_and_retry_removes_only_residual_tracked_files(self):
         branch = "a-x-001-01"
         proofs = []

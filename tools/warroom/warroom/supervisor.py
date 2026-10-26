@@ -948,7 +948,7 @@ class Supervisor:
     def _run_ok(self, b) -> None:
         try:
             if b["state"] == "PRODUCING":
-                info = self._find_pr(b)
+                info = self._find_recovery_pr(b) if b["method"] in {"a", "b", "c", "d"} else self._find_pr(b)
                 if info is None:
                     refusal = self._adapter(b["producer"]).policy_refusal(Path(b["log_file"]))
                     if refusal:   # the local CLI policy stopped the PR step: keep everything, wait for the operator
@@ -1076,9 +1076,8 @@ class Supervisor:
             return
         self.store.set(f"last_poll_{b['id']}", str(self.clock()))
         try:
-            # A live Stage 1 producer still needs its final-result gate for an open PR. A merged PR can be
-            # recovered from its exact candidate claim and stopped immediately; CLEANUP separately proves the
-            # worktree safety conditions before removal.
+            # Keep the live final-result gate ahead of open-PR adoption. Other Stage 1 paths can validate ownership
+            # immediately; final-result producers validate exact ownership after their completion/denial gates.
             info = self._find_pr(b) if stage1 and ad.requires_final_result_for_pr else (
                 self._find_recovery_pr(b) if stage1 else self._find_pr(b))
         except (DuplicateClaim, RecoveryBlocked) as e:
@@ -1090,7 +1089,7 @@ class Supervisor:
             return
         if stage1 and info["merged"] and ad.requires_final_result_for_pr:
             try:
-                info = self._find_recovery_pr(b)  # merged recovery additionally requires the exact Candidate claim
+                info = self._find_recovery_pr(b)  # merged recovery still requires the exact Candidate claim
             except (DuplicateClaim, RecoveryBlocked) as e:
                 ad.stop(b["pid"])
                 return self._fail(b, "ERROR", str(e))
@@ -1117,6 +1116,12 @@ class Supervisor:
             if not self._denials_cleared(b, Path(b["log_file"])):
                 ad.stop(b["pid"])
                 return
+            if stage1:
+                try:
+                    info = self._find_recovery_pr(b)
+                except (DuplicateClaim, RecoveryBlocked) as e:
+                    ad.stop(b["pid"])
+                    return self._fail(b, "ERROR", str(e))
         self.store.update(b["id"], state="WAITING_REVIEW", pr_number=info["number"],
                           head_sha=info["head_sha"], error=None, retries=0)
         self.store.set(f"last_poll_{b['id']}", "0")

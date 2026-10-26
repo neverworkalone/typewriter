@@ -172,7 +172,34 @@ class Git:
             if not path.is_dir():
                 raise CleanupBlocked(f"worktree is still registered but its path is missing (manual check): {path}")
             if (d := self.dirty(path)).strip():
-                raise CleanupBlocked(f"uncommitted changes in worktree:\n{d.strip()[:400]}")
+                if not self._cleanup_proof_matches(path, branch, pr_head_sha, cleanup_proof):
+                    raise CleanupBlocked(f"uncommitted changes in worktree without matching cleanup proof:\n"
+                                         f"{d.strip()[:400]}")
+                if self.head(path) != pr_head_sha:
+                    raise CleanupBlocked(f"registered worktree HEAD moved from proven merged PR HEAD "
+                                         f"{pr_head_sha}; preserved")
+                ref = self._git("rev-parse", "--verify", "--quiet", f"refs/heads/{branch}^{{commit}}", check=False)
+                if not ref.ok or ref.out.strip() != pr_head_sha:
+                    raise CleanupBlocked(f"local branch {branch} moved from proven merged PR HEAD "
+                                         f"{pr_head_sha}; preserved")
+                missing = self._partial_tree_status(path, self._common_dir(), pr_head_sha)
+                actual = self._git("status", "--porcelain=v1", "--untracked-files=all", "--no-renames", "-z",
+                                   cwd=path).out
+                actual_missing = []
+                for record in actual.split("\0"):
+                    if not record:
+                        continue
+                    if len(record) < 4 or record[2] != " " or record[0] != " " or record[1] != "D":
+                        raise CleanupBlocked("registered worktree has changes beyond proven tracked-file deletions "
+                                             "(preserved)")
+                    actual_missing.append(record[3:])
+                if not missing or set(actual_missing) != set(missing):
+                    raise CleanupBlocked("registered worktree deletions do not match the proven PR HEAD "
+                                         "(preserved)")
+                self._restore_partial_deletions(path, pr_head_sha, missing)
+                if (d := self.dirty(path)).strip():
+                    raise CleanupBlocked(f"worktree is still dirty after restoring proven partial deletions:\n"
+                                         f"{d.strip()[:400]}")
             local = self.head(path)
             if local != pr_head_sha:
                 self._sync_to_pr_head(path, local, pr_head_sha)
@@ -263,12 +290,20 @@ class Git:
             if not read.ok:
                 detail = read.err.strip() or read.out.strip() or f"exit {read.code}"
                 raise CleanupBlocked(f"cannot prepare a read-only PR HEAD comparison for residual worktree: {detail}")
-            status = self.r.run(prefix + ["status", "--porcelain=v1", "--untracked-files=all"],
+            status = self.r.run(prefix + ["status", "--porcelain=v1", "--untracked-files=all", "--no-renames", "-z"],
                                 cwd=self.root, env=env, timeout=120)
             if not status.ok:
                 detail = status.err.strip() or status.out.strip() or f"exit {status.code}"
                 raise CleanupBlocked(f"cannot inspect residual worktree against merged PR HEAD: {detail}")
-            rows = status.out.splitlines()
+            rows, missing = [], []
+            for record in status.out.split("\0"):
+                if not record:
+                    continue
+                if len(record) < 4:
+                    raise CleanupBlocked("cannot parse merged PR worktree status; residual worktree is preserved")
+                rows.append(record[:2] + " " + record[3:])
+                if record[1] == "D":
+                    missing.append(record[3:])
             files = self.r.run(prefix + ["ls-files", "--stage", "-z"], cwd=self.root, env=env, timeout=120)
             if not files.ok:
                 detail = files.err.strip() or files.out.strip() or f"exit {files.code}"
@@ -322,17 +357,27 @@ class Git:
         if unexpected:
             raise CleanupBlocked("residual worktree has changes outside partial deletion (preserved):\n"
                                  + "\n".join(unexpected[:12]))
-        return rows
+        return missing
+
+    @staticmethod
+    def _cleanup_proof_matches(path: Path, branch: str, pr_head_sha: str, proof: dict | None) -> bool:
+        expected = {"version": 1, "path": str(path), "branch": branch, "head_sha": pr_head_sha,
+                    "remove_started": True}
+        return isinstance(proof, dict) and all(proof.get(k) == v for k, v in expected.items())
+
+    def _restore_partial_deletions(self, path: Path, pr_head_sha: str, paths: list[str]) -> None:
+        """Restore only proven missing tracked paths so registered Git can perform its normal non-force removal."""
+        with tempfile.TemporaryDirectory(prefix="warroom-cleanup-restore-") as tmp:
+            pathspec = Path(tmp) / "paths"
+            try:
+                pathspec.write_bytes(b"".join(os.fsencode(rel) + b"\0" for rel in paths))
+            except OSError as e:
+                raise CleanupBlocked(f"cannot prepare exact tracked-file restoration list: {e}")
+            self._git("--literal-pathspecs", "restore", f"--source={pr_head_sha}", "--worktree",
+                      f"--pathspec-from-file={pathspec}", "--pathspec-file-nul", cwd=path)
 
     def _remove_partial(self, path: Path, branch: str, pr_head_sha: str, proof: dict | None) -> None:
-        expected = {
-            "version": 1,
-            "path": str(path),
-            "branch": branch,
-            "head_sha": pr_head_sha,
-            "remove_started": True,
-        }
-        if not isinstance(proof, dict) or any(proof.get(k) != v for k, v in expected.items()):
+        if not self._cleanup_proof_matches(path, branch, pr_head_sha, proof):
             raise CleanupBlocked("worktree registration is missing and no matching durable clean/HEAD/ownership "
                                  "cleanup proof exists; residual files and branch are preserved. Verify the saved "
                                  "batch path, branch, PR HEAD, and local changes with the repository owner before "

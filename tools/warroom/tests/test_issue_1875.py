@@ -96,6 +96,56 @@ class Recovery(unittest.TestCase):
         self.assertIsNone(w.store.get(f"cleanup_proof_{b['id']}"))
         self.assertEqual(len(w.adapter.launches), 1)
 
+    def test_registered_partial_deletion_retries_from_cleanup_without_rerun_or_other_line_changes(self):
+        w = World()
+        self.addCleanup(w.tmp.cleanup)
+        w.start("single", method="b")
+        w.tick()
+        b = w.row(method="b")
+        install_batch_pr(w, b)
+        w.store.update(b["id"], state="MERGED", pid=None, pr_number=1870, head_sha=HEAD1, merged=1)
+        other = dict(w.store.line("deepseek", "a"))
+        w.tick()  # MERGED -> CLEANUP
+
+        original = w.git.remove_owned
+        failed_once = {"value": False}
+        saved_proof = {}
+
+        def registered_owner(path):
+            return [owner for worktree, owner in w.git.reg.items()
+                    if Path(worktree).resolve() == Path(path).resolve()]
+
+        def partial(path, branch, head, *, cleanup_proof=None, on_verified=None):
+            if not failed_once["value"]:
+                failed_once["value"] = True
+                on_verified()
+                w.git.dirty_text = " D tracked.txt"
+                raise GitError("git worktree remove: Operation not permitted")
+            self.assertEqual(registered_owner(path), [branch])  # registration survived the first remove attempt
+            self.assertTrue(cleanup_proof)
+            self.assertEqual(cleanup_proof["head_sha"], head)
+            saved_proof.update(cleanup_proof)
+            w.git.dirty_text = ""  # real Git restores only the proof-verified deletion before normal removal
+            return original(path, branch, head, cleanup_proof=cleanup_proof, on_verified=on_verified)
+
+        w.git.remove_owned = partial
+        w.tick()
+        row = w.row(method="b")
+        self.assertEqual((row["state"], row["paused_from"]), ("ERROR", "CLEANUP"))
+        self.assertTrue(w.store.get(f"cleanup_proof_{b['id']}"))
+        self.assertEqual(registered_owner(b["worktree"]), [b["branch"]])
+        self.assertEqual(dict(w.store.line("deepseek", "a")), other)
+
+        self.assertTrue(control.retry(w.store, "deepseek", "b"))
+        w.tick()  # Retry restores CLEANUP; no producer launch
+        w.tick()  # saved proof plus surviving registration resumes bounded cleanup
+
+        self.assertEqual(w.row(method="b")["state"], "COMPLETE")
+        self.assertTrue(saved_proof)
+        self.assertFalse(Path(b["worktree"]).exists())
+        self.assertEqual(dict(w.store.line("deepseek", "a")), other)
+        self.assertEqual(len(w.adapter.launches), 1)
+
 
 class ProducerHandoff(unittest.TestCase):
     def test_validated_pr_stops_codex_style_producer_before_it_can_poll_or_cleanup(self):

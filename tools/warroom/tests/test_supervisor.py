@@ -16,6 +16,17 @@ def review(i, head, body="-1", user="genonfire"):
             "commit_id": head, "submitted_at": "2026-10-21T10:00:00Z"}
 
 
+def install_candidate_pr(w, number=7, head=HEAD1, *, state="open", merged=False):
+    b = w.row()
+    branch = b["branch"]
+    w.pr_info(number, head, state=state, merged=merged, head_ref=branch)
+    w.gh.by_branch[branch] = [{"number": number, "state": state.upper(), "headRefOid": head}]
+    w.gh.files[number] = [{"path": f"data/relation-candidates/{b['shard']}/"
+                                  f"{b['shard']}_{b['batch']}_{b['method']}_{b['producer']}.jsonl"}]
+    if state == "open":
+        w.git.remote[branch] = head
+
+
 
 def _quota_event(**over):
     err = {"type": "provider.quota", "status": 429,
@@ -78,8 +89,7 @@ class Lifecycle(unittest.TestCase):
         self.assertEqual(w.row()["state"], "WAITING_REVIEW")
 
     def open_pr(self):
-        self.w.pr_info(7, HEAD1)
-        self.w.gh.by_branch[BRANCH] = [{"number": 7, "state": "OPEN", "headRefOid": HEAD1}]
+        install_candidate_pr(self.w)
 
     def test_full_cycle_with_fix_and_cleanup(self):
         w = self.w
@@ -226,15 +236,29 @@ class Lifecycle(unittest.TestCase):
         self.assertEqual(w.row()["state"], "ERROR")  # no PR found
         w2 = World()
         w2.start("single")
-        w2.adapter.plan.append({"code": 0, "effect": lambda: (
-            w2.pr_info(7, HEAD1),
-            w2.gh.by_branch.update({BRANCH: [{"number": 7, "state": "OPEN", "headRefOid": HEAD1}]}),
+        def own_plus_rival():
+            install_candidate_pr(w2)
             w2.gh.open.append({"number": 5, "headRefName": "other", "files": [{
-                "path": "data/relation-candidates/001/001_01_a_deepseek.jsonl"}]}))})
+                "path": "data/relation-candidates/001/001_01_a_deepseek.jsonl"}]})
+        w2.adapter.plan.append({"code": 0, "effect": own_plus_rival})
         w2.tick(); w2.adapter.finish(w2.adapter.launches[-1]["pid"]); w2.tick()
         self.assertEqual(w2.row()["state"], "ERROR")
         self.assertIn("#5", w2.row()["error"])
         w2.tmp.cleanup()
+
+    def test_finished_producer_does_not_accept_unclaimed_open_pr(self):
+        w = World()
+        w.start("single")
+        w.adapter.plan.append({"code": 0, "effect": lambda: install_candidate_pr(w)})
+        w.tick()
+        w.adapter.finish(w.adapter.launches[-1]["pid"])
+        w.gh.files[7] = []
+        w.tick()
+        self.assertEqual(w.row()["state"], "ERROR")
+        self.assertIn("Candidate 파일 소유권", w.row()["error"])
+        self.assertIsNone(w.row()["pr_number"])
+        self.assertTrue(Path(w.row()["worktree"]).exists())
+        w.tmp.cleanup()
 
 
 class LiveAiHandover(unittest.TestCase):
@@ -272,6 +296,36 @@ class LiveAiHandover(unittest.TestCase):
         self.assertEqual(w.row()["state"], "FIXING")
         w.tmp.cleanup()
 
+    def test_open_pr_requires_exact_candidate_claim_and_matching_branch_and_heads(self):
+        cases = [
+            ("missing claim", lambda w, b: w.gh.files.update({7: []}), "Candidate 파일 소유권"),
+            ("wrong claim", lambda w, b: w.gh.files.update({7: [{"path":
+                "data/relation-candidates/001/001_02_a_deepseek.jsonl"}]}), "Candidate 파일 소유권"),
+            ("wrong PR branch", lambda w, b: w.pr_info(7, HEAD1, head_ref="other-branch"), "head 브랜치"),
+            ("wrong local HEAD", lambda w, b: setattr(w.git, "local_head", HEAD2), "로컬 worktree HEAD"),
+            ("wrong remote HEAD", lambda w, b: w.git.remote.update({b["branch"]: HEAD2}), "원격 소유 브랜치"),
+        ]
+        for name, mutate, expected in cases:
+            with self.subTest(name):
+                w = World()
+                self.addCleanup(w.tmp.cleanup)
+                w.start("single")
+                w.adapter.plan.append({"code": 0, "session": "ses_1"})
+                w.tick()
+                b = w.row()
+                w.pr_info(7, HEAD1, head_ref=b["branch"])
+                w.gh.by_branch[b["branch"]] = [{"number": 7, "state": "OPEN", "headRefOid": HEAD1}]
+                w.gh.files[7] = [{"path": f"data/relation-candidates/{b['shard']}/"
+                                          f"{b['shard']}_{b['batch']}_{b['method']}_{b['producer']}.jsonl"}]
+                w.git.remote[b["branch"]] = HEAD1
+                mutate(w, b)
+                w.tick()
+                row = w.row()
+                self.assertEqual(row["state"], "ERROR")
+                self.assertIn(expected, row["error"])
+                self.assertTrue(Path(row["worktree"]).exists())
+                self.assertEqual(w.git.removed, [])
+
     def test_merge_while_ai_alive_stops_ai_before_cleanup(self):
         w = World()
         w.start("single")
@@ -295,9 +349,7 @@ class ReviewReversal(unittest.TestCase):
     def test_retracted_minus_one_never_triggers_even_after_restart(self):
         w = World()
         w.start("single")
-        w.adapter.plan.append({"code": 0, "session": "ses_1", "effect": lambda: (
-            w.pr_info(7, HEAD1),
-            w.gh.by_branch.update({BRANCH: [{"number": 7, "state": "OPEN", "headRefOid": HEAD1}]}))})
+        w.adapter.plan.append({"code": 0, "session": "ses_1", "effect": lambda: install_candidate_pr(w)})
         w.tick(); w.adapter.finish(w.adapter.launches[-1]["pid"]); w.tick()
         m1 = review(11, HEAD1); m1["submitted_at"] = "2026-10-21T10:00:00Z"
         p1 = review(12, HEAD1, "+1"); p1["submitted_at"] = "2026-10-21T10:05:00Z"
@@ -389,9 +441,7 @@ class Operations(unittest.TestCase):
     def test_continuous_starts_next_batch_fresh_after_cleanup(self):
         w = World()
         w.start("continuous")
-        w.adapter.plan.append({"code": 0, "session": "ses_1", "effect": lambda: (
-            w.pr_info(7, HEAD1),
-            w.gh.by_branch.update({BRANCH: [{"number": 7, "state": "OPEN", "headRefOid": HEAD1}]}))})
+        w.adapter.plan.append({"code": 0, "session": "ses_1", "effect": lambda: install_candidate_pr(w)})
         w.tick(); w.adapter.finish(w.adapter.launches[-1]["pid"]); w.tick()
         w.pr_info(7, HEAD1, state="closed", merged=True)
         w.tick(3)
@@ -408,9 +458,7 @@ class Operations(unittest.TestCase):
     def test_stop_after_current_prevents_next_batch(self):
         w = World()
         w.start("continuous")
-        w.adapter.plan.append({"code": 0, "effect": lambda: (
-            w.pr_info(7, HEAD1),
-            w.gh.by_branch.update({BRANCH: [{"number": 7, "state": "OPEN", "headRefOid": HEAD1}]}))})
+        w.adapter.plan.append({"code": 0, "effect": lambda: install_candidate_pr(w)})
         w.tick()
         control.set_drain(w.store, "deepseek", "a", True)  # current batch continues, no next one
         w.adapter.finish(w.adapter.launches[-1]["pid"]); w.tick()
