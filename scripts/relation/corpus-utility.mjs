@@ -24,6 +24,7 @@ const MIN_MAX_CHARS = 600;
 const HEAD_RESERVE = 160; // status line, short cursor and error text of renderContexts
 const ITEM_OVERHEAD = 200; // the item label line around the excerpt
 const WORD_CHARACTER = /[\p{L}\p{N}]/u;
+const normalizeForms = (forms) => [...new Set(forms.map((form) => String(form).trim()).filter(Boolean))];
 
 /** Open the approved paragraph corpus index read-only (`query_only`) after its schema check. */
 export function openReadonlyDb(databasePath) {
@@ -106,7 +107,7 @@ export function searchContexts(database, forms, {
   boundary,
   cursor = null,
 } = {}) {
-  const list = [...new Set(forms.map((form) => String(form).trim()).filter(Boolean))];
+  const list = normalizeForms(forms);
   if (list.length === 0) return { status: 'SEARCH_FAILED', error: 'no search form', items: [], next_cursor: null };
   try {
     const formsKey = searchId(database, list, boundary);
@@ -156,6 +157,39 @@ export function searchContexts(database, forms, {
   } catch (error) {
     return { status: 'SEARCH_FAILED', error: error.message, items: [], next_cursor: null };
   }
+}
+
+function searchRequestKey(forms, options = {}) {
+  const {
+    maxSamples = DEFAULT_MAX_SAMPLES,
+    maxChars = DEFAULT_MAX_CHARS,
+    snippetChars = DEFAULT_SNIPPET_CHARS,
+    scanRows = DEFAULT_SCAN_ROWS,
+    boundary,
+    cursor = null,
+  } = options;
+  return JSON.stringify([forms, maxSamples, maxChars, snippetChars, scanRows, boundary ?? null, cursor]);
+}
+
+const copySearchResult = (result) => ({ ...result, items: result.items.map((item) => ({ ...item })) });
+
+/**
+ * Create a memory-only, per-chunk reuse function bound to one read-only corpus connection.
+ * Exact request pages are reused; LIMITED pages remain distinct by cursor, and SEARCH_FAILED is retried.
+ * `reused` concerns search output only: callers must verify every source sense independently.
+ */
+export function createSearchContextReuse(database) {
+  const results = new Map();
+  return (forms, options = {}) => {
+    const list = normalizeForms(forms);
+    const key = searchRequestKey(list, options);
+    const cached = results.get(key);
+    if (cached) return { result: copySearchResult(cached), reused: true };
+
+    const result = searchContexts(database, list, options);
+    if (result.status !== 'SEARCH_FAILED') results.set(key, copySearchResult(result));
+    return { result: copySearchResult(result), reused: false };
+  };
 }
 
 function finish(items, status, id, form, after) {
