@@ -216,6 +216,10 @@ const RAW_CI_CATEGORIES = Object.freeze({
         tier: 'normal',
       },
       {
+        ...testCheck('scripts/relation/corpus-utility.test.mjs', 'Test D corpus search utility bounds, paging and atomic chunk save'),
+        tier: 'normal',
+      },
+      {
         ...testCheck('scripts/relation/admission.test.mjs', 'Test Stage 2 Relation Admission preparation and accounting'),
         tier: 'normal',
       },

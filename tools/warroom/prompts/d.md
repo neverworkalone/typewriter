@@ -18,6 +18,19 @@ War Room이 고정한 `(method,model,shard,batch)`/worktree/branch/HEAD는 재�
 
 문맥 출력은 sense당 판독에 필요한 **검색어 중심의 짧은 발췌(문맥 몇 건)**만 화면에 낸다. 한 번에 판독이 부족하면 그 sense의 문맥만 선택적으로 더 조회하고, 필요한 원문 범위를 잘라 미검증 후보를 만들지 않는다.
 
+**검색은 `scripts/relation/corpus-utility.mjs`를 import해 쓴다**(재사용 권장, 강제 아님; 특수 경로가 필요하면 조합·확장). 매 배치 `probe-*.mjs`/`followup.mjs`를 다시 구현하지 않는다.
+
+```js
+import { openReadonlyDb, searchContexts, renderContexts, saveChunk } from '<worktree>/scripts/relation/corpus-utility.mjs';
+const db = openReadonlyDb('<승인 문어 SQLite 경로>');            // read-only
+let r = searchContexts(db, ['김구'], { maxSamples: 8 });      // 전체 호출에 걸친 표본·문자 상한, 짧은 형태는 양쪽 경계(boundary: 'left'|'none'으로 조정)
+console.log(renderContexts(r));                                // 상태 + 짧은 발췌 + next_cursor
+if (r.next_cursor) r = searchContexts(db, ['김구'], { cursor: r.next_cursor });  // 같은 형태 목록·boundary·DB로만 다음 문맥(null이면 끝, 다시 호출하면 처음부터)
+await saveChunk('.warroom-scratch/d-{{batch}}', 3, rows, chunk);  // chunk = [{record_id, sense_ids}] Canonical 순서; 하나라도 빠지면 쓰지 않고 실패
+```
+
+상태: `ZERO_HITS`(완전 탐색 후 없음) / `COMPLETE` / `LIMITED`(상한에서 멈춤, `next_cursor`로 계속) / `SEARCH_FAILED`. 이 도구는 검색·출력 상한만 담당하며 source sense 판독(VERIFIED)과 후보 편집은 AI가 직접 한다. `LIMITED` 표본에 출발 sense가 없다고 `ZERO_HITS`/`NO_VERIFIED`로 확정하지 않고, 필요하면 `next_cursor`나 다른 승인 검색형으로 더 조회한다.
+
 검색 규칙:
 - 3글자 이상은 `paragraph_fts`(trigram) 등 승인 인덱스의 실제 스키마가 지원하는 경로를 쓴다. 1~2글자는 trigram이 지원되지 않으므로 필요한 sense에 한해 제한된 literal 검색을 쓰되, **앞뒤 양쪽 문자 경계**(예: `기현`에 `기현상`·`이기현`이 섞이지 않도록)와 활용형·동음이의어를 직접 확인한다.
 - `LIMIT` 표본에서 정확 문맥이 없다고 전체 corpus의 ZERO_HITS로 보고하지 않는다. ZERO_HITS / NO_VERIFIED / SEARCH_FAILED / 미작업을 구분하고, 부족하면 승인된 다른 검색형·활용형·다른 문맥으로 필요한 만큼만 확장한다. 전수 선행 스캔은 하지 않는다.
