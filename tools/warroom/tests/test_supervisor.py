@@ -1,8 +1,11 @@
+import json
+import tempfile
 import unittest
 from pathlib import Path
 
 from tests.fakes import HEAD1, HEAD2, World
 from warroom import control
+from warroom.adapters import opencode_free_quota
 from warroom.supervisor import Supervisor, acquire_lock
 
 BRANCH = "a-deepseek-001-01"
@@ -12,6 +15,50 @@ def review(i, head, body="-1", user="genonfire"):
     return {"id": i, "user": {"login": user}, "body": f"{body}\nHEAD: {head}\nfix it",
             "commit_id": head, "submitted_at": "2026-10-21T10:00:00Z"}
 
+
+
+def _quota_event(**over):
+    err = {"type": "provider.quota", "status": 429,
+           "response": {"body": json.dumps({"type": "error", "error": {"type": "FreeUsageLimitError",
+                                                                      "message": "Free usage limit reached."}})}}
+    err.update(over)
+    return json.dumps({"type": "error", "error": err})
+
+
+QUOTA_LINE = _quota_event() + "\n"
+_TEXT = json.dumps({"type": "text", "part": {"text": "FreeUsageLimitError"}})
+_TOOL = json.dumps({"type": "tool_use", "part": {"state": {"output": _quota_event()}}})
+_EMBED = json.dumps({"type": "text", "part": {"text": _quota_event()}})
+_RATE = json.dumps({"type": "error", "error": {"type": "provider.quota", "status": 429, "response": {"body": "{}"}}})
+
+
+class StructuredQuota(unittest.TestCase):
+    def test_only_a_real_provider_event_qualifies(self):
+        big = (_TEXT + "\n") * 3000   # > 30KB of later output must not hide the earlier error event
+        cases = [
+            ("real event", QUOTA_LINE, True),
+            ("early event, big log, other final error", QUOTA_LINE + big + _RATE + "\n", True),
+            ("garbage lines around it", "oops\n" + QUOTA_LINE + "{broken\n", True),
+            ("ai text", _TEXT + "\n", False),
+            ("tool stdout", _TOOL + "\n", False),
+            ("embedded json string", _EMBED + "\n", False),
+            ("plain text line", "FreeUsageLimitError: Free usage limit reached\n", False),
+            ("no body", _quota_event(response={}) + "\n", False),
+            ("body not json", _quota_event(response={"body": "FreeUsageLimitError"}) + "\n", False),
+            ("body not string", _quota_event(response={"body": {"error": {"type": "FreeUsageLimitError"}}}) + "\n", False),
+            ("other inner type", _quota_event(response={"body": json.dumps({"error": {"type": "Other"}})}) + "\n", False),
+            ("status 500", _quota_event(status=500) + "\n", False),
+            ("status true", _quota_event(status=True) + "\n", False),
+            ("other error type", _quota_event(type="provider.rate") + "\n", False),
+            ("truncated event", QUOTA_LINE[:-20], False),
+            ("empty", "", False),
+        ]
+        for name, text, want in cases:
+            with self.subTest(name), tempfile.TemporaryDirectory() as d:
+                f = Path(d) / "run.log"
+                f.write_text(text)
+                self.assertEqual(opencode_free_quota(f), want)
+        self.assertFalse(opencode_free_quota("/nonexistent/run.log"))
 
 class Lifecycle(unittest.TestCase):
     def setUp(self):
@@ -296,8 +343,9 @@ class ModelPolicy(unittest.TestCase):
 
     def test_table(self):
         cases = [  # text, models, state, tier, launches
-            ("FreeUsageLimitError reached", None, "PRODUCING", "go", 2),
-            ("FreeUsageLimitError reached", {"free": "p/free-x-free", "go": ""}, "PAUSED", "free", 1),
+            (QUOTA_LINE, None, "PRODUCING", "go", 2),
+            (QUOTA_LINE, {"free": "p/free-x-free", "go": ""}, "PAUSED", "free", 1),
+            ("FreeUsageLimitError reached", None, "PAUSED", "free", 1),     # bare text is never quota evidence
             ("HTTP 429 Too Many Requests", None, "PRODUCING", "free", 1),   # backoff, not Go
             ("401 unauthorized", None, "PAUSED", "free", 1),
             ("weird provider blob", None, "PAUSED", "free", 1),             # never silently paid

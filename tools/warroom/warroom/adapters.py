@@ -713,7 +713,50 @@ def _logged_in(out: str) -> bool:
         return False
 
 
-# --- failure classification: free-quota exhaustion is the ONLY trigger for Go ---
+QUOTA_EVIDENCE = "provider.quota / FreeUsageLimitError / 429"
+
+
+def _is_free_quota_event(e: object) -> bool:
+    """A top-level OpenCode `error` event whose provider body is FreeUsageLimitError; nothing looser qualifies."""
+    err = e.get("error") if isinstance(e, dict) and e.get("type") == "error" else None
+    if not isinstance(err, dict) or err.get("type") != "provider.quota":
+        return False
+    status = err.get("status")
+    resp = err.get("response")
+    body = resp.get("body") if isinstance(resp, dict) else None
+    if isinstance(status, bool) or status != 429 or not isinstance(body, str):
+        return False
+    try:
+        inner = json.loads(body)
+    except ValueError:
+        return False
+    inner_err = inner.get("error") if isinstance(inner, dict) else None
+    return isinstance(inner_err, dict) and inner_err.get("type") == "FreeUsageLimitError"
+
+
+def opencode_free_quota(log_file: str | Path) -> bool:
+    """True only when this run's JSONL log holds a real provider Free-quota error event.
+
+    The file is streamed line by line, so an error event is never lost to a tail cut; AI text, tool output
+    and embedded JSON strings are never top-level events and cannot qualify. Unreadable or malformed
+    input is simply not evidence (fail closed: the caller keeps its non-paid recovery paths)."""
+    try:
+        with open(log_file, encoding="utf-8", errors="replace") as fh:
+            for line in fh:
+                if '"provider.quota"' not in line:
+                    continue
+                try:
+                    ev = json.loads(line)
+                except ValueError:
+                    continue
+                if _is_free_quota_event(ev):
+                    return True
+    except OSError:
+        return False
+    return False
+
+
+# --- failure classification: a structured OpenCode Free-quota error is the ONLY trigger for Go ---
 def classify_failure(log_text: str, quota_patterns: list[str]) -> str:
     """'free_quota' | 'effort' | 'rate_limit' | 'auth' | 'network' | 'unknown'.
 

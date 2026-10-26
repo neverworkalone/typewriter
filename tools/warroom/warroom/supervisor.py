@@ -18,7 +18,7 @@ import traceback
 from pathlib import Path
 
 from . import auth, batches, control, defects, progress, prompts, reviews, stage2
-from .adapters import PREFLIGHT_PENDING, RunSpec, classify_failure
+from .adapters import PREFLIGHT_PENDING, QUOTA_EVIDENCE, RunSpec, classify_failure, opencode_free_quota
 from .config import (TIERED_ADAPTERS, adapter_label, config_problem, load_config, registry, registry_problems,
                      reload_problem, run_spec, stage2_problem)
 from .gitops import CleanupBlocked, GitError
@@ -716,11 +716,7 @@ class Supervisor:
                                         and runs[0]["kind"].startswith("produce")
                                         and runs[0]["ended_at"] is not None)
                 if is_terminal_producer and failed_code is not None and failed_code != 0:
-                    try:
-                        text = Path(runs[0]["log_file"]).read_text("utf-8", errors="replace")[-30000:]
-                    except OSError:
-                        text = ""
-                    cls = classify_failure(text, self.cfg["quota_patterns"])
+                    cls = self._classify_run(b["producer"], runs[0]["log_file"])
                     if self._handoff_failed_pr(b, failed_code, cls):
                         return
                 elif is_terminal_producer and failed_code == 0:
@@ -1103,12 +1099,21 @@ class Supervisor:
                        "재생산을 막고 수동 확인을 요청합니다.", "error")
         return True
 
-    def _run_failed(self, b, code: int) -> None:
+    def _classify_run(self, producer: str, log_file) -> str:
+        """Failure class of ONE run's log. For the tiered CLI (OpenCode) only a structured provider Free-quota
+        error event is `free_quota`; text patterns never are. Other CLIs keep the configured text patterns."""
         try:
-            text = Path(b["log_file"]).read_text("utf-8", errors="replace")[-30000:]
+            text = Path(log_file).read_text("utf-8", errors="replace")[-30000:]
         except OSError:
             text = ""
-        cls = classify_failure(text, self.cfg["quota_patterns"])
+        if self._tiered(producer):
+            if opencode_free_quota(log_file):
+                return "free_quota"
+            return classify_failure(text, [])
+        return classify_failure(text, self.cfg["quota_patterns"])
+
+    def _run_failed(self, b, code: int) -> None:
+        cls = self._classify_run(b["producer"], b["log_file"])
         self.store.log(b["id"], f"AI 종료 코드 {code}, 분류={cls}", "warn")
         if b["state"] == "PRODUCING" and not b["pr_number"]:
             if self._handoff_failed_pr(b, code, cls):
@@ -1129,7 +1134,7 @@ class Supervisor:
             if b["model_tier"] == "free" and go:
                 self.store.set_line(b["producer"], b["method"], model_tier="go")
                 self.store.update(b["id"], model_tier="go")
-                self.store.log(b["id"], "무료 한도 소진 확인 → Go 모델로 전환")
+                self.store.log(b["id"], f"제공자 Free 한도 오류 확인 ({QUOTA_EVIDENCE}) → Go 모델로 전환")
                 return self._relaunch(self.store.batch(b["id"]))
             return self._fail(b, "PAUSED", "무료 한도 소진이 확인되었지만 전환할 Go 모델이 없거나 이미 Go입니다.")
         if cls in ("rate_limit", "network"):
