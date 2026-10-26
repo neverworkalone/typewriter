@@ -111,3 +111,25 @@ test('saveChunk exposes only a complete chunk file and rejects a wrong record se
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test('rendered output stays within maxChars for many forms, and the cursor does not carry the form list', async () => {
+  const forms = Array.from({ length: 12 }, (_, index) => `검색어${String(index).padStart(2, '가')}긴표면형`);
+  const { root, databasePath } = await makeCorpus(Array.from({ length: 60 }, (_, index) => `${'앞'.repeat(150)} ${forms[index % forms.length]} ${'뒤'.repeat(150)}`));
+  try {
+    const database = openReadonlyDb(databasePath);
+    for (const maxChars of [400, 700, 1500]) {
+      const pages = drain(database, forms, { maxChars, maxSamples: 50 });
+      for (const page of pages) {
+        const text = renderContexts(page);
+        assert.ok(text.length <= maxChars, `${text.length} > ${maxChars}`);
+        if (page.next_cursor) assert.ok(page.next_cursor.length < 100);
+      }
+      const ids = pages.flatMap((page) => page.items.map((item) => `${item.form}:${item.paragraph_rowid}`));
+      assert.equal(new Set(ids).size, ids.length);
+      assert.equal(ids.length, 60);
+    }
+    database.close();
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

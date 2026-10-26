@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { mkdir, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -18,6 +19,9 @@ export const DEFAULT_SNIPPET_CHARS = 240;
 export const DEFAULT_SCAN_ROWS = 200_000;
 const FTS_MIN_LENGTH = 3;
 const BATCH_ROWS = 200;
+const MIN_MAX_CHARS = 400;
+const HEAD_RESERVE = 160; // status line, short cursor and error text of renderContexts
+const ITEM_OVERHEAD = 120; // the item label line around the excerpt
 const WORD_CHARACTER = /[\p{L}\p{N}]/u;
 
 /** Open the approved paragraph corpus index read-only (`query_only`) after its schema check. */
@@ -27,10 +31,12 @@ export function openReadonlyDb(databasePath) {
 
 const encodeCursor = (state) => Buffer.from(JSON.stringify(state), 'utf8').toString('base64url');
 
+const formsId = (list) => createHash('sha256').update(JSON.stringify(list)).digest('hex').slice(0, 12);
+
 function decodeCursor(cursor, formsKey) {
   try {
     const state = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8'));
-    if (state.forms === formsKey && Number.isInteger(state.form) && Number.isInteger(state.after)) return state;
+    if (state.id === formsKey && Number.isInteger(state.form) && Number.isInteger(state.after)) return state;
   } catch { /* fall through */ }
   throw new Error('search cursor does not belong to this form list');
 }
@@ -73,7 +79,7 @@ function rawBatch(database, form, after, scanLimit) {
  */
 export function searchContexts(database, forms, {
   maxSamples = DEFAULT_MAX_SAMPLES,
-  maxChars = DEFAULT_MAX_CHARS,
+  maxChars = DEFAULT_MAX_CHARS, // bound of the rendered response; values below 400 are raised to 400
   snippetChars = DEFAULT_SNIPPET_CHARS,
   scanRows = DEFAULT_SCAN_ROWS,
   boundary,
@@ -81,12 +87,14 @@ export function searchContexts(database, forms, {
 } = {}) {
   const list = [...new Set(forms.map((form) => String(form).trim()).filter(Boolean))];
   if (list.length === 0) return { status: 'SEARCH_FAILED', error: 'no search form', items: [], next_cursor: null };
-  const formsKey = JSON.stringify(list);
+  const formsKey = formsId(list);
   try {
-    const state = cursor ? decodeCursor(cursor, formsKey) : { forms: formsKey, form: 0, after: 0 };
-    const snippet = Math.min(snippetChars, maxChars);
+    const state = cursor ? decodeCursor(cursor, formsKey) : { id: formsKey, form: 0, after: 0 };
+    // maxChars bounds the whole rendered response (renderContexts): header + every item line + excerpt.
+    const budget = Math.max(maxChars, MIN_MAX_CHARS);
+    const snippet = Math.max(20, Math.min(snippetChars, budget - HEAD_RESERVE - ITEM_OVERHEAD));
     const items = [];
-    let chars = 0;
+    let chars = HEAD_RESERVE;
     let scanned = 0;
     for (let formIndex = state.form; formIndex < list.length; formIndex += 1) {
       const form = list[formIndex];
@@ -94,7 +102,7 @@ export function searchContexts(database, forms, {
       let after = formIndex === state.form ? state.after : 0;
       for (;;) {
         const limit = Math.min(BATCH_ROWS, scanRows - scanned);
-        if (limit <= 0) return finish(items, 'LIMITED', list, formIndex, after);
+        if (limit <= 0) return finish(items, 'LIMITED', formsKey, formIndex, after);
         const rows = rawBatch(database, form, after, limit);
         scanned += rows.length;
         for (const row of rows) {
@@ -102,12 +110,14 @@ export function searchContexts(database, forms, {
           const at = findBoundedOccurrence(row.text, form, formBoundary);
           if (at < 0) continue;
           const excerpt = excerptAround(row.text, [form], snippet, at, form).text;
-          if (items.length > 0 && chars + excerpt.length > maxChars) {
-            return finish(items, 'LIMITED', list, formIndex, row.rowid - 1);
+          const item = { form: form.slice(0, 30), paragraph_rowid: row.rowid, title: (row.title ?? '').slice(0, 30), author: (row.author ?? '').slice(0, 30), excerpt };
+          const cost = renderItem(item, items.length).length + 1;
+          if (items.length > 0 && chars + cost > budget) {
+            return finish(items, 'LIMITED', formsKey, formIndex, row.rowid - 1);
           }
-          items.push({ form, paragraph_rowid: row.rowid, title: (row.title ?? '').slice(0, 80), author: (row.author ?? '').slice(0, 80), excerpt });
-          chars += excerpt.length;
-          if (items.length >= maxSamples) return finish(items, 'LIMITED', list, formIndex, row.rowid);
+          items.push(item);
+          chars += cost;
+          if (items.length >= maxSamples) return finish(items, 'LIMITED', formsKey, formIndex, row.rowid);
         }
         if (rows.length < limit) break;
       }
@@ -118,14 +128,16 @@ export function searchContexts(database, forms, {
   }
 }
 
-function finish(items, status, list, form, after) {
-  return { status, items, next_cursor: encodeCursor({ forms: JSON.stringify(list), form, after }) };
+function finish(items, status, id, form, after) {
+  return { status, items, next_cursor: encodeCursor({ id, form, after }) };
 }
+
+const renderItem = (item, index) => `[${index + 1}] ${item.form} | ${item.title} ${item.author}\n${item.excerpt}`;
 
 /** One bounded text block for the AI to read. Includes the status and, when LIMITED, the cursor to continue. */
 export function renderContexts(result) {
-  const head = `${result.status} shown=${result.items.length}${result.next_cursor ? ` next_cursor=${result.next_cursor}` : ''}${result.error ? ` error=${result.error}` : ''}`;
-  return [head, ...result.items.map((item, index) => `[${index + 1}] ${item.form} | ${item.title} ${item.author}\n${item.excerpt}`)].join('\n');
+  const head = `${result.status} shown=${result.items.length}${result.next_cursor ? ` next_cursor=${result.next_cursor}` : ''}${result.error ? ` error=${String(result.error).slice(0, 100)}` : ''}`;
+  return [head, ...result.items.map(renderItem)].join('\n');
 }
 
 /**
