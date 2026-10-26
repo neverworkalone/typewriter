@@ -123,11 +123,13 @@ test('an exact Canonical lemma wins over a colliding orthographic form for exist
   });
 
   const firstSenseOnly = [crossShardLink('w427808-s1')];
-  assert.deepEqual(prepare(firstSenseOnly).items[0].candidates.map((candidate) => candidate.text), ['무릎치기']);
+  assert.deepEqual(prepare(firstSenseOnly).items, [], 'an existing ID relation accounts for the candidate without requiring a link to every target sense');
+  assert.equal(prepare(firstSenseOnly).stats.skipped_existing, 1);
   assert.equal(verify(firstSenseOnly).missing, 0, 'a valid other-shard reverse ID pair accounts for the candidate');
 
+  assert.deepEqual(prepare([]).items[0].candidates.map((candidate) => candidate.text), ['무릎치기'], 'a new candidate still needs a target-sense decision');
   const everyTargetSense = [...firstSenseOnly, crossShardLink('w427808-s2')];
-  assert.deepEqual(prepare(everyTargetSense).items, [], 'prepare skips only after every sense of the exact lemma target is linked');
+  assert.deepEqual(prepare(everyTargetSense).items, [], 'additional approved target-sense links remain existing coverage');
   assert.equal(prepare(everyTargetSense).stats.skipped_existing, 1);
   assert.equal(verify(everyTargetSense).skipped_existing, 1);
 

@@ -38,11 +38,12 @@ class FakeAdapter(AgentAdapter):
         return Handle(pid, Path(ex), Path(log))
 
     def start(self, prompt, cwd, env, run, title, log_file, exit_file):
-        return self._go("start", cwd, log_file, exit_file, prompt=prompt, model=run.model, effort=run.effort)
+        return self._go("start", cwd, log_file, exit_file, prompt=prompt, model=run.model, effort=run.effort,
+                        approved_literary_db=env.get("TYPEWRITER_APPROVED_LITERARY_DB"))
 
     def resume(self, session_id, prompt, cwd, env, run, log_file, exit_file):
         return self._go("resume", cwd, log_file, exit_file, prompt=prompt, model=run.model, effort=run.effort,
-                        session=session_id)
+                        session=session_id, approved_literary_db=env.get("TYPEWRITER_APPROVED_LITERARY_DB"))
 
     def preflight(self, runner, env, runs):
         """Stands in for OpenCode: the provider-qualified (p/...) IDs get the real `opencode models` check."""

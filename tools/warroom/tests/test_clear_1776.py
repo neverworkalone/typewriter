@@ -459,6 +459,10 @@ class ClearQueues(unittest.TestCase):
             with self.subTest(method=method):
                 w = World(models=None)
                 try:
+                    if method == "c":
+                        index = Path(w.tmp.name) / "approved-index.sqlite"
+                        index.write_bytes(b"synthetic approved-index path")
+                        w.cfg["literary_index_path"] = str(index)
                     w.start("single", "deepseek", method)
                     w.tick()
                     mine = w.row("deepseek", method)

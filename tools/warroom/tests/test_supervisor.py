@@ -133,6 +133,83 @@ class Lifecycle(unittest.TestCase):
         w.tick(2)
         self.assertEqual(len(w.adapter.launches), 2)
 
+    def test_c_requires_configured_index_and_passes_it_to_production_and_review_fixes(self):
+        w = self.w
+        w.start("single", "deepseek", "c")
+        w.tick()
+        blocked = control.line_status(w.store, "deepseek", "c")["blocked"]
+        self.assertIn("literary_index_path", blocked)
+        self.assertEqual(w.adapter.launches, [])
+        self.assertIsNone(w.row("deepseek", "c"))
+
+        invalid = World()
+        private_path = Path(invalid.tmp.name) / "private-approved-index.sqlite"
+        invalid.cfg["literary_index_path"] = str(private_path)
+        invalid.start("single", "deepseek", "c")
+        invalid.tick()
+        invalid_blocked = control.line_status(invalid.store, "deepseek", "c")["blocked"]
+        self.assertIn("literary_index_path", invalid_blocked)
+        self.assertNotIn(str(private_path), invalid_blocked)
+        self.assertEqual(invalid.adapter.launches, [])
+        invalid.tmp.cleanup()
+
+        index = Path(w.tmp.name) / "approved literary index.sqlite"
+        index.write_bytes(b"synthetic approved-index path")
+        w.cfg["literary_index_path"] = str(index)
+        w.start("single", "deepseek", "c")
+        w.tick()
+        launch = w.adapter.launches[-1]
+        self.assertEqual(launch["approved_literary_db"], str(index))
+        self.assertIn("TYPEWRITER_APPROVED_LITERARY_DB", launch["prompt"])
+        resume_env = w.sup._launch_env({"method": "c"}, "produce_resume")
+        self.assertEqual(resume_env["TYPEWRITER_APPROVED_LITERARY_DB"], str(index))
+        agent_env = {"PATH": "/warroom/bin:/usr/bin", "WARROOM_REAL_GIT": "/usr/bin/git",
+                     "TYPEWRITER_APPROVED_LITERARY_DB": "/untrusted/inherited.sqlite"}
+        combined_env = w.sup._launch_env({"method": "c"}, "produce", agent_env)
+        self.assertEqual(combined_env["PATH"], agent_env["PATH"])
+        self.assertEqual(combined_env["WARROOM_REAL_GIT"], agent_env["WARROOM_REAL_GIT"])
+        self.assertEqual(combined_env["TYPEWRITER_APPROVED_LITERARY_DB"], str(index))
+        for kind in ("fix_resume", "fix_new"):
+            with self.subTest(kind=kind):
+                env = w.sup._launch_env({"method": "c"}, kind)
+                self.assertEqual(env["TYPEWRITER_APPROVED_LITERARY_DB"], str(index))
+        for method in ("a", "b", "d"):
+            with self.subTest(method=method):
+                env = w.sup._launch_env({"method": method}, "fix_new")
+                self.assertIsNone(env.get("TYPEWRITER_APPROVED_LITERARY_DB"))
+
+    def test_c_review_fix_launches_require_the_approved_index(self):
+        w = self.w
+        index = Path(w.tmp.name) / "approved literary index.sqlite"
+        index.write_bytes(b"synthetic approved-index path")
+        w.cfg["literary_index_path"] = str(index)
+        w.start("single", "deepseek", "c")
+        w.tick()
+        batch = w.row("deepseek", "c")
+        event = [{"kind": "review", "author": "reviewer", "path": "data/relation-candidates/001/001_01_c_deepseek.jsonl",
+                  "line": 1, "key": "review-1", "body": "Recheck the exact source sense."}]
+
+        for kind in ("fix_resume", "fix_new"):
+            with self.subTest(kind=kind):
+                w.store.update(batch["id"], state="WAITING_REVIEW", pid=None,
+                               session_id="ses_c" if kind == "fix_resume" else None,
+                               pr_number=7, head_sha=HEAD1)
+                before = len(w.adapter.launches)
+                w.sup._launch(w.store.batch(batch["id"]), kind, event)
+                self.assertEqual(len(w.adapter.launches), before + 1)
+                launched = w.adapter.launches[-1]
+                self.assertEqual(launched["approved_literary_db"], str(index))
+                self.assertIn("TYPEWRITER_APPROVED_LITERARY_DB", launched["prompt"])
+
+        w.cfg["literary_index_path"] = ""
+        before = len(w.adapter.launches)
+        w.sup._launch(w.store.batch(batch["id"]), "fix_new", event)
+        self.assertEqual(len(w.adapter.launches), before)
+        failed = w.store.batch(batch["id"])
+        self.assertEqual(failed["state"], "ERROR")
+        self.assertIn("literary_index_path", failed["error"])
+        self.assertNotIn(str(index), failed["error"])
+
     def test_resume_failure_falls_back_to_new_session_once(self):
         w = self.w
         self.produce_to_review()
