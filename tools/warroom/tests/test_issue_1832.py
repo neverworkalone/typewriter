@@ -154,10 +154,31 @@ class DeniedButCompleted(unittest.TestCase):
         w.store.update(b["id"], state="PRODUCING")
         self.assertTrue(w.sup._retry_denied_success(w.store.batch(b["id"])))    # a producing success is still adopted
 
-    def test_non_stage2_denial_stays_paused(self):
-        w = self.w
-        self.assertIsNotNone(w.sup._denied_run_problem({"method": "a"}))
-
+    def test_non_stage2_denial_is_cleared_by_owned_pr_pushed_head_and_clean_worktree(self):
+        # A/B/C/D have no Part verify: a denied stray command must not block a run whose owned PR, pushed HEAD and clean
+        # worktree prove completion (real #1849, A 003_02); the same Retry never adopts anything less.
+        for name, kw, ok in [("proven", {}, True),
+                             ("uncommitted worktree", dict(dirty=" M data/x"), False),
+                             ("local HEAD not on the PR", dict(local="d" * 40), False),
+                             ("no PR", dict(pr=False), False)]:
+            with self.subTest(name):
+                self.tearDown()
+                self.setUp()
+                w = self.w
+                b = self.run_part(final(), verified=False)
+                self.assertEqual(b["state"], "PAUSED")
+                w.store.update(b["id"], method="a", batch="01", state="PRODUCING")   # as the operator Retry leaves it
+                w.gh.files[7] = [{"path": "data/relation-candidates/001/001_01_a_claude.jsonl"}]
+                if not kw.get("pr", True):
+                    w.gh.by_branch[BRANCH] = []
+                w.git.dirty_text = kw.get("dirty", "")
+                if "local" in kw:
+                    w.git.local_head = kw["local"]
+                b = w.store.batch(b["id"])
+                self.assertEqual(w.sup._denied_run_problem(b) is None, ok)
+                self.assertEqual(w.sup._retry_denied_success(b), ok)
+                self.assertEqual(w.store.batch(b["id"])["state"], "WAITING_REVIEW" if ok else "PRODUCING")
+                self.assertEqual(len(w.adapter.launches), 1)
 
 if __name__ == "__main__":
     unittest.main()
