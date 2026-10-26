@@ -5,6 +5,7 @@ worktree의 현재 상태와 기존 산출물을 확인하고, 이미 있는 산
 생산 규칙은 해당 Method의 정본 이슈(A/B #860, C #1155, D #1156)와 AGENTS.md를 따른다.
 
 Method C 복구 시 `ps`·`pgrep`에 의존하지 말고, 작업의 실행 결과와 기존 기록으로 상태를 확인한다.
+Method C의 승인 SQLite는 Supervisor가 `TYPEWRITER_APPROVED_LITERARY_DB`로 전달한다. 기존 DB를 이 변수로 사용하고, 값이 없으면 DB를 검색하거나 추측하지 말고 경로 설정 누락을 보고한다.
 
 임시·스크래치 파일(검증용 스크립트, 청크, probe 결과 등)은 worktree 안의 `.warroom-scratch/` 에만 만든다. 이 디렉터리는 git에서 무시되며 커밋하지 않는다.
 산출물이 아닌 파일을 worktree의 다른 경로에 남기지 않는다.

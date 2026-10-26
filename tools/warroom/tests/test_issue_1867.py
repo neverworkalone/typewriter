@@ -2,6 +2,7 @@
 profile (adapter/model/effort/permission_profile) from config; producer identity, pins and fail-closed rules are unchanged."""
 import json
 import unittest
+from pathlib import Path
 
 from tests.fakes import World
 from tests.test_issue_1555 import produce_and_report
@@ -179,6 +180,10 @@ class ReloadAndRuns(unittest.TestCase):
 
     def test_stage1_methods_run_high_and_start_is_blocked_without_a_stage_pin(self):
         w = self.world()
+        index = Path(w.tmp.name) / "approved-literature.sqlite"
+        index.write_bytes(b"synthetic approved-index path")
+        write(w, PRODUCERS, model_profiles=PROFILES, assignments=ASSIGN, literary_index_path=str(index))
+        self.assertTrue(reload(w)[0])
         for method in "abcd":
             w.start("single", "codex", method)
         w.tick(4)
