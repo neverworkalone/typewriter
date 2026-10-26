@@ -814,7 +814,7 @@ class Supervisor:
         if not denied:
             return True
         names = sorted({str(d.get("tool_name")) for d in denied})
-        cmds = [str((d.get("tool_input") or {}).get("command", ""))[:80] for d in denied
+        cmds = [" ".join(str((d.get("tool_input") or {}).get("command", "")).split())[:80] for d in denied
                 if isinstance(d.get("tool_input"), dict) and (d.get("tool_input") or {}).get("command")]
         what = f"도구: {', '.join(names)}" + (f"; 명령: {' | '.join(cmds[:3])}" if cmds else "")
         pause = (f"로컬 CLI 권한 정책상 거부되어 실행이 불완전합니다 ({what}). 자동 권한 상승 없이 중지합니다. "
