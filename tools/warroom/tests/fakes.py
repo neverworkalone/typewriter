@@ -39,11 +39,13 @@ class FakeAdapter(AgentAdapter):
 
     def start(self, prompt, cwd, env, run, title, log_file, exit_file):
         return self._go("start", cwd, log_file, exit_file, prompt=prompt, model=run.model, effort=run.effort,
-                        approved_literary_db=env.get("TYPEWRITER_APPROVED_LITERARY_DB"))
+                        approved_literary_db=env.get("TYPEWRITER_APPROVED_LITERARY_DB"),
+                        stage2_chunk_git=env.get("WARROOM_STAGE2_CHUNK"))
 
     def resume(self, session_id, prompt, cwd, env, run, log_file, exit_file):
         return self._go("resume", cwd, log_file, exit_file, prompt=prompt, model=run.model, effort=run.effort,
-                        session=session_id, approved_literary_db=env.get("TYPEWRITER_APPROVED_LITERARY_DB"))
+                        session=session_id, approved_literary_db=env.get("TYPEWRITER_APPROVED_LITERARY_DB"),
+                        stage2_chunk_git=env.get("WARROOM_STAGE2_CHUNK"))
 
     def preflight(self, runner, env, runs):
         """Stands in for OpenCode: the provider-qualified (p/...) IDs get the real `opencode models` check."""

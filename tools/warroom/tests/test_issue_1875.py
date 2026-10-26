@@ -246,6 +246,15 @@ class ProducerHandoff(unittest.TestCase):
                                          HEAD1], env=env, capture_output=True, text=True)
             listing = subprocess.run([sys.executable, str(BIN / "git"), "-C", "/repo", "status", "--short"],
                                      env=env, capture_output=True, text=True)
+            chunk_env = {**env, "WARROOM_STAGE2_CHUNK": "1"}
+            chunk_commit = subprocess.run([sys.executable, str(BIN / "git"), "commit", "-m", "chunk"],
+                                          env=chunk_env, capture_output=True, text=True)
+            chunk_push = subprocess.run([sys.executable, str(BIN / "git"), "push", "origin", "branch"],
+                                        env=chunk_env, capture_output=True, text=True)
+            finalizer_commit = subprocess.run([sys.executable, str(BIN / "git"), "commit", "-m", "final"],
+                                              env=env, capture_output=True, text=True)
+            finalizer_push = subprocess.run([sys.executable, str(BIN / "git"), "push", "origin", "branch"],
+                                            env=env, capture_output=True, text=True)
 
         self.assertEqual(remove.returncode, 126)
         self.assertEqual(delete.returncode, 126)
@@ -253,6 +262,11 @@ class ProducerHandoff(unittest.TestCase):
         self.assertEqual(update_ref.returncode, 126)
         self.assertEqual(listing.returncode, 0)
         self.assertEqual(listing.stdout.strip(), "-C /repo status --short")
+        self.assertEqual(chunk_commit.returncode, 126)
+        self.assertEqual(chunk_push.returncode, 126)
+        self.assertEqual((finalizer_commit.returncode, finalizer_push.returncode), (0, 0))
+        self.assertEqual(finalizer_commit.stdout.strip(), "commit -m final")
+        self.assertEqual(finalizer_push.stdout.strip(), "push origin branch")
 
 
 if __name__ == "__main__":

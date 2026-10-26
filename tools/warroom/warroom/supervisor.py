@@ -611,12 +611,15 @@ class Supervisor:
         return None
 
     def _launch_env(self, b, kind: str, base_env: dict | None = None) -> dict:
-        """Keep the private approved index path in every C producer run, including review fixes."""
+        """Add run-specific worker environment without inheriting Stage 2 chunk restrictions into finalization."""
         env = dict(self.env if base_env is None else base_env)
         key = "TYPEWRITER_APPROVED_LITERARY_DB"
         env.pop(key, None)
         if b["method"] == "c":
             env[key] = str(Path(self.cfg["literary_index_path"].strip()).expanduser())
+        env.pop("WARROOM_STAGE2_CHUNK", None)
+        if b["method"] == STAGE2_METHOD and isinstance(kind, str) and kind.startswith("s2_chunk_"):
+            env["WARROOM_STAGE2_CHUNK"] = "1"
         return env
 
     def _pinned_runs(self, producer: str, role: str = "stage1"):
@@ -738,8 +741,13 @@ class Supervisor:
                 if stage2.next_action(checkpoint) != phase:
                     raise prompts.PromptError("Stage 2 실행 단계와 현재 checkpoint 상태가 다릅니다")
                 prompt = prompts.stage2(b, phase, checkpoint, resumed=kind.endswith("_resume"))
-                # Persist before spawning so even an immediate checkpoint write is compared to this exact run start.
-                self.store.set(stage2.run_start_key(b["id"]), json.dumps(checkpoint, sort_keys=True))
+                if phase == "chunk":
+                    # Snapshot the checkpoint and both Git refs before each chunk; neither may move mid-run.
+                    baseline = {"checkpoint": checkpoint, "branch": b["branch"], "worktree": str(wt),
+                                "head": self.git.head(wt), "remote_head": self.git.remote_head(b["branch"])}
+                    self.store.set(stage2.run_start_key(b["id"]), json.dumps(baseline, sort_keys=True))
+                else:
+                    self.store.delete(stage2.run_start_key(b["id"]))
                 title = f"Stage 2 {stage2.label(b['shard'], b['batch'])} {phase}"
                 if kind.endswith("_resume"):
                     h = ad.resume(sid, prompt, wt, run_env, run, log, ex, **extra)
@@ -759,12 +767,8 @@ class Supervisor:
                 h = ad.start(prompts.fix(b, events, False), wt, run_env, run,
                                        f"PR {b['pr_number']} fix", log, ex, **extra)
         except prompts.PromptError as e:   # rendered before any process is started
-            if b["method"] == STAGE2_METHOD:
-                self.store.delete(stage2.run_start_key(b["id"]))
             return self._fail(b, "ERROR", f"프롬프트 오류로 AI를 시작하지 않았습니다: {e}")
         except Exception as e:
-            if b["method"] == STAGE2_METHOD:
-                self.store.delete(stage2.run_start_key(b["id"]))
             return self._fail(b, "ERROR", f"AI 실행 시작 실패: {e}")
         self.store.set(f"headlag_{b['id']}", "")   # a new run supersedes any earlier push verification
         state = "FIXING" if kind.startswith("fix") else "PRODUCING"
@@ -813,6 +817,9 @@ class Supervisor:
             return
         if b["method"] == STAGE2_METHOD and not b["pr_number"] and \
                 isinstance(b["run_kind"], str) and b["run_kind"].startswith("s2_chunk_"):
+            problem = self._stage2_chunk_boundary_problem(b)
+            if problem:
+                return self._fail(b, "ERROR", problem)
             try:
                 if self._find_recovery_pr(b) is not None:
                     return self._fail(b, "ERROR", "청크 실행 브랜치에 이미 PR이 있어 자동 재개를 중단합니다. "
@@ -1106,21 +1113,46 @@ class Supervisor:
         return None
 
     def _stage2_chunk_saved(self, b) -> bool:
-        """Compare the current checkpoint to the baseline persisted before the latest chunk run."""
+        """Compare the current checkpoint to the saved chunk-run baseline."""
         raw = self.store.get(stage2.run_start_key(b["id"]))
         if raw is None:
             return False
         try:
-            before = json.loads(raw)
-            if before is not None and not isinstance(before, dict):
+            baseline = json.loads(raw)
+            if not isinstance(baseline, dict) or "checkpoint" not in baseline:
                 return False
             after = stage2.checkpoint(b["worktree"], b["shard"], b["batch"])
         except (OSError, ValueError, KeyError, TypeError):
             return False
-        return stage2.chunk_saved_since(before, after)
+        return stage2.chunk_saved_since(baseline["checkpoint"], after)
+
+    def _stage2_chunk_boundary_problem(self, b) -> str | None:
+        """Fail closed if a chunk run changed or lost the Part's owned HEAD or remote branch ref."""
+        raw = self.store.get(stage2.run_start_key(b["id"]))
+        if raw is None:
+            return "Stage 2 청크의 Git 경계 기준이 없어 Retry를 중단합니다. worktree와 브랜치를 보존합니다."
+        try:
+            baseline = json.loads(raw)
+            if not isinstance(baseline, dict) or baseline.get("branch") != b["branch"] or \
+                    baseline.get("worktree") != str(b["worktree"]) or not isinstance(baseline.get("head"), str) or \
+                    "remote_head" not in baseline:
+                return "Stage 2 청크의 Git 경계 기준이 손상되거나 다른 Part를 가리킵니다. worktree를 보존합니다."
+            head = self.git.head(Path(b["worktree"]))
+            if head != baseline["head"]:
+                return f"Stage 2 청크 실행 중 소유 HEAD가 변경됐습니다 ({baseline['head']} / {head}). 후속 실행을 중단합니다."
+            remote = self.git.remote_head(b["branch"])
+            if remote != baseline["remote_head"]:
+                return (f"Stage 2 청크 실행 중 원격 브랜치 {b['branch']}가 변경됐습니다 "
+                        f"({baseline['remote_head']} / {remote}). 후속 실행을 중단합니다.")
+        except Exception as e:
+            return f"Stage 2 청크의 HEAD/원격 브랜치 경계를 확인하지 못했습니다: {e}. worktree를 보존합니다."
+        return None
 
     def _run_ok_stage2_chunk(self, b) -> None:
         """Accept one saved chunk as an intermediate success; never accept or create an intermediate PR."""
+        problem = self._stage2_chunk_boundary_problem(b)
+        if problem:
+            return self._fail(b, "ERROR", problem)
         try:
             info = self._find_recovery_pr(b)
             if info is not None:

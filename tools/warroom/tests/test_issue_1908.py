@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 
 from tests.test_issue_1684 import S2, merge_part, s2_world
-from tests.fakes import HEAD1
+from tests.fakes import HEAD1, HEAD2
 from tests.test_claude_adapter import init, result, stream
 from tests.test_issue_1832 import Reporting
 from warroom import control, progress
@@ -90,6 +90,7 @@ class Stage2ChunkRuns(unittest.TestCase):
         self.assertEqual((b["run_kind"], b["session_id"], b["state"]), ("s2_chunk_new", "ses_chunk_2", "PRODUCING"))
         second = w.adapter.launches[-1]
         self.assertEqual(second["kind"], "start")  # a fresh CLI session, never --resume after a saved chunk
+        self.assertEqual((first["stage2_chunk_git"], second["stage2_chunk_git"]), ("1", "1"))
         self.assertEqual((second["model"], second["effort"], second["cwd"]),
                          (first["model"], first["effort"], first["cwd"]))
         self.assertIn("chunk", second["prompt"])
@@ -100,6 +101,7 @@ class Stage2ChunkRuns(unittest.TestCase):
         b = w.store.batch(b["id"])
         final = w.adapter.launches[-1]
         self.assertEqual((b["run_kind"], final["kind"]), ("s2_finalize_new", "start"))
+        self.assertIsNone(final["stage2_chunk_git"])  # only the finalizer may commit and push
         self.assertIn("finalize", final["prompt"])
         self.assertEqual(b["branch"], w.git.created[0][1])
         self.assertEqual(w.git.local_head, HEAD1)
@@ -125,6 +127,26 @@ class Stage2ChunkRuns(unittest.TestCase):
         self.assertEqual(b["state"], "ERROR")
         self.assertIn("checkpoint가 정확히 전진하지 않았거나", b["error"])
         self.assertEqual(len(w.adapter.launches), 1)
+
+    def test_chunk_refuses_to_advance_after_owned_head_or_remote_branch_moves(self):
+        for changed_ref in ("HEAD", "origin branch"):
+            with self.subTest(changed_ref=changed_ref):
+                w = s2_world(self)
+                self.addCleanup(w.tmp.cleanup)
+                control.start(w.store, "claude", S2, "single", cfg=w.cfg)
+                w.adapter.plan.append({"code": 0, "session": "ses_chunk", "effect": lambda: write_state(
+                    w.store.active_batch("claude", S2), decided=1, total=2, next_chunk=2)})
+                w.tick()
+                b = w.store.active_batch("claude", S2)
+                w.adapter.finish(w.adapter.launches[-1]["pid"])
+                if changed_ref == "HEAD":
+                    w.git.local_head = HEAD2
+                else:
+                    w.git.remote[b["branch"]] = HEAD2
+                w.tick()
+                b = w.store.batch(b["id"])
+                self.assertEqual((b["state"], len(w.adapter.launches)), ("ERROR", 1))
+                self.assertIn("변경됐습니다", b["error"])
 
 
 class Stage2Retry(unittest.TestCase):
