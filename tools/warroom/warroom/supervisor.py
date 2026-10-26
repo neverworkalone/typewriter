@@ -673,6 +673,8 @@ class Supervisor:
     def _retry_denied_success(self, b) -> bool:
         """Retry after a denial pause: if the last exited run was a successful one (own session/result evidence) whose only
         problem was its permission denials, re-run the same completion evidence check instead of relaunching the AI."""
+        if b["state"] == "FIXING":   # a fix denial is never cleared (see _denied_run_problem): Retry re-runs the fix
+            return False
         runs = self.store.runs(b["id"])
         if not runs or runs[0]["ended_at"] is None or str(runs[0]["exit_status"]) != "0":
             return False

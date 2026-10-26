@@ -104,6 +104,14 @@ class DeniedButCompleted(unittest.TestCase):
                 w.store.update(b["id"], state="FIXING", head_sha=HEAD1)
                 self.assertIn("필수 편집", w.sup._denied_run_problem(w.store.batch(b["id"])))
 
+    def test_retry_of_a_fixing_denial_is_not_swallowed(self):
+        w = self.w
+        b = self.run_part(final())
+        w.store.update(b["id"], state="FIXING")
+        self.assertFalse(w.sup._retry_denied_success(w.store.batch(b["id"])))   # falls through to the fix relaunch
+        w.store.update(b["id"], state="PRODUCING")
+        self.assertTrue(w.sup._retry_denied_success(w.store.batch(b["id"])))    # a producing success is still adopted
+
     def test_non_stage2_denial_stays_paused(self):
         w = self.w
         self.assertIsNotNone(w.sup._denied_run_problem({"method": "a"}))
