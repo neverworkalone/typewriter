@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<title>WAR ROOM / TYPEWRITER</title>
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<header id="top">
+  <h1>WAR ROOM <span>/ TYPEWRITER</span></h1>
+  <span id="sup" class="pill">…</span>
+</header>
+<main id="app"></main>
+<dialog id="confirm">
+  <form method="dialog">
+    <p id="confirm-text"></p>
+    <div class="row">
+      <button value="no" id="confirm-no">취소</button>
+      <button value="yes" id="confirm-yes" class="danger">확인</button>
+    </div>
+  </form>
+</dialog>
+<div id="toast" role="status" aria-live="polite"></div>
+<script src="/app.js"></script>
+</body>
+</html>

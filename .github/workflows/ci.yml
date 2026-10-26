@@ -62,7 +62,7 @@ jobs:
               *) docs_only=false ;;
             esac
             case "$file" in
-              tools/warroom/warroom/*|tools/warroom/tests/*|tools/warroom/run-tests.mjs|tools/warroom/requirements.txt|war)
+              tools/warroom/warroom/*|tools/warroom/tests/*|tools/warroom/run-tests.mjs|tools/warroom/requirements.txt|war|war-web)
                 run_warroom_tests=true
                 ;;
             esac
