@@ -647,8 +647,7 @@ class Supervisor:
             phase = stage2.next_action(checkpoint)
         except (OSError, ValueError, KeyError, TypeError) as e:
             return self._fail(b, "ERROR", f"Stage 2 checkpoint 확인 실패: {e}. worktree를 보존합니다.")
-        suffix = "resume" if resume else "new"
-        return self._launch(b, f"s2_{phase}_{suffix}")
+        return self._launch(b, f"s2_{phase}_new")
 
     # ---- launching runs ------------------------------------------------
     def _run(self, b) -> RunSpec:
