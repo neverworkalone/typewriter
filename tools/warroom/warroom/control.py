@@ -301,4 +301,24 @@ def maintainer_card(store: Store, cfg: dict) -> dict:
     if not items:
         return {"state": "IDLE", "text": ""}
     text = items[0][0] + (f" (+{len(items) - 1}건 대기)" if len(items) > 1 else "")
-    return {"state": "ERROR" if any(bad for _, bad in items[:1]) else "WORKING", "text": text}
+    out = {"state": "ERROR" if any(bad for _, bad in items[:1]) else "WORKING", "text": text,
+           "issue": "", "pr": "", "detail": "", "elapsed": None}
+    head, sep, rest = items[0][0].partition(" · ")
+    if not head.startswith("urgent issue #"):   # a pending defect report has no Issue yet: keep the plain wrap
+        return out
+    out["issue"] = head + (f" (+{len(items) - 1}건 대기)" if len(items) > 1 else "")
+    rows = [m for m in store.maintenance_rows() if f"urgent issue #{m['issue_number']} · " in items[0][0]]
+    b = store.batch(rows[0]["batch_id"]) if rows and rows[0]["batch_id"] else None
+    if b is not None:   # the same real execution time as every other card: recorded runs, an unfinished one up to now
+        runs, now = store.runs(b["id"]), time.time()
+        if runs:
+            out["elapsed"] = sum(max(0.0, (r["ended_at"] or now) - r["started_at"]) for r in runs)
+    if out["state"] == "ERROR" or not sep:
+        out["detail"] = rest
+    elif b is not None and b["pr_number"] and b["state"] in ("PREPARE", "PRODUCING", "WAITING_REVIEW", "FIXING"):
+        out["pr"] = f"PR #{b['pr_number']}"
+    elif b is not None and b["state"] in ("PREPARE", "PRODUCING"):
+        out["pr"] = "PR 생성 전"
+    else:   # hold / queued / merged states keep their own wording on the bottom-left
+        out["detail"] = rest
+    return out

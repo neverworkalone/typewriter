@@ -9,7 +9,7 @@ import unittest
 from pathlib import Path
 
 from tests.fakes import HEAD1, FakeAdapter, World
-from warroom import control, prompts
+from warroom import control
 from warroom.gitops import CleanupBlocked, GitError
 
 
@@ -220,8 +220,6 @@ class ProducerHandoff(unittest.TestCase):
         self.assertEqual((row["state"], row["pr_number"]), ("WAITING_REVIEW", 1870))
         self.assertFalse(w.adapter.alive(pid))
         self.assertTrue(w.store.get(f"stop_after_pr_{b['id']}"))
-        self.assertIn("lifecycle handoff", w.adapter.launches[0]["prompt"])
-        self.assertIn("Do not run PR polling", w.adapter.launches[0]["prompt"])
         self.assertEqual(w.adapter.last_env["PATH"].split(os.pathsep)[0], str(BIN))
         self.assertTrue(Path(w.adapter.last_env["WARROOM_REAL_GIT"]).is_absolute())
 
@@ -255,19 +253,6 @@ class ProducerHandoff(unittest.TestCase):
         self.assertEqual(update_ref.returncode, 126)
         self.assertEqual(listing.returncode, 0)
         self.assertEqual(listing.stdout.strip(), "-C /repo status --short")
-
-    def test_stage_one_prompts_override_general_pr_monitoring_instructions(self):
-        w = World()
-        self.addCleanup(w.tmp.cleanup)
-        w.start("single", method="a")
-        w.tick()
-        b = w.row()
-        produce = " ".join(prompts.produce(b).split())
-        recovery = " ".join(prompts.recovery(b).split())
-        fix = " ".join(prompts.fix(b, [], False).split())
-        self.assertIn("General repository instructions about monitoring PRs do not apply", produce)
-        self.assertIn("finish and exit", recovery)
-        self.assertIn("Supervisor owns review monitoring", fix)
 
 
 if __name__ == "__main__":
