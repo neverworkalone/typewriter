@@ -538,10 +538,13 @@ class Supervisor:
             return f"{adapter_label(name)} CLI 어댑터가 이 War Room 빌드에 없습니다 — 다른 CLI로 대신 실행하지 않습니다."
         return None
 
-    def _preflight(self, producer: str, method: str = "a") -> str | None:
+    def _preflight(self, producer: str, method: str = "a", *,
+                   require_literary_index: bool = True) -> str | None:
         """Fail closed before any process starts: the CLI must be able to run exactly the pinned model and effort."""
         problem = self._adapter_problem(producer)
         if problem:
+            return problem
+        if method == "c" and require_literary_index and (problem := self._literary_index_problem()):
             return problem
         ad = self._adapter(producer)
         if self._tiered(producer):   # OpenCode/DeepSeek: the free tier must be an explicit, recognisably free model
@@ -556,6 +559,31 @@ class Supervisor:
         except ValueError as e:
             return str(e)
         return ad.preflight(self.runner, self.env, runs)
+
+    def _literary_index_problem(self) -> str | None:
+        """Method C receives one explicitly configured approved index; never search for a substitute."""
+        configured = self.cfg.get("literary_index_path", "")
+        if not isinstance(configured, str) or not configured.strip():
+            return ("Method C 시작 차단: literary_index_path가 설정되지 않았습니다. "
+                    "tools/warroom/.local/config.json에 승인 SQLite의 절대 경로를 설정하세요.")
+        database = Path(configured.strip()).expanduser()
+        try:
+            readable = database.is_absolute() and database.is_file() and os.access(database, os.R_OK)
+        except (OSError, ValueError):
+            readable = False
+        if not readable:
+            return ("Method C 시작 차단: literary_index_path가 읽을 수 있는 절대 파일을 가리키지 않습니다. "
+                    "tools/warroom/.local/config.json을 확인하세요.")
+        return None
+
+    def _launch_env(self, b, kind: str) -> dict:
+        """Keep the private approved index path in the environment of C production only."""
+        env = dict(self.env)
+        key = "TYPEWRITER_APPROVED_LITERARY_DB"
+        env.pop(key, None)
+        if b["method"] == "c" and not kind.startswith("fix"):
+            env[key] = str(Path(self.cfg["literary_index_path"].strip()).expanduser())
+        return env
 
     def _pinned_runs(self, producer: str, role: str = "stage1"):
         """Every model/effort this producer may run with: both tiers of a tiered CLI (a configured Go model too)."""
@@ -629,7 +657,8 @@ class Supervisor:
         drift = self._pin_drift(b, run, self._tiered(b["producer"]), self.store.runs(b["id"]), tier_models)
         if drift:
             return self._fail(b, "ERROR", drift)
-        problem = self._preflight(b["producer"], b["method"])   # every launch proves the CLI again (cached once proven)
+        # Every launch proves the CLI again (cached once proven); fixes do not need the C database.
+        problem = self._preflight(b["producer"], b["method"], require_literary_index=not kind.startswith("fix"))
         if problem and problem.startswith(PREFLIGHT_PENDING):
             return   # still proving the pin in the background; the next tick retries this relaunch
         if problem:
@@ -641,18 +670,19 @@ class Supervisor:
             except Exception as e:
                 return self._fail(b, "ERROR", f"worktree의 Git 관리 디렉터리를 확인할 수 없어 AI를 시작하지 않았습니다: {e}")
         try:
+            run_env = self._launch_env(b, kind)
             if kind == "produce":
-                h = ad.start(prompts.produce(b), wt, self.env, run,
+                h = ad.start(prompts.produce(b), wt, run_env, run,
                                        f"{b['method'].upper()} {b['shard']}_{b['batch']}", log, ex, **extra)
             elif kind == "produce_resume":
-                h = ad.resume(sid, prompts.recovery(b, resolved_defects=self.maint.resolved_note(b)), wt, self.env, run, log, ex, **extra)
+                h = ad.resume(sid, prompts.recovery(b, resolved_defects=self.maint.resolved_note(b)), wt, run_env, run, log, ex, **extra)
             elif kind == "produce_recover":
-                h = ad.start(prompts.recovery(b, resolved_defects=self.maint.resolved_note(b)), wt, self.env, run,
+                h = ad.start(prompts.recovery(b, resolved_defects=self.maint.resolved_note(b)), wt, run_env, run,
                                        f"{b['method'].upper()} {b['shard']}_{b['batch']} recover", log, ex, **extra)
             elif kind == "fix_resume":
-                h = ad.resume(sid, prompts.fix(b, events, True), wt, self.env, run, log, ex, **extra)
+                h = ad.resume(sid, prompts.fix(b, events, True), wt, run_env, run, log, ex, **extra)
             else:  # fix_new
-                h = ad.start(prompts.fix(b, events, False), wt, self.env, run,
+                h = ad.start(prompts.fix(b, events, False), wt, run_env, run,
                                        f"PR {b['pr_number']} fix", log, ex, **extra)
         except prompts.PromptError as e:   # rendered before any process is started
             return self._fail(b, "ERROR", f"프롬프트 오류로 AI를 시작하지 않았습니다: {e}")

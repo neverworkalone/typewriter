@@ -47,6 +47,15 @@ Run the CLI from the repository root with the batch assigned to the current C
 producer. The normal path is: **init once, then `chunk` → `submit` per chunk, then
 `export` once.** There is no per-context, per-candidate or per-sense command.
 
+War Room Method C runs receive the approved database as
+`TYPEWRITER_APPROVED_LITERARY_DB`, sourced from the local
+`literary_index_path` setting in `tools/warroom/.local/config.json`. The
+Supervisor checks that it is an absolute readable file before selecting a
+batch and passes it only to C production runs. Use that value for every `--db`
+argument; an unset or unreadable path is a setup error, not a reason to search
+the cache or guess another index. The absolute path stays in local settings and
+the process environment, not in Git, PR text, or Candidate output.
+
 `init` runs the same lean read-only index check once itself, so a separate
 `preflight` is **not** a per-batch step; run `preflight` (or `preflight --deep`)
 only for explicit diagnosis, first approval of an index, or a suspected change.
@@ -55,14 +64,14 @@ only for explicit diagnosis, first approval of an index, or a suspected change.
 node scripts/relation/literary-context-cli.mjs init \
   --canonical data/canonical/stdict-0001.jsonl \
   --shard 001 --batch 01 --model codex \
-  --db /path/to/approved-literary.sqlite \
+  --db "$TYPEWRITER_APPROVED_LITERARY_DB" \
   --checkpoint .warroom-scratch/001_01_c_codex.checkpoint.json
 node scripts/relation/literary-context-cli.mjs chunk \
-  --db /path/to/approved-literary.sqlite \
+  --db "$TYPEWRITER_APPROVED_LITERARY_DB" \
   --checkpoint .warroom-scratch/001_01_c_codex.checkpoint.json
 # read the chunk, judge and search, write .warroom-scratch/chunk-01.json, then:
 node scripts/relation/literary-context-cli.mjs submit \
-  --db /path/to/approved-literary.sqlite \
+  --db "$TYPEWRITER_APPROVED_LITERARY_DB" \
   --checkpoint .warroom-scratch/001_01_c_codex.checkpoint.json \
   --input .warroom-scratch/chunk-01.json
 # repeat chunk/submit until `chunk` returns no items, then:
@@ -98,20 +107,32 @@ node scripts/relation/literary-context-cli.mjs add-form \
 ### Reading a chunk without noisy output
 
 Use the paths, settings and checkpoint you were given; do not list the cache root
-(`rg --files`, `find`) to locate them, and when a path is unknown narrow it by
-directory, filename pattern and `| head`. Use `report` for checkpoint status;
+(`rg --files`, `find`) to locate them. The database path must come from
+`TYPEWRITER_APPROVED_LITERARY_DB`; if it is absent, stop and report a setup error
+instead of searching or guessing. For other unknown paths, narrow any necessary
+inspection by directory and filename pattern. Use `report` for checkpoint status;
 otherwise query only the fields or counts you need, never the whole checkpoint or
 ledger. Normal literary excerpts and sense-reading contexts are never trimmed.
 
-Save the `chunk` response once, then reuse these two filters (items with only
-`sense_id` and `status`, such as `SEARCH_FAILED`, have no `contexts`):
+Save the `chunk` response once, then format every returned sense and its full
+contexts in one `jq` call. Items with only `sense_id` and `status`, such as
+`SEARCH_FAILED`, remain visible in the same output:
 
 ```sh
-node scripts/relation/literary-context-cli.mjs chunk --db DB --checkpoint CP > .warroom-scratch/chunk-01.read.json
-# Overview: one line per sense
-jq -r '.items[] | [.sense_id, (.lemma // "-"), (.pos // "-"), (.gloss // .status), "hits=\(.total_hits // 0)", "unseen=\(.unseen_hits // 0)", "shown=\((.contexts // []) | length)"] | @tsv' .warroom-scratch/chunk-01.read.json
-# Contexts: only the selected sense, full excerpts
-jq -r --arg id SENSE_ID '.items[] | select(.sense_id == $id) | (.contexts // [])[] | "[\(.k)] \(.src)\n\(.x)\n"' .warroom-scratch/chunk-01.read.json
+node scripts/relation/literary-context-cli.mjs chunk --db "$TYPEWRITER_APPROVED_LITERARY_DB" --checkpoint CP > .warroom-scratch/chunk-01.read.json
+jq -r '
+  "batch=\(.batch.shard)_\(.batch.batch) done=\(.done_senses)/\(.total_senses) zero_hit=\(.zero_hit_recorded) not_yet_read=\(.not_yet_read)\n\n" +
+  ([.items[] |
+    if has("contexts") then
+      "## \(.sense_id) — \(.lemma) [\(.pos)]\n\(.gloss)\n" +
+      (if ((.forms // []) | length) > 0 then "forms: \((.forms // []) | join(", "))\n" else "" end) +
+      "hits=\(.total_hits) unseen=\(.unseen_hits)\n" +
+      ([.contexts[] | "[\(.k)] \(.src)\n\(.x)"] | join("\n\n"))
+    else
+      "## \(.sense_id) — \(.status)"
+    end
+  ] | join("\n\n"))
+' .warroom-scratch/chunk-01.read.json
 ```
 
 ## What you still do for every sense with hits

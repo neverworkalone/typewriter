@@ -23,6 +23,9 @@ PRODUCERS = {
 def multi_world():
     w = World()
     w.cfg["producers"] = PRODUCERS
+    index = Path(w.tmp.name) / "approved-literature.sqlite"
+    index.write_bytes(b"synthetic approved-index path")
+    w.cfg["literary_index_path"] = str(index)
     w.runner.models += ["p/sonnet-free"]
     return w
 

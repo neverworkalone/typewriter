@@ -123,6 +123,39 @@ class Lifecycle(unittest.TestCase):
         w.tick(2)
         self.assertEqual(len(w.adapter.launches), 2)
 
+    def test_c_requires_configured_index_and_passes_it_only_to_production(self):
+        w = self.w
+        w.start("single", "deepseek", "c")
+        w.tick()
+        blocked = control.line_status(w.store, "deepseek", "c")["blocked"]
+        self.assertIn("literary_index_path", blocked)
+        self.assertEqual(w.adapter.launches, [])
+        self.assertIsNone(w.row("deepseek", "c"))
+
+        invalid = World()
+        private_path = Path(invalid.tmp.name) / "private-approved-index.sqlite"
+        invalid.cfg["literary_index_path"] = str(private_path)
+        invalid.start("single", "deepseek", "c")
+        invalid.tick()
+        invalid_blocked = control.line_status(invalid.store, "deepseek", "c")["blocked"]
+        self.assertIn("literary_index_path", invalid_blocked)
+        self.assertNotIn(str(private_path), invalid_blocked)
+        self.assertEqual(invalid.adapter.launches, [])
+        invalid.tmp.cleanup()
+
+        index = Path(w.tmp.name) / "approved literary index.sqlite"
+        index.write_bytes(b"synthetic approved-index path")
+        w.cfg["literary_index_path"] = str(index)
+        w.start("single", "deepseek", "c")
+        w.tick()
+        launch = w.adapter.launches[-1]
+        self.assertEqual(launch["approved_literary_db"], str(index))
+        self.assertIn("TYPEWRITER_APPROVED_LITERARY_DB", launch["prompt"])
+        resume_env = w.sup._launch_env({"method": "c"}, "produce_resume")
+        self.assertEqual(resume_env["TYPEWRITER_APPROVED_LITERARY_DB"], str(index))
+        self.assertIsNone(w.sup._launch_env({"method": "c"}, "fix_new").get("TYPEWRITER_APPROVED_LITERARY_DB"))
+        self.assertIsNone(w.sup._launch_env({"method": "a"}, "produce").get("TYPEWRITER_APPROVED_LITERARY_DB"))
+
     def test_resume_failure_falls_back_to_new_session_once(self):
         w = self.w
         self.produce_to_review()
