@@ -721,7 +721,7 @@ test('Deep gate separates validated data from affected contracts and fails close
     'docs/review-toolchain.md',
     'docs/new-deep-gate-contract.md',
     'src/components/SearchBar.vue',
-    'web/src/App.vue',
+    'site/src/App.vue',
     'public/favicon.ico',
     'tests/normalize-canonical.test.mjs',
   ]) {
@@ -1134,7 +1134,7 @@ test('CI and Pages workflows keep their trigger responsibilities separate', asyn
   const pagesEvents = pagesWorkflow.split('\non:\n')[1]?.split('\npermissions:\n')[0]?.trim();
   assert.doesNotMatch(pagesEvents, /schedule:|cron:/u);
   assert.match(pagesEvents, /^workflow_dispatch:$|^  workflow_dispatch:$/mu);
-  assert.match(pagesEvents, /^push:\n    branches:\n      - master\n    paths:\n      - 'web\/\*\*'\n/mu);
+  assert.match(pagesEvents, /^push:\n    branches:\n      - master\n    paths:\n      - 'site\/\*\*'\n/mu);
   assert.doesNotMatch(pagesEvents, /pull_request/u);
   assert.equal((pagesWorkflow.match(/github\.ref == 'refs\/heads\/master'/gu) ?? []).length, 2,
     'both Pages artifact upload and deployment must require master');

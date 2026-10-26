@@ -11,7 +11,7 @@ License 2.0 by Never Work Alone, copyright © 2026. This covers `src/`,
 and original software/configuration files at the repository root, including
 `popup.html`, `options.html`, `pack.py`, `pack.sh`, `package.json`,
 `pnpm-lock.yaml`, `vite.config.js`, `vitest.config.js`, and `.gitignore`.
-Future original software under `web/` and `vite.web.config.js` is also covered.
+Original software under `site/` and `vite.web.config.js` is also covered.
 The complete license text is in [`Apache-2.0.txt`](Apache-2.0.txt).
 
 The code grant excludes canonical and editorial data, documentation, brand

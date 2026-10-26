@@ -157,7 +157,7 @@ to its MO-2 license or an explicit hold/exception:
 
 | MO-1 path group | MO-2 disposition |
 | --- | --- |
-| Application, build, schema, test, CI, root software/configuration, extension manifest, `.gitignore`, and future `web/` source | Apache-2.0 for original Typewriter software; third-party components retain their licenses. |
+| Application, build, schema, test, CI, root software/configuration, extension manifest, `.gitignore`, and `site/` source | Apache-2.0 for original Typewriter software; third-party components retain their licenses. |
 | docs/, AGENTS.md, REVIEW.md, README.md, and original project documentation | CC BY 4.0 for original prose; embedded data, third-party content, and brand assets are excluded. The README states product availability and license boundaries. |
 | Canonical, inventory, batch, validation, SQLite, and product data artifacts | CC BY 4.0 only after item-level clearance; the current corpus and data-bearing artifacts remain held pending record-level rights evidence and release approval. |
 | Public logo, icons, and brand identity | All Rights Reserved; owner confirmed direct creation and ownership. |

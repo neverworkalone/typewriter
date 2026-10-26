@@ -52,13 +52,13 @@ tmux kill-session -t warroom 2>/dev/null || true
 The Supervisor recovers existing batches using the persisted state and running processes;
 do not delete `tools/warroom/.local/`, manually reset worktrees or press Retry just to reload code.
 
-## Web UI (`./war-web`)
+## Web UI (`./dashboard`)
 
 Mac 브라우저와 iPhone/iPad Safari용 **두 번째 View**다. 새 Controller·Supervisor가 아니며, 기존 `./war`·Supervisor를 바꾸지 않는다.
 
 ```sh
-./war-web                 # http://localhost:8000
-./war-web --port 8123     # 포트 변경
+./dashboard              # http://localhost:8000
+./dashboard --port 8123  # 포트 변경
 ```
 ## 계정·설정 경로
 
