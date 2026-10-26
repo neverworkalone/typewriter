@@ -20,6 +20,8 @@ War Room이 고정한 `(method,model,shard,batch)`/worktree/branch/HEAD는 재�
 
 최초 조회는 보통 3~4개 문맥, 문맥당 180~240자로 시작한다. 정확한 의미 확인과 어휘 발굴에 충분하면 종료하고, 부족하면 해당 sense의 문맥을 추가 조회한다. 조회 건수는 할당량이 아니다.
 
+발췌 문맥만으로 source sense를 판별하기 어려울 때는 해당 문맥의 필요한 범위만 추가 확인한다. 의미를 추측해 후보를 생성하지 않는다.
+
 **검색은 `scripts/relation/corpus-utility.mjs`를 import해 쓴다**(재사용 권장, 강제 아님; 특수 경로가 필요하면 조합·확장). 매 배치 `probe-*.mjs`/`followup.mjs`를 다시 구현하지 않는다.
 
 ```js
@@ -37,7 +39,7 @@ await saveChunk('.warroom-scratch/d-{{batch}}', 3, rows, chunk);  // chunk = [{r
 
 같은 청크에서 다른 sense가 **검색형 순서·boundary·모든 검색 상한·페이지 cursor까지 같은 요청**을 하면 `search`가 메모리 결과를 재사용하고 `reused: true`를 반환한다. 출력은 다시 하지 않아도 되지만, 해당 문맥을 각 source sense에 대조해 VERIFIED 여부와 후보 발굴은 **sense마다 독립적으로** 수행한다. 재사용은 이 `db` 연결과 청크 안에서만 유지되며 `SEARCH_FAILED`는 캐시하지 않는다.
 
-상태: `ZERO_HITS`(완전 탐색 후 없음) / `COMPLETE` / `LIMITED`(상한에서 멈춤, `next_cursor`로 계속) / `SEARCH_FAILED`. 이 도구는 검색·출력 상한만 담당하며 source sense 판독(VERIFIED)과 후보 편집은 AI가 직접 한다. `LIMITED` 상태에서 VERIFIED 문맥을 확보하지 못했다면 `next_cursor` 또는 다른 승인 검색형으로 추가 탐색한다. 검색이 제한된 상태를 `ZERO_HITS`나 확인된 `NO_VERIFIED`로 취급하지 않는다. VERIFIED 문맥 없이 뜻풀이만으로 D 후보를 생성하지 않는다.
+상태: `ZERO_HITS`(완전 탐색 후 없음) / `COMPLETE` / `LIMITED`(상한에서 멈춤, `next_cursor`로 계속) / `SEARCH_FAILED`. 이 도구는 검색·출력 상한만 담당하며 source sense 판독(VERIFIED)과 후보 편집은 AI가 직접 한다. `LIMITED` 표본에 출발 sense가 없다고 `ZERO_HITS`/`NO_VERIFIED`로 확정하지 않고, 필요하면 `next_cursor`나 다른 승인 검색형으로 더 조회한다.
 
 검색 규칙:
 - 3글자 이상은 `paragraph_fts`(trigram) 등 승인 인덱스의 실제 스키마가 지원하는 경로를 쓴다. 1~2글자는 trigram이 지원되지 않으므로 필요한 sense에 한해 제한된 literal 검색을 쓰되, **앞뒤 양쪽 문자 경계**(예: `기현`에 `기현상`·`이기현`이 섞이지 않도록)와 활용형·동음이의어를 직접 확인한다.
