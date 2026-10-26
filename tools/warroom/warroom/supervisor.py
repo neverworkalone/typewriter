@@ -684,8 +684,13 @@ class Supervisor:
             return False
         if ad.completion_problem(log, self._recorded_run(b), b["session_id"], b["worktree"], self.env):
             return False   # not a clean success otherwise: the regular handling decides
-        if not self._denials_cleared(b, log):
-            return True
+        why = self._denied_run_problem(b)
+        if why is not None:
+            # No proof the required work finished: the operator's explicit Retry takes the regular relaunch path
+            # (owned-PR recovery checks, then session resume), never a re-pause on the old log.
+            self.store.log(b["id"], f"권한 거부 후 Retry: 완료 증거 없음({why}) — 기존 재개 경로로 진행", "warn")
+            return False
+        self.store.log(b["id"], "권한 거부가 있었으나 소유 PR·push된 HEAD·Part verify로 필수 작업 완료를 확인했습니다 — 리뷰 감시로 인계", "warn")
         self.store.set(f"verified_completion_run_{b['id']}", str(runs[0]["id"]))
         self._run_ok(b)
         return True

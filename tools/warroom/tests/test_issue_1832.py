@@ -104,6 +104,28 @@ class DeniedButCompleted(unittest.TestCase):
                 w.store.update(b["id"], state="FIXING", head_sha=HEAD1)
                 self.assertIn("필수 편집", w.sup._denied_run_problem(w.store.batch(b["id"])))
 
+    def test_retry_after_a_blocked_pr_creation_resumes_the_session(self):
+        w = self.w
+        b = self.run_part(final(), pr=False)                  # gh pr create was denied: success result, no PR
+        self.assertEqual(b["state"], "PAUSED")
+        w.tick(3)
+        self.assertEqual(len(w.adapter.launches), 1)           # nothing restarts before the operator's Retry
+        self.assertTrue(control.retry(w.store, "claude", S2))
+        w.tick(2)
+        b = w.store.active_batch("claude", S2)
+        self.assertEqual((b["state"], len(w.adapter.launches)), ("PRODUCING", 2))
+        self.assertIn(w.adapter.launches[-1]["kind"], ("resume", "start"))
+        self.assertEqual(b["branch"], BRANCH)
+
+    def test_retry_with_an_unverified_existing_pr_never_relaunches(self):
+        w = self.w
+        b = self.run_part(final(), verified=False)
+        self.assertEqual(b["state"], "PAUSED")
+        self.assertTrue(control.retry(w.store, "claude", S2))
+        w.tick(2)
+        self.assertEqual(len(w.adapter.launches), 1)           # an existing PR is never duplicated by a new run
+        self.assertIn(w.store.active_batch("claude", S2)["state"], ("PAUSED", "ERROR"))
+
     def test_retry_of_a_fixing_denial_is_not_swallowed(self):
         w = self.w
         b = self.run_part(final())
