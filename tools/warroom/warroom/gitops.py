@@ -156,7 +156,7 @@ class Git:
         A local HEAD that is a strict ancestor of it is fast-forwarded first. Before
         removing a registered worktree, `on_verified` durably records the clean/HEAD
         ownership proof. That record is required to resume a partially completed
-        removal after Git has already dropped the registration.
+        removal whether Git dropped the registration or deleted the checkout first.
         """
         raw_path = Path(os.path.abspath(path))
         if raw_path.is_symlink():
@@ -170,7 +170,10 @@ class Git:
         registered = self.registered(path)
         if registered == branch:
             if not path.is_dir():
-                raise CleanupBlocked(f"worktree is still registered but its path is missing (manual check): {path}")
+                if path.exists():
+                    raise CleanupBlocked(f"registered worktree path is occupied by a non-directory (preserved): {path}")
+                self._retry_registered_missing_checkout(path, branch, pr_head_sha, cleanup_proof)
+                return
             if (d := self.dirty(path)).strip():
                 if not self._cleanup_proof_matches(path, branch, pr_head_sha, cleanup_proof):
                     raise CleanupBlocked(f"uncommitted changes in worktree without matching cleanup proof:\n"
@@ -220,6 +223,79 @@ class Git:
         if registered is not None:
             raise CleanupBlocked(f"worktree is registered with a different branch (expected {branch}, got {registered!r})")
         self._remove_partial(path, branch, pr_head_sha, cleanup_proof)
+
+    def _retry_registered_missing_checkout(self, path: Path, branch: str, pr_head_sha: str,
+                                           proof: dict | None) -> None:
+        """Retry non-force removal when Git registration survives but its checkout was already deleted."""
+        if not self._cleanup_proof_matches(path, branch, pr_head_sha, proof):
+            raise CleanupBlocked("registered worktree checkout is missing and no matching durable cleanup proof exists; "
+                                 "the admin entry and branch are preserved for manual verification")
+        if path.exists() or path.is_symlink():
+            raise CleanupBlocked(f"missing checkout path became occupied during cleanup (preserved): {path}")
+
+        common = self._common_dir()
+        admin = self._registered_admin_entry(path, common)
+        branch_ref = self._git("rev-parse", "--verify", "--quiet", f"refs/heads/{branch}^{{commit}}", check=False)
+        if not branch_ref.ok or branch_ref.out.strip() != pr_head_sha:
+            raise CleanupBlocked(f"local branch {branch} moved from proven merged PR HEAD {pr_head_sha}; preserved")
+        head_file, common_file = admin / "HEAD", admin / "commondir"
+        if any(item.is_symlink() or not item.is_file() for item in (head_file, common_file)):
+            raise CleanupBlocked(f"registered worktree admin metadata is missing or unexpected (preserved): {admin}")
+        try:
+            head_ref = head_file.read_text("utf-8").strip()
+            common_pointer = common_file.read_text("utf-8").strip()
+        except (OSError, UnicodeError) as e:
+            raise CleanupBlocked(f"cannot verify registered worktree admin metadata (preserved): {e}")
+        if head_ref != f"ref: refs/heads/{branch}":
+            raise CleanupBlocked(f"registered worktree admin HEAD does not point to owned branch {branch}; preserved")
+        if (admin / common_pointer).resolve() != common:
+            raise CleanupBlocked(f"registered worktree admin entry points to a different common directory; preserved")
+        admin_head = self._git(f"--git-dir={admin}", "rev-parse", "--verify", "HEAD", check=False)
+        if not admin_head.ok or admin_head.out.strip() != pr_head_sha:
+            raise CleanupBlocked(f"registered worktree admin HEAD differs from proven merged PR HEAD {pr_head_sha}; "
+                                 "preserved")
+        if path.exists() or path.is_symlink():
+            raise CleanupBlocked(f"missing checkout path became occupied during cleanup (preserved): {path}")
+
+        # Git can safely drop the stale registration when its checkout is already absent. Keep this non-force: the
+        # proof, back-pointer, admin HEAD, local branch and absent destination must all agree first.
+        res = self._git("worktree", "remove", str(path), check=False)
+        if not res.ok:
+            detail = res.err.strip() or res.out.strip() or f"exit {res.code}"
+            raise GitError(f"git worktree remove {path} (exit={res.code}; {detail}); "
+                           "cleanup proof is saved, so Retry can resume cleanup without rerunning production")
+        if self.registered(path) is not None or self._registered_admin_entry(path, common, required=False):
+            raise CleanupBlocked(f"Git did not remove the proven stale worktree registration (preserved): {path}")
+        self._delete_owned_branch(branch, pr_head_sha)
+
+    def _registered_admin_entry(self, path: Path, common: Path, *, required: bool = True) -> Path | None:
+        """Find exactly one admin entry whose gitdir back-pointer names this worktree's .git file."""
+        root = common / "worktrees"
+        try:
+            entries = list(root.iterdir()) if root.is_dir() else []
+        except OSError as e:
+            raise CleanupBlocked(f"cannot inspect registered worktree admin entries (preserved): {e}")
+        expected = (path / ".git").resolve()
+        matches = []
+        for entry in entries:
+            if entry.is_symlink() or not entry.is_dir():
+                continue
+            pointer = entry / "gitdir"
+            if pointer.is_symlink() or not pointer.is_file():
+                continue
+            try:
+                owner = Path(pointer.read_text("utf-8").strip()).resolve()
+            except (OSError, UnicodeError) as e:
+                raise CleanupBlocked(f"cannot read worktree admin back-pointer (preserved): {pointer}: {e}")
+            if owner == expected:
+                matches.append(entry.resolve())
+        if len(matches) == 1:
+            return matches[0]
+        if not matches and not required:
+            return None
+        if len(matches) > 1:
+            raise CleanupBlocked(f"multiple Git admin entries point to the missing worktree (preserved): {path}")
+        raise CleanupBlocked(f"no Git admin entry points to the missing worktree (preserved): {path}")
 
     def _delete_owned_branch(self, branch: str, pr_head_sha: str) -> None:
         ref = self._git("rev-parse", "--verify", "--quiet", f"refs/heads/{branch}^{{commit}}", check=False)

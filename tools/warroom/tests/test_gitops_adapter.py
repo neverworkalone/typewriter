@@ -218,6 +218,108 @@ class RealGit(unittest.TestCase):
         self.assertTrue(self.wt.exists())
         return head
 
+    def _simulate_checkout_removed_admin_present(self, branch, on_verified=None, path=None):
+        """Delete the checkout but retain its registered Git admin entry, as when admin deletion fails."""
+        path = path or self.wt
+        self.git.fetch_base("master")
+        self.git.create_worktree(path, branch, "master")
+        head = self.git.head(path)
+        gitdir = self.git.worktree_gitdir(path)
+        original = self.git._git
+
+        def partial_remove(*args, **kwargs):
+            if args[:2] == ("worktree", "remove"):
+                shutil.rmtree(path)   # checkout deletion succeeded; admin entry deletion fails
+                return Result(255, "", "failed to delete Git admin entry: Operation not permitted")
+            return original(*args, **kwargs)
+
+        self.git._git = partial_remove
+        try:
+            with self.assertRaises(GitError):
+                self.git.remove_owned(path, branch, head, on_verified=on_verified)
+        finally:
+            self.git._git = original
+        self.assertFalse(path.exists())
+        self.assertEqual(self.git.registered(path), branch)
+        self.assertTrue(gitdir.is_dir())
+        self.assertEqual(Path((gitdir / "gitdir").read_text().strip()).resolve(), (path / ".git").resolve())
+        return head, gitdir
+
+    def test_registered_missing_checkout_retries_nonforce_remove_with_matching_proof(self):
+        branch = "a-x-001-01"
+        proofs = []
+        head, gitdir = self._simulate_checkout_removed_admin_present(branch, lambda: proofs.append({
+            "version": 1, "path": str(self.wt.resolve()), "branch": branch, "head_sha": self.git.head(self.wt),
+            "remove_started": True,
+        }))
+        proof = proofs[0]
+        proof["head_sha"] = head
+        original = self.git._git
+        observed = {"nonforce": False}
+
+        def observe_retry(*args, **kwargs):
+            if args[:2] == ("worktree", "remove"):
+                observed["nonforce"] = "--force" not in args
+                self.assertFalse(self.wt.exists())
+                self.assertEqual(self.git.registered(self.wt), branch)
+            return original(*args, **kwargs)
+
+        self.git._git = observe_retry
+        try:
+            self.git.remove_owned(self.wt, branch, head, cleanup_proof=proof)
+        finally:
+            self.git._git = original
+
+        self.assertTrue(observed["nonforce"])
+        self.assertFalse(gitdir.exists())
+        self.assertIsNone(self.git.registered(self.wt))
+        self.assertNotEqual(subprocess.run(["git", "rev-parse", "--verify", "-q", branch], cwd=self.repo,
+                                           env=ENV).returncode, 0)
+
+    def test_registered_missing_checkout_requires_proof_exact_branch_and_head_and_empty_path(self):
+        cases = ["missing proof", "wrong branch", "moved branch", "new file", "new directory", "new symlink"]
+        for i, case in enumerate(cases, start=1):
+            with self.subTest(case):
+                path = self.wts / f"w{case.replace(' ', '-')}"
+                branch = f"a-x-001-{i:02d}"
+                head, gitdir = self._simulate_checkout_removed_admin_present(branch, path=path)
+                proof = {"version": 1, "path": str(path.resolve()), "branch": branch,
+                         "head_sha": head, "remove_started": True}
+                requested_branch = branch
+                requested_proof = proof
+                if case == "missing proof":
+                    requested_proof = None
+                elif case == "wrong branch":
+                    requested_branch = "another-branch"
+                elif case == "moved branch":
+                    moved = subprocess.run(["git", "commit-tree", f"{head}^{{tree}}", "-m", "moved"],
+                                           cwd=self.repo, env=ENV, check=True, capture_output=True, text=True).stdout.strip()
+                    sh("git", "update-ref", f"refs/heads/{branch}", moved, cwd=self.repo)
+                elif case == "new file":
+                    path.write_text("owner data")
+                elif case == "new directory":
+                    path.mkdir()
+                    (path / "owner data").write_text("keep")
+                else:
+                    target = self.wts / f"foreign-{i}"
+                    target.mkdir()
+                    (target / "owner data").write_text("keep")
+                    path.symlink_to(target, target_is_directory=True)
+
+                with self.assertRaises((CleanupBlocked, GitError)):
+                    self.git.remove_owned(path, requested_branch, head, cleanup_proof=requested_proof)
+                self.assertEqual(self.git.registered(path), branch)
+                self.assertTrue(gitdir.exists())
+                if case == "new file":
+                    self.assertEqual(path.read_text(), "owner data")
+                elif case == "new directory":
+                    self.assertEqual((path / "owner data").read_text(), "keep")
+                elif case == "new symlink":
+                    self.assertTrue(path.is_symlink())
+                    self.assertEqual((target / "owner data").read_text(), "keep")
+                else:
+                    self.assertFalse(path.exists())
+
     def test_registered_partial_tracked_deletion_restores_then_retries_normal_remove(self):
         branch = "a-x-001-01"
         proofs = []

@@ -146,6 +146,58 @@ class Recovery(unittest.TestCase):
         self.assertEqual(dict(w.store.line("deepseek", "a")), other)
         self.assertEqual(len(w.adapter.launches), 1)
 
+    def test_missing_checkout_with_registered_admin_retries_after_restart_without_rerun(self):
+        w = World()
+        self.addCleanup(w.tmp.cleanup)
+        w.start("single", method="b")
+        w.tick()
+        b = w.row(method="b")
+        install_batch_pr(w, b)
+        w.store.update(b["id"], state="MERGED", pid=None, pr_number=1870, head_sha=HEAD1, merged=1)
+        other = dict(w.store.line("deepseek", "a"))
+        w.tick()  # MERGED -> CLEANUP
+
+        failed_once = {"value": False}
+        removed = []
+
+        def registered_owner(path):
+            return [owner for worktree, owner in w.git.reg.items()
+                    if Path(worktree).resolve() == Path(path).resolve()]
+
+        def partial(path, branch, head, *, cleanup_proof=None, on_verified=None):
+            if not failed_once["value"]:
+                failed_once["value"] = True
+                on_verified()
+                Path(path).rmdir()  # checkout is gone; the fake Git registration/admin entry remains
+                raise GitError("git worktree remove: admin entry Operation not permitted")
+            self.assertEqual(registered_owner(path), [branch])
+            self.assertTrue(cleanup_proof)
+            self.assertEqual(cleanup_proof["head_sha"], head)
+            self.assertFalse(Path(path).exists())
+            w.git.reg.pop(str(path), None)  # successful non-force retry removes only the stale registration
+            removed.append((str(path), branch))
+
+        w.git.remove_owned = partial
+        w.tick()
+        row = w.row(method="b")
+        self.assertEqual((row["state"], row["paused_from"]), ("ERROR", "CLEANUP"))
+        self.assertFalse(Path(b["worktree"]).exists())
+        self.assertEqual(registered_owner(b["worktree"]), [b["branch"]])
+        self.assertTrue(w.store.get(f"cleanup_proof_{b['id']}"))
+
+        w.sup = w.make_sup()
+        w.sup_runner_ok()
+        self.assertTrue(control.retry(w.store, "deepseek", "b"))
+        w.tick()  # Retry restores CLEANUP
+        w.tick()  # merged PR and proof are rechecked, no producer launch
+
+        self.assertEqual(w.row(method="b")["state"], "COMPLETE")
+        self.assertEqual([(Path(path).resolve(), branch) for path, branch in removed],
+                         [(Path(b["worktree"]).resolve(), b["branch"])])
+        self.assertIsNone(w.store.get(f"cleanup_proof_{b['id']}"))
+        self.assertEqual(dict(w.store.line("deepseek", "a")), other)
+        self.assertEqual(len(w.adapter.launches), 1)
+
 
 class ProducerHandoff(unittest.TestCase):
     def test_validated_pr_stops_codex_style_producer_before_it_can_poll_or_cleanup(self):
