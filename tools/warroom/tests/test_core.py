@@ -116,9 +116,10 @@ class Failures(unittest.TestCase):
 class AuthIsolation(unittest.TestCase):
     def test_env(self):
         base = {"PATH": "/bin", "GH_TOKEN": "t", "GITHUB_TOKEN": "t2", "GIT_CONFIG_COUNT": "1",
-                "GIT_CONFIG_KEY_0": "user.name", "GIT_CONFIG_VALUE_0": "me", "GIT_SSH_COMMAND": "ssh -i k"}
+                "GIT_CONFIG_KEY_0": "user.name", "GIT_CONFIG_VALUE_0": "me", "GIT_SSH_COMMAND": "ssh -i k",
+                "SSH_AUTH_SOCK": "/tmp/ssh-agent.sock"}
         env = auth.build_env(base, Paths().gh_config)
-        for k in ("GH_TOKEN", "GITHUB_TOKEN", "GIT_SSH_COMMAND"):
+        for k in ("GH_TOKEN", "GITHUB_TOKEN", "GIT_SSH_COMMAND", "SSH_AUTH_SOCK"):
             self.assertNotIn(k, env)
         self.assertEqual(env["GH_CONFIG_DIR"], str(Paths().gh_config))
         keys = [env[f"GIT_CONFIG_KEY_{i}"] for i in range(int(env["GIT_CONFIG_COUNT"]))]

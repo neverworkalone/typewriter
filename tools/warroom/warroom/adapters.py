@@ -79,32 +79,95 @@ class AgentAdapter:
     def exit_code(self, exit_file: Path) -> int | None: ...
 
 
-def stage2_chunk_sandbox_command(cmd: list[str], git_executables: list[str], path: str) -> list[str]:
-    """Run a chunk worker inside an OS policy that denies executing every discovered Git binary."""
-    paths = set()
-    for item in git_executables:
+_STAGE2_GIT_CREDENTIAL_ENV = {
+    "GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "GITHUB_ENTERPRISE_TOKEN",
+    "GH_HOST", "GH_REPO", "GIT_ASKPASS", "SSH_ASKPASS", "GIT_SSH", "GIT_SSH_COMMAND",
+    "SSH_AUTH_SOCK", "GCM_INTERACTIVE",
+}
+
+
+def stage2_chunk_worker_env(source: dict[str, str]) -> tuple[dict[str, str], list[str]]:
+    """Remove GitHub credentials from a chunk and return paths the OS sandbox must hide."""
+    env = dict(source)
+    home = Path(env.get("HOME") or Path.home()).expanduser()
+    if not home.is_absolute():
+        home = Path.home()
+    private_paths = {
+        home / ".ssh",
+        home / ".gitconfig",
+        home / ".git-credentials",
+        home / ".netrc",
+        home / ".config" / "gh",
+        home / ".config" / "git" / "config",
+        home / ".config" / "git" / "credentials",
+    }
+    for key in ("GH_CONFIG_DIR", "GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM", "GIT_ASKPASS", "SSH_ASKPASS",
+                "SSH_AUTH_SOCK"):
+        value = env.get(key)
+        if isinstance(value, str) and value and Path(value).is_absolute():
+            path = Path(value)
+            if path != Path(os.devnull):
+                private_paths.add(path)
+    for key in list(env):
+        if key in _STAGE2_GIT_CREDENTIAL_ENV or key.startswith("GIT_CONFIG"):
+            env.pop(key, None)
+    # The chunk needs the model provider's own auth, but never the War Room GitHub identity.
+    # Disable all ambient Git config and credential helpers; finalization gets the normal environment.
+    env["GH_CONFIG_DIR"] = os.devnull
+    env["GIT_CONFIG_NOSYSTEM"] = "1"
+    env["GIT_CONFIG_GLOBAL"] = os.devnull
+    env["GIT_CONFIG_SYSTEM"] = os.devnull
+    env["GIT_CONFIG_COUNT"] = "1"
+    env["GIT_CONFIG_KEY_0"] = "credential.helper"
+    env["GIT_CONFIG_VALUE_0"] = ""
+    env["GIT_TERMINAL_PROMPT"] = "0"
+    env["GIT_SSH_COMMAND"] = "/usr/bin/false"
+    env.pop("WARROOM_STAGE2_GIT_METADATA_PATHS", None)
+    return env, sorted(str(path) for path in private_paths)
+
+
+def stage2_chunk_sandbox_command(cmd: list[str], git_metadata_paths: list[str], path: str,
+                                 private_paths: list[str] | None = None) -> list[str]:
+    """Protect the owned Git metadata and credentials, independent of the Git executable's path."""
+    if not isinstance(git_metadata_paths, list) or not git_metadata_paths:
+        raise RuntimeError("Stage 2 청크를 시작하지 않습니다: 소유 worktree의 Git 보호 경로가 없습니다")
+    metadata = set()
+    for item in git_metadata_paths:
         if not isinstance(item, str) or not item or not Path(item).is_absolute():
-            raise RuntimeError("Stage 2 청크를 시작하지 않습니다: Git 실행 경로가 절대 경로가 아닙니다")
-        paths.add(str(Path(item)))
-        paths.add(str(Path(item).resolve()))
-    paths = sorted(paths)
-    if not paths:
-        raise RuntimeError("Stage 2 청크를 시작하지 않습니다: 차단할 Git 실행 파일 경로를 확인하지 못했습니다")
+            raise RuntimeError("Stage 2 청크를 시작하지 않습니다: Git 보호 경로가 절대 경로가 아닙니다")
+        resolved = Path(item).resolve()
+        if not (resolved.is_dir() or resolved.is_file()):
+            raise RuntimeError("Stage 2 청크를 시작하지 않습니다: Git 보호 경로가 없습니다")
+        metadata.add(str(resolved))
+    metadata = sorted(metadata)
+    protected = set()
+    for item in private_paths or []:
+        if not isinstance(item, str) or not item or not Path(item).is_absolute():
+            raise RuntimeError("Stage 2 청크를 시작하지 않습니다: 자격 증명 보호 경로가 올바르지 않습니다")
+        protected.add(str(Path(item).resolve(strict=False)))
+    protected = sorted(protected)
     if sys.platform == "darwin":
         sandbox = shutil.which("sandbox-exec", path=path)
         if not sandbox:
             raise RuntimeError("Stage 2 청크를 시작하지 않습니다: macOS sandbox-exec를 찾을 수 없습니다")
-        rules = " ".join(f"(deny process-exec (literal {json.dumps(item)}))" for item in paths)
-        profile = f"(version 1) (allow default) {rules}"
+        rules = [f"(deny file-write* (subpath {json.dumps(item)}))" for item in metadata]
+        rules.extend(f"(deny file-read* (subpath {json.dumps(item)}))" for item in protected)
+        profile = f"(version 1) (allow default) {' '.join(rules)}"
         return [sandbox, "-p", profile, *cmd]
     if sys.platform.startswith("linux"):
         bubblewrap = shutil.which("bwrap", path=path)
         if not bubblewrap:
-            raise RuntimeError("Stage 2 청크를 시작하지 않습니다: Git 실행을 차단할 bwrap을 찾을 수 없습니다")
-        masked = [arg for item in paths for arg in ("--ro-bind", "/dev/null", item)]
-        return [bubblewrap, "--die-with-parent", "--new-session", "--bind", "/", "/", *masked,
+            raise RuntimeError("Stage 2 청크를 시작하지 않습니다: Git 메타데이터를 보호할 bwrap을 찾을 수 없습니다")
+        mounts = [arg for item in metadata for arg in ("--ro-bind", item, item)]
+        for item in protected:
+            private = Path(item)
+            if private.is_dir():
+                mounts.extend(("--tmpfs", item))
+            elif private.is_file():
+                mounts.extend(("--ro-bind", "/dev/null", item))
+        return [bubblewrap, "--die-with-parent", "--new-session", "--bind", "/", "/", *mounts,
                 "--", *cmd]
-    raise RuntimeError(f"Stage 2 청크를 시작하지 않습니다: {sys.platform}용 Git 실행 샌드박스가 없습니다")
+    raise RuntimeError(f"Stage 2 청크를 시작하지 않습니다: {sys.platform}용 파일 시스템 샌드박스가 없습니다")
 
 
 _SESSION = re.compile(r"\bses_[A-Za-z0-9]+")
@@ -132,14 +195,13 @@ class ProcessAdapter(AgentAdapter):
         env = dict(env)
         if env.get("WARROOM_STAGE2_CHUNK") == "1":
             try:
-                git_executables = json.loads(env.pop("WARROOM_GIT_EXECUTABLES", "[]"))
+                git_metadata_paths = json.loads(env.pop("WARROOM_STAGE2_GIT_METADATA_PATHS", "[]"))
             except json.JSONDecodeError as e:
-                raise RuntimeError("Stage 2 청크의 Git 차단 경로가 손상되었습니다") from e
-            if not isinstance(git_executables, list):
-                raise RuntimeError("Stage 2 청크의 Git 차단 경로가 올바르지 않습니다")
-            cmd = stage2_chunk_sandbox_command(cmd, git_executables, env.get("PATH", os.defpath))
+                raise RuntimeError("Stage 2 청크의 Git 보호 경로가 손상되었습니다") from e
+            env, private_paths = stage2_chunk_worker_env(env)
+            cmd = stage2_chunk_sandbox_command(cmd, git_metadata_paths, env.get("PATH", os.defpath), private_paths)
         else:
-            env.pop("WARROOM_GIT_EXECUTABLES", None)
+            env.pop("WARROOM_STAGE2_GIT_METADATA_PATHS", None)
         # The wrapper records the exit status so a restarted Supervisor can still
         # learn how the (detached) child ended.
         wrapper = ['"$@"', "echo $? > \"$WARROOM_EXIT_FILE\""]
