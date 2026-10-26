@@ -13,6 +13,7 @@ import {
   inspectLiteraryIndex,
   loadLiteraryCheckpoint,
   readLiteraryChunk,
+  resolveVerifiedContextKey,
   submitLiteraryChunk,
   summarizeLiteraryCheckpoint,
   validateExistingLiteraryCandidates,
@@ -156,6 +157,7 @@ async function makeRetiredParagraphIndex() {
 
 const chunk = (fixture, extra = {}) => readLiteraryChunk({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, scratchDirectory: fixture.scratchDirectory, ...extra });
 const submit = (fixture, senses) => submitLiteraryChunk({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath, submission: { senses }, scratchDirectory: fixture.scratchDirectory });
+const rejectsSubmitAs = (promise, reason) => assert.rejects(promise, (error) => error.code === 'LITERARY_SUBMISSION_VALIDATION' && error.reason === reason);
 const load = async (fixture) => (await loadLiteraryCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory })).checkpoint;
 const exportOutput = (fixture) => exportLiteraryCandidates({
   checkpointPath: fixture.checkpointPath,
@@ -164,6 +166,17 @@ const exportOutput = (fixture) => exportLiteraryCandidates({
   repositoryDirectory: fixture.root,
   scratchDirectory: fixture.scratchDirectory,
 });
+
+async function submitCli(fixture, submission, databasePath = fixture.databasePath) {
+  const inputPath = path.join(fixture.scratchDirectory, 'submit-input.json');
+  await writeFile(inputPath, typeof submission === 'string' ? submission : JSON.stringify(submission));
+  return spawnSync(process.execPath, [
+    path.resolve('scripts/relation/literary-context-cli.mjs'), 'submit',
+    '--db', databasePath,
+    '--checkpoint', fixture.checkpointPath,
+    '--input', inputPath,
+  ], { cwd: fixture.root, encoding: 'utf8' });
+}
 
 test('default preflight is read-only and does not hash the database or rebuild the FTS index', async () => {
   const fixture = await makeFixture({ unitCount: 1 });
@@ -387,19 +400,199 @@ test('submission fails closed and writes nothing for uncited, duplicate or unkno
     const [item] = (await chunk(fixture)).items;
     const key = item.contexts[0].k;
     const before = await readFile(fixture.checkpointPath, 'utf8');
-    await assert.rejects(submit(fixture, [{ sense_id: 'sense-000001', verified: [], candidates: ['서리'] }]), /no VERIFIED source-sense context/u);
-    await assert.rejects(submit(fixture, [{ sense_id: 'sense-000001', verified: ['0'.repeat(12)], candidates: [] }]), /does not identify exactly one indexed context/u);
-    await assert.rejects(submit(fixture, [{ sense_id: 'sense-000001', verified: [key, key], candidates: [] }]), /same verified context twice/u);
-    await assert.rejects(submit(fixture, [{ sense_id: 'sense-000001', verified: [key.slice(0, 4)], candidates: [] }]), /shorter than 12/u);
-    await assert.rejects(submit(fixture, [{ sense_id: 'sense-000001', verified: [key], candidates: [] }, { sense_id: 'sense-000001', verified: [], candidates: [] }]), /more than once/u);
-    await assert.rejects(submit(fixture, [{ sense_id: 'sense-000001', verified: [key], candidates: [], note: 'extra' }]), /exactly sense_id, verified\[\], candidates\[\]/u);
-    await assert.rejects(submit(fixture, [{ sense_id: 'sense-000001', verified: [key], candidates: [] }, { sense_id: 'sense-999999', verified: [], candidates: [] }]), /not in this checkpoint/u);
+    await rejectsSubmitAs(submit(fixture, [{ sense_id: 'sense-000001', verified: [], candidates: ['서리'] }]), 'missing_verified');
+    await rejectsSubmitAs(submit(fixture, [{ sense_id: 'sense-000001', verified: ['0'.repeat(12)], candidates: [] }]), 'context_key_not_found');
+    await rejectsSubmitAs(submit(fixture, [{ sense_id: 'sense-000001', verified: [key, key], candidates: [] }]), 'duplicate_verified');
+    await rejectsSubmitAs(submit(fixture, [{ sense_id: 'sense-000001', verified: [key.slice(0, 4)], candidates: [] }]), 'context_key_too_short');
+    await rejectsSubmitAs(submit(fixture, [{ sense_id: 'sense-000001', verified: [key], candidates: [] }, { sense_id: 'sense-000001', verified: [], candidates: [] }]), 'duplicate_sense');
+    await rejectsSubmitAs(submit(fixture, [{ sense_id: 'sense-000001', verified: [key], candidates: [], note: 'extra' }]), 'submission_schema');
+    await rejectsSubmitAs(submit(fixture, [{ sense_id: 'sense-000001', verified: [key], candidates: [] }, { sense_id: 'sense-999999', verified: [], candidates: [] }]), 'unknown_sense');
     assert.equal(await readFile(fixture.checkpointPath, 'utf8'), before);
     // A sense with hits but no VERIFIED context is a real result, not a missing one.
     await submit(fixture, [{ sense_id: 'sense-000001', verified: [], candidates: [] }]);
     assert.equal((await load(fixture)).records[0].senses[0].submission.status, 'SUBMITTED');
   } finally {
     await cleanup(fixture);
+  }
+});
+
+test('submit validation returns bounded reason codes and source-sense fields without echoing private input', async () => {
+  const fixture = await makeFixture({ unitCount: 3 });
+  try {
+    const [item] = (await chunk(fixture)).items;
+    const key = item.contexts[0].k;
+    const before = await readFile(fixture.checkpointPath, 'utf8');
+    const cases = [
+      {
+        name: 'short context key',
+        senses: [{ sense_id: item.sense_id, verified: [key.slice(0, 4)], candidates: [] }],
+        reason: 'context_key_too_short',
+        field: 'verified',
+        senseId: item.sense_id,
+      },
+      {
+        name: 'unknown context key',
+        senses: [{ sense_id: item.sense_id, verified: ['private-locator-marker'], candidates: [] }],
+        reason: 'context_key_not_found',
+        field: 'verified',
+        senseId: item.sense_id,
+      },
+      {
+        name: 'duplicate verified context',
+        senses: [{ sense_id: item.sense_id, verified: [key, key], candidates: [] }],
+        reason: 'duplicate_verified',
+        field: 'verified',
+        senseId: item.sense_id,
+      },
+      {
+        name: 'candidates without verified context',
+        senses: [{ sense_id: item.sense_id, verified: [], candidates: ['서리'] }],
+        reason: 'missing_verified',
+        field: 'verified',
+        senseId: item.sense_id,
+      },
+      {
+        name: 'unknown source sense',
+        senses: [{ sense_id: 'private-unknown-sense-marker', verified: [], candidates: [] }],
+        reason: 'unknown_sense',
+        field: 'sense_id',
+        senseId: null,
+      },
+      {
+        name: 'malformed candidates field',
+        senses: [{ sense_id: item.sense_id, verified: [], candidates: 'private-input-marker' }],
+        reason: 'submission_schema',
+        field: 'candidates',
+        senseId: item.sense_id,
+      },
+      {
+        name: 'invalid JSON input',
+        raw: '{not-json private-json-marker',
+        reason: 'submission_schema',
+        field: 'input',
+        senseId: null,
+      },
+      {
+        name: 'unsupported top-level field',
+        submission: { senses: [], private_top_level_marker: true },
+        reason: 'submission_schema',
+        field: 'submission',
+        senseId: null,
+      },
+    ];
+
+    for (const scenario of cases) {
+      const result = await submitCli(fixture, scenario.raw ?? scenario.submission ?? { senses: scenario.senses });
+      assert.equal(result.status, 1, scenario.name);
+      assert.equal(result.stdout, '', scenario.name);
+      const diagnostic = JSON.parse(result.stderr);
+      assert.equal(diagnostic.status, 'FAILED', scenario.name);
+      assert.equal(diagnostic.diagnostic, 'submit_validation', scenario.name);
+      assert.equal(diagnostic.reason, scenario.reason, scenario.name);
+      assert.deepEqual(diagnostic.affected, { sense_id: scenario.senseId, field: scenario.field }, scenario.name);
+      const expectedRepairScope = scenario.reason === 'submission_schema'
+        ? 'correct_submission_shape'
+        : scenario.reason === 'unknown_sense'
+          ? 'correct_source_sense_id'
+          : 'resubmit_affected_sense';
+      assert.equal(diagnostic.repair_scope, expectedRepairScope, scenario.name);
+      assert.equal(result.stderr.includes(fixture.root), false, scenario.name);
+      assert.equal(result.stderr.includes('fixture gloss'), false, scenario.name);
+      assert.equal(result.stderr.includes('private-locator-marker'), false, scenario.name);
+      assert.equal(result.stderr.includes('private-unknown-sense-marker'), false, scenario.name);
+      assert.equal(result.stderr.includes('private-input-marker'), false, scenario.name);
+      assert.equal(result.stderr.includes('private-json-marker'), false, scenario.name);
+      assert.equal(result.stderr.includes('private_top_level_marker'), false, scenario.name);
+      assert.equal(result.stderr.includes(' at '), false, scenario.name);
+      assert.equal(await readFile(fixture.checkpointPath, 'utf8'), before, scenario.name);
+    }
+
+    const successful = await submitCli(fixture, { senses: [{ sense_id: item.sense_id, verified: [key], candidates: ['서리'] }] });
+    assert.equal(successful.status, 0, successful.stderr);
+    assert.equal(JSON.parse(successful.stdout).status, 'SAVED');
+  } finally {
+    await cleanup(fixture);
+  }
+});
+
+test('ambiguous context prefixes are classified without including the key', () => {
+  const senseId = 'sense-000001';
+  assert.throws(
+    () => resolveVerifiedContextKey('abcdef123456', senseId, [
+      { locator_key: 'abcdef123456' + '0'.repeat(52) },
+      { locator_key: 'abcdef123456' + '1'.repeat(52) },
+    ]),
+    (error) => error.code === 'LITERARY_SUBMISSION_VALIDATION'
+      && error.reason === 'context_key_ambiguous'
+      && error.affected.sense_id === senseId
+      && error.affected.field === 'verified'
+      && !error.message.includes('abcdef123456'),
+  );
+});
+
+test('submit index access and identity failures stop safely and leave the checkpoint unchanged', async () => {
+  const inaccessible = await makeFixture({ unitCount: 1 });
+  try {
+    const before = await readFile(inaccessible.checkpointPath, 'utf8');
+    const result = await submitCli(inaccessible, { senses: [{ sense_id: 'sense-000001', verified: [], candidates: [] }] }, path.join(inaccessible.root, 'missing.sqlite'));
+    assert.equal(result.status, 1);
+    const diagnostic = JSON.parse(result.stderr);
+    assert.equal(diagnostic.diagnostic, 'index_access');
+    assert.equal(diagnostic.repair_scope, 'stop_and_report');
+    assert.equal(result.stderr.includes(inaccessible.root), false);
+    assert.equal(await readFile(inaccessible.checkpointPath, 'utf8'), before);
+  } finally {
+    await cleanup(inaccessible);
+  }
+
+  for (const scenario of [
+    {
+      name: 'schema mismatch',
+      diagnostic: 'index_schema',
+      mutate(database) { database.exec('ALTER TABLE text_units RENAME COLUMN eol TO line_ending'); },
+    },
+    {
+      name: 'metadata mismatch',
+      diagnostic: 'index_metadata',
+      mutate(database) { database.prepare("UPDATE index_metadata SET value = 'invalid' WHERE key = 'logical_rows_sha256'").run(); },
+    },
+  ]) {
+    const invalidIndex = await makeFixture({ unitCount: 1 });
+    try {
+      const before = await readFile(invalidIndex.checkpointPath, 'utf8');
+      const database = new DatabaseSync(invalidIndex.databasePath);
+      scenario.mutate(database);
+      database.close();
+      const result = await submitCli(invalidIndex, { senses: [{ sense_id: 'sense-000001', verified: [], candidates: [] }] });
+      assert.equal(result.status, 1, scenario.name);
+      const diagnostic = JSON.parse(result.stderr);
+      assert.equal(diagnostic.diagnostic, scenario.diagnostic, scenario.name);
+      assert.equal(diagnostic.repair_scope, 'stop_and_report', scenario.name);
+      assert.equal(result.stderr.includes(invalidIndex.root), false, scenario.name);
+      assert.equal(result.stderr.includes('fixture gloss'), false, scenario.name);
+      assert.equal(await readFile(invalidIndex.checkpointPath, 'utf8'), before, scenario.name);
+    } finally {
+      await cleanup(invalidIndex);
+    }
+  }
+
+  const changed = await makeFixture({ unitCount: 1 });
+  try {
+    const [item] = (await chunk(changed)).items;
+    const before = await readFile(changed.checkpointPath, 'utf8');
+    const database = new DatabaseSync(changed.databasePath);
+    database.prepare('UPDATE works SET title = ? WHERE work_id = 1').run('Changed fixture title');
+    database.close();
+    const result = await submitCli(changed, { senses: [{ sense_id: item.sense_id, verified: [], candidates: [] }] });
+    assert.equal(result.status, 1);
+    const diagnostic = JSON.parse(result.stderr);
+    assert.equal(diagnostic.diagnostic, 'index_identity');
+    assert.equal(diagnostic.repair_scope, 'stop_and_report');
+    assert.equal(result.stderr.includes(changed.root), false);
+    assert.equal(result.stderr.includes('Changed fixture title'), false);
+    assert.equal(await readFile(changed.checkpointPath, 'utf8'), before);
+  } finally {
+    await cleanup(changed);
   }
 });
 
@@ -540,7 +733,10 @@ test('submit re-resolves only the contexts chunk showed: shown units stay bound 
     checkpoint.records[0].senses[0].shown.unit_rowids[0] = 999999;
     await writeFile(fixture.checkpointPath, JSON.stringify(checkpoint));
     const tampered = await readFile(fixture.checkpointPath, 'utf8');
-    await assert.rejects(submit(fixture, [{ sense_id: 'sense-000001', verified: [key], candidates: [] }]), /no longer matches/u);
+    await assert.rejects(
+      submit(fixture, [{ sense_id: 'sense-000001', verified: [key], candidates: [] }]),
+      (error) => error.code === 'LITERARY_INDEX_SEARCH',
+    );
     assert.equal(await readFile(fixture.checkpointPath, 'utf8'), tampered);
     // Without recorded reads (legacy checkpoint) the original full search still binds the key.
     const legacy = JSON.parse(original);

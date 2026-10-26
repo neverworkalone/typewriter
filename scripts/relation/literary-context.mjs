@@ -49,6 +49,26 @@ function fail(message) {
   throw new Error(message);
 }
 
+function failSubmission(reason, senseId, field) {
+  const error = new Error('literary chunk submission validation failed');
+  error.code = 'LITERARY_SUBMISSION_VALIDATION';
+  error.reason = reason;
+  error.affected = { sense_id: senseId, field };
+  error.repair_scope = new Map([
+    ['submission_schema', 'correct_submission_shape'],
+    ['duplicate_sense', 'correct_submission_shape'],
+    ['unknown_sense', 'correct_source_sense_id'],
+    ['missing_search_forms', 'stop_and_report'],
+  ]).get(reason) ?? 'resubmit_affected_sense';
+  throw error;
+}
+
+function codedError(code, message) {
+  const error = new Error(message);
+  error.code = code;
+  return error;
+}
+
 function gitHead() {
   try {
     return execFileSync('git', ['rev-parse', 'HEAD'], { cwd: process.cwd(), encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
@@ -186,8 +206,12 @@ function assertIndexSchema(database) {
   if (normalizedFtsSql !== expectedFtsSql) fail('unsupported literary index FTS definition; expected unit_fts over text_units.unit_rowid with trigram');
 
   // Exercise FTS5 trigram and literal substring support without returning indexed text.
-  database.prepare('SELECT rowid FROM unit_fts WHERE unit_fts MATCH ? LIMIT 1').all('"preflight"');
-  if (database.prepare("SELECT instr('abc', 'b') AS found").get().found !== 2) fail('SQLite literal substring search is unavailable');
+  try {
+    database.prepare('SELECT rowid FROM unit_fts WHERE unit_fts MATCH ? LIMIT 1').all('"preflight"');
+    if (database.prepare("SELECT instr('abc', 'b') AS found").get().found !== 2) fail('SQLite literal substring search is unavailable');
+  } catch {
+    throw codedError('LITERARY_INDEX_SEARCH', 'approved literary index search contract is unavailable');
+  }
 }
 
 function readCorpusIndexMetadata(database) {
@@ -348,7 +372,12 @@ function assertIndexData(database, metadata) {
 }
 
 function openLiteraryIndex(databasePath, { prepareFtsVocabulary = false } = {}) {
-  const database = new DatabaseSync(databasePath, { readOnly: true });
+  let database;
+  try {
+    database = new DatabaseSync(databasePath, { readOnly: true });
+  } catch {
+    throw codedError('LITERARY_INDEX_ACCESS', 'approved literary index could not be opened');
+  }
   try {
     assertIndexSchema(database);
     if (prepareFtsVocabulary) {
@@ -498,6 +527,10 @@ function findSense(checkpoint, senseId) {
   fail(`sense_id ${JSON.stringify(senseId)} is not in this checkpoint`);
 }
 
+function checkpointHasSense(checkpoint, senseId) {
+  return checkpoint.records.some((record) => record.senses.some((sense) => sense.sense_id === senseId));
+}
+
 function currentSenseStatus(sense) {
   const search = sense.search;
   if (!search) return 'PENDING';
@@ -575,11 +608,17 @@ function readUnitWindow(database, { file_id: fileId, ordinal, unit_rowid: unitRo
 }
 
 async function assertCheckpointIndexUnchanged(checkpoint, databasePath, metadata) {
-  const databaseRealPath = await realpath(databasePath);
-  const [current, recorded] = await Promise.all([
-    stat(databaseRealPath, { bigint: true }),
-    stat(checkpoint.index.path, { bigint: true }),
-  ]);
+  let current;
+  let recorded;
+  try {
+    const databaseRealPath = await realpath(databasePath);
+    [current, recorded] = await Promise.all([
+      stat(databaseRealPath, { bigint: true }),
+      stat(checkpoint.index.path, { bigint: true }),
+    ]);
+  } catch {
+    throw codedError('LITERARY_INDEX_ACCESS', 'approved literary index identity could not be checked');
+  }
   const fingerprint = [String(current.dev), String(current.ino), String(current.size), String(current.mtimeNs), String(current.ctimeNs)].join(':');
   const unchanged = String(current.dev) === String(recorded.dev)
     && String(current.ino) === String(recorded.ino)
@@ -590,7 +629,9 @@ async function assertCheckpointIndexUnchanged(checkpoint, databasePath, metadata
     && checkpoint.index.schema_version === metadata.schema_version
     && checkpoint.index.input_manifest_sha256 === metadata.input_manifest_sha256
     && checkpoint.index.logical_rows_sha256 === metadata.logical_rows_sha256;
-  if (!unchanged) fail('literary index identity or schema provenance changed after checkpoint initialization; re-run preflight and start a new checkpoint');
+  if (!unchanged) {
+    throw codedError('LITERARY_INDEX_IDENTITY', 'approved literary index identity or provenance changed after checkpoint initialization');
+  }
 }
 
 function cursorEncode(value) {
@@ -1023,20 +1064,34 @@ function targetsPending(checkpoint) {
   return checkpoint.records.reduce((count, record) => count + record.senses.filter((sense) => !senseDone(sense)).length, 0);
 }
 
-function validateSubmission(submission) {
-  assertRecord(submission, 'chunk submission');
-  if (!exactKeys(submission, ['senses']) || !Array.isArray(submission.senses) || submission.senses.length === 0) fail('chunk submission must be {"senses":[...]} with at least one sense');
+function validateSubmission(submission, checkpoint) {
+  if (!submission || typeof submission !== 'object' || Array.isArray(submission)) failSubmission('submission_schema', null, 'submission');
+  if (!exactKeys(submission, ['senses'])) failSubmission('submission_schema', null, 'submission');
+  if (!Array.isArray(submission.senses) || submission.senses.length === 0) failSubmission('submission_schema', null, 'senses');
   const seen = new Set();
   for (const entry of submission.senses) {
-    assertRecord(entry, 'submitted sense');
-    if (!exactKeys(entry, ['sense_id', 'verified', 'candidates'])) fail('each submitted sense needs exactly sense_id, verified[], candidates[]');
-    if (typeof entry.sense_id !== 'string' || entry.sense_id === '') fail('submitted sense_id must be a non-empty string');
-    if (seen.has(entry.sense_id)) fail(`sense_id ${JSON.stringify(entry.sense_id)} is submitted more than once`);
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) failSubmission('submission_schema', null, 'senses');
+    if (typeof entry.sense_id !== 'string' || entry.sense_id === '') failSubmission('submission_schema', null, 'sense_id');
+    if (!exactKeys(entry, ['sense_id', 'verified', 'candidates'])) {
+      failSubmission('submission_schema', checkpointHasSense(checkpoint, entry.sense_id) ? entry.sense_id : null, 'sense');
+    }
+    if (!checkpointHasSense(checkpoint, entry.sense_id)) failSubmission('unknown_sense', null, 'sense_id');
+    if (seen.has(entry.sense_id)) failSubmission('duplicate_sense', entry.sense_id, 'sense_id');
     seen.add(entry.sense_id);
     for (const key of ['verified', 'candidates']) {
-      if (!Array.isArray(entry[key]) || entry[key].some((item) => typeof item !== 'string' || item.trim() === '')) fail(`${key} of ${entry.sense_id} must be a string[]`);
+      if (!Array.isArray(entry[key]) || entry[key].some((item) => typeof item !== 'string' || item.trim() === '')) {
+        failSubmission('submission_schema', entry.sense_id, key);
+      }
     }
   }
+}
+
+export function resolveVerifiedContextKey(key, senseId, results) {
+  if (key.length < SHORT_KEY_LENGTH) failSubmission('context_key_too_short', senseId, 'verified');
+  const matches = results.filter((row) => row.locator_key.startsWith(key));
+  if (matches.length === 0) failSubmission('context_key_not_found', senseId, 'verified');
+  if (matches.length > 1) failSubmission('context_key_ambiguous', senseId, 'verified');
+  return matches[0];
 }
 
 /**
@@ -1044,8 +1099,8 @@ function validateSubmission(submission) {
  * contexts of that sense can be cited) and the final candidates. Nothing is written unless every sense is valid.
  */
 export async function submitLiteraryChunk({ databasePath, checkpointPath, submission, scratchDirectory = path.resolve(CHECKPOINT_SCRATCH_DIRECTORY) }) {
-  validateSubmission(submission);
   const { checkpoint, path: resolvedCheckpoint } = await loadLiteraryCheckpoint(checkpointPath, { scratchDirectory });
+  validateSubmission(submission, checkpoint);
   const { database, metadata } = openLiteraryIndex(databasePath);
   const accepted = [];
   try {
@@ -1053,26 +1108,31 @@ export async function submitLiteraryChunk({ databasePath, checkpointPath, submis
     for (const entry of submission.senses) {
       const { record, sense } = findSense(checkpoint, entry.sense_id);
       const forms = senseForms(sense);
-      if (forms.length === 0) fail(`${entry.sense_id} has no search forms and cannot be submitted`);
+      if (forms.length === 0) failSubmission('missing_search_forms', entry.sense_id, 'search_forms');
       // Normal path: re-resolve the few contexts `chunk` showed. A sense never read by `chunk` (or whose forms changed) keeps the full search.
       const digest = formsDigest(forms);
-      const result = sense.shown?.forms_sha256 === digest
-        ? { total_hits: sense.shown.total_hits, results: sense.shown.unit_rowids.map((unitRowId) => resolveShownContext(database, unitRowId, forms)) }
-        : runSearch(database, forms, { pageSize: MAX_CONTEXTS_PER_SENSE, cursor: null, snippetChars: DEFAULT_SNIPPET_CHARS, preferredForm: record.lemma.normalize('NFC').trim() });
-      if (result.total_hits === 0 && (entry.verified.length > 0 || entry.candidates.length > 0)) fail(`${entry.sense_id} has no literary hits, so it cannot have verified contexts or candidates`);
-      const verified = entry.verified.map((key) => {
-        if (key.length < SHORT_KEY_LENGTH) fail(`context key ${JSON.stringify(key)} on ${entry.sense_id} is shorter than ${SHORT_KEY_LENGTH} characters`);
-        const matches = result.results.filter((row) => row.locator_key.startsWith(key));
-        if (matches.length !== 1) fail(`context key ${JSON.stringify(key)} on ${entry.sense_id} does not identify exactly one indexed context`);
-        return matches[0];
-      });
-      if (new Set(verified.map((row) => row.locator_key)).size !== verified.length) fail(`${entry.sense_id} lists the same verified context twice`);
+      let result;
+      let verified;
+      try {
+        result = sense.shown?.forms_sha256 === digest
+          ? { total_hits: sense.shown.total_hits, results: sense.shown.unit_rowids.map((unitRowId) => resolveShownContext(database, unitRowId, forms)) }
+          : runSearch(database, forms, { pageSize: MAX_CONTEXTS_PER_SENSE, cursor: null, snippetChars: DEFAULT_SNIPPET_CHARS, preferredForm: record.lemma.normalize('NFC').trim() });
+        if (result.total_hits === 0 && entry.verified.length > 0) failSubmission('context_key_not_found', entry.sense_id, 'verified');
+        if (result.total_hits === 0 && entry.candidates.length > 0) failSubmission('no_literary_hits', entry.sense_id, 'candidates');
+        verified = entry.verified.map((key) => resolveVerifiedContextKey(key, entry.sense_id, result.results));
+      } catch (error) {
+        if (error?.code === 'LITERARY_SUBMISSION_VALIDATION') throw error;
+        throw codedError('LITERARY_INDEX_SEARCH', 'approved literary index search failed');
+      }
+      if (new Set(verified.map((row) => row.locator_key)).size !== verified.length) {
+        failSubmission('duplicate_verified', entry.sense_id, 'verified');
+      }
       const candidates = new Map();
       for (const candidate of entry.candidates) {
         const normalized = normalizeCandidate(candidate);
         if (!candidates.has(normalized)) candidates.set(normalized, candidate.normalize('NFC').trim());
       }
-      if (candidates.size > 0 && verified.length === 0) fail(`${entry.sense_id} has candidates but no VERIFIED source-sense context`);
+      if (candidates.size > 0 && verified.length === 0) failSubmission('missing_verified', entry.sense_id, 'verified');
       accepted.push({
         sense,
         submission: {
