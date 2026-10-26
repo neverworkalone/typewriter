@@ -50,12 +50,11 @@ def main() -> int:
     argv = sys.argv[1:]
     command, rest = _command(argv)
     blocked = False
-    if os.environ.get("WARROOM_STAGE2_CHUNK") == "1" and command in {
-        "add", "am", "apply", "checkout", "cherry-pick", "clean", "commit", "fetch", "merge", "pull",
-        "push", "rebase", "reset", "restore", "revert", "stash", "switch", "tag",
-    }:
+    chunk_run = os.environ.get("WARROOM_STAGE2_CHUNK") == "1"
+    if chunk_run and command is not None:
+        # Chunk runs do not need Git; do not delegate to an executable hidden behind this shim.
         blocked = True
-    if command == "worktree":
+    elif command == "worktree":
         # `list` is read-only; every other worktree lifecycle operation is Supervisor-owned.
         blocked = bool(rest and rest[0] != "list")
     elif command == "branch":
@@ -65,8 +64,8 @@ def main() -> int:
         # Producer jobs need normal commits/pushes, never direct ref manipulation.
         blocked = True
     if blocked:
-        message = ("Stage 2 chunk runs cannot modify Git state; leave the assigned HEAD and branch unchanged."
-                   if os.environ.get("WARROOM_STAGE2_CHUNK") == "1" else
+        message = ("Stage 2 chunk runs cannot access Git; leave the assigned HEAD and branch unchanged."
+                   if chunk_run else
                    "War Room Supervisor owns worktree and branch cleanup; leave the assigned checkout intact.")
         print(message, file=sys.stderr)
         return 126

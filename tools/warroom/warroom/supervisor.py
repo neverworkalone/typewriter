@@ -11,6 +11,7 @@ The AI process exiting never completes a batch; only GitHub `merged=true` does.
 from __future__ import annotations
 
 import fcntl
+import hashlib
 import json
 import os
 import re
@@ -621,7 +622,53 @@ class Supervisor:
         env.pop("WARROOM_STAGE2_CHUNK", None)
         if b["method"] == STAGE2_METHOD and isinstance(kind, str) and kind.startswith("s2_chunk_"):
             env["WARROOM_STAGE2_CHUNK"] = "1"
+            env["PATH"] = self._worker_path_without_git(env.get("PATH", os.defpath))
         return env
+
+    def _worker_path_without_git(self, path: str) -> str:
+        """Hide actual Git executables from a chunk worker's PATH, preserving other commands in their directories."""
+        guard_dir = (Path(__file__).resolve().parents[1] / "bin").resolve()
+        safe_root = self.paths.local / "worker-path-without-git"
+        safe_root.mkdir(parents=True, exist_ok=True)
+        sanitized = []
+        for entry in path.split(os.pathsep):
+            source = Path(entry or os.curdir).expanduser()
+            try:
+                resolved = source.resolve()
+                git_command = source / "git"
+                if resolved == guard_dir or not git_command.is_file() or not os.access(git_command, os.X_OK):
+                    sanitized.append(entry)
+                    continue
+                sanitized.append(str(self._path_overlay_without_git(source, safe_root)))
+            except OSError as e:
+                raise RuntimeError(f"Stage 2 청크용 PATH를 안전하게 구성하지 못했습니다: {source}: {e}") from e
+        return os.pathsep.join(sanitized)
+
+    @staticmethod
+    def _path_overlay_without_git(source: Path, safe_root: Path) -> Path:
+        """Cache a symlink view of one PATH directory that omits its Git executable."""
+        source = source.resolve()
+        key_data = f"{source}:{source.stat().st_mtime_ns}".encode("utf-8")
+        key = hashlib.sha256(key_data).hexdigest()[:20]
+        safe = safe_root / key
+        if (safe / ".warroom-ready").is_file():
+            return safe
+        temporary = safe_root / f"{key}.{os.getpid()}.tmp"
+        shutil.rmtree(temporary, ignore_errors=True)
+        temporary.mkdir(mode=0o700)
+        try:
+            for item in source.iterdir():
+                if item.name in {"git", ".warroom-ready"}:
+                    continue
+                (temporary / item.name).symlink_to(item, target_is_directory=item.is_dir())
+            (temporary / ".warroom-ready").write_text("git excluded\n", encoding="utf-8")
+            if safe.exists():
+                shutil.rmtree(safe)
+            temporary.rename(safe)
+        except Exception:
+            shutil.rmtree(temporary, ignore_errors=True)
+            raise
+        return safe
 
     def _pinned_runs(self, producer: str, role: str = "stage1"):
         """Every model/effort this producer may run with: both tiers of a tiered CLI (a configured Go model too)."""

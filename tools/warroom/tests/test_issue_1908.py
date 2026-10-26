@@ -1,5 +1,7 @@
 """Issue #1908: each Stage 2 checkpoint chunk has an independent run, with saved-decision progress."""
 import json
+import os
+import shutil
 import unittest
 from pathlib import Path
 
@@ -93,6 +95,11 @@ class Stage2ChunkRuns(unittest.TestCase):
         self.assertEqual((first["stage2_chunk_git"], second["stage2_chunk_git"]), ("1", "1"))
         self.assertEqual((first["git_shim"], second["git_shim"]), (str(Path(__file__).parents[1] / "bin" / "git"),) * 2)
         self.assertEqual((first["real_git"], second["real_git"]), (None, None))
+        real_git = Path(shutil.which("git", path=os.environ.get("PATH", os.defpath))).resolve()
+        for worker_path in (first["worker_path"], second["worker_path"]):
+            self.assertEqual(shutil.which("git", path=worker_path), first["git_shim"])
+            self.assertTrue(all((Path(entry) / "git").resolve() != real_git
+                                for entry in worker_path.split(os.pathsep)))
         self.assertEqual((second["model"], second["effort"], second["cwd"]),
                          (first["model"], first["effort"], first["cwd"]))
         self.assertIn("chunk", second["prompt"])
@@ -106,6 +113,8 @@ class Stage2ChunkRuns(unittest.TestCase):
         self.assertIsNone(final["stage2_chunk_git"])  # only the finalizer may commit and push
         self.assertEqual(final["git_shim"], str(Path(__file__).parents[1] / "bin" / "git"))
         self.assertIsNone(final["real_git"])
+        final_path = final["worker_path"].split(os.pathsep)
+        self.assertIn(str(Path(shutil.which("git", path=os.environ.get("PATH", os.defpath))).parent), final_path)
         self.assertIn("finalize", final["prompt"])
         self.assertEqual(b["branch"], w.git.created[0][1])
         self.assertEqual(w.git.local_head, HEAD1)

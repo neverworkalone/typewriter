@@ -259,6 +259,8 @@ class ProducerHandoff(unittest.TestCase):
                                                  env=chunk_env, capture_output=True, text=True)
             chunk_direct_push = subprocess.run([chunk_env["WARROOM_GIT_SHIM"], "push", "origin", "branch"],
                                                env=chunk_env, capture_output=True, text=True)
+            chunk_status = subprocess.run(["git", "status", "--short"], env=chunk_env,
+                                          capture_output=True, text=True)
             finalizer_commit = subprocess.run(["git", "commit", "-m", "final"], env=env,
                                               capture_output=True, text=True)
             finalizer_push = subprocess.run(["git", "push", "origin", "branch"], env=env,
@@ -278,6 +280,7 @@ class ProducerHandoff(unittest.TestCase):
         self.assertEqual(chunk_commit.returncode, 126)
         self.assertEqual(chunk_push.returncode, 126)
         self.assertEqual((chunk_direct_commit.returncode, chunk_direct_push.returncode), (126, 126))
+        self.assertEqual(chunk_status.returncode, 126)
         self.assertEqual((finalizer_commit.returncode, finalizer_push.returncode,
                           finalizer_direct_commit.returncode, finalizer_direct_push.returncode), (0, 0, 0, 0))
         self.assertEqual(finalizer_commit.stdout.strip(), "commit -m final")
