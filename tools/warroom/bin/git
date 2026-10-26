@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import os
+import shutil
 import sys
+from pathlib import Path
 
 
 def _command(argv: list[str]) -> tuple[str | None, list[str]]:
@@ -24,6 +26,24 @@ def _command(argv: list[str]) -> tuple[str | None, list[str]]:
         else:
             return arg, argv[i + 1:]
     return None, []
+
+
+def _real_git() -> str | None:
+    """Find Git behind this shim without publishing its executable path to worker processes."""
+    shim = Path(__file__).resolve()
+    search_path = []
+    for entry in os.environ.get("PATH", os.defpath).split(os.pathsep):
+        candidate = Path(entry or os.curdir) / "git"
+        try:
+            if candidate.resolve() == shim:
+                continue
+        except OSError:
+            continue
+        search_path.append(entry)
+    real_git = shutil.which("git", path=os.pathsep.join(search_path))
+    if real_git and Path(real_git).resolve() != shim:
+        return real_git
+    return None
 
 
 def main() -> int:
@@ -51,8 +71,8 @@ def main() -> int:
         print(message, file=sys.stderr)
         return 126
 
-    real_git = os.environ.get("WARROOM_REAL_GIT", "")
-    if not os.path.isabs(real_git) or not os.path.isfile(real_git):
+    real_git = _real_git()
+    if not real_git:
         print("War Room's real Git executable is not configured.", file=sys.stderr)
         return 127
     os.execv(real_git, [real_git, *argv])

@@ -91,6 +91,8 @@ class Stage2ChunkRuns(unittest.TestCase):
         second = w.adapter.launches[-1]
         self.assertEqual(second["kind"], "start")  # a fresh CLI session, never --resume after a saved chunk
         self.assertEqual((first["stage2_chunk_git"], second["stage2_chunk_git"]), ("1", "1"))
+        self.assertEqual((first["git_shim"], second["git_shim"]), (str(Path(__file__).parents[1] / "bin" / "git"),) * 2)
+        self.assertEqual((first["real_git"], second["real_git"]), (None, None))
         self.assertEqual((second["model"], second["effort"], second["cwd"]),
                          (first["model"], first["effort"], first["cwd"]))
         self.assertIn("chunk", second["prompt"])
@@ -102,6 +104,8 @@ class Stage2ChunkRuns(unittest.TestCase):
         final = w.adapter.launches[-1]
         self.assertEqual((b["run_kind"], final["kind"]), ("s2_finalize_new", "start"))
         self.assertIsNone(final["stage2_chunk_git"])  # only the finalizer may commit and push
+        self.assertEqual(final["git_shim"], str(Path(__file__).parents[1] / "bin" / "git"))
+        self.assertIsNone(final["real_git"])
         self.assertIn("finalize", final["prompt"])
         self.assertEqual(b["branch"], w.git.created[0][1])
         self.assertEqual(w.git.local_head, HEAD1)

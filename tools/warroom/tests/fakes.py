@@ -40,12 +40,16 @@ class FakeAdapter(AgentAdapter):
     def start(self, prompt, cwd, env, run, title, log_file, exit_file):
         return self._go("start", cwd, log_file, exit_file, prompt=prompt, model=run.model, effort=run.effort,
                         approved_literary_db=env.get("TYPEWRITER_APPROVED_LITERARY_DB"),
-                        stage2_chunk_git=env.get("WARROOM_STAGE2_CHUNK"))
+                        stage2_chunk_git=env.get("WARROOM_STAGE2_CHUNK"),
+                        git_shim=env.get("WARROOM_GIT_SHIM"),
+                        real_git=env.get("WARROOM_REAL_GIT"))
 
     def resume(self, session_id, prompt, cwd, env, run, log_file, exit_file):
         return self._go("resume", cwd, log_file, exit_file, prompt=prompt, model=run.model, effort=run.effort,
                         session=session_id, approved_literary_db=env.get("TYPEWRITER_APPROVED_LITERARY_DB"),
-                        stage2_chunk_git=env.get("WARROOM_STAGE2_CHUNK"))
+                        stage2_chunk_git=env.get("WARROOM_STAGE2_CHUNK"),
+                        git_shim=env.get("WARROOM_GIT_SHIM"),
+                        real_git=env.get("WARROOM_REAL_GIT"))
 
     def preflight(self, runner, env, runs):
         """Stands in for OpenCode: the provider-qualified (p/...) IDs get the real `opencode models` check."""

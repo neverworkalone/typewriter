@@ -163,11 +163,13 @@ class Lifecycle(unittest.TestCase):
         self.assertIn("TYPEWRITER_APPROVED_LITERARY_DB", launch["prompt"])
         resume_env = w.sup._launch_env({"method": "c"}, "produce_resume")
         self.assertEqual(resume_env["TYPEWRITER_APPROVED_LITERARY_DB"], str(index))
-        agent_env = {"PATH": "/warroom/bin:/usr/bin", "WARROOM_REAL_GIT": "/usr/bin/git",
+        agent_env = {"PATH": "/warroom/bin:/usr/bin", "WARROOM_GIT_SHIM": "/warroom/bin/git",
+                     "WARROOM_REAL_GIT": "/usr/bin/git",
                      "TYPEWRITER_APPROVED_LITERARY_DB": "/untrusted/inherited.sqlite"}
         combined_env = w.sup._launch_env({"method": "c"}, "produce", agent_env)
         self.assertEqual(combined_env["PATH"], agent_env["PATH"])
-        self.assertEqual(combined_env["WARROOM_REAL_GIT"], agent_env["WARROOM_REAL_GIT"])
+        self.assertEqual(combined_env["WARROOM_GIT_SHIM"], agent_env["WARROOM_GIT_SHIM"])
+        self.assertNotIn("WARROOM_REAL_GIT", combined_env)
         self.assertEqual(combined_env["TYPEWRITER_APPROVED_LITERARY_DB"], str(index))
         for kind in ("fix_resume", "fix_new"):
             with self.subTest(kind=kind):

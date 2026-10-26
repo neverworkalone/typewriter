@@ -617,6 +617,7 @@ class Supervisor:
         env.pop(key, None)
         if b["method"] == "c":
             env[key] = str(Path(self.cfg["literary_index_path"].strip()).expanduser())
+        env.pop("WARROOM_REAL_GIT", None)
         env.pop("WARROOM_STAGE2_CHUNK", None)
         if b["method"] == STAGE2_METHOD and isinstance(kind, str) and kind.startswith("s2_chunk_"):
             env["WARROOM_STAGE2_CHUNK"] = "1"
@@ -688,14 +689,15 @@ class Supervisor:
         return None
 
     def _agent_env(self) -> dict:
-        """Give worker CLIs a Git shim that leaves worktree/branch lifecycle to Supervisor."""
+        """Give worker CLIs a guarded Git entry point without exposing the real executable path."""
         env = dict(self.env)
         original_path = env.get("PATH", os.defpath)
         real_git = shutil.which("git", path=original_path)
         guard_dir = Path(__file__).resolve().parents[1] / "bin"
         if not real_git or not (guard_dir / "git").is_file():
             raise RuntimeError("Supervisor Git 경계 도구를 찾을 수 없어 AI를 시작하지 않습니다")
-        env["WARROOM_REAL_GIT"] = real_git
+        env.pop("WARROOM_REAL_GIT", None)
+        env["WARROOM_GIT_SHIM"] = str(guard_dir / "git")
         env["PATH"] = str(guard_dir) + os.pathsep + original_path
         return env
 

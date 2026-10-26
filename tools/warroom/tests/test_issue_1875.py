@@ -221,7 +221,8 @@ class ProducerHandoff(unittest.TestCase):
         self.assertFalse(w.adapter.alive(pid))
         self.assertTrue(w.store.get(f"stop_after_pr_{b['id']}"))
         self.assertEqual(w.adapter.last_env["PATH"].split(os.pathsep)[0], str(BIN))
-        self.assertTrue(Path(w.adapter.last_env["WARROOM_REAL_GIT"]).is_absolute())
+        self.assertEqual(w.adapter.last_env["WARROOM_GIT_SHIM"], str(BIN / "git"))
+        self.assertNotIn("WARROOM_REAL_GIT", w.adapter.last_env)
 
         w.tick()  # reap the stopped process and clear the handoff marker
         self.assertIsNone(w.row(model="codex", method="b")["pid"])
@@ -231,10 +232,13 @@ class ProducerHandoff(unittest.TestCase):
     def test_worker_git_shim_blocks_cleanup_but_delegates_read_only_git(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            real = root / "git-real"
+            real_bin = root / "real-bin"
+            real_bin.mkdir()
+            real = real_bin / "git"
             real.write_text("#!/bin/sh\nprintf '%s\\n' \"$*\"\n")
             real.chmod(0o755)
-            env = {"WARROOM_REAL_GIT": str(real), "PATH": os.environ.get("PATH", "/usr/bin:/bin")}
+            env = {"WARROOM_GIT_SHIM": str(BIN / "git"),
+                   "PATH": os.pathsep.join((str(BIN), str(real_bin), os.environ.get("PATH", "/usr/bin:/bin")))}
 
             remove = subprocess.run([sys.executable, str(BIN / "git"), "-C", "/repo", "worktree", "remove",
                                       "/repo/wts/a"], env=env, capture_output=True, text=True)
@@ -247,15 +251,24 @@ class ProducerHandoff(unittest.TestCase):
             listing = subprocess.run([sys.executable, str(BIN / "git"), "-C", "/repo", "status", "--short"],
                                      env=env, capture_output=True, text=True)
             chunk_env = {**env, "WARROOM_STAGE2_CHUNK": "1"}
-            chunk_commit = subprocess.run([sys.executable, str(BIN / "git"), "commit", "-m", "chunk"],
-                                          env=chunk_env, capture_output=True, text=True)
-            chunk_push = subprocess.run([sys.executable, str(BIN / "git"), "push", "origin", "branch"],
-                                        env=chunk_env, capture_output=True, text=True)
-            finalizer_commit = subprocess.run([sys.executable, str(BIN / "git"), "commit", "-m", "final"],
-                                              env=env, capture_output=True, text=True)
-            finalizer_push = subprocess.run([sys.executable, str(BIN / "git"), "push", "origin", "branch"],
-                                            env=env, capture_output=True, text=True)
+            chunk_commit = subprocess.run(["git", "commit", "-m", "chunk"], env=chunk_env,
+                                          capture_output=True, text=True)
+            chunk_push = subprocess.run(["git", "push", "origin", "branch"], env=chunk_env,
+                                        capture_output=True, text=True)
+            chunk_direct_commit = subprocess.run([chunk_env["WARROOM_GIT_SHIM"], "commit", "-m", "chunk"],
+                                                 env=chunk_env, capture_output=True, text=True)
+            chunk_direct_push = subprocess.run([chunk_env["WARROOM_GIT_SHIM"], "push", "origin", "branch"],
+                                               env=chunk_env, capture_output=True, text=True)
+            finalizer_commit = subprocess.run(["git", "commit", "-m", "final"], env=env,
+                                              capture_output=True, text=True)
+            finalizer_push = subprocess.run(["git", "push", "origin", "branch"], env=env,
+                                            capture_output=True, text=True)
+            finalizer_direct_commit = subprocess.run([env["WARROOM_GIT_SHIM"], "commit", "-m", "final"],
+                                                     env=env, capture_output=True, text=True)
+            finalizer_direct_push = subprocess.run([env["WARROOM_GIT_SHIM"], "push", "origin", "branch"],
+                                                   env=env, capture_output=True, text=True)
 
+        self.assertNotIn("WARROOM_REAL_GIT", chunk_env)
         self.assertEqual(remove.returncode, 126)
         self.assertEqual(delete.returncode, 126)
         self.assertEqual(move.returncode, 126)
@@ -264,7 +277,9 @@ class ProducerHandoff(unittest.TestCase):
         self.assertEqual(listing.stdout.strip(), "-C /repo status --short")
         self.assertEqual(chunk_commit.returncode, 126)
         self.assertEqual(chunk_push.returncode, 126)
-        self.assertEqual((finalizer_commit.returncode, finalizer_push.returncode), (0, 0))
+        self.assertEqual((chunk_direct_commit.returncode, chunk_direct_push.returncode), (126, 126))
+        self.assertEqual((finalizer_commit.returncode, finalizer_push.returncode,
+                          finalizer_direct_commit.returncode, finalizer_direct_push.returncode), (0, 0, 0, 0))
         self.assertEqual(finalizer_commit.stdout.strip(), "commit -m final")
         self.assertEqual(finalizer_push.stdout.strip(), "push origin branch")
 
