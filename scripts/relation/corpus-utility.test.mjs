@@ -4,7 +4,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { DatabaseSync } from 'node:sqlite';
 
-import { openReadonlyDb, renderContexts, saveChunk, searchContexts } from './corpus-utility.mjs';
+import { createSearchContextReuse, openReadonlyDb, renderContexts, saveChunk, searchContexts } from './corpus-utility.mjs';
 
 async function makeCorpus(paragraphs) {
   const root = await mkdtemp(path.join((await mkdir(path.resolve('.warroom-scratch'), { recursive: true })) ?? path.resolve('.warroom-scratch'), 'corpus-utility-'));
@@ -166,6 +166,74 @@ test('a cursor is rejected when its options, corpus or position differ', async (
     assert.equal(searchContexts(otherDb, ['기현'], { cursor: first.next_cursor }).status, 'SEARCH_FAILED');
     otherDb.close();
     await rm(other.root, { recursive: true, force: true });
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('same-chunk search reuse skips identical SQLite reads and keeps request pages separate', async () => {
+  const { root, databasePath } = await makeCorpus([
+    '이 기현상은 흔하다.', '이기현 씨가 왔다.', '기현이 웃었다.', '그 기현, 낯설다.', '전혀 관계없는 글이다.',
+    ...Array.from({ length: 30 }, () => '앞에 아무 말도 없는 문단이다.'),
+  ]);
+  try {
+    const database = openReadonlyDb(databasePath);
+    let reads = 0;
+    const counted = new Proxy(database, {
+      get(target, key) {
+        if (key === 'prepare') return (sql) => {
+          const statement = target.prepare(sql);
+          return { all: (...args) => { reads += 1; return statement.all(...args); }, get: (...args) => statement.get(...args) };
+        };
+        return target[key].bind?.(target) ?? target[key];
+      },
+    });
+    const search = createSearchContextReuse(counted);
+    const options = { maxSamples: 1, maxChars: 800, snippetChars: 80, scanRows: 40, boundary: 'both' };
+    const first = search(['기현'], options);
+    assert.equal(first.reused, false);
+    assert.equal(first.result.status, 'LIMITED');
+    assert.ok(first.result.next_cursor);
+    const firstReadCount = reads;
+
+    first.result.items[0].excerpt = 'caller mutation';
+    const sameRequest = search([' 기현 ', '기현'], options);
+    assert.equal(sameRequest.reused, true);
+    assert.equal(reads, firstReadCount);
+    assert.notEqual(sameRequest.result.items[0].excerpt, 'caller mutation');
+
+    for (const changedOptions of [
+      { ...options, maxSamples: 2 },
+      { ...options, maxChars: 801 },
+      { ...options, snippetChars: 81 },
+      { ...options, scanRows: 39 },
+      { ...options, boundary: 'left' },
+    ]) {
+      const before = reads;
+      assert.equal(search(['기현'], changedOptions).reused, false);
+      assert.equal(reads, before + 1);
+    }
+
+    const firstOrder = search(['기현', '기현상'], options);
+    const reverseOrder = search(['기현상', '기현'], options);
+    assert.equal(firstOrder.reused, false);
+    assert.equal(reverseOrder.reused, false);
+
+    const nextPageOptions = { ...options, cursor: sameRequest.result.next_cursor };
+    const nextPage = search(['기현'], nextPageOptions);
+    assert.equal(nextPage.reused, false);
+    assert.equal(nextPage.result.status, 'COMPLETE');
+    const nextPageReadCount = reads;
+    assert.equal(search(['기현'], nextPageOptions).reused, true);
+    assert.equal(reads, nextPageReadCount);
+
+    const noHits = search(['없는표면형']);
+    assert.equal(noHits.result.status, 'ZERO_HITS');
+    assert.equal(search(['없는표면형']).reused, true);
+    const failed = search(['기현'], { ...options, cursor: 'invalid' });
+    assert.equal(failed.result.status, 'SEARCH_FAILED');
+    assert.equal(search(['기현'], { ...options, cursor: 'invalid' }).reused, false);
+    database.close();
   } finally {
     await rm(root, { recursive: true, force: true });
   }
