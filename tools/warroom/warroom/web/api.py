@@ -179,18 +179,9 @@ def read_log(store: Store, cfg: dict, paths: Paths, model: str, method: str, sou
         raise ApiError(400, "알 수 없는 로그 종류입니다.")
     runs = store.line_runs(model, method)
     if source == "audit":
-        events = []
-        after = cursor or 0
-        if cursor is None:                    # first view: the newest events only
-            while True:
-                page = store.line_events(model, method, after)
-                events += list(page)
-                if len(page) < 500:
-                    break
-                after = page[-1]["id"]
-            events = events[-AUDIT_TAIL:]
-        else:
-            events = list(store.line_events(model, method, after))
+        # first view: one bounded tail query (cost independent of history size); then only newer events
+        events = list(store.line_events_tail(model, method, AUDIT_TAIL) if cursor is None
+                      else store.line_events(model, method, cursor))
         nxt = events[-1]["id"] if events else (cursor or 0)
         return clean({"key": "audit", "live": any(r["ended_at"] is None for r in runs), "missing": False,
                       "message": "", "reset": False, "cursor": nxt,

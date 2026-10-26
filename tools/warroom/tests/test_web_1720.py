@@ -207,6 +207,23 @@ class ReadTests(unittest.TestCase):
         rest = self.log(cursor=d4["cursor"], run=rid, raw=True)
         self.assertEqual(rest["lines"][-1], f"l{api.MAX_LOG_LINES + 4}")
 
+    def test_audit_first_view_is_one_bounded_tail_query(self):
+        bid, _, _ = self.e.batch("claude", "a")
+        for n in range(api.AUDIT_TAIL + 250):
+            self.e.store.log(bid, f"ev{n}")
+        calls = []
+        full, tail = self.e.store.line_events, self.e.store.line_events_tail
+        self.e.store.line_events = lambda *a, **k: calls.append("scan") or full(*a, **k)
+        self.e.store.line_events_tail = lambda *a, **k: calls.append(a[2]) or tail(*a, **k)
+        d = self.log(source="audit")
+        self.assertEqual(calls, [api.AUDIT_TAIL])                 # no full scan, one LIMIT-bounded query
+        self.assertEqual(len(d["lines"]), api.AUDIT_TAIL)
+        self.assertTrue(d["lines"][0].endswith(f"ev{250}") and d["lines"][-1].endswith(f"ev{api.AUDIT_TAIL + 249}"))
+        self.e.store.log(bid, "fresh")
+        d2 = self.log(source="audit", cursor=d["cursor"])
+        self.assertEqual([l.split()[-1] for l in d2["lines"]], ["fresh"])
+        self.assertEqual(self.log(source="audit", cursor=d2["cursor"])["lines"], [])
+
     def test_long_log_starts_at_its_tail(self):
         self.e.batch("claude", "a", log_text=("z" * 99 + "\n") * (INITIAL_BYTES // 100 + 500))
         d = self.log()
