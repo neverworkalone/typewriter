@@ -538,13 +538,12 @@ class Supervisor:
             return f"{adapter_label(name)} CLI 어댑터가 이 War Room 빌드에 없습니다 — 다른 CLI로 대신 실행하지 않습니다."
         return None
 
-    def _preflight(self, producer: str, method: str = "a", *,
-                   require_literary_index: bool = True) -> str | None:
+    def _preflight(self, producer: str, method: str = "a") -> str | None:
         """Fail closed before any process starts: the CLI must be able to run exactly the pinned model and effort."""
         problem = self._adapter_problem(producer)
         if problem:
             return problem
-        if method == "c" and require_literary_index and (problem := self._literary_index_problem()):
+        if method == "c" and (problem := self._literary_index_problem()):
             return problem
         ad = self._adapter(producer)
         if self._tiered(producer):   # OpenCode/DeepSeek: the free tier must be an explicit, recognisably free model
@@ -577,11 +576,11 @@ class Supervisor:
         return None
 
     def _launch_env(self, b, kind: str) -> dict:
-        """Keep the private approved index path in the environment of C production only."""
+        """Keep the private approved index path in every C producer run, including review fixes."""
         env = dict(self.env)
         key = "TYPEWRITER_APPROVED_LITERARY_DB"
         env.pop(key, None)
-        if b["method"] == "c" and not kind.startswith("fix"):
+        if b["method"] == "c":
             env[key] = str(Path(self.cfg["literary_index_path"].strip()).expanduser())
         return env
 
@@ -657,8 +656,8 @@ class Supervisor:
         drift = self._pin_drift(b, run, self._tiered(b["producer"]), self.store.runs(b["id"]), tier_models)
         if drift:
             return self._fail(b, "ERROR", drift)
-        # Every launch proves the CLI again (cached once proven); fixes do not need the C database.
-        problem = self._preflight(b["producer"], b["method"], require_literary_index=not kind.startswith("fix"))
+        # Every launch proves the CLI again (cached once proven); C review fixes also need the approved source index.
+        problem = self._preflight(b["producer"], b["method"])
         if problem and problem.startswith(PREFLIGHT_PENDING):
             return   # still proving the pin in the background; the next tick retries this relaunch
         if problem:
