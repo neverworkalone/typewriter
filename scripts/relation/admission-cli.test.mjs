@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -168,22 +168,10 @@ test('--part selects 100-record Stage 2 scopes, reports scoped stats, and keeps 
     { source_record_id: 'w101', source_sense_id: 'w101-s1', candidate: '후보101', reason: '출발 의미와 무관' },
   ]));
 
-  const firstPart = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
-  assert.deepEqual(
-    [firstPart.raw, firstPart.unique, firstPart.merged_duplicates, firstPart.relation, firstPart.drop, firstPart.reverse_covered, firstPart.missing],
-    [4, 3, 1, 1, 1, 1, 0],
-    'Part 01 completes without requiring unrelated candidates in Parts 02–05 to be accounted',
-  );
-  const secondPart = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '02'], { root }));
-  assert.deepEqual(
-    [secondPart.raw, secondPart.unique, secondPart.merged_duplicates, secondPart.relation, secondPart.drop, secondPart.missing],
-    [3, 3, 0, 2, 1, 0],
-  );
-  const preparedAgain = await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
-  assert.deepEqual(preparedAgain.items, [], 'an approved ID pair, text-only Relation and Drop remain decided on re-run');
-  assert.deepEqual(
-    [preparedAgain.stats.raw, preparedAgain.stats.unique, preparedAgain.stats.merged_duplicates, preparedAgain.stats.skipped_existing, preparedAgain.stats.skipped_dropped],
-    [4, 3, 1, 2, 1],
+  await assert.rejects(
+    () => quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01'], { root })),
+    /checkpoint is incomplete or not merged/,
+    'a Stage 2 Part cannot be verified after bypassing per-candidate decisions',
   );
 
   const initialRelations = [
@@ -201,7 +189,7 @@ test('--part selects 100-record Stage 2 scopes, reports scoped stats, and keeps 
   };
   await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), jsonl([...initialRelations, reverseConflict, ...laterRelations]));
   await assert.rejects(
-    () => quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '03'], { root })),
+    () => quiet(() => run(['verify', '--shard', '001', '--batch', '01'], { root })),
     /reverse-duplicate ID relation/,
     'Part verification keeps shard-wide reverse-duplicate checks',
   );
@@ -237,6 +225,7 @@ test('--part requires a batch, rejects out-of-range parts, and allows the final 
   await assert.rejects(() => quiet(() => run(['prepare', '--shard', '001', '--batch', '02', '--part', '02'], { root })), /batch 02 has no records for part 02/);
   await assert.rejects(() => quiet(() => run(['prepare', '--shard', '001', '--part', '01'], { root })), /--part requires --batch/);
   await assert.rejects(() => quiet(() => run(['verify', '--shard', '001', '--batch', '02', '--part', '06'], { root })), /--part must be 01, 02, 03, 04 or 05/);
+  await assert.rejects(() => quiet(() => run(['prepare', '--shard', '001', '--batch', '02', '--part', '01', '--out', 'part.json'], { root })), /use --checkpoint instead of --out/);
 });
 
 test('an ID row owned by the other batch also answers this batch\'s reverse candidate in both prepare and verify', async (t) => {
@@ -385,4 +374,144 @@ test('verify and prepare resolve Canonical orthographic search forms without clo
     { source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '미끄럼저항기', reason: '출발 의미와 무관' },
   ]));
   await assert.rejects(() => quiet(() => run(args('verify'), { root })), /"미끄럼저항기" is named by the gloss of w1-s1 and cannot be dropped as unrelated/);
+});
+
+test('Stage 2 chunks bind exact senses, resume safely, and preserve text-only Parts and prior rows', async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), 'typewriter-admission-chunks-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const records = Array.from({ length: 504 }, (_, index) => ({
+    id: `w${index + 1}`,
+    lemma: `표제${index + 1}`,
+    senses: [{ id: `w${index + 1}-s1`, pos: 'noun', gloss: `뜻${index + 1}` }],
+  }));
+  records[0] = { id: 'w1', lemma: '출발어', senses: [{ id: 'w1-s1', pos: 'noun', gloss: '출발 의미' }] };
+  records[500] = { id: 'w501', lemma: '유일표적', senses: [
+    { id: 'w501-s1', pos: 'noun', gloss: '후보의 정확한 뜻' },
+    { id: 'w501-s2', pos: 'noun', gloss: '표기가 같은 다른 뜻' },
+  ] };
+  records[501] = { id: 'w502', lemma: '겹표기', senses: [{ id: 'w502-s1', pos: 'noun', gloss: '동음이의어 첫 뜻' }] };
+  records[502] = { id: 'w503', lemma: '겹표기', senses: [{ id: 'w503-s1', pos: 'verb', gloss: '동음이의어 둘째 뜻' }] };
+  records[503] = { id: 'w504', lemma: '역방향표적', senses: [{ id: 'w504-s1', pos: 'noun', gloss: '이미 연결된 뜻' }] };
+  for (const dir of ['data/canonical', 'data/relation-candidates/001', 'data/relations', 'data/relation-drops']) {
+    await mkdir(path.join(root, dir), { recursive: true });
+  }
+  await writeFile(path.join(root, 'data/canonical/stdict-0001.jsonl'), jsonl(records));
+  const candidateRows = (batchRecords, producer) => batchRecords.map((record) => ({
+    record_id: record.id,
+    senses: [{
+      sense_id: record.senses[0].id,
+      candidates: producer !== 'a_codex' ? [] : record.id === 'w1'
+        ? ['유일표적', '겹표기', '낯선말', '버릴말', '역방향표적']
+        : record.id === 'w2' ? ['두번째표현']
+          : record.id === 'w101' ? ['오직텍스트']
+          : record.id === 'w201' ? ['유일표적']
+            : record.id === 'w301' ? ['이전Drop'] : [],
+    }],
+  }));
+  for (const producer of ['a_codex', 'a_claude', 'b_codex', 'b_claude', 'c_codex', 'd_codex']) {
+    await writeFile(path.join(root, `data/relation-candidates/001/001_01_${producer}.jsonl`), jsonl(candidateRows(records.slice(0, 500), producer)));
+  }
+  const priorRelation = {
+    source_record_id: 'w201', source_sense_id: 'w201-s1', target_record_id: 'w501', target_sense_id: 'w501-s1',
+    type: 'association', relevance: 7, reverse_type: 'mood', reverse_relevance: 4,
+  };
+  const priorDrop = { source_record_id: 'w301', source_sense_id: 'w301-s1', candidate: '이전Drop', reason: '다른 sense에서만 맞는 표현' };
+  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), jsonl([priorRelation]));
+  await writeFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), jsonl([priorDrop]));
+  await writeFile(path.join(root, 'data/relations/relation-002.jsonl'), jsonl([{
+    source_record_id: 'w504', source_sense_id: 'w504-s1', target_record_id: 'w1', target_sense_id: 'w1-s1',
+    type: 'scene', relevance: 2, reverse_type: 'mood', reverse_relevance: 5,
+  }]));
+
+  const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
+  const prepared = await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  assert.equal(prepared.stats.to_edit, 5, 'the already approved reverse ID candidate is absorbed');
+  const resumed = await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  assert.equal(resumed.items.length, prepared.items.length, 'prepare resumes the checkpoint instead of replacing it');
+  assert.deepEqual(resumed.items[0].approved_peers, [{
+    target_lemma: '역방향표적', target_sense_id: 'w504-s1', target_pos: 'noun', target_gloss: '이미 연결된 뜻', type: 'mood', relevance: 5,
+  }], 'same-source reverse peers retain their own type and relevance');
+
+  const first = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint, '--max-candidates', '2'], { root }));
+  const retry = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint, '--max-candidates', '2'], { root }));
+  assert.equal(retry.chunk_id, first.chunk_id, 'an unsaved chunk is returned unchanged after interruption');
+  assert.deepEqual(first.items[0].candidates[0].same_spelling_targets, [{
+    record_id: 'w501', lemma: '유일표적', senses: [
+      { sense_id: 'w501-s1', pos: 'noun', gloss: '후보의 정확한 뜻' },
+      { sense_id: 'w501-s2', pos: 'noun', gloss: '표기가 같은 다른 뜻' },
+    ],
+  }]);
+  assert.deepEqual(first.items[0].candidates[1].same_spelling_targets.map((target) => target.senses[0].sense_id), ['w502-s1', 'w503-s1']);
+
+  const input = '.warroom-scratch/001_01_01.decisions.json';
+  const exact = {
+    source_sense_id: 'w1-s1', candidate: '유일표적', disposition: 'relation', target_resolution: 'exact',
+    target_record_id: 'w501', target_sense_id: 'w501-s1',
+    type: 'near', relevance: 1, reverse_type: 'mood', reverse_relevance: 6,
+  };
+  const ambiguousText = {
+    source_sense_id: 'w1-s1', candidate: '겹표기', disposition: 'relation', target_resolution: 'no_exact_match',
+    checked_target_sense_ids: ['w502-s1'], type: 'association', relevance: 7,
+  };
+  await writeFile(path.join(root, input), JSON.stringify({ chunk_id: first.chunk_id, decisions: [exact] }));
+  await assert.rejects(() => quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', input], { root })), /missing decisions/);
+  await writeFile(path.join(root, input), JSON.stringify({ chunk_id: first.chunk_id, decisions: [exact, exact] }));
+  await assert.rejects(() => quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', input], { root })), /repeats decision/);
+  await writeFile(path.join(root, input), JSON.stringify({ chunk_id: first.chunk_id, decisions: [exact, ambiguousText] }));
+  await assert.rejects(() => quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', input], { root })), /check every same-spelling target sense/);
+  await assert.rejects(() => quiet(() => run(['merge', '--checkpoint', checkpoint], { root })), /before merging/);
+
+  ambiguousText.checked_target_sense_ids.push('w503-s1');
+  await writeFile(path.join(root, input), JSON.stringify({ chunk_id: first.chunk_id, decisions: [exact, ambiguousText] }));
+  await quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', input], { root }));
+  const continued = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint, '--max-candidates', '3'], { root }));
+  assert.deepEqual(continued.continuation, [
+    {
+      source_sense_id: 'w1-s1', candidate_start: 2, candidate_end: 4, candidate_total: 4,
+      continues_from_previous: true, continues_in_next: false,
+    },
+    {
+      source_sense_id: 'w2-s1', candidate_start: 0, candidate_end: 1, candidate_total: 1,
+      continues_from_previous: false, continues_in_next: false,
+    },
+  ], 'large senses resume exactly while a following complete sense stays intact in the same chunk');
+  const noTargetText = {
+    source_sense_id: 'w1-s1', candidate: '낯선말', disposition: 'relation', type: 'sensory', relevance: 5,
+  };
+  const drop = { source_sense_id: 'w1-s1', candidate: '버릴말', disposition: 'drop', reason: '출발 sense와 무관한 임시 표기' };
+  const secondSenseText = {
+    source_sense_id: 'w2-s1', candidate: '두번째표현', disposition: 'relation', type: 'scene', relevance: 4,
+  };
+  await writeFile(path.join(root, input), JSON.stringify({ chunk_id: continued.chunk_id, decisions: [noTargetText, drop, secondSenseText] }));
+  await quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', input], { root }));
+  assert.equal((await quiet(() => run(['read-chunk', '--checkpoint', checkpoint], { root }))).complete, true);
+  const merged = await quiet(() => run(['merge', '--checkpoint', checkpoint], { root }));
+  assert.deepEqual([merged.relations_added, merged.drops_added], [4, 1]);
+  assert.deepEqual(await quiet(() => run(['merge', '--checkpoint', checkpoint], { root })), {
+    merged: true, relations_added: 0, drops_added: 0, checkpoint: path.join(root, checkpoint),
+  }, 'a repeated merge is idempotent');
+  assert.ok((await readFile(path.join(root, 'data/relations/relation-001.jsonl'), 'utf8')).includes(JSON.stringify(priorRelation)));
+  assert.ok((await readFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), 'utf8')).includes(JSON.stringify(priorDrop)));
+  const counts = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  assert.deepEqual([counts.unique, counts.relation, counts.drop, counts.skipped_existing, counts.missing], [6, 4, 1, 1, 0]);
+
+  // War Room rechecks completion on a clean latest-master checkout, where the local edit checkpoint is absent.
+  await rm(path.join(root, checkpoint));
+  const masterCounts = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  assert.equal(masterCounts.missing, 0);
+
+  const textOnlyCheckpoint = '.warroom-scratch/relation-admission-001-01-02.json';
+  await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '02'], { root }));
+  const textOnlyChunk = await quiet(() => run(['read-chunk', '--checkpoint', textOnlyCheckpoint], { root }));
+  assert.equal(textOnlyChunk.items.flatMap((item) => item.candidates).length, 1);
+  assert.deepEqual(textOnlyChunk.items[0].candidates[0].same_spelling_targets, []);
+  const textOnlyDecision = {
+    source_sense_id: 'w101-s1', candidate: '오직텍스트', disposition: 'relation', type: 'scene', relevance: 4,
+  };
+  const textOnlyInput = '.warroom-scratch/001_01_02.decisions.json';
+  await writeFile(path.join(root, textOnlyInput), JSON.stringify({ chunk_id: textOnlyChunk.chunk_id, decisions: [textOnlyDecision] }));
+  await quiet(() => run(['save-chunk', '--checkpoint', textOnlyCheckpoint, '--in', textOnlyInput], { root }));
+  await quiet(() => run(['merge', '--checkpoint', textOnlyCheckpoint], { root }));
+  const textOnlyCounts = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '02'], { root }));
+  assert.deepEqual([textOnlyCounts.unique, textOnlyCounts.relation, textOnlyCounts.drop, textOnlyCounts.missing], [1, 1, 0, 0], 'a fully text-only Part remains valid when no exact Canonical target exists');
 });

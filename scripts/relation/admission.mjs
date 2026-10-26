@@ -178,6 +178,44 @@ export function buildCanonicalIndex(rows) {
   return { byId, byLemma, byNormalizedLemma, byOrthographicForm, senses };
 }
 
+/** Complete, source-bound target context for a candidate's exact lemma or orthographic spelling. */
+export function sameSpellingTargets(index, form) {
+  return canonicalRecordsForOrthographicForm(index, form).map((record) => ({
+    record_id: record.id,
+    lemma: record.lemma,
+    senses: record.senses.map((sense) => ({ sense_id: sense.id, pos: sense.pos, gloss: sense.gloss })),
+  }));
+}
+
+/** Existing same-source peers for relative type/Tier decisions, including relations stored in reverse. */
+export function approvedPeersForSense(senseId, relationRows, index) {
+  const peers = [];
+  const add = ({ recordId, targetSenseId, type, relevance, text = null }) => {
+    const record = index.byId.get(recordId);
+    const found = index.senses.get(targetSenseId);
+    if (!record || !found || found.record.id !== recordId) return;
+    peers.push({
+      ...(text === null ? { target_lemma: record.lemma, target_sense_id: targetSenseId, target_pos: found.sense.pos, target_gloss: found.sense.gloss } : { text }),
+      type,
+      relevance,
+    });
+  };
+
+  for (const row of relationRows) {
+    if ('text' in row) {
+      if (row.source_sense_id === senseId) peers.push({ text: row.text, type: row.type, relevance: row.relevance });
+      continue;
+    }
+    if (row.source_sense_id === senseId) add({
+      recordId: row.target_record_id, targetSenseId: row.target_sense_id, type: row.type, relevance: row.relevance,
+    });
+    if (row.target_sense_id === senseId) add({
+      recordId: row.source_record_id, targetSenseId: row.source_sense_id, type: row.reverse_type, relevance: row.reverse_relevance,
+    });
+  }
+  return peers;
+}
+
 /**
  * Validate approved Relation + Drop rows of one shard against the Canonical index. Pure; throws one aggregated error.
  * `otherRelationRows` are approved rows of every other shard (duplicate/reverse-duplicate detection).

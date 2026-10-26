@@ -187,7 +187,7 @@ PR의 Normal 검사는 추가·수정된 `data/relation-candidates/` 파일마�
 ```
 
 - `type`/`reverse_type`: `near|mood|scene|sensory|action|association`. `relevance`/`reverse_relevance`: 정수 1..9. 방향별로 달라도 같아도 된다.
-- ID 링크의 target은 후보 문자열과 철자가 정확히 같은 Canonical record의 실제 sense여야 한다. 동철 이의어는 `same_spelling_records`로 확인해 올바른 record를 고른다. 일치하는 target이 없으면 text-only이며 가짜 ID를 쓰지 않는다.
+- ID 링크의 target은 후보 문자열과 철자가 정확히 같은 Canonical record의 실제 sense여야 한다. Stage 2 Part의 `read-chunk` 입력은 같은 표기의 모든 target record, lemma, sense ID, POS, 전체 gloss를 제공한다. 동철 이의어·다의어는 출발 sense와 각 target sense를 비교해 선택하며 첫 항목을 자동 선택하지 않는다. text-only로 남길 때도 제공된 target sense ID를 전부 검토하고 `no_exact_match`로 명시한다. 일치하는 target이 없으면 text-only이며 가짜 ID를 쓰지 않는다.
 - 소유 샤드 = 출발(source) sense가 속한 샤드. 한 쌍(A↔B)은 한 행에만 저장하며, 다른 샤드에 이미 같은 쌍(정·역 모두)이나 같은 text-only가 있으면 거부한다. 빌드는 ID 행마다 방향별 2개 탐색 행을 만든다(빌드 구현은 별도 PR).
 - 모든 고유 후보는 **신규 관계 / Drop / 정확한 중복 병합 / 기존 승인 관계 제외**로 설명되어야 한다. 같은 후보 표기에 ID 관계가 여러 개 있으면 실제 target sense가 서로 다를 때 허용하며, 동일 source/target sense 쌍은 한 번만 저장한다. 같은 후보에 대한 text-only 관계나 Drop은 다른 처리와 중복할 수 없다.
 - Drop은 출발 의미와 명백히 무관한 후보에만 쓴다. 출발 sense의 뜻풀이가 그 후보를 직접 언급하면 Drop할 수 없으며(`verify`가 거부), 같은 sense의 승인 peer와 모순되는 Drop도 금지다. 약한 연상은 낮은 Tier의 관계로 보존한다.
@@ -195,17 +195,24 @@ PR의 Normal 검사는 추가·수정된 `data/relation-candidates/` 파일마�
 **도구** (`pnpm run relation:admission -- <command>`, 샤드 번호만 바꿔 재사용):
 
 ```sh
-node scripts/relation/admission-cli.mjs prepare --shard 001 --out <scratch>/p001.json  # 편집 입력: 고유 신규 후보 + 출발 sense/뜻풀이
-node scripts/relation/admission-cli.mjs verify  --shard 001                           # 스키마·ID 결속·Tier·귀속 완전성
-node scripts/relation/admission-cli.mjs prepare --shard 003 --batch 01 --part 01 --out <scratch>/003_01_01.json
-node scripts/relation/admission-cli.mjs verify  --shard 003 --batch 01 --part 01
+node scripts/relation/admission-cli.mjs prepare --shard 001 --out <scratch>/p001.json  # 비-Part 전체 입력 보기
+node scripts/relation/admission-cli.mjs verify  --shard 001                           # 전체 스키마·ID 결속·귀속 완전성
+node scripts/relation/admission-cli.mjs prepare --shard 003 --batch 01 --part 01      # 기본 checkpoint: .warroom-scratch/relation-admission-003-01-01.json
+node scripts/relation/admission-cli.mjs read-chunk --checkpoint .warroom-scratch/relation-admission-003-01-01.json --out .warroom-scratch/active-chunk.json
+node scripts/relation/admission-cli.mjs save-chunk --checkpoint .warroom-scratch/relation-admission-003-01-01.json --in .warroom-scratch/decisions.json
+node scripts/relation/admission-cli.mjs merge --checkpoint .warroom-scratch/relation-admission-003-01-01.json
+node scripts/relation/admission-cli.mjs verify --shard 003 --batch 01 --part 01
 ```
 
 `--batch 01|02`를 주면 해당 500레코드 배치의 필수 Stage 1 파일 6개·Canonical 행·행 귀속만 대상으로 한다(같은 샤드 파일 `relation-<SSS>.jsonl`에 배치별로 나눠 누적할 때 사용). 다른 배치의 행은 그 실행의 귀속 검사에서 제외되며, 샤드 전체가 끝났는지는 `--batch` 없는 `verify`가 판단한다.
 
 `--part 01|02|03|04|05`는 반드시 `--batch`와 함께 사용하며, 선택한 Stage 1 배치 안에서 Stage 2의 Canonical 순서 100개만 편집·통계·귀속 검사한다. Batch 01의 Part 01–05는 shard record 1–100, 101–200, 201–300, 301–400, 401–500이고 Batch 02는 501–600, 601–700, 701–800, 801–900, 901–1000이다. 마지막 샤드의 Batch 02는 83개이므로 Part 01만 유효하다. 비어 있는 Part와 `--part` 단독 지정은 실패한다. Part별 `prepare` 항목과 `raw`, `unique`, `merged_duplicates`, `skipped_existing`, `skipped_dropped`, `to_edit`, `relation`, `drop`, `reverse_covered`, `missing` 통계는 모두 해당 Part의 source senses만 센다.
 
-Part 모드는 선택한 Stage 1 Batch의 필수 후보 파일 6개를 기존 v1 계약대로 전부 검증·통합한다. Candidate 입력을 Part별로 자르거나 100개 밖의 후보를 생략하지 않는다. 저장된 Relation/Drop 파일은 기존 샤드 파일을 계속 누적 사용한다. `verify --batch BB --part PP`는 그 Part의 Candidate 귀속 완전성을 판단하지만, 같은 샤드의 모든 저장 Relation/Drop 스키마·ID 결속·중복·역방향 충돌도 계속 검사한다. 같은 샤드 다른 Part의 미처리 후보는 이 호출을 실패시키지 않으며, 해당 Part가 끝난 뒤 그 Part의 정확한 `verify`를 별도로 실행한다. `--part`가 없는 기존 Batch 및 샤드 전체 호출은 이전 범위와 의미를 유지한다.
+Part 모드는 선택한 Stage 1 Batch의 필수 후보 파일 6개를 기존 v1 계약대로 한 번 검증·통합하고, Part checkpoint에 source sense, 후보 provenance, 같은 표기의 모든 target sense/gloss, 같은 출발 sense의 기존 승인 동료, 후보별 판정 상태를 보존한다. `prepare --part`를 재실행하면 기존 checkpoint를 이어간다. `read-chunk`는 Canonical이나 승인 관계를 다시 읽지 않고 미판정 후보를 한 번에 보여 준다. 기본 250개 후보를 기준으로 여러 완전한 source sense를 묶으며, 하나의 sense가 그보다 크면 정확한 candidate 시작·끝 offset을 표시해 이어서 처리한다. source sense는 이 초과 경우에만 청크 사이에서 이어진다.
+
+각 후보는 한 번의 통합 판단으로 `relation` 또는 실제 `drop`을 선택한다. Relation은 후보별 `type`과 상대 Tier `1..9`를 가진다. 같은 표기의 target sense가 있으면 `target_resolution`을 명시한다. 정확한 대상은 `exact`와 제공된 record/sense ID, 정·역방향 type/Tier를 적고, text-only는 `no_exact_match`와 제공된 target sense ID 전체를 `checked_target_sense_ids`에 적는다. 같은 표기의 target이 없으면 target 판정 필드는 생략한다. checkpoint에 필요한 비교 상태만 남기며 의미적 정답을 자동 판정하지 않는다. `save-chunk`는 청크의 누락·중복·범위 밖 decision, 미판정 target, 생략된 역방향 판단을 저장 전에 거부한다. Drop은 후보별 근거를 가진다. Type/Tier 기본값이나 별도 ID/Tier 패스는 없다.
+
+모든 청크가 저장된 뒤 `merge`가 이 Part의 승인 Relations/Drop을 기존 샤드 파일에 누적한다. 기존 Part 행은 보존하며, 같은 checkpoint로 다시 merge해도 중복 행을 추가하지 않는다. 편집 worktree에서 `verify --batch BB --part PP`를 실행하면 Part checkpoint의 완전한 판정·merge와 Candidate 귀속을 함께 검사하고, 같은 샤드의 모든 저장 Relation/Drop 스키마·ID 결속·중복·역방향 충돌도 계속 검사한다. 최신 master에서 완료 여부를 다시 확인할 때처럼 로컬 checkpoint가 없는 경우에는 기존 Part Candidate accounting을 검증한다. 그 뒤 Batch 또는 샤드가 끝날 때는 이전과 같이 범위를 넓혀 별도로 검증한다. `--part`가 없는 기존 Batch 및 샤드 전체 호출은 이전 범위와 의미를 유지한다.
 
 `--batch` 없이 실행하면 필수 Stage 1 파일(2배치 × A-Codex/A-Claude/B-Codex/B-Claude/C/D 12개)이 하나라도 없을 때 실패한다. `--batch BB`는 **해당 배치의 필수 생산자 6개만** 요구하므로 다른 배치 입력이 없어도 착수·검증할 수 있다(다른 배치의 Candidate 파일은 목록 검사·파싱 대상이 아니므로 충돌하거나 미완성이어도 이 실행을 막지 않는다). 다른 배치나 샤드의 ID 관계는 `prepare`와 `verify`에서 실제 target sense별로 계산한다. 고유 표제어가 여러 sense를 가지면 일부 sense만 기존 관계로 연결된 후보는 나머지 sense 편집을 위해 `prepare`에 남고, 모든 sense가 연결되면 제외한다. text-only 승인 관계는 후보 전체를 처리한 것으로 본다. `--allow-partial`은 도구 점검 전용이며 샤드 완료 증거가 아니다. 다른 샤드의 승인 Relations(정·역방향)와 동철 이의어는 위 규칙대로 처리하며, 동철 이의어 철자는 기존 관계로 간주하지 않는다.
 
