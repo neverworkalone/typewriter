@@ -177,13 +177,19 @@ class FakeGit:
     def changed_files(self, sha):
         return self.changed.get(sha, ["README.md"])   # default: a documentation-only fix
 
-    def remove_owned(self, path, branch, pr_head):
+    def remove_owned(self, path, branch, pr_head, *, cleanup_proof=None, on_verified=None):
         if self.block:
             raise CleanupBlocked(self.block)
+        registered = next((owner for key, owner in self.reg.items()
+                           if Path(key).resolve() == Path(path).resolve()), None)
+        if registered != branch and not cleanup_proof:
+            raise CleanupBlocked("worktree registration is missing and no matching cleanup proof exists")
         if self.dirty_text.strip():
             raise CleanupBlocked("dirty")
         if self.local_head != pr_head:
             raise CleanupBlocked("head mismatch")
+        if on_verified is not None:
+            on_verified()
         self.removed.append((str(path), branch))
         Path(path).rmdir()
 
@@ -217,7 +223,13 @@ class FakeGh:
     def pull(self, n):
         if self.fail_pull:
             raise RuntimeError("pull failed")
-        return self.prs[n]
+        result = dict(self.prs[n])
+        if result.get("head_ref") == "x":   # default from pr_info; preserve deliberate mismatch fixtures
+            for branch, prs in self.by_branch.items():
+                if any(pr.get("number") == n for pr in prs):
+                    result["head_ref"] = branch
+                    break
+        return result
 
     def close_pr(self, n):
         if self.close_error:

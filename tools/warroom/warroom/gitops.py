@@ -1,6 +1,9 @@
 """Git/worktree handling. War Room only ever removes worktrees/branches it owns."""
 from __future__ import annotations
 
+import os
+import shutil
+import tempfile
 from pathlib import Path
 
 from .shell import Runner
@@ -144,29 +147,224 @@ class Git:
         if self.head(path) != pr_head_sha:
             raise CleanupBlocked(f"{desc} (동기화 후에도 불일치)")
 
-    def remove_owned(self, path: Path, branch: str, pr_head_sha: str) -> None:
+    def remove_owned(self, path: Path, branch: str, pr_head_sha: str, *,
+                     cleanup_proof: dict | None = None, on_verified=None) -> None:
         """Remove worktree + local branch only if provably ours, clean and fully merged.
 
         `pr_head_sha` is the merged PR's final HEAD; squash merges make ancestry
         checks unreliable, so the invariant is local HEAD == the HEAD GitHub merged.
-        A local HEAD that is a strict ancestor of it is fast-forwarded first.
+        A local HEAD that is a strict ancestor of it is fast-forwarded first. Before
+        removing a registered worktree, `on_verified` durably records the clean/HEAD
+        ownership proof. That record is required to resume a partially completed
+        removal after Git has already dropped the registration.
         """
-        path = Path(path)
+        raw_path = Path(os.path.abspath(path))
+        if raw_path.is_symlink():
+            raise CleanupBlocked(f"worktree path is a symlink (preserved): {raw_path}")
+        path = raw_path.resolve()
         try:
-            path.resolve().relative_to(self.worktrees_dir.resolve())
+            path.relative_to(self.worktrees_dir.resolve())
         except ValueError:
             raise CleanupBlocked(f"worktree is outside War Room's directory: {path}")
-        if not path.exists():
-            raise CleanupBlocked(f"worktree path missing (needs manual check): {path}")
-        if self.registered(path) != branch:
-            raise CleanupBlocked(f"worktree is not registered with branch {branch}")
-        if (d := self.dirty(path)).strip():
-            raise CleanupBlocked(f"uncommitted changes in worktree:\n{d.strip()[:400]}")
-        local = self.head(path)
-        if local != pr_head_sha:
-            self._sync_to_pr_head(path, local, pr_head_sha)
-        self._git("worktree", "remove", str(path))  # no --force
+
+        registered = self.registered(path)
+        if registered == branch:
+            if not path.is_dir():
+                raise CleanupBlocked(f"worktree is still registered but its path is missing (manual check): {path}")
+            if (d := self.dirty(path)).strip():
+                raise CleanupBlocked(f"uncommitted changes in worktree:\n{d.strip()[:400]}")
+            local = self.head(path)
+            if local != pr_head_sha:
+                self._sync_to_pr_head(path, local, pr_head_sha)
+            if self.head(path) != pr_head_sha:
+                raise CleanupBlocked(f"worktree HEAD does not match merged PR HEAD {pr_head_sha}")
+            if (d := self.dirty(path)).strip():
+                raise CleanupBlocked(f"uncommitted changes after HEAD synchronization:\n{d.strip()[:400]}")
+            if on_verified is not None:
+                on_verified()
+            res = self._git("worktree", "remove", str(path), check=False)
+            if not res.ok:
+                detail = res.err.strip() or res.out.strip() or f"exit {res.code}"
+                raise GitError(f"git worktree remove {path} (exit={res.code}; {detail}); "
+                               "cleanup proof is saved, so Retry can resume cleanup without rerunning production")
+            self._delete_owned_branch(branch, pr_head_sha)
+            return
+
+        if registered is not None:
+            raise CleanupBlocked(f"worktree is registered with a different branch (expected {branch}, got {registered!r})")
+        self._remove_partial(path, branch, pr_head_sha, cleanup_proof)
+
+    def _delete_owned_branch(self, branch: str, pr_head_sha: str) -> None:
+        ref = self._git("rev-parse", "--verify", "--quiet", f"refs/heads/{branch}^{{commit}}", check=False)
+        if not ref.ok:
+            return
+        if ref.out.strip() != pr_head_sha:
+            raise CleanupBlocked(f"local branch {branch} moved from merged PR HEAD {pr_head_sha}; preserved")
         self._git("branch", "-D", branch)
+
+    def _common_dir(self) -> Path:
+        common = self._git("rev-parse", "--path-format=absolute", "--git-common-dir", check=False)
+        if not common.ok or not common.out.strip():
+            raise CleanupBlocked(f"Git common directory cannot be verified: {common.err.strip()[:200]}")
+        path = Path(common.out.strip()).resolve()
+        if not path.is_absolute():
+            raise CleanupBlocked(f"Git common directory is not absolute: {common.out.strip()[:200]}")
+        return path
+
+    def _has_admin_entry(self, path: Path, common: Path) -> bool:
+        worktrees = common / "worktrees"
+        expected_gitfile = path / ".git"
+        try:
+            entries = list(worktrees.iterdir()) if worktrees.exists() else []
+        except OSError as e:
+            raise CleanupBlocked(f"cannot inspect Git worktree admin entries: {e}")
+        for entry in entries:
+            if entry.name == path.name:
+                return True
+            try:
+                raw = (entry / "gitdir").read_text("utf-8").strip()
+                owner = Path(raw).resolve()
+            except (OSError, UnicodeError):
+                continue
+            if owner == expected_gitfile.resolve():
+                return True
+        return False
+
+    def _verify_partial_gitfile(self, path: Path, common: Path) -> None:
+        gitfile = path / ".git"
+        if not gitfile.exists() and not gitfile.is_symlink():
+            return
+        if gitfile.is_symlink() or not gitfile.is_file():
+            raise CleanupBlocked(f"partial worktree has an unexpected .git entry (preserved): {gitfile}")
+        try:
+            lines = gitfile.read_text("utf-8").splitlines()
+        except (OSError, UnicodeError) as e:
+            raise CleanupBlocked(f"cannot verify partial worktree .git pointer (preserved): {e}")
+        if len(lines) != 1 or not lines[0].startswith("gitdir: "):
+            raise CleanupBlocked(f"partial worktree has an invalid .git pointer (preserved): {gitfile}")
+        gitdir = Path(lines[0][8:]).resolve()
+        if gitdir.parent != (common / "worktrees").resolve() or gitdir.name != path.name:
+            raise CleanupBlocked(f"partial worktree .git pointer does not match its expected admin entry: {gitfile}")
+        if gitdir.exists():
+            raise CleanupBlocked(f"partial worktree Git admin entry still exists (manual check): {gitdir}")
+
+    def _partial_tree_status(self, path: Path, common: Path, pr_head_sha: str) -> list[str]:
+        """Read the residual tree against the recorded PR HEAD using a temporary index.
+
+        Missing tracked files are consistent with an interrupted directory removal. Any
+        modified, type-changed, or untracked path is ambiguous and blocks deletion.
+        """
+        with tempfile.TemporaryDirectory(prefix="warroom-cleanup-") as tmp:
+            env = dict(self.env)
+            env["GIT_INDEX_FILE"] = str(Path(tmp) / "index")
+            env["GIT_OPTIONAL_LOCKS"] = "0"
+            prefix = ["git", f"--git-dir={common}", f"--work-tree={path}"]
+            read = self.r.run(prefix + ["read-tree", pr_head_sha], cwd=self.root, env=env, timeout=120)
+            if not read.ok:
+                detail = read.err.strip() or read.out.strip() or f"exit {read.code}"
+                raise CleanupBlocked(f"cannot prepare a read-only PR HEAD comparison for residual worktree: {detail}")
+            status = self.r.run(prefix + ["status", "--porcelain=v1", "--untracked-files=all"],
+                                cwd=self.root, env=env, timeout=120)
+            if not status.ok:
+                detail = status.err.strip() or status.out.strip() or f"exit {status.code}"
+                raise CleanupBlocked(f"cannot inspect residual worktree against merged PR HEAD: {detail}")
+            rows = status.out.splitlines()
+            files = self.r.run(prefix + ["ls-files", "--stage", "-z"], cwd=self.root, env=env, timeout=120)
+            if not files.ok:
+                detail = files.err.strip() or files.out.strip() or f"exit {files.code}"
+                raise CleanupBlocked(f"cannot enumerate merged PR files for residual cleanup: {detail}")
+            tracked = {}
+            for record in files.out.split("\0"):
+                if not record:
+                    continue
+                metadata, sep, name = record.partition("\t")
+                fields = metadata.split()
+                if not sep or len(fields) != 3:
+                    raise CleanupBlocked("cannot parse merged PR file list; residual worktree is preserved")
+                tracked[os.fsdecode(name)] = fields[0]
+        # `git status` omits ignored files. Walk the actual checkout as well, so an ignored or empty untracked item
+        # cannot be erased by rmtree. The one repository-defined throw-away scratch directory is already excluded
+        # from the regular clean gate and is safe to discard with this owned worktree.
+        tracked_dirs = set()
+        for rel in tracked:
+            parts = rel.split("/")
+            tracked_dirs.update("/".join(parts[:i]) for i in range(1, len(parts)))
+
+        def inspect(directory: Path, prefix: str = "") -> None:
+            try:
+                entries = list(os.scandir(directory))
+            except OSError as e:
+                raise CleanupBlocked(f"cannot inspect residual worktree contents at {directory}: {e}")
+            for entry in entries:
+                rel = f"{prefix}/{entry.name}" if prefix else entry.name
+                if not prefix and rel == ".git":
+                    continue   # verified separately as a stale pointer to the now-absent admin entry
+                if rel == SCRATCH_DIR or rel.startswith(SCRATCH_DIR + "/"):
+                    if entry.is_dir(follow_symlinks=False):
+                        inspect(Path(entry.path), rel)
+                    continue
+                if rel not in tracked and rel not in tracked_dirs:
+                    raise CleanupBlocked(f"residual worktree contains untracked/ignored data (preserved): {rel}")
+                is_dir = entry.is_dir(follow_symlinks=False)
+                if rel in tracked and (is_dir or tracked[rel] == "160000"):
+                    raise CleanupBlocked(f"tracked file has an unexpected directory/submodule residual (preserved): {rel}")
+                if rel in tracked_dirs and not is_dir:
+                    raise CleanupBlocked(f"tracked directory has an unexpected file residual (preserved): {rel}")
+                if is_dir:
+                    inspect(Path(entry.path), rel)
+
+        inspect(path)
+        # The temporary index is based on the merged PR HEAD while the repository's
+        # primary HEAD may be a squash merge. Ignore X (index-vs-HEAD) and inspect
+        # only Y (index-vs-worktree): a missing file is expected during removal;
+        # every other worktree change is ambiguous.
+        unexpected = [row for row in rows if len(row) < 2 or row[1] not in (" ", "D")]
+        if unexpected:
+            raise CleanupBlocked("residual worktree has changes outside partial deletion (preserved):\n"
+                                 + "\n".join(unexpected[:12]))
+        return rows
+
+    def _remove_partial(self, path: Path, branch: str, pr_head_sha: str, proof: dict | None) -> None:
+        expected = {
+            "version": 1,
+            "path": str(path),
+            "branch": branch,
+            "head_sha": pr_head_sha,
+            "remove_started": True,
+        }
+        if not isinstance(proof, dict) or any(proof.get(k) != v for k, v in expected.items()):
+            raise CleanupBlocked("worktree registration is missing and no matching durable clean/HEAD/ownership "
+                                 "cleanup proof exists; residual files and branch are preserved. Verify the saved "
+                                 "batch path, branch, PR HEAD, and local changes with the repository owner before "
+                                 "retrying cleanup")
+        root = self.worktrees_dir.resolve()
+        if path.parent.resolve() != root:
+            raise CleanupBlocked(f"partial worktree is not a direct child of War Room's directory: {path}")
+        if path.is_symlink():
+            raise CleanupBlocked(f"partial worktree path is a symlink (preserved): {path}")
+        common = self._common_dir()
+        if self.registered(path) is not None:
+            raise CleanupBlocked(f"partial worktree registration changed during cleanup (preserved): {path}")
+        if self._has_admin_entry(path, common):
+            raise CleanupBlocked(f"Git still has a worktree admin entry for this path (manual check): {path}")
+
+        ref = self._git("rev-parse", "--verify", "--quiet", f"refs/heads/{branch}^{{commit}}", check=False)
+        if path.exists():
+            if not path.is_dir():
+                raise CleanupBlocked(f"partial worktree path is not a directory (preserved): {path}")
+            if not ref.ok or ref.out.strip() != pr_head_sha:
+                raise CleanupBlocked(f"partial worktree still exists but local branch {branch} does not point to "
+                                     f"merged PR HEAD {pr_head_sha}; preserved")
+            self._verify_partial_gitfile(path, common)
+            self._partial_tree_status(path, common, pr_head_sha)
+            try:
+                shutil.rmtree(path)
+            except OSError as e:
+                raise CleanupBlocked(f"partial worktree removal failed; files and branch are preserved for Retry: {e}")
+        elif ref.ok and ref.out.strip() != pr_head_sha:
+            raise CleanupBlocked(f"local branch {branch} moved from merged PR HEAD {pr_head_sha}; preserved")
+
+        self._delete_owned_branch(branch, pr_head_sha)
 
     # ---- operator Clear: discard ONE owned batch (explicitly confirmed, unlike post-merge cleanup) ----
     def verify_owned(self, path: Path, branch: str) -> bool:

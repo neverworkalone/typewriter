@@ -247,26 +247,27 @@ class LiveAiHandover(unittest.TestCase):
         w.tick()
         pid = w.adapter.launches[-1]["pid"]
         self.assertEqual(w.row()["state"], "PRODUCING")
-        w.pr_info(7, HEAD1)  # AI created the PR but keeps running (waiting for merge)
+        w.pr_info(7, HEAD1, head_ref=BRANCH)  # AI created the PR but keeps running (waiting for merge)
         w.gh.by_branch[BRANCH] = [{"number": 7, "state": "OPEN", "headRefOid": HEAD1}]
+        w.gh.files[7] = [{"path": "data/relation-candidates/001/001_01_a_deepseek.jsonl"}]
+        w.git.remote[BRANCH] = HEAD1
+        stops = []
+        orig_stop = w.adapter.stop
+        w.adapter.stop = lambda p: (stops.append(p), None)[1]  # producer ignores the first stop request
         w.tick()
         b = w.row()
         self.assertEqual((b["state"], b["pr_number"], b["pid"]), ("WAITING_REVIEW", 7, pid))
         self.assertTrue(w.adapter.alive(pid))
-        # -1 arrives: the live AI is stopped first; no second AI starts while it is alive.
+        # Supervisor keeps requesting the stop and does not poll/fix while the producer remains live.
         w.gh.reviews_ = [review(11, HEAD1)]
-        stops = []
-        orig_stop = w.adapter.stop
-        w.adapter.stop = lambda p: (stops.append(p), None)[1]  # AI ignores the first SIGTERM
         w.tick(2)
         self.assertEqual(len(w.adapter.launches), 1)
         self.assertEqual(w.row()["state"], "WAITING_REVIEW")
         self.assertTrue(stops)
         w.adapter.stop = orig_stop
-        w.tick()                     # stop now takes effect
+        w.tick()                     # stop now takes effect; the marker still blocks review work this tick
         self.assertEqual(len(w.adapter.launches), 1)
-        w.adapter.plan.append({"code": 0})
-        w.tick(2)                    # exit confirmed -> exactly one fix run, same session
+        w.tick()                    # exit confirmed -> exactly one fix run, same session
         self.assertEqual([l["kind"] for l in w.adapter.launches], ["start", "resume"])
         self.assertEqual(w.row()["state"], "FIXING")
         w.tmp.cleanup()
@@ -276,8 +277,10 @@ class LiveAiHandover(unittest.TestCase):
         w.start("single")
         w.adapter.plan.append({"code": 0})
         w.tick()
-        w.pr_info(7, HEAD1)
+        w.pr_info(7, HEAD1, head_ref=BRANCH)
         w.gh.by_branch[BRANCH] = [{"number": 7, "state": "OPEN", "headRefOid": HEAD1}]
+        w.gh.files[7] = [{"path": "data/relation-candidates/001/001_01_a_deepseek.jsonl"}]
+        w.git.remote[BRANCH] = HEAD1
         w.tick()
         w.pr_info(7, HEAD1, state="closed", merged=True)
         w.tick(5)

@@ -1,4 +1,5 @@
 import os
+import shutil
 import stat
 import subprocess
 import tempfile
@@ -8,7 +9,7 @@ from pathlib import Path
 
 from warroom.adapters import OpenCodeAdapter, RunSpec
 from warroom.gitops import CleanupBlocked, Git, GitError
-from warroom.shell import Runner
+from warroom.shell import Result, Runner
 
 ENV = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t",
        "GIT_COMMITTER_EMAIL": "t@t", "GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_SYSTEM": "/dev/null"}
@@ -166,6 +167,64 @@ class RealGit(unittest.TestCase):
         (self.wt / SCRATCH_DIR / "left.txt").write_text("t")
         self.git.remove_owned(self.wt, "a-x-001-01", head)        # leftover scratch does not block cleanup
         self.assertFalse(self.wt.exists())
+
+    def _simulate_registration_removed(self, branch, on_verified=None):
+        self.git.fetch_base("master")
+        self.git.create_worktree(self.wt, branch, "master")
+        head = self.git.head(self.wt)
+        gitdir = self.git.worktree_gitdir(self.wt)
+        original = self.git._git
+
+        def partial_remove(*args, **kwargs):
+            if args[:2] == ("worktree", "remove"):
+                shutil.rmtree(gitdir)    # Git dropped its admin entry before checkout deletion failed.
+                return Result(255, "", "failed to delete checkout: Operation not permitted")
+            return original(*args, **kwargs)
+
+        self.git._git = partial_remove
+        try:
+            with self.assertRaises(GitError):
+                self.git.remove_owned(self.wt, branch, head, on_verified=on_verified)
+        finally:
+            self.git._git = original
+        self.assertIsNone(self.git.registered(self.wt))
+        self.assertTrue(self.wt.exists())
+        return head
+
+    def test_partial_remove_persists_proof_and_retry_removes_only_residual_tracked_files(self):
+        branch = "a-x-001-01"
+        proofs = []
+        head = self._simulate_registration_removed(branch, lambda: proofs.append({
+            "version": 1, "path": str(self.wt.resolve()), "branch": branch, "head_sha": self.git.head(self.wt),
+            "remove_started": True,
+        }))
+        (self.wt / "f").unlink()    # expected partial directory deletion after the admin entry disappeared
+        proof = proofs[0]
+        proof["head_sha"] = head
+
+        self.git.remove_owned(self.wt, branch, head, cleanup_proof=proof)
+
+        self.assertFalse(self.wt.exists())
+        self.assertNotEqual(subprocess.run(["git", "rev-parse", "--verify", "-q", branch], cwd=self.repo,
+                                           env=ENV).returncode, 0)
+
+    def test_partial_remove_without_proof_or_with_ignored_residual_data_is_preserved(self):
+        branch = "a-x-001-01"
+        head = self._simulate_registration_removed(branch)
+        with self.assertRaisesRegex(CleanupBlocked, "no matching durable"):
+            self.git.remove_owned(self.wt, branch, head)
+        self.assertTrue(self.wt.exists())
+
+        proof = {"version": 1, "path": str(self.wt.resolve()), "branch": branch, "head_sha": head,
+                 "remove_started": True}
+        ignored = self.wt / "owner-private.txt"
+        ignored.write_text("keep me")
+        exclude = self.repo / ".git" / "info" / "exclude"
+        exclude.write_text(exclude.read_text() + "\n/owner-private.txt\n")
+        with self.assertRaisesRegex(CleanupBlocked, "untracked/ignored data"):
+            self.git.remove_owned(self.wt, branch, head, cleanup_proof=proof)
+        self.assertEqual(ignored.read_text(), "keep me")
+        self.assertTrue(self.wt.exists())
 
     def test_refuses_existing_branch_or_path(self):
         self.git.fetch_base("master")
