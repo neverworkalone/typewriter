@@ -117,7 +117,7 @@ test('rendered output stays within maxChars for many forms, and the cursor does 
   const { root, databasePath } = await makeCorpus(Array.from({ length: 60 }, (_, index) => `${'앞'.repeat(150)} ${forms[index % forms.length]} ${'뒤'.repeat(150)}`));
   try {
     const database = openReadonlyDb(databasePath);
-    for (const maxChars of [400, 700, 1500]) {
+    for (const maxChars of [600, 900, 1500]) {
       const pages = drain(database, forms, { maxChars, maxSamples: 50 });
       for (const page of pages) {
         const text = renderContexts(page);
@@ -127,6 +127,24 @@ test('rendered output stays within maxChars for many forms, and the cursor does 
       const ids = pages.flatMap((page) => page.items.map((item) => `${item.form}:${item.paragraph_rowid}`));
       assert.equal(new Set(ids).size, ids.length);
       assert.equal(ids.length, 60);
+    }
+    database.close();
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('supplementary-plane text is bounded by the rendered UTF-16 length, including the first item', async () => {
+  const forms = ['𠮷검색어𠮷', '😀표면형😀'];
+  const { root, databasePath } = await makeCorpus(Array.from({ length: 24 }, (_, index) => `${'😀'.repeat(200)} ${forms[index % 2]} ${'𠮷'.repeat(200)}`));
+  try {
+    const database = openReadonlyDb(databasePath);
+    for (const maxChars of [400, 600, 1000]) {
+      const pages = drain(database, forms, { maxChars, maxSamples: 50, snippetChars: 700 });
+      for (const page of pages) assert.ok(renderContexts(page).length <= Math.max(maxChars, 600), `${renderContexts(page).length} > ${maxChars}`);
+      const ids = pages.flatMap((page) => page.items.map((item) => `${item.form}:${item.paragraph_rowid}`));
+      assert.equal(new Set(ids).size, ids.length);
+      assert.equal(ids.length, 24);
     }
     database.close();
   } finally {

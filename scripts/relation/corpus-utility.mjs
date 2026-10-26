@@ -19,9 +19,9 @@ export const DEFAULT_SNIPPET_CHARS = 240;
 export const DEFAULT_SCAN_ROWS = 200_000;
 const FTS_MIN_LENGTH = 3;
 const BATCH_ROWS = 200;
-const MIN_MAX_CHARS = 400;
+const MIN_MAX_CHARS = 600;
 const HEAD_RESERVE = 160; // status line, short cursor and error text of renderContexts
-const ITEM_OVERHEAD = 120; // the item label line around the excerpt
+const ITEM_OVERHEAD = 200; // the item label line around the excerpt
 const WORD_CHARACTER = /[\p{L}\p{N}]/u;
 
 /** Open the approved paragraph corpus index read-only (`query_only`) after its schema check. */
@@ -79,7 +79,7 @@ function rawBatch(database, form, after, scanLimit) {
  */
 export function searchContexts(database, forms, {
   maxSamples = DEFAULT_MAX_SAMPLES,
-  maxChars = DEFAULT_MAX_CHARS, // bound of the rendered response; values below 400 are raised to 400
+  maxChars = DEFAULT_MAX_CHARS, // bound of the rendered response; UTF-16 code units; values below 600 are raised to 600
   snippetChars = DEFAULT_SNIPPET_CHARS,
   scanRows = DEFAULT_SCAN_ROWS,
   boundary,
@@ -110,8 +110,16 @@ export function searchContexts(database, forms, {
           const at = findBoundedOccurrence(row.text, form, formBoundary);
           if (at < 0) continue;
           const excerpt = excerptAround(row.text, [form], snippet, at, form).text;
-          const item = { form: form.slice(0, 30), paragraph_rowid: row.rowid, title: (row.title ?? '').slice(0, 30), author: (row.author ?? '').slice(0, 30), excerpt };
-          const cost = renderItem(item, items.length).length + 1;
+          const item = { form: [...form].slice(0, 30).join(''), paragraph_rowid: row.rowid, title: [...(row.title ?? '')].slice(0, 30).join(''), author: [...(row.author ?? '')].slice(0, 30).join(''), excerpt };
+          let cost = renderItem(item, items.length).length + 1;
+          // The bound is in UTF-16 code units like the rendered string; the excerpt limit counts code points,
+          // so shrink even the first item until its real rendering fits.
+          for (let chars_ = [...item.excerpt]; items.length === 0 && chars + cost > budget && chars_.length > 0;) {
+            chars_ = chars_.slice(0, -Math.max(1, Math.ceil((chars + cost - budget) / 2)));
+            item.excerpt = chars_.join('');
+            cost = renderItem(item, 0).length + 1;
+          }
+
           if (items.length > 0 && chars + cost > budget) {
             return finish(items, 'LIMITED', formsKey, formIndex, row.rowid - 1);
           }
@@ -136,7 +144,7 @@ const renderItem = (item, index) => `[${index + 1}] ${item.form} | ${item.title}
 
 /** One bounded text block for the AI to read. Includes the status and, when LIMITED, the cursor to continue. */
 export function renderContexts(result) {
-  const head = `${result.status} shown=${result.items.length}${result.next_cursor ? ` next_cursor=${result.next_cursor}` : ''}${result.error ? ` error=${String(result.error).slice(0, 100)}` : ''}`;
+  const head = `${result.status} shown=${result.items.length}${result.next_cursor ? ` next_cursor=${result.next_cursor}` : ''}${result.error ? ` error=${[...String(result.error)].slice(0, 50).join('')}` : ''}`;
   return [head, ...result.items.map(renderItem)].join('\n');
 }
 
