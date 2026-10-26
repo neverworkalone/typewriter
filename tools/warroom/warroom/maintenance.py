@@ -229,9 +229,54 @@ class Maintenance:
                 continue
             if head is None:
                 continue
+            if not self._archive_report(d, b):
+                continue   # the resolved report could not be set aside: never resume into a stale stop signal
             if self.store.release_defect(d["id"], b["id"], head):
                 self.store.log(b["id"], f"공통 수정 {d['merge_sha'][:10]} 반영·검증 완료 (HEAD {head[:10]}) → "
                                f"{b['paused_from'] or 'PRODUCING'}부터 자동 Retry 1회")
+
+    def _archive_report(self, d, b) -> bool:
+        """Set the RESOLVED report aside so the resumed producer does not read it as an unresolved stop signal.
+
+        Only the exact file of this defect event moves (to `.warroom-scratch/resolved-defects/`); a report whose content
+        changed since is new evidence and stays. False: the move failed (retried on the next tick, batch stays PAUSED).
+        """
+        f = Path(b["worktree"]) / defects.REPORT_FILE
+        try:
+            raw = f.read_text("utf-8", errors="replace")
+        except FileNotFoundError:
+            return True
+        except OSError as e:
+            self.store.log(b["id"], f"해결된 공통 결함 보고서를 읽지 못해 재개를 미룹니다(재시도 예정): {e}", "warn")
+            return False
+        base = defects.report_event_key(b["id"], raw)
+        if d["event_key"] != base and not d["event_key"].startswith(base + ":after:"):
+            return True   # a different (changed) report: new evidence, left for the normal report scan
+        dest = f.parent / "resolved-defects" / f"defect-{d['id']}.json"
+        try:
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            f.replace(dest)
+        except OSError as e:
+            self.store.log(b["id"], f"해결된 공통 결함 보고서 보관 실패로 재개를 미룹니다(재시도 예정): {e}", "warn")
+            return False
+        self.store.log(b["id"], f"해결된 공통 결함 #{d['id']} 보고서를 {dest.relative_to(b['worktree'])}로 보관")
+        return True
+
+    def resolved_note(self, b, short: bool = False) -> str:
+        """Evidence-backed context: defects of this batch whose merged fix was applied and verified (RELEASED)."""
+        done = [d for d in self.store.defects(("RELEASED",)) if d["batch_id"] == b["id"]]
+        if not done:
+            return ""
+        refs = ", ".join(f"#{d['id']}(`{d['defect_class']}`, 수정 {d['merge_sha'][:10]}, 반영 HEAD {d['integrated_sha'][:10]})"
+                         for d in done)
+        if short:
+            return (f"이 배치는 공통 결함 {refs}의 수정이 반영·검증된 뒤 재개된 실행입니다. 재개된 AI가 이미 해결된 보고서 "
+                    "때문에 멈췄는지 로그를 확인하세요 (같은 보고서로는 자동 재시작하지 않음).")
+        return ("이 배치가 이전에 보고한 공통 결함 " + refs + "은(는) 수정이 머지되어 이 worktree HEAD에 반영·검증되었다 "
+                "(War Room이 해당 보고서를 `.warroom-scratch/resolved-defects/`로 보관했다). 그 보고서를 미해결 오류로 "
+                "취급하거나 그것 때문에 멈추지 말고, 수정된 CLI로 실패했던 단계(예: `export`)를 다시 실행해 남은 작업을 계속하라. "
+                "수정 후에도 같은 결함이 실제로 재현되거나 새로운 결함이 확인되면 그때는 새 증거로 `shared-defect.json`을 "
+                "다시 작성해 보고하고 멈춘다.\n")
 
     def _apply(self, d, b) -> str | None:
         wt, git = Path(b["worktree"]), self.sup.git
