@@ -74,12 +74,32 @@ replaced, but the persistent database, producer worktrees and PRs are not delete
 ```sh
 tmux kill-session -t warroom-supervisor 2>/dev/null || true
 tmux kill-session -t warroom 2>/dev/null || true
-./war
 ```
 
 `./war` creates or reattaches the TUI and starts a fresh Supervisor if none holds its lock.
 The Supervisor recovers existing batches using the persisted state and running processes;
 do not delete `tools/warroom/.local/`, manually reset worktrees or press Retry just to reload code.
+
+## Investigate Logs
+```sh
+SELECT r.log_file                               
+FROM runs r
+JOIN batches b ON b.id = r.batch_id
+WHERE b.pr_number = pr
+  AND r.kind LIKE 'produce%'
+ORDER BY r.started_at;
+" | pbcopy
+```
+
+```sh
+sqlite3 -noheader tools/warroom/.local/warroom.db \
+"SELECT r.log_file FROM runs r
+JOIN batches b ON b.id = r.batch_id
+WHERE (b.method, b.shard, b.batch) = ('a', '046', '01')
+AND b.producer = 'codex'
+AND r.kind LIKE 'produce%'
+ORDER BY r.started_at;" | pbcopy
+```
 
 ## Factory Board · Production Lines
 
