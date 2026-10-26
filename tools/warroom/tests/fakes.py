@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import itertools
+import re
 import tempfile
 from pathlib import Path
 
@@ -178,13 +179,19 @@ class FakeGit:
     def changed_files(self, sha):
         return self.changed.get(sha, ["README.md"])   # default: a documentation-only fix
 
-    def remove_owned(self, path, branch, pr_head):
+    def remove_owned(self, path, branch, pr_head, *, cleanup_proof=None, on_verified=None):
         if self.block:
             raise CleanupBlocked(self.block)
+        registered = next((owner for key, owner in self.reg.items()
+                           if Path(key).resolve() == Path(path).resolve()), None)
+        if registered != branch and not cleanup_proof:
+            raise CleanupBlocked("worktree registration is missing and no matching cleanup proof exists")
         if self.dirty_text.strip():
             raise CleanupBlocked("dirty")
         if self.local_head != pr_head:
             raise CleanupBlocked("head mismatch")
+        if on_verified is not None:
+            on_verified()
         self.removed.append((str(path), branch))
         Path(path).rmdir()
 
@@ -200,6 +207,7 @@ class FakeGh:
         self.closed, self.close_error = [], None
         self.reviews_, self.inline_, self.issue_ = [], [], []
         self.commit_ts = 0.0
+        self.git = None
         self.issues: dict[int, dict] = {}        # urgent Issues: number -> {state, labels, title, body}
         self.issue_comments_: dict[int, list] = {}
         self.created: list[int] = []
@@ -218,7 +226,16 @@ class FakeGh:
     def pull(self, n):
         if self.fail_pull:
             raise RuntimeError("pull failed")
-        return self.prs[n]
+        result = dict(self.prs[n])
+        if result.get("head_ref") == "x":   # default from pr_info; preserve deliberate mismatch fixtures
+            for branch, prs in self.by_branch.items():
+                if any(pr.get("number") == n for pr in prs):
+                    result["head_ref"] = branch
+                    break
+        branch = result.get("head_ref")
+        if self.git is not None and result.get("state") == "open" and isinstance(branch, str) and branch != "x":
+            self.git.remote.setdefault(branch, result.get("head_sha"))
+        return result
 
     def close_pr(self, n):
         if self.close_error:
@@ -249,7 +266,21 @@ class FakeGh:
         self.issue_comments_.setdefault(n, []).append({"body": body})
 
     def pull_files(self, n):
-        files = self.files.get(n, [])
+        if n in self.files:
+            files = self.files[n]
+        else:
+            # A branch-linked fake Stage 1 PR represents the normal producer output unless a test explicitly
+            # supplies a different file list (including [] or None for missing/unknown-claim cases).
+            branch = self.pull(n).get("head_ref", "")
+            parts = branch.split("-")
+            if (len(parts) >= 4 and parts[0] in "abcd" and re.fullmatch(r"\d{3}", parts[-2])
+                    and re.fullmatch(r"\d{2}", parts[-1])):
+                method, shard, batch = parts[0], parts[-2], parts[-1]
+                producer = "-".join(parts[1:-2])
+                files = [{"path": f"data/relation-candidates/{shard}/"
+                                  f"{shard}_{batch}_{method}_{producer}.jsonl"}]
+            else:
+                files = []
         if isinstance(files, Exception):
             raise files
         return files
@@ -272,6 +303,7 @@ class World:
         self.cfg["rate_limit_backoff_seconds"] = 10
         self.store = Store(self.paths.db)
         self.adapter, self.git, self.gh = FakeAdapter(), FakeGit(self.paths.worktrees), FakeGh()
+        self.gh.git = self.git
         self.now = 1_000_000.0
         self.sup = self.make_sup()
         self.sup_runner_ok()

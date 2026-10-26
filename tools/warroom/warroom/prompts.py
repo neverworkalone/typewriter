@@ -19,6 +19,16 @@ ALLOWED = {"a": _PRODUCE, "b": _PRODUCE, "c": _PRODUCE, "d": _PRODUCE, "recovery
            "m": _MAINTAIN, "m_recovery": _MAINTAIN, "s2": _STAGE2, "s2_recovery": _STAGE2}
 MAINTENANCE_METHOD = "m"
 STAGE2_METHOD = "s2"
+PRODUCER_HANDOFF = """
+
+## War Room lifecycle handoff (binding)
+
+The War Room Supervisor owns this assigned worktree and local branch. Do not run PR polling, merge waiting, or any
+worktree/branch cleanup, deletion, pruning, moving, or repair. General repository instructions about monitoring PRs do
+not apply to this assigned run. For production, create the required PR, confirm its number and labels, then finish and
+exit. For a review-fix run, address the assigned feedback, push the fix or post the response, then finish and exit. The
+Supervisor owns review monitoring and merged cleanup.
+"""
 
 
 class PromptError(Exception):
@@ -65,7 +75,8 @@ def produce(b, directory: Path | None = None) -> str:
         return render("m", {"issue": b["batch"], "branch": b["branch"]}, directory)
     if b["method"] == STAGE2_METHOD:
         return render("s2", _stage2_values(b), directory)
-    return render(b["method"], {"batch": f"{b['shard']}_{b['batch']}", "branch": b["branch"]}, directory)
+    out = render(b["method"], {"batch": f"{b['shard']}_{b['batch']}", "branch": b["branch"]}, directory)
+    return out.rstrip() + PRODUCER_HANDOFF if b["method"] in {"a", "b", "c", "d"} else out
 
 
 def recovery(b, directory: Path | None = None, resolved_defects: str = "") -> str:
@@ -73,8 +84,9 @@ def recovery(b, directory: Path | None = None, resolved_defects: str = "") -> st
         return render("m_recovery", {"issue": b["batch"], "branch": b["branch"]}, directory)
     if b["method"] == STAGE2_METHOD:
         return render("s2_recovery", _stage2_values(b), directory)
-    return render("recovery", {"batch": f"{b['shard']}_{b['batch']}", "branch": b["branch"],
-                               "resolved_defects": resolved_defects}, directory)
+    out = render("recovery", {"batch": f"{b['shard']}_{b['batch']}", "branch": b["branch"],
+                              "resolved_defects": resolved_defects}, directory)
+    return out.rstrip() + PRODUCER_HANDOFF if b["method"] in {"a", "b", "c", "d"} else out
 
 
 def fix(b, events, resumed: bool, directory: Path | None = None) -> str:
@@ -84,5 +96,6 @@ def fix(b, events, resumed: bool, directory: Path | None = None) -> str:
         lines.append(f"--- {e['kind']} by {e['author']}{loc} [{e['key']}]\n{e['body']}\n")
     note = "" if resumed else ("(이전 AI 세션을 이어받지 못한 새 세션이다. AGENTS.md와 이 worktree의 git 상태, "
                                "PR 내용을 먼저 파악하라.)\n")
-    return render("fix", {"pr": b["pr_number"], "head": b["head_sha"], "branch": b["branch"],
-                          "review_events": "\n".join(lines), "session_note": note}, directory)
+    out = render("fix", {"pr": b["pr_number"], "head": b["head_sha"], "branch": b["branch"],
+                         "review_events": "\n".join(lines), "session_note": note}, directory)
+    return out.rstrip() + PRODUCER_HANDOFF if b["method"] in {"a", "b", "c", "d"} else out

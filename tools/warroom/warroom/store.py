@@ -98,7 +98,7 @@ ACTIVE_STATES = ("PREPARE", "PRODUCING", "WAITING_REVIEW", "FIXING", "MERGED",
                  "CLEANUP", "PAUSED", "ERROR", "CLEARING")
 # Per-batch kv keys the Supervisor writes; removed with the batch by Clear.
 BATCH_KV_PREFIXES = ("last_poll_", "last_poll_fixhead_", "headlag_", "last_merge_check_", "no_pr_recovery_",
-                     "verified_completion_run_", "defect_hold_")
+                     "verified_completion_run_", "defect_hold_", "cleanup_proof_", "stop_after_pr_")
 
 
 class LineBusy(Exception):
@@ -209,6 +209,10 @@ class Store:
         with self._conn() as c:
             c.execute("INSERT INTO kv(key,value) VALUES(?,?) "
                       "ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, value))
+
+    def delete(self, key: str) -> None:
+        with self._conn() as c:
+            c.execute("DELETE FROM kv WHERE key=?", (key,))
 
     # --- batches ---
     def create_batch(self, from_run: bool = False, **f) -> int:

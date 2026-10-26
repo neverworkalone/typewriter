@@ -218,15 +218,18 @@ class MissingPrRecovery(unittest.TestCase):
         self.assertEqual(w.row(method="b")["state"], "ERROR")
         self.assertEqual(w.git.removed, [])
 
-    def test_unregistered_worktree_blocks_pr_adoption(self):
+    def test_unregistered_merged_worktree_is_adopted_then_cleanup_fails_closed_without_proof(self):
         w, b = self.failed_producer()
         self.install_pr(w, b)
         del w.git.reg[b["worktree"]]
 
         w.tick()
+        self.assertEqual((w.row(method="b")["state"], w.row(method="b")["pr_number"]), ("MERGED", 1594))
+        w.tick(2)
 
         self.assertEqual(w.row(method="b")["state"], "ERROR")
-        self.assertIsNone(w.row(method="b")["pr_number"])
+        self.assertEqual(w.row(method="b")["pr_number"], 1594)
+        self.assertIn("no matching cleanup proof", w.row(method="b")["error"])
         self.assertEqual(w.git.removed, [])
         self.assertEqual(len(w.adapter.launches), 1)
 

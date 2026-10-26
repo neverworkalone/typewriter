@@ -11,8 +11,10 @@ The AI process exiting never completes a batch; only GitHub `merged=true` does.
 from __future__ import annotations
 
 import fcntl
+import json
 import os
 import re
+import shutil
 import time
 import traceback
 from pathlib import Path
@@ -153,6 +155,7 @@ class Supervisor:
             if ln["retry_batch"] is not None:
                 self.store.set_line(b["producer"], b["method"], retry_batch=None)
             return
+        b = self.store.batch(b["id"])
         if b["pause_reason"] == "shared_defect":
             # Paused for a shared defect: only Maintenance._release resumes it (once, after the fix is applied and
             # verified). An operator Retry counts only after an explicit Stop (the hold), as a deliberate override.
@@ -163,6 +166,16 @@ class Supervisor:
             self._override_defect(b)
         elif ln["retry_batch"] != b["id"] and self._recover_if_merged(b):
             return
+        elif (ln["retry_batch"] == b["id"] and not b["pr_number"]
+              and self._complete_progress(b) and not self._verified_late_producer_exit(b)):
+            # A full saved output can already have a merged PR even when the run
+            # status was lost. Rule that out before honoring Retry.
+            previous_error = b["error"]
+            if self._recover_if_merged(b, force=True):
+                return
+            current = self.store.batch(b["id"])
+            if current["state"] != b["state"] or current["error"] != previous_error:
+                return
         if ln["retry_batch"] == b["id"]:
             self.store.set_line(b["producer"], b["method"], retry_batch=None, run=1)
             self.store.update(b["id"], state=b["paused_from"] or "PRODUCING", error=None,
@@ -176,19 +189,25 @@ class Supervisor:
         self.store.set(f"defect_hold_{b['id']}", "")
         self.store.log(b["id"], "공통 결함 PAUSED를 운영자가 직접 해제 (수정 반영 없음)", "warn")
 
-    def _recover_if_merged(self, b) -> bool:
+    @staticmethod
+    def _complete_progress(b) -> bool:
+        done, total = b["records_done"], b["records_total"]
+        return isinstance(done, int) and isinstance(total, int) and total > 0 and done == total
+
+    def _recover_if_merged(self, b, force: bool = False) -> bool:
         """Recover a failed producer batch from its owned PR without starting another AI run.
 
-        Known PRs keep the existing merged-only recovery. A missing PR number is rediscovered only for a completed
-        producer run with usable exit evidence; open PRs return to normal review monitoring. Cleanup still rechecks
-        merged=true and applies the regular worktree safety gates.
+        Known PRs keep the existing merged-only recovery. A missing PR number is rediscovered only when the producer
+        exit is verified or saved record progress is complete. PR ownership is checked independently of worktree
+        registration; cleanup separately rechecks merged=true and its worktree safety gates.
         """
         if b["paused_from"] == "CLEANUP" or b["pid"] is not None:
             return False
-        if not b["pr_number"] and not self._verified_late_producer_exit(b):
+        verified_exit = self._verified_late_producer_exit(b)
+        if not b["pr_number"] and not verified_exit and not self._complete_progress(b):
             return False
         key = f"last_merge_check_{b['id']}"
-        if self.clock() - float(self.store.get(key, "0")) < max(self.cfg["poll_seconds"], 60):
+        if not force and self.clock() - float(self.store.get(key, "0")) < max(self.cfg["poll_seconds"], 60):
             return False
         self.store.set(key, str(self.clock()))
         try:
@@ -202,14 +221,17 @@ class Supervisor:
             else:
                 self._fail(b, "ERROR", f"실패 배치의 기존 PR 재발견/머지 확인이 불명확합니다: {e}. "
                            "worktree와 실행 상태를 보존하며 AI를 재실행하지 않습니다.")
+                return True
             return False
         if info is None:
             if self.store.get(f"no_pr_recovery_{b['id']}") != "1":
-                self.store.log(b["id"], "종료된 생산 실행의 소유 브랜치에서 기존 PR을 찾지 못했습니다. "
+                self.store.log(b["id"], "완료 기록이 남은 소유 브랜치에서 기존 PR을 찾지 못했습니다. "
                                "AI 재실행 없이 다음 제한 폴링에서 다시 확인합니다.", "warn")
                 self.store.set(f"no_pr_recovery_{b['id']}", "1")
             return False
         if not b["pr_number"]:
+            if info["merged"]:
+                return self._enter_merged(b, info, f"{b['state']} 상태에서 누락 PR 복구")
             return self._handoff_recovered_pr(b, info, "PAUSED/ERROR 상태에서")
         if not info["merged"]:
             return False
@@ -268,7 +290,7 @@ class Supervisor:
                 and run["ended_at"] is not None and recorded == code)
 
     def _find_recovery_pr(self, b):
-        """Find one existing PR and prove it belongs to this finished batch before handing it off."""
+        """Find one existing PR and prove its branch/candidate claim belongs to this batch before handoff."""
         prs = self.gh.prs_for_branch(b["branch"])
         if not isinstance(prs, list):
             raise RecoveryBlocked("소유 브랜치 PR 조회 결과 형식이 잘못되었습니다")
@@ -292,16 +314,18 @@ class Supervisor:
         dup = self._duplicate_claim(b, number)
         if dup:
             raise RecoveryBlocked(f"같은 배치를 다른 열린 PR #{dup}이 점유 — 복구를 중단합니다")
+        if info.get("merged"):
+            if info.get("state") != "closed":
+                raise RecoveryBlocked(f"PR #{number}의 merged/state 값이 상충합니다")
+            # The merged PR proves the durable batch/branch/candidate claim. Registration and residual files are
+            # checked separately by CLEANUP, which requires a pre-removal proof before resuming partial deletion.
+            return info
         wt = Path(b["worktree"])
         if self.git.registered(wt) != b["branch"]:
             raise RecoveryBlocked(f"worktree가 소유 브랜치 {b['branch']}로 등록되어 있지 않습니다")
         self.git.worktree_gitdir(wt)
         local = self.git.head(wt)
-        if info.get("merged"):
-            if info.get("state") != "closed":
-                raise RecoveryBlocked(f"PR #{number}의 merged/state 값이 상충합니다")
-            # _cleanup performs the clean check and permits only a safe fast-forward to the merged PR HEAD.
-        elif info.get("state") == "open":
+        if info.get("state") == "open":
             if local != info.get("head_sha"):
                 raise RecoveryBlocked(f"PR #{number} HEAD와 로컬 worktree HEAD가 다릅니다 "
                                       f"({info.get('head_sha')} / {local})")
@@ -575,9 +599,9 @@ class Supervisor:
                     "tools/warroom/.local/config.json을 확인하세요.")
         return None
 
-    def _launch_env(self, b, kind: str) -> dict:
+    def _launch_env(self, b, kind: str, base_env: dict | None = None) -> dict:
         """Keep the private approved index path in every C producer run, including review fixes."""
-        env = dict(self.env)
+        env = dict(self.env if base_env is None else base_env)
         key = "TYPEWRITER_APPROVED_LITERARY_DB"
         env.pop(key, None)
         if b["method"] == "c":
@@ -638,6 +662,18 @@ class Supervisor:
                     f"{now} 이 다릅니다. 설정을 되돌리고 Board에서 r(설정 리로드) 후 Retry 하세요.")
         return None
 
+    def _agent_env(self) -> dict:
+        """Give worker CLIs a Git shim that leaves worktree/branch lifecycle to Supervisor."""
+        env = dict(self.env)
+        original_path = env.get("PATH", os.defpath)
+        real_git = shutil.which("git", path=original_path)
+        guard_dir = Path(__file__).resolve().parents[1] / "bin"
+        if not real_git or not (guard_dir / "git").is_file():
+            raise RuntimeError("Supervisor Git 경계 도구를 찾을 수 없어 AI를 시작하지 않습니다")
+        env["WARROOM_REAL_GIT"] = real_git
+        env["PATH"] = str(guard_dir) + os.pathsep + original_path
+        return env
+
     def _launch(self, b, kind: str, events=None) -> None:
         """kind: produce | fix_resume | fix_new | produce_resume | produce_recover"""
         ts = int(self.clock())
@@ -662,6 +698,10 @@ class Supervisor:
             return   # still proving the pin in the background; the next tick retries this relaunch
         if problem:
             return self._fail(b, "ERROR", f"실행 전 확인 실패: {problem}")
+        try:
+            agent_env = self._agent_env()
+        except Exception as e:
+            return self._fail(b, "ERROR", f"AI 실행용 Git 경계 설정 실패: {e}")
         extra = {}
         if getattr(ad, "needs_git_dir", False):   # one rule for every launch kind: the owned worktree's Git admin dir
             try:
@@ -669,7 +709,7 @@ class Supervisor:
             except Exception as e:
                 return self._fail(b, "ERROR", f"worktree의 Git 관리 디렉터리를 확인할 수 없어 AI를 시작하지 않았습니다: {e}")
         try:
-            run_env = self._launch_env(b, kind)
+            run_env = self._launch_env(b, kind, agent_env)
             if kind == "produce":
                 h = ad.start(prompts.produce(b), wt, run_env, run,
                                        f"{b['method'].upper()} {b['shard']}_{b['batch']}", log, ex, **extra)
@@ -937,7 +977,7 @@ class Supervisor:
     def _run_ok(self, b) -> None:
         try:
             if b["state"] == "PRODUCING":
-                info = self._find_pr(b)
+                info = self._find_recovery_pr(b) if b["method"] in {"a", "b", "c", "d"} else self._find_pr(b)
                 if info is None:
                     refusal = self._adapter(b["producer"]).policy_refusal(Path(b["log_file"]))
                     if refusal:   # the local CLI policy stopped the PR step: keep everything, wait for the operator
@@ -1053,13 +1093,11 @@ class Supervisor:
         return self.gh.pull(pr["number"])
 
     def _adopt_pr_while_running(self, b) -> None:
-        """PR existence is independent of AI liveness: hand over to review watching
-        even if the AI keeps running (e.g. waiting for merge); the process is
-        coordinated/stopped before any fix run (see _watch). A CLI with requires_session_for_pr (Claude, Codex) is not
-        taken over from before it reported its session, so a run without its own evidence is not adopted."""
+        """Hand a validated PR to Supervisor while the producer is live, then stop that process."""
         ad = self._adapter(b["producer"])
-        if ad.requires_final_result_for_pr:   # the run is not verified until it exits: no review, merge or cleanup yet
-            return
+        stage1 = b["method"] in {"a", "b", "c", "d"}
+        if not stage1 and ad.requires_final_result_for_pr:
+            return   # Stage 2/maintenance retain their existing final-result and verify gates.
         if ad.requires_session_for_pr and not b["session_id"]:
             return
         last = float(self.store.get(f"last_poll_{b['id']}", "0"))
@@ -1067,17 +1105,58 @@ class Supervisor:
             return
         self.store.set(f"last_poll_{b['id']}", str(self.clock()))
         try:
-            info = self._find_pr(b)
-        except DuplicateClaim as e:
+            # Keep the live final-result gate ahead of open-PR adoption. Other Stage 1 paths can validate ownership
+            # immediately; final-result producers validate exact ownership after their completion/denial gates.
+            info = self._find_pr(b) if stage1 and ad.requires_final_result_for_pr else (
+                self._find_recovery_pr(b) if stage1 else self._find_pr(b))
+        except (DuplicateClaim, RecoveryBlocked) as e:
+            ad.stop(b["pid"])
             return self._fail(b, "ERROR", str(e))
         except Exception as e:
             return self.store.log(b["id"], f"PR 조회 실패(재시도 예정): {e}", "warn")
         if info is None:
             return
+        if stage1 and info["merged"] and ad.requires_final_result_for_pr:
+            try:
+                info = self._find_recovery_pr(b)  # merged recovery still requires the exact Candidate claim
+            except (DuplicateClaim, RecoveryBlocked) as e:
+                ad.stop(b["pid"])
+                return self._fail(b, "ERROR", str(e))
+        if not stage1:
+            self.store.update(b["id"], state="WAITING_REVIEW", pr_number=info["number"],
+                              head_sha=info["head_sha"], error=None, retries=0)
+            self.store.set(f"last_poll_{b['id']}", "0")
+            self.store.log(b["id"], f"AI 실행 중 PR #{info['number']} 감지 → 리뷰 감시로 인계")
+            return
+        if info["merged"]:
+            ad.stop(b["pid"])
+            return self._enter_merged(b, info, "생산 실행 중 소유 PR 발견")
+        if info["state"] != "open":
+            ad.stop(b["pid"])
+            self.store.update(b["id"], state="ERROR", paused_from="WAITING_REVIEW", pr_number=info["number"],
+                              head_sha=info["head_sha"], error=f"PR #{info['number']}이 머지 없이 닫혀 있습니다. "
+                              "worktree·브랜치를 보존합니다.")
+            return self.store.log(b["id"], f"생산 실행 중 닫힌 PR #{info['number']} 발견; 안전 정지", "error")
+        if ad.requires_final_result_for_pr:
+            result_problem = ad.completion_problem(Path(b["log_file"]), self._recorded_run(b), b["session_id"],
+                                                   b["worktree"], self.env)
+            if result_problem:
+                return   # keep the established success/denial gate for an open PR
+            if not self._denials_cleared(b, Path(b["log_file"])):
+                ad.stop(b["pid"])
+                return
+            if stage1:
+                try:
+                    info = self._find_recovery_pr(b)
+                except (DuplicateClaim, RecoveryBlocked) as e:
+                    ad.stop(b["pid"])
+                    return self._fail(b, "ERROR", str(e))
         self.store.update(b["id"], state="WAITING_REVIEW", pr_number=info["number"],
                           head_sha=info["head_sha"], error=None, retries=0)
         self.store.set(f"last_poll_{b['id']}", "0")
-        self.store.log(b["id"], f"AI 실행 중이지만 PR #{info['number']} 감지 → 리뷰 감시로 인계")
+        self.store.set(f"stop_after_pr_{b['id']}", "1")
+        ad.stop(b["pid"])
+        self.store.log(b["id"], f"AI 실행 중 소유 PR #{info['number']} 감지 → Supervisor로 인계하고 생산 프로세스 종료 요청")
 
     def _duplicate_claim(self, b, my_pr: int) -> int | None:
         """A rival open PR on the same batch file: same model for A/B, any model for the shared C/D queue."""
@@ -1214,6 +1293,12 @@ class Supervisor:
 
     def _watch(self, b) -> None:
         b, live = self._reap(b)
+        stop_key = f"stop_after_pr_{b['id']}"
+        if self.store.get(stop_key):
+            if live:
+                self._adapter(b["producer"]).stop(b["pid"])
+                return
+            self.store.delete(stop_key)
         last = float(self.store.get(f"last_poll_{b['id']}", "0"))
         if self.clock() - last < self.cfg["poll_seconds"]:
             return
@@ -1270,16 +1355,48 @@ class Supervisor:
             return self.store.log(b["id"], "남은 AI 프로세스 정지 요청, 종료 확인 대기")
         try:
             info = self.gh.pull(b["pr_number"])
-            if not info["merged"]:
+            if (info.get("number") != b["pr_number"] or info.get("head_ref") != b["branch"]):
+                return self._fail(b, "ERROR", "PR 번호/head 브랜치가 배치 소유권과 일치하지 않아 정리하지 않습니다.")
+            if not info.get("merged") or info.get("state") != "closed":
                 return self._fail(b, "ERROR", "merged=true 아님 — 정리하지 않음")
             if b["method"] == STAGE2_METHOD and not self._stage2_merged_verify(b, info):
                 return
-            self.git.remove_owned(Path(b["worktree"]), b["branch"], info["head_sha"])
+            path = Path(os.path.abspath(b["worktree"])).resolve()
+            proof = {
+                "version": 1,
+                "batch_id": b["id"],
+                "method": b["method"],
+                "producer": b["producer"],
+                "shard": b["shard"],
+                "batch": b["batch"],
+                "path": str(path),
+                "branch": b["branch"],
+                "pr_number": b["pr_number"],
+                "head_sha": info["head_sha"],
+                "remove_started": True,
+            }
+            proof_key = f"cleanup_proof_{b['id']}"
+            saved = None
+            try:
+                candidate = json.loads(self.store.get(proof_key, ""))
+            except (TypeError, ValueError):
+                candidate = None
+            if candidate == proof:
+                saved = candidate
+
+            def record_proof() -> None:
+                self.store.set(proof_key, json.dumps(proof, sort_keys=True))
+                self.store.log(b["id"], f"PR #{info['number']} merged + clean/HEAD/worktree ownership 확인 기록 후 cleanup 시작")
+
+            self.git.remove_owned(path, b["branch"], info["head_sha"], cleanup_proof=saved,
+                                  on_verified=record_proof)
         except CleanupBlocked as e:
             return self._fail(b, "ERROR", f"정리 차단(보존): {e}")
         except Exception as e:
             return self._fail(b, "ERROR", f"정리 실패(보존): {e}")
         self.store.update(b["id"], state="COMPLETE", error=None)
+        self.store.delete(f"cleanup_proof_{b['id']}")
+        self.store.delete(f"stop_after_pr_{b['id']}")
         self.store.finish_runs(b["id"], None)
         self.store.log(b["id"], f"배치 {b['shard']}_{b['batch']} 정리 완료")
         ln = self.store.line(b["producer"], b["method"])

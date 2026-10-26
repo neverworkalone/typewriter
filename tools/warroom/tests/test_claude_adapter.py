@@ -282,8 +282,8 @@ class SupervisorStopsOnContradiction(unittest.TestCase):
         w.tick()
         self.assertEqual(w.row("claude", "a")["state"], "PRODUCING")
 
-    # Review (Stage 2, #1380): a PR that appears while the run is still alive is not a verified result. It is taken
-    # over only after the run exited and its final denials, session and model were checked.
+    # An open PR still passes the final result and denial gates. A merged PR can stop the producer immediately, but
+    # cleanup remains owned by the Supervisor and waits for its separate cleanup state.
 
     def live_log(self, pid, text):
         Path(self.w.adapter.running[pid]["log"]).write_text(text)   # what the CLI has written so far
@@ -293,6 +293,7 @@ class SupervisorStopsOnContradiction(unittest.TestCase):
         w.start("single", "claude", "a")
         w.pr_info(7, HEAD1)
         w.gh.by_branch[BRANCH] = [{"number": 7, "state": "OPEN", "headRefOid": HEAD1}]
+        w.gh.files[7] = []  # the denial case has no verified Candidate claim
         w.adapter.plan.append({"code": 0, "text": stream(init(), result(denials=[{"tool_name": "Bash"}]))})
         w.tick()
         pid = w.adapter.launches[-1]["pid"]
@@ -310,6 +311,8 @@ class SupervisorStopsOnContradiction(unittest.TestCase):
         w.start("single", "claude", "a")
         w.pr_info(7, HEAD1)
         w.gh.by_branch[BRANCH] = [{"number": 7, "state": "OPEN", "headRefOid": HEAD1}]
+        w.gh.files[7] = [{"path": "data/relation-candidates/001/001_01_a_claude.jsonl"}]
+        w.git.remote[BRANCH] = HEAD1
         w.adapter.plan.append({"code": 0, "text": stream(init(), result())})
         w.tick()
         pid = w.adapter.launches[-1]["pid"]
@@ -357,16 +360,15 @@ class SupervisorStopsOnContradiction(unittest.TestCase):
         w.start("single", "claude", "a")
         w.pr_info(7, HEAD1, state="closed", merged=True)
         w.gh.by_branch[BRANCH] = [{"number": 7, "state": "CLOSED", "headRefOid": HEAD1}]
+        w.gh.files[7] = [{"path": "data/relation-candidates/001/001_01_a_claude.jsonl"}]
         w.adapter.plan.append({"code": 0, "text": stream(init(), result())})
         w.tick()
         pid = w.adapter.launches[-1]["pid"]
         self.live_log(pid, stream(init()))
-        w.tick(3)
-        self.assertEqual(w.row("claude", "a")["state"], "PRODUCING")     # not MERGED, not CLEANUP, not COMPLETE
-        self.assertTrue(w.adapter.alive(pid))                           # the run was not stopped for cleanup
-        w.adapter.finish(pid)
         w.tick()
-        self.assertEqual(w.row("claude", "a")["state"], "WAITING_REVIEW")  # verified at exit, then watched for merge
+        self.assertEqual(w.row("claude", "a")["state"], "MERGED")
+        self.assertFalse(w.adapter.alive(pid))
+        self.assertEqual(w.git.removed, [])   # the MERGED transition does not remove the worktree
 
     def test_denial_pauses_for_the_operator(self):
         w = self.w
