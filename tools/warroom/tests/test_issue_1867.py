@@ -117,6 +117,26 @@ class Resolution(unittest.TestCase):
         self.assertEqual(maintainer_id(c), "codex2")
 
 
+class DisplayPins(unittest.TestCase):
+    def test_detail_never_shows_another_stages_pin(self):
+        from warroom.config import pin_summary
+        from warroom.views import detail_meta
+        st = {"worktree": "", "state": "", "branch": "", "head": "", "session": "", "tier": "free"}
+        for assigned, shown, hidden in [("stage1", "a", "s2"), ("stage2", "s2", "a")]:
+            c = cfg(assignments={assigned: {"codex": "luna-high" if assigned == "stage1" else "luna-xhigh"}}, maintainer="sonnet-medium")
+            c["assignments"][assigned]["claude"] = "sonnet-medium"
+            with self.subTest(assigned):
+                from warroom.config import role_view
+                ok = detail_meta(st, role_view(c, "codex", shown), "codex")
+                no = detail_meta(st, role_view(c, "codex", hidden), "codex")
+                self.assertIn("gpt-6-luna", ok)
+                self.assertNotIn("gpt-6-luna", no)
+                self.assertNotIn("high", no)
+                self.assertIn("미배정", no)
+                self.assertNotIn("gpt-6-luna", pin_summary(registry(c)["codex"]))   # settings: no stage-less pin either
+        self.assertIn("gpt-6-luna", detail_meta(st, role_view(cfg(), "codex", "s2"), "codex"))
+
+
 class ReloadAndRuns(unittest.TestCase):
     def world(self, **over):
         self.w = World()

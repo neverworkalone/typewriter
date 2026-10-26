@@ -17,7 +17,7 @@ from textual.widgets import Button, Collapsible, Footer, Header, RichLog, Rule, 
 import time
 
 from . import auth, control
-from .config import (Paths, role_entry, role_of, role_pin_lines, adapter_label, adapters, load_config, methods, ordered_models, pin_summary, registry,
+from .config import (Paths, role_pin_lines, role_view, adapter_label, adapters, load_config, methods, ordered_models, pin_summary, registry,
                      stage2_models, STAGE2_ADAPTERS)
 from .logrender import render_line
 from .views import (_hhmm, _when, control_columns, select_width, card_text, detail_header, maintainer_card_text,  # noqa: F401  (CARD_W/ICON re-exported for tests)
@@ -381,11 +381,7 @@ class LineDetail(Screen):
     # --- view ---
     def refresh_view(self) -> None:
         st = control.line_status(self.app.store, self.model, self.method)
-        reg = registry(self.app.cfg).get(self.model, {})
-        try:   # the pin this Line's method actually runs on (Stage 2 / Maintainer profiles differ from Stage 1)
-            reg = role_entry(self.app.cfg, self.model, role_of(self.method)) if reg else reg
-        except ValueError:
-            pass
+        reg = role_view(self.app.cfg, self.model, self.method)   # the pin this Line's method runs on (profiles differ by stage)
         # Text, never markup: the error/branch/path values are data and may hold [brackets] (a Rich MarkupError ends the app)
         self.query_one("#info", Static).update(Text(detail_header(st, reg, self.model)))
         self.query_one("#meta", Static).update(Text(detail_meta(st, reg, self.model)))

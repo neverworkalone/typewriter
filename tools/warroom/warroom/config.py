@@ -121,12 +121,13 @@ def registry(cfg: dict) -> dict[str, dict]:
     for pid, p in prods.items():
         adapter = p.get("adapter", "opencode")
         prof = profs.get(_assigned(cfg, STAGE1, pid) or _assigned(cfg, STAGE2, pid) or "")
+        governed = bool(_assigned_profiles(cfg, pid))
         if prof:   # a governed producer has no pin of its own (config_problem): board/settings show its first assigned profile
             p = {**p, "model": prof["model"], "effort": prof["effort"], "permission_profile": prof["permission_profile"]}
         out[pid] = {"label": p.get("label") or KNOWN_LABELS.get(pid, pid), "adapter": adapter,
                     "model": p.get("model") or "",
                     "effort": p["effort"] if "effort" in p else LEGACY_EFFORT.get(adapter, ""),
-                    "permission_profile": p.get("permission_profile") or "",
+                    "permission_profile": p.get("permission_profile") or "", "governed": governed,
                     "models": {"free": "", "go": "", **(p.get("models") or {})}}
     return out
 
@@ -211,6 +212,20 @@ def role_entry(cfg: dict, producer: str, role: str) -> dict:
     if prof is None or prof["adapter"] != p["adapter"]:
         raise ValueError(f"{producer}: {role} 프로필 {pid!r}가 없거나 adapter가 모델과 다릅니다.")
     return {**p, **{k: prof[k] for k in ("model", "effort", "permission_profile")}}
+
+
+def role_view(cfg: dict, producer: str, method: str) -> dict:
+    """The entry to DISPLAY for `producer` running `method`: its stage pin, or an explicit `unassigned` marker.
+
+    Never the producer-level default pin, which for a profile-governed producer is just its first assigned profile.
+    """
+    reg = registry(cfg).get(producer)
+    if reg is None:
+        return {}
+    try:
+        return role_entry(cfg, producer, role_of(method))
+    except ValueError as e:
+        return {**reg, "model": "", "effort": "", "permission_profile": "", "unassigned": str(e)}
 
 
 def role_problem(cfg: dict, producer: str, role: str) -> str | None:
@@ -518,6 +533,8 @@ def run_spec(cfg: dict, producer: str, tier: str = "free", role: str = STAGE1) -
 def pin_summary(p: dict) -> str:
     """What one logical model runs on: its CLI model ID(s) and the pinned reasoning effort."""
     effort = p["effort"] or "(미설정)"
+    if p.get("governed"):   # the pin depends on the stage: role_pin_lines lists each
+        return "단계별 프로필 배정 (아래 참조)"
     if p["adapter"] in TIERED_ADAPTERS:
         return f"free={p['models']['free'] or '(미설정)'}  go={p['models']['go'] or '(미설정)'}  effort={effort}"
     profile = f"  permission_profile={p['permission_profile']}" if p["permission_profile"] else ""
