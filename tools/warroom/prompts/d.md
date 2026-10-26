@@ -18,6 +18,20 @@ War Room이 고정한 `(method,model,shard,batch)`/worktree/branch/HEAD는 재�
 
 문맥 출력은 sense당 판독에 필요한 **검색어 중심의 짧은 발췌(문맥 몇 건)**만 화면에 낸다. 한 번에 판독이 부족하면 그 sense의 문맥만 선택적으로 더 조회하고, 필요한 원문 범위를 잘라 미검증 후보를 만들지 않는다.
 
+**출력 상한은 바깥 루프까지 멈춰야 실제로 적용된다.** `rows × snippets` 중첩 반복에서 안쪽 `break`만 쓰면 바깥 `rows`가 계속 돌아 "최대 3개"가 수백 개(`김구` 469개 / 약 77,000자)로 출력된다. 새 scratch 검색 스크립트는 처음부터 라벨 break 또는 한 함수의 `return`으로 쓴다.
+
+```js
+const found = [];
+rowLoop: for (const {form} of rows)
+  for (const s of snippets(form, term, true)) {
+    found.push(s);
+    if (found.length >= MAX_SAMPLES) break rowLoop;   // 안쪽 break만 쓰지 않는다
+  }
+// 출력 직전: 표본 수·문자 수 상한을 함께 적용하고, 잘렸으면 LIMITED_* 로 표시한다.
+```
+
+상한에 걸린 표본(`LIMITED_*`)은 "일부만 본 상태"다. 동명이인이 많은 짧은 표면형(`김구`)에서 표본에 source sense가 없다고 `ZERO_HITS`/`NO_VERIFIED`로 확정하지 않고, 해당 sense에 한해 다른 검색형·인접 문맥으로 선택적으로 더 조회한다. 정확한 source sense인지의 AI 판독은 그대로 유지한다.
+
 검색 규칙:
 - 3글자 이상은 `paragraph_fts`(trigram) 등 승인 인덱스의 실제 스키마가 지원하는 경로를 쓴다. 1~2글자는 trigram이 지원되지 않으므로 필요한 sense에 한해 제한된 literal 검색을 쓰되, **앞뒤 양쪽 문자 경계**(예: `기현`에 `기현상`·`이기현`이 섞이지 않도록)와 활용형·동음이의어를 직접 확인한다.
 - `LIMIT` 표본에서 정확 문맥이 없다고 전체 corpus의 ZERO_HITS로 보고하지 않는다. ZERO_HITS / NO_VERIFIED / SEARCH_FAILED / 미작업을 구분하고, 부족하면 승인된 다른 검색형·활용형·다른 문맥으로 필요한 만큼만 확장한다. 전수 선행 스캔은 하지 않는다.
