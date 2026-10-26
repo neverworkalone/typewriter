@@ -682,6 +682,98 @@ class SerialMaintainer(unittest.TestCase):
         w.tmp.cleanup()
 
 
+class ResolvedReportResume(unittest.TestCase):
+    """Issue #1825: a RELEASED defect's own report must not stop the resumed producer again."""
+
+    def released(self):
+        w = world()
+        b = produce_and_report(w)
+        run_maintainer_to_merge(w, 101)
+        w.tick(3)
+        return w, w.row()
+
+    def test_resolved_report_is_archived_and_the_resume_prompt_carries_the_evidence(self):
+        w, b = self.released()
+        wt = Path(b["worktree"])
+        d = w.store.defects()[0]
+        self.assertEqual(d["state"], "RELEASED")
+        self.assertFalse((wt / defects.REPORT_FILE).exists())
+        self.assertTrue((wt / ".warroom-scratch/resolved-defects" / f"defect-{d['id']}.json").exists())
+        prompt = [l for l in w.adapter.launches if l["cwd"] == b["worktree"]][-1]["prompt"]
+        self.assertIn("resolved-defects", prompt)
+        self.assertIn(MERGE[:10], prompt)
+        # the resumed AI finishes with a PR: the batch continues to review instead of pausing again
+        branch = b["branch"]
+        w.pr_info(60, HEAD1, head_ref=branch)
+        w.gh.by_branch[branch] = [{"number": 60, "state": "OPEN", "headRefOid": HEAD1}]
+        w.adapter.finish(w.adapter.launches[-1]["pid"])
+        w.tick(2)
+        self.assertEqual((w.row()["state"], w.row()["pr_number"]), ("WAITING_REVIEW", 60))
+        self.assertEqual(len(w.gh.created), 1)
+        w.tmp.cleanup()
+
+    def test_archive_table(self):
+        w, b = self.released()
+        d = w.store.defects()[0]
+        f = Path(b["worktree"]) / defects.REPORT_FILE
+        raw = json.dumps(report())
+        for name, text, moved in [("same content", raw, True), ("changed content", json.dumps(report(summary="new")), False),
+                                  ("absent", None, True)]:
+            with self.subTest(name):
+                f.parent.mkdir(parents=True, exist_ok=True)
+                f.unlink(missing_ok=True)
+                if text is not None:
+                    f.write_text(text)
+                self.assertTrue(w.sup.maint._archive_report(d, b))
+                self.assertEqual(f.exists(), text is not None and not moved)
+        w.tmp.cleanup()
+
+    def test_same_report_written_again_after_release_is_new_evidence(self):
+        w, b = self.released()
+        write_report(w, b)                    # the fixed HEAD still reproduces the defect: identical content, new event
+        w.tick(2)
+        b2 = w.row()
+        self.assertEqual((b2["state"], b2["pause_reason"]), ("PAUSED", "shared_defect"))
+        rows = w.store.defects()
+        self.assertEqual(len(rows), 2)
+        self.assertTrue(rows[1]["event_key"].endswith(f":after:{rows[0]['id']}"))
+        w.tick(4)
+        self.assertEqual(len(w.store.defects()), 2)      # the same file is not re-reported every tick
+        w.tmp.cleanup()
+
+    def test_changed_report_is_not_archived_and_pauses_as_new_evidence(self):
+        w = world()
+        produce_and_report(w)
+        b = w.row()
+        write_report(w, b, report(summary="a different symptom"))   # edited after the first report was recorded
+        run_maintainer_to_merge(w, 101)
+        w.tick(4)
+        self.assertEqual(w.row()["pause_reason"], "shared_defect")
+        self.assertEqual(len(w.store.defects()), 2)
+        w.tmp.cleanup()
+
+    def test_exit_zero_without_pr_after_release_names_the_cause_and_never_restarts(self):
+        w, b = self.released()
+        n = len(w.adapter.launches)
+        w.adapter.finish(w.adapter.launches[-1]["pid"])
+        w.tick(3)
+        b = w.row()
+        self.assertEqual(b["state"], "ERROR")
+        self.assertIn("PR을 찾지 못했습니다", b["error"])
+        self.assertIn("공통 결함 #1", b["error"])
+        w.tick(5)
+        self.assertEqual(len(w.adapter.launches), n)
+        w.tmp.cleanup()
+
+    def test_batch_without_a_released_defect_has_no_resolved_context(self):
+        w = world()
+        w.start("single", "deepseek", "a")
+        w.adapter.plan.append({"code": 0, "session": "s"})
+        w.tick()
+        self.assertEqual(w.sup.maint.resolved_note(w.row()), "")
+        w.tmp.cleanup()
+
+
 class MaintainerConfig(unittest.TestCase):
     def test_config_table(self):
         w = world()

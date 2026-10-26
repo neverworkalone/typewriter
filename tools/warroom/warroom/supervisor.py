@@ -643,9 +643,9 @@ class Supervisor:
                 h = ad.start(prompts.produce(b), wt, self.env, run,
                                        f"{b['method'].upper()} {b['shard']}_{b['batch']}", log, ex, **extra)
             elif kind == "produce_resume":
-                h = ad.resume(sid, prompts.recovery(b), wt, self.env, run, log, ex, **extra)
+                h = ad.resume(sid, prompts.recovery(b, resolved_defects=self.maint.resolved_note(b)), wt, self.env, run, log, ex, **extra)
             elif kind == "produce_recover":
-                h = ad.start(prompts.recovery(b), wt, self.env, run,
+                h = ad.start(prompts.recovery(b, resolved_defects=self.maint.resolved_note(b)), wt, self.env, run,
                                        f"{b['method'].upper()} {b['shard']}_{b['batch']} recover", log, ex, **extra)
             elif kind == "fix_resume":
                 h = ad.resume(sid, prompts.fix(b, events, True), wt, self.env, run, log, ex, **extra)
@@ -789,7 +789,13 @@ class Supervisor:
         if not raw.strip():
             return False
         key = defects.report_event_key(b["id"], raw)
-        if self.store.defect_by_event(key):
+        prior = self.store.defect_by_event(key)
+        while prior is not None and prior["state"] == "RELEASED":
+            # The same content written again after its fix was applied (resolved reports are archived at release) is
+            # new evidence that the defect still reproduces on the fixed HEAD: a new event, not the resolved one.
+            key = f"{key}:after:{prior['id']}"
+            prior = self.store.defect_by_event(key)
+        if prior is not None:
             return False
         ad = self._adapter(b["producer"])
         live = bool(b["pid"]) and ad.alive(b["pid"])
@@ -828,8 +834,9 @@ class Supervisor:
                     if refusal:   # the local CLI policy stopped the PR step: keep everything, wait for the operator
                         return self._fail(b, "PAUSED", f"{refusal}. PR이 만들어지지 않았습니다. 로컬 설정을 확인한 뒤 "
                                           "Retry 하세요 (worktree·브랜치·세션 보존).")
+                    cause = self.maint.resolved_note(b, short=True)
                     return self._fail(b, "ERROR", "AI가 정상 종료했지만 PR을 찾지 못했습니다 "
-                                      "(자동 재생산 안 함, 로그 확인 후 Retry).")
+                                      "(자동 재생산 안 함, 로그 확인 후 Retry)." + (f" {cause}" if cause else ""))
             else:
                 info = self.gh.pull(b["pr_number"])
         except DuplicateClaim as e:

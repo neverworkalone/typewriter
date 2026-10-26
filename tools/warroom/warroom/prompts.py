@@ -14,7 +14,7 @@ _PLACEHOLDER = re.compile(r"\{\{\s*([A-Za-z_]\w*)\s*\}\}")
 _PRODUCE = {"batch", "branch"}
 _MAINTAIN = {"issue", "branch"}
 _STAGE2 = {"shard", "batch", "part", "branch"}
-ALLOWED = {"a": _PRODUCE, "b": _PRODUCE, "c": _PRODUCE, "d": _PRODUCE, "recovery": _PRODUCE,
+ALLOWED = {"a": _PRODUCE, "b": _PRODUCE, "c": _PRODUCE, "d": _PRODUCE, "recovery": _PRODUCE | {"resolved_defects"},
            "fix": {"pr", "head", "branch", "review_events", "session_note"},
            "m": _MAINTAIN, "m_recovery": _MAINTAIN, "s2": _STAGE2, "s2_recovery": _STAGE2}
 MAINTENANCE_METHOD = "m"
@@ -68,12 +68,13 @@ def produce(b, directory: Path | None = None) -> str:
     return render(b["method"], {"batch": f"{b['shard']}_{b['batch']}", "branch": b["branch"]}, directory)
 
 
-def recovery(b, directory: Path | None = None) -> str:
+def recovery(b, directory: Path | None = None, resolved_defects: str = "") -> str:
     if b["method"] == MAINTENANCE_METHOD:
         return render("m_recovery", {"issue": b["batch"], "branch": b["branch"]}, directory)
     if b["method"] == STAGE2_METHOD:
         return render("s2_recovery", _stage2_values(b), directory)
-    return render("recovery", {"batch": f"{b['shard']}_{b['batch']}", "branch": b["branch"]}, directory)
+    return render("recovery", {"batch": f"{b['shard']}_{b['batch']}", "branch": b["branch"],
+                               "resolved_defects": resolved_defects}, directory)
 
 
 def fix(b, events, resumed: bool, directory: Path | None = None) -> str:
