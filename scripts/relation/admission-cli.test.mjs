@@ -1,11 +1,14 @@
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 import { run } from './admission-cli.mjs';
 
+const REPOSITORY_DIRECTORY = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const jsonl = (rows) => `${rows.map((row) => JSON.stringify(row)).join('\n')}\n`;
 
 async function repository(t, { relations = [], drops = [], malformedBackups = false } = {}) {
@@ -41,6 +44,44 @@ const quiet = async (callback) => {
   try { return await callback(); } finally { console.log = log; }
 };
 const texts = (payload) => payload.items.flatMap((item) => item.candidates.map((candidate) => candidate.text)).sort();
+
+test('CLI entrypoint prepares a Part without an injected repository root', async (t) => {
+  const scratchDirectory = path.join(REPOSITORY_DIRECTORY, '.warroom-scratch');
+  await mkdir(scratchDirectory, { recursive: true });
+  const root = await mkdtemp(path.join(scratchDirectory, 'admission-cli-regression-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+
+  const relationScriptDirectory = path.join(root, 'scripts/relation');
+  for (const directory of [relationScriptDirectory, path.join(root, 'data/canonical'), path.join(root, 'data/relation-candidates/001')]) {
+    await mkdir(directory, { recursive: true });
+  }
+  for (const file of ['admission-cli.mjs', 'admission.mjs', 'candidate-contract.mjs']) {
+    await copyFile(path.join(REPOSITORY_DIRECTORY, 'scripts/relation', file), path.join(relationScriptDirectory, file));
+  }
+
+  const records = Array.from({ length: 500 }, (_, index) => ({
+    id: `w${index + 1}`,
+    lemma: `표제${index + 1}`,
+    senses: [{ id: `w${index + 1}-s1`, pos: 'noun', gloss: `뜻${index + 1}` }],
+  }));
+  await writeFile(path.join(root, 'data/canonical/stdict-0001.jsonl'), jsonl(records));
+  for (const producer of ['a_codex', 'a_claude', 'b_codex', 'b_claude', 'c_codex', 'd_codex']) {
+    await writeFile(path.join(root, `data/relation-candidates/001/001_01_${producer}.jsonl`), jsonl(records.map((record, index) => ({
+      record_id: record.id,
+      senses: [{ sense_id: record.senses[0].id, candidates: producer === 'a_codex' && index === 200 ? ['독립후보'] : [] }],
+    }))));
+  }
+
+  const checkpoint = '.warroom-scratch/relation-admission-001-01-03.json';
+  const result = spawnSync(process.execPath, [
+    path.join(relationScriptDirectory, 'admission-cli.mjs'),
+    'prepare', '--shard', '001', '--batch', '01', '--part', '03', '--checkpoint', checkpoint,
+  ], { cwd: root, encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.doesNotMatch(result.stderr, /fileURLToPath is not defined/u);
+  const prepared = JSON.parse(await readFile(path.join(root, checkpoint), 'utf8'));
+  assert.deepEqual(texts(prepared), ['독립후보']);
+});
 
 test('prepare re-run offers only undecided candidates: this shard\'s own approved relations and Drops count as decided', async (t) => {
   const none = await repository(t);
