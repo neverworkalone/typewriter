@@ -551,13 +551,22 @@ class FailClosed(unittest.TestCase):
                 w.adapter.finish(w.adapter.launches[-1]["pid"])
                 w.tick()
                 w.pr_info(50, HEAD1, state="closed", merged=True, head_ref=branch, merge_sha=MERGE)
-                w.tick(2)          # merged: the Maintainer completes; the tracker then re-reads the PR
+                w.tick(2)          # merged PR reaches CLEANUP; tracker holds if cleanup or merge proof fails
                 w.pr_info(50, HEAD1, state="closed", merged=True, **{"head_ref": branch, "merge_sha": MERGE, **kw})
                 w.store.update_maintenance(101, state="ACTIVE")
                 w.tick(2)
-                self.assertEqual(w.store.maintenance(101)["state"], "HELD")
+                task = w.store.maintenance(101)
+                if name == "other branch":
+                    # CLEANUP sees the changed branch identity itself and blocks before COMPLETE.
+                    self.assertEqual(task["state"], "ACTIVE")
+                    batch = w.store.batch(task["batch_id"])
+                    self.assertEqual(batch["state"], "ERROR")
+                    self.assertIn("head 브랜치", batch["error"])
+                    self.assertIn("Maintainer ERROR", control.urgent_line(w.store, w.cfg))
+                else:
+                    self.assertEqual(task["state"], "HELD")
+                    self.assertIn("보류", control.urgent_line(w.store, w.cfg))
                 self.assertEqual(w.git.integrated, [])
-                self.assertIn("보류", control.urgent_line(w.store, w.cfg))
                 w.tmp.cleanup()
 
     def test_closed_issue_without_a_fix_is_not_a_release(self):

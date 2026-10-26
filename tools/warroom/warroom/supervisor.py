@@ -1076,7 +1076,11 @@ class Supervisor:
             return
         self.store.set(f"last_poll_{b['id']}", str(self.clock()))
         try:
-            info = self._find_recovery_pr(b) if stage1 else self._find_pr(b)
+            # A live Stage 1 producer still needs its final-result gate for an open PR. A merged PR can be
+            # recovered from its exact candidate claim and stopped immediately; CLEANUP separately proves the
+            # worktree safety conditions before removal.
+            info = self._find_pr(b) if stage1 and ad.requires_final_result_for_pr else (
+                self._find_recovery_pr(b) if stage1 else self._find_pr(b))
         except (DuplicateClaim, RecoveryBlocked) as e:
             ad.stop(b["pid"])
             return self._fail(b, "ERROR", str(e))
@@ -1084,6 +1088,12 @@ class Supervisor:
             return self.store.log(b["id"], f"PR 조회 실패(재시도 예정): {e}", "warn")
         if info is None:
             return
+        if stage1 and info["merged"] and ad.requires_final_result_for_pr:
+            try:
+                info = self._find_recovery_pr(b)  # merged recovery additionally requires the exact Candidate claim
+            except (DuplicateClaim, RecoveryBlocked) as e:
+                ad.stop(b["pid"])
+                return self._fail(b, "ERROR", str(e))
         if not stage1:
             self.store.update(b["id"], state="WAITING_REVIEW", pr_number=info["number"],
                               head_sha=info["head_sha"], error=None, retries=0)
@@ -1099,6 +1109,14 @@ class Supervisor:
                               head_sha=info["head_sha"], error=f"PR #{info['number']}이 머지 없이 닫혀 있습니다. "
                               "worktree·브랜치를 보존합니다.")
             return self.store.log(b["id"], f"생산 실행 중 닫힌 PR #{info['number']} 발견; 안전 정지", "error")
+        if ad.requires_final_result_for_pr:
+            result_problem = ad.completion_problem(Path(b["log_file"]), self._recorded_run(b), b["session_id"],
+                                                   b["worktree"], self.env)
+            if result_problem:
+                return   # keep the established success/denial gate for an open PR
+            if not self._denials_cleared(b, Path(b["log_file"])):
+                ad.stop(b["pid"])
+                return
         self.store.update(b["id"], state="WAITING_REVIEW", pr_number=info["number"],
                           head_sha=info["head_sha"], error=None, retries=0)
         self.store.set(f"last_poll_{b['id']}", "0")
