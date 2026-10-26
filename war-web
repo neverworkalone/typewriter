@@ -1,0 +1,9 @@
+#!/bin/sh
+# War Room Web UI launcher (loopback only). Stdlib-only server: no venv, tmux or Supervisor is started.
+set -e
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+WR="$ROOT/tools/warroom"
+PY="$WR/.local/venv/bin/python"
+[ -x "$PY" ] || PY="python3"
+cd "$ROOT"
+exec env PYTHONPATH="$WR" "$PY" -m warroom.web "$@"

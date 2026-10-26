@@ -41,6 +41,44 @@ sqlite3 -noheader tools/warroom/.local/warroom.db \
 
 **리뷰 후 수정 로그까지 함께** 보려면 위 명령의 `AND r.kind LIKE 'produce%'` 조건을 삭제한다. `runs.kind`도 같이 확인하려면 `SELECT r.kind, r.log_file`로 바꾼다. `pbcopy`를 빼면 터미널에 경로가 표시된다. `less <로그경로>` 또는 `tail -f <로그경로>`로 원본 로그를 읽을 수 있다.
 
+## Web UI (`./war-web`)
+
+Mac 브라우저와 iPhone/iPad Safari용 **두 번째 View**다. 새 Controller·Supervisor가 아니며, 기존 `./war`·Supervisor를 바꾸지 않는다.
+
+```sh
+./war-web                 # http://localhost:8000
+./war-web --port 8123     # 포트 변경
+```
+
+- **구조:** `./war`(TUI)와 `./war-web`(Web)은 같은 `warroom.store.Store` + `control.py`(SQLite)를 읽고 쓴다. 하나의 Supervisor가 AI 생산·리뷰·Cleanup을 실행한다. Web은 Supervisor·AI CLI·tmux·git·셸을 실행하지 않으며 `tools/warroom/warroom/web/`(stdlib `http.server`, 추가 의존성 없음)에 있다. `./war-web`만 실행하면 Supervisor가 없을 때 읽기 전용 OFFLINE 화면이 뜬다. Supervisor는 기존대로 `./war`가 띄운다.
+- **화면:** Factory Board(모델별 A/B/C/D·Stage 2·Maintainer 카드, 2초 폴링), Batch Detail(메타데이터·Run History·Agent Log/Audit Log). iPhone 폭에서는 진행 중/오류 라인을 앞에 두고 빈 라인은 접는다. 조작: Start, Drain/Cancel Drain, Retry, Stop, Clear, Drain All, Stop All. Stop·Stop All·Clear는 대상을 보여 주는 확인 창을 거치며, 서버도 정확한 확인 값이 없으면 거절한다.
+- **OFFLINE:** Supervisor heartbeat가 30초 넘게 없으면 상단에 OFFLINE을 표시하고 모든 변경 명령을 서버에서 거절한다(상태·이력 조회만 가능).
+- **로그:** DB에 기록된 `runs.log_file`만, 로그 디렉터리 안의 파일일 때만 제공한다. 요청으로 경로를 지정할 수 없고 토큰류는 redact된다. 삭제된 로그는 "이력만 남음"으로 안내한다. Readable Log는 요청 단위로 렌더링하므로 Codex 명령 중복 표시 억제가 TUI만큼 정밀하지 않다(필요하면 Raw Log).
+
+### 보안 경계
+
+- **loopback 전용:** 서버는 `127.0.0.1`/`::1`에만 바인딩하며 `0.0.0.0`·LAN 주소는 시작 시 거부한다. 공인 인터넷 공개·Tailscale Funnel은 범위 밖이다.
+- **자체 인증 없음:** 같은 Mac에서 loopback에 접속하는 프로세스는 모든 조작을 할 수 있다. 외부 기기는 승인된 사설망(Tailscale)만 믿는다.
+- **웹 페이지/DNS rebinding 방어:** 모든 요청의 `Host`는 loopback(자신의 포트) 또는 `--allow-host`로 허용한 이름만 통과한다. 변경은 `POST /api/command` 하나뿐이며 `Origin` 일치, `Content-Type: application/json`, `Sec-Fetch-Site` same-origin, 4KB 본문 제한, 명령·인자 화이트리스트(`start/drain/retry/stop/clear/drain_all/stop_all`)를 요구한다. 임의 경로·셸 실행·Supervisor 제어 엔드포인트는 없다.
+
+### Tailscale Serve (별도 운영 안내, 선택)
+
+Tailscale은 접근 계층일 뿐 Web UI의 실행 의존성이 아니다(없어도 `localhost`로 동작). 다른 기기에서 쓰려면 Mac에서 Tailscale에 로그인한 뒤:
+
+```sh
+./war-web --allow-host <mac이름>.<tailnet>.ts.net
+tailscale serve --bg 8000        # tailnet 안에서만 https://<mac이름>.<tailnet>.ts.net 로 노출
+tailscale serve status           # 확인 · 끄기: tailscale serve reset
+```
+
+`--allow-host`는 Serve가 전달하는 tailnet 이름을 Host/Origin으로 허용한다. **Tailscale의 접속 허가(ACL)와 앱의 권한 경계는 다르다.** tailnet에 접속할 수 있는 기기·사용자는 이 UI의 모든 조작(Stop All 포함)을 할 수 있으므로 tailnet ACL로 대상을 제한한다. `tailscale funnel`은 사용하지 않는다.
+
+### 테스트
+
+```sh
+node tools/warroom/run-tests.mjs    # 전체 (Web: tests/test_web_1720.py)
+```
+
 ## Supervisor 코드 수정 후 재시작
 
 ```sh

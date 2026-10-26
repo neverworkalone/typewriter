@@ -512,6 +512,15 @@ class Store:
                 "(SELECT id FROM batches WHERE producer=? AND method=?)) ORDER BY id LIMIT ?",
                 (after_id, f"{model}/{method}", model, method, limit)).fetchall()
 
+    def line_events_tail(self, model: str, method: str, limit: int = 300):
+        """The newest `limit` audit events of one Line, oldest first, read with one bounded query."""
+        with self._conn() as c:
+            rows = c.execute(
+                "SELECT * FROM events WHERE (line=? OR batch_id IN "
+                "(SELECT id FROM batches WHERE producer=? AND method=?)) ORDER BY id DESC LIMIT ?",
+                (f"{model}/{method}", model, method, limit)).fetchall()
+        return list(reversed(rows))
+
     def last_event(self, batch_id: int):
         with self._conn() as c:
             return c.execute("SELECT * FROM events WHERE batch_id=? ORDER BY id DESC LIMIT 1",
