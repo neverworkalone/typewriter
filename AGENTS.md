@@ -378,7 +378,20 @@ Explicit PR label instructions replace conflicting inherited labels (e.g.,
 Verify the PR's labels after creation. Never rely on labels remembered at issue start.
 ## Monitoring after PR creation
 
-After creating and pushing the implementation PR, automatically begin monitoring that PR every 5 minutes when the execution environment supports it.
+**War Room-managed work exception (takes precedence over the generic monitoring rule below):**
+For any PR owned by the War Room Supervisor—including Stage 1 A/B/C/D,
+Stage 2, and Maintainer runs—the producer must **exit immediately after
+submitting its PR and verifying the required labels**. It must not start
+a timer, sleep/retry loop, or poll the PR for reviews, comments, CI, or
+merge status, even if the execution environment supports monitoring.
+After pushing a review-driven fix to an existing War Room PR, the agent
+must likewise finish its response and exit without monitoring.
+**The War Room Supervisor exclusively monitors these PRs and starts a
+separate fix run when actionable feedback arrives.** Do not interpret
+the generic five-minute rule or the dialogue obligations below as
+permission to keep a War Room producer session alive.
+
+**Non-War Room implementation PRs only:** After creating and pushing the implementation PR, automatically begin monitoring that PR every 5 minutes when the execution environment supports it.
 
 On each check:
 
