@@ -103,9 +103,10 @@ class Card(Static, can_focus=True):
     BINDINGS = [("enter", "open", "Open"), ("left", "move(0,-1)", ""), ("right", "move(0,1)", ""),
                 ("up", "move(-1,0)", ""), ("down", "move(1,0)", "")]
 
-    def __init__(self, model: str, method: str):
+    def __init__(self, model: str, method: str, card_id: str | None = None):
         # Stage 2 cards start neutral: colour belongs to a task that exists, never to an idle slot.
-        super().__init__("", id=f"card-{model}-{method}", classes="card empty" if method == STAGE2_METHOD else "card")
+        super().__init__("", id=card_id or f"card-{model}-{method}",
+                         classes="card empty" if method == STAGE2_METHOD else "card")
         self.model, self.method = model, method
 
     def on_click(self) -> None:
@@ -130,11 +131,37 @@ class Card(Static, can_focus=True):
                 return
 
 
-class MaintainerCard(Static):
-    """Status-only card for the hidden #1555 Maintainer (always in the DeepSeek column). It starts and opens nothing."""
+class MaintainerCard(Card):
+    """Row-5 card of the hidden #1555 Maintainer (always in the DeepSeek column). It is a Card for focus, arrow keys,
+    Tab and click, but Enter/click only opens a read-only detail: it never starts or changes work."""
 
-    def __init__(self):
-        super().__init__("", id="card-maintainer", classes="card empty")
+    def __init__(self, model: str):
+        super().__init__(model, STAGE2_METHOD, card_id="card-maintainer")
+
+    def action_open(self) -> None:
+        self.app.push_screen(MaintainerDetail())
+
+
+class MaintainerDetail(Screen):
+    """Read-only list of every open urgent Issue the Maintainer is handling (full text, nothing truncated)."""
+    BINDINGS = [("escape", "app.pop_screen", "Back")]
+
+    def compose(self) -> ComposeResult:
+        yield Header()
+        yield Static(id="maintainer-body")
+        yield Footer(show_command_palette=False)
+
+    def on_mount(self) -> None:
+        self.set_interval(1.0, self.refresh_view)
+        self.refresh_view()
+
+    def refresh_view(self) -> None:
+        items = control.urgent_items(self.app.store, self.app.cfg)
+        lines = ["Maintainer — 진행 중인 작업 없음"] if not items else \
+            [f"Maintainer — 열린 urgent 작업 {len(items)}건", ""] + \
+            [f"{'✖' if bad else '▶'} {text}" for text, bad in items]
+        lines += ["", "m: PAUSED/ERROR 작업 재시도 (Board에서)  ·  Esc: 돌아가기"]
+        self.query_one("#maintainer-body", Static).update(Text("\n".join(lines)))   # text, never markup
 
 
 class BoardFooter(Footer):
@@ -509,7 +536,7 @@ class WarRoom(App):
                     if model in self.stage2_capable:   # row 5: Claude / Codex Stage 2 ...
                         yield Card(model, STAGE2_METHOD)
                     elif model == self.maintainer_col:   # ... and the Maintainer status in the DeepSeek column
-                        yield MaintainerCard()
+                        yield MaintainerCard(model)
         yield BoardFooter(show_command_palette=False)
 
     def action_toggle_tier(self) -> None:
