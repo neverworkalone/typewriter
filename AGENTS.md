@@ -378,29 +378,7 @@ Explicit PR label instructions replace conflicting inherited labels (e.g.,
 Verify the PR's labels after creation. Never rely on labels remembered at issue start.
 ## Handling PR review feedback
 
-When explicitly assigned a PR review fix, evaluate the supplied actionable feedback
-against the current HEAD, active issue, canonical data rules, and requirements.
-Do not accept reviewer feedback blindly. For valid findings, make the scoped fix,
-run relevant validation, commit and push to the same PR branch, and explain the
-resolution in the relevant conversation or inline thread. Explain rejected or
-deferred findings with specific evidence. Do not initiate or repeat a review.
-
-**Blocking review dialogue:** Respond to a substantive `-1` in the PR conversation
-(or relevant inline thread), not just in a linked Issue or by silently editing
-PR metadata. If a finding is correct, fix it; if incorrect or already resolved,
-explain the evidence and request reconsideration through the ordinary PR
-discussion. Engage with any later response when a new fix task is assigned,
-rather than blindly complying or repeating a rebuttal without new reasoning.
-Metadata-only corrections may not require a code change.
-
-**Dependency blockers:** If a fix depends on another Issue or PR, report the
-dependency and stop. Do not poll, sleep, or post repetitive status comments.
-
-**Unresolved disagreements:** Distinguish actual defects from disagreements
-about evidence or requirements. Report agreed facts, competing arguments,
-outstanding risk, and the owner decision needed; do not silently declare the
-batch complete or start unrelated work. This does not authorize the author
-to trigger, perform, or merge its own review.
+When assigned PR feedback, independently assess it against the current HEAD and requirements. Fix valid findings with appropriate validation, or explain disagreements with evidence in the PR conversation. Report blocked dependencies or unresolved disputes to the owner. Do not initiate reviews, poll PR status, or merge.
 
 ## Review boundary
 
