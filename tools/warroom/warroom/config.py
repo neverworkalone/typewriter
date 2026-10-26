@@ -22,6 +22,10 @@ DEFAULTS = {
     # Model registry: logical model id (= Candidate filename producer suffix) ->
     # {"label", "adapter", "models": {"free", "go"}}. No count limit.
     "producers": {},
+    # Issue #1867: reusable run settings (adapter/model/effort/permission_profile) and which one each stage uses.
+    # `assignments.stage1|stage2` map a logical producer ID to a profile ID; `maintainer` may also be a profile ID.
+    "model_profiles": {},
+    "assignments": {},
     "methods": ["a", "b", "c", "d"],
     # Issue #1555: the logical producer ID (a key of `producers`) that runs the hidden Maintainer; None = disabled.
     "maintainer": None,
@@ -113,22 +117,131 @@ def registry(cfg: dict) -> dict[str, dict]:
         w = cfg["worker"]
         prods = {w["producer"]: {"adapter": w.get("adapter", "opencode"), "models": cfg.get("models", {})}}
     out = {}
+    profs = _profiles(cfg)
     for pid, p in prods.items():
         adapter = p.get("adapter", "opencode")
+        prof = profs.get(_assigned(cfg, STAGE1, pid) or _assigned(cfg, STAGE2, pid) or "")
+        governed = bool(_assigned_profiles(cfg, pid))
+        if prof:   # a governed producer has no pin of its own (config_problem): board/settings show its first assigned profile
+            p = {**p, "model": prof["model"], "effort": prof["effort"], "permission_profile": prof["permission_profile"]}
         out[pid] = {"label": p.get("label") or KNOWN_LABELS.get(pid, pid), "adapter": adapter,
                     "model": p.get("model") or "",
                     "effort": p["effort"] if "effort" in p else LEGACY_EFFORT.get(adapter, ""),
-                    "permission_profile": p.get("permission_profile") or "",
+                    "permission_profile": p.get("permission_profile") or "", "governed": governed,
                     "models": {"free": "", "go": "", **(p.get("models") or {})}}
     return out
 
 
-def _endpoints(p: dict) -> list[str]:
+STAGE1, STAGE2, MAINTAINER = "stage1", "stage2", "maintainer"
+ASSIGNMENT_ROLES = (STAGE1, STAGE2)   # `assignments` keys; the Maintainer is the single top-level `maintainer`
+
+
+def role_of(method: str) -> str:
+    """The assignment role of a batch's method: Stage 2 (`s2`), the Maintainer (`m`), else a Stage 1 Method (a-d)."""
+    return {"s2": STAGE2, "m": MAINTAINER}.get(method, STAGE1)
+
+
+def _profiles(cfg: dict) -> dict[str, dict]:
+    """Profile ID -> {adapter, model, effort, permission_profile} (every field a string; unset = '')."""
+    raw = cfg.get("model_profiles")
+    raw = raw if isinstance(raw, dict) else {}
+    return {pid: {k: (p.get(k) if isinstance(p, dict) and isinstance(p.get(k), str) else "")
+                  for k in ("adapter", "model", "effort", "permission_profile")} for pid, p in raw.items()}
+
+
+def _assigned(cfg: dict, role: str, producer: str) -> str | None:
+    a = cfg.get("assignments")
+    r = a.get(role) if isinstance(a, dict) else None
+    return r.get(producer) if isinstance(r, dict) else None
+
+
+def _assigned_profiles(cfg: dict, producer: str) -> list[str]:
+    return [p for p in (_assigned(cfg, r, producer) for r in ASSIGNMENT_ROLES) if p]
+
+
+def maintainer_target(cfg: dict) -> tuple[str | None, str | None, str | None]:
+    """(producer, profile, problem) of the configured Maintainer. `maintainer` is a legacy producer ID or a profile ID.
+
+    A profile ID runs on the one producer of its adapter; several producers of that adapter are narrowed to those
+    assigned that profile; anything still ambiguous is an error (never guessed from the adapter name).
+    """
+    m = cfg.get("maintainer")
+    if m is None:
+        return None, None, "maintainer가 설정되지 않았습니다"
+    reg, profs = registry(cfg), _profiles(cfg)
+    if m in reg and m in profs:
+        return None, None, f"maintainer {m!r}가 모델 ID와 프로필 ID 양쪽에 있어 모호합니다 — 이름을 구분하세요."
+    if m in reg:
+        if _assigned_profiles(cfg, m):
+            return None, None, f"maintainer {m!r}는 프로필로 배정된 모델 ID입니다 — 프로필 ID(model_profiles)를 지정하세요."
+        return m, None, None
+    if m in profs:
+        cands = [pid for pid, p in reg.items() if p["adapter"] == profs[m]["adapter"]]
+        if len(cands) > 1:
+            cands = [pid for pid in cands if m in _assigned_profiles(cfg, pid)]
+        if len(cands) != 1:
+            return None, None, (f"maintainer 프로필 {m!r}를 실행할 모델 ID를 하나로 정할 수 없습니다 "
+                                f"(adapter {profs[m]['adapter']!r}: {', '.join(cands) or '해당 모델 없음'}) — "
+                                f"assignments에 이 프로필을 배정해 모델 ID를 지정하세요.")
+        return cands[0], m, None
+    return None, None, f"maintainer {m!r}는 등록된 모델 ID도 프로필 ID도 아닙니다 (모델: {', '.join(reg) or '없음'}; 프로필: {', '.join(profs) or '없음'})"
+
+
+def role_entry(cfg: dict, producer: str, role: str) -> dict:
+    """The registry entry of `producer` with the pin (model/effort/permission_profile) its `role` runs on.
+
+    Stage 1/2: the assigned profile, else the producer's own pin. Maintainer: the configured profile when `maintainer`
+    names one (it must resolve to this producer), else the producer's own pin. Raises ValueError on a mismatch.
+    """
+    p = dict(registry(cfg)[producer])
+    if role == MAINTAINER:
+        m = cfg.get("maintainer")
+        if m not in _profiles(cfg):
+            return p
+        target, _, problem = maintainer_target(cfg)
+        if problem or target != producer:
+            raise ValueError(f"{producer}: maintainer 프로필 {m!r}는 이 모델 ID로 실행할 수 없습니다 ({problem or target})")
+        pid = m
+    else:
+        pid = _assigned(cfg, role, producer)
+        if not pid and _assigned_profiles(cfg, producer):   # governed: another stage's profile is never borrowed
+            raise ValueError(f"{producer}: {role} 단계에 배정된 프로필이 없습니다 (assignments.{role}).")
+        if not pid:
+            return p
+    prof = _profiles(cfg).get(pid)
+    if prof is None or prof["adapter"] != p["adapter"]:
+        raise ValueError(f"{producer}: {role} 프로필 {pid!r}가 없거나 adapter가 모델과 다릅니다.")
+    return {**p, **{k: prof[k] for k in ("model", "effort", "permission_profile")}}
+
+
+def role_view(cfg: dict, producer: str, method: str) -> dict:
+    """The entry to DISPLAY for `producer` running `method`: its stage pin, or an explicit `unassigned` marker.
+
+    Never the producer-level default pin, which for a profile-governed producer is just its first assigned profile.
+    """
+    reg = registry(cfg).get(producer)
+    if reg is None:
+        return {}
+    try:
+        return role_entry(cfg, producer, role_of(method))
+    except ValueError as e:
+        return {**reg, "model": "", "effort": "", "permission_profile": "", "unassigned": str(e)}
+
+
+def role_problem(cfg: dict, producer: str, role: str) -> str | None:
+    """Why `producer` must not run `role` (None = its resolved pin is valid). Fail closed before Start."""
+    try:
+        return _producer_problem(producer, role_entry(cfg, producer, role))
+    except ValueError as e:
+        return str(e)
+
+
+def _endpoints(cfg: dict, pid: str, p: dict) -> list[str]:
     """Every concrete model ID a logical model runs on (a duplicate endpoint is a duplicate model)."""
     eps = [ep for ep in p["models"].values() if ep]
-    if p["adapter"] not in TIERED_ADAPTERS and p["model"]:
-        eps.append(p["model"])
-    return eps
+    if p["adapter"] not in TIERED_ADAPTERS:
+        eps += [m for m in [p["model"]] + [_profiles(cfg).get(x, {}).get("model") for x in _assigned_profiles(cfg, pid)] if m]
+    return list(dict.fromkeys(eps))
 
 
 def _producer_problem(pid: str, p: dict) -> str | None:
@@ -161,7 +274,7 @@ def registry_problems(cfg: dict) -> dict[str, str]:
         seen.setdefault(pid.lower(), pid)
     endpoints: dict[str, str] = {}
     for pid, p in reg.items():
-        for ep in _endpoints(p):
+        for ep in _endpoints(cfg, pid, p):
             if endpoints.setdefault(ep, pid) != pid:
                 bad[pid] = f"엔드포인트 {ep!r}가 {endpoints[ep]!r}와 중복 — 같은 논리 모델의 중복 등록입니다."
                 bad.setdefault(endpoints[ep], bad[pid])
@@ -247,7 +360,44 @@ def config_problem(cfg: dict) -> str | None:
             if isinstance(p, dict):
                 bad += _entry_problems(f"producers.{pid}", p, ("label", "adapter", "model", "effort", "permission_profile"))
     bad += _maintainer_config_problems(cfg)
+    if not bad:
+        bad += _profile_config_problems(cfg)
+    if not bad and cfg.get("maintainer") is not None:   # an unknown/ambiguous Maintainer never falls back to a guess
+        bad += [p] if (p := maintainer_target(cfg)[2]) else []
     return "; ".join(bad) or None
+
+
+def _profile_config_problems(cfg: dict) -> list[str]:
+    """`model_profiles`/`assignments` are well-formed and agree with `producers`; a legacy pin and an assignment never mix."""
+    profiles, assign, bad = cfg.get("model_profiles"), cfg.get("assignments"), []
+    if not isinstance(profiles, dict) or not all(isinstance(p, dict) for p in profiles.values()):
+        return ["model_profiles는 {프로필 ID: 객체} 형태여야 합니다"]
+    if not isinstance(assign, dict) or not all(isinstance(v, dict) for v in assign.values()):
+        return ["assignments는 {stage1|stage2: {모델 ID: 프로필 ID}} 형태여야 합니다"]
+    for pid, p in profiles.items():
+        bad += _entry_problems(f"model_profiles.{pid}", p, ("adapter", "model", "effort", "permission_profile"))
+    if bad:
+        return bad
+    for pid, p in _profiles(cfg).items():
+        if p["adapter"] in TIERED_ADAPTERS:
+            bad.append(f"model_profiles.{pid}: {adapter_label(p['adapter'])}의 Free/Go 모델은 producers.models로 설정합니다")
+        elif why := _producer_problem(pid, {**p, "models": {}}):
+            bad.append(f"model_profiles.{pid}: {why}")
+    for role, by_producer in assign.items():
+        if role not in ASSIGNMENT_ROLES:
+            bad.append(f"assignments.{role}: 알 수 없는 단계입니다 (허용: {', '.join(ASSIGNMENT_ROLES)})")
+            continue
+        for producer, pid in by_producer.items():
+            prod = cfg["producers"].get(producer)
+            if prod is None:
+                bad.append(f"assignments.{role}.{producer}: 등록되지 않은 모델 ID입니다")
+            elif not isinstance(pid, str) or pid not in profiles:
+                bad.append(f"assignments.{role}.{producer}: 프로필 {pid!r}가 없습니다")
+            elif profiles[pid].get("adapter") != prod.get("adapter", "opencode"):
+                bad.append(f"assignments.{role}.{producer}: 프로필 {pid!r}의 adapter가 모델 ID의 adapter와 다릅니다")
+            elif any(k in prod for k in ("model", "effort", "permission_profile")):
+                bad.append(f"producers.{producer}: model/effort/permission_profile과 assignments를 함께 쓸 수 없습니다 — 프로필로만 지정하세요")
+    return list(dict.fromkeys(bad))
 
 
 def _maintainer_config_problems(cfg: dict) -> list[str]:
@@ -256,9 +406,7 @@ def _maintainer_config_problems(cfg: dict) -> list[str]:
     m = cfg.get("maintainer")
     if m is not None:
         if not isinstance(m, str):
-            bad.append("maintainer는 producers에 등록된 모델 ID 문자열이어야 합니다")
-        elif isinstance(cfg.get("producers"), dict) and m not in registry(cfg):
-            bad.append(f"maintainer {m!r}는 등록된 모델이 아닙니다 (producers: {', '.join(registry(cfg)) or '없음'})")
+            bad.append("maintainer는 producers의 모델 ID 또는 model_profiles의 프로필 ID 문자열이어야 합니다")
     v = cfg.get("shared_defect_verify")
     if not isinstance(v, list) or not all(_strings(a, nonempty=True) for a in v):
         bad.append("shared_defect_verify는 비어 있지 않은 문자열 argv 목록의 목록이어야 합니다")
@@ -266,16 +414,17 @@ def _maintainer_config_problems(cfg: dict) -> list[str]:
 
 
 def maintainer_id(cfg: dict) -> str | None:
-    """The configured Maintainer producer ID (None: not configured). Call only on a config that passed config_problem."""
-    return cfg.get("maintainer")
+    """The producer ID the Maintainer runs on (None: not configured). Call only on a config that passed config_problem;
+    an unresolvable value is returned as written and refused by maintainer_problem."""
+    return maintainer_target(cfg)[0] or cfg.get("maintainer")
 
 
 def maintainer_problem(cfg: dict) -> str | None:
-    """Why the configured Maintainer must not run (None = it may). Its producer entry must be a valid one."""
-    m = maintainer_id(cfg)
-    if m is None:
-        return "maintainer가 설정되지 않았습니다"
-    return registry_problems(cfg).get(m)
+    """Why the configured Maintainer must not run (None = it may). Its producer and resolved pin must be valid."""
+    producer, _, problem = maintainer_target(cfg)
+    if problem:
+        return problem
+    return registry_problems(cfg).get(producer) or role_problem(cfg, producer, MAINTAINER)
 
 
 def reload_problem(old: dict, new: dict, in_use: set[str]) -> str | None:
@@ -365,13 +514,13 @@ def effort_problem(adapter: str, effort: str) -> str | None:
     return None
 
 
-def run_spec(cfg: dict, producer: str, tier: str = "free") -> RunSpec:
-    """The exact model and effort one run of `producer` is pinned to. Raises ValueError if either is unset.
+def run_spec(cfg: dict, producer: str, tier: str = "free", role: str = STAGE1) -> RunSpec:
+    """The exact model and effort one run of `producer` in `role` is pinned to. Raises ValueError if either is unset.
 
     Tiered (OpenCode): the model of `tier`; a Go switch changes only the model, never the effort.
     Single-model CLIs: their one `model`; `tier` is ignored (they have no Free/Go tiers).
     """
-    p = registry(cfg)[producer]
+    p = role_entry(cfg, producer, role)
     model = p["models"].get(tier, "") if p["adapter"] in TIERED_ADAPTERS else p["model"]
     if not model:
         raise ValueError(f"{producer}: {tier if p['adapter'] in TIERED_ADAPTERS else 'model'} 모델 ID가 설정되지 않았습니다.")
@@ -384,6 +533,8 @@ def run_spec(cfg: dict, producer: str, tier: str = "free") -> RunSpec:
 def pin_summary(p: dict) -> str:
     """What one logical model runs on: its CLI model ID(s) and the pinned reasoning effort."""
     effort = p["effort"] or "(미설정)"
+    if p.get("governed"):   # the pin depends on the stage: role_pin_lines lists each
+        return "단계별 프로필 배정 (아래 참조)"
     if p["adapter"] in TIERED_ADAPTERS:
         return f"free={p['models']['free'] or '(미설정)'}  go={p['models']['go'] or '(미설정)'}  effort={effort}"
     profile = f"  permission_profile={p['permission_profile']}" if p["permission_profile"] else ""
@@ -403,3 +554,17 @@ def adapters(cfg: dict) -> list[str]:
     """Adapters that have at least one registered logical model, ordered by display label (Claude, Codex, OpenCode)."""
     found = {p["adapter"] for p in registry(cfg).values()}
     return sorted(found, key=lambda a: (adapter_label(a), a))
+
+
+def role_pin_lines(cfg: dict) -> list[str]:
+    """Settings lines for what each stage runs on (profile ID, model, effort); only when profiles are configured."""
+    profs, lines = _profiles(cfg), []
+    def one(label, pid):
+        p = profs.get(pid, {})
+        return f"  {label}: {pid} (model={p.get('model') or '(미설정)'} effort={p.get('effort') or '(미설정)'})"
+    for role in ASSIGNMENT_ROLES:
+        for producer, pid in sorted((cfg.get("assignments", {}).get(role) or {}).items()):
+            lines.append(one(f"{role}/{producer}", pid))
+    if cfg.get("maintainer") in profs:
+        lines.append(one("maintainer", cfg["maintainer"]))
+    return lines

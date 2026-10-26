@@ -207,6 +207,8 @@ def detail_header(st: dict, reg: dict, model: str) -> str:
 
 def _pins(reg: dict, st: dict) -> str:
     """The Free/Go tier for OpenCode; the fixed model ID and effort for the single-model CLIs (no tiers there)."""
+    if reg.get("unassigned"):   # a stage with no profile: never show another stage's pin
+        return "model id: (이 단계 미배정)   effort: (이 단계 미배정)"
     if reg.get("adapter") in TIERED_ADAPTERS:
         return f"tier: {st['tier']}   effort: {reg.get('effort') or '-'}"
     return f"model id: {reg.get('model') or '-'}   effort: {reg.get('effort') or '-'}"

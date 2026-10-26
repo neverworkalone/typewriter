@@ -17,7 +17,7 @@ from textual.widgets import Button, Collapsible, Footer, Header, RichLog, Rule, 
 import time
 
 from . import auth, control
-from .config import (Paths, adapter_label, adapters, load_config, methods, ordered_models, pin_summary, registry,
+from .config import (Paths, role_pin_lines, role_view, adapter_label, adapters, load_config, methods, ordered_models, pin_summary, registry,
                      stage2_models, STAGE2_ADAPTERS)
 from .logrender import render_line
 from .views import (_hhmm, _when, control_columns, select_width, card_text, detail_header, maintainer_card_text,  # noqa: F401  (CARD_W/ICON re-exported for tests)
@@ -197,6 +197,7 @@ class SettingsScreen(Screen):
         for pid in ordered_models(app.cfg):
             p = reg[pid]
             lines.append(f"{p['label']} ({pid})  adapter={p['adapter']}  {pin_summary(p)}")
+        lines += role_pin_lines(app.cfg)
         self.query_one("#settings-body", Static).update("\n".join(lines))
 
 
@@ -380,7 +381,7 @@ class LineDetail(Screen):
     # --- view ---
     def refresh_view(self) -> None:
         st = control.line_status(self.app.store, self.model, self.method)
-        reg = registry(self.app.cfg).get(self.model, {})
+        reg = role_view(self.app.cfg, self.model, self.method)   # the pin this Line's method runs on (profiles differ by stage)
         # Text, never markup: the error/branch/path values are data and may hold [brackets] (a Rich MarkupError ends the app)
         self.query_one("#info", Static).update(Text(detail_header(st, reg, self.model)))
         self.query_one("#meta", Static).update(Text(detail_meta(st, reg, self.model)))

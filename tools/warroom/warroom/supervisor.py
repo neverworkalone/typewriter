@@ -20,7 +20,7 @@ from pathlib import Path
 from . import auth, batches, control, defects, progress, prompts, reviews, stage2
 from .adapters import PREFLIGHT_PENDING, QUOTA_EVIDENCE, RunSpec, classify_failure, opencode_free_quota
 from .config import (TIERED_ADAPTERS, adapter_label, config_problem, load_config, registry, registry_problems,
-                     reload_problem, run_spec, stage2_problem)
+                     reload_problem, role_of, role_problem, run_spec, stage2_problem)
 from .gitops import CleanupBlocked, GitError
 from .maintenance import Maintenance
 from .store import MAINTENANCE_METHOD, STAGE2_METHOD, LineBusy, LineNotRunnable
@@ -445,10 +445,12 @@ class Supervisor:
             return self._blocked(ln, "시작 차단: " + registry_problems(self.cfg)[model])
         if method == STAGE2_METHOD and (why := stage2_problem(self.cfg, model)):   # fail closed here too, not only in Start
             return self._blocked(ln, "시작 차단: " + why)
+        if why := role_problem(self.cfg, model, role_of(method)):   # the stage's assigned profile must resolve to a valid pin
+            return self._blocked(ln, "시작 차단: " + why)
         d = auth.diagnose(self.runner, self.env, self.cfg["repo"], self.cfg["expected_account"])
         if not d["ok"]:
             return self._blocked(ln, "시작 차단: " + "; ".join(d["problems"]))
-        problem = self._preflight(model)
+        problem = self._preflight(model, method)
         if problem and problem.startswith(PREFLIGHT_PENDING):
             return   # the CLI check runs in the background: this Line waits here, the others keep moving
         if problem:
@@ -536,7 +538,7 @@ class Supervisor:
             return f"{adapter_label(name)} CLI 어댑터가 이 War Room 빌드에 없습니다 — 다른 CLI로 대신 실행하지 않습니다."
         return None
 
-    def _preflight(self, producer: str) -> str | None:
+    def _preflight(self, producer: str, method: str = "a") -> str | None:
         """Fail closed before any process starts: the CLI must be able to run exactly the pinned model and effort."""
         problem = self._adapter_problem(producer)
         if problem:
@@ -550,17 +552,17 @@ class Supervisor:
             if not re.search(self.cfg.get("free_model_pattern", r"-free$"), free):
                 return f"models.free={free!r} 는 무료 모델 ID로 확인되지 않습니다 (패턴 {self.cfg.get('free_model_pattern', '-free$')})."
         try:
-            runs = self._pinned_runs(producer)
+            runs = self._pinned_runs(producer, role_of(method))
         except ValueError as e:
             return str(e)
         return ad.preflight(self.runner, self.env, runs)
 
-    def _pinned_runs(self, producer: str):
+    def _pinned_runs(self, producer: str, role: str = "stage1"):
         """Every model/effort this producer may run with: both tiers of a tiered CLI (a configured Go model too)."""
         if not self._tiered(producer):
-            return [run_spec(self.cfg, producer)]
+            return [run_spec(self.cfg, producer, role=role)]
         go = registry(self.cfg)[producer]["models"].get("go")
-        return [run_spec(self.cfg, producer, "free")] + ([run_spec(self.cfg, producer, "go")] if go else [])
+        return [run_spec(self.cfg, producer, "free", role)] + ([run_spec(self.cfg, producer, "go", role)] if go else [])
 
     def _prepare_existing(self, b) -> None:
         wt = Path(b["worktree"])
@@ -577,7 +579,7 @@ class Supervisor:
     # ---- launching runs ------------------------------------------------
     def _run(self, b) -> RunSpec:
         """The model and effort this batch's next run is pinned to (the current tier for OpenCode)."""
-        return run_spec(self.cfg, b["producer"], b["model_tier"])
+        return run_spec(self.cfg, b["producer"], b["model_tier"], role_of(b["method"]))
 
     def _recorded_run(self, b) -> RunSpec | None:
         """The model and effort the batch's current run was launched with (the store is the source of truth)."""
@@ -627,7 +629,7 @@ class Supervisor:
         drift = self._pin_drift(b, run, self._tiered(b["producer"]), self.store.runs(b["id"]), tier_models)
         if drift:
             return self._fail(b, "ERROR", drift)
-        problem = self._preflight(b["producer"])   # every launch proves the CLI again (cached once proven)
+        problem = self._preflight(b["producer"], b["method"])   # every launch proves the CLI again (cached once proven)
         if problem and problem.startswith(PREFLIGHT_PENDING):
             return   # still proving the pin in the background; the next tick retries this relaunch
         if problem:
