@@ -829,8 +829,6 @@ class Supervisor:
 
     def _denied_run_problem(self, b) -> str | None:
         """Why a run with permission denials cannot be accepted as complete, or None when the evidence is conclusive."""
-        if b["method"] != STAGE2_METHOD:
-            return "Stage 2 Part verify 증거가 없는 배치입니다"
         try:
             info = self._find_recovery_pr(b)
             if info is None:
@@ -846,6 +844,10 @@ class Supervisor:
             wt = Path(b["worktree"])
             if self.git.dirty(wt).strip():
                 return "worktree에 미커밋 변경이 있습니다"
+            if b["method"] != STAGE2_METHOD:
+                # A/B/C/D batches have no Part verify: the same proof as a clean run is the owned open PR carrying the
+                # local HEAD from a clean worktree (the review gates validate the content).
+                return None if self.git.head(wt) == info["head_sha"] else "worktree HEAD가 PR HEAD와 다릅니다(push 안 됨)"
             bb, pp = stage2.split_key(b["batch"])
             ok, tail = self.git.verify_stage2(self.git.head(wt), "part", b["shard"], bb, pp)
         except Exception as e:
