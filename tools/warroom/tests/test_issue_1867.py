@@ -136,6 +136,29 @@ class DisplayPins(unittest.TestCase):
                 self.assertNotIn("gpt-6-luna", pin_summary(registry(c)["codex"]))   # settings: no stage-less pin either
         self.assertIn("gpt-6-luna", detail_meta(st, role_view(cfg(), "codex", "s2"), "codex"))
 
+    def test_web_line_detail_uses_the_stage_pin(self):
+        from tests.test_web_1720 import Env
+        from warroom.web import api
+        for assigned, shown, hidden, effort in [("stage1", "a", "s2", "high"), ("stage2", "s2", "a", "xhigh"), ("both", "s2", "a", "xhigh")]:
+            e = Env()
+            self.addCleanup(e.close)
+            a = {"stage1": {"codex": "luna-high"}, "stage2": {"codex": "luna-xhigh"}}
+            if assigned != "both":
+                a = {assigned: a[assigned]}
+            e.cfg = cfg(assignments=a, maintainer="sonnet-medium", producers={"codex": PRODUCERS["codex"], "claude": PRODUCERS["claude"]},
+                        model_profiles=PROFILES)
+            e.cfg["assignments"].setdefault("stage1", {})["claude"] = "sonnet-medium"
+            e.cfg["assignments"].setdefault("stage2", {})["claude"] = "sonnet-medium"
+            with self.subTest(assigned):
+                ok = api.line_detail(e.store, e.cfg, e.paths, "codex", shown)["meta"]
+                self.assertIn(f"effort: {effort}" if assigned != "both" else "effort: xhigh", ok)
+                if assigned != "both":
+                    no = api.line_detail(e.store, e.cfg, e.paths, "codex", hidden)["meta"]
+                    self.assertNotIn("gpt-6-luna", no)
+                    self.assertIn("미배정", no)
+                else:
+                    self.assertIn("effort: high", api.line_detail(e.store, e.cfg, e.paths, "codex", "a")["meta"])
+
 
 class ReloadAndRuns(unittest.TestCase):
     def world(self, **over):

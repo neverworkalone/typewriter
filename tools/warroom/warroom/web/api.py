@@ -11,7 +11,7 @@ import time
 from pathlib import Path
 
 from .. import control, views
-from ..config import Paths, adapter_label, adapters, methods, ordered_models, registry, stage2_models, STAGE2_ADAPTERS
+from ..config import Paths, adapter_label, adapters, methods, ordered_models, registry, role_view, stage2_models, STAGE2_ADAPTERS
 from ..logrender import render_line
 from ..logtail import INITIAL_BYTES, MAX_CHUNK, redact
 from ..store import STAGE2_METHOD, Store
@@ -119,7 +119,7 @@ def _run_row(r) -> dict:
 def line_detail(store: Store, cfg: dict, paths: Paths, model: str, method: str) -> dict:
     _known(store, cfg, model, method)
     st = control.line_status(store, model, method)
-    reg = registry(cfg).get(model, {})
+    reg = role_view(cfg, model, method)   # the pin this Line's stage runs on, never another stage's
     runs = store.line_runs(model, method)
     return clean({
         "line": _line_view(st), "header": views.detail_header(st, reg, model), "meta": views.detail_meta(st, reg, model),
