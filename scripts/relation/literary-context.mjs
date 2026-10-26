@@ -1148,17 +1148,34 @@ async function validateCandidateRows({ checkpoint, canonicalPath, candidateRows,
     });
     return { status: 'VALID', ...summary };
   } catch (error) {
-    const lineMatch = error.message.match(/(?:^|\s)(?:[^\s:]+\.jsonl|Candidate):(\d+)(?::|\s)/u);
+    const lineMatch = error.message.match(/(?:^|\s)(?:[^\s:]+\.jsonl|Candidate):(\d+)(?::(\d+))?(?::|\s)/u);
     const line = lineMatch ? Number(lineMatch[1]) : null;
+    const senseIndex = lineMatch?.[2] ? Number(lineMatch[2]) : null;
     const failedRow = line ? candidateRows[line - 1] : null;
     const failedSource = line ? canonicalRows[(batchNumber - 1) * CANDIDATE_BATCH_SIZE + line - 1] : null;
-    const candidateInfo = failedRow?.senses?.flatMap((candidateSense) => candidateSense.candidates ?? []).find((candidate) => error.message.includes(JSON.stringify(candidate)));
+    const failedSense = senseIndex ? failedRow?.senses?.[senseIndex - 1] : null;
+    const candidateSenses = failedSense ? [failedSense] : failedRow?.senses ?? [];
+    const candidateInfo = candidateSenses.flatMap((candidateSense) => candidateSense.candidates ?? [])
+      .find((candidate) => error.message.includes(JSON.stringify(candidate)));
+    const senseIds = failedSense?.sense_id
+      ? [failedSense.sense_id]
+      : failedRow?.senses?.map((sense) => sense.sense_id) ?? [];
     return {
       status: 'INVALID',
       error_type: error.name,
       message: error.message,
-      affected: failedRow ? { record_id: failedRow.record_id, canonical_record_id: failedSource?.id, sense_ids: failedRow.senses?.map((sense) => sense.sense_id) ?? [], candidate: candidateInfo ?? null, candidate_line: line } : null,
-      repair_scope: 'Resubmit only the affected sense (read it again with --sense-ids if needed), then export again.',
+      affected: failedRow ? {
+        record_id: failedRow.record_id,
+        canonical_record_id: failedSource?.id,
+        sense_ids: senseIds,
+        sense_id: failedSense?.sense_id ?? null,
+        sense_index: senseIndex,
+        candidate: candidateInfo ?? null,
+        candidate_line: line,
+      } : null,
+      repair_scope: failedSense
+        ? 'Resubmit only the affected sense (read it again with --sense-ids if needed), then export again.'
+        : 'Repair the affected Candidate row and resubmit its senses before exporting again.',
     };
   }
 }
@@ -1172,7 +1189,13 @@ export async function exportLiteraryCandidates({ checkpointPath, canonicalPath, 
   if (unfinished.length > 0) fail(`${unfinished.length} sense(s) are not read and submitted yet (first: ${unfinished.slice(0, 5).join(', ')}); run chunk/submit until none remain`);
   const candidateRows = candidateRowsFromCheckpoint(checkpoint);
   const validation = await validateCandidateRows({ checkpoint, canonicalPath, candidateRows, repositoryDirectory });
-  if (validation.status !== 'VALID') fail(`${validation.message}${validation.affected ? ` (affected ${JSON.stringify(validation.affected)})` : ''}`);
+  if (validation.status !== 'VALID') {
+    const error = new Error(`${validation.message}${validation.affected ? ` (affected ${JSON.stringify(validation.affected)})` : ''}`);
+    error.code = 'CANDIDATE_V1_VALIDATION';
+    error.affected = validation.affected;
+    error.repair_scope = validation.repair_scope;
+    throw error;
+  }
   const resolvedOutput = path.resolve(outputPath);
   const expectedRepositoryPath = path.resolve(repositoryDirectory, 'data/relation-candidates', checkpoint.batch.shard, expectedName);
   try {

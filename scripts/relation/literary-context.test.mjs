@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
-import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { DatabaseSync } from 'node:sqlite';
@@ -21,8 +20,10 @@ import {
 
 const jsonl = (items) => `${items.map((item) => JSON.stringify(item)).join('\n')}\n`;
 
-async function makeFixture({ unitCount = 2, unitText, unitTexts, firstForm = '가나다', workCount = 1 } = {}) {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'typewriter-literary-context-'));
+async function makeFixture({ unitCount = 2, unitText, unitTexts, firstForm = '가나다', firstSenseGlosses, workCount = 1 } = {}) {
+  const fixtureRoot = path.resolve('.warroom-scratch');
+  await mkdir(fixtureRoot, { recursive: true });
+  const root = await mkdtemp(path.join(fixtureRoot, 'typewriter-literary-context-'));
   const canonicalDirectory = path.join(root, 'data/canonical');
   const scratchDirectory = path.join(root, '.warroom-scratch');
   await mkdir(canonicalDirectory, { recursive: true });
@@ -30,11 +31,19 @@ async function makeFixture({ unitCount = 2, unitText, unitTexts, firstForm = '�
   const records = Array.from({ length: 500 }, (_, index) => {
     const ordinal = String(index + 1).padStart(6, '0');
     const lemma = index === 0 ? firstForm : `표제${ordinal}`;
+    const senses = index === 0 && firstSenseGlosses
+      ? firstSenseGlosses.map((gloss, senseIndex) => ({
+        id: senseIndex === 0 ? `sense-${ordinal}` : `sense-${ordinal}-${senseIndex + 1}`,
+        pos: 'noun',
+        gloss,
+        relations: [],
+      }))
+      : [{ id: `sense-${ordinal}`, pos: 'noun', gloss: `fixture gloss ${ordinal}`, relations: [] }];
     return {
       id: `record-${ordinal}`,
       lemma,
       search_forms: [],
-      senses: [{ id: `sense-${ordinal}`, pos: 'noun', gloss: `fixture gloss ${ordinal}`, relations: [] }],
+      senses,
     };
   });
   const canonicalPath = path.join(canonicalDirectory, 'stdict-0001.jsonl');
@@ -126,7 +135,9 @@ async function cleanup(fixture) {
 }
 
 async function makeRetiredParagraphIndex() {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'typewriter-retired-literary-index-'));
+  const fixtureRoot = path.resolve('.warroom-scratch');
+  await mkdir(fixtureRoot, { recursive: true });
+  const root = await mkdtemp(path.join(fixtureRoot, 'typewriter-retired-literary-index-'));
   const databasePath = path.join(root, 'retired.sqlite');
   const scratchDirectory = path.join(root, '.warroom-scratch');
   await mkdir(scratchDirectory, { recursive: true });
@@ -221,12 +232,56 @@ test('CLI failures suppress local database paths and environment values', () => 
   const marker = 'private-probe-path-marker';
   const tokenMarker = 'synthetic-secret-marker';
   const result = spawnSync(process.execPath, [
-    'scripts/relation/literary-context-cli.mjs', 'preflight', '--db', path.join(os.tmpdir(), marker, 'missing.sqlite'),
+    'scripts/relation/literary-context-cli.mjs', 'preflight', '--db', path.join(process.cwd(), '.warroom-scratch', marker, 'missing.sqlite'),
   ], { cwd: process.cwd(), encoding: 'utf8', env: { ...process.env, TYPEWRITER_TEST_SECRET: tokenMarker } });
   assert.equal(result.status, 1);
   assert.equal(`${result.stdout}${result.stderr}`.includes(marker), false);
   assert.equal(`${result.stdout}${result.stderr}`.includes(tokenMarker), false);
   assert.match(result.stderr, /local paths, source text, and secret details were suppressed/u);
+});
+
+test('CLI export maps a sense-level Candidate v1 failure to the right sense when the row repeats that candidate', async () => {
+  const fixture = await makeFixture({ unitCount: 1, firstSenseGlosses: ['7,460 meters', '460 items'] });
+  try {
+    const read = await chunk(fixture);
+    const contextsBySense = new Map(read.items.map((item) => [item.sense_id, item.contexts[0].k]));
+    const senseIds = ['sense-000001', 'sense-000001-2'];
+    assert.deepEqual([...contextsBySense.keys()], senseIds);
+    await submit(fixture, senseIds.map((sense_id) => ({
+      sense_id,
+      verified: [contextsBySense.get(sense_id)],
+      candidates: ['460'],
+    })));
+    const fixtureRoot = await realpath(fixture.root);
+    const outputPath = path.join(fixtureRoot, 'data/relation-candidates/001/001_01_c_codex.jsonl');
+    const cliPath = path.resolve('scripts/relation/literary-context-cli.mjs');
+    const result = spawnSync(process.execPath, [
+      cliPath, 'export', '--checkpoint', path.join(fixtureRoot, '.warroom-scratch/001_01_c_codex.checkpoint.json'),
+      '--canonical', path.join(fixtureRoot, 'data/canonical/stdict-0001.jsonl'), '--output', outputPath,
+    ], { cwd: fixtureRoot, encoding: 'utf8' });
+
+    assert.equal(result.status, 1);
+    const diagnostic = JSON.parse(result.stderr);
+    assert.equal(diagnostic.status, 'FAILED');
+    assert.equal(diagnostic.diagnostic, 'candidate_validation', result.stderr);
+    assert.equal(diagnostic.error_type, 'Error');
+    assert.deepEqual(diagnostic.affected, {
+      record_id: 'record-000001',
+      canonical_record_id: 'record-000001',
+      sense_ids: ['sense-000001'],
+      sense_id: 'sense-000001',
+      sense_index: 1,
+      candidate: '460',
+      candidate_line: 1,
+    });
+    assert.match(diagnostic.repair_scope, /Resubmit only the affected sense/u);
+    assert.equal(JSON.stringify(diagnostic).includes(fixture.root), false);
+    assert.equal(JSON.stringify(diagnostic).includes('fixture gloss'), false);
+    assert.equal((await load(fixture)).output, null);
+    await assert.rejects(stat(outputPath), { code: 'ENOENT' });
+  } finally {
+    await cleanup(fixture);
+  }
 });
 
 test('literal search does not join matches across physical lines; zero-hit senses are recorded in the chunk write', async () => {
