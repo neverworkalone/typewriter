@@ -156,7 +156,7 @@ class MaintainerDetail(Screen):
         self.refresh_view()
 
     def refresh_view(self) -> None:
-        items = control.urgent_items(self.app.store, self.app.cfg)
+        items = control.urgent_items(self.app.store, self.app.cfg, full=True)
         lines = ["Maintainer — 진행 중인 작업 없음"] if not items else \
             [f"Maintainer — 열린 urgent 작업 {len(items)}건", ""] + \
             [f"{'✖' if bad else '▶'} {text}" for text, bad in items]

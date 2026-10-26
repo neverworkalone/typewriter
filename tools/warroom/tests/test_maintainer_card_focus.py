@@ -70,5 +70,38 @@ class MaintainerCardFocusTests(unittest.TestCase):
         self.run_app(scenario)
 
 
+class MaintainerDetailTextTests(unittest.TestCase):
+    """The detail shows every hold reason / error uncut; the Board summary keeps its 70-char limit."""
+    LONG = "원인 " + "가나다라마바사 " * 30 + "끝-마커"
+
+    def world(self):
+        from warroom import control
+        w = World()
+        self.addCleanup(w.tmp.cleanup)
+        st = w.store
+        bid = st.create_batch(method="a", producer="deepseek", shard="001", batch="01", branch="b", worktree="w")
+        did = st.report_defect(bid, "k", "report", "span", "REPORTED", "{}", "shared_defect", "paused")
+        st.update_defect(did, state="HELD", issue_number=7, hold_reason=self.LONG)    # held dependency
+        st.ensure_maintenance(7)
+        mb = st.create_batch(method="b",producer="deepseek", shard="001", batch="02", branch="m", worktree="w2")
+        st.update(mb, state="ERROR", error=self.LONG)                                  # failed Maintainer batch
+        st.ensure_maintenance(8)
+        st.update_maintenance(8, state="ACTIVE", batch_id=mb)
+        return w, control
+
+    def test_full_detail_vs_short_summary(self):
+        w, control = self.world()
+        marker = "끝-마커"
+        for full, expect_marker in ((True, True), (False, False)):
+            texts = [t for t, _ in control.urgent_items(w.store, w.cfg, full=full)]
+            self.assertEqual(len(texts), 2)
+            for t in texts:
+                self.assertEqual(marker in t, expect_marker, t)
+                self.assertEqual(" ".join(self.LONG.split()) in t, expect_marker)
+                if not full:
+                    self.assertLessEqual(len(t), 130)
+        self.assertEqual(control.urgent_items(w.store, w.cfg), control.urgent_items(w.store, w.cfg, full=False))
+
+
 if __name__ == "__main__":
     unittest.main()

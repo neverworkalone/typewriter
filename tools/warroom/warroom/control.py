@@ -220,24 +220,29 @@ def set_tier(store: Store, cfg: dict, methods, tier: str) -> int:
 
 
 # --- the single "urgent" status line (Issue #1555) ---------------------------------------------------------------------
-def _short(text: str | None, n: int = 70) -> str:
+def _short(text: str | None, n: int | None = 70) -> str:
+    """One-line summary cut at `n` cells' worth of characters; n=None keeps the whole text (detail views)."""
     t = " ".join((text or "").split())
-    return t if len(t) <= n else t[: n - 1] + "…"
+    return t if n is None or len(t) <= n else t[: n - 1] + "…"
 
 
-def _maintainer_text(store: Store, cfg: dict, m, deps) -> str:
-    """What one urgent Issue is doing right now, read only from persisted state (no invented progress)."""
+def _maintainer_text(store: Store, cfg: dict, m, deps, full: bool = False) -> str:
+    """What one urgent Issue is doing right now, read only from persisted state (no invented progress).
+
+    `full` keeps hold reasons and errors uncut (Maintainer detail); the Board card/yellow line keep the 70-char summary.
+    """
+    n = None if full else 70
     st = m["state"]
     held = [d for d in deps if d["state"] == "HELD"]
     if held:
-        return f"보류: {_short(held[0]['hold_reason'])}"
+        return f"보류: {_short(held[0]['hold_reason'], n)}"
     if st == "HELD":
-        return f"보류: {_short(m['hold_reason'])}"
+        return f"보류: {_short(m['hold_reason'], n)}"
     if st == "QUEUED":
         if cfg.get("maintainer") is None:
             return "Maintainer 미설정 · 대기"
         problem = maintainer_problem(cfg)
-        return f"Maintainer 설정 오류 · {_short(problem)}" if problem else "Maintainer 대기 중"
+        return f"Maintainer 설정 오류 · {_short(problem, n)}" if problem else "Maintainer 대기 중"
     if st == "DONE":
         return "머지·Cleanup 완료 · 종속 배치 수정 반영 중"
     b = store.batch(m["batch_id"]) if m["batch_id"] else None
@@ -248,18 +253,19 @@ def _maintainer_text(store: Store, cfg: dict, m, deps) -> str:
             "PRODUCING": "Maintainer WORKING >> 수정 중 · PR 생성 전" if not b["pr_number"] else f"{pr}수정 중",
             "WAITING_REVIEW": f"{pr}리뷰 대기", "FIXING": f"{pr}수정 중",
             "MERGED": f"{pr}머지됨 · Cleanup 중", "CLEANUP": f"{pr}머지됨 · Cleanup 중",
-            "PAUSED": f"{pr}Maintainer PAUSED · {_short(b['error'])} (m: Retry)",
-            "ERROR": f"{pr}Maintainer ERROR · {_short(b['error'])} (m: Retry)"}.get(b["state"], b["state"])
+            "PAUSED": f"{pr}Maintainer PAUSED · {_short(b['error'], n)} (m: Retry)",
+            "ERROR": f"{pr}Maintainer ERROR · {_short(b['error'], n)} (m: Retry)"}.get(b["state"], b["state"])
 
 
 _BAD_PREFIXES = ("보류", "Maintainer 설정 오류", "Maintainer 미설정")
 
 
-def urgent_items(store: Store, cfg: dict) -> list[tuple[str, bool]]:
+def urgent_items(store: Store, cfg: dict, full: bool = False) -> list[tuple[str, bool]]:
     """(text, needs_attention) of every open urgent Issue, oldest first; [] when nothing is open.
 
     An Issue disappears only after its PR is merged, the Maintainer is cleaned up and every batch that depended on
-    it was released (or deliberately resumed by the operator). Held and failed states stay visible.
+    it was released (or deliberately resumed by the operator). Held and failed states stay visible. `full` leaves
+    hold reasons/errors uncut for the Maintainer detail screen.
     """
     deps_by_issue: dict[int, list] = {}
     for d in store.defects(("LINKED", "FIX_MERGED", "HELD")):
@@ -271,7 +277,7 @@ def urgent_items(store: Store, cfg: dict) -> list[tuple[str, bool]]:
         deps = deps_by_issue.get(m["issue_number"], [])
         if m["state"] in ("DONE", "HELD") and not deps:   # nothing depends on it any more (all released/overridden)
             continue
-        text = _maintainer_text(store, cfg, m, deps)
+        text = _maintainer_text(store, cfg, m, deps, full)
         bad = text.startswith(_BAD_PREFIXES) or "PAUSED" in text or "ERROR" in text
         items.append((f"urgent issue #{m['issue_number']} · {text}", bad))
     return items
