@@ -142,7 +142,7 @@ class CompletionGate(unittest.TestCase):
             ("result with an empty session id", stream(init(), {**result(), "session_id": ""}), "ERROR"),
             ("result with a blank session id", stream(init(), {**result(), "session_id": "  "}), "ERROR"),
             ("result with a non-string session id", stream(init(), {**result(), "session_id": 7}), "ERROR"),
-            ("success with denials pauses", stream(init(), result(denials=[{"tool_name": "Bash"}])), "PAUSED"),
+            ("success with denials passes the adapter (Supervisor checks the work)", stream(init(), result(denials=[{"tool_name": "Bash"}])), None),
         ]
         for name, raw, want in cases:
             with self.subTest(name):
@@ -173,7 +173,7 @@ class RunProblem(unittest.TestCase):
             ("different model reported", [init("claude-opus-5-5")], "ERROR"),
             ("model not reported", [{**init(), "model": ""}], "ERROR"),
             ("session changed by the CLI", [init(session="11111111-2222-4333-8444-555555555555")], "ERROR"),
-            ("denied tool at the end", [init(), result(denials=[{"tool_name": "Bash"}])], "PAUSED"),
+            ("denied tool at the end is not a run contradiction", [init(), result(denials=[{"tool_name": "Bash"}])], None),
             ("clean result", [init(), result()], None),
             ("session id absent from the init event", [{k: v for k, v in init().items() if k != "session_id"}], "ERROR"),
             ("session id empty", [init(session="")], "ERROR"),
@@ -193,11 +193,13 @@ class RunProblem(unittest.TestCase):
     def test_legacy_run_without_recorded_pin_skips_the_model_comparison(self):
         self.assertIsNone(self.check([init("claude-opus-5-5")], run=None))
 
-    def test_denied_tool_names_are_reported(self):
-        problem = self.check([init(), result(denials=[{"tool_name": "Bash"}, {"tool_name": "Bash"}])])
-        self.assertIn("Bash", problem[1])
-        self.assertIn("로컬 CLI 권한 정책상 거부", problem[1])          # the local settings decided, not a War Room list
-        self.assertNotIn("허용 목록", problem[1])
+    def test_denied_actions_are_read_from_the_final_result_only(self):
+        with tempfile.TemporaryDirectory() as d:
+            log = Path(d) / "l.log"
+            for raw, want in [(stream(init(), result(denials=[{"tool_name": "Bash"}])), 1), (stream(init(), result()), 0),
+                              (stream(init()), 0), ("", 0), (stream(init(), {**result(), "permission_denials": None}), 0)]:
+                log.write_text(raw)
+                self.assertEqual(len(ClaudeCodeAdapter().denied_actions(log)), want)
 
 
 class Classification(unittest.TestCase):
@@ -220,6 +222,7 @@ class Classification(unittest.TestCase):
 class SupervisorStopsOnContradiction(unittest.TestCase):
     class Reporting(FakeAdapter):
         run_problem = ClaudeCodeAdapter.run_problem
+        denied_actions = ClaudeCodeAdapter.denied_actions
         completion_problem = ClaudeCodeAdapter.completion_problem
         requires_session_for_pr = ClaudeCodeAdapter.requires_session_for_pr
         requires_final_result_for_pr = ClaudeCodeAdapter.requires_final_result_for_pr
