@@ -293,6 +293,7 @@ class SupervisorStopsOnContradiction(unittest.TestCase):
         w.start("single", "claude", "a")
         w.pr_info(7, HEAD1)
         w.gh.by_branch[BRANCH] = [{"number": 7, "state": "OPEN", "headRefOid": HEAD1}]
+        w.gh.files[7] = []  # the denial case has no verified Candidate claim
         w.adapter.plan.append({"code": 0, "text": stream(init(), result(denials=[{"tool_name": "Bash"}]))})
         w.tick()
         pid = w.adapter.launches[-1]["pid"]
