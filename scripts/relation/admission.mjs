@@ -324,11 +324,12 @@ function existingCandidateLinks(relationRows, index) {
 }
 
 /**
- * Prepare the editing input of a shard: unique candidates with the exact source sense/gloss, minus candidates already
- * fully covered by text-only approval or by ID links to every sense of the unique target record. Never an editorial
- * judgement; nothing is dropped here.
+ * Prepare unique candidates with the exact source sense/gloss. Candidate accounting is per (source sense, candidate);
+ * an existing ID relation answers it without requiring links to every sense of a polysemous target. When requested by
+ * the Part workflow, partially covered candidates remain visible for optional additional links to unlinked senses.
+ * Never an editorial judgement; nothing is dropped here.
  */
-export function prepareShard({ canonicalRows, candidateFiles, approvedRelationRows = [], dropRows = [], index, scopeRows = canonicalRows }) {
+export function prepareShard({ canonicalRows, candidateFiles, approvedRelationRows = [], dropRows = [], index, scopeRows = canonicalRows, includePartiallyCovered = false }) {
   const canonicalLemmaForms = new Set([...index.byLemma.keys()].map(normalizeCandidate));
   const { merged, rawCandidateCountBySense } = mergeCandidates(canonicalRows, candidateFiles, { canonicalLemmaForms });
   const rawCandidateCount = rawCandidateCountForScope(rawCandidateCountBySense, scopeRows);
@@ -341,6 +342,7 @@ export function prepareShard({ canonicalRows, candidateFiles, approvedRelationRo
       const entry = merged.get(sense.id);
       if (!entry) continue;
       const fresh = [];
+      const partiallyCovered = [];
       for (const [text, producers] of entry.candidates) {
         stats.unique += 1;
         if (text === normalizeCandidate(record.lemma)) throw new Error(`${sense.id}: candidate ${JSON.stringify(text)} repeats the source lemma`);
@@ -348,15 +350,39 @@ export function prepareShard({ canonicalRows, candidateFiles, approvedRelationRo
         const nonIdLink = links.some((link) => link.kind !== 'id');
         const targetRecords = canonicalRecordsForOrthographicForm(index, text);
         const targetSenseIds = targetRecords.length === 1 ? targetRecords[0].senses.map((targetSense) => targetSense.id) : [];
-        const allTargetSensesCovered = targetSenseIds.length > 0 && targetSenseIds.every((targetSenseId) =>
-          links.some((link) => link.kind === 'id' && link.targetSenseId === targetSenseId));
-        if (nonIdLink || allTargetSensesCovered) { stats.skipped_existing += 1; continue; }
+        const hasExistingIdLink = targetRecords.length === 1 && links.some((link) => link.kind === 'id'
+          && targetRecords[0].senses.some((targetSense) => targetSense.id === link.targetSenseId));
+        if (nonIdLink || hasExistingIdLink) {
+          stats.skipped_existing += 1;
+          const existingTargetSenseIds = [...new Set(links.filter((link) => link.kind === 'id').map((link) => link.targetSenseId))]
+            .filter((targetSenseId) => targetSenseIds.includes(targetSenseId)).sort();
+          const unlinkedTargetSenseIds = targetSenseIds.filter((targetSenseId) => !existingTargetSenseIds.includes(targetSenseId));
+          if (includePartiallyCovered && !nonIdLink && hasExistingIdLink && unlinkedTargetSenseIds.length > 0) {
+            partiallyCovered.push({
+              text,
+              producers,
+              same_spelling_records: targetRecords.map((target) => target.id),
+              already_accounted: true,
+              existing_target_sense_ids: existingTargetSenseIds,
+              unlinked_target_sense_ids: unlinkedTargetSenseIds,
+            });
+          }
+          continue;
+        }
         if (dropped.has(`${sense.id}\u0000${text}`)) { stats.skipped_dropped += 1; continue; }
         fresh.push({ text, producers, same_spelling_records: targetRecords.map((target) => target.id) });
       }
-      if (fresh.length === 0) continue;
+      if (fresh.length === 0 && partiallyCovered.length === 0) continue;
       stats.to_edit += fresh.length;
-      items.push({ record_id: record.id, sense_id: sense.id, lemma: record.lemma, pos: sense.pos, gloss: sense.gloss, candidates: fresh });
+      items.push({
+        record_id: record.id,
+        sense_id: sense.id,
+        lemma: record.lemma,
+        pos: sense.pos,
+        gloss: sense.gloss,
+        // Pre-accounted candidates go first so regular chunks remain a contiguous undecided prefix.
+        candidates: [...partiallyCovered, ...fresh],
+      });
     }
   }
   stats.merged_duplicates = stats.raw - stats.unique;

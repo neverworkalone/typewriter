@@ -26,7 +26,7 @@ import {
 const USAGE = `usage:
   node scripts/relation/admission-cli.mjs prepare --shard 001 [--batch 01] [--out <file.json>] [--allow-partial]
   node scripts/relation/admission-cli.mjs prepare --shard 001 --batch 01 --part 01 [--checkpoint <file.json>] [--allow-partial]
-  node scripts/relation/admission-cli.mjs read-chunk --checkpoint <file.json> [--max-candidates 250] [--out <file.json>]
+  node scripts/relation/admission-cli.mjs read-chunk --checkpoint <file.json> [--max-candidates 250] [--source-sense-id <id> --candidate <text>] [--out <file.json>]
   node scripts/relation/admission-cli.mjs save-chunk --checkpoint <file.json> --in <decisions.json>
   node scripts/relation/admission-cli.mjs merge --checkpoint <file.json>
   node scripts/relation/admission-cli.mjs verify --shard 001 [--batch 01 [--part 01]] [--checkpoint <file.json>] [--allow-partial]`;
@@ -66,6 +66,10 @@ function validateDecision(item, candidate, decision) {
   if (decision.source_sense_id !== item.sense_id || decision.candidate !== candidate.text) {
     throw new Error(`${item.sense_id}/${candidate.text}: decision must retain the exact source sense and candidate`);
   }
+  if (candidate.already_accounted === true
+      && (decision.disposition !== 'relation' || decision.target_resolution !== 'exact')) {
+    throw new Error(`${item.sense_id}/${candidate.text}: an optional additional link must target an unlinked same-spelling sense`);
+  }
   if (decision.disposition === 'drop') {
     if (keysOf(decision) !== 'candidate,disposition,reason,source_sense_id') throw new Error(`${item.sense_id}/${candidate.text}: Drop decision has unexpected or missing fields`);
     if (typeof decision.reason !== 'string' || !decision.reason.trim()) throw new Error(`${item.sense_id}/${candidate.text}: Drop needs a reason`);
@@ -85,6 +89,16 @@ function validateDecision(item, candidate, decision) {
       throw new Error(`${item.sense_id}/${candidate.text}: exact target must be one of the supplied same-spelling senses`);
     }
     if (decision.target_record_id === item.record_id) throw new Error(`${item.sense_id}/${candidate.text}: an ID relation cannot target its own record`);
+    if (candidate.already_accounted === true) {
+      const usedTargetSenseIds = new Set([
+        ...candidate.existing_target_sense_ids,
+        ...(candidate.additional_relations ?? []).map((relation) => relation.target_sense_id),
+      ]);
+      if (!candidate.unlinked_target_sense_ids.includes(decision.target_sense_id)
+          || usedTargetSenseIds.has(decision.target_sense_id)) {
+        throw new Error(`${item.sense_id}/${candidate.text}: optional link must choose a not-yet-linked target sense`);
+      }
+    }
     if (!ADMISSION_TYPES.includes(decision.reverse_type)) throw new Error(`${item.sense_id}/${candidate.text}: reverse_type must be one of ${ADMISSION_TYPES.join('/')}`);
     if (!isTier(decision.reverse_relevance)) throw new Error(`${item.sense_id}/${candidate.text}: reverse_relevance must be an integer 1..9`);
     return;
@@ -131,6 +145,20 @@ function validateCheckpoint(checkpoint, identity = {}) {
     let hasPending = false;
     for (const candidate of item.candidates) {
       if (!isPlainObject(candidate) || typeof candidate.text !== 'string' || !Array.isArray(candidate.same_spelling_targets)) throw new Error(`${item.sense_id}: checkpoint contains an invalid candidate`);
+      if (candidate.already_accounted === true) {
+        const availableIds = candidate.same_spelling_targets.flatMap((target) => target.senses.map((sense) => sense.sense_id)).sort();
+        const coveredIds = candidate.existing_target_sense_ids;
+        const unlinkedIds = candidate.unlinked_target_sense_ids;
+        if (!Array.isArray(coveredIds) || !Array.isArray(unlinkedIds) || !Array.isArray(candidate.additional_relations)
+            || candidate.decision?.disposition !== 'existing'
+            || new Set([...coveredIds, ...unlinkedIds]).size !== coveredIds.length + unlinkedIds.length
+            || JSON.stringify([...coveredIds, ...unlinkedIds].sort()) !== JSON.stringify(availableIds)) {
+          throw new Error(`${item.sense_id}/${candidate.text}: checkpoint contains invalid existing-coverage context`);
+        }
+      } else if (candidate.already_accounted !== undefined || candidate.existing_target_sense_ids !== undefined
+          || candidate.unlinked_target_sense_ids !== undefined || candidate.additional_relations !== undefined) {
+        throw new Error(`${item.sense_id}/${candidate.text}: optional-link fields require existing ID coverage`);
+      }
       const key = `${item.sense_id}\u0000${candidate.text}`;
       if (seen.has(key)) throw new Error(`checkpoint repeats ${item.sense_id}/${candidate.text}`);
       seen.add(key);
@@ -143,10 +171,13 @@ function validateCheckpoint(checkpoint, identity = {}) {
   if (checkpoint.pending_chunk !== null && !isPlainObject(checkpoint.pending_chunk)) throw new Error('checkpoint pending_chunk must be an object or null');
   if (checkpoint.pending_chunk) {
     const { pending_chunk: pending } = checkpoint;
-    if (keysOf(pending) !== 'candidate_count,chunk_id,slices' || !Array.isArray(pending.slices) || pending.slices.length === 0
+    const revision = pending.revision === true;
+    const expectedKeys = revision ? 'candidate_count,chunk_id,revision,slices' : 'candidate_count,chunk_id,slices';
+    if (keysOf(pending) !== expectedKeys || !Array.isArray(pending.slices) || pending.slices.length === 0
         || pending.chunk_id !== `${checkpoint.shard}-${checkpoint.batch}-${checkpoint.part}-${String(checkpoint.next_chunk_number).padStart(3, '0')}`) {
       throw new Error('checkpoint contains an invalid pending chunk');
     }
+    if (revision && checkpoint.merged) throw new Error('a merged checkpoint cannot have a revision chunk');
     const pendingSenses = new Set();
     let pendingCount = 0;
     for (const slice of pending.slices) {
@@ -155,7 +186,10 @@ function validateCheckpoint(checkpoint, identity = {}) {
       const firstUndecided = item?.candidates.findIndex((candidate) => candidate.decision === null) ?? -1;
       if (!item || keysOf(slice) !== 'end,sense_id,start' || pendingSenses.has(slice.sense_id)
           || !Number.isInteger(slice.start) || !Number.isInteger(slice.end)
-          || slice.start !== firstUndecided || slice.end <= slice.start || slice.end > item.candidates.length) {
+          || slice.start < 0 || slice.end > item.candidates.length
+          || (revision
+            ? slice.end !== slice.start + 1 || slice.end > item.candidates.length || item.candidates[slice.start]?.decision === null
+            : slice.start !== firstUndecided || slice.end <= slice.start || slice.end > item.candidates.length)) {
         throw new Error(`checkpoint contains an invalid pending slice for ${slice.sense_id}`);
       }
       pendingSenses.add(slice.sense_id);
@@ -173,7 +207,17 @@ function validateCheckpointDecisions(checkpoint) {
   for (const item of checkpoint.items) {
     for (const candidate of item.candidates) {
       if (candidate.decision === null) throw new Error(`${item.sense_id}/${candidate.text}: decision is missing`);
-      validateDecision(item, candidate, candidate.decision);
+      if (candidate.already_accounted === true) {
+        if (candidate.decision.disposition !== 'existing') throw new Error(`${item.sense_id}/${candidate.text}: existing coverage cannot be replaced by a required decision`);
+        const seenTargets = new Set(candidate.existing_target_sense_ids);
+        for (const [index, relation] of candidate.additional_relations.entries()) {
+          validateDecision(item, { ...candidate, additional_relations: candidate.additional_relations.slice(0, index) }, relation);
+          if (seenTargets.has(relation.target_sense_id)) throw new Error(`${item.sense_id}/${candidate.text}: checkpoint repeats optional target sense ${relation.target_sense_id}`);
+          seenTargets.add(relation.target_sense_id);
+        }
+      } else {
+        validateDecision(item, candidate, candidate.decision);
+      }
     }
   }
 }
@@ -191,27 +235,34 @@ function decisionRows(checkpoint) {
   for (const item of checkpoint.items) {
     for (const candidate of item.candidates) {
       const decision = candidate.decision;
-      if (decision.disposition === 'drop') {
+      const appendRelation = (relationDecision) => {
+        if (relationDecision.target_resolution === 'exact') {
+          relations.push({
+            source_record_id: item.record_id,
+            source_sense_id: item.sense_id,
+            target_record_id: relationDecision.target_record_id,
+            target_sense_id: relationDecision.target_sense_id,
+            type: relationDecision.type,
+            relevance: relationDecision.relevance,
+            reverse_type: relationDecision.reverse_type,
+            reverse_relevance: relationDecision.reverse_relevance,
+          });
+        } else {
+          relations.push({
+            source_record_id: item.record_id,
+            source_sense_id: item.sense_id,
+            text: candidate.text,
+            type: relationDecision.type,
+            relevance: relationDecision.relevance,
+          });
+        }
+      };
+      if (candidate.already_accounted === true) {
+        for (const relation of candidate.additional_relations) appendRelation(relation);
+      } else if (decision.disposition === 'drop') {
         drops.push({ source_record_id: item.record_id, source_sense_id: item.sense_id, candidate: candidate.text, reason: decision.reason.trim() });
-      } else if (decision.target_resolution === 'exact') {
-        relations.push({
-          source_record_id: item.record_id,
-          source_sense_id: item.sense_id,
-          target_record_id: decision.target_record_id,
-          target_sense_id: decision.target_sense_id,
-          type: decision.type,
-          relevance: decision.relevance,
-          reverse_type: decision.reverse_type,
-          reverse_relevance: decision.reverse_relevance,
-        });
       } else {
-        relations.push({
-          source_record_id: item.record_id,
-          source_sense_id: item.sense_id,
-          text: candidate.text,
-          type: decision.type,
-          relevance: decision.relevance,
-        });
+        appendRelation(decision);
       }
     }
   }
@@ -238,8 +289,8 @@ function assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, ne
   for (const item of checkpoint.items) for (const candidate of item.candidates) {
     const candidateKey = `${item.sense_id}\u0000${candidate.text}`;
     checkpointCandidates.set(candidateKey, candidate);
-    if (candidate.decision?.target_resolution === 'exact') {
-      sourceCandidateForPair.set(idPairKey(item.sense_id, candidate.decision.target_sense_id), candidateKey);
+    for (const decision of [candidate.decision, ...(candidate.additional_relations ?? [])]) {
+      if (decision?.target_resolution === 'exact') sourceCandidateForPair.set(idPairKey(item.sense_id, decision.target_sense_id), candidateKey);
     }
   }
   for (const row of existingRelations) {
@@ -292,27 +343,9 @@ function assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, ne
   return { relations: [...existingRelations, ...appendRelations], drops: [...existingDrops, ...appendDrops] };
 }
 
-function checkpointIndex(checkpoint) {
-  const byId = new Map();
-  const senses = new Map();
-  const add = (recordId, lemma, sense) => {
-    const record = byId.get(recordId) ?? { id: recordId, lemma, senses: [] };
-    byId.set(recordId, record);
-    if (!record.senses.some((entry) => entry.id === sense.sense_id)) record.senses.push({ id: sense.sense_id, pos: sense.pos, gloss: sense.gloss });
-    senses.set(sense.sense_id, { record, sense: { id: sense.sense_id, pos: sense.pos, gloss: sense.gloss } });
-  };
-  for (const item of checkpoint.items) {
-    add(item.record_id, item.lemma, { sense_id: item.sense_id, pos: item.pos, gloss: item.gloss });
-    for (const candidate of item.candidates) for (const target of candidate.same_spelling_targets) {
-      for (const sense of target.senses) add(target.record_id, target.lemma, sense);
-    }
-  }
-  return { byId, senses };
-}
-
 function parseArgs(argv) {
   const [command, ...rest] = argv;
-  const options = { command, shard: null, batch: null, part: null, out: null, checkpoint: null, input: null, maxCandidates: DEFAULT_CHUNK_CANDIDATES, allowPartial: false };
+  const options = { command, shard: null, batch: null, part: null, out: null, checkpoint: null, input: null, maxCandidates: DEFAULT_CHUNK_CANDIDATES, allowPartial: false, sourceSenseId: null, candidateText: null };
   for (let index = 0; index < rest.length; index += 1) {
     const flag = rest[index];
     if (flag === '--shard') options.shard = rest[++index];
@@ -322,6 +355,8 @@ function parseArgs(argv) {
     else if (flag === '--checkpoint') options.checkpoint = rest[++index];
     else if (flag === '--in') options.input = rest[++index];
     else if (flag === '--max-candidates') options.maxCandidates = Number(rest[++index]);
+    else if (flag === '--source-sense-id') options.sourceSenseId = rest[++index];
+    else if (flag === '--candidate') options.candidateText = rest[++index];
     else if (flag === '--allow-partial') options.allowPartial = true;
     else throw new Error(`unknown argument ${flag}\n${USAGE}`);
   }
@@ -335,6 +370,11 @@ function parseArgs(argv) {
   if (['read-chunk', 'save-chunk', 'merge'].includes(command) && !options.checkpoint) throw new Error(`${command} requires --checkpoint\n${USAGE}`);
   if (command === 'save-chunk' && !options.input) throw new Error(`save-chunk requires --in\n${USAGE}`);
   if (options.allowPartial && !['prepare', 'verify'].includes(command)) throw new Error(`--allow-partial is only valid for prepare/verify\n${USAGE}`);
+  if ((options.sourceSenseId !== null || options.candidateText !== null)
+      && (command !== 'read-chunk' || typeof options.sourceSenseId !== 'string' || !options.sourceSenseId
+        || typeof options.candidateText !== 'string' || !options.candidateText)) {
+    throw new Error(`--source-sense-id and --candidate must be used together with read-chunk\n${USAGE}`);
+  }
   if (command === 'prepare' && options.part && options.out) throw new Error('Part prepare writes its checkpoint; use --checkpoint instead of --out');
   return options;
 }
@@ -357,7 +397,7 @@ export async function run(argv, { root } = {}) {
 
   if (options.command === 'read-chunk' || options.command === 'save-chunk') {
     const checkpoint = await readCheckpoint(checkpointPath);
-    if (options.command === 'read-chunk') return readChunk(checkpoint, checkpointPath, options.maxCandidates, options.out, repositoryRoot);
+    if (options.command === 'read-chunk') return readChunk(checkpoint, checkpointPath, options.maxCandidates, options.out, repositoryRoot, options.sourceSenseId, options.candidateText);
     return saveChunk(checkpoint, checkpointPath, options.input, repositoryRoot);
   }
   if (options.command === 'merge') return mergeCheckpoint(await readCheckpoint(checkpointPath), checkpointPath, repositoryRoot);
@@ -392,7 +432,15 @@ export async function run(argv, { root } = {}) {
     // A re-run must not re-offer what is already decided: this shard's own approved rows and real Drops count too.
     const own = await loadOptionalJsonl(shardRelationPath(options.shard, repositoryRoot));
     const ownDrops = await loadOptionalJsonl(shardDropPath(options.shard, repositoryRoot));
-    const result = prepareShard({ canonicalRows, candidateFiles, approvedRelationRows: [...others, ...own], dropRows: ownDrops, index, scopeRows });
+    const result = prepareShard({
+      canonicalRows,
+      candidateFiles,
+      approvedRelationRows: [...others, ...own],
+      dropRows: ownDrops,
+      index,
+      scopeRows,
+      includePartiallyCovered: Boolean(options.part),
+    });
     if (options.part) {
       const checkpoint = {
         version: CHECKPOINT_VERSION,
@@ -407,12 +455,21 @@ export async function run(argv, { root } = {}) {
         items: result.items.map((item) => ({
           ...item,
           approved_peers: approvedPeersForSense(item.sense_id, [...others, ...own], index),
-          candidates: item.candidates.map((candidate) => ({
-            text: candidate.text,
-            producers: candidate.producers,
-            same_spelling_targets: sameSpellingTargets(index, candidate.text),
-            decision: null,
-          })),
+          candidates: item.candidates.map((candidate) => {
+            const alreadyAccounted = candidate.already_accounted === true;
+            return {
+              text: candidate.text,
+              producers: candidate.producers,
+              same_spelling_targets: sameSpellingTargets(index, candidate.text),
+              ...(alreadyAccounted ? {
+                already_accounted: true,
+                existing_target_sense_ids: candidate.existing_target_sense_ids,
+                unlinked_target_sense_ids: candidate.unlinked_target_sense_ids,
+                additional_relations: [],
+              } : {}),
+              decision: alreadyAccounted ? { disposition: 'existing' } : null,
+            };
+          }),
         })),
       };
       validateCheckpoint(checkpoint, { shard: options.shard, batch: options.batch, part: options.part });
@@ -494,18 +551,51 @@ function pendingChunkPayload(checkpoint, pending) {
         candidate_total: item.candidates.length,
         continues_from_previous: slice.start > 0,
         continues_in_next: slice.end < item.candidates.length,
-        candidates: item.candidates.slice(slice.start, slice.end).map(({ text, producers, same_spelling_targets: targets }) => ({
-          text,
-          producers,
-          same_spelling_targets: targets,
+        candidates: item.candidates.slice(slice.start, slice.end).map((candidate) => ({
+          text: candidate.text,
+          producers: candidate.producers,
+          same_spelling_targets: candidate.same_spelling_targets,
+          ...(candidate.already_accounted === true ? {
+            already_accounted: true,
+            existing_target_sense_ids: candidate.existing_target_sense_ids,
+            unlinked_target_sense_ids: candidate.unlinked_target_sense_ids,
+            additional_relations: candidate.additional_relations,
+          } : {}),
+          ...(candidate.decision === null ? {} : { previous_decision: candidate.decision }),
         })),
       };
     }),
   };
 }
 
-async function readChunk(checkpoint, checkpointPath, maxCandidates, out, root) {
+async function readChunk(checkpoint, checkpointPath, maxCandidates, out, root, sourceSenseId = null, candidateText = null) {
   let pending = checkpoint.pending_chunk;
+  if (sourceSenseId !== null) {
+    if (checkpoint.merged) throw new Error('cannot revise a decision after the Part checkpoint has merged');
+    if (pending) {
+      const item = checkpoint.items.find((entry) => entry.sense_id === sourceSenseId);
+      const candidateIndex = item?.candidates.findIndex((candidate) => candidate.text === candidateText) ?? -1;
+      if (pending.revision !== true || pending.slices.length !== 1
+          || pending.slices[0].sense_id !== sourceSenseId || pending.slices[0].start !== candidateIndex) {
+        throw new Error(`checkpoint already has an active chunk ${pending.chunk_id}; save it before opening a revision`);
+      }
+    } else {
+      const item = checkpoint.items.find((entry) => entry.sense_id === sourceSenseId);
+      const candidateIndex = item?.candidates.findIndex((candidate) => candidate.text === candidateText) ?? -1;
+      if (!item || candidateIndex < 0) throw new Error(`checkpoint has no candidate ${sourceSenseId}/${candidateText}`);
+      const candidate = item.candidates[candidateIndex];
+      if (candidate.decision === null) throw new Error(`${sourceSenseId}/${candidateText} has no saved decision to revise`);
+      const chunkNumber = String(checkpoint.next_chunk_number).padStart(3, '0');
+      pending = {
+        chunk_id: `${checkpoint.shard}-${checkpoint.batch}-${checkpoint.part}-${chunkNumber}`,
+        candidate_count: 1,
+        revision: true,
+        slices: [{ sense_id: sourceSenseId, start: candidateIndex, end: candidateIndex + 1 }],
+      };
+      checkpoint.pending_chunk = pending;
+      await writeJsonAtomically(checkpointPath, checkpoint);
+    }
+  }
   if (!pending) {
     let remaining = maxCandidates;
     const slices = [];
@@ -526,7 +616,19 @@ async function readChunk(checkpoint, checkpointPath, maxCandidates, out, root) {
       if (remaining <= 0) break;
     }
     if (slices.length === 0) {
-      const complete = { complete: true, shard: checkpoint.shard, batch: checkpoint.batch, part: checkpoint.part, ...checkpointProgressPayload(checkpoint), items: [] };
+      const optionalLinks = checkpoint.merged ? [] : checkpoint.items.flatMap((item) => item.candidates
+        .filter((candidate) => candidate.already_accounted === true && candidate.decision.disposition === 'existing')
+        .map((candidate) => {
+          const additionalTargetSenseIds = new Set(candidate.additional_relations.map((relation) => relation.target_sense_id));
+          return {
+            source_sense_id: item.sense_id,
+            candidate: candidate.text,
+            existing_target_sense_ids: candidate.existing_target_sense_ids,
+            unlinked_target_sense_ids: candidate.unlinked_target_sense_ids.filter((senseId) => !additionalTargetSenseIds.has(senseId)),
+          };
+        })
+        .filter((candidate) => candidate.unlinked_target_sense_ids.length > 0));
+      const complete = { complete: true, shard: checkpoint.shard, batch: checkpoint.batch, part: checkpoint.part, ...checkpointProgressPayload(checkpoint), optional_links: optionalLinks, items: [] };
       if (out) await writeJsonAtomically(resolveRootPath(root, out), complete);
       else console.log(JSON.stringify(complete));
       return complete;
@@ -569,7 +671,11 @@ async function saveChunk(checkpoint, checkpointPath, inputPath, root) {
   }
   const missing = [...expected.keys()].filter((key) => !received.has(key));
   if (missing.length) throw new Error(`chunk has missing decisions: ${missing.map((key) => key.replace('\u0000', '/')).join(', ')}`);
-  for (const [key, decision] of received) expected.get(key).candidate.decision = decision;
+  for (const [key, decision] of received) {
+    const { candidate } = expected.get(key);
+    if (candidate.already_accounted === true) candidate.additional_relations.push(decision);
+    else candidate.decision = decision;
+  }
   checkpoint.pending_chunk = null;
   checkpoint.next_chunk_number += 1;
   await writeJsonAtomically(checkpointPath, checkpoint);
@@ -584,15 +690,31 @@ async function mergeCheckpoint(checkpoint, checkpointPath, root) {
   if (checkpoint.items.some((item) => item.candidates.some((candidate) => candidate.decision === null))) throw new Error(`cannot merge an incomplete checkpoint: ${checkpointProgress(checkpoint)}`);
   validateCheckpointDecisions(checkpoint);
   const { relations: newRelations, drops: newDrops } = decisionRows(checkpoint);
-  const index = checkpointIndex(checkpoint);
-  const shardSenseIds = new Set(checkpoint.items.map((item) => item.sense_id));
   const others = await loadApprovedRelations(root, { exceptShard: checkpoint.shard });
-  validateRelationRows({ relationRows: newRelations, dropRows: newDrops, index, shardSenseIds, otherRelationRows: others });
   const relationFile = shardRelationPath(checkpoint.shard, root);
   const dropFile = shardDropPath(checkpoint.shard, root);
   const existingRelations = await loadOptionalJsonl(relationFile);
   const existingDrops = await loadOptionalJsonl(dropFile);
   const merged = assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, newRelations, newDrops);
+  const loaded = await loadShard(checkpoint.shard, root, { batch: checkpoint.batch });
+  const scoped = partScope(loaded.canonicalRows, loaded.candidateFiles, checkpoint.batch, checkpoint.part);
+  const finalShardSenseIds = new Set(loaded.canonicalRows.flatMap((record) => record.senses.map((sense) => sense.id)));
+  validateRelationRows({
+    relationRows: merged.relations,
+    dropRows: merged.drops,
+    index: loaded.index,
+    shardSenseIds: finalShardSenseIds,
+    otherRelationRows: others,
+  });
+  verifyAccounting({
+    canonicalRows: loaded.canonicalRows,
+    candidateFiles: scoped.files,
+    relationRows: merged.relations,
+    dropRows: merged.drops,
+    otherRelationRows: others,
+    index: loaded.index,
+    scopeRows: scoped.scopeRows,
+  });
   if (merged.relations.length > existingRelations.length) await writeJsonlAtomically(relationFile, merged.relations);
   if (merged.drops.length > existingDrops.length) await writeJsonlAtomically(dropFile, merged.drops);
   checkpoint.merged = true;
