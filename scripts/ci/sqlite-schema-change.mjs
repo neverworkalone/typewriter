@@ -136,6 +136,17 @@ function changedFileContainsSchemaSql(filePath, revision, repositoryDirectory) {
   // Full/Lite product schema, so its DDL must not select the product build. Product paths stay fail-closed.
   if (filePath.startsWith('tools/warroom/')) return false;
   try {
+    // Probe text matches with Git first so binary assets in the same diff do not
+    // get decoded as UTF-8. A matching text file is still parsed below with the
+    // existing fail-closed decoding and SQL schema rules.
+    const matches = runGit([
+      'grep', '-I', '-l', '-z', '-i', '-E', SQL_SCHEMA_GREP_PATTERN,
+      revision, '--', `:(literal)${filePath}`,
+    ], repositoryDirectory, { allowNoMatch: true });
+    const matchedPaths = nulPaths(matches, `SQL text scan at ${revision}`)
+      .map((value) => value.startsWith(`${revision}:`) ? value.slice(revision.length + 1) : value);
+    if (!matchedPaths.includes(filePath)) return false;
+
     const bytes = runGit(['show', `${revision}:${filePath}`], repositoryDirectory);
     return containsSqlSchemaMutation(decodeGitText(bytes, `${revision}:${filePath}`));
   } catch (error) {

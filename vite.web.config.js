@@ -7,7 +7,7 @@ import vue from '@vitejs/plugin-vue';
 import { createWebStaticAssets } from './scripts/build/web-static-assets-plugin.mjs';
 
 const projectRoot = fileURLToPath(new URL('.', import.meta.url));
-const webRoot = path.join(projectRoot, 'web');
+const siteRoot = path.join(projectRoot, 'site');
 const outputDirectory = path.resolve(
   process.env.TYPEWRITER_WEB_BUILD_OUTPUT_DIRECTORY ?? path.join(projectRoot, 'dist-web'),
 );
@@ -22,9 +22,9 @@ if (!base.startsWith('/') || !base.endsWith('/')) {
 // dictionary and bundles no search runtime; the dictionary lives in the
 // Chrome Extension build (vite.config.js).
 export default defineConfig({
-  root: webRoot,
+  root: siteRoot,
   base,
-  publicDir: path.join(webRoot, 'public'),
+  publicDir: path.join(siteRoot, 'public'),
   plugins: [
     vue(),
     createWebStaticAssets({ projectRoot, basePath: base }),
@@ -36,8 +36,8 @@ export default defineConfig({
     minify: shouldMinify ? 'esbuild' : false,
     rollupOptions: {
       input: {
-        main: path.join(webRoot, 'index.html'),
-        about: path.join(webRoot, 'about/index.html'),
+        main: path.join(siteRoot, 'index.html'),
+        about: path.join(siteRoot, 'about/index.html'),
       },
       output: {
         format: 'es',

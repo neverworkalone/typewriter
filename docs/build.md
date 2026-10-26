@@ -183,7 +183,7 @@ without any SQLite file present and never creates one.
 
 ## GitHub Pages build and deployment
 
-The Pages workflow builds the separate web source under web/ at the repository path
+The Pages workflow builds the separate web source under `site/` at the repository path
 /typewriter/. The site is a static product landing page for the Chrome Extension:
 `/typewriter/` introduces the product and links to the Chrome Web Store, and
 `/typewriter/about/` redirects to the landing page's philosophy section. Pages
@@ -199,7 +199,7 @@ initial-load transfer size.
 
 Pull requests build and validate on an ephemeral runner, but never upload or deploy
 Pages. The workflow runs on manual dispatch (`workflow_dispatch`) and on pushes to
-`master` that change files under `web/`; it has no cron schedule. On `master` it builds and validates the artifact for that exact commit,
+`master` that change files under `site/`; it has no cron schedule. On `master` it builds and validates the artifact for that exact commit,
 uploads it only after validation succeeds, then deploys it to the
 `github-pages` environment. The deployment job depends on the successful build and
 uses only Pages, OIDC, and Actions read permissions. Configure the repository Pages

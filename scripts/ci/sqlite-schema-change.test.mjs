@@ -75,6 +75,19 @@ test('exact PR diffs for Candidate, Relation, Canonical and product-code changes
   }
 });
 
+test('binary assets do not fail SQL schema classification', async () => {
+  const fixture = await makeRepository();
+  try {
+    const result = await classifyChange(fixture, {
+      'site/public/favicon.ico': Buffer.from([0x00, 0xff, 0x10, 0x00]),
+    });
+    assert.equal(result.schemaChanged, false);
+    assert.deepEqual(result.changedSchemaOwnerPaths, []);
+  } finally {
+    await rm(fixture.directory, { recursive: true, force: true });
+  }
+});
+
 test('connection-local temporary tables do not select the persistent product schema gate', async () => {
   const fixture = await makeRepository();
   try {

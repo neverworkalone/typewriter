@@ -62,7 +62,7 @@ describe('product dictionary runtime assets', () => {
     expect(webConfig).not.toContain('product-runtime-plugin');
     expect(webConfig).not.toContain('buildDictionary');
     expect(webConfig).toContain("?? '/typewriter/'");
-    expect(webConfig).toContain("path.join(webRoot, 'public')");
+    expect(webConfig).toContain("path.join(siteRoot, 'public')");
     expect(runtimePlugin).toContain("src/runtime/dictionary-worker.mjs");
     expect(runtimePlugin).toContain("src/runtime/dictionary-background.mjs");
     expect(runtimePlugin).toContain("src/runtime/dictionary-host.js");

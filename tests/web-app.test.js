@@ -6,7 +6,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import WebApp from '../web/src/App.vue';
+import WebApp from '../site/src/App.vue';
 
 const mountedApps = [];
 const STORE_URL =
@@ -72,18 +72,18 @@ describe('Typewriter Web static landing page', () => {
       extensionFavicon,
       extensionIcon16,
     ] = await Promise.all([
-      readFile(path.join(repositoryRoot, 'web/src/App.vue'), 'utf8'),
+      readFile(path.join(repositoryRoot, 'site/src/App.vue'), 'utf8'),
       readFile(path.join(repositoryRoot, 'vite.web.config.js'), 'utf8'),
-      readFile(path.join(repositoryRoot, 'web/index.html'), 'utf8'),
-      readFile(path.join(repositoryRoot, 'web/about/index.html'), 'utf8'),
-      readFile(path.join(repositoryRoot, 'web/public/favicon.ico')),
+      readFile(path.join(repositoryRoot, 'site/index.html'), 'utf8'),
+      readFile(path.join(repositoryRoot, 'site/about/index.html'), 'utf8'),
+      readFile(path.join(repositoryRoot, 'site/public/favicon.ico')),
       readFile(path.join(repositoryRoot, 'public/favicon.ico')),
       readFile(path.join(repositoryRoot, 'public/icon16.png')),
     ]);
 
     expect(webSource).not.toMatch(/src\/(?:runtime|domain|components)|DictionaryPanel|sqlite|chrome\./u);
-    expect(webConfig).toContain("root: webRoot");
-    expect(webConfig).toContain("path.join(webRoot, 'public')");
+    expect(webConfig).toContain("root: siteRoot");
+    expect(webConfig).toContain("path.join(siteRoot, 'public')");
     expect(html).toContain('href="/favicon.ico"');
     expect(aboutHtml).toContain('href="/favicon.ico"');
     expect(aboutHtml).toContain('http-equiv="refresh"');
