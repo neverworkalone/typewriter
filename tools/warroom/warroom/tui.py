@@ -381,8 +381,9 @@ class LineDetail(Screen):
     def refresh_view(self) -> None:
         st = control.line_status(self.app.store, self.model, self.method)
         reg = registry(self.app.cfg).get(self.model, {})
-        self.query_one("#info", Static).update(detail_header(st, reg, self.model))
-        self.query_one("#meta", Static).update(detail_meta(st, reg, self.model))
+        # Text, never markup: the error/branch/path values are data and may hold [brackets] (a Rich MarkupError ends the app)
+        self.query_one("#info", Static).update(Text(detail_header(st, reg, self.model)))
+        self.query_one("#meta", Static).update(Text(detail_meta(st, reg, self.model)))
         d = self.query_one("#drain", Button)
         d.label = "Cancel Drain" if st["line_drain"] else "Drain"
         d.disabled = not (st["can_drain"] or st["line_drain"])
