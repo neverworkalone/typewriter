@@ -66,5 +66,14 @@ for (const [name, width] of [['desktop', 1400], ['mobile', 375]]) {
   assert.equal(t.$$('#controls select')[2].value, 'b', `${name}: Method kept after blur`);
   assert.equal(t.$$('#controls select').length, 4, `${name}: controls not duplicated`);
 }
+
+const s2 = await boot(1400);
+s2.set(snap(true, [active('s2', 'PRODUCING', { label: 'Stage 2', batch: '001_01-03',
+  stage2: { shard: '001', batch: '01', part: '03' }, progress_text: '15 / 100 candidates', progress_pct: 15 })]));
+await s2.tick();
+const s2card = s2.$('.card.PRODUCING');
+assert.match(s2card.textContent, /Stage 2 · S001 B01 P03/);
+assert.match(s2card.textContent, /15 \/ 100 candidates  15%/);
+assert.equal(s2card.querySelector('.bar2 i').style.width, '15%');
 console.log('web_board ok');
 process.exit(0);   // the page's poll timer would otherwise keep Node alive

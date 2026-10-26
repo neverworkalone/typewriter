@@ -57,6 +57,7 @@ class Supervisor:
         self.paths, self.cfg, self.store = paths, cfg, store
         self.runner, self.adapter, self.gh, self.git, self.env = runner, adapter, gh, git, env
         self.clock = clock
+        self._worker_git_executables = []
         self.maint = Maintenance(self)   # shared-defect Issues, the hidden Maintainer and applying its merged fix
 
     def _adapter(self, producer: str):
@@ -149,6 +150,9 @@ class Supervisor:
         return True
 
     def _wait_operator(self, b) -> None:
+        if b["method"] == STAGE2_METHOD:
+            self._record_progress(b)   # checkpoint progress survives Stop, PAUSED/ERROR and Supervisor restart
+            b = self.store.batch(b["id"])
         ln = self.store.line(b["producer"], b["method"])
         if not self._reap_stopped(b):
             # Stop is pending: Retry is not honoured (and not remembered) while the old AI lives.
@@ -239,6 +243,12 @@ class Supervisor:
 
     def _handoff_recovered_pr(self, b, info, context: str) -> bool:
         """Attach a previously untracked, fully ownership-checked PR without rerunning production."""
+        if b["method"] == STAGE2_METHOD and isinstance(b["run_kind"], str) and \
+                b["run_kind"].startswith("s2_finalize_"):
+            problem = self._stage2_final_pr_problem(b, info)
+            if problem:
+                self._fail(b, "ERROR", problem)
+                return True
         self.store.update(b["id"], pr_number=info["number"], head_sha=info["head_sha"])
         self.store.log(b["id"], f"누락 PR #{info['number']} 재발견 및 소유권 확인 완료 (브랜치 {b['branch']})", "warn")
         b = self.store.batch(b["id"])
@@ -263,7 +273,8 @@ class Supervisor:
         if not runs:
             return False
         run = runs[0]
-        if not isinstance(run["kind"], str) or not run["kind"].startswith("produce") or run["ended_at"] is None:
+        if not isinstance(run["kind"], str) or not (run["kind"].startswith("produce") or
+                                                     run["kind"].startswith("s2_finalize_")) or run["ended_at"] is None:
             return False
         try:
             code = int(run["exit_status"])
@@ -286,7 +297,8 @@ class Supervisor:
             recorded = int(run["exit_status"])
         except (TypeError, ValueError):
             return False
-        return (isinstance(run["kind"], str) and run["kind"].startswith("produce")
+        return (isinstance(run["kind"], str) and (run["kind"].startswith("produce") or
+                                                   run["kind"].startswith("s2_finalize_"))
                 and run["ended_at"] is not None and recorded == code)
 
     def _find_recovery_pr(self, b):
@@ -600,12 +612,18 @@ class Supervisor:
         return None
 
     def _launch_env(self, b, kind: str, base_env: dict | None = None) -> dict:
-        """Keep the private approved index path in every C producer run, including review fixes."""
+        """Add run-specific worker environment without inheriting Stage 2 chunk restrictions into finalization."""
         env = dict(self.env if base_env is None else base_env)
         key = "TYPEWRITER_APPROVED_LITERARY_DB"
         env.pop(key, None)
         if b["method"] == "c":
             env[key] = str(Path(self.cfg["literary_index_path"].strip()).expanduser())
+        env.pop("WARROOM_REAL_GIT", None)
+        env.pop("WARROOM_STAGE2_CHUNK", None)
+        env.pop("WARROOM_GIT_EXECUTABLES", None)
+        if b["method"] == STAGE2_METHOD and isinstance(kind, str) and kind.startswith("s2_chunk_"):
+            env["WARROOM_STAGE2_CHUNK"] = "1"
+            env["WARROOM_GIT_EXECUTABLES"] = json.dumps(self._worker_git_executables)
         return env
 
     def _pinned_runs(self, producer: str, role: str = "stage1"):
@@ -625,7 +643,18 @@ class Supervisor:
                 return self._fail(b, "ERROR", f"worktree가 있지만 소유 확인 불가: {wt}")
         except GitError as e:
             return self._fail(b, "ERROR", f"worktree 준비 실패: {e}")
+        if b["method"] == STAGE2_METHOD:
+            return self._launch_stage2_next(b)
         self._launch(b, "produce")
+
+    def _launch_stage2_next(self, b) -> None:
+        """Start exactly one checkpoint chunk in a fresh session, or the separate Part finalizer."""
+        try:
+            checkpoint = stage2.checkpoint(b["worktree"], b["shard"], b["batch"])
+            phase = stage2.next_action(checkpoint)
+        except (OSError, ValueError, KeyError, TypeError) as e:
+            return self._fail(b, "ERROR", f"Stage 2 checkpoint 확인 실패: {e}. worktree를 보존합니다.")
+        return self._launch(b, f"s2_{phase}_new")
 
     # ---- launching runs ------------------------------------------------
     def _run(self, b) -> RunSpec:
@@ -663,19 +692,32 @@ class Supervisor:
         return None
 
     def _agent_env(self) -> dict:
-        """Give worker CLIs a Git shim that leaves worktree/branch lifecycle to Supervisor."""
+        """Give worker CLIs a guarded Git entry point without exposing the real executable path."""
         env = dict(self.env)
         original_path = env.get("PATH", os.defpath)
         real_git = shutil.which("git", path=original_path)
-        guard_dir = Path(__file__).resolve().parents[1] / "bin"
+        guard_dir = (Path(__file__).resolve().parents[1] / "bin").resolve()
         if not real_git or not (guard_dir / "git").is_file():
             raise RuntimeError("Supervisor Git 경계 도구를 찾을 수 없어 AI를 시작하지 않습니다")
-        env["WARROOM_REAL_GIT"] = real_git
+        git_executables = set()
+        for entry in original_path.split(os.pathsep):
+            candidate = Path(entry or os.curdir).expanduser() / "git"
+            if not candidate.is_file() or not os.access(candidate, os.X_OK):
+                continue
+            if candidate.resolve() == (guard_dir / "git").resolve():
+                continue
+            git_executables.add(str(candidate.absolute()))
+            git_executables.add(str(candidate.resolve()))
+        if not git_executables:
+            raise RuntimeError("실행 환경 PATH에서 차단할 Git 실행 파일 경로를 찾을 수 없습니다")
+        self._worker_git_executables = sorted(git_executables)
+        env.pop("WARROOM_REAL_GIT", None)
+        env["WARROOM_GIT_SHIM"] = str(guard_dir / "git")
         env["PATH"] = str(guard_dir) + os.pathsep + original_path
         return env
 
     def _launch(self, b, kind: str, events=None) -> None:
-        """kind: produce | fix_resume | fix_new | produce_resume | produce_recover"""
+        """Launch one pinned run; Stage 2 kinds identify one chunk or the separate finalizer."""
         ts = int(self.clock())
         while any((self.paths.logs / f"batch-{b['id']}-{ts}.{x}").exists() for x in ("log", "exit")):
             ts += 1   # one launch per log: a launch in the same second must not reuse (and append to) an earlier log
@@ -710,7 +752,25 @@ class Supervisor:
                 return self._fail(b, "ERROR", f"worktree의 Git 관리 디렉터리를 확인할 수 없어 AI를 시작하지 않았습니다: {e}")
         try:
             run_env = self._launch_env(b, kind, agent_env)
-            if kind == "produce":
+            if b["method"] == STAGE2_METHOD and kind.startswith("s2_"):
+                phase = "finalize" if "_finalize_" in kind else "chunk"
+                checkpoint = stage2.checkpoint(wt, b["shard"], b["batch"])
+                if stage2.next_action(checkpoint) != phase:
+                    raise prompts.PromptError("Stage 2 실행 단계와 현재 checkpoint 상태가 다릅니다")
+                prompt = prompts.stage2(b, phase, checkpoint, resumed=kind.endswith("_resume"))
+                if phase == "chunk":
+                    # Snapshot the checkpoint and both Git refs before each chunk; neither may move mid-run.
+                    baseline = {"checkpoint": checkpoint, "branch": b["branch"], "worktree": str(wt),
+                                "head": self.git.head(wt), "remote_head": self.git.remote_head(b["branch"])}
+                    self.store.set(stage2.run_start_key(b["id"]), json.dumps(baseline, sort_keys=True))
+                else:
+                    self.store.delete(stage2.run_start_key(b["id"]))
+                title = f"Stage 2 {stage2.label(b['shard'], b['batch'])} {phase}"
+                if kind.endswith("_resume"):
+                    h = ad.resume(sid, prompt, wt, run_env, run, log, ex, **extra)
+                else:
+                    h = ad.start(prompt, wt, run_env, run, title, log, ex, **extra)
+            elif kind == "produce":
                 h = ad.start(prompts.produce(b), wt, run_env, run,
                                        f"{b['method'].upper()} {b['shard']}_{b['batch']}", log, ex, **extra)
             elif kind == "produce_resume":
@@ -731,7 +791,7 @@ class Supervisor:
         state = "FIXING" if kind.startswith("fix") else "PRODUCING"
         fields = dict(state=state, pid=h.pid, exit_file=str(ex), log_file=str(log),
                       run_kind=kind, retry_after=None, error=None)
-        if kind == "fix_new" or kind in ("produce", "produce_recover"):
+        if kind == "fix_new" or kind in ("produce", "produce_recover", "s2_chunk_new", "s2_finalize_new"):
             fields["session_id"] = None  # captured from the new run's log
         self.store.update(b["id"], **fields)
         self.store.add_run(b["id"], kind, fields.get("session_id", sid), h.pid, log, ex,
@@ -772,6 +832,36 @@ class Supervisor:
     def _relaunch(self, b) -> None:
         if self._retry_denied_success(b):
             return
+        if b["method"] == STAGE2_METHOD and not b["pr_number"] and \
+                isinstance(b["run_kind"], str) and b["run_kind"].startswith("s2_chunk_"):
+            problem = self._stage2_chunk_boundary_problem(b)
+            if problem:
+                return self._fail(b, "ERROR", problem)
+            try:
+                if self._find_recovery_pr(b) is not None:
+                    return self._fail(b, "ERROR", "청크 실행 브랜치에 이미 PR이 있어 자동 재개를 중단합니다. "
+                                      "PR과 worktree를 보존합니다.")
+            except Exception as e:
+                return self._fail(b, "ERROR", f"청크 재개 전 기존 PR 소유권 확인 실패: {e}. worktree를 보존합니다.")
+            if self._stage2_chunk_saved(b):
+                self.store.log(b["id"], "이전 실행의 검증된 checkpoint 청크 저장을 확인했습니다. 같은 결정을 다시 만들지 않고 다음 새 세션으로 진행합니다.")
+                self.store.delete(stage2.run_start_key(b["id"]))
+                self.store.update(b["id"], session_id=None, retries=0, retry_after=None, error=None)
+                return self._launch_stage2_next(self.store.batch(b["id"]))
+            # An incomplete chunk may resume only its own session; without one, a fresh session reads the same pending
+            # checkpoint chunk. It never selects a different Part or changes the owned checkout.
+            kind = "s2_chunk_resume" if b["session_id"] else "s2_chunk_new"
+            return self._launch(b, kind)
+        if b["method"] == STAGE2_METHOD and not b["pr_number"] and \
+                isinstance(b["run_kind"], str) and b["run_kind"].startswith("s2_finalize_"):
+            try:
+                info = self._find_recovery_pr(b)
+            except Exception as e:
+                return self._fail(b, "ERROR", f"최종화 Retry 전 기존 PR 소유권 확인 실패: {e}. worktree를 보존합니다.")
+            if info is not None:
+                return self._handoff_recovered_pr(b, info, "운영자 Retry 직전")
+            kind = "s2_finalize_resume" if b["session_id"] else "s2_finalize_new"
+            return self._launch(b, kind)
         kind = b["run_kind"] or "produce"
         base = "fix" if kind.startswith("fix") else "produce"
         if base == "fix":
@@ -959,6 +1049,14 @@ class Supervisor:
 
     def _record_progress(self, b) -> None:
         """Observed progress of the current worktree only: the final file's records, else saved chunks/senses."""
+        if b["method"] == STAGE2_METHOD:
+            obs = progress.observe(b["worktree"], b["shard"], b["batch"], b["method"], b["producer"])
+            fields = {"records_done": None, "progress_kind": obs[0] if obs else None,
+                      "progress_done": obs[1] if obs else None, "progress_total": obs[2] if obs else None}
+            changed = {k: v for k, v in fields.items() if v != b[k]}
+            if changed:
+                self.store.update(b["id"], **changed)
+            return
         f = Path(b["worktree"]) / "data/relation-candidates" / b["shard"] / \
             f"{b['shard']}_{b['batch']}_{b['method']}_{b['producer']}.jsonl"
         try:
@@ -975,6 +1073,9 @@ class Supervisor:
             self.store.update(b["id"], **changed)
 
     def _run_ok(self, b) -> None:
+        if b["method"] == STAGE2_METHOD and b["state"] == "PRODUCING" and \
+                isinstance(b["run_kind"], str) and b["run_kind"].startswith("s2_chunk_"):
+            return self._run_ok_stage2_chunk(b)
         try:
             if b["state"] == "PRODUCING":
                 info = self._find_recovery_pr(b) if b["method"] in {"a", "b", "c", "d"} else self._find_pr(b)
@@ -992,6 +1093,12 @@ class Supervisor:
             return self._fail(b, "ERROR", str(e))
         except Exception as e:
             return self._fail(b, "ERROR", f"GitHub 조회 실패: {e}")
+        if b["method"] == STAGE2_METHOD and b["state"] == "PRODUCING" and \
+                isinstance(b["run_kind"], str) and b["run_kind"].startswith("s2_finalize_"):
+            problem = self._stage2_final_pr_problem(b, info)
+            if problem:
+                denied = self._adapter(b["producer"]).denied_actions(Path(b["log_file"]))
+                return self._fail(b, "PAUSED" if denied else "ERROR", problem)
         if b["state"] == "FIXING":
             if self._check_fix_head(b, info) != "ok":
                 return
@@ -999,7 +1106,88 @@ class Supervisor:
                 self.store.log(b["id"], "수정 실행이 끝났지만 새 HEAD 없음 (코멘트로만 응답했을 수 있음)", "warn")
         self._to_review(b, info)
 
+    def _stage2_final_pr_problem(self, b, info) -> str | None:
+        """Require a complete merged checkpoint and exact Part verify on the PR's pushed worktree HEAD."""
+        try:
+            checkpoint = stage2.checkpoint(b["worktree"], b["shard"], b["batch"])
+            if checkpoint is None or not checkpoint["complete"] or checkpoint["pending_chunk"] is not None or \
+                    checkpoint["decided"] != checkpoint["total"] or not checkpoint["merged"]:
+                return "Stage 2 finalizer PR 거부: checkpoint가 모든 decision 저장 및 merge 완료 상태가 아닙니다"
+            if info.get("head_ref") != b["branch"]:
+                return "Stage 2 finalizer PR의 head 브랜치가 이 Part의 소유 브랜치와 다릅니다"
+            wt = Path(b["worktree"])
+            if self.git.dirty(wt).strip():
+                return "Stage 2 finalizer PR 거부: worktree에 미커밋 변경이 있습니다"
+            head = self.git.head(wt)
+            if not head or head != info.get("head_sha"):
+                return f"Stage 2 finalizer PR HEAD와 소유 worktree HEAD가 다릅니다 ({info.get('head_sha')} / {head})"
+            batch, part = stage2.split_key(b["batch"])
+            ok, tail = self.git.verify_stage2(head, "part", b["shard"], batch, part)
+            if not ok:
+                return f"{stage2.label(b['shard'], b['batch'])} PR HEAD verify 실패: {tail}"
+        except Exception as e:
+            return f"Stage 2 finalizer PR 검증 실패: {e}"
+        return None
+
+    def _stage2_chunk_saved(self, b) -> bool:
+        """Compare the current checkpoint to the saved chunk-run baseline."""
+        raw = self.store.get(stage2.run_start_key(b["id"]))
+        if raw is None:
+            return False
+        try:
+            baseline = json.loads(raw)
+            if not isinstance(baseline, dict) or "checkpoint" not in baseline:
+                return False
+            after = stage2.checkpoint(b["worktree"], b["shard"], b["batch"])
+        except (OSError, ValueError, KeyError, TypeError):
+            return False
+        return stage2.chunk_saved_since(baseline["checkpoint"], after)
+
+    def _stage2_chunk_boundary_problem(self, b) -> str | None:
+        """Fail closed if a chunk run changed or lost the Part's owned HEAD or remote branch ref."""
+        raw = self.store.get(stage2.run_start_key(b["id"]))
+        if raw is None:
+            return "Stage 2 청크의 Git 경계 기준이 없어 Retry를 중단합니다. worktree와 브랜치를 보존합니다."
+        try:
+            baseline = json.loads(raw)
+            if not isinstance(baseline, dict) or baseline.get("branch") != b["branch"] or \
+                    baseline.get("worktree") != str(b["worktree"]) or not isinstance(baseline.get("head"), str) or \
+                    "remote_head" not in baseline:
+                return "Stage 2 청크의 Git 경계 기준이 손상되거나 다른 Part를 가리킵니다. worktree를 보존합니다."
+            head = self.git.head(Path(b["worktree"]))
+            if head != baseline["head"]:
+                return f"Stage 2 청크 실행 중 소유 HEAD가 변경됐습니다 ({baseline['head']} / {head}). 후속 실행을 중단합니다."
+            remote = self.git.remote_head(b["branch"])
+            if remote != baseline["remote_head"]:
+                return (f"Stage 2 청크 실행 중 원격 브랜치 {b['branch']}가 변경됐습니다 "
+                        f"({baseline['remote_head']} / {remote}). 후속 실행을 중단합니다.")
+        except Exception as e:
+            return f"Stage 2 청크의 HEAD/원격 브랜치 경계를 확인하지 못했습니다: {e}. worktree를 보존합니다."
+        return None
+
+    def _run_ok_stage2_chunk(self, b) -> None:
+        """Accept one saved chunk as an intermediate success; never accept or create an intermediate PR."""
+        problem = self._stage2_chunk_boundary_problem(b)
+        if problem:
+            return self._fail(b, "ERROR", problem)
+        try:
+            info = self._find_recovery_pr(b)
+            if info is not None:
+                return self._fail(b, "ERROR", f"청크 실행 중 소유 브랜치에 예상하지 않은 PR #{info['number']}이 있습니다. "
+                                  "PR과 worktree를 보존하고 자동 인계하지 않습니다.")
+        except Exception as e:
+            return self._fail(b, "ERROR", f"중간 청크 종료 후 기존 PR 소유권 확인 실패: {e}. worktree를 보존합니다.")
+        if not self._stage2_chunk_saved(b):
+            return self._fail(b, "ERROR", "Stage 2 청크 실행은 종료됐지만 시작 시점 대비 checkpoint가 정확히 전진하지 않았거나 "
+                              "pending_chunk가 남아 있습니다. 자동 재생산하지 않고 worktree와 기록을 보존합니다.")
+        self.store.delete(stage2.run_start_key(b["id"]))
+        self.store.update(b["id"], session_id=None, retries=0, retry_after=None, error=None)
+        self.store.log(b["id"], "Stage 2 청크가 admission-cli save-chunk를 통과해 checkpoint에 저장됐습니다. 다음 단계는 새 세션으로 실행합니다.")
+        return self._launch_stage2_next(self.store.batch(b["id"]))
+
     def _to_review(self, b, info, recovery_note: str | None = None) -> None:
+        if b["method"] == STAGE2_METHOD:
+            self.store.delete(stage2.run_start_key(b["id"]))
         self.store.update(b["id"], state="WAITING_REVIEW", pr_number=info["number"],
                           head_sha=info["head_sha"], error=recovery_note, retries=0)
         self.store.log(b["id"], f"PR #{info['number']} HEAD {info['head_sha'][:10]} 리뷰 대기")
@@ -1195,6 +1383,12 @@ class Supervisor:
             self.store.log(b["id"], f"AI 종료 코드 {code}, 분류={cls}; 소유 브랜치 PR 미발견 "
                            "(확인된 미발견이며 기존 실패 분류를 계속 적용합니다).", "warn")
             return False
+        if b["method"] == STAGE2_METHOD and isinstance(b["run_kind"], str) and \
+                b["run_kind"].startswith("s2_finalize_"):
+            problem = self._stage2_final_pr_problem(b, info)
+            if problem:
+                self._fail(b, "ERROR", problem)
+                return True
         self.store.log(b["id"], f"AI 종료 코드 {code}, 분류={cls}; 기존 소유 PR #{info['number']} 인계 "
                        f"(state={info['state']}, merged={info['merged']}, HEAD {info['head_sha'][:10]}) — "
                        "AI 재실행 없이 기존 검증 절차를 유지합니다.", "warn")
@@ -1227,7 +1421,9 @@ class Supervisor:
     def _run_failed(self, b, code: int) -> None:
         cls = self._classify_run(b["producer"], b["log_file"])
         self.store.log(b["id"], f"AI 종료 코드 {code}, 분류={cls}", "warn")
-        if b["state"] == "PRODUCING" and not b["pr_number"]:
+        chunk_run = b["method"] == STAGE2_METHOD and isinstance(b["run_kind"], str) \
+            and b["run_kind"].startswith("s2_chunk_")
+        if b["state"] == "PRODUCING" and not b["pr_number"] and not chunk_run:
             if self._handoff_failed_pr(b, code, cls):
                 return
         if cls == "effort":
@@ -1397,6 +1593,8 @@ class Supervisor:
         self.store.update(b["id"], state="COMPLETE", error=None)
         self.store.delete(f"cleanup_proof_{b['id']}")
         self.store.delete(f"stop_after_pr_{b['id']}")
+        if b["method"] == STAGE2_METHOD:
+            self.store.delete(stage2.run_start_key(b["id"]))
         self.store.finish_runs(b["id"], None)
         self.store.log(b["id"], f"배치 {b['shard']}_{b['batch']} 정리 완료")
         ln = self.store.line(b["producer"], b["method"])

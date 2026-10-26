@@ -5,7 +5,7 @@ import os
 import time
 import unicodedata
 
-from . import control
+from . import control, stage2
 from .config import TIERED_ADAPTERS, adapter_label
 
 
@@ -127,11 +127,8 @@ def card_text(st: dict) -> str:
     icon = ICON.get(st["state"], "?")
     phase = PHASE.get(st["state"], st["state"]) + (" + DRAIN" if st["drain"] else "")
     s2 = st.get("stage2")
-    title = _two_sided(m if s2 else f"{m} · {st['batch']}", f"{phase}  {icon}")
-    if s2:   # Stage 2 has no record counter: the Part's identity, then PR and elapsed time as on every card
-        ops = _two_sided(f"PR #{st['pr']}" if st["pr"] else "PR 생성 전",
-                         f"경과 {fmt_elapsed(st['elapsed'])}" if st.get("elapsed") is not None else "")
-        return "\n".join([title, _fit(f"Shard {s2['shard']} · Batch {s2['batch']} · Part {s2['part']}"), "", ops])
+    identity = f"Stage 2 {s2['shard']}/{s2['batch']}/{s2['part']}" if s2 else f"{m} · {st['batch']}"
+    title = _two_sided(identity, f"{phase}  {icon}")
     done, total, unit = progress_of(st)
     observed = done is not None and bool(total)
     if observed:
@@ -183,7 +180,9 @@ def detail_header(st: dict, reg: dict, model: str) -> str:
     who = f"{adapter_label(reg.get('adapter', '?'))} / {control.method_label(st['method'])}"
     if st["batch"] is None:
         return f"{who}  ({_idle_phase(st).lstrip('— ')})"
-    head = [f"{who} · {st['batch']}", PHASE.get(st["state"], st["state"]) + (" + DRAIN" if st["drain"] else "")]
+    s2 = st.get("stage2")
+    batch = stage2.label(s2["shard"], f"{s2['batch']}-{s2['part']}") if s2 else st["batch"]
+    head = [f"{who} · {batch}", PHASE.get(st["state"], st["state"]) + (" + DRAIN" if st["drain"] else "")]
     if st["pr"]:
         head.append(f"PR #{st['pr']}")
     if st["progress"]:

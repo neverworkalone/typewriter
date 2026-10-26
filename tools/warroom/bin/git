@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import os
+import shutil
 import sys
+from pathlib import Path
 
 
 def _command(argv: list[str]) -> tuple[str | None, list[str]]:
@@ -26,11 +28,33 @@ def _command(argv: list[str]) -> tuple[str | None, list[str]]:
     return None, []
 
 
+def _real_git() -> str | None:
+    """Find Git behind this shim without publishing its executable path to worker processes."""
+    shim = Path(__file__).resolve()
+    search_path = []
+    for entry in os.environ.get("PATH", os.defpath).split(os.pathsep):
+        candidate = Path(entry or os.curdir) / "git"
+        try:
+            if candidate.resolve() == shim:
+                continue
+        except OSError:
+            continue
+        search_path.append(entry)
+    real_git = shutil.which("git", path=os.pathsep.join(search_path))
+    if real_git and Path(real_git).resolve() != shim:
+        return real_git
+    return None
+
+
 def main() -> int:
     argv = sys.argv[1:]
     command, rest = _command(argv)
     blocked = False
-    if command == "worktree":
+    chunk_run = os.environ.get("WARROOM_STAGE2_CHUNK") == "1"
+    if chunk_run and command is not None:
+        # Chunk runs do not need Git; do not delegate to an executable hidden behind this shim.
+        blocked = True
+    elif command == "worktree":
         # `list` is read-only; every other worktree lifecycle operation is Supervisor-owned.
         blocked = bool(rest and rest[0] != "list")
     elif command == "branch":
@@ -40,12 +64,14 @@ def main() -> int:
         # Producer jobs need normal commits/pushes, never direct ref manipulation.
         blocked = True
     if blocked:
-        print("War Room Supervisor owns worktree and branch cleanup; leave the assigned checkout intact.",
-              file=sys.stderr)
+        message = ("Stage 2 chunk runs cannot access Git; leave the assigned HEAD and branch unchanged."
+                   if chunk_run else
+                   "War Room Supervisor owns worktree and branch cleanup; leave the assigned checkout intact.")
+        print(message, file=sys.stderr)
         return 126
 
-    real_git = os.environ.get("WARROOM_REAL_GIT", "")
-    if not os.path.isabs(real_git) or not os.path.isfile(real_git):
+    real_git = _real_git()
+    if not real_git:
         print("War Room's real Git executable is not configured.", file=sys.stderr)
         return 127
     os.execv(real_git, [real_git, *argv])

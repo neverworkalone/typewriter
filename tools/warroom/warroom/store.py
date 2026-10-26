@@ -98,7 +98,8 @@ ACTIVE_STATES = ("PREPARE", "PRODUCING", "WAITING_REVIEW", "FIXING", "MERGED",
                  "CLEANUP", "PAUSED", "ERROR", "CLEARING")
 # Per-batch kv keys the Supervisor writes; removed with the batch by Clear.
 BATCH_KV_PREFIXES = ("last_poll_", "last_poll_fixhead_", "headlag_", "last_merge_check_", "no_pr_recovery_",
-                     "verified_completion_run_", "defect_hold_", "cleanup_proof_", "stop_after_pr_")
+                     "verified_completion_run_", "defect_hold_", "cleanup_proof_", "stop_after_pr_",
+                     "s2_run_start_")
 
 
 class LineBusy(Exception):

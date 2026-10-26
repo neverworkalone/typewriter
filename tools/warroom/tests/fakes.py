@@ -39,11 +39,21 @@ class FakeAdapter(AgentAdapter):
 
     def start(self, prompt, cwd, env, run, title, log_file, exit_file):
         return self._go("start", cwd, log_file, exit_file, prompt=prompt, model=run.model, effort=run.effort,
-                        approved_literary_db=env.get("TYPEWRITER_APPROVED_LITERARY_DB"))
+                        approved_literary_db=env.get("TYPEWRITER_APPROVED_LITERARY_DB"),
+                        stage2_chunk_git=env.get("WARROOM_STAGE2_CHUNK"),
+                        git_shim=env.get("WARROOM_GIT_SHIM"),
+                        real_git=env.get("WARROOM_REAL_GIT"),
+                        git_sandbox_paths=env.get("WARROOM_GIT_EXECUTABLES"),
+                        worker_path=env.get("PATH"))
 
     def resume(self, session_id, prompt, cwd, env, run, log_file, exit_file):
         return self._go("resume", cwd, log_file, exit_file, prompt=prompt, model=run.model, effort=run.effort,
-                        session=session_id, approved_literary_db=env.get("TYPEWRITER_APPROVED_LITERARY_DB"))
+                        session=session_id, approved_literary_db=env.get("TYPEWRITER_APPROVED_LITERARY_DB"),
+                        stage2_chunk_git=env.get("WARROOM_STAGE2_CHUNK"),
+                        git_shim=env.get("WARROOM_GIT_SHIM"),
+                        real_git=env.get("WARROOM_REAL_GIT"),
+                        git_sandbox_paths=env.get("WARROOM_GIT_EXECUTABLES"),
+                        worker_path=env.get("PATH"))
 
     def preflight(self, runner, env, runs):
         """Stands in for OpenCode: the provider-qualified (p/...) IDs get the real `opencode models` check."""
@@ -96,6 +106,7 @@ class FakeGit:
         self.integrate_error: Exception | None = None         # raised by integrate (IntegrationBlocked / GitError)
         self.changed: dict[str, list[str]] = {}               # merge sha -> files the merged PR changed
         self.verified: set[tuple] = set()                     # (kind, shard, batch, part) Stage 2 verifies that succeed on master
+        self.verify_heads: set[tuple] = set()                 # (sha, kind, shard, batch, part) exact non-master verification
         self.verify_calls: list[tuple] = []
         self.verify_error: Exception | None = None
         self.on_base = True                                   # is a merge commit already on origin/<base>
@@ -107,7 +118,7 @@ class FakeGit:
         self.verify_calls.append((kind, shard, batch, part))
         if self.verify_error:
             raise self.verify_error
-        ok = (kind, shard, batch, part) in self.verified
+        ok = (kind, shard, batch, part) in self.verified or (sha, kind, shard, batch, part) in self.verify_heads
         return ok, "" if ok else "Relation Admission accounting failed: candidate has no relation"
 
     def contains_on_base(self, sha, base):
@@ -193,7 +204,8 @@ class FakeGit:
         if on_verified is not None:
             on_verified()
         self.removed.append((str(path), branch))
-        Path(path).rmdir()
+        import shutil
+        shutil.rmtree(path)
 
 
 class FakeGh:

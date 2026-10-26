@@ -3,6 +3,7 @@
 Fake AI/GitHub/git: this proves the state machine, selection and exclusivity logic, not a real model run or real
 `admission-cli` output (the real verify is a node process on a detached master checkout).
 """
+import json
 import sqlite3
 import unittest
 from unittest import mock
@@ -52,6 +53,18 @@ def merge_part(w, model, shard, batch, part, n=7, head=HEAD1):
     w.pr_info(n, head, head_ref=branch)
     w.gh.by_branch[branch] = [{"number": n, "state": "OPEN", "headRefOid": head}]
     w.gh.files[n] = [{"path": f"data/relations/relation-{shard}.jsonl"}, {"path": f"data/relation-drops/drop-{shard}.jsonl"}]
+
+
+def write_checkpoint(w, *, merged=False, shard="001", batch="01", part="01", next_chunk=2):
+    from pathlib import Path
+    b = w.store.active_batch("claude", S2) or w.store.active_batch("codex", S2)
+    path = Path(b["worktree"]) / ".warroom-scratch" / f"relation-admission-{shard}-{batch}-{part}.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({
+        "version": 1, "shard": shard, "batch": batch, "part": part, "complete": True, "stats": {},
+        "next_chunk_number": next_chunk, "pending_chunk": None, "merged": merged,
+        "items": [{"sense_id": "source-sense", "candidates": [{"text": "fixture", "decision": {"disposition": "drop"}}]}],
+    }), "utf-8")
 
 
 class StageTwoExclusivity(unittest.TestCase):
@@ -278,9 +291,17 @@ class StageTwoSelection(unittest.TestCase):
         self.assertIn("파일 목록을 알 수 없어", w.store.peek_line("claude", S2)["blocked"])
 
     def finish_part(self, w, model, shard, batch, part, n=7):
-        """AI opens the PR and exits, the PR is merged, the Part verify succeeds on master, cleanup completes."""
-        merge_part(w, model, shard, batch, part, n)
+        """One chunk session saves, one final session opens the PR, then exact merge verification completes."""
         bid = w.store.active_batch(model, S2)["id"]
+        chunk_pid = w.adapter.launches[-1]["pid"]
+        w.adapter.running[chunk_pid]["effect"] = lambda: write_checkpoint(w, shard=shard, batch=batch, part=part)
+        w.adapter.plan.append({"code": 0, "effect": lambda: write_checkpoint(w, merged=True,
+                                                                               shard=shard, batch=batch, part=part)})
+        w.adapter.finish(chunk_pid)
+        w.tick()
+        self.assertEqual(w.store.batch(bid)["state"], "PRODUCING")
+        merge_part(w, model, shard, batch, part, n)
+        w.git.verify_heads.add((HEAD1, "part", shard, batch, part))
         w.adapter.finish(w.adapter.launches[-1]["pid"])
         w.tick()
         self.assertEqual(w.store.batch(bid)["state"], "WAITING_REVIEW")
@@ -294,12 +315,18 @@ class StageTwoLifecycle(unittest.TestCase):
     def setUp(self):
         self.w = s2_world(self)
         control.start(self.w.store, "claude", S2, "continuous", cfg=self.w.cfg)
-        self.w.adapter.plan.append({"code": 0, "session": "ses_s2"})
+        self.w.adapter.plan.append({"code": 0, "session": "ses_chunk",
+                                    "effect": lambda: write_checkpoint(self.w)})
+        self.w.adapter.plan.append({"code": 0, "session": "ses_finalize",
+                                    "effect": lambda: write_checkpoint(self.w, merged=True)})
         self.w.tick()
 
     def to_review(self):
         w = self.w
+        w.adapter.finish(w.adapter.launches[-1]["pid"])
+        w.tick()
         merge_part(w, "claude", "001", "01", "01")
+        w.git.verify_heads.add((HEAD1, "part", "001", "01", "01"))
         w.adapter.finish(w.adapter.launches[-1]["pid"])
         w.tick()
         self.assertEqual(w.store.active_batch("claude", S2)["state"], "WAITING_REVIEW")
@@ -311,7 +338,7 @@ class StageTwoLifecycle(unittest.TestCase):
         w = self.w
         self.to_review()
         w.tick(3)   # PR exists but is not merged: no second Part, no second AI
-        self.assertEqual(len(w.adapter.launches), 1)
+        self.assertEqual(len(w.adapter.launches), 2)
         self.merge()
         w.tick(3)   # merged, but the exact Part verify fails on the latest master: ERROR, worktree kept
         b = w.store.active_batch("claude", S2)
@@ -319,7 +346,7 @@ class StageTwoLifecycle(unittest.TestCase):
         self.assertEqual(b["state"], "ERROR")
         self.assertEqual(b["paused_from"], "CLEANUP")
         self.assertIn("Shard 001 · Batch 01 · Part 01", b["error"])
-        self.assertEqual((len(w.adapter.launches), w.git.removed), (1, []))
+        self.assertEqual((len(w.adapter.launches), w.git.removed), (2, []))
         self.assertFalse(w.store.get(stage2.ok_key("001", "01", "01")))
         w.git.verified.add(("part", "001", "01", "01"))   # the owner fixes it; Retry re-verifies without any AI run
         self.assertTrue(control.retry(w.store, "claude", S2))
@@ -381,8 +408,11 @@ class StageTwoLifecycle(unittest.TestCase):
 
     def test_a_rival_pr_on_the_same_shard_stops_before_review(self):
         w = self.w
+        w.adapter.finish(w.adapter.launches[-1]["pid"])
+        w.tick()
         w.gh.open = [{"number": 55, "files": [{"path": "data/relation-drops/drop-001.jsonl"}]}]
         merge_part(w, "claude", "001", "01", "01")
+        w.git.verify_heads.add((HEAD1, "part", "001", "01", "01"))
         w.adapter.finish(w.adapter.launches[-1]["pid"])
         w.tick()
         b = w.store.active_batch("claude", S2)

@@ -91,6 +91,29 @@ class CardsAndControl(unittest.TestCase):
         self.assertEqual([fmt_elapsed(x) for x in (0, 59, 60, 312, 3599, 3900)],
                          ["0초", "59초", "1분 00초", "5분 12초", "59분 59초", "1시간 05분"])
 
+    def test_stage2_card_keeps_part_identity_pr_elapsed_and_saved_candidate_progress(self):
+        from warroom.views import CARD_W, card_text, cell_len
+        st = self.status(method="s2", batch="001_01-03", stage2={"shard": "001", "batch": "01", "part": "03"},
+                        progress_kind="candidates", progress_done=35, progress_total=100, pr=9, elapsed=60)
+        lines = card_text(st).split("\n")
+        self.assertEqual(len(lines), 4)
+        self.assertIn("Stage 2 001/01/03", lines[0])
+        self.assertIn("35 / 100 candidates", lines[1])
+        self.assertIn("35.0%", lines[1])
+        self.assertEqual(cell_len(lines[2]), CARD_W)
+        self.assertIn("PR #9", lines[3])
+        self.assertIn("경과 1분 00초", lines[3])
+
+    def test_stage2_card_distinguishes_unconfirmed_from_zero_percent(self):
+        from warroom.views import card_text
+        stage2 = {"shard": "001", "batch": "01", "part": "01"}
+        unconfirmed = card_text(self.status(method="s2", batch="001_01-01", stage2=stage2)).split("\n")
+        zero = card_text(self.status(method="s2", batch="001_01-01", stage2=stage2,
+                                     progress_kind="candidates", progress_done=0, progress_total=100)).split("\n")
+        self.assertEqual(unconfirmed[1], "진행량 확인 중")
+        self.assertIn("0 / 100 candidates", zero[1])
+        self.assertIn("0.0%", zero[1])
+
     def test_producing_is_shown_as_working_but_stays_producing_in_the_state_machine(self):
         from warroom.views import card_text, detail_header
         st = self.status(state="PRODUCING", mode="single", run=False, drain_once=False, error=None, blocked="",
