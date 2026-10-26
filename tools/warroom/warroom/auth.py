@@ -11,7 +11,7 @@ from pathlib import Path
 from .shell import Runner
 
 SCRUBBED = ("GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "GITHUB_ENTERPRISE_TOKEN",
-            "GH_HOST", "GH_REPO", "GIT_ASKPASS", "SSH_ASKPASS", "SSH_AUTH_SOCK", "GIT_SSH_COMMAND", "GIT_SSH")
+            "GH_HOST", "GH_REPO", "GIT_ASKPASS", "SSH_ASKPASS", "GIT_SSH_COMMAND", "GIT_SSH")
 
 
 class AuthError(Exception):

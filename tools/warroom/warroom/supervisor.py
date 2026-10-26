@@ -57,6 +57,7 @@ class Supervisor:
         self.paths, self.cfg, self.store = paths, cfg, store
         self.runner, self.adapter, self.gh, self.git, self.env = runner, adapter, gh, git, env
         self.clock = clock
+        self._worker_git_executables = []
         self.maint = Maintenance(self)   # shared-defect Issues, the hidden Maintainer and applying its merged fix
 
     def _adapter(self, producer: str):
@@ -610,8 +611,7 @@ class Supervisor:
                     "tools/warroom/.local/config.json을 확인하세요.")
         return None
 
-    def _launch_env(self, b, kind: str, base_env: dict | None = None,
-                    stage2_git_metadata_paths: list[Path] | None = None) -> dict:
+    def _launch_env(self, b, kind: str, base_env: dict | None = None) -> dict:
         """Add run-specific worker environment without inheriting Stage 2 chunk restrictions into finalization."""
         env = dict(self.env if base_env is None else base_env)
         key = "TYPEWRITER_APPROVED_LITERARY_DB"
@@ -620,14 +620,10 @@ class Supervisor:
             env[key] = str(Path(self.cfg["literary_index_path"].strip()).expanduser())
         env.pop("WARROOM_REAL_GIT", None)
         env.pop("WARROOM_STAGE2_CHUNK", None)
-        env.pop("WARROOM_STAGE2_GIT_METADATA_PATHS", None)
+        env.pop("WARROOM_GIT_EXECUTABLES", None)
         if b["method"] == STAGE2_METHOD and isinstance(kind, str) and kind.startswith("s2_chunk_"):
-            if not stage2_git_metadata_paths or any(not path.is_absolute() for path in stage2_git_metadata_paths):
-                raise RuntimeError("Stage 2 청크의 Git 보호 경로를 확인하지 못했습니다")
             env["WARROOM_STAGE2_CHUNK"] = "1"
-            env["WARROOM_STAGE2_GIT_METADATA_PATHS"] = json.dumps(
-                [str(path) for path in stage2_git_metadata_paths]
-            )
+            env["WARROOM_GIT_EXECUTABLES"] = json.dumps(self._worker_git_executables)
         return env
 
     def _pinned_runs(self, producer: str, role: str = "stage1"):
@@ -696,13 +692,25 @@ class Supervisor:
         return None
 
     def _agent_env(self) -> dict:
-        """Give worker CLIs the Supervisor-owned Git shim as their normal Git entry point."""
+        """Give worker CLIs a guarded Git entry point without exposing the real executable path."""
         env = dict(self.env)
         original_path = env.get("PATH", os.defpath)
         real_git = shutil.which("git", path=original_path)
         guard_dir = (Path(__file__).resolve().parents[1] / "bin").resolve()
         if not real_git or not (guard_dir / "git").is_file():
             raise RuntimeError("Supervisor Git 경계 도구를 찾을 수 없어 AI를 시작하지 않습니다")
+        git_executables = set()
+        for entry in original_path.split(os.pathsep):
+            candidate = Path(entry or os.curdir).expanduser() / "git"
+            if not candidate.is_file() or not os.access(candidate, os.X_OK):
+                continue
+            if candidate.resolve() == (guard_dir / "git").resolve():
+                continue
+            git_executables.add(str(candidate.absolute()))
+            git_executables.add(str(candidate.resolve()))
+        if not git_executables:
+            raise RuntimeError("실행 환경 PATH에서 차단할 Git 실행 파일 경로를 찾을 수 없습니다")
+        self._worker_git_executables = sorted(git_executables)
         env.pop("WARROOM_REAL_GIT", None)
         env["WARROOM_GIT_SHIM"] = str(guard_dir / "git")
         env["PATH"] = str(guard_dir) + os.pathsep + original_path
@@ -737,27 +745,13 @@ class Supervisor:
         except Exception as e:
             return self._fail(b, "ERROR", f"AI 실행용 Git 경계 설정 실패: {e}")
         extra = {}
-        stage2_git_admin_dir = None
-        stage2_git_metadata_paths = None
-        stage2_chunk = b["method"] == STAGE2_METHOD and kind.startswith("s2_chunk_")
-        needs_owned_git_dir = getattr(ad, "needs_git_dir", False) or stage2_chunk
-        if needs_owned_git_dir:   # the owned worktree's Git admin dir; Stage 2 chunks make it OS read-only
+        if getattr(ad, "needs_git_dir", False):   # one rule for every launch kind: the owned worktree's Git admin dir
             try:
-                stage2_git_admin_dir = self.git.worktree_gitdir(Path(wt))
-                if getattr(ad, "needs_git_dir", False):
-                    extra["git_dir"] = stage2_git_admin_dir
-                if stage2_chunk:
-                    worktree_gitfile = Path(wt) / ".git"
-                    if not worktree_gitfile.is_file():
-                        raise RuntimeError("등록된 linked worktree의 .git 포인터 파일이 없습니다")
-                    # The common directory owns branch refs and objects; the linked-worktree pointer
-                    # must remain attached to this admin entry. Neither may be changed by a chunk.
-                    stage2_git_metadata_paths = [stage2_git_admin_dir.parent.parent, worktree_gitfile]
+                extra["git_dir"] = self.git.worktree_gitdir(Path(wt))
             except Exception as e:
                 return self._fail(b, "ERROR", f"worktree의 Git 관리 디렉터리를 확인할 수 없어 AI를 시작하지 않았습니다: {e}")
         try:
-            run_env = self._launch_env(b, kind, agent_env,
-                                       stage2_git_metadata_paths)
+            run_env = self._launch_env(b, kind, agent_env)
             if b["method"] == STAGE2_METHOD and kind.startswith("s2_"):
                 phase = "finalize" if "_finalize_" in kind else "chunk"
                 checkpoint = stage2.checkpoint(wt, b["shard"], b["batch"])

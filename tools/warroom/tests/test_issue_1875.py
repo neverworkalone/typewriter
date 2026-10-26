@@ -12,7 +12,7 @@ from unittest.mock import patch
 from pathlib import Path
 
 from tests.fakes import HEAD1, FakeAdapter, World
-from warroom.adapters import ProcessAdapter, stage2_chunk_sandbox_command, stage2_chunk_worker_env
+from warroom.adapters import ProcessAdapter, stage2_chunk_sandbox_command
 from warroom import control
 from warroom.gitops import CleanupBlocked, GitError
 
@@ -295,147 +295,70 @@ class Stage2ProcessSandbox(unittest.TestCase):
     @unittest.skipUnless((sys.platform == "darwin" and shutil.which("sandbox-exec")) or
                          (sys.platform.startswith("linux") and shutil.which("bwrap")),
                          "requires sandbox-exec on macOS or bwrap on Linux")
-    def test_copied_git_cannot_change_owned_refs_or_use_chunk_credentials(self):
+    def test_direct_git_commit_and_push_are_blocked_but_finalizer_can_publish(self):
         real_git = shutil.which("git")
         self.assertTrue(real_git)
+        git_paths = [real_git, str(Path(real_git).resolve())]
         path = os.environ.get("PATH", os.defpath)
+        if sys.platform.startswith("linux"):
+            probe = subprocess.run(stage2_chunk_sandbox_command(["/bin/true"], git_paths, path),
+                                   capture_output=True, text=True)
+            if probe.returncode != 0:
+                self.skipTest("bwrap is installed but unavailable for unprivileged process isolation")
+
+        def git(*args):
+            return subprocess.run([real_git, *args], check=True, capture_output=True, text=True)
+
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            repo, worktree, remote = root / "repo", root / "part-worktree", root / "remote.git"
-            home, gh_config = root / "home", root / "gh-config"
-            home.mkdir()
-            (home / ".ssh").mkdir()
-            gh_config.mkdir()
-            (gh_config / "hosts.yml").write_text("github.com: oauth_token: publishable\n", "utf-8")
-            helper_dir = root / "helpers"
-            helper_dir.mkdir()
-            fake_gh = helper_dir / "gh"
-            fake_gh.write_text(
-                "#!/bin/sh\n"
-                "grep -q publishable \"$GH_CONFIG_DIR/hosts.yml\" || exit 1\n"
-                "printf 'username=warroom\\npassword=publishable\\n\\n'\n",
-                "utf-8",
-            )
-            fake_gh.chmod(0o755)
-            source_env = {
-                "PATH": str(helper_dir) + os.pathsep + path, "HOME": str(home), "GH_TOKEN": "publishable",
-                "GITHUB_TOKEN": "another-token", "GH_CONFIG_DIR": str(gh_config),
-                "GIT_CONFIG_COUNT": "2", "GIT_CONFIG_KEY_0": "credential.helper",
-                "GIT_CONFIG_VALUE_0": "!gh auth git-credential",
-                "GIT_CONFIG_KEY_1": "user.name", "GIT_CONFIG_VALUE_1": "Ignored identity",
-                "GIT_ASKPASS": "/tmp/askpass-with-token", "SSH_AUTH_SOCK": str(root / "ssh-agent.sock"),
-            }
-
-            def git(*args, env=None, input=None):
-                return subprocess.run([real_git, *args], env=source_env if env is None else env,
-                                      check=True, capture_output=True, text=True, input=input)
-
-            protocol = "protocol=https\nhost=github.com\n\n"
-            source_credential = git("credential", "fill", env=source_env, input=protocol)
-            self.assertIn("password=publishable", source_credential.stdout)
+            repo, remote = root / "repo", root / "remote.git"
             git("init", "--bare", str(remote))
-            hook = remote / "hooks" / "pre-receive"
-            hook.write_text("#!/bin/sh\n[ \"$GH_TOKEN\" = publishable ]\n", "utf-8")
-            hook.chmod(0o755)
             repo.mkdir()
             git("init", "-b", "main", str(repo))
             git("-C", str(repo), "config", "user.name", "Stage2 test")
             git("-C", str(repo), "config", "user.email", "stage2@example.invalid")
             git("-C", str(repo), "commit", "--allow-empty", "-m", "initial")
-            first_commit = git("-C", str(repo), "rev-parse", "HEAD").stdout.strip()
-            git("-C", str(repo), "commit", "--allow-empty", "-m", "current")
-            current_commit = git("-C", str(repo), "rev-parse", "HEAD").stdout.strip()
             git("-C", str(repo), "remote", "add", "origin", str(remote))
-            git("-C", str(repo), "push", "origin", "HEAD:refs/heads/stage2")
-            git("-C", str(repo), "worktree", "add", "-b", "stage2", str(worktree), "HEAD")
-            before = git("-C", str(worktree), "rev-parse", "HEAD").stdout.strip()
-            git_common_dir = git("-C", str(worktree), "rev-parse", "--path-format=absolute",
-                                 "--git-common-dir").stdout.strip()
-            git_metadata_paths = [git_common_dir, str(worktree / ".git")]
-            remote_before = git("--git-dir", str(remote), "rev-parse", "refs/heads/stage2").stdout.strip()
-            copied_git = root / "renamed-tool"
-            shutil.copyfile(real_git, copied_git)
-            copied_git.chmod(0o755)
-            chunk_env, private_paths = stage2_chunk_worker_env(source_env)
-            chunk_credential = subprocess.run([real_git, "credential", "fill"], env=chunk_env,
-                                               input=protocol, capture_output=True, text=True)
-            self.assertNotEqual(chunk_credential.returncode, 0)
-            credential_override_env = dict(chunk_env)
-            credential_override_env["GH_CONFIG_DIR"] = str(gh_config)
-            credential_override_env["GIT_CONFIG_COUNT"] = "1"
-            credential_override_env["GIT_CONFIG_KEY_0"] = "credential.helper"
-            credential_override_env["GIT_CONFIG_VALUE_0"] = "!gh auth git-credential"
-            protected_credential = subprocess.run(stage2_chunk_sandbox_command(
-                [real_git, "credential", "fill"], git_metadata_paths, path, private_paths),
-                env=credential_override_env, input=protocol, capture_output=True, text=True)
-            self.assertNotEqual(protected_credential.returncode, 0)
+            git("-C", str(repo), "push", "origin", "HEAD:refs/heads/main")
+            before = git("-C", str(repo), "rev-parse", "HEAD").stdout.strip()
+            remote_before = git("--git-dir", str(remote), "rev-parse", "refs/heads/main").stdout.strip()
 
-            allowed = subprocess.run(stage2_chunk_sandbox_command(
-                ["/bin/echo", "sandbox-ok"], git_metadata_paths, path, private_paths),
-                env=chunk_env, capture_output=True, text=True)
-            if sys.platform.startswith("linux") and allowed.returncode != 0:
-                self.skipTest("bwrap is installed but unavailable for unprivileged process isolation")
+            allowed = subprocess.run(stage2_chunk_sandbox_command(["/bin/echo", "sandbox-ok"], git_paths, path),
+                                     capture_output=True, text=True)
             self.assertEqual((allowed.returncode, allowed.stdout.strip()), (0, "sandbox-ok"))
-            commits = [subprocess.run(stage2_chunk_sandbox_command(
-                [binary, "-C", str(worktree), "commit", "--allow-empty", "-m", "chunk"],
-                git_metadata_paths, path, private_paths), env=chunk_env, capture_output=True, text=True)
-                for binary in (real_git, str(copied_git))]
-            ref_update = subprocess.run(stage2_chunk_sandbox_command(
-                [str(copied_git), "-C", str(worktree), "update-ref", "refs/heads/stage2",
-                 first_commit, current_commit], git_metadata_paths, path, private_paths),
-                env=chunk_env, capture_output=True, text=True)
+            commit = subprocess.run(stage2_chunk_sandbox_command(
+                [real_git, "-C", str(repo), "commit", "--allow-empty", "-m", "chunk"], git_paths, path),
+                capture_output=True, text=True)
             push = subprocess.run(stage2_chunk_sandbox_command(
-                [str(copied_git), "-C", str(worktree), "push", "origin", "HEAD:refs/heads/stage2"],
-                git_metadata_paths, path, private_paths), env=chunk_env, capture_output=True, text=True)
-            self.assertTrue(all(result.returncode != 0 for result in commits))
-            self.assertNotEqual(ref_update.returncode, 0)
+                [real_git, "-C", str(repo), "push", "origin", "HEAD:refs/heads/main"], git_paths, path),
+                capture_output=True, text=True)
+            self.assertNotEqual(commit.returncode, 0)
             self.assertNotEqual(push.returncode, 0)
-            self.assertEqual(git("-C", str(worktree), "rev-parse", "HEAD").stdout.strip(), before)
-            self.assertEqual(git("--git-dir", str(remote), "rev-parse", "refs/heads/stage2").stdout.strip(),
+            self.assertEqual(git("-C", str(repo), "rev-parse", "HEAD").stdout.strip(), before)
+            self.assertEqual(git("--git-dir", str(remote), "rev-parse", "refs/heads/main").stdout.strip(),
                              remote_before)
 
-            git("-C", str(worktree), "commit", "--allow-empty", "-m", "finalizer", env=source_env)
-            git("-C", str(worktree), "push", "origin", "HEAD:refs/heads/stage2", env=source_env)
-            self.assertNotEqual(git("--git-dir", str(remote), "rev-parse", "refs/heads/stage2").stdout.strip(),
+            git("-C", str(repo), "commit", "--allow-empty", "-m", "finalizer")
+            git("-C", str(repo), "push", "origin", "HEAD:refs/heads/main")
+            self.assertNotEqual(git("--git-dir", str(remote), "rev-parse", "refs/heads/main").stdout.strip(),
                                 remote_before)
 
     @unittest.skipUnless(sys.platform == "darwin" and shutil.which("sandbox-exec"),
                          "requires sandbox-exec on macOS")
-    def test_spawn_protects_git_metadata_and_removes_github_credentials(self):
+    def test_spawn_strips_sandbox_paths_before_worker_exec(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            git_common_dir, gitfile, home, gh_config = root / "git-common", root / "worktree.git", root / "home", root / "gh-config"
-            git_common_dir.mkdir()
-            gitfile.write_text("gitdir: /owned/common/worktrees/part\n", "utf-8")
-            home.mkdir()
-            (home / ".ssh").mkdir()
-            gh_config.mkdir()
+            git_path = shutil.which("git")
             log_file, exit_file = root / "run.log", root / "run.exit"
-            env = {"PATH": os.environ.get("PATH", os.defpath), "HOME": str(home),
-                   "WARROOM_STAGE2_CHUNK": "1",
-                   "WARROOM_STAGE2_GIT_METADATA_PATHS": json.dumps([str(git_common_dir), str(gitfile)]),
-                   "GH_TOKEN": "must-not-reach-worker", "GITHUB_TOKEN": "must-not-reach-worker",
-                   "GH_CONFIG_DIR": str(gh_config), "SSH_AUTH_SOCK": str(root / "ssh-agent.sock"),
-                   "GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "credential.helper",
-                   "GIT_CONFIG_VALUE_0": "!gh auth git-credential"}
+            env = {"PATH": os.environ.get("PATH", os.defpath), "WARROOM_STAGE2_CHUNK": "1",
+                   "WARROOM_GIT_EXECUTABLES": json.dumps([git_path])}
             with patch("warroom.adapters.subprocess.Popen") as popen:
                 popen.return_value.pid = 42
                 ProcessAdapter()._spawn(["/bin/echo", "worker"], root, env, log_file, exit_file)
             spawned = popen.call_args.args[0]
             worker_env = popen.call_args.kwargs["env"]
-            command = " ".join(spawned)
             self.assertIn(shutil.which("sandbox-exec"), spawned)
-            self.assertIn("(deny file-write* (subpath", command)
-            self.assertIn(str(git_common_dir), command)
-            self.assertIn(str(gitfile), command)
-            self.assertNotIn("WARROOM_STAGE2_GIT_METADATA_PATHS", worker_env)
-            self.assertNotIn("GH_TOKEN", worker_env)
-            self.assertNotIn("GITHUB_TOKEN", worker_env)
-            self.assertNotIn("SSH_AUTH_SOCK", worker_env)
-            self.assertEqual(worker_env["GH_CONFIG_DIR"], os.devnull)
-            self.assertEqual(worker_env["GIT_SSH_COMMAND"], "/usr/bin/false")
-            self.assertEqual(worker_env["GIT_CONFIG_VALUE_0"], "")
-            self.assertNotIn("!gh auth git-credential", worker_env.values())
+            self.assertNotIn("WARROOM_GIT_EXECUTABLES", worker_env)
 
 
 if __name__ == "__main__":

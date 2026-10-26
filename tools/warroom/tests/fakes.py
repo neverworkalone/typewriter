@@ -41,18 +41,18 @@ class FakeAdapter(AgentAdapter):
         return self._go("start", cwd, log_file, exit_file, prompt=prompt, model=run.model, effort=run.effort,
                         approved_literary_db=env.get("TYPEWRITER_APPROVED_LITERARY_DB"),
                         stage2_chunk_git=env.get("WARROOM_STAGE2_CHUNK"),
-                        stage2_git_metadata_paths=env.get("WARROOM_STAGE2_GIT_METADATA_PATHS"),
                         git_shim=env.get("WARROOM_GIT_SHIM"),
                         real_git=env.get("WARROOM_REAL_GIT"),
+                        git_sandbox_paths=env.get("WARROOM_GIT_EXECUTABLES"),
                         worker_path=env.get("PATH"))
 
     def resume(self, session_id, prompt, cwd, env, run, log_file, exit_file):
         return self._go("resume", cwd, log_file, exit_file, prompt=prompt, model=run.model, effort=run.effort,
                         session=session_id, approved_literary_db=env.get("TYPEWRITER_APPROVED_LITERARY_DB"),
                         stage2_chunk_git=env.get("WARROOM_STAGE2_CHUNK"),
-                        stage2_git_metadata_paths=env.get("WARROOM_STAGE2_GIT_METADATA_PATHS"),
                         git_shim=env.get("WARROOM_GIT_SHIM"),
                         real_git=env.get("WARROOM_REAL_GIT"),
+                        git_sandbox_paths=env.get("WARROOM_GIT_EXECUTABLES"),
                         worker_path=env.get("PATH"))
 
     def preflight(self, runner, env, runs):
@@ -126,10 +126,6 @@ class FakeGit:
 
     def create_worktree(self, path, branch, base):
         Path(path).mkdir(parents=True)
-        if branch.startswith("s2-"):
-            (Path(path) / ".git").write_text(
-                f"gitdir: /repo/.git/worktrees/{Path(path).name}\n", "utf-8"
-            )
         self.reg[str(path)] = branch
         self.created.append((str(path), branch))
 
