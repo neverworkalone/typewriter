@@ -121,6 +121,7 @@ function validateCheckpoint(checkpoint, identity = {}) {
   if (!Array.isArray(checkpoint.items) || !Number.isInteger(checkpoint.next_chunk_number) || checkpoint.next_chunk_number < 1) {
     throw new Error('checkpoint is missing its items or chunk cursor');
   }
+  if (typeof checkpoint.complete !== 'boolean') throw new Error('checkpoint must record whether all Stage 1 inputs are complete');
   const seen = new Set();
   const seenSenses = new Set();
   for (const item of checkpoint.items) {
@@ -578,6 +579,7 @@ async function saveChunk(checkpoint, checkpointPath, inputPath, root) {
 }
 
 async function mergeCheckpoint(checkpoint, checkpointPath, root) {
+  if (!checkpoint.complete) throw new Error('cannot merge a checkpoint prepared with incomplete Stage 1 inputs');
   if (checkpoint.pending_chunk) throw new Error(`save the active chunk ${checkpoint.pending_chunk.chunk_id} before merging`);
   if (checkpoint.items.some((item) => item.candidates.some((candidate) => candidate.decision === null))) throw new Error(`cannot merge an incomplete checkpoint: ${checkpointProgress(checkpoint)}`);
   validateCheckpointDecisions(checkpoint);

@@ -66,6 +66,17 @@ test('Stage 2 loaders ignore malformed historical Relation and Drop backups', as
   assert.deepEqual(texts(prepared), ['버릴말', '새 말', '유일', '텍스트']);
 });
 
+test('Part merge refuses a checkpoint prepared with incomplete Stage 1 inputs', async (t) => {
+  const root = await repository(t);
+  const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
+  const prepared = await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01', '--allow-partial'], { root }));
+  assert.equal(prepared.complete, false);
+  await assert.rejects(
+    () => quiet(() => run(['merge', '--checkpoint', checkpoint], { root })),
+    /cannot merge a checkpoint prepared with incomplete Stage 1 inputs/,
+  );
+});
+
 test('--batch scopes prepare/verify to one 500-record batch: its own producers, records and rows', async (t) => {
   const root = await mkdtemp(path.join(tmpdir(), 'typewriter-admission-batch-'));
   t.after(() => rm(root, { recursive: true, force: true }));
