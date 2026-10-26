@@ -128,14 +128,16 @@ class DeniedButCompleted(unittest.TestCase):
 
     def test_retry_with_a_lost_exit_status_uses_the_log_and_pr_evidence(self):
         # Real #1828: the run's exit status was recorded as 'unknown' (lost exit file) although its log ends in success.
-        for name, verified, want in [("verified", True, "WAITING_REVIEW"), ("verify fails", False, None)]:
+        for name, verified, want, status in [("verified", True, "WAITING_REVIEW", "unknown"),
+                                             ("stopped by the old denial pause", True, "WAITING_REVIEW", "stopped"),
+                                             ("verify fails", False, None, "unknown")]:
             with self.subTest(name):
                 self.tearDown()
                 self.setUp()
                 w = self.w
                 b = self.run_part(final(), verified=False)
                 with w.store._conn() as c:
-                    c.execute("UPDATE runs SET exit_status='unknown' WHERE batch_id=?", (b["id"],))
+                    c.execute("UPDATE runs SET exit_status=? WHERE batch_id=?", (status, b["id"]))
                 if verified:
                     w.git.verified.add(("part", "001", "01", "01"))
                 self.assertTrue(control.retry(w.store, "claude", S2))
