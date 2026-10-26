@@ -17,7 +17,7 @@ from textual.widgets import Button, Collapsible, Footer, Header, RichLog, Rule, 
 import time
 
 from . import auth, control
-from .config import (Paths, adapter_label, adapters, load_config, methods, ordered_models, pin_summary, registry,
+from .config import (Paths, role_entry, role_of, role_pin_lines, adapter_label, adapters, load_config, methods, ordered_models, pin_summary, registry,
                      stage2_models, STAGE2_ADAPTERS)
 from .logrender import render_line
 from .views import (_hhmm, _when, control_columns, select_width, card_text, detail_header, maintainer_card_text,  # noqa: F401  (CARD_W/ICON re-exported for tests)
@@ -197,6 +197,7 @@ class SettingsScreen(Screen):
         for pid in ordered_models(app.cfg):
             p = reg[pid]
             lines.append(f"{p['label']} ({pid})  adapter={p['adapter']}  {pin_summary(p)}")
+        lines += role_pin_lines(app.cfg)
         self.query_one("#settings-body", Static).update("\n".join(lines))
 
 
@@ -381,6 +382,10 @@ class LineDetail(Screen):
     def refresh_view(self) -> None:
         st = control.line_status(self.app.store, self.model, self.method)
         reg = registry(self.app.cfg).get(self.model, {})
+        try:   # the pin this Line's method actually runs on (Stage 2 / Maintainer profiles differ from Stage 1)
+            reg = role_entry(self.app.cfg, self.model, role_of(self.method)) if reg else reg
+        except ValueError:
+            pass
         # Text, never markup: the error/branch/path values are data and may hold [brackets] (a Rich MarkupError ends the app)
         self.query_one("#info", Static).update(Text(detail_header(st, reg, self.model)))
         self.query_one("#meta", Static).update(Text(detail_meta(st, reg, self.model)))

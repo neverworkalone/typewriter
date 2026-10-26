@@ -7,16 +7,11 @@
   "producers": {
     "claude": {
       "label": "Sonnet",
-      "adapter": "claude",
-      "model": "sonnet",
-      "effort": "medium"
+      "adapter": "claude"
     },
     "codex": {
       "label": "Luna",
-      "adapter": "codex",
-      "model": "gpt-6-luna",
-      "effort": "xhigh",
-      "permission_profile": "worktree"
+      "adapter": "codex"
     },
     "deepseek": {
       "label": "DeepSeek",
@@ -28,15 +23,51 @@
       "effort": "high"
     }
   },
-  "methods": ["a", "b", "c", "d"],
-  "maintainer": "claude",
+  "model_profiles": {
+    "luna-high": {
+      "adapter": "codex",
+      "model": "gpt-6-luna",
+      "effort": "high",
+      "permission_profile": "worktree"
+    },
+    "luna-xhigh": {
+      "adapter": "codex",
+      "model": "gpt-6-luna",
+      "effort": "xhigh",
+      "permission_profile": "worktree"
+    },
+    "sonnet-medium": {
+      "adapter": "claude",
+      "model": "claude-sonnet-5-5",
+      "effort": "medium"
+    }
+  },
+  "assignments": {
+    "stage1": {
+      "codex": "luna-high",
+      "claude": "sonnet-medium"
+    },
+    "stage2": {
+      "codex": "luna-xhigh",
+      "claude": "sonnet-medium"
+    }
+  },
+  "methods": [
+    "a",
+    "b",
+    "c",
+    "d"
+  ],
+  "maintainer": "luna-xhigh",
   "shared_defect_verify": [],
   "opencode_bin": "opencode",
   "quota_patterns": [
     "FreeUsageLimit",
     "free (usage|tier|quota).{0,40}(exhaust|exceed|limit)"
   ],
-  "trusted_reviewers": ["genonfire"],
+  "trusted_reviewers": [
+    "genonfire"
+  ],
   "poll_seconds": 300,
   "pr_head_lag_timeout_seconds": 1800,
   "rate_limit_retries": 3,
