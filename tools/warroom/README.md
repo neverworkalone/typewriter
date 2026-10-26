@@ -41,27 +41,7 @@ sqlite3 -noheader tools/warroom/.local/warroom.db \
 
 **리뷰 후 수정 로그까지 함께** 보려면 위 명령의 `AND r.kind LIKE 'produce%'` 조건을 삭제한다. `runs.kind`도 같이 확인하려면 `SELECT r.kind, r.log_file`로 바꾼다. `pbcopy`를 빼면 터미널에 경로가 표시된다. `less <로그경로>` 또는 `tail -f <로그경로>`로 원본 로그를 읽을 수 있다.
 
-## 장애 대응 빠른 판단
-
-| 화면/상황 | 먼저 할 일 | 피할 일 |
-| --- | --- | --- |
-| `PAUSED` (인증·CLI 권한·한도) | Batch Detail에서 정확한 실패 명령과 권한/계정/한도를 확인 → 환경을 수정한 뒤 같은 배치 `Retry` | 권한을 무조건 확대하거나 새 배치 실행 |
-| `ERROR: 정상 종료했지만 PR 없음` | `Raw Log` 마지막 부분과 `Audit Log` 확인 → 최종 파일/PR 생성 여부 확인 → 같은 배치 복구 판단 | `Clear` 또는 무조건 초기 생산 |
-| `WAITING_REVIEW` | PR 번호로 리뷰 상태와 정확한 HEAD를 확인. 새로운 `-1`이 접수되면 War Room이 기존 PR에 수정 실행 | 수동으로 중복 PR 생성 |
-| `MERGED` / `CLEANUP` 오류 | 해당 PR의 실제 merge 여부, worktree 상태, Audit Log 확인. 원인 해결 후 같은 배치 `Retry` | 강제 reset/rebase 또는 worktree 수동 삭제 |
-| Stage 2 입력 대기 | 해당 Batch의 필수 Stage 1 Candidate 6개가 머지됐는지 확인. Single이면 기존 샤드에서 대기 | 다른 Part/샤드로 수동 전환 |
-| Shared defect 보고 | 연결된 `urgent` Issue와 Maintainer PR, 해당 배치의 `PAUSED` 사유 확인 | 수정 반영 전 무조건 재개 |
-
-**Shared defect 자동 복구:** 반복 가능한 공통 결함은 원 배치를 `PAUSED`로 보존하고 `urgent` Issue와 Maintainer 수정 PR을 통해 해결한다. Maintainer의 PR이 **머지되고 정리가 완료**되면 수정 커밋이 원 배치에 반영되고 회귀 검증에 성공한 경우 **기존 배치를 자동으로 한 번 재개**한다. 단순 PR 머지만으로 자동 재개 완료가 아니다. `Audit Log`에서 `공통 수정 … 반영·검증 완료 … → 자동 Retry 1회`를 확인한다. **Shared defect 보류 중 일반 `Retry`는 이를 우회하지 않는다.** 명시적으로 `Stop` 후 `Retry`하는 것은 수정 검증을 건너뛸 수 있는 운영자 override이므로 주의한다. 자동 복구 뒤 `ERROR`가 발생하면 먼저 실제 이전 결함이 해결됐는지와 재개 로그를 구분한다.
-
-## Restarting after code updates
-
-Updating files with `git pull` does not reload Python code already running in the Supervisor.
-The Board's `r` key reloads `config.json` only; it does **not** restart the Supervisor.
-After updating War Room's Python code, restart **both** tmux sessions from a separate,
-ordinary terminal (not from inside either War Room tmux session).
-Prefer a time when no producer is actively working; the Supervisor and TUI sessions are
-replaced, but the persistent database, producer worktrees and PRs are not deleted.
+## Supervisor 코드 수정 후 재시작
 
 ```sh
 tmux kill-session -t warroom-supervisor 2>/dev/null || true
