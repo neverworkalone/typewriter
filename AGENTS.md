@@ -376,29 +376,9 @@ Immediately before opening a PR, read the linked Issue's current labels
 Explicit PR label instructions replace conflicting inherited labels (e.g.,
 `urgent` instead of `batch`); retain unrelated labels.
 Verify the PR's labels after creation. Never rely on labels remembered at issue start.
-## Monitoring after PR creation
+## Handling PR review feedback
 
-After creating and pushing the implementation PR, automatically begin monitoring that PR every 5 minutes when the execution environment supports it.
-
-On each check:
-
-1. Check whether the PR is still open. Stop monitoring when it is merged or closed.
-2. Check for new or updated review submissions, inline review comments, and PR conversation comments. Track what has already been processed to avoid duplicate work.
-3. Evaluate all new actionable feedback together against the current head, active issue, canonical data rules, and product requirements. Do not accept feedback blindly.
-4. For accepted feedback, implement the appropriate fixes, run relevant validation, commit, and push to the same PR branch. Explain rejected or deferred feedback in the relevant thread.
-5. If there is no new actionable feedback, make no changes and post no repetitive status comments.
-
-**Resolve blocking reviews through dialogue:** respond to each new substantive `-1` in the PR conversation (or its relevant inline thread), not solely in a linked Issue or by silently editing PR metadata. Independently assess each finding against the current HEAD and requirements. If correct, fix it and point to the change/evidence; if incorrect or already resolved, explain the counterevidence and specifically ask for reconsideration through the ordinary PR discussion (do not invoke the reviewer yourself). A metadata-only correction may need no code change. Address the reviewer's next response in turn: acknowledge valid points, revise your own position where warranted, and narrow any remaining dispute to verifiable facts and an actionable next step. Neither blind compliance nor repeating the same rebuttal without engaging the reviewer's answer is sufficient.
-
-**Dependency Wait:** When resolving a PR blocker depends on another issue or PR, wait for that dependency to complete. Do not post repetitive replies or status comments while waiting; respond only to a new independent issue or an explicit owner instruction.
-
-**Do not abandon a blocked line:** distinguish a legitimate unresolved defect from a disagreement about evidence or requirements. If further exchanges offer no substantive progress, report the agreed facts, competing arguments, outstanding risk and decision needed to the owner; keep the PR/Issue status truthful and do not silently abandon the batch, declare completion or start unrelated downstream work. No fixed number of exchanges limits a productive discussion. This obligation does not authorize the author to perform, trigger or merge its own review.
-
-Continue monitoring after each feedback batch until the PR is merged or closed, or the user asks you to stop.
-
-Monitoring does not authorize starting, requesting, repeating, or performing a PR review, posting `@codex review`, or merging the PR.
-
-If the execution environment cannot sustain periodic monitoring, report that limitation explicitly rather than claiming monitoring is active.
+When assigned PR feedback, independently assess it against the current HEAD and requirements. Fix valid findings with appropriate validation, or explain disagreements with evidence in the PR conversation. Report blocked dependencies or unresolved disputes to the owner. Do not initiate reviews, poll PR status, or merge.
 
 ## Review boundary
 
