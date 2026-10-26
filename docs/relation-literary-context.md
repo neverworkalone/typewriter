@@ -51,10 +51,12 @@ War Room Method C runs receive the approved database as
 `TYPEWRITER_APPROVED_LITERARY_DB`, sourced from the local
 `literary_index_path` setting in `tools/warroom/.local/config.json`. The
 Supervisor checks that it is an absolute readable file before selecting a
-batch and passes it only to C production runs. Use that value for every `--db`
-argument; an unset or unreadable path is a setup error, not a reason to search
-the cache or guess another index. The absolute path stays in local settings and
-the process environment, not in Git, PR text, or Candidate output.
+batch and passes it only to C production runs. Pass that value with `--db` to
+`preflight`, `init`, `chunk`, and `submit`. The `report`, `add-form`, `export`,
+and `validate` commands do not accept `--db`. An unset or unreadable path is a
+setup error, not a reason to search the cache or guess another index. The
+absolute path stays in local settings and the process environment, not in Git,
+PR text, or Candidate output.
 
 `init` runs the same lean read-only index check once itself, so a separate
 `preflight` is **not** a per-batch step; run `preflight` (or `preflight --deep`)
