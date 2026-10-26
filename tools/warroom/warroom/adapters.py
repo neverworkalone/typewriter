@@ -63,6 +63,10 @@ class AgentAdapter:
         """
         return None
 
+    def denied_actions(self, log_file: Path) -> list[dict]:
+        """Actions the CLI's permission policy denied during an exited, otherwise successful run ([] if none/unknown)."""
+        return []
+
     def policy_refusal(self, log_file: Path) -> str | None:
         """A reason when the CLI's own policy refused an action (seen in the log), or None. Used when a run ended
         without its result (no PR): such a run is PAUSED for the operator instead of counted as a plain error."""
@@ -293,8 +297,9 @@ class OpenCodeAdapter(ProcessAdapter):
 
 # Permissions are the operator's own local Claude settings (~/.claude/settings.json, project settings), applied by
 # the CLI's own precedence. War Room passes no permission option: no allowlist, no permission mode, no bypass.
-# A tool the local settings do not allow is denied by the CLI and reported in `permission_denials`, which stops
-# the run in PAUSED (see run_problem). Model, effort and the session are the only things War Room pins.
+# A tool the local settings do not allow is denied by the CLI and reported in `permission_denials`. The Supervisor
+# keeps such a run in PAUSED unless owned-PR and Part verify evidence shows the required work completed anyway
+# (Supervisor._denied_run_completed). Model, effort and the session are the only things War Room pins.
 CLAUDE_REQUIRED_FLAGS = ("--model", "--effort", "--resume", "--name", "--output-format", "stream-json")
 _CLAUDE_EFFORT_FALLBACK = "ignoring it and using the default effort"   # the CLI's own warning for an unknown --effort
 
@@ -377,12 +382,21 @@ class ClaudeCodeAdapter(ProcessAdapter):
             return ("ERROR", "CLI가 실행 모델을 보고하지 않아 요청한 모델로 실행됐는지 확인할 수 없습니다.")
         if run and run.model.lower() not in reported.lower():
             return ("ERROR", f"CLI가 보고한 모델 {reported!r}이 요청한 {run.model!r}과 다릅니다 — 중지합니다.")
-        if result is not None and result.get("permission_denials"):
-            names = sorted({str(d.get("tool_name")) for d in result["permission_denials"] if isinstance(d, dict)})
-            return ("PAUSED", f"로컬 CLI 권한 정책상 거부되어 실행이 불완전합니다 (도구: {', '.join(names)}). "
-                              "자동 권한 상승 없이 중지합니다. 로컬 Claude 설정을 직접 확인한 뒤 Retry 하세요 "
-                              "(worktree·PR·세션 보존).")
         return None
+
+    def denied_actions(self, log_file):
+        """The final result's `permission_denials` (dicts), [] when none or no final result. A denial is not by itself
+        a failed run: the Supervisor accepts a successful run with denials only on owned-PR and Part verify evidence."""
+        try:
+            text = Path(log_file).read_text("utf-8", errors="replace")
+        except OSError:
+            return []
+        result = None
+        for o in _json_objects(text):
+            if o.get("type") == "result":
+                result = o
+        denials = result.get("permission_denials") if result is not None else None
+        return [d if isinstance(d, dict) else {"tool_name": str(d)} for d in denials] if isinstance(denials, list) else []
 
     def completion_problem(self, log_file, run, expected_session, cwd=None, env=None):
         """An exited run is accepted only with its own evidence: the session its init event reported AND a final

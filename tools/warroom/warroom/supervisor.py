@@ -670,7 +670,27 @@ class Supervisor:
         tier = f", tier={b['model_tier']}" if self._tiered(b["producer"]) else ""
         self.store.log(b["id"], f"{state} 시작 ({kind}, model={run.model}, effort={run.effort}{tier})")
 
+    def _retry_denied_success(self, b) -> bool:
+        """Retry after a denial pause: if the last exited run was a successful one (own session/result evidence) whose only
+        problem was its permission denials, re-run the same completion evidence check instead of relaunching the AI."""
+        runs = self.store.runs(b["id"])
+        if not runs or runs[0]["ended_at"] is None or str(runs[0]["exit_status"]) != "0":
+            return False
+        log = Path(runs[0]["log_file"] or "")
+        ad = self._adapter(b["producer"])
+        if not ad.denied_actions(log):
+            return False
+        if ad.completion_problem(log, self._recorded_run(b), b["session_id"], b["worktree"], self.env):
+            return False   # not a clean success otherwise: the regular handling decides
+        if not self._denials_cleared(b, log):
+            return True
+        self.store.set(f"verified_completion_run_{b['id']}", str(runs[0]["id"]))
+        self._run_ok(b)
+        return True
+
     def _relaunch(self, b) -> None:
+        if self._retry_denied_success(b):
+            return
         kind = b["run_kind"] or "produce"
         base = "fix" if kind.startswith("fix") else "produce"
         if base == "fix":
@@ -766,11 +786,57 @@ class Supervisor:
                                             b["worktree"], self.env)
             if problem:
                 return self._fail(b, problem[0], problem[1])
+            if not self._denials_cleared(b, Path(b["log_file"])):
+                return
             runs = self.store.runs(b["id"])
             if runs:
                 self.store.set(f"verified_completion_run_{b['id']}", str(runs[0]["id"]))
             return self._run_ok(b)
         self._run_failed(b, code)
+
+    def _denials_cleared(self, b, log_file: Path) -> bool:
+        """True: the exited, otherwise successful run had no permission denial, or its required work is proven done.
+
+        Invariant: a permission denial pauses the run unless the owned PR is open at the pushed local HEAD AND the exact
+        Part `verify` passes on that HEAD (Stage 2 only). Nothing is relaxed in the CLI permissions; a real block of a
+        required step leaves the PR missing, unpushed or failing verify, so it stays PAUSED. False: already failed."""
+        denied = self._adapter(b["producer"]).denied_actions(log_file)
+        if not denied:
+            return True
+        names = sorted({str(d.get("tool_name")) for d in denied})
+        cmds = [str((d.get("tool_input") or {}).get("command", ""))[:80] for d in denied
+                if isinstance(d.get("tool_input"), dict) and (d.get("tool_input") or {}).get("command")]
+        what = f"도구: {', '.join(names)}" + (f"; 명령: {' | '.join(cmds[:3])}" if cmds else "")
+        pause = (f"로컬 CLI 권한 정책상 거부되어 실행이 불완전합니다 ({what}). 자동 권한 상승 없이 중지합니다. "
+                 "로컬 Claude 설정을 직접 확인한 뒤 Retry 하세요 (worktree·PR·세션 보존).")
+        why = self._denied_run_problem(b)
+        if why is None:
+            self.store.log(b["id"], f"권한 거부 {len(denied)}건({what}) 있었으나 소유 PR·push된 HEAD·Part verify로 "
+                           "필수 작업 완료를 확인했습니다 — 리뷰 감시로 인계", "warn")
+            return True
+        self._fail(b, "PAUSED", f"{pause} 완료 증거 없음: {why}")
+        return False
+
+    def _denied_run_problem(self, b) -> str | None:
+        """Why a run with permission denials cannot be accepted as complete, or None when the evidence is conclusive."""
+        if b["method"] != STAGE2_METHOD:
+            return "Stage 2 Part verify 증거가 없는 배치입니다"
+        try:
+            info = self._find_recovery_pr(b)
+            if info is None:
+                return "소유 브랜치에 PR이 없습니다"
+            if b["pr_number"] and info["number"] != b["pr_number"]:
+                return f"PR #{info['number']}이 기록된 PR #{b['pr_number']}과 다릅니다"
+            if info["state"] != "open" or info["merged"]:
+                return f"PR #{info['number']}이 열린 상태가 아닙니다"
+            wt = Path(b["worktree"])
+            if self.git.dirty(wt).strip():
+                return "worktree에 미커밋 변경이 있습니다"
+            bb, pp = stage2.split_key(b["batch"])
+            ok, tail = self.git.verify_stage2(self.git.head(wt), "part", b["shard"], bb, pp)
+        except Exception as e:
+            return f"확인 실패: {e}"
+        return None if ok else f"{stage2.label(b['shard'], b['batch'])} verify 실패: {tail}"
 
     def _scan_report(self, b) -> bool:
         """A producer's structured shared-defect report (its own worktree scratch file) pauses its batch. True: handled.
