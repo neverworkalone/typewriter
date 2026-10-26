@@ -1,337 +1,110 @@
-# War Room
+# War Room — 운영 가이드
 
-Typewriter's production supervisor. `./war` opens a terminal situation board (Textual) over a
-persistent **Supervisor** that runs configured Claude, Codex or OpenCode producers, watches each PR
-(review → fix → `merged=true`) and removes only the worktree and branch it owns afterwards.
+이 README는 **오너가 War Room을 사용하면서 바로 찾아 실행할 명령과 조작 방법**을 정리한 문서다. 내부 아키텍처, 개발 이력, 구현 설계는 다루지 않는다. 모든 셸 명령은 별도 표시가 없으면 **Typewriter 저장소 루트**에서 실행한다.
 
-```text
-./war  ──tmux session "warroom"──▶ TUI (view + commands, writes SQLite only)
-                                   tmux session "warroom-supervisor" ──▶ Supervisor loop
-                                        ├─ AI producer subprocesses (detached, own process group)
-                                        ├─ gh (isolated GH_CONFIG_DIR), git worktrees
-                                        └─ SQLite state: tools/warroom/.local/warroom.db
+## 1. 실행 및 기본 조작
+
+```sh
+./war
 ```
 
-The Supervisor reads `config.json` at start and again on **`r`** (Board): it re-runs `load_config`, and the new
-config replaces the running one only if the whole config validates (JSON, the type and range of every runtime value such as
-`poll_seconds` and `rate_limit_retries`, model/effort pins, duplicate IDs). Start runs the same check. A
-rejected reload keeps the old config and shows the reason in the event log and on the Board. A reload that removes a
-model with an unfinished batch, changes its CLI adapter, or changes `repo`, `*_bin`, `git_name` or `git_email` (wired once at start), is
-rejected: restart the Supervisor for those. A successful reload clears `시작 차단:` messages (Start re-checks them).
-Unfinished batches keep their recorded model + effort pin; a changed pin still stops them at relaunch. New columns
-appear after reopening the TUI.
+- 첫 실행: `brew install tmux`; 사용하려는 AI CLI(Claude Code / Codex / OpenCode)를 설치하고 로그인한다. War Room의 GitHub 계정 설정은 아래 §5 참조.
+- **시작:** 상단에서 CLI/모델, Method `A`/`B`/`C`/`D` 또는 `Stage 2`, `Single`/`Continuous`를 선택하고 `Start`를 누른다. 각 카드에는 작업 배치와 상태, 관측된 진행률(해당 시), PR 번호가 표시된다.
+- **Single:** A/B/C/D는 배치 하나 수행 후 종료한다. Stage 2는 처음 선택한 샤드에 고정되어 준비된 Part를 순서대로 처리하며, 입력이 없으면 해당 샤드에서 기다린다.
+- **Continuous:** 같은 생산 라인의 다음 작업을 순서대로 계속 선택한다. Stage 2는 다른 준비된 샤드로 넘어갈 수 있다.
+- **카드 선택:** `Batch Detail`에서 현재 오류, PR, Agent Log / `Raw Log` / `Audit Log`, Run History, `Metadata / Details`(HEAD·branch·worktree)를 확인한다.
+- **`Drain` / `Drain All`:** 현재 작업을 리뷰·머지·정리까지 마치고 더는 새 작업을 배정하지 않도록 한다. `Drain All`은 현재 실행 중인 라인에 한 번 적용된다.
+- **`Stop` / `Stop All`:** 현재 실행을 멈추되 브랜치·worktree·PR·미완성 산출물을 보존한다.
+- **`Retry`:** `PAUSED`/`ERROR`에서 같은 배치를 재개한다. 먼저 오류와 `Audit Log`를 확인한다. 기존 PR·worktree를 버리고 새 배치를 고르는 버튼이 아니다.
+- **`Clear` (주의):** 미완료 배치의 작업을 **포기**하고 PR·브랜치·worktree·실행 기록 정리를 진행하는 파괴적 동작이다. 단순 오류·일시중단·코드 업데이트 때문에 사용하지 않는다.
+- **`r`:** `config.json` 설정만 재로드한다. 실행 중인 Supervisor의 Python 코드는 재시작되지 않는다. 새 모델 열은 TUI를 다시 열어야 표시된다.
+- **`s`:** Settings. **`f`:** OpenCode Free/Go 전환(Go 진입은 확인 필요). **`m`:** `PAUSED`/`ERROR`인 Maintainer 재시도. **`Esc`:** 보드로 돌아가기.
 
-Closing the TUI or detaching tmux never stops the Supervisor or the AI. If tmux dies, `./war`
-restarts the Supervisor, which resumes from SQLite + GitHub + git worktrees; it never
-re-produces or opens a second PR when the situation is unclear (state `ERROR`, everything kept).
+Stage 2는 **Claude/Codex에서만 시작할 수 있고 동시에 Part 하나**만 진행한다. Part 하나(보통 100 Canonical records, 마지막 예외 83 records)가 PR 하나다. Stage 1의 다른 A/B/C/D 라인은 동시에 실행 가능하다.
 
-## Stage 2 (Relation Admission, Issue #1684)
+## 2. 생산 로그 찾기 (전체 실행 기록)
 
-Stage 2 is one serial process under the Stage 1 A/B/C/D lines, shown as **row 5** of the Board: column 1 (Claude) and
-column 2 (Codex) hold a `Stage 2` card, column 3 (DeepSeek) the status-only **Maintainer** card (#1555 progress,
-whichever model runs the Maintainer; the top yellow area keeps only the Drain note and real errors). Idle cards use the
-neutral empty style; colour appears only while a task exists.
+아래 명령은 **최초 생산과 중단·복구 뒤의 모든 `produce%` 실행**에 대한 `runs.log_file` 경로를 시작 시간순으로 출력하고 macOS 클립보드에 복사한다. **마지막 실행 하나만 담는 `batches.log_file`과 다르다.**
 
-- **Start:** pick Claude or Codex, then Method `Stage 2` (not offered for DeepSeek; switching to DeepSeek falls back to
-  `A`). The model uses the already registered producer pin; there is no separate Stage 2 model config. Start is also
-  refused in `control.start` and the Supervisor for any other model.
-- **One occupancy:** Stage 2 holds at most one Part for the whole factory (SQLite, one write transaction shared by
-  Start and batch creation). Another model's Start is refused while a Part is unfinished or reserved; a restart with
-  another model after Stop/Drain must Retry (or Clear) the owner's Part. Stage 1 lines keep running beside it.
-- **Unit:** one Part (100 records, `Shard SSS · Batch BB · Part PP`) = one AI run = one PR. It is an ordinary `batches`
-  row with method `s2` and `batch = "BB-PP"`, so PR review, fixes, Stop/Drain/Retry/Clear and recovery are unchanged.
-- **Next Part:** the earliest Part whose six Stage 1 inputs are on the latest master, whose shard has no open Stage 2
-  PR, and whose exact `admission-cli verify --shard S --batch B --part P` fails on a detached checkout of
-  `origin/master` (`worktrees/s2-verify`). Successes are cached, so a finished Part is never redone and a PR or file alone
-  never counts. After a Part's PR is merged, its exact verify must pass on the latest master (else `ERROR`, worktree
-  kept, Retry re-verifies) before cleanup and the next Part. Batch and shard verify run when their last Part is done.
-- **Single** binds to the shard of its first Part and waits there if inputs are missing; **Continuous** moves on. With
-  nothing runnable the line waits and re-checks every `poll_seconds`.
-- `s2` and `m` are reserved names and cannot be listed in `methods`.
+### PR 번호로 조회
 
-## Setup
+```sh
+sqlite3 -noheader tools/warroom/.local/warroom.db \
+  "SELECT r.log_file FROM runs r JOIN batches b ON b.id=r.batch_id
+   WHERE b.pr_number=1829 AND r.kind LIKE 'produce%'
+   ORDER BY r.started_at;" | pbcopy
+```
 
-1. `brew install tmux` and install the CLI(s) for the configured producers. `./war` creates `.local/venv` (Textual) on first run.
-2. Log the producer account in **without touching your own gh/git setup**:
-   `GH_CONFIG_DIR=tools/warroom/.local/gh gh auth login` (expected account `neverworkalone-agent`).
-3. Optional `tools/warroom/.local/config.json` (see `config.example.json`): model IDs
-   (`models.free`, `models.go`), git author for the producer, quota patterns, polling.
-   `models.free` is **required**: Start is blocked unless it is installed (`opencode models`) and
-   matches `free_model_pattern` (default `-free$`); OpenCode's implicit default model is never used.
-   An empty `models.go` disables the Go switch (quota exhaustion then pauses).
+### 배치명으로 조회 — A / 046_01 / Codex
 
-`.local/` (config, DB, logs, auth, worktrees, venv) is git-ignored; never commit tokens/logs.
+```sh
+sqlite3 -noheader tools/warroom/.local/warroom.db \
+  "SELECT r.log_file FROM runs r JOIN batches b ON b.id=r.batch_id
+   WHERE b.method='a' AND b.shard='046' AND b.batch='01'
+     AND b.producer='codex' AND r.kind LIKE 'produce%'
+   ORDER BY r.started_at;" | pbcopy
+```
 
-## Restarting after code updates
+`method`는 `a`·`b`·`c`·`d`, `producer`는 설정의 논리 모델 ID(`codex`, `claude`, `deepseek` 등)다. **A/B는 모델별 독립 큐**이므로 모델을 지정해 보는 것이 편하다. **C/D는 방식별 공유 큐**라 모델 조건을 빼도 된다. 같은 배치명으로 과거 여러 실행 기록이 있으면 일치하는 경로가 모두 나온다.
 
-Updating files with `git pull` does not reload Python code already running in the Supervisor.
-The Board's `r` key reloads `config.json` only; it does **not** restart the Supervisor.
-After updating War Room's Python code, restart **both** tmux sessions from a separate,
-ordinary terminal (not from inside either War Room tmux session).
-Prefer a time when no producer is actively working; the Supervisor and TUI sessions are
-replaced, but the persistent database, producer worktrees and PRs are not deleted.
+### Stage 2 Part로 조회 — 046 / Batch 01 / Part 03
+
+Stage 2는 `batches.method='s2'`, `batches.batch='BB-PP'`로 저장한다.
+
+```sh
+sqlite3 -noheader tools/warroom/.local/warroom.db \
+  "SELECT r.log_file FROM runs r JOIN batches b ON b.id=r.batch_id
+   WHERE b.method='s2' AND b.shard='046' AND b.batch='01-03'
+     AND r.kind LIKE 'produce%'
+   ORDER BY r.started_at;" | pbcopy
+```
+
+**리뷰 후 수정 로그까지 함께** 보려면 위 명령의 `AND r.kind LIKE 'produce%'` 조건을 삭제한다. `runs.kind`도 같이 확인하려면 `SELECT r.kind, r.log_file`로 바꾼다. `pbcopy`를 빼면 터미널에 경로가 표시된다. `less <로그경로>` 또는 `tail -f <로그경로>`로 원본 로그를 읽을 수 있다.
+
+## 3. 장애 대응 빠른 판단
+
+| 화면/상황 | 먼저 할 일 | 피할 일 |
+| --- | --- | --- |
+| `PAUSED` (인증·CLI 권한·한도) | Batch Detail에서 정확한 실패 명령과 권한/계정/한도를 확인 → 환경을 수정한 뒤 같은 배치 `Retry` | 권한을 무조건 확대하거나 새 배치 실행 |
+| `ERROR: 정상 종료했지만 PR 없음` | `Raw Log` 마지막 부분과 `Audit Log` 확인 → 최종 파일/PR 생성 여부 확인 → 같은 배치 복구 판단 | `Clear` 또는 무조건 초기 생산 |
+| `WAITING_REVIEW` | PR 번호로 리뷰 상태와 정확한 HEAD를 확인. 새로운 `-1`이 접수되면 War Room이 기존 PR에 수정 실행 | 수동으로 중복 PR 생성 |
+| `MERGED` / `CLEANUP` 오류 | 해당 PR의 실제 merge 여부, worktree 상태, Audit Log 확인. 원인 해결 후 같은 배치 `Retry` | 강제 reset/rebase 또는 worktree 수동 삭제 |
+| Stage 2 입력 대기 | 해당 Batch의 필수 Stage 1 Candidate 6개가 머지됐는지 확인. Single이면 기존 샤드에서 대기 | 다른 Part/샤드로 수동 전환 |
+| Shared defect 보고 | 연결된 `urgent` Issue와 Maintainer PR, 해당 배치의 `PAUSED` 사유 확인 | 수정 반영 전 무조건 재개 |
+
+**Shared defect 자동 복구:** 반복 가능한 공통 결함은 원 배치를 `PAUSED`로 보존하고 `urgent` Issue와 Maintainer 수정 PR을 통해 해결한다. Maintainer의 PR이 **머지되고 정리가 완료**되면 수정 커밋이 원 배치에 반영되고 회귀 검증에 성공한 경우 **기존 배치를 자동으로 한 번 재개**한다. 단순 PR 머지만으로 자동 재개 완료가 아니다. `Audit Log`에서 `공통 수정 … 반영·검증 완료 … → 자동 Retry 1회`를 확인한다. **Shared defect 보류 중 일반 `Retry`는 이를 우회하지 않는다.** 명시적으로 `Stop` 후 `Retry`하는 것은 수정 검증을 건너뛸 수 있는 운영자 override이므로 주의한다. 자동 복구 뒤 `ERROR`가 발생하면 먼저 실제 이전 결함이 해결됐는지와 재개 로그를 구분한다.
+
+## 4. 코드·설정 변경 반영
+
+**설정만 수정:** `tools/warroom/.local/config.json`을 편집하고 보드에서 `r`을 누른다. 변경이 거부되면 화면/Audit Log 사유를 확인한다. 모델/effort pin을 실행 중간에 바꾸면 복구가 막힐 수 있다.
+
+**War Room Python 코드 업데이트:** `git pull`만 해서는 실행 중인 Supervisor가 새 코드를 읽지 않는다. 가능하면 AI가 작업하지 않을 때 **War Room tmux 밖의 일반 터미널**에서 아래를 실행한다.
 
 ```sh
 tmux kill-session -t warroom-supervisor 2>/dev/null || true
 tmux kill-session -t warroom 2>/dev/null || true
+./war
 ```
 
-`./war` creates or reattaches the TUI and starts a fresh Supervisor if none holds its lock.
-The Supervisor recovers existing batches using the persisted state and running processes;
-do not delete `tools/warroom/.local/`, manually reset worktrees or press Retry just to reload code.
+이 과정에서 `.local/`의 데이터베이스·로그·worktree는 삭제하지 않는다. 코드 적용 목적으로 `Clear`, 임의 worktree reset, 불필요한 `Retry`를 사용하지 않는다. TUI만 닫거나 tmux를 detach해도 Supervisor의 기존 실행은 계속된다.
 
-## Investigate Logs
-```sh
-SELECT r.log_file                               
-FROM runs r
-JOIN batches b ON b.id = r.batch_id
-WHERE b.pr_number = pr
-  AND r.kind LIKE 'produce%'
-ORDER BY r.started_at;
-" | pbcopy
-```
+## 5. 계정·설정 경로
 
 ```sh
-sqlite3 -noheader tools/warroom/.local/warroom.db \
-"SELECT r.log_file FROM runs r
-JOIN batches b ON b.id = r.batch_id
-WHERE (b.method, b.shard, b.batch) = ('a', '046', '01')
-AND b.producer = 'codex'
-AND r.kind LIKE 'produce%'
-ORDER BY r.started_at;" | pbcopy
+# War Room 전용 GitHub 계정 확인 (개인 gh 로그인과 분리)
+GH_CONFIG_DIR=tools/warroom/.local/gh gh auth status
+
+# 최초 설정이 필요한 경우에만
+GH_CONFIG_DIR=tools/warroom/.local/gh gh auth login
+
+# Claude / Codex 계정 상태
+claude auth status
+codex login status
 ```
 
-## Factory Board · Production Lines
+- War Room GitHub 기대 계정: `neverworkalone-agent`. GitHub 인증은 `.local/gh`로 분리되며, Claude/Codex 로그인은 각 CLI의 로컬 계정을 사용한다.
+- 작업 설정: `tools/warroom/.local/config.json` (`tools/warroom/config.example.json` 참고).
+- 상태 DB: `tools/warroom/.local/warroom.db`. 로그·worktree: `tools/warroom/.local/` 아래. 해당 디렉터리는 Git에서 제외되므로 인증·로그를 커밋하지 않는다.
+- Codex 권한 문제가 나면 `~/.codex/config.toml`의 지정 `permission_profile`을, Claude 권한 문제가 나면 `~/.claude/settings.json` 등 로컬 권한 설정을 확인한다. War Room이 임의로 권한을 넓히지는 않는다.
 
-A **Line** = (logical model, method A/B/C/D). `Factory → Model → Line → Batch history → Run history`.
-The model registry is config (`producers` in `config.json`, any number of models, see
-`config.example.json`; without it the legacy `worker`/`models` is one entry). Each Line owns at most
-**one** unfinished batch (`Store.create_batch` refuses a second one; Start on an occupied Line is
-rejected). Lines are independent: batch/PR/HEAD/session/PID/worktree/runs/errors/retry/tier/drain are
-per Line, and an exception or a long review wait in one Line never stalls another. Registering the same
-logical model twice (duplicate id or shared endpoint ID) is blocked.
-
-- **Board**: one column per registered model, fixed A/B/C/D slots (3-line fixed-size cards: `Method · batch`
-  + phase icon / phase + observed `N/500` / `PR #n` + last activity; empty slots are dim grey, a finished (COMPLETE) batch leaves its slot EMPTY and stays in Batch/Run History). Clicking any card (even an empty slot) only opens its Batch Detail. New work starts only from the
-  one-row top bar `[CLI] [Method] [Single|Continuous] [Start] [Drain All] [Stop All]` (Selects are sized to their longest label, the three buttons share one fixed width; narrow terminals wrap it into
-  a grid). The CLI/Adapter list comes from the registry (Claude, Codex, OpenCode by label); the model Select appears
-  only when one CLI hosts several logical models, so Start never guesses a model. **Single** = one batch
-  then stop; **Continuous** = consecutive batches in the *same* Line (never parallel batches in one Line).
-  The board shows no always-on Supervisor status; a stopped Supervisor, auth/model problems and Drain All stay visible.
-- **Drain** (Line): stop assigning new batches; the current batch continues through review/merge/cleanup.
-- **Drain All**: a one-shot request to the Lines running now. Each finishes its current batch (review/fix/merge/
-  cleanup, kept across PAUSED/ERROR/Retry and Supervisor restarts), then ends its Continuous run; a reservation
-  without a batch is cancelled. Other Lines can Start afterwards; Line drains are untouched.
-- **Stop** / **Stop All**: red (Stop All is disabled while no Line has an unfinished batch or run flag), y/N modal (Enter/Esc = No). Stops the AI of the scope, preserves
-  worktree/branch/PR, clears the run flag so nothing restarts; **Retry** (PAUSED/ERROR only) reuses
-  the same batch.
-- **Clear** (Batch Detail, red, y/N modal naming producer · method · batch ID · PR): explicitly **abandons** the selected
-  unfinished batch, unlike Stop. The TUI only writes a batch-ID-specific request (`clear_requests`); the Supervisor pins
-  the batch as `CLEARING` (run/retry/drain/reservations off), stops the AI and confirms its exit, then verifies the owned
-  worktree (inside `.local/worktrees`, registered to the recorded branch), every PR on the owned branch (head branch +
-  candidate-file ownership; an open PR is closed **without merge**, a merged PR is never abandoned and goes to the normal
-  MERGED cleanup instead) and the remote branch (head must match a known PR/local HEAD; deleted with a lease). Only then
-  the worktree (dirty/untracked included), local branch and this batch's run files go, and the batch row, runs, review
-  dedupe and events are deleted in one transaction, so the Line is IDLE and the batch is unclaimed and schedulable
-  again; one line-level audit event remains. Any failed check leaves the batch `CLEARING` + BLOCKED with the reason and
-  deletes nothing; pressing Clear again resumes teardown (never relaunches the producer).
-- **Batch Detail**: short header (`OpenCode / A · 009_02`, phase, PR, observed progress, time); SHA, session,
-  tier and worktree (a cleaned-up one is labelled as a past path) are under *Metadata / Details*. The Agent Log is
-  a readable rendering of OpenCode JSON Lines (`logrender.py`, per line, so the incremental `tail -f` read by byte
-  offset is kept; unknown events and non-JSON lines are shown as-is); **Raw Log** switches to the verbatim file.
-  Secrets are redacted in both. Run History (`runs` table) and a separate Audit Log stay. **Auto-scroll**
-  (default ON, off on manual scroll-up) is shown only for a still-running log. Esc returns to the board. `s` opens Settings.
-- **SQLite**: per-Line controls, batch history, run history and audit events persist in
-  `tools/warroom/.local/warroom.db`. Schema migrations are additive; existing batch and run records are preserved.
-
-## Producer CLIs and pinned models
-
-Each logical model (`producers` in `config.json`, see `config.example.json`) runs on one CLI adapter.
-The Factory Board columns and the top CLI Select follow the adapter label, **Claude → Codex → OpenCode**,
-then the model label; the order of `producers` in the file does not matter.
-
-| Producer (example label) | Adapter (CLI) | Model | Effort |
-|---|---|---|---|
-| `claude` (Sonnet) | `claude` (Claude Code) | `model: sonnet` → `--model sonnet` | `effort: medium` → `--effort medium` |
-| `codex` (Luna) | `codex` (Codex CLI) | `model: gpt-6-luna` → `-m gpt-6-luna` | `effort: xhigh` → `-c model_reasoning_effort=xhigh` |
-| `deepseek` (DeepSeek) | `opencode` | `models.free` / `models.go` | `effort: high` → `--model <id>#high` |
-
-Rules (fail closed):
-
-- Every start, edit, recovery and resume passes the model and effort explicitly. Nothing falls back to a CLI default.
-- A producer with an unset, flag-like (`--…`) or malformed model, or an effort its CLI does not accept, blocks
-  Start with the reason shown in the Line's BLOCKED field.
-- A CLI that is not wired into this build blocks Start. It is never redirected to another CLI.
-- Every relaunch of a batch (resume, recovery after a lost session, fix) runs on the pin of its last recorded run.
-  A changed effort stops the batch in ERROR, and so does any changed model, with no process started. The one exception
-  is OpenCode's own Free → Go switch of its configured IDs. Another ID in the same tier, or a Go → Free change, stops
-  the batch. To continue, restore the config, press `r` on the board (reload), then Retry.
-- OpenCode's reasoning variant is the `#variant` suffix of `--model`. The installed CLI rejects `--variant`
-  (`Unrecognized flag`). Before any batch or worktree exists, every model+variant pair (Free, and Go when configured)
-  is proven by a short probe: one `opencode run` from an empty temporary directory outside the repository, without
-  `--auto` and without tools, in the background. While a probe runs, the Line waits (it is not blocked and the other
-  Lines keep moving). The probe denies every tool (`OPENCODE_CONFIG_CONTENT={"permission":{"*":"deny"}}`, run with
-  `--standalone`, which was verified to stop a shell call on the installed CLI). `opencode models` is listed once per
-  Supervisor life, also in the background; until it finishes Start waits. A variant the CLI refuses (`Variant
-  unavailable`) blocks Start with that reason. Any provider answer, quota errors included, proves the variant. Silence,
-  a timeout, or unreadable output does not, and blocks.
-  A proven pair is kept for this Supervisor run. A refused pair stays refused until the Supervisor restarts. The probe
-  may cost a few tokens and creates one session titled `WR preflight`. A variant refused later still stops the batch
-  in ERROR, with nothing substituted. A DeepSeek entry without `effort` runs at `high`, the owner-fixed value
-  (also the default when `effort` is omitted).
-- Run History and the Audit Log record the model ID and effort each launch was pinned to.
-
-### Claude Code (`claude`) setup
-
-- Install Claude Code and log in with the operator's own account: `claude auth login`. `claude auth status`
-  must report `loggedIn: true`; Start checks it. Unlike GitHub, this login is not isolated per War Room.
-- Every run pins only the model and the reasoning effort: `claude -p <prompt> --model <model> --effort <effort>
-  --output-format stream-json --verbose`. Resume uses `--resume <session id>` with the same pins.
-- **Permissions are the operator's local Claude settings** (`~/.claude/settings.json`, project settings), applied by
-  the CLI's own precedence. War Room passes no permission option: no allowlist, no `--permission-mode`, no bypass.
-  A tool the local settings do not allow is denied by the CLI and listed in `permission_denials`; the run then stops
-  in **PAUSED** with the denied tool named, and nothing is widened automatically. Worktree, PR and session are kept.
-  To allow such a tool, the operator edits the local Claude settings directly and then retries.
-- Start refuses when `ANTHROPIC_MODEL` or `CLAUDE_CODE_EFFORT_LEVEL` is set to anything other than the pin, because
-  it would decide the effective value.
-- A session that is not reported (absent, empty or not a string) stops the run, and so does a run that ends without
-  any init event: a PR is accepted only with its own session.
-- The stream reports the model it ran (`system/init`); a different model stops the batch. The CLI does not print the
-  effort it used, so an unknown effort (the CLI's "ignoring it and using the default effort") is treated as a stop.
-
-### Codex CLI (`codex`) setup
-
-- Install the Codex CLI and log in with the operator's own account: `codex login`. `codex login status` must
-  report `Logged in`; Start checks it. Like Claude, this login is not isolated per War Room.
-- Codex runs under the operator's **local CLI policy** (`~/.codex/config.toml`, approval and execpolicy rules, project
-  settings). The permission profile is configured per producer with `permission_profile` in `config.json`, like
-  `model` and `effort`: `"permission_profile": "worktree"` passes `-c default_permissions=worktree` on every start and
-  resume. Without it nothing is passed and the CLI default applies. The name must be a plain profile name
-  (`[A-Za-z0-9_-]`) and is accepted only for Codex producers. The profile's rules live in the operator's own
-  `[permissions.<name>]` table; War Room never defines them. War Room adds no legacy sandbox, approval, network or
-  writable-root options and never uses `--ignore-user-config`, `--ignore-rules`, `--full-auto` or bypass flags.
-- Every run pins the model, reasoning effort and (when configured) permission profile:
-  `codex exec --json -m <model> -c model_reasoning_effort=<effort> [-c default_permissions=<profile>] <prompt>`.
-  Resume is `codex exec resume <thread id>` with the same pins. `--worktree`, `--last` and `--all` are never used.
-- Git needs `index.lock` in the run's own linked-worktree admin directory, which the profile may not cover. Before every
-  launch (start, resume, recovery, fix) War Room asks git for `git rev-parse --absolute-git-dir` of the worktree it
-  owns and checks it is exactly `<repo common dir>/worktrees/<entry>` pointing back at that worktree; otherwise the
-  batch stops in ERROR and no AI starts. Start passes only that directory as `--add-dir <dir>`. `codex exec resume`
-  has no `--add-dir`, so resume passes `-c 'permissions.<profile>.filesystem={"<dir>"="write"}'`, which merges into the
-  operator's profile (other entries are kept) and therefore needs `permission_profile`. The operator's config is
-  never edited and the repository's whole `.git` is never opened.
-- Each run records its permission profile next to model and effort. A relaunch (resume, recovery, fix) whose configured
-  profile differs from the batch's last recorded run, including adding or removing one, stops in ERROR before any CLI
-  starts; runs recorded before profiles were tracked are not compared.
-- Legacy `sandbox_mode` in any active config layer takes precedence over permission profiles. Do not combine
-  `sandbox_mode` / `sandbox_workspace_write` with a configured `permission_profile`.
-- Checked, not assumed: the `thread.started` thread id must equal the requested session, and the model and effort in
-  the rollout's `turn_context` must equal the pins. A finished turn with no recorded context stops the batch.
-- A failed command with actual local-policy denial evidence (for example, `index.lock: Operation not permitted`,
-  `Permission denied`, or an approval request) stops the run in **PAUSED**. Shell syntax/globbing failures and zsh's
-  `nice(5) failed: operation not permitted` diagnostic are ordinary command failures, not policy refusals. The
-  worktree, branch, PR and session are kept and nothing is retried automatically. Permission is never raised by War
-  Room; the operator changes the local CLI settings and then retries.
-- Start refuses unless `codex exec --help` and `codex exec resume --help` list the required options.
-
-## Shared defects and the hidden Maintainer (Issue #1555)
-
-A batch (or its PR review) that finds a *repeatable defect of a shared layer* reports it in a structured way — never by
-keywords in free text. Format and rules: [`prompts/shared-defect.md`](prompts/shared-defect.md). A producer writes
-`.warroom-scratch/shared-defect.json` in its worktree; a trusted reviewer's `-1` may carry the same JSON in a
-```` ```warroom-shared-defect ```` block. Required: `defect_class`, `summary`, at least one really failing case, a `reproduction` and the `suspected_layer`
-(root cause, scope, fix and regression design are optional hints — the Maintainer does that work). A disputed single
-candidate has no reproducible shared-layer failure, so it fails this bar; anything weaker (that, CLI/auth/network
-trouble, malformed JSON, a blank field) pauses only that batch as
-`pause_reason=defect_unverified` with everything kept, creates **no** Issue, and an ordinary Retry resumes it.
-
-```text
-valid report → that batch PAUSED (pause_reason=shared_defect; worktree/branch/PR/session kept, AI stopped)
-  → one `urgent` Issue (event marker + defect-class marker; GitHub is searched first, so duplicates, restarts and
-    a crash right after creation never make a second Issue; a failed create is retried, the report is never lost;
-    an open Issue of the same class is reused and the batch only joins it)
-  → ONE Maintainer at a time (`maint-<issue>` worktree off the latest base branch; an ordinary hidden `batches` row
-    with method `m` — no Board card, no new state machine; PR review/fix/merge/cleanup are the existing code)
-  → exact Maintainer PR merged=true AND the Maintainer's worktree cleanup succeeded (`Issue closed`, PR created or
-    green checks release nothing)
-  → the PR's merge commit is merged into each dependent batch worktree (plain merge of a commit already on the base
-    branch: uncommitted/partial output and commits stay; conflict → merge aborted, nothing changed),
-    proven by `HEAD contains merge commit`, and verified (the PR's changed `tests/*.test.mjs` via `node --test`,
-    plus `shared_defect_verify`)
-  → the batch returns to the phase it was paused in, exactly once (single DB transaction)
-```
-
-Fail closed (batch stays PAUSED, reason on the yellow line, no automatic Retry): conflict, PR HEAD mismatch, closed/merged
-batch PR, failed verification, Issue closed without a fix, Maintainer PR closed unmerged, cleanup failure. A transient
-git/GitHub error is retried. A shared-defect pause is **not** resumed by a plain Retry: `Stop` then `Retry` on that Line is
-the operator's explicit override (no fix applied). `m` retries a PAUSED/ERROR Maintainer. `Stop All`/`Drain All` are
-production controls and never touch the Maintainer.
-
-`config.json` (one top-level line enables it; absent = no Maintainer runs, reports/Issues/pauses still happen):
-
-```json
-{ "maintainer": "claude", "shared_defect_verify": [] }
-```
-
-`maintainer` must be a key of `producers`; its model/effort/permission profile/adapter and the existing pin-drift,
-preflight and session rules apply unchanged. A non-string or unregistered value is a config error, an invalid producer
-entry blocks the Maintainer (never another model). A started task keeps the producer it started with.
-The top yellow line shows the current urgent Issue (`urgent issue #N · PR #M · 리뷰 대기`, `(+k건 대기)`) from persisted
-state only, and disappears once the PR is merged, the Maintainer cleaned up and every dependent batch released.
-
-## Prompts
-
-What the AI is told lives in `tools/warroom/prompts/` (`a.md` `b.md` `c.md` `d.md` `fix.md` `recovery.md`), checked in and
-resolved from the repository, not the cwd. Placeholders (`{{batch}}`, `{{branch}}`, and for `fix.md` `{{pr}}` `{{head}}`
-`{{review_events}}` `{{session_note}}`) are filled once when a run starts, so editing a file never changes a running AI.
-A missing/empty/unreadable file or an unknown/unfilled placeholder stops the batch in `ERROR` without starting any AI.
-
-## State machine (one batch = one atomic unit)
-
-`PREPARE → PRODUCING → WAITING_REVIEW ⇄ FIXING → MERGED → CLEANUP → COMPLETE`, plus
-`PAUSED` (recoverable, operator Retry) and `ERROR` (safety stop; worktree/PR preserved).
-
-- **Batch choice** (`batches.py`): A/B keep one queue per (method, model); **C/D share one queue per method across all models** (a Candidate file or open PR of any model completes/claims the batch; local unfinished batches of any model occupy it; two models' files for one C/D batch is an error, and `create_batch` refuses a second model's reservation inside one `BEGIN IMMEDIATE` transaction). Each Line selects its earliest batch whose Candidate file is absent on
-  `origin/master`, not claimed by an open PR under its queue key and not owned by War Room.
-  A master file with the wrong record count is reported, never skipped or regenerated.
-- **Fix trigger** (`reviews.py`): only accounts in `trusted_reviewers` (default `genonfire`; empty = nothing
-  triggers) can produce events — other users' text never reaches the AI. A `-1` review (or `-1` general comment) for the *current* HEAD
-  (`HEAD: <sha>` marker, else the review's `commit_id`), not authored by the producer account.
-  Inline comments anchored to the current HEAD ride along with such a `-1` but never trigger alone.
-  Handled once per `(PR, HEAD, event id)`; a review of an older HEAD is ignored.
-- **Live AI:** a PR is detected even while the AI is still running (e.g. waiting for merge) and
-  review watching takes over; before a fix run the old process is stopped and its exit confirmed.
-- **Effective verdict:** a `-1` blocks only until a later same-HEAD `+1`/`+2` (dismissed reviews ignored).
-- **Merge** is only `merged=true` from the GitHub API (not `+1/+2`, CI or `closed`).
-- **Cleanup** removes a worktree only if it is under `.local/worktrees`, registered to the recorded
-  branch, clean (incl. untracked), the AI process is gone and local HEAD equals the merged PR HEAD.
-  If local HEAD is merely behind (e.g. GitHub "Update branch" added commits), the merged PR HEAD is
-  fetched and fast-forwarded (`merge --ff-only`) first; a non-ancestor HEAD or a dirty tree stays
-  `ERROR` and preserved (never reset/rebase/force). Retry of such an `ERROR` resumes at CLEANUP, no AI rerun.
-- **PR HEAD synchronization**: after a fix, a clean local HEAD that matches the remote branch but is ahead of
-  GitHub's PR `head.sha` is treated as PR metadata lag rather than an unpushed change. The Supervisor rechecks
-  at `poll_seconds` intervals without restarting the AI. If the lag exceeds `pr_head_lag_timeout_seconds`
-  (default 1800 seconds), the batch stops with the reason and keeps its worktree; Retry rechecks without an AI run.
-  A missing or divergent remote branch, wrong PR branch or failed lookup is not treated as metadata lag.
-- **Merged error recovery**: for ERROR/PAUSED batches with an existing PR, the Supervisor checks `merged=true`
-  at `poll_seconds` intervals (at least 60 seconds). A merged PR proceeds through MERGED → CLEANUP → COMPLETE
-  without launching the AI. A cleanup safety failure preserves the worktree and requires operator attention;
-  no unmerged PR is marked complete.
-- **Model policy**: only a failure matching `quota_patterns` while on the free tier switches to the
-  Go model. 429/network → backoff retry; auth → `PAUSED`; anything unrecognised → `PAUSED`
-  (never a silent paid fallback).
-- **Auth isolation** (`auth.py`): children get `GH_CONFIG_DIR`, scrubbed `GH_TOKEN`/`GITHUB_TOKEN`
-  and env-scoped git config (`gh auth git-credential`, SSH→HTTPS). Start is blocked unless
-  `gh api user` equals the expected account with push permission. No `gh auth switch`, no global git config.
-
-## Tests
-
-```sh
-cd tools/warroom
-PYTHONPATH=. .local/venv/bin/python -m unittest discover -s tests -t .
-```
-
-CI runs it as a Deep+affected check (`tools/warroom/run-tests.mjs`, paths `tools/warroom`, `war`).
-Core tests use only the standard library (the TUI smoke test is skipped without Textual).
-They fake GitHub/OpenCode/git and also exercise real `git worktree` and a real detached process.
-
+추가 생산·검증 절차의 정본은 [Relation Factory](../../docs/relation-factory.md) 및 [Stage 2 Issue #927](https://github.com/neverworkalone/typewriter/issues/927)이다. 이 README는 개발 설계서가 아니라 **오너용 운영 명령 모음**으로 유지한다.
