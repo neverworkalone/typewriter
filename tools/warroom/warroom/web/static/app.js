@@ -84,6 +84,8 @@ function maintainerCard(m) {
     h("div", { class: "s" }, m.state === "IDLE" ? "진행 중인 작업 없음" : m.text));
 }
 
+// The top bar is built once per controls config and kept (focus, open picker, chosen values survive every poll);
+// only its buttons' enabled state is refreshed. Notes and the card grid are replaced on EVERY poll.
 function controls(b) {
   const c = b.controls, sel = selection;
   const adapter = h("select", { "aria-label": "CLI" }, c.adapters.map((a) => h("option", { value: a.id }, a.label)));
@@ -105,17 +107,27 @@ function controls(b) {
   model.addEventListener("change", () => (sel.model = model.value));
   method.addEventListener("change", () => (sel.method = method.value));
   mode.addEventListener("change", () => (sel.mode = mode.value));
-  const off = !b.alive;
-  return h("div", { class: "bar" }, adapter, model, method, mode,
-    h("button", { class: "primary", disabled: off, onclick: () => send({ cmd: "start", model: model.value, method: method.value, mode: mode.value }) }, "Start"),
-    h("button", { disabled: off, onclick: () => send({ cmd: "drain_all" }) }, "Drain All"),
-    h("button", { class: "danger", disabled: off || !b.can_stop_all,
-      onclick: () => send({ cmd: "stop_all", confirm: "stop-all" }, "모든 라인의 AI 실행을 즉시 중지합니다.") }, "Stop All"));
+  const start = h("button", { class: "primary", onclick: () => send({ cmd: "start", model: model.value, method: method.value, mode: mode.value }) }, "Start");
+  const drainAll = h("button", { onclick: () => send({ cmd: "drain_all" }) }, "Drain All");
+  const stopAll = h("button", { class: "danger",
+    onclick: () => send({ cmd: "stop_all", confirm: "stop-all" }, "모든 라인의 AI 실행을 즉시 중지합니다.") }, "Stop All");
+  const el = h("div", { class: "bar", id: "controls" }, adapter, model, method, mode, start, drainAll, stopAll);
+  el.refresh = (nb) => {
+    start.disabled = drainAll.disabled = !nb.alive;
+    stopAll.disabled = !nb.alive || !nb.can_stop_all;
+  };
+  return el;
 }
 
+let shell = null, controlsKey = "";
 function renderBoard(b) {
-  const keep = app.querySelector(".bar select:focus");
-  if (keep) return;   // do not rebuild a control the person is using
+  const key = JSON.stringify(b.controls);
+  if (!shell || !app.contains(shell.controls) || key !== controlsKey) {   // first view, back from Detail, or config change
+    controlsKey = key;
+    shell = { controls: controls(b), notes: h("div"), grid: h("div") };
+    app.replaceChildren(shell.controls, shell.notes, shell.grid);
+  }
+  shell.controls.refresh(b);
   const notes = [...b.notes, ...(b.draining.length ? ["DRAIN ALL: 현재 배치 후 종료 — " + b.draining.join(", ")] : []),
     ...b.urgent.map((u) => u.text)];
   const grid = h("div", { class: "board" });
@@ -135,8 +147,11 @@ function renderBoard(b) {
         b.maintainer && b.maintainer.column === c.id ? maintainerCard(b.maintainer) : null));
     }
   }
-  app.replaceChildren(controls(b),
-    notes.length ? h("div", { class: "notes" + (!b.alive ? " bad" : "") }, notes.join("\n")) : null, grid);
+  const noteEl = h("div", notes.length ? { class: "notes" + (!b.alive ? " bad" : "") } : {}, notes.length ? notes.join("\n") : null);
+  shell.notes.replaceWith(noteEl);
+  shell.grid.replaceWith(grid);
+  shell.notes = noteEl;
+  shell.grid = grid;
 }
 
 // --- Detail ---
