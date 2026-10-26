@@ -89,15 +89,20 @@ class DeniedButCompleted(unittest.TestCase):
         self.assertEqual((b["state"], b["pr_number"]), ("WAITING_REVIEW", 7))
         self.assertEqual(len(w.adapter.launches), 1)      # never re-produced
 
-    def test_fixing_with_a_denial_needs_a_new_pushed_head(self):
-        # #1828: verify passes on the old HEAD while the review blocker is unresolved; only a new HEAD is a fix.
+    def test_fixing_with_a_denial_is_never_cleared(self):
+        # #1828: Part verify passes whether or not the review blocker was fixed, so even a really pushed new HEAD
+        # (PR, worktree and origin all agree) is no proof that the denied edit was non-required: stay PAUSED.
         w = self.w
         b = self.run_part(final())
-        for name, before, want_ok in [("HEAD unchanged", HEAD1, False), ("new HEAD pushed", "e" * 40, True)]:
+        new = "e" * 40
+        for name, pushed in [("HEAD unchanged", False), ("new HEAD pushed", True)]:
             with self.subTest(name):
-                w.store.update(b["id"], state="FIXING", head_sha=before)
-                problem = w.sup._denied_run_problem(w.store.batch(b["id"]))
-                self.assertEqual(problem is None, want_ok, problem)
+                if pushed:
+                    w.gh.prs[7]["head_sha"] = new
+                    w.git.local_head = new
+                    w.git.remote[BRANCH] = new
+                w.store.update(b["id"], state="FIXING", head_sha=HEAD1)
+                self.assertIn("필수 편집", w.sup._denied_run_problem(w.store.batch(b["id"])))
 
     def test_non_stage2_denial_stays_paused(self):
         w = self.w

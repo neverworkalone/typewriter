@@ -829,10 +829,10 @@ class Supervisor:
                 return f"PR #{info['number']}이 기록된 PR #{b['pr_number']}과 다릅니다"
             if info["state"] != "open" or info["merged"]:
                 return f"PR #{info['number']}이 열린 상태가 아닙니다"
-            if b["state"] == "FIXING" and info["head_sha"] == b["head_sha"]:
-                # Part verify can already pass before the fix (a semantic blocker is not verify-detectable): only a
-                # newly pushed HEAD proves the denied run still made the required edit.
-                return "수정 실행이 새 HEAD를 push하지 않았습니다 — 리뷰 피드백 반영을 확인할 수 없습니다"
+            if b["state"] == "FIXING":
+                # A pending review blocker is semantic: Part verify passes before and after, and a new HEAD proves only
+                # some change. Nothing shows the denied edit was non-required, so the fix flow is preserved (PAUSED).
+                return "리뷰 피드백 수정 실행의 권한 거부는 필수 편집이 반영됐다는 증거가 없어 완료로 인정하지 않습니다"
             wt = Path(b["worktree"])
             if self.git.dirty(wt).strip():
                 return "worktree에 미커밋 변경이 있습니다"
