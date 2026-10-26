@@ -20,6 +20,8 @@ War Room이 고정한 `(method,model,shard,batch)`/worktree/branch/HEAD는 재�
 
 최초 조회는 보통 3~4개 문맥, 문맥당 180~240자로 시작한다. 정확한 의미 확인과 어휘 발굴에 충분하면 종료하고, 부족하면 해당 sense의 문맥을 추가 조회한다. 조회 건수는 할당량이 아니다.
 
+발췌 문맥만으로 source sense를 판별하기 어려울 때는 해당 문맥의 필요한 범위만 추가 확인한다. 의미를 추측해 후보를 생성하지 않는다.
+
 **검색은 `scripts/relation/corpus-utility.mjs`를 import해 쓴다**(재사용 권장, 강제 아님; 특수 경로가 필요하면 조합·확장). 매 배치 `probe-*.mjs`/`followup.mjs`를 다시 구현하지 않는다.
 
 ```js
