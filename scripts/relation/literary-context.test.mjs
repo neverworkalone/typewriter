@@ -240,8 +240,8 @@ test('CLI failures suppress local database paths and environment values', () => 
   assert.match(result.stderr, /local paths, source text, and secret details were suppressed/u);
 });
 
-test('CLI export maps a sense-level Candidate v1 failure to the right sense when the row repeats that candidate', async () => {
-  const fixture = await makeFixture({ unitCount: 1, firstSenseGlosses: ['7,460 meters', '460 items'] });
+test('CLI export reports the exact sense for a Candidate v1 source-lemma repeat', async () => {
+  const fixture = await makeFixture({ unitCount: 1, firstForm: '구름', firstSenseGlosses: ['first sense', 'second sense'] });
   try {
     const read = await chunk(fixture);
     const contextsBySense = new Map(read.items.map((item) => [item.sense_id, item.contexts[0].k]));
@@ -250,7 +250,7 @@ test('CLI export maps a sense-level Candidate v1 failure to the right sense when
     await submit(fixture, senseIds.map((sense_id) => ({
       sense_id,
       verified: [contextsBySense.get(sense_id)],
-      candidates: ['460'],
+      candidates: [sense_id === 'sense-000001' ? '구름' : '서리'],
     })));
     const fixtureRoot = await realpath(fixture.root);
     const outputPath = path.join(fixtureRoot, 'data/relation-candidates/001/001_01_c_codex.jsonl');
@@ -271,7 +271,7 @@ test('CLI export maps a sense-level Candidate v1 failure to the right sense when
       sense_ids: ['sense-000001'],
       sense_id: 'sense-000001',
       sense_index: 1,
-      candidate: '460',
+      candidate: '구름',
       candidate_line: 1,
     });
     assert.match(diagnostic.repair_scope, /Resubmit only the affected sense/u);
