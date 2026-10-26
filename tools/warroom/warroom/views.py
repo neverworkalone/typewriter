@@ -148,6 +148,11 @@ def maintainer_card_text(card: dict) -> str:
     """Status-only Maintainer card (Issue #1555 progress moved off the top area): 4 fixed lines, neutral when idle."""
     if card["state"] == "IDLE":
         return "\n".join([_fit("Maintainer"), _fit("—  진행 중인 작업 없음")] + [""] * (CARD_LINES - 2))
+    title = _two_sided("Maintainer", "ERROR  ✖" if card["state"] == "ERROR" else "WORKING  ▶")
+    if card.get("issue"):   # as the Stage 2 card: identity, a blank line, then PR / elapsed time on the last line
+        bottom = card["pr"] or card["detail"]
+        elapsed = f"경과 {fmt_elapsed(card['elapsed'])}" if card.get("elapsed") is not None else ""
+        return "\n".join([title, _fit(card["issue"]), "", _two_sided(bottom, elapsed)])
     text, lines = " ".join(card["text"].split()), []
     while text and len(lines) < CARD_LINES - 1:   # wrap by terminal cells; the last line is cut with an ellipsis
         head = set_cell_size(text, CARD_W)
@@ -155,8 +160,7 @@ def maintainer_card_text(card: dict) -> str:
             head = _fit(text)
         lines.append(head)
         text = text[len(head):].lstrip()
-    return "\n".join([_two_sided("Maintainer", "ERROR  ✖" if card["state"] == "ERROR" else "WORKING  ▶")]
-                      + lines + [""] * (CARD_LINES - 1 - len(lines)))
+    return "\n".join([title] + lines + [""] * (CARD_LINES - 1 - len(lines)))
 
 
 TIER_FOOTER = {
