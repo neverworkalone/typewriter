@@ -676,7 +676,9 @@ class Supervisor:
         if b["state"] == "FIXING":   # a fix denial is never cleared (see _denied_run_problem): Retry re-runs the fix
             return False
         runs = self.store.runs(b["id"])
-        if not runs or runs[0]["ended_at"] is None or str(runs[0]["exit_status"]) != "0":
+        # "unknown": the exit file was lost (e.g. a Supervisor restart); the log's own final success result, session and
+        # denial evidence below, plus the owned-PR/Part verify gate, replace the missing exit code.
+        if not runs or runs[0]["ended_at"] is None or str(runs[0]["exit_status"]) not in ("0", "unknown"):
             return False
         log = Path(runs[0]["log_file"] or "")
         ad = self._adapter(b["producer"])
