@@ -16,7 +16,9 @@ War Room이 고정한 `(method,model,shard,batch)`/worktree/branch/HEAD는 재�
 
 청크 하나는 **조회 → 정확 문맥 판독 → 즉시 후보 편집 → 완성 청크를 `.warroom-scratch/`에 한 번 저장**으로 끝낸다. 검색어 목록을 한 번에 모아 하나의 스크립트로 질의하고, 임시 `jq`/Python 필터·JSON 재출력·사후 통계 집계·`progress` 원장은 만들지 않는다. dict 키·따옴표 오류를 피하려면 청크 입력(Canonical record/sense/`search_forms`)과 출력(`{sense_id: [후보]}`)을 파일 하나씩의 단순 JSON으로 두고, 인용이 복잡한 값은 셸 인자가 아닌 파일로 전달한다.
 
-문맥 출력은 sense당 판독에 필요한 **검색어 중심의 짧은 발췌(문맥 몇 건)**만 화면에 낸다. 한 번에 판독이 부족하면 그 sense의 문맥만 선택적으로 더 조회하고, 필요한 원문 범위를 잘라 미검증 후보를 만들지 않는다.
+각 source sense는 실제 문어 용례를 확인하고, VERIFIED 문맥에서 대상·행동·도구·상황·인과·대비·감각·연상 등 다양한 어휘를 한 번의 통합 탐색으로 충분히 발굴한다. 정확한 출발 의미에 결속되는 느슨하지만 설명 가능한 연상도 보존하되, 후보 수를 채우기 위한 억지 생성은 하지 않는다.
+
+최초 조회는 보통 3~4개 문맥, 문맥당 180~240자로 시작한다. 정확한 의미 확인과 다양한 어휘 발굴에 충분하면 종료하고, 부족하면 해당 sense의 문맥만 추가 조회한다. 조회 건수는 할당량이 아니며, 필요한 원문 범위를 잘라 미검증 후보를 만들지 않는다.
 
 **검색은 `scripts/relation/corpus-utility.mjs`를 import해 쓴다**(재사용 권장, 강제 아님; 특수 경로가 필요하면 조합·확장). 매 배치 `probe-*.mjs`/`followup.mjs`를 다시 구현하지 않는다.
 
@@ -24,18 +26,19 @@ War Room이 고정한 `(method,model,shard,batch)`/worktree/branch/HEAD는 재�
 import { openReadonlyDb, createSearchContextReuse, renderContexts, saveChunk } from '<worktree>/scripts/relation/corpus-utility.mjs';
 const db = openReadonlyDb('<승인 문어 SQLite 경로>');            // read-only
 const search = createSearchContextReuse(db);                    // 25-record 청크마다 한 번 생성
-let page = search(['김구'], { maxSamples: 8 });                 // 표본·문자 상한, 짧은 형태는 boundary: 'left'|'none' 조정
-if (!page.reused) console.log(renderContexts(page.result));    // 같은 요청은 재사용하고 stdout에 한 번만 출력
-if (page.result.next_cursor) {
-  page = search(['김구'], { cursor: page.result.next_cursor }); // 다음 페이지는 새 요청; 더 없으면 cursor가 null
-  if (!page.reused) console.log(renderContexts(page.result));
-}
+let page = search(['김구'], { maxSamples: 4, snippetChars: 220 });  // 최초 3~4개 문맥, 180~240자 안팎부터 판독
+if (!page.reused) console.log(renderContexts(page.result));        // 같은 요청의 중복 stdout은 생략
+// source sense 판독·통합 발굴에 부족하고 next_cursor가 있을 때에만 후속 페이지 조회:
+// page = search(['김구'], { maxSamples: 4, snippetChars: 220, cursor: page.result.next_cursor });
+// if (!page.reused) console.log(renderContexts(page.result));
 await saveChunk('.warroom-scratch/d-{{batch}}', 3, rows, chunk);  // chunk = [{record_id, sense_ids}] Canonical 순서; 하나라도 빠지면 쓰지 않고 실패
 ```
 
-같은 청크에서 다른 sense가 **검색형 순서·boundary·모든 검색 상한·페이지 cursor까지 같은 요청**을 하면 `search`가 메모리 결과를 재사용하고 `reused: true`를 반환한다. 출력은 다시 하지 않아도 되지만, 해당 문맥을 각 source sense에 대조해 VERIFIED 여부와 후보 발굴은 **sense마다 독립적으로** 수행한다. 재사용은 이 `db` 연결과 청크 안에서만 유지되며 `SEARCH_FAILED`는 캐시하지 않는다.
+같은 청크에서 다른 sense가 **검색형 순서·boundary·모든 검색 상한·페이지 cursor까지 같은 요청**을 하면 `search`가 메모리 결과를 재사용하고 `reused: true`를 반환한다. 출력은 다시 하지 않아도 되지만, 해당 문맥을 각 source sense에 대조해 VERIFIED 여부와 후보 발굴은 **sense마다 독립적으로** 수행한다. 재사용은 이 `db` 연결과 청크 안에서만 유지되며 `SEARCH_FAILED`는 캐시하지 않는다. 캐시 hit 자체를 VERIFIED 근거로 삼지 않고, 이미 직접 읽은 문맥을 각 sense에 독립적으로 대조한다.
 
-상태: `ZERO_HITS`(완전 탐색 후 없음) / `COMPLETE` / `LIMITED`(상한에서 멈춤, `next_cursor`로 계속) / `SEARCH_FAILED`. 이 도구는 검색·출력 상한만 담당하며 source sense 판독(VERIFIED)과 후보 편집은 AI가 직접 한다. `LIMITED` 표본에 출발 sense가 없다고 `ZERO_HITS`/`NO_VERIFIED`로 확정하지 않고, 필요하면 `next_cursor`나 다른 승인 검색형으로 더 조회한다.
+청크 저장 전 Canonical의 모든 source sense에 대해 탐색과 후보 판정을 명시적으로 완료한다. 후보가 0개인 경우에도 완전 검색의 `ZERO_HITS`, 충분한 탐색 후의 `NO_VERIFIED`, 또는 VERIFIED 문맥에서 적격 후보 없음 중 실제 근거를 판단해야 한다. `c[sense_id] ?? []`·`|| []` 등으로 미판정 sense를 자동으로 빈 배열로 보충하지 않는다. 청크의 입력 sense ID 집합과 Canonical sense ID 집합이 정확히 일치하지 않거나 탐색이 미완료라면 저장하지 않고 해당 sense를 처리한다. 실패·미작업 상태를 정상 `[]`로 위장하지 않는다.
+
+상태: `ZERO_HITS`(완전 탐색 후 없음) / `COMPLETE` / `LIMITED`(상한에서 멈춤, `next_cursor`로 계속) / `SEARCH_FAILED`. 이 도구는 검색·출력 상한만 담당하며 source sense 판독(VERIFIED)과 후보 편집은 AI가 직접 한다. `LIMITED` 상태에서 VERIFIED 문맥을 확보하지 못했다면 `next_cursor` 또는 다른 승인 검색형으로 추가 탐색한다. 제한 상태를 `ZERO_HITS`나 확인된 `NO_VERIFIED`로 취급하지 않는다. VERIFIED 문맥 없이 뜻풀이만으로 D 후보를 생성하지 않는다. 추가 탐색을 끝내지 못했거나 `SEARCH_FAILED`인 sense를 정상 빈 후보로 제출하지 않는다.
 
 검색 규칙:
 - 3글자 이상은 `paragraph_fts`(trigram) 등 승인 인덱스의 실제 스키마가 지원하는 경로를 쓴다. 1~2글자는 trigram이 지원되지 않으므로 필요한 sense에 한해 제한된 literal 검색을 쓰되, **앞뒤 양쪽 문자 경계**(예: `기현`에 `기현상`·`이기현`이 섞이지 않도록)와 활용형·동음이의어를 직접 확인한다.
