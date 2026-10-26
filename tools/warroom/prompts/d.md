@@ -41,6 +41,8 @@ await saveChunk('.warroom-scratch/d-{{batch}}', 3, rows, chunk);  // chunk = [{r
 
 상태: `ZERO_HITS`(완전 탐색 후 없음) / `COMPLETE` / `LIMITED`(상한에서 멈춤, `next_cursor`로 계속) / `SEARCH_FAILED`. 이 도구는 검색·출력 상한만 담당하며 source sense 판독(VERIFIED)과 후보 편집은 AI가 직접 한다. `LIMITED` 표본에 출발 sense가 없다고 `ZERO_HITS`/`NO_VERIFIED`로 확정하지 않고, 필요하면 `next_cursor`나 다른 승인 검색형으로 더 조회한다.
 
+**Sense·배치 완료 판정:** `LIMITED`는 한 번의 검색 호출이 출력 한도에 도달했다는 뜻이지 그 Sense의 미완료나 검색 실패를 뜻하지 않는다. 실제 반환된 문맥을 출발 sense에 대조하고 필요한 추가 문맥·승인 검색형을 합리적으로 확인했지만 맞는 VERIFIED 용례가 없다면 `NO_VERIFIED`로 판정하여 `candidates: []`로 완료할 수 있다. `next_cursor`가 남았다는 이유만으로 전체 말뭉치 또는 해당 검색의 모든 페이지를 소진할 필요는 없으며, 이것만으로 청크나 PR을 보류하지 않는다. 반대로 미검색·실제 `SEARCH_FAILED`·필요한 판독이 아직 끝나지 않은 Sense는 정상 빈 후보로 완료하지 않고, VERIFIED 용례 없이 후보를 생성하지 않는다. 미완료가 없다면 최종 Candidate v1 검증 후 기존 지침대로 PR을 제출한다.
+
 검색 규칙:
 - 3글자 이상은 `paragraph_fts`(trigram) 등 승인 인덱스의 실제 스키마가 지원하는 경로를 쓴다. 1~2글자는 trigram이 지원되지 않으므로 필요한 sense에 한해 제한된 literal 검색을 쓰되, **앞뒤 양쪽 문자 경계**(예: `기현`에 `기현상`·`이기현`이 섞이지 않도록)와 활용형·동음이의어를 직접 확인한다.
 - `LIMIT` 표본에서 정확 문맥이 없다고 전체 corpus의 ZERO_HITS로 보고하지 않는다. ZERO_HITS / NO_VERIFIED / SEARCH_FAILED / 미작업을 구분하고, 부족하면 승인된 다른 검색형·활용형·다른 문맥으로 필요한 만큼만 확장한다. 전수 선행 스캔은 하지 않는다.
