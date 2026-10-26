@@ -43,6 +43,7 @@ class FakeAdapter(AgentAdapter):
                         stage2_chunk_git=env.get("WARROOM_STAGE2_CHUNK"),
                         git_shim=env.get("WARROOM_GIT_SHIM"),
                         real_git=env.get("WARROOM_REAL_GIT"),
+                        git_sandbox_paths=env.get("WARROOM_GIT_EXECUTABLES"),
                         worker_path=env.get("PATH"))
 
     def resume(self, session_id, prompt, cwd, env, run, log_file, exit_file):
@@ -51,6 +52,7 @@ class FakeAdapter(AgentAdapter):
                         stage2_chunk_git=env.get("WARROOM_STAGE2_CHUNK"),
                         git_shim=env.get("WARROOM_GIT_SHIM"),
                         real_git=env.get("WARROOM_REAL_GIT"),
+                        git_sandbox_paths=env.get("WARROOM_GIT_EXECUTABLES"),
                         worker_path=env.get("PATH"))
 
     def preflight(self, runner, env, runs):

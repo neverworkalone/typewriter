@@ -12,6 +12,7 @@ import re
 import shutil
 import signal
 import subprocess
+import sys
 import tempfile
 import threading
 from dataclasses import dataclass
@@ -78,6 +79,34 @@ class AgentAdapter:
     def exit_code(self, exit_file: Path) -> int | None: ...
 
 
+def stage2_chunk_sandbox_command(cmd: list[str], git_executables: list[str], path: str) -> list[str]:
+    """Run a chunk worker inside an OS policy that denies executing every discovered Git binary."""
+    paths = set()
+    for item in git_executables:
+        if not isinstance(item, str) or not item or not Path(item).is_absolute():
+            raise RuntimeError("Stage 2 청크를 시작하지 않습니다: Git 실행 경로가 절대 경로가 아닙니다")
+        paths.add(str(Path(item)))
+        paths.add(str(Path(item).resolve()))
+    paths = sorted(paths)
+    if not paths:
+        raise RuntimeError("Stage 2 청크를 시작하지 않습니다: 차단할 Git 실행 파일 경로를 확인하지 못했습니다")
+    if sys.platform == "darwin":
+        sandbox = shutil.which("sandbox-exec", path=path)
+        if not sandbox:
+            raise RuntimeError("Stage 2 청크를 시작하지 않습니다: macOS sandbox-exec를 찾을 수 없습니다")
+        rules = " ".join(f"(deny process-exec (literal {json.dumps(item)}))" for item in paths)
+        profile = f"(version 1) (allow default) {rules}"
+        return [sandbox, "-p", profile, *cmd]
+    if sys.platform.startswith("linux"):
+        bubblewrap = shutil.which("bwrap", path=path)
+        if not bubblewrap:
+            raise RuntimeError("Stage 2 청크를 시작하지 않습니다: Git 실행을 차단할 bwrap을 찾을 수 없습니다")
+        masked = [arg for item in paths for arg in ("--ro-bind", "/dev/null", item)]
+        return [bubblewrap, "--die-with-parent", "--new-session", "--bind", "/", "/", *masked,
+                "--", *cmd]
+    raise RuntimeError(f"Stage 2 청크를 시작하지 않습니다: {sys.platform}용 Git 실행 샌드박스가 없습니다")
+
+
 _SESSION = re.compile(r"\bses_[A-Za-z0-9]+")
 
 
@@ -100,10 +129,21 @@ class ProcessAdapter(AgentAdapter):
         log_file, exit_file = Path(log_file), Path(exit_file)
         log_file.parent.mkdir(parents=True, exist_ok=True)
         exit_file.unlink(missing_ok=True)
+        env = dict(env)
+        if env.get("WARROOM_STAGE2_CHUNK") == "1":
+            try:
+                git_executables = json.loads(env.pop("WARROOM_GIT_EXECUTABLES", "[]"))
+            except json.JSONDecodeError as e:
+                raise RuntimeError("Stage 2 청크의 Git 차단 경로가 손상되었습니다") from e
+            if not isinstance(git_executables, list):
+                raise RuntimeError("Stage 2 청크의 Git 차단 경로가 올바르지 않습니다")
+            cmd = stage2_chunk_sandbox_command(cmd, git_executables, env.get("PATH", os.defpath))
+        else:
+            env.pop("WARROOM_GIT_EXECUTABLES", None)
         # The wrapper records the exit status so a restarted Supervisor can still
         # learn how the (detached) child ended.
         wrapper = ['"$@"', "echo $? > \"$WARROOM_EXIT_FILE\""]
-        env = {**env, "WARROOM_EXIT_FILE": str(exit_file)}
+        env["WARROOM_EXIT_FILE"] = str(exit_file)
         with open(log_file, "wb") as log:   # a launch's log is its own: never continued behind an earlier run's events
             p = subprocess.Popen(["/bin/sh", "-c", "; ".join(wrapper), "sh", *cmd],
                                  cwd=cwd, env=env, stdin=subprocess.DEVNULL,
