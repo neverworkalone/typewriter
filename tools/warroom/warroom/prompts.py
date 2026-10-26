@@ -21,13 +21,8 @@ MAINTENANCE_METHOD = "m"
 STAGE2_METHOD = "s2"
 PRODUCER_HANDOFF = """
 
-## War Room lifecycle handoff (binding)
-
-The War Room Supervisor owns this assigned worktree and local branch. Do not run PR polling, merge waiting, or any
-worktree/branch cleanup, deletion, pruning, moving, or repair. General repository instructions about monitoring PRs do
-not apply to this assigned run. For production, create the required PR, confirm its number and labels, then finish and
-exit. For a review-fix run, address the assigned feedback, push the fix or post the response, then finish and exit. The
-Supervisor owns review monitoring and merged cleanup.
+The War Room Supervisor owns PR monitoring and worktree/branch cleanup.
+Do not poll for reviews or merges, or delete, move, or repair the assigned worktree or branch.
 """
 
 
