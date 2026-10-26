@@ -10,6 +10,8 @@ Issue #1155의 C 생산 계약을 읽고 준수한다.
 
 C 생산의 검색·체크포인트·Candidate 출력에는 scripts/relation/literary-context-cli.mjs를 반드시 사용한다. 절차는 docs/relation-literary-context.md의 `init → chunk/submit 반복 → export`를 따른다. 문맥·후보·Sense별 개별 명령, 관점별 빈 배열, KEEP/REMOVE 장부, 반복 `validate`는 쓰지 않는다. 승인 인덱스의 전체 SHA/FTS 재구축은 하지 않는다. 배치마다 동일 기능의 임시 스크립트를 새로 작성하지 않는다.
 
+승인 SQLite·CLI·Canonical·체크포인트는 War Room이 이미 제공한 작업 디렉터리·경로·설정을 먼저 사용한다. 캐시 루트 전체에 `rg --files`·`find` 같은 일괄 파일 나열을 하지 않는다. 경로를 모르면 좁은 디렉터리·파일명 패턴·결과 수(`| head`)로 한정한다. 체크포인트는 `report`로 확인하고, 그 밖에는 필요한 필드·카운트·작은 범위만 `jq`로 조회한다. 전체 체크포인트·검증 장부·무관한 결과를 통째로 stdout에 내지 않는다. `chunk` 결과는 `.warroom-scratch/`에 저장하고 `docs/relation-literary-context.md`의 Overview/Contexts `jq` 예제로 선택한 Sense만 읽는다. 문학 원문·Sense 판독 문맥에는 총량 제한이 없으며, 필요한 문맥은 `--sense-ids`, `--contexts 16`으로 충분히 읽는다.
+
 셸 명령은 개별로 실행해 각 종료 코드와 출력을 확인한다. `gh api` 경로에 `?` 또는 `&`가 있으면 경로 인수 전체를 작은따옴표로 감싼다. 예: `gh api 'repos/neverworkalone/typewriter/contents/data/relation-candidates/031?ref=master'`, `gh api 'repos/neverworkalone/typewriter/pulls?state=open&per_page=100' --jq 'length'`.
 
 Codex 샌드박스에서 차단되는 `ps`·`pgrep`에 의존하지 말고, 작업의 실행 결과와 기존 기록으로 상태를 확인한다.
