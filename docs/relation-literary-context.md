@@ -178,6 +178,15 @@ what resumes a run: per sense the total hit count, the cited contexts' source
 locators and digests, and the final candidates. It does not store excerpt text.
 Resubmitting a sense replaces its earlier submission.
 
+On a rejected submission, `submit` writes a bounded JSON diagnostic to stderr:
+`submit_validation` includes a fixed `reason` code plus the affected public
+`sense_id` and input `field` when known. It never includes the submitted key,
+source excerpt, locator, local path, or stack. Correct only the named sense or
+input shape and resubmit. Index access, identity, schema, metadata, and search
+failures use an index diagnostic with `repair_scope: stop_and_report`; stop the
+batch and report those instead of changing producer input or retrying the same
+chunk. An unexpected failure remains the generic `operation` diagnostic.
+
 ## Export, final validation, and fixes
 
 `export` requires every sense to be `ZERO_HITS` or submitted, preserves Canonical

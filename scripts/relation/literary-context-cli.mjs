@@ -84,8 +84,17 @@ async function readSubmission(filePath) {
   if (!relative || relative.startsWith(`..${path.sep}`) || relative === '..' || path.isAbsolute(relative)) fail('submission JSON must remain under .warroom-scratch/');
   const fileStat = await stat(filePath);
   if (fileStat.size > 64_000) fail('sweep results JSON exceeds the 64 KB input limit');
-  const parsed = JSON.parse(await readFile(filePath, 'utf8'));
-  return parsed;
+  try {
+    return JSON.parse(await readFile(filePath, 'utf8'));
+  } catch (error) {
+    if (!(error instanceof SyntaxError)) throw error;
+    const failure = new Error('literary chunk submission JSON is invalid');
+    failure.code = 'LITERARY_SUBMISSION_VALIDATION';
+    failure.reason = 'submission_schema';
+    failure.affected = { sense_id: null, field: 'input' };
+    failure.repair_scope = 'correct_submission_shape';
+    throw failure;
+  }
 }
 
 function usage() {
@@ -196,8 +205,36 @@ async function main() {
 }
 
 main().catch((error) => {
-  const message = typeof error?.message === 'string' ? error.message : '';
   const errorType = typeof error?.name === 'string' && /^[A-Za-z][A-Za-z0-9]*$/u.test(error.name) ? error.name : 'Error';
+  if (error?.code === 'LITERARY_SUBMISSION_VALIDATION') {
+    const reasons = new Set([
+      'submission_schema', 'unknown_sense', 'duplicate_sense', 'context_key_not_found',
+      'context_key_ambiguous', 'context_key_too_short', 'duplicate_verified',
+      'missing_verified', 'missing_search_forms', 'no_literary_hits',
+    ]);
+    const fields = new Set(['submission', 'senses', 'sense', 'sense_id', 'verified', 'candidates', 'search_forms', 'input']);
+    const reason = reasons.has(error.reason) ? error.reason : 'submission_schema';
+    const affected = error.affected && typeof error.affected === 'object' ? error.affected : {};
+    const senseId = typeof affected.sense_id === 'string'
+      && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u.test(affected.sense_id)
+      ? affected.sense_id
+      : null;
+    const field = fields.has(affected.field) ? affected.field : 'submission';
+    const repairScopes = new Set(['correct_submission_shape', 'correct_source_sense_id', 'resubmit_affected_sense', 'stop_and_report']);
+    const repairScope = repairScopes.has(error.repair_scope) ? error.repair_scope : 'correct_submission_shape';
+    process.stderr.write(`${JSON.stringify({
+      status: 'FAILED',
+      diagnostic: 'submit_validation',
+      error_type: errorType,
+      message: 'Chunk submission did not satisfy the approved source-sense context contract.',
+      reason,
+      affected: { sense_id: senseId, field },
+      repair_scope: repairScope,
+    })}\n`);
+    process.exitCode = 1;
+    return;
+  }
+
   if (error?.code === 'CANDIDATE_V1_VALIDATION') {
     process.stderr.write(`${JSON.stringify({
       status: 'FAILED',
@@ -213,16 +250,32 @@ main().catch((error) => {
 
   let diagnostic = 'operation';
   let safeMessage = 'C literary context operation failed; local paths, source text, and secret details were suppressed.';
-  if (/^unsupported literary index schema/iu.test(message)) {
+  let repairScope;
+  if (error?.code === 'LITERARY_INDEX_ACCESS') {
+    diagnostic = 'index_access';
+    safeMessage = 'The approved literary index could not be accessed; stop and report the index setup issue.';
+    repairScope = 'stop_and_report';
+  } else if (error?.code === 'LITERARY_INDEX_IDENTITY') {
+    diagnostic = 'index_identity';
+    safeMessage = 'The approved literary index no longer matches this checkpoint; stop and report the index identity change.';
+    repairScope = 'stop_and_report';
+  } else if (error?.code === 'LITERARY_INDEX_SEARCH') {
+    diagnostic = 'index_search';
+    safeMessage = 'The approved literary index search failed; stop and report the index search issue.';
+    repairScope = 'stop_and_report';
+  } else if (/^unsupported literary index schema/iu.test(error?.message ?? '')) {
     diagnostic = 'index_schema';
     safeMessage = 'Unsupported literary index schema; only the approved works/text_units/unit_fts schema version 1 is supported.';
-  } else if (/literary index metadata|provenance digest|index inventory/iu.test(message)) {
+    repairScope = 'stop_and_report';
+  } else if (/literary index metadata|provenance digest|index inventory/iu.test(error?.message ?? '')) {
     diagnostic = 'index_metadata';
     safeMessage = 'Literary index metadata or provenance validation failed.';
-  } else if (/FTS|trigram|literal substring/iu.test(message)) {
+    repairScope = 'stop_and_report';
+  } else if (/FTS|trigram|literal substring/iu.test(error?.message ?? '')) {
     diagnostic = 'index_search';
     safeMessage = 'The approved literary index search contract is unavailable or inconsistent.';
+    repairScope = 'stop_and_report';
   }
-  process.stderr.write(`${JSON.stringify({ status: 'FAILED', diagnostic, error_type: errorType, message: safeMessage })}\n`);
+  process.stderr.write(`${JSON.stringify({ status: 'FAILED', diagnostic, error_type: errorType, message: safeMessage, ...(repairScope ? { repair_scope: repairScope } : {}) })}\n`);
   process.exitCode = 1;
 });
