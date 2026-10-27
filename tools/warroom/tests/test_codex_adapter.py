@@ -18,7 +18,7 @@ from pathlib import Path
 from unittest import mock
 
 from tests.fakes import FakeAdapter, World
-from warroom.adapters import CodexCLIAdapter, Handle, RunSpec, classify_failure
+from warroom.adapters import CodexCLIAdapter, Handle, RunSpec, classify_failure, xcrun_git, _SHIM_DIR
 from warroom.config import DEFAULTS
 from warroom.shell import Result
 
@@ -853,6 +853,51 @@ class RealProcessLaunch(unittest.TestCase):
             self.assertEqual(a.session_id(h.log_file), THREAD)
 
 
+class XcrunGitLookup(unittest.TestCase):
+    """The xcrun Git lookup never sees the War Room shim and never reads or writes xcrun's cache."""
+
+    def _fake_xcrun(self, d, output):
+        bin_dir = Path(d) / "fakebin"
+        bin_dir.mkdir()
+        x = bin_dir / "xcrun"
+        x.write_text('#!/bin/sh\nprintf "%s\\n" "$*" > "$FAKE_LOG"\nprintf "%s\\n" "$PATH" >> "$FAKE_LOG"\n'
+                     'env | grep -c ^WARROOM_ >> "$FAKE_LOG"\nprintf "%s" "' + output + '"\n')
+        x.chmod(0o755)
+        return bin_dir
+
+    def test_lookup_table(self):
+        with tempfile.TemporaryDirectory() as d:
+            link_dir = Path(d) / "link"
+            link_dir.mkdir()
+            (link_dir / "git").symlink_to(_SHIM_DIR / "git")
+            real = Path(d) / "dev" / "git"
+            real.parent.mkdir()
+            real.write_text("#!/bin/sh\n")
+            for case, output, expected in [("real git", str(real), str(real)),
+                                           ("shim result", str(_SHIM_DIR / "git"), None),
+                                           ("symlink to shim", str(link_dir / "git"), None),
+                                           ("relative", "git", None),
+                                           ("empty", "", None)]:
+                with self.subTest(case):
+                    sub = Path(d) / case.replace(" ", "_")
+                    sub.mkdir()
+                    bin_dir = self._fake_xcrun(sub, output)
+                    log = sub / "log"
+                    path = os.pathsep.join((str(_SHIM_DIR), str(link_dir), str(bin_dir), "/usr/bin"))
+                    env = {"PATH": path, "FAKE_LOG": str(log), "WARROOM_STAGE2_CHUNK": "1"}
+                    self.assertEqual(xcrun_git(env), expected)
+                    args, seen_path, warroom_vars = log.read_text().splitlines()
+                    self.assertEqual(args, "--no-cache --find git")
+                    self.assertEqual(seen_path.split(os.pathsep), [str(bin_dir), "/usr/bin"])
+                    self.assertEqual(warroom_vars, "0")
+
+    @unittest.skipUnless(sys.platform == "darwin" and shutil.which("xcrun"), "requires macOS xcrun")
+    def test_real_xcrun_with_shim_first_on_path_does_not_find_the_shim(self):
+        env = {"PATH": os.pathsep.join((str(_SHIM_DIR), os.environ.get("PATH", "/usr/bin:/bin")))}
+        found = xcrun_git(env)
+        self.assertTrue(found is None or (os.path.isabs(found) and Path(found).resolve().parent != _SHIM_DIR))
+
+
 class Stage2ChunkSandbox(unittest.TestCase):
     """A Stage 2 chunk blocks Git with Codex's own sandbox, never an outer one that macOS would refuse to nest."""
     GIT = "/usr/bin/git"
@@ -962,8 +1007,8 @@ class Stage2ChunkSandbox(unittest.TestCase):
             # The developer-dir Git that xcrun runs for /usr/bin/git is hidden on its own: it is in the profile and
             # cannot be read or copied under it (a direct exec of it is not stopped by a read rule; the module note
             # covers why it still cannot change Git metadata or reach the network).
-            found = subprocess.run(["xcrun", "--find", "git"], env=env, capture_output=True, text=True).stdout.strip()
-            if os.path.isabs(found):
+            found = xcrun_git(env)
+            if found:
                 self.assertIn(f'{json.dumps(found)}="none"', profile)
                 cases += [("read xcrun git", ["/bin/cat", found], False),
                           ("copy xcrun git", ["/bin/cp", found, str(Path(d) / "git-copy")], False)]
