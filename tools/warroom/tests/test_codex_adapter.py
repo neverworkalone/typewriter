@@ -18,7 +18,7 @@ from pathlib import Path
 from unittest import mock
 
 from tests.fakes import FakeAdapter, World
-from warroom.adapters import CodexCLIAdapter, Handle, RunSpec, classify_failure
+from warroom.adapters import CodexCLIAdapter, Handle, RunSpec, classify_failure, xcrun_git, _SHIM_DIR
 from warroom.config import DEFAULTS
 from warroom.shell import Result
 
@@ -853,6 +853,56 @@ class RealProcessLaunch(unittest.TestCase):
             self.assertEqual(a.session_id(h.log_file), THREAD)
 
 
+class XcrunGitLookup(unittest.TestCase):
+    """The Git lookup resolves the developer-dir Git directly: it never runs xcrun and never returns the shim."""
+
+    def _developer_dir(self, d, name, git=None):
+        git_path = Path(d) / name / "usr" / "bin" / "git"
+        git_path.parent.mkdir(parents=True)
+        if git == "file":
+            git_path.write_text("#!/bin/sh\n")
+            git_path.chmod(0o755)
+        elif git == "plain":
+            git_path.write_text("x")
+        elif git is not None:
+            git_path.symlink_to(git)
+        return str(Path(d) / name)
+
+    def test_lookup_table(self):
+        with tempfile.TemporaryDirectory() as d:
+            xcrun_marker = Path(d) / "xcrun-ran"
+            fake_bin = Path(d) / "fakebin"
+            fake_bin.mkdir()
+            (fake_bin / "xcrun").write_text(f"#!/bin/sh\ntouch {xcrun_marker}\n")
+            (fake_bin / "xcrun").chmod(0o755)
+            path = os.pathsep.join((str(_SHIM_DIR), str(fake_bin), "/usr/bin"))
+            cases = [("real git", "file", True), ("not executable", "plain", False), ("missing", None, False),
+                     ("symlink to shim", str(_SHIM_DIR / "git"), False)]
+            for name, git, found in cases:
+                with self.subTest(name):
+                    dev = self._developer_dir(d, name.replace(" ", "_"), git)
+                    result = xcrun_git({"PATH": path, "DEVELOPER_DIR": dev})
+                    self.assertEqual(result, os.path.join(dev, "usr", "bin", "git") if found else None)
+            with self.subTest("relative developer dir"):
+                self.assertIsNone(xcrun_git({"PATH": path, "DEVELOPER_DIR": "relative/dev"}))
+            with self.subTest("developer dir is the shim dir"):
+                self.assertIsNone(xcrun_git({"PATH": path, "DEVELOPER_DIR": str(_SHIM_DIR.parent)}))
+            self.assertFalse(xcrun_marker.exists())   # xcrun was never run
+
+    @unittest.skipUnless(sys.platform == "darwin" and os.path.exists("/usr/bin/xcode-select"), "requires macOS")
+    def test_real_lookup_with_shim_first_on_path_leaves_the_xcrun_cache_untouched(self):
+        cache_dir = subprocess.run(["getconf", "DARWIN_USER_CACHE_DIR"], capture_output=True, text=True).stdout.strip()
+        db = Path(cache_dir) / "xcrun_db"
+
+        def stamp():
+            return db.stat().st_mtime_ns if db.exists() else None
+
+        before = stamp()
+        found = xcrun_git({"PATH": os.pathsep.join((str(_SHIM_DIR), os.environ.get("PATH", "/usr/bin:/bin")))})
+        self.assertEqual(stamp(), before)
+        self.assertTrue(found is None or (os.path.isabs(found) and Path(found).resolve().parent != _SHIM_DIR))
+
+
 class Stage2ChunkSandbox(unittest.TestCase):
     """A Stage 2 chunk blocks Git with Codex's own sandbox, never an outer one that macOS would refuse to nest."""
     GIT = "/usr/bin/git"
@@ -962,8 +1012,8 @@ class Stage2ChunkSandbox(unittest.TestCase):
             # The developer-dir Git that xcrun runs for /usr/bin/git is hidden on its own: it is in the profile and
             # cannot be read or copied under it (a direct exec of it is not stopped by a read rule; the module note
             # covers why it still cannot change Git metadata or reach the network).
-            found = subprocess.run(["xcrun", "--find", "git"], env=env, capture_output=True, text=True).stdout.strip()
-            if os.path.isabs(found):
+            found = xcrun_git(env)
+            if found:
                 self.assertIn(f'{json.dumps(found)}="none"', profile)
                 cases += [("read xcrun git", ["/bin/cat", found], False),
                           ("copy xcrun git", ["/bin/cp", found, str(Path(d) / "git-copy")], False)]

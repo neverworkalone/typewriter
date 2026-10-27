@@ -581,6 +581,37 @@ def _command_denial(item: dict) -> str | None:
     return f"{command} (exit={item.get('exit_code')}; 출력: {evidence})"
 
 
+_SHIM_DIR = (Path(__file__).resolve().parents[1] / "bin").resolve()
+
+
+def _is_shim(path) -> bool:
+    """True for the War Room Git shim, its directory, or any symlink resolving to them."""
+    try:
+        real = Path(path).resolve()
+    except (OSError, RuntimeError):
+        return True   # unresolvable: treat as unsafe
+    return real == _SHIM_DIR / "git" or real.parent == _SHIM_DIR or real == _SHIM_DIR
+
+
+def xcrun_git(env) -> str | None:
+    """The developer-dir Git that macOS's /usr/bin/git (an xcrun stub) runs, resolved without running xcrun.
+
+    Every xcrun invocation reads and updates its lookup cache (`--no-cache` only skips the read), and with the shim
+    on PATH its PATH fallback could cache the shim as `git`. So the path is built directly from the active developer
+    directory (`DEVELOPER_DIR`, else `xcode-select -p`, which does not touch the cache), and a result that is
+    missing, not executable, or is the shim (or a symlink to it) is discarded."""
+    developer_dir = env.get("DEVELOPER_DIR") or ""
+    if not developer_dir:
+        try:
+            developer_dir = subprocess.run(["/usr/bin/xcode-select", "-p"], env={}, capture_output=True, text=True,
+                                           timeout=60).stdout.strip()
+        except (OSError, subprocess.SubprocessError):
+            return None
+    found = os.path.join(developer_dir, "usr", "bin", "git")
+    ok = os.path.isabs(developer_dir) and os.path.isfile(found) and os.access(found, os.X_OK) and not _is_shim(found)
+    return found if ok else None
+
+
 class CodexCLIAdapter(ProcessAdapter):
     """Codex CLI (`codex exec --json`, `codex exec resume <thread id>`). Model and effort pinned on every launch."""
     name = "codex"
@@ -620,12 +651,8 @@ class CodexCLIAdapter(ProcessAdapter):
         blocked = stage2_git_executables(env)
         hidden = set(blocked)
         if sys.platform == "darwin":   # /usr/bin/git is an xcrun shim: hiding the developer-dir Git it runs blocks it
-            try:
-                found = subprocess.run(["xcrun", "--find", "git"], env=env, capture_output=True, text=True,
-                                       timeout=60).stdout.strip()
-            except (OSError, subprocess.SubprocessError):
-                found = ""
-            if os.path.isabs(found):
+            found = xcrun_git(env)
+            if found:
                 hidden.update((found, str(Path(found).resolve())))
         entries = ", ".join(f'{json.dumps(p)}="none"' for p in sorted(hidden))
         profile = f'permissions.{STAGE2_CHUNK_PROFILE}={{extends=":workspace", filesystem={{{entries}}}}}'
