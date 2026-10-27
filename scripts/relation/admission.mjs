@@ -3,6 +3,7 @@ import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { parseArrowReference } from '../build/gloss-arrow-reference.mjs';
 import { CANDIDATE_BATCH_SIZE, normalizeCandidate, parseCandidateJsonl, validateCandidateBatch } from './candidate-contract.mjs';
 
 export { normalizeCandidate };
@@ -34,7 +35,11 @@ const isText = (value) => typeof value === 'string' && value.trim().length > 0;
 /** Stage 2 must never ask an editor to judge candidates without an actual source meaning. */
 export function assertStage2SourceGloss(senseId, gloss) {
   const normalized = typeof gloss === 'string' ? gloss.trim() : '';
-  if (!normalized || /^→\s*\.\s*$/u.test(normalized)) {
+  const reference = parseArrowReference(normalized);
+  const referenceTail = reference?.ok
+    ? normalized.slice(reference.offset + reference.text.length).replace(/^\.\s*/u, '').trim()
+    : null;
+  if (!normalized || /^→\s*\.\s*$/u.test(normalized) || referenceTail === '') {
     throw new Error(`Stage 2 source sense ${senseId} has no usable meaning gloss (${JSON.stringify(gloss)}); candidate adjudication is blocked`);
   }
 }

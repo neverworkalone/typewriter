@@ -535,7 +535,7 @@ test('Stage 2 blocks missing source glosses during preparation and when resuming
   const canonicalPath = path.join(broken.root, 'data/canonical/stdict-0001.jsonl');
   const canonicalRows = (await readFile(canonicalPath, 'utf8')).trim().split('\n').map(JSON.parse);
   const originalSource = canonicalRows[0];
-  for (const gloss of ['→ .', '']) {
+  for (const gloss of ['→ .', '', '→ 다른 표제어.', '→ 다른 표제어[Ⅱ].']) {
     canonicalRows[0] = { ...originalSource, senses: originalSource.senses.map((sense) => ({ ...sense, gloss })) };
     await writeFile(canonicalPath, jsonl(canonicalRows));
     await assert.rejects(
@@ -552,12 +552,14 @@ test('Stage 2 blocks missing source glosses during preparation and when resuming
   assert.match(readable.text, /S\tw1-s1\tw1\t출발어\tnoun\t출발 의미\t/u, 'a source gloss with a meaning still reaches the chunk');
   const absoluteCheckpoint = path.join(legacy.root, checkpointPath);
   const checkpoint = JSON.parse(await readFile(absoluteCheckpoint, 'utf8'));
-  checkpoint.items[0].gloss = '→ .';
-  await writeFile(absoluteCheckpoint, `${JSON.stringify(checkpoint)}\n`);
-  await assert.rejects(
-    () => quiet(() => run(['read-chunk', '--checkpoint', checkpointPath, '--format', 'compact'], { root: legacy.root })),
-    /Stage 2 source sense w1-s1 has no usable meaning gloss/u,
-  );
+  for (const gloss of ['→ .', '→ 다른 표제어[Ⅱ].']) {
+    checkpoint.items[0].gloss = gloss;
+    await writeFile(absoluteCheckpoint, `${JSON.stringify(checkpoint)}\n`);
+    await assert.rejects(
+      () => quiet(() => run(['read-chunk', '--checkpoint', checkpointPath, '--format', 'compact'], { root: legacy.root })),
+      /Stage 2 source sense w1-s1 has no usable meaning gloss/u,
+    );
+  }
 });
 
 test('Stage 2 chunks bind exact senses, resume safely, and preserve text-only Parts and prior rows', async (t) => {
