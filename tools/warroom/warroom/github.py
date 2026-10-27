@@ -42,6 +42,16 @@ class GhClient:
             raise GhError(f"gh pr list --head: {r.err.strip()}")
         return json.loads(r.out or "[]")
 
+    def create_pr(self, head: str, base: str, title: str, body: str, labels: list[str]) -> None:
+        """Open a PR. The caller re-queries by branch afterwards: a lost response must never create a second one."""
+        argv = ["gh", "pr", "create", "--repo", self.repo, "--head", head, "--base", base, "--title", title,
+                "--body", body]
+        for label in labels:
+            argv += ["--label", label]
+        r = self.runner.run(argv, env=self.env, timeout=120)
+        if not r.ok:
+            raise GhError(f"gh pr create: {r.err.strip() or r.out.strip()}")
+
     def close_pr(self, n: int) -> None:
         """Close without merging; the branch is left alone (deleted separately, after verification)."""
         r = self.runner.run(["gh", "pr", "close", str(n), "--repo", self.repo], env=self.env, timeout=60)

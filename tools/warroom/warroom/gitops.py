@@ -120,6 +120,34 @@ class Git:
         except OSError as e:
             raise GitError(f"info/exclude를 갱신할 수 없습니다: {e}")
 
+    def commit_paths(self, path: Path, rels: list[str], message: str) -> str:
+        """Commit exactly `rels` (Supervisor-owned finalization). Any other change in the worktree is refused untouched."""
+        out = self.dirty(path)
+        changed = {line[3:].strip() for line in out.splitlines() if line.strip()}
+        if not changed or changed != set(rels):
+            raise GitError(f"커밋 대상이 의도한 파일 {sorted(rels)}과 다릅니다 (변경: {sorted(changed)}) — 아무것도 커밋하지 않았습니다")
+        self._git("add", "--", *rels, cwd=path)
+        self._git("commit", "-q", "-m", message, cwd=path)
+        return self.head(path)
+
+    def is_committed(self, path: Path, rel: str) -> bool:
+        """`rel` is tracked at HEAD with no change in the worktree (and nothing else is dirty)."""
+        if self.dirty(path).strip():
+            return False
+        return self._git("cat-file", "-e", f"HEAD:{rel}", cwd=path, check=False).ok
+
+    def is_candidate_child(self, path: Path, base_sha: str, rel: str) -> bool:
+        """HEAD is a direct child of `base_sha` that changed exactly `rel` (our own interrupted Candidate commit)."""
+        parent = self._git("rev-parse", "HEAD^", cwd=path, check=False)
+        if not parent.ok or parent.out.strip() != base_sha:
+            return False
+        files = self._git("diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD", cwd=path, check=False)
+        return files.ok and files.out.split() == [rel]
+
+    def push_branch(self, path: Path, branch: str) -> None:
+        """Plain push of HEAD to a not-yet-existing remote branch. Never forced; a moved remote is the caller's ERROR."""
+        self._git("push", "origin", f"HEAD:refs/heads/{branch}", cwd=path, timeout=600)
+
     def dirty(self, path: Path) -> str:
         self.ignore_scratch()
         return self._git("status", "--porcelain=v1", "--untracked-files=all", cwd=path).out

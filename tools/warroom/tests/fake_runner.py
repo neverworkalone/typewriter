@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 
+from tests.fake_literary import FakeLiteraryCli
 from warroom.shell import Result, Runner
 
 
@@ -24,6 +25,7 @@ class ScriptedRunner(Runner):
         self.probes: list[str] = []
         self.probe_calls: list[dict] = []         # argv + cwd of every `opencode run` (the probe)
         self.probe_gate = None                    # threading.Event: when set, a probe waits until it is released
+        self.literary = FakeLiteraryCli()          # Method C literary-context CLI
         self.models_gate = None                   # threading.Event: `opencode models` waits until it is released
 
     def ok_auth(self, account):
@@ -35,6 +37,8 @@ class ScriptedRunner(Runner):
     def run(self, argv, cwd=None, env=None, input=None, timeout=120):
         argv = ["git", *argv[1:]] if argv and os.path.basename(argv[0]) == "git" else argv   # a resolved Git path
         self.calls.append(list(argv))
+        if argv[:2] == ["node", "scripts/relation/literary-context-cli.mjs"]:
+            return self.literary.run(argv, cwd)
         if argv[:3] == ["gh", "api", "user"]:
             return Result(0, self.account + "\n") if self.api_ok else Result(1, "", "not logged in")
         if argv[:2] == ["gh", "api"] and ".permissions.push" in argv:

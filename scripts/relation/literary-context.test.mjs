@@ -13,6 +13,8 @@ import {
   inspectLiteraryIndex,
   loadLiteraryCheckpoint,
   readLiteraryChunk,
+  renderChunkText,
+  reportLiteraryCheckpointSenses,
   resolveVerifiedContextKey,
   submitLiteraryChunk,
   summarizeLiteraryCheckpoint,
@@ -758,6 +760,129 @@ test('adding a search form after chunk drops the shown contexts so the changed f
     assert.ok((await load(fixture)).records[0].senses[0].shown);
     await addSearchForm(fixture.checkpointPath, 'sense-000001', '서릿발', 'reviewed form', { scratchDirectory: fixture.scratchDirectory });
     assert.equal((await load(fixture)).records[0].senses[0].shown, null);
+  } finally {
+    await cleanup(fixture);
+  }
+});
+
+const runCli = (fixture, args) => spawnSync(process.execPath, [path.resolve('scripts/relation/literary-context-cli.mjs'), ...args], { cwd: fixture.root, encoding: 'utf8' });
+const cliChunkArgs = (fixture, extra = []) => ['chunk', '--db', fixture.databasePath, '--checkpoint', fixture.checkpointPath, ...extra];
+
+test('chunk --format text carries every sense, state and context of the JSON result, and JSON stays the default', async () => {
+  const fixture = await makeFixture({ unitCount: 6, workCount: 3, firstSenseGlosses: ['첫째 뜻', '둘째 뜻'] });
+  try {
+    const asText = runCli(fixture, cliChunkArgs(fixture, ['--contexts', '3', '--format', 'text']));
+    assert.equal(asText.status, 0, asText.stderr);
+    const check = await load(fixture);
+    // chunk records zero-hit senses; read the same chunk again as JSON for the comparison (nothing left but the hit senses)
+    const asJson = runCli(fixture, cliChunkArgs(fixture, ['--contexts', '3']));
+    assert.equal(asJson.status, 0, asJson.stderr);
+    const parsed = JSON.parse(asJson.stdout);
+    const body = (text) => text.slice(text.indexOf('\n\n') + 2);   // the header's zero_hit differs: the first read recorded them
+    assert.equal(body(asText.stdout), body(renderChunkText(parsed)));
+    assert.match(asText.stdout, /zero_hit=499 /u);
+    assert.ok(parsed.items.length >= 1);
+    for (const item of parsed.items) {
+      assert.ok(asText.stdout.includes(`## ${item.sense_id} — ${item.lemma} [${item.pos}]\n${item.gloss}\n`));
+      assert.ok(asText.stdout.includes(`hits=${item.total_hits} unseen=${item.unseen_hits}`));
+      for (const context of item.contexts) assert.ok(asText.stdout.includes(`[${context.k}] ${context.src}\n${context.x}`), 'context key, source and excerpt are verbatim');
+    }
+    assert.ok(check.records.length > 0);
+    const bad = runCli(fixture, cliChunkArgs(fixture, ['--format', 'xml']));
+    assert.notEqual(bad.status, 0);
+  } finally {
+    await cleanup(fixture);
+  }
+});
+
+test('renderChunkText table: header, forms line, status-only items and empty chunk', () => {
+  const base = { batch: { shard: '001', batch: '01' }, done_senses: 3, total_senses: 5, zero_hit_recorded: 1, not_yet_read: 2 };
+  const withContexts = { sense_id: 's1', lemma: '가나', pos: '명사', gloss: '뜻', total_hits: 4, unseen_hits: 2, contexts: [{ k: 'aaaaaaaaaaaa', src: '제목 / 작가', x: '원문 한 줄' }, { k: 'bbbbbbbbbbbb', src: '', x: '둘째' }] };
+  const cases = [
+    ['plain', { ...base, items: [withContexts] }, '## s1 — 가나 [명사]\n뜻\nhits=4 unseen=2\n[aaaaaaaaaaaa] 제목 / 작가\n원문 한 줄\n\n[bbbbbbbbbbbb] \n둘째\n'],
+    ['forms', { ...base, items: [{ ...withContexts, forms: ['가나', '가날'] }] }, 'forms: 가나, 가날\nhits=4'],
+    ['status only', { ...base, items: [{ sense_id: 's2', status: 'SEARCH_FAILED' }, { sense_id: 's3', status: 'UNSEARCHABLE' }] }, '## s2 — SEARCH_FAILED\n\n## s3 — UNSEARCHABLE\n'],
+    ['empty', { ...base, items: [] }, 'not_yet_read=2\n\n\n'],
+  ];
+  for (const [name, result, expected] of cases) {
+    const text = renderChunkText(result);
+    assert.ok(text.startsWith('batch=001_01 done=3/5 zero_hit=1 not_yet_read=2\n\n'), name);
+    assert.ok(text.includes(expected), name);
+  }
+});
+
+test('report --sense-ids returns done-ness by the existing senseDone meaning and fails closed on bad input', async () => {
+  const fixture = await makeFixture({ unitCount: 3, firstSenseGlosses: ['첫째 뜻', '둘째 뜻'] });
+  try {
+    const read = await chunk(fixture);
+    const ids = read.items.map((item) => item.sense_id);
+    assert.equal(ids.length, 2);
+    let checkpoint = await load(fixture);
+    let report = reportLiteraryCheckpointSenses(checkpoint, `${ids.join(',')},${checkpoint.records[1].senses[0].sense_id}`);
+    assert.deepEqual(report.senses.map((item) => [item.status, item.done]), [['PENDING', false], ['PENDING', false], ['ZERO_HITS', true]]);
+    assert.equal(report.all_done, false);
+    await submit(fixture, [{ sense_id: ids[0], verified: [], candidates: [] }]);
+    checkpoint = await load(fixture);
+    report = reportLiteraryCheckpointSenses(checkpoint, ids[0]);
+    assert.deepEqual(report.senses, [{ sense_id: ids[0], status: 'SUBMITTED', done: true }]);
+    assert.equal(JSON.stringify(report).includes(fixture.root), false, 'no paths');
+    const viaCli = runCli(fixture, ['report', '--checkpoint', fixture.checkpointPath, '--sense-ids', `${ids[0]},${ids[1]}`]);
+    assert.equal(viaCli.status, 0, viaCli.stderr);
+    assert.deepEqual(JSON.parse(viaCli.stdout).senses.map((item) => item.done), [true, false]);
+    assert.equal(JSON.parse(runCli(fixture, ['report', '--checkpoint', fixture.checkpointPath]).stdout).contract, 'literary-checkpoint-v3', 'plain report unchanged');
+
+    const clone = () => structuredClone(checkpoint);
+    const unusual = clone();
+    Object.assign(unusual.records[0].senses[0].submission, { status: 'ZERO_HITS', verified: [], candidates: [] });
+    assert.equal(reportLiteraryCheckpointSenses(unusual, ids[0]).senses[0].done, true, 'ZERO_HITS with no candidates is valid');
+    const withCandidate = clone();
+    Object.assign(withCandidate.records[0].senses[0].submission, { verified: [{ locator_key: 'k' }], candidates: ['후보'] });
+    assert.equal(reportLiteraryCheckpointSenses(withCandidate, ids[0]).senses[0].done, true, 'candidate with a verified context is valid');
+    const damaged = [
+      ['unknown id', () => clone(), 'nope', /not in this checkpoint/u],
+      ['repeated request id', () => clone(), `${ids[0]},${ids[0]}`, /repeated/u],
+      ['empty element', () => clone(), `${ids[0]},`, /comma-separated/u],
+      ['unknown submission status', () => { const c = clone(); c.records[0].senses[0].submission.status = 'DONE'; return c; }, ids[0], /submission is damaged/u],
+      ['ZERO_HITS with a candidate', () => { const c = clone(); Object.assign(c.records[0].senses[0].submission, { status: 'ZERO_HITS', candidates: ['후보'] }); return c; }, ids[0], /submission is damaged/u],
+      ['candidate without any verified context', () => { const c = clone(); Object.assign(c.records[0].senses[0].submission, { verified: [], candidates: ['후보'] }); return c; }, ids[0], /submission is damaged/u],
+      ['verified item without locator_key', () => { const c = clone(); c.records[0].senses[0].submission.verified = [{}]; return c; }, ids[0], /submission is damaged/u],
+      ['submission candidates not strings', () => { const c = clone(); c.records[0].senses[0].submission.candidates = [1]; return c; }, ids[0], /submission is damaged/u],
+      ['duplicate sense id in checkpoint', () => { const c = clone(); c.records[1].senses[0].sense_id = ids[0]; return c; }, ids[0], /sense structure is damaged/u],
+      ['missing batch binding', () => { const c = clone(); delete c.batch.model; return c; }, ids[0], /batch binding/u],
+      ['bad search state', () => { const c = clone(); c.records[0].senses[1].search = { status: 5 }; return c; }, ids[1], /search state is damaged/u],
+      ['senses not an array', () => { const c = clone(); c.records[0].senses = null; return c; }, ids[0], /record structure is damaged/u],
+    ];
+    for (const [name, make, list, pattern] of damaged) assert.throws(() => reportLiteraryCheckpointSenses(make(), list), pattern, name);
+  } finally {
+    await cleanup(fixture);
+  }
+});
+
+test('a damaged checkpoint is refused by every consumer (plain report, chunk, export), valid ZERO_HITS passes', async () => {
+  const fixture = await makeFixture({ unitCount: 3 });
+  try {
+    const [item] = (await chunk(fixture)).items;
+    await submit(fixture, [{ sense_id: item.sense_id, verified: [item.contexts[0].k], candidates: ['서리'] }]);
+    const good = await readFile(fixture.checkpointPath, 'utf8');
+    const damagedVariants = [
+      ['ZERO_HITS carrying a candidate', (cp) => Object.assign(cp.records[0].senses[0].submission, { status: 'ZERO_HITS', verified: [] })],
+      ['candidate without verified context', (cp) => { cp.records[0].senses[0].submission.verified = []; }],
+    ];
+    for (const [name, damage] of damagedVariants) {
+      const cp = JSON.parse(good);
+      damage(cp);
+      await writeFile(fixture.checkpointPath, JSON.stringify(cp));
+      const plain = runCli(fixture, ['report', '--checkpoint', fixture.checkpointPath]);
+      assert.notEqual(plain.status, 0, `plain report: ${name}`);
+      assert.notEqual(runCli(fixture, cliChunkArgs(fixture)).status, 0, `chunk: ${name}`);
+      await assert.rejects(exportOutput(fixture), /damaged/u, `export: ${name}`);
+    }
+    const valid = JSON.parse(good);
+    Object.assign(valid.records[0].senses[0].submission, { status: 'ZERO_HITS', verified: [], candidates: [] });
+    await writeFile(fixture.checkpointPath, JSON.stringify(valid));
+    const plain = runCli(fixture, ['report', '--checkpoint', fixture.checkpointPath]);
+    assert.equal(plain.status, 0, plain.stderr);
+    assert.equal(JSON.parse(plain.stdout).coverage.sense_statuses.ZERO_HITS >= 1, true);
   } finally {
     await cleanup(fixture);
   }

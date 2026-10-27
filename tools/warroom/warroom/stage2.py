@@ -126,25 +126,29 @@ def chunk_pages(text: str) -> list[str]:
     return pages
 
 
-def page_path(number: int, total: int) -> str:
-    return CHUNK_VIEW if total == 1 else CHUNK_VIEW.replace(".txt", f".p{number}of{total}.txt")
+def page_path(number: int, total: int, view: str = CHUNK_VIEW) -> str:
+    return view if total == 1 else view.replace(".txt", f".p{number}of{total}.txt")
 
 
-def write_chunk_pages(worktree) -> list[str]:
-    """Page the rendered chunk view for reading; returns worktree-relative paths in reading order.
+def write_pages(worktree, view: str, pages: list[str]) -> list[str]:
+    """Write `pages` next to `view` (shared with Method C); returns worktree-relative paths in reading order.
 
-    One page is the view itself. Otherwise `active-chunk.p<i>of<n>.txt` files are written, after removing pages of an
+    One page is the view itself. Otherwise `<stem>.p<i>of<n>.txt` files are written, after removing pages of an
     earlier chunk so a stale page can never be read with the current one.
     """
-    view = Path(worktree) / CHUNK_VIEW
-    pages = chunk_pages(view.read_text("utf-8"))
-    for stale in view.parent.glob("active-chunk.p*of*.txt"):
+    view_file = Path(worktree) / view
+    for stale in view_file.parent.glob(view_file.name.replace(".txt", ".p*of*.txt")):
         stale.unlink()
-    paths = [page_path(i, len(pages)) for i in range(1, len(pages) + 1)]
+    paths = [page_path(i, len(pages), view) for i in range(1, len(pages) + 1)]
     if len(pages) > 1:
         for path, page in zip(paths, pages):
             (Path(worktree) / path).write_text(page, "utf-8")
     return paths
+
+
+def write_chunk_pages(worktree) -> list[str]:
+    """Page the rendered Stage 2 chunk view for reading; returns worktree-relative paths in reading order."""
+    return write_pages(worktree, CHUNK_VIEW, chunk_pages((Path(worktree) / CHUNK_VIEW).read_text("utf-8")))
 
 
 def run_start_key(batch_id: int) -> str:

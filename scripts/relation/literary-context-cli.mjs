@@ -12,6 +12,8 @@ import {
   loadLiteraryCheckpoint,
   MAX_RESPONSE_CHARS,
   readLiteraryChunk,
+  renderChunkText,
+  reportLiteraryCheckpointSenses,
   submitLiteraryChunk,
   summarizeLiteraryCheckpoint,
   validateExistingLiteraryCandidates,
@@ -137,7 +139,9 @@ async function main() {
       break;
     }
     case 'chunk': {
-      only(options, 'db', 'checkpoint', 'limit', 'contexts', 'snippet-chars', 'sense-ids');
+      only(options, 'db', 'checkpoint', 'limit', 'contexts', 'snippet-chars', 'sense-ids', 'format');
+      const format = options.format ?? 'json';
+      if (!['json', 'text'].includes(format)) fail('--format must be json or text');
       required(options, 'db', 'checkpoint');
       result = await readLiteraryChunk({
         databasePath: options.db,
@@ -148,6 +152,17 @@ async function main() {
         snippetChars: options['snippet-chars'],
         scratchDirectory: SCRATCH_DIRECTORY,
       });
+      if (format === 'text') {
+        // Never trimmed: a text view over the budget fails closed instead of dropping senses or excerpts.
+        const text = renderChunkText(result);
+        if (text.length > MAX_OUTPUT_CHARS) {
+          process.stderr.write(`${JSON.stringify({ status: 'OUTPUT_LIMIT', max_chars: MAX_OUTPUT_CHARS, actual_chars: text.length, message: 'Text view exceeds the output budget; nothing was emitted.' })}\n`);
+          process.exitCode = 1;
+          return;
+        }
+        process.stdout.write(text);
+        return;
+      }
       break;
     }
     case 'submit': {
@@ -168,9 +183,9 @@ async function main() {
       break;
     }
     case 'report': {
-      only(options, 'checkpoint');
+      only(options, 'checkpoint', 'sense-ids');
       const { checkpoint } = await loadLiteraryCheckpoint(required(options, 'checkpoint').checkpoint, { scratchDirectory: SCRATCH_DIRECTORY });
-      result = summarizeLiteraryCheckpoint(checkpoint);
+      result = options['sense-ids'] === undefined ? summarizeLiteraryCheckpoint(checkpoint) : reportLiteraryCheckpointSenses(checkpoint, options['sense-ids']);
       break;
     }
     case 'export': {

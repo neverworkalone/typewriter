@@ -14,9 +14,11 @@ _PLACEHOLDER = re.compile(r"\{\{\s*([A-Za-z_]\w*)\s*\}\}")
 _PRODUCE = {"batch", "branch"}
 _MAINTAIN = {"issue", "branch"}
 _STAGE2 = {"shard", "batch", "part", "branch", "phase", "checkpoint", "session_note", "chunk_read"}
+_C_CHUNK = {"batch", "branch", "chunk_no", "checkpoint", "session_note", "chunk_input"}
 ALLOWED = {"a": _PRODUCE, "b": _PRODUCE, "c": _PRODUCE, "d": _PRODUCE, "recovery": _PRODUCE | {"resolved_defects"},
            "fix": {"pr", "head", "branch", "review_events", "session_note"},
-           "m": _MAINTAIN, "m_recovery": _MAINTAIN, "s2": _STAGE2, "s2_chunk": _STAGE2, "s2_recovery": _STAGE2}
+           "m": _MAINTAIN, "m_recovery": _MAINTAIN, "s2": _STAGE2, "s2_chunk": _STAGE2, "s2_recovery": _STAGE2,
+           "c_chunk": _C_CHUNK, "c_chunk_resume": {"chunk_no", "checkpoint", "remaining"}}
 MAINTENANCE_METHOD = "m"
 STAGE2_METHOD = "s2"
 CHUNK_VIEW = ".warroom-scratch/active-chunk.txt"
@@ -107,6 +109,34 @@ def stage2(b, phase: str, checkpoint: dict | None, *, resumed: bool = False,
                   session_note=("중단된 같은 청크를 이어간다. 이미 checkpoint에 저장된 결정을 다시 만들지 않는다.\n"
                                 if resumed else ""))
     return render("s2_chunk" if phase == "chunk" else "s2", values, directory)
+
+
+VIEW_BEGIN, VIEW_END = "<<<CHUNK_VIEW_BEGIN>>>", "<<<CHUNK_VIEW_END>>>"
+
+
+def c_chunk(b, chunk_no: int, checkpoint: str, *, view: str | None = None, pages: list[str] | None = None,
+            note: str = "", directory: Path | None = None) -> str:
+    """The self-contained card of ONE new Method C chunk session: the whole view inline, or (only when it cannot be
+    delivered that way) the page files to read once each. Exactly one of `view` / `pages`."""
+    if (view is None) == (pages is None):
+        raise PromptError("C 청크 입력은 inline view 또는 page 목록 중 정확히 하나여야 합니다")
+    if view is not None:
+        chunk_input = (f"아래가 이번 청크의 **전체 view**다(손실 없음). 다시 `cat`으로 읽지 않는다.\n{VIEW_BEGIN}\n{view}"
+                       f"{'' if view.endswith(chr(10)) else chr(10)}{VIEW_END}")
+    else:
+        reads = "\n".join(f"   - `cat {path}` ({i}/{len(pages)})" for i, path in enumerate(pages, 1))
+        chunk_input = ("청크 view가 한 번에 전달하기에 커서 page 파일로 나눴다. 아래 page를 순서대로 **page마다 별도 도구 호출 한 번씩** "
+                       "`cat`으로 읽는다(Codex는 각 호출에 `max_output_tokens: 10000`). 모두 이으면 view와 같다. "
+                       "하나라도 받지 못했거나 truncated 경고가 보이면 제출하지 말고 그 사실을 보고한 뒤 종료한다.\n" + reads)
+    return render("c_chunk", {"batch": f"{b['shard']}_{b['batch']}", "branch": b["branch"],
+                              "chunk_no": f"{chunk_no:03d}", "checkpoint": checkpoint, "session_note": note,
+                              "chunk_input": chunk_input}, directory)
+
+
+def c_chunk_resume(chunk_no: int, checkpoint: str, remaining: list[str], directory: Path | None = None) -> str:
+    """Resuming the same session: only the still-open sense ids, never the chunk body again."""
+    return render("c_chunk_resume", {"chunk_no": f"{chunk_no:03d}", "checkpoint": checkpoint,
+                                     "remaining": "남은 Sense ID: " + ", ".join(remaining)}, directory)
 
 
 def fix(b, events, resumed: bool, directory: Path | None = None) -> str:
