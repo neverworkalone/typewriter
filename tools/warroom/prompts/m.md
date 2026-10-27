@@ -5,4 +5,4 @@
 수정이 끝나면 이 브랜치에서 커밋·push하고, Issue #{{issue}}를 연결한(`Closes #{{issue}}`) PR 하나만 만든다. PR 본문에 보장해야 할 규칙(invariant)과 실제로 검증한 것/하지 않은 것을 적고, PR 직전에 `gh issue view {{issue}} --json labels` 로 Issue의 현재 라벨을 PR에 복사한다.
 리뷰를 요청·수행하지 않고, 스스로 승인하거나 머지하지 않는다. 기존 worktree와 HEAD를 유지하며 master가 갱신되어도 현재 브랜치를 merge/rebase/reset하지 않는다.
 임시·스크래치 파일은 worktree 안의 `.warroom-scratch/` 에만 만든다. 이 디렉터리는 git에서 무시되며 커밋하지 않는다.
-끝나면 종료한다.
+PR 생성 및 라벨 확인이 끝나면 즉시 종료한다. 이미 열린 PR을 이어받은 경우에도 필요한 구현·커밋·라벨 확인까지만 수행하고 종료한다. PR 이후의 CI·리뷰·머지 상태를 조회하거나 기다리거나 반복 모니터링하지 않는다(`gh pr checks`, `gh run watch`, `--watch`, `sleep` 및 주기적 폴링 금지). 그 후속 감시는 War Room Supervisor의 책임이다.

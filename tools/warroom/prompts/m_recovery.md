@@ -2,4 +2,4 @@
 worktree의 상태와 기존 커밋·미커밋 변경, 이미 열린 PR이 있는지(`gh pr list --head {{branch}} --state all`)를 먼저 확인하라. 이미 있는 작업·PR을 버리거나 중복 PR을 만들지 말고 남은 작업만 완료한다.
 범위·금지 사항은 처음 지시와 같다: Issue #{{issue}}의 공통 원인 수정과 공유 regression만, 배치 Candidate JSONL은 건드리지 않고, 리뷰 요청·승인·머지를 하지 않으며, 현재 브랜치를 merge/rebase/reset하지 않는다.
 PR이 없으면 이 브랜치에서 `Closes #{{issue}}` 를 포함한 PR 하나를 만들고 Issue의 현재 라벨을 복사한다.
-임시·스크래치 파일은 `.warroom-scratch/` 에만 만든다. 끝나면 종료한다.
+임시·스크래치 파일은 `.warroom-scratch/` 에만 만든다. PR 생성 및 라벨 확인이 끝나면 즉시 종료한다. 이미 열린 PR을 이어받은 경우에도 필요한 구현·커밋·라벨 확인까지만 수행하고 종료한다. PR 이후의 CI·리뷰·머지 상태를 조회하거나 기다리거나 반복 모니터링하지 않는다(`gh pr checks`, `gh run watch`, `--watch`, `sleep` 및 주기적 폴링 금지). 그 후속 감시는 War Room Supervisor의 책임이다.
