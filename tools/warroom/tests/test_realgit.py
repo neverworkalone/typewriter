@@ -10,7 +10,8 @@ from pathlib import Path
 from unittest import mock
 
 from warroom import realgit
-from warroom.gitops import Git
+from warroom import batches
+from warroom.gitops import Git, GitError
 from warroom.realgit import SHIM_DIR, resolve_git
 from warroom.shell import Runner
 
@@ -60,6 +61,26 @@ class PoisonedStub(unittest.TestCase):
         git = Git(Runner(), Path(self.tmp.name), self.env, Path(self.tmp.name) / "wt")
         res = git._git("fetch", "origin", "master")
         self.assertEqual(res.out.strip(), "real git fetch origin master")
+
+    def test_callers_fail_instead_of_falling_back_to_a_bare_git(self):
+        """No usable Git (dev dir missing, shim first on PATH): nothing is executed, every caller raises."""
+        marker = Path(self.tmp.name) / "ran"
+        _script(Path(self.stub), f'touch "{marker}"\n')   # the stub would leave a marker if a bare `git` ran it
+        env = {**self.env, "DEVELOPER_DIR": str(Path(self.tmp.name) / "missing")}
+        runner = mock.Mock(spec=Runner)
+        git = Git(runner, Path(self.tmp.name), env, Path(self.tmp.name) / "wt")
+        with self.subTest("gitops"):
+            with self.assertRaises(GitError):
+                git._git("fetch", "origin", "master")
+            with self.assertRaises(GitError):
+                git.fetch_base("master")
+        with self.subTest("batches"):
+            with self.assertRaises(batches.BatchError):
+                batches._counts(runner, self.tmp.name, env, "origin/master", "x")
+            with self.assertRaises(batches.BatchError):
+                batches._candidate_counts(runner, self.tmp.name, env, "origin/master")
+        runner.run.assert_not_called()
+        self.assertFalse(marker.exists())
 
     def test_worker_shim_runs_the_real_git_when_the_cache_is_poisoned(self):
         loader = importlib.machinery.SourceFileLoader("warroom_git_shim", str(SHIM_DIR / "git"))

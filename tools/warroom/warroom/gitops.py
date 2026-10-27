@@ -29,7 +29,14 @@ class Git:
     def __init__(self, runner: Runner, repo_root: Path, env: dict, worktrees_dir: Path):
         self.r, self.root, self.env = runner, Path(repo_root), env
         self.worktrees_dir = Path(worktrees_dir)
-        self.bin = resolve_git(env) or "git"   # never the worker shim or the (cache-poisonable) xcrun stub
+        self._bin = resolve_git(env)   # never the worker shim or the (cache-poisonable) xcrun stub
+
+    @property
+    def bin(self) -> str:
+        """The verified Git; with none usable, fail instead of letting a bare `git` find the shim or the stub."""
+        if not self._bin:
+            raise GitError("git: 사용할 수 있는 실제 Git 실행 파일을 찾지 못했습니다 (War Room shim과 xcrun stub은 제외됨)")
+        return self._bin
 
     def _git(self, *args, cwd=None, check=True, timeout=300):
         res = self.r.run([self.bin, *args], cwd=cwd or self.root, env=self.env, timeout=timeout)
