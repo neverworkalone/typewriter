@@ -7,6 +7,8 @@ import time
 from contextlib import contextmanager
 from pathlib import Path
 
+from .usage import parse_usage
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS batches (
@@ -89,7 +91,11 @@ CREATE TABLE IF NOT EXISTS maintenance (
 """
 # Additive migration (user_version 7, Issue #1684): `lines.shard_pin` is the shard a Single-mode Stage 2 run is bound to.
 # Additive migration (user_version 8, Issue #1809): the observed unit of intermediate progress (chunks/senses).
-SCHEMA_VERSION = 8
+# Additive migration (user_version 9, Issue #2033): per-run token / tool-call usage read from the run's own log when
+# the run ends. NULL = not measured (old runs, OpenCode, missing usage); never 0 as a stand-in.
+RUN_USAGE_COLUMNS_V9 = ("input_tokens", "cached_input_tokens", "cache_write_tokens", "output_tokens",
+                        "reasoning_output_tokens", "tool_calls", "submit_failures")
+SCHEMA_VERSION = 9
 
 MAINTENANCE_METHOD = "m"   # the hidden Maintainer's execution record lives in `batches` under this method
 CLEARED_HOLD = "운영자가 Maintainer 실행을 Clear함 — Issue·결함 기록 보존, 명시적 Retry 전에는 자동 재시작하지 않습니다"
@@ -188,6 +194,10 @@ class Store:
         for col in ("progress_kind TEXT", "progress_done INTEGER", "progress_total INTEGER"):
             if col.split()[0] not in have:
                 c.execute(f"ALTER TABLE batches ADD COLUMN {col}")
+        have = {r["name"] for r in c.execute("PRAGMA table_info(runs)")}
+        for col in RUN_USAGE_COLUMNS_V9:
+            if col not in have:
+                c.execute(f"ALTER TABLE runs ADD COLUMN {col} INTEGER")
         c.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
 
     @contextmanager
@@ -496,8 +506,23 @@ class Store:
                       (session_id, batch_id))
 
     def finish_runs(self, batch_id: int, status) -> None:
-        """Close the batch's open run(s) with an exit status (None -> 'unknown')."""
+        """Close the batch's open run(s) with an exit status (None -> 'unknown') and record each run's own usage.
+
+        Measuring never affects the run's outcome: an unreadable or unrecognised log leaves the usage NULL."""
         with self._conn() as c:
+            open_runs = c.execute("SELECT id, log_file FROM runs WHERE batch_id=? AND ended_at IS NULL", (batch_id,)).fetchall()
+        measured = []
+        for r in open_runs:   # read the logs outside the write transaction
+            try:
+                u = parse_usage(r["log_file"]) if r["log_file"] else None
+            except Exception:   # noqa: BLE001 - a measurement failure must not block closing the run
+                u = None
+            measured.append((r["id"], u or {}))
+        with self._conn() as c:
+            sets = ", ".join(f"{k}=?" for k in RUN_USAGE_COLUMNS_V9)
+            for rid, u in measured:
+                c.execute(f"UPDATE runs SET {sets} WHERE id=? AND ended_at IS NULL",
+                          (*[u.get(k) for k in RUN_USAGE_COLUMNS_V9], rid))
             c.execute("UPDATE runs SET ended_at=?, exit_status=? WHERE batch_id=? AND ended_at IS NULL",
                       (time.time(), "unknown" if status is None else str(status), batch_id))
 

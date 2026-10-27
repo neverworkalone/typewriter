@@ -266,3 +266,29 @@ def detail_meta(st: dict, reg: dict, model: str) -> str:
                      f"phase: {st['state']}" + (f"   hold: {mt['hold']}" if mt["hold"] else ""))
     return "\n".join(lines + [f"branch: {st['branch'] or '-'}", f"HEAD: {st['head'] or '-'}",
                               f"session: {st['session'] or '-'}", wt_line])
+
+
+def _tok(n) -> str:
+    return "unknown" if n is None else f"{n:,}"
+
+
+def usage_text(runs, pricing: dict | None = None, now: float | None = None) -> str:
+    """Cumulative usage of ONE batch's runs (resumes included). Unmeasured data is shown as unknown / incomplete,
+    never as 0; the cost needs the model's configured `pricing` and is otherwise unknown."""
+    import time as _t
+    from .usage import estimate_cost, sum_usage
+    if not runs:
+        return ""
+    now = _t.time() if now is None else now
+    total = sum_usage(runs)
+    wall = sum(max(0.0, (r["ended_at"] if r["ended_at"] is not None else now) - r["started_at"]) for r in runs)
+    cost = estimate_cost(total, pricing)
+    lines = [f"사용량(배치 누적, run {total['runs']}개): 경과 {fmt_elapsed(wall)}   "
+             f"input {_tok(total['input_tokens'])} (cached {_tok(total['cached_input_tokens'])}, "
+             f"cache write {_tok(total['cache_write_tokens'])})   "
+             f"output {_tok(total['output_tokens'])} (reasoning {_tok(total['reasoning_output_tokens'])})",
+             f"도구 호출 {_tok(total['tool_calls'])}   submit 실패 {_tok(total['submit_failures'])}   "
+             f"추정 비용 {'unknown' if cost is None else f'${cost:,.2f}'}"]
+    if total["partial"]:
+        lines.append(f"※ 일부 run에 사용량 기록이 없어 합계가 불완전합니다 ({', '.join(total['partial'])})")
+    return "\n".join(lines)

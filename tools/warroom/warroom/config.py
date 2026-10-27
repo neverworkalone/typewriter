@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .adapters import RunSpec
+from .usage import pricing_problems
 
 WARROOM_DIR = Path(__file__).resolve().parents[1]
 REPO_ROOT = WARROOM_DIR.parents[1]
@@ -361,6 +362,7 @@ def config_problem(cfg: dict) -> str | None:
         for pid, p in cfg["producers"].items():
             if isinstance(p, dict):
                 bad += _entry_problems(f"producers.{pid}", p, ("label", "adapter", "model", "effort", "permission_profile"))
+    bad += pricing_problems(cfg.get("pricing"))
     bad += _maintainer_config_problems(cfg)
     if not bad:
         bad += _profile_config_problems(cfg)

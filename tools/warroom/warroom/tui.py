@@ -21,7 +21,7 @@ from .config import (Paths, role_pin_lines, role_view, adapter_label, adapters, 
                      stage2_models, STAGE2_ADAPTERS)
 from .logrender import render_line
 from .views import (_hhmm, _when, control_columns, select_width, card_text, detail_header, maintainer_card_text,  # noqa: F401  (CARD_W/ICON re-exported for tests)
-                    model_title, tier_footer, detail_meta)
+                    model_title, tier_footer, detail_meta, usage_text)
 from .logtail import LogTail, redact
 from .store import MAINTENANCE_METHOD, STAGE2_METHOD, Store
 
@@ -374,7 +374,15 @@ class LineDetail(Screen):
         reg = role_view(self.app.cfg, self.model, self.method)   # the pin this Line's method runs on (profiles differ by stage)
         # Text, never markup: the error/branch/path values are data and may hold [brackets] (a Rich MarkupError ends the app)
         self.query_one("#info", Static).update(Text(detail_header(st, reg, self.model)))
-        self.query_one("#meta", Static).update(Text(detail_meta(st, reg, self.model)))
+        meta = detail_meta(st, reg, self.model)
+        runs = self._runs()
+        if runs:   # the latest batch's runs only; usage is secondary and must never break the view
+            try:
+                pricing = (self.app.cfg.get("pricing") or {}).get(runs[0]["model"] or "")
+                meta += "\n" + usage_text([r for r in runs if r["batch_id"] == runs[0]["batch_id"]], pricing)
+            except Exception:   # noqa: BLE001
+                pass
+        self.query_one("#meta", Static).update(Text(meta))
         d = self.query_one("#drain", Button)
         d.label = "Cancel Drain" if st["line_drain"] else "Drain"
         d.disabled = not (st["can_drain"] or st["line_drain"])
