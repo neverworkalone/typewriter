@@ -492,6 +492,14 @@ test('submit validation returns bounded reason codes and source-sense fields wit
         jsonSyntax: { line: 2, column: 1 },
       },
       {
+        name: 'lone CR and CRLF count as line breaks',
+        raw: '{"senses":\r[\r\n{"sense_id":"x"}\r]\r',
+        reason: 'submission_schema',
+        field: 'input',
+        senseId: null,
+        jsonSyntax: { line: 5, column: 1 },
+      },
+      {
         name: 'truncated JSON reports the end position',
         raw: '{"senses":[{"sense_id":"private-json-marker",',
         reason: 'submission_schema',

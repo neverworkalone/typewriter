@@ -95,8 +95,13 @@ async function readSubmission(filePath) {
     // Only a numeric position is forwarded; V8's message can quote file content, so it is never echoed.
     const position = Number(/ at position (\d+)/u.exec(error.message)?.[1]);
     if (Number.isSafeInteger(position) && position <= text.length) {
-      const before = text.slice(0, position);
-      failure.syntax = { line: before.split('\n').length, column: position - before.lastIndexOf('\n') };
+      let line = 1;
+      let lineStart = 0;
+      for (const match of text.slice(0, position).matchAll(/\r\n|[\n\r]/gu)) {
+        line += 1;
+        lineStart = match.index + match[0].length;
+      }
+      failure.syntax = { line, column: position - lineStart + 1 };
     }
     failure.code = 'LITERARY_SUBMISSION_VALIDATION';
     failure.reason = 'submission_schema';
