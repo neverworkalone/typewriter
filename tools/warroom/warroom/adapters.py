@@ -148,8 +148,8 @@ def _ids_in(obj):
 
 class ProcessAdapter(AgentAdapter):
     """Process handling shared by every CLI: detached group, exit wrapper, liveness, stop, log scan."""
-    # True: this adapter owns its chunk sandbox setup, so ProcessAdapter must not add an outer OS sandbox; macOS
-    # refuses a nested sandbox_apply and every command would fail.
+    # True: do not wrap this adapter in the common chunk sandbox. Its own CLI policy (or compatibility needs)
+    # defines the boundary; macOS also refuses nested sandbox_apply calls.
     native_stage2_chunk_sandbox = False
 
     def _spawn(self, cmd: list[str], cwd, env, log_file: Path, exit_file: Path) -> Handle:
@@ -539,21 +539,15 @@ class ClaudeCodeAdapter(ProcessAdapter):
         return None
 
 
-# Codex runs under the operator's own local CLI policy: its config, sandbox, approval and execpolicy rules are used
-# as they are. War Room pins only the model and the reasoning effort (on every launch, first run and resume alike)
-# and checks what Codex actually did: the thread id, the recorded model and effort. It never overrides sandbox,
-# approval, network or writable roots. A command the local policy denies stops the run in PAUSED, nothing is retried.
-# The one exception is the run's own linked-worktree Git admin directory (`git_dir`): the sandbox otherwise denies
-# `index.lock` there. It is added for that exact directory only (`--add-dir` on start; `exec resume` has no such flag, so a
-# `-c permissions.<profile>.filesystem` entry for the same directory, merged into the profile). Never the repo's `.git`.
-# C/D and Stage 2 chunks use Codex's built-in `:workspace` profile instead of the local one; A/B answer-only chunks
-# use `:read-only`. The profiles permit Git execution but no Git admin directory grant; the linked worktree's Git
-# metadata stays read-only. No outer sandbox is added around Codex (macOS refuses nested sandbox_apply).
-# `--ignore-rules` stops local execpolicy allow rules (`git push`, ...) from running outside the sandbox, and
-# `approval_policy="never"` stops escalation.
-CODEX_REQUIRED_EXEC_FLAGS = ("--json", "--model", "--config", "--add-dir", "--ignore-rules")
-CODEX_REQUIRED_RESUME_FLAGS = ("resume", "--json", "--model", "--config", "--ignore-rules")
-STAGE2_CHUNK_PROFILE = "warroom_stage2_chunk"
+# Codex runs under the operator's configured CLI policy. War Room pins the model, reasoning effort and configured
+# permission profile on every launch (including chunks and resumes), then checks the thread, model and effort it used.
+# A command refused by local policy pauses the run; it is not retried. For ordinary starts the linked worktree's Git
+# admin directory (`git_dir`) is opened alone with `--add-dir`; resume adds the same exact-directory grant to the named
+# configured profile because `exec resume` has no `--add-dir` flag. The repository's `.git` is never granted.
+# Chunks add only lightweight web-search/project-doc settings. Answer-only output remains a result contract, not a
+# permission-profile override. Codex is not wrapped in the common Git-blocking chunk sandbox.
+CODEX_REQUIRED_EXEC_FLAGS = ("--json", "--model", "--config", "--add-dir")
+CODEX_REQUIRED_RESUME_FLAGS = ("resume", "--json", "--model", "--config")
 _PROFILE_NAME = re.compile(r"[A-Za-z0-9_-]+")
 _CODEX_DENIED = re.compile(r"operation not permitted|permission denied|requires approval|approval required|"
                            r"blocked by (the )?(sandbox|policy)|not allowed by (the )?(sandbox|policy)", re.I)
@@ -665,38 +659,21 @@ class CodexCLIAdapter(ProcessAdapter):
             raise ValueError("worktree의 Git 관리 디렉터리를 알 수 없어 Codex를 시작하지 않았습니다.")
         return text
 
-    def _probe(self, argv: list[str], env, cwd) -> int:
-        return subprocess.run(argv, cwd=cwd, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-                              stderr=subprocess.DEVNULL, timeout=60).returncode
+    def _chunk_args(self) -> list[str]:
+        """Keep chunk input lean without replacing the operator's configured permission or approval policy."""
+        return ["-c", 'web_search="disabled"', "-c", "project_doc_max_bytes=0"]
 
-    def _chunk_args(self, env, cwd) -> list[str]:
-        """A chunk judges only the supplied view, with no web lookup or auto-loaded AGENTS.md. Normal chunks use
-        `:workspace`, where Git commands may run; A/B answer-only chunks use `:read-only` and verify that writes fail."""
-        answer_only = is_answer_only(env)   # an A/B answer-only chunk may not write at all: its answer is the only output
-        profile_base = ":read-only" if answer_only else ":workspace"
-        profile = f'permissions.{STAGE2_CHUNK_PROFILE}={{extends="{profile_base}"}}'
-        if answer_only:   # proven before launch: a write under the profile must fail, or the chunk does not start
-            target = str(Path(cwd) / ".warroom-scratch" / ".answer-only-write-probe")
-            code = self._probe([self.binary, "sandbox", "-P", STAGE2_CHUNK_PROFILE, "-C", str(cwd), "-c", profile, "--",
-                                "/bin/sh", "-c", 'if (echo x > "$1") 2>/dev/null; then rm -f "$1"; exit 4; fi; exit 0', "sh", target],
-                               env, cwd)
-            Path(target).unlink(missing_ok=True)
-            if code != 0:
-                raise RuntimeError("답변 전용 청크를 시작하지 않습니다: Codex 샌드박스에서 쓰기가 차단되지 않거나 확인하지 못했습니다"
-                                   f" (exit={code})")
-        return ["-c", 'web_search="disabled"', "-c", "project_doc_max_bytes=0", "-c", profile,
-                "-c", f"default_permissions={STAGE2_CHUNK_PROFILE}", "--ignore-rules", "-c", 'approval_policy="never"']
-
-    def _launch_args(self, env, cwd, run: RunSpec, grant: list[str]) -> list[str]:
-        """Pins plus either the chunk policy (which replaces the local profile) or the run's Git admin grant."""
+    def _launch_args(self, env, run: RunSpec, grant: list[str]) -> list[str]:
+        """Pin the configured run profile; chunks add only input optimizations and omit Git admin grants."""
+        pins = self._pins(run)
         if is_stage2_chunk(env):
-            return [*self._pins(RunSpec(run.model, run.effort)), *self._chunk_args(env, cwd)]
-        return [*self._pins(run), *grant]
+            return [*pins, *self._chunk_args()]
+        return [*pins, *grant]
 
     def start(self, prompt, cwd, env, run, title, log_file, exit_file, git_dir=None):
         run = _pinned(run)
         grant = [] if is_stage2_chunk(env) else ["--add-dir", self._git_dir(git_dir)]
-        cmd = [self.binary, "exec", *self._launch_args(env, cwd, run, grant), prompt]
+        cmd = [self.binary, "exec", *self._launch_args(env, run, grant), prompt]
         _baseline_path(log_file).unlink(missing_ok=True)   # a fresh start has no baseline: every turn is its own
         return self._spawn(cmd, cwd, env, log_file, exit_file)
 
@@ -709,7 +686,7 @@ class CodexCLIAdapter(ProcessAdapter):
                                  "열 수 없습니다. producer 설정에 permission_profile을 지정하세요.")
             grant = ["-c", f"permissions.{run.permission_profile}.filesystem="
                            f"{{{json.dumps(self._git_dir(git_dir))}=\"write\"}}"]
-        cmd = [self.binary, "exec", "resume", session_id, *self._launch_args(env, cwd, run, grant), prompt]
+        cmd = [self.binary, "exec", "resume", session_id, *self._launch_args(env, run, grant), prompt]
         # The turns recorded before this run: only turns after this baseline belong to this run.
         Path(log_file).parent.mkdir(parents=True, exist_ok=True)
         _baseline_path(log_file).write_text(json.dumps({"thread": session_id,

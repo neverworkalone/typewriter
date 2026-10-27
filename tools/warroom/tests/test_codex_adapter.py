@@ -1,16 +1,11 @@
-"""Codex runs with War Room's pinned worktree permission profile and operator-defined rules.
+"""Codex starts and resumes use the configured permission profile, including answer-only and review chunks.
 
-War Room pins model, effort, and the worktree permission selection on every launch, while the
-profile's filesystem/network rules and approval policy still come from the operator's CLI config.
-A command the resulting policy refuses stops the run in PAUSED. A Stage 2 chunk uses War Room's `:workspace`-based
-profile, which permits Git execution while keeping the chunk's workspace boundary.
+Chunk launches add only input-size and web-search settings. A command refused by the configured local policy pauses
+the run, and answer-only acceptance still depends on the final answer and saved result evidence.
 """
 import json
 import os
-import shutil
 import stat
-import subprocess
-import sys
 import tempfile
 import time
 import unittest
@@ -167,8 +162,8 @@ class Argv(unittest.TestCase):
 
 
 class Preflight(unittest.TestCase):
-    EXEC = "--json --model -m --config -c --add-dir --ignore-rules "
-    RESUME = "resume --json --model -m --config -c --ignore-rules "
+    EXEC = "--json --model -m --config -c --add-dir "
+    RESUME = "resume --json --model -m --config -c "
 
     class Fake:
         def __init__(self, exec_help=None, resume_help=None, login="Logged in using ChatGPT", version_ok=True):
@@ -193,9 +188,6 @@ class Preflight(unittest.TestCase):
             ("version fails", {"version_ok": False}, "--version"),
             ("exec lacks --config", {"exec_help": self.EXEC.replace("--config", "")}, "--config"),
             ("resume lacks --json", {"resume_help": self.RESUME.replace("--json", "")}, "--json"),
-            ("exec lacks --ignore-rules", {"exec_help": self.EXEC.replace("--ignore-rules", "")}, "--ignore-rules"),
-            ("resume lacks --ignore-rules", {"resume_help": self.RESUME.replace("--ignore-rules", "")},
-             "--ignore-rules"),
             ("not logged in", {"login": "Not logged in"}, "로그인"),
         ]
         for name, kw, want in cases:
@@ -847,8 +839,8 @@ class RealProcessLaunch(unittest.TestCase):
             self.assertEqual(a.session_id(h.log_file), THREAD)
 
 
-class Stage2ChunkSandbox(unittest.TestCase):
-    """A Stage 2 chunk uses Codex's built-in workspace profile without Git execution probes or admin grants."""
+class ChunkLaunchArgs(unittest.TestCase):
+    """Chunks keep the configured profile and add only the lightweight input settings."""
     GIT = "/usr/bin/git"
 
     def env(self, **extra):
@@ -864,25 +856,32 @@ class Stage2ChunkSandbox(unittest.TestCase):
                 a.resume(THREAD, "p", d, env, run, d / "l.log", d / "l.exit", git_dir=GIT_DIR)
         return a
 
-    def test_chunk_argv_replaces_local_profile_and_grant_on_start_and_resume(self):
+    def test_chunk_start_and_resume_keep_configured_profile_for_both_efforts(self):
+        runs = [RunSpec("gpt-6-luna", effort, "worktree") for effort in ("high", "xhigh")]
+        runs.append(PIN)  # an unset profile remains unset; no built-in profile is selected
         for kind in ("start", "resume"):
-            for run in (LAUNCH, PIN):   # a chunk does not use the local profile, so none is needed
-                with self.subTest(kind=kind, profile=run.permission_profile):
-                    a = self.launch(kind, self.env(), run)
-                    argv, joined = a.cmd, " ".join(a.cmd)
-                    self.assertEqual(argv[-1], "p")
-                    self.assertIn("--ignore-rules", argv)
-                    self.assertIn('approval_policy="never"', argv)
-                    self.assertEqual([x for x in argv if x.startswith("default_permissions=")],
-                                     ["default_permissions=warroom_stage2_chunk"])
-                    profiles = [x for x in argv if x.startswith("permissions.")]
-                    self.assertEqual(profiles, ['permissions.warroom_stage2_chunk={extends=":workspace"}'])
-                    self.assertNotIn("--add-dir", argv)
-                    self.assertNotIn(GIT_DIR, joined)                  # no Git admin grant: metadata stays read-only
-                    self.assertNotIn('"write"', joined)
-                    self.assertNotIn("filesystem", joined)
-                    for bad in ("--dangerously-bypass-approvals-and-sandbox", "danger-full-access", "sandbox_mode"):
-                        self.assertNotIn(bad, joined)
+            for answer_only in (False, True):  # A/B output-only chunks share the configured permission profile
+                env = self.env(**({"WARROOM_ANSWER_ONLY": "1"} if answer_only else {}))
+                for run in runs:
+                    with self.subTest(kind=kind, answer_only=answer_only, effort=run.effort,
+                                      profile=run.permission_profile):
+                        a = self.launch(kind, env, run)
+                        argv, joined = a.cmd, " ".join(a.cmd)
+                        self.assertEqual(argv[-1], "p")
+                        expected = ([f"default_permissions={run.permission_profile}"]
+                                    if run.permission_profile else [])
+                        self.assertEqual([x for x in argv if x.startswith("default_permissions=")], expected)
+                        self.assertIn('web_search="disabled"', argv)
+                        self.assertIn("project_doc_max_bytes=0", argv)
+                        self.assertNotIn("--ignore-rules", argv)
+                        self.assertNotIn("approval_policy", joined)
+                        self.assertFalse(any(x.startswith("permissions.") for x in argv))
+                        self.assertNotIn("--add-dir", argv)
+                        self.assertNotIn(GIT_DIR, joined)  # chunk runs keep the existing no-admin-grant behavior
+                        self.assertNotIn('"write"', joined)
+                        for bad in (":workspace", ":read-only", "warroom_stage2_chunk",
+                                    "--dangerously-bypass-approvals-and-sandbox", "danger-full-access", "sandbox_mode"):
+                            self.assertNotIn(bad, joined)
 
     def test_non_chunk_launch_is_unchanged(self):
         for kind in ("start", "resume"):
@@ -904,42 +903,6 @@ class Stage2ChunkSandbox(unittest.TestCase):
         self.assertFalse(any("sandbox-exec" in x or "bwrap" in x for x in spawned))
         self.assertNotIn("WARROOM_GIT_EXECUTABLES", worker_env)
         self.assertEqual(worker_env["WARROOM_STAGE2_CHUNK"], "1")
-
-    @unittest.skipUnless(sys.platform == "darwin" and shutil.which("codex") and shutil.which("git"),
-                         "requires the real Codex CLI sandbox on macOS")
-    def test_real_codex_workspace_profile_allows_git_and_keeps_metadata_read_only(self):
-        git = shutil.which("git")
-        env = dict(os.environ, **self.env(WARROOM_GIT_EXECUTABLES=json.dumps([git])))
-        repo_root = Path(__file__).resolve().parents[3]
-        git_admin = Path(subprocess.run([git, "rev-parse", "--absolute-git-dir"], cwd=repo_root,
-                                        capture_output=True, text=True, check=True).stdout.strip())
-        admin_probe = git_admin / f"warroom-stage2-probe-{os.getpid()}.lock"
-        self.assertFalse(admin_probe.exists())
-        try:
-            with tempfile.TemporaryDirectory() as d:
-                worktree = Path(d)
-                args = CodexCLIAdapter()._chunk_args(env, worktree)
-                profile = next(x for x in args if x.startswith("permissions."))
-
-                def sandboxed(*cmd):
-                    return subprocess.run(["codex", "sandbox", "-P", "warroom_stage2_chunk", "-C", str(worktree),
-                                           "-c", profile, "--", *cmd], cwd=worktree, env=env,
-                                          capture_output=True, text=True)
-
-                cases = [("git version", [git, "--version"], True),
-                         ("git init in the chunk workspace", [git, "init", "-q", str(worktree)], True),
-                         ("worktree write", ["/usr/bin/touch", str(worktree / "scratch")], True),
-                         ("external Git admin write", ["/usr/bin/touch", str(admin_probe)], False),
-                         ("echo", ["/bin/echo", "ok"], True)]
-                for case, cmd, ok in cases:
-                    with self.subTest(case):
-                        result = sandboxed(*cmd)
-                        self.assertEqual(result.returncode == 0, ok, result.stderr)
-                self.assertTrue((worktree / ".git").exists())
-                self.assertFalse(admin_probe.exists())
-        finally:
-            admin_probe.unlink(missing_ok=True)
-
 
 if __name__ == "__main__":
     unittest.main()

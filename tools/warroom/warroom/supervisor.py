@@ -683,12 +683,12 @@ class Supervisor:
         env.pop("WARROOM_ANSWER_ONLY", None)
         env.pop("OPENCODE_CONFIG_CONTENT", None)
         ab_chunk = b["method"] in stage1ab.METHODS and isinstance(kind, str) and kind.startswith("ab_chunk_")
-        if ab_chunk:   # A/B answer-only chunk: the AI only answers; tools are removed or sandboxed per CLI (adapters)
+        if ab_chunk:   # A/B answer-only is an output contract; adapter-specific tool handling remains unchanged
             env["WARROOM_ANSWER_ONLY"] = "1"
             if self._adapter(b["producer"]).name == "opencode":
                 env["OPENCODE_CONFIG_CONTENT"] = json.dumps({"permission": {"edit": "deny", "bash": "deny", "webfetch": "deny"}})
-        # Chunk runs suppress auto-loaded AGENTS.md and web lookup. Execution rules stay adapter-specific; Codex
-        # permits Git in its :workspace profile, while A/B answer-only chunks use :read-only.
+        # Chunk runs suppress auto-loaded AGENTS.md and web lookup. Execution rules stay adapter-specific; Codex keeps
+        # the operator's configured permission profile, while answer-only results are judged by their output contract.
         if (b["method"] == STAGE2_METHOD and isinstance(kind, str) and kind.startswith("s2_chunk_")) or \
                 (b["method"] == literary.METHOD and isinstance(kind, str) and kind.startswith("c_chunk_")) or \
                 (b["method"] == dchunk.METHOD and isinstance(kind, str) and kind.startswith("d_chunk_")) or ab_chunk:
