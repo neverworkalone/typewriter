@@ -594,21 +594,22 @@ def _is_shim(path) -> bool:
 
 
 def xcrun_git(env) -> str | None:
-    """The developer-dir Git `xcrun` runs for /usr/bin/git, looked up in a clean environment.
+    """The developer-dir Git that macOS's /usr/bin/git (an xcrun stub) runs, resolved without running xcrun.
 
-    xcrun falls back to a PATH lookup of `git`; with the shim on PATH it would find the shim, loop through
-    /usr/bin/git and cache the shim path in its lookup cache. So the lookup runs with every shim directory removed
-    from PATH and with `--no-cache` (no read or write of the cache), and a result that is the shim is discarded."""
-    entries = [e for e in (env.get("PATH") or os.defpath).split(os.pathsep)
-               if not (_is_shim(e or os.curdir) or _is_shim(Path(e or os.curdir) / "git"))]
-    clean = {k: v for k, v in env.items() if not k.startswith("WARROOM_")}
-    clean["PATH"] = os.pathsep.join(entries)
-    try:
-        found = subprocess.run(["xcrun", "--no-cache", "--find", "git"], env=clean, capture_output=True,
-                               text=True, timeout=60).stdout.strip()
-    except (OSError, subprocess.SubprocessError):
-        return None
-    return found if os.path.isabs(found) and not _is_shim(found) else None
+    Every xcrun invocation reads and updates its lookup cache (`--no-cache` only skips the read), and with the shim
+    on PATH its PATH fallback could cache the shim as `git`. So the path is built directly from the active developer
+    directory (`DEVELOPER_DIR`, else `xcode-select -p`, which does not touch the cache), and a result that is
+    missing, not executable, or is the shim (or a symlink to it) is discarded."""
+    developer_dir = env.get("DEVELOPER_DIR") or ""
+    if not developer_dir:
+        try:
+            developer_dir = subprocess.run(["/usr/bin/xcode-select", "-p"], env={}, capture_output=True, text=True,
+                                           timeout=60).stdout.strip()
+        except (OSError, subprocess.SubprocessError):
+            return None
+    found = os.path.join(developer_dir, "usr", "bin", "git")
+    ok = os.path.isabs(developer_dir) and os.path.isfile(found) and os.access(found, os.X_OK) and not _is_shim(found)
+    return found if ok else None
 
 
 class CodexCLIAdapter(ProcessAdapter):

@@ -854,47 +854,52 @@ class RealProcessLaunch(unittest.TestCase):
 
 
 class XcrunGitLookup(unittest.TestCase):
-    """The xcrun Git lookup never sees the War Room shim and never reads or writes xcrun's cache."""
+    """The Git lookup resolves the developer-dir Git directly: it never runs xcrun and never returns the shim."""
 
-    def _fake_xcrun(self, d, output):
-        bin_dir = Path(d) / "fakebin"
-        bin_dir.mkdir()
-        x = bin_dir / "xcrun"
-        x.write_text('#!/bin/sh\nprintf "%s\\n" "$*" > "$FAKE_LOG"\nprintf "%s\\n" "$PATH" >> "$FAKE_LOG"\n'
-                     'env | grep -c ^WARROOM_ >> "$FAKE_LOG"\nprintf "%s" "' + output + '"\n')
-        x.chmod(0o755)
-        return bin_dir
+    def _developer_dir(self, d, name, git=None):
+        git_path = Path(d) / name / "usr" / "bin" / "git"
+        git_path.parent.mkdir(parents=True)
+        if git == "file":
+            git_path.write_text("#!/bin/sh\n")
+            git_path.chmod(0o755)
+        elif git == "plain":
+            git_path.write_text("x")
+        elif git is not None:
+            git_path.symlink_to(git)
+        return str(Path(d) / name)
 
     def test_lookup_table(self):
         with tempfile.TemporaryDirectory() as d:
-            link_dir = Path(d) / "link"
-            link_dir.mkdir()
-            (link_dir / "git").symlink_to(_SHIM_DIR / "git")
-            real = Path(d) / "dev" / "git"
-            real.parent.mkdir()
-            real.write_text("#!/bin/sh\n")
-            for case, output, expected in [("real git", str(real), str(real)),
-                                           ("shim result", str(_SHIM_DIR / "git"), None),
-                                           ("symlink to shim", str(link_dir / "git"), None),
-                                           ("relative", "git", None),
-                                           ("empty", "", None)]:
-                with self.subTest(case):
-                    sub = Path(d) / case.replace(" ", "_")
-                    sub.mkdir()
-                    bin_dir = self._fake_xcrun(sub, output)
-                    log = sub / "log"
-                    path = os.pathsep.join((str(_SHIM_DIR), str(link_dir), str(bin_dir), "/usr/bin"))
-                    env = {"PATH": path, "FAKE_LOG": str(log), "WARROOM_STAGE2_CHUNK": "1"}
-                    self.assertEqual(xcrun_git(env), expected)
-                    args, seen_path, warroom_vars = log.read_text().splitlines()
-                    self.assertEqual(args, "--no-cache --find git")
-                    self.assertEqual(seen_path.split(os.pathsep), [str(bin_dir), "/usr/bin"])
-                    self.assertEqual(warroom_vars, "0")
+            xcrun_marker = Path(d) / "xcrun-ran"
+            fake_bin = Path(d) / "fakebin"
+            fake_bin.mkdir()
+            (fake_bin / "xcrun").write_text(f"#!/bin/sh\ntouch {xcrun_marker}\n")
+            (fake_bin / "xcrun").chmod(0o755)
+            path = os.pathsep.join((str(_SHIM_DIR), str(fake_bin), "/usr/bin"))
+            cases = [("real git", "file", True), ("not executable", "plain", False), ("missing", None, False),
+                     ("symlink to shim", str(_SHIM_DIR / "git"), False)]
+            for name, git, found in cases:
+                with self.subTest(name):
+                    dev = self._developer_dir(d, name.replace(" ", "_"), git)
+                    result = xcrun_git({"PATH": path, "DEVELOPER_DIR": dev})
+                    self.assertEqual(result, os.path.join(dev, "usr", "bin", "git") if found else None)
+            with self.subTest("relative developer dir"):
+                self.assertIsNone(xcrun_git({"PATH": path, "DEVELOPER_DIR": "relative/dev"}))
+            with self.subTest("developer dir is the shim dir"):
+                self.assertIsNone(xcrun_git({"PATH": path, "DEVELOPER_DIR": str(_SHIM_DIR.parent)}))
+            self.assertFalse(xcrun_marker.exists())   # xcrun was never run
 
-    @unittest.skipUnless(sys.platform == "darwin" and shutil.which("xcrun"), "requires macOS xcrun")
-    def test_real_xcrun_with_shim_first_on_path_does_not_find_the_shim(self):
-        env = {"PATH": os.pathsep.join((str(_SHIM_DIR), os.environ.get("PATH", "/usr/bin:/bin")))}
-        found = xcrun_git(env)
+    @unittest.skipUnless(sys.platform == "darwin" and os.path.exists("/usr/bin/xcode-select"), "requires macOS")
+    def test_real_lookup_with_shim_first_on_path_leaves_the_xcrun_cache_untouched(self):
+        cache_dir = subprocess.run(["getconf", "DARWIN_USER_CACHE_DIR"], capture_output=True, text=True).stdout.strip()
+        db = Path(cache_dir) / "xcrun_db"
+
+        def stamp():
+            return db.stat().st_mtime_ns if db.exists() else None
+
+        before = stamp()
+        found = xcrun_git({"PATH": os.pathsep.join((str(_SHIM_DIR), os.environ.get("PATH", "/usr/bin:/bin")))})
+        self.assertEqual(stamp(), before)
         self.assertTrue(found is None or (os.path.isabs(found) and Path(found).resolve().parent != _SHIM_DIR))
 
 
