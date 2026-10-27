@@ -16,7 +16,7 @@ SONNET = {"label": "Sonnet", "adapter": "claude", "model": "sonnet", "effort": "
 
 
 def write(w, producers, **extra):
-    w.paths.config_file.write_text(json.dumps({"producers": producers, **extra}), "utf-8")
+    w.paths.config_file.write_text(json.dumps({"producers": producers, "ab_chunk_sessions": False, **extra}), "utf-8")
 
 
 def reload(w):
@@ -76,7 +76,7 @@ class ReloadTable(unittest.TestCase):
                 else:   # fail-closed: the old config stays, and the reason is in the event log
                     self.assertEqual(self.w.sup.cfg, before)
                     self.assertIn("리로드 거부", self.w.store.recent_events(limit=1)[0]["msg"])
-                self.w.paths.config_file.write_text(json.dumps({"producers": {"deepseek": DS}}), "utf-8")
+                self.w.paths.config_file.write_text(json.dumps({"producers": {"deepseek": DS}, "ab_chunk_sessions": False}), "utf-8")
                 reload(self.w)
 
     def test_reload_problem_is_pure_and_covers_restart_keys(self):

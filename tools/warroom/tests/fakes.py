@@ -42,6 +42,7 @@ class FakeAdapter(AgentAdapter):
                         approved_literary_db=env.get("TYPEWRITER_APPROVED_LITERARY_DB"),
                         approved_corpus_db=env.get("TYPEWRITER_APPROVED_CORPUS_DB"),
                         stage2_chunk_git=env.get("WARROOM_STAGE2_CHUNK"),
+                        answer_only=env.get("WARROOM_ANSWER_ONLY"), opencode_config=env.get("OPENCODE_CONFIG_CONTENT"),
                         git_shim=env.get("WARROOM_GIT_SHIM"),
                         real_git=env.get("WARROOM_REAL_GIT"),
                         git_sandbox_paths=env.get("WARROOM_GIT_EXECUTABLES"),
@@ -52,6 +53,7 @@ class FakeAdapter(AgentAdapter):
                         session=session_id, approved_literary_db=env.get("TYPEWRITER_APPROVED_LITERARY_DB"),
                         approved_corpus_db=env.get("TYPEWRITER_APPROVED_CORPUS_DB"),
                         stage2_chunk_git=env.get("WARROOM_STAGE2_CHUNK"),
+                        answer_only=env.get("WARROOM_ANSWER_ONLY"), opencode_config=env.get("OPENCODE_CONFIG_CONTENT"),
                         git_shim=env.get("WARROOM_GIT_SHIM"),
                         real_git=env.get("WARROOM_REAL_GIT"),
                         git_sandbox_paths=env.get("WARROOM_GIT_EXECUTABLES"),
@@ -383,6 +385,7 @@ class World:
         self.paths.ensure()
         self.cfg = json.loads(json.dumps(DEFAULTS))
         self.cfg["poll_seconds"] = 0
+        self.cfg["ab_chunk_sessions"] = False   # legacy A/B tests drive the long session; test_issue_2035 enables chunks
         self.cfg["models"] = models or {"free": "p/free-x-free", "go": "p/go"}
         self.cfg["rate_limit_backoff_seconds"] = 10
         self.store = Store(self.paths.db)

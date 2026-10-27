@@ -20,6 +20,8 @@ Issue #860과 `AGENTS.md`의 B 생산 계약을 읽고 준수한다.
 
 추가 측정·로그·장부·보고서는 쓰지 않는다. PR 본문은 #860의 표준 메타데이터(방식·모델·샤드·배치·coverage 등)만 담는다.
 
+(War Room 자동 경로는 청크별 answer-only 세션이라 AI가 답변만 하고 저장/merge/commit/push/PR은 Supervisor가 수행한다 — `b_chunk.md`. 이 문서는 수동 복구·직접 실행 경로이며 `--format compact`도 쓸 수 있다.)
+
 B 생산의 Canonical 청크·후보 저장, Sense 연결, checkpoint, 편집 검사 상태 및 Candidate 결합에는 `scripts/relation/candidate-workbench.mjs`를 반드시 사용한다. 구체적인 실행 절차는 전용 도구 매뉴얼을 따른다. 배치마다 동일 기능의 임시 스크립트를 새로 작성하지 않는다.
 
 셸 명령은 개별로 실행해 각 종료 코드와 출력을 확인한다. `gh api` 경로에 `?` 또는 `&`가 있으면 경로 인수 전체를 작은따옴표로 감싼다. 예: `gh api 'repos/neverworkalone/typewriter/contents/data/relation-candidates/031?ref=master'`, `gh api 'repos/neverworkalone/typewriter/pulls?state=open&per_page=100' --jq 'length'`.

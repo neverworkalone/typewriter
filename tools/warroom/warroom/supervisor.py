@@ -18,7 +18,7 @@ import time
 import traceback
 from pathlib import Path
 
-from . import auth, batches, control, dchunk, defects, literary, progress, prompts, reviews, stage2
+from . import auth, batches, control, dchunk, defects, literary, progress, prompts, reviews, stage1ab, stage2
 from .adapters import PREFLIGHT_PENDING, QUOTA_EVIDENCE, RunSpec, classify_failure, opencode_free_quota
 from .config import (TIERED_ADAPTERS, adapter_label, config_problem, load_config, registry, registry_problems,
                      reload_problem, role_of, role_problem, run_spec, stage2_problem)
@@ -672,10 +672,17 @@ class Supervisor:
             env["TYPEWRITER_APPROVED_CORPUS_DB"] = str(Path(self.cfg["corpus_index_path"].strip()).expanduser())
         env.pop("WARROOM_STAGE2_CHUNK", None)
         env.pop("WARROOM_GIT_EXECUTABLES", None)
+        env.pop("WARROOM_ANSWER_ONLY", None)
+        env.pop("OPENCODE_CONFIG_CONTENT", None)
+        ab_chunk = b["method"] in stage1ab.METHODS and isinstance(kind, str) and kind.startswith("ab_chunk_")
+        if ab_chunk:   # A/B answer-only chunk: the AI only answers; tools are removed or sandboxed per CLI (adapters)
+            env["WARROOM_ANSWER_ONLY"] = "1"
+            if self._adapter(b["producer"]).name == "opencode":
+                env["OPENCODE_CONFIG_CONTENT"] = json.dumps({"permission": {"edit": "deny", "bash": "deny", "webfetch": "deny"}})
         # One chunk policy for every chunk run (Stage 2 and Methods C/D): no auto-loaded AGENTS.md / web, Git blocked.
         if (b["method"] == STAGE2_METHOD and isinstance(kind, str) and kind.startswith("s2_chunk_")) or \
                 (b["method"] == literary.METHOD and isinstance(kind, str) and kind.startswith("c_chunk_")) or \
-                (b["method"] == dchunk.METHOD and isinstance(kind, str) and kind.startswith("d_chunk_")):
+                (b["method"] == dchunk.METHOD and isinstance(kind, str) and kind.startswith("d_chunk_")) or ab_chunk:
             env["WARROOM_STAGE2_CHUNK"] = "1"
             env["WARROOM_GIT_EXECUTABLES"] = json.dumps(self._worker_git_executables)
         return env
@@ -703,6 +710,9 @@ class Supervisor:
             return self._launch_c_next(b)
         if b["method"] == dchunk.METHOD:
             return self._launch_d_next(b)
+        if b["method"] in stage1ab.METHODS and self.cfg.get("ab_chunk_sessions", True) \
+                and not str(b["run_kind"] or "").startswith("produce"):
+            return self._launch_ab_next(b)   # new A/B batches run as answer-only chunks (#2035); an old long session stays as it is
         self._launch(b, "produce")
 
     def _launch_stage2_next(self, b) -> None:
@@ -844,6 +854,14 @@ class Supervisor:
                     h = ad.resume(sid, prompt, wt, run_env, run, log, ex, **extra)
                 else:
                     h = ad.start(prompt, wt, run_env, run, title, log, ex, **extra)
+            elif b["method"] in stage1ab.METHODS and kind in ("ab_chunk_new", "ab_chunk_retry"):
+                prompt, baseline, resume = self._ab_chunk_prompt(b, kind)
+                self.store.set(stage1ab.run_start_key(b["id"]), json.dumps(baseline, sort_keys=True))
+                title = f"{b['method'].upper()} {b['shard']}_{b['batch']} chunk {baseline['chunk_no']:03d}"
+                if resume:
+                    h = ad.resume(sid, prompt, wt, run_env, run, log, ex, **extra)
+                else:
+                    h = ad.start(prompt, wt, run_env, run, title, log, ex, **extra)
             elif kind == "produce":
                 h = ad.start(prompts.produce(b), wt, run_env, run,
                                        f"{b['method'].upper()} {b['shard']}_{b['batch']}", log, ex, **extra)
@@ -855,7 +873,8 @@ class Supervisor:
             elif kind == "fix_resume":
                 h = ad.resume(sid, prompts.fix(b, events, True), wt, run_env, run, log, ex, **extra)
             else:  # fix_new
-                h = ad.start(prompts.fix(b, events, False), wt, run_env, run,
+                context = self._ab_fix_context(b, events) if b["method"] in stage1ab.METHODS else ""
+                h = ad.start(prompts.fix(b, events, False, source_context=context), wt, run_env, run,
                                        f"PR {b['pr_number']} fix", log, ex, **extra)
         except prompts.PromptError as e:   # rendered before any process is started
             return self._fail(b, "ERROR", f"프롬프트 오류로 AI를 시작하지 않았습니다: {e}")
@@ -866,7 +885,7 @@ class Supervisor:
         fields = dict(state=state, pid=h.pid, exit_file=str(ex), log_file=str(log),
                       run_kind=kind, retry_after=None, error=None)
         if kind == "fix_new" or kind in ("produce", "produce_recover", "s2_chunk_new", "s2_finalize_new", "c_chunk_new",
-                                         "d_chunk_new"):
+                                         "d_chunk_new", "ab_chunk_new"):
             fields["session_id"] = None  # captured from the new run's log
         self.store.update(b["id"], **fields)
         self.store.add_run(b["id"], kind, fields.get("session_id", sid), h.pid, log, ex,
@@ -915,6 +934,10 @@ class Supervisor:
             return self._relaunch_d(b)
         if b["method"] == dchunk.METHOD and not b["pr_number"] and b["run_kind"] == "d_finalize":
             return self._d_finalize(b)
+        if self._ab_chunk_run(b) and not b["pr_number"]:
+            return self._relaunch_ab(b)
+        if b["method"] in stage1ab.METHODS and not b["pr_number"] and b["run_kind"] == "ab_finalize":
+            return self._ab_finalize(b)
         if b["method"] == STAGE2_METHOD and not b["pr_number"] and \
                 isinstance(b["run_kind"], str) and b["run_kind"].startswith("s2_chunk_"):
             self.maint.adopt_released_baseline(b)
@@ -949,7 +972,7 @@ class Supervisor:
         kind = b["run_kind"] or "produce"
         base = "fix" if kind.startswith("fix") else "produce"
         if base == "fix":
-            return self._launch(b, "fix_resume" if b["session_id"] else "fix_new", self._all_events(b))
+            return self._launch(b, self._fix_kind(b), self._all_events(b))
         if not b["pr_number"]:
             runs = self.store.runs(b["id"])
             if runs:
@@ -1013,14 +1036,16 @@ class Supervisor:
             self.store.set_run_session(b["id"], sid)
             b = self.store.batch(b["id"])
         self._record_progress(b)
-        problem = ad.run_problem(Path(b["log_file"]), self._recorded_run(b), b["session_id"])
+        tolerant = {"tolerate_denied": True} if self._ab_chunk_run(b) and getattr(ad, "supports_tolerate_denied", False) else {}
+        problem = ad.run_problem(Path(b["log_file"]), self._recorded_run(b), b["session_id"], **tolerant)
         if problem:   # the CLI contradicts its pins: stop it, keep worktree/PR, wait for the operator
             state, msg = problem
             if ad.alive(b["pid"]):
                 ad.stop(b["pid"])
             return self._fail(b, state, msg)
         if ad.alive(b["pid"]):
-            if b["state"] == "PRODUCING" and not self._c_chunk_run(b) and not self._d_chunk_run(b):
+            if b["state"] == "PRODUCING" and not self._c_chunk_run(b) and not self._d_chunk_run(b) \
+                    and not self._ab_chunk_run(b):
                 self._adopt_pr_while_running(b)
             return
         code = ad.exit_code(Path(b["exit_file"]))
@@ -1053,6 +1078,11 @@ class Supervisor:
         required step leaves the PR missing, unpushed or failing verify, so it stays PAUSED. False: already failed."""
         denied = self._adapter(b["producer"]).denied_actions(log_file)
         if not denied:
+            return True
+        if self._ab_chunk_run(b):
+            # Answer-only: a refused tool call is a metric, not a failure. The answer is judged by its block and its save,
+            # and any real side effect (dirty tracked tree, moved HEAD/remote) by `_run_ok_ab_chunk`.
+            self.store.log(b["id"], f"answer-only 청크에서 도구 호출 {len(denied)}건이 거부됐습니다 (부작용 없으면 실패 아님)", "warn")
             return True
         names = sorted({str(d.get("tool_name")) for d in denied})
         cmds = [" ".join(str((d.get("tool_input") or {}).get("command", "")).split())[:80] for d in denied
@@ -1161,6 +1191,8 @@ class Supervisor:
             return self._run_ok_c_chunk(b)
         if self._d_chunk_run(b) and b["state"] == "PRODUCING":
             return self._run_ok_d_chunk(b)
+        if self._ab_chunk_run(b) and b["state"] == "PRODUCING":
+            return self._run_ok_ab_chunk(b)
         if b["method"] == STAGE2_METHOD and b["state"] == "PRODUCING" and \
                 isinstance(b["run_kind"], str) and b["run_kind"].startswith("s2_chunk_"):
             return self._run_ok_stage2_chunk(b)
@@ -1192,6 +1224,9 @@ class Supervisor:
                 return
             if info["head_sha"] == b["head_sha"]:
                 self.store.log(b["id"], "수정 실행이 끝났지만 새 HEAD 없음 (코멘트로만 응답했을 수 있음)", "warn")
+            elif b["method"] in stage1ab.METHODS and self.cfg.get("ab_chunk_sessions", True) \
+                    and (problem := self._ab_fix_diff_problem(b)):
+                return self._fail(b, "PAUSED", problem)
         self._to_review(b, info)
 
     def _stage2_final_pr_problem(self, b, info) -> str | None:
@@ -1710,6 +1745,267 @@ class Supervisor:
         except Exception as e:
             return self._fail(b, "ERROR", f"D 최종화 중 GitHub/Git 오류: {e}. worktree를 보존합니다.")
 
+    # ---- Stage 1 A/B: serial 50-record answer-only chunks, then deterministic finalization (Issue #2035) -------------
+    @staticmethod
+    def _ab_chunk_run(b) -> bool:
+        return b["method"] in stage1ab.METHODS and isinstance(b["run_kind"], str) and b["run_kind"].startswith("ab_chunk_")
+
+    def _fix_kind(self, b) -> str:
+        """A/B review fixes start a small new session (never a resume of a long production session)."""
+        small = b["method"] in stage1ab.METHODS and self.cfg.get("ab_chunk_sessions", True)
+        return "fix_new" if small or not b["session_id"] else "fix_resume"
+
+    def _ab_head_problem(self, b, wt: Path) -> str | None:
+        """The batch is bound to the HEAD of its first chunk; the only later HEAD allowed is our own Candidate commit."""
+        try:
+            head = self.git.head(wt)
+            base = self.store.get(f"ab_base_head_{b['id']}")
+            if base is None:
+                self.store.set(f"ab_base_head_{b['id']}", head)
+                return None
+            if head == base or head == self.store.get(f"ab_commit_head_{b['id']}"):
+                return None
+            if self.git.is_candidate_child(wt, base, stage1ab.names(b).output):
+                self.store.set(f"ab_commit_head_{b['id']}", head)
+                return None
+        except Exception as e:
+            return f"HEAD 결속을 확인하지 못했습니다: {e}"
+        return f"worktree HEAD {head[:10]}가 배치 기준 HEAD {base[:10]}도, Supervisor가 만든 Candidate commit도 아닙니다."
+
+    def _ab_chunks_problem(self, b, cp: dict, skip: int | None = None) -> str | None:
+        """Every chunk accepted earlier must still be byte-identical (an AI session never edits a saved chunk)."""
+        wt = Path(b["worktree"])
+        try:
+            for chunk in cp["chunks"]:
+                known = self.store.get(f"ab_sha_{b['id']}_{chunk['number']}")
+                if known is not None and chunk["number"] != skip and known != stage1ab.chunk_sha(wt, b, chunk):
+                    return f"이미 저장된 청크 {chunk['number']:03d}이 수정되었습니다. 덮어쓰지 않고 보존합니다."
+        except stage1ab.ABChunkError as e:
+            return str(e)
+        return None
+
+    def _ab_remember(self, b, chunk: dict) -> None:
+        self.store.set(f"ab_sha_{b['id']}_{chunk['number']}", stage1ab.chunk_sha(Path(b["worktree"]), b, chunk))
+
+    def _launch_ab_next(self, b) -> None:
+        """Advance A/B from the saved files: prepare once, then the first unsaved chunk (new or correction session), or finalize."""
+        wt = Path(b["worktree"])
+        try:
+            if problem := self._ab_head_problem(b, wt):
+                return self._fail(b, "ERROR", problem + " worktree를 보존합니다.")
+            cp = stage1ab.prepare(self.runner, self.env, wt, b)   # a prepared batch is reused as it is
+            repair = self.store.get(f"ab_repair_{b['id']}")
+            chunk = stage1ab.chunk_by_number(cp, int(repair)) if repair else stage1ab.next_chunk(wt, b, cp)
+            if problem := self._ab_chunks_problem(b, cp, skip=int(repair) if repair else None):
+                return self._fail(b, "ERROR", problem)
+            if chunk is None:
+                return self._ab_finalize(b)
+            st = stage1ab.load_state(self.store, b["id"], chunk["number"])
+            if st["tries"] > stage1ab.MAX_TRIES:
+                return self._fail(b, "ERROR", f"청크 {chunk['number']:03d}의 저장 거부가 정정 {stage1ab.MAX_TRIES}회 뒤에도 해소되지 않았습니다. "
+                                  f"답변({stage1ab.answer_path(b, chunk['number'])})과 상태를 보존합니다.")
+        except (stage1ab.ABChunkError, OSError, ValueError, GitError) as e:
+            return self._fail(b, "ERROR", f"Stage 1 A/B 상태 확인 실패: {e}. worktree를 보존합니다.")
+        retry = st["tries"] > 0 or bool(repair)
+        self.store.update(b["id"], session_id=st["sid"] if retry and st["sid"] and not repair else None)
+        return self._launch(b, "ab_chunk_retry" if retry else "ab_chunk_new")
+
+    def _ab_chunk_prompt(self, b, kind: str) -> tuple[str, dict, bool]:
+        """(prompt, run-start baseline, resume?) for the active chunk. A correction resumes only that chunk's own session."""
+        wt = Path(b["worktree"])
+        cp = stage1ab.checkpoint(wt, b)
+        repair = self.store.get(f"ab_repair_{b['id']}")
+        chunk = stage1ab.chunk_by_number(cp, int(repair)) if repair else stage1ab.next_chunk(wt, b, cp)
+        if chunk is None:
+            raise prompts.PromptError("저장되지 않은 청크가 없습니다")
+        st = stage1ab.load_state(self.store, b["id"], chunk["number"])
+        view = stage1ab.write_view(self.runner, self.env, wt, b, chunk)
+        requested = ", ".join(st["requested"]) if st["requested"] else "모든 S<n> 줄(전체 청크 답변)"
+        resume = kind == "ab_chunk_retry" and bool(b["session_id"])
+        if resume:
+            prompt = prompts.ab_chunk_retry(chunk["number"], requested, st.get("problem") or "사유 없음")
+        else:
+            note = ""
+            if kind == "ab_chunk_retry":
+                note = (f"이 청크는 이미 답변·저장이 있으나 검증에서 거부됐다. 거부 사유: {st.get('problem') or '사유 없음'}\n"
+                        f"고칠 줄: {requested}. `C` 줄이 현재 저장된 후보다.\n")
+            card_bytes = len(prompts.ab_chunk(b, chunk["number"], view="", note=note).encode("utf-8"))
+            if stage1ab.delivery(card_bytes, view) != "inline":
+                raise prompts.PromptError("청크 view가 한 argv 요소 한도를 넘어 inline 전달할 수 없습니다 (자동 분할 없음, 청크 보존)")
+            prompt = prompts.ab_chunk(b, chunk["number"], view=view, note=note)
+        baseline = {"branch": b["branch"], "worktree": str(wt), "head": self.git.head(wt),
+                    "remote_head": self.git.remote_head(b["branch"]), "chunk_no": chunk["number"], "repair": bool(repair),
+                    "saved": stage1ab.saved_snapshot(wt, b, cp)}
+        return prompt, baseline, resume
+
+    def _ab_accept(self, b, chunk: dict, repair: bool) -> None:
+        """A saved chunk: remember its bytes, clear its run state, and move on with a new session."""
+        self._ab_remember(b, chunk)
+        if repair:
+            self.store.delete(f"ab_repair_{b['id']}")
+        self.store.delete(stage1ab.run_start_key(b["id"]))
+        self.store.delete(stage1ab.state_key(b["id"], chunk["number"]))
+        self.store.update(b["id"], session_id=None, retries=0, retry_after=None, error=None)
+        self.store.log(b["id"], f"A/B 청크 {chunk['number']:03d} 저장을 확인했습니다. 다음 단계는 새 세션으로 실행합니다.")
+        return self._launch_ab_next(self.store.batch(b["id"]))
+
+    def _run_ok_ab_chunk(self, b) -> None:
+        """A zero exit is not success: the chunk counts only when the run's FINAL answer parsed, saved and the exact file exists."""
+        problem = self._stage2_chunk_boundary_problem(b, stage1ab.run_start_key(b["id"]))
+        if problem:
+            return self._fail(b, "ERROR", problem)
+        wt = Path(b["worktree"])
+        try:
+            if self.git.dirty(wt).strip():
+                return self._fail(b, "ERROR", "answer-only 청크 실행 뒤 worktree에 추적 변경이 있습니다 (격리 위반 가능). 보존합니다.")
+            info = self._find_recovery_pr(b)
+            if info is not None:
+                return self._fail(b, "ERROR", f"청크 실행 중 소유 브랜치에 예상하지 않은 PR #{info['number']}이 있습니다. 보존합니다.")
+            baseline = json.loads(self.store.get(stage1ab.run_start_key(b["id"])) or "{}")
+            cp = stage1ab.checkpoint(wt, b)
+            chunk = stage1ab.chunk_by_number(cp, baseline["chunk_no"])
+            repair = bool(baseline.get("repair"))
+            if stage1ab.saved_snapshot(wt, b, cp) != baseline.get("saved"):   # the AI only answers: it never writes a chunk file
+                return self._fail(b, "ERROR", "answer-only 청크 실행 중 Supervisor가 만들지 않은 저장물 변경이 있습니다 (AI의 직접 쓰기). "
+                                  "완료로 인정하지 않고 보존합니다.")
+            st = stage1ab.load_state(self.store, b["id"], chunk["number"])
+            st["sid"] = b["session_id"] or st["sid"]
+            rows = stage1ab.view_rows((wt / stage1ab.view_path(b, chunk["number"])).read_text("utf-8"))
+        except (stage1ab.ABChunkError, OSError, ValueError, KeyError, GitError) as e:
+            return self._fail(b, "ERROR", f"A/B 청크 종료 확인 실패: {e}. 보존합니다.")
+        except Exception as e:
+            return self._fail(b, "ERROR", f"청크 종료 후 GitHub/Git 확인 실패: {e}. worktree를 보존합니다.")
+        ok, diag = False, ""
+        try:
+            body = stage1ab.extract_block(self._adapter(b["producer"]).final_answer(Path(b["log_file"])), chunk["number"])
+            revised = stage1ab.split_rows(body)
+            previous = None
+            answer_file = wt / stage1ab.answer_path(b, chunk["number"])
+            if st["requested"] is not None or repair:
+                if repair and not answer_file.exists():
+                    answer_file.parent.mkdir(parents=True, exist_ok=True)
+                    answer_file.write_text(stage1ab.compact_text(chunk["number"], stage1ab.saved_answer_lines(wt, b, chunk)), "utf-8")
+                previous = stage1ab.split_rows(answer_file.read_text("utf-8").split("\n")[1:-1])
+            lines = stage1ab.merge_answer(previous, st["requested"], revised)
+            ok, diag = stage1ab.save(self.runner, self.env, wt, b, chunk, lines)
+            if ok:
+                if not stage1ab.chunk_saved(wt, b, chunk):
+                    return self._fail(b, "ERROR", "save-chunk가 성공했지만 저장 파일이 chunk의 Canonical ID와 맞지 않습니다. 보존합니다.")
+                return self._ab_accept(b, chunk, repair)
+            st["requested"] = stage1ab.rejected_aliases(diag, rows)
+        except stage1ab.ABChunkError as e:
+            diag = str(e)   # an unusable answer: ask the same rows again
+        except (OSError, ValueError) as e:
+            return self._fail(b, "ERROR", f"답변 처리 중 파일 오류: {e}. 보존합니다.")
+        st["tries"] += 1
+        st["problem"] = diag[:1500]
+        stage1ab.save_state(self.store, b["id"], chunk["number"], st)
+        self.store.log(b["id"], f"A/B 청크 {chunk['number']:03d} 저장 거부 {st['tries']}회: {diag[:200]}", "warn")
+        self.store.delete(stage1ab.run_start_key(b["id"]))
+        return self._launch_ab_next(self.store.batch(b["id"]))
+
+    def _relaunch_ab(self, b) -> None:
+        problem = self._stage2_chunk_boundary_problem(b, stage1ab.run_start_key(b["id"]))
+        if problem and self.store.get(stage1ab.run_start_key(b["id"])) is not None:
+            return self._fail(b, "ERROR", problem)
+        try:
+            if self._find_recovery_pr(b) is not None:
+                return self._fail(b, "ERROR", "청크 실행 브랜치에 이미 PR이 있어 자동 재개를 중단합니다. 보존합니다.")
+        except Exception as e:
+            return self._fail(b, "ERROR", f"청크 재개 전 기존 PR 소유권 확인 실패: {e}. worktree를 보존합니다.")
+        self.store.update(b["id"], retries=0, retry_after=None, error=None)
+        return self._launch_ab_next(self.store.batch(b["id"]))
+
+    def _ab_finalize(self, b) -> None:
+        """Merge once, commit, push and PR from current file / Git / GitHub facts; any step already true is skipped."""
+        wt = Path(b["worktree"])
+        n = stage1ab.names(b)
+        self.store.update(b["id"], state="PRODUCING", pid=None, run_kind="ab_finalize")
+        try:
+            if problem := self._ab_head_problem(b, wt):
+                return self._fail(b, "ERROR", problem + " worktree를 보존합니다.")
+            label = registry(self.cfg)[b["producer"]].get("label", b["producer"])
+            info = self._find_recovery_pr(b)
+            if info is not None:   # a PR from an earlier, interrupted finalization (or a lost response)
+                return self._to_review(b, info)
+            cp = stage1ab.checkpoint(wt, b)
+            if stage1ab.next_chunk(wt, b, cp) is not None:
+                return self._fail(b, "ERROR", "모든 청크가 저장되지 않았습니다. 보존합니다.")
+            if problem := self._ab_chunks_problem(b, cp):
+                return self._fail(b, "ERROR", problem)
+            try:
+                coverage = stage1ab.merge(self.runner, self.env, wt, b)
+            except stage1ab.MergeRejected as e:
+                chunk = stage1ab.chunk_of_error(cp, e.raw)
+                if chunk is None:
+                    return self._fail(b, "ERROR", f"{e} — 오류가 한 청크로 특정되지 않아 임의 재생산 없이 보존합니다.")
+                st = stage1ab.load_state(self.store, b["id"], chunk["number"])
+                if st["tries"] >= stage1ab.MAX_TRIES:
+                    return self._fail(b, "ERROR", f"{e} — 청크 {chunk['number']:03d} 정정 {stage1ab.MAX_TRIES}회 뒤에도 해소되지 않았습니다. 보존합니다.")
+                rows = stage1ab.view_rows(stage1ab.write_view(self.runner, self.env, wt, b, chunk))
+                st.update(requested=stage1ab.rejected_aliases(e.raw, rows), problem=str(e)[:1500], sid=None)
+                st["tries"] += 1
+                stage1ab.save_state(self.store, b["id"], chunk["number"], st)
+                self.store.set(f"ab_repair_{b['id']}", str(chunk["number"]))
+                self.store.log(b["id"], f"최종 merge 거부가 청크 {chunk['number']:03d}을 지목해 그 범위만 정정합니다: {str(e)[:200]}", "warn")
+                return self._launch_ab_next(self.store.batch(b["id"]))
+            title = stage1ab.pr_title(label, b)
+            if not self.git.is_committed(wt, n.output):
+                sha = self.git.commit_paths(wt, [n.output], title)
+                self.store.set(f"ab_commit_head_{b['id']}", sha)
+                self.store.log(b["id"], f"Candidate 파일을 commit했습니다 ({sha[:10]})")
+            else:
+                self.store.set(f"ab_commit_head_{b['id']}", self.git.head(wt))
+            head, remote = self.git.head(wt), self.git.remote_head(b["branch"])
+            if remote is None:
+                self.git.push_branch(wt, b["branch"])
+                remote = self.git.remote_head(b["branch"])
+            if remote != head:
+                return self._fail(b, "ERROR", f"원격 브랜치 {b['branch']}가 로컬 HEAD와 다릅니다 ({remote} / {head}). force push 없이 보존합니다.")
+            if rival := self._shared_occupied(b):
+                return self._fail(b, "ERROR", f"같은 {b['method'].upper()} 배치가 이미 점유됐습니다 ({rival}). 다른 배치로 바꾸지 않고 보존합니다.")
+            try:
+                self.gh.create_pr(b["branch"], self.cfg["base_branch"], title, stage1ab.pr_body(label, b, coverage), [stage1ab.PR_LABEL])
+            except Exception as e:   # the response may be lost although the PR exists: look before ever creating again
+                self.store.log(b["id"], f"PR 생성 응답 오류: {e}", "warn")
+            info = self._find_recovery_pr(b)
+            if info is None:
+                return self._fail(b, "ERROR", "PR 생성 후 소유 PR을 찾지 못했습니다. 중복 생성 없이 보존합니다 — Retry는 다시 조회부터 합니다.")
+            return self._to_review(b, info)
+        except (stage1ab.ABChunkError, GitError, RecoveryBlocked, DuplicateClaim, OSError, ValueError) as e:
+            return self._fail(b, "ERROR", f"A/B 최종화 중단: {e}. worktree를 보존합니다.")
+        except Exception as e:
+            return self._fail(b, "ERROR", f"A/B 최종화 중 GitHub/Git 오류: {e}. worktree를 보존합니다.")
+
+    def _ab_fix_context(self, b, events) -> str:
+        """The reviewer's fixed list reduced to exact source rows + saved candidates for the small `fix_new` session.
+        The named (record_id, sense_id) set is remembered for the post-fix diff: nothing outside it may change."""
+        text = "\n".join(str(e.get("body", "")) for e in (events or []))
+        try:
+            allowed, context = stage1ab.fix_scope(Path(b["worktree"]), b, text)
+        except stage1ab.ABChunkError as e:
+            self.store.delete(f"ab_fix_scope_{b['id']}")
+            return f"source_context 없음: {e}\n"
+        self.store.set(f"ab_fix_scope_{b['id']}", json.dumps(sorted(allowed)))
+        return context
+
+    def _ab_fix_diff_problem(self, b) -> str | None:
+        """After an A/B fix that produced a new HEAD: candidates outside the reviewers' named senses must be unchanged."""
+        wt, out = Path(b["worktree"]), stage1ab.names(b).output
+        try:
+            raw = self.store.get(f"ab_fix_scope_{b['id']}")
+            if raw is None:
+                return "A/B 수정의 리뷰 지목 범위가 기록되지 않아 목록 밖 변경 여부를 확인할 수 없습니다"
+            allowed = {tuple(pair) for pair in json.loads(raw)}
+            old = self.git._git("show", f"{b['head_sha']}:{out}", cwd=wt).out
+            changed = stage1ab.out_of_scope_changes(old, (wt / out).read_text("utf-8"), allowed)
+        except Exception as e:
+            return f"A/B 수정의 목록 밖 변경 여부를 확인하지 못했습니다: {e}"
+        if changed:
+            return ("A/B 리뷰 수정이 리뷰어가 지목하지 않은 sense의 후보를 바꿨습니다 "
+                    f"({', '.join(changed[:5])}{' …' if len(changed) > 5 else ''}). #860 고정 목록 규칙에 따라 보존하고 중지합니다.")
+        return None
+
     def _to_review(self, b, info, recovery_note: str | None = None) -> None:
         if b["method"] == STAGE2_METHOD:
             self.store.delete(stage2.run_start_key(b["id"]))
@@ -1717,6 +2013,8 @@ class Supervisor:
             self.store.delete(literary.run_start_key(b["id"]))
         if b["method"] == dchunk.METHOD:
             self.store.delete(dchunk.run_start_key(b["id"]))
+        if b["method"] in stage1ab.METHODS:
+            self.store.delete(stage1ab.run_start_key(b["id"]))
         self.store.update(b["id"], state="WAITING_REVIEW", pr_number=info["number"],
                           head_sha=info["head_sha"], error=recovery_note, retries=0)
         self.store.log(b["id"], f"PR #{info['number']} HEAD {info['head_sha'][:10]} 리뷰 대기")
@@ -1961,7 +2259,8 @@ class Supervisor:
             self.store.log(b["id"], "AI가 비정상 종료했지만 활성 청크의 save 저장이 확인되어 재생산하지 않습니다.", "warn")
             return self._run_ok_d_chunk(b)
         chunk_run = (b["method"] == STAGE2_METHOD and isinstance(b["run_kind"], str)
-                     and b["run_kind"].startswith("s2_chunk_")) or self._c_chunk_run(b) or self._d_chunk_run(b)
+                     and b["run_kind"].startswith("s2_chunk_")) or self._c_chunk_run(b) or self._d_chunk_run(b) \
+            or self._ab_chunk_run(b)
         if b["state"] == "PRODUCING" and not b["pr_number"] and not chunk_run:
             if self._handoff_failed_pr(b, code, cls):
                 return
@@ -2069,7 +2368,7 @@ class Supervisor:
             return self.store.log(b["id"], "새 리뷰 이벤트 — 실행 중인 AI 종료 요청, 종료 확인 후 수정 실행")
         if fresh:
             self.store.log(b["id"], f"새 리뷰 이벤트 {len(fresh)}건 → 수정 실행")
-            self._launch(b, "fix_resume" if b["session_id"] else "fix_new", fresh)
+            self._launch(b, self._fix_kind(b), fresh)
 
     # ---- MERGED / CLEANUP / COMPLETE ---------------------------------
     def _to_cleanup(self, b) -> None:

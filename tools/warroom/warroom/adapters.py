@@ -75,10 +75,19 @@ class AgentAdapter:
         without its result (no PR): such a run is PAUSED for the operator instead of counted as a plain error."""
         return None
 
+    def final_answer(self, log_file: Path) -> str | None:
+        """The FINAL assistant answer of this run (its own log), or None. Tool output and earlier messages never count."""
+        return final_answer(log_file)
+
     def stop(self, pid: int) -> None: ...
     def alive(self, pid: int) -> bool: ...
     def session_id(self, log_file: Path) -> str | None: ...
     def exit_code(self, exit_file: Path) -> int | None: ...
+
+
+def is_answer_only(env) -> bool:
+    """The Supervisor marks an A/B answer-only chunk launch (`_launch_env`): the AI only answers; nothing it writes counts."""
+    return env.get("WARROOM_ANSWER_ONLY") == "1"
 
 
 def is_stage2_chunk(env) -> bool:
@@ -368,6 +377,37 @@ def _json_objects(text: str):
             yield o
 
 
+def final_answer(log_file) -> str | None:
+    """The last assistant answer in one launch's log, for any of the three CLIs:
+    Claude `result.result` (success only), Codex the last completed `agent_message`, OpenCode the text parts of the
+    last step that produced text. A log is one launch, so an earlier run's answer can never be returned."""
+    try:
+        text = Path(log_file).read_text("utf-8", errors="replace")
+    except OSError:
+        return None
+    claude = codex = None
+    steps: list[list[str]] = [[]]
+    for o in _json_objects(text):
+        kind = o.get("type")
+        if kind == "result" and o.get("subtype") == "success" and o.get("is_error") is False and isinstance(o.get("result"), str):
+            claude = o["result"]
+        elif kind == "item.completed" and isinstance(o.get("item"), dict) and o["item"].get("type") == "agent_message" \
+                and isinstance(o["item"].get("text"), str):
+            codex = o["item"]["text"]
+        elif kind == "step_start":
+            steps.append([])
+        elif kind == "text" and isinstance(o.get("part"), dict) and isinstance(o["part"].get("text"), str):
+            steps[-1].append(o["part"]["text"])
+    if claude is not None:
+        return claude
+    if codex is not None:
+        return codex
+    for texts in reversed(steps):
+        if texts:
+            return "".join(texts)
+    return None
+
+
 class ClaudeCodeAdapter(ProcessAdapter):
     """Claude Code (`claude -p --output-format stream-json`). Model and effort are passed on every launch."""
     name = "claude"
@@ -377,17 +417,35 @@ class ClaudeCodeAdapter(ProcessAdapter):
 
     def __init__(self, binary: str = "claude"):
         self.binary = binary
+        self._help_flags: set[str] | None = None   # option names the installed CLI lists (set by preflight)
 
     @staticmethod
     def _pins(run: RunSpec) -> list[str]:
         return ["--model", run.model, "--effort", run.effort, "--output-format", "stream-json", "--verbose"]
 
+    def _answer_only_args(self, env) -> list[str]:
+        """Answer-only chunk: every tool removed (`--tools ""`), MCP limited to none, slash commands off. `--bare` also
+        drops CLAUDE.md/hooks/plugins/memory but needs API-key auth, so it is used only when the key is in the worker
+        environment. The tool removal is the isolation guarantee: a CLI without `--tools` is refused, not guessed at."""
+        if not is_answer_only(env):
+            return []
+        flags = self._help_flags
+        if flags is None or "--tools" not in flags:
+            raise RuntimeError("답변 전용 청크를 시작하지 않습니다: 설치된 Claude CLI가 --tools 로 도구를 제거하는 것을 지원하는지 확인하지 못했습니다")
+        args = ["--tools", ""]
+        for optional in ("--strict-mcp-config", "--disable-slash-commands"):
+            if optional in flags:
+                args.append(optional)
+        if "--bare" in flags and env.get("ANTHROPIC_API_KEY"):
+            args.append("--bare")
+        return args
+
     def start(self, prompt, cwd, env, run, title, log_file, exit_file):
-        cmd = [self.binary, "-p", prompt, *self._pins(_pinned(run)), "--name", title]
+        cmd = [self.binary, "-p", prompt, *self._pins(_pinned(run)), "--name", title, *self._answer_only_args(env)]
         return self._spawn(cmd, cwd, env, log_file, exit_file)
 
     def resume(self, session_id, prompt, cwd, env, run, log_file, exit_file):
-        cmd = [self.binary, "-p", prompt, "--resume", session_id, *self._pins(_pinned(run))]
+        cmd = [self.binary, "-p", prompt, "--resume", session_id, *self._pins(_pinned(run)), *self._answer_only_args(env)]
         return self._spawn(cmd, cwd, env, log_file, exit_file)
 
     def preflight(self, runner, env, runs):
@@ -397,6 +455,7 @@ class ClaudeCodeAdapter(ProcessAdapter):
         h = runner.run([self.binary, "--help"], env=env, timeout=60)
         if not h.ok:
             return f"`{self.binary} --help` 실행 실패: {h.err.strip()[:200]}"
+        self._help_flags = set(re.findall(r"--[a-z][a-z-]*", h.out))
         missing = [f for f in CLAUDE_REQUIRED_FLAGS if f not in h.out]
         if missing:
             return f"설치된 Claude Code CLI({v.out.strip()})가 필요한 옵션을 지원하지 않습니다: {', '.join(missing)}"
@@ -629,13 +688,23 @@ class CodexCLIAdapter(ProcessAdapter):
             if found:
                 hidden.update((found, str(Path(found).resolve())))
         entries = ", ".join(f'{json.dumps(p)}="none"' for p in sorted(hidden))
-        profile = f'permissions.{STAGE2_CHUNK_PROFILE}={{extends=":workspace", filesystem={{{entries}}}}}'
+        answer_only = is_answer_only(env)   # an A/B answer-only chunk may not write at all: its answer is the only output
+        profile = f'permissions.{STAGE2_CHUNK_PROFILE}={{extends="{":read-only" if answer_only else ":workspace"}", filesystem={{{entries}}}}}'
         code = self._probe([self.binary, "sandbox", "-P", STAGE2_CHUNK_PROFILE, "-C", str(cwd), "-c", profile, "--",
                             "/bin/sh", "-c", _GIT_BLOCK_PROBE, "sh", *blocked], env, cwd)
         if code != 0:
             raise RuntimeError("Stage 2 청크를 시작하지 않습니다: " +
                                ("Codex 샌드박스에서 Git 실행 파일이 실행됩니다" if code == 3 else
                                 f"Codex 샌드박스로 Git 차단을 확인하지 못했습니다 (exit={code})"))
+        if answer_only:   # proven before launch: a write under the profile must fail, or the chunk does not start
+            target = str(Path(cwd) / ".warroom-scratch" / ".answer-only-write-probe")
+            code = self._probe([self.binary, "sandbox", "-P", STAGE2_CHUNK_PROFILE, "-C", str(cwd), "-c", profile, "--",
+                                "/bin/sh", "-c", 'if (echo x > "$1") 2>/dev/null; then rm -f "$1"; exit 4; fi; exit 0', "sh", target],
+                               env, cwd)
+            Path(target).unlink(missing_ok=True)
+            if code != 0:
+                raise RuntimeError("답변 전용 청크를 시작하지 않습니다: Codex 샌드박스에서 쓰기가 차단되지 않거나 확인하지 못했습니다"
+                                   f" (exit={code})")
         return ["-c", 'web_search="disabled"', "-c", "project_doc_max_bytes=0", "-c", profile,
                 "-c", f"default_permissions={STAGE2_CHUNK_PROFILE}", "--ignore-rules", "-c", 'approval_policy="never"']
 
@@ -760,7 +829,11 @@ class CodexCLIAdapter(ProcessAdapter):
                 return ("ERROR", f"Codex가 실행한 추론 수준 {ctx.get('effort')!r}이 요청한 {run.effort!r}과 다릅니다 — 중지합니다.")
         return None
 
-    def run_problem(self, log_file, run, expected_session, cwd=None, env=None):
+    supports_tolerate_denied = True
+
+    def run_problem(self, log_file, run, expected_session, cwd=None, env=None, tolerate_denied=False):
+        """`tolerate_denied`: an answer-only chunk. A command its sandbox refused is only a metric there; the
+        Supervisor judges side effects (dirty tracked tree, HEAD/remote change) and the answer itself."""
         try:
             text = Path(log_file).read_text("utf-8", errors="replace")
         except OSError:
@@ -775,7 +848,7 @@ class CodexCLIAdapter(ProcessAdapter):
         if expected_session and thread != expected_session:
             return ("ERROR", f"세션 ID 불일치: 요청 {expected_session}, 실제 {thread} — "
                              "새 세션으로 진행된 것으로 보고 중지합니다.")
-        denied = _denied_command(events)
+        denied = None if tolerate_denied else _denied_command(events)
         if denied:   # the local policy refused a command (or asked for approval): stop, keep everything, wait for the operator
             return ("PAUSED", f"로컬 Codex 정책이 명령을 거부했습니다 ({denied}). 자동 권한 상승 없이 중지합니다. "
                               "로컬 설정을 확인한 뒤 Retry 하세요 (worktree·브랜치·PR·세션 보존).")

@@ -32,6 +32,8 @@ DEFAULTS = {
     "literary_index_path": "",
     # Local, approved paragraph-corpus index for Method D (written-corpus). Passed only to D chunk runs.
     "corpus_index_path": "",
+    # Issue #2035: new A/B batches run as serial 50-record answer-only chunk sessions; false keeps the old long session.
+    "ab_chunk_sessions": True,
     # Issue #1555: the logical producer ID (a key of `producers`) that runs the hidden Maintainer; None = disabled.
     "maintainer": None,
     # Extra argv lists run in a paused batch worktree after a shared fix was merged into it (all must pass).
@@ -338,6 +340,8 @@ def config_problem(cfg: dict) -> str | None:
     for key in ("git_name", "git_email", "free_model_pattern", "literary_index_path", "corpus_index_path"):
         if not isinstance(cfg.get(key), str):
             bad.append(f"{key}는 문자열이어야 합니다")
+    if not isinstance(cfg.get("ab_chunk_sessions"), bool):
+        bad.append("ab_chunk_sessions는 true/false여야 합니다")
     if isinstance(cfg.get("free_model_pattern"), str):
         try:
             re.compile(cfg["free_model_pattern"])
