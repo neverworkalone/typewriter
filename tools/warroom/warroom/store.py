@@ -626,8 +626,12 @@ class Store:
         with self._conn() as c:
             c.execute(f"UPDATE defects SET {cols} WHERE id=?", (*fields.values(), defect_id))
 
-    def release_defect(self, defect_id: int, batch_id: int, integrated_sha: str) -> bool:
+    def release_defect(self, defect_id: int, batch_id: int, integrated_sha: str,
+                       run_start: tuple[str, str] | None = None) -> bool:
         """The ONE automatic Retry: batch back to the phase it was paused in, defect RELEASED, in one transaction.
+
+        `run_start` = (kv key, value): the verified Stage 2 chunk run-start baseline retargeted to the integrated HEAD,
+        written in the same transaction so a crash can never leave RELEASED with the superseded baseline.
 
         False (nothing changed) unless the batch is still paused for exactly this defect and the defect is still
         FIX_MERGED, so a repeated poll or a restart can never retry twice.
@@ -648,6 +652,9 @@ class Store:
                       (now, b["producer"], b["method"]))
             c.execute("UPDATE defects SET state='RELEASED', integrated_sha=?, hold_reason=NULL, updated_at=? WHERE id=?",
                       (integrated_sha, now, defect_id))
+            if run_start is not None:
+                c.execute("INSERT INTO kv(key,value) VALUES(?,?) "
+                          "ON CONFLICT(key) DO UPDATE SET value=excluded.value", run_start)
             return True
 
     # --- Maintainer task record: one row per urgent Issue ---

@@ -845,6 +845,7 @@ class Supervisor:
             return
         if b["method"] == STAGE2_METHOD and not b["pr_number"] and \
                 isinstance(b["run_kind"], str) and b["run_kind"].startswith("s2_chunk_"):
+            self.maint.adopt_released_baseline(b)
             problem = self._stage2_chunk_boundary_problem(b)
             if problem:
                 return self._fail(b, "ERROR", problem)
