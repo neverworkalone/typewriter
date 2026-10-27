@@ -50,13 +50,14 @@ def _claude_usage(u: dict) -> dict | None:
                                ("input_tokens", "cache_read_input_tokens", "cache_creation_input_tokens", "output_tokens"))
     if fresh is None or out is None:
         return None
-    if read is None and write is None:
-        return None   # a result without cache fields cannot be priced/compared honestly
     details = u.get("output_tokens_details")
     reason = _count(details.get("thinking_tokens")) if isinstance(details, dict) else None
     if reason is not None and reason > out:
         return None
-    return {"input_tokens": fresh + (read or 0) + (write or 0), "cached_input_tokens": read,
+    # Total input is the sum of three parts: a missing part makes the total unknown (never a part read as 0);
+    # the parts that ARE stated are kept.
+    total = None if read is None or write is None else fresh + read + write
+    return {"input_tokens": total, "cached_input_tokens": read,
             "cache_write_tokens": write, "output_tokens": out, "reasoning_output_tokens": reason}
 
 
