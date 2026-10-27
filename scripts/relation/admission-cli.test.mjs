@@ -52,12 +52,28 @@ test('CLI entrypoint prepares a Part without an injected repository root', async
   t.after(() => rm(root, { recursive: true, force: true }));
 
   const relationScriptDirectory = path.join(root, 'scripts/relation');
-  for (const directory of [relationScriptDirectory, path.join(root, 'data/canonical'), path.join(root, 'data/relation-candidates/001')]) {
+  const buildScriptDirectory = path.join(root, 'scripts/build');
+  const runtimeDirectory = path.join(root, 'src/runtime');
+  for (const directory of [
+    relationScriptDirectory,
+    buildScriptDirectory,
+    runtimeDirectory,
+    path.join(root, 'data/canonical'),
+    path.join(root, 'data/relation-candidates/001'),
+  ]) {
     await mkdir(directory, { recursive: true });
   }
   for (const file of ['admission-cli.mjs', 'admission.mjs', 'candidate-contract.mjs']) {
     await copyFile(path.join(REPOSITORY_DIRECTORY, 'scripts/relation', file), path.join(relationScriptDirectory, file));
   }
+  await copyFile(
+    path.join(REPOSITORY_DIRECTORY, 'scripts/build/gloss-arrow-reference.mjs'),
+    path.join(buildScriptDirectory, 'gloss-arrow-reference.mjs'),
+  );
+  await copyFile(
+    path.join(REPOSITORY_DIRECTORY, 'src/runtime/dictionary-contract.js'),
+    path.join(runtimeDirectory, 'dictionary-contract.js'),
+  );
 
   const records = Array.from({ length: 500 }, (_, index) => ({
     id: `w${index + 1}`,
