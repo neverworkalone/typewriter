@@ -13,9 +13,11 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from pathlib import Path
 
 from . import batches
 from . import progress
+from . import prompts
 from .store import STAGE2_METHOD
 
 METHOD = STAGE2_METHOD
@@ -94,6 +96,55 @@ def chunk_saved_since(before: dict | None, after: dict | None) -> bool:
         return False
     return (after["next_chunk_number"] == before["next_chunk_number"] + 1
             and after["decided"] >= before["decided"])
+
+
+# One chunk-view page must reach the model whole in one tool call. Codex caps a tool call's whole output at 10,000
+# tokens, counted as bytes/4, and ignores larger `max_output_tokens`. Claude's Bash shows at most 30,000 characters.
+PAGE_MAX_BYTES = 36_000
+PAGE_MAX_CHARS = 28_000
+CHUNK_VIEW = prompts.CHUNK_VIEW
+
+
+def chunk_pages(text: str) -> list[str]:
+    """Split the compact chunk view at line boundaries into pages that each fit one tool call.
+
+    Joining the pages gives back `text` exactly: nothing is dropped, duplicated or cut mid-line. A single line over
+    the page budget raises ValueError so the Supervisor starts no AI run.
+    """
+    pages, current, size, chars = [], [], 0, 0
+    for line in text.splitlines(keepends=True):
+        b, c = len(line.encode("utf-8")), len(line)
+        if b > PAGE_MAX_BYTES or c > PAGE_MAX_CHARS:
+            raise ValueError(f"compact chunk line exceeds one page ({b} bytes): {line[:80]!r}")
+        if current and (size + b > PAGE_MAX_BYTES or chars + c > PAGE_MAX_CHARS):
+            pages.append("".join(current))
+            current, size, chars = [], 0, 0
+        current.append(line)
+        size, chars = size + b, chars + c
+    if current:
+        pages.append("".join(current))
+    return pages
+
+
+def page_path(number: int, total: int) -> str:
+    return CHUNK_VIEW if total == 1 else CHUNK_VIEW.replace(".txt", f".p{number}of{total}.txt")
+
+
+def write_chunk_pages(worktree) -> list[str]:
+    """Page the rendered chunk view for reading; returns worktree-relative paths in reading order.
+
+    One page is the view itself. Otherwise `active-chunk.p<i>of<n>.txt` files are written, after removing pages of an
+    earlier chunk so a stale page can never be read with the current one.
+    """
+    view = Path(worktree) / CHUNK_VIEW
+    pages = chunk_pages(view.read_text("utf-8"))
+    for stale in view.parent.glob("active-chunk.p*of*.txt"):
+        stale.unlink()
+    paths = [page_path(i, len(pages)) for i in range(1, len(pages) + 1)]
+    if len(pages) > 1:
+        for path, page in zip(paths, pages):
+            (Path(worktree) / path).write_text(page, "utf-8")
+    return paths
 
 
 def run_start_key(batch_id: int) -> str:

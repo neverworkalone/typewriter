@@ -755,17 +755,20 @@ class Supervisor:
             if b["method"] == STAGE2_METHOD and kind.startswith("s2_"):
                 phase = "finalize" if "_finalize_" in kind else "chunk"
                 checkpoint = stage2.checkpoint(wt, b["shard"], b["batch"])
+                pages = None
                 if phase == "chunk" and stage2.next_action(checkpoint) == "chunk":
-                    # The Supervisor, not the AI, prepares the Part and renders the one compact chunk view to judge.
+                    # The Supervisor, not the AI, prepares the Part and renders the one compact chunk view to judge,
+                    # paged so each page reaches the model whole in one tool call.
                     bb, pp = stage2.split_key(b["batch"])
                     self.git.stage2_chunk_view(Path(wt), b["shard"], bb, pp, prepare=checkpoint is None)
                     checkpoint = stage2.checkpoint(wt, b["shard"], b["batch"])
+                    pages = stage2.write_chunk_pages(wt)
                     if kind == "s2_chunk_new" and stage2.next_action(checkpoint) == "finalize":
                         self.store.log(b["id"], "prepare 결과 판정할 필수 후보가 없어 바로 최종화 단계로 진행합니다.")
                         return self._launch(b, "s2_finalize_new")
                 if stage2.next_action(checkpoint) != phase:
                     raise prompts.PromptError("Stage 2 실행 단계와 현재 checkpoint 상태가 다릅니다")
-                prompt = prompts.stage2(b, phase, checkpoint, resumed=kind.endswith("_resume"))
+                prompt = prompts.stage2(b, phase, checkpoint, resumed=kind.endswith("_resume"), pages=pages)
                 if phase == "chunk":
                     # Snapshot the checkpoint and both Git refs before each chunk; neither may move mid-run.
                     baseline = {"checkpoint": checkpoint, "branch": b["branch"], "worktree": str(wt),
