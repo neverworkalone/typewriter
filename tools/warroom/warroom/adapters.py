@@ -84,17 +84,28 @@ def is_stage2_chunk(env) -> bool:
     return env.get("WARROOM_STAGE2_CHUNK") == "1"
 
 
-def stage2_chunk_sandbox_command(cmd: list[str], git_executables: list[str], path: str) -> list[str]:
-    """Run a chunk worker inside an OS policy that denies executing every discovered Git binary."""
+def stage2_git_executables(env) -> list[str]:
+    """The discovered Git binaries a chunk must not run (`WARROOM_GIT_EXECUTABLES`), with resolved targets."""
+    try:
+        items = json.loads(env.get("WARROOM_GIT_EXECUTABLES") or "[]")
+    except json.JSONDecodeError as e:
+        raise RuntimeError("Stage 2 청크의 Git 차단 경로가 손상되었습니다") from e
+    if not isinstance(items, list):
+        raise RuntimeError("Stage 2 청크의 Git 차단 경로가 올바르지 않습니다")
     paths = set()
-    for item in git_executables:
+    for item in items:
         if not isinstance(item, str) or not item or not Path(item).is_absolute():
             raise RuntimeError("Stage 2 청크를 시작하지 않습니다: Git 실행 경로가 절대 경로가 아닙니다")
         paths.add(str(Path(item)))
         paths.add(str(Path(item).resolve()))
-    paths = sorted(paths)
     if not paths:
         raise RuntimeError("Stage 2 청크를 시작하지 않습니다: 차단할 Git 실행 파일 경로를 확인하지 못했습니다")
+    return sorted(paths)
+
+
+def stage2_chunk_sandbox_command(cmd: list[str], git_executables: list[str], path: str) -> list[str]:
+    """Run a chunk worker inside an OS policy that denies executing every discovered Git binary."""
+    paths = stage2_git_executables({"WARROOM_GIT_EXECUTABLES": json.dumps(git_executables)})
     if sys.platform == "darwin":
         sandbox = shutil.which("sandbox-exec", path=path)
         if not sandbox:
@@ -129,22 +140,18 @@ def _ids_in(obj):
 
 class ProcessAdapter(AgentAdapter):
     """Process handling shared by every CLI: detached group, exit wrapper, liveness, stop, log scan."""
+    # True: the CLI's own per-command sandbox blocks Git in a chunk (its launch args carry the rule), so an outer
+    # OS sandbox must not be added: macOS refuses a nested sandbox_apply and every command would fail.
+    native_stage2_git_block = False
 
     def _spawn(self, cmd: list[str], cwd, env, log_file: Path, exit_file: Path) -> Handle:
         log_file, exit_file = Path(log_file), Path(exit_file)
         log_file.parent.mkdir(parents=True, exist_ok=True)
         exit_file.unlink(missing_ok=True)
         env = dict(env)
-        if is_stage2_chunk(env):
-            try:
-                git_executables = json.loads(env.pop("WARROOM_GIT_EXECUTABLES", "[]"))
-            except json.JSONDecodeError as e:
-                raise RuntimeError("Stage 2 청크의 Git 차단 경로가 손상되었습니다") from e
-            if not isinstance(git_executables, list):
-                raise RuntimeError("Stage 2 청크의 Git 차단 경로가 올바르지 않습니다")
-            cmd = stage2_chunk_sandbox_command(cmd, git_executables, env.get("PATH", os.defpath))
-        else:
-            env.pop("WARROOM_GIT_EXECUTABLES", None)
+        if is_stage2_chunk(env) and not self.native_stage2_git_block:
+            cmd = stage2_chunk_sandbox_command(cmd, stage2_git_executables(env), env.get("PATH", os.defpath))
+        env.pop("WARROOM_GIT_EXECUTABLES", None)
         # The wrapper records the exit status so a restarted Supervisor can still
         # learn how the (detached) child ended.
         wrapper = ['"$@"', "echo $? > \"$WARROOM_EXIT_FILE\""]
@@ -481,8 +488,16 @@ class ClaudeCodeAdapter(ProcessAdapter):
 # The one exception is the run's own linked-worktree Git admin directory (`git_dir`): the sandbox otherwise denies
 # `index.lock` there. It is added for that exact directory only (`--add-dir` on start; `exec resume` has no such flag, so a
 # `-c permissions.<profile>.filesystem` entry for the same directory, merged into the profile). Never the repo's `.git`.
-CODEX_REQUIRED_EXEC_FLAGS = ("--json", "--model", "--config", "--add-dir")
-CODEX_REQUIRED_RESUME_FLAGS = ("resume", "--json", "--model", "--config")
+# A Stage 2 chunk is the one narrowing: Codex's own sandbox blocks Git there, with no outer sandbox around Codex
+# (macOS refuses the nested sandbox_apply). Its commands run under the built-in `:workspace` profile instead of the
+# local one: writes to the worktree and temp only, no network, no Git admin grant (all Git metadata stays read-only),
+# and the discovered Git binaries unreadable (`"none"`). `--ignore-rules` stops local execpolicy allow rules
+# (`git push`, ...) from running a command outside the sandbox; `approval_policy="never"` stops escalation.
+CODEX_REQUIRED_EXEC_FLAGS = ("--json", "--model", "--config", "--add-dir", "--ignore-rules")
+CODEX_REQUIRED_RESUME_FLAGS = ("resume", "--json", "--model", "--config", "--ignore-rules")
+STAGE2_CHUNK_PROFILE = "warroom_stage2_chunk"
+# Run under the chunk's policy: 0 = every listed Git binary failed; 3 = one ran; anything else = no usable sandbox.
+_GIT_BLOCK_PROBE = 'for g do "$g" --version >/dev/null 2>&1 && exit 3; done; exit 0'
 _PROFILE_NAME = re.compile(r"[A-Za-z0-9_-]+")
 _CODEX_DENIED = re.compile(r"operation not permitted|permission denied|requires approval|approval required|"
                            r"blocked by (the )?(sandbox|policy)|not allowed by (the )?(sandbox|policy)", re.I)
@@ -573,6 +588,7 @@ class CodexCLIAdapter(ProcessAdapter):
     requires_session_for_pr = True
     requires_final_result_for_pr = True   # a PR is taken over only after the run exited and its final result was checked
     needs_git_dir = True
+    native_stage2_git_block = True
 
     def __init__(self, binary: str = "codex"):
         self.binary = binary
@@ -593,27 +609,58 @@ class CodexCLIAdapter(ProcessAdapter):
             raise ValueError("worktree의 Git 관리 디렉터리를 알 수 없어 Codex를 시작하지 않았습니다.")
         return text
 
-    @staticmethod
-    def _chunk_args(env) -> list[str]:
-        """A Stage 2 chunk judges only the supplied chunk view: no web lookup and no auto-loaded AGENTS.md.
+    def _probe(self, argv: list[str], env, cwd) -> int:
+        return subprocess.run(argv, cwd=cwd, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                              stderr=subprocess.DEVNULL, timeout=60).returncode
 
-        Tool configuration only; sandbox, approval and permission settings stay with the local profile.
-        """
-        return ["-c", 'web_search="disabled"', "-c", "project_doc_max_bytes=0"] if is_stage2_chunk(env) else []
+    def _chunk_args(self, env, cwd) -> list[str]:
+        """A Stage 2 chunk judges only the supplied chunk view: no web lookup and no auto-loaded AGENTS.md, and
+        Codex's own sandbox blocks Git (see the module note above). The policy is proven before launch: every
+        discovered Git binary must fail under it, or the chunk does not start."""
+        blocked = stage2_git_executables(env)
+        hidden = set(blocked)
+        if sys.platform == "darwin":   # /usr/bin/git is an xcrun shim: hiding the developer-dir Git it runs blocks it
+            try:
+                found = subprocess.run(["xcrun", "--find", "git"], env=env, capture_output=True, text=True,
+                                       timeout=60).stdout.strip()
+            except (OSError, subprocess.SubprocessError):
+                found = ""
+            if os.path.isabs(found):
+                hidden.update((found, str(Path(found).resolve())))
+        entries = ", ".join(f'{json.dumps(p)}="none"' for p in sorted(hidden))
+        profile = f'permissions.{STAGE2_CHUNK_PROFILE}={{extends=":workspace", filesystem={{{entries}}}}}'
+        code = self._probe([self.binary, "sandbox", "-P", STAGE2_CHUNK_PROFILE, "-C", str(cwd), "-c", profile, "--",
+                            "/bin/sh", "-c", _GIT_BLOCK_PROBE, "sh", *blocked], env, cwd)
+        if code != 0:
+            raise RuntimeError("Stage 2 청크를 시작하지 않습니다: " +
+                               ("Codex 샌드박스에서 Git 실행 파일이 실행됩니다" if code == 3 else
+                                f"Codex 샌드박스로 Git 차단을 확인하지 못했습니다 (exit={code})"))
+        return ["-c", 'web_search="disabled"', "-c", "project_doc_max_bytes=0", "-c", profile,
+                "-c", f"default_permissions={STAGE2_CHUNK_PROFILE}", "--ignore-rules", "-c", 'approval_policy="never"']
+
+    def _launch_args(self, env, cwd, run: RunSpec, grant: list[str]) -> list[str]:
+        """Pins plus either the chunk policy (which replaces the local profile) or the run's Git admin grant."""
+        if is_stage2_chunk(env):
+            return [*self._pins(RunSpec(run.model, run.effort)), *self._chunk_args(env, cwd)]
+        return [*self._pins(run), *grant]
 
     def start(self, prompt, cwd, env, run, title, log_file, exit_file, git_dir=None):
-        cmd = [self.binary, "exec", *self._pins(_pinned(run)), *self._chunk_args(env),
-               "--add-dir", self._git_dir(git_dir), prompt]
+        run = _pinned(run)
+        grant = [] if is_stage2_chunk(env) else ["--add-dir", self._git_dir(git_dir)]
+        cmd = [self.binary, "exec", *self._launch_args(env, cwd, run, grant), prompt]
         _baseline_path(log_file).unlink(missing_ok=True)   # a fresh start has no baseline: every turn is its own
         return self._spawn(cmd, cwd, env, log_file, exit_file)
 
     def resume(self, session_id, prompt, cwd, env, run, log_file, exit_file, git_dir=None):
         run = _pinned(run)
-        if not _PROFILE_NAME.fullmatch(run.permission_profile or ""):
-            raise ValueError("`codex exec resume`에는 --add-dir이 없어 permission_profile 없이는 Git 관리 디렉터리를 "
-                             "열 수 없습니다. producer 설정에 permission_profile을 지정하세요.")
-        grant = f"permissions.{run.permission_profile}.filesystem={{{json.dumps(self._git_dir(git_dir))}=\"write\"}}"
-        cmd = [self.binary, "exec", "resume", session_id, *self._pins(run), *self._chunk_args(env), "-c", grant, prompt]
+        grant = []
+        if not is_stage2_chunk(env):
+            if not _PROFILE_NAME.fullmatch(run.permission_profile or ""):
+                raise ValueError("`codex exec resume`에는 --add-dir이 없어 permission_profile 없이는 Git 관리 디렉터리를 "
+                                 "열 수 없습니다. producer 설정에 permission_profile을 지정하세요.")
+            grant = ["-c", f"permissions.{run.permission_profile}.filesystem="
+                           f"{{{json.dumps(self._git_dir(git_dir))}=\"write\"}}"]
+        cmd = [self.binary, "exec", "resume", session_id, *self._launch_args(env, cwd, run, grant), prompt]
         # The turns recorded before this run: only turns after this baseline belong to this run.
         Path(log_file).parent.mkdir(parents=True, exist_ok=True)
         _baseline_path(log_file).write_text(json.dumps({"thread": session_id,
