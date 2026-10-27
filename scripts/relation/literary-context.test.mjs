@@ -604,8 +604,8 @@ test('submit validation returns bounded reason codes and source-sense fields wit
     assert.equal(successful.status, 0, successful.stderr);
     assert.equal(JSON.parse(successful.stdout).status, 'SAVED');
     await assert.rejects(readFile(path.join(fixture.scratchDirectory, 'submit-input.json.diag.json'), 'utf8'), { code: 'ENOENT' });   // a stale diagnostic never survives a later submit
-    // The 035_02-class "operation" was an unlabeled refusal of the input file itself: each one is now named, never retried, and
-    // never touches a sidecar outside .warroom-scratch/.
+    // Input-file refusals (path outside scratch, missing, oversize) used to surface as an unlabeled "operation". Each is now named,
+    // never retried, and never touches a sidecar outside .warroom-scratch/. (The recorded 035_02 cause is waived, not proven here.)
     const outside = path.join(fixture.root, 'outside-submit.json');
     await writeFile(outside, '{"senses":[]}');
     await writeFile(`${outside}.diag.json`, 'sentinel');
