@@ -110,6 +110,9 @@ class FakeGit:
         self.verify_calls: list[tuple] = []
         self.verify_error: Exception | None = None
         self.on_base = True                                   # is a merge commit already on origin/<base>
+        self.chunk_views: list[tuple] = []                    # (worktree, shard, batch, part, prepare) pre-chunk renders
+        self.chunk_view_error: Exception | None = None
+        self.chunk_view_total = 1                             # candidates a fake `prepare` writes
 
     def fetch_base(self, base):
         return "m" * 40
@@ -120,6 +123,30 @@ class FakeGit:
             raise self.verify_error
         ok = (kind, shard, batch, part) in self.verified or (sha, kind, shard, batch, part) in self.verify_heads
         return ok, "" if ok else "Relation Admission accounting failed: candidate has no relation"
+
+    def stage2_chunk_view(self, worktree, shard, batch, part, *, prepare, timeout=900):
+        """Mimic admission-cli prepare + read-chunk: a pending chunk covering every undecided candidate."""
+        self.chunk_views.append((str(worktree), shard, batch, part, prepare))
+        if self.chunk_view_error:
+            raise self.chunk_view_error
+        path = Path(worktree) / ".warroom-scratch" / f"relation-admission-{shard}-{batch}-{part}.json"
+        if prepare:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps({
+                "version": 1, "shard": shard, "batch": batch, "part": part, "complete": True, "stats": {},
+                "next_chunk_number": 1, "pending_chunk": None, "merged": False,
+                "items": [{"sense_id": "source-sense", "candidates": [
+                    {"text": f"candidate-{i}", "decision": None} for i in range(self.chunk_view_total)]}],
+            }), "utf-8")
+        data = json.loads(path.read_text("utf-8"))
+        candidates = data["items"][0]["candidates"]
+        start = next((i for i, c in enumerate(candidates) if c["decision"] is None), -1)
+        if data["pending_chunk"] is None and start >= 0:
+            data["pending_chunk"] = {"chunk_id": f"{shard}-{batch}-{part}-{data['next_chunk_number']:03d}",
+                                     "candidate_count": len(candidates) - start,
+                                     "slices": [{"sense_id": "source-sense", "start": start, "end": len(candidates)}]}
+            path.write_text(json.dumps(data), "utf-8")
+        (path.parent / "active-chunk.txt").write_text(f"# chunk {data['pending_chunk']}\n", "utf-8")
 
     def contains_on_base(self, sha, base):
         return self.on_base

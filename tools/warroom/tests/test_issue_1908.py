@@ -2,14 +2,23 @@
 import json
 import os
 import shutil
+import tempfile
 import unittest
 from pathlib import Path
 
-from tests.test_issue_1684 import S2, merge_part, s2_world
+from tests.test_issue_1684 import S2, merge_part, s2_world as _s2_world
 from tests.fakes import HEAD1, HEAD2
 from tests.test_claude_adapter import init, result, stream
 from tests.test_issue_1832 import Reporting
 from warroom import control, progress
+from warroom.gitops import GitError
+
+
+def s2_world(test):
+    """A Stage 2 world whose fake `prepare` writes the two-candidate Part these tests save chunk by chunk."""
+    w = _s2_world(test)
+    w.git.chunk_view_total = 2
+    return w
 
 
 def write_state(batch, *, decided, total=2, next_chunk=2, pending=None, merged=False):
@@ -162,6 +171,66 @@ class Stage2ChunkRuns(unittest.TestCase):
                 b = w.store.batch(b["id"])
                 self.assertEqual((b["state"], len(w.adapter.launches)), ("ERROR", 1))
                 self.assertIn("변경됐습니다", b["error"])
+
+
+class Stage2ChunkView(unittest.TestCase):
+    """The Supervisor renders the compact chunk view itself; the AI only reads it, judges and saves."""
+
+    def test_supervisor_prepares_and_renders_each_chunk_before_a_self_contained_prompt(self):
+        w = s2_world(self)
+        control.start(w.store, "claude", S2, "single", cfg=w.cfg)
+        w.adapter.plan.append({"code": 0, "session": "ses_chunk_1", "effect": lambda: write_state(
+            w.store.active_batch("claude", S2), decided=1, total=2, next_chunk=2)})
+        w.tick()
+        b = w.store.active_batch("claude", S2)
+        wt = str(b["worktree"])
+        self.assertEqual(w.git.chunk_views, [(wt, "001", "01", "01", True)])
+        self.assertTrue((Path(wt) / ".warroom-scratch" / "active-chunk.txt").is_file())
+        prompt = w.adapter.launches[-1]["prompt"]
+        for needed in ("active-chunk.txt", "--format compact", "decisions.txt", "연상 Tier 1"):
+            self.assertIn(needed, prompt)
+        for gone in ("docs/relation-factory.md을 읽", "prepare --shard", "read-chunk --checkpoint"):
+            self.assertNotIn(gone, prompt)
+        w.adapter.finish(w.adapter.launches[-1]["pid"])
+        w.tick()
+        self.assertEqual(w.git.chunk_views[-1], (wt, "001", "01", "01", False))  # an existing checkpoint is reused
+        self.assertEqual(w.store.batch(b["id"])["run_kind"], "s2_chunk_new")
+
+    def test_a_failed_chunk_view_starts_no_ai(self):
+        w = s2_world(self)
+        w.git.chunk_view_error = GitError("admission-cli prepare 실패: inputs incomplete")
+        control.start(w.store, "claude", S2, "single", cfg=w.cfg)
+        w.tick()
+        b = w.store.active_batch("claude", S2)
+        self.assertEqual((b["state"], len(w.adapter.launches)), ("ERROR", 0))
+        self.assertIn("admission-cli prepare 실패", b["error"])
+
+    def test_a_part_with_nothing_to_judge_goes_straight_to_finalize(self):
+        w = s2_world(self)
+        w.git.chunk_view_total = 0
+        control.start(w.store, "claude", S2, "single", cfg=w.cfg)
+        w.tick()
+        b = w.store.active_batch("claude", S2)
+        self.assertEqual((b["run_kind"], len(w.adapter.launches)), ("s2_finalize_new", 1))
+        self.assertIn("finalize", w.adapter.launches[-1]["prompt"])
+
+
+class Stage2ChunkCodexConfig(unittest.TestCase):
+    def test_only_chunk_runs_disable_web_search_and_project_docs(self):
+        from tests.test_codex_adapter import GIT_DIR, Recording
+        from warroom.adapters import RunSpec
+        run = RunSpec("gpt-6-luna", "xhigh", "worktree")
+        for env, expected in (({"WARROOM_STAGE2_CHUNK": "1"}, True), ({}, False)):
+            with self.subTest(chunk=expected), tempfile.TemporaryDirectory() as d:
+                log, ex = Path(d) / "l.log", Path(d) / "l.exit"
+                a = Recording("codex")
+                a.start("p", d, env, run, "t", log, ex, git_dir=GIT_DIR)
+                start = a.cmd
+                a.resume("019a0000-0000-7000-8000-000000000000", "p", d, env, run, log, ex, git_dir=GIT_DIR)
+                for argv in (start, a.cmd):
+                    self.assertEqual('web_search="disabled"' in argv, expected)
+                    self.assertEqual("project_doc_max_bytes=0" in argv, expected)
+                    self.assertEqual(argv[-1], "p")
 
 
 class Stage2Retry(unittest.TestCase):

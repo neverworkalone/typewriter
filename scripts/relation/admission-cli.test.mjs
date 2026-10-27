@@ -478,7 +478,7 @@ test('an existing ID relation accounts for a candidate even when another target 
   await assert.rejects(() => quiet(() => run(args('verify'), { root })), /"미끄럼저항기" is named by the gloss of w1-s1 and cannot be dropped as unrelated/);
 });
 
-test('Stage 2 chunks bind exact senses, resume safely, and preserve text-only Parts and prior rows', async (t) => {
+async function chunkRepository(t) {
   const root = await mkdtemp(path.join(tmpdir(), 'typewriter-admission-chunks-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   const records = Array.from({ length: 504 }, (_, index) => ({
@@ -524,7 +524,11 @@ test('Stage 2 chunks bind exact senses, resume safely, and preserve text-only Pa
     source_record_id: 'w504', source_sense_id: 'w504-s1', target_record_id: 'w1', target_sense_id: 'w1-s1',
     type: 'scene', relevance: 2, reverse_type: 'mood', reverse_relevance: 5,
   }]));
+  return { root, priorRelation, priorDrop };
+}
 
+test('Stage 2 chunks bind exact senses, resume safely, and preserve text-only Parts and prior rows', async (t) => {
+  const { root, priorRelation, priorDrop } = await chunkRepository(t);
   const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
   const prepared = await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
   assert.equal(prepared.stats.to_edit, 5, 'the already approved reverse ID candidate is absorbed');
@@ -616,6 +620,86 @@ test('Stage 2 chunks bind exact senses, resume safely, and preserve text-only Pa
   await quiet(() => run(['merge', '--checkpoint', textOnlyCheckpoint], { root }));
   const textOnlyCounts = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '02'], { root }));
   assert.deepEqual([textOnlyCounts.unique, textOnlyCounts.relation, textOnlyCounts.drop, textOnlyCounts.missing], [1, 1, 0, 0], 'a fully text-only Part remains valid when no exact Canonical target exists');
+});
+
+test('compact chunks are a lossless view and compact decisions expand into the same validated decisions', async (t) => {
+  const { root } = await chunkRepository(t);
+  const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
+  const view = '.warroom-scratch/active-chunk.txt';
+  const input = '.warroom-scratch/decisions.txt';
+  await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  const compact = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint, '--max-candidates', '2', '--format', 'compact', '--out', view], { root }));
+  const json = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint], { root }));
+  assert.equal(json.chunk_id, compact.chunk_id, 'both formats render the same pending chunk');
+  const text = await readFile(path.join(root, view), 'utf8');
+  assert.equal(text, compact.text);
+  const lines = text.split('\n');
+  for (const item of json.items) {
+    assert.ok(lines.some((line) => line.startsWith(`S\t${item.sense_id}\t${item.record_id}\t${item.lemma}\t${item.pos}\t${item.gloss}\t`)), `source ${item.sense_id} keeps its full gloss`);
+    for (const candidate of item.candidates) {
+      for (const target of candidate.same_spelling_targets) for (const sense of target.senses) {
+        assert.equal(lines.filter((line) => line.endsWith(`\t${sense.sense_id}\t${target.record_id}\t${target.lemma}\t${sense.pos}\t${sense.gloss}`)).length, 1, `target ${sense.sense_id} appears exactly once with its full gloss`);
+      }
+    }
+  }
+  assert.ok(lines.includes('c1\t유일표적\ta_codex\tT1,T2'));
+  assert.ok(lines.includes('c2\t겹표기\ta_codex\tT3,T4'));
+  assert.ok(lines.includes('P\tmood\t5\tw504-s1 역방향표적 noun 이미 연결된 뜻'), 'approved reverse peers keep their own type and relevance');
+
+  const save = async (body) => {
+    await writeFile(path.join(root, input), body);
+    return quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', input, '--format', 'compact'], { root }));
+  };
+  const head = `chunk ${compact.chunk_id}`;
+  for (const [body, error] of [
+    ['chunk 001-01-01-999\nc1 R near 1 T1 mood 6\nc2 R association 7 none T3,T4', /must start with/],
+    [`${head}\nc9 R near 1 T1 mood 6`, /names no candidate/],
+    [`${head}\nc1 R near 1 T9 mood 6\nc2 R association 7 none T3,T4`, /unknown target alias T9/],
+    [`${head}\nc1 R near 1 T3 mood 6\nc2 R association 7 none T3,T4`, /exact target must be one of/],
+    [`${head}\nc1 R near 1 T1 mood 6\nc2 R association 7 none T3`, /check every same-spelling target sense/],
+    [`${head}\nc1 R near 1 T1 mood 6\nc2 R association 7`, /omit target-resolution fields|target_resolution must be/],
+    [`${head}\nc1 R near 10 T1 mood 6\nc2 R association 7 none T3,T4`, /single digit/],
+    [`${head}\nc1 R near 1 T1 mood 0\nc2 R association 7 none T3,T4`, /single digit/],
+    [`${head}\nc1 R near 1 T1\nc2 R association 7 none T3,T4`, /2, 4 or 5 fields/],
+    [`${head}\nc1 R closeness 1 T1 mood 6\nc2 R association 7 none T3,T4`, /type must be one of/],
+    [`${head}\nc1 X near 1 T1 mood 6\nc2 R association 7 none T3,T4`, /R or D/],
+    [`${head}\nc1 D\nc2 R association 7 none T3,T4`, /Drop needs a reason/],
+    [`${head}\nc1 R near 1 T1 mood 6`, /missing decisions/],
+    [`${head}\nc1 R near 1 T1 mood 6\nc1 R near 1 T1 mood 6\nc2 R association 7 none T3,T4`, /repeats decision/],
+  ]) await assert.rejects(() => save(body), error, body);
+
+  await save(`# comments and blank lines are ignored\n${head}\n\nc1 R near 1 T1 mood 6\nc2 R association 7 none T4,T3\n`);
+  const saved = JSON.parse(await readFile(path.join(root, checkpoint), 'utf8'));
+  assert.deepEqual(saved.items[0].candidates.slice(0, 2).map((candidate) => candidate.decision), [
+    {
+      source_sense_id: 'w1-s1', candidate: '유일표적', disposition: 'relation', type: 'near', relevance: 1,
+      target_resolution: 'exact', target_record_id: 'w501', target_sense_id: 'w501-s1', reverse_type: 'mood', reverse_relevance: 6,
+    },
+    {
+      source_sense_id: 'w1-s1', candidate: '겹표기', disposition: 'relation', type: 'association', relevance: 7,
+      target_resolution: 'no_exact_match', checked_target_sense_ids: ['w503-s1', 'w502-s1'],
+    },
+  ], 'compact lines become the same decision objects the JSON format stores');
+
+  const next = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint, '--max-candidates', '3', '--format', 'compact'], { root }));
+  const nextLines = next.text.split('\n');
+  assert.ok(nextLines.includes('S\tw1-s1\tw1\t출발어\tnoun\t출발 의미\tcandidates 3-4/4'));
+  assert.ok(nextLines.includes('Q\t유일표적\trelation\tnear\t1\tw501-s1\tmood\t6'), 'a continuation shows the same sense\'s saved decisions');
+  assert.ok(nextLines.includes('Q\t겹표기\trelation\tassociation\t7\ttext-only'));
+  assert.ok(nextLines.includes('c1\t낯선말\ta_codex\t-'));
+  assert.ok(!nextLines.some((line) => line.startsWith('T1\t')), 'aliases restart for each chunk');
+  await save(`chunk ${next.chunk_id}\nc1 R sensory 5\nc2 D 출발 sense와 무관한 임시 표기\nc3 R scene 4`);
+  const finished = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint, '--format', 'compact'], { root }));
+  assert.equal(finished.complete, true);
+  assert.deepEqual(await quiet(() => run(['merge', '--checkpoint', checkpoint], { root })), {
+    merged: true, relations_added: 4, drops_added: 1, checkpoint: path.join(root, checkpoint),
+  });
+  const counts = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  assert.deepEqual([counts.unique, counts.relation, counts.drop, counts.skipped_existing, counts.missing], [6, 4, 1, 1, 0]);
+
+  await assert.rejects(() => run(['read-chunk', '--checkpoint', checkpoint, '--format', 'compact', '--source-sense-id', 'w1-s1', '--candidate', '유일표적'], { root }), /primary chunks only/);
+  await assert.rejects(() => run(['verify', '--shard', '001', '--format', 'compact'], { root }), /only valid for read-chunk\/save-chunk/);
+  await assert.rejects(() => run(['read-chunk', '--checkpoint', checkpoint, '--format', 'yaml'], { root }), /json or compact/);
 });
 
 test('merge validates final Part accounting before writing and supports a local decision revision', async (t) => {

@@ -26,13 +26,14 @@ import {
 const USAGE = `usage:
   node scripts/relation/admission-cli.mjs prepare --shard 001 [--batch 01] [--out <file.json>] [--allow-partial]
   node scripts/relation/admission-cli.mjs prepare --shard 001 --batch 01 --part 01 [--checkpoint <file.json>] [--allow-partial]
-  node scripts/relation/admission-cli.mjs read-chunk --checkpoint <file.json> [--max-candidates 250] [--source-sense-id <id> --candidate <text>] [--out <file.json>]
-  node scripts/relation/admission-cli.mjs save-chunk --checkpoint <file.json> --in <decisions.json>
+  node scripts/relation/admission-cli.mjs read-chunk --checkpoint <file.json> [--max-candidates 250] [--source-sense-id <id> --candidate <text>] [--format json|compact] [--out <file>]
+  node scripts/relation/admission-cli.mjs save-chunk --checkpoint <file.json> --in <decisions> [--format json|compact]
   node scripts/relation/admission-cli.mjs merge --checkpoint <file.json>
   node scripts/relation/admission-cli.mjs verify --shard 001 [--batch 01 [--part 01]] [--checkpoint <file.json>] [--allow-partial]`;
 
 const CHECKPOINT_VERSION = 1;
 const DEFAULT_CHUNK_CANDIDATES = 250;
+const CHUNK_FORMATS = ['json', 'compact'];
 const CHECKPOINT_DIRECTORY = '.warroom-scratch';
 const isPlainObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 const keysOf = (value) => Object.keys(value).sort().join(',');
@@ -50,6 +51,13 @@ async function writeJsonAtomically(file, value) {
   await mkdir(path.dirname(file), { recursive: true });
   const temporary = `${file}.tmp`;
   await writeFile(temporary, `${JSON.stringify(value)}\n`);
+  await rename(temporary, file);
+}
+
+async function writeTextAtomically(file, text) {
+  await mkdir(path.dirname(file), { recursive: true });
+  const temporary = `${file}.tmp`;
+  await writeFile(temporary, text);
   await rename(temporary, file);
 }
 
@@ -345,7 +353,7 @@ function assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, ne
 
 function parseArgs(argv) {
   const [command, ...rest] = argv;
-  const options = { command, shard: null, batch: null, part: null, out: null, checkpoint: null, input: null, maxCandidates: DEFAULT_CHUNK_CANDIDATES, allowPartial: false, sourceSenseId: null, candidateText: null };
+  const options = { command, shard: null, batch: null, part: null, out: null, checkpoint: null, input: null, maxCandidates: DEFAULT_CHUNK_CANDIDATES, allowPartial: false, sourceSenseId: null, candidateText: null, format: null };
   for (let index = 0; index < rest.length; index += 1) {
     const flag = rest[index];
     if (flag === '--shard') options.shard = rest[++index];
@@ -358,8 +366,13 @@ function parseArgs(argv) {
     else if (flag === '--source-sense-id') options.sourceSenseId = rest[++index];
     else if (flag === '--candidate') options.candidateText = rest[++index];
     else if (flag === '--allow-partial') options.allowPartial = true;
+    else if (flag === '--format') options.format = rest[++index];
     else throw new Error(`unknown argument ${flag}\n${USAGE}`);
   }
+  if (options.format !== null && !['read-chunk', 'save-chunk'].includes(command)) throw new Error(`--format is only valid for read-chunk/save-chunk\n${USAGE}`);
+  if (options.format !== null && !CHUNK_FORMATS.includes(options.format)) throw new Error(`--format must be json or compact\n${USAGE}`);
+  if (options.format === 'compact' && options.sourceSenseId !== null) throw new Error(`--format compact covers primary chunks only; read a revision as JSON\n${USAGE}`);
+  options.format ??= 'json';
   if (!['prepare', 'read-chunk', 'save-chunk', 'merge', 'verify'].includes(command)) throw new Error(USAGE);
   if (['prepare', 'verify'].includes(command)) assertShard(options.shard);
   if (options.batch !== null && !['01', '02'].includes(options.batch)) throw new Error(`--batch must be 01 or 02\n${USAGE}`);
@@ -397,8 +410,8 @@ export async function run(argv, { root } = {}) {
 
   if (options.command === 'read-chunk' || options.command === 'save-chunk') {
     const checkpoint = await readCheckpoint(checkpointPath);
-    if (options.command === 'read-chunk') return readChunk(checkpoint, checkpointPath, options.maxCandidates, options.out, repositoryRoot, options.sourceSenseId, options.candidateText);
-    return saveChunk(checkpoint, checkpointPath, options.input, repositoryRoot);
+    if (options.command === 'read-chunk') return readChunk(checkpoint, checkpointPath, options.maxCandidates, options.out, repositoryRoot, options.sourceSenseId, options.candidateText, options.format);
+    return saveChunk(checkpoint, checkpointPath, options.input, repositoryRoot, options.format);
   }
   if (options.command === 'merge') return mergeCheckpoint(await readCheckpoint(checkpointPath), checkpointPath, repositoryRoot);
   if (options.command === 'prepare' && options.part && existsSync(checkpointPath)) {
@@ -568,8 +581,126 @@ function pendingChunkPayload(checkpoint, pending) {
   };
 }
 
-async function readChunk(checkpoint, checkpointPath, maxCandidates, out, root, sourceSenseId = null, candidateText = null) {
+/**
+ * The aliases one primary chunk's compact view and its compact decisions share, derived only from the checkpoint.
+ * Every same-spelling target sense appears once as `T<n>`, every candidate as `c<n>`; nothing is truncated.
+ */
+function compactChunkModel(checkpoint, pending) {
+  if (pending.revision === true) throw new Error(`active chunk ${pending.chunk_id} is a revision; use the JSON format`);
+  const targets = new Map();
+  const candidates = [];
+  const sources = pending.slices.map((slice) => {
+    const item = checkpoint.items.find((entry) => entry.sense_id === slice.sense_id);
+    const rows = item.candidates.slice(slice.start, slice.end).map((candidate) => {
+      const aliases = candidate.same_spelling_targets.flatMap((target) => target.senses.map((sense) => {
+        if (!targets.has(sense.sense_id)) {
+          targets.set(sense.sense_id, { alias: `T${targets.size + 1}`, record_id: target.record_id, lemma: target.lemma, sense_id: sense.sense_id, pos: sense.pos, gloss: sense.gloss });
+        }
+        return targets.get(sense.sense_id).alias;
+      }));
+      const row = { alias: `c${candidates.length + 1}`, item, candidate, targets: aliases };
+      candidates.push(row);
+      return row;
+    });
+    return { slice, item, rows };
+  });
+  return { sources, candidates, targets };
+}
+
+function compactField(value) {
+  const text = String(value);
+  if (/[\t\r\n]/u.test(text)) throw new Error(`compact chunk field cannot contain a tab or line break: ${JSON.stringify(text)}`);
+  return text;
+}
+
+const compactLine = (...fields) => fields.map(compactField).join('\t');
+
+function compactSavedDecision(decision) {
+  if (decision.disposition === 'drop') return ['drop', decision.reason];
+  if (decision.disposition === 'existing') return ['existing'];
+  if (decision.target_resolution === 'exact') {
+    return ['relation', decision.type, decision.relevance, decision.target_sense_id, decision.reverse_type, decision.reverse_relevance];
+  }
+  return ['relation', decision.type, decision.relevance, 'text-only'];
+}
+
+export const COMPACT_DECISION_GRAMMAR = [
+  'chunk <chunk_id>                                  first line',
+  'c<n> R <type> <tier> T<k> <reverse_type> <reverse_tier>   exact target sense T<k>',
+  'c<n> R <type> <tier> none T<a>,T<b>,...           text-only; list every target alias of c<n>',
+  'c<n> R <type> <tier>                              text-only; c<n> has no targets (-)',
+  'c<n> D <reason>                                   Drop',
+];
+
+function renderCompactChunk(checkpoint, pending) {
+  const model = compactChunkModel(checkpoint, pending);
+  const lines = [
+    `# Stage 2 chunk ${pending.chunk_id} · shard ${checkpoint.shard} batch ${checkpoint.batch} part ${checkpoint.part} · ${pending.candidate_count} candidates`,
+    '# T<k>\ttarget_sense_id\ttarget_record_id\tlemma\tpos\tfull gloss',
+    '# S\tsource_sense_id\tsource_record_id\tlemma\tpos\tfull gloss\tcandidates <start>-<end>/<total>',
+    '# P\tapproved peer: type\trelevance\ttarget_sense_id lemma pos gloss | text',
+    '# Q\tsaved decision of an earlier candidate of the same source sense',
+    '# c<n>\tcandidate\tproducers\tsame-spelling target aliases (- = none)',
+    ...COMPACT_DECISION_GRAMMAR.map((rule) => `# decision: ${rule}`),
+    '',
+    '## targets',
+    ...[...model.targets.values()].map((target) => compactLine(target.alias, target.sense_id, target.record_id, target.lemma, target.pos, target.gloss)),
+  ];
+  for (const { slice, item, rows } of model.sources) {
+    lines.push('', compactLine('S', item.sense_id, item.record_id, item.lemma, item.pos, item.gloss, `candidates ${slice.start + 1}-${slice.end}/${item.candidates.length}`));
+    for (const peer of item.approved_peers ?? []) {
+      lines.push(compactLine('P', peer.type, peer.relevance, 'text' in peer ? peer.text : `${peer.target_sense_id} ${peer.target_lemma} ${peer.target_pos} ${peer.target_gloss}`));
+    }
+    for (const candidate of item.candidates.slice(0, slice.start)) lines.push(compactLine('Q', candidate.text, ...compactSavedDecision(candidate.decision)));
+    for (const row of rows) lines.push(compactLine(row.alias, row.candidate.text, row.candidate.producers.join(','), row.targets.length ? row.targets.join(',') : '-'));
+  }
+  return `${lines.join('\n')}\n`;
+}
+
+function compactTier(value, where) {
+  if (typeof value !== 'string' || !/^[1-9]$/u.test(value)) throw new Error(`${where}: tier must be a single digit 1..9`);
+  return Number(value);
+}
+
+/** Expand compact decision lines into the exact decision objects `validateDecision` already checks. */
+function parseCompactDecisions(text, checkpoint, pending) {
+  const model = compactChunkModel(checkpoint, pending);
+  const byAlias = new Map(model.candidates.map((row) => [row.alias, row]));
+  const targetByAlias = new Map([...model.targets.values()].map((target) => [target.alias, target]));
+  const lines = text.split('\n').map((line) => line.trim()).filter((line) => line && !line.startsWith('#'));
+  const header = (lines.shift() ?? '').split(/\s+/u);
+  if (header.length !== 2 || header[0] !== 'chunk' || header[1] !== pending.chunk_id) {
+    throw new Error(`compact decisions must start with "chunk ${pending.chunk_id}"`);
+  }
+  return lines.map((line) => {
+    const [alias, kind, ...fields] = line.split(/\s+/u);
+    const row = byAlias.get(alias);
+    if (!row) throw new Error(`compact decision "${line}" names no candidate of chunk ${pending.chunk_id}`);
+    const base = { source_sense_id: row.item.sense_id, candidate: row.candidate.text };
+    if (kind === 'D') return { ...base, disposition: 'drop', reason: line.slice(alias.length).trim().slice(kind.length).trim() };
+    if (kind !== 'R') throw new Error(`${alias}: decision kind must be R or D`);
+    const target = (targetAlias) => {
+      const found = targetByAlias.get(targetAlias);
+      if (!found) throw new Error(`${alias}: unknown target alias ${targetAlias}`);
+      return found;
+    };
+    const [type, tier, ...rest] = fields;
+    const relation = { ...base, disposition: 'relation', type, relevance: compactTier(tier, alias) };
+    if (rest.length === 0) return relation;
+    if (rest.length === 2 && rest[0] === 'none') {
+      return { ...relation, target_resolution: 'no_exact_match', checked_target_sense_ids: rest[1].split(',').map((name) => target(name).sense_id) };
+    }
+    if (rest.length === 3) {
+      const exact = target(rest[0]);
+      return { ...relation, target_resolution: 'exact', target_record_id: exact.record_id, target_sense_id: exact.sense_id, reverse_type: rest[1], reverse_relevance: compactTier(rest[2], `${alias} reverse`) };
+    }
+    throw new Error(`${alias}: relation needs 2, 4 or 5 fields after R`);
+  });
+}
+
+async function readChunk(checkpoint, checkpointPath, maxCandidates, out, root, sourceSenseId = null, candidateText = null, format = 'json') {
   let pending = checkpoint.pending_chunk;
+  if (format === 'compact' && pending?.revision === true) throw new Error(`active chunk ${pending.chunk_id} is a revision; read it as JSON`);
   if (sourceSenseId !== null) {
     if (checkpoint.merged) throw new Error('cannot revise a decision after the Part checkpoint has merged');
     if (pending) {
@@ -629,6 +760,13 @@ async function readChunk(checkpoint, checkpointPath, maxCandidates, out, root, s
         })
         .filter((candidate) => candidate.unlinked_target_sense_ids.length > 0));
       const complete = { complete: true, shard: checkpoint.shard, batch: checkpoint.batch, part: checkpoint.part, ...checkpointProgressPayload(checkpoint), optional_links: optionalLinks, items: [] };
+      if (format === 'compact') {
+        // optional_links stay a JSON finalize-phase concern; the compact view only says no primary chunk remains.
+        const text = `# complete: no primary chunk remains (${complete.decided}/${complete.total} decided)\n`;
+        if (out) await writeTextAtomically(resolveRootPath(root, out), text);
+        else console.log(text.trimEnd());
+        return { ...complete, text };
+      }
       if (out) await writeJsonAtomically(resolveRootPath(root, out), complete);
       else console.log(JSON.stringify(complete));
       return complete;
@@ -639,18 +777,28 @@ async function readChunk(checkpoint, checkpointPath, maxCandidates, out, root, s
     checkpoint.pending_chunk = pending;
     await writeJsonAtomically(checkpointPath, checkpoint);
   }
+  if (format === 'compact') {
+    const text = renderCompactChunk(checkpoint, pending);
+    if (out) await writeTextAtomically(resolveRootPath(root, out), text);
+    else console.log(text.trimEnd());
+    return { chunk_id: pending.chunk_id, candidate_count: pending.candidate_count, text };
+  }
   const payload = pendingChunkPayload(checkpoint, pending);
   if (out) await writeJsonAtomically(resolveRootPath(root, out), payload);
   else console.log(JSON.stringify(payload));
   return payload;
 }
 
-async function saveChunk(checkpoint, checkpointPath, inputPath, root) {
+async function saveChunk(checkpoint, checkpointPath, inputPath, root, format = 'json') {
   const pending = checkpoint.pending_chunk;
   if (!pending) throw new Error('checkpoint has no unread or unsaved chunk');
   let input;
-  try { input = JSON.parse(await readFile(resolveRootPath(root, inputPath), 'utf8')); }
-  catch (error) { throw new Error(`cannot read chunk decisions: ${error.message}`); }
+  try {
+    const raw = await readFile(resolveRootPath(root, inputPath), 'utf8');
+    input = format === 'compact'
+      ? { chunk_id: pending.chunk_id, decisions: parseCompactDecisions(raw, checkpoint, pending) }
+      : JSON.parse(raw);
+  } catch (error) { throw new Error(`cannot read chunk decisions: ${error.message}`); }
   if (!isPlainObject(input) || keysOf(input) !== 'chunk_id,decisions' || input.chunk_id !== pending.chunk_id || !Array.isArray(input.decisions)) {
     throw new Error(`decision file must contain the active chunk_id ${pending.chunk_id} and a decisions array`);
   }

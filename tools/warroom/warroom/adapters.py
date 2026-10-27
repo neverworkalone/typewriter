@@ -79,6 +79,11 @@ class AgentAdapter:
     def exit_code(self, exit_file: Path) -> int | None: ...
 
 
+def is_stage2_chunk(env) -> bool:
+    """The Supervisor marks a Stage 2 chunk launch in its worker environment (`_launch_env`)."""
+    return env.get("WARROOM_STAGE2_CHUNK") == "1"
+
+
 def stage2_chunk_sandbox_command(cmd: list[str], git_executables: list[str], path: str) -> list[str]:
     """Run a chunk worker inside an OS policy that denies executing every discovered Git binary."""
     paths = set()
@@ -130,7 +135,7 @@ class ProcessAdapter(AgentAdapter):
         log_file.parent.mkdir(parents=True, exist_ok=True)
         exit_file.unlink(missing_ok=True)
         env = dict(env)
-        if env.get("WARROOM_STAGE2_CHUNK") == "1":
+        if is_stage2_chunk(env):
             try:
                 git_executables = json.loads(env.pop("WARROOM_GIT_EXECUTABLES", "[]"))
             except json.JSONDecodeError as e:
@@ -588,8 +593,17 @@ class CodexCLIAdapter(ProcessAdapter):
             raise ValueError("worktree의 Git 관리 디렉터리를 알 수 없어 Codex를 시작하지 않았습니다.")
         return text
 
+    @staticmethod
+    def _chunk_args(env) -> list[str]:
+        """A Stage 2 chunk judges only the supplied chunk view: no web lookup and no auto-loaded AGENTS.md.
+
+        Tool configuration only; sandbox, approval and permission settings stay with the local profile.
+        """
+        return ["-c", 'web_search="disabled"', "-c", "project_doc_max_bytes=0"] if is_stage2_chunk(env) else []
+
     def start(self, prompt, cwd, env, run, title, log_file, exit_file, git_dir=None):
-        cmd = [self.binary, "exec", *self._pins(_pinned(run)), "--add-dir", self._git_dir(git_dir), prompt]
+        cmd = [self.binary, "exec", *self._pins(_pinned(run)), *self._chunk_args(env),
+               "--add-dir", self._git_dir(git_dir), prompt]
         _baseline_path(log_file).unlink(missing_ok=True)   # a fresh start has no baseline: every turn is its own
         return self._spawn(cmd, cwd, env, log_file, exit_file)
 
@@ -599,7 +613,7 @@ class CodexCLIAdapter(ProcessAdapter):
             raise ValueError("`codex exec resume`에는 --add-dir이 없어 permission_profile 없이는 Git 관리 디렉터리를 "
                              "열 수 없습니다. producer 설정에 permission_profile을 지정하세요.")
         grant = f"permissions.{run.permission_profile}.filesystem={{{json.dumps(self._git_dir(git_dir))}=\"write\"}}"
-        cmd = [self.binary, "exec", "resume", session_id, *self._pins(run), "-c", grant, prompt]
+        cmd = [self.binary, "exec", "resume", session_id, *self._pins(run), *self._chunk_args(env), "-c", grant, prompt]
         # The turns recorded before this run: only turns after this baseline belong to this run.
         Path(log_file).parent.mkdir(parents=True, exist_ok=True)
         _baseline_path(log_file).write_text(json.dumps({"thread": session_id,

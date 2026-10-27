@@ -593,6 +593,25 @@ class Git:
             self._git("clean", "-fdq", cwd=path)
         return path
 
+    def stage2_chunk_view(self, worktree: Path, shard: str, batch: str, part: str, *, prepare: bool,
+                          timeout: int = 900) -> None:
+        """Deterministic chunk I/O before a Stage 2 chunk run, so the AI only reads one compact view and judges it.
+
+        Prepares a missing Part checkpoint, then renders its pending (or next) primary chunk to
+        `.warroom-scratch/active-chunk.txt`. `read-chunk` re-renders an already pending chunk unchanged.
+        """
+        checkpoint = f".warroom-scratch/relation-admission-{shard}-{batch}-{part}.json"
+        steps = [["read-chunk", "--checkpoint", checkpoint, "--format", "compact",
+                  "--out", ".warroom-scratch/active-chunk.txt"]]
+        if prepare:
+            steps.insert(0, ["prepare", "--shard", shard, "--batch", batch, "--part", part, "--checkpoint", checkpoint])
+        for args in steps:
+            res = self.r.run(["node", "scripts/relation/admission-cli.mjs", *args], cwd=worktree, env=self.env,
+                             timeout=timeout)
+            if not res.ok:
+                tail = " ".join((res.err or res.out).split())[-300:]
+                raise GitError(f"admission-cli {args[0]} 실패: {tail}")
+
     def verify_stage2(self, sha: str, kind: str, shard: str, batch: str | None, part: str | None,
                       timeout: int = 900) -> tuple[bool, str]:
         """Run the exact `admission-cli verify` for a Part / Batch / shard on commit `sha` (the latest master)."""
