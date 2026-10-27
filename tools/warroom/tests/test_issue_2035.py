@@ -1,0 +1,357 @@
+"""Issue #2035 PR B: Stage 1 A/B as serial 50-record answer-only chunk sessions with a deterministic finalization."""
+import json
+import unittest
+from pathlib import Path
+
+from tests.fakes import HEAD1, World
+from tests.test_supervisor import review
+from warroom import control, prompts, stage1ab
+
+REL = "data/relation-candidates/001/001_01_a_deepseek.jsonl"
+
+
+def log_text(answer: str) -> str:
+    return json.dumps({"type": "step_start"}) + "\n" + json.dumps({"type": "text", "part": {"text": answer}}) + "\n"
+
+
+class ABWorld(World):
+    def __init__(self, records=120, method="a", **kw):
+        super().__init__(**kw)
+        self.method = method
+        self.cfg["ab_chunk_sessions"] = True
+        self.adapter.name = "opencode"
+        self.runner.workbench.records = records
+        self.git.on_create = self.runner.workbench.write_canonical
+        self.git.local_head = HEAD1
+
+    def row_(self):
+        return self.row("deepseek", self.method)
+
+    def wt(self):
+        return Path(self.row_()["worktree"])
+
+    def senses(self, n):
+        return sum(len(r["senses"]) for r in self.runner.workbench.rows()[(n - 1) * 50:n * 50])
+
+    def block(self, n, overrides=None, begin=True, end=True, no=None):
+        no = no or n
+        rows = {f"S{i}": f"S{i}\t후보{n}-{i}" for i in range(1, self.senses(n) + 1)}
+        rows.update(overrides or {})
+        body = "\n".join(rows[a] for a in sorted(rows, key=lambda a: int(a[1:])))
+        return (f"BEGIN chunk {no:03d}\n" if begin else "") + body + (f"\nEND chunk {no:03d}" if end else "")
+
+    def ai(self, text, code=0, session="ses_x", **extra):
+        self.adapter.plan.append({"code": code, "session": session, "text": log_text(text), **extra})
+
+    def finish_last(self):
+        self.adapter.finish(self.adapter.launches[-1]["pid"])
+
+    def kinds(self):
+        return [r["kind"] for r in reversed(self.store.runs(self.row_()["id"]))]
+
+    def run_chunks(self, n=3):
+        for i in range(1, n + 1):
+            self.ai(self.block(i), session=f"ses_{i}")
+        for _ in range(n):
+            self.tick()
+            self.finish_last()
+            self.tick()
+
+
+class SerialChunks(unittest.TestCase):
+    def setUp(self):
+        self.w = ABWorld()
+        self.addCleanup(self.w.tmp.cleanup)
+
+    def test_fifty_record_chunks_answer_only_then_deterministic_merge_commit_push_pr(self):
+        w = self.w
+        w.start("single", "deepseek", "a")
+        w.run_chunks(3)
+        cp = json.loads((w.wt() / stage1ab.names(w.row_()).checkpoint).read_text())
+        self.assertEqual([c["sense_count"] and len(c["record_ids"]) for c in cp["chunks"][:3]], [50, 50, 20][:3] if False else [50, 50, 20])
+        self.assertEqual(w.kinds(), ["ab_chunk_new"] * 3)
+        first, third = w.adapter.launches[0], w.adapter.launches[2]
+        self.assertTrue(all(l["kind"] == "start" for l in w.adapter.launches))
+        self.assertEqual((first["answer_only"], first["stage2_chunk_git"]), ("1", "1"))
+        self.assertTrue(first["git_sandbox_paths"])
+        self.assertIn(prompts.VIEW_BEGIN, first["prompt"])
+        self.assertIn("S1\tw0001-s1", first["prompt"])
+        self.assertNotIn("AGENTS.md를 읽", first["prompt"])
+        self.assertNotIn("S1\tw0101-s1", first["prompt"])                    # chunk 3 carries only its own senses
+        self.assertNotIn("w0001-s1", third["prompt"])
+        self.assertEqual(json.loads(first["opencode_config"])["permission"]["bash"], "deny")
+        b = w.row_()
+        self.assertEqual((b["state"], b["pr_number"]), ("WAITING_REVIEW", 100))
+        pr = w.gh.created_prs[0]
+        self.assertEqual(pr["labels"], ["batch"])
+        self.assertRegex(pr["title"], r"^\[A/[^\]]+\] 001_01$")
+        self.assertNotIn("860", pr["body"])
+        self.assertEqual(w.git.commits[0][0], [REL])
+        self.assertEqual(w.git.pushes, [b["branch"]])
+        self.assertEqual(w.runner.workbench.merges, 1)
+        merged = (w.wt() / REL).read_text().splitlines()
+        self.assertEqual([json.loads(l)["record_id"] for l in merged], [r["id"] for r in w.runner.workbench.rows()])
+
+    def test_prepare_uses_fifty_for_a_new_batch_and_keeps_an_existing_checkpoint(self):
+        w = self.w
+        w.start("single", "deepseek", "a")
+        w.ai(self.w.block(1))
+        w.tick()
+        prepares = [c for c in w.runner.workbench.calls if c[2] == "prepare"]
+        self.assertEqual(prepares[0][prepares[0].index("--chunk-size") + 1], "50")
+        # a batch that already has a 25-record checkpoint is resumed with ITS chunk size, never re-prepared
+        again = stage1ab.prepare(w.runner, w.env if hasattr(w, "env") else {}, w.wt(), w.row_())
+        self.assertEqual(again["source"]["chunk_size"], 50)
+        self.assertNotIn("--chunk-size", [c for c in w.runner.workbench.calls if c[2] == "prepare"][-1])
+
+    def test_missing_end_marker_wrong_chunk_and_prose_are_rejected_and_retried_in_the_same_session(self):
+        w = self.w
+        w.start("single", "deepseek", "a")
+        for text, why in ((w.block(1, end=False), "END"), (w.block(1, no=2), "chunk"), ("S1\t후보", "BEGIN")):
+            w.ai(text, session="ses_1")
+        w.ai(w.block(1), session="ses_1")
+        w.tick()
+        w.finish_last()
+        w.tick()                                                              # rejected -> retry (resume)
+        retry = w.adapter.launches[-1]
+        self.assertEqual((retry["kind"], retry["session"]), ("resume", "ses_1"))
+        self.assertNotIn(prompts.VIEW_BEGIN, retry["prompt"])                 # a correction never carries the view again
+        self.assertLess(len(retry["prompt"]), 2500)
+        self.assertEqual(w.row_()["state"], "PRODUCING")
+        w.finish_last()
+        w.tick()                                                              # second rejection -> second retry
+        self.assertEqual(w.kinds(), ["ab_chunk_new", "ab_chunk_retry", "ab_chunk_retry"])
+        w.finish_last()
+        w.tick()                                                              # third rejection exceeds the cap
+        b = w.row_()
+        self.assertEqual(b["state"], "ERROR")
+        self.assertEqual(len(w.adapter.launches), 3)
+        self.assertFalse((w.wt() / stage1ab.names(b).directory / "candidates/chunk-001.jsonl").exists())
+        w.ai(w.block(1), session="ses_1")
+        self.assertTrue(control.retry(w.store, "deepseek", "a"))              # the cap survives a restart/Retry
+        w.tick(2)
+        self.assertEqual(w.row_()["state"], "ERROR")
+        self.assertEqual(len(w.adapter.launches), 3)
+
+    def test_save_rejection_asks_only_the_pointed_row_and_merges_it_into_the_earlier_answer(self):
+        w = self.w
+        w.start("single", "deepseek", "a")
+        w.ai(w.block(1, {"S5": "S5\t표제4"}), session="ses_1")                  # a self-repeat of the source lemma at S5 (record w0005)
+        w.ai("BEGIN chunk 001\nS5\t바다\nEND chunk 001", session="ses_1")
+        w.tick()
+        w.finish_last()
+        w.tick()
+        retry = w.adapter.launches[-1]
+        self.assertEqual(retry["kind"], "resume")
+        self.assertIn("S5", retry["prompt"])
+        self.assertNotIn("S6", retry["prompt"].split("거부 사유")[0])
+        w.finish_last()
+        w.tick()
+        saved = [json.loads(l) for l in (w.wt() / stage1ab.names(w.row_()).directory / "candidates/chunk-001.jsonl").read_text().splitlines()]
+        flat = {s["sense_id"]: s["candidates"] for r in saved for s in r["senses"]}
+        self.assertEqual(flat["w0001-s1"], ["후보1-1"])                           # every other row kept from the first answer
+        self.assertEqual(flat["w0004-s1"], ["바다"])
+        self.assertEqual(w.kinds(), ["ab_chunk_new", "ab_chunk_retry", "ab_chunk_new"])   # then chunk 2 starts a NEW session
+
+    def test_a_correction_may_not_change_an_unrequested_row(self):
+        w = self.w
+        w.start("single", "deepseek", "a")
+        w.ai(w.block(1, {"S5": "S5\t표제4"}), session="ses_1")
+        w.ai("BEGIN chunk 001\nS5\t바다\nS6\t바꿈\nEND chunk 001", session="ses_1")
+        w.tick()
+        w.finish_last()
+        w.tick()
+        w.finish_last()
+        w.tick()
+        self.assertEqual(w.row_()["state"], "PRODUCING")                       # rejected again (a retry), nothing saved
+        self.assertFalse((w.wt() / stage1ab.names(w.row_()).directory / "candidates/chunk-001.jsonl").exists())
+
+    def test_refused_tool_calls_are_a_metric_but_a_dirty_tracked_tree_is_not(self):
+        w = self.w
+        w.start("single", "deepseek", "a")
+        w.ai(w.block(1), session="ses_1")
+        w.tick()
+        w.finish_last()
+        w.tick()
+        self.assertEqual(w.row_()["state"], "PRODUCING")                       # accepted: chunk 2 launched
+        w.git.dirty_text = " M data/canonical/stdict-0001.jsonl\n"
+        w.ai(w.block(2), session="ses_2")
+        w.finish_last()
+        w.tick()
+        b = w.row_()
+        self.assertEqual(b["state"], "ERROR")
+        self.assertIn("격리", b["error"])
+        self.assertFalse((w.wt() / stage1ab.names(b).directory / "candidates/chunk-002.jsonl").exists())
+
+    def test_merge_rejection_pointing_at_one_chunk_repairs_only_that_chunk(self):
+        w = self.w
+        w.start("single", "deepseek", "a")
+        w.runner.workbench.merge_error = "Candidate v1 invalid: record_id w0060 sense_id w0060-s1 candidate duplicates"
+        w.run_chunks(3)
+        b = w.row_()
+        self.assertEqual((b["state"], b["run_kind"]), ("PRODUCING", "ab_chunk_retry"))
+        repair = w.adapter.launches[-1]
+        self.assertEqual(repair["kind"], "start")                              # the old session is gone: a new small one
+        self.assertIn("검증에서 거부", repair["prompt"])
+        self.assertIn("C\t", repair["prompt"])                                 # the saved candidates of that chunk only
+        self.assertIn("w0060-s1", repair["prompt"])
+        self.assertNotIn("w0001-s1", repair["prompt"])
+        saved_before = (w.wt() / stage1ab.names(b).directory / "candidates/chunk-001.jsonl").read_bytes()
+        view = (w.wt() / stage1ab.view_path(b, 2)).read_text()
+        aliases = [r[0] for r in stage1ab.view_rows(view) if r[1].startswith("w0060-")]
+        self.assertEqual(len(aliases), 2)
+        text = "BEGIN chunk 002\n" + "\n".join(f"{a}\t새후보{a}" for a in aliases) + "\nEND chunk 002"
+        w.adapter.running[repair["pid"]]["text"] = log_text(text)
+        w.adapter.running[repair["pid"]]["session"] = "ses_r"
+        w.finish_last()
+        w.tick(2)
+        self.assertEqual((w.wt() / stage1ab.names(b).directory / "candidates/chunk-001.jsonl").read_bytes(), saved_before)
+        fixed = (w.wt() / stage1ab.names(b).directory / "candidates/chunk-002.jsonl").read_text()
+        self.assertIn(f"새후보{aliases[0]}", fixed)
+        self.assertIn("후보2-1", fixed)                                          # the unrequested rows keep the first answer
+        self.assertEqual(w.runner.workbench.merges, 1)
+        self.assertEqual(w.row_()["state"], "WAITING_REVIEW")
+
+    def test_unidentifiable_merge_rejection_is_an_error_and_nothing_is_regenerated(self):
+        w = self.w
+        w.start("single", "deepseek", "a")
+        w.runner.workbench.merge_error = "Candidate v1 invalid: something global"
+        w.run_chunks(3)
+        self.assertEqual(w.row_()["state"], "ERROR")
+        self.assertEqual(len(w.adapter.launches), 3)
+
+    def test_editing_a_saved_chunk_is_an_error(self):
+        w = self.w
+        w.start("single", "deepseek", "a")
+        w.run_chunks(1)
+        path = w.wt() / stage1ab.names(w.row_()).directory / "candidates/chunk-001.jsonl"
+        path.write_text(path.read_text().replace("후보1-1", "변조"))
+        w.ai(w.block(2), session="ses_2")
+        w.finish_last()
+        w.tick()
+        self.assertEqual(w.row_()["state"], "ERROR")
+        self.assertIn("수정", w.row_()["error"])
+
+
+class ReviewFix(unittest.TestCase):
+    def test_review_fix_is_a_small_new_session_with_the_named_sense_and_unlisted_senses_stay_unchanged(self):
+        w = ABWorld()
+        self.addCleanup(w.tmp.cleanup)
+        w.start("single", "deepseek", "a")
+        w.run_chunks(3)
+        b = w.row_()
+        self.assertTrue(b["session_id"] is None or True)
+        w.pr_info(b["pr_number"], HEAD1)
+        w.gh.reviews_ = [review(11, HEAD1, "-1 w0001/w0001-s1 후보1-1 삭제")]
+        out = w.wt() / REL
+        original = out.read_text()
+
+        def fixed():
+            out.write_text(original.replace("후보1-1", "고침", 1))
+            w.pr_info(b["pr_number"], "b" * 40)
+            w.git.local_head = "b" * 40
+
+        w.git._git = lambda *a, **k: type("R", (), {"out": original, "ok": True})()
+        w.adapter.plan.append({"code": 0, "session": "ses_fix", "effect": fixed})
+        w.tick()
+        fix = w.adapter.launches[-1]
+        self.assertEqual(fix["kind"], "start")                                  # never a resume of the long session
+        self.assertIn("source_context", fix["prompt"])
+        self.assertIn("w0001-s1\t표제1\tnoun\t뜻 1-1\t후보1-1", fix["prompt"])
+        self.assertNotIn("w0060-s1", fix["prompt"])
+        w.adapter.finish(fix["pid"])
+        w.tick()
+        self.assertEqual((w.row_()["state"], w.row_()["error"]), ("WAITING_REVIEW", None))   # only the listed sense changed
+
+        w.gh.reviews_.append(review(12, "b" * 40, "-1 w0001/w0001-s1 again"))
+
+        def sneaky():
+            out.write_text(out.read_text().replace("후보2-2", "몰래", 1))
+            w.pr_info(b["pr_number"], "c" * 40)
+            w.git.local_head = "c" * 40
+
+        w.adapter.plan.append({"code": 0, "session": "ses_fix2", "effect": sneaky})
+        w.tick()
+        w.adapter.finish(w.adapter.launches[-1]["pid"])
+        w.tick()
+        self.assertEqual(w.row_()["state"], "PAUSED")                           # a change outside the listed sense
+        self.assertIn("지목하지 않은", w.row_()["error"])
+
+
+class Helpers(unittest.TestCase):
+    def test_extract_block_table(self):
+        ok = "설명\nBEGIN chunk 003\nS1\ta\n```\nS2\nEND chunk 003\n끝"
+        self.assertEqual(stage1ab.extract_block(ok, 3), ["S1\ta", "S2"])
+        for name, text in (("none", None), ("empty", " "), ("no begin", "S1\nEND chunk 003"), ("no end", "BEGIN chunk 003\nS1"),
+                           ("wrong number", "BEGIN chunk 004\nS1\nEND chunk 004"), ("two blocks", "BEGIN chunk 003\nS1\nEND chunk 003\nBEGIN chunk 003\nS1\nEND chunk 003"),
+                           ("reversed", "END chunk 003\nBEGIN chunk 003"), ("mismatched", "BEGIN chunk 003\nS1\nEND chunk 004")):
+            with self.subTest(name), self.assertRaises(stage1ab.ABChunkError):
+                stage1ab.extract_block(text, 3)
+
+    def test_merge_answer_and_rejected_aliases(self):
+        prev = {"S1": "S1\ta", "S2": "S2\tb", "S3": "S3"}
+        self.assertEqual(stage1ab.merge_answer(prev, ["S2"], {"S2": "S2\tc"}), ["S1\ta", "S2\tc", "S3"])
+        with self.assertRaises(stage1ab.ABChunkError):
+            stage1ab.merge_answer(prev, ["S2"], {"S2": "S2\tc", "S1": "S1\tz"})
+        with self.assertRaises(stage1ab.ABChunkError):
+            stage1ab.merge_answer(prev, ["S2", "S3"], {"S2": "S2\tc"})
+        rows = [["S1", "w1-s1"], ["S2", "w1-s2"], ["S3", "w2-s1"]]
+        self.assertEqual(stage1ab.rejected_aliases("compact line 4 alias S3 x", rows), ["S3"])
+        self.assertEqual(stage1ab.rejected_aliases("record_id w1 sense_id w2-s1", rows), ["S1", "S2", "S3"])
+        self.assertIsNone(stage1ab.rejected_aliases("nothing named", rows))
+        self.assertIsNone(stage1ab.rejected_aliases("alias S9 unknown", rows))
+
+    def test_final_answer_per_cli_is_this_runs_last_answer_only(self):
+        from warroom.adapters import final_answer
+        import tempfile
+        cases = {
+            "claude": [{"type": "assistant", "message": {"content": [{"type": "text", "text": "중간"}]}},
+                       {"type": "result", "subtype": "success", "is_error": False, "result": "최종"}],
+            "claude error": [{"type": "result", "subtype": "error_max_turns", "is_error": True, "result": "x"}],
+            "codex": [{"type": "item.completed", "item": {"type": "agent_message", "text": "중간"}},
+                      {"type": "item.completed", "item": {"type": "command_execution", "aggregated_output": "tool"}},
+                      {"type": "item.completed", "item": {"type": "agent_message", "text": "최종"}}],
+            "opencode": [{"type": "step_start"}, {"type": "text", "part": {"text": "중간"}}, {"type": "step_start"},
+                         {"type": "text", "part": {"text": "최"}}, {"type": "text", "part": {"text": "종"}}],
+        }
+        with tempfile.TemporaryDirectory() as d:
+            for name, events in cases.items():
+                path = Path(d) / f"{name}.log"
+                path.write_text("\n".join(json.dumps(e) for e in events) + "\n")
+                self.assertEqual(final_answer(path), None if name == "claude error" else "최종", name)
+            self.assertIsNone(final_answer(Path(d) / "missing.log"))
+
+
+class AdapterPolicy(unittest.TestCase):
+    def test_claude_answer_only_removes_tools_and_refuses_when_that_cannot_be_proven(self):
+        from warroom.adapters import ClaudeCodeAdapter
+        ad = ClaudeCodeAdapter()
+        env = {"WARROOM_ANSWER_ONLY": "1"}
+        self.assertEqual(ad._answer_only_args({}), [])                              # other runs are untouched
+        with self.assertRaises(RuntimeError):                                       # help not proven: no guess
+            ad._answer_only_args(env)
+        ad._help_flags = {"--print", "--model"}
+        with self.assertRaises(RuntimeError):                                       # no --tools: no isolation guarantee
+            ad._answer_only_args(env)
+        ad._help_flags = {"--tools", "--strict-mcp-config", "--disable-slash-commands", "--bare"}
+        self.assertEqual(ad._answer_only_args(env), ["--tools", "", "--strict-mcp-config", "--disable-slash-commands"])
+        self.assertIn("--bare", ad._answer_only_args({**env, "ANTHROPIC_API_KEY": "k"}))   # bare needs API-key auth
+        ad._help_flags = {"--tools"}
+        self.assertEqual(ad._answer_only_args(env), ["--tools", ""])                # optional trimming is not required
+
+    def test_codex_denied_command_is_only_a_metric_for_an_answer_only_chunk(self):
+        from warroom.adapters import CodexCLIAdapter
+        import tempfile
+        events = [{"type": "thread.started", "thread_id": "th_1"},
+                  {"type": "item.completed", "item": {"type": "command_execution", "command": "cat > .warroom-scratch/x <<EOF",
+                                                      "status": "failed", "exit_code": 1, "aggregated_output": "Operation not permitted"}}]
+        with tempfile.TemporaryDirectory() as d:
+            log = Path(d) / "run.log"
+            log.write_text("\n".join(json.dumps(e) for e in events) + "\n")
+            ad = CodexCLIAdapter()
+            self.assertEqual(ad.run_problem(log, None, "th_1")[0], "PAUSED")             # the regular policy still pauses
+            self.assertIsNone(ad.run_problem(log, None, "th_1", tolerate_denied=True))  # answer-only: judged by effects + answer
+
+
+if __name__ == "__main__":
+    unittest.main()

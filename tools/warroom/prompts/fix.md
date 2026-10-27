@@ -13,3 +13,4 @@ Method C 배치의 리뷰 수정에서도 Supervisor가 승인 문학 DB 경로�
 공통 결함(반복 가능한 공유 계층 결함)을 확인하면 `tools/warroom/prompts/shared-defect.md` 형식으로 `.warroom-scratch/shared-defect.json` 에 보고하고 멈춘다.
 {{session_note}}
 {{review_events}}
+{{source_context}}

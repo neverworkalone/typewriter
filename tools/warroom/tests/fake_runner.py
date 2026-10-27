@@ -5,6 +5,7 @@ import os
 
 from tests.fake_dchunk import FakeDChunkCli
 from tests.fake_literary import FakeLiteraryCli
+from tests.fake_workbench import CLI as WORKBENCH_CLI, FakeWorkbenchCli
 from warroom.shell import Result, Runner
 
 
@@ -28,6 +29,7 @@ class ScriptedRunner(Runner):
         self.probe_gate = None                    # threading.Event: when set, a probe waits until it is released
         self.literary = FakeLiteraryCli()          # Method C literary-context CLI
         self.dchunk = FakeDChunkCli()              # Method D chunk CLI + Candidate v1 validator
+        self.workbench = FakeWorkbenchCli()        # A/B candidate-workbench (compact I/O)
         self.models_gate = None                   # threading.Event: `opencode models` waits until it is released
 
     def ok_auth(self, account):
@@ -41,6 +43,8 @@ class ScriptedRunner(Runner):
         self.calls.append(list(argv))
         if argv[:2] == ["node", "scripts/relation/literary-context-cli.mjs"]:
             return self.literary.run(argv, cwd)
+        if argv[:2] == WORKBENCH_CLI:
+            return self.workbench.run(argv, cwd)
         if argv[:2] in (["node", "scripts/relation/d-chunk-cli.mjs"], ["node", "scripts/relation/candidate-contract.mjs"]):
             return self.dchunk.run(argv, cwd)
         if argv[:3] == ["gh", "api", "user"]:
