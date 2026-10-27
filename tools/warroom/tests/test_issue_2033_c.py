@@ -130,6 +130,50 @@ class SerialChunks(unittest.TestCase):
         self.assertEqual(w.kinds()[:2], ["c_chunk_new", "c_chunk_new"])   # moved on to a NEW chunk, not a re-run
         self.assertEqual(len(w.adapter.launches), 2)
 
+    def _leave_rejected_submit(self, saved):
+        w = self.w
+
+        def effect():
+            ids = w.active()["sense_ids"]
+            w.runner.literary.mark(w.wt(), f".warroom-scratch/{CP_NAME}", ids[:saved])
+            (w.wt() / f".warroom-scratch/c-chunk-{w.active()['chunk_no']:03d}.submit.json").write_text('{"senses":[]')
+        w.adapter.plan.append({"code": 0, "session": "ses_c", "effect": effect})
+
+    def test_rejected_submit_file_is_repaired_in_the_same_session_at_most_twice(self):
+        w = self.w
+        w.start("single", "deepseek", "c")
+        self._leave_rejected_submit(0)
+        w.tick()
+        chunk_no = w.active()["chunk_no"]
+        for attempt in (1, 2):
+            self._leave_rejected_submit(0)
+            w.finish_last()
+            w.tick(2)
+            self.assertEqual(w.row("deepseek", "c")["state"], "PRODUCING", attempt)
+            self.assertEqual(w.adapter.launches[-1]["kind"], "resume", attempt)
+            self.assertEqual(w.active()["chunk_no"], chunk_no)
+        w.finish_last()
+        w.tick()
+        b = w.row("deepseek", "c")
+        self.assertEqual(b["state"], "ERROR")   # fail-closed once the cap is spent; nothing is regenerated
+        self.assertIn("checkpoint 완료 증거 없음", b["error"])
+        self.assertEqual(len(w.adapter.launches), 3)
+        self.assertEqual(w.active()["chunk_no"], chunk_no)
+
+    def test_repaired_submit_resets_the_budget_and_next_chunk_starts_new(self):
+        w = self.w
+        w.start("single", "deepseek", "c")
+        self._leave_rejected_submit(0)
+        w.tick()
+        w.ai()   # the resumed session stores the whole chunk
+        w.finish_last()
+        w.tick(2)
+        self.assertEqual(w.adapter.launches[1]["kind"], "resume")
+        w.finish_last()
+        w.tick(2)
+        self.assertEqual(w.kinds()[-1], "c_chunk_new")
+        self.assertIsNone(w.store.get(literary.resubmit_key(w.row("deepseek", "c")["id"])))
+
     def test_retry_after_partial_checkpoint_ignores_multiple_old_closed_prs_and_resumes_same_chunk(self):
         w = self.w
         w.start("single", "deepseek", "c")

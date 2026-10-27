@@ -61,6 +61,13 @@ def run_start_key(batch_id: int) -> str:
     return f"c_run_start_{batch_id}"
 
 
+MAX_RESUBMITS = 2   # same-session repairs of a rejected submit file per chunk
+
+
+def resubmit_key(batch_id: int) -> str:
+    return f"c_resubmit_{batch_id}"
+
+
 def cli(runner, env, worktree, *args, db: bool = False, timeout: float = 900):
     argv = ["node", CLI, *args]
     return runner.run(argv, cwd=worktree, env=env, timeout=timeout)

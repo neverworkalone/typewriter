@@ -1545,9 +1545,12 @@ class Supervisor:
         except Exception as e:
             return self._fail(b, "ERROR", f"청크 종료 후 기존 PR 소유권 확인 실패: {e}. worktree를 보존합니다.")
         if not self._c_chunk_saved(b):
+            if self._c_resubmit(b):
+                return
             return self._fail(b, "ERROR", "C 청크 실행이 종료됐지만 활성 청크의 모든 sense가 완료되지 않았습니다 (checkpoint 완료 증거 없음). "
                               "자동 재생산하지 않고 보존합니다 — Retry는 같은 청크의 미완료 sense만 이어갑니다.")
         self.store.delete(literary.run_start_key(b["id"]))
+        self.store.delete(literary.resubmit_key(b["id"]))
         self.store.update(b["id"], session_id=None, retries=0, retry_after=None, error=None)
         self.store.log(b["id"], "C 청크의 모든 sense 저장을 확인했습니다. 다음 단계는 새 세션으로 실행합니다.")
         try:
@@ -1555,6 +1558,23 @@ class Supervisor:
         except OSError as e:
             return self._fail(b, "ERROR", f"활성 청크 정리 실패: {e}")
         return self._launch_c_next(self.store.batch(b["id"]))
+
+    def _c_resubmit(self, b) -> bool:
+        """The run ended with its submit file still in scratch and nothing saved: the submission was rejected or never sent.
+        Ask the SAME session (candidates and judgments intact) to repair only that file, at most `MAX_RESUBMITS` times per chunk."""
+        try:
+            rec = literary.read_active(Path(b["worktree"]), b)
+            left = rec is not None and (Path(b["worktree"]) / f"{literary.names(b).submit_prefix}{rec['chunk_no']:03d}.submit.json").is_file()
+        except (OSError, ValueError, literary.LiteraryError):
+            return False
+        used = int(self.store.get(literary.resubmit_key(b["id"])) or 0)
+        if not left or not b["session_id"] or used >= literary.MAX_RESUBMITS:
+            return False
+        self.store.set(literary.resubmit_key(b["id"]), str(used + 1))
+        self.store.update(b["id"], retries=0, retry_after=None, error=None)
+        self.store.log(b["id"], f"C 청크 제출이 저장되지 않았습니다. 같은 세션에서 제출 파일만 국소 수정해 다시 제출합니다 ({used + 1}/{literary.MAX_RESUBMITS})", "warn")
+        self._launch_c_next(self.store.batch(b["id"]))
+        return True
 
     def _relaunch_c(self, b) -> None:
         problem = self._c_boundary_problem(b)
