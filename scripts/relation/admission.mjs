@@ -3,7 +3,7 @@ import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { parseArrowReference } from '../build/gloss-arrow-reference.mjs';
+import { buildTargetIndex, parseArrowReference, resolveArrowTarget } from '../build/gloss-arrow-reference.mjs';
 import { CANDIDATE_BATCH_SIZE, normalizeCandidate, parseCandidateJsonl, validateCandidateBatch } from './candidate-contract.mjs';
 
 export { normalizeCandidate };
@@ -33,15 +33,30 @@ const isTier = (value) => Number.isInteger(value) && value >= 1 && value <= 9;
 const isText = (value) => typeof value === 'string' && value.trim().length > 0;
 
 /** Stage 2 must never ask an editor to judge candidates without an actual source meaning. */
-export function assertStage2SourceGloss(senseId, gloss) {
+export function assertStage2SourceGloss(senseId, gloss, referenceGloss = null) {
   const normalized = typeof gloss === 'string' ? gloss.trim() : '';
   const reference = parseArrowReference(normalized);
   const referenceTail = reference?.ok
     ? normalized.slice(reference.offset + reference.text.length).replace(/^\.\s*/u, '').trim()
     : null;
-  if (!normalized || /^→\s*\.\s*$/u.test(normalized) || referenceTail === '') {
+  // A reference-only gloss (`→ 둘째.`) is usable only with the meaning of its proven target (`sourceReferenceGloss`).
+  const referenceResolved = referenceTail === '' && typeof referenceGloss === 'string' && referenceGloss.trim() !== '';
+  if (!normalized || /^→\s*\.\s*$/u.test(normalized) || (referenceTail === '' && !referenceResolved)) {
     throw new Error(`Stage 2 source sense ${senseId} has no usable meaning gloss (${JSON.stringify(gloss)}); candidate adjudication is blocked`);
   }
+}
+
+/**
+ * Meaning of the ONE Canonical record a reference-only source gloss names (same resolution as the product synonym link),
+ * as its non-reference glosses; `null` when the reference is not proven or the target has no definition of its own.
+ */
+export function sourceReferenceGloss(gloss, targetIndex) {
+  const reference = parseArrowReference(typeof gloss === 'string' ? gloss.trim() : '');
+  if (!reference?.ok) return null;
+  const target = resolveArrowTarget(reference, targetIndex);
+  if (target.hold) return null;
+  const glosses = target.record.senses.map((sense) => sense.gloss).filter((text) => typeof text === 'string' && !text.trim().startsWith('→')); // any arrow gloss (valid, empty or malformed) is no definition
+  return glosses.length > 0 ? glosses.join(' / ') : null;
 }
 
 export const shardCanonicalPath = (shard, root = REPOSITORY_DIRECTORY) => path.join(root, 'data/canonical', `stdict-${shard.padStart(4, '0')}.jsonl`);
@@ -348,6 +363,8 @@ export function prepareShard({ canonicalRows, candidateFiles, approvedRelationRo
   const rawCandidateCount = rawCandidateCountForScope(rawCandidateCountBySense, scopeRows);
   const covered = existingCandidateLinks(approvedRelationRows, index);
   const dropped = new Set(dropRows.map((row) => `${row.source_sense_id}\u0000${normalizeCandidate(row.candidate)}`));
+  let referenceTargets = null;
+  const targetIndex = { get: (lemma) => (referenceTargets ??= buildTargetIndex([...index.byId.values()], () => true)).get(lemma) };
   const items = [];
   const stats = { raw: rawCandidateCount, unique: 0, merged_duplicates: 0, skipped_existing: 0, skipped_dropped: 0, to_edit: 0 };
   for (const record of scopeRows) {
@@ -386,7 +403,8 @@ export function prepareShard({ canonicalRows, candidateFiles, approvedRelationRo
         fresh.push({ text, producers, same_spelling_records: targetRecords.map((target) => target.id) });
       }
       if (fresh.length === 0 && partiallyCovered.length === 0) continue;
-      assertStage2SourceGloss(sense.id, sense.gloss);
+      const referenceGloss = sourceReferenceGloss(sense.gloss, targetIndex);
+      assertStage2SourceGloss(sense.id, sense.gloss, referenceGloss);
       stats.to_edit += fresh.length;
       items.push({
         record_id: record.id,
@@ -394,6 +412,7 @@ export function prepareShard({ canonicalRows, candidateFiles, approvedRelationRo
         lemma: record.lemma,
         pos: sense.pos,
         gloss: sense.gloss,
+        ...(referenceGloss === null ? {} : { reference_gloss: referenceGloss }),
         // Pre-accounted candidates go first so regular chunks remain a contiguous undecided prefix.
         candidates: [...partiallyCovered, ...fresh],
       });

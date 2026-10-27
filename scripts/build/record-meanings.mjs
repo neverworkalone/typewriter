@@ -1,4 +1,5 @@
 import { MEANING_RELATION_ORIGINS } from '../../src/runtime/dictionary-contract.js';
+import { isEmptyArrowReference } from './gloss-arrow-reference.mjs';
 import { homographLemmaIndex, productGloss } from './gloss-homograph-reference.mjs';
 
 /**
@@ -47,10 +48,13 @@ export function projectRecordMeanings(records) {
         throw new Error(`${sense.id}: source gloss must be a non-empty single-line string`);
       }
     }
+    // An arrow with no target (`→ .`) is a lost reference, not a definition: it is not shown (the sense stays a member).
+    const shown = record.senses.filter((sense) => !isEmptyArrowReference(sense.gloss));
+    if (shown.length === 0) throw new Error(`${record.id}: no source gloss with a meaning to show`);
     meanings.push({
       id: recordMeaningId(record.id),
       lemma: record.lemma,
-      gloss: record.senses.map((sense) => productGloss(sense.gloss, lemmas)).join(MEANING_GLOSS_SEPARATOR),
+      gloss: shown.map((sense) => productGloss(sense.gloss, lemmas)).join(MEANING_GLOSS_SEPARATOR),
       sense_ids: record.senses.map((sense) => sense.id),
     });
   }

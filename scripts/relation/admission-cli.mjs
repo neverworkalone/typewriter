@@ -149,7 +149,7 @@ function validateCheckpoint(checkpoint, identity = {}) {
   const seenSenses = new Set();
   for (const item of checkpoint.items) {
     if (!isPlainObject(item) || !Array.isArray(item.candidates) || typeof item.sense_id !== 'string') throw new Error('checkpoint contains an invalid source sense');
-    if (item.candidates.length > 0) assertStage2SourceGloss(item.sense_id, item.gloss);
+    if (item.candidates.length > 0) assertStage2SourceGloss(item.sense_id, item.gloss, item.reference_gloss);
     if (seenSenses.has(item.sense_id)) throw new Error(`checkpoint repeats source sense ${item.sense_id}`);
     seenSenses.add(item.sense_id);
     let hasPending = false;
@@ -560,6 +560,7 @@ function pendingChunkPayload(checkpoint, pending) {
         lemma: item.lemma,
         pos: item.pos,
         gloss: item.gloss,
+        ...(item.reference_gloss === undefined ? {} : { reference_gloss: item.reference_gloss }),
         approved_peers: item.approved_peers,
         candidate_start: slice.start,
         candidate_end: slice.end,
@@ -649,7 +650,7 @@ function renderCompactChunk(checkpoint, pending) {
     ...[...model.targets.values()].map((target) => compactLine(target.alias, target.sense_id, target.record_id, target.lemma, target.pos, target.gloss)),
   ];
   for (const { slice, item, rows } of model.sources) {
-    lines.push('', compactLine('S', item.sense_id, item.record_id, item.lemma, item.pos, item.gloss, `candidates ${slice.start + 1}-${slice.end}/${item.candidates.length}`));
+    lines.push('', compactLine('S', item.sense_id, item.record_id, item.lemma, item.pos, item.reference_gloss === undefined ? item.gloss : `${item.gloss} ⇒ ${item.reference_gloss}`, `candidates ${slice.start + 1}-${slice.end}/${item.candidates.length}`));
     for (const peer of item.approved_peers ?? []) {
       lines.push(compactLine('P', peer.type, peer.relevance, 'text' in peer ? peer.text : `${peer.target_sense_id} ${peer.target_lemma} ${peer.target_pos} ${peer.target_gloss}`));
     }

@@ -346,7 +346,7 @@ const projectGloss = (records, relations = null) => {
 const summary = (relations) => relations.map((r) => `${r.source_meaning_id}>${r.target_meaning_id}:${r.type}:${r.origin}`);
 
 test('gloss reference projection: exact targets only, held otherwise, original direct respected', () => {
-  const { relations, holds, stats } = projectGloss([
+  const { meanings, relations, holds, stats } = projectGloss([
     record(20, '희닥거리', [['→ 희롱질.']]),                       // plain unique target
     record(21, '희롱질', [['서로 놀리는 짓.']]),
     withHomograph(22, '포수', 3, [['사냥꾼.']]),                    // numbered target
@@ -359,13 +359,14 @@ test('gloss reference projection: exact targets only, held otherwise, original d
     record(29, '둘째뜻', [['→ 희롱질「1」.'], ['→ 희롱질.']]),      // two glosses, one pair, both kept as evidence
     record(30, '고리', [['→ 연쇄.']]),                             // chain: names 연쇄, not what 연쇄 names
     record(31, '연쇄', [['→ 희롱질.']]),
-    record(32, '빈참조', [['→ .']]),                               // malformed
+    record(32, '빈참조', [['→ .'], ['뜻.']]),                      // malformed; the target-less line is not shown
     withHomograph(33, '숫자', 1, [['뜻.']]),
     record(34, '숫자부정', [['→ 숫자.']]),                         // numberless reference naming a numbered record
     record(35, '원본선행', [['→ 희롱질.']]),
-    record(36, '그룹가', [['→ 희롱질[Ⅰ].']]),                       // a group Canonical cannot verify: held, not linked
+    record(36, '그룹가', [['→ 희롱질[Ⅰ].']]),                       // a group of a unique record: the record is exact, linked
     record(37, '그룹나', [['→ 포수03[Ⅱ].']]),                       // also with a homograph number
-    record(38, '그룹다', [['→ 포수03[Ⅰ]「1」.']]),                  // and with a sense number
+    record(38, '그룹다', [['→ 포수03[Ⅰ]「1」.']]),                  // a group-relative sense number is no record sense position
+    record(39, '그룹라', [['→ 포수[Ⅱ].']]),                         // a group never narrows an ambiguous homograph pair: held
   ].map((item) => (item.id === 'w0035' ? { ...item, senses: [{ ...item.senses[0], relations: [direct('w0021-s1')] }] } : item)));
   assert.deepEqual(summary(relations.filter((r) => r.origin === 'stdict-gloss-reference')), [
     'm0020>m0021:direct:stdict-gloss-reference',
@@ -373,7 +374,15 @@ test('gloss reference projection: exact targets only, held otherwise, original d
     'm0029>m0021:direct:stdict-gloss-reference',
     'm0030>m0031:direct:stdict-gloss-reference',
     'm0031>m0021:direct:stdict-gloss-reference',
+    'm0036>m0021:direct:stdict-gloss-reference',
+    'm0037>m0022:direct:stdict-gloss-reference',
+    'm0038>m0022:direct:stdict-gloss-reference',
   ]);
+  // A target-less `→ .` line is a lost reference: hidden from the product gloss, the sense stays a member.
+  const empty = meanings.find((meaning) => meaning.id === 'm0032');
+  assert.equal(empty.gloss, '뜻.');
+  assert.deepEqual(empty.sense_ids, ['w0032-s1', 'w0032-s2']);
+  assert.equal(relations.find((r) => r.source_meaning_id === 'm0038').gloss_sources[0].target_sense_position, null);
   // The original direct keeps its origin; the gloss only adds evidence.
   assert.deepEqual(summary(relations.filter((r) => r.source_meaning_id === 'm0035')), ['m0035>m0021:direct:stdict-sense-projection']);
   assert.equal(relations.find((r) => r.source_meaning_id === 'm0035').gloss_sources.length, 1);
@@ -385,13 +394,11 @@ test('gloss reference projection: exact targets only, held otherwise, original d
     'w0028-s1': 'sense_out_of_range',
     'w0032-s1': 'malformed',
     'w0034-s1': 'numberless_reference_to_homograph',
-    'w0036-s1': 'group_unsupported',
-    'w0037-s1': 'group_unsupported',
-    'w0038-s1': 'group_unsupported',
+    'w0039-s1': 'ambiguous_target',
   });
-  assert.equal(stats.gloss_reference_count, 16);
+  assert.equal(stats.gloss_reference_count, 17);
   assert.equal(stats.gloss_reference_resolved_count + stats.gloss_reference_held_count, stats.gloss_reference_count);
-  assert.equal(stats.gloss_forward_count, 5);
+  assert.equal(stats.gloss_forward_count, 8);
   assert.equal(stats.gloss_forward_existing_direct_count, 1);
   assert.equal(stats.gloss_forward_shared_count, 1);
   // Positions stay dense and unique per source meaning.

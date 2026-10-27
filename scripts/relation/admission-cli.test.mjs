@@ -561,6 +561,27 @@ test('Stage 2 blocks missing source glosses during preparation and when resuming
     await assert.rejects(readFile(path.join(broken.root, '.warroom-scratch/relation-admission-001-01-01.json')), { code: 'ENOENT' });
   }
 
+  // A reference-only gloss whose target is proven (here `유일표적`, one record) carries the target's meaning (Issue #2031).
+  canonicalRows[0] = { ...originalSource, senses: originalSource.senses.map((sense) => ({ ...sense, gloss: '→ 유일표적.' })) };
+  await writeFile(canonicalPath, jsonl(canonicalRows));
+  await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root: broken.root }));
+  const referenced = await quiet(() => run(['read-chunk', '--checkpoint', '.warroom-scratch/relation-admission-001-01-01.json', '--format', 'compact'], { root: broken.root }));
+  assert.match(referenced.text, /S\tw1-s1\tw1\t출발어\tnoun\t→ 유일표적\. ⇒ 후보의 정확한 뜻 \/ 표기가 같은 다른 뜻\t/u);
+
+  // A proven target that itself has only arrow glosses (valid, target-less or malformed) gives no meaning: still blocked.
+  for (const targetGloss of ['→ .', '→ 다른말.', '→']) {
+    const rows = (await readFile(canonicalPath, 'utf8')).trim().split('\n').map(JSON.parse);
+    const target = rows.find((row) => row.id === 'w501');
+    target.senses = target.senses.map((sense) => ({ ...sense, gloss: targetGloss }));
+    await writeFile(canonicalPath, jsonl(rows));
+    await rm(path.join(broken.root, '.warroom-scratch/relation-admission-001-01-01.json'), { force: true });
+    await assert.rejects(
+      () => quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root: broken.root })),
+      /Stage 2 source sense w1-s1 has no usable meaning gloss/u,
+      targetGloss,
+    );
+  }
+
   const legacy = await chunkRepository(t, scratchRoot);
   const checkpointPath = '.warroom-scratch/relation-admission-001-01-01.json';
   await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root: legacy.root }));

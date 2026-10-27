@@ -6,7 +6,7 @@ import { MEANING_RELATION_ORIGINS } from '../../src/runtime/dictionary-contract.
  * Invariant: a source gloss that begins `→ <reference>` becomes one product `direct` relation (origin
  * `stdict-gloss-reference`) from the meaning that owns the gloss to the meaning of the ONE Canonical record the
  * reference names; a reference that is malformed or names no record, several records, a missing sense or the record
- * itself, or a `[Ⅰ]`-style group Canonical cannot verify, is held, never guessed. The editors' `→` is not re-judged semantically. `projectDirectReverses()` then mirrors
+ * itself is held, never guessed. A `[Ⅰ]`-style group names a part-of-speech group of the target record; a product meaning is the whole record, so a group reference is linked exactly when its record is proven unique (its `「n」` is then relative to the group and is not a record sense position). The editors' `→` is not re-judged semantically. `projectDirectReverses()` then mirrors
  * the forward row like any other `direct`. Canonical senses and relations are never modified.
  *
  * Grammar (read from the ORIGINAL gloss, before the display-only homograph-number removal of gloss-homograph-reference):
@@ -55,7 +55,6 @@ export const HOLD_REASONS = Object.freeze([
   'ambiguous_target',
   'numberless_reference_to_homograph',
   'sense_out_of_range',
-  'group_unsupported',
   'self_reference',
 ]);
 
@@ -77,9 +76,6 @@ export function buildTargetIndex(records, ownsMeaning) {
  * @returns {{ record: object } | { hold: string }}
  */
 export function resolveArrowTarget(reference, index) {
-  // `[Ⅰ]`/`[Ⅱ]` select a sense group of the target. Canonical keeps no group structure (a record is a flat list of senses),
-  // so which senses a group means cannot be proven from it; such a reference is held, never guessed from part of speech.
-  if (reference.group !== null) return { hold: 'group_unsupported' };
   const candidates = index.get(lemmaOf(reference.headword)) ?? [];
   const matching = reference.homograph_no === null
     ? candidates
@@ -91,9 +87,18 @@ export function resolveArrowTarget(reference, index) {
   if (reference.homograph_no === null && record.homograph_no !== null && record.homograph_no !== undefined) {
     return { hold: 'numberless_reference_to_homograph' };
   }
-  if (reference.sense_no !== null && reference.sense_no > record.senses.length) return { hold: 'sense_out_of_range' };
+  if (reference.group === null && reference.sense_no !== null && reference.sense_no > record.senses.length) {
+    return { hold: 'sense_out_of_range' };
+  }
   return { record };
 }
+
+/** 0-based sense position in the target record; `null` when no sense is named or the number is relative to a `[Ⅰ]` group. */
+export const targetSensePosition = (reference) =>
+  reference.group !== null || reference.sense_no === null ? null : reference.sense_no - 1;
+
+/** A source gloss that is an arrow with no target (`→ .`): STDICT lost the reference, so it carries no meaning. */
+export const isEmptyArrowReference = (gloss) => typeof gloss === 'string' && /^→\s*\.?\s*$/u.test(gloss);
 
 const keyOf = (source, target) => `${source}\u0000${target}`;
 
@@ -162,7 +167,7 @@ export function projectGlossReferences({ records, meanings, relations }) {
         gloss_offset: reference.offset,
         reference_text: reference.text,
         target_record_id: target.record.id,
-        target_sense_position: reference.sense_no === null ? null : reference.sense_no - 1,
+        target_sense_position: targetSensePosition(reference),
         sense_position: senseIndex,
       };
       const key = keyOf(sourceMeaningId, targetMeaningId);
