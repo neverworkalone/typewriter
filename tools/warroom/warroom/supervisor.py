@@ -1560,11 +1560,12 @@ class Supervisor:
         return self._launch_c_next(self.store.batch(b["id"]))
 
     def _c_resubmit(self, b) -> bool:
-        """The run ended with its submit file still in scratch and nothing saved: the submission was rejected or never sent.
+        """The run ended with nothing saved and the CLI's own diagnostic marking the rejection repairable in place
+        (`stop_and_report`, unknown or missing diagnostics never qualify).
         Ask the SAME session (candidates and judgments intact) to repair only that file, at most `MAX_RESUBMITS` times per chunk."""
         try:
             rec = literary.read_active(Path(b["worktree"]), b)
-            left = rec is not None and (Path(b["worktree"]) / f"{literary.names(b).submit_prefix}{rec['chunk_no']:03d}.submit.json").is_file()
+            left = rec is not None and literary.submit_retryable(Path(b["worktree"]), b, rec["chunk_no"])
         except (OSError, ValueError, literary.LiteraryError):
             return False
         used = int(self.store.get(literary.resubmit_key(b["id"])) or 0)

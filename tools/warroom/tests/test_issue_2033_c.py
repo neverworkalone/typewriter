@@ -130,13 +130,17 @@ class SerialChunks(unittest.TestCase):
         self.assertEqual(w.kinds()[:2], ["c_chunk_new", "c_chunk_new"])   # moved on to a NEW chunk, not a re-run
         self.assertEqual(len(w.adapter.launches), 2)
 
-    def _leave_rejected_submit(self, saved):
+    def _leave_rejected_submit(self, saved, diagnostic=None):
         w = self.w
+        diagnostic = {"diagnostic": "submit_validation", "repair_scope": "correct_submission_shape"} if diagnostic is None else diagnostic
 
         def effect():
             ids = w.active()["sense_ids"]
             w.runner.literary.mark(w.wt(), f".warroom-scratch/{CP_NAME}", ids[:saved])
-            (w.wt() / f".warroom-scratch/c-chunk-{w.active()['chunk_no']:03d}.submit.json").write_text('{"senses":[]')
+            submit = w.wt() / f".warroom-scratch/c-chunk-{w.active()['chunk_no']:03d}.submit.json"
+            submit.write_text('{"senses":[]')
+            if diagnostic:
+                submit.with_name(submit.name + ".diag.json").write_text(json.dumps({"status": "FAILED", **diagnostic}) + "\n")
         w.adapter.plan.append({"code": 0, "session": "ses_c", "effect": effect})
 
     def test_rejected_submit_file_is_repaired_in_the_same_session_at_most_twice(self):
@@ -159,6 +163,27 @@ class SerialChunks(unittest.TestCase):
         self.assertIn("checkpoint 완료 증거 없음", b["error"])
         self.assertEqual(len(w.adapter.launches), 3)
         self.assertEqual(w.active()["chunk_no"], chunk_no)
+
+    def test_only_a_repairable_cli_diagnostic_allows_an_automatic_resume(self):
+        cases = {
+            "stop_and_report index": {"diagnostic": "index_access", "repair_scope": "stop_and_report"},
+            "stop_and_report validation": {"diagnostic": "submit_validation", "repair_scope": "stop_and_report"},
+            "unknown operation": {"diagnostic": "operation"},
+            "no diagnostic at all": {},
+        }
+        for name, diagnostic in cases.items():
+            with self.subTest(name):
+                w = CWorld()
+                self.addCleanup(w.tmp.cleanup)
+                self.w = w
+                w.start("single", "deepseek", "c")
+                self._leave_rejected_submit(0, diagnostic or False)
+                w.tick()
+                w.finish_last()
+                w.tick()
+                b = w.row("deepseek", "c")
+                self.assertEqual(b["state"], "ERROR")
+                self.assertEqual(len(w.adapter.launches), 1)
 
     def test_repaired_submit_resets_the_budget_and_next_chunk_starts_new(self):
         w = self.w

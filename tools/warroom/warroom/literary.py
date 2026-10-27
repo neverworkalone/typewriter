@@ -68,6 +68,17 @@ def resubmit_key(batch_id: int) -> str:
     return f"c_resubmit_{batch_id}"
 
 
+def submit_retryable(worktree, b, chunk_no: int) -> bool:
+    """True only when the submit CLI left a diagnostic for this chunk that a local file repair can fix."""
+    path = Path(worktree) / f"{names(b).submit_prefix}{chunk_no:03d}.submit.json.diag.json"
+    try:
+        diag = json.loads(path.read_text("utf-8"))
+    except (OSError, ValueError):
+        return False
+    return (isinstance(diag, dict) and diag.get("diagnostic") in ("submit_validation", "candidate_validation")
+            and diag.get("repair_scope") != "stop_and_report")
+
+
 def cli(runner, env, worktree, *args, db: bool = False, timeout: float = 900):
     argv = ["node", CLI, *args]
     return runner.run(argv, cwd=worktree, env=env, timeout=timeout)

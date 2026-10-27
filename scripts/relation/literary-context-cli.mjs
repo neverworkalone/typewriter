@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
-import { readFile, stat } from 'node:fs/promises';
+import { writeFileSync } from 'node:fs';
+import { readFile, stat, unlink } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 
@@ -78,6 +79,16 @@ function print(payload) {
     return;
   }
   process.stdout.write(`${serialized}\n`);
+}
+
+// A submit rejection the model can repair in place is also left next to the submit file, so the Supervisor decides
+// retryability from this diagnostic and never from the file merely remaining. Any other failure leaves none.
+let submitDiagnosticPath = null;
+function emitRetryable(text) {
+  process.stderr.write(text);
+  if (submitDiagnosticPath) {
+    try { writeFileSync(submitDiagnosticPath, text); } catch { /* no file means no automatic retry */ }
+  }
 }
 
 async function readSubmission(filePath) {
@@ -180,6 +191,8 @@ async function main() {
     case 'submit': {
       only(options, 'db', 'checkpoint', 'input');
       required(options, 'db', 'checkpoint', 'input');
+      submitDiagnosticPath = `${path.resolve(options.input)}.diag.json`;
+      await unlink(submitDiagnosticPath).catch(() => {});
       result = await submitLiteraryChunk({
         databasePath: options.db,
         checkpointPath: options.checkpoint,
@@ -259,7 +272,7 @@ main().catch((error) => {
       }));
     const repairScopes = new Set(['correct_submission_shape', 'correct_source_sense_id', 'resubmit_affected_sense', 'stop_and_report']);
     const repairScope = repairScopes.has(error.repair_scope) ? error.repair_scope : 'correct_submission_shape';
-    process.stderr.write(`${JSON.stringify({
+    emitRetryable(`${JSON.stringify({
       status: 'FAILED',
       diagnostic: 'submit_validation',
       error_type: errorType,
@@ -276,7 +289,7 @@ main().catch((error) => {
   }
 
   if (error?.code === 'CANDIDATE_V1_VALIDATION') {
-    process.stderr.write(`${JSON.stringify({
+    emitRetryable(`${JSON.stringify({
       status: 'FAILED',
       diagnostic: 'candidate_validation',
       error_type: errorType,

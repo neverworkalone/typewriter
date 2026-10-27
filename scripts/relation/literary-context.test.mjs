@@ -576,6 +576,10 @@ test('submit validation returns bounded reason codes and source-sense fields wit
       }
       if (scenario.issuesTruncated) assert.equal(diagnostic.issues_truncated, true, scenario.name);
       assert.deepEqual(diagnostic.json_syntax, scenario.jsonSyntax, scenario.name);
+      // The CLI's own diagnostic is what lets the Supervisor retry in place; a repairable rejection leaves it beside the input.
+      const left = JSON.parse(await readFile(path.join(fixture.scratchDirectory, 'submit-input.json.diag.json'), 'utf8'));
+      assert.equal(left.diagnostic, 'submit_validation', scenario.name);
+      assert.equal(left.repair_scope, diagnostic.repair_scope, scenario.name);
       const expectedRepairScope = scenario.reason === 'submission_schema'
         ? 'correct_submission_shape'
         : scenario.reason === 'unknown_sense'
@@ -599,6 +603,10 @@ test('submit validation returns bounded reason codes and source-sense fields wit
     const successful = await submitCli(fixture, { senses: [{ sense_id: item.sense_id, verified: [key], candidates: ['서리'] }] });
     assert.equal(successful.status, 0, successful.stderr);
     assert.equal(JSON.parse(successful.stdout).status, 'SAVED');
+    await assert.rejects(readFile(path.join(fixture.scratchDirectory, 'submit-input.json.diag.json'), 'utf8'), { code: 'ENOENT' });   // a stale diagnostic never survives a later submit
+    const unrepairable = await submitCli(fixture, { senses: [{ sense_id: item.sense_id, verified: [], candidates: [] }] }, path.join(fixture.root, 'missing.sqlite'));
+    assert.notEqual(unrepairable.status, 0);
+    await assert.rejects(readFile(path.join(fixture.scratchDirectory, 'submit-input.json.diag.json'), 'utf8'), { code: 'ENOENT' });   // index/operation failures are never retryable
   } finally {
     await cleanup(fixture);
   }
