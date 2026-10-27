@@ -118,6 +118,7 @@ class FakeGit:
         self.chunk_view_error: Exception | None = None
         self.chunk_view_total = 1                             # candidates a fake `prepare` writes
         self.chunk_view_text: str | None = None               # rendered view (default: one short line)
+        self.save_calls: list[str] = []                       # decisions.txt text at each save-chunk
 
     def fetch_base(self, base):
         return "m" * 40
@@ -176,6 +177,39 @@ class FakeGit:
             path.write_text(json.dumps(data), "utf-8")
         (path.parent / "active-chunk.txt").write_text(
             self.chunk_view_text or f"# chunk {data['pending_chunk']}\n", "utf-8")
+
+    def stage2_save_chunk(self, worktree, shard, batch, part, timeout=900):
+        """Mimic `admission-cli save-chunk --format compact`: one `c<n>` row per pending candidate, none other, else the
+        complete error list with the checkpoint untouched; on success the cursor advances and the chunk is decided."""
+        wt = Path(worktree)
+        text = (wt / ".warroom-scratch" / "decisions.txt").read_text("utf-8")
+        self.save_calls.append(text)
+        path = wt / ".warroom-scratch" / f"relation-admission-{shard}-{batch}-{part}.json"
+        data = json.loads(path.read_text("utf-8"))
+        pending = data["pending_chunk"]
+        count = pending["candidate_count"]
+        rows = {}
+        for line in text.split("\n")[1:]:
+            if line.strip():
+                rows.setdefault(line.split()[0], []).append(line.strip())
+        problems = []
+        for alias, found in rows.items():
+            n = int(alias[1:]) if alias[1:].isdigit() else 0
+            if not 1 <= n <= count:
+                problems.append(f"{alias}: names no candidate")
+            elif len(found) > 1 or " BAD" in found[0]:
+                problems.append(f"{alias} candidate-{n}: bad decision")
+        problems += [f"c{n} candidate-{n - 1}: chunk has missing decisions" for n in range(1, count + 1) if f"c{n}" not in rows]
+        problems.sort(key=lambda p: int(p.split()[0][1:]) if p.split()[0][1:].isdigit() else 0)
+        if problems:
+            return False, f"chunk {pending['chunk_id']} not saved, checkpoint unchanged: {len(problems)} problem(s)\n" + "\n".join(problems)
+        for sl in pending["slices"]:
+            for c in data["items"][0]["candidates"][sl["start"]:sl["end"]]:
+                c["decision"] = {"disposition": "drop"}
+        data["pending_chunk"] = None
+        data["next_chunk_number"] += 1
+        path.write_text(json.dumps(data), "utf-8")
+        return True, f"Saved {count} decisions"
 
     def contains_on_base(self, sha, base):
         return self.on_base

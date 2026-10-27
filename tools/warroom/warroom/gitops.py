@@ -649,6 +649,15 @@ class Git:
                 tail = " ".join((res.err or res.out).split())[-300:]
                 raise GitError(f"admission-cli {args[0]} 실패: {tail}")
 
+    def stage2_save_chunk(self, worktree: Path, shard: str, batch: str, part: str, timeout: int = 900) -> tuple[bool, str]:
+        """Run the existing `admission-cli save-chunk --format compact` on the Supervisor-written decision file.
+        (ok, output): on rejection the CLI's complete error list, with the checkpoint unchanged."""
+        checkpoint = f".warroom-scratch/relation-admission-{shard}-{batch}-{part}.json"
+        res = self.r.run(["node", "scripts/relation/admission-cli.mjs", "save-chunk", "--checkpoint", checkpoint,
+                          "--in", ".warroom-scratch/decisions.txt", "--format", "compact"],
+                         cwd=worktree, env=self.env, timeout=timeout)
+        return res.ok, (res.err or res.out).strip()
+
     def verify_stage2(self, sha: str, kind: str, shard: str, batch: str | None, part: str | None,
                       timeout: int = 900) -> tuple[bool, str]:
         """Run the exact `admission-cli verify` for a Part / Batch / shard on commit `sha` (the latest master)."""

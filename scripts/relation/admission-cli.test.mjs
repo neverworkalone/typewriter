@@ -834,6 +834,16 @@ test('compact chunks are a lossless view and compact decisions expand into the s
     [`${head}\nc1 R near 1 T1 mood 6\nc1 R near 1 T1 mood 6\nc2 R association 7 none T3,T4`, /repeats decision/],
   ]) await assert.rejects(() => save(body), error, body);
 
+  const before = await readFile(path.join(root, checkpoint));
+  const reported = await save(`${head}\nc1 R near 10 T1 mood 6\nc2 R association 7 none T3`).then(() => null, (error) => error.message);
+  assert.match(reported, /not saved, checkpoint unchanged: 2 problem\(s\)/);
+  assert.match(reported, /^c1 유일표적: c1: tier must be a single digit/m, 'a grammar error names its alias and candidate');
+  assert.match(reported, /^c2 겹표기: .*check every same-spelling target sense.*none T3,T4/m, 'a validation error gives the allowed rows');
+  const missingAndBad = await save(`${head}\nc2 R bogus 7 none T3,T4`).then(() => null, (error) => error.message);
+  assert.match(missingAndBad, /^c1 유일표적: .*missing decisions/m, 'an omitted candidate is reported with the bad row');
+  assert.match(missingAndBad, /^c2 겹표기: .*type must be one of/m);
+  assert.deepEqual(await readFile(path.join(root, checkpoint)), before, 'a failed save leaves the checkpoint byte-identical');
+
   await save(`# comments and blank lines are ignored\n${head}\n\nc1 R near 1 T1 mood 6\nc2 R association 7 none T4,T3\n`);
   const saved = JSON.parse(await readFile(path.join(root, checkpoint), 'utf8'));
   assert.deepEqual(saved.items[0].candidates.slice(0, 2).map((candidate) => candidate.decision), [

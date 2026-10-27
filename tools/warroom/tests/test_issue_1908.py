@@ -182,9 +182,10 @@ class Stage2ChunkView(unittest.TestCase):
         self.assertEqual(w.git.chunk_views, [(wt, "001", "01", "01", True)])
         self.assertTrue((Path(wt) / ".warroom-scratch" / "active-chunk.txt").is_file())
         prompt = w.adapter.launches[-1]["prompt"]
-        for needed in ("active-chunk.txt", "--format compact", "decisions.txt", "연상 Tier 1"):
+        for needed in ("<<<CHUNK_VIEW_BEGIN>>>", "chunk 001-01-01-001", "연상 Tier 1"):
             self.assertIn(needed, prompt)
-        for gone in ("docs/relation-factory.md을 읽", "prepare --shard", "read-chunk --checkpoint"):
+        for gone in ("docs/relation-factory.md을 읽", "prepare --shard", "read-chunk --checkpoint", "cat .warroom-scratch",
+                     "save-chunk --checkpoint"):
             self.assertNotIn(gone, prompt)
         w.adapter.finish(w.adapter.launches[-1]["pid"])
         w.tick()
@@ -237,40 +238,6 @@ class Stage2ChunkPages(unittest.TestCase):
         with self.assertRaises(ValueError):
             stage2.chunk_pages("가" * 20_000 + "\n")             # one line cannot be split without cutting a gloss
 
-    def test_written_pages_replace_stale_ones_and_one_page_is_the_view_itself(self):
-        with tempfile.TemporaryDirectory() as d:
-            scratch = Path(d) / ".warroom-scratch"
-            scratch.mkdir()
-            view = scratch / "active-chunk.txt"
-            view.write_text("가나다\n" * 20_000, "utf-8")
-            paths = stage2.write_chunk_pages(d)
-            self.assertGreater(len(paths), 1)
-            self.assertEqual("".join((Path(d) / p).read_text("utf-8") for p in paths), view.read_text("utf-8"))
-            view.write_text("# small\n", "utf-8")
-            self.assertEqual(stage2.write_chunk_pages(d), [stage2.CHUNK_VIEW])
-            self.assertEqual(list(scratch.glob("active-chunk.p*of*.txt")), [])   # an earlier chunk's pages are gone
-
-    def test_supervisor_lists_every_page_in_order_and_refuses_an_unpageable_view(self):
-        w = s2_world(self)
-        w.git.chunk_view_text = "T1\tw1-s1\tw1\t말\tnoun\t" + "뜻풀이 " * 10 + "\n"
-        w.git.chunk_view_text *= 900
-        control.start(w.store, "claude", S2, "single", cfg=w.cfg)
-        w.tick()
-        prompt = w.adapter.launches[-1]["prompt"]
-        wt = Path(w.store.active_batch("claude", S2)["worktree"])
-        pages = sorted((wt / ".warroom-scratch").glob("active-chunk.p*of*.txt"))
-        self.assertGreater(len(pages), 1)
-        for i in range(1, len(pages) + 1):
-            self.assertIn(f"cat .warroom-scratch/active-chunk.p{i}of{len(pages)}.txt` ({i}/{len(pages)})", prompt)
-        self.assertIn("max_output_tokens: 10000", prompt)
-
-        w2 = s2_world(self)
-        w2.git.chunk_view_text = "가" * 20_000 + "\n"
-        control.start(w2.store, "claude", S2, "single", cfg=w2.cfg)
-        w2.tick()
-        b = w2.store.active_batch("claude", S2)
-        self.assertEqual((b["state"], len(w2.adapter.launches)), ("ERROR", 0))
-
 
 class Stage2ChunkCodexConfig(unittest.TestCase):
     def test_only_chunk_runs_disable_web_search_and_project_docs(self):
@@ -315,7 +282,8 @@ class Stage2Retry(unittest.TestCase):
         self.assertEqual(progress.observe(b["worktree"], "001", "01-01", S2, "claude"),
                          ("candidates", 1, 2))
 
-    def test_retry_after_denied_but_saved_chunk_advances_from_checkpoint(self):
+    def test_blocked_attempts_do_not_discard_a_saved_chunk(self):
+        """Answer-only chunk: a refused tool call is a metric, not a failure; the saved checkpoint decides."""
         w = s2_world(self)
         self.addCleanup(w.tmp.cleanup)
         w.adapter = Reporting()
@@ -328,18 +296,11 @@ class Stage2Retry(unittest.TestCase):
         b = w.store.active_batch("claude", S2)
         first = w.adapter.launches[-1]
         w.adapter.finish(first["pid"])
-        w.tick()
-        self.assertEqual(w.store.batch(b["id"])["state"], "PAUSED")
-        self.assertEqual(len(w.adapter.launches), 1)
-
-        self.assertTrue(control.retry(w.store, "claude", S2))
         w.tick(2)
         b = w.store.batch(b["id"])
         self.assertEqual((b["run_kind"], b["state"]), ("s2_chunk_new", "PRODUCING"))
-        self.assertEqual(w.adapter.launches[-1]["kind"], "start")
         self.assertNotEqual(w.adapter.launches[-1]["pid"], first["pid"])
-        self.assertEqual(progress.observe(b["worktree"], "001", "01-01", S2, "claude"),
-                         ("candidates", 1, 2))
+        self.assertEqual(progress.observe(b["worktree"], "001", "01-01", S2, "claude"), ("candidates", 1, 2))
 
     def test_pending_unsaved_chunk_retries_the_same_session_and_checkpoint(self):
         w = s2_world(self)
