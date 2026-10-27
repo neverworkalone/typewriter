@@ -91,12 +91,22 @@ function emitRetryable(text) {
   }
 }
 
+function inputFailure(reason) {
+  const failure = new Error('literary chunk submission input is unusable');
+  failure.code = 'LITERARY_SUBMISSION_INPUT';
+  failure.reason = reason;
+  return failure;
+}
+
+function assertSubmissionPath(filePath) {
+  const relative = path.relative(SCRATCH_DIRECTORY, path.resolve(filePath));
+  if (!relative || relative.startsWith(`..${path.sep}`) || relative === '..' || path.isAbsolute(relative)) throw inputFailure('outside_scratch');
+}
+
 async function readSubmission(filePath) {
-  const resolved = path.resolve(filePath);
-  const relative = path.relative(SCRATCH_DIRECTORY, resolved);
-  if (!relative || relative.startsWith(`..${path.sep}`) || relative === '..' || path.isAbsolute(relative)) fail('submission JSON must remain under .warroom-scratch/');
-  const fileStat = await stat(filePath);
-  if (fileStat.size > 64_000) fail('sweep results JSON exceeds the 64 KB input limit');
+  assertSubmissionPath(filePath);
+  const fileStat = await stat(filePath).catch((error) => { throw error?.code === 'ENOENT' ? inputFailure('not_found') : error; });
+  if (fileStat.size > 64_000) throw inputFailure('too_large');
   const text = await readFile(filePath, 'utf8');
   try {
     return JSON.parse(text);
@@ -191,6 +201,7 @@ async function main() {
     case 'submit': {
       only(options, 'db', 'checkpoint', 'input');
       required(options, 'db', 'checkpoint', 'input');
+      assertSubmissionPath(options.input);   // only a sidecar inside .warroom-scratch/ is ever touched
       submitDiagnosticPath = `${path.resolve(options.input)}.diag.json`;
       await unlink(submitDiagnosticPath).catch(() => {});
       result = await submitLiteraryChunk({
@@ -283,6 +294,20 @@ main().catch((error) => {
       ...(error.issues_truncated ? { issues_truncated: true } : {}),
       ...(error.syntax ? { json_syntax: error.syntax } : {}),
       repair_scope: repairScope,
+    })}\n`);
+    process.exitCode = 1;
+    return;
+  }
+
+  if (error?.code === 'LITERARY_SUBMISSION_INPUT') {
+    const reason = ['outside_scratch', 'too_large', 'not_found'].includes(error.reason) ? error.reason : 'outside_scratch';
+    process.stderr.write(`${JSON.stringify({
+      status: 'FAILED',
+      diagnostic: 'submit_input',
+      error_type: errorType,
+      message: 'The submission file path or size was refused before parsing; run from the worktree root with --input under .warroom-scratch/ (at most 64 KB).',
+      reason,
+      repair_scope: 'correct_submission_path',
     })}\n`);
     process.exitCode = 1;
     return;

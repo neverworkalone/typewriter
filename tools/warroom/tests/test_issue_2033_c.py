@@ -169,6 +169,7 @@ class SerialChunks(unittest.TestCase):
             "stop_and_report index": {"diagnostic": "index_access", "repair_scope": "stop_and_report"},
             "stop_and_report validation": {"diagnostic": "submit_validation", "repair_scope": "stop_and_report"},
             "unknown operation": {"diagnostic": "operation"},
+            "refused input path": {"diagnostic": "submit_input", "repair_scope": "correct_submission_path"},
             "no diagnostic at all": {},
         }
         for name, diagnostic in cases.items():

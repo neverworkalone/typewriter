@@ -604,6 +604,21 @@ test('submit validation returns bounded reason codes and source-sense fields wit
     assert.equal(successful.status, 0, successful.stderr);
     assert.equal(JSON.parse(successful.stdout).status, 'SAVED');
     await assert.rejects(readFile(path.join(fixture.scratchDirectory, 'submit-input.json.diag.json'), 'utf8'), { code: 'ENOENT' });   // a stale diagnostic never survives a later submit
+    // The 035_02-class "operation" was an unlabeled refusal of the input file itself: each one is now named, never retried, and
+    // never touches a sidecar outside .warroom-scratch/.
+    const outside = path.join(fixture.root, 'outside-submit.json');
+    await writeFile(outside, '{"senses":[]}');
+    await writeFile(`${outside}.diag.json`, 'sentinel');
+    await writeFile(path.join(fixture.scratchDirectory, 'oversize.json'), ' '.repeat(64_001));
+    for (const [input, reason] of [[outside, 'outside_scratch'], [path.join(fixture.scratchDirectory, 'absent.json'), 'not_found'], [path.join(fixture.scratchDirectory, 'oversize.json'), 'too_large']]) {
+      const refused = runCli(fixture, ['submit', '--db', fixture.databasePath, '--checkpoint', fixture.checkpointPath, '--input', input]);
+      const refusal = JSON.parse(refused.stderr);
+      assert.equal(refused.status, 1, reason);
+      assert.deepEqual([refusal.diagnostic, refusal.reason, refusal.repair_scope], ['submit_input', reason, 'correct_submission_path'], reason);
+      assert.equal(refused.stderr.includes(fixture.root), false, reason);
+      if (input !== outside) assert.equal(await readFile(`${input}.diag.json`, 'utf8').then(() => true, () => false), false, reason);
+    }
+    assert.equal(await readFile(`${outside}.diag.json`, 'utf8'), 'sentinel');
     const unrepairable = await submitCli(fixture, { senses: [{ sense_id: item.sense_id, verified: [], candidates: [] }] }, path.join(fixture.root, 'missing.sqlite'));
     assert.notEqual(unrepairable.status, 0);
     await assert.rejects(readFile(path.join(fixture.scratchDirectory, 'submit-input.json.diag.json'), 'utf8'), { code: 'ENOENT' });   // index/operation failures are never retryable
