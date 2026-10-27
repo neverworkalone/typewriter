@@ -3,8 +3,9 @@ import json
 import unittest
 from pathlib import Path
 
-from tests.fakes import HEAD1, World
+from tests.fakes import HEAD1, HEAD2, World
 from warroom import control, literary, prompts, stage2
+from warroom.supervisor import RecoveryBlocked
 
 CP_NAME = "001_01_c_deepseek.checkpoint.json"
 
@@ -36,6 +37,21 @@ class CWorld(World):
 
     def kinds(self):
         return [r["kind"] for r in reversed(self.store.runs(self.row("deepseek", "c")["id"]))]
+
+    def add_branch_pr(self, number, *, state="closed", merged=False, head="b" * 40, merged_at=None):
+        b = self.row("deepseek", "c")
+        branch = b["branch"]
+        self.gh.prs[number] = {"number": number, "state": state, "merged": merged, "head_sha": head,
+                               "head_ref": branch, "url": "", "merge_commit_sha": ""}
+        summary = {"number": number, "state": state.upper(), "headRefOid": head}
+        if state == "closed":
+            summary["mergedAt"] = merged_at
+        self.gh.by_branch.setdefault(branch, []).append(summary)
+        self.gh.files[number] = [{"path": f"data/relation-candidates/{b['shard']}/"
+                                           f"{b['shard']}_{b['batch']}_{b['method']}_{b['producer']}.jsonl"}]
+        if state == "open":
+            self.git.remote[branch] = head
+        return b
 
 
 class SerialChunks(unittest.TestCase):
@@ -114,6 +130,138 @@ class SerialChunks(unittest.TestCase):
         self.assertEqual(w.kinds()[:2], ["c_chunk_new", "c_chunk_new"])   # moved on to a NEW chunk, not a re-run
         self.assertEqual(len(w.adapter.launches), 2)
 
+    def test_retry_after_partial_checkpoint_ignores_multiple_old_closed_prs_and_resumes_same_chunk(self):
+        w = self.w
+        w.start("single", "deepseek", "c")
+        w.ai(mark=5)
+        w.tick()
+        active_before = w.active()
+        ids = list(active_before["sense_ids"])
+        w.add_branch_pr(2050, head="b" * 40)
+        w.add_branch_pr(2051, head="c" * 40)
+
+        w.finish_last()
+        w.tick()
+
+        b = w.row("deepseek", "c")
+        self.assertEqual(b["state"], "ERROR")  # partial checkpoint remains a stop; it is not treated as saved
+        self.assertIn("checkpoint 완료 증거 없음", b["error"])
+        self.assertIsNone(b["pr_number"])
+        self.assertEqual(w.active()["chunk_no"], active_before["chunk_no"])
+        self.assertEqual(w.active()["sense_ids"], ids)
+        self.assertEqual(len(w.adapter.launches), 1)
+
+        w.ai()
+        self.assertTrue(control.retry(w.store, "deepseek", "c"))
+        w.tick(2)
+
+        b = w.row("deepseek", "c")
+        resume = w.adapter.launches[-1]
+        self.assertEqual(b["state"], "PRODUCING")
+        self.assertEqual(len(w.adapter.launches), 2)
+        self.assertEqual(resume["kind"], "resume")
+        self.assertEqual(w.active()["chunk_no"], active_before["chunk_no"])
+        self.assertEqual(w.active()["sense_ids"], ids)
+        for done in ids[:5]:
+            self.assertNotIn(done, resume["prompt"])
+        for remaining in ids[5:]:
+            self.assertIn(remaining, resume["prompt"])
+        self.assertIsNone(b["pr_number"])
+
+    def test_c_recovery_keeps_merged_pr_eligible_beside_old_closed_history(self):
+        w = self.w
+        w.start("single", "deepseek", "c")
+        w.tick()
+        b = w.row("deepseek", "c")
+        w.add_branch_pr(2050, head="b" * 40)
+        w.add_branch_pr(2051, head="c" * 40)
+        w.add_branch_pr(2060, state="closed", merged=True, head=HEAD1, merged_at="2026-10-27T00:00:00Z")
+
+        info = w.sup._find_recovery_pr(w.row("deepseek", "c"))
+
+        self.assertEqual(info["number"], 2060)
+        self.assertTrue(info["merged"])
+
+    def test_c_live_pr_lookup_ignores_old_closed_history_but_finds_new_open_pr(self):
+        w = self.w
+        w.start("single", "deepseek", "c")
+        w.tick()
+        b = w.row("deepseek", "c")
+        w.add_branch_pr(2050, head="b" * 40)
+        w.add_branch_pr(2051, head="c" * 40)
+
+        self.assertIsNone(w.sup._find_pr(b))
+
+        w.add_branch_pr(2052, head=HEAD1)
+        self.assertEqual(w.sup._find_pr(b)["number"], 2052)
+
+        w.add_branch_pr(2060, state="open", head=HEAD1)
+        self.assertEqual(w.sup._find_pr(b)["number"], 2060)
+
+    def test_c_recovery_preserves_attached_closed_pr_validation(self):
+        w = self.w
+        w.start("single", "deepseek", "c")
+        w.tick()
+        b = w.row("deepseek", "c")
+        w.add_branch_pr(2050, head=HEAD2)
+        w.store.update(b["id"], pr_number=2050)
+
+        with self.assertRaisesRegex(RecoveryBlocked, "닫힌 PR #2050 HEAD와 로컬 worktree HEAD가 다릅니다"):
+            w.sup._find_recovery_pr(w.row("deepseek", "c"))
+
+    def test_c_recovery_keeps_unattached_closed_pr_at_current_worktree_head(self):
+        w = self.w
+        w.start("single", "deepseek", "c")
+        w.tick()
+        b = w.add_branch_pr(2050, head=HEAD1)
+
+        info = w.sup._find_recovery_pr(b)
+
+        self.assertEqual(info["number"], 2050)
+        self.assertFalse(info["merged"])
+
+    def test_c_recovery_keeps_closed_pr_at_recorded_finalization_head(self):
+        w = self.w
+        w.start("single", "deepseek", "c")
+        w.tick()
+        b = w.row("deepseek", "c")
+        w.store.set(f"c_commit_head_{b['id']}", HEAD2)
+        w.add_branch_pr(2050, head=HEAD2)
+
+        with self.assertRaisesRegex(RecoveryBlocked, "닫힌 PR #2050 HEAD와 로컬 worktree HEAD가 다릅니다"):
+            w.sup._find_recovery_pr(b)
+
+    def test_c_recovery_keeps_open_pr_head_checks(self):
+        w = self.w
+        w.start("single", "deepseek", "c")
+        w.tick()
+        w.add_branch_pr(2050, state="open", head=HEAD2)
+
+        with self.assertRaisesRegex(RecoveryBlocked, "PR #2050 HEAD와 로컬 worktree HEAD가 다릅니다"):
+            w.sup._find_recovery_pr(w.row("deepseek", "c"))
+
+    def test_c_recovery_keeps_multiple_open_prs_and_remote_head_checks(self):
+        for case in ("multiple", "candidate_claim", "remote_head"):
+            with self.subTest(case=case):
+                w = CWorld()
+                self.addCleanup(w.tmp.cleanup)
+                w.start("single", "deepseek", "c")
+                w.tick()
+                b = w.row("deepseek", "c")
+                w.add_branch_pr(2050, state="open", head=HEAD1)
+                if case == "multiple":
+                    w.add_branch_pr(2051, state="open", head=HEAD1)
+                    expected = "소유 브랜치에 PR이 여러 개 있습니다"
+                elif case == "candidate_claim":
+                    w.gh.files[2050] = [{"path": "README.md"}]
+                    expected = "Candidate 파일 소유권이 배치와 일치하지 않습니다"
+                else:
+                    w.git.remote[b["branch"]] = HEAD2
+                    expected = "PR #2050 HEAD와 원격 소유 브랜치가 다릅니다"
+
+                with self.assertRaisesRegex(RecoveryBlocked, expected):
+                    w.sup._find_recovery_pr(b)
+
     def test_search_failed_stops_before_any_ai(self):
         w = self.w
         w.runner.literary.chunk_status["s0003"] = "SEARCH_FAILED"
@@ -183,6 +331,50 @@ class Finalization(unittest.TestCase):
         self.assertEqual(b["state"], "WAITING_REVIEW")
         self.assertEqual(len(w.gh.created_prs), 1)
 
+    def test_old_closed_history_does_not_block_saved_chunk_or_new_pr(self):
+        w = self.w
+        w.start("single", "deepseek", "c")
+        w.ai()
+        w.tick()
+        w.add_branch_pr(2050, head="b" * 40)
+        w.add_branch_pr(2051, head="c" * 40)
+
+        w.finish_last()
+        w.tick()
+
+        b = w.row("deepseek", "c")
+        self.assertEqual(b["state"], "WAITING_REVIEW")
+        self.assertEqual(b["pr_number"], 100)
+        self.assertEqual(len(w.gh.created_prs), 1)
+        self.assertEqual(w.sup._find_recovery_pr(b)["number"], 100)
+        self.assertEqual(w.gh.prs[2050]["state"], "closed")
+        self.assertEqual(w.gh.prs[2051]["state"], "closed")
+
+    def test_retry_preserves_a_closed_pr_matching_the_current_head_without_creating_another(self):
+        w = self.w
+        w.start("single", "deepseek", "c")
+        w.ai(mark=5)
+        w.tick()
+        w.add_branch_pr(2050, head=HEAD1)
+        w.finish_last()
+        w.tick()
+
+        b = w.row("deepseek", "c")
+        self.assertEqual(b["state"], "ERROR")
+        self.assertIn("예상하지 않은 PR #2050", b["error"])
+        self.assertEqual(len(w.adapter.launches), 1)
+        self.assertIsNone(b["pr_number"])
+
+        w.ai()
+        self.assertTrue(control.retry(w.store, "deepseek", "c"))
+        w.tick(2)
+
+        self.assertEqual(w.row("deepseek", "c")["state"], "ERROR")
+        self.assertIn("이미 PR이 있어 자동 재개를 중단합니다", w.row("deepseek", "c")["error"])
+        self.assertEqual(len(w.adapter.launches), 1)
+        self.assertEqual(w.gh.created_prs if hasattr(w.gh, "created_prs") else [], [])
+
+
     def test_failed_pr_creation_keeps_commit_and_push_and_retry_does_not_repeat_them(self):
         w = self.w
         w.gh.create_pr_error = RuntimeError("boom")
@@ -246,6 +438,24 @@ class Finalization(unittest.TestCase):
         w.tick()
         self.assertEqual(w.row("deepseek", "c")["state"], "WAITING_REVIEW")
         self.assertEqual(len(w.gh.created_prs), 1)
+
+
+class RecoveryScope(unittest.TestCase):
+    def test_other_methods_still_block_unmerged_closed_prs(self):
+        w = World()
+        self.addCleanup(w.tmp.cleanup)
+        w.start("single", "deepseek", "a")
+        w.tick()
+        b = w.row("deepseek", "a")
+        w.gh.prs[2050] = {"number": 2050, "state": "closed", "merged": False, "head_sha": "b" * 40,
+                           "head_ref": b["branch"], "url": "", "merge_commit_sha": ""}
+        w.gh.by_branch[b["branch"]] = [{"number": 2050, "state": "CLOSED", "headRefOid": "b" * 40,
+                                         "mergedAt": None}]
+        w.gh.files[2050] = [{"path": f"data/relation-candidates/{b['shard']}/"
+                                      f"{b['shard']}_{b['batch']}_{b['method']}_{b['producer']}.jsonl"}]
+
+        with self.assertRaisesRegex(RecoveryBlocked, "닫힌 PR #2050 HEAD와 로컬 worktree HEAD가 다릅니다"):
+            w.sup._find_recovery_pr(b)
 
 
 class CommitRecovery(unittest.TestCase):

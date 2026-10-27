@@ -306,11 +306,46 @@ class Supervisor:
                                                    run["kind"].startswith("s2_finalize_"))
                 and run["ended_at"] is not None and recorded == code)
 
+    def _eligible_branch_prs(self, b, prs):
+        """Exclude provably older unmerged C PRs without hiding the attached or same-HEAD PR."""
+        if b["method"] != literary.METHOD:
+            return prs
+        attached = b["pr_number"]
+        stale = [pr for pr in prs if (
+            str(pr.get("state", "")).lower() == "closed"
+            and "mergedAt" in pr and pr["mergedAt"] is None
+            and isinstance(pr.get("number"), int) and not isinstance(pr.get("number"), bool)
+            and pr.get("number") != attached
+            and isinstance(pr.get("headRefOid"), str) and re.fullmatch(r"[0-9a-f]{40}", pr["headRefOid"])
+        )]
+        if not stale:
+            return prs
+        try:
+            wt = Path(b["worktree"])
+            if self.git.registered(wt) != b["branch"]:
+                return prs
+            current_head = self.git.head(wt)
+        except (GitError, OSError, ValueError):
+            return prs
+        known_heads = {current_head}
+        finalized_head = self.store.get(f"c_commit_head_{b['id']}")
+        if isinstance(finalized_head, str):
+            known_heads.add(finalized_head)
+        return [pr for pr in prs if not (
+            str(pr.get("state", "")).lower() == "closed"
+            and "mergedAt" in pr and pr["mergedAt"] is None
+            and isinstance(pr.get("number"), int) and not isinstance(pr.get("number"), bool)
+            and pr.get("number") != attached
+            and isinstance(pr.get("headRefOid"), str) and re.fullmatch(r"[0-9a-f]{40}", pr["headRefOid"])
+            and pr["headRefOid"] not in known_heads
+        )]
+
     def _find_recovery_pr(self, b):
         """Find one existing PR and prove its branch/candidate claim belongs to this batch before handoff."""
         prs = self.gh.prs_for_branch(b["branch"])
         if not isinstance(prs, list):
             raise RecoveryBlocked("소유 브랜치 PR 조회 결과 형식이 잘못되었습니다")
+        prs = self._eligible_branch_prs(b, prs)
         if not prs:
             return None
         if len(prs) != 1:
@@ -1766,6 +1801,8 @@ class Supervisor:
     def _find_pr(self, b):
         """The batch's PR (by its owned branch) or None; raises DuplicateClaim on a rival PR."""
         prs = self.gh.prs_for_branch(b["branch"])
+        if b["method"] == literary.METHOD:
+            prs = self._eligible_branch_prs(b, prs)
         if not prs:
             return None
         pr = sorted(prs, key=lambda p: p["number"])[-1]
