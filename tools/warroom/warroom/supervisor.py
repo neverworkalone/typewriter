@@ -14,7 +14,6 @@ import fcntl
 import json
 import os
 import re
-import shutil
 import time
 import traceback
 from pathlib import Path
@@ -631,7 +630,6 @@ class Supervisor:
         env.pop(key, None)
         if b["method"] == "c":
             env[key] = str(Path(self.cfg["literary_index_path"].strip()).expanduser())
-        env.pop("WARROOM_REAL_GIT", None)
         env.pop("WARROOM_STAGE2_CHUNK", None)
         env.pop("WARROOM_GIT_EXECUTABLES", None)
         if b["method"] == STAGE2_METHOD and isinstance(kind, str) and kind.startswith("s2_chunk_"):
@@ -705,28 +703,17 @@ class Supervisor:
         return None
 
     def _agent_env(self) -> dict:
-        """Give worker CLIs a guarded Git entry point without exposing the real executable path."""
-        env = dict(self.env)
-        original_path = env.get("PATH", os.defpath)
-        real_git = shutil.which("git", path=original_path)
-        guard_dir = (Path(__file__).resolve().parents[1] / "bin").resolve()
-        if not real_git or not (guard_dir / "git").is_file():
-            raise RuntimeError("Supervisor Git 경계 도구를 찾을 수 없어 AI를 시작하지 않습니다")
+        """Worker CLIs run with the normal environment (and normal Git). The Git binaries on PATH are only recorded so
+        a Stage 2 chunk can have them blocked; with none found, only that chunk fails closed (`stage2_git_executables`)."""
+        env = {k: v for k, v in self.env.items() if k not in ("WARROOM_GIT_SHIM", "WARROOM_GIT_SHIM_EXEC_PID",
+                                                               "WARROOM_REAL_GIT")}   # leftovers of the removed shim
         git_executables = set()
-        for entry in original_path.split(os.pathsep):
+        for entry in env.get("PATH", os.defpath).split(os.pathsep):
             candidate = Path(entry or os.curdir).expanduser() / "git"
-            if not candidate.is_file() or not os.access(candidate, os.X_OK):
-                continue
-            if candidate.resolve() == (guard_dir / "git").resolve():
-                continue
-            git_executables.add(str(candidate.absolute()))
-            git_executables.add(str(candidate.resolve()))
-        if not git_executables:
-            raise RuntimeError("실행 환경 PATH에서 차단할 Git 실행 파일 경로를 찾을 수 없습니다")
+            if candidate.is_file() and os.access(candidate, os.X_OK):
+                git_executables.add(str(candidate.absolute()))
+                git_executables.add(str(candidate.resolve()))
         self._worker_git_executables = sorted(git_executables)
-        env.pop("WARROOM_REAL_GIT", None)
-        env["WARROOM_GIT_SHIM"] = str(guard_dir / "git")
-        env["PATH"] = str(guard_dir) + os.pathsep + original_path
         return env
 
     def _launch(self, b, kind: str, events=None) -> None:
@@ -756,7 +743,7 @@ class Supervisor:
         try:
             agent_env = self._agent_env()
         except Exception as e:
-            return self._fail(b, "ERROR", f"AI 실행용 Git 경계 설정 실패: {e}")
+            return self._fail(b, "ERROR", f"AI 실행 환경 설정 실패: {e}")
         extra = {}
         if getattr(ad, "needs_git_dir", False):   # one rule for every launch kind: the owned worktree's Git admin dir
             try:

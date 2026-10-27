@@ -17,7 +17,6 @@ from warroom import control
 from warroom.gitops import CleanupBlocked, GitError
 
 
-BIN = Path(__file__).resolve().parents[1] / "bin"
 
 
 class FinalResultAdapter(FakeAdapter):
@@ -224,105 +223,13 @@ class ProducerHandoff(unittest.TestCase):
         self.assertEqual((row["state"], row["pr_number"]), ("WAITING_REVIEW", 1870))
         self.assertFalse(w.adapter.alive(pid))
         self.assertTrue(w.store.get(f"stop_after_pr_{b['id']}"))
-        self.assertEqual(w.adapter.last_env["PATH"].split(os.pathsep)[0], str(BIN))
-        self.assertEqual(w.adapter.last_env["WARROOM_GIT_SHIM"], str(BIN / "git"))
-        self.assertNotIn("WARROOM_REAL_GIT", w.adapter.last_env)
+        self.assertEqual(w.adapter.last_env.get("PATH"), w.sup.env.get("PATH"))   # normal Git: no shim directory first
+        self.assertFalse(any(k.startswith("WARROOM_GIT_SHIM") or k == "WARROOM_REAL_GIT" for k in w.adapter.last_env))
 
         w.tick()  # reap the stopped process and clear the handoff marker
         self.assertIsNone(w.row(model="codex", method="b")["pid"])
         self.assertIsNone(w.store.get(f"stop_after_pr_{b['id']}"))
         self.assertEqual(len(w.adapter.launches), 1)
-
-    def test_worker_git_shim_blocks_cleanup_but_delegates_read_only_git(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            real_bin = root / "real-bin"
-            real_bin.mkdir()
-            real = real_bin / "git"
-            real.write_text("#!/bin/sh\nprintf '%s\\n' \"$*\"\n")
-            real.chmod(0o755)
-            env = {"WARROOM_GIT_SHIM": str(BIN / "git"),
-                   "PATH": os.pathsep.join((str(BIN), str(real_bin), os.environ.get("PATH", "/usr/bin:/bin")))}
-
-            remove = subprocess.run([sys.executable, str(BIN / "git"), "-C", "/repo", "worktree", "remove",
-                                      "/repo/wts/a"], env=env, capture_output=True, text=True)
-            delete = subprocess.run([sys.executable, str(BIN / "git"), "branch", "-D", "a"], env=env,
-                                    capture_output=True, text=True)
-            move = subprocess.run([sys.executable, str(BIN / "git"), "branch", "-M", "a", "b"], env=env,
-                                  capture_output=True, text=True)
-            update_ref = subprocess.run([sys.executable, str(BIN / "git"), "update-ref", "refs/heads/a",
-                                         HEAD1], env=env, capture_output=True, text=True)
-            listing = subprocess.run([sys.executable, str(BIN / "git"), "-C", "/repo", "status", "--short"],
-                                     env=env, capture_output=True, text=True)
-            chunk_env = {**env, "WARROOM_STAGE2_CHUNK": "1"}
-            chunk_commit = subprocess.run(["git", "commit", "-m", "chunk"], env=chunk_env,
-                                          capture_output=True, text=True)
-            chunk_push = subprocess.run(["git", "push", "origin", "branch"], env=chunk_env,
-                                        capture_output=True, text=True)
-            chunk_direct_commit = subprocess.run([chunk_env["WARROOM_GIT_SHIM"], "commit", "-m", "chunk"],
-                                                 env=chunk_env, capture_output=True, text=True)
-            chunk_direct_push = subprocess.run([chunk_env["WARROOM_GIT_SHIM"], "push", "origin", "branch"],
-                                               env=chunk_env, capture_output=True, text=True)
-            chunk_status = subprocess.run(["git", "status", "--short"], env=chunk_env,
-                                          capture_output=True, text=True)
-            finalizer_commit = subprocess.run(["git", "commit", "-m", "final"], env=env,
-                                              capture_output=True, text=True)
-            finalizer_push = subprocess.run(["git", "push", "origin", "branch"], env=env,
-                                            capture_output=True, text=True)
-            finalizer_direct_commit = subprocess.run([env["WARROOM_GIT_SHIM"], "commit", "-m", "final"],
-                                                     env=env, capture_output=True, text=True)
-            finalizer_direct_push = subprocess.run([env["WARROOM_GIT_SHIM"], "push", "origin", "branch"],
-                                                   env=env, capture_output=True, text=True)
-
-        self.assertNotIn("WARROOM_REAL_GIT", chunk_env)
-        self.assertEqual(remove.returncode, 126)
-        self.assertEqual(delete.returncode, 126)
-        self.assertEqual(move.returncode, 126)
-        self.assertEqual(update_ref.returncode, 126)
-        self.assertEqual(listing.returncode, 0)
-        self.assertEqual(listing.stdout.strip(), "-C /repo status --short")
-        self.assertEqual(chunk_commit.returncode, 126)
-        self.assertEqual(chunk_push.returncode, 126)
-        self.assertEqual((chunk_direct_commit.returncode, chunk_direct_push.returncode), (126, 126))
-        self.assertEqual(chunk_status.returncode, 126)
-        self.assertEqual((finalizer_commit.returncode, finalizer_push.returncode,
-                          finalizer_direct_commit.returncode, finalizer_direct_push.returncode), (0, 0, 0, 0))
-        self.assertEqual(finalizer_commit.stdout.strip(), "commit -m final")
-        self.assertEqual(finalizer_push.stdout.strip(), "push origin branch")
-
-    def test_shim_never_loops_through_a_git_that_looks_itself_up_on_path(self):
-        """macOS /usr/bin/git (xcrun) re-resolves `git` on PATH when its developer-dir Git is unusable."""
-        with tempfile.TemporaryDirectory() as tmp:
-            real_bin = Path(tmp) / "real-bin"
-            real_bin.mkdir()
-            path_probe = real_bin / "git"
-            path_probe.write_text("#!/bin/sh\nprintf '%s' \"$PATH\"\n")
-            path_probe.chmod(0o755)
-            base = os.pathsep.join((str(BIN), str(real_bin), os.environ.get("PATH", "/usr/bin:/bin")))
-            shim_path = subprocess.run([sys.executable, str(BIN / "git"), "status"], env={"PATH": base},
-                                       capture_output=True, text=True, timeout=30)
-
-            # A real Git that re-enters the shim by exec, the way xcrun does, must stop at once.
-            path_probe.write_text(f'#!/bin/sh\nexec "{BIN / "git"}" "$@"\n')
-            looped = subprocess.run([sys.executable, str(BIN / "git"), "rev-parse", "HEAD"],
-                                    env={"PATH": base}, capture_output=True, text=True, timeout=30)
-
-            # A Git spawned by Git (hook, alias) is a different process and still works.
-            path_probe.write_text("#!/bin/sh\nprintf 'ok\\n'\n")
-            nested = subprocess.run([sys.executable, str(BIN / "git"), "status"],
-                                    env={"PATH": base, "WARROOM_GIT_SHIM_EXEC_PID": "1"},
-                                    capture_output=True, text=True, timeout=30)
-            chunk_version = subprocess.run([sys.executable, str(BIN / "git"), "--version"],
-                                           env={"PATH": base, "WARROOM_STAGE2_CHUNK": "1"},
-                                           capture_output=True, text=True, timeout=30)
-
-        self.assertEqual(shim_path.returncode, 0)
-        self.assertNotIn(str(BIN), shim_path.stdout.split(os.pathsep))
-        self.assertIn(str(real_bin), shim_path.stdout.split(os.pathsep))
-        self.assertEqual(looped.returncode, 126)
-        self.assertIn("re-entered", looped.stderr)
-        self.assertEqual((nested.returncode, nested.stdout.strip()), (0, "ok"))
-        self.assertEqual(chunk_version.returncode, 126)
 
 
 class Stage2ProcessSandbox(unittest.TestCase):
