@@ -1,5 +1,7 @@
 #1155 C 진행해
 
+(참고: War Room이 직접 배정한 일반 C 생산은 Supervisor가 청크 단위 새 세션으로 진행하며 `c_chunk.md`를 쓴다. 이 문서는 수동 복구·리뷰 수정 경로용이다. `chunk --format text`로 jq 없이 같은 형식의 view를 읽을 수 있고, `report --sense-ids a,b`로 지정 sense의 완료 여부를 확인할 수 있다.)
+
 War Room이 지정한 배치 {{batch}}를 생산한다.
 현재 worktree와 브랜치 {{branch}}를 그대로 사용한다.
 배치를 다시 선정하거나 브랜치를 변경하지 않는다.

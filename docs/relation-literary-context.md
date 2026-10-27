@@ -137,6 +137,38 @@ jq -r '
 ' .warroom-scratch/chunk-01.read.json
 ```
 
+### Lossless text view and per-sense status
+
+`chunk --format text` prints exactly what the `jq` command above formats (progress header, each sense's
+id/lemma/POS/gloss/forms/hits/unseen, every returned context's key, source label and full excerpt,
+and `SEARCH_FAILED` / `UNSEARCHABLE` items) without the intermediate JSON file. The default JSON output is
+unchanged. The text is never trimmed: if it would exceed the output budget the command fails closed instead
+of dropping senses or excerpts.
+
+`report --sense-ids a,b` answers, for exactly those senses, `{sense_id, status, done}` plus `all_done`, with
+`done` meaning the existing `senseDone` set (`ZERO_HITS`, `SUBMITTED`, `NO_VERIFIED`, `SAMPLED_NO_VERIFIED`,
+`DISCOVERED`). Unknown or repeated ids and a damaged checkpoint structure (batch binding, duplicate ids,
+malformed submission or search state) fail closed. It exposes no path, source text or private locator.
+
+### Under the War Room Supervisor
+
+For War Room-assigned C batches the Supervisor, not a long AI session, drives the batch:
+
+1. It runs `init` once (never over an existing checkpoint; a restart validates the batch/model binding and the
+   checkpoint's HEAD, allowing only its own Candidate commit as a later HEAD).
+2. For each chunk it runs `chunk --limit 12 --contexts 8 --format text`, stores the view and an active-chunk
+   record under `.warroom-scratch/`, and starts a **new** AI session whose initial prompt contains the whole
+   view (only a view too large for one argument falls back to Stage 2-style 36,000 byte / 28,000 char pages).
+   The session reads, discovers and submits that chunk once; it does not export, commit, push or open a PR.
+3. A chunk is complete only when `report --sense-ids` says every one of its senses is done. An exit code alone
+   is never completion, and a stored submit is never regenerated. An incomplete chunk is resumed in its own
+   session with only the open sense ids.
+4. After the last sense the Supervisor exports (reusing a current valid output), commits only the intended
+   Candidate file, pushes without force, re-checks the common C claim, and opens the one `[C/<Model>] SSS_BB`
+   PR, re-deriving each step from file, Git and GitHub facts so an interruption never repeats work.
+
+The manual path in this document remains valid for hand-run batches.
+
 ## What you still do for every sense with hits
 
 The semantic work is unchanged: compare each context with the exact Canonical

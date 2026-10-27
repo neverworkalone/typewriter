@@ -118,6 +118,26 @@ class FakeGit:
     def fetch_base(self, base):
         return "m" * 40
 
+    # ---- Method C finalization (Issue #2033) ----
+    def commit_paths(self, path, rels, message):
+        self.commits = getattr(self, "commits", [])
+        if self.dirty_text.strip() and {l[3:].strip() for l in self.dirty_text.splitlines() if l.strip()} != set(rels):
+            raise GitError("커밋 대상이 의도한 파일과 다릅니다")
+        self.commits.append((list(rels), message))
+        self.local_head = "f" * 40
+        self.committed_rels = getattr(self, "committed_rels", set()) | set(rels)
+        return self.local_head
+
+    def is_committed(self, path, rel):
+        return rel in getattr(self, "committed_rels", set()) and not self.dirty_text.strip()
+
+    def push_branch(self, path, branch):
+        self.pushes = getattr(self, "pushes", [])
+        if self.push_error:
+            raise GitError(self.push_error)
+        self.pushes.append(branch)
+        self.remote[branch] = self.local_head
+
     def verify_stage2(self, sha, kind, shard, batch, part, timeout=900):
         self.verify_calls.append((kind, shard, batch, part))
         if self.verify_error:
@@ -257,6 +277,22 @@ class FakeGh:
 
     def open_prs(self):
         return self.open
+
+    def create_pr(self, head, base, title, body, labels):
+        self.created_prs = getattr(self, "created_prs", [])
+        if getattr(self, "create_pr_error", None):
+            # the response may be lost although the PR exists
+            if getattr(self, "create_pr_lost", False):
+                self._register(head, title, body, labels)
+            raise self.create_pr_error
+        self._register(head, title, body, labels)
+
+    def _register(self, head, title, body, labels):
+        n = 100 + len(self.created_prs)
+        self.created_prs.append({"number": n, "head": head, "title": title, "body": body, "labels": labels})
+        self.prs[n] = {"number": n, "state": "open", "merged": False, "head_sha": self.git.local_head, "head_ref": head,
+                       "url": "", "merge_commit_sha": ""}
+        self.by_branch.setdefault(head, []).append({"number": n, "state": "OPEN", "headRefOid": self.git.local_head})
 
     def prs_for_branch(self, branch):
         self.branch_queries += 1
