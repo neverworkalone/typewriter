@@ -570,17 +570,18 @@ function findSourceSelfRepeats(candidates, source, senseId) {
 }
 
 /**
- * One bounded report for every self-repeat of a chunk. save-chunk diagnostics are tail-truncated downstream, so the detail
- * lines are capped and the complete `sense_id` list comes last, where truncation keeps it.
+ * One bounded report for every self-repeat of a chunk. save-chunk diagnostics are tail-truncated downstream (1500 chars),
+ * so the detail lines are capped and the complete target list comes last, where truncation keeps it. A compact save lists
+ * the short `S<n>` view aliases (a 136-sense chunk stays well inside the limit); a JSON save has no alias, so `sense_id`s.
  */
-function sourceRepeatReport(label, repeats) {
+function sourceRepeatReport(label, repeats, aliasOfSense) {
   const details = repeats.slice(0, 5).map(({ senseId, text }) => `sense_id ${senseId} ${text}`);
   const omitted = repeats.length - details.length;
   const senseIds = [...new Set(repeats.map(({ senseId }) => senseId))];
   return [
     ...details,
     ...(omitted > 0 ? [`(+${omitted} more)`] : []),
-    `${label} source lemma repeat in ${senseIds.length} sense(s): ${senseIds.map((id) => `sense_id ${id}`).join('; ')}`,
+    `${label} source lemma repeat in ${senseIds.length} sense(s): ${senseIds.map((id) => aliasOfSense?.get(id) ?? `sense_id ${id}`).join(aliasOfSense ? ' ' : '; ')}`,
   ].join('\n');
 }
 
@@ -642,7 +643,7 @@ function validateChunkRows(inputRows, sourceRows, chunkNumber) {
 }
 
 /** Validate a complete chunk's input rows and write them (replacing any earlier save of it), in Canonical order. */
-async function writeChunkRows(workspace, chunk, sourceRows, inputRows, repositoryDirectory) {
+async function writeChunkRows(workspace, chunk, sourceRows, inputRows, repositoryDirectory, { compact = false } = {}) {
   const { label, repeats, suspects } = validateChunkRows(inputRows, sourceRows, chunk.number);
   if (suspects.length > 0) {
     const lemmaForms = await loadCanonicalLemmaForms(repositoryDirectory);
@@ -653,7 +654,10 @@ async function writeChunkRows(workspace, chunk, sourceRows, inputRows, repositor
       }
     }
   }
-  if (repeats.length > 0) fail(sourceRepeatReport(label, repeats));
+  if (repeats.length > 0) {
+    const aliasOfSense = compact ? new Map(compactSenseModel(sourceRows).map((entry) => [entry.sense.id, entry.alias])) : undefined;
+    fail(sourceRepeatReport(label, repeats, aliasOfSense));
+  }
   const inputById = new Map(inputRows.map((row) => [row.record_id, row]));
   const rows = sourceRows.map((source) => {
     const input = inputById.get(source.id);
@@ -724,7 +728,7 @@ export async function saveCandidateChunk({ scratchDirectory, chunk: requestedChu
   const contents = await readFile(resolvedInput, 'utf8');
   if (format === 'compact') {
     const { inputRows, duplicatesRemoved } = parseCompactAnswer(contents, chunk, sourceRows);
-    return { ...(await writeChunkRows(workspace, chunk, sourceRows, inputRows, repositoryDirectory)), duplicatesRemoved };
+    return { ...(await writeChunkRows(workspace, chunk, sourceRows, inputRows, repositoryDirectory, { compact: true })), duplicatesRemoved };
   }
   return writeChunkRows(workspace, chunk, sourceRows, parseJsonl(contents, resolvedInput), repositoryDirectory);
 }

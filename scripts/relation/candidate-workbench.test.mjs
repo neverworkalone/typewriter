@@ -237,6 +237,30 @@ test('save-chunk reports every source-lemma self-repeat of a chunk at once, keep
   assert.equal((await save({ 'w004-s1': ['건축가', '건축 도면'] })).candidateCount, 2);
 });
 
+test('a compact save of a 136-sense chunk where every sense repeats its lemma keeps every alias inside the 1500-char tail', async (t) => {
+  const context = await setup(t);
+  for (const [index, record] of context.canonicalRows.slice(0, 50).entries()) {
+    const extra = index < 36 ? 2 : 1;
+    record.senses = Array.from({ length: extra + 1 }, (_, sense) => ({ id: `${record.id}-s${sense + 1}`, pos: 'noun', gloss: `뜻 ${index + 1}-${sense + 1}.` }));
+  }
+  await writeFile(path.join(context.repositoryDirectory, 'data/canonical/stdict-0001.jsonl'), `${context.canonicalRows.map((row) => JSON.stringify(row)).join('\n')}\n`);
+  await prepare(context, 50);
+  const lines = ['chunk 001'];
+  let alias = 0;
+  for (const record of context.canonicalRows.slice(0, 50)) for (const _ of record.senses) lines.push(`S${(alias += 1)}\t${record.lemma}`);
+  assert.equal(alias, 136);
+  const inputPath = path.join(context.scratchDirectory, 'answer.tsv');
+  await mkdir(context.scratchDirectory, { recursive: true });
+  await writeFile(inputPath, `${lines.join('\n')}\n`);
+  await assert.rejects(saveCandidateChunk({ scratchDirectory: context.scratchDirectory, chunk: 1, inputPath, format: 'compact', repositoryDirectory: context.repositoryDirectory }), (error) => {
+    // The Supervisor keeps the last 1500 characters of the whitespace-collapsed diagnostic and picks the S<n> tokens in it.
+    const tail = error.message.split(/\s+/u).join(' ').slice(-1500);
+    const aliases = new Set(tail.match(/\bS[1-9]\d*\b/gu));
+    assert.deepEqual([...aliases].sort((a, b) => Number(a.slice(1)) - Number(b.slice(1))), Array.from({ length: 136 }, (_, i) => `S${i + 1}`));
+    return true;
+  });
+});
+
 test('patch rejects unknown IDs and absent removals, and writes nothing on failure', async (t) => {
   const context = await setup(t);
   await prepare(context);

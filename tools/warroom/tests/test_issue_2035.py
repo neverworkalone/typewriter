@@ -173,14 +173,6 @@ class SerialChunks(unittest.TestCase):
         w.tick()                                                              # one correction fixes all three; chunk saved
         self.assertEqual(w.kinds(), ["ab_chunk_new", "ab_chunk_retry", "ab_chunk_new"])
 
-    def test_every_alias_survives_the_tail_limit_with_many_repeats(self):
-        rows = [[f"S{i}", f"w{i:04d}-s1"] for i in range(1, 51)]
-        ids = [r[1] for r in rows]
-        details = [f'sense_id {sid} candidate "{"가" * 40}" repeats source lemma "{"나" * 40}"' for sid in ids[:5]]
-        message = "\n".join(details + ["chunk 001 source lemma repeat in 50 sense(s): " + "; ".join(f"sense_id {sid}" for sid in ids)])
-        res = type("R", (), {"err": message, "out": ""})()
-        self.assertEqual(stage1ab.rejected_aliases(stage1ab._tail(res), rows), [r[0] for r in rows])
-
     def test_the_rejection_reason_survives_a_restart(self):
         w = self.w
         w.start("single", "deepseek", "a")
