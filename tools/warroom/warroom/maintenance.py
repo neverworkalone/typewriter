@@ -13,13 +13,14 @@ rows (`defects`), Issue publication, and applying a merged fix to a paused batch
 """
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
-from . import auth, defects
+from . import auth, defects, stage2
 from .config import maintainer_id, maintainer_problem
 from .gitops import GitError, IntegrationBlocked
-from .store import MAINTENANCE_METHOD
+from .store import MAINTENANCE_METHOD, STAGE2_METHOD
 
 _NODE_TEST = re.compile(r"(?:.+/)?[^/]+\.test\.mjs")   # `node --test <file>` regression files wherever they live (AGENTS.md)
 _PY_TEST = re.compile(r"tools/warroom/tests/test_[^/]+\.py")
@@ -231,9 +232,56 @@ class Maintenance:
                 continue
             if not self._archive_report(d, b):
                 continue   # the resolved report could not be set aside: never resume into a stale stop signal
-            if self.store.release_defect(d["id"], b["id"], head):
+            if self.store.release_defect(d["id"], b["id"], head, self._retargeted_run_start(b, head)):
                 self.store.log(b["id"], f"공통 수정 {d['merge_sha'][:10]} 반영·검증 완료 (HEAD {head[:10]}) → "
                                f"{b['paused_from'] or 'PRODUCING'}부터 자동 Retry 1회")
+
+    def _retargeted_run_start(self, b, new_head: str) -> tuple[str, str] | None:
+        """The Stage 2 chunk run-start baseline moved to the approved integrated HEAD, or None (leave it untouched).
+
+        Invariant: the baseline's owned HEAD may only advance to a HEAD that is a verified Maintainer integration of this
+        same branch/worktree. The old HEAD must be an ancestor (a plain forward merge) and the remote ref must still be
+        what the chunk started with; anything else keeps the old baseline so the boundary check still fails closed.
+        """
+        if b["method"] != STAGE2_METHOD:
+            return None
+        key = stage2.run_start_key(b["id"])
+        raw = self.store.get(key)
+        if raw is None:
+            return None
+        wt = Path(b["worktree"])
+        try:
+            base = json.loads(raw)
+            if not isinstance(base, dict) or base.get("branch") != b["branch"] or base.get("worktree") != str(wt) \
+                    or not isinstance(base.get("head"), str) or "remote_head" not in base:
+                return None
+            if self.sup.git.head(wt) != new_head or not self.sup.git.contains(wt, base["head"]) \
+                    or self.sup.git.remote_head(b["branch"]) != base["remote_head"]:
+                return None
+        except Exception:
+            return None
+        if base["head"] != new_head:
+            base["head"] = new_head
+            self.store.log(b["id"], f"승인된 Maintainer 통합으로 Stage 2 청크 Git 경계 기준을 HEAD {new_head[:10]}로 전환했습니다.")
+        return key, json.dumps(base, sort_keys=True)
+
+    def adopt_released_baseline(self, b) -> None:
+        """Recover a batch released before the baseline was retargeted: only when its HEAD is exactly the HEAD a RELEASED
+        defect of this batch integrated (and that integration is still verifiable); any other movement stays a problem."""
+        try:
+            head = self.sup.git.head(Path(b["worktree"]))
+            key = stage2.run_start_key(b["id"])
+            raw = self.store.get(key)
+            if raw is None or json.loads(raw).get("head") == head:
+                return
+            for d in self.store.defects(("RELEASED",)):
+                if d["batch_id"] == b["id"] and d["integrated_sha"] == head and self.sup.git.contains(Path(b["worktree"]), d["merge_sha"]):
+                    moved = self._retargeted_run_start(b, head)
+                    if moved:
+                        self.store.set(*moved)
+                    return
+        except Exception:
+            return   # unreadable evidence: the unchanged baseline keeps failing closed
 
     def _archive_report(self, d, b) -> bool:
         """Set the RESOLVED report aside so the resumed producer does not read it as an unresolved stop signal.
