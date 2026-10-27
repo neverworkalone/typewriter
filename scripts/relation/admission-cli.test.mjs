@@ -788,6 +788,52 @@ test('merge coalesces consistent independently adjudicated reciprocal ID decisio
   assert.equal(await readFile(path.join(root, 'data/relations/relation-001.jsonl'), 'utf8'), approvedBeforeConflict);
 });
 
+test('merge coalesces orthographic aliases for one target sense and keeps the canonical headword judgment', async (t) => {
+  const scratchDirectory = path.join(REPOSITORY_DIRECTORY, '.warroom-scratch');
+  await mkdir(scratchDirectory, { recursive: true });
+  const root = await mkdtemp(path.join(scratchDirectory, 'admission-orthographic-alias-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const records = Array.from({ length: 500 }, (_, index) => {
+    if (index === 0) return { id: 'w1', lemma: '생명 보험 회사', senses: [{ id: 'w1-s1', pos: 'noun', gloss: '생명 보험을 판매하는 회사.' }] };
+    if (index === 1) return { id: 'w2', lemma: '생명 보험', search_forms: ['생명보험'], senses: [{ id: 'w2-s1', pos: 'noun', gloss: '사람의 생명에 대하여 보험금을 지급하는 보험.' }] };
+    return { id: `w${index + 1}`, lemma: `표제${index + 1}`, senses: [{ id: `w${index + 1}-s1`, pos: 'noun', gloss: `뜻${index + 1}` }] };
+  });
+  for (const directory of ['data/canonical', 'data/relation-candidates/001', 'data/relations', 'data/relation-drops']) {
+    await mkdir(path.join(root, directory), { recursive: true });
+  }
+  await writeFile(path.join(root, 'data/canonical/stdict-0001.jsonl'), jsonl(records));
+  for (const producer of ['a_codex', 'a_claude', 'b_codex', 'b_claude', 'c_codex', 'd_codex']) {
+    await writeFile(path.join(root, `data/relation-candidates/001/001_01_${producer}.jsonl`), jsonl(records.map((record, index) => ({
+      record_id: record.id,
+      senses: [{ sense_id: record.senses[0].id, candidates: producer === 'a_codex' && index === 0 ? ['생명보험', '생명 보험'] : [] }],
+    }))));
+  }
+
+  const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
+  await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  const chunk = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint], { root }));
+  assert.deepEqual(chunk.items[0].candidates.map((candidate) => candidate.text), ['생명보험', '생명 보험']);
+  const decisionsFile = '.warroom-scratch/decisions.json';
+  await writeFile(path.join(root, decisionsFile), JSON.stringify({
+    chunk_id: chunk.chunk_id,
+    decisions: [
+      { source_sense_id: 'w1-s1', candidate: '생명보험', disposition: 'relation', target_resolution: 'exact', target_record_id: 'w2', target_sense_id: 'w2-s1', type: 'association', relevance: 7, reverse_type: 'scene', reverse_relevance: 8 },
+      { source_sense_id: 'w1-s1', candidate: '생명 보험', disposition: 'relation', target_resolution: 'exact', target_record_id: 'w2', target_sense_id: 'w2-s1', type: 'near', relevance: 2, reverse_type: 'mood', reverse_relevance: 4 },
+    ],
+  }));
+  await quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', decisionsFile], { root }));
+
+  const merged = await quiet(() => run(['merge', '--checkpoint', checkpoint], { root }));
+  assert.equal(merged.relations_added, 1, 'one canonical ID row represents both candidate spellings');
+  const relations = (await readFile(path.join(root, 'data/relations/relation-001.jsonl'), 'utf8')).trim().split('\n').map(JSON.parse);
+  assert.deepEqual(relations, [{
+    source_record_id: 'w1', source_sense_id: 'w1-s1', target_record_id: 'w2', target_sense_id: 'w2-s1',
+    type: 'near', relevance: 2, reverse_type: 'mood', reverse_relevance: 4,
+  }], 'the canonical target headword spelling supplies the retained sense-pair judgment');
+  const verified = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  assert.equal(verified.missing, 0, 'the single ID row accounts for both orthographic candidate forms');
+});
+
 test('compact chunks are a lossless view and compact decisions expand into the same validated decisions', async (t) => {
   const { root } = await chunkRepository(t);
   const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
