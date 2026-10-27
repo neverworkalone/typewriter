@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import os
-import shutil
 import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from warroom.realgit import resolve_git  # noqa: E402
 
 
 _EXEC_MARK = "WARROOM_GIT_SHIM_EXEC_PID"
@@ -34,24 +36,21 @@ def _command(argv: list[str]) -> tuple[str | None, list[str]]:
 def _real_git() -> tuple[str | None, str]:
     """Find Git behind this shim, plus the PATH to run it with: that PATH never contains the shim.
 
-    macOS's /usr/bin/git is an xcrun stub that looks `git` up on PATH whenever the developer-dir Git cannot be used
-    (a sandbox hiding it). With the shim on PATH, xcrun finds the shim, the shim runs /usr/bin/git again, and the
-    exec chain loops forever (and xcrun caches the shim as `git` for every later terminal)."""
+    macOS's /usr/bin/git is an xcrun stub that looks `git` up through xcrun's cache and, failing that, on PATH. With
+    the shim on PATH (or its path left in xcrun's cache by an earlier run), the stub runs the shim again and the exec
+    chain loops. The shared resolver therefore swaps the stub for the developer-dir Git it would run, executed
+    directly, and never returns the shim."""
     shim = Path(__file__).resolve()
     search_path = []
     for entry in os.environ.get("PATH", os.defpath).split(os.pathsep):
-        candidate = Path(entry or os.curdir) / "git"
         try:
-            if candidate.resolve() == shim:
+            if (Path(entry or os.curdir) / "git").resolve() == shim:
                 continue
         except OSError:
             continue
         search_path.append(entry)
     clean_path = os.pathsep.join(search_path)
-    real_git = shutil.which("git", path=clean_path)
-    if real_git and Path(real_git).resolve() != shim:
-        return real_git, clean_path
-    return None, clean_path
+    return resolve_git({**os.environ, "PATH": clean_path}), clean_path
 
 
 def main() -> int:

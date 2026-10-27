@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 
 from warroom.shell import Result, Runner
 
@@ -32,6 +33,7 @@ class ScriptedRunner(Runner):
         self.canon, self.done = canon, done
 
     def run(self, argv, cwd=None, env=None, input=None, timeout=120):
+        argv = ["git", *argv[1:]] if argv and os.path.basename(argv[0]) == "git" else argv   # a resolved Git path
         self.calls.append(list(argv))
         if argv[:3] == ["gh", "api", "user"]:
             return Result(0, self.account + "\n") if self.api_ok else Result(1, "", "not logged in")

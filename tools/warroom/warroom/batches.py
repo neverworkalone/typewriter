@@ -11,6 +11,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from .realgit import resolve_git
 from .shell import Runner
 from .store import SHARED_QUEUE_METHODS, STAGE2_METHOD
 
@@ -82,7 +83,7 @@ def is_shared_queue(method: str) -> bool:
 
 
 def _counts(runner: Runner, root, env, ref: str, pathspec: str) -> dict[str, int]:
-    res = runner.run(["git", "grep", "-c", "", ref, "--", pathspec], cwd=root, env=env,
+    res = runner.run([resolve_git(env) or "git", "grep", "-c", "", ref, "--", pathspec], cwd=root, env=env,
                      timeout=120)
     if res.code not in (0, 1):
         raise BatchError(f"git grep {pathspec}: {res.err.strip()}")
@@ -99,7 +100,7 @@ def _candidate_counts(runner: Runner, root, env, ref: str) -> dict[str, int]:
     Existence comes from `git ls-tree`, counts from `git grep -c ''`: grep prints nothing for a committed
     0-byte file, so a file missing from the grep output counts as 0 records (corrupt), never as absent.
     """
-    res = runner.run(["git", "ls-tree", "-r", "--name-only", ref, "--", "data/relation-candidates"],
+    res = runner.run([resolve_git(env) or "git", "ls-tree", "-r", "--name-only", ref, "--", "data/relation-candidates"],
                      cwd=root, env=env, timeout=120)
     if not res.ok:
         raise BatchError(f"git ls-tree data/relation-candidates: {res.err.strip()}")
