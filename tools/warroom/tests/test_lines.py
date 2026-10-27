@@ -26,7 +26,9 @@ def multi_world():
     index = Path(w.tmp.name) / "approved-literature.sqlite"
     index.write_bytes(b"synthetic approved-index path")
     w.cfg["literary_index_path"] = str(index)
+    w.cfg["corpus_index_path"] = str(index)
     w.runner.models += ["p/sonnet-free"]
+    w.git.on_create = w.runner.dchunk.write_canonical   # Method D reads the batch's Canonical from its worktree
     return w
 
 

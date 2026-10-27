@@ -182,7 +182,8 @@ class ReloadAndRuns(unittest.TestCase):
         w = self.world()
         index = Path(w.tmp.name) / "approved-literature.sqlite"
         index.write_bytes(b"synthetic approved-index path")
-        write(w, PRODUCERS, model_profiles=PROFILES, assignments=ASSIGN, literary_index_path=str(index))
+        write(w, PRODUCERS, model_profiles=PROFILES, assignments=ASSIGN, literary_index_path=str(index),
+              corpus_index_path=str(index))
         self.assertTrue(reload(w)[0])
         for method in "abcd":
             w.start("single", "codex", method)

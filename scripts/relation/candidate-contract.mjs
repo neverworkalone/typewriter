@@ -114,7 +114,7 @@ function hasExactKeys(value, keys) {
 
 /** Validate one Candidate JSONL batch against its complete Canonical shard. */
 /** Why a candidate repeats its own source lemma (exact, parenthetical or spacing/hyphen search form), if it does. */
-function sourceLemmaRepeatMessage(candidate, source, independentLemmaForms) {
+export function sourceLemmaRepeatMessage(candidate, source, independentLemmaForms) {
   if (normalizeCandidate(candidate) === normalizeCandidate(source.lemma ?? '')) {
     return `candidate repeats source lemma ${JSON.stringify(source.lemma)}`;
   }

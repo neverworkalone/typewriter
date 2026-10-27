@@ -4,6 +4,8 @@ worktree의 현재 상태와 기존 산출물을 확인하고, 이미 있는 산
 기존 산출물과 미커밋 변경을 보존하며 남은 작업을 완료한다. 기존 PR이 있으면 재사용하고, 없으면 현재 브랜치에서 최초 PR 하나를 생성한다.
 생산 규칙은 해당 Method의 정본 이슈(A/B #860, C #1155, D #1156)와 AGENTS.md를 따른다.
 
+Method D 복구 시 `.warroom-scratch/d-<배치>/chunk-NNN.jsonl`로 이미 저장된 청크는 다시 만들거나 덮어쓰지 않고, 미완료 청크를 빈 후보 `[]`로 위장해 저장하지 않는다(정확한 연속 prefix만 완료로 인정된다).
+
 Method C 복구 시 `ps`·`pgrep`에 의존하지 말고, 작업의 실행 결과와 기존 기록으로 상태를 확인한다.
 Method C의 승인 SQLite는 Supervisor가 `TYPEWRITER_APPROVED_LITERARY_DB`로 전달한다. 기존 DB를 이 변수로 사용하고, 값이 없으면 DB를 검색하거나 추측하지 말고 경로 설정 누락을 보고한다.
 
