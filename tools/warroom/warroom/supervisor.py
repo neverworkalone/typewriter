@@ -679,7 +679,8 @@ class Supervisor:
             env["WARROOM_ANSWER_ONLY"] = "1"
             if self._adapter(b["producer"]).name == "opencode":
                 env["OPENCODE_CONFIG_CONTENT"] = json.dumps({"permission": {"edit": "deny", "bash": "deny", "webfetch": "deny"}})
-        # One chunk policy for every chunk run (Stage 2 and Methods C/D): no auto-loaded AGENTS.md / web, Git blocked.
+        # Chunk runs suppress auto-loaded AGENTS.md and web lookup. Execution rules stay adapter-specific; Codex
+        # permits Git in its :workspace profile, while A/B answer-only chunks use :read-only.
         if (b["method"] == STAGE2_METHOD and isinstance(kind, str) and kind.startswith("s2_chunk_")) or \
                 (b["method"] == literary.METHOD and isinstance(kind, str) and kind.startswith("c_chunk_")) or \
                 (b["method"] == dchunk.METHOD and isinstance(kind, str) and kind.startswith("d_chunk_")) or ab_chunk:

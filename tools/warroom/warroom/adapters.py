@@ -18,9 +18,6 @@ import threading
 from dataclasses import dataclass
 from pathlib import Path
 
-from .realgit import developer_git
-
-
 @dataclass(frozen=True)
 class RunSpec:
     """The model and reasoning effort one run is pinned to; passed explicitly on every launch."""
@@ -151,16 +148,16 @@ def _ids_in(obj):
 
 class ProcessAdapter(AgentAdapter):
     """Process handling shared by every CLI: detached group, exit wrapper, liveness, stop, log scan."""
-    # True: the CLI's own per-command sandbox blocks Git in a chunk (its launch args carry the rule), so an outer
-    # OS sandbox must not be added: macOS refuses a nested sandbox_apply and every command would fail.
-    native_stage2_git_block = False
+    # True: this adapter owns its chunk sandbox setup, so ProcessAdapter must not add an outer OS sandbox; macOS
+    # refuses a nested sandbox_apply and every command would fail.
+    native_stage2_chunk_sandbox = False
 
     def _spawn(self, cmd: list[str], cwd, env, log_file: Path, exit_file: Path) -> Handle:
         log_file, exit_file = Path(log_file), Path(exit_file)
         log_file.parent.mkdir(parents=True, exist_ok=True)
         exit_file.unlink(missing_ok=True)
         env = dict(env)
-        if is_stage2_chunk(env) and not self.native_stage2_git_block:
+        if is_stage2_chunk(env) and not self.native_stage2_chunk_sandbox:
             cmd = stage2_chunk_sandbox_command(cmd, stage2_git_executables(env), env.get("PATH", os.defpath))
         env.pop("WARROOM_GIT_EXECUTABLES", None)
         # The wrapper records the exit status so a restarted Supervisor can still
@@ -549,16 +546,14 @@ class ClaudeCodeAdapter(ProcessAdapter):
 # The one exception is the run's own linked-worktree Git admin directory (`git_dir`): the sandbox otherwise denies
 # `index.lock` there. It is added for that exact directory only (`--add-dir` on start; `exec resume` has no such flag, so a
 # `-c permissions.<profile>.filesystem` entry for the same directory, merged into the profile). Never the repo's `.git`.
-# A Stage 2 chunk is the one narrowing: Codex's own sandbox blocks Git there, with no outer sandbox around Codex
-# (macOS refuses the nested sandbox_apply). Its commands run under the built-in `:workspace` profile instead of the
-# local one: writes to the worktree and temp only, no network, no Git admin grant (all Git metadata stays read-only),
-# and the discovered Git binaries unreadable (`"none"`). `--ignore-rules` stops local execpolicy allow rules
-# (`git push`, ...) from running a command outside the sandbox; `approval_policy="never"` stops escalation.
+# C/D and Stage 2 chunks use Codex's built-in `:workspace` profile instead of the local one; A/B answer-only chunks
+# use `:read-only`. The profiles permit Git execution but no Git admin directory grant; the linked worktree's Git
+# metadata stays read-only. No outer sandbox is added around Codex (macOS refuses nested sandbox_apply).
+# `--ignore-rules` stops local execpolicy allow rules (`git push`, ...) from running outside the sandbox, and
+# `approval_policy="never"` stops escalation.
 CODEX_REQUIRED_EXEC_FLAGS = ("--json", "--model", "--config", "--add-dir", "--ignore-rules")
 CODEX_REQUIRED_RESUME_FLAGS = ("resume", "--json", "--model", "--config", "--ignore-rules")
 STAGE2_CHUNK_PROFILE = "warroom_stage2_chunk"
-# Run under the chunk's policy: 0 = every listed Git binary failed; 3 = one ran; anything else = no usable sandbox.
-_GIT_BLOCK_PROBE = 'for g do "$g" --version >/dev/null 2>&1 && exit 3; done; exit 0'
 _PROFILE_NAME = re.compile(r"[A-Za-z0-9_-]+")
 _CODEX_DENIED = re.compile(r"operation not permitted|permission denied|requires approval|approval required|"
                            r"blocked by (the )?(sandbox|policy)|not allowed by (the )?(sandbox|policy)", re.I)
@@ -642,9 +637,6 @@ def _command_denial(item: dict) -> str | None:
     return f"{command} (exit={item.get('exit_code')}; 출력: {evidence})"
 
 
-xcrun_git = developer_git   # the Git behind /usr/bin/git, hidden from Stage 2 chunks
-
-
 class CodexCLIAdapter(ProcessAdapter):
     """Codex CLI (`codex exec --json`, `codex exec resume <thread id>`). Model and effort pinned on every launch."""
     name = "codex"
@@ -652,7 +644,7 @@ class CodexCLIAdapter(ProcessAdapter):
     requires_session_for_pr = True
     requires_final_result_for_pr = True   # a PR is taken over only after the run exited and its final result was checked
     needs_git_dir = True
-    native_stage2_git_block = True
+    native_stage2_chunk_sandbox = True
 
     def __init__(self, binary: str = "codex"):
         self.binary = binary
@@ -678,24 +670,11 @@ class CodexCLIAdapter(ProcessAdapter):
                               stderr=subprocess.DEVNULL, timeout=60).returncode
 
     def _chunk_args(self, env, cwd) -> list[str]:
-        """A Stage 2 chunk judges only the supplied chunk view: no web lookup and no auto-loaded AGENTS.md, and
-        Codex's own sandbox blocks Git (see the module note above). The policy is proven before launch: every
-        discovered Git binary must fail under it, or the chunk does not start."""
-        blocked = stage2_git_executables(env)
-        hidden = set(blocked)
-        if sys.platform == "darwin":   # /usr/bin/git is an xcrun shim: hiding the developer-dir Git it runs blocks it
-            found = xcrun_git(env)
-            if found:
-                hidden.update((found, str(Path(found).resolve())))
-        entries = ", ".join(f'{json.dumps(p)}="none"' for p in sorted(hidden))
+        """A chunk judges only the supplied view, with no web lookup or auto-loaded AGENTS.md. Normal chunks use
+        `:workspace`, where Git commands may run; A/B answer-only chunks use `:read-only` and verify that writes fail."""
         answer_only = is_answer_only(env)   # an A/B answer-only chunk may not write at all: its answer is the only output
-        profile = f'permissions.{STAGE2_CHUNK_PROFILE}={{extends="{":read-only" if answer_only else ":workspace"}", filesystem={{{entries}}}}}'
-        code = self._probe([self.binary, "sandbox", "-P", STAGE2_CHUNK_PROFILE, "-C", str(cwd), "-c", profile, "--",
-                            "/bin/sh", "-c", _GIT_BLOCK_PROBE, "sh", *blocked], env, cwd)
-        if code != 0:
-            raise RuntimeError("Stage 2 청크를 시작하지 않습니다: " +
-                               ("Codex 샌드박스에서 Git 실행 파일이 실행됩니다" if code == 3 else
-                                f"Codex 샌드박스로 Git 차단을 확인하지 못했습니다 (exit={code})"))
+        profile_base = ":read-only" if answer_only else ":workspace"
+        profile = f'permissions.{STAGE2_CHUNK_PROFILE}={{extends="{profile_base}"}}'
         if answer_only:   # proven before launch: a write under the profile must fail, or the chunk does not start
             target = str(Path(cwd) / ".warroom-scratch" / ".answer-only-write-probe")
             code = self._probe([self.binary, "sandbox", "-P", STAGE2_CHUNK_PROFILE, "-C", str(cwd), "-c", profile, "--",

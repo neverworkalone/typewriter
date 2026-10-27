@@ -2,8 +2,8 @@
 
 War Room pins model, effort, and the worktree permission selection on every launch, while the
 profile's filesystem/network rules and approval policy still come from the operator's CLI config.
-A command the resulting policy refuses stops the run in PAUSED. A Stage 2 chunk is the one exception: it runs
-under War Room's `:workspace`-based chunk profile with Git blocked by Codex's own sandbox.
+A command the resulting policy refuses stops the run in PAUSED. A Stage 2 chunk uses War Room's `:workspace`-based
+profile, which permits Git execution while keeping the chunk's workspace boundary.
 """
 import json
 import os
@@ -18,7 +18,7 @@ from pathlib import Path
 from unittest import mock
 
 from tests.fakes import FakeAdapter, World
-from warroom.adapters import CodexCLIAdapter, Handle, RunSpec, classify_failure, xcrun_git
+from warroom.adapters import CodexCLIAdapter, Handle, RunSpec, classify_failure
 from warroom.config import DEFAULTS
 from warroom.shell import Result
 
@@ -72,15 +72,9 @@ def context(model="gpt-6-luna", effort="xhigh", sandbox="workspace-write", appro
 
 
 class Recording(CodexCLIAdapter):
-    probe_code = 0   # the Stage 2 chunk Git-block probe: 0 = every Git binary failed under the chunk policy
-
     def _spawn(self, cmd, cwd, env, log_file, exit_file):
         self.cmd = cmd
         return Handle(0, Path(exit_file), Path(log_file))
-
-    def _probe(self, argv, env, cwd):
-        self.probe = argv
-        return self.probe_code
 
 
 class Argv(unittest.TestCase):
@@ -853,63 +847,15 @@ class RealProcessLaunch(unittest.TestCase):
             self.assertEqual(a.session_id(h.log_file), THREAD)
 
 
-class XcrunGitLookup(unittest.TestCase):
-    """The Git lookup resolves the developer-dir Git directly: it never runs xcrun."""
-
-    def _developer_dir(self, d, name, git=None):
-        git_path = Path(d) / name / "usr" / "bin" / "git"
-        git_path.parent.mkdir(parents=True)
-        if git == "file":
-            git_path.write_text("#!/bin/sh\n")
-            git_path.chmod(0o755)
-        elif git == "plain":
-            git_path.write_text("x")
-        elif git is not None:
-            git_path.symlink_to(git)
-        return str(Path(d) / name)
-
-    def test_lookup_table(self):
-        with tempfile.TemporaryDirectory() as d:
-            xcrun_marker = Path(d) / "xcrun-ran"
-            fake_bin = Path(d) / "fakebin"
-            fake_bin.mkdir()
-            (fake_bin / "xcrun").write_text(f"#!/bin/sh\ntouch {xcrun_marker}\n")
-            (fake_bin / "xcrun").chmod(0o755)
-            path = os.pathsep.join((str(fake_bin), "/usr/bin"))
-            cases = [("real git", "file", True), ("not executable", "plain", False), ("missing", None, False)]
-            for name, git, found in cases:
-                with self.subTest(name):
-                    dev = self._developer_dir(d, name.replace(" ", "_"), git)
-                    result = xcrun_git({"PATH": path, "DEVELOPER_DIR": dev})
-                    self.assertEqual(result, os.path.join(dev, "usr", "bin", "git") if found else None)
-            with self.subTest("relative developer dir"):
-                self.assertIsNone(xcrun_git({"PATH": path, "DEVELOPER_DIR": "relative/dev"}))
-            self.assertFalse(xcrun_marker.exists())   # xcrun was never run
-
-    @unittest.skipUnless(sys.platform == "darwin" and os.path.exists("/usr/bin/xcode-select"), "requires macOS")
-    def test_real_lookup_leaves_the_xcrun_cache_untouched(self):
-        cache_dir = subprocess.run(["getconf", "DARWIN_USER_CACHE_DIR"], capture_output=True, text=True).stdout.strip()
-        db = Path(cache_dir) / "xcrun_db"
-
-        def stamp():
-            return db.stat().st_mtime_ns if db.exists() else None
-
-        before = stamp()
-        found = xcrun_git({"PATH": os.environ.get("PATH", "/usr/bin:/bin")})
-        self.assertEqual(stamp(), before)
-        self.assertTrue(found is None or os.path.isabs(found))
-
-
 class Stage2ChunkSandbox(unittest.TestCase):
-    """A Stage 2 chunk blocks Git with Codex's own sandbox, never an outer one that macOS would refuse to nest."""
+    """A Stage 2 chunk uses Codex's built-in workspace profile without Git execution probes or admin grants."""
     GIT = "/usr/bin/git"
 
     def env(self, **extra):
         return {"WARROOM_STAGE2_CHUNK": "1", "WARROOM_GIT_EXECUTABLES": json.dumps([self.GIT]), **extra}
 
-    def launch(self, kind, env, run=LAUNCH, probe_code=0):
+    def launch(self, kind, env, run=LAUNCH):
         a = Recording("codex")
-        a.probe_code = probe_code
         with tempfile.TemporaryDirectory() as d:
             d = Path(d)
             if kind == "start":
@@ -930,53 +876,23 @@ class Stage2ChunkSandbox(unittest.TestCase):
                     self.assertEqual([x for x in argv if x.startswith("default_permissions=")],
                                      ["default_permissions=warroom_stage2_chunk"])
                     profiles = [x for x in argv if x.startswith("permissions.")]
-                    self.assertEqual(len(profiles), 1)
-                    self.assertTrue(profiles[0].startswith('permissions.warroom_stage2_chunk={extends=":workspace", '))
-                    self.assertIn(f'"{self.GIT}"="none"', profiles[0])
+                    self.assertEqual(profiles, ['permissions.warroom_stage2_chunk={extends=":workspace"}'])
                     self.assertNotIn("--add-dir", argv)
                     self.assertNotIn(GIT_DIR, joined)                  # no Git admin grant: metadata stays read-only
                     self.assertNotIn('"write"', joined)
+                    self.assertNotIn("filesystem", joined)
                     for bad in ("--dangerously-bypass-approvals-and-sandbox", "danger-full-access", "sandbox_mode"):
                         self.assertNotIn(bad, joined)
-                    # the probe checks the very policy the run gets
-                    self.assertEqual(a.probe[:3], ["codex", "sandbox", "-P"])
-                    self.assertEqual(a.probe[a.probe.index("-c") + 1], profiles[0])
-                    self.assertEqual(a.probe[-1], self.GIT)
 
     def test_non_chunk_launch_is_unchanged(self):
         for kind in ("start", "resume"):
             with self.subTest(kind=kind):
                 a = self.launch(kind, {"WARROOM_GIT_EXECUTABLES": json.dumps([self.GIT])})
                 joined = " ".join(a.cmd)
-                self.assertFalse(hasattr(a, "probe"))
                 self.assertEqual(a.cmd.count("default_permissions=worktree"), 1)
                 self.assertIn(GIT_DIR, joined)
                 for bad in NEVER_PASSED:
                     self.assertNotIn(bad, joined)
-
-    def test_unproven_or_unusable_git_block_refuses_the_chunk(self):
-        cases = [
-            ("a Git binary runs under the policy", self.env(), 3),
-            ("codex sandbox failed", self.env(), 1),
-            ("codex sandbox missing", self.env(), 127),
-            ("no Git paths", {"WARROOM_STAGE2_CHUNK": "1"}, 0),
-            ("empty Git paths", self.env(WARROOM_GIT_EXECUTABLES="[]"), 0),
-            ("malformed Git paths", self.env(WARROOM_GIT_EXECUTABLES="{"), 0),
-            ("non-list Git paths", self.env(WARROOM_GIT_EXECUTABLES='"/usr/bin/git"'), 0),
-            ("relative Git path", self.env(WARROOM_GIT_EXECUTABLES='["bin/git"]'), 0),
-        ]
-        for kind in ("start", "resume"):
-            for name, env, code in cases:
-                with self.subTest(kind=kind, case=name):
-                    a = Recording("codex")
-                    a.probe_code = code
-                    with tempfile.TemporaryDirectory() as d, self.assertRaises(RuntimeError):
-                        d = Path(d)
-                        if kind == "start":
-                            a.start("p", d, env, LAUNCH, "t", d / "l.log", d / "l.exit", git_dir=GIT_DIR)
-                        else:
-                            a.resume(THREAD, "p", d, env, LAUNCH, d / "l.log", d / "l.exit", git_dir=GIT_DIR)
-                    self.assertFalse(hasattr(a, "cmd"))
 
     def test_codex_chunk_is_not_wrapped_in_an_outer_sandbox(self):
         with tempfile.TemporaryDirectory() as d, mock.patch("warroom.adapters.subprocess.Popen") as popen:
@@ -987,38 +903,42 @@ class Stage2ChunkSandbox(unittest.TestCase):
         self.assertEqual(spawned[spawned.index("sh", 3) + 1:], ["codex", "exec", "p"])
         self.assertFalse(any("sandbox-exec" in x or "bwrap" in x for x in spawned))
         self.assertNotIn("WARROOM_GIT_EXECUTABLES", worker_env)
-        self.assertEqual(worker_env["WARROOM_STAGE2_CHUNK"], "1")   # the PATH shim still refuses a bare `git`
+        self.assertEqual(worker_env["WARROOM_STAGE2_CHUNK"], "1")
 
     @unittest.skipUnless(sys.platform == "darwin" and shutil.which("codex") and shutil.which("git"),
                          "requires the real Codex CLI sandbox on macOS")
-    def test_real_codex_sandbox_blocks_git_and_keeps_the_worktree_writable(self):
+    def test_real_codex_workspace_profile_allows_git_and_keeps_metadata_read_only(self):
         git = shutil.which("git")
         env = dict(os.environ, **self.env(WARROOM_GIT_EXECUTABLES=json.dumps([git])))
-        with tempfile.TemporaryDirectory() as d:
-            args = CodexCLIAdapter()._chunk_args(env, d)   # the real probe must pass
-            profile = next(x for x in args if x.startswith("permissions."))
+        repo_root = Path(__file__).resolve().parents[3]
+        git_admin = Path(subprocess.run([git, "rev-parse", "--absolute-git-dir"], cwd=repo_root,
+                                        capture_output=True, text=True, check=True).stdout.strip())
+        admin_probe = git_admin / f"warroom-stage2-probe-{os.getpid()}.lock"
+        self.assertFalse(admin_probe.exists())
+        try:
+            with tempfile.TemporaryDirectory() as d:
+                worktree = Path(d)
+                args = CodexCLIAdapter()._chunk_args(env, worktree)
+                profile = next(x for x in args if x.startswith("permissions."))
 
-            def sandboxed(*cmd):
-                return subprocess.run(["codex", "sandbox", "-P", "warroom_stage2_chunk", "-C", d, "-c", profile,
-                                       "--", *cmd], cwd=d, env=env, capture_output=True).returncode
+                def sandboxed(*cmd):
+                    return subprocess.run(["codex", "sandbox", "-P", "warroom_stage2_chunk", "-C", str(worktree),
+                                           "-c", profile, "--", *cmd], cwd=worktree, env=env,
+                                          capture_output=True, text=True)
 
-            cases = [("git version", [git, "--version"], False),
-                     ("git init", [git, "init", "-q", d], False),
-                     ("worktree write", ["/usr/bin/touch", str(Path(d) / "scratch")], True),
-                     ("echo", ["/bin/echo", "ok"], True)]
-            # The developer-dir Git that xcrun runs for /usr/bin/git is hidden on its own: it is in the profile and
-            # cannot be read or copied under it (a direct exec of it is not stopped by a read rule; the module note
-            # covers why it still cannot change Git metadata or reach the network).
-            found = xcrun_git(env)
-            if found:
-                self.assertIn(f'{json.dumps(found)}="none"', profile)
-                cases += [("read xcrun git", ["/bin/cat", found], False),
-                          ("copy xcrun git", ["/bin/cp", found, str(Path(d) / "git-copy")], False)]
-            for case, cmd, ok in cases:
-                with self.subTest(case):
-                    self.assertEqual(sandboxed(*cmd) == 0, ok)
-            self.assertFalse((Path(d) / ".git").exists())
-            self.assertFalse((Path(d) / "git-copy").exists())
+                cases = [("git version", [git, "--version"], True),
+                         ("git init in the chunk workspace", [git, "init", "-q", str(worktree)], True),
+                         ("worktree write", ["/usr/bin/touch", str(worktree / "scratch")], True),
+                         ("external Git admin write", ["/usr/bin/touch", str(admin_probe)], False),
+                         ("echo", ["/bin/echo", "ok"], True)]
+                for case, cmd, ok in cases:
+                    with self.subTest(case):
+                        result = sandboxed(*cmd)
+                        self.assertEqual(result.returncode == 0, ok, result.stderr)
+                self.assertTrue((worktree / ".git").exists())
+                self.assertFalse(admin_probe.exists())
+        finally:
+            admin_probe.unlink(missing_ok=True)
 
 
 if __name__ == "__main__":
