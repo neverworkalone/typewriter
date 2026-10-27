@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -10,6 +10,7 @@ import {
   mergeCandidateBatch,
   patchCandidateSenses,
   prepareCandidateBatch,
+  readCandidateChunkCompact,
   readCandidateChunkPage,
   readCandidateStatus,
   saveCandidateChunk,
@@ -286,4 +287,178 @@ test('merge runs the Candidate v1 validator and leaves no partial output; inspec
   await assert.rejects(readFile(outPath, 'utf8'), { code: 'ENOENT' });
   const inspected = await inspectCanonicalRecord({ shard: '001', recordId: 'w001', repositoryDirectory: context.repositoryDirectory });
   assert.deepEqual(inspected.record.senses, context.canonicalRows[0].senses);
+});
+
+// ---- compact I/O (#2035 PR A) ----
+
+const compactLines = (text) => text.split('\n').filter((line) => line && !line.startsWith('#')).map((line) => line.split('\t'));
+
+/** Flatten the default JSON read view into the same per-sense tuples the compact view carries. */
+async function jsonSenseTuples(context, chunk) {
+  const tuples = [];
+  let offset = 0;
+  for (;;) {
+    const page = await readCandidateChunkPage({ scratchDirectory: context.scratchDirectory, chunk, offset, repositoryDirectory: context.repositoryDirectory });
+    for (const item of page.items) {
+      for (const sense of item.senses) {
+        const forms = item.search_forms ? item.search_forms.join(',') : '';
+        tuples.push([sense.id, `${item.lemma}${item.homograph_no === undefined ? '' : ` [${item.homograph_no}]`}`, sense.pos, forms, sense.gloss]);
+      }
+    }
+    if (!page.has_more) return tuples;
+    offset = page.next_offset;
+  }
+}
+
+test('compact read-chunk carries exactly the JSON view data, for real shard 001/01 at 25 and 50 records', async (t) => {
+  const repositoryDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-candidate-workbench-real-'));
+  t.after(() => rm(repositoryDirectory, { recursive: true, force: true }));
+  await mkdir(path.join(repositoryDirectory, 'data/canonical'), { recursive: true });
+  await copyFile(new URL('../../data/canonical/stdict-0001.jsonl', import.meta.url), path.join(repositoryDirectory, 'data/canonical/stdict-0001.jsonl'));
+  for (const chunkSize of [25, 50]) {
+    const context = { repositoryDirectory, scratchDirectory: path.join(repositoryDirectory, `.warroom-scratch/real-${chunkSize}`), method: 'a' };
+    const prepared = await prepare(context, chunkSize);
+    assert.equal(prepared.chunks.length, 500 / chunkSize);
+    for (const chunk of prepared.chunks) {
+      const outPath = path.join(context.scratchDirectory, `view-${chunk.number}.txt`);
+      const result = await readCandidateChunkCompact({ scratchDirectory: context.scratchDirectory, chunk: chunk.number, outPath, repositoryDirectory });
+      const text = await readFile(outPath, 'utf8');
+      assert.equal(result.bytes, Buffer.byteLength(text, 'utf8'));
+      assert.equal(result.senseCount, chunk.senseCount);
+      const rows = compactLines(text);
+      assert.equal(rows.length, chunk.senseCount);
+      assert.deepEqual(rows.map((row) => row[0]), Array.from({ length: chunk.senseCount }, (_, index) => `S${index + 1}`));
+      assert.deepEqual(rows.map((row) => row.slice(1)), await jsonSenseTuples(context, chunk.number));
+    }
+  }
+});
+
+test('compact read-chunk keeps long glosses whole, rejects tab/newline fields, writes only inside scratch, and honours stdout caps', async (t) => {
+  const context = await setup(t);
+  const longGloss = '아주 긴 뜻풀이. '.repeat(5000);
+  context.canonicalRows[0].senses[0].gloss = longGloss.trim();
+  context.canonicalRows[0].homograph_no = 3;
+  context.canonicalRows[0].search_forms = ['표제어 1', '표제어일'];
+  await writeFile(path.join(context.repositoryDirectory, 'data/canonical/stdict-0001.jsonl'), `${context.canonicalRows.map((row) => JSON.stringify(row)).join('\n')}\n`);
+  await prepare(context, 50);
+  const args = { scratchDirectory: context.scratchDirectory, chunk: 1, repositoryDirectory: context.repositoryDirectory };
+  await assert.rejects(readCandidateChunkCompact(args), /exceeds the stdout caps.*--out/u);
+  await assert.rejects(readCandidateChunkCompact({ ...args, outPath: path.join(context.repositoryDirectory, 'elsewhere.txt') }), /out must be inside/u);
+  const outPath = path.join(context.scratchDirectory, 'view.txt');
+  const result = await readCandidateChunkCompact({ ...args, outPath });
+  const first = compactLines(await readFile(outPath, 'utf8'))[0];
+  assert.deepEqual(first, ['S1', 'w001-s1', '표제어 1 [3]', 'noun', '표제어 1,표제어일', longGloss.trim()]);
+  assert.ok(result.chars > 32 * 1024);
+
+  const small = await setup(t);
+  small.canonicalRows[2].senses[0].gloss = '탭\t포함';
+  await writeFile(path.join(small.repositoryDirectory, 'data/canonical/stdict-0001.jsonl'), `${small.canonicalRows.map((row) => JSON.stringify(row)).join('\n')}\n`);
+  await prepare(small, 25);
+  await assert.rejects(readCandidateChunkCompact({ scratchDirectory: small.scratchDirectory, chunk: 1, repositoryDirectory: small.repositoryDirectory }), /cannot carry a tab or line break/u);
+  const page = await readCandidateChunkPage({ scratchDirectory: small.scratchDirectory, chunk: 1, repositoryDirectory: small.repositoryDirectory });
+  assert.equal(page.items[2].senses[0].gloss, '탭\t포함');
+});
+
+test('compact read-chunk shows saved candidates and the 83-record tail splits 50+33', async (t) => {
+  const repositoryDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-candidate-workbench-compact-tail-'));
+  t.after(() => rm(repositoryDirectory, { recursive: true, force: true }));
+  const scratchDirectory = path.join(repositoryDirectory, '.warroom-scratch/428_02_a_codex');
+  await mkdir(path.join(repositoryDirectory, 'data/canonical'), { recursive: true });
+  const rows = Array.from({ length: 583 }, (_, index) => ({
+    id: `tail-${index + 1}`, lemma: `꼬리 ${index + 1}`,
+    senses: [{ id: `tail-${index + 1}-s1`, pos: 'noun', gloss: `꼬리 뜻 ${index + 1}.` }], source: 'stdict',
+  }));
+  await writeFile(path.join(repositoryDirectory, 'data/canonical/stdict-0428.jsonl'), `${rows.map((row) => JSON.stringify(row)).join('\n')}\n`);
+  const prepared = await prepareCandidateBatch({ shard: '428', batch: '02', method: 'a', model: 'codex', scratchDirectory, chunkSize: 50, repositoryDirectory });
+  assert.deepEqual(prepared.chunks.map((chunk) => chunk.recordCount), [50, 33]);
+  const answer = path.join(scratchDirectory, 'answer.tsv');
+  await writeFile(answer, `chunk 002\n${Array.from({ length: 33 }, (_, index) => (index === 0 ? 'S1\t별빛\t달무리' : `S${index + 1}`)).join('\n')}\n`);
+  await saveCandidateChunk({ scratchDirectory, chunk: 2, inputPath: answer, format: 'compact', repositoryDirectory });
+  const view = await readCandidateChunkCompact({ scratchDirectory, chunk: 2, repositoryDirectory });
+  const lines = compactLines(view.text);
+  assert.equal(view.senseCount, 33);
+  assert.equal(lines.filter((line) => line[0].startsWith('S')).length, 33);
+  assert.deepEqual(lines.find((line) => line[0] === 'C'), ['C', 'S1', '별빛', '달무리']);
+});
+
+async function compactChunkSetup(t, senseCountCheck = true) {
+  const context = await setup(t);
+  await prepare(context, 25);
+  const senseCount = context.canonicalRows.slice(0, 25).reduce((count, row) => count + row.senses.length, 0);
+  if (senseCountCheck) assert.equal(senseCount, 26);
+  const answer = async (body, name = 'answer.tsv') => {
+    const inputPath = path.join(context.scratchDirectory, name);
+    await mkdir(context.scratchDirectory, { recursive: true });
+    await writeFile(inputPath, body);
+    return inputPath;
+  };
+  const save = async (body, chunk = 1) => saveCandidateChunk({ scratchDirectory: context.scratchDirectory, chunk, inputPath: await answer(body), format: 'compact', repositoryDirectory: context.repositoryDirectory });
+  const body = (overrides = {}) => `chunk 001\n${Array.from({ length: 26 }, (_, index) => overrides[index + 1] ?? `S${index + 1}`).join('\n')}\n`;
+  return { context, save, body, answer };
+}
+
+test('compact save-chunk expands aliases to the JSON save and removes only exact normalized duplicates', async (t) => {
+  const { context, save, body } = await compactChunkSetup(t);
+  const result = await save(body({ 2: 'S2\t밤 하늘\t밤  하늘\t별빛', 3: 'S3\t달무리' }));
+  assert.equal(result.duplicatesRemoved, 1);
+  assert.deepEqual([result.recordCount, result.senseCount, result.candidateCount], [25, 26, 3]);
+  const saved = (await readFile(path.join(context.scratchDirectory, 'candidates/chunk-001.jsonl'), 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
+  assert.deepEqual(saved[0].senses, [{ sense_id: 'w001-s1', candidates: [] }, { sense_id: 'w001-s2', candidates: ['밤 하늘', '별빛'] }]);
+  assert.deepEqual(saved[1], { record_id: 'w002', senses: [{ sense_id: 'w002-s1', candidates: ['달무리'] }] });
+
+  const jsonRows = rowsFor(context.canonicalRows, 0, 25, { 'w001-s2': ['밤 하늘', '별빛'], 'w002-s1': ['달무리'] });
+  const jsonContext = await setup(t);
+  await prepare(jsonContext, 25);
+  const inputPath = await writeInput(jsonContext, jsonRows, 'in.jsonl');
+  await saveCandidateChunk({ scratchDirectory: jsonContext.scratchDirectory, chunk: 1, inputPath, repositoryDirectory: jsonContext.repositoryDirectory });
+  assert.equal(await readFile(path.join(jsonContext.scratchDirectory, 'candidates/chunk-001.jsonl'), 'utf8'), await readFile(path.join(context.scratchDirectory, 'candidates/chunk-001.jsonl'), 'utf8'));
+});
+
+test('the default JSON save still rejects a normalized duplicate that compact removes', async (t) => {
+  const context = await setup(t);
+  await prepare(context, 25);
+  const inputPath = await writeInput(context, rowsFor(context.canonicalRows, 0, 25, { 'w001-s1': ['밤 하늘', '밤  하늘'] }), 'dup.jsonl');
+  await assert.rejects(saveCandidateChunk({ scratchDirectory: context.scratchDirectory, chunk: 1, inputPath, repositoryDirectory: context.repositoryDirectory }), /duplicates candidate/u);
+});
+
+test('compact save-chunk fails closed on every grammar and alias defect and writes nothing', async (t) => {
+  const { context, save, body } = await compactChunkSetup(t);
+  const savedPath = path.join(context.scratchDirectory, 'candidates/chunk-001.jsonl');
+  const cases = [
+    ['wrong chunk number', body().replace('chunk 001', 'chunk 002'), /must start with "chunk 001"/u],
+    ['unpadded chunk number', body().replace('chunk 001', 'chunk 1'), /must start with "chunk 001"/u],
+    ['missing header', body().replace('chunk 001\n', ''), /must start with "chunk 001"/u],
+    ['missing alias', body().replace('\nS26\n', '\n'), /missing alias\(es\): S26/u],
+    ['duplicate alias', `${body()}S1\t별빛\n`, /repeats alias S1/u],
+    ['unknown alias past the end', `${body()}S27\n`, /alias S27 is outside/u],
+    ['alias of another chunk', body({ 5: 'S51\t별빛' }), /alias S51 is outside/u],
+    ['zero alias', body({ 5: 'S0\t별빛' }), /S<n> alias/u],
+    ['leading-zero alias', body({ 5: 'S05\t별빛' }), /S<n> alias/u],
+    ['lowercase alias', body({ 5: 's5\t별빛' }), /S<n> alias/u],
+    ['space instead of tab', body({ 5: 'S5 별빛' }), /S<n> alias/u],
+    ['blank line', body({ 5: 'S5\n' }), /S<n> alias/u],
+    ['empty candidate field', body({ 5: 'S5\t\t별빛' }), /empty candidate field/u],
+    ['untrimmed candidate', body({ 5: 'S5\t 별빛' }), /non-empty trimmed string/u],
+    ['carriage return', body().replace(/\n/gu, '\r\n'), /line breaks only/u],
+    ['source lemma repeat', body({ 5: 'S5\t표제어 4' }), /repeats source lemma/u],
+  ];
+  for (const [name, text, pattern] of cases) {
+    await assert.rejects(save(text), pattern, name);
+    await assert.rejects(readFile(savedPath, 'utf8'), { code: 'ENOENT' }, `${name} must not write a chunk`);
+  }
+  await assert.rejects(save(body(), 99), /outside this batch/u);
+});
+
+test('compact save-chunk allows an independent compound of the source lemma and a separate Canonical lemma', async (t) => {
+  const context = await setup(t);
+  context.canonicalRows[3].lemma = '건축';
+  context.canonicalRows[4].lemma = '건축가';
+  await writeFile(path.join(context.repositoryDirectory, 'data/canonical/stdict-0001.jsonl'), `${context.canonicalRows.map((row) => JSON.stringify(row)).join('\n')}\n`);
+  await prepare(context, 25);
+  const inputPath = path.join(context.scratchDirectory, 'answer.tsv');
+  const lines = ['chunk 001', ...Array.from({ length: 26 }, (_, index) => (index === 3 ? 'S4\t건축가\t건축 도면' : `S${index + 1}`))];
+  await mkdir(context.scratchDirectory, { recursive: true });
+  await writeFile(inputPath, `${lines.join('\n')}\n`);
+  const result = await saveCandidateChunk({ scratchDirectory: context.scratchDirectory, chunk: 1, inputPath, format: 'compact', repositoryDirectory: context.repositoryDirectory });
+  assert.equal(result.candidateCount, 2);
 });

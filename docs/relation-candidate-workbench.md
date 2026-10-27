@@ -39,11 +39,25 @@ node scripts/relation/candidate-workbench.mjs merge \
   --out data/relation-candidates/001/001_01_a_codex.jsonl
 ```
 
+Compact I/O (Supervisor answer-only chunks; the JSON commands above are unchanged):
+
+```sh
+node scripts/relation/candidate-workbench.mjs read-chunk \
+  --scratch-dir .warroom-scratch/001_01_a_codex --chunk 1 \
+  --format compact --out .warroom-scratch/001_01_a_codex/view-001.txt
+
+node scripts/relation/candidate-workbench.mjs save-chunk \
+  --scratch-dir .warroom-scratch/001_01_a_codex --chunk 1 --format compact \
+  --input .warroom-scratch/001_01_a_codex/answer-001.tsv
+```
+
 `status` lists unsaved chunks; `inspect --shard SSS --record-id ID` prints one full Canonical record. Use `--method b` for B.
 
 ## Input formats
 
 - `save-chunk` (JSONL, one row per record): `{"record_id":"w001","senses":[{"sense_id":"w001-s1","candidates":["별빛"]}]}`. IDs must match the chunk exactly: no missing, extra, duplicate, or cross-mapped record or sense. Candidates must be non-empty trimmed strings without normalized duplicates, and must not exactly repeat the chunk's own source lemma (also with a lone parenthetical annotation, or as a spacing/hyphen variant listed in its `search_forms`) — the same rule the final `merge` validator applies, reported here at the failing record/sense. Finish editing (dedupe, self-repeats, sentence-like phrases, gloss restatements) **before** writing the array; save the complete configured chunk (A: usually 25 records; B: 50 records for a new full batch, potentially shorter for the final chunk) once, and use `patch` only for clear local fixes to candidates that are actually in the saved chunk.
+- Compact view (`read-chunk --format compact`): the whole chunk as tab-separated lines `S<n>`, `sense_id`, `lemma [homograph]`, `pos`, `search_forms` (empty when only the lemma), full untruncated `gloss`; `S<n>` numbers every Canonical sense of the chunk in Canonical order, and a saved chunk adds `C<TAB>S<n><TAB>candidates…`. No paging: with `--out` (inside `.warroom-scratch`) the file is written atomically and read back; without it the text must fit the stdout caps. A field containing a tab or line break fails closed; read that chunk as JSON.
+- Compact answer (`save-chunk --format compact`): line 1 `chunk NNN`, then exactly one `S<n>` line per sense of that chunk, candidates tab-separated after the alias (`S<n>` alone = no candidates). Wrong chunk number, unknown/duplicate/missing alias, empty field, CR or blank line fail closed; aliases expand to exact `record_id`/`sense_id` and go through the same validation and atomic write as the JSON save. Only here, exact normalized duplicates within one sense keep the first and are counted in `duplicatesRemoved`; the JSON save still rejects them.
 - `patch` (JSONL, one row per sense): `{"record_id":"w001","sense_id":"w001-s1","remove":["은하수"],"add":["달무리"]}`. `remove` must match an existing candidate exactly; unknown IDs fail the whole patch and nothing is written. Other senses and candidates are untouched.
 
 ## Files and resuming
