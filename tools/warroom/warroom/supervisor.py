@@ -1615,12 +1615,15 @@ class Supervisor:
             return self._fail(b, "ERROR", f"C 최종화 중 GitHub/Git 오류: {e}. worktree를 보존합니다.")
 
     def _shared_occupied(self, b) -> str | None:
-        """#1155/#1156 common C/D claim at PR-creation time: any model's completed Candidate on master, or any open formal PR."""
+        """Claim at PR-creation time, same key as `_duplicate_claim` and `batches.next_batch`: A/B conflict only with
+        the same producer's completed Candidate on master (#860); C/D (#1155/#1156) with any model's. Open formal PRs likewise."""
         base = f"origin/{self.cfg['base_branch']}"
         self.git.fetch_base(self.cfg["base_branch"])
+        shared = batches.is_shared_queue(b["method"])
         for path in batches._candidate_counts(self.runner, self.paths.repo_root, self.env, base):
             m = batches._CAND.fullmatch(path)
-            if m and (m.group(1), m.group(2), m.group(3)) == (b["shard"], b["batch"], b["method"]):
+            if m and (m.group(1), m.group(2), m.group(3)) == (b["shard"], b["batch"], b["method"]) \
+                    and (shared or m.group(4) == b["producer"]):
                 return f"master에 {path}"
         rival = self._duplicate_claim(b, 0)
         return f"열린 PR #{rival}" if rival else None

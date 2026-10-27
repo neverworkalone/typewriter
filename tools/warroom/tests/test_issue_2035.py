@@ -413,3 +413,40 @@ class AdapterPolicy(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class MasterOccupancy(unittest.TestCase):
+    """Issue #2063: PR-time master occupancy uses the same key as the open-PR check and the batch selector."""
+
+    def world(self, method, other_model=None):
+        w = ABWorld(method=method)
+        self.addCleanup(w.tmp.cleanup)
+        if other_model:   # seeded before the batch is selected: the selector itself ignores another producer's file
+            w.runner.done[f"data/relation-candidates/001/001_01_{method}_{other_model}.jsonl"] = 500
+        w.start("single", "deepseek", method)
+        return w
+
+    def test_ab_other_producers_master_candidate_does_not_block_the_pr(self):
+        for method in ("a", "b"):
+            with self.subTest(method=method):
+                w = self.world(method, "codex")
+                w.run_chunks(3)
+                b = w.row(method=method)
+                self.assertEqual((b["shard"], b["batch"]), ("001", "01"))
+                self.assertEqual((b["state"], b["pr_number"]), ("WAITING_REVIEW", 100))
+                self.assertEqual(len(w.gh.created_prs), 1)
+
+    def test_occupancy_key_is_producer_for_ab_and_any_model_for_cd(self):
+        w = self.world("a")
+        w.tick()
+        b = dict(w.row_(), shard="001", batch="01")
+        for method, path, blocked in [
+            ("a", "001_01_a_deepseek", True), ("a", "001_01_a_codex", False), ("b", "001_01_b_deepseek", True),
+            ("b", "001_01_b_codex", False), ("c", "001_01_c_codex", True), ("c", "001_01_c_deepseek", True),
+            ("d", "001_01_d_claude", True), ("a", "001_02_a_deepseek", False), ("c", "001_02_c_codex", False),
+        ]:
+            with self.subTest(method=method, path=path):
+                w.runner.done.clear()
+                w.runner.done[f"data/relation-candidates/001/{path}.jsonl"] = 500
+                got = w.sup._shared_occupied(dict(b, method=method, producer="deepseek"))
+                self.assertEqual(got is not None, blocked, got)
