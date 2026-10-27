@@ -141,7 +141,7 @@ class Maintenance:
 
     # ---- 2. start the single Maintainer ------------------------------------------------------------------------
     def _start(self) -> None:
-        if self.store.maintenance_batch_open():
+        if self.store.maintenance_batch_open() or self.store.maintenance_drained():   # Drain: no automatic next claim
             return
         queued = [m for m in self.store.maintenance_rows() if m["state"] == "QUEUED"]
         if not queued or maintainer_id(self.cfg) is None:   # unconfigured: reports, Issues and PAUSED stay; nothing runs

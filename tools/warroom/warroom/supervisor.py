@@ -118,6 +118,12 @@ class Supervisor:
         b = self.store.active_batch(model, method)
         if ln["force_stop"]:
             self.store.set_line(model, method, force_stop=0)
+            pin = self.store.get(f"stop_pin_{model}_{method}")
+            if pin is not None:   # a Stop bound to the execution on screen never lands on another one
+                self.store.delete(f"stop_pin_{model}_{method}")
+                if b is None or str(b["id"]) != pin:
+                    return self.store.log(b["id"] if b else None, f"Stop 무시: 요청한 실행 #{pin}이 더 이상 현재 실행이 아닙니다",
+                                          "warn", line=f"{model}/{method}")
             return self._force_stop(b) if b is not None else self.store.set_line(model, method, run=0)
         if b is None:
             if ln["drain_once"]:
@@ -408,8 +414,13 @@ class Supervisor:
 
     def _clear_teardown(self, b, req):
         branch, wt = b["branch"], Path(b["worktree"])
-        if branch != f"{b['method']}-{b['producer']}-{b['shard']}-{b['batch']}":
+        maint = b["method"] == MAINTENANCE_METHOD
+        if branch != (f"maint-{b['batch']}" if maint else f"{b['method']}-{b['producer']}-{b['shard']}-{b['batch']}"):
             raise RecoveryBlocked(f"브랜치 {branch!r}가 War Room 소유 이름이 아닙니다")
+        if maint:   # the Issue's task row must still point at exactly this execution (never another Issue's)
+            row = self.store.maintenance(int(b["batch"])) if str(b["batch"]).isdigit() else None
+            if row is None or row["batch_id"] != b["id"]:
+                raise RecoveryBlocked(f"Issue #{b['batch']}의 Maintainer 작업 기록이 이 실행을 가리키지 않습니다")
         exists = self.git.verify_owned(wt, branch)
         nums = {p["number"] for p in self.gh.prs_for_branch(branch)} | ({b["pr_number"]} if b["pr_number"] else set())
         for pr in self.gh.open_prs():
@@ -423,13 +434,14 @@ class Supervisor:
             if info["merged"]:
                 return info
             infos.append(info)
-        expected = batches.expected_claim(b)
         open_prs = [i for i in infos if i["state"] == "open"]
-        for i in open_prs:
-            cands = batches.pr_claims(b, {"number": i["number"], "files": self.gh.pull_files(i["number"])})
-            if cands != [expected]:
-                raise RecoveryBlocked(f"PR #{i['number']}의 Candidate 파일 소유권이 배치와 일치하지 않습니다 "
-                                      f"(기대 {expected}, 확인 {cands})")
+        if not maint:   # a Maintainer PR is Issue-scoped: its ownership proof is the head branch checked above
+            expected = batches.expected_claim(b)
+            for i in open_prs:
+                cands = batches.pr_claims(b, {"number": i["number"], "files": self.gh.pull_files(i["number"])})
+                if cands != [expected]:
+                    raise RecoveryBlocked(f"PR #{i['number']}의 Candidate 파일 소유권이 배치와 일치하지 않습니다 "
+                                          f"(기대 {expected}, 확인 {cands})")
         # Every ownership proof comes BEFORE the first irreversible step: a failing check must never leave a closed PR.
         remote = self.git.remote_head(branch)
         if remote is not None:
@@ -453,7 +465,8 @@ class Supervisor:
         self.git.discard_owned(wt, branch)
         self._remove_run_files(b)
         note = self.store.clear_request(b["producer"], b["method"])["note"]
-        self.store.finish_clear(b, f"Clear 완료: {b['producer']}/{b['method'].upper()} 배치 {b['shard']}_{b['batch']} "
+        what = f"Maintainer urgent Issue #{b['batch']}" if maint else f"{b['method'].upper()} 배치 {b['shard']}_{b['batch']}"
+        self.store.finish_clear(b, f"Clear 완료: {b['producer']}/{b['method'].upper()} {what} "
                                    f"(이전 상태 {req['prior_state']}, 기록 PR {('#' + str(b['pr_number'])) if b['pr_number'] else '없음'}); "
                                    f"{note}worktree·로컬 브랜치·실행 파일 정리")
         return None
@@ -1609,6 +1622,8 @@ class Supervisor:
         self.store.finish_runs(b["id"], None)
         self.store.log(b["id"], f"배치 {b['shard']}_{b['batch']} 정리 완료")
         ln = self.store.line(b["producer"], b["method"])
+        if b["method"] == MAINTENANCE_METHOD:   # Drain outlives the Issue (it stops the NEXT claim); only Cancel Drain ends it
+            return self.store.set_line(b["producer"], b["method"], run=0, drain_once=0)
         if b["method"] == STAGE2_METHOD:   # Single ends when its shard is complete (next pick), not after every Part
             if ln["drain"] or ln["drain_once"]:
                 self.store.set_line(b["producer"], b["method"], run=0, drain=0, drain_once=0, shard_pin="")
