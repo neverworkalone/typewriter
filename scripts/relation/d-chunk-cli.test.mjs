@@ -5,6 +5,8 @@ import path from 'node:path';
 import test from 'node:test';
 import { DatabaseSync } from 'node:sqlite';
 
+import { openReadonlyDb, searchContexts } from './corpus-utility.mjs';
+
 import {
   autoZCandidate,
   checkDecisions,
@@ -133,44 +135,87 @@ test('autoZCandidate: POS alone never qualifies; form shape and length are part 
   for (const [record, forms, want] of table) assert.equal(autoZCandidate(record, forms), want, JSON.stringify([record, forms]));
 });
 
-test('searchToCompletion follows a 0-hit LIMITED search only inside its budget and never fakes ZERO_HITS', () => {
+test('searchToCompletion finishes 0-hit LIMITED pages inside one call and never fakes ZERO_HITS', () => {
   const page = (status, items = 0, cursor = null) => ({ status, items: Array.from({ length: items }, () => ({})), next_cursor: cursor });
-  const run = (pages, budget) => {
+  const run = (pages, options = {}, budget) => {
     const calls = [];
-    const search = (forms, options) => {
-      calls.push(options.cursor ?? null);
+    const search = (forms, opts) => {
+      calls.push(opts.cursor ?? null);
       return { result: pages[Math.min(calls.length - 1, pages.length - 1)] };
     };
-    return { ...searchToCompletion(search, ['눈'], {}, budget), calls };
+    return { ...searchToCompletion(search, ['눈'], options, budget), calls };
   };
-  const limited = page('LIMITED', 0, 'c');
-  // complete zero after follow-ups
-  let out = run([limited, limited, page('COMPLETE')], undefined);
+  const chain = (count) => [...Array.from({ length: count }, (_, at) => page('LIMITED', 0, `c${at + 1}`)), page('COMPLETE')];
+  // 3+ empty LIMITED pages from the start -> ZERO_HITS, one call
+  let out = run(chain(5));
   assert.equal(out.result.status, 'ZERO_HITS');
-  assert.deepEqual(out.calls, [null, 'c', 'c']);
-  // a hit stops the follow-up and is returned as a continued COMPLETE/LIMITED page, never a zero
-  out = run([limited, page('LIMITED', 2, 'd')], undefined);
+  assert.deepEqual(out.calls, [null, 'c1', 'c2', 'c3', 'c4', 'c5']);
+  // a hit after empty pages stops the search at once (rest of the corpus is not scanned); LIMITED with contexts is kept
+  out = run([page('LIMITED', 0, 'c1'), page('LIMITED', 0, 'c2'), page('LIMITED', 2, 'c3'), page('COMPLETE')]);
   assert.equal(out.result.items.length, 2);
   assert.equal(out.result.status, 'LIMITED');
-  // no follow-up needed: a first ZERO_HITS is kept as is
-  assert.equal(run([page('ZERO_HITS')], undefined).calls.length, 1);
-  // call budget exhausted -> still LIMITED
-  out = run([limited], { followupCalls: 3 });
-  assert.equal(out.result.status, 'LIMITED');
-  assert.equal(out.calls.length, 4);
-  // scan budget exhausted -> still LIMITED
-  out = run([limited], { followupScanRows: 400_000 });
-  assert.equal(out.result.status, 'LIMITED');
-  assert.equal(out.calls.length, 2);
-  // failure is kept
-  assert.equal(run([page('SEARCH_FAILED')], undefined).result.status, 'SEARCH_FAILED');
+  assert.equal(out.calls.length, 3);
+  assert.equal(run([page('LIMITED', 3, 'c1')]).calls.length, 1, 'LIMITED with contexts is not scanned further');
+  // first ZERO_HITS kept; failure kept
+  assert.equal(run([page('ZERO_HITS')]).calls.length, 1);
+  assert.equal(run([page('SEARCH_FAILED')]).result.status, 'SEARCH_FAILED');
+  assert.equal(run([page('LIMITED', 0, 'c1'), page('SEARCH_FAILED')]).result.status, 'SEARCH_FAILED');
+  // external cursor start: COMPLETE 0 is never converted, even after internal pages
+  out = run([page('LIMITED', 0, 'c2'), page('COMPLETE')], { cursor: 'c1' });
+  assert.equal(out.result.status, 'COMPLETE');
+  assert.equal(out.cursorIn, 'c1');
+  assert.equal(run([page('COMPLETE')], { cursor: 'c1' }).result.status, 'COMPLETE');
+  // no progress (repeated cursor, also the external one) and the call limit fail closed
+  out = run([page('LIMITED', 0, 'c1')]);
+  assert.equal(out.result.status, 'SEARCH_FAILED');
+  assert.match(out.result.error, /no progress/u);
+  assert.equal(run([page('LIMITED', 0, 'c1')], { cursor: 'c1' }).result.status, 'SEARCH_FAILED');
+  out = run(chain(10), {}, { maxCalls: 3 });
+  assert.equal(out.result.status, 'SEARCH_FAILED');
+  assert.match(out.result.error, /call limit/u);
 });
 
-test('recordEvidence: hits add up per search; a search counts complete only by its last entry', () => {
-  const e = (key, status, hits, complete) => ({ record_id: 'r', key, status, hits, complete });
+test('searchToCompletion over a real index: multi-page zero, forms/boundary-bound cursors, external cursor', async () => {
+  const world = await makeWorld();
+  try {
+    const database = openReadonlyDb(world.options.databasePath);
+    const search = (forms, options) => ({ result: searchContexts(database, forms, { ...options, scanRows: 1 }) });
+    const zero = searchToCompletion(search, ['마', '쿠'], {});
+    assert.equal(zero.result.status, 'ZERO_HITS');
+    assert.ok(zero.followups >= 3);
+    const hit = searchToCompletion(search, ['기회'], { maxSamples: 4 });
+    assert.ok(hit.result.items.length > 0, 'first hit is returned');
+    const first = searchContexts(database, ['마', '쿠'], { scanRows: 1 });
+    assert.equal(first.status, 'LIMITED');
+    const external = searchToCompletion(search, ['마', '쿠'], { cursor: first.next_cursor });
+    assert.equal(external.result.status, 'COMPLETE', 'external cursor never becomes ZERO_HITS');
+    const other = searchToCompletion(search, ['마'], { cursor: first.next_cursor });
+    assert.equal(other.result.status, 'SEARCH_FAILED', 'a cursor of another form list is rejected');
+    database.close();
+  } finally {
+    await rm(world.root, { recursive: true, force: true });
+  }
+});
+
+test('recordEvidence: hits add up per search; completion needs a proven start', () => {
+  const e = (key, status, hits, complete, cursorIn = null, cursorOut = null) => ({
+    record_id: 'r', key, status, hits, complete, cursor_in: cursorIn, cursor_out: cursorOut,
+  });
   assert.deepEqual(recordEvidence([e('a', 'ZERO_HITS', 0, true)], 'r'), { searches: 1, hits: 0, allComplete: true });
-  assert.deepEqual(recordEvidence([e('a', 'LIMITED', 0, false)], 'r'), { searches: 1, hits: 0, allComplete: false });
-  assert.deepEqual(recordEvidence([e('a', 'LIMITED', 0, false), e('a', 'COMPLETE', 0, true)], 'r'), { searches: 1, hits: 0, allComplete: true });
+  assert.deepEqual(recordEvidence([e('a', 'LIMITED', 0, false, null, 'x')], 'r'), { searches: 1, hits: 0, allComplete: false });
+  // (a) fresh start completed internally
+  assert.equal(recordEvidence([e('a', 'ZERO_HITS', 0, true)], 'r').allComplete, true);
+  // (b) external cursor with no recorded origin: COMPLETE 0 is not proof
+  assert.equal(recordEvidence([e('a', 'COMPLETE', 0, true, 'x')], 'r').allComplete, false);
+  // (c) earlier page hit + later COMPLETE 0 -> hits > 0 (Z refused by checkDecisions)
+  const withHit = recordEvidence([e('a', 'LIMITED', 3, false, null, 'x'), e('a', 'COMPLETE', 0, true, 'x')], 'r');
+  assert.deepEqual(withHit, { searches: 1, hits: 3, allComplete: true });
+  // chain: proven through recorded cursors; a cursor that was never recorded breaks it
+  assert.equal(recordEvidence([e('a', 'LIMITED', 0, false, null, 'x'), e('a', 'LIMITED', 0, false, 'x', 'y'), e('a', 'COMPLETE', 0, true, 'y')], 'r').allComplete, true);
+  assert.equal(recordEvidence([e('a', 'LIMITED', 0, false, null, 'x'), e('a', 'COMPLETE', 0, true, 'z')], 'r').allComplete, false);
+  assert.equal(recordEvidence([e('a', 'COMPLETE', 0, true, 'q', 'x'), e('a', 'COMPLETE', 0, true, 'x')], 'r').allComplete, false, 'unproven pages stay unproven');
+  // (d) another search key does not provide the origin
+  assert.equal(recordEvidence([e('a', 'LIMITED', 0, false, null, 'x'), e('b', 'COMPLETE', 0, true, 'x')], 'r').allComplete, false);
   assert.deepEqual(recordEvidence([e('a', 'ZERO_HITS', 0, true), e('b', 'LIMITED', 3, false)], 'r'), { searches: 2, hits: 3, allComplete: false });
   assert.deepEqual(recordEvidence([], 'r'), { searches: 0, hits: 0, allComplete: false });
   assert.deepEqual(recordEvidence([e('a', 'COMPLETE', 2, true)], 'other'), { searches: 0, hits: 0, allComplete: false });
