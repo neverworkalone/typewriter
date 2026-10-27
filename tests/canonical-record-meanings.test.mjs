@@ -101,6 +101,11 @@ test('projectRecordMeanings: table over valid and invalid record shapes', () => 
     assert.deepEqual(splitMeaningGloss(meaning.gloss), record.senses.map((item) => item.gloss), name);
   }
   assert.deepEqual(projectRecordMeanings([entry('w1', 'a', [])]), [], 'a record without senses has no meaning');
+  // A target-less arrow is a lost reference (Issue #2031): its line is not shown, every sense stays a member, and a record
+  // with nothing left to show is refused rather than shipped as an empty meaning.
+  const lost = entry('w5', 'a', [sense('w5', 1, '→ .'), sense('w5', 2, '→ 둘째[Ⅱ].'), sense('w5', 3, '→ .')]);
+  assert.deepEqual(projectRecordMeanings([lost]), [{ id: 'm5', lemma: 'a', gloss: '→ 둘째[Ⅱ].', sense_ids: ['w5-s1', 'w5-s2', 'w5-s3'] }]);
+  assert.throws(() => projectRecordMeanings([entry('w6', 'a', [sense('w6', 1, '→ .'), sense('w6', 2, '→')])]), /no source gloss with a meaning/u);
   for (const gloss of ['', `줄${MEANING_GLOSS_SEPARATOR}바꿈`]) {
     assert.throws(() => projectRecordMeanings([entry('w1', 'a', [sense('w1', 1, gloss)])]), /single-line/u, JSON.stringify(gloss));
   }

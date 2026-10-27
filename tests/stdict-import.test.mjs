@@ -22,6 +22,7 @@ import {
   flattenSenses,
   homographNumber,
   inventoryStdictSource,
+  sourceDefinition,
   readStdictItems,
   mapPos,
   recordIdFor,
@@ -100,6 +101,22 @@ test('the homograph number is the headword suffix that surfaceForms strips, kept
   const plain = convertItem(item(7002, '배', '단어', [[1, '배의 뜻.']]), { index, isSelected }).record;
   assert.equal(Object.hasOwn(plain, 'homograph_no'), false);
   assert.equal(Object.hasOwn(JSON.parse(serializeRecord(plain)), 'homograph_no'), false);
+});
+
+test('an emptied <sp_no> reference is restored from definition_original, nothing else is touched', () => {
+  const emptied = (original) => ({ definition: '→ .', definition_original: original });
+  const table = [
+    [emptied('→ <sp_no>414853002</sp_no>둘째_.'), '→ 둘째.'],
+    [emptied('→ <sp_no>1</sp_no>대_ .'), '→ 대.'],
+    [emptied('→ <sp_no>1</sp_no>번쩍번쩍하다_.'), '→ 번쩍번쩍하다.'],
+    [emptied('→ <sp_no>1</sp_no>큰 집_.'), '→ 큰 집.'],
+    [emptied('→ .'), '→ .'],                                           // nothing to restore: stays visibly empty
+    [emptied('→ <sp_no>1</sp_no>A형_.'), '→ .'],                       // not a Hangul headword: not guessed
+    [{ definition: '→ .' }, '→ .'],
+    [{ definition: '→ 둘째[Ⅱ].', definition_original: '→ <sense_no>1393592</sense_no>둘째_.' }, '→ 둘째[Ⅱ].'],
+    [{ definition: '뜻.', definition_original: '→ <sp_no>1</sp_no>둘째_.' }, '뜻.'],
+  ];
+  for (const [sense, expected] of table) assert.equal(sourceDefinition(sense), expected, JSON.stringify(sense));
 });
 
 test('definitions are cleaned of embedded markup without hiding what was removed', () => {

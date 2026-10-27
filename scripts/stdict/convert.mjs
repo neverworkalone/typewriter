@@ -102,6 +102,18 @@ export function cleanDefinition(definition) {
   return { text, markup, unknownMarkup: ANY_TAG.test(text) };
 }
 
+// STDICT drops the target of a part-of-speech-level reference (`<sp_no>` id tag) from `definition` (`→ .`) but keeps it
+// in `definition_original` (`→ <sp_no>414853002</sp_no>둘째_.`; `_` closes the headword).
+const EMPTY_ARROW = /^→\s*\.\s*$/u;
+const SP_NO_REFERENCE = /^→ <sp_no>\d+<\/sp_no>(?<head>[가-힣ㄱ-ㅎ]+(?: [가-힣ㄱ-ㅎ]+)*)_ ?\.$/u;
+
+/** The source gloss text of a sense: `definition`, with an emptied `<sp_no>` reference restored from `definition_original`. */
+export function sourceDefinition(sense) {
+  if (!EMPTY_ARROW.test(sense.definition ?? '')) return sense.definition;
+  const head = SP_NO_REFERENCE.exec(sense.definition_original ?? '')?.groups.head;
+  return head === undefined ? sense.definition : `→ ${head}.`;
+}
+
 export function recordIdFor(targetCode) {
   // The canonical id pattern needs at least three digits; target_codes 1-99 are zero-padded.
   return `w${String(targetCode).padStart(3, '0')}`;
@@ -315,7 +327,7 @@ export function convertItem(item, { index, isSelected }) {
       report.excluded.push({ sense: senseId, reason: verdict.reason });
       return;
     }
-    const cleaned = cleanDefinition(sense.definition);
+    const cleaned = cleanDefinition(sourceDefinition(sense));
     for (const name of cleaned.markup) report.markup.push({ sense: senseId, markup: name });
     if (cleaned.unknownMarkup) report.unknownMarkup.push(senseId);
     const pos = mapPos(sourcePos, info.word_unit);

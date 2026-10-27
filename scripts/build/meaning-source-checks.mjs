@@ -1,5 +1,5 @@
 import { MEANING_RELATION_ORIGINS } from '../../src/runtime/dictionary-contract.js';
-import { buildTargetIndex, parseArrowReference, resolveArrowTarget } from './gloss-arrow-reference.mjs';
+import { buildTargetIndex, parseArrowReference, resolveArrowTarget, targetSensePosition } from './gloss-arrow-reference.mjs';
 
 // Meaning of a sense: its own member meaning, else (for a `duplicate` drop) the meaning of `duplicate_of`.
 const memberMeaning = (sense) => `(SELECT meaning_id FROM meaning_members WHERE sense_id = ${sense})`;
@@ -252,7 +252,7 @@ export function glossReferenceViolations(database) {
       gloss_offset: reference.offset,
       reference_text: reference.text,
       target_record_id: target.record.id,
-      target_sense_position: reference.sense_no === null ? null : reference.sense_no - 1,
+      target_sense_position: targetSensePosition(reference),
     });
   }
   const actual = new Map(

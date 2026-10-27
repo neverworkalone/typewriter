@@ -73,7 +73,7 @@ included) is a `direct` link in the existing 유의어 area, in both directions;
 `direct`. Only the *target* is identified (never re-judged semantically): headword, homograph number `NN` and sense `「n」`
 are read from the original gloss (before the display-only number removal) and must name exactly one Canonical record with a meaning;
 a malformed reference, a missing or ambiguous target (several homographs without a number, or a number the headword does not have), a
-sense beyond the target's senses, a `[Ⅰ]`/`[Ⅱ]` group (Canonical keeps no group structure, so it cannot be verified) and a self reference are held and counted (`meaning_projection_gloss_reference_hold_*_count`). A pair
+sense beyond the target's senses, and a self reference are held and counted (`meaning_projection_gloss_reference_hold_*_count`). A `[Ⅰ]`/`[Ⅱ]` group names a part-of-speech group of the target; since a product meaning is the whole record, such a reference is linked when its record is unique (Issue #2031) and its group-relative `「n」` is not recorded as a record sense position. A target-less `→ .` gloss (STDICT drops the target of an `<sp_no>` reference from `definition`; the converter restores it from `definition_original`) is never shown in the product gloss; its sense stays a member of the meaning. A pair
 that already exists as an original `direct` keeps its origin and order and only gains evidence. The Full-only
 `meaning_relation_gloss_sources` rows record the source sense, the reference token's offset and text in the gloss, and the target
 record/sense; `glossReferenceViolations()` re-derives the expected set from `senses`/`meanings` and fails on missing, forged or mismatched rows.
