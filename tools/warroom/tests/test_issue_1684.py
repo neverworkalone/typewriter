@@ -151,8 +151,9 @@ class StageTwoSelection(unittest.TestCase):
         self.assertEqual(stage2.label(b["shard"], b["batch"]), "Shard 001 · Batch 01 · Part 01")
         launch = w.adapter.launches[-1]
         self.assertEqual((launch["model"], launch["effort"]), ("claude-x", "high"))
-        for needle in ("Shard 001 · Batch 01 · Part 01", "--shard 001 --batch 01 --part 01", "s2-claude-001-01-01"):
+        for needle in ("Shard 001 · Batch 01 · Part 01", "relation-admission-001-01-01.json", "s2-claude-001-01-01"):
             self.assertIn(needle, launch["prompt"])
+        self.assertEqual(w.git.chunk_views, [(b["worktree"], "001", "01", "01", True)])   # the Supervisor prepares this exact Part
         self.assertEqual(w.git.verify_calls, [("part", "001", "01", "01")])
         st = control.line_status(w.store, "claude", S2)
         self.assertEqual(st["stage2"], {"shard": "001", "batch": "01", "part": "01"})
