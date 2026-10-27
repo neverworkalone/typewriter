@@ -373,6 +373,21 @@ class Store:
         with self._conn() as c:
             c.execute(f"UPDATE lines SET run=0, drain_once=0, force_stop=1, retry_batch=NULL, updated_at=? {where}", (time.time(), *args))
 
+    def request_stop_pinned(self, model: str, method: str, batch_id: int) -> bool:
+        """Stop request bound to the execution the operator saw (the Maintainer's Detail): one transaction checks that
+        `batch_id` is still this Line's unfinished batch, then writes the flag and the pin the Supervisor re-checks when
+        it consumes the flag. False (nothing written): the screen is stale."""
+        with self._conn() as c:
+            c.execute("BEGIN IMMEDIATE")
+            if c.execute("SELECT 1 FROM batches WHERE id=? AND producer=? AND method=? AND state NOT IN ('COMPLETE','CLEARING')",
+                         (batch_id, model, method)).fetchone() is None:
+                return False
+            c.execute("INSERT INTO kv(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                      (f"stop_pin_{model}_{method}", str(batch_id)))
+            c.execute("UPDATE lines SET run=0, drain_once=0, force_stop=1, retry_batch=NULL, updated_at=? "
+                      "WHERE model=? AND method=?", (time.time(), model, method))
+            return True
+
     # --- Clear: abandon one unfinished batch (Supervisor-owned teardown) ---
     def request_clear(self, model: str, method: str, batch_id: int, issue_number: int | None = None) -> tuple[bool, str]:
         """TUI -> Supervisor. Writes only the batch-ID-specific request; a stale ID is refused, a BLOCKED one is re-armed.

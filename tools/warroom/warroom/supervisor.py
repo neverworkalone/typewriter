@@ -118,6 +118,12 @@ class Supervisor:
         b = self.store.active_batch(model, method)
         if ln["force_stop"]:
             self.store.set_line(model, method, force_stop=0)
+            pin = self.store.get(f"stop_pin_{model}_{method}")
+            if pin is not None:   # a Stop bound to the execution on screen never lands on another one
+                self.store.delete(f"stop_pin_{model}_{method}")
+                if b is None or str(b["id"]) != pin:
+                    return self.store.log(b["id"] if b else None, f"Stop 무시: 요청한 실행 #{pin}이 더 이상 현재 실행이 아닙니다",
+                                          "warn", line=f"{model}/{method}")
             return self._force_stop(b) if b is not None else self.store.set_line(model, method, run=0)
         if b is None:
             if ln["drain_once"]:

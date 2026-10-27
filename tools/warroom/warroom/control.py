@@ -72,6 +72,11 @@ def stop_line(store: Store, model: str, method: str) -> None:
     store.stop_lines(model, method)
 
 
+def stop_maintainer(store: Store, model: str, batch_id: int) -> bool:
+    """Stop the Maintainer execution `batch_id` the operator saw; False (nothing stopped) when it is no longer current."""
+    return store.request_stop_pinned(model, MAINTENANCE_METHOD, batch_id)
+
+
 def stop_all(store: Store) -> None:
     store.stop_lines()
 

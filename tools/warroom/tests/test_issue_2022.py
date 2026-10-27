@@ -186,7 +186,7 @@ class MaintainerControls(World2022):
         w.tick()
         other = w.row("deepseek", "b")
         b, m = start_maintainer(w)
-        control.stop_line(w.store, "sonnet", "m")
+        self.assertTrue(control.stop_maintainer(w.store, "sonnet", m["id"]))
         w.tick(2)
         paused = maintainer_row(w)
         self.assertEqual(paused["state"], "PAUSED")
@@ -199,6 +199,29 @@ class MaintainerControls(World2022):
         w.tick(2)
         self.assertEqual(maintainer_row(w)["state"], "PRODUCING")
         self.assertEqual(len([x for x in w.store.all_batches() if x["method"] == "m"]), 1)
+
+    def test_stop_bound_to_a_finished_issue_never_stops_the_next_one(self):
+        w = self.w
+        b, m = start_maintainer(w)
+        w.store.ensure_maintenance(202)
+        w.gh.issues[202] = {"state": "open", "labels": ["urgent"], "title": "t", "body": ""}
+        run_maintainer_to_merge(w, 101)                          # A completes, B (#202) is claimed
+        w.tick(2)
+        nxt = w.store.active_batch("sonnet", "m")
+        self.assertEqual(nxt["batch"], "202")
+        self.assertFalse(control.stop_maintainer(w.store, "sonnet", m["id"]))   # Yes on A's stale confirmation
+        w.tick(2)
+        self.assertEqual(w.store.active_batch("sonnet", "m")["state"], "PRODUCING")
+        # a request that was accepted for A but is consumed after B was claimed is dropped by the Supervisor
+        w.store.set("stop_pin_sonnet_m", str(m["id"]))
+        w.store.set_line("sonnet", "m", force_stop=1)
+        w.tick(2)
+        self.assertEqual((w.store.active_batch("sonnet", "m")["id"], w.store.active_batch("sonnet", "m")["state"]), (nxt["id"], "PRODUCING"))
+        self.assertIsNone(w.store.get("stop_pin_sonnet_m"))
+        self.assertEqual(w.store.peek_line("sonnet", "m")["force_stop"], 0)
+        self.assertTrue(control.stop_maintainer(w.store, "sonnet", nxt["id"]))    # the current execution still stops
+        w.tick(2)
+        self.assertEqual(w.store.active_batch("sonnet", "m")["state"], "PAUSED")
 
     def test_board_m_key_path_still_retries_only_paused_or_error(self):
         w = self.w

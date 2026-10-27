@@ -409,7 +409,8 @@ class LineDetail(Screen):
         elif e.button.id == "stop":
             what = "Maintainer의 현재 실행(worktree·PR·Issue·세션·로그 보존, 다른 라인/Stage 2는 영향 없음)" if self.maint \
                 else f"{m} / {control.method_label(me)} 라인의 AI 실행"
-            self.app.push_screen(Confirm(f"{what}을 즉시 중지합니다."), self._stopped)
+            bid = self._status()["batch_id"] if self.maint else None
+            self.app.push_screen(Confirm(f"{what}을 즉시 중지합니다."), lambda yes, b=bid: self._stopped(yes, b))
 
         elif e.button.id == "clear":
             st = self._status()
@@ -434,9 +435,14 @@ class LineDetail(Screen):
                 "머지된 PR이 있으면 포기하지 않고 정상 정리 경로로 넘깁니다."),
                 lambda yes, bid=st["batch_id"]: self._cleared(yes, bid))
 
-    def _stopped(self, yes: bool | None) -> None:
-        if yes:
-            control.stop_line(self.app.store, self.model, self.method)
+    def _stopped(self, yes: bool | None, batch_id: int | None = None) -> None:
+        if not yes:
+            return
+        if self.maint:   # pinned to the execution shown when Stop was pressed
+            if batch_id is None or not control.stop_maintainer(self.app.store, self.model, batch_id):
+                self.notify("중지할 Maintainer 실행이 화면과 달라졌습니다 (화면을 새로 고치세요).", severity="warning")
+            return
+        control.stop_line(self.app.store, self.model, self.method)
 
     def _cleared(self, yes: bool | None, batch_id: int, issue_number: int | None = None) -> None:
         if yes:
