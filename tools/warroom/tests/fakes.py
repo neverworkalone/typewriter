@@ -131,6 +131,9 @@ class FakeGit:
     def is_committed(self, path, rel):
         return rel in getattr(self, "committed_rels", set()) and not self.dirty_text.strip()
 
+    def is_candidate_child(self, path, base_sha, rel):
+        return getattr(self, "child_of", None) == (base_sha, rel)
+
     def push_branch(self, path, branch):
         self.pushes = getattr(self, "pushes", [])
         if self.push_error:

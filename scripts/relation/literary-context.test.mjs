@@ -832,11 +832,20 @@ test('report --sense-ids returns done-ness by the existing senseDone meaning and
     assert.equal(JSON.parse(runCli(fixture, ['report', '--checkpoint', fixture.checkpointPath]).stdout).contract, 'literary-checkpoint-v3', 'plain report unchanged');
 
     const clone = () => structuredClone(checkpoint);
+    const unusual = clone();
+    Object.assign(unusual.records[0].senses[0].submission, { status: 'ZERO_HITS', verified: [], candidates: [] });
+    assert.equal(reportLiteraryCheckpointSenses(unusual, ids[0]).senses[0].done, true, 'ZERO_HITS with no candidates is valid');
+    const withCandidate = clone();
+    Object.assign(withCandidate.records[0].senses[0].submission, { verified: [{ locator_key: 'k' }], candidates: ['후보'] });
+    assert.equal(reportLiteraryCheckpointSenses(withCandidate, ids[0]).senses[0].done, true, 'candidate with a verified context is valid');
     const damaged = [
       ['unknown id', () => clone(), 'nope', /not in this checkpoint/u],
       ['repeated request id', () => clone(), `${ids[0]},${ids[0]}`, /repeated/u],
       ['empty element', () => clone(), `${ids[0]},`, /comma-separated/u],
       ['unknown submission status', () => { const c = clone(); c.records[0].senses[0].submission.status = 'DONE'; return c; }, ids[0], /submission is damaged/u],
+      ['ZERO_HITS with a candidate', () => { const c = clone(); Object.assign(c.records[0].senses[0].submission, { status: 'ZERO_HITS', candidates: ['후보'] }); return c; }, ids[0], /submission is damaged/u],
+      ['candidate without any verified context', () => { const c = clone(); Object.assign(c.records[0].senses[0].submission, { verified: [], candidates: ['후보'] }); return c; }, ids[0], /submission is damaged/u],
+      ['verified item without locator_key', () => { const c = clone(); c.records[0].senses[0].submission.verified = [{}]; return c; }, ids[0], /submission is damaged/u],
       ['submission candidates not strings', () => { const c = clone(); c.records[0].senses[0].submission.candidates = [1]; return c; }, ids[0], /submission is damaged/u],
       ['duplicate sense id in checkpoint', () => { const c = clone(); c.records[1].senses[0].sense_id = ids[0]; return c; }, ids[0], /sense structure is damaged/u],
       ['missing batch binding', () => { const c = clone(); delete c.batch.model; return c; }, ids[0], /batch binding/u],

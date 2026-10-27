@@ -248,6 +248,35 @@ class Finalization(unittest.TestCase):
         self.assertEqual(len(w.gh.created_prs), 1)
 
 
+class CommitRecovery(unittest.TestCase):
+    def test_restart_between_commit_and_recording_resumes_but_arbitrary_head_does_not(self):
+        rel = "data/relation-candidates/001/001_01_c_deepseek.jsonl"
+        for name, child, want in (("our exact commit", True, "WAITING_REVIEW"), ("arbitrary HEAD move", False, "ERROR")):
+            with self.subTest(name):
+                w = CWorld(senses=12)
+                self.addCleanup(w.tmp.cleanup)
+                real_set, armed = w.store.set, [True]
+
+                def crashing_set(key, value, _real=real_set, _armed=armed):
+                    if key.startswith("c_commit_head_") and _armed[0]:
+                        _armed[0] = False
+                        raise RuntimeError("process died right after the commit")
+                    return _real(key, value)
+                w.store.set = crashing_set
+                w.start("single", "deepseek", "c")
+                w.ai()
+                w.tick()
+                w.finish_last()
+                w.tick()   # commit happened, its HEAD was never recorded
+                self.assertEqual(w.row("deepseek", "c")["state"], "ERROR")
+                self.assertEqual(len(w.git.commits), 1)
+                w.git.child_of = (HEAD1, rel) if child else None
+                self.assertTrue(control.retry(w.store, "deepseek", "c"))
+                w.tick(2)
+                self.assertEqual(w.row("deepseek", "c")["state"], want)
+                self.assertEqual(len(w.git.commits), 1)   # never a second commit
+
+
 class PureHelpers(unittest.TestCase):
     def test_view_ids_table(self):
         view = ("batch=001_01 done=0/5 zero_hit=0 not_yet_read=0\n\n## a1 — 표제 [noun]\n뜻\nhits=1 unseen=0\n[k] 출처\n"

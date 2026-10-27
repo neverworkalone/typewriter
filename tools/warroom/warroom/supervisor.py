@@ -1235,6 +1235,12 @@ class Supervisor:
             return f"checkpoint/HEAD 결속을 확인하지 못했습니다: {e}"
         if head == created or head == self.store.get(f"c_commit_head_{b['id']}"):
             return None
+        try:   # a crash between our commit and recording it: accept only that exact commit, then remember it
+            if self.git.is_candidate_child(wt, created, literary.names(b).output):
+                self.store.set(f"c_commit_head_{b['id']}", head)
+                return None
+        except GitError:
+            pass
         return f"worktree HEAD {head[:10]}가 checkpoint 기준 HEAD {created[:10]}도, Supervisor가 만든 Candidate commit도 아닙니다."
 
     def _launch_c_next(self, b) -> None:

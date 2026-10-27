@@ -136,6 +136,14 @@ class Git:
             return False
         return self._git("cat-file", "-e", f"HEAD:{rel}", cwd=path, check=False).ok
 
+    def is_candidate_child(self, path: Path, base_sha: str, rel: str) -> bool:
+        """HEAD is a direct child of `base_sha` that changed exactly `rel` (our own interrupted Candidate commit)."""
+        parent = self._git("rev-parse", "HEAD^", cwd=path, check=False)
+        if not parent.ok or parent.out.strip() != base_sha:
+            return False
+        files = self._git("diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD", cwd=path, check=False)
+        return files.ok and files.out.split() == [rel]
+
     def push_branch(self, path: Path, branch: str) -> None:
         """Plain push of HEAD to a not-yet-existing remote branch. Never forced; a moved remote is the caller's ERROR."""
         self._git("push", "origin", f"HEAD:refs/heads/{branch}", cwd=path, timeout=600)

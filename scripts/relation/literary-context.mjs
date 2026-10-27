@@ -1190,8 +1190,13 @@ function assertCheckpointStructure(checkpoint) {
       const saved = sense.submission;
       if (saved !== null && saved !== undefined) {
         if (!isPlainObject(saved) || !SUBMISSION_STATUSES.includes(saved.status) || !Array.isArray(saved.candidates)
-          || !saved.candidates.every((candidate) => typeof candidate === 'string')
-          || (saved.status === 'SUBMITTED' && !Array.isArray(saved.verified))) fail('checkpoint sense submission is damaged');
+          || !saved.candidates.every((candidate) => typeof candidate === 'string')) fail('checkpoint sense submission is damaged');
+        // Per-status invariants: a candidate always rests on a stored VERIFIED context, and ZERO_HITS has neither.
+        const verified = saved.verified ?? [];
+        if (!Array.isArray(verified) || !verified.every((item) => isPlainObject(item) && isNonEmptyString(item.locator_key))
+          || (saved.status === 'SUBMITTED' && !Array.isArray(saved.verified))
+          || (saved.status === 'ZERO_HITS' && (saved.candidates.length > 0 || verified.length > 0))
+          || (saved.candidates.length > 0 && verified.length === 0)) fail('checkpoint sense submission is damaged');
       } else if (sense.search !== null && sense.search !== undefined) {
         if (!isPlainObject(sense.search) || typeof sense.search.status !== 'string'
           || !Array.isArray(sense.contexts ?? []) || !(sense.candidate_reviews === undefined || Array.isArray(sense.candidate_reviews))) fail('checkpoint sense search state is damaged');
