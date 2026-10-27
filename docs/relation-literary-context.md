@@ -210,14 +210,29 @@ what resumes a run: per sense the total hit count, the cited contexts' source
 locators and digests, and the final candidates. It does not store excerpt text.
 Resubmitting a sense replaces its earlier submission.
 
-On a rejected submission, `submit` writes a bounded JSON diagnostic to stderr:
-`submit_validation` includes a fixed `reason` code plus the affected public
-`sense_id` and input `field` when known. It never includes the submitted key,
-source excerpt, locator, local path, or stack. Correct only the named sense or
-input shape and resubmit. Index access, identity, schema, metadata, and search
-failures use an index diagnostic with `repair_scope: stop_and_report`; stop the
-batch and report those instead of changing producer input or retrying the same
-chunk. An unexpected failure remains the generic `operation` diagnostic.
+On a rejected submission, `submit` writes a bounded JSON diagnostic to stderr.
+`submit_validation` keeps the fixed `reason`, `affected.sense_id`, `field`, and
+`repair_scope` fields, and adds `affected.entry_number`: the 1-based position in
+the submitted `senses[]` array (not the JSON file's line number), or `null` when
+the error is at the top level. For ID and entry-schema errors, `issues` lists up
+to 16 `{entry_number, reason, field}` items; `issues_truncated: true` means more
+items were found. Unknown Sense IDs are not echoed. These diagnostics never
+include the submitted key, source excerpt, locator, local path, or stack.
+
+For a rejected submission, match each reported array position to that entry in
+the original JSON file and correct only the reported item or field. Compare an
+`unknown_sense` entry with the active chunk's exact Sense IDs to determine
+whether it is an extra entry or a mistyped ID. Do not delete it automatically
+or infer a replacement from a missing ID alone; correct a typo only when the
+entry's source-sense evidence identifies the intended ID. Before resubmitting,
+check that the active chunk's expected senses are covered exactly once. A
+rejected submit does not partially update the checkpoint, and saved senses from
+an earlier resume remain intact.
+
+Index access, identity, schema, metadata, and search failures use an index
+diagnostic with `repair_scope: stop_and_report`; stop the batch and report those
+instead of changing producer input or retrying the same chunk. An unexpected
+failure remains the generic `operation` diagnostic.
 
 ## Export, final validation, and fixes
 

@@ -180,6 +180,14 @@ async function submitCli(fixture, submission, databasePath = fixture.databasePat
   ], { cwd: fixture.root, encoding: 'utf8' });
 }
 
+function reportCli(fixture, senseIds) {
+  return spawnSync(process.execPath, [
+    path.resolve('scripts/relation/literary-context-cli.mjs'), 'report',
+    '--checkpoint', fixture.checkpointPath,
+    '--sense-ids', senseIds,
+  ], { cwd: fixture.root, encoding: 'utf8' });
+}
+
 test('default preflight is read-only and does not hash the database or rebuild the FTS index', async () => {
   const fixture = await makeFixture({ unitCount: 1 });
   try {
@@ -481,6 +489,44 @@ test('submit validation returns bounded reason codes and source-sense fields wit
         field: 'submission',
         senseId: null,
       },
+      {
+        name: 'multiple ID and schema errors retain submitted array positions',
+        senses: [
+          { sense_id: item.sense_id, verified: [], candidates: [] },
+          { sense_id: 'private-unknown-sense-second-marker', verified: [], candidates: [] },
+          { sense_id: item.sense_id, verified: [], candidates: [] },
+          { sense_id: item.sense_id, verified: [], candidates: 'private-schema-marker' },
+          ...Array.from({ length: 6 }, () => ({ sense_id: item.sense_id, verified: [], candidates: [] })),
+          { sense_id: 'private-unknown-sense-eleventh-marker', verified: [], candidates: [] },
+        ],
+        reason: 'unknown_sense',
+        field: 'sense_id',
+        senseId: null,
+        entryNumber: 2,
+        expectedIssuePositions: [
+          [2, 'unknown_sense', 'sense_id'],
+          [3, 'duplicate_sense', 'sense_id'],
+          [4, 'duplicate_sense', 'sense_id'],
+          [4, 'submission_schema', 'candidates'],
+          [5, 'duplicate_sense', 'sense_id'],
+          [6, 'duplicate_sense', 'sense_id'],
+          [7, 'duplicate_sense', 'sense_id'],
+          [8, 'duplicate_sense', 'sense_id'],
+          [9, 'duplicate_sense', 'sense_id'],
+          [10, 'duplicate_sense', 'sense_id'],
+          [11, 'unknown_sense', 'sense_id'],
+        ],
+      },
+      {
+        name: 'issue list is bounded for oversized invalid submissions',
+        senses: Array.from({ length: 20 }, (_, index) => ({ sense_id: `private-unknown-sense-${index}`, verified: [], candidates: [] })),
+        reason: 'unknown_sense',
+        field: 'sense_id',
+        senseId: null,
+        entryNumber: 1,
+        expectedIssueCount: 16,
+        issuesTruncated: true,
+      },
     ];
 
     for (const scenario of cases) {
@@ -491,7 +537,19 @@ test('submit validation returns bounded reason codes and source-sense fields wit
       assert.equal(diagnostic.status, 'FAILED', scenario.name);
       assert.equal(diagnostic.diagnostic, 'submit_validation', scenario.name);
       assert.equal(diagnostic.reason, scenario.reason, scenario.name);
-      assert.deepEqual(diagnostic.affected, { sense_id: scenario.senseId, field: scenario.field }, scenario.name);
+      const entryNumber = scenario.entryNumber ?? (scenario.senses ? 1 : null);
+      assert.deepEqual(diagnostic.affected, { sense_id: scenario.senseId, field: scenario.field, entry_number: entryNumber }, scenario.name);
+      assert.ok(Array.isArray(diagnostic.issues), scenario.name);
+      assert.ok(diagnostic.issues.length <= 16, scenario.name);
+      if (scenario.expectedIssuePositions) {
+        assert.deepEqual(diagnostic.issues.map((issue) => [issue.entry_number, issue.reason, issue.field]), scenario.expectedIssuePositions, scenario.name);
+      } else if (scenario.expectedIssueCount) {
+        assert.equal(diagnostic.issues.length, scenario.expectedIssueCount, scenario.name);
+        assert.deepEqual(diagnostic.issues.map((issue) => issue.entry_number), Array.from({ length: scenario.expectedIssueCount }, (_, index) => index + 1), scenario.name);
+      } else {
+        assert.deepEqual(diagnostic.issues, [{ entry_number: entryNumber, reason: scenario.reason, field: scenario.field }], scenario.name);
+      }
+      if (scenario.issuesTruncated) assert.equal(diagnostic.issues_truncated, true, scenario.name);
       const expectedRepairScope = scenario.reason === 'submission_schema'
         ? 'correct_submission_shape'
         : scenario.reason === 'unknown_sense'
@@ -502,6 +560,9 @@ test('submit validation returns bounded reason codes and source-sense fields wit
       assert.equal(result.stderr.includes('fixture gloss'), false, scenario.name);
       assert.equal(result.stderr.includes('private-locator-marker'), false, scenario.name);
       assert.equal(result.stderr.includes('private-unknown-sense-marker'), false, scenario.name);
+      assert.equal(result.stderr.includes('private-unknown-sense-second-marker'), false, scenario.name);
+      assert.equal(result.stderr.includes('private-unknown-sense-eleventh-marker'), false, scenario.name);
+      assert.equal(result.stderr.includes('private-schema-marker'), false, scenario.name);
       assert.equal(result.stderr.includes('private-input-marker'), false, scenario.name);
       assert.equal(result.stderr.includes('private-json-marker'), false, scenario.name);
       assert.equal(result.stderr.includes('private_top_level_marker'), false, scenario.name);
@@ -512,6 +573,62 @@ test('submit validation returns bounded reason codes and source-sense fields wit
     const successful = await submitCli(fixture, { senses: [{ sense_id: item.sense_id, verified: [key], candidates: ['서리'] }] });
     assert.equal(successful.status, 0, successful.stderr);
     assert.equal(JSON.parse(successful.stdout).status, 'SAVED');
+  } finally {
+    await cleanup(fixture);
+  }
+});
+
+test('a rejected extra Sense is repaired in the same chunk while saved work remains intact', async () => {
+  const fixture = await makeFixture({ unitCount: 3, firstSenseGlosses: ['first sense', 'second sense'] });
+  try {
+    const items = (await chunk(fixture)).items;
+    assert.equal(items.length, 2);
+    const entries = items.map((item) => ({ sense_id: item.sense_id, verified: [item.contexts[0].k], candidates: [] }));
+    const beforeDiagnostics = await readFile(fixture.checkpointPath, 'utf8');
+    const expectCliFailure = async (submission, reason, entryNumber, field, senseId = null) => {
+      const result = await submitCli(fixture, submission);
+      assert.equal(result.status, 1, result.stderr);
+      const diagnostic = JSON.parse(result.stderr);
+      assert.equal(diagnostic.reason, reason);
+      assert.deepEqual(diagnostic.affected, { sense_id: senseId, field, entry_number: entryNumber });
+      assert.equal(result.stderr.includes('private-extra-sense-marker'), false);
+    };
+    await expectCliFailure({ senses: [...entries, {
+      sense_id: 'private-extra-sense-marker', verified: [], candidates: [],
+    }] }, 'unknown_sense', 3, 'sense_id'); // All expected IDs plus one added ID.
+    await expectCliFailure({ senses: [entries[0], {
+      sense_id: 'private-extra-sense-marker', verified: [], candidates: [],
+    }] }, 'unknown_sense', 2, 'sense_id'); // One expected ID is absent; do not infer that the unknown ID is its replacement.
+    await expectCliFailure({ senses: [entries[0], entries[0]] }, 'duplicate_sense', 2, 'sense_id', entries[0].sense_id);
+    await expectCliFailure({ senses: [entries[0], {
+      ...entries[1], candidates: 'private-extra-sense-marker',
+    }] }, 'submission_schema', 2, 'candidates', entries[1].sense_id);
+    const topLevelSchema = await submitCli(fixture, { senses: [], private_top_level_marker: true });
+    assert.equal(topLevelSchema.status, 1);
+    assert.deepEqual(JSON.parse(topLevelSchema.stderr).affected, { sense_id: null, field: 'submission', entry_number: null });
+    assert.equal(await readFile(fixture.checkpointPath, 'utf8'), beforeDiagnostics, 'all diagnostic failures leave the checkpoint unchanged');
+
+    await submit(fixture, [entries[0]]); // Represents a sense already saved before a resumed submission.
+
+    const beforeRejectedSubmit = await readFile(fixture.checkpointPath, 'utf8');
+    await assert.rejects(submit(fixture, [entries[1], {
+      sense_id: 'private-extra-sense-marker', verified: [], candidates: [],
+    }]), (error) => {
+      assert.equal(error.reason, 'unknown_sense');
+      assert.deepEqual(error.affected, { sense_id: null, field: 'sense_id', entry_number: 2 });
+      assert.deepEqual(error.issues, [{ entry_number: 2, reason: 'unknown_sense', field: 'sense_id' }]);
+      return true;
+    });
+    assert.equal(await readFile(fixture.checkpointPath, 'utf8'), beforeRejectedSubmit, 'a rejected submit makes no checkpoint change');
+
+    const saved = await submit(fixture, [entries[1]]); // Retry only the remaining Sense in this active chunk.
+    assert.equal(saved.status, 'SAVED');
+    const report = reportCli(fixture, items.map((item) => item.sense_id).join(','));
+    assert.equal(report.status, 0, report.stderr);
+    assert.equal(report.stderr, '');
+    const completion = JSON.parse(report.stdout);
+    assert.equal(completion.all_done, true);
+    assert.deepEqual(completion.senses.map((sense) => [sense.sense_id, sense.done]), items.map((item) => [item.sense_id, true]));
   } finally {
     await cleanup(fixture);
   }
