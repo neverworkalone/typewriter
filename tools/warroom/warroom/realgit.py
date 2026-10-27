@@ -9,10 +9,11 @@ from __future__ import annotations
 import functools
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 SHIM_DIR = (Path(__file__).resolve().parents[1] / "bin").resolve()
-XCRUN_STUB = Path("/usr/bin/git")   # tests may point this elsewhere
+XCRUN_STUB = Path("/usr/bin/git") if sys.platform == "darwin" else None   # only macOS has the stub; tests may set it
 
 
 def is_shim(path) -> bool:
@@ -51,7 +52,7 @@ def resolve_git(env) -> str | None:
         candidate = Path(entry or os.curdir) / "git"
         if not candidate.is_file() or not os.access(candidate, os.X_OK) or is_shim(candidate):
             continue
-        if candidate.resolve() == XCRUN_STUB.resolve():
+        if XCRUN_STUB is not None and candidate.resolve() == XCRUN_STUB.resolve():
             found = developer_git(env)
             if found:
                 return found

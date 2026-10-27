@@ -62,6 +62,13 @@ class PoisonedStub(unittest.TestCase):
         res = git._git("fetch", "origin", "master")
         self.assertEqual(res.out.strip(), "real git fetch origin master")
 
+    def test_a_regular_git_is_used_where_there_is_no_xcrun_stub(self):
+        """Linux: /usr/bin/git is a real Git, not a stub (CI); the stub is only special on macOS."""
+        git = _script(Path(self.tmp.name) / "plain" / "git", "true\n")
+        with mock.patch.object(realgit, "XCRUN_STUB", None):
+            self.assertEqual(resolve_git({"PATH": f"{SHIM_DIR}{os.pathsep}{Path(git).parent}"}), git)
+            self.assertIsNotNone(resolve_git({"GH_CONFIG_DIR": "x"}))   # a PATH-less env falls back to os.defpath
+
     def test_callers_fail_instead_of_falling_back_to_a_bare_git(self):
         """No usable Git (dev dir missing, shim first on PATH): nothing is executed, every caller raises."""
         marker = Path(self.tmp.name) / "ran"
