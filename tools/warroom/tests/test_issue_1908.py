@@ -282,7 +282,8 @@ class Stage2ChunkCodexConfig(unittest.TestCase):
         from tests.test_codex_adapter import GIT_DIR, Recording
         from warroom.adapters import RunSpec
         run = RunSpec("gpt-6-luna", "xhigh", "worktree")
-        for env, expected in (({"WARROOM_STAGE2_CHUNK": "1"}, True), ({}, False)):
+        chunk_env = {"WARROOM_STAGE2_CHUNK": "1", "WARROOM_GIT_EXECUTABLES": json.dumps(["/usr/bin/git"])}
+        for env, expected in ((chunk_env, True), ({}, False)):
             with self.subTest(chunk=expected), tempfile.TemporaryDirectory() as d:
                 log, ex = Path(d) / "l.log", Path(d) / "l.exit"
                 a = Recording("codex")
