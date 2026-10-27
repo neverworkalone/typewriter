@@ -296,10 +296,14 @@ test('--part requires a batch, rejects out-of-range parts, and allows the final 
   await assert.rejects(() => quiet(() => run(['prepare', '--shard', '001', '--batch', '02', '--part', '01', '--out', 'part.json'], { root })), /use --checkpoint instead of --out/);
 });
 
-test('an ID row owned by the other batch also answers this batch\'s reverse candidate in both prepare and verify', async (t) => {
+test('an exact ID row owned by the other batch answers this batch\'s reverse candidate despite homographs', async (t) => {
   const root = await mkdtemp(path.join(tmpdir(), 'typewriter-admission-xbatch-'));
   t.after(() => rm(root, { recursive: true, force: true }));
-  const records = Array.from({ length: 501 }, (_, i) => ({ id: `w${i + 1}`, lemma: `표제${i + 1}`, senses: [{ id: `w${i + 1}-s1`, pos: 'noun', gloss: `뜻${i + 1}` }] }));
+  const records = Array.from({ length: 502 }, (_, i) => ({
+    id: `w${i + 1}`,
+    lemma: i === 500 || i === 501 ? '표제501' : `표제${i + 1}`,
+    senses: [{ id: `w${i + 1}-s1`, pos: 'noun', gloss: `뜻${i + 1}` }],
+  }));
   for (const dir of ['data/canonical', 'data/relation-candidates/001', 'data/relations']) await mkdir(path.join(root, dir), { recursive: true });
   await writeFile(path.join(root, 'data/canonical/stdict-0001.jsonl'), jsonl(records));
   for (const name of ['a_codex', 'a_claude', 'b_codex', 'b_claude', 'c_codex', 'd_codex']) {
@@ -315,6 +319,7 @@ test('an ID row owned by the other batch also answers this batch\'s reverse cand
   assert.equal(prepared.stats.skipped_existing, 1);
   const counts = await quiet(() => run(args('verify'), { root }));
   assert.equal(counts.missing, 0);
+  assert.equal(counts.reverse_covered, 1);
 });
 
 test('a batch with no candidates and no authored rows is complete once verify succeeds', async (t) => {
@@ -701,6 +706,12 @@ test('merge coalesces consistent independently adjudicated reciprocal ID decisio
     const pair = [
       { id: 'w109230', lemma: '마지' },
       { id: 'w111040', lemma: '말기름' },
+      { id: 'w109231', lemma: '마지' },
+      { id: 'w109232', lemma: '마지' },
+      { id: 'w14296', lemma: '거성' },
+      { id: 'w153363', lemma: '불가입성' },
+      { id: 'w14297', lemma: '거성' },
+      { id: 'w14298', lemma: '거성' },
       { id: 'w200002', lemma: '다른출발' },
       { id: 'w200003', lemma: '다른표적' },
     ][index];
@@ -719,6 +730,8 @@ test('merge coalesces consistent independently adjudicated reciprocal ID decisio
   const candidates = new Map([
     ['w109230', ['말기름']],
     ['w111040', ['마지']],
+    ['w14296', ['불가입성']],
+    ['w153363', ['거성']],
     ['w200002', ['다른표적']],
     ['w200003', ['다른출발']],
   ]);
@@ -732,10 +745,12 @@ test('merge coalesces consistent independently adjudicated reciprocal ID decisio
   const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
   await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
   const chunk = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint], { root }));
-  assert.equal(chunk.items.flatMap((item) => item.candidates).length, 4);
+  assert.equal(chunk.items.flatMap((item) => item.candidates).length, 6);
   const decisions = [
     { source_sense_id: 'w109230-s1', candidate: '말기름', disposition: 'relation', target_resolution: 'exact', target_record_id: 'w111040', target_sense_id: 'w111040-s1', type: 'near', relevance: 1, reverse_type: 'near', reverse_relevance: 1 },
     { source_sense_id: 'w111040-s1', candidate: '마지', disposition: 'relation', target_resolution: 'exact', target_record_id: 'w109230', target_sense_id: 'w109230-s1', type: 'near', relevance: 1, reverse_type: 'near', reverse_relevance: 1 },
+    { source_sense_id: 'w14296-s1', candidate: '불가입성', disposition: 'relation', target_resolution: 'exact', target_record_id: 'w153363', target_sense_id: 'w153363-s1', type: 'near', relevance: 1, reverse_type: 'near', reverse_relevance: 1 },
+    { source_sense_id: 'w153363-s1', candidate: '거성', disposition: 'relation', target_resolution: 'exact', target_record_id: 'w14296', target_sense_id: 'w14296-s1', type: 'near', relevance: 1, reverse_type: 'near', reverse_relevance: 1 },
     { source_sense_id: 'w200002-s1', candidate: '다른표적', disposition: 'relation', target_resolution: 'exact', target_record_id: 'w200003', target_sense_id: 'w200003-s1', type: 'near', relevance: 2, reverse_type: 'mood', reverse_relevance: 5 },
     { source_sense_id: 'w200003-s1', candidate: '다른출발', disposition: 'relation', target_resolution: 'exact', target_record_id: 'w200002', target_sense_id: 'w200002-s1', type: 'mood', relevance: 5, reverse_type: 'near', reverse_relevance: 2 },
   ];
@@ -744,14 +759,15 @@ test('merge coalesces consistent independently adjudicated reciprocal ID decisio
   await quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', decisionsFile], { root }));
 
   const merged = await quiet(() => run(['merge', '--checkpoint', checkpoint], { root }));
-  assert.deepEqual([merged.relations_added, merged.drops_added], [2, 0]);
+  assert.deepEqual([merged.relations_added, merged.drops_added], [3, 0]);
   const relations = (await readFile(path.join(root, 'data/relations/relation-001.jsonl'), 'utf8')).trim().split('\n').map(JSON.parse);
   assert.deepEqual(relations, [
     { source_record_id: 'w109230', source_sense_id: 'w109230-s1', target_record_id: 'w111040', target_sense_id: 'w111040-s1', type: 'near', relevance: 1, reverse_type: 'near', reverse_relevance: 1 },
+    { source_record_id: 'w14296', source_sense_id: 'w14296-s1', target_record_id: 'w153363', target_sense_id: 'w153363-s1', type: 'near', relevance: 1, reverse_type: 'near', reverse_relevance: 1 },
     { source_record_id: 'w200002', source_sense_id: 'w200002-s1', target_record_id: 'w200003', target_sense_id: 'w200003-s1', type: 'near', relevance: 2, reverse_type: 'mood', reverse_relevance: 5 },
   ], 'one row retains each independently authored direction, including distinct type and relevance');
   const counts = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
-  assert.deepEqual([counts.unique, counts.relation, counts.reverse_covered, counts.missing], [4, 2, 2, 0]);
+  assert.deepEqual([counts.unique, counts.relation, counts.reverse_covered, counts.missing], [6, 3, 3, 0]);
   assert.deepEqual(await quiet(() => run(['merge', '--checkpoint', checkpoint], { root })), {
     merged: true, relations_added: 0, drops_added: 0, checkpoint: path.join(root, checkpoint),
   }, 'merging the same checkpoint again remains idempotent');

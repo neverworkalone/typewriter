@@ -180,10 +180,10 @@ test('an exact Canonical lemma wins over a colliding orthographic form for exist
   }), /is not a Stage 1 candidate/u, 'a relation to the colliding search-form record cannot claim the exact lemma candidate');
 });
 
-test('an existing ID relation also answers the reverse direction, but an ambiguous homograph spelling is never assumed covered', () => {
+test('an exact existing ID relation answers its reverse candidate despite homographic spelling', () => {
   const approved = [{ source_record_id: 'w900', source_sense_id: 'w900-s1', target_record_id: 'w1', target_sense_id: 'w1-s1', type: 'near', relevance: 3, reverse_type: 'near', reverse_relevance: 3 }];
   const { items } = prepareShard({ canonicalRows: shardRows, candidateFiles: files, approvedRelationRows: approved, index });
-  assert.ok(items.find((item) => item.sense_id === 'w1-s1').candidates.some((c) => c.text === '동철'));
+  assert.equal(items.some((item) => item.sense_id === 'w1-s1' && item.candidates.some((c) => c.text === '동철')), false);
 });
 
 const base = { source_record_id: 'w1', source_sense_id: 'w1-s1' };
@@ -353,7 +353,7 @@ test('inventory allows exactly one C and one D model per batch and rejects a sec
   assert.doesNotThrow(() => candidateInventory(full.map((name) => name.replace('_c_codex', '_c_claude').replace('001_02_c_claude', '001_02_c_codex'))));
 });
 
-test('a stored ID pair also answers the reverse Stage 1 candidate when the source spelling is unique; an ambiguous spelling still needs its own disposition', () => {
+test('a stored exact ID pair answers the reverse candidate when its spelling also names homographs', () => {
   const local = [
     { id: 'w1', lemma: '하나', senses: [{ id: 'w1-s1', pos: 'noun', gloss: 'a' }] },
     { id: 'w2', lemma: '둘', senses: [{ id: 'w2-s1', pos: 'noun', gloss: 'b' }] },
@@ -367,6 +367,6 @@ test('a stored ID pair also answers the reverse Stage 1 candidate when the sourc
   const pair = (source, target) => ({ source_record_id: source[0], source_sense_id: source[1], target_record_id: target[0], target_sense_id: target[1], type: 'near', relevance: 2, reverse_type: 'near', reverse_relevance: 3 });
   // 하나 <-> 둘 listed each other; one stored row (source 둘, unique spelling) answers both candidates.
   assert.equal(verify({ w1: ['둘'], w2: ['하나'] }, [pair(['w2', 'w2-s1'], ['w1', 'w1-s1'])]).reverse_covered, 1);
-  // Source spelling 동철 names two records: the reverse candidate is not silently covered.
-  assert.throws(() => verify({ w5: ['동철'], w3: ['다섯'] }, [pair(['w3', 'w3-s1'], ['w5', 'w5-s1'])]), /has no relation, drop or existing/);
+  // Exact source ID w3 is one of the records named by 동철, so its stored pair covers w5's reverse candidate.
+  assert.equal(verify({ w5: ['동철'], w3: ['다섯'] }, [pair(['w3', 'w3-s1'], ['w5', 'w5-s1'])]).reverse_covered, 1);
 });
