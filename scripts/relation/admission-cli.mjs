@@ -686,40 +686,60 @@ function compactTier(value, where) {
   return Number(value);
 }
 
-/** Expand compact decision lines into the exact decision objects `validateDecision` already checks. */
+/**
+ * Expand compact decision lines into the exact decision objects `validateDecision` already checks.
+ * Grammar problems are collected per line (`errors`, keyed by candidate) instead of stopping at the first one.
+ */
 function parseCompactDecisions(text, checkpoint, pending) {
   const model = compactChunkModel(checkpoint, pending);
   const byAlias = new Map(model.candidates.map((row) => [row.alias, row]));
   const targetByAlias = new Map([...model.targets.values()].map((target) => [target.alias, target]));
   const lines = text.split('\n').map((line) => line.trim()).filter((line) => line && !line.startsWith('#'));
+  const errors = [];
   const header = (lines.shift() ?? '').split(/\s+/u);
   if (header.length !== 2 || header[0] !== 'chunk' || header[1] !== pending.chunk_id) {
-    throw new Error(`compact decisions must start with "chunk ${pending.chunk_id}"`);
+    errors.push({ alias: null, message: `compact decisions must start with "chunk ${pending.chunk_id}"` });
   }
-  return lines.map((line) => {
+  const decisions = [];
+  for (const line of lines) {
     const [alias, kind, ...fields] = line.split(/\s+/u);
     const row = byAlias.get(alias);
-    if (!row) throw new Error(`compact decision "${line}" names no candidate of chunk ${pending.chunk_id}`);
-    const base = { source_sense_id: row.item.sense_id, candidate: row.candidate.text };
-    if (kind === 'D') return { ...base, disposition: 'drop', reason: line.slice(alias.length).trim().slice(kind.length).trim() };
-    if (kind !== 'R') throw new Error(`${alias}: decision kind must be R or D`);
-    const target = (targetAlias) => {
-      const found = targetByAlias.get(targetAlias);
-      if (!found) throw new Error(`${alias}: unknown target alias ${targetAlias}`);
-      return found;
-    };
-    const [type, tier, ...rest] = fields;
-    const relation = { ...base, disposition: 'relation', type, relevance: compactTier(tier, alias) };
-    if (rest.length === 0) return relation;
-    if (rest.length === 2 && rest[0] === 'none') {
-      return { ...relation, target_resolution: 'no_exact_match', checked_target_sense_ids: rest[1].split(',').map((name) => target(name).sense_id) };
+    if (!row) {
+      errors.push({ alias: /^c\d+$/u.test(alias) ? alias : null, message: `compact decision "${line}" names no candidate of chunk ${pending.chunk_id}` });
+      continue;
     }
-    if (rest.length === 3) {
-      const exact = target(rest[0]);
-      return { ...relation, target_resolution: 'exact', target_record_id: exact.record_id, target_sense_id: exact.sense_id, reverse_type: rest[1], reverse_relevance: compactTier(rest[2], `${alias} reverse`) };
+    try {
+      const base = { source_sense_id: row.item.sense_id, candidate: row.candidate.text };
+      if (kind === 'D') {
+        decisions.push({ ...base, disposition: 'drop', reason: line.slice(alias.length).trim().slice(kind.length).trim() });
+        continue;
+      }
+      if (kind !== 'R') throw new Error(`${alias}: decision kind must be R or D`);
+      const target = (targetAlias) => {
+        const found = targetByAlias.get(targetAlias);
+        if (!found) throw new Error(`${alias}: unknown target alias ${targetAlias}`);
+        return found;
+      };
+      const [type, tier, ...rest] = fields;
+      const relation = { ...base, disposition: 'relation', type, relevance: compactTier(tier, alias) };
+      if (rest.length === 0) decisions.push(relation);
+      else if (rest.length === 2 && rest[0] === 'none') {
+        decisions.push({ ...relation, target_resolution: 'no_exact_match', checked_target_sense_ids: rest[1].split(',').map((name) => target(name).sense_id) });
+      } else if (rest.length === 3) {
+        const exact = target(rest[0]);
+        decisions.push({ ...relation, target_resolution: 'exact', target_record_id: exact.record_id, target_sense_id: exact.sense_id, reverse_type: rest[1], reverse_relevance: compactTier(rest[2], `${alias} reverse`) });
+      } else throw new Error(`${alias}: relation needs 2, 4 or 5 fields after R`);
+    } catch (error) {
+      errors.push({ alias, message: error.message });
     }
-    throw new Error(`${alias}: relation needs 2, 4 or 5 fields after R`);
-  });
+  }
+  return { decisions, errors, model };
+}
+
+/** The compact rows a candidate may use, given its own same-spelling target aliases. */
+function compactHint(row) {
+  if (row.targets.length === 0) return `${row.alias} R <type> <tier> | ${row.alias} D <reason>`;
+  return `${row.alias} R <type> <tier> T<k> <reverse_type> <reverse_tier> (T<k> one of ${row.targets.join(',')}) | ${row.alias} R <type> <tier> none ${row.targets.join(',')} | ${row.alias} D <reason>`;
 }
 
 async function readChunk(checkpoint, checkpointPath, maxCandidates, out, root, sourceSenseId = null, candidateText = null, format = 'json') {
@@ -816,12 +836,17 @@ async function readChunk(checkpoint, checkpointPath, maxCandidates, out, root, s
 async function saveChunk(checkpoint, checkpointPath, inputPath, root, format = 'json') {
   const pending = checkpoint.pending_chunk;
   if (!pending) throw new Error('checkpoint has no unread or unsaved chunk');
+  const problems = [];
   let input;
+  let model = null;
   try {
     const raw = await readFile(resolveRootPath(root, inputPath), 'utf8');
-    input = format === 'compact'
-      ? { chunk_id: pending.chunk_id, decisions: parseCompactDecisions(raw, checkpoint, pending) }
-      : JSON.parse(raw);
+    if (format === 'compact') {
+      const parsed = parseCompactDecisions(raw, checkpoint, pending);
+      model = parsed.model;
+      problems.push(...parsed.errors);
+      input = { chunk_id: pending.chunk_id, decisions: parsed.decisions };
+    } else input = JSON.parse(raw);
   } catch (error) { throw new Error(`cannot read chunk decisions: ${error.message}`); }
   if (!isPlainObject(input) || keysOf(input) !== 'chunk_id,decisions' || input.chunk_id !== pending.chunk_id || !Array.isArray(input.decisions)) {
     throw new Error(`decision file must contain the active chunk_id ${pending.chunk_id} and a decisions array`);
@@ -831,18 +856,39 @@ async function saveChunk(checkpoint, checkpointPath, inputPath, root, format = '
     const item = checkpoint.items.find((entry) => entry.sense_id === slice.sense_id);
     for (const candidate of item.candidates.slice(slice.start, slice.end)) expected.set(`${item.sense_id}\u0000${candidate.text}`, { item, candidate });
   }
+  const rowByKey = new Map((model?.candidates ?? []).map((row) => [`${row.item.sense_id}\u0000${row.candidate.text}`, row]));
+  const labelOf = (key) => rowByKey.get(key)?.alias ?? key.replace('\u0000', '/');
+  const failed = new Set(problems.map((problem) => problem.alias).filter((alias) => alias !== null));
+  const failedKeys = new Set([...rowByKey].filter(([, row]) => failed.has(row.alias)).map(([key]) => key));
+  const problem = (key, message) => {
+    failedKeys.add(key);
+    const row = rowByKey.get(key);
+    problems.push({ alias: row?.alias ?? null, label: row ? undefined : key.replace('\u0000', '/'), message: message.replace(`${key.replace('\u0000', '/')}: `, '') });
+  };
   const received = new Map();
   for (const decision of input.decisions) {
-    if (!isPlainObject(decision) || typeof decision.source_sense_id !== 'string' || typeof decision.candidate !== 'string') throw new Error('each decision needs source_sense_id and candidate');
+    if (!isPlainObject(decision) || typeof decision.source_sense_id !== 'string' || typeof decision.candidate !== 'string') {
+      problems.push({ alias: null, message: 'each decision needs source_sense_id and candidate' });
+      continue;
+    }
     const key = `${decision.source_sense_id}\u0000${decision.candidate}`;
-    if (received.has(key)) throw new Error(`chunk repeats decision ${decision.source_sense_id}/${decision.candidate}`);
+    if (received.has(key)) { problem(key, `chunk repeats decision ${decision.source_sense_id}/${decision.candidate}`); continue; }
     const source = expected.get(key);
-    if (!source) throw new Error(`decision ${decision.source_sense_id}/${decision.candidate} is outside the active chunk`);
-    validateDecision(source.item, source.candidate, decision);
+    if (!source) { problems.push({ alias: null, message: `decision ${decision.source_sense_id}/${decision.candidate} is outside the active chunk` }); continue; }
     received.set(key, decision);
+    try { validateDecision(source.item, source.candidate, decision); } catch (error) { problem(key, error.message); }
   }
-  const missing = [...expected.keys()].filter((key) => !received.has(key));
-  if (missing.length) throw new Error(`chunk has missing decisions: ${missing.map((key) => key.replace('\u0000', '/')).join(', ')}`);
+  for (const key of expected.keys()) {
+    if (!received.has(key) && !failedKeys.has(key)) problem(key, `chunk has missing decisions: ${labelOf(key)}`);
+  }
+  if (problems.length) {
+    const lines = problems.map((entry) => {
+      const row = entry.alias === null ? null : model?.candidates.find((candidate) => candidate.alias === entry.alias);
+      const head = entry.alias ?? entry.label ?? '-';
+      return `${head}${row ? ` ${row.candidate.text}` : ''}: ${entry.message}${row ? `  ->  ${compactHint(row)}` : ''}`;
+    });
+    throw new Error(`chunk ${pending.chunk_id} not saved, checkpoint unchanged: ${problems.length} problem(s)\n${lines.join('\n')}\ntypes: ${ADMISSION_TYPES.join('/')}; tier: one digit 1..9`);
+  }
   for (const [key, decision] of received) {
     const { candidate } = expected.get(key);
     if (candidate.already_accounted === true) candidate.additional_relations.push(decision);

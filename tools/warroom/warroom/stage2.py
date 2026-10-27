@@ -12,6 +12,7 @@ did, so a finished Part is never re-verified or re-produced). Past file existenc
 from __future__ import annotations
 
 import math
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -146,9 +147,101 @@ def write_pages(worktree, view: str, pages: list[str]) -> list[str]:
     return paths
 
 
-def write_chunk_pages(worktree) -> list[str]:
-    """Page the rendered Stage 2 chunk view for reading; returns worktree-relative paths in reading order."""
-    return write_pages(worktree, CHUNK_VIEW, chunk_pages((Path(worktree) / CHUNK_VIEW).read_text("utf-8")))
+DECISIONS = ".warroom-scratch/decisions.txt"
+MAX_FIXES = 2   # AI correction runs per fresh `s2_chunk_new` session
+_ROW = re.compile(r"c(\d+)\s")
+_ERROR_ALIAS = re.compile(r"^(c\d+)\b", re.M)
+_FENCE = re.compile(r"^\s*```")
+
+
+def extract_decisions(final_text: str | None, chunk_id: str) -> list[str] | None:
+    """The `c<n>` rows of the run's FINAL answer after its last `chunk <chunk_id>` line, or None ("no response").
+
+    Text without that exact current-chunk header (a progress note before an interruption, another chunk's answer) is
+    not a response. Prose and a code fence around the rows are ignored; the rows themselves are validated by the CLI.
+    """
+    if not isinstance(final_text, str):
+        return None
+    lines = final_text.replace("\r\n", "\n").split("\n")
+    starts = [i for i, line in enumerate(lines) if line.strip() == f"chunk {chunk_id}"]
+    if not starts:
+        return None
+    rows = []
+    for line in lines[starts[-1] + 1:]:
+        if _FENCE.match(line):
+            break
+        if _ROW.match(line.strip()):
+            rows.append(line.strip())
+    return rows
+
+
+def decisions_header(worktree) -> str | None:
+    """The chunk ID in the first line of the saved decision file, or None (absent, empty or not a header)."""
+    try:
+        for line in (Path(worktree) / DECISIONS).read_text("utf-8").split("\n"):
+            line = line.strip()
+            if line and not line.startswith("#"):
+                parts = line.split()
+                return parts[1] if len(parts) == 2 and parts[0] == "chunk" else None
+    except OSError:
+        pass
+    return None
+
+
+def write_decisions(worktree, chunk_id: str, rows: list[str]) -> None:
+    path = Path(worktree) / DECISIONS
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(f"chunk {chunk_id}\n" + "".join(f"{row}\n" for row in rows), "utf-8")
+    tmp.replace(path)
+
+
+def clear_decisions(worktree) -> None:
+    (Path(worktree) / DECISIONS).unlink(missing_ok=True)
+
+
+def read_rows(worktree) -> list[str]:
+    try:
+        return [line.strip() for line in (Path(worktree) / DECISIONS).read_text("utf-8").split("\n") if _ROW.match(line.strip())]
+    except OSError:
+        return []
+
+
+def alias_of(row: str) -> str:
+    return row.split(None, 1)[0]
+
+
+def error_aliases(diagnostic: str) -> list[str]:
+    """The `c<n>` aliases a save-chunk rejection names (errors and missing rows), in order of first mention."""
+    return list(dict.fromkeys(_ERROR_ALIAS.findall(diagnostic)))
+
+
+def unknown_aliases(diagnostic: str) -> list[str]:
+    """Aliases a save-chunk rejection says name no candidate of the chunk (rows that can never be valid)."""
+    return list(dict.fromkeys(re.findall(r"^(c\d+): .*names no candidate", diagnostic, re.M)))
+
+
+def merge_fix(existing: list[str], revised: list[str], allowed: list[str]) -> tuple[list[str], list[str]]:
+    """(complete rows, ignored rows): replace or add only the `allowed` aliases; every other existing row is unchanged
+    and a revised row outside `allowed` is ignored (the caller logs it)."""
+    merged = {alias_of(row): row for row in existing}
+    ignored = []
+    for row in revised:
+        if alias_of(row) in allowed:
+            merged[alias_of(row)] = row
+        else:
+            ignored.append(row)
+    return [merged[a] for a in sorted(merged, key=lambda a: int(a[1:]))], ignored
+
+
+def fixes_used(runs) -> int:
+    """`s2_chunk_fix` runs since the most recent `s2_chunk_new` (`runs` newest first, as Store.runs gives them)."""
+    n = 0
+    for r in runs:
+        if r["kind"] == "s2_chunk_new":
+            break
+        n += r["kind"] == "s2_chunk_fix"
+    return n
 
 
 def run_start_key(batch_id: int) -> str:

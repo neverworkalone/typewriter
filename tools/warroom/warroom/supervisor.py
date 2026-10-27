@@ -57,6 +57,7 @@ class Supervisor:
         self.runner, self.adapter, self.gh, self.git, self.env = runner, adapter, gh, git, env
         self.clock = clock
         self._worker_git_executables = []
+        self._s2_fix_problem: dict[int, str] = {}   # batch id -> the rejected save's error list for the next `s2_chunk_fix`
         self.maint = Maintenance(self)   # shared-defect Issues, the hidden Maintainer and applying its merged fix
 
     def _adapter(self, producer: str):
@@ -186,6 +187,13 @@ class Supervisor:
             if current["state"] != b["state"] or current["error"] != previous_error:
                 return
         if ln["retry_batch"] == b["id"]:
+            if b["method"] == STAGE2_METHOD and b["state"] == "ERROR" and not b["pr_number"] and self._s2_chunk_run(b) \
+                    and stage2.fixes_used(self.store.runs(b["id"])) >= stage2.MAX_FIXES:
+                # Only the owner's explicit Retry after the corrections are used up restarts this pending chunk in a new
+                # session; `fixes_used` counts from that new session, so the correction chances start over.
+                stage2.clear_decisions(b["worktree"])
+                self.store.update(b["id"], session_id=None)
+                self.store.log(b["id"], "수정 기회 소진 뒤 운영자 Retry: 같은 청크를 새 AI 세션으로 다시 시작합니다")
             self.store.set_line(b["producer"], b["method"], retry_batch=None, run=1)
             self.store.update(b["id"], state=b["paused_from"] or "PRODUCING", error=None,
                               retries=0, retry_after=None, pause_reason="", defect_id=None)
@@ -813,32 +821,49 @@ class Supervisor:
             if b["method"] == STAGE2_METHOD and kind.startswith("s2_"):
                 phase = "finalize" if "_finalize_" in kind else "chunk"
                 checkpoint = stage2.checkpoint(wt, b["shard"], b["batch"])
-                pages = None
-                if phase == "chunk" and stage2.next_action(checkpoint) == "chunk":
-                    # The Supervisor, not the AI, prepares the Part and renders the one compact chunk view to judge,
-                    # paged so each page reaches the model whole in one tool call.
+                view = None
+                if kind == "s2_chunk_new" and stage2.next_action(checkpoint) == "chunk":
+                    # The Supervisor, not the AI, prepares the Part and renders the one compact chunk view; the whole
+                    # view goes into the prompt and the AI only answers with its decisions.
                     bb, pp = stage2.split_key(b["batch"])
                     self.git.stage2_chunk_view(Path(wt), b["shard"], bb, pp, prepare=checkpoint is None)
                     checkpoint = stage2.checkpoint(wt, b["shard"], b["batch"])
-                    pages = stage2.write_chunk_pages(wt)
-                    if kind == "s2_chunk_new" and stage2.next_action(checkpoint) == "finalize":
+                    if stage2.next_action(checkpoint) == "finalize":
                         self.store.log(b["id"], "prepare 결과 판정할 필수 후보가 없어 바로 최종화 단계로 진행합니다.")
                         return self._launch(b, "s2_finalize_new")
+                    view = (Path(wt) / stage2.CHUNK_VIEW).read_text("utf-8")
+                    stage2.clear_decisions(wt)   # a new chunk never inherits the previous chunk's decision file
                 if stage2.next_action(checkpoint) != phase:
                     raise prompts.PromptError("Stage 2 실행 단계와 현재 checkpoint 상태가 다릅니다")
-                prompt = prompts.stage2(b, phase, checkpoint, resumed=kind.endswith("_resume"), pages=pages)
-                if phase == "chunk":
-                    # Snapshot the checkpoint and both Git refs before each chunk; neither may move mid-run.
-                    baseline = {"checkpoint": checkpoint, "branch": b["branch"], "worktree": str(wt),
-                                "head": self.git.head(wt), "remote_head": self.git.remote_head(b["branch"])}
-                    self.store.set(stage2.run_start_key(b["id"]), json.dumps(baseline, sort_keys=True))
-                else:
-                    self.store.delete(stage2.run_start_key(b["id"]))
                 title = f"Stage 2 {stage2.label(b['shard'], b['batch'])} {phase}"
-                if kind.endswith("_resume"):
+                if kind == "s2_chunk_fix":
+                    # Correction of the unsaved pending chunk: same session, same baseline, no new prepare/view/cursor.
+                    problem = self._stage2_chunk_boundary_problem(b)
+                    if problem:
+                        return self._fail(b, "ERROR", problem)
+                    detail = self._s2_fix_problem.pop(b["id"], None)
+                    if not sid or not checkpoint["pending_chunk"] or not detail:
+                        raise prompts.PromptError("수정 요청에 기존 세션·pending 청크·오류 목록이 모두 필요합니다")
+                    prompt = prompts.stage2_chunk_fix(checkpoint["pending_chunk"], detail)
                     h = ad.resume(sid, prompt, wt, run_env, run, log, ex, **extra)
                 else:
-                    h = ad.start(prompt, wt, run_env, run, title, log, ex, **extra)
+                    if kind == "s2_chunk_resume":
+                        if not checkpoint["pending_chunk"]:
+                            raise prompts.PromptError("이어갈 pending 청크가 없습니다")
+                        prompt = prompts.stage2_chunk_resume(checkpoint["pending_chunk"])
+                    else:
+                        prompt = prompts.stage2(b, phase, checkpoint, resumed=kind.endswith("_resume"), view=view)
+                    if phase == "chunk":
+                        # Snapshot the checkpoint and both Git refs before each chunk; neither may move mid-run.
+                        baseline = {"checkpoint": checkpoint, "branch": b["branch"], "worktree": str(wt),
+                                    "head": self.git.head(wt), "remote_head": self.git.remote_head(b["branch"])}
+                        self.store.set(stage2.run_start_key(b["id"]), json.dumps(baseline, sort_keys=True))
+                    else:
+                        self.store.delete(stage2.run_start_key(b["id"]))
+                    if kind.endswith("_resume"):
+                        h = ad.resume(sid, prompt, wt, run_env, run, log, ex, **extra)
+                    else:
+                        h = ad.start(prompt, wt, run_env, run, title, log, ex, **extra)
             elif b["method"] == literary.METHOD and kind in ("c_chunk_new", "c_chunk_resume"):
                 prompt, baseline = self._c_chunk_prompt(b, kind)
                 self.store.set(literary.run_start_key(b["id"]), json.dumps(baseline, sort_keys=True))
@@ -956,6 +981,17 @@ class Supervisor:
                 self.store.delete(stage2.run_start_key(b["id"]))
                 self.store.update(b["id"], session_id=None, retries=0, retry_after=None, error=None)
                 return self._launch_stage2_next(self.store.batch(b["id"]))
+            pending = self._stage2_pending(b)
+            if pending is not None and stage2.decisions_header(b["worktree"]) == pending:
+                # Restart / Retry: re-validate the saved decisions of THIS chunk only (an older chunk's file is "no
+                # response"); no AI run, and no failure is recorded for this re-check.
+                try:
+                    ok, detail = self._stage2_save(b)
+                except (OSError, ValueError, GitError) as e:
+                    return self._fail(b, "ERROR", f"저장된 판정 재검증 실패: {e}. worktree를 보존합니다.")
+                if ok:
+                    return self._stage2_saved_or_fail(b)
+                return self._stage2_rejected(b, detail)
             # An incomplete chunk may resume only its own session; without one, a fresh session reads the same pending
             # checkpoint chunk. It never selects a different Part or changes the owned checkout.
             kind = "s2_chunk_resume" if b["session_id"] else "s2_chunk_new"
@@ -1037,7 +1073,8 @@ class Supervisor:
             self.store.set_run_session(b["id"], sid)
             b = self.store.batch(b["id"])
         self._record_progress(b)
-        tolerant = {"tolerate_denied": True} if self._ab_chunk_run(b) and getattr(ad, "supports_tolerate_denied", False) else {}
+        tolerant = {"tolerate_denied": True} if (self._ab_chunk_run(b) or self._s2_chunk_run(b)) \
+            and getattr(ad, "supports_tolerate_denied", False) else {}
         problem = ad.run_problem(Path(b["log_file"]), self._recorded_run(b), b["session_id"], **tolerant)
         if problem:   # the CLI contradicts its pins: stop it, keep worktree/PR, wait for the operator
             state, msg = problem
@@ -1080,7 +1117,7 @@ class Supervisor:
         denied = self._adapter(b["producer"]).denied_actions(log_file)
         if not denied:
             return True
-        if self._ab_chunk_run(b):
+        if self._ab_chunk_run(b) or (self._s2_chunk_run(b) and b["state"] == "PRODUCING"):
             # Answer-only: a refused tool call is a metric, not a failure. The answer is judged by its block and its save,
             # and any real side effect (dirty tracked tree, moved HEAD/remote) by `_run_ok_ab_chunk`.
             self.store.log(b["id"], f"answer-only 청크에서 도구 호출 {len(denied)}건이 거부됐습니다 (부작용 없으면 실패 아님)", "warn")
@@ -1289,8 +1326,62 @@ class Supervisor:
             return f"Stage 2 청크의 HEAD/원격 브랜치 경계를 확인하지 못했습니다: {e}. worktree를 보존합니다."
         return None
 
+    @staticmethod
+    def _s2_chunk_run(b) -> bool:
+        return b["method"] == STAGE2_METHOD and isinstance(b["run_kind"], str) and b["run_kind"].startswith("s2_chunk_")
+
+    def _stage2_pending(self, b) -> str | None:
+        try:
+            checkpoint = stage2.checkpoint(b["worktree"], b["shard"], b["batch"])
+        except (OSError, ValueError, KeyError, TypeError):
+            return None
+        return checkpoint["pending_chunk"] if checkpoint else None
+
+    def _stage2_response(self, b) -> list[str] | None:
+        """The `c<n>` rows of this run's final answer for the CURRENT pending chunk, or None (no response)."""
+        pending = self._stage2_pending(b)
+        if pending is None:
+            return None
+        return stage2.extract_decisions(self._adapter(b["producer"]).final_answer(Path(b["log_file"])), pending)
+
+    def _stage2_save(self, b) -> tuple[bool, str]:
+        bb, pp = stage2.split_key(b["batch"])
+        ok, detail = self.git.stage2_save_chunk(Path(b["worktree"]), b["shard"], bb, pp)
+        extra = stage2.unknown_aliases(detail) if not ok else []
+        if extra:   # a row for a candidate this chunk does not have can never be saved or corrected: drop it, then re-check
+            stage2.write_decisions(b["worktree"], stage2.decisions_header(b["worktree"]),
+                                   [r for r in stage2.read_rows(b["worktree"]) if stage2.alias_of(r) not in extra])
+            self.store.log(b["id"], f"청크에 없는 후보 별칭 행 {', '.join(extra)}을 제거하고 다시 검증합니다", "warn")
+            ok, detail = self.git.stage2_save_chunk(Path(b["worktree"]), b["shard"], bb, pp)
+        return ok, detail
+
+    def _stage2_accept(self, b) -> None:
+        self.store.delete(stage2.run_start_key(b["id"]))
+        self.store.update(b["id"], session_id=None, retries=0, retry_after=None, error=None)
+        self.store.log(b["id"], "Stage 2 청크가 admission-cli save-chunk를 통과해 checkpoint에 저장됐습니다. 다음 단계는 새 세션으로 실행합니다.")
+        return self._launch_stage2_next(self.store.batch(b["id"]))
+
+    def _stage2_saved_or_fail(self, b) -> None:
+        if not self._stage2_chunk_saved(b):
+            return self._fail(b, "ERROR", "save-chunk가 성공했지만 checkpoint가 시작 시점 대비 정확히 한 청크만 전진하지 않았습니다. "
+                              "자동 재생산하지 않고 worktree와 기록을 보존합니다.")
+        return self._stage2_accept(b)
+
+    def _stage2_rejected(self, b, diagnostic: str) -> None:
+        """The pending chunk's decisions failed `save-chunk` (checkpoint unchanged, decision file kept): ask the SAME
+        session to correct only the reported rows, at most `MAX_FIXES` times since the chunk's new session."""
+        if stage2.fixes_used(self.store.runs(b["id"])) < stage2.MAX_FIXES and b["session_id"]:
+            self._s2_fix_problem[b["id"]] = diagnostic
+            self.store.update(b["id"], retries=0, retry_after=None, error=None)
+            return self._launch(self.store.batch(b["id"]), "s2_chunk_fix")
+        return self._fail(b, "ERROR", "Stage 2 청크 판정이 저장 검증을 통과하지 못했고 자동 수정 기회가 없습니다 "
+                          f"(결정 파일 {stage2.DECISIONS} 보존; 오너 Retry는 같은 청크를 새 세션으로 다시 시작): {diagnostic[:600]}")
+
     def _run_ok_stage2_chunk(self, b) -> None:
-        """Accept one saved chunk as an intermediate success; never accept or create an intermediate PR."""
+        """Accept one saved chunk as an intermediate success; never accept or create an intermediate PR.
+
+        The AI only answered: its final answer's rows for the current chunk become the decision file and the
+        Supervisor runs `save-chunk`. A first-response rejection is recorded on that AI run."""
         problem = self._stage2_chunk_boundary_problem(b)
         if problem:
             return self._fail(b, "ERROR", problem)
@@ -1301,13 +1392,34 @@ class Supervisor:
                                   "PR과 worktree를 보존하고 자동 인계하지 않습니다.")
         except Exception as e:
             return self._fail(b, "ERROR", f"중간 청크 종료 후 기존 PR 소유권 확인 실패: {e}. worktree를 보존합니다.")
-        if not self._stage2_chunk_saved(b):
-            return self._fail(b, "ERROR", "Stage 2 청크 실행은 종료됐지만 시작 시점 대비 checkpoint가 정확히 전진하지 않았거나 "
-                              "pending_chunk가 남아 있습니다. 자동 재생산하지 않고 worktree와 기록을 보존합니다.")
-        self.store.delete(stage2.run_start_key(b["id"]))
-        self.store.update(b["id"], session_id=None, retries=0, retry_after=None, error=None)
-        self.store.log(b["id"], "Stage 2 청크가 admission-cli save-chunk를 통과해 checkpoint에 저장됐습니다. 다음 단계는 새 세션으로 실행합니다.")
-        return self._launch_stage2_next(self.store.batch(b["id"]))
+        if self._stage2_chunk_saved(b):
+            return self._stage2_accept(b)
+        rows = self._stage2_response(b)
+        if rows is None:   # no `chunk <current id>` header: nothing to save, no correction or failure is consumed
+            return self._fail(b, "ERROR", "Stage 2 청크 실행은 종료됐지만 현재 청크 ID 헤더가 있는 판정 응답이 없고 시작 시점 대비 "
+                              "checkpoint가 정확히 전진하지 않았거나 pending_chunk가 남아 있습니다. 자동 재생산하지 않고 worktree와 기록을 보존합니다.")
+        pending = self._stage2_pending(b)
+        try:
+            if b["run_kind"] == "s2_chunk_fix":
+                ok, detail = self._stage2_save(b)   # the same rejection the fix prompt was built from, to find its rows
+                if ok:
+                    return self._stage2_saved_or_fail(b)
+                targets = stage2.error_aliases(detail)
+                merged, ignored = stage2.merge_fix(stage2.read_rows(b["worktree"]), rows, targets)
+                if ignored:
+                    self.store.log(b["id"], f"수정 응답의 허용 범위 밖 행 {len(ignored)}개를 무시했습니다: "
+                                   f"{', '.join(stage2.alias_of(r) for r in ignored[:10])}", "warn")
+                stage2.write_decisions(b["worktree"], pending, merged)
+            else:
+                stage2.write_decisions(b["worktree"], pending, rows)
+            ok, detail = self._stage2_save(b)
+        except (OSError, ValueError, GitError) as e:
+            return self._fail(b, "ERROR", f"판정 저장 처리 실패: {e}. worktree를 보존합니다.")
+        if ok:
+            return self._stage2_saved_or_fail(b)
+        self.store.add_submit_failure(b["id"])
+        self.store.log(b["id"], f"Stage 2 청크 저장 거부: {detail[:300]}", "warn")
+        return self._stage2_rejected(b, detail)
 
     # ---- Method C: serial chunks, then deterministic finalization (Issue #2033) ----------------------------------
     @staticmethod
@@ -2251,6 +2363,11 @@ class Supervisor:
     def _run_failed(self, b, code: int) -> None:
         cls = self._classify_run(b["producer"], b["log_file"])
         self.store.log(b["id"], f"AI 종료 코드 {code}, 분류={cls}", "warn")
+        if self._s2_chunk_run(b) and b["state"] == "PRODUCING" and self._stage2_response(b) is not None:
+            # A nonzero exit is not the verdict: run_problem found no model/permission/policy block, and a judgement for
+            # the current chunk is in the log, so it is saved and judged by save-chunk like any other answer.
+            self.store.log(b["id"], "AI가 비정상 종료했지만 현재 청크의 판정 응답이 있어 저장을 시도합니다.", "warn")
+            return self._run_ok_stage2_chunk(b)
         if self._c_chunk_run(b) and b["state"] == "PRODUCING" and self._c_chunk_saved(b):
             # The submit was stored (e.g. the CLI died or its answer was lost afterwards): never produce it again.
             self.store.log(b["id"], "AI가 비정상 종료했지만 활성 청크의 submit 저장이 확인되어 재생산하지 않습니다.", "warn")

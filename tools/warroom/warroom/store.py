@@ -526,6 +526,13 @@ class Store:
             c.execute("UPDATE runs SET ended_at=?, exit_status=? WHERE batch_id=? AND ended_at IS NULL",
                       (time.time(), "unknown" if status is None else str(status), batch_id))
 
+    def add_submit_failure(self, batch_id: int) -> None:
+        """One rejected `save-chunk` of the batch's latest AI run's own answer (the run already closed, so its CLI log
+        cannot show it)."""
+        with self._conn() as c:
+            c.execute("UPDATE runs SET submit_failures=COALESCE(submit_failures,0)+1 "
+                      "WHERE id=(SELECT MAX(id) FROM runs WHERE batch_id=?)", (batch_id,))
+
     def runs(self, batch_id: int):
         with self._conn() as c:
             return c.execute("SELECT * FROM runs WHERE batch_id=? ORDER BY id DESC", (batch_id,)).fetchall()

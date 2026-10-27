@@ -4,7 +4,7 @@ War Room이 지정한 Part (Shard {{shard}} · Batch {{batch}} · Part {{part}})
 현재 worktree와 브랜치 `{{branch}}`, 준비된 HEAD를 그대로 사용한다. Part·브랜치·HEAD를 바꾸지 않는다.
 현재 저장 상태: {{checkpoint}}
 {{session_note}}
-War Room이 이미 checkpoint를 준비하고 이번 청크를 `.warroom-scratch/active-chunk.txt`에 손실 없이 렌더링해, 도구 출력 상한에 맞는 page로 나눴다. 이 실행은 구현 작업이 아니라 청크 판정이다. 판정에 필요한 계약은 아래 카드에 있으므로 AGENTS.md·`docs/`·이슈·스크립트 소스를 읽지 않는다. web search, `gh`, Git, 다른 모델·CLI·서브에이전트도 사용하지 않는다.
+War Room이 checkpoint를 준비하고 이번 청크의 전체 compact 뷰를 아래에 손실 없이 넣었다. 이 실행은 구현 작업이 아니라 청크 판정이다. 판정에 필요한 계약은 아래 카드에 있으므로 AGENTS.md·`docs/`·이슈·스크립트 소스를 읽지 않는다. **일반적인 청크 판정에서는 도구와 파일을 사용하지 않는다.** Git·web·`gh`·다른 모델·CLI·서브에이전트도 쓰지 않는다. War Room이 마지막 답변을 파일에 기록하고 저장·검증한다. 단, 실제 공통 결함을 발견한 경우에는 기존 규약에 따라 `tools/warroom/prompts/shared-defect.md` 형식으로 `.warroom-scratch/shared-defect.json`을 작성하고 중단한다.
 
 ## 판정 카드 (요약 — 권위 원문: #927 §2, `docs/relation-editorial-policy.md`)
 
@@ -17,17 +17,13 @@ War Room이 이미 checkpoint를 준비하고 이번 청크를 `.warroom-scratch
 - **Tier(relevance 1..9)**: 같은 출발 sense·같은 UI 그룹(말의 결=near/mood, 연상=scene/sensory/action/association) 안에서 `P`(기존 승인)·`Q`(앞 청크 저장)·이번 판정과 비교한 상대 표시 우선순위다. 1=유의어로 놓아도 될 정도, 3=상당히 근접, 5=적당한 관계, 7=약한 관계, 9=버리기 아까운 주변적 연결. 짝수는 인접한 홀수 사이다. **연상 Tier 1**은 작가가 비공식 유의어로 여길 실제 대체 표현에만 준다(나그네→방랑자 O, 나그네→봇짐 X). 할당량이나 일괄 부여는 없다.
 - **Target 결속**: 후보 줄의 모든 `T<k>` 전체 gloss를 대조한다. 의도한 의미와 **정확히 일치하는** sense가 있으면 그 `T<k>`로 ID 결속한다(동음이의어 오결속 금지, 첫 문자열 일치 선택 금지). 이때 target 의미를 출발점으로 한 **역방향 type/tier**를 따로 정한다. 일치하는 sense가 없으면 text-only로 두고, 그 후보의 target 별칭을 **전부** 나열한다. target이 `-`이면 target 필드 없이 판정한다.
 
-## 실행 절차 (정확히 이 순서로)
+## 답변 형식 (정확히 이 순서로, 마지막 답변 하나)
 
-1. 청크 뷰를 아래 page 순서대로 **page마다 별도 도구 호출 한 번씩** `cat`으로 읽는다. 한 호출에 여러 page를 묶지 않는다(도구 호출 하나의 출력은 약 10,000 tokens에서 잘린다). Codex는 각 호출에 `max_output_tokens: 10000`을 지정한다. page는 줄 단위로 나뉘어 있고, 모두 이으면 `.warroom-scratch/active-chunk.txt`와 같다(누락·중복 없음). 다시 읽거나 sense별 재덤프를 하지 않는다.
-{{chunk_read}}
-   출력에 truncated 경고가 보이거나 page를 하나라도 받지 못했으면, 판정 파일을 쓰지 말고 그 사실을 보고한 뒤 종료한다. `# complete`만 있으면 판정할 청크가 없으므로 종료한다.
-2. 모든 `c<n>`의 판정을 `.warroom-scratch/decisions.txt`에 한 번에 쓴다. 첫 줄은 `chunk <청크 ID>`이고, 한 줄에 후보 하나씩 공백으로 구분한다:
-   - `c3 R near 2 T5 mood 4` — exact ID 결속(T5), 역방향 mood/4
-   - `c4 R scene 6 none T7,T8` — text-only, c4의 target 별칭 전부 확인
-   - `c5 R sensory 5` — target이 `-`인 후보
-   - `c6 D 출발 의미와 무관한 이유` — Drop
-3. `node scripts/relation/admission-cli.mjs save-chunk --checkpoint .warroom-scratch/relation-admission-{{shard}}-{{batch}}-{{part}}.json --in .warroom-scratch/decisions.txt --format compact`를 실행한다. 도구가 거부하면 오류가 가리킨 줄만 고쳐 다시 저장한다. 저장에 성공하면 즉시 종료한다.
+첫 줄은 정확히 `chunk {{chunk_id}}`이고, 이어서 **모든** `c<n>`마다 한 줄씩 공백으로 구분해 쓴다. 진행 안내·설명·코드 펜스를 덧붙이지 않는다. `# complete`만 있는 뷰면 판정할 청크가 없으므로 그렇게만 답한다.
 
-다음 청크 읽기, optional links, merge, verify, commit, push, PR은 처리하지 않는다. 저장 실패나 중단 때는 checkpoint와 decision 파일을 보존한다. 임시 파일은 `.warroom-scratch/`에만 둔다.
-공통 결함을 확인하면 `tools/warroom/prompts/shared-defect.md` 형식으로 `.warroom-scratch/shared-defect.json`에 보고하고 멈춘다.
+- `c3 R near 2 T5 mood 4` — exact ID 결속(T5), 역방향 mood/4
+- `c4 R scene 6 none T7,T8` — text-only, c4의 target 별칭 전부 확인
+- `c5 R sensory 5` — target이 `-`인 후보
+- `c6 D 출발 의미와 무관한 이유` — Drop
+
+{{chunk_input}}
