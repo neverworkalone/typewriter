@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { writeFileSync } from 'node:fs';
+import { realpathSync, writeFileSync } from 'node:fs';
 import { readFile, stat, unlink } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
@@ -87,7 +87,7 @@ let submitDiagnosticPath = null;
 function emitRetryable(text) {
   process.stderr.write(text);
   if (submitDiagnosticPath) {
-    try { writeFileSync(submitDiagnosticPath, text); } catch { /* no file means no automatic retry */ }
+    try { writeFileSync(submitDiagnosticPath, text, { flag: 'wx' }); } catch { /* no file means no automatic retry */ }
   }
 }
 
@@ -99,8 +99,25 @@ function inputFailure(reason) {
 }
 
 function assertSubmissionPath(filePath) {
-  const relative = path.relative(SCRATCH_DIRECTORY, path.resolve(filePath));
-  if (!relative || relative.startsWith(`..${path.sep}`) || relative === '..' || path.isAbsolute(relative)) throw inputFailure('outside_scratch');
+  const inside = (root, target) => {
+    const relative = path.relative(root, target);
+    return Boolean(relative) && relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
+  };
+  const resolved = path.resolve(filePath);
+  if (!inside(SCRATCH_DIRECTORY, resolved)) throw inputFailure('outside_scratch');
+  // Symlinks are followed: the real location of the input (or of its directory, when it does not exist yet) must stay inside the real scratch.
+  let realScratch;
+  let realTarget;
+  try {
+    realScratch = realpathSync(SCRATCH_DIRECTORY);
+    try { realTarget = realpathSync(resolved); } catch (error) {
+      if (error?.code !== 'ENOENT') throw error;
+      realTarget = path.join(realpathSync(path.dirname(resolved)), path.basename(resolved));
+    }
+  } catch (error) {
+    throw error?.code === 'ENOENT' ? inputFailure('not_found') : error;
+  }
+  if (!inside(realScratch, realTarget)) throw inputFailure('outside_scratch');
 }
 
 async function readSubmission(filePath) {

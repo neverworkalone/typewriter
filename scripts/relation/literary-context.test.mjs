@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile, realpath, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, realpath, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import test from 'node:test';
@@ -619,6 +619,19 @@ test('submit validation returns bounded reason codes and source-sense fields wit
       if (input !== outside) assert.equal(await readFile(`${input}.diag.json`, 'utf8').then(() => true, () => false), false, reason);
     }
     assert.equal(await readFile(`${outside}.diag.json`, 'utf8'), 'sentinel');
+    // A symlink inside scratch that points outside must not let the sidecar be deleted or written there.
+    const outsideDirectory = path.join(fixture.root, 'outside-directory');
+    await mkdir(outsideDirectory, { recursive: true });
+    await writeFile(path.join(outsideDirectory, 'submit.json'), '{"senses":[');
+    await writeFile(path.join(outsideDirectory, 'submit.json.diag.json'), 'sentinel');
+    await symlink(outsideDirectory, path.join(fixture.scratchDirectory, 'alias'));
+    for (const linked of [path.join(fixture.scratchDirectory, 'alias', 'submit.json'), path.join(fixture.scratchDirectory, 'alias', 'new.json')]) {
+      const refused = runCli(fixture, ['submit', '--db', fixture.databasePath, '--checkpoint', fixture.checkpointPath, '--input', linked]);
+      assert.equal(refused.status, 1, linked);
+      assert.equal(JSON.parse(refused.stderr).diagnostic, 'submit_input', linked);
+    }
+    assert.equal(await readFile(path.join(outsideDirectory, 'submit.json.diag.json'), 'utf8'), 'sentinel');
+    assert.equal(await readFile(path.join(outsideDirectory, 'new.json.diag.json'), 'utf8').then(() => true, () => false), false);
     const unrepairable = await submitCli(fixture, { senses: [{ sense_id: item.sense_id, verified: [], candidates: [] }] }, path.join(fixture.root, 'missing.sqlite'));
     assert.notEqual(unrepairable.status, 0);
     await assert.rejects(readFile(path.join(fixture.scratchDirectory, 'submit-input.json.diag.json'), 'utf8'), { code: 'ENOENT' });   // index/operation failures are never retryable
