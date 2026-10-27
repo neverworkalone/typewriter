@@ -481,6 +481,23 @@ test('submit validation returns bounded reason codes and source-sense fields wit
         reason: 'submission_schema',
         field: 'input',
         senseId: null,
+        jsonSyntax: { line: 1, column: 2 },
+      },
+      {
+        name: 'missing final closing brace reports its line and column',
+        raw: '{"senses":[{"sense_id":"private-json-marker","verified":[],"candidates":[]}]\n',
+        reason: 'submission_schema',
+        field: 'input',
+        senseId: null,
+        jsonSyntax: { line: 2, column: 1 },
+      },
+      {
+        name: 'truncated JSON reports the end position',
+        raw: '{"senses":[{"sense_id":"private-json-marker",',
+        reason: 'submission_schema',
+        field: 'input',
+        senseId: null,
+        jsonSyntax: { line: 1, column: 46 },
       },
       {
         name: 'unsupported top-level field',
@@ -550,6 +567,7 @@ test('submit validation returns bounded reason codes and source-sense fields wit
         assert.deepEqual(diagnostic.issues, [{ entry_number: entryNumber, reason: scenario.reason, field: scenario.field }], scenario.name);
       }
       if (scenario.issuesTruncated) assert.equal(diagnostic.issues_truncated, true, scenario.name);
+      assert.deepEqual(diagnostic.json_syntax, scenario.jsonSyntax, scenario.name);
       const expectedRepairScope = scenario.reason === 'submission_schema'
         ? 'correct_submission_shape'
         : scenario.reason === 'unknown_sense'

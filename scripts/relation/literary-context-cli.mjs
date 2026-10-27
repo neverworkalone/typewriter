@@ -86,11 +86,18 @@ async function readSubmission(filePath) {
   if (!relative || relative.startsWith(`..${path.sep}`) || relative === '..' || path.isAbsolute(relative)) fail('submission JSON must remain under .warroom-scratch/');
   const fileStat = await stat(filePath);
   if (fileStat.size > 64_000) fail('sweep results JSON exceeds the 64 KB input limit');
+  const text = await readFile(filePath, 'utf8');
   try {
-    return JSON.parse(await readFile(filePath, 'utf8'));
+    return JSON.parse(text);
   } catch (error) {
     if (!(error instanceof SyntaxError)) throw error;
     const failure = new Error('literary chunk submission JSON is invalid');
+    // Only a numeric position is forwarded; V8's message can quote file content, so it is never echoed.
+    const position = Number(/ at position (\d+)/u.exec(error.message)?.[1]);
+    if (Number.isSafeInteger(position) && position <= text.length) {
+      const before = text.slice(0, position);
+      failure.syntax = { line: before.split('\n').length, column: position - before.lastIndexOf('\n') };
+    }
     failure.code = 'LITERARY_SUBMISSION_VALIDATION';
     failure.reason = 'submission_schema';
     failure.affected = { sense_id: null, field: 'input', entry_number: null };
@@ -256,6 +263,7 @@ main().catch((error) => {
       affected: { sense_id: senseId, field, entry_number: entryNumber },
       issues,
       ...(error.issues_truncated ? { issues_truncated: true } : {}),
+      ...(error.syntax ? { json_syntax: error.syntax } : {}),
       repair_scope: repairScope,
     })}\n`);
     process.exitCode = 1;
