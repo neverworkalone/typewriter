@@ -192,6 +192,9 @@ class SerialChunks(unittest.TestCase):
 
         self.assertIsNone(w.sup._find_pr(b))
 
+        w.add_branch_pr(2052, head=HEAD1)
+        self.assertEqual(w.sup._find_pr(b)["number"], 2052)
+
         w.add_branch_pr(2060, state="open", head=HEAD1)
         self.assertEqual(w.sup._find_pr(b)["number"], 2060)
 
@@ -205,6 +208,28 @@ class SerialChunks(unittest.TestCase):
 
         with self.assertRaisesRegex(RecoveryBlocked, "닫힌 PR #2050 HEAD와 로컬 worktree HEAD가 다릅니다"):
             w.sup._find_recovery_pr(w.row("deepseek", "c"))
+
+    def test_c_recovery_keeps_unattached_closed_pr_at_current_worktree_head(self):
+        w = self.w
+        w.start("single", "deepseek", "c")
+        w.tick()
+        b = w.add_branch_pr(2050, head=HEAD1)
+
+        info = w.sup._find_recovery_pr(b)
+
+        self.assertEqual(info["number"], 2050)
+        self.assertFalse(info["merged"])
+
+    def test_c_recovery_keeps_closed_pr_at_recorded_finalization_head(self):
+        w = self.w
+        w.start("single", "deepseek", "c")
+        w.tick()
+        b = w.row("deepseek", "c")
+        w.store.set(f"c_commit_head_{b['id']}", HEAD2)
+        w.add_branch_pr(2050, head=HEAD2)
+
+        with self.assertRaisesRegex(RecoveryBlocked, "닫힌 PR #2050 HEAD와 로컬 worktree HEAD가 다릅니다"):
+            w.sup._find_recovery_pr(b)
 
     def test_c_recovery_keeps_open_pr_head_checks(self):
         w = self.w
@@ -324,6 +349,30 @@ class Finalization(unittest.TestCase):
         self.assertEqual(w.sup._find_recovery_pr(b)["number"], 100)
         self.assertEqual(w.gh.prs[2050]["state"], "closed")
         self.assertEqual(w.gh.prs[2051]["state"], "closed")
+
+    def test_retry_preserves_a_closed_pr_matching_the_current_head_without_creating_another(self):
+        w = self.w
+        w.start("single", "deepseek", "c")
+        w.ai(mark=5)
+        w.tick()
+        w.add_branch_pr(2050, head=HEAD1)
+        w.finish_last()
+        w.tick()
+
+        b = w.row("deepseek", "c")
+        self.assertEqual(b["state"], "ERROR")
+        self.assertIn("예상하지 않은 PR #2050", b["error"])
+        self.assertEqual(len(w.adapter.launches), 1)
+        self.assertIsNone(b["pr_number"])
+
+        w.ai()
+        self.assertTrue(control.retry(w.store, "deepseek", "c"))
+        w.tick(2)
+
+        self.assertEqual(w.row("deepseek", "c")["state"], "ERROR")
+        self.assertIn("이미 PR이 있어 자동 재개를 중단합니다", w.row("deepseek", "c")["error"])
+        self.assertEqual(len(w.adapter.launches), 1)
+        self.assertEqual(w.gh.created_prs if hasattr(w.gh, "created_prs") else [], [])
 
 
     def test_failed_pr_creation_keeps_commit_and_push_and_retry_does_not_repeat_them(self):
