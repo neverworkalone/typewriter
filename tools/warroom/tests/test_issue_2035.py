@@ -155,6 +155,24 @@ class SerialChunks(unittest.TestCase):
         self.assertEqual(flat["w0004-s1"], ["바다"])
         self.assertEqual(w.kinds(), ["ab_chunk_new", "ab_chunk_retry", "ab_chunk_new"])   # then chunk 2 starts a NEW session
 
+    def test_three_source_lemma_repeats_in_one_answer_are_all_requested_by_the_first_save(self):
+        w = self.w
+        w.start("single", "deepseek", "a")
+        w.ai(w.block(1, {"S2": "S2\t표제2", "S5": "S5\t표제4", "S9": "S9\t표제7"}), session="ses_1")
+        w.ai("BEGIN chunk 001\nS2\t바다\nS5\t노을\nS9\t파도\nEND chunk 001", session="ses_1")
+        w.tick()
+        w.finish_last()
+        w.tick()
+        st = stage1ab.load_state(w.store, w.row_()["id"], 1)
+        self.assertEqual((st["tries"], st["requested"]), (1, ["S2", "S5", "S9"]))
+        retry = w.adapter.launches[-1]
+        self.assertEqual(retry["kind"], "resume")
+        for alias in ("S2", "S5", "S9"):
+            self.assertIn(alias, retry["prompt"])
+        w.finish_last()
+        w.tick()                                                              # one correction fixes all three; chunk saved
+        self.assertEqual(w.kinds(), ["ab_chunk_new", "ab_chunk_retry", "ab_chunk_new"])
+
     def test_the_rejection_reason_survives_a_restart(self):
         w = self.w
         w.start("single", "deepseek", "a")

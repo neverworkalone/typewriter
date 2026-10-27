@@ -204,6 +204,63 @@ test('save-chunk rejects exact source lemma self-repeats that the final validato
   assert.equal(saved.candidateCount, 4);
 });
 
+test('save-chunk reports every source-lemma self-repeat of a chunk at once, keeps saved data, and still allows valid forms', async (t) => {
+  const context = await setup(t);
+  context.canonicalRows[0].lemma = '들소';
+  context.canonicalRows[1].lemma = '뒷밭';
+  context.canonicalRows[1].search_forms = ['뒷밭', '뒷 밭'];
+  context.canonicalRows[2].lemma = '드레싱';
+  context.canonicalRows[3].lemma = '건축';
+  context.canonicalRows[4].lemma = '건축가';
+  await writeFile(path.join(context.repositoryDirectory, 'data/canonical/stdict-0001.jsonl'), `${context.canonicalRows.map((row) => JSON.stringify(row)).join('\n')}\n`);
+  await prepare(context);
+  await saveChunk(context, 1, { 'w004-s1': ['보존'] });
+  const savedPath = path.join(context.scratchDirectory, 'candidates/chunk-001.jsonl');
+  const before = await readFile(savedPath, 'utf8');
+  const save = async (bySense) => saveCandidateChunk({
+    scratchDirectory: context.scratchDirectory,
+    chunk: 1,
+    inputPath: await writeInput(context, rowsFor(context.canonicalRows, 0, 25, bySense), 'repeat.jsonl'),
+    repositoryDirectory: context.repositoryDirectory,
+  });
+  // Exact, parenthetical and search-form repeats in three different senses: one save names all three, and only them.
+  await assert.rejects(save({ 'w001-s1': ['들소'], 'w002-s1': ['뒷 밭'], 'w003-s1': ['드레싱(dressing)'], 'w004-s1': ['건축가'] }), (error) => {
+    const summary = error.message.split('\n').at(-1);
+    assert.deepEqual([...summary.matchAll(/sense_id (\S+?)(?:;|$)/gu)].map((match) => match[1]).sort(), ['w001-s1', 'w002-s1', 'w003-s1']);
+    assert.match(summary, /source lemma repeat in 3 sense\(s\)/u);
+    return true;
+  });
+  assert.equal(await readFile(savedPath, 'utf8'), before);
+  // A structural defect is still a plain fail-closed error, not a self-repeat report.
+  await assert.rejects(save({ 'w001-s1': ['들소', ' 별빛'] }), /non-empty trimmed string/u);
+  // Valid-but-unusual: an independent compound and another Canonical lemma are accepted.
+  assert.equal((await save({ 'w004-s1': ['건축가', '건축 도면'] })).candidateCount, 2);
+});
+
+test('a compact save of a 136-sense chunk where every sense repeats its lemma keeps every alias inside the 1500-char tail', async (t) => {
+  const context = await setup(t);
+  for (const [index, record] of context.canonicalRows.slice(0, 50).entries()) {
+    const extra = index < 36 ? 2 : 1;
+    record.senses = Array.from({ length: extra + 1 }, (_, sense) => ({ id: `${record.id}-s${sense + 1}`, pos: 'noun', gloss: `뜻 ${index + 1}-${sense + 1}.` }));
+  }
+  await writeFile(path.join(context.repositoryDirectory, 'data/canonical/stdict-0001.jsonl'), `${context.canonicalRows.map((row) => JSON.stringify(row)).join('\n')}\n`);
+  await prepare(context, 50);
+  const lines = ['chunk 001'];
+  let alias = 0;
+  for (const record of context.canonicalRows.slice(0, 50)) for (const _ of record.senses) lines.push(`S${(alias += 1)}\t${record.lemma}`);
+  assert.equal(alias, 136);
+  const inputPath = path.join(context.scratchDirectory, 'answer.tsv');
+  await mkdir(context.scratchDirectory, { recursive: true });
+  await writeFile(inputPath, `${lines.join('\n')}\n`);
+  await assert.rejects(saveCandidateChunk({ scratchDirectory: context.scratchDirectory, chunk: 1, inputPath, format: 'compact', repositoryDirectory: context.repositoryDirectory }), (error) => {
+    // The Supervisor keeps the last 1500 characters of the whitespace-collapsed diagnostic and picks the S<n> tokens in it.
+    const tail = error.message.split(/\s+/u).join(' ').slice(-1500);
+    const aliases = new Set(tail.match(/\bS[1-9]\d*\b/gu));
+    assert.deepEqual([...aliases].sort((a, b) => Number(a.slice(1)) - Number(b.slice(1))), Array.from({ length: 136 }, (_, i) => `S${i + 1}`));
+    return true;
+  });
+});
+
 test('patch rejects unknown IDs and absent removals, and writes nothing on failure', async (t) => {
   const context = await setup(t);
   await prepare(context);
