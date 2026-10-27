@@ -105,13 +105,19 @@ export function cleanDefinition(definition) {
 // STDICT drops the target of a part-of-speech-level reference (`<sp_no>` id tag) from `definition` (`→ .`) but keeps it
 // in `definition_original` (`→ <sp_no>414853002</sp_no>둘째_.`; `_` closes the headword).
 const EMPTY_ARROW = /^→\s*\.\s*$/u;
-const SP_NO_REFERENCE = /^→ <sp_no>\d+<\/sp_no>(?<head>[가-힣ㄱ-ㅎ]+(?: [가-힣ㄱ-ㅎ]+)*)_ ?\.$/u;
+const SP_NO_REFERENCE = /^→ <sp_no>(?<posCode>\d+)<\/sp_no>(?<head>[가-힣ㄱ-ㅎ]+(?: [가-힣ㄱ-ㅎ]+)*)_ ?\.$/u;
 
-/** The source gloss text of a sense: `definition`, with an emptied `<sp_no>` reference restored from `definition_original`. */
-export function sourceDefinition(sense) {
+/**
+ * The source gloss text of a sense: `definition`, with an emptied `<sp_no>` reference restored from `definition_original`.
+ * `<sp_no>` is the target's part-of-speech code (`<target_code><3 digits>`); `wordOf(target_code)` supplies the target's
+ * source word so its homograph number is written the way STDICT writes other references (`→ 졸리다02.`).
+ */
+export function sourceDefinition(sense, wordOf = () => undefined) {
   if (!EMPTY_ARROW.test(sense.definition ?? '')) return sense.definition;
-  const head = SP_NO_REFERENCE.exec(sense.definition_original ?? '')?.groups.head;
-  return head === undefined ? sense.definition : `→ ${head}.`;
+  const groups = SP_NO_REFERENCE.exec(sense.definition_original ?? '')?.groups;
+  if (groups === undefined) return sense.definition;
+  const number = homographNumber(wordOf(Number(groups.posCode.slice(0, -3))) ?? '');
+  return `→ ${groups.head}${number === null ? '' : String(number).padStart(2, '0')}.`;
 }
 
 export function recordIdFor(targetCode) {
@@ -166,7 +172,7 @@ export function flattenSenses(item) {
 export function addToSenseIndex(index, item) {
   const targetCode = item.target_code;
   const { word, word_unit: wordUnit } = item.word_info;
-  const entry = { included: 0, held: false };
+  const entry = { included: 0, held: false, word };
   flattenSenses(item).forEach(({ sense, sourcePos }, position) => {
     const verdict = classifySense({ word, wordUnit, sourcePos, definition: sense.definition });
     index.senseByCode.set(Number(sense.sense_code), { targetCode, position, include: verdict.include });
@@ -327,7 +333,7 @@ export function convertItem(item, { index, isSelected }) {
       report.excluded.push({ sense: senseId, reason: verdict.reason });
       return;
     }
-    const cleaned = cleanDefinition(sourceDefinition(sense));
+    const cleaned = cleanDefinition(sourceDefinition(sense, (code) => index.entries.get(code)?.word));
     for (const name of cleaned.markup) report.markup.push({ sense: senseId, markup: name });
     if (cleaned.unknownMarkup) report.unknownMarkup.push(senseId);
     const pos = mapPos(sourcePos, info.word_unit);

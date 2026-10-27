@@ -117,6 +117,12 @@ test('an emptied <sp_no> reference is restored from definition_original, nothing
     [{ definition: '뜻.', definition_original: '→ <sp_no>1</sp_no>둘째_.' }, '뜻.'],
   ];
   for (const [sense, expected] of table) assert.equal(sourceDefinition(sense), expected, JSON.stringify(sense));
+  // The target's homograph number comes from `<sp_no>` (`<target_code>` + 3 digits) and the target's source word.
+  const words = new Map([[414853, '둘-째'], [292185, '졸리다01'], [5, '가나다99']]);
+  const withNumber = (original) => sourceDefinition(emptied(original), (code) => words.get(code));
+  assert.equal(withNumber('→ <sp_no>414853002</sp_no>둘째_.'), '→ 둘째.');
+  assert.equal(withNumber('→ <sp_no>292185003</sp_no>졸리다_.'), '→ 졸리다01.');
+  assert.equal(withNumber('→ <sp_no>999999001</sp_no>졸리다_.'), '→ 졸리다.', 'an unknown target adds no number');
 });
 
 test('definitions are cleaned of embedded markup without hiding what was removed', () => {
