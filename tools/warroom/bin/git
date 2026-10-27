@@ -8,6 +8,9 @@ import sys
 from pathlib import Path
 
 
+_EXEC_MARK = "WARROOM_GIT_SHIM_EXEC_PID"
+
+
 def _command(argv: list[str]) -> tuple[str | None, list[str]]:
     """Skip Git global options and return the command plus its remaining arguments."""
     value_options = {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--exec-path", "--super-prefix",
@@ -28,8 +31,12 @@ def _command(argv: list[str]) -> tuple[str | None, list[str]]:
     return None, []
 
 
-def _real_git() -> str | None:
-    """Find Git behind this shim without publishing its executable path to worker processes."""
+def _real_git() -> tuple[str | None, str]:
+    """Find Git behind this shim, plus the PATH to run it with: that PATH never contains the shim.
+
+    macOS's /usr/bin/git is an xcrun stub that looks `git` up on PATH whenever the developer-dir Git cannot be used
+    (a sandbox hiding it). With the shim on PATH, xcrun finds the shim, the shim runs /usr/bin/git again, and the
+    exec chain loops forever (and xcrun caches the shim as `git` for every later terminal)."""
     shim = Path(__file__).resolve()
     search_path = []
     for entry in os.environ.get("PATH", os.defpath).split(os.pathsep):
@@ -40,10 +47,11 @@ def _real_git() -> str | None:
         except OSError:
             continue
         search_path.append(entry)
-    real_git = shutil.which("git", path=os.pathsep.join(search_path))
+    clean_path = os.pathsep.join(search_path)
+    real_git = shutil.which("git", path=clean_path)
     if real_git and Path(real_git).resolve() != shim:
-        return real_git
-    return None
+        return real_git, clean_path
+    return None, clean_path
 
 
 def main() -> int:
@@ -51,8 +59,8 @@ def main() -> int:
     command, rest = _command(argv)
     blocked = False
     chunk_run = os.environ.get("WARROOM_STAGE2_CHUNK") == "1"
-    if chunk_run and command is not None:
-        # Chunk runs do not need Git; do not delegate to an executable hidden behind this shim.
+    if chunk_run:
+        # Chunk runs do not need Git (not even `git --version`); never delegate to an executable behind this shim.
         blocked = True
     elif command == "worktree":
         # `list` is read-only; every other worktree lifecycle operation is Supervisor-owned.
@@ -70,11 +78,16 @@ def main() -> int:
         print(message, file=sys.stderr)
         return 126
 
-    real_git = _real_git()
+    if os.environ.get(_EXEC_MARK) == str(os.getpid()):
+        # exec keeps the pid: this process already handed over to real Git and was re-entered (an xcrun loop).
+        print("War Room Git shim was re-entered through the Git it runs; stopping the exec loop.", file=sys.stderr)
+        return 126
+    real_git, clean_path = _real_git()
     if not real_git:
         print("War Room's real Git executable is not configured.", file=sys.stderr)
         return 127
-    os.execv(real_git, [real_git, *argv])
+    env = {**os.environ, "PATH": clean_path, _EXEC_MARK: str(os.getpid())}
+    os.execve(real_git, [real_git, *argv], env)
     return 127
 
 

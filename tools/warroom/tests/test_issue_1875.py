@@ -290,6 +290,40 @@ class ProducerHandoff(unittest.TestCase):
         self.assertEqual(finalizer_commit.stdout.strip(), "commit -m final")
         self.assertEqual(finalizer_push.stdout.strip(), "push origin branch")
 
+    def test_shim_never_loops_through_a_git_that_looks_itself_up_on_path(self):
+        """macOS /usr/bin/git (xcrun) re-resolves `git` on PATH when its developer-dir Git is unusable."""
+        with tempfile.TemporaryDirectory() as tmp:
+            real_bin = Path(tmp) / "real-bin"
+            real_bin.mkdir()
+            path_probe = real_bin / "git"
+            path_probe.write_text("#!/bin/sh\nprintf '%s' \"$PATH\"\n")
+            path_probe.chmod(0o755)
+            base = os.pathsep.join((str(BIN), str(real_bin), os.environ.get("PATH", "/usr/bin:/bin")))
+            shim_path = subprocess.run([sys.executable, str(BIN / "git"), "status"], env={"PATH": base},
+                                       capture_output=True, text=True, timeout=30)
+
+            # A real Git that re-enters the shim by exec, the way xcrun does, must stop at once.
+            path_probe.write_text(f'#!/bin/sh\nexec "{BIN / "git"}" "$@"\n')
+            looped = subprocess.run([sys.executable, str(BIN / "git"), "rev-parse", "HEAD"],
+                                    env={"PATH": base}, capture_output=True, text=True, timeout=30)
+
+            # A Git spawned by Git (hook, alias) is a different process and still works.
+            path_probe.write_text("#!/bin/sh\nprintf 'ok\\n'\n")
+            nested = subprocess.run([sys.executable, str(BIN / "git"), "status"],
+                                    env={"PATH": base, "WARROOM_GIT_SHIM_EXEC_PID": "1"},
+                                    capture_output=True, text=True, timeout=30)
+            chunk_version = subprocess.run([sys.executable, str(BIN / "git"), "--version"],
+                                           env={"PATH": base, "WARROOM_STAGE2_CHUNK": "1"},
+                                           capture_output=True, text=True, timeout=30)
+
+        self.assertEqual(shim_path.returncode, 0)
+        self.assertNotIn(str(BIN), shim_path.stdout.split(os.pathsep))
+        self.assertIn(str(real_bin), shim_path.stdout.split(os.pathsep))
+        self.assertEqual(looped.returncode, 126)
+        self.assertIn("re-entered", looped.stderr)
+        self.assertEqual((nested.returncode, nested.stdout.strip()), (0, "ok"))
+        self.assertEqual(chunk_version.returncode, 126)
+
 
 class Stage2ProcessSandbox(unittest.TestCase):
     @unittest.skipUnless((sys.platform == "darwin" and shutil.which("sandbox-exec")) or
