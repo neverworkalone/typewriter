@@ -29,6 +29,12 @@ class FakeWorkbenchCli:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in self.rows()), "utf-8")
 
+    def chunk_rows_to(self, path: Path, worktree: Path, number: int) -> None:
+        """Write a structurally valid candidate file for chunk `number` (what only a forbidden AI write could leave)."""
+        rows = self.rows()[(number - 1) * 50:number * 50]
+        path.write_text("".join(json.dumps({"record_id": r["id"], "senses": [{"sense_id": s["id"], "candidates": ["x"]} for s in r["senses"]]},
+                                           ensure_ascii=False) + "\n" for r in rows), "utf-8")
+
     @staticmethod
     def opt(argv, name):
         return argv[argv.index(name) + 1] if name in argv else None

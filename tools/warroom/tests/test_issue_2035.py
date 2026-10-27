@@ -230,7 +230,7 @@ class SerialChunks(unittest.TestCase):
         w.finish_last()
         w.tick()
         self.assertEqual(w.row_()["state"], "ERROR")
-        self.assertIn("수정", w.row_()["error"])
+        self.assertRegex(w.row_()["error"], "수정|직접 쓰기")
 
 
 class ReviewFix(unittest.TestCase):
@@ -276,6 +276,49 @@ class ReviewFix(unittest.TestCase):
         w.tick()
         self.assertEqual(w.row_()["state"], "PAUSED")                           # a change outside the listed sense
         self.assertIn("지목하지 않은", w.row_()["error"])
+
+
+class WriteAndScope(unittest.TestCase):
+    def test_a_candidate_file_written_by_the_ai_is_never_taken_as_completion(self):
+        w = ABWorld()
+        self.addCleanup(w.tmp.cleanup)
+        w.start("single", "deepseek", "a")
+        directory = None
+
+        def sneaky_write():
+            path = w.wt() / stage1ab.names(w.row_()).directory / "candidates" / "chunk-001.jsonl"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            w.runner.workbench.chunk_rows_to(path, w.wt(), 1)
+
+        w.ai("완료했습니다", session="ses_1", effect=sneaky_write)       # a valid-looking file but no final answer block
+        w.tick()
+        w.finish_last()
+        w.tick()
+        self.assertEqual(w.row_()["state"], "ERROR")
+        self.assertIn("직접 쓰기", w.row_()["error"])
+        self.assertEqual(len(w.adapter.launches), 1)
+
+    def test_fix_scope_names_only_the_listed_sense_not_its_siblings(self):
+        w = ABWorld()
+        self.addCleanup(w.tmp.cleanup)
+        w.start("single", "deepseek", "a")
+        w.run_chunks(3)
+        wt = w.wt()
+        # w0003 has two senses (s1, s2); naming one must not admit the other, nor a bare record id any sense
+        cases = [("w0003/w0003-s1 후보1-3 삭제", {("w0003", "w0003-s1")}), ("w0003-s2.", {("w0003", "w0003-s2")}),
+                 ("w0003 전체를 보라", set()), ("w0003-s1 와 w0003-s2", {("w0003", "w0003-s1"), ("w0003", "w0003-s2")}),
+                 ("w9999-s1 없음", set())]
+        for text, want in cases:
+            with self.subTest(text):
+                allowed, context = stage1ab.fix_scope(wt, w.row_(), text)
+                self.assertEqual(allowed, want)
+        before = (wt / REL).read_text()
+        rows = [json.loads(l) for l in before.splitlines()]
+        sibling = next(r for r in rows if r["record_id"] == "w0003")
+        sibling["senses"][1]["candidates"] = ["몰래"]
+        after = "\n".join(json.dumps(r, ensure_ascii=False) for r in rows) + "\n"
+        self.assertEqual(stage1ab.out_of_scope_changes(before, after, {("w0003", "w0003-s1")}), ["w0003/w0003-s2"])
+        self.assertEqual(stage1ab.out_of_scope_changes(before, after, {("w0003", "w0003-s2")}), [])
 
 
 class Helpers(unittest.TestCase):
@@ -338,6 +381,33 @@ class AdapterPolicy(unittest.TestCase):
         self.assertIn("--bare", ad._answer_only_args({**env, "ANTHROPIC_API_KEY": "k"}))   # bare needs API-key auth
         ad._help_flags = {"--tools"}
         self.assertEqual(ad._answer_only_args(env), ["--tools", ""])                # optional trimming is not required
+
+    def test_codex_answer_only_profile_is_read_only_and_proves_a_write_fails(self):
+        from warroom.adapters import CodexCLIAdapter
+        import tempfile
+        probes = []
+
+        class Ad(CodexCLIAdapter):
+            result = 0
+
+            def _probe(self, argv, env, cwd):
+                probes.append(argv)
+                return 4 if "answer-only-write-probe" in " ".join(argv) and self.result else 0
+
+        env = {"WARROOM_ANSWER_ONLY": "1", "WARROOM_STAGE2_CHUNK": "1", "WARROOM_GIT_EXECUTABLES": json.dumps(["/usr/bin/git"])}
+        with tempfile.TemporaryDirectory() as d:
+            args = Ad()._chunk_args(env, d)
+            self.assertTrue(any('extends=":read-only"' in a for a in args))
+            self.assertFalse(any(":workspace" in a for a in args))
+            self.assertEqual(len(probes), 2)                                            # Git block probe + write probe
+            ad = Ad()
+            ad.result = 1
+            with self.assertRaises(RuntimeError):                                       # a write that succeeds refuses the launch
+                ad._chunk_args(env, d)
+            probes.clear()
+            args = Ad()._chunk_args({**env, "WARROOM_ANSWER_ONLY": ""}, d)
+            self.assertTrue(any('extends=":workspace"' in a for a in args))              # other chunk kinds are unchanged
+            self.assertEqual(len(probes), 1)
 
     def test_codex_denied_command_is_only_a_metric_for_an_answer_only_chunk(self):
         from warroom.adapters import CodexCLIAdapter

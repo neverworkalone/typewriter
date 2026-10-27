@@ -135,6 +135,19 @@ def next_chunk(worktree, b, cp: dict) -> dict | None:
     return None
 
 
+def saved_snapshot(worktree, b, cp: dict) -> dict[str, str | None]:
+    """chunk number -> SHA-256 of its candidate file (None: absent), taken before an AI run and compared after it:
+    an answer-only AI never writes a candidate file, so any difference is a write the Supervisor did not make."""
+    import hashlib
+    out: dict[str, str | None] = {}
+    for chunk in cp["chunks"]:
+        try:
+            out[str(chunk["number"])] = hashlib.sha256(_chunk_files(worktree, b, chunk)[1].read_bytes()).hexdigest()
+        except OSError:
+            out[str(chunk["number"])] = None
+    return out
+
+
 def chunk_by_number(cp: dict, number: int) -> dict:
     for chunk in cp["chunks"]:
         if chunk["number"] == number:
@@ -350,12 +363,9 @@ def fix_scope(worktree, b, review_text: str) -> tuple[set[tuple[str, str]], str]
         saved = _candidate_rows((root / names(b).output).read_text("utf-8"))
     except (OSError, ValueError, KeyError) as e:
         raise ABChunkError(f"리뷰 대상 Candidate 파일을 읽을 수 없습니다: {e}") from e
-    records = {rid for rid, _ in saved}
     senses = {sid: (rid, sid) for rid, sid in saved}
     tokens = {t for raw in _TOKEN.findall(review_text) for t in (raw, raw.rstrip(".:-_"))}   # "w1-s1." ends a sentence
-    allowed = {senses[t] for t in tokens if t in senses}
-    for rid in tokens & records:
-        allowed |= {key for key in saved if key[0] == rid}
+    allowed = {senses[t] for t in tokens if t in senses}   # only a named sense; a record id alone names no sense
     start = (int(b["batch"]) - 1) * 500
     canonical: dict[str, dict] = {}
     try:

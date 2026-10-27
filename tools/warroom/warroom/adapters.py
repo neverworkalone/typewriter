@@ -688,13 +688,23 @@ class CodexCLIAdapter(ProcessAdapter):
             if found:
                 hidden.update((found, str(Path(found).resolve())))
         entries = ", ".join(f'{json.dumps(p)}="none"' for p in sorted(hidden))
-        profile = f'permissions.{STAGE2_CHUNK_PROFILE}={{extends=":workspace", filesystem={{{entries}}}}}'
+        answer_only = is_answer_only(env)   # an A/B answer-only chunk may not write at all: its answer is the only output
+        profile = f'permissions.{STAGE2_CHUNK_PROFILE}={{extends="{":read-only" if answer_only else ":workspace"}", filesystem={{{entries}}}}}'
         code = self._probe([self.binary, "sandbox", "-P", STAGE2_CHUNK_PROFILE, "-C", str(cwd), "-c", profile, "--",
                             "/bin/sh", "-c", _GIT_BLOCK_PROBE, "sh", *blocked], env, cwd)
         if code != 0:
             raise RuntimeError("Stage 2 청크를 시작하지 않습니다: " +
                                ("Codex 샌드박스에서 Git 실행 파일이 실행됩니다" if code == 3 else
                                 f"Codex 샌드박스로 Git 차단을 확인하지 못했습니다 (exit={code})"))
+        if answer_only:   # proven before launch: a write under the profile must fail, or the chunk does not start
+            target = str(Path(cwd) / ".warroom-scratch" / ".answer-only-write-probe")
+            code = self._probe([self.binary, "sandbox", "-P", STAGE2_CHUNK_PROFILE, "-C", str(cwd), "-c", profile, "--",
+                                "/bin/sh", "-c", 'if (echo x > "$1") 2>/dev/null; then rm -f "$1"; exit 4; fi; exit 0', "sh", target],
+                               env, cwd)
+            Path(target).unlink(missing_ok=True)
+            if code != 0:
+                raise RuntimeError("답변 전용 청크를 시작하지 않습니다: Codex 샌드박스에서 쓰기가 차단되지 않거나 확인하지 못했습니다"
+                                   f" (exit={code})")
         return ["-c", 'web_search="disabled"', "-c", "project_doc_max_bytes=0", "-c", profile,
                 "-c", f"default_permissions={STAGE2_CHUNK_PROFILE}", "--ignore-rules", "-c", 'approval_policy="never"']
 

@@ -1799,20 +1799,9 @@ class Supervisor:
                 raise prompts.PromptError("청크 view가 한 argv 요소 한도를 넘어 inline 전달할 수 없습니다 (자동 분할 없음, 청크 보존)")
             prompt = prompts.ab_chunk(b, chunk["number"], view=view, note=note)
         baseline = {"branch": b["branch"], "worktree": str(wt), "head": self.git.head(wt),
-                    "remote_head": self.git.remote_head(b["branch"]), "chunk_no": chunk["number"], "repair": bool(repair)}
+                    "remote_head": self.git.remote_head(b["branch"]), "chunk_no": chunk["number"], "repair": bool(repair),
+                    "saved": stage1ab.saved_snapshot(wt, b, cp)}
         return prompt, baseline, resume
-
-    def _ab_chunk_saved(self, b) -> bool:
-        """The chunk of the run that just ended has its exact saved file (asked on an abnormal exit / on recovery)."""
-        try:
-            baseline = json.loads(self.store.get(stage1ab.run_start_key(b["id"])) or "{}")
-            if baseline.get("repair"):
-                return False   # a repair replaces an existing file: only this run's own answer can prove it
-            wt = Path(b["worktree"])
-            cp = stage1ab.checkpoint(wt, b)
-            return stage1ab.chunk_saved(wt, b, stage1ab.chunk_by_number(cp, baseline["chunk_no"]))
-        except (stage1ab.ABChunkError, OSError, ValueError, KeyError, TypeError):
-            return False
 
     def _ab_accept(self, b, chunk: dict, repair: bool) -> None:
         """A saved chunk: remember its bytes, clear its run state, and move on with a new session."""
@@ -1841,8 +1830,9 @@ class Supervisor:
             cp = stage1ab.checkpoint(wt, b)
             chunk = stage1ab.chunk_by_number(cp, baseline["chunk_no"])
             repair = bool(baseline.get("repair"))
-            if not repair and stage1ab.chunk_saved(wt, b, chunk):   # saved although the answer was lost / the CLI died
-                return self._ab_accept(b, chunk, False)
+            if stage1ab.saved_snapshot(wt, b, cp) != baseline.get("saved"):   # the AI only answers: it never writes a chunk file
+                return self._fail(b, "ERROR", "answer-only 청크 실행 중 Supervisor가 만들지 않은 저장물 변경이 있습니다 (AI의 직접 쓰기). "
+                                  "완료로 인정하지 않고 보존합니다.")
             st = stage1ab.load_state(self.store, b["id"], chunk["number"])
             st["sid"] = b["session_id"] or st["sid"]
             rows = stage1ab.view_rows((wt / stage1ab.view_path(b, chunk["number"])).read_text("utf-8"))
@@ -2227,9 +2217,6 @@ class Supervisor:
             # The submit was stored (e.g. the CLI died or its answer was lost afterwards): never produce it again.
             self.store.log(b["id"], "AI가 비정상 종료했지만 활성 청크의 submit 저장이 확인되어 재생산하지 않습니다.", "warn")
             return self._run_ok_c_chunk(b)
-        if self._ab_chunk_run(b) and b["state"] == "PRODUCING" and self._ab_chunk_saved(b):
-            self.store.log(b["id"], "AI가 비정상 종료했지만 활성 청크의 저장이 확인되어 재생산하지 않습니다.", "warn")
-            return self._run_ok_ab_chunk(b)
         if self._d_chunk_run(b) and b["state"] == "PRODUCING" and self._d_chunk_saved(b):
             # The save was stored (e.g. the CLI died or its answer was lost afterwards): never produce it again.
             self.store.log(b["id"], "AI가 비정상 종료했지만 활성 청크의 save 저장이 확인되어 재생산하지 않습니다.", "warn")
