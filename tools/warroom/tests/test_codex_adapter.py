@@ -18,7 +18,8 @@ from pathlib import Path
 from unittest import mock
 
 from tests.fakes import FakeAdapter, World
-from warroom.adapters import CodexCLIAdapter, Handle, RunSpec, classify_failure, xcrun_git, _SHIM_DIR
+from warroom.adapters import CodexCLIAdapter, Handle, RunSpec, classify_failure, xcrun_git
+from warroom.realgit import SHIM_DIR as _SHIM_DIR
 from warroom.config import DEFAULTS
 from warroom.shell import Result
 

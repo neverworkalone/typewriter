@@ -11,6 +11,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from .realgit import resolve_git
 from .shell import Runner
 from .store import SHARED_QUEUE_METHODS, STAGE2_METHOD
 
@@ -81,8 +82,16 @@ def is_shared_queue(method: str) -> bool:
     return method in SHARED_QUEUE_METHODS
 
 
+def _git_bin(env) -> str:
+    """The verified Git; with none usable, fail instead of letting a bare `git` find the shim or the xcrun stub."""
+    found = resolve_git(env)
+    if not found:
+        raise BatchError("사용할 수 있는 실제 Git 실행 파일을 찾지 못했습니다 (War Room shim과 xcrun stub은 제외됨)")
+    return found
+
+
 def _counts(runner: Runner, root, env, ref: str, pathspec: str) -> dict[str, int]:
-    res = runner.run(["git", "grep", "-c", "", ref, "--", pathspec], cwd=root, env=env,
+    res = runner.run([_git_bin(env), "grep", "-c", "", ref, "--", pathspec], cwd=root, env=env,
                      timeout=120)
     if res.code not in (0, 1):
         raise BatchError(f"git grep {pathspec}: {res.err.strip()}")
@@ -99,7 +108,7 @@ def _candidate_counts(runner: Runner, root, env, ref: str) -> dict[str, int]:
     Existence comes from `git ls-tree`, counts from `git grep -c ''`: grep prints nothing for a committed
     0-byte file, so a file missing from the grep output counts as 0 records (corrupt), never as absent.
     """
-    res = runner.run(["git", "ls-tree", "-r", "--name-only", ref, "--", "data/relation-candidates"],
+    res = runner.run([_git_bin(env), "ls-tree", "-r", "--name-only", ref, "--", "data/relation-candidates"],
                      cwd=root, env=env, timeout=120)
     if not res.ok:
         raise BatchError(f"git ls-tree data/relation-candidates: {res.err.strip()}")
