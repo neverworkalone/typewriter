@@ -220,6 +220,10 @@ const RAW_CI_CATEGORIES = Object.freeze({
         tier: 'normal',
       },
       {
+        ...testCheck('scripts/relation/d-chunk-cli.test.mjs', 'Test D chunk CLI prepare, search evidence and save checks'),
+        tier: 'normal',
+      },
+      {
         ...testCheck('scripts/relation/admission.test.mjs', 'Test Stage 2 Relation Admission preparation and accounting'),
         tier: 'normal',
       },

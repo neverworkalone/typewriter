@@ -8,7 +8,7 @@ War Room이 준비한 HEAD를 기준으로 작업하며,
 
 Issue #1156의 D 생산 계약을 읽고 준수한다.
 
-D는 전용 CLI·전수 사전 `scan`·문맥/후보별 영수증 없이 #1156의 간단한 경로로 생산한다. 25-record 청크마다 승인 문어 SQLite를 read-only로 직접 검색하고(필요한 검색어만 요구 시 조회), 읽은 문맥을 직접 판독해 후보를 만들고, 청크 단위 scratch(`.warroom-scratch/`)에 중간 결과만 남겨 재개한다. 청크 하나를 끝내면 그 청크의 Candidate 행(`{"record_id","senses":[{"sense_id","candidates"}]}`, 청크의 모든 record를 Canonical 순서대로 정확히 한 번씩, 25개 또는 마지막 청크의 잔여 개수)을 `.warroom-scratch/d-{{batch}}/chunk-NNN.jsonl`(NNN은 1부터 3자리)로 저장한다. 먼저 같은 폴더의 `chunk-NNN.jsonl.tmp`에 완전히 쓴 뒤 `mv`로 이름을 바꿔, 완성된 청크만 해당 이름으로 나타나게 한다(War Room이 이 파일 수로 진행 막대를 그린다). 조회만 끝났거나 미완성인 청크는 이 이름으로 두지 않는다. 마지막에 Candidate JSONL을 조립해 `scripts/relation/candidate-contract.mjs` 검증만 실행한다.
+War Room이 배정한 D 배치는 Supervisor가 25-record 청크마다 `scripts/relation/d-chunk-cli.mjs prepare`로 view를 준비하고 청크마다 새 AI 세션(`d_chunk.md`)으로 실행한다. 이 문서는 War Room 밖 수동 경로와 복구용이며 전수 사전 `scan`·문맥/후보별 영수증 없이 #1156의 간단한 경로로 생산한다(수동 경로에서도 청크 파일의 형식과 저장 규칙은 같다: Supervisor는 `chunk-001`부터의 정확한 연속 prefix만 완료로 본다). 25-record 청크마다 승인 문어 SQLite를 read-only로 직접 검색하고(필요한 검색어만 요구 시 조회), 읽은 문맥을 직접 판독해 후보를 만들고, 청크 단위 scratch(`.warroom-scratch/`)에 중간 결과만 남겨 재개한다. 청크 하나를 끝내면 그 청크의 Candidate 행(`{"record_id","senses":[{"sense_id","candidates"}]}`, 청크의 모든 record를 Canonical 순서대로 정확히 한 번씩, 25개 또는 마지막 청크의 잔여 개수)을 `.warroom-scratch/d-{{batch}}/chunk-NNN.jsonl`(NNN은 1부터 3자리)로 저장한다. 먼저 같은 폴더의 `chunk-NNN.jsonl.tmp`에 완전히 쓴 뒤 `mv`로 이름을 바꿔, 완성된 청크만 해당 이름으로 나타나게 한다(War Room이 이 파일 수로 진행 막대를 그린다). 조회만 끝났거나 미완성인 청크는 이 이름으로 두지 않는다. 마지막에 Candidate JSONL을 조립해 `scripts/relation/candidate-contract.mjs` 검증만 실행한다.
 
 ## 청크 반복 경로 (25-record 청크마다)
 

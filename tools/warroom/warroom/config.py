@@ -30,6 +30,8 @@ DEFAULTS = {
     "methods": ["a", "b", "c", "d"],
     # Local, approved literary index for Method C. The Supervisor passes this only to C production runs.
     "literary_index_path": "",
+    # Local, approved paragraph-corpus index for Method D (written-corpus). Passed only to D chunk runs.
+    "corpus_index_path": "",
     # Issue #1555: the logical producer ID (a key of `producers`) that runs the hidden Maintainer; None = disabled.
     "maintainer": None,
     # Extra argv lists run in a paused batch worktree after a shared fix was merged into it (all must pass).
@@ -333,7 +335,7 @@ def config_problem(cfg: dict) -> str | None:
     for key in ("repo", "base_branch", "expected_account", "opencode_bin", "claude_bin", "codex_bin"):
         if not isinstance(cfg.get(key), str) or not cfg[key].strip():
             bad.append(f"{key}는 비어 있지 않은 문자열이어야 합니다")
-    for key in ("git_name", "git_email", "free_model_pattern", "literary_index_path"):
+    for key in ("git_name", "git_email", "free_model_pattern", "literary_index_path", "corpus_index_path"):
         if not isinstance(cfg.get(key), str):
             bad.append(f"{key}는 문자열이어야 합니다")
     if isinstance(cfg.get("free_model_pattern"), str):

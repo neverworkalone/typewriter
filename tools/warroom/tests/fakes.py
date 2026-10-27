@@ -40,6 +40,7 @@ class FakeAdapter(AgentAdapter):
     def start(self, prompt, cwd, env, run, title, log_file, exit_file):
         return self._go("start", cwd, log_file, exit_file, prompt=prompt, model=run.model, effort=run.effort,
                         approved_literary_db=env.get("TYPEWRITER_APPROVED_LITERARY_DB"),
+                        approved_corpus_db=env.get("TYPEWRITER_APPROVED_CORPUS_DB"),
                         stage2_chunk_git=env.get("WARROOM_STAGE2_CHUNK"),
                         git_shim=env.get("WARROOM_GIT_SHIM"),
                         real_git=env.get("WARROOM_REAL_GIT"),
@@ -49,6 +50,7 @@ class FakeAdapter(AgentAdapter):
     def resume(self, session_id, prompt, cwd, env, run, log_file, exit_file):
         return self._go("resume", cwd, log_file, exit_file, prompt=prompt, model=run.model, effort=run.effort,
                         session=session_id, approved_literary_db=env.get("TYPEWRITER_APPROVED_LITERARY_DB"),
+                        approved_corpus_db=env.get("TYPEWRITER_APPROVED_CORPUS_DB"),
                         stage2_chunk_git=env.get("WARROOM_STAGE2_CHUNK"),
                         git_shim=env.get("WARROOM_GIT_SHIM"),
                         real_git=env.get("WARROOM_REAL_GIT"),
@@ -178,6 +180,8 @@ class FakeGit:
 
     def create_worktree(self, path, branch, base):
         Path(path).mkdir(parents=True)
+        if getattr(self, "on_create", None):
+            self.on_create(Path(path))
         self.reg[str(path)] = branch
         self.created.append((str(path), branch))
 

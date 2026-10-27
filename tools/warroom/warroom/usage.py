@@ -18,7 +18,7 @@ import re
 
 FIELDS = ("input_tokens", "cached_input_tokens", "cache_write_tokens", "output_tokens",
           "reasoning_output_tokens", "tool_calls", "submit_failures")
-_SUBMIT = re.compile(r"literary-context-cli\.mjs\s+submit\b")
+_SUBMIT = re.compile(r"(?:literary-context-cli\.mjs\s+submit|d-chunk-cli\.mjs\s+save)\b")
 
 
 def _count(v):

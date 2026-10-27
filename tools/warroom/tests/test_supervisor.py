@@ -176,6 +176,13 @@ class Lifecycle(unittest.TestCase):
             with self.subTest(method=method):
                 env = w.sup._launch_env({"method": method}, "fix_new")
                 self.assertIsNone(env.get("TYPEWRITER_APPROVED_LITERARY_DB"))
+        # Method D receives the approved index only for its chunk sessions and the Supervisor's own prepare.
+        for kind in ("d_chunk_new", "d_chunk_resume", "d_cli"):
+            with self.subTest(kind=kind):
+                w.cfg["corpus_index_path"] = str(index)
+                env = w.sup._launch_env({"method": "d"}, kind)
+                self.assertEqual(env["TYPEWRITER_APPROVED_CORPUS_DB"], str(index))
+                self.assertIsNone(env.get("TYPEWRITER_APPROVED_LITERARY_DB"))
 
     def test_c_review_fix_launches_require_the_approved_index(self):
         w = self.w
