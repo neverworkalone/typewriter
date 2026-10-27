@@ -255,6 +255,8 @@ class Maintenance:
             if not isinstance(base, dict) or base.get("branch") != b["branch"] or base.get("worktree") != str(wt) \
                     or not isinstance(base.get("head"), str) or "remote_head" not in base:
                 return None
+            if self.sup.git.registered(wt) != b["branch"]:   # detached or another branch: not the owned checkout
+                return None
             if self.sup.git.head(wt) != new_head or not self.sup.git.contains(wt, base["head"]) \
                     or self.sup.git.remote_head(b["branch"]) != base["remote_head"]:
                 return None

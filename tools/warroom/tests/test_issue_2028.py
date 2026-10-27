@@ -94,6 +94,26 @@ class Stage2BaselineAfterMaintainerFix(unittest.TestCase):
         self.assertEqual(w.store.batch(self.b["id"])["state"], "PRODUCING")
         self.assertEqual(len(w.adapter.launches), n + 1)
 
+    def test_wrong_worktree_ownership_is_never_retargeted(self):
+        for name, owner in (("detached", ""), ("other branch", "other-branch"), ("unregistered", None)):
+            with self.subTest(name):
+                self.setUp()   # fresh world per case
+                w = self.w
+                did = self.pause_for_defect()
+                w.git.local_head = HEAD2
+                w.git.reg[str(self.b["worktree"])] = owner
+                n = len(w.adapter.launches)
+                w.tick(3)
+                self.assertEqual(self.head(), HEAD1)
+                self.assertNotEqual(w.store.batch(self.b["id"])["state"], "PRODUCING")
+                self.assertEqual(len(w.adapter.launches), n)
+                # recovery path of an already RELEASED batch is equally closed
+                w.store.update(self.b["id"], state="ERROR", pid=None)
+                w.store.update_defect(did, state="RELEASED", integrated_sha=HEAD2)
+                self.assertTrue(control.retry(w.store, "claude", S2))
+                w.tick(3)
+                self.assertEqual((self.head(), len(w.adapter.launches)), (HEAD1, n))
+
 
 if __name__ == "__main__":
     unittest.main()
