@@ -550,23 +550,38 @@ export async function readCandidateChunkPage({ scratchDirectory, chunk: requeste
 }
 
 /**
- * Exact self-repeat of the chunk's own source lemma, using the same rules as the final Candidate v1 validator so the
- * failure surfaces at save-chunk instead of at merge. A spelling variant that matches a source search_form is returned
- * as a suspect: it is only an error when it is not the lemma of another Canonical entry, which needs the all-Canonical
- * lemma set, loaded lazily by the caller for these rare cases only.
+ * Self-repeats of the chunk's own source lemma, using the same rules as the final Candidate v1 validator so the failure
+ * surfaces at save-chunk instead of at merge. Definite repeats are returned for batch reporting. A spelling variant that
+ * matches a source search_form is returned as a suspect: it is only an error when it is not the lemma of another
+ * Canonical entry, which needs the all-Canonical lemma set, loaded lazily by the caller for these rare cases only.
  */
-function findSourceSelfRepeats(candidates, source, location) {
+function findSourceSelfRepeats(candidates, source, senseId) {
   const lemma = normalizeCandidate(source.lemma ?? '');
+  const repeats = [];
   const suspects = [];
   for (const candidate of candidates) {
     if (normalizeCandidate(candidate) === lemma || isSourceLemmaProjection(candidate, source.lemma)) {
-      fail(`${location} candidate ${JSON.stringify(candidate)} repeats source lemma ${JSON.stringify(source.lemma)}`);
-    }
-    if (matchingSourceOrthographicForm(candidate, source.lemma, source.search_forms, new Set()) !== undefined) {
-      suspects.push({ candidate, source, location });
+      repeats.push({ senseId, text: `candidate ${JSON.stringify(candidate)} repeats source lemma ${JSON.stringify(source.lemma)}` });
+    } else if (matchingSourceOrthographicForm(candidate, source.lemma, source.search_forms, new Set()) !== undefined) {
+      suspects.push({ candidate, source, senseId });
     }
   }
-  return suspects;
+  return { repeats, suspects };
+}
+
+/**
+ * One bounded report for every self-repeat of a chunk. save-chunk diagnostics are tail-truncated downstream, so the detail
+ * lines are capped and the complete `sense_id` list comes last, where truncation keeps it.
+ */
+function sourceRepeatReport(label, repeats) {
+  const details = repeats.slice(0, 5).map(({ senseId, text }) => `sense_id ${senseId} ${text}`);
+  const omitted = repeats.length - details.length;
+  const senseIds = [...new Set(repeats.map(({ senseId }) => senseId))];
+  return [
+    ...details,
+    ...(omitted > 0 ? [`(+${omitted} more)`] : []),
+    `${label} source lemma repeat in ${senseIds.length} sense(s): ${senseIds.map((id) => `sense_id ${id}`).join('; ')}`,
+  ].join('\n');
 }
 
 function assertCandidateList(candidates, location) {
@@ -582,8 +597,12 @@ function assertCandidateList(candidates, location) {
   }
 }
 
-/** Check a complete chunk's rows against its own source records: exact record/sense IDs and candidate format. */
+/**
+ * Check a complete chunk's rows against its own source records: exact record/sense IDs and candidate format. Structural
+ * defects fail at once; source-lemma self-repeats are collected in this same pass so one save reports all of them.
+ */
 function validateChunkRows(inputRows, sourceRows, chunkNumber) {
+  const repeats = [];
   const suspects = [];
   const label = `chunk ${String(chunkNumber).padStart(3, '0')}`;
   const sourceById = new Map(sourceRows.map((row) => [row.id, row]));
@@ -606,7 +625,9 @@ function validateChunkRows(inputRows, sourceRows, chunkNumber) {
       senseIds.add(sense.sense_id);
       const senseLocation = `${location} record_id ${row.record_id} sense_id ${sense.sense_id}`;
       assertCandidateList(sense.candidates, senseLocation);
-      suspects.push(...findSourceSelfRepeats(sense.candidates, source, senseLocation));
+      const found = findSourceSelfRepeats(sense.candidates, source, sense.sense_id);
+      repeats.push(...found.repeats);
+      suspects.push(...found.suspects);
     }
     const expected = source.senses.map((sense) => sense.id);
     const missing = expected.filter((id) => !senseIds.has(id));
@@ -617,21 +638,22 @@ function validateChunkRows(inputRows, sourceRows, chunkNumber) {
   }
   const missingRecords = sourceRows.map((row) => row.id).filter((id) => !seen.has(id));
   if (missingRecords.length) fail(`${label} is missing record_id(s): ${missingRecords.join(', ')}`);
-  return suspects;
+  return { label, repeats, suspects };
 }
 
 /** Validate a complete chunk's input rows and write them (replacing any earlier save of it), in Canonical order. */
 async function writeChunkRows(workspace, chunk, sourceRows, inputRows, repositoryDirectory) {
-  const suspects = validateChunkRows(inputRows, sourceRows, chunk.number);
+  const { label, repeats, suspects } = validateChunkRows(inputRows, sourceRows, chunk.number);
   if (suspects.length > 0) {
     const lemmaForms = await loadCanonicalLemmaForms(repositoryDirectory);
-    for (const { candidate, source, location } of suspects) {
+    for (const { candidate, source, senseId } of suspects) {
       const searchForm = matchingSourceOrthographicForm(candidate, source.lemma, source.search_forms, lemmaForms);
       if (searchForm !== undefined) {
-        fail(`${location} candidate ${JSON.stringify(candidate)} repeats source lemma ${JSON.stringify(source.lemma)} in orthographic search form ${JSON.stringify(searchForm)}`);
+        repeats.push({ senseId, text: `candidate ${JSON.stringify(candidate)} repeats source lemma ${JSON.stringify(source.lemma)} in orthographic search form ${JSON.stringify(searchForm)}` });
       }
     }
   }
+  if (repeats.length > 0) fail(sourceRepeatReport(label, repeats));
   const inputById = new Map(inputRows.map((row) => [row.record_id, row]));
   const rows = sourceRows.map((source) => {
     const input = inputById.get(source.id);

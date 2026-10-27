@@ -122,11 +122,13 @@ class FakeWorkbenchCli:
         missing = [f"S{i}" for i in range(1, len(senses) + 1) if f"S{i}" not in answered]
         if missing:
             return Result(1, "", f"compact answer for chunk {n:03d} is missing alias(es): {', '.join(missing)}")
-        for i, (rec, s) in enumerate(senses, 1):
-            for c in answered[f"S{i}"]:
-                if c == rec["lemma"]:
-                    return Result(1, "", f"chunk {n:03d} input line {i} record_id {rec['id']} sense_id {s['id']} candidate "
-                                         f'"{c}" repeats source lemma "{rec["lemma"]}"')
+        repeats = [(s["id"], f'candidate "{c}" repeats source lemma "{rec["lemma"]}"')
+                   for i, (rec, s) in enumerate(senses, 1) for c in answered[f"S{i}"] if c == rec["lemma"]]
+        if repeats:                                                   # like the real validator: every repeat, ids last
+            ids = list(dict.fromkeys(sid for sid, _ in repeats))
+            return Result(1, "", "\n".join([f"sense_id {sid} {text}" for sid, text in repeats[:5]]
+                                           + [f"chunk {n:03d} source lemma repeat in {len(ids)} sense(s): "
+                                              + "; ".join(f"sense_id {sid}" for sid in ids)]))
         (base / "candidates").mkdir(parents=True, exist_ok=True)
         rows, i = [], 0
         for rec in src:
