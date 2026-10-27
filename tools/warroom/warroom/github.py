@@ -36,7 +36,7 @@ class GhClient:
 
     def prs_for_branch(self, branch: str) -> list[dict]:
         r = self.runner.run(["gh", "pr", "list", "--repo", self.repo, "--head", branch,
-                             "--state", "all", "--json", "number,state,headRefOid"],
+                             "--state", "all", "--json", "number,state,headRefOid,mergedAt"],
                             env=self.env, timeout=60)
         if not r.ok:
             raise GhError(f"gh pr list --head: {r.err.strip()}")

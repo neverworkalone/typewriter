@@ -22,6 +22,23 @@ class PullRequestFiles(unittest.TestCase):
             {"path": "README.md"},
         ])
 
+    def test_branch_pr_listing_includes_merge_timestamp_for_closed_state_classification(self):
+        class Runner:
+            argv = None
+
+            def run(self, argv, **kwargs):
+                self.argv = argv
+                return Result(0, json.dumps([{"number": 2050, "state": "CLOSED", "headRefOid": HEAD1,
+                                              "mergedAt": None}]))
+
+        runner = Runner()
+        gh = GhClient(runner, {}, "neverworkalone/typewriter")
+
+        self.assertEqual(gh.prs_for_branch("c-codex-035-02"), [
+            {"number": 2050, "state": "CLOSED", "headRefOid": HEAD1, "mergedAt": None}
+        ])
+        self.assertIn("number,state,headRefOid,mergedAt", runner.argv)
+
 
 class MissingPrRecovery(unittest.TestCase):
     def running_producer(self, method="b", text="unclassified provider failure"):
