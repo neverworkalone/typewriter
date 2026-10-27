@@ -448,6 +448,83 @@ function splitSenses(record, senses, candidatesBySense) {
   ];
 }
 
+export const CANDIDATE_CHUNK_FORMATS = ['json', 'compact'];
+
+/**
+ * The aliases one chunk's compact view and compact answer share: `S<n>` numbers every Canonical sense of the chunk in
+ * Canonical order (1..sense_count), derived only from the chunk's own source rows.
+ */
+function compactSenseModel(sourceRows) {
+  const senses = [];
+  for (const record of sourceRows) {
+    for (const sense of record.senses) senses.push({ alias: `S${senses.length + 1}`, record, sense });
+  }
+  return senses;
+}
+
+function compactField(value, where) {
+  const text = String(value ?? '');
+  if (/[\t\r\n]/u.test(text)) fail(`compact view cannot carry a tab or line break in ${where}: ${JSON.stringify(text)}; read this chunk with the default JSON format`);
+  return text;
+}
+
+const compactChunkId = (number) => String(number).padStart(3, '0');
+
+/** Same data as the JSON read view, one tab-separated line per Canonical sense, with nothing truncated. */
+function renderCompactChunk(checkpoint, chunk, sourceRows, saved) {
+  const senses = compactSenseModel(sourceRows);
+  const savedByRecord = saved ? new Map(saved.map((row) => [row.record_id, new Map(row.senses.map((sense) => [sense.sense_id, sense.candidates]))])) : null;
+  const lines = [
+    `# chunk ${compactChunkId(chunk.number)} · shard ${checkpoint.batch.shard} batch ${checkpoint.batch.batch} · ${sourceRows.length} records · ${senses.length} senses${saved ? ' · saved' : ''}`,
+    '# S<n>\tsense_id\tlemma [homograph]\tpos\tsearch_forms (empty = lemma only)\tfull gloss',
+    ...(saved ? ['# C\tS<n>\tsaved candidates'] : []),
+  ];
+  for (const { alias, record, sense } of senses) {
+    const where = `${record.id}/${sense.id}`;
+    const forms = Array.isArray(record.search_forms) && !(record.search_forms.length === 1 && record.search_forms[0] === record.lemma)
+      ? record.search_forms.join(',')
+      : '';
+    lines.push([
+      alias,
+      sense.id,
+      `${record.lemma}${record.homograph_no === undefined ? '' : ` [${record.homograph_no}]`}`,
+      sense.pos,
+      forms,
+      sense.gloss,
+    ].map((field) => compactField(field, where)).join('\t'));
+    if (savedByRecord) {
+      const candidates = savedByRecord.get(record.id)?.get(sense.id) ?? [];
+      if (candidates.length > 0) lines.push(['C', alias, ...candidates].map((field) => compactField(field, where)).join('\t'));
+    }
+  }
+  return `${lines.join('\n')}\n`;
+}
+
+/**
+ * Compact read of one whole chunk. With `outPath` (inside .warroom-scratch) the complete view is written atomically and
+ * read back byte-for-byte; without it the text must fit the stdout caps. Default JSON paging is a separate path.
+ */
+export async function readCandidateChunkCompact({ scratchDirectory, chunk: requestedChunk, outPath, repositoryDirectory = REPOSITORY_DIRECTORY } = {}) {
+  const workspace = await loadCheckpoint(scratchDirectory, repositoryDirectory);
+  const chunk = chunkOf(workspace.checkpoint, requestedChunk);
+  const sourceRows = await readSourceChunk(workspace.scratchDirectory, chunk);
+  const saved = await readSavedChunk(workspace.scratchDirectory, chunk);
+  const text = renderCompactChunk(workspace.checkpoint, chunk, sourceRows, saved);
+  const bytes = Buffer.byteLength(text, 'utf8');
+  const chars = Array.from(text).length;
+  const summary = { chunk: chunk.number, saved: saved !== null, recordCount: sourceRows.length, senseCount: chunk.sense_count, bytes, chars };
+  if (outPath === undefined) {
+    if (bytes > MAX_CANDIDATE_WORKBENCH_STDOUT_BYTES || chars > MAX_CANDIDATE_WORKBENCH_STDOUT_CHARS) {
+      fail(`compact view of chunk ${chunk.number} exceeds the stdout caps (${bytes}/${MAX_CANDIDATE_WORKBENCH_STDOUT_BYTES} bytes, ${chars}/${MAX_CANDIDATE_WORKBENCH_STDOUT_CHARS} characters); pass --out <file in .warroom-scratch>`);
+    }
+    return { ...summary, text };
+  }
+  const resolvedOut = assertScratchPath(repositoryDirectory, outPath, 'out');
+  await writeFileAtomic(resolvedOut, text);
+  if ((await readFile(resolvedOut, 'utf8')) !== text) fail(`compact view ${resolvedOut} does not match the rendered chunk after writing`);
+  return { ...summary, path: resolvedOut };
+}
+
 /** Read one chunk: each Canonical record once with all its senses; saved candidates ride along under their sense. */
 export async function readCandidateChunkPage({ scratchDirectory, chunk: requestedChunk, offset = 0, limit, maxBytes, maxChars, repositoryDirectory = REPOSITORY_DIRECTORY } = {}) {
   const workspace = await loadCheckpoint(scratchDirectory, repositoryDirectory);
@@ -543,13 +620,8 @@ function validateChunkRows(inputRows, sourceRows, chunkNumber) {
   return suspects;
 }
 
-/** Write one complete chunk (replacing any earlier save of it), in Canonical order. */
-export async function saveCandidateChunk({ scratchDirectory, chunk: requestedChunk, inputPath, repositoryDirectory = REPOSITORY_DIRECTORY } = {}) {
-  const workspace = await loadCheckpoint(scratchDirectory, repositoryDirectory);
-  const chunk = chunkOf(workspace.checkpoint, requestedChunk);
-  const sourceRows = await readSourceChunk(workspace.scratchDirectory, chunk);
-  const resolvedInput = assertScratchPath(repositoryDirectory, inputPath, 'input');
-  const inputRows = parseJsonl(await readFile(resolvedInput, 'utf8'), resolvedInput);
+/** Validate a complete chunk's input rows and write them (replacing any earlier save of it), in Canonical order. */
+async function writeChunkRows(workspace, chunk, sourceRows, inputRows, repositoryDirectory) {
   const suspects = validateChunkRows(inputRows, sourceRows, chunk.number);
   if (suspects.length > 0) {
     const lemmaForms = await loadCanonicalLemmaForms(repositoryDirectory);
@@ -573,6 +645,66 @@ export async function saveCandidateChunk({ scratchDirectory, chunk: requestedChu
     senseCount: chunk.sense_count,
     candidateCount: rows.reduce((count, row) => count + row.senses.reduce((inner, sense) => inner + sense.candidates.length, 0), 0),
   };
+}
+
+/**
+ * Parse a compact answer by its declared grammar: line 1 `chunk NNN`, then exactly one `S<n>[<TAB>candidate]...` line per
+ * Canonical sense of this chunk. Exact normalized duplicates within one sense keep the first and are reported; nothing else
+ * is changed, so every other defect reaches the shared chunk validator or fails here.
+ */
+function parseCompactAnswer(text, chunk, sourceRows) {
+  const label = `chunk ${compactChunkId(chunk.number)}`;
+  if (text.includes('\r')) fail(`compact answer for ${label} must use \\n line breaks only`);
+  const lines = text.split('\n');
+  if (lines.at(-1) === '') lines.pop();
+  if (lines[0] !== `chunk ${compactChunkId(chunk.number)}`) fail(`compact answer must start with "chunk ${compactChunkId(chunk.number)}"`);
+  const senses = compactSenseModel(sourceRows);
+  const byAlias = new Map(senses.map((entry) => [entry.alias, entry]));
+  const aliasOfSense = new Map(senses.map((entry) => [entry.sense, entry.alias]));
+  const answered = new Map();
+  let duplicatesRemoved = 0;
+  for (const [index, line] of lines.slice(1).entries()) {
+    const location = `${label} compact line ${index + 2}`;
+    const [alias, ...candidates] = line.split('\t');
+    if (!/^S[1-9]\d*$/u.test(alias)) fail(`${location} must start with an S<n> alias`);
+    if (!byAlias.has(alias)) fail(`${location} alias ${alias} is outside ${label} (S1..S${senses.length})`);
+    if (answered.has(alias)) fail(`${location} repeats alias ${alias}`);
+    if (candidates.some((candidate) => candidate.length === 0)) fail(`${location} ${alias} has an empty candidate field`);
+    const seen = new Set();
+    const kept = [];
+    for (const candidate of candidates) {
+      const normalized = normalizeCandidate(candidate);
+      if (seen.has(normalized)) {
+        duplicatesRemoved += 1;
+        continue;
+      }
+      seen.add(normalized);
+      kept.push(candidate);
+    }
+    answered.set(alias, kept);
+  }
+  const missing = senses.filter((entry) => !answered.has(entry.alias)).map((entry) => entry.alias);
+  if (missing.length) fail(`compact answer for ${label} is missing alias(es): ${missing.join(', ')}`);
+  const inputRows = sourceRows.map((record) => ({
+    record_id: record.id,
+    senses: record.senses.map((sense) => ({ sense_id: sense.id, candidates: answered.get(aliasOfSense.get(sense)) })),
+  }));
+  return { inputRows, duplicatesRemoved };
+}
+
+/** Write one complete chunk (replacing any earlier save of it), in Canonical order. */
+export async function saveCandidateChunk({ scratchDirectory, chunk: requestedChunk, inputPath, format = 'json', repositoryDirectory = REPOSITORY_DIRECTORY } = {}) {
+  if (!CANDIDATE_CHUNK_FORMATS.includes(format)) fail('--format must be json or compact');
+  const workspace = await loadCheckpoint(scratchDirectory, repositoryDirectory);
+  const chunk = chunkOf(workspace.checkpoint, requestedChunk);
+  const sourceRows = await readSourceChunk(workspace.scratchDirectory, chunk);
+  const resolvedInput = assertScratchPath(repositoryDirectory, inputPath, 'input');
+  const contents = await readFile(resolvedInput, 'utf8');
+  if (format === 'compact') {
+    const { inputRows, duplicatesRemoved } = parseCompactAnswer(contents, chunk, sourceRows);
+    return { ...(await writeChunkRows(workspace, chunk, sourceRows, inputRows, repositoryDirectory)), duplicatesRemoved };
+  }
+  return writeChunkRows(workspace, chunk, sourceRows, parseJsonl(contents, resolvedInput), repositoryDirectory);
 }
 
 /**
@@ -698,7 +830,9 @@ function usage() {
     'usage:',
     '  node scripts/relation/candidate-workbench.mjs prepare --shard SSS --batch BB --method a|b --model <id> --scratch-dir .warroom-scratch/<batch> [--chunk-size 25..50]',
     '  node scripts/relation/candidate-workbench.mjs read-chunk --scratch-dir <dir> --chunk N [--offset N] [--limit 1..50] [--max-bytes N] [--max-chars N]',
+    '  node scripts/relation/candidate-workbench.mjs read-chunk --scratch-dir <dir> --chunk N --format compact [--out <file in .warroom-scratch>]',
     '  node scripts/relation/candidate-workbench.mjs save-chunk --scratch-dir <dir> --chunk N --input <candidate-chunk.jsonl>',
+    '  node scripts/relation/candidate-workbench.mjs save-chunk --scratch-dir <dir> --chunk N --format compact --input <answer.tsv>',
     '  node scripts/relation/candidate-workbench.mjs patch --scratch-dir <dir> --input <patches.jsonl>',
     '  node scripts/relation/candidate-workbench.mjs status --scratch-dir <dir>',
     '  node scripts/relation/candidate-workbench.mjs merge --scratch-dir <dir> --out <candidate.jsonl> [--replace]',
@@ -727,6 +861,17 @@ async function main() {
     }));
     return;
   }
+  if (options.format !== undefined && !CANDIDATE_CHUNK_FORMATS.includes(options.format)) fail('--format must be json or compact');
+  if (options.format !== undefined && !['read-chunk', 'save-chunk'].includes(command)) fail('--format is only valid for read-chunk/save-chunk');
+  if (options.out !== undefined && !['merge', 'read-chunk'].includes(command)) fail('--out is only valid for merge/read-chunk');
+  if (command === 'read-chunk' && options.format === 'compact') {
+    if (['offset', 'limit', 'max-bytes', 'max-chars'].some((name) => options[name] !== undefined)) fail('--format compact reads the whole chunk; --offset/--limit/--max-bytes/--max-chars apply to the JSON format only');
+    const result = await readCandidateChunkCompact({ scratchDirectory: scratchDirectory(), chunk: Number(requireOption(options, 'chunk')), outPath: options.out });
+    if (result.text === undefined) emitJson(result);
+    else process.stdout.write(result.text);
+    return;
+  }
+  if (command === 'read-chunk' && options.out !== undefined) fail('--out requires --format compact');
   if (command === 'read-chunk') {
     emitJson(await readCandidateChunkPage({
       scratchDirectory: scratchDirectory(),
@@ -739,7 +884,7 @@ async function main() {
     return;
   }
   if (command === 'save-chunk') {
-    emitJson(await saveCandidateChunk({ scratchDirectory: scratchDirectory(), chunk: Number(requireOption(options, 'chunk')), inputPath: requireOption(options, 'input') }));
+    emitJson(await saveCandidateChunk({ scratchDirectory: scratchDirectory(), chunk: Number(requireOption(options, 'chunk')), inputPath: requireOption(options, 'input'), format: options.format }));
     return;
   }
   if (command === 'patch') {
