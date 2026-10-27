@@ -55,7 +55,7 @@ export function sourceReferenceGloss(gloss, targetIndex) {
   if (!reference?.ok) return null;
   const target = resolveArrowTarget(reference, targetIndex);
   if (target.hold) return null;
-  const glosses = target.record.senses.map((sense) => sense.gloss).filter((text) => parseArrowReference(text) === null);
+  const glosses = target.record.senses.map((sense) => sense.gloss).filter((text) => typeof text === 'string' && !text.trim().startsWith('→')); // any arrow gloss (valid, empty or malformed) is no definition
   return glosses.length > 0 ? glosses.join(' / ') : null;
 }
 
