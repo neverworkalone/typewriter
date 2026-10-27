@@ -38,7 +38,7 @@ node scripts/relation/literary-context-cli.mjs submit --db "$TYPEWRITER_APPROVED
 ```
 
 - `senses`에는 이 활성 청크의 **모든 제출 가능 Sense ID**를 한 번씩 넣는다. `entry_number`는 이 배열의 1부터 시작하는 순번이며 파일의 줄 번호가 아니다.
-- `submit_validation`이 거부되면 `affected.entry_number`와 `issues[].entry_number`를 제출 파일의 같은 배열 항목과 대조한다. 진단된 항목·필드만 고치고 나머지 올바른 VERIFIED 문맥과 후보는 그대로 보존한다. 최상위 오류처럼 위치가 `null`이면 진단된 최상위 모양만 고친다.
+- `submit_validation`이 거부되면 `affected.entry_number`와 `issues[].entry_number`를 제출 파일의 같은 배열 항목과 대조한다. 진단된 항목·필드만 고치고 나머지 올바른 VERIFIED 문맥과 후보는 그대로 보존한다. 최상위 오류처럼 위치가 `null`이면 진단된 최상위 모양만 고친다. JSON 문법 오류는 `json_syntax`의 `line`/`column`(제출 파일 기준; CRLF·LF·CR 모두 줄바꿈) 주변의 필요한 문법 토큰(괄호·쉼표·따옴표·이스케이프)만 국소 수정하고 내용은 바꾸지 않는다.
 - `unknown_sense`는 해당 항목을 무조건 삭제하지 않는다. 그 위치의 ID를 활성 청크에 표시된 정확한 Sense ID 목록과 대조해 추가 항목인지, 의도한 ID의 오기인지 판별한다. 기대 ID가 제출에 없고 문제 항목이 추가분인 것이 확인되면 그 추가 항목만 제외한다. 누락 ID와 미지 ID가 각각 하나뿐이라는 사실만으로 서로 대응한다고 추측하지 않는다. 문제 항목의 기존 source-sense 근거로 원래 ID를 확정할 수 있을 때만 교정하며, 대응을 확정할 수 없으면 중단해 보고한다.
 - 수정 후 제출 배열이 이 활성 청크의 제출 가능 Sense를 각각 한 번씩 모두 담고, 다른 청크 항목이나 미지 ID를 포함하지 않는지 확인한다. 제출 거부는 checkpoint에 부분 저장되지 않는다. 성공(`SAVED`)하면 즉시 종료하고 다음 청크는 시작하지 않는다. 이미 checkpoint에 저장된 Sense와 지난 청크 결과는 다시 만들거나 덮어쓰지 않는다.
 - 셸 명령은 그 외에는 개별로 실행해 종료 코드와 출력을 확인한다. 임시 파일은 worktree의 `.warroom-scratch/`에만 둔다.

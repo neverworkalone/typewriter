@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
-import { readFile, stat } from 'node:fs/promises';
+import { realpathSync, writeFileSync } from 'node:fs';
+import { readFile, stat, unlink } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 
@@ -80,17 +81,66 @@ function print(payload) {
   process.stdout.write(`${serialized}\n`);
 }
 
-async function readSubmission(filePath) {
+// A submit rejection the model can repair in place is also left next to the submit file, so the Supervisor decides
+// retryability from this diagnostic and never from the file merely remaining. Any other failure leaves none.
+let submitDiagnosticPath = null;
+function emitRetryable(text) {
+  process.stderr.write(text);
+  if (submitDiagnosticPath) {
+    try { writeFileSync(submitDiagnosticPath, text, { flag: 'wx' }); } catch { /* no file means no automatic retry */ }
+  }
+}
+
+function inputFailure(reason) {
+  const failure = new Error('literary chunk submission input is unusable');
+  failure.code = 'LITERARY_SUBMISSION_INPUT';
+  failure.reason = reason;
+  return failure;
+}
+
+function assertSubmissionPath(filePath) {
+  const inside = (root, target) => {
+    const relative = path.relative(root, target);
+    return Boolean(relative) && relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
+  };
   const resolved = path.resolve(filePath);
-  const relative = path.relative(SCRATCH_DIRECTORY, resolved);
-  if (!relative || relative.startsWith(`..${path.sep}`) || relative === '..' || path.isAbsolute(relative)) fail('submission JSON must remain under .warroom-scratch/');
-  const fileStat = await stat(filePath);
-  if (fileStat.size > 64_000) fail('sweep results JSON exceeds the 64 KB input limit');
+  if (!inside(SCRATCH_DIRECTORY, resolved)) throw inputFailure('outside_scratch');
+  // Symlinks are followed: the real location of the input (or of its directory, when it does not exist yet) must stay inside the real scratch.
+  let realScratch;
+  let realTarget;
   try {
-    return JSON.parse(await readFile(filePath, 'utf8'));
+    realScratch = realpathSync(SCRATCH_DIRECTORY);
+    try { realTarget = realpathSync(resolved); } catch (error) {
+      if (error?.code !== 'ENOENT') throw error;
+      realTarget = path.join(realpathSync(path.dirname(resolved)), path.basename(resolved));
+    }
+  } catch (error) {
+    throw error?.code === 'ENOENT' ? inputFailure('not_found') : error;
+  }
+  if (!inside(realScratch, realTarget)) throw inputFailure('outside_scratch');
+}
+
+async function readSubmission(filePath) {
+  assertSubmissionPath(filePath);
+  const fileStat = await stat(filePath).catch((error) => { throw error?.code === 'ENOENT' ? inputFailure('not_found') : error; });
+  if (fileStat.size > 64_000) throw inputFailure('too_large');
+  const text = await readFile(filePath, 'utf8');
+  try {
+    return JSON.parse(text);
   } catch (error) {
     if (!(error instanceof SyntaxError)) throw error;
     const failure = new Error('literary chunk submission JSON is invalid');
+    // Only a numeric position is forwarded; V8's message can quote file content, so it is never echoed.
+    const position = Number(/ at position (\d+)/u.exec(error.message)?.[1]);
+    if (Number.isSafeInteger(position) && position <= text.length) {
+      let line = 1;
+      let lineStart = 0;
+      for (const match of text.slice(0, position).matchAll(/\r\n|[\n\r]/gu)) {
+        line += 1;
+        lineStart = match.index + match[0].length;
+      }
+      failure.syntax = { line, column: position - lineStart + 1 };
+    }
     failure.code = 'LITERARY_SUBMISSION_VALIDATION';
     failure.reason = 'submission_schema';
     failure.affected = { sense_id: null, field: 'input', entry_number: null };
@@ -168,6 +218,9 @@ async function main() {
     case 'submit': {
       only(options, 'db', 'checkpoint', 'input');
       required(options, 'db', 'checkpoint', 'input');
+      assertSubmissionPath(options.input);   // only a sidecar inside .warroom-scratch/ is ever touched
+      submitDiagnosticPath = `${path.resolve(options.input)}.diag.json`;
+      await unlink(submitDiagnosticPath).catch(() => {});
       result = await submitLiteraryChunk({
         databasePath: options.db,
         checkpointPath: options.checkpoint,
@@ -247,7 +300,7 @@ main().catch((error) => {
       }));
     const repairScopes = new Set(['correct_submission_shape', 'correct_source_sense_id', 'resubmit_affected_sense', 'stop_and_report']);
     const repairScope = repairScopes.has(error.repair_scope) ? error.repair_scope : 'correct_submission_shape';
-    process.stderr.write(`${JSON.stringify({
+    emitRetryable(`${JSON.stringify({
       status: 'FAILED',
       diagnostic: 'submit_validation',
       error_type: errorType,
@@ -256,14 +309,29 @@ main().catch((error) => {
       affected: { sense_id: senseId, field, entry_number: entryNumber },
       issues,
       ...(error.issues_truncated ? { issues_truncated: true } : {}),
+      ...(error.syntax ? { json_syntax: error.syntax } : {}),
       repair_scope: repairScope,
     })}\n`);
     process.exitCode = 1;
     return;
   }
 
-  if (error?.code === 'CANDIDATE_V1_VALIDATION') {
+  if (error?.code === 'LITERARY_SUBMISSION_INPUT') {
+    const reason = ['outside_scratch', 'too_large', 'not_found'].includes(error.reason) ? error.reason : 'outside_scratch';
     process.stderr.write(`${JSON.stringify({
+      status: 'FAILED',
+      diagnostic: 'submit_input',
+      error_type: errorType,
+      message: 'The submission file path or size was refused before parsing; run from the worktree root with --input under .warroom-scratch/ (at most 64 KB).',
+      reason,
+      repair_scope: 'correct_submission_path',
+    })}\n`);
+    process.exitCode = 1;
+    return;
+  }
+
+  if (error?.code === 'CANDIDATE_V1_VALIDATION') {
+    emitRetryable(`${JSON.stringify({
       status: 'FAILED',
       diagnostic: 'candidate_validation',
       error_type: errorType,

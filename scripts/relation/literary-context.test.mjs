@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile, realpath, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, realpath, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import test from 'node:test';
@@ -481,6 +481,31 @@ test('submit validation returns bounded reason codes and source-sense fields wit
         reason: 'submission_schema',
         field: 'input',
         senseId: null,
+        jsonSyntax: { line: 1, column: 2 },
+      },
+      {
+        name: 'missing final closing brace reports its line and column',
+        raw: '{"senses":[{"sense_id":"private-json-marker","verified":[],"candidates":[]}]\n',
+        reason: 'submission_schema',
+        field: 'input',
+        senseId: null,
+        jsonSyntax: { line: 2, column: 1 },
+      },
+      {
+        name: 'lone CR and CRLF count as line breaks',
+        raw: '{"senses":\r[\r\n{"sense_id":"x"}\r]\r',
+        reason: 'submission_schema',
+        field: 'input',
+        senseId: null,
+        jsonSyntax: { line: 5, column: 1 },
+      },
+      {
+        name: 'truncated JSON reports the end position',
+        raw: '{"senses":[{"sense_id":"private-json-marker",',
+        reason: 'submission_schema',
+        field: 'input',
+        senseId: null,
+        jsonSyntax: { line: 1, column: 46 },
       },
       {
         name: 'unsupported top-level field',
@@ -550,6 +575,11 @@ test('submit validation returns bounded reason codes and source-sense fields wit
         assert.deepEqual(diagnostic.issues, [{ entry_number: entryNumber, reason: scenario.reason, field: scenario.field }], scenario.name);
       }
       if (scenario.issuesTruncated) assert.equal(diagnostic.issues_truncated, true, scenario.name);
+      assert.deepEqual(diagnostic.json_syntax, scenario.jsonSyntax, scenario.name);
+      // The CLI's own diagnostic is what lets the Supervisor retry in place; a repairable rejection leaves it beside the input.
+      const left = JSON.parse(await readFile(path.join(fixture.scratchDirectory, 'submit-input.json.diag.json'), 'utf8'));
+      assert.equal(left.diagnostic, 'submit_validation', scenario.name);
+      assert.equal(left.repair_scope, diagnostic.repair_scope, scenario.name);
       const expectedRepairScope = scenario.reason === 'submission_schema'
         ? 'correct_submission_shape'
         : scenario.reason === 'unknown_sense'
@@ -573,6 +603,38 @@ test('submit validation returns bounded reason codes and source-sense fields wit
     const successful = await submitCli(fixture, { senses: [{ sense_id: item.sense_id, verified: [key], candidates: ['서리'] }] });
     assert.equal(successful.status, 0, successful.stderr);
     assert.equal(JSON.parse(successful.stdout).status, 'SAVED');
+    await assert.rejects(readFile(path.join(fixture.scratchDirectory, 'submit-input.json.diag.json'), 'utf8'), { code: 'ENOENT' });   // a stale diagnostic never survives a later submit
+    // Input-file refusals (path outside scratch, missing, oversize) used to surface as an unlabeled "operation". Each is now named,
+    // never retried, and never touches a sidecar outside .warroom-scratch/. (The recorded 035_02 cause is waived, not proven here.)
+    const outside = path.join(fixture.root, 'outside-submit.json');
+    await writeFile(outside, '{"senses":[]}');
+    await writeFile(`${outside}.diag.json`, 'sentinel');
+    await writeFile(path.join(fixture.scratchDirectory, 'oversize.json'), ' '.repeat(64_001));
+    for (const [input, reason] of [[outside, 'outside_scratch'], [path.join(fixture.scratchDirectory, 'absent.json'), 'not_found'], [path.join(fixture.scratchDirectory, 'oversize.json'), 'too_large']]) {
+      const refused = runCli(fixture, ['submit', '--db', fixture.databasePath, '--checkpoint', fixture.checkpointPath, '--input', input]);
+      const refusal = JSON.parse(refused.stderr);
+      assert.equal(refused.status, 1, reason);
+      assert.deepEqual([refusal.diagnostic, refusal.reason, refusal.repair_scope], ['submit_input', reason, 'correct_submission_path'], reason);
+      assert.equal(refused.stderr.includes(fixture.root), false, reason);
+      if (input !== outside) assert.equal(await readFile(`${input}.diag.json`, 'utf8').then(() => true, () => false), false, reason);
+    }
+    assert.equal(await readFile(`${outside}.diag.json`, 'utf8'), 'sentinel');
+    // A symlink inside scratch that points outside must not let the sidecar be deleted or written there.
+    const outsideDirectory = path.join(fixture.root, 'outside-directory');
+    await mkdir(outsideDirectory, { recursive: true });
+    await writeFile(path.join(outsideDirectory, 'submit.json'), '{"senses":[');
+    await writeFile(path.join(outsideDirectory, 'submit.json.diag.json'), 'sentinel');
+    await symlink(outsideDirectory, path.join(fixture.scratchDirectory, 'alias'));
+    for (const linked of [path.join(fixture.scratchDirectory, 'alias', 'submit.json'), path.join(fixture.scratchDirectory, 'alias', 'new.json')]) {
+      const refused = runCli(fixture, ['submit', '--db', fixture.databasePath, '--checkpoint', fixture.checkpointPath, '--input', linked]);
+      assert.equal(refused.status, 1, linked);
+      assert.equal(JSON.parse(refused.stderr).diagnostic, 'submit_input', linked);
+    }
+    assert.equal(await readFile(path.join(outsideDirectory, 'submit.json.diag.json'), 'utf8'), 'sentinel');
+    assert.equal(await readFile(path.join(outsideDirectory, 'new.json.diag.json'), 'utf8').then(() => true, () => false), false);
+    const unrepairable = await submitCli(fixture, { senses: [{ sense_id: item.sense_id, verified: [], candidates: [] }] }, path.join(fixture.root, 'missing.sqlite'));
+    assert.notEqual(unrepairable.status, 0);
+    await assert.rejects(readFile(path.join(fixture.scratchDirectory, 'submit-input.json.diag.json'), 'utf8'), { code: 'ENOENT' });   // index/operation failures are never retryable
   } finally {
     await cleanup(fixture);
   }
