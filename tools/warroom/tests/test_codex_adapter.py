@@ -955,13 +955,23 @@ class Stage2ChunkSandbox(unittest.TestCase):
                 return subprocess.run(["codex", "sandbox", "-P", "warroom_stage2_chunk", "-C", d, "-c", profile,
                                        "--", *cmd], cwd=d, env=env, capture_output=True).returncode
 
-            for case, cmd, ok in [("git version", [git, "--version"], False),
-                                  ("git init", [git, "init", "-q", d], False),
-                                  ("worktree write", ["/usr/bin/touch", str(Path(d) / "scratch")], True),
-                                  ("echo", ["/bin/echo", "ok"], True)]:
+            cases = [("git version", [git, "--version"], False),
+                     ("git init", [git, "init", "-q", d], False),
+                     ("worktree write", ["/usr/bin/touch", str(Path(d) / "scratch")], True),
+                     ("echo", ["/bin/echo", "ok"], True)]
+            # The developer-dir Git that xcrun runs for /usr/bin/git is hidden on its own: it is in the profile and
+            # cannot be read or copied under it (a direct exec of it is not stopped by a read rule; the module note
+            # covers why it still cannot change Git metadata or reach the network).
+            found = subprocess.run(["xcrun", "--find", "git"], env=env, capture_output=True, text=True).stdout.strip()
+            if os.path.isabs(found):
+                self.assertIn(f'{json.dumps(found)}="none"', profile)
+                cases += [("read xcrun git", ["/bin/cat", found], False),
+                          ("copy xcrun git", ["/bin/cp", found, str(Path(d) / "git-copy")], False)]
+            for case, cmd, ok in cases:
                 with self.subTest(case):
                     self.assertEqual(sandboxed(*cmd) == 0, ok)
             self.assertFalse((Path(d) / ".git").exists())
+            self.assertFalse((Path(d) / "git-copy").exists())
 
 
 if __name__ == "__main__":
