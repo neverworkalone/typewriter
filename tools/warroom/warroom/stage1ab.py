@@ -170,7 +170,8 @@ def load_state(store, batch_id: int, chunk_no: int) -> dict:
         data = json.loads(raw) if raw else {}
     except ValueError:
         data = {}
-    return {"sid": data.get("sid"), "tries": int(data.get("tries", 0)), "requested": data.get("requested")}
+    return {"sid": data.get("sid"), "tries": int(data.get("tries", 0)), "requested": data.get("requested"),
+            "problem": data.get("problem")}
 
 
 def save_state(store, batch_id: int, chunk_no: int, state: dict) -> None:

@@ -144,6 +144,8 @@ class SerialChunks(unittest.TestCase):
         retry = w.adapter.launches[-1]
         self.assertEqual(retry["kind"], "resume")
         self.assertIn("S5", retry["prompt"])
+        self.assertIn("repeats source lemma", retry["prompt"])                  # the real save diagnostic reaches the correction
+        self.assertNotIn("사유 없음", retry["prompt"])
         self.assertNotIn("S6", retry["prompt"].split("거부 사유")[0])
         w.finish_last()
         w.tick()
@@ -152,6 +154,17 @@ class SerialChunks(unittest.TestCase):
         self.assertEqual(flat["w0001-s1"], ["후보1-1"])                           # every other row kept from the first answer
         self.assertEqual(flat["w0004-s1"], ["바다"])
         self.assertEqual(w.kinds(), ["ab_chunk_new", "ab_chunk_retry", "ab_chunk_new"])   # then chunk 2 starts a NEW session
+
+    def test_the_rejection_reason_survives_a_restart(self):
+        w = self.w
+        w.start("single", "deepseek", "a")
+        w.ai(w.block(1, {"S5": "S5\t표제4"}), session="ses_1")
+        w.tick()
+        w.finish_last()
+        w.tick()
+        st = stage1ab.load_state(w.store, w.row_()["id"], 1)
+        self.assertEqual((st["tries"], st["requested"]), (1, ["S5"]))
+        self.assertIn("repeats source lemma", st["problem"])
 
     def test_a_correction_may_not_change_an_unrequested_row(self):
         w = self.w
@@ -193,6 +206,8 @@ class SerialChunks(unittest.TestCase):
         repair = w.adapter.launches[-1]
         self.assertEqual(repair["kind"], "start")                              # the old session is gone: a new small one
         self.assertIn("검증에서 거부", repair["prompt"])
+        self.assertIn("duplicates", repair["prompt"])                           # the merge diagnostic reaches the repair session
+        self.assertNotIn("사유 없음", repair["prompt"])
         self.assertIn("C\t", repair["prompt"])                                 # the saved candidates of that chunk only
         self.assertIn("w0060-s1", repair["prompt"])
         self.assertNotIn("w0001-s1", repair["prompt"])
