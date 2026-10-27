@@ -857,3 +857,33 @@ test('report --sense-ids returns done-ness by the existing senseDone meaning and
     await cleanup(fixture);
   }
 });
+
+test('a damaged checkpoint is refused by every consumer (plain report, chunk, export), valid ZERO_HITS passes', async () => {
+  const fixture = await makeFixture({ unitCount: 3 });
+  try {
+    const [item] = (await chunk(fixture)).items;
+    await submit(fixture, [{ sense_id: item.sense_id, verified: [item.contexts[0].k], candidates: ['서리'] }]);
+    const good = await readFile(fixture.checkpointPath, 'utf8');
+    const damagedVariants = [
+      ['ZERO_HITS carrying a candidate', (cp) => Object.assign(cp.records[0].senses[0].submission, { status: 'ZERO_HITS', verified: [] })],
+      ['candidate without verified context', (cp) => { cp.records[0].senses[0].submission.verified = []; }],
+    ];
+    for (const [name, damage] of damagedVariants) {
+      const cp = JSON.parse(good);
+      damage(cp);
+      await writeFile(fixture.checkpointPath, JSON.stringify(cp));
+      const plain = runCli(fixture, ['report', '--checkpoint', fixture.checkpointPath]);
+      assert.notEqual(plain.status, 0, `plain report: ${name}`);
+      assert.notEqual(runCli(fixture, cliChunkArgs(fixture)).status, 0, `chunk: ${name}`);
+      await assert.rejects(exportOutput(fixture), /damaged/u, `export: ${name}`);
+    }
+    const valid = JSON.parse(good);
+    Object.assign(valid.records[0].senses[0].submission, { status: 'ZERO_HITS', verified: [], candidates: [] });
+    await writeFile(fixture.checkpointPath, JSON.stringify(valid));
+    const plain = runCli(fixture, ['report', '--checkpoint', fixture.checkpointPath]);
+    assert.equal(plain.status, 0, plain.stderr);
+    assert.equal(JSON.parse(plain.stdout).coverage.sense_statuses.ZERO_HITS >= 1, true);
+  } finally {
+    await cleanup(fixture);
+  }
+});

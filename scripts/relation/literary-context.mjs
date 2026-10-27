@@ -931,6 +931,9 @@ export async function loadLiteraryCheckpoint(checkpointPath, { scratchDirectory 
   const resolvedPath = assertScratchPath(checkpointPath, scratchDirectory);
   const checkpoint = JSON.parse(await readFile(resolvedPath, 'utf8'));
   if (![CHECKPOINT_CONTRACT, LEGACY_CHECKPOINT_CONTRACT].includes(checkpoint?.contract) || !Array.isArray(checkpoint.records)) fail('unsupported literary checkpoint contract');
+  // One shared boundary for every consumer (summary report, chunk, submit, export, validate): a damaged state is
+  // never counted as done or exported.
+  assertCheckpointStructure(checkpoint);
   return { checkpoint, path: resolvedPath };
 }
 
@@ -1177,7 +1180,6 @@ const isNonEmptyString = (value) => typeof value === 'string' && value !== '';
 function assertCheckpointStructure(checkpoint) {
   const batch = checkpoint.batch;
   if (!isPlainObject(batch) || !['shard', 'batch', 'model'].every((key) => isNonEmptyString(batch[key]))) fail('checkpoint batch binding is damaged');
-  if (checkpoint.contract !== CHECKPOINT_CONTRACT) fail('checkpoint contract does not match the current contract');
   const recordIds = new Set();
   const senseIds = new Set();
   for (const record of checkpoint.records) {
