@@ -4,7 +4,7 @@ War Room이 지정한 Part (Shard {{shard}} · Batch {{batch}} · Part {{part}})
 현재 worktree와 브랜치 `{{branch}}`, 준비된 HEAD를 그대로 사용한다. Part·브랜치·HEAD를 바꾸지 않는다.
 현재 저장 상태: {{checkpoint}}
 {{session_note}}
-War Room이 checkpoint를 준비하고 이번 청크의 전체 compact 뷰를 아래에 손실 없이 넣었다. 이 실행은 구현 작업이 아니라 청크 판정이다. 판정에 필요한 계약은 아래 카드에 있으므로 AGENTS.md·`docs/`·이슈·스크립트 소스를 읽지 않는다. **도구·파일·Git·web·`gh`·다른 모델·CLI·서브에이전트를 쓰지 않는다.** 파일을 읽거나 쓰거나 저장하지 않는다. War Room이 마지막 답변을 파일에 기록하고 저장·검증한다.
+War Room이 checkpoint를 준비하고 이번 청크의 전체 compact 뷰를 아래에 손실 없이 넣었다. 이 실행은 구현 작업이 아니라 청크 판정이다. 판정에 필요한 계약은 아래 카드에 있으므로 AGENTS.md·`docs/`·이슈·스크립트 소스를 읽지 않는다. **일반적인 청크 판정에서는 도구와 파일을 사용하지 않는다.** Git·web·`gh`·다른 모델·CLI·서브에이전트도 쓰지 않는다. War Room이 마지막 답변을 파일에 기록하고 저장·검증한다. 단, 실제 공통 결함을 발견한 경우에는 기존 규약에 따라 `tools/warroom/prompts/shared-defect.md` 형식으로 `.warroom-scratch/shared-defect.json`을 작성하고 중단한다.
 
 ## 판정 카드 (요약 — 권위 원문: #927 §2, `docs/relation-editorial-policy.md`)
 

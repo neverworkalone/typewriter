@@ -79,6 +79,18 @@ class AnswerOnlyChunk(unittest.TestCase):
         self.assertEqual(b["run_kind"], "s2_finalize_new")
         self.assertEqual(self.failures(w, b)[:2], [1, 0])
 
+    def test_out_of_range_alias_rows_are_removed_and_do_not_block_the_chunk(self):
+        w, b = self.world({"code": 0, "session": "s1", "text": answer(f"chunk {CHUNK}\nc1 D first\nc2 D second\nc3 D extra")})
+        b = self.finish(w, b)
+        self.assertEqual(self.decisions(b), GOOD + "\n")
+        self.assertEqual((len(w.git.save_calls), b["run_kind"]), (2, "s2_finalize_new"))   # no fix run was needed
+        w, b = self.world({"code": 0, "session": "s1", "text": answer(f"chunk {CHUNK}\nc1 D first\nc3 D extra")},
+                          {"code": 0, "session": "s1", "text": answer(f"chunk {CHUNK}\nc2 D second")})
+        b = self.finish(w, b, 1)
+        self.assertEqual(self.decisions(b), f"chunk {CHUNK}\nc1 D first\n")   # c3 gone, c1 kept, only c2 to fix
+        b = self.finish(w, b)
+        self.assertEqual((self.decisions(b), b["run_kind"]), (GOOD + "\n", "s2_finalize_new"))
+
     def test_two_failed_corrections_end_in_error_and_only_an_owner_retry_starts_a_new_session(self):
         bad = answer(f"chunk {CHUNK}\nc1 D first\nc2 R x BAD")
         w, b = self.world({"code": 0, "session": "s1", "text": bad}, {"code": 0, "session": "s1", "text": bad},

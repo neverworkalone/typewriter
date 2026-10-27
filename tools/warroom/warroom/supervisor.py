@@ -1345,7 +1345,14 @@ class Supervisor:
 
     def _stage2_save(self, b) -> tuple[bool, str]:
         bb, pp = stage2.split_key(b["batch"])
-        return self.git.stage2_save_chunk(Path(b["worktree"]), b["shard"], bb, pp)
+        ok, detail = self.git.stage2_save_chunk(Path(b["worktree"]), b["shard"], bb, pp)
+        extra = stage2.unknown_aliases(detail) if not ok else []
+        if extra:   # a row for a candidate this chunk does not have can never be saved or corrected: drop it, then re-check
+            stage2.write_decisions(b["worktree"], stage2.decisions_header(b["worktree"]),
+                                   [r for r in stage2.read_rows(b["worktree"]) if stage2.alias_of(r) not in extra])
+            self.store.log(b["id"], f"청크에 없는 후보 별칭 행 {', '.join(extra)}을 제거하고 다시 검증합니다", "warn")
+            ok, detail = self.git.stage2_save_chunk(Path(b["worktree"]), b["shard"], bb, pp)
+        return ok, detail
 
     def _stage2_accept(self, b) -> None:
         self.store.delete(stage2.run_start_key(b["id"]))

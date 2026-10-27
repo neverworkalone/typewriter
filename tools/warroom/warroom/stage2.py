@@ -216,6 +216,11 @@ def error_aliases(diagnostic: str) -> list[str]:
     return list(dict.fromkeys(_ERROR_ALIAS.findall(diagnostic)))
 
 
+def unknown_aliases(diagnostic: str) -> list[str]:
+    """Aliases a save-chunk rejection says name no candidate of the chunk (rows that can never be valid)."""
+    return list(dict.fromkeys(re.findall(r"^(c\d+): .*names no candidate", diagnostic, re.M)))
+
+
 def merge_fix(existing: list[str], revised: list[str], allowed: list[str]) -> tuple[list[str], list[str]]:
     """(complete rows, ignored rows): replace or add only the `allowed` aliases; every other existing row is unchanged
     and a revised row outside `allowed` is ignored (the caller logs it)."""
