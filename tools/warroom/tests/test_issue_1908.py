@@ -102,14 +102,12 @@ class Stage2ChunkRuns(unittest.TestCase):
         second = w.adapter.launches[-1]
         self.assertEqual(second["kind"], "start")  # a fresh CLI session, never --resume after a saved chunk
         self.assertEqual((first["stage2_chunk_git"], second["stage2_chunk_git"]), ("1", "1"))
-        self.assertEqual((first["git_shim"], second["git_shim"]), (str(Path(__file__).parents[1] / "bin" / "git"),) * 2)
-        self.assertEqual((first["real_git"], second["real_git"]), (None, None))
+        self.assertEqual((first["git_shim"], second["git_shim"], first["real_git"], second["real_git"]),
+                         (None,) * 4)
         self.assertTrue(json.loads(first["git_sandbox_paths"]))
         self.assertEqual(first["git_sandbox_paths"], second["git_sandbox_paths"])
         real_git = str(Path(shutil.which("git", path=os.environ.get("PATH", os.defpath))).resolve())
-        for worker_path in (first["worker_path"], second["worker_path"]):
-            self.assertEqual(shutil.which("git", path=worker_path), first["git_shim"])
-            self.assertIn(real_git, json.loads(first["git_sandbox_paths"]))
+        self.assertIn(real_git, json.loads(first["git_sandbox_paths"]))
         self.assertEqual((second["model"], second["effort"], second["cwd"]),
                          (first["model"], first["effort"], first["cwd"]))
         self.assertIn("chunk", second["prompt"])
@@ -121,11 +119,8 @@ class Stage2ChunkRuns(unittest.TestCase):
         final = w.adapter.launches[-1]
         self.assertEqual((b["run_kind"], final["kind"]), ("s2_finalize_new", "start"))
         self.assertIsNone(final["stage2_chunk_git"])  # only the finalizer may commit and push
-        self.assertEqual(final["git_shim"], str(Path(__file__).parents[1] / "bin" / "git"))
-        self.assertIsNone(final["real_git"])
+        self.assertEqual((final["git_shim"], final["real_git"]), (None, None))
         self.assertIsNone(final.get("git_sandbox_paths"))
-        final_path = final["worker_path"].split(os.pathsep)
-        self.assertIn(str(Path(shutil.which("git", path=os.environ.get("PATH", os.defpath))).parent), final_path)
         self.assertIn("finalize", final["prompt"])
         self.assertEqual(b["branch"], w.git.created[0][1])
         self.assertEqual(w.git.local_head, HEAD1)

@@ -1,8 +1,6 @@
-"""War Room's own Git calls and the worker shim never run the shim or a cache-poisoned xcrun stub."""
+"""War Room's own Git calls never run a cache-poisoned xcrun stub."""
 from __future__ import annotations
 
-import importlib.machinery
-import importlib.util
 import os
 import tempfile
 import unittest
@@ -12,7 +10,7 @@ from unittest import mock
 from warroom import realgit
 from warroom import batches
 from warroom.gitops import Git, GitError
-from warroom.realgit import SHIM_DIR, resolve_git
+from warroom.realgit import resolve_git
 from warroom.shell import Runner
 
 
@@ -24,36 +22,33 @@ def _script(path: Path, body: str) -> str:
 
 
 class PoisonedStub(unittest.TestCase):
-    """The stub at /usr/bin/git, whose xcrun cache (poisoned by an earlier run) points back at the shim."""
+    """The stub at /usr/bin/git, whose xcrun cache (poisoned by an earlier run) points at a removed or looping path."""
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         d = Path(self.tmp.name)
-        self.stub = _script(d / "usr-bin" / "git", f'exec "{SHIM_DIR / "git"}" "$@"\n')   # what the poisoned cache does
+        self.stale = d / "removed-bin" / "git"   # a cached path that no longer exists
+        self.stub = _script(d / "usr-bin" / "git", f'exec "{self.stale}" "$@"\n')   # what the poisoned cache does
         self.dev = d / "dev"
         self.dev_git = _script(self.dev / "usr" / "bin" / "git", 'echo "real git $*"\n')
         patcher = mock.patch.object(realgit, "XCRUN_STUB", Path(self.stub))
         patcher.start()
         self.addCleanup(patcher.stop)
         realgit._developer_dir.cache_clear()
-        self.env = {"PATH": os.pathsep.join((str(SHIM_DIR), str(d / "usr-bin"))), "DEVELOPER_DIR": str(self.dev)}
+        self.env = {"PATH": str(d / "usr-bin"), "DEVELOPER_DIR": str(self.dev)}
 
     def test_resolution_table(self):
         d = Path(self.tmp.name)
-        link = d / "link"
-        link.mkdir()
-        (link / "git").symlink_to(SHIM_DIR / "git")
         other = _script(d / "other" / "git", "true\n")
         no_dev = {**self.env, "DEVELOPER_DIR": str(d / "missing")}
         for case, env, expected in [
                 ("stub swapped for the developer-dir git", self.env, self.dev_git),
-                ("shim and symlink to it skipped", {**self.env, "PATH": f"{SHIM_DIR}{os.pathsep}{link}{os.pathsep}"
-                                                    f"{d / 'usr-bin'}"}, self.dev_git),
+                ("empty and missing PATH entries skipped", {**self.env, "PATH": f"{os.pathsep}{d / 'nope'}{os.pathsep}"
+                                                            f"{d / 'usr-bin'}"}, self.dev_git),
                 ("unusable stub falls through to the next git", {**no_dev, "PATH": os.pathsep.join(
                     (self.env["PATH"], str(d / "other")))}, other),
-                ("unusable stub and nothing else", no_dev, None),
-                ("only the shim", {**self.env, "PATH": str(SHIM_DIR)}, None)]:
+                ("unusable stub and nothing else", no_dev, None)]:
             with self.subTest(case):
                 self.assertEqual(resolve_git(env), expected)
 
@@ -66,11 +61,11 @@ class PoisonedStub(unittest.TestCase):
         """Linux: /usr/bin/git is a real Git, not a stub (CI); the stub is only special on macOS."""
         git = _script(Path(self.tmp.name) / "plain" / "git", "true\n")
         with mock.patch.object(realgit, "XCRUN_STUB", None):
-            self.assertEqual(resolve_git({"PATH": f"{SHIM_DIR}{os.pathsep}{Path(git).parent}"}), git)
+            self.assertEqual(resolve_git({"PATH": str(Path(git).parent)}), git)
             self.assertIsNotNone(resolve_git({"GH_CONFIG_DIR": "x"}))   # a PATH-less env falls back to os.defpath
 
     def test_callers_fail_instead_of_falling_back_to_a_bare_git(self):
-        """No usable Git (dev dir missing, shim first on PATH): nothing is executed, every caller raises."""
+        """No usable Git (dev dir missing): nothing is executed, every caller raises."""
         marker = Path(self.tmp.name) / "ran"
         _script(Path(self.stub), f'touch "{marker}"\n')   # the stub would leave a marker if a bare `git` ran it
         env = {**self.env, "DEVELOPER_DIR": str(Path(self.tmp.name) / "missing")}
@@ -88,15 +83,6 @@ class PoisonedStub(unittest.TestCase):
                 batches._candidate_counts(runner, self.tmp.name, env, "origin/master")
         runner.run.assert_not_called()
         self.assertFalse(marker.exists())
-
-    def test_worker_shim_runs_the_real_git_when_the_cache_is_poisoned(self):
-        loader = importlib.machinery.SourceFileLoader("warroom_git_shim", str(SHIM_DIR / "git"))
-        shim = importlib.util.module_from_spec(importlib.util.spec_from_loader(loader.name, loader))
-        loader.exec_module(shim)
-        with mock.patch.dict(os.environ, self.env):
-            real, clean_path = shim._real_git()
-        self.assertEqual(real, self.dev_git)
-        self.assertNotIn(str(SHIM_DIR), clean_path.split(os.pathsep))
 
 
 if __name__ == "__main__":

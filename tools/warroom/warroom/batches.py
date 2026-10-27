@@ -83,10 +83,10 @@ def is_shared_queue(method: str) -> bool:
 
 
 def _git_bin(env) -> str:
-    """The verified Git; with none usable, fail instead of letting a bare `git` find the shim or the xcrun stub."""
+    """The verified Git; with none usable, fail instead of letting a bare `git` find the xcrun stub."""
     found = resolve_git(env)
     if not found:
-        raise BatchError("사용할 수 있는 실제 Git 실행 파일을 찾지 못했습니다 (War Room shim과 xcrun stub은 제외됨)")
+        raise BatchError("사용할 수 있는 실제 Git 실행 파일을 찾지 못했습니다 (xcrun stub은 제외됨)")
     return found
 
 
