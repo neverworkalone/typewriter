@@ -178,11 +178,10 @@ function canonicalRecordsForOrthographicForm(index, form) {
   return index.byNormalizedLemma?.get(normalized) ?? index.byOrthographicForm?.get(normalized) ?? index.byLemma.get(normalized) ?? [];
 }
 
-function uniquelyIdentifyingOrthographicForms(record, index) {
-  return canonicalOrthographicForms(record).filter((form) => {
-    const matches = canonicalRecordsForOrthographicForm(index, form);
-    return matches.length === 1 && matches[0].id === record.id;
-  });
+/** Candidate spellings that resolve to this record, including ambiguous forms when it is an exact target. */
+function candidateFormsForRecord(record, index) {
+  return canonicalOrthographicForms(record).filter((form) =>
+    canonicalRecordsForOrthographicForm(index, form).some((match) => match.id === record.id));
 }
 
 /** Lemma, orthographic search-form, and id lookups over the full Canonical (all shards). */
@@ -318,7 +317,7 @@ export function validateRelationRows({ relationRows, dropRows = [], index, shard
 /**
  * Coarse existing approved Relation coverage mapped to `sourceSenseId\0normalizedCandidate`, without retaining the
  * target sense. Target-sensitive preparation and accounting use existingCandidateLinks instead. An ID relation is
- * mapped only when the candidate equals the counterpart lemma AND that lemma identifies one Canonical record.
+ * mapped when its exact counterpart is among the Canonical records matched by the candidate spelling.
  */
 export function existingCandidateKeys(relationRows, index) {
   const covered = new Map();
@@ -338,12 +337,12 @@ function existingCandidateLinks(relationRows, index) {
     const target = index.byId.get(row.target_record_id);
     const source = index.byId.get(row.source_record_id);
     if (target) {
-      for (const form of uniquelyIdentifyingOrthographicForms(target, index)) {
+      for (const form of candidateFormsForRecord(target, index)) {
         add(row.source_sense_id, form, { kind: 'id', targetSenseId: row.target_sense_id, why: 'id-forward' });
       }
     }
     if (source) {
-      for (const form of uniquelyIdentifyingOrthographicForms(source, index)) {
+      for (const form of candidateFormsForRecord(source, index)) {
         add(row.target_sense_id, form, { kind: 'id', targetSenseId: row.source_sense_id, why: 'id-reverse' });
       }
     }
@@ -379,9 +378,8 @@ export function prepareShard({ canonicalRows, candidateFiles, approvedRelationRo
         const links = covered.get(`${sense.id}\u0000${text}`) ?? [];
         const nonIdLink = links.some((link) => link.kind !== 'id');
         const targetRecords = canonicalRecordsForOrthographicForm(index, text);
-        const targetSenseIds = targetRecords.length === 1 ? targetRecords[0].senses.map((targetSense) => targetSense.id) : [];
-        const hasExistingIdLink = targetRecords.length === 1 && links.some((link) => link.kind === 'id'
-          && targetRecords[0].senses.some((targetSense) => targetSense.id === link.targetSenseId));
+        const targetSenseIds = targetRecords.flatMap((targetRecord) => targetRecord.senses.map((targetSense) => targetSense.id));
+        const hasExistingIdLink = links.some((link) => link.kind === 'id' && targetSenseIds.includes(link.targetSenseId));
         if (nonIdLink || hasExistingIdLink) {
           stats.skipped_existing += 1;
           const existingTargetSenseIds = [...new Set(links.filter((link) => link.kind === 'id').map((link) => link.targetSenseId))]
@@ -509,7 +507,7 @@ export function verifyAccounting({ canonicalRows, candidateFiles, relationRows: 
       const target = index.byId.get(row.target_record_id);
       if (!target) return;
       const sourceCandidates = merged.get(row.source_sense_id)?.candidates;
-      const matchingForms = uniquelyIdentifyingOrthographicForms(target, index).filter((form) => sourceCandidates?.has(form));
+      const matchingForms = candidateFormsForRecord(target, index).filter((form) => sourceCandidates?.has(form));
       const formsToClaim = matchingForms.length > 0 ? matchingForms : [normalizeCandidate(target.lemma)];
       for (const form of formsToClaim) claim(row.source_sense_id, form, 'an ID relation', { kind: 'id', targetSenseId: row.target_sense_id }, at);
     }
@@ -522,13 +520,13 @@ export function verifyAccounting({ canonicalRows, candidateFiles, relationRows: 
   });
 
   // An ID pair is stored once. When both senses listed each other as a Stage 1 candidate, the stored row's reverse
-  // direction answers the other candidate, provided the source spelling identifies one Canonical record.
+  // direction answers the other candidate when the exact source record matches that candidate spelling.
   const reverseCovered = new Map();
   for (const row of allRelationRows) {
     if ('text' in row) continue;
     const source = index.byId.get(row.source_record_id);
     if (source) {
-      for (const form of uniquelyIdentifyingOrthographicForms(source, index)) {
+      for (const form of candidateFormsForRecord(source, index)) {
         const key = `${row.target_sense_id}\u0000${form}`;
         reverseCovered.set(key, [...(reverseCovered.get(key) ?? []), { kind: 'id', targetSenseId: row.source_sense_id }]);
       }
