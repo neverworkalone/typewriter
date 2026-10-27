@@ -57,6 +57,35 @@ test('prepare merges exact duplicates, keeps homograph ambiguity visible and ski
   assert.equal(stats.merged_duplicates, 1);
 });
 
+test('Stage 2 does not require a source gloss for candidates already covered by an approved Relation or Drop', () => {
+  const text = '이미결정된후보';
+  for (const disposition of ['relation', 'drop']) {
+    const canonicalRows = canonical();
+    canonicalRows[0] = {
+      ...canonicalRows[0],
+      senses: [{ ...canonicalRows[0].senses[0], gloss: '→ 다른 표제어[Ⅱ].' }],
+    };
+    const sourceIndex = buildCanonicalIndex(canonicalRows);
+    const covered = disposition === 'relation'
+      ? [{ source_record_id: 'w1', source_sense_id: 'w1-s1', text, type: 'near', relevance: 3 }]
+      : [];
+    const dropped = disposition === 'drop'
+      ? [{ source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: text, reason: '이미 결정됨' }]
+      : [];
+
+    const { items, stats } = prepareShard({
+      canonicalRows,
+      candidateFiles: [file('001_01_a_codex.jsonl', { w1: [text] })],
+      approvedRelationRows: covered,
+      dropRows: dropped,
+      index: sourceIndex,
+      scopeRows: canonicalRows,
+    });
+    assert.deepEqual(items, [], `${disposition}-accounted candidates do not need a new source gloss`);
+    assert.equal(stats[disposition === 'relation' ? 'skipped_existing' : 'skipped_dropped'], 1);
+  }
+});
+
 test('Stage 2 retains an orthographic search form that is another Canonical lemma', () => {
   const canonicalRows = canonical(1000);
   const source = {

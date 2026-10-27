@@ -3,6 +3,7 @@ import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { parseArrowReference } from '../build/gloss-arrow-reference.mjs';
 import { CANDIDATE_BATCH_SIZE, normalizeCandidate, parseCandidateJsonl, validateCandidateBatch } from './candidate-contract.mjs';
 
 export { normalizeCandidate };
@@ -30,6 +31,18 @@ const keysOf = (row) => Object.keys(row).sort().join(',');
 const isPlainObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 const isTier = (value) => Number.isInteger(value) && value >= 1 && value <= 9;
 const isText = (value) => typeof value === 'string' && value.trim().length > 0;
+
+/** Stage 2 must never ask an editor to judge candidates without an actual source meaning. */
+export function assertStage2SourceGloss(senseId, gloss) {
+  const normalized = typeof gloss === 'string' ? gloss.trim() : '';
+  const reference = parseArrowReference(normalized);
+  const referenceTail = reference?.ok
+    ? normalized.slice(reference.offset + reference.text.length).replace(/^\.\s*/u, '').trim()
+    : null;
+  if (!normalized || /^→\s*\.\s*$/u.test(normalized) || referenceTail === '') {
+    throw new Error(`Stage 2 source sense ${senseId} has no usable meaning gloss (${JSON.stringify(gloss)}); candidate adjudication is blocked`);
+  }
+}
 
 export const shardCanonicalPath = (shard, root = REPOSITORY_DIRECTORY) => path.join(root, 'data/canonical', `stdict-${shard.padStart(4, '0')}.jsonl`);
 export const shardRelationPath = (shard, root = REPOSITORY_DIRECTORY) => path.join(root, 'data/relations', `relation-${shard}.jsonl`);
@@ -373,6 +386,7 @@ export function prepareShard({ canonicalRows, candidateFiles, approvedRelationRo
         fresh.push({ text, producers, same_spelling_records: targetRecords.map((target) => target.id) });
       }
       if (fresh.length === 0 && partiallyCovered.length === 0) continue;
+      assertStage2SourceGloss(sense.id, sense.gloss);
       stats.to_edit += fresh.length;
       items.push({
         record_id: record.id,
