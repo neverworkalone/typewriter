@@ -6,6 +6,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import {
   ADMISSION_TYPES,
+  assertStage2SourceGloss,
   approvedPeersForSense,
   assertShard,
   batchScope,
@@ -148,6 +149,7 @@ function validateCheckpoint(checkpoint, identity = {}) {
   const seenSenses = new Set();
   for (const item of checkpoint.items) {
     if (!isPlainObject(item) || !Array.isArray(item.candidates) || typeof item.sense_id !== 'string') throw new Error('checkpoint contains an invalid source sense');
+    if (item.candidates.length > 0) assertStage2SourceGloss(item.sense_id, item.gloss);
     if (seenSenses.has(item.sense_id)) throw new Error(`checkpoint repeats source sense ${item.sense_id}`);
     seenSenses.add(item.sense_id);
     let hasPending = false;

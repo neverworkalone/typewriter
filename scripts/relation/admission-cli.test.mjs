@@ -478,8 +478,8 @@ test('an existing ID relation accounts for a candidate even when another target 
   await assert.rejects(() => quiet(() => run(args('verify'), { root })), /"미끄럼저항기" is named by the gloss of w1-s1 and cannot be dropped as unrelated/);
 });
 
-async function chunkRepository(t) {
-  const root = await mkdtemp(path.join(tmpdir(), 'typewriter-admission-chunks-'));
+async function chunkRepository(t, base = tmpdir()) {
+  const root = await mkdtemp(path.join(base, 'typewriter-admission-chunks-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   const records = Array.from({ length: 504 }, (_, index) => ({
     id: `w${index + 1}`,
@@ -526,6 +526,39 @@ async function chunkRepository(t) {
   }]));
   return { root, priorRelation, priorDrop };
 }
+
+test('Stage 2 blocks missing source glosses during preparation and when resuming an old checkpoint', async (t) => {
+  const scratchRoot = path.join(REPOSITORY_DIRECTORY, '.warroom-scratch');
+  await mkdir(scratchRoot, { recursive: true });
+
+  const broken = await chunkRepository(t, scratchRoot);
+  const canonicalPath = path.join(broken.root, 'data/canonical/stdict-0001.jsonl');
+  const canonicalRows = (await readFile(canonicalPath, 'utf8')).trim().split('\n').map(JSON.parse);
+  const originalSource = canonicalRows[0];
+  for (const gloss of ['→ .', '']) {
+    canonicalRows[0] = { ...originalSource, senses: originalSource.senses.map((sense) => ({ ...sense, gloss })) };
+    await writeFile(canonicalPath, jsonl(canonicalRows));
+    await assert.rejects(
+      () => quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root: broken.root })),
+      /Stage 2 source sense w1-s1 has no usable meaning gloss/u,
+    );
+    await assert.rejects(readFile(path.join(broken.root, '.warroom-scratch/relation-admission-001-01-01.json')), { code: 'ENOENT' });
+  }
+
+  const legacy = await chunkRepository(t, scratchRoot);
+  const checkpointPath = '.warroom-scratch/relation-admission-001-01-01.json';
+  await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root: legacy.root }));
+  const readable = await quiet(() => run(['read-chunk', '--checkpoint', checkpointPath, '--format', 'compact'], { root: legacy.root }));
+  assert.match(readable.text, /S\tw1-s1\tw1\t출발어\tnoun\t출발 의미\t/u, 'a source gloss with a meaning still reaches the chunk');
+  const absoluteCheckpoint = path.join(legacy.root, checkpointPath);
+  const checkpoint = JSON.parse(await readFile(absoluteCheckpoint, 'utf8'));
+  checkpoint.items[0].gloss = '→ .';
+  await writeFile(absoluteCheckpoint, `${JSON.stringify(checkpoint)}\n`);
+  await assert.rejects(
+    () => quiet(() => run(['read-chunk', '--checkpoint', checkpointPath, '--format', 'compact'], { root: legacy.root })),
+    /Stage 2 source sense w1-s1 has no usable meaning gloss/u,
+  );
+});
 
 test('Stage 2 chunks bind exact senses, resume safely, and preserve text-only Parts and prior rows', async (t) => {
   const { root, priorRelation, priorDrop } = await chunkRepository(t);
