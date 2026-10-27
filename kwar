@@ -1,0 +1,4 @@
+#!/bin/sh
+# War Room killer: kill tmux session.
+tmux kill-session -t warroom-supervisor 2>/dev/null || true
+tmux kill-session -t warroom 2>/dev/null || true
