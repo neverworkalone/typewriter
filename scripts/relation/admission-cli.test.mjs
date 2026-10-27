@@ -694,6 +694,84 @@ test('Stage 2 chunks bind exact senses, resume safely, and preserve text-only Pa
   assert.deepEqual([textOnlyCounts.unique, textOnlyCounts.relation, textOnlyCounts.drop, textOnlyCounts.missing], [1, 1, 0, 0], 'a fully text-only Part remains valid when no exact Canonical target exists');
 });
 
+test('merge coalesces consistent independently adjudicated reciprocal ID decisions into one bidirectional row', async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), 'typewriter-admission-reciprocal-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const records = Array.from({ length: 500 }, (_, index) => {
+    const pair = [
+      { id: 'w109230', lemma: '마지' },
+      { id: 'w111040', lemma: '말기름' },
+      { id: 'w200002', lemma: '다른출발' },
+      { id: 'w200003', lemma: '다른표적' },
+    ][index];
+    const id = pair?.id ?? `w${200000 + index}`;
+    return {
+      id,
+      lemma: pair?.lemma ?? `표제${index}`,
+      senses: [{ id: `${id}-s1`, pos: 'noun', gloss: index < 4 ? '같은 전체 뜻풀이.' : `뜻${index}` }],
+    };
+  });
+  for (const directory of ['data/canonical', 'data/relation-candidates/001', 'data/relations', 'data/relation-drops']) {
+    await mkdir(path.join(root, directory), { recursive: true });
+  }
+  await writeFile(path.join(root, 'data/canonical/stdict-0001.jsonl'), jsonl(records));
+  const producers = ['a_codex', 'a_claude', 'b_codex', 'b_claude', 'c_codex', 'd_codex'];
+  const candidates = new Map([
+    ['w109230', ['말기름']],
+    ['w111040', ['마지']],
+    ['w200002', ['다른표적']],
+    ['w200003', ['다른출발']],
+  ]);
+  for (const producer of producers) {
+    await writeFile(path.join(root, `data/relation-candidates/001/001_01_${producer}.jsonl`), jsonl(records.map((record) => ({
+      record_id: record.id,
+      senses: [{ sense_id: record.senses[0].id, candidates: producer === 'a_codex' ? candidates.get(record.id) ?? [] : [] }],
+    }))));
+  }
+
+  const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
+  await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  const chunk = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint], { root }));
+  assert.equal(chunk.items.flatMap((item) => item.candidates).length, 4);
+  const decisions = [
+    { source_sense_id: 'w109230-s1', candidate: '말기름', disposition: 'relation', target_resolution: 'exact', target_record_id: 'w111040', target_sense_id: 'w111040-s1', type: 'near', relevance: 1, reverse_type: 'near', reverse_relevance: 1 },
+    { source_sense_id: 'w111040-s1', candidate: '마지', disposition: 'relation', target_resolution: 'exact', target_record_id: 'w109230', target_sense_id: 'w109230-s1', type: 'near', relevance: 1, reverse_type: 'near', reverse_relevance: 1 },
+    { source_sense_id: 'w200002-s1', candidate: '다른표적', disposition: 'relation', target_resolution: 'exact', target_record_id: 'w200003', target_sense_id: 'w200003-s1', type: 'near', relevance: 2, reverse_type: 'mood', reverse_relevance: 5 },
+    { source_sense_id: 'w200003-s1', candidate: '다른출발', disposition: 'relation', target_resolution: 'exact', target_record_id: 'w200002', target_sense_id: 'w200002-s1', type: 'mood', relevance: 5, reverse_type: 'near', reverse_relevance: 2 },
+  ];
+  const decisionsFile = '.warroom-scratch/reciprocal-decisions.json';
+  await writeFile(path.join(root, decisionsFile), JSON.stringify({ chunk_id: chunk.chunk_id, decisions }));
+  await quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', decisionsFile], { root }));
+
+  const merged = await quiet(() => run(['merge', '--checkpoint', checkpoint], { root }));
+  assert.deepEqual([merged.relations_added, merged.drops_added], [2, 0]);
+  const relations = (await readFile(path.join(root, 'data/relations/relation-001.jsonl'), 'utf8')).trim().split('\n').map(JSON.parse);
+  assert.deepEqual(relations, [
+    { source_record_id: 'w109230', source_sense_id: 'w109230-s1', target_record_id: 'w111040', target_sense_id: 'w111040-s1', type: 'near', relevance: 1, reverse_type: 'near', reverse_relevance: 1 },
+    { source_record_id: 'w200002', source_sense_id: 'w200002-s1', target_record_id: 'w200003', target_sense_id: 'w200003-s1', type: 'near', relevance: 2, reverse_type: 'mood', reverse_relevance: 5 },
+  ], 'one row retains each independently authored direction, including distinct type and relevance');
+  const counts = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  assert.deepEqual([counts.unique, counts.relation, counts.reverse_covered, counts.missing], [4, 2, 2, 0]);
+  assert.deepEqual(await quiet(() => run(['merge', '--checkpoint', checkpoint], { root })), {
+    merged: true, relations_added: 0, drops_added: 0, checkpoint: path.join(root, checkpoint),
+  }, 'merging the same checkpoint again remains idempotent');
+  const checkpointPath = path.join(root, checkpoint);
+  const conflictingCheckpoint = JSON.parse(await readFile(checkpointPath, 'utf8'));
+  const reverseDecision = conflictingCheckpoint.items
+    .flatMap((item) => item.candidates)
+    .find((candidate) => candidate.decision.source_sense_id === 'w111040-s1').decision;
+  reverseDecision.type = 'mood';
+  reverseDecision.relevance = 5;
+  await writeFile(checkpointPath, `${JSON.stringify(conflictingCheckpoint)}\n`);
+  const approvedBeforeConflict = await readFile(path.join(root, 'data/relations/relation-001.jsonl'), 'utf8');
+  await assert.rejects(
+    () => quiet(() => run(['merge', '--checkpoint', checkpoint], { root })),
+    /cannot merge duplicate or reverse-duplicate ID relation/u,
+    'inconsistent independently authored directions still require resolution instead of silently choosing one',
+  );
+  assert.equal(await readFile(path.join(root, 'data/relations/relation-001.jsonl'), 'utf8'), approvedBeforeConflict);
+});
+
 test('compact chunks are a lossless view and compact decisions expand into the same validated decisions', async (t) => {
   const { root } = await chunkRepository(t);
   const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';

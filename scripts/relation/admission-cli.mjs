@@ -287,10 +287,22 @@ function idPairKey(sourceSenseId, targetSenseId) {
   return `${sourceSenseId}\u0000${targetSenseId}`;
 }
 
+function isConsistentReciprocalIdRelation(left, right) {
+  return !('text' in left) && !('text' in right)
+    && left.source_record_id === right.target_record_id
+    && left.source_sense_id === right.target_sense_id
+    && left.target_record_id === right.source_record_id
+    && left.target_sense_id === right.source_sense_id
+    && left.type === right.reverse_type
+    && left.relevance === right.reverse_relevance
+    && left.reverse_type === right.type
+    && left.reverse_relevance === right.relevance;
+}
+
 function assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, newRelations, newDrops) {
   const exactRelations = new Set(existingRelations.map(stableRow));
   const exactDrops = new Set(existingDrops.map(stableRow));
-  const idPairs = new Set();
+  const idPairs = new Map();
   const textPairs = new Set();
   const drops = new Set(existingDrops.map((row) => `${row.source_sense_id}\u0000${normalizeCandidate(row.candidate)}`));
   const sourceCandidateForPair = new Map();
@@ -306,8 +318,8 @@ function assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, ne
   for (const row of existingRelations) {
     if ('text' in row) textPairs.add(`${row.source_sense_id}\u0000${normalizeCandidate(row.text)}`);
     else {
-      idPairs.add(idPairKey(row.source_sense_id, row.target_sense_id));
-      idPairs.add(idPairKey(row.target_sense_id, row.source_sense_id));
+      idPairs.set(idPairKey(row.source_sense_id, row.target_sense_id), row);
+      idPairs.set(idPairKey(row.target_sense_id, row.source_sense_id), row);
       for (const item of checkpoint.items) {
         const forward = item.candidates.filter((candidate) => item.sense_id === row.source_sense_id
           && candidate.same_spelling_targets.some((target) => target.record_id === row.target_record_id));
@@ -328,12 +340,21 @@ function assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, ne
     } else {
       const key = idPairKey(row.source_sense_id, row.target_sense_id);
       const reverse = idPairKey(row.target_sense_id, row.source_sense_id);
-      if (idPairs.has(key) || idPairs.has(reverse)) throw new Error(`cannot merge duplicate or reverse-duplicate ID relation ${row.source_sense_id}/${row.target_sense_id}`);
+      const existingPair = idPairs.get(key) ?? idPairs.get(reverse);
+      if (existingPair) {
+        const sameOrientation = existingPair.source_record_id === row.source_record_id
+          && existingPair.source_sense_id === row.source_sense_id
+          && existingPair.target_record_id === row.target_record_id
+          && existingPair.target_sense_id === row.target_sense_id;
+        if (!sameOrientation && isConsistentReciprocalIdRelation(existingPair, row)) continue;
+        throw new Error(`cannot merge duplicate or reverse-duplicate ID relation ${row.source_sense_id}/${row.target_sense_id}`);
+      }
       const candidateKey = sourceCandidateForPair.get(key);
       if (candidateKey && drops.has(candidateKey)) throw new Error(`cannot merge an ID relation already marked Drop for ${candidateKey.replace('\u0000', '/')}`);
       if (candidateKey && textPairs.has(candidateKey)) throw new Error(`cannot merge an ID relation already text-only for ${candidateKey.replace('\u0000', '/')}`);
-      idPairs.add(key);
-      idPairs.add(reverse);
+      idPairs.set(key, row);
+      idPairs.set(reverse, row);
+      exactRelations.add(stableRow(row));
     }
     appendRelations.push(row);
   }
@@ -880,7 +901,11 @@ function assertCheckpointMerged(checkpoint, relationRows, dropRows) {
   const relationSet = new Set(relationRows.map(stableRow));
   const dropSet = new Set(dropRows.map(stableRow));
   const expected = decisionRows(checkpoint);
-  for (const row of expected.relations) if (!relationSet.has(stableRow(row))) throw new Error(`merged Part relation is missing: ${stableRow(row)}`);
+  for (const row of expected.relations) {
+    if (!relationSet.has(stableRow(row)) && !relationRows.some((approved) => isConsistentReciprocalIdRelation(approved, row))) {
+      throw new Error(`merged Part relation is missing: ${stableRow(row)}`);
+    }
+  }
   for (const row of expected.drops) if (!dropSet.has(stableRow(row))) throw new Error(`merged Part Drop is missing: ${stableRow(row)}`);
 }
 
