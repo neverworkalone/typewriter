@@ -1165,6 +1165,77 @@ export function summarizeLiteraryCheckpoint(checkpoint) {
   return checkpointSummary(checkpoint);
 }
 
+const SUBMISSION_STATUSES = ['ZERO_HITS', 'SUBMITTED'];
+const isPlainObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
+const isNonEmptyString = (value) => typeof value === 'string' && value !== '';
+
+/**
+ * Structure a completion decision relies on, checked before any sense is called done: the batch binding, unique
+ * record/sense ids, and for each sense either a well-formed saved submission or a well-formed search state.
+ * A damaged checkpoint fails closed; nothing in it is ever counted as done.
+ */
+function assertCheckpointStructure(checkpoint) {
+  const batch = checkpoint.batch;
+  if (!isPlainObject(batch) || !['shard', 'batch', 'model'].every((key) => isNonEmptyString(batch[key]))) fail('checkpoint batch binding is damaged');
+  if (checkpoint.contract !== CHECKPOINT_CONTRACT) fail('checkpoint contract does not match the current contract');
+  const recordIds = new Set();
+  const senseIds = new Set();
+  for (const record of checkpoint.records) {
+    if (!isPlainObject(record) || !isNonEmptyString(record.record_id) || !Array.isArray(record.senses) || recordIds.has(record.record_id)) fail('checkpoint record structure is damaged');
+    recordIds.add(record.record_id);
+    for (const sense of record.senses) {
+      if (!isPlainObject(sense) || !isNonEmptyString(sense.sense_id) || senseIds.has(sense.sense_id)) fail('checkpoint sense structure is damaged');
+      senseIds.add(sense.sense_id);
+      if (!Array.isArray(sense.search_forms) || !Array.isArray(sense.added_forms)) fail('checkpoint sense search forms are damaged');
+      const saved = sense.submission;
+      if (saved !== null && saved !== undefined) {
+        if (!isPlainObject(saved) || !SUBMISSION_STATUSES.includes(saved.status) || !Array.isArray(saved.candidates)
+          || !saved.candidates.every((candidate) => typeof candidate === 'string')
+          || (saved.status === 'SUBMITTED' && !Array.isArray(saved.verified))) fail('checkpoint sense submission is damaged');
+      } else if (sense.search !== null && sense.search !== undefined) {
+        if (!isPlainObject(sense.search) || typeof sense.search.status !== 'string'
+          || !Array.isArray(sense.contexts ?? []) || !(sense.candidate_reviews === undefined || Array.isArray(sense.candidate_reviews))) fail('checkpoint sense search state is damaged');
+      }
+    }
+  }
+  return senseIds;
+}
+
+/**
+ * Status and done-ness (the existing `senseDone` meaning) of exactly the requested senses. Unknown or repeated ids and any
+ * damaged checkpoint structure fail closed. Exposes no path, source text, private locator or candidate.
+ */
+export function reportLiteraryCheckpointSenses(checkpoint, senseIdList) {
+  const known = assertCheckpointStructure(checkpoint);
+  const requested = String(senseIdList).split(',').map((item) => item.trim());
+  if (requested.length === 0 || requested.some((id) => id === '')) fail('--sense-ids must be a comma-separated list of sense ids');
+  if (new Set(requested).size !== requested.length) fail('--sense-ids contains a repeated sense id');
+  for (const id of requested) if (!known.has(id)) fail(`sense_id ${JSON.stringify(id)} is not in this checkpoint`);
+  const senses = requested.map((id) => {
+    const { sense } = findSense(checkpoint, id);
+    return { sense_id: id, status: senseState(sense), done: senseDone(sense) };
+  });
+  return {
+    contract: CHECKPOINT_CONTRACT,
+    batch: { shard: checkpoint.batch.shard, batch: checkpoint.batch.batch, model: checkpoint.batch.model },
+    all_done: senses.every((item) => item.done),
+    senses,
+  };
+}
+
+/** Lossless text view of a `chunk` result: the same content as the documented one-call `jq` formatting. */
+export function renderChunkText(result) {
+  const head = `batch=${result.batch.shard}_${result.batch.batch} done=${result.done_senses}/${result.total_senses} zero_hit=${result.zero_hit_recorded} not_yet_read=${result.not_yet_read}\n\n`;
+  const items = result.items.map((item) => {
+    if (!Array.isArray(item.contexts)) return `## ${item.sense_id} — ${item.status}`;
+    return `## ${item.sense_id} — ${item.lemma} [${item.pos}]\n${item.gloss}\n`
+      + (Array.isArray(item.forms) && item.forms.length > 0 ? `forms: ${item.forms.join(', ')}\n` : '')
+      + `hits=${item.total_hits} unseen=${item.unseen_hits}\n`
+      + item.contexts.map((context) => `[${context.k}] ${context.src}\n${context.x}`).join('\n\n');
+  });
+  return `${head}${items.join('\n\n')}\n`;
+}
+
 function candidateRowsFromCheckpoint(checkpoint) {
   return checkpoint.records.map((record) => ({
     record_id: record.record_id,
