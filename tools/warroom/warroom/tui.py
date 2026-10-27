@@ -481,7 +481,6 @@ class WarRoom(App):
     """
     BINDINGS = [("q", "quit", "Quit"), ("s", "settings", "Settings"),
                 ("r", "reload_config", "설정 리로드"), ("f", "toggle_tier", "Free/Go 전환"),
-                ("m", "retry_maintainer", "Maintainer Retry"),
                 ("left", "control_move(-1)", ""), ("right", "control_move(1)", ""),
                 Binding("tab", "switch_region", "", priority=True),
                 Binding("shift+tab", "switch_region", "", show=False, priority=True)]
@@ -575,13 +574,6 @@ class WarRoom(App):
             return self.notify("Supervisor가 실행 중이 아닙니다. 시작 시 설정을 읽으므로 ./war 를 다시 실행하세요.", severity="warning")
         self._reload_token = control.request_reload(self.store)
         self.notify("설정 리로드를 요청했습니다.")
-
-    def action_retry_maintainer(self) -> None:
-        """m: retry the hidden Maintainer when it is PAUSED/ERROR (it has no card on the Board)."""
-        if self.screen is not self.screen_stack[0]:
-            return
-        if not control.retry_maintainer(self.store):
-            self.notify("재시도할 Maintainer 작업(PAUSED/ERROR)이 없습니다.", severity="warning")
 
     def _poll_reload(self) -> None:
         res = control.reload_result(self.store)
