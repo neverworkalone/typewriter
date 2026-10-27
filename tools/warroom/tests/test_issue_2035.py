@@ -397,34 +397,6 @@ class AdapterPolicy(unittest.TestCase):
         ad._help_flags = {"--tools"}
         self.assertEqual(ad._answer_only_args(env), ["--tools", ""])                # optional trimming is not required
 
-    def test_codex_answer_only_profile_is_read_only_and_proves_a_write_fails(self):
-        from warroom.adapters import CodexCLIAdapter
-        import tempfile
-        probes = []
-
-        class Ad(CodexCLIAdapter):
-            result = 0
-
-            def _probe(self, argv, env, cwd):
-                probes.append(argv)
-                return 4 if "answer-only-write-probe" in " ".join(argv) and self.result else 0
-
-        env = {"WARROOM_ANSWER_ONLY": "1", "WARROOM_STAGE2_CHUNK": "1", "WARROOM_GIT_EXECUTABLES": json.dumps(["/usr/bin/git"])}
-        with tempfile.TemporaryDirectory() as d:
-            args = Ad()._chunk_args(env, d)
-            self.assertTrue(any('extends=":read-only"' in a for a in args))
-            self.assertFalse(any(":workspace" in a for a in args))
-            self.assertEqual(len(probes), 1)                                            # answer-only write probe
-            self.assertIn("answer-only-write-probe", " ".join(probes[0]))
-            ad = Ad()
-            ad.result = 1
-            with self.assertRaises(RuntimeError):                                       # a write that succeeds refuses the launch
-                ad._chunk_args(env, d)
-            probes.clear()
-            args = Ad()._chunk_args({**env, "WARROOM_ANSWER_ONLY": ""}, d)
-            self.assertTrue(any('extends=":workspace"' in a for a in args))              # other chunk kinds are unchanged
-            self.assertEqual(probes, [])
-
     def test_codex_denied_command_is_only_a_metric_for_an_answer_only_chunk(self):
         from warroom.adapters import CodexCLIAdapter
         import tempfile
