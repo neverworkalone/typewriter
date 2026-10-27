@@ -1983,6 +1983,7 @@ class Supervisor:
         self.store.delete(stage1ab.run_start_key(b["id"]))
         self.store.delete(stage1ab.state_key(b["id"], chunk["number"]))
         self.store.update(b["id"], session_id=None, retries=0, retry_after=None, error=None)
+        self._record_progress(self.store.batch(b["id"]))
         self.store.log(b["id"], f"A/B 청크 {chunk['number']:03d} 저장을 확인했습니다. 다음 단계는 새 세션으로 실행합니다.")
         return self._launch_ab_next(self.store.batch(b["id"]))
 
