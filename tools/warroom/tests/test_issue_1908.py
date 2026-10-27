@@ -10,7 +10,7 @@ from tests.test_issue_1684 import S2, merge_part, s2_world as _s2_world
 from tests.fakes import HEAD1, HEAD2
 from tests.test_claude_adapter import init, result, stream
 from tests.test_issue_1832 import Reporting
-from warroom import control, progress
+from warroom import control, progress, stage2
 from warroom.gitops import GitError
 
 
@@ -213,6 +213,68 @@ class Stage2ChunkView(unittest.TestCase):
         b = w.store.active_batch("claude", S2)
         self.assertEqual((b["run_kind"], len(w.adapter.launches)), ("s2_finalize_new", 1))
         self.assertIn("finalize", w.adapter.launches[-1]["prompt"])
+
+
+class Stage2ChunkPages(unittest.TestCase):
+    """Each page of the compact view must reach the model whole in one tool call (Codex: 10,000 tokens = bytes/4)."""
+
+    def test_pages_rejoin_exactly_and_each_fits_one_tool_call(self):
+        hangul = "T{}\tw{}-s1\tw{}\t사제\tnoun\t" + "스승과 제자를 아울러 이르는 말. " * 6 + "\n"
+        ascii_line = "c{}\tcandidate\ta_codex,b_claude\tT1,T2,T3,T4,T5,T6,T7,T8\n"
+        cases = {
+            "one short line": "# Stage 2 chunk 001-01-03-001\n",
+            "no trailing newline": "# head\nc1\t말\ta_codex\t-",
+            "large Korean chunk": "".join(hangul.format(i, i, i) for i in range(1, 1500)),
+            "ASCII-heavy (character budget binds)": "".join(ascii_line.format(i) for i in range(1, 2000)),
+            "exactly one full page": "x" * (stage2.PAGE_MAX_CHARS - 1) + "\n",
+            "one byte over a page": "가" * 11_999 + "\n" + "나\n",
+        }
+        for name, text in cases.items():
+            with self.subTest(name):
+                pages = stage2.chunk_pages(text)
+                self.assertEqual("".join(pages), text)          # nothing dropped, duplicated or reordered
+                for page in pages:
+                    self.assertLessEqual(len(page.encode("utf-8")), stage2.PAGE_MAX_BYTES)
+                    self.assertLessEqual(len(page), stage2.PAGE_MAX_CHARS)
+                    self.assertLessEqual(len(page.encode("utf-8")) / 4, 9_000)   # Codex token estimate, with margin
+                    self.assertTrue(page.endswith("\n") or page is pages[-1])    # pages break only between lines
+        self.assertGreater(len(stage2.chunk_pages(cases["large Korean chunk"])), 1)
+        with self.assertRaises(ValueError):
+            stage2.chunk_pages("가" * 20_000 + "\n")             # one line cannot be split without cutting a gloss
+
+    def test_written_pages_replace_stale_ones_and_one_page_is_the_view_itself(self):
+        with tempfile.TemporaryDirectory() as d:
+            scratch = Path(d) / ".warroom-scratch"
+            scratch.mkdir()
+            view = scratch / "active-chunk.txt"
+            view.write_text("가나다\n" * 20_000, "utf-8")
+            paths = stage2.write_chunk_pages(d)
+            self.assertGreater(len(paths), 1)
+            self.assertEqual("".join((Path(d) / p).read_text("utf-8") for p in paths), view.read_text("utf-8"))
+            view.write_text("# small\n", "utf-8")
+            self.assertEqual(stage2.write_chunk_pages(d), [stage2.CHUNK_VIEW])
+            self.assertEqual(list(scratch.glob("active-chunk.p*of*.txt")), [])   # an earlier chunk's pages are gone
+
+    def test_supervisor_lists_every_page_in_order_and_refuses_an_unpageable_view(self):
+        w = s2_world(self)
+        w.git.chunk_view_text = "T1\tw1-s1\tw1\t말\tnoun\t" + "뜻풀이 " * 10 + "\n"
+        w.git.chunk_view_text *= 900
+        control.start(w.store, "claude", S2, "single", cfg=w.cfg)
+        w.tick()
+        prompt = w.adapter.launches[-1]["prompt"]
+        wt = Path(w.store.active_batch("claude", S2)["worktree"])
+        pages = sorted((wt / ".warroom-scratch").glob("active-chunk.p*of*.txt"))
+        self.assertGreater(len(pages), 1)
+        for i in range(1, len(pages) + 1):
+            self.assertIn(f"cat .warroom-scratch/active-chunk.p{i}of{len(pages)}.txt` ({i}/{len(pages)})", prompt)
+        self.assertIn("max_output_tokens: 10000", prompt)
+
+        w2 = s2_world(self)
+        w2.git.chunk_view_text = "가" * 20_000 + "\n"
+        control.start(w2.store, "claude", S2, "single", cfg=w2.cfg)
+        w2.tick()
+        b = w2.store.active_batch("claude", S2)
+        self.assertEqual((b["state"], len(w2.adapter.launches)), ("ERROR", 0))
 
 
 class Stage2ChunkCodexConfig(unittest.TestCase):

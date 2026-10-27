@@ -13,12 +13,13 @@ PROMPT_DIR = Path(__file__).resolve().parent.parent / "prompts"   # independent 
 _PLACEHOLDER = re.compile(r"\{\{\s*([A-Za-z_]\w*)\s*\}\}")
 _PRODUCE = {"batch", "branch"}
 _MAINTAIN = {"issue", "branch"}
-_STAGE2 = {"shard", "batch", "part", "branch", "phase", "checkpoint", "session_note"}
+_STAGE2 = {"shard", "batch", "part", "branch", "phase", "checkpoint", "session_note", "chunk_read"}
 ALLOWED = {"a": _PRODUCE, "b": _PRODUCE, "c": _PRODUCE, "d": _PRODUCE, "recovery": _PRODUCE | {"resolved_defects"},
            "fix": {"pr", "head", "branch", "review_events", "session_note"},
            "m": _MAINTAIN, "m_recovery": _MAINTAIN, "s2": _STAGE2, "s2_chunk": _STAGE2, "s2_recovery": _STAGE2}
 MAINTENANCE_METHOD = "m"
 STAGE2_METHOD = "s2"
+CHUNK_VIEW = ".warroom-scratch/active-chunk.txt"
 PRODUCER_HANDOFF = """
 
 The War Room Supervisor owns PR monitoring and worktree/branch cleanup.
@@ -85,7 +86,7 @@ def recovery(b, directory: Path | None = None, resolved_defects: str = "") -> st
 
 
 def stage2(b, phase: str, checkpoint: dict | None, *, resumed: bool = False,
-           directory: Path | None = None) -> str:
+           directory: Path | None = None, pages: list[str] | None = None) -> str:
     """One bounded Stage 2 chunk run (`s2_chunk.md`, self-contained) or the separate finalization run (`s2.md`)."""
     if phase not in ("chunk", "finalize"):
         raise PromptError(f"알 수 없는 Stage 2 실행 단계: {phase!r}")
@@ -99,6 +100,9 @@ def stage2(b, phase: str, checkpoint: dict | None, *, resumed: bool = False,
         chunk = (f"checkpoint {checkpoint['decided']}/{checkpoint['total']} 후보 판정 저장; "
                  f"next_chunk_number={checkpoint['next_chunk_number']}; 다음 청크 ID={pending}; "
                  f"pending_chunk={'없음' if checkpoint['pending_chunk'] is None else checkpoint['pending_chunk']}")
+    pages = pages or [CHUNK_VIEW]   # the Supervisor passes the pages it wrote; one page is the view itself
+    values["chunk_read"] = "\n".join(f"   - `cat {path}` ({i}/{len(pages)})" for i, path in enumerate(pages, 1)) \
+        if phase == "chunk" else ""
     values.update(phase="chunk" if phase == "chunk" else "finalize", checkpoint=chunk,
                   session_note=("중단된 같은 청크를 이어간다. 이미 checkpoint에 저장된 결정을 다시 만들지 않는다.\n"
                                 if resumed else ""))

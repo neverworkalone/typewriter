@@ -113,6 +113,7 @@ class FakeGit:
         self.chunk_views: list[tuple] = []                    # (worktree, shard, batch, part, prepare) pre-chunk renders
         self.chunk_view_error: Exception | None = None
         self.chunk_view_total = 1                             # candidates a fake `prepare` writes
+        self.chunk_view_text: str | None = None               # rendered view (default: one short line)
 
     def fetch_base(self, base):
         return "m" * 40
@@ -146,7 +147,8 @@ class FakeGit:
                                      "candidate_count": len(candidates) - start,
                                      "slices": [{"sense_id": "source-sense", "start": start, "end": len(candidates)}]}
             path.write_text(json.dumps(data), "utf-8")
-        (path.parent / "active-chunk.txt").write_text(f"# chunk {data['pending_chunk']}\n", "utf-8")
+        (path.parent / "active-chunk.txt").write_text(
+            self.chunk_view_text or f"# chunk {data['pending_chunk']}\n", "utf-8")
 
     def contains_on_base(self, sha, base):
         return self.on_base
