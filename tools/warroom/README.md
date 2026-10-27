@@ -27,16 +27,19 @@ sqlite3 -noheader tools/warroom/.local/warroom.db \
 
 `method`는 `a`·`b`·`c`·`d`, `producer`는 설정의 논리 모델 ID(`codex`, `claude`, `deepseek` 등)다. **A/B는 모델별 독립 큐**이므로 모델을 지정해 보는 것이 편하다. **C/D는 방식별 공유 큐**라 모델 조건을 빼도 된다. 같은 배치명으로 과거 여러 실행 기록이 있으면 일치하는 경로가 모두 나온다.
 
-### Stage 2 Part로 조회 — 046 / Batch 01 / Part 03
+### Stage 2 Part로 조회 — 001 / Batch 01 / Part 03
 
 Stage 2는 `batches.method='s2'`, `batches.batch='BB-PP'`로 저장한다.
 
 ```sh
 sqlite3 -noheader tools/warroom/.local/warroom.db \
-  "SELECT r.log_file FROM runs r JOIN batches b ON b.id=r.batch_id
-   WHERE b.method='s2' AND b.shard='046' AND b.batch='01-03'
-     AND r.kind LIKE 'produce%'
-   ORDER BY r.started_at;" | pbcopy
+  "SELECT r.kind, r.log_file
+   FROM runs r
+   JOIN batches b ON b.id = r.batch_id
+   WHERE b.method = 's2'
+     AND b.shard = '001'
+     AND b.batch = '01-03'
+   ORDER BY r.started_at;"
 ```
 
 **리뷰 후 수정 로그까지 함께** 보려면 위 명령의 `AND r.kind LIKE 'produce%'` 조건을 삭제한다. `runs.kind`도 같이 확인하려면 `SELECT r.kind, r.log_file`로 바꾼다. `pbcopy`를 빼면 터미널에 경로가 표시된다. `less <로그경로>` 또는 `tail -f <로그경로>`로 원본 로그를 읽을 수 있다.
