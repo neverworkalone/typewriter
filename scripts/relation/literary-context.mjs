@@ -30,6 +30,7 @@ export const SWEEP_LENSES = Object.freeze([
 const CHUNK_DEFAULT_SENSES = 12;
 const CHUNK_DEFAULT_CONTEXTS = 8;
 const CHUNK_RESPONSE_CHARS = 36_000;
+const MAX_SUBMISSION_ISSUES = 16;
 const SHORT_KEY_LENGTH = 12;
 const MAX_CONTEXTS_PER_SENSE = 16;
 const DEFAULT_SNIPPET_CHARS = 700;
@@ -49,11 +50,23 @@ function fail(message) {
   throw new Error(message);
 }
 
-function failSubmission(reason, senseId, field) {
+function failSubmission(reason, senseId, field, entryNumber = null, details = {}) {
   const error = new Error('literary chunk submission validation failed');
   error.code = 'LITERARY_SUBMISSION_VALIDATION';
   error.reason = reason;
-  error.affected = { sense_id: senseId, field };
+  error.affected = {
+    sense_id: senseId,
+    field,
+    entry_number: Number.isSafeInteger(entryNumber) && entryNumber > 0 ? entryNumber : null,
+  };
+  error.issues = (details.issues ?? [{ entry_number: error.affected.entry_number, reason, field }])
+    .slice(0, MAX_SUBMISSION_ISSUES)
+    .map(({ entry_number: number, reason: issueReason, field: issueField }) => ({
+      entry_number: Number.isSafeInteger(number) && number > 0 ? number : null,
+      reason: issueReason,
+      field: issueField,
+    }));
+  error.issues_truncated = Boolean(details.issues_truncated || (details.issues?.length ?? 0) > MAX_SUBMISSION_ISSUES);
   error.repair_scope = new Map([
     ['submission_schema', 'correct_submission_shape'],
     ['duplicate_sense', 'correct_submission_shape'],
@@ -1072,28 +1085,54 @@ function validateSubmission(submission, checkpoint) {
   if (!exactKeys(submission, ['senses'])) failSubmission('submission_schema', null, 'submission');
   if (!Array.isArray(submission.senses) || submission.senses.length === 0) failSubmission('submission_schema', null, 'senses');
   const seen = new Set();
-  for (const entry of submission.senses) {
-    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) failSubmission('submission_schema', null, 'senses');
-    if (typeof entry.sense_id !== 'string' || entry.sense_id === '') failSubmission('submission_schema', null, 'sense_id');
-    if (!exactKeys(entry, ['sense_id', 'verified', 'candidates'])) {
-      failSubmission('submission_schema', checkpointHasSense(checkpoint, entry.sense_id) ? entry.sense_id : null, 'sense');
+  const issues = [];
+  let issuesTruncated = false;
+  const addIssue = (reason, senseId, field, entryNumber) => {
+    if (issues.length < MAX_SUBMISSION_ISSUES) {
+      issues.push({ entry_number: entryNumber, reason, field, sense_id: senseId });
+    } else {
+      issuesTruncated = true;
     }
-    if (!checkpointHasSense(checkpoint, entry.sense_id)) failSubmission('unknown_sense', null, 'sense_id');
-    if (seen.has(entry.sense_id)) failSubmission('duplicate_sense', entry.sense_id, 'sense_id');
-    seen.add(entry.sense_id);
+  };
+  for (const [index, entry] of submission.senses.entries()) {
+    const entryNumber = index + 1;
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+      addIssue('submission_schema', null, 'senses', entryNumber);
+      continue;
+    }
+    if (typeof entry.sense_id !== 'string' || entry.sense_id === '') {
+      addIssue('submission_schema', null, 'sense_id', entryNumber);
+      continue;
+    }
+    const knownSense = checkpointHasSense(checkpoint, entry.sense_id);
+    const safeSenseId = knownSense ? entry.sense_id : null;
+    if (!exactKeys(entry, ['sense_id', 'verified', 'candidates'])) {
+      addIssue('submission_schema', safeSenseId, 'sense', entryNumber);
+    }
+    if (!knownSense) {
+      addIssue('unknown_sense', null, 'sense_id', entryNumber);
+    } else if (seen.has(entry.sense_id)) {
+      addIssue('duplicate_sense', entry.sense_id, 'sense_id', entryNumber);
+    } else {
+      seen.add(entry.sense_id);
+    }
     for (const key of ['verified', 'candidates']) {
       if (!Array.isArray(entry[key]) || entry[key].some((item) => typeof item !== 'string' || item.trim() === '')) {
-        failSubmission('submission_schema', entry.sense_id, key);
+        addIssue('submission_schema', safeSenseId, key, entryNumber);
       }
     }
   }
+  if (issues.length > 0) {
+    const first = issues[0];
+    failSubmission(first.reason, first.sense_id, first.field, first.entry_number, { issues, issues_truncated: issuesTruncated });
+  }
 }
 
-export function resolveVerifiedContextKey(key, senseId, results) {
-  if (key.length < SHORT_KEY_LENGTH) failSubmission('context_key_too_short', senseId, 'verified');
+export function resolveVerifiedContextKey(key, senseId, results, entryNumber = null) {
+  if (key.length < SHORT_KEY_LENGTH) failSubmission('context_key_too_short', senseId, 'verified', entryNumber);
   const matches = results.filter((row) => row.locator_key.startsWith(key));
-  if (matches.length === 0) failSubmission('context_key_not_found', senseId, 'verified');
-  if (matches.length > 1) failSubmission('context_key_ambiguous', senseId, 'verified');
+  if (matches.length === 0) failSubmission('context_key_not_found', senseId, 'verified', entryNumber);
+  if (matches.length > 1) failSubmission('context_key_ambiguous', senseId, 'verified', entryNumber);
   return matches[0];
 }
 
@@ -1108,10 +1147,11 @@ export async function submitLiteraryChunk({ databasePath, checkpointPath, submis
   const accepted = [];
   try {
     await assertCheckpointIndexUnchanged(checkpoint, databasePath, metadata);
-    for (const entry of submission.senses) {
+    for (const [index, entry] of submission.senses.entries()) {
+      const entryNumber = index + 1;
       const { record, sense } = findSense(checkpoint, entry.sense_id);
       const forms = senseForms(sense);
-      if (forms.length === 0) failSubmission('missing_search_forms', entry.sense_id, 'search_forms');
+      if (forms.length === 0) failSubmission('missing_search_forms', entry.sense_id, 'search_forms', entryNumber);
       // Normal path: re-resolve the few contexts `chunk` showed. A sense never read by `chunk` (or whose forms changed) keeps the full search.
       const digest = formsDigest(forms);
       let result;
@@ -1120,22 +1160,22 @@ export async function submitLiteraryChunk({ databasePath, checkpointPath, submis
         result = sense.shown?.forms_sha256 === digest
           ? { total_hits: sense.shown.total_hits, results: sense.shown.unit_rowids.map((unitRowId) => resolveShownContext(database, unitRowId, forms)) }
           : runSearch(database, forms, { pageSize: MAX_CONTEXTS_PER_SENSE, cursor: null, snippetChars: DEFAULT_SNIPPET_CHARS, preferredForm: record.lemma.normalize('NFC').trim() });
-        if (result.total_hits === 0 && entry.verified.length > 0) failSubmission('context_key_not_found', entry.sense_id, 'verified');
-        if (result.total_hits === 0 && entry.candidates.length > 0) failSubmission('no_literary_hits', entry.sense_id, 'candidates');
-        verified = entry.verified.map((key) => resolveVerifiedContextKey(key, entry.sense_id, result.results));
+        if (result.total_hits === 0 && entry.verified.length > 0) failSubmission('context_key_not_found', entry.sense_id, 'verified', entryNumber);
+        if (result.total_hits === 0 && entry.candidates.length > 0) failSubmission('no_literary_hits', entry.sense_id, 'candidates', entryNumber);
+        verified = entry.verified.map((key) => resolveVerifiedContextKey(key, entry.sense_id, result.results, entryNumber));
       } catch (error) {
         if (error?.code === 'LITERARY_SUBMISSION_VALIDATION') throw error;
         throw codedError('LITERARY_INDEX_SEARCH', 'approved literary index search failed');
       }
       if (new Set(verified.map((row) => row.locator_key)).size !== verified.length) {
-        failSubmission('duplicate_verified', entry.sense_id, 'verified');
+        failSubmission('duplicate_verified', entry.sense_id, 'verified', entryNumber);
       }
       const candidates = new Map();
       for (const candidate of entry.candidates) {
         const normalized = normalizeCandidate(candidate);
         if (!candidates.has(normalized)) candidates.set(normalized, candidate.normalize('NFC').trim());
       }
-      if (candidates.size > 0 && verified.length === 0) failSubmission('missing_verified', entry.sense_id, 'verified');
+      if (candidates.size > 0 && verified.length === 0) failSubmission('missing_verified', entry.sense_id, 'verified', entryNumber);
       accepted.push({
         sense,
         submission: {

@@ -93,7 +93,7 @@ async function readSubmission(filePath) {
     const failure = new Error('literary chunk submission JSON is invalid');
     failure.code = 'LITERARY_SUBMISSION_VALIDATION';
     failure.reason = 'submission_schema';
-    failure.affected = { sense_id: null, field: 'input' };
+    failure.affected = { sense_id: null, field: 'input', entry_number: null };
     failure.repair_scope = 'correct_submission_shape';
     throw failure;
   }
@@ -235,6 +235,16 @@ main().catch((error) => {
       ? affected.sense_id
       : null;
     const field = fields.has(affected.field) ? affected.field : 'submission';
+    const entryNumber = Number.isSafeInteger(affected.entry_number) && affected.entry_number > 0
+      ? affected.entry_number
+      : null;
+    const issues = (Array.isArray(error.issues) ? error.issues : [{ entry_number: entryNumber, reason, field }])
+      .slice(0, 16)
+      .map((issue) => ({
+        entry_number: Number.isSafeInteger(issue?.entry_number) && issue.entry_number > 0 ? issue.entry_number : null,
+        reason: reasons.has(issue?.reason) ? issue.reason : 'submission_schema',
+        field: fields.has(issue?.field) ? issue.field : 'submission',
+      }));
     const repairScopes = new Set(['correct_submission_shape', 'correct_source_sense_id', 'resubmit_affected_sense', 'stop_and_report']);
     const repairScope = repairScopes.has(error.repair_scope) ? error.repair_scope : 'correct_submission_shape';
     process.stderr.write(`${JSON.stringify({
@@ -243,7 +253,9 @@ main().catch((error) => {
       error_type: errorType,
       message: 'Chunk submission did not satisfy the approved source-sense context contract.',
       reason,
-      affected: { sense_id: senseId, field },
+      affected: { sense_id: senseId, field, entry_number: entryNumber },
+      issues,
+      ...(error.issues_truncated ? { issues_truncated: true } : {}),
       repair_scope: repairScope,
     })}\n`);
     process.exitCode = 1;
