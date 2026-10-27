@@ -23,6 +23,7 @@ def _when(ts) -> str:
 
 CARD_W = 34   # content cells of a card (column 38 - border - padding): every line is fit to it
 PHASE = {"WAITING_REVIEW": "REVIEW", "PRODUCING": "WORKING"}   # display names; the stored state stays PRODUCING
+PHASE.update({"FIX_MERGED": "FIX 머지됨·반영 중"})
 ICON = {"PREPARE": "…", "PRODUCING": "▶", "WAITING_REVIEW": "◔", "FIXING": "✎", "MERGED": "⇄",
         "CLEANUP": "⌫", "COMPLETE": "✓", "PAUSED": "‖", "ERROR": "✖", "CLEARING": "⌦"}
 
@@ -175,9 +176,39 @@ def tier_footer(state: str) -> str:
             f"[b]f[/] Free/Go 전환 ([{style}]{label}[/])")
 
 
+def _maintainer_header(st: dict, who: str) -> str:
+    """Maintainer Detail header: the Issue it works on, its real phase and every other open Issue (identifiable)."""
+    mt = st["maintainer"]
+    issue = f"Issue #{mt['issue']}" if mt["issue"] else "열린 urgent Issue 없음"
+    head = [f"{who} · {issue}", PHASE.get(st["state"], st["state"]) + (" + DRAIN" if st["drain"] else "")]
+    if st["pr"]:
+        head.append(f"PR #{st['pr']}")
+    lines = ["   ".join(head)]
+    if mt["text"]:
+        lines.append(mt["text"])
+    if st["activity"]:
+        lines.append(f"최근 활동 {_when(st['activity'][0])} {st['activity'][1]}")
+    if mt["others"]:
+        lines.append("그 밖의 열린 urgent Issue: " + " | ".join(f"#{n} {t}" for n, t in mt["others"]))
+    if mt["drain_note"]:
+        lines.append(mt["drain_note"])
+    if st.get("clear"):
+        lines.append("Clear 진행 중: AI 중지 → PR·원격/로컬 브랜치·worktree 정리 (Issue·결함 기록은 보존)"
+                     if st["clear"]["status"] == "REQUESTED"
+                     else "Clear 중단됨 (보존됨) — Clear 버튼으로 이어서 재시도할 수 있습니다")
+    if st["error"]:
+        lines.append(f"ERROR/PAUSED 사유: {st['error']}")
+    if st["blocked"]:
+        lines.append(f"BLOCKED: {st['blocked']}")
+    lines += list(mt["reasons"].values())
+    return "\n".join(lines)
+
+
 def detail_header(st: dict, reg: dict, model: str) -> str:
     """Short operating header; ids, SHAs and paths live in `detail_meta`."""
     who = f"{adapter_label(reg.get('adapter', '?'))} / {control.method_label(st['method'])}"
+    if st.get("maintainer"):
+        return _maintainer_header(st, who)
     if st["batch"] is None:
         return f"{who}  ({_idle_phase(st).lstrip('— ')})"
     s2 = st.get("stage2")
@@ -228,6 +259,10 @@ def detail_meta(st: dict, reg: dict, model: str) -> str:
         wt_line = f"worktree (경로 없음): {wt}"
     else:
         wt_line = f"worktree: {wt}"
-    return "\n".join([
-        f"model: {reg.get('label', model)} ({model})   adapter: {reg.get('adapter', '?')}   {_pins(reg, st)}",
-        f"branch: {st['branch'] or '-'}", f"HEAD: {st['head'] or '-'}", f"session: {st['session'] or '-'}", wt_line])
+    lines = [f"model: {reg.get('label', model)} ({model})   adapter: {reg.get('adapter', '?')}   {_pins(reg, st)}"]
+    if st.get("maintainer"):
+        mt = st["maintainer"]
+        lines.append(f"urgent Issue: #{mt['issue'] or '-'}   PR: {('#' + str(st['pr'])) if st['pr'] else '-'}   "
+                     f"phase: {st['state']}" + (f"   hold: {mt['hold']}" if mt["hold"] else ""))
+    return "\n".join(lines + [f"branch: {st['branch'] or '-'}", f"HEAD: {st['head'] or '-'}",
+                              f"session: {st['session'] or '-'}", wt_line])

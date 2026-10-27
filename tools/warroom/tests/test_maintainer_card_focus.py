@@ -1,7 +1,7 @@
 """The Board's Maintainer card (row 5, DeepSeek column) is selectable like every other Card.
 
 Invariant: every card on the Board is reachable by Tab, arrow keys and mouse click, and Enter/click on the Maintainer
-card only opens a read-only detail. Textual-dependent: skipped when the War Room venv is not installed.
+card only opens the shared Batch Detail (#2022). Textual-dependent: skipped when the War Room venv is not installed.
 """
 import asyncio
 import unittest
@@ -53,19 +53,20 @@ class MaintainerCardFocusTests(unittest.TestCase):
             self.assertIn(card, list(app.query(tui.Card)))   # Tab's "cards" region and arrows see it
         self.run_app(scenario)
 
-    def test_enter_and_click_open_read_only_detail(self):
+    def test_enter_and_click_open_the_batch_detail_without_changing_anything(self):
         async def scenario(app, pilot):
             card = app.query_one("#card-maintainer", tui.MaintainerCard)
             card.focus()
             await pilot.press("enter")
             await pilot.pause()
-            self.assertIsInstance(app.screen, tui.MaintainerDetail)
+            self.assertIsInstance(app.screen, tui.LineDetail)
+            self.assertEqual(app.screen.method, "m")
             await pilot.press("escape")
             await pilot.pause()
             self.assertIs(app.screen, app.screen_stack[0])
             await pilot.click("#card-maintainer")
             await pilot.pause()
-            self.assertIsInstance(app.screen, tui.MaintainerDetail)
+            self.assertIsInstance(app.screen, tui.LineDetail)
             self.assertEqual(app.store.maintenance_rows(), [])   # opening starts/changes nothing
         self.run_app(scenario)
 

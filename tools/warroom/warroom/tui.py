@@ -23,7 +23,7 @@ from .logrender import render_line
 from .views import (_hhmm, _when, control_columns, select_width, card_text, detail_header, maintainer_card_text,  # noqa: F401  (CARD_W/ICON re-exported for tests)
                     model_title, tier_footer, detail_meta)
 from .logtail import LogTail, redact
-from .store import STAGE2_METHOD, Store
+from .store import MAINTENANCE_METHOD, STAGE2_METHOD, Store
 
 TMUX_SUP = "warroom-supervisor"
 
@@ -133,35 +133,15 @@ class Card(Static, can_focus=True):
 
 class MaintainerCard(Card):
     """Row-5 card of the hidden #1555 Maintainer (always in the DeepSeek column). It is a Card for focus, arrow keys,
-    Tab and click, but Enter/click only opens a read-only detail: it never starts or changes work."""
+    Tab and click; Enter/click opens the same Batch Detail as every Line, over the Maintainer Line (Issue #2022)."""
 
     def __init__(self, model: str):
         super().__init__(model, STAGE2_METHOD, card_id="card-maintainer")
 
     def action_open(self) -> None:
-        self.app.push_screen(MaintainerDetail())
-
-
-class MaintainerDetail(Screen):
-    """Read-only list of every open urgent Issue the Maintainer is handling (full text, nothing truncated)."""
-    BINDINGS = [("escape", "app.pop_screen", "Back")]
-
-    def compose(self) -> ComposeResult:
-        yield Header()
-        yield Static(id="maintainer-body")
-        yield Footer(show_command_palette=False)
-
-    def on_mount(self) -> None:
-        self.set_interval(1.0, self.refresh_view)
-        self.refresh_view()
-
-    def refresh_view(self) -> None:
-        items = control.urgent_items(self.app.store, self.app.cfg, full=True)
-        lines = ["Maintainer — 진행 중인 작업 없음"] if not items else \
-            [f"Maintainer — 열린 urgent 작업 {len(items)}건", ""] + \
-            [f"{'✖' if bad else '▶'} {text}" for text, bad in items]
-        lines += ["", "m: PAUSED/ERROR 작업 재시도 (Board에서)  ·  Esc: 돌아가기"]
-        self.query_one("#maintainer-body", Static).update(Text("\n".join(lines)))   # text, never markup
+        # The model shown is the producer that really runs the Maintainer, not the Board column the card sits in.
+        who = control.maintainer_producer(self.app.store, self.app.cfg, self.model)
+        self.app.push_screen(LineDetail(who or self.model, MAINTENANCE_METHOD))
 
 
 class BoardFooter(Footer):
@@ -222,6 +202,7 @@ class LineDetail(Screen):
         self._run_ids: tuple = ()
         self._shown_path = None
         self._view_key = None
+        self.maint = method == MAINTENANCE_METHOD   # the Maintainer Line: same screen, Issue-scoped facts and controls
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -305,6 +286,14 @@ class LineDetail(Screen):
         self.app.pop_screen()
 
     # --- sources ---
+    def _status(self) -> dict:
+        """The Line's view. The Maintainer follows the producer that really runs it (config can change between Issues)."""
+        app = self.app
+        if self.maint:
+            self.model = control.maintainer_producer(app.store, app.cfg, self.model) or self.model
+            return control.maintainer_status(app.store, app.cfg, self.model)
+        return control.line_status(app.store, self.model, self.method)
+
     def _runs(self):
         return self.app.store.line_runs(self.model, self.method)
 
@@ -336,7 +325,8 @@ class LineDetail(Screen):
         for r in runs:
             st = r["exit_status"] if r["ended_at"] else "running"
             pin = f" {r['model']}/{r['effort']}" if r["model"] else ""   # the CLI model ID and effort it ran with
-            opts.append((f"#{r['id']} {r['shard']}_{r['batch']} {r['kind']}{pin} {_hhmm(r['started_at'])} exit={st}",
+            what = f"Issue #{r['batch']}" if self.maint else f"{r['shard']}_{r['batch']}"
+            opts.append((f"#{r['id']} {what} {r['kind']}{pin} {_hhmm(r['started_at'])} exit={st}",
                          f"run:{r['id']}"))
         sel = self.query_one("#source", Select)
         with sel.prevent(Select.Changed):
@@ -380,7 +370,7 @@ class LineDetail(Screen):
 
     # --- view ---
     def refresh_view(self) -> None:
-        st = control.line_status(self.app.store, self.model, self.method)
+        st = self._status()
         reg = role_view(self.app.cfg, self.model, self.method)   # the pin this Line's method runs on (profiles differ by stage)
         # Text, never markup: the error/branch/path values are data and may hold [brackets] (a Rich MarkupError ends the app)
         self.query_one("#info", Static).update(Text(detail_header(st, reg, self.model)))
@@ -407,18 +397,35 @@ class LineDetail(Screen):
             e.button.label = "Readable Log" if self.raw else "Raw Log"
             self._reload()
         elif e.button.id == "drain":
-            control.set_drain(store, m, me, not bool(store.line(m, me)["drain"]))
+            on = not self._status()["line_drain"] if self.maint else not bool(store.line(m, me)["drain"])
+            control.set_drain(store, m, me, on)
         elif e.button.id == "retry":
-            control.retry(store, m, me)
+            if self.maint:   # pinned to the Issue/execution on screen: a stale screen retries nothing else
+                st = self._status()
+                if not control.retry_maintainer(store, st["issue_number"], st["batch_id"]):
+                    self.notify("재시도할 Maintainer 작업이 화면과 달라졌습니다 (화면을 새로 고치세요).", severity="warning")
+            else:
+                control.retry(store, m, me)
         elif e.button.id == "stop":
-            self.app.push_screen(Confirm(
-                f"{m} / {control.method_label(me)} 라인의 AI 실행을 즉시 중지합니다."), self._stopped)
+            what = "Maintainer의 현재 실행(worktree·PR·Issue·세션·로그 보존, 다른 라인/Stage 2는 영향 없음)" if self.maint \
+                else f"{m} / {control.method_label(me)} 라인의 AI 실행"
+            self.app.push_screen(Confirm(f"{what}을 즉시 중지합니다."), self._stopped)
 
         elif e.button.id == "clear":
-            st = control.line_status(store, m, me)
+            st = self._status()
             if st["batch_id"] is None:
                 return
             pr = f"PR #{st['pr']}" if st["pr"] else "PR 없음 (소유 브랜치의 PR은 정리 시 조회)"
+            if self.maint:
+                issue = st["issue_number"]
+                return self.app.push_screen(Confirm(
+                    f"[b]Clear[/b] — Maintainer의 현재 실행 시도를 포기합니다.\n"
+                    f"producer: {m} · urgent Issue #{issue} · batch id {st['batch_id']} · {pr}\n"
+                    "AI를 중지하고 소유 worktree·로컬 브랜치·실행 상태/이력을 삭제합니다. 소유가 확인된 열린 PR은 머지 없이 닫고 "
+                    "원격 브랜치도 삭제합니다. 소유권이 불확실하거나 머지된 PR이 있으면 삭제하지 않고 보존합니다. "
+                    "urgent Issue·공통 결함 기록과 원 배치의 PAUSED 상태는 그대로 두며, Issue는 HELD가 되어 Retry 전에는 "
+                    "자동으로 다시 시작되지 않습니다."),
+                    lambda yes, bid=st["batch_id"], n=issue: self._cleared(yes, bid, n))
             self.app.push_screen(Confirm(
                 f"[b]Clear[/b] — 미완료 배치를 포기합니다.\n"
                 f"producer: {m} · method: {control.method_label(me)} · batch: {st['batch']} (id {st['batch_id']}) · {pr}\n"
@@ -431,9 +438,9 @@ class LineDetail(Screen):
         if yes:
             control.stop_line(self.app.store, self.model, self.method)
 
-    def _cleared(self, yes: bool | None, batch_id: int) -> None:
+    def _cleared(self, yes: bool | None, batch_id: int, issue_number: int | None = None) -> None:
         if yes:
-            ok, msg = control.request_clear(self.app.store, self.model, self.method, batch_id)
+            ok, msg = control.request_clear(self.app.store, self.model, self.method, batch_id, issue_number)
             self.notify("Clear 요청됨 — 정리 진행 중" if ok else msg, severity="information" if ok else "error")
 
 

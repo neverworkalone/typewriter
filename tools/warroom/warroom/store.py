@@ -92,6 +92,7 @@ CREATE TABLE IF NOT EXISTS maintenance (
 SCHEMA_VERSION = 8
 
 MAINTENANCE_METHOD = "m"   # the hidden Maintainer's execution record lives in `batches` under this method
+CLEARED_HOLD = "운영자가 Maintainer 실행을 Clear함 — Issue·결함 기록 보존, 명시적 Retry 전에는 자동 재시작하지 않습니다"
 STAGE2_METHOD = "s2"       # Stage 2 Relation Admission: ONE Part at a time across all models, not a Stage 1 queue method
 
 ACTIVE_STATES = ("PREPARE", "PRODUCING", "WAITING_REVIEW", "FIXING", "MERGED",
@@ -373,17 +374,23 @@ class Store:
             c.execute(f"UPDATE lines SET run=0, drain_once=0, force_stop=1, retry_batch=NULL, updated_at=? {where}", (time.time(), *args))
 
     # --- Clear: abandon one unfinished batch (Supervisor-owned teardown) ---
-    def request_clear(self, model: str, method: str, batch_id: int) -> tuple[bool, str]:
-        """TUI -> Supervisor. Writes only the batch-ID-specific request; a stale ID is refused, a BLOCKED one is re-armed."""
+    def request_clear(self, model: str, method: str, batch_id: int, issue_number: int | None = None) -> tuple[bool, str]:
+        """TUI -> Supervisor. Writes only the batch-ID-specific request; a stale ID is refused, a BLOCKED one is re-armed.
+
+        The Maintainer's execution also needs the urgent Issue number shown on screen (`issue_number`).
+        """
         now = time.time()
         with self._conn() as c:
             c.execute("BEGIN IMMEDIATE")
-            if method == MAINTENANCE_METHOD:
-                return False, "Maintainer 실행 기록은 Clear 대상이 아닙니다."
             b = c.execute("SELECT state FROM batches WHERE id=? AND producer=? AND method=? AND state!='COMPLETE'",
                           (batch_id, model, method)).fetchone()
             if b is None:
                 return False, "대상 배치가 이미 끝났거나 이 라인의 미완료 배치가 아닙니다 (화면을 새로 고치세요)."
+            if method == MAINTENANCE_METHOD:   # the Issue the operator saw must still own exactly this execution
+                m = None if issue_number is None else c.execute(
+                    "SELECT 1 FROM maintenance WHERE issue_number=? AND batch_id=?", (issue_number, batch_id)).fetchone()
+                if m is None:
+                    return False, "화면의 Issue와 현재 Maintainer 실행이 다릅니다 (화면을 새로 고치세요)."
             c.execute("INSERT OR IGNORE INTO clear_requests(batch_id,model,method,prior_state,requested_at) "
                       "VALUES(?,?,?,?,?)", (batch_id, model, method, b["state"], now))
             c.execute("UPDATE clear_requests SET status='REQUESTED', error=NULL WHERE batch_id=?", (batch_id,))
@@ -406,8 +413,10 @@ class Store:
         with self._conn() as c:
             c.execute("DELETE FROM clear_requests WHERE batch_id=?", (batch_id,))
             # Clear ended without removing the batch: no control written meanwhile may act on it afterwards.
-            c.execute("UPDATE lines SET force_stop=0, retry_batch=NULL, drain=0, drain_once=0 "
-                      "WHERE (model, method) IN (SELECT producer, method FROM batches WHERE id=?)", (batch_id,))
+            c.execute("UPDATE lines SET force_stop=0, retry_batch=NULL, "
+                      "drain=CASE WHEN method=? THEN drain ELSE 0 END, drain_once=0 "   # a Maintainer Drain outlives a Clear
+                      "WHERE (model, method) IN (SELECT producer, method FROM batches WHERE id=?)",
+                      (MAINTENANCE_METHOD, batch_id))
 
     def pin_clear(self, model: str, method: str):
         """Supervisor: atomically pin the requested batch ID as CLEARING and switch off everything that could start,
@@ -425,8 +434,9 @@ class Store:
             if b["state"] != "CLEARING":
                 c.execute("UPDATE batches SET state='CLEARING', error=NULL, updated_at=? WHERE id=?",
                           (time.time(), req["batch_id"]))
-                c.execute("UPDATE lines SET run=0, drain=0, drain_once=0, force_stop=0, retry_batch=NULL, blocked='', "
-                          "updated_at=? WHERE model=? AND method=?", (time.time(), model, method))
+                c.execute("UPDATE lines SET run=0, drain=CASE WHEN method=? THEN drain ELSE 0 END, drain_once=0, "
+                          "force_stop=0, retry_batch=NULL, blocked='', updated_at=? WHERE model=? AND method=?",
+                          (MAINTENANCE_METHOD, time.time(), model, method))
             return req
 
     def finish_clear(self, b, audit: str) -> None:
@@ -443,9 +453,14 @@ class Store:
             # batches linked to the same Issue keep their own defect rows untouched).
             c.execute("UPDATE defects SET state='OVERRIDDEN', hold_reason='운영자가 배치를 Clear함', updated_at=? "
                       "WHERE batch_id=? AND state NOT IN ('RELEASED','OVERRIDDEN')", (now, bid))
+            # The Maintainer's execution leaves its Issue HELD with no execution (never a dangling batch_id); the urgent
+            # Issue, the defects that depend on it and their PAUSED batches stay untouched until an explicit Retry.
+            c.execute("UPDATE maintenance SET state='HELD', batch_id=NULL, hold_reason=?, updated_at=? WHERE batch_id=?",
+                      (CLEARED_HOLD, now, bid))
             c.execute("DELETE FROM batches WHERE id=?", (bid,))
-            c.execute("UPDATE lines SET run=0, drain=0, drain_once=0, force_stop=0, retry_batch=NULL, blocked='', "
-                      "shard_pin='', updated_at=? WHERE model=? AND method=?", (now, b["producer"], b["method"]))
+            c.execute("UPDATE lines SET run=0, drain=CASE WHEN method=? THEN drain ELSE 0 END, drain_once=0, "
+                      "force_stop=0, retry_batch=NULL, blocked='', shard_pin='', updated_at=? WHERE model=? AND method=?",
+                      (MAINTENANCE_METHOD, now, b["producer"], b["method"]))
             c.execute("INSERT INTO events(batch_id,ts,level,msg,line) VALUES(NULL,?,?,?,?)",
                       (now, "info", audit, f"{b['producer']}/{b['method']}"))
 
@@ -476,10 +491,12 @@ class Store:
             return c.execute("SELECT * FROM runs WHERE batch_id=? ORDER BY id DESC", (batch_id,)).fetchall()
 
     def line_runs(self, model: str, method: str, limit: int = 200):
+        """Runs of one Line. The single Maintainer is one Line whichever producer ran an Issue (history spans producers)."""
+        who = "" if method == MAINTENANCE_METHOD else "b.producer=? AND "
+        args = (method, limit) if method == MAINTENANCE_METHOD else (model, method, limit)
         with self._conn() as c:
             return c.execute("SELECT r.*, b.shard, b.batch FROM runs r JOIN batches b ON b.id=r.batch_id "
-                             "WHERE b.producer=? AND b.method=? ORDER BY r.id DESC LIMIT ?",
-                             (model, method, limit)).fetchall()
+                             f"WHERE {who}b.method=? ORDER BY r.id DESC LIMIT ?", args).fetchall()
 
     def claimed_keys(self, method: str, producer: str | None) -> set[tuple[str, str]]:
         """Batches already owned here, finished ones included. producer=None: every model (shared C/D queue)."""
@@ -512,6 +529,10 @@ class Store:
     def line_events(self, model: str, method: str, after_id: int = 0, limit: int = 500):
         """Audit events of one Line (incremental by id)."""
         with self._conn() as c:
+            if method == MAINTENANCE_METHOD:   # one Maintainer Line across producers
+                return c.execute("SELECT * FROM events WHERE id>? AND (line LIKE ? OR batch_id IN "
+                                 "(SELECT id FROM batches WHERE method=?)) ORDER BY id LIMIT ?",
+                                 (after_id, f"%/{method}", method, limit)).fetchall()
             return c.execute(
                 "SELECT * FROM events WHERE id>? AND (line=? OR batch_id IN "
                 "(SELECT id FROM batches WHERE producer=? AND method=?)) ORDER BY id LIMIT ?",
@@ -656,6 +677,8 @@ class Store:
             if c.execute("SELECT 1 FROM batches WHERE method=? AND state!='COMPLETE'",
                          (MAINTENANCE_METHOD,)).fetchone():
                 return None
+            if c.execute("SELECT 1 FROM lines WHERE method=? AND drain=1", (MAINTENANCE_METHOD,)).fetchone():
+                return None   # Drain: the current Issue finishes normally, the next one is not claimed automatically
             bid = c.execute(
                 "INSERT INTO batches(method,producer,shard,batch,branch,worktree,state,model_tier,created_at,updated_at)"
                 " VALUES(?,?,?,?,?,?,?,?,?,?)", (MAINTENANCE_METHOD, producer, "issue", str(issue_number), branch,
@@ -663,3 +686,20 @@ class Store:
             c.execute("UPDATE maintenance SET state='ACTIVE', batch_id=?, updated_at=? WHERE issue_number=?",
                       (bid, now, issue_number))
             return bid
+
+    def maintenance_drained(self) -> bool:
+        """The operator's Maintainer Drain (a flag on any Maintainer Line): no further Issue is claimed automatically."""
+        with self._conn() as c:
+            return c.execute("SELECT 1 FROM lines WHERE method=? AND drain=1", (MAINTENANCE_METHOD,)).fetchone() is not None
+
+    def requeue_maintenance(self, issue_number: int) -> bool:
+        """Explicit operator Retry of an Issue the operator cleared: HELD with NO execution -> QUEUED, once.
+
+        Refused (False) for any other row, so an Issue held for a merge/ownership problem, or one that still has an
+        execution, is never silently restarted (a new attempt cannot collide with an execution row).
+        """
+        with self._conn() as c:
+            c.execute("BEGIN IMMEDIATE")
+            cur = c.execute("UPDATE maintenance SET state='QUEUED', hold_reason=NULL, updated_at=? "
+                            "WHERE issue_number=? AND state='HELD' AND batch_id IS NULL", (time.time(), issue_number))
+            return cur.rowcount == 1
