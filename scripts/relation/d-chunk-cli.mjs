@@ -28,7 +28,6 @@ import {
   renderContexts,
   saveChunk,
   searchContexts,
-  DEFAULT_SCAN_ROWS,
 } from './corpus-utility.mjs';
 
 export const CHUNK_RECORDS = 25;
@@ -36,10 +35,9 @@ export const BATCH_RECORDS = 500;
 export const INITIAL_CONTEXTS = 4; // #1156 PASS A starts with 1-4 distinct contexts
 export const INITIAL_SNIPPET_CHARS = 220;
 export const MAX_CALL_CONTEXTS = 16; // per `search` call; the per-sense reading guide of 16 lives in the AI card
-// Default budget of the deterministic follow-up of a 0-hit LIMITED search inside `prepare`: at most this many
-// further calls, or this many paragraph rows in total, per search, whichever is reached first.
-export const FOLLOWUP_CALLS = 8;
-export const FOLLOWUP_SCAN_ROWS = 1_000_000;
+// Safety stop of the deterministic follow-up of a 0-hit LIMITED search (far above a full scan of the approved corpus:
+// ~25 pages of DEFAULT_SCAN_ROWS per form). Reaching it is a search failure, never a completed zero.
+export const MAX_FOLLOWUP_CALLS = 1000;
 const MAX_VARIANT_FORM_LENGTH = 12;
 const HANGUL_FORM = /^[가-힣]+$/u;
 const SENSE_REF = /^s[1-9]\d*$/u;
@@ -87,29 +85,33 @@ export const recordForms = (record) => [...new Set([record.lemma, ...(Array.isAr
 
 // ---- search with the deterministic ZERO_HITS follow-up ------------------------------------------------------------
 /**
- * One search; a first page that is LIMITED with no context at all is continued from its own `next_cursor` inside the
- * budget. A search is a complete zero only when it ends COMPLETE with no hit at all: earlier pages had no hit (a
- * page with a hit stops the follow-up), and a budget that runs out leaves it LIMITED (never ZERO_HITS).
+ * One search, continued inside this call while its page is LIMITED with no context at all: the next page starts at the
+ * page's own `next_cursor` until the first context appears or the search really ends (the corpus range is bounded by
+ * the cursor itself, which is tied to the approved index). A page with a context is returned as is (LIMITED with
+ * contexts stays a valid result). COMPLETE becomes ZERO_HITS only when this call started without a cursor and
+ * therefore saw every page of the request; a call that started from an external cursor keeps COMPLETE (earlier pages are
+ * judged by `recordEvidence`). A repeated cursor or the call limit ends as SEARCH_FAILED, never as a completed zero.
  */
-export function searchToCompletion(search, forms, options = {}, budget = {}) {
-  const { followupCalls = FOLLOWUP_CALLS, followupScanRows = FOLLOWUP_SCAN_ROWS } = budget;
-  const scanRows = options.scanRows ?? DEFAULT_SCAN_ROWS;
+export function searchToCompletion(search, forms, options = {}, { maxCalls = MAX_FOLLOWUP_CALLS } = {}) {
+  const cursorIn = options.cursor ?? null;
   let { result } = search(forms, options);
+  const seen = new Set(cursorIn ? [cursorIn] : []);
   let followups = 0;
-  let spent = scanRows;
-  while (result.status === 'LIMITED' && result.items.length === 0 && result.next_cursor
-    && followups < followupCalls && spent + scanRows <= followupScanRows) {
+  while (result.status === 'LIMITED' && result.items.length === 0 && result.next_cursor) {
+    const failure = seen.has(result.next_cursor) ? 'search follow-up made no progress'
+      : followups >= maxCalls ? 'search follow-up call limit reached' : null;
+    if (failure) return { result: { status: 'SEARCH_FAILED', error: failure, items: [], next_cursor: null }, followups, cursorIn };
+    seen.add(result.next_cursor);
     ({ result } = search(forms, { ...options, cursor: result.next_cursor }));
     followups += 1;
-    spent += scanRows;
   }
-  if (followups > 0 && result.status === 'COMPLETE' && result.items.length === 0) result = { ...result, status: 'ZERO_HITS' };
-  return { result, followups };
+  if (cursorIn === null && followups > 0 && result.status === 'COMPLETE' && result.items.length === 0) result = { ...result, status: 'ZERO_HITS' };
+  return { result, followups, cursorIn };
 }
 
 const isComplete = (status) => status === 'ZERO_HITS' || status === 'COMPLETE';
 const searchKey = (forms, boundary) => JSON.stringify([forms, boundary ?? null]);
-const entryOf = (recordId, forms, boundary, result, source) => ({
+const entryOf = (recordId, forms, boundary, result, source, cursorIn = null) => ({
   record_id: recordId,
   key: searchKey(forms, boundary),
   forms,
@@ -117,15 +119,23 @@ const entryOf = (recordId, forms, boundary, result, source) => ({
   status: result.status,
   hits: result.items.length,
   complete: isComplete(result.status),
+  cursor_in: cursorIn,
+  cursor_out: result.next_cursor ?? null,
   source,
 });
 
-/** Per record from the recorded searches: cumulative hits per search, and whether every search ended complete. */
+/**
+ * Per record from the recorded searches: cumulative hits per search, and whether every search ended complete. A page
+ * that started from a cursor counts only when that cursor is the recorded `cursor_out` of an earlier proven page of
+ * the same search (a search with no recorded start is never a proven complete zero).
+ */
 export function recordEvidence(entries, recordId) {
   const byKey = new Map();
   for (const entry of entries.filter((item) => item.record_id === recordId)) {
-    const current = byKey.get(entry.key) ?? { hits: 0, complete: false };
-    byKey.set(entry.key, { hits: current.hits + entry.hits, complete: entry.complete });
+    const current = byKey.get(entry.key) ?? { hits: 0, complete: false, proven: new Map() };
+    const proven = entry.cursor_in ? current.proven.get(entry.cursor_in) === true : true;
+    if (entry.cursor_out) current.proven.set(entry.cursor_out, proven);
+    byKey.set(entry.key, { hits: current.hits + entry.hits, complete: entry.complete && proven, proven: current.proven });
   }
   const searches = [...byKey.values()];
   return {
@@ -166,13 +176,13 @@ export function buildChunk({ records, shard, batch, chunkNumber, total, search }
     const forms = recordForms(record);
     const main = searchToCompletion(search, forms, { maxSamples: INITIAL_CONTEXTS, snippetChars: INITIAL_SNIPPET_CHARS });
     const shown = [{ forms, boundary: null, result: main.result }];
-    entries.push(entryOf(record.id, forms, null, main.result, 'prepare'));
+    entries.push(entryOf(record.id, forms, null, main.result, 'prepare', main.cursorIn));
     let auto = false;
     if (main.result.status === 'SEARCH_FAILED') failed.push(record.id);
     else if (main.result.status === 'ZERO_HITS' && autoZCandidate(record, forms)) {
       const variants = forms.flatMap(spacedVariants);
       const spaced = searchToCompletion(search, variants, { maxSamples: INITIAL_CONTEXTS, snippetChars: INITIAL_SNIPPET_CHARS });
-      entries.push(entryOf(record.id, variants, null, spaced.result, 'prepare'));
+      entries.push(entryOf(record.id, variants, null, spaced.result, 'prepare', spaced.cursorIn));
       if (spaced.result.status === 'SEARCH_FAILED') failed.push(record.id);
       else if (spaced.result.status === 'ZERO_HITS') auto = true;
       else shown.push({ forms: variants, boundary: null, result: spaced.result });
@@ -190,9 +200,7 @@ export function buildChunk({ records, shard, batch, chunkNumber, total, search }
     const lines = [`## ${record.id} ${record.lemma} | search_forms: ${forms.join(', ')}`];
     for (const block of shown) lines.push(renderBlock(block));
     const zero = shown.every((block) => block.result.status === 'ZERO_HITS');
-    const limitedEmpty = shown.some((block) => block.result.status === 'LIMITED' && block.result.items.length === 0);
     if (zero) lines.push('Z?: 검색은 0건으로 완료됐으나 검색형 충분성은 AI가 판단한다 (활용형·표기 변형이 더 필요하면 `search`).');
-    else if (limitedEmpty) lines.push('LIMITED 0건: ZERO_HITS가 아니다. `search --cursor`로 이어 조회한다.');
     for (const item of refs) lines.push(`${item.ref} ${item.sense_id} [${item.pos}] ${item.gloss}`);
     return lines.join('\n');
   });
@@ -268,11 +276,11 @@ export async function searchActive({ ref, forms, boundary, cursor, contexts, dat
   if (!Number.isInteger(count) || count < 1 || count > MAX_CALL_CONTEXTS) fail(`--contexts must be 1..${MAX_CALL_CONTEXTS}`);
   if (boundary !== undefined && !['left', 'none', 'both'].includes(boundary)) fail('--boundary must be left, none or both');
   const database = openReadonlyDb(databasePath);
-  const result = searchContexts(database, list, {
+  const { result, cursorIn } = searchToCompletion((searchForms, searchOptions) => ({ result: searchContexts(database, searchForms, searchOptions) }), list, {
     maxSamples: count, snippetChars: INITIAL_SNIPPET_CHARS, maxChars: Math.min(24_000, Math.max(6000, count * 600)), boundary, cursor: cursor ?? null,
   });
   database.close?.();
-  await appendFile(searchesPath(directory), `${JSON.stringify(entryOf(record.record_id, list.map((form) => form.normalize('NFC').trim()), boundary, result, 'search'))}\n`);
+  await appendFile(searchesPath(directory), `${JSON.stringify(entryOf(record.record_id, list.map((form) => form.normalize('NFC').trim()), boundary, result, 'search', cursorIn))}\n`);
   return { result, text: renderContexts(result) };
 }
 
