@@ -414,7 +414,8 @@ class AdapterPolicy(unittest.TestCase):
             args = Ad()._chunk_args(env, d)
             self.assertTrue(any('extends=":read-only"' in a for a in args))
             self.assertFalse(any(":workspace" in a for a in args))
-            self.assertEqual(len(probes), 2)                                            # Git block probe + write probe
+            self.assertEqual(len(probes), 1)                                            # answer-only write probe
+            self.assertIn("answer-only-write-probe", " ".join(probes[0]))
             ad = Ad()
             ad.result = 1
             with self.assertRaises(RuntimeError):                                       # a write that succeeds refuses the launch
@@ -422,7 +423,7 @@ class AdapterPolicy(unittest.TestCase):
             probes.clear()
             args = Ad()._chunk_args({**env, "WARROOM_ANSWER_ONLY": ""}, d)
             self.assertTrue(any('extends=":workspace"' in a for a in args))              # other chunk kinds are unchanged
-            self.assertEqual(len(probes), 1)
+            self.assertEqual(probes, [])
 
     def test_codex_denied_command_is_only_a_metric_for_an_answer_only_chunk(self):
         from warroom.adapters import CodexCLIAdapter
