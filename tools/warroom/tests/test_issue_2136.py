@@ -9,7 +9,7 @@ from tests.test_issue_2034_d import DWorld
 from tests.test_issue_2035 import ABWorld
 from tests.test_issue_2047 import CHUNK, GOOD, answer
 from warroom.adapters import ClaudeCodeAdapter
-from warroom import control, dchunk, stage1ab, stage2
+from warroom import control, dchunk, prompts, stage1ab, stage2
 
 
 class Stage2Reentry(unittest.TestCase):
@@ -153,6 +153,54 @@ class ChunkStorageAndLimits(unittest.TestCase):
         self.assertEqual(w.adapter.launches[-1]["kind"], "start")
         self.assertIn("이전 세션을 찾지 못해", w.adapter.launches[-1]["prompt"])
         self.assertEqual(stage1ab.load_state(w.store, b["id"], 1)["tries"], 1)
+
+    def test_nonzero_ab_exit_with_the_exact_current_begin_marker_repairs_malformed_block(self):
+        w = ABWorld(records=60, method="a")
+        self.addCleanup(w.tmp.cleanup)
+        w.start("single", "deepseek", "a")
+        w.ai("BEGIN chunk 001\nS1\t후보", code=2, session="ses_ab", end=False)
+        w.ai(w.block(1), session="ses_ab")
+        w.tick()
+        w.finish_last()
+        w.tick()
+        b = w.row_()
+        self.assertEqual((b["run_kind"], len(w.adapter.launches)), ("ab_chunk_retry", 2))
+        self.assertEqual((w.adapter.launches[-1]["kind"], w.adapter.launches[-1].get("session")), ("resume", "ses_ab"))
+        self.assertIn("TAB", w.adapter.launches[-1]["prompt"])
+        w.finish_last()
+        w.tick()
+        self.assertEqual(w.row_()["run_kind"], "ab_chunk_new")
+
+    def test_nonzero_ab_exit_without_an_exact_current_begin_marker_stays_missing(self):
+        for text in ("작업 안내: BEGIN chunk 001", "BEGIN chunk 002\nS1\t후보\nEND chunk 002", "S1\t후보"):
+            with self.subTest(text=text):
+                w = ABWorld(records=60, method="a")
+                self.addCleanup(w.tmp.cleanup)
+                w.start("single", "deepseek", "a")
+                w.ai(text, code=2, session="ses_ab")
+                w.tick()
+                w.finish_last()
+                w.tick()
+                self.assertEqual((w.row_()["state"], len(w.adapter.launches)), ("PAUSED", 1))
+
+    def test_nonzero_ab_malformed_current_answer_still_requires_the_existing_run_identity_check(self):
+        w = ABWorld(records=60, method="a")
+        self.addCleanup(w.tmp.cleanup)
+        w.start("single", "deepseek", "a")
+        w.ai("BEGIN chunk 001\nS1\t후보", code=2, session="ses_ab")
+        w.tick()
+        w.finish_last()
+        w.adapter.output_identity_problem = lambda *args: ("ERROR", "output identity mismatch")
+        w.tick()
+        self.assertEqual((w.row_()["state"], len(w.adapter.launches)), ("ERROR", 1))
+
+    def test_d_prompts_keep_existing_decisions_and_correct_only_format_on_a_line_error(self):
+        fix = prompts.render("d_chunk_fix", {"chunk_no": "001", "decisions": "decisions.txt", "problem": "line 7"})
+        resume = prompts.render("d_chunk_resume", {"chunk_no": "001"})
+        self.assertIn("판정 의미를 보존", fix)
+        self.assertIn("형식만 바로잡", fix)
+        self.assertIn("이미 `decisions.txt`가 있지만 save/진단이 없다면 새 검색이나 재판정부터 하지 않는다", resume)
+        self.assertIn("실제 미저장이고 현재 세션이 안전하게 이어질 때만 bounded 재개", resume)
 
     def test_c_missing_session_starts_one_new_session_only_when_no_sense_was_saved(self):
         w = CWorld(senses=30)

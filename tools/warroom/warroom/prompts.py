@@ -20,6 +20,7 @@ ALLOWED = {"a": _PRODUCE, "b": _PRODUCE, "c": _PRODUCE, "d": _PRODUCE, "recovery
            "fix": {"pr", "head", "branch", "review_events", "session_note", "source_context"},
            "m": _MAINTAIN, "m_recovery": _MAINTAIN, "s2": _STAGE2, "s2_chunk": _STAGE2, "s2_recovery": _STAGE2,
            "s2_chunk_resume": {"chunk_id"}, "s2_chunk_fix": {"chunk_id", "problem"},
+           "s2_chunk_format_fix": {"chunk_id", "problem"},
            "c_chunk": _C_CHUNK, "c_chunk_resume": {"chunk_no", "checkpoint", "remaining", "session_note"},
            "d_chunk": {"batch", "branch", "chunk_no", "session_note", "chunk_input"}, "d_chunk_resume": {"chunk_no"}, "d_chunk_fix": {"chunk_no", "decisions", "problem"},
            "a_chunk": _AB_CHUNK, "b_chunk": _AB_CHUNK, "ab_chunk_retry": {"chunk_no", "requested", "problem", "chunk_input"}}
@@ -126,6 +127,11 @@ def stage2_chunk_resume(chunk_id: str, directory: Path | None = None) -> str:
 def stage2_chunk_fix(chunk_id: str, problem: str, directory: Path | None = None) -> str:
     """Same session after a rejected save: only the CLI's complete error list and the rows to redo."""
     return render("s2_chunk_fix", {"chunk_id": chunk_id, "problem": problem}, directory)
+
+
+def stage2_chunk_format_fix(chunk_id: str, problem: str, directory: Path | None = None) -> str:
+    """Same session after a malformed full answer: preserve its judgments and resubmit the whole current chunk."""
+    return render("s2_chunk_format_fix", {"chunk_id": chunk_id, "problem": problem}, directory)
 
 
 VIEW_BEGIN, VIEW_END = "<<<CHUNK_VIEW_BEGIN>>>", "<<<CHUNK_VIEW_END>>>"
