@@ -171,11 +171,36 @@ function canonicalOrthographicForms(record) {
     .filter((form) => form.replace(/[\s-]/gu, '') === foldedLemma))];
 }
 
+/** Curated search forms that name a lexical alias rather than a spacing/hyphenation variant of the lemma. */
+function canonicalNonOrthographicSearchForms(record) {
+  const lemma = normalizeCandidate(record.lemma ?? '');
+  const foldedLemma = lemma.replace(/[\s-]/gu, '');
+  if (!foldedLemma) return [];
+  return [...new Set((Array.isArray(record.search_forms) ? record.search_forms : [])
+    .filter((form) => typeof form === 'string')
+    .map(normalizeCandidate)
+    .filter((form) => form && form.replace(/[\s-]/gu, '') !== foldedLemma))];
+}
+
 function canonicalRecordsForOrthographicForm(index, form) {
   const normalized = normalizeCandidate(form);
   // An exact Canonical lemma owns its spelling. Do not make that target ambiguous merely because
   // another record lists the same spelling as an orthographic search form.
   return index.byNormalizedLemma?.get(normalized) ?? index.byOrthographicForm?.get(normalized) ?? index.byLemma.get(normalized) ?? [];
+}
+
+function canonicalRecordsForRelationForm(index, form) {
+  const normalized = normalizeCandidate(form);
+  const exactLemmaRecords = index.byNormalizedLemma?.get(normalized) ?? [];
+  const nonOrthographicAliases = index.byNonOrthographicSearchForm?.get(normalized) ?? [];
+  // Keep exact lemmas ahead of colliding orthographic variants, while retaining explicit lexical aliases
+  // from search_forms so an unrelated exact homograph cannot hide the intended sense.
+  const matchingRecords = exactLemmaRecords.length > 0
+    ? [...exactLemmaRecords, ...nonOrthographicAliases]
+    : [...(index.byOrthographicForm?.get(normalized) ?? []), ...nonOrthographicAliases];
+  const unique = new Map(matchingRecords.map((record) => [record.id, record]));
+  return [...unique.values()].sort((left, right) =>
+    (index.canonicalOrder?.get(left.id) ?? 0) - (index.canonicalOrder?.get(right.id) ?? 0));
 }
 
 /** Candidate spellings that resolve to this record, including ambiguous forms when it is an exact target. */
@@ -184,14 +209,17 @@ function candidateFormsForRecord(record, index) {
     canonicalRecordsForOrthographicForm(index, form).some((match) => match.id === record.id));
 }
 
-/** Lemma, orthographic search-form, and id lookups over the full Canonical (all shards). */
+/** Lemma, curated search-form, and id lookups over the full Canonical (all shards). */
 export function buildCanonicalIndex(rows) {
   const byId = new Map();
   const byLemma = new Map();
   const byNormalizedLemma = new Map();
   const byOrthographicForm = new Map();
+  const byNonOrthographicSearchForm = new Map();
+  const canonicalOrder = new Map();
   const senses = new Map();
   for (const row of rows) {
+    canonicalOrder.set(row.id, canonicalOrder.size);
     byId.set(row.id, row);
     byLemma.set(row.lemma, [...(byLemma.get(row.lemma) ?? []), row]);
     const normalizedLemma = normalizeCandidate(row.lemma);
@@ -200,14 +228,18 @@ export function buildCanonicalIndex(rows) {
       const matches = byOrthographicForm.get(form) ?? [];
       if (!matches.some((match) => match.id === row.id)) byOrthographicForm.set(form, [...matches, row]);
     }
+    for (const form of canonicalNonOrthographicSearchForms(row)) {
+      const matches = byNonOrthographicSearchForm.get(form) ?? [];
+      if (!matches.some((match) => match.id === row.id)) byNonOrthographicSearchForm.set(form, [...matches, row]);
+    }
     for (const sense of row.senses) senses.set(sense.id, { record: row, sense });
   }
-  return { byId, byLemma, byNormalizedLemma, byOrthographicForm, senses };
+  return { byId, byLemma, byNormalizedLemma, byOrthographicForm, byNonOrthographicSearchForm, canonicalOrder, senses };
 }
 
-/** Complete, source-bound target context for a candidate's exact lemma or orthographic spelling. */
+/** Complete, source-bound target context for every matching lemma and curated search form. */
 export function sameSpellingTargets(index, form) {
-  return canonicalRecordsForOrthographicForm(index, form).map((record) => ({
+  return canonicalRecordsForRelationForm(index, form).map((record) => ({
     record_id: record.id,
     lemma: record.lemma,
     senses: record.senses.map((sense) => ({ sense_id: sense.id, pos: sense.pos, gloss: sense.gloss })),
@@ -337,12 +369,12 @@ function existingCandidateLinks(relationRows, index) {
     const target = index.byId.get(row.target_record_id);
     const source = index.byId.get(row.source_record_id);
     if (target) {
-      for (const form of candidateFormsForRecord(target, index)) {
+      for (const form of new Set([...candidateFormsForRecord(target, index), ...canonicalNonOrthographicSearchForms(target)])) {
         add(row.source_sense_id, form, { kind: 'id', targetSenseId: row.target_sense_id, why: 'id-forward' });
       }
     }
     if (source) {
-      for (const form of candidateFormsForRecord(source, index)) {
+      for (const form of new Set([...candidateFormsForRecord(source, index), ...canonicalNonOrthographicSearchForms(source)])) {
         add(row.target_sense_id, form, { kind: 'id', targetSenseId: row.source_sense_id, why: 'id-reverse' });
       }
     }
@@ -377,7 +409,7 @@ export function prepareShard({ canonicalRows, candidateFiles, approvedRelationRo
         if (text === normalizeCandidate(record.lemma)) throw new Error(`${sense.id}: candidate ${JSON.stringify(text)} repeats the source lemma`);
         const links = covered.get(`${sense.id}\u0000${text}`) ?? [];
         const nonIdLink = links.some((link) => link.kind !== 'id');
-        const targetRecords = canonicalRecordsForOrthographicForm(index, text);
+        const targetRecords = canonicalRecordsForRelationForm(index, text);
         const targetSenseIds = targetRecords.flatMap((targetRecord) => targetRecord.senses.map((targetSense) => targetSense.id));
         const hasExistingIdLink = links.some((link) => link.kind === 'id' && targetSenseIds.includes(link.targetSenseId));
         if (nonIdLink || hasExistingIdLink) {
@@ -490,6 +522,7 @@ export function verifyAccounting({ canonicalRows, candidateFiles, relationRows: 
   const approvedLinks = existingCandidateLinks(otherRelationRows, index);
   const errors = [];
   const claimed = new Map();
+  const deferredSearchAliasClaims = [];
   const canShareCandidate = (left, right) => left.kind === 'id' && right.kind === 'id' && left.targetSenseId !== right.targetSenseId;
   const claim = (senseId, text, how, link, at) => {
     const key = `${senseId}\u0000${text}`;
@@ -508,8 +541,15 @@ export function verifyAccounting({ canonicalRows, candidateFiles, relationRows: 
       if (!target) return;
       const sourceCandidates = merged.get(row.source_sense_id)?.candidates;
       const matchingForms = candidateFormsForRecord(target, index).filter((form) => sourceCandidates?.has(form));
-      const formsToClaim = matchingForms.length > 0 ? matchingForms : [normalizeCandidate(target.lemma)];
+      const matchingAliases = canonicalNonOrthographicSearchForms(target).filter((form) => sourceCandidates?.has(form));
+      const formsToClaim = matchingForms.length > 0 ? matchingForms : matchingAliases.length > 0 ? [] : [normalizeCandidate(target.lemma)];
       for (const form of formsToClaim) claim(row.source_sense_id, form, 'an ID relation', { kind: 'id', targetSenseId: row.target_sense_id }, at);
+      for (const form of matchingAliases) deferredSearchAliasClaims.push({
+        source_sense_id: row.source_sense_id,
+        form,
+        link: { kind: 'id', targetSenseId: row.target_sense_id },
+        at,
+      });
     }
   });
   dropRows.forEach((row, position) => claim(row.source_sense_id, row.candidate, 'a drop', { kind: 'drop' }, `drop:${position + 1}`));
@@ -531,6 +571,14 @@ export function verifyAccounting({ canonicalRows, candidateFiles, relationRows: 
         reverseCovered.set(key, [...(reverseCovered.get(key) ?? []), { kind: 'id', targetSenseId: row.source_sense_id }]);
       }
     }
+  }
+
+  // ID rows do not retain the selected Candidate string. Treat non-orthographic search aliases as their ID
+  // disposition only when no explicit Relation, Drop, or already-approved relation owns that Candidate.
+  for (const alias of deferredSearchAliasClaims) {
+    const key = `${alias.source_sense_id}\u0000${alias.form}`;
+    if ((claimed.get(key)?.length ?? 0) > 0 || approvedLinks.has(key) || reverseCovered.has(key)) continue;
+    claim(alias.source_sense_id, alias.form, 'an ID relation', alias.link, alias.at);
   }
 
   const counts = { unique: 0, relation: relationRows.length, drop: dropRows.length, skipped_existing: 0, reverse_covered: 0, missing: 0 };
