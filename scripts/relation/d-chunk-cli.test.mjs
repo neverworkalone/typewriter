@@ -61,7 +61,12 @@ async function makeWorld() {
     INSERT INTO source_files VALUES ('s', 't', 'c', '2000', 'x');
     INSERT INTO documents VALUES (1, 's', 'd', 1, '합성 문서', '합성 저자');
   `);
-  ['새벽안개가 마을을 덮었다.', '아침의 새벽안개는 차갑다.', '그는 기회 비용을 따져 보았다.'].forEach((form, index) => {
+  const corpus = [
+    '새벽안개가 마을을 덮었다.', '아침의 새벽안개는 차갑다.', '그는 기회 비용을 따져 보았다.',
+    // A small real FTS fixture needs multiple page budgets so prepare can complete a multi-form zero search.
+    ...Array.from({ length: 2000 }, (_, index) => `시험용 문단 ${index}.`),
+  ];
+  corpus.forEach((form, index) => {
     database.prepare('INSERT INTO paragraphs VALUES (?, 1, ?, ?, ?)').run(index + 1, `p${index}`, index, form);
     database.prepare('INSERT INTO paragraph_fts(rowid, form) VALUES (?, ?)').run(index + 1, form);
   });
