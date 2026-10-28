@@ -70,11 +70,11 @@ class AgentAdapter:
 
     def completion_incomplete(self, log_file: Path, run: RunSpec | None, expected_session: str | None,
                               cwd=None, env=None) -> bool:
-        """True when a missing terminal event still leaves enough evidence to safely accept this run's output."""
+        """True when only this run's terminal completion event is missing and its identity/pins are valid."""
         return False
 
-    def denied_actions(self, log_file: Path) -> list[dict]:
-        """Actions the CLI's permission policy denied during an exited, otherwise successful run ([] if none/unknown)."""
+    def denied_actions(self, log_file: Path) -> list[dict] | None:
+        """Denied actions, or None when this adapter cannot determine the permission outcome from its log."""
         return []
 
     def policy_refusal(self, log_file: Path) -> str | None:
@@ -505,18 +505,24 @@ class ClaudeCodeAdapter(ProcessAdapter):
         return None
 
     def denied_actions(self, log_file):
-        """The final result's `permission_denials` (dicts), [] when none or no final result. A denial is not by itself
-        a failed run: the Supervisor accepts a successful run with denials only on owned-PR and Part verify evidence."""
+        """The final result's `permission_denials`; None until that result proves the permission outcome.
+
+        A denial is not by itself a failed run: the Supervisor accepts a successful run with denials only on owned-PR
+        and Part verify evidence.
+        """
         try:
             text = Path(log_file).read_text("utf-8", errors="replace")
         except OSError:
-            return []
+            return None
         result = None
         for o in _json_objects(text):
             if o.get("type") == "result":
                 result = o
+        if result is None:
+            return None
         denials = result.get("permission_denials") if result is not None else None
-        return [d if isinstance(d, dict) else {"tool_name": str(d)} for d in denials] if isinstance(denials, list) else []
+        return [d if isinstance(d, dict) else {"tool_name": str(d)} for d in denials] \
+            if isinstance(denials, list) else None
 
     def completion_problem(self, log_file, run, expected_session, cwd=None, env=None):
         """An exited run is accepted only with its own evidence: the session its init event reported AND a final
@@ -569,9 +575,13 @@ class ClaudeCodeAdapter(ProcessAdapter):
         return None
 
     def completion_incomplete(self, log_file, run, expected_session, cwd=None, env=None):
-        # Claude reports permission_denials only in the final result. Without it, an empty denied_actions() means
-        # "unknown", not "none"; preserve exact saved outputs but do not let the Supervisor advance the batch.
-        return False
+        if self.output_identity_problem(log_file, run, expected_session, cwd, env):
+            return False
+        try:
+            return not any(e.get("type") == "result" for e in _json_objects(
+                Path(log_file).read_text("utf-8", errors="replace")))
+        except OSError:
+            return False
 
 
 # Codex runs under the operator's configured CLI policy. War Room pins the model, reasoning effort and configured

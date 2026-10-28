@@ -1492,6 +1492,12 @@ class Supervisor:
         Part `verify` passes on that HEAD (Stage 2 only). Nothing is relaxed in the CLI permissions; a real block of a
         required step leaves the PR missing, unpushed or failing verify, so it stays PAUSED. False: already failed."""
         denied = self._adapter(b["producer"]).denied_actions(log_file)
+        if denied is None:
+            if self._ab_chunk_run(b) or (self._s2_chunk_run(b) and b["state"] == "PRODUCING"):
+                self.store.log(b["id"], "answer-only 청크 권한 결과가 없어도 출력·저장 및 부작용 경계로 판정합니다.", "warn")
+                return True
+            self._fail(b, "PAUSED", "CLI 최종 result가 없어 권한 거부 여부를 확인할 수 없습니다. 저장물과 실행 기록을 보존하고 중지합니다.")
+            return False
         if not denied:
             return True
         if self._ab_chunk_run(b) or (self._s2_chunk_run(b) and b["state"] == "PRODUCING"):
@@ -1637,7 +1643,7 @@ class Supervisor:
             problem = self._stage2_final_pr_problem(b, info)
             if problem:
                 denied = self._adapter(b["producer"]).denied_actions(Path(b["log_file"]))
-                return self._fail(b, "PAUSED" if denied else "ERROR", problem)
+                return self._fail(b, "PAUSED" if denied is None or denied else "ERROR", problem)
         if b["state"] == "FIXING":
             if self._check_fix_head(b, info) != "ok":
                 return

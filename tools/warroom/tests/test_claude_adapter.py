@@ -157,8 +157,8 @@ class CompletionGate(unittest.TestCase):
             self.assertIsNone(ClaudeCodeAdapter().run_problem(log, PIN, SESSION))
             self.assertEqual(ClaudeCodeAdapter().completion_problem(log, PIN, SESSION)[0], "ERROR")
 
-    def test_missing_result_cannot_prove_permission_denials_are_clear(self):
-        self.assertFalse(self.check(stream(init()), method="completion_incomplete"))
+    def test_incomplete_completion_requires_the_requested_session_and_model_pin(self):
+        self.assertTrue(self.check(stream(init()), method="completion_incomplete"))
         self.assertFalse(self.check(stream(init()), expected="11111111-2222-4333-8444-555555555555",
                                      method="completion_incomplete"))
         self.assertFalse(self.check(stream({**init(), "model": ""}), method="completion_incomplete"))
@@ -204,10 +204,11 @@ class RunProblem(unittest.TestCase):
     def test_denied_actions_are_read_from_the_final_result_only(self):
         with tempfile.TemporaryDirectory() as d:
             log = Path(d) / "l.log"
-            for raw, want in [(stream(init(), result(denials=[{"tool_name": "Bash"}])), 1), (stream(init(), result()), 0),
-                              (stream(init()), 0), ("", 0), (stream(init(), {**result(), "permission_denials": None}), 0)]:
+            for raw, want in [(stream(init(), result(denials=[{"tool_name": "Bash"}])), [{"tool_name": "Bash"}]),
+                              (stream(init(), result()), []), (stream(init()), None), ("", None),
+                              (stream(init(), {**result(), "permission_denials": None}), None)]:
                 log.write_text(raw)
-                self.assertEqual(len(ClaudeCodeAdapter().denied_actions(log)), want)
+                self.assertEqual(ClaudeCodeAdapter().denied_actions(log), want)
 
 
 class Classification(unittest.TestCase):
