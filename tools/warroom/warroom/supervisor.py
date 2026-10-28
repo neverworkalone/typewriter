@@ -3022,8 +3022,10 @@ class Supervisor:
                 and not self._d_chunk_saved(b):
             if problem := self._saved_chunk_identity_problem(b):
                 return self._fail(b, problem[0], f"저장 거부를 만든 실행의 소유권/핀 확인 실패: {problem[1]}")
+            if not self._denials_cleared(b, Path(b["log_file"])):
+                return
             if self._d_fix(b):
-                # No model/permission/quota block was found, and the CLI left its own rejection for this chunk.
+                # The CLI left its own repairable rejection, and permission evidence is explicitly clear.
                 return
         chunk_run = (b["method"] == STAGE2_METHOD and isinstance(b["run_kind"], str)
                      and b["run_kind"].startswith("s2_chunk_")) or self._c_chunk_run(b) or self._d_chunk_run(b) \

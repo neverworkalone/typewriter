@@ -240,6 +240,43 @@ class ChunkStorageAndLimits(unittest.TestCase):
         self.assertEqual((w.row_()["state"], len(w.adapter.launches)), ("PAUSED", 1))
         self.assertTrue((w.wt() / dchunk.names(w.row_()).directory / "searches.jsonl").read_text().endswith("\n"))
 
+    def test_nonzero_d_rejection_requires_known_clear_claude_permissions_before_fix(self):
+        cases = (("missing result", None, "PAUSED", 1),
+                 ("denial", [{"tool_name": "Bash", "tool_input": {"command": "node submit"}}], "PAUSED", 1),
+                 ("clear", [], "PRODUCING", 2))
+        for name, denials, want_state, want_launches in cases:
+            with self.subTest(name=name):
+                w = DWorld(records=25)
+                self.addCleanup(w.tmp.cleanup)
+                w.start("single", "deepseek", "d")
+                w.ai_rejected(code=1)
+                w.adapter.plan.append({"code": 0, "session": "ses_d"})
+                w.tick()
+                w.finish_last()
+                b = w.row_()
+                run = w.store.runs(b["id"])[0]
+                events = [{"type": "system", "subtype": "init", "session_id": "ses_d", "model": run["model"]}]
+                if denials is not None:
+                    events.append({"type": "result", "subtype": "success", "is_error": False,
+                                   "session_id": "ses_d", "permission_denials": denials})
+                log = Path(b["log_file"])
+                log.write_text("".join(json.dumps(event) + "\n" for event in events))
+                claude = ClaudeCodeAdapter()
+                w.adapter.run_problem = claude.run_problem
+                w.adapter.output_identity_problem = claude.output_identity_problem
+                w.adapter.denied_actions = claude.denied_actions
+                names = dchunk.names(b)
+                rejection = Path(b["worktree"]) / names.rejected
+                decisions = Path(b["worktree"]) / names.decisions
+                rejection_before, decisions_before = rejection.read_bytes(), decisions.read_bytes()
+
+                w.tick()
+
+                b = w.row_()
+                self.assertEqual((b["state"], len(w.adapter.launches)), (want_state, want_launches))
+                self.assertEqual(w.kinds()[-1], "d_chunk_fix" if want_launches == 2 else "d_chunk_new")
+                self.assertEqual((rejection.read_bytes(), decisions.read_bytes()), (rejection_before, decisions_before))
+
 
 if __name__ == "__main__":
     unittest.main()
