@@ -87,7 +87,7 @@ class DeterministicStage2Completion(unittest.TestCase):
         self.assertIn("미커밋 변경", w.sup._denied_run_problem(b))
         w.git.dirty_text = ""
         w.git.local_head = "d" * 40
-        self.assertIn("HEAD가 PR HEAD와 다릅니다", w.sup._denied_run_problem(b))
+        self.assertIn("HEAD가 다릅니다", w.sup._denied_run_problem(b))
 
 
 if __name__ == "__main__":

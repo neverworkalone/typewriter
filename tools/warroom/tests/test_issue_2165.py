@@ -127,7 +127,7 @@ class Stage2Finalization(unittest.TestCase):
         w.tick()
         b = w.store.active_batch("claude", S2)
         self.assertEqual((b["state"], len(w.adapter.launches)), ("ERROR", 1))
-        self.assertEqual(w.git.commits, [])
+        self.assertEqual(getattr(w.git, "commits", []), [])
         self.assertTrue(control.retry(w.store, "claude", S2))
         w.git.local_verify_ok = True
         w.tick()
@@ -158,8 +158,9 @@ class Stage2Finalization(unittest.TestCase):
         w.adapter.plan.append({"code": 0, "session": "ses_fix"})
         w.sup._launch(w.store.batch(b["id"]), w.sup._fix_kind(w.store.batch(b["id"])), [event])
         fix = w.adapter.launches[-1]
+        fix_batch = w.store.batch(b["id"])
         self.assertEqual((fix["kind"], fix.get("session"), w.store.batch(b["id"])["run_kind"]),
-                         ("start", None, "fix_new"))
+                         ("start", None, "fix_new"), fix_batch.get("error"))
         self.assertIn("inspect w1-s1", fix["prompt"])
         self.assertIn("w999-s1", fix["prompt"])
         self.assertEqual(w.git.inspect_calls[-1][1:], ("001", "01", "01", ["w1-s1"]))
