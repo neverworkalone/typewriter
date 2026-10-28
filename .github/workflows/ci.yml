@@ -50,14 +50,20 @@ jobs:
 
           # Use the PR merge base, not the checked-out synthetic merge commit.
           # Disable renames so moving code into docs/ cannot hide a source-file deletion.
-          git diff --no-renames --name-only -z "${BASE_SHA}...${HEAD_SHA}" > "$paths_file"
+          git diff --no-renames --name-status -z "${BASE_SHA}...${HEAD_SHA}" > "$paths_file"
           # Read NUL-delimited paths (including whitespace safely); Bash 3.2 compatible.
           docs_only=true
           warroom_only=true
           saw_file=false
           run_warroom_tests=false
-          while IFS= read -r -d '' file; do
+          # -z --name-status yields NUL-delimited status/path pairs.
+          # A deletion, type change or unknown status must never gain a cheaper
+          # War Room exemption by moving source to a documentation path.
+          while IFS= read -r -d '' status && IFS= read -r -d '' file; do
             saw_file=true
+            if [[ "$status" != A && "$status" != M ]]; then
+              warroom_only=false
+            fi
             case "$file" in
               docs/*|README.md|REVIEW.md|tools/warroom/prompts/*) ;;
               tools/warroom/warroom/*|tools/warroom/tests/*|tools/warroom/run-tests.mjs|tools/warroom/requirements.txt|war|dashboard)
