@@ -11,7 +11,8 @@ import { excerptAround, openCorpusIndex } from './literary-context.mjs';
 // Result status: ZERO_HITS (complete search, nothing found) | COMPLETE (complete search with hits, or a continued
 // search with nothing more) | LIMITED (stopped at a sample/char/scan bound; `next_cursor` continues exactly after
 // the last paragraph read, so no context is repeated or skipped; `scanRows` caps the paragraphs examined
-// per call: for short forms the paragraph_rowid span evaluated by `instr`, even when nothing matches) | SEARCH_FAILED. LIMITED is never "no hits".
+// per call: for short forms the paragraph_rowid span evaluated by `instr`, even when nothing matches; FTS reserves
+// a full result-page budget even when it finds nothing) | SEARCH_FAILED. LIMITED is never "no hits".
 
 export const DEFAULT_MAX_SAMPLES = 8;
 export const DEFAULT_MAX_CHARS = 6000;
@@ -21,7 +22,7 @@ const FTS_MIN_LENGTH = 3;
 const BATCH_ROWS = 200;
 const SHORT_WINDOW = 20_000; // paragraph_rowid span examined per short-form query
 const MIN_MAX_CHARS = 600;
-const HEAD_RESERVE = 160; // status line, short cursor and error text of renderContexts
+const HEAD_RESERVE = 320; // status line, bounded seen-paragraph cursor and error text of renderContexts
 const ITEM_OVERHEAD = 200; // the item label line around the excerpt
 const WORD_CHARACTER = /[\p{L}\p{N}]/u;
 const normalizeForms = (forms) => [...new Set(forms.map((form) => String(form).trim()).filter(Boolean))];
@@ -34,21 +35,38 @@ export function openReadonlyDb(databasePath) {
 const encodeCursor = (state) => Buffer.from(JSON.stringify(state), 'utf8').toString('base64url');
 
 const corpusIdentity = new WeakMap();
-function searchId(database, list, boundary) {
+function getCorpusIdentity(database) {
   if (!corpusIdentity.has(database)) {
     const metadata = database.prepare('SELECT * FROM index_metadata LIMIT 65').all();
     corpusIdentity.set(database, { metadata, maxRowid: database.prepare('SELECT max(paragraph_rowid) AS id FROM paragraphs').get().id ?? 0 });
   }
-  const { metadata, maxRowid } = corpusIdentity.get(database);
+  return corpusIdentity.get(database);
+}
+function searchId(database, list, boundary) {
+  const { metadata, maxRowid } = getCorpusIdentity(database);
   return createHash('sha256').update(JSON.stringify([list, boundary ?? null, metadata, maxRowid])).digest('hex').slice(0, 12);
 }
-const maxRowidOf = (database) => corpusIdentity.get(database).maxRowid;
+const maxRowidOf = (database) => getCorpusIdentity(database).maxRowid;
+
+/** Corpus range used to bound one CLI search request to roughly one short-form pass. */
+export const corpusScanRows = (database) => Math.max(1, maxRowidOf(database));
 
 function decodeCursor(cursor, formsKey, formCount, maxRowid) {
   try {
     const state = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8'));
     if (state.id === formsKey && Number.isInteger(state.form) && state.form >= 0 && state.form < formCount
-      && Number.isInteger(state.after) && state.after >= 0 && state.after <= maxRowid) return state;
+      && Number.isInteger(state.after) && state.after >= 0 && state.after <= maxRowid) {
+      // Cursors created before paragraph de-duplication have no `p`; they remain valid and resume safely.
+      if (Object.hasOwn(state, 'p') && Object.hasOwn(state, 'seen')) throw new Error('ambiguous seen paragraph IDs');
+      let seen;
+      if (Object.hasOwn(state, 'p')) {
+        if (typeof state.p !== 'string' || state.p !== '' && !/^[0-9a-z]+(?:\.[0-9a-z]+)*$/u.test(state.p)) throw new Error('invalid seen paragraph IDs');
+        seen = state.p === '' ? [] : state.p.split('.').map((rowid) => Number.parseInt(rowid, 36));
+      } else seen = Object.hasOwn(state, 'seen') ? state.seen : [];
+      if (!Array.isArray(seen) || seen.some((rowid) => !Number.isInteger(rowid) || rowid < 1 || rowid > maxRowid)
+        || new Set(seen).size !== seen.length) throw new Error('invalid seen paragraph IDs');
+      return { ...state, seen };
+    }
   } catch { /* fall through */ }
   throw new Error('search cursor does not belong to this exact form list, boundary option and corpus index');
 }
@@ -70,13 +88,22 @@ export function findBoundedOccurrence(text, form, boundary) {
   return -1;
 }
 
+function matchesLaterForm(text, forms, start, boundary) {
+  for (let index = start; index < forms.length; index += 1) {
+    const form = forms[index];
+    const formBoundary = boundary ?? ([...form].length < FTS_MIN_LENGTH ? 'both' : 'none');
+    if (findBoundedOccurrence(text, form, formBoundary) >= 0) return true;
+  }
+  return false;
+}
+
 const ROW_COLUMNS = 'p.paragraph_rowid AS rowid, p.form AS text, d.title, d.author';
 
 /**
- * Read the next bounded piece of one form's search after `after`, returning `{ rows, next, done }`.
- * FTS (3+ chars): at most `limit` matching paragraphs. Short forms: only the `paragraph_rowid` window
- * (after, after + limit] is examined by the literal `instr`, so the number of paragraphs SQLite evaluates is
- * bounded even when nothing matches; `next` is the window end so the search resumes there.
+ * Read the next bounded piece of one form's search after `after`, returning `{ rows, next, done, cost }`.
+ * FTS (3+ chars): at most `limit` matching paragraphs and charge a full page budget even when fewer (or no) rows
+ * match, so empty indexed searches cannot bypass a multi-form or batch budget. Short forms examine only the
+ * `paragraph_rowid` window (after, after + limit] with literal `instr`; `next` is the window end.
  */
 function fetchPiece(database, form, after, limit) {
   if ([...form].length >= FTS_MIN_LENGTH) {
@@ -84,7 +111,7 @@ function fetchPiece(database, form, after, limit) {
       JOIN paragraphs p ON p.paragraph_rowid = f.rowid JOIN documents d ON d.document_rowid = p.document_rowid
       WHERE paragraph_fts MATCH ? AND f.rowid > ? ORDER BY f.rowid LIMIT ?`)
       .all(`"${form.replaceAll('"', '""')}"`, after, limit);
-    return { rows, next: rows.length ? rows.at(-1).rowid : after, done: rows.length < limit, cost: rows.length };
+    return { rows, next: rows.length ? rows.at(-1).rowid : after, done: rows.length < limit, cost: limit };
   }
   const end = Math.min(after + limit, maxRowidOf(database));
   const rows = database.prepare(`SELECT ${ROW_COLUMNS} FROM paragraphs p
@@ -108,29 +135,35 @@ export function searchContexts(database, forms, {
   cursor = null,
 } = {}) {
   const list = normalizeForms(forms);
-  if (list.length === 0) return { status: 'SEARCH_FAILED', error: 'no search form', items: [], next_cursor: null };
+  if (list.length === 0) return { status: 'SEARCH_FAILED', error: 'no search form', items: [], next_cursor: null, scanned_rows: 0 };
+  const items = [];
+  let scanned = 0;
+  let seenParagraphs = new Set();
   try {
     const formsKey = searchId(database, list, boundary);
     const state = cursor ? decodeCursor(cursor, formsKey, list.length, maxRowidOf(database)) : { id: formsKey, form: 0, after: 0 };
+    seenParagraphs = new Set(state.seen ?? []);
     // maxChars bounds the whole rendered response (renderContexts): header + every item line + excerpt.
     const budget = Math.max(maxChars, MIN_MAX_CHARS);
     const snippet = Math.max(20, Math.min(snippetChars, budget - HEAD_RESERVE - ITEM_OVERHEAD));
-    const items = [];
     let chars = HEAD_RESERVE;
-    let scanned = 0;
     for (let formIndex = state.form; formIndex < list.length; formIndex += 1) {
       const form = list[formIndex];
       const formBoundary = boundary ?? ([...form].length < FTS_MIN_LENGTH ? 'both' : 'none');
       let after = formIndex === state.form ? state.after : 0;
       for (;;) {
         const limit = Math.min([...form].length < FTS_MIN_LENGTH ? SHORT_WINDOW : BATCH_ROWS, scanRows - scanned);
-        if (limit <= 0) return finish(items, 'LIMITED', formsKey, formIndex, after);
+        if (limit <= 0) return finish(items, 'LIMITED', formsKey, formIndex, after, scanned, seenParagraphs);
         const piece = fetchPiece(database, form, after, limit);
         scanned += piece.cost;
         for (const row of piece.rows) {
           after = row.rowid;
           const at = findBoundedOccurrence(row.text, form, formBoundary);
           if (at < 0) continue;
+          if (seenParagraphs.has(row.rowid)) {
+            if (!matchesLaterForm(row.text, list, formIndex + 1, boundary)) seenParagraphs.delete(row.rowid);
+            continue;
+          }
           const excerpt = excerptAround(row.text, [form], snippet, at, form).text;
           const item = { form: [...form].slice(0, 30).join(''), paragraph_rowid: row.rowid, title: [...(row.title ?? '')].slice(0, 30).join(''), author: [...(row.author ?? '')].slice(0, 30).join(''), excerpt };
           let cost = renderItem(item, items.length).length + 1;
@@ -143,19 +176,20 @@ export function searchContexts(database, forms, {
           }
 
           if (items.length > 0 && chars + cost > budget) {
-            return finish(items, 'LIMITED', formsKey, formIndex, row.rowid - 1);
+            return finish(items, 'LIMITED', formsKey, formIndex, row.rowid - 1, scanned, seenParagraphs);
           }
           items.push(item);
+          if (matchesLaterForm(row.text, list, formIndex + 1, boundary)) seenParagraphs.add(row.rowid);
           chars += cost;
-          if (items.length >= maxSamples) return finish(items, 'LIMITED', formsKey, formIndex, row.rowid);
+          if (items.length >= maxSamples) return finish(items, 'LIMITED', formsKey, formIndex, row.rowid, scanned, seenParagraphs);
         }
         after = piece.next;
         if (piece.done) break;
       }
     }
-    return { status: items.length > 0 || cursor ? 'COMPLETE' : 'ZERO_HITS', items, next_cursor: null };
+    return { status: items.length > 0 || cursor ? 'COMPLETE' : 'ZERO_HITS', items, next_cursor: null, scanned_rows: scanned };
   } catch (error) {
-    return { status: 'SEARCH_FAILED', error: error.message, items: [], next_cursor: null };
+    return { status: 'SEARCH_FAILED', error: error.message, items, next_cursor: null, scanned_rows: scanned };
   }
 }
 
@@ -180,7 +214,7 @@ const copySearchResult = (result) => ({ ...result, items: result.items.map((item
  */
 export function createSearchContextReuse(database) {
   const results = new Map();
-  return (forms, options = {}) => {
+  const search = (forms, options = {}) => {
     const list = normalizeForms(forms);
     const key = searchRequestKey(list, options);
     const cached = results.get(key);
@@ -190,10 +224,16 @@ export function createSearchContextReuse(database) {
     if (result.status !== 'SEARCH_FAILED') results.set(key, copySearchResult(result));
     return { result: copySearchResult(result), reused: false };
   };
+  search.corpusRows = corpusScanRows(database);
+  return search;
 }
 
-function finish(items, status, id, form, after) {
-  return { status, items, next_cursor: encodeCursor({ id, form, after }) };
+function finish(items, status, id, form, after, scanned, seenParagraphs) {
+  const seen = [...seenParagraphs].sort((left, right) => left - right).map((rowid) => rowid.toString(36)).join('.');
+  return {
+    status, items, scanned_rows: scanned,
+    next_cursor: encodeCursor({ id, form, after, ...(seen ? { p: seen } : {}) }),
+  };
 }
 
 const renderItem = (item, index) => `[${index + 1}] ${item.form} | ${item.title} ${item.author}\n${item.excerpt}`;

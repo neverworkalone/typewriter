@@ -4,7 +4,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { DatabaseSync } from 'node:sqlite';
 
-import { createSearchContextReuse, openReadonlyDb, renderContexts, saveChunk, searchContexts } from './corpus-utility.mjs';
+import { corpusScanRows, createSearchContextReuse, openReadonlyDb, renderContexts, saveChunk, searchContexts } from './corpus-utility.mjs';
 
 async function makeCorpus(paragraphs) {
   const root = await mkdtemp(path.join((await mkdir(path.resolve('.warroom-scratch'), { recursive: true })) ?? path.resolve('.warroom-scratch'), 'corpus-utility-'));
@@ -45,15 +45,34 @@ test('the sample bound holds across many matching paragraphs and paging reads ea
   const { root, databasePath } = await makeCorpus(paragraphs);
   try {
     const database = openReadonlyDb(databasePath);
+    assert.equal(corpusScanRows(database), 50);
     const first = searchContexts(database, ['김구'], { maxSamples: 3 });
     assert.equal(first.items.length, 3);
     assert.equal(first.status, 'LIMITED');
+    assert.ok(first.scanned_rows > 0);
     const pages = drain(database, ['김구'], { maxSamples: 3 });
     assert.ok(pages.every((page) => page.items.length <= 3));
     assert.equal(pages.at(-1).status, 'COMPLETE');
     const ids = pages.flatMap((page) => page.items.map((item) => item.paragraph_rowid));
     assert.deepEqual(ids, Array.from({ length: 50 }, (_, index) => index + 1));
     assert.throws(() => database.exec('DELETE FROM paragraphs'), /readonly|read-only|query_only/i);
+    database.close();
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('zero-hit FTS forms consume the scan budget and leave the next form in the cursor', async () => {
+  const { root, databasePath } = await makeCorpus([]);
+  try {
+    const database = openReadonlyDb(databasePath);
+    const result = searchContexts(database, ['없는말', '없는형', '없는뜻'], { scanRows: 2 });
+    assert.equal(result.status, 'LIMITED');
+    assert.deepEqual(result.items, []);
+    assert.equal(result.scanned_rows, 2, 'an empty FTS page still consumes its result-page budget');
+    assert.ok(result.next_cursor);
+    const state = JSON.parse(Buffer.from(result.next_cursor, 'base64url').toString('utf8'));
+    assert.equal(state.form, 1, 'the cursor resumes at the first unsearched form');
     database.close();
   } finally {
     await rm(root, { recursive: true, force: true });
@@ -91,6 +110,33 @@ test('short forms keep both-side boundaries and homonym hits are left to the rea
     assert.equal(bounded.status, 'LIMITED');
     assert.ok(bounded.next_cursor);
     assert.equal(drain(database, ['기현'], { scanRows: 2 }).flatMap((page) => page.items).length, 1);
+    database.close();
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('overlapping forms return each paragraph once across cursor pages', async () => {
+  const { root, databasePath } = await makeCorpus([
+    '난처히 말했고 난처하다며 웃었다.',
+    '난처히 고개를 돌렸다.',
+    '난처하다 생각했다.',
+  ]);
+  try {
+    const database = openReadonlyDb(databasePath);
+    const pages = drain(database, ['난처히', '난처하다'], { maxSamples: 1 });
+    const items = pages.flatMap((page) => page.items);
+    assert.deepEqual(items.map((item) => item.paragraph_rowid), [1, 2, 3]);
+    assert.equal(new Set(items.map((item) => item.paragraph_rowid)).size, 3);
+    assert.ok(pages.length >= 3, 'the cursor crosses pages and overlapping forms');
+    assert.equal(pages.at(-1).status, 'COMPLETE');
+
+    const withSeen = JSON.parse(Buffer.from(pages[0].next_cursor, 'base64url').toString('utf8'));
+    const oldState = { ...withSeen };
+    delete oldState.p;
+    delete oldState.seen;
+    const oldCursor = Buffer.from(JSON.stringify(oldState)).toString('base64url');
+    assert.notEqual(searchContexts(database, ['난처히', '난처하다'], { maxSamples: 1, cursor: oldCursor }).status, 'SEARCH_FAILED', 'pre-change cursors remain resumable');
     database.close();
   } finally {
     await rm(root, { recursive: true, force: true });

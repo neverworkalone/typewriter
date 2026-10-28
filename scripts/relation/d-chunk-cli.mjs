@@ -3,7 +3,7 @@
 // Stage 1 Method D, one 25-record chunk at a time (Issue #2034; production contract: #1156).
 //
 //   prepare (War Room Supervisor only)  render one chunk's bounded search view, decide nothing semantic
-//   search  (AI, optional)              more contexts for ONE sense of the active chunk
+//   search / search-batch (AI, optional) more contexts for senses of the active chunk
 //   save    (AI, once per chunk)        validate a compact decisions file, then store chunk-NNN.jsonl atomically
 //
 // The CLI reuses the existing read-only search helpers (corpus-utility.mjs) and the Candidate v1 rules
@@ -27,6 +27,7 @@ import {
   DEFAULT_MAX_SAMPLES,
   DEFAULT_SCAN_ROWS,
   DEFAULT_SNIPPET_CHARS,
+  corpusScanRows,
   createSearchContextReuse,
   openReadonlyDb,
   renderContexts,
@@ -40,8 +41,9 @@ export const INITIAL_CONTEXTS = 4; // #1156 PASS A starts with 1-4 distinct cont
 export const INITIAL_SNIPPET_CHARS = 220;
 export const MAX_CALL_CONTEXTS = 16; // per `search` call; the per-sense reading guide of 16 lives in the AI card
 export const MAX_BATCH_OUTPUT_BYTES = 48 * 1024;
-// Safety stop of the deterministic follow-up of a 0-hit LIMITED search (far above a full scan of the approved corpus:
-// ~25 pages of DEFAULT_SCAN_ROWS per form). Reaching it is a search failure, never a completed zero.
+export const DEFAULT_REQUEST_SCAN_BUDGET_ROWS = 5_000_000; // synthetic search adapters only; production derives the corpus range
+export const BATCH_SCAN_BUDGET_PASSES = 4; // bounds one search-batch command independently of each request's budget
+// Pagination safety stop in addition to the deterministic scan budget. Reaching it preserves the real cursor as LIMITED.
 export const MAX_FOLLOWUP_CALLS = 1000;
 const MAX_VARIANT_FORM_LENGTH = 12;
 const HANGUL_FORM = /^[가-힣]+$/u;
@@ -88,30 +90,80 @@ export const recordForms = (record) => [...new Set([record.lemma, ...(Array.isAr
   .filter((form) => typeof form === 'string' && form.trim().length > 0)
   .map((form) => form.normalize('NFC').trim()))];
 
-// ---- search with the deterministic ZERO_HITS follow-up ------------------------------------------------------------
+// ---- bounded collection of distinct contexts -------------------------------------------------------------------
 /**
- * One search, continued inside this call while its page is LIMITED with no context at all: the next page starts at the
- * page's own `next_cursor` until the first context appears or the search really ends (the corpus range is bounded by
- * the cursor itself, which is tied to the approved index). A page with a context is returned as is (LIMITED with
- * contexts stays a valid result). COMPLETE becomes ZERO_HITS only when this call started without a cursor and
- * therefore saw every page of the request; a call that started from an external cursor keeps COMPLETE (earlier pages are
- * judged by `recordEvidence`). A repeated cursor or the call limit ends as SEARCH_FAILED, never as a completed zero.
+ * Continue LIMITED pages until the requested number of distinct paragraph contexts is collected, the approved search
+ * completes, or the request's deterministic scan budget is spent. The aggregate result keeps the real final cursor and
+ * all contexts already found; an external cursor can never prove a fresh ZERO_HITS.
  */
-export function searchToCompletion(search, forms, options = {}, { maxCalls = MAX_FOLLOWUP_CALLS } = {}) {
+export function searchForContexts(search, forms, options = {}, {
+  maxCalls = MAX_FOLLOWUP_CALLS,
+  maxScanRows = search.corpusRows ?? DEFAULT_REQUEST_SCAN_BUDGET_ROWS,
+} = {}) {
   const cursorIn = options.cursor ?? null;
-  let { result } = search(forms, options);
   const seen = new Set(cursorIn ? [cursorIn] : []);
+  const requested = options.maxSamples ?? DEFAULT_MAX_SAMPLES;
+  const budget = Math.max(0, Math.floor(maxScanRows));
+  let scannedRows = 0;
+  let items = [];
+  let cursor = cursorIn;
   let followups = 0;
-  while (result.status === 'LIMITED' && result.items.length === 0 && result.next_cursor) {
-    const failure = seen.has(result.next_cursor) ? 'search follow-up made no progress'
-      : followups >= maxCalls ? 'search follow-up call limit reached' : null;
-    if (failure) return { result: { status: 'SEARCH_FAILED', error: failure, items: [], next_cursor: null }, followups, cursorIn };
-    seen.add(result.next_cursor);
-    ({ result } = search(forms, { ...options, cursor: result.next_cursor }));
+  let lastResult = null;
+  const failed = (error) => ({
+    result: { status: 'SEARCH_FAILED', error, items, next_cursor: null, scanned_rows: scannedRows },
+    followups, cursorIn,
+  });
+
+  while (true) {
+    const remaining = budget - scannedRows;
+    if (remaining <= 0) {
+      if (lastResult?.status === 'LIMITED' && lastResult.next_cursor) {
+        return { result: { ...lastResult, status: 'LIMITED', items, scanned_rows: scannedRows }, followups, cursorIn };
+      }
+      if (lastResult) return { result: { ...lastResult, items, scanned_rows: scannedRows }, followups, cursorIn };
+      return { result: { status: 'DEFERRED', items: [], next_cursor: null, scanned_rows: 0 }, followups, cursorIn };
+    }
+    const scanRows = Math.min(options.scanRows ?? DEFAULT_SCAN_ROWS, remaining);
+    const pageOptions = {
+      ...options,
+      cursor,
+      maxSamples: Math.max(1, requested - items.length),
+      scanRows,
+    };
+    const page = search(forms, pageOptions)?.result;
+    if (!page || !['ZERO_HITS', 'COMPLETE', 'LIMITED', 'SEARCH_FAILED'].includes(page.status) || !Array.isArray(page.items)) {
+      return failed('search returned an invalid result');
+    }
+    scannedRows += Math.min(scanRows, Math.max(0, page.scanned_rows ?? scanRows));
+    const pageIds = new Set(items.map((item) => item.paragraph_rowid).filter(Number.isInteger));
+    for (const item of page.items) {
+      if (Number.isInteger(item.paragraph_rowid) && pageIds.has(item.paragraph_rowid)) continue;
+      if (Number.isInteger(item.paragraph_rowid)) pageIds.add(item.paragraph_rowid);
+      items.push(item);
+    }
+    lastResult = page;
+
+    if (page.status === 'SEARCH_FAILED') {
+      return { result: { ...page, items, next_cursor: null, scanned_rows: scannedRows }, followups, cursorIn };
+    }
+    if (page.status === 'ZERO_HITS') {
+      const status = items.length === 0 && cursorIn === null ? 'ZERO_HITS' : 'COMPLETE';
+      return { result: { ...page, status, items, next_cursor: null, scanned_rows: scannedRows }, followups, cursorIn };
+    }
+    if (page.status === 'COMPLETE') {
+      const status = items.length === 0 && cursorIn === null ? 'ZERO_HITS' : 'COMPLETE';
+      return { result: { ...page, status, items, next_cursor: null, scanned_rows: scannedRows }, followups, cursorIn };
+    }
+
+    if (typeof page.next_cursor !== 'string' || page.next_cursor.length === 0) return failed('LIMITED search returned no cursor');
+    if (seen.has(page.next_cursor)) return failed('search follow-up made no progress');
+    if (items.length >= requested || scannedRows >= budget || followups >= maxCalls) {
+      return { result: { ...page, status: 'LIMITED', items, scanned_rows: scannedRows }, followups, cursorIn };
+    }
+    seen.add(page.next_cursor);
+    cursor = page.next_cursor;
     followups += 1;
   }
-  if (cursorIn === null && followups > 0 && result.status === 'COMPLETE' && result.items.length === 0) result = { ...result, status: 'ZERO_HITS' };
-  return { result, followups, cursorIn };
 }
 
 const isComplete = (status) => status === 'ZERO_HITS' || status === 'COMPLETE';
@@ -191,7 +243,7 @@ export function buildChunk({ records, shard, batch, chunkNumber, total, search }
   for (const record of records) {
     const forms = recordForms(record);
     const mainOptions = { maxSamples: INITIAL_CONTEXTS, snippetChars: INITIAL_SNIPPET_CHARS };
-    const main = searchToCompletion(search, forms, mainOptions);
+    const main = searchForContexts(search, forms, mainOptions);
     const shown = [{ forms, boundary: null, result: main.result }];
     entries.push(entryOf(record.id, forms, null, main.result, 'prepare', main.cursorIn, requestKey(forms, null, mainOptions)));
     let auto = false;
@@ -199,7 +251,7 @@ export function buildChunk({ records, shard, batch, chunkNumber, total, search }
     else if (main.result.status === 'ZERO_HITS' && autoZCandidate(record, forms)) {
       const variants = forms.flatMap(spacedVariants);
       const spacedOptions = { maxSamples: INITIAL_CONTEXTS, snippetChars: INITIAL_SNIPPET_CHARS };
-      const spaced = searchToCompletion(search, variants, spacedOptions);
+      const spaced = searchForContexts(search, variants, spacedOptions);
       entries.push(entryOf(record.id, variants, null, spaced.result, 'prepare', spaced.cursorIn, requestKey(variants, null, spacedOptions)));
       if (spaced.result.status === 'SEARCH_FAILED') failed.push(record.id);
       else if (spaced.result.status === 'ZERO_HITS') auto = true;
@@ -357,23 +409,52 @@ export function buildSearchBatch({ requests, meta, records, search, maxOutputByt
     if (!group) {
       group = {
         result_id: `q${groups.size + 1}`, exactRequestKey, forms, boundary, cursor,
-        contexts, options, requesters: [],
+        contexts, options, requesters: [], originalRequests: [],
       };
       groups.set(exactRequestKey, group);
     }
     const requester = { request_id: requestId, sense: request.sense, record_id: sense.record_id };
     group.requesters.push(requester);
+    group.originalRequests.push({ ...request, ...(Array.isArray(request.forms) ? { forms: [...request.forms] } : {}) });
     resolved.push({ ...requester, result_id: group.result_id });
   });
 
   const evidence = [];
+  const corpusRows = Math.max(1, Math.floor(search.corpusRows ?? DEFAULT_REQUEST_SCAN_BUDGET_ROWS));
+  const scanBudgetRows = corpusRows * BATCH_SCAN_BUDGET_PASSES;
+  let scannedRows = 0;
+  const resultById = new Map();
   const results = [...groups.values()].map((group) => {
-    const { result, cursorIn } = searchToCompletion(search, group.forms, group.options);
-    const recordsSeen = new Set();
-    for (const requester of group.requesters) {
-      if (recordsSeen.has(requester.record_id)) continue;
-      recordsSeen.add(requester.record_id);
-      evidence.push(entryOf(requester.record_id, group.forms, group.boundary, result, 'search', cursorIn, group.exactRequestKey));
+    const remainingBatchRows = scanBudgetRows - scannedRows;
+    if (remainingBatchRows <= 0) {
+      const deferred = {
+        result_id: group.result_id,
+        shared_by: group.requesters,
+        forms: group.forms,
+        boundary: group.boundary ?? null,
+        cursor_in: null,
+        cursor_out: null,
+        contexts_limit: group.contexts,
+        status: 'DEFERRED',
+        hits: 0,
+        scanned_rows: 0,
+        contexts: [],
+        retry_requests: group.originalRequests,
+      };
+      resultById.set(group.result_id, 'DEFERRED');
+      return deferred;
+    }
+    const maxScanRows = Math.min(corpusRows, remainingBatchRows);
+    const { result, cursorIn } = searchForContexts(search, group.forms, group.options, { maxScanRows });
+    scannedRows += result.scanned_rows ?? 0;
+    resultById.set(group.result_id, result.status);
+    if (result.status !== 'DEFERRED') {
+      const recordsSeen = new Set();
+      for (const requester of group.requesters) {
+        if (recordsSeen.has(requester.record_id)) continue;
+        recordsSeen.add(requester.record_id);
+        evidence.push(entryOf(requester.record_id, group.forms, group.boundary, result, 'search', cursorIn, group.exactRequestKey));
+      }
     }
     return {
       result_id: group.result_id,
@@ -385,15 +466,21 @@ export function buildSearchBatch({ requests, meta, records, search, maxOutputByt
       contexts_limit: group.contexts,
       status: result.status,
       hits: result.items.length,
+      scanned_rows: result.scanned_rows ?? 0,
       ...(result.error ? { error: [...String(result.error)].slice(0, 200).join('') } : {}),
       contexts: result.items,
+      ...(result.status === 'DEFERRED' ? { retry_requests: group.originalRequests } : {}),
     };
   });
   const output = {
-    status: results.some((result) => result.status === 'SEARCH_FAILED') ? 'SEARCH_FAILED' : 'OK',
+    status: results.some((result) => result.status === 'SEARCH_FAILED') ? 'SEARCH_FAILED'
+      : results.some((result) => result.status === 'DEFERRED') ? 'PARTIAL' : 'OK',
     request_count: requests.length,
     result_count: results.length,
-    requests: resolved,
+    deferred_count: results.filter((result) => result.status === 'DEFERRED').reduce((sum, result) => sum + result.retry_requests.length, 0),
+    scan_budget_rows: scanBudgetRows,
+    scanned_rows: scannedRows,
+    requests: resolved.map((request) => ({ ...request, status: resultById.get(request.result_id) })),
     results,
   };
   const bytes = Buffer.byteLength(`${JSON.stringify(output)}\n`);
@@ -433,7 +520,9 @@ export async function searchActive({ ref, forms, boundary, cursor, contexts, dat
   if (boundary !== undefined && !['left', 'none', 'both'].includes(boundary)) fail('--boundary must be left, none or both');
   const database = openReadonlyDb(databasePath);
   const options = searchOptions(count, boundary, cursor);
-  const { result, cursorIn } = searchToCompletion((searchForms, searchOpts) => ({ result: searchContexts(database, searchForms, searchOpts) }), list, options);
+  const search = (searchForms, searchOpts) => ({ result: searchContexts(database, searchForms, searchOpts) });
+  search.corpusRows = corpusScanRows(database);
+  const { result, cursorIn } = searchForContexts(search, list, options);
   database.close?.();
   const exactRequestKey = requestKey(list, boundary, options);
   await appendFile(searchesPath(directory), `${JSON.stringify(entryOf(record.record_id, list, boundary, result, 'search', cursorIn, exactRequestKey))}\n`);
