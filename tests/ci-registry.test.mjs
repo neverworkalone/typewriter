@@ -903,7 +903,7 @@ test('CI changed-path gate isolates War Room while keeping mixed/unknown changes
   const scriptBlock = block.split('\n          # Deep impact and exact-check selection stay inside this PR check.\n')[0];
   const script = scriptBlock.split('        run: |\n')[1]
     ?.split('\n').map((line) => line.startsWith('          ') ? line.slice(10) : line).join('\n');
-  assert.ok(script?.includes('git diff --no-renames --name-only -z'), 'classification must include both rename sides');
+  assert.ok(script?.includes('git diff --no-renames --name-status -z'), 'classification must include both rename sides');
   assert.match(workflow, /node scripts\/ci\/deep-gate\.mjs/u, 'Deep classification must run inside the existing classifier step');
   assert.doesNotMatch(workflow, /ci:candidates|run_level == 'candidates'/u);
   assert.match(workflow, /steps\.changes\.outcome != 'success' \|\| \(steps\.changes\.outputs\.run_level == 'normal'/u);
@@ -1148,12 +1148,12 @@ test('CI and Pages workflows keep their trigger responsibilities separate', asyn
   assert.match(workflow, /actions\/checkout@v7/u);
   assert.match(workflow, /actions\/setup-node@v7/u);
   assert.match(workflow, /node-version: 24\.x/u);
-  // Docs-only runs skip install, so the pnpm store never exists: the cache post-step
-  // must only be registered by the setup-node step that shares the install condition.
+  // Docs-only and isolated War Room runs skip install: the pnpm store never exists,
+  // so the cache post-step must share the actual product/Deep/schema install condition.
   const nodeSteps = workflow.split('      - name: ').filter((step) => step.includes('actions/setup-node'));
   const cached = nodeSteps.filter((step) => /cache: pnpm/u.test(step));
   assert.equal(cached.length, 1);
-  assert.match(cached[0], /\n        if: .*run_level != 'none'/u);
+  assert.match(cached[0], /\n        if: .*run_level == 'normal'/u);
   assert.ok(nodeSteps.every((step) => step === cached[0] || /package-manager-cache: false/u.test(step)));
   assert.doesNotMatch(workflow, /^\s+schedule:/mu);
   assert.doesNotMatch(workflow, /^\s+workflow_dispatch:/mu);
