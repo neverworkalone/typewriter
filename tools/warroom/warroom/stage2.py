@@ -77,15 +77,16 @@ def scope_label(kind: str, shard: str, batch: str | None) -> str:
     return f"{shard}_{batch}" if kind == "batch" else shard
 
 
+_RELATION_FILE = re.compile(r"data/relations/relation-\d{3}\.jsonl")
 _SHARED_VERIFY_INPUTS = ("data/canonical/", "scripts/relation/", "scripts/build/gloss-arrow-reference.mjs",
                          "src/runtime/dictionary-contract.js")
 
 
 def scope_inputs_changed(paths, shard: str) -> bool:
     """True if any changed path is something `admission-cli verify` for this shard reads (see `choose`)."""
-    own = (f"data/relations/relation-{shard}.jsonl", f"data/relation-drops/drop-{shard}.jsonl",
-           f"data/relation-candidates/{shard}/")
-    return any(p.startswith(own + _SHARED_VERIFY_INPUTS) for p in paths)
+    own = (f"data/relation-drops/drop-{shard}.jsonl", f"data/relation-candidates/{shard}/")
+    # verify also loads every OTHER shard's approved Relation file (loadApprovedRelations), so any of them counts
+    return any(p.startswith(own + _SHARED_VERIFY_INPUTS) or _RELATION_FILE.fullmatch(p) for p in paths)
 
 
 def stop_head(kind: str, shard: str, batch: str | None) -> str:
@@ -350,10 +351,9 @@ def choose(runner, root, env, *, ref: str, sha: str, open_prs: list[dict], verif
     success releases it. Without `outcome` a failure stops the Line as before.
 
     A cached Batch/shard success is the master SHA it was verified on. On another SHA it stands only while
-    `changed(old, new)` shows nothing that verify reads for that shard (its own Relation/Drop/Candidate files, canonical
+    `changed(old, new)` shows nothing that verify reads for that shard (any Relation file, its own Drop/Candidate files, canonical
     data, shared verify code); otherwise the exact verify runs again, so a later regression is found and a RELEASED scope
-    can fail as a new event. (Other shards' Relation files are read by verify too but are not tracked: re-verifying
-    every completed scope on every Stage 2 merge would cost more than it protects.)
+    can fail as a new event. Every shard's Relation file counts, since verify reads all of them.
     """
     diffs: dict[str, list[str] | None] = {}
 

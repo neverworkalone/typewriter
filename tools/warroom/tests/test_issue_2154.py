@@ -265,10 +265,10 @@ class VerifyBlock(unittest.TestCase):
         control.start(w.store, "claude", S2, "single", cfg=w.cfg)
         calls = len(w.git.verify_calls)
         w.git.base_sha = SHA3
-        w.git.changed_paths = ["data/relations/relation-002.jsonl", "docs/x.md", "data/relation-candidates/0010/x.jsonl"]
+        w.git.changed_paths = ["docs/x.md", "data/relation-drops/drop-002.jsonl", "data/relation-candidates/002/002_01_a_codex.jsonl", "data/relations/relation-002-backup.jsonl"]
         self.tick()
         self.assertEqual((len(w.git.verify_calls), w.store.get(stage2.ok_key("001", "01"))), (calls, SHA3))   # carried over
-        for n, path in enumerate(("data/relation-drops/drop-001.jsonl", "scripts/relation/admission.mjs", "data/canonical/stdict-0001.jsonl",
+        for n, path in enumerate(("data/relations/relation-002.jsonl", "data/relation-drops/drop-001.jsonl", "scripts/relation/admission.mjs", "data/canonical/stdict-0001.jsonl",
                                   "data/relation-candidates/001/001_01_a_codex.jsonl")):
             with self.subTest(path=path):
                 control.start(w.store, "claude", S2, "single", cfg=w.cfg)
