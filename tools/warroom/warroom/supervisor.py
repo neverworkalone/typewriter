@@ -20,7 +20,8 @@ import traceback
 from pathlib import Path
 
 from . import auth, batches, control, dchunk, defects, literary, progress, prompts, reviews, stage1ab, stage2
-from .adapters import PREFLIGHT_PENDING, QUOTA_EVIDENCE, RunSpec, classify_failure, opencode_free_quota
+from .adapters import (PREFLIGHT_PENDING, QUOTA_EVIDENCE, RunSpec, classify_claude_failure, classify_failure,
+                       opencode_free_quota)
 from .config import (TIERED_ADAPTERS, adapter_label, config_problem, load_config, registry, registry_problems,
                      reload_problem, role_of, role_problem, run_spec, stage2_problem)
 from .github import GhError, GhTransient
@@ -459,13 +460,17 @@ class Supervisor:
             target = self._chunk_retry_target(b)
             if target is not None:
                 self.store.delete(self._auto_retry_key(b, target))   # only an explicit operator Retry grants one new chance
-            if b["method"] == STAGE2_METHOD and b["state"] == "ERROR" and not b["pr_number"] and self._s2_chunk_run(b) \
-                    and stage2.fixes_used(self.store.runs(b["id"])) >= stage2.MAX_FIXES:
-                # Only the owner's explicit Retry after the corrections are used up restarts this pending chunk in a new
-                # session; `fixes_used` counts from that new session, so the correction chances start over.
-                stage2.clear_decisions(b["worktree"])
-                self.store.update(b["id"], session_id=None)
-                self.store.log(b["id"], "수정 기회 소진 뒤 운영자 Retry: 같은 청크를 새 AI 세션으로 다시 시작합니다")
+            if (b["method"] == STAGE2_METHOD and b["state"] in ("PAUSED", "ERROR") and not b["pr_number"]
+                    and self._s2_chunk_run(b)
+                    and stage2.fixes_used(self.store.runs(b["id"]), "s2_chunk_new",
+                                          ("s2_chunk_fix", "s2_chunk_format_fix")) >= stage2.MAX_FIXES):
+                pending = self._stage2_pending(b)
+                file_state = stage2.decision_file_state(b["worktree"], pending) if pending else "corrupt"
+                if b["session_id"] and pending and file_state in ("current", "missing"):
+                    status = self._s2_retry_fix_status(b, pending)
+                    if status is None:
+                        self._write_s2_retry_fix_status(b, pending, "granted")
+                        self.store.log(b["id"], "운영자 Retry: 현재 청크/세션에 추가 판정 수정 1회를 결속했습니다")
             if self._d_chunk_run(b) and not b["pr_number"]:
                 self.store.delete_prefix(f"d_fix_{b['id']}:")   # only an explicit Retry regrants the automatic correction
             self.store.set_line(b["producer"], b["method"], retry_batch=None, run=1)
@@ -1381,12 +1386,7 @@ class Supervisor:
                 raise
             except Exception as e:
                 return self._fail(b, "ERROR", f"optional-link 재개 전 PR 소유권 확인 실패: {e}. 보존합니다.")
-            runs = self.store.runs(b["id"])
-            fixes = 0
-            for run in runs:
-                if run["kind"] == "s2_links_new":
-                    break
-                fixes += run["kind"] == "s2_links_fix"
+            fixes = stage2.fixes_used(self.store.runs(b["id"]), "s2_links_new", ("s2_links_fix",))
             if not b["session_id"] or fixes >= stage2.MAX_FIXES:
                 self.store.update(b["id"], session_id=None)
                 self.store.delete(stage2.links_start_key(b["id"]))
@@ -1413,7 +1413,14 @@ class Supervisor:
                 self.store.update(b["id"], session_id=None, retries=0, retry_after=None, error=None)
                 return self._launch_stage2_next(self.store.batch(b["id"]))
             pending = self._stage2_pending(b)
-            if pending is not None and stage2.decisions_header(b["worktree"]) == pending:
+            file_state = stage2.decision_file_state(b["worktree"], pending) if pending is not None else "missing"
+            if file_state == "corrupt":
+                return self._fail(b, "ERROR", f"현재 청크 판정 파일이 손상되었거나 다른 청크에 속해 있습니다. "
+                                  f"파일과 checkpoint를 보존합니다: {stage2.DECISIONS}")
+            if file_state == "current":
+                if not b["session_id"]:
+                    return self._fail(b, "ERROR", f"현재 청크 판정 파일은 보존했지만 연결된 세션이 없습니다. "
+                                      f"새 전체 재판정은 하지 않습니다: {stage2.DECISIONS}")
                 # Restart / Retry: re-validate the saved decisions of THIS chunk only (an older chunk's file is "no
                 # response"); no AI run, and no failure is recorded for this re-check.
                 try:
@@ -2017,6 +2024,39 @@ class Supervisor:
             return None
         return checkpoint["pending_chunk"] if checkpoint else None
 
+    def _s2_retry_fix_status(self, b, pending: str) -> str | None:
+        key = stage2.retry_fix_key(b["id"])
+        raw = self.store.get(key)
+        if raw is None:
+            return None
+        try:
+            status = json.loads(raw)
+        except (TypeError, ValueError):
+            self.store.delete(key)
+            return None
+        if not isinstance(status, dict):
+            self.store.delete(key)
+            return None
+        expected = {"batch_id": b["id"], "shard": b["shard"], "batch": b["batch"],
+                    "chunk_id": pending, "session_id": b["session_id"]}
+        if any(status.get(name) != value for name, value in expected.items()) \
+                or status.get("state") not in ("granted", "consumed"):
+            self.store.delete(key)
+            return None
+        return status["state"]
+
+    def _write_s2_retry_fix_status(self, b, pending: str, state: str) -> None:
+        self.store.set(stage2.retry_fix_key(b["id"]), json.dumps({
+            "batch_id": b["id"], "shard": b["shard"], "batch": b["batch"],
+            "chunk_id": pending, "session_id": b["session_id"], "state": state,
+        }, sort_keys=True))
+
+    def _consume_s2_retry_fix(self, b, pending: str) -> bool:
+        if self._s2_retry_fix_status(b, pending) != "granted":
+            return False
+        self._write_s2_retry_fix_status(b, pending, "consumed")
+        return True
+
     def _run_ok_stage2_links(self, b) -> None:
         """Save the final optional-link answer through the official CLI; retries stay in this session."""
         if problem := self._stage2_links_boundary_problem(b):
@@ -2063,11 +2103,7 @@ class Supervisor:
         return self._launch_stage2_next(self.store.batch(b["id"]))
 
     def _stage2_links_rejected(self, b, diagnostic: str) -> None:
-        used = 0
-        for run in self.store.runs(b["id"]):
-            if run["kind"] == "s2_links_new":
-                break
-            used += run["kind"] == "s2_links_fix"
+        used = stage2.fixes_used(self.store.runs(b["id"]), "s2_links_new", ("s2_links_fix",))
         if used < stage2.MAX_FIXES and b["session_id"]:
             self._s2_links_problem[b["id"]] = diagnostic
             self.store.update(b["id"], retries=0, retry_after=None, error=None)
@@ -2104,6 +2140,7 @@ class Supervisor:
     def _stage2_accept(self, b) -> None:
         self._clear_batch_retry(b["id"])
         self.store.delete(stage2.run_start_key(b["id"]))
+        self.store.delete(stage2.retry_fix_key(b["id"]))
         self.store.update(b["id"], session_id=None, retries=0, retry_after=None, error=None)
         self.store.log(b["id"], "Stage 2 청크가 admission-cli save-chunk를 통과해 checkpoint에 저장됐습니다. 다음 단계는 새 세션으로 실행합니다.")
         return self._launch_stage2_next(self.store.batch(b["id"]))
@@ -2123,13 +2160,16 @@ class Supervisor:
         if file_state == "corrupt":
             return self._fail(b, "ERROR", f"Stage 2 판정 파일이 비어 있거나 현재 청크와 맞지 않거나 손상되어 수정하지 않습니다. "
                               f"파일과 checkpoint를 보존합니다: {stage2.DECISIONS}")
-        if stage2.fixes_used(self.store.runs(b["id"])) < stage2.MAX_FIXES and b["session_id"]:
-            self._s2_fix_problem[b["id"]] = diagnostic
+        used = stage2.fixes_used(self.store.runs(b["id"]), "s2_chunk_new",
+                                 ("s2_chunk_fix", "s2_chunk_format_fix"))
+        extra = bool(b["session_id"] and used >= stage2.MAX_FIXES and self._consume_s2_retry_fix(b, pending))
+        if b["session_id"] and (used < stage2.MAX_FIXES or extra):
+            self._s2_fix_problem[b["id"]] = stage2.compact_fix_diagnostic(diagnostic)
             self.store.update(b["id"], retries=0, retry_after=None, error=None)
             kind = "s2_chunk_format_fix" if file_state == "missing" else "s2_chunk_fix"
             return self._launch(self.store.batch(b["id"]), kind)
         return self._fail(b, "ERROR", "Stage 2 청크 판정이 저장 검증을 통과하지 못했고 자동 수정 기회가 없습니다 "
-                          f"(결정 파일 {stage2.DECISIONS} 보존; 오너 Retry는 같은 청크를 새 세션으로 다시 시작): {diagnostic[:600]}")
+                          f"(결정 파일 {stage2.DECISIONS} 보존; 명시적 Retry는 같은 세션의 추가 수정 1회만 허용): {diagnostic[:600]}")
 
     def _stage2_invalid_format(self, b, problem: str) -> None:
         """Reject a parse-level format failure to the same session without discarding a prior partial decision file."""
@@ -2185,6 +2225,8 @@ class Supervisor:
                 return
             return self._fail(b, "ERROR", "Stage 2 청크 실행은 종료됐지만 현재 청크 ID 헤더가 있는 판정 응답이 없고 시작 시점 대비 "
                               "checkpoint가 정확히 전진하지 않았거나 pending_chunk가 남아 있습니다. 자동 재진입 한도를 소진했거나 안전하지 않아 기록을 보존합니다.")
+        if format_problem := stage2.joined_decision_rows_problem(rows):
+            return self._stage2_invalid_format(b, format_problem)
         pending = self._stage2_pending(b)
         try:
             file_state = stage2.decision_file_state(b["worktree"], pending)
@@ -3202,7 +3244,7 @@ class Supervisor:
             context = self.git.stage2_inspect(Path(b["worktree"]), b["shard"], *stage2.split_key(b["batch"]), selected)
             if unknown:
                 context += "\n# Review-mentioned IDs outside this Part: " + ", ".join(unknown[:20]) + "\n"
-            if len(context.encode("utf-8")) <= 28_000:
+            if len(context.encode("utf-8")) <= 90_000:
                 return context
             page_paths = stage2.write_pages(Path(b["worktree"]), ".warroom-scratch/s2-fix-context.txt",
                                             stage2.chunk_pages(context))
@@ -3458,6 +3500,8 @@ class Supervisor:
             text = Path(log_file).read_text("utf-8", errors="replace")[-30000:]
         except OSError:
             text = ""
+        if getattr(self._adapter(producer), "name", None) == "claude":
+            return classify_claude_failure(log_file, text, self.cfg["quota_patterns"])
         if self._tiered(producer):
             if opencode_free_quota(log_file):
                 return "free_quota"

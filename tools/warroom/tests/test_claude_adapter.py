@@ -8,7 +8,8 @@ import unittest
 from pathlib import Path
 
 from tests.fakes import FakeAdapter, World
-from warroom.adapters import ClaudeCodeAdapter, Handle, ProcessAdapter, RunSpec, classify_failure
+from warroom.adapters import (ClaudeCodeAdapter, Handle, ProcessAdapter, RunSpec, classify_claude_failure,
+                              classify_failure)
 from warroom.config import DEFAULTS
 from warroom.shell import Result
 
@@ -217,15 +218,45 @@ class Classification(unittest.TestCase):
             ("No conversation found with session ID: 0000", "session_missing"),
             ("no rollout found for thread id 0000 (code -32600)", "session_missing"),
             ("Claude AI usage limit reached. Your limit resets at 5pm", "usage_limit"),
+            ("session limit reached; resets at midnight", "usage_limit"),
+            ("usage_limit_reached", "usage_limit"),
             ("5-hour limit reached", "usage_limit"),
+            ("weekly limit reached", "usage_limit"),
             ("Warning: Unknown --effort value 'bogus' — ignoring it", "effort"),
             ("Not logged in · Please run /login", "auth"),
+            ("rate_limit_error (HTTP 429)", "rate_limit"),
             ("Rate limit reached for model in the org", "rate_limit"),   # generic 429 keeps the backoff path
+            ("ECONNRESET while reading response", "network"),
             ("FreeUsageLimitError reached", "free_quota"),               # quota patterns still come first
         ]
         for text, want in cases:
             with self.subTest(text=text):
                 self.assertEqual(classify_failure(text, QUOTA), want)
+
+    def test_stream_json_uses_only_its_final_structured_result_for_usage_limits(self):
+        with tempfile.TemporaryDirectory() as d:
+            log = Path(d) / "claude.log"
+            cases = [
+                (stream(init(), {"type": "assistant", "api_error": "usage_limit_reached"},
+                        {**result(), "is_error": True, "api_error": "usage_limit_reached", "api_error_status": 429}),
+                 "usage_limit"),
+                (stream(init(), {**result(), "is_error": True, "api_error": "usage_limit_reached", "api_error_status": 429},
+                        result()), "unknown"),  # an earlier result is not the final result
+                (stream(init(), {**result(), "is_error": False, "api_error": "usage_limit_reached", "api_error_status": 429}),
+                 "rate_limit"),
+                (stream(init(), {**result(), "is_error": True, "api_error": "rate_limit_error", "api_error_status": 429}),
+                 "rate_limit"),
+                (stream(init(), {"type": "assistant", "message": {"content": [
+                    {"type": "text", "text": "usage limit reached; resets soon"}] }}, result()), "unknown"),
+                (stream(init(), {"type": "item.completed", "item": {"type": "command_execution",
+                    "output": "usage_limit_reached"}}, result()), "unknown"),
+                ('{"type":"result","is_error":true,"api_error":"usage_limit_reached","api_error_status":429\n',
+                 "usage_limit"),  # damaged JSON falls back to text evidence
+            ]
+            for raw, want in cases:
+                with self.subTest(want=want, raw=raw[:80]):
+                    log.write_text(raw, "utf-8")
+                    self.assertEqual(classify_claude_failure(log, "", QUOTA), want)
 
 
 class SupervisorStopsOnContradiction(unittest.TestCase):

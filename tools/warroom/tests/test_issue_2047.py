@@ -4,6 +4,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from tests.test_issue_1684 import S2
 from tests.test_issue_1908 import s2_world
@@ -105,7 +106,76 @@ class AnswerOnlyChunk(unittest.TestCase):
         self.assertEqual(self.decisions(b), f"chunk {CHUNK}\nc1 D first\n")
         b = self.finish(w, b, 1)
         self.assertEqual((self.decisions(b), b["run_kind"]), (GOOD + "\n", "s2_deterministic_finalize"))
-        self.assertEqual(stage2.fixes_used(w.store.runs(b["id"])), 2)
+        self.assertEqual(stage2.fixes_used(w.store.runs(b["id"]), "s2_chunk_new",
+                                           ("s2_chunk_fix", "s2_chunk_format_fix")), 2)
+
+    def test_usage_limit_retry_revalidates_current_rows_and_fixes_only_rejected_aliases(self):
+        quota = json.dumps({"type": "result", "subtype": "error_during_execution", "is_error": True,
+                            "api_error": "usage_limit_reached", "api_error_status": 429, "session_id": "s1",
+                            "usage": {"input_tokens": 0, "output_tokens": 0}, "result": ""}) + "\n"
+        w, b = self.world({"code": 0, "session": "s1", "text": answer(f"chunk {CHUNK}\nc1 D first")},
+                          {"code": 1, "session": "s1", "text": quota},
+                          {"code": 0, "session": "s1", "text": answer(f"chunk {CHUNK}\nc2 D second")})
+        w.adapter.name = "claude"
+        b = self.finish(w, b, 1)
+        self.assertEqual((b["run_kind"], self.decisions(b)), ("s2_chunk_fix", f"chunk {CHUNK}\nc1 D first\n"))
+        b = self.finish(w, b)
+        self.assertEqual(b["state"], "PAUSED")
+        usage_run = w.store.runs(b["id"])[0]
+        self.assertEqual((usage_run["exit_status"], usage_run["output_tokens"]), ("1", 0))
+        self.assertEqual(stage2.fixes_used(w.store.runs(b["id"]), "s2_chunk_new",
+                                            ("s2_chunk_fix", "s2_chunk_format_fix")), 0)
+        with mock.patch.object(stage2, "clear_decisions", wraps=stage2.clear_decisions) as clear:
+            self.assertTrue(control.retry(w.store, "claude", S2))
+            w.tick(2)
+            clear.assert_not_called()
+        fix = w.adapter.launches[-1]
+        self.assertEqual((w.store.batch(b["id"])["run_kind"], fix["kind"], fix.get("session")),
+                         ("s2_chunk_fix", "resume", "s1"))
+        self.assertIn("c2", fix["prompt"])
+        self.assertNotIn("c1 D first", fix["prompt"])
+        self.assertEqual(self.decisions(w.store.batch(b["id"])), f"chunk {CHUNK}\nc1 D first\n")
+        b = self.finish(w, b)
+        self.assertEqual((self.decisions(b), b["run_kind"]), (GOOD + "\n", "s2_deterministic_finalize"))
+
+    def test_current_decisions_without_session_stop_and_preserve_on_retry(self):
+        w, b = self.world()
+        w.adapter.stop(b["pid"])
+        w.store.finish_runs(b["id"], 1)
+        w.store.update(b["id"], pid=None, session_id=None, state="ERROR", paused_from="PRODUCING",
+                       run_kind="s2_chunk_fix", error="test")
+        stage2.write_decisions(b["worktree"], CHUNK, ["c1 D preserve"])
+        before = self.decisions(b)
+        self.assertTrue(control.retry(w.store, "claude", S2))
+        w.tick(2)
+        b = w.store.batch(b["id"])
+        self.assertEqual((b["state"], len(w.adapter.launches), self.decisions(b)), ("ERROR", 1, before))
+        self.assertIn("새 전체 재판정은 하지 않습니다", b["error"])
+
+    def test_failed_same_session_resume_with_current_decisions_does_not_start_a_fresh_session(self):
+        w, b = self.world({"code": 0, "session": "s1", "text": answer(f"chunk {CHUNK}\nc1 D keep")},
+                          {"code": 1, "session": "s1", "text": "No conversation found with session ID: old"})
+        w.adapter.name = "claude"
+        b = self.finish(w, b, 1)
+        before = self.decisions(b)
+        b = self.finish(w, b)
+        self.assertEqual((b["state"], len(w.adapter.launches), self.decisions(b)), ("PAUSED", 2, before))
+        self.assertIn("세션 ID를 찾지 못했습니다", b["error"])
+
+    def test_corrupt_decisions_stop_and_preserve_on_retry(self):
+        w, b = self.world()
+        w.adapter.stop(b["pid"])
+        w.store.finish_runs(b["id"], 1)
+        w.store.update(b["id"], pid=None, session_id="s1", state="ERROR", paused_from="PRODUCING",
+                       run_kind="s2_chunk_fix", error="test")
+        path = Path(b["worktree"]) / stage2.DECISIONS
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("chunk broken\nnot a row\n", "utf-8")
+        before = path.read_text("utf-8")
+        self.assertTrue(control.retry(w.store, "claude", S2))
+        w.tick(2)
+        b = w.store.batch(b["id"])
+        self.assertEqual((b["state"], len(w.adapter.launches), path.read_text("utf-8")), ("ERROR", 1, before))
 
     def test_format_failure_does_not_overwrite_an_empty_or_wrong_chunk_decisions_file(self):
         malformed = f"chunk {CHUNK} c1 R near 1 c2 R near 3"
@@ -149,33 +219,56 @@ class AnswerOnlyChunk(unittest.TestCase):
         b = self.finish(w, b)
         self.assertEqual((self.decisions(b), b["run_kind"]), (GOOD + "\n", "s2_deterministic_finalize"))
 
-    def test_two_failed_corrections_end_in_error_and_only_an_owner_retry_starts_a_new_session(self):
+    def test_two_failed_corrections_then_owner_retry_preserves_rows_and_grants_one_same_session_fix(self):
         bad = answer(f"chunk {CHUNK}\nc1 D first\nc2 R x BAD")
         w, b = self.world({"code": 0, "session": "s1", "text": bad}, {"code": 0, "session": "s1", "text": bad},
-                          {"code": 0, "session": "s1", "text": bad})
+                          {"code": 0, "session": "s1", "text": bad}, {"code": 0, "session": "s1", "text": answer(GOOD)})
         b = self.finish(w, b, 1)
         b = self.finish(w, b, 1)
         self.assertEqual((b["run_kind"], len(w.adapter.launches)), ("s2_chunk_fix", 3))
         b = self.finish(w, b)
         self.assertEqual((b["state"], len(w.adapter.launches)), ("ERROR", 3))   # 1 answer + 2 fixes, then preserved
         self.assertIn("c2", b["error"])
-        self.assertEqual(stage2.fixes_used(w.store.runs(b["id"])), 2)
+        self.assertEqual(stage2.fixes_used(w.store.runs(b["id"]), "s2_chunk_new", ("s2_chunk_fix", "s2_chunk_format_fix")), 2)
         w.tick(3)
         self.assertEqual((w.store.batch(b["id"])["state"], len(w.adapter.launches)), ("ERROR", 3))   # no automatic restart
-        w.adapter.plan.append({"code": 0, "session": "s2", "text": answer(GOOD)})
+        with mock.patch.object(stage2, "clear_decisions", wraps=stage2.clear_decisions) as clear:
+            self.assertTrue(control.retry(w.store, "claude", S2))
+            w.tick(2)
+            clear.assert_not_called()
+        fix = w.adapter.launches[-1]
+        self.assertEqual((fix["kind"], fix.get("session")), ("resume", "s1"))
+        self.assertEqual(w.store.batch(b["id"])["run_kind"], "s2_chunk_fix")
+        self.assertEqual(self.decisions(w.store.batch(b["id"])), f"chunk {CHUNK}\nc1 D first\nc2 R x BAD\n")
+        grant = json.loads(w.store.get(stage2.retry_fix_key(b["id"])))
+        self.assertEqual((grant["chunk_id"], grant["session_id"], grant["state"]), (CHUNK, "s1", "consumed"))
+        b = self.finish(w, b)
+        self.assertEqual((b["run_kind"], len(w.adapter.launches)), ("s2_deterministic_finalize", 4))
+        self.assertEqual(self.decisions(b), GOOD + "\n")
+
+    def test_consumed_operator_retry_grant_cannot_be_regranted_for_the_same_chunk_session(self):
+        bad = answer(f"chunk {CHUNK}\nc1 D first\nc2 R x BAD")
+        w, b = self.world({"code": 0, "session": "s1", "text": bad}, {"code": 0, "session": "s1", "text": bad},
+                          {"code": 0, "session": "s1", "text": bad}, {"code": 0, "session": "s1", "text": bad})
+        b = self.finish(w, b, 1)
+        b = self.finish(w, b, 1)
+        b = self.finish(w, b)
+        self.assertEqual(b["state"], "ERROR")
         self.assertTrue(control.retry(w.store, "claude", S2))
         w.tick(2)
-        again = w.adapter.launches[-1]
-        self.assertEqual((again["kind"], again.get("session")), ("start", None))
-        self.assertIn("<<<CHUNK_VIEW_BEGIN>>>", again["prompt"])
-        b = w.store.batch(b["id"])
-        self.assertEqual((b["run_kind"], stage2.fixes_used(w.store.runs(b["id"]))), ("s2_chunk_new", 0))
+        self.assertEqual((w.adapter.launches[-1]["kind"], w.adapter.launches[-1].get("session")), ("resume", "s1"))
+        self.assertEqual(json.loads(w.store.get(stage2.retry_fix_key(b["id"])))["state"], "consumed")
+        b = self.finish(w, b)
+        self.assertEqual((b["state"], len(w.adapter.launches)), ("ERROR", 4))
+        self.assertTrue(control.retry(w.store, "claude", S2))
+        w.tick(3)
+        self.assertEqual((w.store.batch(b["id"])["state"], len(w.adapter.launches)), ("ERROR", 4))
 
     def test_recovery_revalidates_only_the_current_chunks_decisions_without_a_failure_record(self):
         w, b = self.world({"code": 2, "session": "s1", "text": answer("작업 중")}, {"code": 0, "session": "s2"})
         b = self.finish(w, b, 1)
         self.assertEqual(b["state"], "PAUSED")
-        stage2.write_decisions(b["worktree"], "001-01-01-000", ["c1 D old", "c2 D old"])   # an older chunk's file
+        self.assertEqual(stage2.decision_file_state(b["worktree"], CHUNK), "missing")
         self.assertTrue(control.retry(w.store, "claude", S2))
         w.tick(2)
         resumed = w.adapter.launches[-1]   # "no response": the existing resume path, with the short request only
@@ -210,6 +303,28 @@ class FixHelpers(unittest.TestCase):
             with self.subTest(missing=missing):
                 self.assertIsNone(stage2.format_problem(missing, CHUNK))
 
+    def test_joined_decision_rows_are_detected_only_for_allowed_row_syntax(self):
+        for rows in (["c1 R near 1", "c2 D reason"], ["c1 D mentions c12 as a reference"],
+                     ["c1 D mentions c12 in a sentence that is not a row"]):
+            with self.subTest(rows=rows):
+                self.assertIsNone(stage2.joined_decision_rows_problem(rows))
+        joined = ["c1 R near 1 c2 R mood 3 T4 near 4", "c3 D reason c4 D another reason"]
+        problem = stage2.joined_decision_rows_problem(joined)
+        self.assertIn("2개 판정 행", problem)
+        self.assertIn("c2, c4", problem)
+        self.assertNotIn(joined[0], problem)
+
+    def test_large_repeated_save_diagnostics_keep_every_alias_when_compacted(self):
+        diagnostic = "chunk 001-01-01-001 not saved, checkpoint unchanged: 231 problem(s)\n" + "\n".join(
+            f"c{i} candidate-{i}: c{i}: relation needs 2, 4 or 5 fields after R  ->  c{i} R <type> <tier>"
+            for i in range(1, 232)) + "\ntypes: near/mood; tier: one digit 1..9"
+        compact = stage2.compact_fix_diagnostic(diagnostic)
+        self.assertLess(len(compact), len(diagnostic) * 2 // 5)
+        self.assertIn("relation needs 2, 4 or 5 fields after R (231 aliases)", compact)
+        for i in range(1, 232):
+            self.assertIn(f"c{i}: c{i} R <type> <tier>", compact)
+        self.assertIn("types: near/mood", compact)
+
     def test_decisions_file_state_distinguishes_absent_current_and_corrupt(self):
         with tempfile.TemporaryDirectory() as temp:
             path = Path(temp) / stage2.DECISIONS
@@ -227,8 +342,28 @@ class FixHelpers(unittest.TestCase):
         self.assertEqual((merged, ignored), (["c1 D a", "c2 D b", "c3 D c", "c4 D new"], ["c3 D HACK"]))
 
     def test_fix_count_starts_after_the_latest_new_session(self):
-        runs = [{"kind": k} for k in ("s2_chunk_format_fix", "s2_chunk_fix", "s2_chunk_resume", "s2_chunk_new", "s2_chunk_fix")]
-        self.assertEqual(stage2.fixes_used(runs), 2)
+        def run(kind, status, output):
+            return {"kind": kind, "exit_status": status, "output_tokens": output}
+
+        chunk = ("s2_chunk_new", ("s2_chunk_fix", "s2_chunk_format_fix"))
+        links = ("s2_links_new", ("s2_links_fix",))
+        self.assertEqual(stage2.fixes_used([run("s2_chunk_format_fix", "1", 0),
+                                            run("s2_chunk_fix", "2", 0),
+                                            run("s2_chunk_new", "0", 20)], *chunk), 0)
+        self.assertEqual(stage2.fixes_used([run("s2_chunk_format_fix", "0", 0), run("s2_chunk_fix", "0", 1),
+                                            run("s2_chunk_new", "0", 20)], *chunk), 2)
+        self.assertEqual(stage2.fixes_used([run("s2_chunk_fix", "0", 4), run("s2_chunk_fix", "1", 4),
+                                            run("s2_chunk_new", "0", 20)], *chunk), 2)
+        self.assertEqual(stage2.fixes_used([run("s2_chunk_fix", "1", None), run("s2_chunk_new", "0", 20)], *chunk), 1)
+        self.assertEqual(stage2.fixes_used([run("s2_chunk_fix", None, 0), run("s2_chunk_new", "0", 20)], *chunk), 1)
+        mixed = [run("s2_chunk_fix", "0", 4), run("s2_chunk_new", "0", 20),
+                 run("s2_chunk_fix", "0", 4), run("s2_chunk_new", "0", 20)]
+        self.assertEqual(stage2.fixes_used(mixed, *chunk), 1)
+        links_runs = [run("s2_links_fix", "0", 4), run("s2_chunk_fix", "0", 4),
+                      run("s2_links_new", "0", 20), run("s2_chunk_fix", "0", 4),
+                      run("s2_chunk_new", "0", 20)]
+        self.assertEqual(stage2.fixes_used(links_runs, *links), 1)
+        self.assertEqual(stage2.fixes_used(links_runs, *chunk), 2)
 
     def test_prompts(self):
         self.assertIn(CHUNK, prompts.stage2_chunk_resume(CHUNK))

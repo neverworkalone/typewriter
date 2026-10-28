@@ -967,7 +967,7 @@ def opencode_free_quota(log_file: str | Path) -> bool:
 
 # --- failure classification: a structured OpenCode Free-quota error is the ONLY trigger for Go ---
 def classify_failure(log_text: str, quota_patterns: list[str]) -> str:
-    """'free_quota' | 'effort' | 'rate_limit' | 'auth' | 'network' | 'unknown'.
+    """'free_quota' | 'usage_limit' | 'effort' | 'rate_limit' | 'auth' | 'network' | 'unknown'.
 
     Quota patterns come from config and are checked first; a bare 429 / rate
     limit is never quota exhaustion, and anything unrecognised stays 'unknown'
@@ -983,7 +983,7 @@ def classify_failure(log_text: str, quota_patterns: list[str]) -> str:
         return "effort"
     if re.search(r"no conversation found with session id|no rollout found for thread id|thread/resume failed", low):
         return "session_missing"   # never answered by a silent new session: the worktree and PR are kept
-    if re.search(r"usage limit|5-hour limit|weekly limit", low):
+    if re.search(r"session limit|usage[ _]limit|5-hour limit|weekly limit", low):
         return "usage_limit"       # a plan limit is not retried or switched automatically
     if re.search(r"\b429\b|rate.?limit|too many requests", low):
         return "rate_limit"
@@ -992,3 +992,56 @@ def classify_failure(log_text: str, quota_patterns: list[str]) -> str:
     if re.search(r"econnreset|etimedout|enotfound|network|socket hang up|connection (refused|reset)", low):
         return "network"
     return "unknown"
+
+
+def classify_claude_failure(log_file: str | Path, fallback_text: str, quota_patterns: list[str]) -> str:
+    """Classify Claude's stream-json errors without treating model/tool text as provider errors.
+
+    Only the final structured `result` event can prove the exact usage-limit API error. If that evidence is absent,
+    use the existing text fallback on plain or damaged log lines plus structured error metadata; omit valid assistant
+    and tool-output events so their ordinary text cannot be mistaken for a quota response.
+    """
+    final_result = None
+    saw_json = False
+    fallback_lines: list[str] = []
+    try:
+        with open(log_file, encoding="utf-8", errors="replace") as fh:
+            for line in fh:
+                stripped = line.strip()
+                if not stripped:
+                    continue
+                try:
+                    event = json.loads(stripped)
+                except ValueError:
+                    fallback_lines.append(stripped)
+                    continue
+                if not isinstance(event, dict):
+                    fallback_lines.append(stripped)
+                    continue
+                saw_json = True
+                if event.get("type") == "result":
+                    final_result = event
+                error = event.get("error")
+                if isinstance(error, str):
+                    fallback_lines.append(error)
+                elif isinstance(error, dict):
+                    for key in ("type", "code", "status", "message"):
+                        value = error.get(key)
+                        if isinstance(value, (str, int)) and not isinstance(value, bool):
+                            fallback_lines.append(str(value))
+    except OSError:
+        return classify_failure(fallback_text, quota_patterns)
+
+    if (final_result is not None and final_result.get("is_error") is True
+            and final_result.get("api_error") == "usage_limit_reached"):
+        return "usage_limit"
+    if final_result is not None:
+        api_error = final_result.get("api_error")
+        if isinstance(api_error, str) and api_error != "usage_limit_reached":
+            fallback_lines.append(api_error)
+        status = final_result.get("api_error_status")
+        if isinstance(status, int) and not isinstance(status, bool):
+            fallback_lines.append(str(status))
+    if not saw_json:
+        return classify_failure("\n".join(fallback_lines) or fallback_text, quota_patterns)
+    return classify_failure("\n".join(fallback_lines), quota_patterns)
