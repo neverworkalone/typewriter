@@ -360,6 +360,50 @@ function coalesceOrthographicAliasRelations(checkpoint, relations, relationCandi
   return { relations: selectedRelations, relationCandidates: selectedCandidates };
 }
 
+function coalesceIdenticalSensePairRelations(relations, relationCandidates) {
+  const selectedRelations = [];
+  const selectedCandidates = [];
+  const relationIndexByPair = new Map();
+  for (const [index, relation] of relations.entries()) {
+    const candidateKey = relationCandidates[index];
+    if ('text' in relation) {
+      selectedRelations.push(relation);
+      selectedCandidates.push(candidateKey);
+      continue;
+    }
+
+    const pair = idPairKey(relation.source_sense_id, relation.target_sense_id);
+    const selectedIndex = relationIndexByPair.get(pair);
+    if (selectedIndex === undefined) {
+      relationIndexByPair.set(pair, selectedRelations.length);
+      selectedRelations.push(relation);
+      selectedCandidates.push(candidateKey);
+      continue;
+    }
+
+    const selected = selectedRelations[selectedIndex];
+    const sameJudgment = selected.source_record_id === relation.source_record_id
+      && selected.target_record_id === relation.target_record_id
+      && selected.type === relation.type
+      && selected.relevance === relation.relevance
+      && selected.reverse_type === relation.reverse_type
+      && selected.reverse_relevance === relation.reverse_relevance;
+    if (!sameJudgment) {
+      // Preserve conflicting decisions so the common merge-conflict gate can reject them.
+      selectedRelations.push(relation);
+      selectedCandidates.push(candidateKey);
+      continue;
+    }
+
+    selectedRelations[selectedIndex] = {
+      ...selected,
+      candidate_forms: [...new Set([...selected.candidate_forms, ...relation.candidate_forms])],
+      reverse_candidate_forms: [...new Set([...selected.reverse_candidate_forms, ...relation.reverse_candidate_forms])],
+    };
+  }
+  return { relations: selectedRelations, relationCandidates: selectedCandidates };
+}
+
 function assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, newRelations, newRelationCandidates, newDrops, index) {
   const exactRelations = new Set(existingRelations.map(stableRow));
   const exactDrops = new Set(existingDrops.map(stableRow));
@@ -397,7 +441,8 @@ function assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, ne
     }
   }
   const appendRelations = [];
-  const coalesced = coalesceOrthographicAliasRelations(checkpoint, newRelations, newRelationCandidates);
+  const orthographicCoalesced = coalesceOrthographicAliasRelations(checkpoint, newRelations, newRelationCandidates);
+  const coalesced = coalesceIdenticalSensePairRelations(orthographicCoalesced.relations, orthographicCoalesced.relationCandidates);
   let relationsChanged = false;
   for (const [rowIndex, row] of coalesced.relations.entries()) {
     const candidateKey = coalesced.relationCandidates[rowIndex];
