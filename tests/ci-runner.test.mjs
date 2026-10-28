@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
@@ -9,10 +9,82 @@ import { fileURLToPath } from 'node:url';
 import { CI_CATEGORIES, registerCheck } from '../scripts/ci/registry.mjs';
 import { classifyDeepGateDiff } from '../scripts/ci/deep-gate.mjs';
 import { runChecks, runCli, runLevel } from '../scripts/ci/run-category.mjs';
-import { loadCanonicalContext } from '../scripts/validate/canonical-context.mjs';
+import { createCanonicalContext, loadCanonicalContext } from '../scripts/validate/canonical-context.mjs';
 import { sampleCanonicalRecordLine, syntheticRelationPacket } from './helpers/synthetic-data.mjs';
 
 const TEST_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
+
+test('approved-relations CI check resolves selected spellings from the complete Canonical form index', async (t) => {
+  const repositoryDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-ci-approved-relations-'));
+  t.after(() => rm(repositoryDirectory, { recursive: true, force: true }));
+  const canonicalDirectory = path.join(repositoryDirectory, 'data/canonical');
+  const relationsDirectory = path.join(repositoryDirectory, 'data/relations');
+  await mkdir(relationsDirectory, { recursive: true });
+
+  const canonicalRecord = (id, lemma, searchForms, shard) => ({
+    filePath: path.join(canonicalDirectory, `stdict-0${shard}.jsonl`),
+    record: {
+      id,
+      record_type: 'entry',
+      role: 'start',
+      candidate_id: id,
+      lemma,
+      search_forms: searchForms,
+      senses: [{ id: `${id}-s1`, pos: 'noun', gloss: `${lemma}의 뜻.` }],
+    },
+  });
+  const canonicalContext = createCanonicalContext({
+    fileCount: 2,
+    records: [
+      canonicalRecord('w226284', '앱스트랙트 발레', ['앱스트랙트 발레', '추상무용'], '001'),
+      canonicalRecord('w134325', '발레', ['발레', '무용극'], '098'),
+      canonicalRecord('w300001', '무용극', ['무용극'], '098'),
+      canonicalRecord('w300002', '추상무용', ['추상무용'], '098'),
+      canonicalRecord('w300003', '겹친 표기', ['겹친 표기', '겹친표기'], '098'),
+      canonicalRecord('w300004', '겹친표기', ['겹친표기'], '098'),
+    ],
+  }, { canonicalDirectory });
+  const writeRelations = async (rows) => writeFile(
+    path.join(relationsDirectory, 'relation-001.jsonl'),
+    `${rows.map((row) => JSON.stringify(row)).join('\n')}\n`,
+  );
+  const assignedRelation = (overrides = {}) => ({
+    source_record_id: 'w226284',
+    source_sense_id: 'w226284-s1',
+    target_record_id: 'w134325',
+    target_sense_id: 'w134325-s1',
+    type: 'near',
+    relevance: 4,
+    reverse_type: 'association',
+    reverse_relevance: 6,
+    candidate_assignment_version: 1,
+    candidate_forms: ['발레', '무용극'],
+    reverse_candidate_forms: ['앱스트랙트 발레', '추상무용'],
+    ...overrides,
+  });
+  const approvedRelationsCheck = CI_CATEGORIES.relations.checks.find(
+    ({ inProcess }) => inProcess === 'approved-relations',
+  );
+  assert.ok(approvedRelationsCheck, 'the regression must use the registered approved-relations CI check');
+  const runApprovedRelationsCheck = () => runChecks(
+    [approvedRelationsCheck],
+    { canonicalContext },
+    { repositoryDirectory, log: () => {} },
+  );
+
+  await writeRelations([assignedRelation()]);
+  await runApprovedRelationsCheck();
+
+  await writeRelations([assignedRelation({ candidate_forms: ['등록되지 않은 표기'] })]);
+  await assert.rejects(runApprovedRelationsCheck, /candidate_forms candidate "등록되지 않은 표기" does not resolve to w134325/u);
+
+  await writeRelations([assignedRelation({
+    target_record_id: 'w300003',
+    target_sense_id: 'w300003-s1',
+    candidate_forms: ['겹친표기'],
+  })]);
+  await assert.rejects(runApprovedRelationsCheck, /candidate_forms candidate "겹친표기" does not resolve to w300003/u);
+});
 
 function workflowStepRun(workflow, stepName, { changesOutcome, deepMode, runLevel, runDeep }) {
   const step = workflow.split(`      - name: ${stepName}\n`)[1]
