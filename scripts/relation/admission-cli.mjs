@@ -24,6 +24,7 @@ import {
   shardRelationPath,
   validateRelationRows,
   verifyAccounting,
+  AdmissionVerifyError,
 } from './admission.mjs';
 
 const USAGE = `usage:
@@ -32,7 +33,7 @@ const USAGE = `usage:
   node scripts/relation/admission-cli.mjs read-chunk --checkpoint <file.json> [--max-candidates 250] [--source-sense-id <id> --candidate <text>] [--format json|compact] [--out <file>]
   node scripts/relation/admission-cli.mjs save-chunk --checkpoint <file.json> --in <decisions> [--format json|compact]
   node scripts/relation/admission-cli.mjs merge --checkpoint <file.json>
-  node scripts/relation/admission-cli.mjs verify --shard 001 [--batch 01 [--part 01]] [--checkpoint <file.json>] [--allow-partial]`;
+  node scripts/relation/admission-cli.mjs verify --shard 001 [--batch 01 [--part 01]] [--checkpoint <file.json>] [--allow-partial] [--json]`;
 
 const CHECKPOINT_VERSION = 1;
 const DEFAULT_CHUNK_CANDIDATES = 250;
@@ -515,7 +516,7 @@ function assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, ne
 
 function parseArgs(argv) {
   const [command, ...rest] = argv;
-  const options = { command, shard: null, batch: null, part: null, out: null, checkpoint: null, input: null, maxCandidates: DEFAULT_CHUNK_CANDIDATES, allowPartial: false, sourceSenseId: null, candidateText: null, format: null };
+  const options = { command, shard: null, batch: null, part: null, out: null, checkpoint: null, input: null, maxCandidates: DEFAULT_CHUNK_CANDIDATES, allowPartial: false, json: false, sourceSenseId: null, candidateText: null, format: null };
   for (let index = 0; index < rest.length; index += 1) {
     const flag = rest[index];
     if (flag === '--shard') options.shard = rest[++index];
@@ -528,6 +529,7 @@ function parseArgs(argv) {
     else if (flag === '--source-sense-id') options.sourceSenseId = rest[++index];
     else if (flag === '--candidate') options.candidateText = rest[++index];
     else if (flag === '--allow-partial') options.allowPartial = true;
+    else if (flag === '--json') options.json = true;
     else if (flag === '--format') options.format = rest[++index];
     else throw new Error(`unknown argument ${flag}\n${USAGE}`);
   }
@@ -544,6 +546,7 @@ function parseArgs(argv) {
   if (!Number.isInteger(options.maxCandidates) || options.maxCandidates < 1) throw new Error(`--max-candidates must be a positive integer\n${USAGE}`);
   if (['read-chunk', 'save-chunk', 'merge'].includes(command) && !options.checkpoint) throw new Error(`${command} requires --checkpoint\n${USAGE}`);
   if (command === 'save-chunk' && !options.input) throw new Error(`save-chunk requires --in\n${USAGE}`);
+  if (options.json && command !== 'verify') throw new Error(`--json is only valid for verify\n${USAGE}`);
   if (options.allowPartial && !['prepare', 'verify'].includes(command)) throw new Error(`--allow-partial is only valid for prepare/verify\n${USAGE}`);
   if ((options.sourceSenseId !== null || options.candidateText !== null)
       && (command !== 'read-chunk' || typeof options.sourceSenseId !== 'string' || !options.sourceSenseId
@@ -677,6 +680,10 @@ export async function run(argv, { root } = {}) {
   const counts = verifyAccounting({ canonicalRows, candidateFiles, relationRows, dropRows, otherRelationRows: others, index, scopeRows });
   if (verifiedCheckpoint) {
     assertCheckpointMerged(verifiedCheckpoint, relationRows, dropRows);
+  }
+  if (options.json) {
+    console.log(JSON.stringify({ version: 1, ok: true, counts }));
+    return counts;
   }
   console.log(`Relation Admission accounting valid for shard ${options.shard}${options.batch ? ` batch ${options.batch}` : ''}${options.part ? ` part ${options.part}` : ''}: ${JSON.stringify(counts)}`);
   return counts;
@@ -1124,7 +1131,14 @@ function assertCheckpointMerged(checkpoint, relationRows, dropRows) {
 }
 
 if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url) {
-  run(process.argv.slice(2)).catch((error) => {
+  const argv = process.argv.slice(2);
+  run(argv).catch((error) => {
+    // `verify --json`: only a deterministic rows/accounting failure is machine-classifiable (exit 2, one JSON line).
+    if (argv[0] === 'verify' && argv.includes('--json') && error instanceof AdmissionVerifyError) {
+      console.log(JSON.stringify({ version: 1, ok: false, family: error.family, errors: error.errors, total: error.total }));
+      process.exitCode = 2;
+      return;
+    }
     console.error(error.message);
     process.exitCode = 1;
   });

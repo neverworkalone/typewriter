@@ -11,12 +11,14 @@ did, so a finished Part is never re-verified or re-produced). Past file existenc
 """
 from __future__ import annotations
 
+import hashlib
 import math
 import re
 from dataclasses import dataclass
 from pathlib import Path
 
 from . import batches
+from .gitops import GitError
 from . import progress
 from . import prompts
 from .store import STAGE2_METHOD
@@ -39,10 +41,72 @@ class Part:
 
 
 @dataclass(frozen=True)
+class VerifyFailure:
+    """A deterministic, reproduced rows/accounting verify failure of a completed Batch/shard (#2154)."""
+    kind: str            # batch | shard
+    shard: str
+    batch: str | None
+    sha: str             # the master commit it was reproduced on
+    command: str
+    family: str          # rows | accounting
+    errors: tuple[str, ...]   # the complete, untruncated list
+    fingerprint: str
+
+    @property
+    def total(self) -> int:
+        return len(self.errors)
+
+    @property
+    def defect_class(self) -> str:
+        return verify_class(self.kind, self.shard, self.batch)
+
+    @property
+    def scope(self) -> str:
+        return scope_label(self.kind, self.shard, self.batch)
+
+
+@dataclass(frozen=True)
 class Choice:
-    status: str          # part | wait | done | stop
+    status: str          # part | wait | done | stop | verify_failed
     part: Part | None = None
     note: str = ""
+    failure: VerifyFailure | None = None
+
+
+def scope_label(kind: str, shard: str, batch: str | None) -> str:
+    return f"{shard}_{batch}" if kind == "batch" else shard
+
+
+_RELATION_FILE = re.compile(r"data/relations/relation-\d{3}\.jsonl")
+_SHARED_VERIFY_INPUTS = ("data/canonical/", "scripts/relation/", "scripts/build/gloss-arrow-reference.mjs",
+                         "src/runtime/dictionary-contract.js")
+
+
+def scope_inputs_changed(paths, shard: str) -> bool:
+    """True if any changed path is something `admission-cli verify` for this shard reads (see `choose`)."""
+    own = (f"data/relation-drops/drop-{shard}.jsonl", f"data/relation-candidates/{shard}/")
+    # verify also loads every OTHER shard's approved Relation file (loadApprovedRelations), so any of them counts
+    return any(p.startswith(own + _SHARED_VERIFY_INPUTS) or _RELATION_FILE.fullmatch(p) for p in paths)
+
+
+def stop_head(kind: str, shard: str, batch: str | None) -> str:
+    return (f"Batch {shard}_{batch}의 모든 Part가 끝났지만 Batch verify가 실패했습니다" if kind == "batch"
+            else f"샤드 {shard}의 모든 Part가 끝났지만 shard verify가 실패했습니다")
+
+
+def verify_class(kind: str, shard: str, batch: str | None) -> str:
+    """Defect class of the one active block of a verify scope: `stage2-verify-batch-001-01` / `stage2-verify-shard-001`."""
+    return f"stage2-verify-batch-{shard}-{batch}" if kind == "batch" else f"stage2-verify-shard-{shard}"
+
+
+def verify_command(kind: str, shard: str, batch: str | None) -> str:
+    return f"node scripts/relation/admission-cli.mjs verify --shard {shard}" + (f" --batch {batch}" if kind == "batch" else "") + " --json"
+
+
+def fingerprint(kind: str, shard: str, batch: str | None, family: str, errors) -> str:
+    """Cause identity: scope + family + the sorted COMPLETE error list. Never the master SHA."""
+    text = "\n".join([scope_label(kind, shard, batch), family, *sorted(errors)])
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
 
 
 def batch_key(batch: str, part: str) -> str:
@@ -272,14 +336,75 @@ def inputs_ready(cands: dict[str, int], shard: str, batch: str, records: int) ->
     return all(any(m == method and n == records for (m, _), n in have.items()) for method in ("c", "d"))
 
 
-def choose(runner, root, env, *, ref: str, sha: str, open_prs: list[dict], verify, kv, pin: str = "") -> Choice:
+def choose(runner, root, env, *, ref: str, sha: str, open_prs: list[dict], verify, kv, pin: str = "",
+           outcome=None, blocks=None, changed=None) -> Choice:
     """The earliest ready, incomplete Part in canonical order (a pinned shard only, for a Single run).
 
     `verify(kind, shard, batch, part) -> (ok, tail)` runs the exact admission verify on the latest master; `kv` caches
     its successes. A Part whose Stage 1 inputs are not on master, or whose shard has an open Stage 2 PR, is waited
     for, never skipped by changing the Single shard. Batch and shard verify close out their last Part. Raises
     BatchError / GitError on unreadable master data or an open PR with an unknown file list (never "no PR").
+
+    Batch/shard close-out (#2154): with `outcome(kind, shard, batch, part) -> VerifyOutcome` a deterministic verify
+    failure reproduced on the same SHA becomes `Choice("verify_failed")`, and `blocks` (the Store) holds the one active
+    block per scope: while it is current on this SHA the scope waits; a new SHA is re-verified exactly, and only a
+    success releases it. Without `outcome` a failure stops the Line as before.
+
+    A cached Batch/shard success is the master SHA it was verified on. On another SHA it stands only while
+    `changed(old, new)` shows nothing that verify reads for that shard (any Relation file, its own Drop/Candidate files, canonical
+    data, shared verify code); otherwise the exact verify runs again, so a later regression is found and a RELEASED scope
+    can fail as a new event. Every shard's Relation file counts, since verify reads all of them.
     """
+    diffs: dict[str, list[str] | None] = {}
+
+    def verified(key, shard):
+        """True while the scope's cached success still holds on `sha`."""
+        old = kv.get(key)
+        if not old:
+            return False
+        if old == sha or changed is None:
+            return True
+        if old not in diffs:
+            try:
+                diffs[old] = changed(old, sha)
+            except GitError:
+                diffs[old] = None   # the old commit is unavailable: unknown, so verify again
+        paths = diffs[old]
+        if paths is None or scope_inputs_changed(paths, shard):
+            return False
+        kv.set(key, sha)   # nothing it reads changed: the success carries over to this commit
+        return True
+
+    def close(kind, shard, batch):
+        """None once the scope's exact verify succeeded (cached), else the Choice that holds the Line."""
+        key = ok_key(shard, batch) if kind == "batch" else ok_key(shard, None)
+        if outcome is None:
+            ok, tail = verify(kind, shard, batch, None)
+            if not ok:
+                return Choice("stop", note=f"{stop_head(kind, shard, batch)}: {tail}")
+            kv.set(key, sha)
+            return None
+        block = blocks.active_verify(verify_class(kind, shard, batch))
+        if block is not None and block["last_sha"] == sha:   # already verified on this exact master: wait, never re-verify
+            return Choice("wait", note=f"urgent Issue #{block['issue_number']} 복구 대기" if block["issue_number"]
+                          else f"{scope_label(kind, shard, batch)} verify 실패 차단(Issue 등록 대기)")
+        first = outcome(kind, shard, batch, None)
+        if first.ok:
+            if block is not None:
+                blocks.release_verify(block["id"], sha, key)
+            else:
+                kv.set(key, sha)
+            return None
+        if first.failure is None:
+            return Choice("stop", note=f"{stop_head(kind, shard, batch)} (결정적 rows/accounting 실패로 분류되지 않음 — 운영자 확인): {first.tail}")
+        again = outcome(kind, shard, batch, None)   # the same SHA must reproduce the same cause
+        fps = [fingerprint(kind, shard, batch, o.failure["family"], o.failure["errors"]) if o.failure else None for o in (first, again)]
+        if again.ok or fps[0] != fps[1]:
+            return Choice("stop", note=f"{stop_head(kind, shard, batch)} (같은 SHA에서 같은 원인으로 재현되지 않음 — 운영자 확인): {again.tail or first.tail}")
+        f = first.failure
+        return Choice("verify_failed", note=first.tail, failure=VerifyFailure(
+            kind, shard, batch, sha, verify_command(kind, shard, batch), f["family"], tuple(f["errors"]), fps[0]))
+
     canon = batches._counts(runner, root, env, ref, "data/canonical/stdict-*.jsonl")
     cands = batches._candidate_counts(runner, root, env, ref)
     occupied: set[str] = set()
@@ -312,16 +437,12 @@ def choose(runner, root, env, *, ref: str, sha: str, open_prs: list[dict], verif
                 kv.set(ok_key(shard, batch, part), sha)
             open_ = any(not kv.get(ok_key(shard, batch, part)) for part in parts)
             batches_open.append(open_)
-            if not open_ and not kv.get(ok_key(shard, batch)):
-                ok, tail = verify("batch", shard, batch, None)
-                if not ok:
-                    return Choice("stop", note=f"Batch {shard}_{batch}의 모든 Part가 끝났지만 Batch verify가 실패했습니다: {tail}")
-                kv.set(ok_key(shard, batch), sha)
-        if batches_open and not any(batches_open) and not kv.get(ok_key(shard, None)):
-            ok, tail = verify("shard", shard, None, None)
-            if not ok:
-                return Choice("stop", note=f"샤드 {shard}의 모든 Part가 끝났지만 shard verify가 실패했습니다: {tail}")
-            kv.set(ok_key(shard, None), sha)
+            if not open_ and not verified(ok_key(shard, batch), shard):
+                if (held := close("batch", shard, batch)) is not None:
+                    return held
+        if batches_open and not any(batches_open) and not verified(ok_key(shard, None), shard):
+            if (held := close("shard", shard, None)) is not None:
+                return held
     if waiting:
         return Choice("wait", note="; ".join(dict.fromkeys(waiting)))
     return Choice("done", note="더 이상 진행할 Stage 2 Part가 없습니다." if not pin else f"샤드 {pin}의 Stage 2 Part가 모두 완료되었습니다.")
