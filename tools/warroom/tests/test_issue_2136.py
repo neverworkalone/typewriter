@@ -66,7 +66,7 @@ class Stage2Reentry(unittest.TestCase):
         self.assertEqual((b["state"], b["run_kind"], w.adapter.launches[-1]["kind"]),
                          ("PRODUCING", "s2_chunk_new", "start"))
         checkpoint = stage2.checkpoint(b["worktree"], "001", "01-01")
-        self.assertEqual(checkpoint["pending_chunk"]["chunk_id"], CHUNK)
+        self.assertEqual(checkpoint["pending_chunk"], CHUNK)
         b = self.finish(w, b)
         self.assertEqual((b["run_kind"], len(w.adapter.launches)), ("s2_finalize_new", 2))
 

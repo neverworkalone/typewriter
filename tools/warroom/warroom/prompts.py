@@ -20,7 +20,7 @@ ALLOWED = {"a": _PRODUCE, "b": _PRODUCE, "c": _PRODUCE, "d": _PRODUCE, "recovery
            "fix": {"pr", "head", "branch", "review_events", "session_note", "source_context"},
            "m": _MAINTAIN, "m_recovery": _MAINTAIN, "s2": _STAGE2, "s2_chunk": _STAGE2, "s2_recovery": _STAGE2,
            "s2_chunk_resume": {"chunk_id"}, "s2_chunk_fix": {"chunk_id", "problem"},
-           "c_chunk": _C_CHUNK, "c_chunk_resume": {"chunk_no", "checkpoint", "remaining"},
+           "c_chunk": _C_CHUNK, "c_chunk_resume": {"chunk_no", "checkpoint", "remaining", "session_note"},
            "d_chunk": {"batch", "branch", "chunk_no", "session_note", "chunk_input"}, "d_chunk_resume": {"chunk_no"}, "d_chunk_fix": {"chunk_no", "decisions", "problem"},
            "a_chunk": _AB_CHUNK, "b_chunk": _AB_CHUNK, "ab_chunk_retry": {"chunk_no", "requested", "problem", "chunk_input"}}
 MAINTENANCE_METHOD = "m"
