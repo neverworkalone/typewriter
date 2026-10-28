@@ -176,9 +176,9 @@ test('hadaPrefetchForms: exact Hangul -하다 bases use POS-scoped forms and omi
 
   const existing = rec('w4', '공부하다', [['verb', '배우고 익히다.']], { search_forms: ['공부하다', '공부해', '말하다'] });
   assert.equal(hadaPrefetchForms(existing).filter((form) => form === '공부해').length, 0, 'Canonical forms are not added twice');
-  assert.equal(hadaPrefetchForms(rec('w5', '배가 내박하다', [['verb', '뜻.']])), [], 'phrases are not treated as lexical bases');
-  assert.equal(hadaPrefetchForms(rec('w6', '행복스럽다', [['adjective', '뜻.']])), [], 'other endings are out of scope');
-  assert.equal(hadaPrefetchForms(rec('w7', '유용하다', [['noun', '뜻.']])), [], 'unsupported POS is not expanded');
+  assert.deepEqual(hadaPrefetchForms(rec('w5', '배가 내박하다', [['verb', '뜻.']])), [], 'phrases are not treated as lexical bases');
+  assert.deepEqual(hadaPrefetchForms(rec('w6', '행복스럽다', [['adjective', '뜻.']])), [], 'other endings are out of scope');
+  assert.deepEqual(hadaPrefetchForms(rec('w7', '유용하다', [['noun', '뜻.']])), [], 'unsupported POS is not expanded');
 });
 
 test('prepare keeps -하다 prefetch opt-in, shows combined evidence, and records the opt-in through the CLI', async () => {
