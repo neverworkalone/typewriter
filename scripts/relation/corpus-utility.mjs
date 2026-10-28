@@ -34,6 +34,18 @@ export function openReadonlyDb(databasePath) {
 
 const encodeCursor = (state) => Buffer.from(JSON.stringify(state), 'utf8').toString('base64url');
 
+export class InvalidCursorError extends Error {
+  constructor(message) {
+    super(`INVALID_CURSOR: ${message}`);
+    this.name = 'InvalidCursorError';
+    this.code = 'INVALID_CURSOR';
+  }
+}
+
+function invalidCursor(message) {
+  return new InvalidCursorError(message);
+}
+
 const corpusIdentity = new WeakMap();
 function getCorpusIdentity(database) {
   if (!corpusIdentity.has(database)) {
@@ -52,8 +64,15 @@ const maxRowidOf = (database) => getCorpusIdentity(database).maxRowid;
 export const corpusScanRows = (database) => Math.max(1, maxRowidOf(database));
 
 function decodeCursor(cursor, formsKey, formCount, maxRowid) {
+  if (typeof cursor !== 'string' || !/^[A-Za-z0-9_-]+$/u.test(cursor)) {
+    throw invalidCursor('cursor is not a Base64URL token');
+  }
   try {
-    const state = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8'));
+    const json = Buffer.from(cursor, 'base64url').toString('utf8');
+    if (Buffer.from(json, 'utf8').toString('base64url') !== cursor) throw new Error('non-canonical Base64URL');
+    const state = JSON.parse(json);
+    if (state === null || typeof state !== 'object' || Array.isArray(state)
+      || Object.keys(state).some((key) => !['id', 'form', 'after', 'p', 'seen'].includes(key))) throw new Error('invalid cursor fields');
     if (state.id === formsKey && Number.isInteger(state.form) && state.form >= 0 && state.form < formCount
       && Number.isInteger(state.after) && state.after >= 0 && state.after <= maxRowid) {
       // Cursors created before paragraph de-duplication have no `p`; they remain valid and resume safely.
@@ -67,8 +86,20 @@ function decodeCursor(cursor, formsKey, formCount, maxRowid) {
         || new Set(seen).size !== seen.length) throw new Error('invalid seen paragraph IDs');
       return { ...state, seen };
     }
-  } catch { /* fall through */ }
-  throw new Error('search cursor does not belong to this exact form list, boundary option and corpus index');
+  } catch (error) {
+    if (error instanceof InvalidCursorError) throw error;
+    throw invalidCursor('cursor structure is malformed or does not match this exact form list, boundary option and corpus index');
+  }
+  throw invalidCursor('cursor does not belong to this exact form list, boundary option and corpus index');
+}
+
+/** Validate a supplied cursor against cached metadata for an already-open corpus connection. */
+export function validateSearchCursor(database, forms, { boundary, cursor }) {
+  if (cursor === null || cursor === undefined) return null;
+  const list = normalizeForms(forms);
+  if (list.length === 0) throw invalidCursor('a cursor requires at least one search form');
+  const formsKey = searchId(database, list, boundary);
+  return decodeCursor(cursor, formsKey, list.length, maxRowidOf(database));
 }
 
 /**
@@ -139,9 +170,18 @@ export function searchContexts(database, forms, {
   const items = [];
   let scanned = 0;
   let seenParagraphs = new Set();
+  let formsKey;
+  let state;
   try {
-    const formsKey = searchId(database, list, boundary);
-    const state = cursor ? decodeCursor(cursor, formsKey, list.length, maxRowidOf(database)) : { id: formsKey, form: 0, after: 0 };
+    formsKey = searchId(database, list, boundary);
+    state = cursor === null || cursor === undefined
+      ? { id: formsKey, form: 0, after: 0 }
+      : decodeCursor(cursor, formsKey, list.length, maxRowidOf(database));
+  } catch (error) {
+    if (error instanceof InvalidCursorError) throw error;
+    return { status: 'SEARCH_FAILED', error: error.message, items, next_cursor: null, scanned_rows: scanned };
+  }
+  try {
     seenParagraphs = new Set(state.seen ?? []);
     // maxChars bounds the whole rendered response (renderContexts): header + every item line + excerpt.
     const budget = Math.max(maxChars, MIN_MAX_CHARS);
