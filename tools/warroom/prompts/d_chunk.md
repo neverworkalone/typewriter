@@ -24,7 +24,7 @@ view의 `## `마다 Canonical record 하나다: 표제어·검색형, 그 record
   JSON
   ```
   `forms`를 생략하면 해당 record의 Canonical 검색형을 쓴다. `boundary`·`cursor`·`contexts` 생략 시 각각 기본 경계·첫 페이지·4개 문맥을 쓴다. 결과의 `requests`에서 각 요청과 `result_id`를 대응하고, `results`의 `shared_by`와 `contexts`를 읽는다. 검색형·경계·cursor·문맥 수 등 결과에 영향을 주는 옵션이 모두 같으면 **record ID가 달라도** 한 번만 검색하고 문맥을 한 번만 출력하며, `shared_by`에 연결된 record마다 증거를 한 번 기록한다. 같은 record의 여러 Sense는 해당 record 증거를 공유하지만, source-sense 판독과 후보 발굴은 각각 독립 수행한다. 다른 조건은 합치지 않는다.
-  CLI는 요청별 문맥 수를 채우거나 검색 완료 또는 요청 스캔 한도에 도달할 때까지 내부 페이지를 이어 읽는다. 검색 한도에 도달하면 실제 모은 문맥과 유효한 `next_cursor`를 `LIMITED`로 돌려준다. 한 번의 `search-batch`에는 별도 합산 스캔 한도가 있다. 상위 `PARTIAL`은 이 합산 한도 때문에 일부 요청을 시작하지 않았다는 뜻이다. 그 결과는 `DEFERRED`이며, 해당 결과의 `retry_requests`에 들어 있는 원래 요청을 모아 다음 호출의 `requests` 배열에 그대로 넣는다. 이 요청은 아직 검색되지 않았고 증거도 기록되지 않는다. 다른 완료·진행 결과는 함께 반환된다. 결과의 `requests[].status`로 각 요청 상태를 확인한다.
+  CLI는 요청별 문맥 수를 채우거나 검색 완료 또는 요청 스캔 한도에 도달할 때까지 내부 페이지를 이어 읽는다. 짧은 검색형은 실제 확인한 문단 범위를, 3자 이상 FTS 검색형은 결과가 0건이어도 페이지 예산을 사용하므로 검색형을 많이 보내도 한도를 우회하지 않는다. 검색 한도에 도달하면 실제 모은 문맥과 유효한 `next_cursor`를 `LIMITED`로 돌려준다. 한 번의 `search-batch`에는 별도 합산 스캔 한도가 있다. 상위 `PARTIAL`은 이 합산 한도 때문에 일부 요청을 시작하지 않았다는 뜻이다. 그 결과는 `DEFERRED`이며, 해당 결과의 `retry_requests`에 들어 있는 원래 요청을 모아 다음 호출의 `requests` 배열에 그대로 넣는다. 이 요청은 아직 검색되지 않았고 증거도 기록되지 않는다. 다른 완료·진행 결과는 함께 반환된다. 결과의 `requests[].status`로 각 요청 상태를 확인한다.
   전체 응답이 48 KiB 제한을 넘으면 명시적 오류로 종료되고 해당 호출의 검색 증거는 기록되지 않는다. 요청 수를 나누거나 `contexts`를 낮춰 다시 보낸다. 결과 안의 `SEARCH_FAILED`도 0건 완료로 보지 말고 상태를 그대로 처리한다.
 - 한 Sense만 추가 조회할 때는 기존 단일 검색을 계속 쓸 수 있다:
   `node scripts/relation/d-chunk-cli.mjs search <sN> [--forms 형태1,형태2] [--boundary left|none|both] [--cursor <next_cursor>] [--contexts 1..16]`

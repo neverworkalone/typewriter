@@ -11,7 +11,8 @@ import { excerptAround, openCorpusIndex } from './literary-context.mjs';
 // Result status: ZERO_HITS (complete search, nothing found) | COMPLETE (complete search with hits, or a continued
 // search with nothing more) | LIMITED (stopped at a sample/char/scan bound; `next_cursor` continues exactly after
 // the last paragraph read, so no context is repeated or skipped; `scanRows` caps the paragraphs examined
-// per call: for short forms the paragraph_rowid span evaluated by `instr`, even when nothing matches) | SEARCH_FAILED. LIMITED is never "no hits".
+// per call: for short forms the paragraph_rowid span evaluated by `instr`, even when nothing matches; FTS reserves
+// a full result-page budget even when it finds nothing) | SEARCH_FAILED. LIMITED is never "no hits".
 
 export const DEFAULT_MAX_SAMPLES = 8;
 export const DEFAULT_MAX_CHARS = 6000;
@@ -99,10 +100,10 @@ function matchesLaterForm(text, forms, start, boundary) {
 const ROW_COLUMNS = 'p.paragraph_rowid AS rowid, p.form AS text, d.title, d.author';
 
 /**
- * Read the next bounded piece of one form's search after `after`, returning `{ rows, next, done }`.
- * FTS (3+ chars): at most `limit` matching paragraphs. Short forms: only the `paragraph_rowid` window
- * (after, after + limit] is examined by the literal `instr`, so the number of paragraphs SQLite evaluates is
- * bounded even when nothing matches; `next` is the window end so the search resumes there.
+ * Read the next bounded piece of one form's search after `after`, returning `{ rows, next, done, cost }`.
+ * FTS (3+ chars): at most `limit` matching paragraphs and charge a full page budget even when fewer (or no) rows
+ * match, so empty indexed searches cannot bypass a multi-form or batch budget. Short forms examine only the
+ * `paragraph_rowid` window (after, after + limit] with literal `instr`; `next` is the window end.
  */
 function fetchPiece(database, form, after, limit) {
   if ([...form].length >= FTS_MIN_LENGTH) {
@@ -110,7 +111,7 @@ function fetchPiece(database, form, after, limit) {
       JOIN paragraphs p ON p.paragraph_rowid = f.rowid JOIN documents d ON d.document_rowid = p.document_rowid
       WHERE paragraph_fts MATCH ? AND f.rowid > ? ORDER BY f.rowid LIMIT ?`)
       .all(`"${form.replaceAll('"', '""')}"`, after, limit);
-    return { rows, next: rows.length ? rows.at(-1).rowid : after, done: rows.length < limit, cost: rows.length };
+    return { rows, next: rows.length ? rows.at(-1).rowid : after, done: rows.length < limit, cost: limit };
   }
   const end = Math.min(after + limit, maxRowidOf(database));
   const rows = database.prepare(`SELECT ${ROW_COLUMNS} FROM paragraphs p

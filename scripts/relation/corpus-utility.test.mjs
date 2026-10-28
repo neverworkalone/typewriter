@@ -62,6 +62,23 @@ test('the sample bound holds across many matching paragraphs and paging reads ea
   }
 });
 
+test('zero-hit FTS forms consume the scan budget and leave the next form in the cursor', async () => {
+  const { root, databasePath } = await makeCorpus([]);
+  try {
+    const database = openReadonlyDb(databasePath);
+    const result = searchContexts(database, ['없는말', '없는형', '없는뜻'], { scanRows: 2 });
+    assert.equal(result.status, 'LIMITED');
+    assert.deepEqual(result.items, []);
+    assert.equal(result.scanned_rows, 2, 'an empty FTS page still consumes its result-page budget');
+    assert.ok(result.next_cursor);
+    const state = JSON.parse(Buffer.from(result.next_cursor, 'base64url').toString('utf8'));
+    assert.equal(state.form, 1, 'the cursor resumes at the first unsearched form');
+    database.close();
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('a character budget limits one call and a cursor with the wrong form list fails closed', async () => {
   const { root, databasePath } = await makeCorpus(Array.from({ length: 20 }, () => `${'가'.repeat(100)} 새벽안개 ${'나'.repeat(100)}`));
   try {

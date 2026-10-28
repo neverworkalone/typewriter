@@ -391,6 +391,33 @@ test('search-batch caps aggregate work and returns started progress plus untouch
   assert.deepEqual(recordEvidence(evidence, 'w4'), { searches: 1, hits: 1, allComplete: false });
 });
 
+test('search-batch defers requests after zero-hit FTS pages spend the aggregate budget', async () => {
+  const world = await makeWorld();
+  try {
+    const records = Array.from({ length: 5 }, (_, index) => rec(`w${index + 1}`, `lemma${index + 1}`, [['noun', '뜻.']]));
+    const senses = records.map((record, index) => ({ ref: `s${index + 1}`, record_id: record.id, sense_id: `${record.id}-s1`, auto: false }));
+    const requests = senses.map((sense, index) => ({ sense: sense.ref, forms: [`없는말${index}`, `다른말${index}`] }));
+    const database = openReadonlyDb(world.options.databasePath);
+    const search = (forms, options) => ({ result: searchContexts(database, forms, options) });
+    search.corpusRows = 1;
+
+    try {
+      const { output, evidence } = buildSearchBatch({ requests, meta: { senses }, records, search });
+      assert.equal(output.status, 'PARTIAL');
+      assert.equal(output.scanned_rows, 4);
+      assert.deepEqual(output.results.map((result) => result.status), ['LIMITED', 'LIMITED', 'LIMITED', 'LIMITED', 'DEFERRED']);
+      assert.ok(output.results.slice(0, 4).every((result) => result.cursor_out), 'started searches retain a real continuation cursor');
+      assert.deepEqual(output.results[4].retry_requests, [requests[4]]);
+      assert.equal(evidence.length, 4, 'the deferred request records no evidence');
+      assert.equal(evidence.some((entry) => entry.record_id === 'w5'), false);
+    } finally {
+      database.close();
+    }
+  } finally {
+    await rm(world.root, { recursive: true, force: true });
+  }
+});
+
 test('parseDecisions accepts the compact grammar and reports every malformed line', () => {
   const ok = parseDecisions('s1 V 건축가|설계도 | 공사장\n\ns2 V\ns3 N\ns4 Z\n');
   assert.deepEqual(ok.errors, []);
