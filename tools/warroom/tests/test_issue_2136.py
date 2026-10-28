@@ -265,6 +265,7 @@ class ChunkStorageAndLimits(unittest.TestCase):
                 w.adapter.run_problem = claude.run_problem
                 w.adapter.output_identity_problem = claude.output_identity_problem
                 w.adapter.denied_actions = claude.denied_actions
+                w.adapter.session_id = claude.session_id
                 names = dchunk.names(b)
                 rejection = Path(b["worktree"]) / names.rejected
                 decisions = Path(b["worktree"]) / names.decisions
