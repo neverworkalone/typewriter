@@ -28,6 +28,7 @@ sqlite3 -noheader tools/warroom/.local/warroom.db \
    WHERE b.method = 'c'
      AND b.shard = '001'
      AND b.batch = '01'
+     AND b.producer='codex'
      AND r.log_file IS NOT NULL
    ORDER BY r.started_at, r.id;" | paste -sd ' ' - | pbcopy
 ```
