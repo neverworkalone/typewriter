@@ -1172,3 +1172,77 @@ test('merge accounts an ID relation against only its selected candidate spelling
     'a new assigned row with a missing candidate_forms field is rejected instead of treated as legacy',
   );
 });
+
+test('merge coalesces distinct candidate forms that share one identical sense-pair judgment', async (t) => {
+  const scratchDirectory = path.join(REPOSITORY_DIRECTORY, '.warroom-scratch');
+  await mkdir(scratchDirectory, { recursive: true });
+  const root = await mkdtemp(path.join(scratchDirectory, 'admission-sense-pair-forms-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const records = Array.from({ length: 500 }, (_, index) => {
+    if (index === 0) return {
+      id: 'w226347', lemma: '억지투정',
+      senses: [{ id: 'w226347-s1', pos: 'noun', gloss: '주로 윗사람에게 불만이 있어 떼를 쓰는 짓.' }],
+    };
+    if (index === 1) return {
+      id: 'w334626', lemma: '칭얼거리다', search_forms: ['칭얼거리다', '칭얼'],
+      senses: [{ id: 'w334626-s1', pos: 'verb', gloss: '몸이 불편하거나 마음에 못마땅하여 짜증을 내며 자꾸 중얼거리거나 보채다.' }],
+    };
+    return {
+      id: `wfixture${index}`,
+      lemma: `표제${index}`,
+      senses: [{ id: `wfixture${index}-s1`, pos: 'noun', gloss: `뜻${index}` }],
+    };
+  });
+  for (const directory of ['data/canonical', 'data/relation-candidates/001', 'data/relations', 'data/relation-drops']) {
+    await mkdir(path.join(root, directory), { recursive: true });
+  }
+  await writeFile(path.join(root, 'data/canonical/stdict-0001.jsonl'), jsonl(records));
+  for (const producer of ['a_codex', 'a_claude', 'b_codex', 'b_claude', 'c_codex', 'd_codex']) {
+    await writeFile(path.join(root, `data/relation-candidates/001/001_01_${producer}.jsonl`), jsonl(records.map((record, index) => ({
+      record_id: record.id,
+      senses: [{ sense_id: record.senses[0].id, candidates: producer === 'a_codex' && index === 0 ? ['칭얼거리다', '칭얼'] : [] }],
+    }))));
+  }
+
+  const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
+  await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  const chunk = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint], { root }));
+  assert.deepEqual(chunk.items[0].candidates.map((candidate) => candidate.text), ['칭얼거리다', '칭얼']);
+  assert.ok(chunk.items[0].candidates.every((candidate) => candidate.same_spelling_targets.some(
+    (target) => target.record_id === 'w334626' && target.senses.some((sense) => sense.sense_id === 'w334626-s1'),
+  )));
+
+  const decisionsFile = '.warroom-scratch/decisions.json';
+  const sharedJudgment = {
+    source_sense_id: 'w226347-s1', disposition: 'relation', target_resolution: 'exact',
+    target_record_id: 'w334626', target_sense_id: 'w334626-s1', type: 'action', relevance: 5,
+    reverse_type: 'association', reverse_relevance: 5,
+  };
+  const decisions = ['칭얼거리다', '칭얼'].map((candidate) => ({ ...sharedJudgment, candidate }));
+  await writeFile(path.join(root, decisionsFile), JSON.stringify({ chunk_id: chunk.chunk_id, decisions }));
+  await quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', decisionsFile], { root }));
+
+  const merged = await quiet(() => run(['merge', '--checkpoint', checkpoint], { root }));
+  assert.deepEqual([merged.relations_added, merged.drops_added], [1, 0]);
+  const relationPath = path.join(root, 'data/relations/relation-001.jsonl');
+  const relationBytes = await readFile(relationPath);
+  const relations = relationBytes.toString('utf8').trim().split('\n').map(JSON.parse);
+  assert.deepEqual(relations, [{
+    source_record_id: 'w226347', source_sense_id: 'w226347-s1',
+    target_record_id: 'w334626', target_sense_id: 'w334626-s1',
+    type: 'action', relevance: 5, reverse_type: 'association', reverse_relevance: 5,
+    candidate_assignment_version: 1, candidate_forms: ['칭얼거리다', '칭얼'], reverse_candidate_forms: ['억지투정'],
+  }]);
+  const counts = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  assert.deepEqual([counts.unique, counts.relation, counts.missing], [2, 1, 0]);
+
+  const conflictingCheckpoint = JSON.parse(await readFile(path.join(root, checkpoint), 'utf8'));
+  conflictingCheckpoint.items[0].candidates.find((candidate) => candidate.text === '칭얼').decision.type = 'mood';
+  await writeFile(path.join(root, checkpoint), `${JSON.stringify(conflictingCheckpoint)}\n`);
+  await assert.rejects(
+    () => quiet(() => run(['merge', '--checkpoint', checkpoint], { root })),
+    /cannot merge duplicate or reverse-duplicate ID relation/u,
+    'distinct candidate forms with conflicting judgments must not be silently collapsed',
+  );
+  assert.deepEqual(await readFile(relationPath), relationBytes, 'a conflicting retry leaves the accepted relation unchanged');
+});
