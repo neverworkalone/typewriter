@@ -3,41 +3,20 @@
     "Validate manifest version": "normal",
     "Validate canonical JSONL": "normal",
     "Run single-pass global canonical audit": "normal",
-    "Validate M6-3 surface-form projection coverage": "normal",
-    "Test canonical JSONL validator": "normal",
-    "Test shared canonical context": "normal",
-    "Test STDICT canonical conversion, licensed-source gate and pilot shard": "normal",
-    "Test dataset validator": "normal",
-    "Test CI category runner fail-fast behavior": "normal",
-    "Test CI check ownership registry": "normal",
-    "Test zero current-revision SQLite builds in automatic CI (real runner fault injection)": "normal"
+    "Validate M6-3 surface-form projection coverage": "normal"
   },
   "toolchain": {
     "Run single-pass global canonical audit": "normal",
-    "Normalize canonical data": "normal",
-    "Test canonical normalization": "normal",
-    "Test SQLite dictionary build": "normal"
-  },
-  "product": {
-    "Test packaged dictionary runtime guards": "normal",
-    "Test shared search query contract": "normal",
-    "Test shared native and WASM SQLite query adapter": "normal",
-    "Test M6-3 surface-form projection and search": "normal",
-    "Run product unit tests": "normal",
-    "Build Typewriter Web": "normal",
-    "Validate static Pages artifact": "normal"
+    "Normalize canonical data": "normal"
   },
   "artifacts": {
     "Test artifact policy": "deep",
-    "Test Pages artifact publication boundary": "normal",
-    "Test package validation": "normal",
     "Enforce generated-artifact policy and clean checkout": "normal"
   },
   "deep": {
     "Run single-pass global canonical audit": "deep"
   },
   "relations": {
-    "Test Canonical relation backfill queue, apply, and correction paths": "deep",
-    "Test exploratory relation relevance contract": "normal"
+    "Test Canonical relation backfill queue, apply, and correction paths": "deep"
   }
 }

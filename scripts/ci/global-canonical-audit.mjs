@@ -2,7 +2,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { contextSummary, loadCanonicalContext } from '../validate/canonical-context.mjs';
-import { validateDatasetRecords } from '../validate/dataset-integrity.mjs';
+import { validateDatasetDirectory } from '../validate/dataset-integrity.mjs';
 import { auditCanonicalLexicalQuality } from '../validate/lexical-quality.mjs';
 import {
   buildCanonicalSemanticAudit,
@@ -38,12 +38,17 @@ export async function runGlobalCanonicalAudit({ canonicalContext } = {}) {
     });
   context.derived.lexicalQuality = lexicalQuality;
 
-  const indexes = validateDatasetRecords(context.records, {
-    context,
+  const dataset = await validateDatasetDirectory(context.canonicalDirectory, {
+    canonicalContext: context,
     semanticAudit,
     requireSemanticAudit: true,
+    requireRelevance: true,
+    requireSurfaceFormProjection: true,
+    requireSurfaceFormClassifications: true,
+    requireSurfaceFormCollisionReview: true,
     lexicalQuality,
   });
+  // Normalize and M2 reuse this same in-process validation result in Normal CI.
   const surfaceFormExceptionManifest = context.derived.surfaceFormExceptionManifest
     ?? await loadSurfaceFormExceptionManifest();
   context.derived.surfaceFormExceptionManifest = surfaceFormExceptionManifest;
@@ -67,7 +72,7 @@ export async function runGlobalCanonicalAudit({ canonicalContext } = {}) {
       record_count: context.records.length,
       sense_count: context.statistics.senseCount,
       relation_count: context.statistics.relationCount,
-      candidate_count: indexes.candidatesById.size,
+      candidate_count: dataset.candidateCount,
       lexical_blocking_finding_count: lexicalQuality.blocking_finding_count,
       semantic_audit_complete: true,
       surface_form_eligible_sense_count: surfaceFormProjection.coverage.eligible_sense_count,

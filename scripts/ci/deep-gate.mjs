@@ -67,9 +67,6 @@ const FULL_DEEP_PATHS = Object.freeze([
   'scripts/ci/sqlite-build-ledger.mjs',
   'scripts/ci/sqlite-schema-change.mjs',
   'scripts/ci/schema-build-gate.mjs',
-  'tests/ci-registry.test.mjs',
-  'tests/ci-runner.test.mjs',
-  'tests/ci-sqlite-build-guard.test.mjs',
   'scripts/ci/sqlite-schema-change.test.mjs',
   'package.json',
   'pnpm-lock.yaml',
@@ -87,7 +84,6 @@ const KNOWN_NON_DEEP_ROOT_PATHS = Object.freeze([
   'options.html',
   'vite.config.js',
   'vite.web.config.js',
-  'vitest.config.js',
   'pack.py',
   'pack.sh',
 ]);
@@ -118,17 +114,16 @@ if (knownNonDeepPaths.some((knownPath) => !validRepositoryPath(knownPath))) {
 const KNOWN_NON_DEEP_PATH_SET = new Set(knownNonDeepPaths);
 const NORMAL_COVERAGE_PATH = 'scripts/ci/deep-gate-coverage.json';
 
-// This is an exact-file allowlist, not a directory wildcard or a claim that
-// a changed producer is safe without regression coverage. Normal owns every
-// listed test on every PR; Deep dependency matches take precedence.
+// This exact-file manifest retains its historical `normal_tests` key, but
+// tests may now be always-on Normal checks or source-bound affected Deep checks.
+// Deep bindings must name the changed implementation path, not only the test.
 export function validateNormalCoverage(manifest = NORMAL_COVERAGE, {
   categories = CI_CATEGORIES,
-  deepChecks = registeredDeepChecks(),
   repositoryDirectory = REPOSITORY_DIRECTORY,
   retirements = NORMAL_COVERAGE_RETIREMENTS,
 } = {}) {
   if (manifest?.version !== 1 || !Array.isArray(manifest.bindings)) {
-    throw new TypeError('Normal coverage registry has an unsupported shape.');
+    throw new TypeError('Regression coverage registry has an unsupported shape.');
   }
   if (retirements?.version !== 1 || !Array.isArray(retirements.retirements)) {
     throw new TypeError('Normal coverage retirement registry has an unsupported shape.');
@@ -145,7 +140,7 @@ export function validateNormalCoverage(manifest = NORMAL_COVERAGE, {
       || retired.has(retirement.path)
       || existsSync(path.join(repositoryDirectory, retirement.path))
     ) {
-      throw new TypeError('Invalid or reintroduced Normal coverage retirement: ' + JSON.stringify(retirement));
+      throw new TypeError('Invalid or reintroduced regression coverage retirement: ' + JSON.stringify(retirement));
     }
     retired.set(retirement.path, retirement);
   }
@@ -161,24 +156,29 @@ export function validateNormalCoverage(manifest = NORMAL_COVERAGE, {
       || new Set(tests).size !== tests.length
       || bindings.has(binding.path)
       || FULL_DEEP_PATHS.some((rule) => matchesPath(binding.path, rule))
-      || deepChecks.some((check) => deepPathMatches(binding.path, check))
       || binding.path === NORMAL_COVERAGE_PATH
     ) {
-      throw new TypeError('Unsafe or duplicate Normal coverage binding: ' + JSON.stringify(binding));
+      throw new TypeError('Unsafe or duplicate regression coverage binding: ' + JSON.stringify(binding));
     }
     const retirement = retired.get(binding.path);
     if (retirement) {
       if (JSON.stringify(retirement.normal_tests) !== JSON.stringify(tests)) {
-        throw new TypeError('Normal coverage retirement does not match its append-only binding: ' + binding.path);
+        throw new TypeError('Regression coverage retirement does not match its append-only binding: ' + binding.path);
       }
     } else {
       for (const test of tests) {
         const covered = Object.values(categories).some((category) => category.checks.some((check) => (
-          check.tier === 'normal'
-          && check.schedule === 'always'
-          && (check.testFiles ?? []).includes(test)
+          (check.testFiles ?? []).includes(test)
+          && (
+            (check.tier === 'normal' && check.schedule === 'always')
+            || (
+              check.tier === 'deep'
+              && check.schedule === 'affected'
+              && deepPathMatches(binding.path, check)
+            )
+          )
         )));
-        if (!covered) throw new TypeError('Normal coverage test is not always-on in Normal CI: ' + test);
+      if (!covered) throw new TypeError('Coverage test is neither always-on in Normal CI nor registered for its affected Deep path: ' + test);
       }
     }
     bindings.set(binding.path, binding);

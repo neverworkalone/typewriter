@@ -33,7 +33,6 @@ Use the following commands while working on the product shell:
 ```sh
 pnpm run dev          # Vite development server
 pnpm run build        # production MV3 assets in dist/, minified by esbuild
-pnpm run test:unit    # Vitest component/unit tests
 pnpm run test:mv3:product --chrome="/path/to/Google Chrome for Testing" # popup/options CFT check
 ```
 
@@ -126,10 +125,10 @@ and never change canonical data or the release package.
 dirty, use `TYPEWRITER_ALLOW_DIRTY=true pnpm run build` explicitly.
 
 pnpm test runs the current normal CI gate and is equivalent to
-pnpm run ci:normal. The category registry selects the active validation and test
-suite instead of running every historical test file as one unfiltered glob. The
-normal gate includes the product output contract checks. Use pnpm run test:unit
-for Vue unit tests. Product/package verification runs through
+pnpm run ci:normal. Normal CI keeps the production-data and source integrity
+checks. Implementation regression tests run in Selective Deep when their
+registered code paths change, and the owner manually validates the product UI.
+Product/package verification runs through
 pnpm run test:mv3:package.
 
 The browser-based check covers the extension search runtime and the static landing
@@ -230,10 +229,9 @@ pnpm run test:mv3:package \
   --zip=/tmp/typewriter-package/generated-package.zip
 ```
 
-The Vitest watch command (`pnpm run test:unit:watch`) is a local editor loop, not a
-CI route. The two browser scripts and the CFT package checks protect current web,
-extension, interaction, offline-loading, and package boundaries. Retired task,
-batch, migration, and scale checks are not kept as Manual test files.
+The browser scripts and CFT package checks are optional targeted diagnostics,
+not Normal CI checks. Retired task, batch, migration, and scale checks are not
+kept as Manual test files.
 
 ## Failure diagnosis
 

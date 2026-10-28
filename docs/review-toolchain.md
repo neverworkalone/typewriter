@@ -42,11 +42,11 @@ An automatic test belongs in CI only when both conditions hold:
 
 Before registering a test, ask whether its future failure would reveal a user-facing or data/build regression, or only report that a one-time implementation or design choice changed. The latter stays task-local. Delete its test file when it has no lasting regression value; do not preserve it as Manual or let a broad test glob run it indirectly.
 
-Keep functional UI contracts such as keyboard search, candidate selection, relation navigation, settings persistence, offline loading, and package safety. Remove one-off style or markup assertions that freeze CSS colors, selectors, exact source strings, or glyph formatting unless that representation is itself an approved stable product contract with a distinct failure value. Visual choices should be checked in the task that changes them.
+The owner manually validates product UI behavior, including keyboard interaction, candidate selection, relation navigation, settings, and visual presentation. Keep automatic checks focused on production data and the registered implementation contracts that have a recurring failure value.
 
-Vitest automatic discovery is an explicit list in `scripts/ci/product-unit-test-files.mjs`, shared with `scripts/ci/registry.mjs`. `vitest.config.js` must use that list, and the registry regression verifies the discovered, registered, and on-disk `tests/*.test.js` sets are equal. A new one-off check must not be added to this list, `ci:normal`, `ci:deep`, `ci:all`, `ci:pr`, or a scheduled workflow. Manual tests are retained only for an actual current workflow that is run repeatedly outside CI, not as storage for retired task checks.
+Implementation regression tests are registered with `tier: 'deep'`, `schedule: 'affected'`, and the narrow source/test paths they protect. A path match selects only its affected checks; the weekly Full Deep run includes every Deep check. Normal retains source and production-data validators, not tests of CI registration or runner mechanics.
 
-Each test file has one CI registry owner. The audit inventory in `docs/test-inventory-823.md` records current callers, protected failures, automatic/direct execution, overlap, and the `KEEP`, `CONSOLIDATE`, or `DELETE` decision.
+Each active test has one CI registry owner. The audit inventory in `docs/test-inventory-823.md` is a historical snapshot of the earlier suite and is not the current registration map.
 
 ## Validation evidence
 

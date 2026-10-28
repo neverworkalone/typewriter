@@ -457,6 +457,7 @@ async function runInProcessCheck(name, context, { repositoryDirectory = REPOSITO
       {
         canonicalContext,
         semanticAudit: canonicalContext.semanticAudit,
+        reuseValidatedDataset: true,
       },
     );
     const senseCount = context.normalizedModel.records.reduce(
@@ -507,9 +508,10 @@ async function runInProcessCheck(name, context, { repositoryDirectory = REPOSITO
       canonicalContext,
       model: context.normalizedModel,
       databaseMode: 'data-only',
+      reuseValidatedDataset: true,
     });
     console.log(
-      `Database-free M2 source/model audit passed: ${summary.fileCount} canonical file(s) / ${summary.recordCount} record(s) / ${summary.senseCount} sense(s) / ${summary.relationCount} relation(s). SQLite generation, database integrity and Full/Lite verification were not run.`,
+      `Database-free M2 source/model audit passed: ${summary.fileCount} canonical file(s) / ${summary.recordCount} record(s) / ${summary.senseCount} sense(s) / ${summary.relationCount} relation(s); reused the successful global Canonical validation. SQLite generation, database integrity and Full/Lite verification were not run.`,
     );
     return;
   }

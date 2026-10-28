@@ -456,13 +456,61 @@ export async function validateDatasetDirectory(
     0,
   );
 
-  return {
+  const summary = {
     fileCount: result.fileCount,
     recordCount: result.records.length,
     senseCount,
     relationCount,
     candidateCount: indexes.candidatesById.size,
   };
+  const requireSurfaceFormProjection = Boolean(
+    options.requireSurfaceFormProjection || isDefaultCanonical,
+  );
+  const requireSurfaceFormClassifications = options.requireSurfaceFormClassifications
+    ?? requireSurfaceFormProjection;
+  const requireSurfaceFormCollisionReview = options.requireSurfaceFormCollisionReview
+    ?? requireSurfaceFormClassifications;
+  context.derived.datasetValidation = {
+    records: context.records,
+    directory: path.resolve(directory),
+    semanticAudit,
+    requireSemanticAudit,
+    requireRelevance: options.requireRelevance ?? isDefaultCanonical,
+    requireSurfaceFormProjection,
+    requireSurfaceFormClassifications,
+    requireSurfaceFormCollisionReview,
+    summary,
+  };
+  return summary;
+}
+
+export function getValidatedDatasetSummary(context, {
+  directory = context?.canonicalDirectory ?? DEFAULT_CANONICAL_DIRECTORY,
+  semanticAudit = context?.semanticAudit,
+  requireSemanticAudit = false,
+  requireRelevance = false,
+  requireSurfaceFormProjection = false,
+  requireSurfaceFormClassifications = false,
+  requireSurfaceFormCollisionReview = false,
+} = {}) {
+  const validation = context?.derived?.datasetValidation;
+  if (
+    !validation
+    || validation.records !== context.records
+    || validation.directory !== path.resolve(directory)
+    || validation.semanticAudit !== semanticAudit
+    || (requireSemanticAudit && !validation.requireSemanticAudit)
+    || (requireRelevance && !validation.requireRelevance)
+    || (requireSurfaceFormProjection && !validation.requireSurfaceFormProjection)
+    || (requireSurfaceFormClassifications && !validation.requireSurfaceFormClassifications)
+    || (requireSurfaceFormCollisionReview && !validation.requireSurfaceFormCollisionReview)
+  ) {
+    throw new DatasetIntegrityError(
+      'The current Canonical context has no matching successful dataset validation to reuse.',
+      'DATASET_VALIDATION_REUSE_UNAVAILABLE',
+    );
+  }
+  return validation.summary;
 }
 
 export async function main() {
