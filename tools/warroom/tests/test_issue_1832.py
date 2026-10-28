@@ -68,10 +68,13 @@ class DeterministicStage2Completion(unittest.TestCase):
         self.assertEqual(len(w.adapter.launches), 1)
 
     def test_non_stage2_denial_still_requires_a_clean_owned_pr_at_local_head(self):
-        w = World()
+        w = base_s2_world(self)
+        w.runner.set_batches(canon={1: 1000}, done={})
+        w.adapter.plan.append({"code": 0, "session": "ses_a"})
         control.start(w.store, "claude", "a", "single", cfg=w.cfg)
         w.tick()
         b = w.store.active_batch("claude", "a")
+        self.assertIsNotNone(b)
         head = "c" * 40
         w.git.local_head = head
         w.git.remote[b["branch"]] = head

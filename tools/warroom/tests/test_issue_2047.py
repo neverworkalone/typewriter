@@ -188,8 +188,8 @@ class AnswerOnlyChunk(unittest.TestCase):
         w2.tick(2)
         b2 = w2.store.batch(b2["id"])
         self.assertEqual((len(w2.git.save_calls), b2["run_kind"]), (1, "s2_deterministic_finalize"))   # saved, no extra AI for the chunk
-        self.assertEqual(len(w2.adapter.launches), 2)
-        self.assertEqual(self.failures(w2, b2)[-2:], [0, 0])
+        self.assertEqual(len(w2.adapter.launches), 1)  # deterministic finalization does not launch an AI session
+        self.assertEqual(self.failures(w2, b2), [0])
 
 
 class FixHelpers(unittest.TestCase):

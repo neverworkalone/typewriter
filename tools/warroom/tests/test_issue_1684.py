@@ -292,21 +292,16 @@ class StageTwoSelection(unittest.TestCase):
         self.assertIn("파일 목록을 알 수 없어", w.store.peek_line("claude", S2)["blocked"])
 
     def finish_part(self, w, model, shard, batch, part, n=7):
-        """One chunk session saves, one final session opens the PR, then exact merge verification completes."""
+        """One chunk session saves, then deterministic optional/final steps open the PR and merge verification completes."""
         bid = w.store.active_batch(model, S2)["id"]
         chunk_pid = w.adapter.launches[-1]["pid"]
         w.adapter.running[chunk_pid]["effect"] = lambda: write_checkpoint(w, shard=shard, batch=batch, part=part)
-        w.adapter.plan.append({"code": 0, "effect": lambda: write_checkpoint(w, merged=True,
-                                                                               shard=shard, batch=batch, part=part)})
         w.adapter.finish(chunk_pid)
         w.tick()
-        self.assertEqual(w.store.batch(bid)["state"], "PRODUCING")
-        merge_part(w, model, shard, batch, part, n)
-        w.git.verify_heads.add((HEAD1, "part", shard, batch, part))
-        w.adapter.finish(w.adapter.launches[-1]["pid"])
-        w.tick()
-        self.assertEqual(w.store.batch(bid)["state"], "WAITING_REVIEW")
-        w.pr_info(n, HEAD1, state="closed", merged=True, head_ref=f"s2-{model}-{shard}-{batch}-{part}", merge_sha="c" * 40)
+        b = w.store.batch(bid)
+        self.assertEqual(b["state"], "WAITING_REVIEW")
+        n = b["pr_number"]
+        w.gh.prs[n] |= {"state": "closed", "merged": True, "merge_commit_sha": "c" * 40}
         w.git.verified.add(("part", shard, batch, part))
         w.tick(3)
         self.assertEqual(w.store.batch(bid)["state"], "COMPLETE")

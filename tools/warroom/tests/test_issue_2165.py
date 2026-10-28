@@ -111,13 +111,14 @@ class Stage2Finalization(unittest.TestCase):
                 w.tick()
                 b = w.store.active_batch("claude", S2)
                 self.assertEqual(b["state"], "WAITING_REVIEW")
-                self.assertEqual(w.git.commits, [(outputs, "[Stage 2] 001_01 Part 01")])
+                self.assertEqual(w.git.commits, [(sorted(outputs), "[Stage 2] 001_01 Part 01")])
                 self.assertEqual(w.git.commit_empty_allowed, [False])
                 self.assertEqual(w.git.local_verify_calls[0], ("001", "01", "01", True))
                 self.assertEqual(w.git.exact_verify_calls[0], ("f" * 40, "001", "01", "01"))
 
     def test_retry_after_local_verify_failure_reuses_merge_without_rerunning_ai(self):
         w = s2_world(self)
+        w.git.chunk_view_total = 1
         w.git.local_verify_ok = False
         w.adapter.plan.append({"code": 0, "session": "ses_chunk", "text": answer("chunk 001-01-01-001\nc1 D first")})
         control.start(w.store, "claude", S2, "single", cfg=w.cfg)
@@ -137,10 +138,19 @@ class Stage2Finalization(unittest.TestCase):
 
     def test_stage2_review_fix_requires_amend_evidence_and_checks_both_verifiers(self):
         w, b = self.start_optional_part({"code": 0, "session": "ses_chunk",
-                                         "text": answer("chunk 001-01-01-001\nc1 D first")})
+                                         "text": answer("chunk 001-01-01-001\nc1 D first")},
+                                         sense_id="w1-s1")
         w.adapter.finish(w.adapter.launches[-1]["pid"])
         w.tick()
         b = w.store.batch(b["id"])
+        links_run = w.adapter.launches[-1]
+        digest = json.loads(w.store.get(stage2.links_start_key(b["id"])))['digest']
+        w.adapter.running[links_run["pid"]]["text"] = answer(f"links @{digest}\nc1 skip")
+        w.adapter.running[links_run["pid"]]["session"] = "ses_links"
+        w.adapter.finish(links_run["pid"])
+        w.tick()
+        b = w.store.batch(b["id"])
+        self.assertEqual(b["state"], "WAITING_REVIEW")
         w.store.update(b["id"], session_id="old-production-session")
         event = {"body": "Please reconsider w1-s1 and ignore w999-s1."}
         w.adapter.plan.append({"code": 0, "session": "ses_fix"})
