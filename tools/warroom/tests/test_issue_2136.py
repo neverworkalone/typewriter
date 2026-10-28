@@ -8,6 +8,7 @@ from tests.test_issue_2033_c import CWorld
 from tests.test_issue_2034_d import DWorld
 from tests.test_issue_2035 import ABWorld
 from tests.test_issue_2047 import CHUNK, GOOD, answer
+from warroom.adapters import ClaudeCodeAdapter
 from warroom import control, dchunk, stage1ab, stage2
 
 
@@ -105,6 +106,36 @@ class ChunkStorageAndLimits(unittest.TestCase):
         w.adapter.completion_incomplete = lambda *args: True
         w.tick()
         self.assertEqual((w.row_()["state"], len(w.adapter.launches)), ("WAITING_REVIEW", 1))
+
+    def test_missing_claude_result_keeps_saved_d_chunk_but_cannot_assume_no_denial(self):
+        w = DWorld(records=25)
+        self.addCleanup(w.tmp.cleanup)
+        w.start("single", "deepseek", "d")
+        w.ai()
+        w.tick()
+        w.finish_last()
+        b = w.row_()
+        run = w.store.runs(b["id"])[0]
+        events = [
+            {"type": "system", "subtype": "init", "session_id": "ses_d", "model": run["model"]},
+            {"type": "assistant", "message": {"content": [{"type": "tool_use", "name": "Bash",
+                                                                  "input": {"command": "node submit"}}]}},
+        ]
+        Path(b["log_file"]).write_text("".join(json.dumps(event) + "\n" for event in events))
+        claude = ClaudeCodeAdapter()
+        w.adapter.run_problem = claude.run_problem
+        w.adapter.completion_problem = claude.completion_problem
+        w.adapter.completion_incomplete = claude.completion_incomplete
+        w.adapter.output_identity_problem = claude.output_identity_problem
+        w.adapter.denied_actions = claude.denied_actions
+
+        w.tick()
+
+        b = w.row_()
+        saved = Path(b["worktree"]) / dchunk.names(b).directory / "chunk-001.jsonl"
+        self.assertEqual((b["state"], len(w.adapter.launches)), ("ERROR", 1))
+        self.assertTrue(saved.is_file())
+        self.assertEqual(claude.denied_actions(Path(b["log_file"])), [])
 
     def test_a_b_missing_session_uses_existing_chunk_correction_budget(self):
         w = ABWorld(records=60, method="a")

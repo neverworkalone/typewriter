@@ -70,7 +70,7 @@ class AgentAdapter:
 
     def completion_incomplete(self, log_file: Path, run: RunSpec | None, expected_session: str | None,
                               cwd=None, env=None) -> bool:
-        """True when only this run's terminal completion event is missing and its identity/pins are valid."""
+        """True when a missing terminal event still leaves enough evidence to safely accept this run's output."""
         return False
 
     def denied_actions(self, log_file: Path) -> list[dict]:
@@ -569,13 +569,9 @@ class ClaudeCodeAdapter(ProcessAdapter):
         return None
 
     def completion_incomplete(self, log_file, run, expected_session, cwd=None, env=None):
-        if self.output_identity_problem(log_file, run, expected_session, cwd, env):
-            return False
-        try:
-            return not any(e.get("type") == "result" for e in _json_objects(
-                Path(log_file).read_text("utf-8", errors="replace")))
-        except OSError:
-            return False
+        # Claude reports permission_denials only in the final result. Without it, an empty denied_actions() means
+        # "unknown", not "none"; preserve exact saved outputs but do not let the Supervisor advance the batch.
+        return False
 
 
 # Codex runs under the operator's configured CLI policy. War Room pins the model, reasoning effort and configured

@@ -157,8 +157,8 @@ class CompletionGate(unittest.TestCase):
             self.assertIsNone(ClaudeCodeAdapter().run_problem(log, PIN, SESSION))
             self.assertEqual(ClaudeCodeAdapter().completion_problem(log, PIN, SESSION)[0], "ERROR")
 
-    def test_incomplete_completion_requires_the_requested_session_and_model_pin(self):
-        self.assertTrue(self.check(stream(init()), method="completion_incomplete"))
+    def test_missing_result_cannot_prove_permission_denials_are_clear(self):
+        self.assertFalse(self.check(stream(init()), method="completion_incomplete"))
         self.assertFalse(self.check(stream(init()), expected="11111111-2222-4333-8444-555555555555",
                                      method="completion_incomplete"))
         self.assertFalse(self.check(stream({**init(), "model": ""}), method="completion_incomplete"))
