@@ -69,7 +69,7 @@ def _fit(text: str, width: int = CARD_W) -> str:
 def _idle_phase(st: dict) -> str:
     """A Line without a batch: a pending Start or a Drain that will block it is still operator-relevant."""
     if st["drain"]:
-        return "비어 있음 + DRAIN" + ("  시작 예약" if st.get("run") else "")
+        return "비어 있음+DRAIN" + ("  시작 예약" if st.get("run") else "")
     return "—  시작 예약 중" if st.get("run") else "—  실행 이력 없음"
 
 
@@ -126,9 +126,11 @@ def card_text(st: dict) -> str:
     if st["batch"] is None:
         return _idle_card(st, m)
     icon = ICON.get(st["state"], "?")
-    phase = PHASE.get(st["state"], st["state"]) + (" + DRAIN" if st["drain"] else "")
     s2 = st.get("stage2")
-    identity = f"Stage 2 {s2['shard']}/{s2['batch']}/{s2['part']}" if s2 else f"{m} · {st['batch']}"
+    phase = PHASE.get(st["state"], st["state"])
+    if st["drain"]:
+        phase += "+DRAIN"
+    identity = f"Stage2 {s2['shard']}/{s2['batch']}/{s2['part']}" if s2 else f"{m} · {st['batch']}"
     title = _two_sided(identity, f"{phase}  {icon}")
     done, total, unit = progress_of(st)
     observed = done is not None and bool(total)
@@ -180,7 +182,7 @@ def _maintainer_header(st: dict, who: str) -> str:
     """Maintainer Detail header: the Issue it works on, its real phase and every other open Issue (identifiable)."""
     mt = st["maintainer"]
     issue = f"Issue #{mt['issue']}" if mt["issue"] else "열린 urgent Issue 없음"
-    head = [f"{who} · {issue}", PHASE.get(st["state"], st["state"]) + (" + DRAIN" if st["drain"] else "")]
+    head = [f"{who} · {issue}", PHASE.get(st["state"], st["state"]) + ("+DRAIN" if st["drain"] else "")]
     if st["pr"]:
         head.append(f"PR #{st['pr']}")
     lines = ["   ".join(head)]
@@ -213,7 +215,7 @@ def detail_header(st: dict, reg: dict, model: str) -> str:
         return f"{who}  ({_idle_phase(st).lstrip('— ')})"
     s2 = st.get("stage2")
     batch = stage2.label(s2["shard"], f"{s2['batch']}-{s2['part']}") if s2 else st["batch"]
-    head = [f"{who} · {batch}", PHASE.get(st["state"], st["state"]) + (" + DRAIN" if st["drain"] else "")]
+    head = [f"{who} · {batch}", PHASE.get(st["state"], st["state"]) + ("+DRAIN" if st["drain"] else "")]
     if st["pr"]:
         head.append(f"PR #{st['pr']}")
     if st["progress"]:

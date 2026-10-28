@@ -70,7 +70,7 @@ function card(l) {
   const batch = l.stage2 ? `S${l.stage2.shard} B${l.stage2.batch} P${l.stage2.part}` : l.batch;
   return h("button", { class: "card " + l.state, onclick: go },
     h("div", { class: "t" }, h("span", {}, (mobile.matches ? l.model + " · " : "") + l.label + " · " + batch),
-      h("span", {}, l.phase + (l.drain ? " + DRAIN" : "") + "  " + l.icon)),
+      h("span", {}, l.phase + (l.drain ? "+DRAIN" : "") + "  " + l.icon)),
     h("div", { class: "s" }, l.progress_text ? `${l.progress_text}  ${l.progress_pct}%` : "진행량 확인 중"),
     l.progress_text ? bar : null,
     h("div", { class: "s" }, (l.pr ? `PR #${l.pr}` : "PR 생성 전") + (l.elapsed_text ? `  ·  경과 ${l.elapsed_text}` : "")),
