@@ -5,7 +5,7 @@ from pathlib import Path
 
 from tests.test_issue_1684 import S2
 from tests.test_issue_1908 import s2_world, write_state
-from warroom import control, stage2
+from warroom import control, prompts, stage2
 
 
 def answer(text):
@@ -79,6 +79,30 @@ class Stage2Finalization(unittest.TestCase):
         self.assertEqual(w.git.inspect_calls[-1][1:], ("001", "01", "01", ["w1-s1"]))
         self.assertIn("inspect w1-s1", context)
         self.assertIn("w999-s1", context)
+
+    def test_fix_context_keeps_40kb_inline_and_pages_only_above_90kb(self):
+        w, b = self.start_optional_part(sense_id="w1-s1")
+        w.git.inspect_text = "source context\n" + "x" * 40_000
+        inline = w.sup._s2_fix_context(b, [{"body": "review w1-s1"}])
+        self.assertEqual(inline, w.git.inspect_text)
+        self.assertFalse((Path(b["worktree"]) / ".warroom-scratch" / "s2-fix-context.txt").exists())
+
+        w.git.inspect_text = "source context\n" + "x" * 100_000
+        paged = w.sup._s2_fix_context(b, [{"body": "review w1-s1"}])
+        self.assertIn("bounded pages", paged)
+        pages = stage2.chunk_pages(w.git.inspect_text)
+        page_paths = [Path(b["worktree"]) / stage2.page_path(i, len(pages), ".warroom-scratch/s2-fix-context.txt")
+                      for i in range(1, len(pages) + 1)]
+        self.assertEqual("".join(path.read_text("utf-8") for path in page_paths), w.git.inspect_text)
+
+    def test_stage2_fix_prompt_has_the_supported_foreground_verify_and_gh_instructions(self):
+        w, b = self.start_optional_part(sense_id="w1-s1")
+        fix = prompts.fix(b, [], False, source_context="source context")
+        for phrase in ("node scripts/relation/admission-cli.mjs verify --shard 001 --batch 01 --part 01 --json",
+                       "120000 ms", "foreground", "GH_CONFIG_DIR", "gh` CLI", "Write tool", "amend --help",
+                       "do not use GitHub MCP"):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, fix)
 
     def test_no_optional_links_creates_empty_commit_without_an_ai_run(self):
         w = s2_world(self)

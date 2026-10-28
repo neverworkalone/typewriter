@@ -217,6 +217,10 @@ DECISIONS = ".warroom-scratch/decisions.txt"
 MAX_FIXES = 2   # AI correction runs per fresh `s2_chunk_new` session
 _ROW = re.compile(r"c(\d+)\s")
 _ROW_START = re.compile(r"c\d+(?:\s|$)")
+_RELATION_TYPES = r"near|mood|scene|sensory|action|association"
+_DECISION_ROW_PATTERN = rf"(?P<alias>c\d+)[ \t]+(?:R[ \t]+(?:{_RELATION_TYPES})\b|D[ \t]+\S)"
+_DECISION_ROW = re.compile(rf"^{_DECISION_ROW_PATTERN}$")
+_JOINED_DECISION_ROW = re.compile(rf"[ \t]+{_DECISION_ROW_PATTERN}")
 _ERROR_ALIAS = re.compile(r"^(c\d+)\b", re.M)
 _FENCE = re.compile(r"^\s*```")
 _LINK_ROW = re.compile(r"^c\d+\s")
@@ -378,6 +382,62 @@ def error_aliases(diagnostic: str) -> list[str]:
     return list(dict.fromkeys(_ERROR_ALIAS.findall(diagnostic)))
 
 
+def joined_decision_rows_problem(rows: list[str]) -> str | None:
+    """Short format-only diagnostic when a decision row contains another complete row after horizontal whitespace."""
+    malformed = [(row, [] if _DECISION_ROW.fullmatch(row) else
+                  [match.group("alias") for match in _JOINED_DECISION_ROW.finditer(row)]) for row in rows]
+    malformed = [(row, aliases) for row, aliases in malformed if aliases]
+    if not malformed:
+        return None
+    aliases = list(dict.fromkeys(alias for _, found in malformed for alias in found))
+    examples = ", ".join(aliases[:6])
+    more = f" 외 {len(aliases) - 6}개" if len(aliases) > 6 else ""
+    return (f"현재 청크에서 {len(malformed)}개 판정 행 안에 새 판정 행이 공백으로 이어졌습니다 "
+            f"(추가 행 별칭 {len(aliases)}개, 예: {examples}{more}). 줄바꿈만 바로잡고 기존 판정 내용을 보존하세요.")
+
+
+def compact_fix_diagnostic(diagnostic: str, threshold: int = 6_000) -> str:
+    """Collapse only large, repeated relation-field or missing-decision errors, preserving every affected alias."""
+    if len(diagnostic) <= threshold:
+        return diagnostic
+    lines = diagnostic.splitlines()
+    first, last = None, None
+    groups: dict[str, list[tuple[str, str]]] = {"relation fields": [], "missing decisions": []}
+    for index, line in enumerate(lines):
+        match = re.match(r"^(c\d+)(?:\s+[^:]+)?:\s+(.*)$", line)
+        if not match:
+            if re.match(r"^c\d+\b", line):
+                return diagnostic
+            continue
+        alias, detail = match.groups()
+        detail, separator, hint = detail.partition("  ->  ")
+        detail = re.sub(rf"^{re.escape(alias)}:\s*", "", detail)
+        if detail == "relation needs 2, 4 or 5 fields after R":
+            group = "relation fields"
+        elif detail.startswith("chunk has missing decisions"):
+            group = "missing decisions"
+        else:
+            return diagnostic
+        groups[group].append((alias, hint if separator else ""))
+        first = index if first is None else first
+        last = index
+    if first is None or sum(map(len, groups.values())) < 20:
+        return diagnostic
+    out = lines[:first]
+    if groups["relation fields"]:
+        rows = groups["relation fields"]
+        out.append(f"relation needs 2, 4 or 5 fields after R ({len(rows)} aliases)")
+        out.extend(f"{alias}: {hint}" if hint else alias for alias, hint in rows)
+        out.append("각 listed R 행의 기존 의미를 보존하고 필요한 필드 수만 바로잡으세요.")
+    if groups["missing decisions"]:
+        rows = groups["missing decisions"]
+        out.append(f"chunk has missing decisions ({len(rows)} aliases)")
+        out.extend(f"{alias}: {hint}" if hint else alias for alias, hint in rows)
+        out.append("각 listed alias의 누락 판정 행을 추가하고 이미 저장된 정상 행은 바꾸지 마세요.")
+    out.extend(lines[last + 1:])
+    return "\n".join(out)
+
+
 def unknown_aliases(diagnostic: str) -> list[str]:
     """Aliases a save-chunk rejection says name no candidate of the chunk (rows that can never be valid)."""
     return list(dict.fromkeys(re.findall(r"^(c\d+): .*names no candidate", diagnostic, re.M)))
@@ -396,14 +456,30 @@ def merge_fix(existing: list[str], revised: list[str], allowed: list[str]) -> tu
     return [merged[a] for a in sorted(merged, key=lambda a: int(a[1:]))], ignored
 
 
-def fixes_used(runs) -> int:
-    """`s2_chunk_fix` runs since the most recent `s2_chunk_new` (`runs` newest first, as Store.runs gives them)."""
+def fixes_used(runs, new_kind: str, fix_kinds: tuple[str, ...]) -> int:
+    """Count output-producing fixes after the latest `new_kind` (`runs` newest first, as Store.runs gives them).
+
+    A failed fix is free only when a numeric nonzero exit and an explicitly measured zero output-token count both prove
+    that it returned no answer. Unknown exit or usage values conservatively consume one correction opportunity.
+    """
     n = 0
     for r in runs:
-        if r["kind"] == "s2_chunk_new":
+        if r["kind"] == new_kind:
             break
-        n += r["kind"] in ("s2_chunk_fix", "s2_chunk_format_fix")
+        if r["kind"] not in fix_kinds:
+            continue
+        status, output_tokens = r["exit_status"], r["output_tokens"]
+        try:
+            failed = status is not None and int(status) != 0
+        except (TypeError, ValueError):
+            failed = False
+        n += not (failed and output_tokens == 0)
     return n
+
+
+def retry_fix_key(batch_id: int) -> str:
+    """The one-use explicit owner Retry allowance for a Stage 2 chunk and its recorded session."""
+    return f"s2_chunk_retry_fix_{batch_id}"
 
 
 def run_start_key(batch_id: int) -> str:
