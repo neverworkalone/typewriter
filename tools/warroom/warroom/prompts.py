@@ -22,7 +22,8 @@ ALLOWED = {"a": _PRODUCE, "b": _PRODUCE, "c": _PRODUCE, "d": _PRODUCE, "recovery
            "s2_chunk_resume": {"chunk_id"}, "s2_chunk_fix": {"chunk_id", "problem"},
            "s2_chunk_format_fix": {"chunk_id", "problem"},
            "c_chunk": _C_CHUNK, "c_chunk_resume": {"chunk_no", "checkpoint", "remaining", "session_note"},
-           "d_chunk": {"batch", "branch", "chunk_no", "session_note", "chunk_input"}, "d_chunk_resume": {"chunk_no"}, "d_chunk_fix": {"chunk_no", "decisions", "problem"},
+           "d_chunk": {"batch", "branch", "chunk_no", "session_note", "chunk_input"},
+           "d_chunk_resume": {"chunk_no", "decisions", "searches"}, "d_chunk_fix": {"chunk_no", "decisions", "problem"},
            "a_chunk": _AB_CHUNK, "b_chunk": _AB_CHUNK, "ab_chunk_retry": {"chunk_no", "requested", "problem", "chunk_input"}}
 MAINTENANCE_METHOD = "m"
 STAGE2_METHOD = "s2"
