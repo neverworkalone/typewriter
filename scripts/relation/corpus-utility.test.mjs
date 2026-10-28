@@ -4,7 +4,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { DatabaseSync } from 'node:sqlite';
 
-import { corpusScanRows, createSearchContextReuse, openReadonlyDb, renderContexts, saveChunk, searchContexts } from './corpus-utility.mjs';
+import { InvalidCursorError, corpusScanRows, createSearchContextReuse, openReadonlyDb, renderContexts, saveChunk, searchContexts } from './corpus-utility.mjs';
 
 async function makeCorpus(paragraphs) {
   const root = await mkdtemp(path.join((await mkdir(path.resolve('.warroom-scratch'), { recursive: true })) ?? path.resolve('.warroom-scratch'), 'corpus-utility-'));
@@ -87,7 +87,7 @@ test('a character budget limits one call and a cursor with the wrong form list f
     assert.ok(result.items.reduce((sum, item) => sum + item.excerpt.length, 0) <= 500);
     assert.equal(result.status, 'LIMITED');
     assert.ok(renderContexts(result).length < 1500);
-    assert.equal(searchContexts(database, ['다른말'], { cursor: result.next_cursor }).status, 'SEARCH_FAILED');
+    assert.throws(() => searchContexts(database, ['다른말'], { cursor: result.next_cursor }), InvalidCursorError);
     database.close();
   } finally {
     await rm(root, { recursive: true, force: true });
@@ -200,16 +200,17 @@ test('a cursor is rejected when its options, corpus or position differ', async (
     const database = openReadonlyDb(databasePath);
     const first = searchContexts(database, ['기현'], { maxSamples: 2 });
     assert.equal(searchContexts(database, ['기현'], { cursor: first.next_cursor, maxSamples: 20 }).status, 'COMPLETE');
-    assert.equal(searchContexts(database, ['기현'], { cursor: first.next_cursor, boundary: 'none' }).status, 'SEARCH_FAILED');
+    assert.throws(() => searchContexts(database, ['기현'], { cursor: first.next_cursor, boundary: 'none' }), InvalidCursorError);
     const forged = (state) => Buffer.from(JSON.stringify(state)).toString('base64url');
     const id = JSON.parse(Buffer.from(first.next_cursor, 'base64url').toString()).id;
     for (const state of [{ id, form: 5, after: 1 }, { id, form: 0, after: -1 }, { id, form: 0, after: 9999 }, { id, form: 0, after: 1.5 }]) {
-      assert.equal(searchContexts(database, ['기현'], { cursor: forged(state) }).status, 'SEARCH_FAILED');
+      assert.throws(() => searchContexts(database, ['기현'], { cursor: forged(state) }), InvalidCursorError);
     }
+    assert.throws(() => searchContexts(database, ['기현'], { cursor: '%%%not-base64url%%%' }), InvalidCursorError);
     database.close();
     const other = await makeCorpus(Array.from({ length: 11 }, () => '기현 이 말했다.'));
     const otherDb = openReadonlyDb(other.databasePath);
-    assert.equal(searchContexts(otherDb, ['기현'], { cursor: first.next_cursor }).status, 'SEARCH_FAILED');
+    assert.throws(() => searchContexts(otherDb, ['기현'], { cursor: first.next_cursor }), InvalidCursorError);
     otherDb.close();
     await rm(other.root, { recursive: true, force: true });
   } finally {
@@ -276,9 +277,8 @@ test('same-chunk search reuse skips identical SQLite reads and keeps request pag
     const noHits = search(['없는표면형']);
     assert.equal(noHits.result.status, 'ZERO_HITS');
     assert.equal(search(['없는표면형']).reused, true);
-    const failed = search(['기현'], { ...options, cursor: 'invalid' });
-    assert.equal(failed.result.status, 'SEARCH_FAILED');
-    assert.equal(search(['기현'], { ...options, cursor: 'invalid' }).reused, false);
+    assert.throws(() => search(['기현'], { ...options, cursor: 'invalid' }), InvalidCursorError);
+    assert.throws(() => search(['기현'], { ...options, cursor: 'invalid' }), InvalidCursorError);
     database.close();
   } finally {
     await rm(root, { recursive: true, force: true });
