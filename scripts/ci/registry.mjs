@@ -3,7 +3,6 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import LEGACY_CHECK_IDENTITIES from './legacy-check-identities.json' with { type: 'json' };
 import LEGACY_CHECK_TIERS from './legacy-check-tiers.json' with { type: 'json' };
-import { PRODUCT_UNIT_TEST_FILES } from './product-unit-test-files.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 export const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
@@ -49,20 +48,17 @@ function globalCanonicalAuditCheck() {
   };
 }
 
-function pnpmCheck(label, script, args = [], testFiles = []) {
-  return {
-    label,
-    command: () => pnpmCommand(script, args),
-    testFiles,
-  };
-}
-
 function testCheck(file, label = `Run ${file}`) {
   return commandCheck(label, ['--test', file], [file]);
 }
 
-function contractCheck(label, script, testFile) {
-  return pnpmCheck(label, script, [], [testFile]);
+function affectedTestCheck(file, label, paths) {
+  return {
+    ...testCheck(file, label),
+    tier: 'deep',
+    schedule: 'affected',
+    paths: [...new Set([file, ...paths])],
+  };
 }
 
 export const CI_CATEGORY_ORDER = Object.freeze([
@@ -134,35 +130,53 @@ const RAW_CI_CATEGORIES = Object.freeze({
       inProcessCheck('Validate canonical JSONL', 'canonical-jsonl'),
       globalCanonicalAuditCheck(),
       inProcessCheck('Validate M6-3 surface-form projection coverage', 'surface-form-projection'),
-      testCheck('tests/validate-canonical-jsonl.test.mjs', 'Test canonical JSONL validator'),
-      testCheck('tests/canonical-context.test.mjs', 'Test shared canonical context'),
-      testCheck('tests/stdict-import.test.mjs', 'Test STDICT canonical conversion, licensed-source gate and pilot shard'),
-      testCheck('tests/validate-dataset-integrity.test.mjs', 'Test dataset validator'),
-      {
-        ...testCheck('tests/meaning-provenance.test.mjs', 'Test meaning relation provenance completeness and source binding'),
-        tier: 'normal',
-      },
+      affectedTestCheck('tests/validate-canonical-jsonl.test.mjs', 'Test canonical JSONL validator', [
+        'scripts/validate/canonical-jsonl.mjs',
+        'schema/canonical-record.schema.json',
+      ]),
+      affectedTestCheck('tests/canonical-context.test.mjs', 'Test shared canonical context', [
+        'scripts/validate/canonical-context.mjs',
+        'scripts/validate/canonical-jsonl.mjs',
+      ]),
+      affectedTestCheck('tests/stdict-import.test.mjs', 'Test STDICT canonical conversion, licensed-source gate and pilot shard', [
+        'scripts/build/dictionary.mjs',
+        'scripts/stdict/convert.mjs',
+        'scripts/stdict/build-shard.mjs',
+        'scripts/stdict/policy.mjs',
+        'scripts/validate/canonical-jsonl.mjs',
+        'scripts/validate/dataset-integrity.mjs',
+        'scripts/validate/lexical-quality.mjs',
+        'scripts/validate/licensed-source.mjs',
+        'src/domain/search-session.js',
+      ]),
+      affectedTestCheck('tests/validate-dataset-integrity.test.mjs', 'Test dataset validator', [
+        'scripts/validate/canonical-jsonl.mjs',
+        'scripts/validate/dataset-integrity.mjs',
+        'schema/canonical-record.schema.json',
+      ]),
       {
         ...testCheck('tests/canonical-record-meanings.test.mjs', 'Test Issue #820 canonical-only record meanings (corpus coverage, no Meaning input, record candidates)'),
         tier: 'normal',
       },
+      affectedTestCheck('tests/meaning-search.test.mjs', 'Test meaning search candidates, stored ranking and 더보기 partition', [
+        'scripts/build/dictionary.mjs',
+        'scripts/build/sqlite-schema.mjs',
+        'src/domain/exact-search-candidates.js',
+        'src/domain/projection.js',
+        'src/domain/search-session.js',
+        'src/runtime/sqlite-query.js',
+      ]),
+      affectedTestCheck('tests/sharded-json.test.mjs', 'Test shared sharded source writer', [
+        'scripts/lib/sharded-json.mjs',
+        'scripts/lib/sharded-json-sources.mjs',
+        'scripts/validate/apply-semantic-corrections.mjs',
+      ]),
       {
-        ...testCheck('tests/meaning-search.test.mjs', 'Test meaning search candidates, stored ranking and 더보기 partition'),
-        tier: 'normal',
-      },
-      testCheck('tests/ci-runner.test.mjs', 'Test CI category runner fail-fast behavior'),
-      testCheck('tests/ci-registry.test.mjs', 'Test CI check ownership registry'),
-      { ...testCheck('tests/sharded-json.test.mjs', 'Test shared sharded source writer'), tier: 'normal' },
-      testCheck(
-        'tests/ci-sqlite-build-guard.test.mjs',
-        'Test zero current-revision SQLite builds in automatic CI (real runner fault injection)',
-      ),
-      {
-        ...testCheck(
+        ...affectedTestCheck(
           'scripts/ci/sqlite-schema-change.test.mjs',
           'Test exact SQL schema change classification and fail-closed owner detection',
+          ['scripts/ci/sqlite-schema-change.mjs'],
         ),
-        tier: 'normal',
       },
     ],
   },
@@ -177,11 +191,20 @@ const RAW_CI_CATEGORIES = Object.freeze({
         ),
         schedule: 'affected',
         paths: [
-          'scripts/relation',
-          'scripts/relation/relation-amendments.mjs',
+          'scripts/relation/backfill-apply.mjs',
+          'scripts/relation/backfill-queue.mjs',
+          'scripts/relation/backfill-queue-cli.mjs',
+          'scripts/relation/candidate-retrieval.mjs',
+          'scripts/relation/plan.mjs',
           'scripts/relation/relation-corrections.mjs',
+          'scripts/relation/relation-amendments.mjs',
           'scripts/relation/semantic-authority.mjs',
+          'scripts/batch/authored-semantic-decision-source.mjs',
+          'scripts/validate/canonical-context.mjs',
+          'scripts/validate/dataset-integrity.mjs',
           'scripts/validate/semantic-audit.mjs',
+          'tests/helpers/sharded-authority.mjs',
+          'tests/helpers/synthetic-canonical-base.mjs',
           'scripts/relation/backfill-queue.test.mjs',
           'scripts/relation/backfill-queue-cli.test.mjs',
           'scripts/relation/backfill-apply.test.mjs',
@@ -204,38 +227,67 @@ const RAW_CI_CATEGORIES = Object.freeze({
         tier: 'normal',
       },
       {
-        ...testCheck('scripts/relation/candidate-contract.test.mjs', 'Test relation Candidate v1 batch contract'),
-        tier: 'normal',
+        ...affectedTestCheck('scripts/relation/candidate-contract.test.mjs', 'Test relation Candidate v1 batch contract', [
+          'scripts/relation/candidate-contract.mjs',
+          'scripts/relation/validate-candidate-changes.mjs',
+        ]),
       },
       {
-        ...testCheck('scripts/relation/candidate-workbench.test.mjs', 'Test relation Candidate workbench chunk mapping and checkpoints'),
-        tier: 'normal',
+        ...affectedTestCheck('scripts/relation/candidate-workbench.test.mjs', 'Test relation Candidate workbench chunk mapping and checkpoints', [
+          'scripts/relation/candidate-workbench.mjs',
+          'scripts/relation/candidate-contract.mjs',
+        ]),
       },
       {
-        ...testCheck('scripts/relation/literary-context.test.mjs', 'Test C literary search, evidence checkpoints and local Candidate repair'),
-        tier: 'normal',
+        ...affectedTestCheck('scripts/relation/literary-context.test.mjs', 'Test C literary search, evidence checkpoints and local Candidate repair', [
+          'scripts/relation/literary-context.mjs',
+          'scripts/relation/literary-context-cli.mjs',
+          'scripts/relation/candidate-contract.mjs',
+        ]),
       },
       {
-        ...testCheck('scripts/relation/corpus-utility.test.mjs', 'Test D corpus search utility bounds, paging and atomic chunk save'),
-        tier: 'normal',
+        ...affectedTestCheck('scripts/relation/corpus-utility.test.mjs', 'Test D corpus search utility bounds, paging and atomic chunk save', [
+          'scripts/relation/corpus-utility.mjs',
+        ]),
       },
       {
-        ...testCheck('scripts/relation/d-chunk-cli.test.mjs', 'Test D chunk CLI prepare, search evidence and save checks'),
-        tier: 'normal',
+        ...affectedTestCheck('scripts/relation/d-chunk-cli.test.mjs', 'Test D chunk CLI prepare, search evidence and save checks', [
+          'scripts/relation/d-chunk-cli.mjs',
+          'scripts/relation/corpus-utility.mjs',
+          'scripts/relation/candidate-contract.mjs',
+        ]),
       },
       {
-        ...testCheck('scripts/relation/admission.test.mjs', 'Test Stage 2 Relation Admission preparation and accounting'),
-        tier: 'normal',
+        ...affectedTestCheck('scripts/relation/admission.test.mjs', 'Test Stage 2 Relation Admission preparation and accounting', [
+          'scripts/relation/admission.mjs',
+          'scripts/relation/candidate-contract.mjs',
+        ]),
       },
       {
-        ...testCheck('tests/authored-relations.test.mjs', 'Test approved Relations build projection and text-only product path'),
-        tier: 'normal',
+        ...affectedTestCheck('tests/authored-relations.test.mjs', 'Test approved Relations build projection and text-only product path', [
+          'scripts/build/authored-relations.mjs',
+          'scripts/build/dictionary.mjs',
+          'scripts/build/lite-dictionary.mjs',
+          'scripts/normalize/canonical.mjs',
+          'src/domain/projection.js',
+          'src/runtime/dictionary-validation.js',
+          'src/runtime/sqlite-query.js',
+        ]),
       },
       {
-        ...testCheck('scripts/relation/admission-cli.test.mjs', 'Test Stage 2 Relation Admission CLI re-run behavior'),
-        tier: 'normal',
+        ...affectedTestCheck('scripts/relation/admission-cli.test.mjs', 'Test Stage 2 Relation Admission CLI re-run behavior', [
+          'scripts/relation/admission-cli.mjs',
+          'scripts/relation/admission.mjs',
+          'scripts/relation/candidate-contract.mjs',
+        ]),
       },
-      testCheck('tests/relation-relevance.test.mjs', 'Test exploratory relation relevance contract'),
+      affectedTestCheck('tests/relation-relevance.test.mjs', 'Test exploratory relation relevance contract', [
+        'scripts/build/dictionary.mjs',
+        'scripts/build/query.mjs',
+        'scripts/validate/canonical-jsonl.mjs',
+        'scripts/validate/dataset-integrity.mjs',
+        'src/runtime/dictionary-contract.js',
+      ]),
     ],
   },
 
@@ -244,7 +296,11 @@ const RAW_CI_CATEGORIES = Object.freeze({
     checks: [
       globalCanonicalAuditCheck(),
       inProcessCheck('Normalize canonical data', 'normalize-canonical'),
-      testCheck('tests/normalize-canonical.test.mjs', 'Test canonical normalization'),
+      affectedTestCheck('tests/normalize-canonical.test.mjs', 'Test canonical normalization', [
+        'scripts/normalize/canonical.mjs',
+        'scripts/validate/canonical-jsonl.mjs',
+        'scripts/validate/dataset-integrity.mjs',
+      ]),
       {
         ...inProcessCheck('Run database-free M2 source and model audit', 'm2-data-audit'),
         tier: 'normal',
@@ -253,32 +309,73 @@ const RAW_CI_CATEGORIES = Object.freeze({
         ...inProcessCheck('Verify current surface-form projection reuse', 'surface-form-projection-reuse'),
         tier: 'normal',
       },
-      testCheck('tests/build-dictionary.test.mjs', 'Test SQLite dictionary build'),
+      affectedTestCheck('tests/build-dictionary.test.mjs', 'Test SQLite dictionary build', [
+        'scripts/build/dictionary.mjs',
+        'scripts/build/lite-dictionary.mjs',
+        'scripts/build/query.mjs',
+        'src/runtime/dictionary-contract.js',
+        'src/runtime/sqlite-query.js',
+      ]),
       {
-        ...testCheck('tests/lite-dictionary.test.mjs', 'Test Full dictionary to Lite product extraction'),
-        tier: 'normal',
+        ...affectedTestCheck('tests/lite-dictionary.test.mjs', 'Test Full dictionary to Lite product extraction', [
+          'scripts/build/dictionary.mjs',
+          'scripts/build/lite-dictionary.mjs',
+          'scripts/build/query.mjs',
+          'scripts/ci/validate-shared-dictionary.mjs',
+          'src/runtime/dictionary-contract.js',
+          'src/runtime/dictionary-validation.js',
+        ]),
       },
       {
-        ...testCheck('tests/build-provenance.test.mjs', 'Test source revision provenance and dirty-build safeguards'),
-        tier: 'normal',
+        ...affectedTestCheck('tests/build-provenance.test.mjs', 'Test source revision provenance and dirty-build safeguards', [
+          'scripts/build/provenance.mjs',
+        ]),
+      },
+      {
+        ...affectedTestCheck('tests/meaning-provenance.test.mjs', 'Test meaning relation provenance completeness and source binding', [
+          'scripts/build/direct-reverse.mjs',
+          'scripts/build/gloss-arrow-reference.mjs',
+          'scripts/build/lite-dictionary.mjs',
+          'scripts/build/meaning-source-checks.mjs',
+          'scripts/build/record-meanings.mjs',
+          'scripts/build/dictionary.mjs',
+          'src/runtime/dictionary-contract.js',
+          'src/runtime/dictionary-validation.js',
+        ]),
       },
     ],
   },
 
   product: {
-    label: 'Product tests and database-free UI builds',
+    label: 'Product runtime contract regressions',
     checks: [
-      testCheck('tests/dictionary-validation.test.mjs', 'Test packaged dictionary runtime guards'),
-      testCheck('tests/search-query.test.mjs', 'Test shared search query contract'),
-      testCheck('tests/runtime-query-adapter.test.mjs', 'Test shared native and WASM SQLite query adapter'),
-      testCheck('tests/surface-form-projection.test.mjs', 'Test M6-3 surface-form projection and search'),
-      pnpmCheck('Run product unit tests', 'test:unit', [], PRODUCT_UNIT_TEST_FILES),
-      {
-        ...pnpmCheck('Build extension UI assets without a dictionary database', 'build:ui'),
-        tier: 'normal',
-      },
-      pnpmCheck('Build Typewriter Web', 'build:web'),
-      pnpmCheck('Validate static Pages artifact', 'validate:pages-artifact'),
+      affectedTestCheck('tests/dictionary-validation.test.mjs', 'Test packaged dictionary runtime guards', [
+        'scripts/build/sqlite-schema.mjs',
+        'src/runtime/dictionary-contract.js',
+        'src/runtime/dictionary-validation.js',
+      ]),
+      affectedTestCheck('tests/search-query.test.mjs', 'Test shared search query contract', [
+        'src/runtime/search-query.js',
+      ]),
+      affectedTestCheck('tests/runtime-query-adapter.test.mjs', 'Test shared native and WASM SQLite query adapter', [
+        'scripts/benchmark/sqlite-runtime.mjs',
+        'scripts/build/sqlite-schema.mjs',
+        'src/runtime/dictionary-contract.js',
+        'src/runtime/search-query.js',
+        'src/runtime/sqlite-query.js',
+      ]),
+      affectedTestCheck('tests/surface-form-projection.test.mjs', 'Test M6-3 surface-form projection and search', [
+        'scripts/batch/historical-canonical.mjs',
+        'scripts/build/query.mjs',
+        'scripts/build/sqlite-schema.mjs',
+        'scripts/inflection/surface-form-projection.mjs',
+        'scripts/validate/canonical-context.mjs',
+        'scripts/validate/canonical-jsonl.mjs',
+        'scripts/validate/dataset-integrity.mjs',
+        'scripts/validate/semantic-audit.mjs',
+        'scripts/validate/surface-form-projection.mjs',
+        'src/domain/projection.js',
+      ]),
     ],
   },
 
@@ -298,8 +395,17 @@ const RAW_CI_CATEGORIES = Object.freeze({
           'data/validation/canonical-semantic-decision-source.shards/',
         ],
       },
-      testCheck('tests/pages-artifact.test.mjs', 'Test Pages artifact publication boundary'),
-      testCheck('tests/validate-package.test.mjs', 'Test package validation'),
+      affectedTestCheck('tests/pages-artifact.test.mjs', 'Test Pages artifact publication boundary', [
+        'scripts/validate/pages-artifact.mjs',
+        'scripts/validate/product-output-contract.mjs',
+      ]),
+      affectedTestCheck('tests/validate-package.test.mjs', 'Test package validation', [
+        'scripts/build/release-info.mjs',
+        'scripts/build/sqlite-schema.mjs',
+        'scripts/build/stage-release-candidate.mjs',
+        'scripts/validate-package.mjs',
+        'src/runtime/dictionary-contract.js',
+      ]),
       commandCheck('Enforce generated-artifact policy and clean checkout', [
         'scripts/validate/artifact-policy.mjs',
         '--clean',
@@ -308,7 +414,7 @@ const RAW_CI_CATEGORIES = Object.freeze({
   },
 
   deep: {
-    label: 'Manual deep current-revision data reproducibility validation',
+    label: 'Selective implementation regressions and full-data reproducibility',
     checks: [
       {
         ...globalCanonicalAuditCheck(),

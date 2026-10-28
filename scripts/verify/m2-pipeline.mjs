@@ -10,7 +10,10 @@ import {
   DEFAULT_CANONICAL_DIRECTORY,
 } from '../validate/canonical-jsonl.mjs';
 import { loadCanonicalContext } from '../validate/canonical-context.mjs';
-import { validateDatasetDirectory } from '../validate/dataset-integrity.mjs';
+import {
+  getValidatedDatasetSummary,
+  validateDatasetDirectory,
+} from '../validate/dataset-integrity.mjs';
 import { normalizeCanonicalDirectory } from '../normalize/canonical.mjs';
 import { buildDictionary } from '../build/dictionary.mjs';
 import { extractLiteDictionary, readDatabaseKind } from '../build/lite-dictionary.mjs';
@@ -302,6 +305,7 @@ export async function runM2Pipeline({
   databaseMode = databasePath ? 'verify-existing' : 'reproducible',
   requireSurfaceFormClassifications,
   requireSurfaceFormCollisionReview,
+  reuseValidatedDataset = false,
 } = {}) {
   const context = canonicalContext ?? await loadCanonicalContext({
     directory: inputDirectory,
@@ -334,16 +338,27 @@ export async function runM2Pipeline({
     fileCount: context.fileCount,
     records: context.records,
   };
-  const dataset = await validateDatasetDirectory(inputDirectory, {
-    canonicalContext: context,
-    semanticAudit: context.semanticAudit,
-    requireSurfaceFormProjection: true,
-    requireSurfaceFormClassifications: requireClassDispositions,
-    requireSurfaceFormCollisionReview: requireCollisionReview,
-  });
+  const dataset = reuseValidatedDataset
+    ? getValidatedDatasetSummary(context, {
+      directory: inputDirectory,
+      semanticAudit: context.semanticAudit,
+      requireSemanticAudit: isDefaultCanonicalDirectory,
+      requireRelevance: isDefaultCanonicalDirectory,
+      requireSurfaceFormProjection: true,
+      requireSurfaceFormClassifications: requireClassDispositions,
+      requireSurfaceFormCollisionReview: requireCollisionReview,
+    })
+    : await validateDatasetDirectory(inputDirectory, {
+      canonicalContext: context,
+      semanticAudit: context.semanticAudit,
+      requireSurfaceFormProjection: true,
+      requireSurfaceFormClassifications: requireClassDispositions,
+      requireSurfaceFormCollisionReview: requireCollisionReview,
+    });
   const model = suppliedModel ?? await normalizeCanonicalDirectory(inputDirectory, {
     canonicalContext: context,
     semanticAudit: context.semanticAudit,
+    reuseValidatedDataset,
   });
 
   assertCanonicalModelMatchesRaw(canonical.records, model);

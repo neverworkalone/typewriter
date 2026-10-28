@@ -18,8 +18,8 @@ This page describes files used by the current product and approved maintenance p
 - `src/runtime/` contains the extension's offline SQLite worker and query boundary.
 - `src/popup/` and `src/options/` contain the extension UI; `site/` contains the static web application.
 - `public/` contains the extension manifest and approved product assets. Root `popup.html` and `options.html` are the extension entrypoints.
-- `scripts/ci/registry.mjs` owns automatic checks and their tier/dependency metadata. `scripts/ci/product-unit-test-files.mjs` is the explicit Vitest file set shared with the registry and `vitest.config.js`.
-- `tests/` and the directly invoked `scripts/**.test.mjs` files protect current product, source-integrity, build, relation, and CI contracts. Their current execution and disposition are recorded in [`docs/test-inventory-823.md`](test-inventory-823.md).
+- `scripts/ci/registry.mjs` owns automatic checks and their tier/dependency metadata. Normal CI runs production-data checks; implementation regressions use registered Selective Deep paths. The workflow runs extension UI and Web builds only for `src/**` and `site/**` changes, respectively.
+- `tests/` and the directly invoked `scripts/**.test.mjs` files protect current data-integrity, build, relation, search, and runtime contracts. The original test inventory at [`docs/test-inventory-823.md`](test-inventory-823.md) is a historical snapshot.
 
 ## Local-only and historical material
 

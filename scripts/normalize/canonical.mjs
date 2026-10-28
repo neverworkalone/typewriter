@@ -5,7 +5,10 @@ import {
   DEFAULT_CANONICAL_DIRECTORY,
 } from '../validate/canonical-jsonl.mjs';
 import { loadCanonicalContext } from '../validate/canonical-context.mjs';
-import { validateDatasetRecords } from '../validate/dataset-integrity.mjs';
+import {
+  getValidatedDatasetSummary,
+  validateDatasetRecords,
+} from '../validate/dataset-integrity.mjs';
 import {
   buildCanonicalSemanticAudit,
 } from '../validate/semantic-audit.mjs';
@@ -76,6 +79,7 @@ export async function normalizeCanonicalDirectory(
   {
     canonicalContext,
     semanticAudit,
+    reuseValidatedDataset = false,
   } = {},
 ) {
   const context = canonicalContext ?? await loadCanonicalContext({ directory });
@@ -88,11 +92,22 @@ export async function normalizeCanonicalDirectory(
         canonicalContext: context,
       })).artifact
       : undefined);
-  validateDatasetRecords(context.records, {
-    context,
-    semanticAudit: effectiveSemanticAudit,
-    requireSemanticAudit,
-  });
+  if (reuseValidatedDataset) {
+    getValidatedDatasetSummary(context, {
+      directory,
+      semanticAudit: effectiveSemanticAudit,
+      requireSemanticAudit,
+      requireSurfaceFormProjection: requireSemanticAudit,
+      requireSurfaceFormClassifications: requireSemanticAudit,
+      requireSurfaceFormCollisionReview: requireSemanticAudit,
+    });
+  } else {
+    validateDatasetRecords(context.records, {
+      context,
+      semanticAudit: effectiveSemanticAudit,
+      requireSemanticAudit,
+    });
+  }
 
   return normalizeRecords(context.records);
 }
