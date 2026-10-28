@@ -45,7 +45,7 @@ function canonicalRows() {
   return rows;
 }
 
-async function makeWorld() {
+async function makeWorld({ fillerParagraphs = 2000 } = {}) {
   const root = await mkdtemp(path.join((await mkdir(path.resolve('.warroom-scratch'), { recursive: true })) ?? path.resolve('.warroom-scratch'), 'd-chunk-'));
   const canonicalPath = path.join(root, 'stdict-0001.jsonl');
   await writeFile(canonicalPath, `${canonicalRows().map((row) => JSON.stringify(row)).join('\n')}\n`);
@@ -64,7 +64,7 @@ async function makeWorld() {
   const corpus = [
     '새벽안개가 마을을 덮었다.', '아침의 새벽안개는 차갑다.', '그는 기회 비용을 따져 보았다.',
     // A small real FTS fixture needs multiple page budgets so prepare can complete a multi-form zero search.
-    ...Array.from({ length: 2000 }, (_, index) => `시험용 문단 ${index}.`),
+    ...Array.from({ length: fillerParagraphs }, (_, index) => `시험용 문단 ${index}.`),
   ];
   corpus.forEach((form, index) => {
     database.prepare('INSERT INTO paragraphs VALUES (?, 1, ?, ?, ?)').run(index + 1, `p${index}`, index, form);
@@ -233,7 +233,7 @@ test('searchForContexts fills N, preserves collected hits, and keeps completion 
 });
 
 test('searchForContexts over a real index: bounded zero, form-bound cursors, external cursor', async () => {
-  const world = await makeWorld();
+  const world = await makeWorld({ fillerParagraphs: 0 });
   try {
     const database = openReadonlyDb(world.options.databasePath);
     const search = (forms, options) => ({ result: searchContexts(database, forms, { ...options, scanRows: 1 }) });
