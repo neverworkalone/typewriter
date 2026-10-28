@@ -112,14 +112,14 @@ jobs:
           fi
 
       - name: Set up pnpm dependency cache
-        if: ${{ steps.changes.outcome != 'success' || steps.changes.outputs.run_level == 'normal' || steps.changes.outputs.run_deep == 'true' || steps.schema.outputs.schema_changed == 'true' }}
+        if: ${{ steps.changes.outcome != 'success' || steps.changes.outputs.run_level == 'normal' || steps.changes.outputs.run_deep == 'true' || steps.schema.outputs.schema_changed == 'true' || steps.changes.outputs.run_warroom_tests == 'true' }}
         uses: actions/setup-node@v7
         with:
           node-version: 24.x
           cache: pnpm
 
       - name: Install pinned dependencies
-        if: ${{ steps.changes.outcome != 'success' || steps.changes.outputs.run_level == 'normal' || steps.changes.outputs.run_deep == 'true' || steps.schema.outputs.schema_changed == 'true' }}
+        if: ${{ steps.changes.outcome != 'success' || steps.changes.outputs.run_level == 'normal' || steps.changes.outputs.run_deep == 'true' || steps.schema.outputs.schema_changed == 'true' || steps.changes.outputs.run_warroom_tests == 'true' }}
         run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: War Room Python unit tests
