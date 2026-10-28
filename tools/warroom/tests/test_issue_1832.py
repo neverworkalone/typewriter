@@ -2,14 +2,18 @@
 import unittest
 
 from tests.fakes import FakeAdapter, World
-from tests.test_issue_1684 import S2
-from tests.test_issue_1908 import s2_world
-from tests.test_issue_2047 import CHUNK, GOOD, answer
+from tests.test_issue_1684 import S2, s2_world as base_s2_world
 from tests.test_claude_adapter import init, result, stream
 from warroom import control
 from warroom.adapters import ClaudeCodeAdapter, ProcessAdapter
 
 BASH = [{"tool_name": "Bash", "tool_input": {"command": "gh pr create --fill"}}]
+CHUNK = "001-01-01-001"
+
+
+def answer(text):
+    import json
+    return json.dumps({"type": "item.completed", "item": {"type": "agent_message", "text": text}}) + "\n"
 
 
 class Reporting(FakeAdapter):
@@ -28,7 +32,8 @@ def final(denials=BASH, **kw):
 
 class DeterministicStage2Completion(unittest.TestCase):
     def setUp(self):
-        self.w = w = s2_world(self)
+        self.w = w = base_s2_world(self)
+        w.git.chunk_view_total = 2
         w.adapter = Reporting()
         w.sup.adapter = w.adapter
         control.start(w.store, "claude", S2, "single", cfg=w.cfg)

@@ -147,7 +147,7 @@ class FakeGit:
     def commit_paths(self, path, rels, message, *, allow_empty=False):
         self.commits = getattr(self, "commits", [])
         self.commit_empty_allowed.append(allow_empty)
-        if not self.dirty_text.strip() and (rels or not allow_empty):
+        if not self.dirty_text.strip() and not rels and not allow_empty:
             raise GitError("빈 커밋은 명시적으로 허용된 경우에만 가능합니다")
         if self.dirty_text.strip() and {l[3:].strip() for l in self.dirty_text.splitlines() if l.strip()} != set(rels):
             raise GitError("커밋 대상이 의도한 파일과 다릅니다")
