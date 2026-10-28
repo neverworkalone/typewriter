@@ -283,7 +283,7 @@ class MaintainerDetailScreen(unittest.TestCase):
         w.cfg["producers"] = dict(w.cfg["producers"])
         patches = [mock.patch.object(tui, "Paths", return_value=w.paths),
                    mock.patch.object(tui, "load_config", return_value=w.cfg),
-                   mock.patch.object(tui, "ensure_supervisor", return_value=""),
+                   mock.patch.object(tui, "ensure_supervisor", return_value=("starting", None)),
                    mock.patch.object(tui.WarRoom, "check_auth", lambda self: None)]
         for p in patches:
             p.start()
