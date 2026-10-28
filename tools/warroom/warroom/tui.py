@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import shlex
 import subprocess
 import sys
 
@@ -26,23 +27,66 @@ from .logtail import LogTail, redact
 from .store import MAINTENANCE_METHOD, STAGE2_METHOD, Store
 
 TMUX_SUP = "warroom-supervisor"
+SUPERVISOR_STARTUP_GRACE_SECONDS = 20
+SUPERVISOR_RETRY_COOLDOWN_SECONDS = 5
 
 
-def ensure_supervisor(paths: Paths) -> str | None:
-    """Start the detached supervisor in tmux if none holds the lock. Returns a problem or None."""
+def ensure_supervisor(paths: Paths) -> tuple[str, str | None]:
+    """Ensure a Supervisor start is underway without replacing a process that may already be starting.
+
+    The Supervisor lock distinguishes a running process from a stale heartbeat. A second lock serializes TUI launchers
+    while the tmux session is inspected/replaced, so concurrent TUI refreshes cannot kill a session another just made.
+    Returns (locked|starting|failed, optional error).
+    """
     from .supervisor import acquire_lock
-    lock = acquire_lock(paths.lock)
-    if lock is None:
-        return None  # already running
-    lock.close()
-    if subprocess.run(["which", "tmux"], capture_output=True).returncode != 0:
-        return "tmux가 설치되어 있지 않습니다: `brew install tmux` 후 다시 ./war 를 실행하세요."
-    py = sys.executable
-    wr = str(paths.repo_root / "tools" / "warroom")
-    subprocess.run(["tmux", "kill-session", "-t", TMUX_SUP], capture_output=True)
-    r = subprocess.run(["tmux", "new-session", "-d", "-s", TMUX_SUP, "-c", str(paths.repo_root),
-                        f"env PYTHONPATH={wr} {py} -m warroom.supervisor"], capture_output=True, text=True)
-    return None if r.returncode == 0 else f"supervisor tmux 시작 실패: {r.stderr.strip()}"
+    launch_lock = acquire_lock(paths.local / "supervisor-launch.lock")
+    if launch_lock is None:
+        return "starting", None  # another TUI is checking/starting the shared session
+    try:
+        supervisor_lock = acquire_lock(paths.lock)
+        if supervisor_lock is None:
+            return "locked", None  # heartbeat can lag, but the existing process owns the lock
+        supervisor_lock.close()
+
+        def run(command: list[str], *, text: bool = False):
+            return subprocess.run(command, capture_output=True, text=text, timeout=2)
+
+        if run(["which", "tmux"]).returncode != 0:
+            return "failed", "tmux가 설치되어 있지 않습니다 (`brew install tmux`)."
+
+        existing = run(["tmux", "has-session", "-t", TMUX_SUP])
+        if existing.returncode == 0:
+            pane = run(["tmux", "display-message", "-p", "-t", TMUX_SUP, "#{pane_dead}"], text=True)
+            if pane.returncode != 0:
+                return "failed", f"기존 Supervisor tmux 세션 상태 확인 실패: {pane.stderr.strip()}"
+            if pane.stdout.strip() != "1":
+                return "starting", None  # preserve a live pane; it may be acquiring the lock or starting up
+            output = run(["tmux", "capture-pane", "-p", "-t", TMUX_SUP], text=True)
+            detail = ("\n".join(redact(line) for line in output.stdout.splitlines()[-8:]).strip()
+                      if output.returncode == 0 else redact(output.stderr.strip()))
+            removed = run(["tmux", "kill-session", "-t", TMUX_SUP], text=True)
+            if removed.returncode != 0:
+                check = run(["tmux", "has-session", "-t", TMUX_SUP])
+                if check.returncode == 0:
+                    return "failed", f"종료된 Supervisor tmux 세션 정리 실패: {removed.stderr.strip()}"
+            return "failed", "Supervisor 프로세스가 종료됐습니다. " + (detail or "종료 출력을 남기지 않았습니다.")
+
+        py = sys.executable
+        wr = str(paths.repo_root / "tools" / "warroom")
+        supervisor_command = shlex.join(["env", f"PYTHONPATH={wr}", py, "-m", "warroom.supervisor"])
+        command = f"tmux set-window-option -t {shlex.quote(TMUX_SUP)} remain-on-exit failed && {supervisor_command}"
+        r = run(["tmux", "new-session", "-d", "-s", TMUX_SUP, "-c", str(paths.repo_root), command], text=True)
+        if r.returncode == 0:
+            return "starting", None
+        # A concurrent non-TUI launcher may have created the shared session after our check. Never kill it.
+        check = run(["tmux", "has-session", "-t", TMUX_SUP])
+        if check.returncode == 0:
+            return "starting", None
+        return "failed", f"Supervisor tmux 시작 실패: {r.stderr.strip()}"
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return "failed", f"Supervisor 자동 시작 명령 실패: {exc}"
+    finally:
+        launch_lock.close()
 
 
 def in_open_select(widget) -> bool:
@@ -499,11 +543,13 @@ class WarRoom(App):
         self.paths.ensure()
         self.cfg = load_config(self.paths)
         self.store = Store(self.paths.db)
-        self.problem = ensure_supervisor(self.paths)
+        self._t0 = time.monotonic()
+        self._supervisor_state, self._supervisor_error = ensure_supervisor(self.paths)
+        self._supervisor_retry_at = self._t0 + SUPERVISOR_RETRY_COOLDOWN_SECONDS
+        self._supervisor_recovery_running = False
         self._auth: dict | None = None
         self._reload_token: str | None = None
         self._reload_fail = ""
-        self._t0 = time.time()
         self.models = ordered_models(self.cfg)   # board order: adapter label, never config order
         self.methods = methods(self.cfg)
 
@@ -579,9 +625,23 @@ class WarRoom(App):
         if self.screen is not self.screen_stack[0]:
             return
         if not control.supervisor_alive(self.store):
-            return self.notify("Supervisor가 실행 중이 아닙니다. 시작 시 설정을 읽으므로 ./war 를 다시 실행하세요.", severity="warning")
+            return self.notify("Supervisor heartbeat가 지연되어 설정 리로드를 요청하지 않았습니다. 상단 상태 안내를 확인하세요.",
+                               severity="warning")
         self._reload_token = control.request_reload(self.store)
         self.notify("설정 리로드를 요청했습니다.")
+
+    def _finish_supervisor_recovery(self, state: str, error: str | None) -> None:
+        self._supervisor_recovery_running = False
+        self._supervisor_state, self._supervisor_error = state, error
+        self._supervisor_retry_at = time.monotonic() + SUPERVISOR_RETRY_COOLDOWN_SECONDS
+        self.refresh_view()
+
+    def _recover_supervisor(self) -> None:
+        try:
+            state, error = ensure_supervisor(self.paths)
+        except Exception as exc:  # keep a launcher failure visible instead of ending the TUI worker
+            state, error = "failed", f"{type(exc).__name__}: {exc}"
+        self.call_from_thread(self._finish_supervisor_recovery, state, error)
 
     def _poll_reload(self) -> None:
         res = control.reload_result(self.store)
@@ -719,6 +779,15 @@ class WarRoom(App):
         self._poll_reload()
         root = self.screen_stack[0]   # the board, even while Detail/Settings is on top
         alive = control.supervisor_alive(store)
+        now = time.monotonic()
+        if alive:
+            self._supervisor_state, self._supervisor_error = "running", None
+        elif ((now - self._t0 >= SUPERVISOR_STARTUP_GRACE_SECONDS or self._supervisor_error is not None)
+              and now >= self._supervisor_retry_at
+              and not self._supervisor_recovery_running):
+            self._supervisor_recovery_running = True
+            self._supervisor_state, self._supervisor_error = "starting", None
+            self.run_worker(self._recover_supervisor, thread=True, exit_on_error=False)
         statuses = {}
         for model, me in self._line_keys():
             st = statuses[(model, me)] = control.line_status(store, model, me)
@@ -751,10 +820,16 @@ class WarRoom(App):
                   for s in statuses.values() if s["blocked"]]
         if self._reload_fail:
             notes.append(f"! {self._reload_fail}")
-        if self.problem:
-            notes.append(f"! {self.problem}")
-        elif not alive and time.time() - self._t0 > 20:   # grace: the Supervisor's first heartbeat
-            notes.append("! Supervisor가 실행 중이 아닙니다. ./war 를 다시 실행하세요.")
+        if self._supervisor_error:
+            retry_in = max(self._supervisor_retry_at - now,
+                           self._t0 + SUPERVISOR_STARTUP_GRACE_SECONDS - now, 0)
+            notes.append(f"! Supervisor 자동 재기동 실패: {self._supervisor_error} "
+                         f"({retry_in:.0f}초 후 재시도)")
+        elif not alive and now - self._t0 >= SUPERVISOR_STARTUP_GRACE_SECONDS:
+            if self._supervisor_state == "locked":
+                notes.append("! Supervisor lock이 점유 중인데 heartbeat가 지연되고 있습니다. 기존 프로세스는 유지합니다.")
+            elif self._supervisor_state == "starting":
+                notes.append("! Supervisor 자동 시작 중 · heartbeat 응답을 기다리고 있습니다.")
         banner = root.query_one("#banner", Static)
         banner.update("\n".join(notes))
         banner.display = bool(notes)
