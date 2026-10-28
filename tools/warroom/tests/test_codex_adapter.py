@@ -560,7 +560,7 @@ class SupervisorGitDir(unittest.TestCase):
 class CompletionGate(unittest.TestCase):
     """#1381 blocker 1: a run that exits 0 is accepted only with its own thread id and its own turn record."""
 
-    def check(self, events, contexts=None, run=PIN, expected=THREAD, baseline=None):
+    def check(self, events, contexts=None, run=PIN, expected=THREAD, baseline=None, method="completion_problem"):
         with tempfile.TemporaryDirectory() as d:
             d = Path(d)
             log = d / "l.log"
@@ -570,7 +570,7 @@ class CompletionGate(unittest.TestCase):
                 _baseline_path(log).write_text(json.dumps({"thread": THREAD, "turns": baseline}))
             home = rollout_home(d / "codex", THREAD, contexts or []) if contexts is not None else d / "empty"
             with mock.patch.dict(os.environ, {"CODEX_HOME": str(home)}):
-                return CodexCLIAdapter().completion_problem(log, run, expected)
+                return getattr(CodexCLIAdapter(), method)(log, run, expected)
 
     def test_table(self):
         cases = [  # name, events, contexts, baseline turns, expected state
@@ -607,6 +607,15 @@ class CompletionGate(unittest.TestCase):
             _baseline_path(log).write_text(json.dumps({"thread": THREAD, "turns": 0}))
             problem = CodexCLIAdapter().completion_problem(log, PIN, None)
             self.assertEqual(problem[0], "ERROR")
+
+    def test_incomplete_completion_requires_the_requested_thread_and_model_effort_pin(self):
+        self.assertTrue(self.check([started()], contexts=[context()], method="completion_incomplete"))
+        self.assertFalse(self.check([started()], contexts=[context()], expected="99999999-0000-4000-8000-000000000000",
+                                    method="completion_incomplete"))
+        self.assertFalse(self.check([started()], contexts=None, method="completion_incomplete"))
+        self.assertFalse(self.check([started()], contexts=[context(model="gpt-5")], method="completion_incomplete"))
+        self.assertIsNone(self.check([started()], contexts=[context()], method="output_identity_problem"))
+        self.assertIsNotNone(self.check([started()], contexts=None, method="output_identity_problem"))
 
     def test_resume_records_the_turn_baseline_of_its_session(self):
         class Spy(CodexCLIAdapter):

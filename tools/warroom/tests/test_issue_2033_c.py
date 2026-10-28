@@ -98,18 +98,22 @@ class SerialChunks(unittest.TestCase):
         self.assertEqual(w.git.pushes, [b["branch"]])
         self.assertEqual(w.runner.literary.exports, 1)
 
-    def test_zero_exit_without_checkpoint_evidence_is_not_success_and_retry_resumes_only_the_rest(self):
+    def test_incomplete_checkpoint_gets_one_automatic_retry_then_operator_retry_resumes_only_the_rest(self):
         w = self.w
         w.start("single", "deepseek", "c")
+        w.ai(mark=5)
         w.ai(mark=5)
         w.tick()
         ids = w.active()["sense_ids"]
         w.finish_last()
         w.tick()
+        self.assertEqual((w.adapter.launches[-1]["kind"], len(w.adapter.launches)), ("resume", 2))
+        w.finish_last()
+        w.tick()
         b = w.row("deepseek", "c")
         self.assertEqual(b["state"], "ERROR")
-        self.assertEqual(len(w.adapter.launches), 1)
-        # Retry continues the same chunk in the same session with only the open sense ids, never the chunk body.
+        self.assertEqual(len(w.adapter.launches), 2)
+        # Explicit Retry grants one new chance and continues only the open senses, never the chunk body.
         w.ai()
         self.assertTrue(control.retry(w.store, "deepseek", "c"))
         w.tick(2)

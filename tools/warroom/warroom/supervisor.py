@@ -218,6 +218,137 @@ class Supervisor:
             return None
         return None
 
+    def _chunk_retry_target(self, b) -> str | None:
+        """Stable identity of the currently active chunk for the bounded, persisted AI re-entry allowance."""
+        try:
+            wt = Path(b["worktree"])
+            if b["method"] in stage1ab.METHODS:
+                cp = stage1ab.checkpoint(wt, b)
+                repair = self.store.get(f"ab_repair_{b['id']}")
+                chunk = stage1ab.chunk_by_number(cp, int(repair)) if repair else stage1ab.next_chunk(wt, b, cp)
+                return None if chunk is None else f"ab:{chunk['number']}"
+            if b["method"] == literary.METHOD:
+                rec = literary.read_active(wt, b)
+                return None if rec is None else f"c:{rec['chunk_no']}"
+            if b["method"] == dchunk.METHOD:
+                rec = dchunk.read_active(wt, b)
+                return None if rec is None else f"d:{rec['chunk_no']}"
+            if b["method"] == STAGE2_METHOD:
+                checkpoint = stage2.checkpoint(wt, b["shard"], b["batch"])
+                pending = checkpoint.get("pending_chunk") if checkpoint else None
+                return None if pending is None else f"s2:{pending}"
+        except (OSError, ValueError, KeyError, TypeError, stage1ab.ABChunkError,
+                literary.LiteraryError, dchunk.DChunkError):
+            return None
+        return None
+
+    def _auto_retry_key(self, b, target: str) -> str:
+        return f"auto_chunk_retry_{b['id']}:{b['method']}:{target}"
+
+    def _auto_retry_chunk(self, b, reason: str, *, fresh_session: bool = False) -> bool:
+        """Use the one persisted additional re-entry for this exact active chunk, then reuse its normal Retry path."""
+        if b["state"] != "PRODUCING" or b["pid"] is not None:
+            return False
+        target = self._chunk_retry_target(b)
+        if target is None or (not fresh_session and not b["session_id"]):
+            return False
+        key = self._auto_retry_key(b, target)
+        try:
+            used = int(self.store.get(key) or 0)
+        except (TypeError, ValueError):
+            used = 1   # a damaged retry count must fail closed
+        if used >= 1:
+            self.store.log(b["id"], f"{target} 자동 재진입 한도를 이미 사용했습니다. 현재 상태를 보존합니다.", "warn")
+            return False
+        self.store.set(key, str(used + 1))   # persisted before launch; duplicate ticks/restarts cannot regrant it
+        if fresh_session:
+            self.store.update(b["id"], session_id=None)
+        self.store.log(b["id"], f"{target} {reason} — 같은 청크의 안전한 재개를 한 번 시도합니다 (1/1)", "warn")
+        self._relaunch(self.store.batch(b["id"]))
+        return True
+
+    def _retry_unsaved_chunk(self, b, reason: str) -> bool:
+        """Re-enter a missing-output chunk once, using a fresh session only when its method boundary is self-contained."""
+        fresh = not bool(b["session_id"])
+        if fresh and not self._safe_fresh_chunk_after_missing_session(b):
+            return False
+        return self._auto_retry_chunk(b, reason, fresh_session=fresh)
+
+    def _ab_chunk_saved_for_run(self, b) -> bool:
+        """The active A/B chunk was stored after this run's baseline and every other chunk stayed byte-identical."""
+        try:
+            raw = self.store.get(stage1ab.run_start_key(b["id"]))
+            baseline = json.loads(raw or "")
+            cp = stage1ab.checkpoint(b["worktree"], b)
+            chunk_no = int(baseline["chunk_no"])
+            chunk = stage1ab.chunk_by_number(cp, chunk_no)
+            if not stage1ab.chunk_saved(b["worktree"], b, chunk):
+                return False
+            before, after = baseline.get("saved"), stage1ab.saved_snapshot(b["worktree"], b, cp)
+            if not isinstance(before, dict):
+                return False
+            changed = [number for number in after if before.get(number) != after[number]]
+            if len(changed) != 1 or changed[0] != str(chunk_no):
+                return False
+            return True
+        except (stage1ab.ABChunkError, OSError, ValueError, KeyError, TypeError):
+            return False
+
+    def _saved_chunk_for_run(self, b) -> bool:
+        """Exact active-chunk evidence for output-producing exits, bound to this run's start baseline."""
+        if self._s2_chunk_run(b):
+            return self._stage2_chunk_saved(b)
+        if self._c_chunk_run(b):
+            return self._c_chunk_saved(b)
+        if self._d_chunk_run(b):
+            return self._d_chunk_saved(b)
+        if self._ab_chunk_run(b):
+            return self._ab_chunk_saved_for_run(b)
+        return False
+
+    def _saved_chunk_identity_problem(self, b):
+        ad = self._adapter(b["producer"])
+        return ad.output_identity_problem(Path(b["log_file"]), self._recorded_run(b), b["session_id"],
+                                          b["worktree"], self.env)
+
+    def _safe_fresh_chunk_after_missing_session(self, b) -> bool:
+        """Only methods with a self-contained, still-unsaved chunk may leave a dead session for a new one."""
+        wt = Path(b["worktree"])
+        if self._s2_chunk_run(b) and b["run_kind"] != "s2_chunk_fix":
+            pending = self._stage2_pending(b)
+            decisions = wt / stage2.DECISIONS
+            try:
+                return pending is not None and (not decisions.exists() or not decisions.read_text("utf-8").strip())
+            except OSError:
+                return False
+        if self._c_chunk_run(b):
+            try:
+                rec = literary.read_active(wt, b)
+                if rec is None:
+                    return False
+                submit = wt / f"{literary.names(b).submit_prefix}{rec['chunk_no']:03d}.submit.json"
+                diag = submit.with_name(submit.name + ".diag.json")
+                if submit.exists() or diag.exists():
+                    return False
+                state = literary.sense_report(self.runner, self._c_env(b), wt, b, rec["sense_ids"])
+                return not rec.get("repair") and not any(s["done"] for s in state["senses"])
+            except (literary.LiteraryError, OSError, ValueError, KeyError, TypeError):
+                return False
+        if self._d_chunk_run(b) and b["run_kind"] != "d_chunk_fix":
+            try:
+                rec = dchunk.read_active(wt, b)
+                if rec is None or dchunk.has_search_failure(wt, b):
+                    return False
+                n = dchunk.names(b)
+                decisions = wt / n.decisions
+                rejected = wt / n.rejected
+                if rejected.exists():
+                    return False
+                return not decisions.exists() or not decisions.read_text("utf-8").strip()
+            except (dchunk.DChunkError, OSError, ValueError):
+                return False
+        return False
+
     def _guarded(self, b, stage: str, fn, **evidence):
         """Run one retryable step; a transient query failure becomes a pending re-entry instead of ERROR/PAUSED."""
         try:
@@ -344,6 +475,9 @@ class Supervisor:
             if current["state"] != b["state"] or current["error"] != previous_error:
                 return
         if ln["retry_batch"] == b["id"]:
+            target = self._chunk_retry_target(b)
+            if target is not None:
+                self.store.delete(self._auto_retry_key(b, target))   # only an explicit operator Retry grants one new chance
             if b["method"] == STAGE2_METHOD and b["state"] == "ERROR" and not b["pr_number"] and self._s2_chunk_run(b) \
                     and stage2.fixes_used(self.store.runs(b["id"])) >= stage2.MAX_FIXES:
                 # Only the owner's explicit Retry after the corrections are used up restarts this pending chunk in a new
@@ -1326,6 +1460,21 @@ class Supervisor:
         self.store.finish_runs(b["id"], code)
         b = self.store.batch(b["id"])
         if code is None:
+            if self._saved_chunk_for_run(b):
+                if self._saved_output_failure(b, self._classify_run(b["producer"], b["log_file"])):
+                    return
+                ad = self._adapter(b["producer"])
+                if problem := self._saved_chunk_identity_problem(b):
+                    return self._fail(b, problem[0], f"종료 기록은 없지만 청크 실행 소유권/핀을 확인하지 못했습니다: {problem[1]}")
+                problem = ad.completion_problem(Path(b["log_file"]), self._recorded_run(b), b["session_id"],
+                                                b["worktree"], self.env)
+                if problem and not ad.completion_incomplete(Path(b["log_file"]), self._recorded_run(b),
+                                                            b["session_id"], b["worktree"], self.env):
+                    return self._fail(b, "ERROR", f"종료 상태 기록이 없고 실행 증거도 불완전합니다: {problem[1]}. 저장 청크와 worktree를 보존합니다.")
+                if not self._denials_cleared(b, Path(b["log_file"])):
+                    return
+                self.store.log(b["id"], "AI 종료 상태 기록은 없지만 현재 청크의 정확한 저장 증거와 실행 핀을 확인했습니다. 저장물을 다시 만들지 않고 진행합니다.", "warn")
+                return self._run_ok(b)
             return self._fail(b, "ERROR", "AI 프로세스가 종료 상태 기록 없이 사라졌습니다. "
                               "자동 재생산하지 않음 — worktree/PR 확인 후 Retry.")
         last = self._last_run(b)
@@ -1337,10 +1486,19 @@ class Supervisor:
         """Accept the result only with the run's own evidence (Claude: the session its init event reported; Codex: its
         thread id and turn record). Reads the log and GitHub only, so a retryable query failure re-runs just this."""
         ad = self._adapter(b["producer"])
+        saved = self._saved_chunk_for_run(b)
+        if saved:
+            if problem := self._saved_chunk_identity_problem(b):
+                return self._fail(b, problem[0], f"저장 청크 실행의 소유권/핀 확인 실패: {problem[1]}")
         problem = ad.completion_problem(Path(b["log_file"]), self._recorded_run(b), b["session_id"],
                                         b["worktree"], self.env)
         if problem:
-            return self._fail(b, problem[0], problem[1])
+            if not saved or not ad.completion_incomplete(
+                    Path(b["log_file"]), self._recorded_run(b), b["session_id"], b["worktree"], self.env):
+                return self._fail(b, problem[0], problem[1])
+            if self._saved_output_failure(b, self._classify_run(b["producer"], b["log_file"])):
+                return
+            self.store.log(b["id"], "CLI의 최종 완료 로그는 없지만 현재 청크의 정확한 저장과 실행 핀을 확인했습니다. 저장물을 다시 만들지 않습니다.", "warn")
         if not self._denials_cleared(b, Path(b["log_file"])):
             return
         runs = self.store.runs(b["id"])
@@ -1643,9 +1801,11 @@ class Supervisor:
         if self._stage2_chunk_saved(b):
             return self._stage2_accept(b)
         rows = self._stage2_response(b)
-        if rows is None:   # no `chunk <current id>` header: nothing to save, no correction or failure is consumed
+        if rows is None:   # no `chunk <current id>` header: keep the pending checkpoint and try this chunk once more
+            if b["run_kind"] != "s2_chunk_fix" and self._retry_unsaved_chunk(b, "현재 청크 응답 누락"):
+                return
             return self._fail(b, "ERROR", "Stage 2 청크 실행은 종료됐지만 현재 청크 ID 헤더가 있는 판정 응답이 없고 시작 시점 대비 "
-                              "checkpoint가 정확히 전진하지 않았거나 pending_chunk가 남아 있습니다. 자동 재생산하지 않고 worktree와 기록을 보존합니다.")
+                              "checkpoint가 정확히 전진하지 않았거나 pending_chunk가 남아 있습니다. 자동 재진입 한도를 소진했거나 안전하지 않아 기록을 보존합니다.")
         pending = self._stage2_pending(b)
         try:
             if b["run_kind"] == "s2_chunk_fix":
@@ -1767,12 +1927,16 @@ class Supervisor:
                 raise prompts.PromptError("이어갈 미완료 sense가 없습니다")
             prompt = prompts.c_chunk_resume(rec["chunk_no"], checkpoint, remaining)
         else:
-            card_bytes = len(prompts.c_chunk(b, rec["chunk_no"], checkpoint, view="", note=rec.get("note", "")).encode("utf-8"))
+            note = rec.get("note", "")
+            if self.store.get(literary.run_start_key(b["id"])):
+                note += ("이전 세션을 찾지 못해 새 세션으로 같은 활성 청크를 이어간다. 이미 checkpoint에 완료된 Sense와 "
+                         "기존 제출·판정은 보존하고, 남은 Sense만 처리한다.\n")
+            card_bytes = len(prompts.c_chunk(b, rec["chunk_no"], checkpoint, view="", note=note).encode("utf-8"))
             if literary.delivery(card_bytes, view) == "inline":
-                prompt = prompts.c_chunk(b, rec["chunk_no"], checkpoint, view=view, note=rec.get("note", ""))
+                prompt = prompts.c_chunk(b, rec["chunk_no"], checkpoint, view=view, note=note)
             else:   # only this chunk falls back to pages; a failure here starts no AI
                 prompt = prompts.c_chunk(b, rec["chunk_no"], checkpoint, pages=literary.write_pages(wt, view),
-                                         note=rec.get("note", ""))
+                                         note=note)
         baseline = {"branch": b["branch"], "worktree": str(wt), "head": self.git.head(wt),
                     "remote_head": self.git.remote_head(b["branch"]) if remote == "?" else remote, "chunk_no": rec["chunk_no"]}
         return prompt, baseline
@@ -1804,8 +1968,18 @@ class Supervisor:
         if not self._c_chunk_saved(b):
             if self._c_resubmit(b):
                 return
+            rec = diag = None
+            try:
+                rec = literary.read_active(Path(b["worktree"]), b)
+                if rec is not None:
+                    diag = Path(b["worktree"]) / f"{literary.names(b).submit_prefix}{rec['chunk_no']:03d}.submit.json.diag.json"
+            except (literary.LiteraryError, OSError, ValueError, KeyError, TypeError):
+                pass
+            if rec is not None and diag is not None and not diag.exists() and b["run_kind"] != "c_chunk_fix" \
+                    and self._retry_unsaved_chunk(b, "checkpoint 미완료"):
+                return
             return self._fail(b, "ERROR", "C 청크 실행이 종료됐지만 활성 청크의 모든 sense가 완료되지 않았습니다 (checkpoint 완료 증거 없음). "
-                              "자동 재생산하지 않고 보존합니다 — Retry는 같은 청크의 미완료 sense만 이어갑니다.")
+                              "자동 재진입 한도를 소진했거나 제출 진단 때문에 안전하지 않아 보존합니다 — Retry는 같은 청크의 미완료 sense만 이어갑니다.")
         self.store.delete(literary.run_start_key(b["id"]))
         self.store.delete(literary.resubmit_key(b["id"]))
         self.store.update(b["id"], session_id=None, retries=0, retry_after=None, error=None)
@@ -2055,14 +2229,20 @@ class Supervisor:
         if rec is None:
             raise prompts.PromptError("활성 청크 기록이 없습니다")
         view = dchunk.read_view(wt, b, rec)
+        note = ""
+        if kind == "d_chunk_new" and self.store.get(dchunk.run_start_key(b["id"])):
+            names = dchunk.names(b)
+            note = ("이전 세션을 찾지 못해 새 세션으로 같은 활성 청크를 이어간다. "
+                    f"{names.directory}/decisions.txt와 searches.jsonl의 기존 판정·검색 증거를 읽고 보존한다. "
+                    "이미 완성된 판정을 다시 만들거나 검색 기록을 삭제하지 말고, 미완료 Sense만 이어서 처리한다.\n")
         if kind == "d_chunk_resume":
             prompt = prompts.d_chunk_resume(rec["chunk_no"])
         else:
-            card_bytes = len(prompts.d_chunk(b, rec["chunk_no"], view="").encode("utf-8"))
+            card_bytes = len(prompts.d_chunk(b, rec["chunk_no"], view="", note=note).encode("utf-8"))
             if dchunk.delivery(card_bytes, view) == "inline":
-                prompt = prompts.d_chunk(b, rec["chunk_no"], view=view)
+                prompt = prompts.d_chunk(b, rec["chunk_no"], view=view, note=note)
             else:   # only this chunk falls back to pages; a failure here starts no AI
-                prompt = prompts.d_chunk(b, rec["chunk_no"], pages=dchunk.write_pages(wt, b, view))
+                prompt = prompts.d_chunk(b, rec["chunk_no"], pages=dchunk.write_pages(wt, b, view), note=note)
         baseline = {"branch": b["branch"], "worktree": str(wt), "head": self.git.head(wt),
                     "remote_head": self.git.remote_head(b["branch"]) if remote == "?" else remote, "chunk_no": rec["chunk_no"]}
         return prompt, baseline
@@ -2107,8 +2287,14 @@ class Supervisor:
         if not self._d_chunk_saved(b):
             if self._d_fix(b):
                 return
+            wt = Path(b["worktree"])
+            rejected = wt / dchunk.names(b).rejected
+            if b["run_kind"] != "d_chunk_fix" and not rejected.exists() \
+                    and not dchunk.has_search_failure(wt, b) \
+                    and self._retry_unsaved_chunk(b, "활성 청크 저장 누락"):
+                return
             return self._fail(b, "ERROR", "D 청크 실행이 종료됐지만 활성 청크가 저장되지 않았습니다 (chunk-NNN.jsonl 증거 없음). "
-                              "자동 재생산하지 않고 보존합니다 — Retry는 같은 청크를 이어갑니다." + self._d_rejection_note(b))
+                              "자동 재진입 한도를 소진했거나 저장/검색 진단 때문에 안전하지 않아 보존합니다 — Retry는 같은 청크를 이어갑니다." + self._d_rejection_note(b))
         if problem := self._d_accept_saved(b):
             return self._fail(b, "ERROR", problem)
         self.store.delete(dchunk.run_start_key(b["id"]))
@@ -2300,8 +2486,11 @@ class Supervisor:
         else:
             note = ""
             if kind == "ab_chunk_retry":
-                note = (f"이 청크는 이미 답변·저장이 있으나 검증에서 거부됐다. 거부 사유: {st.get('problem') or '사유 없음'}\n"
-                        f"고칠 줄: {requested}. `C` 줄이 현재 저장된 후보다.\n")
+                if st["requested"] is None:
+                    note = f"이 청크의 이전 세션을 찾지 못해 완전한 답변이 남지 않았다. 전체 청크를 새로 답한다. 사유: {st.get('problem') or '세션 없음'}\n"
+                else:
+                    note = (f"이 청크는 이미 답변·저장이 있으나 검증에서 거부됐다. 거부 사유: {st.get('problem') or '사유 없음'}\n"
+                            f"고칠 줄: {requested}. `C` 줄이 현재 저장된 후보다.\n")
             card_bytes = len(prompts.ab_chunk(b, chunk["number"], view="", note=note).encode("utf-8"))
             if stage1ab.delivery(card_bytes, view) != "inline":
                 raise prompts.PromptError("청크 view가 한 argv 요소 한도를 넘어 inline 전달할 수 없습니다 (자동 분할 없음, 청크 보존)")
@@ -2351,6 +2540,7 @@ class Supervisor:
         if problem:
             return self._fail(b, "ERROR", problem)
         wt = Path(b["worktree"])
+        already_saved = False
         try:
             if self.git.dirty(wt).strip():
                 return self._fail(b, "ERROR", "answer-only 청크 실행 뒤 worktree에 추적 변경이 있습니다 (격리 위반 가능). 보존합니다.")
@@ -2361,7 +2551,9 @@ class Supervisor:
             cp = stage1ab.checkpoint(wt, b)
             chunk = stage1ab.chunk_by_number(cp, baseline["chunk_no"])
             repair = bool(baseline.get("repair"))
-            if stage1ab.saved_snapshot(wt, b, cp) != baseline.get("saved"):   # the AI only answers: it never writes a chunk file
+            snapshot_changed = stage1ab.saved_snapshot(wt, b, cp) != baseline.get("saved")
+            already_saved = self._ab_chunk_saved_for_run(b)
+            if snapshot_changed and not already_saved:   # the AI only answers: it never writes a chunk file
                 return self._fail(b, "ERROR", "answer-only 청크 실행 중 Supervisor가 만들지 않은 저장물 변경이 있습니다 (AI의 직접 쓰기). "
                                   "완료로 인정하지 않고 보존합니다.")
             st = stage1ab.load_state(self.store, b["id"], chunk["number"])
@@ -2373,6 +2565,9 @@ class Supervisor:
             return self._fail(b, "ERROR", f"A/B 청크 종료 확인 실패: {e}. 보존합니다.")
         except Exception as e:
             return self._fail(b, "ERROR", f"청크 종료 후 GitHub/Git 확인 실패: {e}. worktree를 보존합니다.")
+        if already_saved:   # a prior save completed before its hand-off was recorded; never request the answer again
+            self.store.log(b["id"], "활성 A/B 청크의 정확한 저장을 시작 기준과 대조해 확인했습니다. 답변을 다시 만들지 않습니다.", "warn")
+            return self._ab_accept(b, chunk, repair)
         ok, diag = False, ""
         submitted_lines = None
         try:
@@ -2785,32 +2980,79 @@ class Supervisor:
             return classify_failure(text, [])
         return classify_failure(text, self.cfg["quota_patterns"])
 
+    def _saved_output_failure(self, b, cls: str) -> bool:
+        """Keep known authentication, quota, and run-pin failures blocking even when a chunk file exists."""
+        if cls == "effort":
+            self._fail(b, "ERROR", "CLI가 요청한 모델 또는 추론 수준을 받아들이지 않았습니다 — 다른 값으로 "
+                       f"대체하지 않습니다. 로그 확인 후 설정을 고치세요: {b['log_file']}")
+            return True
+        messages = {
+            "auth": "인증 실패 — Settings의 인증 안내를 확인하세요.",
+            "usage_limit": "CLI 사용량 한도에 도달했습니다 — 자동 전환·재시도 없이 중지합니다. 한도 해제 후 Retry.",
+            "free_quota": "무료 한도 소진이 확인되었습니다 — 저장 증거가 있어도 자동 모델 전환 없이 중지합니다.",
+        }
+        if cls in messages:
+            self._fail(b, "PAUSED", messages[cls])
+            return True
+        return False
+
     def _run_failed(self, b, code: int) -> None:
         cls = self._classify_run(b["producer"], b["log_file"])
         self.store.log(b["id"], f"AI 종료 코드 {code}, 분류={cls}", "warn")
-        if self._s2_chunk_run(b) and b["state"] == "PRODUCING" and self._stage2_response(b) is not None:
+        # A stored chunk can outlive an ordinary non-zero exit, but it never converts a known authentication,
+        # quota, or run-pin failure into success.
+        safe_to_accept_stored = cls not in ("effort", "auth", "usage_limit", "free_quota")
+        if safe_to_accept_stored and self._s2_chunk_run(b) and b["state"] == "PRODUCING" and self._stage2_chunk_saved(b):
+            self.store.log(b["id"], "AI가 비정상 종료했지만 현재 Stage 2 청크의 checkpoint 저장이 확인되어 재생산하지 않습니다.", "warn")
+            if problem := self._saved_chunk_identity_problem(b):
+                return self._fail(b, problem[0], f"저장 청크 실행의 소유권/핀 확인 실패: {problem[1]}")
+            if not self._denials_cleared(b, Path(b["log_file"])):
+                return
+            return self._run_ok_stage2_chunk(b)
+        if safe_to_accept_stored and self._s2_chunk_run(b) and b["state"] == "PRODUCING" and self._stage2_response(b) is not None:
             # A nonzero exit is not the verdict: run_problem found no model/permission/policy block, and a judgement for
             # the current chunk is in the log, so it is saved and judged by save-chunk like any other answer.
             self.store.log(b["id"], "AI가 비정상 종료했지만 현재 청크의 판정 응답이 있어 저장을 시도합니다.", "warn")
+            if problem := self._saved_chunk_identity_problem(b):
+                return self._fail(b, problem[0], f"현재 청크 응답의 소유권/핀 확인 실패: {problem[1]}")
             return self._run_ok_stage2_chunk(b)
-        if self._ab_chunk_run(b) and b["state"] == "PRODUCING" and self._ab_chunk_response(b):
+        if safe_to_accept_stored and self._ab_chunk_run(b) and b["state"] == "PRODUCING" and self._ab_chunk_saved_for_run(b):
+            self.store.log(b["id"], "AI가 비정상 종료했지만 현재 A/B 청크의 정확한 저장이 확인되어 재생산하지 않습니다.", "warn")
+            if problem := self._saved_chunk_identity_problem(b):
+                return self._fail(b, problem[0], f"저장 청크 실행의 소유권/핀 확인 실패: {problem[1]}")
+            if not self._denials_cleared(b, Path(b["log_file"])):
+                return
+            return self._run_ok_ab_chunk(b)
+        if safe_to_accept_stored and self._ab_chunk_run(b) and b["state"] == "PRODUCING" and self._ab_chunk_response(b):
             # A nonzero exit is not the verdict (`run_problem` found no model/permission/policy block): the log holds this
             # chunk's complete answer, so it is saved and judged by save-chunk like any other answer.
             self.store.log(b["id"], "AI가 비정상 종료했지만 현재 A/B 청크의 완성된 답변이 있어 저장을 시도합니다.", "warn")
+            if problem := self._saved_chunk_identity_problem(b):
+                return self._fail(b, problem[0], f"현재 청크 응답의 소유권/핀 확인 실패: {problem[1]}")
             return self._run_ok_ab_chunk(b)
-        if self._c_chunk_run(b) and b["state"] == "PRODUCING" and self._c_chunk_saved(b):
+        if safe_to_accept_stored and self._c_chunk_run(b) and b["state"] == "PRODUCING" and self._c_chunk_saved(b):
             # The submit was stored (e.g. the CLI died or its answer was lost afterwards): never produce it again.
             self.store.log(b["id"], "AI가 비정상 종료했지만 활성 청크의 submit 저장이 확인되어 재생산하지 않습니다.", "warn")
+            if problem := self._saved_chunk_identity_problem(b):
+                return self._fail(b, problem[0], f"저장 청크 실행의 소유권/핀 확인 실패: {problem[1]}")
+            if not self._denials_cleared(b, Path(b["log_file"])):
+                return
             return self._run_ok_c_chunk(b)
-        if self._d_chunk_run(b) and b["state"] == "PRODUCING" and self._d_chunk_saved(b):
+        if safe_to_accept_stored and self._d_chunk_run(b) and b["state"] == "PRODUCING" and self._d_chunk_saved(b):
             # The save was stored (e.g. the CLI died or its answer was lost afterwards): never produce it again.
             self.store.log(b["id"], "AI가 비정상 종료했지만 활성 청크의 save 저장이 확인되어 재생산하지 않습니다.", "warn")
+            if problem := self._saved_chunk_identity_problem(b):
+                return self._fail(b, problem[0], f"저장 청크 실행의 소유권/핀 확인 실패: {problem[1]}")
+            if not self._denials_cleared(b, Path(b["log_file"])):
+                return
             return self._run_ok_d_chunk(b)
         if self._d_chunk_run(b) and b["state"] == "PRODUCING" and cls == "unknown" and not b["pr_number"] \
-                and not self._d_chunk_saved(b) and self._d_fix(b):
-            # A nonzero exit is not the verdict: no model/permission/quota block was found, and the CLI left its own
-            # rejection for this chunk (e.g. the AI ended with exit 2 after a failed save), so it is corrected in place.
-            return
+                and not self._d_chunk_saved(b):
+            if problem := self._saved_chunk_identity_problem(b):
+                return self._fail(b, problem[0], f"저장 거부를 만든 실행의 소유권/핀 확인 실패: {problem[1]}")
+            if self._d_fix(b):
+                # No model/permission/quota block was found, and the CLI left its own rejection for this chunk.
+                return
         chunk_run = (b["method"] == STAGE2_METHOD and isinstance(b["run_kind"], str)
                      and b["run_kind"].startswith("s2_chunk_")) or self._c_chunk_run(b) or self._d_chunk_run(b) \
             or self._ab_chunk_run(b)
@@ -2821,8 +3063,28 @@ class Supervisor:
             return self._fail(b, "ERROR", "CLI가 요청한 모델 또는 추론 수준을 받아들이지 않았습니다 — 다른 값으로 "
                               f"대체하지 않습니다. 로그 확인 후 설정을 고치세요: {b['log_file']}")
         if cls == "session_missing":
-            return self._fail(b, "PAUSED", "세션 ID를 찾지 못했습니다 — 새 세션을 만들지 않고 worktree·PR을 보존합니다. "
-                              "원인 확인 후 Retry.")
+            if self._ab_chunk_run(b) and b["state"] == "PRODUCING":
+                try:
+                    raw = self.store.get(stage1ab.run_start_key(b["id"]))
+                    baseline = json.loads(raw or "")
+                    chunk_no = int(baseline["chunk_no"])
+                    state = stage1ab.load_state(self.store, b["id"], chunk_no)
+                    state["sid"] = None   # the recorded session is gone; the existing bounded save retry starts a new one
+                    if state["requested"] is None:
+                        state["problem"] = "이전 세션을 찾지 못해 완전한 청크 답변이 남지 않았습니다"
+                    stage1ab.save_state(self.store, b["id"], chunk_no, state)
+                except (stage1ab.ABChunkError, OSError, ValueError, KeyError, TypeError) as e:
+                    return self._fail(b, "ERROR", f"A/B 청크 세션 복구 상태 확인 실패: {e}. 보존합니다.")
+                self.store.update(b["id"], session_id=None)
+                self.store.log(b["id"], "A/B 세션을 찾지 못했습니다. 기존 청크별 저장 정정 한도를 사용해 같은 청크를 새 세션으로 이어갑니다.", "warn")
+                return self._run_ok_ab_chunk(self.store.batch(b["id"]))
+            if b["state"] == "PRODUCING" and self._safe_fresh_chunk_after_missing_session(b):
+                self.store.update(b["id"], session_id=None)   # same chunk's local evidence is sufficient for a fresh session
+                b = self.store.batch(b["id"])
+                if self._auto_retry_chunk(b, "기존 세션을 찾지 못함", fresh_session=True):
+                    return
+            return self._fail(b, "PAUSED", "세션 ID를 찾지 못했습니다 — 이 청크의 저장·검색 상태로 안전한 새 세션 재개가 증명되지 않거나 자동 재진입 한도를 소진했습니다. "
+                              "worktree와 기록을 보존합니다. 원인 확인 후 Retry.")
         if cls == "usage_limit":
             return self._fail(b, "PAUSED", "CLI 사용량 한도에 도달했습니다 — 자동 전환·재시도 없이 중지합니다. 한도 해제 후 Retry.")
         if cls == "free_quota":

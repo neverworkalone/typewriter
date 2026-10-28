@@ -63,6 +63,16 @@ class AgentAdapter:
         """
         return None
 
+    def output_identity_problem(self, log_file: Path, run: RunSpec | None, expected_session: str | None,
+                                cwd=None, env=None) -> tuple[str, str] | None:
+        """Check this run's own identity and pinned model without requiring a terminal success event."""
+        return None
+
+    def completion_incomplete(self, log_file: Path, run: RunSpec | None, expected_session: str | None,
+                              cwd=None, env=None) -> bool:
+        """True when only this run's terminal completion event is missing and its identity/pins are valid."""
+        return False
+
     def denied_actions(self, log_file: Path) -> list[dict]:
         """Actions the CLI's permission policy denied during an exited, otherwise successful run ([] if none/unknown)."""
         return []
@@ -538,6 +548,35 @@ class ClaudeCodeAdapter(ProcessAdapter):
             return ("ERROR", f"최종 result의 세션 ID {reported!r}가 없거나 init의 {init.get('session_id')!r}와 다릅니다 — 중지하고 보존합니다.")
         return None
 
+    def output_identity_problem(self, log_file, run, expected_session, cwd=None, env=None):
+        try:
+            events = list(_json_objects(Path(log_file).read_text("utf-8", errors="replace")))
+        except OSError:
+            return ("ERROR", "실행 로그를 읽을 수 없어 청크를 만든 세션을 확인하지 못했습니다.")
+        init = next((e for e in events if e.get("type") == "system" and e.get("subtype") == "init"), None)
+        if init is None:
+            return ("ERROR", "청크를 만든 실행의 세션 ID를 확인할 수 없습니다.")
+        session = init.get("session_id")
+        if not isinstance(session, str) or not session.strip() or (expected_session and session != expected_session):
+            return ("ERROR", "청크를 만든 실행의 세션 ID가 없거나 요청한 세션과 다릅니다.")
+        model = str(init.get("model") or "")
+        if not model or run is None or run.model.lower() not in model.lower():
+            return ("ERROR", "청크를 만든 실행의 모델 핀을 확인하지 못했습니다.")
+        for result in (e for e in events if e.get("type") == "result"):
+            reported = result.get("session_id")
+            if reported is not None and reported != session:
+                return ("ERROR", "최종 result의 세션 ID가 청크를 만든 실행과 다릅니다.")
+        return None
+
+    def completion_incomplete(self, log_file, run, expected_session, cwd=None, env=None):
+        if self.output_identity_problem(log_file, run, expected_session, cwd, env):
+            return False
+        try:
+            return not any(e.get("type") == "result" for e in _json_objects(
+                Path(log_file).read_text("utf-8", errors="replace")))
+        except OSError:
+            return False
+
 
 # Codex runs under the operator's configured CLI policy. War Room pins the model, reasoning effort and configured
 # permission profile on every launch (including chunks and resumes), then checks the thread, model and effort it used.
@@ -784,6 +823,39 @@ class CodexCLIAdapter(ProcessAdapter):
             if run is not None and ctx.get("effort") != run.effort:
                 return ("ERROR", f"Codex가 실행한 추론 수준 {ctx.get('effort')!r}이 요청한 {run.effort!r}과 다릅니다 — 중지합니다.")
         return None
+
+    def output_identity_problem(self, log_file, run, expected_session, cwd=None, env=None):
+        try:
+            events = list(_json_objects(Path(log_file).read_text("utf-8", errors="replace")))
+        except OSError:
+            return ("ERROR", "실행 로그를 읽을 수 없어 청크를 만든 세션을 확인하지 못했습니다.")
+        started = next((e for e in events if e.get("type") == "thread.started"), None)
+        if started is None or not _valid_thread(started.get("thread_id")):
+            return ("ERROR", "청크를 만든 Codex thread ID를 확인할 수 없습니다.")
+        thread = started["thread_id"]
+        if expected_session and thread != expected_session:
+            return ("ERROR", "청크를 만든 Codex thread ID가 요청한 세션과 다릅니다.")
+        base_thread, _ = _baseline(log_file)
+        if base_thread and thread != base_thread:
+            return ("ERROR", "재개 실행이 청크를 만든 Codex 세션과 다릅니다.")
+        if run is None:
+            return ("ERROR", "청크를 만든 Codex 실행 설정을 확인할 수 없습니다.")
+        contexts = _run_contexts(log_file, thread)
+        if not contexts:
+            return ("ERROR", "청크를 만든 Codex 모델·추론 수준 기록이 없습니다.")
+        for ctx in contexts:
+            if ctx.get("model") != run.model or ctx.get("effort") != run.effort:
+                return ("ERROR", "청크를 만든 Codex 실행의 모델 또는 추론 수준이 요청한 핀과 다릅니다.")
+        return None
+
+    def completion_incomplete(self, log_file, run, expected_session, cwd=None, env=None):
+        if self.output_identity_problem(log_file, run, expected_session, cwd, env):
+            return False
+        try:
+            events = list(_json_objects(Path(log_file).read_text("utf-8", errors="replace")))
+        except OSError:
+            return False
+        return not any(e.get("type") in ("turn.failed", "turn.completed") for e in events)
 
     supports_tolerate_denied = True
 
