@@ -239,6 +239,10 @@ Tests and validators protect product stability and established product invariant
 - Before retaining a new automated check, identify the concrete regression or invariant it protects, why existing coverage is insufficient, and why that benefit outweighs implementation, recurring CI, maintenance, and review costs. If that cannot be shown, do not add it.
 - For a genuine shared defect, fix the common cause and add only the smallest general old-fails/new-passes regression needed for current and future records. Do not weaken required gates or ignore real product, security, or integrity failures.
 
+### War Room automated tests
+
+War Room automated tests cover Supervisor behavior only. Do not add tests for TUI appearance or interaction, layout, DOM/browser rendering, standalone Web UI or Web API/HTTP presentation and transport. The owner manually validates UI changes. Every new War Room test must name the specific Supervisor invariant it protects: execution, persisted state, ownership, safety, recovery, or production outcome. A view/helper change alone does not justify an automated test.
+
 ## Validation
 
 Run the validation appropriate to the changed surface.
