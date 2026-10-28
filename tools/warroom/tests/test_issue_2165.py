@@ -132,7 +132,7 @@ class Stage2Finalization(unittest.TestCase):
         w.git.local_verify_ok = True
         w.tick()
         b = w.store.batch(b["id"])
-        self.assertEqual((b["state"], len(w.adapter.launches)), ("WAITING_REVIEW", 1))
+        self.assertEqual((b["state"], len(w.adapter.launches)), ("WAITING_REVIEW", 1), b["error"])
         self.assertEqual(w.git.stage2_merge_calls, [("001", "01", "01"), ("001", "01", "01")])
         self.assertEqual(len(w.git.commits), 1)
         self.assertEqual(w.git.pushes, [b["branch"]])
