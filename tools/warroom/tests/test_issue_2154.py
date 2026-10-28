@@ -75,6 +75,36 @@ class Classification(unittest.TestCase):
         self.assertNotEqual(f(many), f(many, batch="02"))
 
 
+class ChangedBetween(unittest.TestCase):
+    def test_a_verify_input_moved_out_of_its_directory_is_reported_under_its_original_path(self):
+        import os
+        import subprocess
+        import tempfile
+        from pathlib import Path
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        repo = Path(tmp.name) / "repo"
+        sh = lambda *a: subprocess.run(a, cwd=repo, check=True, capture_output=True, text=True).stdout.strip()
+        (repo / "data/relations").mkdir(parents=True)
+        sh("git", "init", "-q", "-b", "master")
+        (repo / "data/relations/relation-001.jsonl").write_text("".join(f'{{"row":{i}}}\n' for i in range(20)))
+        sh("git", "add", "-A")
+        sh("git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "a")
+        old = sh("git", "rev-parse", "HEAD")
+        (repo / "data/archive").mkdir()
+        sh("git", "mv", "data/relations/relation-001.jsonl", "data/archive/relation-001.jsonl")   # a pure rename
+        sh("git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "b")
+        new = sh("git", "rev-parse", "HEAD")
+        paths = Git(Shell_runner(), repo, dict(os.environ), Path(tmp.name) / "wt").changed_between(old, new)
+        self.assertIn("data/relations/relation-001.jsonl", paths)
+        self.assertTrue(stage2.scope_inputs_changed(paths, "001"))
+
+
+def Shell_runner():
+    from warroom.shell import Runner
+    return Runner()
+
+
 class VerifyBlock(unittest.TestCase):
     def setUp(self):
         self.w = w = s2_world(self, canon={1: 100})

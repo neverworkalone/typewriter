@@ -626,8 +626,11 @@ class Git:
         return [p for p in out.splitlines() if p]
 
     def changed_between(self, old: str, new: str) -> list[str]:
-        """Paths that differ between two master commits (GitError if `old` is not available locally)."""
-        return [p for p in self._git("diff", "--name-only", old, new).out.splitlines() if p]
+        """Paths that differ between two master commits (GitError if `old` is not available locally).
+
+        `--no-renames`: a moved file is its old path deleted plus its new path added, so a verify input moved out of
+        a watched location is still reported under its original path."""
+        return [p for p in self._git("diff", "--name-only", "--no-renames", old, new).out.splitlines() if p]
 
     def integrate(self, path: Path, branch: str, base: str, sha: str) -> str:
         """Bring the merged shared fix `sha` into the paused batch worktree and return the resulting HEAD.
