@@ -351,6 +351,8 @@ class Supervisor:
                 stage2.clear_decisions(b["worktree"])
                 self.store.update(b["id"], session_id=None)
                 self.store.log(b["id"], "수정 기회 소진 뒤 운영자 Retry: 같은 청크를 새 AI 세션으로 다시 시작합니다")
+            if self._d_chunk_run(b) and not b["pr_number"]:
+                self.store.delete_prefix(f"d_fix_{b['id']}:")   # only an explicit Retry regrants the automatic correction
             self.store.set_line(b["producer"], b["method"], retry_batch=None, run=1)
             self.store.update(b["id"], state=b["paused_from"] or "PRODUCING", error=None,
                               retries=0, retry_after=None, pause_reason="", defect_id=None)
@@ -1064,6 +1066,18 @@ class Supervisor:
                     h = ad.resume(sid, prompt, wt, run_env, run, log, ex, **extra)
                 else:
                     h = ad.start(prompt, wt, run_env, run, title, log, ex, **extra)
+            elif b["method"] == dchunk.METHOD and kind == "d_chunk_fix":
+                # Correction of the unsaved active chunk: same session, same run-start baseline (not rewritten), the CLI's
+                # own rejection reasons for exactly this chunk, and the decision file it left in place.
+                problem = self._stage2_chunk_boundary_problem(b, dchunk.run_start_key(b["id"]))
+                if problem:
+                    return self._fail(b, "ERROR", problem)
+                rec = dchunk.read_active(Path(wt), b)
+                diag = dchunk.read_rejection(Path(wt), b, rec) if rec else None
+                if not sid or diag is None:
+                    raise prompts.PromptError("수정 요청에 기존 세션과 활성 청크에 결속된 저장 거부 진단이 필요합니다")
+                prompt = prompts.d_chunk_fix(b, rec["chunk_no"], dchunk.fix_problem(diag))
+                h = ad.resume(sid, prompt, wt, run_env, run, log, ex, **extra)
             elif b["method"] == dchunk.METHOD and kind in ("d_chunk_new", "d_chunk_resume"):
                 prompt, baseline = self._d_chunk_prompt(b, kind, remote)
                 self.store.set(dchunk.run_start_key(b["id"]), json.dumps(baseline, sort_keys=True))
@@ -2091,14 +2105,49 @@ class Supervisor:
         except Exception as e:
             return self._fail(b, "ERROR", f"청크 종료 후 기존 PR 소유권 확인 실패: {e}. worktree를 보존합니다.")
         if not self._d_chunk_saved(b):
+            if self._d_fix(b):
+                return
             return self._fail(b, "ERROR", "D 청크 실행이 종료됐지만 활성 청크가 저장되지 않았습니다 (chunk-NNN.jsonl 증거 없음). "
-                              "자동 재생산하지 않고 보존합니다 — Retry는 같은 청크를 이어갑니다.")
+                              "자동 재생산하지 않고 보존합니다 — Retry는 같은 청크를 이어갑니다." + self._d_rejection_note(b))
         if problem := self._d_accept_saved(b):
             return self._fail(b, "ERROR", problem)
         self.store.delete(dchunk.run_start_key(b["id"]))
         self.store.update(b["id"], session_id=None, retries=0, retry_after=None, error=None)
         self.store.log(b["id"], "D 청크 저장을 확인했습니다. 다음 단계는 새 세션으로 실행합니다.")
         return self._launch_d_next(self.store.batch(b["id"]))
+
+    def _d_fix(self, b) -> bool:
+        """The run ended with nothing saved and the CLI's own `save` rejection for exactly this active chunk says the
+        decisions can be repaired (a hit-bearing Z, `SEARCH_FAILED` or any other state never qualifies). Ask the SAME
+        session to correct only the reported senses, at most `MAX_FIXES` times per chunk. The count is a persistent KV
+        written before the launch, so a restart or a duplicate tick cannot add a second one; only an operator Retry clears it."""
+        wt = Path(b["worktree"])
+        try:
+            rec = dchunk.read_active(wt, b)
+            diag = dchunk.read_rejection(wt, b, rec) if rec else None
+            has_decisions = (wt / dchunk.names(b).decisions).is_file()
+        except (dchunk.DChunkError, OSError, ValueError):
+            return False
+        if rec is None or diag is None or not has_decisions or not b["session_id"]:
+            return False
+        key = dchunk.fix_key(b["id"], rec["chunk_no"])
+        used = int(self.store.get(key) or 0)
+        if used >= dchunk.MAX_FIXES:
+            return False
+        self.store.set(key, str(used + 1))
+        self.store.update(b["id"], retries=0, retry_after=None, error=None)
+        self.store.log(b["id"], f"D 청크 {rec['chunk_no']:03d} 저장 거부({diag.get('error_count', len(diag['errors']))}건). "
+                       f"같은 세션에서 지목된 판정만 수정해 다시 저장합니다 ({used + 1}/{dchunk.MAX_FIXES})", "warn")
+        self._launch(self.store.batch(b["id"]), "d_chunk_fix")
+        return True
+
+    def _d_rejection_note(self, b) -> str:
+        """The recorded `save` rejection of the active chunk (reasons only), shown with the ERROR so the operator sees why."""
+        try:
+            diag = json.loads((Path(b["worktree"]) / dchunk.names(b).rejected).read_text("utf-8"))
+            return " 마지막 save 거부: " + " / ".join(str(e) for e in diag["errors"][:3])[:600]
+        except (OSError, ValueError, KeyError, TypeError):
+            return ""
 
     def _relaunch_d(self, b) -> None:
         problem = self._stage2_chunk_boundary_problem(b, dchunk.run_start_key(b["id"]))
@@ -2757,6 +2806,11 @@ class Supervisor:
             # The save was stored (e.g. the CLI died or its answer was lost afterwards): never produce it again.
             self.store.log(b["id"], "AI가 비정상 종료했지만 활성 청크의 save 저장이 확인되어 재생산하지 않습니다.", "warn")
             return self._run_ok_d_chunk(b)
+        if self._d_chunk_run(b) and b["state"] == "PRODUCING" and cls == "unknown" and not b["pr_number"] \
+                and not self._d_chunk_saved(b) and self._d_fix(b):
+            # A nonzero exit is not the verdict: no model/permission/quota block was found, and the CLI left its own
+            # rejection for this chunk (e.g. the AI ended with exit 2 after a failed save), so it is corrected in place.
+            return
         chunk_run = (b["method"] == STAGE2_METHOD and isinstance(b["run_kind"], str)
                      and b["run_kind"].startswith("s2_chunk_")) or self._c_chunk_run(b) or self._d_chunk_run(b) \
             or self._ab_chunk_run(b)

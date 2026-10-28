@@ -21,7 +21,7 @@ ALLOWED = {"a": _PRODUCE, "b": _PRODUCE, "c": _PRODUCE, "d": _PRODUCE, "recovery
            "m": _MAINTAIN, "m_recovery": _MAINTAIN, "s2": _STAGE2, "s2_chunk": _STAGE2, "s2_recovery": _STAGE2,
            "s2_chunk_resume": {"chunk_id"}, "s2_chunk_fix": {"chunk_id", "problem"},
            "c_chunk": _C_CHUNK, "c_chunk_resume": {"chunk_no", "checkpoint", "remaining"},
-           "d_chunk": {"batch", "branch", "chunk_no", "session_note", "chunk_input"}, "d_chunk_resume": {"chunk_no"},
+           "d_chunk": {"batch", "branch", "chunk_no", "session_note", "chunk_input"}, "d_chunk_resume": {"chunk_no"}, "d_chunk_fix": {"chunk_no", "decisions", "problem"},
            "a_chunk": _AB_CHUNK, "b_chunk": _AB_CHUNK, "ab_chunk_retry": {"chunk_no", "requested", "problem", "chunk_input"}}
 MAINTENANCE_METHOD = "m"
 STAGE2_METHOD = "s2"
@@ -177,6 +177,12 @@ def d_chunk(b, chunk_no: int, *, view: str | None = None, pages: list[str] | Non
 def d_chunk_resume(chunk_no: int, directory: Path | None = None) -> str:
     """Resuming the same session: a short continue instruction only, never the chunk view again."""
     return render("d_chunk_resume", {"chunk_no": f"{chunk_no:03d}"}, directory)
+
+
+def d_chunk_fix(b, chunk_no: int, problem: str, directory: Path | None = None) -> str:
+    """Same session after a rejected `save`: only the CLI's rejection reasons, never the view again."""
+    return render("d_chunk_fix", {"chunk_no": f"{chunk_no:03d}", "problem": problem,
+                                  "decisions": f".warroom-scratch/d-{b['shard']}_{b['batch']}/decisions.txt"}, directory)
 
 
 def ab_chunk(b, chunk_no: int, *, view: str, note: str = "", directory: Path | None = None) -> str:

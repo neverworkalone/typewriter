@@ -374,6 +374,11 @@ withWorld('end to end: search records evidence, save stores the chunk once, a re
   await writeFile(decisionsFile, `${lines({ [ref('w005-s1')]: 'Z' })}\n`);
   await assert.rejects(saveActive({ inputPath: decisionsFile, root: world.root }), (error) => error.exitCode === 2 && /w005|s\d+: Z needs/u.test(error.message));
   assert.equal(existsSync(path.join(world.directory, 'chunk-001.jsonl')), false);
+  // the rejection leaves one diagnostic bound to the active chunk; a hit-bearing record's Z is not repairable by re-judging
+  const rejected = JSON.parse(await readFile(path.join(world.directory, 'save-rejected.json'), 'utf8'));
+  assert.deepEqual([rejected.diagnostic, rejected.chunk_no, rejected.view_sha256, rejected.repair_scope],
+    ['save_rejected', 1, saved.view_sha256, 'stop_and_report']);
+  assert.ok(rejected.senses.includes(ref('w005-s1')) && rejected.errors.some((line) => /Z needs/u.test(line)));
 
   // an AI search is recorded; a zero-hit search of another form keeps the record's Z valid
   const out = await searchActive({ ref: ref('w003-s1'), forms: ['달려서'], boundary: 'none', contexts: 16, databasePath: world.options.databasePath, root: world.root });
@@ -384,6 +389,7 @@ withWorld('end to end: search records evidence, save stores the chunk once, a re
   await writeFile(decisionsFile, `${lines()}\n`);
   const done = await saveActive({ inputPath: decisionsFile, root: world.root });
   assert.equal(done.status, 'SAVED');
+  assert.equal(existsSync(path.join(world.directory, 'save-rejected.json')), false, 'a saved chunk leaves no stale diagnostic');
   const rows = (await readFile(path.join(world.directory, 'chunk-001.jsonl'), 'utf8')).trim().split('\n').map(JSON.parse);
   assert.equal(rows.length, 25);
   assert.deepEqual(rows[0], { record_id: 'w001', senses: [{ sense_id: 'w001-s1', candidates: ['해무', '새벽 공기'] }, { sense_id: 'w001-s2', candidates: ['해무', '새벽 공기'] }] });

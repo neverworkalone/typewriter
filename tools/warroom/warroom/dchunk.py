@@ -24,6 +24,8 @@ CLI = "scripts/relation/d-chunk-cli.mjs"
 CONTRACT_CLI = "scripts/relation/candidate-contract.mjs"
 # Same whole-prompt-as-one-argv bound as Method C (Linux MAX_ARG_STRLEN 128 KiB, kept clearly below).
 INLINE_MAX_PROMPT_BYTES = 100_000
+MAX_FIXES = 1   # automatic same-session corrections per chunk (an operator Retry grants one more)
+MAX_DIAGNOSTIC_CHARS = 3000
 PR_LABEL = "batch"
 _CHUNK = re.compile(r"chunk-(\d{3})\.jsonl")
 _ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}")
@@ -41,6 +43,8 @@ class Names:
     view: str
     canonical: str
     output: str
+    rejected: str
+    decisions: str
 
 
 def names(b) -> Names:
@@ -48,11 +52,17 @@ def names(b) -> Names:
     directory = f"{SCRATCH}/d-{shard}_{batch}"
     return Names(directory=directory, active=f"{directory}/active-chunk.json", view=f"{directory}/active-chunk.txt",
                  canonical=f"data/canonical/stdict-{int(shard):04d}.jsonl",
-                 output=f"data/relation-candidates/{shard}/{shard}_{batch}_d_{model}.jsonl")
+                 output=f"data/relation-candidates/{shard}/{shard}_{batch}_d_{model}.jsonl",
+                 rejected=f"{directory}/save-rejected.json", decisions=f"{directory}/decisions.txt")
 
 
 def run_start_key(batch_id: int) -> str:
     return f"d_run_start_{batch_id}"
+
+
+def fix_key(batch_id: int, chunk_no: int) -> str:
+    """Persistent per-chunk count of automatic `d_chunk_fix` runs; only an explicit operator Retry clears it."""
+    return f"d_fix_{batch_id}:{chunk_no}"
 
 
 def sha256_bytes(data: bytes) -> str:
@@ -197,10 +207,34 @@ def read_view(worktree, b, rec: dict) -> str:
 
 def clear_active(worktree, b) -> None:
     n = names(b)
-    for rel in (n.active, n.view):
+    for rel in (n.active, n.view, n.rejected):
         (Path(worktree) / rel).unlink(missing_ok=True)
     for stale in (Path(worktree) / n.directory).glob("active-chunk.p*of*.txt"):
         stale.unlink()
+
+
+def read_rejection(worktree, b, rec: dict) -> dict | None:
+    """The CLI's `save` rejection for exactly this active chunk (number and view hash), or None when there is none, it is
+    stale/foreign/damaged, or it says the rejection cannot be repaired by re-judging (`stop_and_report`, e.g. a Z
+    refused because a recorded search of the record has hits). Only this file decides repairability; no tool log is parsed."""
+    try:
+        diag = json.loads((Path(worktree) / names(b).rejected).read_text("utf-8"))
+    except (OSError, ValueError):
+        return None
+    if not (isinstance(diag, dict) and diag.get("diagnostic") == "save_rejected" and diag.get("repair_scope") == "decisions"
+            and diag.get("chunk_no") == rec["chunk_no"] and diag.get("view_sha256") == rec["view_sha256"]
+            and isinstance(diag.get("errors"), list) and diag["errors"] and all(isinstance(e, str) for e in diag["errors"])):
+        return None
+    return diag
+
+
+def fix_problem(diag: dict) -> str:
+    """The rejection reasons for the fix prompt (bounded; reasons only, no view or search contexts)."""
+    text = "\n".join(diag["errors"])
+    more = int(diag.get("error_count") or len(diag["errors"])) - len(diag["errors"])
+    if more > 0:
+        text += f"\n(그 밖에 {more}건)"
+    return text[:MAX_DIAGNOSTIC_CHARS]
 
 
 def delivery(card_bytes: int, view: str) -> str:
