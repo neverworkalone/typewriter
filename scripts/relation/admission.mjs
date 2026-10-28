@@ -203,6 +203,50 @@ function canonicalRecordsForRelationForm(index, form) {
   return [...new Map(matchingRecords.map((record) => [record.id, record])).values()];
 }
 
+function createCanonicalRelationFormIndexes() {
+  return {
+    byLemma: new Map(),
+    byNormalizedLemma: new Map(),
+    byOrthographicForm: new Map(),
+    byNonOrthographicSearchForm: new Map(),
+  };
+}
+
+function canonicalRecordOf(recordInfoOrRecord) {
+  return recordInfoOrRecord.record ?? recordInfoOrRecord;
+}
+
+function addCanonicalRelationFormIndexes(index, recordInfoOrRecord) {
+  const record = canonicalRecordOf(recordInfoOrRecord);
+  index.byLemma.set(record.lemma, [...(index.byLemma.get(record.lemma) ?? []), record]);
+  const normalizedLemma = normalizeCandidate(record.lemma);
+  index.byNormalizedLemma.set(normalizedLemma, [
+    ...(index.byNormalizedLemma.get(normalizedLemma) ?? []),
+    record,
+  ]);
+  for (const form of canonicalOrthographicForms(record)) {
+    const matches = index.byOrthographicForm.get(form) ?? [];
+    if (!matches.some((match) => match.id === record.id)) {
+      index.byOrthographicForm.set(form, [...matches, record]);
+    }
+  }
+  for (const form of canonicalNonOrthographicSearchForms(record)) {
+    const matches = index.byNonOrthographicSearchForm.get(form) ?? [];
+    if (!matches.some((match) => match.id === record.id)) {
+      index.byNonOrthographicSearchForm.set(form, [...matches, record]);
+    }
+  }
+}
+
+/** Build just the Canonical form lookups used by approved Relation assignment validation. */
+export function buildCanonicalRelationFormIndex(recordInfosOrRecords) {
+  const index = createCanonicalRelationFormIndexes();
+  for (const recordInfoOrRecord of recordInfosOrRecords) {
+    addCanonicalRelationFormIndexes(index, recordInfoOrRecord);
+  }
+  return index;
+}
+
 /** Candidate spellings that resolve to this record, including ambiguous forms when it is an exact target. */
 export function candidateFormsForRecord(record, index) {
   return canonicalOrthographicForms(record).filter((form) =>
@@ -217,27 +261,14 @@ export function legacyCandidateFormsForRecord(record, index) {
 /** Lemma, curated search-form, and id lookups over the full Canonical (all shards). */
 export function buildCanonicalIndex(rows) {
   const byId = new Map();
-  const byLemma = new Map();
-  const byNormalizedLemma = new Map();
-  const byOrthographicForm = new Map();
-  const byNonOrthographicSearchForm = new Map();
+  const formIndexes = createCanonicalRelationFormIndexes();
   const senses = new Map();
   for (const row of rows) {
     byId.set(row.id, row);
-    byLemma.set(row.lemma, [...(byLemma.get(row.lemma) ?? []), row]);
-    const normalizedLemma = normalizeCandidate(row.lemma);
-    byNormalizedLemma.set(normalizedLemma, [...(byNormalizedLemma.get(normalizedLemma) ?? []), row]);
-    for (const form of canonicalOrthographicForms(row)) {
-      const matches = byOrthographicForm.get(form) ?? [];
-      if (!matches.some((match) => match.id === row.id)) byOrthographicForm.set(form, [...matches, row]);
-    }
-    for (const form of canonicalNonOrthographicSearchForms(row)) {
-      const matches = byNonOrthographicSearchForm.get(form) ?? [];
-      if (!matches.some((match) => match.id === row.id)) byNonOrthographicSearchForm.set(form, [...matches, row]);
-    }
+    addCanonicalRelationFormIndexes(formIndexes, row);
     for (const sense of row.senses) senses.set(sense.id, { record: row, sense });
   }
-  return { byId, byLemma, byNormalizedLemma, byOrthographicForm, byNonOrthographicSearchForm, senses };
+  return { byId, ...formIndexes, senses };
 }
 
 /** Complete, source-bound target context for every matching lemma and curated search form. */
