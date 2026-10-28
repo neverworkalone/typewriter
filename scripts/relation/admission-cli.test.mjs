@@ -1661,6 +1661,39 @@ test('six Drop-to-Relation amendments equal a from-scratch merge and verify with
   await assert.rejects(readFile(path.join(fresh.root, 'data/relation-drops/drop-001.jsonl')), { code: 'ENOENT' });
 });
 
+test('amend rewrites Drop reasons and same-count Drop-to-Relation swaps from the trusted snapshot', async (t) => {
+  const { root, checkpoint, sourceCandidates } = await prepareSixPart(t, { emptyRelation: true });
+  const chunk = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint], { root }));
+  const decisions = sourceCandidates.map((candidate, index) => index < 3
+    ? { source_sense_id: 'w1-s1', candidate, disposition: 'drop', reason: '초기 Drop 사유' }
+    : { source_sense_id: 'w1-s1', candidate, disposition: 'relation', type: 'scene', relevance: 4 });
+  const decisionsFile = '.warroom-scratch/mixed-initial-decisions.json';
+  await writeFile(path.join(root, decisionsFile), JSON.stringify({ chunk_id: chunk.chunk_id, decisions }));
+  await quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', decisionsFile], { root }));
+  await mergeForTest(root, checkpoint);
+
+  const dropPath = path.join(root, 'data/relation-drops/drop-001.jsonl');
+  const initialDrops = (await readFile(dropPath, 'utf8')).trim().split('\n').map(JSON.parse);
+  assert.equal(initialDrops.length, 3);
+  const inspect = await quiet(() => run(['inspect', '--checkpoint', checkpoint, '--source-sense-id', 'w1-s1'], { root }));
+  const amendFile = '.warroom-scratch/amend-drop-reason-and-swap.txt';
+  const amendText = `amend w1-s1 @${inspect.digest}\nc1 D 수정된 Drop 사유\nc2 R scene 6\nc4 D Relation에서 변경된 Drop\n`;
+  await writeFile(path.join(root, amendFile), amendText);
+  await quiet(() => run(['amend', '--checkpoint', checkpoint, '--in', amendFile], { root }));
+
+  const amendedBytes = await readFile(dropPath);
+  const amendedDrops = amendedBytes.toString('utf8').trim().split('\n').map(JSON.parse);
+  assert.equal(amendedDrops.length, initialDrops.length, 'the total Drop count stays unchanged');
+  assert.deepEqual(amendedDrops.map(({ candidate }) => candidate), [sourceCandidates[0], sourceCandidates[2], sourceCandidates[3]]);
+  assert.equal(amendedDrops[0].reason, '수정된 Drop 사유');
+  assert.equal(amendedDrops[2].reason, 'Relation에서 변경된 Drop');
+  const counts = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01', '--checkpoint', checkpoint], { root }));
+  assert.equal(counts.missing, 0);
+  const repeated = await quiet(() => run(['amend', '--checkpoint', checkpoint, '--in', amendFile], { root }));
+  assert.equal(repeated.already_applied, true);
+  assert.deepEqual(await readFile(dropPath), amendedBytes, 'an idempotent retry preserves the amended Drop bytes');
+});
+
 test('amend rejects stale scope, invalid batches, drift and a changed snapshot without partial writes', async (t) => {
   const { root, checkpoint } = await prepareSixPart(t, { emptyRelation: true });
   await saveAllPrimaryAsDrops(root, checkpoint);
