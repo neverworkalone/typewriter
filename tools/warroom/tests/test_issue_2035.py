@@ -107,9 +107,8 @@ class SerialChunks(unittest.TestCase):
     def test_missing_end_marker_wrong_chunk_and_prose_are_rejected_and_retried_in_the_same_session(self):
         w = self.w
         w.start("single", "deepseek", "a")
-        for text, why in ((w.block(1, end=False), "END"), (w.block(1, no=2), "chunk"), ("S1\t후보", "BEGIN")):
+        for text in (w.block(1, end=False), w.block(1, no=2), "S1\t후보", "완료했습니다"):
             w.ai(text, session="ses_1")
-        w.ai(w.block(1), session="ses_1")
         w.tick()
         w.finish_last()
         w.tick()                                                              # rejected -> retry (resume)
@@ -122,73 +121,90 @@ class SerialChunks(unittest.TestCase):
         w.tick()                                                              # second rejection -> second retry
         self.assertEqual(w.kinds(), ["ab_chunk_new", "ab_chunk_retry", "ab_chunk_retry"])
         w.finish_last()
-        w.tick()                                                              # third rejection exceeds the cap
+        w.tick()                                                              # third correction is still available
+        self.assertEqual(w.kinds(), ["ab_chunk_new", "ab_chunk_retry", "ab_chunk_retry", "ab_chunk_retry"])
+        w.finish_last()
+        w.tick()                                                              # third correction failed without an exact candidate to remove
         b = w.row_()
         self.assertEqual(b["state"], "ERROR")
-        self.assertEqual(len(w.adapter.launches), 3)
+        self.assertEqual(len(w.adapter.launches), 4)
         self.assertFalse((w.wt() / stage1ab.names(b).directory / "candidates/chunk-001.jsonl").exists())
         w.ai(w.block(1), session="ses_1")
         self.assertTrue(control.retry(w.store, "deepseek", "a"))              # the cap survives a restart/Retry
         w.tick(2)
         self.assertEqual(w.row_()["state"], "ERROR")
-        self.assertEqual(len(w.adapter.launches), 3)
+        self.assertEqual(len(w.adapter.launches), 4)
 
-    def test_save_rejection_asks_only_the_pointed_row_and_merges_it_into_the_earlier_answer(self):
+    def test_save_chunk_automatically_removes_definite_self_repeats_without_an_ai_retry(self):
         w = self.w
         w.start("single", "deepseek", "a")
         w.ai(w.block(1, {"S5": "S5\t표제4"}), session="ses_1")                  # a self-repeat of the source lemma at S5 (record w0005)
-        w.ai("BEGIN chunk 001\nS5\t바다\nEND chunk 001", session="ses_1")
         w.tick()
-        w.finish_last()
-        w.tick()
-        retry = w.adapter.launches[-1]
-        self.assertEqual(retry["kind"], "resume")
-        self.assertIn("S5", retry["prompt"])
-        self.assertIn("repeats source lemma", retry["prompt"])                  # the real save diagnostic reaches the correction
-        self.assertNotIn("사유 없음", retry["prompt"])
-        self.assertNotIn("S6", retry["prompt"].split("거부 사유")[0])
         w.finish_last()
         w.tick()
         saved = [json.loads(l) for l in (w.wt() / stage1ab.names(w.row_()).directory / "candidates/chunk-001.jsonl").read_text().splitlines()]
         flat = {s["sense_id"]: s["candidates"] for r in saved for s in r["senses"]}
-        self.assertEqual(flat["w0001-s1"], ["후보1-1"])                           # every other row kept from the first answer
-        self.assertEqual(flat["w0004-s1"], ["바다"])
-        self.assertEqual(w.kinds(), ["ab_chunk_new", "ab_chunk_retry", "ab_chunk_new"])   # then chunk 2 starts a NEW session
+        self.assertEqual(flat["w0001-s1"], ["후보1-1"])
+        self.assertEqual(flat["w0004-s1"], [])
+        self.assertEqual(w.kinds(), ["ab_chunk_new", "ab_chunk_new"])            # chunk 2 starts a NEW session
+        events = [entry for entry in w.store.recent_events() if entry["batch_id"] == w.row_()["id"]]
+        self.assertTrue(any("자동 정제 1개" in entry["msg"] and 'S5 "표제4" (source lemma repeat)' in entry["msg"]
+                            for entry in events))
 
-    def test_three_source_lemma_repeats_in_one_answer_are_all_requested_by_the_first_save(self):
+    def test_three_source_lemma_repeats_are_removed_together_and_other_rows_are_preserved(self):
         w = self.w
         w.start("single", "deepseek", "a")
         w.ai(w.block(1, {"S2": "S2\t표제2", "S5": "S5\t표제4", "S9": "S9\t표제7"}), session="ses_1")
-        w.ai("BEGIN chunk 001\nS2\t바다\nS5\t노을\nS9\t파도\nEND chunk 001", session="ses_1")
         w.tick()
         w.finish_last()
         w.tick()
-        st = stage1ab.load_state(w.store, w.row_()["id"], 1)
-        self.assertEqual((st["tries"], st["requested"]), (1, ["S2", "S5", "S9"]))
-        retry = w.adapter.launches[-1]
-        self.assertEqual(retry["kind"], "resume")
-        for alias in ("S2", "S5", "S9"):
-            self.assertIn(alias, retry["prompt"])
-        w.finish_last()
-        w.tick()                                                              # one correction fixes all three; chunk saved
-        self.assertEqual(w.kinds(), ["ab_chunk_new", "ab_chunk_retry", "ab_chunk_new"])
+        saved = [json.loads(l) for l in (w.wt() / stage1ab.names(w.row_()).directory / "candidates/chunk-001.jsonl").read_text().splitlines()]
+        flat = {s["sense_id"]: s["candidates"] for r in saved for s in r["senses"]}
+        self.assertEqual([flat[sense] for sense in ("w0002-s1", "w0004-s1", "w0007-s1")], [[], [], []])
+        self.assertEqual(flat["w0001-s1"], ["후보1-1"])
+        self.assertEqual(w.kinds(), ["ab_chunk_new", "ab_chunk_new"])
+        logs = [entry["msg"] for entry in w.store.recent_events() if entry["batch_id"] == w.row_()["id"]]
+        self.assertTrue(any("자동 정제 3개" in line and all(alias in line for alias in ("S2", "S5", "S9")) for line in logs))
+
+    def test_third_correction_removes_only_the_exact_rejected_candidate_then_revalidates(self):
+        w = self.w
+        w.start("single", "deepseek", "a")
+        w.ai(w.block(1, {"S5": "S5\t bad"}), session="ses_1")
+        retry = "BEGIN chunk 001\nS5\t bad\nEND chunk 001"
+        for _ in range(3):
+            w.ai(retry, session="ses_1")
+        w.tick()
+        for _ in range(4):
+            w.finish_last()
+            w.tick()
+        b = w.row_()
+        saved = [json.loads(l) for l in (w.wt() / stage1ab.names(b).directory / "candidates/chunk-001.jsonl").read_text().splitlines()]
+        flat = {s["sense_id"]: s["candidates"] for r in saved for s in r["senses"]}
+        self.assertEqual(flat["w0004-s1"], [])
+        self.assertEqual(flat["w0001-s1"], ["후보1-1"])
+        self.assertEqual(len([call for call in w.runner.workbench.calls if call[2] == "save-chunk"]), 5)
+        self.assertEqual(w.kinds(), ["ab_chunk_new", "ab_chunk_retry", "ab_chunk_retry", "ab_chunk_retry", "ab_chunk_new"])
+        self.assertEqual(w.row_()["state"], "PRODUCING")                 # next chunk starts after the validated save
+        events = [entry for entry in w.store.recent_events() if entry["batch_id"] == b["id"]]
+        self.assertTrue(any("정정 3회 뒤 식별된 부적격 후보 1개" in entry["msg"] and 'S5 " bad"' in entry["msg"]
+                            for entry in events))
 
     def test_the_rejection_reason_survives_a_restart(self):
         w = self.w
         w.start("single", "deepseek", "a")
-        w.ai(w.block(1, {"S5": "S5\t표제4"}), session="ses_1")
+        w.ai(w.block(1, {"S5": "S5\t bad"}), session="ses_1")
         w.tick()
         w.finish_last()
         w.tick()
         st = stage1ab.load_state(w.store, w.row_()["id"], 1)
         self.assertEqual((st["tries"], st["requested"]), (1, ["S5"]))
-        self.assertIn("repeats source lemma", st["problem"])
+        self.assertIn('" bad"', st["problem"])
 
     def test_a_correction_may_not_change_an_unrequested_row(self):
         w = self.w
         w.start("single", "deepseek", "a")
-        w.ai(w.block(1, {"S5": "S5\t표제4"}), session="ses_1")
-        w.ai("BEGIN chunk 001\nS5\t바다\nS6\t바꿈\nEND chunk 001", session="ses_1")
+        w.ai(w.block(1, {"S5": "S5\t bad"}), session="ses_1")
+        w.ai("BEGIN chunk 001\nS5\t수정\nS6\t바꿈\nEND chunk 001", session="ses_1")
         w.tick()
         w.finish_last()
         w.tick()
@@ -244,6 +260,28 @@ class SerialChunks(unittest.TestCase):
         self.assertIn("후보2-1", fixed)                                          # the unrequested rows keep the first answer
         self.assertEqual(w.runner.workbench.merges, 1)
         self.assertEqual(w.row_()["state"], "WAITING_REVIEW")
+
+    def test_save_cleanup_limit_does_not_increase_final_merge_repair_limit(self):
+        w = self.w
+        w.start("single", "deepseek", "a")
+        w.runner.workbench.merge_error = "Candidate v1 invalid: record_id w0060 sense_id w0060-s1 candidate duplicates"
+        w.run_chunks(3)
+        repair = w.adapter.launches[-1]
+        for expected_kind in ("start", "resume"):
+            self.assertEqual(repair["kind"], expected_kind)
+            aliases = [row[0] for row in stage1ab.view_rows((w.wt() / stage1ab.view_path(w.row_(), 2)).read_text())
+                       if row[1] == "w0060-s1"]
+            self.assertEqual(len(aliases), 1)
+            w.adapter.running[repair["pid"]]["text"] = log_text(
+                f"BEGIN chunk 002\n{aliases[0]}\t bad\nEND chunk 002")
+            w.adapter.running[repair["pid"]]["session"] = "ses_merge_repair"
+            w.finish_last()
+            w.tick()
+            if expected_kind == "start":
+                repair = w.adapter.launches[-1]
+        self.assertEqual(len(w.adapter.launches), 5)  # 3 ordinary chunks plus only 2 merge-repair attempts
+        self.assertEqual(w.row_()["state"], "ERROR")
+        self.assertIn("정정 2회", w.row_()["error"])
 
     def test_unidentifiable_merge_rejection_is_an_error_and_nothing_is_regenerated(self):
         w = self.w
@@ -375,6 +413,15 @@ class Helpers(unittest.TestCase):
         self.assertEqual(stage1ab.rejected_aliases("record_id w1 sense_id w2-s1", rows), ["S1", "S2", "S3"])
         self.assertIsNone(stage1ab.rejected_aliases("nothing named", rows))
         self.assertIsNone(stage1ab.rejected_aliases("alias S9 unknown", rows))
+
+    def test_exactly_named_candidate_can_be_removed_without_changing_other_rows(self):
+        rows = [["S1", "w1-s1"], ["S2", "w2-s1"]]
+        answer = ["S1\tkeep\t bad", "S2\tstay"]
+        diagnostic = 'chunk 001 input line 1 record_id w1 sense_id w1-s1 candidate 2 " bad" must be a non-empty trimmed string'
+        rejected = stage1ab.rejected_candidates(diagnostic, rows, answer)
+        self.assertEqual([(item["alias"], item["candidate"]) for item in rejected], [("S1", " bad")])
+        self.assertEqual(stage1ab.remove_rejected_candidates(answer, rejected), ["S1\tkeep", "S2\tstay"])
+        self.assertEqual(stage1ab.rejected_candidates('candidate " bad" is invalid', rows, answer), [])
 
     def test_final_answer_per_cli_is_this_runs_last_answer_only(self):
         from warroom.adapters import final_answer
