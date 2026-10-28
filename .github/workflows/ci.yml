@@ -117,6 +117,7 @@ jobs:
         run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: War Room Python unit tests
+        id: warroom
         if: ${{ always() && steps.changes.outcome == 'success' && steps.changes.outputs.run_warroom_tests == 'true' }}
         run: node tools/warroom/run-tests.mjs
 
@@ -148,7 +149,7 @@ jobs:
           CHANGED_PATHS_COMPLETE: ${{ steps.changes.outputs.changed_paths_complete }}
           RUN_LEVEL: ${{ steps.changes.outputs.run_level }}
           DEEP_MODE: ${{ steps.changes.outputs.deep_mode }}
-          WARROOM_OUTCOME: ${{ steps['War Room Python unit tests'].outcome }}
+          WARROOM_OUTCOME: ${{ steps.warroom.outcome }}
           NORMAL_OUTCOME: ${{ steps.normal.outcome }}
           SELECTIVE_OUTCOME: ${{ steps.selective.outcome }}
           SCHEMA_CHANGED: ${{ steps.schema.outputs.schema_changed }}
@@ -183,7 +184,7 @@ jobs:
           SCHEMA_OUTCOME: ${{ steps.schema-build.outcome }}
           NORMAL_OUTCOME: ${{ steps.normal.outcome }}
           SELECTIVE_OUTCOME: ${{ steps.selective.outcome }}
-          WARROOM_OUTCOME: ${{ steps['War Room Python unit tests'].outcome }}
+          WARROOM_OUTCOME: ${{ steps.warroom.outcome }}
           FINAL_GATE: ${{ job.status }}
         shell: bash
         run: |
