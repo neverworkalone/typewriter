@@ -87,6 +87,15 @@ export function findBoundedOccurrence(text, form, boundary) {
   return -1;
 }
 
+function matchesLaterForm(text, forms, start, boundary) {
+  for (let index = start; index < forms.length; index += 1) {
+    const form = forms[index];
+    const formBoundary = boundary ?? ([...form].length < FTS_MIN_LENGTH ? 'both' : 'none');
+    if (findBoundedOccurrence(text, form, formBoundary) >= 0) return true;
+  }
+  return false;
+}
+
 const ROW_COLUMNS = 'p.paragraph_rowid AS rowid, p.form AS text, d.title, d.author';
 
 /**
@@ -148,9 +157,12 @@ export function searchContexts(database, forms, {
         scanned += piece.cost;
         for (const row of piece.rows) {
           after = row.rowid;
-          if (seenParagraphs.has(row.rowid)) continue;
           const at = findBoundedOccurrence(row.text, form, formBoundary);
           if (at < 0) continue;
+          if (seenParagraphs.has(row.rowid)) {
+            if (!matchesLaterForm(row.text, list, formIndex + 1, boundary)) seenParagraphs.delete(row.rowid);
+            continue;
+          }
           const excerpt = excerptAround(row.text, [form], snippet, at, form).text;
           const item = { form: [...form].slice(0, 30).join(''), paragraph_rowid: row.rowid, title: [...(row.title ?? '')].slice(0, 30).join(''), author: [...(row.author ?? '')].slice(0, 30).join(''), excerpt };
           let cost = renderItem(item, items.length).length + 1;
@@ -166,7 +178,7 @@ export function searchContexts(database, forms, {
             return finish(items, 'LIMITED', formsKey, formIndex, row.rowid - 1, scanned, seenParagraphs);
           }
           items.push(item);
-          seenParagraphs.add(row.rowid);
+          if (matchesLaterForm(row.text, list, formIndex + 1, boundary)) seenParagraphs.add(row.rowid);
           chars += cost;
           if (items.length >= maxSamples) return finish(items, 'LIMITED', formsKey, formIndex, row.rowid, scanned, seenParagraphs);
         }
