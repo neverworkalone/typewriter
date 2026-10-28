@@ -10,6 +10,7 @@ import { openReadonlyDb, searchContexts } from './corpus-utility.mjs';
 
 import {
   autoZCandidate,
+  buildChunk,
   buildSearchBatch,
   checkDecisions,
   parseDecisions,
@@ -18,7 +19,7 @@ import {
   saveActive,
   searchActive,
   searchBatchActive,
-  searchToCompletion,
+  searchForContexts,
 } from './d-chunk-cli.mjs';
 
 const SYLLABLES = ['가', '나', '다', '라', '마', '바', '사', '아', '자', '차'];
@@ -151,61 +152,96 @@ test('autoZCandidate: POS alone never qualifies; form shape and length are part 
   for (const [record, forms, want] of table) assert.equal(autoZCandidate(record, forms), want, JSON.stringify([record, forms]));
 });
 
-test('searchToCompletion finishes 0-hit LIMITED pages inside one call and never fakes ZERO_HITS', () => {
-  const page = (status, items = 0, cursor = null) => ({ status, items: Array.from({ length: items }, () => ({})), next_cursor: cursor });
-  const run = (pages, options = {}, budget) => {
-    const calls = [];
-    const search = (forms, opts) => {
-      calls.push(opts.cursor ?? null);
-      return { result: pages[Math.min(calls.length - 1, pages.length - 1)] };
-    };
-    return { ...searchToCompletion(search, ['눈'], options, budget), calls };
+test('prepare collects four distinct contexts across LIMITED pages before returning its view', () => {
+  const record = rec('w1', '노래', [['noun', '소리를 내어 부르는 일.']]);
+  const contexts = [1, 2, 3, 4].map((paragraph_rowid) => ({ paragraph_rowid, form: '노래', title: '작품', author: '작가', excerpt: `문맥 ${paragraph_rowid}` }));
+  const calls = [];
+  const search = (_forms, options) => {
+    calls.push(options);
+    if (calls.length === 1) return { result: { status: 'LIMITED', items: [contexts[0]], next_cursor: 'c1', scanned_rows: 1 } };
+    if (calls.length === 2) return { result: { status: 'LIMITED', items: [contexts[1]], next_cursor: 'c2', scanned_rows: 1 } };
+    return { result: { status: 'COMPLETE', items: contexts.slice(2), next_cursor: null, scanned_rows: 1 } };
   };
-  const chain = (count) => [...Array.from({ length: count }, (_, at) => page('LIMITED', 0, `c${at + 1}`)), page('COMPLETE')];
-  // 3+ empty LIMITED pages from the start -> ZERO_HITS, one call
-  let out = run(chain(5));
-  assert.equal(out.result.status, 'ZERO_HITS');
-  assert.deepEqual(out.calls, [null, 'c1', 'c2', 'c3', 'c4', 'c5']);
-  // a hit after empty pages stops the search at once (rest of the corpus is not scanned); LIMITED with contexts is kept
-  out = run([page('LIMITED', 0, 'c1'), page('LIMITED', 0, 'c2'), page('LIMITED', 2, 'c3'), page('COMPLETE')]);
-  assert.equal(out.result.items.length, 2);
-  assert.equal(out.result.status, 'LIMITED');
-  assert.equal(out.calls.length, 3);
-  assert.equal(run([page('LIMITED', 3, 'c1')]).calls.length, 1, 'LIMITED with contexts is not scanned further');
-  // first ZERO_HITS kept; failure kept
-  assert.equal(run([page('ZERO_HITS')]).calls.length, 1);
-  assert.equal(run([page('SEARCH_FAILED')]).result.status, 'SEARCH_FAILED');
-  assert.equal(run([page('LIMITED', 0, 'c1'), page('SEARCH_FAILED')]).result.status, 'SEARCH_FAILED');
-  // external cursor start: COMPLETE 0 is never converted, even after internal pages
-  out = run([page('LIMITED', 0, 'c2'), page('COMPLETE')], { cursor: 'c1' });
-  assert.equal(out.result.status, 'COMPLETE');
-  assert.equal(out.cursorIn, 'c1');
-  assert.equal(run([page('COMPLETE')], { cursor: 'c1' }).result.status, 'COMPLETE');
-  // no progress (repeated cursor, also the external one) and the call limit fail closed
-  out = run([page('LIMITED', 0, 'c1')]);
-  assert.equal(out.result.status, 'SEARCH_FAILED');
-  assert.match(out.result.error, /no progress/u);
-  assert.equal(run([page('LIMITED', 0, 'c1')], { cursor: 'c1' }).result.status, 'SEARCH_FAILED');
-  out = run(chain(10), {}, { maxCalls: 3 });
-  assert.equal(out.result.status, 'SEARCH_FAILED');
-  assert.match(out.result.error, /call limit/u);
+  search.corpusRows = 10;
+  const built = buildChunk({ records: [record], shard: '001', batch: '01', chunkNumber: 1, total: 20, search });
+  assert.equal(calls.length, 3);
+  assert.deepEqual(calls.map((item) => item.maxSamples), [4, 3, 2]);
+  assert.equal(built.entries[0].hits, 4);
+  assert.equal(built.entries[0].status, 'COMPLETE');
+  assert.equal(new Set([...built.view.matchAll(/문맥 (\d)/gu)].map((match) => match[1])).size, 4);
 });
 
-test('searchToCompletion over a real index: multi-page zero, forms/boundary-bound cursors, external cursor', async () => {
+test('searchForContexts fills N, preserves collected hits, and keeps completion tied to cursor provenance', () => {
+  const item = (paragraph_rowid) => ({ paragraph_rowid, excerpt: `context-${paragraph_rowid}` });
+  const page = (status, items = [], cursor = null, scanned_rows = 1) => ({ status, items, next_cursor: cursor, scanned_rows });
+  const run = (pages, options = {}, budget = {}) => {
+    const calls = [];
+    const search = (forms, opts) => {
+      calls.push({ cursor: opts.cursor ?? null, scanRows: opts.scanRows, maxSamples: opts.maxSamples });
+      return { result: pages[Math.min(calls.length - 1, pages.length - 1)] };
+    };
+    return { ...searchForContexts(search, ['눈'], options, budget), calls };
+  };
+  let out = run([
+    page('LIMITED', [item(1)], 'c1'),
+    page('LIMITED', [item(2)], 'c2'),
+    page('COMPLETE', [item(3), item(4)], null),
+  ], { maxSamples: 4 });
+  assert.equal(out.result.status, 'COMPLETE');
+  assert.deepEqual(out.result.items.map((context) => context.paragraph_rowid), [1, 2, 3, 4]);
+  assert.deepEqual(out.calls.map((call) => call.cursor), [null, 'c1', 'c2']);
+  assert.deepEqual(out.calls.map((call) => call.maxSamples), [4, 3, 2]);
+
+  // Empty pages continue internally until real completion, and a fresh complete empty search is the only ZERO_HITS.
+  out = run([page('LIMITED', [], 'c1'), page('LIMITED', [item(1)], 'c2'), page('COMPLETE', [])], { maxSamples: 4 });
+  assert.equal(out.result.status, 'COMPLETE');
+  assert.equal(out.result.items.length, 1);
+  out = run([page('LIMITED', [], 'c1'), page('COMPLETE', [])]);
+  assert.equal(out.result.status, 'ZERO_HITS');
+
+  // A request scan cap returns accumulated contexts with the actual continuation cursor.
+  out = run([page('LIMITED', [item(1)], 'c1', 2), page('LIMITED', [item(2)], 'c2', 1), page('COMPLETE', [])], { maxSamples: 4 }, { maxScanRows: 3 });
+  assert.equal(out.result.status, 'LIMITED');
+  assert.equal(out.result.scanned_rows, 3);
+  assert.equal(out.result.next_cursor, 'c2');
+  assert.deepEqual(out.calls.map((call) => call.scanRows), [3, 1]);
+
+  // A later failure retains earlier hits and cannot turn them into a false empty result.
+  out = run([page('LIMITED', [item(1)], 'c1'), { status: 'SEARCH_FAILED', error: 'index unavailable', items: [], next_cursor: null, scanned_rows: 1 }]);
+  assert.equal(out.result.status, 'SEARCH_FAILED');
+  assert.deepEqual(out.result.items.map((context) => context.paragraph_rowid), [1]);
+
+  // External cursor completion without new hits remains COMPLETE, never ZERO_HITS.
+  out = run([page('COMPLETE', [])], { cursor: 'c1' });
+  assert.equal(out.result.status, 'COMPLETE');
+  assert.equal(out.cursorIn, 'c1');
+  assert.equal(run([page('COMPLETE', [])], { cursor: 'c1' }).result.status, 'COMPLETE');
+
+  // Repeated cursors fail closed; a call limit stays a truthful LIMITED continuation.
+  out = run([page('LIMITED', [item(1)], 'c1'), page('LIMITED', [], 'c1')]);
+  assert.equal(out.result.status, 'SEARCH_FAILED');
+  assert.match(out.result.error, /no progress/u);
+  assert.equal(out.result.items.length, 1);
+  out = run([page('LIMITED', [item(1)], 'c1')], {}, { maxCalls: 0 });
+  assert.equal(out.result.status, 'LIMITED');
+  assert.equal(out.result.next_cursor, 'c1');
+});
+
+test('searchForContexts over a real index: bounded zero, form-bound cursors, external cursor', async () => {
   const world = await makeWorld();
   try {
     const database = openReadonlyDb(world.options.databasePath);
     const search = (forms, options) => ({ result: searchContexts(database, forms, { ...options, scanRows: 1 }) });
-    const zero = searchToCompletion(search, ['마', '쿠'], {});
+    const zero = searchForContexts(search, ['마', '쿠'], {});
     assert.equal(zero.result.status, 'ZERO_HITS');
     assert.ok(zero.followups >= 3);
-    const hit = searchToCompletion(search, ['기회'], { maxSamples: 4 });
-    assert.ok(hit.result.items.length > 0, 'first hit is returned');
+    const hit = searchForContexts(search, ['기회'], { maxSamples: 4 });
+    assert.ok(hit.result.items.length > 0, 'contexts are returned');
     const first = searchContexts(database, ['마', '쿠'], { scanRows: 1 });
     assert.equal(first.status, 'LIMITED');
-    const external = searchToCompletion(search, ['마', '쿠'], { cursor: first.next_cursor });
+    const external = searchForContexts(search, ['마', '쿠'], { cursor: first.next_cursor });
     assert.equal(external.result.status, 'COMPLETE', 'external cursor never becomes ZERO_HITS');
-    const other = searchToCompletion(search, ['마'], { cursor: first.next_cursor });
+    const other = searchForContexts(search, ['마'], { cursor: first.next_cursor });
     assert.equal(other.result.status, 'SEARCH_FAILED', 'a cursor of another form list is rejected');
     database.close();
   } finally {
@@ -249,14 +285,26 @@ test('search-batch shares identical search work across homonym records and keeps
   const forms = [' 쉼표,포함 ', '"공백 포함"'];
   const same = (sense) => ({ sense, forms, boundary: 'left', cursor: null, contexts: 2 });
   const calls = [];
+  let nextGroup = 0;
   const search = (requestForms, options) => {
     calls.push({ forms: requestForms, options });
+    if (options.cursor === 'external-cursor') return { result: { status: 'COMPLETE', items: [], next_cursor: null, scanned_rows: 1 } };
+    if (options.cursor === null) {
+      const group = ++nextGroup;
+      return { result: {
+        status: 'LIMITED',
+        items: [{ form: requestForms[0], paragraph_rowid: group * 10, title: '문서', author: '저자', excerpt: `context-${group}-1` }],
+        next_cursor: `cursor-${group}`, scanned_rows: 1,
+      } };
+    }
+    const group = Number(options.cursor.replace('cursor-', ''));
     return { result: {
-      status: options.cursor ? 'COMPLETE' : 'LIMITED',
-      items: [{ form: requestForms[0], paragraph_rowid: calls.length, title: '문서', author: '저자', excerpt: `context-${calls.length}` }],
-      next_cursor: options.cursor ? null : `cursor-${calls.length}`,
+      status: 'COMPLETE',
+      items: [{ form: requestForms[0], paragraph_rowid: group * 10 + 1, title: '문서', author: '저자', excerpt: `context-${group}-2` }],
+      next_cursor: null, scanned_rows: 1,
     } };
   };
+  search.corpusRows = 10;
   const requests = [
     same('s1'), same('s2'), same('s3'),
     { ...same('s1'), boundary: 'none' },
@@ -265,17 +313,17 @@ test('search-batch shares identical search work across homonym records and keeps
     { ...same('s1'), forms: ['별도,검색형', '"인용"'] },
   ];
   const { output, evidence } = buildSearchBatch({ requests, meta: metaValue, records, search });
-  assert.equal(calls.length, 5, 'record IDs are absent from the request identity, while forms, boundary, cursor and contexts distinguish results');
+  assert.equal(calls.length, 9, 'record IDs are absent from the request identity, while forms, boundary, cursor and contexts distinguish results');
   assert.equal(output.result_count, 5);
   assert.equal(output.results[0].result_id, 'q1');
   assert.deepEqual(output.results[0].shared_by.map((item) => [item.sense, item.record_id]), [['s1', 'w1'], ['s2', 'w1'], ['s3', 'w2']]);
-  assert.equal(output.results[0].contexts.length, 1, 'shared contexts are included once');
+  assert.equal(output.results[0].contexts.length, 2, 'shared contexts are collected once and included once');
   assert.equal(output.requests[0].result_id, output.requests[1].result_id);
   assert.equal(output.requests[1].result_id, output.requests[2].result_id);
   assert.deepEqual(calls[0].forms, ['쉼표,포함', '"공백 포함"'], 'JSON keeps commas, spaces and quotes inside each form');
   assert.equal(evidence.length, 6, 'same record and identical query produces one evidence row; another record gets its own row');
   assert.deepEqual([...new Set(evidence.slice(0, 2).map((entry) => entry.record_id))], ['w1', 'w2']);
-  assert.deepEqual(recordEvidence([...evidence, evidence[0]], 'w1'), { searches: 3, hits: 5, allComplete: false });
+  assert.deepEqual(recordEvidence([...evidence, evidence[0]], 'w1'), { searches: 5, hits: 8, allComplete: false });
 });
 
 test('search-batch preserves mixed statuses and rejects unproven external cursors per record', () => {
@@ -286,11 +334,13 @@ test('search-batch preserves mixed statuses and rejects unproven external cursor
     { ref: 's3', record_id: 'w2', sense_id: 'w2-s1', auto: false },
   ] };
   const search = (forms, options) => {
-    if (forms[0] === 'fail') return { result: { status: 'SEARCH_FAILED', error: 'index unavailable', items: [], next_cursor: null } };
-    if (forms[0] === 'zero') return { result: { status: 'ZERO_HITS', items: [], next_cursor: null } };
-    if (options.cursor === 'external') return { result: { status: 'COMPLETE', items: [], next_cursor: null } };
-    return { result: { status: 'LIMITED', items: [{ excerpt: 'shared hit' }], next_cursor: 'recorded-cursor' } };
+    if (forms[0] === 'fail') return { result: { status: 'SEARCH_FAILED', error: 'index unavailable', items: [], next_cursor: null, scanned_rows: 1 } };
+    if (forms[0] === 'zero') return { result: { status: 'ZERO_HITS', items: [], next_cursor: null, scanned_rows: 1 } };
+    if (options.cursor === 'external') return { result: { status: 'COMPLETE', items: [], next_cursor: null, scanned_rows: 1 } };
+    if (options.cursor === null) return { result: { status: 'LIMITED', items: [{ paragraph_rowid: 1, excerpt: 'shared hit' }], next_cursor: 'recorded-cursor', scanned_rows: 1 } };
+    return { result: { status: 'COMPLETE', items: [], next_cursor: null, scanned_rows: 1 } };
   };
+  search.corpusRows = 10;
   const { output, evidence } = buildSearchBatch({
     requests: [
       { sense: 's1', forms: ['shared'] },
@@ -301,13 +351,44 @@ test('search-batch preserves mixed statuses and rejects unproven external cursor
     ],
     meta: metaValue, records, search,
   });
-  assert.deepEqual(output.results.map((result) => result.status), ['LIMITED', 'COMPLETE', 'ZERO_HITS', 'SEARCH_FAILED']);
+  assert.deepEqual(output.results.map((result) => result.status), ['COMPLETE', 'COMPLETE', 'ZERO_HITS', 'SEARCH_FAILED']);
   assert.equal(output.status, 'SEARCH_FAILED');
-  assert.deepEqual(recordEvidence(evidence, 'w1'), { searches: 1, hits: 1, allComplete: false });
+  assert.deepEqual(recordEvidence(evidence, 'w1'), { searches: 2, hits: 1, allComplete: false });
   assert.deepEqual(recordEvidence(evidence, 'w2'), { searches: 3, hits: 1, allComplete: false });
   const external = evidence.find((entry) => entry.record_id === 'w1' && entry.cursor_in === 'external');
   assert.equal(external.complete, true, 'raw page status remains accurate in the evidence');
   assert.equal(recordEvidence(evidence, 'w1').allComplete, false, 'raw COMPLETE does not bypass missing cursor provenance');
+});
+
+test('search-batch caps aggregate work and returns started progress plus untouched retry requests', () => {
+  const records = Array.from({ length: 6 }, (_, index) => rec(`w${index + 1}`, `lemma${index + 1}`, [['noun', '뜻.']]));
+  const senses = records.map((record, index) => ({ ref: `s${index + 1}`, record_id: record.id, sense_id: `${record.id}-s1`, auto: false }));
+  const requests = senses.map((sense, index) => ({ sense: sense.ref, forms: [`term${index + 1}`], contexts: 1 }));
+  requests[4].cursor = 'unverified-cursor';
+  const calls = [];
+  const search = (forms, options) => {
+    calls.push({ forms, options });
+    if (forms[0] === 'term4') return { result: {
+      status: 'LIMITED', items: [{ paragraph_rowid: 44, excerpt: 'found before batch limit' }], next_cursor: 'cursor-term4', scanned_rows: 1,
+    } };
+    return { result: { status: 'ZERO_HITS', items: [], next_cursor: null, scanned_rows: 1 } };
+  };
+  search.corpusRows = 1;
+
+  const { output, evidence } = buildSearchBatch({ requests, meta: { senses }, records, search });
+  assert.equal(calls.length, 4);
+  assert.equal(output.status, 'PARTIAL');
+  assert.equal(output.scan_budget_rows, 4);
+  assert.equal(output.scanned_rows, 4);
+  assert.deepEqual(output.results.map((result) => result.status), ['ZERO_HITS', 'ZERO_HITS', 'ZERO_HITS', 'LIMITED', 'DEFERRED', 'DEFERRED']);
+  assert.equal(output.results[3].cursor_out, 'cursor-term4');
+  assert.equal(output.requests[4].status, 'DEFERRED');
+  assert.equal(output.results[4].cursor_in, null, 'an unstarted result does not claim to have validated its input cursor');
+  assert.deepEqual(output.results[4].retry_requests, [requests[4]]);
+  assert.deepEqual(output.results[5].retry_requests, [requests[5]]);
+  assert.equal(evidence.length, 4, 'only requests that actually ran write evidence');
+  assert.equal(evidence.some((entry) => entry.record_id === 'w5' || entry.record_id === 'w6'), false);
+  assert.deepEqual(recordEvidence(evidence, 'w4'), { searches: 1, hits: 1, allComplete: false });
 });
 
 test('parseDecisions accepts the compact grammar and reports every malformed line', () => {
