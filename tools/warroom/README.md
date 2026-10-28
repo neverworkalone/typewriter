@@ -14,7 +14,6 @@ sqlite3 -noheader tools/warroom/.local/warroom.db \
    FROM runs r
    JOIN batches b ON b.id = r.batch_id
    WHERE b.pr_number = 2046
-     AND r.kind = 'c_chunk_new'
    ORDER BY r.started_at;" | paste -sd ' ' - | pbcopy
 ```
 
