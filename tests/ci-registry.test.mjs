@@ -879,8 +879,8 @@ test('Deep gate separates validated data from affected contracts and fails close
 
 
 // Execute the actual inline CI classifier against tiny synthetic Git histories.
-// Retired Stage 1 artifact paths and every other non-doc change use Normal.
-test('CI changed-path gate sends all non-doc changes through Normal', async (t) => {
+// Retired candidates and mixed/product/CI changes use Normal; isolated War Room changes use Python tests only.
+test('CI changed-path gate isolates War Room while keeping mixed/unknown changes on Normal', async (t) => {
   const workflow = await readFile(path.resolve(TEST_DIRECTORY, '../.github/workflows/ci.yml'), 'utf8');
   const block = workflow.split('      - name: Classify changed files\n')[1]
     ?.split('      - name: Install pinned dependencies\n')[0];
@@ -892,6 +892,8 @@ test('CI changed-path gate sends all non-doc changes through Normal', async (t) 
   assert.match(workflow, /node scripts\/ci\/deep-gate\.mjs/u, 'Deep classification must run inside the existing classifier step');
   assert.doesNotMatch(workflow, /ci:candidates|run_level == 'candidates'/u);
   assert.match(workflow, /steps\.changes\.outcome != 'success' \|\| \(steps\.changes\.outputs\.run_level == 'normal'/u);
+  assert.match(workflow, /steps\.warroom\.outcome/u, 'War Room gate result must be verified');
+  assert.match(workflow, /name: Normal validation/u);
   const warRoomStep = workflow.split('      - name: War Room Python unit tests\n')[1]
     ?.split('\n      - name: ')[0];
   assert.ok(warRoomStep);
@@ -981,6 +983,7 @@ test('CI changed-path gate sends all non-doc changes through Normal', async (t) 
     const expectedSummary = {
       none: /Changed-path classification: none/u,
       normal: /Changed-path classification: normal/u,
+      warroom: /Changed-path classification: warroom/u,
     };
     assert.match(await readFile(summary, 'utf8'), expectedSummary[expectedLevel], name);
   };
@@ -1017,6 +1020,23 @@ test('CI changed-path gate sends all non-doc changes through Normal', async (t) 
   await scenario('prompt plus War Room code', async () => {
     await writeFile(path.join(root, 'tools/warroom/prompts/c.md'), 'prompt v4\n');
     await writeFile(path.join(root, 'tools/warroom/warroom/supervisor.py'), 'supervisor v2\n');
+  }, 'warroom', true);
+  await scenario('War Room code with ordinary documentation', async () => {
+    await writeFile(path.join(root, 'tools/warroom/warroom/supervisor.py'), 'supervisor v3\n');
+    await writeFile(path.join(root, 'docs/guide.md'), 'guide v3\n');
+  }, 'warroom', true);
+  await scenario('War Room and product code together', async () => {
+    await writeFile(path.join(root, 'tools/warroom/warroom/supervisor.py'), 'supervisor v4\n');
+    await writeFile(path.join(root, 'src/main.mjs'), 'export const value = 3;\n');
+  }, 'normal', true);
+  await scenario('War Room plus CI workflow must run Normal', async () => {
+    await mkdir(path.join(root, '.github/workflows'), { recursive: true });
+    await writeFile(path.join(root, '.github/workflows/ci.yml'), 'name: new ci\n');
+    await writeFile(path.join(root, 'tools/warroom/warroom/supervisor.py'), 'supervisor v5\n');
+  }, 'normal', true);
+  await scenario('War Room plus AGENTS instructions must run Normal', async () => {
+    await writeFile(path.join(root, 'AGENTS.md'), 'updated agents\n');
+    await writeFile(path.join(root, 'tools/warroom/warroom/supervisor.py'), 'supervisor v6\n');
   }, 'normal', true);
   await scenario('prompt plus ordinary product code', async () => {
     await writeFile(path.join(root, 'tools/warroom/prompts/c.md'), 'prompt v5\n');
@@ -1028,10 +1048,11 @@ test('CI changed-path gate sends all non-doc changes through Normal', async (t) 
       path.join(root, 'tools/warroom/prompts/supervisor.py'),
     );
   }, 'normal', true);
-  await scenario('War Room test source', () => writeFile(path.join(root, 'tools/warroom/tests/test_core.py'), 'test v2\n'), 'normal', true);
-  await scenario('War Room test launcher', () => writeFile(path.join(root, 'tools/warroom/run-tests.mjs'), 'runner v2\n'), 'normal', true);
-  await scenario('War Room dependency settings', () => writeFile(path.join(root, 'tools/warroom/requirements.txt'), 'textual>=0.81,<9\n'), 'normal', true);
-  await scenario('War Room root launcher', () => writeFile(path.join(root, 'war'), 'launcher v2\n'), 'normal', true);
+  await scenario('War Room test source', () => writeFile(path.join(root, 'tools/warroom/tests/test_core.py'), 'test v2\n'), 'warroom', true);
+  await scenario('War Room test launcher', () => writeFile(path.join(root, 'tools/warroom/run-tests.mjs'), 'runner v2\n'), 'warroom', true);
+  await scenario('War Room dependency settings', () => writeFile(path.join(root, 'tools/warroom/requirements.txt'), 'textual>=0.81,<9\n'), 'warroom', true);
+  await scenario('War Room root launcher', () => writeFile(path.join(root, 'war'), 'launcher v2\n'), 'warroom', true);
+  await scenario('War Room dashboard entry', () => writeFile(path.join(root, 'dashboard'), 'dashboard v2\n'), 'warroom', true);
   await scenario('War Room documentation outside prompts', () => writeFile(path.join(root, 'tools/warroom/README.md'), 'readme v2\n'), 'normal');
   await scenario('canonical-data', async () => {
     await mkdir(path.join(root, 'data/canonical'), { recursive: true });
