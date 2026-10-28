@@ -825,13 +825,37 @@ test('merge coalesces orthographic aliases for one target sense and keeps the ca
 
   const merged = await quiet(() => run(['merge', '--checkpoint', checkpoint], { root }));
   assert.equal(merged.relations_added, 1, 'one canonical ID row represents both candidate spellings');
-  const relations = (await readFile(path.join(root, 'data/relations/relation-001.jsonl'), 'utf8')).trim().split('\n').map(JSON.parse);
+  const relationPath = path.join(root, 'data/relations/relation-001.jsonl');
+  const checkpointPath = path.join(root, checkpoint);
+  const relationBytes = await readFile(relationPath);
+  const relations = relationBytes.toString('utf8').trim().split('\n').map(JSON.parse);
   assert.deepEqual(relations, [{
     source_record_id: 'w1', source_sense_id: 'w1-s1', target_record_id: 'w2', target_sense_id: 'w2-s1',
     type: 'near', relevance: 2, reverse_type: 'mood', reverse_relevance: 4,
   }], 'the canonical target headword spelling supplies the retained sense-pair judgment');
+
+  const repeated = await quiet(() => run(['merge', '--checkpoint', checkpoint], { root }));
+  assert.equal(repeated.relations_added, 0, 're-merging the same checkpoint is idempotent');
+  assert.deepEqual(await readFile(relationPath), relationBytes, 'an idempotent retry leaves the Relation file byte-identical');
+
+  const interruptedCheckpoint = JSON.parse(await readFile(checkpointPath, 'utf8'));
+  interruptedCheckpoint.merged = false;
+  await writeFile(checkpointPath, `${JSON.stringify(interruptedCheckpoint)}\n`);
+  const recovered = await quiet(() => run(['merge', '--checkpoint', checkpoint], { root }));
+  assert.equal(recovered.relations_added, 0, 'a saved Relation row with an unmerged checkpoint recovers without another row');
+  assert.deepEqual(await readFile(relationPath), relationBytes, 'partial-save recovery preserves the Relation file byte-for-byte');
   const verified = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
   assert.equal(verified.missing, 0, 'the single ID row accounts for both orthographic candidate forms');
+
+  const conflictingCheckpoint = JSON.parse(await readFile(checkpointPath, 'utf8'));
+  conflictingCheckpoint.items[0].candidates.find((candidate) => candidate.text === '생명 보험').decision.type = 'scene';
+  await writeFile(checkpointPath, `${JSON.stringify(conflictingCheckpoint)}\n`);
+  await assert.rejects(
+    () => quiet(() => run(['merge', '--checkpoint', checkpoint], { root })),
+    /cannot merge duplicate or reverse-duplicate ID relation/u,
+    'a stored judgment that differs from the canonical alias selection remains a conflict',
+  );
+  assert.deepEqual(await readFile(relationPath), relationBytes, 'a conflicting retry cannot rewrite the approved Relation row');
 });
 
 test('compact chunks are a lossless view and compact decisions expand into the same validated decisions', async (t) => {

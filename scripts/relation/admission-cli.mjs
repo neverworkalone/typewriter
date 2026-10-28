@@ -301,6 +301,50 @@ function isConsistentReciprocalIdRelation(left, right) {
     && left.reverse_relevance === right.relevance;
 }
 
+function coalesceOrthographicAliasRelations(checkpoint, relations, relationCandidates) {
+  const checkpointCandidates = new Map();
+  for (const item of checkpoint.items) for (const candidate of item.candidates) {
+    checkpointCandidates.set(`${item.sense_id}\u0000${candidate.text}`, candidate);
+  }
+
+  const selectedRelations = [];
+  const selectedCandidates = [];
+  const relationIndexByPair = new Map();
+  for (const [index, relation] of relations.entries()) {
+    const candidateKey = relationCandidates[index];
+    if ('text' in relation) {
+      selectedRelations.push(relation);
+      selectedCandidates.push(candidateKey);
+      continue;
+    }
+
+    const pair = idPairKey(relation.source_sense_id, relation.target_sense_id);
+    const selectedIndex = relationIndexByPair.get(pair);
+    if (selectedIndex === undefined) {
+      relationIndexByPair.set(pair, selectedRelations.length);
+      selectedRelations.push(relation);
+      selectedCandidates.push(candidateKey);
+      continue;
+    }
+
+    const selectedCandidate = checkpointCandidates.get(selectedCandidates[selectedIndex]);
+    const currentCandidate = checkpointCandidates.get(candidateKey);
+    const usesCanonicalSpelling = (candidate) => {
+      const targetLemma = candidate?.same_spelling_targets
+        .find((target) => target.record_id === relation.target_record_id)?.lemma;
+      return typeof targetLemma === 'string' && normalizeCandidate(candidate.text) === normalizeCandidate(targetLemma);
+    };
+    // One meaning pair can be reached through multiple spacing/hyphenation aliases. The relation row
+    // represents the target meaning, so prefer its canonical headword decision when aliases disagree;
+    // otherwise retain the first candidate in the stable Stage 1 order.
+    if (usesCanonicalSpelling(currentCandidate) && !usesCanonicalSpelling(selectedCandidate)) {
+      selectedRelations[selectedIndex] = relation;
+      selectedCandidates[selectedIndex] = candidateKey;
+    }
+  }
+  return { relations: selectedRelations, relationCandidates: selectedCandidates };
+}
+
 function assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, newRelations, newRelationCandidates, newDrops) {
   const exactRelations = new Set(existingRelations.map(stableRow));
   const exactDrops = new Set(existingDrops.map(stableRow));
@@ -338,9 +382,9 @@ function assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, ne
     }
   }
   const appendRelations = [];
-  const newPairOrigins = new Map();
-  for (const [rowIndex, row] of newRelations.entries()) {
-    const candidateKey = newRelationCandidates[rowIndex];
+  const coalesced = coalesceOrthographicAliasRelations(checkpoint, newRelations, newRelationCandidates);
+  for (const [rowIndex, row] of coalesced.relations.entries()) {
+    const candidateKey = coalesced.relationCandidates[rowIndex];
     if (exactRelations.has(stableRow(row))) continue;
     if ('text' in row) {
       const key = `${row.source_sense_id}\u0000${normalizeCandidate(row.text)}`;
@@ -356,32 +400,6 @@ function assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, ne
           && existingPair.target_record_id === row.target_record_id
           && existingPair.target_sense_id === row.target_sense_id;
         if (!sameOrientation && isConsistentReciprocalIdRelation(existingPair, row)) continue;
-        if (sameOrientation) {
-          const origin = newPairOrigins.get(key);
-          if (origin) {
-            const priorCandidate = checkpointCandidates.get(origin.candidateKey);
-            const currentCandidate = checkpointCandidates.get(candidateKey);
-            const targetLemma = (candidate) => candidate?.same_spelling_targets
-              .find((target) => target.record_id === row.target_record_id)?.lemma;
-            const usesCanonicalSpelling = (candidate) => {
-              const lemma = targetLemma(candidate);
-              return typeof lemma === 'string' && normalizeCandidate(candidate.text) === normalizeCandidate(lemma);
-            };
-            // One meaning pair can be reached through multiple spacing/hyphenation aliases. The relation row
-            // represents the target meaning, so prefer its canonical headword decision when aliases disagree;
-            // otherwise retain the first candidate in the stable Stage 1 order.
-            if (usesCanonicalSpelling(currentCandidate) && !usesCanonicalSpelling(priorCandidate)) {
-              appendRelations[origin.index] = row;
-              idPairs.set(key, row);
-              idPairs.set(reverse, row);
-              exactRelations.delete(stableRow(existingPair));
-              exactRelations.add(stableRow(row));
-              newPairOrigins.set(key, { candidateKey, index: origin.index });
-              newPairOrigins.set(reverse, { candidateKey, index: origin.index });
-            }
-            continue;
-          }
-        }
         throw new Error(`cannot merge duplicate or reverse-duplicate ID relation ${row.source_sense_id}/${row.target_sense_id}`);
       }
       const candidateKeys = sourceCandidatesForPair.get(key) ?? new Set([candidateKey]);
@@ -392,8 +410,6 @@ function assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, ne
       idPairs.set(key, row);
       idPairs.set(reverse, row);
       exactRelations.add(stableRow(row));
-      newPairOrigins.set(key, { candidateKey, index: appendRelations.length });
-      newPairOrigins.set(reverse, { candidateKey, index: appendRelations.length });
     }
     appendRelations.push(row);
   }
@@ -986,15 +1002,13 @@ function assertCheckpointMerged(checkpoint, relationRows, dropRows) {
   const relationSet = new Set(relationRows.map(stableRow));
   const dropSet = new Set(dropRows.map(stableRow));
   const expected = decisionRows(checkpoint);
-  const coalesced = assertNoMergeConflicts(
-    checkpoint, [], [], expected.relations, expected.relationCandidates, expected.drops,
-  );
+  const coalesced = coalesceOrthographicAliasRelations(checkpoint, expected.relations, expected.relationCandidates);
   for (const row of coalesced.relations) {
     if (!relationSet.has(stableRow(row)) && !relationRows.some((approved) => isConsistentReciprocalIdRelation(approved, row))) {
       throw new Error(`merged Part relation is missing: ${stableRow(row)}`);
     }
   }
-  for (const row of coalesced.drops) if (!dropSet.has(stableRow(row))) throw new Error(`merged Part Drop is missing: ${stableRow(row)}`);
+  for (const row of expected.drops) if (!dropSet.has(stableRow(row))) throw new Error(`merged Part Drop is missing: ${stableRow(row)}`);
 }
 
 if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url) {
