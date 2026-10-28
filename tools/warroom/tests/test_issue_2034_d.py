@@ -37,12 +37,15 @@ class DWorld(World):
                 self.runner.dchunk.save(self.wt(), self.active()["chunk_no"])
         self.adapter.plan.append({"code": code, "session": session, "effect": effect})
 
-    def ai_rejected(self, code=0, session="ses_d", scope="decisions", stale=False):
+    def ai_rejected(self, code=0, session="ses_d", scope="decisions", stale=False, failed_search_after=False):
         """A fake AI whose `save` is rejected: decisions.txt stays, the CLI's diagnostic for the active chunk is written."""
         def effect():
             rec = self.active()
             folder = self.wt() / dchunk.names(self.row_()).directory
             (folder / "decisions.txt").write_text("s1 Z\n")
+            if failed_search_after:   # a search after the rejected save failed: the repairable diagnostic is now stale
+                with open(folder / "searches.jsonl", "a") as fh:
+                    fh.write(json.dumps({"record_id": "w0001", "status": "SEARCH_FAILED", "hits": 0}) + "\n")
             (folder / "save-rejected.json").write_text(json.dumps({
                 "diagnostic": "save_rejected", "chunk_no": rec["chunk_no"],
                 "view_sha256": "0" * 64 if stale else rec["view_sha256"], "git_head": rec["git_head"], "repair_scope": scope,
@@ -277,7 +280,8 @@ class SaveRejectedFix(unittest.TestCase):
         self.assertEqual(w.kinds().count("d_chunk_fix"), 2)
 
     def test_unrepairable_stale_or_missing_diagnostics_start_no_ai(self):
-        for label, kw in (("hit-bearing Z", {"scope": "stop_and_report"}), ("stale view", {"stale": True})):
+        for label, kw in (("hit-bearing Z", {"scope": "stop_and_report"}), ("stale view", {"stale": True}),
+                           ("search failed after the rejection", {"failed_search_after": True})):
             with self.subTest(label):
                 w = DWorld()
                 self.addCleanup(w.tmp.cleanup)
