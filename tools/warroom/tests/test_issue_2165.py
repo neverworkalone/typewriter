@@ -130,7 +130,7 @@ class Stage2Finalization(unittest.TestCase):
         self.assertEqual(getattr(w.git, "commits", []), [])
         self.assertTrue(control.retry(w.store, "claude", S2))
         w.git.local_verify_ok = True
-        w.tick()
+        w.tick(2)  # the first tick restores PRODUCING; the next retries deterministic finalization
         b = w.store.batch(b["id"])
         self.assertEqual((b["state"], len(w.adapter.launches)), ("WAITING_REVIEW", 1), b["error"])
         self.assertEqual(w.git.stage2_merge_calls, [("001", "01", "01"), ("001", "01", "01")])
