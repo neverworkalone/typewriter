@@ -87,7 +87,7 @@ class Stage2Finalization(unittest.TestCase):
         self.assertEqual(inline, w.git.inspect_text)
         self.assertFalse((Path(b["worktree"]) / ".warroom-scratch" / "s2-fix-context.txt").exists())
 
-        w.git.inspect_text = "source context\n" + "x" * 100_000
+        w.git.inspect_text = "".join(f"row {i} " + "x" * 1_000 + "\n" for i in range(100))
         paged = w.sup._s2_fix_context(b, [{"body": "review w1-s1"}])
         self.assertIn("bounded pages", paged)
         pages = stage2.chunk_pages(w.git.inspect_text)

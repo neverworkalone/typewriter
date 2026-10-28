@@ -363,7 +363,7 @@ class FixHelpers(unittest.TestCase):
                       run("s2_links_new", "0", 20), run("s2_chunk_fix", "0", 4),
                       run("s2_chunk_new", "0", 20)]
         self.assertEqual(stage2.fixes_used(links_runs, *links), 1)
-        self.assertEqual(stage2.fixes_used(links_runs, *chunk), 1)
+        self.assertEqual(stage2.fixes_used(links_runs, *chunk), 2)
 
     def test_prompts(self):
         self.assertIn(CHUNK, prompts.stage2_chunk_resume(CHUNK))

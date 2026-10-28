@@ -1043,5 +1043,5 @@ def classify_claude_failure(log_file: str | Path, fallback_text: str, quota_patt
         if isinstance(status, int) and not isinstance(status, bool):
             fallback_lines.append(str(status))
     if not saw_json:
-        return classify_failure(fallback_text, quota_patterns)
+        return classify_failure("\n".join(fallback_lines) or fallback_text, quota_patterns)
     return classify_failure("\n".join(fallback_lines), quota_patterns)
