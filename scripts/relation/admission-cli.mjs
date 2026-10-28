@@ -342,6 +342,10 @@ function stableRow(row) {
   return JSON.stringify(Object.fromEntries(Object.entries(row).sort(([left], [right]) => left.localeCompare(right))));
 }
 
+function sameRows(left, right) {
+  return left.length === right.length && left.every((row, index) => stableRow(row) === stableRow(right[index]));
+}
+
 function idPairKey(sourceSenseId, targetSenseId) {
   return `${sourceSenseId}\u0000${targetSenseId}`;
 }
@@ -506,7 +510,6 @@ function assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, ne
   const appendRelations = [];
   const orthographicCoalesced = coalesceOrthographicAliasRelations(checkpoint, newRelations, newRelationCandidates);
   const coalesced = coalesceIdenticalSensePairRelations(orthographicCoalesced.relations, orthographicCoalesced.relationCandidates);
-  let relationsChanged = false;
   for (const [rowIndex, row] of coalesced.relations.entries()) {
     const candidateKey = coalesced.relationCandidates[rowIndex];
     if (exactRelations.has(stableRow(row))) continue;
@@ -540,7 +543,6 @@ function assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, ne
             existingPair.candidate_forms = target ? legacyCandidateFormsForRecord(target, index) : [];
             existingPair.reverse_candidate_forms = [...new Set(row.candidate_forms)];
           }
-          relationsChanged = true;
           continue;
         }
         throw new Error(`cannot merge duplicate or reverse-duplicate ID relation ${row.source_sense_id}/${row.target_sense_id}`);
@@ -555,7 +557,6 @@ function assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, ne
       exactRelations.add(stableRow(row));
     }
     appendRelations.push(row);
-    relationsChanged = true;
   }
   const appendDrops = [];
   for (const row of newDrops) {
@@ -570,7 +571,7 @@ function assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, ne
       throw new Error(`cannot merge a Drop already answered by an approved ID relation ${key.replace('\u0000', '/')}`);
     }
   }
-  return { relations: [...baseRelations, ...appendRelations], drops: [...baseDrops, ...appendDrops], relationsChanged };
+  return { relations: [...baseRelations, ...appendRelations], drops: [...baseDrops, ...appendDrops] };
 }
 
 function parseArgs(argv) {
@@ -1766,8 +1767,10 @@ async function materializePart(checkpoint, root, baseline) {
     shardSenseIds: finalShardSenseIds, otherRelationRows: others });
   verifyAccounting({ canonicalRows: loaded.canonicalRows, candidateFiles: scoped.files, relationRows: merged.relations,
     dropRows: merged.drops, otherRelationRows: others, index: loaded.index, scopeRows: scoped.scopeRows });
-  const relations = merged.relationsChanged ? serializedJsonlState(merged.relations, baseline.relations) : baseline.relations;
-  const drops = merged.drops.length !== existingDrops.length ? serializedJsonlState(merged.drops, baseline.drops) : baseline.drops;
+  const relations = sameRows(merged.relations, existingRelations)
+    ? baseline.relations : serializedJsonlState(merged.relations, baseline.relations);
+  const drops = sameRows(merged.drops, existingDrops)
+    ? baseline.drops : serializedJsonlState(merged.drops, baseline.drops);
   return { relations, drops, merged, existingRelations, existingDrops };
 }
 
