@@ -32,6 +32,7 @@ import {
   loadApprovedRelationFiles,
   validateApprovedRelationRows,
 } from '../build/authored-relations.mjs';
+import { buildCanonicalRelationFormIndex } from '../relation/admission.mjs';
 import { runGlobalCanonicalAudit } from './global-canonical-audit.mjs';
 import { runM2Pipeline } from '../verify/m2-pipeline.mjs';
 import { classifyDeepGateDiff, routePrDeepGate } from './deep-gate.mjs';
@@ -209,6 +210,7 @@ export async function runChecks(
     execute = runCommand,
     log = console.log,
     executionPolicy,
+    repositoryDirectory = REPOSITORY_DIRECTORY,
   } = {},
 ) {
   const runnableChecks = executionPolicy
@@ -237,7 +239,7 @@ export async function runChecks(
       log(`\n--- ${index + 1}/${runnableChecks.length}: ${check.label} ---`);
       log(`$ ${formatCommand(command)}`);
       if (check.inProcess) {
-        await runInProcessCheck(check.inProcess, context);
+        await runInProcessCheck(check.inProcess, context, { repositoryDirectory });
       } else {
         await execute(command, context, check);
       }
@@ -387,7 +389,7 @@ export async function createCanonicalSession({
   };
 }
 
-async function runInProcessCheck(name, context) {
+async function runInProcessCheck(name, context, { repositoryDirectory = REPOSITORY_DIRECTORY } = {}) {
   const canonicalContext = context.canonicalContext;
   if (name === 'canonical-jsonl') {
     console.log(
@@ -475,9 +477,10 @@ async function runInProcessCheck(name, context) {
   }
 
   if (name === 'approved-relations') {
-    const files = await loadApprovedRelationFiles(path.join(REPOSITORY_DIRECTORY, 'data/relations'));
+    const files = await loadApprovedRelationFiles(path.join(repositoryDirectory, 'data/relations'));
     const shardSenseIds = buildShardSenseIdsFromCanonicalRecords(canonicalContext.records);
     const canonicalIndex = {
+      ...buildCanonicalRelationFormIndex(canonicalContext.records),
       senses: {
         get(senseId) {
           const found = canonicalContext.indexes.sensesById.get(senseId);
@@ -499,7 +502,7 @@ async function runInProcessCheck(name, context) {
   if (name === 'm2-data-audit') {
     const summary = await runM2Pipeline({
       inputDirectory: canonicalContext.canonicalDirectory,
-      repositoryDirectory: REPOSITORY_DIRECTORY,
+      repositoryDirectory,
       allowDirty: process.env.TYPEWRITER_ALLOW_DIRTY === 'true',
       canonicalContext,
       model: context.normalizedModel,
