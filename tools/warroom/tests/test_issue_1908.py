@@ -83,8 +83,6 @@ class Stage2ChunkRuns(unittest.TestCase):
                 self.w.store.active_batch("claude", S2), decided=1, total=2, next_chunk=2)},
             {"code": 0, "session": "ses_chunk_2", "effect": lambda: write_state(
                 self.w.store.active_batch("claude", S2), decided=2, total=2, next_chunk=3)},
-            {"code": 0, "session": "ses_finalize", "effect": lambda: write_state(
-                self.w.store.active_batch("claude", S2), decided=2, total=2, next_chunk=3, merged=True)},
         ])
         self.w.tick()
 
@@ -114,27 +112,14 @@ class Stage2ChunkRuns(unittest.TestCase):
         self.assertEqual(w.gh.by_branch.get(b["branch"], []), [])
         w.adapter.finish(second["pid"])
         w.tick()
-        w.tick()  # likewise capture the independent finalizer session
         b = w.store.batch(b["id"])
-        final = w.adapter.launches[-1]
-        self.assertEqual((b["run_kind"], final["kind"]), ("s2_finalize_new", "start"))
-        self.assertIsNone(final["stage2_chunk_git"])  # only the finalizer may commit and push
-        self.assertEqual((final["git_shim"], final["real_git"]), (None, None))
-        self.assertIsNone(final.get("git_sandbox_paths"))
-        self.assertIn("finalize", final["prompt"])
+        self.assertEqual((b["run_kind"], b["state"]), ("s2_deterministic_finalize", "WAITING_REVIEW"))
+        self.assertEqual(len(w.adapter.launches), 2, "finalization does not resume or start an AI session")
         self.assertEqual(b["branch"], w.git.created[0][1])
-        self.assertEqual(w.git.local_head, HEAD1)
-        self.assertIsNone(b["pr_number"])
-
-        merge_part(w, "claude", "001", "01", "01")
-        w.git.verify_heads.add((HEAD1, "part", "001", "01", "01"))
-        w.adapter.finish(final["pid"])
-        w.tick()
-        b = w.store.batch(b["id"])
-        self.assertEqual((b["state"], b["pr_number"]), ("WAITING_REVIEW", 7))
-        self.assertEqual([r["kind"] for r in w.store.runs(b["id"])],
-                         ["s2_finalize_new", "s2_chunk_new", "s2_chunk_new"])
-        self.assertEqual(w.git.verify_calls[-1], ("part", "001", "01", "01"))
+        self.assertEqual((b["pr_number"], len(w.gh.created_prs)), (100, 1))
+        self.assertEqual(w.git.local_verify_calls, [("001", "01", "01", True), ("001", "01", "01", True)])
+        self.assertEqual(w.git.exact_verify_calls, [("f" * 40, "001", "01", "01")])
+        self.assertEqual([r["kind"] for r in w.store.runs(b["id"])], ["s2_chunk_new", "s2_chunk_new"])
 
     def test_zero_exit_without_checkpoint_advance_retries_once_then_stops(self):
         w = self.w
@@ -213,8 +198,8 @@ class Stage2ChunkView(unittest.TestCase):
         control.start(w.store, "claude", S2, "single", cfg=w.cfg)
         w.tick()
         b = w.store.active_batch("claude", S2)
-        self.assertEqual((b["run_kind"], len(w.adapter.launches)), ("s2_finalize_new", 1))
-        self.assertIn("finalize", w.adapter.launches[-1]["prompt"])
+        self.assertEqual((b["run_kind"], b["state"], len(w.adapter.launches)),
+                         ("s2_deterministic_finalize", "WAITING_REVIEW", 0))
 
 
 class Stage2ChunkPages(unittest.TestCase):

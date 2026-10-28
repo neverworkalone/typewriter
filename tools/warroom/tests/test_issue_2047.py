@@ -46,12 +46,12 @@ class AnswerOnlyChunk(unittest.TestCase):
         self.assertEqual(self.decisions(b), GOOD + "\n")
         self.assertEqual(len(w.git.save_calls), 1)
         self.assertEqual(self.failures(w, b)[0], 0)
-        self.assertEqual((b["run_kind"], w.adapter.launches[-1]["kind"]), ("s2_finalize_new", "start"))   # saved: next step
+        self.assertEqual((b["run_kind"], w.adapter.launches[-1]["kind"]), ("s2_deterministic_finalize", "start"))   # saved: next step
 
     def test_nonzero_exit_with_the_current_header_is_saved_but_a_headerless_text_is_no_response(self):
         w, b = self.world({"code": 2, "session": "s1", "text": answer(GOOD)})
         b = self.finish(w, b)
-        self.assertEqual(b["run_kind"], "s2_finalize_new")
+        self.assertEqual(b["run_kind"], "s2_deterministic_finalize")
         self.assertEqual(len(w.git.save_calls), 1)
         for text in ("조금 더 살펴보겠습니다", "chunk 001-01-01-000\nc1 D old\nc2 D old"):
             with self.subTest(text=text):
@@ -73,7 +73,7 @@ class AnswerOnlyChunk(unittest.TestCase):
         self.assertIn("현재 청크 전체", fix["prompt"])
         self.assertNotIn("c1 R near 1 c2 R near 3", fix["prompt"])
         b = self.finish(w, b, 1)
-        self.assertEqual((self.decisions(b), b["run_kind"]), (GOOD + "\n", "s2_finalize_new"))
+        self.assertEqual((self.decisions(b), b["run_kind"]), (GOOD + "\n", "s2_deterministic_finalize"))
         self.assertEqual(len(w.git.save_calls), 1)
 
     def test_nonzero_exit_format_fix_is_blocked_by_auth_usage_and_run_pin_failures(self):
@@ -104,7 +104,7 @@ class AnswerOnlyChunk(unittest.TestCase):
         self.assertIn("출력 형식이 잘못", second_fix["prompt"])
         self.assertEqual(self.decisions(b), f"chunk {CHUNK}\nc1 D first\n")
         b = self.finish(w, b, 1)
-        self.assertEqual((self.decisions(b), b["run_kind"]), (GOOD + "\n", "s2_finalize_new"))
+        self.assertEqual((self.decisions(b), b["run_kind"]), (GOOD + "\n", "s2_deterministic_finalize"))
         self.assertEqual(stage2.fixes_used(w.store.runs(b["id"])), 2)
 
     def test_format_failure_does_not_overwrite_an_empty_or_wrong_chunk_decisions_file(self):
@@ -134,20 +134,20 @@ class AnswerOnlyChunk(unittest.TestCase):
         self.assertEqual(self.decisions(b), f"chunk {CHUNK}\nc1 D first\n")   # incomplete answer is kept
         b = self.finish(w, b)
         self.assertEqual(self.decisions(b), f"chunk {CHUNK}\nc1 D first\nc2 D second\n")   # c1 unchanged, extra row ignored
-        self.assertEqual(b["run_kind"], "s2_finalize_new")
+        self.assertEqual(b["run_kind"], "s2_deterministic_finalize")
         self.assertEqual(self.failures(w, b)[:2], [1, 0])
 
     def test_out_of_range_alias_rows_are_removed_and_do_not_block_the_chunk(self):
         w, b = self.world({"code": 0, "session": "s1", "text": answer(f"chunk {CHUNK}\nc1 D first\nc2 D second\nc3 D extra")})
         b = self.finish(w, b)
         self.assertEqual(self.decisions(b), GOOD + "\n")
-        self.assertEqual((len(w.git.save_calls), b["run_kind"]), (2, "s2_finalize_new"))   # no fix run was needed
+        self.assertEqual((len(w.git.save_calls), b["run_kind"]), (2, "s2_deterministic_finalize"))   # no fix run was needed
         w, b = self.world({"code": 0, "session": "s1", "text": answer(f"chunk {CHUNK}\nc1 D first\nc3 D extra")},
                           {"code": 0, "session": "s1", "text": answer(f"chunk {CHUNK}\nc2 D second")})
         b = self.finish(w, b, 1)
         self.assertEqual(self.decisions(b), f"chunk {CHUNK}\nc1 D first\n")   # c3 gone, c1 kept, only c2 to fix
         b = self.finish(w, b)
-        self.assertEqual((self.decisions(b), b["run_kind"]), (GOOD + "\n", "s2_finalize_new"))
+        self.assertEqual((self.decisions(b), b["run_kind"]), (GOOD + "\n", "s2_deterministic_finalize"))
 
     def test_two_failed_corrections_end_in_error_and_only_an_owner_retry_starts_a_new_session(self):
         bad = answer(f"chunk {CHUNK}\nc1 D first\nc2 R x BAD")
@@ -187,9 +187,9 @@ class AnswerOnlyChunk(unittest.TestCase):
         self.assertTrue(control.retry(w2.store, "claude", S2))
         w2.tick(2)
         b2 = w2.store.batch(b2["id"])
-        self.assertEqual((len(w2.git.save_calls), b2["run_kind"]), (1, "s2_finalize_new"))   # saved, no extra AI for the chunk
-        self.assertEqual(len(w2.adapter.launches), 2)
-        self.assertEqual(self.failures(w2, b2)[-2:], [0, 0])
+        self.assertEqual((len(w2.git.save_calls), b2["run_kind"]), (1, "s2_deterministic_finalize"))   # saved, no extra AI for the chunk
+        self.assertEqual(len(w2.adapter.launches), 1)  # deterministic finalization does not launch an AI session
+        self.assertEqual(self.failures(w2, b2), [0])
 
 
 class FixHelpers(unittest.TestCase):

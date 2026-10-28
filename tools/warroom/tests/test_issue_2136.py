@@ -48,7 +48,7 @@ class Stage2Reentry(unittest.TestCase):
         w.tick(2)
         self.assertEqual(w.adapter.launches[-1]["kind"], "resume")
         b = self.finish(w, b)
-        self.assertEqual((b["run_kind"], len(w.git.save_calls)), ("s2_finalize_new", 1))
+        self.assertEqual((b["run_kind"], len(w.git.save_calls)), ("s2_deterministic_finalize", 1))
         self.assertIsNone(w.store.get(key))
 
     def test_missing_answer_without_a_session_uses_one_safe_fresh_session(self):
@@ -69,7 +69,7 @@ class Stage2Reentry(unittest.TestCase):
         checkpoint = stage2.checkpoint(b["worktree"], "001", "01-01")
         self.assertEqual(checkpoint["pending_chunk"], CHUNK)
         b = self.finish(w, b)
-        self.assertEqual((b["run_kind"], len(w.adapter.launches)), ("s2_finalize_new", 3))
+        self.assertEqual((b["run_kind"], len(w.adapter.launches)), ("s2_deterministic_finalize", 2))
 
 
 class ChunkStorageAndLimits(unittest.TestCase):

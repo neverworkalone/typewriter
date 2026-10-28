@@ -86,7 +86,7 @@ class CardsAndControl(unittest.TestCase):
         self.assertEqual((half.count("█"), half.count("░")), (CARD_W // 2, CARD_W // 2))
         # State, batch and PR number appear once; the first line carries Method, batch, state and icon.
         full = card_text(self.status(state="WAITING_REVIEW", pr=7, drain=True)).split("\n")
-        self.assertTrue(full[0].startswith("A · 009_02") and full[0].endswith("REVIEW + DRAIN ◔"))
+        self.assertTrue(full[0].startswith("A · 009_02") and full[0].endswith("REVIEW+DRAIN ◔"))
         self.assertEqual(sum(l.count("REVIEW") for l in full), 1)
         self.assertEqual([fmt_elapsed(x) for x in (0, 59, 60, 312, 3599, 3900)],
                          ["0초", "59초", "1분 00초", "5분 12초", "59분 59초", "1시간 05분"])
@@ -97,7 +97,7 @@ class CardsAndControl(unittest.TestCase):
                         progress_kind="candidates", progress_done=35, progress_total=100, pr=9, elapsed=60)
         lines = card_text(st).split("\n")
         self.assertEqual(len(lines), 4)
-        self.assertIn("Stage 2 001/01/03", lines[0])
+        self.assertIn("Stage2 001/01/03", lines[0])
         self.assertIn("35 / 100 candidates", lines[1])
         self.assertIn("35.0%", lines[1])
         self.assertEqual(cell_len(lines[2]), CARD_W)
@@ -149,7 +149,7 @@ class CardsAndControl(unittest.TestCase):
         self.assertTrue(ok)
         self.assertEqual(mid(), "— 시작 예약 중")
         control.set_drain(w.store, "deepseek", "a", True)               # blocks the new batch
-        self.assertEqual(mid(), "비어 있음 + DRAIN 시작 예약")
+        self.assertEqual(mid(), "비어 있음+DRAIN 시작 예약")
         self.assertIn("DRAIN", detail_header(cell(), reg, "deepseek"))
         control.set_drain(w.store, "deepseek", "a", False)              # Cancel Drain
         self.assertEqual(mid(), "— 시작 예약 중")

@@ -132,16 +132,18 @@ def checkpoint(worktree, shard: str, key: str):
 
 
 def next_action(state: dict | None) -> str:
-    """Choose the next independent run from persisted Stage 2 state."""
+    """Choose the next producer run or deterministic finalization step from persisted Stage 2 state."""
     if state is None:
         return "chunk"
     if not state["complete"]:
         raise ValueError("Stage 2 checkpoint does not contain the complete Candidate input set")
     if state["pending_chunk"] is not None:
-        return "finalize" if state["pending_revision"] else "chunk"
+        return "chunk"
     if state["decided"] < state["total"]:
         return "chunk"
-    return "finalize"
+    if state.get("optional_review_complete"):
+        return "finalize"
+    return "complete_optional" if state.get("optional_links", 0) == 0 else "links"
 
 
 def chunk_saved_since(before: dict | None, after: dict | None) -> bool:
@@ -217,6 +219,7 @@ _ROW = re.compile(r"c(\d+)\s")
 _ROW_START = re.compile(r"c\d+(?:\s|$)")
 _ERROR_ALIAS = re.compile(r"^(c\d+)\b", re.M)
 _FENCE = re.compile(r"^\s*```")
+_LINK_ROW = re.compile(r"^c\d+\s")
 
 
 def extract_decisions(final_text: str | None, chunk_id: str) -> list[str] | None:
@@ -275,6 +278,40 @@ def format_problem(final_text: str | None, chunk_id: str) -> str | None:
                         "한 줄당 하나의 `c<n>` 행 형식이 아닙니다. 같은 세션의 기존 판정 의미를 보존해 형식만 고쳐 재제출하세요.")
             break
     return None
+
+
+def extract_link_decisions(final_text: str | None, digest: str) -> list[str] | None:
+    """Rows after this link run's exact digest header, or None when it did not answer this view."""
+    if not isinstance(final_text, str):
+        return None
+    lines = final_text.replace("\r\n", "\n").split("\n")
+    header = f"links @{digest}"
+    starts = [i for i, line in enumerate(lines) if line.strip() == header]
+    if not starts:
+        return None
+    rows = []
+    for line in lines[starts[-1] + 1:]:
+        if _FENCE.match(line):
+            break
+        stripped = line.strip()
+        if stripped and not stripped.startswith("#"):
+            rows.append(stripped)
+    return rows
+
+
+def link_format_problem(final_text: str | None, digest: str) -> str | None:
+    if extract_link_decisions(final_text, digest) is not None:
+        return None
+    if not isinstance(final_text, str):
+        return "최종 응답이 없어 links digest header를 확인할 수 없습니다. 같은 세션에서 exact header와 후보 행을 다시 제출하세요."
+    if "links" in final_text or re.search(r"\bc\d+\b", final_text):
+        return (f"최종 응답에 optional-link 판정 시도는 있으나 exact `links @{digest}` header가 없습니다. "
+                "같은 세션에서 헤더와 후보별 행만 다시 제출하세요.")
+    return None
+
+
+def links_start_key(batch_id: int) -> str:
+    return f"s2_links_start_{batch_id}"
 
 
 def decision_file_state(worktree, chunk_id: str) -> str:
