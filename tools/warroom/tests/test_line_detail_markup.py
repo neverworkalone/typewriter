@@ -23,7 +23,7 @@ class LineDetailMarkup(unittest.TestCase):
         bid = w.row("claude", "a")["id"]
         reasons = ['거부됨 (명령: cat <<EOF d=[("s1",["가스 | python3)', "[/x] [bold", "[red]x", "]["]
         for p in (mock.patch.object(tui, "Paths", return_value=w.paths), mock.patch.object(tui, "load_config", return_value=w.cfg),
-                  mock.patch.object(tui, "ensure_supervisor", return_value=""),
+                  mock.patch.object(tui, "ensure_supervisor", return_value=("starting", None)),
                   mock.patch.object(tui.WarRoom, "check_auth", lambda self: None)):
             p.start()
             self.addCleanup(p.stop)
