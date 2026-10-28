@@ -62,7 +62,7 @@ class Supervisor:
         self.runner, self.adapter, self.gh, self.git, self.env = runner, adapter, gh, git, env
         self.clock = clock
         self._worker_git_executables = []
-        self._s2_fix_problem: dict[int, str] = {}   # batch id -> the rejected save's error list for the next `s2_chunk_fix`
+        self._s2_fix_problem: dict[int, str] = {}   # batch id -> the save/format diagnostic for the next same-session fix
         self.maint = Maintenance(self)   # shared-defect Issues, the hidden Maintainer and applying its merged fix
 
     def _adapter(self, producer: str):
@@ -292,7 +292,7 @@ class Supervisor:
     def _safe_fresh_chunk_after_missing_session(self, b) -> bool:
         """Only methods with a self-contained, still-unsaved chunk may leave a dead session for a new one."""
         wt = Path(b["worktree"])
-        if self._s2_chunk_run(b) and b["run_kind"] != "s2_chunk_fix":
+        if self._s2_chunk_run(b) and b["run_kind"] not in ("s2_chunk_fix", "s2_chunk_format_fix"):
             pending = self._stage2_pending(b)
             decisions = wt / stage2.DECISIONS
             try:
@@ -1147,15 +1147,23 @@ class Supervisor:
                 if stage2.next_action(checkpoint) != phase:
                     raise prompts.PromptError("Stage 2 실행 단계와 현재 checkpoint 상태가 다릅니다")
                 title = f"Stage 2 {stage2.label(b['shard'], b['batch'])} {phase}"
-                if kind == "s2_chunk_fix":
-                    # Correction of the unsaved pending chunk: same session, same baseline, no new prepare/view/cursor.
+                if kind in ("s2_chunk_fix", "s2_chunk_format_fix"):
+                    # Same session and pending baseline; choose a whole-format or alias-only card from the preserved file state.
                     problem = self._stage2_chunk_boundary_problem(b)
                     if problem:
                         return self._fail(b, "ERROR", problem)
                     detail = self._s2_fix_problem.pop(b["id"], None)
                     if not sid or not checkpoint["pending_chunk"] or not detail:
                         raise prompts.PromptError("수정 요청에 기존 세션·pending 청크·오류 목록이 모두 필요합니다")
-                    prompt = prompts.stage2_chunk_fix(checkpoint["pending_chunk"], detail)
+                    file_state = stage2.decision_file_state(wt, checkpoint["pending_chunk"])
+                    if kind == "s2_chunk_format_fix":
+                        if file_state != "missing":
+                            raise prompts.PromptError("전체 형식 수정에는 기존 판정 파일이 없어야 합니다")
+                        prompt = prompts.stage2_chunk_format_fix(checkpoint["pending_chunk"], detail)
+                    else:
+                        if file_state != "current":
+                            raise prompts.PromptError("부분 수정에는 현재 pending 청크의 기존 판정 파일이 필요합니다")
+                        prompt = prompts.stage2_chunk_fix(checkpoint["pending_chunk"], detail)
                     h = ad.resume(sid, prompt, wt, run_env, run, log, ex, **extra)
                 else:
                     if kind == "s2_chunk_resume":
@@ -1737,6 +1745,14 @@ class Supervisor:
             return None
         return stage2.extract_decisions(self._adapter(b["producer"]).final_answer(Path(b["log_file"])), pending)
 
+    def _stage2_format_problem(self, b) -> str | None:
+        """A malformed but clearly attempted current-chunk answer from this run's FINAL response, or None (MISSING)."""
+        pending = self._stage2_pending(b)
+        if pending is None:
+            return None
+        final = self._adapter(b["producer"]).final_answer(Path(b["log_file"]))
+        return stage2.format_problem(final, pending)
+
     def _stage2_save(self, b) -> tuple[bool, str]:
         bb, pp = stage2.split_key(b["batch"])
         ok, detail = self.git.stage2_save_chunk(Path(b["worktree"]), b["shard"], bb, pp)
@@ -1762,14 +1778,46 @@ class Supervisor:
         return self._stage2_accept(b)
 
     def _stage2_rejected(self, b, diagnostic: str) -> None:
-        """The pending chunk's decisions failed `save-chunk` (checkpoint unchanged, decision file kept): ask the SAME
-        session to correct only the reported rows, at most `MAX_FIXES` times since the chunk's new session."""
+        """Route a saved/format rejection by the preserved decisions file: absent means full format repair, current means alias repair."""
+        pending = self._stage2_pending(b)
+        if pending is None:
+            return self._fail(b, "ERROR", "Stage 2 수정 요청에 현재 pending 청크가 없습니다. 결정 파일과 checkpoint를 보존합니다.")
+        file_state = stage2.decision_file_state(b["worktree"], pending)
+        if file_state == "corrupt":
+            return self._fail(b, "ERROR", f"Stage 2 판정 파일이 비어 있거나 현재 청크와 맞지 않거나 손상되어 수정하지 않습니다. "
+                              f"파일과 checkpoint를 보존합니다: {stage2.DECISIONS}")
         if stage2.fixes_used(self.store.runs(b["id"])) < stage2.MAX_FIXES and b["session_id"]:
             self._s2_fix_problem[b["id"]] = diagnostic
             self.store.update(b["id"], retries=0, retry_after=None, error=None)
-            return self._launch(self.store.batch(b["id"]), "s2_chunk_fix")
+            kind = "s2_chunk_format_fix" if file_state == "missing" else "s2_chunk_fix"
+            return self._launch(self.store.batch(b["id"]), kind)
         return self._fail(b, "ERROR", "Stage 2 청크 판정이 저장 검증을 통과하지 못했고 자동 수정 기회가 없습니다 "
                           f"(결정 파일 {stage2.DECISIONS} 보존; 오너 Retry는 같은 청크를 새 세션으로 다시 시작): {diagnostic[:600]}")
+
+    def _stage2_invalid_format(self, b, problem: str) -> None:
+        """Reject a parse-level format failure to the same session without discarding a prior partial decision file."""
+        pending = self._stage2_pending(b)
+        if pending is None:
+            return self._fail(b, "ERROR", "Stage 2 형식 오류를 처리할 현재 pending 청크가 없습니다. 기록을 보존합니다.")
+        file_state = stage2.decision_file_state(b["worktree"], pending)
+        self.store.add_submit_failure(b["id"])
+        self.store.log(b["id"], f"Stage 2 청크 출력 형식 거부: {problem[:300]}", "warn")
+        if file_state == "corrupt":
+            return self._fail(b, "ERROR", f"Stage 2 판정 파일이 비어 있거나 현재 청크와 맞지 않거나 손상되어 형식 수정에 사용하지 않습니다. "
+                              f"파일과 checkpoint를 보존합니다: {stage2.DECISIONS}")
+        if file_state == "current":
+            try:
+                ok, detail = self._stage2_save(b)  # re-check the original aliases before asking for another partial fix
+            except TRANSIENT:
+                raise
+            except (OSError, ValueError, GitError) as e:
+                return self._fail(b, "ERROR", f"기존 Stage 2 판정 재검증 실패: {e}. 파일과 checkpoint를 보존합니다.")
+            if ok:
+                return self._stage2_saved_or_fail(b)
+            diagnostic = f"{detail}\n\n현재 청크의 수정 응답도 출력 형식이 잘못되었습니다: {problem}"
+        else:
+            diagnostic = problem
+        return self._stage2_rejected(b, diagnostic)
 
     def _run_ok_stage2_chunk(self, b) -> None:
         """Accept one saved chunk as an intermediate success; never accept or create an intermediate PR.
@@ -1791,14 +1839,22 @@ class Supervisor:
         if self._stage2_chunk_saved(b):
             return self._stage2_accept(b)
         rows = self._stage2_response(b)
-        if rows is None:   # no `chunk <current id>` header: keep the pending checkpoint and try this chunk once more
-            if b["run_kind"] != "s2_chunk_fix" and self._retry_unsaved_chunk(b, "현재 청크 응답 누락"):
+        if rows is None:
+            if format_problem := self._stage2_format_problem(b):
+                return self._stage2_invalid_format(b, format_problem)
+            # No recognizable current-chunk judgment: keep the bounded missing-output path, never relabel it as format.
+            if b["run_kind"] not in ("s2_chunk_fix", "s2_chunk_format_fix") \
+                    and self._retry_unsaved_chunk(b, "현재 청크 응답 누락"):
                 return
             return self._fail(b, "ERROR", "Stage 2 청크 실행은 종료됐지만 현재 청크 ID 헤더가 있는 판정 응답이 없고 시작 시점 대비 "
                               "checkpoint가 정확히 전진하지 않았거나 pending_chunk가 남아 있습니다. 자동 재진입 한도를 소진했거나 안전하지 않아 기록을 보존합니다.")
         pending = self._stage2_pending(b)
         try:
+            file_state = stage2.decision_file_state(b["worktree"], pending)
             if b["run_kind"] == "s2_chunk_fix":
+                if file_state != "current":
+                    return self._fail(b, "ERROR", "부분 수정 응답을 병합할 현재 청크 판정 파일이 없거나 손상됐습니다. "
+                                      f"수정하지 않고 파일과 checkpoint를 보존합니다: {stage2.DECISIONS}")
                 ok, detail = self._stage2_save(b)   # the same rejection the fix prompt was built from, to find its rows
                 if ok:
                     return self._stage2_saved_or_fail(b)
@@ -1809,6 +1865,9 @@ class Supervisor:
                                    f"{', '.join(stage2.alias_of(r) for r in ignored[:10])}", "warn")
                 stage2.write_decisions(b["worktree"], pending, merged)
             else:
+                if file_state != "missing":
+                    return self._fail(b, "ERROR", "전체 Stage 2 응답을 쓸 판정 파일이 이미 있거나 손상됐습니다. "
+                                      f"덮어쓰지 않고 파일과 checkpoint를 보존합니다: {stage2.DECISIONS}")
                 stage2.write_decisions(b["worktree"], pending, rows)
             ok, detail = self._stage2_save(b)
         except TRANSIENT:
@@ -2620,6 +2679,16 @@ class Supervisor:
         except (stage1ab.ABChunkError, OSError, ValueError, KeyError, TypeError):
             return False
 
+    def _ab_chunk_attempted(self, b) -> bool:
+        """Exact current `BEGIN chunk NNN` line in this run's final answer, even when its block is malformed."""
+        try:
+            baseline = json.loads(self.store.get(stage1ab.run_start_key(b["id"])) or "")
+            marker = f"BEGIN chunk {int(baseline['chunk_no']):03d}"
+            final = self._adapter(b["producer"]).final_answer(Path(b["log_file"]))
+            return isinstance(final, str) and any(line.strip() == marker for line in final.replace("\r\n", "\n").split("\n"))
+        except (OSError, ValueError, KeyError, TypeError):
+            return False
+
     def _relaunch_ab(self, b) -> None:
         problem = self._stage2_chunk_boundary_problem(b, stage1ab.run_start_key(b["id"]))
         if problem and self.store.get(stage1ab.run_start_key(b["id"])) is not None:
@@ -2993,17 +3062,23 @@ class Supervisor:
             if not self._denials_cleared(b, Path(b["log_file"])):
                 return
             return self._run_ok_stage2_chunk(b)
-        if safe_to_accept_stored and self._s2_chunk_run(b) and b["state"] == "PRODUCING" and self._stage2_response(b) is not None:
-            # A nonzero exit is not the verdict: run_problem found no model/permission/policy block, and a judgement for
-            # the current chunk is in the log, so it is saved and judged by save-chunk like any other answer.
-            self.store.log(b["id"], "AI가 비정상 종료했지만 현재 청크의 판정 응답이 있어 저장을 시도합니다.", "warn")
+        s2_rows = self._stage2_response(b) if self._s2_chunk_run(b) and b["state"] == "PRODUCING" else None
+        s2_format_problem = (self._stage2_format_problem(b) if s2_rows is None and self._s2_chunk_run(b)
+                             and b["state"] == "PRODUCING" else None)
+        if safe_to_accept_stored and self._s2_chunk_run(b) and b["state"] == "PRODUCING" \
+                and (s2_rows is not None or s2_format_problem is not None):
+            # A nonzero exit is not the verdict: a clearly attempted current-chunk answer, including a malformed one,
+            # is routed through the existing answer/validator path after the normal identity and boundary checks.
+            reason = "현재 청크 판정 응답" if s2_rows is not None else "현재 청크의 형식 오류 응답"
+            self.store.log(b["id"], f"AI가 비정상 종료했지만 {reason}이 있어 기존 저장 검증 경로로 전달합니다.", "warn")
             if problem := self._saved_chunk_identity_problem(b):
                 return self._fail(b, problem[0], f"현재 청크 응답의 소유권/핀 확인 실패: {problem[1]}")
             return self._run_ok_stage2_chunk(b)
-        if safe_to_accept_stored and self._ab_chunk_run(b) and b["state"] == "PRODUCING" and self._ab_chunk_response(b):
-            # A nonzero exit is not the verdict (`run_problem` found no model/permission/policy block): the log holds this
-            # chunk's complete answer, so it is saved and judged by save-chunk like any other answer.
-            self.store.log(b["id"], "AI가 비정상 종료했지만 현재 A/B 청크의 완성된 답변이 있어 저장을 시도합니다.", "warn")
+        if safe_to_accept_stored and self._ab_chunk_run(b) and b["state"] == "PRODUCING" \
+                and (self._ab_chunk_response(b) or self._ab_chunk_attempted(b)):
+            # A nonzero exit may leave a malformed current block. Its exact BEGIN marker is enough to enter the existing
+            # same-session correction path; absent or different chunk markers remain a missing response.
+            self.store.log(b["id"], "AI가 비정상 종료했지만 현재 A/B 청크의 답변 시도 표식이 있어 기존 저장·정정 경로로 전달합니다.", "warn")
             if problem := self._saved_chunk_identity_problem(b):
                 return self._fail(b, problem[0], f"현재 청크 응답의 소유권/핀 확인 실패: {problem[1]}")
             return self._run_ok_ab_chunk(b)

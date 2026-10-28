@@ -291,10 +291,11 @@ class ABRescue(unittest.TestCase):
         self.assertEqual(w.kinds(), ["ab_chunk_new", "ab_chunk_new"])        # chunk 1 saved, chunk 2 is the next launch
         self.assertEqual(w.row_()["state"], "PRODUCING")
 
-    def test_incomplete_or_foreign_answers_are_not_rescued(self):
-        cases = [("missing end", lambda w: w.block(1, end=False)), ("other chunk", lambda w: w.block(1, no=2)),
-                 ("duplicate S", lambda w: w.block(1) .replace("S2\t", "S1\t", 1)), ("empty", lambda w: "")]
-        for name, make in cases:
+    def test_only_an_exact_current_begin_marker_routes_malformed_nonzero_answers_to_existing_fix(self):
+        cases = [("missing end", lambda w: w.block(1, end=False), True),
+                 ("duplicate S", lambda w: w.block(1).replace("S2\t", "S1\t", 1), True),
+                 ("other chunk", lambda w: w.block(1, no=2), False), ("empty", lambda w: "", False)]
+        for name, make, attempted in cases:
             with self.subTest(name):
                 w = ABWorld()
                 self.addCleanup(w.tmp.cleanup)
@@ -303,7 +304,12 @@ class ABRescue(unittest.TestCase):
                 w.tick()
                 w.finish_last()
                 w.tick()
-                self.assertIn(w.row_()["state"], ("PAUSED", "ERROR"))
+                if attempted:
+                    self.assertEqual((w.row_()["state"], w.row_()["run_kind"], len(w.adapter.launches)),
+                                     ("PRODUCING", "ab_chunk_retry", 2))
+                else:
+                    self.assertIn(w.row_()["state"], ("PAUSED", "ERROR"))
+                    self.assertEqual(len(w.adapter.launches), 1)
                 self.assertFalse((w.wt() / "data/relation-candidates").exists() and
                                  list((w.wt() / stage1ab_dir(w)).glob("candidates/chunk-001.jsonl")))
 

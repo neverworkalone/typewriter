@@ -1,6 +1,7 @@
 """Issue #2047: a Stage 2 chunk run is answer-only; the Supervisor stores the decisions, runs save-chunk and
 corrects only the rejected rows in the same session (at most twice)."""
 import json
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -60,6 +61,63 @@ class AnswerOnlyChunk(unittest.TestCase):
                 self.assertEqual(self.failures(w, b), [0])
                 self.assertFalse((Path(b["worktree"]) / stage2.DECISIONS).exists())
                 self.assertEqual(len(w.adapter.launches), 1)
+
+    def test_nonzero_exit_with_a_structural_but_malformed_current_answer_uses_same_session_format_fix(self):
+        malformed = f"chunk {CHUNK} c1 R near 1 c2 R near 3"
+        w, b = self.world({"code": 2, "session": "s1", "text": answer(malformed)},
+                          {"code": 0, "session": "s1", "text": answer(GOOD)})
+        b = self.finish(w, b, 1)
+        fix = w.adapter.launches[-1]
+        self.assertEqual((b["run_kind"], fix["kind"], fix["session"]),
+                         ("s2_chunk_format_fix", "resume", "s1"))
+        self.assertIn("현재 청크 전체", fix["prompt"])
+        self.assertNotIn("c1 R near 1 c2 R near 3", fix["prompt"])
+        b = self.finish(w, b, 1)
+        self.assertEqual((self.decisions(b), b["run_kind"]), (GOOD + "\n", "s2_finalize_new"))
+        self.assertEqual(len(w.git.save_calls), 1)
+
+    def test_nonzero_exit_format_fix_is_blocked_by_auth_usage_and_run_pin_failures(self):
+        malformed = f"chunk {CHUNK} c1 R near 1 c2 R near 3"
+        for name, suffix, pin_error in (("auth", "authentication failed", None),
+                                        ("usage", "usage limit reached", None),
+                                        ("pin", "", ("ERROR", "output identity mismatch"))):
+            with self.subTest(name=name):
+                w, b = self.world({"code": 2, "session": "s1", "text": answer(malformed) + suffix})
+                if pin_error:
+                    w.adapter.output_identity_problem = lambda *args: pin_error
+                b = self.finish(w, b, 1)
+                self.assertEqual((b["state"], len(w.adapter.launches), w.git.save_calls), ("PAUSED" if name != "pin" else "ERROR", 1, []))
+
+    def test_partial_fix_with_bad_format_rechecks_aliases_and_preserves_good_rows(self):
+        w, b = self.world(
+            {"code": 0, "session": "s1", "text": answer(f"chunk {CHUNK}\nc1 D first")},
+            {"code": 0, "session": "s1", "text": answer(f"chunk {CHUNK} c2 D second")},
+            {"code": 0, "session": "s1", "text": answer(GOOD)})
+        b = self.finish(w, b, 1)
+        first_fix = w.adapter.launches[-1]
+        self.assertEqual((b["run_kind"], first_fix["kind"]), ("s2_chunk_fix", "resume"))
+        b = self.finish(w, b, 1)
+        second_fix = w.adapter.launches[-1]
+        self.assertEqual((b["run_kind"], second_fix["kind"], second_fix["session"]),
+                         ("s2_chunk_fix", "resume", "s1"))
+        self.assertIn("c2", second_fix["prompt"])
+        self.assertIn("출력 형식이 잘못", second_fix["prompt"])
+        self.assertEqual(self.decisions(b), f"chunk {CHUNK}\nc1 D first\n")
+        b = self.finish(w, b, 1)
+        self.assertEqual((self.decisions(b), b["run_kind"]), (GOOD + "\n", "s2_finalize_new"))
+        self.assertEqual(stage2.fixes_used(w.store.runs(b["id"])), 2)
+
+    def test_format_failure_does_not_overwrite_an_empty_or_wrong_chunk_decisions_file(self):
+        malformed = f"chunk {CHUNK} c1 R near 1 c2 R near 3"
+        for contents in ("", "chunk 001-01-01-000\nc1 D old\n", f"chunk {CHUNK}\nnot a decision row\n"):
+            with self.subTest(contents=contents):
+                w, b = self.world({"code": 0, "session": "s1", "text": answer(malformed)})
+                path = Path(b["worktree"]) / stage2.DECISIONS
+                path.write_text(contents, "utf-8")
+                b = self.finish(w, b, 1)
+                self.assertEqual((b["state"], len(w.adapter.launches), w.git.save_calls),
+                                 ("ERROR", 1, []))
+                self.assertEqual(path.read_text("utf-8"), contents)
 
     def test_rejection_resumes_the_same_session_for_only_the_reported_rows(self):
         w, b = self.world(
@@ -142,18 +200,44 @@ class FixHelpers(unittest.TestCase):
             self.assertIsNone(stage2.extract_decisions(none, CHUNK))
         self.assertEqual(stage2.error_aliases("c3 x: a\nc1: b\n  c3 again\ntypes: ..."), ["c3", "c1"])
 
+    def test_format_problem_only_accepts_structural_current_chunk_attempts(self):
+        self.assertEqual(stage2.format_problem(f"chunk {CHUNK}\nc1 D x\nc2 D y", CHUNK), None)
+        self.assertEqual(stage2.format_problem(f"chunk {CHUNK}\n", CHUNK), None)  # VALID([]), then save-chunk decides
+        for malformed in (f"chunk {CHUNK} c1 D x c2 D y", f"**chunk {CHUNK}**:\nc1 D x"):
+            with self.subTest(malformed=malformed):
+                self.assertIsNotNone(stage2.format_problem(malformed, CHUNK))
+        for missing in (f"작업 중 chunk {CHUNK} c1 D x", "chunk 001-01-01-000 c1 D x", "진행 안내만 있음"):
+            with self.subTest(missing=missing):
+                self.assertIsNone(stage2.format_problem(missing, CHUNK))
+
+    def test_decisions_file_state_distinguishes_absent_current_and_corrupt(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / stage2.DECISIONS
+            self.assertEqual(stage2.decision_file_state(temp, CHUNK), "missing")
+            path.parent.mkdir(parents=True)
+            path.write_text(f"chunk {CHUNK}\nc1 D old\n", "utf-8")
+            self.assertEqual(stage2.decision_file_state(temp, CHUNK), "current")
+            for text in ("", "chunk 001-01-01-000\nc1 D old\n", f"chunk {CHUNK}\nnot a row\n"):
+                with self.subTest(text=text):
+                    path.write_text(text, "utf-8")
+                    self.assertEqual(stage2.decision_file_state(temp, CHUNK), "corrupt")
+
     def test_merge_changes_only_allowed_aliases(self):
         merged, ignored = stage2.merge_fix(["c1 D a", "c2 R bad", "c3 D c"], ["c2 D b", "c3 D HACK", "c4 D new"], ["c2", "c4"])
         self.assertEqual((merged, ignored), (["c1 D a", "c2 D b", "c3 D c", "c4 D new"], ["c3 D HACK"]))
 
     def test_fix_count_starts_after_the_latest_new_session(self):
-        runs = [{"kind": k} for k in ("s2_chunk_fix", "s2_chunk_fix", "s2_chunk_resume", "s2_chunk_new", "s2_chunk_fix")]
+        runs = [{"kind": k} for k in ("s2_chunk_format_fix", "s2_chunk_fix", "s2_chunk_resume", "s2_chunk_new", "s2_chunk_fix")]
         self.assertEqual(stage2.fixes_used(runs), 2)
 
     def test_prompts(self):
         self.assertIn(CHUNK, prompts.stage2_chunk_resume(CHUNK))
         self.assertNotIn("VIEW", prompts.stage2_chunk_resume(CHUNK))
         self.assertIn("c4: 오류", prompts.stage2_chunk_fix(CHUNK, "c4: 오류"))
+        format_prompt = prompts.stage2_chunk_format_fix(CHUNK, "형식 오류")
+        self.assertIn("현재 청크 전체", format_prompt)
+        self.assertIn("형식 오류", format_prompt)
+        self.assertNotIn("원본 241행", format_prompt)
 
 
 if __name__ == "__main__":

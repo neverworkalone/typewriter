@@ -201,10 +201,18 @@ class SerialChunks(unittest.TestCase):
         w.tick()
         chunk_no = w.active()["chunk_no"]
         w.finish_last()
+        submit = w.wt() / f".warroom-scratch/c-chunk-{chunk_no:03d}.submit.json"
+        diagnostic = submit.with_name(submit.name + ".diag.json")
+        self.assertTrue(submit.is_file())
+        self.assertFalse(diagnostic.exists())
+        original_submit = submit.read_bytes()
         w.tick()
         self.assertEqual((w.row("deepseek", "c")["state"], len(w.adapter.launches)), ("PRODUCING", 2))
         self.assertEqual((w.adapter.launches[-1]["kind"], w.adapter.launches[-1]["session"]), ("resume", "ses_c"))
         self.assertEqual(w.active()["chunk_no"], chunk_no)
+        self.assertEqual(submit.read_bytes(), original_submit)  # general chunk file survives the bounded no-diagnostic resume
+        self.assertFalse(diagnostic.exists())
+        self.assertFalse(any(call[2] == "submit" for call in w.runner.literary.calls))
 
     def test_repaired_submit_resets_the_budget_and_next_chunk_starts_new(self):
         w = self.w

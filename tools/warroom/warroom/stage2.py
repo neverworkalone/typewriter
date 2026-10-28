@@ -214,6 +214,7 @@ def write_pages(worktree, view: str, pages: list[str]) -> list[str]:
 DECISIONS = ".warroom-scratch/decisions.txt"
 MAX_FIXES = 2   # AI correction runs per fresh `s2_chunk_new` session
 _ROW = re.compile(r"c(\d+)\s")
+_ROW_START = re.compile(r"c\d+(?:\s|$)")
 _ERROR_ALIAS = re.compile(r"^(c\d+)\b", re.M)
 _FENCE = re.compile(r"^\s*```")
 
@@ -237,6 +238,66 @@ def extract_decisions(final_text: str | None, chunk_id: str) -> list[str] | None
         if _ROW.match(line.strip()):
             rows.append(line.strip())
     return rows
+
+
+def format_problem(final_text: str | None, chunk_id: str) -> str | None:
+    """Describe a clearly attempted current-chunk answer that failed the header/row layout parser.
+
+    A current chunk id by itself is not evidence: it must be a structural header at the start of a line, followed by a
+    `c<n>` row on that line or on the next nonblank line. Limited Markdown/list decoration around the header is
+    tolerated for classification only; the answer is never rewritten or normalized.
+    """
+    if not isinstance(final_text, str) or extract_decisions(final_text, chunk_id) is not None:
+        return None
+    lines = final_text.replace("\r\n", "\n").split("\n")
+    for i, raw in enumerate(lines):
+        line = raw.strip().lstrip(">#*`_~- \t")
+        if not line.startswith("chunk "):
+            continue
+        tail = line[len("chunk "):]
+        if not tail.startswith(chunk_id):
+            continue
+        boundary = tail[len(chunk_id):]
+        if boundary and boundary[0].isalnum():
+            continue
+        remainder = boundary.lstrip(" \t:*`_~")
+        if _ROW_START.match(remainder):
+            return (f"최종 응답에 현재 청크 {chunk_id}의 판정은 있으나, 독립된 `chunk {chunk_id}` 헤더와 "
+                    "한 줄당 하나의 `c<n>` 행 형식이 아닙니다. 같은 세션의 기존 판정 의미를 보존해 형식만 고쳐 재제출하세요.")
+        if remainder:
+            continue
+        for following in lines[i + 1:]:
+            next_line = following.strip()
+            if not next_line:
+                continue
+            if _ROW_START.match(next_line):
+                return (f"최종 응답에 현재 청크 {chunk_id}의 판정은 있으나, 독립된 `chunk {chunk_id}` 헤더와 "
+                        "한 줄당 하나의 `c<n>` 행 형식이 아닙니다. 같은 세션의 기존 판정 의미를 보존해 형식만 고쳐 재제출하세요.")
+            break
+    return None
+
+
+def decision_file_state(worktree, chunk_id: str) -> str:
+    """Classify the decisions file as `missing`, `current`, or fail-closed `corrupt` for a pending chunk."""
+    path = Path(worktree) / DECISIONS
+    if not path.exists() and not path.is_symlink():
+        return "missing"
+    try:
+        text = path.read_text("utf-8")
+    except (OSError, UnicodeError):
+        return "corrupt"
+    if not text.strip():
+        return "corrupt"
+    lines = text.replace("\r\n", "\n").split("\n")
+    meaningful = [(i, line.strip()) for i, line in enumerate(lines) if line.strip() and not line.strip().startswith("#")]
+    if not meaningful or meaningful[0][1] != f"chunk {chunk_id}":
+        return "corrupt"
+    header_index = meaningful[0][0]
+    for line in lines[header_index + 1:]:
+        value = line.strip()
+        if value and not value.startswith("#") and not _ROW.match(value):
+            return "corrupt"
+    return "current"
 
 
 def decisions_header(worktree) -> str | None:
@@ -304,7 +365,7 @@ def fixes_used(runs) -> int:
     for r in runs:
         if r["kind"] == "s2_chunk_new":
             break
-        n += r["kind"] == "s2_chunk_fix"
+        n += r["kind"] in ("s2_chunk_fix", "s2_chunk_format_fix")
     return n
 
 
