@@ -354,8 +354,11 @@ export function existingCandidateKeys(relationRows, index) {
   return covered;
 }
 
-/** Existing approved candidate links, retaining the exact target sense for ID relations. */
-function existingCandidateLinks(relationRows, index) {
+/**
+ * Existing approved candidate links, retaining the exact target sense and, when available, candidate assignment.
+ * Relation JSONL v1 omits the chosen spelling, so a live Stage 2 checkpoint overrides form inference for its rows.
+ */
+function existingCandidateLinks(relationRows, index, relationCandidateByPair = new Map()) {
   const links = new Map();
   const add = (senseId, text, link) => {
     const key = `${senseId}\u0000${normalizeCandidate(text)}`;
@@ -365,13 +368,28 @@ function existingCandidateLinks(relationRows, index) {
     if ('text' in row) { add(row.source_sense_id, row.text, { kind: 'text', why: 'text-only' }); continue; }
     const target = index.byId.get(row.target_record_id);
     const source = index.byId.get(row.source_record_id);
+    const pairKey = `${row.source_sense_id}\u0000${row.target_sense_id}`;
+    const reversePairKey = `${row.target_sense_id}\u0000${row.source_sense_id}`;
+    const hasCandidateAssignment = relationCandidateByPair.has(pairKey) || relationCandidateByPair.has(reversePairKey);
     if (target) {
-      for (const form of new Set([...candidateFormsForRecord(target, index), ...canonicalNonOrthographicSearchForms(target)])) {
+      const assignedCandidates = relationCandidateByPair.get(pairKey);
+      const forms = assignedCandidates !== undefined
+        ? assignedCandidates
+        : hasCandidateAssignment
+          ? [normalizeCandidate(target.lemma)]
+          : [...new Set([...candidateFormsForRecord(target, index), ...canonicalNonOrthographicSearchForms(target)])];
+      for (const form of forms) {
         add(row.source_sense_id, form, { kind: 'id', targetSenseId: row.target_sense_id, why: 'id-forward' });
       }
     }
     if (source) {
-      for (const form of new Set([...candidateFormsForRecord(source, index), ...canonicalNonOrthographicSearchForms(source)])) {
+      const assignedCandidates = relationCandidateByPair.get(reversePairKey);
+      const forms = assignedCandidates !== undefined
+        ? assignedCandidates
+        : hasCandidateAssignment
+          ? [normalizeCandidate(source.lemma)]
+          : [...new Set([...candidateFormsForRecord(source, index), ...canonicalNonOrthographicSearchForms(source)])];
+      for (const form of forms) {
         add(row.target_sense_id, form, { kind: 'id', targetSenseId: row.source_sense_id, why: 'id-reverse' });
       }
     }
@@ -507,7 +525,7 @@ function glossNamesCandidate(gloss, candidate, index) {
  * Account for every unique candidate: new Relation, real Drop or existing approved Relation (excluding this shard's own
  * rows, which are the result being checked). Throws on a missing, doubly-assigned or unknown candidate.
  */
-export function verifyAccounting({ canonicalRows, candidateFiles, relationRows: allRelationRows, dropRows: allDropRows, otherRelationRows, index, scopeRows = canonicalRows }) {
+export function verifyAccounting({ canonicalRows, candidateFiles, relationRows: allRelationRows, dropRows: allDropRows, otherRelationRows, index, scopeRows = canonicalRows, relationCandidateByPair = new Map() }) {
   const canonicalLemmaForms = new Set([...index.byLemma.keys()].map(normalizeCandidate));
   const { merged, rawCandidateCountBySense } = mergeCandidates(canonicalRows, candidateFiles, { canonicalLemmaForms });
   const rawCandidateCount = rawCandidateCountForScope(rawCandidateCountBySense, scopeRows);
@@ -516,7 +534,7 @@ export function verifyAccounting({ canonicalRows, candidateFiles, relationRows: 
   const dropRows = allDropRows.filter((row) => scopeSenses.has(row.source_sense_id));
   // Keep the bound sense as well as the candidate spelling. A single lexical candidate can point to distinct senses
   // of a polysemous lemma; only a repeated sense pair is a duplicate disposition.
-  const approvedLinks = existingCandidateLinks(otherRelationRows, index);
+  const approvedLinks = existingCandidateLinks(otherRelationRows, index, relationCandidateByPair);
   const errors = [];
   const claimed = new Map();
   const deferredSearchAliasClaims = [];
@@ -536,6 +554,13 @@ export function verifyAccounting({ canonicalRows, candidateFiles, relationRows: 
     else {
       const target = index.byId.get(row.target_record_id);
       if (!target) return;
+      const assignedCandidates = relationCandidateByPair.get(`${row.source_sense_id}\u0000${row.target_sense_id}`);
+      if (assignedCandidates !== undefined) {
+        for (const assignedCandidate of assignedCandidates) {
+          claim(row.source_sense_id, assignedCandidate, 'an ID relation', { kind: 'id', targetSenseId: row.target_sense_id }, at);
+        }
+        return;
+      }
       const sourceCandidates = merged.get(row.source_sense_id)?.candidates;
       const matchingForms = candidateFormsForRecord(target, index).filter((form) => sourceCandidates?.has(form));
       const matchingAliases = canonicalNonOrthographicSearchForms(target).filter((form) => sourceCandidates?.has(form));
@@ -563,15 +588,24 @@ export function verifyAccounting({ canonicalRows, candidateFiles, relationRows: 
     if ('text' in row) continue;
     const source = index.byId.get(row.source_record_id);
     if (source) {
-      for (const form of candidateFormsForRecord(source, index)) {
+      const reversePairKey = `${row.target_sense_id}\u0000${row.source_sense_id}`;
+      const forwardPairKey = `${row.source_sense_id}\u0000${row.target_sense_id}`;
+      const assignedCandidates = relationCandidateByPair.get(reversePairKey);
+      const hasCandidateAssignment = assignedCandidates !== undefined || relationCandidateByPair.has(forwardPairKey);
+      const forms = assignedCandidates !== undefined
+        ? assignedCandidates
+        : hasCandidateAssignment
+          ? [normalizeCandidate(source.lemma)]
+          : candidateFormsForRecord(source, index);
+      for (const form of forms) {
         const key = `${row.target_sense_id}\u0000${form}`;
         reverseCovered.set(key, [...(reverseCovered.get(key) ?? []), { kind: 'id', targetSenseId: row.source_sense_id }]);
       }
     }
   }
 
-  // ID rows do not retain the selected Candidate string. Treat non-orthographic search aliases as their ID
-  // disposition only when no explicit Relation, Drop, or already-approved relation owns that Candidate.
+  // Legacy ID rows without a checkpoint assignment infer non-orthographic search aliases only when no explicit
+  // Relation, Drop, or already-approved relation owns that Candidate.
   for (const alias of deferredSearchAliasClaims) {
     const key = `${alias.source_sense_id}\u0000${alias.form}`;
     if ((claimed.get(key)?.length ?? 0) > 0 || approvedLinks.has(key) || reverseCovered.has(key)) continue;

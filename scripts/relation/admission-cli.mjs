@@ -289,6 +289,50 @@ function idPairKey(sourceSenseId, targetSenseId) {
   return `${sourceSenseId}\u0000${targetSenseId}`;
 }
 
+function relationCandidateAssignments(checkpoint) {
+  // Relation JSONL v1 has no candidate field; keep checkpoint spelling decisions attached through verification.
+  const expected = decisionRows(checkpoint);
+  const selected = coalesceOrthographicAliasRelations(checkpoint, expected.relations, expected.relationCandidates);
+  const assignments = new Map();
+  for (const [index, relation] of selected.relations.entries()) {
+    if ('text' in relation) continue;
+    const candidateKeys = selected.relationCandidateGroups[index];
+    assignments.set(
+      idPairKey(relation.source_sense_id, relation.target_sense_id),
+      candidateKeys.map((candidateKey) => candidateKey.slice(candidateKey.indexOf('\u0000') + 1)),
+    );
+  }
+  return assignments;
+}
+
+function addCandidateAssignments(target, source) {
+  for (const [pair, candidates] of source) {
+    target.set(pair, [...new Set([...(target.get(pair) ?? []), ...candidates])]);
+  }
+}
+
+async function relationCandidateAssignmentsForScope(root, { shard, batch, part, checkpoint }) {
+  const assignments = new Map();
+  if (checkpoint) {
+    addCandidateAssignments(assignments, relationCandidateAssignments(checkpoint));
+    return assignments;
+  }
+
+  const batches = batch ? [batch] : ['01', '02'];
+  const parts = part ? [part] : ['01', '02', '03', '04', '05'];
+  for (const currentBatch of batches) {
+    for (const currentPart of parts) {
+      const checkpointPath = defaultCheckpointPath(shard, currentBatch, currentPart, root);
+      if (!existsSync(checkpointPath)) continue;
+      const current = await readCheckpoint(checkpointPath, { shard, batch: currentBatch, part: currentPart });
+      if (!current.merged) continue;
+      validateCheckpointDecisions(current);
+      addCandidateAssignments(assignments, relationCandidateAssignments(current));
+    }
+  }
+  return assignments;
+}
+
 function isConsistentReciprocalIdRelation(left, right) {
   return !('text' in left) && !('text' in right)
     && left.source_record_id === right.target_record_id
@@ -309,26 +353,33 @@ function coalesceOrthographicAliasRelations(checkpoint, relations, relationCandi
 
   const selectedRelations = [];
   const selectedCandidates = [];
+  const selectedCandidateGroups = [];
   const relationIndexByPair = new Map();
   for (const [index, relation] of relations.entries()) {
     const candidateKey = relationCandidates[index];
     if ('text' in relation) {
       selectedRelations.push(relation);
       selectedCandidates.push(candidateKey);
+      selectedCandidateGroups.push([candidateKey]);
       continue;
     }
 
     const pair = idPairKey(relation.source_sense_id, relation.target_sense_id);
-    const selectedIndex = relationIndexByPair.get(pair);
+    const currentCandidate = checkpointCandidates.get(candidateKey);
+    // Distinct words that happen to target one sense stay distinct; only spacing/hyphenation variants coalesce.
+    const orthographicForm = normalizeCandidate(currentCandidate?.text ?? '').replace(/[\s-]/gu, '');
+    const groupKey = `${pair}\u0000${orthographicForm}`;
+    const selectedIndex = relationIndexByPair.get(groupKey);
     if (selectedIndex === undefined) {
-      relationIndexByPair.set(pair, selectedRelations.length);
+      relationIndexByPair.set(groupKey, selectedRelations.length);
       selectedRelations.push(relation);
       selectedCandidates.push(candidateKey);
+      selectedCandidateGroups.push([candidateKey]);
       continue;
     }
 
+    if (!selectedCandidateGroups[selectedIndex].includes(candidateKey)) selectedCandidateGroups[selectedIndex].push(candidateKey);
     const selectedCandidate = checkpointCandidates.get(selectedCandidates[selectedIndex]);
-    const currentCandidate = checkpointCandidates.get(candidateKey);
     const usesCanonicalSpelling = (candidate) => {
       const targetLemma = candidate?.same_spelling_targets
         .find((target) => target.record_id === relation.target_record_id)?.lemma;
@@ -342,7 +393,7 @@ function coalesceOrthographicAliasRelations(checkpoint, relations, relationCandi
       selectedCandidates[selectedIndex] = candidateKey;
     }
   }
-  return { relations: selectedRelations, relationCandidates: selectedCandidates };
+  return { relations: selectedRelations, relationCandidates: selectedCandidates, relationCandidateGroups: selectedCandidateGroups };
 }
 
 function assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, newRelations, newRelationCandidates, newDrops) {
@@ -497,12 +548,13 @@ export async function run(argv, { root } = {}) {
     console.log(`Resuming shard ${options.shard} batch ${options.batch} part ${options.part}: ${checkpointProgress(checkpoint)} -> ${checkpointPath}`);
     return checkpoint;
   }
+  let verifiedCheckpoint = null;
   if (options.command === 'verify' && options.part && existsSync(checkpointPath)) {
-    const checkpoint = await readCheckpoint(checkpointPath, { shard: options.shard, batch: options.batch, part: options.part });
-    if (!checkpoint.merged || checkpoint.pending_chunk || checkpoint.items.some((item) => item.candidates.some((candidate) => candidate.decision === null))) {
-      throw new Error(`Part checkpoint is incomplete or not merged: ${checkpointProgress(checkpoint)}`);
+    verifiedCheckpoint = await readCheckpoint(checkpointPath, { shard: options.shard, batch: options.batch, part: options.part });
+    if (!verifiedCheckpoint.merged || verifiedCheckpoint.pending_chunk || verifiedCheckpoint.items.some((item) => item.candidates.some((candidate) => candidate.decision === null))) {
+      throw new Error(`Part checkpoint is incomplete or not merged: ${checkpointProgress(verifiedCheckpoint)}`);
     }
-    validateCheckpointDecisions(checkpoint);
+    validateCheckpointDecisions(verifiedCheckpoint);
   }
 
   const loaded = await loadShard(options.shard, repositoryRoot, { batch: options.batch });
@@ -589,10 +641,17 @@ export async function run(argv, { root } = {}) {
   const dropRows = await loadOptionalJsonl(shardDropPath(options.shard, repositoryRoot));
   const shardSenseIds = new Set(canonicalRows.flatMap((record) => record.senses.map((sense) => sense.id)));
   validateRelationRows({ relationRows, dropRows, index, shardSenseIds, otherRelationRows: others });
-  const counts = verifyAccounting({ canonicalRows, candidateFiles, relationRows, dropRows, otherRelationRows: others, index, scopeRows });
-  if (options.part && existsSync(checkpointPath)) {
-    const checkpoint = await readCheckpoint(checkpointPath, { shard: options.shard, batch: options.batch, part: options.part });
-    assertCheckpointMerged(checkpoint, relationRows, dropRows);
+  const relationCandidateByPair = options.command === 'verify'
+    ? await relationCandidateAssignmentsForScope(repositoryRoot, {
+      shard: options.shard,
+      batch: options.batch,
+      part: options.part,
+      checkpoint: verifiedCheckpoint,
+    })
+    : new Map();
+  const counts = verifyAccounting({ canonicalRows, candidateFiles, relationRows, dropRows, otherRelationRows: others, index, scopeRows, relationCandidateByPair });
+  if (verifiedCheckpoint) {
+    assertCheckpointMerged(verifiedCheckpoint, relationRows, dropRows);
   }
   console.log(`Relation Admission accounting valid for shard ${options.shard}${options.batch ? ` batch ${options.batch}` : ''}${options.part ? ` part ${options.part}` : ''}: ${JSON.stringify(counts)}`);
   return counts;
@@ -969,6 +1028,7 @@ async function mergeCheckpoint(checkpoint, checkpointPath, root) {
   const existingRelations = await loadOptionalJsonl(relationFile);
   const existingDrops = await loadOptionalJsonl(dropFile);
   const merged = assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, newRelations, newRelationCandidates, newDrops);
+  const relationCandidateByPair = relationCandidateAssignments(checkpoint);
   const loaded = await loadShard(checkpoint.shard, root, { batch: checkpoint.batch });
   const scoped = partScope(loaded.canonicalRows, loaded.candidateFiles, checkpoint.batch, checkpoint.part);
   const finalShardSenseIds = new Set(loaded.canonicalRows.flatMap((record) => record.senses.map((sense) => sense.id)));
@@ -987,6 +1047,7 @@ async function mergeCheckpoint(checkpoint, checkpointPath, root) {
     otherRelationRows: others,
     index: loaded.index,
     scopeRows: scoped.scopeRows,
+    relationCandidateByPair,
   });
   if (merged.relations.length > existingRelations.length) await writeJsonlAtomically(relationFile, merged.relations);
   if (merged.drops.length > existingDrops.length) await writeJsonlAtomically(dropFile, merged.drops);

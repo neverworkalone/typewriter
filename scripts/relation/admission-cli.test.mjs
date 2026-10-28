@@ -1006,3 +1006,59 @@ test('merge validates final Part accounting before writing and supports a local 
   assert.deepEqual(relations.map((row) => row.text), ['가로']);
   assert.deepEqual(drops.map((row) => row.candidate), ['무관후보'], 'the earlier valid decision remains intact when the rejected Drop is revised');
 });
+
+test('merge accounts an ID relation against only its selected candidate spelling', async (t) => {
+  const scratch = path.join(REPOSITORY_DIRECTORY, '.warroom-scratch');
+  await mkdir(scratch, { recursive: true });
+  const root = await mkdtemp(path.join(scratch, 'admission-form-collision-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+
+  const records = [
+    { id: 'w249019', lemma: '완만히', search_forms: ['완만히'], senses: [{ id: 'w249019-s1', pos: 'adverb', gloss: '태도가 온순하고 부드럽게.' }] },
+    { id: 'w462682', lemma: '온순하다', search_forms: ['온순하다', '온순'], senses: [{ id: 'w462682-s1', pos: 'adjective', gloss: '성질이나 마음씨가 온화하고 양순하다.' }] },
+    { id: 'w245707', lemma: '온순하다', search_forms: ['온순하다', '온순'], senses: [{ id: 'w245707-s1', pos: 'adjective', gloss: '온화하고 단순하다.' }] },
+    ...Array.from({ length: 497 }, (_, index) => ({
+      id: `wfixture${index + 1}`,
+      lemma: `표제${index + 1}`,
+      senses: [{ id: `wfixture${index + 1}-s1`, pos: 'noun', gloss: `뜻${index + 1}` }],
+    })),
+  ];
+  for (const directory of ['data/canonical', 'data/relation-candidates/001', 'data/relations', 'data/relation-drops']) {
+    await mkdir(path.join(root, directory), { recursive: true });
+  }
+  await writeFile(path.join(root, 'data/canonical/stdict-0001.jsonl'), jsonl(records));
+  const producers = ['a_codex', 'a_claude', 'b_codex', 'b_claude', 'c_codex', 'd_codex'];
+  for (const producer of producers) {
+    await writeFile(path.join(root, `data/relation-candidates/001/001_01_${producer}.jsonl`), jsonl(records.map((record, index) => ({
+      record_id: record.id,
+      senses: [{ sense_id: record.senses[0].id, candidates: producer === 'a_codex' && index === 0 ? ['온순', '온순하다'] : [] }],
+    }))));
+  }
+
+  const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
+  await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  const chunk = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint], { root }));
+  const decisionsFile = '.warroom-scratch/decisions.json';
+  const decisions = [
+    {
+      source_sense_id: 'w249019-s1', candidate: '온순', disposition: 'relation', type: 'near', relevance: 3,
+      target_resolution: 'exact', target_record_id: 'w462682', target_sense_id: 'w462682-s1', reverse_type: 'near', reverse_relevance: 3,
+    },
+    {
+      source_sense_id: 'w249019-s1', candidate: '온순하다', disposition: 'relation', type: 'association', relevance: 5,
+      target_resolution: 'no_exact_match', checked_target_sense_ids: ['w245707-s1', 'w462682-s1'],
+    },
+  ];
+  await writeFile(path.join(root, decisionsFile), JSON.stringify({ chunk_id: chunk.chunk_id, decisions }));
+  await quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', decisionsFile], { root }));
+
+  const merged = await quiet(() => run(['merge', '--checkpoint', checkpoint], { root }));
+  assert.deepEqual([merged.relations_added, merged.drops_added], [2, 0]);
+  const counts = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  assert.deepEqual([counts.unique, counts.relation, counts.missing], [2, 2, 0]);
+  const batchCounts = await quiet(() => run(['verify', '--shard', '001', '--batch', '01'], { root }));
+  assert.deepEqual([batchCounts.unique, batchCounts.relation, batchCounts.missing], [2, 2, 0], 'batch verification uses the merged Part checkpoint assignment');
+  const relations = (await readFile(path.join(root, 'data/relations/relation-001.jsonl'), 'utf8')).trim().split('\n').map(JSON.parse);
+  assert.equal(relations.some((row) => row.target_record_id === 'w462682'), true, 'the selected alias candidate keeps its exact ID target');
+  assert.equal(relations.some((row) => row.text === '온순하다'), true, 'the other spelling remains an independent text-only candidate');
+});
