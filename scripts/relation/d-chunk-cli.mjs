@@ -12,7 +12,7 @@
 
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { appendFile, mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { appendFile, mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 
@@ -282,6 +282,9 @@ export const scratchDirectory = (shard, batch, root = '.warroom-scratch') => pat
 const activePath = (directory) => path.join(directory, 'active-chunk.json');
 const viewPath = (directory) => path.join(directory, 'active-chunk.txt');
 const searchesPath = (directory) => path.join(directory, 'searches.jsonl');
+const rejectedPath = (directory) => path.join(directory, 'save-rejected.json');
+const MAX_REJECTED_ERRORS = 40;
+const MAX_REJECTED_ERROR_CHARS = 300;
 
 async function writeAtomic(target, text) {
   await mkdir(path.dirname(target), { recursive: true });
@@ -316,6 +319,7 @@ export async function prepareChunk({ canonicalPath, shard, batch, chunkNumber, d
   await mkdir(directory, { recursive: true });
   await writeAtomic(viewPath(directory), built.view);
   await writeAtomic(searchesPath(directory), built.entries.map((entry) => JSON.stringify(entry)).join('\n') + (built.entries.length ? '\n' : ''));
+  await rm(rejectedPath(directory), { force: true }); // a diagnostic belongs to one active chunk only
   await writeAtomic(activePath(directory), JSON.stringify(meta));
   return { status: 'READY', view_sha256: meta.view_sha256, view_bytes: meta.view_bytes, ai_senses: built.senses.filter((item) => !item.auto).length, ...base };
 }
@@ -555,6 +559,7 @@ export function parseDecisions(text) {
  */
 export function checkDecisions({ meta, records, entries, decisions, lemmaForms }) {
   const errors = [];
+  const hitBearingZ = []; // Z refused because a recorded search of the record has hits: re-judging alone cannot fix it
   const bySense = new Map(meta.senses.map((item) => [item.ref, item]));
   for (const ref of decisions.keys()) {
     if (!bySense.has(ref)) errors.push(`${ref}: unknown sense (this chunk has s1..s${meta.senses.length})`);
@@ -577,6 +582,7 @@ export function checkDecisions({ meta, records, entries, decisions, lemmaForms }
       }
       if (decision.kind === 'Z' && !(evidence.allComplete && evidence.hits === 0)) {
         errors.push(`${item.ref}: Z needs every recorded search of this record to be complete with 0 hits (a LIMITED or hit-bearing search cannot support Z)`);
+        if (evidence.hits > 0) hitBearingZ.push(item.ref);
       }
     }
     const seen = new Set();
@@ -590,7 +596,7 @@ export function checkDecisions({ meta, records, entries, decisions, lemmaForms }
     }
     rowOf.get(item.record_id).senses.push({ sense_id: item.sense_id, candidates: decision.candidates });
   }
-  return { errors, rows };
+  return { errors, rows, hitBearingZ };
 }
 
 export async function saveActive({ inputPath, root }) {
@@ -609,14 +615,26 @@ export async function saveActive({ inputPath, root }) {
   const { decisions, errors: parseErrors } = parseDecisions(await readFile(inputPath, 'utf8'));
   const lemmaForms = await loadCanonicalLemmaForms();
   const entries = await readEntries(directory);
-  const { errors, rows } = checkDecisions({ meta, records, entries, decisions, lemmaForms });
+  const { errors, rows, hitBearingZ } = checkDecisions({ meta, records, entries, decisions, lemmaForms });
   const all_errors = [...parseErrors, ...errors];
   if (all_errors.length > 0) {
+    // A recorded SEARCH_FAILED means the evidence itself is broken: re-judging is never an automatic repair.
+    const searchFailed = entries.some((entry) => entry.status === 'SEARCH_FAILED');
+    // One diagnostic bound to this active chunk, for the War Room Supervisor (never read from tool logs). It holds only
+    // the rejection reasons, never the view or search contexts. A hit-bearing Z cannot be repaired by editing decisions.
+    await writeAtomic(rejectedPath(directory), JSON.stringify({
+      diagnostic: 'save_rejected', chunk_no: meta.chunk_no, view_sha256: meta.view_sha256, git_head: meta.git_head,
+      repair_scope: hitBearingZ.length > 0 || searchFailed ? 'stop_and_report' : 'decisions',
+      senses: [...new Set(all_errors.map((message) => /^(s[1-9]\d*):/u.exec(message)?.[1]).filter(Boolean))],
+      errors: all_errors.slice(0, MAX_REJECTED_ERRORS).map((message) => message.slice(0, MAX_REJECTED_ERROR_CHARS)),
+      error_count: all_errors.length,
+    }));
     const error = new Error(`save rejected (${all_errors.length}); nothing was stored:\n${all_errors.join('\n')}`);
     error.exitCode = 2;
     throw error;
   }
   await saveChunk(directory, meta.chunk_no, rows, expectedOf(records));
+  await rm(rejectedPath(directory), { force: true });
   return { status: 'SAVED', chunk_no: meta.chunk_no, records: rows.length, senses: meta.senses.length };
 }
 

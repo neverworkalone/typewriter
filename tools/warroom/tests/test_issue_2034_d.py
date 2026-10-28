@@ -37,6 +37,22 @@ class DWorld(World):
                 self.runner.dchunk.save(self.wt(), self.active()["chunk_no"])
         self.adapter.plan.append({"code": code, "session": session, "effect": effect})
 
+    def ai_rejected(self, code=0, session="ses_d", scope="decisions", stale=False, failed_search_after=False):
+        """A fake AI whose `save` is rejected: decisions.txt stays, the CLI's diagnostic for the active chunk is written."""
+        def effect():
+            rec = self.active()
+            folder = self.wt() / dchunk.names(self.row_()).directory
+            (folder / "decisions.txt").write_text("s1 Z\n")
+            if failed_search_after:   # a search after the rejected save failed: the repairable diagnostic is now stale
+                with open(folder / "searches.jsonl", "a") as fh:
+                    fh.write(json.dumps({"record_id": "w0001", "status": "SEARCH_FAILED", "hits": 0}) + "\n")
+            (folder / "save-rejected.json").write_text(json.dumps({
+                "diagnostic": "save_rejected", "chunk_no": rec["chunk_no"],
+                "view_sha256": "0" * 64 if stale else rec["view_sha256"], "git_head": rec["git_head"], "repair_scope": scope,
+                "senses": ["s1"], "errors": ["s1: Z needs every recorded search of this record to be complete with 0 hits"],
+                "error_count": 1}))
+        self.adapter.plan.append({"code": code, "session": session, "effect": effect})
+
     def finish_last(self):
         self.adapter.finish(self.adapter.launches[-1]["pid"])
 
@@ -192,6 +208,120 @@ class SerialChunks(unittest.TestCase):
         self.assertEqual("".join((w.wt() / p).read_text() for p in
                                  [l.split("`")[1].split()[1] for l in prompt.splitlines() if l.strip().startswith("- `cat ")]),
                          (w.wt() / dchunk.names(w.row_()).view).read_text())
+
+
+class SaveRejectedFix(unittest.TestCase):
+    """Issue #2136: a `save` the CLI rejected is corrected in the same session once per chunk, never beyond what its own
+    diagnostic says is repairable, and the count survives ticks and restarts until an explicit operator Retry."""
+
+    def setUp(self):
+        self.w = DWorld()
+        self.addCleanup(self.w.tmp.cleanup)
+
+    def run_once(self):
+        self.w.tick()
+        self.w.finish_last()
+        self.w.tick()
+
+    def test_repairable_rejection_resumes_the_same_session_once_then_continues(self):
+        w = self.w
+        w.start("single", "deepseek", "d")
+        w.ai_rejected()
+        w.ai()                                                           # the fix run saves chunk 1
+        w.ai(session="ses_2")
+        self.run_once()
+        self.assertEqual(w.row_()["state"], "PRODUCING")
+        fix = w.adapter.launches[-1]
+        self.assertEqual((fix["kind"], w.kinds()[-1]), ("resume", "d_chunk_fix"))
+        self.assertIn("Z needs every recorded search", fix["prompt"])
+        self.assertIn(".warroom-scratch/d-001_01/decisions.txt", fix["prompt"])
+        self.assertNotIn(prompts.VIEW_BEGIN, fix["prompt"])
+        self.assertNotIn("{{", fix["prompt"])
+        w.finish_last()
+        w.tick()
+        self.assertEqual(dchunk.verified_prefix(w.wt(), w.row_())[0], 1)
+        self.assertEqual(w.kinds(), ["d_chunk_new", "d_chunk_fix", "d_chunk_new"])
+        self.assertEqual(w.active()["chunk_no"], 2)
+        self.assertFalse((w.wt() / dchunk.names(w.row_()).rejected).exists())   # clear_active dropped it
+
+    def test_repeated_rejection_stops_after_the_limit_and_extra_ticks_launch_nothing(self):
+        w = self.w
+        w.start("single", "deepseek", "d")
+        w.ai_rejected()
+        w.ai_rejected()
+        self.run_once()
+        w.finish_last()
+        w.tick()
+        self.assertEqual(w.row_()["state"], "ERROR")
+        self.assertIn("마지막 save 거부", w.row_()["error"])
+        self.assertEqual(len(w.adapter.launches), 2)
+        w.tick(3)
+        self.assertEqual(len(w.adapter.launches), 2)
+        self.assertEqual(w.store.get(dchunk.fix_key(w.row_()["id"], 1)), "1")
+
+    def test_operator_retry_regrants_exactly_one_correction(self):
+        w = self.w
+        w.start("single", "deepseek", "d")
+        for _ in range(3):
+            w.ai_rejected()
+        self.run_once()
+        w.finish_last()
+        w.tick()
+        self.assertEqual(w.row_()["state"], "ERROR")
+        self.assertTrue(control.retry(w.store, "deepseek", "d"))
+        w.tick(2)                                                        # the Retry resumes the chunk (existing path)
+        w.finish_last()
+        w.tick()
+        self.assertEqual(w.kinds()[-1], "d_chunk_fix")                   # ...and a new rejection gets one fresh correction
+        w.finish_last()
+        w.tick()
+        self.assertEqual(w.row_()["state"], "ERROR")
+        w.tick(3)
+        self.assertEqual(w.kinds().count("d_chunk_fix"), 2)
+
+    def test_unrepairable_stale_or_missing_diagnostics_start_no_ai(self):
+        for label, kw in (("hit-bearing Z", {"scope": "stop_and_report"}), ("stale view", {"stale": True}),
+                           ("search failed after the rejection", {"failed_search_after": True})):
+            with self.subTest(label):
+                w = DWorld()
+                self.addCleanup(w.tmp.cleanup)
+                w.start("single", "deepseek", "d")
+                w.ai_rejected(**kw)
+                w.tick()
+                w.finish_last()
+                w.tick()
+                self.assertEqual(w.row_()["state"], "ERROR")
+                self.assertEqual(len(w.adapter.launches), 1)
+        w = DWorld()                                                     # no CLI diagnostic at all (e.g. SEARCH_FAILED mid-chunk)
+        self.addCleanup(w.tmp.cleanup)
+        w.start("single", "deepseek", "d")
+        w.ai(save=False)
+        w.tick()
+        w.finish_last()
+        w.tick()
+        self.assertEqual((w.row_()["state"], len(w.adapter.launches)), ("ERROR", 1))
+
+    def test_nonzero_exit_with_a_repairable_rejection_is_corrected_not_paused(self):
+        w = self.w
+        w.start("single", "deepseek", "d")
+        w.ai_rejected(code=2)
+        self.run_once()
+        self.assertEqual(w.kinds(), ["d_chunk_new", "d_chunk_fix"])
+        self.assertEqual(w.row_()["state"], "PRODUCING")
+
+    def test_completed_chunks_are_untouched_by_a_later_chunks_fix(self):
+        w = self.w
+        w.start("single", "deepseek", "d")
+        w.ai()
+        w.ai_rejected(session="ses_2")
+        w.tick()
+        w.finish_last()
+        w.tick()
+        before = dchunk.chunk_sha(w.wt(), w.row_(), 1)
+        w.finish_last()
+        w.tick()
+        self.assertEqual(w.kinds(), ["d_chunk_new", "d_chunk_new", "d_chunk_fix"])
+        self.assertEqual(dchunk.chunk_sha(w.wt(), w.row_(), 1), before)
 
 
 class Finalization(unittest.TestCase):
