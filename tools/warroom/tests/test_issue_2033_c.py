@@ -98,18 +98,22 @@ class SerialChunks(unittest.TestCase):
         self.assertEqual(w.git.pushes, [b["branch"]])
         self.assertEqual(w.runner.literary.exports, 1)
 
-    def test_zero_exit_without_checkpoint_evidence_is_not_success_and_retry_resumes_only_the_rest(self):
+    def test_incomplete_checkpoint_gets_one_automatic_retry_then_operator_retry_resumes_only_the_rest(self):
         w = self.w
         w.start("single", "deepseek", "c")
+        w.ai(mark=5)
         w.ai(mark=5)
         w.tick()
         ids = w.active()["sense_ids"]
         w.finish_last()
         w.tick()
+        self.assertEqual((w.adapter.launches[-1]["kind"], len(w.adapter.launches)), ("resume", 2))
+        w.finish_last()
+        w.tick()
         b = w.row("deepseek", "c")
         self.assertEqual(b["state"], "ERROR")
-        self.assertEqual(len(w.adapter.launches), 1)
-        # Retry continues the same chunk in the same session with only the open sense ids, never the chunk body.
+        self.assertEqual(len(w.adapter.launches), 2)
+        # Explicit Retry grants one new chance and continues only the open senses, never the chunk body.
         w.ai()
         self.assertTrue(control.retry(w.store, "deepseek", "c"))
         w.tick(2)
@@ -172,7 +176,6 @@ class SerialChunks(unittest.TestCase):
             "stop_and_report validation": {"diagnostic": "submit_validation", "repair_scope": "stop_and_report"},
             "unknown operation": {"diagnostic": "operation"},
             "refused input path": {"diagnostic": "submit_input", "repair_scope": "correct_submission_path"},
-            "no diagnostic at all": {},
         }
         for name, diagnostic in cases.items():
             with self.subTest(name):
@@ -187,6 +190,21 @@ class SerialChunks(unittest.TestCase):
                 b = w.row("deepseek", "c")
                 self.assertEqual(b["state"], "ERROR")
                 self.assertEqual(len(w.adapter.launches), 1)
+
+    def test_missing_cli_diagnostic_gets_one_same_session_retry(self):
+        w = CWorld()
+        self.addCleanup(w.tmp.cleanup)
+        self.w = w
+        w.start("single", "deepseek", "c")
+        self._leave_rejected_submit(0, False)
+        w.ai()
+        w.tick()
+        chunk_no = w.active()["chunk_no"]
+        w.finish_last()
+        w.tick()
+        self.assertEqual((w.row("deepseek", "c")["state"], len(w.adapter.launches)), ("PRODUCING", 2))
+        self.assertEqual((w.adapter.launches[-1]["kind"], w.adapter.launches[-1]["session"]), ("resume", "ses_c"))
+        self.assertEqual(w.active()["chunk_no"], chunk_no)
 
     def test_repaired_submit_resets_the_budget_and_next_chunk_starts_new(self):
         w = self.w
@@ -206,6 +224,7 @@ class SerialChunks(unittest.TestCase):
         w = self.w
         w.start("single", "deepseek", "c")
         w.ai(mark=5)
+        w.ai(mark=5)
         w.tick()
         active_before = w.active()
         ids = list(active_before["sense_ids"])
@@ -214,14 +233,18 @@ class SerialChunks(unittest.TestCase):
 
         w.finish_last()
         w.tick()
+        self.assertEqual((w.row("deepseek", "c")["state"], len(w.adapter.launches)), ("PRODUCING", 2))
+        self.assertEqual(w.adapter.launches[-1]["kind"], "resume")
+        w.finish_last()
+        w.tick()
 
         b = w.row("deepseek", "c")
-        self.assertEqual(b["state"], "ERROR")  # partial checkpoint remains a stop; it is not treated as saved
+        self.assertEqual(b["state"], "ERROR")  # one bounded automatic resume, then preserve the partial checkpoint
         self.assertIn("checkpoint 완료 증거 없음", b["error"])
         self.assertIsNone(b["pr_number"])
         self.assertEqual(w.active()["chunk_no"], active_before["chunk_no"])
         self.assertEqual(w.active()["sense_ids"], ids)
-        self.assertEqual(len(w.adapter.launches), 1)
+        self.assertEqual(len(w.adapter.launches), 2)
 
         w.ai()
         self.assertTrue(control.retry(w.store, "deepseek", "c"))
@@ -230,7 +253,7 @@ class SerialChunks(unittest.TestCase):
         b = w.row("deepseek", "c")
         resume = w.adapter.launches[-1]
         self.assertEqual(b["state"], "PRODUCING")
-        self.assertEqual(len(w.adapter.launches), 2)
+        self.assertEqual(len(w.adapter.launches), 3)
         self.assertEqual(resume["kind"], "resume")
         self.assertEqual(w.active()["chunk_no"], active_before["chunk_no"])
         self.assertEqual(w.active()["sense_ids"], ids)

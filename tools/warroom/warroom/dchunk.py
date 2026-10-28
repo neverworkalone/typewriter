@@ -225,15 +225,23 @@ def read_rejection(worktree, b, rec: dict) -> dict | None:
             and diag.get("chunk_no") == rec["chunk_no"] and diag.get("view_sha256") == rec["view_sha256"]
             and isinstance(diag.get("errors"), list) and diag["errors"] and all(isinstance(e, str) for e in diag["errors"])):
         return None
-    try:   # evidence recorded AFTER the rejection (a later failed search) also makes it non-repairable
-        for line in (Path(worktree) / names(b).directory / "searches.jsonl").read_text("utf-8").splitlines():
-            if line.strip() and json.loads(line).get("status") == "SEARCH_FAILED":
-                return None
-    except FileNotFoundError:
-        pass
-    except (OSError, ValueError, AttributeError):
+    if has_search_failure(worktree, b):
         return None
     return diag
+
+
+def has_search_failure(worktree, b) -> bool:
+    """Fail closed when the active D chunk's accumulated search evidence contains SEARCH_FAILED or is unreadable."""
+    try:
+        lines = (Path(worktree) / names(b).directory / "searches.jsonl").read_text("utf-8").splitlines()
+    except FileNotFoundError:
+        return False
+    except OSError:
+        return True
+    try:
+        return any(line.strip() and json.loads(line).get("status") == "SEARCH_FAILED" for line in lines)
+    except (ValueError, AttributeError):
+        return True
 
 
 def fix_problem(diag: dict) -> str:

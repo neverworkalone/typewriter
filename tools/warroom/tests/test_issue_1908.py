@@ -136,16 +136,22 @@ class Stage2ChunkRuns(unittest.TestCase):
                          ["s2_finalize_new", "s2_chunk_new", "s2_chunk_new"])
         self.assertEqual(w.git.verify_calls[-1], ("part", "001", "01", "01"))
 
-    def test_zero_exit_without_exact_checkpoint_advance_is_not_success(self):
+    def test_zero_exit_without_checkpoint_advance_retries_once_then_stops(self):
         w = self.w
         b = w.store.active_batch("claude", S2)
         w.adapter.running[w.adapter.launches[-1]["pid"]]["effect"] = None
+        w.adapter.plan = []
+        w.adapter.finish(w.adapter.launches[-1]["pid"])
+        w.tick()
+        b = w.store.batch(b["id"])
+        self.assertEqual((b["state"], b["run_kind"], len(w.adapter.launches)),
+                         ("PRODUCING", "s2_chunk_resume", 2))
         w.adapter.finish(w.adapter.launches[-1]["pid"])
         w.tick()
         b = w.store.batch(b["id"])
         self.assertEqual(b["state"], "ERROR")
         self.assertIn("checkpoint가 정확히 전진하지 않았거나", b["error"])
-        self.assertEqual(len(w.adapter.launches), 1)
+        self.assertEqual(len(w.adapter.launches), 2)
 
     def test_chunk_refuses_to_advance_after_owned_head_or_remote_branch_moves(self):
         for changed_ref in ("HEAD", "origin branch"):
@@ -267,14 +273,11 @@ class Stage2Retry(unittest.TestCase):
                                                                   decided=1, total=2, next_chunk=2)})
         self.w.tick()
 
-    def test_retry_after_saved_chunk_does_not_reproduce_it_or_resume_old_session(self):
+    def test_nonzero_exit_after_exact_saved_chunk_advances_without_reproducing_it(self):
         w = self.w
         b = w.store.active_batch("claude", S2)
         w.adapter.finish(w.adapter.launches[-1]["pid"])
         w.tick()
-        self.assertEqual(w.store.batch(b["id"])["state"], "PAUSED")
-        self.assertTrue(control.retry(w.store, "claude", S2))
-        w.tick(2)
         b = w.store.batch(b["id"])
         self.assertEqual((b["run_kind"], b["state"]), ("s2_chunk_new", "PRODUCING"))
         self.assertEqual(w.adapter.launches[-1]["kind"], "start")
