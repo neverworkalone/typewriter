@@ -46,6 +46,12 @@ class Classifier(unittest.TestCase):
             (Result(1, "", "error connecting to api.github.com: connection reset by peer"), True),
             (Result(1, "", "HTTP 401: Bad credentials"), False), (Result(1, "", "HTTP 403: Resource not accessible"), False),
             (Result(1, "", "HTTP 404: Not Found"), False), (Result(1, "", "HTTP 422: Validation Failed"), False),
+            (Result(128, "", "fatal: unable to access 'https://github.com/o/r/': The requested URL returned error: 404"), False),
+            (Result(128, "", "fatal: unable to access 'https://github.com/o/r/': The requested URL returned error: 403"), False),
+            (Result(128, "", "remote: Repository not found.\nfatal: unable to access 'https://github.com/o/r/': error: 401"), False),
+            (Result(128, "", "fatal: unable to access 'https://github.com/o/r/': The requested URL returned error: 503"), True),
+            (Result(128, "", "error: RPC failed; HTTP 502 curl 22 The requested URL returned error: 502"), True),
+            (Result(128, "", "fatal: unable to access 'https://github.com/o/r/': Failed to connect to github.com port 443"), True),
             (Result(128, "", "fatal: not a git repository"), False), (Result(1, "", ""), False), (Result(0, "ok", ""), False),
         ]
         for res, want in cases:
