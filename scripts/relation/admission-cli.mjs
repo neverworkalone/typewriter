@@ -10,7 +10,9 @@ import {
   approvedPeersForSense,
   assertShard,
   batchScope,
+  candidateFormsForRecord,
   candidateInventory,
+  legacyCandidateFormsForRecord,
   loadApprovedRelations,
   loadOptionalJsonl,
   loadShard,
@@ -257,6 +259,9 @@ function decisionRows(checkpoint) {
             relevance: relationDecision.relevance,
             reverse_type: relationDecision.reverse_type,
             reverse_relevance: relationDecision.reverse_relevance,
+            candidate_assignment_version: 1,
+            candidate_forms: [candidate.text],
+            reverse_candidate_forms: [],
           });
         } else {
           relations.push({
@@ -319,16 +324,21 @@ function coalesceOrthographicAliasRelations(checkpoint, relations, relationCandi
     }
 
     const pair = idPairKey(relation.source_sense_id, relation.target_sense_id);
-    const selectedIndex = relationIndexByPair.get(pair);
+    const currentCandidate = checkpointCandidates.get(candidateKey);
+    // Distinct words that happen to target one sense stay distinct; only spacing/hyphenation variants coalesce.
+    const orthographicForm = normalizeCandidate(currentCandidate?.text ?? '').replace(/[\s-]/gu, '');
+    const groupKey = `${pair}\u0000${orthographicForm}`;
+    const selectedIndex = relationIndexByPair.get(groupKey);
     if (selectedIndex === undefined) {
-      relationIndexByPair.set(pair, selectedRelations.length);
+      relationIndexByPair.set(groupKey, selectedRelations.length);
       selectedRelations.push(relation);
       selectedCandidates.push(candidateKey);
       continue;
     }
 
+    const mergedCandidateForms = [...new Set([...selectedRelations[selectedIndex].candidate_forms, ...relation.candidate_forms])];
+    const mergedReverseCandidateForms = [...new Set([...selectedRelations[selectedIndex].reverse_candidate_forms, ...relation.reverse_candidate_forms])];
     const selectedCandidate = checkpointCandidates.get(selectedCandidates[selectedIndex]);
-    const currentCandidate = checkpointCandidates.get(candidateKey);
     const usesCanonicalSpelling = (candidate) => {
       const targetLemma = candidate?.same_spelling_targets
         .find((target) => target.record_id === relation.target_record_id)?.lemma;
@@ -341,11 +351,16 @@ function coalesceOrthographicAliasRelations(checkpoint, relations, relationCandi
       selectedRelations[selectedIndex] = relation;
       selectedCandidates[selectedIndex] = candidateKey;
     }
+    selectedRelations[selectedIndex] = {
+      ...selectedRelations[selectedIndex],
+      candidate_forms: mergedCandidateForms,
+      reverse_candidate_forms: mergedReverseCandidateForms,
+    };
   }
   return { relations: selectedRelations, relationCandidates: selectedCandidates };
 }
 
-function assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, newRelations, newRelationCandidates, newDrops) {
+function assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, newRelations, newRelationCandidates, newDrops, index) {
   const exactRelations = new Set(existingRelations.map(stableRow));
   const exactDrops = new Set(existingDrops.map(stableRow));
   const idPairs = new Map();
@@ -383,6 +398,7 @@ function assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, ne
   }
   const appendRelations = [];
   const coalesced = coalesceOrthographicAliasRelations(checkpoint, newRelations, newRelationCandidates);
+  let relationsChanged = false;
   for (const [rowIndex, row] of coalesced.relations.entries()) {
     const candidateKey = coalesced.relationCandidates[rowIndex];
     if (exactRelations.has(stableRow(row))) continue;
@@ -399,7 +415,26 @@ function assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, ne
           && existingPair.source_sense_id === row.source_sense_id
           && existingPair.target_record_id === row.target_record_id
           && existingPair.target_sense_id === row.target_sense_id;
-        if (!sameOrientation && isConsistentReciprocalIdRelation(existingPair, row)) continue;
+        if (!sameOrientation && isConsistentReciprocalIdRelation(existingPair, row)) {
+          if ([0, 1].includes(existingPair.candidate_assignment_version)) {
+            existingPair.candidate_forms = [...new Set([
+              ...(Array.isArray(existingPair.candidate_forms) ? existingPair.candidate_forms : []),
+              ...row.reverse_candidate_forms,
+            ])];
+            existingPair.reverse_candidate_forms = [...new Set([
+              ...(Array.isArray(existingPair.reverse_candidate_forms) ? existingPair.reverse_candidate_forms : []),
+              ...row.candidate_forms,
+            ])];
+          } else {
+            // Materialize the old inferred forward forms and record the new reciprocal selection separately.
+            const target = index.byId.get(existingPair.target_record_id);
+            existingPair.candidate_assignment_version = 0;
+            existingPair.candidate_forms = target ? legacyCandidateFormsForRecord(target, index) : [];
+            existingPair.reverse_candidate_forms = [...new Set(row.candidate_forms)];
+          }
+          relationsChanged = true;
+          continue;
+        }
         throw new Error(`cannot merge duplicate or reverse-duplicate ID relation ${row.source_sense_id}/${row.target_sense_id}`);
       }
       const candidateKeys = sourceCandidatesForPair.get(key) ?? new Set([candidateKey]);
@@ -412,6 +447,7 @@ function assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, ne
       exactRelations.add(stableRow(row));
     }
     appendRelations.push(row);
+    relationsChanged = true;
   }
   const appendDrops = [];
   for (const row of newDrops) {
@@ -426,7 +462,7 @@ function assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, ne
       throw new Error(`cannot merge a Drop already answered by an approved ID relation ${key.replace('\u0000', '/')}`);
     }
   }
-  return { relations: [...existingRelations, ...appendRelations], drops: [...existingDrops, ...appendDrops] };
+  return { relations: [...existingRelations, ...appendRelations], drops: [...existingDrops, ...appendDrops], relationsChanged };
 }
 
 function parseArgs(argv) {
@@ -497,12 +533,13 @@ export async function run(argv, { root } = {}) {
     console.log(`Resuming shard ${options.shard} batch ${options.batch} part ${options.part}: ${checkpointProgress(checkpoint)} -> ${checkpointPath}`);
     return checkpoint;
   }
+  let verifiedCheckpoint = null;
   if (options.command === 'verify' && options.part && existsSync(checkpointPath)) {
-    const checkpoint = await readCheckpoint(checkpointPath, { shard: options.shard, batch: options.batch, part: options.part });
-    if (!checkpoint.merged || checkpoint.pending_chunk || checkpoint.items.some((item) => item.candidates.some((candidate) => candidate.decision === null))) {
-      throw new Error(`Part checkpoint is incomplete or not merged: ${checkpointProgress(checkpoint)}`);
+    verifiedCheckpoint = await readCheckpoint(checkpointPath, { shard: options.shard, batch: options.batch, part: options.part });
+    if (!verifiedCheckpoint.merged || verifiedCheckpoint.pending_chunk || verifiedCheckpoint.items.some((item) => item.candidates.some((candidate) => candidate.decision === null))) {
+      throw new Error(`Part checkpoint is incomplete or not merged: ${checkpointProgress(verifiedCheckpoint)}`);
     }
-    validateCheckpointDecisions(checkpoint);
+    validateCheckpointDecisions(verifiedCheckpoint);
   }
 
   const loaded = await loadShard(options.shard, repositoryRoot, { batch: options.batch });
@@ -590,9 +627,8 @@ export async function run(argv, { root } = {}) {
   const shardSenseIds = new Set(canonicalRows.flatMap((record) => record.senses.map((sense) => sense.id)));
   validateRelationRows({ relationRows, dropRows, index, shardSenseIds, otherRelationRows: others });
   const counts = verifyAccounting({ canonicalRows, candidateFiles, relationRows, dropRows, otherRelationRows: others, index, scopeRows });
-  if (options.part && existsSync(checkpointPath)) {
-    const checkpoint = await readCheckpoint(checkpointPath, { shard: options.shard, batch: options.batch, part: options.part });
-    assertCheckpointMerged(checkpoint, relationRows, dropRows);
+  if (verifiedCheckpoint) {
+    assertCheckpointMerged(verifiedCheckpoint, relationRows, dropRows);
   }
   console.log(`Relation Admission accounting valid for shard ${options.shard}${options.batch ? ` batch ${options.batch}` : ''}${options.part ? ` part ${options.part}` : ''}: ${JSON.stringify(counts)}`);
   return counts;
@@ -968,10 +1004,22 @@ async function mergeCheckpoint(checkpoint, checkpointPath, root) {
   const dropFile = shardDropPath(checkpoint.shard, root);
   const existingRelations = await loadOptionalJsonl(relationFile);
   const existingDrops = await loadOptionalJsonl(dropFile);
-  const merged = assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, newRelations, newRelationCandidates, newDrops);
   const loaded = await loadShard(checkpoint.shard, root, { batch: checkpoint.batch });
-  const scoped = partScope(loaded.canonicalRows, loaded.candidateFiles, checkpoint.batch, checkpoint.part);
   const finalShardSenseIds = new Set(loaded.canonicalRows.flatMap((record) => record.senses.map((sense) => sense.id)));
+  validateRelationRows({
+    relationRows: existingRelations,
+    dropRows: existingDrops,
+    index: loaded.index,
+    shardSenseIds: finalShardSenseIds,
+    otherRelationRows: others,
+  });
+  for (const relation of newRelations) {
+    if ('text' in relation) continue;
+    const source = loaded.index.byId.get(relation.source_record_id);
+    if (source) relation.reverse_candidate_forms = candidateFormsForRecord(source, loaded.index);
+  }
+  const merged = assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, newRelations, newRelationCandidates, newDrops, loaded.index);
+  const scoped = partScope(loaded.canonicalRows, loaded.candidateFiles, checkpoint.batch, checkpoint.part);
   validateRelationRows({
     relationRows: merged.relations,
     dropRows: merged.drops,
@@ -988,7 +1036,7 @@ async function mergeCheckpoint(checkpoint, checkpointPath, root) {
     index: loaded.index,
     scopeRows: scoped.scopeRows,
   });
-  if (merged.relations.length > existingRelations.length) await writeJsonlAtomically(relationFile, merged.relations);
+  if (merged.relationsChanged) await writeJsonlAtomically(relationFile, merged.relations);
   if (merged.drops.length > existingDrops.length) await writeJsonlAtomically(dropFile, merged.drops);
   checkpoint.merged = true;
   await writeJsonAtomically(checkpointPath, checkpoint);
@@ -999,12 +1047,27 @@ async function mergeCheckpoint(checkpoint, checkpointPath, root) {
 
 function assertCheckpointMerged(checkpoint, relationRows, dropRows) {
   if (!checkpoint.merged) throw new Error('Part checkpoint is not marked merged');
-  const relationSet = new Set(relationRows.map(stableRow));
   const dropSet = new Set(dropRows.map(stableRow));
   const expected = decisionRows(checkpoint);
   const coalesced = coalesceOrthographicAliasRelations(checkpoint, expected.relations, expected.relationCandidates);
   for (const row of coalesced.relations) {
-    if (!relationSet.has(stableRow(row)) && !relationRows.some((approved) => isConsistentReciprocalIdRelation(approved, row))) {
+    const merged = relationRows.some((approved) => {
+      if ('text' in row || 'text' in approved) return stableRow(approved) === stableRow(row);
+      const hasForms = (actual, wanted) => Array.isArray(actual) && wanted.every((form) => actual.includes(form));
+      const sameOrientation = approved.source_record_id === row.source_record_id
+        && approved.source_sense_id === row.source_sense_id
+        && approved.target_record_id === row.target_record_id
+        && approved.target_sense_id === row.target_sense_id;
+      if (sameOrientation) {
+        return approved.type === row.type && approved.relevance === row.relevance
+          && approved.reverse_type === row.reverse_type && approved.reverse_relevance === row.reverse_relevance
+          && [0, 1].includes(approved.candidate_assignment_version) && hasForms(approved.candidate_forms, row.candidate_forms);
+      }
+      return isConsistentReciprocalIdRelation(approved, row)
+        && [0, 1].includes(approved.candidate_assignment_version)
+        && hasForms(approved.reverse_candidate_forms, row.candidate_forms);
+    });
+    if (!merged) {
       throw new Error(`merged Part relation is missing: ${stableRow(row)}`);
     }
   }

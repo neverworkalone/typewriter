@@ -179,7 +179,7 @@ PR의 Normal 검사는 추가·수정된 `data/relation-candidates/` 파일마�
 
 ```jsonl
 # data/relations/relation-001.jsonl — ID 링크(양방향 한 행)
-{"source_record_id":"w1","source_sense_id":"w1-s1","target_record_id":"w9","target_sense_id":"w9-s1","type":"near","relevance":2,"reverse_type":"mood","reverse_relevance":5}
+{"source_record_id":"w1","source_sense_id":"w1-s1","target_record_id":"w9","target_sense_id":"w9-s1","type":"near","relevance":2,"reverse_type":"mood","reverse_relevance":5,"candidate_assignment_version":1,"candidate_forms":["표적 표기"],"reverse_candidate_forms":["출발 표기"]}
 # text-only (reverse 없음, 클릭 불가)
 {"source_record_id":"w1","source_sense_id":"w1-s1","text":"새 말","type":"scene","relevance":4}
 # data/relation-drops/drop-001.jsonl — 실제 Drop만 (없으면 빈 파일/부재 허용)
@@ -187,6 +187,7 @@ PR의 Normal 검사는 추가·수정된 `data/relation-candidates/` 파일마�
 ```
 
 - `type`/`reverse_type`: `near|mood|scene|sensory|action|association`. `relevance`/`reverse_relevance`: 정수 1..9. 방향별로 달라도 같아도 된다.
+- 새 ID Relation에는 `candidate_assignment_version: 1`, `candidate_forms`, `reverse_candidate_forms`를 저장한다. 두 배열은 각 방향에서 이 ID 행이 처리하는 정확한 Stage 1 후보 문자열이며, spacing/hyphen 표기 변형으로 병합한 문자열은 모두 적는다. 이 필드는 회계/재개용 provenance이고 제품 링크의 target을 바꾸지 않는다. 이 필드가 없는 기존 v1 행은 레거시 추론으로 읽는다. 기존 레거시 행에 새 역방향 판단을 병합하면 `candidate_assignment_version: 0`으로 승격한다. v0의 `candidate_forms`는 기존 정방향 추론의 가능한 표기 스냅샷이며 확정 선택이 아니다. 검증과 prepare는 기존 규칙대로 현재 Stage 1 후보와 대조해 소유권을 추론하고, 새 역방향 선택은 `reverse_candidate_forms`에 정확히 보존한다. 버전이 있는 행은 세 필드가 모두 있어야 하며, 후보 문자열은 해당 방향의 Canonical record 표기에 결속되어야 한다.
 - ID 링크의 target은 후보 문자열과 철자가 정확히 같은 Canonical record의 실제 sense여야 한다. Stage 2 Part의 `read-chunk` 입력은 같은 표기의 모든 target record, lemma, sense ID, POS, 전체 gloss를 제공한다. 동철 이의어·다의어는 출발 sense와 각 target sense를 비교해 선택하며 첫 항목을 자동 선택하지 않는다. text-only로 남길 때도 제공된 target sense ID를 전부 검토하고 `no_exact_match`로 명시한다. 일치하는 target이 없으면 text-only이며 가짜 ID를 쓰지 않는다.
 - 소유 샤드 = 출발(source) sense가 속한 샤드. 한 쌍(A↔B)은 한 행에만 저장하며, 다른 샤드에 이미 같은 쌍(정·역 모두)이나 같은 text-only가 있으면 거부한다. 양쪽 출발 sense에서 같은 쌍을 독립 판정한 경우 merge는 각 방향의 type/relevance가 상대 행의 reverse_type/reverse_relevance와 일치할 때만 한 행으로 합친다. 방향 판단이 서로 다르면 한쪽을 임의로 선택하지 않고 merge를 거부한다. 빌드는 ID 행마다 방향별 2개 탐색 행을 만든다(빌드 구현은 별도 PR).
 - 모든 고유 후보는 **신규 관계 / Drop / 정확한 중복 병합 / 기존 승인 관계 제외**로 설명되어야 한다. 같은 후보 표기에 ID 관계가 여러 개 있으면 실제 target sense가 서로 다를 때 허용하며, 동일 source/target sense 쌍은 한 번만 저장한다. 같은 후보에 대한 text-only 관계나 Drop은 다른 처리와 중복할 수 없다.

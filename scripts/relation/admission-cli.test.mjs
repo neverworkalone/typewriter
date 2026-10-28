@@ -762,9 +762,9 @@ test('merge coalesces consistent independently adjudicated reciprocal ID decisio
   assert.deepEqual([merged.relations_added, merged.drops_added], [3, 0]);
   const relations = (await readFile(path.join(root, 'data/relations/relation-001.jsonl'), 'utf8')).trim().split('\n').map(JSON.parse);
   assert.deepEqual(relations, [
-    { source_record_id: 'w109230', source_sense_id: 'w109230-s1', target_record_id: 'w111040', target_sense_id: 'w111040-s1', type: 'near', relevance: 1, reverse_type: 'near', reverse_relevance: 1 },
-    { source_record_id: 'w14296', source_sense_id: 'w14296-s1', target_record_id: 'w153363', target_sense_id: 'w153363-s1', type: 'near', relevance: 1, reverse_type: 'near', reverse_relevance: 1 },
-    { source_record_id: 'w200002', source_sense_id: 'w200002-s1', target_record_id: 'w200003', target_sense_id: 'w200003-s1', type: 'near', relevance: 2, reverse_type: 'mood', reverse_relevance: 5 },
+    { source_record_id: 'w109230', source_sense_id: 'w109230-s1', target_record_id: 'w111040', target_sense_id: 'w111040-s1', type: 'near', relevance: 1, reverse_type: 'near', reverse_relevance: 1, candidate_assignment_version: 1, candidate_forms: ['말기름'], reverse_candidate_forms: ['마지'] },
+    { source_record_id: 'w14296', source_sense_id: 'w14296-s1', target_record_id: 'w153363', target_sense_id: 'w153363-s1', type: 'near', relevance: 1, reverse_type: 'near', reverse_relevance: 1, candidate_assignment_version: 1, candidate_forms: ['불가입성'], reverse_candidate_forms: ['거성'] },
+    { source_record_id: 'w200002', source_sense_id: 'w200002-s1', target_record_id: 'w200003', target_sense_id: 'w200003-s1', type: 'near', relevance: 2, reverse_type: 'mood', reverse_relevance: 5, candidate_assignment_version: 1, candidate_forms: ['다른표적'], reverse_candidate_forms: ['다른출발'] },
   ], 'one row retains each independently authored direction, including distinct type and relevance');
   const counts = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
   assert.deepEqual([counts.unique, counts.relation, counts.reverse_covered, counts.missing], [6, 3, 3, 0]);
@@ -787,6 +787,92 @@ test('merge coalesces consistent independently adjudicated reciprocal ID decisio
   );
   assert.equal(await readFile(path.join(root, 'data/relations/relation-001.jsonl'), 'utf8'), approvedBeforeConflict);
 });
+
+for (const includeTargetAlias of [false, true]) {
+  test(`legacy reciprocal merge keeps inferred forms source-bound${includeTargetAlias ? ' with an extra target spelling' : ''}`, async (t) => {
+    const scratch = path.join(REPOSITORY_DIRECTORY, '.warroom-scratch');
+    await mkdir(scratch, { recursive: true });
+    const root = await mkdtemp(path.join(scratch, 'admission-legacy-reciprocal-'));
+    t.after(() => rm(root, { recursive: true, force: true }));
+
+    const records = Array.from({ length: 1000 }, (_, index) => {
+      if (index === 0) return { id: 'w1', lemma: '생명 보험 회사', senses: [{ id: 'w1-s1', pos: 'noun', gloss: '생명 보험을 판매하는 회사.' }] };
+      if (index === 100) return {
+        id: 'w2', lemma: '생명 보험',
+        ...(includeTargetAlias ? { search_forms: ['생명보험'] } : {}),
+        senses: [{ id: 'w2-s1', pos: 'noun', gloss: '사람의 생명에 대하여 보험금을 지급하는 보험.' }],
+      };
+      const id = `wfixture${index}`;
+      return { id, lemma: `표제${index}`, senses: [{ id: `${id}-s1`, pos: 'noun', gloss: `뜻${index}` }] };
+    });
+    for (const directory of ['data/canonical', 'data/relation-candidates/001', 'data/relations', 'data/relation-drops']) {
+      await mkdir(path.join(root, directory), { recursive: true });
+    }
+    await writeFile(path.join(root, 'data/canonical/stdict-0001.jsonl'), jsonl(records));
+    const producers = ['a_codex', 'a_claude', 'b_codex', 'b_claude', 'c_codex', 'd_codex'];
+    for (const batch of ['01', '02']) {
+      const batchRecords = records.slice((Number(batch) - 1) * 500, Number(batch) * 500);
+      for (const producer of producers) {
+        await writeFile(path.join(root, `data/relation-candidates/001/001_${batch}_${producer}.jsonl`), jsonl(batchRecords.map((record) => ({
+          record_id: record.id,
+          senses: [{
+            sense_id: record.senses[0].id,
+            candidates: batch === '01' && producer === 'a_codex'
+              ? record.id === 'w1' ? ['생명 보험', '독립어'] : record.id === 'w2' ? ['생명 보험 회사'] : []
+              : [],
+          }],
+        }))));
+      }
+    }
+
+    // This Part was prepared independently before the earlier Part's legacy row appeared.
+    const checkpoint = '.warroom-scratch/relation-admission-001-01-02.json';
+    await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '02'], { root }));
+    const chunk = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint], { root }));
+    assert.deepEqual(chunk.items.flatMap((item) => item.candidates.map((candidate) => candidate.text)), ['생명 보험 회사']);
+    const decisionsFile = '.warroom-scratch/legacy-reciprocal-decisions.json';
+    await writeFile(path.join(root, decisionsFile), JSON.stringify({
+      chunk_id: chunk.chunk_id,
+      decisions: [{
+        source_sense_id: 'w2-s1', candidate: '생명 보험 회사', disposition: 'relation',
+        target_resolution: 'exact', target_record_id: 'w1', target_sense_id: 'w1-s1',
+        type: 'near', relevance: 3, reverse_type: 'near', reverse_relevance: 3,
+      }],
+    }));
+    await quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', decisionsFile], { root }));
+
+    const relationPath = path.join(root, 'data/relations/relation-001.jsonl');
+    const legacyRow = {
+      source_record_id: 'w1', source_sense_id: 'w1-s1', target_record_id: 'w2', target_sense_id: 'w2-s1',
+      type: 'near', relevance: 3, reverse_type: 'near', reverse_relevance: 3,
+    };
+    await writeFile(relationPath, jsonl([legacyRow]));
+    const merged = await quiet(() => run(['merge', '--checkpoint', checkpoint], { root }));
+    assert.equal(merged.merged, true);
+    const rows = (await readFile(relationPath, 'utf8')).trim().split('\n').map(JSON.parse);
+    assert.equal(rows.length, 1, 'reciprocal decisions retain one bidirectional ID row');
+    assert.equal(rows[0].candidate_assignment_version, 0, 'the original forward direction remains legacy-inferred');
+    assert.deepEqual(rows[0].candidate_forms, includeTargetAlias ? ['생명 보험', '생명보험'] : ['생명 보험']);
+    assert.deepEqual(rows[0].reverse_candidate_forms, ['생명 보험 회사'], 'the newly selected reciprocal spelling is persisted exactly');
+
+    const partCounts = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '02'], { root }));
+    assert.deepEqual([partCounts.unique, partCounts.reverse_covered, partCounts.missing], [1, 1, 0]);
+    await rm(path.join(root, checkpoint));
+
+    const resumedPrepare = await quiet(() => run(['prepare', '--shard', '001', '--batch', '01'], { root }));
+    assert.deepEqual(texts(resumedPrepare), ['독립어'], 'prepare skips the previously approved candidate and retains an independent one');
+
+    // Resolve the still-independent fixture candidate so full Batch/Shard accounting can run on the same inputs.
+    rows.push({
+      source_record_id: 'w1', source_sense_id: 'w1-s1', text: '독립어', type: 'association', relevance: 5,
+    });
+    await writeFile(relationPath, jsonl(rows));
+    const batchCounts = await quiet(() => run(['verify', '--shard', '001', '--batch', '01'], { root }));
+    assert.deepEqual([batchCounts.unique, batchCounts.relation, batchCounts.reverse_covered, batchCounts.missing], [3, 2, 1, 0]);
+    const shardCounts = await quiet(() => run(['verify', '--shard', '001'], { root }));
+    assert.deepEqual([shardCounts.unique, shardCounts.relation, shardCounts.reverse_covered, shardCounts.missing], [3, 2, 1, 0]);
+  });
+}
 
 test('merge coalesces orthographic aliases for one target sense and keeps the canonical headword judgment', async (t) => {
   const scratchDirectory = path.join(REPOSITORY_DIRECTORY, '.warroom-scratch');
@@ -832,6 +918,7 @@ test('merge coalesces orthographic aliases for one target sense and keeps the ca
   assert.deepEqual(relations, [{
     source_record_id: 'w1', source_sense_id: 'w1-s1', target_record_id: 'w2', target_sense_id: 'w2-s1',
     type: 'near', relevance: 2, reverse_type: 'mood', reverse_relevance: 4,
+    candidate_assignment_version: 1, candidate_forms: ['생명보험', '생명 보험'], reverse_candidate_forms: ['생명 보험 회사'],
   }], 'the canonical target headword spelling supplies the retained sense-pair judgment');
 
   const repeated = await quiet(() => run(['merge', '--checkpoint', checkpoint], { root }));
@@ -1005,4 +1092,83 @@ test('merge validates final Part accounting before writing and supports a local 
   const drops = (await readFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), 'utf8')).trim().split('\n').map(JSON.parse);
   assert.deepEqual(relations.map((row) => row.text), ['가로']);
   assert.deepEqual(drops.map((row) => row.candidate), ['무관후보'], 'the earlier valid decision remains intact when the rejected Drop is revised');
+});
+
+test('merge accounts an ID relation against only its selected candidate spelling', async (t) => {
+  const scratch = path.join(REPOSITORY_DIRECTORY, '.warroom-scratch');
+  await mkdir(scratch, { recursive: true });
+  const root = await mkdtemp(path.join(scratch, 'admission-form-collision-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+
+  const records = [
+    { id: 'w249019', lemma: '완만히', search_forms: ['완만히'], senses: [{ id: 'w249019-s1', pos: 'adverb', gloss: '태도가 온순하고 부드럽게.' }] },
+    { id: 'w462682', lemma: '온순하다', search_forms: ['온순하다', '온순'], senses: [{ id: 'w462682-s1', pos: 'adjective', gloss: '성질이나 마음씨가 온화하고 양순하다.' }] },
+    { id: 'w245707', lemma: '온순하다', search_forms: ['온순하다', '온순'], senses: [{ id: 'w245707-s1', pos: 'adjective', gloss: '온화하고 단순하다.' }] },
+    ...Array.from({ length: 997 }, (_, index) => ({
+      id: `wfixture${index + 1}`,
+      lemma: `표제${index + 1}`,
+      senses: [{ id: `wfixture${index + 1}-s1`, pos: 'noun', gloss: `뜻${index + 1}` }],
+    })),
+  ];
+  for (const directory of ['data/canonical', 'data/relation-candidates/001', 'data/relations', 'data/relation-drops']) {
+    await mkdir(path.join(root, directory), { recursive: true });
+  }
+  await writeFile(path.join(root, 'data/canonical/stdict-0001.jsonl'), jsonl(records));
+  const producers = ['a_codex', 'a_claude', 'b_codex', 'b_claude', 'c_codex', 'd_codex'];
+  for (const batch of ['01', '02']) {
+    const batchRecords = records.slice((Number(batch) - 1) * 500, Number(batch) * 500);
+    for (const producer of producers) {
+      await writeFile(path.join(root, `data/relation-candidates/001/001_${batch}_${producer}.jsonl`), jsonl(batchRecords.map((record) => ({
+        record_id: record.id,
+        senses: [{ sense_id: record.senses[0].id, candidates: batch === '01' && producer === 'a_codex' && record.id === 'w249019' ? ['온순', '온순하다'] : [] }],
+      }))));
+    }
+  }
+
+  const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
+  await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  const chunk = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint], { root }));
+  const decisionsFile = '.warroom-scratch/decisions.json';
+  const decisions = [
+    {
+      source_sense_id: 'w249019-s1', candidate: '온순', disposition: 'relation', type: 'near', relevance: 3,
+      target_resolution: 'exact', target_record_id: 'w462682', target_sense_id: 'w462682-s1', reverse_type: 'near', reverse_relevance: 3,
+    },
+    {
+      source_sense_id: 'w249019-s1', candidate: '온순하다', disposition: 'relation', type: 'association', relevance: 5,
+      target_resolution: 'no_exact_match', checked_target_sense_ids: ['w245707-s1', 'w462682-s1'],
+    },
+  ];
+  await writeFile(path.join(root, decisionsFile), JSON.stringify({ chunk_id: chunk.chunk_id, decisions }));
+  await quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', decisionsFile], { root }));
+
+  const merged = await quiet(() => run(['merge', '--checkpoint', checkpoint], { root }));
+  assert.deepEqual([merged.relations_added, merged.drops_added], [2, 0]);
+  const relationPath = path.join(root, 'data/relations/relation-001.jsonl');
+  const relations = (await readFile(relationPath, 'utf8')).trim().split('\n').map(JSON.parse);
+  const idRelation = relations.find((row) => row.target_record_id === 'w462682');
+  assert.deepEqual(idRelation.candidate_forms, ['온순'], 'the selected spelling is persisted with the ID row');
+  assert.deepEqual(idRelation.reverse_candidate_forms, ['완만히']);
+  await rm(path.join(root, checkpoint));
+  const counts = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  assert.deepEqual([counts.unique, counts.relation, counts.missing], [2, 2, 0]);
+  const batchCounts = await quiet(() => run(['verify', '--shard', '001', '--batch', '01'], { root }));
+  assert.deepEqual([batchCounts.unique, batchCounts.relation, batchCounts.missing], [2, 2, 0], 'batch verification reads candidate assignment from Relation JSONL');
+  const shardCounts = await quiet(() => run(['verify', '--shard', '001'], { root }));
+  assert.deepEqual([shardCounts.unique, shardCounts.relation, shardCounts.missing], [2, 2, 0], 'shard verification also reads persistent candidate assignment');
+  assert.equal(relations.some((row) => row.target_record_id === 'w462682'), true, 'the selected alias candidate keeps its exact ID target');
+  assert.equal(relations.some((row) => row.text === '온순하다'), true, 'the other spelling remains an independent text-only candidate');
+
+  await writeFile(relationPath, jsonl([idRelation]));
+  const resumedPrepare = await quiet(() => run(['prepare', '--shard', '001', '--batch', '01'], { root }));
+  assert.deepEqual(texts(resumedPrepare), ['온순하다'], 'an existing ID row does not own its target record’s other spelling during prepare');
+
+  const lostAssignment = { ...idRelation };
+  delete lostAssignment.candidate_forms;
+  await writeFile(relationPath, jsonl([lostAssignment]));
+  await assert.rejects(
+    () => quiet(() => run(['verify', '--shard', '001', '--batch', '01'], { root })),
+    /must have exactly .*candidate_forms/u,
+    'a new assigned row with a missing candidate_forms field is rejected instead of treated as legacy',
+  );
 });
