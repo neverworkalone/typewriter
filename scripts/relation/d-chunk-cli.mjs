@@ -529,11 +529,13 @@ export async function saveActive({ inputPath, root }) {
   const { errors, rows, hitBearingZ } = checkDecisions({ meta, records, entries, decisions, lemmaForms });
   const all_errors = [...parseErrors, ...errors];
   if (all_errors.length > 0) {
+    // A recorded SEARCH_FAILED means the evidence itself is broken: re-judging is never an automatic repair.
+    const searchFailed = entries.some((entry) => entry.status === 'SEARCH_FAILED');
     // One diagnostic bound to this active chunk, for the War Room Supervisor (never read from tool logs). It holds only
     // the rejection reasons, never the view or search contexts. A hit-bearing Z cannot be repaired by editing decisions.
     await writeAtomic(rejectedPath(directory), JSON.stringify({
       diagnostic: 'save_rejected', chunk_no: meta.chunk_no, view_sha256: meta.view_sha256, git_head: meta.git_head,
-      repair_scope: hitBearingZ.length > 0 ? 'stop_and_report' : 'decisions',
+      repair_scope: hitBearingZ.length > 0 || searchFailed ? 'stop_and_report' : 'decisions',
       senses: [...new Set(all_errors.map((message) => /^(s[1-9]\d*):/u.exec(message)?.[1]).filter(Boolean))],
       errors: all_errors.slice(0, MAX_REJECTED_ERRORS).map((message) => message.slice(0, MAX_REJECTED_ERROR_CHARS)),
       error_count: all_errors.length,

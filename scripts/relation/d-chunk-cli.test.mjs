@@ -380,6 +380,20 @@ withWorld('end to end: search records evidence, save stores the chunk once, a re
     ['save_rejected', 1, saved.view_sha256, 'stop_and_report']);
   assert.ok(rejected.senses.includes(ref('w005-s1')) && rejected.errors.some((line) => /Z needs/u.test(line)));
 
+  // a recorded SEARCH_FAILED makes even a hit-free rejection non-repairable; without it the same rejection stays repairable
+  const zeroHitRef = saved.senses.find((item) => !item.auto && !item.sense_id.startsWith('w001') && !item.sense_id.startsWith('w005')).ref;
+  const failedEntry = { record_id: saved.senses.find((item) => item.ref === zeroHitRef).record_id, status: 'SEARCH_FAILED', hits: 0, complete: false, key: 'x', forms: ['x'] };
+  const searches = path.join(world.directory, 'searches.jsonl');
+  const priorSearches = await readFile(searches, 'utf8');
+  const scope = async () => JSON.parse(await readFile(path.join(world.directory, 'save-rejected.json'), 'utf8')).repair_scope;
+  await writeFile(decisionsFile, `${lines({ [zeroHitRef]: 'V' })}\n`); // V without any recorded context: a pure re-judging error
+  await assert.rejects(saveActive({ inputPath: decisionsFile, root: world.root }), (error) => error.exitCode === 2);
+  assert.equal(await scope(), 'decisions');
+  await writeFile(searches, `${priorSearches}${JSON.stringify(failedEntry)}\n`);
+  await assert.rejects(saveActive({ inputPath: decisionsFile, root: world.root }), (error) => error.exitCode === 2);
+  assert.equal(await scope(), 'stop_and_report');
+  await writeFile(searches, priorSearches);
+
   // an AI search is recorded; a zero-hit search of another form keeps the record's Z valid
   const out = await searchActive({ ref: ref('w003-s1'), forms: ['달려서'], boundary: 'none', contexts: 16, databasePath: world.options.databasePath, root: world.root });
   assert.equal(out.result.status, 'ZERO_HITS');
