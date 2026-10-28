@@ -824,9 +824,7 @@ class WarRoom(App):
             retry_in = max(self._supervisor_retry_at - now, 0)
             notes.append(f"! Supervisor 자동 재기동 실패: {self._supervisor_error} "
                          f"({retry_in:.0f}초 후 재시도)")
-        elif not alive and now - self._t0 >= SUPERVISOR_STARTUP_GRACE_SECONDS:
-            if self._supervisor_state == "starting":
-                notes.append("! Supervisor 자동 시작 중 · heartbeat 응답을 기다리고 있습니다.")
+
         banner = root.query_one("#banner", Static)
         banner.update("\n".join(notes))
         banner.display = bool(notes)
