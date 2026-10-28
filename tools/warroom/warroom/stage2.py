@@ -18,6 +18,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from . import batches
+from .gitops import GitError
 from . import progress
 from . import prompts
 from .store import STAGE2_METHOD
@@ -74,6 +75,17 @@ class Choice:
 
 def scope_label(kind: str, shard: str, batch: str | None) -> str:
     return f"{shard}_{batch}" if kind == "batch" else shard
+
+
+_SHARED_VERIFY_INPUTS = ("data/canonical/", "scripts/relation/", "scripts/build/gloss-arrow-reference.mjs",
+                         "src/runtime/dictionary-contract.js")
+
+
+def scope_inputs_changed(paths, shard: str) -> bool:
+    """True if any changed path is something `admission-cli verify` for this shard reads (see `choose`)."""
+    own = (f"data/relations/relation-{shard}.jsonl", f"data/relation-drops/drop-{shard}.jsonl",
+           f"data/relation-candidates/{shard}/")
+    return any(p.startswith(own + _SHARED_VERIFY_INPUTS) for p in paths)
 
 
 def stop_head(kind: str, shard: str, batch: str | None) -> str:
@@ -324,7 +336,7 @@ def inputs_ready(cands: dict[str, int], shard: str, batch: str, records: int) ->
 
 
 def choose(runner, root, env, *, ref: str, sha: str, open_prs: list[dict], verify, kv, pin: str = "",
-           outcome=None, blocks=None) -> Choice:
+           outcome=None, blocks=None, changed=None) -> Choice:
     """The earliest ready, incomplete Part in canonical order (a pinned shard only, for a Single run).
 
     `verify(kind, shard, batch, part) -> (ok, tail)` runs the exact admission verify on the latest master; `kv` caches
@@ -336,7 +348,33 @@ def choose(runner, root, env, *, ref: str, sha: str, open_prs: list[dict], verif
     failure reproduced on the same SHA becomes `Choice("verify_failed")`, and `blocks` (the Store) holds the one active
     block per scope: while it is current on this SHA the scope waits; a new SHA is re-verified exactly, and only a
     success releases it. Without `outcome` a failure stops the Line as before.
+
+    A cached Batch/shard success is the master SHA it was verified on. On another SHA it stands only while
+    `changed(old, new)` shows nothing that verify reads for that shard (its own Relation/Drop/Candidate files, canonical
+    data, shared verify code); otherwise the exact verify runs again, so a later regression is found and a RELEASED scope
+    can fail as a new event. (Other shards' Relation files are read by verify too but are not tracked: re-verifying
+    every completed scope on every Stage 2 merge would cost more than it protects.)
     """
+    diffs: dict[str, list[str] | None] = {}
+
+    def verified(key, shard):
+        """True while the scope's cached success still holds on `sha`."""
+        old = kv.get(key)
+        if not old:
+            return False
+        if old == sha or changed is None:
+            return True
+        if old not in diffs:
+            try:
+                diffs[old] = changed(old, sha)
+            except GitError:
+                diffs[old] = None   # the old commit is unavailable: unknown, so verify again
+        paths = diffs[old]
+        if paths is None or scope_inputs_changed(paths, shard):
+            return False
+        kv.set(key, sha)   # nothing it reads changed: the success carries over to this commit
+        return True
+
     def close(kind, shard, batch):
         """None once the scope's exact verify succeeded (cached), else the Choice that holds the Line."""
         key = ok_key(shard, batch) if kind == "batch" else ok_key(shard, None)
@@ -399,10 +437,10 @@ def choose(runner, root, env, *, ref: str, sha: str, open_prs: list[dict], verif
                 kv.set(ok_key(shard, batch, part), sha)
             open_ = any(not kv.get(ok_key(shard, batch, part)) for part in parts)
             batches_open.append(open_)
-            if not open_ and not kv.get(ok_key(shard, batch)):
+            if not open_ and not verified(ok_key(shard, batch), shard):
                 if (held := close("batch", shard, batch)) is not None:
                     return held
-        if batches_open and not any(batches_open) and not kv.get(ok_key(shard, None)):
+        if batches_open and not any(batches_open) and not verified(ok_key(shard, None), shard):
             if (held := close("shard", shard, None)) is not None:
                 return held
     if waiting:

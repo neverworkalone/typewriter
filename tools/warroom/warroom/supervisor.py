@@ -769,7 +769,8 @@ class Supervisor:
             choice = stage2.choose(self.runner, self.paths.repo_root, self.env, ref=f"origin/{base}", sha=sha,
                                    open_prs=self.gh.open_prs(), kv=self.store, pin=pin,
                                    verify=lambda *a: self.git.verify_stage2(sha, *a),
-                                   outcome=lambda *a: self.git.verify_stage2_outcome(sha, *a), blocks=self.store)
+                                   outcome=lambda *a: self.git.verify_stage2_outcome(sha, *a), blocks=self.store,
+                                   changed=self.git.changed_between)
         except TRANSIENT as e:
             return self._transient_wait(f"line:{model}:{method}:prepare", e, line=line)
         except Exception as e:   # BatchError, GitError, GhError

@@ -113,6 +113,7 @@ class FakeGit:
         self.verify_heads: set[tuple] = set()                 # (sha, kind, shard, batch, part) exact non-master verification
         self.verify_calls: list[tuple] = []
         self.verify_error: Exception | None = None
+        self.changed_paths: list[str] = []                    # what differs between two master commits (changed_between)
         self.base_sha = "m" * 40                              # origin/<base> as fetch_base reports it
         self.outcomes: dict[tuple, list] = {}                 # (kind, shard, batch) -> queued VerifyOutcome (last one repeats)
         self.on_base = True                                   # is a merge commit already on origin/<base>
@@ -154,6 +155,9 @@ class FakeGit:
             raise self.verify_error
         ok = (kind, shard, batch, part) in self.verified or (sha, kind, shard, batch, part) in self.verify_heads
         return ok, "" if ok else "Relation Admission accounting failed: candidate has no relation"
+
+    def changed_between(self, old, new):
+        return list(self.changed_paths)
 
     def verify_stage2_outcome(self, sha, kind, shard, batch, part, timeout=900):
         """A queued VerifyOutcome for this scope (last one repeats), else success when verified/unclassified failure."""

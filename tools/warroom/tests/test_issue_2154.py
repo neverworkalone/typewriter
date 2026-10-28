@@ -241,7 +241,7 @@ class VerifyBlock(unittest.TestCase):
         w.git.verified.add(("shard", "001", None, None))
         self.tick()
         self.assertIsNone(self.block())
-        w.store.set(stage2.ok_key("001", "01"), "")   # the scope is verified again on a later master
+        w.git.changed_paths = ["data/relations/relation-001.jsonl"]   # a later master changes what the scope reads
         w.git.verified.add(("shard", "001", None, None))
         control.start(w.store, "claude", S2, "single", cfg=w.cfg)
         w.git.base_sha = SHA3
@@ -252,6 +252,32 @@ class VerifyBlock(unittest.TestCase):
         self.assertTrue(keys[1].startswith(keys[0] + ":after:"))
         self.assertEqual(sum(d["state"] not in ("RELEASED", "OVERRIDDEN") for d in w.store.defects()), 1)
         self.assertEqual(w.store.report_verify_failure("verify:batch:001:01:ffff", CLS, "{}"), None)   # second active block refused
+
+    def test_a_cached_scope_success_carries_over_only_while_its_inputs_are_unchanged(self):
+        w = self.w
+        self.tick()
+        self.fix_merged()
+        w.git.base_sha = SHA2
+        w.git.outcomes[("batch", "001", "01")] = [VerifyOutcome(True, "")]
+        w.git.verified.add(("shard", "001", None, None))
+        self.tick()
+        self.assertEqual(w.store.get(stage2.ok_key("001", "01")), SHA2)
+        control.start(w.store, "claude", S2, "single", cfg=w.cfg)
+        calls = len(w.git.verify_calls)
+        w.git.base_sha = SHA3
+        w.git.changed_paths = ["data/relations/relation-002.jsonl", "docs/x.md", "data/relation-candidates/0010/x.jsonl"]
+        self.tick()
+        self.assertEqual((len(w.git.verify_calls), w.store.get(stage2.ok_key("001", "01"))), (calls, SHA3))   # carried over
+        for n, path in enumerate(("data/relation-drops/drop-001.jsonl", "scripts/relation/admission.mjs", "data/canonical/stdict-0001.jsonl",
+                                  "data/relation-candidates/001/001_01_a_codex.jsonl")):
+            with self.subTest(path=path):
+                control.start(w.store, "claude", S2, "single", cfg=w.cfg)
+                sha = f"{n + 4}" * 40
+                w.git.base_sha, w.git.changed_paths = sha, [path]
+                calls = len(w.git.verify_calls)
+                self.tick()
+                self.assertGreater(len(w.git.verify_calls), calls)   # verified again on the new master
+                self.assertEqual(w.store.get(stage2.ok_key("001", "01")), sha)
 
     def test_batch_id_zero_never_reaches_production_batch_paths(self):
         w = self.w
