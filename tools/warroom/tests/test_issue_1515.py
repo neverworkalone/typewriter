@@ -58,23 +58,25 @@ class FixHeadLag(unittest.TestCase):
         self.assertEqual(w.row()["state"], "COMPLETE")
         self.assertEqual(len(w.adapter.launches), n)
 
-    def test_timeout_preserves_then_retry_reverifies_without_ai(self):
+    def test_timeout_only_warns_while_origin_holds_the_local_head(self):
         w = self.to_finished_fix()
         n = len(w.adapter.launches)
         w.tick()
         w.now += 101
         w.tick()
         b = w.row()
-        self.assertEqual(b["state"], "ERROR")
+        self.assertEqual((b["state"], b["error"]), ("FIXING", None))   # lag past the window is a warning, not a verdict
         self.assertEqual(w.git.removed, [])
-        self.assertTrue(control.retry(w.store, "deepseek", "a"))
-        w.tick()
-        self.assertEqual((w.row()["state"], len(w.adapter.launches)), ("FIXING", n))   # re-verifying, no AI
+        self.assertIn("조회 재시도", control.line_status(w.store, "deepseek", "a")["wait"])
+        w.now += 400
+        w.tick(2)
+        self.assertEqual((w.row()["state"], len(w.adapter.launches)), ("FIXING", n))   # still no AI
         w.pr_info(7, HEAD2, head_ref=BRANCH)
         w.tick()
         self.assertEqual(w.row()["state"], "WAITING_REVIEW")
+        self.assertEqual(w.store.kv_prefix(f"tw_b{b['id']}:"), [])   # the warning counter left with the transition
 
-    def test_gh_failure_while_waiting_times_out_closed(self):
+    def test_gh_failure_while_waiting_never_becomes_an_error(self):
         w = self.to_finished_fix()
         w.tick()
         w.gh.pull = lambda n: (_ for _ in ()).throw(RuntimeError("boom"))
@@ -82,7 +84,7 @@ class FixHeadLag(unittest.TestCase):
         self.assertEqual(w.row()["state"], "FIXING")
         w.now += 101
         w.tick()
-        self.assertEqual(w.row()["state"], "ERROR")
+        self.assertEqual(w.row()["state"], "FIXING")
 
     def test_real_problems_are_not_waits(self):
         cases = [  # name, kwargs, remote override, expected text

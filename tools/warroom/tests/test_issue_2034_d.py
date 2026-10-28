@@ -1,9 +1,11 @@
 """Issue #2034: Method D runs as serial 25-record chunk sessions with a deterministic, idempotent finalization."""
 import json
 import unittest
+
 from pathlib import Path
 
 from tests.fakes import HEAD1, World
+from warroom.github import GhError
 from warroom import control, dchunk, prompts
 
 REL = "data/relation-candidates/001/001_01_d_deepseek.jsonl"
@@ -226,7 +228,7 @@ class Finalization(unittest.TestCase):
 
     def test_failed_pr_creation_keeps_commit_and_push_and_retry_does_not_repeat_them(self):
         w = self.w
-        w.gh.create_pr_error = RuntimeError("boom")
+        w.gh.create_pr_error = GhError("gh pr create: boom")
         b = self.run_to_finalize()
         self.assertEqual(b["state"], "ERROR")
         self.assertEqual((len(w.git.commits), len(w.git.pushes)), (1, 1))

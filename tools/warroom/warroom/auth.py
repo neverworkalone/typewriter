@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .shell import Runner
+from .shell import Runner, transient
 
 SCRUBBED = ("GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "GITHUB_ENTERPRISE_TOKEN",
             "GH_HOST", "GH_REPO", "GIT_ASKPASS", "SSH_ASKPASS", "GIT_SSH_COMMAND", "GIT_SSH")
@@ -43,25 +43,38 @@ def build_env(base: dict, gh_config: Path, git_name: str = "", git_email: str = 
 
 
 def diagnose(runner: Runner, env: dict, repo: str, expected: str) -> dict:
-    """Return {ok, account, problems[]}; never raises, never returns a credential."""
+    """Return {ok, account, problems[], transient}; never raises, never returns a credential.
+
+    A lookup that failed in a way asking again can fix sets `transient` (and no problem text): it is not evidence of
+    missing authentication or permission. Only a definite answer produces a problem.
+    """
     problems: list[str] = []
     account = None
+    why: str | None = None
     who = runner.run(["gh", "api", "user", "--jq", ".login"], env=env, timeout=30)
     if not who.ok:
-        problems.append(
-            "GitHub 인증 없음: `GH_CONFIG_DIR=%s gh auth login` 으로 %s 계정을 로그인하세요."
-            % (env["GH_CONFIG_DIR"], expected))
+        why = transient(who)
+        if not why:
+            problems.append(
+                "GitHub 인증 없음: `GH_CONFIG_DIR=%s gh auth login` 으로 %s 계정을 로그인하세요."
+                % (env["GH_CONFIG_DIR"], expected))
     else:
         account = who.out.strip()
         if account != expected:
             problems.append(f"계정 불일치: 실제 {account!r}, 기대 {expected!r}")
         perm = runner.run(["gh", "api", f"repos/{repo}", "--jq", ".permissions.push"],
                           env=env, timeout=30)
-        if perm.out.strip() != "true":
+        if not perm.ok and transient(perm):
+            why = transient(perm)
+        elif perm.out.strip() != "true":
             problems.append(f"{account} 계정에 {repo} push 권한이 없습니다")
         cred = runner.run(["gh", "auth", "git-credential", "get"], env=env, timeout=30,
                           input="protocol=https\nhost=github.com\n\n")
         user_line = next((l for l in cred.out.splitlines() if l.startswith("username=")), "")
-        if not cred.ok or "password=" not in cred.out or not user_line:
+        if not cred.ok and transient(cred):
+            why = why or transient(cred)
+        elif not cred.ok or "password=" not in cred.out or not user_line:
             problems.append("git push 자격증명(gh auth git-credential)을 사용할 수 없습니다")
-    return {"ok": not problems, "account": account, "problems": problems}
+    if why and not problems:   # a definite problem outranks a transient one; otherwise nothing is decided yet
+        return {"ok": False, "account": account, "problems": [], "transient": why}
+    return {"ok": not problems, "account": account, "problems": problems, "transient": None}

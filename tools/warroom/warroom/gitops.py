@@ -7,11 +7,15 @@ import tempfile
 from pathlib import Path
 
 from .realgit import resolve_git
-from .shell import Runner
+from .shell import Runner, transient
 
 
 class GitError(Exception):
     pass
+
+
+class GitTransient(GitError):
+    """A remote git call failed in a way asking again can fix (timeout, network); nothing was decided."""
 
 
 class CleanupBlocked(Exception):
@@ -38,14 +42,16 @@ class Git:
             raise GitError("git: 사용할 수 있는 실제 Git 실행 파일을 찾지 못했습니다 (xcrun stub은 제외됨)")
         return self._bin
 
-    def _git(self, *args, cwd=None, check=True, timeout=300):
+    def _git(self, *args, cwd=None, check=True, timeout=300, net=False):
+        """`net=True` marks a remote-access call: its transient failure is a GitTransient (ask again), not a verdict."""
         res = self.r.run([self.bin, *args], cwd=cwd or self.root, env=self.env, timeout=timeout)
         if check and not res.ok:
-            raise GitError(f"git {' '.join(args)}: {res.err.strip() or res.out.strip()}")
+            msg = f"git {' '.join(args)}: {res.err.strip() or res.out.strip()}"
+            raise (GitTransient(msg) if net and transient(res) else GitError(msg))
         return res
 
     def fetch_base(self, base: str) -> str:
-        self._git("fetch", "origin", base)
+        self._git("fetch", "origin", base, net=True)
         return self._git("rev-parse", f"origin/{base}").out.strip()
 
     def create_worktree(self, path: Path, branch: str, base: str) -> None:
@@ -55,9 +61,12 @@ class Git:
         if self._git("rev-parse", "--verify", "--quiet", f"refs/heads/{branch}",
                      check=False).ok:
             raise GitError(f"local branch already exists: {branch}")
-        if self._git("ls-remote", "--exit-code", "--heads", "origin", branch,
-                     check=False).ok:
+        remote = self._git("ls-remote", "--exit-code", "--heads", "origin", branch, check=False)
+        if remote.ok:   # code 0: the branch exists; code 2: it does not; anything else is NOT evidence of absence
             raise GitError(f"remote branch already exists: {branch}")
+        if remote.code != 2:
+            why = f"git ls-remote {branch}: {remote.err.strip() or remote.out.strip() or remote.code}"
+            raise GitTransient(why) if transient(remote) else GitError(why)
         path.parent.mkdir(parents=True, exist_ok=True)
         self.ignore_scratch()
         self._git("worktree", "add", "-b", branch, str(path), f"origin/{base}")
@@ -100,7 +109,7 @@ class Git:
 
     def remote_head(self, branch: str) -> str | None:
         """Actual SHA of origin's `branch` (None: no such remote branch); raises GitError if it cannot be queried."""
-        res = self._git("ls-remote", "--heads", "origin", f"refs/heads/{branch}")
+        res = self._git("ls-remote", "--heads", "origin", f"refs/heads/{branch}", net=True)
         for line in res.out.splitlines():
             sha, _, ref = line.partition("\t")
             if ref.strip() == f"refs/heads/{branch}":
@@ -146,7 +155,7 @@ class Git:
 
     def push_branch(self, path: Path, branch: str) -> None:
         """Plain push of HEAD to a not-yet-existing remote branch. Never forced; a moved remote is the caller's ERROR."""
-        self._git("push", "origin", f"HEAD:refs/heads/{branch}", cwd=path, timeout=600)
+        self._git("push", "origin", f"HEAD:refs/heads/{branch}", cwd=path, timeout=600, net=True)
 
     def dirty(self, path: Path) -> str:
         self.ignore_scratch()
@@ -175,8 +184,12 @@ class Git:
         """
         desc = f"local HEAD {local[:10]} != merged PR HEAD {pr_head_sha[:10]}"
         have = self._git("cat-file", "-e", f"{pr_head_sha}^{{commit}}", cwd=path, check=False).ok
-        if not have and not self._git("fetch", "origin", pr_head_sha, cwd=path, check=False).ok:
-            raise CleanupBlocked(f"{desc} (merged PR HEAD를 가져올 수 없음)")
+        if not have:
+            fetched = self._git("fetch", "origin", pr_head_sha, cwd=path, check=False)
+            if not fetched.ok:
+                if transient(fetched):   # the network, not the worktree: ask again, never a Cleanup verdict
+                    raise GitTransient(f"git fetch origin {pr_head_sha[:10]}: {fetched.err.strip()[:200]}")
+                raise CleanupBlocked(f"{desc} (merged PR HEAD를 가져올 수 없음)")
         if not self._git("merge-base", "--is-ancestor", local, pr_head_sha, cwd=path, check=False).ok:
             raise CleanupBlocked(f"{desc} (local HEAD가 PR HEAD의 조상이 아님)")
         if not self._git("merge", "--ff-only", pr_head_sha, cwd=path, check=False).ok:
@@ -592,7 +605,7 @@ class Git:
         path = self._owned(path)
         if self.registered(path) != branch:
             raise IntegrationBlocked(f"worktree가 브랜치 {branch}에 등록되어 있지 않습니다")
-        self._git("fetch", "origin", base)   # a network/auth failure is a GitError: transient, caller retries
+        self._git("fetch", "origin", base, net=True)   # a network/auth failure is a GitError: transient, caller retries
         if not self._git("merge-base", "--is-ancestor", sha, f"origin/{base}", check=False).ok:
             raise IntegrationBlocked(f"{sha[:10]}이 origin/{base}에 포함되어 있지 않습니다")
         if self._git("rev-parse", "-q", "--verify", "MERGE_HEAD", cwd=path, check=False).ok:

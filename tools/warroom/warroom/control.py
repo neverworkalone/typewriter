@@ -5,6 +5,7 @@ whole Factory. A Line never reads or writes another Line's controls.
 """
 from __future__ import annotations
 
+import json
 import time
 
 from . import stage2
@@ -143,6 +144,19 @@ def supervisor_alive(store: Store, now: float | None = None, max_age: float = 30
     return hb is not None and (now or time.time()) - float(hb) < max_age
 
 
+def transient_wait_text(store: Store, keys: list[str]) -> str:
+    """One `wait` line per recorded transient-retry record (count, next attempt, last error); "" when none."""
+    parts = []
+    for key in keys:
+        try:
+            rec = json.loads(store.get(key) or "")
+            parts.append(f"조회 재시도 {rec['count']}회째 대기(다음 시도 {time.strftime('%H:%M:%S', time.localtime(rec['next_at']))}): "
+                         f"{str(rec.get('last_error', ''))[:120]}")
+        except (ValueError, KeyError, TypeError):
+            continue
+    return "; ".join(parts)
+
+
 def line_status(store: Store, model: str, method: str) -> dict:
     """Card/detail view of one Line: current unfinished batch (COMPLETE -> empty slot, history kept) + controls."""
     ln = store.peek_line(model, method)
@@ -157,6 +171,11 @@ def line_status(store: Store, model: str, method: str) -> dict:
     if method == STAGE2_METHOD:
         out["wait"] = store.get(f"s2_wait_{model}") or ""
     out["drain"] = out["line_drain"] or out["drain_once"]
+    keys = [f"tw_line:{model}:{method}:prepare"]
+    if b is not None and b["state"] != "COMPLETE":
+        keys += [r["key"] for r in store.kv_prefix(f"tw_b{b['id']}:")]
+    if text := transient_wait_text(store, keys):   # a stage-2 Part wait and a retry wait may both be shown
+        out["wait"] = "; ".join(x for x in (out["wait"], text) if x)
     if b is not None and b["state"] != "COMPLETE":   # a finished batch leaves the slot EMPTY; it stays in history
         out.update(state=b["state"], batch=f"{b['shard']}_{b['batch']}", branch=b["branch"],
                    pr=b["pr_number"], head=b["head_sha"], session=b["session_id"],

@@ -49,7 +49,7 @@ DEFAULTS = {
     ],
     "trusted_reviewers": ["genonfire"],
     "poll_seconds": 300,
-    "pr_head_lag_timeout_seconds": 1800,
+    "pr_head_lag_timeout_seconds": 1800,   # warning / "PR 생성 여부 미확정" threshold (#2092); never an ERROR by itself
     "rate_limit_retries": 3,
     "rate_limit_backoff_seconds": 120,
 }

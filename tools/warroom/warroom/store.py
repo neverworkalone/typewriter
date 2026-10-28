@@ -106,7 +106,7 @@ ACTIVE_STATES = ("PREPARE", "PRODUCING", "WAITING_REVIEW", "FIXING", "MERGED",
 # Per-batch kv keys the Supervisor writes; removed with the batch by Clear.
 BATCH_KV_PREFIXES = ("last_poll_", "last_poll_fixhead_", "headlag_", "last_merge_check_", "no_pr_recovery_",
                      "verified_completion_run_", "defect_hold_", "cleanup_proof_", "stop_after_pr_",
-                     "s2_run_start_")
+                     "s2_run_start_", "pending_", "pr_create_")
 
 
 class LineBusy(Exception):
@@ -221,6 +221,15 @@ class Store:
         with self._conn() as c:
             c.execute("INSERT INTO kv(key,value) VALUES(?,?) "
                       "ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, value))
+
+    def kv_prefix(self, prefix: str) -> list:
+        with self._conn() as c:
+            return c.execute("SELECT key, value FROM kv WHERE substr(key, 1, ?)=? ORDER BY key",
+                             (len(prefix), prefix)).fetchall()
+
+    def delete_prefix(self, prefix: str) -> None:
+        with self._conn() as c:
+            c.execute("DELETE FROM kv WHERE substr(key, 1, ?)=?", (len(prefix), prefix))
 
     def delete(self, key: str) -> None:
         with self._conn() as c:
@@ -474,6 +483,8 @@ class Store:
                 c.execute(f"DELETE FROM {table} WHERE batch_id=?", (bid,))
             for prefix in BATCH_KV_PREFIXES:
                 c.execute("DELETE FROM kv WHERE key=?", (f"{prefix}{bid}",))
+            # Transient-retry backoff keys are `tw_b<bid>:<stage>`; the trailing colon keeps b1 from touching b10.
+            c.execute("DELETE FROM kv WHERE substr(key, 1, ?)=?", (len(f"tw_b{bid}:"), f"tw_b{bid}:"))
             # The batch is gone for good: its shared-defect reports must leave the publish/release loops (other
             # batches linked to the same Issue keep their own defect rows untouched).
             c.execute("UPDATE defects SET state='OVERRIDDEN', hold_reason='운영자가 배치를 Clear함', updated_at=? "

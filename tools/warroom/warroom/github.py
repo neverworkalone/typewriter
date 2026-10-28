@@ -3,16 +3,26 @@ from __future__ import annotations
 
 import json
 
-from .shell import Runner
+from .shell import Result, Runner, transient
 
 
 class GhError(Exception):
     pass
 
 
+class GhTransient(GhError):
+    """The query failed in a way asking again can fix (timeout, 5xx, 429, rate limit, network); nothing was decided."""
+
+
 class GhClient:
     def __init__(self, runner: Runner, env: dict, repo: str):
         self.runner, self.env, self.repo = runner, env, repo
+
+    @staticmethod
+    def _fail(what: str, r: Result) -> GhError:
+        why = transient(r)
+        text = r.err.strip() or r.out.strip()
+        return GhTransient(f"{what}: {text or why}") if why else GhError(f"{what}: {text}")
 
     def _api(self, path: str, paginate: bool = False):
         argv = ["gh", "api", path]
@@ -20,7 +30,7 @@ class GhClient:
             argv += ["--paginate", "--slurp"]
         r = self.runner.run(argv, env=self.env, timeout=60)
         if not r.ok:
-            raise GhError(f"gh api {path}: {r.err.strip() or r.out.strip()}")
+            raise self._fail(f"gh api {path}", r)
         data = json.loads(r.out or "null")
         if paginate:  # --slurp yields a list of pages
             return [item for page in data for item in page]
@@ -31,7 +41,7 @@ class GhClient:
                              "--limit", "300", "--json", "number,headRefName,baseRefName,files,title"],
                             env=self.env, timeout=60)
         if not r.ok:
-            raise GhError(f"gh pr list: {r.err.strip()}")
+            raise self._fail("gh pr list", r)
         return json.loads(r.out or "[]")
 
     def prs_for_branch(self, branch: str) -> list[dict]:
@@ -39,7 +49,7 @@ class GhClient:
                              "--state", "all", "--json", "number,state,headRefOid,mergedAt"],
                             env=self.env, timeout=60)
         if not r.ok:
-            raise GhError(f"gh pr list --head: {r.err.strip()}")
+            raise self._fail("gh pr list --head", r)
         return json.loads(r.out or "[]")
 
     def create_pr(self, head: str, base: str, title: str, body: str, labels: list[str]) -> None:
@@ -50,7 +60,7 @@ class GhClient:
             argv += ["--label", label]
         r = self.runner.run(argv, env=self.env, timeout=120)
         if not r.ok:
-            raise GhError(f"gh pr create: {r.err.strip() or r.out.strip()}")
+            raise self._fail("gh pr create", r)
 
     def close_pr(self, n: int) -> None:
         """Close without merging; the branch is left alone (deleted separately, after verification)."""
