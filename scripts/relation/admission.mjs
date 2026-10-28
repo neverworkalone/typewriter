@@ -397,7 +397,7 @@ function existingCandidateLinks(relationRows, index) {
     const target = index.byId.get(row.target_record_id);
     const source = index.byId.get(row.source_record_id);
     if (target) {
-      const forms = [0, 1].includes(row.candidate_assignment_version) && Array.isArray(row.candidate_forms)
+      const forms = row.candidate_assignment_version === 1 && Array.isArray(row.candidate_forms)
         ? row.candidate_forms
         : legacyCandidateFormsForRecord(target, index);
       for (const form of forms) {
@@ -573,7 +573,9 @@ export function verifyAccounting({ canonicalRows, candidateFiles, relationRows: 
     else {
       const target = index.byId.get(row.target_record_id);
       if (!target) return;
-      const assignedCandidates = [0, 1].includes(row.candidate_assignment_version) ? row.candidate_forms : null;
+      // Version 0 preserves the legacy inference surface, not a selected spelling. Reapply the original
+      // source-candidate-aware inference below; only version 1 is an explicit assignment.
+      const assignedCandidates = row.candidate_assignment_version === 1 ? row.candidate_forms : null;
       if (Array.isArray(assignedCandidates)) {
         for (const assignedCandidate of assignedCandidates) {
           claim(row.source_sense_id, assignedCandidate, 'an ID relation', { kind: 'id', targetSenseId: row.target_sense_id }, at);
@@ -617,7 +619,7 @@ export function verifyAccounting({ canonicalRows, candidateFiles, relationRows: 
     }
   }
 
-  // Legacy ID rows without persisted assignments infer non-orthographic search aliases only when no explicit
+  // Legacy ID rows (unversioned or version 0) infer non-orthographic search aliases only when no explicit
   // Relation, Drop, or already-approved relation owns that Candidate.
   for (const alias of deferredSearchAliasClaims) {
     const key = `${alias.source_sense_id}\u0000${alias.form}`;

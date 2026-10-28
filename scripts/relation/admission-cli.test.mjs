@@ -788,6 +788,92 @@ test('merge coalesces consistent independently adjudicated reciprocal ID decisio
   assert.equal(await readFile(path.join(root, 'data/relations/relation-001.jsonl'), 'utf8'), approvedBeforeConflict);
 });
 
+for (const includeTargetAlias of [false, true]) {
+  test(`legacy reciprocal merge keeps inferred forms source-bound${includeTargetAlias ? ' with an extra target spelling' : ''}`, async (t) => {
+    const scratch = path.join(REPOSITORY_DIRECTORY, '.warroom-scratch');
+    await mkdir(scratch, { recursive: true });
+    const root = await mkdtemp(path.join(scratch, 'admission-legacy-reciprocal-'));
+    t.after(() => rm(root, { recursive: true, force: true }));
+
+    const records = Array.from({ length: 1000 }, (_, index) => {
+      if (index === 0) return { id: 'w1', lemma: '생명 보험 회사', senses: [{ id: 'w1-s1', pos: 'noun', gloss: '생명 보험을 판매하는 회사.' }] };
+      if (index === 100) return {
+        id: 'w2', lemma: '생명 보험',
+        ...(includeTargetAlias ? { search_forms: ['생명보험'] } : {}),
+        senses: [{ id: 'w2-s1', pos: 'noun', gloss: '사람의 생명에 대하여 보험금을 지급하는 보험.' }],
+      };
+      const id = `wfixture${index}`;
+      return { id, lemma: `표제${index}`, senses: [{ id: `${id}-s1`, pos: 'noun', gloss: `뜻${index}` }] };
+    });
+    for (const directory of ['data/canonical', 'data/relation-candidates/001', 'data/relations', 'data/relation-drops']) {
+      await mkdir(path.join(root, directory), { recursive: true });
+    }
+    await writeFile(path.join(root, 'data/canonical/stdict-0001.jsonl'), jsonl(records));
+    const producers = ['a_codex', 'a_claude', 'b_codex', 'b_claude', 'c_codex', 'd_codex'];
+    for (const batch of ['01', '02']) {
+      const batchRecords = records.slice((Number(batch) - 1) * 500, Number(batch) * 500);
+      for (const producer of producers) {
+        await writeFile(path.join(root, `data/relation-candidates/001/001_${batch}_${producer}.jsonl`), jsonl(batchRecords.map((record) => ({
+          record_id: record.id,
+          senses: [{
+            sense_id: record.senses[0].id,
+            candidates: batch === '01' && producer === 'a_codex'
+              ? record.id === 'w1' ? ['생명 보험', '독립어'] : record.id === 'w2' ? ['생명 보험 회사'] : []
+              : [],
+          }],
+        }))));
+      }
+    }
+
+    // This Part was prepared independently before the earlier Part's legacy row appeared.
+    const checkpoint = '.warroom-scratch/relation-admission-001-01-02.json';
+    await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '02'], { root }));
+    const chunk = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint], { root }));
+    assert.deepEqual(chunk.items.flatMap((item) => item.candidates.map((candidate) => candidate.text)), ['생명 보험 회사']);
+    const decisionsFile = '.warroom-scratch/legacy-reciprocal-decisions.json';
+    await writeFile(path.join(root, decisionsFile), JSON.stringify({
+      chunk_id: chunk.chunk_id,
+      decisions: [{
+        source_sense_id: 'w2-s1', candidate: '생명 보험 회사', disposition: 'relation',
+        target_resolution: 'exact', target_record_id: 'w1', target_sense_id: 'w1-s1',
+        type: 'near', relevance: 3, reverse_type: 'near', reverse_relevance: 3,
+      }],
+    }));
+    await quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', decisionsFile], { root }));
+
+    const relationPath = path.join(root, 'data/relations/relation-001.jsonl');
+    const legacyRow = {
+      source_record_id: 'w1', source_sense_id: 'w1-s1', target_record_id: 'w2', target_sense_id: 'w2-s1',
+      type: 'near', relevance: 3, reverse_type: 'near', reverse_relevance: 3,
+    };
+    await writeFile(relationPath, jsonl([legacyRow]));
+    const merged = await quiet(() => run(['merge', '--checkpoint', checkpoint], { root }));
+    assert.equal(merged.merged, true);
+    const rows = (await readFile(relationPath, 'utf8')).trim().split('\n').map(JSON.parse);
+    assert.equal(rows.length, 1, 'reciprocal decisions retain one bidirectional ID row');
+    assert.equal(rows[0].candidate_assignment_version, 0, 'the original forward direction remains legacy-inferred');
+    assert.deepEqual(rows[0].candidate_forms, includeTargetAlias ? ['생명 보험', '생명보험'] : ['생명 보험']);
+    assert.deepEqual(rows[0].reverse_candidate_forms, ['생명 보험 회사'], 'the newly selected reciprocal spelling is persisted exactly');
+
+    const partCounts = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '02'], { root }));
+    assert.deepEqual([partCounts.unique, partCounts.reverse_covered, partCounts.missing], [1, 1, 0]);
+    await rm(path.join(root, checkpoint));
+
+    const resumedPrepare = await quiet(() => run(['prepare', '--shard', '001', '--batch', '01'], { root }));
+    assert.deepEqual(texts(resumedPrepare), ['독립어'], 'prepare skips the previously approved candidate and retains an independent one');
+
+    // Resolve the still-independent fixture candidate so full Batch/Shard accounting can run on the same inputs.
+    rows.push({
+      source_record_id: 'w1', source_sense_id: 'w1-s1', text: '독립어', type: 'association', relevance: 5,
+    });
+    await writeFile(relationPath, jsonl(rows));
+    const batchCounts = await quiet(() => run(['verify', '--shard', '001', '--batch', '01'], { root }));
+    assert.deepEqual([batchCounts.unique, batchCounts.relation, batchCounts.reverse_covered, batchCounts.missing], [3, 2, 1, 0]);
+    const shardCounts = await quiet(() => run(['verify', '--shard', '001'], { root }));
+    assert.deepEqual([shardCounts.unique, shardCounts.relation, shardCounts.reverse_covered, shardCounts.missing], [3, 2, 1, 0]);
+  });
+}
+
 test('merge coalesces orthographic aliases for one target sense and keeps the canonical headword judgment', async (t) => {
   const scratchDirectory = path.join(REPOSITORY_DIRECTORY, '.warroom-scratch');
   await mkdir(scratchDirectory, { recursive: true });
