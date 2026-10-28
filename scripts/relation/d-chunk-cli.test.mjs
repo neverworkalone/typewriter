@@ -385,6 +385,18 @@ test('recorded cursors require the exact active record, search and unconsumed LI
   });
   const zero = { ...first, status: 'ZERO_HITS', hits: 0, complete: true, cursor_out: null };
   assert.throws(() => resolveRecordedCursor({ cursor: 'next', recordId: 'w1', forms: ['낭축'], boundary: 'both', entries: [zero] }), /no recorded unfinished LIMITED/u);
+  const failedStart = { ...first, status: 'SEARCH_FAILED', hits: 0, complete: false, cursor_in: null, cursor_out: null };
+  assert.equal(resolveRecordedCursor({ cursor: null, recordId: 'w1', forms: ['낭축'], boundary: 'both', entries: [failedStart] }), null,
+    'a failed first page can still be retried without a cursor');
+  const failedContinuation = { ...second, status: 'SEARCH_FAILED', hits: 0, complete: false, cursor_in: 'cursor-one', cursor_out: null };
+  for (const cursor of [null, 'next']) {
+    assert.throws(() => resolveRecordedCursor({ cursor, recordId: 'w1', forms: ['낭축'], boundary: 'both', entries: [first, failedContinuation] }), (error) => {
+      assert.match(error.message, /SEARCH_FAILED/u);
+      assert.match(error.message, /preserve the evidence and report/u);
+      assert.doesNotMatch(error.message, /continue it with next/u);
+      return true;
+    });
+  }
   const branched = [first, cursorEvidence('w1', ['낭축'], 'both', 'cursor-other')];
   assert.throws(() => resolveRecordedCursor({ cursor: 'next', recordId: 'w1', forms: ['낭축'], boundary: 'both', entries: branched }), (error) => {
     assert.match(error.message, /more than one/u);
@@ -756,6 +768,31 @@ withWorld('cursor next resumes recorded search pages and invalid cursor input le
 
   const previous = beforeInvalid.split('\n').filter(Boolean).map(JSON.parse).find((entry) => entry.record_id === 'w001' && entry.forms[0] === '새벽안개');
   assert.equal(previous.status, 'LIMITED', 'prepare-issued cursor is persisted as unfinished evidence');
+  const failedContinuation = {
+    ...previous,
+    status: 'SEARCH_FAILED',
+    hits: 0,
+    complete: false,
+    cursor_in: previous.cursor_out,
+    cursor_out: null,
+    source: 'search',
+  };
+  await writeFile(searchesPath, `${beforeInvalid}${JSON.stringify(failedContinuation)}\n`);
+  const withFailedContinuation = await readFile(searchesPath, 'utf8');
+  await assert.rejects(searchActive({
+    ref: 's1', contexts: 8, databasePath: world.options.databasePath, root: world.root,
+  }), /continuation of this cursor chain has recorded SEARCH_FAILED/u);
+  assert.equal(await readFile(searchesPath, 'utf8'), withFailedContinuation, 'cursorless retry preserves failed continuation evidence');
+  await assert.rejects(searchActive({
+    ref: 's1', cursor: 'next', databasePath: world.options.databasePath, root: world.root,
+  }), /continuation of this cursor chain has recorded SEARCH_FAILED/u);
+  assert.equal(await readFile(searchesPath, 'utf8'), withFailedContinuation, 'next is also blocked after a failed continuation');
+  await assert.rejects(searchBatchActive({
+    requests: [{ sense: 's1', cursor: 'next' }], databasePath: world.options.databasePath, root: world.root,
+  }), /continuation of this cursor chain has recorded SEARCH_FAILED/u);
+  assert.equal(await readFile(searchesPath, 'utf8'), withFailedContinuation, 'search-batch records no evidence after a failed continuation');
+  await writeFile(searchesPath, beforeInvalid);
+
   const altered = JSON.parse(Buffer.from(previous.cursor_out, 'base64url').toString('utf8'));
   altered.after += 1;
   const forged = Buffer.from(JSON.stringify(altered), 'utf8').toString('base64url');

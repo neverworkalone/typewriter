@@ -490,8 +490,10 @@ export function resolveRecordedCursor({ cursor, recordId, forms, boundary, entri
       throw cursorInputError(ref, 'recorded search evidence is incomplete or has an unknown status');
     }
     if (entry.status === 'SEARCH_FAILED') {
-      if (requestedCursor === null) continue;
-      throw cursorInputError(ref, 'this search has recorded SEARCH_FAILED evidence');
+      if (requestedCursor === null && entry.cursor_in === null) continue;
+      throw cursorInputError(ref, entry.cursor_in === null
+        ? 'this search has recorded SEARCH_FAILED evidence'
+        : 'a continuation of this cursor chain has recorded SEARCH_FAILED evidence');
     }
 
     const input = entry.cursor_in;
