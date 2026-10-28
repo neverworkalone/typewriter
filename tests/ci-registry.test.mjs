@@ -738,6 +738,21 @@ test('Deep gate separates validated data from affected contracts and fails close
     }).deepMode,
     'none',
   );
+  for (const warRoomPath of [
+    'tools/warroom/warroom/supervisor.py',
+    'tools/warroom/tests/test_issue_2092.py',
+    'tools/warroom/run-tests.mjs',
+    'tools/warroom/requirements.txt',
+    'war',
+    'dashboard',
+  ]) {
+    assert.equal(classifyDeepGatePaths([warRoomPath]).deepMode, 'none', warRoomPath);
+  }
+  assert.equal(
+    classifyDeepGatePaths(['tools/warroom/warroom/supervisor.py', 'scripts/ci/registry.mjs']).deepMode,
+    'full',
+    'a War Room source cannot hide a CI registry change from Deep classification',
+  );
   assert.equal(classifyDeepGatePaths(['tests/new-unregistered-check.test.mjs']).deepMode, 'full');
   assert.equal(classifyDeepGatePaths(['docs/review-toolchain.md', 'scripts/ci/run-category.mjs']).deepMode, 'full');
   assert.equal(classifyDeepGatePaths([]).deepMode, 'full');
@@ -959,7 +974,7 @@ test('CI changed-path gate isolates War Room while keeping mixed/unknown changes
       `changed_paths_complete=${expectedPathsComplete}`,
       '',
     ].join('\n'), name);
-    const runEvidenceGate = (classifierOutcome, pathsComplete) => {
+    const runEvidenceGate = (classifierOutcome, pathsComplete, overrides = {}) => {
       try {
         execFileSync('bash', ['-c', evidenceScript], {
           cwd: root,
@@ -968,7 +983,14 @@ test('CI changed-path gate isolates War Room while keeping mixed/unknown changes
             ...process.env,
             CLASSIFIER_OUTCOME: classifierOutcome,
             CHANGED_PATHS_COMPLETE: pathsComplete,
+            RUN_LEVEL: expectedLevel,
+            DEEP_MODE: 'none',
+            WARROOM_OUTCOME: expectedWarRoom ? 'success' : 'skipped',
+            NORMAL_OUTCOME: expectedLevel === 'normal' ? 'success' : 'skipped',
+            SELECTIVE_OUTCOME: 'skipped',
+            SCHEMA_CHANGED: 'false',
             GITHUB_STEP_SUMMARY: summary,
+            ...overrides,
           },
         });
         return 0;
@@ -979,6 +1001,11 @@ test('CI changed-path gate isolates War Room while keeping mixed/unknown changes
     assert.equal(runEvidenceGate('success', String(expectedPathsComplete)), expectedPathsComplete ? 0 : 1, name);
     if (expectedPathsComplete) {
       assert.equal(runEvidenceGate('failure', ''), 1, `${name}: classifier failure must fail closed`);
+    }
+    if (expectedLevel === 'warroom') {
+      assert.equal(runEvidenceGate('success', 'true', { WARROOM_OUTCOME: 'failure' }), 1, `${name}: failed War Room tests cannot grant exemption`);
+      assert.equal(runEvidenceGate('success', 'true', { NORMAL_OUTCOME: 'success' }), 1, `${name}: unexpected Normal run is not an isolated War Room gate`);
+      assert.equal(runEvidenceGate('success', 'true', { SCHEMA_CHANGED: 'true' }), 1, `${name}: schema owner changes must never get exemption`);
     }
     const expectedSummary = {
       none: /Changed-path classification: none/u,
