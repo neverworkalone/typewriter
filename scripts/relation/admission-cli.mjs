@@ -382,21 +382,24 @@ function coalesceIdenticalSensePairRelations(relations, relationCandidates) {
     }
 
     const selected = selectedRelations[selectedIndex];
-    const sameJudgment = selected.source_record_id === relation.source_record_id
+    const sameClassification = selected.source_record_id === relation.source_record_id
       && selected.target_record_id === relation.target_record_id
       && selected.type === relation.type
-      && selected.relevance === relation.relevance
-      && selected.reverse_type === relation.reverse_type
-      && selected.reverse_relevance === relation.reverse_relevance;
-    if (!sameJudgment) {
+      && selected.reverse_type === relation.reverse_type;
+    if (!sameClassification) {
       // Preserve conflicting decisions so the common merge-conflict gate can reject them.
       selectedRelations.push(relation);
       selectedCandidates.push(candidateKey);
       continue;
     }
 
+    // One ID row represents this exact sense pair. When distinct candidate forms assign
+    // different priorities to the same relation types, retain the strongest priority
+    // (the lower relevance number) independently in each direction.
     selectedRelations[selectedIndex] = {
       ...selected,
+      relevance: Math.min(selected.relevance, relation.relevance),
+      reverse_relevance: Math.min(selected.reverse_relevance, relation.reverse_relevance),
       candidate_forms: [...new Set([...selected.candidate_forms, ...relation.candidate_forms])],
       reverse_candidate_forms: [...new Set([...selected.reverse_candidate_forms, ...relation.reverse_candidate_forms])],
     };
@@ -1094,7 +1097,8 @@ function assertCheckpointMerged(checkpoint, relationRows, dropRows) {
   if (!checkpoint.merged) throw new Error('Part checkpoint is not marked merged');
   const dropSet = new Set(dropRows.map(stableRow));
   const expected = decisionRows(checkpoint);
-  const coalesced = coalesceOrthographicAliasRelations(checkpoint, expected.relations, expected.relationCandidates);
+  const orthographicCoalesced = coalesceOrthographicAliasRelations(checkpoint, expected.relations, expected.relationCandidates);
+  const coalesced = coalesceIdenticalSensePairRelations(orthographicCoalesced.relations, orthographicCoalesced.relationCandidates);
   for (const row of coalesced.relations) {
     const merged = relationRows.some((approved) => {
       if ('text' in row || 'text' in approved) return stableRow(approved) === stableRow(row);

@@ -945,6 +945,63 @@ test('merge coalesces orthographic aliases for one target sense and keeps the ca
   assert.deepEqual(await readFile(relationPath), relationBytes, 'a conflicting retry cannot rewrite the approved Relation row');
 });
 
+test('merge coalesces one sense pair reached by distinct candidates using the strongest relevance per direction', async (t) => {
+  const scratchDirectory = path.join(REPOSITORY_DIRECTORY, '.warroom-scratch');
+  await mkdir(scratchDirectory, { recursive: true });
+  const root = await mkdtemp(path.join(scratchDirectory, 'admission-pair-relevance-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const records = Array.from({ length: 500 }, (_, index) => {
+    if (index === 0) return {
+      id: 'w228756', lemma: '엉벙',
+      senses: [{ id: 'w228756-s1', pos: 'noun', gloss: '쓸데없는 것들을 너절하게 벌이어 놓은 모양.' }],
+    };
+    if (index === 1) return {
+      id: 'w459957', lemma: '어수선하다', search_forms: ['어수선'],
+      senses: [{ id: 'w459957-s1', pos: 'adjective', gloss: '어수선한 상태에 있다.' }],
+    };
+    return {
+      id: `w${index + 1}`, lemma: `표제${index + 1}`,
+      senses: [{ id: `w${index + 1}-s1`, pos: 'noun', gloss: `뜻${index + 1}` }],
+    };
+  });
+  for (const directory of ['data/canonical', 'data/relation-candidates/001', 'data/relations', 'data/relation-drops']) {
+    await mkdir(path.join(root, directory), { recursive: true });
+  }
+  await writeFile(path.join(root, 'data/canonical/stdict-0001.jsonl'), jsonl(records));
+  for (const producer of ['a_codex', 'a_claude', 'b_codex', 'b_claude', 'c_codex', 'd_codex']) {
+    await writeFile(path.join(root, `data/relation-candidates/001/001_01_${producer}.jsonl`), jsonl(records.map((record, index) => ({
+      record_id: record.id,
+      senses: [{ sense_id: record.senses[0].id, candidates: producer === 'a_codex' && index === 0 ? ['어수선', '어수선하다'] : [] }],
+    }))));
+  }
+
+  const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
+  await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  const chunk = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint], { root }));
+  assert.deepEqual(chunk.items[0].candidates.map((candidate) => candidate.text), ['어수선', '어수선하다']);
+  const decisionsFile = '.warroom-scratch/decisions.json';
+  await writeFile(path.join(root, decisionsFile), JSON.stringify({
+    chunk_id: chunk.chunk_id,
+    decisions: [
+      { source_sense_id: 'w228756-s1', candidate: '어수선', disposition: 'relation', target_resolution: 'exact', target_record_id: 'w459957', target_sense_id: 'w459957-s1', type: 'near', relevance: 4, reverse_type: 'mood', reverse_relevance: 8 },
+      { source_sense_id: 'w228756-s1', candidate: '어수선하다', disposition: 'relation', target_resolution: 'exact', target_record_id: 'w459957', target_sense_id: 'w459957-s1', type: 'near', relevance: 3, reverse_type: 'mood', reverse_relevance: 6 },
+    ],
+  }));
+  await quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', decisionsFile], { root }));
+
+  const merged = await quiet(() => run(['merge', '--checkpoint', checkpoint], { root }));
+  assert.equal(merged.relations_added, 1);
+  const relations = (await readFile(path.join(root, 'data/relations/relation-001.jsonl'), 'utf8')).trim().split('\n').map(JSON.parse);
+  assert.deepEqual(relations, [{
+    source_record_id: 'w228756', source_sense_id: 'w228756-s1',
+    target_record_id: 'w459957', target_sense_id: 'w459957-s1',
+    type: 'near', relevance: 3, reverse_type: 'mood', reverse_relevance: 6,
+    candidate_assignment_version: 1, candidate_forms: ['어수선', '어수선하다'], reverse_candidate_forms: ['엉벙'],
+  }]);
+  const verified = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  assert.deepEqual([verified.unique, verified.relation, verified.missing], [2, 1, 0]);
+});
+
 test('compact chunks are a lossless view and compact decisions expand into the same validated decisions', async (t) => {
   const { root } = await chunkRepository(t);
   const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
