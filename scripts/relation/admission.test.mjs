@@ -6,6 +6,7 @@ import {
   candidateInventory,
   normalizeCandidate,
   prepareShard,
+  sameSpellingTargets,
   validateRelationRows,
   verifyAccounting,
 } from './admission.mjs';
@@ -117,6 +118,66 @@ test('Stage 2 retains an orthographic search form that is another Canonical lemm
     items.find((item) => item.sense_id === 'w122481-s1').candidates.map((candidate) => candidate.text),
     ['무릎치기'],
   );
+});
+
+test('Stage 2 resolves curated lexical search forms alongside an unrelated exact lemma', () => {
+  const source = {
+    id: 'w1', lemma: '야나치다',
+    senses: [{ id: 'w1-s1', pos: 'adjective', gloss: '영락없고 매몰하다.' }],
+  };
+  const exactLemma = {
+    id: 'w2', lemma: '매정', search_forms: ['매정'],
+    senses: [{ id: 'w2-s1', pos: 'noun', gloss: '정자를 난자에 결합시키는 일.' }],
+  };
+  const searchFormAlias = {
+    id: 'w3', lemma: '매정하다', search_forms: ['매정하다', '매정'],
+    senses: [
+      { id: 'w3-s1', pos: 'adjective', gloss: '몹시 쌀쌀맞다.' },
+      { id: 'w3-s2', pos: 'adjective', gloss: '얄미울 정도로 쌀쌀맞고 인정이 없다.' },
+    ],
+  };
+  const secondExactLemma = {
+    id: 'w4', lemma: '매정', search_forms: ['매정'],
+    senses: [{ id: 'w4-s1', pos: 'noun', gloss: '정자를 난자에 결합시키는 다른 일.' }],
+  };
+  const secondSearchFormAlias = {
+    id: 'w5', lemma: '매정스럽다', search_forms: ['매정스럽다', '매정'],
+    senses: [{ id: 'w5-s1', pos: 'adjective', gloss: '매정한 성질이 있다.' }],
+  };
+  const canonicalRows = [source];
+  const candidateFiles = [{
+    name: '001_01_a_codex.jsonl',
+    rows: [{ record_id: source.id, senses: [{ sense_id: 'w1-s1', candidates: ['매정'] }] }],
+  }];
+  // The aliases precede both exact-lemma records in Canonical order.
+  const index = buildCanonicalIndex([source, searchFormAlias, exactLemma, secondSearchFormAlias, secondExactLemma]);
+
+  assert.deepEqual(
+    sameSpellingTargets(index, '매정').map((target) => [target.record_id, target.senses.map((sense) => sense.sense_id)]),
+    [['w2', ['w2-s1']], ['w4', ['w4-s1']], ['w3', ['w3-s1', 'w3-s2']], ['w5', ['w5-s1']]],
+    'exact-lemma and alias groups each keep Canonical order, with exact lemmas first',
+  );
+  const prepared = prepareShard({ canonicalRows, candidateFiles, index, scopeRows: canonicalRows });
+  assert.deepEqual(prepared.items[0].candidates[0].same_spelling_records, ['w2', 'w4', 'w3', 'w5']);
+
+  const relation = {
+    source_record_id: source.id, source_sense_id: 'w1-s1',
+    target_record_id: searchFormAlias.id, target_sense_id: 'w3-s2',
+    type: 'near', relevance: 2, reverse_type: 'near', reverse_relevance: 2,
+  };
+  const covered = prepareShard({
+    canonicalRows, candidateFiles, approvedRelationRows: [relation], index, scopeRows: canonicalRows,
+  });
+  assert.deepEqual(covered.items, [], 'a stored ID relation also covers its curated search-form candidate');
+  assert.equal(covered.stats.skipped_existing, 1);
+
+  const verified = verifyAccounting({
+    canonicalRows,
+    candidateFiles,
+    relationRows: [relation],
+    dropRows: [], otherRelationRows: [], index, scopeRows: canonicalRows,
+  });
+  assert.equal(verified.missing, 0, 'an ID link to the curated search-form target accounts for its candidate spelling');
 });
 
 test('an exact Canonical lemma wins over a colliding orthographic form for existing ID coverage', () => {
