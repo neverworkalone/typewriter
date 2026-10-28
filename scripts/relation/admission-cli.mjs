@@ -1428,8 +1428,8 @@ function parseOptionalDecisions(text, checkpoint, links, digest) {
           reverse_type: reverseType,
           reverse_relevance: compactTier(reverseTierText, `${alias} reverse`),
         };
-        validateDecision(row.item, { ...row.candidate, additional_relations: [...row.candidate.additional_relations, ...current.relations] }, relation);
         if (current.relations.some((saved) => saved.target_sense_id === target.sense_id)) throw new Error(`repeats target ${target.sense_id}`);
+        validateDecision(row.item, { ...row.candidate, additional_relations: [...row.candidate.additional_relations, ...current.relations] }, relation);
         current.relations.push(relation);
       } else throw new Error('use skip or R <type> <tier> T<k> <reverse_type> <reverse_tier>');
       decisions.set(alias, current);

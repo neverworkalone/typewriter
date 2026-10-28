@@ -1004,8 +1004,8 @@ test('merge coalesces orthographic aliases for one target sense and keeps the ca
   await writeFile(checkpointPath, `${JSON.stringify(conflictingCheckpoint)}\n`);
   await assert.rejects(
     () => quiet(() => run(['merge', '--checkpoint', checkpoint], { root })),
-    /cannot merge duplicate or reverse-duplicate ID relation/u,
-    'a stored judgment that differs from the canonical alias selection remains a conflict',
+    /Relation output matches neither its trusted premerge snapshot nor the deterministic Part result/u,
+    'a changed merged checkpoint is rejected before it can rewrite the approved Relation row',
   );
   assert.deepEqual(await readFile(relationPath), relationBytes, 'a conflicting retry cannot rewrite the approved Relation row');
 });
