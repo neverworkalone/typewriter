@@ -3,7 +3,8 @@
 The Supervisor owns everything deterministic: `prepare` (once per batch), the compact chunk view, extracting the AI's
 FINAL answer block, `save-chunk --format compact`, deciding from the SAVED files whether a chunk is done, and (in
 `supervisor.py`) merge / commit / push / PR. The AI only reads one inlined chunk view and answers; a new chunk always
-starts a new session, and only a rejected save of the same chunk resumes that session (at most MAX_TRIES times).
+starts a new session, and only a rejected save of the same chunk resumes that session (at most
+MAX_SAVE_TRIES times). Final merge repairs retain their separate MAX_TRIES cap.
 
 Completion is judged from `candidates/chunk-NNN.jsonl` against the checkpoint's own chunk list and source files, never
 from an exit code, a file count or another chunk's file. A/B state semantics are separate from Stage 2 `next_action`
@@ -21,7 +22,8 @@ from .progress import SCRATCH
 METHODS = ("a", "b")
 CLI = "scripts/relation/candidate-workbench.mjs"
 CHUNK_SIZE = 50
-MAX_TRIES = 3          # same-session corrections of one chunk after its first answer
+MAX_TRIES = 2          # final-merge repair attempts for one chunk
+MAX_SAVE_TRIES = 3     # same-session save corrections after the chunk's first answer
 PR_LABEL = "batch"
 INLINE_MAX_PROMPT_BYTES = 100_000   # whole prompt as one argv element (Linux MAX_ARG_STRLEN 128 KiB, kept well below)
 _ALIAS = re.compile(r"\bS[1-9]\d*\b")

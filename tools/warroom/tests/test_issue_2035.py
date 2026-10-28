@@ -261,6 +261,28 @@ class SerialChunks(unittest.TestCase):
         self.assertEqual(w.runner.workbench.merges, 1)
         self.assertEqual(w.row_()["state"], "WAITING_REVIEW")
 
+    def test_save_cleanup_limit_does_not_increase_final_merge_repair_limit(self):
+        w = self.w
+        w.start("single", "deepseek", "a")
+        w.runner.workbench.merge_error = "Candidate v1 invalid: record_id w0060 sense_id w0060-s1 candidate duplicates"
+        w.run_chunks(3)
+        repair = w.adapter.launches[-1]
+        for expected_kind in ("start", "resume"):
+            self.assertEqual(repair["kind"], expected_kind)
+            aliases = [row[0] for row in stage1ab.view_rows((w.wt() / stage1ab.view_path(w.row_(), 2)).read_text())
+                       if row[1] == "w0060-s1"]
+            self.assertEqual(len(aliases), 1)
+            w.adapter.running[repair["pid"]]["text"] = log_text(
+                f"BEGIN chunk 002\n{aliases[0]}\t bad\nEND chunk 002")
+            w.adapter.running[repair["pid"]]["session"] = "ses_merge_repair"
+            w.finish_last()
+            w.tick()
+            if expected_kind == "start":
+                repair = w.adapter.launches[-1]
+        self.assertEqual(len(w.adapter.launches), 5)  # 3 ordinary chunks plus only 2 merge-repair attempts
+        self.assertEqual(w.row_()["state"], "ERROR")
+        self.assertIn("정정 2회", w.row_()["error"])
+
     def test_unidentifiable_merge_rejection_is_an_error_and_nothing_is_regenerated(self):
         w = self.w
         w.start("single", "deepseek", "a")

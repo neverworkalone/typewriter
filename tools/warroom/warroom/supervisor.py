@@ -1938,8 +1938,9 @@ class Supervisor:
             if chunk is None:
                 return self._ab_finalize(b)
             st = stage1ab.load_state(self.store, b["id"], chunk["number"])
-            if st["tries"] > stage1ab.MAX_TRIES:
-                return self._fail(b, "ERROR", f"청크 {chunk['number']:03d}의 저장 거부가 정정 {stage1ab.MAX_TRIES}회 뒤에도 해소되지 않았습니다. "
+            max_tries = stage1ab.MAX_TRIES if repair else stage1ab.MAX_SAVE_TRIES
+            if st["tries"] > max_tries:
+                return self._fail(b, "ERROR", f"청크 {chunk['number']:03d}의 저장 거부가 정정 {max_tries}회 뒤에도 해소되지 않았습니다. "
                                   f"답변({stage1ab.answer_path(b, chunk['number'])})과 상태를 보존합니다.")
         except (stage1ab.ABChunkError, OSError, ValueError, GitError) as e:
             return self._fail(b, "ERROR", f"Stage 1 A/B 상태 확인 실패: {e}. worktree를 보존합니다.")
@@ -2060,10 +2061,13 @@ class Supervisor:
         except (OSError, ValueError) as e:
             return self._fail(b, "ERROR", f"답변 처리 중 파일 오류: {e}. 보존합니다.")
         st["problem"] = diag[:1500]
-        if st["tries"] >= stage1ab.MAX_TRIES:
+        if repair and st["tries"] >= stage1ab.MAX_TRIES:
+            return self._fail(b, "ERROR", f"최종 merge 거부 뒤 청크 {chunk['number']:03d}의 정정 {stage1ab.MAX_TRIES}회가 저장되지 않았습니다. "
+                              f"실제 저장 오류: {diag}. 답변과 상태를 보존합니다.")
+        if not repair and st["tries"] >= stage1ab.MAX_SAVE_TRIES:
             rejected = stage1ab.rejected_candidates(diag, rows, submitted_lines or [])
             if not rejected:
-                st["tries"] = stage1ab.MAX_TRIES + 1
+                st["tries"] = stage1ab.MAX_SAVE_TRIES + 1
                 stage1ab.save_state(self.store, b["id"], chunk["number"], st)
                 self.store.log(b["id"], f"A/B 청크 {chunk['number']:03d} 마지막 정정 저장 거부: {diag[:200]}", "warn")
                 return self._fail(b, "ERROR", f"청크 {chunk['number']:03d}의 정정 3회 뒤에도 저장되지 않았고 제거할 부적격 후보를 정확히 특정하지 못했습니다. 실제 저장 오류: {diag}. 답변과 상태를 보존합니다.")
@@ -2071,12 +2075,12 @@ class Supervisor:
                 cleaned = stage1ab.remove_rejected_candidates(submitted_lines or [], rejected)
                 saved, final_diag = stage1ab.save(self.runner, self.env, wt, b, chunk, cleaned)
             except (stage1ab.ABChunkError, OSError, ValueError) as e:
-                st["tries"] = stage1ab.MAX_TRIES + 1
+                st["tries"] = stage1ab.MAX_SAVE_TRIES + 1
                 stage1ab.save_state(self.store, b["id"], chunk["number"], st)
                 return self._fail(b, "ERROR", f"청크 {chunk['number']:03d}의 정정 3회 뒤 후보 정리 실패: {e}. 기존 오류: {diag}. 답변과 상태를 보존합니다.")
             self._ab_log_candidate_discards(b, chunk, rejected)
             if not saved:
-                st["tries"] = stage1ab.MAX_TRIES + 1
+                st["tries"] = stage1ab.MAX_SAVE_TRIES + 1
                 st["problem"] = final_diag[:1500]
                 stage1ab.save_state(self.store, b["id"], chunk["number"], st)
                 return self._fail(b, "ERROR", f"청크 {chunk['number']:03d}의 정정 3회 뒤 정확히 식별된 후보를 제거했지만 동일 save-chunk 검증이 실패했습니다: {final_diag}. 답변과 상태를 보존합니다.")
