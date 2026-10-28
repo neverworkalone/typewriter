@@ -453,24 +453,33 @@ async function readCursorEntries(directory, meta, ref) {
   }
 }
 
-function cursorInputError(ref, reason) {
-  return new InvalidCursorError(`${ref}: ${reason}; use cursor:"next" with the same forms and boundary; no search executed; no evidence recorded`);
+function cursorInputError(ref, reason, guidance = 'preserve') {
+  const nextStep = guidance === 'no-pending'
+    ? 'check the last recorded status and exact forms/order/boundary; next is available only for an unconsumed LIMITED search'
+    : guidance === 'duplicate'
+      ? 'an unfinished LIMITED search already exists; continue it with next under the same condition, or start only a different condition without a cursor'
+      : guidance === 'batch'
+        ? 'keep one request per record and search condition in this batch; identical senses can share that request'
+        : 'do not retry or restart this condition; preserve the evidence and report the conflict';
+  return new InvalidCursorError(`${ref}: ${reason}; ${nextStep}; no search executed; no evidence recorded`);
 }
 
 /** Resolve only an unconsumed, source-recorded LIMITED cursor for this exact record and search condition. */
 export function resolveRecordedCursor({ cursor, recordId, forms, boundary, entries, ref = 'cursor' }) {
-  if (cursor === null || cursor === undefined || cursor === '') return null;
-  if (typeof cursor !== 'string') throw cursorInputError(ref, 'cursor must be a string or null');
+  const requestedCursor = cursor === '' ? null : cursor ?? null;
+  if (requestedCursor !== null && typeof requestedCursor !== 'string') throw cursorInputError(ref, 'cursor must be a string or null');
   if (!Array.isArray(entries) || entries.some((entry) => entry === null || typeof entry !== 'object' || Array.isArray(entry))) {
     throw cursorInputError(ref, 'recorded search evidence contains a malformed row');
   }
   const key = searchKey(forms, boundary);
-  const matching = entries.filter((entry) => entry?.record_id === recordId && entry?.key === key);
+  const matching = entries.filter((entry) => entry?.record_id === recordId
+    && (entry?.key === key || Array.isArray(entry?.forms) && JSON.stringify(entry.forms) === JSON.stringify(forms)
+      && (entry.boundary ?? null) === (boundary ?? null)));
   const issued = new Map();
   const active = new Set();
 
   for (const entry of matching) {
-    if (!Array.isArray(entry.forms) || JSON.stringify(entry.forms) !== JSON.stringify(forms)
+    if (entry.key !== key || !Array.isArray(entry.forms) || JSON.stringify(entry.forms) !== JSON.stringify(forms)
       || (entry.boundary ?? null) !== (boundary ?? null)) {
       throw cursorInputError(ref, 'recorded search evidence does not match the exact forms and boundary');
     }
@@ -480,7 +489,12 @@ export function resolveRecordedCursor({ cursor, recordId, forms, boundary, entri
       || !Object.hasOwn(entry, 'cursor_out') || entry.cursor_out !== null && typeof entry.cursor_out !== 'string') {
       throw cursorInputError(ref, 'recorded search evidence is incomplete or has an unknown status');
     }
-    if (entry.status === 'SEARCH_FAILED') throw cursorInputError(ref, 'this search has recorded SEARCH_FAILED evidence');
+    if (entry.status === 'SEARCH_FAILED') {
+      // A failed first-page attempt issued no cursor. Ignore it for both retry and
+      // continuation resolution so a later successful LIMITED chain can proceed.
+      if (entry.cursor_in === null) continue;
+      throw cursorInputError(ref, 'a continuation of this cursor chain has recorded SEARCH_FAILED evidence');
+    }
 
     const input = entry.cursor_in;
     if (entry.status === 'ZERO_HITS' && input !== null) {
@@ -502,14 +516,21 @@ export function resolveRecordedCursor({ cursor, recordId, forms, boundary, entri
     }
   }
 
-  if (cursor === 'next') {
-    if (active.size !== 1) throw cursorInputError(ref, active.size === 0
-      ? 'there is no recorded unfinished LIMITED search for this record and exact search condition'
-      : 'more than one recorded unfinished search matches; select a recorded cursor explicitly');
+  if (active.size > 1) {
+    throw cursorInputError(ref, 'more than one unfinished cursor chain matches this record and exact search condition');
+  }
+  if (requestedCursor === null) {
+    if (active.size > 0) {
+      throw cursorInputError(ref, 'a recorded LIMITED search for this record and exact search condition is still unfinished', 'duplicate');
+    }
+    return null;
+  }
+  if (requestedCursor === 'next') {
+    if (active.size === 0) throw cursorInputError(ref, 'there is no recorded unfinished LIMITED search for this record and exact search condition', 'no-pending');
     return active.values().next().value;
   }
-  if (!active.has(cursor)) throw cursorInputError(ref, 'cursor does not exactly match an unconsumed recorded LIMITED.cursor_out for this record and search condition');
-  return cursor;
+  if (!active.has(requestedCursor)) throw cursorInputError(ref, 'cursor does not exactly match an unconsumed recorded LIMITED.cursor_out for this record and search condition');
+  return requestedCursor;
 }
 
 function validateRequestedCursor(database, cursor, forms, boundary, ref) {
@@ -557,6 +578,7 @@ export function buildSearchBatch({ requests, meta, records, search, priorEntries
   const canonical = new Map(records.map((record) => [record.id, record]));
   const groups = new Map();
   const resolved = [];
+  const recordConditions = new Map();
   const allowed = new Set(['sense', 'forms', 'boundary', 'cursor', 'contexts']);
 
   requests.forEach((request, index) => {
@@ -595,6 +617,12 @@ export function buildSearchBatch({ requests, meta, records, search, priorEntries
     }
     const options = searchOptions(contexts, boundary, cursor);
     const exactRequestKey = requestKey(forms, boundary, options);
+    const recordCondition = JSON.stringify([record.id, searchKey(forms, boundary)]);
+    const previousRequest = recordConditions.get(recordCondition);
+    if (previousRequest && previousRequest !== exactRequestKey) {
+      throw cursorInputError(request.sense, 'this batch contains multiple requests for the same record and search condition', 'batch');
+    }
+    recordConditions.set(recordCondition, exactRequestKey);
     let group = groups.get(exactRequestKey);
     if (!group) {
       group = {
@@ -685,9 +713,7 @@ export async function searchBatchActive({ requests, databasePath, root = '.warro
   const rows = await loadBatchRecords(meta.canonical, meta.shard, meta.batch);
   const activeRecords = new Set(meta.records.map((record) => record.record_id));
   const records = rows.filter((record) => activeRecords.has(record.id));
-  const needsCursorEvidence = Array.isArray(requests) && requests.some((request) => request && typeof request === 'object'
-    && request.cursor !== undefined && request.cursor !== null && request.cursor !== '');
-  const priorEntries = needsCursorEvidence ? await readCursorEntries(directory, meta, 'search-batch') : undefined;
+  const priorEntries = await readCursorEntries(directory, meta, 'search-batch');
   const database = openReadonlyDb(databasePath);
   let batch;
   try {
@@ -716,7 +742,7 @@ export async function searchActive({ ref, forms, boundary, cursor, contexts, dat
   if (!Number.isInteger(count) || count < 1 || count > MAX_CALL_CONTEXTS) fail(`--contexts must be 1..${MAX_CALL_CONTEXTS}`);
   if (boundary !== undefined && !['left', 'none', 'both'].includes(boundary)) fail('--boundary must be left, none or both');
   const requestedCursor = cursor === '' ? null : cursor ?? null;
-  const priorEntries = requestedCursor === null ? undefined : await readCursorEntries(directory, meta, ref);
+  const priorEntries = await readCursorEntries(directory, meta, ref);
   const resolvedCursor = resolveRecordedCursor({ cursor: requestedCursor, recordId: record.record_id, forms: list, boundary, entries: priorEntries ?? [], ref });
   const database = openReadonlyDb(databasePath);
   let result;
