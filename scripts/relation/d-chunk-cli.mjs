@@ -376,18 +376,30 @@ async function findActive(root = '.warroom-scratch') {
   const directories = (await readdir(root).catch((error) => error.code === 'ENOENT' ? [] : Promise.reject(error)))
     .filter((name) => /^d-\d{3}_0[12]$/u.test(name));
   const found = [];
+  const inactiveLegacy = [];
   for (const name of directories) {
     const directory = path.join(root, name);
     const files = await readdir(directory).catch((error) => error.code === 'ENOENT' ? [] : Promise.reject(error));
-    if (files.some((file) => legacyFiles.has(file) || file.startsWith('active-chunk.') || file.startsWith('searches.jsonl.')))
-      fail('legacy D scratch files are present; preserving them without automatic migration or deletion');
-    const activeArtifacts = files.filter((file) => file.startsWith('active-'));
-    if (activeArtifacts.some((file) => !/^active-\d{3}\.json$/u.test(file))) fail('active D metadata filename is invalid; preserving scratch files');
-    const activeFiles = activeArtifacts;
-    for (const file of activeFiles) found.push({ directory, file, folder: name });
+    const activeFiles = files.filter((file) => /^active-\d{3}\.json$/u.test(file));
+    const legacyActive = files.includes('active-chunk.json');
+    const invalidActiveFiles = files.filter((file) => file.startsWith('active-')
+      && !/^active-\d{3}\.json$/u.test(file) && file !== 'active-chunk.json' && file !== 'active-chunk.txt');
+    const activeMarkers = activeFiles.length + Number(legacyActive) + invalidActiveFiles.length;
+    const hasLegacy = files.some((file) => legacyFiles.has(file) || file.startsWith('active-chunk.') || file.startsWith('searches.jsonl.'));
+    if (activeMarkers > 0) found.push({ directory, file: activeFiles[0], folder: name, activeFiles, legacyActive, invalidActiveFiles, files });
+    else if (hasLegacy) inactiveLegacy.push(name);
   }
-  if (found.length !== 1) fail(found.length === 0 ? 'no active D chunk' : 'more than one active D chunk');
-  const { directory, file, folder } = found[0];
+  const activeCount = found.reduce((count, item) => count + item.activeFiles.length + Number(item.legacyActive) + item.invalidActiveFiles.length, 0);
+  if (activeCount > 1) fail('more than one active D chunk');
+  if (found.length === 0) {
+    if (inactiveLegacy.length > 0) fail('legacy D scratch files are present; preserving them without automatic migration or deletion');
+    fail('no active D chunk');
+  }
+  const { directory, file, folder, activeFiles, legacyActive, invalidActiveFiles, files: activeDirectoryFiles } = found[0];
+  if (invalidActiveFiles.length > 0) fail('active D metadata filename is invalid; preserving scratch files');
+  if (legacyActive || activeDirectoryFiles.some((name) => legacyFiles.has(name) || name.startsWith('active-chunk.') || name.startsWith('searches.jsonl.')))
+    fail('legacy D scratch files are present; preserving them without automatic migration or deletion');
+  if (activeFiles.length !== 1) fail('active D metadata filename is invalid; preserving scratch files');
   let meta;
   try {
     meta = JSON.parse(await readFile(path.join(directory, file), 'utf8'));

@@ -814,6 +814,68 @@ withWorld('chunk 002 reads and saves only its own paths when stale chunk 001 scr
   assert.equal(await readFile(chunkPath(world, 'decisions', 1), 'utf8'), 's1 V old decision\n');
 });
 
+withWorld('active chunk ignores inactive legacy scratch from another batch and uses its own files', async (world) => {
+  const previousDirectory = path.join(world.root, 'd-050_01');
+  const currentDirectory = path.join(world.root, 'd-051_01');
+  await mkdir(previousDirectory, { recursive: true });
+  const previousLegacy = {
+    decisions: 'decisions.txt',
+    searches: 'searches.jsonl',
+    rejected: 'save-rejected.json',
+    view: 'active-chunk.txt',
+  };
+  const previousBytes = new Map();
+  for (const [kind, name] of Object.entries(previousLegacy)) {
+    const bytes = `old batch ${kind}\n`;
+    await writeFile(path.join(previousDirectory, name), bytes);
+    previousBytes.set(name, bytes);
+  }
+
+  await prepareChunk({ ...world.options, shard: '051', batch: '01', directory: currentDirectory, chunkNumber: 1 });
+  const active = JSON.parse(await readFile(path.join(currentDirectory, 'active-001.json'), 'utf8'));
+  const w001 = active.senses.find((sense) => sense.sense_id === 'w001-s1');
+  const w003 = active.senses.find((sense) => sense.sense_id === 'w003-s1');
+  const batch = await searchBatchActive({
+    requests: [{ sense: w001.ref }], databasePath: world.options.databasePath, root: world.root,
+  });
+  assert.equal(batch.request_count, 1);
+  const extra = await searchActive({
+    ref: w003.ref, forms: ['달려서'], databasePath: world.options.databasePath, root: world.root,
+  });
+  assert.ok(['ZERO_HITS', 'COMPLETE', 'LIMITED'].includes(extra.result.status));
+
+  const decisions = active.senses.filter((sense) => !sense.auto).map((sense) => {
+    if (sense.sense_id.startsWith('w001')) return `${sense.ref} V 해무|새벽 공기`;
+    if (sense.sense_id.startsWith('w005')) return `${sense.ref} V`;
+    return `${sense.ref} Z`;
+  }).join('\n');
+  const decisionPath = path.join(currentDirectory, 'decision-001.txt');
+  await writeFile(decisionPath, `${decisions}\n`);
+  const saved = await saveActive({ inputPath: decisionPath, root: world.root });
+  assert.equal(saved.chunk_no, 1);
+  assert.equal(existsSync(path.join(currentDirectory, 'chunk-001.jsonl')), true);
+  const currentSearches = (await readFile(path.join(currentDirectory, 'search-001.jsonl'), 'utf8')).trim().split('\n').map(JSON.parse);
+  assert.ok(currentSearches.length > 0 && currentSearches.every((entry) => entry.chunk_no === 1 && entry.view_sha256 === active.view_sha256));
+  for (const [name, bytes] of previousBytes) assert.equal(await readFile(path.join(previousDirectory, name), 'utf8'), bytes);
+});
+
+withWorld('legacy active marker beside a new active chunk is ambiguous and preserves all files', async (world) => {
+  await prepareChunk({ ...world.options, chunkNumber: 1 });
+  const activeBefore = await readFile(chunkPath(world, 'active'), 'utf8');
+  const viewBefore = await readFile(chunkPath(world, 'view'), 'utf8');
+  const legacy = {
+    active: path.join(world.directory, 'active-chunk.json'),
+    view: path.join(world.directory, 'active-chunk.txt'),
+    decisions: path.join(world.directory, 'decisions.txt'),
+    searches: path.join(world.directory, 'searches.jsonl'),
+  };
+  for (const [name, file] of Object.entries(legacy)) await writeFile(file, `legacy ${name}\n`);
+  await assert.rejects(searchActive({ ref: 's1', databasePath: world.options.databasePath, root: world.root }), /more than one active D chunk/u);
+  assert.equal(await readFile(chunkPath(world, 'active'), 'utf8'), activeBefore);
+  assert.equal(await readFile(chunkPath(world, 'view'), 'utf8'), viewBefore);
+  for (const [name, file] of Object.entries(legacy)) assert.equal(await readFile(file, 'utf8'), `legacy ${name}\n`);
+});
+
 withWorld('legacy D scratch layout blocks prepare and stays byte-for-byte untouched', async (world) => {
   await mkdir(world.directory, { recursive: true });
   const legacy = {
