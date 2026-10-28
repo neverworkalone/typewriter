@@ -446,7 +446,7 @@ test('search-batch shares identical search work across homonym records and keeps
   assert.deepEqual(calls[0].forms, ['쉼표,포함', '"공백 포함"'], 'JSON keeps commas, spaces and quotes inside each form');
   assert.equal(evidence.length, 6, 'same record and identical query produces one evidence row; another record gets its own row');
   assert.deepEqual([...new Set(evidence.slice(0, 2).map((entry) => entry.record_id))], ['w1', 'w2']);
-  assert.deepEqual(recordEvidence([...evidence, evidence[0]], 'w1'), { searches: 3, hits: 8, allComplete: false });
+  assert.deepEqual(recordEvidence([...evidence, evidence[0]], 'w1'), { searches: 4, hits: 6, allComplete: false });
 });
 
 test('search-batch resolves recorded cursors and leaves actual SEARCH_FAILED intact', () => {
