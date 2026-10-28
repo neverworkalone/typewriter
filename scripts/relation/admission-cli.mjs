@@ -241,6 +241,7 @@ async function readCheckpoint(file, identity = {}) {
 
 function decisionRows(checkpoint) {
   const relations = [];
+  const relationCandidates = [];
   const drops = [];
   for (const item of checkpoint.items) {
     for (const candidate of item.candidates) {
@@ -266,6 +267,7 @@ function decisionRows(checkpoint) {
             relevance: relationDecision.relevance,
           });
         }
+        relationCandidates.push(`${item.sense_id}\u0000${candidate.text}`);
       };
       if (candidate.already_accounted === true) {
         for (const relation of candidate.additional_relations) appendRelation(relation);
@@ -276,7 +278,7 @@ function decisionRows(checkpoint) {
       }
     }
   }
-  return { relations, drops };
+  return { relations, relationCandidates, drops };
 }
 
 function stableRow(row) {
@@ -299,20 +301,69 @@ function isConsistentReciprocalIdRelation(left, right) {
     && left.reverse_relevance === right.relevance;
 }
 
-function assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, newRelations, newDrops) {
+function coalesceOrthographicAliasRelations(checkpoint, relations, relationCandidates) {
+  const checkpointCandidates = new Map();
+  for (const item of checkpoint.items) for (const candidate of item.candidates) {
+    checkpointCandidates.set(`${item.sense_id}\u0000${candidate.text}`, candidate);
+  }
+
+  const selectedRelations = [];
+  const selectedCandidates = [];
+  const relationIndexByPair = new Map();
+  for (const [index, relation] of relations.entries()) {
+    const candidateKey = relationCandidates[index];
+    if ('text' in relation) {
+      selectedRelations.push(relation);
+      selectedCandidates.push(candidateKey);
+      continue;
+    }
+
+    const pair = idPairKey(relation.source_sense_id, relation.target_sense_id);
+    const selectedIndex = relationIndexByPair.get(pair);
+    if (selectedIndex === undefined) {
+      relationIndexByPair.set(pair, selectedRelations.length);
+      selectedRelations.push(relation);
+      selectedCandidates.push(candidateKey);
+      continue;
+    }
+
+    const selectedCandidate = checkpointCandidates.get(selectedCandidates[selectedIndex]);
+    const currentCandidate = checkpointCandidates.get(candidateKey);
+    const usesCanonicalSpelling = (candidate) => {
+      const targetLemma = candidate?.same_spelling_targets
+        .find((target) => target.record_id === relation.target_record_id)?.lemma;
+      return typeof targetLemma === 'string' && normalizeCandidate(candidate.text) === normalizeCandidate(targetLemma);
+    };
+    // One meaning pair can be reached through multiple spacing/hyphenation aliases. The relation row
+    // represents the target meaning, so prefer its canonical headword decision when aliases disagree;
+    // otherwise retain the first candidate in the stable Stage 1 order.
+    if (usesCanonicalSpelling(currentCandidate) && !usesCanonicalSpelling(selectedCandidate)) {
+      selectedRelations[selectedIndex] = relation;
+      selectedCandidates[selectedIndex] = candidateKey;
+    }
+  }
+  return { relations: selectedRelations, relationCandidates: selectedCandidates };
+}
+
+function assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, newRelations, newRelationCandidates, newDrops) {
   const exactRelations = new Set(existingRelations.map(stableRow));
   const exactDrops = new Set(existingDrops.map(stableRow));
   const idPairs = new Map();
   const textPairs = new Set();
   const drops = new Set(existingDrops.map((row) => `${row.source_sense_id}\u0000${normalizeCandidate(row.candidate)}`));
-  const sourceCandidateForPair = new Map();
+  const sourceCandidatesForPair = new Map();
   const existingIdCandidates = new Set();
   const checkpointCandidates = new Map();
+  const addSourceCandidateForPair = (pair, candidateKey) => {
+    const candidates = sourceCandidatesForPair.get(pair) ?? new Set();
+    candidates.add(candidateKey);
+    sourceCandidatesForPair.set(pair, candidates);
+  };
   for (const item of checkpoint.items) for (const candidate of item.candidates) {
     const candidateKey = `${item.sense_id}\u0000${candidate.text}`;
     checkpointCandidates.set(candidateKey, candidate);
     for (const decision of [candidate.decision, ...(candidate.additional_relations ?? [])]) {
-      if (decision?.target_resolution === 'exact') sourceCandidateForPair.set(idPairKey(item.sense_id, decision.target_sense_id), candidateKey);
+      if (decision?.target_resolution === 'exact') addSourceCandidateForPair(idPairKey(item.sense_id, decision.target_sense_id), candidateKey);
     }
   }
   for (const row of existingRelations) {
@@ -331,7 +382,9 @@ function assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, ne
     }
   }
   const appendRelations = [];
-  for (const row of newRelations) {
+  const coalesced = coalesceOrthographicAliasRelations(checkpoint, newRelations, newRelationCandidates);
+  for (const [rowIndex, row] of coalesced.relations.entries()) {
+    const candidateKey = coalesced.relationCandidates[rowIndex];
     if (exactRelations.has(stableRow(row))) continue;
     if ('text' in row) {
       const key = `${row.source_sense_id}\u0000${normalizeCandidate(row.text)}`;
@@ -349,9 +402,11 @@ function assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, ne
         if (!sameOrientation && isConsistentReciprocalIdRelation(existingPair, row)) continue;
         throw new Error(`cannot merge duplicate or reverse-duplicate ID relation ${row.source_sense_id}/${row.target_sense_id}`);
       }
-      const candidateKey = sourceCandidateForPair.get(key);
-      if (candidateKey && drops.has(candidateKey)) throw new Error(`cannot merge an ID relation already marked Drop for ${candidateKey.replace('\u0000', '/')}`);
-      if (candidateKey && textPairs.has(candidateKey)) throw new Error(`cannot merge an ID relation already text-only for ${candidateKey.replace('\u0000', '/')}`);
+      const candidateKeys = sourceCandidatesForPair.get(key) ?? new Set([candidateKey]);
+      for (const sourceCandidateKey of candidateKeys) {
+        if (drops.has(sourceCandidateKey)) throw new Error(`cannot merge an ID relation already marked Drop for ${sourceCandidateKey.replace('\u0000', '/')}`);
+        if (textPairs.has(sourceCandidateKey)) throw new Error(`cannot merge an ID relation already text-only for ${sourceCandidateKey.replace('\u0000', '/')}`);
+      }
       idPairs.set(key, row);
       idPairs.set(reverse, row);
       exactRelations.add(stableRow(row));
@@ -907,13 +962,13 @@ async function mergeCheckpoint(checkpoint, checkpointPath, root) {
   if (checkpoint.pending_chunk) throw new Error(`save the active chunk ${checkpoint.pending_chunk.chunk_id} before merging`);
   if (checkpoint.items.some((item) => item.candidates.some((candidate) => candidate.decision === null))) throw new Error(`cannot merge an incomplete checkpoint: ${checkpointProgress(checkpoint)}`);
   validateCheckpointDecisions(checkpoint);
-  const { relations: newRelations, drops: newDrops } = decisionRows(checkpoint);
+  const { relations: newRelations, relationCandidates: newRelationCandidates, drops: newDrops } = decisionRows(checkpoint);
   const others = await loadApprovedRelations(root, { exceptShard: checkpoint.shard });
   const relationFile = shardRelationPath(checkpoint.shard, root);
   const dropFile = shardDropPath(checkpoint.shard, root);
   const existingRelations = await loadOptionalJsonl(relationFile);
   const existingDrops = await loadOptionalJsonl(dropFile);
-  const merged = assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, newRelations, newDrops);
+  const merged = assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, newRelations, newRelationCandidates, newDrops);
   const loaded = await loadShard(checkpoint.shard, root, { batch: checkpoint.batch });
   const scoped = partScope(loaded.canonicalRows, loaded.candidateFiles, checkpoint.batch, checkpoint.part);
   const finalShardSenseIds = new Set(loaded.canonicalRows.flatMap((record) => record.senses.map((sense) => sense.id)));
@@ -947,7 +1002,8 @@ function assertCheckpointMerged(checkpoint, relationRows, dropRows) {
   const relationSet = new Set(relationRows.map(stableRow));
   const dropSet = new Set(dropRows.map(stableRow));
   const expected = decisionRows(checkpoint);
-  for (const row of expected.relations) {
+  const coalesced = coalesceOrthographicAliasRelations(checkpoint, expected.relations, expected.relationCandidates);
+  for (const row of coalesced.relations) {
     if (!relationSet.has(stableRow(row)) && !relationRows.some((approved) => isConsistentReciprocalIdRelation(approved, row))) {
       throw new Error(`merged Part relation is missing: ${stableRow(row)}`);
     }
