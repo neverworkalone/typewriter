@@ -79,6 +79,10 @@ const KNOWN_NON_DEEP_ROOT_PATHS = Object.freeze([
   'README.md',
   'REVIEW.md',
   'AGENTS.md',
+  'tools/warroom/run-tests.mjs',
+  'tools/warroom/requirements.txt',
+  'war',
+  'dashboard',
   'popup.html',
   'options.html',
   'vite.config.js',
@@ -88,11 +92,13 @@ const KNOWN_NON_DEEP_ROOT_PATHS = Object.freeze([
   'pack.sh',
 ]);
 
-// Prompt files are operator-authored instructions, not executable code or a
-// product validation dependency. Keep this narrow so nearby War Room files
-// still require the ordinary PR gate.
+// Isolated War Room runtime/tests are not product Deep dependencies. The
+// workflow's stricter whole-diff classifier decides whether to skip Normal;
+// knowing a path is non-Deep never grants a Normal exemption on its own.
 const KNOWN_NON_DEEP_PREFIXES = Object.freeze([
   'tools/warroom/prompts/',
+  'tools/warroom/warroom/',
+  'tools/warroom/tests/',
 ]);
 
 if (KNOWN_NON_DEEP_PATHS.version !== 1 || !Array.isArray(KNOWN_NON_DEEP_PATHS.paths)) {
