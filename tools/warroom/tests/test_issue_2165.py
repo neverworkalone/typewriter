@@ -123,6 +123,8 @@ class Stage2Finalization(unittest.TestCase):
         w.adapter.plan.append({"code": 0, "session": "ses_chunk", "text": answer("chunk 001-01-01-001\nc1 D first")})
         control.start(w.store, "claude", S2, "single", cfg=w.cfg)
         w.tick()
+        w.adapter.finish(w.adapter.launches[-1]["pid"])
+        w.tick()
         b = w.store.active_batch("claude", S2)
         self.assertEqual((b["state"], len(w.adapter.launches)), ("ERROR", 1))
         self.assertEqual(w.git.commits, [])

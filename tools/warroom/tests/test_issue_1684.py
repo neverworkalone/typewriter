@@ -313,28 +313,28 @@ class StageTwoLifecycle(unittest.TestCase):
         control.start(self.w.store, "claude", S2, "continuous", cfg=self.w.cfg)
         self.w.adapter.plan.append({"code": 0, "session": "ses_chunk",
                                     "effect": lambda: write_checkpoint(self.w)})
-        self.w.adapter.plan.append({"code": 0, "session": "ses_finalize",
-                                    "effect": lambda: write_checkpoint(self.w, merged=True)})
         self.w.tick()
 
     def to_review(self):
         w = self.w
         w.adapter.finish(w.adapter.launches[-1]["pid"])
         w.tick()
-        merge_part(w, "claude", "001", "01", "01")
-        w.git.verify_heads.add((HEAD1, "part", "001", "01", "01"))
-        w.adapter.finish(w.adapter.launches[-1]["pid"])
-        w.tick()
-        self.assertEqual(w.store.active_batch("claude", S2)["state"], "WAITING_REVIEW")
+        b = w.store.active_batch("claude", S2)
+        self.assertEqual(b["state"], "WAITING_REVIEW")
+        w.gh.files[b["pr_number"]] = [
+            {"path": "data/relations/relation-001.jsonl"},
+            {"path": "data/relation-drops/drop-001.jsonl"},
+        ]
 
     def merge(self):
-        self.w.pr_info(7, HEAD1, state="closed", merged=True, head_ref="s2-claude-001-01-01", merge_sha="c" * 40)
+        b = self.w.store.active_batch("claude", S2)
+        self.w.gh.prs[b["pr_number"]] |= {"state": "closed", "merged": True, "merge_commit_sha": "c" * 40}
 
     def test_next_part_never_starts_before_merge_and_master_verify(self):
         w = self.w
         self.to_review()
         w.tick(3)   # PR exists but is not merged: no second Part, no second AI
-        self.assertEqual(len(w.adapter.launches), 2)
+        self.assertEqual(len(w.adapter.launches), 1)
         self.merge()
         w.tick(3)   # merged, but the exact Part verify fails on the latest master: ERROR, worktree kept
         b = w.store.active_batch("claude", S2)
@@ -342,7 +342,7 @@ class StageTwoLifecycle(unittest.TestCase):
         self.assertEqual(b["state"], "ERROR")
         self.assertEqual(b["paused_from"], "CLEANUP")
         self.assertIn("Shard 001 · Batch 01 · Part 01", b["error"])
-        self.assertEqual((len(w.adapter.launches), w.git.removed), (2, []))
+        self.assertEqual((len(w.adapter.launches), w.git.removed), (1, []))
         self.assertFalse(w.store.get(stage2.ok_key("001", "01", "01")))
         w.git.verified.add(("part", "001", "01", "01"))   # the owner fixes it; Retry re-verifies without any AI run
         self.assertTrue(control.retry(w.store, "claude", S2))
@@ -373,7 +373,7 @@ class StageTwoLifecycle(unittest.TestCase):
         control.stop_line(w.store, "claude", S2)
         w.tick()
         b = w.store.active_batch("claude", S2)
-        self.assertEqual((b["state"], b["pr_number"], b["batch"]), ("PAUSED", 7, "01-01"))
+        self.assertEqual((b["state"], b["pr_number"], b["batch"]), ("PAUSED", 100, "01-01"))
         self.assertEqual(len(w.store.line("claude", S2)) and w.store.peek_line("claude", S2)["mode"], "continuous")
         self.assertTrue(control.retry(w.store, "claude", S2))
         w.tick(2)
@@ -383,21 +383,21 @@ class StageTwoLifecycle(unittest.TestCase):
     def test_clear_of_a_stage_two_part_closes_only_its_own_pr(self):
         w = self.w
         self.to_review()
-        w.git.remote["s2-claude-001-01-01"] = HEAD1
-        w.git.local_head = HEAD1
         b = w.store.active_batch("claude", S2)
+        w.git.remote[b["branch"]] = b["head_sha"]
+        w.git.local_head = b["head_sha"]
         self.assertTrue(control.request_clear(w.store, "claude", S2, b["id"])[0])
         w.tick(3)
-        self.assertEqual(w.gh.closed, [7])
+        self.assertEqual(w.gh.closed, [b["pr_number"]])
         self.assertIsNone(w.store.active_batch("claude", S2))
         self.assertEqual(w.store.peek_line("claude", S2)["shard_pin"], "")
 
     def test_clear_refuses_a_pr_that_touches_another_shard(self):
         w = self.w
         self.to_review()
-        w.gh.files[7] = [{"path": "data/relations/relation-001.jsonl"}, {"path": "data/relations/relation-002.jsonl"}]
-        w.git.remote["s2-claude-001-01-01"] = HEAD1
         b = w.store.active_batch("claude", S2)
+        w.gh.files[b["pr_number"]] = [{"path": "data/relations/relation-001.jsonl"}, {"path": "data/relations/relation-002.jsonl"}]
+        w.git.remote[b["branch"]] = b["head_sha"]
         control.request_clear(w.store, "claude", S2, b["id"])
         w.tick(2)
         self.assertEqual((w.gh.closed, w.store.active_batch("claude", S2)["state"]), ([], "CLEARING"))
@@ -405,11 +405,7 @@ class StageTwoLifecycle(unittest.TestCase):
     def test_a_rival_pr_on_the_same_shard_stops_before_review(self):
         w = self.w
         w.adapter.finish(w.adapter.launches[-1]["pid"])
-        w.tick()
         w.gh.open = [{"number": 55, "files": [{"path": "data/relation-drops/drop-001.jsonl"}]}]
-        merge_part(w, "claude", "001", "01", "01")
-        w.git.verify_heads.add((HEAD1, "part", "001", "01", "01"))
-        w.adapter.finish(w.adapter.launches[-1]["pid"])
         w.tick()
         b = w.store.active_batch("claude", S2)
         self.assertEqual(b["state"], "ERROR")

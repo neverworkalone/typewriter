@@ -3136,7 +3136,15 @@ class Supervisor:
             checkpoint = stage2.checkpoint(b["worktree"], b["shard"], b["batch"])
             if checkpoint is None:
                 return "source_context 없음: 현재 Part checkpoint를 읽을 수 없습니다."
-            in_part = {item["sense_id"] for item in checkpoint.get("items", [])}
+            bb, pp = stage2.split_key(b["batch"])
+            cp_path = Path(b["worktree"]) / ".warroom-scratch" / \
+                f"relation-admission-{b['shard']}-{bb}-{pp}.json"
+            raw_checkpoint = json.loads(cp_path.read_text("utf-8"))
+            if (raw_checkpoint.get("shard"), raw_checkpoint.get("batch"), raw_checkpoint.get("part")) != \
+                    (b["shard"], bb, pp) or not isinstance(raw_checkpoint.get("items"), list):
+                return "source_context 없음: 현재 Part checkpoint의 source Sense 목록을 신뢰할 수 없습니다."
+            in_part = {item["sense_id"] for item in raw_checkpoint["items"]
+                       if isinstance(item, dict) and isinstance(item.get("sense_id"), str)}
             selected = [sense_id for sense_id in mentioned if sense_id in in_part]
             unknown = [sense_id for sense_id in mentioned if sense_id not in in_part]
             if not selected:

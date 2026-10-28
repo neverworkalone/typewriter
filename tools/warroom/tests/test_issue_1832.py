@@ -79,6 +79,7 @@ class DeterministicStage2Completion(unittest.TestCase):
         w.git.local_head = head
         w.git.remote[b["branch"]] = head
         w.gh.git = w.git
+        w.gh.created_prs = []
         w.gh._register(b["branch"], "test", "", [])
         b = w.store.batch(b["id"])
         self.assertIsNone(w.sup._denied_run_problem(b))
