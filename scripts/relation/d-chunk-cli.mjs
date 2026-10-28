@@ -377,22 +377,27 @@ async function findActive(root = '.warroom-scratch') {
     .filter((name) => /^d-\d{3}_0[12]$/u.test(name));
   const found = [];
   const inactiveLegacy = [];
+  const inactiveInvalidActive = [];
   for (const name of directories) {
     const directory = path.join(root, name);
     const files = await readdir(directory).catch((error) => error.code === 'ENOENT' ? [] : Promise.reject(error));
     const activeFiles = files.filter((file) => /^active-\d{3}\.json$/u.test(file));
     const legacyActive = files.includes('active-chunk.json');
     const invalidActiveFiles = files.filter((file) => file.startsWith('active-')
-      && !/^active-\d{3}\.json$/u.test(file) && file !== 'active-chunk.json' && file !== 'active-chunk.txt');
-    const activeMarkers = activeFiles.length + Number(legacyActive) + invalidActiveFiles.length;
+      && !/^active-\d{3}\.json$/u.test(file) && !file.startsWith('active-chunk.'));
+    const activeMarkers = activeFiles.length + Number(legacyActive);
     const hasLegacy = files.some((file) => legacyFiles.has(file) || file.startsWith('active-chunk.') || file.startsWith('searches.jsonl.'));
     if (activeMarkers > 0) found.push({ directory, file: activeFiles[0], folder: name, activeFiles, legacyActive, invalidActiveFiles, files });
-    else if (hasLegacy) inactiveLegacy.push(name);
+    else {
+      if (hasLegacy) inactiveLegacy.push(name);
+      if (invalidActiveFiles.length > 0) inactiveInvalidActive.push(name);
+    }
   }
-  const activeCount = found.reduce((count, item) => count + item.activeFiles.length + Number(item.legacyActive) + item.invalidActiveFiles.length, 0);
+  const activeCount = found.reduce((count, item) => count + item.activeFiles.length + Number(item.legacyActive), 0);
   if (activeCount > 1) fail('more than one active D chunk');
   if (found.length === 0) {
     if (inactiveLegacy.length > 0) fail('legacy D scratch files are present; preserving them without automatic migration or deletion');
+    if (inactiveInvalidActive.length > 0) fail('active D metadata filename is invalid; preserving scratch files');
     fail('no active D chunk');
   }
   const { directory, file, folder, activeFiles, legacyActive, invalidActiveFiles, files: activeDirectoryFiles } = found[0];

@@ -823,6 +823,7 @@ withWorld('active chunk ignores inactive legacy scratch from another batch and u
     searches: 'searches.jsonl',
     rejected: 'save-rejected.json',
     view: 'active-chunk.txt',
+    page: 'active-chunk.p1of2.txt',
   };
   const previousBytes = new Map();
   for (const [kind, name] of Object.entries(previousLegacy)) {
@@ -874,6 +875,18 @@ withWorld('legacy active marker beside a new active chunk is ambiguous and prese
   assert.equal(await readFile(chunkPath(world, 'active'), 'utf8'), activeBefore);
   assert.equal(await readFile(chunkPath(world, 'view'), 'utf8'), viewBefore);
   for (const [name, file] of Object.entries(legacy)) assert.equal(await readFile(file, 'utf8'), `legacy ${name}\n`);
+});
+
+withWorld('selected active chunk rejects and preserves a legacy paginated view', async (world) => {
+  await prepareChunk({ ...world.options, chunkNumber: 1 });
+  const activeBefore = await readFile(chunkPath(world, 'active'), 'utf8');
+  const viewBefore = await readFile(chunkPath(world, 'view'), 'utf8');
+  const legacyPage = path.join(world.directory, 'active-chunk.p1of2.txt');
+  await writeFile(legacyPage, 'legacy page\n');
+  await assert.rejects(searchActive({ ref: 's1', databasePath: world.options.databasePath, root: world.root }), /legacy D scratch files are present/u);
+  assert.equal(await readFile(chunkPath(world, 'active'), 'utf8'), activeBefore);
+  assert.equal(await readFile(chunkPath(world, 'view'), 'utf8'), viewBefore);
+  assert.equal(await readFile(legacyPage, 'utf8'), 'legacy page\n');
 });
 
 withWorld('legacy D scratch layout blocks prepare and stays byte-for-byte untouched', async (world) => {
