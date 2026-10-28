@@ -43,11 +43,13 @@ jobs:
         run: |
           set -euo pipefail
           paths_file="$(mktemp)"
-          trap 'rm -f "$paths_file"' EXIT
+          renames_file="$(mktemp)"
+          trap 'rm -f "$paths_file" "$renames_file"' EXIT
 
           # Use the PR merge base, not the checked-out synthetic merge commit.
-          # Disable renames so moving code into docs/ cannot hide a source-file deletion.
+          # Keep both sides visible for path classification, then separately detect cross-scope renames.
           git diff --no-renames --name-status -z "${BASE_SHA}...${HEAD_SHA}" > "$paths_file"
+          git diff --find-renames --name-status -z "${BASE_SHA}...${HEAD_SHA}" > "$renames_file"
           # Read NUL-delimited paths (including whitespace safely); Bash 3.2 compatible.
           docs_only=true
           warroom_only=true
@@ -59,9 +61,7 @@ jobs:
             saw_file=true
             case "$status" in A|M|D) ;; *) docs_only=false; warroom_only=false ;; esac
             case "$file" in
-              docs/*|README.md|REVIEW.md|tools/warroom/prompts/*)
-                warroom_only=false
-                ;;
+              docs/*|README.md|REVIEW.md|tools/warroom/prompts/*) ;;
               tools/warroom/warroom/*|tools/warroom/tests/*|tools/warroom/run-tests.mjs|tools/warroom/requirements.txt|war|dashboard)
                 docs_only=false
                 run_warroom_tests=true
@@ -72,6 +72,29 @@ jobs:
                 ;;
             esac
           done < "$paths_file"
+
+          # Renames between War Room runtime/test paths and any other path fail closed.
+          # The no-renames pass above still classifies all added/deleted paths individually.
+          while IFS= read -r -d '' status; do
+            case "$status" in
+              R*)
+                IFS= read -r -d '' old_file
+                IFS= read -r -d '' new_file
+                old_is_warroom=false
+                new_is_warroom=false
+                case "$old_file" in
+                  tools/warroom/warroom/*|tools/warroom/tests/*|tools/warroom/run-tests.mjs|tools/warroom/requirements.txt|war|dashboard) old_is_warroom=true ;;
+                esac
+                case "$new_file" in
+                  tools/warroom/warroom/*|tools/warroom/tests/*|tools/warroom/run-tests.mjs|tools/warroom/requirements.txt|war|dashboard) new_is_warroom=true ;;
+                esac
+                if [[ "$old_is_warroom" != "$new_is_warroom" ]]; then
+                  warroom_only=false
+                fi
+                ;;
+              *) IFS= read -r -d '' _file ;;
+            esac
+          done < "$renames_file"
 
           # Only strictly scoped War Room-only PRs can skip product Normal.
           # Empty/unclassified diffs, product changes and CI changes run Normal.
