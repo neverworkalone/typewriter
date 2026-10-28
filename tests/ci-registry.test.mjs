@@ -1359,8 +1359,13 @@ test('War Room Python tests are outside every CI registry tier and prompts are D
     'tools/warroom/prompts/c.md',
     'tools/warroom/warroom/supervisor.py',
   ]);
-  assert.equal(promptAndCode.reason, 'unclassified-path');
-  assert.equal(promptAndCode.runDeep, true, 'code plus prompt cannot take the prompt-only shortcut');
+  assert.equal(promptAndCode.reason, 'known-non-deep-paths-only');
+  assert.equal(promptAndCode.runDeep, false, 'War Room runtime and prompts have no product Deep dependencies');
+  assert.equal(promptAndCode.deepMode, 'none');
+  assert.deepEqual(promptAndCode.knownNonDeepPaths, [
+    'tools/warroom/prompts/c.md',
+    'tools/warroom/warroom/supervisor.py',
+  ], 'the separate CI workflow classifier must still require War Room tests for mixed prompt+runtime changes');
   const nearbyPath = classifyDeepGatePaths(['tools/warroom/prompts-old/c.md']);
   assert.equal(nearbyPath.reason, 'unclassified-path', 'the prompt exemption must stay prefix-bounded');
 });
