@@ -13,6 +13,7 @@ import {
   buildChunk,
   buildSearchBatch,
   checkDecisions,
+  hadaPrefetchForms,
   parseDecisions,
   prepareChunk,
   recordEvidence,
@@ -155,6 +156,76 @@ test('autoZCandidate: POS alone never qualifies; form shape and length are part 
     [noun('서울역'), [], false],
   ];
   for (const [record, forms, want] of table) assert.equal(autoZCandidate(record, forms), want, JSON.stringify([record, forms]));
+});
+
+test('hadaPrefetchForms: exact Hangul -하다 bases use POS-scoped forms and omit short or existing forms', () => {
+  const verb = rec('w1', '공부하다', [['verb', '학문이나 기술을 배우고 익히다.']]);
+  assert.deepEqual(hadaPrefetchForms(verb), [
+    '공부해', '공부해서', '공부했다', '공부하여', '공부하고', '공부하면', '공부한', '공부할', '공부하는', '공부한다',
+  ]);
+
+  const adjective = rec('w2', '조용하다', [['adjective', '소리가 나지 않고 잠잠하다.']]);
+  assert.deepEqual(hadaPrefetchForms(adjective), [
+    '조용해', '조용해서', '조용했다', '조용하여', '조용하고', '조용하면', '조용한', '조용할',
+  ]);
+
+  const short = rec('w3', '구하다', [['verb', '찾다.']]);
+  const shortForms = hadaPrefetchForms(short);
+  assert.ok(!shortForms.includes('구해'), 'the two-syllable form 구해 is excluded');
+  assert.ok(!shortForms.includes('구한') && !shortForms.includes('구할'));
+
+  const existing = rec('w4', '공부하다', [['verb', '배우고 익히다.']], { search_forms: ['공부하다', '공부해', '말하다'] });
+  assert.equal(hadaPrefetchForms(existing).filter((form) => form === '공부해').length, 0, 'Canonical forms are not added twice');
+  assert.equal(hadaPrefetchForms(rec('w5', '배가 내박하다', [['verb', '뜻.']])), [], 'phrases are not treated as lexical bases');
+  assert.equal(hadaPrefetchForms(rec('w6', '행복스럽다', [['adjective', '뜻.']])), [], 'other endings are out of scope');
+  assert.equal(hadaPrefetchForms(rec('w7', '유용하다', [['noun', '뜻.']])), [], 'unsupported POS is not expanded');
+});
+
+test('prepare keeps -하다 prefetch opt-in, shows combined evidence, and records the opt-in through the CLI', async () => {
+  const world = await makeWorld();
+  try {
+    const rows = (await readFile(world.options.canonicalPath, 'utf8')).trim().split('\n').map(JSON.parse);
+    rows[2] = rec('w003', '공부하다', [['verb', '학문이나 기술을 배우고 익히다.']]);
+    await writeFile(world.options.canonicalPath, `${rows.map((row) => JSON.stringify(row)).join('\n')}\n`);
+
+    const calls = [];
+    const zeroSearch = (forms) => {
+      calls.push(forms);
+      return { result: { status: 'ZERO_HITS', items: [], next_cursor: null, scanned_rows: 1 } };
+    };
+    zeroSearch.corpusRows = 10;
+    const record = rows[2];
+    const defaultBuilt = buildChunk({ records: [record], shard: '001', batch: '01', chunkNumber: 1, total: 20, search: zeroSearch });
+    assert.deepEqual(calls[0], ['공부하다'], 'default prepare searches Canonical forms only');
+    const optedInBuilt = buildChunk({ records: [record], shard: '001', batch: '01', chunkNumber: 1, total: 20, search: zeroSearch, hadaPrefetch: true });
+    assert.deepEqual(calls[1], ['공부하다', ...hadaPrefetchForms(record)]);
+    assert.match(optedInBuilt.view, /search_forms: 공부하다\nsearch: forms=공부하다,공부해,공부해서/u);
+    assert.equal(optedInBuilt.entries[0].status, 'ZERO_HITS');
+    assert.deepEqual(optedInBuilt.entries[0].forms, ['공부하다', ...hadaPrefetchForms(record)]);
+    assert.equal(optedInBuilt.senses[0].auto, false, 'prefetch never expands the automatic-Z rule to verbs');
+
+    const result = await runCli([
+      'prepare', '--canonical', world.options.canonicalPath, '--shard', '001', '--batch', '01', '--chunk', '1',
+      '--db', world.options.databasePath, '--model', 'codex', '--head', 'a'.repeat(40), '--dir', world.directory, '--hada-prefetch',
+    ], '');
+    assert.equal(result.code, 0, result.stderr);
+    assert.equal(JSON.parse(result.stdout).status, 'READY');
+    const activeView = await view(world);
+    assert.match(activeView, /search_forms: 공부하다\nsearch: forms=공부하다,공부해,공부해서/u);
+    const evidence = (await readFile(path.join(world.directory, 'searches.jsonl'), 'utf8')).trim().split('\n').map(JSON.parse)
+      .find((entry) => entry.record_id === 'w003');
+    assert.deepEqual(evidence.forms, ['공부하다', ...hadaPrefetchForms(record)]);
+    assert.equal(evidence.source, 'prepare');
+    assert.equal(evidence.status, 'ZERO_HITS');
+    assert.equal(evidence.complete, true);
+    const zeroDecision = new Map([['s1', { kind: 'Z', candidates: [], line: 1 }]]);
+    assert.deepEqual(checkDecisions({
+      meta: { senses: [{ ref: 's1', record_id: 'w003', sense_id: 'w003-s1', auto: false }] },
+      records: [record], entries: [evidence], decisions: zeroDecision, lemmaForms: new Map(),
+    }).errors, [], 'the existing Z decision gate accepts complete zero-hit prefetch evidence');
+  } finally {
+    await rm(world.root, { recursive: true, force: true });
+  }
 });
 
 test('prepare collects four distinct contexts across LIMITED pages before returning its view', () => {

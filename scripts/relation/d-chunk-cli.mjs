@@ -90,6 +90,31 @@ export const recordForms = (record) => [...new Set([record.lemma, ...(Array.isAr
   .filter((form) => typeof form === 'string' && form.trim().length > 0)
   .map((form) => form.normalize('NFC').trim()))];
 
+const HADA_SHARED_SUFFIXES = Object.freeze(['해', '해서', '했다', '하여', '하고', '하면', '한', '할']);
+const HADA_VERB_SUFFIXES = Object.freeze(['하는', '한다']);
+
+/**
+ * The deliberately small, observed -하다 prefetch set for an explicit prepare opt-in.
+ * It uses only Canonical Hangul lemma/search forms and POS, and never generates forms of two syllables or fewer.
+ */
+export function hadaPrefetchForms(record) {
+  const poses = new Set((Array.isArray(record.senses) ? record.senses : []).map((sense) => sense?.pos));
+  if (!poses.has('verb') && !poses.has('adjective')) return [];
+  const bases = recordForms(record);
+  const suffixes = [...HADA_SHARED_SUFFIXES, ...(poses.has('verb') ? HADA_VERB_SUFFIXES : [])];
+  const generated = [];
+  for (const base of bases) {
+    const match = /^([가-힣]+)하다$/u.exec(base);
+    if (!match) continue;
+    for (const suffix of suffixes) {
+      const form = `${match[1]}${suffix}`;
+      if ([...form].length <= 2 || bases.includes(form)) continue;
+      generated.push(form);
+    }
+  }
+  return [...new Set(generated)];
+}
+
 // ---- bounded collection of distinct contexts -------------------------------------------------------------------
 /**
  * Continue LIMITED pages until the requested number of distinct paragraph contexts is collected, the approved search
@@ -234,14 +259,15 @@ function renderBlock(entry) {
  * Build the whole chunk: searches (shared by all senses of a record), the AI view, and the chunk's sense map.
  * Pure over an opened corpus connection, so it is testable without a SQLite file.
  */
-export function buildChunk({ records, shard, batch, chunkNumber, total, search }) {
+export function buildChunk({ records, shard, batch, chunkNumber, total, search, hadaPrefetch = false }) {
   const senses = [];
   const entries = [];
   const failed = [];
   const blocks = [];
   const autoZ = [];
   for (const record of records) {
-    const forms = recordForms(record);
+    const canonicalForms = recordForms(record);
+    const forms = [...canonicalForms, ...(hadaPrefetch ? hadaPrefetchForms(record) : [])];
     const mainOptions = { maxSamples: INITIAL_CONTEXTS, snippetChars: INITIAL_SNIPPET_CHARS };
     const main = searchForContexts(search, forms, mainOptions);
     const shown = [{ forms, boundary: null, result: main.result }];
@@ -260,14 +286,14 @@ export function buildChunk({ records, shard, batch, chunkNumber, total, search }
     const first = senses.length + 1;
     for (const sense of record.senses) senses.push({ ref: `s${senses.length + 1}`, record_id: record.id, sense_id: sense.id, pos: sense.pos, gloss: sense.gloss ?? '', auto });
     if (auto) autoZ.push(...senses.slice(first - 1).map((item) => item.ref));
-    else blocks.push({ record, forms, shown, refs: senses.slice(first - 1) });
+    else blocks.push({ record, canonicalForms, shown, refs: senses.slice(first - 1) });
   }
   const aiSenses = senses.filter((item) => !item.auto);
   const head = `batch=${shard}_${batch} chunk=${String(chunkNumber).padStart(3, '0')}/${String(total).padStart(3, '0')} `
     + `records=${records.length} senses=${senses.length} ai_senses=${aiSenses.length}`
     + `${autoZ.length ? ` auto_z=${autoZ.join(',')}` : ''}`;
-  const body = blocks.map(({ record, forms, shown, refs }) => {
-    const lines = [`## ${record.id} ${record.lemma} | search_forms: ${forms.join(', ')}`];
+  const body = blocks.map(({ record, canonicalForms, shown, refs }) => {
+    const lines = [`## ${record.id} ${record.lemma} | search_forms: ${canonicalForms.join(', ')}`];
     for (const block of shown) lines.push(renderBlock(block));
     const zero = shown.every((block) => block.result.status === 'ZERO_HITS');
     if (zero) lines.push('Z?: 검색은 0건으로 완료됐으나 검색형 충분성은 AI가 판단한다 (활용형·표기 변형이 더 필요하면 `search`).');
@@ -295,12 +321,12 @@ async function writeAtomic(target, text) {
 const expectedOf = (records) => records.map((record) => ({ record_id: record.id, sense_ids: record.senses.map((sense) => sense.id) }));
 const emptyRows = (records) => records.map((record) => ({ record_id: record.id, senses: record.senses.map((sense) => ({ sense_id: sense.id, candidates: [] })) }));
 
-export async function prepareChunk({ canonicalPath, shard, batch, chunkNumber, databasePath, model, head, directory = scratchDirectory(shard, batch) }) {
+export async function prepareChunk({ canonicalPath, shard, batch, chunkNumber, databasePath, model, head, directory = scratchDirectory(shard, batch), hadaPrefetch = false }) {
   const records = await loadBatchRecords(canonicalPath, shard, batch);
   const total = totalChunks(records);
   const chunk = chunkRecords(records, chunkNumber);
   const database = openReadonlyDb(databasePath);
-  const built = buildChunk({ records: chunk, shard, batch, chunkNumber, total, search: createSearchContextReuse(database) });
+  const built = buildChunk({ records: chunk, shard, batch, chunkNumber, total, search: createSearchContextReuse(database), hadaPrefetch });
   database.close?.();
   const base = { chunk_no: chunkNumber, total_chunks: total, records: chunk.length, senses: built.senses.length, auto_z: built.autoZ };
   if (built.failed.length > 0) return { status: 'SEARCH_FAILED', failed_records: built.failed, ...base };
@@ -642,6 +668,7 @@ export async function saveActive({ inputPath, root }) {
 function parseArguments(args) {
   const options = {};
   const positional = [];
+  const booleanOptions = new Set(['hada-prefetch']);
   for (let index = 0; index < args.length; index += 1) {
     const item = args[index];
     if (!item.startsWith('--')) {
@@ -651,6 +678,10 @@ function parseArguments(args) {
     const key = item.slice(2);
     if (!/^[a-z][a-z0-9-]*$/u.test(key)) fail(`invalid option ${item}`);
     if (options[key] !== undefined) fail(`${item} was provided more than once`);
+    if (booleanOptions.has(key)) {
+      options[key] = true;
+      continue;
+    }
     const value = args[index + 1];
     if (value === undefined || value.startsWith('--')) fail(`${item} requires a value`);
     options[key] = value;
@@ -670,12 +701,12 @@ async function main(argv) {
   const [command, ...rest] = argv;
   const { options, positional } = parseArguments(rest);
   if (command === 'prepare') {
-    only(options, 'canonical', 'shard', 'batch', 'chunk', 'db', 'model', 'head', 'dir');
+    only(options, 'canonical', 'shard', 'batch', 'chunk', 'db', 'model', 'head', 'dir', 'hada-prefetch');
     if (positional.length) fail('prepare takes options only');
     const out = await prepareChunk({
       canonicalPath: need(options, 'canonical'), shard: need(options, 'shard'), batch: need(options, 'batch'),
       chunkNumber: Number(need(options, 'chunk')), databasePath: need(options, 'db'), model: need(options, 'model'),
-      head: need(options, 'head'), directory: options.dir,
+      head: need(options, 'head'), directory: options.dir, hadaPrefetch: options['hada-prefetch'] === true,
     });
     console.log(JSON.stringify(out));
     return out.status === 'SEARCH_FAILED' ? 3 : 0;
