@@ -32,13 +32,13 @@ class Stage2Reentry(unittest.TestCase):
         self.assertEqual((w.adapter.launches[-1]["kind"], w.row("claude", "s2")["run_kind"]),
                          ("resume", "s2_chunk_resume"))
         checkpoint = stage2.checkpoint(w.row("claude", "s2")["worktree"], "001", "01-01")
-        self.assertEqual(checkpoint["pending_chunk"]["chunk_id"], CHUNK)
+        self.assertEqual(checkpoint["pending_chunk"], CHUNK)
 
         w.sup = w.make_sup()  # the one-use allowance survives a Supervisor restart
         b = self.finish(w, b)
         self.assertEqual((b["state"], len(w.adapter.launches)), ("ERROR", 2))
         checkpoint = stage2.checkpoint(b["worktree"], "001", "01-01")
-        self.assertEqual(checkpoint["pending_chunk"]["chunk_id"], CHUNK)
+        self.assertEqual(checkpoint["pending_chunk"], CHUNK)
         target = w.sup._chunk_retry_target(b)
         key = w.sup._auto_retry_key(b, target)
         self.assertEqual(w.store.get(key), "1")
@@ -57,7 +57,7 @@ class Stage2Reentry(unittest.TestCase):
         self.assertEqual((w.row("claude", "s2")["run_kind"], w.adapter.launches[-1]["kind"]),
                          ("s2_chunk_new", "start"))
         checkpoint = stage2.checkpoint(w.row("claude", "s2")["worktree"], "001", "01-01")
-        self.assertEqual(checkpoint["pending_chunk"]["chunk_id"], CHUNK)
+        self.assertEqual(checkpoint["pending_chunk"], CHUNK)
 
     def test_missing_session_falls_back_to_one_new_session_for_the_same_part(self):
         w, b = self.world({"code": 2, "session": "s1", "text": "no conversation found with session id s1"},
@@ -138,6 +138,42 @@ class ChunkStorageAndLimits(unittest.TestCase):
         self.assertEqual((w.row("deepseek", "c")["run_kind"], w.adapter.launches[-1]["kind"]), ("c_chunk_new", "start"))
         self.assertEqual(w.active()["chunk_no"], chunk_no)
         self.assertIn("이전 세션을 찾지 못해 새 세션", w.adapter.launches[-1]["prompt"])
+
+    def test_c_candidate_repair_without_cli_diagnostic_resumes_same_repair_chunk_once(self):
+        w = CWorld(senses=12)
+        self.addCleanup(w.tmp.cleanup)
+        w.runner.literary.export_error = json.dumps({"status": "FAILED", "diagnostic": "candidate_validation",
+                                                     "affected": {"sense_ids": ["s0002"]}})
+        w.ai(session="ses_first")
+        def malformed_submit():
+            rec = w.active()
+            path = w.wt() / f".warroom-scratch/c-chunk-{rec['chunk_no']:03d}.submit.json"
+            path.write_text('{"senses":[{"sense_id":"s0002","verified":[],"candidates":["후보"]}]\nnode scripts/relation/literary-context-cli.mjs submit\n')
+        w.adapter.plan.append({"code": 0, "session": "ses_repair", "effect": malformed_submit})
+        def repaired_submit():
+            rec = w.active()
+            w.runner.literary.mark(w.wt(), ".warroom-scratch/001_01_c_deepseek.checkpoint.json", rec["sense_ids"])
+            w.runner.literary.export_error = None
+        w.adapter.plan.append({"code": 0, "session": "ses_repair", "effect": repaired_submit})
+        w.start("single", "deepseek", "c")
+        w.tick()
+        w.finish_last()
+        w.tick()
+        repair = w.active()
+        self.assertTrue(repair["repair"])
+        repair_chunk = repair["chunk_no"]
+
+        w.finish_last()
+        w.tick()
+        retry = w.adapter.launches[-1]
+        self.assertEqual((retry["kind"], retry["session"], w.active()["chunk_no"]),
+                         ("resume", "ses_repair", repair_chunk))
+        self.assertIn("Candidate v1 검증이", retry["prompt"])
+        self.assertIn("같은 파일을 다시 제출", retry["prompt"])
+
+        w.finish_last()
+        w.tick(2)
+        self.assertEqual((w.row("deepseek", "c")["state"], len(w.adapter.launches)), ("WAITING_REVIEW", 3))
 
     def test_d_missing_session_uses_a_new_session_for_the_same_empty_chunk(self):
         w = DWorld(records=25)

@@ -274,26 +274,6 @@ class Supervisor:
             return False
         return self._auto_retry_chunk(b, reason, fresh_session=fresh)
 
-    def _ab_chunk_saved_for_run(self, b) -> bool:
-        """The active A/B chunk was stored after this run's baseline and every other chunk stayed byte-identical."""
-        try:
-            raw = self.store.get(stage1ab.run_start_key(b["id"]))
-            baseline = json.loads(raw or "")
-            cp = stage1ab.checkpoint(b["worktree"], b)
-            chunk_no = int(baseline["chunk_no"])
-            chunk = stage1ab.chunk_by_number(cp, chunk_no)
-            if not stage1ab.chunk_saved(b["worktree"], b, chunk):
-                return False
-            before, after = baseline.get("saved"), stage1ab.saved_snapshot(b["worktree"], b, cp)
-            if not isinstance(before, dict):
-                return False
-            changed = [number for number in after if before.get(number) != after[number]]
-            if len(changed) != 1 or changed[0] != str(chunk_no):
-                return False
-            return True
-        except (stage1ab.ABChunkError, OSError, ValueError, KeyError, TypeError):
-            return False
-
     def _saved_chunk_for_run(self, b) -> bool:
         """Exact active-chunk evidence for output-producing exits, bound to this run's start baseline."""
         if self._s2_chunk_run(b):
@@ -302,8 +282,6 @@ class Supervisor:
             return self._c_chunk_saved(b)
         if self._d_chunk_run(b):
             return self._d_chunk_saved(b)
-        if self._ab_chunk_run(b):
-            return self._ab_chunk_saved_for_run(b)
         return False
 
     def _saved_chunk_identity_problem(self, b):
@@ -1487,13 +1465,14 @@ class Supervisor:
         thread id and turn record). Reads the log and GitHub only, so a retryable query failure re-runs just this."""
         ad = self._adapter(b["producer"])
         saved = self._saved_chunk_for_run(b)
-        if saved:
+        answer_only = self._ab_chunk_run(b) and self._ab_chunk_response(b)
+        if saved or answer_only:
             if problem := self._saved_chunk_identity_problem(b):
                 return self._fail(b, problem[0], f"저장 청크 실행의 소유권/핀 확인 실패: {problem[1]}")
         problem = ad.completion_problem(Path(b["log_file"]), self._recorded_run(b), b["session_id"],
                                         b["worktree"], self.env)
         if problem:
-            if not saved or not ad.completion_incomplete(
+            if not (saved or answer_only) or not ad.completion_incomplete(
                     Path(b["log_file"]), self._recorded_run(b), b["session_id"], b["worktree"], self.env):
                 return self._fail(b, problem[0], problem[1])
             if self._saved_output_failure(b, self._classify_run(b["producer"], b["log_file"])):
@@ -1925,7 +1904,7 @@ class Supervisor:
                 remaining = [s["sense_id"] for s in state["senses"] if not s["done"]]
             if not remaining:
                 raise prompts.PromptError("이어갈 미완료 sense가 없습니다")
-            prompt = prompts.c_chunk_resume(rec["chunk_no"], checkpoint, remaining)
+            prompt = prompts.c_chunk_resume(rec["chunk_no"], checkpoint, remaining, note=rec.get("note", ""))
         else:
             note = rec.get("note", "")
             if self.store.get(literary.run_start_key(b["id"])):
@@ -2540,7 +2519,6 @@ class Supervisor:
         if problem:
             return self._fail(b, "ERROR", problem)
         wt = Path(b["worktree"])
-        already_saved = False
         try:
             if self.git.dirty(wt).strip():
                 return self._fail(b, "ERROR", "answer-only 청크 실행 뒤 worktree에 추적 변경이 있습니다 (격리 위반 가능). 보존합니다.")
@@ -2551,9 +2529,7 @@ class Supervisor:
             cp = stage1ab.checkpoint(wt, b)
             chunk = stage1ab.chunk_by_number(cp, baseline["chunk_no"])
             repair = bool(baseline.get("repair"))
-            snapshot_changed = stage1ab.saved_snapshot(wt, b, cp) != baseline.get("saved")
-            already_saved = self._ab_chunk_saved_for_run(b)
-            if snapshot_changed and not already_saved:   # the AI only answers: it never writes a chunk file
+            if stage1ab.saved_snapshot(wt, b, cp) != baseline.get("saved"):   # the AI only answers: it never writes a chunk file
                 return self._fail(b, "ERROR", "answer-only 청크 실행 중 Supervisor가 만들지 않은 저장물 변경이 있습니다 (AI의 직접 쓰기). "
                                   "완료로 인정하지 않고 보존합니다.")
             st = stage1ab.load_state(self.store, b["id"], chunk["number"])
@@ -2565,9 +2541,6 @@ class Supervisor:
             return self._fail(b, "ERROR", f"A/B 청크 종료 확인 실패: {e}. 보존합니다.")
         except Exception as e:
             return self._fail(b, "ERROR", f"청크 종료 후 GitHub/Git 확인 실패: {e}. worktree를 보존합니다.")
-        if already_saved:   # a prior save completed before its hand-off was recorded; never request the answer again
-            self.store.log(b["id"], "활성 A/B 청크의 정확한 저장을 시작 기준과 대조해 확인했습니다. 답변을 다시 만들지 않습니다.", "warn")
-            return self._ab_accept(b, chunk, repair)
         ok, diag = False, ""
         submitted_lines = None
         try:
@@ -3016,13 +2989,6 @@ class Supervisor:
             if problem := self._saved_chunk_identity_problem(b):
                 return self._fail(b, problem[0], f"현재 청크 응답의 소유권/핀 확인 실패: {problem[1]}")
             return self._run_ok_stage2_chunk(b)
-        if safe_to_accept_stored and self._ab_chunk_run(b) and b["state"] == "PRODUCING" and self._ab_chunk_saved_for_run(b):
-            self.store.log(b["id"], "AI가 비정상 종료했지만 현재 A/B 청크의 정확한 저장이 확인되어 재생산하지 않습니다.", "warn")
-            if problem := self._saved_chunk_identity_problem(b):
-                return self._fail(b, problem[0], f"저장 청크 실행의 소유권/핀 확인 실패: {problem[1]}")
-            if not self._denials_cleared(b, Path(b["log_file"])):
-                return
-            return self._run_ok_ab_chunk(b)
         if safe_to_accept_stored and self._ab_chunk_run(b) and b["state"] == "PRODUCING" and self._ab_chunk_response(b):
             # A nonzero exit is not the verdict (`run_problem` found no model/permission/policy block): the log holds this
             # chunk's complete answer, so it is saved and judged by save-chunk like any other answer.

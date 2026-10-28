@@ -150,10 +150,12 @@ def c_chunk(b, chunk_no: int, checkpoint: str, *, view: str | None = None, pages
                               "chunk_input": chunk_input}, directory)
 
 
-def c_chunk_resume(chunk_no: int, checkpoint: str, remaining: list[str], directory: Path | None = None) -> str:
+def c_chunk_resume(chunk_no: int, checkpoint: str, remaining: list[str], *, note: str = "",
+                   directory: Path | None = None) -> str:
     """Resuming the same session: only the still-open sense ids, never the chunk body again."""
     return render("c_chunk_resume", {"chunk_no": f"{chunk_no:03d}", "checkpoint": checkpoint,
-                                     "remaining": "남은 Sense ID: " + ", ".join(remaining)}, directory)
+                                     "remaining": "남은 Sense ID: " + ", ".join(remaining),
+                                     "session_note": note}, directory)
 
 
 def d_chunk(b, chunk_no: int, *, view: str | None = None, pages: list[str] | None = None,
