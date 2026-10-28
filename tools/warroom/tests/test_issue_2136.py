@@ -68,7 +68,7 @@ class Stage2Reentry(unittest.TestCase):
         checkpoint = stage2.checkpoint(b["worktree"], "001", "01-01")
         self.assertEqual(checkpoint["pending_chunk"], CHUNK)
         b = self.finish(w, b)
-        self.assertEqual((b["run_kind"], len(w.adapter.launches)), ("s2_finalize_new", 2))
+        self.assertEqual((b["run_kind"], len(w.adapter.launches)), ("s2_finalize_new", 3))
 
 
 class ChunkStorageAndLimits(unittest.TestCase):

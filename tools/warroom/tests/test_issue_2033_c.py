@@ -253,7 +253,7 @@ class SerialChunks(unittest.TestCase):
         b = w.row("deepseek", "c")
         resume = w.adapter.launches[-1]
         self.assertEqual(b["state"], "PRODUCING")
-        self.assertEqual(len(w.adapter.launches), 2)
+        self.assertEqual(len(w.adapter.launches), 3)
         self.assertEqual(resume["kind"], "resume")
         self.assertEqual(w.active()["chunk_no"], active_before["chunk_no"])
         self.assertEqual(w.active()["sense_ids"], ids)
