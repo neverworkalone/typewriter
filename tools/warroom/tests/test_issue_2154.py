@@ -271,7 +271,7 @@ class VerifyBlock(unittest.TestCase):
         w.git.verified.add(("shard", "001", None, None))
         self.tick()
         self.assertIsNone(self.block())
-        w.git.changed_paths = ["data/relations/relation-001.jsonl"]   # a later master changes what the scope reads
+        w.git.changed_between_paths = ["data/relations/relation-001.jsonl"]   # a later master changes what the scope reads
         w.git.verified.add(("shard", "001", None, None))
         control.start(w.store, "claude", S2, "single", cfg=w.cfg)
         w.git.base_sha = SHA3
@@ -295,7 +295,7 @@ class VerifyBlock(unittest.TestCase):
         control.start(w.store, "claude", S2, "single", cfg=w.cfg)
         calls = len(w.git.verify_calls)
         w.git.base_sha = SHA3
-        w.git.changed_paths = ["docs/x.md", "data/relation-drops/drop-002.jsonl", "data/relation-candidates/002/002_01_a_codex.jsonl", "data/relations/relation-002-backup.jsonl"]
+        w.git.changed_between_paths = ["docs/x.md", "data/relation-drops/drop-002.jsonl", "data/relation-candidates/002/002_01_a_codex.jsonl", "data/relations/relation-002-backup.jsonl"]
         self.tick()
         self.assertEqual((len(w.git.verify_calls), w.store.get(stage2.ok_key("001", "01"))), (calls, SHA3))   # carried over
         for n, path in enumerate(("data/relations/relation-002.jsonl", "data/relation-drops/drop-001.jsonl", "scripts/relation/admission.mjs", "data/canonical/stdict-0001.jsonl",
@@ -303,7 +303,7 @@ class VerifyBlock(unittest.TestCase):
             with self.subTest(path=path):
                 control.start(w.store, "claude", S2, "single", cfg=w.cfg)
                 sha = f"{n + 4}" * 40
-                w.git.base_sha, w.git.changed_paths = sha, [path]
+                w.git.base_sha, w.git.changed_between_paths = sha, [path]
                 calls = len(w.git.verify_calls)
                 self.tick()
                 self.assertGreater(len(w.git.verify_calls), calls)   # verified again on the new master

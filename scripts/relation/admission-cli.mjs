@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs';
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
+import { createHash, randomUUID } from 'node:crypto';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -31,14 +32,23 @@ const USAGE = `usage:
   node scripts/relation/admission-cli.mjs prepare --shard 001 [--batch 01] [--out <file.json>] [--allow-partial]
   node scripts/relation/admission-cli.mjs prepare --shard 001 --batch 01 --part 01 [--checkpoint <file.json>] [--allow-partial]
   node scripts/relation/admission-cli.mjs read-chunk --checkpoint <file.json> [--max-candidates 250] [--source-sense-id <id> --candidate <text>] [--format json|compact] [--out <file>]
+  node scripts/relation/admission-cli.mjs read-chunk --checkpoint <file.json> --optional [--format json|compact] [--page <n>] [--page-size <n>] [--out <file>]
+  node scripts/relation/admission-cli.mjs inspect --checkpoint <file.json> --source-sense-id <id>[,<id>...] [--candidate <text>] [--format json|compact] [--page <n>] [--page-size <n>] [--out <file>]
   node scripts/relation/admission-cli.mjs save-chunk --checkpoint <file.json> --in <decisions> [--format json|compact]
+  node scripts/relation/admission-cli.mjs save-optional --checkpoint <file.json> --in <decisions>
+  node scripts/relation/admission-cli.mjs complete-optional --checkpoint <file.json>
+  node scripts/relation/admission-cli.mjs cancel-revision --checkpoint <file.json> --chunk-id <exact>
   node scripts/relation/admission-cli.mjs merge --checkpoint <file.json>
+  node scripts/relation/admission-cli.mjs amend --checkpoint <file.json> --in <decisions>
   node scripts/relation/admission-cli.mjs verify --shard 001 [--batch 01 [--part 01]] [--checkpoint <file.json>] [--allow-partial] [--json]`;
 
 const CHECKPOINT_VERSION = 1;
 const DEFAULT_CHUNK_CANDIDATES = 250;
 const CHUNK_FORMATS = ['json', 'compact'];
 const CHECKPOINT_DIRECTORY = '.warroom-scratch';
+const INSPECT_PAGE_SIZE = 40;
+const INSPECT_PAGE_MAX_BYTES = 36_000;
+const INSPECT_PAGE_MAX_CHARS = 28_000;
 const isPlainObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 const keysOf = (value) => Object.keys(value).sort().join(',');
 const isTier = (value) => Number.isInteger(value) && value >= 1 && value <= 9;
@@ -71,6 +81,30 @@ async function writeJsonlAtomically(file, rows) {
   const contents = rows.length ? `${rows.map((row) => JSON.stringify(row)).join('\n')}\n` : '';
   await writeFile(temporary, contents);
   await rename(temporary, file);
+}
+
+const sha256 = (value) => createHash('sha256').update(value).digest('hex');
+
+async function readFileState(file) {
+  try {
+    const bytes = await readFile(file);
+    return { exists: true, bytes, sha256: sha256(bytes) };
+  } catch (error) {
+    if (error.code === 'ENOENT') return { exists: false, bytes: Buffer.alloc(0), sha256: null };
+    throw error;
+  }
+}
+
+function sameFileState(left, right) {
+  return left.exists === right.exists && left.bytes.equals(right.bytes);
+}
+
+async function writeFileStateAtomically(file, state) {
+  if (!state.exists) {
+    try { await unlink(file); } catch (error) { if (error.code !== 'ENOENT') throw error; }
+    return;
+  }
+  await writeTextAtomically(file, state.bytes);
 }
 
 function validateDecision(item, candidate, decision) {
@@ -148,6 +182,12 @@ function validateCheckpoint(checkpoint, identity = {}) {
     throw new Error('checkpoint is missing its items or chunk cursor');
   }
   if (typeof checkpoint.complete !== 'boolean') throw new Error('checkpoint must record whether all Stage 1 inputs are complete');
+  if (checkpoint.optional_review_complete !== undefined && typeof checkpoint.optional_review_complete !== 'boolean') {
+    throw new Error('checkpoint optional_review_complete must be a boolean when present');
+  }
+  if (checkpoint.amend_revision !== undefined && (!Number.isInteger(checkpoint.amend_revision) || checkpoint.amend_revision < 0)) {
+    throw new Error('checkpoint amend_revision must be a non-negative integer when present');
+  }
   const seen = new Set();
   const seenSenses = new Set();
   for (const item of checkpoint.items) {
@@ -213,6 +253,17 @@ function validateCheckpoint(checkpoint, identity = {}) {
   if (checkpoint.merged && (checkpoint.pending_chunk || checkpoint.items.some((item) => item.candidates.some((candidate) => candidate.decision === null)))) {
     throw new Error('checkpoint cannot be merged while decisions are missing');
   }
+  if (checkpoint.premerge !== undefined) {
+    const manifest = checkpoint.premerge;
+    const fileMeta = (value) => isPlainObject(value) && typeof value.exists === 'boolean'
+      && (value.exists ? typeof value.sha256 === 'string' && /^[a-f0-9]{64}$/u.test(value.sha256) : value.sha256 === null);
+    if (!isPlainObject(manifest) || !['preparing', 'ready'].includes(manifest.status)
+        || manifest.identity !== `${checkpoint.shard}/${checkpoint.batch}/${checkpoint.part}`
+        || !fileMeta(manifest.relations) || !fileMeta(manifest.drops)) {
+      throw new Error('checkpoint contains invalid premerge snapshot metadata');
+    }
+  }
+  if (checkpoint.optional_review_complete === true) assertOptionalComplete(checkpoint);
   return checkpoint;
 }
 
@@ -409,11 +460,19 @@ function coalesceIdenticalSensePairRelations(relations, relationCandidates) {
 }
 
 function assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, newRelations, newRelationCandidates, newDrops, index) {
-  const exactRelations = new Set(existingRelations.map(stableRow));
-  const exactDrops = new Set(existingDrops.map(stableRow));
+  // The materializer must be safe to run repeatedly from a pre-merge snapshot. Do not let a reciprocal
+  // relation update alias and mutate the input rows supplied by its caller.
+  const baseRelations = existingRelations.map((row) => ({
+    ...row,
+    ...(Array.isArray(row.candidate_forms) ? { candidate_forms: [...row.candidate_forms] } : {}),
+    ...(Array.isArray(row.reverse_candidate_forms) ? { reverse_candidate_forms: [...row.reverse_candidate_forms] } : {}),
+  }));
+  const baseDrops = existingDrops.map((row) => ({ ...row }));
+  const exactRelations = new Set(baseRelations.map(stableRow));
+  const exactDrops = new Set(baseDrops.map(stableRow));
   const idPairs = new Map();
   const textPairs = new Set();
-  const drops = new Set(existingDrops.map((row) => `${row.source_sense_id}\u0000${normalizeCandidate(row.candidate)}`));
+  const drops = new Set(baseDrops.map((row) => `${row.source_sense_id}\u0000${normalizeCandidate(row.candidate)}`));
   const sourceCandidatesForPair = new Map();
   const existingIdCandidates = new Set();
   const checkpointCandidates = new Map();
@@ -429,7 +488,7 @@ function assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, ne
       if (decision?.target_resolution === 'exact') addSourceCandidateForPair(idPairKey(item.sense_id, decision.target_sense_id), candidateKey);
     }
   }
-  for (const row of existingRelations) {
+  for (const row of baseRelations) {
     if ('text' in row) textPairs.add(`${row.source_sense_id}\u0000${normalizeCandidate(row.text)}`);
     else {
       idPairs.set(idPairKey(row.source_sense_id, row.target_sense_id), row);
@@ -511,12 +570,14 @@ function assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, ne
       throw new Error(`cannot merge a Drop already answered by an approved ID relation ${key.replace('\u0000', '/')}`);
     }
   }
-  return { relations: [...existingRelations, ...appendRelations], drops: [...existingDrops, ...appendDrops], relationsChanged };
+  return { relations: [...baseRelations, ...appendRelations], drops: [...baseDrops, ...appendDrops], relationsChanged };
 }
 
 function parseArgs(argv) {
   const [command, ...rest] = argv;
-  const options = { command, shard: null, batch: null, part: null, out: null, checkpoint: null, input: null, maxCandidates: DEFAULT_CHUNK_CANDIDATES, allowPartial: false, json: false, sourceSenseId: null, candidateText: null, format: null };
+  const options = { command, shard: null, batch: null, part: null, out: null, checkpoint: null, input: null,
+    maxCandidates: DEFAULT_CHUNK_CANDIDATES, allowPartial: false, json: false, sourceSenseId: null, candidateText: null,
+    format: null, optional: false, chunkId: null, page: 1, pageSize: INSPECT_PAGE_SIZE };
   for (let index = 0; index < rest.length; index += 1) {
     const flag = rest[index];
     if (flag === '--shard') options.shard = rest[++index];
@@ -528,31 +589,49 @@ function parseArgs(argv) {
     else if (flag === '--max-candidates') options.maxCandidates = Number(rest[++index]);
     else if (flag === '--source-sense-id') options.sourceSenseId = rest[++index];
     else if (flag === '--candidate') options.candidateText = rest[++index];
+    else if (flag === '--optional') options.optional = true;
+    else if (flag === '--chunk-id') options.chunkId = rest[++index];
+    else if (flag === '--page') options.page = Number(rest[++index]);
+    else if (flag === '--page-size') options.pageSize = Number(rest[++index]);
     else if (flag === '--allow-partial') options.allowPartial = true;
     else if (flag === '--json') options.json = true;
     else if (flag === '--format') options.format = rest[++index];
     else throw new Error(`unknown argument ${flag}\n${USAGE}`);
   }
-  if (options.format !== null && !['read-chunk', 'save-chunk'].includes(command)) throw new Error(`--format is only valid for read-chunk/save-chunk\n${USAGE}`);
-  if (options.format !== null && !CHUNK_FORMATS.includes(options.format)) throw new Error(`--format must be json or compact\n${USAGE}`);
-  if (options.format === 'compact' && options.sourceSenseId !== null) throw new Error(`--format compact covers primary chunks only; read a revision as JSON\n${USAGE}`);
+  if (options.format !== null && !['inspect', 'read-chunk', 'save-chunk'].includes(command)) throw new Error(`--format is only valid for inspect/read-chunk/save-chunk\n${USAGE}`);
+  if (options.format !== null && !['json', 'compact'].includes(options.format)) throw new Error(`--format must be json or compact\n${USAGE}`);
+  if (options.format === 'compact' && command === 'read-chunk' && !options.optional && options.sourceSenseId !== null) {
+    throw new Error(`--format compact covers primary chunks only; read a revision as JSON\n${USAGE}`);
+  }
   options.format ??= 'json';
-  if (!['prepare', 'read-chunk', 'save-chunk', 'merge', 'verify'].includes(command)) throw new Error(USAGE);
+  if (!['prepare', 'inspect', 'read-chunk', 'save-chunk', 'save-optional', 'complete-optional', 'cancel-revision', 'merge', 'amend', 'verify'].includes(command)) throw new Error(USAGE);
   if (['prepare', 'verify'].includes(command)) assertShard(options.shard);
   if (options.batch !== null && !['01', '02'].includes(options.batch)) throw new Error(`--batch must be 01 or 02\n${USAGE}`);
   if (options.part !== null && !['01', '02', '03', '04', '05'].includes(options.part)) throw new Error(`--part must be 01, 02, 03, 04 or 05\n${USAGE}`);
   if (options.part !== null && options.batch === null) throw new Error(`--part requires --batch\n${USAGE}`);
   if (options.part !== null && !['prepare', 'verify'].includes(command)) throw new Error(`--part is only valid for prepare/verify\n${USAGE}`);
   if (!Number.isInteger(options.maxCandidates) || options.maxCandidates < 1) throw new Error(`--max-candidates must be a positive integer\n${USAGE}`);
-  if (['read-chunk', 'save-chunk', 'merge'].includes(command) && !options.checkpoint) throw new Error(`${command} requires --checkpoint\n${USAGE}`);
-  if (command === 'save-chunk' && !options.input) throw new Error(`save-chunk requires --in\n${USAGE}`);
+  if (['inspect', 'read-chunk', 'save-chunk', 'save-optional', 'complete-optional', 'cancel-revision', 'merge', 'amend'].includes(command) && !options.checkpoint) throw new Error(`${command} requires --checkpoint\n${USAGE}`);
+  if (['save-chunk', 'save-optional', 'amend'].includes(command) && !options.input) throw new Error(`${command} requires --in\n${USAGE}`);
+  if (command === 'cancel-revision' && !options.chunkId) throw new Error(`cancel-revision requires --chunk-id\n${USAGE}`);
+  if (['inspect', 'read-chunk'].includes(command) && (!Number.isInteger(options.page) || options.page < 1)) throw new Error(`--page must be a positive integer\n${USAGE}`);
+  if (['inspect', 'read-chunk'].includes(command) && (!Number.isInteger(options.pageSize) || options.pageSize < 1)) throw new Error(`--page-size must be a positive integer\n${USAGE}`);
+  if ((options.page !== 1 || options.pageSize !== INSPECT_PAGE_SIZE) && !['inspect', 'read-chunk'].includes(command)) throw new Error(`--page/--page-size is only valid for inspect/read-chunk\n${USAGE}`);
+  if (options.optional && command !== 'read-chunk') throw new Error(`--optional is only valid for read-chunk\n${USAGE}`);
+  if (options.chunkId && command !== 'cancel-revision') throw new Error(`--chunk-id is only valid for cancel-revision\n${USAGE}`);
   if (options.json && command !== 'verify') throw new Error(`--json is only valid for verify\n${USAGE}`);
   if (options.allowPartial && !['prepare', 'verify'].includes(command)) throw new Error(`--allow-partial is only valid for prepare/verify\n${USAGE}`);
-  if ((options.sourceSenseId !== null || options.candidateText !== null)
-      && (command !== 'read-chunk' || typeof options.sourceSenseId !== 'string' || !options.sourceSenseId
-        || typeof options.candidateText !== 'string' || !options.candidateText)) {
-    throw new Error(`--source-sense-id and --candidate must be used together with read-chunk\n${USAGE}`);
+  if (command === 'inspect' && (typeof options.sourceSenseId !== 'string' || !options.sourceSenseId)) {
+    throw new Error(`inspect requires --source-sense-id\n${USAGE}`);
   }
+  if ((options.sourceSenseId !== null || options.candidateText !== null)
+      && !(command === 'inspect' || (command === 'read-chunk' && !options.optional
+        && typeof options.sourceSenseId === 'string' && options.sourceSenseId
+        && typeof options.candidateText === 'string' && options.candidateText))) {
+    throw new Error(`--source-sense-id and --candidate must be used with inspect, or together with read-chunk\n${USAGE}`);
+  }
+  if (options.optional && (options.sourceSenseId !== null || options.candidateText !== null)) throw new Error(`--optional cannot be combined with a source candidate filter\n${USAGE}`);
+  if (options.out && !['inspect', 'read-chunk'].includes(command)) throw new Error(`--out is only valid for inspect/read-chunk\n${USAGE}`);
   if (command === 'prepare' && options.part && options.out) throw new Error('Part prepare writes its checkpoint; use --checkpoint instead of --out');
   return options;
 }
@@ -573,10 +652,37 @@ export async function run(argv, { root } = {}) {
         ? defaultCheckpointPath(options.shard, options.batch, options.part, repositoryRoot)
         : null;
 
+  if (options.command === 'inspect') {
+    const checkpoint = await readCheckpoint(checkpointPath);
+    const ids = options.sourceSenseId.split(',').map((value) => value.trim());
+    if (ids.some((value) => !value)) throw new Error('--source-sense-id contains an empty ID');
+    return inspectCheckpoint(checkpoint, options.out, repositoryRoot, ids, options.candidateText, options.format, options.page, options.pageSize);
+  }
   if (options.command === 'read-chunk' || options.command === 'save-chunk') {
     const checkpoint = await readCheckpoint(checkpointPath);
-    if (options.command === 'read-chunk') return readChunk(checkpoint, checkpointPath, options.maxCandidates, options.out, repositoryRoot, options.sourceSenseId, options.candidateText, options.format);
+    if (options.command === 'read-chunk') return readChunk(checkpoint, checkpointPath, options.maxCandidates, options.out, repositoryRoot,
+      options.sourceSenseId, options.candidateText, options.format, options.optional, options.page, options.pageSize);
     return saveChunk(checkpoint, checkpointPath, options.input, repositoryRoot, options.format);
+  }
+  if (options.command === 'save-optional') {
+    const result = await saveOptional(await readCheckpoint(checkpointPath), checkpointPath, options.input, repositoryRoot);
+    console.log(JSON.stringify(result));
+    return result;
+  }
+  if (options.command === 'complete-optional') {
+    const result = await completeOptional(await readCheckpoint(checkpointPath), checkpointPath);
+    console.log(JSON.stringify(result));
+    return result;
+  }
+  if (options.command === 'cancel-revision') {
+    const result = await cancelRevision(await readCheckpoint(checkpointPath), checkpointPath, options.chunkId);
+    console.log(JSON.stringify(result));
+    return result;
+  }
+  if (options.command === 'amend') {
+    const result = await amendCheckpoint(await readCheckpoint(checkpointPath), checkpointPath, options.input, repositoryRoot);
+    console.log(JSON.stringify(result));
+    return result;
   }
   if (options.command === 'merge') return mergeCheckpoint(await readCheckpoint(checkpointPath), checkpointPath, repositoryRoot);
   if (options.command === 'prepare' && options.part && existsSync(checkpointPath)) {
@@ -591,6 +697,21 @@ export async function run(argv, { root } = {}) {
       throw new Error(`Part checkpoint is incomplete or not merged: ${checkpointProgress(verifiedCheckpoint)}`);
     }
     validateCheckpointDecisions(verifiedCheckpoint);
+    if ((verifiedCheckpoint.amend_revision ?? 0) > 0) {
+      const journalPath = checkpointPath.replace(/\.json$/u, '.amend-state.json');
+      const journal = await readAmendJournal(journalPath);
+      if (!journal) throw new Error('amended Part checkpoint has no amend recovery evidence');
+      const oldCheckpoint = checkpointFromJournal(journal.old_checkpoint_b64);
+      const newCheckpoint = checkpointFromJournal(journal.new_checkpoint_b64);
+      if (!/^[a-f0-9]{64}$/u.test(journal.request_sha256)
+          || oldCheckpoint.shard !== verifiedCheckpoint.shard || oldCheckpoint.batch !== verifiedCheckpoint.batch
+          || oldCheckpoint.part !== verifiedCheckpoint.part || newCheckpoint.shard !== verifiedCheckpoint.shard
+          || newCheckpoint.batch !== verifiedCheckpoint.batch || newCheckpoint.part !== verifiedCheckpoint.part
+          || newCheckpoint.amend_revision !== verifiedCheckpoint.amend_revision
+          || !sameFileState(await readFileState(checkpointPath), bytesState(checkpointBytes(newCheckpoint)))) {
+        throw new Error('latest amend recovery evidence does not match the current checkpoint');
+      }
+    }
   }
 
   const loaded = await loadShard(options.shard, repositoryRoot, { batch: options.batch });
@@ -630,6 +751,7 @@ export async function run(argv, { root } = {}) {
         stats: result.stats,
         next_chunk_number: 1,
         pending_chunk: null,
+        optional_review_complete: false,
         merged: false,
         items: result.items.map((item) => ({
           ...item,
@@ -680,6 +802,17 @@ export async function run(argv, { root } = {}) {
   const counts = verifyAccounting({ canonicalRows, candidateFiles, relationRows, dropRows, otherRelationRows: others, index, scopeRows });
   if (verifiedCheckpoint) {
     assertCheckpointMerged(verifiedCheckpoint, relationRows, dropRows);
+    if (verifiedCheckpoint.premerge) {
+      const baseline = await readReadyPremerge(verifiedCheckpoint, checkpointPath);
+      const expected = await materializePart(verifiedCheckpoint, repositoryRoot, baseline);
+      const [actualRelations, actualDrops] = await Promise.all([
+        readFileState(shardRelationPath(options.shard, repositoryRoot)),
+        readFileState(shardDropPath(options.shard, repositoryRoot)),
+      ]);
+      if (!sameFileState(actualRelations, expected.relations) || !sameFileState(actualDrops, expected.drops)) {
+        throw new Error('merged Part outputs do not match byte-for-byte materialize(premerge, checkpoint)');
+      }
+    }
   }
   if (options.json) {
     console.log(JSON.stringify({ version: 1, ok: true, counts }));
@@ -888,7 +1021,465 @@ function compactHint(row) {
   return `${row.alias} R <type> <tier> T<k> <reverse_type> <reverse_tier> (T<k> one of ${row.targets.join(',')}) | ${row.alias} R <type> <tier> none ${row.targets.join(',')} | ${row.alias} D <reason>`;
 }
 
-async function readChunk(checkpoint, checkpointPath, maxCandidates, out, root, sourceSenseId = null, candidateText = null, format = 'json') {
+function stableDigest(value) {
+  return sha256(Buffer.from(JSON.stringify(value), 'utf8'));
+}
+
+function remainingOptionalLinks(checkpoint) {
+  return checkpoint.items.flatMap((item) => item.candidates
+    .filter((candidate) => candidate.already_accounted === true && candidate.decision?.disposition === 'existing')
+    .map((candidate) => {
+      const linked = new Set([
+        ...candidate.existing_target_sense_ids,
+        ...candidate.additional_relations.map((relation) => relation.target_sense_id),
+      ]);
+      return {
+        item,
+        candidate,
+        existing_target_sense_ids: candidate.existing_target_sense_ids,
+        unlinked_target_sense_ids: candidate.unlinked_target_sense_ids.filter((senseId) => !linked.has(senseId)),
+      };
+    })
+    .filter((entry) => entry.unlinked_target_sense_ids.length > 0));
+}
+
+function optionalReviewState(checkpoint) {
+  return checkpoint.items.flatMap((item) => item.candidates
+    .filter((candidate) => candidate.already_accounted === true)
+    .map((candidate) => ({
+      source_sense_id: item.sense_id,
+      candidate: candidate.text,
+      existing_target_sense_ids: candidate.existing_target_sense_ids,
+      unlinked_target_sense_ids: candidate.unlinked_target_sense_ids,
+      additional_relations: candidate.additional_relations,
+    })));
+}
+
+function optionalReviewDigest(checkpoint) {
+  return stableDigest({
+    part: [checkpoint.shard, checkpoint.batch, checkpoint.part],
+    candidates: optionalReviewState(checkpoint),
+  });
+}
+
+function assertOptionalComplete(checkpoint) {
+  if (checkpoint.optional_review_complete !== true || typeof checkpoint.optional_review_digest !== 'string'
+      || !/^[a-f0-9]{64}$/u.test(checkpoint.optional_review_digest)
+      || checkpoint.optional_review_state_sha256 !== stableDigest(optionalReviewState(checkpoint))) {
+    throw new Error('checkpoint optional-link completion evidence is missing or does not match its saved decisions');
+  }
+}
+
+function requestedCheckpointCandidates(checkpoint, sourceSenseIds, candidateText = null) {
+  const requested = [...new Set(sourceSenseIds)];
+  if (requested.length !== sourceSenseIds.length) throw new Error('source sense IDs must not repeat');
+  const missing = requested.filter((senseId) => !checkpoint.items.some((item) => item.sense_id === senseId));
+  if (missing.length) throw new Error(`checkpoint has no source sense(s): ${missing.join(', ')}`);
+  const items = checkpoint.items.filter((item) => requested.includes(item.sense_id));
+  const allCandidates = items.flatMap((item) => item.candidates.map((candidate) => ({ item, candidate })));
+  const candidates = allCandidates.filter(({ candidate }) => candidateText === null || candidate.text === candidateText);
+  if (candidateText !== null && candidates.length === 0) throw new Error(`checkpoint has no candidate ${requested.join(',')}/${candidateText}`);
+  return { items, allCandidates, candidates, senseIds: [...requested].sort() };
+}
+
+function inspectDigest(checkpoint, selected) {
+  return stableDigest({
+    part: [checkpoint.shard, checkpoint.batch, checkpoint.part],
+    sense_ids: selected.senseIds,
+    candidates: selected.allCandidates.map(({ item, candidate }) => ({
+      source_sense_id: item.sense_id,
+      candidate: candidate.text,
+      decision: candidate.decision,
+      additional_relations: candidate.additional_relations ?? [],
+      optional: candidate.already_accounted === true ? {
+        existing_target_sense_ids: candidate.existing_target_sense_ids,
+        unlinked_target_sense_ids: candidate.unlinked_target_sense_ids,
+      } : null,
+    })),
+    optional_review_complete: checkpoint.optional_review_complete === true,
+    optional_review_digest: checkpoint.optional_review_digest ?? null,
+  });
+}
+
+function inspectModel(selected) {
+  const targets = new Map();
+  const aliasByCandidate = new Map();
+  for (const [index, { item, candidate }] of (selected.allCandidates ?? selected.candidates).entries()) {
+    aliasByCandidate.set(`${item.sense_id}\u0000${candidate.text}`, `c${index + 1}`);
+  }
+  for (const { item, candidate } of (selected.allCandidates ?? selected.candidates)) {
+    for (const target of candidate.same_spelling_targets) {
+      for (const sense of target.senses) {
+        if (!targets.has(sense.sense_id)) {
+          targets.set(sense.sense_id, {
+            alias: `T${targets.size + 1}`,
+            record_id: target.record_id,
+            lemma: target.lemma,
+            sense_id: sense.sense_id,
+            pos: sense.pos,
+            gloss: sense.gloss,
+          });
+        }
+      }
+    }
+  }
+  const candidates = selected.candidates.map(({ item, candidate }) => {
+    const targetAliases = [];
+    for (const target of candidate.same_spelling_targets) {
+      for (const sense of target.senses) {
+        targetAliases.push(targets.get(sense.sense_id).alias);
+      }
+    }
+    return { alias: aliasByCandidate.get(`${item.sense_id}\u0000${candidate.text}`), item, candidate, targetAliases };
+  });
+  return { candidates, targets };
+}
+
+function targetAliasFor(targets, senseId) {
+  const target = targets.get(senseId);
+  if (!target) throw new Error(`inspect context has no target sense ${senseId}`);
+  return target.alias;
+}
+
+function compactCurrentDecision(row, model) {
+  const { candidate } = row;
+  const decision = candidate.decision;
+  if (decision === null) return `# current ${row.alias}: pending`;
+  if (decision.disposition === 'existing') {
+    const optional = candidate.additional_relations.map((relation) => {
+      const target = targetAliasFor(model.targets, relation.target_sense_id);
+      return `R ${relation.type} ${relation.relevance} ${target} ${relation.reverse_type} ${relation.reverse_relevance}`;
+    });
+    return `# current ${row.alias}: existing${optional.length ? `; optional ${optional.join(' | ')}` : ''}`;
+  }
+  if (decision.disposition === 'drop') return `# current ${row.alias}: D ${decision.reason}`;
+  if (decision.target_resolution === 'exact') {
+    return `# current ${row.alias}: R ${decision.type} ${decision.relevance} ${targetAliasFor(model.targets, decision.target_sense_id)} ${decision.reverse_type} ${decision.reverse_relevance}`;
+  }
+  if (decision.target_resolution === 'no_exact_match') {
+    const checked = decision.checked_target_sense_ids.map((senseId) => targetAliasFor(model.targets, senseId));
+    return `# current ${row.alias}: R ${decision.type} ${decision.relevance} none ${checked.join(',')}`;
+  }
+  return `# current ${row.alias}: R ${decision.type} ${decision.relevance}`;
+}
+
+function renderInspect(checkpoint, selected, digest, page, pageSize) {
+  const model = inspectModel(selected);
+  const totalPages = Math.max(1, Math.ceil(model.candidates.length / pageSize));
+  if (page > totalPages) throw new Error(`inspect page ${page} is outside 1..${totalPages}`);
+  const rows = model.candidates.slice((page - 1) * pageSize, page * pageSize);
+  const usedTargets = new Set(rows.flatMap((row) => row.targetAliases));
+  const lines = [
+    `inspect ${selected.senseIds.join(',')} @${digest}`,
+    `# shard ${checkpoint.shard} batch ${checkpoint.batch} part ${checkpoint.part} · page ${page}/${totalPages} · candidates ${rows.length}/${model.candidates.length}`,
+    `# optional_review_complete ${checkpoint.optional_review_complete === true}`,
+    '# T<k> target_sense_id target_record_id lemma pos full_gloss',
+    ...[...model.targets.values()].filter((target) => usedTargets.has(target.alias)
+      || rows.some((row) => row.candidate.decision?.target_sense_id === target.sense_id
+        || row.candidate.decision?.checked_target_sense_ids?.includes(target.sense_id)
+        || row.candidate.additional_relations?.some((relation) => relation.target_sense_id === target.sense_id)))
+      .map((target) => [target.alias, target.sense_id, target.record_id, target.lemma, target.pos, target.gloss].map(compactField).join('\t')),
+  ];
+  let lastSenseId = null;
+  for (const row of rows) {
+    if (row.item.sense_id !== lastSenseId) {
+      lastSenseId = row.item.sense_id;
+      lines.push('', ['S', row.item.sense_id, row.item.record_id, row.item.lemma, row.item.pos,
+        row.item.reference_gloss === undefined ? row.item.gloss : `${row.item.gloss} ⇒ ${row.item.reference_gloss}`].map(compactField).join('\t'));
+      for (const peer of row.item.approved_peers ?? []) {
+        lines.push(['P', peer.type, peer.relevance, 'text' in peer ? peer.text
+          : `${peer.target_sense_id} ${peer.target_lemma} ${peer.target_pos} ${peer.target_gloss}`].map(compactField).join('\t'));
+      }
+    }
+    lines.push([row.alias, row.candidate.text, row.candidate.producers.join(','), row.targetAliases.join(',') || '-'].map(compactField).join('\t'));
+    lines.push(compactCurrentDecision(row, model));
+  }
+  return `${lines.join('\n')}\n`;
+}
+
+function optionalDigest(checkpoint, links = remainingOptionalLinks(checkpoint)) {
+  return stableDigest({
+    part: [checkpoint.shard, checkpoint.batch, checkpoint.part],
+    optional_review_complete: checkpoint.optional_review_complete === true,
+    links: links.map(({ item, candidate, existing_target_sense_ids, unlinked_target_sense_ids }) => ({
+      source_sense_id: item.sense_id,
+      candidate: candidate.text,
+      existing_target_sense_ids,
+      unlinked_target_sense_ids,
+      additional_relations: candidate.additional_relations,
+    })),
+  });
+}
+
+function optionalModel(links) {
+  const candidates = links.map(({ item, candidate }) => ({ item, candidate }));
+  return inspectModel({ candidates, allCandidates: candidates, senseIds: [] });
+}
+
+function renderOptional(checkpoint, links, digest, page, pageSize) {
+  const model = optionalModel(links);
+  const totalPages = Math.max(1, Math.ceil(model.candidates.length / pageSize));
+  if (page > totalPages) throw new Error(`optional page ${page} is outside 1..${totalPages}`);
+  const rows = model.candidates.slice((page - 1) * pageSize, page * pageSize);
+  const linksByCandidate = new Map(links.map((entry) => [`${entry.item.sense_id}\u0000${entry.candidate.text}`, entry]));
+  const usedTargets = new Set(rows.flatMap((row) => row.targetAliases));
+  const targetLines = [...model.targets.values()].filter((target) => usedTargets.has(target.alias))
+    .map((target) => [target.alias, target.sense_id, target.record_id, target.lemma, target.pos, target.gloss].map(compactField).join('\t'));
+  const lines = [
+    `links @${digest}`,
+    `# shard ${checkpoint.shard} batch ${checkpoint.batch} part ${checkpoint.part} · page ${page}/${totalPages} · optional candidates ${rows.length}/${model.candidates.length}`,
+    '# T<k> target_sense_id target_record_id lemma pos full_gloss',
+    '# S source_sense_id record_id lemma pos full_gloss',
+    '# c<n> candidate unlinked target aliases',
+    '# answer each candidate once: c<n> skip OR one or more c<n> R <type> <tier> T<k> <reverse_type> <reverse_tier>',
+    ...targetLines,
+  ];
+  for (const row of rows) {
+    if (!lines.some((line) => line.startsWith(`S\t${row.item.sense_id}\t`))) {
+      lines.push('', ['S', row.item.sense_id, row.item.record_id, row.item.lemma, row.item.pos,
+        row.item.reference_gloss === undefined ? row.item.gloss : `${row.item.gloss} ⇒ ${row.item.reference_gloss}`].map(compactField).join('\t'));
+    }
+    const entry = linksByCandidate.get(`${row.item.sense_id}\u0000${row.candidate.text}`);
+    const available = new Set(entry.unlinked_target_sense_ids);
+    const linked = [...entry.existing_target_sense_ids, ...entry.candidate.additional_relations.map((relation) => relation.target_sense_id)];
+    lines.push([row.alias, row.candidate.text,
+      'unlinked=' + [...available].map((senseId) => targetAliasFor(model.targets, senseId)).join(','),
+      'linked=' + [...new Set(linked)].map((senseId) => targetAliasFor(model.targets, senseId)).join(',')].map(compactField).join('\t'));
+  }
+  return `${lines.join('\n')}\n`;
+}
+
+async function writeOutput(out, root, text) {
+  if (out) await writeTextAtomically(resolveRootPath(root, out), text);
+  else console.log(text.trimEnd());
+}
+
+function assertBoundedInspectPage(text, label) {
+  const bytes = Buffer.byteLength(text, 'utf8');
+  if (bytes > INSPECT_PAGE_MAX_BYTES || text.length > INSPECT_PAGE_MAX_CHARS) {
+    throw new Error(`${label} page exceeds its output limit (${bytes} bytes, ${text.length} characters); retry with a smaller --page-size`);
+  }
+}
+
+function assertPrimaryComplete(checkpoint) {
+  if (!checkpoint.complete) throw new Error('Stage 1 inputs are incomplete for this Part');
+  if (checkpoint.pending_chunk) throw new Error(`save the active chunk ${checkpoint.pending_chunk.chunk_id} first`);
+  if (checkpoint.items.some((item) => item.candidates.some((candidate) => candidate.decision === null))) {
+    throw new Error(`primary decisions are incomplete: ${checkpointProgress(checkpoint)}`);
+  }
+}
+
+async function inspectCheckpoint(checkpoint, out, root, sourceSenseIds, candidateText, format, page, pageSize) {
+  const selected = requestedCheckpointCandidates(checkpoint, sourceSenseIds, candidateText);
+  const digest = inspectDigest(checkpoint, selected);
+  const model = inspectModel(selected);
+  const totalPages = Math.max(1, Math.ceil(model.candidates.length / pageSize));
+  if (page > totalPages) throw new Error(`inspect page ${page} is outside 1..${totalPages}`);
+  if (format === 'compact') {
+    const text = renderInspect(checkpoint, selected, digest, page, pageSize);
+    assertBoundedInspectPage(text, 'inspect');
+    await writeOutput(out, root, text);
+    return { digest, page, total_pages: totalPages, text };
+  }
+  const items = model.candidates.slice((page - 1) * pageSize, page * pageSize).map((row) => ({
+    alias: row.alias,
+    source_sense_id: row.item.sense_id,
+    source_record_id: row.item.record_id,
+    lemma: row.item.lemma,
+    pos: row.item.pos,
+    gloss: row.item.gloss,
+    ...(row.item.reference_gloss === undefined ? {} : { reference_gloss: row.item.reference_gloss }),
+    approved_peers: row.item.approved_peers ?? [],
+    candidate: row.candidate.text,
+    producers: row.candidate.producers,
+    same_spelling_targets: row.candidate.same_spelling_targets,
+    decision: row.candidate.decision,
+    additional_relations: row.candidate.additional_relations ?? [],
+    ...(row.candidate.already_accounted === true ? {
+      already_accounted: true,
+      existing_target_sense_ids: row.candidate.existing_target_sense_ids,
+      unlinked_target_sense_ids: row.candidate.unlinked_target_sense_ids,
+    } : {}),
+  }));
+  const payload = {
+    inspect: true,
+    shard: checkpoint.shard,
+    batch: checkpoint.batch,
+    part: checkpoint.part,
+    source_sense_ids: selected.senseIds,
+    digest,
+    page,
+    total_pages: totalPages,
+    total_candidates: model.candidates.length,
+    optional_review_complete: checkpoint.optional_review_complete === true,
+    items,
+  };
+  const text = `${JSON.stringify(payload)}\n`;
+  assertBoundedInspectPage(text, 'inspect');
+  await writeOutput(out, root, text);
+  return payload;
+}
+
+async function readOptional(checkpoint, out, root, format, page, pageSize) {
+  assertPrimaryComplete(checkpoint);
+  if (checkpoint.merged) throw new Error('cannot read optional links after the Part has merged');
+  if (checkpoint.optional_review_complete === true) assertOptionalComplete(checkpoint);
+  const links = remainingOptionalLinks(checkpoint);
+  const digest = optionalDigest(checkpoint, links);
+  const model = optionalModel(links);
+  const totalPages = Math.max(1, Math.ceil(model.candidates.length / pageSize));
+  if (page > totalPages) throw new Error(`optional page ${page} is outside 1..${totalPages}`);
+  if (format === 'compact') {
+    const text = links.length === 0
+      ? `# no optional links · ${checkpoint.shard}/${checkpoint.batch}/${checkpoint.part} · ${checkpoint.optional_review_complete === true ? 'complete' : 'review required'}\nlinks @${digest}\n`
+      : renderOptional(checkpoint, links, digest, page, pageSize);
+    assertBoundedInspectPage(text, 'optional-link');
+    await writeOutput(out, root, text);
+    return { complete: true, optional_review_complete: checkpoint.optional_review_complete === true,
+      shard: checkpoint.shard, batch: checkpoint.batch, part: checkpoint.part, digest, page, total_pages: totalPages,
+      links: links.length, text };
+  }
+  const pageEntries = model.candidates.slice((page - 1) * pageSize, page * pageSize).map((row) => {
+    const entry = links.find((link) => link.item.sense_id === row.item.sense_id && link.candidate.text === row.candidate.text);
+    return {
+      alias: row.alias,
+      source_sense_id: row.item.sense_id,
+      source_record_id: row.item.record_id,
+      lemma: row.item.lemma,
+      pos: row.item.pos,
+      gloss: row.item.gloss,
+      ...(row.item.reference_gloss === undefined ? {} : { reference_gloss: row.item.reference_gloss }),
+      candidate: row.candidate.text,
+      existing_target_sense_ids: entry.existing_target_sense_ids,
+      additional_relations: row.candidate.additional_relations,
+      unlinked_target_sense_ids: entry.unlinked_target_sense_ids,
+      same_spelling_targets: row.candidate.same_spelling_targets,
+    };
+  });
+  const payload = {
+    complete: true,
+    optional_review_complete: checkpoint.optional_review_complete === true,
+    shard: checkpoint.shard,
+    batch: checkpoint.batch,
+    part: checkpoint.part,
+    digest,
+    page,
+    total_pages: totalPages,
+    total_candidates: model.candidates.length,
+    links: pageEntries,
+  };
+  const text = `${JSON.stringify(payload)}\n`;
+  assertBoundedInspectPage(text, 'optional-link');
+  await writeOutput(out, root, text);
+  return payload;
+}
+
+async function completeOptional(checkpoint, checkpointPath) {
+  assertPrimaryComplete(checkpoint);
+  if (checkpoint.merged) throw new Error('cannot mark optional links complete after the Part has merged');
+  if (checkpoint.optional_review_complete === true) {
+    assertOptionalComplete(checkpoint);
+    return { optional_review_complete: true, already_complete: true, checkpoint: checkpointPath };
+  }
+  const links = remainingOptionalLinks(checkpoint);
+  if (links.length > 0) throw new Error(`optional-link review still has ${links.length} candidate(s); use save-optional`);
+  checkpoint.optional_review_digest = optionalDigest(checkpoint, links);
+  checkpoint.optional_review_state_sha256 = stableDigest(optionalReviewState(checkpoint));
+  checkpoint.optional_review_complete = true;
+  await writeJsonAtomically(checkpointPath, checkpoint);
+  return { optional_review_complete: true, links: 0, checkpoint: checkpointPath };
+}
+
+function parseOptionalDecisions(text, checkpoint, links, digest) {
+  const model = optionalModel(links);
+  const byAlias = new Map(model.candidates.map((row) => [row.alias, row]));
+  const targetByAlias = new Map([...model.targets.values()].map((target) => [target.alias, target]));
+  const meaningful = text.split('\n').map((line) => line.trim()).filter((line) => line && !line.startsWith('#'));
+  const errors = [];
+  const header = (meaningful.shift() ?? '').split(/\s+/u);
+  if (header.length !== 2 || header[0] !== 'links' || header[1] !== `@${digest}`) {
+    errors.push(`optional decisions must start with "links @${digest}"`);
+  }
+  const decisions = new Map();
+  for (const line of meaningful) {
+    const [alias, kind, ...fields] = line.split(/\s+/u);
+    const row = byAlias.get(alias);
+    if (!row) { errors.push(`${alias}: names no optional candidate`); continue; }
+    const current = decisions.get(alias) ?? { skip: false, relations: [] };
+    try {
+      if (kind === 'skip' && fields.length === 0) {
+        if (current.skip || current.relations.length) throw new Error('skip cannot repeat or mix with Relation rows');
+        current.skip = true;
+      } else if (kind === 'R' && fields.length === 5) {
+        if (current.skip) throw new Error('skip cannot mix with Relation rows');
+        const [type, tierText, targetAlias, reverseType, reverseTierText] = fields;
+        const target = targetByAlias.get(targetAlias);
+        if (!target) throw new Error(`unknown target alias ${targetAlias}`);
+        const relation = {
+          source_sense_id: row.item.sense_id,
+          candidate: row.candidate.text,
+          disposition: 'relation',
+          target_resolution: 'exact',
+          target_record_id: target.record_id,
+          target_sense_id: target.sense_id,
+          type,
+          relevance: compactTier(tierText, alias),
+          reverse_type: reverseType,
+          reverse_relevance: compactTier(reverseTierText, `${alias} reverse`),
+        };
+        validateDecision(row.item, { ...row.candidate, additional_relations: [...row.candidate.additional_relations, ...current.relations] }, relation);
+        if (current.relations.some((saved) => saved.target_sense_id === target.sense_id)) throw new Error(`repeats target ${target.sense_id}`);
+        current.relations.push(relation);
+      } else throw new Error('use skip or R <type> <tier> T<k> <reverse_type> <reverse_tier>');
+      decisions.set(alias, current);
+    } catch (error) { errors.push(`${alias}: ${error.message}`); }
+  }
+  for (const row of model.candidates) {
+    const decision = decisions.get(row.alias);
+    if (!decision) errors.push(`${row.alias}: missing optional candidate decision`);
+    else if (decision.skip && decision.relations.length) errors.push(`${row.alias}: skip cannot mix with Relation rows`);
+  }
+  return { errors, decisions, model };
+}
+
+async function saveOptional(checkpoint, checkpointPath, inputPath, root) {
+  assertPrimaryComplete(checkpoint);
+  if (checkpoint.merged) throw new Error('cannot save optional links after the Part has merged');
+  if (checkpoint.optional_review_complete === true) throw new Error('optional-link review is already complete');
+  const links = remainingOptionalLinks(checkpoint);
+  if (links.length === 0) throw new Error('there are no optional links to save; use complete-optional');
+  const digest = optionalDigest(checkpoint, links);
+  let raw;
+  try { raw = await readFile(resolveRootPath(root, inputPath), 'utf8'); }
+  catch (error) { throw new Error(`cannot read optional-link decisions: ${error.message}`); }
+  const parsed = parseOptionalDecisions(raw, checkpoint, links, digest);
+  if (parsed.errors.length) throw new Error(`optional links not saved, checkpoint unchanged: ${parsed.errors.length} problem(s)\n${parsed.errors.join('\n')}`);
+  for (const row of parsed.model.candidates) {
+    const decision = parsed.decisions.get(row.alias);
+    row.candidate.additional_relations.push(...decision.relations);
+  }
+  checkpoint.optional_review_digest = digest;
+  checkpoint.optional_review_complete = true;
+  checkpoint.optional_review_state_sha256 = stableDigest(optionalReviewState(checkpoint));
+  await writeJsonAtomically(checkpointPath, checkpoint);
+  return { optional_review_complete: true, optional_links_saved: [...parsed.decisions.values()].reduce((sum, value) => sum + value.relations.length, 0),
+    optional_candidates: parsed.decisions.size, checkpoint: checkpointPath };
+}
+
+async function cancelRevision(checkpoint, checkpointPath, chunkId) {
+  if (!chunkId) throw new Error('cancel-revision requires --chunk-id');
+  if (checkpoint.merged || !checkpoint.pending_chunk || checkpoint.pending_chunk.revision !== true
+      || checkpoint.pending_chunk.chunk_id !== chunkId) {
+    throw new Error(`cannot cancel revision ${chunkId}: it must exactly match an active unmerged revision chunk`);
+  }
+  checkpoint.pending_chunk = null;
+  await writeJsonAtomically(checkpointPath, checkpoint);
+  return { canceled: chunkId, next_chunk_number: checkpoint.next_chunk_number, checkpoint: checkpointPath };
+}
+
+async function readChunk(checkpoint, checkpointPath, maxCandidates, out, root, sourceSenseId = null, candidateText = null, format = 'json',
+                          optional = false, page = 1, pageSize = INSPECT_PAGE_SIZE) {
+  if (optional) return readOptional(checkpoint, out, root, format, page, pageSize);
   let pending = checkpoint.pending_chunk;
   if (format === 'compact' && pending?.revision === true) throw new Error(`active chunk ${pending.chunk_id} is a revision; read it as JSON`);
   if (sourceSenseId !== null) {
@@ -1048,56 +1639,446 @@ async function saveChunk(checkpoint, checkpointPath, inputPath, root, format = '
   return result;
 }
 
-async function mergeCheckpoint(checkpoint, checkpointPath, root) {
-  if (!checkpoint.complete) throw new Error('cannot merge a checkpoint prepared with incomplete Stage 1 inputs');
-  if (checkpoint.pending_chunk) throw new Error(`save the active chunk ${checkpoint.pending_chunk.chunk_id} before merging`);
-  if (checkpoint.items.some((item) => item.candidates.some((candidate) => candidate.decision === null))) throw new Error(`cannot merge an incomplete checkpoint: ${checkpointProgress(checkpoint)}`);
-  validateCheckpointDecisions(checkpoint);
-  const { relations: newRelations, relationCandidates: newRelationCandidates, drops: newDrops } = decisionRows(checkpoint);
-  const others = await loadApprovedRelations(root, { exceptShard: checkpoint.shard });
+function premergeSnapshotPaths(checkpoint, checkpointPath) {
+  const prefix = `relation-admission-${checkpoint.shard}-${checkpoint.batch}-${checkpoint.part}.premerge-`;
+  const directory = path.dirname(checkpointPath);
+  return {
+    relations: path.join(directory, `${prefix}relations.jsonl`),
+    drops: path.join(directory, `${prefix}drops.jsonl`),
+  };
+}
+
+function stateManifest(state) {
+  return { exists: state.exists, sha256: state.exists ? sha256(state.bytes) : null };
+}
+
+function parseJsonlState(state, family) {
+  if (!state.exists || state.bytes.length === 0) return [];
+  try {
+    return state.bytes.toString('utf8').split(/\r?\n/u).filter((line) => line.trim()).map((line) => JSON.parse(line));
+  } catch (error) { throw new Error(`cannot parse premerge ${family} snapshot: ${error.message}`); }
+}
+
+function serializedJsonlState(rows, baseline) {
+  if (rows.length === 0 && !baseline.exists) return { exists: false, bytes: Buffer.alloc(0), sha256: null };
+  const text = rows.length ? `${rows.map((row) => JSON.stringify(row)).join('\n')}\n` : '';
+  const bytes = Buffer.from(text, 'utf8');
+  return { exists: true, bytes, sha256: sha256(bytes) };
+}
+
+async function snapshotState(file, expected, current, status, family) {
+  let snapshot;
+  try {
+    const bytes = await readFile(file);
+    snapshot = { exists: true, bytes, sha256: sha256(bytes) };
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+    snapshot = { exists: false, bytes: Buffer.alloc(0), sha256: null };
+  }
+  if (!expected.exists) {
+    if (snapshot.exists) throw new Error(`unexpected premerge ${family} snapshot exists although the source file was absent`);
+    return snapshot;
+  }
+  if (snapshot.exists) {
+    if (snapshot.sha256 !== expected.sha256) throw new Error(`premerge ${family} snapshot hash does not match checkpoint metadata`);
+    return snapshot;
+  }
+  if (status !== 'preparing' || !current.exists || current.sha256 !== expected.sha256) {
+    throw new Error(`premerge ${family} snapshot is missing; refusing to recapture it`);
+  }
+  await writeTextAtomically(file, current.bytes);
+  return { ...current, bytes: Buffer.from(current.bytes) };
+}
+
+async function ensurePremerge(checkpoint, checkpointPath, root) {
   const relationFile = shardRelationPath(checkpoint.shard, root);
   const dropFile = shardDropPath(checkpoint.shard, root);
-  const existingRelations = await loadOptionalJsonl(relationFile);
-  const existingDrops = await loadOptionalJsonl(dropFile);
+  const snapshots = premergeSnapshotPaths(checkpoint, checkpointPath);
+  let manifest = checkpoint.premerge;
+  if (!manifest) {
+    if (checkpoint.merged) throw new Error('merged checkpoint has no premerge snapshot; it cannot be amended or rematerialized');
+    for (const file of Object.values(snapshots)) {
+      try { await readFile(file); throw new Error(`untrusted preexisting snapshot file ${file}`); }
+      catch (error) { if (error.code !== 'ENOENT') throw error; }
+    }
+    const [relations, drops] = await Promise.all([readFileState(relationFile), readFileState(dropFile)]);
+    manifest = {
+      status: 'preparing',
+      identity: `${checkpoint.shard}/${checkpoint.batch}/${checkpoint.part}`,
+      relations: stateManifest(relations),
+      drops: stateManifest(drops),
+    };
+    checkpoint.premerge = manifest;
+    await writeJsonAtomically(checkpointPath, checkpoint);
+  }
+  const [currentRelations, currentDrops] = await Promise.all([readFileState(relationFile), readFileState(dropFile)]);
+  if (manifest.status === 'preparing') {
+    if (currentRelations.exists !== manifest.relations.exists || currentRelations.sha256 !== manifest.relations.sha256
+        || currentDrops.exists !== manifest.drops.exists || currentDrops.sha256 !== manifest.drops.sha256) {
+      throw new Error('Relation/Drop outputs changed while premerge snapshots were being prepared');
+    }
+  }
+  const [relations, drops] = await Promise.all([
+    snapshotState(snapshots.relations, manifest.relations, currentRelations, manifest.status, 'Relation'),
+    snapshotState(snapshots.drops, manifest.drops, currentDrops, manifest.status, 'Drop'),
+  ]);
+  if (manifest.status === 'preparing') {
+    checkpoint.premerge = { ...manifest, status: 'ready' };
+    await writeJsonAtomically(checkpointPath, checkpoint);
+  }
+  return { relations, drops, relationFile, dropFile };
+}
+
+async function readReadyPremerge(checkpoint, checkpointPath) {
+  const manifest = checkpoint.premerge;
+  if (!manifest || manifest.status !== 'ready' || manifest.identity !== `${checkpoint.shard}/${checkpoint.batch}/${checkpoint.part}`) {
+    throw new Error('Part has no trusted, complete premerge snapshot');
+  }
+  const files = premergeSnapshotPaths(checkpoint, checkpointPath);
+  const [relations, drops] = await Promise.all([
+    snapshotState(files.relations, manifest.relations, { exists: false, bytes: Buffer.alloc(0), sha256: null }, 'ready', 'Relation'),
+    snapshotState(files.drops, manifest.drops, { exists: false, bytes: Buffer.alloc(0), sha256: null }, 'ready', 'Drop'),
+  ]);
+  return { relations, drops };
+}
+
+async function materializePart(checkpoint, root, baseline) {
+  assertPrimaryComplete(checkpoint);
+  assertOptionalComplete(checkpoint);
+  validateCheckpointDecisions(checkpoint);
+  const existingRelations = parseJsonlState(baseline.relations, 'Relation');
+  const existingDrops = parseJsonlState(baseline.drops, 'Drop');
+  const others = await loadApprovedRelations(root, { exceptShard: checkpoint.shard });
   const loaded = await loadShard(checkpoint.shard, root, { batch: checkpoint.batch });
   const finalShardSenseIds = new Set(loaded.canonicalRows.flatMap((record) => record.senses.map((sense) => sense.id)));
-  validateRelationRows({
-    relationRows: existingRelations,
-    dropRows: existingDrops,
-    index: loaded.index,
-    shardSenseIds: finalShardSenseIds,
-    otherRelationRows: others,
-  });
+  validateRelationRows({ relationRows: existingRelations, dropRows: existingDrops, index: loaded.index,
+    shardSenseIds: finalShardSenseIds, otherRelationRows: others });
+  const { relations: newRelations, relationCandidates, drops: newDrops } = decisionRows(checkpoint);
   for (const relation of newRelations) {
     if ('text' in relation) continue;
     const source = loaded.index.byId.get(relation.source_record_id);
     if (source) relation.reverse_candidate_forms = candidateFormsForRecord(source, loaded.index);
   }
-  const merged = assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, newRelations, newRelationCandidates, newDrops, loaded.index);
+  const merged = assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, newRelations, relationCandidates, newDrops, loaded.index);
   const scoped = partScope(loaded.canonicalRows, loaded.candidateFiles, checkpoint.batch, checkpoint.part);
-  validateRelationRows({
-    relationRows: merged.relations,
-    dropRows: merged.drops,
-    index: loaded.index,
-    shardSenseIds: finalShardSenseIds,
-    otherRelationRows: others,
-  });
-  verifyAccounting({
-    canonicalRows: loaded.canonicalRows,
-    candidateFiles: scoped.files,
-    relationRows: merged.relations,
-    dropRows: merged.drops,
-    otherRelationRows: others,
-    index: loaded.index,
-    scopeRows: scoped.scopeRows,
-  });
-  if (merged.relationsChanged) await writeJsonlAtomically(relationFile, merged.relations);
-  if (merged.drops.length > existingDrops.length) await writeJsonlAtomically(dropFile, merged.drops);
+  validateRelationRows({ relationRows: merged.relations, dropRows: merged.drops, index: loaded.index,
+    shardSenseIds: finalShardSenseIds, otherRelationRows: others });
+  verifyAccounting({ canonicalRows: loaded.canonicalRows, candidateFiles: scoped.files, relationRows: merged.relations,
+    dropRows: merged.drops, otherRelationRows: others, index: loaded.index, scopeRows: scoped.scopeRows });
+  const relations = merged.relationsChanged ? serializedJsonlState(merged.relations, baseline.relations) : baseline.relations;
+  const drops = merged.drops.length !== existingDrops.length ? serializedJsonlState(merged.drops, baseline.drops) : baseline.drops;
+  return { relations, drops, merged, existingRelations, existingDrops };
+}
+
+function assertOldOrNew(actual, oldState, newState, family) {
+  if (!sameFileState(actual, oldState) && !sameFileState(actual, newState)) {
+    throw new Error(`${family} output matches neither its trusted premerge snapshot nor the deterministic Part result`);
+  }
+}
+
+async function mergeCheckpoint(checkpoint, checkpointPath, root) {
+  if (checkpoint.merged && !checkpoint.premerge) {
+    return { merged: true, legacy_snapshot_unavailable: true, checkpoint: checkpointPath };
+  }
+  assertPrimaryComplete(checkpoint);
+  assertOptionalComplete(checkpoint);
+  validateCheckpointDecisions(checkpoint);
+  const baseline = await ensurePremerge(checkpoint, checkpointPath, root);
+  const expected = await materializePart(checkpoint, root, baseline);
+  const actualRelations = await readFileState(baseline.relationFile);
+  const actualDrops = await readFileState(baseline.dropFile);
+  assertOldOrNew(actualRelations, baseline.relations, expected.relations, 'Relation');
+  assertOldOrNew(actualDrops, baseline.drops, expected.drops, 'Drop');
+  if (checkpoint.merged) {
+    if (!sameFileState(actualRelations, expected.relations) || !sameFileState(actualDrops, expected.drops)) {
+      throw new Error('merged checkpoint outputs do not match deterministic materialization');
+    }
+    return { merged: true, relations_added: 0, drops_added: 0, already_merged: true, checkpoint: checkpointPath };
+  }
+  if (!sameFileState(actualRelations, expected.relations)) await writeFileStateAtomically(baseline.relationFile, expected.relations);
+  if (!sameFileState(actualDrops, expected.drops)) await writeFileStateAtomically(baseline.dropFile, expected.drops);
   checkpoint.merged = true;
   await writeJsonAtomically(checkpointPath, checkpoint);
-  const result = { merged: true, relations_added: merged.relations.length - existingRelations.length, drops_added: merged.drops.length - existingDrops.length, checkpoint: checkpointPath };
+  const result = {
+    merged: true,
+    relations_added: expected.merged.relations.length - expected.existingRelations.length,
+    drops_added: expected.merged.drops.length - expected.existingDrops.length,
+    checkpoint: checkpointPath,
+  };
   console.log(`Merged ${result.relations_added} Relations and ${result.drops_added} Drops for ${checkpoint.shard}/${checkpoint.batch}/${checkpoint.part}`);
   return result;
+}
+
+function parseAmendDecision(line, row, targets, selectedOptional = []) {
+  const fields = line.split(/\s+/u);
+  const alias = fields[0];
+  const kind = fields[1];
+  if (kind === 'skip' && fields.length === 2 && row.candidate.already_accounted === true) {
+    return { optional: true, skip: true, relations: [] };
+  }
+  if (kind === 'D') {
+    if (row.candidate.already_accounted === true) throw new Error('existing coverage can only add or skip optional links');
+    const reason = line.slice(alias.length).trim().slice(kind.length).trim();
+    const decision = { source_sense_id: row.item.sense_id, candidate: row.candidate.text, disposition: 'drop', reason };
+    validateDecision(row.item, row.candidate, decision);
+    return { optional: false, decision };
+  }
+  if (kind !== 'R' || fields.length < 4) throw new Error('use R <type> <tier> with a valid target form, or D <reason>');
+  const type = fields[2];
+  const relevance = compactTier(fields[3], alias);
+  const rest = fields.slice(4);
+  const relation = { source_sense_id: row.item.sense_id, candidate: row.candidate.text,
+    disposition: 'relation', type, relevance };
+  if (rest.length === 0) {
+    if (row.candidate.same_spelling_targets.length || row.candidate.already_accounted === true) {
+      throw new Error('target senses exist; choose T<k> or list every checked target after none');
+    }
+    validateDecision(row.item, row.candidate, relation);
+    return { optional: false, decision: relation };
+  }
+  if (rest.length === 2 && rest[0] === 'none') {
+    if (row.candidate.already_accounted === true) throw new Error('optional links require an exact target sense');
+    const aliases = rest[1].split(',');
+    const targetByAlias = new Map([...targets.values()].map((target) => [target.alias, target]));
+    const checked = aliases.map((name) => {
+      const target = targetByAlias.get(name);
+      if (!target || !row.targetAliases.includes(name)) throw new Error('unknown or unrelated target alias ' + name);
+      return target.sense_id;
+    });
+    const decision = { ...relation, target_resolution: 'no_exact_match', checked_target_sense_ids: checked };
+    validateDecision(row.item, row.candidate, decision);
+    return { optional: false, decision };
+  }
+  if (rest.length !== 3) throw new Error('Relation syntax needs T<k> reverse-type reverse-tier or none T<a>,T<b>,...');
+  const [targetName, reverseType, reverseTierText] = rest;
+  const target = [...targets.values()].find((entry) => entry.alias === targetName);
+  if (!target || !row.targetAliases.includes(targetName)) throw new Error('unknown or unrelated target alias ' + targetName);
+  const decision = { ...relation, target_resolution: 'exact', target_record_id: target.record_id,
+    target_sense_id: target.sense_id, reverse_type: reverseType, reverse_relevance: compactTier(reverseTierText, alias + ' reverse') };
+  if (row.candidate.already_accounted !== true) {
+    validateDecision(row.item, row.candidate, decision);
+    return { optional: false, decision };
+  }
+  const validationCandidate = { ...row.candidate, additional_relations: selectedOptional };
+  validateDecision(row.item, validationCandidate, decision);
+  if (selectedOptional.some((saved) => saved.target_sense_id === target.sense_id)) {
+    throw new Error('repeats target ' + target.sense_id);
+  }
+  if (!row.candidate.unlinked_target_sense_ids.includes(target.sense_id)) {
+    throw new Error('target ' + target.sense_id + ' is not an optional same-spelling sense');
+  }
+  return { optional: true, relation: decision };
+}
+
+function parseAmendInput(raw, checkpoint) {
+  const meaningful = raw.replace(/\r\n/gu, '\n').split('\n').map((line) => line.trim())
+    .filter((line) => line && !line.startsWith('#'));
+  const header = (meaningful.shift() || '').split(/\s+/u);
+  if (header.length !== 3 || header[0] !== 'amend' || !/^@[a-f0-9]{64}$/u.test(header[2])) {
+    throw new Error('amend input must start with "amend <sorted-sense-ids> @<inspect-digest>"');
+  }
+  const senseIds = header[1].split(',');
+  if (senseIds.some((id) => !id) || new Set(senseIds).size !== senseIds.length
+      || JSON.stringify(senseIds) !== JSON.stringify([...senseIds].sort())) {
+    throw new Error('amend header sense IDs must be unique and sorted');
+  }
+  const selected = requestedCheckpointCandidates(checkpoint, senseIds);
+  const digest = inspectDigest(checkpoint, selected);
+  if (header[2] !== '@' + digest) throw new Error('stale inspect digest: expected @' + digest);
+  const model = inspectModel(selected);
+  const byAlias = new Map(model.candidates.map((row) => [row.alias, row]));
+  const changes = new Map();
+  const errors = [];
+  for (const line of meaningful) {
+    const alias = line.split(/\s+/u)[0];
+    const row = byAlias.get(alias);
+    if (!row) { errors.push(alias + ': names no candidate in the inspected source senses'); continue; }
+    const change = changes.get(alias) || { optional: row.candidate.already_accounted === true, relations: [] };
+    try {
+      const parsed = parseAmendDecision(line, { ...row, optionalRelations: change.relations }, model.targets, change.relations);
+      if (parsed.optional) {
+        if (!change.optional) throw new Error('candidate has more than one replacement decision');
+        if (parsed.skip) {
+          if (change.skip || change.relations.length) throw new Error('skip cannot repeat or mix with Relation rows');
+          change.skip = true;
+        } else if (parsed.relation) {
+          if (change.skip) throw new Error('skip cannot mix with Relation rows');
+          change.relations.push(parsed.relation);
+        }
+      } else {
+        if (change.decision || change.relations.length || change.skip) throw new Error('candidate has more than one replacement decision');
+        change.decision = parsed.decision;
+      }
+      changes.set(alias, change);
+    } catch (error) { errors.push(alias + ': ' + error.message); }
+  }
+  if (!meaningful.length) errors.push('amend needs at least one sparse decision row');
+  if (errors.length) throw new Error('invalid amend input: ' + errors.length + ' problem(s)\n' + errors.join('\n'));
+  return { digest, senseIds, changes, model };
+}
+
+function applyAmendChanges(checkpoint, parsed) {
+  const next = JSON.parse(JSON.stringify(checkpoint));
+  const rows = new Map(parsed.model.candidates.map((row) => [row.alias, row]));
+  let changed = 0;
+  for (const [alias, replacement] of parsed.changes) {
+    const row = rows.get(alias);
+    const item = next.items.find((entry) => entry.sense_id === row.item.sense_id);
+    const candidate = item.candidates.find((entry) => entry.text === row.candidate.text);
+    if (candidate.already_accounted === true) {
+      const relations = replacement.skip ? [] : replacement.relations;
+      if (JSON.stringify(candidate.additional_relations) !== JSON.stringify(relations)) changed += 1;
+      candidate.additional_relations = relations;
+    } else {
+      if (JSON.stringify(candidate.decision) !== JSON.stringify(replacement.decision)) changed += 1;
+      candidate.decision = replacement.decision;
+    }
+  }
+  if (!changed) return { checkpoint: next, changed: 0 };
+  next.amend_revision = (next.amend_revision || 0) + 1;
+  if (next.optional_review_complete === true) next.optional_review_state_sha256 = stableDigest(optionalReviewState(next));
+  validateCheckpoint(next);
+  validateCheckpointDecisions(next);
+  return { checkpoint: next, changed };
+}
+
+function bytesState(bytes) {
+  return { exists: true, bytes, sha256: sha256(bytes) };
+}
+
+function classifyAmendState(actual, oldStates, newStates) {
+  const oldCheckpoint = sameFileState(actual.checkpoint, oldStates.checkpoint);
+  const newCheckpoint = sameFileState(actual.checkpoint, newStates.checkpoint);
+  const oldRelations = sameFileState(actual.relations, oldStates.relations);
+  const newRelations = sameFileState(actual.relations, newStates.relations);
+  const oldDrops = sameFileState(actual.drops, oldStates.drops);
+  const newDrops = sameFileState(actual.drops, newStates.drops);
+  if (newCheckpoint && newRelations && newDrops) return 4;
+  if (oldCheckpoint && newRelations && newDrops) return 3;
+  if (oldCheckpoint && newRelations && oldDrops) return 2;
+  if (oldCheckpoint && oldRelations && oldDrops) return 1;
+  return 0;
+}
+
+function checkpointBytes(checkpoint) {
+  return Buffer.from(JSON.stringify(checkpoint) + '\n', 'utf8');
+}
+
+async function readAmendJournal(file) {
+  try {
+    const value = JSON.parse(await readFile(file, 'utf8'));
+    if (!isPlainObject(value) || value.version !== 1 || typeof value.request_sha256 !== 'string' || !/^[a-f0-9]{64}$/u.test(value.request_sha256)
+        || typeof value.old_checkpoint_b64 !== 'string' || typeof value.new_checkpoint_b64 !== 'string') {
+      throw new Error('malformed amend recovery journal');
+    }
+    return value;
+  } catch (error) {
+    if (error.code === 'ENOENT') return null;
+    throw new Error('cannot read amend recovery journal: ' + error.message);
+  }
+}
+
+function checkpointFromJournal(encoded) {
+  return validateCheckpoint(JSON.parse(Buffer.from(encoded, 'base64').toString('utf8')));
+}
+
+async function applyAmendJournalState(checkpoint, checkpointPath, root, oldCheckpoint, newCheckpoint, requestHash, journalPath) {
+  const baseline = await readReadyPremerge(checkpoint, checkpointPath);
+  const oldResult = await materializePart(oldCheckpoint, root, baseline);
+  const newResult = await materializePart(newCheckpoint, root, baseline);
+  const relationFile = shardRelationPath(checkpoint.shard, root);
+  const dropFile = shardDropPath(checkpoint.shard, root);
+  const oldStates = { checkpoint: bytesState(checkpointBytes(oldCheckpoint)), relations: oldResult.relations, drops: oldResult.drops };
+  const newStates = { checkpoint: bytesState(checkpointBytes(newCheckpoint)), relations: newResult.relations, drops: newResult.drops };
+  const actual = { checkpoint: await readFileState(checkpointPath), relations: await readFileState(relationFile), drops: await readFileState(dropFile) };
+  const state = classifyAmendState(actual, oldStates, newStates);
+  if (!state) throw new Error('amend outputs/checkpoint are in an unrecognized state; preserving all files');
+  if (state === 4) return { amended: true, already_applied: true, checkpoint: checkpointPath };
+  await writeJsonAtomically(journalPath, {
+    version: 1,
+    request_sha256: requestHash,
+    old_checkpoint_b64: checkpointBytes(oldCheckpoint).toString('base64'),
+    new_checkpoint_b64: checkpointBytes(newCheckpoint).toString('base64'),
+  });
+  // The sequence is not a transaction: each rename is atomic and retry accepts only the four specified states.
+  if (!sameFileState(actual.relations, newStates.relations)) await writeFileStateAtomically(relationFile, newStates.relations);
+  if (!sameFileState(actual.drops, newStates.drops)) await writeFileStateAtomically(dropFile, newStates.drops);
+  if (!sameFileState(actual.checkpoint, newStates.checkpoint)) await writeFileStateAtomically(checkpointPath, newStates.checkpoint);
+  return { amended: true, changed_candidates: newResult.changed || undefined, checkpoint: checkpointPath };
+}
+
+async function amendCheckpointLocked(checkpoint, checkpointPath, inputPath, root) {
+  if (!checkpoint.merged) throw new Error('amend requires checkpoint.merged=true in the current Part worktree');
+  if (!checkpoint.premerge) throw new Error('this merged checkpoint has no premerge snapshot and cannot be amended');
+  assertOptionalComplete(checkpoint);
+  const baseline = await readReadyPremerge(checkpoint, checkpointPath);
+  const relationFile = shardRelationPath(checkpoint.shard, root);
+  const dropFile = shardDropPath(checkpoint.shard, root);
+  const journalPath = checkpointPath.replace(/\.json$/u, '.amend-state.json');
+  const [raw, journal] = await Promise.all([
+    readFile(resolveRootPath(root, inputPath), 'utf8'),
+    readAmendJournal(journalPath),
+  ]);
+  const requestHash = sha256(Buffer.from(raw, 'utf8'));
+  const current = { checkpoint: await readFileState(checkpointPath), relations: await readFileState(relationFile), drops: await readFileState(dropFile) };
+  if (journal) {
+    const oldCheckpoint = checkpointFromJournal(journal.old_checkpoint_b64);
+    const newCheckpoint = checkpointFromJournal(journal.new_checkpoint_b64);
+    const oldResult = await materializePart(oldCheckpoint, root, baseline);
+    const newResult = await materializePart(newCheckpoint, root, baseline);
+    const oldStates = { checkpoint: bytesState(checkpointBytes(oldCheckpoint)), relations: oldResult.relations, drops: oldResult.drops };
+    const newStates = { checkpoint: bytesState(checkpointBytes(newCheckpoint)), relations: newResult.relations, drops: newResult.drops };
+    const state = classifyAmendState(current, oldStates, newStates);
+    if (!state) throw new Error('amend recovery found an unrecognized checkpoint/Relation/Drop combination; preserving all files');
+    if (journal.request_sha256 === requestHash) {
+      const parsed = parseAmendInput(raw, oldCheckpoint);
+      const replay = applyAmendChanges(oldCheckpoint, parsed);
+      if (!replay.changed || JSON.stringify(replay.checkpoint) !== JSON.stringify(newCheckpoint)) {
+        throw new Error('same amend input does not reproduce its recorded new checkpoint');
+      }
+      if (state === 4) return { amended: true, already_applied: true, checkpoint: checkpointPath };
+      return applyAmendJournalState(checkpoint, checkpointPath, root, oldCheckpoint, newCheckpoint, requestHash, journalPath);
+    }
+    if (state !== 4) throw new Error('another amend is incomplete; rerun its exact input before starting a different request');
+  }
+  const currentExpected = await materializePart(checkpoint, root, baseline);
+  if (!sameFileState(current.relations, currentExpected.relations) || !sameFileState(current.drops, currentExpected.drops)) {
+    throw new Error('current merged outputs do not match materialize(premerge, checkpoint); refusing to amend drifted files');
+  }
+  const parsed = parseAmendInput(raw, checkpoint);
+  const applied = applyAmendChanges(checkpoint, parsed);
+  if (!applied.changed) return { amended: true, changed_candidates: 0, unchanged: true, checkpoint: checkpointPath };
+  return applyAmendJournalState(checkpoint, checkpointPath, root, checkpoint, applied.checkpoint, requestHash, journalPath);
+}
+
+async function amendCheckpoint(checkpoint, checkpointPath, inputPath, root) {
+  const lockPath = `${checkpointPath}.amend-lock`;
+  const token = `${process.pid}:${randomUUID()}`;
+  await mkdir(path.dirname(lockPath), { recursive: true });
+  try {
+    await writeFile(lockPath, token, { flag: 'wx' });
+  } catch (error) {
+    if (error.code !== 'EEXIST') throw error;
+    let owner = '';
+    try { owner = await readFile(lockPath, 'utf8'); } catch (readError) {
+      if (readError.code !== 'ENOENT') throw readError;
+    }
+    const ownerPid = Number(owner.split(':', 1)[0]);
+    let alive = Number.isInteger(ownerPid) && ownerPid > 0;
+    if (alive) {
+      try { process.kill(ownerPid, 0); } catch (probeError) { alive = probeError.code === 'EPERM'; }
+    }
+    if (alive) throw new Error(`another amend is active for this checkpoint (pid ${ownerPid}); preserving all files`);
+    try { await unlink(lockPath); } catch (unlinkError) { if (unlinkError.code !== 'ENOENT') throw unlinkError; }
+    await writeFile(lockPath, token, { flag: 'wx' });
+  }
+  try {
+    return await amendCheckpointLocked(checkpoint, checkpointPath, inputPath, root);
+  } finally {
+    try {
+      if ((await readFile(lockPath, 'utf8')) === token) await unlink(lockPath);
+    } catch (error) { if (error.code !== 'ENOENT') throw error; }
+  }
 }
 
 function assertCheckpointMerged(checkpoint, relationRows, dropRows) {

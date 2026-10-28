@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import tempfile
 from dataclasses import dataclass
@@ -161,12 +162,15 @@ class Git:
         except OSError as e:
             raise GitError(f"info/exclude를 갱신할 수 없습니다: {e}")
 
-    def commit_paths(self, path: Path, rels: list[str], message: str) -> str:
-        """Commit exactly `rels` (Supervisor-owned finalization). Any other change in the worktree is refused untouched."""
+    def commit_paths(self, path: Path, rels: list[str], message: str, *, allow_empty: bool = False) -> str:
+        """Commit exactly `rels` (Supervisor-owned finalization). Any other change is refused untouched."""
         out = self.dirty(path)
         changed = {line[3:].strip() for line in out.splitlines() if line.strip()}
-        if not changed or changed != set(rels):
+        if (not changed and not allow_empty) or changed != set(rels):
             raise GitError(f"커밋 대상이 의도한 파일 {sorted(rels)}과 다릅니다 (변경: {sorted(changed)}) — 아무것도 커밋하지 않았습니다")
+        if not changed:
+            self._git("commit", "--allow-empty", "-q", "-m", message, cwd=path)
+            return self.head(path)
         self._git("add", "--", *rels, cwd=path)
         self._git("commit", "-q", "-m", message, cwd=path)
         return self.head(path)
@@ -176,6 +180,17 @@ class Git:
         if self.dirty(path).strip():
             return False
         return self._git("cat-file", "-e", f"HEAD:{rel}", cwd=path, check=False).ok
+
+    def changed_paths(self, path: Path) -> set[str]:
+        """Worktree paths changed from HEAD, including untracked files."""
+        return {line[3:].strip() for line in self.dirty(path).splitlines() if line.strip()}
+
+    def commit_subject(self, path: Path) -> str:
+        return self._git("show", "-s", "--format=%s", "HEAD", cwd=path).out.strip()
+
+    def commit_parent(self, path: Path) -> str | None:
+        res = self._git("rev-parse", "HEAD^", cwd=path, check=False)
+        return res.out.strip() if res.ok else None
 
     def is_candidate_child(self, path: Path, base_sha: str, rel: str) -> bool:
         """HEAD is a direct child of `base_sha` that changed exactly `rel` (our own interrupted Candidate commit)."""
@@ -709,6 +724,135 @@ class Git:
                           "--in", ".warroom-scratch/decisions.txt", "--format", "compact"],
                          cwd=worktree, env=self.env, timeout=timeout)
         return res.ok, (res.err or res.out).strip()
+
+    def stage2_optional_view(self, worktree: Path, shard: str, batch: str, part: str, timeout: int = 900) -> str:
+        """Read every optional-link page without touching the checkpoint; return the complete compact view."""
+        checkpoint = f".warroom-scratch/relation-admission-{shard}-{batch}-{part}.json"
+        out = ".warroom-scratch/active-links.raw.txt"
+        page_size = 40
+        while True:
+            pages, total_pages, digest, page = [], 1, None, 1
+            retry_smaller = False
+            while page <= total_pages:
+                args = ["node", "scripts/relation/admission-cli.mjs", "read-chunk", "--checkpoint", checkpoint,
+                        "--optional", "--format", "compact", "--page", str(page), "--page-size", str(page_size),
+                        "--out", out]
+                res = self.r.run(args, cwd=worktree, env=self.env, timeout=timeout)
+                if not res.ok:
+                    detail = " ".join((res.err or res.out).split())[-300:]
+                    if "page exceeds its output limit" in detail and page_size > 1:
+                        page_size = max(1, page_size // 2)
+                        retry_smaller = True
+                        break
+                    raise GitError(f"admission-cli optional read 실패: {detail}")
+                try:
+                    text = (Path(worktree) / out).read_text("utf-8")
+                except OSError as e:
+                    raise GitError(f"optional-link view를 읽을 수 없습니다: {e}") from e
+                header = next((line for line in text.splitlines() if line.startswith("links @")), "")
+                found_digest = header.removeprefix("links @") if header.startswith("links @") else None
+                match = re.search(r"page (\d+)/(\d+)", text)
+                found_total = int(match.group(2)) if match else 1
+                if found_digest is None or (digest is not None and found_digest != digest):
+                    raise GitError("optional-link pages do not share one valid digest")
+                if page > 1 and found_total != total_pages:
+                    raise GitError("optional-link page count changed during read")
+                digest, total_pages = found_digest, found_total
+                pages.append(text)
+                page += 1
+            if not retry_smaller:
+                return "".join(pages)
+            # The first page exceeded the output bound; restart with a smaller page size.
+            if page_size == 1:
+                raise GitError("optional-link page exceeds its output limit at --page-size 1")
+
+    def stage2_inspect(self, worktree: Path, shard: str, batch: str, part: str, sense_ids: list[str],
+                       timeout: int = 900) -> str:
+        """Read bounded compact inspect pages for review context, never changing the checkpoint."""
+        checkpoint = f".warroom-scratch/relation-admission-{shard}-{batch}-{part}.json"
+        out = ".warroom-scratch/s2-fix-inspect.raw.txt"
+        page_size = 40
+        while True:
+            pages, total_pages, digest, page = [], 1, None, 1
+            retry_smaller = False
+            while page <= total_pages:
+                args = ["node", "scripts/relation/admission-cli.mjs", "inspect", "--checkpoint", checkpoint,
+                        "--source-sense-id", ",".join(sense_ids), "--format", "compact", "--page", str(page),
+                        "--page-size", str(page_size), "--out", out]
+                res = self.r.run(args, cwd=worktree, env=self.env, timeout=timeout)
+                if not res.ok:
+                    detail = " ".join((res.err or res.out).split())[-300:]
+                    if "page exceeds its output limit" in detail and page_size > 1:
+                        page_size = max(1, page_size // 2)
+                        retry_smaller = True
+                        break
+                    raise GitError(f"admission-cli inspect 실패: {detail}")
+                try:
+                    text = (Path(worktree) / out).read_text("utf-8")
+                except OSError as e:
+                    raise GitError(f"Stage 2 inspect page를 읽을 수 없습니다: {e}") from e
+                lines = text.splitlines()
+                header = lines[0] if lines else ""
+                match_digest = re.search(r" @([a-f0-9]{64})$", header)
+                match = re.search(r"page (\d+)/(\d+)", text)
+                found_total = int(match.group(2)) if match else 1
+                if not match_digest or (digest is not None and match_digest.group(1) != digest):
+                    raise GitError("inspect pages do not share one valid digest")
+                if page > 1 and found_total != total_pages:
+                    raise GitError("inspect page count changed during read")
+                digest, total_pages = match_digest.group(1), found_total
+                pages.append(text)
+                page += 1
+            if not retry_smaller:
+                return "".join(pages)
+            if page_size == 1:
+                raise GitError("inspect page exceeds its output limit at --page-size 1")
+
+    def stage2_complete_optional(self, worktree: Path, shard: str, batch: str, part: str, timeout: int = 900) -> None:
+        checkpoint = f".warroom-scratch/relation-admission-{shard}-{batch}-{part}.json"
+        res = self.r.run(["node", "scripts/relation/admission-cli.mjs", "complete-optional", "--checkpoint", checkpoint],
+                         cwd=worktree, env=self.env, timeout=timeout)
+        if not res.ok:
+            raise GitError(f"admission-cli complete-optional 실패: {' '.join((res.err or res.out).split())[-300:]}")
+
+    def stage2_save_optional(self, worktree: Path, shard: str, batch: str, part: str,
+                             timeout: int = 900) -> tuple[bool, str]:
+        checkpoint = f".warroom-scratch/relation-admission-{shard}-{batch}-{part}.json"
+        res = self.r.run(["node", "scripts/relation/admission-cli.mjs", "save-optional", "--checkpoint", checkpoint,
+                          "--in", ".warroom-scratch/optional-decisions.txt"], cwd=worktree, env=self.env,
+                         timeout=timeout)
+        return res.ok, (res.err or res.out).strip()
+
+    def stage2_merge(self, worktree: Path, shard: str, batch: str, part: str, timeout: int = 900) -> None:
+        checkpoint = f".warroom-scratch/relation-admission-{shard}-{batch}-{part}.json"
+        res = self.r.run(["node", "scripts/relation/admission-cli.mjs", "merge", "--checkpoint", checkpoint],
+                         cwd=worktree, env=self.env, timeout=timeout)
+        if not res.ok:
+            raise GitError(f"admission-cli merge 실패: {' '.join((res.err or res.out).split())[-300:]}")
+
+    def verify_stage2_local(self, worktree: Path, shard: str, batch: str, part: str,
+                            *, checkpoint: bool, timeout: int = 900) -> tuple[bool, str]:
+        """Verify the exact local Part, optionally requiring its private checkpoint evidence; demand success JSON."""
+        checkpoint_path = f".warroom-scratch/relation-admission-{shard}-{batch}-{part}.json"
+        args = ["--shard", shard, "--batch", batch, "--part", part]
+        if checkpoint:
+            args.extend(["--checkpoint", checkpoint_path])
+        res = self.r.run(["node", "scripts/relation/admission-cli.mjs", "verify", *args, "--json"],
+                         cwd=worktree, env=self.env, timeout=timeout)
+        if not res.ok:
+            return False, " ".join((res.err or res.out).split())[-300:]
+        try:
+            payload = json.loads(res.out.strip().splitlines()[-1])
+        except (ValueError, IndexError):
+            return False, "verify exited 0 without valid JSON success output"
+        if not isinstance(payload, dict) or payload.get("ok") is not True:
+            return False, "verify exited 0 without {ok:true}"
+        return True, ""
+
+    def verify_stage2_exact(self, sha: str, shard: str, batch: str, part: str, timeout: int = 900) -> tuple[bool, str]:
+        """Verify the exact PR commit in War Room's detached checkout, without its private checkpoint."""
+        path = self._verify_checkout(sha)
+        return self.verify_stage2_local(path, shard, batch, part, checkpoint=False, timeout=timeout)
 
     def verify_stage2(self, sha: str, kind: str, shard: str, batch: str | None, part: str | None,
                       timeout: int = 900) -> tuple[bool, str]:

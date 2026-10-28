@@ -113,7 +113,7 @@ class FakeGit:
         self.verify_heads: set[tuple] = set()                 # (sha, kind, shard, batch, part) exact non-master verification
         self.verify_calls: list[tuple] = []
         self.verify_error: Exception | None = None
-        self.changed_paths: list[str] = []                    # what differs between two master commits (changed_between)
+        self.changed_between_paths: list[str] = []            # what differs between two master commits
         self.base_sha = "m" * 40                              # origin/<base> as fetch_base reports it
         self.outcomes: dict[tuple, list] = {}                 # (kind, shard, batch) -> queued VerifyOutcome (last one repeats)
         self.on_base = True                                   # is a merge commit already on origin/<base>
@@ -121,20 +121,52 @@ class FakeGit:
         self.chunk_view_error: Exception | None = None
         self.chunk_view_total = 1                             # candidates a fake `prepare` writes
         self.chunk_view_text: str | None = None               # rendered view (default: one short line)
+        self.chunk_view_sense_id = "source-sense"
         self.save_calls: list[str] = []                       # decisions.txt text at each save-chunk
+        self.optional_view_text: str | None = None
+        self.optional_candidate_after_chunk = False
+        self.optional_save_result: tuple[bool, str] | None = None
+        self.optional_save_calls: list[str] = []
+        self.finalize_output_paths: list[str] | None = None
+        self.finalize_error: Exception | None = None
+        self.local_verify_ok = True
+        self.exact_verify_ok = True
+        self.local_verify_calls: list[tuple] = []
+        self.exact_verify_calls: list[tuple] = []
+        self.inspect_calls: list[tuple] = []
+        self.inspect_text = "inspect w1-s1 @" + "2" * 64 + "\n# page 1/1\nS\tw1-s1\tw1\t출발어\tnoun\t출발 의미\n"
+        self.commit_parent_sha: str | None = None
+        self.commit_message: str | None = None
+        self.commit_empty_allowed: list[bool] = []
+        self.stage2_merge_calls: list[tuple] = []
 
     def fetch_base(self, base):
         return self.base_sha
 
     # ---- Method C finalization (Issue #2033) ----
-    def commit_paths(self, path, rels, message):
+    def commit_paths(self, path, rels, message, *, allow_empty=False):
         self.commits = getattr(self, "commits", [])
+        self.commit_empty_allowed.append(allow_empty)
+        if not self.dirty_text.strip() and (rels or not allow_empty):
+            raise GitError("빈 커밋은 명시적으로 허용된 경우에만 가능합니다")
         if self.dirty_text.strip() and {l[3:].strip() for l in self.dirty_text.splitlines() if l.strip()} != set(rels):
             raise GitError("커밋 대상이 의도한 파일과 다릅니다")
+        self.commit_parent_sha = self.local_head
+        self.commit_message = message
         self.commits.append((list(rels), message))
         self.local_head = "f" * 40
         self.committed_rels = getattr(self, "committed_rels", set()) | set(rels)
+        self.dirty_text = ""
         return self.local_head
+
+    def changed_paths(self, path):
+        return {line[3:].strip() for line in self.dirty_text.splitlines() if line.strip()}
+
+    def commit_parent(self, path):
+        return self.commit_parent_sha
+
+    def commit_subject(self, path):
+        return self.commit_message or ""
 
     def is_committed(self, path, rel):
         return rel in getattr(self, "committed_rels", set()) and not self.dirty_text.strip()
@@ -157,7 +189,7 @@ class FakeGit:
         return ok, "" if ok else "Relation Admission accounting failed: candidate has no relation"
 
     def changed_between(self, old, new):
-        return list(self.changed_paths)
+        return list(self.changed_between_paths)
 
     def verify_stage2_outcome(self, sha, kind, shard, batch, part, timeout=900):
         """A queued VerifyOutcome for this scope (last one repeats), else success when verified/unclassified failure."""
@@ -179,7 +211,7 @@ class FakeGit:
             path.write_text(json.dumps({
                 "version": 1, "shard": shard, "batch": batch, "part": part, "complete": True, "stats": {},
                 "next_chunk_number": 1, "pending_chunk": None, "merged": False,
-                "items": [{"sense_id": "source-sense", "candidates": [
+                "items": [{"sense_id": self.chunk_view_sense_id, "candidates": [
                     {"text": f"candidate-{i}", "decision": None} for i in range(self.chunk_view_total)]}],
             }), "utf-8")
         data = json.loads(path.read_text("utf-8"))
@@ -188,7 +220,7 @@ class FakeGit:
         if data["pending_chunk"] is None and start >= 0:
             data["pending_chunk"] = {"chunk_id": f"{shard}-{batch}-{part}-{data['next_chunk_number']:03d}",
                                      "candidate_count": len(candidates) - start,
-                                     "slices": [{"sense_id": "source-sense", "start": start, "end": len(candidates)}]}
+                                     "slices": [{"sense_id": self.chunk_view_sense_id, "start": start, "end": len(candidates)}]}
             path.write_text(json.dumps(data), "utf-8")
         (path.parent / "active-chunk.txt").write_text(
             self.chunk_view_text or f"# chunk {data['pending_chunk']}\n", "utf-8")
@@ -221,10 +253,72 @@ class FakeGit:
         for sl in pending["slices"]:
             for c in data["items"][0]["candidates"][sl["start"]:sl["end"]]:
                 c["decision"] = {"disposition": "drop"}
+                if self.optional_candidate_after_chunk:
+                    c.update({"already_accounted": True, "decision": {"disposition": "existing"},
+                              "existing_target_sense_ids": ["target-1"],
+                              "unlinked_target_sense_ids": ["target-2"], "additional_relations": []})
         data["pending_chunk"] = None
         data["next_chunk_number"] += 1
         path.write_text(json.dumps(data), "utf-8")
         return True, f"Saved {count} decisions"
+
+    def stage2_optional_view(self, worktree, shard, batch, part, timeout=900):
+        if self.optional_view_text is not None:
+            return self.optional_view_text
+        if self.optional_candidate_after_chunk:
+            return ("# optional links · source-sense/candidate-0 · full target context\n"
+                    f"links @{'a' * 64}\nS\tsource-sense\tsource\t출발어\tnoun\t출발 의미\n"
+                    "T1\ttarget-1\tt1\t표적\tnoun\t기존 연결 sense\n"
+                    "T2\ttarget-2\tt2\t표적\tnoun\t추가 검토 sense\n"
+                    "c1\tcandidate-0\tT1,T2\n")
+        return f"# no optional links · {shard}/{batch}/{part} · review required\nlinks @{'0' * 64}\n"
+
+    def stage2_complete_optional(self, worktree, shard, batch, part, timeout=900):
+        path = Path(worktree) / ".warroom-scratch" / f"relation-admission-{shard}-{batch}-{part}.json"
+        data = json.loads(path.read_text("utf-8"))
+        data["optional_review_complete"] = True
+        data["optional_review_digest"] = "0" * 64
+        data["optional_review_state_sha256"] = "0" * 64
+        path.write_text(json.dumps(data), "utf-8")
+
+    def stage2_save_optional(self, worktree, shard, batch, part, timeout=900):
+        decisions = Path(worktree) / ".warroom-scratch" / "optional-decisions.txt"
+        self.optional_save_calls.append(decisions.read_text("utf-8"))
+        if self.optional_save_result is not None and not self.optional_save_result[0]:
+            return self.optional_save_result
+        path = Path(worktree) / ".warroom-scratch" / f"relation-admission-{shard}-{batch}-{part}.json"
+        data = json.loads(path.read_text("utf-8"))
+        data["optional_review_complete"] = True
+        data["optional_review_digest"] = "1" * 64
+        data["optional_review_state_sha256"] = "1" * 64
+        path.write_text(json.dumps(data), "utf-8")
+        return self.optional_save_result or (True, "Saved optional links")
+
+    def stage2_merge(self, worktree, shard, batch, part, timeout=900):
+        self.stage2_merge_calls.append((shard, batch, part))
+        if self.finalize_error:
+            raise self.finalize_error
+        path = Path(worktree) / ".warroom-scratch" / f"relation-admission-{shard}-{batch}-{part}.json"
+        data = json.loads(path.read_text("utf-8"))
+        data["merged"] = True
+        data["premerge"] = {"status": "ready", "identity": f"{shard}/{batch}/{part}"}
+        path.write_text(json.dumps(data), "utf-8")
+        outputs = self.finalize_output_paths
+        if outputs is None:
+            outputs = [f"data/relations/relation-{shard}.jsonl"]
+        self.dirty_text = "".join(f" M {output}\n" for output in outputs)
+
+    def verify_stage2_local(self, worktree, shard, batch, part, *, checkpoint, timeout=900):
+        self.local_verify_calls.append((shard, batch, part, checkpoint))
+        return self.local_verify_ok, "" if self.local_verify_ok else "local verify failed"
+
+    def verify_stage2_exact(self, sha, shard, batch, part, timeout=900):
+        self.exact_verify_calls.append((sha, shard, batch, part))
+        return self.exact_verify_ok, "" if self.exact_verify_ok else "exact HEAD verify failed"
+
+    def stage2_inspect(self, worktree, shard, batch, part, sense_ids, timeout=900):
+        self.inspect_calls.append((str(worktree), shard, batch, part, list(sense_ids)))
+        return self.inspect_text
 
     def contains_on_base(self, sha, base):
         return self.on_base
@@ -394,7 +488,7 @@ class FakeGh:
         return n
 
     def issue(self, n):
-        i = self.issues[n]
+        i = self.issues.get(n, {"state": "open", "labels": [], "body": ""})
         return {"number": n, "state": i["state"], "labels": i["labels"], "pull_request": False, "body": i["body"]}
 
     def comment_issue(self, n, body):
@@ -404,11 +498,13 @@ class FakeGh:
         if n in self.files:
             files = self.files[n]
         else:
-            # A branch-linked fake Stage 1 PR represents the normal producer output unless a test explicitly
-            # supplies a different file list (including [] or None for missing/unknown-claim cases).
+            # A branch-linked fake PR represents the normal producer output unless a test supplies another file list.
             branch = self.pull(n).get("head_ref", "")
             parts = branch.split("-")
-            if (len(parts) >= 4 and parts[0] in "abcd" and re.fullmatch(r"\d{3}", parts[-2])
+            if len(parts) >= 5 and parts[0] == "s2" and re.fullmatch(r"\d{3}", parts[-3]):
+                shard = parts[-3]
+                files = [{"path": f"data/relations/relation-{shard}.jsonl"}]
+            elif (len(parts) >= 4 and parts[0] in "abcd" and re.fullmatch(r"\d{3}", parts[-2])
                     and re.fullmatch(r"\d{2}", parts[-1])):
                 method, shard, batch = parts[0], parts[-2], parts[-1]
                 producer = "-".join(parts[1:-2])

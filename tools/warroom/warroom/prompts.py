@@ -17,10 +17,13 @@ _STAGE2 = {"shard", "batch", "part", "branch", "phase", "checkpoint", "session_n
 _AB_CHUNK = {"batch", "chunk_no", "session_note", "chunk_input"}
 _C_CHUNK = {"batch", "branch", "chunk_no", "checkpoint", "session_note", "chunk_input"}
 ALLOWED = {"a": _PRODUCE, "b": _PRODUCE, "c": _PRODUCE, "d": _PRODUCE, "recovery": _PRODUCE | {"resolved_defects"},
-           "fix": {"pr", "head", "branch", "review_events", "session_note", "source_context"},
+           "fix": {"pr", "head", "branch", "shard", "batch", "part", "review_events", "session_note", "source_context"},
+           "producer_fix": {"pr", "head", "branch", "review_events", "session_note", "source_context"},
            "m": _MAINTAIN, "m_recovery": _MAINTAIN, "s2": _STAGE2, "s2_chunk": _STAGE2, "s2_recovery": _STAGE2,
            "s2_chunk_resume": {"chunk_id"}, "s2_chunk_fix": {"chunk_id", "problem"},
            "s2_chunk_format_fix": {"chunk_id", "problem"},
+           "s2_links": _STAGE2 | {"link_input"},
+           "s2_links_fix": {"digest", "problem"},
            "c_chunk": _C_CHUNK, "c_chunk_resume": {"chunk_no", "checkpoint", "remaining", "session_note"},
            "d_chunk": {"batch", "branch", "chunk_no", "session_note", "chunk_input"}, "d_chunk_resume": {"chunk_no"}, "d_chunk_fix": {"chunk_no", "decisions", "problem"},
            "a_chunk": _AB_CHUNK, "b_chunk": _AB_CHUNK, "ab_chunk_retry": {"chunk_no", "requested", "problem", "chunk_input"}}
@@ -94,12 +97,11 @@ def recovery(b, directory: Path | None = None, resolved_defects: str = "") -> st
 
 def stage2(b, phase: str, checkpoint: dict | None, *, resumed: bool = False,
            directory: Path | None = None, view: str | None = None) -> str:
-    """One bounded Stage 2 chunk run (`s2_chunk.md`: the whole compact view inline, answer-only) or the separate
-    finalization run (`s2.md`)."""
-    if phase not in ("chunk", "finalize"):
+    """One bounded Stage 2 primary chunk run; finalization is deterministic Supervisor work."""
+    if phase != "chunk":
         raise PromptError(f"알 수 없는 Stage 2 실행 단계: {phase!r}")
-    if (phase == "chunk") != (view is not None):
-        raise PromptError("Stage 2 청크 실행에는 청크 view가 필요하고 최종화에는 없어야 합니다")
+    if view is None:
+        raise PromptError("Stage 2 청크 실행에는 청크 view가 필요합니다")
     values = _stage2_values(b)
     batch, part = values["batch"], values["part"]
     pending = f"{b['shard']}-{batch}-{part}-001"
@@ -113,10 +115,21 @@ def stage2(b, phase: str, checkpoint: dict | None, *, resumed: bool = False,
                  f"pending_chunk={'없음' if checkpoint['pending_chunk'] is None else checkpoint['pending_chunk']}")
     chunk_input = (f"아래가 이번 청크의 **전체 view**다(손실 없음).\n{VIEW_BEGIN}\n{view}"
                    f"{'' if view.endswith(chr(10)) else chr(10)}{VIEW_END}") if view is not None else ""
-    values.update(phase="chunk" if phase == "chunk" else "finalize", checkpoint=chunk, chunk_input=chunk_input, chunk_id=pending,
+    values.update(phase="chunk", checkpoint=chunk, chunk_input=chunk_input, chunk_id=pending,
                   session_note=("중단된 같은 청크를 이어간다. 이미 checkpoint에 저장된 결정을 다시 만들지 않는다.\n"
                                 if resumed else ""))
-    return render("s2_chunk" if phase == "chunk" else "s2", values, directory)
+    return render("s2_chunk", values, directory)
+
+
+def stage2_links(b, checkpoint: dict, links: str, directory: Path | None = None) -> str:
+    values = _stage2_values(b)
+    values.update(checkpoint=(f"{checkpoint['decided']}/{checkpoint['total']} primary decisions; optional links pending"),
+                  session_note="새 optional-link 세션이다. primary 판정은 변경하지 않는다.\n", link_input=links)
+    return render("s2_links", values, directory)
+
+
+def stage2_links_fix(digest: str, problem: str, directory: Path | None = None) -> str:
+    return render("s2_links_fix", {"digest": digest, "problem": problem}, directory)
 
 
 def stage2_chunk_resume(chunk_id: str, directory: Path | None = None) -> str:
@@ -221,7 +234,10 @@ def fix(b, events, resumed: bool, directory: Path | None = None, source_context:
         note = ("A/B 리뷰 수정 전용 새 세션이다. 아래 `source_context`에 지적된 sense의 Canonical 근거와 저장 후보가 있다. "
                 "리뷰어가 최초로 명시한 목록만 `(record_id, sense_id, candidate)`별로 삭제/유지를 판단하고(이유는 PR 답글로 간결히), "
                 "목록 밖 기존 후보는 삭제·이동·교체하지 않는다. 신규 후보 재발굴·전수 재검사는 하지 않는다.\n")
-    out = render("fix", {"pr": b["pr_number"], "head": b["head_sha"], "branch": b["branch"],
+    template = "fix" if b["method"] == STAGE2_METHOD else "producer_fix"
+    out = render(template, {"pr": b["pr_number"], "head": b["head_sha"], "branch": b["branch"],
+                         "shard": b["shard"], "batch": b["batch"].split("-")[0] if b["method"] == STAGE2_METHOD else b["batch"],
+                         "part": b["batch"].split("-")[1] if b["method"] == STAGE2_METHOD else "",
                          "review_events": "\n".join(lines), "session_note": note,
                          "source_context": source_context}, directory)
     return out.rstrip() + PRODUCER_HANDOFF if b["method"] in {"a", "b", "c", "d"} else out

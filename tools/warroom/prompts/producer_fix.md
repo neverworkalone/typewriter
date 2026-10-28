@@ -1,0 +1,18 @@
+PR #{{pr}} (브랜치 `{{branch}}`, 현재 HEAD {{head}})에 새 리뷰가 달렸다.
+아래 리뷰/코멘트를 현재 HEAD 기준으로 검토하고, 동의하는 지적은 수정·검증한 뒤 같은 브랜치에만 커밋·push한다.
+기존 worktree와 HEAD를 유지하며, master가 갱신되어도 현재 브랜치를 merge/rebase/reset하지 않는다.
+동의하지 않으면 근거를 PR 코멘트로 남긴다.
+새 PR을 만들지 않고, 리뷰를 요청하거나 머지하지 않는다.
+파일 변경이 필요 없는 경우 불필요한 커밋을 만들지 않고 PR에 답변만 남긴다.
+끝나면 종료한다.
+이전 실행이 중단되며 worktree에 미커밋 변경이 남아 있을 수 있으니 먼저 git status로 확인하라.
+세부 생산 규칙은 해당 Method의 정본 이슈(A/B #860, C #1155, D #1156, Stage 2 #927)와 AGENTS.md를 따른다.
+Method C 배치의 리뷰 수정에서도 Supervisor가 승인 문학 DB 경로를 `TYPEWRITER_APPROVED_LITERARY_DB`로 전달한다. source-sense나 VERIFIED 문맥 지적을 수정할 때는 이 기존 DB를 사용하고 `docs/relation-literary-context.md`의 CLI 옵션을 따른다. 값이 없으면 검색하거나 추측하지 말고 설정 오류로 중단한다.
+임시·스크래치 파일(검증용 스크립트, 청크, probe 결과 등)은 worktree 안의 `.warroom-scratch/` 에만 만든다. 이 디렉터리는 git에서 무시되며 커밋하지 않는다.
+산출물이 아닌 파일을 worktree의 다른 경로에 남기지 않는다.
+공통 결함 보고·중단 규칙은 **생산자(A/B/C/D/Stage 2) 전용**이다.
+- 생산자는 리뷰 수정 도중 자신의 배치가 처리할 수 없는 반복 가능한 공유 계층 결함을 확인하면 `tools/warroom/prompts/shared-defect.md` 형식으로 `.warroom-scratch/shared-defect.json` 에 보고하고 멈춘다.
+- **Maintainer(공통 결함 urgent Issue 구현 및 해당 PR의 리뷰 수정)는 위 규칙의 대상이 아니다.** 담당 Issue나 PR 리뷰에서 공통 결함을 재현한 경우 `shared-defect.json`을 작성하거나 같은 결함을 재보고하며 중단하지 말고, 현재 전용 worktree/브랜치에서 원인을 직접 수정·회귀 검증하고 기존 PR에 커밋·push한다. 실제로 해결할 수 없는 차단 요인만 증거와 함께 오너에게 보고한다.
+{{session_note}}
+{{review_events}}
+{{source_context}}

@@ -293,6 +293,17 @@ def stage2_checkpoint(worktree, shard: str, batch_key: str):
         "pending_chunk": pending["chunk_id"] if pending is not None else None,
         "pending_revision": bool(pending and pending.get("revision") is True),
         "complete": data["complete"], "merged": data["merged"], "decided": decided, "total": total,
+        "optional_review_complete": data.get("optional_review_complete") is True,
+        "optional_links": sum(
+            1 for item in data["items"] for candidate in item["candidates"]
+            if candidate.get("already_accounted") is True
+            and (candidate.get("decision") or {}).get("disposition") == "existing"
+            and any(sense_id not in candidate.get("existing_target_sense_ids", [])
+                    and sense_id not in {row.get("target_sense_id") for row in candidate.get("additional_relations", [])}
+                    for sense_id in candidate.get("unlinked_target_sense_ids", []))
+        ),
+        "premerge": data.get("premerge"),
+        "amend_revision": data.get("amend_revision", 0),
     }
 
 
