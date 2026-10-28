@@ -1,6 +1,7 @@
 """SQLite persistent state. Short-lived connections: TUI and Supervisor share the file."""
 from __future__ import annotations
 
+import json
 import re
 import sqlite3
 import time
@@ -698,6 +699,69 @@ class Store:
             if run_start is not None:
                 c.execute("INSERT INTO kv(key,value) VALUES(?,?) "
                           "ON CONFLICT(key) DO UPDATE SET value=excluded.value", run_start)
+            return True
+
+    # --- Stage 2 verify blocks (Issue #2154): a completed Batch/shard whose exact verify fails deterministically ---
+    # Same `defects` table with source="verify" and batch_id=0 (no production batch exists: nothing is paused, and no
+    # batch-keyed path may treat 0 as one). The scope's defect_class identifies the single active block.
+    VERIFY_OPEN = ("REPORTED", "LINKED", "FIX_MERGED", "HELD")
+
+    def report_verify_failure(self, event_key: str, defect_class: str, report: str) -> int | None:
+        """Insert one verify block, or None when the event exists or the scope already has an active block."""
+        now = time.time()
+        with self._conn() as c:
+            c.execute("BEGIN IMMEDIATE")
+            if c.execute("SELECT 1 FROM defects WHERE event_key=?", (event_key,)).fetchone():
+                return None
+            if c.execute(f"SELECT 1 FROM defects WHERE source='verify' AND defect_class=? AND state IN ({','.join('?' * len(self.VERIFY_OPEN))})",
+                         (defect_class, *self.VERIFY_OPEN)).fetchone():
+                return None
+            return c.execute("INSERT INTO defects(event_key,batch_id,source,defect_class,state,report,created_at,updated_at)"
+                             " VALUES(?,?,?,?,?,?,?,?)", (event_key, 0, "verify", defect_class, "REPORTED", report,
+                                                          now, now)).lastrowid
+
+    def active_verify(self, defect_class: str):
+        """The scope's active block as a dict (row + `last_sha`, the master SHA it was last verified on), or None."""
+        with self._conn() as c:
+            row = c.execute(f"SELECT * FROM defects WHERE source='verify' AND defect_class=? AND state IN "
+                            f"({','.join('?' * len(self.VERIFY_OPEN))}) ORDER BY id DESC", (defect_class, *self.VERIFY_OPEN)).fetchone()
+        if row is None:
+            return None
+        try:
+            last = json.loads(row["report"]).get("sha", "")
+        except ValueError:
+            last = ""
+        return {**dict(row), "last_sha": last}
+
+    def last_verify_defect_id(self, defect_class: str) -> int:
+        with self._conn() as c:
+            row = c.execute("SELECT MAX(id) AS m FROM defects WHERE source='verify' AND defect_class=?", (defect_class,)).fetchone()
+        return row["m"] or 0
+
+    def release_verify(self, defect_id: int, sha: str, ok_key: str) -> bool:
+        """The scope's exact verify succeeded on `sha`: RELEASED and the `ok_key` cache in ONE transaction."""
+        now = time.time()
+        with self._conn() as c:
+            c.execute("BEGIN IMMEDIATE")
+            cur = c.execute(f"UPDATE defects SET state='RELEASED', integrated_sha=?, hold_reason=NULL, updated_at=? WHERE id=? "
+                            f"AND source='verify' AND state IN ({','.join('?' * len(self.VERIFY_OPEN))})",
+                            (sha, now, defect_id, *self.VERIFY_OPEN))
+            if cur.rowcount != 1:
+                return False
+            c.execute("INSERT INTO kv(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (ok_key, sha))
+            return True
+
+    def link_defect(self, defect_id: int, issue_number: int) -> bool:
+        """REPORTED -> LINKED and the Maintainer queue row (QUEUED, if none) in ONE transaction (shared defects and verify blocks)."""
+        now = time.time()
+        with self._conn() as c:
+            c.execute("BEGIN IMMEDIATE")
+            cur = c.execute("UPDATE defects SET state='LINKED', issue_number=?, updated_at=? WHERE id=? AND state='REPORTED'",
+                            (issue_number, now, defect_id))
+            if cur.rowcount != 1:
+                return False
+            c.execute("INSERT OR IGNORE INTO maintenance(issue_number,state,created_at,updated_at) VALUES(?,?,?,?)",
+                      (issue_number, "QUEUED", now, now))
             return True
 
     # --- Maintainer task record: one row per urgent Issue ---

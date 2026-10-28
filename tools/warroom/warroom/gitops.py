@@ -1,9 +1,11 @@
 """Git/worktree handling. War Room only ever removes worktrees/branches it owns."""
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import tempfile
+from dataclasses import dataclass
 from pathlib import Path
 
 from .realgit import resolve_git
@@ -24,6 +26,36 @@ class CleanupBlocked(Exception):
 
 class IntegrationBlocked(Exception):
     """A shared fix cannot be brought into a batch worktree safely (conflict, wrong state); nothing was changed."""
+
+
+@dataclass(frozen=True)
+class VerifyOutcome:
+    """Result of a Batch/Shard verify (#2154). `failure` = {family, errors, total} only for a deterministic rows/accounting
+    failure (exit 2 with a fully valid JSON line); every other failure leaves it None (unclassified)."""
+    ok: bool
+    tail: str
+    failure: dict | None = None
+
+
+VERIFY_FAMILIES = ("rows", "accounting")
+
+
+def parse_verify_failure(code: int, out: str) -> dict | None:
+    """The structured failure of `verify --json`, or None unless exit 2 AND the single JSON line is entirely valid."""
+    if code != 2:
+        return None
+    try:
+        data = json.loads(out.strip())
+    except ValueError:
+        return None
+    if (not isinstance(data, dict) or set(data) != {"version", "ok", "family", "errors", "total"}
+            or data["version"] != 1 or data["ok"] is not False or data["family"] not in VERIFY_FAMILIES):
+        return None
+    errors = data["errors"]
+    if (not isinstance(errors, list) or not errors or not all(isinstance(e, str) and e.strip() for e in errors)
+            or type(data["total"]) is not int or data["total"] != len(errors)):
+        return None
+    return {"family": data["family"], "errors": errors, "total": data["total"]}
 
 
 SCRATCH_DIR = ".warroom-scratch"   # the AI's throw-away files; never part of a batch and never blocks a worktree check
@@ -593,6 +625,13 @@ class Git:
         out = self._git("diff", "--name-only", f"{sha}^1", sha).out
         return [p for p in out.splitlines() if p]
 
+    def changed_between(self, old: str, new: str) -> list[str]:
+        """Paths that differ between two master commits (GitError if `old` is not available locally).
+
+        `--no-renames`: a moved file is its old path deleted plus its new path added, so a verify input moved out of
+        a watched location is still reported under its original path."""
+        return [p for p in self._git("diff", "--name-only", "--no-renames", old, new).out.splitlines() if p]
+
     def integrate(self, path: Path, branch: str, base: str, sha: str) -> str:
         """Bring the merged shared fix `sha` into the paused batch worktree and return the resulting HEAD.
 
@@ -682,3 +721,25 @@ class Git:
                          timeout=timeout)
         tail = " ".join((res.err or res.out).split())[-300:]
         return res.ok, tail
+
+    def verify_stage2_outcome(self, sha: str, kind: str, shard: str, batch: str | None, part: str | None,
+                              timeout: int = 900) -> VerifyOutcome:
+        """Like `verify_stage2` for a Batch / shard, but with `--json` so a deterministic failure is classifiable.
+
+        Only exit 2 with a complete valid JSON line fills `failure`; exit 1/124/127, broken JSON, a schema mismatch or
+        any other result is an unclassified failure. A checkout/fetch GitError/GitTransient propagates as before.
+        """
+        args = ["--shard", shard] + (["--batch", batch] if batch else []) + (["--part", part] if part else [])
+        if kind not in ("part", "batch", "shard") or (kind == "part") != bool(part) or (kind != "shard") != bool(batch):
+            raise GitError(f"잘못된 Stage 2 verify 범위: {kind} {shard} {batch} {part}")
+        path = self._verify_checkout(sha)
+        res = self.r.run(["node", "scripts/relation/admission-cli.mjs", "verify", *args, "--json"], cwd=path,
+                         env=self.env, timeout=timeout)
+        if res.ok:
+            return VerifyOutcome(True, "")
+        failure = parse_verify_failure(res.code, res.out)
+        if failure:
+            tail = f"{failure['family']} {failure['total']}건: {' '.join(failure['errors'][0].split())[:200]}"
+        else:
+            tail = " ".join((res.err or res.out).split())[-300:]
+        return VerifyOutcome(False, tail, failure)

@@ -880,7 +880,9 @@ class Supervisor:
             sha = self.git.fetch_base(base)
             choice = stage2.choose(self.runner, self.paths.repo_root, self.env, ref=f"origin/{base}", sha=sha,
                                    open_prs=self.gh.open_prs(), kv=self.store, pin=pin,
-                                   verify=lambda *a: self.git.verify_stage2(sha, *a))
+                                   verify=lambda *a: self.git.verify_stage2(sha, *a),
+                                   outcome=lambda *a: self.git.verify_stage2_outcome(sha, *a), blocks=self.store,
+                                   changed=self.git.changed_between)
         except TRANSIENT as e:
             return self._transient_wait(f"line:{model}:{method}:prepare", e, line=line)
         except Exception as e:   # BatchError, GitError, GhError
@@ -888,6 +890,9 @@ class Supervisor:
         self._transient_clear(f"line:{model}:{method}:prepare", line=line)
         if choice.status == "stop":
             return self._blocked(ln, choice.note)
+        if choice.status == "verify_failed":   # #2154: a scope block + urgent Issue + Maintainer, never `run=0`
+            self.maint.report_verify(choice.failure)
+            choice = stage2.Choice("wait", note=f"{choice.failure.scope} verify 실패 차단 — urgent Issue 등록·복구 대기")
         if choice.status == "wait":
             if self.store.get(wait_key) != choice.note:
                 self.store.log(None, f"Stage 2 대기: {choice.note}", line=line)
