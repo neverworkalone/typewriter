@@ -243,84 +243,9 @@ Tests and validators protect product stability and established product invariant
 
 Run the validation appropriate to the changed surface.
 
-### CI registration and execution tiers
+### Local validation hygiene
 
-CI scope identifies the domain a check protects; execution tier identifies when
-the check runs. Keep these separate in `scripts/ci/registry.mjs`. Register each
-check with one domain owner, one protected contract, one tier (`candidate`,
-`normal`, or `deep`), and one schedule (`always`, `affected`, or
-`manual`). New checks default to `deep`; promote a check into `normal` only when
-it protects a current-revision, admission, or product invariant that must block
-the same PR. An `affected` check must list normalized repository-relative
-dependency paths. Missing path evidence, an empty/unclassifiable diff, or an
-unknown or renamed path must retain the Normal gate and a visible diagnostic; they do not justify Full Deep on a PR.
-Before relying on that fallback for a newly encountered source path, identify
-its protected contract and register the actual regression coverage. An existing
-always-on Normal test may be bound to the exact path in
-`scripts/ci/deep-gate-coverage.json` without running unrelated Deep checks;
-that registry is append-only and independently checked against the PR base.
-If existing Deep contracts are affected, connect all affected Deep dependency
-paths; if a required check is missing, add a reusable old-fails/new-passes
-Normal or Deep regression, not an exemption or batch-specific fixture.
-Never remove/replace an earlier binding to lower the gate. Unresolved coverage must be corrected with actual regression ownership; it
-never selects unrelated Full Deep as a PR gate. Classifier/runner/registry changes
-still require Normal, plus any directly affected registered Deep checks. A registered
-test file has exactly one registry owner; unregistered tests may be run directly.
-
-The pull-request workflow runs Normal for Candidate, Relation, Canonical,
-product-code and other ordinary/mixed changes. **Only isolated War Room**
-runtime/tests/launcher/dependency changes (with optional docs/prompt changes)
-use the exact-HEAD War Room Python test gate and explicitly skip product Normal.
-The strictly enumerated paths and fail-closed mixed/unknown/CI fallback live in
-`docs/review-toolchain.md`. Candidate validation uses the factory contracts;
-automatic CI does not create a current-Canonical SQLite database. `ci:fast`
-is an optional checkpoint inside Normal.
-
-`ci:normal` remains the required gate for ordinary code/data/mixed PRs and must
-retain the complete current-canonical audit and applicable source/admission
-protections. Fast, Normal, Deep, All, PR and selective-Deep automatic paths must
-generate zero current-Canonical Full/Lite SQLite databases, including through
-nested tests, product builds or Vite fallbacks. The build ledger records and
-fails on any such generation. The database-free UI build and unit contracts do
-not claim to validate built product output. `ci:fast` is a checkpoint inside
-the same Normal session. `ci:all` runs Normal then current-system Deep data
-checks, and `ci:deep` selects Deep checks across every domain scope.
-
-The exact `BASE_SHA...HEAD_SHA` SQL schema classifier controls the separate
-`ci:schema` PR gate. Its registered SQL DDL owner is
-`scripts/build/sqlite-schema.mjs`; that file contains Full and Lite schema
-definitions. Owner deletion or movement remains visible because rename
-detection is disabled. An SQL DDL definition outside the registered owner list
-fails classification until the owner list is updated. Only an owner-path change
-runs the product Full/Lite build, integrity and reproducibility checks. The
-gate reports its exact HEAD and stage timings. Normal product/code changes do
-not trigger it. The normal `pnpm run build`, packaging and release contracts
-remain available and unchanged.
-
-The existing `Validate and test Typewriter` PR check
-runs the applicable product Normal gate **or** (for isolated War Room paths)
-the exact-HEAD War Room Python tests with an explicit Normal skip. It uses
-`ci:pr` to run only affected Deep checks, including Normal, if any Deep
-dependency actually matches. `ci:all` retains full current-system Deep
-coverage for weekly scheduled/manual audits, never automatic PR classification. The path
-classifier is not a separate PR check.
-Deep data inputs belong in each check's `deepInputs` registry metadata;
-`dependency_paths` separately name changes that invalidate that check's
-contract. A data file appearing in `deepInputs` does not alone select the
-check. Routine canonical and reviewed relation changes must pass schema/shape
-classification and the existing Normal source-bound validators.
-New or malformed paths remain fail-closed. Docs-only changes retain the
-exact-head Normal skip, and pure root candidate artifacts retain `ci:candidates`.
-CI runner/registry/workflow/classifier edits, unresolved unknown
-paths, missing/empty diff evidence and malformed data take Normal on PRs;
-any independently matched Deep dependency adds only its affected checks.
-Normal validators still reject invalid data. Verified append-only `deep-gate-coverage.json` additions are not
-classified as runner or registry implementation changes. A skipped Deep check must be listed with its reason; it never counts as
-completed Deep evidence.
-
-### Local Normal CI preflight
-
-Before local Normal CI (`ci:normal`, `pnpm test`, `ci:pr`/`ci:all`), require an empty `git status --porcelain=v1 --untracked-files=all`; otherwise commit intended changes first. Do not run dirty just to trigger `DIRTY_WORKTREE` and retry. `TYPEWRITER_ALLOW_DIRTY=true` is development-only, not PR gate evidence. If CI itself dirties the worktree, fix that producer; retain existing provenance guards.
+Before running local validation, commit intended changes and ensure `git status --porcelain=v1 --untracked-files=all` is empty. Do not bypass provenance protections with `TYPEWRITER_ALLOW_DIRTY=true` to present a dirty run as PR evidence. The GitHub Actions workflow owns PR CI check selection and execution.
 
 For data changes, validation may include:
 
