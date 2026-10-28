@@ -160,7 +160,7 @@ class Stage2Finalization(unittest.TestCase):
         fix = w.adapter.launches[-1]
         fix_batch = w.store.batch(b["id"])
         self.assertEqual((fix["kind"], fix.get("session"), w.store.batch(b["id"])["run_kind"]),
-                         ("start", None, "fix_new"), fix_batch.get("error"))
+                         ("start", None, "fix_new"), fix_batch["error"])
         self.assertIn("inspect w1-s1", fix["prompt"])
         self.assertIn("w999-s1", fix["prompt"])
         self.assertEqual(w.git.inspect_calls[-1][1:], ("001", "01", "01", ["w1-s1"]))
