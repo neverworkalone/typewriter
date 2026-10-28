@@ -50,30 +50,41 @@ jobs:
 
           # Use the PR merge base, not the checked-out synthetic merge commit.
           # Disable renames so moving code into docs/ cannot hide a source-file deletion.
-          git diff --no-renames --name-only -z "${BASE_SHA}...${HEAD_SHA}" > "$paths_file"
+          git diff --no-renames --name-status -z "${BASE_SHA}...${HEAD_SHA}" > "$paths_file"
           # Read NUL-delimited paths (including whitespace safely); Bash 3.2 compatible.
           docs_only=true
+          warroom_only=true
           saw_file=false
           run_warroom_tests=false
-          while IFS= read -r -d '' file; do
+          # -z --name-status yields NUL-delimited status/path pairs.
+          # A deletion, type change or unknown status must never gain a cheaper
+          # War Room exemption by moving source to a documentation path.
+          while IFS= read -r -d '' status && IFS= read -r -d '' file; do
             saw_file=true
+            if [[ "$status" != A && "$status" != M ]]; then
+              warroom_only=false
+            fi
             case "$file" in
               docs/*|README.md|REVIEW.md|tools/warroom/prompts/*) ;;
-              *) docs_only=false ;;
-            esac
-            case "$file" in
               tools/warroom/warroom/*|tools/warroom/tests/*|tools/warroom/run-tests.mjs|tools/warroom/requirements.txt|war|dashboard)
+                docs_only=false
                 run_warroom_tests=true
+                ;;
+              *)
+                docs_only=false
+                warroom_only=false
                 ;;
             esac
           done < "$paths_file"
 
-          # Only documentation-only changes skip Normal. All other changes,
-          # including retired candidate artifacts and mixed/empty diffs, use Normal.
+          # Only strictly scoped War Room-only PRs can skip product Normal.
+          # Empty/unclassified diffs, product changes and CI changes run Normal.
           if [[ "$saw_file" != true ]]; then
             run_level=normal
           elif [[ "$docs_only" == true ]]; then
             run_level=none
+          elif [[ "$warroom_only" == true && "$run_warroom_tests" == true ]]; then
+            run_level=warroom
           else
             run_level=normal
           fi
@@ -94,22 +105,25 @@ jobs:
             echo "Running exact-head ci:pr (Normal + affected Deep checks) inside this PR check." >> "$GITHUB_STEP_SUMMARY"
           elif [[ "$run_level" == none ]]; then
             echo "Documentation-only PR: ci:normal skipped; no Deep contract dependency changed." >> "$GITHUB_STEP_SUMMARY"
+          elif [[ "$run_level" == warroom ]]; then
+            echo "War Room-only PR: War Room Python tests required; product ci:normal skipped." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "Ordinary PR changes: running ci:normal." >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Set up pnpm dependency cache
-        if: ${{ steps.changes.outcome != 'success' || steps.changes.outputs.run_level != 'none' || steps.changes.outputs.run_deep == 'true' || steps.schema.outputs.schema_changed == 'true' }}
+        if: ${{ steps.changes.outcome != 'success' || steps.changes.outputs.run_level == 'normal' || steps.changes.outputs.run_deep == 'true' || steps.schema.outputs.schema_changed == 'true' }}
         uses: actions/setup-node@v7
         with:
           node-version: 24.x
           cache: pnpm
 
       - name: Install pinned dependencies
-        if: ${{ steps.changes.outcome != 'success' || steps.changes.outputs.run_level != 'none' || steps.changes.outputs.run_deep == 'true' || steps.schema.outputs.schema_changed == 'true' }}
+        if: ${{ steps.changes.outcome != 'success' || steps.changes.outputs.run_level == 'normal' || steps.changes.outputs.run_deep == 'true' || steps.schema.outputs.schema_changed == 'true' }}
         run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: War Room Python unit tests
+        id: warroom
         if: ${{ always() && steps.changes.outcome == 'success' && steps.changes.outputs.run_warroom_tests == 'true' }}
         run: node tools/warroom/run-tests.mjs
 
@@ -139,11 +153,31 @@ jobs:
         env:
           CLASSIFIER_OUTCOME: ${{ steps.changes.outcome }}
           CHANGED_PATHS_COMPLETE: ${{ steps.changes.outputs.changed_paths_complete }}
+          RUN_LEVEL: ${{ steps.changes.outputs.run_level }}
+          DEEP_MODE: ${{ steps.changes.outputs.deep_mode }}
+          WARROOM_OUTCOME: ${{ steps.warroom.outcome }}
+          NORMAL_OUTCOME: ${{ steps.normal.outcome }}
+          SELECTIVE_OUTCOME: ${{ steps.selective.outcome }}
+          SCHEMA_CHANGED: ${{ steps.schema.outputs.schema_changed }}
         shell: bash
         run: |
           if [[ "$CLASSIFIER_OUTCOME" != success || "$CHANGED_PATHS_COMPLETE" != true ]]; then
             echo "Changed-path evidence is incomplete; Normal fallback ran, but this PR check cannot pass." >> "$GITHUB_STEP_SUMMARY"
             exit 1
+          fi
+          if [[ "$RUN_LEVEL" == warroom ]]; then
+            if [[ "$WARROOM_OUTCOME" != success || "$SCHEMA_CHANGED" == true ]]; then
+              echo "War Room-only exemption requires successful War Room tests and no SQL schema change." >> "$GITHUB_STEP_SUMMARY"
+              exit 1
+            fi
+            if [[ "$DEEP_MODE" == selective ]]; then
+              [[ "$SELECTIVE_OUTCOME" == success ]] || exit 1
+            else
+              if [[ "$NORMAL_OUTCOME" != skipped || "$SELECTIVE_OUTCOME" != skipped ]]; then
+                echo "Unexpected product/Deep CI gate for a War Room-only change." >> "$GITHUB_STEP_SUMMARY"
+                exit 1
+              fi
+            fi
           fi
 
       - name: Record executed CI gate
@@ -156,6 +190,7 @@ jobs:
           SCHEMA_OUTCOME: ${{ steps.schema-build.outcome }}
           NORMAL_OUTCOME: ${{ steps.normal.outcome }}
           SELECTIVE_OUTCOME: ${{ steps.selective.outcome }}
+          WARROOM_OUTCOME: ${{ steps.warroom.outcome }}
           FINAL_GATE: ${{ job.status }}
         shell: bash
         run: |
@@ -166,6 +201,7 @@ jobs:
             echo "- Deep selection mode: ${DEEP_MODE:-Normal fallback}"
             echo "- SQL schema build gate required: ${SCHEMA_GATE:-unknown}"
             echo "- SQL schema build gate outcome: ${SCHEMA_OUTCOME:-skipped}"
+            echo "- War Room gate outcome: ${WARROOM_OUTCOME:-skipped}"
             echo "- Normal-only gate outcome: ${NORMAL_OUTCOME:-skipped}"
             echo "- Selective Deep gate outcome: ${SELECTIVE_OUTCOME:-skipped}"
             echo "- Final gate result: ${FINAL_GATE:-unknown}"

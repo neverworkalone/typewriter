@@ -79,6 +79,10 @@ const KNOWN_NON_DEEP_ROOT_PATHS = Object.freeze([
   'README.md',
   'REVIEW.md',
   'AGENTS.md',
+  'tools/warroom/run-tests.mjs',
+  'tools/warroom/requirements.txt',
+  'war',
+  'dashboard',
   'popup.html',
   'options.html',
   'vite.config.js',
@@ -88,11 +92,13 @@ const KNOWN_NON_DEEP_ROOT_PATHS = Object.freeze([
   'pack.sh',
 ]);
 
-// Prompt files are operator-authored instructions, not executable code or a
-// product validation dependency. Keep this narrow so nearby War Room files
-// still require the ordinary PR gate.
+// Isolated War Room runtime/tests are not product Deep dependencies. The
+// workflow's stricter whole-diff classifier decides whether to skip Normal;
+// knowing a path is non-Deep never grants a Normal exemption on its own.
 const KNOWN_NON_DEEP_PREFIXES = Object.freeze([
   'tools/warroom/prompts/',
+  'tools/warroom/warroom/',
+  'tools/warroom/tests/',
 ]);
 
 if (KNOWN_NON_DEEP_PATHS.version !== 1 || !Array.isArray(KNOWN_NON_DEEP_PATHS.paths)) {
@@ -619,7 +625,9 @@ function main() {
   const runLevel = process.env.TYPEWRITER_CI_RUN_LEVEL ?? 'normal';
   const baseGate = runLevel === 'none'
     ? 'ci:normal skipped (documentation-only)'
-    : 'ci:normal';
+    : runLevel === 'warroom' && result.deepMode !== 'selective'
+      ? 'ci:normal skipped (War Room-only; War Room Python tests required)'
+      : 'ci:normal';
   const triggerEvidence = (result.matchedTriggers ?? []).length > 0
     ? result.matchedTriggers.map(({ path: changedPath, checks }) => (
       `\`${changedPath}\` -> ${checks.map((id) => `\`${id}\``).join(', ')}`
@@ -648,7 +656,7 @@ function main() {
     `- Matched contract triggers: ${triggerEvidence}`,
     `- Deep checks selected (${selectedLabels.length}/${deepChecks.length}): ${selectedLabels.length > 0 ? selectedLabels.map((value) => `\`${value}\``).join(', ') : 'none'}`,
     `- Deep checks skipped: ${skippedLabels.length > 0 ? skippedLabels.map((value) => `\`${value}\``).join(', ') : 'none'}${skippedLabels.length > 0 ? ` (reason: no registered dependency matched this change; classifier: ${result.reason})` : ''}`,
-    `- PR command: \`${result.deepMode === 'selective' ? 'ci:pr' : 'ci:normal'}\``,
+    `- PR command: \`${result.deepMode === 'selective' ? 'ci:pr' : runLevel === 'warroom' ? 'node tools/warroom/run-tests.mjs' : runLevel === 'none' ? 'docs-only skip' : 'ci:normal'}\``,
   ].join('\n') + '\n';
   if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary, 'utf8');
   process.stdout.write(`${JSON.stringify({ ...result, base_sha: baseSha ?? null, head_sha: headSha ?? null })}\n`);

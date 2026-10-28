@@ -738,6 +738,21 @@ test('Deep gate separates validated data from affected contracts and fails close
     }).deepMode,
     'none',
   );
+  for (const warRoomPath of [
+    'tools/warroom/warroom/supervisor.py',
+    'tools/warroom/tests/test_issue_2092.py',
+    'tools/warroom/run-tests.mjs',
+    'tools/warroom/requirements.txt',
+    'war',
+    'dashboard',
+  ]) {
+    assert.equal(classifyDeepGatePaths([warRoomPath]).deepMode, 'none', warRoomPath);
+  }
+  assert.equal(
+    classifyDeepGatePaths(['tools/warroom/warroom/supervisor.py', 'scripts/ci/registry.mjs']).deepMode,
+    'full',
+    'a War Room source cannot hide a CI registry change from Deep classification',
+  );
   assert.equal(classifyDeepGatePaths(['tests/new-unregistered-check.test.mjs']).deepMode, 'full');
   assert.equal(classifyDeepGatePaths(['docs/review-toolchain.md', 'scripts/ci/run-category.mjs']).deepMode, 'full');
   assert.equal(classifyDeepGatePaths([]).deepMode, 'full');
@@ -879,8 +894,8 @@ test('Deep gate separates validated data from affected contracts and fails close
 
 
 // Execute the actual inline CI classifier against tiny synthetic Git histories.
-// Retired Stage 1 artifact paths and every other non-doc change use Normal.
-test('CI changed-path gate sends all non-doc changes through Normal', async (t) => {
+// Retired candidates and mixed/product/CI changes use Normal; isolated War Room changes use Python tests only.
+test('CI changed-path gate isolates War Room while keeping mixed/unknown changes on Normal', async (t) => {
   const workflow = await readFile(path.resolve(TEST_DIRECTORY, '../.github/workflows/ci.yml'), 'utf8');
   const block = workflow.split('      - name: Classify changed files\n')[1]
     ?.split('      - name: Install pinned dependencies\n')[0];
@@ -888,10 +903,12 @@ test('CI changed-path gate sends all non-doc changes through Normal', async (t) 
   const scriptBlock = block.split('\n          # Deep impact and exact-check selection stay inside this PR check.\n')[0];
   const script = scriptBlock.split('        run: |\n')[1]
     ?.split('\n').map((line) => line.startsWith('          ') ? line.slice(10) : line).join('\n');
-  assert.ok(script?.includes('git diff --no-renames --name-only -z'), 'classification must include both rename sides');
+  assert.ok(script?.includes('git diff --no-renames --name-status -z'), 'classification must include both rename sides');
   assert.match(workflow, /node scripts\/ci\/deep-gate\.mjs/u, 'Deep classification must run inside the existing classifier step');
   assert.doesNotMatch(workflow, /ci:candidates|run_level == 'candidates'/u);
   assert.match(workflow, /steps\.changes\.outcome != 'success' \|\| \(steps\.changes\.outputs\.run_level == 'normal'/u);
+  assert.match(workflow, /steps\.warroom\.outcome/u, 'War Room gate result must be verified');
+  assert.match(workflow, /name: Normal validation/u);
   const warRoomStep = workflow.split('      - name: War Room Python unit tests\n')[1]
     ?.split('\n      - name: ')[0];
   assert.ok(warRoomStep);
@@ -957,7 +974,7 @@ test('CI changed-path gate sends all non-doc changes through Normal', async (t) 
       `changed_paths_complete=${expectedPathsComplete}`,
       '',
     ].join('\n'), name);
-    const runEvidenceGate = (classifierOutcome, pathsComplete) => {
+    const runEvidenceGate = (classifierOutcome, pathsComplete, overrides = {}) => {
       try {
         execFileSync('bash', ['-c', evidenceScript], {
           cwd: root,
@@ -966,7 +983,14 @@ test('CI changed-path gate sends all non-doc changes through Normal', async (t) 
             ...process.env,
             CLASSIFIER_OUTCOME: classifierOutcome,
             CHANGED_PATHS_COMPLETE: pathsComplete,
+            RUN_LEVEL: expectedLevel,
+            DEEP_MODE: 'none',
+            WARROOM_OUTCOME: expectedWarRoom ? 'success' : 'skipped',
+            NORMAL_OUTCOME: expectedLevel === 'normal' ? 'success' : 'skipped',
+            SELECTIVE_OUTCOME: 'skipped',
+            SCHEMA_CHANGED: 'false',
             GITHUB_STEP_SUMMARY: summary,
+            ...overrides,
           },
         });
         return 0;
@@ -978,9 +1002,15 @@ test('CI changed-path gate sends all non-doc changes through Normal', async (t) 
     if (expectedPathsComplete) {
       assert.equal(runEvidenceGate('failure', ''), 1, `${name}: classifier failure must fail closed`);
     }
+    if (expectedLevel === 'warroom') {
+      assert.equal(runEvidenceGate('success', 'true', { WARROOM_OUTCOME: 'failure' }), 1, `${name}: failed War Room tests cannot grant exemption`);
+      assert.equal(runEvidenceGate('success', 'true', { NORMAL_OUTCOME: 'success' }), 1, `${name}: unexpected Normal run is not an isolated War Room gate`);
+      assert.equal(runEvidenceGate('success', 'true', { SCHEMA_CHANGED: 'true' }), 1, `${name}: schema owner changes must never get exemption`);
+    }
     const expectedSummary = {
       none: /Changed-path classification: none/u,
       normal: /Changed-path classification: normal/u,
+      warroom: /Changed-path classification: warroom/u,
     };
     assert.match(await readFile(summary, 'utf8'), expectedSummary[expectedLevel], name);
   };
@@ -1017,6 +1047,23 @@ test('CI changed-path gate sends all non-doc changes through Normal', async (t) 
   await scenario('prompt plus War Room code', async () => {
     await writeFile(path.join(root, 'tools/warroom/prompts/c.md'), 'prompt v4\n');
     await writeFile(path.join(root, 'tools/warroom/warroom/supervisor.py'), 'supervisor v2\n');
+  }, 'warroom', true);
+  await scenario('War Room code with ordinary documentation', async () => {
+    await writeFile(path.join(root, 'tools/warroom/warroom/supervisor.py'), 'supervisor v3\n');
+    await writeFile(path.join(root, 'docs/guide.md'), 'guide v3\n');
+  }, 'warroom', true);
+  await scenario('War Room and product code together', async () => {
+    await writeFile(path.join(root, 'tools/warroom/warroom/supervisor.py'), 'supervisor v4\n');
+    await writeFile(path.join(root, 'src/main.mjs'), 'export const value = 3;\n');
+  }, 'normal', true);
+  await scenario('War Room plus CI workflow must run Normal', async () => {
+    await mkdir(path.join(root, '.github/workflows'), { recursive: true });
+    await writeFile(path.join(root, '.github/workflows/ci.yml'), 'name: new ci\n');
+    await writeFile(path.join(root, 'tools/warroom/warroom/supervisor.py'), 'supervisor v5\n');
+  }, 'normal', true);
+  await scenario('War Room plus AGENTS instructions must run Normal', async () => {
+    await writeFile(path.join(root, 'AGENTS.md'), 'updated agents\n');
+    await writeFile(path.join(root, 'tools/warroom/warroom/supervisor.py'), 'supervisor v6\n');
   }, 'normal', true);
   await scenario('prompt plus ordinary product code', async () => {
     await writeFile(path.join(root, 'tools/warroom/prompts/c.md'), 'prompt v5\n');
@@ -1028,10 +1075,11 @@ test('CI changed-path gate sends all non-doc changes through Normal', async (t) 
       path.join(root, 'tools/warroom/prompts/supervisor.py'),
     );
   }, 'normal', true);
-  await scenario('War Room test source', () => writeFile(path.join(root, 'tools/warroom/tests/test_core.py'), 'test v2\n'), 'normal', true);
-  await scenario('War Room test launcher', () => writeFile(path.join(root, 'tools/warroom/run-tests.mjs'), 'runner v2\n'), 'normal', true);
-  await scenario('War Room dependency settings', () => writeFile(path.join(root, 'tools/warroom/requirements.txt'), 'textual>=0.81,<9\n'), 'normal', true);
-  await scenario('War Room root launcher', () => writeFile(path.join(root, 'war'), 'launcher v2\n'), 'normal', true);
+  await scenario('War Room test source', () => writeFile(path.join(root, 'tools/warroom/tests/test_core.py'), 'test v2\n'), 'warroom', true);
+  await scenario('War Room test launcher', () => writeFile(path.join(root, 'tools/warroom/run-tests.mjs'), 'runner v2\n'), 'warroom', true);
+  await scenario('War Room dependency settings', () => writeFile(path.join(root, 'tools/warroom/requirements.txt'), 'textual>=0.81,<9\n'), 'warroom', true);
+  await scenario('War Room root launcher', () => writeFile(path.join(root, 'war'), 'launcher v2\n'), 'warroom', true);
+  await scenario('War Room dashboard entry', () => writeFile(path.join(root, 'dashboard'), 'dashboard v2\n'), 'warroom', true);
   await scenario('War Room documentation outside prompts', () => writeFile(path.join(root, 'tools/warroom/README.md'), 'readme v2\n'), 'normal');
   await scenario('canonical-data', async () => {
     await mkdir(path.join(root, 'data/canonical'), { recursive: true });
@@ -1100,12 +1148,12 @@ test('CI and Pages workflows keep their trigger responsibilities separate', asyn
   assert.match(workflow, /actions\/checkout@v7/u);
   assert.match(workflow, /actions\/setup-node@v7/u);
   assert.match(workflow, /node-version: 24\.x/u);
-  // Docs-only runs skip install, so the pnpm store never exists: the cache post-step
-  // must only be registered by the setup-node step that shares the install condition.
+  // Docs-only and isolated War Room runs skip install: the pnpm store never exists,
+  // so the cache post-step must share the actual product/Deep/schema install condition.
   const nodeSteps = workflow.split('      - name: ').filter((step) => step.includes('actions/setup-node'));
   const cached = nodeSteps.filter((step) => /cache: pnpm/u.test(step));
   assert.equal(cached.length, 1);
-  assert.match(cached[0], /\n        if: .*run_level != 'none'/u);
+  assert.match(cached[0], /\n        if: .*run_level == 'normal'/u);
   assert.ok(nodeSteps.every((step) => step === cached[0] || /package-manager-cache: false/u.test(step)));
   assert.doesNotMatch(workflow, /^\s+schedule:/mu);
   assert.doesNotMatch(workflow, /^\s+workflow_dispatch:/mu);
@@ -1311,8 +1359,13 @@ test('War Room Python tests are outside every CI registry tier and prompts are D
     'tools/warroom/prompts/c.md',
     'tools/warroom/warroom/supervisor.py',
   ]);
-  assert.equal(promptAndCode.reason, 'unclassified-path');
-  assert.equal(promptAndCode.runDeep, true, 'code plus prompt cannot take the prompt-only shortcut');
+  assert.equal(promptAndCode.reason, 'known-non-deep-paths-only');
+  assert.equal(promptAndCode.runDeep, false, 'War Room runtime and prompts have no product Deep dependencies');
+  assert.equal(promptAndCode.deepMode, 'none');
+  assert.deepEqual(promptAndCode.knownNonDeepPaths, [
+    'tools/warroom/prompts/c.md',
+    'tools/warroom/warroom/supervisor.py',
+  ], 'the separate CI workflow classifier must still require War Room tests for mixed prompt+runtime changes');
   const nearbyPath = classifyDeepGatePaths(['tools/warroom/prompts-old/c.md']);
   assert.equal(nearbyPath.reason, 'unclassified-path', 'the prompt exemption must stay prefix-bounded');
 });
