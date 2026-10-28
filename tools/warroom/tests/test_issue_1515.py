@@ -4,6 +4,7 @@ import unittest
 
 from tests.fakes import HEAD1, HEAD2, World
 from warroom import control
+from warroom.github import GhError, GhTransient
 from warroom.gitops import GitError
 
 BRANCH = "a-deepseek-001-01"
@@ -76,15 +77,23 @@ class FixHeadLag(unittest.TestCase):
         self.assertEqual(w.row()["state"], "WAITING_REVIEW")
         self.assertEqual(w.store.kv_prefix(f"tw_b{b['id']}:"), [])   # the warning counter left with the transition
 
-    def test_gh_failure_while_waiting_never_becomes_an_error(self):
-        w = self.to_finished_fix()
-        w.tick()
-        w.gh.pull = lambda n: (_ for _ in ()).throw(RuntimeError("boom"))
-        w.tick()
-        self.assertEqual(w.row()["state"], "FIXING")
-        w.now += 101
-        w.tick()
-        self.assertEqual(w.row()["state"], "FIXING")
+    def test_gh_failure_while_waiting_is_a_wait_only_when_retryable(self):
+        cases = [("transient", GhTransient("HTTP 502"), "FIXING"), ("401", GhError("gh api: HTTP 401: Bad credentials"), "ERROR"),
+                 ("404", GhError("gh api: HTTP 404: Not Found"), "ERROR"), ("unknown", RuntimeError("boom"), "ERROR")]
+        for name, exc, want in cases:
+            with self.subTest(name):
+                w = World()
+                w.cfg["pr_head_lag_timeout_seconds"] = 100
+                self.addCleanup(w.tmp.cleanup)
+                self.to_finished_fix(w=w)
+                w.tick()
+                w.gh.pull = lambda n, e=exc: (_ for _ in ()).throw(e)
+                w.tick()
+                w.now += 101
+                w.tick()
+                self.assertEqual(w.row()["state"], want)
+                if want == "ERROR":
+                    self.assertEqual(w.git.removed, [])
 
     def test_real_problems_are_not_waits(self):
         cases = [  # name, kwargs, remote override, expected text

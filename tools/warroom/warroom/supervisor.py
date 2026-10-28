@@ -1215,7 +1215,12 @@ class Supervisor:
         if base == "fix":
             if self._verified_fix_exit(b):
                 # The fix run ended 0 with its own completion evidence: only its push is unverified. No AI, commit or push.
-                info = self.gh.pull(b["pr_number"])
+                try:
+                    info = self.gh.pull(b["pr_number"])
+                except TRANSIENT:
+                    raise
+                except Exception as e:
+                    return self._fail(b, "ERROR", f"검증된 수정 실행 뒤 PR 조회가 확정적으로 실패했습니다: {e}. 보존합니다.")
                 if self._check_fix_head(b, info) == "ok":
                     self._to_review(b, info)
                 return
@@ -2517,10 +2522,12 @@ class Supervisor:
         self.store.set(pk, str(self.clock()))
         try:
             info = self.gh.pull(b["pr_number"])
-        except Exception as e:
-            if self._head_lag_wait(b, key, f"GitHub 조회 실패({e})") == "wait":
+        except TRANSIENT as e:   # only a retryable failure is "lag"; a definite answer (401/404/...) is a verdict
+            if self._head_lag_wait(b, key, f"GitHub 조회 일시 실패({e})") == "wait":
                 self.store.log(b["id"], f"PR 재조회 실패(재시도 예정): {e}", "warn")
             return
+        except Exception as e:
+            return self._fail(b, "ERROR", f"수정 후 PR 재조회가 확정적으로 실패했습니다: {e}. worktree·원격 브랜치를 보존합니다.")
         if self._check_fix_head(b, info) == "ok":
             self._to_review(b, info)
 
