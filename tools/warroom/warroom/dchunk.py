@@ -39,21 +39,35 @@ class DChunkError(Exception):
 @dataclass(frozen=True)
 class Names:
     directory: str
-    active: str
-    view: str
     canonical: str
     output: str
-    rejected: str
+
+
+@dataclass(frozen=True)
+class ChunkNames:
+    directory: str
+    active: str
+    view: str
+    searches: str
     decisions: str
+    rejected: str
 
 
 def names(b) -> Names:
     shard, batch, model = b["shard"], b["batch"], b["producer"]
     directory = f"{SCRATCH}/d-{shard}_{batch}"
-    return Names(directory=directory, active=f"{directory}/active-chunk.json", view=f"{directory}/active-chunk.txt",
-                 canonical=f"data/canonical/stdict-{int(shard):04d}.jsonl",
-                 output=f"data/relation-candidates/{shard}/{shard}_{batch}_d_{model}.jsonl",
-                 rejected=f"{directory}/save-rejected.json", decisions=f"{directory}/decisions.txt")
+    return Names(directory=directory, canonical=f"data/canonical/stdict-{int(shard):04d}.jsonl",
+                 output=f"data/relation-candidates/{shard}/{shard}_{batch}_d_{model}.jsonl")
+
+
+def chunk_names(b, chunk_no: int) -> ChunkNames:
+    if not isinstance(chunk_no, int) or not 1 <= chunk_no <= 999:
+        raise DChunkError(f"잘못된 D 청크 번호입니다: {chunk_no}")
+    directory = names(b).directory
+    number = f"{chunk_no:03d}"
+    return ChunkNames(directory=directory, active=f"{directory}/active-{number}.json",
+                      view=f"{directory}/view-{number}.txt", searches=f"{directory}/search-{number}.jsonl",
+                      decisions=f"{directory}/decision-{number}.txt", rejected=f"{directory}/rejected-{number}.json")
 
 
 def run_start_key(batch_id: int) -> str:
@@ -176,15 +190,34 @@ def prepare(runner, env, worktree, b, chunk_no: int, db_path: str, head: str) ->
 
 
 def read_active(worktree, b) -> dict | None:
-    """The active record the CLI wrote for this batch, None when there is none; a damaged or foreign one raises."""
-    path = Path(worktree) / names(b).active
-    if not path.exists():
+    """Read the sole exact active-NNN record; legacy or ambiguous layouts fail closed and remain untouched."""
+    folder = Path(worktree) / names(b).directory
+    try:
+        entries = {p.name for p in folder.iterdir()} if folder.is_dir() else set()
+    except OSError as e:
+        raise DChunkError(f"D scratch 폴더를 읽을 수 없습니다: {e}") from e
+    legacy = {"active-chunk.json", "active-chunk.txt", "searches.jsonl", "decisions.txt", "save-rejected.json"}
+    if entries & legacy or any(re.fullmatch(r"active-chunk\.p\d+of\d+\.txt", name) for name in entries):
+        raise DChunkError("기존 D 임시 파일 형식이 남아 있습니다. 자동 이전·삭제 없이 보존하고 수동 확인이 필요합니다.")
+    active_files = sorted(name for name in entries if name.startswith("active-"))
+    if any(not re.fullmatch(r"active-\d{3}\.json", name) for name in active_files):
+        raise DChunkError("D 활성 청크 파일명이 잘못되었습니다. 임시 파일을 보존합니다.")
+    if len(active_files) > 1:
+        raise DChunkError("D 배치에 활성 청크 메타가 둘 이상 있습니다. 임시 파일을 보존합니다.")
+    if not active_files:
         return None
+    active_name = active_files[0]
+    active_no = int(active_name[7:10])
+    if active_no < 1:
+        raise DChunkError("활성 D 청크 번호가 범위를 벗어났습니다. 임시 파일을 보존합니다.")
+    path = folder / active_name
     try:
         rec = json.loads(path.read_text("utf-8"))
         ok = (isinstance(rec, dict) and (rec.get("shard"), rec.get("batch"), rec.get("model")) ==
               (b["shard"], b["batch"], b["producer"]) and isinstance(rec.get("chunk_no"), int)
-              and isinstance(rec.get("view_sha256"), str) and isinstance(rec.get("git_head"), str)
+              and rec.get("chunk_no") == active_no
+              and isinstance(rec.get("view_sha256"), str) and re.fullmatch(r"[a-f0-9]{64}", rec["view_sha256"])
+              and isinstance(rec.get("git_head"), str) and re.fullmatch(r"[a-f0-9]{40}", rec["git_head"])
               and isinstance(rec.get("senses"), list) and rec["senses"]
               and all(isinstance(s, dict) and _ID.fullmatch(str(s.get("sense_id", ""))) for s in rec["senses"]))
     except (OSError, ValueError):
@@ -197,7 +230,7 @@ def read_active(worktree, b) -> dict | None:
 def read_view(worktree, b, rec: dict) -> str:
     """The saved view, proven byte-for-byte to be the one the active record was written for."""
     try:
-        data = (Path(worktree) / names(b).view).read_bytes()
+        data = (Path(worktree) / chunk_names(b, rec["chunk_no"]).view).read_bytes()
     except OSError as e:
         raise DChunkError(f"활성 청크 view를 읽을 수 없습니다: {e}") from e
     if sha256_bytes(data) != rec["view_sha256"]:
@@ -205,12 +238,39 @@ def read_view(worktree, b, rec: dict) -> str:
     return data.decode("utf-8")
 
 
-def clear_active(worktree, b) -> None:
-    n = names(b)
-    for rel in (n.active, n.view, n.rejected):
-        (Path(worktree) / rel).unlink(missing_ok=True)
-    for stale in (Path(worktree) / n.directory).glob("active-chunk.p*of*.txt"):
-        stale.unlink()
+def clear_active(worktree, b, chunk_no: int) -> None:
+    """Remove one verified chunk's scratch, leaving its final chunk-NNN.jsonl and every sibling untouched.
+
+    The active metadata is removed first. If cleanup is interrupted after that, the run baseline and verified output
+    identify the saved chunk so the Supervisor can retry the remaining chunk-local cleanup before starting a new session.
+    """
+    rec = read_active(worktree, b)
+    active_matches = rec is not None and rec["chunk_no"] == chunk_no
+    if not active_matches:
+        done, _total = verified_prefix(worktree, b)
+        if done < chunk_no:
+            raise DChunkError(f"저장 검증이 끝나지 않은 D 청크 {chunk_no:03d}는 정리할 수 없습니다.")
+    n = chunk_names(b, chunk_no)
+    folder = Path(worktree) / n.directory
+    paths = [Path(worktree) / n.active] if active_matches else []
+    paths.extend(Path(worktree) / rel for rel in (n.view, n.searches, n.decisions, n.rejected))
+    paths.extend(path for base in (folder / n.view, folder / n.searches, folder / n.decisions,
+                                   folder / n.rejected, folder / n.active)
+                 for path in folder.glob(base.name + ".tmp"))
+    try:
+        paths.extend(path for path in folder.iterdir()
+                     if re.fullmatch(rf"view-{chunk_no:03d}\.p\d+of\d+\.txt(?:\.tmp)?", path.name))
+    except OSError as e:
+        raise DChunkError(f"D 청크 {chunk_no:03d} 페이지 파일 목록을 읽지 못했습니다: {e}") from e
+    seen = set()
+    for path in paths:
+        if path in seen:
+            continue
+        seen.add(path)
+        try:
+            path.unlink(missing_ok=True)
+        except OSError as e:
+            raise DChunkError(f"D 청크 {chunk_no:03d} 임시 파일 {path.name} 정리에 실패했습니다: {e}") from e
 
 
 def read_rejection(worktree, b, rec: dict) -> dict | None:
@@ -218,11 +278,12 @@ def read_rejection(worktree, b, rec: dict) -> dict | None:
     stale/foreign/damaged, or it says the rejection cannot be repaired by re-judging (`stop_and_report`, e.g. a Z
     refused because a recorded search of the record has hits). Only this file decides repairability; no tool log is parsed."""
     try:
-        diag = json.loads((Path(worktree) / names(b).rejected).read_text("utf-8"))
+        diag = json.loads((Path(worktree) / chunk_names(b, rec["chunk_no"]).rejected).read_text("utf-8"))
     except (OSError, ValueError):
         return None
     if not (isinstance(diag, dict) and diag.get("diagnostic") == "save_rejected" and diag.get("repair_scope") == "decisions"
             and diag.get("chunk_no") == rec["chunk_no"] and diag.get("view_sha256") == rec["view_sha256"]
+            and diag.get("git_head") == rec["git_head"]
             and isinstance(diag.get("errors"), list) and diag["errors"] and all(isinstance(e, str) for e in diag["errors"])):
         return None
     if has_search_failure(worktree, b):
@@ -232,15 +293,21 @@ def read_rejection(worktree, b, rec: dict) -> dict | None:
 
 def has_search_failure(worktree, b) -> bool:
     """Fail closed when the active D chunk's accumulated search evidence contains SEARCH_FAILED or is unreadable."""
+    rec = read_active(worktree, b)
+    if rec is None:
+        return True
+    n = chunk_names(b, rec["chunk_no"])
     try:
-        lines = (Path(worktree) / names(b).directory / "searches.jsonl").read_text("utf-8").splitlines()
-    except FileNotFoundError:
-        return False
+        lines = (Path(worktree) / n.searches).read_text("utf-8").splitlines()
     except OSError:
         return True
     try:
-        return any(line.strip() and json.loads(line).get("status") == "SEARCH_FAILED" for line in lines)
-    except (ValueError, AttributeError):
+        entries = [json.loads(line) for line in lines if line.strip()]
+        if any(not isinstance(item, dict) or item.get("chunk_no") != rec["chunk_no"]
+               or item.get("view_sha256") != rec["view_sha256"] for item in entries):
+            return True
+        return any(item.get("status") == "SEARCH_FAILED" for item in entries)
+    except (ValueError, AttributeError, TypeError):
         return True
 
 
@@ -263,7 +330,10 @@ def write_pages(worktree, b, view: str) -> list[str]:
     pages = stage2.chunk_pages(view)
     if "".join(pages) != view:
         raise DChunkError("page 분할 결과가 원본 view와 일치하지 않습니다")
-    return stage2.write_pages(worktree, names(b).view, pages)
+    rec = read_active(worktree, b)
+    if rec is None:
+        raise DChunkError("페이지 분할 전에 활성 D 청크를 확인할 수 없습니다")
+    return stage2.write_pages(worktree, chunk_names(b, rec["chunk_no"]).view, pages)
 
 
 # ---- deterministic, idempotent finalization ----------------------------------------------------------------------------
