@@ -193,7 +193,7 @@ test('Part merge refuses a checkpoint prepared with incomplete Stage 1 inputs', 
   assert.equal(prepared.complete, false);
   await assert.rejects(
     () => quiet(() => run(['merge', '--checkpoint', checkpoint], { root })),
-    /cannot merge a checkpoint prepared with incomplete Stage 1 inputs/,
+    /Stage 1 inputs are incomplete for this Part/,
   );
 });
 
@@ -520,6 +520,8 @@ test('an existing ID relation accounts for a candidate even when another target 
   const accountedPart = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
   assert.equal(accountedPart.missing, 0);
   await rm(path.join(root, partCheckpoint));
+  await Promise.all(['.premerge-relations.jsonl', '.premerge-drops.jsonl'].map((suffix) =>
+    rm(path.join(root, '.warroom-scratch/relation-admission-001-01-01' + suffix), { force: true })));
 
   await quiet(() => run([
     'prepare', '--shard', '001', '--batch', '01', '--part', '01',
@@ -705,7 +707,7 @@ test('Stage 2 chunks bind exact senses, resume safely, and preserve text-only Pa
   await assert.rejects(() => quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', input], { root })), /repeats decision/);
   await writeFile(path.join(root, input), JSON.stringify({ chunk_id: first.chunk_id, decisions: [exact, ambiguousText] }));
   await assert.rejects(() => quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', input], { root })), /check every same-spelling target sense/);
-  await assert.rejects(() => quiet(() => run(['merge', '--checkpoint', checkpoint], { root })), /before merging/);
+  await assert.rejects(() => quiet(() => run(['merge', '--checkpoint', checkpoint], { root })), /save the active chunk .* first/);
 
   ambiguousText.checked_target_sense_ids.push('w503-s1');
   await writeFile(path.join(root, input), JSON.stringify({ chunk_id: first.chunk_id, decisions: [exact, ambiguousText] }));
@@ -734,7 +736,7 @@ test('Stage 2 chunks bind exact senses, resume safely, and preserve text-only Pa
   const merged = await mergeForTest(root, checkpoint);
   assert.deepEqual([merged.relations_added, merged.drops_added], [4, 1]);
   assert.deepEqual(await mergeForTest(root, checkpoint), {
-    merged: true, relations_added: 0, drops_added: 0, checkpoint: path.join(root, checkpoint),
+    merged: true, relations_added: 0, drops_added: 0, already_merged: true, checkpoint: path.join(root, checkpoint),
   }, 'a repeated merge is idempotent');
   assert.ok((await readFile(path.join(root, 'data/relations/relation-001.jsonl'), 'utf8')).includes(JSON.stringify(priorRelation)));
   assert.ok((await readFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), 'utf8')).includes(JSON.stringify(priorDrop)));
@@ -832,7 +834,7 @@ test('merge coalesces consistent independently adjudicated reciprocal ID decisio
   const counts = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
   assert.deepEqual([counts.unique, counts.relation, counts.reverse_covered, counts.missing], [6, 3, 3, 0]);
   assert.deepEqual(await mergeForTest(root, checkpoint), {
-    merged: true, relations_added: 0, drops_added: 0, checkpoint: path.join(root, checkpoint),
+    merged: true, relations_added: 0, drops_added: 0, already_merged: true, checkpoint: path.join(root, checkpoint),
   }, 'merging the same checkpoint again remains idempotent');
   const checkpointPath = path.join(root, checkpoint);
   const conflictingCheckpoint = JSON.parse(await readFile(checkpointPath, 'utf8'));
@@ -992,7 +994,7 @@ test('merge coalesces orthographic aliases for one target sense and keeps the ca
   interruptedCheckpoint.merged = false;
   await writeFile(checkpointPath, `${JSON.stringify(interruptedCheckpoint)}\n`);
   const recovered = await mergeForTest(root, checkpoint);
-  assert.equal(recovered.relations_added, 0, 'a saved Relation row with an unmerged checkpoint recovers without another row');
+  assert.equal(recovered.relations_added, 1, 'recovery rematerializes the same single Relation row from the trusted premerge state');
   assert.deepEqual(await readFile(relationPath), relationBytes, 'partial-save recovery preserves the Relation file byte-for-byte');
   const verified = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
   assert.equal(verified.missing, 0, 'the single ID row accounts for both orthographic candidate forms');
@@ -1151,7 +1153,7 @@ test('compact chunks are a lossless view and compact decisions expand into the s
   assert.deepEqual([counts.unique, counts.relation, counts.drop, counts.skipped_existing, counts.missing], [6, 4, 1, 1, 0]);
 
   await assert.rejects(() => run(['read-chunk', '--checkpoint', checkpoint, '--format', 'compact', '--source-sense-id', 'w1-s1', '--candidate', '유일표적'], { root }), /primary chunks only/);
-  await assert.rejects(() => run(['verify', '--shard', '001', '--format', 'compact'], { root }), /only valid for read-chunk\/save-chunk/);
+  await assert.rejects(() => run(['verify', '--shard', '001', '--format', 'compact'], { root }), /only valid for inspect\/read-chunk\/save-chunk/);
   await assert.rejects(() => run(['read-chunk', '--checkpoint', checkpoint, '--format', 'yaml'], { root }), /json or compact/);
 });
 
@@ -1495,12 +1497,16 @@ test('inspect and optional reads preserve checkpoint/output/snapshot bytes and m
   await quiet(() => run(['complete-optional', '--checkpoint', checkpoint], { root }));
   assert.deepEqual(await readFile(checkpointPath), completeBytes, 'zero optional links has one idempotent deterministic completion marker');
   assert.equal((await stat(checkpointPath)).mtimeMs, completeTime);
+  const completedInspect = await quiet(() => run([
+    'inspect', '--checkpoint', checkpoint, '--source-sense-id', 'w1-s1', '--format', 'json', '--page-size', '2', '--page', '1',
+  ], { root }));
+  assert.notEqual(completedInspect.digest, changed.digest, 'optional completion evidence is bound into the inspect digest');
   await mergeForTest(root, checkpoint);
   const mergedBefore = await Promise.all([checkpointPath, relationPath, dropPath, relationSnapshot, dropSnapshot].map(fileState));
   const mergedInspect = await quiet(() => run([
     'inspect', '--checkpoint', checkpoint, '--source-sense-id', 'w1-s1', '--format', 'json', '--page-size', '2', '--page', '1',
   ], { root }));
-  assert.equal(mergedInspect.digest, changed.digest);
+  assert.equal(mergedInspect.digest, completedInspect.digest, 'merge does not change the inspection scope digest');
   assert.deepEqual(await Promise.all([checkpointPath, relationPath, dropPath, relationSnapshot, dropSnapshot].map(fileState)), mergedBefore,
     'inspect remains read-only after merge, including trusted snapshots');
 });
@@ -1557,22 +1563,22 @@ test('save-optional accepts multiple exact target links per candidate and reject
   await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
   await saveAllPrimaryAsDrops(root, checkpoint);
   const view = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint, '--optional'], { root }));
-  assert.equal(view.links.length, 2);
+  assert.equal(view.links.length, 1, 'one candidate may have multiple unlinked target senses');
   const compact = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint, '--optional', '--format', 'compact'], { root }));
   assert.match(compact.text, /T2\tw501-s2/u);
   assert.match(compact.text, /T3\tw501-s3/u);
   const input = '.warroom-scratch/optional-input.txt';
   const before = await readFile(path.join(root, checkpoint));
-  const duplicate = `links @${view.digest}\nc1 R near 3 T2 scene 4\nc1 R mood 4 T2 near 2\nc2 skip\n`;
+  const duplicate = `links @${view.digest}\nc1 R near 3 T2 scene 4\nc1 R mood 4 T2 near 2\n`;
   await writeFile(path.join(root, input), duplicate);
   await assert.rejects(
     () => quiet(() => run(['save-optional', '--checkpoint', checkpoint, '--in', input], { root })),
     /optional links not saved.*repeats target/u,
   );
   assert.deepEqual(await readFile(path.join(root, checkpoint)), before, 'one duplicate target rejects all optional decisions');
-  await writeFile(path.join(root, input), `links @${view.digest}\nc1 R near 3 T2 scene 4\nc1 R mood 4 T3 near 2\nc2 skip\n`);
+  await writeFile(path.join(root, input), `links @${view.digest}\nc1 R near 3 T2 scene 4\nc1 R mood 4 T3 near 2\n`);
   const saved = await quiet(() => run(['save-optional', '--checkpoint', checkpoint, '--in', input], { root }));
-  assert.deepEqual([saved.optional_review_complete, saved.optional_links_saved, saved.optional_candidates], [true, 2, 2]);
+  assert.deepEqual([saved.optional_review_complete, saved.optional_links_saved, saved.optional_candidates], [true, 2, 1]);
   const checkpointData = JSON.parse(await readFile(path.join(root, checkpoint), 'utf8'));
   const added = checkpointData.items.find((item) => item.sense_id === 'w1-s1').candidates.find((candidate) => candidate.text === '유일표적');
   assert.deepEqual(added.additional_relations.map((relation) => relation.target_sense_id), ['w501-s2', 'w501-s3']);
@@ -1729,6 +1735,8 @@ test('amend resumes each of its four allowed file states and refuses a different
   };
   // Recreate the pre-amend merged Drop bytes from its saved decisions without invoking a new production path.
   const oldRoot = await prepareSixPart(t, { emptyRelation: true });
+  const oldActive = await quiet(() => run(['read-chunk', '--checkpoint', oldRoot.checkpoint], { root: oldRoot.root }));
+  oldChunk.chunk_id = oldActive.chunk_id;
   await writeFile(path.join(oldRoot.root, oldDecisionInput), JSON.stringify(oldChunk));
   await quiet(() => run(['save-chunk', '--checkpoint', oldRoot.checkpoint, '--in', oldDecisionInput], { root: oldRoot.root }));
   await mergeForTest(oldRoot.root, oldRoot.checkpoint);

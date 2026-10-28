@@ -631,8 +631,8 @@ function parseArgs(argv) {
     throw new Error(`--source-sense-id and --candidate must be used with inspect, or together with read-chunk\n${USAGE}`);
   }
   if (options.optional && (options.sourceSenseId !== null || options.candidateText !== null)) throw new Error(`--optional cannot be combined with a source candidate filter\n${USAGE}`);
-  if (options.out && !['inspect', 'read-chunk'].includes(command)) throw new Error(`--out is only valid for inspect/read-chunk\n${USAGE}`);
   if (command === 'prepare' && options.part && options.out) throw new Error('Part prepare writes its checkpoint; use --checkpoint instead of --out');
+  if (options.out && !['inspect', 'read-chunk'].includes(command)) throw new Error(`--out is only valid for inspect/read-chunk\n${USAGE}`);
   return options;
 }
 
@@ -837,6 +837,7 @@ function checkpointProgressPayload(checkpoint) {
 function pendingChunkPayload(checkpoint, pending) {
   return {
     chunk_id: pending.chunk_id,
+    ...(pending.revision === true ? { revision: true } : {}),
     shard: checkpoint.shard,
     batch: checkpoint.batch,
     part: checkpoint.part,
