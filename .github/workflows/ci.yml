@@ -18,9 +18,6 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
 
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v6
-
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
@@ -123,15 +120,19 @@ jobs:
             echo "Ordinary PR changes: running ci:normal." >> "$GITHUB_STEP_SUMMARY"
           fi
 
+      - name: Set up pnpm
+        if: ${{ steps.changes.outcome != 'success' || steps.changes.outputs.run_level == 'normal' || steps.changes.outputs.run_deep == 'true' || steps.schema.outputs.schema_changed == 'true' }}
+        uses: pnpm/action-setup@v6
+
       - name: Set up pnpm dependency cache
-        if: ${{ steps.changes.outcome != 'success' || steps.changes.outputs.run_level == 'normal' || steps.changes.outputs.run_deep == 'true' || steps.schema.outputs.schema_changed == 'true' || steps.changes.outputs.run_warroom_tests == 'true' }}
+        if: ${{ steps.changes.outcome != 'success' || steps.changes.outputs.run_level == 'normal' || steps.changes.outputs.run_deep == 'true' || steps.schema.outputs.schema_changed == 'true' }}
         uses: actions/setup-node@v7
         with:
           node-version: 24.x
           cache: pnpm
 
       - name: Install pinned dependencies
-        if: ${{ steps.changes.outcome != 'success' || steps.changes.outputs.run_level == 'normal' || steps.changes.outputs.run_deep == 'true' || steps.schema.outputs.schema_changed == 'true' || steps.changes.outputs.run_warroom_tests == 'true' }}
+        if: ${{ steps.changes.outcome != 'success' || steps.changes.outputs.run_level == 'normal' || steps.changes.outputs.run_deep == 'true' || steps.schema.outputs.schema_changed == 'true' }}
         run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Build extension UI assets without a dictionary database
