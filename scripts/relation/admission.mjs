@@ -313,6 +313,17 @@ export function approvedPeersForSense(senseId, relationRows, index) {
  * Validate approved Relation + Drop rows of one shard against the Canonical index. Pure; throws one aggregated error.
  * `otherRelationRows` are approved rows of every other shard (duplicate/reverse-duplicate detection).
  */
+/** Deterministic Batch/Shard verify failure (#2154): the complete, untruncated error list behind the usual message. */
+export class AdmissionVerifyError extends Error {
+  constructor(family, errors, message) {
+    super(message);
+    this.name = 'AdmissionVerifyError';
+    this.family = family;
+    this.errors = errors;
+    this.total = errors.length;
+  }
+}
+
 export function validateRelationRows({ relationRows, dropRows = [], index, shardSenseIds, otherRelationRows = [] }) {
   const errors = [];
   const seenPairs = new Map();
@@ -401,7 +412,7 @@ export function validateRelationRows({ relationRows, dropRows = [], index, shard
     dropSeen.add(key);
   });
 
-  if (errors.length > 0) throw new Error(`Relation Admission rows are invalid:\n${errors.map((error) => `- ${error}`).join('\n')}`);
+  if (errors.length > 0) throw new AdmissionVerifyError('rows', errors, `Relation Admission rows are invalid:\n${errors.map((error) => `- ${error}`).join('\n')}`);
   return { relationCount: relationRows.length, dropCount: dropRows.length };
 }
 
@@ -685,7 +696,7 @@ export function verifyAccounting({ canonicalRows, candidateFiles, relationRows: 
       }
     }
   }
-  if (errors.length > 0) throw new Error(`Relation Admission accounting failed:\n${errors.slice(0, 50).map((error) => `- ${error}`).join('\n')}${errors.length > 50 ? `\n- ... ${errors.length - 50} more` : ''}`);
+  if (errors.length > 0) throw new AdmissionVerifyError('accounting', errors, `Relation Admission accounting failed:\n${errors.slice(0, 50).map((error) => `- ${error}`).join('\n')}${errors.length > 50 ? `\n- ... ${errors.length - 50} more` : ''}`);
   return { ...counts, raw: rawCandidateCount, merged_duplicates: rawCandidateCount - counts.unique };
 }
 

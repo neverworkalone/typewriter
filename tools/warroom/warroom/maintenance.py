@@ -87,7 +87,13 @@ class Maintenance:
 
     # ---- 1. Issue publication (idempotent) --------------------------------------------------------------------
     def _publish(self) -> None:
+        for d in self.store.defects(("LINKED",)):   # a crash between the old two-step link left LINKED without a queue row
+            if d["issue_number"] and self.store.maintenance(d["issue_number"]) is None:
+                self.store.ensure_maintenance(d["issue_number"])
         for d in self.store.defects(("REPORTED",)):
+            if d["source"] == "verify":
+                self._publish_verify(d)
+                continue
             if not self._due(f"defect_issue_try_{d['id']}"):
                 continue
             report, facts = self._split(d)
@@ -110,9 +116,9 @@ class Maintenance:
                 number = self._attach(number, d, report, facts)
                 if number is None:
                     continue
-            self.store.update_defect(d["id"], state="LINKED", issue_number=number)
-            self.store.ensure_maintenance(number)
+            self.store.link_defect(d["id"], number)
             self.store.log(d["batch_id"], f"urgent Issue #{number} 연결 (공통 결함 `{report['defect_class']}`)")
+        self._post_verify_evidence()
 
     def _find(self, issues, d, report) -> tuple[int | None, bool]:
         """(number, created-for-this-event). 1) the Issue this exact event already created (crash/restart/duplicate);
@@ -139,6 +145,122 @@ class Maintenance:
             self.store.log(d["batch_id"], f"기존 Issue #{number} 연결 코멘트 실패(재시도 예정): {e}", "warn")
             return None
         return number
+
+    # ---- Stage 2 Batch/Shard verify blocks (Issue #2154) -----------------------------------------------------------
+    def report_verify(self, f) -> None:
+        """Record a reproduced deterministic verify failure. A scope has exactly one active block: a repeat only
+        refreshes its evidence, a different fingerprint before the fix merges is added as evidence, and a failure that
+        survives a merged fix (or recurs while HELD) holds the block for the operator. Never a second Issue or PAUSE."""
+        cls = f.defect_class
+        block = self.store.active_verify(cls)
+        if block is None:
+            base = f"verify:{f.kind}:{f.shard}{':' + f.batch if f.batch else ''}:{f.fingerprint}"
+            key = f"{base}:after:{self.store.last_verify_defect_id(cls)}" if self.store.defect_by_event(base) else base
+            if self.store.report_verify_failure(key, cls, defects.verify_report(f)) is not None:
+                self.store.log(None, f"Stage 2 {f.scope} verify 실패({f.family} {f.total}건, 지문 {f.fingerprint}) → 범위 차단, urgent Issue 등록 대기",
+                               "error", line=self._line())
+            return
+        try:
+            d = defects.parse_verify(block["report"])
+        except defects.ReportProblem:
+            d = None   # unusable stored evidence: replaced by this reproduced failure below
+        same = d is not None and d["fingerprint"] == f.fingerprint
+        extra = d["extra"] if d else []
+        if d is not None and not same and block["state"] in ("REPORTED", "LINKED"):
+            if all(x["fingerprint"] != f.fingerprint for x in extra) and d["fingerprint"] != f.fingerprint:
+                extra = (extra + [{"fingerprint": f.fingerprint, "sha": f.sha, "total": f.total,
+                                   "errors": defects.verify_evidence(f.errors), "posted": False}])[-defects.VERIFY_EXTRA_MAX:]
+            report = defects.canonical({**d, "sha": f.sha, "extra": extra})
+        else:
+            report = defects.verify_report(f, extra)
+        fields = {"report": report}
+        if block["state"] in ("FIX_MERGED", "HELD"):
+            fields["state"] = "HELD"
+            old = d["fingerprint"] if d else "?"
+            fields["hold_reason"] = (f"수정 머지({(block['merge_sha'] or '')[:10]}) 후에도 최신 master {f.sha[:10]}에서 {f.scope} verify가 계속 실패합니다 "
+                                     f"(지문 {f.fingerprint}, 최초 {old}). 새 Issue/Maintainer를 자동으로 만들지 않습니다 — 운영자 확인 필요."
+                                     if block["state"] == "FIX_MERGED" else block["hold_reason"] or "운영자 확인 필요")
+            if block["state"] == "FIX_MERGED":
+                self.store.log(None, fields["hold_reason"], "error", line=self._line())
+        self.store.update_defect(block["id"], **fields)
+
+    def _line(self) -> str:
+        return f"{maintainer_id(self.cfg) or 'm'}/s2"
+
+    def _publish_verify(self, d) -> None:
+        if not self._due(f"defect_issue_try_{d['id']}"):
+            return
+        try:
+            v = defects.parse_verify(d["report"])
+        except defects.ReportProblem as e:
+            self.store.update_defect(d["id"], state="HELD", hold_reason=f"verify 보고 스키마 오류 — Issue를 만들지 않습니다: {e}")
+            return self.store.log(None, f"Stage 2 verify 보고 거부(HELD): {e}", "error", line=self._line())
+        try:
+            issues = self.sup.gh.urgent_issues()
+        except Exception as e:
+            return self.store.log(None, f"urgent Issue 조회 실패(차단 보존, 재시도 예정): {e}", "warn", line=self._line())
+        number, fresh = self._find_verify(issues, d, v)
+        if number is None:
+            try:
+                number = self.sup.gh.create_issue(defects.verify_issue_title(v),
+                                                  defects.verify_issue_body(v, d["event_key"], d["defect_class"]), ["urgent"])
+            except Exception as e:
+                return self.store.log(None, f"urgent Issue 생성 실패(차단 보존, 재시도 예정): {e}", "warn", line=self._line())
+        elif not fresh:
+            if not self._comment_once(number, d["event_key"], defects.verify_link_comment(v, d["event_key"])):
+                return
+        self.store.link_defect(d["id"], number)
+        self.store.log(None, f"urgent Issue #{number} 연결 (Stage 2 verify 차단 `{d['defect_class']}`)", line=self._line())
+
+    def _comment_once(self, number: int, event_key: str, body: str) -> bool:
+        """Add `body` to Issue `number` unless a comment with this event marker exists. False: GitHub failed (retried)."""
+        try:
+            if not any((defects.EVENT_MARK, event_key) in defects.markers(c.get("body")) for c in self.sup.gh.issue_comments(number)):
+                self.sup.gh.comment_issue(number, body)
+        except Exception as e:
+            self.store.log(None, f"Issue #{number} 코멘트 실패(재시도 예정): {e}", "warn", line=self._line())
+            return False
+        return True
+
+    def _find_verify(self, issues, d, v) -> tuple[int | None, bool]:
+        """(number, created-for-this-event): 1) the Issue this exact event created (restart); 2) an open Issue of this
+        scope's class with no finished fix; 3) an open manual urgent Issue naming BOTH the scope label and the first
+        verify error (title similarity alone never links). DONE/HELD Issues are never reused for new work."""
+        for i in issues:
+            if (defects.EVENT_MARK, d["event_key"]) in defects.markers(i["body"]):
+                return i["number"], True
+        def usable(i):
+            m = self.store.maintenance(i["number"])
+            return i["state"] == "open" and (m is None or m["state"] in ("QUEUED", "ACTIVE"))
+        for i in issues:
+            if usable(i) and (defects.CLASS_MARK, d["defect_class"]) in defects.markers(i["body"]):
+                return i["number"], False
+        scope = re.compile(rf"(?<![0-9_]){re.escape(defects.verify_scope(v))}(?![0-9_])")
+        first = " ".join(v["errors"][0].split()).rstrip("…")
+        for i in issues:
+            if not usable(i) or any(k == defects.CLASS_MARK for k, _ in defects.markers(i["body"])):
+                continue
+            text = " ".join(f"{i.get('title', '')}\n{i['body']}".split())
+            if scope.search(text) and first in text:
+                return i["number"], False
+        return None, False
+
+    def _post_verify_evidence(self) -> None:
+        """Comment, once each, the additional fingerprints seen on an active scope before its fix merged."""
+        for d in self.store.defects(("LINKED",)):
+            if d["source"] != "verify" or not d["issue_number"]:
+                continue
+            try:
+                v = defects.parse_verify(d["report"])
+            except defects.ReportProblem:
+                continue
+            if all(x["posted"] for x in v["extra"]) or not self._due(f"verify_evidence_try_{d['id']}"):
+                continue
+            for x in v["extra"]:
+                if not x["posted"] and self._comment_once(d["issue_number"], f"{d['event_key']}:evidence:{x['fingerprint']}",
+                                                          defects.verify_evidence_comment(x, v, f"{d['event_key']}:evidence:{x['fingerprint']}")):
+                    x["posted"] = True
+            self.store.update_defect(d["id"], report=defects.canonical(v))
 
     # ---- 2. start the single Maintainer ------------------------------------------------------------------------
     def _start(self) -> None:
@@ -208,6 +330,8 @@ class Maintenance:
     # ---- 4. apply the merged fix to each paused batch, verify, retry once ------------------------------------------
     def _release(self) -> None:
         for d in self.store.defects(("FIX_MERGED",)):
+            if d["source"] == "verify":   # no production batch: the scope's exact verify on master releases it (stage2.choose)
+                continue
             b = self.store.batch(d["batch_id"])
             if b is None:   # the batch no longer exists: this defect can never be applied, and must not block the others
                 self.store.update_defect(d["id"], state="OVERRIDDEN", hold_reason="배치가 더 이상 존재하지 않음")
