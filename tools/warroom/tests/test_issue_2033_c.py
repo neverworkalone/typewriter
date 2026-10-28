@@ -1,9 +1,11 @@
 """Issue #2033 (PR 2): Method C runs as serial chunk sessions with a deterministic, idempotent finalization."""
 import json
 import unittest
+
 from pathlib import Path
 
 from tests.fakes import HEAD1, HEAD2, World
+from warroom.github import GhError
 from warroom import control, literary, prompts, stage2
 from warroom.supervisor import RecoveryBlocked
 
@@ -447,7 +449,7 @@ class Finalization(unittest.TestCase):
 
     def test_failed_pr_creation_keeps_commit_and_push_and_retry_does_not_repeat_them(self):
         w = self.w
-        w.gh.create_pr_error = RuntimeError("boom")
+        w.gh.create_pr_error = GhError("gh pr create: boom")
         b = self.run_to_finalize()
         self.assertEqual(b["state"], "ERROR")
         self.assertEqual((len(w.git.commits), len(w.git.pushes)), (1, 1))

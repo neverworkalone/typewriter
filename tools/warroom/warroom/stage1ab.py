@@ -390,9 +390,3 @@ def fix_scope(worktree, b, review_text: str) -> tuple[set[tuple[str, str]], str]
     if len(lines) == 1:
         lines.append("(리뷰 본문에서 식별된 sense 없음 — 리뷰가 명시한 항목만 직접 따른다)")
     return allowed, "\n".join(lines) + "\n"
-
-
-def out_of_scope_changes(old_text: str, new_text: str, allowed: set[tuple[str, str]]) -> list[str]:
-    """Every (record_id, sense_id) outside `allowed` whose candidates differ between the two Candidate files."""
-    old, new = _candidate_rows(old_text), _candidate_rows(new_text)
-    return [f"{k[0]}/{k[1]}" for k in sorted(set(old) | set(new)) if k not in allowed and old.get(k) != new.get(k)]

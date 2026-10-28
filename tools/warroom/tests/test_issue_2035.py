@@ -307,8 +307,8 @@ class ReviewFix(unittest.TestCase):
         w.tick()
         w.adapter.finish(w.adapter.launches[-1]["pid"])
         w.tick()
-        self.assertEqual(w.row_()["state"], "PAUSED")                           # a change outside the listed sense
-        self.assertIn("지목하지 않은", w.row_()["error"])
+        # #2092: a correct fix is judged by review, never PAUSED by a literal-enumeration scope gate
+        self.assertEqual((w.row_()["state"], w.row_()["error"]), ("WAITING_REVIEW", None))
 
 
 class WriteAndScope(unittest.TestCase):
@@ -350,8 +350,7 @@ class WriteAndScope(unittest.TestCase):
         sibling = next(r for r in rows if r["record_id"] == "w0003")
         sibling["senses"][1]["candidates"] = ["몰래"]
         after = "\n".join(json.dumps(r, ensure_ascii=False) for r in rows) + "\n"
-        self.assertEqual(stage1ab.out_of_scope_changes(before, after, {("w0003", "w0003-s1")}), ["w0003/w0003-s2"])
-        self.assertEqual(stage1ab.out_of_scope_changes(before, after, {("w0003", "w0003-s2")}), [])
+        self.assertFalse(hasattr(stage1ab, "out_of_scope_changes"))   # #2092: no post-fix scope gate exists any more
 
 
 class Helpers(unittest.TestCase):
