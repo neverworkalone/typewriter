@@ -267,11 +267,14 @@ never selects unrelated Full Deep as a PR gate. Classifier/runner/registry chang
 still require Normal, plus any directly affected registered Deep checks. A registered
 test file has exactly one registry owner; unregistered tests may be run directly.
 
-The pull-request workflow runs Normal for every non-documentation change,
-including Candidate, Relation, Canonical and product-code changes. Candidate
-validation uses the factory contracts; automatic CI does not create a
-current-Canonical SQLite database. `ci:fast` is an optional checkpoint inside
-Normal.
+The pull-request workflow runs Normal for Candidate, Relation, Canonical,
+product-code and other ordinary/mixed changes. **Only isolated War Room**
+runtime/tests/launcher/dependency changes (with optional docs/prompt changes)
+use the exact-HEAD War Room Python test gate and explicitly skip product Normal.
+The strictly enumerated paths and fail-closed mixed/unknown/CI fallback live in
+`docs/review-toolchain.md`. Candidate validation uses the factory contracts;
+automatic CI does not create a current-Canonical SQLite database. `ci:fast`
+is an optional checkpoint inside Normal.
 
 `ci:normal` remains the required gate for ordinary code/data/mixed PRs and must
 retain the complete current-canonical audit and applicable source/admission
@@ -295,8 +298,10 @@ not trigger it. The normal `pnpm run build`, packaging and release contracts
 remain available and unchanged.
 
 The existing `Validate and test Typewriter` PR check
-always runs the applicable Normal gate and uses `ci:pr` to run only affected
-Deep checks at the exact PR HEAD. `ci:all` retains full current-system Deep
+runs the applicable product Normal gate **or** (for isolated War Room paths)
+the exact-HEAD War Room Python tests with an explicit Normal skip. It uses
+`ci:pr` to run only affected Deep checks, including Normal, if any Deep
+dependency actually matches. `ci:all` retains full current-system Deep
 coverage for weekly scheduled/manual audits, never automatic PR classification. The path
 classifier is not a separate PR check.
 Deep data inputs belong in each check's `deepInputs` registry metadata;
