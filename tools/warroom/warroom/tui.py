@@ -821,8 +821,7 @@ class WarRoom(App):
         if self._reload_fail:
             notes.append(f"! {self._reload_fail}")
         if self._supervisor_error:
-            retry_in = max(self._supervisor_retry_at - now,
-                           self._t0 + SUPERVISOR_STARTUP_GRACE_SECONDS - now, 0)
+            retry_in = max(self._supervisor_retry_at - now, 0)
             notes.append(f"! Supervisor 자동 재기동 실패: {self._supervisor_error} "
                          f"({retry_in:.0f}초 후 재시도)")
         elif not alive and now - self._t0 >= SUPERVISOR_STARTUP_GRACE_SECONDS:

@@ -1,5 +1,6 @@
 """TUI recovery of a missing Supervisor, without replacing a live lock/session."""
 import asyncio
+import re
 import subprocess
 import tempfile
 import threading
@@ -186,11 +187,15 @@ class SupervisorRecoveryBannerTests(unittest.TestCase):
                 await pilot.pause()
                 with mock.patch.object(tui.control, "supervisor_alive", return_value=False):
                     before = time.monotonic()
-                    app._t0 = before - tui.SUPERVISOR_STARTUP_GRACE_SECONDS - 1
+                    app._t0 = before - 1
                     app._finish_supervisor_recovery("failed", "config.json 오류: invalid pin")
                     self.assertGreaterEqual(app._supervisor_retry_at - before, 4)
                     self.assertLessEqual(app._supervisor_retry_at - before, 6)
-                    self.assertIn("invalid pin", str(app.query_one("#banner", tui.Static).content))
+                    banner = str(app.query_one("#banner", tui.Static).content)
+                    self.assertIn("invalid pin", banner)
+                    countdown = re.search(r"\((\d+)초 후 재시도\)", banner)
+                    self.assertIsNotNone(countdown)
+                    self.assertLessEqual(int(countdown.group(1)), 6)
 
         asyncio.run(go())
 
