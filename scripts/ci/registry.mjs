@@ -361,6 +361,7 @@ const RAW_CI_CATEGORIES = Object.freeze({
         'scripts/benchmark/sqlite-runtime.mjs',
         'scripts/build/sqlite-schema.mjs',
         'src/runtime/dictionary-contract.js',
+        'src/runtime/search-query.js',
         'src/runtime/sqlite-query.js',
       ]),
       affectedTestCheck('tests/surface-form-projection.test.mjs', 'Test M6-3 surface-form projection and search', [
