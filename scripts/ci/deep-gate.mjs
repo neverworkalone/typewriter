@@ -619,7 +619,9 @@ function main() {
   const runLevel = process.env.TYPEWRITER_CI_RUN_LEVEL ?? 'normal';
   const baseGate = runLevel === 'none'
     ? 'ci:normal skipped (documentation-only)'
-    : 'ci:normal';
+    : runLevel === 'warroom' && result.deepMode !== 'selective'
+      ? 'ci:normal skipped (War Room-only; War Room Python tests required)'
+      : 'ci:normal';
   const triggerEvidence = (result.matchedTriggers ?? []).length > 0
     ? result.matchedTriggers.map(({ path: changedPath, checks }) => (
       `\`${changedPath}\` -> ${checks.map((id) => `\`${id}\``).join(', ')}`
@@ -648,7 +650,7 @@ function main() {
     `- Matched contract triggers: ${triggerEvidence}`,
     `- Deep checks selected (${selectedLabels.length}/${deepChecks.length}): ${selectedLabels.length > 0 ? selectedLabels.map((value) => `\`${value}\``).join(', ') : 'none'}`,
     `- Deep checks skipped: ${skippedLabels.length > 0 ? skippedLabels.map((value) => `\`${value}\``).join(', ') : 'none'}${skippedLabels.length > 0 ? ` (reason: no registered dependency matched this change; classifier: ${result.reason})` : ''}`,
-    `- PR command: \`${result.deepMode === 'selective' ? 'ci:pr' : 'ci:normal'}\``,
+    `- PR command: \`${result.deepMode === 'selective' ? 'ci:pr' : runLevel === 'warroom' ? 'node tools/warroom/run-tests.mjs' : runLevel === 'none' ? 'docs-only skip' : 'ci:normal'}\``,
   ].join('\n') + '\n';
   if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary, 'utf8');
   process.stdout.write(`${JSON.stringify({ ...result, base_sha: baseSha ?? null, head_sha: headSha ?? null })}\n`);
