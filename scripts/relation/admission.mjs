@@ -198,9 +198,8 @@ function canonicalRecordsForRelationForm(index, form) {
   const matchingRecords = exactLemmaRecords.length > 0
     ? [...exactLemmaRecords, ...nonOrthographicAliases]
     : [...(index.byOrthographicForm?.get(normalized) ?? []), ...nonOrthographicAliases];
-  const unique = new Map(matchingRecords.map((record) => [record.id, record]));
-  return [...unique.values()].sort((left, right) =>
-    (index.canonicalOrder?.get(left.id) ?? 0) - (index.canonicalOrder?.get(right.id) ?? 0));
+  // Each group is already in Canonical order; keep the exact-lemma group first instead of sorting aliases over it.
+  return [...new Map(matchingRecords.map((record) => [record.id, record])).values()];
 }
 
 /** Candidate spellings that resolve to this record, including ambiguous forms when it is an exact target. */
@@ -216,10 +215,8 @@ export function buildCanonicalIndex(rows) {
   const byNormalizedLemma = new Map();
   const byOrthographicForm = new Map();
   const byNonOrthographicSearchForm = new Map();
-  const canonicalOrder = new Map();
   const senses = new Map();
   for (const row of rows) {
-    canonicalOrder.set(row.id, canonicalOrder.size);
     byId.set(row.id, row);
     byLemma.set(row.lemma, [...(byLemma.get(row.lemma) ?? []), row]);
     const normalizedLemma = normalizeCandidate(row.lemma);
@@ -234,7 +231,7 @@ export function buildCanonicalIndex(rows) {
     }
     for (const sense of row.senses) senses.set(sense.id, { record: row, sense });
   }
-  return { byId, byLemma, byNormalizedLemma, byOrthographicForm, byNonOrthographicSearchForm, canonicalOrder, senses };
+  return { byId, byLemma, byNormalizedLemma, byOrthographicForm, byNonOrthographicSearchForm, senses };
 }
 
 /** Complete, source-bound target context for every matching lemma and curated search form. */
