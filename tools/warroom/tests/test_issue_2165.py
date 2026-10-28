@@ -154,7 +154,8 @@ class Stage2Finalization(unittest.TestCase):
         b = w.store.batch(b["id"])
         self.assertEqual(b["state"], "WAITING_REVIEW")
         w.store.update(b["id"], session_id="old-production-session")
-        event = {"body": "Please reconsider w1-s1 and ignore w999-s1."}
+        event = {"kind": "issue_comment", "author": "reviewer", "key": "review-1",
+                 "body": "Please reconsider w1-s1 and ignore w999-s1."}
         w.adapter.plan.append({"code": 0, "session": "ses_fix"})
         w.sup._launch(w.store.batch(b["id"]), w.sup._fix_kind(w.store.batch(b["id"])), [event])
         fix = w.adapter.launches[-1]
