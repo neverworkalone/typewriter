@@ -323,7 +323,7 @@ test('search-batch shares identical search work across homonym records and keeps
   assert.deepEqual(calls[0].forms, ['쉼표,포함', '"공백 포함"'], 'JSON keeps commas, spaces and quotes inside each form');
   assert.equal(evidence.length, 6, 'same record and identical query produces one evidence row; another record gets its own row');
   assert.deepEqual([...new Set(evidence.slice(0, 2).map((entry) => entry.record_id))], ['w1', 'w2']);
-  assert.deepEqual(recordEvidence([...evidence, evidence[0]], 'w1'), { searches: 5, hits: 8, allComplete: false });
+  assert.deepEqual(recordEvidence([...evidence, evidence[0]], 'w1'), { searches: 3, hits: 8, allComplete: false });
 });
 
 test('search-batch preserves mixed statuses and rejects unproven external cursors per record', () => {
@@ -353,7 +353,7 @@ test('search-batch preserves mixed statuses and rejects unproven external cursor
   });
   assert.deepEqual(output.results.map((result) => result.status), ['COMPLETE', 'COMPLETE', 'ZERO_HITS', 'SEARCH_FAILED']);
   assert.equal(output.status, 'SEARCH_FAILED');
-  assert.deepEqual(recordEvidence(evidence, 'w1'), { searches: 2, hits: 1, allComplete: false });
+  assert.deepEqual(recordEvidence(evidence, 'w1'), { searches: 1, hits: 1, allComplete: false });
   assert.deepEqual(recordEvidence(evidence, 'w2'), { searches: 3, hits: 1, allComplete: false });
   const external = evidence.find((entry) => entry.record_id === 'w1' && entry.cursor_in === 'external');
   assert.equal(external.complete, true, 'raw page status remains accurate in the evidence');

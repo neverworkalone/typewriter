@@ -116,6 +116,7 @@ test('overlapping forms return each paragraph once across cursor pages', async (
 
     const withSeen = JSON.parse(Buffer.from(pages[0].next_cursor, 'base64url').toString('utf8'));
     const oldState = { ...withSeen };
+    delete oldState.p;
     delete oldState.seen;
     const oldCursor = Buffer.from(JSON.stringify(oldState)).toString('base64url');
     assert.notEqual(searchContexts(database, ['난처히', '난처하다'], { maxSamples: 1, cursor: oldCursor }).status, 'SEARCH_FAILED', 'pre-change cursors remain resumable');

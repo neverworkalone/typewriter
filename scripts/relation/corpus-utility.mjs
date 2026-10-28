@@ -55,8 +55,13 @@ function decodeCursor(cursor, formsKey, formCount, maxRowid) {
     const state = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8'));
     if (state.id === formsKey && Number.isInteger(state.form) && state.form >= 0 && state.form < formCount
       && Number.isInteger(state.after) && state.after >= 0 && state.after <= maxRowid) {
-      // Cursors created before paragraph de-duplication have no `seen`; they remain valid and resume safely.
-      const seen = Object.hasOwn(state, 'seen') ? state.seen : [];
+      // Cursors created before paragraph de-duplication have no `p`; they remain valid and resume safely.
+      if (Object.hasOwn(state, 'p') && Object.hasOwn(state, 'seen')) throw new Error('ambiguous seen paragraph IDs');
+      let seen;
+      if (Object.hasOwn(state, 'p')) {
+        if (typeof state.p !== 'string' || state.p !== '' && !/^[0-9a-z]+(?:\.[0-9a-z]+)*$/u.test(state.p)) throw new Error('invalid seen paragraph IDs');
+        seen = state.p === '' ? [] : state.p.split('.').map((rowid) => Number.parseInt(rowid, 36));
+      } else seen = Object.hasOwn(state, 'seen') ? state.seen : [];
       if (!Array.isArray(seen) || seen.some((rowid) => !Number.isInteger(rowid) || rowid < 1 || rowid > maxRowid)
         || new Set(seen).size !== seen.length) throw new Error('invalid seen paragraph IDs');
       return { ...state, seen };
@@ -211,9 +216,10 @@ export function createSearchContextReuse(database) {
 }
 
 function finish(items, status, id, form, after, scanned, seenParagraphs) {
+  const seen = [...seenParagraphs].sort((left, right) => left - right).map((rowid) => rowid.toString(36)).join('.');
   return {
     status, items, scanned_rows: scanned,
-    next_cursor: encodeCursor({ id, form, after, seen: [...seenParagraphs] }),
+    next_cursor: encodeCursor({ id, form, after, ...(seen ? { p: seen } : {}) }),
   };
 }
 
