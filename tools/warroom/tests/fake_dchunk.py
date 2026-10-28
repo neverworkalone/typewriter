@@ -79,9 +79,12 @@ class FakeDChunkCli:
             for r in self.chunk(number)) + "\n" + "".join(f"padding {i} 한국어 원문 발췌\n" for i in range(self.padding))
         folder = Path(cwd) / D_DIR
         folder.mkdir(parents=True, exist_ok=True)
-        (folder / "active-chunk.txt").write_text(view, "utf-8")
-        (folder / "active-chunk.json").write_text(json.dumps({
+        number_text = f"{number:03d}"
+        (folder / f"view-{number_text}.txt").write_text(view, "utf-8")
+        (folder / f"search-{number_text}.jsonl").write_text("", "utf-8")
+        (folder / f"active-{number_text}.json").write_text(json.dumps({
             "shard": self.opt(argv, "--shard"), "batch": self.opt(argv, "--batch"), "model": self.opt(argv, "--model"),
             "git_head": self.opt(argv, "--head"), "chunk_no": number, "view_sha256": hashlib.sha256(view.encode()).hexdigest(),
+            "view_bytes": len(view.encode()),
             "senses": senses}))
         return Result(0, json.dumps({"status": "READY", "ai_senses": len(senses), **base}))

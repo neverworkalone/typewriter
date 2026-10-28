@@ -51,13 +51,13 @@ view의 `## `마다 Canonical record 하나다: 표제어·검색형, 그 record
 모든 판정 대상 Sense를 마친 뒤, 아래 **한 번의 셸 호출**로 판정 파일 작성과 저장을 함께 한다. 작성이 실패하면 저장하지 않고 종료 코드 90으로 끝나며(`WRITE_FAILED`), 저장이 거부되면 저장 도구의 종료 코드와 진단이 그대로 나온다(`SAVE_FAILED`).
 
 ```sh
-cat > .warroom-scratch/d-{{batch}}/decisions.txt <<'DEC' || { echo WRITE_FAILED >&2; exit 90; }
+cat > .warroom-scratch/d-{{batch}}/decision-{{chunk_no}}.txt <<'DEC' || { echo WRITE_FAILED >&2; exit 90; }
 s1 V 후보A|후보B|후보C
 s2 V
 s3 N
 s4 Z
 DEC
-node scripts/relation/d-chunk-cli.mjs save --in .warroom-scratch/d-{{batch}}/decisions.txt || { c=$?; echo "SAVE_FAILED exit=$c" >&2; exit "$c"; }
+node scripts/relation/d-chunk-cli.mjs save --in .warroom-scratch/d-{{batch}}/decision-{{chunk_no}}.txt || { c=$?; echo "SAVE_FAILED exit=$c" >&2; exit "$c"; }
 ```
 
 - 한 Sense 한 줄: `sN V 후보|후보` (VERIFIED + 후보), `sN V` (VERIFIED + 적격 후보 0), `sN N`, `sN Z`. `auto_z` Sense는 쓰지 않는다. 다른 모든 Sense를 정확히 한 번씩 쓴다.

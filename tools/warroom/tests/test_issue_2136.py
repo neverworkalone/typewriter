@@ -195,11 +195,11 @@ class ChunkStorageAndLimits(unittest.TestCase):
         self.assertEqual((w.row_()["state"], len(w.adapter.launches)), ("ERROR", 1))
 
     def test_d_prompts_keep_existing_decisions_and_correct_only_format_on_a_line_error(self):
-        fix = prompts.render("d_chunk_fix", {"chunk_no": "001", "decisions": "decisions.txt", "problem": "line 7"})
-        resume = prompts.render("d_chunk_resume", {"chunk_no": "001"})
+        fix = prompts.render("d_chunk_fix", {"chunk_no": "001", "decisions": "decision-001.txt", "problem": "line 7"})
+        resume = prompts.d_chunk_resume(1, decisions="decision-001.txt", searches="search-001.jsonl")
         self.assertIn("판정 의미를 보존", fix)
         self.assertIn("형식만 바로잡", fix)
-        self.assertIn("이미 `decisions.txt`가 있지만 save/진단이 없다면 새 검색이나 재판정부터 하지 않는다", resume)
+        self.assertIn("이미 `decision-001.txt`가 있지만 save/진단이 없다면 새 검색이나 재판정부터 하지 않는다", resume)
         self.assertIn("실제 미저장이고 현재 세션이 안전하게 이어질 때만 bounded 재개", resume)
 
     def test_c_missing_session_starts_one_new_session_only_when_no_sense_was_saved(self):
@@ -277,8 +277,10 @@ class ChunkStorageAndLimits(unittest.TestCase):
         self.addCleanup(w.tmp.cleanup)
         def failed_search():
             folder = w.wt() / dchunk.names(w.row_()).directory
-            with open(folder / "searches.jsonl", "a", encoding="utf-8") as fh:
-                fh.write(json.dumps({"record_id": "w0001", "status": "SEARCH_FAILED", "hits": 0}) + "\n")
+            rec = w.active()
+            with open(folder / "search-001.jsonl", "a", encoding="utf-8") as fh:
+                fh.write(json.dumps({"record_id": "w0001", "status": "SEARCH_FAILED", "hits": 0,
+                                     "chunk_no": rec["chunk_no"], "view_sha256": rec["view_sha256"]}) + "\n")
         w.adapter.plan.append({"code": 2, "session": "ses_d", "text": "no conversation found with session id ses_d",
                                "effect": failed_search})
         w.start("single", "deepseek", "d")
@@ -286,7 +288,7 @@ class ChunkStorageAndLimits(unittest.TestCase):
         w.finish_last()
         w.tick()
         self.assertEqual((w.row_()["state"], len(w.adapter.launches)), ("PAUSED", 1))
-        self.assertTrue((w.wt() / dchunk.names(w.row_()).directory / "searches.jsonl").read_text().endswith("\n"))
+        self.assertTrue((w.wt() / dchunk.names(w.row_()).directory / "search-001.jsonl").read_text().endswith("\n"))
 
     def test_nonzero_d_rejection_requires_known_clear_claude_permissions_before_fix(self):
         cases = (("missing result", None, "PAUSED", 1),
@@ -314,7 +316,7 @@ class ChunkStorageAndLimits(unittest.TestCase):
                 w.adapter.output_identity_problem = claude.output_identity_problem
                 w.adapter.denied_actions = claude.denied_actions
                 w.adapter.session_id = claude.session_id
-                names = dchunk.names(b)
+                names = dchunk.chunk_names(b, 1)
                 rejection = Path(b["worktree"]) / names.rejected
                 decisions = Path(b["worktree"]) / names.decisions
                 rejection_before, decisions_before = rejection.read_bytes(), decisions.read_bytes()

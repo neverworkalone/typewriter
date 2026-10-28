@@ -317,7 +317,7 @@ class Supervisor:
                 rec = dchunk.read_active(wt, b)
                 if rec is None or dchunk.has_search_failure(wt, b):
                     return False
-                n = dchunk.names(b)
+                n = dchunk.chunk_names(b, rec["chunk_no"])
                 decisions = wt / n.decisions
                 rejected = wt / n.rejected
                 if rejected.exists():
@@ -2237,16 +2237,41 @@ class Supervisor:
             done, total = dchunk.verified_prefix(wt, b)
             if problem := self._d_chunks_problem(b, done):
                 return self._fail(b, "ERROR", problem)
-            self._d_remember(b, done)
             rec = dchunk.read_active(wt, b)
             if rec is not None:
-                if rec["chunk_no"] <= done:
-                    dchunk.clear_active(wt, b)   # that chunk is already saved
+                if rec["chunk_no"] == done:
+                    if problem := self._stage2_chunk_boundary_problem(b, dchunk.run_start_key(b["id"])):
+                        return self._fail(b, "ERROR", problem)
+                    if problem := self._d_accept_saved(b, boundary_checked=True):
+                        return self._fail(b, "ERROR", problem)
+                    self.store.update(b["id"], session_id=None, retries=0, retry_after=None, error=None)
+                    self.store.delete(dchunk.run_start_key(b["id"]))
                     rec = None
+                elif rec["chunk_no"] < done:
+                    return self._fail(b, "ERROR", f"저장 완료 prefix {done} 뒤에 이전 활성 청크 {rec['chunk_no']}가 남아 있습니다. 보존합니다.")
                 elif rec["chunk_no"] != done + 1:
                     return self._fail(b, "ERROR", f"활성 청크 {rec['chunk_no']}가 연속 prefix {done} 다음이 아닙니다. 보존합니다.")
                 else:
+                    self._d_remember(b, done)
                     dchunk.read_view(wt, b, rec)   # the view must still be the one this record was written for
+            else:
+                raw = self.store.get(dchunk.run_start_key(b["id"]))
+                if raw is not None:
+                    try:
+                        baseline = json.loads(raw)
+                        baseline_chunk = baseline.get("chunk_no") if isinstance(baseline, dict) else None
+                    except (TypeError, ValueError):
+                        baseline_chunk = None
+                    if baseline_chunk != done:
+                        return self._fail(b, "ERROR", "D 청크 활성 파일은 없지만 실행 baseline이 저장 완료 prefix와 일치하지 않습니다. 보존합니다.")
+                    if problem := self._stage2_chunk_boundary_problem(b, dchunk.run_start_key(b["id"])):
+                        return self._fail(b, "ERROR", problem)
+                    self._d_remember(b, done)
+                    dchunk.clear_active(wt, b, done)  # idempotently finish any chunk-local cleanup interrupted after save verification
+                    self.store.update(b["id"], session_id=None, retries=0, retry_after=None, error=None)
+                    self.store.delete(dchunk.run_start_key(b["id"]))
+                else:
+                    self._d_remember(b, done)
             while rec is None:
                 if done == total:
                     return self._d_finalize(b)
@@ -2278,14 +2303,15 @@ class Supervisor:
         if rec is None:
             raise prompts.PromptError("활성 청크 기록이 없습니다")
         view = dchunk.read_view(wt, b, rec)
+        chunk_files = dchunk.chunk_names(b, rec["chunk_no"])
         note = ""
         if kind == "d_chunk_new" and self.store.get(dchunk.run_start_key(b["id"])):
-            names = dchunk.names(b)
             note = ("이전 세션을 찾지 못해 새 세션으로 같은 활성 청크를 이어간다. "
-                    f"{names.directory}/decisions.txt와 searches.jsonl의 기존 판정·검색 증거를 읽고 보존한다. "
+                    f"{chunk_files.decisions}와 {chunk_files.searches}의 기존 판정·검색 증거를 읽고 보존한다. "
                     "이미 완성된 판정을 다시 만들거나 검색 기록을 삭제하지 말고, 미완료 Sense만 이어서 처리한다.\n")
         if kind == "d_chunk_resume":
-            prompt = prompts.d_chunk_resume(rec["chunk_no"])
+            prompt = prompts.d_chunk_resume(rec["chunk_no"], decisions=chunk_files.decisions,
+                                            searches=chunk_files.searches)
         else:
             card_bytes = len(prompts.d_chunk(b, rec["chunk_no"], view="", note=note).encode("utf-8"))
             if dchunk.delivery(card_bytes, view) == "inline":
@@ -2293,7 +2319,8 @@ class Supervisor:
             else:   # only this chunk falls back to pages; a failure here starts no AI
                 prompt = prompts.d_chunk(b, rec["chunk_no"], pages=dchunk.write_pages(wt, b, view), note=note)
         baseline = {"branch": b["branch"], "worktree": str(wt), "head": self.git.head(wt),
-                    "remote_head": self.git.remote_head(b["branch"]) if remote == "?" else remote, "chunk_no": rec["chunk_no"]}
+                    "remote_head": self.git.remote_head(b["branch"]) if remote == "?" else remote,
+                    "chunk_no": rec["chunk_no"]}
         return prompt, baseline
 
     def _d_chunk_saved(self, b) -> bool:
@@ -2304,18 +2331,32 @@ class Supervisor:
         except (dchunk.DChunkError, OSError, ValueError):
             return False
 
-    def _d_accept_saved(self, b) -> str | None:
+    def _d_accept_saved(self, b, *, boundary_checked: bool = False) -> str | None:
         """After a saved chunk: exactly one chunk advanced, nothing else changed. A problem string, or None."""
         wt = Path(b["worktree"])
         try:
             rec = dchunk.read_active(wt, b)
+            if rec is None:
+                return "저장된 청크의 활성 메타가 없습니다. 보존합니다."
+            if not boundary_checked:
+                if problem := self._stage2_chunk_boundary_problem(b, dchunk.run_start_key(b["id"])):
+                    return problem
+            raw = self.store.get(dchunk.run_start_key(b["id"]))
+            try:
+                baseline = json.loads(raw) if raw is not None else None
+            except (TypeError, ValueError):
+                baseline = None
+            if not isinstance(baseline, dict) or baseline.get("chunk_no") != rec["chunk_no"] \
+                    or baseline.get("head") != rec["git_head"]:
+                return "저장된 D 청크 번호와 실행 baseline이 일치하지 않습니다. 보존합니다."
             done, _total = dchunk.verified_prefix(wt, b)
-            if rec is None or done != rec["chunk_no"]:
-                return f"저장된 청크 수({done})가 활성 청크({rec and rec['chunk_no']})와 맞지 않습니다. 보존합니다."
-            if problem := self._d_chunks_problem(b, done - 1):
+            if done != rec["chunk_no"]:
+                return f"저장된 청크 수({done})가 활성 청크({rec['chunk_no']})와 맞지 않습니다. 보존합니다."
+            dchunk.read_view(wt, b, rec)  # the saved metadata must still bind the exact view being cleaned
+            if problem := self._d_chunks_problem(b, done):
                 return problem
             self._d_remember(b, done)
-            dchunk.clear_active(wt, b)
+            dchunk.clear_active(wt, b, rec["chunk_no"])
         except (dchunk.DChunkError, OSError, ValueError) as e:
             return f"저장된 청크를 확인하지 못했습니다: {e}. 보존합니다."
         return None
@@ -2337,17 +2378,21 @@ class Supervisor:
             if self._d_fix(b):
                 return
             wt = Path(b["worktree"])
-            rejected = wt / dchunk.names(b).rejected
+            try:
+                rec = dchunk.read_active(wt, b)
+            except (dchunk.DChunkError, OSError, ValueError) as e:
+                return self._fail(b, "ERROR", f"활성 D 청크 상태를 읽지 못했습니다. 임시 파일을 보존합니다: {e}")
+            rejected = wt / dchunk.chunk_names(b, rec["chunk_no"]).rejected if rec else wt / "missing-d-rejection"
             if b["run_kind"] != "d_chunk_fix" and not rejected.exists() \
                     and not dchunk.has_search_failure(wt, b) \
                     and self._retry_unsaved_chunk(b, "활성 청크 저장 누락"):
                 return
             return self._fail(b, "ERROR", "D 청크 실행이 종료됐지만 활성 청크가 저장되지 않았습니다 (chunk-NNN.jsonl 증거 없음). "
                               "자동 재진입 한도를 소진했거나 저장/검색 진단 때문에 안전하지 않아 보존합니다 — Retry는 같은 청크를 이어갑니다." + self._d_rejection_note(b))
-        if problem := self._d_accept_saved(b):
+        if problem := self._d_accept_saved(b, boundary_checked=True):
             return self._fail(b, "ERROR", problem)
-        self.store.delete(dchunk.run_start_key(b["id"]))
         self.store.update(b["id"], session_id=None, retries=0, retry_after=None, error=None)
+        self.store.delete(dchunk.run_start_key(b["id"]))
         self.store.log(b["id"], "D 청크 저장을 확인했습니다. 다음 단계는 새 세션으로 실행합니다.")
         return self._launch_d_next(self.store.batch(b["id"]))
 
@@ -2360,7 +2405,7 @@ class Supervisor:
         try:
             rec = dchunk.read_active(wt, b)
             diag = dchunk.read_rejection(wt, b, rec) if rec else None
-            has_decisions = (wt / dchunk.names(b).decisions).is_file()
+            has_decisions = (wt / dchunk.chunk_names(b, rec["chunk_no"]).decisions).is_file() if rec else False
         except (dchunk.DChunkError, OSError, ValueError):
             return False
         if rec is None or diag is None or not has_decisions or not b["session_id"]:
@@ -2379,7 +2424,10 @@ class Supervisor:
     def _d_rejection_note(self, b) -> str:
         """The recorded `save` rejection of the active chunk (reasons only), shown with the ERROR so the operator sees why."""
         try:
-            diag = json.loads((Path(b["worktree"]) / dchunk.names(b).rejected).read_text("utf-8"))
+            rec = dchunk.read_active(Path(b["worktree"]), b)
+            if rec is None:
+                return ""
+            diag = json.loads((Path(b["worktree"]) / dchunk.chunk_names(b, rec["chunk_no"]).rejected).read_text("utf-8"))
             return " 마지막 save 거부: " + " / ".join(str(e) for e in diag["errors"][:3])[:600]
         except (OSError, ValueError, KeyError, TypeError):
             return ""
@@ -2396,10 +2444,10 @@ class Supervisor:
         except Exception as e:
             return self._fail(b, "ERROR", f"청크 재개 전 기존 PR 소유권 확인 실패: {e}. worktree를 보존합니다.")
         if self._d_chunk_saved(b):
-            if problem := self._d_accept_saved(b):
+            if problem := self._d_accept_saved(b, boundary_checked=True):
                 return self._fail(b, "ERROR", problem)
-            self.store.delete(dchunk.run_start_key(b["id"]))
             self.store.update(b["id"], session_id=None, retries=0, retry_after=None, error=None)
+            self.store.delete(dchunk.run_start_key(b["id"]))
         return self._launch_d_next(self.store.batch(b["id"]))
 
     def _d_finalize(self, b) -> None:

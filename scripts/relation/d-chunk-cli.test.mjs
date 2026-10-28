@@ -105,8 +105,15 @@ const runCli = (args, input, environment) => new Promise((resolve, reject) => {
   child.stdin.end(input);
 });
 
-const meta = (world) => readFile(path.join(world.directory, 'active-chunk.json'), 'utf8').then(JSON.parse);
-const view = (world) => readFile(path.join(world.directory, 'active-chunk.txt'), 'utf8');
+const chunkPath = (world, kind, number = 1) => path.join(world.directory, {
+  active: `active-${String(number).padStart(3, '0')}.json`,
+  view: `view-${String(number).padStart(3, '0')}.txt`,
+  searches: `search-${String(number).padStart(3, '0')}.jsonl`,
+  decisions: `decision-${String(number).padStart(3, '0')}.txt`,
+  rejected: `rejected-${String(number).padStart(3, '0')}.json`,
+}[kind]);
+const meta = (world, number = 1) => readFile(chunkPath(world, 'active', number), 'utf8').then(JSON.parse);
+const view = (world, number = 1) => readFile(chunkPath(world, 'view', number), 'utf8');
 
 withWorld('prepare shares one record search across senses and judges each sense separately', async (world) => {
   const result = await prepareChunk({ ...world.options, chunkNumber: 1 });
@@ -144,7 +151,7 @@ withWorld('a chunk whose senses are all mechanically proven ZERO_HITS is saved w
   const rows = (await readFile(path.join(world.directory, 'chunk-002.jsonl'), 'utf8')).trim().split('\n').map(JSON.parse);
   assert.equal(rows.length, 25);
   assert.ok(rows.every((row) => row.senses.every((sense) => sense.candidates.length === 0)));
-  assert.equal(existsSync(path.join(world.directory, 'active-chunk.json')), false);
+  assert.equal(existsSync(chunkPath(world, 'active', 2)), false);
   await assert.rejects(prepareChunk({ ...world.options, chunkNumber: 2 }), /already saved/u);
 });
 
@@ -218,7 +225,7 @@ test('prepare keeps -하다 prefetch opt-in, shows combined evidence, and record
     assert.equal(JSON.parse(result.stdout).status, 'READY');
     const activeView = await view(world);
     assert.match(activeView, /search_forms: 공부하다\nsearch: forms=공부하다,공부해,공부해서/u);
-    const evidence = (await readFile(path.join(world.directory, 'searches.jsonl'), 'utf8')).trim().split('\n').map(JSON.parse)
+    const evidence = (await readFile(chunkPath(world, 'searches'), 'utf8')).trim().split('\n').map(JSON.parse)
       .find((entry) => entry.record_id === 'w003');
     assert.deepEqual(evidence.forms, ['공부하다', ...hadaPrefetchForms(record)]);
     assert.equal(evidence.source, 'prepare');
@@ -591,7 +598,7 @@ withWorld('end to end: search records evidence, save stores the chunk once, a re
   const saved = await meta(world);
   const ref = (senseId) => saved.senses.find((item) => item.sense_id === senseId).ref;
   const open = saved.senses.filter((item) => !item.auto).map((item) => item.ref);
-  const decisionsFile = path.join(world.root, 'decisions.txt');
+  const decisionsFile = chunkPath(world, 'decisions');
   const lines = (overrides = {}) => open.map((id) => {
     if (overrides[id]) return `${id} ${overrides[id]}`;
     const sense = saved.senses.find((item) => item.ref === id).sense_id;
@@ -603,17 +610,18 @@ withWorld('end to end: search records evidence, save stores the chunk once, a re
   await assert.rejects(saveActive({ inputPath: decisionsFile, root: world.root }), (error) => error.exitCode === 2 && /w005|s\d+: Z needs/u.test(error.message));
   assert.equal(existsSync(path.join(world.directory, 'chunk-001.jsonl')), false);
   // the rejection leaves one diagnostic bound to the active chunk; a hit-bearing record's Z is not repairable by re-judging
-  const rejected = JSON.parse(await readFile(path.join(world.directory, 'save-rejected.json'), 'utf8'));
+  const rejected = JSON.parse(await readFile(chunkPath(world, 'rejected'), 'utf8'));
   assert.deepEqual([rejected.diagnostic, rejected.chunk_no, rejected.view_sha256, rejected.repair_scope],
     ['save_rejected', 1, saved.view_sha256, 'stop_and_report']);
   assert.ok(rejected.senses.includes(ref('w005-s1')) && rejected.errors.some((line) => /Z needs/u.test(line)));
 
   // a recorded SEARCH_FAILED makes even a hit-free rejection non-repairable; without it the same rejection stays repairable
   const zeroHitRef = saved.senses.find((item) => !item.auto && !item.sense_id.startsWith('w001') && !item.sense_id.startsWith('w005')).ref;
-  const failedEntry = { record_id: saved.senses.find((item) => item.ref === zeroHitRef).record_id, status: 'SEARCH_FAILED', hits: 0, complete: false, key: 'x', forms: ['x'] };
-  const searches = path.join(world.directory, 'searches.jsonl');
+  const failedEntry = { record_id: saved.senses.find((item) => item.ref === zeroHitRef).record_id, status: 'SEARCH_FAILED', hits: 0,
+    complete: false, key: 'x', forms: ['x'], chunk_no: saved.chunk_no, view_sha256: saved.view_sha256 };
+  const searches = chunkPath(world, 'searches');
   const priorSearches = await readFile(searches, 'utf8');
-  const scope = async () => JSON.parse(await readFile(path.join(world.directory, 'save-rejected.json'), 'utf8')).repair_scope;
+  const scope = async () => JSON.parse(await readFile(chunkPath(world, 'rejected'), 'utf8')).repair_scope;
   await writeFile(decisionsFile, `${lines({ [zeroHitRef]: 'V' })}\n`); // V without any recorded context: a pure re-judging error
   await assert.rejects(saveActive({ inputPath: decisionsFile, root: world.root }), (error) => error.exitCode === 2);
   assert.equal(await scope(), 'decisions');
@@ -631,7 +639,7 @@ withWorld('end to end: search records evidence, save stores the chunk once, a re
   await writeFile(decisionsFile, `${lines()}\n`);
   const done = await saveActive({ inputPath: decisionsFile, root: world.root });
   assert.equal(done.status, 'SAVED');
-  assert.equal(existsSync(path.join(world.directory, 'save-rejected.json')), false, 'a saved chunk leaves no stale diagnostic');
+  assert.equal(existsSync(chunkPath(world, 'rejected')), true, 'the Supervisor owns scratch cleanup after verifying the saved chunk');
   const rows = (await readFile(path.join(world.directory, 'chunk-001.jsonl'), 'utf8')).trim().split('\n').map(JSON.parse);
   assert.equal(rows.length, 25);
   assert.deepEqual(rows[0], { record_id: 'w001', senses: [{ sense_id: 'w001-s1', candidates: ['해무', '새벽 공기'] }, { sense_id: 'w001-s2', candidates: ['해무', '새벽 공기'] }] });
@@ -654,7 +662,7 @@ withWorld('search-batch CLI accepts JSON on stdin and records one shared search 
   assert.equal(output.result_count, 1);
   assert.equal(output.requests[0].result_id, output.requests[1].result_id);
   assert.equal(output.results[0].contexts.length, 2);
-  const evidence = (await readFile(path.join(world.directory, 'searches.jsonl'), 'utf8')).trim().split('\n').map(JSON.parse)
+  const evidence = (await readFile(chunkPath(world, 'searches'), 'utf8')).trim().split('\n').map(JSON.parse)
     .filter((entry) => entry.record_id === 'w001' && entry.request_key !== undefined);
   assert.equal(evidence.length, 1, 'same-record senses share one request evidence row');
   assert.equal(evidence[0].source, 'prepare', 'the identical completed prepare search already supplies the record evidence');
@@ -672,7 +680,7 @@ withWorld('cursor next resumes recorded search pages and invalid cursor input le
   database.close();
 
   await prepareChunk({ ...world.options, chunkNumber: 1 });
-  const searchesPath = path.join(world.directory, 'searches.jsonl');
+  const searchesPath = chunkPath(world, 'searches');
   const beforeInvalid = await readFile(searchesPath, 'utf8');
   const cliFailure = await runCli(['search-batch', '--dir', world.root], JSON.stringify({
     requests: [{ sense: 's1', forms: ['새벽안개'], cursor: 'not-a-recorded-cursor' }],
@@ -720,7 +728,7 @@ withWorld('cursor next resumes recorded search pages and invalid cursor input le
 
 withWorld('search-batch cursor next resumes its recorded cursor and rejects a mixed invalid batch atomically', async (world) => {
   await prepareChunk({ ...world.options, chunkNumber: 1 });
-  const searchesPath = path.join(world.directory, 'searches.jsonl');
+  const searchesPath = chunkPath(world, 'searches');
   const beforeInvalid = await readFile(searchesPath, 'utf8');
   await assert.rejects(searchBatchActive({
     requests: [{ sense: 's1', forms: ['새벽안개'] }, { sense: 's2', forms: ['새벽안개'], cursor: 'borrowed-token' }],
@@ -746,11 +754,11 @@ withWorld('search-batch cursor next resumes its recorded cursor and rejects a mi
 
 withWorld('search-batch output overflow records no partial evidence', async (world) => {
   await prepareChunk({ ...world.options, chunkNumber: 1 });
-  const before = await readFile(path.join(world.directory, 'searches.jsonl'), 'utf8');
+  const before = await readFile(chunkPath(world, 'searches'), 'utf8');
   await assert.rejects(searchBatchActive({
     requests: [{ sense: 's1' }], databasePath: world.options.databasePath, root: world.root, maxOutputBytes: 1,
   }), /No search evidence was recorded/u);
-  assert.equal(await readFile(path.join(world.directory, 'searches.jsonl'), 'utf8'), before);
+  assert.equal(await readFile(chunkPath(world, 'searches'), 'utf8'), before);
 });
 
 withWorld('save requires earlier chunks to exist and the same Canonical records as prepare', async (world) => {
@@ -760,7 +768,62 @@ withWorld('save requires earlier chunks to exist and the same Canonical records 
   await prepareChunk({ ...world.options, chunkNumber: 1 });
   const active = await meta(world);
   const forged = { ...active, chunk_no: 2 };
-  await writeFile(path.join(world.directory, 'active-chunk.json'), JSON.stringify(forged));
-  await writeFile(path.join(world.root, 'd.txt'), 's1 V\n');
-  await assert.rejects(saveActive({ inputPath: path.join(world.root, 'd.txt'), root: world.root }), /chunk-001\.jsonl is missing|changed since prepare/u);
+  await writeFile(chunkPath(world, 'active'), JSON.stringify(forged));
+  await writeFile(chunkPath(world, 'decisions'), 's1 V\n');
+  await assert.rejects(saveActive({ inputPath: chunkPath(world, 'decisions'), root: world.root }), /active D metadata does not match its exact chunk path/u);
+});
+
+withWorld('chunk 002 reads and saves only its own paths when stale chunk 001 scratch remains', async (world) => {
+  await mkdir(world.directory, { recursive: true });
+  const canonical = canonicalRows();
+  canonical[25].senses[0].pos = 'verb'; // keep one sense visible to the AI instead of AUTO_COMPLETE
+  await writeFile(world.options.canonicalPath, `${canonical.map((row) => JSON.stringify(row)).join('\n')}\n`);
+  const firstRows = canonical.slice(0, 25).map((record) => ({
+    record_id: record.id,
+    senses: record.senses.map((sense) => ({ sense_id: sense.id, candidates: [] })),
+  }));
+  await writeFile(path.join(world.directory, 'chunk-001.jsonl'), `${firstRows.map((row) => JSON.stringify(row)).join('\n')}\n`);
+  const staleSearch = JSON.stringify({ chunk_no: 1, view_sha256: '1'.repeat(64), record_id: 'w001', status: 'SEARCH_FAILED' });
+  await writeFile(chunkPath(world, 'view', 1), 'stale view 001\n');
+  await writeFile(chunkPath(world, 'searches', 1), `${staleSearch}\n`);
+  await writeFile(chunkPath(world, 'decisions', 1), 's1 V old decision\n');
+
+  const result = await prepareChunk({ ...world.options, chunkNumber: 2 });
+  assert.equal(result.status, 'READY');
+  const active = await meta(world, 2);
+  assert.equal(active.chunk_no, 2);
+  assert.match(await view(world, 2), /chunk=002/u);
+  const search2 = chunkPath(world, 'searches', 2);
+  let entries = (await readFile(search2, 'utf8')).trim().split('\n').map(JSON.parse);
+  assert.ok(entries.length > 0 && entries.every((entry) => entry.chunk_no === 2 && entry.view_sha256 === active.view_sha256));
+  assert.equal(await readFile(chunkPath(world, 'searches', 1), 'utf8'), `${staleSearch}\n`);
+
+  const activeSense = active.senses.find((item) => !item.auto);
+  const source = canonical[25];
+  const extra = await searchActive({ ref: activeSense.ref, forms: [source.lemma], databasePath: world.options.databasePath, root: world.root });
+  assert.ok(['ZERO_HITS', 'COMPLETE', 'LIMITED'].includes(extra.result.status));
+  entries = (await readFile(search2, 'utf8')).trim().split('\n').map(JSON.parse);
+  assert.ok(entries.every((entry) => entry.chunk_no === 2 && entry.view_sha256 === active.view_sha256));
+  assert.equal(await readFile(chunkPath(world, 'searches', 1), 'utf8'), `${staleSearch}\n`);
+
+  await writeFile(chunkPath(world, 'decisions', 2), `${activeSense.ref} Z\n`);
+  await assert.rejects(saveActive({ inputPath: chunkPath(world, 'decisions', 1), root: world.root }), /decision file for active chunk 002/u);
+  const saved = await saveActive({ inputPath: chunkPath(world, 'decisions', 2), root: world.root });
+  assert.equal(saved.chunk_no, 2);
+  assert.equal(existsSync(path.join(world.directory, 'chunk-002.jsonl')), true);
+  assert.equal(await readFile(chunkPath(world, 'decisions', 1), 'utf8'), 's1 V old decision\n');
+});
+
+withWorld('legacy D scratch layout blocks prepare and stays byte-for-byte untouched', async (world) => {
+  await mkdir(world.directory, { recursive: true });
+  const legacy = {
+    active: path.join(world.directory, 'active-chunk.json'),
+    view: path.join(world.directory, 'active-chunk.txt'),
+    decisions: path.join(world.directory, 'decisions.txt'),
+    searches: path.join(world.directory, 'searches.jsonl'),
+  };
+  for (const [name, file] of Object.entries(legacy)) await writeFile(file, `legacy ${name}\n`);
+  await assert.rejects(prepareChunk({ ...world.options, chunkNumber: 1 }), /legacy D scratch files are present/u);
+  for (const [name, file] of Object.entries(legacy)) assert.equal(await readFile(file, 'utf8'), `legacy ${name}\n`);
+  await assert.rejects(searchActive({ ref: 's1', databasePath: world.options.databasePath, root: world.root }), /legacy D scratch files are present/u);
 });

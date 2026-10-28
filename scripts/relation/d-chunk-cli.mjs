@@ -12,7 +12,7 @@
 
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { appendFile, mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { appendFile, mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 
@@ -307,10 +307,17 @@ export function buildChunk({ records, shard, batch, chunkNumber, total, search, 
 
 // ---- scratch layout -------------------------------------------------------------------------------------------------
 export const scratchDirectory = (shard, batch, root = '.warroom-scratch') => path.join(root, `d-${shard}_${batch}`);
-const activePath = (directory) => path.join(directory, 'active-chunk.json');
-const viewPath = (directory) => path.join(directory, 'active-chunk.txt');
-const searchesPath = (directory) => path.join(directory, 'searches.jsonl');
-const rejectedPath = (directory) => path.join(directory, 'save-rejected.json');
+const chunkPaths = (directory, number) => {
+  const n = String(number).padStart(3, '0');
+  return {
+    active: path.join(directory, `active-${n}.json`),
+    view: path.join(directory, `view-${n}.txt`),
+    searches: path.join(directory, `search-${n}.jsonl`),
+    decisions: path.join(directory, `decision-${n}.txt`),
+    rejected: path.join(directory, `rejected-${n}.json`),
+  };
+};
+const legacyFiles = new Set(['active-chunk.json', 'active-chunk.txt', 'searches.jsonl', 'decisions.txt', 'save-rejected.json']);
 const MAX_REJECTED_ERRORS = 40;
 const MAX_REJECTED_ERROR_CHARS = 300;
 
@@ -327,12 +334,24 @@ export async function prepareChunk({ canonicalPath, shard, batch, chunkNumber, d
   const records = await loadBatchRecords(canonicalPath, shard, batch);
   const total = totalChunks(records);
   const chunk = chunkRecords(records, chunkNumber);
+  const files = await readdir(directory).catch((error) => error.code === 'ENOENT' ? [] : Promise.reject(error));
+  if (files.some((name) => legacyFiles.has(name) || name.startsWith('active-chunk.') || name.startsWith('searches.jsonl.')))
+    fail('legacy D scratch files are present; preserving them without automatic migration or deletion');
+  const activeArtifacts = files.filter((name) => name.startsWith('active-'));
+  if (activeArtifacts.some((name) => !/^active-\d{3}\.json$/u.test(name))) fail('active D metadata filename is invalid; preserving scratch files');
+  const activeFiles = activeArtifacts;
+  if (activeFiles.length > 0) fail('an active D chunk already exists; it must be resumed or safely finalized first');
+  const filesForChunk = chunkPaths(directory, chunkNumber);
+  if (existsSync(path.join(directory, chunkFile(chunkNumber)))) fail(`${chunkFile(chunkNumber)} is already saved; it is never overwritten`);
+  const temporary = [filesForChunk.active, filesForChunk.view, filesForChunk.searches, filesForChunk.decisions,
+    filesForChunk.rejected].flatMap((file) => [file, `${file}.tmp`]);
+  if (temporary.some((file) => existsSync(file)) || files.some((name) => name.startsWith(`view-${String(chunkNumber).padStart(3, '0')}.p`)))
+    fail(`temporary files for chunk ${String(chunkNumber).padStart(3, '0')} already exist; preserving them`);
   const database = openReadonlyDb(databasePath);
   const built = buildChunk({ records: chunk, shard, batch, chunkNumber, total, search: createSearchContextReuse(database), hadaPrefetch });
   database.close?.();
   const base = { chunk_no: chunkNumber, total_chunks: total, records: chunk.length, senses: built.senses.length, auto_z: built.autoZ };
   if (built.failed.length > 0) return { status: 'SEARCH_FAILED', failed_records: built.failed, ...base };
-  if (existsSync(path.join(directory, chunkFile(chunkNumber)))) fail(`${chunkFile(chunkNumber)} is already saved; it is never overwritten`);
   if (built.senses.every((item) => item.auto)) {
     // Every sense is a mechanically proven ZERO_HITS: no AI is needed for this chunk.
     await saveChunk(directory, chunkNumber, emptyRows(chunk), expectedOf(chunk));
@@ -345,29 +364,73 @@ export async function prepareChunk({ canonicalPath, shard, batch, chunkNumber, d
     senses: built.senses,
   };
   await mkdir(directory, { recursive: true });
-  await writeAtomic(viewPath(directory), built.view);
-  await writeAtomic(searchesPath(directory), built.entries.map((entry) => JSON.stringify(entry)).join('\n') + (built.entries.length ? '\n' : ''));
-  await rm(rejectedPath(directory), { force: true }); // a diagnostic belongs to one active chunk only
-  await writeAtomic(activePath(directory), JSON.stringify(meta));
+  const boundEntries = built.entries.map((entry) => ({ ...entry, chunk_no: chunkNumber, view_sha256: meta.view_sha256 }));
+  await writeAtomic(filesForChunk.view, built.view);
+  await writeAtomic(filesForChunk.searches, boundEntries.map((entry) => JSON.stringify(entry)).join('\n') + (boundEntries.length ? '\n' : ''));
+  await writeAtomic(filesForChunk.active, JSON.stringify(meta));
   return { status: 'READY', view_sha256: meta.view_sha256, view_bytes: meta.view_bytes, ai_senses: built.senses.filter((item) => !item.auto).length, ...base };
 }
 
 // ---- active chunk (AI-side commands) -----------------------------------------------------------------------------
 async function findActive(root = '.warroom-scratch') {
-  const names = (await readdir(root).catch(() => [])).filter((name) => /^d-\d{3}_0[12]$/u.test(name));
-  const found = names.filter((name) => existsSync(activePath(path.join(root, name))));
+  const directories = (await readdir(root).catch((error) => error.code === 'ENOENT' ? [] : Promise.reject(error)))
+    .filter((name) => /^d-\d{3}_0[12]$/u.test(name));
+  const found = [];
+  for (const name of directories) {
+    const directory = path.join(root, name);
+    const files = await readdir(directory).catch((error) => error.code === 'ENOENT' ? [] : Promise.reject(error));
+    if (files.some((file) => legacyFiles.has(file) || file.startsWith('active-chunk.') || file.startsWith('searches.jsonl.')))
+      fail('legacy D scratch files are present; preserving them without automatic migration or deletion');
+    const activeArtifacts = files.filter((file) => file.startsWith('active-'));
+    if (activeArtifacts.some((file) => !/^active-\d{3}\.json$/u.test(file))) fail('active D metadata filename is invalid; preserving scratch files');
+    const activeFiles = activeArtifacts;
+    for (const file of activeFiles) found.push({ directory, file, folder: name });
+  }
   if (found.length !== 1) fail(found.length === 0 ? 'no active D chunk' : 'more than one active D chunk');
-  const directory = path.join(root, found[0]);
-  const meta = JSON.parse(await readFile(activePath(directory), 'utf8'));
-  return { directory, meta };
+  const { directory, file, folder } = found[0];
+  let meta;
+  try {
+    meta = JSON.parse(await readFile(path.join(directory, file), 'utf8'));
+  } catch (error) {
+    fail(`active D metadata is unreadable: ${error.message}`);
+  }
+  const number = Number(/^active-(\d{3})\.json$/u.exec(file)?.[1]);
+  if (!Number.isInteger(number) || number < 1 || !meta || typeof meta !== 'object' || Array.isArray(meta)
+    || meta.chunk_no !== number || !Number.isInteger(meta.total_chunks) || number > meta.total_chunks
+    || String(meta.shard) !== folder.slice(2, 5) || String(meta.batch) !== folder.slice(6, 8)
+    || typeof meta.view_sha256 !== 'string' || !/^[a-f0-9]{64}$/u.test(meta.view_sha256)
+    || !Number.isInteger(meta.view_bytes) || typeof meta.git_head !== 'string' || !/^[a-f0-9]{40}$/u.test(meta.git_head))
+    fail('active D metadata does not match its exact chunk path; preserving scratch files');
+  const files = chunkPaths(directory, number);
+  let view;
+  try {
+    view = await readFile(files.view);
+  } catch (error) {
+    fail(`active D view for chunk ${String(number).padStart(3, '0')} is unreadable: ${error.message}`);
+  }
+  if (view.byteLength !== meta.view_bytes || sha256(view) !== meta.view_sha256)
+    fail('active D view does not match its recorded SHA-256; preserving scratch files');
+  return { directory, meta, files };
 }
 
-const readEntries = async (directory) => (await readFile(searchesPath(directory), 'utf8').catch(() => ''))
-  .split('\n').filter(Boolean).map((line) => JSON.parse(line));
-
-async function readCursorEntries(directory, ref) {
+const readEntries = async (directory, meta) => {
+  const files = chunkPaths(directory, meta.chunk_no);
+  let text;
   try {
-    return await readEntries(directory);
+    text = await readFile(files.searches, 'utf8');
+  } catch (error) {
+    fail(`search evidence for chunk ${String(meta.chunk_no).padStart(3, '0')} is unreadable: ${error.message}`);
+  }
+  const entries = text.split('\n').filter(Boolean).map((line) => JSON.parse(line));
+  if (entries.some((entry) => !entry || typeof entry !== 'object' || Array.isArray(entry)
+    || entry.chunk_no !== meta.chunk_no || entry.view_sha256 !== meta.view_sha256))
+    fail('search evidence does not match the active chunk and view SHA-256; preserving scratch files');
+  return entries;
+};
+
+async function readCursorEntries(directory, meta, ref) {
+  try {
+    return await readEntries(directory, meta);
   } catch {
     throw cursorInputError(ref, 'recorded search evidence is unreadable');
   }
@@ -442,19 +505,20 @@ function validateRequestedCursor(database, cursor, forms, boundary, ref) {
 }
 
 /** Append one source-sense-independent evidence row per record and exact successful request. */
-async function appendSearchEvidence(directory, entries, priorEntries = undefined) {
+async function appendSearchEvidence(directory, meta, entries, priorEntries = undefined) {
   if (entries.length === 0) return 0;
-  const prior = priorEntries ?? await readEntries(directory);
+  const files = chunkPaths(directory, meta.chunk_no);
+  const prior = priorEntries ?? await readEntries(directory, meta);
   const seen = new Set(prior.filter((entry) => entry.request_key !== undefined && entry.status !== 'SEARCH_FAILED')
     .map((entry) => JSON.stringify([entry.record_id, entry.request_key])));
   const append = [];
   for (const entry of entries) {
     const identity = JSON.stringify([entry.record_id, entry.request_key]);
     if (entry.status !== 'SEARCH_FAILED' && seen.has(identity)) continue;
-    append.push(entry);
+    append.push({ ...entry, chunk_no: meta.chunk_no, view_sha256: meta.view_sha256 });
     if (entry.status !== 'SEARCH_FAILED') seen.add(identity);
   }
-  if (append.length > 0) await appendFile(searchesPath(directory), `${append.map((entry) => JSON.stringify(entry)).join('\n')}\n`);
+  if (append.length > 0) await appendFile(files.searches, `${append.map((entry) => JSON.stringify(entry)).join('\n')}\n`);
   return append.length;
 }
 
@@ -606,7 +670,7 @@ export async function searchBatchActive({ requests, databasePath, root = '.warro
   const records = rows.filter((record) => activeRecords.has(record.id));
   const needsCursorEvidence = Array.isArray(requests) && requests.some((request) => request && typeof request === 'object'
     && request.cursor !== undefined && request.cursor !== null && request.cursor !== '');
-  const priorEntries = needsCursorEvidence ? await readCursorEntries(directory, 'search-batch') : undefined;
+  const priorEntries = needsCursorEvidence ? await readCursorEntries(directory, meta, 'search-batch') : undefined;
   const database = openReadonlyDb(databasePath);
   let batch;
   try {
@@ -618,12 +682,12 @@ export async function searchBatchActive({ requests, databasePath, root = '.warro
   } finally {
     database.close?.();
   }
-  await appendSearchEvidence(directory, batch.evidence, priorEntries);
+  await appendSearchEvidence(directory, meta, batch.evidence, priorEntries);
   return batch.output;
 }
 
 export async function searchActive({ ref, forms, boundary, cursor, contexts, databasePath, root }) {
-  const { directory, meta } = await findActive(root);
+  const { directory, meta, files } = await findActive(root);
   const sense = meta.senses.find((item) => item.ref === ref);
   if (!sense) fail(`${ref} is not a sense of the active chunk`);
   if (sense.auto) fail(`${ref} is an automatic ZERO_HITS sense of this chunk; it is not searched`);
@@ -635,7 +699,7 @@ export async function searchActive({ ref, forms, boundary, cursor, contexts, dat
   if (!Number.isInteger(count) || count < 1 || count > MAX_CALL_CONTEXTS) fail(`--contexts must be 1..${MAX_CALL_CONTEXTS}`);
   if (boundary !== undefined && !['left', 'none', 'both'].includes(boundary)) fail('--boundary must be left, none or both');
   const requestedCursor = cursor === '' ? null : cursor ?? null;
-  const priorEntries = requestedCursor === null ? undefined : await readCursorEntries(directory, ref);
+  const priorEntries = requestedCursor === null ? undefined : await readCursorEntries(directory, meta, ref);
   const resolvedCursor = resolveRecordedCursor({ cursor: requestedCursor, recordId: record.record_id, forms: list, boundary, entries: priorEntries ?? [], ref });
   const database = openReadonlyDb(databasePath);
   let result;
@@ -650,7 +714,8 @@ export async function searchActive({ ref, forms, boundary, cursor, contexts, dat
     database.close?.();
   }
   const exactRequestKey = requestKey(list, boundary, options);
-  await appendFile(searchesPath(directory), `${JSON.stringify(entryOf(record.record_id, list, boundary, result, 'search', cursorIn, exactRequestKey))}\n`);
+  await appendFile(files.searches, `${JSON.stringify({ ...entryOf(record.record_id, list, boundary, result, 'search', cursorIn, exactRequestKey),
+    chunk_no: meta.chunk_no, view_sha256: meta.view_sha256 })}\n`);
   return { result, text: renderContexts(result) };
 }
 
@@ -725,7 +790,9 @@ export function checkDecisions({ meta, records, entries, decisions, lemmaForms }
 }
 
 export async function saveActive({ inputPath, root }) {
-  const { directory, meta } = await findActive(root);
+  const { directory, meta, files } = await findActive(root);
+  if (path.resolve(inputPath) !== path.resolve(files.decisions))
+    fail(`save input must be the decision file for active chunk ${String(meta.chunk_no).padStart(3, '0')}; no other chunk file is read`);
   const target = path.join(directory, chunkFile(meta.chunk_no));
   if (existsSync(target)) fail(`${chunkFile(meta.chunk_no)} is already saved; it is never overwritten`);
   for (let number = 1; number < meta.chunk_no; number += 1) {
@@ -739,7 +806,7 @@ export async function saveActive({ inputPath, root }) {
   }
   const { decisions, errors: parseErrors } = parseDecisions(await readFile(inputPath, 'utf8'));
   const lemmaForms = await loadCanonicalLemmaForms();
-  const entries = await readEntries(directory);
+  const entries = await readEntries(directory, meta);
   const { errors, rows, hitBearingZ } = checkDecisions({ meta, records, entries, decisions, lemmaForms });
   const all_errors = [...parseErrors, ...errors];
   if (all_errors.length > 0) {
@@ -747,7 +814,7 @@ export async function saveActive({ inputPath, root }) {
     const searchFailed = entries.some((entry) => entry.status === 'SEARCH_FAILED');
     // One diagnostic bound to this active chunk, for the War Room Supervisor (never read from tool logs). It holds only
     // the rejection reasons, never the view or search contexts. A hit-bearing Z cannot be repaired by editing decisions.
-    await writeAtomic(rejectedPath(directory), JSON.stringify({
+    await writeAtomic(files.rejected, JSON.stringify({
       diagnostic: 'save_rejected', chunk_no: meta.chunk_no, view_sha256: meta.view_sha256, git_head: meta.git_head,
       repair_scope: hitBearingZ.length > 0 || searchFailed ? 'stop_and_report' : 'decisions',
       senses: [...new Set(all_errors.map((message) => /^(s[1-9]\d*):/u.exec(message)?.[1]).filter(Boolean))],
@@ -759,7 +826,6 @@ export async function saveActive({ inputPath, root }) {
     throw error;
   }
   await saveChunk(directory, meta.chunk_no, rows, expectedOf(records));
-  await rm(rejectedPath(directory), { force: true });
   return { status: 'SAVED', chunk_no: meta.chunk_no, records: rows.length, senses: meta.senses.length };
 }
 

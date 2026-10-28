@@ -28,7 +28,7 @@ class DWorld(World):
         return Path(self.row_()["worktree"])
 
     def active(self):
-        return json.loads((self.wt() / dchunk.names(self.row_()).active).read_text())
+        return dchunk.read_active(self.wt(), self.row_())
 
     def ai(self, code=0, session="ses_d", save=True):
         """Queue a fake AI whose effect saves the active chunk (the `save` call), or nothing."""
@@ -41,12 +41,14 @@ class DWorld(World):
         """A fake AI whose `save` is rejected: decisions.txt stays, the CLI's diagnostic for the active chunk is written."""
         def effect():
             rec = self.active()
-            folder = self.wt() / dchunk.names(self.row_()).directory
-            (folder / "decisions.txt").write_text("s1 Z\n")
+            names = dchunk.chunk_names(self.row_(), rec["chunk_no"])
+            folder = self.wt() / names.directory
+            (self.wt() / names.decisions).write_text("s1 Z\n")
             if failed_search_after:   # a search after the rejected save failed: the repairable diagnostic is now stale
-                with open(folder / "searches.jsonl", "a") as fh:
-                    fh.write(json.dumps({"record_id": "w0001", "status": "SEARCH_FAILED", "hits": 0}) + "\n")
-            (folder / "save-rejected.json").write_text(json.dumps({
+                with open(self.wt() / names.searches, "a") as fh:
+                    fh.write(json.dumps({"record_id": "w0001", "status": "SEARCH_FAILED", "hits": 0,
+                                         "chunk_no": rec["chunk_no"], "view_sha256": rec["view_sha256"]}) + "\n")
+            (self.wt() / names.rejected).write_text(json.dumps({
                 "diagnostic": "save_rejected", "chunk_no": rec["chunk_no"],
                 "view_sha256": "0" * 64 if stale else rec["view_sha256"], "git_head": rec["git_head"], "repair_scope": scope,
                 "senses": ["s1"], "errors": ["s1: Z needs every recorded search of this record to be complete with 0 hits"],
@@ -151,6 +153,129 @@ class SerialChunks(unittest.TestCase):
         self.assertEqual(w.active()["chunk_no"], 2)
         self.assertEqual(len(w.adapter.launches), 2)
 
+    def test_verified_chunk_cleanup_is_scoped_and_the_next_chunk_starts_a_new_session(self):
+        w = DWorld(records=50)
+        self.addCleanup(w.tmp.cleanup)
+        w.start("single", "deepseek", "d")
+        w.ai(session="ses_first")
+        w.ai(session="ses_second")
+        w.tick()
+        b = w.row_()
+        first = dchunk.chunk_names(b, 1)
+        folder = w.wt() / first.directory
+        (w.wt() / first.decisions).write_text("s1 V old\n")
+        (w.wt() / first.rejected).write_text("{}\n")
+        (folder / "view-001.p1of2.txt").write_text("first page\n")
+        (folder / "view-001.p2of2.txt").write_text("second page\n")
+        # Stale scratch for another chunk and another batch is preserved and cannot be consumed by chunk 002.
+        sibling = {"shard": "001", "batch": "01", "producer": "deepseek"}
+        other = dchunk.chunk_names(sibling, 20)
+        other_path = w.wt() / other.decisions
+        other_path.write_text("keep me\n")
+        other_batch = folder.parent / "d-001_02" / "decision-001.txt"
+        other_batch.parent.mkdir(parents=True, exist_ok=True)
+        other_batch.write_text("other batch\n")
+
+        w.finish_last()
+        w.tick()
+
+        self.assertTrue((w.wt() / first.directory / "chunk-001.jsonl").is_file())
+        for rel in (first.active, first.view, first.searches, first.decisions, first.rejected,
+                    f"{first.directory}/view-001.p1of2.txt", f"{first.directory}/view-001.p2of2.txt"):
+            self.assertFalse((w.wt() / rel).exists(), rel)
+        self.assertEqual(other_path.read_text(), "keep me\n")
+        self.assertEqual(other_batch.read_text(), "other batch\n")
+        self.assertEqual((w.row_()["run_kind"], w.adapter.launches[-1]["kind"]), ("d_chunk_new", "start"))
+        self.assertEqual(w.active()["chunk_no"], 2)
+        self.assertIn("decision-002.txt", w.adapter.launches[-1]["prompt"])
+        self.assertNotIn("old\n", w.adapter.launches[-1]["prompt"])
+
+    def test_cleanup_failure_blocks_next_chunk_and_preserves_saved_and_active_files(self):
+        w = DWorld(records=50)
+        self.addCleanup(w.tmp.cleanup)
+        w.start("single", "deepseek", "d")
+        w.ai(session="ses_first")
+        w.ai(session="ses_second")
+        w.tick()
+        active = dchunk.chunk_names(w.row_(), 1)
+        real_clear = dchunk.clear_active
+        dchunk.clear_active = lambda *args: (_ for _ in ()).throw(dchunk.DChunkError("simulated unlink failure"))
+        try:
+            w.finish_last()
+            w.tick()
+        finally:
+            dchunk.clear_active = real_clear
+        self.assertEqual((w.row_()["state"], len(w.adapter.launches)), ("ERROR", 1))
+        self.assertTrue((w.wt() / f"{active.directory}/chunk-001.jsonl").is_file())
+        self.assertTrue((w.wt() / active.active).is_file())
+        self.assertTrue((w.wt() / active.view).is_file())
+
+    def test_restart_after_cleanup_finishes_handoff_without_resuming_the_old_session(self):
+        w = DWorld(records=50)
+        self.addCleanup(w.tmp.cleanup)
+        w.start("single", "deepseek", "d")
+        w.ai(session="ses_old")
+        w.ai(session="ses_new")
+        w.tick()
+        real_clear = dchunk.clear_active
+
+        def remove_then_interrupt(worktree, batch, chunk_no):
+            (Path(worktree) / dchunk.chunk_names(batch, chunk_no).active).unlink()
+            raise dchunk.DChunkError("simulated Supervisor interruption after cleanup")
+
+        dchunk.clear_active = remove_then_interrupt
+        try:
+            w.finish_last()
+            w.tick()
+        finally:
+            dchunk.clear_active = real_clear
+        self.assertEqual(w.row_()["state"], "ERROR")
+        self.assertIsNotNone(w.store.get(dchunk.run_start_key(w.row_()["id"])))
+        self.assertIsNone(dchunk.read_active(w.wt(), w.row_()))
+        self.assertTrue((w.wt() / dchunk.chunk_names(w.row_(), 1).view).is_file())
+
+        self.assertTrue(control.retry(w.store, "deepseek", "d"))
+        w.tick(2)
+        self.assertEqual((w.row_()["run_kind"], w.active()["chunk_no"]), ("d_chunk_new", 2))
+        self.assertEqual(w.adapter.launches[-1]["kind"], "start")
+        self.assertNotEqual(w.adapter.launches[-1].get("session"), "ses_old")
+        self.assertEqual(json.loads(w.store.get(dchunk.run_start_key(w.row_()["id"])))["chunk_no"], 2)
+        self.assertFalse((w.wt() / dchunk.chunk_names(w.row_(), 1).view).exists())
+
+    def test_repeated_cleanup_after_saved_prefix_is_idempotent(self):
+        w = DWorld(records=25)
+        self.addCleanup(w.tmp.cleanup)
+        w.start("single", "deepseek", "d")
+        w.ai()
+        w.tick()
+        w.finish_last()
+        w.tick()
+        b = w.row_()
+        dchunk.clear_active(w.wt(), b, 1)
+        self.assertFalse((w.wt() / dchunk.chunk_names(b, 1).active).exists())
+        self.assertFalse((w.wt() / dchunk.chunk_names(b, 1).view).exists())
+        self.assertTrue((w.wt() / dchunk.names(b).directory / "chunk-001.jsonl").is_file())
+
+    def test_damaged_saved_chunk_is_never_cleaned_or_advanced(self):
+        w = DWorld(records=50)
+        self.addCleanup(w.tmp.cleanup)
+        w.start("single", "deepseek", "d")
+        w.ai()
+        w.ai()
+        w.tick()
+        b = w.row_()
+        files = dchunk.chunk_names(b, 1)
+        w.finish_last()
+        (w.wt() / f"{files.directory}/chunk-001.jsonl").write_text("{ damaged\n")
+
+        problem = w.make_sup()._d_accept_saved(b)
+
+        self.assertIsNotNone(problem)
+        self.assertTrue((w.wt() / f"{files.directory}/chunk-001.jsonl").is_file())
+        self.assertTrue((w.wt() / files.active).is_file())
+        self.assertTrue((w.wt() / files.view).is_file())
+        self.assertEqual(len(w.adapter.launches), 1)
+
     def test_search_failed_pauses_before_any_ai(self):
         w = self.w
         w.runner.dchunk.failed = {1}
@@ -208,10 +333,10 @@ class SerialChunks(unittest.TestCase):
         w.tick()
         prompt = w.adapter.launches[-1]["prompt"]
         self.assertNotIn(prompts.VIEW_BEGIN, prompt)
-        self.assertIn("cat .warroom-scratch/d-001_01/active-chunk.p1of", prompt)
+        self.assertIn("cat .warroom-scratch/d-001_01/view-001.p1of", prompt)
         self.assertEqual("".join((w.wt() / p).read_text() for p in
                                  [l.split("`")[1].split()[1] for l in prompt.splitlines() if l.strip().startswith("- `cat ")]),
-                         (w.wt() / dchunk.names(w.row_()).view).read_text())
+                         (w.wt() / dchunk.chunk_names(w.row_(), 1).view).read_text())
 
 
 class SaveRejectedFix(unittest.TestCase):
@@ -238,7 +363,7 @@ class SaveRejectedFix(unittest.TestCase):
         fix = w.adapter.launches[-1]
         self.assertEqual((fix["kind"], w.kinds()[-1]), ("resume", "d_chunk_fix"))
         self.assertIn("Z needs every recorded search", fix["prompt"])
-        self.assertIn(".warroom-scratch/d-001_01/decisions.txt", fix["prompt"])
+        self.assertIn(".warroom-scratch/d-001_01/decision-001.txt", fix["prompt"])
         self.assertNotIn(prompts.VIEW_BEGIN, fix["prompt"])
         self.assertNotIn("{{", fix["prompt"])
         w.finish_last()
@@ -246,7 +371,7 @@ class SaveRejectedFix(unittest.TestCase):
         self.assertEqual(dchunk.verified_prefix(w.wt(), w.row_())[0], 1)
         self.assertEqual(w.kinds(), ["d_chunk_new", "d_chunk_fix", "d_chunk_new"])
         self.assertEqual(w.active()["chunk_no"], 2)
-        self.assertFalse((w.wt() / dchunk.names(w.row_()).rejected).exists())   # clear_active dropped it
+        self.assertFalse((w.wt() / dchunk.chunk_names(w.row_(), 1).rejected).exists())   # accepted chunk scratch was removed
 
     def test_repeated_rejection_stops_after_the_limit_and_extra_ticks_launch_nothing(self):
         w = self.w
@@ -525,6 +650,17 @@ class VerifiedPrefix(unittest.TestCase):
         self.assertIn("Candidates: 3 (9 empty senses)", body)
         self.assertIn("Candidate v1: validated", body)
 
+    def test_legacy_active_layout_is_preserved_and_blocked(self):
+        folder = self.folder
+        folder.mkdir(parents=True, exist_ok=True)
+        legacy = folder / "active-chunk.json"
+        legacy.write_text('{"chunk_no":1}\n')
+        (folder / "decisions.txt").write_text("legacy decisions\n")
+        with self.assertRaisesRegex(dchunk.DChunkError, "자동 이전·삭제 없이 보존"):
+            dchunk.read_active(self.wt, self.b)
+        self.assertEqual(legacy.read_text(), '{"chunk_no":1}\n')
+        self.assertEqual((folder / "decisions.txt").read_text(), "legacy decisions\n")
+
 
 class Prompts(unittest.TestCase):
     def test_exactly_one_of_view_or_pages_and_the_card_binds_the_save_call(self):
@@ -534,7 +670,7 @@ class Prompts(unittest.TestCase):
         with self.assertRaises(prompts.PromptError):
             prompts.d_chunk(b, 1, view="v\n", pages=["p"])
         card = prompts.d_chunk(b, 3, view="VIEW\n")
-        self.assertIn(".warroom-scratch/d-001_01/decisions.txt", card)
+        self.assertIn(".warroom-scratch/d-001_01/decision-003.txt", card)
         self.assertIn("d-chunk-cli.mjs save --in", card)
         self.assertIn("청크 003", card)
         self.assertNotIn("{{", card)
