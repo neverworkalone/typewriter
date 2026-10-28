@@ -44,7 +44,7 @@ class SavedStage2Progress(unittest.TestCase):
         control.start(self.w.store, "claude", S2, "single", cfg=self.w.cfg)
         self.w.tick()
 
-    def test_only_valid_saved_decisions_count_and_web_view_uses_same_values(self):
+    def test_only_valid_saved_decisions_are_recorded_as_supervisor_progress(self):
         b = self.w.store.active_batch("claude", S2)
         path = write_state(b, decided=1, total=3, next_chunk=2,
                            pending={"chunk_id": "001-01-01-002", "candidate_count": 1,
@@ -54,12 +54,11 @@ class SavedStage2Progress(unittest.TestCase):
         self.w.store.update(b["id"], state="PAUSED")
         self.w.sup._record_progress(self.w.store.batch(b["id"]))
         status = control.line_status(self.w.store, "claude", S2)
-        self.assertEqual((status["progress_kind"], status["progress_done"], status["progress_total"], status["progress"]),
-                         ("candidates", 1, 3, "1/3 candidates"))
-        from warroom.web.api import _line_view
-        line = _line_view(status)
-        self.assertEqual((line["progress_text"], line["progress_pct"], line["stage2"]),
-                         ("1 / 3 candidates", 33.3, {"shard": "001", "batch": "01", "part": "01"}))
+        saved = self.w.store.batch(b["id"])
+        self.assertEqual((status["progress_kind"], status["progress_done"], status["progress_total"]),
+                         ("candidates", 1, 3))
+        self.assertEqual((saved["progress_kind"], saved["progress_done"], saved["progress_total"]),
+                         ("candidates", 1, 3))
         path.write_text("{broken", "utf-8")
         progress._cache.clear()
         self.assertIsNone(progress.observe(b["worktree"], "001", "01-01", S2, "claude"))

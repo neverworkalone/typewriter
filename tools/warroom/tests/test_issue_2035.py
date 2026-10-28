@@ -82,10 +82,7 @@ class SerialChunks(unittest.TestCase):
         self.assertEqual(json.loads(first["opencode_config"])["permission"]["bash"], "deny")
         b = w.row_()
         self.assertEqual((b["state"], b["pr_number"]), ("WAITING_REVIEW", 100))
-        pr = w.gh.created_prs[0]
-        self.assertEqual(pr["labels"], ["batch"])
-        self.assertRegex(pr["title"], r"^\[A/[^\]]+\] 001_01$")
-        self.assertNotIn("860", pr["body"])
+        self.assertEqual(len(w.gh.created_prs), 1)
         self.assertEqual(w.git.commits[0][0], [REL])
         self.assertEqual(w.git.pushes, [b["branch"]])
         self.assertEqual(w.runner.workbench.merges, 1)

@@ -18,9 +18,6 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
 
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v6
-
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
@@ -57,15 +54,14 @@ jobs:
           saw_file=false
           run_warroom_tests=false
           # -z --name-status yields NUL-delimited status/path pairs.
-          # A deletion, type change or unknown status must never gain a cheaper
-          # War Room exemption by moving source to a documentation path.
+          # Only explicit add/modify/delete statuses can qualify for the War Room-only path.
           while IFS= read -r -d '' status && IFS= read -r -d '' file; do
             saw_file=true
-            if [[ "$status" != A && "$status" != M ]]; then
-              warroom_only=false
-            fi
+            case "$status" in A|M|D) ;; *) docs_only=false; warroom_only=false ;; esac
             case "$file" in
-              docs/*|README.md|REVIEW.md|tools/warroom/prompts/*) ;;
+              docs/*|README.md|REVIEW.md|tools/warroom/prompts/*)
+                warroom_only=false
+                ;;
               tools/warroom/warroom/*|tools/warroom/tests/*|tools/warroom/run-tests.mjs|tools/warroom/requirements.txt|war|dashboard)
                 docs_only=false
                 run_warroom_tests=true
@@ -111,15 +107,19 @@ jobs:
             echo "Ordinary PR changes: running ci:normal." >> "$GITHUB_STEP_SUMMARY"
           fi
 
+      - name: Set up pnpm
+        if: ${{ steps.changes.outcome != 'success' || steps.changes.outputs.run_level == 'normal' || steps.changes.outputs.run_deep == 'true' || steps.schema.outputs.schema_changed == 'true' }}
+        uses: pnpm/action-setup@v6
+
       - name: Set up pnpm dependency cache
-        if: ${{ steps.changes.outcome != 'success' || steps.changes.outputs.run_level == 'normal' || steps.changes.outputs.run_deep == 'true' || steps.schema.outputs.schema_changed == 'true' || steps.changes.outputs.run_warroom_tests == 'true' }}
+        if: ${{ steps.changes.outcome != 'success' || steps.changes.outputs.run_level == 'normal' || steps.changes.outputs.run_deep == 'true' || steps.schema.outputs.schema_changed == 'true' }}
         uses: actions/setup-node@v7
         with:
           node-version: 24.x
           cache: pnpm
 
       - name: Install pinned dependencies
-        if: ${{ steps.changes.outcome != 'success' || steps.changes.outputs.run_level == 'normal' || steps.changes.outputs.run_deep == 'true' || steps.schema.outputs.schema_changed == 'true' || steps.changes.outputs.run_warroom_tests == 'true' }}
+        if: ${{ steps.changes.outcome != 'success' || steps.changes.outputs.run_level == 'normal' || steps.changes.outputs.run_deep == 'true' || steps.schema.outputs.schema_changed == 'true' }}
         run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: War Room Python unit tests

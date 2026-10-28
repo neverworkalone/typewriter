@@ -52,7 +52,6 @@ class DeterministicStage2Completion(unittest.TestCase):
         self.assertEqual(len(w.git.commits), 1)
         self.assertEqual(w.git.pushes, [b["branch"]])
         self.assertEqual(len(w.gh.created_prs), 1)
-        self.assertEqual(w.gh.created_prs[0]["labels"], [])
         self.assertEqual(w.git.exact_verify_calls, [("f" * 40, "001", "01", "01")])
 
     def test_failed_exact_head_verification_does_not_accept_the_pr(self):

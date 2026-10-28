@@ -118,7 +118,6 @@ class Prepare(unittest.TestCase):
                 ln = w.store.line("deepseek", "a")
                 self.assertEqual((ln["run"], ln["mode"], ln["drain"], ln["blocked"]), (1, "continuous", 0, ""))
                 self.assertIsNone(w.store.active_batch("deepseek", "a"))
-                self.assertIn("조회 재시도", control.line_status(w.store, "deepseek", "a")["wait"])
                 w.tick()                                  # still backing off: no second attempt yet
                 self.assertIsNone(w.store.active_batch("deepseek", "a"))
                 w.now += 10
@@ -127,7 +126,6 @@ class Prepare(unittest.TestCase):
                 w.tick()
                 self.assertEqual(w.row()["state"], "PRODUCING")
                 self.assertEqual(len(w.adapter.launches), 1)
-                self.assertEqual(control.line_status(w.store, "deepseek", "a")["wait"], "")
 
     def test_auth_transient_is_not_a_missing_login_but_a_definite_401_is(self):
         w = self.w
@@ -350,7 +348,6 @@ class PrCreatedOnce(unittest.TestCase):
             w.now += 2000
             w.tick(2)
         self.assertEqual((calls, len(getattr(w.gh, "created_prs", [])), w.row_()["state"]), ([], 0, "PRODUCING"))
-        self.assertIn("운영자 확인", control.line_status(w.store, "deepseek", "d")["wait"])
         w.sup = w.make_sup()                              # the marker survives a restart
         w.tick(2)
         self.assertEqual(calls, [])

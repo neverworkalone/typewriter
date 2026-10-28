@@ -1,5 +1,4 @@
-// Runs the War Room Python unittest suite. Uses the War Room venv when present
-// (adds the Textual smoke test); otherwise plain python3 (core tests are stdlib-only).
+// Runs the Supervisor-focused War Room Python unittest suite, preferring the local venv when present.
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import path from 'node:path';

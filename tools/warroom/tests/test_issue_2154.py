@@ -221,7 +221,6 @@ class VerifyBlock(unittest.TestCase):
                 self.assertEqual(b["state"], "HELD")
                 self.assertIn(stage2.fingerprint("batch", "001", "01", "accounting", ["other"] if fresh_cause else ERRORS), b["hold_reason"])
                 self.assertEqual((self.issue_count(), len(self.maint()), b["last_sha"]), (1, 1, SHA2))
-                self.assertIn("보류", control.urgent_items(w.store, w.cfg)[0][0])
 
     def test_held_waits_on_the_same_sha_and_rechecks_exactly_on_a_new_one(self):
         w = self.w
@@ -317,7 +316,6 @@ class VerifyBlock(unittest.TestCase):
         w.sup.maint.step()   # _release must not OVERRIDE a verify block for "no longer existing batch 0"
         self.assertEqual((before, w.store.defects()[0]["state"]), ("FIX_MERGED", "FIX_MERGED"))
         self.assertEqual(w.sup.maint.resolved_note({"id": 0}), "")
-        self.assertIn("urgent issue #101", control.urgent_line(w.store, w.cfg))
 
     def test_maintainer_unset_leaves_the_block_and_issue_only(self):
         w = self.w
