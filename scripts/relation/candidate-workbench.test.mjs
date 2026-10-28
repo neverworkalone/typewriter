@@ -237,7 +237,7 @@ test('save-chunk reports every source-lemma self-repeat of a chunk at once, keep
   assert.equal((await save({ 'w004-s1': ['건축가', '건축 도면'] })).candidateCount, 2);
 });
 
-test('a compact save of a 136-sense chunk where every sense repeats its lemma keeps every alias inside the 1500-char tail', async (t) => {
+test('compact save removes every definite self-repeat and reports every affected alias', async (t) => {
   const context = await setup(t);
   for (const [index, record] of context.canonicalRows.slice(0, 50).entries()) {
     const extra = index < 36 ? 2 : 1;
@@ -252,13 +252,13 @@ test('a compact save of a 136-sense chunk where every sense repeats its lemma ke
   const inputPath = path.join(context.scratchDirectory, 'answer.tsv');
   await mkdir(context.scratchDirectory, { recursive: true });
   await writeFile(inputPath, `${lines.join('\n')}\n`);
-  await assert.rejects(saveCandidateChunk({ scratchDirectory: context.scratchDirectory, chunk: 1, inputPath, format: 'compact', repositoryDirectory: context.repositoryDirectory }), (error) => {
-    // The Supervisor keeps the last 1500 characters of the whitespace-collapsed diagnostic and picks the S<n> tokens in it.
-    const tail = error.message.split(/\s+/u).join(' ').slice(-1500);
-    const aliases = new Set(tail.match(/\bS[1-9]\d*\b/gu));
-    assert.deepEqual([...aliases].sort((a, b) => Number(a.slice(1)) - Number(b.slice(1))), Array.from({ length: 136 }, (_, i) => `S${i + 1}`));
-    return true;
-  });
+  const result = await saveCandidateChunk({ scratchDirectory: context.scratchDirectory, chunk: 1, inputPath, format: 'compact', repositoryDirectory: context.repositoryDirectory });
+  assert.equal(result.candidateCount, 0);
+  assert.equal(result.autoRemoved.count, 136);
+  assert.deepEqual(result.autoRemoved.items.map((item) => item.alias), Array.from({ length: 136 }, (_, i) => `S${i + 1}`));
+  assert.ok(result.autoRemoved.items.every((item) => item.reason === 'source lemma repeat'));
+  const saved = await readFile(path.join(context.scratchDirectory, 'candidates/chunk-001.jsonl'), 'utf8');
+  assert.ok(saved.split('\n').filter(Boolean).every((line) => JSON.parse(line).senses.every((sense) => sense.candidates.length === 0)));
 });
 
 test('patch rejects unknown IDs and absent removals, and writes nothing on failure', async (t) => {
@@ -478,7 +478,7 @@ test('the default JSON save still rejects a normalized duplicate that compact re
   await assert.rejects(saveCandidateChunk({ scratchDirectory: context.scratchDirectory, chunk: 1, inputPath, repositoryDirectory: context.repositoryDirectory }), /duplicates candidate/u);
 });
 
-test('compact save-chunk fails closed on every grammar and alias defect and writes nothing', async (t) => {
+test('compact save-chunk fails closed on grammar and alias defects and writes nothing', async (t) => {
   const { context, save, body } = await compactChunkSetup(t);
   const savedPath = path.join(context.scratchDirectory, 'candidates/chunk-001.jsonl');
   const cases = [
@@ -494,16 +494,55 @@ test('compact save-chunk fails closed on every grammar and alias defect and writ
     ['lowercase alias', body({ 5: 's5\t별빛' }), /S<n> alias/u],
     ['space instead of tab', body({ 5: 'S5 별빛' }), /S<n> alias/u],
     ['blank line', body({ 5: 'S5\n' }), /S<n> alias/u],
-    ['empty candidate field', body({ 5: 'S5\t\t별빛' }), /empty candidate field/u],
     ['untrimmed candidate', body({ 5: 'S5\t 별빛' }), /non-empty trimmed string/u],
     ['carriage return', body().replace(/\n/gu, '\r\n'), /line breaks only/u],
-    ['source lemma repeat', body({ 5: 'S5\t표제어 4' }), /repeats source lemma/u],
   ];
   for (const [name, text, pattern] of cases) {
     await assert.rejects(save(text), pattern, name);
     await assert.rejects(readFile(savedPath, 'utf8'), { code: 'ENOENT' }, `${name} must not write a chunk`);
   }
   await assert.rejects(save(body(), 99), /outside this batch/u);
+});
+
+test('compact save treats empty fields as no candidates and removes only invalid values from the same answer', async (t) => {
+  const context = await setup(t);
+  await prepare(context, 50);
+  const view = await readCandidateChunkCompact({ scratchDirectory: context.scratchDirectory, chunk: 1, repositoryDirectory: context.repositoryDirectory });
+  const senseLines = view.text.split('\n').filter((line) => /^S[1-9]\d*\t/u.test(line));
+  const aliases = senseLines.map((line) => line.split('\t', 1)[0]);
+  const lemmaByAlias = new Map(senseLines.map((line) => { const [alias, , lemma] = line.split('\t'); return [alias, lemma]; }));
+  const selfRepeatAliases = new Set(['S4', 'S13', 'S37', 'S46']);
+  const lines = ['chunk 001', ...aliases.map((alias) => alias === 'S15' ? 'S15\t' : alias === 'S33' ? 'S33\t' : alias === 'S2' ? 'S2\t夜\t夜\t\t光' : selfRepeatAliases.has(alias) ? `${alias}\t${lemmaByAlias.get(alias)}` : alias)];
+  const inputPath = path.join(context.scratchDirectory, 'blank-fields.tsv');
+  await mkdir(context.scratchDirectory, { recursive: true });
+  await writeFile(inputPath, `${lines.join('\n')}\n`);
+  const result = await saveCandidateChunk({ scratchDirectory: context.scratchDirectory, chunk: 1, inputPath, format: 'compact', repositoryDirectory: context.repositoryDirectory });
+  assert.deepEqual([result.recordCount, result.senseCount, result.candidateCount], [50, 51, 2]);
+  assert.equal(result.duplicatesRemoved, 1);
+  assert.equal(result.autoRemoved.count, 8);
+  assert.deepEqual(result.autoRemoved.items.filter((item) => item.alias === 'S15' || item.alias === 'S33').map((item) => [item.alias, item.candidate]), [['S15', ''], ['S33', '']]);
+  assert.deepEqual(result.autoRemoved.items.filter((item) => item.alias === 'S2').map((item) => item.reason), ['normalized duplicate', 'empty candidate field']);
+  assert.deepEqual(result.autoRemoved.items.filter((item) => selfRepeatAliases.has(item.alias)).map((item) => [item.alias, item.candidate, item.reason]),
+    [...selfRepeatAliases].map((alias) => [alias, lemmaByAlias.get(alias), 'source lemma repeat']));
+  const saved = (await readFile(path.join(context.scratchDirectory, 'candidates/chunk-001.jsonl'), 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
+  const candidates = new Map(saved.flatMap((row) => row.senses.map((sense) => [sense.sense_id, sense.candidates])));
+  assert.deepEqual(candidates.get(view.text.split('\n').find((line) => line.startsWith('S15\t')).split('\t')[1]), []);
+  assert.deepEqual(candidates.get(view.text.split('\n').find((line) => line.startsWith('S33\t')).split('\t')[1]), []);
+  assert.deepEqual(candidates.get(view.text.split('\n').find((line) => line.startsWith('S2\t')).split('\t')[1]), ['夜', '光']);
+  for (const alias of selfRepeatAliases) {
+    assert.deepEqual(candidates.get(view.text.split('\n').find((line) => line.startsWith(`${alias}\t`)).split('\t')[1]), []);
+  }
+  for (let number = 2; number <= 10; number += 1) {
+    const start = (number - 1) * 50;
+    const input = await writeInput(context, rowsFor(context.canonicalRows, start, start + 50), `empty-${number}.jsonl`);
+    await saveCandidateChunk({ scratchDirectory: context.scratchDirectory, chunk: number, inputPath: input, repositoryDirectory: context.repositoryDirectory });
+  }
+  const merged = await mergeCandidateBatch({
+    scratchDirectory: context.scratchDirectory,
+    outPath: path.join(context.scratchDirectory, 'merged.jsonl'),
+    repositoryDirectory: context.repositoryDirectory,
+  });
+  assert.deepEqual(merged.validation, { recordCount: 500, senseCount: 501, candidateCount: 2, emptySenseCount: 500 });
 });
 
 test('compact save-chunk allows an independent compound of the source lemma and a separate Canonical lemma', async (t) => {

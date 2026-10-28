@@ -1987,6 +1987,27 @@ class Supervisor:
         self.store.log(b["id"], f"A/B 청크 {chunk['number']:03d} 저장을 확인했습니다. 다음 단계는 새 세션으로 실행합니다.")
         return self._launch_ab_next(self.store.batch(b["id"]))
 
+    def _ab_log_auto_removals(self, b, chunk: dict, save_result: str) -> None:
+        """Record exact compact-save cleanup only when the CLI reports removals."""
+        if '"items":[]' in save_result:
+            return
+        try:
+            result = json.loads(save_result)
+            cleanup = result.get("autoRemoved", {})
+            items = cleanup.get("items", [])
+            count = int(cleanup.get("count", len(items)))
+        except (TypeError, ValueError, AttributeError):
+            return
+        if count <= 0 or not items:
+            return
+        details = "; ".join(f"{item['alias']} {json.dumps(item['candidate'], ensure_ascii=False)} ({item['reason']})"
+                             for item in items if isinstance(item, dict) and {"alias", "candidate", "reason"} <= item.keys())
+        self.store.log(b["id"], f"A/B 청크 {chunk['number']:03d} 자동 정제 {count}개: {details}", "warn")
+
+    def _ab_log_candidate_discards(self, b, chunk: dict, rejected: list[dict]) -> None:
+        details = "; ".join(f"{item['alias']} {json.dumps(item['candidate'], ensure_ascii=False)} ({item['reason']})" for item in rejected)
+        self.store.log(b["id"], f"A/B 청크 {chunk['number']:03d} 정정 3회 뒤 식별된 부적격 후보 {len(rejected)}개를 제거하고 재검증합니다: {details}", "warn")
+
     def _run_ok_ab_chunk(self, b) -> None:
         """A zero exit is not success: the chunk counts only when the run's FINAL answer parsed, saved and the exact file exists."""
         problem = self._stage2_chunk_boundary_problem(b, stage1ab.run_start_key(b["id"]))
@@ -2014,6 +2035,7 @@ class Supervisor:
         except Exception as e:
             return self._fail(b, "ERROR", f"청크 종료 후 GitHub/Git 확인 실패: {e}. worktree를 보존합니다.")
         ok, diag = False, ""
+        submitted_lines = None
         try:
             body = stage1ab.extract_block(self._adapter(b["producer"]).final_answer(Path(b["log_file"])), chunk["number"])
             revised = stage1ab.split_rows(body)
@@ -2025,8 +2047,10 @@ class Supervisor:
                     answer_file.write_text(stage1ab.compact_text(chunk["number"], stage1ab.saved_answer_lines(wt, b, chunk)), "utf-8")
                 previous = stage1ab.split_rows(answer_file.read_text("utf-8").split("\n")[1:-1])
             lines = stage1ab.merge_answer(previous, st["requested"], revised)
+            submitted_lines = lines
             ok, diag = stage1ab.save(self.runner, self.env, wt, b, chunk, lines)
             if ok:
+                self._ab_log_auto_removals(b, chunk, diag)
                 if not stage1ab.chunk_saved(wt, b, chunk):
                     return self._fail(b, "ERROR", "save-chunk가 성공했지만 저장 파일이 chunk의 Canonical ID와 맞지 않습니다. 보존합니다.")
                 return self._ab_accept(b, chunk, repair)
@@ -2035,8 +2059,32 @@ class Supervisor:
             diag = str(e)   # an unusable answer: ask the same rows again
         except (OSError, ValueError) as e:
             return self._fail(b, "ERROR", f"답변 처리 중 파일 오류: {e}. 보존합니다.")
-        st["tries"] += 1
         st["problem"] = diag[:1500]
+        if st["tries"] >= stage1ab.MAX_TRIES:
+            rejected = stage1ab.rejected_candidates(diag, rows, submitted_lines or [])
+            if not rejected:
+                st["tries"] = stage1ab.MAX_TRIES + 1
+                stage1ab.save_state(self.store, b["id"], chunk["number"], st)
+                self.store.log(b["id"], f"A/B 청크 {chunk['number']:03d} 마지막 정정 저장 거부: {diag[:200]}", "warn")
+                return self._fail(b, "ERROR", f"청크 {chunk['number']:03d}의 정정 3회 뒤에도 저장되지 않았고 제거할 부적격 후보를 정확히 특정하지 못했습니다. 실제 저장 오류: {diag}. 답변과 상태를 보존합니다.")
+            try:
+                cleaned = stage1ab.remove_rejected_candidates(submitted_lines or [], rejected)
+                saved, final_diag = stage1ab.save(self.runner, self.env, wt, b, chunk, cleaned)
+            except (stage1ab.ABChunkError, OSError, ValueError) as e:
+                st["tries"] = stage1ab.MAX_TRIES + 1
+                stage1ab.save_state(self.store, b["id"], chunk["number"], st)
+                return self._fail(b, "ERROR", f"청크 {chunk['number']:03d}의 정정 3회 뒤 후보 정리 실패: {e}. 기존 오류: {diag}. 답변과 상태를 보존합니다.")
+            self._ab_log_candidate_discards(b, chunk, rejected)
+            if not saved:
+                st["tries"] = stage1ab.MAX_TRIES + 1
+                st["problem"] = final_diag[:1500]
+                stage1ab.save_state(self.store, b["id"], chunk["number"], st)
+                return self._fail(b, "ERROR", f"청크 {chunk['number']:03d}의 정정 3회 뒤 정확히 식별된 후보를 제거했지만 동일 save-chunk 검증이 실패했습니다: {final_diag}. 답변과 상태를 보존합니다.")
+            self._ab_log_auto_removals(b, chunk, final_diag)
+            if not stage1ab.chunk_saved(wt, b, chunk):
+                return self._fail(b, "ERROR", "후보 제거 후 save-chunk가 성공했지만 저장 파일이 chunk의 Canonical ID와 맞지 않습니다. 보존합니다.")
+            return self._ab_accept(b, chunk, repair)
+        st["tries"] += 1
         stage1ab.save_state(self.store, b["id"], chunk["number"], st)
         self.store.log(b["id"], f"A/B 청크 {chunk['number']:03d} 저장 거부 {st['tries']}회: {diag[:200]}", "warn")
         self.store.delete(stage1ab.run_start_key(b["id"]))

@@ -21,12 +21,13 @@ from .progress import SCRATCH
 METHODS = ("a", "b")
 CLI = "scripts/relation/candidate-workbench.mjs"
 CHUNK_SIZE = 50
-MAX_TRIES = 2          # same-session corrections of one chunk after its first answer
+MAX_TRIES = 3          # same-session corrections of one chunk after its first answer
 PR_LABEL = "batch"
 INLINE_MAX_PROMPT_BYTES = 100_000   # whole prompt as one argv element (Linux MAX_ARG_STRLEN 128 KiB, kept well below)
 _ALIAS = re.compile(r"\bS[1-9]\d*\b")
 _SENSE = re.compile(r"sense_id ([^\s,;:]+)")
 _RECORD = re.compile(r"record_id ([^\s,;:]+)")
+_CANDIDATE_VALUE = re.compile(r'\bcandidate(?:\s+\d+)?\s+("(?:\\.|[^"\\])*")')
 _FENCE = re.compile(r"^\s*```\w*\s*$")
 _VALID = re.compile(r'"recordCount":(\d+),"senseCount":(\d+),"candidateCount":(\d+),"emptySenseCount":(\d+)')
 
@@ -276,6 +277,50 @@ def rejected_aliases(message: str, rows: list[list[str]]) -> list[str] | None:
     return sorted(found, key=lambda a: int(a[1:])) or None
 
 
+def rejected_candidates(message: str, rows: list[list[str]], answer_lines: list[str]) -> list[dict]:
+    """Exact candidate strings named by the current save diagnostic and present on its uniquely named sense row."""
+    fields = {}
+    for line in answer_lines:
+        alias, *candidates = line.split("\t")
+        fields[alias] = candidates
+    rejected = []
+    seen = set()
+    for line in message.splitlines():
+        aliases = rejected_aliases(line, rows) or []
+        if len(aliases) != 1:
+            continue
+        alias = aliases[0]
+        for match in _CANDIDATE_VALUE.finditer(line):
+            try:
+                candidate = json.loads(match.group(1))
+            except ValueError:
+                continue
+            key = (alias, candidate)
+            if isinstance(candidate, str) and candidate in fields.get(alias, []) and key not in seen:
+                seen.add(key)
+                rejected.append({"alias": alias, "candidate": candidate, "reason": line.strip()})
+    return rejected
+
+
+def remove_rejected_candidates(answer_lines: list[str], rejected: list[dict]) -> list[str]:
+    """Remove only diagnostic-named exact fields, keeping every other answer row and candidate unchanged."""
+    by_alias = {}
+    for item in rejected:
+        by_alias.setdefault(item["alias"], []).append(item["candidate"])
+    cleaned = []
+    for line in answer_lines:
+        alias, *candidates = line.split("\t")
+        for candidate in by_alias.pop(alias, []):
+            try:
+                candidates.remove(candidate)
+            except ValueError as e:
+                raise ABChunkError(f"후보 {candidate!r}가 별칭 {alias}의 현재 답변에 없습니다") from e
+        cleaned.append(alias + "".join("\t" + candidate for candidate in candidates))
+    if by_alias:
+        raise ABChunkError(f"부적격 후보 별칭이 현재 답변에 없습니다: {', '.join(by_alias)}")
+    return cleaned
+
+
 def save(runner, env, worktree, b, chunk: dict, lines: list[str]) -> tuple[bool, str]:
     """Write answer-NNN.tsv and run the existing `save-chunk --format compact`. (ok, diagnostic)."""
     rel = answer_path(b, chunk["number"])
@@ -286,7 +331,7 @@ def save(runner, env, worktree, b, chunk: dict, lines: list[str]) -> tuple[bool,
     tmp.replace(path)
     res = cli(runner, env, worktree, "save-chunk", "--scratch-dir", names(b).directory, "--chunk", str(chunk["number"]),
               "--format", "compact", "--input", rel)
-    return res.ok, _tail(res)
+    return res.ok, (res.out if res.ok else _tail(res))
 
 
 def saved_answer_lines(worktree, b, chunk: dict) -> list[str]:

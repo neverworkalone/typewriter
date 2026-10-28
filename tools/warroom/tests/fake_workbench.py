@@ -110,6 +110,12 @@ class FakeWorkbenchCli:
             return Result(1, "", f'compact answer must start with "chunk {n:03d}"')
         senses = [(rec, s) for rec in src for s in rec["senses"]]
         answered = {}
+        source_lines = {}
+        record_index = 0
+        for rec in src:
+            record_index += 1
+            for s in rec["senses"]:
+                source_lines[f"S{len(source_lines) + 1}"] = (record_index, rec, s)
         for k, line in enumerate(lines[1:], 2):
             alias, *cands = line.split("\t")
             if not re.fullmatch(r"S[1-9]\d*", alias):
@@ -122,12 +128,25 @@ class FakeWorkbenchCli:
         missing = [f"S{i}" for i in range(1, len(senses) + 1) if f"S{i}" not in answered]
         if missing:
             return Result(1, "", f"compact answer for chunk {n:03d} is missing alias(es): {', '.join(missing)}")
-        repeats = [(f"S{i}", f'candidate "{c}" repeats source lemma "{rec["lemma"]}"')
-                   for i, (rec, s) in enumerate(senses, 1) for c in answered[f"S{i}"] if c == rec["lemma"]]
-        if repeats:                                                   # like the real validator: every repeat, ids last
-            ids = list(dict.fromkeys(sid for sid, _ in repeats))
-            return Result(1, "", "\n".join([f"sense_id {senses[int(a[1:]) - 1][1]['id']} {text}" for a, text in repeats[:5]]
-                                           + [f"chunk {n:03d} source lemma repeat in {len(ids)} sense(s): " + " ".join(ids)]))
+        auto_removed = []
+        for alias, (record_index, rec, sense) in source_lines.items():
+            kept, seen = [], set()
+            for index, candidate in enumerate(answered[alias], 1):
+                reason = None
+                if candidate == "":
+                    reason = "empty candidate field"
+                elif " ".join(candidate.split()).casefold() in seen:
+                    reason = "normalized duplicate"
+                elif candidate == rec["lemma"]:
+                    reason = "source lemma repeat"
+                if reason:
+                    auto_removed.append({"alias": alias, "senseId": sense["id"], "candidate": candidate, "reason": reason})
+                    continue
+                if candidate.strip() != candidate:
+                    return Result(1, "", f'chunk {n:03d} input line {record_index} record_id {rec["id"]} sense_id {sense["id"]} candidate {index} {json.dumps(candidate, ensure_ascii=False)} must be a non-empty trimmed string')
+                seen.add(" ".join(candidate.split()).casefold())
+                kept.append(candidate)
+            answered[alias] = kept
         (base / "candidates").mkdir(parents=True, exist_ok=True)
         rows, i = [], 0
         for rec in src:
@@ -139,7 +158,8 @@ class FakeWorkbenchCli:
         tmp = base / "candidates" / (chunk["file"] + ".tmp")
         tmp.write_text("\n".join(rows) + "\n", "utf-8")
         tmp.replace(base / "candidates" / chunk["file"])
-        return Result(0, json.dumps({"chunk": n, "duplicatesRemoved": 0}))
+        return Result(0, json.dumps({"chunk": n, "duplicatesRemoved": sum(item["reason"] == "normalized duplicate" for item in auto_removed),
+                                     "autoRemoved": {"count": len(auto_removed), "items": auto_removed}}, ensure_ascii=False))
 
     def _merge(self, argv, base, cwd):
         if self.merge_error:
