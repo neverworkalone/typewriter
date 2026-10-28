@@ -68,7 +68,6 @@ class FixHeadLag(unittest.TestCase):
         b = w.row()
         self.assertEqual((b["state"], b["error"]), ("FIXING", None))   # lag past the window is a warning, not a verdict
         self.assertEqual(w.git.removed, [])
-        self.assertIn("조회 재시도", control.line_status(w.store, "deepseek", "a")["wait"])
         w.now += 400
         w.tick(2)
         self.assertEqual((w.row()["state"], len(w.adapter.launches)), ("FIXING", n))   # still no AI

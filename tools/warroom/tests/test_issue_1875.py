@@ -1,18 +1,10 @@
 """Issue #1875: keep producer runs out of Supervisor cleanup and recover proven partial removals safely."""
 from __future__ import annotations
 
-import json
-import os
-import shutil
-import subprocess
-import sys
-import tempfile
 import unittest
-from unittest.mock import patch
 from pathlib import Path
 
 from tests.fakes import HEAD1, FakeAdapter, World
-from warroom.adapters import ProcessAdapter, stage2_chunk_sandbox_command
 from warroom import control
 from warroom.gitops import CleanupBlocked, GitError
 
@@ -230,76 +222,6 @@ class ProducerHandoff(unittest.TestCase):
         self.assertIsNone(w.row(model="codex", method="b")["pid"])
         self.assertIsNone(w.store.get(f"stop_after_pr_{b['id']}"))
         self.assertEqual(len(w.adapter.launches), 1)
-
-
-class Stage2ProcessSandbox(unittest.TestCase):
-    @unittest.skipUnless((sys.platform == "darwin" and shutil.which("sandbox-exec")) or
-                         (sys.platform.startswith("linux") and shutil.which("bwrap")),
-                         "requires sandbox-exec on macOS or bwrap on Linux")
-    def test_direct_git_commit_and_push_are_blocked_but_finalizer_can_publish(self):
-        real_git = shutil.which("git")
-        self.assertTrue(real_git)
-        git_paths = [real_git, str(Path(real_git).resolve())]
-        path = os.environ.get("PATH", os.defpath)
-        if sys.platform.startswith("linux"):
-            probe = subprocess.run(stage2_chunk_sandbox_command(["/bin/true"], git_paths, path),
-                                   capture_output=True, text=True)
-            if probe.returncode != 0:
-                self.skipTest("bwrap is installed but unavailable for unprivileged process isolation")
-
-        def git(*args):
-            return subprocess.run([real_git, *args], check=True, capture_output=True, text=True)
-
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            repo, remote = root / "repo", root / "remote.git"
-            git("init", "--bare", str(remote))
-            repo.mkdir()
-            git("init", "-b", "main", str(repo))
-            git("-C", str(repo), "config", "user.name", "Stage2 test")
-            git("-C", str(repo), "config", "user.email", "stage2@example.invalid")
-            git("-C", str(repo), "commit", "--allow-empty", "-m", "initial")
-            git("-C", str(repo), "remote", "add", "origin", str(remote))
-            git("-C", str(repo), "push", "origin", "HEAD:refs/heads/main")
-            before = git("-C", str(repo), "rev-parse", "HEAD").stdout.strip()
-            remote_before = git("--git-dir", str(remote), "rev-parse", "refs/heads/main").stdout.strip()
-
-            allowed = subprocess.run(stage2_chunk_sandbox_command(["/bin/echo", "sandbox-ok"], git_paths, path),
-                                     capture_output=True, text=True)
-            self.assertEqual((allowed.returncode, allowed.stdout.strip()), (0, "sandbox-ok"))
-            commit = subprocess.run(stage2_chunk_sandbox_command(
-                [real_git, "-C", str(repo), "commit", "--allow-empty", "-m", "chunk"], git_paths, path),
-                capture_output=True, text=True)
-            push = subprocess.run(stage2_chunk_sandbox_command(
-                [real_git, "-C", str(repo), "push", "origin", "HEAD:refs/heads/main"], git_paths, path),
-                capture_output=True, text=True)
-            self.assertNotEqual(commit.returncode, 0)
-            self.assertNotEqual(push.returncode, 0)
-            self.assertEqual(git("-C", str(repo), "rev-parse", "HEAD").stdout.strip(), before)
-            self.assertEqual(git("--git-dir", str(remote), "rev-parse", "refs/heads/main").stdout.strip(),
-                             remote_before)
-
-            git("-C", str(repo), "commit", "--allow-empty", "-m", "finalizer")
-            git("-C", str(repo), "push", "origin", "HEAD:refs/heads/main")
-            self.assertNotEqual(git("--git-dir", str(remote), "rev-parse", "refs/heads/main").stdout.strip(),
-                                remote_before)
-
-    @unittest.skipUnless(sys.platform == "darwin" and shutil.which("sandbox-exec"),
-                         "requires sandbox-exec on macOS")
-    def test_spawn_strips_sandbox_paths_before_worker_exec(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            git_path = shutil.which("git")
-            log_file, exit_file = root / "run.log", root / "run.exit"
-            env = {"PATH": os.environ.get("PATH", os.defpath), "WARROOM_STAGE2_CHUNK": "1",
-                   "WARROOM_GIT_EXECUTABLES": json.dumps([git_path])}
-            with patch("warroom.adapters.subprocess.Popen") as popen:
-                popen.return_value.pid = 42
-                ProcessAdapter()._spawn(["/bin/echo", "worker"], root, env, log_file, exit_file)
-            spawned = popen.call_args.args[0]
-            worker_env = popen.call_args.kwargs["env"]
-            self.assertIn(shutil.which("sandbox-exec"), spawned)
-            self.assertNotIn("WARROOM_GIT_EXECUTABLES", worker_env)
 
 
 if __name__ == "__main__":

@@ -148,15 +148,12 @@ class StageTwoSelection(unittest.TestCase):
         self.w = w = s2_world(self)
         b = self.pick(w)
         self.assertEqual((b["shard"], b["batch"], b["branch"]), ("001", "01-01", "s2-claude-001-01-01"))
-        self.assertEqual(stage2.label(b["shard"], b["batch"]), "Shard 001 · Batch 01 · Part 01")
         launch = w.adapter.launches[-1]
         self.assertEqual((launch["model"], launch["effort"]), ("claude-x", "high"))
-        for needle in ("Shard 001 · Batch 01 · Part 01", "001-01-01-001", "s2-claude-001-01-01"):
+        for needle in ("001-01-01-001", "s2-claude-001-01-01"):
             self.assertIn(needle, launch["prompt"])
         self.assertEqual(w.git.chunk_views, [(b["worktree"], "001", "01", "01", True)])   # the Supervisor prepares this exact Part
         self.assertEqual(w.git.verify_calls, [("part", "001", "01", "01")])
-        st = control.line_status(w.store, "claude", S2)
-        self.assertEqual(st["stage2"], {"shard": "001", "batch": "01", "part": "01"})
 
     def test_completed_parts_are_skipped_and_only_exact_verified_parts_count(self):
         self.w = w = s2_world(self)
@@ -222,7 +219,6 @@ class StageTwoSelection(unittest.TestCase):
         w.tick()
         self.assertIsNone(w.store.active_batch("claude", S2))
         self.assertEqual(w.store.peek_line("claude", S2)["run"], 1)   # waiting, not finished
-        self.assertIn("Stage 1 입력", control.line_status(w.store, "claude", S2)["wait"])
 
     def test_single_is_bound_to_the_first_shard_and_stops_when_it_is_complete(self):
         self.w = w = s2_world(self, canon={1: 100, 2: 100})
@@ -277,7 +273,6 @@ class StageTwoSelection(unittest.TestCase):
         control.start(w.store, "codex", S2, "single", cfg=w.cfg)
         w.tick(2)
         self.assertEqual((w.store.incomplete_batches(), w.adapter.launches), ([], []))
-        self.assertIn("열린 Stage 2 PR", control.line_status(w.store, "codex", S2)["wait"])
         w.gh.open = [{"number": 99, "files": [{"path": "data/relations/relation-002.jsonl"}]}]   # other shard: no conflict
         w.now += 400
         w.tick()

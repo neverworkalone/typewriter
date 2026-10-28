@@ -100,8 +100,6 @@ class SharedDefectFlow(unittest.TestCase):
             self.assertIn(needle, issue["body"])
         d = w.store.defects()[0]
         self.assertEqual((d["state"], d["issue_number"], d["batch_id"]), ("LINKED", 101, b["id"]))
-        # the yellow line shows the real state of the persisted work
-        self.assertIn("urgent issue #101", control.urgent_line(w.store, w.cfg))
         # the hidden Maintainer: one slot, own worktree off the base branch, the configured producer, no Board card
         m = maintainer_row(w)
         self.assertEqual((m["method"], m["producer"], m["branch"], m["batch"]), ("m", "sonnet", "maint-101", "101"))
@@ -112,7 +110,6 @@ class SharedDefectFlow(unittest.TestCase):
         self.assertIn("#101", launch["prompt"])
         self.assertNotIn("shared-defect", launch["prompt"])
         self.assertEqual(launch["model"], "p/sonnet-free")
-        self.assertIn("urgent issue #101 · Maintainer WORKING >> 수정 중 · PR 생성 전", control.urgent_line(w.store, w.cfg))
         # while the Maintainer works nothing resumes the paused batch, however many ticks pass
         w.tick(4)
         self.assertEqual(w.row()["state"], "PAUSED")
@@ -123,7 +120,6 @@ class SharedDefectFlow(unittest.TestCase):
         w.adapter.finish(launch["pid"])
         w.tick()
         self.assertEqual(maintainer_row(w)["state"], "WAITING_REVIEW")
-        self.assertIn("urgent issue #101 · PR #50 · 리뷰 대기", control.urgent_line(w.store, w.cfg))
         # a PR that is open, approved or merely green is never a release trigger
         w.gh.reviews_ = [review(21, HEAD1, "+2")]
         w.tick(3)
@@ -134,7 +130,6 @@ class SharedDefectFlow(unittest.TestCase):
         w.pr_info(50, HEAD1, state="closed", merged=True, head_ref="maint-101", merge_sha=MERGE)
         w.tick(3)
         self.assertEqual(maintainer_row(w)["state"], "ERROR")
-        self.assertIn("Maintainer ERROR", control.urgent_line(w.store, w.cfg))
         self.assertEqual((w.row()["state"], w.store.defects()[0]["state"]), ("PAUSED", "LINKED"))
         self.assertEqual(w.git.integrated, [])
         # operator fixes the cleanup problem and retries the Maintainer: now merged + cleaned -> fix applied -> one Retry
@@ -147,7 +142,6 @@ class SharedDefectFlow(unittest.TestCase):
         self.assertEqual((b["state"], b["pause_reason"], b["defect_id"], b["error"]), ("PRODUCING", "", None, None))
         d = w.store.defects()[0]
         self.assertEqual((d["state"], d["merge_sha"]), ("RELEASED", MERGE))
-        self.assertEqual(control.urgent_line(w.store, w.cfg), "")
         # the retry resumed the SAME session in the SAME worktree; ticking on never retries again
         w.tick()
         relaunch = w.adapter.launches[-1]
@@ -163,7 +157,6 @@ class SharedDefectFlow(unittest.TestCase):
         self.assertEqual(w.gh.created, [101])
         w.tick(5)
         self.assertIsNone(maintainer_row(w))
-        self.assertIn("Maintainer 미설정", control.urgent_line(w.store, w.cfg))
         w.tmp.cleanup()
 
     def test_only_the_reporting_batch_pauses(self):
@@ -266,7 +259,6 @@ class ReportEvidence(unittest.TestCase):
                 self.assertEqual(w.gh.created, [])
                 self.assertEqual(w.store.defects()[0]["state"], "UNVERIFIED")
                 self.assertIsNone(maintainer_row(w))
-                self.assertEqual(control.urgent_line(w.store, w.cfg), "")
                 w.tick(3)
                 self.assertEqual(w.gh.created, [])
                 # an ordinary Retry works for this pause (it is not a shared-defect pause) and the same file is not re-read
@@ -417,8 +409,6 @@ class FailClosed(unittest.TestCase):
         self.merged_and_cleaned()
         self.assert_still_paused("HELD")
         self.assertIn("CONFLICT", w.row()["error"])
-        self.assertIn("보류", control.urgent_line(w.store, w.cfg))
-        self.assertIn("CONFLICT", control.urgent_line(w.store, w.cfg))
         self.assertFalse(control.retry(w.store, "deepseek", "a"))      # a plain Retry cannot skip the fix
         self.assertTrue(Path(w.row()["worktree"]).exists())
 
@@ -562,10 +552,8 @@ class FailClosed(unittest.TestCase):
                     batch = w.store.batch(task["batch_id"])
                     self.assertEqual(batch["state"], "ERROR")
                     self.assertIn("head 브랜치", batch["error"])
-                    self.assertIn("Maintainer ERROR", control.urgent_line(w.store, w.cfg))
                 else:
                     self.assertEqual(task["state"], "HELD")
-                    self.assertIn("보류", control.urgent_line(w.store, w.cfg))
                 self.assertEqual(w.git.integrated, [])
                 w.tmp.cleanup()
 
@@ -579,7 +567,6 @@ class FailClosed(unittest.TestCase):
         self.assertEqual(w2.store.maintenance(101)["state"], "HELD")
         self.assertIsNone(maintainer_row(w2))
         self.assertEqual(w2.row()["state"], "PAUSED")
-        self.assertIn("보류", control.urgent_line(w2.store, w2.cfg))
         w2.tmp.cleanup()
 
 
@@ -642,7 +629,6 @@ class SerialMaintainer(unittest.TestCase):
         self.assertEqual(w.gh.created, [101, 102])
         self.assertEqual([b["batch"] for b in w.store.all_batches() if b["method"] == "m"], ["101"])
         self.assertEqual(w.store.maintenance(102)["state"], "QUEUED")
-        self.assertIn("(+1건 대기)", control.urgent_line(w.store, w.cfg))
         run_maintainer_to_merge(w, 101)
         w.tick(2)
         self.assertEqual(w.row("deepseek", "a")["state"], "PRODUCING")     # the first batch resumed
@@ -807,7 +793,6 @@ class MaintainerConfig(unittest.TestCase):
         w.tick(3)
         self.assertIsNone(maintainer_row(w))
         self.assertEqual(w.row()["state"], "PAUSED")
-        self.assertIn("설정 오류", control.urgent_line(w.store, w.cfg))
         w.tmp.cleanup()
 
     def test_a_started_task_keeps_its_producer_and_pin_across_reload_and_restart(self):

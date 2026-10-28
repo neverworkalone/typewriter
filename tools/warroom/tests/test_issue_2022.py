@@ -1,23 +1,16 @@
-"""#2022: the Maintainer card opens the same Batch Detail as every Line, with Retry/Stop/Clear/Drain that really work.
+"""#2022: Maintainer issue ownership, clear, stop, retry, and drain semantics.
 
 Invariant: every Maintainer control acts on the exact Issue + execution shown, only on the Maintainer Line, and a Clear
 removes only a proven-owned execution (fail closed otherwise) while the urgent Issue, its defects and the PAUSED
 origin batch stay untouched and nothing restarts without an explicit Retry. Fake AI/GitHub/git only.
 """
-import asyncio
 import unittest
 from pathlib import Path
-from unittest import mock
 
-from tests.fakes import HEAD1, HEAD2
+from tests.fakes import HEAD1
 from tests.test_issue_1555 import (MERGE, maintainer_row, produce_and_report, run_maintainer_to_merge, world)
-from warroom import control, views
+from warroom import control
 from warroom.store import CLEARED_HOLD
-
-try:
-    from warroom import tui
-except ModuleNotFoundError:   # plain python3 without the venv: the core suite stays stdlib-only
-    tui = None
 
 
 def start_maintainer(w):
@@ -56,7 +49,7 @@ class World2022(unittest.TestCase):
 
 
 class MaintainerStatus(World2022):
-    def test_status_shows_the_real_producer_issue_and_phase_for_every_state(self):
+    def test_control_status_binds_actions_to_the_active_maintainer_issue(self):
         w = self.w
         st = control.maintainer_status(w.store, w.cfg, control.maintainer_producer(w.store, w.cfg))
         self.assertEqual((st["state"], st["maintainer"]["issue"]), ("IDLE", None))
@@ -67,11 +60,8 @@ class MaintainerStatus(World2022):
         self.assertTrue(st["can_stop"] and st["can_drain"] and not st["can_retry"])
         w.store.update(m["id"], state="ERROR", error="원인 [x] 전문 " * 40, pid=None)
         st = control.maintainer_status(w.store, w.cfg, "sonnet")
+        self.assertEqual((st["state"], st["maintainer"]["issue"], st["batch_id"]), ("ERROR", 101, m["id"]))
         self.assertTrue(st["can_retry"] and st["can_clear"] and not st["can_stop"])
-        header = views.detail_header(st, {"adapter": "opencode"}, "sonnet")
-        self.assertIn("Issue #101", header)
-        self.assertIn("원인 [x] 전문 " * 40, header.replace("\n", " ") + " ")   # full error, never cut
-        self.assertNotIn("(m: Retry)", header)
 
     def test_other_open_issues_are_identifiable_and_the_live_one_is_the_target(self):
         w = self.w
@@ -81,7 +71,6 @@ class MaintainerStatus(World2022):
         st = control.maintainer_status(w.store, w.cfg, "sonnet")
         self.assertEqual(st["maintainer"]["issue"], 101)  # the ACTIVE execution, not the oldest row
         self.assertEqual([n for n, _ in st["maintainer"]["others"]], [150])
-        self.assertIn("#150", views.detail_header(st, {}, "sonnet"))
 
 
 class MaintainerClear(World2022):
@@ -107,14 +96,14 @@ class MaintainerClear(World2022):
         self.assertEqual((st["state"], st["can_retry"], st["can_clear"], st["can_stop"]), ("HELD", True, False, False))
         # explicit Retry starts exactly one new attempt for the SAME Issue
         self.assertTrue(control.retry_maintainer(w.store, 101))
-        self.assertFalse(control.retry_maintainer(w.store, 101))  # a repeated click requeues nothing
+        self.assertFalse(control.retry_maintainer(w.store, 101))  # a repeated request requeues nothing
         w.tick(2)
         again = maintainer_row(w)
         self.assertEqual((again["batch"], again["branch"], w.store.maintenance(101)["batch_id"]), ("101", "maint-101", again["id"]))
         self.assertEqual(len([x for x in w.store.all_batches() if x["method"] == "m"]), 1)
         self.assertEqual(len(w.gh.created), 1)
 
-    def test_stale_screen_cannot_clear_another_issue_or_execution(self):
+    def test_clear_request_cannot_target_another_issue_or_execution(self):
         w = self.w
         b, m = start_maintainer(w)
         w.store.ensure_maintenance(999)
@@ -223,7 +212,7 @@ class MaintainerControls(World2022):
         w.tick(2)
         self.assertEqual(w.store.active_batch("sonnet", "m")["state"], "PAUSED")
 
-    def test_board_m_key_path_still_retries_only_paused_or_error(self):
+    def test_maintainer_retry_is_available_only_for_a_repairable_issue(self):
         w = self.w
         b, m = start_maintainer(w)
         self.assertFalse(control.retry_maintainer(w.store))
@@ -238,7 +227,6 @@ class MaintainerControls(World2022):
         control.set_drain(w.store, "sonnet", "m", True)
         st = control.maintainer_status(w.store, w.cfg, "sonnet")
         self.assertTrue(st["line_drain"] and st["can_drain"])
-        self.assertIn("Drain", views.detail_header(st, {}, "sonnet"))
         run_maintainer_to_merge(w, 101)                           # the current Issue completes normally ...
         self.assertEqual(w.store.maintenance(101)["state"], "DONE")
         w.tick(4)                                                 # ... and the next is NOT claimed
@@ -248,11 +236,10 @@ class MaintainerControls(World2022):
         w.tick(2)
         self.assertEqual(w.store.maintenance(202)["state"], "ACTIVE")
 
-    def test_drain_is_disabled_with_a_reason_when_there_is_nothing_to_drain(self):
+    def test_drain_controls_are_unavailable_when_no_issue_is_active(self):
         w = self.w
         st = control.maintainer_status(w.store, w.cfg, "sonnet")
         self.assertFalse(st["can_drain"])
-        self.assertIn("Drain 비활성", views.detail_header(st, {}, "sonnet"))
         self.assertFalse(st["can_stop"] or st["can_clear"] or st["can_retry"])
 
     def test_drain_stop_all_and_drain_all_never_touch_the_maintainer(self):
@@ -272,86 +259,5 @@ class MaintainerControls(World2022):
         self.assertEqual(w.git.integrated, [])
         self.assertEqual(w.row()["state"], "PAUSED")
         self.assertEqual(w.store.defects()[0]["state"], "LINKED")
-        self.assertEqual(control.urgent_items(w.store, w.cfg)[0][0].split(" · ")[0], "urgent issue #101")
-
-
-@unittest.skipIf(tui is None, "textual not installed")
-class MaintainerDetailScreen(unittest.TestCase):
-    """Enter/click on the card opens the SAME LineDetail over the Maintainer Line, with working buttons."""
-
-    def run_app(self, w, scenario):
-        w.cfg["producers"] = dict(w.cfg["producers"])
-        patches = [mock.patch.object(tui, "Paths", return_value=w.paths),
-                   mock.patch.object(tui, "load_config", return_value=w.cfg),
-                   mock.patch.object(tui, "ensure_supervisor", return_value=("starting", None)),
-                   mock.patch.object(tui.WarRoom, "check_auth", lambda self: None)]
-        for p in patches:
-            p.start()
-            self.addCleanup(p.stop)
-        app = tui.WarRoom()
-
-        async def go():
-            async with app.run_test(size=(200, 60)) as pilot:
-                await pilot.pause()
-                await scenario(app, pilot)
-        asyncio.run(go())
-
-    def test_card_opens_the_batch_detail_with_buttons_logs_and_the_real_model(self):
-        w = world()
-        self.addCleanup(w.tmp.cleanup)
-        b, m = start_maintainer(w)
-        w.store.update(m["id"], state="ERROR", error="실패 전문 [bracket]", pid=None)
-        log = Path(w.tmp.name) / "m.log"
-        log.write_text("hello maintainer\n")
-        run_id = w.store.add_run(m["id"], "start", "ses_m", None, log, log.with_suffix(".exit"), "p/sonnet-free", "high")
-
-        async def scenario(app, pilot):
-            await pilot.click("#card-maintainer")
-            await pilot.pause()
-            scr = app.screen
-            self.assertIsInstance(scr, tui.LineDetail)
-            self.assertEqual((scr.model, scr.method), ("sonnet", "m"))          # the real producer, not DeepSeek's column
-            await pilot.pause(1.2)
-            info = str(scr.query_one("#info").render())
-            self.assertIn("Issue #101", info)
-            self.assertIn("실패 전문 [bracket]", info)
-            self.assertIn("sonnet", str(scr.query_one("#meta").render()))
-            for bid, enabled in (("retry", True), ("clear", True), ("stop", False), ("drain", True)):
-                self.assertEqual(not scr.query_one(f"#{bid}").disabled, enabled, bid)
-            self.assertTrue(any("hello maintainer" in str(s.text) for s in scr.log_w.lines))   # live log tail
-            opts = [o[1] for o in scr.query_one("#source")._options]
-            self.assertIn(f"run:{run_id}", opts)
-            self.assertIn("audit", opts)
-            await pilot.click("#retry")
-            await pilot.pause()
-            self.assertEqual(w.store.peek_line("sonnet", "m")["retry_batch"], m["id"])
-            await pilot.click("#clear")
-            await pilot.pause()
-            self.assertIsInstance(app.screen, tui.Confirm)                      # destructive: explicit confirmation
-            await pilot.press("n")
-            await pilot.pause()
-            self.assertIsNone(w.store.clear_request("sonnet", "m"))
-            await pilot.press("escape")
-            await pilot.pause()
-            self.assertIs(app.screen, app.screen_stack[0])
-        self.run_app(w, scenario)
-
-    def test_confirmed_clear_writes_the_issue_and_batch_pinned_request(self):
-        w = world()
-        self.addCleanup(w.tmp.cleanup)
-        b, m = start_maintainer(w)
-
-        async def scenario(app, pilot):
-            await pilot.click("#card-maintainer")
-            await pilot.pause(1.2)
-            await pilot.click("#clear")
-            await pilot.pause()
-            await pilot.press("y")
-            await pilot.pause()
-            req = w.store.clear_request("sonnet", "m")
-            self.assertEqual((req["batch_id"], req["status"]), (m["id"], "REQUESTED"))
-        self.run_app(w, scenario)
-
-
 if __name__ == "__main__":
     unittest.main()

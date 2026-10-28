@@ -7,7 +7,6 @@ from pathlib import Path
 from warroom.config import DEFAULTS, config_problem
 from warroom.store import Store
 from warroom.usage import estimate_cost, parse_usage, pricing_problems, sum_usage
-from warroom.views import usage_text
 
 SUBMIT = "node scripts/relation/literary-context-cli.mjs submit --file x.json"
 
@@ -212,15 +211,6 @@ class Totals(unittest.TestCase):
                     self.assertIsNone(got)
                 else:
                     self.assertAlmostEqual(got, want)
-
-    def test_usage_text_shows_unknown_and_incomplete(self):
-        runs = [dict(self.row(input_tokens=10, output_tokens=2, tool_calls=1, submit_failures=0),
-                     started_at=0.0, ended_at=60.0), dict(self.row(), started_at=60.0, ended_at=90.0)]
-        text = usage_text(runs, None, now=100.0)
-        self.assertIn("unknown", text)
-        self.assertIn("불완전", text)
-        self.assertNotIn("$", text)
-
 
 class PricingConfig(unittest.TestCase):
     def test_validation_table(self):

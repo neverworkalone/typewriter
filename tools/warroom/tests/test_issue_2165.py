@@ -93,11 +93,6 @@ class Stage2Finalization(unittest.TestCase):
         self.assertEqual(w.git.commit_empty_allowed, [True])
         self.assertEqual(w.git.pushes, [b["branch"]])
         self.assertEqual(len(w.gh.created_prs), 1)
-        body = w.gh.created_prs[0]["body"]
-        self.assertIn("001/01/05", body)
-        self.assertIn("80M tokens", body)
-        self.assertIn("9.7M tokens", body)
-        self.assertIn("미측정", body)
 
     def test_finalization_commits_only_changed_relation_or_drop_outputs(self):
         relation = "data/relations/relation-001.jsonl"

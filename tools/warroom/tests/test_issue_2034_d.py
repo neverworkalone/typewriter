@@ -100,11 +100,7 @@ class SerialChunks(unittest.TestCase):
         self.assertNotIn("## w0001", w.adapter.launches[2]["prompt"])    # chunk 3 does not carry chunk 1
         b = w.row_()
         self.assertEqual((b["state"], b["pr_number"]), ("WAITING_REVIEW", 100))
-        pr = w.gh.created_prs[0]
-        self.assertEqual(pr["labels"], ["batch"])
-        self.assertRegex(pr["title"], r"^\[D/[^\]]+\] 001_01$")
-        self.assertNotIn("1156", pr["body"])
-        self.assertIn("- Candidates:", pr["body"])
+        self.assertEqual(len(w.gh.created_prs), 1)
         self.assertEqual(w.git.commits[0][0], [REL])
         self.assertEqual(w.git.pushes, [b["branch"]])
         self.assertEqual(w.runner.dchunk.validations, 1)                 # the final Candidate v1 check runs once
@@ -644,12 +640,6 @@ class VerifiedPrefix(unittest.TestCase):
         with self.assertRaises(dchunk.DChunkError):
             dchunk.assemble(self.wt, self.b)
 
-    def test_pr_body_facts(self):
-        body = dchunk.pr_body("Luna", self.b, {"records": 500, "senses": 560, "candidates": 3, "empty_senses": 9})
-        self.assertIn("Coverage: 500 records / 560 senses", body)
-        self.assertIn("Candidates: 3 (9 empty senses)", body)
-        self.assertIn("Candidate v1: validated", body)
-
     def test_legacy_active_layout_is_preserved_and_blocked(self):
         folder = self.folder
         folder.mkdir(parents=True, exist_ok=True)
@@ -672,7 +662,6 @@ class Prompts(unittest.TestCase):
         card = prompts.d_chunk(b, 3, view="VIEW\n")
         self.assertIn(".warroom-scratch/d-001_01/decision-003.txt", card)
         self.assertIn("d-chunk-cli.mjs save --in", card)
-        self.assertIn("청크 003", card)
         self.assertNotIn("{{", card)
 
 

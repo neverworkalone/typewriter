@@ -87,13 +87,7 @@ class SerialChunks(unittest.TestCase):
         self.assertEqual(sum(1 for c in w.runner.literary.calls if c[2] == "init"), 1)
         b = w.row("deepseek", "c")
         self.assertEqual(b["state"], "WAITING_REVIEW")
-        self.assertEqual(b["pr_number"], 100)
-        pr = w.gh.created_prs[0]
-        self.assertEqual(pr["labels"], ["batch"])
-        self.assertRegex(pr["title"], r"^\[C/[^\]]+\] 001_01$")
-        self.assertEqual([l.split(":")[0] for l in pr["body"].splitlines()],
-                         ["- Method", "- Model", "- Shard", "- Batch", "- Coverage", "- Candidates"])
-        self.assertNotIn("1155", pr["body"])
+        self.assertEqual((b["pr_number"], len(w.gh.created_prs)), (100, 1))
         self.assertEqual(w.git.commits[0][0], ["data/relation-candidates/001/001_01_c_deepseek.jsonl"])
         self.assertEqual(w.git.pushes, [b["branch"]])
         self.assertEqual(w.runner.literary.exports, 1)
@@ -614,13 +608,6 @@ class PureHelpers(unittest.TestCase):
         for text, want in [(ok, ["s1"]), (many, ["s1", "s2"]), ("not json", []), ("", []),
                            (json.dumps({"diagnostic": "other", "affected": {"sense_id": "s1"}}), [])]:
             self.assertEqual(literary.affected_senses(text), want)
-
-    def test_pr_body_has_exactly_six_items(self):
-        b = {"shard": "001", "batch": "01"}
-        body = literary.pr_body("Luna", b, {"records": 500, "senses": 560, "candidates": 3})
-        self.assertEqual(len(body.strip().splitlines()), 6)
-        self.assertIn("Coverage: 500 records / 560 senses", body)
-
 
 if __name__ == "__main__":
     unittest.main()

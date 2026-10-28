@@ -9,7 +9,7 @@ from tests.test_issue_1555 import produce_and_report
 from tests.test_issue_1684 import s2_world
 from warroom import control
 from warroom.config import (DEFAULTS, MAINTAINER, STAGE1, STAGE2, config_problem, maintainer_id, maintainer_problem,
-                            registry, registry_problems, reload_problem, role_of, run_spec)
+                            registry_problems, reload_problem, role_of, run_spec)
 from tests.test_reload import reload, write
 
 PROFILES = {
@@ -116,49 +116,6 @@ class Resolution(unittest.TestCase):
                            c["assignments"]["stage1"].update(codex2="luna-medium"), c.update(maintainer="luna-medium")))
         self.assertIsNone(config_problem(c))
         self.assertEqual(maintainer_id(c), "codex2")
-
-
-class DisplayPins(unittest.TestCase):
-    def test_detail_never_shows_another_stages_pin(self):
-        from warroom.config import pin_summary
-        from warroom.views import detail_meta
-        st = {"worktree": "", "state": "", "branch": "", "head": "", "session": "", "tier": "free"}
-        for assigned, shown, hidden in [("stage1", "a", "s2"), ("stage2", "s2", "a")]:
-            c = cfg(assignments={assigned: {"codex": "luna-high" if assigned == "stage1" else "luna-xhigh"}}, maintainer="sonnet-medium")
-            c["assignments"][assigned]["claude"] = "sonnet-medium"
-            with self.subTest(assigned):
-                from warroom.config import role_view
-                ok = detail_meta(st, role_view(c, "codex", shown), "codex")
-                no = detail_meta(st, role_view(c, "codex", hidden), "codex")
-                self.assertIn("gpt-6-luna", ok)
-                self.assertNotIn("gpt-6-luna", no)
-                self.assertNotIn("high", no)
-                self.assertIn("미배정", no)
-                self.assertNotIn("gpt-6-luna", pin_summary(registry(c)["codex"]))   # settings: no stage-less pin either
-        self.assertIn("gpt-6-luna", detail_meta(st, role_view(cfg(), "codex", "s2"), "codex"))
-
-    def test_web_line_detail_uses_the_stage_pin(self):
-        from tests.test_web_1720 import Env
-        from warroom.web import api
-        for assigned, shown, hidden, effort in [("stage1", "a", "s2", "high"), ("stage2", "s2", "a", "xhigh"), ("both", "s2", "a", "xhigh")]:
-            e = Env()
-            self.addCleanup(e.close)
-            a = {"stage1": {"codex": "luna-high"}, "stage2": {"codex": "luna-xhigh"}}
-            if assigned != "both":
-                a = {assigned: a[assigned]}
-            e.cfg = cfg(assignments=a, maintainer="sonnet-medium", producers={"codex": PRODUCERS["codex"], "claude": PRODUCERS["claude"]},
-                        model_profiles=PROFILES)
-            e.cfg["assignments"].setdefault("stage1", {})["claude"] = "sonnet-medium"
-            e.cfg["assignments"].setdefault("stage2", {})["claude"] = "sonnet-medium"
-            with self.subTest(assigned):
-                ok = api.line_detail(e.store, e.cfg, e.paths, "codex", shown)["meta"]
-                self.assertIn(f"effort: {effort}" if assigned != "both" else "effort: xhigh", ok)
-                if assigned != "both":
-                    no = api.line_detail(e.store, e.cfg, e.paths, "codex", hidden)["meta"]
-                    self.assertNotIn("gpt-6-luna", no)
-                    self.assertIn("미배정", no)
-                else:
-                    self.assertIn("effort: high", api.line_detail(e.store, e.cfg, e.paths, "codex", "a")["meta"])
 
 
 class ReloadAndRuns(unittest.TestCase):

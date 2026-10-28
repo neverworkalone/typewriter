@@ -571,11 +571,11 @@ class Operations(unittest.TestCase):
         w.start("single")
         w.adapter.plan.append({"code": 0})
         w.tick()
-        self.assertIsNone(control.line_status(w.store, "deepseek", "a")["progress"])
+        self.assertIsNone(w.row()["records_done"])
         f = Path(w.row()["worktree"]) / "data/relation-candidates/001/001_01_a_deepseek.jsonl"
         f.parent.mkdir(parents=True); f.write_text("{}\n" * 120)
         w.tick()
-        self.assertEqual(control.line_status(w.store, "deepseek", "a")["progress"], "120/500")
+        self.assertEqual((w.row()["records_done"], w.row()["records_total"]), (120, 500))
         w.tmp.cleanup()
 
     def test_single_instance_lock(self):
