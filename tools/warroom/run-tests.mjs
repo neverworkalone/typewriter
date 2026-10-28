@@ -1,4 +1,4 @@
-// Runs the Supervisor-focused War Room Python unittest suite, preferring the local venv when present.
+// Runs the focused Supervisor and security-boundary Python suite, preferring the local venv when present.
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
