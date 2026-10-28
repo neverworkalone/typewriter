@@ -173,3 +173,91 @@ def link_comment(report: dict, event_key: str, facts: str) -> str:
     return "\n".join(["같은 결함 분류를 다른 배치가 보고했습니다 (해당 배치도 이 Issue에 종속되어 PAUSED).", "",
                       facts, "", f"### 실제 실패 사례\n{cases}", f"### 재현\n{_safe(report['reproduction'])}", "",
                       marker(EVENT_MARK, event_key)])
+
+
+# ---- Stage 2 verify blocks (Issue #2154): system-generated, not producer/reviewer reports ---------------------------
+VERIFY_EVIDENCE_ERRORS = 20      # errors kept in a report / Issue (the fingerprint always covers the complete list)
+VERIFY_ERROR_CHARS = 300
+VERIFY_EXTRA_MAX = 5             # other fingerprints seen before the fix is merged (evidence only, never a new Issue)
+_VERIFY_KEYS = {"version", "kind", "shard", "batch", "sha", "command", "family", "fingerprint", "total", "errors", "extra"}
+_SHARD = re.compile(r"^\d{3}$")
+_BATCH = re.compile(r"^\d{2}$")
+_SHA = re.compile(r"^[0-9a-f]{40}$")
+_FP = re.compile(r"^[0-9a-f]{16}$")
+
+
+def verify_evidence(errors) -> list[str]:
+    return [e if len(e) <= VERIFY_ERROR_CHARS else e[:VERIFY_ERROR_CHARS - 1] + "…" for e in list(errors)[:VERIFY_EVIDENCE_ERRORS]]
+
+
+def verify_report(failure, extra: list | None = None) -> str:
+    """Canonical JSON of one verify failure (a `stage2.VerifyFailure`)."""
+    return canonical({"version": VERSION, "kind": failure.kind, "shard": failure.shard, "batch": failure.batch,
+                      "sha": failure.sha, "command": failure.command, "family": failure.family,
+                      "fingerprint": failure.fingerprint, "total": failure.total,
+                      "errors": verify_evidence(failure.errors), "extra": extra or []})
+
+
+def parse_verify(text: str) -> dict:
+    """Validate a stored verify report and return it. Raises ReportProblem (the block is HELD, no Issue)."""
+    try:
+        d = json.loads(text)
+    except ValueError as e:
+        raise ReportProblem(f"verify 보고 JSON을 해석할 수 없습니다: {e}") from e
+    if not isinstance(d, dict) or set(d) != _VERIFY_KEYS or d["version"] != VERSION:
+        raise ReportProblem("verify 보고의 필드/version이 올바르지 않습니다.")
+    ok = (d["kind"] in ("batch", "shard") and isinstance(d["shard"], str) and _SHARD.match(d["shard"])
+          and (d["batch"] is None if d["kind"] == "shard" else isinstance(d["batch"], str) and bool(_BATCH.match(d["batch"])))
+          and isinstance(d["sha"], str) and _SHA.match(d["sha"]) and isinstance(d["command"], str) and d["command"]
+          and d["family"] in ("rows", "accounting") and isinstance(d["fingerprint"], str) and _FP.match(d["fingerprint"])
+          and type(d["total"]) is int and d["total"] >= 1
+          and isinstance(d["errors"], list) and 1 <= len(d["errors"]) <= min(d["total"], VERIFY_EVIDENCE_ERRORS)
+          and all(isinstance(e, str) and e.strip() for e in d["errors"]) and isinstance(d["extra"], list)
+          and len(d["extra"]) <= VERIFY_EXTRA_MAX
+          and all(isinstance(x, dict) and set(x) == {"fingerprint", "sha", "total", "errors", "posted"} for x in d["extra"]))
+    if not ok:
+        raise ReportProblem("verify 보고의 값이 스키마에 맞지 않습니다.")
+    return d
+
+
+def verify_scope(d: dict) -> str:
+    return f"{d['shard']}_{d['batch']}" if d["kind"] == "batch" else d["shard"]
+
+
+def verify_event_key(d: dict) -> str:
+    return f"verify:{d['kind']}:{d['shard']}{':' + d['batch'] if d['batch'] else ''}:{d['fingerprint']}"
+
+
+def verify_issue_title(d: dict) -> str:
+    what = f"Batch {verify_scope(d)}" if d["kind"] == "batch" else f"Shard {d['shard']}"
+    return f"[urgent][War Room][Stage 2] {what} verify 실패: {d['family']} {d['total']}건"
+
+
+def _verify_errors(d: dict) -> str:
+    more = f"\n- … 외 {d['total'] - len(d['errors'])}건 (전체는 재현 명령으로 확인)" if d["total"] > len(d["errors"]) else ""
+    return "\n".join(f"- {_safe(e)}" for e in d["errors"]) + more
+
+
+def verify_issue_body(d: dict, event_key: str, cls: str) -> str:
+    return "\n".join([
+        "## Stage 2 verify 실패 (War Room 자동 등록)", "",
+        f"완료된 Stage 2 **{'Batch' if d['kind'] == 'batch' else 'Shard'} `{verify_scope(d)}`**의 exact verify가 같은 master SHA에서 두 번 "
+        "동일하게 실패했습니다. 이 범위는 차단되었고 (Stage 2 Line은 대기, 다른 Line은 영향 없음) 최신 master에서 같은 verify가 "
+        "성공해야만 해제됩니다. 데이터 충돌인지 공통 코드/검증기 결함인지는 Maintainer가 증거로 판단합니다.", "",
+        f"- master SHA: `{d['sha']}`", f"- 재현: `{d['command']}`", f"- family: `{d['family']}` · 오류 {d['total']}건 · 지문 `{d['fingerprint']}`", "",
+        f"### 오류 (앞 {len(d['errors'])}건)", _verify_errors(d), "",
+        marker(EVENT_MARK, event_key), marker(CLASS_MARK, cls)])
+
+
+def verify_link_comment(d: dict, event_key: str) -> str:
+    return "\n".join(["War Room이 이 Issue를 같은 범위의 Stage 2 verify 실패로 연결했습니다.", "",
+                      f"- 범위: `{verify_scope(d)}` · master SHA `{d['sha']}`", f"- 재현: `{d['command']}`",
+                      f"- family `{d['family']}` · 오류 {d['total']}건 · 지문 `{d['fingerprint']}`", "",
+                      f"### 오류 (앞 {len(d['errors'])}건)", _verify_errors(d), "", marker(EVENT_MARK, event_key)])
+
+
+def verify_evidence_comment(x: dict, d: dict, event_key: str) -> str:
+    """Another fingerprint seen on the same scope before the fix merged: evidence only, never a new Issue."""
+    return "\n".join(["수정 전 같은 범위에서 다른 verify 오류 지문이 확인되었습니다 (증거 추가).", "",
+                      f"- 범위: `{verify_scope(d)}` · master SHA `{x['sha']}` · 지문 `{x['fingerprint']}` · 오류 {x['total']}건", "",
+                      _verify_errors(x), "", marker(EVENT_MARK, event_key)])

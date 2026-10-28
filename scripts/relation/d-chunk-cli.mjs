@@ -27,12 +27,14 @@ import {
   DEFAULT_MAX_SAMPLES,
   DEFAULT_SCAN_ROWS,
   DEFAULT_SNIPPET_CHARS,
+  InvalidCursorError,
   corpusScanRows,
   createSearchContextReuse,
   openReadonlyDb,
   renderContexts,
   saveChunk,
   searchContexts,
+  validateSearchCursor,
 } from './corpus-utility.mjs';
 
 export const CHUNK_RECORDS = 25;
@@ -363,10 +365,86 @@ async function findActive(root = '.warroom-scratch') {
 const readEntries = async (directory) => (await readFile(searchesPath(directory), 'utf8').catch(() => ''))
   .split('\n').filter(Boolean).map((line) => JSON.parse(line));
 
+async function readCursorEntries(directory, ref) {
+  try {
+    return await readEntries(directory);
+  } catch {
+    throw cursorInputError(ref, 'recorded search evidence is unreadable');
+  }
+}
+
+function cursorInputError(ref, reason) {
+  return new InvalidCursorError(`${ref}: ${reason}; use cursor:"next" with the same forms and boundary; no search executed; no evidence recorded`);
+}
+
+/** Resolve only an unconsumed, source-recorded LIMITED cursor for this exact record and search condition. */
+export function resolveRecordedCursor({ cursor, recordId, forms, boundary, entries, ref = 'cursor' }) {
+  if (cursor === null || cursor === undefined || cursor === '') return null;
+  if (typeof cursor !== 'string') throw cursorInputError(ref, 'cursor must be a string or null');
+  if (!Array.isArray(entries) || entries.some((entry) => entry === null || typeof entry !== 'object' || Array.isArray(entry))) {
+    throw cursorInputError(ref, 'recorded search evidence contains a malformed row');
+  }
+  const key = searchKey(forms, boundary);
+  const matching = entries.filter((entry) => entry?.record_id === recordId && entry?.key === key);
+  const issued = new Map();
+  const active = new Set();
+
+  for (const entry of matching) {
+    if (!Array.isArray(entry.forms) || JSON.stringify(entry.forms) !== JSON.stringify(forms)
+      || (entry.boundary ?? null) !== (boundary ?? null)) {
+      throw cursorInputError(ref, 'recorded search evidence does not match the exact forms and boundary');
+    }
+    if (!['ZERO_HITS', 'COMPLETE', 'LIMITED', 'SEARCH_FAILED'].includes(entry.status)
+      || !['prepare', 'search'].includes(entry.source) || !Number.isInteger(entry.hits) || entry.hits < 0
+      || !Object.hasOwn(entry, 'cursor_in') || entry.cursor_in !== null && typeof entry.cursor_in !== 'string'
+      || !Object.hasOwn(entry, 'cursor_out') || entry.cursor_out !== null && typeof entry.cursor_out !== 'string') {
+      throw cursorInputError(ref, 'recorded search evidence is incomplete or has an unknown status');
+    }
+    if (entry.status === 'SEARCH_FAILED') throw cursorInputError(ref, 'this search has recorded SEARCH_FAILED evidence');
+
+    const input = entry.cursor_in;
+    if (entry.status === 'ZERO_HITS' && input !== null) {
+      throw cursorInputError(ref, 'a continued search cannot be recorded as ZERO_HITS');
+    }
+    if (input !== null) {
+      if (!active.has(input)) throw cursorInputError(ref, 'recorded cursor chain is missing, consumed, or ambiguous');
+      active.delete(input);
+    }
+    if (entry.status === 'LIMITED') {
+      if (entry.complete !== false || typeof entry.cursor_out !== 'string' || entry.cursor_out.length === 0
+        || entry.cursor_out === input || issued.has(entry.cursor_out)) {
+        throw cursorInputError(ref, 'recorded LIMITED cursor evidence is not trustworthy');
+      }
+      issued.set(entry.cursor_out, { active: true });
+      active.add(entry.cursor_out);
+    } else if (entry.complete !== true || entry.cursor_out !== null) {
+      throw cursorInputError(ref, 'recorded completed search evidence is not trustworthy');
+    }
+  }
+
+  if (cursor === 'next') {
+    if (active.size !== 1) throw cursorInputError(ref, active.size === 0
+      ? 'there is no recorded unfinished LIMITED search for this record and exact search condition'
+      : 'more than one recorded unfinished search matches; select a recorded cursor explicitly');
+    return active.values().next().value;
+  }
+  if (!active.has(cursor)) throw cursorInputError(ref, 'cursor does not exactly match an unconsumed recorded LIMITED.cursor_out for this record and search condition');
+  return cursor;
+}
+
+function validateRequestedCursor(database, cursor, forms, boundary, ref) {
+  try {
+    validateSearchCursor(database, forms, { boundary, cursor });
+  } catch (error) {
+    if (error instanceof InvalidCursorError) throw cursorInputError(ref, error.message.replace(/^INVALID_CURSOR:\s*/u, ''));
+    throw error;
+  }
+}
+
 /** Append one source-sense-independent evidence row per record and exact successful request. */
-async function appendSearchEvidence(directory, entries) {
+async function appendSearchEvidence(directory, entries, priorEntries = undefined) {
   if (entries.length === 0) return 0;
-  const prior = await readEntries(directory);
+  const prior = priorEntries ?? await readEntries(directory);
   const seen = new Set(prior.filter((entry) => entry.request_key !== undefined && entry.status !== 'SEARCH_FAILED')
     .map((entry) => JSON.stringify([entry.record_id, entry.request_key])));
   const append = [];
@@ -392,7 +470,7 @@ const searchOptions = (contexts, boundary, cursor) => ({
 });
 
 /** Resolve and deduplicate all same-condition searches before they reach the approved read-only index. */
-export function buildSearchBatch({ requests, meta, records, search, maxOutputBytes = MAX_BATCH_OUTPUT_BYTES }) {
+export function buildSearchBatch({ requests, meta, records, search, priorEntries = [], validateCursor, maxOutputBytes = MAX_BATCH_OUTPUT_BYTES }) {
   if (!Array.isArray(requests) || requests.length === 0) fail('search-batch needs a non-empty requests array');
   const senses = new Map(meta.senses.map((item) => [item.ref, item]));
   const canonical = new Map(records.map((record) => [record.id, record]));
@@ -423,11 +501,16 @@ export function buildSearchBatch({ requests, meta, records, search, maxOutputByt
     if (forms.length === 0) fail(`${requestId}.forms must contain at least one non-empty search form`);
     const boundary = request.boundary;
     if (boundary !== undefined && !['left', 'none', 'both'].includes(boundary)) fail(`${requestId}.boundary must be left, none or both`);
-    const cursor = request.cursor === '' ? null : request.cursor ?? null;
-    if (cursor !== null && typeof cursor !== 'string') fail(`${requestId}.cursor must be a string or null`);
+    const requestedCursor = request.cursor === '' ? null : request.cursor ?? null;
+    if (requestedCursor !== null && typeof requestedCursor !== 'string') fail(`${requestId}.cursor must be a string or null`);
     const contexts = request.contexts ?? INITIAL_CONTEXTS;
     if (!Number.isInteger(contexts) || contexts < 1 || contexts > MAX_CALL_CONTEXTS) {
       fail(`${requestId}.contexts must be 1..${MAX_CALL_CONTEXTS}`);
+    }
+    const cursor = resolveRecordedCursor({ cursor: requestedCursor, recordId: record.id, forms, boundary, entries: priorEntries, ref: request.sense });
+    if (cursor !== null) {
+      if (typeof validateCursor !== 'function') throw cursorInputError(request.sense, 'corpus cursor validation is required');
+      validateCursor(cursor, forms, boundary, request.sense);
     }
     const options = searchOptions(contexts, boundary, cursor);
     const exactRequestKey = requestKey(forms, boundary, options);
@@ -521,14 +604,21 @@ export async function searchBatchActive({ requests, databasePath, root = '.warro
   const rows = await loadBatchRecords(meta.canonical, meta.shard, meta.batch);
   const activeRecords = new Set(meta.records.map((record) => record.record_id));
   const records = rows.filter((record) => activeRecords.has(record.id));
+  const needsCursorEvidence = Array.isArray(requests) && requests.some((request) => request && typeof request === 'object'
+    && request.cursor !== undefined && request.cursor !== null && request.cursor !== '');
+  const priorEntries = needsCursorEvidence ? await readCursorEntries(directory, 'search-batch') : undefined;
   const database = openReadonlyDb(databasePath);
   let batch;
   try {
-    batch = buildSearchBatch({ requests, meta, records, search: createSearchContextReuse(database), maxOutputBytes });
+    batch = buildSearchBatch({
+      requests, meta, records, search: createSearchContextReuse(database), priorEntries: priorEntries ?? [],
+      validateCursor: (cursor, forms, boundary, ref) => validateRequestedCursor(database, cursor, forms, boundary, ref),
+      maxOutputBytes,
+    });
   } finally {
     database.close?.();
   }
-  await appendSearchEvidence(directory, batch.evidence);
+  await appendSearchEvidence(directory, batch.evidence, priorEntries);
   return batch.output;
 }
 
@@ -544,12 +634,21 @@ export async function searchActive({ ref, forms, boundary, cursor, contexts, dat
   const count = contexts ?? INITIAL_CONTEXTS;
   if (!Number.isInteger(count) || count < 1 || count > MAX_CALL_CONTEXTS) fail(`--contexts must be 1..${MAX_CALL_CONTEXTS}`);
   if (boundary !== undefined && !['left', 'none', 'both'].includes(boundary)) fail('--boundary must be left, none or both');
+  const requestedCursor = cursor === '' ? null : cursor ?? null;
+  const priorEntries = requestedCursor === null ? undefined : await readCursorEntries(directory, ref);
+  const resolvedCursor = resolveRecordedCursor({ cursor: requestedCursor, recordId: record.record_id, forms: list, boundary, entries: priorEntries ?? [], ref });
   const database = openReadonlyDb(databasePath);
-  const options = searchOptions(count, boundary, cursor);
-  const search = (searchForms, searchOpts) => ({ result: searchContexts(database, searchForms, searchOpts) });
-  search.corpusRows = corpusScanRows(database);
-  const { result, cursorIn } = searchForContexts(search, list, options);
-  database.close?.();
+  let result;
+  let cursorIn;
+  const options = searchOptions(count, boundary, resolvedCursor);
+  try {
+    if (resolvedCursor !== null) validateRequestedCursor(database, resolvedCursor, list, boundary, ref);
+    const search = (searchForms, searchOpts) => ({ result: searchContexts(database, searchForms, searchOpts) });
+    search.corpusRows = corpusScanRows(database);
+    ({ result, cursorIn } = searchForContexts(search, list, options));
+  } finally {
+    database.close?.();
+  }
   const exactRequestKey = requestKey(list, boundary, options);
   await appendFile(searchesPath(directory), `${JSON.stringify(entryOf(record.record_id, list, boundary, result, 'search', cursorIn, exactRequestKey))}\n`);
   return { result, text: renderContexts(result) };
@@ -713,7 +812,7 @@ async function main(argv) {
   }
   if (command === 'search') {
     only(options, 'forms', 'boundary', 'cursor', 'contexts');
-    if (positional.length !== 1 || !SENSE_REF.test(positional[0])) fail('usage: search <s-id> [--forms a,b] [--boundary left|none|both] [--cursor C] [--contexts 1..16]');
+    if (positional.length !== 1 || !SENSE_REF.test(positional[0])) fail('usage: search <s-id> [--forms a,b] [--boundary left|none|both] [--cursor C|next] [--contexts 1..16]');
     const databasePath = process.env.TYPEWRITER_APPROVED_CORPUS_DB || fail('TYPEWRITER_APPROVED_CORPUS_DB is not set');
     const { result, text } = await searchActive({
       ref: positional[0], forms: options.forms?.split(',').map((item) => item.trim()).filter(Boolean), boundary: options.boundary,

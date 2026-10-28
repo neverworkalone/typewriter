@@ -118,15 +118,19 @@ class SerialChunks(unittest.TestCase):
         self.assertEqual(w.row_()["state"], "WAITING_REVIEW")
         self.assertEqual(dchunk.verified_prefix(w.wt(), w.row_()), (3, 3))
 
-    def test_zero_exit_without_saved_chunk_is_not_success_and_retry_resumes_with_a_short_prompt(self):
+    def test_zero_exit_without_saved_chunk_gets_one_retry_and_operator_retry_resumes_short(self):
         w = self.w
         w.start("single", "deepseek", "d")
+        w.ai(save=False)
         w.ai(save=False)
         w.tick()
         w.finish_last()
         w.tick()
+        self.assertEqual((w.adapter.launches[-1]["kind"], len(w.adapter.launches)), ("resume", 2))
+        w.finish_last()
+        w.tick()
         self.assertEqual(w.row_()["state"], "ERROR")
-        self.assertEqual(len(w.adapter.launches), 1)
+        self.assertEqual(len(w.adapter.launches), 2)
         w.ai()
         self.assertTrue(control.retry(w.store, "deepseek", "d"))
         w.tick(2)
@@ -279,7 +283,7 @@ class SaveRejectedFix(unittest.TestCase):
         w.tick(3)
         self.assertEqual(w.kinds().count("d_chunk_fix"), 2)
 
-    def test_unrepairable_stale_or_missing_diagnostics_start_no_ai(self):
+    def test_unrepairable_or_stale_diagnostics_start_no_ai(self):
         for label, kw in (("hit-bearing Z", {"scope": "stop_and_report"}), ("stale view", {"stale": True}),
                            ("search failed after the rejection", {"failed_search_after": True})):
             with self.subTest(label):
@@ -292,14 +296,18 @@ class SaveRejectedFix(unittest.TestCase):
                 w.tick()
                 self.assertEqual(w.row_()["state"], "ERROR")
                 self.assertEqual(len(w.adapter.launches), 1)
-        w = DWorld()                                                     # no CLI diagnostic at all (e.g. SEARCH_FAILED mid-chunk)
+        w = DWorld()                                                     # no rejection or failed search: one bounded retry is safe
         self.addCleanup(w.tmp.cleanup)
         w.start("single", "deepseek", "d")
+        w.ai(save=False)
         w.ai(save=False)
         w.tick()
         w.finish_last()
         w.tick()
-        self.assertEqual((w.row_()["state"], len(w.adapter.launches)), ("ERROR", 1))
+        self.assertEqual((w.row_()["state"], len(w.adapter.launches)), ("PRODUCING", 2))
+        w.finish_last()
+        w.tick()
+        self.assertEqual((w.row_()["state"], len(w.adapter.launches)), ("ERROR", 2))
 
     def test_nonzero_exit_with_a_repairable_rejection_is_corrected_not_paused(self):
         w = self.w

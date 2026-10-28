@@ -1303,3 +1303,77 @@ test('merge coalesces distinct candidate forms that share one identical sense-pa
   );
   assert.deepEqual(await readFile(relationPath), relationBytes, 'a conflicting retry leaves the accepted relation unchanged');
 });
+
+// #2154: `verify --json` makes a deterministic Batch/Shard rows/accounting failure machine-classifiable (exit 2); every
+// other failure stays an ordinary exit 1 and the output without --json is unchanged.
+async function spawnedVerifyRepository(t, { candidates = () => [], relations = [], count = 3 } = {}) {
+  const scratch = path.join(REPOSITORY_DIRECTORY, '.warroom-scratch');
+  await mkdir(scratch, { recursive: true });
+  const root = await mkdtemp(path.join(scratch, 'admission-verify-json-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  for (const [from, to] of [
+    ['scripts/relation/admission-cli.mjs'], ['scripts/relation/admission.mjs'], ['scripts/relation/candidate-contract.mjs'],
+    ['scripts/build/gloss-arrow-reference.mjs'], ['src/runtime/dictionary-contract.js'],
+  ]) {
+    await mkdir(path.dirname(path.join(root, from)), { recursive: true });
+    await copyFile(path.join(REPOSITORY_DIRECTORY, from), path.join(root, to ?? from));
+  }
+  const records = Array.from({ length: count }, (_, i) => ({ id: `w${i + 1}`, lemma: `표제${i + 1}`, senses: [{ id: `w${i + 1}-s1`, pos: 'noun', gloss: `뜻${i + 1}` }] }));
+  for (const dir of ['data/canonical', 'data/relation-candidates/001', 'data/relations']) await mkdir(path.join(root, dir), { recursive: true });
+  await writeFile(path.join(root, 'data/canonical/stdict-0001.jsonl'), jsonl(records));
+  for (const name of ['a_codex', 'a_claude', 'b_codex', 'b_claude', 'c_codex', 'd_codex']) {
+    await writeFile(path.join(root, `data/relation-candidates/001/001_01_${name}.jsonl`), jsonl(records.map((record, i) => ({
+      record_id: record.id, senses: [{ sense_id: record.senses[0].id, candidates: name === 'a_codex' ? candidates(i) : [] }] }))));
+  }
+  if (relations.length > 0) await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), jsonl(relations));
+  return root;
+}
+const spawnVerify = (root, ...extra) => spawnSync(process.execPath, [path.join(root, 'scripts/relation/admission-cli.mjs'), 'verify', '--shard', '001', '--batch', '01', ...extra], { cwd: root, encoding: 'utf8' });
+
+test('verify --json: accounting failure is one JSON line with the complete error list and exit 2', async (t) => {
+  const root = await spawnedVerifyRepository(t, { count: 60, candidates: (i) => [`후보${i + 1}`] });
+  const json = spawnVerify(root, '--json');
+  assert.equal(json.status, 2, json.stderr);
+  assert.equal(json.stderr, '');
+  assert.equal(json.stdout.trim().split('\n').length, 1);
+  const out = JSON.parse(json.stdout);
+  assert.deepEqual([out.version, out.ok, out.family, out.total, out.errors.length], [1, false, 'accounting', 60, 60]);
+  assert.ok(out.errors.every((error) => typeof error === 'string' && error.includes('has no relation')));
+  const plain = spawnVerify(root);   // unchanged: exit 1, message capped at 50
+  assert.equal(plain.status, 1);
+  assert.match(plain.stderr, /Relation Admission accounting failed:/u);
+  assert.match(plain.stderr, /\.\.\. 10 more/u);
+  assert.equal(plain.stderr.split('\n- ').length - 1, 51);
+});
+
+test('verify --json: invalid relation rows are family rows (exit 2); success is ok:true with counts (exit 0)', async (t) => {
+  const bad = await spawnedVerifyRepository(t, { relations: [{ source_record_id: 'w1', source_sense_id: 'w1-s1', text: '표제1', type: 'near', relevance: 1 }] });
+  const rows = spawnVerify(bad, '--json');
+  assert.equal(rows.status, 2, rows.stderr);
+  assert.equal(JSON.parse(rows.stdout).family, 'rows');
+  const good = await spawnedVerifyRepository(t);
+  const ok = spawnVerify(good, '--json');
+  assert.equal(ok.status, 0, ok.stderr);
+  const out = JSON.parse(ok.stdout);
+  assert.deepEqual([out.version, out.ok, out.counts.missing], [1, true, 0]);
+  assert.equal(JSON.parse(spawnVerify(good, '--json').stdout).ok, true);
+  assert.match(spawnVerify(good).stdout, /^Relation Admission accounting valid for shard 001 batch 01:/u);
+});
+
+test('verify --json: unclassified failures stay exit 1 (missing input, usage, unmerged Part checkpoint)', async (t) => {
+  const root = await spawnedVerifyRepository(t);
+  const usage = spawnVerify(root, '--json', '--bogus');
+  assert.equal(usage.status, 1);
+  assert.equal(usage.stdout, '');
+  const missing = spawnSync(process.execPath, [path.join(root, 'scripts/relation/admission-cli.mjs'), 'verify', '--shard', '002', '--batch', '01', '--json'], { cwd: root, encoding: 'utf8' });
+  assert.equal(missing.status, 1);
+  assert.equal(missing.stdout, '');
+  const prepared = spawnSync(process.execPath, [path.join(root, 'scripts/relation/admission-cli.mjs'), 'prepare', '--shard', '001', '--batch', '01', '--part', '01'], { cwd: root, encoding: 'utf8' });
+  assert.equal(prepared.status, 0, prepared.stderr);
+  const part = spawnSync(process.execPath, [path.join(root, 'scripts/relation/admission-cli.mjs'), 'verify', '--shard', '001', '--batch', '01', '--part', '01', '--json'], { cwd: root, encoding: 'utf8' });
+  assert.equal(part.status, 1);
+  assert.equal(part.stdout, '');
+  assert.match(part.stderr, /not merged|incomplete/u);
+  const wrongCommand = spawnSync(process.execPath, [path.join(root, 'scripts/relation/admission-cli.mjs'), 'prepare', '--shard', '001', '--json'], { cwd: root, encoding: 'utf8' });
+  assert.equal(wrongCommand.status, 1);
+});
