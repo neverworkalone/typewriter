@@ -1573,7 +1573,7 @@ test('save-optional accepts multiple exact target links per candidate and reject
   await writeFile(path.join(root, input), duplicate);
   await assert.rejects(
     () => quiet(() => run(['save-optional', '--checkpoint', checkpoint, '--in', input], { root })),
-    /optional links not saved.*repeats target/u,
+    /optional links not saved[\s\S]*repeats target/u,
   );
   assert.deepEqual(await readFile(path.join(root, checkpoint)), before, 'one duplicate target rejects all optional decisions');
   await writeFile(path.join(root, input), `links @${view.digest}\nc1 R near 3 T2 scene 4\nc1 R mood 4 T3 near 2\n`);
