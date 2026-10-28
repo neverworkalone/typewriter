@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
@@ -9,12 +10,14 @@ import { openReadonlyDb, searchContexts } from './corpus-utility.mjs';
 
 import {
   autoZCandidate,
+  buildSearchBatch,
   checkDecisions,
   parseDecisions,
   prepareChunk,
   recordEvidence,
   saveActive,
   searchActive,
+  searchBatchActive,
   searchToCompletion,
 } from './d-chunk-cli.mjs';
 
@@ -74,6 +77,19 @@ const withWorld = (name, body) => test(name, async () => {
   } finally {
     await rm(world.root, { recursive: true, force: true });
   }
+});
+
+const runCli = (args, input, environment) => new Promise((resolve, reject) => {
+  const child = spawn(process.execPath, [path.resolve('scripts/relation/d-chunk-cli.mjs'), ...args], {
+    cwd: process.cwd(), env: { ...process.env, ...environment }, stdio: ['pipe', 'pipe', 'pipe'],
+  });
+  let stdout = '';
+  let stderr = '';
+  child.stdout.setEncoding('utf8').on('data', (chunk) => { stdout += chunk; });
+  child.stderr.setEncoding('utf8').on('data', (chunk) => { stderr += chunk; });
+  child.once('error', reject);
+  child.once('close', (code) => resolve({ code, stdout, stderr }));
+  child.stdin.end(input);
 });
 
 const meta = (world) => readFile(path.join(world.directory, 'active-chunk.json'), 'utf8').then(JSON.parse);
@@ -219,6 +235,79 @@ test('recordEvidence: hits add up per search; completion needs a proven start', 
   assert.deepEqual(recordEvidence([e('a', 'ZERO_HITS', 0, true), e('b', 'LIMITED', 3, false)], 'r'), { searches: 2, hits: 3, allComplete: false });
   assert.deepEqual(recordEvidence([], 'r'), { searches: 0, hits: 0, allComplete: false });
   assert.deepEqual(recordEvidence([e('a', 'COMPLETE', 2, true)], 'other'), { searches: 0, hits: 0, allComplete: false });
+  const exact = { ...e('a', 'COMPLETE', 2, true), request_key: 'same request' };
+  assert.deepEqual(recordEvidence([exact, exact], 'r'), { searches: 1, hits: 2, allComplete: true }, 'an exact duplicate request never doubles hits');
+});
+
+test('search-batch shares identical search work across homonym records and keeps distinct options separate', () => {
+  const records = [rec('w1', '난주', [['noun', '첫 뜻.'], ['noun', '둘째 뜻.']]), rec('w2', '난주', [['noun', '다른 표제 record.']])];
+  const metaValue = { senses: [
+    { ref: 's1', record_id: 'w1', sense_id: 'w1-s1', auto: false },
+    { ref: 's2', record_id: 'w1', sense_id: 'w1-s2', auto: false },
+    { ref: 's3', record_id: 'w2', sense_id: 'w2-s1', auto: false },
+  ] };
+  const forms = [' 쉼표,포함 ', '"공백 포함"'];
+  const same = (sense) => ({ sense, forms, boundary: 'left', cursor: null, contexts: 2 });
+  const calls = [];
+  const search = (requestForms, options) => {
+    calls.push({ forms: requestForms, options });
+    return { result: {
+      status: options.cursor ? 'COMPLETE' : 'LIMITED',
+      items: [{ form: requestForms[0], paragraph_rowid: calls.length, title: '문서', author: '저자', excerpt: `context-${calls.length}` }],
+      next_cursor: options.cursor ? null : `cursor-${calls.length}`,
+    } };
+  };
+  const requests = [
+    same('s1'), same('s2'), same('s3'),
+    { ...same('s1'), boundary: 'none' },
+    { ...same('s1'), contexts: 3 },
+    { ...same('s1'), cursor: 'external-cursor' },
+    { ...same('s1'), forms: ['별도,검색형', '"인용"'] },
+  ];
+  const { output, evidence } = buildSearchBatch({ requests, meta: metaValue, records, search });
+  assert.equal(calls.length, 5, 'record IDs are absent from the request identity, while forms, boundary, cursor and contexts distinguish results');
+  assert.equal(output.result_count, 5);
+  assert.equal(output.results[0].result_id, 'q1');
+  assert.deepEqual(output.results[0].shared_by.map((item) => [item.sense, item.record_id]), [['s1', 'w1'], ['s2', 'w1'], ['s3', 'w2']]);
+  assert.equal(output.results[0].contexts.length, 1, 'shared contexts are included once');
+  assert.equal(output.requests[0].result_id, output.requests[1].result_id);
+  assert.equal(output.requests[1].result_id, output.requests[2].result_id);
+  assert.deepEqual(calls[0].forms, ['쉼표,포함', '"공백 포함"'], 'JSON keeps commas, spaces and quotes inside each form');
+  assert.equal(evidence.length, 6, 'same record and identical query produces one evidence row; another record gets its own row');
+  assert.deepEqual([...new Set(evidence.slice(0, 2).map((entry) => entry.record_id))], ['w1', 'w2']);
+  assert.deepEqual(recordEvidence([...evidence, evidence[0]], 'w1'), { searches: 3, hits: 5, allComplete: false });
+});
+
+test('search-batch preserves mixed statuses and rejects unproven external cursors per record', () => {
+  const records = [rec('w1', '난주', [['noun', '첫 뜻.'], ['noun', '둘째 뜻.']]), rec('w2', '난주', [['noun', '다른 record.']])];
+  const metaValue = { senses: [
+    { ref: 's1', record_id: 'w1', sense_id: 'w1-s1', auto: false },
+    { ref: 's2', record_id: 'w1', sense_id: 'w1-s2', auto: false },
+    { ref: 's3', record_id: 'w2', sense_id: 'w2-s1', auto: false },
+  ] };
+  const search = (forms, options) => {
+    if (forms[0] === 'fail') return { result: { status: 'SEARCH_FAILED', error: 'index unavailable', items: [], next_cursor: null } };
+    if (forms[0] === 'zero') return { result: { status: 'ZERO_HITS', items: [], next_cursor: null } };
+    if (options.cursor === 'external') return { result: { status: 'COMPLETE', items: [], next_cursor: null } };
+    return { result: { status: 'LIMITED', items: [{ excerpt: 'shared hit' }], next_cursor: 'recorded-cursor' } };
+  };
+  const { output, evidence } = buildSearchBatch({
+    requests: [
+      { sense: 's1', forms: ['shared'] },
+      { sense: 's2', forms: ['shared'], cursor: 'external' },
+      { sense: 's3', forms: ['shared'] },
+      { sense: 's3', forms: ['zero'] },
+      { sense: 's3', forms: ['fail'] },
+    ],
+    meta: metaValue, records, search,
+  });
+  assert.deepEqual(output.results.map((result) => result.status), ['LIMITED', 'COMPLETE', 'ZERO_HITS', 'SEARCH_FAILED']);
+  assert.equal(output.status, 'SEARCH_FAILED');
+  assert.deepEqual(recordEvidence(evidence, 'w1'), { searches: 1, hits: 1, allComplete: false });
+  assert.deepEqual(recordEvidence(evidence, 'w2'), { searches: 3, hits: 1, allComplete: false });
+  const external = evidence.find((entry) => entry.record_id === 'w1' && entry.cursor_in === 'external');
+  assert.equal(external.complete, true, 'raw page status remains accurate in the evidence');
+  assert.equal(recordEvidence(evidence, 'w1').allComplete, false, 'raw COMPLETE does not bypass missing cursor provenance');
 });
 
 test('parseDecisions accepts the compact grammar and reports every malformed line', () => {
@@ -300,6 +389,37 @@ withWorld('end to end: search records evidence, save stores the chunk once, a re
   assert.deepEqual(rows[0], { record_id: 'w001', senses: [{ sense_id: 'w001-s1', candidates: ['해무', '새벽 공기'] }, { sense_id: 'w001-s2', candidates: ['해무', '새벽 공기'] }] });
   assert.deepEqual(rows[1].senses[0].candidates, [], 'automatic Z is stored as an empty sense');
   await assert.rejects(saveActive({ inputPath: decisionsFile, root: world.root }), /already saved/u);
+});
+
+withWorld('search-batch CLI accepts JSON on stdin and records one shared search per record', async (world) => {
+  await prepareChunk({ ...world.options, chunkNumber: 1 });
+  const active = await meta(world);
+  const refs = active.senses.filter((item) => item.record_id === 'w001').map((item) => item.ref);
+  assert.equal(refs.length, 2);
+  const result = await runCli(['search-batch', '--dir', world.root], JSON.stringify({ requests: refs.map((sense) => ({ sense })) }), {
+    TYPEWRITER_APPROVED_CORPUS_DB: world.options.databasePath,
+  });
+  assert.equal(result.code, 0, result.stderr);
+  const output = JSON.parse(result.stdout);
+  assert.equal(output.status, 'OK');
+  assert.equal(output.request_count, 2);
+  assert.equal(output.result_count, 1);
+  assert.equal(output.requests[0].result_id, output.requests[1].result_id);
+  assert.equal(output.results[0].contexts.length, 2);
+  const evidence = (await readFile(path.join(world.directory, 'searches.jsonl'), 'utf8')).trim().split('\n').map(JSON.parse)
+    .filter((entry) => entry.record_id === 'w001' && entry.request_key !== undefined);
+  assert.equal(evidence.length, 1, 'same-record senses share one request evidence row');
+  assert.equal(evidence[0].source, 'prepare', 'the identical completed prepare search already supplies the record evidence');
+  assert.equal(evidence[0].forms[0], '새벽안개');
+});
+
+withWorld('search-batch output overflow records no partial evidence', async (world) => {
+  await prepareChunk({ ...world.options, chunkNumber: 1 });
+  const before = await readFile(path.join(world.directory, 'searches.jsonl'), 'utf8');
+  await assert.rejects(searchBatchActive({
+    requests: [{ sense: 's1' }], databasePath: world.options.databasePath, root: world.root, maxOutputBytes: 1,
+  }), /No search evidence was recorded/u);
+  assert.equal(await readFile(path.join(world.directory, 'searches.jsonl'), 'utf8'), before);
 });
 
 withWorld('save requires earlier chunks to exist and the same Canonical records as prepare', async (world) => {

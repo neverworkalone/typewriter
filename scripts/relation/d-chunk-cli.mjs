@@ -23,6 +23,10 @@ import {
   sourceLemmaRepeatMessage,
 } from './candidate-contract.mjs';
 import {
+  DEFAULT_MAX_CHARS,
+  DEFAULT_MAX_SAMPLES,
+  DEFAULT_SCAN_ROWS,
+  DEFAULT_SNIPPET_CHARS,
   createSearchContextReuse,
   openReadonlyDb,
   renderContexts,
@@ -35,6 +39,7 @@ export const BATCH_RECORDS = 500;
 export const INITIAL_CONTEXTS = 4; // #1156 PASS A starts with 1-4 distinct contexts
 export const INITIAL_SNIPPET_CHARS = 220;
 export const MAX_CALL_CONTEXTS = 16; // per `search` call; the per-sense reading guide of 16 lives in the AI card
+export const MAX_BATCH_OUTPUT_BYTES = 48 * 1024;
 // Safety stop of the deterministic follow-up of a 0-hit LIMITED search (far above a full scan of the approved corpus:
 // ~25 pages of DEFAULT_SCAN_ROWS per form). Reaching it is a search failure, never a completed zero.
 export const MAX_FOLLOWUP_CALLS = 1000;
@@ -111,9 +116,15 @@ export function searchToCompletion(search, forms, options = {}, { maxCalls = MAX
 
 const isComplete = (status) => status === 'ZERO_HITS' || status === 'COMPLETE';
 const searchKey = (forms, boundary) => JSON.stringify([forms, boundary ?? null]);
-const entryOf = (recordId, forms, boundary, result, source, cursorIn = null) => ({
+const requestKey = (forms, boundary, options) => JSON.stringify([
+  forms, boundary ?? null, options.cursor ?? null, options.maxSamples ?? DEFAULT_MAX_SAMPLES,
+  options.maxChars ?? DEFAULT_MAX_CHARS, options.snippetChars ?? DEFAULT_SNIPPET_CHARS,
+  options.scanRows ?? DEFAULT_SCAN_ROWS,
+]);
+const entryOf = (recordId, forms, boundary, result, source, cursorIn = null, exactRequestKey = null) => ({
   record_id: recordId,
   key: searchKey(forms, boundary),
+  ...(exactRequestKey === null ? {} : { request_key: exactRequestKey }),
   forms,
   boundary: boundary ?? null,
   status: result.status,
@@ -131,7 +142,12 @@ const entryOf = (recordId, forms, boundary, result, source, cursorIn = null) => 
  */
 export function recordEvidence(entries, recordId) {
   const byKey = new Map();
+  const seenRequests = new Set();
   for (const entry of entries.filter((item) => item.record_id === recordId)) {
+    if (entry.request_key !== undefined && entry.status !== 'SEARCH_FAILED') {
+      if (seenRequests.has(entry.request_key)) continue;
+      seenRequests.add(entry.request_key);
+    }
     const current = byKey.get(entry.key) ?? { hits: 0, complete: false, proven: new Map() };
     const proven = entry.cursor_in ? current.proven.get(entry.cursor_in) === true : true;
     if (entry.cursor_out) current.proven.set(entry.cursor_out, proven);
@@ -174,15 +190,17 @@ export function buildChunk({ records, shard, batch, chunkNumber, total, search }
   const autoZ = [];
   for (const record of records) {
     const forms = recordForms(record);
-    const main = searchToCompletion(search, forms, { maxSamples: INITIAL_CONTEXTS, snippetChars: INITIAL_SNIPPET_CHARS });
+    const mainOptions = { maxSamples: INITIAL_CONTEXTS, snippetChars: INITIAL_SNIPPET_CHARS };
+    const main = searchToCompletion(search, forms, mainOptions);
     const shown = [{ forms, boundary: null, result: main.result }];
-    entries.push(entryOf(record.id, forms, null, main.result, 'prepare', main.cursorIn));
+    entries.push(entryOf(record.id, forms, null, main.result, 'prepare', main.cursorIn, requestKey(forms, null, mainOptions)));
     let auto = false;
     if (main.result.status === 'SEARCH_FAILED') failed.push(record.id);
     else if (main.result.status === 'ZERO_HITS' && autoZCandidate(record, forms)) {
       const variants = forms.flatMap(spacedVariants);
-      const spaced = searchToCompletion(search, variants, { maxSamples: INITIAL_CONTEXTS, snippetChars: INITIAL_SNIPPET_CHARS });
-      entries.push(entryOf(record.id, variants, null, spaced.result, 'prepare', spaced.cursorIn));
+      const spacedOptions = { maxSamples: INITIAL_CONTEXTS, snippetChars: INITIAL_SNIPPET_CHARS };
+      const spaced = searchToCompletion(search, variants, spacedOptions);
+      entries.push(entryOf(record.id, variants, null, spaced.result, 'prepare', spaced.cursorIn, requestKey(variants, null, spacedOptions)));
       if (spaced.result.status === 'SEARCH_FAILED') failed.push(record.id);
       else if (spaced.result.status === 'ZERO_HITS') auto = true;
       else shown.push({ forms: variants, boundary: null, result: spaced.result });
@@ -263,6 +281,140 @@ async function findActive(root = '.warroom-scratch') {
 const readEntries = async (directory) => (await readFile(searchesPath(directory), 'utf8').catch(() => ''))
   .split('\n').filter(Boolean).map((line) => JSON.parse(line));
 
+/** Append one source-sense-independent evidence row per record and exact successful request. */
+async function appendSearchEvidence(directory, entries) {
+  if (entries.length === 0) return 0;
+  const prior = await readEntries(directory);
+  const seen = new Set(prior.filter((entry) => entry.request_key !== undefined && entry.status !== 'SEARCH_FAILED')
+    .map((entry) => JSON.stringify([entry.record_id, entry.request_key])));
+  const append = [];
+  for (const entry of entries) {
+    const identity = JSON.stringify([entry.record_id, entry.request_key]);
+    if (entry.status !== 'SEARCH_FAILED' && seen.has(identity)) continue;
+    append.push(entry);
+    if (entry.status !== 'SEARCH_FAILED') seen.add(identity);
+  }
+  if (append.length > 0) await appendFile(searchesPath(directory), `${append.map((entry) => JSON.stringify(entry)).join('\n')}\n`);
+  return append.length;
+}
+
+const normalizedSearchForms = (forms) => [...new Set(forms
+  .map((form) => String(form).normalize('NFC').trim()).filter(Boolean))];
+
+const searchOptions = (contexts, boundary, cursor) => ({
+  maxSamples: contexts,
+  snippetChars: INITIAL_SNIPPET_CHARS,
+  maxChars: Math.min(24_000, Math.max(6000, contexts * 600)),
+  boundary,
+  cursor: cursor ?? null,
+});
+
+/** Resolve and deduplicate all same-condition searches before they reach the approved read-only index. */
+export function buildSearchBatch({ requests, meta, records, search, maxOutputBytes = MAX_BATCH_OUTPUT_BYTES }) {
+  if (!Array.isArray(requests) || requests.length === 0) fail('search-batch needs a non-empty requests array');
+  const senses = new Map(meta.senses.map((item) => [item.ref, item]));
+  const canonical = new Map(records.map((record) => [record.id, record]));
+  const groups = new Map();
+  const resolved = [];
+  const allowed = new Set(['sense', 'forms', 'boundary', 'cursor', 'contexts']);
+
+  requests.forEach((request, index) => {
+    const requestId = `r${index + 1}`;
+    if (request === null || typeof request !== 'object' || Array.isArray(request)) fail(`${requestId} must be an object`);
+    const unexpected = Object.keys(request).filter((key) => !allowed.has(key));
+    if (unexpected.length > 0) fail(`${requestId} has unsupported field(s): ${unexpected.join(', ')}`);
+    if (typeof request.sense !== 'string' || !SENSE_REF.test(request.sense)) fail(`${requestId}.sense must be an active sN reference`);
+    const sense = senses.get(request.sense);
+    if (!sense) fail(`${request.sense} is not a sense of the active chunk`);
+    if (sense.auto) fail(`${request.sense} is an automatic ZERO_HITS sense of this chunk; it is not searched`);
+    const record = canonical.get(sense.record_id);
+    if (!record) fail(`${request.sense} has no Canonical record in the active chunk`);
+
+    let forms;
+    if (request.forms === undefined) forms = recordForms(record);
+    else {
+      if (!Array.isArray(request.forms) || request.forms.some((form) => typeof form !== 'string')) {
+        fail(`${requestId}.forms must be an array of strings`);
+      }
+      forms = normalizedSearchForms(request.forms);
+    }
+    if (forms.length === 0) fail(`${requestId}.forms must contain at least one non-empty search form`);
+    const boundary = request.boundary;
+    if (boundary !== undefined && !['left', 'none', 'both'].includes(boundary)) fail(`${requestId}.boundary must be left, none or both`);
+    const cursor = request.cursor === '' ? null : request.cursor ?? null;
+    if (cursor !== null && typeof cursor !== 'string') fail(`${requestId}.cursor must be a string or null`);
+    const contexts = request.contexts ?? INITIAL_CONTEXTS;
+    if (!Number.isInteger(contexts) || contexts < 1 || contexts > MAX_CALL_CONTEXTS) {
+      fail(`${requestId}.contexts must be 1..${MAX_CALL_CONTEXTS}`);
+    }
+    const options = searchOptions(contexts, boundary, cursor);
+    const exactRequestKey = requestKey(forms, boundary, options);
+    let group = groups.get(exactRequestKey);
+    if (!group) {
+      group = {
+        result_id: `q${groups.size + 1}`, exactRequestKey, forms, boundary, cursor,
+        contexts, options, requesters: [],
+      };
+      groups.set(exactRequestKey, group);
+    }
+    const requester = { request_id: requestId, sense: request.sense, record_id: sense.record_id };
+    group.requesters.push(requester);
+    resolved.push({ ...requester, result_id: group.result_id });
+  });
+
+  const evidence = [];
+  const results = [...groups.values()].map((group) => {
+    const { result, cursorIn } = searchToCompletion(search, group.forms, group.options);
+    const recordsSeen = new Set();
+    for (const requester of group.requesters) {
+      if (recordsSeen.has(requester.record_id)) continue;
+      recordsSeen.add(requester.record_id);
+      evidence.push(entryOf(requester.record_id, group.forms, group.boundary, result, 'search', cursorIn, group.exactRequestKey));
+    }
+    return {
+      result_id: group.result_id,
+      shared_by: group.requesters,
+      forms: group.forms,
+      boundary: group.boundary ?? null,
+      cursor_in: cursorIn,
+      cursor_out: result.next_cursor ?? null,
+      contexts_limit: group.contexts,
+      status: result.status,
+      hits: result.items.length,
+      ...(result.error ? { error: [...String(result.error)].slice(0, 200).join('') } : {}),
+      contexts: result.items,
+    };
+  });
+  const output = {
+    status: results.some((result) => result.status === 'SEARCH_FAILED') ? 'SEARCH_FAILED' : 'OK',
+    request_count: requests.length,
+    result_count: results.length,
+    requests: resolved,
+    results,
+  };
+  const bytes = Buffer.byteLength(`${JSON.stringify(output)}\n`);
+  if (bytes > maxOutputBytes) {
+    fail(`search-batch response is ${bytes} bytes; limit is ${maxOutputBytes}. Split the request into fewer senses or lower contexts, then retry. No search evidence was recorded.`);
+  }
+  return { output, evidence };
+}
+
+export async function searchBatchActive({ requests, databasePath, root = '.warroom-scratch', maxOutputBytes = MAX_BATCH_OUTPUT_BYTES }) {
+  const { directory, meta } = await findActive(root);
+  const rows = await loadBatchRecords(meta.canonical, meta.shard, meta.batch);
+  const activeRecords = new Set(meta.records.map((record) => record.record_id));
+  const records = rows.filter((record) => activeRecords.has(record.id));
+  const database = openReadonlyDb(databasePath);
+  let batch;
+  try {
+    batch = buildSearchBatch({ requests, meta, records, search: createSearchContextReuse(database), maxOutputBytes });
+  } finally {
+    database.close?.();
+  }
+  await appendSearchEvidence(directory, batch.evidence);
+  return batch.output;
+}
+
 export async function searchActive({ ref, forms, boundary, cursor, contexts, databasePath, root }) {
   const { directory, meta } = await findActive(root);
   const sense = meta.senses.find((item) => item.ref === ref);
@@ -271,16 +423,16 @@ export async function searchActive({ ref, forms, boundary, cursor, contexts, dat
   const record = meta.records.find((item) => item.record_id === sense.record_id);
   const rows = await loadBatchRecords(meta.canonical, meta.shard, meta.batch);
   const source = rows.find((item) => item.id === record.record_id);
-  const list = forms ?? recordForms(source);
+  const list = normalizedSearchForms(forms ?? recordForms(source));
   const count = contexts ?? INITIAL_CONTEXTS;
   if (!Number.isInteger(count) || count < 1 || count > MAX_CALL_CONTEXTS) fail(`--contexts must be 1..${MAX_CALL_CONTEXTS}`);
   if (boundary !== undefined && !['left', 'none', 'both'].includes(boundary)) fail('--boundary must be left, none or both');
   const database = openReadonlyDb(databasePath);
-  const { result, cursorIn } = searchToCompletion((searchForms, searchOptions) => ({ result: searchContexts(database, searchForms, searchOptions) }), list, {
-    maxSamples: count, snippetChars: INITIAL_SNIPPET_CHARS, maxChars: Math.min(24_000, Math.max(6000, count * 600)), boundary, cursor: cursor ?? null,
-  });
+  const options = searchOptions(count, boundary, cursor);
+  const { result, cursorIn } = searchToCompletion((searchForms, searchOpts) => ({ result: searchContexts(database, searchForms, searchOpts) }), list, options);
   database.close?.();
-  await appendFile(searchesPath(directory), `${JSON.stringify(entryOf(record.record_id, list.map((form) => form.normalize('NFC').trim()), boundary, result, 'search', cursorIn))}\n`);
+  const exactRequestKey = requestKey(list, boundary, options);
+  await appendFile(searchesPath(directory), `${JSON.stringify(entryOf(record.record_id, list, boundary, result, 'search', cursorIn, exactRequestKey))}\n`);
   return { result, text: renderContexts(result) };
 }
 
@@ -432,13 +584,37 @@ async function main(argv) {
     console.log(text);
     return result.status === 'SEARCH_FAILED' ? 3 : 0;
   }
+  if (command === 'search-batch') {
+    only(options, 'dir');
+    if (positional.length) fail('search-batch reads one JSON request from stdin and takes no positional arguments');
+    const chunks = [];
+    let bytes = 0;
+    for await (const chunk of process.stdin) {
+      bytes += Buffer.byteLength(chunk);
+      if (bytes > 256 * 1024) fail('search-batch input exceeds 256 KiB; split the request into fewer senses');
+      chunks.push(chunk);
+    }
+    let input;
+    try {
+      input = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+    } catch (error) {
+      fail(`search-batch stdin must be one JSON object: ${error.message}`);
+    }
+    if (input === null || typeof input !== 'object' || Array.isArray(input)) fail('search-batch stdin must be a JSON object with a requests array');
+    const unexpected = Object.keys(input).filter((key) => key !== 'requests');
+    if (unexpected.length > 0) fail(`search-batch input has unsupported field(s): ${unexpected.join(', ')}`);
+    const databasePath = process.env.TYPEWRITER_APPROVED_CORPUS_DB || fail('TYPEWRITER_APPROVED_CORPUS_DB is not set');
+    const output = await searchBatchActive({ requests: input.requests, databasePath, root: options.dir });
+    console.log(JSON.stringify(output));
+    return output.status === 'SEARCH_FAILED' ? 3 : 0;
+  }
   if (command === 'save') {
     only(options, 'in');
     if (positional.length) fail('save takes options only');
     console.log(JSON.stringify(await saveActive({ inputPath: need(options, 'in') })));
     return 0;
   }
-  return fail('usage: d-chunk-cli.mjs prepare|search|save');
+  return fail('usage: d-chunk-cli.mjs prepare|search|search-batch|save');
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(import.meta.url).pathname)) {
