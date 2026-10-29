@@ -1141,8 +1141,6 @@ class Supervisor:
 
     def _launch(self, b, kind: str, events=None) -> None:
         """Launch one pinned run; Stage 2 runs cover primary chunks, optional links and fresh review fixes."""
-        if kind.startswith("fix") and b["method"] in ("a", "b", "c", "d") and not events:
-            return self._fail(b, "ERROR", "현재 PR HEAD에 유효한 리뷰 수정 이벤트가 없어 AI를 시작하지 않았습니다. 오래된 HEAD 이벤트는 되살리지 않습니다.")
         ts = int(self.clock())
         while any((self.paths.logs / f"batch-{b['id']}-{ts}.{x}").exists() for x in ("log", "exit")):
             ts += 1   # one launch per log: a launch in the same second must not reuse (and append to) an earlier log
@@ -1159,6 +1157,8 @@ class Supervisor:
         drift = self._pin_drift(b, run, self._tiered(b["producer"]), self.store.runs(b["id"]), tier_models)
         if drift:
             return self._fail(b, "ERROR", drift)
+        if kind.startswith("fix") and b["method"] in ("a", "b", "c", "d") and not events:
+            return self._fail(b, "ERROR", "현재 PR HEAD에 유효한 리뷰 수정 이벤트가 없어 AI를 시작하지 않았습니다. 오래된 HEAD 이벤트는 되살리지 않습니다.")
         # Every launch proves the CLI again (cached once proven); C review fixes also need the approved source index.
         problem = self._preflight(b["producer"], b["method"])
         if problem and problem.startswith(PREFLIGHT_PENDING):
