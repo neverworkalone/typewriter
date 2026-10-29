@@ -55,13 +55,7 @@ source and scope:
   plain text with no ID (a word, name, phrase or multi-word expression such as
   `디아블로와 바알`): not clickable, no reverse relation, no invented record
   or ID.
-- **ID↔ID bidirectional exploration.** An approved new Typewriter-authored
-  말의 결/연상 whose target is an exact record is provided in both directions.
-  Each direction takes its own type and relevance from its own source meaning,
-  so Tier need not match. Existing STDICT relations and earlier exploratory
-  relations are **not** blindly symmetrised, and text-only targets have no
-  reverse. This supersedes "do not invent symmetry" in the reviewer
-  responsibilities below for this scope only.
+- **ID↔ID bidirectional exploration.** Authored exact links remain available both ways. After #2309 is implemented, new Parts score Type/Tier once from the source and mirror it; **equal reverse values are intended, not review defects**. Older Parts/checkpoints may use independently scored reverse values. Do not rewrite historical/STDICT relations; text-only has no reverse.
 - **Headword-promotion candidates** are collected separately, never in the
   relation rows: `data/headword-candidates/pr-<PR number>.jsonl` in the
   Schema v1 defined in #838 (`term`, `meaning_hint`, `source_lemma`,
@@ -228,16 +222,7 @@ relative order, nor mechanically score or test subjective usefulness.
    Fix genuine shared producer defects and test the applicable current
    and future authoring paths, without mechanical synonym-or-creativity
    validators.
-5. Reverse links: the product build mirrors every original STDICT `direct`
-   (including `direct` derived from an explicit STDICT `→` reference, Issue
-   #834) as a derived `direct-reverse-projection` row (Issue #797); this is
-   unchanged and no other STDICT/earlier type is mirrored. New #838
-   Typewriter-authored ID↔ID 말의 결/연상 are explorable in both directions
-   with independently reviewed type and relevance per direction (once
-   implemented); text-only targets have no reverse; earlier exploratory rows
-   are not blindly reprocessed. Do not demand equal relevance across different
-   sources or silently rewrite canonical history. Zero relations remain valid;
-   no quotas.
+5. Reverse links: STDICT `direct` (including `→`, #834) keeps its projection (#797); other STDICT types remain unchanged. Authored exact ID links are bidirectional: #2309 new Parts mirror source Type/Tier; older Parts may be asymmetric. **Neither equality in new Parts nor asymmetry in old Parts is a blocker.** Text-only has no reverse. Preserve history; no quotas.
 
 Stage 1 and Stage 2 PR reviewers apply these principles with their independent
 review stages, exact-HEAD requirements and ordinary confirmed-error gates.

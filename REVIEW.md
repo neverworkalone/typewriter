@@ -83,7 +83,7 @@ Batch-wide verify; after all valid Parts in the shard are complete, run
 shard-wide verify (shard 428 has six valid Parts, not ten). For these #927 Relation Admission Part PRs, follow [#927 §4.0–4.2](https://github.com/neverworkalone/typewriter/issues/927) for risk-first Tier/Type sampling: the independent PR **second reviewer** records its own Tier-audit evidence and the non-blocking Part score in the same `+2` review (not on `-1`), without making score thresholds into blockers or adding a review stage. These Stage 2 admission work units
 are distinct from the independent technical review roles in Sections 1–4.
 
-For the **first independent Stage 2 technical review round** of a #927 Part, include a lightweight whole-Part risk sweep of **both forward and reverse** Relation Type/Tier assignments. Look for suspicious source-sense concentrations, uniform reverse near/1 classifications and forward/reverse discrepancies. Check representative flagged rows against actual bound source/target senses and product reverse projection. Patterns and counts are **investigation signals, never automatic blockers or Tier quotas**; do not add a new validator, CI check or exhaustive item-by-item audit solely for this sweep. Follow-up rounds use Section 3's focused scope.
+For #927 Part reviews, audit source-bound Type/Tier, exact target and bidirectional projection. **After #2309 is implemented**, new Parts deliberately mirror Type/Tier in both directions: equal values are required, **never grounds for `-1` or independent reverse re-scoring**. Older Parts/checkpoints retain independent reverse scores; approved asymmetric rows remain valid. Patterns alone are not blockers. Follow-up rounds focus on fixes.
 
 ## 3. Stage 2 — independent comprehensive technical gate
 
