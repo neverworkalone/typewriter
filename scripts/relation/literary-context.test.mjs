@@ -867,13 +867,13 @@ test('export removes one normalized duplicate and reuses the checkpoint output a
   const fixture = await makeFixture({ unitCount: 1 });
   try {
     const [item] = (await chunk(fixture)).items;
-    await submit(fixture, [{ sense_id: 'sense-000001', verified: [item.contexts[0].k], candidates: ['서리'] }]);
+    await submit(fixture, [{ sense_id: 'sense-000001', verified: [item.contexts[0].k], candidates: ['겨울 아침'] }]);
     const checkpoint = await load(fixture);
-    checkpoint.records[0].senses[0].submission.candidates.push('서  리');
+    checkpoint.records[0].senses[0].submission.candidates.push('겨울  아침');
     await writeFile(fixture.checkpointPath, JSON.stringify(checkpoint));
     const output = await exportOutput(fixture);
     assert.equal(output.coverage.candidates, 1);
-    assert.deepEqual((await load(fixture)).records[0].senses[0].submission.candidates, ['서리']);
+    assert.deepEqual((await load(fixture)).records[0].senses[0].submission.candidates, ['겨울 아침']);
     // Re-export of the checkpoint's own output after a later correction overwrites that file, nothing else.
     await submit(fixture, [{ sense_id: 'sense-000001', verified: [item.contexts[0].k], candidates: ['서리', '겨울 아침'] }]);
     assert.equal(summarizeLiteraryCheckpoint(await load(fixture)).batch.state, 'OUTPUT_STALE');
