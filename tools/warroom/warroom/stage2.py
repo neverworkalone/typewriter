@@ -234,18 +234,18 @@ _REVIEW_TARGET_CUE = re.compile(
     r"\b(?:fix|correct|revise|reconsider|amend|change|update|inspect|address|resolve|remove|retain|drop|"
     r"wrong|incorrect|problematic|defect|blocker|needs? (?:a )?(?:fix|change|revision)|"
     r"should be (?:fixed|changed|revised|removed)|must be (?:fixed|changed|revised|removed))\b|"
-    r"(?:수정|고쳐|정정|검토|변경|삭제|보존|오류|문제|잘못|부정확|차단)"
+    r"(?:수정|고쳐|정정|검토|변경|삭제|보존|오류|문제|잘못|부정확|차단)", re.I
 )
 _EXPLICIT_REVIEW_CUE = re.compile(r"(?:^|[.!?;,:-])\s*(?:please\s+|kindly\s+|could you\s+)?review\b", re.I)
 _REVIEW_REFERENCE_CUE = re.compile(
     r"\b(?:compare|compared|comparison|peer|target(?: sense| id)?|linked sense|example|e\.g\.|historical|"
     r"retrospective|previous review|past review|prior review|statistic|statistics|stats|count|total|unrelated|reference)\b|"
-    r"(?:비교|대조|동료|대상 sense|표적 sense|예시|과거 리뷰|이전 리뷰|회고|통계|개수|합계|참고|무관)"
+    r"(?:비교|대조|동료|대상 sense|표적 sense|예시|과거 리뷰|이전 리뷰|회고|통계|개수|합계|참고|무관)", re.I
 )
 _REVIEW_REFERENCE_AFTER = re.compile(
     r"\b(?:compare[ds]? (?:with|to)|as an? example|for example|e\.g\.|peer sense|target sense|"
     r"linked sense|historical|retrospective|previous review|past review|prior review|statistics|stats|count|total)\b|"
-    r"(?:비교 대상|비교하면|예를 들어|동료 sense|대상 sense|과거 리뷰|이전 리뷰|회고|통계)"
+    r"(?:비교 대상|비교하면|예를 들어|동료 sense|대상 sense|과거 리뷰|이전 리뷰|회고|통계)", re.I
 )
 
 

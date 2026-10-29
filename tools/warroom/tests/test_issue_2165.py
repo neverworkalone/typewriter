@@ -94,6 +94,24 @@ class Stage2Finalization(unittest.TestCase):
         self.assertEqual(json.loads((Path(b["worktree"]) / ".warroom-scratch/s2-fix-select.json").read_text("utf-8")),
                          {"candidates": [{"source_sense_id": "w1-s1", "candidate": "candidate-0"}]})
 
+    def test_stage2_fix_context_uses_case_insensitive_cues_for_inspect_selection(self):
+        w, b = self.start_optional_part(sense_id="w1-s1")
+        checkpoint_path = Path(b["worktree"]) / ".warroom-scratch/relation-admission-001-01-01.json"
+        checkpoint = json.loads(checkpoint_path.read_text("utf-8"))
+        first = checkpoint["items"][0]
+        checkpoint["items"] = [
+            {**first, "record_id": "w1"},
+            {**first, "record_id": "w2", "sense_id": "w2-s1"},
+        ]
+        checkpoint_path.write_text(json.dumps(checkpoint), "utf-8")
+
+        context = w.sup._s2_fix_context(b, [{"body": "Please Fix w1-s1 and Compare w2-s1."}])
+
+        self.assertEqual(w.git.inspect_calls[-1][1:], ("001", "01", "01", ["w1-s1"]))
+        self.assertEqual(json.loads((Path(b["worktree"]) / ".warroom-scratch/s2-fix-select.json").read_text("utf-8")),
+                         {"candidates": []})
+        self.assertIn("w1-s1", context)
+
     def test_fix_context_keeps_40kb_inline_and_pages_only_above_90kb(self):
         w, b = self.start_optional_part(sense_id="w1-s1")
         w.git.inspect_text = "source context\n" + "x" * 40_000
