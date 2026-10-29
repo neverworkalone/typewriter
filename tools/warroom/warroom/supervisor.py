@@ -570,9 +570,25 @@ class Supervisor:
     def _verified_fix_exit(self, b) -> bool:
         """The last run is a finished FIX run (exit 0) whose completion evidence the Supervisor recorded."""
         last = self._last_run(b)
-        return (last is not None and isinstance(last["kind"], str) and last["kind"].startswith("fix")
+        completed = (last is not None and isinstance(last["kind"], str) and last["kind"].startswith("fix")
                 and last["ended_at"] is not None and str(last["exit_status"]) == "0"
                 and self.store.get(f"verified_completion_run_{b['id']}") == str(last["id"]) and bool(b["pr_number"]))
+        if not completed:
+            return False
+        if b["method"] not in ("a", "b", "c", "d"):
+            return True
+        try:
+            claim = json.loads(self.store.get(f"fix_claim_{b['id']}") or "")
+            if claim.get("status") != "HANDLED" or claim.get("run_id") != last["id"]:
+                return False
+            for key in claim["event_keys"]:
+                event = self.store.handled_event(b["id"], claim["pr"], claim["head_sha"], key)
+                if (event is None or event["status"] != "HANDLED" or event["run_id"] != last["id"]
+                        or event["reply_id"] is None or event["completed_at"] is None):
+                    return False
+            return True
+        except (TypeError, ValueError, KeyError):
+            return False
 
     def _verified_late_producer_exit(self, b) -> bool:
         """Only inspect PRs after a terminal producer result, never after a stop or unverified success."""
@@ -1141,6 +1157,8 @@ class Supervisor:
         drift = self._pin_drift(b, run, self._tiered(b["producer"]), self.store.runs(b["id"]), tier_models)
         if drift:
             return self._fail(b, "ERROR", drift)
+        if kind.startswith("fix") and b["method"] in ("a", "b", "c", "d") and not events:
+            return self._fail(b, "ERROR", "현재 PR HEAD에 유효한 리뷰 수정 이벤트가 없어 AI를 시작하지 않았습니다. 오래된 HEAD 이벤트는 되살리지 않습니다.")
         # Every launch proves the CLI again (cached once proven); C review fixes also need the approved source index.
         problem = self._preflight(b["producer"], b["method"])
         if problem and problem.startswith(PREFLIGHT_PENDING):
@@ -1151,6 +1169,7 @@ class Supervisor:
             agent_env = self._agent_env()
         except Exception as e:
             return self._fail(b, "ERROR", f"AI 실행 환경 설정 실패: {e}")
+        fix_context_digests = {}
         extra = {}
         if getattr(ad, "needs_git_dir", False):   # one rule for every launch kind: the owned worktree's Git admin dir
             try:
@@ -1329,12 +1348,16 @@ class Supervisor:
                 checkpoint = stage2.checkpoint(wt, b["shard"], b["batch"]) if b["method"] == STAGE2_METHOD else None
                 if b["method"] == STAGE2_METHOD and checkpoint is None:
                     raise prompts.PromptError("Stage 2 리뷰 수정 재개에 현재 Part checkpoint가 없습니다")
-                h = ad.resume(sid, prompts.fix(b, events, True, checkpoint=checkpoint), wt, run_env, run, log, ex, **extra)
+                source_context = ""
+                if b["method"] in ("a", "b", "c", "d"):
+                    source_context, fix_context_digests = self._producer_fix_context(b, events, session_id=sid)
+                h = ad.resume(sid, prompts.fix(b, events, True, source_context=source_context,
+                                               checkpoint=checkpoint), wt, run_env, run, log, ex, **extra)
             else:  # fix_new
                 context = ""
                 checkpoint = None
-                if b["method"] in stage1ab.METHODS:
-                    context = self._ab_fix_context(b, events)
+                if b["method"] in ("a", "b", "c", "d"):
+                    context, fix_context_digests = self._producer_fix_context(b, events)
                 elif b["method"] == STAGE2_METHOD:
                     context = self._s2_fix_context(b, events)
                     checkpoint = stage2.checkpoint(wt, b["shard"], b["batch"])
@@ -1364,10 +1387,24 @@ class Supervisor:
                                          "d_chunk_new", "ab_chunk_new"):
             fields["session_id"] = None  # captured from the new run's log
         self.store.update(b["id"], **fields)
-        self.store.add_run(b["id"], kind, fields.get("session_id", sid), h.pid, log, ex,
-                           model=run.model, effort=run.effort, permission_profile=run.permission_profile)
-        if events:  # claim only after the run really started
-            self.store.mark_handled(b["id"], b["pr_number"], b["head_sha"], [e["key"] for e in events])
+        run_id = self.store.add_run(b["id"], kind, fields.get("session_id", sid), h.pid, log, ex,
+                                    model=run.model, effort=run.effort, permission_profile=run.permission_profile)
+        if events:
+            keys = [e["key"] for e in events]
+            if b["method"] in ("a", "b", "c", "d") and kind.startswith("fix"):
+                self.store.claim_events(b["id"], b["pr_number"], b["head_sha"], keys, run_id)
+                self.store.set(f"fix_claim_{b['id']}", json.dumps({
+                    "pr": b["pr_number"], "head_sha": b["head_sha"], "event_keys": keys,
+                    "run_id": run_id, "status": "CLAIMED",
+                }, sort_keys=True))
+                if fix_context_digests:
+                    self.store.set(f"fix_context_pending_{b['id']}", json.dumps({
+                        "run_id": run_id, "digests": fix_context_digests,
+                    }, sort_keys=True))
+                else:
+                    self.store.delete(f"fix_context_pending_{b['id']}")
+            else:  # Stage 2 retains its existing event lifecycle; its behavior is outside #2322.
+                self.store.mark_handled(b["id"], b["pr_number"], b["head_sha"], keys)
         tier = f", tier={b['model_tier']}" if self._tiered(b["producer"]) else ""
         self.store.log(b["id"], f"{state} 시작 ({kind}, model={run.model}, effort={run.effort}{tier})")
 
@@ -1527,7 +1564,9 @@ class Supervisor:
                         self.store.delete(f"s2_fix_start_{b['id']}")
                     self._to_review(b, info)
                 return
-            return self._launch(b, self._fix_kind(b), self._all_events(b))
+            if b["method"] in ("a", "b", "c", "d"):
+                return self._retry_producer_fix(b)
+            return self._launch(b, self._fix_kind(b), self._events(b)[1])
         if not b["pr_number"]:
             runs = self.store.runs(b["id"])
             if runs:
@@ -1804,6 +1843,8 @@ class Supervisor:
             return self._run_ok_stage2_links(b)
         if self._s2_repair_run(b) and b["state"] == "PRODUCING":
             return self._run_ok_stage2_repair(b)
+        if b["state"] == "FIXING" and b["method"] in ("a", "b", "c", "d"):
+            self._remember_fix_context_delivery(b)
         try:
             if b["state"] == "PRODUCING":
                 info = self._find_recovery_pr(b) if b["method"] in {"a", "b", "c", "d"} else self._find_pr(b)
@@ -1832,6 +1873,13 @@ class Supervisor:
         if b["state"] == "FIXING":
             if self._check_fix_head(b, info) != "ok":
                 return
+            if b["method"] in ("a", "b", "c", "d"):
+                if info.get("number") != b["pr_number"] or info.get("head_ref") != b["branch"]:
+                    return self._fail(b, "ERROR", "리뷰 수정 완료 PR의 번호 또는 소유 브랜치가 다릅니다. worktree·PR을 보존합니다.")
+                if info.get("state") != "open" or info.get("merged"):
+                    return self._fail(b, "ERROR", "리뷰 수정 완료 시 소유 PR이 열린 상태가 아닙니다. worktree·PR을 보존합니다.")
+                if problem := self._complete_producer_fix_events(b):
+                    return self._fail(b, "ERROR", problem)
             if b["method"] == STAGE2_METHOD:
                 if problem := self._stage2_fix_result_problem(b, info):
                     return self._fail(b, "ERROR", problem)
@@ -3802,15 +3850,201 @@ class Supervisor:
         except Exception as e:
             return self._fail(b, "ERROR", f"A/B 최종화 중 GitHub/Git 오류: {e}. worktree를 보존합니다.")
 
-    def _ab_fix_context(self, b, events) -> str:
-        """The reviewer's fixed list reduced to exact source rows + saved candidates for the small `fix_new` session.
-        It is context only: the fix is judged by review, never by a scope gate that rejects a correct in-range change."""
+    def _producer_fix_context(self, b, events, session_id: str | None = None) -> tuple[str, dict[str, str]]:
+        """Provide the exact current Candidate/Canonical evidence and only reuse it after confirmed same-session delivery."""
         text = "\n".join(str(e.get("body", "")) for e in (events or []))
         try:
-            _allowed, context = stage1ab.fix_scope(Path(b["worktree"]), b, text)
-        except stage1ab.ABChunkError as e:
-            return f"source_context 없음: {e}\n"
-        return context
+            if b["method"] in stage1ab.METHODS:
+                names = stage1ab.names(b)
+            elif b["method"] == literary.METHOD:
+                names = literary.names(b)
+            elif b["method"] == dchunk.METHOD:
+                names = dchunk.names(b)
+            else:
+                raise stage1ab.ABChunkError(f"알 수 없는 Candidate 방식: {b['method']}")
+            _allowed, context, digests = stage1ab.fix_scope_data(
+                Path(b["worktree"]), b, text, output_path=names.output, canonical_path=names.canonical)
+            key = f"fix_context_sent_{b['id']}"
+            previous = {}
+            try:
+                previous = json.loads(self.store.get(key) or "{}")
+            except (TypeError, ValueError):
+                pass
+            sent = previous.get("digests") if previous.get("session_id") == session_id and session_id else {}
+            sent = sent if isinstance(sent, dict) else {}
+            repeated = sorted(sid for sid, digest in digests.items() if sent.get(sid) == digest)
+            digests = {sid: digest for sid, digest in digests.items() if sid not in repeated}
+            if repeated:
+                note = f"이 세션에 이미 전달된 동일 근거: {', '.join(repeated)}"
+                if not digests:
+                    return note, {}
+                context_lines = context.splitlines()
+                context_lines = [line for line in context_lines if not (
+                    len(line.split("\t")) == 6 and line.split("\t")[1] in repeated)]
+                context = note + "\n" + "\n".join(context_lines) + "\n"
+            if len(context.encode("utf-8")) > 90_000:
+                pages = stage2.chunk_pages(context)
+                page_paths = stage2.write_pages(Path(b["worktree"]), ".warroom-scratch/producer-fix-context.txt", pages)
+                context = ("source_context가 90 KB를 넘어 손실 없이 분할했다. 아래 page를 각각 별도 도구 호출 한 번씩 읽는다:\n" +
+                           "\n".join(f"- cat {path} ({i}/{len(page_paths)})"
+                                     for i, path in enumerate(page_paths, 1)) + "\n")
+            return context, digests
+        except TRANSIENT:
+            raise
+        except (stage1ab.ABChunkError, OSError, ValueError, KeyError, TypeError) as e:
+            return f"source_context 없음: {e}\n", {}
+
+    def _retry_producer_fix(self, b) -> None:
+        """Owner Retry rechecks the attached PR and its current-HEAD blockers before assigning an incomplete event."""
+        try:
+            info, events = self._events(b)
+            if info.get("number") != b["pr_number"] or info.get("head_ref") != b["branch"]:
+                return self._fail(b, "ERROR", "Retry 차단: 현재 PR 번호 또는 head 브랜치가 배치 소유권과 다릅니다. 보존합니다.")
+            if info.get("state") != "open" or info.get("merged"):
+                return self._fail(b, "ERROR", "Retry 차단: 소유 PR이 열린 상태가 아닙니다. worktree와 PR을 보존합니다.")
+            local = self.git.head(Path(b["worktree"]))
+            if local != info["head_sha"]:
+                self._fast_forward_pr_head(b, info)
+                info, events = self._events(b)  # re-read review events after safe synchronization
+                if info.get("number") != b["pr_number"] or info.get("head_ref") != b["branch"] \
+                        or info.get("state") != "open" or info.get("merged"):
+                    return self._fail(b, "ERROR", "Retry 중 소유 PR이 바뀌었습니다. worktree와 PR을 보존합니다.")
+                if self.git.head(Path(b["worktree"])) != info["head_sha"]:
+                    return self._fail(b, "ERROR", "Retry 중 local HEAD와 현재 PR HEAD가 일치하지 않습니다. 보존합니다.")
+            remote = self.git.remote_head(b["branch"])
+            if remote != info["head_sha"]:
+                return self._fail(b, "ERROR", f"Retry 차단: 원격 소유 브랜치와 PR HEAD가 다릅니다 ({remote} / {info['head_sha']}). 보존합니다.")
+            if b["head_sha"] != info["head_sha"]:
+                self.store.update(b["id"], head_sha=info["head_sha"])
+                b = self.store.batch(b["id"])
+            events, problem = self._retryable_producer_fix_events(b, events)
+            if problem:
+                return self._fail(b, "ERROR", problem)
+            if not events:
+                self._to_review(b, info, "운영자 Retry: 현재 HEAD에 유효한 미해결 리뷰 이벤트가 없어 오래된 이벤트를 다시 실행하지 않았습니다.")
+                return self.store.log(b["id"], "운영자 Retry: 현재 HEAD의 미해결 리뷰 이벤트 없음 — 리뷰 감시로 복귀")
+            return self._launch(b, self._fix_kind(b), events)
+        except TRANSIENT:
+            raise
+        except Exception as e:
+            return self._fail(b, "ERROR", f"Retry 전 현재 PR/HEAD/리뷰 확인 실패: {e}. worktree와 PR을 보존합니다.")
+
+    def _retryable_producer_fix_events(self, b, events) -> tuple[list[dict], str | None]:
+        """Skip proven completions; recover legacy launch-time markers only when missing reply evidence proves a gap."""
+        pending = []
+        for event in events:
+            row = self.store.handled_event(b["id"], b["pr_number"], b["head_sha"], event["key"])
+            if row is None or row["status"] == "CLAIMED":
+                pending.append(event)
+                continue
+            if row["status"] == "HANDLED":
+                continue
+            if row["status"] != "LEGACY":
+                return [], f"알 수 없는 리뷰 이벤트 상태 {row['status']!r}; 이벤트와 PR을 보존했습니다."
+
+            # Before #2322, the marker was written immediately after add_run(). Correlate only a nearby prior fix run;
+            # if the old evidence cannot be tied to that event, do not revive or overwrite it speculatively.
+            prior_runs = [run for run in self.store.runs(b["id"])
+                          if isinstance(run["kind"], str) and run["kind"].startswith("fix")
+                          and run["started_at"] is not None and run["started_at"] <= row["ts"]]
+            prior_run = max(prior_runs, key=lambda run: run["started_at"], default=None)
+            if prior_run is None or row["ts"] - prior_run["started_at"] > 60:
+                return [], (f"legacy 이벤트 {event['key']}의 과거 fix 실행을 정확히 연결할 수 없어 자동 복구하지 않았습니다. "
+                            "기록을 보존했습니다. 오너가 실행·답글 증거를 확인해야 합니다.")
+            replies = []
+            for comment in self.gh.issue_comments(b["pr_number"]):
+                user = comment.get("user") if isinstance(comment.get("user"), dict) else {}
+                if (str(user.get("login") or "").casefold() == str(self.cfg["expected_account"]).casefold()
+                        and str(comment.get("body") or "").strip() and comment.get("id") is not None
+                        and reviews._ts(comment.get("created_at")) >= prior_run["started_at"]):
+                    replies.append(comment)
+            if replies:
+                return [], (f"legacy 이벤트 {event['key']}의 과거 fix 실행 뒤 PR 답글이 있어 완료 여부가 모호합니다. "
+                            "이벤트와 PR을 보존하고 자동 재실행하지 않았습니다.")
+            pending.append(event)
+            self.store.log(b["id"], f"운영자 Retry: legacy 리뷰 이벤트 {event['key']}의 관련 fix 실행은 있으나 "
+                           "실행 후 PR 답글 증거가 없어 미완료 이벤트로 복구합니다.", "warn")
+        return pending, None
+
+    def _remember_fix_context_delivery(self, b) -> None:
+        """Persist only source rows from a successfully completed fix prompt with its actual session ID."""
+        key = f"fix_context_pending_{b['id']}"
+        try:
+            pending = json.loads(self.store.get(key) or "")
+            run = self._last_run(b)
+            digests = pending.get("digests")
+            if (run is None or pending.get("run_id") != run["id"] or not run["kind"].startswith("fix")
+                    or run["ended_at"] is None or str(run["exit_status"]) != "0"
+                    or self.store.get(f"verified_completion_run_{b['id']}") != str(run["id"])
+                    or not isinstance(run["session_id"], str) or not run["session_id"].strip()
+                    or not isinstance(digests, dict) or not digests):
+                return
+            session_id = run["session_id"]
+            sent_key = f"fix_context_sent_{b['id']}"
+            try:
+                previous = json.loads(self.store.get(sent_key) or "{}")
+            except (TypeError, ValueError):
+                previous = {}
+            old = previous.get("digests") if previous.get("session_id") == session_id else {}
+            merged = dict(old) if isinstance(old, dict) else {}
+            merged.update(digests)
+            self.store.set(sent_key, json.dumps({"session_id": session_id, "digests": merged}, sort_keys=True))
+            self.store.delete(key)
+        except (TypeError, ValueError, KeyError):
+            return
+
+    def _complete_producer_fix_events(self, b) -> str | None:
+        """A fix event is complete only after its exact run, owned PR and a new PR reply are confirmed."""
+        try:
+            claim = json.loads(self.store.get(f"fix_claim_{b['id']}") or "")
+            run = self._last_run(b)
+            if (not isinstance(claim, dict) or claim.get("status") != "CLAIMED"
+                    or claim.get("pr") != b["pr_number"] or claim.get("head_sha") != b["head_sha"]
+                    or not isinstance(claim.get("event_keys"), list) or not claim["event_keys"]
+                    or run is None or claim.get("run_id") != run["id"] or not run["kind"].startswith("fix")
+                    or run["ended_at"] is None or str(run["exit_status"]) != "0"
+                    or self.store.get(f"verified_completion_run_{b['id']}") != str(run["id"])):
+                return "수정 완료 증거가 현재 PR/HEAD에 배정된 fix 실행과 일치하지 않습니다. 리뷰 이벤트는 미완료로 보존했습니다."
+            replies = []
+            for comment in self.gh.issue_comments(b["pr_number"]):
+                user = comment.get("user") if isinstance(comment.get("user"), dict) else {}
+                if (str(user.get("login") or "").casefold() != str(self.cfg["expected_account"]).casefold()
+                        or not str(comment.get("body") or "").strip()
+                        or reviews._ts(comment.get("created_at")) < run["started_at"]
+                        or comment.get("id") is None):
+                    continue
+                replies.append(comment)
+            event_replies = {}
+            for comment in replies:
+                body_lines = {line.strip() for line in str(comment.get("body") or "").splitlines()}
+                for key in claim["event_keys"]:
+                    if f"WarRoom-Review-Event: {key}" in body_lines:
+                        comment_id = int(comment["id"])
+                        old = event_replies.get(key)
+                        if old is None or (reviews._ts(comment.get("created_at")), comment_id) > old[0]:
+                            event_replies[key] = ((reviews._ts(comment.get("created_at")), comment_id), comment_id)
+            for key, (_order, reply_id) in event_replies.items():
+                self.store.mark_handled(b["id"], b["pr_number"], claim["head_sha"], [key],
+                                        run_id=run["id"], reply_id=reply_id)
+            missing = [key for key in claim["event_keys"] if key not in event_replies]
+            if missing:
+                claim.update(status="PARTIAL" if event_replies else "CLAIMED",
+                             handled_event_keys=sorted(event_replies), missing_event_keys=missing,
+                             completed_at=self.clock() if event_replies else None)
+                self.store.set(f"fix_claim_{b['id']}", json.dumps(claim, sort_keys=True))
+                if not event_replies:
+                    return (f"fix 실행 #{run['id']}의 성공 응답은 확인했지만 PR #{b['pr_number']}에 리뷰 이벤트 키가 표시된 "
+                            "실행 후 답글이 없습니다. 이벤트는 미완료로 보존했습니다. 원인 확인 후 소유자 Retry가 필요합니다.")
+                return (f"fix 실행 #{run['id']}의 PR 답글은 확인했지만 답변 증거가 없는 리뷰 이벤트가 남았습니다: "
+                        f"{', '.join(missing)}. 표시된 이벤트만 완료 처리하고 나머지는 보존했습니다. 원인 확인 후 소유자 Retry가 필요합니다.")
+            reply_ids = {key: reply_id for key, (_order, reply_id) in event_replies.items()}
+            claim.update(status="HANDLED", reply_ids=reply_ids, completed_at=self.clock())
+            self.store.set(f"fix_claim_{b['id']}", json.dumps(claim, sort_keys=True))
+            return None
+        except TRANSIENT:
+            raise
+        except Exception as e:
+            return f"리뷰 수정 완료 증거 조회 실패: {e}. 이벤트는 미완료로 보존했습니다."
 
     def _s2_fix_context(self, b, events) -> str:
         """Inspect only source senses named by the review and present in this Part, in bounded pages."""
@@ -4355,7 +4589,7 @@ class Supervisor:
             return self._fail(b, "PAUSED", "인증 실패 — Settings의 인증 안내를 확인하세요.")
         if b["run_kind"] == "fix_resume":  # session resume impossible -> safe recovery once
             self.store.log(b["id"], "세션 resume 실패 → 새 AI 세션으로 복구", "warn")
-            return self._launch(b, "fix_new", self._all_events(b))
+            return self._launch(b, "fix_new", self._events(b)[1])
         self._fail(b, "PAUSED", f"인식할 수 없는 AI 실패(코드 {code}) — 조용히 유료 전환/재생산하지 않음. 로그: {b['log_file']}")
 
     # ---- WAITING_REVIEW ------------------------------------------------

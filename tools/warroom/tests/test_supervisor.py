@@ -115,6 +115,7 @@ class Lifecycle(unittest.TestCase):
         w.tick(2)  # still running: no duplicate launch
         self.assertEqual(len(w.adapter.launches), 2)
         w.adapter.finish(fix["pid"])
+        w.gh.add_pr_reply(7, "검토 내용을 확인했고 후보 수정을 반영했습니다.\nWarRoom-Review-Event: review:11")
         w.tick()
         b = w.row()
         self.assertEqual((b["state"], b["head_sha"]), ("WAITING_REVIEW", HEAD2))
@@ -394,6 +395,7 @@ class UpdateBranchSync(unittest.TestCase):
         fix_pid = w.row()["pid"]
         before_finish = len(w.adapter.launches)
         w.adapter.finish(fix_pid)
+        w.gh.add_pr_reply(7, "검토 내용을 확인했고 수정 근거를 남깁니다.\nWarRoom-Review-Event: review:11")
 
         w.tick()
 
@@ -446,7 +448,8 @@ class UpdateBranchSync(unittest.TestCase):
         self.ready_for_review()
         b = w.row()
         w.adapter.plan.append({"code": 0})
-        w.sup._launch(b, "fix_resume", [])
+        w.sup._launch(b, "fix_new", [{"kind": "review", "author": "reviewer", "key": "review:11",
+                                      "body": f"-1\nHEAD: {HEAD1}\nfix it"}])
         live = w.row()
         self.assertIsNotNone(live["pid"])
         w.store.update(live["id"], state="WAITING_REVIEW")

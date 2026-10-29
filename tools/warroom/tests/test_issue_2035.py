@@ -328,6 +328,7 @@ class ReviewFix(unittest.TestCase):
         self.assertIn("w0001-s1\t표제1\tnoun\t뜻 1-1\t후보1-1", fix["prompt"])
         self.assertNotIn("w0060-s1", fix["prompt"])
         w.adapter.finish(fix["pid"])
+        w.gh.add_pr_reply(b["pr_number"], "지적된 후보를 확인하고 수정했습니다.\nWarRoom-Review-Event: review:11")
         w.tick()
         self.assertEqual((w.row_()["state"], w.row_()["error"]), ("WAITING_REVIEW", None))   # only the listed sense changed
 
@@ -341,6 +342,7 @@ class ReviewFix(unittest.TestCase):
         w.adapter.plan.append({"code": 0, "session": "ses_fix2", "effect": sneaky})
         w.tick()
         w.adapter.finish(w.adapter.launches[-1]["pid"])
+        w.gh.add_pr_reply(b["pr_number"], "두 번째 지적도 확인했고 판단 근거를 답변했습니다.\nWarRoom-Review-Event: review:12")
         w.tick()
         # #2092: a correct fix is judged by review, never PAUSED by a literal-enumeration scope gate
         self.assertEqual((w.row_()["state"], w.row_()["error"]), ("WAITING_REVIEW", None))
