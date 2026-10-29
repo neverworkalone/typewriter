@@ -98,16 +98,18 @@ class Stage2Finalization(unittest.TestCase):
         w, b = self.start_optional_part(sense_id="w1-s1")
         w.git.inspect_text = "source context\n" + "x" * 40_000
         inline = w.sup._s2_fix_context(b, [{"body": "review w1-s1"}])
-        self.assertEqual(inline, w.git.inspect_text)
+        fallback_note = "\n# Full-sense fallback for explicit review targets: w1-s1\n"
+        self.assertEqual(inline, w.git.inspect_text + fallback_note)
         self.assertFalse((Path(b["worktree"]) / ".warroom-scratch" / "s2-fix-context.txt").exists())
 
         w.git.inspect_text = "".join(f"row {i} " + "x" * 1_000 + "\n" for i in range(100))
         paged = w.sup._s2_fix_context(b, [{"body": "review w1-s1"}])
         self.assertIn("bounded pages", paged)
-        pages = stage2.chunk_pages(w.git.inspect_text)
+        expected_context = w.git.inspect_text + fallback_note
+        pages = stage2.chunk_pages(expected_context)
         page_paths = [Path(b["worktree"]) / stage2.page_path(i, len(pages), ".warroom-scratch/s2-fix-context.txt")
                       for i in range(1, len(pages) + 1)]
-        self.assertEqual("".join(path.read_text("utf-8") for path in page_paths), w.git.inspect_text)
+        self.assertEqual("".join(path.read_text("utf-8") for path in page_paths), expected_context)
 
     def test_stage2_fix_prompt_has_the_supported_foreground_verify_and_gh_instructions(self):
         w, b = self.start_optional_part(sense_id="w1-s1")

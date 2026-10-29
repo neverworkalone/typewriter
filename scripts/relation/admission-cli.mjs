@@ -1441,7 +1441,7 @@ function selectedInspectQPage(checkpoint, senseIds, digest, rows, page, totalPag
 }
 
 function selectedInspectPages(checkpoint, selected, digest, pageSize) {
-  const fullModel = inspectModel(selected);
+  const fullModel = inspectModel({ ...selected, candidates: selected.allCandidates });
   const detailedKeys = new Set(selected.candidates.map(({ item, candidate }) => `${item.sense_id}\u0000${candidate.text}`));
   const qRows = fullModel.candidates.filter(({ item, candidate }) => !detailedKeys.has(`${item.sense_id}\u0000${candidate.text}`));
   const detailPages = [];
