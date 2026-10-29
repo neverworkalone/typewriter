@@ -457,6 +457,12 @@ class AdapterPolicy(unittest.TestCase):
         self.assertIn("--bare", ad._answer_only_args({**env, "ANTHROPIC_API_KEY": "k"}))   # bare needs API-key auth
         ad._help_flags = {"--tools"}
         self.assertEqual(ad._answer_only_args(env), ["--tools", ""])                # optional trimming is not required
+        repair_env = {"WARROOM_ANSWER_ONLY": "1", "WARROOM_STAGE2_REPAIR": "1"}
+        with self.assertRaises(RuntimeError):
+            ad._answer_only_args(repair_env)                                       # repair fails closed without MCP isolation
+        ad._help_flags = {"--tools", "--strict-mcp-config", "--disable-slash-commands"}
+        self.assertEqual(ad._answer_only_args(repair_env),
+                         ["--tools", "", "--strict-mcp-config", "--disable-slash-commands"])
 
     def test_codex_denied_command_is_only_a_metric_for_an_answer_only_chunk(self):
         from warroom.adapters import CodexCLIAdapter

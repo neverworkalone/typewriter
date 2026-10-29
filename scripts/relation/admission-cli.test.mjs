@@ -1370,6 +1370,110 @@ test('merge coalesces distinct candidate forms that share one identical sense-pa
   assert.deepEqual(await readFile(relationPath), relationBytes, 'a conflicting retry leaves the accepted relation unchanged');
 });
 
+test('preflight collects pair conflicts and Drop/gloss failures without mutation; official repair is stale-safe and idempotent', async (t) => {
+  const { root } = await sixCandidateRepository(t);
+  const canonicalPath = path.join(root, 'data/canonical/stdict-0001.jsonl');
+  const canonical = (await readFile(canonicalPath, 'utf8')).trim().split('\n').map(JSON.parse);
+  canonical[0].senses[0].gloss = '버릴말.';
+  canonical[1].search_forms = ['유일', '유일하다'];
+  await writeFile(canonicalPath, jsonl(canonical));
+  const candidatesPath = path.join(root, 'data/relation-candidates/001/001_01_a_codex.jsonl');
+  const candidateRows = (await readFile(candidatesPath, 'utf8')).trim().split('\n').map(JSON.parse);
+  candidateRows[0].senses[0].candidates = ['유일', '유일하다', '버릴말'];
+  await writeFile(candidatesPath, jsonl(candidateRows));
+
+  const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
+  await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  const chunk = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint], { root }));
+  const target = chunk.items[0].candidates.find((candidate) => candidate.text === '유일').same_spelling_targets
+    .find((entry) => entry.record_id === 'w2');
+  assert.equal(target.record_id, 'w2');
+  const decisions = [
+    { source_sense_id: 'w1-s1', candidate: '유일', disposition: 'relation', type: 'near', relevance: 3,
+      target_resolution: 'exact', target_record_id: 'w2', target_sense_id: 'w2-s1', reverse_type: 'near', reverse_relevance: 3 },
+    { source_sense_id: 'w1-s1', candidate: '유일하다', disposition: 'relation', type: 'mood', relevance: 4,
+      target_resolution: 'exact', target_record_id: 'w2', target_sense_id: 'w2-s1', reverse_type: 'near', reverse_relevance: 3 },
+    { source_sense_id: 'w1-s1', candidate: '버릴말', disposition: 'drop', reason: '무관' },
+  ];
+  const decisionsPath = '.warroom-scratch/preflight-decisions.json';
+  await writeFile(path.join(root, decisionsPath), JSON.stringify({ chunk_id: chunk.chunk_id, decisions }));
+  await quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', decisionsPath], { root }));
+  await completeOptionalForTest(root, checkpoint);
+  await quiet(() => run(['prepare-merge', '--checkpoint', checkpoint, '--json'], { root }));
+
+  const watched = [
+    path.join(root, checkpoint),
+    path.join(root, 'data/relations/relation-001.jsonl'),
+    path.join(root, 'data/relation-drops/drop-001.jsonl'),
+    path.join(root, '.warroom-scratch/relation-admission-001-01-01.premerge-relations.jsonl'),
+    path.join(root, '.warroom-scratch/relation-admission-001-01-01.premerge-drops.jsonl'),
+  ];
+  const before = await Promise.all(watched.map(fileState));
+  const first = await quiet(() => run(['preflight', '--checkpoint', checkpoint, '--json'], { root }));
+  const repeated = await quiet(() => run(['preflight', '--checkpoint', checkpoint, '--json'], { root }));
+  assert.equal(first.ok, false);
+  assert.equal(first.repairable, true);
+  assert.deepEqual(first.coverage, {
+    merge_conflicts: 'complete', drop_gloss: 'complete',
+    materialization: 'deferred-until-conflicts-are-fixed', accounting: 'deferred-until-conflicts-are-fixed',
+  });
+  assert.equal(first.total, 2, 'the pair conflict and independent Drop/gloss failure are grouped separately');
+  assert.equal(first.candidate_total, 3);
+  assert.deepEqual(first.unclassified, []);
+  assert.equal(first.fingerprint, repeated.fingerprint);
+  assert.deepEqual(await Promise.all(watched.map(fileState)), before, 'preflight does not change bytes or mtimes');
+  const pageOne = await quiet(() => run(['preflight', '--checkpoint', checkpoint, '--json', '--limit', '1'], { root }));
+  const pageTwo = await quiet(() => run(['preflight', '--checkpoint', checkpoint, '--json', '--limit', '1', '--offset', '1'], { root }));
+  assert.equal(pageOne.total, 2);
+  assert.equal(pageOne.next_offset, 1);
+  assert.equal(pageTwo.next_offset, null);
+  assert.deepEqual([...pageOne.problems, ...pageTwo.problems], first.problems, 'bounded pages preserve complete stable coverage');
+
+  const pair = first.problems.find((problem) => problem.candidate_keys.length === 2);
+  assert.ok(pair);
+  const secondCandidate = pair.candidates.find((candidate) => candidate.candidate === '유일하다');
+  const aligned = { ...secondCandidate.decision, type: 'near' };
+  const repair = { version: 1, fingerprint: first.fingerprint, supervisor_nonce: 'e'.repeat(64), decisions: [{
+    source_sense_id: secondCandidate.source_sense_id,
+    candidate: secondCandidate.candidate,
+    expected_decision: secondCandidate.decision,
+    expected_additional_relations: null,
+    decision: aligned,
+    additional_relations: null,
+  }] };
+  const repairPath = '.warroom-scratch/repair.json';
+  await writeFile(path.join(root, repairPath), JSON.stringify(repair));
+  const saved = await quiet(() => run(['repair', '--checkpoint', checkpoint, '--in', repairPath, '--json'], { root }));
+  assert.equal(saved.repaired, 1);
+  const afterSave = await fileState(watched[0]);
+  const replay = await quiet(() => run(['repair', '--checkpoint', checkpoint, '--in', repairPath, '--json'], { root }));
+  assert.equal(replay.already_applied, true);
+  assert.equal(replay.supervisor_nonce, repair.supervisor_nonce);
+  assert.deepEqual(await fileState(watched[0]), afterSave, 'receipt-backed replay does not write the checkpoint again');
+  await writeFile(path.join(root, repairPath), JSON.stringify({ ...repair, supervisor_nonce: 'f'.repeat(64) }));
+  await assert.rejects(() => quiet(() => run(['repair', '--checkpoint', checkpoint, '--in', repairPath, '--json'], { root })),
+    /bound to another Supervisor apply intent/);
+
+  const afterPair = await quiet(() => run(['preflight', '--checkpoint', checkpoint, '--json'], { root }));
+  assert.equal(afterPair.repairable, true);
+  assert.equal(afterPair.total, 1);
+  assert.equal(afterPair.problems[0].candidates[0].candidate, '버릴말');
+  const drop = afterPair.problems[0].candidates[0];
+  const repairedDrop = { source_sense_id: drop.source_sense_id, candidate: drop.candidate,
+    disposition: 'relation', type: 'association', relevance: 4 };
+  await writeFile(path.join(root, repairPath), JSON.stringify({ version: 1, fingerprint: afterPair.fingerprint,
+    supervisor_nonce: 'a'.repeat(64), decisions: [{
+    source_sense_id: drop.source_sense_id, candidate: drop.candidate,
+    expected_decision: drop.decision, expected_additional_relations: null,
+    decision: repairedDrop, additional_relations: null,
+  }] }));
+  await quiet(() => run(['repair', '--checkpoint', checkpoint, '--in', repairPath, '--json'], { root }));
+  const clear = await quiet(() => run(['preflight', '--checkpoint', checkpoint, '--json'], { root }));
+  assert.equal(clear.ok, true);
+  assert.equal(clear.total, 0);
+  assert.deepEqual(clear.unclassified, []);
+});
+
 // #2154: `verify --json` makes a deterministic Batch/Shard rows/accounting failure machine-classifiable (exit 2); every
 // other failure stays an ordinary exit 1 and the output without --json is unchanged.
 async function spawnedVerifyRepository(t, { candidates = () => [], relations = [], count = 3 } = {}) {

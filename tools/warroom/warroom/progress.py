@@ -304,6 +304,7 @@ def stage2_checkpoint(worktree, shard: str, batch_key: str):
         ),
         "premerge": data.get("premerge"),
         "amend_revision": data.get("amend_revision", 0),
+        "repair_receipts": len(data.get("repair_receipts", [])),
     }
 
 

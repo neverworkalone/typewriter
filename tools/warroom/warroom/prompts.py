@@ -24,6 +24,7 @@ ALLOWED = {"a": _PRODUCE, "b": _PRODUCE, "c": _PRODUCE, "d": _PRODUCE, "recovery
            "s2_chunk_format_fix": {"chunk_id", "problem"},
            "s2_links": _STAGE2 | {"link_input"},
            "s2_links_fix": {"digest", "problem"},
+           "s2_repair": _STAGE2 | {"fingerprint", "repair_input", "round_info"},
            "c_chunk": _C_CHUNK, "c_chunk_resume": {"chunk_no", "checkpoint", "remaining", "session_note"},
            "d_chunk": {"batch", "branch", "chunk_no", "session_note", "chunk_input"},
            "d_chunk_resume": {"chunk_no", "decisions", "searches"}, "d_chunk_fix": {"chunk_no", "decisions", "problem"},
@@ -131,6 +132,13 @@ def stage2_links(b, checkpoint: dict, links: str, directory: Path | None = None)
 
 def stage2_links_fix(digest: str, problem: str, directory: Path | None = None) -> str:
     return render("s2_links_fix", {"digest": digest, "problem": problem}, directory)
+
+
+def stage2_repair(b, fingerprint: str, repair_input: str, round_info: str,
+                  directory: Path | None = None) -> str:
+    values = _stage2_values(b)
+    values.update(fingerprint=fingerprint, repair_input=repair_input, round_info=round_info)
+    return render("s2_repair", values, directory)
 
 
 def stage2_chunk_resume(chunk_id: str, directory: Path | None = None) -> str:
