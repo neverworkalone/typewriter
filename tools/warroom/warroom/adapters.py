@@ -729,10 +729,7 @@ class CodexCLIAdapter(ProcessAdapter):
     def _launch_args(self, env, run: RunSpec, grant: list[str]) -> list[str]:
         """Pin the configured run profile; chunks add only input optimizations and omit Git admin grants."""
         pins = self._pins(run)
-        if is_stage2_repair(env):
-            # Stage 2 repair keeps the operator's permission profile and never pauses for approval.
-            return [*pins, *self._chunk_args(), "-c", 'approval_policy="never"']
-        if is_stage2_chunk(env):
+        if is_stage2_repair(env) or is_stage2_chunk(env):
             return [*pins, *self._chunk_args()]
         return [*pins, *grant]
 

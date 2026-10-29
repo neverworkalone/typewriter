@@ -926,12 +926,12 @@ class ChunkLaunchArgs(unittest.TestCase):
                 for bad in NEVER_PASSED:
                     self.assertNotIn(bad, joined)
 
-    def test_stage2_repair_keeps_configured_profile_and_never_escalates(self):
+    def test_stage2_repair_keeps_configured_profile_without_overrides(self):
         for kind in ("start", "resume"):
             with self.subTest(kind=kind):
                 env = self.env(WARROOM_ANSWER_ONLY="1", WARROOM_STAGE2_REPAIR="1")
                 a = self.launch(kind, env)
-                self.assertIn('approval_policy="never"', a.cmd)
+                self.assertNotIn("approval_policy", " ".join(a.cmd))
                 self.assertNotIn("--ask-for-approval", a.cmd)
                 self.assertNotIn("--sandbox", a.cmd)
                 self.assertNotIn("--add-dir", a.cmd)
