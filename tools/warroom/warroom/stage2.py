@@ -230,49 +230,35 @@ _FENCE = re.compile(r"^\s*```")
 _LINK_ROW = re.compile(r"^c\d+\s")
 _SENSE_ID = re.compile(r"\b[wr]\d+-s[1-9]\d*\b")
 _REVIEW_TUPLE_START = re.compile(r"(?<![\w-])(?P<record>[wr]\d+)[ \t]*,[ \t]*(?P<sense>[wr]\d+-s[1-9]\d*)[ \t]*,[ \t]*")
-_REVIEW_TARGET_CUE = re.compile(
-    r"\b(?:fix|correct|revise|reconsider|amend|change|update|inspect|address|resolve|remove|retain|drop|"
-    r"wrong|incorrect|problematic|defect|blocker|needs? (?:a )?(?:fix|change|revision)|"
-    r"should be (?:fixed|changed|revised|removed)|must be (?:fixed|changed|revised|removed))\b|"
-    r"(?:수정|고쳐|정정|검토|변경|삭제|보존|오류|문제|잘못|부정확|차단)", re.I
-)
-_EXPLICIT_REVIEW_CUE = re.compile(r"(?:^|[.!?;,:-])\s*(?:please\s+|kindly\s+|could you\s+)?review\b", re.I)
-_REVIEW_REFERENCE_CUE = re.compile(
-    r"\b(?:compare|compared|comparison|peer|target(?: sense| id)?|linked sense|example|e\.g\.|historical|"
-    r"retrospective|previous review|past review|prior review|statistic|statistics|stats|count|total|unrelated|reference)\b|"
-    r"(?:비교|대조|동료|대상 sense|표적 sense|예시|과거 리뷰|이전 리뷰|회고|통계|개수|합계|참고|무관)", re.I
-)
-_REVIEW_REFERENCE_AFTER = re.compile(
-    r"\b(?:compare[ds]? (?:with|to)|as an? example|for example|e\.g\.|peer sense|target sense|"
-    r"linked sense|historical|retrospective|previous review|past review|prior review|statistics|stats|count|total)\b|"
-    r"(?:비교 대상|비교하면|예를 들어|동료 sense|대상 sense|과거 리뷰|이전 리뷰|회고|통계)", re.I
-)
 
 
-def _review_triplets(text: str) -> list[tuple[str, str, str]]:
-    """Parse explicitly formatted `(record, sense, candidate)` rows without splitting candidate commas."""
-    found: list[tuple[str, str, str]] = []
+def _review_triplets(text: str) -> list[tuple[str, str, str, int, int]]:
+    """Parse structured `(record, sense, candidate)` rows and retain each tuple's source span."""
+    found: list[tuple[str, str, str, int, int]] = []
 
-    def add(value: str) -> None:
+    def add(value: str, start: int, end: int) -> None:
         fields = value.strip().strip("` ").split(",", 2)
         if len(fields) != 3:
             return
         record_id, sense_id, candidate = (field.strip().strip("` ") for field in fields)
         if record_id and sense_id and candidate:
-            found.append((record_id, sense_id, candidate))
+            found.append((record_id, sense_id, candidate, start, end))
 
     # Whole-tuple code spans, including candidates that themselves contain commas.
     for match in re.finditer(r"`([^`\n]+)`", text):
-        add(match.group(1))
+        add(match.group(1), match.start(), match.end())
 
     # Three separately quoted fields, e.g. `w1`, `w1-s1`, `a, b`.
-    for line in text.splitlines():
+    offset = 0
+    for line in text.splitlines(keepends=True):
         spans = list(re.finditer(r"`([^`\n]+)`", line))
         for index in range(len(spans) - 2):
             between = (line[spans[index].end():spans[index + 1].start()] +
                        line[spans[index + 1].end():spans[index + 2].start()])
             if re.fullmatch(r"[\s,()]*", between):
-                add(",".join(span.group(1) for span in spans[index:index + 3]))
+                add(",".join(span.group(1) for span in spans[index:index + 3]),
+                    offset + spans[index].start(), offset + spans[index + 2].end())
+        offset += len(line)
 
     # Parenthesized tuples. Balance nested candidate parentheses before taking the first two commas.
     for start, char in enumerate(text):
@@ -285,13 +271,21 @@ def _review_triplets(text: str) -> list[tuple[str, str, str]]:
             elif text[end] == ")":
                 depth -= 1
                 if depth == 0:
-                    add(text[start + 1:end])
+                    add(text[start + 1:end], start, end + 1)
                     break
 
     # Plain numbered/bulleted rows; only a whole row is treated as a tuple.
-    for line in text.splitlines():
-        row = re.sub(r"^\s*(?:[-*+]\s+|\d+[.)]\s+)", "", line).strip()
+    offset = 0
+    for line in text.splitlines(keepends=True):
+        content = line.rstrip("\r\n")
+        prefix = re.match(r"^\s*(?:[-*+]\s+|\d+[.)]\s+)", content)
+        row_start = prefix.end() if prefix else 0
+        row = content[row_start:]
+        leading = len(row) - len(row.lstrip())
+        row = row.strip()
+        row_start += leading
         if row.startswith("(") or "`" in row or row.count(",") < 2:
+            offset += len(line)
             continue
         starts = list(_REVIEW_TUPLE_START.finditer(row))
         if len(starts) > 1:
@@ -299,46 +293,49 @@ def _review_triplets(text: str) -> list[tuple[str, str, str]]:
                 end = starts[index + 1].start() if index + 1 < len(starts) else len(row)
                 candidate = row[match.end():end].strip().rstrip(";| ")
                 if candidate:
-                    found.append((match.group("record"), match.group("sense"), candidate))
+                    raw_candidate = row[match.end():end]
+                    trim_end = len(raw_candidate.rstrip(";| "))
+                    found.append((match.group("record"), match.group("sense"), candidate,
+                                  offset + row_start + match.start(),
+                                  offset + row_start + match.end() + trim_end))
+            offset += len(line)
             continue
-        add(row.rstrip(".;"))
-    return list(dict.fromkeys(found))
+        trimmed = row.rstrip(".;")
+        add(trimmed, offset + row_start, offset + row_start + len(trimmed))
+        offset += len(line)
+    return found
 
 
-def _explicit_review_targets(text: str) -> set[str]:
-    """Return only Sense IDs tied to a direct repair/review cue, not IDs used as comparison context."""
-    targets: set[str] = set()
-    for line in text.splitlines():
-        matches = list(_SENSE_ID.finditer(line))
-        for index, match in enumerate(matches):
-            prefix = line[:match.start()]
-            separators = list(re.finditer(r"[.!?;](?:\s+|$)", prefix))
-            clause_start = separators[-1].end() if separators else 0
-            before = line[clause_start:match.start()]
-            clause_end_match = re.search(r"[.!?;](?:\s+|$)", line[match.end():])
-            clause_end = match.end() + clause_end_match.start() if clause_end_match else len(line)
-            next_start = next((candidate.start() for candidate in matches[index + 1:]
-                               if candidate.start() < clause_end), clause_end)
-            after = line[match.end():min(next_start, match.end() + 60)]
-            action_positions = [cue.start() for cue in _REVIEW_TARGET_CUE.finditer(before)]
-            action_positions.extend(cue.start() for cue in _EXPLICIT_REVIEW_CUE.finditer(before))
-            reference_positions = [cue.start() for cue in _REVIEW_REFERENCE_CUE.finditer(before)]
-            if action_positions or reference_positions:
-                if action_positions and (not reference_positions or max(action_positions) > max(reference_positions)):
-                    targets.add(match.group(0))
-                continue
-            if (_REVIEW_REFERENCE_AFTER.search(after)
-                    or not _REVIEW_TARGET_CUE.search(after)):
-                continue
-            targets.add(match.group(0))
-    return targets
+def _mask_spans(text: str, spans: list[tuple[int, int]]) -> str:
+    """Replace tuple spans with spaces while preserving text length, newlines, and all later offsets."""
+    if not spans:
+        return text
+    chars = list(text)
+    merged = []
+    for start, end in sorted(spans):
+        start, end = max(0, start), min(len(chars), end)
+        if start >= end:
+            continue
+        if merged and start <= merged[-1][1]:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], end))
+        else:
+            merged.append((start, end))
+    for start, end in merged:
+        for index in range(start, end):
+            if chars[index] not in "\r\n":
+                chars[index] = " "
+    return "".join(chars)
 
 
-def review_pairs(text: str, items: list[dict]) -> dict:
-    """Extract exact source candidate targets from review text and retain conservative Sense-level fallbacks.
+def review_events(event_texts: list[str], items: list[dict]) -> dict:
+    """Select exact candidate pairs and conservative full-Sense fallbacks across independent review events.
 
     Returned pairs are validated against the Part's exact record/sense/candidate tuples. Invalid structured rows are
-    reported in `unmatched_pairs`; their in-Part Sense is a fallback only when no valid candidate pair identifies it.
+    reported in `unmatched_pairs`; their in-Part Sense is a full-Sense fallback. Any Part Sense mentioned outside a
+    recognized tuple span is also a full-Sense fallback, even when the prose describes it as a comparison peer.
+
+    A prose reference without a Sense ID or structured tuple (for example, “also fix this Sense's activities photo”)
+    cannot be bound to a source by this parser and remains an explicit known limitation.
     """
     available: set[tuple[str, str, str]] = set()
     for item in items:
@@ -347,31 +344,43 @@ def review_pairs(text: str, items: list[dict]) -> dict:
             candidate_text = candidate if isinstance(candidate, str) else candidate.get("text") if isinstance(candidate, dict) else None
             if isinstance(record_id, str) and isinstance(sense_id, str) and isinstance(candidate_text, str):
                 available.add((record_id, sense_id, candidate_text))
-    valid = []
-    unmatched = []
-    for pair in _review_triplets(text):
-        if pair in available:
-            valid.append(pair)
-        else:
-            unmatched.append(pair)
-    valid = list(dict.fromkeys(valid))
-    unmatched = list(dict.fromkeys(unmatched))
     in_part_senses = {
         item["sense_id"] for item in items
         if isinstance(item, dict) and isinstance(item.get("sense_id"), str)
     }
-    targeted = (_explicit_review_targets(text) | {sense for _, sense, _ in unmatched}) & in_part_senses
-    identified = {sense for _, sense, _ in valid}
-    fallback = sorted(targeted - identified)
-    mentioned = sorted(set(_SENSE_ID.findall(text)))
+    valid = []
+    unmatched = []
+    full = set()
+    mentioned = set()
+    for text in event_texts:
+        tuples = _review_triplets(text)
+        for record, sense, candidate, _start, _end in tuples:
+            pair = (record, sense, candidate)
+            if pair in available:
+                valid.append(pair)
+            else:
+                unmatched.append(pair)
+                if sense in in_part_senses:
+                    full.add(sense)
+        prose = _mask_spans(text, [(start, end) for _, _, _, start, end in tuples])
+        full.update(set(_SENSE_ID.findall(prose)) & in_part_senses)
+        mentioned.update(_SENSE_ID.findall(text))
+    valid = list(dict.fromkeys(valid))
+    unmatched = list(dict.fromkeys(unmatched))
+    valid = [pair for pair in valid if pair[1] not in full]
     return {
         "pairs": [{"record_id": record, "source_sense_id": sense, "candidate": candidate}
                   for record, sense, candidate in valid],
-        "fallback_sense_ids": fallback,
+        "fallback_sense_ids": sorted(full),
         "unmatched_pairs": [{"record_id": record, "source_sense_id": sense, "candidate": candidate}
                             for record, sense, candidate in unmatched],
-        "mentioned_sense_ids": mentioned,
+        "mentioned_sense_ids": sorted(mentioned),
     }
+
+
+def review_pairs(text: str, items: list[dict]) -> dict:
+    """Backward-compatible one-event wrapper for `review_events`."""
+    return review_events([text], items)
 
 
 def extract_decisions(final_text: str | None, chunk_id: str) -> list[str] | None:

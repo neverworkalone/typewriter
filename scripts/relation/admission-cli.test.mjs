@@ -1879,6 +1879,37 @@ test('selected inspect preserves whole-sense digest and aliases while bounding Q
   assert.equal(legacyFilter.digest, fullW1.digest, 'the existing --candidate filter keeps its prior digest contract');
 });
 
+test('inspect --select keeps detailed current rows for a full-sense review target', async (t) => {
+  const { root, sourceCandidates } = await sixCandidateRepository(t);
+  const candidatePath = path.join(root, 'data/relation-candidates/001/001_01_a_codex.jsonl');
+  const producerRows = (await readFile(candidatePath, 'utf8')).trim().split('\n').map(JSON.parse);
+  producerRows.find((row) => row.record_id === 'w2').senses[0].candidates = ['peer candidate'];
+  await writeFile(candidatePath, jsonl(producerRows));
+
+  const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
+  await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  await saveAllPrimaryAsDrops(root, checkpoint);
+  const selectionPath = '.warroom-scratch/s2-fix-select.json';
+  await writeFile(path.join(root, selectionPath), JSON.stringify({ candidates: [
+    { source_sense_id: 'w2-s1', candidate: 'peer candidate' },
+  ] }));
+
+  const inspect = await quiet(() => run([
+    'inspect', '--checkpoint', checkpoint, '--source-sense-id', 'w1-s1,w2-s1',
+    '--select', selectionPath, '--format', 'compact',
+  ], { root }));
+
+  assert.ok(sourceCandidates.length > 1);
+  for (const candidate of sourceCandidates) {
+    assert.ok(inspect.text.includes(`\t${candidate}\t`), `${candidate} remains a detailed full-Sense row`);
+  }
+  assert.match(inspect.text, /\nc\d+\t첫 이미지\t/u, 'an unquoted candidate retains its c<n> detail alias');
+  assert.match(inspect.text, /# current c\d+: D /u, 'the detailed row includes its current Drop decision');
+  assert.match(inspect.text, /\nc\d+\tpeer candidate\t/u, 'the other Sense keeps its selected candidate detail');
+  assert.doesNotMatch(inspect.text, /\t첫 이미지\t.*\tQ\t/u,
+    'a prose-full Sense is not reduced to a Q summary by another Sense selection');
+});
+
 test('premerge preparation resumes only from matching source hashes and distinguishes empty files from absence', async (t) => {
   const { root } = await prepareSixPart(t, { emptyRelation: true });
   const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
