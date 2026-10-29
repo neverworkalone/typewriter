@@ -317,7 +317,7 @@ def _explicit_review_targets(text: str) -> set[str]:
             after = line[match.end():min(next_start, match.end() + 60)]
             previous_end = match.end()
             if (_REVIEW_REFERENCE_CUE.search(before) or _REVIEW_REFERENCE_AFTER.search(after)
-                    or not (_REVIEW_TARGET_CUE.search(before + " " + after) or _EXPLICIT_REVIEW_CUE.search(before)):
+                    or not (_REVIEW_TARGET_CUE.search(before + " " + after) or _EXPLICIT_REVIEW_CUE.search(before))):
                 continue
             targets.add(match.group(0))
     return targets

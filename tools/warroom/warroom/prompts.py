@@ -23,6 +23,7 @@ ALLOWED = {"a": _PRODUCE, "b": _PRODUCE, "c": _PRODUCE, "d": _PRODUCE, "recovery
            "producer_fix": {"pr", "head", "branch", "review_events", "session_note", "source_context",
                             "canonical", "output", "method_contract", "method_fix_scope"},
            "contract_a": set(), "contract_b": set(), "contract_c": set(), "contract_d": set(),
+           "s2_policy_card": {"relation_direction_rule"},
            "m": _MAINTAIN, "m_recovery": _MAINTAIN, "s2": _STAGE2,
            "s2_chunk": _STAGE2 | {"s2_policy_card"}, "s2_recovery": _STAGE2,
            "s2_chunk_resume": {"chunk_id", "relation_direction_rule"},
