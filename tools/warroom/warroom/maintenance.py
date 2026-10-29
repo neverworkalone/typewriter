@@ -14,7 +14,9 @@ rows (`defects`), Issue publication, and applying a merged fix to a paused batch
 from __future__ import annotations
 
 import json
+import hashlib
 import re
+from datetime import datetime, timezone
 from pathlib import Path
 
 from . import auth, defects, stage2
@@ -54,13 +56,18 @@ class Maintenance:
         return True
 
     def step(self) -> None:
-        for fn in (self._publish, self._start, self._track, self._release):
+        for fn in (self._publish, self._publish_issue_requests, self._start, self._track, self._release):
             try:
                 fn()
             except Exception as e:   # GitHub/git trouble never stops the production Lines; the state is re-read next tick
                 self.store.log(None, f"Maintainer {fn.__name__} 예외(재시도 예정): {e}", "warn")
 
     # ---- reporting (called by the Supervisor when it finds a report) ---------------------------------------------
+    def report_issue(self, title: str, body: str, urgent: bool = False, event_key: str = "") -> int:
+        """Persist a caller-authored Issue request. Only urgent requests join the existing Maintainer queue."""
+        request = self.store.request_issue(event_key, title, body, urgent)
+        return request["id"]
+
     def report(self, b, source: str, event_key: str, raw: str, pr_info: dict | None = None) -> None:
         """Pause `b` for one defect event. A malformed or insufficient report holds the batch for the operator and
         creates no Issue; a valid one is queued for publication. Repeating the same event changes nothing."""
@@ -81,6 +88,108 @@ class Maintenance:
             self.store.log(b["id"], f"공통 결함 `{report['defect_class']}` 보고({source}) → 배치 PAUSED, 작업물·세션 보존", "warn")
 
     @staticmethod
+    def _issue_request_marker(event_key: str) -> str:
+        digest = hashlib.sha256(event_key.encode("utf-8")).hexdigest()
+        return f"<!-- warroom-issue-request:{digest} -->"
+
+    def _issue_retry_due(self, key: str) -> bool:
+        return self.sup._transient_due(f"issue:{key}")
+
+    def _issue_retry_failed(self, key: str, error) -> None:
+        self.sup._transient_wait(f"issue:{key}", error)
+
+    def _issue_retry_succeeded(self, key: str) -> None:
+        self.sup._transient_clear(f"issue:{key}")
+
+    @staticmethod
+    def _created_timestamp(value) -> float | None:
+        if isinstance(value, (int, float)):
+            return float(value)
+        if not isinstance(value, str) or not value:
+            return None
+        try:
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=timezone.utc)
+            return parsed.timestamp()
+        except ValueError:
+            return None
+
+    def _find_issue_request(self, request) -> int | None:
+        """Recover this request after a lost create response without changing its title or body.
+
+        A request marker lives in a comment, leaving caller-authored Issue bodies byte-for-byte intact. The ordered
+        publisher marks each completed Issue before starting the next request, so another event with identical text
+        is not mistaken for this one.
+        """
+        expected_marker = self._issue_request_marker(request["event_key"])
+        prefix = "<!-- warroom-issue-request:"
+        issues = self.sup.gh.all_issues()
+        exact = [i for i in issues if not i.get("pull_request") and i.get("title", "") == request["title"]
+                 and i.get("body", "") == request["body"]]
+        unmarked_recent = []
+        not_before = int(float(request["created_at"]))
+        for issue in exact:
+            comments = self.sup.gh.issue_comments(issue["number"])
+            bodies = [c.get("body") or "" for c in comments]
+            if any(expected_marker in body for body in bodies):
+                return issue["number"]
+            if any(prefix in body for body in bodies):
+                continue
+            created = self._created_timestamp(issue.get("created_at"))
+            if created is not None and created >= not_before:
+                unmarked_recent.append(issue["number"])
+        if len(unmarked_recent) > 1:
+            raise RuntimeError("동일한 제목·본문의 미확인 Issue가 여러 개라 발행 대상을 안전하게 특정할 수 없습니다")
+        return unmarked_recent[0] if unmarked_recent else None
+
+    def _publish_issue_requests(self) -> None:
+        """Publish durable ordinary/urgent requests independently from the shared-defect state machine."""
+        for request in self.store.issue_requests(("PENDING", "CREATED")):
+            retry_key = f"request:{request['id']}"
+            if not self._issue_retry_due(retry_key):
+                continue
+            try:
+                if request["state"] == "CREATED":
+                    number = request["issue_number"]
+                    if number is None:
+                        raise RuntimeError("CREATED 요청에 GitHub Issue 번호가 없습니다")
+                else:
+                    number, _fresh = self._find_or_create_issue(
+                        request["title"], request["body"], ["urgent"] if request["urgent"] else [],
+                        lambda: (self._find_issue_request(request), False))
+                    if not self.store.mark_issue_request_created(request["id"], number):
+                        raise RuntimeError("발행된 Issue 번호를 요청에 영속화하지 못했습니다")
+
+                marker = self._issue_request_marker(request["event_key"])
+                comments = self.sup.gh.issue_comments(number)
+                if not any(marker in (c.get("body") or "") for c in comments):
+                    self.sup.gh.comment_issue(number, marker)
+
+                if request["urgent"]:
+                    issue = self.sup.gh.issue(number)
+                    if issue["pull_request"] or issue["state"] != "open" or "urgent" not in issue["labels"]:
+                        raise RuntimeError(f"urgent 요청 Issue #{number}가 열린 urgent Issue가 아닙니다")
+                if not self.store.complete_issue_request(request["id"], number):
+                    raise RuntimeError("Issue 발행 완료 상태를 영속화하지 못했습니다")
+                self._issue_retry_succeeded(retry_key)
+                self.store.log(None, f"Issue 요청 {request['id']} 발행 완료: #{number}"
+                               f" ({'urgent / Maintainer 큐' if request['urgent'] else '수동 처리'})")
+            except Exception as e:
+                self._issue_retry_failed(retry_key, e)
+
+    def _find_or_create_issue(self, title: str, body: str, labels: list[str], lookup) -> tuple[int, bool]:
+        """Share Issue creation across generic requests, shared defects and verify blocks.
+
+        Each caller owns its established duplicate policy (event marker, defect class, or exact request payload),
+        while this common boundary performs exactly one GitHub create when that policy finds no reusable Issue.
+        """
+        number, fresh = lookup()
+        if number is None:
+            return self.sup.gh.create_issue(title, body, labels), True
+        return number, fresh
+
+    @staticmethod
     def _split(d) -> tuple[dict, str]:
         text, _, facts = d["report"].partition("\n")
         return defects.parse(text), facts
@@ -94,29 +203,32 @@ class Maintenance:
             if d["source"] == "verify":
                 self._publish_verify(d)
                 continue
-            if not self._due(f"defect_issue_try_{d['id']}"):
+            retry_key = f"defect:{d['id']}"
+            if not self._issue_retry_due(retry_key):
                 continue
             report, facts = self._split(d)
             try:
                 issues = self.sup.gh.urgent_issues()
             except Exception as e:
                 self.store.log(d["batch_id"], f"urgent Issue 조회 실패(보고·작업물 보존, 재시도 예정): {e}", "warn")
+                self._issue_retry_failed(retry_key, e)
                 continue
-            number, fresh = self._find(issues, d, report)
-            if number is None:
-                try:
-                    number = self.sup.gh.create_issue(
-                        defects.issue_title(report), defects.issue_body(report, d["event_key"], facts, d["source"]),
-                        ["urgent"])
-                except Exception as e:
-                    self.store.log(d["batch_id"], f"urgent Issue 생성 실패(보고·작업물 보존, 재시도 예정): {e}", "warn")
-                    continue
-                fresh = True
-            elif number and not fresh:
+            try:
+                number, fresh = self._find_or_create_issue(
+                    defects.issue_title(report),
+                    defects.issue_body(report, d["event_key"], facts, d["source"]), ["urgent"],
+                    lambda: self._find(issues, d, report))
+            except Exception as e:
+                self.store.log(d["batch_id"], f"urgent Issue 생성 실패(보고·작업물 보존, 재시도 예정): {e}", "warn")
+                self._issue_retry_failed(retry_key, e)
+                continue
+            if number and not fresh:
                 number = self._attach(number, d, report, facts)
                 if number is None:
+                    self._issue_retry_failed(retry_key, "Issue 연결 코멘트 실패")
                     continue
             self.store.link_defect(d["id"], number)
+            self._issue_retry_succeeded(retry_key)
             self.store.log(d["batch_id"], f"urgent Issue #{number} 연결 (공통 결함 `{report['defect_class']}`)")
         self._post_verify_evidence()
 
@@ -188,7 +300,8 @@ class Maintenance:
         return f"{maintainer_id(self.cfg) or 'm'}/s2"
 
     def _publish_verify(self, d) -> None:
-        if not self._due(f"defect_issue_try_{d['id']}"):
+        retry_key = f"verify:{d['id']}"
+        if not self._issue_retry_due(retry_key):
             return
         try:
             v = defects.parse_verify(d["report"])
@@ -198,18 +311,22 @@ class Maintenance:
         try:
             issues = self.sup.gh.urgent_issues()
         except Exception as e:
+            self._issue_retry_failed(retry_key, e)
             return self.store.log(None, f"urgent Issue 조회 실패(차단 보존, 재시도 예정): {e}", "warn", line=self._line())
-        number, fresh = self._find_verify(issues, d, v)
-        if number is None:
-            try:
-                number = self.sup.gh.create_issue(defects.verify_issue_title(v),
-                                                  defects.verify_issue_body(v, d["event_key"], d["defect_class"]), ["urgent"])
-            except Exception as e:
-                return self.store.log(None, f"urgent Issue 생성 실패(차단 보존, 재시도 예정): {e}", "warn", line=self._line())
-        elif not fresh:
+        try:
+            number, fresh = self._find_or_create_issue(
+                defects.verify_issue_title(v),
+                defects.verify_issue_body(v, d["event_key"], d["defect_class"]), ["urgent"],
+                lambda: self._find_verify(issues, d, v))
+        except Exception as e:
+            self._issue_retry_failed(retry_key, e)
+            return self.store.log(None, f"urgent Issue 생성 실패(차단 보존, 재시도 예정): {e}", "warn", line=self._line())
+        if not fresh:
             if not self._comment_once(number, d["event_key"], defects.verify_link_comment(v, d["event_key"])):
+                self._issue_retry_failed(retry_key, "Issue 연결 코멘트 실패")
                 return
         self.store.link_defect(d["id"], number)
+        self._issue_retry_succeeded(retry_key)
         self.store.log(None, f"urgent Issue #{number} 연결 (Stage 2 verify 차단 `{d['defect_class']}`)", line=self._line())
 
     def _comment_once(self, number: int, event_key: str, body: str) -> bool:

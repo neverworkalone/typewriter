@@ -90,13 +90,27 @@ CREATE TABLE IF NOT EXISTS maintenance (
   created_at REAL NOT NULL, updated_at REAL NOT NULL
 );
 """
+# Additive migration (user_version 10, Issue #2291): durable requests for ordinary and urgent Issues. These requests
+# are separate from `defects`, whose batch-pause and shared-defect lifecycle remains unchanged.
+SCHEMA_V10 = """
+CREATE TABLE IF NOT EXISTS issue_requests (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  event_key TEXT NOT NULL UNIQUE,
+  title TEXT NOT NULL, body TEXT NOT NULL,
+  urgent INTEGER NOT NULL DEFAULT 0,
+  state TEXT NOT NULL DEFAULT 'PENDING',
+  issue_number INTEGER UNIQUE,
+  created_at REAL NOT NULL, updated_at REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS issue_requests_state ON issue_requests(state, id);
+"""
 # Additive migration (user_version 7, Issue #1684): `lines.shard_pin` is the shard a Single-mode Stage 2 run is bound to.
 # Additive migration (user_version 8, Issue #1809): the observed unit of intermediate progress (chunks/senses).
 # Additive migration (user_version 9, Issue #2033): per-run token / tool-call usage read from the run's own log when
 # the run ends. NULL = not measured (old runs, OpenCode, missing usage); never 0 as a stand-in.
 RUN_USAGE_COLUMNS_V9 = ("input_tokens", "cached_input_tokens", "cache_write_tokens", "output_tokens",
                         "reasoning_output_tokens", "tool_calls", "submit_failures")
-SCHEMA_VERSION = 9
+SCHEMA_VERSION = 10
 
 MAINTENANCE_METHOD = "m"   # the hidden Maintainer's execution record lives in `batches` under this method
 CLEARED_HOLD = "운영자가 Maintainer 실행을 Clear함 — Issue·결함 기록 보존, 명시적 Retry 전에는 자동 재시작하지 않습니다"
@@ -200,6 +214,7 @@ class Store:
         for col in RUN_USAGE_COLUMNS_V9:
             if col not in have:
                 c.execute(f"ALTER TABLE runs ADD COLUMN {col} INTEGER")
+        c.executescript(SCHEMA_V10)
         c.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
 
     @contextmanager
@@ -627,6 +642,72 @@ class Store:
             for key in keys:
                 c.execute("INSERT OR IGNORE INTO handled_events VALUES(?,?,?,?,?)",
                           (batch_id, pr, head, key, time.time()))
+
+    # --- durable Issue publication requests (Issue #2291) ---
+    def request_issue(self, event_key: str, title: str, body: str, urgent: bool = False) -> dict:
+        """Persist an Issue request before any GitHub call; repeated event keys must retain the same payload."""
+        if not isinstance(event_key, str) or not event_key.strip():
+            raise ValueError("event_key must be a non-empty string")
+        if not isinstance(title, str) or not title.strip():
+            raise ValueError("title must be a non-empty string")
+        if not isinstance(body, str):
+            raise ValueError("body must be a string")
+        now = time.time()
+        with self._conn() as c:
+            c.execute("BEGIN IMMEDIATE")
+            old = c.execute("SELECT * FROM issue_requests WHERE event_key=?", (event_key,)).fetchone()
+            if old is not None:
+                if (old["title"], old["body"], bool(old["urgent"])) != (title, body, bool(urgent)):
+                    raise ValueError("event_key is already registered with a different Issue request")
+                return dict(old)
+            issue_id = c.execute(
+                "INSERT INTO issue_requests(event_key,title,body,urgent,state,created_at,updated_at) "
+                "VALUES(?,?,?,?,?,?,?)", (event_key, title, body, int(bool(urgent)), "PENDING", now, now)
+            ).lastrowid
+            return dict(c.execute("SELECT * FROM issue_requests WHERE id=?", (issue_id,)).fetchone())
+
+    def issue_requests(self, states: tuple[str, ...] | None = None) -> list[dict]:
+        with self._conn() as c:
+            if states:
+                rows = c.execute(f"SELECT * FROM issue_requests WHERE state IN ({','.join('?' * len(states))}) "
+                                  "ORDER BY id", states).fetchall()
+            else:
+                rows = c.execute("SELECT * FROM issue_requests ORDER BY id").fetchall()
+        return [dict(r) for r in rows]
+
+    def mark_issue_request_created(self, request_id: int, issue_number: int) -> bool:
+        """Persist the remote number before adding its event marker or making the request visible as complete."""
+        now = time.time()
+        with self._conn() as c:
+            c.execute("BEGIN IMMEDIATE")
+            row = c.execute("SELECT state,issue_number FROM issue_requests WHERE id=?", (request_id,)).fetchone()
+            if row is None:
+                return False
+            if row["state"] in ("CREATED", "PUBLISHED"):
+                if row["issue_number"] != issue_number:
+                    raise ValueError("Issue request is already linked to a different GitHub Issue")
+                return True
+            cur = c.execute("UPDATE issue_requests SET state='CREATED',issue_number=?,updated_at=? "
+                            "WHERE id=? AND state='PENDING'", (issue_number, now, request_id))
+            return cur.rowcount == 1
+
+    def complete_issue_request(self, request_id: int, issue_number: int) -> bool:
+        """Mark publication complete and, for urgent requests only, register the existing Maintainer queue atomically."""
+        now = time.time()
+        with self._conn() as c:
+            c.execute("BEGIN IMMEDIATE")
+            row = c.execute("SELECT state,issue_number,urgent FROM issue_requests WHERE id=?", (request_id,)).fetchone()
+            if row is None:
+                return False
+            if row["state"] == "PUBLISHED":
+                return row["issue_number"] == issue_number
+            if row["state"] != "CREATED" or row["issue_number"] != issue_number:
+                return False
+            c.execute("UPDATE issue_requests SET state='PUBLISHED',updated_at=? WHERE id=?", (now, request_id))
+            if row["urgent"]:
+                c.execute("INSERT OR IGNORE INTO maintenance(issue_number,state,created_at,updated_at) "
+                          "VALUES(?,?,?,?)", (issue_number, "QUEUED", now, now))
+            return True
 
     # --- shared defects (Issue #1555) ---
     def report_defect(self, batch_id: int, event_key: str, source: str, defect_class: str, state: str,

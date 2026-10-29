@@ -99,6 +99,15 @@ class GhClient:
             raise GhError(f"gh issue list: {r.err.strip()}")
         return [{**i, "state": str(i["state"]).lower()} for i in json.loads(r.out or "[]")]
 
+    def all_issues(self) -> list[dict]:
+        """List all repository Issues (excluding PRs) for exact-payload recovery after a lost create response."""
+        rows = self._api(f"repos/{self.repo}/issues?state=all&per_page=100", paginate=True)
+        return [{"number": i["number"], "state": str(i["state"]).lower(), "title": i.get("title") or "",
+                 "body": i.get("body") or "", "created_at": i.get("created_at"),
+                 "labels": [label["name"] for label in i.get("labels", [])],
+                 "pull_request": "pull_request" in i}
+                for i in rows if "pull_request" not in i]
+
     def create_issue(self, title: str, body: str, labels: list[str]) -> int:
         argv = ["gh", "issue", "create", "--repo", self.repo, "--title", title, "--body", body]
         for label in labels:
