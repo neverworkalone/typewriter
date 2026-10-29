@@ -1450,7 +1450,7 @@ test('preflight collects pair conflicts and Drop/gloss failures without mutation
   assert.equal(afterPair.problems[0].candidates[0].candidate, '버릴말');
   const drop = afterPair.problems[0].candidates[0];
   const repairedDrop = { source_sense_id: drop.source_sense_id, candidate: drop.candidate,
-    disposition: 'relation', type: 'association', relevance: 4, target_resolution: 'no_exact_match', checked_target_sense_ids: [] };
+    disposition: 'relation', type: 'association', relevance: 4 };
   await writeFile(path.join(root, repairPath), JSON.stringify({ version: 1, fingerprint: afterPair.fingerprint, decisions: [{
     source_sense_id: drop.source_sense_id, candidate: drop.candidate,
     expected_decision: drop.decision, expected_additional_relations: null,
