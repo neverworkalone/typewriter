@@ -309,8 +309,8 @@ class ReviewFix(unittest.TestCase):
         w.run_chunks(3)
         b = w.row_()
         self.assertTrue(b["session_id"] is None or True)
-        w.pr_info(b["pr_number"], HEAD1)
-        w.gh.reviews_ = [review(11, HEAD1, "-1 w0001/w0001-s1 후보1-1 삭제")]
+        head = b["head_sha"]
+        w.gh.reviews_ = [review(11, head, "-1 w0001/w0001-s1 후보1-1 삭제")]
         out = w.wt() / REL
         original = out.read_text()
 

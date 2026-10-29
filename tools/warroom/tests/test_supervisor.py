@@ -6,6 +6,7 @@ from pathlib import Path
 from tests.fakes import HEAD1, HEAD2, World
 from warroom import control
 from warroom.adapters import opencode_free_quota
+from warroom.github import GhTransient
 from warroom.supervisor import Supervisor, acquire_lock
 
 BRANCH = "a-deepseek-001-01"
@@ -342,6 +343,169 @@ class Lifecycle(unittest.TestCase):
         self.assertIsNone(w.row()["pr_number"])
         self.assertTrue(Path(w.row()["worktree"]).exists())
         w.tmp.cleanup()
+
+
+class UpdateBranchSync(unittest.TestCase):
+    def setUp(self):
+        self.w = World()
+
+    def tearDown(self):
+        self.w.tmp.cleanup()
+
+    def ready_for_review(self):
+        w = self.w
+        w.start("single")
+        w.adapter.plan.append({"code": 0, "session": "ses_1", "effect": lambda: install_candidate_pr(w)})
+        w.tick()
+        w.adapter.finish(w.adapter.launches[-1]["pid"])
+        w.tick()
+        self.assertEqual(w.row()["state"], "WAITING_REVIEW")
+
+    def update_pr_branch(self, w, head=HEAD2):
+        b = w.row()
+        w.pr_info(7, head, head_ref=b["branch"])
+        w.git.remote[b["branch"]] = head
+        return b
+
+    def test_watch_fast_forwards_and_processes_reviews_against_the_new_head(self):
+        w = self.w
+        self.ready_for_review()
+        b = self.update_pr_branch(w)
+        w.gh.reviews_ = [review(12, HEAD2)]
+
+        w.tick()
+
+        self.assertEqual(w.git.local_head, HEAD2)
+        self.assertEqual(w.row()["state"], "FIXING")
+        self.assertEqual(len(w.adapter.launches), 2)
+        self.assertEqual(w.adapter.launches[-1]["kind"], "resume")
+        expected = f"data/relation-candidates/{b['shard']}/{b['shard']}_{b['batch']}_{b['method']}_{b['producer']}.jsonl"
+        self.assertEqual(w.git.fast_forward_calls[-1][3], {expected})
+        self.assertTrue(any("안전 fast-forward" in e["msg"] and HEAD2 in e["msg"]
+                            for e in w.store.line_events_tail("deepseek", "a")))
+
+    def test_fix_head_fast_forwards_without_restarting_the_completed_fix(self):
+        w = self.w
+        self.ready_for_review()
+        w.gh.reviews_ = [review(11, HEAD1)]
+        w.adapter.plan.append({"code": 0, "session": "ses_1", "effect": lambda: self.update_pr_branch(w)})
+        w.tick()
+        self.assertEqual(w.row()["state"], "FIXING")
+        fix_pid = w.row()["pid"]
+        before_finish = len(w.adapter.launches)
+        w.adapter.finish(fix_pid)
+
+        w.tick()
+
+        self.assertEqual(w.git.local_head, HEAD2)
+        self.assertEqual(w.row()["state"], "WAITING_REVIEW")
+        self.assertEqual(w.row()["head_sha"], HEAD2)
+        self.assertEqual(len(w.adapter.launches), before_finish)
+
+    def test_api_remote_lag_waits_without_error_or_worktree_change(self):
+        w = self.w
+        self.ready_for_review()
+        b = w.row()
+        w.pr_info(7, HEAD2, head_ref=b["branch"])
+        w.git.remote[b["branch"]] = "c" * 40
+
+        w.tick()
+
+        self.assertEqual(w.row()["state"], "WAITING_REVIEW")
+        self.assertEqual(w.git.local_head, HEAD1)
+        self.assertEqual(w.git.fast_forward_calls, [])
+        self.assertIsNotNone(w.store.get(f"tw_b{b['id']}:branch_sync"))
+
+    def test_unsafe_candidate_change_divergence_and_dirty_tree_are_preserved(self):
+        cases = [
+            ("candidate change", lambda w, b: setattr(w.git, "fast_forward_changed_paths", [
+                f"data/relation-candidates/{b['shard']}/{b['shard']}_{b['batch']}_{b['method']}_{b['producer']}.jsonl"])),
+            ("divergence", lambda w, b: w.git.fast_forward_ancestors.clear()),
+            ("remote missing", lambda w, b: w.git.remote.update({b["branch"]: None})),
+            ("dirty", lambda w, b: setattr(w.git, "dirty_text", "?? data/untracked.jsonl")),
+        ]
+        for name, mutate in cases:
+            with self.subTest(name=name):
+                w = World()
+                self.addCleanup(w.tmp.cleanup)
+                w.start("single")
+                w.adapter.plan.append({"code": 0, "session": "ses_1", "effect": lambda: install_candidate_pr(w)})
+                w.tick(); w.adapter.finish(w.adapter.launches[-1]["pid"]); w.tick()
+                b = self.update_pr_branch(w)
+                mutate(w, b)
+
+                w.tick()
+
+                self.assertEqual(w.row()["state"], "ERROR")
+                self.assertEqual(w.git.local_head, HEAD1)
+                self.assertTrue(Path(w.row()["worktree"]).exists())
+                self.assertEqual(w.git.removed, [])
+
+    def test_active_ai_defers_sync_until_process_exit(self):
+        w = self.w
+        self.ready_for_review()
+        b = w.row()
+        w.adapter.plan.append({"code": 0})
+        w.sup._launch(b, "fix_resume", [])
+        live = w.row()
+        self.assertIsNotNone(live["pid"])
+        w.store.update(live["id"], state="WAITING_REVIEW")
+        self.update_pr_branch(w)
+        launches = len(w.adapter.launches)
+
+        w.tick()
+
+        self.assertEqual(w.row()["state"], "WAITING_REVIEW")
+        self.assertEqual(w.git.local_head, HEAD1)
+        self.assertEqual(len(w.adapter.launches), launches)
+
+    def test_pr_head_race_during_final_recheck_waits_for_latest_snapshot(self):
+        w = self.w
+        self.ready_for_review()
+        b = self.update_pr_branch(w)
+
+        def move_both_heads():
+            w.pr_info(7, "c" * 40, head_ref=b["branch"])
+            w.git.remote[b["branch"]] = "c" * 40
+
+        w.git.fast_forward_recheck_effect = move_both_heads
+        w.tick()
+
+        self.assertEqual(w.row()["state"], "WAITING_REVIEW")
+        self.assertEqual(w.git.local_head, HEAD1)
+        self.assertEqual(w.git.fast_forward_calls[0][2], HEAD2)
+
+    def test_transient_pr_lookup_is_not_a_head_mismatch_verdict(self):
+        w = self.w
+        self.ready_for_review()
+        b = self.update_pr_branch(w)
+        w.gh.pull = lambda _n: (_ for _ in ()).throw(GhTransient("temporary API failure"))
+
+        w.tick()
+
+        self.assertEqual(w.row()["state"], "WAITING_REVIEW")
+        self.assertEqual(w.git.local_head, HEAD1)
+        self.assertEqual(w.git.fast_forward_calls, [])
+
+    def test_operator_retry_of_legacy_fix_head_error_rechecks_sync_without_relaunch(self):
+        w = self.w
+        self.ready_for_review()
+        b = self.update_pr_branch(w)
+        w.store.update(b["id"], state="ERROR", paused_from="FIXING", pid=None,
+                       error=f"원격 ref와 로컬 HEAD 불일치: 원격 {HEAD2[:10]} / 로컬 {HEAD1[:10]} (미push 또는 분기, PR HEAD {HEAD2[:10]}). 보존.")
+        w.store.set_line("deepseek", "a", run=0, drain=1, drain_once=1)
+        launches = len(w.adapter.launches)
+
+        self.assertTrue(control.retry(w.store, "deepseek", "a"))
+        w.tick()
+        self.assertEqual(w.row()["state"], "WAITING_REVIEW")
+        w.tick()
+
+        line = w.store.line("deepseek", "a")
+        self.assertEqual(w.row()["state"], "WAITING_REVIEW")
+        self.assertEqual(w.git.local_head, HEAD2)
+        self.assertEqual(len(w.adapter.launches), launches)
+        self.assertEqual((line["drain"], line["drain_once"]), (1, 1))
 
 
 class LiveAiHandover(unittest.TestCase):

@@ -21,6 +21,14 @@ class GitTransient(GitError):
     """A remote git call failed in a way asking again can fix (timeout, network); nothing was decided."""
 
 
+class FastForwardRace(GitTransient):
+    """The PR or remote branch moved while a safe PR-head fast-forward was being checked."""
+
+
+class FastForwardBlocked(GitError):
+    """A PR-head fast-forward would violate worktree ownership or preserve a protected artifact change."""
+
+
 class CleanupBlocked(Exception):
     """Removal would risk data loss or touch something War Room does not own."""
 
@@ -243,6 +251,67 @@ class Git:
             raise CleanupBlocked(f"{desc} (fast-forward 실패)")
         if self.head(path) != pr_head_sha:
             raise CleanupBlocked(f"{desc} (동기화 후에도 불일치)")
+
+    def fast_forward_open_pr(self, path: Path, branch: str, pr_head_sha: str, protected_paths: set[str],
+                             *, recheck=None) -> str:
+        """Fast-forward an owned, clean PR worktree to one already-verified open PR HEAD.
+
+        The caller supplies the exact files owned by the PR and a GitHub recheck that runs after fetching the target.
+        Network/API races are retryable; ownership, dirty state, divergence, and protected-file changes stop safely.
+        """
+        path = Path(path)
+        if self.registered(path) != branch:
+            raise FastForwardBlocked(f"worktree가 소유 브랜치 {branch!r}로 등록되어 있지 않습니다")
+        try:
+            self.worktree_gitdir(path)
+        except GitError as e:
+            raise FastForwardBlocked(str(e)) from e
+        if (dirty := self.dirty(path)).strip():
+            raise FastForwardBlocked(f"worktree가 clean 상태가 아닙니다: {dirty.strip()[:400]}")
+        if not protected_paths:
+            raise FastForwardBlocked("PR의 보호 산출물 경로를 확인할 수 없습니다")
+
+        local = self.head(path)
+        remote = self.remote_head(branch)
+        if remote is None:
+            raise FastForwardBlocked(f"원격 소유 브랜치 {branch}가 없습니다")
+        if remote != pr_head_sha:
+            raise FastForwardRace(f"PR HEAD와 원격 소유 브랜치가 달라졌습니다 ({pr_head_sha} / {remote})")
+        if local == pr_head_sha:
+            return local
+
+        self._git("fetch", "origin", pr_head_sha, cwd=path, timeout=600, net=True)
+        if not self._git("cat-file", "-e", f"{pr_head_sha}^{{commit}}", cwd=path, check=False).ok:
+            raise FastForwardBlocked(f"원격 PR HEAD {pr_head_sha}를 commit으로 확인할 수 없습니다")
+        if not self._git("merge-base", "--is-ancestor", local, pr_head_sha, cwd=path, check=False).ok:
+            raise FastForwardBlocked(f"local HEAD {local}가 PR HEAD {pr_head_sha}의 조상이 아닙니다")
+
+        diff = self._git("diff", "--name-only", "-z", "--no-renames", local, pr_head_sha, "--", cwd=path)
+        changed = {p for p in diff.out.split("\0") if p}
+        altered = sorted(changed & protected_paths)
+        if altered:
+            raise FastForwardBlocked("PR Update branch가 보호 산출물을 변경했습니다: " + ", ".join(altered))
+
+        # Recheck GitHub after fetch, then the live ref immediately before changing the worktree.
+        if recheck is not None:
+            recheck()
+        if self.registered(path) != branch or self.head(path) != local:
+            raise FastForwardBlocked("FF 직전에 worktree 소유권 또는 local HEAD가 바뀌었습니다")
+        if (dirty := self.dirty(path)).strip():
+            raise FastForwardBlocked(f"FF 직전에 worktree가 clean 상태가 아닙니다: {dirty.strip()[:400]}")
+        current_remote = self.remote_head(branch)
+        if current_remote is None:
+            raise FastForwardBlocked(f"FF 직전에 원격 소유 브랜치 {branch}가 사라졌습니다")
+        if current_remote != pr_head_sha:
+            raise FastForwardRace(f"FF 직전에 원격 브랜치가 이동했습니다 ({pr_head_sha} / {current_remote})")
+
+        if not self._git("merge", "--ff-only", pr_head_sha, cwd=path, check=False).ok:
+            raise FastForwardBlocked("git merge --ff-only가 실패했습니다")
+        if self.head(path) != pr_head_sha:
+            raise FastForwardBlocked("fast-forward 후 local HEAD가 확인한 PR HEAD와 다릅니다")
+        if (dirty := self.dirty(path)).strip():
+            raise FastForwardBlocked(f"fast-forward 후 worktree가 clean 상태가 아닙니다: {dirty.strip()[:400]}")
+        return local
 
     def remove_owned(self, path: Path, branch: str, pr_head_sha: str, *,
                      cleanup_proof: dict | None = None, on_verified=None) -> None:

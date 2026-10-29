@@ -188,7 +188,19 @@ class Stage2Finalization(unittest.TestCase):
         info = w.gh.pull(b["pr_number"])
         self.assertIsNone(w.sup._stage2_fix_result_problem(w.store.batch(b["id"]), info),
                           "a no-change response may keep the already verified exact HEAD")
-        new_head = "e" * 40
+        old_head = info["head_sha"]
+        safe_update_head = "e" * 40
+        w.adapter.stop(fix["pid"])
+        w.store.update(b["id"], pid=None)
+        w.git.fast_forward_ancestors.add((old_head, safe_update_head))
+        w.git.remote[b["branch"]] = safe_update_head
+        w.gh.prs[b["pr_number"]]["head_sha"] = safe_update_head
+        info = w.gh.pull(b["pr_number"])
+        w.sup._fast_forward_pr_head(w.store.batch(b["id"]), info)
+        self.assertIsNone(w.sup._stage2_fix_result_problem(w.store.batch(b["id"]), info),
+                          "a proven Update branch FF with the Stage 2 outputs and checkpoint unchanged is a no-change fix")
+
+        new_head = "d" * 40
         w.git.local_head = new_head
         w.git.remote[b["branch"]] = new_head
         w.gh.prs[b["pr_number"]]["head_sha"] = new_head

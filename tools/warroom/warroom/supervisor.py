@@ -26,7 +26,7 @@ from .adapters import (PREFLIGHT_PENDING, QUOTA_EVIDENCE, RunSpec, classify_clau
 from .config import (TIERED_ADAPTERS, adapter_label, config_problem, load_config, registry, registry_problems,
                      reload_problem, role_of, role_problem, run_spec, stage2_problem)
 from .github import GhError, GhTransient
-from .gitops import CleanupBlocked, GitError, GitTransient
+from .gitops import CleanupBlocked, FastForwardBlocked, FastForwardRace, GitError, GitTransient
 from .maintenance import Maintenance
 from .store import MAINTENANCE_METHOD, STAGE2_METHOD, LineBusy, LineNotRunnable
 
@@ -474,10 +474,19 @@ class Supervisor:
                         self.store.log(b["id"], "운영자 Retry: 현재 청크/세션에 추가 판정 수정 1회를 결속했습니다")
             if self._d_chunk_run(b) and not b["pr_number"]:
                 self.store.delete_prefix(f"d_fix_{b['id']}:")   # only an explicit Retry regrants the automatic correction
+            resume_state = b["paused_from"] or "PRODUCING"
+            legacy_ff_error = (b["state"] == "ERROR" and b["paused_from"] == "FIXING" and b["pr_number"] is not None
+                              and isinstance(b["error"], str)
+                              and b["error"].startswith("원격 ref와 로컬 HEAD 불일치:"))
+            if legacy_ff_error:
+                # Older Supervisor releases treated every remote/local SHA difference as divergence. Re-enter the
+                # owned PR watcher; it retries only after the complete safe fast-forward proof below.
+                resume_state = "WAITING_REVIEW"
+                self.store.log(b["id"], "기존 원격/local HEAD 불일치 오류: AI 재실행 없이 소유 PR fast-forward 안전 조건을 재확인합니다", "warn")
             self.store.set_line(b["producer"], b["method"], retry_batch=None, run=1)
-            self.store.update(b["id"], state=b["paused_from"] or "PRODUCING", error=None,
+            self.store.update(b["id"], state=resume_state, error=None,
                               retries=0, retry_after=None, pause_reason="", defect_id=None)
-            self.store.log(b["id"], f"운영자 재시도: {b['paused_from']}로 복귀")
+            self.store.log(b["id"], f"운영자 재시도: {resume_state}로 복귀")
 
     def _override_defect(self, b) -> None:
         if b["defect_id"] is not None:
@@ -1345,6 +1354,8 @@ class Supervisor:
         except Exception as e:
             return self._fail(b, "ERROR", f"AI 실행 시작 실패: {e}")
         self.store.set(f"headlag_{b['id']}", "")   # a new run supersedes any earlier push verification
+        if b["method"] == STAGE2_METHOD:
+            self.store.delete(f"s2_safe_ff_{b['id']}")
         self._clear_batch_retry(b["id"])
         state = "FIXING" if kind.startswith("fix") else "PRODUCING"
         fields = dict(state=state, pid=h.pid, exit_file=str(ex), log_file=str(log),
@@ -1882,9 +1893,19 @@ class Supervisor:
             if info.get("head_ref") != b["branch"] or self.git.head(wt) != info.get("head_sha") or \
                     self.git.remote_head(b["branch"]) != info.get("head_sha") or self.git.dirty(wt).strip():
                 return "Stage 2 리뷰 수정 결과의 branch/로컬·원격 HEAD/clean 상태가 일치하지 않습니다"
+            try:
+                safe_ff = json.loads(self.store.get(f"s2_safe_ff_{b['id']}") or "")
+            except (TypeError, ValueError):
+                safe_ff = {}
+            safe_ff_no_change = (isinstance(safe_ff, dict) and safe_ff.get("branch") == b["branch"] and
+                                 safe_ff.get("worktree") == str(wt) and safe_ff.get("from") == baseline.get("head") and
+                                 safe_ff.get("to") == info.get("head_sha"))
             if info.get("head_sha") == baseline.get("head"):
                 if cp_sha != baseline["checkpoint_sha256"] or checkpoint.get("amend_revision", 0) != baseline.get("amend_revision", 0):
                     return "HEAD 변경 없는 Stage 2 반론에서 checkpoint가 달라졌습니다"
+            elif safe_ff_no_change:
+                if cp_sha != baseline["checkpoint_sha256"] or checkpoint.get("amend_revision", 0) != baseline.get("amend_revision", 0):
+                    return "안전 fast-forward 중 Stage 2 checkpoint가 변경되었습니다"
             else:
                 if checkpoint.get("amend_revision", 0) <= baseline.get("amend_revision", 0):
                     return "Stage 2 PR HEAD가 바뀌었지만 공식 amend revision이 증가하지 않았습니다. 직접 파일 변경은 수락하지 않습니다"
@@ -3841,16 +3862,85 @@ class Supervisor:
                           head_sha=info["head_sha"], error=recovery_note, retries=0)
         self._clear_batch_retry(b["id"])
         self.store.delete(f"pr_create_{b['id']}")
+        self.store.delete(f"s2_safe_ff_{b['id']}")
         self.store.log(b["id"], f"PR #{info['number']} HEAD {info['head_sha'][:10]} 리뷰 대기")
+
+    def _pr_protected_paths(self, b, info) -> set[str]:
+        """Return this PR's exact output paths whose contents must not change in an Update branch merge."""
+        try:
+            files = self.gh.pull_files(info["number"])
+            if not isinstance(files, list) or any(not isinstance(f, dict) or not isinstance(f.get("path"), str)
+                                                  for f in files):
+                raise FastForwardBlocked("PR 파일 목록을 확인할 수 없습니다")
+            paths = {f["path"] for f in files}
+            if b["method"] in stage1ab.METHODS or b["method"] in (literary.METHOD, dchunk.METHOD):
+                claim = batches.expected_claim(b)
+                found = batches.pr_claims(b, {"number": info["number"], "files": files})
+                expected_path = (f"data/relation-candidates/{b['shard']}/"
+                                 f"{b['shard']}_{b['batch']}_{b['method']}_{b['producer']}.jsonl")
+                if found.count(claim) != 1 or any(item != claim for item in found) or expected_path not in paths:
+                    raise FastForwardBlocked(f"PR #{info['number']}의 Candidate 파일 소유권이 배치와 일치하지 않습니다")
+                return {expected_path}
+            if b["method"] == STAGE2_METHOD:
+                claim = batches.expected_claim(b)
+                found = batches.pr_claims(b, {"number": info["number"], "files": files})
+                if found.count(claim) != 1 or any(item != claim for item in found):
+                    raise FastForwardBlocked(f"PR #{info['number']}의 Stage 2 산출물 소유권이 shard와 일치하지 않습니다")
+                owned = {f"data/relations/relation-{b['shard']}.jsonl",
+                         f"data/relation-drops/drop-{b['shard']}.jsonl"}
+                protected = paths & owned
+                if not protected:
+                    raise FastForwardBlocked(f"PR #{info['number']}에 보호할 Stage 2 산출물이 없습니다")
+                return protected
+            if b["method"] == MAINTENANCE_METHOD and paths:
+                return paths
+            raise FastForwardBlocked(f"Method {b['method']!r}의 보호 산출물을 증명할 수 없습니다")
+        except batches.BatchError as e:
+            raise FastForwardBlocked(str(e)) from e
+
+    def _fast_forward_pr_head(self, b, info) -> str:
+        """Apply the shared ownership, process, PR, remote, ancestry, artifact, and clean-worktree gates."""
+        number, branch, wt = b["pr_number"], b["branch"], Path(b["worktree"])
+        if number is None or info.get("number") != number:
+            raise FastForwardBlocked("PR 번호가 batch 소유 PR과 일치하지 않습니다")
+        if info.get("state") != "open" or info.get("merged"):
+            raise FastForwardRace(f"PR #{number}가 동기화 중 open 상태에서 이동했습니다")
+        if info.get("head_ref") != branch:
+            raise FastForwardBlocked(f"PR #{number}의 head 브랜치가 소유 브랜치 {branch!r}와 다릅니다")
+        target = info.get("head_sha")
+        if not isinstance(target, str) or not re.fullmatch(r"[a-f0-9]{40}", target):
+            raise FastForwardBlocked(f"PR #{number} HEAD가 유효한 commit SHA가 아닙니다")
+        if b["pid"] is not None:
+            raise FastForwardRace("AI 프로세스 종료가 확인되지 않아 worktree 동기화를 미룹니다")
+
+        protected = self._pr_protected_paths(b, info)
+
+        def recheck_pr() -> None:
+            current = self.gh.pull(number)
+            if current.get("number") != number or current.get("head_ref") != branch:
+                raise FastForwardBlocked(f"PR #{number}의 repository 또는 소유 head 브랜치가 바뀌었습니다")
+            if current.get("state") != "open" or current.get("merged"):
+                raise FastForwardRace(f"PR #{number}가 동기화 중 open 상태에서 이동했습니다")
+            if current.get("head_sha") != target:
+                raise FastForwardRace(f"PR #{number} HEAD가 확인 중 이동했습니다 ({target} / {current.get('head_sha')})")
+
+        old = self.git.head(wt)
+        self.git.fast_forward_open_pr(wt, branch, target, protected, recheck=recheck_pr)
+        if b["method"] == STAGE2_METHOD and b["state"] == "FIXING":
+            key = f"s2_safe_ff_{b['id']}"
+            try:
+                prior = json.loads(self.store.get(key) or "")
+            except (TypeError, ValueError):
+                prior = {}
+            start = prior.get("from") if prior.get("branch") == branch and prior.get("to") == old else old
+            self.store.set(key, json.dumps({"branch": branch, "worktree": str(wt), "from": start, "to": target},
+                                           sort_keys=True))
+        self.store.log(b["id"], f"소유 PR #{number} 안전 fast-forward: {old} -> {target}")
+        return old
 
     # ---- FIXING: is the fix really on the PR? ------------------------------
     def _check_fix_head(self, b, info) -> str:
-        """After a fix run: "ok" (clean, local HEAD == PR HEAD), "wait" (only the PR API lags) or "stop" (handled).
-
-        Invariant: a fix is accepted only if its commit is on the PR. A PR API `head.sha` that differs from the local
-        HEAD is "not pushed" only when origin's own branch ref says so; if origin already holds the local HEAD, the
-        PR metadata is merely late and is re-polled for a bounded time. Nothing is ever forced, reset or re-created.
-        """
+        """Accept a fix only on the owned PR; safely follow an Update branch fast-forward before returning to review."""
         key, wt = f"headlag_{b['id']}", Path(b["worktree"])
         if self.git.dirty(wt).strip():
             self.store.set(key, "")
@@ -3866,30 +3956,85 @@ class Supervisor:
             self.store.update(b["id"], state="MERGED", merged=1, head_sha=info["head_sha"], error=None)
             self.store.log(b["id"], f"PR #{info['number']} merged=true 확인 ({short}) — 정리 단계에서 검증")
             return "stop"
-        stop = None
         if info["state"] != "open":
-            stop = f"PR #{info['number']}이 머지 없이 닫혔습니다 ({short}). worktree 보존, 수동 조치 필요."
-        elif info["head_ref"] != b["branch"]:
-            stop = (f"PR #{info['number']}의 head 브랜치 {info['head_ref']!r}가 소유 브랜치 {b['branch']!r}와 다릅니다 "
-                    "(잘못된 PR/브랜치). 보존.")
-        else:
-            try:
-                remote = self.git.remote_head(b["branch"])
-            except TRANSIENT as e:   # the query failed: neither "pushed" nor "not pushed" is known yet
-                return self._head_lag_wait(b, key, f"원격 브랜치 조회 일시 실패({e}); 로컬 HEAD {local[:10]} / PR HEAD {info['head_sha'][:10]}")
-            except Exception as e:
-                stop = f"원격 브랜치 조회 실패 — push 여부를 확인할 수 없어 보존합니다 ({short}): {e}"
-            else:
-                if remote is None:
-                    stop = f"실제 미push: 원격에 브랜치 {b['branch']}가 없습니다 ({short}). 보존."
-                elif remote != local:
-                    stop = (f"원격 ref와 로컬 HEAD 불일치: 원격 {remote[:10]} / 로컬 {local[:10]} "
-                            f"(미push 또는 분기, PR HEAD {info['head_sha'][:10]}). 보존.")
-        if stop:
             self.store.set(key, "")
-            self._fail(b, "ERROR", stop)
+            self._fail(b, "ERROR", f"PR #{info['number']}이 머지 없이 닫혔습니다 ({short}). worktree 보존, 수동 조치 필요.")
             return "stop"
-        return self._head_lag_wait(b, key, f"원격 브랜치는 로컬 HEAD {local[:10]}인데 PR API HEAD는 {info['head_sha'][:10]}")
+        if info["head_ref"] != b["branch"]:
+            self.store.set(key, "")
+            self._fail(b, "ERROR", (f"PR #{info['number']}의 head 브랜치 {info['head_ref']!r}가 소유 브랜치 "
+                                      f"{b['branch']!r}와 다릅니다 (잘못된 PR/브랜치). 보존."))
+            return "stop"
+        try:
+            remote = self.git.remote_head(b["branch"])
+            if remote is None:
+                self.store.set(key, "")
+                self._fail(b, "ERROR", f"원격 소유 브랜치 {b['branch']}가 없습니다. worktree·브랜치를 보존합니다.")
+                return "stop"
+            if remote == local:
+                return self._head_lag_wait(
+                    b, key, f"원격에는 local HEAD {local[:10]}이 있지만 PR API HEAD는 {info['head_sha'][:10]}입니다")
+            if remote != info["head_sha"]:
+                # A stale PR API can briefly trail an Update branch push. Re-read once before classifying
+                # an unrelated origin SHA as divergence; only a PR now pointing at that exact SHA may sync.
+                current = self.gh.pull(info["number"])
+                if current.get("merged"):
+                    self.store.set(key, "")
+                    self.store.update(b["id"], state="MERGED", merged=1, head_sha=current["head_sha"], error=None)
+                    self.store.log(b["id"], f"PR #{info['number']} merged=true 확인 중 HEAD 재조회 — 정리 단계에서 검증")
+                    return "stop"
+                if current.get("state") != "open":
+                    self.store.set(key, "")
+                    self._fail(b, "ERROR", f"PR #{info['number']}이 머지 없이 닫혔습니다. worktree 보존.")
+                    return "stop"
+                if current.get("number") != b["pr_number"] or current.get("head_ref") != b["branch"]:
+                    self.store.set(key, "")
+                    self._fail(b, "ERROR", f"PR #{info['number']}의 repository 또는 소유 head 브랜치가 바뀌었습니다. worktree 보존.")
+                    return "stop"
+                if current.get("head_sha") != remote:
+                    self.store.set(key, "")
+                    self._fail(b, "ERROR", (f"원격 ref와 PR HEAD 불일치: 원격 {remote[:10]} / 로컬 {local[:10]} "
+                                              f"(PR HEAD {current.get('head_sha')}). worktree·브랜치를 보존합니다."))
+                    return "stop"
+                info.update(current)
+            self._fast_forward_pr_head(b, info)
+            latest = self.gh.pull(info["number"])
+            if latest.get("number") != b["pr_number"] or latest.get("head_ref") != b["branch"]:
+                self.store.set(key, "")
+                self._fail(b, "ERROR", f"PR #{info['number']}의 repository 또는 소유 head 브랜치가 바뀌었습니다. worktree 보존.")
+                return "stop"
+            if latest.get("merged"):
+                self.store.set(key, "")
+                self.store.update(b["id"], state="MERGED", merged=1, head_sha=latest["head_sha"], error=None)
+                self.store.log(b["id"], f"PR #{info['number']} fast-forward 중 merged=true 확인 — 정리 단계에서 검증")
+                return "stop"
+            if latest.get("state") != "open":
+                self.store.set(key, "")
+                self._fail(b, "ERROR", f"PR #{info['number']}이 fast-forward 중 머지 없이 닫혔습니다. worktree 보존.")
+                return "stop"
+            local = self.git.head(wt)
+            remote = self.git.remote_head(b["branch"])
+            if remote is None:
+                self.store.set(key, "")
+                self._fail(b, "ERROR", f"원격 소유 브랜치 {b['branch']}가 fast-forward 후 사라졌습니다. worktree 보존.")
+                return "stop"
+            if latest.get("head_sha") != local or remote != local:
+                return self._head_lag_wait(
+                    b, key, f"fast-forward 후 PR/원격 HEAD가 local HEAD와 다릅니다 "
+                    f"({latest.get('head_sha')} / {remote} / {local})")
+            info.update(latest)
+        except TRANSIENT as e:
+            return self._head_lag_wait(b, key, f"안전 fast-forward 확인 일시 실패({e}); {short}")
+        except GitError as e:
+            self.store.set(key, "")
+            self._fail(b, "ERROR", f"안전 fast-forward 차단: {e}. worktree·브랜치를 보존합니다.")
+            return "stop"
+        except Exception as e:
+            self.store.set(key, "")
+            self._fail(b, "ERROR", f"안전 fast-forward 확인 실패: {e}. worktree·브랜치를 보존합니다.")
+            return "stop"
+        self.store.set(key, "")
+        return "ok"
 
     def _head_lag_wait(self, b, key: str, what: str) -> str:
         """PR metadata lag: wait (bounded by pr_head_lag_timeout_seconds) instead of declaring an unpushed fix."""
@@ -4255,37 +4400,62 @@ class Supervisor:
             return
         self.store.set(f"last_poll_{b['id']}", str(self.clock()))
         try:
-            info, evs = self._events(b)
+            synced = False
+            while True:
+                info, evs = self._events(b)
+                if info["merged"]:
+                    self.store.update(b["id"], state="MERGED", merged=1, head_sha=info["head_sha"])
+                    return self.store.log(b["id"], f"PR #{b['pr_number']} merged=true 확인")
+                if info["state"] != "open":
+                    if live:
+                        self._adapter(b["producer"]).stop(b["pid"])
+                    return self._fail(b, "ERROR", f"PR #{b['pr_number']}이 머지 없이 닫혔습니다. worktree 보존, 수동 조치 필요.")
+                if info["head_sha"] != b["head_sha"]:
+                    self.store.update(b["id"], head_sha=info["head_sha"])
+                    b = self.store.batch(b["id"])
+                    self.store.log(b["id"], f"HEAD 변경 감지 → {info['head_sha'][:10]}")
+                for e in ([] if b["method"] == MAINTENANCE_METHOD else evs):   # a trusted reviewer's explicit shared-defect
+                    raw = defects.review_block(e["body"])                      # block pauses the batch instead of a fix run
+                    key = defects.review_event_key(b["id"], b["pr_number"], e["key"])
+                    if raw is not None and not self.store.defect_by_event(key):
+                        if live:
+                            self._adapter(b["producer"]).stop(b["pid"])
+                        return self.maint.report(b, "review", key, raw, info)
+                fresh = [e for e in evs if not self.store.is_handled(b["id"], b["pr_number"], info["head_sha"], e["key"])]
+                if fresh and live:
+                    # Never run two AI processes in one worktree: stop the old one, confirm exit
+                    # on a following tick, then start the fix run.
+                    self._adapter(b["producer"]).stop(b["pid"])
+                    self.store.set(f"last_poll_{b['id']}", "0")
+                    return self.store.log(b["id"], "새 리뷰 이벤트 — 실행 중인 AI 종료 요청, 종료 확인 후 수정 실행")
+                try:
+                    local = self.git.head(Path(b["worktree"]))
+                except Exception as e:
+                    return self._fail(b, "ERROR", f"소유 worktree HEAD를 확인할 수 없습니다: {e}. 보존.")
+                if local != info["head_sha"]:
+                    if synced:
+                        self._transient_wait(f"b{b['id']}:branch_sync", "FF 중 PR HEAD가 다시 이동", b["id"])
+                        return
+                    try:
+                        self._fast_forward_pr_head(b, info)
+                    except TRANSIENT as e:
+                        return self._transient_wait(f"b{b['id']}:branch_sync", e, b["id"])
+                    except GitError as e:
+                        return self._fail(b, "ERROR", f"안전 fast-forward 차단: {e}. worktree·브랜치를 보존합니다.")
+                    except Exception as e:
+                        return self._fail(b, "ERROR", f"안전 fast-forward 확인 실패: {e}. worktree·브랜치를 보존합니다.")
+                    self._transient_clear(f"b{b['id']}:branch_sync", b["id"])
+                    synced = True
+                    continue   # re-read PR HEAD and review events after the FF; never act on a stale snapshot
+                self._transient_clear(f"b{b['id']}:branch_sync", b["id"])
+                if fresh:
+                    self.store.log(b["id"], f"새 리뷰 이벤트 {len(fresh)}건 → 수정 실행")
+                    self._launch(b, self._fix_kind(b), fresh)
+                return
+        except TRANSIENT as e:
+            return self._transient_wait(f"b{b['id']}:watch", e, b["id"])
         except Exception as e:
             return self.store.log(b["id"], f"GitHub 폴링 실패(재시도 예정): {e}", "warn")
-        if info["merged"]:
-            self.store.update(b["id"], state="MERGED", merged=1, head_sha=info["head_sha"])
-            return self.store.log(b["id"], f"PR #{b['pr_number']} merged=true 확인")
-        if info["state"] != "open":
-            if live:
-                self._adapter(b["producer"]).stop(b["pid"])
-            return self._fail(b, "ERROR", f"PR #{b['pr_number']}이 머지 없이 닫혔습니다. worktree 보존, 수동 조치 필요.")
-        if info["head_sha"] != b["head_sha"]:
-            self.store.update(b["id"], head_sha=info["head_sha"])
-            b = self.store.batch(b["id"])
-            self.store.log(b["id"], f"HEAD 변경 감지 → {info['head_sha'][:10]}")
-        for e in ([] if b["method"] == MAINTENANCE_METHOD else evs):   # a trusted reviewer's explicit shared-defect
-            raw = defects.review_block(e["body"])                      # block pauses the batch instead of a fix run
-            key = defects.review_event_key(b["id"], b["pr_number"], e["key"])
-            if raw is not None and not self.store.defect_by_event(key):
-                if live:
-                    self._adapter(b["producer"]).stop(b["pid"])
-                return self.maint.report(b, "review", key, raw, info)
-        fresh = [e for e in evs if not self.store.is_handled(b["id"], b["pr_number"], info["head_sha"], e["key"])]
-        if fresh and live:
-            # Never run two AI processes in one worktree: stop the old one, confirm exit
-            # on a following tick, then start the fix run.
-            self._adapter(b["producer"]).stop(b["pid"])
-            self.store.set(f"last_poll_{b['id']}", "0")
-            return self.store.log(b["id"], "새 리뷰 이벤트 — 실행 중인 AI 종료 요청, 종료 확인 후 수정 실행")
-        if fresh:
-            self.store.log(b["id"], f"새 리뷰 이벤트 {len(fresh)}건 → 수정 실행")
-            self._launch(b, self._fix_kind(b), fresh)
 
     # ---- MERGED / CLEANUP / COMPLETE ---------------------------------
     def _to_cleanup(self, b) -> None:

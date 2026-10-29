@@ -6,7 +6,7 @@ reload leaves the old config, and an unfinished batch keeps relaunching on its r
 import json
 import unittest
 
-from tests.fakes import World
+from tests.fakes import HEAD1, World
 from warroom import control
 from warroom.config import RESTART_KEYS, load_config, reload_problem
 
@@ -237,8 +237,8 @@ class RuntimeValueTypes(unittest.TestCase):
         self.w.start("single", "claude")
         self.w.tick()
         b = self.w.store.active_batch("claude", "a")
-        self.w.store.update(b["id"], state="WAITING_REVIEW", pid=None, pr_number=7, head_sha="h")
-        self.w.pr_info(7, "h")
+        self.w.store.update(b["id"], state="WAITING_REVIEW", pid=None, pr_number=7, head_sha=HEAD1)
+        self.w.pr_info(7, HEAD1)
         for key, value in [("poll_seconds", "300"), ("rate_limit_retries", "3"), ("rate_limit_backoff_seconds", None)]:
             write(self.w, {"deepseek": DS, "claude": SONNET}, **{key: value})
             self.assertFalse(reload(self.w)[0])

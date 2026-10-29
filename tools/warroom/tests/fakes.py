@@ -9,7 +9,8 @@ from pathlib import Path
 from warroom import control
 from warroom.adapters import AgentAdapter, Handle, OpenCodeAdapter
 from warroom.config import DEFAULTS, Paths
-from warroom.gitops import CleanupBlocked, GitError, IntegrationBlocked
+from warroom.gitops import (CleanupBlocked, FastForwardBlocked, FastForwardRace, GitError,
+                            IntegrationBlocked)
 from warroom.shell import Result
 from warroom.store import Store
 from warroom.supervisor import Supervisor
@@ -140,6 +141,10 @@ class FakeGit:
         self.inspect_text = "inspect w1-s1 @" + "2" * 64 + "\n# page 1/1\nS\tw1-s1\tw1\t출발어\tnoun\t출발 의미\n"
         self.commit_parent_sha: str | None = None
         self.commit_message: str | None = None
+        self.fast_forward_calls: list[tuple[str, str, str, set[str]]] = []
+        self.fast_forward_ancestors: set[tuple[str, str]] = {(HEAD1, HEAD2)}
+        self.fast_forward_changed_paths: list[str] = []
+        self.fast_forward_recheck_effect = None
         self.commit_empty_allowed: list[bool] = []
         self.stage2_merge_calls: list[tuple] = []
         self.stage2_prepare_merge_calls: list[tuple] = []
@@ -412,6 +417,37 @@ class FakeGit:
         if isinstance(v, Exception):
             raise v
         return v
+
+    def fast_forward_open_pr(self, path, branch, pr_head_sha, protected_paths, *, recheck=None):
+        path = Path(path)
+        if self.registered(path) != branch:
+            raise FastForwardBlocked("not the owned worktree")
+        self.worktree_gitdir(path)
+        if self.dirty(path).strip():
+            raise FastForwardBlocked("dirty worktree")
+        local = self.head(path)
+        remote = self.remote_head(branch)
+        if remote is None:
+            raise FastForwardBlocked("remote branch missing")
+        if remote != pr_head_sha:
+            raise FastForwardRace("PR/remote mismatch")
+        if local == pr_head_sha:
+            return local
+        if (local, pr_head_sha) not in self.fast_forward_ancestors:
+            raise FastForwardBlocked("local is not ancestor")
+        if set(self.fast_forward_changed_paths) & protected_paths:
+            raise FastForwardBlocked("protected artifact changed")
+        self.fast_forward_calls.append((str(path), branch, pr_head_sha, set(protected_paths)))
+        if self.fast_forward_recheck_effect:
+            self.fast_forward_recheck_effect()
+        if recheck is not None:
+            recheck()
+        if self.remote_head(branch) != pr_head_sha:
+            raise FastForwardRace("remote moved during recheck")
+        if self.head(path) != local or self.dirty(path).strip():
+            raise FastForwardBlocked("worktree changed during recheck")
+        self.local_head = pr_head_sha
+        return local
 
     def verify_owned(self, path, branch):
         try:
