@@ -15,6 +15,7 @@ import hashlib
 import json
 import os
 import re
+import secrets
 import time
 import traceback
 from pathlib import Path
@@ -985,6 +986,7 @@ class Supervisor:
         if b["method"] == "d" and isinstance(kind, str) and kind.startswith(("d_chunk_", "d_cli")):
             env["TYPEWRITER_APPROVED_CORPUS_DB"] = str(Path(self.cfg["corpus_index_path"].strip()).expanduser())
         env.pop("WARROOM_STAGE2_CHUNK", None)
+        env.pop("WARROOM_STAGE2_REPAIR", None)
         env.pop("WARROOM_GIT_EXECUTABLES", None)
         env.pop("WARROOM_ANSWER_ONLY", None)
         env.pop("OPENCODE_CONFIG_CONTENT", None)
@@ -993,9 +995,12 @@ class Supervisor:
             env["WARROOM_ANSWER_ONLY"] = "1"
             if self._adapter(b["producer"]).name == "opencode":
                 env["OPENCODE_CONFIG_CONTENT"] = json.dumps({"permission": {"edit": "deny", "bash": "deny", "webfetch": "deny"}})
+        if b["method"] == STAGE2_METHOD and kind == "s2_repair_new":
+            env["WARROOM_ANSWER_ONLY"] = "1"
+            env["WARROOM_STAGE2_REPAIR"] = "1"
         # Chunk runs suppress auto-loaded AGENTS.md and web lookup. Execution rules stay adapter-specific; Codex keeps
         # the operator's configured permission profile, while answer-only results are judged by their output contract.
-        if (b["method"] == STAGE2_METHOD and isinstance(kind, str) and kind.startswith(("s2_chunk_", "s2_links_"))) or \
+        if (b["method"] == STAGE2_METHOD and isinstance(kind, str) and kind.startswith(("s2_chunk_", "s2_links_", "s2_repair_"))) or \
                 (b["method"] == literary.METHOD and isinstance(kind, str) and kind.startswith("c_chunk_")) or \
                 (b["method"] == dchunk.METHOD and isinstance(kind, str) and kind.startswith("d_chunk_")) or ab_chunk:
             env["WARROOM_STAGE2_CHUNK"] = "1"
@@ -1146,7 +1151,7 @@ class Supervisor:
         try:
             run_env = self._launch_env(b, kind, agent_env)
             remote = "?"
-            if isinstance(kind, str) and kind.startswith(("s2_chunk_", "s2_links_", "c_chunk_", "d_chunk_", "ab_chunk_")):
+            if isinstance(kind, str) and kind.startswith(("s2_chunk_", "s2_links_", "s2_repair_", "c_chunk_", "d_chunk_", "ab_chunk_")):
                 remote = self.git.remote_head(b["branch"])   # the one remote read, before any view/page/decision write
             if b["method"] == STAGE2_METHOD and kind.startswith("s2_"):
                 checkpoint = stage2.checkpoint(wt, b["shard"], b["batch"])
@@ -1176,17 +1181,17 @@ class Supervisor:
                         if kind == "s2_chunk_format_fix":
                             if file_state != "missing":
                                 raise prompts.PromptError("전체 형식 수정에는 기존 판정 파일이 없어야 합니다")
-                            prompt = prompts.stage2_chunk_format_fix(checkpoint["pending_chunk"], detail)
+                            prompt = prompts.stage2_chunk_format_fix(checkpoint["pending_chunk"], detail, checkpoint)
                         else:
                             if file_state != "current":
                                 raise prompts.PromptError("부분 수정에는 현재 pending 청크의 기존 판정 파일이 필요합니다")
-                            prompt = prompts.stage2_chunk_fix(checkpoint["pending_chunk"], detail)
+                            prompt = prompts.stage2_chunk_fix(checkpoint["pending_chunk"], detail, checkpoint)
                         h = ad.resume(sid, prompt, wt, run_env, run, log, ex, **extra)
                     else:
                         if kind == "s2_chunk_resume":
                             if not checkpoint["pending_chunk"]:
                                 raise prompts.PromptError("이어갈 pending 청크가 없습니다")
-                            prompt = prompts.stage2_chunk_resume(checkpoint["pending_chunk"])
+                            prompt = prompts.stage2_chunk_resume(checkpoint["pending_chunk"], checkpoint)
                         else:
                             prompt = prompts.stage2(b, "chunk", checkpoint, resumed=False, view=view)
                         baseline = {"checkpoint": checkpoint, "branch": b["branch"], "worktree": str(wt),
@@ -1237,8 +1242,32 @@ class Supervisor:
                         baseline = json.loads(self.store.get(stage2.links_start_key(b["id"])) or "{}")
                         if not re.fullmatch(r"[a-f0-9]{64}", baseline.get("digest", "")):
                             raise prompts.PromptError("optional-link 수정 digest 기준이 없습니다")
-                        prompt = prompts.stage2_links_fix(baseline["digest"], detail)
+                        prompt = prompts.stage2_links_fix(baseline["digest"], detail, checkpoint)
                         h = ad.resume(sid, prompt, wt, run_env, run, log, ex, **extra)
+                elif kind == "s2_repair_new":
+                    state = self._stage2_repair_state(b, required=True)
+                    current = state.get("current")
+                    if not isinstance(current, dict) or current.get("pending_answer") is not None:
+                        raise prompts.PromptError("Stage 2 repair needs one unapplied, persisted repair page")
+                    cursor = current.get("cursor")
+                    groups = current.get("groups")
+                    if type(cursor) is not int or not isinstance(groups, list) or cursor >= len(groups):
+                        raise prompts.PromptError("Stage 2 repair page cursor is outside its saved conflict list")
+                    page = groups[cursor:cursor + stage2.REPAIR_GROUPS_PER_RUN]
+                    page_keys = sorted({key for group in page for key in group.get("candidate_keys", [])})
+                    bb, pp = stage2.split_key(b["batch"])
+                    cp_path = Path(wt) / ".warroom-scratch" / f"relation-admission-{b['shard']}-{bb}-{pp}.json"
+                    baseline = {"branch": b["branch"], "worktree": str(wt), "head": self.git.head(Path(wt)),
+                                "remote_head": remote, "checkpoint_sha256": hashlib.sha256(cp_path.read_bytes()).hexdigest(),
+                                "fingerprint": current["fingerprint"], "cursor": cursor, "page_keys": page_keys}
+                    self.store.set(stage2.repair_run_start_key(b["id"]), json.dumps(baseline, sort_keys=True))
+                    prompt = prompts.stage2_repair(
+                        b, current["fingerprint"], json.dumps({"groups": page}, ensure_ascii=False, separators=(",", ":")),
+                        f"{state['rounds_used']}/{stage2.MAX_REPAIR_ROUNDS}; groups {cursor + 1}..{cursor + len(page)} of {len(groups)}",
+                        type_tier_policy=current.get("type_tier_policy", "legacy-independent"),
+                    )
+                    h = ad.start(prompt, wt, run_env, run,
+                                 f"Stage 2 {stage2.label(b['shard'], b['batch'])} local repair", log, ex, **extra)
                 else:
                     raise prompts.PromptError("Stage 2 finalization은 Supervisor의 deterministic 단계입니다")
             elif b["method"] == literary.METHOD and kind in ("c_chunk_new", "c_chunk_resume"):
@@ -1281,14 +1310,20 @@ class Supervisor:
                 h = ad.start(prompts.produce(b), wt, run_env, run,
                                        f"{b['method'].upper()} {b['shard']}_{b['batch']}", log, ex, **extra)
             elif kind == "produce_resume":
-                h = ad.resume(sid, prompts.recovery(b, resolved_defects=self.maint.resolved_note(b)), wt, run_env, run, log, ex, **extra)
+                checkpoint = stage2.checkpoint(wt, b["shard"], b["batch"]) if b["method"] == STAGE2_METHOD else None
+                h = ad.resume(sid, prompts.recovery(b, resolved_defects=self.maint.resolved_note(b), checkpoint=checkpoint), wt, run_env, run, log, ex, **extra)
             elif kind == "produce_recover":
-                h = ad.start(prompts.recovery(b, resolved_defects=self.maint.resolved_note(b)), wt, run_env, run,
+                checkpoint = stage2.checkpoint(wt, b["shard"], b["batch"]) if b["method"] == STAGE2_METHOD else None
+                h = ad.start(prompts.recovery(b, resolved_defects=self.maint.resolved_note(b), checkpoint=checkpoint), wt, run_env, run,
                                        f"{b['method'].upper()} {b['shard']}_{b['batch']} recover", log, ex, **extra)
             elif kind == "fix_resume":
-                h = ad.resume(sid, prompts.fix(b, events, True), wt, run_env, run, log, ex, **extra)
+                checkpoint = stage2.checkpoint(wt, b["shard"], b["batch"]) if b["method"] == STAGE2_METHOD else None
+                if b["method"] == STAGE2_METHOD and checkpoint is None:
+                    raise prompts.PromptError("Stage 2 리뷰 수정 재개에 현재 Part checkpoint가 없습니다")
+                h = ad.resume(sid, prompts.fix(b, events, True, checkpoint=checkpoint), wt, run_env, run, log, ex, **extra)
             else:  # fix_new
                 context = ""
+                checkpoint = None
                 if b["method"] in stage1ab.METHODS:
                     context = self._ab_fix_context(b, events)
                 elif b["method"] == STAGE2_METHOD:
@@ -1301,7 +1336,7 @@ class Supervisor:
                                 "checkpoint_sha256": hashlib.sha256(cp_path.read_bytes()).hexdigest(),
                                 "amend_revision": checkpoint.get("amend_revision", 0)}
                     self.store.set(f"s2_fix_start_{b['id']}", json.dumps(baseline, sort_keys=True))
-                h = ad.start(prompts.fix(b, events, False, source_context=context), wt, run_env, run,
+                h = ad.start(prompts.fix(b, events, False, source_context=context, checkpoint=checkpoint), wt, run_env, run,
                                        f"PR {b['pr_number']} fix", log, ex, **extra)
         except prompts.PromptError as e:   # rendered before any process is started
             return self._fail(b, "ERROR", f"프롬프트 오류로 AI를 시작하지 않았습니다: {e}")
@@ -1314,7 +1349,7 @@ class Supervisor:
         state = "FIXING" if kind.startswith("fix") else "PRODUCING"
         fields = dict(state=state, pid=h.pid, exit_file=str(ex), log_file=str(log),
                       run_kind=kind, retry_after=None, error=None)
-        if kind == "fix_new" or kind in ("produce", "produce_recover", "s2_chunk_new", "s2_links_new", "s2_finalize_new", "c_chunk_new",
+        if kind == "fix_new" or kind in ("produce", "produce_recover", "s2_chunk_new", "s2_links_new", "s2_repair_new", "s2_finalize_new", "c_chunk_new",
                                          "d_chunk_new", "ab_chunk_new"):
             fields["session_id"] = None  # captured from the new run's log
         self.store.update(b["id"], **fields)
@@ -1393,6 +1428,21 @@ class Supervisor:
                 return self._launch_stage2_next(self.store.batch(b["id"]))
             self._s2_links_problem[b["id"]] = "이전 optional-link 실행이 중단되었습니다. 같은 세션의 기존 판단을 보존하고 전체 응답을 다시 제출하세요."
             return self._launch(b, "s2_links_fix")
+        if self._s2_repair_run(b) and not b["pr_number"]:
+            try:
+                state = self._stage2_repair_state(b, required=True)
+                current = state.get("current")
+                if not isinstance(current, dict):
+                    return self._fail(b, "ERROR", "Stage 2 repair Retry has no active round; preserving evidence")
+                if current.get("pending_answer") is not None:
+                    return self._apply_stage2_repair_answer(b, state)
+                if problem := self._stage2_repair_boundary_problem(b):
+                    return self._fail(b, "ERROR", problem)
+                return self._launch_stage2_repair_page(b)
+            except TRANSIENT:
+                raise
+            except Exception as error:
+                return self._fail(b, "ERROR", f"Stage 2 repair Retry is unsafe: {error}. Worktree is preserved.")
         if b["method"] == STAGE2_METHOD and not b["pr_number"] and \
                 isinstance(b["run_kind"], str) and b["run_kind"].startswith("s2_chunk_"):
             self.maint.adopt_released_baseline(b)
@@ -1536,10 +1586,12 @@ class Supervisor:
             self.store.set_run_session(b["id"], sid)
             b = self.store.batch(b["id"])
         self._record_progress(b)
+        policy_chunk = self._ab_policy_skip_chunk(b)
+        policy_refusal = (ad.confirmed_prompt_refusal(Path(b["log_file"])) if policy_chunk is not None else None)
         tolerant = {"tolerate_denied": True} if (self._ab_chunk_run(b) or self._s2_chunk_run(b)) \
             and getattr(ad, "supports_tolerate_denied", False) else {}
         problem = ad.run_problem(Path(b["log_file"]), self._recorded_run(b), b["session_id"], **tolerant)
-        if problem:   # the CLI contradicts its pins: stop it, keep worktree/PR, wait for the operator
+        if problem and not policy_refusal:   # the CLI contradicts its pins: stop it, keep worktree/PR, wait for the operator
             state, msg = problem
             if ad.alive(b["pid"]):
                 ad.stop(b["pid"])
@@ -1553,6 +1605,8 @@ class Supervisor:
         self.store.update(b["id"], pid=None)
         self.store.finish_runs(b["id"], code)
         b = self.store.batch(b["id"])
+        if policy_refusal:
+            return self._handle_ab_policy_refusal(b, policy_chunk)
         if code is None:
             if self._saved_chunk_for_run(b):
                 if self._saved_output_failure(b, self._classify_run(b["producer"], b["log_file"])):
@@ -1609,14 +1663,14 @@ class Supervisor:
         required step leaves the PR missing, unpushed or failing verify, so it stays PAUSED. False: already failed."""
         denied = self._adapter(b["producer"]).denied_actions(log_file)
         if denied is None:
-            if self._ab_chunk_run(b) or ((self._s2_chunk_run(b) or self._s2_links_run(b)) and b["state"] == "PRODUCING"):
+            if self._ab_chunk_run(b) or ((self._s2_chunk_run(b) or self._s2_links_run(b) or self._s2_repair_run(b)) and b["state"] == "PRODUCING"):
                 self.store.log(b["id"], "answer-only 청크 권한 결과가 없어도 출력·저장 및 부작용 경계로 판정합니다.", "warn")
                 return True
             self._fail(b, "PAUSED", "CLI 최종 result가 없어 권한 거부 여부를 확인할 수 없습니다. 저장물과 실행 기록을 보존하고 중지합니다.")
             return False
         if not denied:
             return True
-        if self._ab_chunk_run(b) or ((self._s2_chunk_run(b) or self._s2_links_run(b)) and b["state"] == "PRODUCING"):
+        if self._ab_chunk_run(b) or ((self._s2_chunk_run(b) or self._s2_links_run(b) or self._s2_repair_run(b)) and b["state"] == "PRODUCING"):
             # Answer-only: a refused tool call is a metric, not a failure. The answer is judged by its block and its save,
             # and any real side effect (dirty tracked tree, moved HEAD/remote) by `_run_ok_ab_chunk`.
             self.store.log(b["id"], f"answer-only 청크에서 도구 호출 {len(denied)}건이 거부됐습니다 (부작용 없으면 실패 아님)", "warn")
@@ -1737,6 +1791,8 @@ class Supervisor:
             return self._run_ok_stage2_chunk(b)
         if b["method"] == STAGE2_METHOD and b["state"] == "PRODUCING" and b["run_kind"] in ("s2_links_new", "s2_links_fix"):
             return self._run_ok_stage2_links(b)
+        if self._s2_repair_run(b) and b["state"] == "PRODUCING":
+            return self._run_ok_stage2_repair(b)
         try:
             if b["state"] == "PRODUCING":
                 info = self._find_recovery_pr(b) if b["method"] in {"a", "b", "c", "d"} else self._find_pr(b)
@@ -1844,6 +1900,362 @@ class Supervisor:
     def _stage2_finalize(self, b) -> None:
         self._guarded(b, "finalize", self._stage2_finalize_do)
 
+    def _stage2_repair_state(self, b, *, required: bool = False) -> dict | None:
+        raw = self.store.get(stage2.repair_state_key(b["id"]))
+        if raw is None:
+            if required:
+                raise ValueError("Stage 2 repair state is missing")
+            return None
+        try:
+            state = json.loads(raw)
+        except (TypeError, ValueError) as error:
+            raise ValueError(f"Stage 2 repair state is malformed: {error}") from error
+        identity = state.get("identity") if isinstance(state, dict) else None
+        if not isinstance(identity, dict) or identity.get("branch") != b["branch"] \
+                or identity.get("worktree") != str(b["worktree"]) or state.get("version") != 1 \
+                or not isinstance(state.get("history"), list):
+            raise ValueError("Stage 2 repair state does not match the owned Part")
+        return state
+
+    def _save_stage2_repair_state(self, b, state: dict) -> None:
+        self.store.set(stage2.repair_state_key(b["id"]), json.dumps(state, ensure_ascii=False, sort_keys=True))
+
+    def _stage2_repair_boundary_problem(self, b) -> str | None:
+        raw = self.store.get(stage2.repair_run_start_key(b["id"]))
+        if raw is None:
+            return "Stage 2 repair has no persisted run boundary; preserving the worktree"
+        try:
+            baseline = json.loads(raw)
+            if not isinstance(baseline, dict) or baseline.get("branch") != b["branch"] \
+                    or baseline.get("worktree") != str(b["worktree"]) \
+                    or not re.fullmatch(r"[a-f0-9]{64}", baseline.get("checkpoint_sha256", "")):
+                return "Stage 2 repair run boundary is malformed or belongs to another Part"
+            wt = Path(b["worktree"])
+            bb, pp = stage2.split_key(b["batch"])
+            checkpoint = wt / ".warroom-scratch" / f"relation-admission-{b['shard']}-{bb}-{pp}.json"
+            if self.git.registered(wt) != b["branch"]:
+                return "Stage 2 repair worktree is no longer registered to its owned branch"
+            current_sha = hashlib.sha256(checkpoint.read_bytes()).hexdigest()
+            if current_sha != baseline["checkpoint_sha256"]:
+                state = self._stage2_repair_state(b, required=True)
+                current = state.get("current", {})
+                intent = current.get("apply_intent") if isinstance(current, dict) else None
+                receipts = json.loads(checkpoint.read_text("utf-8")).get("repair_receipts", [])
+                intent_keys = intent.get("candidate_keys") if isinstance(intent, dict) else None
+                nonce = intent.get("supervisor_nonce") if isinstance(intent, dict) else None
+                replay_proven = current.get("pending_answer") is not None \
+                    and isinstance(intent_keys, list) and all(isinstance(key, str) for key in intent_keys) \
+                    and re.fullmatch(r"[a-f0-9]{64}", nonce or "") \
+                    and intent.get("fingerprint") == baseline.get("fingerprint") \
+                    and any(receipt.get("supervisor_nonce") == nonce
+                            and receipt.get("fingerprint") == baseline.get("fingerprint")
+                            and receipt.get("candidate_keys") == intent_keys for receipt in receipts
+                            if isinstance(receipt, dict))
+                if not replay_proven:
+                    return "Stage 2 repair run changed the checkpoint without its persisted Supervisor apply intent; preserving it"
+            if self.git.dirty(wt).strip():
+                return "Stage 2 repair AI changed tracked worktree files; preserving the worktree"
+            if self.git.head(wt) != baseline.get("head") or self.git.remote_head(b["branch"]) != baseline.get("remote_head"):
+                return "Stage 2 repair AI changed the owned HEAD or remote branch; preserving the worktree"
+            state = self._stage2_repair_state(b, required=True)
+            current = state.get("current")
+            if not isinstance(current, dict) or current.get("fingerprint") != baseline.get("fingerprint") \
+                    or current.get("cursor") != baseline.get("cursor"):
+                return "Stage 2 repair round or target page changed while AI was running"
+        except TRANSIENT:
+            raise
+        except Exception as error:
+            return f"Stage 2 repair boundary check failed: {error}"
+        return None
+
+    def _launch_stage2_repair_page(self, b) -> None:
+        try:
+            state = self._stage2_repair_state(b, required=True)
+            current = state.get("current")
+            groups = current.get("groups") if isinstance(current, dict) else None
+            cursor = current.get("cursor") if isinstance(current, dict) else None
+            if not isinstance(groups, list) or type(cursor) is not int or cursor < 0 or cursor >= len(groups):
+                return self._fail(b, "ERROR", "Stage 2 repair page cursor is invalid; preserving all evidence")
+            if current.get("pending_answer") is not None:
+                return self._apply_stage2_repair_answer(b, state)
+            if current.get("attempts", 0) >= stage2.REPAIR_ATTEMPTS_PER_PAGE:
+                return self._fail(b, "ERROR", "Stage 2 repair response retry limit reached; saved checkpoint and round evidence are preserved")
+            page = groups[cursor:cursor + stage2.REPAIR_GROUPS_PER_RUN]
+            page_keys = sorted({key for group in page for key in group.get("candidate_keys", [])})
+            if not page_keys:
+                return self._fail(b, "ERROR", "Stage 2 repair page has no target candidates")
+            current["attempts"] = current.get("attempts", 0) + 1
+            current["page_keys"] = page_keys
+            current.setdefault("attempt_log", []).append({"cursor": cursor, "attempt": current["attempts"],
+                "fingerprint": current["fingerprint"], "target_keys": page_keys, "status": "launched"})
+            self._save_stage2_repair_state(b, state)
+            info = self._find_recovery_pr(b)
+            if info is not None:
+                return self._fail(b, "ERROR", f"Stage 2 repair is pre-PR only; unexpected PR #{info['number']} found")
+            wt = Path(b["worktree"])
+            if self.git.registered(wt) != b["branch"]:
+                return self._fail(b, "ERROR", "Stage 2 repair worktree is no longer registered to its owned branch")
+            self.git.worktree_gitdir(wt)
+            bb, pp = stage2.split_key(b["batch"])
+            cp = wt / ".warroom-scratch" / f"relation-admission-{b['shard']}-{bb}-{pp}.json"
+            remote = self.git.remote_head(b["branch"])
+            baseline = {"branch": b["branch"], "worktree": str(wt), "head": self.git.head(wt),
+                        "remote_head": remote, "checkpoint_sha256": hashlib.sha256(cp.read_bytes()).hexdigest(),
+                        "fingerprint": current["fingerprint"], "cursor": cursor, "page_keys": page_keys}
+            self.store.set(stage2.repair_run_start_key(b["id"]), json.dumps(baseline, sort_keys=True))
+            return self._launch(self.store.batch(b["id"]), "s2_repair_new")
+        except TRANSIENT:
+            raise
+        except (OSError, ValueError, KeyError, TypeError, GitError) as error:
+            return self._fail(b, "ERROR", f"Stage 2 repair page 준비 실패: {error}. worktree와 checkpoint를 보존합니다.")
+
+    def _stage2_repair_response(self, b, state: dict) -> dict | None:
+        current = state["current"]
+        if current.get("pending_answer") is not None:
+            return current["pending_answer"]
+        final = self._adapter(b["producer"]).final_answer(Path(b["log_file"]))
+        current["last_response"] = final
+        self._save_stage2_repair_state(b, state)
+        try:
+            answer = stage2.extract_repair_answer(final, current["fingerprint"])
+        except ValueError as error:
+            current["last_error"] = str(error)
+            self._save_stage2_repair_state(b, state)
+            raise
+        if answer is None:
+            current["last_error"] = "repair response is missing the exact fingerprint header"
+            if current.get("attempt_log"):
+                current["attempt_log"][-1]["status"] = "rejected"
+            self._save_stage2_repair_state(b, state)
+            return None
+        page = current["groups"][current["cursor"]:current["cursor"] + stage2.REPAIR_GROUPS_PER_RUN]
+        required = {}
+        allowed_peers = {}
+        for group in page:
+            for candidate in group.get("candidates", []):
+                key = (candidate["source_sense_id"], candidate["candidate"])
+                required[key] = candidate
+                for peer in candidate.get("same_group_peers", []):
+                    allowed_peers[(peer["source_sense_id"], peer["candidate"])] = peer
+        direct_rows = answer["decisions"]
+        unresolved_rows = answer["unresolved"]
+        peer_rows = answer["peer_adjustments"]
+        seen = set()
+        for row in direct_rows:
+            if not isinstance(row, dict) or not isinstance(row.get("source_sense_id"), str) or not isinstance(row.get("candidate"), str):
+                raise ValueError("repair decision needs an exact source_sense_id/candidate key")
+            key = (row["source_sense_id"], row["candidate"])
+            if key not in required or key in seen:
+                raise ValueError("repair response contains a duplicate or out-of-page candidate")
+            candidate = required[key]
+            if candidate["already_accounted"]:
+                if set(row) != {"source_sense_id", "candidate", "additional_relations"} or not isinstance(row["additional_relations"], list):
+                    raise ValueError(f"{key[0]}/{key[1]} must return a complete optional-link list")
+            elif set(row) != {"source_sense_id", "candidate", "decision"} or not isinstance(row["decision"], dict):
+                raise ValueError(f"{key[0]}/{key[1]} must return one complete decision")
+            seen.add(key)
+        for row in unresolved_rows:
+            if not isinstance(row, dict) or set(row) != {"source_sense_id", "candidate", "reason"} \
+                    or not isinstance(row.get("reason"), str) or not row["reason"].strip():
+                raise ValueError("unresolved repair items need an exact candidate key and reason")
+            key = (row["source_sense_id"], row["candidate"])
+            if key not in required or key in seen:
+                raise ValueError("unresolved response contains a duplicate or out-of-page candidate")
+            seen.add(key)
+        if seen != set(required):
+            missing = sorted(set(required) - seen)
+            raise ValueError(f"repair response does not cover every target candidate ({len(missing)} missing)")
+        if unresolved_rows:
+            current["last_error"] = "unresolved: " + "; ".join(
+                f"{row['source_sense_id']}/{row['candidate']}: {row['reason']}" for row in unresolved_rows[:8])
+            self._save_stage2_repair_state(b, state)
+            raise ValueError(current["last_error"])
+        affected_types = {}
+        for row in direct_rows:
+            candidate = required[(row["source_sense_id"], row["candidate"])]
+            previous = candidate.get("decision") or {}
+            changed = row.get("decision", {}).get("type") if isinstance(row.get("decision"), dict) else None
+            if changed and previous.get("type") != changed:
+                types = affected_types.setdefault(row["source_sense_id"], set())
+                if previous.get("disposition") == "relation" and previous.get("type"):
+                    types.add(previous["type"])
+                types.add(changed)
+        normalized_peers = set()
+        for row in peer_rows:
+            if not isinstance(row, dict) or set(row) != {"source_sense_id", "candidate", "decision"} \
+                    or not isinstance(row.get("decision"), dict):
+                raise ValueError("peer adjustments need an exact candidate key and complete decision")
+            key = (row["source_sense_id"], row["candidate"])
+            peer = allowed_peers.get(key)
+            if peer is None or key in required or key in normalized_peers or row["source_sense_id"] not in affected_types \
+                    or peer["decision"].get("type") not in affected_types[row["source_sense_id"]]:
+                raise ValueError("peer adjustment is outside the directly affected same-source UI group")
+            normalized_peers.add(key)
+        answer["decisions"] = direct_rows
+        answer["peer_adjustments"] = peer_rows
+        current["pending_answer"] = answer
+        if current.get("attempt_log"):
+            current["attempt_log"][-1]["status"] = "answer_saved"
+        current.pop("last_error", None)
+        self._save_stage2_repair_state(b, state)
+        return answer
+
+    def _apply_stage2_repair_answer(self, b, state: dict | None = None) -> None:
+        try:
+            state = state or self._stage2_repair_state(b, required=True)
+            current = state["current"]
+            if current.get("pending_answer") is None:
+                answer = self._stage2_repair_response(b, state)
+                if answer is None:
+                    return self._fail(b, "ERROR", "Stage 2 repair answer is missing or incomplete; preserving the run output and checkpoint")
+            else:
+                answer = current["pending_answer"]
+            if problem := self._stage2_repair_boundary_problem(b):
+                return self._fail(b, "ERROR", problem)
+            info = self._find_recovery_pr(b)
+            if info is not None:
+                return self._fail(b, "ERROR", f"Stage 2 repair cannot continue after PR creation; unexpected PR #{info['number']} found")
+            page = current["groups"][current["cursor"]:current["cursor"] + stage2.REPAIR_GROUPS_PER_RUN]
+            targets = {}
+            for group in page:
+                for candidate in group["candidates"]:
+                    targets[(candidate["source_sense_id"], candidate["candidate"])] = candidate
+            changes = []
+            def add_change(key, new_decision=None, new_optional=None):
+                candidate = targets.get(key)
+                if candidate is None:
+                    candidate = next((peer for group in page for target in group["candidates"]
+                                      for peer in target.get("same_group_peers", [])
+                                      if (peer["source_sense_id"], peer["candidate"]) == key), None)
+                if candidate is None:
+                    raise ValueError(f"repair answer target is not in the persisted preflight page: {key[0]}/{key[1]}")
+                changes.append({"source_sense_id": key[0], "candidate": key[1],
+                    "expected_decision": candidate["decision"],
+                    "expected_additional_relations": candidate.get("additional_relations"),
+                    "decision": new_decision, "additional_relations": new_optional})
+            for row in answer["decisions"]:
+                key = (row["source_sense_id"], row["candidate"])
+                if key not in targets:
+                    raise ValueError("repair decision key changed after answer validation")
+                if targets[key]["already_accounted"]:
+                    add_change(key, None, row["additional_relations"])
+                else:
+                    add_change(key, row["decision"], None)
+            for row in answer["peer_adjustments"]:
+                add_change((row["source_sense_id"], row["candidate"]), row["decision"], None)
+            repair_input = {"version": 1, "fingerprint": current["fingerprint"],
+                            "decisions": sorted(changes, key=lambda row: (row["source_sense_id"], row["candidate"]))}
+            candidate_keys = sorted(f"{row['source_sense_id']}\u0000{row['candidate']}" for row in repair_input["decisions"])
+            intent = current.get("apply_intent")
+            if intent is None:
+                intent = {"supervisor_nonce": secrets.token_hex(32), "fingerprint": current["fingerprint"],
+                          "candidate_keys": candidate_keys}
+                current["apply_intent"] = intent
+                self._save_stage2_repair_state(b, state)
+            elif not isinstance(intent, dict) or intent.get("fingerprint") != current["fingerprint"] \
+                    or intent.get("candidate_keys") != candidate_keys \
+                    or not re.fullmatch(r"[a-f0-9]{64}", intent.get("supervisor_nonce", "")):
+                raise ValueError("persisted Supervisor apply intent does not match the pending repair answer")
+            repair_input["supervisor_nonce"] = intent["supervisor_nonce"]
+            receipt = self.git.stage2_repair(Path(b["worktree"]), b["shard"], *stage2.split_key(b["batch"]), repair_input)
+            if receipt.get("ok") is not True or not re.fullmatch(r"[a-f0-9]{64}", receipt.get("request_id", "")) \
+                    or receipt.get("supervisor_nonce") != intent["supervisor_nonce"] \
+                    or receipt.get("candidate_keys") != candidate_keys:
+                return self._fail(b, "ERROR", "official repair CLI returned no valid idempotent receipt; preserving state")
+            target_keys = [f"{row['source_sense_id']}\u0000{row['candidate']}" for row in repair_input["decisions"]]
+            current.setdefault("applied_candidate_keys", []).extend(target_keys)
+            current["cursor"] += len(page)
+            current["attempts"] = 0
+            current["last_receipt"] = receipt["request_id"]
+            current["pending_answer"] = None
+            current.pop("apply_intent", None)
+            current.pop("last_response", None)
+            if state.get("history"):
+                state["history"][-1]["applied_candidate_keys"] = list(current["applied_candidate_keys"])
+            if current.get("attempt_log"):
+                current["attempt_log"][-1]["status"] = "applied"
+                current["attempt_log"][-1]["receipt"] = receipt["request_id"]
+            self._save_stage2_repair_state(b, state)
+            self.store.log(b["id"], f"Stage 2 국소 재판정 {len(target_keys)}건을 공식 admission-cli로 저장했습니다 (round {state['rounds_used']}/{stage2.MAX_REPAIR_ROUNDS})")
+            self.store.update(b["id"], session_id=None, retries=0, retry_after=None, error=None,
+                              state="PRODUCING", run_kind="s2_deterministic_finalize", pid=None)
+            return self._stage2_finalize(self.store.batch(b["id"]))
+        except TRANSIENT:
+            raise
+        except (OSError, ValueError, KeyError, TypeError, GitError) as error:
+            try:
+                state = state or self._stage2_repair_state(b, required=True)
+                state["current"]["last_error"] = str(error)[:800]
+                self._save_stage2_repair_state(b, state)
+            except Exception:
+                pass
+            return self._fail(b, "ERROR", f"Stage 2 repair 저장/재개 실패: {error}. response, checkpoint와 receipts를 보존합니다.")
+
+    def _stage2_preflight_repair(self, b, checkpoint: dict) -> bool:
+        """Run the read-only complete preflight; return True once it has launched or stopped a repair action."""
+        try:
+            bb, pp = stage2.split_key(b["batch"])
+            report = self.git.stage2_preflight(Path(b["worktree"]), b["shard"], bb, pp)
+        except TRANSIENT:
+            raise
+        except Exception as error:
+            self._fail(b, "ERROR", f"Stage 2 read-only preflight failed: {error}. Worktree is preserved.")
+            return True
+        state = self._stage2_repair_state(b)
+        if report.get("ok") is True:
+            if state:
+                state["status"] = "complete"
+                state["last_success_fingerprint"] = report.get("fingerprint")
+                if state.get("history"):
+                    state["history"][-1]["resolved"] = True
+                    state["history"][-1]["residual_fingerprint"] = report.get("fingerprint")
+                self._save_stage2_repair_state(b, state)
+            return False
+        if report.get("repairable") is not True or not report.get("problems"):
+            summary = "; ".join(report.get("unclassified", [])[:3]) or "no bounded repairable cases were returned"
+            self._fail(b, "ERROR", f"Stage 2 preflight found a non-local or incomplete failure; automatic semantic repair is blocked: {summary}")
+            return True
+        fingerprint = report.get("fingerprint")
+        if not isinstance(fingerprint, str) or not re.fullmatch(r"[a-f0-9]{64}", fingerprint):
+            self._fail(b, "ERROR", "Stage 2 preflight returned an invalid conflict fingerprint")
+            return True
+        if state is None:
+            state = {"version": 1, "identity": {"branch": b["branch"], "worktree": str(b["worktree"]),
+                      "base_head": self.git.head(Path(b["worktree"])), "remote_head": self.git.remote_head(b["branch"])},
+                     "rounds_used": 0, "history": [], "status": "active", "current": None}
+        if state.get("identity", {}).get("base_head") != self.git.head(Path(b["worktree"])) \
+                or state.get("identity", {}).get("remote_head") != self.git.remote_head(b["branch"]):
+            self._fail(b, "ERROR", "Stage 2 repair owner HEAD/remote identity changed; preserving prior decisions and receipts")
+            return True
+        seen = {entry.get("fingerprint") for entry in state["history"] if isinstance(entry, dict)}
+        if fingerprint in seen:
+            self._fail(b, "ERROR", f"Stage 2 repair made no preflight progress (repeated fingerprint {fingerprint[:12]}); evidence is preserved")
+            return True
+        if state.get("rounds_used", 0) >= stage2.MAX_REPAIR_ROUNDS:
+            self._fail(b, "ERROR", f"Stage 2 automatic repair round limit ({stage2.MAX_REPAIR_ROUNDS}) reached; checkpoint and successful earlier repairs are preserved")
+            return True
+        groups = report["problems"]
+        target_keys = sorted({key for group in groups for key in group.get("candidate_keys", [])})
+        if not target_keys:
+            self._fail(b, "ERROR", "Stage 2 preflight has no repair target identity")
+            return True
+        if state["history"]:
+            previous = state["history"][-1]
+            if not previous.get("resolved") and previous.get("residual_fingerprint") is None:
+                previous["residual_fingerprint"] = fingerprint
+                previous["remaining_candidate_keys"] = target_keys
+        state["rounds_used"] += 1
+        state["current"] = {"fingerprint": fingerprint, "groups": groups, "cursor": 0, "attempts": 0,
+                             "target_keys": target_keys, "pending_answer": None, "applied_candidate_keys": [],
+                             "attempt_log": [], "type_tier_policy": report.get("type_tier_policy", "legacy-independent")}
+        state["history"].append({"round": state["rounds_used"], "fingerprint": fingerprint,
+                                 "target_keys": target_keys, "applied_candidate_keys": [], "resolved": False})
+        state["status"] = "active"
+        self._save_stage2_repair_state(b, state)
+        self.store.log(b["id"], f"Stage 2 preflight detected {len(groups)} conflict groups / {len(target_keys)} candidates; starting fresh bounded repair round {state['rounds_used']}/{stage2.MAX_REPAIR_ROUNDS}", "warn")
+        self._launch_stage2_repair_page(b)
+        return True
+
     def _stage2_finalize_do(self, b) -> None:
         """Optional completion, snapshot merge, two validations, one commit/push and one owned PR; every step resumes from facts."""
         wt = Path(b["worktree"])
@@ -1869,6 +2281,27 @@ class Supervisor:
                 self.store.set(base_key, base)
             if not re.fullmatch(r"[a-f0-9]{40}", base):
                 return self._fail(b, "ERROR", "Stage 2 finalization HEAD baseline is invalid")
+            if not checkpoint.get("merged"):
+                try:
+                    repair_state = self._stage2_repair_state(b)
+                    current_repair = repair_state.get("current") if repair_state else None
+                    if isinstance(current_repair, dict):
+                        if current_repair.get("pending_answer") is not None:
+                            return self._apply_stage2_repair_answer(b, repair_state)
+                        cursor, groups = current_repair.get("cursor"), current_repair.get("groups")
+                        if type(cursor) is int and isinstance(groups, list) and cursor < len(groups):
+                            return self._launch_stage2_repair_page(b)
+                    self.git.stage2_prepare_merge(wt, b["shard"], bb, pp)
+                    checkpoint = stage2.checkpoint(wt, b["shard"], b["batch"])
+                    if checkpoint is None or not isinstance(checkpoint.get("premerge"), dict) \
+                            or checkpoint["premerge"].get("status") != "ready":
+                        return self._fail(b, "ERROR", "trusted premerge snapshot could not be prepared")
+                    if self._stage2_preflight_repair(b, checkpoint):
+                        return
+                except TRANSIENT:
+                    raise
+                except (GitError, OSError, ValueError, KeyError, TypeError) as e:
+                    return self._fail(b, "ERROR", f"Stage 2 preflight preparation failed: {e}. Worktree is preserved.")
             self.git.stage2_merge(wt, b["shard"], bb, pp)
             checkpoint = stage2.checkpoint(wt, b["shard"], b["batch"])
             if checkpoint is None or not checkpoint.get("merged") or not checkpoint.get("optional_review_complete") or \
@@ -2017,6 +2450,10 @@ class Supervisor:
     def _s2_links_run(b) -> bool:
         return b["method"] == STAGE2_METHOD and b["run_kind"] in ("s2_links_new", "s2_links_fix")
 
+    @staticmethod
+    def _s2_repair_run(b) -> bool:
+        return b["method"] == STAGE2_METHOD and b["run_kind"] == "s2_repair_new"
+
     def _stage2_pending(self, b) -> str | None:
         try:
             checkpoint = stage2.checkpoint(b["worktree"], b["shard"], b["batch"])
@@ -2101,6 +2538,24 @@ class Supervisor:
         self.store.update(b["id"], session_id=None, retries=0, retry_after=None, error=None)
         self.store.log(b["id"], "optional-link 결과와 완료 증거를 checkpoint에 저장했습니다. AI 재실행 없이 deterministic finalization으로 진행합니다.")
         return self._launch_stage2_next(self.store.batch(b["id"]))
+
+    def _run_ok_stage2_repair(self, b) -> None:
+        """Accept one fresh answer-only repair page, persist it, then apply only through admission-cli."""
+        if problem := self._stage2_repair_boundary_problem(b):
+            return self._fail(b, "ERROR", problem)
+        try:
+            info = self._find_recovery_pr(b)
+            if info is not None:
+                return self._fail(b, "ERROR", f"Stage 2 repair completed after an unexpected PR #{info['number']} appeared; preserving evidence")
+            state = self._stage2_repair_state(b, required=True)
+            answer = self._stage2_repair_response(b, state)
+            if answer is None:
+                return self._fail(b, "ERROR", "Stage 2 repair answer is missing the exact fingerprint header; preserving the run and checkpoint")
+            return self._apply_stage2_repair_answer(b, state)
+        except TRANSIENT:
+            raise
+        except (OSError, ValueError, KeyError, TypeError, GitError) as error:
+            return self._fail(b, "ERROR", f"Stage 2 repair answer rejected; no checkpoint change was made: {error}")
 
     def _stage2_links_rejected(self, b, diagnostic: str) -> None:
         used = stage2.fixes_used(self.store.runs(b["id"]), "s2_links_new", ("s2_links_fix",))
@@ -2471,6 +2926,7 @@ class Supervisor:
             exp = literary.ensure_export(self.runner, self._c_env(b), wt, b)
             if exp.status == "repair":
                 return self._c_repair(b, exp)
+            self.store.delete(f"c_repair_issue_count_{b['id']}")
             title = literary.pr_title(label, b)
             if not self.git.is_committed(wt, n.output):
                 sha = self.git.commit_paths(wt, [n.output], title)
@@ -2545,11 +3001,27 @@ class Supervisor:
     def _c_repair(self, b, exp) -> None:
         """Candidate v1 named senses: re-read exactly those in a session, resubmit, then export again."""
         wt = Path(b["worktree"])
-        key = f"c_repairs_{b['id']}"
-        tries = int(self.store.get(key) or 0)
-        if tries >= literary.MAX_REPAIRS:
-            return self._fail(b, "ERROR", f"Candidate v1 검증 복구를 {literary.MAX_REPAIRS}번 시도했지만 해결되지 않았습니다: {exp.diagnostic}")
-        self.store.set(key, str(tries + 1))
+        if not exp.candidate_issues or not exp.repair_ids:
+            return self._fail(b, "ERROR", "정확한 source/sense에 결속된 Candidate v1 후보 내용 오류가 없어 자동 복구를 중단합니다.")
+        key = f"c_repair_issue_count_{b['id']}"
+        current_issues = exp.candidate_issue_count
+        if current_issues <= 0:
+            return self._fail(b, "ERROR", "Candidate v1 복구할 후보 오류 수가 확인되지 않아 자동 재호출을 중단합니다.")
+        previous = self.store.get(key)
+        if previous is not None:
+            try:
+                previous_issues = int(previous)
+            except (TypeError, ValueError):
+                return self._fail(b, "ERROR", "Candidate v1 복구 진행 상태가 손상되어 자동 재호출을 중단합니다.")
+            if current_issues >= previous_issues:
+                try:
+                    cleared = literary.clear_candidates(self.runner, self._c_env(b), wt, b, list(exp.repair_ids))
+                except (literary.LiteraryError, OSError, ValueError) as e:
+                    return self._fail(b, "ERROR", f"정확한 Sense 후보 비우기 실패: {e}. worktree를 보존합니다.")
+                self.store.delete(key)
+                self.store.log(b["id"], f"Candidate v1 내용 오류가 줄지 않아 해당 Sense 후보를 비웠습니다 ({cleared['senses']} senses / {cleared['candidates']} candidates)", "warn")
+                return self._c_finalize(b)
+        self.store.set(key, str(current_issues))
         try:
             view = literary.render_chunk(self.runner, self._c_env(b), wt, b, self._c_db(), sense_ids=list(exp.repair_ids))
             literary.write_active(wt, b, view, list(exp.repair_ids), self.git.head(wt), self._c_next_no(b),
@@ -2558,7 +3030,7 @@ class Supervisor:
                                        + exp.diagnostic + "\n")
         except (literary.LiteraryError, OSError) as e:
             return self._fail(b, "ERROR", f"복구 청크 준비 실패: {e}")
-        self.store.log(b["id"], f"Candidate v1 거부 sense {list(exp.repair_ids)}만 재판정합니다 ({tries + 1}/{literary.MAX_REPAIRS})", "warn")
+        self.store.log(b["id"], f"Candidate v1 내용 오류 {current_issues}건이 남은 sense {list(exp.repair_ids)}만 재판정합니다", "warn")
         self.store.update(b["id"], session_id=None)
         return self._launch(b, "c_chunk_new")
 
@@ -2882,6 +3354,98 @@ class Supervisor:
     def _ab_chunk_run(b) -> bool:
         return b["method"] in stage1ab.METHODS and isinstance(b["run_kind"], str) and b["run_kind"].startswith("ab_chunk_")
 
+    @staticmethod
+    def _ab_policy_skip_event_key(b, chunk: dict) -> str:
+        return f"ab-policy-skip:{b['shard']}:{b['batch']}:{b['method']}:{b['producer']}:{chunk['number']:03d}"
+
+    def _ab_policy_skip_chunk(self, b) -> dict | None:
+        """Only a first, answer-only A/B chunk can be converted after an exact provider refusal."""
+        if b["state"] != "PRODUCING" or b["method"] not in stage1ab.METHODS or b["run_kind"] != "ab_chunk_new":
+            return None
+        try:
+            raw = self.store.get(stage1ab.run_start_key(b["id"]))
+            baseline = json.loads(raw or "")
+            if not isinstance(baseline, dict):
+                return None
+            if baseline.get("repair"):
+                return None
+            chunk = stage1ab.chunk_by_number(stage1ab.checkpoint(b["worktree"], b), int(baseline["chunk_no"]))
+            state = stage1ab.load_state(self.store, b["id"], chunk["number"])
+            return chunk if state["tries"] == 0 and state["requested"] is None else None
+        except (stage1ab.ABChunkError, OSError, ValueError, KeyError, TypeError):
+            return None
+
+    def _ab_complete_response(self, b, chunk: dict) -> bool:
+        """True only when the current answer block covers every alias in the chunk's exact saved view."""
+        try:
+            body = stage1ab.extract_block(self._adapter(b["producer"]).final_answer(Path(b["log_file"])), chunk["number"])
+            revised = stage1ab.split_rows(body)
+            view = (Path(b["worktree"]) / stage1ab.view_path(b, chunk["number"])).read_text("utf-8")
+            aliases = [row[0] for row in stage1ab.view_rows(view)]
+            return len(revised) == len(aliases) and set(revised) == set(aliases)
+        except (stage1ab.ABChunkError, OSError, ValueError, KeyError, TypeError):
+            return False
+
+    def _ab_save_policy_skip(self, b, chunk: dict) -> None:
+        """Persist the manual ID list, save an all-empty chunk through save-chunk, then use normal acceptance."""
+        key = stage1ab.run_start_key(b["id"])
+        if problem := self._stage2_chunk_boundary_problem(b, key):
+            return self._fail(b, "ERROR", problem)
+        wt = Path(b["worktree"])
+        try:
+            if self.git.dirty(wt).strip():
+                return self._fail(b, "ERROR", "정책 거부 청크 종료 뒤 worktree에 추적 변경이 있습니다. 보존합니다.")
+            if self._find_recovery_pr(b) is not None:
+                return self._fail(b, "ERROR", "정책 거부 청크 실행 중 소유 브랜치에 PR이 생겼습니다. 보존합니다.")
+            baseline = json.loads(self.store.get(key) or "")
+            cp = stage1ab.checkpoint(wt, b)
+            chunk = stage1ab.chunk_by_number(cp, int(baseline["chunk_no"]))
+            if stage1ab.saved_snapshot(wt, b, cp) != baseline.get("saved"):
+                return self._fail(b, "ERROR", "정책 거부 청크 실행 중 저장물이 변경됐습니다. 덮어쓰지 않고 보존합니다.")
+            if stage1ab.chunk_saved(wt, b, chunk):
+                self.store.log(b["id"], f"A/B 청크 {chunk['number']:03d}에 기존 저장 후보가 있어 정책 Skip으로 덮어쓰지 않습니다.", "warn")
+                return self._ab_accept(b, chunk, False)
+            if self._ab_complete_response(b, chunk):
+                self.store.log(b["id"], f"A/B 청크 {chunk['number']:03d}에 완성 응답이 있어 기존 저장 검증 경로로 전달합니다.", "warn")
+                return self._run_ok_ab_chunk(b)
+            record_ids = stage1ab.chunk_record_ids(wt, b, chunk)
+            view = (wt / stage1ab.view_path(b, chunk["number"])).read_text("utf-8")
+            lines = [row[0] for row in stage1ab.view_rows(view)]
+            if len(lines) != chunk["sense_count"]:
+                raise stage1ab.ABChunkError("정책 Skip compact view의 sense 수가 checkpoint와 다릅니다")
+        except TRANSIENT:
+            raise
+        except (stage1ab.ABChunkError, OSError, ValueError, KeyError, TypeError, GitError) as e:
+            return self._fail(b, "ERROR", f"정책 거부 청크 확인 실패: {e}. 보존합니다.")
+        title = (f"[Policy Skip][{b['method'].upper()}/{b['producer']}] "
+                 f"{b['shard']}_{b['batch']} Chunk {chunk['number']:03d}")
+        body = "\n".join(record_ids)
+        try:
+            request_id = self.maint.report_issue(title, body, urgent=False,
+                                                 event_key=self._ab_policy_skip_event_key(b, chunk))
+        except Exception as e:
+            return self._fail(b, "ERROR", f"정책 Skip 수동 Issue 요청을 영속화하지 못했습니다. 청크와 실행 기록을 보존합니다: {e}")
+        try:
+            saved, diag = stage1ab.save(self.runner, self.env, wt, b, chunk, lines)
+            if not saved:
+                return self._fail(b, "ERROR", f"수동 Issue 요청은 영속화했지만 빈 후보 청크 저장이 거부됐습니다: {diag}. 보존합니다.")
+            if not stage1ab.chunk_saved(wt, b, chunk):
+                return self._fail(b, "ERROR", "빈 후보 저장은 성공했지만 Canonical ID/sense 검증을 통과하지 못했습니다. 보존합니다.")
+        except (stage1ab.ABChunkError, OSError, ValueError, KeyError, TypeError) as e:
+            return self._fail(b, "ERROR", f"수동 Issue 요청 #{request_id} 뒤 빈 후보 청크 저장 확인 실패: {e}. 보존합니다.")
+        except Exception as e:
+            return self._fail(b, "ERROR", f"수동 Issue 요청 #{request_id} 뒤 빈 후보 청크 저장 실패: {e}. 보존합니다.")
+        self.store.log(b["id"], f"Codex 정책 거부: A/B 청크 {chunk['number']:03d}의 빈 후보 저장과 수동 Issue 요청 #{request_id}를 확인했습니다.", "warn")
+        return self._ab_accept(b, chunk, False)
+
+    def _handle_ab_policy_refusal(self, b, chunk: dict) -> None:
+        """A confirmed refusal is accepted only after the run identity and the normal chunk boundary are checked."""
+        ad = self._adapter(b["producer"])
+        if problem := ad.output_identity_problem(Path(b["log_file"]), self._recorded_run(b), b["session_id"],
+                                                 b["worktree"], self.env):
+            return self._fail(b, problem[0], f"Codex 정책 거부 실행의 소유권/핀 확인 실패: {problem[1]}")
+        return self._ab_save_policy_skip(b, chunk)
+
     def _fix_kind(self, b) -> str:
         """A/B review fixes start a small new session (never a resume of a long production session)."""
         if b["method"] == STAGE2_METHOD:
@@ -3144,6 +3708,15 @@ class Supervisor:
             if saved:   # the exact file is already there: accept it, never ask the AI again
                 self.store.log(b["id"], "이전 실행의 A/B 청크 저장을 확인했습니다 — AI 재실행 없이 다음 단계로 진행합니다.")
                 return self._ab_accept(b, chunk, bool(baseline.get("repair")))
+            policy_chunk = self._ab_policy_skip_chunk(b)
+            if policy_chunk is not None:
+                if self._ab_complete_response(b, policy_chunk):
+                    return self._run_ok_ab_chunk(b)
+                refusal = self._adapter(b["producer"]).confirmed_prompt_refusal(Path(b["log_file"]))
+                if refusal:
+                    return self._handle_ab_policy_refusal(b, policy_chunk)
+                if self.store.issue_request(self._ab_policy_skip_event_key(b, policy_chunk)) is not None:
+                    return self._ab_save_policy_skip(b, policy_chunk)
             if self._ab_chunk_response(b):   # a complete answer from the prior run: judge it instead of regenerating it
                 return self._run_ok_ab_chunk(b)
         self.store.update(b["id"], retries=0, retry_after=None, error=None)
@@ -3583,7 +4156,7 @@ class Supervisor:
                 # The CLI left its own repairable rejection, and permission evidence is explicitly clear.
                 return
         chunk_run = (b["method"] == STAGE2_METHOD and isinstance(b["run_kind"], str)
-                     and b["run_kind"].startswith("s2_chunk_")) or self._c_chunk_run(b) or self._d_chunk_run(b) \
+                     and (b["run_kind"].startswith("s2_chunk_") or b["run_kind"] == "s2_repair_new")) or self._c_chunk_run(b) or self._d_chunk_run(b) \
             or self._ab_chunk_run(b)
         if b["state"] == "PRODUCING" and not b["pr_number"] and not chunk_run:
             if self._handoff_failed_pr(b, code, cls):

@@ -8,7 +8,7 @@ War Room이 지정한 배치 {{batch}}의 **청크 하나**(청크 {{chunk_no}},
 
 {{chunk_input}}
 
-view의 `## `마다 Canonical record 하나다: 표제어·검색형, 그 record로 이미 조회한 **공유 문맥**(상태 줄 `COMPLETE`/`LIMITED`/`ZERO_HITS`/`SEARCH_FAILED`와 `[키] 표제 저자` 다음 줄의 발췌), 그리고 아래에 `s1…sK`로 번호가 붙은 record의 모든 Sense(정확한 Sense ID·품사·전체 gloss)가 온다. 문맥은 record의 Sense들이 공유하지만 **source-sense 판정과 후보 발굴은 Sense마다 따로** 한다. 머리 줄의 `auto_z`는 War Room이 기계적으로 완전 0건을 증명해 자동 저장하는 Sense다: 판정 줄에 넣지 않는다.
+view의 `## `마다 Canonical record 하나다: 표제어·검색형, 그 record로 이미 조회한 **공유 문맥**(상태 줄 `COMPLETE`/`LIMITED`/`ZERO_HITS`/`SEARCH_FAILED`와 `[키] 표제 저자` 다음 줄의 발췌), 그리고 아래에 `s1…sK`로 번호가 붙은 record의 모든 Sense(정확한 Sense ID·품사·전체 gloss)가 온다. 문맥은 record의 Sense들이 공유하지만 **source-sense 판정과 후보 발굴은 Sense마다 따로** 한다. 머리 줄의 `decide=`는 이번 청크에서 판정할 필수 Sense 전체이며, `auto_z`는 War Room이 기계적으로 완전 0건을 증명해 자동 저장하므로 판정 줄에 넣지 않는다.
 
 운영자가 `prepare --hada-prefetch`를 명시한 경우 첫 `search:` 줄에는 Canonical 검색형과 함께 제한된 `-하다` 활용형 검색 결과가 들어 있을 수 있다. 이는 해당 record에 이미 기록된 일반 검색 증거다. 같은 검색형을 다시 조회하지 말고 상태와 문맥을 판독한다. 옵션은 기본 실행에서 꺼져 있다. 추가 활용형이 필요하면 아래 검색 도구로 별도 조회할 수 있다.
 
@@ -21,7 +21,8 @@ view의 `## `마다 Canonical record 하나다: 표제어·검색형, 그 record
   cat <<'JSON' | node scripts/relation/d-chunk-cli.mjs search-batch
   {"requests":[
     {"sense":"s2","forms":["검색형, 쉼표 포함","인용 \"포함\""],"boundary":"left","cursor":null,"contexts":4},
-    {"sense":"s5","forms":["다른 검색형"],"boundary":"both","contexts":2}
+    {"sense":"s5","forms":["다른 검색형"],"boundary":"both","contexts":2},
+    {"sense":"s6","forms":["이미 완료된 검색형"],"reread":true,"contexts":4}
   ]}
   JSON
   ```
@@ -35,11 +36,11 @@ view의 `## `마다 Canonical record 하나다: 표제어·검색형, 그 record
 
   검색형·경계·cursor·문맥 수 등 결과에 영향을 주는 옵션이 모두 같으면 **record ID가 달라도** 한 번만 검색하고 문맥을 한 번만 출력하며, `shared_by`에 연결된 record마다 증거를 한 번 기록한다. 같은 record의 여러 Sense는 해당 record 증거를 공유하지만, source-sense 판독과 후보 발굴은 각각 독립 수행한다. 다른 조건은 합치지 않는다. `search-batch`는 반드시 위처럼 JSON 객체를 stdin으로 전달한다.
   CLI는 요청별 문맥 수를 채우거나 검색 완료 또는 요청 스캔 한도에 도달할 때까지 내부 페이지를 이어 읽는다. 짧은 검색형은 실제 확인한 문단 범위를, 3자 이상 FTS 검색형은 결과가 0건이어도 페이지 예산을 사용하므로 검색형을 많이 보내도 한도를 우회하지 않는다. 검색 한도에 도달하면 실제 모은 문맥과 유효한 `next_cursor`를 `LIMITED`로 돌려준다. 한 번의 `search-batch`에는 별도 합산 스캔 한도가 있다. 상위 `PARTIAL`은 이 합산 한도 때문에 일부 요청을 시작하지 않았다는 뜻이다. 그 결과는 `DEFERRED`이며, 해당 결과의 `retry_requests`에 들어 있는 원래 요청을 모아 다음 호출의 `requests` 배열에 그대로 넣는다. 이 요청은 아직 검색되지 않았고 증거도 기록되지 않는다. 다른 완료·진행 결과는 함께 반환된다. 결과의 `requests[].status`로 각 요청 상태를 확인한다.
-  전체 응답이 48 KiB 제한을 넘으면 명시적 오류로 종료되고 해당 호출의 검색 증거는 기록되지 않는다. 요청 수를 나누거나 `contexts`를 낮춰 다시 보낸다. 결과 안의 `SEARCH_FAILED`도 0건 완료로 보지 말고 상태를 그대로 처리한다.
+  완료가 cursor 증거 체인으로 증명된 동일 record·forms 순서·boundary를 다시 요청하면 `ALREADY_COMPLETE`가 반환된다: 재검색·증거 추가 없이 `recorded_status`와 `recorded_hits`만 제공하고 `contexts:[]`이다. `context_source`가 `view`이면 기존 view 문맥을 읽고, `search_response`이면 이전 검색 응답을 읽는다. 문맥을 실제로 잃었을 때만 해당 요청에 `reread:true`를 명시한다. 완료 증거를 확인한 뒤 처음부터 문맥만 다시 읽으며 어떤 검색 증거·누적 hit·cursor도 바꾸지 않는다. hit 수만으로 `V/N`을 고르지 않는다. 전체 응답이 48 KiB 제한을 넘으면 명시적 오류로 종료되고 해당 호출의 검색 증거는 기록되지 않는다. 요청 수를 나누거나 `contexts`를 낮춰 다시 보낸다. 결과 안의 `SEARCH_FAILED`도 0건 완료로 보지 말고 보고한다.
 - 한 Sense만 추가 조회할 때는 기존 단일 검색을 계속 쓸 수 있다:
-  `node scripts/relation/d-chunk-cli.mjs search <sN> [--forms 형태1,형태2] [--boundary left|none|both] [--cursor next] [--contexts 1..16]`
+  `node scripts/relation/d-chunk-cli.mjs search <sN> [--forms 형태1,형태2] [--boundary left|none|both] [--cursor next] [--contexts 1..16] [--reread]`
   `--forms`를 생략하면 record의 Canonical 검색형을 쓴다. `prepare`에서 Canonical 기본 검색을 이어 읽을 때(해당 `search:` 행이 heading의 `search_forms`와 같을 때)만 `--forms`와 `--boundary`를 모두 생략하고, 기록이 `LIMITED`일 때 `--cursor next`를 쓴다. `--hada-prefetch`나 띄어쓰기 변형 등 추가 forms를 사용한 prepare 검색은 해당 `search:` 행의 실제 forms 전체와 순서를 그대로 `--forms`에 지정한다. prepare boundary는 기본값이므로 생략한다. 표시된 forms를 정확하게 복원할 수 없으면 추측하지 말고 보고한다. 새 활용형·표기 변형·경계 검색은 새 조건을 지정하고 `--cursor`를 생략한다. 단, 같은 record·forms 순서·boundary에 미완료 `LIMITED`가 있으면 contexts만 바꾸어 첫 검색을 다시 시작하지 말고 그 기록을 이어 읽는다. 수동 검색을 이어 읽을 때는 직전과 같은 forms 목록·순서와 boundary를 지정하고 유효한 미소비 `LIMITED` 기록이 있을 때만 `--cursor next`를 쓴다. 활용형·표면 변형·다른 승인 검색형으로 넓힐 수는 있으나 부분 문자열을 무차별로 늘려 허위 hit를 만들지 않는다. 1–2자 검색은 앞뒤 문자 경계와 조사 결합을 직접 확인한다. CLI는 같은 문단이 여러 검색형에 걸려도 한 번만 세고, 요청한 문맥 수에 도달하거나 실제 검색이 끝날 때까지 내부 페이지를 이어 읽는다. 요청 스캔 한도에 도달하면 지금까지 찾은 문맥과 검증된 `next_cursor`를 `LIMITED`로 돌려준다. 문맥이 있는 `LIMITED`는 ZERO_HITS도 sense 완료도 아니다. `COMPLETE`·`ZERO_HITS`에는 `next`를 쓰지 않는다. `INVALID_CURSOR`가 나오면 이번 검색과 증거 기록은 0건이다. 마지막 기록 상태와 조건을 확인하며 같은 `next`를 맹목적으로 반복하지 않는다. 미완료 cursor가 없거나 기록이 충돌·손상·모호하면 cursor를 만들거나 처음부터 같은 조건으로 재검색하지 말고 상태를 보존해 보고한다. 호출 횟수는 검색 완료 근거가 아니다.
-- 완료 구분: **`Z`** = 기록된 검색이 모두 완료됐고 누적 0건이며, 이 Sense의 활용형·표기 변형이 더 필요하지 않다고 **내가 판단**했다. 단순히 표본이 0개였거나 미완료 `LIMITED`면 `Z`가 아니다. 뒤 두 가지가 모두 필요하다: CLI는 앞의 검색 사실만 확인하고, 검색형이 충분한지는 이 카드를 따르는 나의 판단이며 리뷰가 확인한다. `-하다` 사전 수집 검색형이 충분하다면 같은 형을 반복 조회할 필요는 없지만, 용언·어근·짧은 표제어는 문맥과 검색형을 검토해 필요한 활용형을 더 조회한 뒤 `Z`를 고른다. **`N`** = 문맥은 있으나 합리적인 추가 탐색 뒤에도 VERIFIED가 없다. **`V`** = VERIFIED 문맥을 직접 읽었다(후보가 없으면 정상 빈 후보 `[]`). `SEARCH_FAILED`·미작업·읽지 않은 Sense를 `Z`/`N`/빈 `V`로 위장하지 않는다. view의 항목이 `SEARCH_FAILED`면 판정하지 말고 저장 없이 그 사실만 보고하고 종료한다.
+- 증거 상태: `Z_ALLOWED`는 record의 모든 기록 검색 완료와 누적 0 hit를 뜻하고, `V_N_ALLOWED`는 적어도 한 기록 hit가 있음을 뜻한다. `SEARCH_MORE`는 hit 없는 미완료 검색이며, `SEARCH_FAILED`는 정상 판정 불가다. 화면·검색 응답의 `decision_state`와 save는 같은 기계적 허용 규칙을 쓴다. record마다 출발 Sense 판독은 독립이다. **`Z`**는 `Z_ALLOWED`와 더불어 이 Sense의 활용형·표기 변형이 더 필요하지 않다고 **내가 판단**해야 한다. 검색형 충분성은 CLI가 대신 판단하지 않는다. `-하다` 사전 수집 검색형이 충분하다면 같은 형을 반복 조회할 필요는 없지만, 용언·어근·짧은 표제어는 문맥과 검색형을 검토해 필요한 활용형을 더 조회한다. **`N`**은 문맥은 있으나 합리적인 추가 탐색 뒤에도 VERIFIED가 없음, **`V`**는 VERIFIED 문맥을 직접 읽음이다(후보가 없으면 정상 빈 후보 `[]`). 검색 hit만으로 Sense VERIFIED가 되지는 않는다. `SEARCH_FAILED`·미작업·읽지 않은 Sense를 `Z`/`N`/빈 `V`로 위장하지 않는다. view의 항목이 `SEARCH_FAILED`면 판정하지 말고 저장 없이 그 사실만 보고하고 종료.
 
 ## 발굴 (#1156 PASS B)
 
@@ -70,5 +71,6 @@ node scripts/relation/d-chunk-cli.mjs save --in .warroom-scratch/d-{{batch}}/dec
 
 - 한 Sense 한 줄: `sN V 후보|후보` (VERIFIED + 후보), `sN V` (VERIFIED + 적격 후보 0), `sN N`, `sN Z`. `auto_z` Sense는 쓰지 않는다. 다른 모든 Sense를 정확히 한 번씩 쓴다.
 - 저장은 청크 전체를 한 번에 검사하고 같은 유형의 오류를 모두 알려 준다. 거부되면 아무것도 저장되지 않는다. 지목된 줄만 고쳐 다시 한 번의 호출로 제출한다. 정상 저장(`SAVED`)되면 즉시 종료하며 다음 청크는 시작하지 않는다.
+- 저장은 Candidate v1이 명백히 부적격으로 판정한 source lemma 반복·천 단위 쉼표 파편과 정규화 중복만 자동 제거하고 `removed_candidates`로 보고한다. 독립 합성어와 정상 후보는 보존하며 `V`의 후보가 모두 제거되어 빈 배열이 되어도 저장할 수 있다.
 - `V`는 내가 VERIFIED 문맥을 읽었다는 뜻이다. 저장 도구는 문맥의 source-sense 진위를 기계적으로 검증했다고 주장하지 않으며, `N`·`Z`의 의미적 타당성은 나와 독립 리뷰의 책임이다.
 - 셸 명령은 그 외에는 개별로 실행해 종료 코드와 출력을 확인한다.

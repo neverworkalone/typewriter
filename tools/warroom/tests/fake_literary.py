@@ -20,6 +20,7 @@ class FakeLiteraryCli:
         self.fail: dict[str, Result] = {}          # command -> forced result
         self.chunk_status: dict[str, str] = {}     # sense id -> SEARCH_FAILED / UNSEARCHABLE in the chunk view
         self.exports = 0
+        self.clears: list[list[str]] = []
 
     # -- helpers ------------------------------------------------------------------------------------------------
     @staticmethod
@@ -101,6 +102,15 @@ class FakeLiteraryCli:
             self.save(cwd, argv, cp)
             return Result(0, json.dumps({"status": "OUTPUT", "coverage": {"records": 500, "senses": len(cp["ids"]),
                                                                            "candidates": 7, "empty_senses": 1}}))
+        if cmd == "clear-candidates":
+            ids = self.opt(argv, "--sense-ids").split(",")
+            if len(set(ids)) != len(ids) or any(i not in cp["status"] for i in ids):
+                return Result(1, "", "unknown sense")
+            self.clears.append(ids)
+            cp["candidate_fallbacks"] = cp.get("candidate_fallbacks", []) + ids
+            self.save(cwd, argv, cp)
+            self.export_error = None
+            return Result(0, json.dumps({"status": "CLEARED", "senses": len(ids), "candidates": len(ids)}))
         if cmd == "validate":
             return Result(0, json.dumps({"status": "VALID", "recordCount": 500, "senseCount": len(cp["ids"]),
                                          "candidateCount": 7, "emptySenseCount": 1}))

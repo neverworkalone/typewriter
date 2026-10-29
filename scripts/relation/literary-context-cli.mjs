@@ -7,6 +7,7 @@ import process from 'node:process';
 
 import {
   addSearchForm,
+  clearLiteraryCandidateSenses,
   exportLiteraryCandidates,
   initializeLiteraryCheckpoint,
   inspectLiteraryIndex,
@@ -152,7 +153,7 @@ async function readSubmission(filePath) {
 function usage() {
   return [
     'Usage: node scripts/relation/literary-context-cli.mjs <command> [options]',
-    'Commands: preflight [--deep], init, chunk, submit, add-form, report, export, validate',
+    'Commands: preflight [--deep], init, chunk, submit, add-form, report, export, clear-candidates, validate',
     'All checkpoint, submission, and digest-cache files must remain under .warroom-scratch/.',
     'Run with --help for this compact command list.',
   ].join('\n');
@@ -253,6 +254,17 @@ async function main() {
       });
       break;
     }
+    case 'clear-candidates': {
+      only(options, 'checkpoint', 'canonical', 'sense-ids');
+      required(options, 'checkpoint', 'canonical', 'sense-ids');
+      result = await clearLiteraryCandidateSenses({
+        checkpointPath: options.checkpoint,
+        canonicalPath: options.canonical,
+        senseIds: options['sense-ids'].split(',').map((id) => id.trim()),
+        scratchDirectory: SCRATCH_DIRECTORY,
+      });
+      break;
+    }
     case 'validate': {
       only(options, 'checkpoint', 'canonical', 'candidate');
       required(options, 'checkpoint', 'canonical', 'candidate');
@@ -331,12 +343,27 @@ main().catch((error) => {
   }
 
   if (error?.code === 'CANDIDATE_V1_VALIDATION') {
+    const affected = error.affected && typeof error.affected === 'object' ? { ...error.affected } : null;
+    if (Array.isArray(affected?.candidate_issues)) {
+      const summaries = new Map();
+      for (const issue of affected.candidate_issues) {
+        if (!issue || typeof issue.record_id !== 'string' || issue.canonical_record_id !== issue.record_id
+          || typeof issue.sense_id !== 'string' || !['source_lemma_repeat', 'thousands_comma_fragment', 'duplicate_candidate'].includes(issue.kind)) continue;
+        summaries.set(`${issue.record_id}\0${issue.sense_id}\0${issue.kind}`, {
+          record_id: issue.record_id,
+          canonical_record_id: issue.canonical_record_id,
+          sense_id: issue.sense_id,
+          kind: issue.kind,
+        });
+      }
+      affected.candidate_issues = [...summaries.values()];
+    }
     emitRetryable(`${JSON.stringify({
       status: 'FAILED',
       diagnostic: 'candidate_validation',
       error_type: errorType,
       message: 'Candidate v1 validation failed; inspect the affected row and resubmit the affected sense.',
-      affected: error.affected ?? null,
+      affected,
       repair_scope: error.repair_scope ?? null,
     })}\n`);
     process.exitCode = 1;

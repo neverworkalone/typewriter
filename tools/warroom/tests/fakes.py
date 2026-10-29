@@ -43,6 +43,7 @@ class FakeAdapter(AgentAdapter):
                         approved_literary_db=env.get("TYPEWRITER_APPROVED_LITERARY_DB"),
                         approved_corpus_db=env.get("TYPEWRITER_APPROVED_CORPUS_DB"),
                         stage2_chunk_git=env.get("WARROOM_STAGE2_CHUNK"),
+                        stage2_repair=env.get("WARROOM_STAGE2_REPAIR"),
                         answer_only=env.get("WARROOM_ANSWER_ONLY"), opencode_config=env.get("OPENCODE_CONFIG_CONTENT"),
                         git_shim=env.get("WARROOM_GIT_SHIM"),
                         real_git=env.get("WARROOM_REAL_GIT"),
@@ -54,6 +55,7 @@ class FakeAdapter(AgentAdapter):
                         session=session_id, approved_literary_db=env.get("TYPEWRITER_APPROVED_LITERARY_DB"),
                         approved_corpus_db=env.get("TYPEWRITER_APPROVED_CORPUS_DB"),
                         stage2_chunk_git=env.get("WARROOM_STAGE2_CHUNK"),
+                        stage2_repair=env.get("WARROOM_STAGE2_REPAIR"),
                         answer_only=env.get("WARROOM_ANSWER_ONLY"), opencode_config=env.get("OPENCODE_CONFIG_CONTENT"),
                         git_shim=env.get("WARROOM_GIT_SHIM"),
                         real_git=env.get("WARROOM_REAL_GIT"),
@@ -140,6 +142,11 @@ class FakeGit:
         self.commit_message: str | None = None
         self.commit_empty_allowed: list[bool] = []
         self.stage2_merge_calls: list[tuple] = []
+        self.stage2_prepare_merge_calls: list[tuple] = []
+        self.stage2_preflight_calls: list[tuple] = []
+        self.stage2_preflight_reports: list[dict] = []
+        self.stage2_repair_calls: list[dict] = []
+        self.stage2_repair_results: list[dict] = []
 
     def fetch_base(self, base):
         return self.base_sha
@@ -309,6 +316,61 @@ class FakeGit:
             outputs = [f"data/relations/relation-{shard}.jsonl"]
         self.dirty_text = "".join(f" M {output}\n" for output in outputs)
 
+    def stage2_prepare_merge(self, worktree, shard, batch, part, timeout=900):
+        self.stage2_prepare_merge_calls.append((shard, batch, part))
+        path = Path(worktree) / ".warroom-scratch" / f"relation-admission-{shard}-{batch}-{part}.json"
+        data = json.loads(path.read_text("utf-8"))
+        data["premerge"] = {"status": "ready", "identity": f"{shard}/{batch}/{part}",
+                            "relations": {"exists": False, "sha256": None},
+                            "drops": {"exists": False, "sha256": None}}
+        path.write_text(json.dumps(data), "utf-8")
+
+    def stage2_preflight(self, worktree, shard, batch, part, timeout=900):
+        self.stage2_preflight_calls.append((shard, batch, part))
+        if self.stage2_preflight_reports:
+            return self.stage2_preflight_reports.pop(0)
+        return {"version": 1, "ok": True, "repairable": False, "shard": shard, "batch": batch,
+                "part": part, "fingerprint": "a" * 64, "total": 0, "candidate_total": 0,
+                "problems": [], "unclassified": [], "coverage": {}}
+
+    def stage2_repair(self, worktree, shard, batch, part, repair, timeout=900):
+        self.stage2_repair_calls.append(repair)
+        path = Path(worktree) / ".warroom-scratch" / f"relation-admission-{shard}-{batch}-{part}.json"
+        data = json.loads(path.read_text("utf-8"))
+        keys = sorted(f"{row['source_sense_id']}\u0000{row['candidate']}" for row in repair["decisions"])
+        prior = next((receipt for receipt in data.get("repair_receipts", [])
+                      if receipt["fingerprint"] == repair["fingerprint"] and receipt["candidate_keys"] == keys
+                      and receipt["supervisor_nonce"] == repair["supervisor_nonce"]), None)
+        if prior:
+            for row in repair["decisions"]:
+                item = next(item for item in data["items"] if item["sense_id"] == row["source_sense_id"])
+                candidate = next(candidate for candidate in item["candidates"] if candidate["text"] == row["candidate"])
+                expected = row["additional_relations"] if candidate.get("already_accounted") is True else row["decision"]
+                actual = candidate.get("additional_relations") if candidate.get("already_accounted") is True else candidate.get("decision")
+                if actual != expected:
+                    raise GitError("repair receipt exists but its candidate state no longer matches")
+            result = {"version": 1, "ok": True, "repaired": 0, "already_applied": True,
+                      "request_id": prior["request_id"], "supervisor_nonce": repair["supervisor_nonce"],
+                      "candidate_keys": keys}
+            self.stage2_repair_results.append(result)
+            return result
+        for row in repair["decisions"]:
+            item = next(item for item in data["items"] if item["sense_id"] == row["source_sense_id"])
+            candidate = next(candidate for candidate in item["candidates"] if candidate["text"] == row["candidate"])
+            if candidate.get("already_accounted") is True:
+                candidate["additional_relations"] = row["additional_relations"]
+            else:
+                candidate["decision"] = row["decision"]
+        data.setdefault("repair_receipts", []).append({"request_id": "c" * 64, "fingerprint": repair["fingerprint"],
+                                                        "supervisor_nonce": repair["supervisor_nonce"],
+                                                        "candidate_keys": keys})
+        path.write_text(json.dumps(data), "utf-8")
+        result = {"version": 1, "ok": True, "repaired": len(repair["decisions"]),
+                  "already_applied": False, "request_id": "c" * 64,
+                  "supervisor_nonce": repair["supervisor_nonce"], "candidate_keys": keys}
+        self.stage2_repair_results.append(result)
+        return result
+
     def verify_stage2_local(self, worktree, shard, batch, part, *, checkpoint, timeout=900):
         self.local_verify_calls.append((shard, batch, part, checkpoint))
         return self.local_verify_ok, "" if self.local_verify_ok else "local verify failed"
@@ -422,6 +484,7 @@ class FakeGh:
         self.reviews_, self.inline_, self.issue_ = [], [], []
         self.commit_ts = 0.0
         self.git = None
+        self.created_prs: list[dict] = []
         self.issues: dict[int, dict] = {}        # urgent Issues: number -> {state, labels, title, body}
         self.issue_comments_: dict[int, list] = {}
         self.created: list[int] = []

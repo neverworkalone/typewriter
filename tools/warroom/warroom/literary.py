@@ -285,7 +285,6 @@ def write_pages(worktree, view: str) -> list[str]:
 
 
 # ---- deterministic, idempotent finalization ----------------------------------------------------------------------
-MAX_REPAIRS = 3
 PR_LABEL = "batch"
 
 
@@ -318,6 +317,8 @@ class Export:
     status: str               # ready | repair
     coverage: dict | None = None
     repair_ids: tuple = ()
+    candidate_issues: tuple = ()
+    candidate_issue_count: int = 0
     diagnostic: str = ""
 
 
@@ -343,13 +344,53 @@ def ensure_export(runner, env, worktree, b) -> Export:
     res = cli(runner, env, wt, "export", "--checkpoint", n.checkpoint, "--canonical", n.canonical, "--output", n.output)
     if not res.ok:
         ids = affected_senses(res.err)
-        if ids:
-            return Export("repair", repair_ids=tuple(ids), diagnostic=" ".join(res.err.split())[-400:])
+        issue_count, issues = _candidate_content_issues(res.err, ids)
+        if ids and issues and issue_count > 0:
+            repair_ids = tuple(dict.fromkeys(issue["sense_id"] for issue in issues))
+            return Export("repair", repair_ids=repair_ids, candidate_issues=tuple(issues), candidate_issue_count=issue_count,
+                          diagnostic=" ".join(res.err.split())[-400:])
         raise LiteraryError("literary export 실패: " + " ".join((res.err or res.out).split())[-300:])
     data = _json(res, "literary export")
     if data.get("status") != "OUTPUT" or not isinstance(data.get("coverage"), dict):
         raise LiteraryError("export 결과가 올바르지 않습니다")
     return Export("ready", _coverage(data["coverage"]))
+
+
+def _candidate_content_issues(stderr: str, sense_ids: list[str]) -> tuple[int, list[dict]]:
+    """Accept only exact source/sense-bound content diagnostics from the shared Candidate v1 validator."""
+    try:
+        diagnostic = json.loads(stderr.strip().splitlines()[-1])
+        affected = diagnostic.get("affected")
+        issues = affected.get("candidate_issues") if isinstance(affected, dict) else None
+    except (ValueError, IndexError, AttributeError):
+        return 0, []
+    if diagnostic.get("diagnostic") != "candidate_validation" or not isinstance(issues, list) \
+            or not issues:
+        return 0, []
+    valid = []
+    for issue in issues:
+        if not isinstance(issue, dict) or not isinstance(issue.get("record_id"), str) \
+                or issue.get("canonical_record_id") != issue.get("record_id") \
+                or issue.get("sense_id") not in sense_ids \
+                or issue.get("kind") not in ("source_lemma_repeat", "thousands_comma_fragment", "duplicate_candidate"):
+            return 0, []
+        valid.append({key: issue[key] for key in ("record_id", "sense_id", "kind")})
+    issue_count = affected.get("candidate_issue_count", len(issues))
+    if not isinstance(issue_count, int) or isinstance(issue_count, bool) or issue_count < len(issues):
+        return 0, []
+    return issue_count, valid
+
+
+def clear_candidates(runner, env, worktree, b, sense_ids: list[str]) -> dict:
+    """Persist an empty candidate list for exact source-bound senses, preserving checkpoint evidence."""
+    n = names(b)
+    data = _json(cli(runner, env, worktree, "clear-candidates", "--checkpoint", n.checkpoint,
+                     "--canonical", n.canonical, "--sense-ids", ",".join(sense_ids)),
+                 "literary clear-candidates")
+    if data.get("status") != "CLEARED" or data.get("senses") != len(sense_ids) \
+            or not isinstance(data.get("candidates"), int) or data["candidates"] < 0:
+        raise LiteraryError("clear-candidates 결과가 정확한 sense 폴백을 증명하지 않습니다")
+    return data
 
 
 def _coverage(data: dict) -> dict:

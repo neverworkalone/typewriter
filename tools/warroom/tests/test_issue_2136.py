@@ -215,8 +215,11 @@ class ChunkStorageAndLimits(unittest.TestCase):
     def test_c_candidate_repair_without_cli_diagnostic_resumes_same_repair_chunk_once(self):
         w = CWorld(senses=12)
         self.addCleanup(w.tmp.cleanup)
+        issue = {"record_id": "r0001", "canonical_record_id": "r0001", "sense_id": "s0002",
+                 "candidate": "반복", "candidate_index": 0, "kind": "source_lemma_repeat"}
         w.runner.literary.export_error = json.dumps({"status": "FAILED", "diagnostic": "candidate_validation",
-                                                     "affected": {"sense_ids": ["s0002"]}})
+                                                     "affected": {"record_id": "r0001", "canonical_record_id": "r0001",
+                                                                  "sense_ids": ["s0002"], "candidate_issues": [issue]}})
         w.ai(session="ses_first")
         def malformed_submit():
             rec = w.active()

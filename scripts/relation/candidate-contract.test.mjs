@@ -74,6 +74,34 @@ test('Candidate v1 rejects the source lemma with a trailing parenthetical and ac
   }
 });
 
+test('Candidate v1 reports every source-bound candidate content error with exact indexes', () => {
+  const canonicalRows = [{
+    id: 'w1', lemma: '기륭', search_forms: [],
+    senses: [{ id: 'w1-s1', gloss: '약 7,460미터' }, { id: 'w1-s2', gloss: '다른 뜻' }],
+  }, ...Array.from({ length: 499 }, (_, index) => ({
+    id: `w${index + 2}`, lemma: `표제${index + 2}`, senses: [{ id: `w${index + 2}-s1`, gloss: '' }],
+  }))];
+  const candidateRows = canonicalRows.map((record, index) => ({
+    record_id: record.id,
+    senses: record.senses.map((sense) => ({
+      sense_id: sense.id,
+      candidates: index === 0 && sense.id === 'w1-s1' ? ['기륭', '460', '서리']
+        : index === 0 && sense.id === 'w1-s2' ? ['기륭(註)', '서  리', '서   리'] : [],
+    })),
+  }));
+
+  assert.throws(() => validateCandidateBatch(canonicalRows, candidateRows, { batch: '01' }), (error) => {
+    assert.deepEqual(error.candidateIssues.map(({ record_id, sense_id, candidate, candidate_index, kind }) =>
+      ({ record_id, sense_id, candidate, candidate_index, kind })), [
+      { record_id: 'w1', sense_id: 'w1-s1', candidate: '기륭', candidate_index: 0, kind: 'source_lemma_repeat' },
+      { record_id: 'w1', sense_id: 'w1-s1', candidate: '460', candidate_index: 1, kind: 'thousands_comma_fragment' },
+      { record_id: 'w1', sense_id: 'w1-s2', candidate: '기륭(註)', candidate_index: 0, kind: 'source_lemma_repeat' },
+      { record_id: 'w1', sense_id: 'w1-s2', candidate: '서   리', candidate_index: 2, kind: 'duplicate_candidate' },
+    ]);
+    return true;
+  });
+});
+
 test('Candidate v1 requires the shard directory to match the filename', () => {
   const repositoryDirectory = '/repo';
   const canonicalPath = '/repo/data/canonical/stdict-0005.jsonl';

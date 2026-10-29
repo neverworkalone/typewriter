@@ -47,12 +47,11 @@ only* do not apply to the new scope.
   non-empty plain text with no ID: no click action, no reverse relation, no
   invented record. Reject a fabricated ID or a wrong-meaning link used to
   avoid text.
-- **Bidirectional:** new authored ID↔ID relations are explorable from both
-  ends, each direction judged for type/Tier from its own source. Do not
-  symmetrise STDICT or earlier exploratory relations.
-- **Not implemented yet:** text-only targets, the authored-relation source of
-  truth and bidirectional derivation. Verify these contracts when the
-  implementing code lands; do not require them, or claim they work, before.
+- **Bidirectional:** authored ID↔ID links remain searchable both ways. Newly prepared Stage 2 Parts judge Type/Tier once from the source and the CLI mirrors the values; equality is expected and is not a blocker. Marker-free checkpoints retain independent reverse scoring, and historical/STDICT relations remain unchanged.
+- **Implementation status:** Text-only targets, the Typewriter-authored
+  relation source and bidirectional ID derivation are implemented. Newly
+  prepared Stage 2 checkpoints mirror Type/Tier from the source; marker-free
+  checkpoints and historical rows may retain independent reverse values.
 - **Headword candidates** (`data/headword-candidates/pr-<PR number>.jsonl`,
   Schema v1 in #838): check only syntax, required/extra fields, a real
   `source_record_id` matching `source_lemma`, same-PR duplicate
@@ -106,11 +105,7 @@ The root `REVIEW.md` **Stage 1 Candidate form gate** is the review authority for
   2 absent a real distinction. Equal values are fine. 4 vs 5 is ordinarily
   subjective, **not a blocker**. Relevance is ordinal display priority,
   **not** semantic distance or confidence.
-- Reverse links need valid source/target identities and preserved provenance;
-  do not create them for symmetry (except new #838 authored ID↔ID relations and
-  the existing `direct` projection, above) or require identical relevance across
-  different source senses. Valid entries with zero relations remain
-  admissible and searchable. Avoid mechanical subjective scoring validators.
+- Reverse links require valid source/target IDs and provenance. Never create them for text-only or STDICT types other than the existing `direct` projection. Older asymmetric scores and zero relations remain valid; no mechanical scoring validators.
 
 ## Systemic relation defects — Stage 2 and re-review
 

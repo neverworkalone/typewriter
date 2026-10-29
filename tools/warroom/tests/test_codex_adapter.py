@@ -13,7 +13,7 @@ from pathlib import Path
 from unittest import mock
 
 from tests.fakes import FakeAdapter, World
-from warroom.adapters import CodexCLIAdapter, Handle, RunSpec, classify_failure
+from warroom.adapters import ClaudeCodeAdapter, CodexCLIAdapter, Handle, RunSpec, classify_failure
 from warroom.config import DEFAULTS
 from warroom.shell import Result
 
@@ -598,6 +598,7 @@ class CompletionGate(unittest.TestCase):
                 problem = self.check(events, contexts=contexts, baseline=baseline)
                 self.assertEqual(problem[0] if problem else None, want)
 
+
     def test_a_resume_that_switched_threads_is_refused(self):
         with tempfile.TemporaryDirectory() as d:
             d = Path(d)
@@ -630,6 +631,29 @@ class CompletionGate(unittest.TestCase):
                 Spy("codex").resume(THREAD, "again", d, {}, LAUNCH, log, d / "r.exit", git_dir=GIT_DIR)
             from warroom.adapters import _baseline
             self.assertEqual(_baseline(log), (THREAD, 2))
+
+
+class ConfirmedPromptRefusal(unittest.TestCase):
+    def test_only_the_exact_structured_codex_terminal_error_matches(self):
+        message = "Invalid prompt: your prompt was flagged as potentially violating our usage policy."
+        cases = [
+            ("exact event", [started(), failed(message)], message),
+            ("ordinary assistant text", [started(), {"type": "item.completed", "item": {
+                "type": "agent_message", "text": message}}], None),
+            ("generic invalid prompt", [started(), failed("Invalid prompt")], None),
+            ("near match", [started(), failed(message + " Please revise it.")], None),
+            ("string error", [started(), {"type": "turn.failed", "error": message}], None),
+            ("contradictory completion", [started(), failed(message), completed()], None),
+        ]
+        with tempfile.TemporaryDirectory() as d:
+            log = Path(d) / "run.jsonl"
+            codex = CodexCLIAdapter()
+            for name, events, want in cases:
+                with self.subTest(name=name):
+                    log.write_text(lines(*events), "utf-8")
+                    self.assertEqual(codex.confirmed_prompt_refusal(log), want)
+            log.write_text(lines(started(), failed(message)), "utf-8")
+            self.assertIsNone(ClaudeCodeAdapter().confirmed_prompt_refusal(log))
 
 
 class PrIntake(unittest.TestCase):
@@ -901,6 +925,17 @@ class ChunkLaunchArgs(unittest.TestCase):
                 self.assertIn(GIT_DIR, joined)
                 for bad in NEVER_PASSED:
                     self.assertNotIn(bad, joined)
+
+    def test_stage2_repair_forces_read_only_sandbox_and_never_escalates(self):
+        for kind in ("start", "resume"):
+            with self.subTest(kind=kind):
+                env = self.env(WARROOM_ANSWER_ONLY="1", WARROOM_STAGE2_REPAIR="1")
+                a = self.launch(kind, env)
+                self.assertEqual(a.cmd.count("--sandbox"), 1)
+                self.assertEqual(a.cmd[a.cmd.index("--sandbox") + 1], "read-only")
+                self.assertEqual(a.cmd[a.cmd.index("--ask-for-approval") + 1], "never")
+                self.assertNotIn("--add-dir", a.cmd)
+                self.assertEqual(a.cmd.count("default_permissions=worktree"), 1)
 
     def test_codex_chunk_is_not_wrapped_in_an_outer_sandbox(self):
         with tempfile.TemporaryDirectory() as d, mock.patch("warroom.adapters.subprocess.Popen") as popen:

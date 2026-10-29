@@ -82,6 +82,10 @@ class AgentAdapter:
         without its result (no PR): such a run is PAUSED for the operator instead of counted as a plain error."""
         return None
 
+    def confirmed_prompt_refusal(self, log_file: Path) -> str | None:
+        """An exact provider-confirmed refusal of the prompt itself, never text from an answer or tool output."""
+        return None
+
     def final_answer(self, log_file: Path) -> str | None:
         """The FINAL assistant answer of this run (its own log), or None. Tool output and earlier messages never count."""
         return final_answer(log_file)
@@ -95,6 +99,11 @@ class AgentAdapter:
 def is_answer_only(env) -> bool:
     """The Supervisor marks an A/B answer-only chunk launch (`_launch_env`): the AI only answers; nothing it writes counts."""
     return env.get("WARROOM_ANSWER_ONLY") == "1"
+
+
+def is_stage2_repair(env) -> bool:
+    """Stage 2 local repair is an answer-only run with adapter-enforced write restrictions."""
+    return env.get("WARROOM_STAGE2_REPAIR") == "1"
 
 
 def is_stage2_chunk(env) -> bool:
@@ -439,6 +448,8 @@ class ClaudeCodeAdapter(ProcessAdapter):
         flags = self._help_flags
         if flags is None or "--tools" not in flags:
             raise RuntimeError("답변 전용 청크를 시작하지 않습니다: 설치된 Claude CLI가 --tools 로 도구를 제거하는 것을 지원하는지 확인하지 못했습니다")
+        if is_stage2_repair(env) and "--strict-mcp-config" not in flags:
+            raise RuntimeError("Stage 2 repair를 시작하지 않습니다: 설치된 Claude CLI가 strict MCP 제한을 지원하는지 확인하지 못했습니다")
         args = ["--tools", ""]
         for optional in ("--strict-mcp-config", "--disable-slash-commands"):
             if optional in flags:
@@ -643,6 +654,13 @@ def _run_contexts(log_file, thread: str) -> list[dict]:
 _NONZERO_EXIT_CODE = re.compile(r"exit\s*code\D{0,12}?([1-9]\d*)|exit\s+([1-9]\d*)", re.I)
 _ZSH_NICE_FAILURE = re.compile(r"^\s*(?:zsh:\d+:\s*)?nice(?:\(\d+\))?\s+failed:\s*operation not permitted\s*$", re.I)
 
+# Exact structured provider error messages. Keep providers empty until their own CLI gives us evidence.
+PROMPT_POLICY_REFUSALS = {
+    "codex": ("Invalid prompt: your prompt was flagged as potentially violating our usage policy.",),
+    "claude": (),
+    "opencode": (),
+}
+
 
 def _codex_denial_evidence(output) -> str | None:
     """Return a policy-denial line, ignoring zsh's OS-level nice diagnostic.
@@ -711,6 +729,9 @@ class CodexCLIAdapter(ProcessAdapter):
     def _launch_args(self, env, run: RunSpec, grant: list[str]) -> list[str]:
         """Pin the configured run profile; chunks add only input optimizations and omit Git admin grants."""
         pins = self._pins(run)
+        if is_stage2_repair(env):
+            # The model may inspect the supplied prompt only; it cannot write files or escalate through approvals.
+            return [*pins, *self._chunk_args(), "--sandbox", "read-only", "--ask-for-approval", "never"]
         if is_stage2_chunk(env):
             return [*pins, *self._chunk_args()]
         return [*pins, *grant]
@@ -790,6 +811,19 @@ class CodexCLIAdapter(ProcessAdapter):
                     exit_code = next(group for group in exit_match.groups() if group)
                     return f"로컬 Codex 정책 거부가 보고되었습니다 (exit={exit_code}; 출력: {evidence})"
         return None
+
+    def confirmed_prompt_refusal(self, log_file):
+        """Match only Codex's exact structured turn.failed error message for this launch."""
+        try:
+            events = list(_json_objects(Path(log_file).read_text("utf-8", errors="replace")))
+        except OSError:
+            return None
+        terminal = [e for e in events if e.get("type") in ("turn.completed", "turn.failed")]
+        if len(terminal) != 1 or terminal[0].get("type") != "turn.failed":
+            return None
+        error = terminal[0].get("error")
+        message = error.get("message") if isinstance(error, dict) else None
+        return message if isinstance(message, str) and message in PROMPT_POLICY_REFUSALS[self.name] else None
 
     def completion_problem(self, log_file, run, expected_session, cwd=None, env=None):
         """A run that exited 0 is accepted only with its own thread id and the turn record of this run."""

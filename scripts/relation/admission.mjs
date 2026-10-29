@@ -582,6 +582,22 @@ function glossNamesCandidate(gloss, candidate, index) {
   return [...forms].some((form) => glossNamesExactCandidate(gloss, form));
 }
 
+/** The existing accounting rule for Drops that repeat the bound meaning gloss. */
+export function findGlossNamedDrops({ dropRows, scopeRows, index }) {
+  const scopeSenses = new Set(scopeRows.flatMap((record) => record.senses.map((sense) => sense.id)));
+  const glossOf = new Map(scopeRows.flatMap((record) => record.senses.map((sense) => [sense.id, sense.gloss])));
+  return dropRows.flatMap((row, position) => {
+    if (!scopeSenses.has(row.source_sense_id)
+        || !glossNamesCandidate(glossOf.get(row.source_sense_id) ?? '', row.candidate, index)) return [];
+    return [{
+      position: position + 1,
+      source_sense_id: row.source_sense_id,
+      candidate: row.candidate,
+      message: `drop:${position + 1}: ${JSON.stringify(row.candidate)} is named by the gloss of ${row.source_sense_id} and cannot be dropped as unrelated`,
+    }];
+  });
+}
+
 /**
  * Account for every unique candidate: new Relation, real Drop or existing approved Relation (excluding this shard's own
  * rows, which are the result being checked). Throws on a missing, doubly-assigned or unknown candidate.
@@ -639,10 +655,7 @@ export function verifyAccounting({ canonicalRows, candidateFiles, relationRows: 
   });
   dropRows.forEach((row, position) => claim(row.source_sense_id, row.candidate, 'a drop', { kind: 'drop' }, `drop:${position + 1}`));
   // A Drop says the candidate is unrelated to the source meaning; the source's own gloss naming it is direct counter-evidence.
-  const glossOf = new Map(scopeRows.flatMap((record) => record.senses.map((sense) => [sense.id, sense.gloss])));
-  dropRows.forEach((row, position) => {
-    if (glossNamesCandidate(glossOf.get(row.source_sense_id) ?? '', row.candidate, index)) errors.push(`drop:${position + 1}: ${JSON.stringify(row.candidate)} is named by the gloss of ${row.source_sense_id} and cannot be dropped as unrelated`);
-  });
+  errors.push(...findGlossNamedDrops({ dropRows, scopeRows, index }).map((entry) => entry.message));
 
   // An ID pair is stored once. When both senses listed each other as a Stage 1 candidate, the stored row's reverse
   // direction answers the other candidate when the exact source record matches that candidate spelling.
