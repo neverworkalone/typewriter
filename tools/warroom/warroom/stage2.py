@@ -230,6 +230,7 @@ _FENCE = re.compile(r"^\s*```")
 _LINK_ROW = re.compile(r"^c\d+\s")
 _SENSE_ID = re.compile(r"(?<![A-Za-z0-9_-])[wr]\d+-s[1-9]\d*(?![A-Za-z0-9_-])")
 _REVIEW_TUPLE_START = re.compile(r"(?<![\w-])(?P<record>[wr]\d+)[ \t]*,[ \t]*(?P<sense>[wr]\d+-s[1-9]\d*)[ \t]*,[ \t]*")
+_REVIEW_PLAIN_TUPLE = re.compile(r"^[^\s,]+[ \t]*,[ \t]*[^\s,]+[ \t]*,[ \t]*")
 
 
 def _review_triplets(text: str) -> list[tuple[str, str, str, int, int]]:
@@ -300,8 +301,9 @@ def _review_triplets(text: str) -> list[tuple[str, str, str, int, int]]:
                                   offset + row_start + match.end() + trim_end))
             offset += len(line)
             continue
-        trimmed = row.rstrip(".;")
-        add(trimmed, offset + row_start, offset + row_start + len(trimmed))
+        if _REVIEW_PLAIN_TUPLE.match(row):
+            trimmed = row.rstrip(".;")
+            add(trimmed, offset + row_start, offset + row_start + len(trimmed))
         offset += len(line)
     return found
 
