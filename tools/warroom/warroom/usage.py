@@ -61,13 +61,56 @@ def _claude_usage(u: dict) -> dict | None:
             "cache_write_tokens": write, "output_tokens": out, "reasoning_output_tokens": reason}
 
 
+def _opencode_usage(u: dict) -> dict:
+    """Map one OpenCode `step_finish.part.tokens` delta to the shared inclusive token convention."""
+    fresh = _count(u.get("input"))
+    output = _count(u.get("output"))
+    reasoning = _count(u.get("reasoning"))
+    cache = u.get("cache")
+    cached = _count(cache.get("read")) if isinstance(cache, dict) else None
+    write = _count(cache.get("write")) if isinstance(cache, dict) else None
+    if output is not None and reasoning is not None and reasoning > output:
+        output = reasoning = None
+    total_input = fresh + cached + write if fresh is not None and cached is not None and write is not None else None
+    return {"input_tokens": total_input, "cached_input_tokens": cached, "cache_write_tokens": write,
+            "output_tokens": output, "reasoning_output_tokens": reasoning}
+
+
+def _opencode_identity(kind: str, ev: dict, part: dict) -> tuple:
+    """Prefer the stable OpenCode part identity; use the full event when older payloads omit it."""
+    session = ev.get("sessionID") or part.get("sessionID")
+    part_id = part.get("id")
+    if isinstance(part_id, str) and part_id:
+        return (kind, session if isinstance(session, str) else "", part_id)
+    return (kind, json.dumps(ev, ensure_ascii=False, sort_keys=True, separators=(",", ":")))
+
+
+def _opencode_step_key(ev: dict, part: dict) -> tuple | None:
+    session = ev.get("sessionID") or part.get("sessionID")
+    message = part.get("messageID")
+    if isinstance(session, str) and session and isinstance(message, str) and message:
+        return session, message
+    return None
+
+
 def parse_usage(log_file) -> dict | None:
-    """The run's usage dict (FIELDS -> int | None), or None when the log is unreadable or not a Codex/Claude stream."""
+    """Usage from this run's own Codex, Claude, or OpenCode JSONL log.
+
+    OpenCode `step_finish` values are per-step deltas. Its CLI may omit a final event, so its persisted `usage_quality`
+    is always best-effort and becomes incomplete when the observed step lifecycle or trailing JSONL is incomplete.
+    """
     tokens: dict = {}
-    codex = claude = False
+    codex = claude = opencode = False
     calls: set = set()
     commands: dict = {}      # Claude tool_use id -> command
     failed: set = set()
+    opencode_tool_calls: set = set()
+    opencode_tool_unidentified = False
+    opencode_submit: dict = {}
+    opencode_events: dict = {}
+    opencode_open_steps: dict = {}
+    opencode_incomplete = False
+    last_nonempty_line_invalid_json = False
     seen_usage = False
     try:
         fh = open(log_file, encoding="utf-8", errors="replace")
@@ -76,16 +119,77 @@ def parse_usage(log_file) -> dict | None:
     with fh:
         for line in fh:
             line = line.strip()
+            if not line:
+                continue
             if not line.startswith("{"):
                 continue
             try:
                 ev = json.loads(line)
             except ValueError:
+                last_nonempty_line_invalid_json = True
                 continue
+            last_nonempty_line_invalid_json = False
             kind = ev.get("type") if isinstance(ev, dict) else None
             if not isinstance(kind, str):
                 continue
-            if kind.startswith(("turn.", "item.", "thread.")):
+            if kind in ("step_start", "step_finish", "text", "reasoning", "tool_use", "error"):
+                opencode = True
+                part = ev.get("part") if isinstance(ev.get("part"), dict) else {}
+                if kind == "step_start":
+                    identity = _opencode_identity(kind, ev, part)
+                    if identity not in opencode_events:
+                        opencode_events[identity] = None
+                        step = _opencode_step_key(ev, part)
+                        if step is None:
+                            opencode_incomplete = True
+                        else:
+                            opencode_open_steps[step] = opencode_open_steps.get(step, 0) + 1
+                elif kind == "step_finish":
+                    identity = _opencode_identity(kind, ev, part)
+                    part_tokens = part.get("tokens")
+                    fingerprint = json.dumps(part_tokens, sort_keys=True, separators=(",", ":"))
+                    if identity in opencode_events:
+                        if opencode_events[identity] != fingerprint:
+                            opencode_incomplete = True
+                            seen_usage = True
+                            for key in FIELDS[:5]:
+                                _add(tokens, key, None)
+                        continue
+                    opencode_events[identity] = fingerprint
+                    step = _opencode_step_key(ev, part)
+                    if step is None or not opencode_open_steps.get(step):
+                        opencode_incomplete = True
+                    else:
+                        opencode_open_steps[step] -= 1
+                        if not opencode_open_steps[step]:
+                            del opencode_open_steps[step]
+                    if isinstance(part_tokens, dict):
+                        seen_usage = True
+                        usage = _opencode_usage(part_tokens)
+                        for key in FIELDS[:5]:
+                            _add(tokens, key, usage[key])
+                elif kind == "tool_use":
+                    call_id = part.get("callID")
+                    part_id = part.get("id")
+                    identity = call_id if isinstance(call_id, str) and call_id else part_id
+                    if not isinstance(identity, str) or not identity:
+                        opencode_tool_unidentified = True
+                        continue
+                    opencode_tool_calls.add(identity)
+                    state = part.get("state") if isinstance(part.get("state"), dict) else {}
+                    state_input = state.get("input") if isinstance(state.get("input"), dict) else {}
+                    command = state_input.get("command")
+                    if isinstance(command, str) and _SUBMIT.search(command):
+                        status = state.get("status")
+                        metadata = state.get("metadata") if isinstance(state.get("metadata"), dict) else {}
+                        exit_code = metadata.get("exit")
+                        outcome = None
+                        if status == "error":
+                            outcome = False
+                        elif status == "completed" and isinstance(exit_code, int) and not isinstance(exit_code, bool):
+                            outcome = exit_code == 0
+                        opencode_submit[identity] = outcome
+            elif kind.startswith(("turn.", "item.", "thread.")):
                 codex = True
                 if kind == "turn.completed" and isinstance(ev.get("usage"), dict):
                     seen_usage = True
@@ -125,8 +229,19 @@ def parse_usage(log_file) -> dict | None:
                         cmd = commands.get(block.get("tool_use_id"))
                         if isinstance(cmd, str) and _SUBMIT.search(cmd):
                             failed.add(block["tool_use_id"])
+    if opencode:
+        if opencode_open_steps or last_nonempty_line_invalid_json:
+            opencode_incomplete = True
+        out = {k: (tokens.get(k) if seen_usage else None) for k in FIELDS[:5]}
+        out["tool_calls"] = None if opencode_tool_unidentified or not opencode_tool_calls else len(opencode_tool_calls)
+        if not opencode_submit or any(value is None for value in opencode_submit.values()):
+            out["submit_failures"] = None
+        else:
+            out["submit_failures"] = sum(value is False for value in opencode_submit.values())
+        out["usage_quality"] = "incomplete" if opencode_incomplete else "best_effort"
+        return out
     if not (codex or claude):
-        return None   # OpenCode and anything unrecognised: usage stays unknown
+        return None   # Unrecognised stream: usage stays unknown
     out = {k: (tokens.get(k) if seen_usage else None) for k in FIELDS[:5]}
     out["tool_calls"] = len(calls)
     out["submit_failures"] = len(failed)
@@ -146,6 +261,14 @@ def sum_usage(rows) -> dict:
             partial.append(k)
     total["runs"] = len(rows)
     total["partial"] = partial
+    qualities = []
+    for row in rows:
+        try:
+            qualities.append(row["usage_quality"])
+        except (IndexError, KeyError, TypeError):
+            qualities.append(None)
+    total["best_effort_runs"] = sum(value in ("best_effort", "incomplete") for value in qualities)
+    total["incomplete_runs"] = sum(value == "incomplete" for value in qualities)
     return total
 
 

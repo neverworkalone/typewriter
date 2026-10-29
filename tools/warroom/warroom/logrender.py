@@ -77,6 +77,35 @@ def _tool(ev: dict, part: dict) -> list[str]:
     return out
 
 
+def _step_usage(part: dict) -> str:
+    tokens = part.get("tokens") if isinstance(part.get("tokens"), dict) else {}
+    cache = tokens.get("cache") if isinstance(tokens.get("cache"), dict) else {}
+
+    def count(value):
+        return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else None
+
+    fresh = count(tokens.get("input"))
+    read, write = count(cache.get("read")), count(cache.get("write"))
+    total_input = fresh + read + write if fresh is not None and read is not None and write is not None else None
+    output, reasoning = count(tokens.get("output")), count(tokens.get("reasoning"))
+    fields = []
+    if total_input is not None:
+        fields.append(f"input {total_input:,} (fresh {fresh:,}, cache {read:,}/{write:,})")
+    else:
+        fields.append("input unknown")
+    if output is None:
+        fields.append("output unknown")
+    elif reasoning is None:
+        fields.append(f"output {output:,}")
+    else:
+        fields.append(f"output {output:,} (reasoning subset {reasoning:,})")
+    if reasoning is None:
+        fields.append("reasoning unknown")
+    elif output is None:
+        fields.append(f"reasoning {reasoning:,}")
+    return " · " + ", ".join(fields) if isinstance(tokens, dict) and tokens else ""
+
+
 def _error(ev: dict) -> list[str]:
     err = ev.get("error")
     if isinstance(err, dict):
@@ -261,7 +290,7 @@ def render_line(raw: str, seen: set | None = None) -> list[str]:
         out = [f"{_stamp(ev)}── step ──"]
     elif kind == "step_finish":
         reason = part.get("reason")
-        out = [f"{_stamp(ev)}── step 종료" + (f" ({reason})" if reason else "") + " ──"]
+        out = [f"{_stamp(ev)}── step 종료" + (f" ({reason})" if reason else "") + _step_usage(part) + " ──"]
     else:
         out = [f"{_stamp(ev)}? {kind or 'event'}: " + _clip(json.dumps(ev, ensure_ascii=False), MAX_INLINE)]
     return [redact(l) for l in out]
