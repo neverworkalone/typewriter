@@ -17,10 +17,9 @@ import path from 'node:path';
 import process from 'node:process';
 
 import {
-  isThousandsCommaFragment,
+  candidateV1ContentIssue,
   loadCanonicalLemmaForms,
   normalizeCandidate,
-  sourceLemmaRepeatMessage,
 } from './candidate-contract.mjs';
 import {
   DEFAULT_MAX_CHARS,
@@ -214,30 +213,199 @@ const entryOf = (recordId, forms, boundary, result, source, cursorIn = null, exa
   source,
 });
 
+function cursorInputError(ref, reason, guidance = 'preserve') {
+  const nextStep = guidance === 'no-pending'
+    ? 'check the last recorded status and exact forms/order/boundary; next is available only for an unconsumed LIMITED search'
+    : guidance === 'duplicate'
+      ? 'an unfinished LIMITED search already exists; continue it with next under the same condition, or start only a different condition without a cursor'
+      : guidance === 'batch'
+        ? 'keep one request per record and search condition in this batch; identical senses can share that request'
+        : 'do not retry or restart this condition; preserve the evidence and report the conflict';
+  return new InvalidCursorError(`${ref}: ${reason}; ${nextStep}; no search executed; no evidence recorded`);
+}
+
+const evidenceFields = (entry) => JSON.stringify([
+  entry.key, entry.forms, entry.boundary ?? null, entry.status, entry.hits, entry.complete,
+  entry.cursor_in, entry.cursor_out,
+]);
+
 /**
- * Per record from the recorded searches: cumulative hits per search, and whether every search ended complete. A page
- * that started from a cursor counts only when that cursor is the recorded `cursor_out` of an earlier proven page of
- * the same search (a search with no recorded start is never a proven complete zero).
+ * Interpret one record's exact ordered forms/boundary condition from its recorded cursor chain. Completion is trusted
+ * only when every continuation consumes the preceding recorded cursor and the chain has one terminal page.
  */
-export function recordEvidence(entries, recordId) {
-  const byKey = new Map();
-  const seenRequests = new Set();
-  for (const entry of entries.filter((item) => item.record_id === recordId)) {
-    if (entry.request_key !== undefined && entry.status !== 'SEARCH_FAILED') {
-      if (seenRequests.has(entry.request_key)) continue;
-      seenRequests.add(entry.request_key);
+export function recordedCondition({ recordId, forms, boundary, entries, ref = 'search' }) {
+  if (!Array.isArray(entries)) throw cursorInputError(ref, 'recorded search evidence is not an array');
+  const key = searchKey(forms, boundary);
+  const forRecord = entries.filter((entry) => entry?.record_id === recordId);
+  for (const entry of forRecord) {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)
+      || !Array.isArray(entry.forms) || entry.forms.length === 0
+      || entry.forms.some((form) => typeof form !== 'string' || form.length === 0 || form !== form.normalize('NFC').trim())
+      || JSON.stringify(entry.forms) !== JSON.stringify(normalizedSearchForms(entry.forms))
+      || entry.key !== searchKey(entry.forms, entry.boundary)
+      || entry.boundary !== null && !['left', 'none', 'both'].includes(entry.boundary)
+      || !['ZERO_HITS', 'COMPLETE', 'LIMITED', 'SEARCH_FAILED'].includes(entry.status)
+      || !['prepare', 'search'].includes(entry.source)
+      || !Number.isInteger(entry.hits) || entry.hits < 0
+      || entry.complete !== isComplete(entry.status)
+      || !Object.hasOwn(entry, 'cursor_in') || entry.cursor_in !== null && typeof entry.cursor_in !== 'string'
+      || !Object.hasOwn(entry, 'cursor_out') || entry.cursor_out !== null && typeof entry.cursor_out !== 'string'
+      || entry.request_key !== undefined && typeof entry.request_key !== 'string') {
+      throw cursorInputError(ref, 'recorded search evidence is incomplete or malformed');
     }
-    const current = byKey.get(entry.key) ?? { hits: 0, complete: false, proven: new Map() };
-    const proven = entry.cursor_in ? current.proven.get(entry.cursor_in) === true : true;
-    if (entry.cursor_out) current.proven.set(entry.cursor_out, proven);
-    byKey.set(entry.key, { hits: current.hits + entry.hits, complete: entry.complete && proven, proven: current.proven });
+    if (entry.status === 'ZERO_HITS' && (entry.hits !== 0 || entry.cursor_in !== null)) {
+      throw cursorInputError(ref, 'recorded ZERO_HITS evidence is inconsistent');
+    }
+    if (entry.status === 'SEARCH_FAILED' && entry.complete !== false) {
+      throw cursorInputError(ref, 'recorded SEARCH_FAILED evidence is inconsistent');
+    }
   }
-  const searches = [...byKey.values()];
+  const matching = forRecord.filter((entry) => entry.key === key
+    || JSON.stringify(entry.forms) === JSON.stringify(forms) && (entry.boundary ?? null) === (boundary ?? null));
+  for (const entry of matching) {
+    if (entry.key !== key || JSON.stringify(entry.forms) !== JSON.stringify(forms)
+      || (entry.boundary ?? null) !== (boundary ?? null)) {
+      throw cursorInputError(ref, 'recorded search evidence does not match the exact forms and boundary');
+    }
+  }
+
+  const unique = [];
+  const byRequest = new Map();
+  const exactRows = new Set();
+  for (const entry of matching) {
+    const fingerprint = evidenceFields(entry);
+    const exactIdentity = `${entry.request_key ?? ''}\0${fingerprint}`;
+    if (exactRows.has(exactIdentity)) continue;
+    exactRows.add(exactIdentity);
+    if (entry.request_key !== undefined && entry.status !== 'SEARCH_FAILED') {
+      const prior = byRequest.get(entry.request_key);
+      if (prior !== undefined) {
+        if (prior !== fingerprint) throw cursorInputError(ref, 'duplicate request evidence conflicts');
+        continue;
+      }
+      byRequest.set(entry.request_key, fingerprint);
+    }
+    unique.push(entry);
+  }
+
+  const active = new Map();
+  const issued = new Set();
+  let chain = null;
+  let completed = null;
+  let failedStart = false;
+  for (const entry of unique) {
+    if (entry.status === 'SEARCH_FAILED') {
+      if (entry.cursor_in === null) {
+        failedStart = true;
+        continue;
+      }
+      if (!active.has(entry.cursor_in)) throw cursorInputError(ref, 'recorded cursor chain is missing, consumed, or ambiguous');
+      throw cursorInputError(ref, 'a continuation of this cursor chain has recorded SEARCH_FAILED evidence');
+    }
+    if (entry.cursor_in === null) {
+      if (chain !== null || active.size > 0 || completed !== null) {
+        throw cursorInputError(ref, 'multiple successful cursor chains match this record and exact search condition');
+      }
+      chain = { hits: 0, sources: new Set() };
+    } else {
+      if (!active.has(entry.cursor_in) || chain === null) {
+        throw cursorInputError(ref, 'recorded cursor chain is missing, consumed, or ambiguous');
+      }
+      active.delete(entry.cursor_in);
+    }
+    chain.hits += entry.hits;
+    chain.sources.add(entry.source);
+    if (entry.status === 'LIMITED') {
+      if (entry.complete !== false || typeof entry.cursor_out !== 'string' || entry.cursor_out.length === 0
+        || entry.cursor_out === entry.cursor_in || issued.has(entry.cursor_out)) {
+        throw cursorInputError(ref, 'recorded LIMITED cursor evidence is not trustworthy');
+      }
+      issued.add(entry.cursor_out);
+      active.set(entry.cursor_out, true);
+    } else {
+      if (entry.complete !== true || entry.cursor_out !== null) {
+        throw cursorInputError(ref, 'recorded completed search evidence is not trustworthy');
+      }
+      completed = { status: entry.status, hits: chain.hits, sources: [...chain.sources] };
+      chain = null;
+    }
+  }
+
+  if (active.size > 1) throw cursorInputError(ref, 'more than one unfinished cursor chain matches this record and exact search condition');
+  if (active.size === 1) {
+    return { status: 'LIMITED', recorded_status: 'LIMITED', recorded_hits: chain?.hits ?? 0,
+      cursor: active.keys().next().value, complete: false, searches: 1 };
+  }
+  if (completed !== null) {
+    return { status: completed.status, recorded_status: completed.status, recorded_hits: completed.hits,
+      cursor: null, complete: true, searches: 1, context_source: [...completed.sources]
+        .map((source) => source === 'prepare' ? 'view' : 'search_response').join('+') };
+  }
+  if (failedStart) return { status: 'SEARCH_FAILED', recorded_status: 'SEARCH_FAILED', recorded_hits: 0,
+    cursor: null, complete: false, searches: 1 };
+  return { status: 'UNRECORDED', recorded_status: null, recorded_hits: 0, cursor: null, complete: false, searches: 0 };
+}
+
+/** Per-record decision evidence, using the same exact cursor-chain proof as search continuation. */
+export function recordEvidence(entries, recordId) {
+  const forRecord = entries.filter((entry) => entry?.record_id === recordId);
+  const conditions = new Map();
+  for (const entry of forRecord) {
+    if (!Array.isArray(entry.forms)) {
+      throw cursorInputError(recordId, 'recorded search evidence is missing its forms');
+    }
+    const key = searchKey(entry.forms, entry.boundary);
+    if (entry.key !== key) throw cursorInputError(recordId, 'recorded search evidence key does not match its forms and boundary');
+    conditions.set(key, { forms: entry.forms, boundary: entry.boundary ?? null });
+  }
+  const searches = [...conditions.values()].map((condition) => recordedCondition({
+    recordId, ...condition, entries, ref: recordId,
+  }));
+  const hits = searches.reduce((sum, item) => sum + item.recorded_hits, 0);
+  const allComplete = searches.length > 0 && searches.every((item) => item.complete);
+  const failed = searches.some((item) => item.status === 'SEARCH_FAILED');
   return {
     searches: searches.length,
-    hits: searches.reduce((sum, item) => sum + item.hits, 0),
-    allComplete: searches.length > 0 && searches.every((item) => item.complete),
+    hits,
+    allComplete,
+    failed,
+    status: failed ? 'SEARCH_FAILED' : hits > 0 ? 'HITS' : allComplete ? 'ZERO_HITS' : 'INCOMPLETE',
+    conditions: searches,
   };
+}
+
+const decisionState = (evidence) => ({
+  state: evidence.failed ? 'SEARCH_FAILED'
+    : evidence.hits > 0 ? 'V_N_ALLOWED'
+      : evidence.allComplete ? 'Z_ALLOWED' : 'SEARCH_MORE',
+  searches: evidence.searches,
+  recorded_hits: evidence.hits,
+  all_complete: evidence.allComplete,
+});
+
+/** Report a just-observed failure without treating it as pre-existing chain corruption during response construction. */
+function decisionStateAfterSearch(priorEntries, newEntries, recordId) {
+  const currentEntries = newEntries.filter((entry) => entry.record_id === recordId);
+  const failedEntries = currentEntries.filter((entry) => entry.status === 'SEARCH_FAILED');
+  if (failedEntries.length === 0) return decisionState(recordEvidence([...priorEntries, ...currentEntries], recordId));
+
+  // Validate prior evidence and any successful pages normally. Failed rows are persisted below and remain fail-closed
+  // on the next read/save; here they must be surfaced to the caller instead of aborting before the failure is returned.
+  const successfulEntries = currentEntries.filter((entry) => entry.status !== 'SEARCH_FAILED');
+  const usableEntries = [...priorEntries, ...successfulEntries];
+  const evidence = recordEvidence(usableEntries, recordId);
+  const knownConditions = new Set(usableEntries
+    .filter((entry) => entry?.record_id === recordId)
+    .map((entry) => searchKey(entry.forms, entry.boundary)));
+  const failedConditions = new Set(failedEntries.map((entry) => searchKey(entry.forms, entry.boundary)));
+  const newlyFailedConditions = [...failedConditions].filter((key) => !knownConditions.has(key)).length;
+  return decisionState({
+    ...evidence,
+    searches: evidence.searches + newlyFailedConditions,
+    allComplete: false,
+    failed: true,
+    status: 'SEARCH_FAILED',
+  });
 }
 
 // ---- automatic ZERO_HITS (mechanical evidence only; everything else is `Z?` for the AI) ----------------------------
@@ -293,12 +461,18 @@ export function buildChunk({ records, shard, batch, chunkNumber, total, search, 
   const aiSenses = senses.filter((item) => !item.auto);
   const head = `batch=${shard}_${batch} chunk=${String(chunkNumber).padStart(3, '0')}/${String(total).padStart(3, '0')} `
     + `records=${records.length} senses=${senses.length} ai_senses=${aiSenses.length}`
+    + `${aiSenses.length ? ` decide=${aiSenses.map((item) => item.ref).join(',')}` : ''}`
     + `${autoZ.length ? ` auto_z=${autoZ.join(',')}` : ''}`;
   const body = blocks.map(({ record, canonicalForms, shown, refs }) => {
     const lines = [`## ${record.id} ${record.lemma} | search_forms: ${canonicalForms.join(', ')}`];
     for (const block of shown) lines.push(renderBlock(block));
-    const zero = shown.every((block) => block.result.status === 'ZERO_HITS');
-    if (zero) lines.push('Z?: 검색은 0건으로 완료됐으나 검색형 충분성은 AI가 판단한다 (활용형·표기 변형이 더 필요하면 `search`).');
+    const evidence = recordEvidence(entries, record.id);
+    if (evidence.failed) lines.push('증거 상태: SEARCH_FAILED — 검색 실패를 보고하고 이 record는 판정·저장하지 않는다.');
+    else if (evidence.allComplete && evidence.hits === 0) {
+      lines.push('증거 상태: 모든 검색 완료·누적 0 hit — Z 형식 허용; 검색형 충분성은 AI가 판단한다.');
+    } else if (evidence.hits > 0) {
+      lines.push(`증거 상태: 누적 hit=${evidence.hits} — V/N 형식 허용; 출발 Sense의 VERIFIED 판독은 AI가 한다.`);
+    } else lines.push('증거 상태: 미완료 — Z 형식 불가; 필요한 검색을 계속한다.');
     for (const item of refs) lines.push(`${item.ref} ${item.sense_id} [${item.pos}] ${item.gloss}`);
     return lines.join('\n');
   });
@@ -453,84 +627,28 @@ async function readCursorEntries(directory, meta, ref) {
   }
 }
 
-function cursorInputError(ref, reason, guidance = 'preserve') {
-  const nextStep = guidance === 'no-pending'
-    ? 'check the last recorded status and exact forms/order/boundary; next is available only for an unconsumed LIMITED search'
-    : guidance === 'duplicate'
-      ? 'an unfinished LIMITED search already exists; continue it with next under the same condition, or start only a different condition without a cursor'
-      : guidance === 'batch'
-        ? 'keep one request per record and search condition in this batch; identical senses can share that request'
-        : 'do not retry or restart this condition; preserve the evidence and report the conflict';
-  return new InvalidCursorError(`${ref}: ${reason}; ${nextStep}; no search executed; no evidence recorded`);
-}
-
 /** Resolve only an unconsumed, source-recorded LIMITED cursor for this exact record and search condition. */
 export function resolveRecordedCursor({ cursor, recordId, forms, boundary, entries, ref = 'cursor' }) {
   const requestedCursor = cursor === '' ? null : cursor ?? null;
   if (requestedCursor !== null && typeof requestedCursor !== 'string') throw cursorInputError(ref, 'cursor must be a string or null');
-  if (!Array.isArray(entries) || entries.some((entry) => entry === null || typeof entry !== 'object' || Array.isArray(entry))) {
-    throw cursorInputError(ref, 'recorded search evidence contains a malformed row');
-  }
-  const key = searchKey(forms, boundary);
-  const matching = entries.filter((entry) => entry?.record_id === recordId
-    && (entry?.key === key || Array.isArray(entry?.forms) && JSON.stringify(entry.forms) === JSON.stringify(forms)
-      && (entry.boundary ?? null) === (boundary ?? null)));
-  const issued = new Map();
-  const active = new Set();
-
-  for (const entry of matching) {
-    if (entry.key !== key || !Array.isArray(entry.forms) || JSON.stringify(entry.forms) !== JSON.stringify(forms)
-      || (entry.boundary ?? null) !== (boundary ?? null)) {
-      throw cursorInputError(ref, 'recorded search evidence does not match the exact forms and boundary');
-    }
-    if (!['ZERO_HITS', 'COMPLETE', 'LIMITED', 'SEARCH_FAILED'].includes(entry.status)
-      || !['prepare', 'search'].includes(entry.source) || !Number.isInteger(entry.hits) || entry.hits < 0
-      || !Object.hasOwn(entry, 'cursor_in') || entry.cursor_in !== null && typeof entry.cursor_in !== 'string'
-      || !Object.hasOwn(entry, 'cursor_out') || entry.cursor_out !== null && typeof entry.cursor_out !== 'string') {
-      throw cursorInputError(ref, 'recorded search evidence is incomplete or has an unknown status');
-    }
-    if (entry.status === 'SEARCH_FAILED') {
-      // A failed first-page attempt issued no cursor. Ignore it for both retry and
-      // continuation resolution so a later successful LIMITED chain can proceed.
-      if (entry.cursor_in === null) continue;
-      throw cursorInputError(ref, 'a continuation of this cursor chain has recorded SEARCH_FAILED evidence');
-    }
-
-    const input = entry.cursor_in;
-    if (entry.status === 'ZERO_HITS' && input !== null) {
-      throw cursorInputError(ref, 'a continued search cannot be recorded as ZERO_HITS');
-    }
-    if (input !== null) {
-      if (!active.has(input)) throw cursorInputError(ref, 'recorded cursor chain is missing, consumed, or ambiguous');
-      active.delete(input);
-    }
-    if (entry.status === 'LIMITED') {
-      if (entry.complete !== false || typeof entry.cursor_out !== 'string' || entry.cursor_out.length === 0
-        || entry.cursor_out === input || issued.has(entry.cursor_out)) {
-        throw cursorInputError(ref, 'recorded LIMITED cursor evidence is not trustworthy');
-      }
-      issued.set(entry.cursor_out, { active: true });
-      active.add(entry.cursor_out);
-    } else if (entry.complete !== true || entry.cursor_out !== null) {
-      throw cursorInputError(ref, 'recorded completed search evidence is not trustworthy');
-    }
-  }
-
-  if (active.size > 1) {
-    throw cursorInputError(ref, 'more than one unfinished cursor chain matches this record and exact search condition');
-  }
+  const condition = recordedCondition({ recordId, forms, boundary, entries, ref });
   if (requestedCursor === null) {
-    if (active.size > 0) {
+    if (condition.status === 'LIMITED') {
       throw cursorInputError(ref, 'a recorded LIMITED search for this record and exact search condition is still unfinished', 'duplicate');
     }
     return null;
   }
   if (requestedCursor === 'next') {
-    if (active.size === 0) throw cursorInputError(ref, 'there is no recorded unfinished LIMITED search for this record and exact search condition', 'no-pending');
-    return active.values().next().value;
+    if (condition.status !== 'LIMITED') {
+      const conditionText = `recorded_status=${condition.recorded_status ?? 'UNRECORDED'} recorded_hits=${condition.recorded_hits} forms=${JSON.stringify(forms)} boundary=${JSON.stringify(boundary ?? null)}`;
+      throw cursorInputError(ref, `${condition.status === 'UNRECORDED' ? 'there is no recorded search' : 'there is no unfinished search'} for this condition (${conditionText})`, 'no-pending');
+    }
+    return condition.cursor;
   }
-  if (!active.has(requestedCursor)) throw cursorInputError(ref, 'cursor does not exactly match an unconsumed recorded LIMITED.cursor_out for this record and search condition');
-  return requestedCursor;
+  if (condition.status !== 'LIMITED' || condition.cursor !== requestedCursor) {
+    throw cursorInputError(ref, 'cursor does not exactly match an unconsumed recorded LIMITED.cursor_out for this record and search condition');
+  }
+  return condition.cursor;
 }
 
 function validateRequestedCursor(database, cursor, forms, boundary, ref) {
@@ -579,7 +697,7 @@ export function buildSearchBatch({ requests, meta, records, search, priorEntries
   const groups = new Map();
   const resolved = [];
   const recordConditions = new Map();
-  const allowed = new Set(['sense', 'forms', 'boundary', 'cursor', 'contexts']);
+  const allowed = new Set(['sense', 'forms', 'boundary', 'cursor', 'contexts', 'reread']);
 
   requests.forEach((request, index) => {
     const requestId = `r${index + 1}`;
@@ -606,9 +724,16 @@ export function buildSearchBatch({ requests, meta, records, search, priorEntries
     if (boundary !== undefined && !['left', 'none', 'both'].includes(boundary)) fail(`${requestId}.boundary must be left, none or both`);
     const requestedCursor = request.cursor === '' ? null : request.cursor ?? null;
     if (requestedCursor !== null && typeof requestedCursor !== 'string') fail(`${requestId}.cursor must be a string or null`);
+    if (request.reread !== undefined && typeof request.reread !== 'boolean') fail(`${requestId}.reread must be a boolean`);
+    const reread = request.reread === true;
+    if (reread && requestedCursor !== null) fail(`${requestId}.reread cannot be combined with a cursor`);
     const contexts = request.contexts ?? INITIAL_CONTEXTS;
     if (!Number.isInteger(contexts) || contexts < 1 || contexts > MAX_CALL_CONTEXTS) {
       fail(`${requestId}.contexts must be 1..${MAX_CALL_CONTEXTS}`);
+    }
+    const condition = recordedCondition({ recordId: record.id, forms, boundary, entries: priorEntries, ref: request.sense });
+    if (reread && !condition.complete) {
+      throw cursorInputError(request.sense, `reread requires a proven completed condition (status=${condition.recorded_status ?? condition.status}, hits=${condition.recorded_hits})`);
     }
     const cursor = resolveRecordedCursor({ cursor: requestedCursor, recordId: record.id, forms, boundary, entries: priorEntries, ref: request.sense });
     if (cursor !== null) {
@@ -623,13 +748,15 @@ export function buildSearchBatch({ requests, meta, records, search, priorEntries
       throw cursorInputError(request.sense, 'this batch contains multiple requests for the same record and search condition', 'batch');
     }
     recordConditions.set(recordCondition, exactRequestKey);
-    let group = groups.get(exactRequestKey);
+    const mode = reread ? 'reread' : condition.complete ? 'cached' : 'search';
+    const groupKey = JSON.stringify([mode, mode === 'cached' ? record.id : null, exactRequestKey]);
+    let group = groups.get(groupKey);
     if (!group) {
       group = {
-        result_id: `q${groups.size + 1}`, exactRequestKey, forms, boundary, cursor,
-        contexts, options, requesters: [], originalRequests: [],
+        result_id: `q${groups.size + 1}`, exactRequestKey, groupKey, mode, forms, boundary, cursor,
+        contexts, options, requesters: [], originalRequests: [], condition,
       };
-      groups.set(exactRequestKey, group);
+      groups.set(groupKey, group);
     }
     const requester = { request_id: requestId, sense: request.sense, record_id: sense.record_id };
     group.requesters.push(requester);
@@ -643,6 +770,24 @@ export function buildSearchBatch({ requests, meta, records, search, priorEntries
   let scannedRows = 0;
   const resultById = new Map();
   const results = [...groups.values()].map((group) => {
+    if (group.mode === 'cached') {
+      resultById.set(group.result_id, 'ALREADY_COMPLETE');
+      return {
+        result_id: group.result_id,
+        shared_by: group.requesters,
+        forms: group.forms,
+        boundary: group.boundary ?? null,
+        cursor_in: null,
+        cursor_out: null,
+        contexts_limit: group.contexts,
+        status: 'ALREADY_COMPLETE',
+        recorded_status: group.condition.recorded_status,
+        recorded_hits: group.condition.recorded_hits,
+        scanned_rows: 0,
+        contexts: [],
+        context_source: group.condition.context_source,
+      };
+    }
     const remainingBatchRows = scanBudgetRows - scannedRows;
     if (remainingBatchRows <= 0) {
       const deferred = {
@@ -665,8 +810,10 @@ export function buildSearchBatch({ requests, meta, records, search, priorEntries
     const maxScanRows = Math.min(corpusRows, remainingBatchRows);
     const { result, cursorIn } = searchForContexts(search, group.forms, group.options, { maxScanRows });
     scannedRows += result.scanned_rows ?? 0;
-    resultById.set(group.result_id, result.status);
-    if (result.status !== 'DEFERRED') {
+    const outputStatus = group.mode === 'reread' && result.status !== 'SEARCH_FAILED'
+      ? 'REREAD' : result.status;
+    resultById.set(group.result_id, outputStatus);
+    if (result.status !== 'DEFERRED' && group.mode === 'search') {
       const recordsSeen = new Set();
       for (const requester of group.requesters) {
         if (recordsSeen.has(requester.record_id)) continue;
@@ -680,9 +827,10 @@ export function buildSearchBatch({ requests, meta, records, search, priorEntries
       forms: group.forms,
       boundary: group.boundary ?? null,
       cursor_in: cursorIn,
-      cursor_out: result.next_cursor ?? null,
+      cursor_out: group.mode === 'reread' ? null : result.next_cursor ?? null,
       contexts_limit: group.contexts,
-      status: result.status,
+      status: outputStatus,
+      ...(group.mode === 'reread' ? { search_status: result.status, context_source: 'reread' } : {}),
       hits: result.items.length,
       scanned_rows: result.scanned_rows ?? 0,
       ...(result.error ? { error: [...String(result.error)].slice(0, 200).join('') } : {}),
@@ -690,15 +838,20 @@ export function buildSearchBatch({ requests, meta, records, search, priorEntries
       ...(result.status === 'DEFERRED' ? { retry_requests: group.originalRequests } : {}),
     };
   });
+  const requestStates = new Map();
+  for (const request of resolved) {
+    requestStates.set(request.request_id, decisionStateAfterSearch(priorEntries, evidence, request.record_id));
+  }
   const output = {
     status: results.some((result) => result.status === 'SEARCH_FAILED') ? 'SEARCH_FAILED'
       : results.some((result) => result.status === 'DEFERRED') ? 'PARTIAL' : 'OK',
     request_count: requests.length,
     result_count: results.length,
+    already_complete_count: resolved.filter((request) => resultById.get(request.result_id) === 'ALREADY_COMPLETE').length,
     deferred_count: results.filter((result) => result.status === 'DEFERRED').reduce((sum, result) => sum + result.retry_requests.length, 0),
     scan_budget_rows: scanBudgetRows,
     scanned_rows: scannedRows,
-    requests: resolved.map((request) => ({ ...request, status: resultById.get(request.result_id) })),
+    requests: resolved.map((request) => ({ ...request, status: resultById.get(request.result_id), decision_state: requestStates.get(request.request_id) })),
     results,
   };
   const bytes = Buffer.byteLength(`${JSON.stringify(output)}\n`);
@@ -729,7 +882,7 @@ export async function searchBatchActive({ requests, databasePath, root = '.warro
   return batch.output;
 }
 
-export async function searchActive({ ref, forms, boundary, cursor, contexts, databasePath, root }) {
+export async function searchActive({ ref, forms, boundary, cursor, contexts, reread = false, databasePath, root }) {
   const { directory, meta, files } = await findActive(root);
   const sense = meta.senses.find((item) => item.ref === ref);
   if (!sense) fail(`${ref} is not a sense of the active chunk`);
@@ -742,12 +895,31 @@ export async function searchActive({ ref, forms, boundary, cursor, contexts, dat
   if (!Number.isInteger(count) || count < 1 || count > MAX_CALL_CONTEXTS) fail(`--contexts must be 1..${MAX_CALL_CONTEXTS}`);
   if (boundary !== undefined && !['left', 'none', 'both'].includes(boundary)) fail('--boundary must be left, none or both');
   const requestedCursor = cursor === '' ? null : cursor ?? null;
+  if (typeof reread !== 'boolean') fail('--reread must be a boolean');
+  if (reread && requestedCursor !== null) fail('--reread cannot be combined with --cursor');
   const priorEntries = await readCursorEntries(directory, meta, ref);
+  const condition = recordedCondition({ recordId: record.record_id, forms: list, boundary, entries: priorEntries, ref });
+  if (reread && !condition.complete) {
+    throw cursorInputError(ref, `reread requires a proven completed condition (status=${condition.recorded_status ?? condition.status}, hits=${condition.recorded_hits})`);
+  }
   const resolvedCursor = resolveRecordedCursor({ cursor: requestedCursor, recordId: record.record_id, forms: list, boundary, entries: priorEntries ?? [], ref });
+  const currentDecisionState = () => decisionState(recordEvidence(priorEntries, record.record_id));
+  if (condition.complete && !reread) {
+    const result = {
+      status: 'ALREADY_COMPLETE',
+      recorded_status: condition.recorded_status,
+      recorded_hits: condition.recorded_hits,
+      items: [],
+      next_cursor: null,
+      scanned_rows: 0,
+    };
+    const text = `${renderContexts(result)}\ncontext_source=${condition.context_source}\nCompleted evidence contains no readable contexts; reuse the prior view/search response, or request reread only after context loss.`;
+    return { result, text, decision_state: currentDecisionState(), context_source: condition.context_source };
+  }
   const database = openReadonlyDb(databasePath);
   let result;
   let cursorIn;
-  const options = searchOptions(count, boundary, resolvedCursor);
+  const options = searchOptions(count, boundary, reread ? null : resolvedCursor);
   try {
     if (resolvedCursor !== null) validateRequestedCursor(database, resolvedCursor, list, boundary, ref);
     const search = (searchForms, searchOpts) => ({ result: searchContexts(database, searchForms, searchOpts) });
@@ -756,10 +928,18 @@ export async function searchActive({ ref, forms, boundary, cursor, contexts, dat
   } finally {
     database.close?.();
   }
+  if (reread) {
+    const searchStatus = result.status;
+    result = { ...result, status: searchStatus === 'SEARCH_FAILED' ? 'SEARCH_FAILED' : 'REREAD',
+      search_status: searchStatus, next_cursor: null };
+    const text = `${renderContexts(result)}\nsearch_status=${searchStatus}\ncontext_source=reread\nReread adds no search evidence; hit totals and decision state are unchanged.`;
+    return { result, text, decision_state: currentDecisionState(), context_source: 'reread' };
+  }
   const exactRequestKey = requestKey(list, boundary, options);
-  await appendFile(files.searches, `${JSON.stringify({ ...entryOf(record.record_id, list, boundary, result, 'search', cursorIn, exactRequestKey),
-    chunk_no: meta.chunk_no, view_sha256: meta.view_sha256 })}\n`);
-  return { result, text: renderContexts(result) };
+  const evidence = { ...entryOf(record.record_id, list, boundary, result, 'search', cursorIn, exactRequestKey),
+    chunk_no: meta.chunk_no, view_sha256: meta.view_sha256 };
+  await appendSearchEvidence(directory, meta, [evidence], priorEntries);
+  return { result, text: renderContexts(result), decision_state: decisionStateAfterSearch(priorEntries, [evidence], record.record_id) };
 }
 
 // ---- save -----------------------------------------------------------------------------------------------------------
@@ -793,6 +973,16 @@ export function parseDecisions(text) {
 export function checkDecisions({ meta, records, entries, decisions, lemmaForms }) {
   const errors = [];
   const hitBearingZ = []; // Z refused because a recorded search of the record has hits: re-judging alone cannot fix it
+  const failedEvidence = new Set();
+  const evidenceByRecord = new Map();
+  for (const record of records) {
+    try {
+      evidenceByRecord.set(record.id, { evidence: recordEvidence(entries, record.id) });
+    } catch (error) {
+      evidenceByRecord.set(record.id, { error: error.message });
+      failedEvidence.add(record.id);
+    }
+  }
   const bySense = new Map(meta.senses.map((item) => [item.ref, item]));
   for (const ref of decisions.keys()) {
     if (!bySense.has(ref)) errors.push(`${ref}: unknown sense (this chunk has s1..s${meta.senses.length})`);
@@ -800,6 +990,7 @@ export function checkDecisions({ meta, records, entries, decisions, lemmaForms }
   }
   const rows = records.map((record) => ({ record_id: record.id, senses: [] }));
   const rowOf = new Map(rows.map((row) => [row.record_id, row]));
+  const removedCandidates = [];
   for (const item of meta.senses) {
     const record = records.find((entry) => entry.id === item.record_id);
     const sourceSense = record.senses.find((sense) => sense.id === item.sense_id);
@@ -809,27 +1000,43 @@ export function checkDecisions({ meta, records, entries, decisions, lemmaForms }
       continue;
     }
     if (!item.auto) {
-      const evidence = recordEvidence(entries, item.record_id);
-      if ((decision.kind === 'V' || decision.kind === 'N') && evidence.hits === 0) {
-        errors.push(`${item.ref}: ${decision.kind} needs at least one recorded search with contexts (none: use Z when a complete search found nothing, otherwise search more)`);
-      }
-      if (decision.kind === 'Z' && !(evidence.allComplete && evidence.hits === 0)) {
-        errors.push(`${item.ref}: Z needs every recorded search of this record to be complete with 0 hits (a LIMITED or hit-bearing search cannot support Z)`);
-        if (evidence.hits > 0) hitBearingZ.push(item.ref);
+      const evidenceResult = evidenceByRecord.get(item.record_id);
+      if (evidenceResult?.error) {
+        errors.push(`${item.ref}: search evidence integrity error (${evidenceResult.error}); stop and report`);
+      } else {
+        const evidence = evidenceResult.evidence;
+        const state = decisionState(evidence);
+        const detail = `decision_state=${state.state} searches=${state.searches} recorded_hits=${state.recorded_hits} all_complete=${state.all_complete}`;
+        if (state.state === 'SEARCH_FAILED') {
+          errors.push(`${item.ref}: SEARCH_FAILED evidence prevents a normal decision (${detail}); stop and report`);
+        } else if ((decision.kind === 'V' || decision.kind === 'N') && evidence.hits === 0) {
+          errors.push(`${item.ref}: ${decision.kind} needs at least one recorded search hit (none: use Z only when all conditions are complete, otherwise search more; ${detail})`);
+        }
+        if (decision.kind === 'Z' && !(evidence.allComplete && evidence.hits === 0)) {
+          errors.push(`${item.ref}: Z needs every recorded search of this record complete with 0 hits (a LIMITED, failed, or hit-bearing search cannot support Z; ${detail})`);
+          if (evidence.hits > 0) hitBearingZ.push(item.ref);
+        }
       }
     }
     const seen = new Set();
+    const candidates = [];
     for (const candidate of decision.candidates) {
       const normalized = normalizeCandidate(candidate);
-      if (seen.has(normalized)) errors.push(`${item.ref}: duplicate candidate ${JSON.stringify(candidate)}`);
+      if (seen.has(normalized)) {
+        removedCandidates.push({ ref: item.ref, candidate, kind: 'duplicate_normalized' });
+        continue;
+      }
       seen.add(normalized);
-      const repeat = sourceLemmaRepeatMessage(candidate, record, lemmaForms);
-      if (repeat !== undefined) errors.push(`${item.ref}: ${repeat}`);
-      else if (isThousandsCommaFragment(candidate, sourceSense.gloss)) errors.push(`${item.ref}: candidate ${JSON.stringify(candidate)} is a fragment of a thousands-comma number in the gloss`);
+      const issue = candidateV1ContentIssue(candidate, record, sourceSense, lemmaForms);
+      if (issue !== undefined) {
+        removedCandidates.push({ ref: item.ref, candidate, kind: issue.kind });
+        continue;
+      }
+      candidates.push(candidate);
     }
-    rowOf.get(item.record_id).senses.push({ sense_id: item.sense_id, candidates: decision.candidates });
+    rowOf.get(item.record_id).senses.push({ sense_id: item.sense_id, candidates });
   }
-  return { errors, rows, hitBearingZ };
+  return { errors, rows, hitBearingZ, removedCandidates, failedEvidence };
 }
 
 export async function saveActive({ inputPath, root }) {
@@ -850,11 +1057,11 @@ export async function saveActive({ inputPath, root }) {
   const { decisions, errors: parseErrors } = parseDecisions(await readFile(inputPath, 'utf8'));
   const lemmaForms = await loadCanonicalLemmaForms();
   const entries = await readEntries(directory, meta);
-  const { errors, rows, hitBearingZ } = checkDecisions({ meta, records, entries, decisions, lemmaForms });
+  const { errors, rows, hitBearingZ, removedCandidates, failedEvidence } = checkDecisions({ meta, records, entries, decisions, lemmaForms });
   const all_errors = [...parseErrors, ...errors];
   if (all_errors.length > 0) {
     // A recorded SEARCH_FAILED means the evidence itself is broken: re-judging is never an automatic repair.
-    const searchFailed = entries.some((entry) => entry.status === 'SEARCH_FAILED');
+    const searchFailed = failedEvidence.size > 0 || entries.some((entry) => entry.status === 'SEARCH_FAILED');
     // One diagnostic bound to this active chunk, for the War Room Supervisor (never read from tool logs). It holds only
     // the rejection reasons, never the view or search contexts. A hit-bearing Z cannot be repaired by editing decisions.
     await writeAtomic(files.rejected, JSON.stringify({
@@ -869,14 +1076,15 @@ export async function saveActive({ inputPath, root }) {
     throw error;
   }
   await saveChunk(directory, meta.chunk_no, rows, expectedOf(records));
-  return { status: 'SAVED', chunk_no: meta.chunk_no, records: rows.length, senses: meta.senses.length };
+  return { status: 'SAVED', chunk_no: meta.chunk_no, records: rows.length, senses: meta.senses.length,
+    removed_candidates: removedCandidates };
 }
 
 // ---- command line -----------------------------------------------------------------------------------------------------
 function parseArguments(args) {
   const options = {};
   const positional = [];
-  const booleanOptions = new Set(['hada-prefetch']);
+  const booleanOptions = new Set(['hada-prefetch', 'reread']);
   for (let index = 0; index < args.length; index += 1) {
     const item = args[index];
     if (!item.startsWith('--')) {
@@ -920,12 +1128,12 @@ async function main(argv) {
     return out.status === 'SEARCH_FAILED' ? 3 : 0;
   }
   if (command === 'search') {
-    only(options, 'forms', 'boundary', 'cursor', 'contexts');
-    if (positional.length !== 1 || !SENSE_REF.test(positional[0])) fail('usage: search <s-id> [--forms a,b] [--boundary left|none|both] [--cursor C|next] [--contexts 1..16]');
+    only(options, 'forms', 'boundary', 'cursor', 'contexts', 'reread');
+    if (positional.length !== 1 || !SENSE_REF.test(positional[0])) fail('usage: search <s-id> [--forms a,b] [--boundary left|none|both] [--cursor C|next] [--contexts 1..16] [--reread]');
     const databasePath = process.env.TYPEWRITER_APPROVED_CORPUS_DB || fail('TYPEWRITER_APPROVED_CORPUS_DB is not set');
     const { result, text } = await searchActive({
       ref: positional[0], forms: options.forms?.split(',').map((item) => item.trim()).filter(Boolean), boundary: options.boundary,
-      cursor: options.cursor, contexts: options.contexts === undefined ? undefined : Number(options.contexts), databasePath,
+      cursor: options.cursor, contexts: options.contexts === undefined ? undefined : Number(options.contexts), reread: options.reread === true, databasePath,
     });
     console.log(text);
     return result.status === 'SEARCH_FAILED' ? 3 : 0;
