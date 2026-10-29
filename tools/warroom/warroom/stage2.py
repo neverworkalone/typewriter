@@ -236,7 +236,7 @@ _REVIEW_TARGET_CUE = re.compile(
     r"should be (?:fixed|changed|revised|removed)|must be (?:fixed|changed|revised|removed))\b|"
     r"(?:수정|고쳐|정정|검토|변경|삭제|보존|오류|문제|잘못|부정확|차단)"
 )
-_EXPLICIT_REVIEW_CUE = re.compile(r"(?:^|[.!?;,:-])\s*(?:please\s+|kindly\s+|could you\s+)?review\s*$", re.I)
+_EXPLICIT_REVIEW_CUE = re.compile(r"(?:^|[.!?;,:-])\s*(?:please\s+|kindly\s+|could you\s+)?review\b", re.I)
 _REVIEW_REFERENCE_CUE = re.compile(
     r"\b(?:compare|compared|comparison|peer|target(?: sense| id)?|linked sense|example|e\.g\.|historical|"
     r"retrospective|previous review|past review|prior review|statistic|statistics|stats|count|total|unrelated|reference)\b|"
@@ -310,14 +310,23 @@ def _explicit_review_targets(text: str) -> set[str]:
     targets: set[str] = set()
     for line in text.splitlines():
         matches = list(_SENSE_ID.finditer(line))
-        previous_end = 0
         for index, match in enumerate(matches):
-            before = line[max(previous_end, match.start() - 90):match.start()]
-            next_start = matches[index + 1].start() if index + 1 < len(matches) else len(line)
+            prefix = line[:match.start()]
+            separators = list(re.finditer(r"[.!?;](?:\s+|$)", prefix))
+            clause_start = separators[-1].end() if separators else 0
+            before = line[clause_start:match.start()]
+            clause_end_match = re.search(r"[.!?;](?:\s+|$)", line[match.end():])
+            clause_end = match.end() + clause_end_match.start() if clause_end_match else len(line)
+            next_start = next((candidate.start() for candidate in matches[index + 1:]
+                               if candidate.start() < clause_end), clause_end)
             after = line[match.end():min(next_start, match.end() + 60)]
-            previous_end = match.end()
-            if (_REVIEW_REFERENCE_CUE.search(before) or _REVIEW_REFERENCE_AFTER.search(after)
-                    or not (_REVIEW_TARGET_CUE.search(before + " " + after) or _EXPLICIT_REVIEW_CUE.search(before))):
+            if _REVIEW_REFERENCE_CUE.search(before):
+                continue
+            if _REVIEW_TARGET_CUE.search(before) or _EXPLICIT_REVIEW_CUE.search(before):
+                targets.add(match.group(0))
+                continue
+            if (_REVIEW_REFERENCE_AFTER.search(after)
+                    or not _REVIEW_TARGET_CUE.search(after)):
                 continue
             targets.add(match.group(0))
     return targets
