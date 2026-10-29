@@ -4204,6 +4204,7 @@ class Supervisor:
 
     def _to_review(self, b, info, recovery_note: str | None = None) -> None:
         if b["method"] == STAGE2_METHOD:
+            self._record_progress(b)   # the verified final checkpoint may be newer than the last producer poll
             self.store.delete(stage2.run_start_key(b["id"]))
         if b["method"] == literary.METHOD:
             self.store.delete(literary.run_start_key(b["id"]))
@@ -4748,6 +4749,12 @@ class Supervisor:
                 self._adapter(b["producer"]).stop(b["pid"])
                 return
             self.store.delete(stop_key)
+        # A Stage 2 PR is only accepted after its complete checkpoint verifies. The last producer poll may have
+        # recorded an earlier candidate count, so reconcile that persisted snapshot while the verified PR waits.
+        if b["method"] == STAGE2_METHOD and (
+                b["progress_kind"] != "candidates" or b["progress_done"] != b["progress_total"]):
+            self._record_progress(b)
+            b = self.store.batch(b["id"])
         last = float(self.store.get(f"last_poll_{b['id']}", "0"))
         if self.clock() - last < self.cfg["poll_seconds"]:
             return
