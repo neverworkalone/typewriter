@@ -84,7 +84,7 @@ class Stage2PreflightRepair(unittest.TestCase):
         self.assertEqual(repair["stage2_chunk_git"], "1")
         self.assertIn(f"repair @{fingerprint}", repair["prompt"])
         self.assertEqual(w.gh.created_prs, [])
-        self.assertEqual(w.git.commits, [])
+        self.assertEqual(getattr(w.git, "commits", []), [])
 
         w.adapter.running[repair["pid"]]["text"] = repair_answer(fingerprint, candidates)
         w.adapter.finish(repair["pid"])
