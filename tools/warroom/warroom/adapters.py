@@ -452,7 +452,7 @@ class ClaudeCodeAdapter(ProcessAdapter):
             raise RuntimeError("Stage 2 repair를 시작하지 않습니다: 설치된 Claude CLI가 strict MCP 제한을 지원하는지 확인하지 못했습니다")
         args = ["--tools", ""]
         for optional in ("--strict-mcp-config", "--disable-slash-commands"):
-            if optional in flags and (optional != "--strict-mcp-config" or is_stage2_repair(env)):
+            if optional in flags:
                 args.append(optional)
         if "--bare" in flags and env.get("ANTHROPIC_API_KEY"):
             args.append("--bare")
