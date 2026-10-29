@@ -48,9 +48,10 @@ only* do not apply to the new scope.
   invented record. Reject a fabricated ID or a wrong-meaning link used to
   avoid text.
 - **Bidirectional:** authored ID↔ID links remain searchable both ways. Newly prepared Stage 2 Parts judge Type/Tier once from the source and the CLI mirrors the values; equality is expected and is not a blocker. Marker-free checkpoints retain independent reverse scoring, and historical/STDICT relations remain unchanged.
-- **Not implemented yet:** text-only targets, the authored-relation source of
-  truth and bidirectional derivation. Verify these contracts when the
-  implementing code lands; do not require them, or claim they work, before.
+- **Implementation status:** Text-only targets, the Typewriter-authored
+  relation source and bidirectional ID derivation are implemented. Newly
+  prepared Stage 2 checkpoints mirror Type/Tier from the source; marker-free
+  checkpoints and historical rows may retain independent reverse values.
 - **Headword candidates** (`data/headword-candidates/pr-<PR number>.jsonl`,
   Schema v1 in #838): check only syntax, required/extra fields, a real
   `source_record_id` matching `source_lemma`, same-PR duplicate

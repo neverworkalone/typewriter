@@ -70,15 +70,11 @@ source and scope:
   generation (B) is to be settled by a small experiment first (corpus-based C
   later). This policy approves no production prompt or bulk backfill.
 
-**Implementation status (not yet implemented).** Text-only targets, a
-Typewriter-authored relation source of truth, and ID↔ID bidirectional
-derivation for #838 authored relations do not exist yet. Today
-`meaning_relations.target_meaning_id` is `NOT NULL`, queries inner-join the
-target, and interactive relations are buttons. Do not produce or review data
-as if the text-only or bidirectional behaviour already worked; reviewers check
-those contracts once the corresponding code lands. The technical docs
-(`meaning-layer.md`, `domain-model.md`, `build.md`) are to be updated by that
-implementation work.
+**Implementation status.** Text-only targets, the Typewriter-authored
+relation source, and bidirectional ID projection are implemented. Newly
+prepared Stage 2 checkpoints mirror Type/Tier from the source sense; marker-
+free checkpoints and historical rows may retain independently judged reverse
+values. Review those behaviors against the current CLI and build contracts.
 
 **Block thresholds (this scope).** Reject a demonstrably wrong sense/homograph
 target, a type that plainly contradicts the relation, a forced or incoherent
