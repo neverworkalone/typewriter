@@ -89,10 +89,10 @@ class Stage2Finalization(unittest.TestCase):
         checkpoint = json.loads(checkpoint_path.read_text("utf-8"))
         checkpoint["items"][0]["record_id"] = "w1"
         checkpoint_path.write_text(json.dumps(checkpoint), "utf-8")
-        w.sup._s2_fix_context(b, [{"body": "`w1`, `w1-s1`, `candidate-1`"}])
+        w.sup._s2_fix_context(b, [{"body": "`w1`, `w1-s1`, `candidate-0`"}])
         self.assertEqual(w.git.inspect_calls[-1][1:], ("001", "01", "01", ["w1-s1"]))
         self.assertEqual(json.loads((Path(b["worktree"]) / ".warroom-scratch/s2-fix-select.json").read_text("utf-8")),
-                         {"candidates": [{"source_sense_id": "w1-s1", "candidate": "candidate-1"}]})
+                         {"candidates": [{"source_sense_id": "w1-s1", "candidate": "candidate-0"}]})
 
     def test_fix_context_keeps_40kb_inline_and_pages_only_above_90kb(self):
         w, b = self.start_optional_part(sense_id="w1-s1")

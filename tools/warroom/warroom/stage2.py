@@ -231,7 +231,7 @@ _LINK_ROW = re.compile(r"^c\d+\s")
 _SENSE_ID = re.compile(r"\b[wr]\d+-s[1-9]\d*\b")
 _REVIEW_TUPLE_START = re.compile(r"(?<![\w-])(?P<record>[wr]\d+)[ \t]*,[ \t]*(?P<sense>[wr]\d+-s[1-9]\d*)[ \t]*,[ \t]*")
 _REVIEW_TARGET_CUE = re.compile(
-    r"\b(?:fix|correct|revise|amend|change|update|inspect|address|resolve|remove|retain|drop|"
+    r"\b(?:fix|correct|revise|reconsider|amend|change|update|inspect|address|resolve|remove|retain|drop|"
     r"wrong|incorrect|problematic|defect|blocker|needs? (?:a )?(?:fix|change|revision)|"
     r"should be (?:fixed|changed|revised|removed)|must be (?:fixed|changed|revised|removed))\b|"
     r"(?:수정|고쳐|정정|검토|변경|삭제|보존|오류|문제|잘못|부정확|차단)"
@@ -345,7 +345,10 @@ def review_pairs(text: str, items: list[dict]) -> dict:
             unmatched.append(pair)
     valid = list(dict.fromkeys(valid))
     unmatched = list(dict.fromkeys(unmatched))
-    in_part_senses = {sense for _, sense, _ in available}
+    in_part_senses = {
+        item["sense_id"] for item in items
+        if isinstance(item, dict) and isinstance(item.get("sense_id"), str)
+    }
     targeted = (_explicit_review_targets(text) | {sense for _, sense, _ in unmatched}) & in_part_senses
     identified = {sense for _, sense, _ in valid}
     fallback = sorted(targeted - identified)
