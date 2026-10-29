@@ -61,6 +61,9 @@ class ReviewPairSelection(unittest.TestCase):
         mixed = stage2.review_pairs("Please fix w1-s1 and unrelated w2-s1.", self.items)
         self.assertEqual(mixed["fallback_sense_ids"], ["w1-s1"])
 
+        mixed = stage2.review_pairs("Please fix w1-s1 and unrelated w2-s1, then fix w3-s1.", self.items)
+        self.assertEqual(mixed["fallback_sense_ids"], ["w1-s1", "w3-s1"])
+
         targeted = stage2.review_pairs("Please fix w3-s1.", self.items)
         self.assertEqual(targeted["fallback_sense_ids"], ["w3-s1"])
 

@@ -320,10 +320,12 @@ def _explicit_review_targets(text: str) -> set[str]:
             next_start = next((candidate.start() for candidate in matches[index + 1:]
                                if candidate.start() < clause_end), clause_end)
             after = line[match.end():min(next_start, match.end() + 60)]
-            if _REVIEW_REFERENCE_CUE.search(before):
-                continue
-            if _REVIEW_TARGET_CUE.search(before) or _EXPLICIT_REVIEW_CUE.search(before):
-                targets.add(match.group(0))
+            action_positions = [cue.start() for cue in _REVIEW_TARGET_CUE.finditer(before)]
+            action_positions.extend(cue.start() for cue in _EXPLICIT_REVIEW_CUE.finditer(before))
+            reference_positions = [cue.start() for cue in _REVIEW_REFERENCE_CUE.finditer(before)]
+            if action_positions or reference_positions:
+                if action_positions and (not reference_positions or max(action_positions) > max(reference_positions)):
+                    targets.add(match.group(0))
                 continue
             if (_REVIEW_REFERENCE_AFTER.search(after)
                     or not _REVIEW_TARGET_CUE.search(after)):
