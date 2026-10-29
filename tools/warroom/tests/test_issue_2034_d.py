@@ -4,7 +4,7 @@ import unittest
 
 from pathlib import Path
 
-from tests.fakes import HEAD1, World
+from tests.fakes import HEAD1, HEAD2, World
 from warroom.github import GhError
 from warroom import control, dchunk, prompts
 
@@ -451,6 +451,237 @@ class SaveRejectedFix(unittest.TestCase):
         w.tick()
         self.assertEqual(w.kinds(), ["d_chunk_new", "d_chunk_new", "d_chunk_fix"])
         self.assertEqual(dchunk.chunk_sha(w.wt(), w.row_(), 1), before)
+
+
+class RestartHandoff(unittest.TestCase):
+    def setUp(self):
+        self.w = DWorld(records=50)
+        self.addCleanup(self.w.tmp.cleanup)
+
+    @staticmethod
+    def restart(w, records=50):
+        w.sup = w.make_sup()
+        w.sup_runner_ok()
+        w.runner.dchunk.records = records
+
+    def save_first_then_interrupt_next_dispatch(self, w=None):
+        w = w or self.w
+        w.start("single", "deepseek", "d")
+        w.ai(session="ses_first")
+        w.ai(session="ses_second")
+        w.tick()
+        real_next = w.sup._launch_d_next
+        w.sup._launch_d_next = lambda _b: (_ for _ in ()).throw(RuntimeError("simulated supervisor restart"))
+        w.finish_last()
+        w.tick()
+        w.sup._launch_d_next = real_next
+        return w.row_()
+
+    def test_restart_after_old_baseline_deletion_starts_only_the_next_chunk(self):
+        w = self.w
+        b = self.save_first_then_interrupt_next_dispatch()
+        sha = dchunk.chunk_sha(w.wt(), b, 1)
+        self.assertEqual((b["state"], b["run_kind"], b["session_id"]), ("PREPARE", None, None))
+        self.assertIsNone(w.store.get(dchunk.run_start_key(b["id"])))
+
+        self.restart(w)
+        w.tick()
+
+        self.assertEqual(len(w.adapter.launches), 2)
+        self.assertEqual((w.row_()["state"], w.row_()["run_kind"], w.active()["chunk_no"]),
+                         ("PRODUCING", "d_chunk_new", 2))
+        self.assertEqual(dchunk.chunk_sha(w.wt(), b, 1), sha)
+
+    def test_restart_after_prepare_persisted_but_before_baseline_delete_is_idempotent(self):
+        w = self.w
+        w.start("single", "deepseek", "d")
+        w.ai(session="ses_first")
+        w.ai(session="ses_second")
+        w.tick()
+        b = w.row_()
+        key = dchunk.run_start_key(b["id"])
+        real_delete = w.store.delete
+        armed = [True]
+
+        def interrupt_delete(found):
+            if found == key and armed[0]:
+                armed[0] = False
+                raise RuntimeError("simulated restart before baseline deletion")
+            return real_delete(found)
+
+        w.store.delete = interrupt_delete
+        w.finish_last()
+        w.tick()
+        w.store.delete = real_delete
+        self.assertEqual(w.row_()["state"], "PREPARE")
+        self.assertIsNotNone(w.store.get(key))
+        before = dchunk.chunk_sha(w.wt(), b, 1)
+
+        self.restart(w)
+        w.tick()
+
+        self.assertEqual(len(w.adapter.launches), 2)
+        self.assertEqual(w.active()["chunk_no"], 2)
+        self.assertEqual(dchunk.chunk_sha(w.wt(), b, 1), before)
+
+    def test_restart_after_cleanup_before_prepare_marker_uses_existing_baseline(self):
+        w = self.w
+        w.start("single", "deepseek", "d")
+        w.ai(session="ses_first")
+        w.ai(session="ses_second")
+        w.tick()
+        b = w.row_()
+        real_update = w.store.update
+        armed = [True]
+
+        def interrupt_update(batch_id, **fields):
+            if batch_id == b["id"] and fields.get("state") == "PREPARE" and armed[0]:
+                armed[0] = False
+                raise RuntimeError("simulated restart before PREPARE marker")
+            return real_update(batch_id, **fields)
+
+        w.store.update = interrupt_update
+        w.finish_last()
+        w.tick()
+        w.store.update = real_update
+        self.assertEqual(w.row_()["state"], "PRODUCING")
+        self.assertIsNone(dchunk.read_active(w.wt(), b))
+        self.assertIsNotNone(w.store.get(dchunk.run_start_key(b["id"])))
+
+        self.restart(w)
+        w.tick()
+
+        self.assertEqual((len(w.adapter.launches), w.active()["chunk_no"]), (2, 2))
+
+    def test_prepare_with_next_chunk_baseline_fails_closed_without_launch(self):
+        w = self.w
+        b = self.save_first_then_interrupt_next_dispatch()
+        rec = dchunk.prepare(w.runner, w.sup._d_env(b), w.wt(), b, 2,
+                             str(Path(w.cfg["corpus_index_path"])), HEAD1)
+        self.assertEqual(rec["status"], "READY")
+        w.store.set(dchunk.run_start_key(b["id"]), json.dumps({"chunk_no": 2}))
+        launches = len(w.adapter.launches)
+
+        self.restart(w)
+        w.tick()
+
+        self.assertEqual(w.row_()["state"], "ERROR")
+        self.assertIn("실행 시작 여부가 모호", w.row_()["error"])
+        self.assertEqual(len(w.adapter.launches), launches)
+
+    def test_legacy_missing_baseline_recovers_only_with_complete_run_and_sha_evidence(self):
+        w = self.w
+        b = self.save_first_then_interrupt_next_dispatch()
+        before = dchunk.chunk_sha(w.wt(), b, 1)
+        w.store.update(b["id"], state="PRODUCING", run_kind="d_chunk_new")
+
+        self.restart(w)
+        w.tick()
+
+        self.assertEqual((w.row_()["state"], w.active()["chunk_no"], len(w.adapter.launches)),
+                         ("PRODUCING", 2, 2))
+        self.assertEqual(dchunk.chunk_sha(w.wt(), b, 1), before)
+
+    def test_legacy_missing_baseline_rejects_unproven_or_ambiguous_state(self):
+        mutations = {
+            "sha mismatch": lambda w, b: w.store.set(f"d_chunk_sha_{b['id']}_1", "0" * 64),
+            "sha missing": lambda w, b: w.store.delete(f"d_chunk_sha_{b['id']}_1"),
+            "completion marker missing": lambda w, b: w.store.delete(f"verified_completion_run_{b['id']}"),
+            "changed HEAD": lambda w, b: setattr(w.git, "local_head", HEAD2),
+            "changed remote": lambda w, b: w.git.remote.__setitem__(b["branch"], HEAD2),
+            "dirty tracked files": lambda w, b: setattr(w.git, "dirty_text", " M README.md"),
+            "log mismatch": lambda w, b: w.store.update(b["id"], log_file="/missing/other-run.log"),
+            "active next chunk": lambda w, b: dchunk.prepare(w.runner, w.sup._d_env(b), w.wt(), b, 2,
+                                                               str(Path(w.cfg["corpus_index_path"])), HEAD1),
+        }
+        for label, mutate in mutations.items():
+            with self.subTest(label=label):
+                w = DWorld(records=50)
+                self.addCleanup(w.tmp.cleanup)
+                b = self.save_first_then_interrupt_next_dispatch(w)
+                saved_bytes = (w.wt() / dchunk.chunk_names(b, 1).directory / "chunk-001.jsonl").read_bytes()
+                w.store.update(b["id"], state="PRODUCING", run_kind="d_chunk_new")
+                mutate(w, b)
+                launches = len(w.adapter.launches)
+                self.restart(w)
+
+                w.tick()
+
+                self.assertEqual(w.row_()["state"], "ERROR")
+                self.assertEqual(len(w.adapter.launches), launches)
+                self.assertEqual((w.wt() / dchunk.chunk_names(b, 1).directory / "chunk-001.jsonl").read_bytes(),
+                                 saved_bytes)
+
+    def test_shared_chunk_boundary_errors_name_the_actual_method(self):
+        w = self.w
+        w.start("single", "deepseek", "d")
+        w.tick()
+        b = w.row_()
+        for method, expected in (("d", "D 청크"), ("c", "C 청크"), ("a", "A 청크"), ("b", "B 청크"),
+                                 ("s2", "Stage 2 청크")):
+            with self.subTest(method=method):
+                error = w.sup._stage2_chunk_boundary_problem(dict(b) | {"method": method}, "missing-run-key")
+                self.assertIn(expected, error)
+
+    def test_legacy_missing_baseline_rejects_an_owned_pr_before_any_new_run(self):
+        w = self.w
+        b = self.save_first_then_interrupt_next_dispatch()
+        w.store.update(b["id"], state="PRODUCING", run_kind="d_chunk_new")
+        w.gh.prs[17] = {"number": 17, "state": "closed", "merged": False, "head_sha": HEAD1,
+                        "head_ref": b["branch"], "url": "", "merge_commit_sha": ""}
+        w.gh.by_branch[b["branch"]] = [{"number": 17, "state": "CLOSED", "headRefOid": HEAD1}]
+        w.gh.files[17] = [{"path": f"data/relation-candidates/{b['shard']}/"
+                                  f"{b['shard']}_{b['batch']}_d_{b['producer']}.jsonl"}]
+        launches = len(w.adapter.launches)
+
+        self.restart(w)
+        w.tick()
+
+        self.assertEqual(w.row_()["state"], "ERROR")
+        self.assertIn("이미 PR", w.row_()["error"])
+        self.assertEqual(len(w.adapter.launches), launches)
+
+    def test_missing_baseline_during_a_live_run_does_not_start_another_run(self):
+        w = self.w
+        w.start("single", "deepseek", "d")
+        w.ai(session="ses_live")
+        w.tick()
+        b = w.row_()
+        w.store.delete(dchunk.run_start_key(b["id"]))
+        pid = b["pid"]
+
+        w.tick()
+
+        self.assertEqual(len(w.adapter.launches), 1)
+        self.assertEqual(w.row_()["pid"], pid)
+
+    def test_final_twentieth_chunk_restart_runs_idempotent_finalizer_once(self):
+        w = DWorld(records=500)
+        self.addCleanup(w.tmp.cleanup)
+        w.start("single", "deepseek", "d")
+        for n in range(20):
+            w.ai(session=f"ses_{n + 1}")
+        for _ in range(19):
+            w.tick()
+            w.finish_last()
+            w.tick()
+        self.assertEqual(w.active()["chunk_no"], 20)
+        real_next = w.sup._launch_d_next
+        w.sup._launch_d_next = lambda _b: (_ for _ in ()).throw(RuntimeError("restart after final save"))
+        w.finish_last()
+        w.tick()
+        w.sup._launch_d_next = real_next
+        self.assertEqual((w.row_()["state"], dchunk.verified_prefix(w.wt(), w.row_())[0]), ("PREPARE", 20))
+
+        self.restart(w, records=500)
+        w.tick()
+        w.tick(2)
+
+        b = w.row_()
+        self.assertEqual(b["state"], "WAITING_REVIEW")
+        self.assertEqual((len(w.adapter.launches), len(w.git.commits), len(w.git.pushes), len(w.gh.created_prs)),
+                         (20, 1, 1, 1))
+        self.assertEqual(w.runner.dchunk.validations, 1)
 
 
 class Finalization(unittest.TestCase):
