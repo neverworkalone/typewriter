@@ -371,7 +371,7 @@ class UpdateBranchSync(unittest.TestCase):
         w = self.w
         self.ready_for_review()
         b = self.update_pr_branch(w)
-        w.gh.reviews_ = [review(12, HEAD2, user="reviewer")]
+        w.gh.reviews_ = [review(12, HEAD2)]
 
         w.tick()
 
@@ -387,7 +387,7 @@ class UpdateBranchSync(unittest.TestCase):
     def test_fix_head_fast_forwards_without_restarting_the_completed_fix(self):
         w = self.w
         self.ready_for_review()
-        w.gh.reviews_ = [review(11, HEAD1, user="reviewer")]
+        w.gh.reviews_ = [review(11, HEAD1)]
         w.adapter.plan.append({"code": 0, "session": "ses_1", "effect": lambda: self.update_pr_branch(w)})
         w.tick()
         self.assertEqual(w.row()["state"], "FIXING")

@@ -3900,7 +3900,7 @@ class Supervisor:
 
     def _fast_forward_pr_head(self, b, info) -> str:
         """Apply the shared ownership, process, PR, remote, ancestry, artifact, and clean-worktree gates."""
-        number, branch, wt = b.get("pr_number"), b.get("branch"), Path(b["worktree"])
+        number, branch, wt = b["pr_number"], b["branch"], Path(b["worktree"])
         if number is None or info.get("number") != number:
             raise FastForwardBlocked("PR 번호가 batch 소유 PR과 일치하지 않습니다")
         if info.get("state") != "open" or info.get("merged"):
@@ -3910,7 +3910,7 @@ class Supervisor:
         target = info.get("head_sha")
         if not isinstance(target, str) or not re.fullmatch(r"[a-f0-9]{40}", target):
             raise FastForwardBlocked(f"PR #{number} HEAD가 유효한 commit SHA가 아닙니다")
-        if b.get("pid") is not None:
+        if b["pid"] is not None:
             raise FastForwardRace("AI 프로세스 종료가 확인되지 않아 worktree 동기화를 미룹니다")
 
         protected = self._pr_protected_paths(b, info)
@@ -3926,7 +3926,7 @@ class Supervisor:
 
         old = self.git.head(wt)
         self.git.fast_forward_open_pr(wt, branch, target, protected, recheck=recheck_pr)
-        if b["method"] == STAGE2_METHOD and b.get("state") == "FIXING":
+        if b["method"] == STAGE2_METHOD and b["state"] == "FIXING":
             key = f"s2_safe_ff_{b['id']}"
             try:
                 prior = json.loads(self.store.get(key) or "")
