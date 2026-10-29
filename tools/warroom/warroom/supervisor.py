@@ -3966,6 +3966,37 @@ class Supervisor:
                                       f"{b['branch']!r}와 다릅니다 (잘못된 PR/브랜치). 보존."))
             return "stop"
         try:
+            remote = self.git.remote_head(b["branch"])
+            if remote is None:
+                self.store.set(key, "")
+                self._fail(b, "ERROR", f"원격 소유 브랜치 {b['branch']}가 없습니다. worktree·브랜치를 보존합니다.")
+                return "stop"
+            if remote == local:
+                return self._head_lag_wait(
+                    b, key, f"원격에는 local HEAD {local[:10]}이 있지만 PR API HEAD는 {info['head_sha'][:10]}입니다")
+            if remote != info["head_sha"]:
+                # A stale PR API can briefly trail an Update branch push. Re-read once before classifying
+                # an unrelated origin SHA as divergence; only a PR now pointing at that exact SHA may sync.
+                current = self.gh.pull(info["number"])
+                if current.get("merged"):
+                    self.store.set(key, "")
+                    self.store.update(b["id"], state="MERGED", merged=1, head_sha=current["head_sha"], error=None)
+                    self.store.log(b["id"], f"PR #{info['number']} merged=true 확인 중 HEAD 재조회 — 정리 단계에서 검증")
+                    return "stop"
+                if current.get("state") != "open":
+                    self.store.set(key, "")
+                    self._fail(b, "ERROR", f"PR #{info['number']}이 머지 없이 닫혔습니다. worktree 보존.")
+                    return "stop"
+                if current.get("number") != b["pr_number"] or current.get("head_ref") != b["branch"]:
+                    self.store.set(key, "")
+                    self._fail(b, "ERROR", f"PR #{info['number']}의 repository 또는 소유 head 브랜치가 바뀌었습니다. worktree 보존.")
+                    return "stop"
+                if current.get("head_sha") != remote:
+                    self.store.set(key, "")
+                    self._fail(b, "ERROR", (f"원격 ref와 PR HEAD 불일치: 원격 {remote[:10]} / 로컬 {local[:10]} "
+                                              f"(PR HEAD {current.get('head_sha')}). worktree·브랜치를 보존합니다."))
+                    return "stop"
+                info.update(current)
             self._fast_forward_pr_head(b, info)
             latest = self.gh.pull(info["number"])
             if latest.get("number") != b["pr_number"] or latest.get("head_ref") != b["branch"]:
