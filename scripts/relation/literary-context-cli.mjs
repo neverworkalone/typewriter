@@ -333,7 +333,7 @@ main().catch((error) => {
       'arguments must use --option value pairs', 'invalid option format', 'an option was provided more than once',
       'an option value is required', '--db is required', '--checkpoint is required', '--canonical is required',
       '--shard is required', '--batch is required', '--model is required', '--input is required', '--output is required',
-      '--sense-ids is required', '--sense-id is required', '--form is required', '--basis is required',
+      '--sense-ids is required', '--sense-id is required', '--form is required', '--basis is required', '--candidate is required',
       'unsupported option', '--contexts must be an integer 1..16', '--limit must be an integer 1..50',
       '--skip must be an integer 0..contexts-1', '--skip requires --sense-ids',
       '--sense-ids must be a comma-separated list of valid IDs', '--sense-ids must contain unique IDs',

@@ -1199,7 +1199,7 @@ test('CLI usage diagnostics are fixed and validation precedes checkpoint/databas
     ]);
     assert.equal(failedOperation.status, 1);
     const protectedDiagnostic = JSON.parse(failedOperation.stderr);
-    assert.equal(protectedDiagnostic.diagnostic, 'operation');
+    assert.equal(protectedDiagnostic.diagnostic, 'index_access');
     assert.equal(failedOperation.stderr.includes(missingDb), false);
     assert.equal(await readFile(fixture.checkpointPath, 'utf8'), before);
   } finally {
