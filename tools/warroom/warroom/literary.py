@@ -372,7 +372,7 @@ def _candidate_content_issues(stderr: str, sense_ids: list[str]) -> tuple[int, l
         if not isinstance(issue, dict) or not isinstance(issue.get("record_id"), str) \
                 or issue.get("canonical_record_id") != issue.get("record_id") \
                 or issue.get("sense_id") not in sense_ids \
-                or issue.get("kind") not in ("source_lemma_repeat", "thousands_comma_fragment"):
+                or issue.get("kind") not in ("source_lemma_repeat", "thousands_comma_fragment", "duplicate_candidate"):
             return 0, []
         valid.append({key: issue[key] for key in ("record_id", "sense_id", "kind")})
     issue_count = affected.get("candidate_issue_count", len(issues))

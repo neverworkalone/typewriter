@@ -86,7 +86,7 @@ test('Candidate v1 reports every source-bound candidate content error with exact
     senses: record.senses.map((sense) => ({
       sense_id: sense.id,
       candidates: index === 0 && sense.id === 'w1-s1' ? ['기륭', '460', '서리']
-        : index === 0 && sense.id === 'w1-s2' ? ['기륭(註)'] : [],
+        : index === 0 && sense.id === 'w1-s2' ? ['기륭(註)', '서리', '서  리'] : [],
     })),
   }));
 
@@ -96,6 +96,7 @@ test('Candidate v1 reports every source-bound candidate content error with exact
       { record_id: 'w1', sense_id: 'w1-s1', candidate: '기륭', candidate_index: 0, kind: 'source_lemma_repeat' },
       { record_id: 'w1', sense_id: 'w1-s1', candidate: '460', candidate_index: 1, kind: 'thousands_comma_fragment' },
       { record_id: 'w1', sense_id: 'w1-s2', candidate: '기륭(註)', candidate_index: 0, kind: 'source_lemma_repeat' },
+      { record_id: 'w1', sense_id: 'w1-s2', candidate: '서  리', candidate_index: 2, kind: 'duplicate_candidate' },
     ]);
     return true;
   });

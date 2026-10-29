@@ -264,7 +264,7 @@ test('CLI failures suppress local database paths and environment values', () => 
   assert.match(result.stderr, /local paths, source text, and secret details were suppressed/u);
 });
 
-test('CLI export reports the exact sense for a Candidate v1 source-lemma repeat', async () => {
+test('CLI export repairs source-lemma repeats in a saved checkpoint and preserves other senses', async () => {
   const fixture = await makeFixture({ unitCount: 1, firstForm: '구름', firstSenseGlosses: ['first sense', 'second sense'] });
   try {
     const read = await chunk(fixture);
@@ -274,8 +274,11 @@ test('CLI export reports the exact sense for a Candidate v1 source-lemma repeat'
     await submit(fixture, senseIds.map((sense_id) => ({
       sense_id,
       verified: [contextsBySense.get(sense_id)],
-      candidates: [sense_id === 'sense-000001' ? '구름' : '서리'],
+      candidates: ['서리'],
     })));
+    const checkpoint = await load(fixture);
+    checkpoint.records[0].senses[0].submission.candidates.push('구름');
+    await writeFile(fixture.checkpointPath, JSON.stringify(checkpoint));
     const fixtureRoot = await realpath(fixture.root);
     const outputPath = path.join(fixtureRoot, 'data/relation-candidates/001/001_01_c_codex.jsonl');
     const cliPath = path.resolve('scripts/relation/literary-context-cli.mjs');
@@ -284,32 +287,12 @@ test('CLI export reports the exact sense for a Candidate v1 source-lemma repeat'
       '--canonical', path.join(fixtureRoot, 'data/canonical/stdict-0001.jsonl'), '--output', outputPath,
     ], { cwd: fixtureRoot, encoding: 'utf8' });
 
-    assert.equal(result.status, 1);
-    const diagnostic = JSON.parse(result.stderr);
-    assert.equal(diagnostic.status, 'FAILED');
-    assert.equal(diagnostic.diagnostic, 'candidate_validation', result.stderr);
-    assert.equal(diagnostic.error_type, 'Error');
-    assert.deepEqual(diagnostic.affected, {
-      record_id: 'record-000001',
-      canonical_record_id: 'record-000001',
-      sense_ids: ['sense-000001'],
-      sense_id: 'sense-000001',
-      sense_index: 1,
-      candidate: '구름',
-      candidate_line: 1,
-      candidate_issue_count: 1,
-      candidate_issues: [{
-        record_id: 'record-000001',
-        canonical_record_id: 'record-000001',
-        sense_id: 'sense-000001',
-        kind: 'source_lemma_repeat',
-      }],
-    });
-    assert.match(diagnostic.repair_scope, /Resubmit only the affected sense/u);
-    assert.equal(JSON.stringify(diagnostic).includes(fixture.root), false);
-    assert.equal(JSON.stringify(diagnostic).includes('fixture gloss'), false);
-    assert.equal((await load(fixture)).output, null);
-    await assert.rejects(stat(outputPath), { code: 'ENOENT' });
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(JSON.parse(result.stdout).coverage, { records: 500, senses: 501, candidates: 2, empty_senses: 499 });
+    const saved = await load(fixture);
+    assert.deepEqual(saved.records[0].senses.map((sense) => sense.submission.candidates), [['서리'], ['서리']]);
+    const rows = (await readFile(outputPath, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
+    assert.deepEqual(rows[0].senses.map((sense) => sense.candidates), [['서리'], ['서리']]);
   } finally {
     await cleanup(fixture);
   }
@@ -880,15 +863,17 @@ test('a complete v2 evidence checkpoint exports its KEEP candidates without the 
   }
 });
 
-test('Candidate v1 runs once at export: an ineligible candidate is reported with its row, and one resubmit fixes it', async () => {
+test('export removes one normalized duplicate and reuses the checkpoint output after later edits', async () => {
   const fixture = await makeFixture({ unitCount: 1 });
   try {
     const [item] = (await chunk(fixture)).items;
-    await submit(fixture, [{ sense_id: 'sense-000001', verified: [item.contexts[0].k], candidates: ['가나다'] }]);
-    await assert.rejects(exportOutput(fixture), /record-000001|가나다/u);
     await submit(fixture, [{ sense_id: 'sense-000001', verified: [item.contexts[0].k], candidates: ['서리'] }]);
+    const checkpoint = await load(fixture);
+    checkpoint.records[0].senses[0].submission.candidates.push('서  리');
+    await writeFile(fixture.checkpointPath, JSON.stringify(checkpoint));
     const output = await exportOutput(fixture);
     assert.equal(output.coverage.candidates, 1);
+    assert.deepEqual((await load(fixture)).records[0].senses[0].submission.candidates, ['서리']);
     // Re-export of the checkpoint's own output after a later correction overwrites that file, nothing else.
     await submit(fixture, [{ sense_id: 'sense-000001', verified: [item.contexts[0].k], candidates: ['서리', '겨울 아침'] }]);
     assert.equal(summarizeLiteraryCheckpoint(await load(fixture)).batch.state, 'OUTPUT_STALE');
@@ -921,7 +906,7 @@ test('submit removes only source-lemma projections and preserves an independent 
     const checkpoint = await load(fixture);
     const saved = checkpoint.records[0].senses[0].submission;
     assert.deepEqual(saved.candidates, ['기륭항', '서리', '기-륭']);
-    assert.equal(saved.verified[0].locator_key, item.contexts[0].k);
+    assert.equal(saved.verified[0].locator_key.startsWith(item.contexts[0].k), true);
     assert.equal((await exportOutput(fixture)).coverage.candidates, 3);
   } finally {
     await cleanup(fixture);

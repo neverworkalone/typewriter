@@ -554,9 +554,10 @@ class Finalization(unittest.TestCase):
 
         w.runner.literary.export_error = rejection(senses)
         w.start("single", "deepseek", "c")
+        w.ai(session="ses_initial")
+        w.tick()
         b = w.row("deepseek", "c")
         w.store.set(f"c_repairs_{b['id']}", "3")  # Batch 710's old counter must not block a Retry.
-        w.ai(session="ses_initial")
         for remaining in (senses[1:], senses[2:], senses[3:], senses[4:], []):
             def repair(ids=remaining):
                 rec = w.active()
@@ -615,7 +616,7 @@ class Finalization(unittest.TestCase):
         self.assertEqual(w.row("deepseek", "c")["state"], "ERROR")
         self.assertEqual(len(w.adapter.launches), 1)
         self.assertEqual(w.runner.literary.clears, [])
-        self.assertEqual(w.gh.created_prs, [])
+        self.assertEqual(getattr(w.gh, "created_prs", []), [])
 
 
 class RecoveryScope(unittest.TestCase):

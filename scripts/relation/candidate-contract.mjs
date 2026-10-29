@@ -201,7 +201,18 @@ export function validateCandidateBatch(canonicalRows, candidateRows, {
           fail(`${senseLine} candidates must be non-empty trimmed strings`);
         }
         const normalized = normalizeCandidate(candidate);
-        if (seen.has(normalized)) fail(`${senseLine} contains duplicate candidate ${JSON.stringify(candidate)}`);
+        if (seen.has(normalized)) {
+          candidateIssues.push({
+            record_id: source.id,
+            canonical_record_id: source.id,
+            sense_id: sourceSense.id,
+            candidate,
+            candidate_index: candidateIndex,
+            kind: 'duplicate_candidate',
+            message: `${senseLine} contains duplicate candidate ${JSON.stringify(candidate)}`,
+          });
+          continue;
+        }
         const issue = candidateV1ContentIssue(candidate, source, sourceSense, independentLemmaForms);
         if (issue !== undefined) {
           candidateIssues.push({
