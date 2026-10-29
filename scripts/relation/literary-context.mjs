@@ -1091,15 +1091,21 @@ export async function readLiteraryChunk({ databasePath, checkpointPath, senseIds
       not_yet_read: unqueried,
       items,
     };
-    if (skipProvided) {
+    if (format === 'text') {
+      const actualChars = renderChunkText(response).length;
+      if (actualChars > MAX_RESPONSE_CHARS) {
+        const error = new Error('chunk response exceeds the output budget');
+        error.code = 'LITERARY_OUTPUT_LIMIT';
+        error.actualChars = actualChars;
+        throw error;
+      }
+    } else {
       let omitted = 0;
-      const responseChars = () => format === 'text' ? renderChunkText(response).length : JSON.stringify(response).length;
+      const responseChars = () => JSON.stringify(response).length;
       while (responseChars() > MAX_RESPONSE_CHARS && response.items.length > 0) {
         response.items.pop();
         omitted += 1;
-      }
-      if (omitted > 0) {
-        response.not_yet_read += omitted;
+        response.not_yet_read = unqueried + omitted;
         response.truncated = true;
         response.has_more = true;
         response.offset = 0;
@@ -1114,9 +1120,9 @@ export async function readLiteraryChunk({ databasePath, checkpointPath, senseIds
         throw error;
       }
     }
-    const returnedSenseIds = skipProvided ? new Set(response.items.map((item) => item.sense_id)) : null;
+    const returnedSenseIds = new Set(response.items.map((item) => item.sense_id));
     for (const { sense, digest, totalHits, unitRowIds } of shownUpdates) {
-      if (returnedSenseIds && !returnedSenseIds.has(sense.sense_id)) continue;
+      if (!returnedSenseIds.has(sense.sense_id)) continue;
       // Keep the accumulated lookup order. For skip reads the first `skip` row ids were already shown and verified above.
       const earlier = sense.shown?.forms_sha256 === digest ? sense.shown.unit_rowids : [];
       sense.shown = { forms_sha256: digest, total_hits: totalHits, unit_rowids: [...new Set([...earlier, ...unitRowIds])] };

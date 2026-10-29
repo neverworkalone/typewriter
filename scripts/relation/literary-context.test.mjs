@@ -859,17 +859,23 @@ test('chunk --skip rejects invalid ranges, missing evidence and mismatched shown
   }
 });
 
-test('chunk --skip output-budget truncation leaves omitted senses without new shown evidence', async () => {
+test('chunk output limits do not save evidence for context items that were not returned', async () => {
   const longForms = Array.from({ length: 50 }, (_, index) => `fixtureform${index}${'x'.repeat(900)}`);
   const fixture = await makeFixture({ unitCount: 2, firstSearchForms: longForms });
   try {
-    await chunk(fixture, { senseIds: 'sense-000001', contexts: 1 });
     const before = await readFile(fixture.checkpointPath, 'utf8');
-    const response = await chunk(fixture, { senseIds: 'sense-000001', contexts: 2, skip: 1, format: 'text' });
-    assert.deepEqual(response.items, []);
-    assert.equal(response.truncated, true);
-    assert.equal(response.not_yet_read, 1);
-    assert.match(renderChunkText(response), /truncated=true/u);
+    await assert.rejects(chunk(fixture, { senseIds: 'sense-000001', contexts: 1, format: 'text' }),
+      (error) => error.code === 'LITERARY_OUTPUT_LIMIT');
+    assert.equal(await readFile(fixture.checkpointPath, 'utf8'), before);
+    await assert.rejects(chunk(fixture, { senseIds: 'sense-000001', contexts: 2, skip: 1, format: 'text' }), /previously shown context evidence/u);
+    assert.equal(await readFile(fixture.checkpointPath, 'utf8'), before);
+
+    const json = await chunk(fixture, { senseIds: 'sense-000001', contexts: 1, format: 'json' });
+    assert.deepEqual(json.items, []);
+    assert.equal(json.truncated, true);
+    assert.equal(json.not_yet_read, 1);
+    assert.equal(await readFile(fixture.checkpointPath, 'utf8'), before);
+    await assert.rejects(chunk(fixture, { senseIds: 'sense-000001', contexts: 2, skip: 1 }), /previously shown context evidence/u);
     assert.equal(await readFile(fixture.checkpointPath, 'utf8'), before);
   } finally {
     await cleanup(fixture);
@@ -1152,15 +1158,16 @@ const cliChunkArgs = (fixture, extra = []) => ['chunk', '--db', fixture.database
 test('chunk CLI accepts --skip and emits only the unseen context suffix', async () => {
   const fixture = await makeFixture({ unitCount: 20 });
   try {
-    const first = runCli(fixture, cliChunkArgs(fixture, ['--sense-ids', 'sense-000001', '--contexts', '8']));
+    const first = runCli(fixture, cliChunkArgs(fixture, ['--sense-ids', 'sense-000001', '--contexts', '8', '--format', 'text']));
     assert.equal(first.status, 0, first.stderr);
-    const initial = JSON.parse(first.stdout).items[0];
+    const initialKeys = [...first.stdout.matchAll(/^\[([A-Za-z0-9]{12})\] /gmu)].map((match) => match[1]);
+    assert.equal(initialKeys.length, 8);
 
     const extra = runCli(fixture, cliChunkArgs(fixture, [
       '--sense-ids', 'sense-000001', '--skip', '8', '--contexts', '16', '--format', 'text',
     ]));
     assert.equal(extra.status, 0, extra.stderr);
-    for (const context of initial.contexts) assert.equal(extra.stdout.includes(`[${context.k}]`), false);
+    for (const key of initialKeys) assert.equal(extra.stdout.includes(`[${key}]`), false);
     assert.match(extra.stdout, /hits=20 unseen=4/u);
     const checkpoint = await load(fixture);
     assert.equal(checkpoint.records[0].senses[0].shown.unit_rowids.length, 16);
