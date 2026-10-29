@@ -24,8 +24,15 @@ import {
 const SCRATCH_DIRECTORY = path.resolve('.warroom-scratch');
 const MAX_OUTPUT_CHARS = MAX_RESPONSE_CHARS;
 
+class UsageError extends Error {
+  constructor(message) {
+    super(message);
+    this.code = 'LITERARY_USAGE';
+  }
+}
+
 function fail(message) {
-  throw new Error(message);
+  throw new UsageError(message);
 }
 
 function parseArguments(args) {
@@ -33,17 +40,17 @@ function parseArguments(args) {
   const flags = new Set(['deep']);
   for (let index = 0; index < args.length; index += 1) {
     const item = args[index];
-    if (!item.startsWith('--')) fail(`unexpected argument ${JSON.stringify(item)}`);
+    if (!item.startsWith('--')) fail('arguments must use --option value pairs');
     const key = item.slice(2);
-    if (!/^[a-z][a-z0-9-]*$/u.test(key)) fail(`invalid option ${item}`);
+    if (!/^[a-z][a-z0-9-]*$/u.test(key)) fail('invalid option format');
     if (flags.has(key)) {
-      if (options[key]) fail(`${item} was provided more than once`);
+      if (options[key]) fail('an option was provided more than once');
       options[key] = true;
       continue;
     }
-    if (options[key] !== undefined) fail(`${item} was provided more than once`);
+    if (options[key] !== undefined) fail('an option was provided more than once');
     const value = args[index + 1];
-    if (value === undefined || value.startsWith('--')) fail(`${item} requires a value`);
+    if (value === undefined || value.startsWith('--')) fail('an option value is required');
     options[key] = value;
     index += 1;
   }
@@ -51,13 +58,39 @@ function parseArguments(args) {
 }
 
 function required(options, ...names) {
-  for (const name of names) if (!options[name]) fail(`--${name} is required`);
+  for (const name of names) if (options[name] === undefined || options[name] === '') fail(`--${name} is required`);
   return Object.fromEntries(names.map((name) => [name, options[name]]));
 }
 
 function only(options, ...allowed) {
   const unexpected = Object.keys(options).filter((key) => !allowed.includes(key));
-  if (unexpected.length > 0) fail(`unsupported option(s): ${unexpected.map((key) => `--${key}`).join(', ')}`);
+  if (unexpected.length > 0) fail('unsupported option');
+}
+
+function integerOption(options, name, minimum, maximum, defaultValue) {
+  const value = options[name];
+  if (value === undefined) return defaultValue;
+  if (!/^\d+$/u.test(value)) {
+    fail(name === 'contexts' ? '--contexts must be an integer 1..16'
+      : name === 'limit' ? '--limit must be an integer 1..50'
+        : '--skip must be an integer 0..contexts-1');
+  }
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed < minimum || parsed > maximum) {
+    fail(name === 'contexts' ? '--contexts must be an integer 1..16'
+      : name === 'limit' ? '--limit must be an integer 1..50'
+        : '--skip must be an integer 0..contexts-1');
+  }
+  return parsed;
+}
+
+function validateSenseIds(value) {
+  const ids = value.split(',');
+  const idPattern = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u;
+  if (ids.length === 0 || ids.some((id) => !idPattern.test(id))) {
+    fail('--sense-ids must be a comma-separated list of valid IDs');
+  }
+  if (new Set(ids).size !== ids.length) fail('--sense-ids must contain unique IDs');
 }
 
 function print(payload) {
@@ -190,16 +223,24 @@ async function main() {
       break;
     }
     case 'chunk': {
-      only(options, 'db', 'checkpoint', 'limit', 'contexts', 'snippet-chars', 'sense-ids', 'format');
+      only(options, 'db', 'checkpoint', 'limit', 'contexts', 'skip', 'snippet-chars', 'sense-ids', 'format');
       const format = options.format ?? 'json';
       if (!['json', 'text'].includes(format)) fail('--format must be json or text');
       required(options, 'db', 'checkpoint');
+      const limit = integerOption(options, 'limit', 1, 50, 12);
+      const contexts = integerOption(options, 'contexts', 1, 16, 8);
+      const skip = options.skip === undefined ? undefined : integerOption(options, 'skip', 0, contexts - 1, 0);
+      if (skip !== undefined && options['sense-ids'] === undefined) fail('--skip requires --sense-ids');
+      if (options['sense-ids'] !== undefined) validateSenseIds(options['sense-ids']);
       result = await readLiteraryChunk({
         databasePath: options.db,
         checkpointPath: options.checkpoint,
         senseIds: options['sense-ids'],
-        limit: options.limit,
-        contexts: options.contexts,
+        limit,
+        contexts,
+        skip,
+        format,
+        outputBudget: MAX_OUTPUT_CHARS,
         snippetChars: options['snippet-chars'],
         scratchDirectory: SCRATCH_DIRECTORY,
       });
@@ -238,6 +279,7 @@ async function main() {
     }
     case 'report': {
       only(options, 'checkpoint', 'sense-ids');
+      if (options['sense-ids'] !== undefined) validateSenseIds(options['sense-ids']);
       const { checkpoint } = await loadLiteraryCheckpoint(required(options, 'checkpoint').checkpoint, { scratchDirectory: SCRATCH_DIRECTORY });
       result = options['sense-ids'] === undefined ? summarizeLiteraryCheckpoint(checkpoint) : reportLiteraryCheckpointSenses(checkpoint, options['sense-ids']);
       break;
@@ -257,6 +299,7 @@ async function main() {
     case 'clear-candidates': {
       only(options, 'checkpoint', 'canonical', 'sense-ids');
       required(options, 'checkpoint', 'canonical', 'sense-ids');
+      validateSenseIds(options['sense-ids']);
       result = await clearLiteraryCandidateSenses({
         checkpointPath: options.checkpoint,
         canonicalPath: options.canonical,
@@ -279,13 +322,37 @@ async function main() {
       break;
     }
     default:
-      fail(`unknown command ${JSON.stringify(command)}\n${usage()}`);
+      fail('unknown command');
   }
   print(result);
 }
 
 main().catch((error) => {
   const errorType = typeof error?.name === 'string' && /^[A-Za-z][A-Za-z0-9]*$/u.test(error.name) ? error.name : 'Error';
+  if (error?.code === 'LITERARY_USAGE') {
+    const messages = new Set([
+      'arguments must use --option value pairs', 'invalid option format', 'an option was provided more than once',
+      'an option value is required', '--db is required', '--checkpoint is required', '--canonical is required',
+      '--shard is required', '--batch is required', '--model is required', '--input is required', '--output is required',
+      '--sense-ids is required', '--sense-id is required', '--form is required', '--basis is required', '--candidate is required',
+      'unsupported option', '--contexts must be an integer 1..16', '--limit must be an integer 1..50',
+      '--skip must be an integer 0..contexts-1', '--skip requires --sense-ids',
+      '--sense-ids must be a comma-separated list of valid IDs', '--sense-ids must contain unique IDs',
+      '--format must be json or text', 'unknown command',
+    ]);
+    const message = messages.has(error.message) ? error.message : 'invalid command arguments';
+    process.stderr.write(`${JSON.stringify({ status: 'FAILED', diagnostic: 'usage', message })}\n`);
+    process.exitCode = 1;
+    return;
+  }
+  if (error?.code === 'LITERARY_OUTPUT_LIMIT') {
+    const message = error.format === 'text'
+      ? 'Text view exceeds the output budget; nothing was emitted.'
+      : 'Chunk output exceeds the response budget; no checkpoint evidence was changed.';
+    process.stderr.write(`${JSON.stringify({ status: 'OUTPUT_LIMIT', max_chars: MAX_OUTPUT_CHARS, actual_chars: error.actualChars, message })}\n`);
+    process.exitCode = 1;
+    return;
+  }
   if (error?.code === 'LITERARY_SUBMISSION_VALIDATION') {
     const reasons = new Set([
       'submission_schema', 'unknown_sense', 'duplicate_sense', 'context_key_not_found',
