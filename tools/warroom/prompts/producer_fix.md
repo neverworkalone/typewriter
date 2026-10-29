@@ -10,7 +10,17 @@ merge/rebase/reset, 새 PR, 리뷰 요청, 머지를 하지 않는다. 변경이
 2. Method 지적을 판단하고 허용 범위 안에서 수정한다.
 3. `node scripts/relation/candidate-contract.mjs {{canonical}} {{output}}`
 4. 파일 변경이 있으면 `git add {{output}}`, commit, `git push origin {{branch}}` 순으로 실행한다. 변경이 없으면 커밋하지 않는다.
-5. 답변한 리뷰 이벤트마다 해당 이벤트 키를 정확히 표시한 줄 `WarRoom-Review-Event: <event_key>`를 포함해 `gh pr comment {{pr}} --body "..."`로 답변한 뒤 종료한다. 한 댓글이 여러 이벤트에 답하면 답한 각 이벤트 키를 별도 줄로 모두 표시한다. 답변하지 않은 이벤트 키는 표시하지 않는다.
+5. 답변한 리뷰 이벤트에 대해서만 PR 댓글을 작성한 뒤 종료한다. 본문은 `--body-file -`과 quoted heredoc을 사용해 전달한다.
+
+```sh
+gh pr comment {{pr}} --body-file - <<'EOF'
+수정 사항과 검증 결과를 기록합니다.
+
+WarRoom-Review-Event: review:<실제 이벤트 ID>
+EOF
+```
+
+예시의 이벤트 키는 자리표시자다. 실행할 때 제공된 전체 `event_key`를 그대로 별도의 실제 줄에 쓴다. 본문 줄바꿈에 리터럴 `\n`을 사용하지 않는다. 한 댓글이 여러 이벤트에 답하면 답한 각 이벤트 키를 각각 별도의 실제 줄에 모두 표시하고, 답변하지 않은 이벤트 키는 포함하지 않는다.
 이벤트 키는 `review:5694086548`처럼 제공된 전체 문자열을 접두사까지 그대로 사용하며 숫자 ID만 작성하지 않는다.
 실패한 명령을 성공으로 간주하지 않는다.
 
