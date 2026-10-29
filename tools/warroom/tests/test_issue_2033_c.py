@@ -557,7 +557,7 @@ class Finalization(unittest.TestCase):
         w.ai(session="ses_initial")
         w.tick()
         b = w.row("deepseek", "c")
-        w.store.set(f"c_repairs_{b['id']}", "3")  # Batch 710's old counter must not block a Retry.
+        w.store.set(f"c_repairs_{b['id']}", "3")  # A legacy batch-wide counter does not gate this repair.
         for remaining in (senses[1:], senses[2:], senses[3:], senses[4:], []):
             def repair(ids=remaining):
                 rec = w.active()
