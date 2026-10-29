@@ -140,7 +140,7 @@ class Stage2Finalization(unittest.TestCase):
         w, b = self.start_optional_part(sense_id="w1-s1")
         context = w.sup._s2_fix_context(b, [{"body": "Please also fix this Sense's activities photo."}])
         self.assertIn("source_context 없음", context)
-        self.assertIn("without a Sense ID", context)
+        self.assertIn("Sense ID나 유효 튜플이 없는 순수 지시 문장", context)
 
     def test_fix_context_keeps_40kb_inline_and_pages_only_above_90kb(self):
         w, b = self.start_optional_part(sense_id="w1-s1")

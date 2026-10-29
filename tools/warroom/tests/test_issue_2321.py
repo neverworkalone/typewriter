@@ -104,6 +104,11 @@ class ReviewPairSelection(unittest.TestCase):
         self.assertEqual(result["fallback_sense_ids"], [])
         self.assertIn("without a Sense ID", stage2.review_events.__doc__)
 
+    def test_sense_ids_followed_by_korean_text_are_still_found(self):
+        result = stage2.review_pairs("w1-s1의 후보와 w2-s1은 비교 대상입니다.", self.items)
+        self.assertEqual(result["fallback_sense_ids"], ["w1-s1", "w2-s1"])
+        self.assertEqual(result["mentioned_sense_ids"], ["w1-s1", "w2-s1"])
+
     def test_pr_2347_review_excerpts_select_the_complete_part_sense_sets(self):
         expected = {
             "w523977-s1", "w524392-s1", "w520343-s1", "w525757-s1",

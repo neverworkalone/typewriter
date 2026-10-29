@@ -12,7 +12,7 @@ Run commands from the worktree root. Use `.warroom-scratch/...` as paths; do not
 
 {{s2_policy_card}}
 
-- Assess each review event against the current PR HEAD, the policy card above, and the supplied `source_context`. The context contains only candidate pairs explicitly selected by the review plus full-Sense fallbacks for clearly targeted but unidentifiable candidates; its Q rows are comparison context, not extra review targets.
+- Assess each review event against the current PR HEAD, the policy card above, and the supplied `source_context`. The context contains exact candidate pairs from events where that Sense has no prose mention, plus full-Sense detail for every Part source Sense mentioned outside a tuple span or named by an unmatched tuple. Its Q rows are comparison context, not extra review targets.
 - Use the supplied context first. If a concrete finding still lacks necessary source or target information, use one narrow read-only `inspect` for only the required Sense or candidate. Do not reread docs or scripts, and do not inspect each candidate separately.
 - Make semantic judgments yourself. Apply all accepted candidate changes together in one `.warroom-scratch/amend-decisions.txt` file and run:
 

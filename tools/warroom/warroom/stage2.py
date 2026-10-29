@@ -228,7 +228,7 @@ _JOINED_DECISION_ROW = re.compile(rf"[ \t]+{_DECISION_ROW_PATTERN}")
 _ERROR_ALIAS = re.compile(r"^(c\d+)\b", re.M)
 _FENCE = re.compile(r"^\s*```")
 _LINK_ROW = re.compile(r"^c\d+\s")
-_SENSE_ID = re.compile(r"\b[wr]\d+-s[1-9]\d*\b")
+_SENSE_ID = re.compile(r"(?<![A-Za-z0-9_-])[wr]\d+-s[1-9]\d*(?![A-Za-z0-9_-])")
 _REVIEW_TUPLE_START = re.compile(r"(?<![\w-])(?P<record>[wr]\d+)[ \t]*,[ \t]*(?P<sense>[wr]\d+-s[1-9]\d*)[ \t]*,[ \t]*")
 
 
