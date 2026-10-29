@@ -231,6 +231,7 @@ _LINK_ROW = re.compile(r"^c\d+\s")
 _SENSE_ID = re.compile(r"(?<![A-Za-z0-9_-])[wr]\d+-s[1-9]\d*(?![A-Za-z0-9_-])")
 _REVIEW_TUPLE_START = re.compile(r"(?<![\w-])(?P<record>[wr]\d+)[ \t]*,[ \t]*(?P<sense>[wr]\d+-s[1-9]\d*)[ \t]*,[ \t]*")
 _REVIEW_PLAIN_TUPLE = re.compile(r"^[^\s,]+[ \t]*,[ \t]*[^\s,]+[ \t]*,[ \t]*")
+_REVIEW_PROSE_BOUNDARY = re.compile(r"(?<=[.!?。！？])[ \t]+(?=\S)")
 
 
 def _review_triplets(text: str) -> list[tuple[str, str, str, int, int]]:
@@ -292,6 +293,9 @@ def _review_triplets(text: str) -> list[tuple[str, str, str, int, int]]:
         if len(starts) > 1:
             for index, match in enumerate(starts):
                 end = starts[index + 1].start() if index + 1 < len(starts) else len(row)
+                boundary = _REVIEW_PROSE_BOUNDARY.search(row, match.end(), end)
+                if boundary:
+                    end = boundary.start() - 1  # Keep the sentence punctuation in prose.
                 candidate = row[match.end():end].strip().rstrip(";| ")
                 if candidate:
                     raw_candidate = row[match.end():end]
@@ -302,7 +306,9 @@ def _review_triplets(text: str) -> list[tuple[str, str, str, int, int]]:
             offset += len(line)
             continue
         if _REVIEW_PLAIN_TUPLE.match(row):
-            trimmed = row.rstrip(".;")
+            boundary = _REVIEW_PROSE_BOUNDARY.search(row)
+            tuple_end = boundary.start() - 1 if boundary else len(row)
+            trimmed = row[:tuple_end].rstrip(".;")
             add(trimmed, offset + row_start, offset + row_start + len(trimmed))
         offset += len(line)
     return found
