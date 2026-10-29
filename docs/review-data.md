@@ -47,15 +47,7 @@ only* do not apply to the new scope.
   non-empty plain text with no ID: no click action, no reverse relation, no
   invented record. Reject a fabricated ID or a wrong-meaning link used to
   avoid text.
-- **Bidirectional scoring by Part policy:** Typewriter-authored ID↔ID relations
-  remain explorable from both ends. Legacy Parts/checkpoints use independently
-  judged reverse type/Tier. **Only after #2309's one-way implementation is
-  merged**, newly prepared Parts have one source-bound Type/Tier judgment and
-  the admission CLI mirrors it into the reverse fields. All new pairs then
-  intentionally have matching forward/reverse Type/Tier; this is **not** a
-  review defect or evidence that the reverse side was neglected. Verify the
-  actual policy of the Part/checkpoint on the exact reviewed HEAD. Do not
-  symmetrise prior approved asymmetric rows or STDICT relations.
+- **Bidirectional:** authored ID↔ID links remain searchable both ways. After #2309 is implemented, new Parts mirror source Type/Tier; equality is required, not a blocker. Older Parts/checkpoints retain independent reverse scores. Do not change historical or STDICT relations.
 - **Not implemented yet:** text-only targets, the authored-relation source of
   truth and bidirectional derivation. Verify these contracts when the
   implementing code lands; do not require them, or claim they work, before.
@@ -112,15 +104,7 @@ The root `REVIEW.md` **Stage 1 Candidate form gate** is the review authority for
   2 absent a real distinction. Equal values are fine. 4 vs 5 is ordinarily
   subjective, **not a blocker**. Relevance is ordinal display priority,
   **not** semantic distance or confidence.
-- Reverse links need valid source/target identities and preserved provenance.
-  The permitted reverse scoring is **policy-specific**: independent in legacy
-  Parts, source-score mirror in newly prepared #2309-mode Parts once implemented.
-  Confirm the actual source/target bindings and bidirectional build; pairwise
-  equality in #2309-mode data is mandatory and **must not be blocked as
-  artificial uniformity**. Do not rewrite historical asymmetric data,
-  invent reverse links for text-only, or symmetrise STDICT (except its
-  existing `direct` projection). Valid entries with zero relations remain
-  admissible and searchable. Avoid mechanical subjective scoring validators.
+- Reverse links require valid source/target IDs and provenance. Never create them for text-only or STDICT types other than the existing `direct` projection. Older asymmetric scores and zero relations remain valid; no mechanical scoring validators.
 
 ## Systemic relation defects — Stage 2 and re-review
 
