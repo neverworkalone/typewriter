@@ -1875,7 +1875,7 @@ test('selected inspect preserves whole-sense digest and aliases while bounding Q
   const legacyFilter = await quiet(() => run([
     'inspect', '--checkpoint', checkpoint, '--source-sense-id', 'w1-s1', '--candidate', longCandidates[4], '--format', 'compact',
   ], { root }));
-  assert.match(legacyFilter.text, /^c5\t/u, 'the existing --candidate filter retains its full-sense alias');
+  assert.match(legacyFilter.text, /\nc5\t/u, 'the existing --candidate filter retains its full-sense alias');
   assert.equal(legacyFilter.digest, fullW1.digest, 'the existing --candidate filter keeps its prior digest contract');
 });
 
