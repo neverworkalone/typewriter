@@ -30,7 +30,7 @@ class IssuePublication(unittest.TestCase):
         self.assertEqual(w.store.maintenance_rows(), [])
         self.assertEqual(w.row()["state"], before["state"])
         self.assertEqual(w.row()["pause_reason"], "")
-        self.assertEqual(SCHEMA_VERSION, 10)
+        self.assertEqual(SCHEMA_VERSION, 11)
 
     def test_unavailable_github_keeps_persisted_request_and_processes_it_after_restart(self):
         w = self.w
@@ -54,7 +54,11 @@ class IssuePublication(unittest.TestCase):
         w.gh.fail_create_lost = True
         w.sup.maint.report_issue("목록", "C000123", event_key="list:lost-response")
         w.tick()
-        self.assertEqual((w.store.issue_requests()[0]["state"], w.gh.created), ("PENDING", [101]))
+        request = w.store.issue_requests()[0]
+        self.assertEqual((request["state"], request["attempt_issue_numbers"], w.gh.created),
+                         ("CREATING", "[]", [101]))
+        # The API may expose only second-resolution timestamps; the pre-create ID snapshot is the recovery proof.
+        w.gh.issues[101]["created_at"] = request["created_at"]
 
         w.sup = w.make_sup()
         w.tick(2)
@@ -63,6 +67,23 @@ class IssuePublication(unittest.TestCase):
                          ("PUBLISHED", 101, [101]))
         self.assertEqual(w.gh.issues[101]["body"], "C000123")
         self.assertEqual(len(w.gh.issue_comments_[101]), 1)
+
+    def test_same_second_preexisting_issue_is_not_reused(self):
+        w = self.w
+        w.gh.issues[101] = {"state": "open", "labels": [], "title": "목록", "body": "C000123",
+                            "created_at": 123.0}
+        w.sup.maint.report_issue("목록", "C000123", event_key="list:after-existing")
+        request = w.store.issue_requests()[0]
+        # Reproduce a GitHub timestamp that collides with the request's Unix second.
+        w.gh.issues[101]["created_at"] = request["created_at"]
+        w.tick()
+
+        request = w.store.issue_requests()[0]
+        self.assertEqual((request["state"], request["issue_number"]), ("PUBLISHED", 102))
+        self.assertEqual(w.gh.created, [102])
+        self.assertNotIn("warroom-issue-request:", "".join(
+            c["body"] for c in w.gh.issue_comments_.get(101, [])))
+        self.assertEqual(w.gh.issues[102]["body"], "C000123")
 
     def test_same_event_is_idempotent_but_distinct_events_with_identical_text_stay_separate(self):
         w = self.w

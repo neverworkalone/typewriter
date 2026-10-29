@@ -16,7 +16,6 @@ from __future__ import annotations
 import json
 import hashlib
 import re
-from datetime import datetime, timezone
 from pathlib import Path
 
 from . import auth, defects, stage2
@@ -101,51 +100,44 @@ class Maintenance:
     def _issue_retry_succeeded(self, key: str) -> None:
         self.sup._transient_clear(f"issue:{key}")
 
-    @staticmethod
-    def _created_timestamp(value) -> float | None:
-        if isinstance(value, (int, float)):
-            return float(value)
-        if not isinstance(value, str) or not value:
-            return None
-        try:
-            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
-            if parsed.tzinfo is None:
-                parsed = parsed.replace(tzinfo=timezone.utc)
-            return parsed.timestamp()
-        except ValueError:
-            return None
+    def _find_issue_request(self, request) -> tuple[int | None, list[int]]:
+        """Find this event's marker or reconcile a create attempt against its pre-create Issue ID snapshot.
 
-    def _find_issue_request(self, request) -> int | None:
-        """Recover this request after a lost create response without changing its title or body.
-
-        A request marker lives in a comment, leaving caller-authored Issue bodies byte-for-byte intact. The ordered
-        publisher marks each completed Issue before starting the next request, so another event with identical text
-        is not mistaken for this one.
+        The snapshot is persisted before the GitHub create call. Only a matching Issue absent from that snapshot can
+        be a create whose response was lost; pre-existing same-title/body Issues are never adopted, regardless of
+        timestamp precision. Multiple unmatched candidates remain ambiguous and block another create attempt.
         """
         expected_marker = self._issue_request_marker(request["event_key"])
         prefix = "<!-- warroom-issue-request:"
         issues = self.sup.gh.all_issues()
         exact = [i for i in issues if not i.get("pull_request") and i.get("title", "") == request["title"]
                  and i.get("body", "") == request["body"]]
-        unmarked_recent = []
-        not_before = int(float(request["created_at"]))
+        matching_numbers = [i["number"] for i in exact]
+        try:
+            previous_numbers = set(json.loads(request.get("attempt_issue_numbers") or "[]"))
+        except (TypeError, ValueError):
+            raise RuntimeError("저장된 Issue 생성 기준점이 손상되어 복구 대상을 특정할 수 없습니다")
+        same_event = None
+        created_since_attempt = []
         for issue in exact:
             comments = self.sup.gh.issue_comments(issue["number"])
             bodies = [c.get("body") or "" for c in comments]
             if any(expected_marker in body for body in bodies):
-                return issue["number"]
+                same_event = issue["number"]
+                break
             if any(prefix in body for body in bodies):
                 continue
-            created = self._created_timestamp(issue.get("created_at"))
-            if created is not None and created >= not_before:
-                unmarked_recent.append(issue["number"])
-        if len(unmarked_recent) > 1:
-            raise RuntimeError("동일한 제목·본문의 미확인 Issue가 여러 개라 발행 대상을 안전하게 특정할 수 없습니다")
-        return unmarked_recent[0] if unmarked_recent else None
+            if request["state"] == "CREATING" and issue["number"] not in previous_numbers:
+                created_since_attempt.append(issue["number"])
+        if same_event is not None:
+            return same_event, matching_numbers
+        if len(created_since_attempt) > 1:
+            raise RuntimeError("Issue 생성 응답 유실 후 동일한 제목·본문의 새 후보가 여러 개라 복구 대상이 모호합니다")
+        return (created_since_attempt[0] if created_since_attempt else None), matching_numbers
 
     def _publish_issue_requests(self) -> None:
         """Publish durable ordinary/urgent requests independently from the shared-defect state machine."""
-        for request in self.store.issue_requests(("PENDING", "CREATED")):
+        for request in self.store.issue_requests(("PENDING", "CREATING", "CREATED")):
             retry_key = f"request:{request['id']}"
             if not self._issue_retry_due(retry_key):
                 continue
@@ -155,9 +147,21 @@ class Maintenance:
                     if number is None:
                         raise RuntimeError("CREATED 요청에 GitHub Issue 번호가 없습니다")
                 else:
+                    before_create = {}
+
+                    def lookup():
+                        number, matching_numbers = self._find_issue_request(request)
+                        before_create["matching_numbers"] = matching_numbers
+                        return number, False
+
+                    def persist_attempt():
+                        if not self.store.prepare_issue_attempt(
+                                request["id"], before_create.get("matching_numbers", [])):
+                            raise RuntimeError("GitHub Issue 생성 전 기준점을 영속화하지 못했습니다")
+
                     number, _fresh = self._find_or_create_issue(
                         request["title"], request["body"], ["urgent"] if request["urgent"] else [],
-                        lambda: (self._find_issue_request(request), False))
+                        lookup, before_create=persist_attempt)
                     if not self.store.mark_issue_request_created(request["id"], number):
                         raise RuntimeError("발행된 Issue 번호를 요청에 영속화하지 못했습니다")
 
@@ -178,7 +182,8 @@ class Maintenance:
             except Exception as e:
                 self._issue_retry_failed(retry_key, e)
 
-    def _find_or_create_issue(self, title: str, body: str, labels: list[str], lookup) -> tuple[int, bool]:
+    def _find_or_create_issue(self, title: str, body: str, labels: list[str], lookup,
+                              before_create=None) -> tuple[int, bool]:
         """Share Issue creation across generic requests, shared defects and verify blocks.
 
         Each caller owns its established duplicate policy (event marker, defect class, or exact request payload),
@@ -186,6 +191,8 @@ class Maintenance:
         """
         number, fresh = lookup()
         if number is None:
+            if before_create is not None:
+                before_create()
             return self.sup.gh.create_issue(title, body, labels), True
         return number, fresh
 
