@@ -328,6 +328,7 @@ class ReviewFix(unittest.TestCase):
         self.assertIn("w0001-s1\t표제1\tnoun\t뜻 1-1\t후보1-1", fix["prompt"])
         self.assertNotIn("w0060-s1", fix["prompt"])
         w.adapter.finish(fix["pid"])
+        w.gh.add_pr_reply(b["pr_number"], "지적된 후보를 확인하고 수정했습니다.")
         w.tick()
         self.assertEqual((w.row_()["state"], w.row_()["error"]), ("WAITING_REVIEW", None))   # only the listed sense changed
 

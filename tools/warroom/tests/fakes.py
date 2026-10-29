@@ -4,6 +4,7 @@ import itertools
 import re
 import tempfile
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 from warroom import control
@@ -613,6 +614,13 @@ class FakeGh:
 
     def comment_issue(self, n, body):
         self.issue_comments_.setdefault(n, []).append({"body": body})
+
+    def add_pr_reply(self, n, body, login="neverworkalone-agent"):
+        comments = self.issue_comments_.setdefault(n, [])
+        comment_id = max((int(comment.get("id", 0)) for comment in comments), default=0) + 1
+        comments.append({"id": comment_id, "body": body, "user": {"login": login},
+                         "created_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")})
+        return comment_id
 
     def pull_files(self, n):
         if n in self.files:

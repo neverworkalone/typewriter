@@ -110,7 +110,7 @@ CREATE INDEX IF NOT EXISTS issue_requests_state ON issue_requests(state, id);
 # the run ends. NULL = not measured (old runs, OpenCode, missing usage); never 0 as a stand-in.
 RUN_USAGE_COLUMNS_V9 = ("input_tokens", "cached_input_tokens", "cache_write_tokens", "output_tokens",
                         "reasoning_output_tokens", "tool_calls", "submit_failures")
-SCHEMA_VERSION = 10
+SCHEMA_VERSION = 11
 
 MAINTENANCE_METHOD = "m"   # the hidden Maintainer's execution record lives in `batches` under this method
 CLEARED_HOLD = "운영자가 Maintainer 실행을 Clear함 — Issue·결함 기록 보존, 명시적 Retry 전에는 자동 재시작하지 않습니다"
@@ -121,6 +121,7 @@ ACTIVE_STATES = ("PREPARE", "PRODUCING", "WAITING_REVIEW", "FIXING", "MERGED",
 # Per-batch kv keys the Supervisor writes; removed with the batch by Clear.
 BATCH_KV_PREFIXES = ("last_poll_", "last_poll_fixhead_", "headlag_", "last_merge_check_", "no_pr_recovery_",
                      "verified_completion_run_", "defect_hold_", "cleanup_proof_", "stop_after_pr_",
+                     "fix_claim_", "fix_context_sent_", "fix_context_pending_",
                      "s2_run_start_", "s2_links_start_", "s2_repair_state_", "s2_repair_run_start_",
                      "s2_finalize_base_", "s2_commit_head_", "s2_fix_start_",
                      "pending_", "pr_create_")
@@ -216,6 +217,12 @@ class Store:
             if col not in have:
                 c.execute(f"ALTER TABLE runs ADD COLUMN {col} INTEGER")
         c.executescript(SCHEMA_V10)
+        handled_columns = {r["name"] for r in c.execute("PRAGMA table_info(handled_events)")}
+        for column in ("status TEXT NOT NULL DEFAULT 'LEGACY'", "run_id INTEGER", "reply_id INTEGER",
+                       "completed_at REAL"):
+            name = column.split()[0]
+            if name not in handled_columns:
+                c.execute(f"ALTER TABLE handled_events ADD COLUMN {column}")
         c.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
 
     @contextmanager
@@ -636,13 +643,36 @@ class Store:
     def is_handled(self, batch_id: int, pr: int, head: str, key: str) -> bool:
         with self._conn() as c:
             return c.execute("SELECT 1 FROM handled_events WHERE batch_id=? AND pr=? AND "
-                             "head_sha=? AND event_key=?", (batch_id, pr, head, key)).fetchone() is not None
+                             "head_sha=? AND event_key=? AND status IN ('HANDLED','LEGACY')",
+                             (batch_id, pr, head, key)).fetchone() is not None
 
-    def mark_handled(self, batch_id: int, pr: int, head: str, keys: list[str]) -> None:
+    def claim_events(self, batch_id: int, pr: int, head: str, keys: list[str], run_id: int) -> None:
+        """Record assignment to one fix run without treating the review event as completed."""
         with self._conn() as c:
             for key in keys:
-                c.execute("INSERT OR IGNORE INTO handled_events VALUES(?,?,?,?,?)",
-                          (batch_id, pr, head, key, time.time()))
+                c.execute("INSERT INTO handled_events(batch_id,pr,head_sha,event_key,ts,status,run_id,reply_id,completed_at) "
+                          "VALUES(?,?,?,?,?,'CLAIMED',?,NULL,NULL) ON CONFLICT(batch_id,pr,head_sha,event_key) "
+                          "DO UPDATE SET ts=excluded.ts,status='CLAIMED',run_id=excluded.run_id,reply_id=NULL,completed_at=NULL",
+                          (batch_id, pr, head, key, time.time(), run_id))
+
+    def mark_handled(self, batch_id: int, pr: int, head: str, keys: list[str], *,
+                     run_id: int | None = None, reply_id: int | None = None) -> None:
+        """Complete a Stage 1 fix with proof; no-proof callers retain their legacy Stage 2 behavior."""
+        now = time.time()
+        with self._conn() as c:
+            for key in keys:
+                status = "HANDLED" if run_id is not None and reply_id is not None else "LEGACY"
+                completed_at = now if status == "HANDLED" else None
+                c.execute("INSERT INTO handled_events(batch_id,pr,head_sha,event_key,ts,status,run_id,reply_id,completed_at) "
+                          "VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(batch_id,pr,head_sha,event_key) "
+                          "DO UPDATE SET ts=excluded.ts,status=excluded.status,run_id=excluded.run_id,"
+                          "reply_id=excluded.reply_id,completed_at=excluded.completed_at",
+                          (batch_id, pr, head, key, now, status, run_id, reply_id, completed_at))
+
+    def handled_event(self, batch_id: int, pr: int, head: str, key: str):
+        with self._conn() as c:
+            return c.execute("SELECT * FROM handled_events WHERE batch_id=? AND pr=? AND head_sha=? AND event_key=?",
+                             (batch_id, pr, head, key)).fetchone()
 
     # --- durable Issue publication requests (Issue #2291) ---
     def request_issue(self, event_key: str, title: str, body: str, urgent: bool = False) -> dict:
