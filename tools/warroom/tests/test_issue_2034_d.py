@@ -4,7 +4,7 @@ import unittest
 
 from pathlib import Path
 
-from tests.fakes import HEAD1, World
+from tests.fakes import HEAD1, HEAD2, World
 from warroom.github import GhError
 from warroom import control, dchunk, prompts
 
@@ -615,6 +615,7 @@ class RestartHandoff(unittest.TestCase):
     def test_shared_chunk_boundary_errors_name_the_actual_method(self):
         w = self.w
         w.start("single", "deepseek", "d")
+        w.tick()
         b = w.row_()
         for method, expected in (("d", "D 청크"), ("c", "C 청크"), ("a", "A 청크"), ("b", "B 청크"),
                                  ("s2", "Stage 2 청크")):
@@ -626,7 +627,8 @@ class RestartHandoff(unittest.TestCase):
         w = self.w
         b = self.save_first_then_interrupt_next_dispatch()
         w.store.update(b["id"], state="PRODUCING", run_kind="d_chunk_new")
-        w.gh.pr_info(17, HEAD1, state="closed", merged=False, head_ref=b["branch"])
+        w.gh.prs[17] = {"number": 17, "state": "closed", "merged": False, "head_sha": HEAD1,
+                        "head_ref": b["branch"], "url": "", "merge_commit_sha": ""}
         w.gh.by_branch[b["branch"]] = [{"number": 17, "state": "CLOSED", "headRefOid": HEAD1}]
         w.gh.files[17] = [{"path": f"data/relation-candidates/{b['shard']}/"
                                   f"{b['shard']}_{b['batch']}_d_{b['producer']}.jsonl"}]
