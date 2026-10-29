@@ -4059,9 +4059,8 @@ class Supervisor:
             return f"리뷰 수정 완료 증거 조회 실패: {e}. 이벤트는 미완료로 보존했습니다."
 
     def _s2_fix_context(self, b, events) -> str:
-        """Inspect only source senses named by the review and present in this Part, in bounded pages."""
+        """Inspect exact reviewed candidate pairs, using a full-Sense fallback only for explicit targets."""
         text = "\n".join(str(e.get("body", "")) for e in (events or []))
-        mentioned = sorted(set(re.findall(r"\b[wr]\d+-s[1-9]\d*\b", text)))
         try:
             checkpoint = stage2.checkpoint(b["worktree"], b["shard"], b["batch"])
             if checkpoint is None:
@@ -4073,17 +4072,36 @@ class Supervisor:
             if (raw_checkpoint.get("shard"), raw_checkpoint.get("batch"), raw_checkpoint.get("part")) != \
                     (b["shard"], bb, pp) or not isinstance(raw_checkpoint.get("items"), list):
                 return "source_context 없음: 현재 Part checkpoint의 source Sense 목록을 신뢰할 수 없습니다."
+            review = stage2.review_pairs(text, raw_checkpoint["items"])
+            selected = sorted({pair["source_sense_id"] for pair in review["pairs"]} |
+                              set(review["fallback_sense_ids"]))
             in_part = {item["sense_id"] for item in raw_checkpoint["items"]
                        if isinstance(item, dict) and isinstance(item.get("sense_id"), str)}
-            selected = [sense_id for sense_id in mentioned if sense_id in in_part]
-            unknown = [sense_id for sense_id in mentioned if sense_id not in in_part]
+            unknown = sorted(set(review["mentioned_sense_ids"]) - in_part)
             if not selected:
-                suffix = f" 리뷰에서 찾은 Part 밖/없는 ID는 {', '.join(unknown[:20])}." if unknown else ""
-                return ("source_context 없음: 리뷰 이벤트에서 현재 Part checkpoint에 속한 source Sense ID를 찾지 못했습니다." + suffix +
-                        " 필요한 ID를 작은 범위로 inspect 하거나 canonical source를 확인하세요.")
-            context = self.git.stage2_inspect(Path(b["worktree"]), b["shard"], *stage2.split_key(b["batch"]), selected)
+                suffix = f" 리뷰의 Part 밖/없는 Sense ID: {', '.join(unknown[:20])}." if unknown else ""
+                return ("source_context 없음: 리뷰에서 정확한 candidate tuple 또는 명시적 수정 대상 Sense를 찾지 못했습니다." + suffix +
+                        " 필요한 Sense·후보만 좁게 inspect 하세요.")
+            selection_path = ".warroom-scratch/s2-fix-select.json"
+            selection_file = Path(b["worktree"]) / selection_path
+            selection_file.parent.mkdir(parents=True, exist_ok=True)
+            selection_file.write_text(json.dumps({"candidates": [
+                {"source_sense_id": pair["source_sense_id"], "candidate": pair["candidate"]}
+                for pair in review["pairs"]
+            ]}, ensure_ascii=False) + "\n", "utf-8")
+            context = self.git.stage2_inspect(Path(b["worktree"]), b["shard"], *stage2.split_key(b["batch"]), selected,
+                                              selection_path=selection_path)
+            diagnostics = []
+            for pair in review["unmatched_pairs"]:
+                diagnostics.append("# Review tuple did not exactly match this Part: " +
+                                   ", ".join((pair["record_id"], pair["source_sense_id"], pair["candidate"])))
+            if review["fallback_sense_ids"]:
+                diagnostics.append("# Full-sense fallback for explicit review targets: " +
+                                   ", ".join(review["fallback_sense_ids"]))
             if unknown:
-                context += "\n# Review-mentioned IDs outside this Part: " + ", ".join(unknown[:20]) + "\n"
+                diagnostics.append("# Review-mentioned IDs outside this Part: " + ", ".join(unknown[:20]))
+            if diagnostics:
+                context += "\n" + "\n".join(diagnostics) + "\n"
             if len(context.encode("utf-8")) <= 90_000:
                 return context
             page_paths = stage2.write_pages(Path(b["worktree"]), ".warroom-scratch/s2-fix-context.txt",

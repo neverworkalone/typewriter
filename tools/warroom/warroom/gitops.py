@@ -836,7 +836,7 @@ class Git:
                 raise GitError("optional-link page exceeds its output limit at --page-size 1")
 
     def stage2_inspect(self, worktree: Path, shard: str, batch: str, part: str, sense_ids: list[str],
-                       timeout: int = 900) -> str:
+                       timeout: int = 900, selection_path: str | None = None) -> str:
         """Read bounded compact inspect pages for review context, never changing the checkpoint."""
         checkpoint = f".warroom-scratch/relation-admission-{shard}-{batch}-{part}.json"
         out = ".warroom-scratch/s2-fix-inspect.raw.txt"
@@ -848,6 +848,8 @@ class Git:
                 args = ["node", "scripts/relation/admission-cli.mjs", "inspect", "--checkpoint", checkpoint,
                         "--source-sense-id", ",".join(sense_ids), "--format", "compact", "--page", str(page),
                         "--page-size", str(page_size), "--out", out]
+                if selection_path is not None:
+                    args.extend(["--select", selection_path])
                 res = self.r.run(args, cwd=worktree, env=self.env, timeout=timeout)
                 if not res.ok:
                     detail = " ".join((res.err or res.out).split())[-300:]

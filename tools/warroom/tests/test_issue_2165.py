@@ -77,29 +77,63 @@ class Stage2Finalization(unittest.TestCase):
         context = w.sup._s2_fix_context(b, [{"body": "Please inspect w1-s1 and unrelated w999-s1."}])
         self.assertEqual(w.sup._fix_kind(b), "fix_new")
         self.assertEqual(w.git.inspect_calls[-1][1:], ("001", "01", "01", ["w1-s1"]))
+        self.assertEqual(w.git.inspect_selection_calls[-1], ".warroom-scratch/s2-fix-select.json")
+        selection = json.loads((Path(b["worktree"]) / ".warroom-scratch/s2-fix-select.json").read_text("utf-8"))
+        self.assertEqual(selection, {"candidates": []}, "an explicit Sense-only target selects the full Sense")
         self.assertIn("inspect w1-s1", context)
         self.assertIn("w999-s1", context)
+
+    def test_stage2_fix_context_selects_only_exact_candidate_pairs(self):
+        w, b = self.start_optional_part(sense_id="w1-s1")
+        checkpoint_path = Path(b["worktree"]) / ".warroom-scratch/relation-admission-001-01-01.json"
+        checkpoint = json.loads(checkpoint_path.read_text("utf-8"))
+        checkpoint["items"][0]["record_id"] = "w1"
+        checkpoint_path.write_text(json.dumps(checkpoint), "utf-8")
+        w.sup._s2_fix_context(b, [{"body": "`w1`, `w1-s1`, `candidate-0`"}])
+        self.assertEqual(w.git.inspect_calls[-1][1:], ("001", "01", "01", ["w1-s1"]))
+        self.assertEqual(json.loads((Path(b["worktree"]) / ".warroom-scratch/s2-fix-select.json").read_text("utf-8")),
+                         {"candidates": [{"source_sense_id": "w1-s1", "candidate": "candidate-0"}]})
+
+    def test_stage2_fix_context_uses_case_insensitive_cues_for_inspect_selection(self):
+        w, b = self.start_optional_part(sense_id="w1-s1")
+        checkpoint_path = Path(b["worktree"]) / ".warroom-scratch/relation-admission-001-01-01.json"
+        checkpoint = json.loads(checkpoint_path.read_text("utf-8"))
+        first = checkpoint["items"][0]
+        checkpoint["items"] = [
+            {**first, "record_id": "w1"},
+            {**first, "record_id": "w2", "sense_id": "w2-s1"},
+        ]
+        checkpoint_path.write_text(json.dumps(checkpoint), "utf-8")
+
+        context = w.sup._s2_fix_context(b, [{"body": "Please Fix w1-s1 and Compare w2-s1."}])
+
+        self.assertEqual(w.git.inspect_calls[-1][1:], ("001", "01", "01", ["w1-s1"]))
+        self.assertEqual(json.loads((Path(b["worktree"]) / ".warroom-scratch/s2-fix-select.json").read_text("utf-8")),
+                         {"candidates": []})
+        self.assertIn("w1-s1", context)
 
     def test_fix_context_keeps_40kb_inline_and_pages_only_above_90kb(self):
         w, b = self.start_optional_part(sense_id="w1-s1")
         w.git.inspect_text = "source context\n" + "x" * 40_000
         inline = w.sup._s2_fix_context(b, [{"body": "review w1-s1"}])
-        self.assertEqual(inline, w.git.inspect_text)
+        fallback_note = "\n# Full-sense fallback for explicit review targets: w1-s1\n"
+        self.assertEqual(inline, w.git.inspect_text + fallback_note)
         self.assertFalse((Path(b["worktree"]) / ".warroom-scratch" / "s2-fix-context.txt").exists())
 
         w.git.inspect_text = "".join(f"row {i} " + "x" * 1_000 + "\n" for i in range(100))
         paged = w.sup._s2_fix_context(b, [{"body": "review w1-s1"}])
         self.assertIn("bounded pages", paged)
-        pages = stage2.chunk_pages(w.git.inspect_text)
+        expected_context = w.git.inspect_text + fallback_note
+        pages = stage2.chunk_pages(expected_context)
         page_paths = [Path(b["worktree"]) / stage2.page_path(i, len(pages), ".warroom-scratch/s2-fix-context.txt")
                       for i in range(1, len(pages) + 1)]
-        self.assertEqual("".join(path.read_text("utf-8") for path in page_paths), w.git.inspect_text)
+        self.assertEqual("".join(path.read_text("utf-8") for path in page_paths), expected_context)
 
     def test_stage2_fix_prompt_has_the_supported_foreground_verify_and_gh_instructions(self):
         w, b = self.start_optional_part(sense_id="w1-s1")
         fix = prompts.fix(b, [], False, source_context="source context")
         for phrase in ("node scripts/relation/admission-cli.mjs verify --shard 001 --batch 01 --part 01 --json",
-                       "120000 ms", "foreground", "GH_CONFIG_DIR", "gh` CLI", "Write tool", "amend --help",
+                       "600000 ms", "foreground", "GH_CONFIG_DIR", "gh` CLI", "Write tool", "amend --help",
                        "do not use GitHub MCP"):
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, fix)
