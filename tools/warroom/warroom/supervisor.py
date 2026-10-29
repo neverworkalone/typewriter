@@ -4014,14 +4014,31 @@ class Supervisor:
                         or comment.get("id") is None):
                     continue
                 replies.append(comment)
-            if not replies:
-                return (f"fix 실행 #{run['id']}의 성공 응답은 확인했지만 PR #{b['pr_number']}에 실행 후 답글이 없습니다. "
-                        "리뷰 이벤트는 미완료로 보존했습니다. 원인 확인 후 소유자 Retry가 필요합니다.")
-            reply = max(replies, key=lambda item: (reviews._ts(item.get("created_at")), int(item["id"])))
-            reply_id = int(reply["id"])
-            self.store.mark_handled(b["id"], b["pr_number"], claim["head_sha"], claim["event_keys"],
-                                    run_id=run["id"], reply_id=reply_id)
-            claim.update(status="HANDLED", reply_id=reply_id, completed_at=self.clock())
+            event_replies = {}
+            for comment in replies:
+                body_lines = {line.strip() for line in str(comment.get("body") or "").splitlines()}
+                for key in claim["event_keys"]:
+                    if f"WarRoom-Review-Event: {key}" in body_lines:
+                        comment_id = int(comment["id"])
+                        old = event_replies.get(key)
+                        if old is None or (reviews._ts(comment.get("created_at")), comment_id) > old[0]:
+                            event_replies[key] = ((reviews._ts(comment.get("created_at")), comment_id), comment_id)
+            for key, (_order, reply_id) in event_replies.items():
+                self.store.mark_handled(b["id"], b["pr_number"], claim["head_sha"], [key],
+                                        run_id=run["id"], reply_id=reply_id)
+            missing = [key for key in claim["event_keys"] if key not in event_replies]
+            if missing:
+                claim.update(status="PARTIAL" if event_replies else "CLAIMED",
+                             handled_event_keys=sorted(event_replies), missing_event_keys=missing,
+                             completed_at=self.clock() if event_replies else None)
+                self.store.set(f"fix_claim_{b['id']}", json.dumps(claim, sort_keys=True))
+                if not event_replies:
+                    return (f"fix 실행 #{run['id']}의 성공 응답은 확인했지만 PR #{b['pr_number']}에 리뷰 이벤트 키가 표시된 "
+                            "실행 후 답글이 없습니다. 이벤트는 미완료로 보존했습니다. 원인 확인 후 소유자 Retry가 필요합니다.")
+                return (f"fix 실행 #{run['id']}의 PR 답글은 확인했지만 답변 증거가 없는 리뷰 이벤트가 남았습니다: "
+                        f"{', '.join(missing)}. 표시된 이벤트만 완료 처리하고 나머지는 보존했습니다. 원인 확인 후 소유자 Retry가 필요합니다.")
+            reply_ids = {key: reply_id for key, (_order, reply_id) in event_replies.items()}
+            claim.update(status="HANDLED", reply_ids=reply_ids, completed_at=self.clock())
             self.store.set(f"fix_claim_{b['id']}", json.dumps(claim, sort_keys=True))
             return None
         except TRANSIENT:
