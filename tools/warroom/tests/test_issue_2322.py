@@ -293,6 +293,7 @@ class FixEventLifecycle(unittest.TestCase):
         w.adapter.plan.append({"code": 0, "session": "ses_remaining"})
         self.assertTrue(control.retry(w.store, "deepseek", "a"))
         w.tick()
+        w.tick()
         self.assertIn("review:12", w.adapter.launches[-1]["prompt"])
         self.assertNotIn("review:11", w.adapter.launches[-1]["prompt"])
         w.adapter.finish(w.row()["pid"])
