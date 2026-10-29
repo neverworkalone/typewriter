@@ -104,16 +104,13 @@ CREATE TABLE IF NOT EXISTS issue_requests (
 );
 CREATE INDEX IF NOT EXISTS issue_requests_state ON issue_requests(state, id);
 """
-# Additive migration (user_version 11, Issue #2291 review): preserve the exact matching Issue IDs seen before a
-# create attempt, so same-second pre-existing issues cannot be mistaken for a create whose response was lost.
-ISSUE_REQUEST_COLUMNS_V11 = ("attempt_issue_numbers",)
 # Additive migration (user_version 7, Issue #1684): `lines.shard_pin` is the shard a Single-mode Stage 2 run is bound to.
 # Additive migration (user_version 8, Issue #1809): the observed unit of intermediate progress (chunks/senses).
 # Additive migration (user_version 9, Issue #2033): per-run token / tool-call usage read from the run's own log when
 # the run ends. NULL = not measured (old runs, OpenCode, missing usage); never 0 as a stand-in.
 RUN_USAGE_COLUMNS_V9 = ("input_tokens", "cached_input_tokens", "cache_write_tokens", "output_tokens",
                         "reasoning_output_tokens", "tool_calls", "submit_failures")
-SCHEMA_VERSION = 11
+SCHEMA_VERSION = 10
 
 MAINTENANCE_METHOD = "m"   # the hidden Maintainer's execution record lives in `batches` under this method
 CLEARED_HOLD = "운영자가 Maintainer 실행을 Clear함 — Issue·결함 기록 보존, 명시적 Retry 전에는 자동 재시작하지 않습니다"
@@ -218,8 +215,6 @@ class Store:
             if col not in have:
                 c.execute(f"ALTER TABLE runs ADD COLUMN {col} INTEGER")
         c.executescript(SCHEMA_V10)
-        if ISSUE_REQUEST_COLUMNS_V11[0] not in {r["name"] for r in c.execute("PRAGMA table_info(issue_requests)")}:
-            c.execute("ALTER TABLE issue_requests ADD COLUMN attempt_issue_numbers TEXT NOT NULL DEFAULT '[]'")
         c.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
 
     @contextmanager
@@ -680,17 +675,13 @@ class Store:
                 rows = c.execute("SELECT * FROM issue_requests ORDER BY id").fetchall()
         return [dict(r) for r in rows]
 
-    def prepare_issue_attempt(self, request_id: int, matching_issue_numbers: list[int]) -> bool:
-        """Persist a pre-create ID snapshot before calling GitHub, for lost-response reconciliation after restart."""
-        numbers = json.dumps(sorted({int(n) for n in matching_issue_numbers}), separators=(",", ":"))
+    def mark_issue_request_creating(self, request_id: int) -> bool:
+        """Persist the create attempt before calling GitHub so a lost response can be reconciled after restart."""
         now = time.time()
         with self._conn() as c:
             c.execute("BEGIN IMMEDIATE")
-            row = c.execute("SELECT state FROM issue_requests WHERE id=?", (request_id,)).fetchone()
-            if row is None or row["state"] not in ("PENDING", "CREATING"):
-                return False
-            cur = c.execute("UPDATE issue_requests SET state='CREATING',attempt_issue_numbers=?,updated_at=? "
-                            "WHERE id=? AND state IN ('PENDING','CREATING')", (numbers, now, request_id))
+            cur = c.execute("UPDATE issue_requests SET state='CREATING',updated_at=? "
+                            "WHERE id=? AND state IN ('PENDING','CREATING')", (now, request_id))
             return cur.rowcount == 1
 
     def mark_issue_request_created(self, request_id: int, issue_number: int) -> bool:

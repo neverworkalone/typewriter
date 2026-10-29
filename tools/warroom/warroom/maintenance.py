@@ -107,7 +107,7 @@ class Maintenance:
     def _issue_retry_succeeded(self, key: str) -> None:
         self.sup._transient_clear(f"issue:{key}")
 
-    def _find_issue_request(self, request) -> tuple[int | None, list[int]]:
+    def _find_issue_request(self, request) -> int | None:
         """Find this event's comment marker or temporary title, never an unrelated matching Issue."""
         expected_marker = self._issue_request_marker(request["event_key"])
         prefix = "<!-- warroom-issue-request:"
@@ -116,30 +116,21 @@ class Maintenance:
         exact = [i for i in issues if not i.get("pull_request")
                  and i.get("title", "") in (request["title"], temporary_title)
                  and i.get("body", "") == request["body"]]
-        matching_numbers = [i["number"] for i in exact]
-        try:
-            previous_numbers = set(json.loads(request.get("attempt_issue_numbers") or "[]"))
-        except (TypeError, ValueError):
-            raise RuntimeError("저장된 Issue 생성 기준점이 손상되어 복구 대상을 특정할 수 없습니다")
-        same_event = None
+        same_event = []
         created_with_request_title = []
         for issue in exact:
             comments = self.sup.gh.issue_comments(issue["number"])
             bodies = [c.get("body") or "" for c in comments]
             if any(expected_marker in body for body in bodies):
-                same_event = issue["number"]
-                break
+                same_event.append(issue["number"])
+                continue
             if any(prefix in body for body in bodies):
                 continue
             if request["state"] == "CREATING" and issue.get("title") == temporary_title:
                 created_with_request_title.append(issue["number"])
-        if same_event is not None:
-            return same_event, matching_numbers
-        created_after_snapshot = [number for number in created_with_request_title if number not in previous_numbers]
-        if len(created_after_snapshot) > 1 or (not created_after_snapshot and len(created_with_request_title) > 1):
-            raise RuntimeError("Issue 생성 응답 유실 후 요청 식별 제목의 후보가 여러 개라 복구 대상이 모호합니다")
-        return (created_after_snapshot[0] if created_after_snapshot else
-                created_with_request_title[0] if created_with_request_title else None), matching_numbers
+        if len(same_event) > 1 or len(created_with_request_title) > 1:
+            raise RuntimeError("Issue 생성 응답 유실 후 요청 식별 후보가 여러 개라 복구 대상이 모호합니다")
+        return same_event[0] if same_event else (created_with_request_title[0] if created_with_request_title else None)
 
     def _publish_issue_requests(self) -> None:
         """Publish durable ordinary/urgent requests independently from the shared-defect state machine."""
@@ -153,17 +144,12 @@ class Maintenance:
                     if number is None:
                         raise RuntimeError("CREATED 요청에 GitHub Issue 번호가 없습니다")
                 else:
-                    before_create = {}
-
                     def lookup():
-                        number, matching_numbers = self._find_issue_request(request)
-                        before_create["matching_numbers"] = matching_numbers
-                        return number, False
+                        return self._find_issue_request(request), False
 
                     def persist_attempt():
-                        if not self.store.prepare_issue_attempt(
-                                request["id"], before_create.get("matching_numbers", [])):
-                            raise RuntimeError("GitHub Issue 생성 전 기준점을 영속화하지 못했습니다")
+                        if not self.store.mark_issue_request_creating(request["id"]):
+                            raise RuntimeError("GitHub Issue 생성 전 요청 상태를 저장하지 못했습니다")
 
                     number, _fresh = self._find_or_create_issue(
                         self._issue_request_title(request), request["body"],
