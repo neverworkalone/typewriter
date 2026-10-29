@@ -91,6 +91,13 @@ class Maintenance:
         digest = hashlib.sha256(event_key.encode("utf-8")).hexdigest()
         return f"<!-- warroom-issue-request:{digest} -->"
 
+    @staticmethod
+    def _issue_request_title(request) -> str:
+        """Temporary, event-specific title used only until the created Issue number is durably recorded."""
+        digest = hashlib.sha256(request["event_key"].encode("utf-8")).hexdigest()
+        title = f"Typewriter request {digest}"
+        return f"{title} (pending)" if title == request["title"] else title
+
     def _issue_retry_due(self, key: str) -> bool:
         return self.sup._transient_due(f"issue:{key}")
 
@@ -101,16 +108,13 @@ class Maintenance:
         self.sup._transient_clear(f"issue:{key}")
 
     def _find_issue_request(self, request) -> tuple[int | None, list[int]]:
-        """Find this event's marker or reconcile a create attempt against its pre-create Issue ID snapshot.
-
-        The snapshot is persisted before the GitHub create call. Only a matching Issue absent from that snapshot can
-        be a create whose response was lost; pre-existing same-title/body Issues are never adopted, regardless of
-        timestamp precision. Multiple unmatched candidates remain ambiguous and block another create attempt.
-        """
+        """Find this event's comment marker or temporary title, never an unrelated matching Issue."""
         expected_marker = self._issue_request_marker(request["event_key"])
         prefix = "<!-- warroom-issue-request:"
+        temporary_title = self._issue_request_title(request)
         issues = self.sup.gh.all_issues()
-        exact = [i for i in issues if not i.get("pull_request") and i.get("title", "") == request["title"]
+        exact = [i for i in issues if not i.get("pull_request")
+                 and i.get("title", "") in (request["title"], temporary_title)
                  and i.get("body", "") == request["body"]]
         matching_numbers = [i["number"] for i in exact]
         try:
@@ -118,7 +122,7 @@ class Maintenance:
         except (TypeError, ValueError):
             raise RuntimeError("저장된 Issue 생성 기준점이 손상되어 복구 대상을 특정할 수 없습니다")
         same_event = None
-        created_since_attempt = []
+        created_with_request_title = []
         for issue in exact:
             comments = self.sup.gh.issue_comments(issue["number"])
             bodies = [c.get("body") or "" for c in comments]
@@ -127,13 +131,15 @@ class Maintenance:
                 break
             if any(prefix in body for body in bodies):
                 continue
-            if request["state"] == "CREATING" and issue["number"] not in previous_numbers:
-                created_since_attempt.append(issue["number"])
+            if request["state"] == "CREATING" and issue.get("title") == temporary_title:
+                created_with_request_title.append(issue["number"])
         if same_event is not None:
             return same_event, matching_numbers
-        if len(created_since_attempt) > 1:
-            raise RuntimeError("Issue 생성 응답 유실 후 동일한 제목·본문의 새 후보가 여러 개라 복구 대상이 모호합니다")
-        return (created_since_attempt[0] if created_since_attempt else None), matching_numbers
+        created_after_snapshot = [number for number in created_with_request_title if number not in previous_numbers]
+        if len(created_after_snapshot) > 1 or (not created_after_snapshot and len(created_with_request_title) > 1):
+            raise RuntimeError("Issue 생성 응답 유실 후 요청 식별 제목의 후보가 여러 개라 복구 대상이 모호합니다")
+        return (created_after_snapshot[0] if created_after_snapshot else
+                created_with_request_title[0] if created_with_request_title else None), matching_numbers
 
     def _publish_issue_requests(self) -> None:
         """Publish durable ordinary/urgent requests independently from the shared-defect state machine."""
@@ -160,10 +166,20 @@ class Maintenance:
                             raise RuntimeError("GitHub Issue 생성 전 기준점을 영속화하지 못했습니다")
 
                     number, _fresh = self._find_or_create_issue(
-                        request["title"], request["body"], ["urgent"] if request["urgent"] else [],
+                        self._issue_request_title(request), request["body"],
+                        ["urgent"] if request["urgent"] else [],
                         lookup, before_create=persist_attempt)
                     if not self.store.mark_issue_request_created(request["id"], number):
                         raise RuntimeError("발행된 Issue 번호를 요청에 영속화하지 못했습니다")
+
+                issue = self.sup.gh.issue(number)
+                if issue["pull_request"]:
+                    raise RuntimeError(f"Issue 요청 #{number}가 pull request를 가리킵니다")
+                temporary_title = self._issue_request_title(request)
+                if issue["title"] == temporary_title:
+                    self.sup.gh.edit_issue_title(number, request["title"])
+                elif issue["title"] != request["title"]:
+                    raise RuntimeError(f"Issue #{number} 제목이 요청 원문과 일치하지 않아 덮어쓰지 않습니다")
 
                 marker = self._issue_request_marker(request["event_key"])
                 comments = self.sup.gh.issue_comments(number)
@@ -171,8 +187,7 @@ class Maintenance:
                     self.sup.gh.comment_issue(number, marker)
 
                 if request["urgent"]:
-                    issue = self.sup.gh.issue(number)
-                    if issue["pull_request"] or issue["state"] != "open" or "urgent" not in issue["labels"]:
+                    if issue["state"] != "open" or "urgent" not in issue["labels"]:
                         raise RuntimeError(f"urgent 요청 Issue #{number}가 열린 urgent Issue가 아닙니다")
                 if not self.store.complete_issue_request(request["id"], number):
                     raise RuntimeError("Issue 발행 완료 상태를 영속화하지 못했습니다")

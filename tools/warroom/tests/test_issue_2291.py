@@ -57,7 +57,7 @@ class IssuePublication(unittest.TestCase):
         request = w.store.issue_requests()[0]
         self.assertEqual((request["state"], request["attempt_issue_numbers"], w.gh.created),
                          ("CREATING", "[]", [101]))
-        # The API may expose only second-resolution timestamps; the pre-create ID snapshot is the recovery proof.
+        # A same-second timestamp collision does not matter: the request-specific temporary title identifies it.
         w.gh.issues[101]["created_at"] = request["created_at"]
 
         w.sup = w.make_sup()
@@ -84,6 +84,26 @@ class IssuePublication(unittest.TestCase):
         self.assertNotIn("warroom-issue-request:", "".join(
             c["body"] for c in w.gh.issue_comments_.get(101, [])))
         self.assertEqual(w.gh.issues[102]["body"], "C000123")
+
+    def test_same_text_issue_created_after_a_failed_attempt_is_not_adopted(self):
+        w = self.w
+        w.gh.fail_create = True
+        w.sup.maint.report_issue("목록", "C000123", event_key="list:external-race")
+        w.tick()
+        self.assertEqual(w.store.issue_requests()[0]["state"], "CREATING")
+
+        # Another actor publishes an identical, unmarked Issue before the request retries.
+        w.gh.fail_create = False
+        w.gh.issues[101] = {"state": "open", "labels": [], "title": "목록", "body": "C000123",
+                            "created_at": w.store.issue_requests()[0]["created_at"]}
+        w.tick()
+
+        request = w.store.issue_requests()[0]
+        self.assertEqual((request["state"], request["issue_number"]), ("PUBLISHED", 102))
+        self.assertEqual(w.gh.created, [102])
+        self.assertEqual(w.gh.issues[101]["title"], "목록")
+        self.assertEqual(w.gh.issue_comments_.get(101, []), [])
+        self.assertEqual(w.gh.issues[102]["title"], "목록")
 
     def test_same_event_is_idempotent_but_distinct_events_with_identical_text_stay_separate(self):
         w = self.w

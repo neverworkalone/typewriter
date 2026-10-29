@@ -87,8 +87,15 @@ class GhClient:
     # ---- Issues (Issue #1555: shared-defect urgent Issues) --------------------------------------------------------
     def issue(self, n: int) -> dict:
         d = self._api(f"repos/{self.repo}/issues/{n}")
-        return {"number": n, "state": d["state"], "labels": [l["name"] for l in d.get("labels", [])],
+        return {"number": n, "title": d.get("title") or "", "state": d["state"],
+                "labels": [l["name"] for l in d.get("labels", [])],
                 "pull_request": "pull_request" in d, "body": d.get("body") or ""}
+
+    def edit_issue_title(self, n: int, title: str) -> None:
+        r = self.runner.run(["gh", "issue", "edit", str(n), "--repo", self.repo, "--title", title],
+                            env=self.env, timeout=60)
+        if not r.ok:
+            raise self._fail(f"gh issue edit {n} --title", r)
 
     def urgent_issues(self) -> list[dict]:
         """Every `urgent` Issue, open and closed, with its body. A list call (not search): it is consistent

@@ -505,8 +505,12 @@ class FakeGh:
         return n
 
     def issue(self, n):
-        i = self.issues.get(n, {"state": "open", "labels": [], "body": ""})
-        return {"number": n, "state": i["state"], "labels": i["labels"], "pull_request": False, "body": i["body"]}
+        i = self.issues.get(n, {"state": "open", "labels": [], "title": "", "body": ""})
+        return {"number": n, "title": i["title"], "state": i["state"], "labels": i["labels"],
+                "pull_request": False, "body": i["body"]}
+
+    def edit_issue_title(self, n, title):
+        self.issues[n]["title"] = title
 
     def comment_issue(self, n, body):
         self.issue_comments_.setdefault(n, []).append({"body": body})
