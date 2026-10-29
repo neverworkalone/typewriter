@@ -107,10 +107,11 @@ CREATE INDEX IF NOT EXISTS issue_requests_state ON issue_requests(state, id);
 # Additive migration (user_version 7, Issue #1684): `lines.shard_pin` is the shard a Single-mode Stage 2 run is bound to.
 # Additive migration (user_version 8, Issue #1809): the observed unit of intermediate progress (chunks/senses).
 # Additive migration (user_version 9, Issue #2033): per-run token / tool-call usage read from the run's own log when
-# the run ends. NULL = not measured (old runs, OpenCode, missing usage); never 0 as a stand-in.
+# the run ends. NULL = not measured (old runs, missing usage); never 0 as a stand-in.
 RUN_USAGE_COLUMNS_V9 = ("input_tokens", "cached_input_tokens", "cache_write_tokens", "output_tokens",
                         "reasoning_output_tokens", "tool_calls", "submit_failures")
-SCHEMA_VERSION = 11
+# Additive migration (user_version 12, Issue #2361): best-effort/incomplete OpenCode usage quality for honest totals.
+SCHEMA_VERSION = 12
 
 MAINTENANCE_METHOD = "m"   # the hidden Maintainer's execution record lives in `batches` under this method
 CLEARED_HOLD = "운영자가 Maintainer 실행을 Clear함 — Issue·결함 기록 보존, 명시적 Retry 전에는 자동 재시작하지 않습니다"
@@ -216,6 +217,8 @@ class Store:
         for col in RUN_USAGE_COLUMNS_V9:
             if col not in have:
                 c.execute(f"ALTER TABLE runs ADD COLUMN {col} INTEGER")
+        if "usage_quality" not in have:
+            c.execute("ALTER TABLE runs ADD COLUMN usage_quality TEXT")
         c.executescript(SCHEMA_V10)
         handled_columns = {r["name"] for r in c.execute("PRAGMA table_info(handled_events)")}
         for column in ("status TEXT NOT NULL DEFAULT 'LEGACY'", "run_id INTEGER", "reply_id INTEGER",
@@ -555,10 +558,10 @@ class Store:
                 u = None
             measured.append((r["id"], u or {}))
         with self._conn() as c:
-            sets = ", ".join(f"{k}=?" for k in RUN_USAGE_COLUMNS_V9)
+            sets = ", ".join(f"{k}=?" for k in (*RUN_USAGE_COLUMNS_V9, "usage_quality"))
             for rid, u in measured:
                 c.execute(f"UPDATE runs SET {sets} WHERE id=? AND ended_at IS NULL",
-                          (*[u.get(k) for k in RUN_USAGE_COLUMNS_V9], rid))
+                          (*[u.get(k) for k in (*RUN_USAGE_COLUMNS_V9, "usage_quality")], rid))
             c.execute("UPDATE runs SET ended_at=?, exit_status=? WHERE batch_id=? AND ended_at IS NULL",
                       (time.time(), "unknown" if status is None else str(status), batch_id))
 

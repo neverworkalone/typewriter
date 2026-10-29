@@ -292,5 +292,9 @@ def usage_text(runs, pricing: dict | None = None, now: float | None = None) -> s
              f"도구 호출 {_tok(total['tool_calls'])}   submit 실패 {_tok(total['submit_failures'])}   "
              f"추정 비용 {'unknown' if cost is None else f'${cost:,.2f}'}"]
     if total["partial"]:
-        lines.append(f"※ 일부 run에 사용량 기록이 없어 합계가 불완전합니다 ({', '.join(total['partial'])})")
+        lines.append(f"※ 일부 run/항목에 사용량 기록이 없어 부분 합계입니다 ({', '.join(total['partial'])})")
+    if total["best_effort_runs"]:
+        lines.append("※ OpenCode JSON 로그 집계는 best-effort입니다. 마지막 step_finish가 누락될 수 있어 "
+                     "관측 토큰은 하한이며 누락량을 추정하지 않습니다. "
+                     f"관측상 불완전한 run: {total['incomplete_runs']}/{total['best_effort_runs']}개")
     return "\n".join(lines)
