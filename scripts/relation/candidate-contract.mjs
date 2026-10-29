@@ -128,6 +128,19 @@ export function sourceLemmaRepeatMessage(candidate, source, independentLemmaForm
   return undefined;
 }
 
+/** Candidate v1 content-only failures that can be removed from an exact, source-bound sense. */
+export function candidateV1ContentIssue(candidate, source, sourceSense, independentLemmaForms) {
+  const repeat = sourceLemmaRepeatMessage(candidate, source, independentLemmaForms);
+  if (repeat !== undefined) return { kind: 'source_lemma_repeat', message: repeat };
+  if (isThousandsCommaFragment(candidate, sourceSense.gloss)) {
+    return {
+      kind: 'thousands_comma_fragment',
+      message: `candidate ${JSON.stringify(candidate)} is a fragment of a number written with a thousands comma in the source gloss`,
+    };
+  }
+  return undefined;
+}
+
 export function validateCandidateBatch(canonicalRows, candidateRows, {
   batch,
   sourceName = 'Canonical',
@@ -154,7 +167,7 @@ export function validateCandidateBatch(canonicalRows, candidateRows, {
   let senseCount = 0;
   let candidateCount = 0;
   let emptySenseCount = 0;
-  const selfRepeats = [];
+  const candidateIssues = [];
 
   for (const [index, source] of expectedRows.entries()) {
     const row = candidateRows[index];
@@ -183,21 +196,36 @@ export function validateCandidateBatch(canonicalRows, candidateRows, {
       }
 
       const seen = new Set();
-      for (const candidate of candidateSense.candidates) {
+      for (const [candidateIndex, candidate] of candidateSense.candidates.entries()) {
         if (typeof candidate !== 'string' || candidate.length === 0 || candidate.trim() !== candidate) {
           fail(`${senseLine} candidates must be non-empty trimmed strings`);
         }
         const normalized = normalizeCandidate(candidate);
-        if (seen.has(normalized)) fail(`${senseLine} contains duplicate candidate ${JSON.stringify(candidate)}`);
-        const repeat = sourceLemmaRepeatMessage(candidate, source, independentLemmaForms);
-        if (repeat !== undefined) {
-          // Collect every self-repetition so one validation run reports the whole class, not one per retry.
-          selfRepeats.push(`${senseLine} ${repeat}`);
-          seen.add(normalized);
+        if (seen.has(normalized)) {
+          candidateIssues.push({
+            record_id: source.id,
+            canonical_record_id: source.id,
+            sense_id: sourceSense.id,
+            candidate,
+            candidate_index: candidateIndex,
+            kind: 'duplicate_candidate',
+            message: `${senseLine} contains duplicate candidate ${JSON.stringify(candidate)}`,
+          });
           continue;
         }
-        if (isThousandsCommaFragment(candidate, sourceSense.gloss)) {
-          fail(`${senseLine} candidate ${JSON.stringify(candidate)} is a fragment of a number written with a thousands comma in the source gloss`);
+        const issue = candidateV1ContentIssue(candidate, source, sourceSense, independentLemmaForms);
+        if (issue !== undefined) {
+          candidateIssues.push({
+            record_id: source.id,
+            canonical_record_id: source.id,
+            sense_id: sourceSense.id,
+            candidate,
+            candidate_index: candidateIndex,
+            kind: issue.kind,
+            message: issue.message,
+          });
+          seen.add(normalized);
+          continue;
         }
         seen.add(normalized);
       }
@@ -208,7 +236,16 @@ export function validateCandidateBatch(canonicalRows, candidateRows, {
     }
   }
 
-  if (selfRepeats.length > 0) fail(selfRepeats.join('\n'));
+  if (candidateIssues.length > 0) {
+    const error = new Error(candidateIssues.map((issue) => {
+      const rowIndex = expectedRows.findIndex((row) => row.id === issue.record_id);
+      const source = expectedRows[rowIndex];
+      const senseIndex = source.senses.findIndex((sense) => sense.id === issue.sense_id);
+      return `${candidateName}:${rowIndex + 1}:${senseIndex + 1} ${issue.message}`;
+    }).join('\n'));
+    error.candidateIssues = candidateIssues;
+    throw error;
+  }
 
   return {
     recordCount: expectedRows.length,
