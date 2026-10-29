@@ -162,7 +162,7 @@ class PolicySkip(unittest.TestCase):
 
         w.sup.maint.report_issue = original
         self.assertTrue(control.retry(w.store, "codex", "a"))
-        w.tick()
+        w.tick(2)  # the first tick restores PRODUCING; the next resumes the failed run from its refusal event
         b = w.row("codex", "a")
         self.assertEqual((b["state"], len(w.adapter.launches)), ("PRODUCING", 2))
         self.assertEqual(len(w.store.issue_requests()), 1)
