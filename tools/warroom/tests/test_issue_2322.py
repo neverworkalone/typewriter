@@ -324,6 +324,44 @@ class FixEventLifecycle(unittest.TestCase):
             self.assertEqual(w.store.handled_event(b["id"], 7, HEAD1, key)["status"], "CLAIMED")
             self.assertFalse(w.store.is_handled(b["id"], 7, HEAD1, key))
 
+    def test_review_watch_surfaces_silent_legacy_event_then_operator_retry(self):
+        w, b = self.w, self.b
+        w.gh.reviews_ = [review(11, HEAD1)]
+        w.store.add_run(b["id"], "fix_new", "ses_old", 999, "old.log", "old.exit")
+        w.store.finish_runs(b["id"], 1)
+        w.store.mark_handled(b["id"], 7, HEAD1, ["review:11"])
+
+        w.tick()
+        self.assertEqual(w.row()["state"], "ERROR")
+        self.assertEqual(w.row()["paused_from"], "WAITING_REVIEW")
+        self.assertIn("review:11(LEGACY)", w.row()["error"])
+        launches = len(w.adapter.launches)
+        w.tick(4)
+        self.assertEqual(len(w.adapter.launches), launches, "legacy marker must not spin fix runs")
+
+        self.assertTrue(control.retry(w.store, "deepseek", "a"))
+        w.tick()  # Explicit Retry routes REVIEW-originated failure through the fix recovery path.
+        self.assertEqual(w.row()["state"], "FIXING")
+        w.adapter.plan.append({"code": 0, "session": "ses_recovered"})
+        w.tick()
+        self.assertEqual(w.row()["state"], "FIXING")
+        self.assertEqual(len(w.adapter.launches), launches + 1)
+        self.assertEqual(w.store.handled_event(b["id"], 7, HEAD1, "review:11")["status"], "CLAIMED")
+
+    def test_review_watch_does_not_automatically_relaunch_stranded_claim(self):
+        w, b = self.w, self.b
+        w.gh.reviews_ = [review(11, HEAD1)]
+        run_id = w.store.add_run(b["id"], "fix_new", "ses_old", 999, "old.log", "old.exit")
+        w.store.finish_runs(b["id"], 1)
+        w.store.claim_events(b["id"], 7, HEAD1, ["review:11"], run_id)
+
+        w.tick()
+        self.assertEqual(w.row()["state"], "ERROR")
+        self.assertIn("review:11(CLAIMED)", w.row()["error"])
+        launches = len(w.adapter.launches)
+        w.tick(4)
+        self.assertEqual(len(w.adapter.launches), launches)
+
     def test_historical_legacy_handled_marker_is_reclaimed_only_on_operator_retry(self):
         w, b = self.w, self.b
         w.gh.reviews_ = [review(11, HEAD1)]
