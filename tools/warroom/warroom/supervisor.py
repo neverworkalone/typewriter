@@ -2469,26 +2469,28 @@ class Supervisor:
 
     def _stage2_chunk_boundary_problem(self, b, key: str | None = None) -> str | None:
         """Fail closed if a chunk run changed or lost the Part's owned HEAD or remote branch ref."""
+        label = {STAGE2_METHOD: "Stage 2", literary.METHOD: "C", dchunk.METHOD: "D"}.get(
+            b["method"], str(b["method"]).upper())
         raw = self.store.get(key or stage2.run_start_key(b["id"]))
         if raw is None:
-            return "Stage 2 청크의 Git 경계 기준이 없어 Retry를 중단합니다. worktree와 브랜치를 보존합니다."
+            return f"{label} 청크의 Git 경계 기준이 없어 Retry를 중단합니다. worktree와 브랜치를 보존합니다."
         try:
             baseline = json.loads(raw)
             if not isinstance(baseline, dict) or baseline.get("branch") != b["branch"] or \
                     baseline.get("worktree") != str(b["worktree"]) or not isinstance(baseline.get("head"), str) or \
                     "remote_head" not in baseline:
-                return "Stage 2 청크의 Git 경계 기준이 손상되거나 다른 Part를 가리킵니다. worktree를 보존합니다."
+                return f"{label} 청크의 Git 경계 기준이 손상되거나 다른 실행을 가리킵니다. worktree를 보존합니다."
             head = self.git.head(Path(b["worktree"]))
             if head != baseline["head"]:
-                return f"Stage 2 청크 실행 중 소유 HEAD가 변경됐습니다 ({baseline['head']} / {head}). 후속 실행을 중단합니다."
+                return f"{label} 청크 실행 중 소유 HEAD가 변경됐습니다 ({baseline['head']} / {head}). 후속 실행을 중단합니다."
             remote = self.git.remote_head(b["branch"])
             if remote != baseline["remote_head"]:
-                return (f"Stage 2 청크 실행 중 원격 브랜치 {b['branch']}가 변경됐습니다 "
+                return (f"{label} 청크 실행 중 원격 브랜치 {b['branch']}가 변경됐습니다 "
                         f"({baseline['remote_head']} / {remote}). 후속 실행을 중단합니다.")
         except TRANSIENT:
             raise
         except Exception as e:
-            return f"Stage 2 청크의 HEAD/원격 브랜치 경계를 확인하지 못했습니다: {e}. worktree를 보존합니다."
+            return f"{label} 청크의 HEAD/원격 브랜치 경계를 확인하지 못했습니다: {e}. worktree를 보존합니다."
         return None
 
     def _stage2_links_boundary_problem(self, b) -> str | None:
@@ -3160,6 +3162,11 @@ class Supervisor:
         if done > 0 and self.store.get(key) is None:
             self.store.set(key, dchunk.chunk_sha(Path(b["worktree"]), b, done))
 
+    def _d_prepare_handoff(self, b) -> None:
+        """Persist the existing PREPARE state before dropping the completed run's boundary baseline."""
+        self.store.update(b["id"], state="PREPARE", run_kind=None, pid=None, session_id=None,
+                          retries=0, retry_after=None, error=None)
+
     def _launch_d_next(self, b) -> None:
         self._guarded(b, "prelaunch", self._launch_d_next_do, entrypoint="launch_d_next")
 
@@ -3179,7 +3186,7 @@ class Supervisor:
                         return self._fail(b, "ERROR", problem)
                     if problem := self._d_accept_saved(b, boundary_checked=True):
                         return self._fail(b, "ERROR", problem)
-                    self.store.update(b["id"], session_id=None, retries=0, retry_after=None, error=None)
+                    self._d_prepare_handoff(b)
                     self.store.delete(dchunk.run_start_key(b["id"]))
                     rec = None
                 elif rec["chunk_no"] < done:
@@ -3187,6 +3194,8 @@ class Supervisor:
                 elif rec["chunk_no"] != done + 1:
                     return self._fail(b, "ERROR", f"활성 청크 {rec['chunk_no']}가 연속 prefix {done} 다음이 아닙니다. 보존합니다.")
                 else:
+                    if b["state"] == "PREPARE" and self.store.get(dchunk.run_start_key(b["id"])) is not None:
+                        return self._fail(b, "ERROR", "D 다음 청크 실행 baseline이 PREPARE 상태에 남아 있습니다. 실행 시작 여부가 모호해 AI를 시작하지 않고 보존합니다.")
                     self._d_remember(b, done)
                     dchunk.read_view(wt, b, rec)   # the view must still be the one this record was written for
             else:
@@ -3203,7 +3212,7 @@ class Supervisor:
                         return self._fail(b, "ERROR", problem)
                     self._d_remember(b, done)
                     dchunk.clear_active(wt, b, done)  # idempotently finish any chunk-local cleanup interrupted after save verification
-                    self.store.update(b["id"], session_id=None, retries=0, retry_after=None, error=None)
+                    self._d_prepare_handoff(b)
                     self.store.delete(dchunk.run_start_key(b["id"]))
                 else:
                     self._d_remember(b, done)
@@ -3326,7 +3335,7 @@ class Supervisor:
                               "자동 재진입 한도를 소진했거나 저장/검색 진단 때문에 안전하지 않아 보존합니다 — Retry는 같은 청크를 이어갑니다." + self._d_rejection_note(b))
         if problem := self._d_accept_saved(b, boundary_checked=True):
             return self._fail(b, "ERROR", problem)
-        self.store.update(b["id"], session_id=None, retries=0, retry_after=None, error=None)
+        self._d_prepare_handoff(b)
         self.store.delete(dchunk.run_start_key(b["id"]))
         self.store.log(b["id"], "D 청크 저장을 확인했습니다. 다음 단계는 새 세션으로 실행합니다.")
         return self._launch_d_next(self.store.batch(b["id"]))
@@ -3368,9 +3377,14 @@ class Supervisor:
             return ""
 
     def _relaunch_d(self, b) -> None:
-        problem = self._stage2_chunk_boundary_problem(b, dchunk.run_start_key(b["id"]))
-        if problem:
-            return self._fail(b, "ERROR", problem)
+        legacy_handoff = self.store.get(dchunk.run_start_key(b["id"])) is None
+        if legacy_handoff:
+            if problem := self._d_legacy_handoff_problem(b):
+                return self._fail(b, "ERROR", f"D 청크 재시작 복구를 안전하게 확인하지 못했습니다: {problem}. worktree와 브랜치를 보존합니다.")
+        else:
+            problem = self._stage2_chunk_boundary_problem(b, dchunk.run_start_key(b["id"]))
+            if problem:
+                return self._fail(b, "ERROR", problem)
         try:
             if self._find_recovery_pr(b) is not None:
                 return self._fail(b, "ERROR", "청크 실행 브랜치에 이미 PR이 있어 자동 재개를 중단합니다. 보존합니다.")
@@ -3378,12 +3392,87 @@ class Supervisor:
             raise
         except Exception as e:
             return self._fail(b, "ERROR", f"청크 재개 전 기존 PR 소유권 확인 실패: {e}. worktree를 보존합니다.")
+        if legacy_handoff:
+            self._d_prepare_handoff(b)
+            self.store.log(b["id"], "D 청크의 완료 기록과 저장 prefix를 확인했습니다. 새 실행 전에 PREPARE로 복구합니다.", "warn")
+            return self._launch_d_next(self.store.batch(b["id"]))
         if self._d_chunk_saved(b):
             if problem := self._d_accept_saved(b, boundary_checked=True):
                 return self._fail(b, "ERROR", problem)
-            self.store.update(b["id"], session_id=None, retries=0, retry_after=None, error=None)
+            self._d_prepare_handoff(b)
             self.store.delete(dchunk.run_start_key(b["id"]))
         return self._launch_d_next(self.store.batch(b["id"]))
+
+    def _d_legacy_handoff_problem(self, b) -> str | None:
+        """Prove a completed old D chunk handoff before recovering a missing run baseline; never invent one."""
+        if b["state"] != "PRODUCING" or b["pid"] is not None or b["session_id"] is not None or \
+                b["run_kind"] != "d_chunk_new" or b["pr_number"] is not None or b["retry_after"] is not None:
+            return "배치가 완료된 청크와 다음 청크 사이의 예상된 상태가 아닙니다"
+        if self.store.get(f"pending_{b['id']}") is not None:
+            return "재시도 대기 상태가 남아 있습니다"
+        wt = Path(b["worktree"])
+        try:
+            if not wt.is_dir() or self.git.registered(wt) != b["branch"]:
+                return "배치 소유 worktree 또는 브랜치가 일치하지 않습니다"
+            if self.git.dirty(wt).strip():
+                return "worktree에 Git 변경이 남아 있습니다"
+            base = self.store.get(f"d_base_head_{b['id']}")
+            head = self.git.head(wt)
+            if not base or head != base or self.store.get(f"d_commit_head_{b['id']}") is not None:
+                return "현재 HEAD가 기록된 배치 기준 HEAD와 다릅니다"
+            if self.git.remote_head(b["branch"]) is not None:
+                return "원격 브랜치 ref가 비어 있지 않아 기존 경계를 증명할 수 없습니다"
+        except TRANSIENT:
+            raise
+        except Exception as e:
+            return f"배치 소유 Git 경계를 확인하지 못했습니다: {e}"
+        try:
+            done, _total = dchunk.verified_prefix(wt, b)
+            if done < 1:
+                return "검증된 완료 청크가 없습니다"
+            for chunk_no in range(1, done + 1):
+                known = self.store.get(f"d_chunk_sha_{b['id']}_{chunk_no}")
+                if known is None or known != dchunk.chunk_sha(wt, b, chunk_no):
+                    return f"완료 청크 {chunk_no:03d}의 기록된 SHA가 없거나 달라졌습니다"
+            if dchunk.read_active(wt, b) is not None:
+                return "활성 D 청크 메타가 남아 있어 다음 실행 여부가 모호합니다"
+            folder = wt / dchunk.names(b).directory
+            allowed = {f"chunk-{n:03d}.jsonl" for n in range(1, done + 1)}
+            if {p.name for p in folder.iterdir()} != allowed:
+                return "D scratch에 저장 청크 외 파일이 있어 실행/임시 상태가 모호합니다"
+        except TRANSIENT:
+            raise
+        except (dchunk.DChunkError, OSError, ValueError) as e:
+            return f"완료 prefix 또는 D scratch를 검증하지 못했습니다: {e}"
+        runs = self.store.runs(b["id"])
+        if len(runs) != done or any(r["kind"] != "d_chunk_new" or r["ended_at"] is None or
+                                      str(r["exit_status"]) != "0" or r["submit_failures"] for r in runs):
+            return "저장 청크 수와 정상 종료한 D 실행 기록이 일치하지 않습니다"
+        last = runs[0]
+        if self.store.get(f"verified_completion_run_{b['id']}") != str(last["id"]):
+            return "마지막 AI 실행의 완료 확인 기록이 없습니다"
+        if b["log_file"] != last["log_file"] or b["exit_file"] != last["exit_file"] or not last["session_id"]:
+            return "배치 실행 파일 또는 세션이 마지막 AI 실행 기록과 다릅니다"
+        try:
+            if Path(last["exit_file"]).read_text("utf-8").strip() != "0":
+                return "마지막 AI 실행의 종료 코드 파일이 성공을 증명하지 않습니다"
+            ad = self._adapter(b["producer"])
+            run = RunSpec(last["model"], last["effort"], last["permission_profile"] or "") if last["model"] else None
+            if run is None:
+                return "마지막 AI 실행의 모델 핀 기록이 없습니다"
+            p = registry(self.cfg)[b["producer"]]
+            tier_models = (p["models"].get("free", ""), p["models"].get("go", "")) if self._tiered(b["producer"]) else None
+            if problem := self._pin_drift(b, self._run(b), self._tiered(b["producer"]), runs, tier_models):
+                return problem
+            if ad.output_identity_problem(Path(last["log_file"]), run, last["session_id"], wt, self.env):
+                return "마지막 AI 실행의 소유권 또는 모델 핀 로그를 확인하지 못했습니다"
+            if ad.completion_problem(Path(last["log_file"]), run, last["session_id"], wt, self.env):
+                return "마지막 AI 실행의 정상 완료 증거를 확인하지 못했습니다"
+        except TRANSIENT:
+            raise
+        except (OSError, TypeError, ValueError, KeyError) as e:
+            return f"마지막 AI 실행 증거를 읽지 못했습니다: {e}"
+        return None
 
     def _d_finalize(self, b) -> None:
         self._guarded(b, "finalize", self._d_finalize_do)
