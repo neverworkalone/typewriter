@@ -231,7 +231,7 @@ _LINK_ROW = re.compile(r"^c\d+\s")
 _SENSE_ID = re.compile(r"(?<![A-Za-z0-9_-])[wr]\d+-s[1-9]\d*(?![A-Za-z0-9_-])")
 _REVIEW_TUPLE_START = re.compile(r"(?<![\w-])(?P<record>[wr]\d+)[ \t]*,[ \t]*(?P<sense>[wr]\d+-s[1-9]\d*)[ \t]*,[ \t]*")
 _REVIEW_PLAIN_TUPLE = re.compile(r"^[^\s,]+[ \t]*,[ \t]*[^\s,]+[ \t]*,[ \t]*")
-_REVIEW_PROSE_BOUNDARY = re.compile(r"(?<=[.!?。！？])[ \t]+(?=\S)")
+_REVIEW_PROSE_BOUNDARY = re.compile(r"(?<=[.!?。！？;—])[ \t]+(?=\S)")
 
 
 def _review_triplets(text: str) -> list[tuple[str, str, str, int, int]]:
@@ -276,7 +276,7 @@ def _review_triplets(text: str) -> list[tuple[str, str, str, int, int]]:
                     add(text[start + 1:end], start, end + 1)
                     break
 
-    # Plain numbered/bulleted rows; only a whole row is treated as a tuple.
+    # Plain numbered/bulleted rows; preserve prose that follows a tuple on the same line.
     offset = 0
     for line in text.splitlines(keepends=True):
         content = line.rstrip("\r\n")
@@ -295,7 +295,7 @@ def _review_triplets(text: str) -> list[tuple[str, str, str, int, int]]:
                 end = starts[index + 1].start() if index + 1 < len(starts) else len(row)
                 boundary = _REVIEW_PROSE_BOUNDARY.search(row, match.end(), end)
                 if boundary:
-                    end = boundary.start() - 1  # Keep the sentence punctuation in prose.
+                    end = boundary.start() - 1  # Keep the separator in prose.
                 candidate = row[match.end():end].strip().rstrip(";| ")
                 if candidate:
                     raw_candidate = row[match.end():end]
@@ -308,7 +308,7 @@ def _review_triplets(text: str) -> list[tuple[str, str, str, int, int]]:
         if _REVIEW_PLAIN_TUPLE.match(row):
             boundary = _REVIEW_PROSE_BOUNDARY.search(row)
             tuple_end = boundary.start() - 1 if boundary else len(row)
-            trimmed = row[:tuple_end].rstrip(".;")
+            trimmed = row[:tuple_end].rstrip(".; \t")
             add(trimmed, offset + row_start, offset + row_start + len(trimmed))
         offset += len(line)
     return found

@@ -136,6 +136,26 @@ class Stage2Finalization(unittest.TestCase):
         self.assertIn("Full-sense detail for prose-mentioned or unmatched-tuple Senses: w1-s1", context)
         self.assertIn("outside this Part (diagnostic only): w999-s1", context)
 
+    def test_same_line_plain_tuple_keeps_later_prose_sense_in_inspect_and_out_of_select(self):
+        w, b = self.start_optional_part(sense_id="w1-s1")
+        checkpoint_path = Path(b["worktree"]) / ".warroom-scratch/relation-admission-001-01-01.json"
+        checkpoint = json.loads(checkpoint_path.read_text("utf-8"))
+        first = checkpoint["items"][0]
+        checkpoint["items"] = [
+            {**first, "record_id": "w1", "sense_id": "w1-s1"},
+            {**first, "record_id": "w2", "sense_id": "w2-s1"},
+        ]
+        checkpoint_path.write_text(json.dumps(checkpoint), "utf-8")
+
+        context = w.sup._s2_fix_context(b, [
+            {"body": "- w1, w1-s1, candidate-0; w2-s1 is a comparison peer."},
+        ])
+
+        self.assertEqual(w.git.inspect_calls[-1][1:], ("001", "01", "01", ["w1-s1", "w2-s1"]))
+        self.assertEqual(json.loads((Path(b["worktree"]) / ".warroom-scratch/s2-fix-select.json").read_text("utf-8")),
+                         {"candidates": [{"source_sense_id": "w1-s1", "candidate": "candidate-0"}]})
+        self.assertIn("Full-sense detail for prose-mentioned or unmatched-tuple Senses: w2-s1", context)
+
     def test_sense_id_free_instruction_is_reported_as_unbound(self):
         w, b = self.start_optional_part(sense_id="w1-s1")
         context = w.sup._s2_fix_context(b, [{"body": "Please also fix this Sense's activities photo."}])

@@ -1891,7 +1891,7 @@ test('inspect --select keeps detailed current rows for a full-sense review targe
   await saveAllPrimaryAsDrops(root, checkpoint);
   const selectionPath = '.warroom-scratch/s2-fix-select.json';
   await writeFile(path.join(root, selectionPath), JSON.stringify({ candidates: [
-    { source_sense_id: 'w2-s1', candidate: 'peer candidate' },
+    { source_sense_id: 'w1-s1', candidate: sourceCandidates[0] },
   ] }));
 
   const inspect = await quiet(() => run([
@@ -1900,14 +1900,10 @@ test('inspect --select keeps detailed current rows for a full-sense review targe
   ], { root }));
 
   assert.ok(sourceCandidates.length > 1);
-  for (const candidate of sourceCandidates) {
-    assert.ok(inspect.text.includes(`\t${candidate}\t`), `${candidate} remains a detailed full-Sense row`);
-  }
-  assert.match(inspect.text, /\nc\d+\t첫 이미지\t/u, 'an unquoted candidate retains its c<n> detail alias');
-  assert.match(inspect.text, /# current c\d+: D /u, 'the detailed row includes its current Drop decision');
-  assert.match(inspect.text, /\nc\d+\tpeer candidate\t/u, 'the other Sense keeps its selected candidate detail');
-  assert.doesNotMatch(inspect.text, /\t첫 이미지\t.*\tQ\t/u,
-    'a prose-full Sense is not reduced to a Q summary by another Sense selection');
+  const peerDetail = inspect.text.match(/\n(c\d+)\tpeer candidate\t[^\n]*\n# current \1: D /u);
+  assert.ok(peerDetail, 'the prose-full Sense keeps its c<n> detail alias and current Drop decision');
+  assert.doesNotMatch(inspect.text, /\nQ\tc\d+\tpeer candidate\t/u,
+    'a prose-full Sense is not reduced to a Q summary when another Sense has selected candidates');
 });
 
 test('premerge preparation resumes only from matching source hashes and distinguishes empty files from absence', async (t) => {

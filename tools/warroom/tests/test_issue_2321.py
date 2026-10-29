@@ -64,12 +64,14 @@ class ReviewPairSelection(unittest.TestCase):
         self.assertEqual(result["fallback_sense_ids"], ["w2-s1"])
 
     def test_plain_list_tuple_masks_only_tuple_before_same_line_prose(self):
-        result = stage2.review_pairs(
-            "- w1, w1-s1, 수정할 후보. w2-s1도 비교 대상입니다.", self.items)
-        self.assertEqual(result["pairs"], [{
-            "record_id": "w1", "source_sense_id": "w1-s1", "candidate": "수정할 후보",
-        }])
-        self.assertEqual(result["fallback_sense_ids"], ["w2-s1"])
+        for separator in (". ", "; ", " — "):
+            with self.subTest(separator=separator):
+                result = stage2.review_pairs(
+                    f"- w1, w1-s1, 수정할 후보{separator}w2-s1도 비교 대상입니다.", self.items)
+                self.assertEqual(result["pairs"], [{
+                    "record_id": "w1", "source_sense_id": "w1-s1", "candidate": "수정할 후보",
+                }])
+                self.assertEqual(result["fallback_sense_ids"], ["w2-s1"])
 
     def test_candidate_quote_does_not_narrow_a_prose_mentioned_sense(self):
         result = stage2.review_pairs(
