@@ -55,7 +55,7 @@ source and scope:
   plain text with no ID (a word, name, phrase or multi-word expression such as
   `디아블로와 바알`): not clickable, no reverse relation, no invented record
   or ID.
-- **ID↔ID bidirectional exploration.** Authored exact links remain available both ways. After #2309 is implemented, new Parts score Type/Tier once from the source and mirror it; **equal reverse values are intended, not review defects**. Older Parts/checkpoints may use independently scored reverse values. Do not rewrite historical/STDICT relations; text-only has no reverse.
+- **ID↔ID bidirectional exploration.** Authored exact links remain available both ways. Newly prepared Stage 2 Parts score Type/Tier once from the source and the CLI mirrors it; **equal reverse values are intended, not review defects**. Marker-free checkpoints retain independent reverse scoring, and previously approved rows may remain asymmetric. Do not rewrite historical/STDICT relations; text-only has no reverse.
 - **Headword-promotion candidates** are collected separately, never in the
   relation rows: `data/headword-candidates/pr-<PR number>.jsonl` in the
   Schema v1 defined in #838 (`term`, `meaning_hint`, `source_lemma`,
@@ -70,15 +70,11 @@ source and scope:
   generation (B) is to be settled by a small experiment first (corpus-based C
   later). This policy approves no production prompt or bulk backfill.
 
-**Implementation status (not yet implemented).** Text-only targets, a
-Typewriter-authored relation source of truth, and ID↔ID bidirectional
-derivation for #838 authored relations do not exist yet. Today
-`meaning_relations.target_meaning_id` is `NOT NULL`, queries inner-join the
-target, and interactive relations are buttons. Do not produce or review data
-as if the text-only or bidirectional behaviour already worked; reviewers check
-those contracts once the corresponding code lands. The technical docs
-(`meaning-layer.md`, `domain-model.md`, `build.md`) are to be updated by that
-implementation work.
+**Implementation status.** Text-only targets, the Typewriter-authored
+relation source, and bidirectional ID projection are implemented. Newly
+prepared Stage 2 checkpoints mirror Type/Tier from the source sense; marker-
+free checkpoints and historical rows may retain independently judged reverse
+values. Review those behaviors against the current CLI and build contracts.
 
 **Block thresholds (this scope).** Reject a demonstrably wrong sense/homograph
 target, a type that plainly contradicts the relation, a forced or incoherent
@@ -222,7 +218,7 @@ relative order, nor mechanically score or test subjective usefulness.
    Fix genuine shared producer defects and test the applicable current
    and future authoring paths, without mechanical synonym-or-creativity
    validators.
-5. Reverse links: STDICT `direct` (including `→`, #834) keeps its projection (#797); other STDICT types remain unchanged. Authored exact ID links are bidirectional: #2309 new Parts mirror source Type/Tier; older Parts may be asymmetric. **Neither equality in new Parts nor asymmetry in old Parts is a blocker.** Text-only has no reverse. Preserve history; no quotas.
+5. Reverse links: STDICT `direct` (including `→`, #834) keeps its projection (#797); other STDICT types remain unchanged. Authored exact ID links are bidirectional: new Stage 2 Parts mirror source Type/Tier; marker-free checkpoints and historical approvals may be asymmetric. **Neither equality in new Parts nor asymmetry in old Parts is a blocker.** Text-only has no reverse. Preserve history; no quotas.
 
 Stage 1 and Stage 2 PR reviewers apply these principles with their independent
 review stages, exact-HEAD requirements and ordinary confirmed-error gates.

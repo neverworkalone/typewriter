@@ -13,17 +13,20 @@ PROMPT_DIR = Path(__file__).resolve().parent.parent / "prompts"   # independent 
 _PLACEHOLDER = re.compile(r"\{\{\s*([A-Za-z_]\w*)\s*\}\}")
 _PRODUCE = {"batch", "branch"}
 _MAINTAIN = {"issue", "branch"}
-_STAGE2 = {"shard", "batch", "part", "branch", "phase", "checkpoint", "session_note", "chunk_input", "chunk_id"}
+_STAGE2 = {"shard", "batch", "part", "branch", "phase", "checkpoint", "session_note", "chunk_input", "chunk_id",
+           "relation_direction_rule"}
 _AB_CHUNK = {"batch", "chunk_no", "session_note", "chunk_input"}
 _C_CHUNK = {"batch", "branch", "chunk_no", "checkpoint", "session_note", "chunk_input"}
 ALLOWED = {"a": _PRODUCE, "b": _PRODUCE, "c": _PRODUCE, "d": _PRODUCE, "recovery": _PRODUCE | {"resolved_defects"},
-           "fix": {"pr", "head", "branch", "shard", "batch", "part", "review_events", "session_note", "source_context"},
+           "fix": {"pr", "head", "branch", "shard", "batch", "part", "review_events", "session_note", "source_context",
+                   "relation_direction_rule"},
            "producer_fix": {"pr", "head", "branch", "review_events", "session_note", "source_context"},
            "m": _MAINTAIN, "m_recovery": _MAINTAIN, "s2": _STAGE2, "s2_chunk": _STAGE2, "s2_recovery": _STAGE2,
-           "s2_chunk_resume": {"chunk_id"}, "s2_chunk_fix": {"chunk_id", "problem"},
-           "s2_chunk_format_fix": {"chunk_id", "problem"},
+           "s2_chunk_resume": {"chunk_id", "relation_direction_rule"},
+           "s2_chunk_fix": {"chunk_id", "problem", "relation_direction_rule"},
+           "s2_chunk_format_fix": {"chunk_id", "problem", "relation_direction_rule"},
            "s2_links": _STAGE2 | {"link_input"},
-           "s2_links_fix": {"digest", "problem"},
+           "s2_links_fix": {"digest", "problem", "relation_direction_rule"},
            "s2_repair": _STAGE2 | {"fingerprint", "repair_input", "round_info"},
            "c_chunk": _C_CHUNK, "c_chunk_resume": {"chunk_no", "checkpoint", "remaining", "session_note"},
            "d_chunk": {"batch", "branch", "chunk_no", "session_note", "chunk_input"},
@@ -78,6 +81,17 @@ def _stage2_values(b) -> dict:
     return {"shard": b["shard"], "batch": batch, "part": part, "branch": b["branch"]}
 
 
+def _relation_direction_rule(checkpoint: dict | None = None) -> str:
+    """State the answer contract for this checkpoint while keeping marker-free work resumable."""
+    if checkpoint is None or checkpoint.get("type_tier_policy") == "source-mirror-v1":
+        return ("For each ID↔ID relation, judge type/relevance once from the source sense. The CLI derives and saves the "
+                "same type/relevance in reverse_type/reverse_relevance. Never supply or independently judge reverse values.")
+    if checkpoint.get("type_tier_policy") in (None, "legacy-independent"):
+        return ("This checkpoint predates the source-mirror policy. Preserve its legacy contract: independently judge "
+                "the reverse type/relevance and provide both values in the exact format shown by its CLI view.")
+    raise PromptError("Stage 2 checkpoint has an unsupported Type/Tier direction policy")
+
+
 def produce(b, directory: Path | None = None) -> str:
     if b["method"] == MAINTENANCE_METHOD:
         return render("m", {"issue": b["batch"], "branch": b["branch"]}, directory)
@@ -87,11 +101,13 @@ def produce(b, directory: Path | None = None) -> str:
     return out.rstrip() + PRODUCER_HANDOFF if b["method"] in {"a", "b", "c", "d"} else out
 
 
-def recovery(b, directory: Path | None = None, resolved_defects: str = "") -> str:
+def recovery(b, directory: Path | None = None, resolved_defects: str = "", checkpoint: dict | None = None) -> str:
     if b["method"] == MAINTENANCE_METHOD:
         return render("m_recovery", {"issue": b["batch"], "branch": b["branch"]}, directory)
     if b["method"] == STAGE2_METHOD:
-        return render("s2_recovery", _stage2_values(b), directory)
+        values = _stage2_values(b)
+        values["relation_direction_rule"] = _relation_direction_rule(checkpoint)
+        return render("s2_recovery", values, directory)
     out = render("recovery", {"batch": f"{b['shard']}_{b['batch']}", "branch": b["branch"],
                               "resolved_defects": resolved_defects}, directory)
     return out.rstrip() + PRODUCER_HANDOFF if b["method"] in {"a", "b", "c", "d"} else out
@@ -118,6 +134,7 @@ def stage2(b, phase: str, checkpoint: dict | None, *, resumed: bool = False,
     chunk_input = (f"아래가 이번 청크의 **전체 view**다(손실 없음).\n{VIEW_BEGIN}\n{view}"
                    f"{'' if view.endswith(chr(10)) else chr(10)}{VIEW_END}") if view is not None else ""
     values.update(phase="chunk", checkpoint=chunk, chunk_input=chunk_input, chunk_id=pending,
+                  relation_direction_rule=_relation_direction_rule(checkpoint),
                   session_note=("중단된 같은 청크를 이어간다. 이미 checkpoint에 저장된 결정을 다시 만들지 않는다.\n"
                                 if resumed else ""))
     return render("s2_chunk", values, directory)
@@ -126,34 +143,43 @@ def stage2(b, phase: str, checkpoint: dict | None, *, resumed: bool = False,
 def stage2_links(b, checkpoint: dict, links: str, directory: Path | None = None) -> str:
     values = _stage2_values(b)
     values.update(checkpoint=(f"{checkpoint['decided']}/{checkpoint['total']} primary decisions; optional links pending"),
+                  relation_direction_rule=_relation_direction_rule(checkpoint),
                   session_note="새 optional-link 세션이다. primary 판정은 변경하지 않는다.\n", link_input=links)
     return render("s2_links", values, directory)
 
 
-def stage2_links_fix(digest: str, problem: str, directory: Path | None = None) -> str:
-    return render("s2_links_fix", {"digest": digest, "problem": problem}, directory)
+def stage2_links_fix(digest: str, problem: str, checkpoint: dict | None = None,
+                     directory: Path | None = None) -> str:
+    return render("s2_links_fix", {"digest": digest, "problem": problem,
+                                    "relation_direction_rule": _relation_direction_rule(checkpoint)}, directory)
 
 
 def stage2_repair(b, fingerprint: str, repair_input: str, round_info: str,
-                  directory: Path | None = None) -> str:
+                  type_tier_policy: str = "source-mirror-v1", directory: Path | None = None) -> str:
     values = _stage2_values(b)
-    values.update(fingerprint=fingerprint, repair_input=repair_input, round_info=round_info)
+    values.update(fingerprint=fingerprint, repair_input=repair_input, round_info=round_info,
+                  relation_direction_rule=_relation_direction_rule({"type_tier_policy": type_tier_policy}))
     return render("s2_repair", values, directory)
 
 
-def stage2_chunk_resume(chunk_id: str, directory: Path | None = None) -> str:
+def stage2_chunk_resume(chunk_id: str, checkpoint: dict | None = None, directory: Path | None = None) -> str:
     """Same session, same unsaved chunk: a short request for the final decisions, never the view again."""
-    return render("s2_chunk_resume", {"chunk_id": chunk_id}, directory)
+    return render("s2_chunk_resume", {"chunk_id": chunk_id,
+                                       "relation_direction_rule": _relation_direction_rule(checkpoint)}, directory)
 
 
-def stage2_chunk_fix(chunk_id: str, problem: str, directory: Path | None = None) -> str:
+def stage2_chunk_fix(chunk_id: str, problem: str, checkpoint: dict | None = None,
+                     directory: Path | None = None) -> str:
     """Same session after a rejected save: only the CLI's complete error list and the rows to redo."""
-    return render("s2_chunk_fix", {"chunk_id": chunk_id, "problem": problem}, directory)
+    return render("s2_chunk_fix", {"chunk_id": chunk_id, "problem": problem,
+                                   "relation_direction_rule": _relation_direction_rule(checkpoint)}, directory)
 
 
-def stage2_chunk_format_fix(chunk_id: str, problem: str, directory: Path | None = None) -> str:
+def stage2_chunk_format_fix(chunk_id: str, problem: str, checkpoint: dict | None = None,
+                            directory: Path | None = None) -> str:
     """Same session after a malformed full answer: preserve its judgments and resubmit the whole current chunk."""
-    return render("s2_chunk_format_fix", {"chunk_id": chunk_id, "problem": problem}, directory)
+    return render("s2_chunk_format_fix", {"chunk_id": chunk_id, "problem": problem,
+                                          "relation_direction_rule": _relation_direction_rule(checkpoint)}, directory)
 
 
 VIEW_BEGIN, VIEW_END = "<<<CHUNK_VIEW_BEGIN>>>", "<<<CHUNK_VIEW_END>>>"
@@ -233,7 +259,8 @@ def ab_chunk_retry(chunk_no: int, requested: str, problem: str, directory: Path 
                                      "chunk_input": ""}, directory)
 
 
-def fix(b, events, resumed: bool, directory: Path | None = None, source_context: str = "") -> str:
+def fix(b, events, resumed: bool, directory: Path | None = None, source_context: str = "",
+        checkpoint: dict | None = None) -> str:
     lines = []
     for e in events:
         loc = f" {e['path']}:{e.get('line')}" if e.get("path") else ""
@@ -249,5 +276,7 @@ def fix(b, events, resumed: bool, directory: Path | None = None, source_context:
                          "shard": b["shard"], "batch": b["batch"].split("-")[0] if b["method"] == STAGE2_METHOD else b["batch"],
                          "part": b["batch"].split("-")[1] if b["method"] == STAGE2_METHOD else "",
                          "review_events": "\n".join(lines), "session_note": note,
-                         "source_context": source_context}, directory)
+                         "source_context": source_context,
+                         "relation_direction_rule": (_relation_direction_rule(checkpoint)
+                                                      if b["method"] == STAGE2_METHOD else "")}, directory)
     return out.rstrip() + PRODUCER_HANDOFF if b["method"] in {"a", "b", "c", "d"} else out

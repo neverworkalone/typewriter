@@ -1181,17 +1181,17 @@ class Supervisor:
                         if kind == "s2_chunk_format_fix":
                             if file_state != "missing":
                                 raise prompts.PromptError("전체 형식 수정에는 기존 판정 파일이 없어야 합니다")
-                            prompt = prompts.stage2_chunk_format_fix(checkpoint["pending_chunk"], detail)
+                            prompt = prompts.stage2_chunk_format_fix(checkpoint["pending_chunk"], detail, checkpoint)
                         else:
                             if file_state != "current":
                                 raise prompts.PromptError("부분 수정에는 현재 pending 청크의 기존 판정 파일이 필요합니다")
-                            prompt = prompts.stage2_chunk_fix(checkpoint["pending_chunk"], detail)
+                            prompt = prompts.stage2_chunk_fix(checkpoint["pending_chunk"], detail, checkpoint)
                         h = ad.resume(sid, prompt, wt, run_env, run, log, ex, **extra)
                     else:
                         if kind == "s2_chunk_resume":
                             if not checkpoint["pending_chunk"]:
                                 raise prompts.PromptError("이어갈 pending 청크가 없습니다")
-                            prompt = prompts.stage2_chunk_resume(checkpoint["pending_chunk"])
+                            prompt = prompts.stage2_chunk_resume(checkpoint["pending_chunk"], checkpoint)
                         else:
                             prompt = prompts.stage2(b, "chunk", checkpoint, resumed=False, view=view)
                         baseline = {"checkpoint": checkpoint, "branch": b["branch"], "worktree": str(wt),
@@ -1242,7 +1242,7 @@ class Supervisor:
                         baseline = json.loads(self.store.get(stage2.links_start_key(b["id"])) or "{}")
                         if not re.fullmatch(r"[a-f0-9]{64}", baseline.get("digest", "")):
                             raise prompts.PromptError("optional-link 수정 digest 기준이 없습니다")
-                        prompt = prompts.stage2_links_fix(baseline["digest"], detail)
+                        prompt = prompts.stage2_links_fix(baseline["digest"], detail, checkpoint)
                         h = ad.resume(sid, prompt, wt, run_env, run, log, ex, **extra)
                 elif kind == "s2_repair_new":
                     state = self._stage2_repair_state(b, required=True)
@@ -1264,6 +1264,7 @@ class Supervisor:
                     prompt = prompts.stage2_repair(
                         b, current["fingerprint"], json.dumps({"groups": page}, ensure_ascii=False, separators=(",", ":")),
                         f"{state['rounds_used']}/{stage2.MAX_REPAIR_ROUNDS}; groups {cursor + 1}..{cursor + len(page)} of {len(groups)}",
+                        type_tier_policy=current.get("type_tier_policy", "legacy-independent"),
                     )
                     h = ad.start(prompt, wt, run_env, run,
                                  f"Stage 2 {stage2.label(b['shard'], b['batch'])} local repair", log, ex, **extra)
@@ -1309,14 +1310,20 @@ class Supervisor:
                 h = ad.start(prompts.produce(b), wt, run_env, run,
                                        f"{b['method'].upper()} {b['shard']}_{b['batch']}", log, ex, **extra)
             elif kind == "produce_resume":
-                h = ad.resume(sid, prompts.recovery(b, resolved_defects=self.maint.resolved_note(b)), wt, run_env, run, log, ex, **extra)
+                checkpoint = stage2.checkpoint(wt, b["shard"], b["batch"]) if b["method"] == STAGE2_METHOD else None
+                h = ad.resume(sid, prompts.recovery(b, resolved_defects=self.maint.resolved_note(b), checkpoint=checkpoint), wt, run_env, run, log, ex, **extra)
             elif kind == "produce_recover":
-                h = ad.start(prompts.recovery(b, resolved_defects=self.maint.resolved_note(b)), wt, run_env, run,
+                checkpoint = stage2.checkpoint(wt, b["shard"], b["batch"]) if b["method"] == STAGE2_METHOD else None
+                h = ad.start(prompts.recovery(b, resolved_defects=self.maint.resolved_note(b), checkpoint=checkpoint), wt, run_env, run,
                                        f"{b['method'].upper()} {b['shard']}_{b['batch']} recover", log, ex, **extra)
             elif kind == "fix_resume":
-                h = ad.resume(sid, prompts.fix(b, events, True), wt, run_env, run, log, ex, **extra)
+                checkpoint = stage2.checkpoint(wt, b["shard"], b["batch"]) if b["method"] == STAGE2_METHOD else None
+                if b["method"] == STAGE2_METHOD and checkpoint is None:
+                    raise prompts.PromptError("Stage 2 리뷰 수정 재개에 현재 Part checkpoint가 없습니다")
+                h = ad.resume(sid, prompts.fix(b, events, True, checkpoint=checkpoint), wt, run_env, run, log, ex, **extra)
             else:  # fix_new
                 context = ""
+                checkpoint = None
                 if b["method"] in stage1ab.METHODS:
                     context = self._ab_fix_context(b, events)
                 elif b["method"] == STAGE2_METHOD:
@@ -1329,7 +1336,7 @@ class Supervisor:
                                 "checkpoint_sha256": hashlib.sha256(cp_path.read_bytes()).hexdigest(),
                                 "amend_revision": checkpoint.get("amend_revision", 0)}
                     self.store.set(f"s2_fix_start_{b['id']}", json.dumps(baseline, sort_keys=True))
-                h = ad.start(prompts.fix(b, events, False, source_context=context), wt, run_env, run,
+                h = ad.start(prompts.fix(b, events, False, source_context=context, checkpoint=checkpoint), wt, run_env, run,
                                        f"PR {b['pr_number']} fix", log, ex, **extra)
         except prompts.PromptError as e:   # rendered before any process is started
             return self._fail(b, "ERROR", f"프롬프트 오류로 AI를 시작하지 않았습니다: {e}")
@@ -2240,7 +2247,7 @@ class Supervisor:
         state["rounds_used"] += 1
         state["current"] = {"fingerprint": fingerprint, "groups": groups, "cursor": 0, "attempts": 0,
                              "target_keys": target_keys, "pending_answer": None, "applied_candidate_keys": [],
-                             "attempt_log": []}
+                             "attempt_log": [], "type_tier_policy": report.get("type_tier_policy", "legacy-independent")}
         state["history"].append({"round": state["rounds_used"], "fingerprint": fingerprint,
                                  "target_keys": target_keys, "applied_candidate_keys": [], "resolved": False})
         state["status"] = "active"

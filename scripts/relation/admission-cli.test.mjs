@@ -95,6 +95,9 @@ async function prepareSixPart(t, { emptyRelation = false } = {}) {
   if (emptyRelation) await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), '');
   const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
   const prepared = await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  // These fixture-based tests predate #2309; omit the marker to exercise legacy asymmetric checkpoint behavior.
+  delete prepared.type_tier_policy;
+  await writeFile(path.join(root, checkpoint), `${JSON.stringify(prepared)}\n`);
   assert.equal(prepared.complete, true);
   return { root, checkpoint, sourceCandidates };
 }
@@ -532,7 +535,7 @@ test('an existing ID relation accounts for a candidate even when another target 
   assert.deepEqual(optional.items[0].candidates[0].unlinked_target_sense_ids, ['w2-s2']);
   const additionalLink = {
     source_sense_id: 'w1-s1', candidate: '미끄럼저항기', disposition: 'relation', target_resolution: 'exact',
-    target_record_id: 'w2', target_sense_id: 'w2-s2', type: 'scene', relevance: 4, reverse_type: 'near', reverse_relevance: 5,
+    target_record_id: 'w2', target_sense_id: 'w2-s2', type: 'scene', relevance: 4,
   };
   const optionalInput = '.warroom-scratch/optional-link.json';
   const duplicateLink = { ...additionalLink, target_sense_id: 'w2-s1' };
@@ -695,7 +698,7 @@ test('Stage 2 chunks bind exact senses, resume safely, and preserve text-only Pa
   const exact = {
     source_sense_id: 'w1-s1', candidate: '유일표적', disposition: 'relation', target_resolution: 'exact',
     target_record_id: 'w501', target_sense_id: 'w501-s1',
-    type: 'near', relevance: 1, reverse_type: 'mood', reverse_relevance: 6,
+    type: 'near', relevance: 1,
   };
   const ambiguousText = {
     source_sense_id: 'w1-s1', candidate: '겹표기', disposition: 'relation', target_resolution: 'no_exact_match',
@@ -739,6 +742,11 @@ test('Stage 2 chunks bind exact senses, resume safely, and preserve text-only Pa
     merged: true, relations_added: 0, drops_added: 0, already_merged: true, checkpoint: path.join(root, checkpoint),
   }, 'a repeated merge is idempotent');
   assert.ok((await readFile(path.join(root, 'data/relations/relation-001.jsonl'), 'utf8')).includes(JSON.stringify(priorRelation)));
+  const mixedRelations = (await readFile(path.join(root, 'data/relations/relation-001.jsonl'), 'utf8')).trim().split('\n').map(JSON.parse);
+  const newlyAuthored = mixedRelations.find((row) => row.candidate_forms?.includes('유일표적'));
+  assert.deepEqual([newlyAuthored.type, newlyAuthored.relevance, newlyAuthored.reverse_type, newlyAuthored.reverse_relevance],
+    ['near', 1, 'near', 1], 'a new relation mirrors its source judgment beside an unchanged historical asymmetric row');
+  assert.deepEqual(mixedRelations.find((row) => row.source_sense_id === priorRelation.source_sense_id), priorRelation);
   assert.ok((await readFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), 'utf8')).includes(JSON.stringify(priorDrop)));
   const counts = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
   assert.deepEqual([counts.unique, counts.relation, counts.drop, counts.skipped_existing, counts.missing], [6, 4, 1, 1, 0]);
@@ -764,7 +772,7 @@ test('Stage 2 chunks bind exact senses, resume safely, and preserve text-only Pa
   assert.deepEqual([textOnlyCounts.unique, textOnlyCounts.relation, textOnlyCounts.drop, textOnlyCounts.missing], [1, 1, 0, 0], 'a fully text-only Part remains valid when no exact Canonical target exists');
 });
 
-test('merge coalesces consistent independently adjudicated reciprocal ID decisions into one bidirectional row', async (t) => {
+test('merge coalesces consistent source-mirror reciprocal ID decisions into one bidirectional row', async (t) => {
   const root = await mkdtemp(path.join(tmpdir(), 'typewriter-admission-reciprocal-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   const records = Array.from({ length: 500 }, (_, index) => {
@@ -812,12 +820,12 @@ test('merge coalesces consistent independently adjudicated reciprocal ID decisio
   const chunk = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint], { root }));
   assert.equal(chunk.items.flatMap((item) => item.candidates).length, 6);
   const decisions = [
-    { source_sense_id: 'w109230-s1', candidate: '말기름', disposition: 'relation', target_resolution: 'exact', target_record_id: 'w111040', target_sense_id: 'w111040-s1', type: 'near', relevance: 1, reverse_type: 'near', reverse_relevance: 1 },
-    { source_sense_id: 'w111040-s1', candidate: '마지', disposition: 'relation', target_resolution: 'exact', target_record_id: 'w109230', target_sense_id: 'w109230-s1', type: 'near', relevance: 1, reverse_type: 'near', reverse_relevance: 1 },
-    { source_sense_id: 'w14296-s1', candidate: '불가입성', disposition: 'relation', target_resolution: 'exact', target_record_id: 'w153363', target_sense_id: 'w153363-s1', type: 'near', relevance: 1, reverse_type: 'near', reverse_relevance: 1 },
-    { source_sense_id: 'w153363-s1', candidate: '거성', disposition: 'relation', target_resolution: 'exact', target_record_id: 'w14296', target_sense_id: 'w14296-s1', type: 'near', relevance: 1, reverse_type: 'near', reverse_relevance: 1 },
-    { source_sense_id: 'w200002-s1', candidate: '다른표적', disposition: 'relation', target_resolution: 'exact', target_record_id: 'w200003', target_sense_id: 'w200003-s1', type: 'near', relevance: 2, reverse_type: 'mood', reverse_relevance: 5 },
-    { source_sense_id: 'w200003-s1', candidate: '다른출발', disposition: 'relation', target_resolution: 'exact', target_record_id: 'w200002', target_sense_id: 'w200002-s1', type: 'mood', relevance: 5, reverse_type: 'near', reverse_relevance: 2 },
+    { source_sense_id: 'w109230-s1', candidate: '말기름', disposition: 'relation', target_resolution: 'exact', target_record_id: 'w111040', target_sense_id: 'w111040-s1', type: 'near', relevance: 1 },
+    { source_sense_id: 'w111040-s1', candidate: '마지', disposition: 'relation', target_resolution: 'exact', target_record_id: 'w109230', target_sense_id: 'w109230-s1', type: 'near', relevance: 1 },
+    { source_sense_id: 'w14296-s1', candidate: '불가입성', disposition: 'relation', target_resolution: 'exact', target_record_id: 'w153363', target_sense_id: 'w153363-s1', type: 'near', relevance: 1 },
+    { source_sense_id: 'w153363-s1', candidate: '거성', disposition: 'relation', target_resolution: 'exact', target_record_id: 'w14296', target_sense_id: 'w14296-s1', type: 'near', relevance: 1 },
+    { source_sense_id: 'w200002-s1', candidate: '다른표적', disposition: 'relation', target_resolution: 'exact', target_record_id: 'w200003', target_sense_id: 'w200003-s1', type: 'near', relevance: 2 },
+    { source_sense_id: 'w200003-s1', candidate: '다른출발', disposition: 'relation', target_resolution: 'exact', target_record_id: 'w200002', target_sense_id: 'w200002-s1', type: 'near', relevance: 2 },
   ];
   const decisionsFile = '.warroom-scratch/reciprocal-decisions.json';
   await writeFile(path.join(root, decisionsFile), JSON.stringify({ chunk_id: chunk.chunk_id, decisions }));
@@ -829,8 +837,8 @@ test('merge coalesces consistent independently adjudicated reciprocal ID decisio
   assert.deepEqual(relations, [
     { source_record_id: 'w109230', source_sense_id: 'w109230-s1', target_record_id: 'w111040', target_sense_id: 'w111040-s1', type: 'near', relevance: 1, reverse_type: 'near', reverse_relevance: 1, candidate_assignment_version: 1, candidate_forms: ['말기름'], reverse_candidate_forms: ['마지'] },
     { source_record_id: 'w14296', source_sense_id: 'w14296-s1', target_record_id: 'w153363', target_sense_id: 'w153363-s1', type: 'near', relevance: 1, reverse_type: 'near', reverse_relevance: 1, candidate_assignment_version: 1, candidate_forms: ['불가입성'], reverse_candidate_forms: ['거성'] },
-    { source_record_id: 'w200002', source_sense_id: 'w200002-s1', target_record_id: 'w200003', target_sense_id: 'w200003-s1', type: 'near', relevance: 2, reverse_type: 'mood', reverse_relevance: 5, candidate_assignment_version: 1, candidate_forms: ['다른표적'], reverse_candidate_forms: ['다른출발'] },
-  ], 'one row retains each independently authored direction, including distinct type and relevance');
+    { source_record_id: 'w200002', source_sense_id: 'w200002-s1', target_record_id: 'w200003', target_sense_id: 'w200003-s1', type: 'near', relevance: 2, reverse_type: 'near', reverse_relevance: 2, candidate_assignment_version: 1, candidate_forms: ['다른표적'], reverse_candidate_forms: ['다른출발'] },
+  ], 'one row mirrors each source judgment across both search directions');
   const counts = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
   assert.deepEqual([counts.unique, counts.relation, counts.reverse_covered, counts.missing], [6, 3, 3, 0]);
   assert.deepEqual(await mergeForTest(root, checkpoint), {
@@ -843,12 +851,14 @@ test('merge coalesces consistent independently adjudicated reciprocal ID decisio
     .find((candidate) => candidate.decision.source_sense_id === 'w111040-s1').decision;
   reverseDecision.type = 'mood';
   reverseDecision.relevance = 5;
+  reverseDecision.reverse_type = 'mood';
+  reverseDecision.reverse_relevance = 5;
   await writeFile(checkpointPath, `${JSON.stringify(conflictingCheckpoint)}\n`);
   const approvedBeforeConflict = await readFile(path.join(root, 'data/relations/relation-001.jsonl'), 'utf8');
   await assert.rejects(
     () => quiet(() => run(['merge', '--checkpoint', checkpoint], { root })),
     /cannot merge duplicate or reverse-duplicate ID relation/u,
-    'inconsistent independently authored directions still require resolution instead of silently choosing one',
+    'reciprocal source judgments that disagree still require resolution instead of silently choosing one',
   );
   assert.equal(await readFile(path.join(root, 'data/relations/relation-001.jsonl'), 'utf8'), approvedBeforeConflict);
 });
@@ -901,7 +911,7 @@ for (const includeTargetAlias of [false, true]) {
       decisions: [{
         source_sense_id: 'w2-s1', candidate: '생명 보험 회사', disposition: 'relation',
         target_resolution: 'exact', target_record_id: 'w1', target_sense_id: 'w1-s1',
-        type: 'near', relevance: 3, reverse_type: 'near', reverse_relevance: 3,
+        type: 'near', relevance: 3,
       }],
     }));
     await quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', decisionsFile], { root }));
@@ -968,8 +978,8 @@ test('merge coalesces orthographic aliases for one target sense and keeps the ca
   await writeFile(path.join(root, decisionsFile), JSON.stringify({
     chunk_id: chunk.chunk_id,
     decisions: [
-      { source_sense_id: 'w1-s1', candidate: '생명보험', disposition: 'relation', target_resolution: 'exact', target_record_id: 'w2', target_sense_id: 'w2-s1', type: 'association', relevance: 7, reverse_type: 'scene', reverse_relevance: 8 },
-      { source_sense_id: 'w1-s1', candidate: '생명 보험', disposition: 'relation', target_resolution: 'exact', target_record_id: 'w2', target_sense_id: 'w2-s1', type: 'near', relevance: 2, reverse_type: 'mood', reverse_relevance: 4 },
+      { source_sense_id: 'w1-s1', candidate: '생명보험', disposition: 'relation', target_resolution: 'exact', target_record_id: 'w2', target_sense_id: 'w2-s1', type: 'near', relevance: 7 },
+      { source_sense_id: 'w1-s1', candidate: '생명 보험', disposition: 'relation', target_resolution: 'exact', target_record_id: 'w2', target_sense_id: 'w2-s1', type: 'near', relevance: 2 },
     ],
   }));
   await quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', decisionsFile], { root }));
@@ -982,7 +992,7 @@ test('merge coalesces orthographic aliases for one target sense and keeps the ca
   const relations = relationBytes.toString('utf8').trim().split('\n').map(JSON.parse);
   assert.deepEqual(relations, [{
     source_record_id: 'w1', source_sense_id: 'w1-s1', target_record_id: 'w2', target_sense_id: 'w2-s1',
-    type: 'near', relevance: 2, reverse_type: 'mood', reverse_relevance: 4,
+    type: 'near', relevance: 2, reverse_type: 'near', reverse_relevance: 2,
     candidate_assignment_version: 1, candidate_forms: ['생명보험', '생명 보험'], reverse_candidate_forms: ['생명 보험 회사'],
   }], 'the canonical target headword spelling supplies the retained sense-pair judgment');
 
@@ -1000,7 +1010,9 @@ test('merge coalesces orthographic aliases for one target sense and keeps the ca
   assert.equal(verified.missing, 0, 'the single ID row accounts for both orthographic candidate forms');
 
   const conflictingCheckpoint = JSON.parse(await readFile(checkpointPath, 'utf8'));
-  conflictingCheckpoint.items[0].candidates.find((candidate) => candidate.text === '생명 보험').decision.type = 'scene';
+  const conflictingDecision = conflictingCheckpoint.items[0].candidates.find((candidate) => candidate.text === '생명 보험').decision;
+  conflictingDecision.type = 'scene';
+  conflictingDecision.reverse_type = 'scene';
   await writeFile(checkpointPath, `${JSON.stringify(conflictingCheckpoint)}\n`);
   await assert.rejects(
     () => quiet(() => run(['merge', '--checkpoint', checkpoint], { root })),
@@ -1048,8 +1060,8 @@ test('merge coalesces one sense pair reached by distinct candidates using the st
   await writeFile(path.join(root, decisionsFile), JSON.stringify({
     chunk_id: chunk.chunk_id,
     decisions: [
-      { source_sense_id: 'w228756-s1', candidate: '어수선', disposition: 'relation', target_resolution: 'exact', target_record_id: 'w459957', target_sense_id: 'w459957-s1', type: 'near', relevance: 4, reverse_type: 'mood', reverse_relevance: 8 },
-      { source_sense_id: 'w228756-s1', candidate: '어수선하다', disposition: 'relation', target_resolution: 'exact', target_record_id: 'w459957', target_sense_id: 'w459957-s1', type: 'near', relevance: 3, reverse_type: 'mood', reverse_relevance: 6 },
+      { source_sense_id: 'w228756-s1', candidate: '어수선', disposition: 'relation', target_resolution: 'exact', target_record_id: 'w459957', target_sense_id: 'w459957-s1', type: 'near', relevance: 4 },
+      { source_sense_id: 'w228756-s1', candidate: '어수선하다', disposition: 'relation', target_resolution: 'exact', target_record_id: 'w459957', target_sense_id: 'w459957-s1', type: 'near', relevance: 3 },
     ],
   }));
   await quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', decisionsFile], { root }));
@@ -1060,7 +1072,7 @@ test('merge coalesces one sense pair reached by distinct candidates using the st
   assert.deepEqual(relations, [{
     source_record_id: 'w228756', source_sense_id: 'w228756-s1',
     target_record_id: 'w459957', target_sense_id: 'w459957-s1',
-    type: 'near', relevance: 3, reverse_type: 'mood', reverse_relevance: 6,
+    type: 'near', relevance: 3, reverse_type: 'near', reverse_relevance: 3,
     candidate_assignment_version: 1, candidate_forms: ['어수선', '어수선하다'], reverse_candidate_forms: ['엉벙'],
   }]);
   const verified = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
@@ -1073,6 +1085,9 @@ test('compact chunks are a lossless view and compact decisions expand into the s
   const view = '.warroom-scratch/active-chunk.txt';
   const input = '.warroom-scratch/decisions.txt';
   await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  const legacyCheckpoint = JSON.parse(await readFile(path.join(root, checkpoint), 'utf8'));
+  delete legacyCheckpoint.type_tier_policy;
+  await writeFile(path.join(root, checkpoint), `${JSON.stringify(legacyCheckpoint)}\n`);
   const compact = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint, '--max-candidates', '2', '--format', 'compact', '--out', view], { root }));
   const json = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint], { root }));
   assert.equal(json.chunk_id, compact.chunk_id, 'both formats render the same pending chunk');
@@ -1155,6 +1170,89 @@ test('compact chunks are a lossless view and compact decisions expand into the s
   await assert.rejects(() => run(['read-chunk', '--checkpoint', checkpoint, '--format', 'compact', '--source-sense-id', 'w1-s1', '--candidate', '유일표적'], { root }), /primary chunks only/);
   await assert.rejects(() => run(['verify', '--shard', '001', '--format', 'compact'], { root }), /only valid for inspect\/read-chunk\/save-chunk/);
   await assert.rejects(() => run(['read-chunk', '--checkpoint', checkpoint, '--format', 'yaml'], { root }), /json or compact/);
+});
+
+test('new Part mirrors source Type/Tier through compact, JSON revision, inspect and amend boundaries', async (t) => {
+  const root = await repository(t);
+  const records = (await readFile(path.join(root, 'data/canonical/stdict-0001.jsonl'), 'utf8')).trim().split('\n').map(JSON.parse);
+  for (const producer of ['a_claude', 'b_codex', 'b_claude', 'c_codex', 'd_codex']) {
+    await writeFile(path.join(root, `data/relation-candidates/001/001_01_${producer}.jsonl`), jsonl(records.map((record) => ({
+      record_id: record.id, senses: record.senses.map((sense) => ({ sense_id: sense.id, candidates: [] })),
+    }))));
+  }
+  const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
+  const input = '.warroom-scratch/source-mirror-decisions.json';
+  await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  const prepared = JSON.parse(await readFile(path.join(root, checkpoint), 'utf8'));
+  assert.equal(prepared.type_tier_policy, 'source-mirror-v1');
+
+  const compact = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint, '--format', 'compact'], { root }));
+  assert.match(compact.text, /c<n> R <type> <tier> T<k>.*derived by the CLI/u);
+  const compactBody = `chunk ${compact.chunk_id}\nc1 R near 2 T1\nc2 D 무관\nc3 D 무관\nc4 D 무관\n`;
+  const beforeRejectedCompact = await readFile(path.join(root, checkpoint));
+  await writeFile(path.join(root, input), compactBody.replace('c1 R near 2 T1', 'c1 R near 2 T1 mood 5'));
+  await assert.rejects(() => quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', input, '--format', 'compact'], { root })),
+    /exact relations use only T<k>/u);
+  assert.deepEqual(await readFile(path.join(root, checkpoint)), beforeRejectedCompact);
+
+  await writeFile(path.join(root, input), compactBody);
+  await quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', input, '--format', 'compact'], { root }));
+  let saved = JSON.parse(await readFile(path.join(root, checkpoint), 'utf8'));
+  let selected = saved.items[0].candidates.find((candidate) => candidate.text === '유일');
+  assert.deepEqual([selected.decision.type, selected.decision.relevance,
+    selected.decision.reverse_type, selected.decision.reverse_relevance], ['near', 2, 'near', 2]);
+
+  const inspectBeforeRevision = await quiet(() => run(['inspect', '--checkpoint', checkpoint, '--source-sense-id', 'w1-s1', '--format', 'compact'], { root }));
+  assert.match(inspectBeforeRevision.text, /# current c1: R near 2 T1\n/u);
+  assert.doesNotMatch(inspectBeforeRevision.text, /# current c1: R near 2 T1 .*\d/u);
+  const revision = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint,
+    '--source-sense-id', 'w1-s1', '--candidate', '유일'], { root }));
+  assert.deepEqual(revision.items[0].candidates[0].previous_decision, {
+    source_sense_id: 'w1-s1', candidate: '유일', disposition: 'relation', type: 'near', relevance: 2,
+    target_resolution: 'exact', target_record_id: 'w3', target_sense_id: 'w3-s1',
+  });
+
+  const revisionDecision = { source_sense_id: 'w1-s1', candidate: '유일', disposition: 'relation', type: 'mood', relevance: 5,
+    target_resolution: 'exact', target_record_id: 'w3', target_sense_id: 'w3-s1' };
+  await writeFile(path.join(root, input), JSON.stringify({ chunk_id: revision.chunk_id,
+    decisions: [{ ...revisionDecision, reverse_type: 'near', reverse_relevance: 2 }] }));
+  await assert.rejects(() => quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', input], { root })),
+    /must omit reverse_type and reverse_relevance/u);
+  await writeFile(path.join(root, input), JSON.stringify({ chunk_id: revision.chunk_id, decisions: [revisionDecision] }));
+  await quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', input], { root }));
+  saved = JSON.parse(await readFile(path.join(root, checkpoint), 'utf8'));
+  selected = saved.items[0].candidates.find((candidate) => candidate.text === '유일');
+  assert.deepEqual([selected.decision.type, selected.decision.relevance,
+    selected.decision.reverse_type, selected.decision.reverse_relevance], ['mood', 5, 'mood', 5]);
+
+  await completeOptionalForTest(root, checkpoint);
+  await quiet(() => run(['merge', '--checkpoint', checkpoint], { root }));
+  const inspect = await quiet(() => run(['inspect', '--checkpoint', checkpoint, '--source-sense-id', 'w1-s1'], { root }));
+  const amendPath = '.warroom-scratch/source-mirror-amend.txt';
+  await writeFile(path.join(root, amendPath), `amend w1-s1 @${inspect.digest}\nc1 R scene 4 T1\n`);
+  await quiet(() => run(['amend', '--checkpoint', checkpoint, '--in', amendPath], { root }));
+  const relation = JSON.parse((await readFile(path.join(root, 'data/relations/relation-001.jsonl'), 'utf8')).trim().split('\n')[0]);
+  assert.deepEqual([relation.type, relation.relevance, relation.reverse_type, relation.reverse_relevance], ['scene', 4, 'scene', 4]);
+});
+
+test('marker-free checkpoints preserve the legacy independent reverse judgment across prepare restart', async (t) => {
+  const root = await repository(t);
+  const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
+  const input = '.warroom-scratch/legacy-decisions.txt';
+  await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01', '--allow-partial'], { root }));
+  const legacy = JSON.parse(await readFile(path.join(root, checkpoint), 'utf8'));
+  delete legacy.type_tier_policy;
+  await writeFile(path.join(root, checkpoint), `${JSON.stringify(legacy)}\n`);
+  const compact = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint, '--format', 'compact'], { root }));
+  assert.match(compact.text, /T<k> <reverse_type> <reverse_tier>/u);
+  await writeFile(path.join(root, input), `chunk ${compact.chunk_id}\nc1 R near 2 T1 mood 5\nc2 D 무관\nc3 D 무관\nc4 D 무관\n`);
+  await quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', input, '--format', 'compact'], { root }));
+  const savedBeforeRestart = await readFile(path.join(root, checkpoint));
+  const resumed = await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01', '--allow-partial'], { root }));
+  assert.equal(resumed.type_tier_policy, undefined);
+  assert.deepEqual(await readFile(path.join(root, checkpoint)), savedBeforeRestart);
+  const current = JSON.parse(savedBeforeRestart).items[0].candidates.find((candidate) => candidate.text === '유일').decision;
+  assert.deepEqual([current.type, current.relevance, current.reverse_type, current.reverse_relevance], ['near', 2, 'mood', 5]);
 });
 
 test('merge validates final Part accounting before writing and supports a local decision revision', async (t) => {
@@ -1255,7 +1353,7 @@ test('merge accounts an ID relation against only its selected candidate spelling
   const decisions = [
     {
       source_sense_id: 'w249019-s1', candidate: '온순', disposition: 'relation', type: 'near', relevance: 3,
-      target_resolution: 'exact', target_record_id: 'w462682', target_sense_id: 'w462682-s1', reverse_type: 'near', reverse_relevance: 3,
+      target_resolution: 'exact', target_record_id: 'w462682', target_sense_id: 'w462682-s1',
     },
     {
       source_sense_id: 'w249019-s1', candidate: '온순하다', disposition: 'relation', type: 'association', relevance: 5,
@@ -1339,7 +1437,6 @@ test('merge coalesces distinct candidate forms that share one identical sense-pa
   const sharedJudgment = {
     source_sense_id: 'w226347-s1', disposition: 'relation', target_resolution: 'exact',
     target_record_id: 'w334626', target_sense_id: 'w334626-s1', type: 'action', relevance: 5,
-    reverse_type: 'association', reverse_relevance: 5,
   };
   const decisions = ['칭얼거리다', '칭얼'].map((candidate) => ({ ...sharedJudgment, candidate }));
   await writeFile(path.join(root, decisionsFile), JSON.stringify({ chunk_id: chunk.chunk_id, decisions }));
@@ -1353,14 +1450,16 @@ test('merge coalesces distinct candidate forms that share one identical sense-pa
   assert.deepEqual(relations, [{
     source_record_id: 'w226347', source_sense_id: 'w226347-s1',
     target_record_id: 'w334626', target_sense_id: 'w334626-s1',
-    type: 'action', relevance: 5, reverse_type: 'association', reverse_relevance: 5,
+    type: 'action', relevance: 5, reverse_type: 'action', reverse_relevance: 5,
     candidate_assignment_version: 1, candidate_forms: ['칭얼거리다', '칭얼'], reverse_candidate_forms: ['억지투정'],
   }]);
   const counts = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
   assert.deepEqual([counts.unique, counts.relation, counts.missing], [2, 1, 0]);
 
   const conflictingCheckpoint = JSON.parse(await readFile(path.join(root, checkpoint), 'utf8'));
-  conflictingCheckpoint.items[0].candidates.find((candidate) => candidate.text === '칭얼').decision.type = 'mood';
+  const conflictingDecision = conflictingCheckpoint.items[0].candidates.find((candidate) => candidate.text === '칭얼').decision;
+  conflictingDecision.type = 'mood';
+  conflictingDecision.reverse_type = 'mood';
   await writeFile(path.join(root, checkpoint), `${JSON.stringify(conflictingCheckpoint)}\n`);
   await assert.rejects(
     () => quiet(() => run(['merge', '--checkpoint', checkpoint], { root })),
@@ -1390,9 +1489,9 @@ test('preflight collects pair conflicts and Drop/gloss failures without mutation
   assert.equal(target.record_id, 'w2');
   const decisions = [
     { source_sense_id: 'w1-s1', candidate: '유일', disposition: 'relation', type: 'near', relevance: 3,
-      target_resolution: 'exact', target_record_id: 'w2', target_sense_id: 'w2-s1', reverse_type: 'near', reverse_relevance: 3 },
+      target_resolution: 'exact', target_record_id: 'w2', target_sense_id: 'w2-s1' },
     { source_sense_id: 'w1-s1', candidate: '유일하다', disposition: 'relation', type: 'mood', relevance: 4,
-      target_resolution: 'exact', target_record_id: 'w2', target_sense_id: 'w2-s1', reverse_type: 'near', reverse_relevance: 3 },
+      target_resolution: 'exact', target_record_id: 'w2', target_sense_id: 'w2-s1' },
     { source_sense_id: 'w1-s1', candidate: '버릴말', disposition: 'drop', reason: '무관' },
   ];
   const decisionsPath = '.warroom-scratch/preflight-decisions.json';
@@ -1673,19 +1772,21 @@ test('save-optional accepts multiple exact target links per candidate and reject
   assert.match(compact.text, /T3\tw501-s3/u);
   const input = '.warroom-scratch/optional-input.txt';
   const before = await readFile(path.join(root, checkpoint));
-  const duplicate = `links @${view.digest}\nc1 R near 3 T2 scene 4\nc1 R mood 4 T2 near 2\n`;
+  const duplicate = `links @${view.digest}\nc1 R near 3 T2\nc1 R mood 4 T2\n`;
   await writeFile(path.join(root, input), duplicate);
   await assert.rejects(
     () => quiet(() => run(['save-optional', '--checkpoint', checkpoint, '--in', input], { root })),
     /optional links not saved[\s\S]*repeats target/u,
   );
   assert.deepEqual(await readFile(path.join(root, checkpoint)), before, 'one duplicate target rejects all optional decisions');
-  await writeFile(path.join(root, input), `links @${view.digest}\nc1 R near 3 T2 scene 4\nc1 R mood 4 T3 near 2\n`);
+  await writeFile(path.join(root, input), `links @${view.digest}\nc1 R near 3 T2\nc1 R mood 4 T3\n`);
   const saved = await quiet(() => run(['save-optional', '--checkpoint', checkpoint, '--in', input], { root }));
   assert.deepEqual([saved.optional_review_complete, saved.optional_links_saved, saved.optional_candidates], [true, 2, 1]);
   const checkpointData = JSON.parse(await readFile(path.join(root, checkpoint), 'utf8'));
   const added = checkpointData.items.find((item) => item.sense_id === 'w1-s1').candidates.find((candidate) => candidate.text === '유일표적');
   assert.deepEqual(added.additional_relations.map((relation) => relation.target_sense_id), ['w501-s2', 'w501-s3']);
+  assert.ok(added.additional_relations.every((relation) => relation.reverse_type === relation.type
+    && relation.reverse_relevance === relation.relevance), 'the CLI mirrors each optional source judgment');
   await mergeForTest(root, checkpoint);
   const counts = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01', '--checkpoint', checkpoint], { root }));
   assert.equal(counts.missing, 0);
