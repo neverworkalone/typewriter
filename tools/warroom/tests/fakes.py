@@ -140,6 +140,10 @@ class FakeGit:
         self.commit_message: str | None = None
         self.commit_empty_allowed: list[bool] = []
         self.stage2_merge_calls: list[tuple] = []
+        self.stage2_prepare_merge_calls: list[tuple] = []
+        self.stage2_preflight_calls: list[tuple] = []
+        self.stage2_preflight_reports: list[dict] = []
+        self.stage2_repair_calls: list[dict] = []
 
     def fetch_base(self, base):
         return self.base_sha
@@ -308,6 +312,41 @@ class FakeGit:
         if outputs is None:
             outputs = [f"data/relations/relation-{shard}.jsonl"]
         self.dirty_text = "".join(f" M {output}\n" for output in outputs)
+
+    def stage2_prepare_merge(self, worktree, shard, batch, part, timeout=900):
+        self.stage2_prepare_merge_calls.append((shard, batch, part))
+        path = Path(worktree) / ".warroom-scratch" / f"relation-admission-{shard}-{batch}-{part}.json"
+        data = json.loads(path.read_text("utf-8"))
+        data["premerge"] = {"status": "ready", "identity": f"{shard}/{batch}/{part}",
+                            "relations": {"exists": False, "sha256": None},
+                            "drops": {"exists": False, "sha256": None}}
+        path.write_text(json.dumps(data), "utf-8")
+
+    def stage2_preflight(self, worktree, shard, batch, part, timeout=900):
+        self.stage2_preflight_calls.append((shard, batch, part))
+        if self.stage2_preflight_reports:
+            return self.stage2_preflight_reports.pop(0)
+        return {"version": 1, "ok": True, "repairable": False, "shard": shard, "batch": batch,
+                "part": part, "fingerprint": "a" * 64, "total": 0, "candidate_total": 0,
+                "problems": [], "unclassified": [], "coverage": {}}
+
+    def stage2_repair(self, worktree, shard, batch, part, repair, timeout=900):
+        self.stage2_repair_calls.append(repair)
+        path = Path(worktree) / ".warroom-scratch" / f"relation-admission-{shard}-{batch}-{part}.json"
+        data = json.loads(path.read_text("utf-8"))
+        for row in repair["decisions"]:
+            item = next(item for item in data["items"] if item["sense_id"] == row["source_sense_id"])
+            candidate = next(candidate for candidate in item["candidates"] if candidate["text"] == row["candidate"])
+            if candidate.get("already_accounted") is True:
+                candidate["additional_relations"] = row["additional_relations"]
+            else:
+                candidate["decision"] = row["decision"]
+        keys = sorted(f"{row['source_sense_id']}\u0000{row['candidate']}" for row in repair["decisions"])
+        data.setdefault("repair_receipts", []).append({"request_id": "c" * 64, "fingerprint": repair["fingerprint"],
+                                                        "candidate_keys": keys})
+        path.write_text(json.dumps(data), "utf-8")
+        return {"version": 1, "ok": True, "repaired": len(repair["decisions"]),
+                "already_applied": False, "request_id": "c" * 64, "candidate_keys": keys}
 
     def verify_stage2_local(self, worktree, shard, batch, part, *, checkpoint, timeout=900):
         self.local_verify_calls.append((shard, batch, part, checkpoint))

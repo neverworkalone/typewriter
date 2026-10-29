@@ -12,6 +12,7 @@ import {
   assertShard,
   batchScope,
   candidateFormsForRecord,
+  findGlossNamedDrops,
   candidateInventory,
   legacyCandidateFormsForRecord,
   loadApprovedRelations,
@@ -39,7 +40,10 @@ const USAGE = `usage:
   node scripts/relation/admission-cli.mjs complete-optional --checkpoint <file.json>
   node scripts/relation/admission-cli.mjs cancel-revision --checkpoint <file.json> --chunk-id <exact>
   node scripts/relation/admission-cli.mjs merge --checkpoint <file.json>
+  node scripts/relation/admission-cli.mjs prepare-merge --checkpoint <file.json> --json
   node scripts/relation/admission-cli.mjs amend --checkpoint <file.json> --in <decisions>
+  node scripts/relation/admission-cli.mjs preflight --checkpoint <file.json> --json [--limit <n>] [--offset <n>]
+  node scripts/relation/admission-cli.mjs repair --checkpoint <file.json> --in <repair.json> --json
   node scripts/relation/admission-cli.mjs verify --shard 001 [--batch 01 [--part 01]] [--checkpoint <file.json>] [--allow-partial] [--json]`;
 
 const CHECKPOINT_VERSION = 1;
@@ -187,6 +191,14 @@ function validateCheckpoint(checkpoint, identity = {}) {
   }
   if (checkpoint.amend_revision !== undefined && (!Number.isInteger(checkpoint.amend_revision) || checkpoint.amend_revision < 0)) {
     throw new Error('checkpoint amend_revision must be a non-negative integer when present');
+  }
+  if (checkpoint.repair_receipts !== undefined && (!Array.isArray(checkpoint.repair_receipts) || checkpoint.repair_receipts.some((receipt) =>
+    !isPlainObject(receipt) || keysOf(receipt) !== 'candidate_keys,fingerprint,request_id'
+      || !/^[a-f0-9]{64}$/u.test(receipt.request_id ?? '') || !/^[a-f0-9]{64}$/u.test(receipt.fingerprint ?? '')
+      || !Array.isArray(receipt.candidate_keys) || receipt.candidate_keys.some((key) => typeof key !== 'string' || !key.includes('\u0000'))
+      || new Set(receipt.candidate_keys).size !== receipt.candidate_keys.length
+      || JSON.stringify(receipt.candidate_keys) !== JSON.stringify([...receipt.candidate_keys].sort())))) {
+    throw new Error('checkpoint repair receipts are malformed');
   }
   const seen = new Set();
   const seenSenses = new Set();
@@ -463,7 +475,7 @@ function coalesceIdenticalSensePairRelations(relations, relationCandidates) {
   return { relations: selectedRelations, relationCandidates: selectedCandidates };
 }
 
-function assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, newRelations, newRelationCandidates, newDrops, index) {
+function collectMergeConflicts(checkpoint, existingRelations, existingDrops, newRelations, newRelationCandidates, newDrops, index) {
   // The materializer must be safe to run repeatedly from a pre-merge snapshot. Do not let a reciprocal
   // relation update alias and mutate the input rows supplied by its caller.
   const baseRelations = existingRelations.map((row) => ({
@@ -508,6 +520,13 @@ function assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, ne
     }
   }
   const appendRelations = [];
+  const conflicts = [];
+  const addConflict = (code, candidateKeys, rows, message) => conflicts.push({
+    code,
+    candidate_keys: [...new Set(candidateKeys)].sort(),
+    relations: rows.filter(Boolean).map((row) => JSON.parse(JSON.stringify(row))),
+    message,
+  });
   const orthographicCoalesced = coalesceOrthographicAliasRelations(checkpoint, newRelations, newRelationCandidates);
   const coalesced = coalesceIdenticalSensePairRelations(orthographicCoalesced.relations, orthographicCoalesced.relationCandidates);
   for (const [rowIndex, row] of coalesced.relations.entries()) {
@@ -515,7 +534,10 @@ function assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, ne
     if (exactRelations.has(stableRow(row))) continue;
     if ('text' in row) {
       const key = `${row.source_sense_id}\u0000${normalizeCandidate(row.text)}`;
-      if (textPairs.has(key) || drops.has(key) || existingIdCandidates.has(key)) throw new Error(`cannot merge duplicate or already-decided candidate ${row.source_sense_id}/${row.text}`);
+      if (textPairs.has(key) || drops.has(key) || existingIdCandidates.has(key)) {
+        addConflict('candidate-already-decided', [candidateKey], [], `cannot merge duplicate or already-decided candidate ${row.source_sense_id}/${row.text}`);
+        continue;
+      }
       textPairs.add(key);
     } else {
       const key = idPairKey(row.source_sense_id, row.target_sense_id);
@@ -545,13 +567,25 @@ function assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, ne
           }
           continue;
         }
-        throw new Error(`cannot merge duplicate or reverse-duplicate ID relation ${row.source_sense_id}/${row.target_sense_id}`);
+        const relatedCandidates = sourceCandidatesForPair.get(key) ?? new Set([candidateKey]);
+        relatedCandidates.add(candidateKey);
+        addConflict('id-pair-conflict', [...relatedCandidates], [existingPair, row],
+          `cannot merge duplicate or reverse-duplicate ID relation ${row.source_sense_id}/${row.target_sense_id}`);
+        continue;
       }
       const candidateKeys = sourceCandidatesForPair.get(key) ?? new Set([candidateKey]);
+      let candidateConflict = false;
       for (const sourceCandidateKey of candidateKeys) {
-        if (drops.has(sourceCandidateKey)) throw new Error(`cannot merge an ID relation already marked Drop for ${sourceCandidateKey.replace('\u0000', '/')}`);
-        if (textPairs.has(sourceCandidateKey)) throw new Error(`cannot merge an ID relation already text-only for ${sourceCandidateKey.replace('\u0000', '/')}`);
+        if (drops.has(sourceCandidateKey)) {
+          addConflict('candidate-already-decided', [sourceCandidateKey], [row], `cannot merge an ID relation already marked Drop for ${sourceCandidateKey.replace('\u0000', '/')}`);
+          candidateConflict = true;
+        }
+        if (textPairs.has(sourceCandidateKey)) {
+          addConflict('candidate-already-decided', [sourceCandidateKey], [row], `cannot merge an ID relation already text-only for ${sourceCandidateKey.replace('\u0000', '/')}`);
+          candidateConflict = true;
+        }
       }
+      if (candidateConflict) continue;
       idPairs.set(key, row);
       idPairs.set(reverse, row);
       exactRelations.add(stableRow(row));
@@ -562,23 +596,38 @@ function assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, ne
   for (const row of newDrops) {
     if (exactDrops.has(stableRow(row))) continue;
     const key = `${row.source_sense_id}\u0000${normalizeCandidate(row.candidate)}`;
-    if (drops.has(key) || textPairs.has(key) || existingIdCandidates.has(key)) throw new Error(`cannot merge duplicate or already-decided candidate ${row.source_sense_id}/${row.candidate}`);
+    if (drops.has(key) || textPairs.has(key) || existingIdCandidates.has(key)) {
+      addConflict('candidate-already-decided', [key], [], `cannot merge duplicate or already-decided candidate ${row.source_sense_id}/${row.candidate}`);
+      continue;
+    }
     drops.add(key);
     appendDrops.push(row);
   }
   for (const [key, candidate] of checkpointCandidates) {
     if (candidate.decision.disposition === 'drop' && existingIdCandidates.has(key)) {
-      throw new Error(`cannot merge a Drop already answered by an approved ID relation ${key.replace('\u0000', '/')}`);
+      const sourceSenseId = key.split('\u0000')[0];
+      const approved = baseRelations.filter((row) => !('text' in row) &&
+        ((row.source_sense_id === sourceSenseId && candidate.same_spelling_targets.some((target) => target.record_id === row.target_record_id)) ||
+         (row.target_sense_id === sourceSenseId && candidate.same_spelling_targets.some((target) => target.record_id === row.source_record_id))));
+      addConflict('candidate-already-decided', [key], approved,
+        `cannot merge a Drop already answered by an approved ID relation ${key.replace('\u0000', '/')}`);
     }
   }
-  return { relations: [...baseRelations, ...appendRelations], drops: [...baseDrops, ...appendDrops] };
+  conflicts.sort((left, right) => left.code.localeCompare(right.code) || left.candidate_keys.join('\n').localeCompare(right.candidate_keys.join('\n')) || left.message.localeCompare(right.message));
+  return { relations: [...baseRelations, ...appendRelations], drops: [...baseDrops, ...appendDrops], conflicts };
+}
+
+function assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, newRelations, newRelationCandidates, newDrops, index) {
+  const result = collectMergeConflicts(checkpoint, existingRelations, existingDrops, newRelations, newRelationCandidates, newDrops, index);
+  if (result.conflicts.length) throw new Error(result.conflicts[0].message);
+  return { relations: result.relations, drops: result.drops };
 }
 
 function parseArgs(argv) {
   const [command, ...rest] = argv;
   const options = { command, shard: null, batch: null, part: null, out: null, checkpoint: null, input: null,
     maxCandidates: DEFAULT_CHUNK_CANDIDATES, allowPartial: false, json: false, sourceSenseId: null, candidateText: null,
-    format: null, optional: false, chunkId: null, page: 1, pageSize: INSPECT_PAGE_SIZE };
+    format: null, optional: false, chunkId: null, page: 1, pageSize: INSPECT_PAGE_SIZE, limit: 20, offset: 0 };
   for (let index = 0; index < rest.length; index += 1) {
     const flag = rest[index];
     if (flag === '--shard') options.shard = rest[++index];
@@ -594,6 +643,8 @@ function parseArgs(argv) {
     else if (flag === '--chunk-id') options.chunkId = rest[++index];
     else if (flag === '--page') options.page = Number(rest[++index]);
     else if (flag === '--page-size') options.pageSize = Number(rest[++index]);
+    else if (flag === '--limit') options.limit = Number(rest[++index]);
+    else if (flag === '--offset') options.offset = Number(rest[++index]);
     else if (flag === '--allow-partial') options.allowPartial = true;
     else if (flag === '--json') options.json = true;
     else if (flag === '--format') options.format = rest[++index];
@@ -605,22 +656,26 @@ function parseArgs(argv) {
     throw new Error(`--format compact covers primary chunks only; read a revision as JSON\n${USAGE}`);
   }
   options.format ??= 'json';
-  if (!['prepare', 'inspect', 'read-chunk', 'save-chunk', 'save-optional', 'complete-optional', 'cancel-revision', 'merge', 'amend', 'verify'].includes(command)) throw new Error(USAGE);
+  if (!['prepare', 'inspect', 'read-chunk', 'save-chunk', 'save-optional', 'complete-optional', 'cancel-revision', 'merge', 'prepare-merge', 'amend', 'preflight', 'repair', 'verify'].includes(command)) throw new Error(USAGE);
   if (['prepare', 'verify'].includes(command)) assertShard(options.shard);
   if (options.batch !== null && !['01', '02'].includes(options.batch)) throw new Error(`--batch must be 01 or 02\n${USAGE}`);
   if (options.part !== null && !['01', '02', '03', '04', '05'].includes(options.part)) throw new Error(`--part must be 01, 02, 03, 04 or 05\n${USAGE}`);
   if (options.part !== null && options.batch === null) throw new Error(`--part requires --batch\n${USAGE}`);
   if (options.part !== null && !['prepare', 'verify'].includes(command)) throw new Error(`--part is only valid for prepare/verify\n${USAGE}`);
   if (!Number.isInteger(options.maxCandidates) || options.maxCandidates < 1) throw new Error(`--max-candidates must be a positive integer\n${USAGE}`);
-  if (['inspect', 'read-chunk', 'save-chunk', 'save-optional', 'complete-optional', 'cancel-revision', 'merge', 'amend'].includes(command) && !options.checkpoint) throw new Error(`${command} requires --checkpoint\n${USAGE}`);
-  if (['save-chunk', 'save-optional', 'amend'].includes(command) && !options.input) throw new Error(`${command} requires --in\n${USAGE}`);
+  if (['inspect', 'read-chunk', 'save-chunk', 'save-optional', 'complete-optional', 'cancel-revision', 'merge', 'prepare-merge', 'amend', 'preflight', 'repair'].includes(command) && !options.checkpoint) throw new Error(`${command} requires --checkpoint\n${USAGE}`);
+  if (['save-chunk', 'save-optional', 'amend', 'repair'].includes(command) && !options.input) throw new Error(`${command} requires --in\n${USAGE}`);
   if (command === 'cancel-revision' && !options.chunkId) throw new Error(`cancel-revision requires --chunk-id\n${USAGE}`);
   if (['inspect', 'read-chunk'].includes(command) && (!Number.isInteger(options.page) || options.page < 1)) throw new Error(`--page must be a positive integer\n${USAGE}`);
   if (['inspect', 'read-chunk'].includes(command) && (!Number.isInteger(options.pageSize) || options.pageSize < 1)) throw new Error(`--page-size must be a positive integer\n${USAGE}`);
   if ((options.page !== 1 || options.pageSize !== INSPECT_PAGE_SIZE) && !['inspect', 'read-chunk'].includes(command)) throw new Error(`--page/--page-size is only valid for inspect/read-chunk\n${USAGE}`);
   if (options.optional && command !== 'read-chunk') throw new Error(`--optional is only valid for read-chunk\n${USAGE}`);
+  if ((options.limit !== 20 || options.offset !== 0) && command !== 'preflight') throw new Error(`--limit/--offset are only valid for preflight\n${USAGE}`);
+  if (!Number.isInteger(options.limit) || options.limit < 1 || options.limit > 100) throw new Error(`--limit must be an integer 1..100\n${USAGE}`);
+  if (!Number.isInteger(options.offset) || options.offset < 0) throw new Error(`--offset must be a non-negative integer\n${USAGE}`);
   if (options.chunkId && command !== 'cancel-revision') throw new Error(`--chunk-id is only valid for cancel-revision\n${USAGE}`);
-  if (options.json && command !== 'verify') throw new Error(`--json is only valid for verify\n${USAGE}`);
+  if (options.json && !['verify', 'prepare-merge', 'preflight', 'repair'].includes(command)) throw new Error(`--json is only valid for verify/prepare-merge/preflight/repair\n${USAGE}`);
+  if (['prepare-merge', 'preflight', 'repair'].includes(command) && !options.json) throw new Error(`${command} requires --json\n${USAGE}`);
   if (options.allowPartial && !['prepare', 'verify'].includes(command)) throw new Error(`--allow-partial is only valid for prepare/verify\n${USAGE}`);
   if (command === 'inspect' && (typeof options.sourceSenseId !== 'string' || !options.sourceSenseId)) {
     throw new Error(`inspect requires --source-sense-id\n${USAGE}`);
@@ -652,6 +707,30 @@ export async function run(argv, { root } = {}) {
     : options.part && ['prepare', 'verify'].includes(options.command)
         ? defaultCheckpointPath(options.shard, options.batch, options.part, repositoryRoot)
         : null;
+
+  if (options.command === 'preflight') {
+    const checkpoint = await readCheckpoint(checkpointPath);
+    const payload = await preflightCheckpoint(checkpoint, checkpointPath, repositoryRoot, options.limit, options.offset);
+    console.log(JSON.stringify(payload));
+    return payload;
+  }
+  if (options.command === 'prepare-merge') {
+    const checkpoint = await readCheckpoint(checkpointPath);
+    assertPrimaryComplete(checkpoint);
+    assertOptionalComplete(checkpoint);
+    if (checkpoint.merged) throw new Error('cannot prepare a merged Part for merge');
+    const prepared = await ensurePremerge(checkpoint, checkpointPath, repositoryRoot);
+    const payload = { version: 1, ok: true, shard: checkpoint.shard, batch: checkpoint.batch, part: checkpoint.part,
+      premerge: checkpoint.premerge, relations: prepared.relations.exists, drops: prepared.drops.exists };
+    console.log(JSON.stringify(payload));
+    return payload;
+  }
+  if (options.command === 'repair') {
+    const result = await applyRepair(await readCheckpoint(checkpointPath), checkpointPath, options.input, repositoryRoot);
+    const payload = { version: 1, ok: true, ...result };
+    console.log(JSON.stringify(payload));
+    return payload;
+  }
 
   if (options.command === 'inspect') {
     const checkpoint = await readCheckpoint(checkpointPath);
@@ -1774,6 +1853,294 @@ async function materializePart(checkpoint, root, baseline) {
   return { relations, drops, merged, existingRelations, existingDrops };
 }
 
+function hydrateRelation(row, index) {
+  const source = index.senses.get(row.source_sense_id);
+  const targetId = row.target_sense_id;
+  const target = targetId ? index.senses.get(targetId) : null;
+  const describe = (entry, senseId) => entry ? {
+    record_id: entry.record.id,
+    sense_id: senseId,
+    lemma: entry.record.lemma,
+    pos: entry.sense.pos,
+    gloss: entry.sense.gloss,
+  } : { sense_id: senseId };
+  return { ...row, source: describe(source, row.source_sense_id), ...(targetId ? { target: describe(target, targetId) } : {}) };
+}
+
+function candidateKeyParts(key) {
+  const at = key.indexOf('\u0000');
+  return at < 0 ? [key, ''] : [key.slice(0, at), key.slice(at + 1)];
+}
+
+async function preflightCheckpoint(checkpoint, checkpointPath, root, limit = 20, offset = 0) {
+  assertPrimaryComplete(checkpoint);
+  assertOptionalComplete(checkpoint);
+  validateCheckpointDecisions(checkpoint);
+  if (checkpoint.merged) throw new Error('preflight only applies before Part merge');
+  const baseline = await readReadyPremerge(checkpoint, checkpointPath);
+  const [actualRelations, actualDrops] = await Promise.all([
+    readFileState(shardRelationPath(checkpoint.shard, root)),
+    readFileState(shardDropPath(checkpoint.shard, root)),
+  ]);
+  if (!sameFileState(actualRelations, baseline.relations) || !sameFileState(actualDrops, baseline.drops)) {
+    throw new Error('Relation/Drop outputs differ from the trusted premerge snapshot; refusing automatic semantic repair');
+  }
+  const existingRelations = parseJsonlState(baseline.relations, 'Relation');
+  const existingDrops = parseJsonlState(baseline.drops, 'Drop');
+  const others = await loadApprovedRelations(root, { exceptShard: checkpoint.shard });
+  const loaded = await loadShard(checkpoint.shard, root, { batch: checkpoint.batch });
+  const scoped = partScope(loaded.canonicalRows, loaded.candidateFiles, checkpoint.batch, checkpoint.part);
+  const finalShardSenseIds = new Set(loaded.canonicalRows.flatMap((record) => record.senses.map((sense) => sense.id)));
+  validateRelationRows({ relationRows: existingRelations, dropRows: existingDrops, index: loaded.index,
+    shardSenseIds: finalShardSenseIds, otherRelationRows: others });
+  const generated = decisionRows(checkpoint);
+  for (const relation of generated.relations) {
+    if ('text' in relation) continue;
+    const source = loaded.index.byId.get(relation.source_record_id);
+    if (source) relation.reverse_candidate_forms = candidateFormsForRecord(source, loaded.index);
+  }
+  const collected = collectMergeConflicts(checkpoint, existingRelations, existingDrops, generated.relations,
+    generated.relationCandidates, generated.drops, loaded.index);
+  const unclassified = [];
+  const byKey = new Map(checkpoint.items.flatMap((item) => item.candidates.map((candidate) =>
+    [`${item.sense_id}\u0000${candidate.text}`, { item, candidate }])));
+  const parent = new Map([...byKey.keys()].map((key) => [key, key]));
+  const find = (key) => {
+    const value = parent.get(key);
+    if (value === undefined) return null;
+    if (value === key) return key;
+    const rootKey = find(value);
+    parent.set(key, rootKey);
+    return rootKey;
+  };
+  const join = (keys) => {
+    const known = keys.filter((key) => parent.has(key));
+    if (known.length < 2) return;
+    const rootKey = find(known[0]);
+    for (const key of known.slice(1)) parent.set(find(key), rootKey);
+  };
+  for (const conflict of collected.conflicts) {
+    if (!['id-pair-conflict', 'candidate-already-decided'].includes(conflict.code)
+        || conflict.candidate_keys.some((key) => !byKey.has(key))) {
+      unclassified.push(conflict.message);
+    }
+    join(conflict.candidate_keys);
+  }
+  const localDrops = existingDrops.concat(generated.drops).filter((row) =>
+    scoped.scopeRows.some((record) => record.senses.some((sense) => sense.id === row.source_sense_id)));
+  const glossProblems = findGlossNamedDrops({ dropRows: localDrops, scopeRows: scoped.scopeRows, index: loaded.index });
+  for (const entry of glossProblems) {
+    if (!byKey.has(`${entry.source_sense_id}\u0000${entry.candidate}`)) unclassified.push(entry.message);
+  }
+  const groups = new Map();
+  const groupFor = (key) => {
+    const rootKey = find(key) ?? key;
+    if (!groups.has(rootKey)) groups.set(rootKey, { candidate_keys: [], conflicts: [], drop_gloss: [] });
+    const group = groups.get(rootKey);
+    if (!group.candidate_keys.includes(key)) group.candidate_keys.push(key);
+    return group;
+  };
+  for (const conflict of collected.conflicts) {
+    if (conflict.candidate_keys.some((key) => !byKey.has(key))) continue;
+    const group = groupFor(conflict.candidate_keys[0]);
+    group.conflicts.push({
+      code: conflict.code,
+      message: conflict.message,
+      relations: conflict.relations.map((row) => hydrateRelation(row, loaded.index)),
+    });
+    for (const key of conflict.candidate_keys.slice(1)) groupFor(key);
+  }
+  for (const entry of glossProblems) {
+    const key = `${entry.source_sense_id}\u0000${entry.candidate}`;
+    if (byKey.has(key)) groupFor(key).drop_gloss.push(entry.message);
+  }
+  const problems = [...groups.values()].map((group) => {
+    group.candidate_keys.sort();
+    const affectedTypes = new Set(group.conflicts.flatMap((conflict) => conflict.relations.map((row) => row.type).filter(Boolean)));
+    group.candidates = group.candidate_keys.map((key) => {
+      const [sourceSenseId, candidateText] = candidateKeyParts(key);
+      const { item, candidate } = byKey.get(key);
+      const allTargets = candidate.same_spelling_targets.flatMap((target) => target.senses.map((sense) => ({
+        record_id: target.record_id, lemma: target.lemma, sense_id: sense.sense_id, pos: sense.pos, gloss: sense.gloss,
+      })));
+      const peers = item.candidates.filter((peer) => peer.text !== candidate.text && peer.decision?.disposition === 'relation')
+        .map((peer) => ({ source_sense_id: item.sense_id, candidate: peer.text, decision: peer.decision,
+          affected_type: affectedTypes.has(peer.decision.type) }));
+      return {
+        source_sense_id: sourceSenseId,
+        source_record_id: item.record_id,
+        source_lemma: item.lemma,
+        source_pos: item.pos,
+        source_gloss: item.gloss,
+        ...(item.reference_gloss === undefined ? {} : { reference_gloss: item.reference_gloss }),
+        candidate: candidateText,
+        decision: candidate.decision,
+        additional_relations: candidate.additional_relations ?? null,
+        already_accounted: candidate.already_accounted === true,
+        target_senses: allTargets,
+        approved_peers: item.approved_peers ?? [],
+        same_group_peers: peers,
+        drop_gloss: group.drop_gloss.filter((message) => message.includes(`${sourceSenseId}`) && message.includes(JSON.stringify(candidateText))),
+      };
+    });
+    return group;
+  }).sort((left, right) => left.candidate_keys[0].localeCompare(right.candidate_keys[0]));
+
+  const fingerprint = stableDigest({
+    identity: [checkpoint.shard, checkpoint.batch, checkpoint.part],
+    problems: problems.map((group) => ({ candidate_keys: group.candidate_keys, conflicts: group.conflicts, drop_gloss: group.drop_gloss })),
+  });
+  let ok = false;
+  let repairable = problems.length > 0 && unclassified.length === 0;
+  let materialization = collected.conflicts.length ? 'deferred-until-conflicts-are-fixed' : 'passed';
+  if (collected.conflicts.length === 0) {
+    try {
+      await materializePart(checkpoint, root, baseline);
+      ok = glossProblems.length === 0 && unclassified.length === 0;
+      repairable = !ok && unclassified.length === 0 && glossProblems.length > 0;
+    } catch (error) {
+      materialization = 'failed';
+      if (error instanceof AdmissionVerifyError && error.family === 'accounting') {
+        const expected = new Set(glossProblems.map((entry) => entry.message));
+        const unexplained = error.errors.filter((message) => !expected.has(message));
+        unclassified.push(...unexplained);
+        repairable = error.errors.length > 0 && unexplained.length === 0 && glossProblems.length > 0;
+      } else unclassified.push(`${error.name}: ${error.message}`);
+      ok = false;
+    }
+  }
+  const total = problems.length;
+  const page = problems.slice(offset, offset + limit);
+  const payload = {
+    version: 1,
+    ok,
+    repairable,
+    shard: checkpoint.shard,
+    batch: checkpoint.batch,
+    part: checkpoint.part,
+    fingerprint,
+    total,
+    candidate_total: problems.reduce((sum, group) => sum + group.candidate_keys.length, 0),
+    offset,
+    limit,
+    next_offset: offset + page.length < total ? offset + page.length : null,
+    coverage: {
+      merge_conflicts: 'complete',
+      drop_gloss: 'complete',
+      materialization,
+      accounting: collected.conflicts.length ? 'deferred-until-conflicts-are-fixed' : materialization,
+    },
+    unclassified: [...new Set(unclassified)].sort(),
+    problems: page,
+  };
+  const text = JSON.stringify(payload);
+  if (Buffer.byteLength(text, 'utf8') > INSPECT_PAGE_MAX_BYTES || text.length > INSPECT_PAGE_MAX_CHARS) {
+    throw new Error(`preflight page exceeds its output limit (${Buffer.byteLength(text, 'utf8')} bytes, ${text.length} characters); retry with a smaller --limit`);
+  }
+  return payload;
+}
+
+function sameJson(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+async function applyRepair(checkpoint, checkpointPath, inputPath, root) {
+  assertPrimaryComplete(checkpoint);
+  assertOptionalComplete(checkpoint);
+  validateCheckpointDecisions(checkpoint);
+  if (checkpoint.merged) throw new Error('repair cannot change a merged checkpoint');
+  if (!checkpoint.premerge || checkpoint.premerge.status !== 'ready') throw new Error('repair requires the trusted premerge snapshot');
+  const [raw, baseline] = await Promise.all([
+    readFile(resolveRootPath(root, inputPath), 'utf8'),
+    readReadyPremerge(checkpoint, checkpointPath),
+  ]);
+  let input;
+  try { input = JSON.parse(raw); } catch (error) { throw new Error(`cannot parse repair input: ${error.message}`); }
+  if (!isPlainObject(input) || keysOf(input) !== 'decisions,fingerprint,version' || input.version !== 1
+      || !/^[a-f0-9]{64}$/u.test(input.fingerprint ?? '') || !Array.isArray(input.decisions) || input.decisions.length === 0) {
+    throw new Error('repair input must contain version 1, a fingerprint and non-empty decisions');
+  }
+  const relationFile = shardRelationPath(checkpoint.shard, root);
+  const dropFile = shardDropPath(checkpoint.shard, root);
+  const [actualRelations, actualDrops] = await Promise.all([readFileState(relationFile), readFileState(dropFile)]);
+  if (!sameFileState(actualRelations, baseline.relations) || !sameFileState(actualDrops, baseline.drops)) {
+    throw new Error('Relation/Drop outputs differ from the trusted premerge snapshot; refusing repair');
+  }
+  if (input.decisions.some((row) => !isPlainObject(row) || typeof row.source_sense_id !== 'string' || typeof row.candidate !== 'string')) {
+    throw new Error('repair decisions need unique exact candidate keys and current/new decision fields');
+  }
+  const normalized = [...input.decisions].sort((left, right) =>
+    `${left.source_sense_id}\u0000${left.candidate}`.localeCompare(`${right.source_sense_id}\u0000${right.candidate}`));
+  if (normalized.some((row, index) => !isPlainObject(row) || keysOf(row) !== 'additional_relations,candidate,decision,expected_additional_relations,expected_decision,source_sense_id'
+      || typeof row.source_sense_id !== 'string' || typeof row.candidate !== 'string'
+      || (index > 0 && normalized[index - 1].source_sense_id === row.source_sense_id && normalized[index - 1].candidate === row.candidate))) {
+    throw new Error('repair decisions need unique exact candidate keys and current/new decision fields');
+  }
+  const requestId = stableDigest({ fingerprint: input.fingerprint, decisions: normalized });
+  const receipts = checkpoint.repair_receipts ?? [];
+  const prior = receipts.find((receipt) => receipt.request_id === requestId);
+  const selected = normalized.map((row) => {
+    const item = checkpoint.items.find((entry) => entry.sense_id === row.source_sense_id);
+    const candidate = item?.candidates.find((entry) => entry.text === row.candidate);
+    if (!item || !candidate) throw new Error(`repair target is outside this Part: ${row.source_sense_id}/${row.candidate}`);
+    return { row, item, candidate };
+  });
+  if (prior) {
+    const expectedKeys = selected.map(({ row }) => `${row.source_sense_id}\u0000${row.candidate}`).sort();
+    if (!sameJson(prior.candidate_keys, expectedKeys)) {
+      throw new Error('repair receipt exists but its candidate set does not match; refusing replay');
+    }
+    for (const { row, candidate } of selected) {
+      const expectedNewDecision = candidate.already_accounted === true ? candidate.decision : row.decision;
+      const expectedNewRelations = candidate.already_accounted === true ? row.additional_relations : null;
+      if (!sameJson(candidate.decision, expectedNewDecision)
+          || !sameJson(candidate.additional_relations ?? null, expectedNewRelations)) {
+        throw new Error('repair receipt exists but its candidate state no longer matches; refusing replay');
+      }
+    }
+    return { repaired: 0, already_applied: true, request_id: requestId, candidate_keys: prior.candidate_keys };
+  }
+  const next = JSON.parse(JSON.stringify(checkpoint));
+  const nextByKey = new Map(next.items.flatMap((item) => item.candidates.map((candidate) =>
+    [`${item.sense_id}\u0000${candidate.text}`, { item, candidate }])));
+  for (const { row, item, candidate } of selected) {
+    if (!sameJson(candidate.decision, row.expected_decision)
+        || !sameJson(candidate.additional_relations ?? null, row.expected_additional_relations)) {
+      throw new Error(`stale repair target: ${row.source_sense_id}/${row.candidate}`);
+    }
+    const current = nextByKey.get(`${item.sense_id}\u0000${candidate.text}`).candidate;
+    if (candidate.already_accounted === true) {
+      if (row.decision !== null || !Array.isArray(row.additional_relations)) {
+        throw new Error(`${row.source_sense_id}/${row.candidate}: existing coverage may only replace optional links`);
+      }
+      const checked = [];
+      for (const [index, relation] of row.additional_relations.entries()) {
+        validateDecision(item, { ...candidate, additional_relations: checked }, relation);
+        if (checked.some((saved) => saved.target_sense_id === relation.target_sense_id)) {
+          throw new Error(`${row.source_sense_id}/${row.candidate}: repeated optional target ${relation.target_sense_id}`);
+        }
+        checked.push(relation);
+      }
+      current.additional_relations = checked;
+    } else {
+      if (row.additional_relations !== null) throw new Error(`${row.source_sense_id}/${row.candidate}: regular candidate cannot contain optional links`);
+      validateDecision(item, candidate, row.decision);
+      current.decision = row.decision;
+    }
+  }
+  next.repair_receipts = [...receipts, {
+    request_id: requestId,
+    fingerprint: input.fingerprint,
+    candidate_keys: selected.map(({ row }) => `${row.source_sense_id}\u0000${row.candidate}`).sort(),
+  }];
+  if (next.optional_review_complete === true) next.optional_review_state_sha256 = stableDigest(optionalReviewState(next));
+  validateCheckpoint(next);
+  validateCheckpointDecisions(next);
+  await writeJsonAtomically(checkpointPath, next);
+  return { repaired: selected.length, already_applied: false, request_id: requestId,
+    candidate_keys: next.repair_receipts.at(-1).candidate_keys };
+}
+
 function assertOldOrNew(actual, oldState, newState, family) {
   if (!sameFileState(actual, oldState) && !sameFileState(actual, newState)) {
     throw new Error(`${family} output matches neither its trusted premerge snapshot nor the deterministic Part result`);
@@ -2117,7 +2484,9 @@ function assertCheckpointMerged(checkpoint, relationRows, dropRows) {
 
 if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url) {
   const argv = process.argv.slice(2);
-  run(argv).catch((error) => {
+  run(argv).then((result) => {
+    if (argv[0] === 'preflight' && result?.ok !== true) process.exitCode = result?.repairable ? 2 : 1;
+  }).catch((error) => {
     // `verify --json`: only a deterministic rows/accounting failure is machine-classifiable (exit 2, one JSON line).
     if (argv[0] === 'verify' && argv.includes('--json') && error instanceof AdmissionVerifyError) {
       console.log(JSON.stringify({ version: 1, ok: false, family: error.family, errors: error.errors, total: error.total }));

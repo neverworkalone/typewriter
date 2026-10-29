@@ -830,6 +830,88 @@ class Git:
         if not res.ok:
             raise GitError(f"admission-cli merge 실패: {' '.join((res.err or res.out).split())[-300:]}")
 
+    def stage2_prepare_merge(self, worktree: Path, shard: str, batch: str, part: str,
+                             timeout: int = 900) -> None:
+        """Capture or validate the trusted premerge snapshot before the read-only preflight."""
+        checkpoint = f".warroom-scratch/relation-admission-{shard}-{batch}-{part}.json"
+        res = self.r.run(["node", "scripts/relation/admission-cli.mjs", "prepare-merge", "--checkpoint", checkpoint, "--json"],
+                         cwd=worktree, env=self.env, timeout=timeout)
+        if not res.ok:
+            raise GitError(f"admission-cli prepare-merge 실패: {' '.join((res.err or res.out).split())[-300:]}")
+        try:
+            payload = json.loads((res.out or "").strip().splitlines()[-1])
+        except (ValueError, IndexError):
+            raise GitError("admission-cli prepare-merge exited 0 without JSON output")
+        if not isinstance(payload, dict) or payload.get("ok") is not True:
+            raise GitError("admission-cli prepare-merge exited 0 without {ok:true}")
+
+    def stage2_preflight(self, worktree: Path, shard: str, batch: str, part: str,
+                         timeout: int = 900) -> dict:
+        """Read-only, paged pre-merge diagnostics from the same Admission materializer used by `merge`."""
+        checkpoint = f".warroom-scratch/relation-admission-{shard}-{batch}-{part}.json"
+        limit, offset = 20, 0
+        first = None
+        problems = []
+        while True:
+            args = ["node", "scripts/relation/admission-cli.mjs", "preflight", "--checkpoint", checkpoint,
+                    "--json", "--limit", str(limit), "--offset", str(offset)]
+            res = self.r.run(args, cwd=worktree, env=self.env, timeout=timeout)
+            output = (res.out or "").strip()
+            if not res.ok and "preflight page exceeds its output limit" in (res.err or output) and limit > 1:
+                limit = max(1, limit // 2)
+                continue
+            try:
+                payload = json.loads(output.splitlines()[-1])
+            except (ValueError, IndexError):
+                raise GitError(f"admission-cli preflight 실패: {' '.join((res.err or res.out).split())[-300:]}")
+            if not isinstance(payload, dict) or payload.get("version") != 1 or not isinstance(payload.get("problems"), list):
+                raise GitError("admission-cli preflight returned an invalid report")
+            if payload.get("offset") != offset or payload.get("limit") != limit:
+                raise GitError("admission-cli preflight returned a page for a different cursor")
+            expected_next = offset + len(payload["problems"])
+            next_offset = payload.get("next_offset")
+            if (next_offset is not None and (not isinstance(next_offset, int) or next_offset != expected_next
+                                             or expected_next <= offset)) \
+                    or (next_offset is None and expected_next < payload.get("total", 0)):
+                raise GitError("admission-cli preflight returned an inconsistent page boundary")
+            if first is None:
+                stable_keys = ("version", "ok", "repairable", "shard", "batch", "part", "fingerprint", "total",
+                               "candidate_total", "coverage", "unclassified")
+                first = {key: payload.get(key) for key in stable_keys}
+                first.update(limit=limit)
+            elif any(payload.get(key) != value for key, value in first.items() if key != "limit"):
+                raise GitError("admission-cli preflight pages changed identity or fingerprint during read")
+            problems.extend(payload["problems"])
+            if next_offset is None:
+                break
+            offset = next_offset
+        first["problems"] = problems
+        if len(problems) != first.get("total"):
+            raise GitError("admission-cli preflight page set is incomplete")
+        return first
+
+    def stage2_repair(self, worktree: Path, shard: str, batch: str, part: str, repair: dict,
+                      timeout: int = 900) -> dict:
+        """Apply a persisted, source-bound answer through the official atomic Admission CLI repair API."""
+        checkpoint = f".warroom-scratch/relation-admission-{shard}-{batch}-{part}.json"
+        input_path = Path(worktree) / ".warroom-scratch" / "s2-repair-input.json"
+        input_path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = input_path.with_suffix(".json.tmp")
+        temporary.write_text(json.dumps(repair, ensure_ascii=False, separators=(",", ":")) + "\n", "utf-8")
+        temporary.replace(input_path)
+        res = self.r.run(["node", "scripts/relation/admission-cli.mjs", "repair", "--checkpoint", checkpoint,
+                          "--in", ".warroom-scratch/s2-repair-input.json", "--json"], cwd=worktree,
+                         env=self.env, timeout=timeout)
+        if not res.ok:
+            raise GitError(f"admission-cli repair 실패: {' '.join((res.err or res.out).split())[-500:]}")
+        try:
+            payload = json.loads((res.out or "").strip().splitlines()[-1])
+        except (ValueError, IndexError):
+            raise GitError("admission-cli repair exited 0 without a valid JSON receipt")
+        if not isinstance(payload, dict) or payload.get("ok") is not True:
+            raise GitError("admission-cli repair exited 0 without {ok:true}")
+        return payload
+
     def verify_stage2_local(self, worktree: Path, shard: str, batch: str, part: str,
                             *, checkpoint: bool, timeout: int = 900) -> tuple[bool, str]:
         """Verify the exact local Part, optionally requiring its private checkpoint evidence; demand success JSON."""

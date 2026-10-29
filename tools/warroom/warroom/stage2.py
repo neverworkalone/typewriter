@@ -12,6 +12,7 @@ did, so a finished Part is never re-verified or re-produced). Past file existenc
 from __future__ import annotations
 
 import hashlib
+import json
 import math
 import re
 from dataclasses import dataclass
@@ -215,6 +216,9 @@ def write_pages(worktree, view: str, pages: list[str]) -> list[str]:
 
 DECISIONS = ".warroom-scratch/decisions.txt"
 MAX_FIXES = 2   # AI correction runs per fresh `s2_chunk_new` session
+MAX_REPAIR_ROUNDS = 4
+REPAIR_GROUPS_PER_RUN = 8
+REPAIR_ATTEMPTS_PER_PAGE = 2
 _ROW = re.compile(r"c(\d+)\s")
 _ROW_START = re.compile(r"c\d+(?:\s|$)")
 _RELATION_TYPES = r"near|mood|scene|sensory|action|association"
@@ -316,6 +320,37 @@ def link_format_problem(final_text: str | None, digest: str) -> str | None:
 
 def links_start_key(batch_id: int) -> str:
     return f"s2_links_start_{batch_id}"
+
+
+def repair_state_key(batch_id: int) -> str:
+    return f"s2_repair_state_{batch_id}"
+
+
+def repair_run_start_key(batch_id: int) -> str:
+    return f"s2_repair_run_start_{batch_id}"
+
+
+def extract_repair_answer(final_text: str | None, fingerprint_: str) -> dict | None:
+    """A self-contained final answer for one exact preflight fingerprint; never parse prose as a decision."""
+    if not isinstance(final_text, str):
+        return None
+    lines = final_text.replace("\r\n", "\n").split("\n")
+    header = f"repair @{fingerprint_}"
+    starts = [index for index, line in enumerate(lines) if line.strip() == header]
+    if len(starts) != 1:
+        return None
+    body = "\n".join(lines[starts[0] + 1:]).strip()
+    if not body:
+        raise ValueError("repair answer has no JSON body")
+    try:
+        result = json.loads(body)
+    except ValueError as error:
+        raise ValueError(f"repair answer JSON is malformed: {error}") from error
+    if not isinstance(result, dict) or set(result) != {"decisions", "peer_adjustments", "unresolved"} \
+            or not isinstance(result["decisions"], list) or not isinstance(result["peer_adjustments"], list) \
+            or not isinstance(result["unresolved"], list):
+        raise ValueError('repair answer must contain exactly "decisions", "peer_adjustments" and "unresolved" arrays')
+    return result
 
 
 def decision_file_state(worktree, chunk_id: str) -> str:
