@@ -864,16 +864,25 @@ test('chunk output limits do not save evidence for context items that were not r
   const fixture = await makeFixture({ unitCount: 2, firstSearchForms: longForms });
   try {
     const before = await readFile(fixture.checkpointPath, 'utf8');
-    await assert.rejects(chunk(fixture, { senseIds: 'sense-000001', contexts: 1, format: 'text' }),
-      (error) => error.code === 'LITERARY_OUTPUT_LIMIT');
+    const cliArgs = (extra) => ['chunk', '--db', fixture.databasePath, '--checkpoint', fixture.checkpointPath, ...extra];
+    const textFailure = spawnSync(process.execPath, [path.resolve('scripts/relation/literary-context-cli.mjs'),
+      ...cliArgs(['--sense-ids', 'sense-000001', '--contexts', '1', '--format', 'text'])],
+    { cwd: fixture.root, encoding: 'utf8' });
+    assert.equal(textFailure.status, 1);
+    assert.equal(JSON.parse(textFailure.stderr).status, 'OUTPUT_LIMIT');
     assert.equal(await readFile(fixture.checkpointPath, 'utf8'), before);
     await assert.rejects(chunk(fixture, { senseIds: 'sense-000001', contexts: 2, skip: 1, format: 'text' }), /previously shown context evidence/u);
     assert.equal(await readFile(fixture.checkpointPath, 'utf8'), before);
 
-    const json = await chunk(fixture, { senseIds: 'sense-000001', contexts: 1, format: 'json' });
-    assert.deepEqual(json.items, []);
-    assert.equal(json.truncated, true);
-    assert.equal(json.not_yet_read, 1);
+    const json = spawnSync(process.execPath, [path.resolve('scripts/relation/literary-context-cli.mjs'),
+      ...cliArgs(['--sense-ids', 'sense-000001', '--contexts', '1'])],
+    { cwd: fixture.root, encoding: 'utf8' });
+    assert.equal(json.status, 0, json.stderr);
+    const jsonOutput = JSON.parse(json.stdout);
+    assert.deepEqual(jsonOutput.items, []);
+    assert.deepEqual({ returned: jsonOutput.returned, has_more: jsonOutput.has_more, truncated: jsonOutput.truncated,
+      next_offset: jsonOutput.next_offset, has_offset: Object.hasOwn(jsonOutput, 'offset') },
+    { returned: 0, has_more: true, truncated: true, next_offset: null, has_offset: false });
     assert.equal(await readFile(fixture.checkpointPath, 'utf8'), before);
     await assert.rejects(chunk(fixture, { senseIds: 'sense-000001', contexts: 2, skip: 1 }), /previously shown context evidence/u);
     assert.equal(await readFile(fixture.checkpointPath, 'utf8'), before);

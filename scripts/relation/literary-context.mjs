@@ -993,10 +993,12 @@ const sourceLabel = (source) => [source.title, source.author].filter(Boolean).jo
  * Read the next chunk of unsubmitted senses with all their sampled contexts in one result and one index connection.
  * Zero-hit senses are recorded in the same single write; senses with hits are never recorded until the AI submits them.
  */
-export async function readLiteraryChunk({ databasePath, checkpointPath, senseIds, limit, contexts, skip, format = 'json', snippetChars, scratchDirectory = path.resolve(CHECKPOINT_SCRATCH_DIRECTORY) }) {
+export async function readLiteraryChunk({ databasePath, checkpointPath, senseIds, limit, contexts, skip, format = 'json', outputBudget, snippetChars, scratchDirectory = path.resolve(CHECKPOINT_SCRATCH_DIRECTORY) }) {
   const senseLimit = boundedInteger(limit, CHUNK_DEFAULT_SENSES, 1, 50, 'chunk limit');
   const contextLimit = boundedInteger(contexts, CHUNK_DEFAULT_CONTEXTS, 1, MAX_CONTEXTS_PER_SENSE, 'contexts per sense');
   const skipProvided = skip !== undefined;
+  const enforceOutputBudget = skipProvided || outputBudget !== undefined;
+  const maxOutputChars = outputBudget ?? MAX_RESPONSE_CHARS;
   const skippedContexts = boundedInteger(skip, 0, 0, contextLimit - 1, 'skip');
   if (skipProvided && (typeof senseIds !== 'string' || senseIds.length === 0)) fail('--sense-ids is required when skip is specified');
   if (skipProvided && !['json', 'text'].includes(format)) fail('chunk output format must be json or text');
@@ -1091,38 +1093,36 @@ export async function readLiteraryChunk({ databasePath, checkpointPath, senseIds
       not_yet_read: unqueried,
       items,
     };
-    if (format === 'text') {
+    if (enforceOutputBudget && format === 'text') {
       const actualChars = renderChunkText(response).length;
-      if (actualChars > MAX_RESPONSE_CHARS) {
+      if (actualChars > maxOutputChars) {
         const error = new Error('chunk response exceeds the output budget');
         error.code = 'LITERARY_OUTPUT_LIMIT';
         error.actualChars = actualChars;
+        error.format = format;
         throw error;
       }
-    } else {
-      let omitted = 0;
+    } else if (enforceOutputBudget) {
       const responseChars = () => JSON.stringify(response).length;
-      while (responseChars() > MAX_RESPONSE_CHARS && response.items.length > 0) {
+      while (responseChars() > maxOutputChars && response.items.length > 0) {
         response.items.pop();
-        omitted += 1;
-        response.not_yet_read = unqueried + omitted;
         response.truncated = true;
         response.has_more = true;
-        response.offset = 0;
         response.returned = response.items.length;
-        response.next_offset = response.items.length;
+        response.next_offset = null;
       }
       const actualChars = responseChars();
-      if (actualChars > MAX_RESPONSE_CHARS) {
+      if (actualChars > maxOutputChars) {
         const error = new Error('chunk response exceeds the output budget');
         error.code = 'LITERARY_OUTPUT_LIMIT';
         error.actualChars = actualChars;
+        error.format = format;
         throw error;
       }
     }
-    const returnedSenseIds = new Set(response.items.map((item) => item.sense_id));
+    const returnedSenseIds = enforceOutputBudget ? new Set(response.items.map((item) => item.sense_id)) : null;
     for (const { sense, digest, totalHits, unitRowIds } of shownUpdates) {
-      if (!returnedSenseIds.has(sense.sense_id)) continue;
+      if (returnedSenseIds && !returnedSenseIds.has(sense.sense_id)) continue;
       // Keep the accumulated lookup order. For skip reads the first `skip` row ids were already shown and verified above.
       const earlier = sense.shown?.forms_sha256 === digest ? sense.shown.unit_rowids : [];
       sense.shown = { forms_sha256: digest, total_hits: totalHits, unit_rowids: [...new Set([...earlier, ...unitRowIds])] };

@@ -240,6 +240,7 @@ async function main() {
         contexts,
         skip,
         format,
+        outputBudget: MAX_OUTPUT_CHARS,
         snippetChars: options['snippet-chars'],
         scratchDirectory: SCRATCH_DIRECTORY,
       });
@@ -345,7 +346,10 @@ main().catch((error) => {
     return;
   }
   if (error?.code === 'LITERARY_OUTPUT_LIMIT') {
-    process.stderr.write(`${JSON.stringify({ status: 'OUTPUT_LIMIT', max_chars: MAX_OUTPUT_CHARS, actual_chars: error.actualChars, message: 'Chunk output exceeds the response budget; no checkpoint evidence was changed.' })}\n`);
+    const message = error.format === 'text'
+      ? 'Text view exceeds the output budget; nothing was emitted.'
+      : 'Chunk output exceeds the response budget; no checkpoint evidence was changed.';
+    process.stderr.write(`${JSON.stringify({ status: 'OUTPUT_LIMIT', max_chars: MAX_OUTPUT_CHARS, actual_chars: error.actualChars, message })}\n`);
     process.exitCode = 1;
     return;
   }
