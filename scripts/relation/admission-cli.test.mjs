@@ -1879,6 +1879,33 @@ test('selected inspect preserves whole-sense digest and aliases while bounding Q
   assert.equal(legacyFilter.digest, fullW1.digest, 'the existing --candidate filter keeps its prior digest contract');
 });
 
+test('inspect --select keeps detailed current rows for a full-sense review target', async (t) => {
+  const { root, sourceCandidates } = await sixCandidateRepository(t);
+  const candidatePath = path.join(root, 'data/relation-candidates/001/001_01_a_codex.jsonl');
+  const producerRows = (await readFile(candidatePath, 'utf8')).trim().split('\n').map(JSON.parse);
+  producerRows.find((row) => row.record_id === 'w2').senses[0].candidates = ['peer candidate'];
+  await writeFile(candidatePath, jsonl(producerRows));
+
+  const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
+  await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  await saveAllPrimaryAsDrops(root, checkpoint);
+  const selectionPath = '.warroom-scratch/s2-fix-select.json';
+  await writeFile(path.join(root, selectionPath), JSON.stringify({ candidates: [
+    { source_sense_id: 'w1-s1', candidate: sourceCandidates[0] },
+  ] }));
+
+  const inspect = await quiet(() => run([
+    'inspect', '--checkpoint', checkpoint, '--source-sense-id', 'w1-s1,w2-s1',
+    '--select', selectionPath, '--format', 'compact',
+  ], { root }));
+
+  assert.ok(sourceCandidates.length > 1);
+  const peerDetail = inspect.text.match(/\n(c\d+)\tpeer candidate\t[^\n]*\n# current \1: D /u);
+  assert.ok(peerDetail, 'the prose-full Sense keeps its c<n> detail alias and current Drop decision');
+  assert.doesNotMatch(inspect.text, /\nQ\tc\d+\tpeer candidate\t/u,
+    'a prose-full Sense is not reduced to a Q summary when another Sense has selected candidates');
+});
+
 test('premerge preparation resumes only from matching source hashes and distinguishes empty files from absence', async (t) => {
   const { root } = await prepareSixPart(t, { emptyRelation: true });
   const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';

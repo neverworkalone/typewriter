@@ -4148,8 +4148,7 @@ class Supervisor:
             return f"리뷰 수정 완료 증거 조회 실패: {e}. 이벤트는 미완료로 보존했습니다."
 
     def _s2_fix_context(self, b, events) -> str:
-        """Inspect exact reviewed candidate pairs, using a full-Sense fallback only for explicit targets."""
-        text = "\n".join(str(e.get("body", "")) for e in (events or []))
+        """Inspect exact reviewed pairs and every Part Sense mentioned outside tuple spans."""
         try:
             checkpoint = stage2.checkpoint(b["worktree"], b["shard"], b["batch"])
             if checkpoint is None:
@@ -4161,7 +4160,8 @@ class Supervisor:
             if (raw_checkpoint.get("shard"), raw_checkpoint.get("batch"), raw_checkpoint.get("part")) != \
                     (b["shard"], bb, pp) or not isinstance(raw_checkpoint.get("items"), list):
                 return "source_context 없음: 현재 Part checkpoint의 source Sense 목록을 신뢰할 수 없습니다."
-            review = stage2.review_pairs(text, raw_checkpoint["items"])
+            event_texts = [str(e.get("body", "")) for e in (events or [])]
+            review = stage2.review_events(event_texts, raw_checkpoint["items"])
             selected = sorted({pair["source_sense_id"] for pair in review["pairs"]} |
                               set(review["fallback_sense_ids"]))
             in_part = {item["sense_id"] for item in raw_checkpoint["items"]
@@ -4169,8 +4169,9 @@ class Supervisor:
             unknown = sorted(set(review["mentioned_sense_ids"]) - in_part)
             if not selected:
                 suffix = f" 리뷰의 Part 밖/없는 Sense ID: {', '.join(unknown[:20])}." if unknown else ""
-                return ("source_context 없음: 리뷰에서 정확한 candidate tuple 또는 명시적 수정 대상 Sense를 찾지 못했습니다." + suffix +
-                        " 필요한 Sense·후보만 좁게 inspect 하세요.")
+                return ("source_context 없음: 리뷰에 현재 Part의 Sense ID 또는 정확한 candidate tuple이 없습니다." + suffix +
+                        " Sense ID나 유효 튜플이 없는 순수 지시 문장은 source에 기계적으로 결속할 수 없습니다. "
+                        "필요한 Sense·후보만 좁게 inspect 하세요.")
             selection_path = ".warroom-scratch/s2-fix-select.json"
             selection_file = Path(b["worktree"]) / selection_path
             selection_file.parent.mkdir(parents=True, exist_ok=True)
@@ -4185,10 +4186,10 @@ class Supervisor:
                 diagnostics.append("# Review tuple did not exactly match this Part: " +
                                    ", ".join((pair["record_id"], pair["source_sense_id"], pair["candidate"])))
             if review["fallback_sense_ids"]:
-                diagnostics.append("# Full-sense fallback for explicit review targets: " +
+                diagnostics.append("# Full-sense detail for prose-mentioned or unmatched-tuple Senses: " +
                                    ", ".join(review["fallback_sense_ids"]))
             if unknown:
-                diagnostics.append("# Review-mentioned IDs outside this Part: " + ", ".join(unknown[:20]))
+                diagnostics.append("# Review-mentioned IDs outside this Part (diagnostic only): " + ", ".join(unknown[:20]))
             if diagnostics:
                 context += "\n" + "\n".join(diagnostics) + "\n"
             if len(context.encode("utf-8")) <= 90_000:

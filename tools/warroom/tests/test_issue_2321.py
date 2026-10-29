@@ -46,29 +46,117 @@ class ReviewPairSelection(unittest.TestCase):
         result = stage2.review_pairs("- w1, w999-s1, 오타 후보", self.items)
         self.assertEqual(result["fallback_sense_ids"], [])
 
-    def test_comparison_peer_target_history_and_statistics_mentions_are_not_fallbacks(self):
-        text = "Compare w1-s1 with peer target w2-s1. Prior review statistics mention w3-s1."
+    def test_each_event_keeps_its_own_pairs_and_prose_mentions_select_full_senses(self):
+        events = [
+            "`w1`, `w1-s1`, `쉼표, 포함 후보`",
+            "Compare w2-s1 with peer target w3-s1. Prior review statistics mention w1-s1.",
+        ]
+        result = stage2.review_events(events, self.items)
+        self.assertEqual(result["pairs"], [])
+        self.assertEqual(result["fallback_sense_ids"], ["w1-s1", "w2-s1", "w3-s1"])
+
+    def test_mixed_tuple_and_prose_in_one_event_keeps_all_required_context(self):
+        result = stage2.review_pairs(
+            "`w1`, `w1-s1`, `쉼표, 포함 후보`; w2-s1 is also affected.", self.items)
+        self.assertEqual(result["pairs"], [{
+            "record_id": "w1", "source_sense_id": "w1-s1", "candidate": "쉼표, 포함 후보",
+        }])
+        self.assertEqual(result["fallback_sense_ids"], ["w2-s1"])
+
+    def test_plain_list_tuple_masks_only_tuple_before_same_line_prose(self):
+        for separator in (". ", "; ", " — "):
+            with self.subTest(separator=separator):
+                result = stage2.review_pairs(
+                    f"- w1, w1-s1, 수정할 후보{separator}w2-s1도 비교 대상입니다.", self.items)
+                self.assertEqual(result["pairs"], [{
+                    "record_id": "w1", "source_sense_id": "w1-s1", "candidate": "수정할 후보",
+                }])
+                self.assertEqual(result["fallback_sense_ids"], ["w2-s1"])
+
+    def test_candidate_quote_does_not_narrow_a_prose_mentioned_sense(self):
+        result = stage2.review_pairs(
+            "`w1`, `w1-s1`, `같은 표현` was approved, but `자동차` is only a peer; "
+            "w1-s1's Drop of 활동사진 is the finding.", self.items)
+        self.assertEqual(result["pairs"], [])
+        self.assertEqual(result["fallback_sense_ids"], ["w1-s1"])
+
+    def test_same_candidate_text_stays_bound_to_the_tuple_sense(self):
+        result = stage2.review_events([
+            "`w1`, `w1-s1`, `같은 표현`",
+            "The other source w2-s1 is mentioned in prose.",
+        ], self.items)
+        self.assertEqual(result["pairs"], [{
+            "record_id": "w1", "source_sense_id": "w1-s1", "candidate": "같은 표현",
+        }])
+        self.assertEqual(result["fallback_sense_ids"], ["w2-s1"])
+
+    def test_part_peer_is_full_and_outside_target_is_diagnostic_only(self):
+        result = stage2.review_pairs("Compare w2-s1 with target w999-s1.", self.items)
+        self.assertEqual(result["fallback_sense_ids"], ["w2-s1"])
+        self.assertEqual(result["mentioned_sense_ids"], ["w2-s1", "w999-s1"])
+
+    def test_overlapping_duplicate_and_adjacent_tuple_spans_leave_neighboring_senses_visible(self):
+        text = ("(`w1`, `w1-s1`, `같은 표현`) and `w1, w1-s1, 같은 표현`\n"
+                "w2-s1 immediately follows; w3-s1 remains after it.")
+        tuples = stage2._review_triplets(text)
+        masked = stage2._mask_spans(text, [(start, end) for _, _, _, start, end in tuples])
+        self.assertEqual(len(masked), len(text))
+        self.assertEqual(masked.count("\n"), text.count("\n"))
+        self.assertIn("w2-s1 immediately follows", masked)
+        self.assertIn("w3-s1 remains", masked)
         result = stage2.review_pairs(text, self.items)
+        self.assertEqual(len(result["pairs"]), 1, "duplicate tuple values are removed")
+        self.assertEqual(result["fallback_sense_ids"], ["w2-s1", "w3-s1"])
+
+    def test_sense_id_free_prose_cannot_be_bound_by_the_parser(self):
+        result = stage2.review_pairs("Please also fix this Sense's activities photo.", self.items)
         self.assertEqual(result["pairs"], [])
         self.assertEqual(result["fallback_sense_ids"], [])
+        self.assertIn("without a Sense ID", stage2.review_events.__doc__)
 
-        cases = [
-            ("Please fix w1-s1 and w2-s1.", ["w1-s1", "w2-s1"]),
-            ("Please review w1-s1 and w2-s1.", ["w1-s1", "w2-s1"]),
-            ("Fix w1-s1.", ["w1-s1"]),
-            ("Correct w2-s1.", ["w2-s1"]),
-            ("Please fix w1-s1 and Compare w2-s1.", ["w1-s1"]),
-            ("Please fix w1-s1 and unrelated w2-s1.", ["w1-s1"]),
-            ("Please fix w1-s1 and unrelated w2-s1, then fix w3-s1.", ["w1-s1", "w3-s1"]),
-            ("Please fix w1-s1 and Unrelated w2-s1, then Fix w3-s1.", ["w1-s1", "w3-s1"]),
+    def test_sense_ids_followed_by_korean_text_are_still_found(self):
+        result = stage2.review_pairs("w1-s1의 후보와 w2-s1은 비교 대상입니다.", self.items)
+        self.assertEqual(result["fallback_sense_ids"], ["w1-s1", "w2-s1"])
+        self.assertEqual(result["mentioned_sense_ids"], ["w1-s1", "w2-s1"])
+
+    def test_pr_2347_review_excerpts_select_the_complete_part_sense_sets(self):
+        expected = {
+            "w523977-s1", "w524392-s1", "w520343-s1", "w525757-s1",
+            "w531793-s1", "w532241-s1", "w532527-s1", "w533719-s1",
+        }
+        items = [{"record_id": sense.split("-s")[0], "sense_id": sense, "candidates": []}
+                 for sense in sorted(expected)]
+        events = [
+            "w524392-s1 초로(와) 같다의 연기 Drop은 유지하기 어렵습니다. "
+            "w523977-s1 제 살 궁리는 다 한다의 눈치 Drop도 과도합니다. "
+            "Canonical 연기 w236213-s1은 사라지는 이미지로 연결됩니다.",
+            "w525757-s1의 자동차와 활동사진 Drop, w520343-s1의 당당하게·의기양양·당당·거드름·으스대다 Drop, "
+            "w531793-s1의 봇물, w532241-s1의 짹짹, w532527-s1의 초야·겸손, w533719-s1의 기계공업을 지적합니다. "
+            "다른 target w50571-s2는 Part 밖입니다.",
         ]
-        for body, expected in cases:
-            with self.subTest(body=body):
-                result = stage2.review_pairs(body, self.items)
-                self.assertEqual(result["fallback_sense_ids"], expected)
+        result = stage2.review_events(events, items)
+        self.assertEqual(set(result["fallback_sense_ids"]), expected)
+        self.assertEqual(set(result["mentioned_sense_ids"]) - expected,
+                         {"w236213-s1", "w50571-s2"})
+        self.assertEqual(result["pairs"], [])
 
-        targeted = stage2.review_pairs("Please fix w3-s1.", self.items)
-        self.assertEqual(targeted["fallback_sense_ids"], ["w3-s1"])
+    def test_pr_2306_tuple_only_excerpt_preserves_pair_selection_until_prose_names_its_sense(self):
+        items = [
+            {"record_id": "w429287", "sense_id": "w429287-s1", "candidates": [{"text": "통실하다"}]},
+            {"record_id": "w413140", "sense_id": "w413140-s2", "candidates": [{"text": "질문"}, {"text": "답변"}]},
+        ]
+        excerpt = ("1. (w429287, w429287-s1, 통실하다) — '보리퉁하다'에서 풍만함을 나타내는 '통실하다'는 near 연관입니다.\n"
+                   "2. (w413140, w413140-s2, 질문), (w413140, w413140-s2, 답변) — 직접적인 수식 문맥입니다.")
+        pure = stage2.review_pairs(excerpt, items)
+        self.assertCountEqual(
+            [(pair["record_id"], pair["source_sense_id"], pair["candidate"]) for pair in pure["pairs"]],
+            [("w429287", "w429287-s1", "통실하다"),
+             ("w413140", "w413140-s2", "질문"), ("w413140", "w413140-s2", "답변")])
+        self.assertEqual(pure["fallback_sense_ids"], [])
+        expanded = stage2.review_pairs(excerpt + " The same source w413140-s2 also has a prose finding.", items)
+        self.assertEqual([(pair["record_id"], pair["candidate"]) for pair in expanded["pairs"]],
+                         [("w429287", "통실하다")])
+        self.assertEqual(expanded["fallback_sense_ids"], ["w413140-s2"])
 
 
 class SharedStage2PolicyCard(unittest.TestCase):
