@@ -16,7 +16,7 @@ _MAINTAIN = {"issue", "branch"}
 _STAGE2 = {"shard", "batch", "part", "branch", "phase", "checkpoint", "session_note", "chunk_input", "chunk_id",
            "relation_direction_rule"}
 _AB_CHUNK = {"batch", "chunk_no", "session_note", "chunk_input"}
-_C_CHUNK = {"batch", "branch", "chunk_no", "checkpoint", "session_note", "chunk_input"}
+_C_CHUNK = {"batch", "branch", "chunk_no", "checkpoint", "chunk_contexts", "session_note", "chunk_input"}
 ALLOWED = {"a": _PRODUCE, "b": _PRODUCE, "c": _PRODUCE, "d": _PRODUCE, "recovery": _PRODUCE | {"resolved_defects"},
            "fix": {"pr", "head", "branch", "shard", "batch", "part", "review_events", "session_note", "source_context",
                    "relation_direction_rule"},
@@ -61,6 +61,8 @@ def render(name: str, values: dict, directory: Path | None = None) -> str:
     if "{{" in stray or "}}" in stray:
         raise PromptError(f"{path.name}: 허용되지 않는 이중 중괄호 구문이 있습니다 (placeholder는 {{{{name}}}} 형태만 가능)")
     used = {m.group(1) for m in _PLACEHOLDER.finditer(text)}
+    if name == "c_chunk" and "chunk_contexts" not in used:
+        raise PromptError(f"{path.name}: 필수 placeholder {{chunk_contexts}}가 없습니다")
     unknown = used - ALLOWED[name]
     if unknown:
         raise PromptError(f"{path.name}: 허용되지 않는 placeholder {sorted(unknown)}")
@@ -191,6 +193,8 @@ def c_chunk(b, chunk_no: int, checkpoint: str, *, view: str | None = None, pages
     delivered that way) the page files to read once each. Exactly one of `view` / `pages`."""
     if (view is None) == (pages is None):
         raise PromptError("C 청크 입력은 inline view 또는 page 목록 중 정확히 하나여야 합니다")
+    from . import literary
+
     if view is not None:
         chunk_input = (f"아래가 이번 청크의 **전체 view**다(손실 없음). 다시 `cat`으로 읽지 않는다.\n{VIEW_BEGIN}\n{view}"
                        f"{'' if view.endswith(chr(10)) else chr(10)}{VIEW_END}")
@@ -200,7 +204,8 @@ def c_chunk(b, chunk_no: int, checkpoint: str, *, view: str | None = None, pages
                        "`cat`으로 읽는다(Codex는 각 호출에 `max_output_tokens: 10000`). 모두 이으면 view와 같다. "
                        "하나라도 받지 못했거나 truncated 경고가 보이면 제출하지 말고 그 사실을 보고한 뒤 종료한다.\n" + reads)
     return render("c_chunk", {"batch": f"{b['shard']}_{b['batch']}", "branch": b["branch"],
-                              "chunk_no": f"{chunk_no:03d}", "checkpoint": checkpoint, "session_note": note,
+                              "chunk_no": f"{chunk_no:03d}", "checkpoint": checkpoint,
+                              "chunk_contexts": literary.CHUNK_CONTEXTS, "session_note": note,
                               "chunk_input": chunk_input}, directory)
 
 
