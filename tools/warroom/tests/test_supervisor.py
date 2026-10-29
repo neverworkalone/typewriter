@@ -448,7 +448,7 @@ class UpdateBranchSync(unittest.TestCase):
         self.ready_for_review()
         b = w.row()
         w.adapter.plan.append({"code": 0})
-        w.sup._launch(b, "fix_resume", [review(11, HEAD1)])
+        w.sup._launch(b, "fix_new", [review(11, HEAD1)])
         live = w.row()
         self.assertIsNotNone(live["pid"])
         w.store.update(live["id"], state="WAITING_REVIEW")

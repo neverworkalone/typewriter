@@ -342,6 +342,7 @@ class ReviewFix(unittest.TestCase):
         w.adapter.plan.append({"code": 0, "session": "ses_fix2", "effect": sneaky})
         w.tick()
         w.adapter.finish(w.adapter.launches[-1]["pid"])
+        w.gh.add_pr_reply(b["pr_number"], "두 번째 지적도 확인했고 판단 근거를 답변했습니다.")
         w.tick()
         # #2092: a correct fix is judged by review, never PAUSED by a literal-enumeration scope gate
         self.assertEqual((w.row_()["state"], w.row_()["error"]), ("WAITING_REVIEW", None))
