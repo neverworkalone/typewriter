@@ -1422,6 +1422,12 @@ test('preflight collects pair conflicts and Drop/gloss failures without mutation
   assert.deepEqual(first.unclassified, []);
   assert.equal(first.fingerprint, repeated.fingerprint);
   assert.deepEqual(await Promise.all(watched.map(fileState)), before, 'preflight does not change bytes or mtimes');
+  const pageOne = await quiet(() => run(['preflight', '--checkpoint', checkpoint, '--json', '--limit', '1'], { root }));
+  const pageTwo = await quiet(() => run(['preflight', '--checkpoint', checkpoint, '--json', '--limit', '1', '--offset', '1'], { root }));
+  assert.equal(pageOne.total, 2);
+  assert.equal(pageOne.next_offset, 1);
+  assert.equal(pageTwo.next_offset, null);
+  assert.deepEqual([...pageOne.problems, ...pageTwo.problems], first.problems, 'bounded pages preserve complete stable coverage');
 
   const pair = first.problems.find((problem) => problem.candidate_keys.length === 2);
   assert.ok(pair);
