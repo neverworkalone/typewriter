@@ -55,13 +55,19 @@ source and scope:
   plain text with no ID (a word, name, phrase or multi-word expression such as
   `디아블로와 바알`): not clickable, no reverse relation, no invented record
   or ID.
-- **ID↔ID bidirectional exploration.** An approved new Typewriter-authored
-  말의 결/연상 whose target is an exact record is provided in both directions.
-  Each direction takes its own type and relevance from its own source meaning,
-  so Tier need not match. Existing STDICT relations and earlier exploratory
-  relations are **not** blindly symmetrised, and text-only targets have no
-  reverse. This supersedes "do not invent symmetry" in the reviewer
-  responsibilities below for this scope only.
+- **ID↔ID bidirectional exploration with policy-specific scoring.** An
+  approved Typewriter-authored 말의 결/연상 with an exact target remains
+  available in both directions. **Legacy Parts/checkpoints** independently
+  judge Type/Tier from each direction's source sense, so values may differ.
+  **New Parts prepared under #2309 only after its implementation lands**
+  judge Type/Tier **once** from the authored source sense; the admission CLI
+  derives identical reverse Type/Tier. Equal forward/reverse values across
+  all newly authored pairs in this mode are the **intended contract**, not a
+  reason to demand independent reverse edits or reject a PR. Review the
+  source-bound relevance and exact target instead. Existing STDICT and
+  historical exploratory relations are **not** retroactively symmetrised;
+  text-only targets have no reverse. This supersedes "do not invent symmetry"
+  in reviewer responsibilities only for the affected authored-ID scope.
 - **Headword-promotion candidates** are collected separately, never in the
   relation rows: `data/headword-candidates/pr-<PR number>.jsonl` in the
   Schema v1 defined in #838 (`term`, `meaning_hint`, `source_lemma`,
@@ -233,10 +239,14 @@ relative order, nor mechanically score or test subjective usefulness.
    #834) as a derived `direct-reverse-projection` row (Issue #797); this is
    unchanged and no other STDICT/earlier type is mirrored. New #838
    Typewriter-authored ID↔ID 말의 결/연상 are explorable in both directions
-   with independently reviewed type and relevance per direction (once
-   implemented); text-only targets have no reverse; earlier exploratory rows
-   are not blindly reprocessed. Do not demand equal relevance across different
-   sources or silently rewrite canonical history. Zero relations remain valid;
+   with stored Type/Tier on both directions. Legacy authored pairs can retain
+   independent values; pairs from newly prepared #2309-mode Parts, **once its
+   code is merged**, have identical reverse Type/Tier derived from the single
+   source-bound judgment. **Never block on universal pairwise equality in
+   #2309-mode data**, or demand asymmetry for its own sake. Check the real
+   source ranking, exact target, provenance and build instead. Text-only
+   targets have no reverse; earlier exploratory rows are not blindly
+   reprocessed or changed. Zero relations remain valid;
    no quotas.
 
 Stage 1 and Stage 2 PR reviewers apply these principles with their independent
