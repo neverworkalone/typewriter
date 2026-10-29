@@ -2475,6 +2475,7 @@ class Supervisor:
             exp = literary.ensure_export(self.runner, self._c_env(b), wt, b)
             if exp.status == "repair":
                 return self._c_repair(b, exp)
+            self.store.delete(f"c_repair_issue_count_{b['id']}")
             title = literary.pr_title(label, b)
             if not self.git.is_committed(wt, n.output):
                 sha = self.git.commit_paths(wt, [n.output], title)
@@ -2549,11 +2550,27 @@ class Supervisor:
     def _c_repair(self, b, exp) -> None:
         """Candidate v1 named senses: re-read exactly those in a session, resubmit, then export again."""
         wt = Path(b["worktree"])
-        key = f"c_repairs_{b['id']}"
-        tries = int(self.store.get(key) or 0)
-        if tries >= literary.MAX_REPAIRS:
-            return self._fail(b, "ERROR", f"Candidate v1 검증 복구를 {literary.MAX_REPAIRS}번 시도했지만 해결되지 않았습니다: {exp.diagnostic}")
-        self.store.set(key, str(tries + 1))
+        if not exp.candidate_issues or not exp.repair_ids:
+            return self._fail(b, "ERROR", "정확한 source/sense에 결속된 Candidate v1 후보 내용 오류가 없어 자동 복구를 중단합니다.")
+        key = f"c_repair_issue_count_{b['id']}"
+        current_issues = exp.candidate_issue_count
+        if current_issues <= 0:
+            return self._fail(b, "ERROR", "Candidate v1 복구할 후보 오류 수가 확인되지 않아 자동 재호출을 중단합니다.")
+        previous = self.store.get(key)
+        if previous is not None:
+            try:
+                previous_issues = int(previous)
+            except (TypeError, ValueError):
+                return self._fail(b, "ERROR", "Candidate v1 복구 진행 상태가 손상되어 자동 재호출을 중단합니다.")
+            if current_issues >= previous_issues:
+                try:
+                    cleared = literary.clear_candidates(self.runner, self._c_env(b), wt, b, list(exp.repair_ids))
+                except (literary.LiteraryError, OSError, ValueError) as e:
+                    return self._fail(b, "ERROR", f"정확한 Sense 후보 비우기 실패: {e}. worktree를 보존합니다.")
+                self.store.delete(key)
+                self.store.log(b["id"], f"Candidate v1 내용 오류가 줄지 않아 해당 Sense 후보를 비웠습니다 ({cleared['senses']} senses / {cleared['candidates']} candidates)", "warn")
+                return self._c_finalize(b)
+        self.store.set(key, str(current_issues))
         try:
             view = literary.render_chunk(self.runner, self._c_env(b), wt, b, self._c_db(), sense_ids=list(exp.repair_ids))
             literary.write_active(wt, b, view, list(exp.repair_ids), self.git.head(wt), self._c_next_no(b),
@@ -2562,7 +2579,7 @@ class Supervisor:
                                        + exp.diagnostic + "\n")
         except (literary.LiteraryError, OSError) as e:
             return self._fail(b, "ERROR", f"복구 청크 준비 실패: {e}")
-        self.store.log(b["id"], f"Candidate v1 거부 sense {list(exp.repair_ids)}만 재판정합니다 ({tries + 1}/{literary.MAX_REPAIRS})", "warn")
+        self.store.log(b["id"], f"Candidate v1 내용 오류 {current_issues}건이 남은 sense {list(exp.repair_ids)}만 재판정합니다", "warn")
         self.store.update(b["id"], session_id=None)
         return self._launch(b, "c_chunk_new")
 

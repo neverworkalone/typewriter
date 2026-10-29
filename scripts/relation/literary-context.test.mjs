@@ -23,7 +23,8 @@ import {
 
 const jsonl = (items) => `${items.map((item) => JSON.stringify(item)).join('\n')}\n`;
 
-async function makeFixture({ unitCount = 2, unitText, unitTexts, firstForm = '가나다', firstSenseGlosses, workCount = 1 } = {}) {
+async function makeFixture({ unitCount = 2, unitText, unitTexts, firstForm = '가나다', firstSenseGlosses,
+  firstSearchForms = [], secondLemma, workCount = 1 } = {}) {
   const fixtureRoot = path.resolve('.warroom-scratch');
   await mkdir(fixtureRoot, { recursive: true });
   const root = await mkdtemp(path.join(fixtureRoot, 'typewriter-literary-context-'));
@@ -33,7 +34,7 @@ async function makeFixture({ unitCount = 2, unitText, unitTexts, firstForm = '�
   await mkdir(scratchDirectory, { recursive: true });
   const records = Array.from({ length: 500 }, (_, index) => {
     const ordinal = String(index + 1).padStart(6, '0');
-    const lemma = index === 0 ? firstForm : `표제${ordinal}`;
+    const lemma = index === 0 ? firstForm : index === 1 && secondLemma ? secondLemma : `표제${ordinal}`;
     const senses = index === 0 && firstSenseGlosses
       ? firstSenseGlosses.map((gloss, senseIndex) => ({
         id: senseIndex === 0 ? `sense-${ordinal}` : `sense-${ordinal}-${senseIndex + 1}`,
@@ -45,7 +46,7 @@ async function makeFixture({ unitCount = 2, unitText, unitTexts, firstForm = '�
     return {
       id: `record-${ordinal}`,
       lemma,
-      search_forms: [],
+      search_forms: index === 0 ? firstSearchForms : [],
       senses,
     };
   });
@@ -296,6 +297,13 @@ test('CLI export reports the exact sense for a Candidate v1 source-lemma repeat'
       sense_index: 1,
       candidate: '구름',
       candidate_line: 1,
+      candidate_issue_count: 1,
+      candidate_issues: [{
+        record_id: 'record-000001',
+        canonical_record_id: 'record-000001',
+        sense_id: 'sense-000001',
+        kind: 'source_lemma_repeat',
+      }],
     });
     assert.match(diagnostic.repair_scope, /Resubmit only the affected sense/u);
     assert.equal(JSON.stringify(diagnostic).includes(fixture.root), false);
@@ -895,6 +903,125 @@ test('Candidate v1 runs once at export: an ineligible candidate is reported with
     assert.equal(invalid.status, 'INVALID');
     assert.equal(invalid.affected.record_id, 'wrong-record');
     assert.equal(invalid.affected.candidate_line, 1);
+  } finally {
+    await cleanup(fixture);
+  }
+});
+
+test('submit removes only source-lemma projections and preserves an independent orthographic target and evidence', async () => {
+  const fixture = await makeFixture({ unitCount: 1, firstForm: '기륭', firstSearchForms: ['기-륭'], secondLemma: '기-륭' });
+  try {
+    const [item] = (await chunk(fixture)).items;
+    const result = await submit(fixture, [{
+      sense_id: item.sense_id,
+      verified: [item.contexts[0].k],
+      candidates: ['기륭', '기륭(註)', '기륭항', '서리', '기-륭'],
+    }]);
+    assert.equal(result.candidates, 3);
+    const checkpoint = await load(fixture);
+    const saved = checkpoint.records[0].senses[0].submission;
+    assert.deepEqual(saved.candidates, ['기륭항', '서리', '기-륭']);
+    assert.equal(saved.verified[0].locator_key, item.contexts[0].k);
+    assert.equal((await exportOutput(fixture)).coverage.candidates, 3);
+  } finally {
+    await cleanup(fixture);
+  }
+});
+
+test('submit may remove every ineligible candidate and still exports a verified empty sense', async () => {
+  const fixture = await makeFixture({ unitCount: 1, firstForm: '기륭' });
+  try {
+    const [item] = (await chunk(fixture)).items;
+    const result = await submit(fixture, [{
+      sense_id: item.sense_id,
+      verified: [item.contexts[0].k],
+      candidates: ['기륭', '기륭(註)'],
+    }]);
+    assert.equal(result.candidates, 0);
+    const saved = (await load(fixture)).records[0].senses[0].submission;
+    assert.deepEqual(saved.candidates, []);
+    assert.equal(saved.verified.length, 1);
+    const output = await exportOutput(fixture);
+    assert.equal(output.coverage.candidates, 0);
+    assert.equal(output.coverage.empty_senses, 500);
+  } finally {
+    await cleanup(fixture);
+  }
+});
+
+test('export removes all diagnosed source-bound content errors from saved checkpoint senses and preserves the rest', async () => {
+  const fixture = await makeFixture({
+    unitCount: 1,
+    firstForm: '구름',
+    firstSenseGlosses: ['약 7,460미터의 길이', '두 번째 뜻'],
+  });
+  try {
+    const items = (await chunk(fixture)).items;
+    const contexts = new Map(items.map((item) => [item.sense_id, item.contexts[0].k]));
+    await submit(fixture, items.map((item, index) => ({
+      sense_id: item.sense_id,
+      verified: [contexts.get(item.sense_id)],
+      candidates: [index === 0 ? '서리' : '겨울 아침'],
+    })));
+    const checkpoint = await load(fixture);
+    const first = checkpoint.records[0].senses[0].submission;
+    const second = checkpoint.records[0].senses[1].submission;
+    const firstVerified = structuredClone(first.verified);
+    const secondVerified = structuredClone(second.verified);
+    const submittedAt = [first.submitted_at, second.submitted_at];
+    first.candidates.push('구름', '460');
+    second.candidates.push('구름 (註)');
+    await writeFile(fixture.checkpointPath, JSON.stringify(checkpoint));
+
+    const output = await exportOutput(fixture);
+    assert.equal(output.coverage.candidates, 2);
+    const repaired = await load(fixture);
+    assert.deepEqual(repaired.records[0].senses[0].submission.candidates, ['서리']);
+    assert.deepEqual(repaired.records[0].senses[1].submission.candidates, ['겨울 아침']);
+    assert.deepEqual(repaired.records[0].senses[0].submission.verified, firstVerified);
+    assert.deepEqual(repaired.records[0].senses[1].submission.verified, secondVerified);
+    assert.deepEqual(repaired.records[0].senses.slice(0, 2).map((sense) => sense.submission.submitted_at), submittedAt);
+    assert.equal(repaired.output.validation_status, 'VALID');
+    const rows = (await readFile(path.join(fixture.scratchDirectory, '001_01_c_codex.jsonl'), 'utf8'))
+      .trim().split('\n').map((line) => JSON.parse(line));
+    assert.deepEqual(rows[0].senses.map((sense) => sense.candidates), [['서리'], ['겨울 아침']]);
+  } finally {
+    await cleanup(fixture);
+  }
+});
+
+test('export does not clean candidate strings when checkpoint-to-Canonical binding fails', async () => {
+  const fixture = await makeFixture({ unitCount: 1, firstForm: '구름' });
+  try {
+    const [item] = (await chunk(fixture)).items;
+    await submit(fixture, [{ sense_id: item.sense_id, verified: [item.contexts[0].k], candidates: ['서리'] }]);
+    const checkpoint = await load(fixture);
+    checkpoint.records[0].senses[0].submission.candidates.push('구름');
+    checkpoint.records[0].lemma = '손상된 결속';
+    await writeFile(fixture.checkpointPath, JSON.stringify(checkpoint));
+    const before = await readFile(fixture.checkpointPath, 'utf8');
+    await assert.rejects(exportOutput(fixture), /not bound to current Canonical/u);
+    assert.equal(await readFile(fixture.checkpointPath, 'utf8'), before);
+  } finally {
+    await cleanup(fixture);
+  }
+});
+
+test('candidate fallback empties exact source-bound senses while preserving submission evidence', async () => {
+  const fixture = await makeFixture({ unitCount: 1, firstForm: '기륭' });
+  try {
+    const [item] = (await chunk(fixture)).items;
+    await submit(fixture, [{ sense_id: item.sense_id, verified: [item.contexts[0].k], candidates: ['서리'] }]);
+    const before = (await load(fixture)).records[0].senses[0].submission;
+    const result = runCli(fixture, ['clear-candidates', '--checkpoint', fixture.checkpointPath,
+      '--canonical', fixture.canonicalPath, '--sense-ids', item.sense_id]);
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(JSON.parse(result.stdout), { status: 'CLEARED', senses: 1, candidates: 1 });
+    const after = (await load(fixture)).records[0].senses[0].submission;
+    assert.deepEqual(after.candidates, []);
+    assert.deepEqual(after.verified, before.verified);
+    assert.equal(after.submitted_at, before.submitted_at);
+    assert.equal((await exportOutput(fixture)).coverage.candidates, 0);
   } finally {
     await cleanup(fixture);
   }

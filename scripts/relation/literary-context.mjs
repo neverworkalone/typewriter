@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 
 import {
   CANDIDATE_BATCH_SIZE,
+  candidateV1ContentIssue,
   loadCanonicalLemmaForms,
   normalizeCandidate,
   validateCandidateBatch,
@@ -1161,7 +1162,6 @@ export async function submitLiteraryChunk({ databasePath, checkpointPath, submis
           ? { total_hits: sense.shown.total_hits, results: sense.shown.unit_rowids.map((unitRowId) => resolveShownContext(database, unitRowId, forms)) }
           : runSearch(database, forms, { pageSize: MAX_CONTEXTS_PER_SENSE, cursor: null, snippetChars: DEFAULT_SNIPPET_CHARS, preferredForm: record.lemma.normalize('NFC').trim() });
         if (result.total_hits === 0 && entry.verified.length > 0) failSubmission('context_key_not_found', entry.sense_id, 'verified', entryNumber);
-        if (result.total_hits === 0 && entry.candidates.length > 0) failSubmission('no_literary_hits', entry.sense_id, 'candidates', entryNumber);
         verified = entry.verified.map((key) => resolveVerifiedContextKey(key, entry.sense_id, result.results, entryNumber));
       } catch (error) {
         if (error?.code === 'LITERARY_SUBMISSION_VALIDATION') throw error;
@@ -1171,10 +1171,15 @@ export async function submitLiteraryChunk({ databasePath, checkpointPath, submis
         failSubmission('duplicate_verified', entry.sense_id, 'verified', entryNumber);
       }
       const candidates = new Map();
+      // Filter only errors proven by this already-bound source lemma/sense. Orthographic aliases
+      // that may be independent Canonical lemmas remain for the final shared validation pass.
+      const localLemmaForms = new Set();
       for (const candidate of entry.candidates) {
         const normalized = normalizeCandidate(candidate);
+        if (candidateV1ContentIssue(candidate, { lemma: record.lemma, search_forms: [] }, sense, localLemmaForms)) continue;
         if (!candidates.has(normalized)) candidates.set(normalized, candidate.normalize('NFC').trim());
       }
+      if (result.total_hits === 0 && candidates.size > 0) failSubmission('no_literary_hits', entry.sense_id, 'candidates', entryNumber);
       if (candidates.size > 0 && verified.length === 0) failSubmission('missing_verified', entry.sense_id, 'verified', entryNumber);
       accepted.push({
         sense,
@@ -1309,14 +1314,19 @@ function assertCheckpointBoundToCanonical(checkpoint, canonicalRows) {
   }
 }
 
-/** The one final check: the shared Candidate v1 batch validator over the whole file, scoped to a row on failure. */
-async function validateCandidateRows({ checkpoint, canonicalPath, candidateRows, repositoryDirectory }) {
+/** Inputs shared by the final validator and any in-place checkpoint cleanup loop. */
+async function candidateValidationContext({ checkpoint, canonicalPath, repositoryDirectory }) {
   const canonicalText = await readFile(canonicalPath, 'utf8');
   if (sha256(canonicalText) !== checkpoint.batch.canonical_sha256) fail('Canonical shard changed after checkpoint initialization');
   const canonicalRows = parseCanonicalShard(canonicalText, canonicalPath);
   assertCheckpointBoundToCanonical(checkpoint, canonicalRows);
   const canonicalLemmaForms = await loadCanonicalLemmaForms(repositoryDirectory);
-  const batchNumber = Number(checkpoint.batch.batch);
+  return { canonicalPath, canonicalRows, canonicalLemmaForms, batchNumber: Number(checkpoint.batch.batch) };
+}
+
+/** The one final check: the shared Candidate v1 batch validator over the whole file, scoped to a row on failure. */
+function validateCandidateRows({ checkpoint, candidateRows, context }) {
+  const { canonicalPath, canonicalRows, canonicalLemmaForms, batchNumber } = context;
   try {
     const summary = validateCandidateBatch(canonicalRows, candidateRows, {
       batch: batchNumber,
@@ -1335,7 +1345,10 @@ async function validateCandidateRows({ checkpoint, canonicalPath, candidateRows,
     const candidateSenses = failedSense ? [failedSense] : failedRow?.senses ?? [];
     const candidateInfo = candidateSenses.flatMap((candidateSense) => candidateSense.candidates ?? [])
       .find((candidate) => error.message.includes(JSON.stringify(candidate)));
-    const senseIds = failedSense?.sense_id
+    const issueSenseIds = Array.isArray(error.candidateIssues)
+      ? [...new Set(error.candidateIssues.map((issue) => issue.sense_id))]
+      : [];
+    const senseIds = issueSenseIds.length > 0 ? issueSenseIds : failedSense?.sense_id
       ? [failedSense.sense_id]
       : failedRow?.senses?.map((sense) => sense.sense_id) ?? [];
     return {
@@ -1350,12 +1363,46 @@ async function validateCandidateRows({ checkpoint, canonicalPath, candidateRows,
         sense_index: senseIndex,
         candidate: candidateInfo ?? null,
         candidate_line: line,
+        ...(Array.isArray(error.candidateIssues) ? { candidate_issue_count: error.candidateIssues.length } : {}),
+        ...(Array.isArray(error.candidateIssues) ? { candidate_issues: error.candidateIssues } : {}),
       } : null,
       repair_scope: failedSense
         ? 'Resubmit only the affected sense (read it again with --sense-ids if needed), then export again.'
         : 'Repair the affected Candidate row and resubmit its senses before exporting again.',
     };
   }
+}
+
+/** Apply only exact, source-bound Candidate v1 content errors to a v3 checkpoint. */
+function removeValidatedCandidateIssues(checkpoint, candidateRows, issues) {
+  if (checkpoint.contract !== CHECKPOINT_CONTRACT || !Array.isArray(issues) || issues.length === 0) return 0;
+  const bySense = new Map();
+  for (const issue of issues) {
+    if (!issue || !['source_lemma_repeat', 'thousands_comma_fragment'].includes(issue.kind)
+      || typeof issue.record_id !== 'string' || typeof issue.sense_id !== 'string'
+      || issue.canonical_record_id !== issue.record_id
+      || typeof issue.candidate !== 'string' || !Number.isInteger(issue.candidate_index) || issue.candidate_index < 0) return 0;
+    const row = candidateRows.find((item) => item.record_id === issue.record_id);
+    const candidateSense = row?.senses?.find((item) => item.sense_id === issue.sense_id);
+    if (!row || !candidateSense || candidateSense.candidates[issue.candidate_index] !== issue.candidate) return 0;
+    const key = `${issue.record_id}\0${issue.sense_id}`;
+    const indexes = bySense.get(key) ?? { recordId: issue.record_id, senseId: issue.sense_id, indexes: new Set() };
+    if (indexes.indexes.has(issue.candidate_index)) return 0;
+    indexes.indexes.add(issue.candidate_index);
+    bySense.set(key, indexes);
+  }
+
+  let removed = 0;
+  for (const { recordId, senseId, indexes } of bySense.values()) {
+    const record = checkpoint.records.find((item) => item.record_id === recordId);
+    const sense = record?.senses?.find((item) => item.sense_id === senseId);
+    const saved = sense?.submission;
+    if (!saved || saved.status !== 'SUBMITTED' || !Array.isArray(saved.candidates)) return 0;
+    const before = saved.candidates.length;
+    saved.candidates = saved.candidates.filter((_, index) => !indexes.has(index));
+    removed += before - saved.candidates.length;
+  }
+  return removed;
 }
 
 /** Export after every sense is read and submitted (or has zero hits); Candidate v1 runs once over the whole batch. */
@@ -1365,14 +1412,23 @@ export async function exportLiteraryCandidates({ checkpointPath, canonicalPath, 
   if (path.basename(outputPath) !== expectedName) fail(`output filename must be ${expectedName}`);
   const unfinished = checkpoint.records.flatMap((record) => record.senses.filter((sense) => !senseDone(sense)).map((sense) => sense.sense_id));
   if (unfinished.length > 0) fail(`${unfinished.length} sense(s) are not read and submitted yet (first: ${unfinished.slice(0, 5).join(', ')}); run chunk/submit until none remain`);
-  const candidateRows = candidateRowsFromCheckpoint(checkpoint);
-  const validation = await validateCandidateRows({ checkpoint, canonicalPath, candidateRows, repositoryDirectory });
-  if (validation.status !== 'VALID') {
-    const error = new Error(`${validation.message}${validation.affected ? ` (affected ${JSON.stringify(validation.affected)})` : ''}`);
-    error.code = 'CANDIDATE_V1_VALIDATION';
-    error.affected = validation.affected;
-    error.repair_scope = validation.repair_scope;
-    throw error;
+  let candidateRows = candidateRowsFromCheckpoint(checkpoint);
+  const context = await candidateValidationContext({ checkpoint, canonicalPath, repositoryDirectory });
+  let validation;
+  while (true) {
+    validation = validateCandidateRows({ checkpoint, candidateRows, context });
+    if (validation.status === 'VALID') break;
+    const removed = removeValidatedCandidateIssues(checkpoint, candidateRows, validation.affected?.candidate_issues);
+    if (removed === 0) {
+      const error = new Error(`${validation.message}${validation.affected ? ` (affected ${JSON.stringify(validation.affected)})` : ''}`);
+      error.code = 'CANDIDATE_V1_VALIDATION';
+      error.affected = validation.affected;
+      error.repair_scope = validation.repair_scope;
+      throw error;
+    }
+    markOutputStale(checkpoint, 'Candidate v1 rejected source-bound candidate content');
+    await saveCheckpoint(resolvedCheckpoint, checkpoint);
+    candidateRows = candidateRowsFromCheckpoint(checkpoint);
   }
   const resolvedOutput = path.resolve(outputPath);
   const expectedRepositoryPath = path.resolve(repositoryDirectory, 'data/relation-candidates', checkpoint.batch.shard, expectedName);
@@ -1405,6 +1461,35 @@ export async function exportLiteraryCandidates({ checkpointPath, canonicalPath, 
   return { status: 'OUTPUT', output: checkpoint.output, coverage: { records: validation.recordCount, senses: validation.senseCount, candidates: validation.candidateCount, empty_senses: validation.emptySenseCount } };
 }
 
+/** Clear candidates only for exact, source-bound senses after a repeated Candidate v1 repair failure. */
+export async function clearLiteraryCandidateSenses({ checkpointPath, canonicalPath, senseIds, scratchDirectory = path.resolve(CHECKPOINT_SCRATCH_DIRECTORY) }) {
+  const { checkpoint, path: resolvedCheckpoint } = await loadLiteraryCheckpoint(checkpointPath, { scratchDirectory });
+  if (checkpoint.contract !== CHECKPOINT_CONTRACT) fail('candidate fallback requires a v3 literary checkpoint');
+  if (!Array.isArray(senseIds) || senseIds.length === 0 || new Set(senseIds).size !== senseIds.length
+    || !senseIds.every((id) => typeof id === 'string' && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u.test(id))) {
+    fail('candidate fallback requires unique exact sense ids');
+  }
+  const canonicalText = await readFile(canonicalPath, 'utf8');
+  if (sha256(canonicalText) !== checkpoint.batch.canonical_sha256) fail('Canonical shard changed after checkpoint initialization');
+  const canonicalRows = parseCanonicalShard(canonicalText, canonicalPath);
+  assertCheckpointBoundToCanonical(checkpoint, canonicalRows);
+
+  let removed = 0;
+  for (const senseId of senseIds) {
+    const { sense } = findSense(checkpoint, senseId);
+    if (sense.submission?.status !== 'SUBMITTED' || !Array.isArray(sense.submission.candidates)) {
+      fail(`candidate fallback is not allowed for incomplete or zero-hit sense ${senseId}`);
+    }
+    removed += sense.submission.candidates.length;
+    sense.submission.candidates = [];
+  }
+  if (removed > 0) {
+    markOutputStale(checkpoint, 'repeated Candidate v1 content error fallback');
+    await saveCheckpoint(resolvedCheckpoint, checkpoint);
+  }
+  return { status: 'CLEARED', senses: senseIds.length, candidates: removed };
+}
+
 /** Validate an existing Candidate file with the shared Candidate v1 batch contract (for a hand-edited file). */
 export async function validateExistingLiteraryCandidates({ checkpointPath, canonicalPath, candidatePath, repositoryDirectory = process.cwd(), scratchDirectory = path.resolve(CHECKPOINT_SCRATCH_DIRECTORY) }) {
   const { checkpoint } = await loadLiteraryCheckpoint(checkpointPath, { scratchDirectory });
@@ -1417,7 +1502,8 @@ export async function validateExistingLiteraryCandidates({ checkpointPath, canon
   } catch (error) {
     return { status: 'INVALID', error_type: error.name, message: `Candidate JSONL parse failed: ${error.message}`, affected: null };
   }
-  return validateCandidateRows({ checkpoint, canonicalPath, candidateRows, repositoryDirectory });
+  const context = await candidateValidationContext({ checkpoint, canonicalPath, repositoryDirectory });
+  return validateCandidateRows({ checkpoint, candidateRows, context });
 }
 
 export function normalizeLiteraryCandidate(value) {

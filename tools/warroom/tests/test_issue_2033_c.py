@@ -513,8 +513,12 @@ class Finalization(unittest.TestCase):
 
     def test_candidate_v1_rejection_reopens_only_the_named_senses(self):
         w = self.w
+        issues = [{"record_id": "r0001", "canonical_record_id": "r0001", "sense_id": sid,
+                   "candidate": "표제", "candidate_index": 0, "kind": "source_lemma_repeat"}
+                  for sid in ("s0002", "s0007")]
         w.runner.literary.export_error = json.dumps({"status": "FAILED", "diagnostic": "candidate_validation",
-                                                      "affected": {"sense_ids": ["s0002", "s0007"]}})
+                                                      "affected": {"record_id": "r0001", "canonical_record_id": "r0001",
+                                                                   "sense_ids": ["s0002", "s0007"], "candidate_issues": issues}})
 
         def resubmit():   # the repair run changes the checkpoint (a successful submit); export is then accepted
             w.runner.literary.mark(w.wt(), f".warroom-scratch/{CP_NAME}", ["s0002", "s0007"])
@@ -535,6 +539,83 @@ class Finalization(unittest.TestCase):
         w.tick()
         self.assertEqual(w.row("deepseek", "c")["state"], "WAITING_REVIEW")
         self.assertEqual(len(w.gh.created_prs), 1)
+
+    def test_candidate_repairs_converge_across_more_than_three_distinct_senses(self):
+        w = self.w
+        senses = [f"s{i:04d}" for i in range(1, 6)]
+
+        def rejection(ids):
+            issues = [{"record_id": "r0001", "canonical_record_id": "r0001", "sense_id": sid,
+                       "candidate": f"repeat-{sid}", "candidate_index": 0, "kind": "source_lemma_repeat"}
+                      for sid in ids]
+            return json.dumps({"status": "FAILED", "diagnostic": "candidate_validation",
+                               "affected": {"record_id": "r0001", "canonical_record_id": "r0001",
+                                            "sense_ids": ids, "candidate_issues": issues}})
+
+        w.runner.literary.export_error = rejection(senses)
+        w.start("single", "deepseek", "c")
+        b = w.row("deepseek", "c")
+        w.store.set(f"c_repairs_{b['id']}", "3")  # Batch 710's old counter must not block a Retry.
+        w.ai(session="ses_initial")
+        for remaining in (senses[1:], senses[2:], senses[3:], senses[4:], []):
+            def repair(ids=remaining):
+                rec = w.active()
+                w.runner.literary.mark(w.wt(), f".warroom-scratch/{CP_NAME}", rec["sense_ids"])
+                w.runner.literary.export_error = rejection(ids) if ids else None
+            w.adapter.plan.append({"code": 0, "session": f"ses_repair_{len(remaining)}", "effect": repair})
+
+        w.tick()
+        w.finish_last()
+        w.tick()  # first source-bound repair starts
+        for _ in range(5):
+            w.finish_last()
+            w.tick()
+
+        self.assertEqual(w.row("deepseek", "c")["state"], "WAITING_REVIEW")
+        self.assertEqual(len(w.adapter.launches), 6)
+        self.assertIsNone(w.store.get(f"c_repair_issue_count_{b['id']}"))
+        self.assertEqual(len(w.gh.created_prs), 1)
+
+    def test_candidate_repair_with_no_reduction_falls_back_to_empty_exact_sense(self):
+        w = self.w
+        issues = [{"record_id": "r0001", "canonical_record_id": "r0001", "sense_id": "s0002",
+                   "candidate": "repeat-s0002", "candidate_index": 0, "kind": "source_lemma_repeat"}]
+        w.runner.literary.export_error = json.dumps({"status": "FAILED", "diagnostic": "candidate_validation",
+                                                      "affected": {"record_id": "r0001", "canonical_record_id": "r0001",
+                                                                   "sense_ids": ["s0002"], "candidate_issues": issues}})
+        w.start("single", "deepseek", "c")
+        w.ai(session="ses_initial")
+
+        def unchanged_repair():
+            rec = w.active()
+            w.runner.literary.mark(w.wt(), f".warroom-scratch/{CP_NAME}", rec["sense_ids"])
+        w.adapter.plan.append({"code": 0, "session": "ses_repair", "effect": unchanged_repair})
+
+        w.tick()
+        w.finish_last()
+        w.tick()
+        w.finish_last()
+        w.tick()
+
+        b = w.row("deepseek", "c")
+        self.assertEqual((b["state"], len(w.adapter.launches)), ("WAITING_REVIEW", 2))
+        self.assertEqual(w.runner.literary.clears, [["s0002"]])
+        self.assertEqual(len(w.gh.created_prs), 1)
+
+    def test_candidate_validation_without_exact_content_evidence_stops_without_empty_fallback(self):
+        w = self.w
+        w.start("single", "deepseek", "c")
+        w.runner.literary.export_error = json.dumps({"status": "FAILED", "diagnostic": "candidate_validation",
+                                                      "affected": {"sense_ids": ["s0002"]}})
+        w.ai()
+        w.tick()
+        w.finish_last()
+        w.tick()
+
+        self.assertEqual(w.row("deepseek", "c")["state"], "ERROR")
+        self.assertEqual(len(w.adapter.launches), 1)
+        self.assertEqual(w.runner.literary.clears, [])
+        self.assertEqual(w.gh.created_prs, [])
 
 
 class RecoveryScope(unittest.TestCase):
