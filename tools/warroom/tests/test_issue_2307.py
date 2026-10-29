@@ -166,6 +166,45 @@ class Stage2PreflightRepair(unittest.TestCase):
         self.assertEqual(w.git.stage2_merge_calls, [])
         self.assertEqual(w.gh.created_prs, [])
 
+    def test_receipt_backed_replay_survives_supervisor_restart(self):
+        fingerprint = "9" * 64
+        w, batch = self.start_repair([conflict_report(fingerprint, ["candidate-0"]), clean_report("a" * 64)])
+        run = w.adapter.launches[-1]
+        w.adapter.running[run["pid"]]["text"] = repair_answer(fingerprint, ["candidate-0"])
+        w.adapter.finish(run["pid"])
+        state = w.sup._stage2_repair_state(batch, required=True)
+        self.assertIsNotNone(w.sup._stage2_repair_response(batch, state))
+
+        original_apply = w.git.stage2_repair
+
+        class SimulatedSupervisorCrash(BaseException):
+            pass
+
+        def apply_then_crash(*args, **kwargs):
+            original_apply(*args, **kwargs)
+            raise SimulatedSupervisorCrash()
+
+        w.git.stage2_repair = apply_then_crash
+        with self.assertRaises(SimulatedSupervisorCrash):
+            w.sup._apply_stage2_repair_answer(batch, state)
+        w.git.stage2_repair = original_apply
+        checkpoint = Path(batch["worktree"]) / ".warroom-scratch" / "relation-admission-001-01-01.json"
+        after_first_apply = json.loads(checkpoint.read_text("utf-8"))
+        self.assertEqual(len(after_first_apply["repair_receipts"]), 1)
+
+        w.sup = w.make_sup()
+        recovered = w.store.batch(batch["id"])
+        self.assertIsNone(w.sup._stage2_repair_boundary_problem(recovered))
+        replay_state = w.sup._stage2_repair_state(recovered, required=True)
+        self.assertEqual(replay_state["current"]["pending_answer"]["decisions"][0]["candidate"], "candidate-0")
+        w.sup._apply_stage2_repair_answer(recovered, replay_state)
+
+        final_checkpoint = json.loads(checkpoint.read_text("utf-8"))
+        self.assertEqual(len(final_checkpoint["repair_receipts"]), 1)
+        self.assertTrue(w.git.stage2_repair_results[-1]["already_applied"])
+        self.assertEqual(w.store.batch(batch["id"])["state"], "WAITING_REVIEW")
+        self.assertEqual(len(w.gh.created_prs), 1)
+
     def test_four_round_limit_preserves_checkpoint_and_does_not_launch_a_fifth_run(self):
         reports = [conflict_report(f"{i:064x}", ["candidate-0"]) for i in range(1, 6)]
         w, batch = self.start_repair(reports)

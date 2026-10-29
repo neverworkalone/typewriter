@@ -144,6 +144,7 @@ class FakeGit:
         self.stage2_preflight_calls: list[tuple] = []
         self.stage2_preflight_reports: list[dict] = []
         self.stage2_repair_calls: list[dict] = []
+        self.stage2_repair_results: list[dict] = []
 
     def fetch_base(self, base):
         return self.base_sha
@@ -334,6 +335,21 @@ class FakeGit:
         self.stage2_repair_calls.append(repair)
         path = Path(worktree) / ".warroom-scratch" / f"relation-admission-{shard}-{batch}-{part}.json"
         data = json.loads(path.read_text("utf-8"))
+        keys = sorted(f"{row['source_sense_id']}\u0000{row['candidate']}" for row in repair["decisions"])
+        prior = next((receipt for receipt in data.get("repair_receipts", [])
+                      if receipt["fingerprint"] == repair["fingerprint"] and receipt["candidate_keys"] == keys), None)
+        if prior:
+            for row in repair["decisions"]:
+                item = next(item for item in data["items"] if item["sense_id"] == row["source_sense_id"])
+                candidate = next(candidate for candidate in item["candidates"] if candidate["text"] == row["candidate"])
+                expected = row["additional_relations"] if candidate.get("already_accounted") is True else row["decision"]
+                actual = candidate.get("additional_relations") if candidate.get("already_accounted") is True else candidate.get("decision")
+                if actual != expected:
+                    raise GitError("repair receipt exists but its candidate state no longer matches")
+            result = {"version": 1, "ok": True, "repaired": 0, "already_applied": True,
+                      "request_id": prior["request_id"], "candidate_keys": keys}
+            self.stage2_repair_results.append(result)
+            return result
         for row in repair["decisions"]:
             item = next(item for item in data["items"] if item["sense_id"] == row["source_sense_id"])
             candidate = next(candidate for candidate in item["candidates"] if candidate["text"] == row["candidate"])
@@ -341,12 +357,13 @@ class FakeGit:
                 candidate["additional_relations"] = row["additional_relations"]
             else:
                 candidate["decision"] = row["decision"]
-        keys = sorted(f"{row['source_sense_id']}\u0000{row['candidate']}" for row in repair["decisions"])
         data.setdefault("repair_receipts", []).append({"request_id": "c" * 64, "fingerprint": repair["fingerprint"],
                                                         "candidate_keys": keys})
         path.write_text(json.dumps(data), "utf-8")
-        return {"version": 1, "ok": True, "repaired": len(repair["decisions"]),
-                "already_applied": False, "request_id": "c" * 64, "candidate_keys": keys}
+        result = {"version": 1, "ok": True, "repaired": len(repair["decisions"]),
+                  "already_applied": False, "request_id": "c" * 64, "candidate_keys": keys}
+        self.stage2_repair_results.append(result)
+        return result
 
     def verify_stage2_local(self, worktree, shard, batch, part, *, checkpoint, timeout=900):
         self.local_verify_calls.append((shard, batch, part, checkpoint))
