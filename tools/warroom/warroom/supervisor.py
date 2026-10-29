@@ -15,6 +15,7 @@ import hashlib
 import json
 import os
 import re
+import secrets
 import time
 import traceback
 from pathlib import Path
@@ -985,6 +986,7 @@ class Supervisor:
         if b["method"] == "d" and isinstance(kind, str) and kind.startswith(("d_chunk_", "d_cli")):
             env["TYPEWRITER_APPROVED_CORPUS_DB"] = str(Path(self.cfg["corpus_index_path"].strip()).expanduser())
         env.pop("WARROOM_STAGE2_CHUNK", None)
+        env.pop("WARROOM_STAGE2_REPAIR", None)
         env.pop("WARROOM_GIT_EXECUTABLES", None)
         env.pop("WARROOM_ANSWER_ONLY", None)
         env.pop("OPENCODE_CONFIG_CONTENT", None)
@@ -993,6 +995,9 @@ class Supervisor:
             env["WARROOM_ANSWER_ONLY"] = "1"
             if self._adapter(b["producer"]).name == "opencode":
                 env["OPENCODE_CONFIG_CONTENT"] = json.dumps({"permission": {"edit": "deny", "bash": "deny", "webfetch": "deny"}})
+        if b["method"] == STAGE2_METHOD and kind == "s2_repair_new":
+            env["WARROOM_ANSWER_ONLY"] = "1"
+            env["WARROOM_STAGE2_REPAIR"] = "1"
         # Chunk runs suppress auto-loaded AGENTS.md and web lookup. Execution rules stay adapter-specific; Codex keeps
         # the operator's configured permission profile, while answer-only results are judged by their output contract.
         if (b["method"] == STAGE2_METHOD and isinstance(kind, str) and kind.startswith(("s2_chunk_", "s2_links_", "s2_repair_"))) or \
@@ -1927,14 +1932,20 @@ class Supervisor:
             if current_sha != baseline["checkpoint_sha256"]:
                 state = self._stage2_repair_state(b, required=True)
                 current = state.get("current", {})
+                intent = current.get("apply_intent") if isinstance(current, dict) else None
                 receipts = json.loads(checkpoint.read_text("utf-8")).get("repair_receipts", [])
-                required_keys = set(baseline.get("page_keys", []))
-                replay_proven = current.get("pending_answer") is not None and any(
-                    receipt.get("fingerprint") == baseline.get("fingerprint")
-                    and required_keys.issubset(set(receipt.get("candidate_keys", []))) for receipt in receipts
-                    if isinstance(receipt, dict))
+                intent_keys = intent.get("candidate_keys") if isinstance(intent, dict) else None
+                nonce = intent.get("supervisor_nonce") if isinstance(intent, dict) else None
+                replay_proven = current.get("pending_answer") is not None \
+                    and isinstance(intent_keys, list) and all(isinstance(key, str) for key in intent_keys) \
+                    and re.fullmatch(r"[a-f0-9]{64}", nonce or "") \
+                    and intent.get("fingerprint") == baseline.get("fingerprint") \
+                    and any(receipt.get("supervisor_nonce") == nonce
+                            and receipt.get("fingerprint") == baseline.get("fingerprint")
+                            and receipt.get("candidate_keys") == intent_keys for receipt in receipts
+                            if isinstance(receipt, dict))
                 if not replay_proven:
-                    return "Stage 2 repair AI changed the checkpoint; preserving it without applying an answer"
+                    return "Stage 2 repair run changed the checkpoint without its persisted Supervisor apply intent; preserving it"
             if self.git.dirty(wt).strip():
                 return "Stage 2 repair AI changed tracked worktree files; preserving the worktree"
             if self.git.head(wt) != baseline.get("head") or self.git.remote_head(b["branch"]) != baseline.get("remote_head"):
@@ -2127,8 +2138,22 @@ class Supervisor:
                 add_change((row["source_sense_id"], row["candidate"]), row["decision"], None)
             repair_input = {"version": 1, "fingerprint": current["fingerprint"],
                             "decisions": sorted(changes, key=lambda row: (row["source_sense_id"], row["candidate"]))}
+            candidate_keys = sorted(f"{row['source_sense_id']}\u0000{row['candidate']}" for row in repair_input["decisions"])
+            intent = current.get("apply_intent")
+            if intent is None:
+                intent = {"supervisor_nonce": secrets.token_hex(32), "fingerprint": current["fingerprint"],
+                          "candidate_keys": candidate_keys}
+                current["apply_intent"] = intent
+                self._save_stage2_repair_state(b, state)
+            elif not isinstance(intent, dict) or intent.get("fingerprint") != current["fingerprint"] \
+                    or intent.get("candidate_keys") != candidate_keys \
+                    or not re.fullmatch(r"[a-f0-9]{64}", intent.get("supervisor_nonce", "")):
+                raise ValueError("persisted Supervisor apply intent does not match the pending repair answer")
+            repair_input["supervisor_nonce"] = intent["supervisor_nonce"]
             receipt = self.git.stage2_repair(Path(b["worktree"]), b["shard"], *stage2.split_key(b["batch"]), repair_input)
-            if receipt.get("ok") is not True or not re.fullmatch(r"[a-f0-9]{64}", receipt.get("request_id", "")):
+            if receipt.get("ok") is not True or not re.fullmatch(r"[a-f0-9]{64}", receipt.get("request_id", "")) \
+                    or receipt.get("supervisor_nonce") != intent["supervisor_nonce"] \
+                    or receipt.get("candidate_keys") != candidate_keys:
                 return self._fail(b, "ERROR", "official repair CLI returned no valid idempotent receipt; preserving state")
             target_keys = [f"{row['source_sense_id']}\u0000{row['candidate']}" for row in repair_input["decisions"]]
             current.setdefault("applied_candidate_keys", []).extend(target_keys)
@@ -2136,6 +2161,7 @@ class Supervisor:
             current["attempts"] = 0
             current["last_receipt"] = receipt["request_id"]
             current["pending_answer"] = None
+            current.pop("apply_intent", None)
             current.pop("last_response", None)
             if state.get("history"):
                 state["history"][-1]["applied_candidate_keys"] = list(current["applied_candidate_keys"])

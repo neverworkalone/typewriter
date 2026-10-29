@@ -82,6 +82,8 @@ class Stage2PreflightRepair(unittest.TestCase):
         repair = w.adapter.launches[-1]
         self.assertEqual(repair["kind"], "start")
         self.assertEqual(repair["stage2_chunk_git"], "1")
+        self.assertEqual(repair["stage2_repair"], "1")
+        self.assertEqual(repair["answer_only"], "1")
         self.assertIn(f"repair @{fingerprint}", repair["prompt"])
         self.assertEqual(w.gh.created_prs, [])
         self.assertEqual(getattr(w.git, "commits", []), [])
@@ -164,6 +166,37 @@ class Stage2PreflightRepair(unittest.TestCase):
         self.assertEqual(checkpoint.read_bytes(), altered_bytes)
         self.assertEqual(w.git.stage2_repair_calls, [])
         self.assertEqual(w.git.stage2_merge_calls, [])
+        self.assertEqual(w.gh.created_prs, [])
+
+    def test_unrelated_decision_and_forged_receipt_cannot_cross_repair_boundary(self):
+        fingerprint = "b" * 64
+        w, batch = self.start_repair([conflict_report(fingerprint, ["candidate-0"]), clean_report("c" * 64)])
+        run = w.adapter.launches[-1]
+        w.adapter.running[run["pid"]]["text"] = repair_answer(fingerprint, ["candidate-0"])
+        w.adapter.finish(run["pid"])
+        state = w.sup._stage2_repair_state(batch, required=True)
+        self.assertIsNotNone(w.sup._stage2_repair_response(batch, state))
+
+        boundary = json.loads(w.store.get(stage2.repair_run_start_key(batch["id"])))
+        checkpoint = Path(batch["worktree"]) / ".warroom-scratch" / \
+            "relation-admission-001-01-01.json"
+        altered = json.loads(checkpoint.read_text("utf-8"))
+        target_keys = set(boundary["page_keys"])
+        unrelated = next(
+            (item, candidate) for item in altered["items"] for candidate in item["candidates"]
+            if f"{item['sense_id']}\u0000{candidate['text']}" not in target_keys
+        )
+        item, candidate = unrelated
+        candidate["decision"] = {"disposition": "drop", "reason": "forged unrelated edit"}
+        altered.setdefault("repair_receipts", []).append({
+            "request_id": "d" * 64, "fingerprint": fingerprint,
+            "candidate_keys": boundary["page_keys"],
+        })
+        checkpoint.write_text(json.dumps(altered), "utf-8")
+
+        problem = w.sup._stage2_repair_boundary_problem(w.store.batch(batch["id"]))
+        self.assertIn("without its persisted Supervisor apply intent", problem)
+        self.assertEqual(w.git.stage2_repair_calls, [])
         self.assertEqual(w.gh.created_prs, [])
 
     def test_receipt_backed_replay_survives_supervisor_restart(self):

@@ -101,6 +101,11 @@ def is_answer_only(env) -> bool:
     return env.get("WARROOM_ANSWER_ONLY") == "1"
 
 
+def is_stage2_repair(env) -> bool:
+    """Stage 2 local repair is an answer-only run with adapter-enforced write restrictions."""
+    return env.get("WARROOM_STAGE2_REPAIR") == "1"
+
+
 def is_stage2_chunk(env) -> bool:
     """The Supervisor marks a Stage 2 chunk launch in its worker environment (`_launch_env`)."""
     return env.get("WARROOM_STAGE2_CHUNK") == "1"
@@ -443,9 +448,11 @@ class ClaudeCodeAdapter(ProcessAdapter):
         flags = self._help_flags
         if flags is None or "--tools" not in flags:
             raise RuntimeError("답변 전용 청크를 시작하지 않습니다: 설치된 Claude CLI가 --tools 로 도구를 제거하는 것을 지원하는지 확인하지 못했습니다")
+        if is_stage2_repair(env) and "--strict-mcp-config" not in flags:
+            raise RuntimeError("Stage 2 repair를 시작하지 않습니다: 설치된 Claude CLI가 strict MCP 제한을 지원하는지 확인하지 못했습니다")
         args = ["--tools", ""]
         for optional in ("--strict-mcp-config", "--disable-slash-commands"):
-            if optional in flags:
+            if optional in flags and (optional != "--strict-mcp-config" or is_stage2_repair(env)):
                 args.append(optional)
         if "--bare" in flags and env.get("ANTHROPIC_API_KEY"):
             args.append("--bare")
@@ -722,6 +729,9 @@ class CodexCLIAdapter(ProcessAdapter):
     def _launch_args(self, env, run: RunSpec, grant: list[str]) -> list[str]:
         """Pin the configured run profile; chunks add only input optimizations and omit Git admin grants."""
         pins = self._pins(run)
+        if is_stage2_repair(env):
+            # The model may inspect the supplied prompt only; it cannot write files or escalate through approvals.
+            return [*pins, *self._chunk_args(), "--sandbox", "read-only", "--ask-for-approval", "never"]
         if is_stage2_chunk(env):
             return [*pins, *self._chunk_args()]
         return [*pins, *grant]

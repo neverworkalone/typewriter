@@ -43,6 +43,7 @@ class FakeAdapter(AgentAdapter):
                         approved_literary_db=env.get("TYPEWRITER_APPROVED_LITERARY_DB"),
                         approved_corpus_db=env.get("TYPEWRITER_APPROVED_CORPUS_DB"),
                         stage2_chunk_git=env.get("WARROOM_STAGE2_CHUNK"),
+                        stage2_repair=env.get("WARROOM_STAGE2_REPAIR"),
                         answer_only=env.get("WARROOM_ANSWER_ONLY"), opencode_config=env.get("OPENCODE_CONFIG_CONTENT"),
                         git_shim=env.get("WARROOM_GIT_SHIM"),
                         real_git=env.get("WARROOM_REAL_GIT"),
@@ -54,6 +55,7 @@ class FakeAdapter(AgentAdapter):
                         session=session_id, approved_literary_db=env.get("TYPEWRITER_APPROVED_LITERARY_DB"),
                         approved_corpus_db=env.get("TYPEWRITER_APPROVED_CORPUS_DB"),
                         stage2_chunk_git=env.get("WARROOM_STAGE2_CHUNK"),
+                        stage2_repair=env.get("WARROOM_STAGE2_REPAIR"),
                         answer_only=env.get("WARROOM_ANSWER_ONLY"), opencode_config=env.get("OPENCODE_CONFIG_CONTENT"),
                         git_shim=env.get("WARROOM_GIT_SHIM"),
                         real_git=env.get("WARROOM_REAL_GIT"),
@@ -337,7 +339,8 @@ class FakeGit:
         data = json.loads(path.read_text("utf-8"))
         keys = sorted(f"{row['source_sense_id']}\u0000{row['candidate']}" for row in repair["decisions"])
         prior = next((receipt for receipt in data.get("repair_receipts", [])
-                      if receipt["fingerprint"] == repair["fingerprint"] and receipt["candidate_keys"] == keys), None)
+                      if receipt["fingerprint"] == repair["fingerprint"] and receipt["candidate_keys"] == keys
+                      and receipt["supervisor_nonce"] == repair["supervisor_nonce"]), None)
         if prior:
             for row in repair["decisions"]:
                 item = next(item for item in data["items"] if item["sense_id"] == row["source_sense_id"])
@@ -347,7 +350,8 @@ class FakeGit:
                 if actual != expected:
                     raise GitError("repair receipt exists but its candidate state no longer matches")
             result = {"version": 1, "ok": True, "repaired": 0, "already_applied": True,
-                      "request_id": prior["request_id"], "candidate_keys": keys}
+                      "request_id": prior["request_id"], "supervisor_nonce": repair["supervisor_nonce"],
+                      "candidate_keys": keys}
             self.stage2_repair_results.append(result)
             return result
         for row in repair["decisions"]:
@@ -358,10 +362,12 @@ class FakeGit:
             else:
                 candidate["decision"] = row["decision"]
         data.setdefault("repair_receipts", []).append({"request_id": "c" * 64, "fingerprint": repair["fingerprint"],
+                                                        "supervisor_nonce": repair["supervisor_nonce"],
                                                         "candidate_keys": keys})
         path.write_text(json.dumps(data), "utf-8")
         result = {"version": 1, "ok": True, "repaired": len(repair["decisions"]),
-                  "already_applied": False, "request_id": "c" * 64, "candidate_keys": keys}
+                  "already_applied": False, "request_id": "c" * 64,
+                  "supervisor_nonce": repair["supervisor_nonce"], "candidate_keys": keys}
         self.stage2_repair_results.append(result)
         return result
 

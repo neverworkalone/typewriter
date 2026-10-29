@@ -193,8 +193,9 @@ function validateCheckpoint(checkpoint, identity = {}) {
     throw new Error('checkpoint amend_revision must be a non-negative integer when present');
   }
   if (checkpoint.repair_receipts !== undefined && (!Array.isArray(checkpoint.repair_receipts) || checkpoint.repair_receipts.some((receipt) =>
-    !isPlainObject(receipt) || keysOf(receipt) !== 'candidate_keys,fingerprint,request_id'
+    !isPlainObject(receipt) || keysOf(receipt) !== 'candidate_keys,fingerprint,request_id,supervisor_nonce'
       || !/^[a-f0-9]{64}$/u.test(receipt.request_id ?? '') || !/^[a-f0-9]{64}$/u.test(receipt.fingerprint ?? '')
+      || !/^[a-f0-9]{64}$/u.test(receipt.supervisor_nonce ?? '')
       || !Array.isArray(receipt.candidate_keys) || receipt.candidate_keys.some((key) => typeof key !== 'string' || !key.includes('\u0000'))
       || new Set(receipt.candidate_keys).size !== receipt.candidate_keys.length
       || JSON.stringify(receipt.candidate_keys) !== JSON.stringify([...receipt.candidate_keys].sort())))) {
@@ -2056,9 +2057,10 @@ async function applyRepair(checkpoint, checkpointPath, inputPath, root) {
   ]);
   let input;
   try { input = JSON.parse(raw); } catch (error) { throw new Error(`cannot parse repair input: ${error.message}`); }
-  if (!isPlainObject(input) || keysOf(input) !== 'decisions,fingerprint,version' || input.version !== 1
-      || !/^[a-f0-9]{64}$/u.test(input.fingerprint ?? '') || !Array.isArray(input.decisions) || input.decisions.length === 0) {
-    throw new Error('repair input must contain version 1, a fingerprint and non-empty decisions');
+  if (!isPlainObject(input) || keysOf(input) !== 'decisions,fingerprint,supervisor_nonce,version' || input.version !== 1
+      || !/^[a-f0-9]{64}$/u.test(input.fingerprint ?? '') || !/^[a-f0-9]{64}$/u.test(input.supervisor_nonce ?? '')
+      || !Array.isArray(input.decisions) || input.decisions.length === 0) {
+    throw new Error('repair input must contain version 1, a fingerprint, a Supervisor nonce and non-empty decisions');
   }
   const relationFile = shardRelationPath(checkpoint.shard, root);
   const dropFile = shardDropPath(checkpoint.shard, root);
@@ -2079,6 +2081,9 @@ async function applyRepair(checkpoint, checkpointPath, inputPath, root) {
   const requestId = stableDigest({ fingerprint: input.fingerprint, decisions: normalized });
   const receipts = checkpoint.repair_receipts ?? [];
   const prior = receipts.find((receipt) => receipt.request_id === requestId);
+  if (prior && prior.supervisor_nonce !== input.supervisor_nonce) {
+    throw new Error('repair receipt is bound to another Supervisor apply intent; refusing replay');
+  }
   const selected = normalized.map((row) => {
     const item = checkpoint.items.find((entry) => entry.sense_id === row.source_sense_id);
     const candidate = item?.candidates.find((entry) => entry.text === row.candidate);
@@ -2098,7 +2103,8 @@ async function applyRepair(checkpoint, checkpointPath, inputPath, root) {
         throw new Error('repair receipt exists but its candidate state no longer matches; refusing replay');
       }
     }
-    return { repaired: 0, already_applied: true, request_id: requestId, candidate_keys: prior.candidate_keys };
+    return { repaired: 0, already_applied: true, request_id: requestId, supervisor_nonce: input.supervisor_nonce,
+      candidate_keys: prior.candidate_keys };
   }
   const next = JSON.parse(JSON.stringify(checkpoint));
   const nextByKey = new Map(next.items.flatMap((item) => item.candidates.map((candidate) =>
@@ -2131,13 +2137,14 @@ async function applyRepair(checkpoint, checkpointPath, inputPath, root) {
   next.repair_receipts = [...receipts, {
     request_id: requestId,
     fingerprint: input.fingerprint,
+    supervisor_nonce: input.supervisor_nonce,
     candidate_keys: selected.map(({ row }) => `${row.source_sense_id}\u0000${row.candidate}`).sort(),
   }];
   if (next.optional_review_complete === true) next.optional_review_state_sha256 = stableDigest(optionalReviewState(next));
   validateCheckpoint(next);
   validateCheckpointDecisions(next);
   await writeJsonAtomically(checkpointPath, next);
-  return { repaired: selected.length, already_applied: false, request_id: requestId,
+  return { repaired: selected.length, already_applied: false, request_id: requestId, supervisor_nonce: input.supervisor_nonce,
     candidate_keys: next.repair_receipts.at(-1).candidate_keys };
 }
 

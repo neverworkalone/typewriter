@@ -1433,7 +1433,7 @@ test('preflight collects pair conflicts and Drop/gloss failures without mutation
   assert.ok(pair);
   const secondCandidate = pair.candidates.find((candidate) => candidate.candidate === '유일하다');
   const aligned = { ...secondCandidate.decision, type: 'near' };
-  const repair = { version: 1, fingerprint: first.fingerprint, decisions: [{
+  const repair = { version: 1, fingerprint: first.fingerprint, supervisor_nonce: 'e'.repeat(64), decisions: [{
     source_sense_id: secondCandidate.source_sense_id,
     candidate: secondCandidate.candidate,
     expected_decision: secondCandidate.decision,
@@ -1448,7 +1448,11 @@ test('preflight collects pair conflicts and Drop/gloss failures without mutation
   const afterSave = await fileState(watched[0]);
   const replay = await quiet(() => run(['repair', '--checkpoint', checkpoint, '--in', repairPath, '--json'], { root }));
   assert.equal(replay.already_applied, true);
+  assert.equal(replay.supervisor_nonce, repair.supervisor_nonce);
   assert.deepEqual(await fileState(watched[0]), afterSave, 'receipt-backed replay does not write the checkpoint again');
+  await writeFile(path.join(root, repairPath), JSON.stringify({ ...repair, supervisor_nonce: 'f'.repeat(64) }));
+  await assert.rejects(() => quiet(() => run(['repair', '--checkpoint', checkpoint, '--in', repairPath, '--json'], { root })),
+    /bound to another Supervisor apply intent/);
 
   const afterPair = await quiet(() => run(['preflight', '--checkpoint', checkpoint, '--json'], { root }));
   assert.equal(afterPair.repairable, true);
@@ -1457,7 +1461,8 @@ test('preflight collects pair conflicts and Drop/gloss failures without mutation
   const drop = afterPair.problems[0].candidates[0];
   const repairedDrop = { source_sense_id: drop.source_sense_id, candidate: drop.candidate,
     disposition: 'relation', type: 'association', relevance: 4 };
-  await writeFile(path.join(root, repairPath), JSON.stringify({ version: 1, fingerprint: afterPair.fingerprint, decisions: [{
+  await writeFile(path.join(root, repairPath), JSON.stringify({ version: 1, fingerprint: afterPair.fingerprint,
+    supervisor_nonce: 'a'.repeat(64), decisions: [{
     source_sense_id: drop.source_sense_id, candidate: drop.candidate,
     expected_decision: drop.decision, expected_additional_relations: null,
     decision: repairedDrop, additional_relations: null,
