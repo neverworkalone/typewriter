@@ -20,7 +20,23 @@ Return this exact header on its own line, followed by one JSON object. No Markdo
 
 `repair @{{fingerprint}}`
 
-`{"decisions":[{"source_sense_id":"...","candidate":"...","decision":{...}}],"peer_adjustments":[],"unresolved":[]}`
+```json
+{
+  "decisions": [
+    {
+      "source_sense_id": "...",
+      "candidate": "...",
+      "decision": {
+        "disposition": "relation",
+        "type": "scene",
+        "relevance": 4
+      }
+    }
+  ],
+  "peer_adjustments": [],
+  "unresolved": []
+}
+```
 
 For an ordinary candidate, `decision` must be a complete valid Stage 2 decision object. It must repeat the exact `source_sense_id` and `candidate` and use the CLI schema: Drop has `disposition:"drop"` and a reason; a relation has `disposition:"relation"`, type, relevance, and either the exact target/reverse fields or the complete checked-target list for a text-only decision.
 
