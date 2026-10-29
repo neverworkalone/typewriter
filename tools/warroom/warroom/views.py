@@ -174,8 +174,8 @@ TIER_FOOTER = {
 def tier_footer(state: str) -> str:
     """One-line board footer with the current tier nested under f; values are Rich markup."""
     label, style = TIER_FOOTER.get(state, TIER_FOOTER["none"])
-    return (f"[b]q[/] Quit · [b]s[/] Settings · [b]r[/] 설정 리로드 · "
-            f"[b]f[/] Free/Go 전환 ([{style}]{label}[/])")
+    return (f"[b #ffa500]q[/] Quit · [b #ffa500]s[/] Settings · [b #ffa500]r[/] 설정 리로드 · "
+            f"[b #ffa500]f[/] Free/Go 전환 ([{style}]{label}[/])")
 
 
 def _maintainer_header(st: dict, who: str) -> str:

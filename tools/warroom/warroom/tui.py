@@ -581,10 +581,12 @@ class WarRoom(App):
         kinds = adapters(self.cfg)
         first = kinds[0] if kinds else "opencode"
         yield Header()
-        yield Static(id="banner")
-        yield Static(id="drain-note")
         with Horizontal(id="controls"):
-            yield Select([(adapter_label(a), a) for a in kinds], value=first, allow_blank=False, id="adapter")
+            adapter_options = [(Text("Claude", style="#ffa500") if a == "claude"
+                                else "DeepSeek" if a == "opencode" else adapter_label(a), a)
+                               for a in kinds]
+            yield Select(adapter_options,
+                         value=first, allow_blank=False, id="adapter")
             # Only shown when one CLI/Adapter hosts several logical models: never guess which one to start.
             yield Select(self._model_options(first), allow_blank=False, id="model")
             yield Select(self._method_options(first), value=self.methods[0], allow_blank=False, id="method")
@@ -605,6 +607,8 @@ class WarRoom(App):
                         yield Card(model, STAGE2_METHOD)
                     elif model == self.maintainer_col:   # ... and the Maintainer status in the DeepSeek column
                         yield MaintainerCard(model)
+        yield Static(id="banner")
+        yield Static(id="drain-note")
         yield BoardFooter(show_command_palette=False)
 
     def action_toggle_tier(self) -> None:
