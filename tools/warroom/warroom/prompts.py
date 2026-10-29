@@ -19,11 +19,12 @@ _AB_CHUNK = {"batch", "chunk_no", "session_note", "chunk_input", "method_contrac
 _C_CHUNK = {"batch", "branch", "chunk_no", "checkpoint", "chunk_contexts", "session_note", "chunk_input", "method_contract"}
 ALLOWED = {"a": _PRODUCE, "b": _PRODUCE, "c": _PRODUCE, "d": _PRODUCE, "recovery": _PRODUCE | {"resolved_defects"},
            "fix": {"pr", "head", "branch", "shard", "batch", "part", "review_events", "session_note", "source_context",
-                   "relation_direction_rule"},
+                   "s2_policy_card"},
            "producer_fix": {"pr", "head", "branch", "review_events", "session_note", "source_context",
                             "canonical", "output", "method_contract", "method_fix_scope"},
            "contract_a": set(), "contract_b": set(), "contract_c": set(), "contract_d": set(),
-           "m": _MAINTAIN, "m_recovery": _MAINTAIN, "s2": _STAGE2, "s2_chunk": _STAGE2, "s2_recovery": _STAGE2,
+           "m": _MAINTAIN, "m_recovery": _MAINTAIN, "s2": _STAGE2,
+           "s2_chunk": _STAGE2 | {"s2_policy_card"}, "s2_recovery": _STAGE2,
            "s2_chunk_resume": {"chunk_id", "relation_direction_rule"},
            "s2_chunk_fix": {"chunk_id", "problem", "relation_direction_rule"},
            "s2_chunk_format_fix": {"chunk_id", "problem", "relation_direction_rule"},
@@ -124,6 +125,11 @@ def _relation_direction_rule(checkpoint: dict | None = None) -> str:
     raise PromptError("Stage 2 checkpoint has an unsupported Type/Tier direction policy")
 
 
+def _stage2_policy_card(checkpoint: dict | None = None, directory: Path | None = None) -> str:
+    """Render the shared judgment card first; `render` intentionally performs one substitution pass."""
+    return render("s2_policy_card", {"relation_direction_rule": _relation_direction_rule(checkpoint)}, directory).rstrip("\n")
+
+
 def produce(b, directory: Path | None = None) -> str:
     if b["method"] == MAINTENANCE_METHOD:
         return render("m", {"issue": b["batch"], "branch": b["branch"]}, directory)
@@ -168,6 +174,7 @@ def stage2(b, phase: str, checkpoint: dict | None, *, resumed: bool = False,
                    f"{'' if view.endswith(chr(10)) else chr(10)}{VIEW_END}") if view is not None else ""
     values.update(phase="chunk", checkpoint=chunk, chunk_input=chunk_input, chunk_id=pending,
                   relation_direction_rule=_relation_direction_rule(checkpoint),
+                  s2_policy_card=_stage2_policy_card(checkpoint, directory),
                   session_note=("중단된 같은 청크를 이어간다. 이미 checkpoint에 저장된 결정을 다시 만들지 않는다.\n"
                                 if resumed else ""))
     return render("s2_chunk", values, directory)
@@ -310,8 +317,8 @@ def fix(b, events, resumed: bool, directory: Path | None = None, source_context:
               "part": b["batch"].split("-")[1] if b["method"] == STAGE2_METHOD else "",
               "review_events": "\n".join(lines), "session_note": note,
               "source_context": source_context,
-              "relation_direction_rule": (_relation_direction_rule(checkpoint)
-                                           if b["method"] == STAGE2_METHOD else "")}
+              "s2_policy_card": (_stage2_policy_card(checkpoint, directory)
+                                 if b["method"] == STAGE2_METHOD else "")}
     if b["method"] in ("a", "b", "c", "d"):
         from . import dchunk, literary, stage1ab
 

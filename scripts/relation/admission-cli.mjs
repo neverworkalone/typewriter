@@ -35,7 +35,7 @@ const USAGE = `usage:
   node scripts/relation/admission-cli.mjs prepare --shard 001 --batch 01 --part 01 [--checkpoint <file.json>] [--allow-partial]
   node scripts/relation/admission-cli.mjs read-chunk --checkpoint <file.json> [--max-candidates 250] [--source-sense-id <id> --candidate <text>] [--format json|compact] [--out <file>]
   node scripts/relation/admission-cli.mjs read-chunk --checkpoint <file.json> --optional [--format json|compact] [--page <n>] [--page-size <n>] [--out <file>]
-  node scripts/relation/admission-cli.mjs inspect --checkpoint <file.json> --source-sense-id <id>[,<id>...] [--candidate <text>] [--format json|compact] [--page <n>] [--page-size <n>] [--out <file>]
+  node scripts/relation/admission-cli.mjs inspect --checkpoint <file.json> --source-sense-id <id>[,<id>...] [--candidate <text> | --select <file.json>] [--format json|compact] [--page <n>] [--page-size <n>] [--out <file>]
   node scripts/relation/admission-cli.mjs save-chunk --checkpoint <file.json> --in <decisions> [--format json|compact]
   node scripts/relation/admission-cli.mjs save-optional --checkpoint <file.json> --in <decisions>
   node scripts/relation/admission-cli.mjs complete-optional --checkpoint <file.json>
@@ -658,7 +658,7 @@ function parseArgs(argv) {
   const [command, ...rest] = argv;
   const options = { command, shard: null, batch: null, part: null, out: null, checkpoint: null, input: null,
     maxCandidates: DEFAULT_CHUNK_CANDIDATES, allowPartial: false, json: false, sourceSenseId: null, candidateText: null,
-    format: null, optional: false, chunkId: null, page: 1, pageSize: INSPECT_PAGE_SIZE, limit: 20, offset: 0 };
+    selectPath: null, format: null, optional: false, chunkId: null, page: 1, pageSize: INSPECT_PAGE_SIZE, limit: 20, offset: 0 };
   for (let index = 0; index < rest.length; index += 1) {
     const flag = rest[index];
     if (flag === '--shard') options.shard = rest[++index];
@@ -670,6 +670,7 @@ function parseArgs(argv) {
     else if (flag === '--max-candidates') options.maxCandidates = Number(rest[++index]);
     else if (flag === '--source-sense-id') options.sourceSenseId = rest[++index];
     else if (flag === '--candidate') options.candidateText = rest[++index];
+    else if (flag === '--select') options.selectPath = rest[++index];
     else if (flag === '--optional') options.optional = true;
     else if (flag === '--chunk-id') options.chunkId = rest[++index];
     else if (flag === '--page') options.page = Number(rest[++index]);
@@ -711,6 +712,10 @@ function parseArgs(argv) {
   if (command === 'inspect' && (typeof options.sourceSenseId !== 'string' || !options.sourceSenseId)) {
     throw new Error(`inspect requires --source-sense-id\n${USAGE}`);
   }
+  if (options.selectPath !== null && command !== 'inspect') throw new Error(`--select is only valid for inspect\n${USAGE}`);
+  if (options.selectPath !== null && !options.selectPath) throw new Error(`--select requires a JSON file path\n${USAGE}`);
+  if (options.selectPath !== null && options.candidateText !== null) throw new Error('--select and --candidate cannot be used together');
+  if (options.selectPath !== null && options.format !== 'compact') throw new Error('--select requires --format compact');
   if ((options.sourceSenseId !== null || options.candidateText !== null)
       && !(command === 'inspect' || (command === 'read-chunk' && !options.optional
         && typeof options.sourceSenseId === 'string' && options.sourceSenseId
@@ -767,7 +772,8 @@ export async function run(argv, { root } = {}) {
     const checkpoint = await readCheckpoint(checkpointPath);
     const ids = options.sourceSenseId.split(',').map((value) => value.trim());
     if (ids.some((value) => !value)) throw new Error('--source-sense-id contains an empty ID');
-    return inspectCheckpoint(checkpoint, options.out, repositoryRoot, ids, options.candidateText, options.format, options.page, options.pageSize);
+    return inspectCheckpoint(checkpoint, options.out, repositoryRoot, ids, options.candidateText, options.selectPath,
+      options.format, options.page, options.pageSize);
   }
   if (options.command === 'read-chunk' || options.command === 'save-chunk') {
     const checkpoint = await readCheckpoint(checkpointPath);
@@ -1217,6 +1223,42 @@ function requestedCheckpointCandidates(checkpoint, sourceSenseIds, candidateText
   return { items, allCandidates, candidates, senseIds: [...requested].sort() };
 }
 
+async function selectedCheckpointCandidates(checkpoint, sourceSenseIds, selectPath, root) {
+  const selected = requestedCheckpointCandidates(checkpoint, sourceSenseIds);
+  if (selectPath === null) return selected;
+  let selection;
+  try {
+    selection = JSON.parse(await readFile(resolveRootPath(root, selectPath), 'utf8'));
+  } catch (error) {
+    throw new Error(`cannot read --select JSON: ${error.message}`);
+  }
+  if (!isPlainObject(selection) || keysOf(selection) !== 'candidates' || !Array.isArray(selection.candidates)) {
+    throw new Error('--select must contain exactly a candidates array');
+  }
+  const requested = new Set(selected.senseIds);
+  const pairsBySense = new Map();
+  const exactPairs = new Set();
+  for (const pair of selection.candidates) {
+    if (!isPlainObject(pair) || keysOf(pair) !== 'candidate,source_sense_id'
+        || typeof pair.source_sense_id !== 'string' || !pair.source_sense_id
+        || typeof pair.candidate !== 'string' || !pair.candidate) {
+      throw new Error('--select candidates must contain exactly source_sense_id and candidate strings');
+    }
+    if (!requested.has(pair.source_sense_id)) throw new Error(`--select Sense is outside --source-sense-id: ${pair.source_sense_id}`);
+    const key = `${pair.source_sense_id}\u0000${pair.candidate}`;
+    if (exactPairs.has(key)) throw new Error(`--select repeats ${pair.source_sense_id}/${pair.candidate}`);
+    exactPairs.add(key);
+    if (!selected.allCandidates.some(({ item, candidate }) => item.sense_id === pair.source_sense_id && candidate.text === pair.candidate)) {
+      throw new Error(`checkpoint has no selected candidate ${pair.source_sense_id}/${pair.candidate}`);
+    }
+    if (!pairsBySense.has(pair.source_sense_id)) pairsBySense.set(pair.source_sense_id, new Set());
+    pairsBySense.get(pair.source_sense_id).add(pair.candidate);
+  }
+  const candidates = selected.allCandidates.filter(({ item, candidate }) =>
+    !pairsBySense.has(item.sense_id) || pairsBySense.get(item.sense_id).has(candidate.text));
+  return { ...selected, candidates, selective: true };
+}
+
 function inspectDigest(checkpoint, selected) {
   return stableDigest({
     part: [checkpoint.shard, checkpoint.batch, checkpoint.part],
@@ -1336,6 +1378,122 @@ function renderInspect(checkpoint, selected, digest, page, pageSize) {
   return `${lines.join('\n')}\n`;
 }
 
+function compactReviewSummary(row) {
+  const decision = row.candidate.decision;
+  if (decision === null) return ['pending', '-'];
+  if (decision.disposition === 'drop') return ['D'];
+  if (decision.disposition === 'relation') {
+    const group = ['near', 'mood'].includes(decision.type) ? '말의 결' : '연상';
+    return [`${decision.type}/${decision.relevance}`, group];
+  }
+  if (decision.disposition === 'existing') {
+    const targetIds = new Set(row.candidate.same_spelling_targets.flatMap((target) => target.senses.map((sense) => sense.sense_id)));
+    const peers = [...new Map((row.item.approved_peers ?? [])
+      .filter((peer) => (peer.target_sense_id && targetIds.has(peer.target_sense_id)) || peer.text === row.candidate.text)
+      .map((peer) => [`${peer.type}\u0000${peer.relevance}`, [peer.type, peer.relevance]])).values()];
+    if (peers.length) return peers.sort(([leftType, leftTier], [rightType, rightTier]) =>
+      leftType.localeCompare(rightType) || leftTier - rightTier)
+      .map(([type, tier]) => `${type}/${tier} ${['near', 'mood'].includes(type) ? '말의 결' : '연상'}`).join('; ');
+    return ['existing', '-'];
+  }
+  return ['pending', '-'];
+}
+
+function selectedInspectDetailPage(checkpoint, selected, digest, rows, page, totalPages) {
+  const model = inspectModel({ ...selected, candidates: rows });
+  const usedTargets = new Set(rows.flatMap((row) => row.targetAliases));
+  const lines = [
+    `inspect ${selected.senseIds.join(',')} @${digest}`,
+    `# shard ${checkpoint.shard} batch ${checkpoint.batch} part ${checkpoint.part} · page ${page}/${totalPages} · candidates ${rows.length}/${selected.candidates.length}`,
+    '# optional_review_complete ' + (checkpoint.optional_review_complete === true),
+    '# T<k> target_sense_id target_record_id lemma pos full_gloss',
+    ...[...model.targets.values()].filter((target) => usedTargets.has(target.alias)
+      || rows.some((row) => row.candidate.decision?.target_sense_id === target.sense_id
+        || row.candidate.decision?.checked_target_sense_ids?.includes(target.sense_id)
+        || row.candidate.additional_relations?.some((relation) => relation.target_sense_id === target.sense_id)))
+      .map((target) => [target.alias, target.sense_id, target.record_id, target.lemma, target.pos, target.gloss].map(compactField).join('\t')),
+  ];
+  let lastSenseId = null;
+  for (const row of model.candidates) {
+    if (row.item.sense_id !== lastSenseId) {
+      lastSenseId = row.item.sense_id;
+      lines.push('', ['S', row.item.sense_id, row.item.record_id, row.item.lemma, row.item.pos,
+        row.item.reference_gloss === undefined ? row.item.gloss : `${row.item.gloss} ⇒ ${row.item.reference_gloss}`].map(compactField).join('\t'));
+      for (const peer of row.item.approved_peers ?? []) {
+        lines.push(['P', peer.type, peer.relevance, 'text' in peer ? peer.text
+          : `${peer.target_sense_id} ${peer.target_lemma} ${peer.target_pos} ${peer.target_gloss}`].map(compactField).join('\t'));
+      }
+    }
+    lines.push([row.alias, row.candidate.text, row.candidate.producers.join(','), row.targetAliases.join(',') || '-'].map(compactField).join('\t'));
+    lines.push(compactCurrentDecision(row, model, checkpoint));
+  }
+  return `${lines.join('\n')}\n`;
+}
+
+function selectedInspectQPage(checkpoint, senseIds, digest, rows, page, totalPages, pageIndex, totalRows) {
+  const lines = [
+    `inspect ${senseIds.join(',')} @${digest}`,
+    `# shard ${checkpoint.shard} batch ${checkpoint.batch} part ${checkpoint.part} · page ${page}/${totalPages} · Q summary ${pageIndex}/${totalRows}`,
+    '# Q<candidate alias> candidate type/tier UI-group | Drop',
+    ...rows.map((row) => ['Q', row.alias, row.candidate.text, ...compactReviewSummary(row)].map(compactField).join('\t')),
+  ];
+  return `${lines.join('\n')}\n`;
+}
+
+function selectedInspectPages(checkpoint, selected, digest, pageSize) {
+  const fullModel = inspectModel(selected);
+  const detailedKeys = new Set(selected.candidates.map(({ item, candidate }) => `${item.sense_id}\u0000${candidate.text}`));
+  const qRows = fullModel.candidates.filter(({ item, candidate }) => !detailedKeys.has(`${item.sense_id}\u0000${candidate.text}`));
+  const detailPages = [];
+  for (let offset = 0; offset < selected.candidates.length; offset += pageSize) {
+    detailPages.push(selected.candidates.slice(offset, offset + pageSize));
+  }
+  const qPages = [];
+  let offset = 0;
+  while (offset < qRows.length) {
+    const pageRows = [];
+    while (offset < qRows.length) {
+      const candidateRows = [...pageRows, qRows[offset]];
+      const candidatePage = selectedInspectQPage(checkpoint, selected.senseIds, digest, candidateRows,
+        999999, 999999, qPages.length + 1, qRows.length);
+      if (Buffer.byteLength(candidatePage, 'utf8') > INSPECT_PAGE_MAX_BYTES || candidatePage.length > INSPECT_PAGE_MAX_CHARS) break;
+      pageRows.push(qRows[offset]);
+      offset += 1;
+    }
+    if (!pageRows.length) throw new Error('one inspect Q summary row exceeds its output limit; use the full-sense inspect path');
+    qPages.push(pageRows);
+  }
+  if (detailPages.length === 0) throw new Error('inspect selection contains no detailed candidates');
+  const totalPages = detailPages.length + qPages.length;
+  const pages = detailPages.map((rows, index) => selectedInspectDetailPage(checkpoint, selected, digest, rows, index + 1, totalPages));
+  for (let index = 0; index < qPages.length; index += 1) {
+    pages.push(selectedInspectQPage(checkpoint, selected.senseIds, digest, qPages[index], detailPages.length + index + 1,
+      totalPages, index + 1, qRows.length));
+  }
+  pages.forEach((pageText) => assertBoundedInspectPage(pageText, 'inspect'));
+  return pages;
+}
+
+async function inspectSelectedCheckpoint(checkpoint, out, root, selected, digest, page, pageSize) {
+  let pages;
+  try {
+    pages = selectedInspectPages(checkpoint, selected, digest, pageSize);
+  } catch (error) {
+    if (!String(error.message).includes('one inspect Q summary row exceeds its output limit')) throw error;
+    const full = await inspectCheckpoint(checkpoint, out, root, selected.senseIds, null, null, 'compact', page, pageSize);
+    const [header, ...body] = full.text.split('\n');
+    const withNote = `${header}\n# selection fallback: full source-sense inspect\n${body.join('\n')}`;
+    const text = Buffer.byteLength(withNote, 'utf8') <= INSPECT_PAGE_MAX_BYTES && withNote.length <= INSPECT_PAGE_MAX_CHARS
+      ? withNote : full.text;
+    await writeOutput(out, root, text);
+    return { ...full, text, selection_fallback: true };
+  }
+  if (page > pages.length) throw new Error(`inspect page ${page} is outside 1..${pages.length}`);
+  const text = pages[page - 1];
+  await writeOutput(out, root, text);
+  return { digest, page, total_pages: pages.length, text };
+}
+
 function optionalDigest(checkpoint, links = remainingOptionalLinks(checkpoint)) {
   return stableDigest({
     part: [checkpoint.shard, checkpoint.batch, checkpoint.part],
@@ -1411,9 +1569,14 @@ function assertPrimaryComplete(checkpoint) {
   }
 }
 
-async function inspectCheckpoint(checkpoint, out, root, sourceSenseIds, candidateText, format, page, pageSize) {
-  const selected = requestedCheckpointCandidates(checkpoint, sourceSenseIds, candidateText);
+async function inspectCheckpoint(checkpoint, out, root, sourceSenseIds, candidateText, selectPath, format, page, pageSize) {
+  const selected = selectPath === null
+    ? requestedCheckpointCandidates(checkpoint, sourceSenseIds, candidateText)
+    : await selectedCheckpointCandidates(checkpoint, sourceSenseIds, selectPath, root);
   const digest = inspectDigest(checkpoint, selected);
+  if (selected.selective && format === 'compact') {
+    return inspectSelectedCheckpoint(checkpoint, out, root, selected, digest, page, pageSize);
+  }
   const model = inspectModel(selected);
   const totalPages = Math.max(1, Math.ceil(model.candidates.length / pageSize));
   if (page > totalPages) throw new Error(`inspect page ${page} is outside 1..${totalPages}`);

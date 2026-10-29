@@ -1792,6 +1792,93 @@ test('inspect and optional reads preserve checkpoint/output/snapshot bytes and m
     'inspect remains read-only after merge, including trusted snapshots');
 });
 
+test('selected inspect preserves whole-sense digest and aliases while bounding Q summaries', async (t) => {
+  const { root } = await sixCandidateRepository(t);
+  const candidatePath = path.join(root, 'data/relation-candidates/001/001_01_a_codex.jsonl');
+  const producerRows = (await readFile(candidatePath, 'utf8')).trim().split('\n').map(JSON.parse);
+  const longCandidates = Array.from({ length: 6 }, (_, index) => `후보${index + 1}-${'별'.repeat(5_000)}`);
+  producerRows.find((row) => row.record_id === 'w1').senses[0].candidates = longCandidates;
+  producerRows.find((row) => row.record_id === 'w2').senses[0].candidates = ['대체 후보'];
+  await writeFile(candidatePath, jsonl(producerRows));
+  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), jsonl([{
+    source_record_id: 'w2', source_sense_id: 'w2-s1', target_record_id: 'w1', target_sense_id: 'w1-s1',
+    type: 'near', relevance: 3, reverse_type: 'near', reverse_relevance: 3,
+  }]));
+  const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
+  await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  const chunk = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint], { root }));
+  const rows = chunk.items.flatMap((item) => item.candidates.map((candidate) => ({ sense: item.sense_id, text: candidate.text })));
+  const decisions = rows.map((_, index) => index === 0 ? `c${index + 1} D unrelated` : `c${index + 1} R near 3`);
+  const decisionsPath = '.warroom-scratch/review-fix-decisions.txt';
+  await writeFile(path.join(root, decisionsPath), `chunk ${chunk.chunk_id}\n${decisions.join('\n')}\n`);
+  await quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', decisionsPath, '--format', 'compact'], { root }));
+
+  const full = await quiet(() => run([
+    'inspect', '--checkpoint', checkpoint, '--source-sense-id', 'w1-s1,w2-s1', '--format', 'compact', '--page-size', '1',
+  ], { root }));
+  const fullW1 = await quiet(() => run([
+    'inspect', '--checkpoint', checkpoint, '--source-sense-id', 'w1-s1', '--format', 'compact', '--page-size', '1',
+  ], { root }));
+  const selectedPair = { source_sense_id: 'w1-s1', candidate: longCandidates[4] };
+  const selectionPath = '.warroom-scratch/s2-fix-select.json';
+  await writeFile(path.join(root, selectionPath), JSON.stringify({ candidates: [selectedPair] }));
+  const first = await quiet(() => run([
+    'inspect', '--checkpoint', checkpoint, '--source-sense-id', 'w1-s1,w2-s1', '--select', selectionPath,
+    '--format', 'compact', '--page-size', '1', '--page', '1',
+  ], { root }));
+  assert.equal(first.digest, full.digest, 'selection does not change the all-candidate digest');
+  assert.match(first.text, /\nc5\t/u, 'candidate aliases remain based on the full source Sense');
+  const fullAlias = await quiet(() => run([
+    'inspect', '--checkpoint', checkpoint, '--source-sense-id', 'w1-s1,w2-s1', '--format', 'compact', '--page-size', '1', '--page', '5',
+  ], { root }));
+  assert.match(fullAlias.text, /\nc5\t/u, 'the same alias is used by an unfiltered inspect');
+  assert.match(first.text, /\nP\tnear\t3\tw2-s1/u, 'approved P context remains on the selected Sense');
+  assert.ok(first.total_pages > 2, 'Q summary rows are split into bounded pages after the detail pages');
+  const pages = [first.text];
+  for (let page = 2; page <= first.total_pages; page += 1) {
+    const next = await quiet(() => run([
+      'inspect', '--checkpoint', checkpoint, '--source-sense-id', 'w1-s1,w2-s1', '--select', selectionPath,
+      '--format', 'compact', '--page-size', '1', '--page', String(page),
+    ], { root }));
+    assert.equal(next.digest, first.digest);
+    assert.equal(next.total_pages, first.total_pages);
+    assert.ok(Buffer.byteLength(next.text, 'utf8') <= 36_000);
+    pages.push(next.text);
+  }
+  const allText = pages.join('');
+  assert.match(allText, /\nS\tw2-s1\tw2\t다라\tnoun\t뜻2\n/u, 'an unfiltered requested Sense is rendered in full');
+  assert.match(allText, /\nc7\t대체 후보\t/u, 'a Sense without selected pairs uses the full-Sense fallback');
+  assert.match(allText, /\nQ\tc1\t/u);
+  assert.match(allText, /\tD\n/u, 'Q retains Drop status');
+  assert.match(allText, /\tnear\/3\t말의 결\n/u, 'Q retains current Type/Tier and UI group');
+  for (const candidate of longCandidates.filter((_, index) => index !== 4)) {
+    assert.equal(allText.split(candidate).length - 1, 1, 'each long Q candidate appears on exactly one bounded page');
+  }
+
+  await writeFile(path.join(root, selectionPath), JSON.stringify({ candidates: [selectedPair, selectedPair] }));
+  await assert.rejects(() => quiet(() => run([
+    'inspect', '--checkpoint', checkpoint, '--source-sense-id', 'w1-s1', '--select', selectionPath, '--format', 'compact',
+  ], { root })), /repeats/u);
+  await writeFile(path.join(root, selectionPath), JSON.stringify({ candidates: [{ ...selectedPair, candidate: 'missing candidate' }] }));
+  await assert.rejects(() => quiet(() => run([
+    'inspect', '--checkpoint', checkpoint, '--source-sense-id', 'w1-s1', '--select', selectionPath, '--format', 'compact',
+  ], { root })), /no selected candidate/u);
+  await writeFile(path.join(root, selectionPath), JSON.stringify({ candidates: [{ source_sense_id: 'w2-s1', candidate: '대체 후보' }] }));
+  await assert.rejects(() => quiet(() => run([
+    'inspect', '--checkpoint', checkpoint, '--source-sense-id', 'w1-s1', '--select', selectionPath, '--format', 'compact',
+  ], { root })), /outside --source-sense-id/u);
+  await assert.rejects(() => quiet(() => run([
+    'inspect', '--checkpoint', checkpoint, '--source-sense-id', 'w1-s1', '--select', selectionPath,
+    '--candidate', '대체 후보', '--format', 'compact',
+  ], { root })), /cannot be used together/u);
+
+  const legacyFilter = await quiet(() => run([
+    'inspect', '--checkpoint', checkpoint, '--source-sense-id', 'w1-s1', '--candidate', longCandidates[4], '--format', 'compact',
+  ], { root }));
+  assert.match(legacyFilter.text, /^c5\t/u, 'the existing --candidate filter retains its full-sense alias');
+  assert.equal(legacyFilter.digest, fullW1.digest, 'the existing --candidate filter keeps its prior digest contract');
+});
+
 test('premerge preparation resumes only from matching source hashes and distinguishes empty files from absence', async (t) => {
   const { root } = await prepareSixPart(t, { emptyRelation: true });
   const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';

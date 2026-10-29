@@ -228,6 +228,136 @@ _JOINED_DECISION_ROW = re.compile(rf"[ \t]+{_DECISION_ROW_PATTERN}")
 _ERROR_ALIAS = re.compile(r"^(c\d+)\b", re.M)
 _FENCE = re.compile(r"^\s*```")
 _LINK_ROW = re.compile(r"^c\d+\s")
+_SENSE_ID = re.compile(r"\b[wr]\d+-s[1-9]\d*\b")
+_REVIEW_TUPLE_START = re.compile(r"(?<![\w-])(?P<record>[wr]\d+)[ \t]*,[ \t]*(?P<sense>[wr]\d+-s[1-9]\d*)[ \t]*,[ \t]*")
+_REVIEW_TARGET_CUE = re.compile(
+    r"\b(?:fix|correct|revise|amend|change|update|inspect|address|resolve|remove|retain|drop|"
+    r"wrong|incorrect|problematic|defect|blocker|needs? (?:a )?(?:fix|change|revision)|"
+    r"should be (?:fixed|changed|revised|removed)|must be (?:fixed|changed|revised|removed))\b|"
+    r"(?:수정|고쳐|정정|검토|변경|삭제|보존|오류|문제|잘못|부정확|차단)"
+)
+_EXPLICIT_REVIEW_CUE = re.compile(r"(?:^|[.!?;,:-])\s*(?:please\s+|kindly\s+|could you\s+)?review\s*$", re.I)
+_REVIEW_REFERENCE_CUE = re.compile(
+    r"\b(?:compare|compared|comparison|peer|target(?: sense| id)?|linked sense|example|e\.g\.|historical|"
+    r"retrospective|previous review|past review|prior review|statistic|statistics|stats|count|total|unrelated|reference)\b|"
+    r"(?:비교|대조|동료|대상 sense|표적 sense|예시|과거 리뷰|이전 리뷰|회고|통계|개수|합계|참고|무관)"
+)
+_REVIEW_REFERENCE_AFTER = re.compile(
+    r"\b(?:compare[ds]? (?:with|to)|as an? example|for example|e\.g\.|peer sense|target sense|"
+    r"linked sense|historical|retrospective|previous review|past review|prior review|statistics|stats|count|total)\b|"
+    r"(?:비교 대상|비교하면|예를 들어|동료 sense|대상 sense|과거 리뷰|이전 리뷰|회고|통계)"
+)
+
+
+def _review_triplets(text: str) -> list[tuple[str, str, str]]:
+    """Parse explicitly formatted `(record, sense, candidate)` rows without splitting candidate commas."""
+    found: list[tuple[str, str, str]] = []
+
+    def add(value: str) -> None:
+        fields = value.strip().strip("` ").split(",", 2)
+        if len(fields) != 3:
+            return
+        record_id, sense_id, candidate = (field.strip().strip("` ") for field in fields)
+        if record_id and sense_id and candidate:
+            found.append((record_id, sense_id, candidate))
+
+    # Whole-tuple code spans, including candidates that themselves contain commas.
+    for match in re.finditer(r"`([^`\n]+)`", text):
+        add(match.group(1))
+
+    # Three separately quoted fields, e.g. `w1`, `w1-s1`, `a, b`.
+    for line in text.splitlines():
+        spans = list(re.finditer(r"`([^`\n]+)`", line))
+        for index in range(len(spans) - 2):
+            between = (line[spans[index].end():spans[index + 1].start()] +
+                       line[spans[index + 1].end():spans[index + 2].start()])
+            if re.fullmatch(r"[\s,()]*", between):
+                add(",".join(span.group(1) for span in spans[index:index + 3]))
+
+    # Parenthesized tuples. Balance nested candidate parentheses before taking the first two commas.
+    for start, char in enumerate(text):
+        if char != "(":
+            continue
+        depth = 1
+        for end in range(start + 1, len(text)):
+            if text[end] == "(":
+                depth += 1
+            elif text[end] == ")":
+                depth -= 1
+                if depth == 0:
+                    add(text[start + 1:end])
+                    break
+
+    # Plain numbered/bulleted rows; only a whole row is treated as a tuple.
+    for line in text.splitlines():
+        row = re.sub(r"^\s*(?:[-*+]\s+|\d+[.)]\s+)", "", line).strip()
+        if row.startswith("(") or "`" in row or row.count(",") < 2:
+            continue
+        starts = list(_REVIEW_TUPLE_START.finditer(row))
+        if len(starts) > 1:
+            for index, match in enumerate(starts):
+                end = starts[index + 1].start() if index + 1 < len(starts) else len(row)
+                candidate = row[match.end():end].strip().rstrip(";| ")
+                if candidate:
+                    found.append((match.group("record"), match.group("sense"), candidate))
+            continue
+        add(row.rstrip(".;"))
+    return list(dict.fromkeys(found))
+
+
+def _explicit_review_targets(text: str) -> set[str]:
+    """Return only Sense IDs tied to a direct repair/review cue, not IDs used as comparison context."""
+    targets: set[str] = set()
+    for line in text.splitlines():
+        matches = list(_SENSE_ID.finditer(line))
+        previous_end = 0
+        for index, match in enumerate(matches):
+            before = line[max(previous_end, match.start() - 90):match.start()]
+            next_start = matches[index + 1].start() if index + 1 < len(matches) else len(line)
+            after = line[match.end():min(next_start, match.end() + 60)]
+            previous_end = match.end()
+            if (_REVIEW_REFERENCE_CUE.search(before) or _REVIEW_REFERENCE_AFTER.search(after)
+                    or not (_REVIEW_TARGET_CUE.search(before + " " + after) or _EXPLICIT_REVIEW_CUE.search(before)):
+                continue
+            targets.add(match.group(0))
+    return targets
+
+
+def review_pairs(text: str, items: list[dict]) -> dict:
+    """Extract exact source candidate targets from review text and retain conservative Sense-level fallbacks.
+
+    Returned pairs are validated against the Part's exact record/sense/candidate tuples. Invalid structured rows are
+    reported in `unmatched_pairs`; their in-Part Sense is a fallback only when no valid candidate pair identifies it.
+    """
+    available: set[tuple[str, str, str]] = set()
+    for item in items:
+        record_id, sense_id = item.get("record_id"), item.get("sense_id")
+        for candidate in item.get("candidates", []):
+            candidate_text = candidate if isinstance(candidate, str) else candidate.get("text") if isinstance(candidate, dict) else None
+            if isinstance(record_id, str) and isinstance(sense_id, str) and isinstance(candidate_text, str):
+                available.add((record_id, sense_id, candidate_text))
+    valid = []
+    unmatched = []
+    for pair in _review_triplets(text):
+        if pair in available:
+            valid.append(pair)
+        else:
+            unmatched.append(pair)
+    valid = list(dict.fromkeys(valid))
+    unmatched = list(dict.fromkeys(unmatched))
+    in_part_senses = {sense for _, sense, _ in available}
+    targeted = (_explicit_review_targets(text) | {sense for _, sense, _ in unmatched}) & in_part_senses
+    identified = {sense for _, sense, _ in valid}
+    fallback = sorted(targeted - identified)
+    mentioned = sorted(set(_SENSE_ID.findall(text)))
+    return {
+        "pairs": [{"record_id": record, "source_sense_id": sense, "candidate": candidate}
+                  for record, sense, candidate in valid],
+        "fallback_sense_ids": fallback,
+        "unmatched_pairs": [{"record_id": record, "source_sense_id": sense, "candidate": candidate}
+                            for record, sense, candidate in unmatched],
+        "mentioned_sense_ids": mentioned,
+    }
 
 
 def extract_decisions(final_text: str | None, chunk_id: str) -> list[str] | None:

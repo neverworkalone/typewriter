@@ -385,8 +385,11 @@ class FakeGit:
         self.exact_verify_calls.append((sha, shard, batch, part))
         return self.exact_verify_ok, "" if self.exact_verify_ok else "exact HEAD verify failed"
 
-    def stage2_inspect(self, worktree, shard, batch, part, sense_ids, timeout=900):
+    def stage2_inspect(self, worktree, shard, batch, part, sense_ids, timeout=900, selection_path=None):
         self.inspect_calls.append((str(worktree), shard, batch, part, list(sense_ids)))
+        if not hasattr(self, "inspect_selection_calls"):
+            self.inspect_selection_calls = []
+        self.inspect_selection_calls.append(selection_path)
         return self.inspect_text
 
     def contains_on_base(self, sha, base):
