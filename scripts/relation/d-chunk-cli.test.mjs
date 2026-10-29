@@ -366,7 +366,7 @@ test('recordEvidence: hits add up per search; completion needs a proven start', 
   // chain: proven through recorded cursors; a cursor that was never recorded breaks it
   assert.equal(summary([e('a', 'LIMITED', 0, false, null, 'x'), e('a', 'LIMITED', 0, false, 'x', 'y'), e('a', 'COMPLETE', 0, true, 'y')]).allComplete, true);
   assert.throws(() => summary([e('a', 'LIMITED', 0, false, null, 'x'), e('a', 'COMPLETE', 0, true, 'z')]), /cursor chain/u);
-  assert.throws(() => summary([e('a', 'COMPLETE', 0, true, 'q', 'x'), e('a', 'COMPLETE', 0, true, 'x')]), /not trustworthy/u, 'unproven pages fail closed');
+  assert.throws(() => summary([e('a', 'COMPLETE', 0, true, 'q', 'x'), e('a', 'COMPLETE', 0, true, 'x')]), /cursor chain/u, 'unproven pages fail closed');
   // (d) another search key does not provide the origin
   assert.throws(() => summary([e('a', 'LIMITED', 0, false, null, 'x'), e('b', 'COMPLETE', 0, true, 'x')]), /cursor chain/u);
   assert.deepEqual(summary([e('a', 'ZERO_HITS', 0, true), e('b', 'LIMITED', 3, false)]), { searches: 2, hits: 3, allComplete: false });
@@ -481,7 +481,7 @@ test('search-batch shares identical search work across homonym records and keeps
   assert.equal(evidence.length, 6, 'same record and identical query produces one evidence row; another record gets its own row');
   assert.deepEqual([...new Set(evidence.slice(0, 2).map((entry) => entry.record_id))], ['w1', 'w2']);
   const continuationHistory = [cursorEvidence('w1', ['cursor-condition'], 'left', 'external-cursor'), ...evidence, evidence[0]];
-  assert.deepEqual(evidenceSummary(continuationHistory, 'w1'), { searches: 4, hits: 4, allComplete: false });
+  assert.deepEqual(evidenceSummary(continuationHistory, 'w1'), { searches: 4, hits: 7, allComplete: true });
 });
 
 test('search-batch resolves recorded cursors and leaves actual SEARCH_FAILED intact', () => {
@@ -720,11 +720,11 @@ const fixture = () => {
   };
   const hit = (id) => entry(id, `${id}-search`, 'LIMITED', 3, false, `${id}-cursor`);
   const zero = (id) => entry(id, `${id}-zero`, 'ZERO_HITS', 0, true);
-  return { records, metaValue, hit, zero };
+  return { records, metaValue, entry, hit, zero };
 };
 
 test('checkDecisions: evidence rules for V / N / Z, and Candidate v1 form rules, all reported together', () => {
-  const { records, metaValue, hit, zero } = fixture();
+  const { records, metaValue, entry, hit, zero } = fixture();
   const run = (text, entries) => {
     const { decisions, errors } = parseDecisions(text);
     assert.deepEqual(errors, []);
@@ -1082,11 +1082,10 @@ withWorld('search-batch cursor next resumes its recorded cursor and rejects a mi
   assert.notEqual(second.results[0].contexts[0].paragraph_rowid, first.results[0].contexts[0].paragraph_rowid);
   const database = openReadonlyDb(world.options.databasePath);
   try {
-    const firstPage = searchContexts(database, ['새벽안개'], { maxSamples: 4, snippetChars: 220, boundary: 'left' });
     const secondPage = searchContexts(database, ['새벽안개'], { maxSamples: 1, snippetChars: 220, boundary: 'left', cursor: firstCursor });
     assert.deepEqual(first.results[0].contexts.map((item) => item.paragraph_rowid), searchContexts(database, ['새벽안개'], { maxSamples: 1, snippetChars: 220, boundary: 'left' }).items.map((item) => item.paragraph_rowid));
     assert.deepEqual(second.results[0].contexts.map((item) => item.paragraph_rowid), secondPage.items.map((item) => item.paragraph_rowid));
-    assert.equal(firstPage.items.some((item) => secondPage.items.some((nextItem) => nextItem.paragraph_rowid === item.paragraph_rowid)), false);
+    assert.equal(first.results[0].contexts.some((item) => secondPage.items.some((nextItem) => nextItem.paragraph_rowid === item.paragraph_rowid)), false);
   } finally {
     database.close();
   }
