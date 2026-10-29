@@ -1,5 +1,7 @@
 PR #{{pr}} (branch `{{branch}}`, current head {{head}}) has new review feedback.
 
+Only an effective blocking `-1` review event calls for a producer response. **Never respond to `+1` or `+2` PASS reviews:** no PR or inline comments, acknowledgments, status messages, commits, or requests for another review. If only PASS events are presented, exit silently without touching files. For a `-1`, make accepted corrections or leave a concise evidence-based disagreement for the reviewer to assess on re-review.
+
 This is a **fresh Stage 2 review-fix session**. Do not resume a production or earlier fix session. Keep the assigned worktree, branch, and current HEAD; never merge, rebase, reset, or switch branches. Do not create another PR, request review, or merge.
 
 Run commands from the worktree root. Use `.warroom-scratch/...` as paths; do not `cd .warroom-scratch`. Create `.warroom-scratch/amend-decisions.txt` with the Write tool. `amend --help` is not implemented; use the command and arguments below.
