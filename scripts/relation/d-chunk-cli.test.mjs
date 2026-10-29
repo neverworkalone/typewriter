@@ -988,7 +988,7 @@ withWorld('single and batch continuation SEARCH_FAILED is returned, persisted, a
   await prepareChunk({ ...world.options, chunkNumber: 1 });
   const active = await meta(world);
   const batchRef = active.senses.find((sense) => sense.record_id === 'w001' && !sense.auto).ref;
-  const singleRef = active.senses.find((sense) => sense.record_id === 'w002' && !sense.auto).ref;
+  const singleRef = active.senses.find((sense) => sense.record_id === 'w003' && !sense.auto).ref;
   const forms = ['새벽안개가', 'bad\u0000form'];
   const searchesPath = chunkPath(world, 'searches');
 
@@ -1029,7 +1029,7 @@ withWorld('single and batch continuation SEARCH_FAILED is returned, persisted, a
   assert.equal(failedSingle.result.status, 'SEARCH_FAILED');
   assert.equal(failedSingle.decision_state.state, 'SEARCH_FAILED');
   const singleEntries = (await readFile(searchesPath, 'utf8')).trim().split('\n').map(JSON.parse);
-  const singleFailure = singleEntries.findLast((entry) => entry.record_id === 'w002' && JSON.stringify(entry.forms) === JSON.stringify(forms));
+  const singleFailure = singleEntries.findLast((entry) => entry.record_id === 'w003' && JSON.stringify(entry.forms) === JSON.stringify(forms));
   assert.equal(singleFailure.status, 'SEARCH_FAILED');
   assert.equal(singleFailure.cursor_in, firstSingle.result.next_cursor);
 });
