@@ -47,7 +47,7 @@ only* do not apply to the new scope.
   non-empty plain text with no ID: no click action, no reverse relation, no
   invented record. Reject a fabricated ID or a wrong-meaning link used to
   avoid text.
-- **Bidirectional:** authored ID↔ID links remain searchable both ways. After #2309 is implemented, new Parts mirror source Type/Tier; equality is required, not a blocker. Older Parts/checkpoints retain independent reverse scores. Do not change historical or STDICT relations.
+- **Bidirectional:** authored ID↔ID links remain searchable both ways. Newly prepared Stage 2 Parts judge Type/Tier once from the source and the CLI mirrors the values; equality is expected and is not a blocker. Marker-free checkpoints retain independent reverse scoring, and historical/STDICT relations remain unchanged.
 - **Not implemented yet:** text-only targets, the authored-relation source of
   truth and bidirectional derivation. Verify these contracts when the
   implementing code lands; do not require them, or claim they work, before.

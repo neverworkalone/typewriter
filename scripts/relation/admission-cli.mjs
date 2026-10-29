@@ -47,6 +47,7 @@ const USAGE = `usage:
   node scripts/relation/admission-cli.mjs verify --shard 001 [--batch 01 [--part 01]] [--checkpoint <file.json>] [--allow-partial] [--json]`;
 
 const CHECKPOINT_VERSION = 1;
+const SOURCE_MIRROR_TYPE_TIER_POLICY = 'source-mirror-v1';
 const DEFAULT_CHUNK_CANDIDATES = 250;
 const CHUNK_FORMATS = ['json', 'compact'];
 const CHECKPOINT_DIRECTORY = '.warroom-scratch';
@@ -56,6 +57,22 @@ const INSPECT_PAGE_MAX_CHARS = 28_000;
 const isPlainObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 const keysOf = (value) => Object.keys(value).sort().join(',');
 const isTier = (value) => Number.isInteger(value) && value >= 1 && value <= 9;
+const usesSourceMirrorTypeTier = (checkpoint) => checkpoint.type_tier_policy === SOURCE_MIRROR_TYPE_TIER_POLICY;
+
+function normalizeInputDecision(checkpoint, decision) {
+  if (!usesSourceMirrorTypeTier(checkpoint) || decision?.disposition !== 'relation' || decision.target_resolution !== 'exact') return decision;
+  if (Object.hasOwn(decision, 'reverse_type') || Object.hasOwn(decision, 'reverse_relevance')) {
+    throw new Error('new-policy exact ID decisions must omit reverse_type and reverse_relevance; the CLI derives both from type/relevance');
+  }
+  return { ...decision, reverse_type: decision.type, reverse_relevance: decision.relevance };
+}
+
+function presentedDecision(checkpoint, decision) {
+  if (!usesSourceMirrorTypeTier(checkpoint) || !isPlainObject(decision)
+      || decision.disposition !== 'relation' || decision.target_resolution !== 'exact') return decision;
+  const { reverse_type, reverse_relevance, ...sourceDecision } = decision;
+  return sourceDecision;
+}
 
 function defaultCheckpointPath(shard, batch, part, root) {
   return path.join(root, CHECKPOINT_DIRECTORY, `relation-admission-${shard}-${batch}-${part}.json`);
@@ -176,6 +193,9 @@ function validateDecision(item, candidate, decision) {
 
 function validateCheckpoint(checkpoint, identity = {}) {
   if (!isPlainObject(checkpoint) || checkpoint.version !== CHECKPOINT_VERSION) throw new Error('unsupported or malformed Stage 2 checkpoint');
+  if (checkpoint.type_tier_policy !== undefined && checkpoint.type_tier_policy !== SOURCE_MIRROR_TYPE_TIER_POLICY) {
+    throw new Error('checkpoint has an unsupported Type/Tier direction policy');
+  }
   if (!/^\d{3}$/u.test(checkpoint.shard ?? '') || !['01', '02'].includes(checkpoint.batch) || !['01', '02', '03', '04', '05'].includes(checkpoint.part)) {
     throw new Error('checkpoint must identify one shard, batch and Part');
   }
@@ -289,11 +309,20 @@ function validateCheckpointDecisions(checkpoint) {
         const seenTargets = new Set(candidate.existing_target_sense_ids);
         for (const [index, relation] of candidate.additional_relations.entries()) {
           validateDecision(item, { ...candidate, additional_relations: candidate.additional_relations.slice(0, index) }, relation);
+          if (usesSourceMirrorTypeTier(checkpoint) && relation.target_resolution === 'exact'
+              && (relation.reverse_type !== relation.type || relation.reverse_relevance !== relation.relevance)) {
+            throw new Error(`${item.sense_id}/${candidate.text}: new-policy optional ID relations must mirror source type/relevance`);
+          }
           if (seenTargets.has(relation.target_sense_id)) throw new Error(`${item.sense_id}/${candidate.text}: checkpoint repeats optional target sense ${relation.target_sense_id}`);
           seenTargets.add(relation.target_sense_id);
         }
       } else {
         validateDecision(item, candidate, candidate.decision);
+        if (usesSourceMirrorTypeTier(checkpoint) && candidate.decision.target_resolution === 'exact'
+            && (candidate.decision.reverse_type !== candidate.decision.type
+              || candidate.decision.reverse_relevance !== candidate.decision.relevance)) {
+          throw new Error(`${item.sense_id}/${candidate.text}: new-policy ID relations must mirror source type/relevance`);
+        }
       }
     }
   }
@@ -825,6 +854,7 @@ export async function run(argv, { root } = {}) {
     if (options.part) {
       const checkpoint = {
         version: CHECKPOINT_VERSION,
+        type_tier_policy: SOURCE_MIRROR_TYPE_TIER_POLICY,
         shard: options.shard,
         batch: options.batch,
         part: options.part,
@@ -957,9 +987,9 @@ function pendingChunkPayload(checkpoint, pending) {
             already_accounted: true,
             existing_target_sense_ids: candidate.existing_target_sense_ids,
             unlinked_target_sense_ids: candidate.unlinked_target_sense_ids,
-            additional_relations: candidate.additional_relations,
+            additional_relations: candidate.additional_relations.map((decision) => presentedDecision(checkpoint, decision)),
           } : {}),
-          ...(candidate.decision === null ? {} : { previous_decision: candidate.decision }),
+          ...(candidate.decision === null ? {} : { previous_decision: presentedDecision(checkpoint, candidate.decision) }),
         })),
       };
     }),
@@ -1000,11 +1030,13 @@ function compactField(value) {
 
 const compactLine = (...fields) => fields.map(compactField).join('\t');
 
-function compactSavedDecision(decision) {
+function compactSavedDecision(decision, checkpoint) {
   if (decision.disposition === 'drop') return ['drop', decision.reason];
   if (decision.disposition === 'existing') return ['existing'];
   if (decision.target_resolution === 'exact') {
-    return ['relation', decision.type, decision.relevance, decision.target_sense_id, decision.reverse_type, decision.reverse_relevance];
+    return usesSourceMirrorTypeTier(checkpoint)
+      ? ['relation', decision.type, decision.relevance, decision.target_sense_id]
+      : ['relation', decision.type, decision.relevance, decision.target_sense_id, decision.reverse_type, decision.reverse_relevance];
   }
   return ['relation', decision.type, decision.relevance, 'text-only'];
 }
@@ -1012,6 +1044,14 @@ function compactSavedDecision(decision) {
 export const COMPACT_DECISION_GRAMMAR = [
   'chunk <chunk_id>                                  first line',
   'c<n> R <type> <tier> T<k> <reverse_type> <reverse_tier>   exact target sense T<k>',
+  'c<n> R <type> <tier> none T<a>,T<b>,...           text-only; list every target alias of c<n>',
+  'c<n> R <type> <tier>                              text-only; c<n> has no targets (-)',
+  'c<n> D <reason>                                   Drop',
+];
+
+const SOURCE_MIRROR_COMPACT_DECISION_GRAMMAR = [
+  'chunk <chunk_id>                                  first line',
+  'c<n> R <type> <tier> T<k>                         exact target sense T<k>; reverse values are derived by the CLI',
   'c<n> R <type> <tier> none T<a>,T<b>,...           text-only; list every target alias of c<n>',
   'c<n> R <type> <tier>                              text-only; c<n> has no targets (-)',
   'c<n> D <reason>                                   Drop',
@@ -1026,7 +1066,8 @@ function renderCompactChunk(checkpoint, pending) {
     '# P\tapproved peer: type\trelevance\ttarget_sense_id lemma pos gloss | text',
     '# Q\tsaved decision of an earlier candidate of the same source sense',
     '# c<n>\tcandidate\tproducers\tsame-spelling target aliases (- = none)',
-    ...COMPACT_DECISION_GRAMMAR.map((rule) => `# decision: ${rule}`),
+    ...(usesSourceMirrorTypeTier(checkpoint) ? SOURCE_MIRROR_COMPACT_DECISION_GRAMMAR : COMPACT_DECISION_GRAMMAR)
+      .map((rule) => `# decision: ${rule}`),
     '',
     '## targets',
     ...[...model.targets.values()].map((target) => compactLine(target.alias, target.sense_id, target.record_id, target.lemma, target.pos, target.gloss)),
@@ -1036,7 +1077,7 @@ function renderCompactChunk(checkpoint, pending) {
     for (const peer of item.approved_peers ?? []) {
       lines.push(compactLine('P', peer.type, peer.relevance, 'text' in peer ? peer.text : `${peer.target_sense_id} ${peer.target_lemma} ${peer.target_pos} ${peer.target_gloss}`));
     }
-    for (const candidate of item.candidates.slice(0, slice.start)) lines.push(compactLine('Q', candidate.text, ...compactSavedDecision(candidate.decision)));
+    for (const candidate of item.candidates.slice(0, slice.start)) lines.push(compactLine('Q', candidate.text, ...compactSavedDecision(candidate.decision, checkpoint)));
     for (const row of rows) lines.push(compactLine(row.alias, row.candidate.text, row.candidate.producers.join(','), row.targets.length ? row.targets.join(',') : '-'));
   }
   return `${lines.join('\n')}\n`;
@@ -1086,10 +1127,15 @@ function parseCompactDecisions(text, checkpoint, pending) {
       if (rest.length === 0) decisions.push(relation);
       else if (rest.length === 2 && rest[0] === 'none') {
         decisions.push({ ...relation, target_resolution: 'no_exact_match', checked_target_sense_ids: rest[1].split(',').map((name) => target(name).sense_id) });
-      } else if (rest.length === 3) {
+      } else if (usesSourceMirrorTypeTier(checkpoint) && rest.length === 1) {
+        const exact = target(rest[0]);
+        decisions.push({ ...relation, target_resolution: 'exact', target_record_id: exact.record_id, target_sense_id: exact.sense_id });
+      } else if (!usesSourceMirrorTypeTier(checkpoint) && rest.length === 3) {
         const exact = target(rest[0]);
         decisions.push({ ...relation, target_resolution: 'exact', target_record_id: exact.record_id, target_sense_id: exact.sense_id, reverse_type: rest[1], reverse_relevance: compactTier(rest[2], `${alias} reverse`) });
-      } else throw new Error(`${alias}: relation needs 2, 4 or 5 fields after R`);
+      } else throw new Error(usesSourceMirrorTypeTier(checkpoint)
+        ? `${alias}: exact relations use only T<k>; the CLI derives reverse type/Tier`
+        : `${alias}: relation needs 2, 4 or 5 fields after R`);
     } catch (error) {
       errors.push({ alias, message: error.message });
     }
@@ -1098,9 +1144,12 @@ function parseCompactDecisions(text, checkpoint, pending) {
 }
 
 /** The compact rows a candidate may use, given its own same-spelling target aliases. */
-function compactHint(row) {
+function compactHint(row, checkpoint) {
   if (row.targets.length === 0) return `${row.alias} R <type> <tier> | ${row.alias} D <reason>`;
-  return `${row.alias} R <type> <tier> T<k> <reverse_type> <reverse_tier> (T<k> one of ${row.targets.join(',')}) | ${row.alias} R <type> <tier> none ${row.targets.join(',')} | ${row.alias} D <reason>`;
+  const exact = usesSourceMirrorTypeTier(checkpoint)
+    ? `${row.alias} R <type> <tier> T<k>`
+    : `${row.alias} R <type> <tier> T<k> <reverse_type> <reverse_tier>`;
+  return `${exact} (T<k> one of ${row.targets.join(',')}) | ${row.alias} R <type> <tier> none ${row.targets.join(',')} | ${row.alias} D <reason>`;
 }
 
 function stableDigest(value) {
@@ -1126,7 +1175,7 @@ function remainingOptionalLinks(checkpoint) {
 }
 
 function optionalReviewState(checkpoint) {
-  return checkpoint.items.flatMap((item) => item.candidates
+  const candidates = checkpoint.items.flatMap((item) => item.candidates
     .filter((candidate) => candidate.already_accounted === true)
     .map((candidate) => ({
       source_sense_id: item.sense_id,
@@ -1135,6 +1184,9 @@ function optionalReviewState(checkpoint) {
       unlinked_target_sense_ids: candidate.unlinked_target_sense_ids,
       additional_relations: candidate.additional_relations,
     })));
+  return usesSourceMirrorTypeTier(checkpoint)
+    ? { type_tier_policy: checkpoint.type_tier_policy, candidates }
+    : candidates;
 }
 
 function optionalReviewDigest(checkpoint) {
@@ -1167,6 +1219,7 @@ function requestedCheckpointCandidates(checkpoint, sourceSenseIds, candidateText
 function inspectDigest(checkpoint, selected) {
   return stableDigest({
     part: [checkpoint.shard, checkpoint.batch, checkpoint.part],
+    ...(checkpoint.type_tier_policy ? { type_tier_policy: checkpoint.type_tier_policy } : {}),
     sense_ids: selected.senseIds,
     candidates: selected.allCandidates.map(({ item, candidate }) => ({
       source_sense_id: item.sense_id,
@@ -1223,20 +1276,23 @@ function targetAliasFor(targets, senseId) {
   return target.alias;
 }
 
-function compactCurrentDecision(row, model) {
+function compactCurrentDecision(row, model, checkpoint) {
   const { candidate } = row;
   const decision = candidate.decision;
   if (decision === null) return `# current ${row.alias}: pending`;
   if (decision.disposition === 'existing') {
     const optional = candidate.additional_relations.map((relation) => {
       const target = targetAliasFor(model.targets, relation.target_sense_id);
-      return `R ${relation.type} ${relation.relevance} ${target} ${relation.reverse_type} ${relation.reverse_relevance}`;
+      return usesSourceMirrorTypeTier(checkpoint)
+        ? `R ${relation.type} ${relation.relevance} ${target}`
+        : `R ${relation.type} ${relation.relevance} ${target} ${relation.reverse_type} ${relation.reverse_relevance}`;
     });
     return `# current ${row.alias}: existing${optional.length ? `; optional ${optional.join(' | ')}` : ''}`;
   }
   if (decision.disposition === 'drop') return `# current ${row.alias}: D ${decision.reason}`;
   if (decision.target_resolution === 'exact') {
-    return `# current ${row.alias}: R ${decision.type} ${decision.relevance} ${targetAliasFor(model.targets, decision.target_sense_id)} ${decision.reverse_type} ${decision.reverse_relevance}`;
+    const exact = `# current ${row.alias}: R ${decision.type} ${decision.relevance} ${targetAliasFor(model.targets, decision.target_sense_id)}`;
+    return usesSourceMirrorTypeTier(checkpoint) ? exact : `${exact} ${decision.reverse_type} ${decision.reverse_relevance}`;
   }
   if (decision.target_resolution === 'no_exact_match') {
     const checked = decision.checked_target_sense_ids.map((senseId) => targetAliasFor(model.targets, senseId));
@@ -1274,7 +1330,7 @@ function renderInspect(checkpoint, selected, digest, page, pageSize) {
       }
     }
     lines.push([row.alias, row.candidate.text, row.candidate.producers.join(','), row.targetAliases.join(',') || '-'].map(compactField).join('\t'));
-    lines.push(compactCurrentDecision(row, model));
+    lines.push(compactCurrentDecision(row, model, checkpoint));
   }
   return `${lines.join('\n')}\n`;
 }
@@ -1282,6 +1338,7 @@ function renderInspect(checkpoint, selected, digest, page, pageSize) {
 function optionalDigest(checkpoint, links = remainingOptionalLinks(checkpoint)) {
   return stableDigest({
     part: [checkpoint.shard, checkpoint.batch, checkpoint.part],
+    ...(checkpoint.type_tier_policy ? { type_tier_policy: checkpoint.type_tier_policy } : {}),
     optional_review_complete: checkpoint.optional_review_complete === true,
     links: links.map(({ item, candidate, existing_target_sense_ids, unlinked_target_sense_ids }) => ({
       source_sense_id: item.sense_id,
@@ -1313,7 +1370,9 @@ function renderOptional(checkpoint, links, digest, page, pageSize) {
     '# T<k> target_sense_id target_record_id lemma pos full_gloss',
     '# S source_sense_id record_id lemma pos full_gloss',
     '# c<n> candidate unlinked target aliases',
-    '# answer each candidate once: c<n> skip OR one or more c<n> R <type> <tier> T<k> <reverse_type> <reverse_tier>',
+    usesSourceMirrorTypeTier(checkpoint)
+      ? '# answer each candidate once: c<n> skip OR one or more c<n> R <type> <tier> T<k> (reverse type/Tier are derived by the CLI)'
+      : '# answer each candidate once: c<n> skip OR one or more c<n> R <type> <tier> T<k> <reverse_type> <reverse_tier>',
     ...targetLines,
   ];
   for (const row of rows) {
@@ -1375,8 +1434,8 @@ async function inspectCheckpoint(checkpoint, out, root, sourceSenseIds, candidat
     candidate: row.candidate.text,
     producers: row.candidate.producers,
     same_spelling_targets: row.candidate.same_spelling_targets,
-    decision: row.candidate.decision,
-    additional_relations: row.candidate.additional_relations ?? [],
+    decision: presentedDecision(checkpoint, row.candidate.decision),
+    additional_relations: (row.candidate.additional_relations ?? []).map((decision) => presentedDecision(checkpoint, decision)),
     ...(row.candidate.already_accounted === true ? {
       already_accounted: true,
       existing_target_sense_ids: row.candidate.existing_target_sense_ids,
@@ -1433,7 +1492,7 @@ async function readOptional(checkpoint, out, root, format, page, pageSize) {
       ...(row.item.reference_gloss === undefined ? {} : { reference_gloss: row.item.reference_gloss }),
       candidate: row.candidate.text,
       existing_target_sense_ids: entry.existing_target_sense_ids,
-      additional_relations: row.candidate.additional_relations,
+      additional_relations: row.candidate.additional_relations.map((decision) => presentedDecision(checkpoint, decision)),
       unlinked_target_sense_ids: entry.unlinked_target_sense_ids,
       same_spelling_targets: row.candidate.same_spelling_targets,
     };
@@ -1492,12 +1551,12 @@ function parseOptionalDecisions(text, checkpoint, links, digest) {
       if (kind === 'skip' && fields.length === 0) {
         if (current.skip || current.relations.length) throw new Error('skip cannot repeat or mix with Relation rows');
         current.skip = true;
-      } else if (kind === 'R' && fields.length === 5) {
+      } else if (kind === 'R' && (usesSourceMirrorTypeTier(checkpoint) ? fields.length === 3 : fields.length === 5)) {
         if (current.skip) throw new Error('skip cannot mix with Relation rows');
         const [type, tierText, targetAlias, reverseType, reverseTierText] = fields;
         const target = targetByAlias.get(targetAlias);
         if (!target) throw new Error(`unknown target alias ${targetAlias}`);
-        const relation = {
+        const relation = normalizeInputDecision(checkpoint, {
           source_sense_id: row.item.sense_id,
           candidate: row.candidate.text,
           disposition: 'relation',
@@ -1506,13 +1565,17 @@ function parseOptionalDecisions(text, checkpoint, links, digest) {
           target_sense_id: target.sense_id,
           type,
           relevance: compactTier(tierText, alias),
-          reverse_type: reverseType,
-          reverse_relevance: compactTier(reverseTierText, `${alias} reverse`),
-        };
+          ...(!usesSourceMirrorTypeTier(checkpoint) ? {
+            reverse_type: reverseType,
+            reverse_relevance: compactTier(reverseTierText, `${alias} reverse`),
+          } : {}),
+        });
         if (current.relations.some((saved) => saved.target_sense_id === target.sense_id)) throw new Error(`repeats target ${target.sense_id}`);
         validateDecision(row.item, { ...row.candidate, additional_relations: [...row.candidate.additional_relations, ...current.relations] }, relation);
         current.relations.push(relation);
-      } else throw new Error('use skip or R <type> <tier> T<k> <reverse_type> <reverse_tier>');
+      } else throw new Error(usesSourceMirrorTypeTier(checkpoint)
+        ? 'use skip or R <type> <tier> T<k>; the CLI derives reverse type/Tier'
+        : 'use skip or R <type> <tier> T<k> <reverse_type> <reverse_tier>');
       decisions.set(alias, current);
     } catch (error) { errors.push(`${alias}: ${error.message}`); }
   }
@@ -1694,8 +1757,11 @@ async function saveChunk(checkpoint, checkpointPath, inputPath, root, format = '
     if (received.has(key)) { problem(key, `chunk repeats decision ${decision.source_sense_id}/${decision.candidate}`); continue; }
     const source = expected.get(key);
     if (!source) { problems.push({ alias: null, message: `decision ${decision.source_sense_id}/${decision.candidate} is outside the active chunk` }); continue; }
-    received.set(key, decision);
-    try { validateDecision(source.item, source.candidate, decision); } catch (error) { problem(key, error.message); }
+    try {
+      const normalizedDecision = normalizeInputDecision(checkpoint, decision);
+      validateDecision(source.item, source.candidate, normalizedDecision);
+      received.set(key, normalizedDecision);
+    } catch (error) { problem(key, error.message); }
   }
   for (const key of expected.keys()) {
     if (!received.has(key) && !failedKeys.has(key)) problem(key, `chunk has missing decisions: ${labelOf(key)}`);
@@ -1704,7 +1770,7 @@ async function saveChunk(checkpoint, checkpointPath, inputPath, root, format = '
     const lines = problems.map((entry) => {
       const row = entry.alias === null ? null : model?.candidates.find((candidate) => candidate.alias === entry.alias);
       const head = entry.alias ?? entry.label ?? '-';
-      return `${head}${row ? ` ${row.candidate.text}` : ''}: ${entry.message}${row ? `  ->  ${compactHint(row)}` : ''}`;
+      return `${head}${row ? ` ${row.candidate.text}` : ''}: ${entry.message}${row ? `  ->  ${compactHint(row, checkpoint)}` : ''}`;
     });
     throw new Error(`chunk ${pending.chunk_id} not saved, checkpoint unchanged: ${problems.length} problem(s)\n${lines.join('\n')}\ntypes: ${ADMISSION_TYPES.join('/')}; tier: one digit 1..9`);
   }
@@ -1965,7 +2031,7 @@ async function preflightCheckpoint(checkpoint, checkpointPath, root, limit = 20,
         record_id: target.record_id, lemma: target.lemma, sense_id: sense.sense_id, pos: sense.pos, gloss: sense.gloss,
       })));
       const peers = item.candidates.filter((peer) => peer.text !== candidate.text && peer.decision?.disposition === 'relation')
-        .map((peer) => ({ source_sense_id: item.sense_id, candidate: peer.text, decision: peer.decision,
+        .map((peer) => ({ source_sense_id: item.sense_id, candidate: peer.text, decision: presentedDecision(checkpoint, peer.decision),
           affected_type: affectedTypes.has(peer.decision.type) }));
       return {
         source_sense_id: sourceSenseId,
@@ -1975,8 +2041,8 @@ async function preflightCheckpoint(checkpoint, checkpointPath, root, limit = 20,
         source_gloss: item.gloss,
         ...(item.reference_gloss === undefined ? {} : { reference_gloss: item.reference_gloss }),
         candidate: candidateText,
-        decision: candidate.decision,
-        additional_relations: candidate.additional_relations ?? null,
+        decision: presentedDecision(checkpoint, candidate.decision),
+        additional_relations: candidate.additional_relations?.map((decision) => presentedDecision(checkpoint, decision)) ?? null,
         already_accounted: candidate.already_accounted === true,
         target_senses: allTargets,
         approved_peers: item.approved_peers ?? [],
@@ -1989,6 +2055,7 @@ async function preflightCheckpoint(checkpoint, checkpointPath, root, limit = 20,
 
   const fingerprint = stableDigest({
     identity: [checkpoint.shard, checkpoint.batch, checkpoint.part],
+    ...(checkpoint.type_tier_policy ? { type_tier_policy: checkpoint.type_tier_policy } : {}),
     problems: problems.map((group) => ({ candidate_keys: group.candidate_keys, conflicts: group.conflicts, drop_gloss: group.drop_gloss })),
   });
   let ok = false;
@@ -2014,6 +2081,7 @@ async function preflightCheckpoint(checkpoint, checkpointPath, root, limit = 20,
   const page = problems.slice(offset, offset + limit);
   const payload = {
     version: 1,
+    type_tier_policy: checkpoint.type_tier_policy ?? 'legacy-independent',
     ok,
     repairable,
     shard: checkpoint.shard,
@@ -2096,8 +2164,10 @@ async function applyRepair(checkpoint, checkpointPath, inputPath, root) {
       throw new Error('repair receipt exists but its candidate set does not match; refusing replay');
     }
     for (const { row, candidate } of selected) {
-      const expectedNewDecision = candidate.already_accounted === true ? candidate.decision : row.decision;
-      const expectedNewRelations = candidate.already_accounted === true ? row.additional_relations : null;
+      const expectedNewDecision = candidate.already_accounted === true ? candidate.decision
+        : normalizeInputDecision(checkpoint, row.decision);
+      const expectedNewRelations = candidate.already_accounted === true
+        ? row.additional_relations.map((relation) => normalizeInputDecision(checkpoint, relation)) : null;
       if (!sameJson(candidate.decision, expectedNewDecision)
           || !sameJson(candidate.additional_relations ?? null, expectedNewRelations)) {
         throw new Error('repair receipt exists but its candidate state no longer matches; refusing replay');
@@ -2110,8 +2180,10 @@ async function applyRepair(checkpoint, checkpointPath, inputPath, root) {
   const nextByKey = new Map(next.items.flatMap((item) => item.candidates.map((candidate) =>
     [`${item.sense_id}\u0000${candidate.text}`, { item, candidate }])));
   for (const { row, item, candidate } of selected) {
-    if (!sameJson(candidate.decision, row.expected_decision)
-        || !sameJson(candidate.additional_relations ?? null, row.expected_additional_relations)) {
+    const expectedOptional = candidate.already_accounted === true
+      ? (candidate.additional_relations ?? []).map((relation) => presentedDecision(checkpoint, relation)) : null;
+    if (!sameJson(presentedDecision(checkpoint, candidate.decision), row.expected_decision)
+        || !sameJson(expectedOptional, row.expected_additional_relations)) {
       throw new Error(`stale repair target: ${row.source_sense_id}/${row.candidate}`);
     }
     const current = nextByKey.get(`${item.sense_id}\u0000${candidate.text}`).candidate;
@@ -2120,18 +2192,20 @@ async function applyRepair(checkpoint, checkpointPath, inputPath, root) {
         throw new Error(`${row.source_sense_id}/${row.candidate}: existing coverage may only replace optional links`);
       }
       const checked = [];
-      for (const [index, relation] of row.additional_relations.entries()) {
-        validateDecision(item, { ...candidate, additional_relations: checked }, relation);
-        if (checked.some((saved) => saved.target_sense_id === relation.target_sense_id)) {
-          throw new Error(`${row.source_sense_id}/${row.candidate}: repeated optional target ${relation.target_sense_id}`);
+      for (const relation of row.additional_relations) {
+        const normalizedRelation = normalizeInputDecision(checkpoint, relation);
+        validateDecision(item, { ...candidate, additional_relations: checked }, normalizedRelation);
+        if (checked.some((saved) => saved.target_sense_id === normalizedRelation.target_sense_id)) {
+          throw new Error(`${row.source_sense_id}/${row.candidate}: repeated optional target ${normalizedRelation.target_sense_id}`);
         }
-        checked.push(relation);
+        checked.push(normalizedRelation);
       }
       current.additional_relations = checked;
     } else {
       if (row.additional_relations !== null) throw new Error(`${row.source_sense_id}/${row.candidate}: regular candidate cannot contain optional links`);
-      validateDecision(item, candidate, row.decision);
-      current.decision = row.decision;
+      const normalizedDecision = normalizeInputDecision(checkpoint, row.decision);
+      validateDecision(item, candidate, normalizedDecision);
+      current.decision = normalizedDecision;
     }
   }
   next.repair_receipts = [...receipts, {
@@ -2187,7 +2261,7 @@ async function mergeCheckpoint(checkpoint, checkpointPath, root) {
   return result;
 }
 
-function parseAmendDecision(line, row, targets, selectedOptional = []) {
+function parseAmendDecision(line, row, targets, selectedOptional = [], checkpoint) {
   const fields = line.split(/\s+/u);
   const alias = fields[0];
   const kind = fields[1];
@@ -2227,12 +2301,19 @@ function parseAmendDecision(line, row, targets, selectedOptional = []) {
     validateDecision(row.item, row.candidate, decision);
     return { optional: false, decision };
   }
-  if (rest.length !== 3) throw new Error('Relation syntax needs T<k> reverse-type reverse-tier or none T<a>,T<b>,...');
+  const mirrorPolicy = usesSourceMirrorTypeTier(checkpoint);
+  if (mirrorPolicy ? rest.length !== 1 : rest.length !== 3) {
+    throw new Error(mirrorPolicy
+      ? 'exact ID amendment uses T<k>; the CLI derives reverse type/Tier'
+      : 'Relation syntax needs T<k> reverse-type reverse-tier or none T<a>,T<b>,...');
+  }
   const [targetName, reverseType, reverseTierText] = rest;
   const target = [...targets.values()].find((entry) => entry.alias === targetName);
   if (!target || !row.targetAliases.includes(targetName)) throw new Error('unknown or unrelated target alias ' + targetName);
-  const decision = { ...relation, target_resolution: 'exact', target_record_id: target.record_id,
-    target_sense_id: target.sense_id, reverse_type: reverseType, reverse_relevance: compactTier(reverseTierText, alias + ' reverse') };
+  const decision = normalizeInputDecision(checkpoint, {
+    ...relation, target_resolution: 'exact', target_record_id: target.record_id, target_sense_id: target.sense_id,
+    ...(!mirrorPolicy ? { reverse_type: reverseType, reverse_relevance: compactTier(reverseTierText, alias + ' reverse') } : {}),
+  });
   if (row.candidate.already_accounted !== true) {
     validateDecision(row.item, row.candidate, decision);
     return { optional: false, decision };
@@ -2273,7 +2354,7 @@ function parseAmendInput(raw, checkpoint) {
     if (!row) { errors.push(alias + ': names no candidate in the inspected source senses'); continue; }
     const change = changes.get(alias) || { optional: row.candidate.already_accounted === true, relations: [] };
     try {
-      const parsed = parseAmendDecision(line, { ...row, optionalRelations: change.relations }, model.targets, change.relations);
+      const parsed = parseAmendDecision(line, { ...row, optionalRelations: change.relations }, model.targets, change.relations, checkpoint);
       if (parsed.optional) {
         if (!change.optional) throw new Error('candidate has more than one replacement decision');
         if (parsed.skip) {

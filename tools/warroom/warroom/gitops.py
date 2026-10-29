@@ -875,7 +875,7 @@ class Git:
                     or (next_offset is None and expected_next < payload.get("total", 0)):
                 raise GitError("admission-cli preflight returned an inconsistent page boundary")
             if first is None:
-                stable_keys = ("version", "ok", "repairable", "shard", "batch", "part", "fingerprint", "total",
+                stable_keys = ("version", "type_tier_policy", "ok", "repairable", "shard", "batch", "part", "fingerprint", "total",
                                "candidate_total", "coverage", "unclassified")
                 first = {key: payload.get(key) for key in stable_keys}
                 first.update(limit=limit)

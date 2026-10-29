@@ -32,6 +32,7 @@ _DONE = {"ZERO_HITS", "SUBMITTED", "NO_VERIFIED", "SAMPLED_NO_VERIFIED", "DISCOV
 _D_CHUNK = re.compile(r"chunk-(\d{3})\.jsonl")
 _S2_SHARD = re.compile(r"\d{3}\Z")
 _S2_BATCH = re.compile(r"(01|02)-(0[1-5])\Z")
+_S2_TYPE_TIER_POLICY = "source-mirror-v1"
 _cache: dict = {}   # (path) -> ((mtime_ns, size), parsed JSON): parse a checkpoint again only when it changed
 
 
@@ -221,6 +222,8 @@ def stage2_checkpoint(worktree, shard: str, batch_key: str):
     if not isinstance(data, dict) or type(data.get("version")) is not int or data.get("version") != 1 or \
             (data.get("shard"), data.get("batch"), data.get("part")) != (shard, batch, part):
         raise ValueError("unsupported or mismatched Stage 2 checkpoint")
+    if data.get("type_tier_policy") not in (None, _S2_TYPE_TIER_POLICY):
+        raise ValueError("unsupported Stage 2 Type/Tier direction policy")
     if not isinstance(data.get("complete"), bool) or not isinstance(data.get("merged"), bool) or \
             type(data.get("next_chunk_number")) is not int or data["next_chunk_number"] < 1 or \
             not isinstance(data.get("items"), list) or "pending_chunk" not in data:
@@ -290,6 +293,7 @@ def stage2_checkpoint(worktree, shard: str, batch_key: str):
         raise ValueError("incomplete Stage 2 checkpoint is marked merged")
     return {
         "shard": shard, "batch": batch, "part": part, "next_chunk_number": data["next_chunk_number"],
+        "type_tier_policy": data.get("type_tier_policy"),
         "pending_chunk": pending["chunk_id"] if pending is not None else None,
         "pending_revision": bool(pending and pending.get("revision") is True),
         "complete": data["complete"], "merged": data["merged"], "decided": decided, "total": total,
