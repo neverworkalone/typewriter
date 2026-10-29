@@ -87,8 +87,15 @@ class GhClient:
     # ---- Issues (Issue #1555: shared-defect urgent Issues) --------------------------------------------------------
     def issue(self, n: int) -> dict:
         d = self._api(f"repos/{self.repo}/issues/{n}")
-        return {"number": n, "state": d["state"], "labels": [l["name"] for l in d.get("labels", [])],
+        return {"number": n, "title": d.get("title") or "", "state": d["state"],
+                "labels": [l["name"] for l in d.get("labels", [])],
                 "pull_request": "pull_request" in d, "body": d.get("body") or ""}
+
+    def edit_issue_title(self, n: int, title: str) -> None:
+        r = self.runner.run(["gh", "issue", "edit", str(n), "--repo", self.repo, "--title", title],
+                            env=self.env, timeout=60)
+        if not r.ok:
+            raise self._fail(f"gh issue edit {n} --title", r)
 
     def urgent_issues(self) -> list[dict]:
         """Every `urgent` Issue, open and closed, with its body. A list call (not search): it is consistent
@@ -98,6 +105,15 @@ class GhClient:
         if not r.ok:
             raise GhError(f"gh issue list: {r.err.strip()}")
         return [{**i, "state": str(i["state"]).lower()} for i in json.loads(r.out or "[]")]
+
+    def all_issues(self) -> list[dict]:
+        """List all repository Issues (excluding PRs) for exact-payload recovery after a lost create response."""
+        rows = self._api(f"repos/{self.repo}/issues?state=all&per_page=100", paginate=True)
+        return [{"number": i["number"], "state": str(i["state"]).lower(), "title": i.get("title") or "",
+                 "body": i.get("body") or "", "created_at": i.get("created_at"),
+                 "labels": [label["name"] for label in i.get("labels", [])],
+                 "pull_request": "pull_request" in i}
+                for i in rows if "pull_request" not in i]
 
     def create_issue(self, title: str, body: str, labels: list[str]) -> int:
         argv = ["gh", "issue", "create", "--repo", self.repo, "--title", title, "--body", body]

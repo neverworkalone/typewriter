@@ -3,6 +3,7 @@ from __future__ import annotations
 import itertools
 import re
 import tempfile
+import time
 from pathlib import Path
 
 from warroom import control
@@ -424,7 +425,7 @@ class FakeGh:
         self.issues: dict[int, dict] = {}        # urgent Issues: number -> {state, labels, title, body}
         self.issue_comments_: dict[int, list] = {}
         self.created: list[int] = []
-        self.fail_create = self.fail_list = False
+        self.fail_create = self.fail_create_lost = self.fail_list = False
         self.fail_pull = False
 
     def open_prs(self):
@@ -479,17 +480,37 @@ class FakeGh:
         return [{"number": n, "state": i["state"], "title": i["title"], "body": i["body"]}
                 for n, i in sorted(self.issues.items()) if "urgent" in i["labels"]]
 
+    def all_issues(self):
+        if self.fail_list:
+            raise RuntimeError("issue list failed")
+        return [{"number": n, "state": i["state"], "title": i["title"], "body": i["body"],
+                 "created_at": i.get("created_at"), "labels": list(i["labels"]), "pull_request": False}
+                for n, i in sorted(self.issues.items())]
+
     def create_issue(self, title, body, labels):
+        if self.fail_create_lost:
+            self.fail_create_lost = False
+            return self._create_issue(title, body, labels, lost=True)
         if self.fail_create:
             raise RuntimeError("issue create failed")
+        return self._create_issue(title, body, labels)
+
+    def _create_issue(self, title, body, labels, lost=False):
         n = 100 + len(self.issues) + 1
-        self.issues[n] = {"state": "open", "labels": list(labels), "title": title, "body": body}
+        self.issues[n] = {"state": "open", "labels": list(labels), "title": title, "body": body,
+                          "created_at": time.time()}
         self.created.append(n)
+        if lost:
+            raise RuntimeError("issue create response lost")
         return n
 
     def issue(self, n):
-        i = self.issues.get(n, {"state": "open", "labels": [], "body": ""})
-        return {"number": n, "state": i["state"], "labels": i["labels"], "pull_request": False, "body": i["body"]}
+        i = self.issues.get(n, {"state": "open", "labels": [], "title": "", "body": ""})
+        return {"number": n, "title": i["title"], "state": i["state"], "labels": i["labels"],
+                "pull_request": False, "body": i["body"]}
+
+    def edit_issue_title(self, n, title):
+        self.issues[n]["title"] = title
 
     def comment_issue(self, n, body):
         self.issue_comments_.setdefault(n, []).append({"body": body})
