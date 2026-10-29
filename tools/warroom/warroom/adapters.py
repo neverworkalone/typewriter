@@ -730,8 +730,8 @@ class CodexCLIAdapter(ProcessAdapter):
         """Pin the configured run profile; chunks add only input optimizations and omit Git admin grants."""
         pins = self._pins(run)
         if is_stage2_repair(env):
-            # The model may inspect the supplied prompt only; it cannot write files or escalate through approvals.
-            return [*pins, *self._chunk_args(), "--sandbox", "read-only", "--ask-for-approval", "never"]
+            # Stage 2 repair keeps the operator's permission profile and never pauses for approval.
+            return [*pins, *self._chunk_args(), "-c", 'approval_policy="never"']
         if is_stage2_chunk(env):
             return [*pins, *self._chunk_args()]
         return [*pins, *grant]

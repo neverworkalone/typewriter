@@ -926,14 +926,14 @@ class ChunkLaunchArgs(unittest.TestCase):
                 for bad in NEVER_PASSED:
                     self.assertNotIn(bad, joined)
 
-    def test_stage2_repair_forces_read_only_sandbox_and_never_escalates(self):
+    def test_stage2_repair_keeps_configured_profile_and_never_escalates(self):
         for kind in ("start", "resume"):
             with self.subTest(kind=kind):
                 env = self.env(WARROOM_ANSWER_ONLY="1", WARROOM_STAGE2_REPAIR="1")
                 a = self.launch(kind, env)
-                self.assertEqual(a.cmd.count("--sandbox"), 1)
-                self.assertEqual(a.cmd[a.cmd.index("--sandbox") + 1], "read-only")
-                self.assertEqual(a.cmd[a.cmd.index("--ask-for-approval") + 1], "never")
+                self.assertIn('approval_policy="never"', a.cmd)
+                self.assertNotIn("--ask-for-approval", a.cmd)
+                self.assertNotIn("--sandbox", a.cmd)
                 self.assertNotIn("--add-dir", a.cmd)
                 self.assertEqual(a.cmd.count("default_permissions=worktree"), 1)
 
