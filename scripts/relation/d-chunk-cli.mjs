@@ -383,6 +383,31 @@ const decisionState = (evidence) => ({
   all_complete: evidence.allComplete,
 });
 
+/** Report a just-observed failure without treating it as pre-existing chain corruption during response construction. */
+function decisionStateAfterSearch(priorEntries, newEntries, recordId) {
+  const currentEntries = newEntries.filter((entry) => entry.record_id === recordId);
+  const failedEntries = currentEntries.filter((entry) => entry.status === 'SEARCH_FAILED');
+  if (failedEntries.length === 0) return decisionState(recordEvidence([...priorEntries, ...currentEntries], recordId));
+
+  // Validate prior evidence and any successful pages normally. Failed rows are persisted below and remain fail-closed
+  // on the next read/save; here they must be surfaced to the caller instead of aborting before the failure is returned.
+  const successfulEntries = currentEntries.filter((entry) => entry.status !== 'SEARCH_FAILED');
+  const usableEntries = [...priorEntries, ...successfulEntries];
+  const evidence = recordEvidence(usableEntries, recordId);
+  const knownConditions = new Set(usableEntries
+    .filter((entry) => entry?.record_id === recordId)
+    .map((entry) => searchKey(entry.forms, entry.boundary)));
+  const failedConditions = new Set(failedEntries.map((entry) => searchKey(entry.forms, entry.boundary)));
+  const newlyFailedConditions = [...failedConditions].filter((key) => !knownConditions.has(key)).length;
+  return decisionState({
+    ...evidence,
+    searches: evidence.searches + newlyFailedConditions,
+    allComplete: false,
+    failed: true,
+    status: 'SEARCH_FAILED',
+  });
+}
+
 // ---- automatic ZERO_HITS (mechanical evidence only; everything else is `Z?` for the AI) ----------------------------
 const spacedVariants = (form) => [...form].slice(1).map((_, at) => `${[...form].slice(0, at + 1).join('')} ${[...form].slice(at + 1).join('')}`);
 
@@ -815,8 +840,7 @@ export function buildSearchBatch({ requests, meta, records, search, priorEntries
   });
   const requestStates = new Map();
   for (const request of resolved) {
-    const recordEntries = [...priorEntries, ...evidence];
-    requestStates.set(request.request_id, decisionState(recordEvidence(recordEntries, request.record_id)));
+    requestStates.set(request.request_id, decisionStateAfterSearch(priorEntries, evidence, request.record_id));
   }
   const output = {
     status: results.some((result) => result.status === 'SEARCH_FAILED') ? 'SEARCH_FAILED'
@@ -915,8 +939,7 @@ export async function searchActive({ ref, forms, boundary, cursor, contexts, rer
   const evidence = { ...entryOf(record.record_id, list, boundary, result, 'search', cursorIn, exactRequestKey),
     chunk_no: meta.chunk_no, view_sha256: meta.view_sha256 };
   await appendSearchEvidence(directory, meta, [evidence], priorEntries);
-  const updatedEntries = [...priorEntries, evidence];
-  return { result, text: renderContexts(result), decision_state: decisionState(recordEvidence(updatedEntries, record.record_id)) };
+  return { result, text: renderContexts(result), decision_state: decisionStateAfterSearch(priorEntries, [evidence], record.record_id) };
 }
 
 // ---- save -----------------------------------------------------------------------------------------------------------

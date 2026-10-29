@@ -984,6 +984,56 @@ withWorld('cursor next resumes recorded search pages and invalid cursor input le
   assert.ok(manualNext.result.items.length > 0, 'the exact manual forms order and boundary resumes successfully');
 });
 
+withWorld('single and batch continuation SEARCH_FAILED is returned, persisted, and blocks save', async (world) => {
+  await prepareChunk({ ...world.options, chunkNumber: 1 });
+  const active = await meta(world);
+  const batchRef = active.senses.find((sense) => sense.record_id === 'w001' && !sense.auto).ref;
+  const singleRef = active.senses.find((sense) => sense.record_id === 'w002' && !sense.auto).ref;
+  const forms = ['새벽안개가', 'bad\u0000form'];
+  const searchesPath = chunkPath(world, 'searches');
+
+  const firstBatch = await searchBatchActive({
+    requests: [{ sense: batchRef, forms, contexts: 1 }], databasePath: world.options.databasePath, root: world.root,
+  });
+  assert.equal(firstBatch.results[0].status, 'LIMITED');
+  const failedBatch = await searchBatchActive({
+    requests: [{ sense: batchRef, forms, contexts: 1, cursor: 'next' }], databasePath: world.options.databasePath, root: world.root,
+  });
+  assert.equal(failedBatch.status, 'SEARCH_FAILED');
+  assert.equal(failedBatch.results[0].status, 'SEARCH_FAILED');
+  assert.equal(failedBatch.requests[0].decision_state.state, 'SEARCH_FAILED');
+  const batchEntries = (await readFile(searchesPath, 'utf8')).trim().split('\n').map(JSON.parse);
+  const batchFailure = batchEntries.findLast((entry) => entry.record_id === 'w001' && JSON.stringify(entry.forms) === JSON.stringify(forms));
+  assert.equal(batchFailure.status, 'SEARCH_FAILED');
+  assert.equal(batchFailure.cursor_in, firstBatch.results[0].cursor_out);
+
+  const decisionsPath = chunkPath(world, 'decisions');
+  const decisions = active.senses.filter((sense) => !sense.auto).map((sense) => `${sense.ref} Z`).join('\n');
+  await writeFile(decisionsPath, `${decisions}\n`);
+  await assert.rejects(saveActive({ inputPath: decisionsPath, root: world.root }), (error) => {
+    assert.equal(error.exitCode, 2);
+    assert.match(error.message, /search evidence integrity error/u);
+    return true;
+  });
+  const rejected = JSON.parse(await readFile(chunkPath(world, 'rejected'), 'utf8'));
+  assert.equal(rejected.repair_scope, 'stop_and_report');
+  assert.equal(existsSync(path.join(world.directory, 'chunk-001.jsonl')), false);
+
+  const firstSingle = await searchActive({
+    ref: singleRef, forms, contexts: 1, databasePath: world.options.databasePath, root: world.root,
+  });
+  assert.equal(firstSingle.result.status, 'LIMITED');
+  const failedSingle = await searchActive({
+    ref: singleRef, forms, cursor: 'next', contexts: 1, databasePath: world.options.databasePath, root: world.root,
+  });
+  assert.equal(failedSingle.result.status, 'SEARCH_FAILED');
+  assert.equal(failedSingle.decision_state.state, 'SEARCH_FAILED');
+  const singleEntries = (await readFile(searchesPath, 'utf8')).trim().split('\n').map(JSON.parse);
+  const singleFailure = singleEntries.findLast((entry) => entry.record_id === 'w002' && JSON.stringify(entry.forms) === JSON.stringify(forms));
+  assert.equal(singleFailure.status, 'SEARCH_FAILED');
+  assert.equal(singleFailure.cursor_in, firstSingle.result.next_cursor);
+});
+
 withWorld('a failed first-page attempt does not block successful single or batch retry pagination', async (world) => {
   await prepareChunk({ ...world.options, chunkNumber: 1 });
   const active = await meta(world);
