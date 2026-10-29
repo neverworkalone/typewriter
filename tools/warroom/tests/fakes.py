@@ -461,6 +461,7 @@ class FakeGh:
         self.reviews_, self.inline_, self.issue_ = [], [], []
         self.commit_ts = 0.0
         self.git = None
+        self.created_prs: list[dict] = []
         self.issues: dict[int, dict] = {}        # urgent Issues: number -> {state, labels, title, body}
         self.issue_comments_: dict[int, list] = {}
         self.created: list[int] = []
