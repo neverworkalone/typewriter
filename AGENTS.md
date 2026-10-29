@@ -308,7 +308,7 @@ Explicit PR label instructions replace conflicting inherited labels (e.g.,
 Verify the PR's labels after creation. Never rely on labels remembered at issue start.
 ## Handling PR review feedback
 
-When assigned PR feedback, independently assess it against the current HEAD and requirements. Fix valid findings with appropriate validation, or explain disagreements with evidence in the PR conversation. Report blocked dependencies or unresolved disputes to the owner. Do not initiate reviews, poll PR status, or merge.
+When assigned **blocking `-1` PR feedback**, independently assess it against the current HEAD and requirements. Fix valid findings with appropriate validation, or explain disagreements with evidence in the PR conversation. Reply once per actionable blocking review event with the fix or reasoned disagreement as required by the assigned War Room workflow; the reviewer must assess that reply on re-review. **Never respond to `+1` or `+2` PASS reviews** with PR comments, inline replies, acknowledgments, status reports, commits, or re-review requests. PASS requires no producer action and must not create another review event. Report blocked dependencies or unresolved disputes to the owner. Do not initiate reviews, poll PR status, or merge.
 
 ## Review boundary
 
