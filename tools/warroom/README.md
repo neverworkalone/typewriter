@@ -52,17 +52,12 @@ sqlite3 -noheader tools/warroom/.local/warroom.db \
 
 **리뷰 후 수정 로그까지 함께** 보려면 위 명령의 `AND r.kind LIKE 'produce%'` 조건을 삭제한다. `runs.kind`도 같이 확인하려면 `SELECT r.kind, r.log_file`로 바꾼다. `pbcopy`를 빼면 터미널에 경로가 표시된다. `less <로그경로>` 또는 `tail -f <로그경로>`로 원본 로그를 읽을 수 있다.
 
-## 사용량 계측과 선택적 단가 (Issues #2033, #2361)
+## 사용량 계측과 선택적 단가 (Issue #2033)
 
 run이 끝나면 그 run 자신의 로그만 읽어 `runs` 테이블에 `input_tokens`(cached·cache write 포함), `cached_input_tokens`,
 `cache_write_tokens`, `output_tokens`(reasoning 포함), `reasoning_output_tokens`(output의 부분집합), `tool_calls`,
-`submit_failures`를 기록합니다. resume은 새 run·새 로그이므로 중복 집계되지 않습니다. OpenCode는 Run JSONL의 각 `step_finish`
-토큰 delta를 합산하고 같은 `part.id` 이벤트는 한 번만 셉니다. `input_tokens`는 `input + cache.read + cache.write`,
-`output_tokens`는 reasoning 포함, `reasoning_output_tokens`는 그 부분집합입니다. `tokens.total`은 별도 합산하지 않습니다.
-OpenCode 로그는 마지막 `step_finish`가 빠질 수 있어 항상 best-effort로 표시하고, 대응 `step_start`가 없거나 마지막 JSONL 행이
-잘린 흔적이 있으면 incomplete로 구분합니다. 관측 토큰은 하한이며 빠진 값을 추정하지 않습니다. resume은 매 Run의 자체 로그만
-집계하므로 앞선 Run을 다시 더하지 않습니다. 로그에 없는 값과 근거를 확인할 수 없는 OpenCode tool/submission 수는 NULL이며
-0으로 채우지 않습니다. 비용은 `config.json`의 선택적 `pricing`(USD / 1M tokens)이 있을 때만 기존 방식으로 계산합니다.
+`submit_failures`를 기록합니다. resume은 새 run·새 로그이므로 중복 집계되지 않습니다. 로그에 없는 값(과거 run, OpenCode,
+usage 누락)은 NULL이며 0으로 채우지 않습니다. 비용은 `config.json`의 선택적 `pricing`(USD / 1M tokens)이 있을 때만 계산합니다.
 실제 단가를 직접 채우세요 (없으면 `unknown`):
 
 ```json
