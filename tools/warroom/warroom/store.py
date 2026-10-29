@@ -675,6 +675,11 @@ class Store:
                 rows = c.execute("SELECT * FROM issue_requests ORDER BY id").fetchall()
         return [dict(r) for r in rows]
 
+    def issue_request(self, event_key: str) -> dict | None:
+        with self._conn() as c:
+            row = c.execute("SELECT * FROM issue_requests WHERE event_key=?", (event_key,)).fetchone()
+        return dict(row) if row is not None else None
+
     def mark_issue_request_creating(self, request_id: int) -> bool:
         """Persist the create attempt before calling GitHub so a lost response can be reconciled after restart."""
         now = time.time()

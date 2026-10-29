@@ -158,6 +158,17 @@ def chunk_by_number(cp: dict, number: int) -> dict:
     raise ABChunkError(f"chunk {number}이 checkpoint에 없습니다")
 
 
+def chunk_record_ids(worktree, b, chunk: dict) -> list[str]:
+    """Read the actual source rows for one chunk and confirm their IDs match its checkpoint order."""
+    source, _ = _chunk_files(worktree, b, chunk)
+    rows = _read_jsonl(source)
+    ids = [row.get("id") if isinstance(row, dict) else None for row in rows]
+    if not isinstance(chunk.get("record_ids"), list) or ids != chunk["record_ids"] \
+            or any(not isinstance(record_id, str) or not re.fullmatch(r"w\d+", record_id) for record_id in ids):
+        raise ABChunkError(f"{source.name}의 실제 stdict record ID가 checkpoint와 일치하지 않습니다")
+    return ids
+
+
 def chunk_sha(worktree, b, chunk: dict) -> str:
     import hashlib
     try:

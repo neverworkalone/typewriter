@@ -1536,10 +1536,12 @@ class Supervisor:
             self.store.set_run_session(b["id"], sid)
             b = self.store.batch(b["id"])
         self._record_progress(b)
+        policy_chunk = self._ab_policy_skip_chunk(b)
+        policy_refusal = (ad.confirmed_prompt_refusal(Path(b["log_file"])) if policy_chunk is not None else None)
         tolerant = {"tolerate_denied": True} if (self._ab_chunk_run(b) or self._s2_chunk_run(b)) \
             and getattr(ad, "supports_tolerate_denied", False) else {}
         problem = ad.run_problem(Path(b["log_file"]), self._recorded_run(b), b["session_id"], **tolerant)
-        if problem:   # the CLI contradicts its pins: stop it, keep worktree/PR, wait for the operator
+        if problem and not policy_refusal:   # the CLI contradicts its pins: stop it, keep worktree/PR, wait for the operator
             state, msg = problem
             if ad.alive(b["pid"]):
                 ad.stop(b["pid"])
@@ -1553,6 +1555,8 @@ class Supervisor:
         self.store.update(b["id"], pid=None)
         self.store.finish_runs(b["id"], code)
         b = self.store.batch(b["id"])
+        if policy_refusal:
+            return self._handle_ab_policy_refusal(b, policy_chunk)
         if code is None:
             if self._saved_chunk_for_run(b):
                 if self._saved_output_failure(b, self._classify_run(b["producer"], b["log_file"])):
@@ -2882,6 +2886,98 @@ class Supervisor:
     def _ab_chunk_run(b) -> bool:
         return b["method"] in stage1ab.METHODS and isinstance(b["run_kind"], str) and b["run_kind"].startswith("ab_chunk_")
 
+    @staticmethod
+    def _ab_policy_skip_event_key(b, chunk: dict) -> str:
+        return f"ab-policy-skip:{b['shard']}:{b['batch']}:{b['method']}:{b['producer']}:{chunk['number']:03d}"
+
+    def _ab_policy_skip_chunk(self, b) -> dict | None:
+        """Only a first, answer-only A/B chunk can be converted after an exact provider refusal."""
+        if b["state"] != "PRODUCING" or b["method"] not in stage1ab.METHODS or b["run_kind"] != "ab_chunk_new":
+            return None
+        try:
+            raw = self.store.get(stage1ab.run_start_key(b["id"]))
+            baseline = json.loads(raw or "")
+            if not isinstance(baseline, dict):
+                return None
+            if baseline.get("repair"):
+                return None
+            chunk = stage1ab.chunk_by_number(stage1ab.checkpoint(b["worktree"], b), int(baseline["chunk_no"]))
+            state = stage1ab.load_state(self.store, b["id"], chunk["number"])
+            return chunk if state["tries"] == 0 and state["requested"] is None else None
+        except (stage1ab.ABChunkError, OSError, ValueError, KeyError, TypeError):
+            return None
+
+    def _ab_complete_response(self, b, chunk: dict) -> bool:
+        """True only when the current answer block covers every alias in the chunk's exact saved view."""
+        try:
+            body = stage1ab.extract_block(self._adapter(b["producer"]).final_answer(Path(b["log_file"])), chunk["number"])
+            revised = stage1ab.split_rows(body)
+            view = (Path(b["worktree"]) / stage1ab.view_path(b, chunk["number"])).read_text("utf-8")
+            aliases = [row[0] for row in stage1ab.view_rows(view)]
+            return len(revised) == len(aliases) and set(revised) == set(aliases)
+        except (stage1ab.ABChunkError, OSError, ValueError, KeyError, TypeError):
+            return False
+
+    def _ab_save_policy_skip(self, b, chunk: dict) -> None:
+        """Persist the manual ID list, save an all-empty chunk through save-chunk, then use normal acceptance."""
+        key = stage1ab.run_start_key(b["id"])
+        if problem := self._stage2_chunk_boundary_problem(b, key):
+            return self._fail(b, "ERROR", problem)
+        wt = Path(b["worktree"])
+        try:
+            if self.git.dirty(wt).strip():
+                return self._fail(b, "ERROR", "정책 거부 청크 종료 뒤 worktree에 추적 변경이 있습니다. 보존합니다.")
+            if self._find_recovery_pr(b) is not None:
+                return self._fail(b, "ERROR", "정책 거부 청크 실행 중 소유 브랜치에 PR이 생겼습니다. 보존합니다.")
+            baseline = json.loads(self.store.get(key) or "")
+            cp = stage1ab.checkpoint(wt, b)
+            chunk = stage1ab.chunk_by_number(cp, int(baseline["chunk_no"]))
+            if stage1ab.saved_snapshot(wt, b, cp) != baseline.get("saved"):
+                return self._fail(b, "ERROR", "정책 거부 청크 실행 중 저장물이 변경됐습니다. 덮어쓰지 않고 보존합니다.")
+            if stage1ab.chunk_saved(wt, b, chunk):
+                self.store.log(b["id"], f"A/B 청크 {chunk['number']:03d}에 기존 저장 후보가 있어 정책 Skip으로 덮어쓰지 않습니다.", "warn")
+                return self._ab_accept(b, chunk, False)
+            if self._ab_complete_response(b, chunk):
+                self.store.log(b["id"], f"A/B 청크 {chunk['number']:03d}에 완성 응답이 있어 기존 저장 검증 경로로 전달합니다.", "warn")
+                return self._run_ok_ab_chunk(b)
+            record_ids = stage1ab.chunk_record_ids(wt, b, chunk)
+            view = (wt / stage1ab.view_path(b, chunk["number"])).read_text("utf-8")
+            lines = [row[0] for row in stage1ab.view_rows(view)]
+            if len(lines) != chunk["sense_count"]:
+                raise stage1ab.ABChunkError("정책 Skip compact view의 sense 수가 checkpoint와 다릅니다")
+        except TRANSIENT:
+            raise
+        except (stage1ab.ABChunkError, OSError, ValueError, KeyError, TypeError, GitError) as e:
+            return self._fail(b, "ERROR", f"정책 거부 청크 확인 실패: {e}. 보존합니다.")
+        title = (f"[Policy Skip][{b['method'].upper()}/{b['producer']}] "
+                 f"{b['shard']}_{b['batch']} Chunk {chunk['number']:03d}")
+        body = "\n".join(record_ids)
+        try:
+            request_id = self.maint.report_issue(title, body, urgent=False,
+                                                 event_key=self._ab_policy_skip_event_key(b, chunk))
+        except Exception as e:
+            return self._fail(b, "ERROR", f"정책 Skip 수동 Issue 요청을 영속화하지 못했습니다. 청크와 실행 기록을 보존합니다: {e}")
+        try:
+            saved, diag = stage1ab.save(self.runner, self.env, wt, b, chunk, lines)
+            if not saved:
+                return self._fail(b, "ERROR", f"수동 Issue 요청은 영속화했지만 빈 후보 청크 저장이 거부됐습니다: {diag}. 보존합니다.")
+            if not stage1ab.chunk_saved(wt, b, chunk):
+                return self._fail(b, "ERROR", "빈 후보 저장은 성공했지만 Canonical ID/sense 검증을 통과하지 못했습니다. 보존합니다.")
+        except (stage1ab.ABChunkError, OSError, ValueError, KeyError, TypeError) as e:
+            return self._fail(b, "ERROR", f"수동 Issue 요청 #{request_id} 뒤 빈 후보 청크 저장 확인 실패: {e}. 보존합니다.")
+        except Exception as e:
+            return self._fail(b, "ERROR", f"수동 Issue 요청 #{request_id} 뒤 빈 후보 청크 저장 실패: {e}. 보존합니다.")
+        self.store.log(b["id"], f"Codex 정책 거부: A/B 청크 {chunk['number']:03d}의 빈 후보 저장과 수동 Issue 요청 #{request_id}를 확인했습니다.", "warn")
+        return self._ab_accept(b, chunk, False)
+
+    def _handle_ab_policy_refusal(self, b, chunk: dict) -> None:
+        """A confirmed refusal is accepted only after the run identity and the normal chunk boundary are checked."""
+        ad = self._adapter(b["producer"])
+        if problem := ad.output_identity_problem(Path(b["log_file"]), self._recorded_run(b), b["session_id"],
+                                                 b["worktree"], self.env):
+            return self._fail(b, problem[0], f"Codex 정책 거부 실행의 소유권/핀 확인 실패: {problem[1]}")
+        return self._ab_save_policy_skip(b, chunk)
+
     def _fix_kind(self, b) -> str:
         """A/B review fixes start a small new session (never a resume of a long production session)."""
         if b["method"] == STAGE2_METHOD:
@@ -3144,6 +3240,15 @@ class Supervisor:
             if saved:   # the exact file is already there: accept it, never ask the AI again
                 self.store.log(b["id"], "이전 실행의 A/B 청크 저장을 확인했습니다 — AI 재실행 없이 다음 단계로 진행합니다.")
                 return self._ab_accept(b, chunk, bool(baseline.get("repair")))
+            policy_chunk = self._ab_policy_skip_chunk(b)
+            if policy_chunk is not None:
+                if self._ab_complete_response(b, policy_chunk):
+                    return self._run_ok_ab_chunk(b)
+                refusal = self._adapter(b["producer"]).confirmed_prompt_refusal(Path(b["log_file"]))
+                if refusal:
+                    return self._handle_ab_policy_refusal(b, policy_chunk)
+                if self.store.issue_request(self._ab_policy_skip_event_key(b, policy_chunk)) is not None:
+                    return self._ab_save_policy_skip(b, policy_chunk)
             if self._ab_chunk_response(b):   # a complete answer from the prior run: judge it instead of regenerating it
                 return self._run_ok_ab_chunk(b)
         self.store.update(b["id"], retries=0, retry_after=None, error=None)

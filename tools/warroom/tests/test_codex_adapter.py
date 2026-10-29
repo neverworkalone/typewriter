@@ -13,7 +13,7 @@ from pathlib import Path
 from unittest import mock
 
 from tests.fakes import FakeAdapter, World
-from warroom.adapters import CodexCLIAdapter, Handle, RunSpec, classify_failure
+from warroom.adapters import ClaudeCodeAdapter, CodexCLIAdapter, Handle, RunSpec, classify_failure
 from warroom.config import DEFAULTS
 from warroom.shell import Result
 
@@ -598,6 +598,7 @@ class CompletionGate(unittest.TestCase):
                 problem = self.check(events, contexts=contexts, baseline=baseline)
                 self.assertEqual(problem[0] if problem else None, want)
 
+
     def test_a_resume_that_switched_threads_is_refused(self):
         with tempfile.TemporaryDirectory() as d:
             d = Path(d)
@@ -630,6 +631,29 @@ class CompletionGate(unittest.TestCase):
                 Spy("codex").resume(THREAD, "again", d, {}, LAUNCH, log, d / "r.exit", git_dir=GIT_DIR)
             from warroom.adapters import _baseline
             self.assertEqual(_baseline(log), (THREAD, 2))
+
+
+class ConfirmedPromptRefusal(unittest.TestCase):
+    def test_only_the_exact_structured_codex_terminal_error_matches(self):
+        message = "Invalid prompt: your prompt was flagged as potentially violating our usage policy."
+        cases = [
+            ("exact event", [started(), failed(message)], message),
+            ("ordinary assistant text", [started(), {"type": "item.completed", "item": {
+                "type": "agent_message", "text": message}}], None),
+            ("generic invalid prompt", [started(), failed("Invalid prompt")], None),
+            ("near match", [started(), failed(message + " Please revise it.")], None),
+            ("string error", [started(), {"type": "turn.failed", "error": message}], None),
+            ("contradictory completion", [started(), failed(message), completed()], None),
+        ]
+        with tempfile.TemporaryDirectory() as d:
+            log = Path(d) / "run.jsonl"
+            codex = CodexCLIAdapter()
+            for name, events, want in cases:
+                with self.subTest(name=name):
+                    log.write_text(lines(*events), "utf-8")
+                    self.assertEqual(codex.confirmed_prompt_refusal(log), want)
+            log.write_text(lines(started(), failed(message)), "utf-8")
+            self.assertIsNone(ClaudeCodeAdapter().confirmed_prompt_refusal(log))
 
 
 class PrIntake(unittest.TestCase):
