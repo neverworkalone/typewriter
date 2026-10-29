@@ -620,7 +620,7 @@ class RestartHandoff(unittest.TestCase):
         for method, expected in (("d", "D 청크"), ("c", "C 청크"), ("a", "A 청크"), ("b", "B 청크"),
                                  ("s2", "Stage 2 청크")):
             with self.subTest(method=method):
-                error = w.sup._stage2_chunk_boundary_problem(b | {"method": method}, "missing-run-key")
+                error = w.sup._stage2_chunk_boundary_problem(dict(b) | {"method": method}, "missing-run-key")
                 self.assertIn(expected, error)
 
     def test_legacy_missing_baseline_rejects_an_owned_pr_before_any_new_run(self):
