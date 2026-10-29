@@ -478,14 +478,26 @@ class Supervisor:
             legacy_ff_error = (b["state"] == "ERROR" and b["paused_from"] == "FIXING" and b["pr_number"] is not None
                               and isinstance(b["error"], str)
                               and b["error"].startswith("원격 ref와 로컬 HEAD 불일치:"))
+            stranded_review = (b["state"] == "ERROR" and b["paused_from"] == "WAITING_REVIEW"
+                               and b["pr_number"] is not None and b["method"] in ("a", "b", "c", "d")
+                               and isinstance(b["error"], str)
+                               and b["error"].startswith("미완료 리뷰 이벤트 감지:"))
             if legacy_ff_error:
                 # Older Supervisor releases treated every remote/local SHA difference as divergence. Re-enter the
                 # owned PR watcher; it retries only after the complete safe fast-forward proof below.
                 resume_state = "WAITING_REVIEW"
                 self.store.log(b["id"], "기존 원격/local HEAD 불일치 오류: AI 재실행 없이 소유 PR fast-forward 안전 조건을 재확인합니다", "warn")
+            if stranded_review:
+                # An interrupted fix may have returned to REVIEW via the safe PR fast-forward. Do not let a
+                # historical launch-time marker silently suppress the active -1, or auto-run it indefinitely.
+                resume_state = "FIXING"
+                self.store.log(b["id"], "운영자 Retry: 미완료 리뷰 이벤트의 현재 PR/HEAD 및 답글 증거를 다시 확인합니다", "warn")
+            fields = dict(state=resume_state, error=None, retries=0, retry_after=None,
+                          pause_reason="", defect_id=None)
+            if stranded_review and not str(b["run_kind"] or "").startswith("fix"):
+                fields["run_kind"] = "fix_new"
             self.store.set_line(b["producer"], b["method"], retry_batch=None, run=1)
-            self.store.update(b["id"], state=resume_state, error=None,
-                              retries=0, retry_after=None, pause_reason="", defect_id=None)
+            self.store.update(b["id"], **fields)
             self.store.log(b["id"], f"운영자 재시도: {resume_state}로 복귀")
 
     def _override_defect(self, b) -> None:
@@ -4682,6 +4694,21 @@ class Supervisor:
                     synced = True
                     continue   # re-read PR HEAD and review events after the FF; never act on a stale snapshot
                 self._transient_clear(f"b{b['id']}:branch_sync", b["id"])
+                if b["method"] in ("a", "b", "c", "d") and not live:
+                    # Older versions marked an event handled when the fix process STARTED, not when the
+                    # reply was confirmed. A safe Update branch can return that failed run to REVIEW.
+                    # Likewise, a stranded CLAIMED event must not launch again without operator Retry.
+                    stranded = []
+                    for event in evs:
+                        row = self.store.handled_event(b["id"], b["pr_number"], info["head_sha"], event["key"])
+                        if row is not None and row["status"] in ("LEGACY", "CLAIMED"):
+                            stranded.append(f"{event['key']}({row['status']})")
+                    if stranded:
+                        return self._fail(
+                            b, "ERROR", "미완료 리뷰 이벤트 감지: " + ", ".join(stranded) +
+                            ". 이전 수정 실행의 완료·PR 답글 증거가 확정되지 않았습니다. "
+                            "자동 재실행하지 않고 보존했습니다. 운영자 Retry에서 현재 PR/HEAD와 답글을 "
+                            "재확인하여 미완료 이벤트만 복구합니다.")
                 if fresh:
                     self.store.log(b["id"], f"새 리뷰 이벤트 {len(fresh)}건 → 수정 실행")
                     self._launch(b, self._fix_kind(b), fresh)
