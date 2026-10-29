@@ -13,6 +13,7 @@ and Method C's checkpoint; only execution helpers are shared.
 from __future__ import annotations
 
 import json
+import hashlib
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -42,6 +43,7 @@ class ABChunkError(Exception):
 class Names:
     directory: str
     checkpoint: str
+    canonical: str
     output: str
 
 
@@ -49,6 +51,7 @@ def names(b) -> Names:
     shard, batch, method, model = b["shard"], b["batch"], b["method"], b["producer"]
     directory = f"{SCRATCH}/{shard}_{batch}_{method}_{model}"
     return Names(directory=directory, checkpoint=f"{directory}/checkpoint.json",
+                 canonical=f"data/canonical/stdict-{int(shard):04d}.jsonl",
                  output=f"data/relation-candidates/{shard}/{shard}_{batch}_{method}_{model}.jsonl")
 
 
@@ -402,6 +405,8 @@ def pr_body(label: str, b, coverage: dict) -> str:
 
 # ---- review fixes (`fix_new`): the reviewer's fixed list, its exact source rows, and the out-of-list diff ---------------
 _TOKEN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]*")   # the ID alphabet; `/`, spaces and punctuation separate tokens
+_SENSE_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]*-s[1-9]\d*")
+_QUOTED = re.compile(r"`([^`\n]+)`|'((?:\\.|[^'\\])*)'|\"((?:\\.|[^\"\\])*)\"")
 
 
 def _candidate_rows(text: str) -> dict[tuple[str, str], list[str]]:
@@ -414,21 +419,42 @@ def _candidate_rows(text: str) -> dict[tuple[str, str], list[str]]:
     return out
 
 
-def fix_scope(worktree, b, review_text: str) -> tuple[set[tuple[str, str]], str]:
-    """The (record_id, sense_id) pairs the review text names (by exact id membership in this batch's Candidate file)
-    and a compact source context for them: Canonical lemma / pos / full gloss plus the saved candidates."""
+def _review_quotes(review_text: str) -> set[str]:
+    """Quoted review strings are evidence only when they exactly equal a saved Candidate string."""
+    values = set()
+    for match in _QUOTED.finditer(review_text):
+        value = next((part for part in match.groups() if part is not None), None)
+        if value is not None:
+            values.add(value)
+    return values
+
+
+def fix_scope_data(worktree, b, review_text: str, output_path: str | None = None,
+                   canonical_path: str | None = None) -> tuple[set[tuple[str, str]], str, dict[str, str]]:
+    """Find review-named Candidate senses and return bounded source context plus per-sense content digests.
+
+    Exact Sense IDs establish scope. An exact quoted Candidate can locate source context only when the review names no
+    Sense ID; a candidate repeated across senses remains ambiguous for the prompt to resolve, never an edit grant.
+    """
     root = Path(worktree)
+    output_path = output_path or names(b).output
+    canonical_path = canonical_path or names(b).canonical
     try:
-        saved = _candidate_rows((root / names(b).output).read_text("utf-8"))
+        saved = _candidate_rows((root / output_path).read_text("utf-8"))
     except (OSError, ValueError, KeyError) as e:
         raise ABChunkError(f"리뷰 대상 Candidate 파일을 읽을 수 없습니다: {e}") from e
     senses = {sid: (rid, sid) for rid, sid in saved}
     tokens = {t for raw in _TOKEN.findall(review_text) for t in (raw, raw.rstrip(".:-_"))}   # "w1-s1." ends a sentence
-    allowed = {senses[t] for t in tokens if t in senses}   # only a named sense; a record id alone names no sense
+    mentioned_senses = {t for t in tokens if _SENSE_ID.fullmatch(t)}
+    allowed = {senses[t] for t in mentioned_senses if t in senses}
+    if not mentioned_senses:
+        quoted = _review_quotes(review_text)
+        allowed = {(rid, sid) for (rid, sid), candidates in saved.items()
+                   if any(candidate in quoted for candidate in candidates)}
     start = (int(b["batch"]) - 1) * 500
     canonical: dict[str, dict] = {}
     try:
-        with open(root / f"data/canonical/stdict-{int(b['shard']):04d}.jsonl", "rb") as fh:
+        with open(root / canonical_path, "rb") as fh:
             for i, line in enumerate(fh):
                 if i >= start + 500:
                     break
@@ -439,12 +465,28 @@ def fix_scope(worktree, b, review_text: str) -> tuple[set[tuple[str, str]], str]
     except (OSError, ValueError, KeyError) as e:
         raise ABChunkError(f"Canonical를 읽을 수 없습니다: {e}") from e
     lines = ["source_context (리뷰가 지목한 sense의 Canonical 근거와 저장 후보; `record_id⇥sense_id⇥표제어⇥품사⇥뜻풀이⇥저장 후보`):"]
+    digests: dict[str, str] = {}
     for rid, sid in sorted(allowed):
         record = canonical.get(rid)
         sense = next((s for s in (record or {}).get("senses", []) if s["id"] == sid), None)
         if record and sense:
+            digest_source = json.dumps([record["lemma"], sense["gloss"], saved[(rid, sid)]],
+                                       ensure_ascii=False, separators=(",", ":"))
+            digests[sid] = hashlib.sha256(digest_source.encode("utf-8")).hexdigest()
             lines.append("\t".join([rid, sid, record["lemma"], str(sense.get("pos", "")), sense["gloss"],
                                     " | ".join(saved[(rid, sid)])]))
     if len(lines) == 1:
-        lines.append("(리뷰 본문에서 식별된 sense 없음 — 리뷰가 명시한 항목만 직접 따른다)")
-    return allowed, "\n".join(lines) + "\n"
+        if mentioned_senses:
+            lines.append("(명시된 Sense ID 중 현재 Candidate 배치에 있는 항목 없음 — 추측하지 않는다)")
+        else:
+            lines.append("(정확히 일치하는 인용 후보 없음 — Record ID만으로 Sense를 선택하지 않는다)")
+    elif not mentioned_senses and len(allowed) > 1:
+        lines.insert(1, "(인용 후보가 여러 Sense에 있어 탐색 근거만 제공한다. 리뷰가 Sense를 특정하지 않으면 임의 수정하지 않는다)")
+    return allowed, "\n".join(lines) + "\n", digests
+
+
+def fix_scope(worktree, b, review_text: str, output_path: str | None = None,
+              canonical_path: str | None = None) -> tuple[set[tuple[str, str]], str]:
+    """Compatibility view of :func:`fix_scope_data` for callers that need only IDs and displayed evidence."""
+    allowed, context, _ = fix_scope_data(worktree, b, review_text, output_path, canonical_path)
+    return allowed, context

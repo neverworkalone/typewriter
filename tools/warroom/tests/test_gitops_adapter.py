@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 
 from warroom.adapters import OpenCodeAdapter, RunSpec
-from warroom.gitops import CleanupBlocked, Git, GitError
+from warroom.gitops import (CleanupBlocked, FastForwardBlocked, FastForwardRace, Git, GitError)
 from warroom.shell import Result, Runner
 
 ENV = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t",
@@ -26,6 +26,7 @@ class RealGit(unittest.TestCase):
         sh("git", "init", "-q", "--bare", "-b", "master", "origin.git", cwd=t)
         sh("git", "clone", "-q", "origin.git", "repo", cwd=t)
         self.repo = t / "repo"
+        self.other_no = 0
         (self.repo / "f").write_text("x")
         sh("git", "add", "f", cwd=self.repo)
         sh("git", "commit", "-qm", "init", cwd=self.repo)
@@ -104,8 +105,10 @@ class RealGit(unittest.TestCase):
         sh("git", "commit", "-qm", "work", cwd=self.wt)
         sh("git", "push", "-q", "origin", f"HEAD:refs/heads/{branch}", cwd=self.wt)
         old = self.git.head(self.wt)
-        other = Path(self.tmp.name) / "other"
-        sh("git", "clone", "-q", "-b", branch, str(Path(self.tmp.name) / "origin.git"), "other", cwd=self.tmp.name)
+        self.other_no += 1
+        other = Path(self.tmp.name) / f"other-{self.other_no}"
+        self.other = other
+        sh("git", "clone", "-q", "-b", branch, str(Path(self.tmp.name) / "origin.git"), str(other), cwd=self.tmp.name)
         for i in (1, 2):                                    # more than one new commit
             (other / f"u{i}").write_text("u")
             sh("git", "add", f"u{i}", cwd=other)
@@ -141,6 +144,54 @@ class RealGit(unittest.TestCase):
         with self.assertRaises(CleanupBlocked):
             self.git.remove_owned(self.wt, "a-x-001-01", "0" * 40)
         self.assertTrue(self.wt.exists())
+
+    def test_update_branch_fast_forward_requires_unchanged_protected_artifact(self):
+        branch = "a-x-001-01"
+        old, new = self._pr_branch_advanced_remotely(branch)
+        returned = self.git.fast_forward_open_pr(self.wt, branch, new, {"n"})
+        self.assertEqual(returned, old)
+        self.assertEqual(self.git.head(self.wt), new)
+        self.assertEqual(self.git.dirty(self.wt), "")
+
+    def test_update_branch_fast_forward_blocks_protected_artifact_change(self):
+        branch = "a-x-001-01"
+        old, new = self._pr_branch_advanced_remotely(branch)
+        other = self.other
+        (other / "n").write_text("candidate changed by Update branch")
+        sh("git", "add", "n", cwd=other)
+        sh("git", "commit", "-qm", "change protected candidate", cwd=other)
+        sh("git", "push", "-q", "origin", f"HEAD:refs/heads/{branch}", cwd=other)
+        changed = subprocess.run(["git", "rev-parse", "HEAD"], cwd=other, env=ENV, check=True,
+                                 capture_output=True, text=True).stdout.strip()
+        with self.assertRaises(FastForwardBlocked):
+            self.git.fast_forward_open_pr(self.wt, branch, changed, {"n"})
+        self.assertEqual(self.git.head(self.wt), old)
+
+    def test_update_branch_fast_forward_refuses_local_divergence(self):
+        branch = "a-x-001-01"
+        old, remote = self._pr_branch_advanced_remotely(branch)
+        (self.wt / "local-only").write_text("local")
+        sh("git", "add", "local-only", cwd=self.wt)
+        sh("git", "commit", "-qm", "local only", cwd=self.wt)
+        diverged = self.git.head(self.wt)
+        with self.assertRaises(FastForwardBlocked):
+            self.git.fast_forward_open_pr(self.wt, branch, remote, {"n"})
+        self.assertEqual(self.git.head(self.wt), diverged)
+
+    def test_update_branch_fast_forward_refuses_remote_race_before_merge(self):
+        branch = "a-x-001-01"
+        old, remote = self._pr_branch_advanced_remotely(branch)
+        other = self.other
+
+        def move_remote():
+            (other / "u3").write_text("race")
+            sh("git", "add", "u3", cwd=other)
+            sh("git", "commit", "-qm", "move during pre-FF recheck", cwd=other)
+            sh("git", "push", "-q", "origin", f"HEAD:refs/heads/{branch}", cwd=other)
+
+        with self.assertRaises(FastForwardRace):
+            self.git.fast_forward_open_pr(self.wt, branch, remote, {"n"}, recheck=move_remote)
+        self.assertEqual(self.git.head(self.wt), old)
 
     def test_scratch_dir_is_ignored_but_other_untracked_files_still_block(self):
         from warroom.gitops import SCRATCH_DIR

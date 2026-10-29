@@ -993,12 +993,22 @@ const sourceLabel = (source) => [source.title, source.author].filter(Boolean).jo
  * Read the next chunk of unsubmitted senses with all their sampled contexts in one result and one index connection.
  * Zero-hit senses are recorded in the same single write; senses with hits are never recorded until the AI submits them.
  */
-export async function readLiteraryChunk({ databasePath, checkpointPath, senseIds, limit, contexts, snippetChars, scratchDirectory = path.resolve(CHECKPOINT_SCRATCH_DIRECTORY) }) {
+export async function readLiteraryChunk({ databasePath, checkpointPath, senseIds, limit, contexts, skip, format = 'json', outputBudget, snippetChars, scratchDirectory = path.resolve(CHECKPOINT_SCRATCH_DIRECTORY) }) {
   const senseLimit = boundedInteger(limit, CHUNK_DEFAULT_SENSES, 1, 50, 'chunk limit');
   const contextLimit = boundedInteger(contexts, CHUNK_DEFAULT_CONTEXTS, 1, MAX_CONTEXTS_PER_SENSE, 'contexts per sense');
+  const skipProvided = skip !== undefined;
+  const enforceOutputBudget = skipProvided || outputBudget !== undefined;
+  const maxOutputChars = outputBudget ?? MAX_RESPONSE_CHARS;
+  const skippedContexts = boundedInteger(skip, 0, 0, contextLimit - 1, 'skip');
+  if (skipProvided && (typeof senseIds !== 'string' || senseIds.length === 0)) fail('--sense-ids is required when skip is specified');
+  if (skipProvided && !['json', 'text'].includes(format)) fail('chunk output format must be json or text');
   const snippetLimit = validateSnippetChars(snippetChars);
+  const requested = senseIds === undefined ? null : String(senseIds).split(',');
+  if (requested && (requested.length === 0 || requested.some((item) => !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u.test(item)))) {
+    fail('--sense-ids must be a comma-separated list of valid ids');
+  }
+  if (requested && new Set(requested).size !== requested.length) fail('--sense-ids must contain unique ids');
   const { checkpoint, path: resolvedCheckpoint } = await loadLiteraryCheckpoint(checkpointPath, { scratchDirectory });
-  const requested = senseIds ? [...new Set(String(senseIds).split(',').map((item) => item.trim()).filter(Boolean))] : null;
   if (requested) for (const senseId of requested) findSense(checkpoint, senseId);
   const targets = checkpoint.records.flatMap((record) => record.senses
     .filter((sense) => (requested ? requested.includes(sense.sense_id) : !senseDone(sense)))
@@ -1010,6 +1020,7 @@ export async function readLiteraryChunk({ databasePath, checkpointPath, senseIds
     let usedChars = 0;
     let zeroHitRecorded = 0;
     let shownRecorded = 0;
+    const shownUpdates = [];
     let unqueried = 0;
     let full = false;
     for (const { record, sense } of targets) {
@@ -1036,6 +1047,21 @@ export async function readLiteraryChunk({ databasePath, checkpointPath, senseIds
         }
         continue;
       }
+      const digest = formsDigest(forms);
+      const allUnitRowIds = result.results.map((row) => row._private.locator.unit_rowid);
+      if (skippedContexts > 0) {
+        const prior = sense.shown;
+        if (!prior || prior.forms_sha256 !== digest || !Array.isArray(prior.unit_rowids)
+          || prior.unit_rowids.length < skippedContexts) {
+          fail('skip requires matching previously shown context evidence for this sense');
+        }
+        const priorPrefix = prior.unit_rowids.slice(0, skippedContexts);
+        if (priorPrefix.length !== skippedContexts
+          || priorPrefix.some((unitRowId, index) => unitRowId !== allUnitRowIds[index])) {
+          fail('skip context order no longer matches previously shown evidence for this sense');
+        }
+      }
+      const visibleResults = result.results.slice(skippedContexts);
       const item = {
         sense_id: sense.sense_id,
         lemma: record.lemma,
@@ -1044,7 +1070,7 @@ export async function readLiteraryChunk({ databasePath, checkpointPath, senseIds
         ...(forms.length > 1 ? { forms } : {}),
         total_hits: result.total_hits,
         unseen_hits: Math.max(0, result.total_hits - result.results.length),
-        contexts: result.results.map((row) => ({ k: row.locator_key.slice(0, SHORT_KEY_LENGTH), src: sourceLabel(row.source), x: row.excerpt })),
+        contexts: visibleResults.map((row) => ({ k: row.locator_key.slice(0, SHORT_KEY_LENGTH), src: sourceLabel(row.source), x: row.excerpt })),
       };
       const size = JSON.stringify(item).length;
       if (items.length > 0 && usedChars + size > CHUNK_RESPONSE_CHARS) {
@@ -1054,15 +1080,10 @@ export async function readLiteraryChunk({ databasePath, checkpointPath, senseIds
       }
       usedChars += size;
       items.push(item);
-      // Remember only which units were shown (not text), so `submit` need not repeat this search.
-      const digest = formsDigest(forms);
-      const earlier = sense.shown?.forms_sha256 === digest ? sense.shown.unit_rowids : [];
-      sense.shown = { forms_sha256: digest, total_hits: result.total_hits, unit_rowids: [...new Set([...earlier, ...result.results.map((row) => row._private.locator.unit_rowid)])] };
-      shownRecorded += 1;
+      shownUpdates.push({ sense, digest, totalHits: result.total_hits, unitRowIds: allUnitRowIds });
     }
-    if (zeroHitRecorded > 0 || shownRecorded > 0) await saveCheckpoint(resolvedCheckpoint, checkpoint);
     const progress = checkpointSummary(checkpoint).coverage;
-    return {
+    const response = {
       contract: LITERARY_CONTEXT_CONTRACT,
       status: 'READY',
       batch: { shard: checkpoint.batch.shard, batch: checkpoint.batch.batch },
@@ -1072,6 +1093,43 @@ export async function readLiteraryChunk({ databasePath, checkpointPath, senseIds
       not_yet_read: unqueried,
       items,
     };
+    if (enforceOutputBudget && format === 'text') {
+      const actualChars = renderChunkText(response).length;
+      if (actualChars > maxOutputChars) {
+        const error = new Error('chunk response exceeds the output budget');
+        error.code = 'LITERARY_OUTPUT_LIMIT';
+        error.actualChars = actualChars;
+        error.format = format;
+        throw error;
+      }
+    } else if (enforceOutputBudget) {
+      const responseChars = () => JSON.stringify(response).length;
+      while (responseChars() > maxOutputChars && response.items.length > 0) {
+        response.items.pop();
+        response.truncated = true;
+        response.has_more = true;
+        response.returned = response.items.length;
+        response.next_offset = null;
+      }
+      const actualChars = responseChars();
+      if (actualChars > maxOutputChars) {
+        const error = new Error('chunk response exceeds the output budget');
+        error.code = 'LITERARY_OUTPUT_LIMIT';
+        error.actualChars = actualChars;
+        error.format = format;
+        throw error;
+      }
+    }
+    const returnedSenseIds = enforceOutputBudget ? new Set(response.items.map((item) => item.sense_id)) : null;
+    for (const { sense, digest, totalHits, unitRowIds } of shownUpdates) {
+      if (returnedSenseIds && !returnedSenseIds.has(sense.sense_id)) continue;
+      // Keep the accumulated lookup order. For skip reads the first `skip` row ids were already shown and verified above.
+      const earlier = sense.shown?.forms_sha256 === digest ? sense.shown.unit_rowids : [];
+      sense.shown = { forms_sha256: digest, total_hits: totalHits, unit_rowids: [...new Set([...earlier, ...unitRowIds])] };
+      shownRecorded += 1;
+    }
+    if (zeroHitRecorded > 0 || shownRecorded > 0) await saveCheckpoint(resolvedCheckpoint, checkpoint);
+    return response;
   } finally {
     database.close();
   }
@@ -1275,9 +1333,9 @@ export function reportLiteraryCheckpointSenses(checkpoint, senseIdList) {
   };
 }
 
-/** Lossless text view of a `chunk` result: the same content as the documented one-call `jq` formatting. */
+/** Text view of the returned `chunk` items in the documented one-call `jq` format. */
 export function renderChunkText(result) {
-  const head = `batch=${result.batch.shard}_${result.batch.batch} done=${result.done_senses}/${result.total_senses} zero_hit=${result.zero_hit_recorded} not_yet_read=${result.not_yet_read}\n\n`;
+  const head = `batch=${result.batch.shard}_${result.batch.batch} done=${result.done_senses}/${result.total_senses} zero_hit=${result.zero_hit_recorded} not_yet_read=${result.not_yet_read}${result.truncated ? ' truncated=true' : ''}\n\n`;
   const items = result.items.map((item) => {
     if (!Array.isArray(item.contexts)) return `## ${item.sense_id} — ${item.status}`;
     return `## ${item.sense_id} — ${item.lemma} [${item.pos}]\n${item.gloss}\n`
