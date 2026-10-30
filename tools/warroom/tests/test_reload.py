@@ -1,8 +1,4 @@
-"""Reload (`r`): the Supervisor re-reads config.json at runtime, fail-closed, without touching run pins.
-
-Invariant: the running config is replaced only by a config that passes every start-time check; a rejected
-reload leaves the old config, and an unfinished batch keeps relaunching on its recorded model + effort.
-"""
+"""Reload (`r`): the Supervisor re-reads config.json at runtime, fail-closed; each new run uses the loaded settings."""
 import json
 import unittest
 
@@ -97,7 +93,7 @@ class ReloadTable(unittest.TestCase):
         self.assertEqual(self.w.store.get("reload_done"), self.w.store.get("reload_req"))
 
 
-class ReloadUnblocksAndPins(unittest.TestCase):
+class ReloadUnblocksAndRuns(unittest.TestCase):
     def setUp(self):
         self.w = World()
         write(self.w, {"deepseek": DS})
@@ -128,40 +124,28 @@ class ReloadUnblocksAndPins(unittest.TestCase):
         self.assertIn("등록되지 않은 모델", self.w.store.line("claude", "a")["blocked"])
         self.assertNotIn("claude", self.w.sup.cfg["producers"])
 
-    def test_running_batch_pin_is_not_bypassed_by_reload(self):
+    def test_running_batch_uses_reloaded_model_and_effort_on_its_next_run(self):
         write(self.w, {"deepseek": DS, "claude": SONNET})
         reload(self.w)
+        self.w.adapter.plan.append({"session": "session-before-reload"})
         self.w.start("single", "claude")
+        self.w.tick(2)
+        bid = self.w.store.active_batch("claude", "a")["id"]
+        write(self.w, {"deepseek": DS, "claude": {**SONNET, "model": "opus", "effort": "high"}})
+        self.assertTrue(reload(self.w)[0])
+        control.stop_line(self.w.store, "claude", "a")
         self.w.tick()
-        self.assertEqual(self.w.adapter.launches[-1]["effort"], "medium")
-        for name, changed, want_error in [
-            ("effort changed", {**SONNET, "effort": "high"}, True),
-            ("model changed", {**SONNET, "model": "opus"}, True),
-            ("label only", {**SONNET, "label": "Renamed"}, False),
-            ("restored", SONNET, False),
-        ]:
-            with self.subTest(name):
-                write(self.w, {"deepseek": DS, "claude": changed})
-                self.assertTrue(reload(self.w)[0])
-                control.stop_line(self.w.store, "claude", "a")
-                self.w.tick()
-                b = self.w.store.active_batch("claude", "a")
-                self.assertEqual(b["state"], "PAUSED")
-                control.retry(self.w.store, "claude", "a")
-                self.w.tick(2)
-                b = self.w.store.active_batch("claude", "a")
-                if want_error:
-                    self.assertEqual(b["state"], "ERROR", name)
-                    self.assertIn("실행 설정 변경 차단", b["error"])
-                    self.assertIn("리로드", b["error"])
-                    write(self.w, {"deepseek": DS, "claude": SONNET})   # restore through reload, then Retry
-                    reload(self.w)
-                    control.retry(self.w.store, "claude", "a")
-                    self.w.tick(2)
-                    b = self.w.store.active_batch("claude", "a")
-                self.assertEqual(b["state"], "PRODUCING", name)
-                self.assertEqual((self.w.adapter.launches[-1]["model"], self.w.adapter.launches[-1]["effort"]),
-                                 ("sonnet", "medium"))
+        control.retry(self.w.store, "claude", "a")
+        self.w.tick(2)
+
+        batch = self.w.store.active_batch("claude", "a")
+        self.assertEqual(batch["state"], "PRODUCING")
+        self.assertEqual((self.w.adapter.launches[-1]["kind"], self.w.adapter.launches[-1]["model"],
+                          self.w.adapter.launches[-1]["effort"], self.w.adapter.launches[-1]["session"]),
+                         ("resume", "opus", "high", "session-before-reload"))
+        runs = self.w.store.runs(bid)
+        self.assertEqual((runs[0]["model"], runs[0]["effort"]), ("opus", "high"))
+        self.assertEqual((runs[1]["model"], runs[1]["effort"]), ("sonnet", "medium"))
 
 NUMERIC = [  # key, value, accepted
     ("poll_seconds", 0, True), ("poll_seconds", 300, True), ("poll_seconds", 2.5, True),

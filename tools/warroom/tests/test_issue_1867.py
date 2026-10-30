@@ -1,5 +1,4 @@
-"""Issue #1867: model profiles + per-stage assignments. Stage 1 (A/B/C/D), Stage 2 and the Maintainer resolve their own
-profile (adapter/model/effort/permission_profile) from config; producer identity, pins and fail-closed rules are unchanged."""
+"""Issue #1867: model profiles + per-stage assignments resolve current settings for each new run."""
 import json
 import unittest
 from pathlib import Path
@@ -155,11 +154,15 @@ class ReloadAndRuns(unittest.TestCase):
         w.tick()
         self.assertIn("시작 차단", w.store.peek_line("claude", "a")["blocked"])
 
-    def test_running_batch_keeps_its_recorded_pin_across_an_assignment_change(self):
+    def test_running_batch_uses_reloaded_assignment_and_keeps_each_run_record(self):
         w = self.world()
+        w.adapter.plan.append({"session": "session-first"})
         w.start("single", "codex", "a")
-        w.tick()
-        self.assertEqual(w.adapter.launches[-1]["effort"], "high")
+        w.tick(2)
+        bid = w.row("codex", "a")["id"]
+        first = w.store.runs(bid)[0]
+        self.assertEqual((first["model"], first["effort"], first["permission_profile"]),
+                         ("gpt-6-luna", "high", "worktree"))
         write(w, PRODUCERS, model_profiles=PROFILES,
               assignments={**ASSIGN, "stage1": {**ASSIGN["stage1"], "codex": "luna-xhigh"}})
         self.assertTrue(reload(w)[0])
@@ -167,22 +170,44 @@ class ReloadAndRuns(unittest.TestCase):
         w.tick()
         control.retry(w.store, "codex", "a")
         w.tick(2)
-        b = w.store.active_batch("codex", "a")
-        self.assertEqual(b["state"], "ERROR")
-        self.assertIn("실행 설정 변경 차단", b["error"])
-        write(w, PRODUCERS, model_profiles=PROFILES, assignments=ASSIGN)   # restore: resumes on the recorded pin
-        self.assertTrue(reload(w)[0])
-        control.retry(w.store, "codex", "a")
-        w.tick(2)
-        self.assertEqual(w.store.active_batch("codex", "a")["state"], "PRODUCING")
-        self.assertEqual(w.adapter.launches[-1]["effort"], "high")
-        # a different Line starting after the change uses the new assignment
-        write(w, PRODUCERS, model_profiles=PROFILES,
-              assignments={**ASSIGN, "stage1": {**ASSIGN["stage1"], "codex": "luna-xhigh"}})
-        self.assertTrue(reload(w)[0])
+        batch = w.store.active_batch("codex", "a")
+        self.assertEqual(batch["state"], "PRODUCING")
+        self.assertEqual((w.adapter.launches[-1]["kind"], w.adapter.launches[-1]["model"],
+                          w.adapter.launches[-1]["effort"], w.adapter.launches[-1]["permission_profile"],
+                          w.adapter.launches[-1]["session"]),
+                         ("resume", "gpt-6-luna", "xhigh", "worktree", "session-first"))
+        runs = w.store.runs(bid)
+        self.assertEqual((runs[0]["model"], runs[0]["effort"], runs[0]["permission_profile"]),
+                         ("gpt-6-luna", "xhigh", "worktree"))
+        self.assertEqual((runs[1]["model"], runs[1]["effort"], runs[1]["permission_profile"]),
+                         ("gpt-6-luna", "high", "worktree"))
+        self.assertEqual((runs[0]["session_id"], runs[1]["session_id"]),
+                         ("session-first", "session-first"))
+        # A different Line also starts from the currently loaded assignment.
         w.start("single", "codex", "b")
         w.tick()
         self.assertEqual(w.adapter.launches[-1]["effort"], "xhigh")
+
+    def test_running_batch_uses_reloaded_permission_profile(self):
+        w = self.world()
+        w.adapter.plan.append({"session": "session-profile"})
+        w.start("single", "codex", "a")
+        w.tick(2)
+        bid = w.row("codex", "a")["id"]
+        profiles = {**PROFILES, "luna-high-restricted": {
+            "adapter": "codex", "model": "gpt-6-luna", "effort": "high", "permission_profile": "restricted"}}
+        assignments = {**ASSIGN, "stage1": {**ASSIGN["stage1"], "codex": "luna-high-restricted"}}
+        write(w, PRODUCERS, model_profiles=profiles, assignments=assignments)
+        self.assertTrue(reload(w)[0])
+        control.stop_line(w.store, "codex", "a")
+        w.tick()
+        control.retry(w.store, "codex", "a")
+        w.tick(2)
+        runs = w.store.runs(bid)
+        self.assertEqual((runs[0]["model"], runs[0]["effort"], runs[0]["permission_profile"]),
+                         ("gpt-6-luna", "high", "restricted"))
+        self.assertEqual((runs[1]["model"], runs[1]["effort"], runs[1]["permission_profile"]),
+                         ("gpt-6-luna", "high", "worktree"))
 
     def test_maintainer_runs_its_profile_and_switches_by_profile_id_only(self):
         for profile, model, effort in (("luna-xhigh", "gpt-6-luna", "xhigh"), ("sonnet-medium", "claude-sonnet-5-5", "medium")):

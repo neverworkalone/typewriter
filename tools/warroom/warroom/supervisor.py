@@ -1113,30 +1113,6 @@ class Supervisor:
         return RunSpec(r["model"], r["effort"], r["permission_profile"] or "") if r else None
 
     @staticmethod
-    def _pin_drift(b, run: RunSpec, tiered: bool, runs, tier_models=None) -> str | None:
-        """Every relaunch of a batch (resume, recovery, fix) runs on the pin its last recorded run used.
-
-        The only model change allowed is a tiered CLI's Free -> Go switch of its own configured IDs (`tier_models` is
-        (free, go)). Any other model change, and any effort change, stops the batch before a process starts.
-        """
-        prev = next((r for r in runs if r["effort"]), None)
-        if prev is None:   # a run from before pins were recorded: nothing to compare with
-            return None
-        same_model = prev["model"] == run.model
-        free_to_go = False
-        if tiered and tier_models:
-            free, go = tier_models
-            free_to_go = bool(free and go) and prev["model"] == free and run.model == go
-        # NULL = recorded before profiles were tracked: nothing to compare. '' = recorded with no profile.
-        prev_profile = prev["permission_profile"]
-        profile_drift = prev_profile is not None and prev_profile != run.permission_profile
-        if prev["effort"] != run.effort or profile_drift or (not same_model and not (tiered and free_to_go)):
-            was = f"{prev['model']} / {prev['effort']}" + (f" / {prev_profile or '(프로필 없음)'}" if prev_profile is not None else "")
-            now = f"{run.model} / {run.effort}" + (f" / {run.permission_profile or '(프로필 없음)'}" if prev_profile is not None else "")
-            return (f"실행 설정 변경 차단: 기록된 실행 설정 {was} 과 현재 설정 "
-                    f"{now} 이 다릅니다. 설정을 되돌리고 Board에서 r(설정 리로드) 후 Retry 하세요.")
-        return None
-
     def _agent_env(self) -> dict:
         """Worker CLIs run with the normal environment (and normal Git). The Git binaries on PATH are only recorded so
         a Stage 2 chunk can have them blocked; with none found, only that chunk fails closed (`stage2_git_executables`)."""
@@ -1152,7 +1128,7 @@ class Supervisor:
         return env
 
     def _launch(self, b, kind: str, events=None) -> None:
-        """Launch one pinned run; Stage 2 runs cover primary chunks, optional links and fresh review fixes."""
+        """Launch one run with the current effective settings; Stage 2 covers chunks, links and fresh review fixes."""
         ts = int(self.clock())
         while any((self.paths.logs / f"batch-{b['id']}-{ts}.{x}").exists() for x in ("log", "exit")):
             ts += 1   # one launch per log: a launch in the same second must not reuse (and append to) an earlier log
@@ -1164,11 +1140,6 @@ class Supervisor:
             run = self._run(b)
         except ValueError as e:
             return self._fail(b, "ERROR", f"실행 설정 오류로 AI를 시작하지 않았습니다: {e}")
-        p = registry(self.cfg)[b["producer"]]
-        tier_models = (p["models"].get("free", ""), p["models"].get("go", "")) if self._tiered(b["producer"]) else None
-        drift = self._pin_drift(b, run, self._tiered(b["producer"]), self.store.runs(b["id"]), tier_models)
-        if drift:
-            return self._fail(b, "ERROR", drift)
         if kind.startswith("fix") and b["method"] in ("a", "b", "c", "d") and not events:
             return self._fail(b, "ERROR", "현재 PR HEAD에 유효한 리뷰 수정 이벤트가 없어 AI를 시작하지 않았습니다. 오래된 HEAD 이벤트는 되살리지 않습니다.")
         # Every launch proves the CLI again (cached once proven); C review fixes also need the approved source index.
@@ -3460,10 +3431,6 @@ class Supervisor:
             run = RunSpec(last["model"], last["effort"], last["permission_profile"] or "") if last["model"] else None
             if run is None:
                 return "마지막 AI 실행의 모델 핀 기록이 없습니다"
-            p = registry(self.cfg)[b["producer"]]
-            tier_models = (p["models"].get("free", ""), p["models"].get("go", "")) if self._tiered(b["producer"]) else None
-            if problem := self._pin_drift(b, self._run(b), self._tiered(b["producer"]), runs, tier_models):
-                return problem
             if ad.output_identity_problem(Path(last["log_file"]), run, last["session_id"], wt, self.env):
                 return "마지막 AI 실행의 소유권 또는 모델 핀 로그를 확인하지 못했습니다"
             if ad.completion_problem(Path(last["log_file"]), run, last["session_id"], wt, self.env):
