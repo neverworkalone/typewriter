@@ -30,10 +30,7 @@ TMUX_SUP = "warroom-supervisor"
 SUPERVISOR_STARTUP_GRACE_SECONDS = 20
 SUPERVISOR_RETRY_COOLDOWN_SECONDS = 5
 SCHEDULE_HOURS = [(f"{hour:02d}:00", f"{hour:02d}") for hour in range(24)]
-
-
-def _next_schedule_hour() -> str:
-    return f"{(time.localtime().tm_hour + 1) % 24:02d}"
+DEFAULT_SCHEDULE_HOUR = "09"
 
 
 def ensure_supervisor(paths: Paths) -> tuple[str, str | None]:
@@ -234,7 +231,7 @@ class LineDetail(Screen):
             yield Static(id="meta")
         with Horizontal(id="line-controls"):
             yield Button("Drain", id="drain")
-            yield Select(SCHEDULE_HOURS, value=_next_schedule_hour(), allow_blank=False, id="drain-time")
+            yield Select(SCHEDULE_HOURS, value=DEFAULT_SCHEDULE_HOUR, allow_blank=False, id="drain-time")
             yield Button("Schedule", id="schedule-drain")
             yield Button("Stop", id="stop", variant="error")
             yield Button("Retry", id="retry")
@@ -629,7 +626,7 @@ class WarRoom(App):
                          value="single", allow_blank=False, id="mode")
             yield Button("Start", id="start", variant="success")
             yield Button("Drain All", id="drain-all")
-            yield Select(SCHEDULE_HOURS, value=_next_schedule_hour(), allow_blank=False, id="drain-all-time")
+            yield Select(SCHEDULE_HOURS, value=DEFAULT_SCHEDULE_HOUR, allow_blank=False, id="drain-all-time")
             yield Button("Schedule", id="schedule-all")
         with HorizontalScroll(id="columns"):
             for model in self._lines():
