@@ -4857,7 +4857,7 @@ class Supervisor:
             return self._fail(b, "ERROR", f"정리 차단(보존): {e}")
         except Exception as e:
             return self._fail(b, "ERROR", f"정리 실패(보존): {e}")
-        self.store.update(b["id"], state="COMPLETE", error=None)
+        self.store.complete_batch(b["id"])
         self._clear_batch_retry(b["id"])
         self.store.delete(f"pr_create_{b['id']}")
         self.store.delete(f"cleanup_proof_{b['id']}")
@@ -4866,16 +4866,6 @@ class Supervisor:
             self.store.delete(stage2.run_start_key(b["id"]))
         self.store.finish_runs(b["id"], None)
         self.store.log(b["id"], f"배치 {b['shard']}_{b['batch']} 정리 완료")
-        ln = self.store.line(b["producer"], b["method"])
-        if b["method"] == MAINTENANCE_METHOD:   # Drain outlives the Issue (it stops the NEXT claim); only Cancel Drain ends it
-            return self.store.set_line(b["producer"], b["method"], run=0)
-        if b["method"] == STAGE2_METHOD:   # Single ends when its shard is complete (next pick), not after every Part
-            if ln["drain"]:
-                self.store.set_line(b["producer"], b["method"], run=0, drain=0, shard_pin="")
-            return
-        if ln["mode"] != "continuous" or ln["drain"]:
-            # Single batch done or this Line's Drain took effect.
-            self.store.set_line(b["producer"], b["method"], run=0, drain=0)
 
     def _stage2_merged_verify(self, b, info) -> bool:
         """A merged Part counts only after its exact verify succeeds on the latest master, BEFORE its worktree is removed

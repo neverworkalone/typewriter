@@ -320,6 +320,31 @@ class Store:
         with self._conn() as c:
             c.execute(f"UPDATE batches SET {cols} WHERE id=?", (*fields.values(), batch_id))
 
+    def complete_batch(self, batch_id: int) -> None:
+        """Mark a batch complete and apply its Line's completion policy atomically with Drain requests."""
+        now = time.time()
+        with self._conn() as c:
+            c.execute("BEGIN IMMEDIATE")
+            b = c.execute("SELECT producer, method FROM batches WHERE id=?", (batch_id,)).fetchone()
+            if b is None:
+                return
+            c.execute("UPDATE batches SET state='COMPLETE', error=NULL, updated_at=? WHERE id=?", (now, batch_id))
+            if b["method"] == MAINTENANCE_METHOD:
+                # Maintainer Drain outlives the Issue; cleanup only ends the current run.
+                c.execute("UPDATE lines SET run=0, updated_at=? WHERE model=? AND method=?",
+                          (now, b["producer"], b["method"]))
+            elif b["method"] == STAGE2_METHOD:
+                # Stage 2 keeps its run reservation between Parts unless Drain was requested.
+                c.execute("UPDATE lines SET run=0, drain=0, shard_pin='', updated_at=? "
+                          "WHERE model=? AND method=? AND drain!=0",
+                          (now, b["producer"], b["method"]))
+            else:
+                # This shares the write lock with request_drain_all: a Drain that wins before completion is
+                # cleared here; one that lands after the COMPLETE transition remains armed on the empty Line.
+                c.execute("UPDATE lines SET run=0, drain=0, updated_at=? "
+                          "WHERE model=? AND method=? AND (mode!='continuous' OR drain!=0)",
+                          (now, b["producer"], b["method"]))
+
     def batch(self, batch_id: int):
         with self._conn() as c:
             return c.execute("SELECT * FROM batches WHERE id=?", (batch_id,)).fetchone()

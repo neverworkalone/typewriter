@@ -319,6 +319,30 @@ class DrainAndStop(unittest.TestCase):
         w.tick()
         self.assertEqual(len(w.store.all_batches()), 2)
 
+    def test_drain_all_and_completion_are_serialized_in_both_orders(self):
+        """A Drain before completion ends with the batch; after completion it stays on the empty Line."""
+        for order in ("completion_first", "drain_first"):
+            with self.subTest(order=order):
+                w = multi_world()
+                w.start("continuous", "deepseek", "a")
+                w.tick()
+                batch_id = w.row("deepseek", "a")["id"]
+
+                if order == "completion_first":
+                    w.store.complete_batch(batch_id)
+                    control.drain_all(w.store, [("deepseek", "a")])
+                    self.assertEqual((w.store.peek_line("deepseek", "a")["run"],
+                                      w.store.peek_line("deepseek", "a")["drain"]), (0, 1))
+                else:
+                    control.drain_all(w.store, [("deepseek", "a")])
+                    self.assertEqual((w.store.peek_line("deepseek", "a")["run"],
+                                      w.store.peek_line("deepseek", "a")["drain"]), (1, 1))
+                    w.store.complete_batch(batch_id)
+                    self.assertEqual((w.store.peek_line("deepseek", "a")["run"],
+                                      w.store.peek_line("deepseek", "a")["drain"]), (0, 0))
+                self.assertEqual(w.store.batch(batch_id)["state"], "COMPLETE")
+                w.tmp.cleanup()
+
     def test_controls_landing_between_the_tick_read_and_batch_creation_win(self):
         """Race: the Supervisor read run=1, then Drain All / a Line drain / Stop lands before the batch insert."""
         from unittest import mock
