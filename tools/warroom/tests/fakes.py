@@ -42,6 +42,7 @@ class FakeAdapter(AgentAdapter):
 
     def start(self, prompt, cwd, env, run, title, log_file, exit_file):
         return self._go("start", cwd, log_file, exit_file, prompt=prompt, model=run.model, effort=run.effort,
+                        permission_profile=run.permission_profile,
                         approved_literary_db=env.get("TYPEWRITER_APPROVED_LITERARY_DB"),
                         approved_corpus_db=env.get("TYPEWRITER_APPROVED_CORPUS_DB"),
                         stage2_chunk_git=env.get("WARROOM_STAGE2_CHUNK"),
@@ -54,6 +55,7 @@ class FakeAdapter(AgentAdapter):
 
     def resume(self, session_id, prompt, cwd, env, run, log_file, exit_file):
         return self._go("resume", cwd, log_file, exit_file, prompt=prompt, model=run.model, effort=run.effort,
+                        permission_profile=run.permission_profile,
                         session=session_id, approved_literary_db=env.get("TYPEWRITER_APPROVED_LITERARY_DB"),
                         approved_corpus_db=env.get("TYPEWRITER_APPROVED_CORPUS_DB"),
                         stage2_chunk_git=env.get("WARROOM_STAGE2_CHUNK"),

@@ -795,7 +795,7 @@ class MaintainerConfig(unittest.TestCase):
         self.assertEqual(w.row()["state"], "PAUSED")
         w.tmp.cleanup()
 
-    def test_a_started_task_keeps_its_producer_and_pin_across_reload_and_restart(self):
+    def test_a_started_task_keeps_its_producer_across_maintainer_target_change_and_restart(self):
         w = world()
         produce_and_report(w, "deepseek", "a")
         w.tick(2)
