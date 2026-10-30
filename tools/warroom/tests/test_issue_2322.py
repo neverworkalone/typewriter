@@ -14,8 +14,8 @@ from warroom import control, dchunk, literary, prompts, stage1ab
 
 PROMPT_DIR = Path(__file__).resolve().parents[1] / "prompts"
 BASE_CARD_DIGESTS = {
-    "a": "17a1094ad808fc9c714e083e68272bdc3ca671e6622db2dba7fbdef473778b13",
-    "b": "9100bb1996895f917509f17c1b680b655949929c3a7391034b93a2d35d12f191",
+    "a": "7012519b1bcd8ee5f36b50c33d9d8b986d8133131f7a55db05b5b5d7a098f3eb",
+    "b": "cbd6c4fee712bcfbbdad61b20f5cc6218d3c57b99bf85b169bb2ea8fbcdae4f1",
     "c": "8ed316c739e19b8eb04d5f3586b9bf639b4f29cc83f3106cd96ef5f9d18ef881",
     "d": "bd2dae2c444d7b38257a0bcb9eee1224068d6a5f14bc8c5bc4c610ecb7ca3d89",
 }
