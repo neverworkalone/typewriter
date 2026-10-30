@@ -92,9 +92,8 @@ def board(store: Store, cfg: dict) -> dict:
              for s in statuses.values() if s["blocked"]]
     if not alive:
         notes.insert(0, OFFLINE_MSG)
-    draining = [f"{s['model']}/{control.method_label(s['method'])}" for s in statuses.values() if s["drain_once"]]
     return clean({
-        "now": time.time(), "alive": alive, "notes": notes, "draining": draining,
+        "now": time.time(), "alive": alive, "notes": notes,
         "columns": [{"id": m, "label": reg.get(m, {}).get("label", m)} for m in cols],
         "lines": [_line_view(statuses[k]) for k in keys],
         "maintainer": {"column": maint_col, **control.maintainer_card(store, cfg)} if maint_col else None,

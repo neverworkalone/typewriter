@@ -228,8 +228,6 @@ def detail_header(st: dict, reg: dict, model: str) -> str:
         second.append(f"최근 활동 {_when(st['activity'][0])} {st['activity'][1]}")
     if st["run"]:
         second.append("실행 예약 중")
-    if st["drain_once"]:
-        second.append("Drain All: 현재 배치 후 종료")
     lines.append("  ·  ".join(second))
     if st.get("clear"):
         lines.append("Clear 진행 중: AI 중지 → PR·원격/로컬 브랜치·worktree 정리" if st["clear"]["status"] == "REQUESTED"

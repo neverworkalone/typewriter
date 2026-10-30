@@ -496,7 +496,7 @@ class UpdateBranchSync(unittest.TestCase):
         b = self.update_pr_branch(w)
         w.store.update(b["id"], state="ERROR", paused_from="FIXING", pid=None,
                        error=f"원격 ref와 로컬 HEAD 불일치: 원격 {HEAD2[:10]} / 로컬 {HEAD1[:10]} (미push 또는 분기, PR HEAD {HEAD2[:10]}). 보존.")
-        w.store.set_line("deepseek", "a", run=0, drain=1, drain_once=1)
+        w.store.set_line("deepseek", "a", run=0, drain=1)
         launches = len(w.adapter.launches)
 
         self.assertTrue(control.retry(w.store, "deepseek", "a"))
@@ -508,7 +508,7 @@ class UpdateBranchSync(unittest.TestCase):
         self.assertEqual(w.row()["state"], "WAITING_REVIEW")
         self.assertEqual(w.git.local_head, HEAD2)
         self.assertEqual(len(w.adapter.launches), launches)
-        self.assertEqual((line["drain"], line["drain_once"]), (1, 1))
+        self.assertEqual(line["drain"], 1)
 
 
 class LiveAiHandover(unittest.TestCase):

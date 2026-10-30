@@ -129,8 +129,7 @@ function renderBoard(b) {
     app.replaceChildren(shell.controls, shell.notes, shell.grid);
   }
   shell.controls.refresh(b);
-  const notes = [...b.notes, ...(b.draining.length ? ["DRAIN ALL: 현재 배치 후 종료 — " + b.draining.join(", ")] : []),
-    ...b.urgent.map((u) => u.text)];
+  const notes = [...b.notes, ...b.urgent.map((u) => u.text)];
   const grid = h("div", { class: "board" });
   if (mobile.matches) {
     const act = b.lines.filter((l) => !l.idle).sort((x, y) => (ATTENTION[x.state] ?? 9) - (ATTENTION[y.state] ?? 9));

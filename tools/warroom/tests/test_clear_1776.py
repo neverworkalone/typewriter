@@ -273,7 +273,7 @@ class ClearFailClosed(ClearBase):
 
 class ClearDrain(ClearBase):
     def test_drain_state_does_not_survive_clear_and_cannot_be_set_while_clearing(self):
-        for flags in ({"drain": 1}, {"drain_once": 1}, {"drain": 1, "drain_once": 1}):
+        for flags in ({}, {"drain": 1}):
             with self.subTest(flags):
                 self.tearDown()
                 self.setUp()
@@ -290,7 +290,7 @@ class ClearDrain(ClearBase):
                 w.tick(2)
                 self.assert_idle_and_reusable()
                 ln = w.store.peek_line("deepseek", "a")
-                self.assertEqual((ln["drain"], ln["drain_once"]), (0, 0))
+                self.assertEqual(ln["drain"], 0)
                 w.start("single")                                         # schedulable again
                 w.tick()
                 self.assertEqual(w.row()["batch"], "01")

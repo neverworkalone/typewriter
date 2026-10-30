@@ -68,7 +68,6 @@ CREATE INDEX IF NOT EXISTS events_line ON events(batch_id);
 # Old runs keep NULL; nothing is rewritten.
 RUN_COLUMNS_V3 = ("model", "effort")
 # Additive migration (user_version 4): a one-shot "finish this batch, then stop" request set by Drain All.
-# It is separate from the per-Line `drain` setting, which Drain All never touches.
 # Additive migration (user_version 5): every run also records the Codex permission profile it was pinned to
 # ('' = none configured). Old runs keep NULL, which the pin-drift check treats as "not recorded".
 RUN_COLUMNS_V5 = ("permission_profile",)
@@ -155,8 +154,6 @@ class Store:
     @staticmethod
     def _migrate(c) -> None:
         c.executescript(SCHEMA_V2)
-        if "drain_once" not in {r["name"] for r in c.execute("PRAGMA table_info(lines)")}:
-            c.execute("ALTER TABLE lines ADD COLUMN drain_once INTEGER NOT NULL DEFAULT 0")
         if "line" not in {r["name"] for r in c.execute("PRAGMA table_info(events)")}:
             c.execute("ALTER TABLE events ADD COLUMN line TEXT")
         have = {r["name"] for r in c.execute("PRAGMA table_info(runs)")}
@@ -272,9 +269,9 @@ class Store:
         with self._conn() as c:
             c.execute("BEGIN IMMEDIATE")   # check + insert under one write lock: concurrent Starts cannot both claim
             if from_run:
-                ln = c.execute("SELECT run, drain, drain_once, force_stop FROM lines WHERE model=? AND method=?",
+                ln = c.execute("SELECT run, drain, force_stop FROM lines WHERE model=? AND method=?",
                                (f["producer"], f["method"])).fetchone()
-                if ln is None or not ln["run"] or ln["drain"] or ln["drain_once"] or ln["force_stop"]:
+                if ln is None or not ln["run"] or ln["drain"] or ln["force_stop"]:
                     raise LineNotRunnable(f"{f['producer']}/{f['method']} 라인이 신규 배치를 받을 수 없는 상태입니다.")
             if c.execute("SELECT 1 FROM batches WHERE method=? AND producer=? AND state!='COMPLETE'",
                          (f["method"], f["producer"])).fetchone():
@@ -311,6 +308,31 @@ class Store:
         with self._conn() as c:
             c.execute(f"UPDATE batches SET {cols} WHERE id=?", (*fields.values(), batch_id))
 
+    def complete_batch(self, batch_id: int) -> None:
+        """Mark a batch complete and apply its Line's completion policy atomically with Drain requests."""
+        now = time.time()
+        with self._conn() as c:
+            c.execute("BEGIN IMMEDIATE")
+            b = c.execute("SELECT producer, method FROM batches WHERE id=?", (batch_id,)).fetchone()
+            if b is None:
+                return
+            c.execute("UPDATE batches SET state='COMPLETE', error=NULL, updated_at=? WHERE id=?", (now, batch_id))
+            if b["method"] == MAINTENANCE_METHOD:
+                # Maintainer Drain outlives the Issue; cleanup only ends the current run.
+                c.execute("UPDATE lines SET run=0, updated_at=? WHERE model=? AND method=?",
+                          (now, b["producer"], b["method"]))
+            elif b["method"] == STAGE2_METHOD:
+                # Stage 2 keeps its run reservation between Parts unless Drain was requested.
+                c.execute("UPDATE lines SET run=0, drain=0, shard_pin='', updated_at=? "
+                          "WHERE model=? AND method=? AND drain!=0",
+                          (now, b["producer"], b["method"]))
+            else:
+                # This shares the write lock with request_drain_all: a Drain that wins before completion is
+                # cleared here; one that lands after the COMPLETE transition remains armed on the empty Line.
+                c.execute("UPDATE lines SET run=0, drain=0, updated_at=? "
+                          "WHERE model=? AND method=? AND (mode!='continuous' OR drain!=0)",
+                          (now, b["producer"], b["method"]))
+
     def batch(self, batch_id: int):
         with self._conn() as c:
             return c.execute("SELECT * FROM batches WHERE id=?", (batch_id,)).fetchone()
@@ -340,14 +362,18 @@ class Store:
         with self._conn() as c:
             c.execute("INSERT OR IGNORE INTO lines(model,method,updated_at) VALUES(?,?,?)",
                       (model, method, time.time()))
-            return c.execute("SELECT * FROM lines WHERE model=? AND method=?", (model, method)).fetchone()
+            return c.execute("SELECT model, method, mode, run, drain, force_stop, retry_batch, blocked, model_tier, "
+                             "updated_at, shard_pin FROM lines WHERE model=? AND method=?",
+                             (model, method)).fetchone()
 
     def peek_line(self, model: str, method: str) -> dict:
         """Read-only view of a Line's controls (defaults if it has no row yet); never writes."""
         with self._conn() as c:
-            row = c.execute("SELECT * FROM lines WHERE model=? AND method=?", (model, method)).fetchone()
+            row = c.execute("SELECT model, method, mode, run, drain, force_stop, retry_batch, blocked, model_tier, "
+                            "updated_at, shard_pin FROM lines WHERE model=? AND method=?",
+                            (model, method)).fetchone()
         return dict(row) if row else {"model": model, "method": method, "mode": "single", "run": 0,
-                                      "drain": 0, "drain_once": 0, "force_stop": 0, "retry_batch": None, "blocked": "",
+                                      "drain": 0, "force_stop": 0, "retry_batch": None, "blocked": "",
                                       "model_tier": "free", "shard_pin": ""}
 
     def set_line(self, model: str, method: str, **fields) -> None:
@@ -357,9 +383,49 @@ class Store:
         with self._conn() as c:
             c.execute(f"UPDATE lines SET {cols} WHERE model=? AND method=?", (*fields.values(), model, method))
 
+    def request_start(self, model: str, method: str, mode: str) -> tuple[str, sqlite3.Row | None]:
+        """Reserve a new Stage 1 run unless an active batch or the Line's Drain won the write race."""
+        now = time.time()
+        with self._conn() as c:
+            c.execute("BEGIN IMMEDIATE")
+            active = c.execute("SELECT shard, batch, state FROM batches WHERE producer=? AND method=? "
+                               "AND state!='COMPLETE' ORDER BY id DESC LIMIT 1", (model, method)).fetchone()
+            if active is not None:
+                return "active", active
+            c.execute("INSERT OR IGNORE INTO lines(model,method,updated_at) VALUES(?,?,?)", (model, method, now))
+            ln = c.execute("SELECT drain FROM lines WHERE model=? AND method=?", (model, method)).fetchone()
+            if ln["drain"]:
+                return "drain", None
+            c.execute("UPDATE lines SET mode=?, force_stop=0, blocked='', run=1, updated_at=? "
+                      "WHERE model=? AND method=?", ("continuous" if mode == "continuous" else "single",
+                                                       now, model, method))
+        return "", None
+
     def lines(self):
         with self._conn() as c:
-            return c.execute("SELECT * FROM lines ORDER BY model, method").fetchall()
+            return c.execute("SELECT model, method, mode, run, drain, force_stop, retry_batch, blocked, model_tier, "
+                             "updated_at, shard_pin FROM lines ORDER BY model, method").fetchall()
+
+    def request_drain(self, model: str, method: str, on: bool) -> None:
+        """Set this Line's Drain explicitly; ON cancels a run reservation only when no batch is active."""
+        now = time.time()
+        with self._conn() as c:
+            c.execute("BEGIN IMMEDIATE")
+            c.execute("INSERT OR IGNORE INTO lines(model,method,updated_at) VALUES(?,?,?)", (model, method, now))
+            if on:
+                active = c.execute("SELECT state FROM batches WHERE producer=? AND method=? AND state!='COMPLETE'",
+                                   (model, method)).fetchone()
+                if active is not None and active["state"] == "CLEARING":
+                    return
+                if active:
+                    c.execute("UPDATE lines SET drain=1, updated_at=? WHERE model=? AND method=?",
+                              (now, model, method))
+                else:
+                    c.execute("UPDATE lines SET drain=1, run=0, updated_at=? WHERE model=? AND method=?",
+                              (now, model, method))
+            else:
+                c.execute("UPDATE lines SET drain=0, updated_at=? WHERE model=? AND method=?",
+                          (now, model, method))
 
     def start_stage2(self, model: str, mode: str) -> tuple[bool, str]:
         """Reserve the single Stage 2 occupancy for `model` in ONE write transaction (shared with `create_batch`).
@@ -384,29 +450,27 @@ class Store:
             if ln is not None and ln["drain"]:
                 return False, f"{model}/S2 라인이 Drain 중입니다. 해당 라인의 Cancel Drain 후 시작하세요."
             c.execute("INSERT OR IGNORE INTO lines(model,method,updated_at) VALUES(?,?,?)", (model, STAGE2_METHOD, now))
-            c.execute("UPDATE lines SET mode=?, force_stop=0, blocked='', run=1, drain_once=0, shard_pin='', updated_at=? "
+            c.execute("UPDATE lines SET mode=?, force_stop=0, blocked='', run=1, shard_pin='', updated_at=? "
                       "WHERE model=? AND method=?", ("continuous" if mode == "continuous" else "single", now, model,
                                                     STAGE2_METHOD))
         return True, ""
 
     def request_drain_all(self, lines) -> int:
-        """Drain All as ONE write transaction (shared with `create_batch`): a Line with an unfinished batch gets
-        `drain_once`, a Line with only a run reservation loses it. Returns the number of Lines affected."""
+        """Set Drain ON for every target Line in one transaction (shared with `create_batch`).
+
+        A Line with an active batch finishes it; a Line without one loses a pending run reservation and stays
+        drained until an explicit Cancel Drain. Returns the number of target Lines updated.
+        """
         n, now = 0, time.time()
         with self._conn() as c:
             c.execute("BEGIN IMMEDIATE")
             for model, method in lines:
-                busy = c.execute("SELECT 1 FROM batches WHERE producer=? AND method=? AND state!='COMPLETE'",
-                                 (model, method)).fetchone()
-                ln = c.execute("SELECT run FROM lines WHERE model=? AND method=?", (model, method)).fetchone()
-                if busy:
-                    c.execute("INSERT OR IGNORE INTO lines(model,method,updated_at) VALUES(?,?,?)", (model, method, now))
-                    c.execute("UPDATE lines SET drain_once=1, updated_at=? WHERE model=? AND method=?",
-                              (now, model, method))
-                    n += 1
-                elif ln is not None and ln["run"]:
-                    c.execute("UPDATE lines SET run=0, updated_at=? WHERE model=? AND method=?", (now, model, method))
-                    n += 1
+                c.execute("INSERT OR IGNORE INTO lines(model,method,updated_at) VALUES(?,?,?)", (model, method, now))
+                c.execute("UPDATE lines SET drain=1, run=CASE WHEN EXISTS ("
+                          "SELECT 1 FROM batches WHERE producer=? AND method=? AND state!='COMPLETE'"
+                          ") THEN run ELSE 0 END, updated_at=? WHERE model=? AND method=?",
+                          (model, method, now, model, method))
+                n += 1
         return n
 
     def stop_lines(self, model: str | None = None, method: str | None = None) -> None:
@@ -418,7 +482,7 @@ class Store:
         where += (" AND NOT EXISTS (SELECT 1 FROM batches b WHERE b.producer=lines.model AND b.method=lines.method "
                   "AND b.state='CLEARING')")
         with self._conn() as c:
-            c.execute(f"UPDATE lines SET run=0, drain_once=0, force_stop=1, retry_batch=NULL, updated_at=? {where}", (time.time(), *args))
+            c.execute(f"UPDATE lines SET run=0, force_stop=1, retry_batch=NULL, updated_at=? {where}", (time.time(), *args))
 
     def request_stop_pinned(self, model: str, method: str, batch_id: int) -> bool:
         """Stop request bound to the execution the operator saw (the Maintainer's Detail): one transaction checks that
@@ -431,7 +495,7 @@ class Store:
                 return False
             c.execute("INSERT INTO kv(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
                       (f"stop_pin_{model}_{method}", str(batch_id)))
-            c.execute("UPDATE lines SET run=0, drain_once=0, force_stop=1, retry_batch=NULL, updated_at=? "
+            c.execute("UPDATE lines SET run=0, force_stop=1, retry_batch=NULL, updated_at=? "
                       "WHERE model=? AND method=?", (time.time(), model, method))
             return True
 
@@ -476,7 +540,7 @@ class Store:
             c.execute("DELETE FROM clear_requests WHERE batch_id=?", (batch_id,))
             # Clear ended without removing the batch: no control written meanwhile may act on it afterwards.
             c.execute("UPDATE lines SET force_stop=0, retry_batch=NULL, "
-                      "drain=CASE WHEN method=? THEN drain ELSE 0 END, drain_once=0 "   # a Maintainer Drain outlives a Clear
+                      "drain=CASE WHEN method=? THEN drain ELSE 0 END "   # a Maintainer Drain outlives a Clear
                       "WHERE (model, method) IN (SELECT producer, method FROM batches WHERE id=?)",
                       (MAINTENANCE_METHOD, batch_id))
 
@@ -496,7 +560,7 @@ class Store:
             if b["state"] != "CLEARING":
                 c.execute("UPDATE batches SET state='CLEARING', error=NULL, updated_at=? WHERE id=?",
                           (time.time(), req["batch_id"]))
-                c.execute("UPDATE lines SET run=0, drain=CASE WHEN method=? THEN drain ELSE 0 END, drain_once=0, "
+                c.execute("UPDATE lines SET run=0, drain=CASE WHEN method=? THEN drain ELSE 0 END, "
                           "force_stop=0, retry_batch=NULL, blocked='', updated_at=? WHERE model=? AND method=?",
                           (MAINTENANCE_METHOD, time.time(), model, method))
             return req
@@ -522,7 +586,7 @@ class Store:
             c.execute("UPDATE maintenance SET state='HELD', batch_id=NULL, hold_reason=?, updated_at=? WHERE batch_id=?",
                       (CLEARED_HOLD, now, bid))
             c.execute("DELETE FROM batches WHERE id=?", (bid,))
-            c.execute("UPDATE lines SET run=0, drain=CASE WHEN method=? THEN drain ELSE 0 END, drain_once=0, "
+            c.execute("UPDATE lines SET run=0, drain=CASE WHEN method=? THEN drain ELSE 0 END, "
                       "force_stop=0, retry_batch=NULL, blocked='', shard_pin='', updated_at=? WHERE model=? AND method=?",
                       (MAINTENANCE_METHOD, now, b["producer"], b["method"]))
             c.execute("INSERT INTO events(batch_id,ts,level,msg,line) VALUES(NULL,?,?,?,?)",
