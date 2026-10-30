@@ -133,8 +133,16 @@ def parse_usage(log_file) -> dict | None:
             if not isinstance(kind, str):
                 continue
             if kind in ("step_start", "step_finish", "text", "reasoning", "tool_use", "error"):
-                opencode = True
                 part = ev.get("part") if isinstance(ev.get("part"), dict) else {}
+                if kind == "step_finish" and not opencode:
+                    part_id = part.get("id")
+                    if (not isinstance(part.get("tokens"), dict)
+                            and _opencode_step_key(ev, part) is None
+                            and not (isinstance(part_id, str) and part_id)):
+                        # A bare finish event without a token payload or lifecycle identity does not
+                        # distinguish an OpenCode stream from arbitrary JSONL.
+                        continue
+                opencode = True
                 if kind == "step_start":
                     identity = _opencode_identity(kind, ev, part)
                     if identity not in opencode_events:
