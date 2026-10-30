@@ -67,7 +67,7 @@ CREATE INDEX IF NOT EXISTS events_line ON events(batch_id);
 # Additive migration (user_version 3): every run records the CLI model ID and reasoning effort it was pinned to.
 # Old runs keep NULL; nothing is rewritten.
 RUN_COLUMNS_V3 = ("model", "effort")
-# Historical user_version 4 added `lines.drain_once` for Drain All. Version 13 folds it into `lines.drain`.
+# Additive migration (user_version 4): a one-shot "finish this batch, then stop" request set by Drain All.
 # Additive migration (user_version 5): every run also records the Codex permission profile it was pinned to
 # ('' = none configured). Old runs keep NULL, which the pin-drift check treats as "not recorded".
 RUN_COLUMNS_V5 = ("permission_profile",)
@@ -110,8 +110,7 @@ CREATE INDEX IF NOT EXISTS issue_requests_state ON issue_requests(state, id);
 RUN_USAGE_COLUMNS_V9 = ("input_tokens", "cached_input_tokens", "cache_write_tokens", "output_tokens",
                         "reasoning_output_tokens", "tool_calls", "submit_failures")
 # Additive migration (user_version 12, Issue #2361): best-effort/incomplete OpenCode usage quality for honest totals.
-# user_version 13 (Issue #2429) merges the historical Drain All flag into the Line's single `drain` state.
-SCHEMA_VERSION = 13
+SCHEMA_VERSION = 12
 
 MAINTENANCE_METHOD = "m"   # the hidden Maintainer's execution record lives in `batches` under this method
 CLEARED_HOLD = "운영자가 Maintainer 실행을 Clear함 — Issue·결함 기록 보존, 명시적 Retry 전에는 자동 재시작하지 않습니다"
@@ -224,17 +223,6 @@ class Store:
             name = column.split()[0]
             if name not in handled_columns:
                 c.execute(f"ALTER TABLE handled_events ADD COLUMN {column}")
-        # Upgrade the old Drain All state exactly once. Keep the data copy and version bump atomic so an
-        # interrupted migration cannot re-enable a Drain after an operator cancelled it.
-        c.commit()
-        c.execute("BEGIN IMMEDIATE")
-        line_columns = {r["name"] for r in c.execute("PRAGMA table_info(lines)")}
-        if "drain_once" in line_columns:
-            c.execute("UPDATE lines SET drain=1, run=CASE WHEN EXISTS ("
-                      "SELECT 1 FROM batches WHERE producer=lines.model AND method=lines.method AND state!='COMPLETE'"
-                      ") THEN run ELSE 0 END WHERE drain_once=1")
-            if sqlite3.sqlite_version_info >= (3, 35, 0):
-                c.execute("ALTER TABLE lines DROP COLUMN drain_once")
         c.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
 
     @contextmanager
