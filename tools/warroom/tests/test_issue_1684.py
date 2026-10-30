@@ -347,6 +347,19 @@ class StageTwoLifecycle(unittest.TestCase):
         w.tick()
         self.assertEqual(w.store.active_batch("claude", S2)["batch"], "01-02")   # next Part only now
 
+    def test_drain_finishes_the_current_part_then_clears_without_starting_another(self):
+        w = self.w
+        bid = w.store.active_batch("claude", S2)["id"]
+        control.drain_all(w.store, [("claude", S2)])
+        self.assertEqual(w.store.peek_line("claude", S2)["drain"], 1)
+        StageTwoSelection.finish_part(self, w, "claude", "001", "01", "01")
+
+        ln = w.store.peek_line("claude", S2)
+        self.assertEqual((ln["run"], ln["drain"], ln["shard_pin"]), (0, 0, ""))
+        self.assertEqual(w.store.batch(bid)["state"], "COMPLETE")
+        w.tick()
+        self.assertEqual(len(w.store.line_batches("claude", S2)), 1)
+
     def test_merge_commit_not_yet_on_master_waits(self):
         w = self.w
         self.to_review()

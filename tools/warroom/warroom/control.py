@@ -26,24 +26,18 @@ def start(store: Store, model: str, method: str, mode: str, cfg: dict | None = N
     if method == STAGE2_METHOD:
         problem = "설정을 확인할 수 없어 Stage 2를 시작하지 않습니다" if cfg is None else stage2_problem(cfg, model)
         return (False, problem) if problem else store.start_stage2(model, mode)
-    b = store.active_batch(model, method)
-    if b is not None:
+    reason, b = store.request_start(model, method, mode)
+    if reason == "active":
         return False, f"{model}/{method.upper()} 라인은 이미 미완료 배치 {b['shard']}_{b['batch']}({b['state']})를 소유 중입니다."
-    if store.peek_line(model, method)["drain"]:
+    if reason == "drain":
         return False, f"{model}/{method.upper()} 라인이 Drain 중입니다. 해당 라인의 Cancel Drain 후 시작하세요."
-    store.set_line(model, method, mode="continuous" if mode == "continuous" else "single",
-                   force_stop=0, blocked="", run=1, drain_once=0)
     return True, ""
 
 
 def drain_all(store: Store, lines) -> int:
-    """One-shot request: every Line that is running finishes its current batch and then stops.
-
-    A Line with an unfinished batch gets `drain_once` (kept across PAUSED/ERROR/Retry and Supervisor restarts);
-    a Line with only a pending run reservation loses it. Later Starts and per-Line `drain` are untouched.
-    """
+    """Set the same per-Line Drain as Detail on for every target, including empty Lines."""
     n = store.request_drain_all(lines)
-    store.log(None, f"Drain All: {n}개 라인 종료 요청")
+    store.log(None, f"Drain All: {n}개 생산 라인 Drain ON")
     return n
 
 
@@ -58,14 +52,11 @@ def set_drain(store: Store, model: str, method: str, on: bool) -> None:
             if ln["method"] == MAINTENANCE_METHOD and ln["drain"] and not on:
                 store.set_line(ln["model"], MAINTENANCE_METHOD, drain=0)
         return store.set_line(model, method, drain=1) if on else None
-    b = store.active_batch(model, method)
-    if on and b is not None and b["state"] == "CLEARING":   # a Clear leaves the Line IDLE: no Drain may outlive it
-        return
-    store.set_line(model, method, drain=1 if on else 0)
+    return store.request_drain(model, method, on)
 
 
 def drained(store: Store, ln) -> bool:
-    """Only the Line's own drain blocks assigning a new batch (Drain All ends the run instead)."""
+    """The Line's single Drain flag blocks all new batch assignments, regardless of which control set it."""
     return bool(ln["drain"])
 
 
@@ -164,13 +155,13 @@ def line_status(store: Store, model: str, method: str) -> dict:
     out = {"model": model, "method": method, "state": "IDLE", "batch": None, "pr": None, "head": None,
            "session": None, "error": None, "progress": None, "worktree": None, "branch": None,
            "mode": ln["mode"], "run": bool(ln["run"]), "line_drain": bool(ln["drain"]),
-           "drain_once": bool(ln["drain_once"]), "blocked": ln["blocked"] or "", "tier": ln["model_tier"],
+           "blocked": ln["blocked"] or "", "tier": ln["model_tier"],
            "batch_id": None, "activity": None, "occupied": False, "updated": None, "records_total": None,
            "records_done": None, "progress_kind": None, "progress_done": None, "progress_total": None,
            "elapsed": None, "stage2": None, "wait": ""}
     if method == STAGE2_METHOD:
         out["wait"] = store.get(f"s2_wait_{model}") or ""
-    out["drain"] = out["line_drain"] or out["drain_once"]
+    out["drain"] = out["line_drain"]
     keys = [f"tw_line:{model}:{method}:prepare"]
     if b is not None and b["state"] != "COMPLETE":
         keys += [r["key"] for r in store.kv_prefix(f"tw_b{b['id']}:")]
@@ -415,7 +406,7 @@ def maintainer_status(store: Store, cfg: dict, model: str) -> dict:
     drained = store.maintenance_drained()
     st["maintainer"] = info
     st["line_drain"] = drained
-    st["drain"] = drained or st["drain_once"]
+    st["drain"] = drained
     waiting = any(r[0]["state"] == "QUEUED" for r in rows)
     st["can_drain"] = drained or (st["occupied"] and st["state"] != "CLEARING") or waiting
     if not st["can_drain"]:

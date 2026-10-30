@@ -135,11 +135,6 @@ class Supervisor:
                                           "warn", line=f"{model}/{method}")
             return self._force_stop(b) if b is not None else self.store.set_line(model, method, run=0)
         if b is None:
-            if ln["drain_once"]:
-                # Drain All landed after this Line's last batch completed (or with only a reservation): the
-                # request is consumed here, whatever the interleaving, so no further batch is assigned.
-                self.store.set_line(model, method, run=0, drain_once=0)
-                return
             if ln["run"] and not control.drained(self.store, ln):
                 self._prepare_new(ln)
             return
@@ -4873,14 +4868,14 @@ class Supervisor:
         self.store.log(b["id"], f"배치 {b['shard']}_{b['batch']} 정리 완료")
         ln = self.store.line(b["producer"], b["method"])
         if b["method"] == MAINTENANCE_METHOD:   # Drain outlives the Issue (it stops the NEXT claim); only Cancel Drain ends it
-            return self.store.set_line(b["producer"], b["method"], run=0, drain_once=0)
+            return self.store.set_line(b["producer"], b["method"], run=0)
         if b["method"] == STAGE2_METHOD:   # Single ends when its shard is complete (next pick), not after every Part
-            if ln["drain"] or ln["drain_once"]:
-                self.store.set_line(b["producer"], b["method"], run=0, drain=0, drain_once=0, shard_pin="")
+            if ln["drain"]:
+                self.store.set_line(b["producer"], b["method"], run=0, drain=0, shard_pin="")
             return
-        if ln["mode"] != "continuous" or ln["drain"] or ln["drain_once"]:
-            # Single batch done, this Line's Drain took effect, or Drain All asked this Line to finish.
-            self.store.set_line(b["producer"], b["method"], run=0, drain=0, drain_once=0)
+        if ln["mode"] != "continuous" or ln["drain"]:
+            # Single batch done or this Line's Drain took effect.
+            self.store.set_line(b["producer"], b["method"], run=0, drain=0)
 
     def _stage2_merged_verify(self, b, info) -> bool:
         """A merged Part counts only after its exact verify succeeds on the latest master, BEFORE its worktree is removed

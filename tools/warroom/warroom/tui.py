@@ -808,11 +808,10 @@ class WarRoom(App):
             mc.update(Text(maintainer_card_text(maint)))   # hold reasons may hold [brackets]: text, never markup
             mc.set_classes("card " + {"IDLE": "empty", "WORKING": "PRODUCING", "ERROR": "ERROR"}[maint["state"]])
         root.query_one("#board-footer", Static).update(tier_footer(control.tier_state(store, self.cfg, self.methods)))
-        draining = [f"{s['model']}/{control.method_label(s['method'])}" for s in statuses.values() if s["drain_once"]]
-        # The yellow area stays ONE line: the Drain note. The Maintainer's progress (Issue #1555) lives in its Board card
-        # (Issue #1684); only a Board without that card (no DeepSeek column) keeps it here.
-        yellow = [x for x in (control.urgent_line(store, self.cfg) if not has_maint_card else "",
-                              "DRAIN ALL: 현재 배치 후 종료 — " + ", ".join(draining) if draining else "") if x]
+        # The Maintainer's progress (Issue #1555) lives in its Board card (Issue #1684); only a Board without that card
+        # (no DeepSeek column) keeps the urgent Issue note here.
+        urgent = control.urgent_line(store, self.cfg) if not has_maint_card else ""
+        yellow = [urgent] if urgent else []
         root.query_one("#drain-note", Static).update(Text(" │ ".join(yellow)))   # Text: hold reasons may hold [brackets], never markup
         root.query_one("#drain-note", Static).display = bool(yellow)
         root.query_one("#stop-all", Button).disabled = not control.can_stop_all(store, self._line_keys())
