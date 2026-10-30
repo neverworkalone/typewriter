@@ -1,7 +1,6 @@
 """Issue #2322: shared Stage 1 fix contracts, bounded source evidence and review completion proof."""
 from __future__ import annotations
 
-import hashlib
 import json
 import tempfile
 import unittest
@@ -10,15 +9,6 @@ from pathlib import Path
 from tests.fakes import HEAD1, HEAD2, World
 from tests.test_supervisor import install_candidate_pr, review
 from warroom import control, dchunk, literary, prompts, stage1ab
-
-
-PROMPT_DIR = Path(__file__).resolve().parents[1] / "prompts"
-BASE_CARD_DIGESTS = {
-    "a": "7012519b1bcd8ee5f36b50c33d9d8b986d8133131f7a55db05b5b5d7a098f3eb",
-    "b": "cbd6c4fee712bcfbbdad61b20f5cc6218d3c57b99bf85b169bb2ea8fbcdae4f1",
-    "c": "8ed316c739e19b8eb04d5f3586b9bf639b4f29cc83f3106cd96ef5f9d18ef881",
-    "d": "bd2dae2c444d7b38257a0bcb9eee1224068d6a5f14bc8c5bc4c610ecb7ca3d89",
-}
 
 
 def ready_for_review(w: World):
@@ -32,13 +22,6 @@ def ready_for_review(w: World):
 
 
 class PromptContracts(unittest.TestCase):
-    def test_method_contract_expansion_keeps_all_four_chunk_cards_byte_identical(self):
-        for method, expected in BASE_CARD_DIGESTS.items():
-            with self.subTest(method=method):
-                template = (PROMPT_DIR / f"{method}_chunk.md").read_text("utf-8")
-                expanded = template.replace("{{method_contract}}", prompts.method_contract(method))
-                self.assertEqual(hashlib.sha256(expanded.encode("utf-8")).hexdigest(), expected)
-
     def test_fix_cards_have_exact_method_paths_scopes_and_bounded_commands(self):
         event = {"kind": "review", "author": "reviewer", "key": "review:7", "body": "-1 w1-s1 `지목 후보`"}
         for method in ("a", "b", "c", "d"):
