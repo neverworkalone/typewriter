@@ -1112,7 +1112,6 @@ class Supervisor:
         r = next((r for r in self.store.runs(b["id"]) if r["model"]), None)
         return RunSpec(r["model"], r["effort"], r["permission_profile"] or "") if r else None
 
-    @staticmethod
     def _agent_env(self) -> dict:
         """Worker CLIs run with the normal environment (and normal Git). The Git binaries on PATH are only recorded so
         a Stage 2 chunk can have them blocked; with none found, only that chunk fails closed (`stage2_git_executables`)."""
