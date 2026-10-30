@@ -18,17 +18,22 @@ from textual.widgets import Button, Collapsible, Footer, Header, RichLog, Rule, 
 import time
 
 from . import auth, control
-from .config import (Paths, role_pin_lines, role_view, adapter_label, adapters, load_config, methods, ordered_models, pin_summary, registry,
+from .config import (Paths, role_view, adapter_label, adapters, load_config, methods, ordered_models, registry,
                      stage2_models, STAGE2_ADAPTERS)
 from .logrender import render_line
-from .views import (_hhmm, _when, control_columns, select_width, card_text, detail_header, maintainer_card_text,  # noqa: F401  (CARD_W/ICON re-exported for tests)
-                    model_title, tier_footer, detail_meta, usage_text)
+from .views import (_hhmm, _when, control_columns, select_width, card_text, detail_header, maintainer_card_text,
+                    model_title, tier_footer, detail_meta, scheduled_at, usage_text)
 from .logtail import LogTail, redact
 from .store import MAINTENANCE_METHOD, STAGE2_METHOD, Store
 
 TMUX_SUP = "warroom-supervisor"
 SUPERVISOR_STARTUP_GRACE_SECONDS = 20
 SUPERVISOR_RETRY_COOLDOWN_SECONDS = 5
+SCHEDULE_HOURS = [(f"{hour:02d}:00", f"{hour:02d}") for hour in range(24)]
+
+
+def _next_schedule_hour() -> str:
+    return f"{(time.localtime().tm_hour + 1) % 24:02d}"
 
 
 def ensure_supervisor(paths: Paths) -> tuple[str, str | None]:
@@ -199,32 +204,6 @@ class BoardFooter(Footer):
         """The static legend is independent of the active screen's binding set."""
 
 
-class SettingsScreen(Screen):
-    BINDINGS = [("escape", "app.pop_screen", "Back")]
-
-    def compose(self) -> ComposeResult:
-        yield Header()
-        yield Static(id="settings-body")
-        yield Footer(show_command_palette=False)
-
-    def on_mount(self) -> None:
-        self.set_interval(1.0, self.refresh_view)
-        self.refresh_view()
-
-    def refresh_view(self) -> None:
-        app, a = self.app, self.app._auth
-        acct = "확인 중…" if a is None else (a["account"] or "인증 안 됨")
-        probs = "" if not a or a["ok"] else "\n  " + "\n  ".join(a["problems"])
-        lines = [f"Settings — GitHub: {acct} (기대: {app.cfg['expected_account']}){probs}",
-                 f"  로그인: GH_CONFIG_DIR={app.paths.gh_config} gh auth login   설정: {app.paths.config_file}", ""]
-        reg = registry(app.cfg)
-        for pid in ordered_models(app.cfg):
-            p = reg[pid]
-            lines.append(f"{p['label']} ({pid})  adapter={p['adapter']}  {pin_summary(p)}")
-        lines += role_pin_lines(app.cfg)
-        self.query_one("#settings-body", Static).update("\n".join(lines))
-
-
 class LineDetail(Screen):
     """Batch Detail for one Line: controls, live Agent Log (tail -f), Run History, Audit Log."""
     BINDINGS = [("escape", "back", "Back"), ("up", "scroll_up", ""),
@@ -255,6 +234,8 @@ class LineDetail(Screen):
             yield Static(id="meta")
         with Horizontal(id="line-controls"):
             yield Button("Drain", id="drain")
+            yield Select(SCHEDULE_HOURS, value=_next_schedule_hour(), allow_blank=False, id="drain-time")
+            yield Button("Schedule", id="schedule-drain")
             yield Button("Stop", id="stop", variant="error")
             yield Button("Retry", id="retry")
             yield Button("Clear", id="clear", variant="error")
@@ -267,8 +248,28 @@ class LineDetail(Screen):
         yield Footer(show_command_palette=False)
 
     def on_mount(self) -> None:
+        self.query_one("#drain-time", Select).styles.width = select_width(("00:00",))
         self.set_interval(1.0, self.refresh_view)
         self.refresh_view()
+        self.call_after_refresh(self._fit_line_controls)
+
+    def on_resize(self, event) -> None:
+        self.call_after_refresh(self._fit_line_controls)
+
+    @staticmethod
+    def _declared_width(widget) -> int:
+        width = widget.styles.width
+        if width is not None and width.unit == Unit.CELLS:
+            return int(width.value)
+        return widget.outer_size.width or 0
+
+    def _fit_line_controls(self) -> None:
+        controls = self.query_one("#line-controls")
+        controls.remove_class("narrow")
+        widths = [self._declared_width(widget) for widget in controls.children if widget.display]
+        if sum(widths) > self.size.width:
+            controls.styles.grid_size_columns = control_columns(widths, self.size.width)
+            controls.add_class("narrow")
 
     @property
     def log_w(self) -> RichLog:
@@ -416,8 +417,6 @@ class LineDetail(Screen):
     def refresh_view(self) -> None:
         st = self._status()
         reg = role_view(self.app.cfg, self.model, self.method)   # the pin this Line's method runs on (profiles differ by stage)
-        # Text, never markup: the error/branch/path values are data and may hold [brackets] (a Rich MarkupError ends the app)
-        self.query_one("#info", Static).update(Text(detail_header(st, reg, self.model)))
         meta = detail_meta(st, reg, self.model)
         runs = self._runs()
         if runs:   # the latest batch's runs only; usage is secondary and must never break the view
@@ -430,12 +429,32 @@ class LineDetail(Screen):
         d = self.query_one("#drain", Button)
         d.label = "Cancel Drain" if st["line_drain"] else "Drain"
         d.disabled = not (st["can_drain"] or st["line_drain"])
+        schedule = (self.app.store.drain_schedule(f"batch:{st['batch_id']}")
+                    if st["batch_id"] is not None and not self.maint else None)
+        schedule_select = self.query_one("#drain-time", Select)
+        schedule_button = self.query_one("#schedule-drain", Button)
+        schedule_button.label = "Cancel" if schedule else "Schedule"
+        schedule_button.disabled = self.maint or ((st["batch_id"] is None or st["state"] == "CLEARING")
+                                                  and schedule is None)
+        schedule_select.display = not self.maint
+        schedule_button.display = not self.maint
+        schedule_select.disabled = (self.maint or st["batch_id"] is None or st["state"] == "CLEARING"
+                                    or schedule is not None)
+        if schedule is not None:
+            hour = f"{time.localtime(schedule['due_at']).tm_hour:02d}"
+            with schedule_select.prevent(Select.Changed):
+                schedule_select.value = hour
+        info = detail_header(st, reg, self.model)
+        if schedule is not None:
+            info += f"\nDrain scheduled for batch #{schedule['batch_id']}: {scheduled_at(schedule['due_at'])}"
+        self.query_one("#info", Static).update(Text(info))
         self.query_one("#stop", Button).disabled = not st["can_stop"]
         self.query_one("#retry", Button).disabled = not st["can_retry"]
         self.query_one("#clear", Button).disabled = not st["can_clear"]
         runs = self._runs()
         self._sync_sources(runs)
         self._pump_log(runs, st)
+        self.call_after_refresh(self._fit_line_controls)
 
     def on_button_pressed(self, e: Button.Pressed) -> None:
         e.stop()
@@ -451,6 +470,22 @@ class LineDetail(Screen):
         elif e.button.id == "drain":
             on = not self._status()["line_drain"] if self.maint else not bool(store.line(m, me)["drain"])
             control.set_drain(store, m, me, on)
+        elif e.button.id == "schedule-drain":
+            st = self._status()
+            if self.maint or st["batch_id"] is None:
+                return
+            target = f"batch:{st['batch_id']}"
+            existing = store.drain_schedule(target)
+            if existing is not None:
+                if control.cancel_drain_schedule(store, target):
+                    self.notify("Drain 예약을 취소했습니다. 현재 Drain 상태는 유지됩니다.")
+            else:
+                hour = self.query_one("#drain-time", Select).value
+                if hour is Select.BLANK:
+                    return self.notify("예약 시간을 선택하세요.", severity="warning")
+                ok, msg = control.schedule_batch_drain(store, m, me, st["batch_id"], str(hour))
+                if not ok:
+                    self.notify(msg, severity="warning")
         elif e.button.id == "retry":
             if self.maint:   # pinned to the Issue/execution on screen: a stale screen retries nothing else
                 st = self._status()
@@ -515,6 +550,7 @@ class WarRoom(App):
     #controls > Button { width: 14; min-width: 14; max-width: 14; }
     #line-controls > Button { min-width: 8; width: auto; }
     #controls.narrow { layout: grid; grid-size: 3; grid-rows: auto; }
+    #line-controls.narrow { layout: grid; grid-rows: auto; }
     #columns { height: 1fr; margin-top: 1; }
     #board-footer { height: 1; padding: 0 1; }
     .col { width: 40; height: auto; margin: 0; }
@@ -528,10 +564,10 @@ class WarRoom(App):
     .card.empty:focus { border: round #888888; }
     .card.ERROR:focus, .card.PAUSED:focus, .card.COMPLETE:focus { border: heavy $accent; }
     #info { border: round $accent; padding: 0 1; height: auto; }
-    #settings-body { padding: 1 2; }
     RichLog { border: round $primary; height: 1fr; }
     """
-    BINDINGS = [("q", "quit", "Quit"), ("s", "settings", "Settings"),
+    BINDINGS = [("q", "quit", "Quit"),
+                Binding("S", "stop_all", "Stop All"),
                 ("r", "reload_config", "설정 리로드"), ("f", "toggle_tier", "Free/Go 전환"),
                 ("left", "control_move(-1)", ""), ("right", "control_move(1)", ""),
                 Binding("tab", "switch_region", "", priority=True),
@@ -566,9 +602,8 @@ class WarRoom(App):
         return next((m for m in self.models if m not in capable), None)
 
     def _line_keys(self):
-        """Every Line of the Board: Methods A-D for each model plus Stage 2 for the models that may run it."""
-        return [(m, me) for m in self._lines() for me in self.methods] + \
-               [(m, STAGE2_METHOD) for m in self._lines() if m in self.stage2_capable]
+        """Every production Line on the Board; also shared with scheduled Drain All execution."""
+        return control.board_line_keys(self.store, self.cfg)
 
     def _lines(self):
         """Columns come from the registry (+ models that still own history), never a fixed 3."""
@@ -594,7 +629,8 @@ class WarRoom(App):
                          value="single", allow_blank=False, id="mode")
             yield Button("Start", id="start", variant="success")
             yield Button("Drain All", id="drain-all")
-            yield Button("Stop All", id="stop-all", variant="error")
+            yield Select(SCHEDULE_HOURS, value=_next_schedule_hour(), allow_blank=False, id="drain-all-time")
+            yield Button("Schedule", id="schedule-all")
         with HorizontalScroll(id="columns"):
             for model in self._lines():
                 with Vertical(classes="col", id=f"col-{model}"):
@@ -732,7 +768,8 @@ class WarRoom(App):
         """Static top-bar Selects get a width from their longest label (no mid-word wrap)."""
         for sid, labels in (("adapter", [adapter_label(a) for a in adapters(self.cfg)]),
                             ("method", [label for label, _ in self._method_options("claude")]),
-                            ("mode", ["Single", "Continuous"])):
+                            ("mode", ["Single", "Continuous"]),
+                            ("drain-all-time", [label for label, _ in SCHEDULE_HOURS])):
             self.query_one(f"#{sid}", Select).styles.width = select_width(labels)
 
     @staticmethod
@@ -775,13 +812,10 @@ class WarRoom(App):
                              self.cfg["git_name"], self.cfg["git_email"])
         self._auth = auth.diagnose(Runner(), env, self.cfg["repo"], self.cfg["expected_account"])
 
-    def action_settings(self) -> None:
-        self.push_screen(SettingsScreen())
-
     def refresh_view(self) -> None:
         store = self.store
         self._poll_reload()
-        root = self.screen_stack[0]   # the board, even while Detail/Settings is on top
+        root = self.screen_stack[0]   # the board, even while Batch Detail is on top
         alive = control.supervisor_alive(store)
         now = time.monotonic()
         if alive:
@@ -808,17 +842,27 @@ class WarRoom(App):
             mc.update(Text(maintainer_card_text(maint)))   # hold reasons may hold [brackets]: text, never markup
             mc.set_classes("card " + {"IDLE": "empty", "WORKING": "PRODUCING", "ERROR": "ERROR"}[maint["state"]])
         root.query_one("#board-footer", Static).update(tier_footer(control.tier_state(store, self.cfg, self.methods)))
+        drain_schedule = store.drain_schedule("all")
+        schedule_select = root.query_one("#drain-all-time", Select)
+        schedule_button = root.query_one("#schedule-all", Button)
+        schedule_button.label = "Cancel" if drain_schedule else "Schedule"
+        schedule_select.disabled = drain_schedule is not None
+        if drain_schedule is not None:
+            hour = f"{time.localtime(drain_schedule['due_at']).tm_hour:02d}"
+            with schedule_select.prevent(Select.Changed):
+                schedule_select.value = hour
         # The Maintainer's progress (Issue #1555) lives in its Board card (Issue #1684); only a Board without that card
         # (no DeepSeek column) keeps the urgent Issue note here.
         urgent = control.urgent_line(store, self.cfg) if not has_maint_card else ""
         yellow = [urgent] if urgent else []
+        if drain_schedule is not None:
+            yellow.append(f"Drain All scheduled: {scheduled_at(drain_schedule['due_at'])}")
         root.query_one("#drain-note", Static).update(Text(" │ ".join(yellow)))   # Text: hold reasons may hold [brackets], never markup
         root.query_one("#drain-note", Static).display = bool(yellow)
-        root.query_one("#stop-all", Button).disabled = not control.can_stop_all(store, self._line_keys())
         # Only auth/model problems surface on the board.
         a, notes = self._auth, []
         if a is not None and not a["ok"]:
-            notes += ["! GitHub 인증: " + "; ".join(a["problems"]) + "  ('s' Settings)"]
+            notes += ["! GitHub 인증: " + "; ".join(a["problems"])]
         notes += [f"! {s['model']}/{control.method_label(s['method'])} BLOCKED: {s['blocked']}"
                   for s in statuses.values() if s["blocked"]]
         if self._reload_fail:
@@ -843,10 +887,31 @@ class WarRoom(App):
                 self.notify(msg, severity="warning")
         elif e.button.id == "drain-all":
             control.drain_all(self.store, self._line_keys())
-        elif e.button.id == "stop-all":
-            n = len(self.store.incomplete_batches())
-            self.push_screen(Confirm(
-                f"모든 라인(미완료 배치 {n}개)을 즉시 중지합니다."), self._stopped_all)
+
+        elif e.button.id == "schedule-all":
+            existing = self.store.drain_schedule("all")
+            if existing is not None:
+                if control.cancel_drain_schedule(self.store, "all"):
+                    self.notify("Drain All 예약을 취소했습니다. 현재 Drain 상태는 유지됩니다.")
+            else:
+                hour = self.query_one("#drain-all-time", Select).value
+                if hour is Select.BLANK:
+                    return self.notify("예약 시간을 선택하세요.", severity="warning")
+                ok, msg = control.schedule_drain_all(self.store, str(hour))
+                if not ok:
+                    self.notify(msg, severity="warning")
+
+    def action_stop_all(self) -> None:
+        """Shift+S on Board or Detail: require confirmation before stopping every production Line."""
+        if self.screen is not self.screen_stack[0] and not isinstance(self.screen, LineDetail):
+            return
+        if in_open_select(self.focused) or any(select.expanded for select in self.screen.query(Select)):
+            return
+        if not control.can_stop_all(self.store, control.board_line_keys(self.store, self.cfg)):
+            return self.notify("중지할 생산 작업이 없습니다.", severity="warning")
+        self.push_screen(Confirm(
+            "모든 생산 Line의 AI 실행을 즉시 중지합니다. 현재 Batch Detail뿐 아니라 전체 Board의 생산 Line이 대상입니다."),
+            self._stopped_all)
 
     def _stopped_all(self, yes: bool | None) -> None:
         if yes:

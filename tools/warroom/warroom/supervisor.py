@@ -82,6 +82,8 @@ class Supervisor:
     def tick(self) -> None:
         self.store.set("heartbeat", str(self.clock()))
         self._handle_reload()
+        # Scheduled operator commands are one-shot and must commit before this tick can assign work to any Line.
+        self.store.fire_due_drain_schedules(self.clock(), control.board_line_keys(self.store, self.cfg))
         for b in self.store.incomplete_batches():  # a Line row always exists for a live batch
             self.store.line(b["producer"], b["method"])
         for ln in self.store.lines():
@@ -4549,7 +4551,7 @@ class Supervisor:
                        f"대체하지 않습니다. 로그 확인 후 설정을 고치세요: {b['log_file']}")
             return True
         messages = {
-            "auth": "인증 실패 — Settings의 인증 안내를 확인하세요.",
+            "auth": "인증 실패 — Board 상단의 GitHub 인증 안내를 확인하세요.",
             "usage_limit": "CLI 사용량 한도에 도달했습니다 — 자동 전환·재시도 없이 중지합니다. 한도 해제 후 Retry.",
             "free_quota": "무료 한도 소진이 확인되었습니다 — 저장 증거가 있어도 자동 모델 전환 없이 중지합니다.",
         }
@@ -4668,7 +4670,7 @@ class Supervisor:
                 return self.store.log(b["id"], f"{cls}: {wait}s 후 재시도 ({b['retries'] + 1})", "warn")
             return self._fail(b, "PAUSED", f"{cls} 재시도 한도 초과 (무료 한도 소진으로 간주하지 않음)")
         if cls == "auth":
-            return self._fail(b, "PAUSED", "인증 실패 — Settings의 인증 안내를 확인하세요.")
+            return self._fail(b, "PAUSED", "인증 실패 — Board 상단의 GitHub 인증 안내를 확인하세요.")
         if b["run_kind"] == "fix_resume":  # session resume impossible -> safe recovery once
             self.store.log(b["id"], "세션 resume 실패 → 새 AI 세션으로 복구", "warn")
             return self._launch(b, "fix_new", self._events(b)[1])

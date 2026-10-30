@@ -21,6 +21,11 @@ def _when(ts) -> str:
     return time.strftime("%H:%M" if t[:3] == time.localtime()[:3] else "%m-%d %H:%M", t)
 
 
+def scheduled_at(ts) -> str:
+    """A persisted epoch rendered as an unambiguous host-local date and time."""
+    return time.strftime("%Y-%m-%d %H:%M", time.localtime(ts)) if ts else "-"
+
+
 CARD_W = 34   # content cells of a card (column 38 - border - padding): every line is fit to it
 PHASE = {"WAITING_REVIEW": "REVIEW", "PRODUCING": "WORKING"}   # display names; the stored state stays PRODUCING
 PHASE.update({"FIX_MERGED": "FIX 머지됨·반영 중"})
@@ -46,7 +51,6 @@ def set_cell_size(text: str, width: int) -> str:
 
 
 SELECT_CHROME = 10    # border 2 + padding 4 + arrow/gap 4: a label of N cells needs N + 10 columns on one line
-BUTTON_W = 14         # Start / Drain All / Stop All share one width
 CONTROLS_MIN_W = 8
 
 
@@ -174,7 +178,7 @@ TIER_FOOTER = {
 def tier_footer(state: str) -> str:
     """One-line board footer with the current tier nested under f; values are Rich markup."""
     label, style = TIER_FOOTER.get(state, TIER_FOOTER["none"])
-    return (f"[b #ffa500]q[/] Quit · [b #ffa500]s[/] Settings · [b #ffa500]r[/] 설정 리로드 · "
+    return (f"[b #ffa500]q[/] Quit · [b #ffa500]Shift+S[/] Stop All · [b #ffa500]r[/] 설정 리로드 · "
             f"[b #ffa500]f[/] Free/Go 전환 ([{style}]{label}[/])")
 
 
