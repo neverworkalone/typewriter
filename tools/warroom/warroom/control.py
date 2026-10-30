@@ -7,9 +7,11 @@ from __future__ import annotations
 
 import json
 import time
+from datetime import datetime, time as wall_time, timedelta
 
 from . import stage2
-from .config import maintainer_id, maintainer_problem, registry, stage2_problem
+from .config import (maintainer_id, maintainer_problem, methods, ordered_models, registry, stage2_models,
+                     stage2_problem)
 from .store import MAINTENANCE_METHOD, STAGE2_METHOD, Store
 
 STATES_HELP = ("PREPARE", "PRODUCING", "WAITING_REVIEW", "FIXING", "MERGED", "CLEANUP",
@@ -39,6 +41,53 @@ def drain_all(store: Store, lines) -> int:
     n = store.request_drain_all(lines)
     store.log(None, f"Drain All: {n}개 생산 라인 Drain ON")
     return n
+
+
+def next_drain_due(hour: int | str, now: float | None = None) -> float:
+    """Return the next local occurrence of an exact hour (00:00–23:00); a reached hour means tomorrow."""
+    if isinstance(hour, bool):
+        raise ValueError("시간은 00:00~23:00 정각이어야 합니다")
+    try:
+        hour = int(hour)
+    except (TypeError, ValueError):
+        raise ValueError("시간은 00:00~23:00 정각이어야 합니다") from None
+    if not 0 <= hour <= 23:
+        raise ValueError("시간은 00:00~23:00 정각이어야 합니다")
+    now = time.time() if now is None else now
+    local = datetime.fromtimestamp(now)
+    due = datetime.combine(local.date(), wall_time(hour=hour))
+    if due.timestamp() <= now:
+        due = datetime.combine(local.date() + timedelta(days=1), wall_time(hour=hour))
+    return due.timestamp()
+
+
+def schedule_drain_all(store: Store, hour: int | str, now: float | None = None) -> tuple[bool, str]:
+    now = time.time() if now is None else now
+    return store.create_drain_schedule("all", next_drain_due(hour, now), created_at=now)
+
+
+def schedule_batch_drain(store: Store, model: str, method: str, batch_id: int, hour: int | str,
+                         now: float | None = None) -> tuple[bool, str]:
+    if method == MAINTENANCE_METHOD:
+        return False, "Maintainer는 배치 Drain 예약 대상이 아닙니다."
+    now = time.time() if now is None else now
+    return store.create_drain_schedule(f"batch:{batch_id}", next_drain_due(hour, now), model=model,
+                                       method=method, batch_id=batch_id, created_at=now)
+
+
+def cancel_drain_schedule(store: Store, target: str) -> bool:
+    return store.cancel_drain_schedule(target)
+
+
+def board_line_keys(store: Store, cfg: dict) -> list[tuple[str, str]]:
+    """The production Lines represented on the Board; shared by TUI and scheduled Drain All."""
+    models = ordered_models(cfg)
+    known = set(models)
+    models += sorted({ln["model"] for ln in store.lines()} - known)
+    configured_methods = methods(cfg)
+    keys = [(model, method) for model in models for method in configured_methods]
+    keys += [(model, STAGE2_METHOD) for model in models if model in stage2_models(cfg)]
+    return [(model, method) for model, method in keys if method != MAINTENANCE_METHOD]
 
 
 def method_label(method: str) -> str:

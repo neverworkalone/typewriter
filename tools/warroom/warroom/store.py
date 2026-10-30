@@ -103,6 +103,17 @@ CREATE TABLE IF NOT EXISTS issue_requests (
 );
 CREATE INDEX IF NOT EXISTS issue_requests_state ON issue_requests(state, id);
 """
+# Additive migration (user_version 13, Issue #2430): durable one-shot Drain reservations.
+SCHEMA_V13 = """
+CREATE TABLE IF NOT EXISTS drain_schedules (
+  target TEXT PRIMARY KEY,
+  model TEXT, method TEXT, batch_id INTEGER,
+  due_at REAL NOT NULL, created_at REAL NOT NULL,
+  CHECK ((target='all' AND model IS NULL AND method IS NULL AND batch_id IS NULL)
+      OR (target LIKE 'batch:%' AND model IS NOT NULL AND method IS NOT NULL AND batch_id IS NOT NULL))
+);
+CREATE INDEX IF NOT EXISTS drain_schedules_due ON drain_schedules(due_at);
+"""
 # Additive migration (user_version 7, Issue #1684): `lines.shard_pin` is the shard a Single-mode Stage 2 run is bound to.
 # Additive migration (user_version 8, Issue #1809): the observed unit of intermediate progress (chunks/senses).
 # Additive migration (user_version 9, Issue #2033): per-run token / tool-call usage read from the run's own log when
@@ -110,7 +121,7 @@ CREATE INDEX IF NOT EXISTS issue_requests_state ON issue_requests(state, id);
 RUN_USAGE_COLUMNS_V9 = ("input_tokens", "cached_input_tokens", "cache_write_tokens", "output_tokens",
                         "reasoning_output_tokens", "tool_calls", "submit_failures")
 # Additive migration (user_version 12, Issue #2361): best-effort/incomplete OpenCode usage quality for honest totals.
-SCHEMA_VERSION = 12
+SCHEMA_VERSION = 13
 
 MAINTENANCE_METHOD = "m"   # the hidden Maintainer's execution record lives in `batches` under this method
 CLEARED_HOLD = "운영자가 Maintainer 실행을 Clear함 — Issue·결함 기록 보존, 명시적 Retry 전에는 자동 재시작하지 않습니다"
@@ -217,6 +228,7 @@ class Store:
         if "usage_quality" not in have:
             c.execute("ALTER TABLE runs ADD COLUMN usage_quality TEXT")
         c.executescript(SCHEMA_V10)
+        c.executescript(SCHEMA_V13)
         handled_columns = {r["name"] for r in c.execute("PRAGMA table_info(handled_events)")}
         for column in ("status TEXT NOT NULL DEFAULT 'LEGACY'", "run_id INTEGER", "reply_id INTEGER",
                        "completed_at REAL"):
@@ -461,17 +473,111 @@ class Store:
         A Line with an active batch finishes it; a Line without one loses a pending run reservation and stays
         drained until an explicit Cancel Drain. Returns the number of target Lines updated.
         """
-        n, now = 0, time.time()
+        now = time.time()
         with self._conn() as c:
             c.execute("BEGIN IMMEDIATE")
-            for model, method in lines:
-                c.execute("INSERT OR IGNORE INTO lines(model,method,updated_at) VALUES(?,?,?)", (model, method, now))
-                c.execute("UPDATE lines SET drain=1, run=CASE WHEN EXISTS ("
-                          "SELECT 1 FROM batches WHERE producer=? AND method=? AND state!='COMPLETE'"
-                          ") THEN run ELSE 0 END, updated_at=? WHERE model=? AND method=?",
-                          (model, method, now, model, method))
-                n += 1
-        return n
+            return self._drain_all_tx(c, lines, now)
+
+    # --- one-shot Drain reservations (Issue #2430) ---
+    def drain_schedule(self, target: str):
+        with self._conn() as c:
+            return c.execute("SELECT * FROM drain_schedules WHERE target=?", (target,)).fetchone()
+
+    def create_drain_schedule(self, target: str, due_at: float, *, model: str | None = None,
+                              method: str | None = None, batch_id: int | None = None,
+                              created_at: float | None = None) -> tuple[bool, str]:
+        """Persist one schedule. Detail reservations are accepted only for the exact active, non-Clear batch."""
+        created_at = time.time() if created_at is None else created_at
+        if target == "all":
+            if model is not None or method is not None or batch_id is not None:
+                raise ValueError("Drain All schedule must not name a Line or batch")
+        elif (target.startswith("batch:") and method != MAINTENANCE_METHOD and model and method
+              and batch_id is not None and target == f"batch:{batch_id}"):
+            pass
+        else:
+            raise ValueError("invalid Drain schedule target")
+        with self._conn() as c:
+            c.execute("BEGIN IMMEDIATE")
+            if target != "all":
+                active = c.execute(
+                    "SELECT id FROM batches WHERE id=? AND producer=? AND method=? "
+                    "AND state NOT IN ('COMPLETE','CLEARING') AND id=(SELECT id FROM batches "
+                    "WHERE producer=? AND method=? AND state NOT IN ('COMPLETE','CLEARING') "
+                    "ORDER BY id DESC LIMIT 1)",
+                    (batch_id, model, method, model, method)).fetchone()
+                if active is None:
+                    return False, "화면의 미완료 배치가 바뀌었거나 이미 종료되었습니다. 새로 고친 뒤 다시 예약하세요."
+            c.execute("INSERT INTO drain_schedules(target,model,method,batch_id,due_at,created_at) "
+                      "VALUES(?,?,?,?,?,?) ON CONFLICT(target) DO UPDATE SET "
+                      "model=excluded.model,method=excluded.method,batch_id=excluded.batch_id,"
+                      "due_at=excluded.due_at,created_at=excluded.created_at",
+                      (target, model, method, batch_id, due_at, created_at))
+            line = f"{model}/{method}" if model is not None else None
+            self._add_event(c, batch_id, f"Drain 예약 저장: {target} · due {due_at:.0f}", line=line, ts=created_at)
+        return True, ""
+
+    def cancel_drain_schedule(self, target: str) -> bool:
+        """Delete only the planned firing; an already applied Drain flag is left untouched."""
+        with self._conn() as c:
+            c.execute("BEGIN IMMEDIATE")
+            row = c.execute("SELECT * FROM drain_schedules WHERE target=?", (target,)).fetchone()
+            if row is None:
+                return False
+            c.execute("DELETE FROM drain_schedules WHERE target=?", (target,))
+            line = f"{row['model']}/{row['method']}" if row["model"] is not None else None
+            self._add_event(c, row["batch_id"], f"Drain 예약 취소: {target}", line=line)
+        return True
+
+    def fire_due_drain_schedules(self, now: float, board_lines) -> list[dict]:
+        """Atomically apply and consume all due reservations; returns one result per fired/expired schedule."""
+        results = []
+        with self._conn() as c:
+            c.execute("BEGIN IMMEDIATE")
+            rows = c.execute("SELECT * FROM drain_schedules WHERE due_at<=? ORDER BY due_at,target", (now,)).fetchall()
+            for row in rows:
+                target = row["target"]
+                if target == "all":
+                    count = self._drain_all_tx(c, board_lines, now)
+                    self._add_event(c, None, f"예약 Drain All 발화: {count}개 생산 Line Drain ON", ts=now)
+                    result = {"target": target, "status": "fired", "count": count}
+                else:
+                    active = c.execute(
+                        "SELECT id FROM batches WHERE id=? AND producer=? AND method=? "
+                        "AND state NOT IN ('COMPLETE','CLEARING') AND id=(SELECT id FROM batches "
+                        "WHERE producer=? AND method=? AND state NOT IN ('COMPLETE','CLEARING') "
+                        "ORDER BY id DESC LIMIT 1)",
+                        (row["batch_id"], row["model"], row["method"], row["model"], row["method"])).fetchone()
+                    line = f"{row['model']}/{row['method']}"
+                    if active is None:
+                        self._add_event(c, row["batch_id"],
+                                        f"예약 Drain 만료: batch id {row['batch_id']}가 완료·Clear·교체되었거나 소유 관계가 바뀜",
+                                        line=line, ts=now)
+                        result = {"target": target, "status": "expired", "count": 0}
+                    else:
+                        c.execute("INSERT OR IGNORE INTO lines(model,method,updated_at) VALUES(?,?,?)",
+                                  (row["model"], row["method"], now))
+                        c.execute("UPDATE lines SET drain=1,updated_at=? WHERE model=? AND method=?",
+                                  (now, row["model"], row["method"]))
+                        self._add_event(c, row["batch_id"],
+                                        f"예약 Drain 발화: batch id {row['batch_id']} · {line}", line=line, ts=now)
+                        result = {"target": target, "status": "fired", "count": 1}
+                c.execute("DELETE FROM drain_schedules WHERE target=?", (target,))
+                results.append(result)
+        return results
+
+    @staticmethod
+    def _drain_all_tx(c, lines, now: float) -> int:
+        count = 0
+        for model, method in lines:
+            if method == MAINTENANCE_METHOD:
+                continue
+            c.execute("INSERT OR IGNORE INTO lines(model,method,updated_at) VALUES(?,?,?)", (model, method, now))
+            c.execute("UPDATE lines SET drain=1, run=CASE WHEN EXISTS ("
+                      "SELECT 1 FROM batches WHERE producer=? AND method=? AND state!='COMPLETE'"
+                      ") THEN run ELSE 0 END, updated_at=? WHERE model=? AND method=?",
+                      (model, method, now, model, method))
+            count += 1
+        return count
 
     def stop_lines(self, model: str | None = None, method: str | None = None) -> None:
         """Request stop for one Line (or every Line): no new run is allowed until Start/Retry."""
@@ -663,13 +769,18 @@ class Store:
             return c.execute("SELECT * FROM batches ORDER BY id").fetchall()
 
     # --- events / log ---
+    @staticmethod
+    def _add_event(c, batch_id: int | None, msg: str, *, line: str | None = None, ts: float | None = None,
+                   level: str = "info") -> None:
+        if line is None and batch_id is not None:
+            row = c.execute("SELECT producer, method FROM batches WHERE id=?", (batch_id,)).fetchone()
+            line = f"{row['producer']}/{row['method']}" if row else None
+        c.execute("INSERT INTO events(batch_id,ts,level,msg,line) VALUES(?,?,?,?,?)",
+                  (batch_id, time.time() if ts is None else ts, level, msg, line))
+
     def log(self, batch_id: int | None, msg: str, level: str = "info", line: str | None = None) -> None:
         with self._conn() as c:
-            if line is None and batch_id is not None:
-                row = c.execute("SELECT producer, method FROM batches WHERE id=?", (batch_id,)).fetchone()
-                line = f"{row['producer']}/{row['method']}" if row else None
-            c.execute("INSERT INTO events(batch_id,ts,level,msg,line) VALUES(?,?,?,?,?)",
-                      (batch_id, time.time(), level, msg, line))
+            self._add_event(c, batch_id, msg, line=line, level=level)
 
     def recent_events(self, limit: int = 100):
         with self._conn() as c:
