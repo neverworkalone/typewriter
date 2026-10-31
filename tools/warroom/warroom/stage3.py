@@ -247,8 +247,8 @@ def decision_context(view: dict, chunk: str) -> dict:
 def normalize_decisions(answer: str | None, chunk: str, context: dict) -> tuple[str, list[str]]:
     """Deterministically discard invalid per-Relation proposals before the strict edit CLI sees them.
 
-    The returned warnings describe discarded proposals. A response without a trustworthy compact block becomes an
-    explicit keep-all chunk, while an identifiable bad proposal affects only the Relation it names.
+    The returned warnings describe discarded proposals or body lines. Each body line is independent; a missing or
+    mismatched chunk header fails closed because its decisions cannot be bound to the active chunk.
     """
     if (not isinstance(context, dict) or context.get("chunk") != chunk
             or type(context.get("relation_count")) is not int or not isinstance(context.get("relations"), list)):
@@ -270,28 +270,25 @@ def normalize_decisions(answer: str | None, chunk: str, context: dict) -> tuple[
     if len(by_number) != context["relation_count"]:
         raise Stage3Error(f"Stage 3 decision context Relation count does not match chunk {chunk}")
 
-    def keep_all(reason: str) -> tuple[str, list[str]]:
-        return f"chunk {chunk}\nnone\n", [f"청크 전체 편집 제안 폐기(Keep all): {reason}"]
-
     if not isinstance(answer, str):
-        return keep_all("응답 본문을 읽을 수 없음")
+        raise Stage3Error("Stage 3 answer is missing")
     lines = [line.strip() for line in answer.strip().splitlines() if line.strip()]
     if not lines or lines[0] != f"chunk {chunk}":
-        return keep_all("청크 표식이 없거나 현재 청크와 다름")
+        raise Stage3Error(f"Stage 3 answer must begin with chunk {chunk}")
     proposals: dict[int, list[tuple[str, str | None]]] = {}
     warnings: list[str] = []
 
     def add(number: int, action: str | None, target: str | None = None) -> None:
         proposals.setdefault(number, []).append((action or "invalid", target))
 
-    if len(lines) == 2 and lines[1] == "none":
+    body = lines[1:]
+    if body == ["none"]:
         return f"chunk {chunk}\nnone\n", []
-    if any(line == "none" for line in lines[1:]):
-        return keep_all("none이 다른 지시와 함께 있어 응답 구조를 해석할 수 없음")
-    if len(lines) < 2:
-        return keep_all("청크 표식 뒤에 유효한 결정 또는 none이 없음")
 
-    for line in lines[1:]:
+    for line in body:
+        if line == "none":
+            warnings.append("혼합된 본문의 none 지시 줄 폐기; 다른 D/L은 계속 판정")
+            continue
         drop = re.fullmatch(r"D\s+(\d+(?:\s+\d+)*)", line)
         if drop:
             for raw_number in re.split(r"\s+", drop.group(1)):
@@ -306,12 +303,12 @@ def normalize_decisions(answer: str | None, chunk: str, context: dict) -> tuple[
         if malformed:
             row_numbers = ([int(value) for value in line.split()[1:] if re.fullmatch(r"\d+", value)]
                            if line.startswith("D") else [int(malformed.group(1))])
-            if not row_numbers:
-                return keep_all(f"잘못된 결정 행에 Relation 번호가 없음: {line[:100]}")
-            for number in row_numbers:
-                add(number, None)
+            if row_numbers:
+                warnings.append(f"Relation {', '.join(map(str, row_numbers))}: 잘못된 제안 줄만 폐기; 원본 유지")
+            else:
+                warnings.append(f"Relation 번호를 식별할 수 없는 제안 줄 폐기: {line[:100]}")
             continue
-        return keep_all(f"결정 행을 Relation 번호에 안전하게 연결할 수 없음: {line[:100]}")
+        warnings.append(f"Relation 번호를 식별할 수 없는 제안 줄 폐기: {line[:100]}")
 
     accepted = []
     for number, row_proposals in proposals.items():
@@ -337,6 +334,10 @@ def normalize_decisions(answer: str | None, chunk: str, context: dict) -> tuple[
             continue
         accepted.append(f"L {number} {target}")
     normalized = "\n".join([f"chunk {chunk}", *accepted]) + "\n" if accepted else f"chunk {chunk}\nnone\n"
+    if not accepted and body and not any("none 지시 줄 폐기" in warning for warning in warnings):
+        warnings.append("유효한 D/L 제안이 없어 none으로 저장")
+    if not body:
+        warnings.append("청크 표식 뒤에 D/L 제안이 없어 none으로 저장")
     return normalized, warnings
 
 

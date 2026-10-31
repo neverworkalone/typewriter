@@ -1241,6 +1241,11 @@ class Supervisor:
             problem = self._stage3_chunk_boundary_problem(b)
             if problem:
                 return self._fail(b, "ERROR", problem)
+            baseline = json.loads(raw)
+            if baseline.get("view") is None:
+                return self._stage3_fallback_for_missing_view(b)
+            if not isinstance(baseline["view"], dict):
+                return self._fail(b, "ERROR", "Stage 3 실행 시작 read-chunk view 스냅샷이 손상되었습니다. worktree와 응답을 보존합니다.")
             if b["run_kind"] == "s3_chunk_fallback_new":
                 return self._fail(b, "PAUSED", "해당 Stage 3 청크의 허용된 새 세션도 완료되지 않았습니다. 추가 AI 재호출 없이 상태를 보존합니다.")
             latest_run = next(iter(self.store.runs(b["id"])), None)
@@ -1307,6 +1312,14 @@ class Supervisor:
             return f"Stage 3 실행 경계를 확인하지 못했습니다: {error}. 보존합니다."
         return None
 
+    def _stage3_fallback_for_missing_view(self, b) -> None:
+        """Discard an unbound legacy answer and start this exact chunk once with a saved view."""
+        if b["run_kind"] == "s3_chunk_fallback_new":
+            return self._fail(b, "PAUSED", "새 Stage 3 fallback 실행 기준에 read-chunk view가 없습니다. 추가 AI 재호출 없이 상태를 보존합니다.")
+        self.store.log(b["id"], "기존 Stage 3 실행에 원본 read-chunk view 스냅샷이 없어 보존 응답을 폐기하고 현재 청크만 새 세션으로 처리합니다.", "warn")
+        self.store.update(b["id"], session_id=None, run_kind="s3_chunk_fallback_new")
+        return self._launch(self.store.batch(b["id"]), "s3_chunk_fallback_new")
+
     def _run_ok_stage3_chunk(self, b) -> None:
         if problem := self._stage3_chunk_boundary_problem(b):
             return self._fail(b, "ERROR", problem)
@@ -1320,14 +1333,14 @@ class Supervisor:
                 info = self._find_recovery_pr(b)
                 if info is not None:
                     raise stage3.Stage3Error(f"청크 실행 중 소유 PR #{info['number']}이 발견되었습니다")
+                if baseline.get("view") is None:
+                    return self._stage3_fallback_for_missing_view(b)
+                if not isinstance(baseline["view"], dict):
+                    raise stage3.Stage3Error("Stage 3 실행 시작 read-chunk view 스냅샷이 손상되었습니다")
                 answer = self._adapter(b["producer"]).final_answer(Path(b["log_file"]))
                 view = stage3.read_chunk(self.runner, self.env, b["worktree"], b["shard"])
-                original_view = baseline.get("view")
-                if original_view is None:  # recover a pre-#2501 run from its unchanged prepared view
-                    original_view = view
-                    baseline["view"] = original_view
-                    self.store.set(stage3.run_start_key(b["id"]), json.dumps(baseline, sort_keys=True))
-                elif original_view != view:
+                original_view = baseline["view"]
+                if original_view != view:
                     raise stage3.Stage3Error("read-chunk view가 실행 시작 시 저장한 결정 기준과 다릅니다")
                 context = stage3.decision_context(original_view, chunk)
                 normalized, warnings = stage3.normalize_decisions(answer, chunk, context)

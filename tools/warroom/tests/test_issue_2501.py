@@ -59,13 +59,22 @@ class Stage3DecisionNormalization(unittest.TestCase):
         self.assertIn("Relation 490", warnings[0])
         self.assertIn("Relation 491", warnings[1])
 
-    def test_unparseable_response_uses_keep_all_and_none_must_stand_alone(self):
-        for answer in (None, "설명만 있음", "chunk 008\n", "chunk 008\nnone\nD 491"):
-            with self.subTest(answer=answer):
-                text, warnings = stage3.normalize_decisions(answer, "008", self.context)
-                self.assertEqual(text, "chunk 008\nnone\n")
-                self.assertEqual(len(warnings), 1)
-                self.assertIn("전체 편집 제안 폐기(Keep all)", warnings[0])
+    def test_unparseable_body_lines_and_mixed_none_preserve_valid_rows(self):
+        text, warnings = stage3.normalize_decisions(
+            "chunk 008\nD 491\n이해할 수 없는 메모\nnone\nL 492 T2\n", "008", self.context)
+        self.assertEqual(text, "chunk 008\nD 491\nL 492 T2\n")
+        self.assertEqual(len(warnings), 2)
+        self.assertIn("메모", warnings[0])
+        self.assertIn("none", warnings[1])
+
+    def test_missing_or_mismatched_chunk_header_fails_closed(self):
+        for answer in (None, "설명만 있음", "chunk 009\nD 491"):
+            with self.subTest(answer=answer), self.assertRaises(stage3.Stage3Error):
+                stage3.normalize_decisions(answer, "008", self.context)
+        self.assertEqual(stage3.normalize_decisions("chunk 008\n", "008", self.context)[0],
+                         "chunk 008\nnone\n")
+        self.assertEqual(stage3.normalize_decisions("chunk 008\nnone\n", "008", self.context)[0],
+                         "chunk 008\nnone\n")
 
     def test_all_invalid_proposals_become_none_with_audit_reasons(self):
         text, warnings = stage3.normalize_decisions(
@@ -165,6 +174,49 @@ class Stage3Recovery(unittest.TestCase):
             w.sup._run_ok_stage3_chunk(self.batch)
         self.assertEqual(w.store.batch(self.batch_id)["state"], "ERROR")
         self.assertIsNotNone(w.store.get(stage3.run_start_key(self.batch_id)))
+
+    def test_legacy_run_without_view_discards_saved_answer_and_starts_one_fresh_chunk(self):
+        w = self.world
+        baseline = json.loads(w.store.get(stage3.run_start_key(self.batch_id)))
+        del baseline["view"]
+        w.store.set(stage3.run_start_key(self.batch_id), json.dumps(baseline, sort_keys=True))
+        changed_view = json.loads(json.dumps(self.view))
+        changed_view["senses"][0]["relations"][2]["targets"][0].update(
+            record_id="w9", sense_id="w9-s9")
+        launch = mock.Mock()
+        w.sup._launch = launch
+        with mock.patch.object(w.adapter, "final_answer", return_value="chunk 008\nL 492 T1\n") as answer, \
+                mock.patch.object(stage3, "read_chunk", return_value=changed_view) as read_view, \
+                mock.patch.object(stage3, "save_chunk", side_effect=AssertionError("legacy answer must not save")):
+            w.sup._relaunch_stage3_chunk(self.batch)
+        answer.assert_not_called()
+        read_view.assert_not_called()
+        launch.assert_called_once()
+        self.assertEqual(launch.call_args.args[1], "s3_chunk_fallback_new")
+        self.assertEqual(w.store.batch(self.batch_id)["run_kind"], "s3_chunk_fallback_new")
+        self.assertEqual(stage3.checkpoint(w.paths.worktrees / "s3-001", "001"), self.before)
+
+    def test_successful_legacy_run_without_view_also_discards_answer(self):
+        w = self.world
+        baseline = json.loads(w.store.get(stage3.run_start_key(self.batch_id)))
+        del baseline["view"]
+        w.store.set(stage3.run_start_key(self.batch_id), json.dumps(baseline, sort_keys=True))
+        launch = mock.Mock()
+        w.sup._launch = launch
+        with mock.patch.object(w.adapter, "final_answer", side_effect=AssertionError("legacy answer must not read")), \
+                mock.patch.object(stage3, "save_chunk", side_effect=AssertionError("legacy answer must not save")):
+            w.sup._run_ok_stage3_chunk(self.batch)
+        launch.assert_called_once()
+        self.assertEqual(launch.call_args.args[1], "s3_chunk_fallback_new")
+
+    def test_wrong_chunk_header_fails_closed_without_saving(self):
+        w = self.world
+        with mock.patch.object(w.adapter, "final_answer", return_value="chunk 009\nD 491\n"), \
+                mock.patch.object(stage3, "read_chunk", return_value=self.view), \
+                mock.patch.object(stage3, "save_chunk", side_effect=AssertionError("wrong header must not save")):
+            w.sup._run_ok_stage3_chunk(self.batch)
+        self.assertEqual(w.store.batch(self.batch_id)["state"], "ERROR")
+        self.assertEqual(stage3.checkpoint(w.paths.worktrees / "s3-001", "001"), self.before)
 
     def test_unidentified_response_uses_one_fresh_chunk_session_then_stops(self):
         w = self.world
