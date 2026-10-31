@@ -5518,7 +5518,7 @@ class Supervisor:
                 return
         chunk_run = (b["method"] == STAGE2_METHOD and isinstance(b["run_kind"], str)
                      and (b["run_kind"].startswith("s2_chunk_") or b["run_kind"] == "s2_repair_new")) or self._c_chunk_run(b) or self._d_chunk_run(b) \
-            or self._ab_chunk_run(b)
+            or self._ab_chunk_run(b) or self._stage3_chunk_run(b)
         if b["state"] == "PRODUCING" and not b["pr_number"] and not chunk_run:
             if self._handoff_failed_pr(b, code, cls):
                 return
