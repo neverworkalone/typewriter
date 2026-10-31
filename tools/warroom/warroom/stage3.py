@@ -121,28 +121,52 @@ def validate_pr(pr: dict, files: list[dict]) -> str:
 
 
 def choose(*, sha: str, kv, open_prs: list[dict], stage2_batches: list, stage3_batches: list,
-           pin: str = "") -> Choice:
-    """Pick the earliest Stage 2 verified shard with no same-shard ownership or PR conflict."""
+           pin: str = "", refresh_stage2=None) -> Choice:
+    """Pick the earliest current-master Stage 2 verified shard without same-shard ownership or PR conflict.
+
+    `refresh_stage2(shard) -> (ready, detail)` carries an old shard verify only across irrelevant changes, or runs the
+    exact shard verify on this master. It is called lazily while considering a shard; missing completion evidence is
+    never upgraded into a success.
+    """
     occupied_prs: set[str] = set()
     for pr in open_prs:
         occupied_prs |= batches.pr_stage2_shards(pr)
     s2_owned = {row["shard"] for row in stage2_batches if row["state"] != "COMPLETE"}
     s3_done = {row["shard"] for row in stage3_batches if row["state"] == "COMPLETE" and row["merged"]}
     s3_owned = {row["shard"] for row in stage3_batches if row["state"] != "COMPLETE"}
-    pending = []
+    incomplete: list[str] = []
+    stale: list[str] = []
+    occupied: list[str] = []
     for number in range(1, SHARDS + 1):
         shard = f"{number:03d}"
         if pin and shard != pin or shard in s3_done:
             continue
         if shard in s2_owned or shard in occupied_prs or shard in s3_owned:
-            pending.append(shard)
+            occupied.append(shard)
             continue
-        if kv.get(stage2.ok_key(shard, None)) != sha:
-            pending.append(shard)
+        old = kv.get(stage2.ok_key(shard, None))
+        if old == sha:
+            return Choice("shard", shard)
+        if not old:
+            incomplete.append(shard)
             continue
-        return Choice("shard", shard)
-    if pending:
-        return Choice("wait", note="Stage 2 미완료 또는 동일 샤드 작업/PR이 있어 대기: " + ", ".join(pending[:8]))
+        if refresh_stage2 is None:
+            stale.append(f"{shard} (최신 master verify 필요)")
+            continue
+        ready, detail = refresh_stage2(shard)
+        if ready:
+            return Choice("shard", shard)
+        stale.append(f"{shard} (최신 master verify 실패: {detail})")
+        break   # do not run exact verifies across later shards after the earliest stale candidate failed
+    if incomplete or stale or occupied:
+        reasons = []
+        if incomplete:
+            reasons.append("Stage 2 미완료(현재 SHA shard verify 성공 기록 없음): " + ", ".join(incomplete[:8]))
+        if stale:
+            reasons.append("구 SHA shard verify 필요 또는 실패: " + "; ".join(stale[:8]))
+        if occupied:
+            reasons.append("동일 샤드 작업·PR 점유: " + ", ".join(occupied[:8]))
+        return Choice("wait", note="; ".join(reasons))
     if pin:
         return Choice("wait", note=f"고정된 Stage 3 샤드 {pin}이 아직 Stage 2 완료·미점유 상태가 아닙니다")
     return Choice("done", note="Stage 2가 완료된 미점유 Stage 3 샤드가 없습니다")

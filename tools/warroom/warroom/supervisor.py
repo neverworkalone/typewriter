@@ -961,7 +961,7 @@ class Supervisor:
         self._s3_recovery_sha = base
 
     def _prepare_new_stage3(self, ln) -> None:
-        """Select the earliest Stage 2 shard verify cached on this master and not occupied by an edit/PR."""
+        """Select the earliest Stage 2 shard verified on this master and not occupied by an edit/PR."""
         model, method = ln["model"], STAGE3_METHOD
         base, line = self.cfg["base_branch"], f"{model}/{method}"
         key = f"line:{model}:{method}:prepare"
@@ -971,7 +971,11 @@ class Supervisor:
             choice = stage3.choose(sha=sha, kv=self.store, open_prs=self.gh.open_prs(),
                                    stage2_batches=[b for b in self.store.all_batches() if b["method"] == STAGE2_METHOD],
                                    stage3_batches=[b for b in self.store.all_batches() if b["method"] == STAGE3_METHOD],
-                                   pin=ln["shard_pin"] if ln["mode"] == "single" else "")
+                                   pin=ln["shard_pin"] if ln["mode"] == "single" else "",
+                                   refresh_stage2=lambda shard: stage2.refresh_shard_success(
+                                       shard, sha, kv=self.store, changed=self.git.changed_between,
+                                       relation_owners=self.git.stage2_affected_relation_shards,
+                                       verify=lambda *args: self.git.verify_stage2(sha, *args)))
         except TRANSIENT as error:
             return self._transient_wait(key, error, line=line)
         except Exception as error:
