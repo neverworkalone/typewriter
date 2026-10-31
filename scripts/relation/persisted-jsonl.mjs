@@ -56,7 +56,8 @@ export function deserializeRelationRow(row, location = 'Relation JSONL row') {
     }
     return relation;
   }
-  assertCompactFields(row, RELATION_ID_KEYS, 'Relation', location);
+  const hasAssignmentMarker = ['ver', 'fm', 'rfm'].some((key) => Object.hasOwn(row, key));
+  assertCompactFields(row, hasAssignmentMarker ? ASSIGNED_RELATION_ID_KEYS : RELATION_ID_KEYS, 'Relation', location);
 }
 
 /** Encode one descriptive in-memory Relation with only the compact persisted fields. */

@@ -299,8 +299,8 @@ test('independent approved rows in opposite directions between different senses 
       [
         { source_meaning_id: 'm004', position: 0, source_sense_id: 'w004-s1', target_sense_id: 'w005-s1', line: 1 },
         { source_meaning_id: 'm004', position: 0, source_sense_id: 'w005-s2', target_sense_id: 'w004-s2', line: 2 },
-        { source_meaning_id: 'm005', position: 0, source_sense_id: 'w005-s2', target_sense_id: 'w004-s2', line: 2 },
         { source_meaning_id: 'm005', position: 0, source_sense_id: 'w004-s1', target_sense_id: 'w005-s1', line: 1 },
+        { source_meaning_id: 'm005', position: 0, source_sense_id: 'w005-s2', target_sense_id: 'w004-s2', line: 2 },
       ],
     );
     full.close();
