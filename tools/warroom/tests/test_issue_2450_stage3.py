@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from tests.fakes import HEAD1, World
+from tests.fakes import HEAD1, HEAD2, World
 from warroom import batches, control, prompts, stage2, stage3
 from warroom.config import stage3_model
 from warroom.store import LineBusy, STAGE2_METHOD, STAGE3_METHOD
