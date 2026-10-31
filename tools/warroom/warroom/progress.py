@@ -224,6 +224,9 @@ def stage2_checkpoint(worktree, shard: str, batch_key: str):
         raise ValueError("unsupported or mismatched Stage 2 checkpoint")
     if data.get("type_tier_policy") not in (None, _S2_TYPE_TIER_POLICY):
         raise ValueError("unsupported Stage 2 Type/Tier direction policy")
+    if data.get("base_revision") is not None and (not isinstance(data.get("base_revision"), str)
+                                                    or not re.fullmatch(r"[a-f0-9]{40}", data["base_revision"])):
+        raise ValueError("malformed Stage 2 base revision")
     if not isinstance(data.get("complete"), bool) or not isinstance(data.get("merged"), bool) or \
             type(data.get("next_chunk_number")) is not int or data["next_chunk_number"] < 1 or \
             not isinstance(data.get("items"), list) or "pending_chunk" not in data:
@@ -293,6 +296,7 @@ def stage2_checkpoint(worktree, shard: str, batch_key: str):
         raise ValueError("incomplete Stage 2 checkpoint is marked merged")
     return {
         "shard": shard, "batch": batch, "part": part, "next_chunk_number": data["next_chunk_number"],
+        "base_revision": data.get("base_revision"),
         "type_tier_policy": data.get("type_tier_policy"),
         "pending_chunk": pending["chunk_id"] if pending is not None else None,
         "pending_revision": bool(pending and pending.get("revision") is True),

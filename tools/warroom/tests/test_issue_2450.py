@@ -1,0 +1,98 @@
+"""#2450 Phase 1: Stage 3 change evidence and source/target owner scoped Stage 2 reconciliation."""
+import unittest
+from pathlib import Path
+
+from tests.fakes import World
+from tests.test_issue_1684 import S2, s2_world
+from warroom import control, stage2
+from warroom.gitops import IntegrationBlocked
+
+
+BASE, STAGE3, HEAD = "1" * 40, "2" * 40, "3" * 40
+RELATION = "data/relations/relation-001.jsonl"
+
+
+class Stage3ChangePoint(unittest.TestCase):
+    def setUp(self):
+        self.w = World()
+        self.addCleanup(self.w.tmp.cleanup)
+
+    def configure_pr(self, files=None):
+        w = self.w
+        w.git.changed_between_paths = [RELATION]
+        w.git.ancestor_pairs = {(BASE, STAGE3), (STAGE3, HEAD), (BASE, HEAD)}
+        w.git.commit_ranges = {(BASE, STAGE3, HEAD)}
+        w.git.changed[STAGE3] = [RELATION]
+        w.gh.merged_stage3_prs = [{"number": 2451, "title": "[Relation Stage 3] 001", "base_ref": "master",
+                                   "shard": "001", "merge_commit_sha": STAGE3}]
+        w.gh.files[2451] = [{"path": path} for path in (files or [RELATION])]
+
+    def test_only_exact_merged_stage3_pr_files_are_accepted_and_checked_once(self):
+        self.configure_pr()
+        worktree = Path(self.w.paths.repo_root)
+        first = self.w.sup._stage3_commits_between(BASE, HEAD, worktree)
+        second = self.w.sup._stage3_commits_between(BASE, HEAD, worktree)
+        self.assertEqual((first, second), ([STAGE3], [STAGE3]))
+        self.assertEqual(self.w.gh.pull_files_calls, [2451])
+
+
+class CompletedPartReconcile(unittest.TestCase):
+    def configure(self, w):
+        old_sha, stage3_commit, latest = BASE, STAGE3, HEAD
+        w.git.base_sha = latest
+        w.git.relation_owner_shards = {"001"}
+        w.git.changed_between_paths = [RELATION]
+        w.git.ancestor_pairs = {(old_sha, stage3_commit), (stage3_commit, latest), (old_sha, latest)}
+        w.git.commit_ranges = {(old_sha, stage3_commit, latest)}
+        w.git.changed[stage3_commit] = [RELATION]
+        w.gh.merged_stage3_prs = [{"number": 2451, "title": "[Relation Stage 3] 001", "base_ref": "master",
+                                   "shard": "001", "merge_commit_sha": stage3_commit}]
+        w.gh.files[2451] = [{"path": RELATION}]
+        return old_sha, stage3_commit, latest
+
+    def test_proven_orphans_open_a_drop_only_reconciliation_pr_without_ai(self):
+        w = s2_world(self, canon={1: 100})
+        old_sha, stage3_commit, latest = self.configure(w)
+        prior_id = w.store.create_batch(method=S2, producer="claude", shard="001", batch="01-01",
+                                        branch="s2-claude-001-01-01", worktree="/old/stage2-part")
+        w.store.update(prior_id, state="COMPLETE", merged=1, pr_number=2410, head_sha=old_sha)
+        w.store.set(stage2.ok_key("001", "01", "01"), old_sha)
+        w.git.reconcile_preview_added = 1
+        w.git.reconcile_added = 1
+        self.assertTrue(control.start(w.store, "claude", S2, "single", cfg=w.cfg)[0])
+        w.tick()
+
+        batch = w.store.active_batch("claude", S2)
+        self.assertEqual(batch["id"], prior_id, "the unique Stage 2 Part identity is reused for reconciliation")
+        self.assertEqual(batch["run_kind"], f"s2_reconcile|{latest}|{old_sha}|{stage3_commit}")
+        self.assertEqual(batch["state"], "WAITING_REVIEW", batch["error"])
+        self.assertTrue(any("이전 PR #2410" in event["msg"] for event in w.store.line_events_tail("claude", S2)))
+        self.assertEqual(w.git.reconcile_preview_calls, [(latest, "001", (stage3_commit,), "01", "01")])
+        self.assertEqual(w.git.reconcile_calls, [(batch["worktree"], "001", (stage3_commit,), "01", "01", False)])
+        self.assertEqual(w.git.commits, [(["data/relation-drops/drop-001.jsonl"], "[Stage 2 Reconcile] 001_01 Part 01")])
+        self.assertEqual(w.adapter.launches, [])
+        self.assertEqual(w.gh.created_prs[0]["title"], "[Stage 2 Reconcile] 001_01 Part 01")
+        self.assertEqual(w.gh.pull_files(100), [{"path": "data/relation-drops/drop-001.jsonl"}])
+
+    def test_no_proven_orphan_drop_means_exact_verify_without_a_pr(self):
+        w = s2_world(self, canon={1: 100})
+        old_sha, _stage3_commit, latest = self.configure(w)
+        w.store.set(stage2.ok_key("001", "01", "01"), old_sha)
+        w.git.reconcile_preview_added = 0
+        w.git.verified |= {("part", "001", "01", "01"), ("batch", "001", "01", None),
+                           ("shard", "001", None, None)}
+        self.assertTrue(control.start(w.store, "claude", S2, "single", cfg=w.cfg)[0])
+        w.tick()
+
+        self.assertEqual(w.store.incomplete_batches(), [])
+        self.assertEqual(w.store.get(stage2.ok_key("001", "01", "01")), latest)
+        self.assertEqual(w.git.verify_calls, [("part", "001", "01", "01"),
+                                             ("batch", "001", "01", None), ("shard", "001", None, None)])
+        self.assertEqual(w.gh.created_prs, [])
+        self.assertEqual(w.adapter.launches, [])
+
+    def test_stage3_pr_file_list_must_match_its_declared_shard_and_merge_commit(self):
+        self.configure_pr([RELATION, "README.md"])
+        with self.assertRaises(IntegrationBlocked):
+            self.w.sup._stage3_commits_between(BASE, HEAD, Path(self.w.paths.repo_root))
+        self.assertEqual(self.w.gh.pull_files_calls, [2451])

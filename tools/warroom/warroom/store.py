@@ -302,15 +302,60 @@ class Store:
                                          f"{other['producer']}({other['state']})가 점유 중입니다.")
             cur = c.execute(
                 "INSERT INTO batches(method,producer,shard,batch,branch,worktree,state,"
-                "model_tier,records_total,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+                "model_tier,records_total,run_kind,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
                 (f["method"], f["producer"], f["shard"], f["batch"], f["branch"],
                  f["worktree"], "PREPARE", f.get("model_tier", "free"),
-                 f.get("records_total"), now, now))
+                 f.get("records_total"), f.get("run_kind"), now, now))
             if f.get("shard_pin") is not None:   # the Single shard binding commits WITH the Part: a crash cannot split them
                 c.execute("INSERT OR IGNORE INTO lines(model,method,updated_at) VALUES(?,?,?)", (f["producer"], f["method"], now))
                 c.execute("UPDATE lines SET shard_pin=?, blocked='', updated_at=? WHERE model=? AND method=?",
                           (f["shard_pin"], now, f["producer"], f["method"]))
             return cur.lastrowid
+
+    def restart_completed_stage2_for_reconcile(self, *, producer: str, shard: str, batch: str, branch: str,
+                                                worktree: str, model_tier: str = "free", run_kind: str,
+                                                from_run: bool = False, shard_pin: str | None = None) -> int | None:
+        """Reuse this producer's unique Stage 2 Part row for deterministic reconciliation after later Relation edits.
+
+        Stage 2 stores one row per Part. Reconciliation therefore reopens that completed identity in place, while its
+        earlier PR remains visible in the event history, instead of inventing a second Part key or violating UNIQUE.
+        """
+        now = time.time()
+        with self._conn() as c:
+            c.execute("BEGIN IMMEDIATE")
+            if from_run:
+                ln = c.execute("SELECT run, drain, force_stop FROM lines WHERE model=? AND method=?",
+                               (producer, STAGE2_METHOD)).fetchone()
+                if ln is None or not ln["run"] or ln["drain"] or ln["force_stop"]:
+                    raise LineNotRunnable(f"{producer}/{STAGE2_METHOD} 라인이 신규 배치를 받을 수 있는 상태가 아닙니다.")
+            if c.execute("SELECT 1 FROM batches WHERE method=? AND producer=? AND state!='COMPLETE'",
+                         (STAGE2_METHOD, producer)).fetchone():
+                raise LineBusy(f"{producer}/{STAGE2_METHOD} 라인에 미완료 배치가 있습니다.")
+            held = c.execute("SELECT producer, shard, batch, state FROM batches WHERE method=? AND state!='COMPLETE'",
+                             (STAGE2_METHOD,)).fetchone()
+            if held:
+                raise LineBusy(f"Stage 2는 전체에서 한 Part만 점유합니다: {held['producer']}가 "
+                               f"{held['shard']}_{held['batch']}({held['state']})를 소유 중입니다.")
+            prior = c.execute("SELECT id, pr_number FROM batches WHERE method=? AND producer=? AND shard=? AND batch=? "
+                              "AND state='COMPLETE'", (STAGE2_METHOD, producer, shard, batch)).fetchone()
+            if prior is None:
+                return None
+            batch_id = prior["id"]
+            c.execute("UPDATE batches SET branch=?, worktree=?, state='PREPARE', paused_from=NULL, pr_number=NULL, "
+                      "head_sha=NULL, session_id=NULL, pid=NULL, exit_file=NULL, log_file=NULL, run_kind=?, model_tier=?, "
+                      "retries=0, retry_after=NULL, records_done=NULL, records_total=NULL, progress_kind=NULL, "
+                      "progress_done=NULL, progress_total=NULL, error=NULL, merged=0, pause_reason='', defect_id=NULL, updated_at=? "
+                      "WHERE id=?", (branch, worktree, run_kind, model_tier, now, batch_id))
+            c.execute("DELETE FROM clear_requests WHERE batch_id=?", (batch_id,))
+            if prior["pr_number"] is not None:
+                c.execute("INSERT INTO events(batch_id,ts,level,msg) VALUES(?,?,?,?)",
+                          (batch_id, now, "info", f"Stage 2 Part가 후속 Relation 변경 조정으로 재개됨 (이전 PR #{prior['pr_number']})"))
+            if shard_pin is not None:
+                c.execute("INSERT OR IGNORE INTO lines(model,method,updated_at) VALUES(?,?,?)",
+                          (producer, STAGE2_METHOD, now))
+                c.execute("UPDATE lines SET shard_pin=?, blocked='', updated_at=? WHERE model=? AND method=?",
+                          (shard_pin, now, producer, STAGE2_METHOD))
+            return batch_id
 
     def update(self, batch_id: int, **fields) -> None:
         if not fields:
