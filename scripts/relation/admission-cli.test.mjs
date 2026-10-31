@@ -1432,7 +1432,7 @@ test('merge accounts an ID relation against only its selected candidate spelling
   await writeFile(relationPath, `${JSON.stringify(compactWithoutCandidateForms)}\n`);
   await assert.rejects(
     () => quiet(() => run(['verify', '--shard', '001', '--batch', '01'], { root })),
-    /must have exactly .*candidate_forms/u,
+    /must have exactly .*fm/u,
     'a new assigned row with a missing candidate_forms field is rejected instead of treated as legacy',
   );
 });
