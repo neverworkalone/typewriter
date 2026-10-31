@@ -169,7 +169,7 @@ def card_text(st: dict) -> str:
     is_stage2 = st["method"] == STAGE2_METHOD
     owner = st.get("display_owner") or st["model"]
     if st["batch"] is None:
-        return _idle_card(st, f"{m} · {owner}" if is_stage2 else m)
+        return _idle_card(st, m)
     icon = ICON.get(st["state"], "?")
     s2 = st.get("stage2")
     phase = PHASE.get(st["state"], st["state"])

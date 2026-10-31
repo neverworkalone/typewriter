@@ -577,7 +577,7 @@ class WarRoom(App):
     .card.empty:focus { border: round #888888; }
     .card.ERROR:focus, .card.PAUSED:focus, .card.COMPLETE:focus { border: heavy $accent; }
     #card-stage2 { height: auto; min-height: 6; }
-    .stage3-placeholder { border: round #444444; height: 6; padding: 0 1; color: #777777; text-align: center; }
+    .stage3-placeholder { text-align: left; }
     #info { border: round $accent; padding: 0 1; height: auto; }
     RichLog { border: round $primary; height: 1fr; }
     """
@@ -665,7 +665,7 @@ class WarRoom(App):
                     if model == self.stage2_col:
                         yield Stage2Card(model)
                     if model == self.stage3_col:
-                        yield Static("Stage 3\n감사 및 수정\n비활성 자리", classes="stage3-placeholder")
+                        yield Static("Stage 3\n- 실행 이력 없음", classes="card empty stage3-placeholder")
                     if model == self.maintainer_col:   # ... and the Maintainer status in the DeepSeek column
                         yield MaintainerCard(model)
         yield Static(id="banner")
