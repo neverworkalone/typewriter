@@ -224,6 +224,7 @@ class Stage3SupervisorFlow(unittest.TestCase):
     def test_finalization_commits_only_the_two_shard_files_then_opens_one_issue_linked_pr(self):
         w = self.w
         batch = self._batch(state="PRODUCING", run_kind="s3_finalize")
+        w.git.remote.pop(batch["branch"], None)
         w.git.dirty_text = f" M {RELATION}\n"
         w.git.verified.add(("shard", "001", None, None))
         w.gh.issues[2450] = {"state": "open", "labels": ["batch"], "title": "Stage 3", "body": ""}
@@ -243,6 +244,7 @@ class Stage3SupervisorFlow(unittest.TestCase):
     def test_finalize_restart_keeps_apply_report_counts_before_creating_pr(self):
         w = self.w
         batch = self._batch(state="PRODUCING", run_kind="s3_finalize")
+        w.git.remote.pop(batch["branch"], None)
         w.store.set(f"s3_apply_ready_{batch['id']}", "1")
         w.store.set(f"s3_apply_result_{batch['id']}", json.dumps({"removed": 3, "repaired": 2, "edit_drops_added": 1}))
         w.git.verified.add(("shard", "001", None, None))
