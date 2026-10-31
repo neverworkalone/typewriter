@@ -1137,6 +1137,9 @@ class Supervisor:
 
     def _launch(self, b, kind: str, events=None) -> None:
         """Launch one run with the current effective settings; Stage 2 covers chunks, links and fresh review fixes."""
+        if (b["method"] == STAGE2_METHOD and str(b["run_kind"] or "").startswith("s2_reconcile|")
+                and isinstance(kind, str) and kind.startswith("fix")):
+            return self._stage2_reconcile_review_fix(b, events)
         ts = int(self.clock())
         while any((self.paths.logs / f"batch-{b['id']}-{ts}.{x}").exists() for x in ("log", "exit")):
             ts += 1   # one launch per log: a launch in the same second must not reuse (and append to) an earlier log
@@ -2351,6 +2354,8 @@ class Supervisor:
         changed_paths = self.git.changed_between(base_revision, head)
         if not any(re.fullmatch(r"data/relations/relation-\d{3}\.jsonl", item) for item in changed_paths):
             return []
+        if not self.git.has_deleted_id_relation_rows(base_revision, head, path=worktree):
+            return []
         if self._stage3_pr_inventory_sha != master_sha:
             self._stage3_pr_inventory = self.gh.merged_relation_stage3_prs()
             self._stage3_pr_inventory_sha = master_sha
@@ -2444,6 +2449,16 @@ class Supervisor:
                        f"{stage2.label(shard, stage2.batch_key(batch, part))} 전용 Drop 조정을 시작합니다")
         self._prepare_existing(self.store.batch(bid))
         return f"{stage2.label(shard, stage2.batch_key(batch, part))} Stage 3 고아 Candidate를 위한 Stage 2 reconcile PR 대기"
+
+    def _stage2_reconcile_review_fix(self, b, events) -> None:
+        """A reconcile PR has no Part checkpoint; preserve it for an explicit owner edit instead of launching AI."""
+        if not events:
+            return self._fail(b, "ERROR", "현재 HEAD에 유효한 reconcile 리뷰 수정 이벤트가 없습니다. PR과 worktree를 보존합니다.")
+        keys = ", ".join(str(event.get("key", "unknown")) for event in events)
+        self._fail(b, "PAUSED", "Stage 2 reconcile PR은 Part checkpoint가 없는 결정적 Drop 수정 작업입니다. "
+                   "AI 수정은 시작하지 않았습니다. 오너가 리뷰 근거에 따라 기존 소유 브랜치의 "
+                   "Drop 전용 변경을 명시적으로 수정하고 검증해 푸시한 뒤 Retry를 실행하세요. "
+                   f"현재 리뷰 이벤트: {keys}. 기존 Stage 2 Part 판정과 reconcile 증거는 보존했습니다.")
 
     def _stage2_reconcile_finalize(self, b) -> None:
         """Write only proven edit Drops, verify the exact Part, and submit a separate Stage2-only PR."""

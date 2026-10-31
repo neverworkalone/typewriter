@@ -124,6 +124,7 @@ class FakeGit:
         self.verify_calls: list[tuple] = []
         self.verify_error: Exception | None = None
         self.changed_between_paths: list[str] = []            # what differs between two master commits
+        self.deleted_id_relation_ranges: set[tuple[str, str]] = set()
         self.relation_owner_shards: set[str] | None = None    # changed Relation row owners; None models unavailable evidence
         self.base_sha = "m" * 40                              # origin/<base> as fetch_base reports it
         self.outcomes: dict[tuple, list] = {}                 # (kind, shard, batch) -> queued VerifyOutcome (last one repeats)
@@ -220,6 +221,9 @@ class FakeGit:
 
     def changed_between(self, old, new):
         return list(self.changed_between_paths)
+
+    def has_deleted_id_relation_rows(self, old, new, *, path=None):
+        return (old, new) in self.deleted_id_relation_ranges
 
     def stage2_affected_relation_shards(self, old, new):
         from warroom.gitops import GitError

@@ -237,6 +237,7 @@ class Stage2Finalization(unittest.TestCase):
         w.git.changed_between_paths = [relation]
         w.git.ancestor_pairs = {(change_point, stage3_commit), (stage3_commit, latest), (change_point, latest)}
         w.git.commit_ranges = {(change_point, stage3_commit, latest)}
+        w.git.deleted_id_relation_ranges.add((change_point, latest))
         w.git.changed[stage3_commit] = [relation]
         w.gh.merged_stage3_prs = [{"number": 2451, "title": "[Relation Stage 3] 001", "base_ref": "master",
                                    "shard": "001", "merge_commit_sha": stage3_commit}]

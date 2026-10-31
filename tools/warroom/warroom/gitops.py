@@ -745,6 +745,25 @@ class Git:
         a watched location is still reported under its original path."""
         return [p for p in self._git("diff", "--name-only", "--no-renames", old, new).out.splitlines() if p]
 
+    def has_deleted_id_relation_rows(self, old: str, new: str, *, path: Path | None = None) -> bool:
+        """Cheaply detect candidate-covering ID Relation deletions before querying Stage 3 PR history."""
+        diff = self._git("diff", "--no-renames", "--unified=0", old, new, "--",
+                         "data/relations/relation-*.jsonl", cwd=path).out
+        relation_file = False
+        for line in diff.splitlines():
+            if line.startswith("diff --git "):
+                match = re.match(r"diff --git a/\S+ b/(\S+)$", line)
+                relation_file = bool(match and re.fullmatch(r"data/relations/relation-\d{3}\.jsonl", match.group(1)))
+            elif relation_file and line.startswith("-") and not line.startswith("---"):
+                try:
+                    row = json.loads(line[1:])
+                except json.JSONDecodeError as error:
+                    raise GitError(f"removed Relation line is not valid JSON: {error}") from error
+                if isinstance(row, dict) and all(isinstance(row.get(key), str) and row[key]
+                                                 for key in ("id", "sid", "tid", "tsid")):
+                    return True
+        return False
+
     def stage2_affected_relation_shards(self, old: str, new: str) -> set[str]:
         """Resolve changed Relation rows to the Canonical shards owning their source/target Senses."""
         res = self.r.run(["node", "scripts/relation/admission-cli.mjs", "affected-shards", "--from", old,
