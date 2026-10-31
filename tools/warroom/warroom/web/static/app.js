@@ -83,13 +83,6 @@ function card(l) {
     l.activity ? h("div", { class: "s" }, `${when(l.activity[0])} ${l.activity[1]}`) : null);
 }
 
-function stage3Card() {
-  return h("div", { class: "card stage3", "aria-disabled": "true" },
-    h("div", { class: "t" }, h("span", {}, "Stage 3")),
-    h("div", { class: "s" }, "감사 및 수정"),
-    h("div", { class: "s" }, "비활성 자리"));
-}
-
 function maintainerCard(m) {
   const st = { IDLE: "empty", WORKING: "PRODUCING", ERROR: "ERROR" }[m.state];
   return h("div", { class: "card " + st },
@@ -108,16 +101,19 @@ function controls(b) {
   const fill = () => {
     const a = c.adapters.find((x) => x.id === adapter.value) || c.adapters[0];
     model.replaceChildren(...a.models.map((m) => h("option", { value: m.id }, m.label)));
-    method.replaceChildren(...a.methods.map((m) => h("option", { value: m.id }, m.label)));
     model.style.display = a.models.length > 1 ? "" : "none";
     if (sel.model && a.models.some((m) => m.id === sel.model)) model.value = sel.model;
-    if (sel.method && a.methods.some((m) => m.id === sel.method)) method.value = sel.method;
+    const available = a.methods.filter((m) => m.id !== "s3" || model.value === c.stage3_model);
+    method.replaceChildren(...available.map((m) => h("option", { value: m.id }, m.label)));
+    if (sel.method && available.some((m) => m.id === sel.method)) method.value = sel.method;
+    sel.model = model.value;
+    sel.method = method.value;
   };
   if (sel.adapter) adapter.value = sel.adapter;
   fill();
   if (sel.mode) mode.value = sel.mode;
   adapter.addEventListener("change", () => { sel.adapter = adapter.value; sel.model = sel.method = null; fill(); });
-  model.addEventListener("change", () => (sel.model = model.value));
+  model.addEventListener("change", () => { sel.model = model.value; fill(); });
   method.addEventListener("change", () => (sel.method = method.value));
   mode.addEventListener("change", () => (sel.mode = mode.value));
   const start = h("button", { class: "primary", onclick: () => send({ cmd: "start", model: model.value, method: method.value, mode: mode.value }) }, "Start");
@@ -144,13 +140,13 @@ function renderBoard(b) {
   const notes = [...b.notes, ...b.urgent.map((u) => u.text)];
   const grid = h("div", { class: "board" });
   if (mobile.matches) {
-    const lines = b.lines.filter((l) => l.method !== "s2");
+    const lines = b.lines.filter((l) => l.method !== "s2" && l.method !== "s3");
     const act = lines.filter((l) => !l.idle).sort((x, y) => (ATTENTION[x.state] ?? 9) - (ATTENTION[y.state] ?? 9));
     const idle = lines.filter((l) => l.idle);
     grid.append(...act.map(card));
     const roles = h("div", { class: "mobile-roles" },
       b.stage2_card ? card(b.stage2_card) : null,
-      b.stage3_column ? stage3Card() : null,
+      b.stage3_card ? card(b.stage3_card) : null,
       b.maintainer && b.maintainer.state !== "IDLE" ? maintainerCard(b.maintainer) : null);
     if (roles.childElementCount) grid.append(roles);
     if (idle.length) grid.append(h("details", { class: "idle" }, h("summary", {}, `빈 라인 ${idle.length}개`),
@@ -158,10 +154,10 @@ function renderBoard(b) {
   } else {
     grid.style.setProperty("--cols", b.columns.length);
     for (const c of b.columns) {
-      const stage1 = b.lines.filter((l) => l.model === c.id && l.method !== "s2").map(card);
+      const stage1 = b.lines.filter((l) => l.model === c.id && l.method !== "s2" && l.method !== "s3").map(card);
       const roles = [
         b.stage2_card && b.stage2_card.column === c.id ? card(b.stage2_card) : null,
-        b.stage3_column === c.id ? stage3Card() : null,
+        b.stage3_card && b.stage3_card.column === c.id ? card(b.stage3_card) : null,
         b.maintainer && b.maintainer.column === c.id ? maintainerCard(b.maintainer) : null,
       ];
       const hasRole = roles.some(Boolean);

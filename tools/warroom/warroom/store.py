@@ -126,6 +126,7 @@ SCHEMA_VERSION = 13
 MAINTENANCE_METHOD = "m"   # the hidden Maintainer's execution record lives in `batches` under this method
 CLEARED_HOLD = "운영자가 Maintainer 실행을 Clear함 — Issue·결함 기록 보존, 명시적 Retry 전에는 자동 재시작하지 않습니다"
 STAGE2_METHOD = "s2"       # Stage 2 Relation Admission: ONE Part at a time across all models, not a Stage 1 queue method
+STAGE3_METHOD = "s3"       # Stage 3 editorial pass: one owned shard and one PR at a time
 
 ACTIVE_STATES = ("PREPARE", "PRODUCING", "WAITING_REVIEW", "FIXING", "MERGED",
                  "CLEANUP", "PAUSED", "ERROR", "CLEARING")
@@ -135,6 +136,8 @@ BATCH_KV_PREFIXES = ("last_poll_", "last_poll_fixhead_", "headlag_", "last_merge
                      "fix_claim_", "fix_context_sent_", "fix_context_pending_",
                      "s2_run_start_", "s2_links_start_", "s2_repair_state_", "s2_repair_run_start_",
                      "s2_finalize_base_", "s2_commit_head_", "s2_fix_start_",
+                     "s3_run_start_", "s3_wait_", "s3_apply_ready_", "s3_apply_result_", "s3_commit_head_",
+                     "s3_merge_wait_",
                      "pending_", "pr_create_")
 
 
@@ -294,6 +297,24 @@ class Store:
                 if held:
                     raise LineBusy(f"Stage 2는 전체에서 한 Part만 점유합니다: {held['producer']}가 "
                                    f"{held['shard']}_{held['batch']}({held['state']})를 소유 중입니다.")
+                s3 = c.execute("SELECT producer, shard, state FROM batches WHERE method=? AND shard=? "
+                               "AND state!='COMPLETE'", (STAGE3_METHOD, f["shard"])).fetchone()
+                if s3:
+                    raise LineBusy(f"Stage 3가 샤드 {f['shard']}를 점유 중입니다 ({s3['producer']}/{s3['state']}).")
+            if f["method"] == STAGE3_METHOD:
+                held = c.execute("SELECT producer, shard, state FROM batches WHERE method=? AND state!='COMPLETE'",
+                                 (STAGE3_METHOD,)).fetchone()
+                if held:
+                    raise LineBusy(f"Stage 3는 한 번에 한 샤드만 점유합니다: {held['producer']}가 "
+                                   f"샤드 {held['shard']}({held['state']})를 소유 중입니다.")
+                prior = c.execute("SELECT producer, state FROM batches WHERE method=? AND shard=? "
+                                  "AND state='COMPLETE' AND merged=1", (STAGE3_METHOD, f["shard"])).fetchone()
+                if prior:
+                    raise LineBusy(f"Stage 3 샤드 {f['shard']}는 이미 {prior['producer']}의 완료 기록이 있습니다.")
+                s2 = c.execute("SELECT producer, batch, state FROM batches WHERE method=? AND shard=? "
+                               "AND state!='COMPLETE'", (STAGE2_METHOD, f["shard"])).fetchone()
+                if s2:
+                    raise LineBusy(f"Stage 2가 샤드 {f['shard']}를 점유 중입니다 ({s2['producer']}/{s2['batch']}/{s2['state']}).")
             if f["method"] in SHARED_QUEUE_METHODS:
                 other = c.execute("SELECT producer, state FROM batches WHERE method=? AND shard=? AND batch=? "
                                   "AND producer!=?", (f["method"], f["shard"], f["batch"], f["producer"])).fetchone()
@@ -511,6 +532,50 @@ class Store:
                       "WHERE model=? AND method=?", ("continuous" if mode == "continuous" else "single", now, model,
                                                     STAGE2_METHOD))
         return True, ""
+
+    def start_stage3(self, model: str, mode: str) -> tuple[bool, str]:
+        """Reserve one shared Stage 3 run; same-shard Stage 2 ownership is checked again at batch creation."""
+        now = time.time()
+        with self._conn() as c:
+            c.execute("BEGIN IMMEDIATE")
+            held = c.execute("SELECT producer, shard, state FROM batches WHERE method=? AND state!='COMPLETE'",
+                             (STAGE3_METHOD,)).fetchone()
+            if held:
+                return False, (f"Stage 3는 전체에서 한 샤드만 점유합니다: {held['producer']}가 "
+                               f"샤드 {held['shard']}({held['state']})를 소유 중입니다. "
+                               "같은 모델로 Retry하거나 Batch Detail에서 Clear하세요.")
+            other = c.execute("SELECT model FROM lines WHERE method=? AND run=1 AND model!=?",
+                              (STAGE3_METHOD, model)).fetchone()
+            if other:
+                return False, f"Stage 3는 이미 {other['model']}가 시작 예약 중입니다."
+            ln = c.execute("SELECT drain FROM lines WHERE model=? AND method=?", (model, STAGE3_METHOD)).fetchone()
+            if ln is not None and ln["drain"]:
+                return False, f"{model}/S3 라인이 Drain 중입니다. 해당 라인의 Cancel Drain 후 시작하세요."
+            c.execute("INSERT OR IGNORE INTO lines(model,method,updated_at) VALUES(?,?,?)", (model, STAGE3_METHOD, now))
+            c.execute("UPDATE lines SET mode=?, force_stop=0, blocked='', run=1, shard_pin='', updated_at=? "
+                      "WHERE model=? AND method=?", ("continuous" if mode == "continuous" else "single", now,
+                                                       model, STAGE3_METHOD))
+        return True, ""
+
+    def restore_stage3_completion(self, *, producer: str, shard: str, pr_number: int, merge_sha: str) -> bool:
+        """Restore one lost Stage 3 completion from a validated merged PR identity; no parallel ledger is created."""
+        now = time.time()
+        branch = f"s3-{producer}-{shard}"
+        with self._conn() as c:
+            c.execute("BEGIN IMMEDIATE")
+            rows = c.execute("SELECT id, producer, state, merged, pr_number, head_sha FROM batches WHERE method=? AND shard=?",
+                             (STAGE3_METHOD, shard)).fetchall()
+            if any(row["state"] != "COMPLETE" for row in rows):
+                return False
+            if rows:
+                matching = next((row for row in rows if row["pr_number"] == pr_number
+                                 and row["head_sha"] == merge_sha and row["merged"]), None)
+                return matching is not None
+            c.execute("INSERT INTO batches(method,producer,shard,batch,branch,worktree,state,pr_number,head_sha,run_kind,"
+                      "merged,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                      (STAGE3_METHOD, producer, shard, "all", branch, "", "COMPLETE", pr_number, merge_sha,
+                       "s3_recovered", 1, now, now))
+        return True
 
     def request_drain_all(self, lines) -> int:
         """Set Drain ON for every target Line in one transaction (shared with `create_batch`).

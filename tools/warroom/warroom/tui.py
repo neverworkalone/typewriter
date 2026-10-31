@@ -19,13 +19,13 @@ import time
 
 from . import auth, control
 from .config import (Paths, role_view, adapter_label, adapters, load_config, methods, ordered_models, registry,
-                     stage2_models, STAGE2_ADAPTERS)
+                     stage2_models, stage3_model, STAGE2_ADAPTERS)
 from .logrender import render_line
 from .views import (_hhmm, _when, control_columns, select_width, card_text, detail_header, maintainer_card_text,
-                    model_title, tier_footer, detail_meta, scheduled_at, usage_text, role_column, stage2_column,
+                    model_title, tier_footer, detail_meta, scheduled_at, usage_text, stage2_column,
                     stage2_display_model)
 from .logtail import LogTail, redact
-from .store import MAINTENANCE_METHOD, STAGE2_METHOD, Store
+from .store import MAINTENANCE_METHOD, STAGE2_METHOD, STAGE3_METHOD, Store
 
 TMUX_SUP = "warroom-supervisor"
 SUPERVISOR_STARTUP_GRACE_SECONDS = 20
@@ -577,7 +577,6 @@ class WarRoom(App):
     .card.empty:focus { border: round #888888; }
     .card.ERROR:focus, .card.PAUSED:focus, .card.COMPLETE:focus { border: heavy $accent; }
     #card-stage2 { height: auto; min-height: 6; }
-    .stage3-placeholder { text-align: left; }
     #info { border: round $accent; padding: 0 1; height: auto; }
     RichLog { border: round $primary; height: 1fr; }
     """
@@ -622,7 +621,7 @@ class WarRoom(App):
 
     @property
     def stage3_col(self):
-        return role_column(self.cfg, "codex")
+        return stage3_model(self.cfg)
 
     def _line_keys(self):
         """Every production Line on the Board; also shared with scheduled Drain All execution."""
@@ -646,8 +645,10 @@ class WarRoom(App):
             yield Select(adapter_options,
                          value=first, allow_blank=False, id="adapter")
             # Only shown when one CLI/Adapter hosts several logical models: never guess which one to start.
-            yield Select(self._model_options(first), allow_blank=False, id="model")
-            yield Select(self._method_options(first), value=self.methods[0], allow_blank=False, id="method")
+            initial_models = self._model_options(first)
+            yield Select(initial_models, allow_blank=False, id="model")
+            initial_model_id = initial_models[0][1] if initial_models else None
+            yield Select(self._method_options(first, initial_model_id), value=self.methods[0], allow_blank=False, id="method")
             yield Select([("Single", "single"), ("Continuous", "continuous")],
                          value="single", allow_blank=False, id="mode")
             yield Button("Start", id="start", variant="success")
@@ -665,7 +666,7 @@ class WarRoom(App):
                     if model == self.stage2_col:
                         yield Stage2Card(model)
                     if model == self.stage3_col:
-                        yield Static("Stage 3\n- 실행 이력 없음", classes="card empty stage3-placeholder")
+                        yield Card(model, STAGE3_METHOD)
                     if model == self.maintainer_col:   # ... and the Maintainer status in the DeepSeek column
                         yield MaintainerCard(model)
         yield Static(id="banner")
@@ -759,20 +760,27 @@ class WarRoom(App):
         return [(f"{reg[pid]['label']} ({pid})", pid) for pid in ordered_models(self.cfg)
                 if reg[pid]["adapter"] == adapter]
 
-    def _method_options(self, adapter: str):
-        """Stage 1 Methods; `Stage 2` only for a CLI that may run it (Claude, Codex)."""
+    def _method_options(self, adapter: str, model: str | None = None):
+        """Stage 1 Methods; Stage 2 on Claude/Codex and Stage 3 on its one fixed Codex model."""
         opts = [(m.upper(), m) for m in self.methods]
-        return opts + [("Stage 2", STAGE2_METHOD)] if adapter in STAGE2_ADAPTERS else opts
+        if adapter in STAGE2_ADAPTERS:
+            opts.append(("Stage 2", STAGE2_METHOD))
+        if adapter == "codex" and model == stage3_model(self.cfg):
+            opts.append(("Stage 3", STAGE3_METHOD))
+        return opts
 
-    def _sync_method_select(self, adapter: str) -> None:
-        """Offer Stage 2 only for Claude/Codex; a Stage 2 choice left over from there falls back to the first Method."""
+    def _sync_method_select(self, adapter: str, model: str | None = None) -> None:
+        """Offer Stage 3 only for its assigned model; stale choices fall back to the first Method."""
         sel = self.query_one("#method", Select)
         cur = sel.value
-        opts = self._method_options(adapter)
+        opts = self._method_options(adapter, model)
         with sel.prevent(Select.Changed):
             sel.set_options(opts)
             sel.value = cur if any(v == cur for _, v in opts) else self.methods[0]
-        sel.styles.width = select_width(label for label, _ in self._method_options("claude"))
+        labels = [label for label, _ in self._method_options("claude")]
+        if owner := stage3_model(self.cfg):
+            labels.extend(label for label, _ in self._method_options("codex", owner))
+        sel.styles.width = select_width(labels)
         self._fit_controls()
 
     def _selected_model(self) -> str | None:
@@ -792,7 +800,8 @@ class WarRoom(App):
     def _size_selects(self) -> None:
         """Static top-bar Selects get a width from their longest label (no mid-word wrap)."""
         for sid, labels in (("adapter", [adapter_label(a) for a in adapters(self.cfg)]),
-                            ("method", [label for label, _ in self._method_options("claude")]),
+                            ("method", [label for label, _ in self._method_options("claude")] +
+                             (["Stage 3"] if stage3_model(self.cfg) else [])),
                             ("mode", ["Single", "Continuous"]),
                             ("drain-all-time", [label for label, _ in SCHEDULE_HOURS])):
             self.query_one(f"#{sid}", Select).styles.width = select_width(labels)
@@ -822,14 +831,17 @@ class WarRoom(App):
         self.set_interval(1.0, self.refresh_view)
         self.run_worker(self.check_auth, thread=True)
         self._size_selects()
-        self._sync_model_select(str(self.query_one("#adapter", Select).value))
-        self._sync_method_select(str(self.query_one("#adapter", Select).value))
+        adapter = str(self.query_one("#adapter", Select).value)
+        self._sync_model_select(adapter)
+        self._sync_method_select(adapter, self._selected_model())
         self.refresh_view()
 
     def on_select_changed(self, e: Select.Changed) -> None:
         if e.select.id == "adapter" and e.value is not Select.BLANK:
             self._sync_model_select(str(e.value))
-            self._sync_method_select(str(e.value))
+            self._sync_method_select(str(e.value), self._selected_model())
+        elif e.select.id == "model" and e.value is not Select.BLANK:
+            self._sync_method_select(str(self.query_one("#adapter", Select).value), str(e.value))
 
     def check_auth(self) -> None:
         from .shell import Runner

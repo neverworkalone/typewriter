@@ -13,7 +13,7 @@ from dataclasses import dataclass
 
 from .realgit import resolve_git
 from .shell import Runner
-from .store import SHARED_QUEUE_METHODS, STAGE2_METHOD
+from .store import SHARED_QUEUE_METHODS, STAGE2_METHOD, STAGE3_METHOD
 
 SHARDS = 428
 BATCH_SIZE = 500
@@ -65,16 +65,25 @@ def pr_stage2_shards(pr: dict) -> set[str]:
     return {m.group(1) for f in files if (m := _STAGE2_FILE.fullmatch((f or {}).get("path", "")))}
 
 
+def pr_stage3_shards(pr: dict) -> set[str]:
+    """Shards claimed by open Stage 3 data PRs. The same shard files also conflict with Stage 2 PRs."""
+    return pr_stage2_shards(pr)
+
+
 def pr_claims(b, pr: dict) -> list:
     """What an open PR claims, in the shape `expected_claim(b)` uses: Candidate keys for A-D, shard keys for Stage 2."""
     if b["method"] == STAGE2_METHOD:
         return [(STAGE2_METHOD, s) for s in sorted(pr_stage2_shards(pr))]
+    if b["method"] == STAGE3_METHOD:
+        return [(STAGE3_METHOD, s) for s in sorted(pr_stage3_shards(pr))]
     return pr_candidates(pr)
 
 
 def expected_claim(b) -> tuple:
     if b["method"] == STAGE2_METHOD:
         return (STAGE2_METHOD, b["shard"])
+    if b["method"] == STAGE3_METHOD:
+        return (STAGE3_METHOD, b["shard"])
     return (b["shard"], b["batch"], b["method"], b["producer"])
 
 

@@ -15,6 +15,7 @@ _PRODUCE = {"batch", "branch"}
 _MAINTAIN = {"issue", "branch"}
 _STAGE2 = {"shard", "batch", "part", "branch", "phase", "checkpoint", "session_note", "chunk_input", "chunk_id",
            "relation_direction_rule"}
+_STAGE3 = {"shard", "branch", "chunk_id", "chunk_input", "session_note", "s3_policy_card"}
 _AB_CHUNK = {"batch", "chunk_no", "session_note", "chunk_input", "method_contract"}
 _C_CHUNK = {"batch", "branch", "chunk_no", "checkpoint", "chunk_contexts", "session_note", "chunk_input", "method_contract"}
 ALLOWED = {"a": _PRODUCE, "b": _PRODUCE, "c": _PRODUCE, "d": _PRODUCE, "recovery": _PRODUCE | {"resolved_defects"},
@@ -32,6 +33,7 @@ ALLOWED = {"a": _PRODUCE, "b": _PRODUCE, "c": _PRODUCE, "d": _PRODUCE, "recovery
            "s2_links": _STAGE2 | {"link_input"},
            "s2_links_fix": {"digest", "problem", "relation_direction_rule"},
            "s2_repair": _STAGE2 | {"fingerprint", "repair_input", "round_info"},
+           "s3_policy_card": set(), "s3_chunk": _STAGE3,
            "c_chunk": _C_CHUNK, "c_chunk_resume": {"chunk_no", "checkpoint", "remaining", "session_note"},
            "d_chunk": {"batch", "branch", "chunk_no", "session_note", "chunk_input", "method_contract"},
            "d_chunk_resume": {"chunk_no", "decisions", "searches"}, "d_chunk_fix": {"chunk_no", "decisions", "problem"},
@@ -136,6 +138,8 @@ def produce(b, directory: Path | None = None) -> str:
         return render("m", {"issue": b["batch"], "branch": b["branch"]}, directory)
     if b["method"] == STAGE2_METHOD:
         return stage2(b, "chunk", None, directory=directory, view="")
+    if b["method"] == "s3":
+        raise PromptError("Stage 3는 현재 chunk view를 사용해 prompts.stage3_chunk으로 시작해야 합니다")
     values = {"batch": f"{b['shard']}_{b['batch']}", "branch": b["branch"]}
     out = render(b["method"], values, directory)
     return out.rstrip() + PRODUCER_HANDOFF if b["method"] in {"a", "b", "c", "d"} else out
@@ -148,6 +152,8 @@ def recovery(b, directory: Path | None = None, resolved_defects: str = "", check
         values = _stage2_values(b)
         values["relation_direction_rule"] = _relation_direction_rule(checkpoint)
         return render("s2_recovery", values, directory)
+    if b["method"] == "s3":
+        raise PromptError("Stage 3는 현재 chunk view를 사용해 prompts.stage3_chunk으로 복구해야 합니다")
     out = render("recovery", {"batch": f"{b['shard']}_{b['batch']}", "branch": b["branch"],
                               "resolved_defects": resolved_defects}, directory)
     return out.rstrip() + PRODUCER_HANDOFF if b["method"] in {"a", "b", "c", "d"} else out
@@ -207,6 +213,21 @@ def stage2_chunk_resume(chunk_id: str, checkpoint: dict | None = None, directory
     """Same session, same unsaved chunk: a short request for the final decisions, never the view again."""
     return render("s2_chunk_resume", {"chunk_id": chunk_id,
                                        "relation_direction_rule": _relation_direction_rule(checkpoint)}, directory)
+
+
+def stage3_chunk(b, chunk_id: str, view: str, *, resumed: bool = False,
+                 directory: Path | None = None) -> str:
+    """One new Stage 3 editing session for exactly one complete source-Sense chunk."""
+    if not re.fullmatch(r"\d{3}", chunk_id):
+        raise PromptError(f"Stage 3 chunk ID가 잘못되었습니다: {chunk_id!r}")
+    chunk_input = (f"아래가 이번 청크의 전체 입력이다. 손실 없이 함께 판단한다.\n"
+                   f"<<<STAGE3_CHUNK_BEGIN>>>\n{view}"
+                   f"{'' if view.endswith(chr(10)) else chr(10)}<<<STAGE3_CHUNK_END>>>")
+    return render("s3_chunk", {"shard": b["shard"], "branch": b["branch"], "chunk_id": chunk_id,
+                               "chunk_input": chunk_input,
+                               "session_note": "중단된 같은 청크를 다시 본다. checkpoint에 완료된 청크는 건드리지 않는다.\n"
+                               if resumed else "새 AI 세션으로 현재 청크만 편집한다.\n",
+                               "s3_policy_card": render("s3_policy_card", {}, directory).rstrip()}, directory)
 
 
 def stage2_chunk_fix(chunk_id: str, problem: str, checkpoint: dict | None = None,

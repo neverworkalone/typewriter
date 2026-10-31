@@ -145,7 +145,7 @@ ASSIGNMENT_ROLES = (STAGE1, STAGE2)   # `assignments` keys; the Maintainer is th
 
 def role_of(method: str) -> str:
     """The assignment role of a batch's method: Stage 2 (`s2`), the Maintainer (`m`), else a Stage 1 Method (a-d)."""
-    return {"s2": STAGE2, "m": MAINTAINER}.get(method, STAGE1)
+    return {"s2": STAGE2, "s3": STAGE2, "m": MAINTAINER}.get(method, STAGE1)
 
 
 def _profiles(cfg: dict) -> dict[str, dict]:
@@ -353,7 +353,7 @@ def config_problem(cfg: dict) -> str | None:
         bad.append("trusted_reviewers는 문자열 목록이어야 합니다")
     if not _strings(cfg.get("methods"), nonempty=True):
         bad.append("methods는 비어 있지 않은 문자열 목록이어야 합니다")
-    elif {m.lower() for m in cfg["methods"]} & RESERVED_METHODS:   # Stage 2 / Maintainer are not Stage 1 Methods
+    elif {m.lower() for m in cfg["methods"]} & RESERVED_METHODS:   # Stage 2/3 and Maintainer are not Stage 1 Methods
         bad.append(f"methods에 예약된 이름 {sorted({m.lower() for m in cfg['methods']} & RESERVED_METHODS)}을 쓸 수 없습니다")
     if not isinstance(cfg.get("producers"), dict) or not all(isinstance(p, dict) for p in cfg["producers"].values()):
         bad.append("producers는 {모델 ID: 객체} 형태여야 합니다")
@@ -470,7 +470,7 @@ def methods(cfg: dict) -> list[str]:
     return [m.lower() for m in cfg.get("methods") or ["a", "b", "c", "d"]]
 
 
-RESERVED_METHODS = {"m", "s2"}   # the hidden Maintainer's and Stage 2's execution methods (never a Stage 1 Method)
+RESERVED_METHODS = {"m", "s2", "s3"}   # hidden Maintainer and Stage 2/3 execution methods (never Stage 1 Methods)
 STAGE2_ADAPTERS = ("claude", "codex")   # Issue #1684: Stage 2 runs on Claude or Codex only, never DeepSeek/OpenCode
 
 
@@ -489,6 +489,12 @@ def stage2_models(cfg: dict) -> list[str]:
     """Registered models that may run Stage 2, in board order."""
     reg = registry(cfg)
     return [pid for pid in ordered_models(cfg) if reg[pid]["adapter"] in STAGE2_ADAPTERS]
+
+
+def stage3_model(cfg: dict) -> str | None:
+    """Stage 3 is shown in the established Codex role column; that model uses its Stage 2 pin."""
+    reg = registry(cfg)
+    return next((pid for pid in ordered_models(cfg) if reg[pid]["adapter"] == "codex"), None)
 
 
 ADAPTER_LABELS = {"claude": "Claude", "codex": "Codex", "opencode": "OpenCode"}   # display names only

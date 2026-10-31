@@ -613,7 +613,7 @@ class FakeGh:
         n = 100 + len(self.created_prs)
         self.created_prs.append({"number": n, "head": head, "title": title, "body": body, "labels": labels})
         self.prs[n] = {"number": n, "state": "open", "merged": False, "head_sha": self.git.local_head, "head_ref": head,
-                       "url": "", "merge_commit_sha": ""}
+                       "url": "", "merge_commit_sha": "", "title": title, "body": body, "base_ref": "master"}
         self.by_branch.setdefault(head, []).append({"number": n, "state": "OPEN", "headRefOid": self.git.local_head})
 
     def prs_for_branch(self, branch):
@@ -704,6 +704,9 @@ class FakeGh:
                 files = [{"path": f"data/relation-drops/drop-{shard}.jsonl"}]
             elif len(parts) >= 5 and parts[0] == "s2" and re.fullmatch(r"\d{3}", parts[-3]):
                 shard = parts[-3]
+                files = [{"path": f"data/relations/relation-{shard}.jsonl"}]
+            elif len(parts) >= 3 and parts[0] == "s3" and re.fullmatch(r"\d{3}", parts[-1]):
+                shard = parts[-1]
                 files = [{"path": f"data/relations/relation-{shard}.jsonl"}]
             elif (len(parts) >= 4 and parts[0] in "abcd" and re.fullmatch(r"\d{3}", parts[-2])
                     and re.fullmatch(r"\d{2}", parts[-1])):

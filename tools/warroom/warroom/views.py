@@ -7,7 +7,7 @@ import unicodedata
 
 from . import control, stage2
 from .config import TIERED_ADAPTERS, adapter_label, ordered_models, registry, stage2_models
-from .store import STAGE2_METHOD
+from .store import STAGE2_METHOD, STAGE3_METHOD
 
 
 def _hhmm(ts) -> str:
@@ -167,6 +167,7 @@ def card_text(st: dict) -> str:
     """
     m = control.method_label(st["method"])
     is_stage2 = st["method"] == STAGE2_METHOD
+    is_stage3 = st["method"] == STAGE3_METHOD
     owner = st.get("display_owner") or st["model"]
     if st["batch"] is None:
         return _idle_card(st, m)
@@ -188,11 +189,11 @@ def card_text(st: dict) -> str:
     ops = _two_sided(f"PR #{st['pr']}" if st["pr"] else "PR 생성 전",
                      f"경과 {fmt_elapsed(st['elapsed'])}" if st.get("elapsed") is not None else "")
     lines = [title, records, bar, ops]
-    if is_stage2 and st.get("wait"):
+    if (is_stage2 or is_stage3) and st.get("wait"):
         lines.append(_fit("대기: " + st["wait"]))
-    if is_stage2 and st.get("error"):
+    if (is_stage2 or is_stage3) and st.get("error"):
         lines.append(_fit("오류: " + st["error"]))
-    elif is_stage2 and st.get("blocked"):
+    elif (is_stage2 or is_stage3) and st.get("blocked"):
         lines.append(_fit("문제: " + st["blocked"]))
     return "\n".join(lines)
 
