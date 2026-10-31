@@ -99,6 +99,47 @@ def scope_inputs_changed(paths, shard: str, relation_shards=None) -> bool:
     return relation_shards is None or shard in relation_shards
 
 
+def scope_cache_invalidated(paths, shard: str, relation_shards=None) -> bool:
+    """Unknown path evidence or any input that can affect this shard invalidates its cached verify."""
+    return paths is None or scope_inputs_changed(paths, shard, relation_shards)
+
+
+def refresh_shard_success(shard: str, sha: str, *, kv, changed, relation_owners, verify) -> tuple[bool, str]:
+    """Carry an earlier exact shard verify to `sha`, or verify the shard on `sha` before caching it.
+
+    A missing prior shard success is not evidence of completion. Unknown change paths or Relation owners fail closed
+    into the exact current-master shard verify. The existing Stage 2 key remains the only completion cache.
+    """
+    key = ok_key(shard, None)
+    old = kv.get(key)
+    if not old:
+        return False, "Stage 2 shard verify 성공 기록 없음"
+    if old == sha:
+        return True, ""
+
+    try:
+        paths = changed(old, sha) if changed is not None else None
+    except GitError:
+        paths = None    # old commit unavailable or diff unknown: exact current-master verify is required
+    relation_shards = None
+    if paths is not None and any(_RELATION_FILE.fullmatch(path) for path in paths):
+        if relation_owners is not None:
+            try:
+                relation_shards = set(relation_owners(old, sha))
+            except Exception:
+                relation_shards = None
+
+    if not scope_cache_invalidated(paths, shard, relation_shards):
+        kv.set(key, sha)
+        return True, ""
+
+    ok, tail = verify("shard", shard, None, None)
+    if not ok:
+        return False, tail or "최신 master shard verify 실패"
+    kv.set(key, sha)
+    return True, ""
+
+
 def stop_head(kind: str, shard: str, batch: str | None) -> str:
     return (f"Batch {shard}_{batch}의 모든 Part가 끝났지만 Batch verify가 실패했습니다" if kind == "batch"
             else f"샤드 {shard}의 모든 Part가 끝났지만 shard verify가 실패했습니다")
@@ -765,7 +806,7 @@ def choose(runner, root, env, *, ref: str, sha: str, open_prs: list[dict], verif
                     except Exception:
                         relation_diffs[old] = None
             relation_shards = relation_diffs[old]
-        if paths is None or scope_inputs_changed(paths, shard, relation_shards):
+        if scope_cache_invalidated(paths, shard, relation_shards):
             return False
         kv.set(key, sha)   # nothing it reads changed: the success carries over to this commit
         return True
@@ -789,7 +830,7 @@ def choose(runner, root, env, *, ref: str, sha: str, open_prs: list[dict], verif
                     except Exception:
                         relation_diffs[old] = None
             relation_shards = relation_diffs[old]
-        return paths, relation_shards, paths is None or scope_inputs_changed(paths, shard, relation_shards)
+        return paths, relation_shards, scope_cache_invalidated(paths, shard, relation_shards)
 
     def close(kind, shard, batch):
         """None once the scope's exact verify succeeded (cached), else the Choice that holds the Line."""
