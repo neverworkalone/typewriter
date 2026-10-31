@@ -44,6 +44,7 @@ class VerifyOutcome:
     ok: bool
     tail: str
     failure: dict | None = None
+    code: int | None = None
 
 
 VERIFY_FAMILIES = ("rows", "accounting")
@@ -1168,10 +1169,10 @@ class Git:
         res = self.r.run(["node", "scripts/relation/admission-cli.mjs", "verify", *args, "--json"], cwd=path,
                          env=self.env, timeout=timeout)
         if res.ok:
-            return VerifyOutcome(True, "")
+            return VerifyOutcome(True, "", code=res.code)
         failure = parse_verify_failure(res.code, res.out)
         if failure:
             tail = f"{failure['family']} {failure['total']}건: {' '.join(failure['errors'][0].split())[:200]}"
         else:
-            tail = " ".join((res.err or res.out).split())[-300:]
-        return VerifyOutcome(False, tail, failure)
+            tail = " ".join((res.err or res.out).split())[-1200:]
+        return VerifyOutcome(False, tail, failure, res.code)

@@ -1089,7 +1089,7 @@ class Store:
                        run_start: tuple[str, str] | None = None) -> bool:
         """The ONE automatic Retry: batch back to the phase it was paused in, defect RELEASED, in one transaction.
 
-        `run_start` = (kv key, value): the verified Stage 2 chunk run-start baseline retargeted to the integrated HEAD,
+        `run_start` = (kv key, value): a verified Stage 2/3 execution baseline retargeted to the integrated HEAD,
         written in the same transaction so a crash can never leave RELEASED with the superseded baseline.
 
         False (nothing changed) unless the batch is still paused for exactly this defect and the defect is still
