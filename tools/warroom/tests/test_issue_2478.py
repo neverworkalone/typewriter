@@ -133,6 +133,38 @@ class Stage3IndependentStart(unittest.TestCase):
         self.assertNotIn("구 SHA", choice.note)
         self.assertEqual(w.git.verify_calls, [])
 
+    def test_wait_note_separates_incomplete_stale_and_same_shard_ownership(self):
+        w = self.w
+        w.store.set(stage2.ok_key("002", None), HEAD1)
+        running = [{"shard": "003", "state": "PRODUCING"}]
+        with mock.patch.object(stage3, "SHARDS", 3):
+            choice = stage3.choose(sha=HEAD2, kv=w.store, open_prs=[], stage2_batches=running,
+                                  stage3_batches=[])
+
+        self.assertEqual(choice.status, "wait")
+        self.assertIn("Stage 2 미완료", choice.note)
+        self.assertIn("구 SHA shard verify 필요 또는 실패", choice.note)
+        self.assertIn("동일 샤드 작업·PR 점유", choice.note)
+
+    def test_failed_earliest_stale_shard_does_not_verify_later_shards(self):
+        w = self.w
+        w.store.set(stage2.ok_key("001", None), HEAD1)
+        w.store.set(stage2.ok_key("002", None), HEAD1)
+        verified = []
+
+        def refresh(shard):
+            verified.append(shard)
+            return False, "accounting incomplete"
+
+        with mock.patch.object(stage3, "SHARDS", 2):
+            choice = stage3.choose(sha=HEAD2, kv=w.store, open_prs=[], stage2_batches=[],
+                                  stage3_batches=[], refresh_stage2=refresh)
+
+        self.assertEqual(choice.status, "wait")
+        self.assertEqual(verified, ["001"])
+        self.assertEqual(w.store.get(stage2.ok_key("001", None)), HEAD1)
+        self.assertEqual(w.store.get(stage2.ok_key("002", None)), HEAD1)
+
 
 if __name__ == "__main__":
     unittest.main()
