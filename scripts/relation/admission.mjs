@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 import { buildTargetIndex, parseArrowReference, resolveArrowTarget } from '../build/gloss-arrow-reference.mjs';
 import { CANDIDATE_BATCH_SIZE, normalizeCandidate, parseCandidateJsonl, validateCandidateBatch } from './candidate-contract.mjs';
+import { parseDropJsonl, parseRelationJsonl } from './persisted-jsonl.mjs';
 
 export { normalizeCandidate };
 
@@ -386,6 +387,9 @@ export function validateRelationRows({ relationRows, dropRows = [], index, shard
     }
     if (!ADMISSION_TYPES.includes(row.reverse_type)) errors.push(`${at}: reverse_type ${JSON.stringify(row.reverse_type)} is not one of ${ADMISSION_TYPES.join('/')}`);
     if (!isTier(row.reverse_relevance)) errors.push(`${at}: reverse_relevance must be an integer 1..9`);
+    if (row.reverse_type !== row.type || row.reverse_relevance !== row.relevance) {
+      errors.push(`${at}: reverse_type and reverse_relevance must match type and relevance`);
+    }
     if (assignedId) {
       if (![0, 1].includes(row.candidate_assignment_version)) errors.push(`${at}: candidate_assignment_version must be 0 (legacy inferred) or 1 (selected)`);
       checkCandidateForms(row.candidate_forms, row.target_record_id, at, 'candidate_forms', { allowEmpty: false });
@@ -733,9 +737,17 @@ export async function loadApprovedRelations(root = REPOSITORY_DIRECTORY, { excep
   const rows = [];
   for (const name of (await readdir(directory)).filter((item) => /^relation-\d{3}\.jsonl$/u.test(item)).sort()) {
     if (exceptShard && name === `relation-${exceptShard}.jsonl`) continue;
-    rows.push(...await readJsonl(path.join(directory, name)));
+    rows.push(...parseRelationJsonl(await readFile(path.join(directory, name), 'utf8'), name));
   }
   return rows;
+}
+
+export async function loadOptionalRelationJsonl(file) {
+  return existsSync(file) ? parseRelationJsonl(await readFile(file, 'utf8'), path.basename(file)) : [];
+}
+
+export async function loadOptionalDropJsonl(file) {
+  return existsSync(file) ? parseDropJsonl(await readFile(file, 'utf8'), path.basename(file)) : [];
 }
 
 /**
@@ -757,8 +769,4 @@ export async function loadShard(shard, root = REPOSITORY_DIRECTORY, { batch = nu
   const canonicalRows = await readJsonl(shardCanonicalPath(shard, root));
   const [{ files, inventory }, allCanonical] = await Promise.all([loadShardCandidateFiles(shard, root, { batch }), loadAllCanonical(root)]);
   return { canonicalRows, candidateFiles: files, inventory, index: buildCanonicalIndex(allCanonical), batchSize: CANDIDATE_BATCH_SIZE };
-}
-
-export async function loadOptionalJsonl(file) {
-  return existsSync(file) ? readJsonl(file) : [];
 }

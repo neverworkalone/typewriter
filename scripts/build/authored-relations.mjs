@@ -4,12 +4,13 @@ import path from 'node:path';
 
 import { MEANING_RELATION_ORIGINS } from '../../src/runtime/dictionary-contract.js';
 import { buildCanonicalIndex, validateRelationRows } from '../relation/admission.mjs';
+import { deserializeRelationRow } from '../relation/persisted-jsonl.mjs';
 
 /**
  * Approved Relations JSONL (Issue #928) -> product meaning relations.
  *
- * Invariant: every approved ID relation becomes exactly two navigable rows, the forward row with its own type/tier and a
- * reverse row with the reverse type/tier, each in the same `meaning_relations` table and index path as every other
+ * Invariant: every approved ID relation becomes exactly two navigable rows, both using the one persisted type/tier, each
+ * in the same `meaning_relations` table and index path as every other
  * relation; every text-only relation becomes one non-navigable `meaning_text_relations` row with no reverse. Candidate
  * and Drop files are never read. A row that duplicates an existing STDICT-derived relation of the same pair and type
  * fails the build instead of being silently merged.
@@ -26,9 +27,9 @@ export async function loadApprovedRelationFiles(directory) {
     lines.forEach((text, index) => {
       if (text.length === 0) return;
       try {
-        rows.push({ row: JSON.parse(text), line: index + 1 });
+        rows.push({ row: deserializeRelationRow(JSON.parse(text)), line: index + 1 });
       } catch (error) {
-        throw new Error(`${name}:${index + 1} is not valid JSON: ${error.message}`);
+        throw new Error(`${name}:${index + 1}: ${error.message}`);
       }
     });
     files.push({ shard: name.slice('relation-'.length, -'.jsonl'.length), rows });
@@ -103,7 +104,7 @@ export function projectAuthoredRelations({ files, records, meanings, existing, s
         origin: MEANING_RELATION_ORIGINS.authored, authored_source: { ...provenance, direction: 'forward' }, order,
       });
       idEntries.push({
-        source_meaning_id: target, target_meaning_id: source, type: row.reverse_type, relevance: row.reverse_relevance,
+        source_meaning_id: target, target_meaning_id: source, type: row.type, relevance: row.relevance,
         origin: MEANING_RELATION_ORIGINS.authoredReverse, authored_source: { ...provenance, direction: 'reverse' }, order,
       });
     }

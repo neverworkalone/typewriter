@@ -17,7 +17,8 @@ import {
   candidateInventory,
   legacyCandidateFormsForRecord,
   loadApprovedRelations,
-  loadOptionalJsonl,
+  loadOptionalDropJsonl,
+  loadOptionalRelationJsonl,
   loadShard,
   normalizeCandidate,
   partScope,
@@ -29,6 +30,7 @@ import {
   verifyAccounting,
   AdmissionVerifyError,
 } from './admission.mjs';
+import { parseDropJsonl, parseRelationJsonl, serializeDropJsonl, serializeRelationJsonl } from './persisted-jsonl.mjs';
 
 const USAGE = `usage:
   node scripts/relation/admission-cli.mjs prepare --shard 001 [--batch 01] [--out <file.json>] [--allow-partial]
@@ -94,14 +96,6 @@ async function writeTextAtomically(file, text) {
   await mkdir(path.dirname(file), { recursive: true });
   const temporary = `${file}.tmp`;
   await writeFile(temporary, text);
-  await rename(temporary, file);
-}
-
-async function writeJsonlAtomically(file, rows) {
-  await mkdir(path.dirname(file), { recursive: true });
-  const temporary = `${file}.tmp`;
-  const contents = rows.length ? `${rows.map((row) => JSON.stringify(row)).join('\n')}\n` : '';
-  await writeFile(temporary, contents);
   await rename(temporary, file);
 }
 
@@ -847,8 +841,8 @@ export async function run(argv, { root } = {}) {
 
   if (options.command === 'prepare') {
     // A re-run must not re-offer what is already decided: this shard's own approved rows and real Drops count too.
-    const own = await loadOptionalJsonl(shardRelationPath(options.shard, repositoryRoot));
-    const ownDrops = await loadOptionalJsonl(shardDropPath(options.shard, repositoryRoot));
+    const own = await loadOptionalRelationJsonl(shardRelationPath(options.shard, repositoryRoot));
+    const ownDrops = await loadOptionalDropJsonl(shardDropPath(options.shard, repositoryRoot));
     const result = prepareShard({
       canonicalRows,
       candidateFiles,
@@ -913,8 +907,8 @@ export async function run(argv, { root } = {}) {
     return payload;
   }
 
-  const relationRows = await loadOptionalJsonl(shardRelationPath(options.shard, repositoryRoot));
-  const dropRows = await loadOptionalJsonl(shardDropPath(options.shard, repositoryRoot));
+  const relationRows = await loadOptionalRelationJsonl(shardRelationPath(options.shard, repositoryRoot));
+  const dropRows = await loadOptionalDropJsonl(shardDropPath(options.shard, repositoryRoot));
   const shardSenseIds = new Set(canonicalRows.flatMap((record) => record.senses.map((sense) => sense.id)));
   validateRelationRows({ relationRows, dropRows, index, shardSenseIds, otherRelationRows: others });
   const counts = verifyAccounting({ canonicalRows, candidateFiles, relationRows, dropRows, otherRelationRows: others, index, scopeRows });
@@ -1967,13 +1961,16 @@ function stateManifest(state) {
 function parseJsonlState(state, family) {
   if (!state.exists || state.bytes.length === 0) return [];
   try {
-    return state.bytes.toString('utf8').split(/\r?\n/u).filter((line) => line.trim()).map((line) => JSON.parse(line));
+    const contents = state.bytes.toString('utf8');
+    return family === 'Relation'
+      ? parseRelationJsonl(contents, `premerge ${family} snapshot`)
+      : parseDropJsonl(contents, `premerge ${family} snapshot`);
   } catch (error) { throw new Error(`cannot parse premerge ${family} snapshot: ${error.message}`); }
 }
 
-function serializedJsonlState(rows, baseline) {
+function serializedJsonlState(rows, baseline, family) {
   if (rows.length === 0 && !baseline.exists) return { exists: false, bytes: Buffer.alloc(0), sha256: null };
-  const text = rows.length ? `${rows.map((row) => JSON.stringify(row)).join('\n')}\n` : '';
+  const text = family === 'Relation' ? serializeRelationJsonl(rows) : serializeDropJsonl(rows);
   const bytes = Buffer.from(text, 'utf8');
   return { exists: true, bytes, sha256: sha256(bytes) };
 }
@@ -2078,9 +2075,9 @@ async function materializePart(checkpoint, root, baseline) {
   verifyAccounting({ canonicalRows: loaded.canonicalRows, candidateFiles: scoped.files, relationRows: merged.relations,
     dropRows: merged.drops, otherRelationRows: others, index: loaded.index, scopeRows: scoped.scopeRows });
   const relations = sameRows(merged.relations, existingRelations)
-    ? baseline.relations : serializedJsonlState(merged.relations, baseline.relations);
+    ? baseline.relations : serializedJsonlState(merged.relations, baseline.relations, 'Relation');
   const drops = sameRows(merged.drops, existingDrops)
-    ? baseline.drops : serializedJsonlState(merged.drops, baseline.drops);
+    ? baseline.drops : serializedJsonlState(merged.drops, baseline.drops, 'Drop');
   return { relations, drops, merged, existingRelations, existingDrops };
 }
 

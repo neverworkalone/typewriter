@@ -10,6 +10,7 @@ import {
   validateRelationRows,
   verifyAccounting,
 } from './admission.mjs';
+import { parseDropJsonl, parseRelationJsonl, serializeDropJsonl, serializeRelationJsonl } from './persisted-jsonl.mjs';
 
 const canonical = (count = 500) => Array.from({ length: count }, (_, i) => ({
   id: `w${i + 1}`, lemma: `표제${i + 1}`, senses: [{ id: `w${i + 1}-s1`, pos: 'noun', gloss: `뜻${i + 1}` }],
@@ -30,6 +31,45 @@ const files = [
   file('001_01_a_codex.jsonl', { w1: ['유일', '새  말', '동철'], w2: ['버릴말'] }),
   file('001_01_b_claude.jsonl', { w1: ['새 말', '표제1x'] }),
 ];
+
+test('persisted Relation and Drop JSONL use one compact schema while preserving candidate-assignment states', () => {
+  const legacy = {
+    source_record_id: 'w1', source_sense_id: 'w1-s1', target_record_id: 'w2', target_sense_id: 'w2-s1',
+    type: 'scene', relevance: 4, reverse_type: 'scene', reverse_relevance: 4,
+  };
+  const versionZero = { ...legacy, candidate_assignment_version: 0, candidate_forms: ['표적 표기'], reverse_candidate_forms: [] };
+  const versionOne = { ...legacy, candidate_assignment_version: 1, candidate_forms: ['표적 표기'], reverse_candidate_forms: ['출발 표기'] };
+  const text = { source_record_id: 'w1', source_sense_id: 'w1-s1', text: '새 말', type: 'scene', relevance: 4 };
+  const drop = { source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '버릴말', reason: '출발 의미와 무관' };
+
+  const persisted = serializeRelationJsonl([legacy, versionZero, versionOne, text]);
+  const stored = persisted.trim().split('\n').map(JSON.parse);
+  assert.deepEqual(stored, [
+    { id: 'w1', sid: 'w1-s1', tid: 'w2', tsid: 'w2-s1', tp: 'scene', rv: 4 },
+    { id: 'w1', sid: 'w1-s1', tid: 'w2', tsid: 'w2-s1', tp: 'scene', rv: 4, ver: 0, fm: ['표적 표기'], rfm: [] },
+    { id: 'w1', sid: 'w1-s1', tid: 'w2', tsid: 'w2-s1', tp: 'scene', rv: 4, ver: 1, fm: ['표적 표기'], rfm: ['출발 표기'] },
+    { id: 'w1', sid: 'w1-s1', tt: '새 말', tp: 'scene', rv: 4 },
+  ]);
+  const decoded = parseRelationJsonl(persisted);
+  assert.deepEqual(decoded, [legacy, versionZero, versionOne, text]);
+  assert.deepEqual(parseDropJsonl(serializeDropJsonl([drop])), [drop]);
+});
+
+test('persisted readers reject the previous verbose Relation and Drop contracts', () => {
+  assert.throws(() => parseRelationJsonl(JSON.stringify({
+    source_record_id: 'w1', source_sense_id: 'w1-s1', text: '새 말', type: 'scene', relevance: 4,
+  })), /obsolete Relation JSONL field/u);
+  assert.throws(() => parseRelationJsonl(JSON.stringify({
+    id: 'w1', sid: 'w1-s1', tid: 'w2', tsid: 'w2-s1', tp: 'scene', rv: 4, reverse_type: 'mood', reverse_relevance: 5,
+  })), /obsolete Relation JSONL field/u);
+  assert.throws(() => parseDropJsonl(JSON.stringify({
+    source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '버릴말', reason: '무관',
+  })), /obsolete Drop JSONL field/u);
+  assert.throws(() => serializeRelationJsonl([{
+    source_record_id: 'w1', source_sense_id: 'w1-s1', target_record_id: 'w2', target_sense_id: 'w2-s1',
+    type: 'scene', relevance: 4, reverse_type: 'mood', reverse_relevance: 5,
+  }]), /legacy reverse judgments/u);
+});
 
 test('normalizeCandidate only trims and collapses whitespace; no fuzzy merge', () => {
   assert.equal(normalizeCandidate('  새   말 '), '새 말');
@@ -249,10 +289,10 @@ test('an exact existing ID relation answers its reverse candidate despite homogr
 
 const base = { source_record_id: 'w1', source_sense_id: 'w1-s1' };
 const validate = (relationRows, dropRows = [], otherRelationRows = []) => validateRelationRows({ relationRows, dropRows, index, shardSenseIds, otherRelationRows });
-const idRow = { ...base, target_record_id: 'w902', target_sense_id: 'w902-s1', type: 'near', relevance: 3, reverse_type: 'mood', reverse_relevance: 5 };
+const idRow = { ...base, target_record_id: 'w902', target_sense_id: 'w902-s1', type: 'near', relevance: 3, reverse_type: 'near', reverse_relevance: 3 };
 const textRow = { ...base, text: '새 말', type: 'scene', relevance: 4 };
 
-test('relation rows: valid ID (different reverse tier) and text-only rows pass', () => {
+test('relation rows: symmetric ID and text-only rows pass', () => {
   assert.deepEqual(validate([idRow, textRow]), { relationCount: 2, dropCount: 0 });
 });
 
@@ -264,6 +304,7 @@ test('relation rows reject the whole invalid set', () => {
     [{ ...idRow, relevance: 2.5 }, /relevance/],
     [{ ...idRow, reverse_relevance: 12 }, /reverse_relevance/],
     [{ ...idRow, reverse_type: 'antonym' }, /reverse_type/],
+    [{ ...idRow, reverse_type: 'mood' }, /must match type and relevance/],
     [{ ...idRow, target_sense_id: 'w900-s1' }, /not a sense of w902/],
     [{ ...idRow, target_record_id: 'w1', target_sense_id: 'w1-s1' }, /own record/],
     [{ ...idRow, source_sense_id: 'w999-s1' }, /not a sense/],
@@ -296,7 +337,7 @@ test('accounting: every unique candidate is exactly one of relation, drop or exi
   const answer = (relationRows, dropRows, other = []) => verifyAccounting({ canonicalRows: shardRows, candidateFiles: files, relationRows, dropRows, otherRelationRows: other, index });
   const full = {
     relations: [
-      { ...base, target_record_id: 'w902', target_sense_id: 'w902-s1', type: 'near', relevance: 1, reverse_type: 'near', reverse_relevance: 2 },
+      { ...base, target_record_id: 'w902', target_sense_id: 'w902-s1', type: 'near', relevance: 1, reverse_type: 'near', reverse_relevance: 1 },
       { ...base, text: '새 말', type: 'scene', relevance: 4 },
       { ...base, text: '표제1x', type: 'scene', relevance: 4 },
       { ...base, target_record_id: 'w900', target_sense_id: 'w900-s1', type: 'near', relevance: 2, reverse_type: 'near', reverse_relevance: 2 },
@@ -372,7 +413,7 @@ test('accounting allows an approved reverse candidate for a different target sen
     source_sense_id: sourceSense,
     target_record_id: targetSense.split('-s')[0],
     target_sense_id: targetSense,
-    type: 'near', relevance: 1, reverse_type: 'near', reverse_relevance: 2,
+    type: 'near', relevance: 1, reverse_type: 'near', reverse_relevance: 1,
   });
   const verify = (relationRows, otherRelationRows) => verifyAccounting({
     canonicalRows: local,
@@ -425,7 +466,7 @@ test('a stored exact ID pair answers the reverse candidate when its spelling als
   const localIndex = buildCanonicalIndex(local);
   const files = (byId) => [{ name: '001_01_a_codex.jsonl', rows: local.map((record) => ({ record_id: record.id, senses: [{ sense_id: record.senses[0].id, candidates: byId[record.id] ?? [] }] })) }];
   const verify = (candidates, relationRows) => verifyAccounting({ canonicalRows: local, candidateFiles: files(candidates), relationRows, dropRows: [], otherRelationRows: [], index: localIndex });
-  const pair = (source, target) => ({ source_record_id: source[0], source_sense_id: source[1], target_record_id: target[0], target_sense_id: target[1], type: 'near', relevance: 2, reverse_type: 'near', reverse_relevance: 3 });
+  const pair = (source, target) => ({ source_record_id: source[0], source_sense_id: source[1], target_record_id: target[0], target_sense_id: target[1], type: 'near', relevance: 2, reverse_type: 'near', reverse_relevance: 2 });
   // 하나 <-> 둘 listed each other; one stored row (source 둘, unique spelling) answers both candidates.
   assert.equal(verify({ w1: ['둘'], w2: ['하나'] }, [pair(['w2', 'w2-s1'], ['w1', 'w1-s1'])]).reverse_covered, 1);
   // Exact source ID w3 is one of the records named by 동철, so its stored pair covers w5's reverse candidate.

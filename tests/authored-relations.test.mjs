@@ -7,6 +7,7 @@ import { DatabaseSync } from 'node:sqlite';
 
 import { buildDictionary } from '../scripts/build/dictionary.mjs';
 import { extractLiteDictionary } from '../scripts/build/lite-dictionary.mjs';
+import { serializeRelationJsonl } from '../scripts/relation/persisted-jsonl.mjs';
 import {
   buildShardSenseIdsFromCanonicalRecords,
   loadApprovedRelationFiles,
@@ -30,22 +31,33 @@ const RECORDS = [
   record(4, '사아', [['사아의 첫째 뜻.'], ['사아의 둘째 뜻.']]),
   record(5, '자차', [['자차의 첫째 뜻.'], ['자차의 둘째 뜻.']]),
 ];
-const idRow = (over = {}) => ({
-  source_record_id: 'w001', source_sense_id: 'w001-s1', target_record_id: 'w003', target_sense_id: 'w003-s1',
-  type: 'near', relevance: 2, reverse_type: 'mood', reverse_relevance: 6, ...over,
-});
+const idRow = (over = {}) => {
+  const row = {
+    source_record_id: 'w001', source_sense_id: 'w001-s1', target_record_id: 'w003', target_sense_id: 'w003-s1',
+    type: 'near', relevance: 2, ...over,
+  };
+  return {
+    ...row,
+    reverse_type: Object.hasOwn(over, 'reverse_type') ? over.reverse_type : row.type,
+    reverse_relevance: Object.hasOwn(over, 'reverse_relevance') ? over.reverse_relevance : row.relevance,
+  };
+};
 const textRow = (over = {}) => ({ source_record_id: 'w001', source_sense_id: 'w001-s1', text: '새 말', type: 'scene', relevance: 4, ...over });
+const relationJsonl = (rows) => serializeRelationJsonl(rows);
 
 test('the product loader reads exact approved Relation filenames and ignores Stage 2 backups', async (t) => {
   const directory = await mkdtemp(path.join(tmpdir(), 'typewriter-relation-backup-'));
   t.after(() => rm(directory, { recursive: true, force: true }));
-  await writeFile(path.join(directory, 'relation-001.jsonl'), `${JSON.stringify(idRow())}\n`);
+  await writeFile(path.join(directory, 'relation-001.jsonl'), relationJsonl([idRow()]));
   await writeFile(path.join(directory, 'relation-001-backup.jsonl'), '{historical backup is not JSON');
   await writeFile(path.join(directory, 'relation-001.jsonl.bak'), '{not a Relation input');
 
   const files = await loadApprovedRelationFiles(directory);
   assert.deepEqual(files.map((file) => file.shard), ['001']);
   assert.deepEqual(files[0].rows.map(({ row }) => row), [idRow()]);
+
+  await writeFile(path.join(directory, 'relation-001.jsonl'), `${JSON.stringify(idRow())}\n`);
+  await assert.rejects(loadApprovedRelationFiles(directory), /obsolete Relation JSONL field/u);
 });
 
 test('DB-free approved Relation validation reads all exact files against the Canonical index', async (t) => {
@@ -66,7 +78,7 @@ test('DB-free approved Relation validation reads all exact files against the Can
   const text = textRow({ source_record_id: 'w004', source_sense_id: 'w004-s1', text: '겨울 장면' });
   const writeRelations = async (shard, rows) => writeFile(
     path.join(relations, `relation-${shard}.jsonl`),
-    rows.map((row) => `${JSON.stringify(row)}\n`).join(''),
+    relationJsonl(rows),
   );
   await writeRelations('001', [link]);
   await writeRelations('002', [text]);
@@ -97,7 +109,7 @@ test('DB-free approved Relation validation reads all exact files against the Can
   await writeRelations('002', [idRow({
     source_record_id: 'w004', source_sense_id: 'w004-s1',
     target_record_id: 'w001', target_sense_id: 'w001-s1',
-    type: 'mood', reverse_type: 'near',
+    type: 'mood', reverse_type: 'mood',
   })]);
   await assert.rejects(validateSavedFiles, /duplicate or reverse-duplicate ID relation/u);
 
@@ -125,11 +137,11 @@ async function build(rows, { files = {}, shards = SHARDS } = {}) {
     await writeFile(path.join(canonical, `stdict-0${shard}.jsonl`), `${records.map((item) => JSON.stringify(item)).join('\n')}\n`);
   }
   const all = { ...(rows.length > 0 ? { '001': rows } : {}), ...files };
-  for (const [shard, list] of Object.entries(all)) {
-    await writeFile(path.join(relations, `relation-${shard}.jsonl`), list.map((row) => `${JSON.stringify(row)}\n`).join(''));
-  }
   const full = path.join(directory, 'dictionary.sqlite');
   try {
+    for (const [shard, list] of Object.entries(all)) {
+      await writeFile(path.join(relations, `relation-${shard}.jsonl`), relationJsonl(list));
+    }
     await buildDictionary({ inputDirectory: canonical, outputPath: full, relationsDirectory: relations, allowDirty: true, recordMeanings: true });
     const lite = path.join(directory, 'lite.sqlite');
     await extractLiteDictionary({ fullPath: full, litePath: lite });
@@ -140,14 +152,14 @@ async function build(rows, { files = {}, shards = SHARDS } = {}) {
   }
 }
 
-test('an authored ID relation becomes two navigable rows with their own type/tier; text-only stays plain text', async () => {
+test('an authored ID relation projects the persisted type/tier in both directions; text-only stays plain text', async () => {
   const built = await build([idRow(), textRow()]);
   try {
     const lite = new DatabaseSync(built.lite, { readOnly: true });
     const rows = lite.prepare("SELECT source_meaning_id, target_meaning_id, type, relevance, origin, note FROM meaning_relations WHERE origin LIKE 'typewriter-authored%' ORDER BY source_meaning_id").all().map((row) => ({ ...row }));
     assert.deepEqual(rows, [
       { source_meaning_id: 'm001', target_meaning_id: 'm003', type: 'near', relevance: 2, origin: 'typewriter-authored', note: '' },
-      { source_meaning_id: 'm003', target_meaning_id: 'm001', type: 'mood', relevance: 6, origin: 'typewriter-authored-reverse', note: '' },
+      { source_meaning_id: 'm003', target_meaning_id: 'm001', type: 'near', relevance: 2, origin: 'typewriter-authored-reverse', note: '' },
     ]);
     assert.deepEqual(lite.prepare('SELECT source_meaning_id, text, type, relevance FROM meaning_text_relations').all().map((row) => ({ ...row })), [
       { source_meaning_id: 'm001', text: '새 말', type: 'scene', relevance: 4 },
@@ -159,7 +171,7 @@ test('an authored ID relation becomes two navigable rows with their own type/tie
     const forward = getMeaningRecord(lite, 'w001').senses[0].relations;
     const reverse = getMeaningRecord(lite, 'w003').senses[0].relations;
     assert.ok(forward.some((r) => r.target === 'w003' && r.type === 'near' && r.relevance === 2));
-    assert.ok(reverse.some((r) => r.target === 'w001' && r.type === 'mood' && r.relevance === 6));
+    assert.ok(reverse.some((r) => r.target === 'w001' && r.type === 'near' && r.relevance === 2));
     const text = forward.find((r) => r.target === null);
     assert.equal(text.target_lemma, '새 말');
     assert.equal(projectRelation(text, 'm001', text.position).action, null);
@@ -214,9 +226,9 @@ test('a second sense of the same meaning reaching the same pair/type keeps the b
 test('invalid approved Relations fail the build (no row is silently dropped)', async () => {
   const cases = [
     [[idRow({ type: 'direct' })], /type "direct"/],
-    [[idRow({ type: 'antonym', reverse_type: 'near' })], /type "antonym"/],
+    [[idRow({ type: 'antonym' })], /type "antonym"/],
     [[idRow({ relevance: 10 })], /relevance/],
-    [[idRow({ reverse_relevance: 0 })], /reverse_relevance/],
+    [[idRow({ reverse_relevance: 0 })], /legacy reverse judgments/],
     [[idRow({ target_sense_id: 'w999-s1' })], /not a sense/],
     [[idRow({ target_record_id: 'w004', target_sense_id: 'w003-s1' })], /not a sense of w004/],
     [[{ ...textRow(), reverse_type: 'near', reverse_relevance: 3 }], /exactly/],
@@ -263,8 +275,8 @@ test('the same text reached with different types by senses of one meaning keeps 
 test('independent approved rows in opposite directions between different senses of the same two meanings build and keep every contributor', async () => {
   // Row 1 (w004-s1 -> w005-s1) and row 2 (w005-s2 -> w004-s2) reach the same two meanings from opposite sides.
   const built = await build([], { files: { '002': [
-    { source_record_id: 'w004', source_sense_id: 'w004-s1', target_record_id: 'w005', target_sense_id: 'w005-s1', type: 'near', relevance: 1, reverse_type: 'mood', reverse_relevance: 9 },
-    { source_record_id: 'w005', source_sense_id: 'w005-s2', target_record_id: 'w004', target_sense_id: 'w004-s2', type: 'mood', relevance: 1, reverse_type: 'near', reverse_relevance: 9 },
+    { source_record_id: 'w004', source_sense_id: 'w004-s1', target_record_id: 'w005', target_sense_id: 'w005-s1', type: 'near', relevance: 1, reverse_type: 'near', reverse_relevance: 1 },
+    { source_record_id: 'w005', source_sense_id: 'w005-s2', target_record_id: 'w004', target_sense_id: 'w004-s2', type: 'mood', relevance: 1, reverse_type: 'mood', reverse_relevance: 1 },
   ] } });
   try {
     const lite = new DatabaseSync(built.lite, { readOnly: true });
@@ -272,6 +284,8 @@ test('independent approved rows in opposite directions between different senses 
       lite.prepare("SELECT source_meaning_id, target_meaning_id, type, relevance, origin FROM meaning_relations WHERE origin LIKE 'typewriter-authored%' ORDER BY source_meaning_id").all().map((row) => ({ ...row })),
       [
         { source_meaning_id: 'm004', target_meaning_id: 'm005', type: 'near', relevance: 1, origin: 'typewriter-authored' },
+        { source_meaning_id: 'm004', target_meaning_id: 'm005', type: 'mood', relevance: 1, origin: 'typewriter-authored-reverse' },
+        { source_meaning_id: 'm005', target_meaning_id: 'm004', type: 'near', relevance: 1, origin: 'typewriter-authored-reverse' },
         { source_meaning_id: 'm005', target_meaning_id: 'm004', type: 'mood', relevance: 1, origin: 'typewriter-authored' },
       ],
     );
@@ -284,9 +298,9 @@ test('independent approved rows in opposite directions between different senses 
       full.prepare('SELECT source_meaning_id, position, source_sense_id, target_sense_id, line FROM meaning_relation_authored_sources ORDER BY source_meaning_id, position').all().map((row) => ({ ...row })),
       [
         { source_meaning_id: 'm004', position: 0, source_sense_id: 'w004-s1', target_sense_id: 'w005-s1', line: 1 },
-        { source_meaning_id: 'm004', position: 1, source_sense_id: 'w005-s2', target_sense_id: 'w004-s2', line: 2 },
+        { source_meaning_id: 'm004', position: 0, source_sense_id: 'w005-s2', target_sense_id: 'w004-s2', line: 2 },
+        { source_meaning_id: 'm005', position: 0, source_sense_id: 'w004-s1', target_sense_id: 'w005-s1', line: 1 },
         { source_meaning_id: 'm005', position: 0, source_sense_id: 'w005-s2', target_sense_id: 'w004-s2', line: 2 },
-        { source_meaning_id: 'm005', position: 1, source_sense_id: 'w004-s1', target_sense_id: 'w005-s1', line: 1 },
       ],
     );
     full.close();
