@@ -99,6 +99,38 @@ async function save(root, text) {
   return quiet(() => run(['save-chunk', '--shard', '001', '--in', input], { root }));
 }
 
+async function addSecondSenseTextRelation(root) {
+  const canonicalPath = path.join(root, 'data/canonical/stdict-0001.jsonl');
+  const canonicalRows = (await readFile(canonicalPath, 'utf8')).trimEnd().split('\n').map(JSON.parse);
+  const source = canonicalRows.find((record) => record.id === 'w1');
+  source.senses.push({ id: 'w1-s2', pos: 'verb', gloss: '첫째 뜻과 구별되는 둘째 뜻.' });
+  await writeFile(canonicalPath, jsonl(canonicalRows));
+
+  for (const producer of ['a_codex', 'a_claude', 'b_codex', 'b_claude', 'c_codex', 'd_codex']) {
+    const candidatePath = path.join(root, `data/relation-candidates/001/001_01_${producer}.jsonl`);
+    const candidateRows = (await readFile(candidatePath, 'utf8')).trimEnd().split('\n').map(JSON.parse);
+    const candidateSource = candidateRows.find((record) => record.record_id === 'w1');
+    candidateSource.senses.push({ sense_id: 'w1-s2', candidates: producer === 'a_codex' ? ['물결'] : [] });
+    await writeFile(candidatePath, jsonl(candidateRows));
+  }
+
+  const relationPath = path.join(root, 'data/relations/relation-001.jsonl');
+  const relations = parseRelationJsonl(await readFile(relationPath, 'utf8'));
+  relations.push({ source_record_id: 'w1', source_sense_id: 'w1-s2', text: '물결', type: 'scene', relevance: 4 });
+  await writeFile(relationPath, serializeRelationJsonl(relations));
+  git(root, 'add', 'data');
+  git(root, 'commit', '-qm', 'Add a second source Sense for stale edit regression');
+}
+
+async function swapRelationRows(root, left, right, message) {
+  const relationPath = path.join(root, 'data/relations/relation-001.jsonl');
+  const relations = parseRelationJsonl(await readFile(relationPath, 'utf8'));
+  [relations[left - 1], relations[right - 1]] = [relations[right - 1], relations[left - 1]];
+  await writeFile(relationPath, serializeRelationJsonl(relations));
+  git(root, 'add', 'data/relations/relation-001.jsonl');
+  git(root, 'commit', '-qm', message);
+}
+
 test('Sense grouping targets 350–500 Relation rows without splitting any source Sense', () => {
   const groups = [200, 200, 100, 70].map((size, index) => ({ sense: String(index), relations: Array(size).fill(index) }));
   const chunks = chunkSenseGroups(groups);
@@ -206,6 +238,32 @@ test('invalid saved Link Repair fails before either Relation or Drop file change
   const relationBefore = await readFile(relationPath, 'utf8');
   const dropBefore = await readFile(dropPath, 'utf8');
   await assert.rejects(quiet(() => run(['apply', '--shard', '001'], { root })), /does not target an exact same-spelling Canonical sense/u);
+  assert.equal(await readFile(relationPath, 'utf8'), relationBefore);
+  assert.equal(await readFile(dropPath, 'utf8'), dropBefore);
+});
+
+test('apply refuses Drop and Link Repair decisions after their prepared Relation rows change', async (t) => {
+  const root = await repository(t);
+  await addSecondSenseTextRelation(root);
+  await quiet(() => run(['prepare', '--shard', '001'], { root }));
+  await save(root, 'chunk 001\nD 1\n');
+
+  await swapRelationRows(root, 1, 4, 'Reorder ID Relations after a saved Drop');
+  let relationPath = path.join(root, 'data/relations/relation-001.jsonl');
+  let dropPath = path.join(root, 'data/relation-drops/drop-001.jsonl');
+  let relationBefore = await readFile(relationPath, 'utf8');
+  let dropBefore = await readFile(dropPath, 'utf8');
+  await assert.rejects(quiet(() => run(['apply', '--shard', '001'], { root })), /no longer matches its prepared Relation input/u);
+  assert.equal(await readFile(relationPath, 'utf8'), relationBefore);
+  assert.equal(await readFile(dropPath, 'utf8'), dropBefore);
+
+  await rm(path.join(root, '.warroom-scratch'), { recursive: true, force: true });
+  await quiet(() => run(['prepare', '--shard', '001'], { root }));
+  await save(root, 'chunk 001\nL 2 T2\n');
+  await swapRelationRows(root, 2, 5, 'Move a Link Repair candidate to a different source Sense');
+  relationBefore = await readFile(relationPath, 'utf8');
+  dropBefore = await readFile(dropPath, 'utf8');
+  await assert.rejects(quiet(() => run(['apply', '--shard', '001'], { root })), /no longer matches its prepared Relation input/u);
   assert.equal(await readFile(relationPath, 'utf8'), relationBefore);
   assert.equal(await readFile(dropPath, 'utf8'), dropBefore);
 });

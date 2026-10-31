@@ -104,11 +104,14 @@ function readCheckpointText(text, shard) {
     if (!decision || Array.isArray(decision) || typeof decision !== 'object') fail('Stage 3 checkpoint has an invalid decision');
     const keys = Object.keys(decision).sort().join(',');
     if (decision.action === 'drop') {
-      if (keys !== 'action,row') fail('Stage 3 Drop decision must have only action and row');
+      if (keys !== 'action,chunk,row') fail('Stage 3 Drop decision must have only action, chunk, and row');
     } else if (decision.action === 'repair') {
-      if (keys !== 'action,row,target_record_id,target_sense_id') fail('Stage 3 Link Repair decision must have exact target IDs');
+      if (keys !== 'action,chunk,row,target_record_id,target_sense_id') fail('Stage 3 Link Repair decision must have exact target IDs');
       if (typeof decision.target_record_id !== 'string' || typeof decision.target_sense_id !== 'string') fail('Stage 3 Link Repair decision has invalid target IDs');
     } else fail('Stage 3 checkpoint has an unknown decision');
+    if (typeof decision.chunk !== 'string' || !/^\d{3}$/u.test(decision.chunk)
+        || Number(decision.chunk) < 1 || Number(decision.chunk) > checkpoint.chunk_total
+        || !completed.has(decision.chunk)) fail('Stage 3 decision refers to an incomplete or unknown chunk');
     if (!Number.isSafeInteger(decision.row) || decision.row < 1 || rows.has(decision.row)) fail('Stage 3 checkpoint repeats or misnumbers a Relation row');
     rows.add(decision.row);
   }
@@ -324,7 +327,7 @@ function parseDecisionText(text, view, checkpoint) {
         const relation = byNumber.get(number);
         if (!relation || seen.has(number)) fail(`D ${number}: Relation number is unknown or repeated`);
         seen.add(number);
-        decisions.push({ row: relation._row, action: 'drop' });
+        decisions.push({ chunk: view.chunk, row: relation._row, action: 'drop' });
       }
       continue;
     }
@@ -336,7 +339,7 @@ function parseDecisionText(text, view, checkpoint) {
       const target = relation.targets.find((item) => item.alias === `T${Number(repair[2])}`);
       if (!target) fail(`L ${number}: target alias T${repair[2]} is not an exact Canonical target for ${JSON.stringify(relation.text)}`);
       seen.add(number);
-      decisions.push({ row: relation._row, action: 'repair', target_record_id: target.record_id, target_sense_id: target.sense_id });
+      decisions.push({ chunk: view.chunk, row: relation._row, action: 'repair', target_record_id: target.record_id, target_sense_id: target.sense_id });
       continue;
     }
     fail(`invalid decision line ${JSON.stringify(line)}; use D <row...>, L <row> T<target>, or none`);
@@ -359,6 +362,51 @@ async function rawNextChunk(shard, root, checkpoint) {
     return view;
   }
   return null;
+}
+
+function preparedRowsByNumber(view, chunk) {
+  if (!view || view.chunk !== chunk || !Array.isArray(view.senses)) fail(`prepared Stage 3 chunk ${chunk} does not match its checkpoint`);
+  const rows = new Map();
+  for (const sense of view.senses) {
+    if (!Array.isArray(sense.relations)) fail(`prepared Stage 3 chunk ${chunk} has an invalid Sense group`);
+    for (const relation of sense.relations) {
+      if (!Number.isSafeInteger(relation._row) || relation._row < 1 || rows.has(relation._row)) {
+        fail(`prepared Stage 3 chunk ${chunk} has an invalid Relation row reference`);
+      }
+      rows.set(relation._row, relation);
+    }
+  }
+  return rows;
+}
+
+async function validatePreparedDecisions(shard, root, decisions, currentRelations) {
+  const rowsByChunk = new Map();
+  for (const decision of decisions) {
+    if (!rowsByChunk.has(decision.chunk)) {
+      const file = path.join(chunkFiles(shard, root), `chunk-${decision.chunk}.json`);
+      let view;
+      try { view = JSON.parse(await readFile(file, 'utf8')); }
+      catch (error) { fail(`prepared Stage 3 chunk ${decision.chunk} is unavailable or invalid: ${error.message}`); }
+      rowsByChunk.set(decision.chunk, preparedRowsByNumber(view, decision.chunk));
+    }
+    const prepared = rowsByChunk.get(decision.chunk).get(decision.row);
+    const current = currentRelations[decision.row - 1];
+    const samePreparedRelation = prepared && current
+      && current.source_record_id === prepared._source_record_id
+      && current.source_sense_id === prepared._source_sense_id
+      && current.type === prepared.type && current.relevance === prepared.tier
+      && (typeof prepared.text === 'string'
+        ? 'text' in current && current.text === prepared.text
+        : !('text' in current) && current.target_record_id === prepared.target_record_id
+          && current.target_sense_id === prepared.target_sense_id);
+    if (!samePreparedRelation) {
+      fail(`saved Stage 3 decision for Relation row ${decision.row} no longer matches its prepared Relation input; prepare and review the changed rows again`);
+    }
+    if (decision.action === 'repair' && !prepared.targets?.some((target) =>
+      target.record_id === decision.target_record_id && target.sense_id === decision.target_sense_id)) {
+      fail(`saved Link Repair for Relation row ${decision.row} does not match an exact target shown in its prepared chunk`);
+    }
+  }
 }
 
 async function saveChunk(shard, inputPath, root = REPOSITORY_DIRECTORY) {
@@ -538,6 +586,7 @@ async function applyEdits(shard, root = REPOSITORY_DIRECTORY) {
     repaired: repairedRows.size, edit_drops_added: newDrops.length };
   const currentIsBase = sameFileState(relationCurrent, relationBase) && sameFileState(dropCurrent, dropBase);
   if (!currentIsBase) fail(`shard ${shard} Relation/Drop files changed from both the Git baseline and this apply result; no files were written`);
+  await validatePreparedDecisions(shard, root, checkpoint.decisions, beforeRelations);
   if (!sameFileState(relationNext, relationBase) || !sameFileState(dropNext, dropBase)) {
     await writeFilesAtomically([
       { file: relationFile, current: relationCurrent, next: relationNext },
