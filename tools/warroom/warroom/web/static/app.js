@@ -60,22 +60,34 @@ const lineName = (l) => `${l.model} / ${l.label}`;
 // --- Board ---
 function card(l) {
   const go = () => (location.hash = `#/line/${l.model}/${l.method}`);
+  const name = l.method === "s2" ? `${l.owner_label} · ${l.label}` : l.label;
   if (l.idle) {
     return h("button", { class: "card empty", onclick: go },
-      h("div", { class: "t" }, h("span", {}, l.label), h("span", { class: "s" }, l.idle_text)),
-      mobile.matches ? h("div", { class: "s" }, l.model) : null);
+      h("div", { class: "t" }, h("span", {}, name), h("span", { class: "s" }, l.idle_text)),
+      l.wait ? h("div", { class: "s" }, "대기: " + l.wait) : null,
+      (l.error || l.blocked) ? h("div", { class: "s" }, "⚠ " + (l.error || l.blocked)) : null);
   }
   const bar = h("div", { class: "bar2" }, h("i"));
   bar.firstChild.style.width = (l.progress_pct || 0) + "%";
   const batch = l.stage2 ? `S${l.stage2.shard} B${l.stage2.batch} P${l.stage2.part}` : l.batch;
+  const title = l.method === "s2" ? `${l.owner_label} · ${l.label} · ${batch}`
+    : (mobile.matches ? l.model + " · " : "") + l.label + " · " + batch;
   return h("button", { class: "card " + l.state, onclick: go },
-    h("div", { class: "t" }, h("span", {}, (mobile.matches ? l.model + " · " : "") + l.label + " · " + batch),
+    h("div", { class: "t" }, h("span", {}, title),
       h("span", {}, l.phase + (l.drain ? "+DRAIN" : "") + "  " + l.icon)),
-    h("div", { class: "s" }, l.progress_text ? `${l.progress_text}  ${l.progress_pct}%` : "진행량 확인 중"),
+    h("div", { class: "s" }, l.progress_text ? `${l.method === "s2" ? l.owner_label + " · " : ""}${l.progress_text}  ${l.progress_pct}%` : "진행량 확인 중"),
     l.progress_text ? bar : null,
     h("div", { class: "s" }, (l.pr ? `PR #${l.pr}` : "PR 생성 전") + (l.elapsed_text ? `  ·  경과 ${l.elapsed_text}` : "")),
-    l.error ? h("div", { class: "s" }, "⚠ " + l.error) : null,
+    l.wait ? h("div", { class: "s" }, "대기: " + l.wait) : null,
+    (l.error || l.blocked) ? h("div", { class: "s" }, "⚠ " + (l.error || l.blocked)) : null,
     l.activity ? h("div", { class: "s" }, `${when(l.activity[0])} ${l.activity[1]}`) : null);
+}
+
+function stage3Card() {
+  return h("div", { class: "card stage3", "aria-disabled": "true" },
+    h("div", { class: "t" }, h("span", {}, "Stage 3")),
+    h("div", { class: "s" }, "감사 및 수정"),
+    h("div", { class: "s" }, "비활성 자리"));
 }
 
 function maintainerCard(m) {
@@ -132,19 +144,29 @@ function renderBoard(b) {
   const notes = [...b.notes, ...b.urgent.map((u) => u.text)];
   const grid = h("div", { class: "board" });
   if (mobile.matches) {
-    const act = b.lines.filter((l) => !l.idle).sort((x, y) => (ATTENTION[x.state] ?? 9) - (ATTENTION[y.state] ?? 9));
-    const idle = b.lines.filter((l) => l.idle);
+    const lines = b.lines.filter((l) => l.method !== "s2");
+    const act = lines.filter((l) => !l.idle).sort((x, y) => (ATTENTION[x.state] ?? 9) - (ATTENTION[y.state] ?? 9));
+    const idle = lines.filter((l) => l.idle);
     grid.append(...act.map(card));
-    if (b.maintainer && b.maintainer.state !== "IDLE") grid.append(maintainerCard(b.maintainer));
+    const roles = h("div", { class: "mobile-roles" },
+      b.stage2_card ? card(b.stage2_card) : null,
+      b.stage3_column ? stage3Card() : null,
+      b.maintainer && b.maintainer.state !== "IDLE" ? maintainerCard(b.maintainer) : null);
+    if (roles.childElementCount) grid.append(roles);
     if (idle.length) grid.append(h("details", { class: "idle" }, h("summary", {}, `빈 라인 ${idle.length}개`),
       h("div", { class: "board" }, idle.map(card))));
   } else {
     grid.style.setProperty("--cols", b.columns.length);
     for (const c of b.columns) {
-      grid.append(h("div", { class: "col" }, h("h2", {}, c.label),
-        b.lines.filter((l) => l.model === c.id && l.method !== "s2").map(card),
-        b.lines.filter((l) => l.model === c.id && l.method === "s2").map(card),
-        b.maintainer && b.maintainer.column === c.id ? maintainerCard(b.maintainer) : null));
+      const stage1 = b.lines.filter((l) => l.model === c.id && l.method !== "s2").map(card);
+      const roles = [
+        b.stage2_card && b.stage2_card.column === c.id ? card(b.stage2_card) : null,
+        b.stage3_column === c.id ? stage3Card() : null,
+        b.maintainer && b.maintainer.column === c.id ? maintainerCard(b.maintainer) : null,
+      ];
+      const hasRole = roles.some(Boolean);
+      grid.append(h("div", { class: "col" }, h("h2", {}, c.label), ...stage1,
+        hasRole ? h("hr", { class: "stage-divider" }) : null, ...roles));
     }
   }
   const noteEl = h("div", notes.length ? { class: "notes" + (!b.alive ? " bad" : "") } : {}, notes.length ? notes.join("\n") : null);

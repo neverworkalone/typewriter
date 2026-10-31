@@ -87,6 +87,13 @@ def board(store: Store, cfg: dict) -> dict:
     statuses = {k: control.line_status(store, *k) for k in keys}
     capable = set(stage2_models(cfg))
     maint_col = next((m for m in cols if m not in capable), None)
+    stage2_owner = views.stage2_display_model(
+        store, cfg, {model: statuses[(model, STAGE2_METHOD)] for model in capable})
+    stage2_card = None
+    if stage2_owner:
+        stage2_card = _line_view(statuses[(stage2_owner, STAGE2_METHOD)])
+        stage2_card["owner_label"] = adapter_label(reg[stage2_owner]["adapter"])
+        stage2_card["column"] = views.stage2_column(cfg)
     alive = control.supervisor_alive(store)
     notes = [f"{s['model']}/{control.method_label(s['method'])} BLOCKED: {s['blocked']}"
              for s in statuses.values() if s["blocked"]]
@@ -96,6 +103,7 @@ def board(store: Store, cfg: dict) -> dict:
         "now": time.time(), "alive": alive, "notes": notes,
         "columns": [{"id": m, "label": reg.get(m, {}).get("label", m)} for m in cols],
         "lines": [_line_view(statuses[k]) for k in keys],
+        "stage2_card": stage2_card, "stage3_column": views.role_column(cfg, "codex"),
         "maintainer": {"column": maint_col, **control.maintainer_card(store, cfg)} if maint_col else None,
         "urgent": [{"text": t, "bad": bad} for t, bad in control.urgent_items(store, cfg)],
         "tier": control.tier_state(store, cfg, methods(cfg)),

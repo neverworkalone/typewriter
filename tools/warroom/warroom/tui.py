@@ -22,7 +22,8 @@ from .config import (Paths, role_view, adapter_label, adapters, load_config, met
                      stage2_models, STAGE2_ADAPTERS)
 from .logrender import render_line
 from .views import (_hhmm, _when, control_columns, select_width, card_text, detail_header, maintainer_card_text,
-                    model_title, tier_footer, detail_meta, scheduled_at, usage_text)
+                    model_title, tier_footer, detail_meta, scheduled_at, usage_text, role_column, stage2_column,
+                    stage2_display_model)
 from .logtail import LogTail, redact
 from .store import MAINTENANCE_METHOD, STAGE2_METHOD, Store
 
@@ -171,10 +172,25 @@ class Card(Static, can_focus=True):
         if row < 0:
             self.app.query_one("#start").focus()
             return
-        for c in cards:
-            if 0 <= col < len(models) and 0 <= row < len(methods) and (c.model, c.method) == (models[col], methods[row]):
-                c.focus()
+        while 0 <= col < len(models) and 0 <= row < len(methods):
+            for c in cards:
+                if (c.model, c.method) == (models[col], methods[row]):
+                    c.focus()
+                    return
+            if not dcol:
                 return
+            col += dcol
+
+
+class Stage2Card(Card):
+    """One fixed Claude-column card whose detail target follows the real Stage 2 owner."""
+
+    def __init__(self, column_model: str):
+        super().__init__(column_model, STAGE2_METHOD, card_id="card-stage2")
+        self.owner_model = column_model
+
+    def action_open(self) -> None:
+        self.app.push_screen(LineDetail(self.owner_model, STAGE2_METHOD))
 
 
 class MaintainerCard(Card):
@@ -560,6 +576,8 @@ class WarRoom(App):
     .card.empty { border: round #444444; color: #777777; }
     .card.empty:focus { border: round #888888; }
     .card.ERROR:focus, .card.PAUSED:focus, .card.COMPLETE:focus { border: heavy $accent; }
+    #card-stage2 { height: auto; min-height: 6; }
+    .stage3-placeholder { border: round #444444; height: 6; padding: 0 1; color: #777777; text-align: center; }
     #info { border: round $accent; padding: 0 1; height: auto; }
     RichLog { border: round $primary; height: 1fr; }
     """
@@ -598,6 +616,14 @@ class WarRoom(App):
         capable = self.stage2_capable
         return next((m for m in self.models if m not in capable), None)
 
+    @property
+    def stage2_col(self):
+        return stage2_column(self.cfg)
+
+    @property
+    def stage3_col(self):
+        return role_column(self.cfg, "codex")
+
     def _line_keys(self):
         """Every production Line on the Board; also shared with scheduled Drain All execution."""
         return control.board_line_keys(self.store, self.cfg)
@@ -634,10 +660,12 @@ class WarRoom(App):
                     yield Static(model_title(registry(self.cfg).get(model, {}).get("label", model)), classes="coltitle", id=f"title-{model}")
                     for me in self.methods:
                         yield Card(model, me)
-                    if model in self.stage2_capable or model == self.maintainer_col:
+                    if model in self.stage2_capable or model == self.maintainer_col or model == self.stage3_col:
                         yield Rule(classes="stage-divider")   # separates Stage 1 Methods A-D from row 5 (not a Card: arrows skip it)
-                    if model in self.stage2_capable:   # row 5: Claude / Codex Stage 2 ...
-                        yield Card(model, STAGE2_METHOD)
+                    if model == self.stage2_col:
+                        yield Stage2Card(model)
+                    elif model == self.stage3_col:
+                        yield Static("Stage 3\n감사 및 수정\n비활성 자리", classes="stage3-placeholder")
                     elif model == self.maintainer_col:   # ... and the Maintainer status in the DeepSeek column
                         yield MaintainerCard(model)
         yield Static(id="banner")
@@ -826,11 +854,23 @@ class WarRoom(App):
         statuses = {}
         for model, me in self._line_keys():
             st = statuses[(model, me)] = control.line_status(store, model, me)
+            if me == STAGE2_METHOD:
+                continue   # the Stage 2 lines remain independent; only their Board card is shared
             try:
                 card = root.query_one(f"#card-{model}-{me}", Card)
             except Exception:
                 continue
-            card.update(Text(card_text(st)) if me == STAGE2_METHOD else card_text(st))   # a wait reason may hold [brackets]
+            card.update(card_text(st))
+            card.set_classes("card " + (st["state"] if st["batch"] else "empty"))
+        owner = stage2_display_model(store, self.cfg, {
+            model: statuses[(model, STAGE2_METHOD)] for model in self.stage2_capable
+        })
+        if owner and self.stage2_col:
+            st = statuses[(owner, STAGE2_METHOD)]
+            owner_label = adapter_label(registry(self.cfg)[owner]["adapter"])
+            card = root.query_one("#card-stage2", Stage2Card)
+            card.owner_model = owner
+            card.update(Text(card_text({**st, "display_owner": owner_label})))
             card.set_classes("card " + (st["state"] if st["batch"] else "empty"))
         maint = control.maintainer_card(store, self.cfg)
         has_maint_card = bool(list(root.query("#card-maintainer")))
