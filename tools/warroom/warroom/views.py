@@ -6,7 +6,8 @@ import time
 import unicodedata
 
 from . import control, stage2
-from .config import TIERED_ADAPTERS, adapter_label
+from .config import TIERED_ADAPTERS, adapter_label, ordered_models, registry, stage2_models
+from .store import STAGE2_METHOD
 
 
 def _hhmm(ts) -> str:
@@ -24,6 +25,42 @@ def _when(ts) -> str:
 def scheduled_at(ts) -> str:
     """A persisted epoch rendered as an unambiguous host-local date and time."""
     return time.strftime("%Y-%m-%d %H:%M", time.localtime(ts)) if ts else "-"
+
+
+def role_column(cfg: dict, adapter: str) -> str | None:
+    """Logical model column for an adapter, in the board's established model order."""
+    reg = registry(cfg)
+    return next((model for model in ordered_models(cfg) if reg[model]["adapter"] == adapter), None)
+
+
+def stage2_column(cfg: dict) -> str | None:
+    """Stage 2's fixed Claude column, with the first eligible model as a configuration fallback."""
+    return role_column(cfg, "claude") or next(iter(stage2_models(cfg)), None)
+
+
+def stage2_display_model(store, cfg: dict, statuses: dict | None = None) -> str | None:
+    """Choose the real Stage 2 owner for its single shared board card without changing line ownership."""
+    models = stage2_models(cfg)
+    if not models:
+        return None
+    if statuses is None:
+        statuses = {model: control.line_status(store, model, STAGE2_METHOD) for model in models}
+
+    active = next((model for model in models if statuses[model]["batch"] is not None), None)
+    if active:
+        return active
+    reserved = next((model for model in models if statuses[model]["run"]), None)
+    if reserved:
+        return reserved
+
+    latest = []
+    for model in models:
+        runs = store.line_runs(model, STAGE2_METHOD, limit=1)
+        if runs:
+            latest.append((runs[0]["started_at"], runs[0]["id"], model))
+    if latest:
+        return max(latest)[2]
+    return stage2_column(cfg)
 
 
 CARD_W = 34   # content cells of a card (column 38 - border - padding): every line is fit to it
@@ -78,9 +115,11 @@ def _idle_phase(st: dict) -> str:
 
 
 def _idle_card(st: dict, title: str) -> str:
-    """Neutral empty card: its title, the idle phase and (Stage 2) why a reserved run is waiting."""
-    wait = _fit("대기: " + st["wait"]) if st.get("wait") and st.get("run") else ""
-    return "\n".join([_fit(title), _fit(_idle_phase(st)), wait] + [""] * (CARD_LINES - 3))
+    """Neutral empty card: its title, idle phase, wait reason and any current problem."""
+    wait = _fit("대기: " + st["wait"]) if st.get("wait") else ""
+    problem = (_fit("오류: " + st["error"]) if st.get("error") else
+               _fit("문제: " + st["blocked"]) if st.get("blocked") else "")
+    return "\n".join([_fit(title), _fit(_idle_phase(st)), wait, problem])
 
 
 CARD_LINES = 4   # every card has exactly these content lines (empty ones stay blank) so all cards share one height
@@ -124,28 +163,38 @@ def card_text(st: dict) -> str:
     """Card = Line summary in a fixed 4-line layout (title / records / bar / PR + elapsed).
 
     Only observed values are shown: no records -> `진행량 확인 중` and no bar, never an estimate. DRAIN is
-    spelled out (never colour-only); every line is fit to the card so it never grows. Activity stays in Detail.
+    spelled out (never colour-only); the shared Stage 2 card also shows its owner and wait/problem cues. Activity stays in Detail.
     """
     m = control.method_label(st["method"])
+    is_stage2 = st["method"] == STAGE2_METHOD
+    owner = st.get("display_owner") or st["model"]
     if st["batch"] is None:
-        return _idle_card(st, m)
+        return _idle_card(st, f"{m} · {owner}" if is_stage2 else m)
     icon = ICON.get(st["state"], "?")
     s2 = st.get("stage2")
     phase = PHASE.get(st["state"], st["state"])
     if st["drain"]:
         phase += "+DRAIN"
-    identity = f"Stage2 {s2['shard']}/{s2['batch']}/{s2['part']}" if s2 else f"{m} · {st['batch']}"
+    identity = f"Stage 2 {s2['shard']}/{s2['batch']}/{s2['part']}" if s2 else f"{m} · {st['batch']}"
     title = _two_sided(identity, f"{phase}  {icon}")
     done, total, unit = progress_of(st)
     observed = done is not None and bool(total)
     if observed:
-        records = _two_sided(f"{done} / {total} {unit}", f"{done / total * 100:.1f}%")
+        progress = f"{owner} · {done} / {total} {unit}" if is_stage2 else f"{done} / {total} {unit}"
+        records = _two_sided(progress, f"{done / total * 100:.1f}%")
         bar = progress_bar(done, total)
     else:
-        records, bar = "진행량 확인 중", ""
+        records, bar = (f"{owner} · 진행량 확인 중" if is_stage2 else "진행량 확인 중"), ""
     ops = _two_sided(f"PR #{st['pr']}" if st["pr"] else "PR 생성 전",
                      f"경과 {fmt_elapsed(st['elapsed'])}" if st.get("elapsed") is not None else "")
-    return "\n".join([title, records, bar, ops])
+    lines = [title, records, bar, ops]
+    if is_stage2 and st.get("wait"):
+        lines.append(_fit("대기: " + st["wait"]))
+    if is_stage2 and st.get("error"):
+        lines.append(_fit("오류: " + st["error"]))
+    elif is_stage2 and st.get("blocked"):
+        lines.append(_fit("문제: " + st["blocked"]))
+    return "\n".join(lines)
 
 
 def maintainer_card_text(card: dict) -> str:
