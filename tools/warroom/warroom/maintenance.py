@@ -18,10 +18,10 @@ import hashlib
 import re
 from pathlib import Path
 
-from . import auth, defects, stage2
+from . import auth, defects, stage2, stage3
 from .config import maintainer_id, maintainer_problem
-from .gitops import GitError, IntegrationBlocked
-from .store import MAINTENANCE_METHOD, STAGE2_METHOD
+from .gitops import GitError, GitTransient, IntegrationBlocked
+from .store import MAINTENANCE_METHOD, STAGE2_METHOD, STAGE3_METHOD
 
 _NODE_TEST = re.compile(r"(?:.+/)?[^/]+\.test\.mjs")   # `node --test <file>` regression files wherever they live (AGENTS.md)
 _PY_TEST = re.compile(r"tools/warroom/tests/test_[^/]+\.py")
@@ -481,20 +481,49 @@ class Maintenance:
                 continue
             if not self._archive_report(d, b):
                 continue   # the resolved report could not be set aside: never resume into a stale stop signal
-            if self.store.release_defect(d["id"], b["id"], head, self._retargeted_run_start(b, head)):
+            run_start = self._retargeted_run_start(b, head)
+            if (b["method"] == STAGE3_METHOD
+                    and (str(b["run_kind"] or "").startswith("s3_chunk_") or b["run_kind"] == "s3_finalize")
+                    and run_start is None):
+                self._hold(d, b, "Stage 3의 원래 실행 기준을 통합 HEAD에 안전하게 재결속할 수 없습니다. "
+                                  "checkpoint/view/commit과 소유 worktree를 보존하고 자동 재개하지 않습니다.")
+                continue
+            if self.store.release_defect(d["id"], b["id"], head, run_start):
                 self.store.log(b["id"], f"공통 수정 {d['merge_sha'][:10]} 반영·검증 완료 (HEAD {head[:10]}) → "
                                f"{b['paused_from'] or 'PRODUCING'}부터 자동 Retry 1회")
 
     def _retargeted_run_start(self, b, new_head: str) -> tuple[str, str] | None:
-        """The Stage 2 chunk run-start baseline moved to the approved integrated HEAD, or None (leave it untouched).
+        """Retarget a Stage 2/3 run baseline after the approved fix is integrated and verified.
 
         Invariant: the baseline's owned HEAD may only advance to a HEAD that is a verified Maintainer integration of this
         same branch/worktree. The old HEAD must be an ancestor (a plain forward merge) and the remote ref must still be
         what the chunk started with; anything else keeps the old baseline so the boundary check still fails closed.
         """
-        if b["method"] != STAGE2_METHOD:
+        if b["method"] == STAGE3_METHOD and b["run_kind"] == "s3_finalize":
+            commit_key = f"s3_commit_head_{b['id']}"
+            committed = self.store.get(commit_key)
+            remote_key = f"s3_commit_remote_head_{b['id']}"
+            saved_remote = self.store.get(remote_key)
+            wt = Path(b["worktree"])
+            try:
+                remote = self.sup.git.remote_head(b["branch"])
+                if (not isinstance(committed, str) or not re.fullmatch(r"[0-9a-f]{40}", committed)
+                        or saved_remote is None or saved_remote != (remote or "")
+                        or self.sup.git.registered(wt) != b["branch"] or self.sup.git.head(wt) != new_head
+                        or not self.sup.git.contains(wt, committed)):
+                    return None
+            except GitTransient:
+                raise
+            except Exception:
+                return None
+            return f"s3_finalize_released_head_{b['id']}", new_head
+        if b["method"] == STAGE3_METHOD and isinstance(b["run_kind"], str) \
+                and b["run_kind"].startswith("s3_chunk_"):
+            key = stage3.run_start_key(b["id"])
+        elif b["method"] == STAGE2_METHOD:
+            key = stage2.run_start_key(b["id"])
+        else:
             return None
-        key = stage2.run_start_key(b["id"])
         raw = self.store.get(key)
         if raw is None:
             return None
@@ -509,21 +538,49 @@ class Maintenance:
             if self.sup.git.head(wt) != new_head or not self.sup.git.contains(wt, base["head"]) \
                     or self.sup.git.remote_head(b["branch"]) != base["remote_head"]:
                 return None
+            if b["method"] == STAGE3_METHOD:
+                checkpoint = base.get("checkpoint")
+                chunk = base.get("chunk")
+                if (not isinstance(checkpoint, dict) or checkpoint.get("shard") != b["shard"]
+                        or chunk != stage3.next_chunk(checkpoint) or not isinstance(base.get("view"), dict)):
+                    return None
+                current = stage3.checkpoint(wt, b["shard"])
+                if current != checkpoint and not stage3.chunk_saved_since(checkpoint, current):
+                    return None
+                if current == checkpoint:
+                    current_view = stage3.read_chunk(self.sup.runner, self.sup.env, wt, b["shard"])
+                    if current_view.get("chunk") != chunk:
+                        return None
+                    if current_view != base["view"]:
+                        # The previous answer was bound to a different Stage 3 input view. Rebind the exact pending
+                        # chunk to the new view and make the Supervisor launch it afresh instead of reusing that answer.
+                        base["view"] = current_view
+                        base["answer_invalidated"] = True
+        except GitTransient:
+            raise
         except Exception:
             return None
         if base["head"] != new_head:
             base["head"] = new_head
-            self.store.log(b["id"], f"승인된 Maintainer 통합으로 Stage 2 청크 Git 경계 기준을 HEAD {new_head[:10]}로 전환했습니다.")
+            self.store.log(b["id"], f"승인된 Maintainer 통합으로 Stage {2 if b['method'] == STAGE2_METHOD else 3} 실행 Git 경계 기준을 HEAD {new_head[:10]}로 전환했습니다.")
         return key, json.dumps(base, sort_keys=True)
 
     def adopt_released_baseline(self, b) -> None:
-        """Recover a batch released before the baseline was retargeted: only when its HEAD is exactly the HEAD a RELEASED
-        defect of this batch integrated (and that integration is still verifiable); any other movement stays a problem."""
+        """Recover a released Stage 2/3 baseline only at this batch's verified Maintainer integration HEAD."""
+        if b["method"] == STAGE2_METHOD:
+            key = stage2.run_start_key(b["id"])
+        elif b["method"] == STAGE3_METHOD and isinstance(b["run_kind"], str) \
+                and b["run_kind"].startswith("s3_chunk_"):
+            key = stage3.run_start_key(b["id"])
+        elif b["method"] == STAGE3_METHOD and b["run_kind"] == "s3_finalize":
+            key = f"s3_finalize_released_head_{b['id']}"
+        else:
+            return
         try:
             head = self.sup.git.head(Path(b["worktree"]))
-            key = stage2.run_start_key(b["id"])
             raw = self.store.get(key)
-            if raw is None or json.loads(raw).get("head") == head:
+            recorded = raw if b["run_kind"] == "s3_finalize" else (json.loads(raw) if raw else None)
+            if raw is None or (recorded == head if b["run_kind"] == "s3_finalize" else recorded.get("head") == head):
                 return
             for d in self.store.defects(("RELEASED",)):
                 if d["batch_id"] == b["id"] and d["integrated_sha"] == head and self.sup.git.contains(Path(b["worktree"]), d["merge_sha"]):
@@ -531,6 +588,8 @@ class Maintenance:
                     if moved:
                         self.store.set(*moved)
                     return
+        except GitTransient:
+            raise
         except Exception:
             return   # unreadable evidence: the unchanged baseline keeps failing closed
 

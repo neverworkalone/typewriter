@@ -256,7 +256,7 @@ class FakeGit:
         queue = self.outcomes.get((kind, shard, batch))
         if queue:
             return queue.pop(0) if len(queue) > 1 else queue[0]
-        return VerifyOutcome(ok, tail)
+        return VerifyOutcome(ok, tail, code=0 if ok else 1)
 
     def stage2_chunk_view(self, worktree, shard, batch, part, *, prepare, timeout=900):
         """Mimic admission-cli prepare + read-chunk: a pending chunk covering every undecided candidate."""
