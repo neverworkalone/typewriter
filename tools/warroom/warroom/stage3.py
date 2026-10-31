@@ -203,6 +203,30 @@ def read_chunk(runner, env: dict, worktree, shard: str) -> dict:
     return result
 
 
+def refresh_pending_chunks(runner, env: dict, worktree, shard: str) -> dict:
+    """Recompute pending views from current Git inputs while preserving checkpointed decisions.
+
+    The CLI requires every completed chunk's full prepared view (including hidden Relation row bindings) to match the
+    current render before it updates any pending scratch view. A changed chunk count or completed view fails closed.
+    """
+    result = cli(runner, env, worktree, "refresh-pending", "--shard", shard)
+    if not isinstance(result, dict) or result.get("shard") != shard or type(result.get("chunk_count")) is not int:
+        raise Stage3Error("edit-cli refresh-pending returned an invalid result")
+    state = checkpoint(worktree, shard)
+    if state is None or result["chunk_count"] != state["chunk_total"]:
+        raise Stage3Error("edit-cli refresh-pending did not preserve the Stage 3 checkpoint")
+    expected = next_chunk(state)
+    if expected is None:
+        if result.get("current_chunk") is not None or result.get("current_view") is not None:
+            raise Stage3Error("edit-cli refresh-pending returned a chunk after checkpoint completion")
+        return result
+    if (result.get("current_chunk") != expected or not isinstance(result.get("current_view"), dict)
+            or type(result.get("active_changed")) is not bool):
+        raise Stage3Error("edit-cli refresh-pending returned no exact next chunk view")
+    decision_context(result["current_view"], expected)
+    return result
+
+
 def decision_context(view: dict, chunk: str) -> dict:
     """Keep only the source-bound facts the Supervisor needs to validate AI edit proposals."""
     if (not isinstance(view, dict) or view.get("chunk") != chunk

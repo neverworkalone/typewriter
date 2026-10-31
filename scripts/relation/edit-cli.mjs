@@ -258,6 +258,26 @@ function stripInternalRow(chunk) {
   })) };
 }
 
+async function renderPreparedViews(shard, root) {
+  gitHead(root);
+  const relationFile = RELATION_PATH(shard, root);
+  const dropFile = DROP_PATH(shard, root);
+  const [relationState, dropState] = await Promise.all([readOptional(relationFile), readOptional(dropFile)]);
+  const relationBase = readHeadFile(root, relationFile);
+  const dropBase = readHeadFile(root, dropFile);
+  if (!sameFileState(relationState, relationBase) || !sameFileState(dropState, dropBase)) {
+    fail(`Stage 3 prepare requires clean shard ${shard} Relation/Drop files so decisions bind to the Git baseline`);
+  }
+  const inputStatus = git(root, ['status', '--porcelain=v1', '--untracked-files=all', '--',
+    'data/canonical', 'data/relation-candidates', 'data/relations', 'data/relation-drops']);
+  if (inputStatus.trim()) fail('Stage 3 view refresh requires clean Canonical, Candidate, Relation, and Drop inputs');
+  const context = await loadContext(shard, root, { relationText: relationBase.text, dropText: dropBase.text });
+  const groups = buildSenseGroups({ canonicalRows: context.canonicalRows, relationRows: context.ownRelations });
+  const chunks = chunkSenseGroups(groups);
+  const views = chunks.map((chunkGroups, index) => renderChunk(chunkGroups, context.index, index + 1, chunks.length));
+  return { context, views };
+}
+
 function chunkFiles(shard, root) {
   return VIEW_DIRECTORY(shard, root);
 }
@@ -269,28 +289,59 @@ async function prepare(shard, root = REPOSITORY_DIRECTORY) {
     const checkpoint = await loadCheckpoint(shard, root);
     return { shard, chunk_count: checkpoint.chunk_total, completed_chunks: checkpoint.completed_chunks.length, resumed: true };
   }
-  gitHead(root);
-  const relationState = await readOptional(RELATION_PATH(shard, root));
-  const dropState = await readOptional(DROP_PATH(shard, root));
-  const relationBase = readHeadFile(root, RELATION_PATH(shard, root));
-  const dropBase = readHeadFile(root, DROP_PATH(shard, root));
-  if (!sameFileState(relationState, relationBase) || !sameFileState(dropState, dropBase)) {
-    fail(`Stage 3 prepare requires clean shard ${shard} Relation/Drop files so decisions bind to the Git baseline`);
-  }
-  const context = await loadContext(shard, root, { relationText: relationBase.text, dropText: dropBase.text });
-  const groups = buildSenseGroups({ canonicalRows: context.canonicalRows, relationRows: context.ownRelations });
-  const chunks = chunkSenseGroups(groups);
+  const { context, views } = await renderPreparedViews(shard, root);
+  const chunks = views;
   const directory = chunkFiles(shard, root);
   await rm(directory, { recursive: true, force: true });
   await mkdir(directory, { recursive: true });
-  for (const [index, chunkGroups] of chunks.entries()) {
-    const view = renderChunk(chunkGroups, context.index, index + 1, chunks.length);
+  for (const view of views) {
     // The view is derived scratch input; the checkpoint stores only chunk completion and edit decisions.
     await writeFile(path.join(directory, `chunk-${view.chunk}.json`), `${JSON.stringify(view)}\n`, 'utf8');
   }
   const checkpoint = { version: 1, shard, chunk_total: chunks.length, completed_chunks: [], decisions: [] };
   await writeJsonAtomically(checkpointPath, checkpoint);
   return { shard, chunk_count: chunks.length, relation_count: context.ownRelations.length, resumed: false };
+}
+
+async function readRawPreparedView(shard, chunk, root) {
+  const file = path.join(chunkFiles(shard, root), `chunk-${chunk}.json`);
+  let view;
+  try { view = JSON.parse(await readFile(file, 'utf8')); }
+  catch (error) { fail(`Stage 3 prepared chunk ${chunk} is unavailable or invalid: ${error.message}`); }
+  if (!view || view.chunk !== chunk || !Array.isArray(view.senses)) fail(`Stage 3 prepared chunk ${chunk} does not match its name`);
+  return view;
+}
+
+async function refreshPendingChunks(shard, root = REPOSITORY_DIRECTORY) {
+  const checkpoint = await loadCheckpoint(shard, root);
+  const { views } = await renderPreparedViews(shard, root);
+  if (views.length !== checkpoint.chunk_total) {
+    fail(`Stage 3 refresh changed shard ${shard} chunk count; completed decisions cannot be rebound safely`);
+  }
+  const completed = new Set(checkpoint.completed_chunks);
+  const prepared = [];
+  for (const fresh of views) {
+    const previous = await readRawPreparedView(shard, fresh.chunk, root);
+    const same = JSON.stringify(previous) === JSON.stringify(fresh);
+    if (completed.has(fresh.chunk) && !same) {
+      fail(`Stage 3 completed chunk ${fresh.chunk} inputs changed after save; checkpoint is preserved`);
+    }
+    prepared.push({ fresh, previous, same, isCompleted: completed.has(fresh.chunk) });
+  }
+  const pending = prepared.filter((entry) => !entry.isCompleted);
+  for (const entry of pending) {
+    if (!entry.same) {
+      await writeJsonAtomically(path.join(chunkFiles(shard, root), `chunk-${entry.fresh.chunk}.json`), entry.fresh);
+    }
+  }
+  const active = pending[0];
+  return {
+    shard,
+    chunk_count: views.length,
+    current_chunk: active?.fresh.chunk ?? null,
+    active_changed: Boolean(active && !active.same),
+    current_view: active ? stripInternalRow(active.fresh) : null,
+  };
 }
 
 async function readNextChunk(shard, root = REPOSITORY_DIRECTORY) {
@@ -721,6 +772,7 @@ async function reportEdits(shard, root = REPOSITORY_DIRECTORY) {
 const USAGE = `Usage:
   node scripts/relation/edit-cli.mjs prepare --shard SSS
   node scripts/relation/edit-cli.mjs read-chunk --shard SSS [--out <file>]
+  node scripts/relation/edit-cli.mjs refresh-pending --shard SSS
   node scripts/relation/edit-cli.mjs save-chunk --shard SSS --in <decisions.txt>
   node scripts/relation/edit-cli.mjs apply --shard SSS
   node scripts/relation/edit-cli.mjs report --shard SSS [--out <file>]`;
@@ -728,7 +780,7 @@ const USAGE = `Usage:
 function parseArgs(argv) {
   const command = argv[0];
   if (command === '--help' || command === '-h') return { command: 'help' };
-  if (!['prepare', 'read-chunk', 'save-chunk', 'apply', 'report'].includes(command)) fail(USAGE);
+  if (!['prepare', 'read-chunk', 'refresh-pending', 'save-chunk', 'apply', 'report'].includes(command)) fail(USAGE);
   const options = { command, shard: null, input: null, output: null };
   for (let index = 1; index < argv.length; index += 1) {
     const flag = argv[index];
@@ -761,6 +813,7 @@ export async function run(argv, { root = REPOSITORY_DIRECTORY } = {}) {
   let result;
   if (options.command === 'prepare') result = await prepare(options.shard, root);
   else if (options.command === 'read-chunk') result = await readNextChunk(options.shard, root);
+  else if (options.command === 'refresh-pending') result = await refreshPendingChunks(options.shard, root);
   else if (options.command === 'save-chunk') result = await saveChunk(options.shard, options.input, root);
   else if (options.command === 'apply') result = await applyEdits(options.shard, root);
   else result = await reportEdits(options.shard, root);

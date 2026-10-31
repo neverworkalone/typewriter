@@ -70,6 +70,67 @@ class Stage3RunRecovery(unittest.TestCase):
         next_chunk.assert_called_once()
         self.assertEqual(stage3.checkpoint(self.path, "001")["completed_chunks"], ["001"])
 
+    def _poll_unknown_exit_with_answer(self, answer, *, identity_problem=None):
+        w = self.w
+        exit_file = self.path / "missing-exit-status"
+        log_file = self.path / "answer.log"
+        log_file.write_text("final response available", "utf-8")
+        self.w.store.update(self.batch_id, pid=123456, session_id="ses_exact", log_file=str(log_file),
+                            exit_file=str(exit_file))
+        self.w.store.add_run(self.batch_id, "s3_chunk_new", "ses_exact", 123456, log_file, exit_file,
+                             model="gpt-x", effort="high")
+        if identity_problem is not None:
+            w.adapter.output_identity_problem = mock.Mock(return_value=identity_problem)
+        next_chunk = mock.Mock()
+        w.sup._launch_stage3_next = next_chunk
+        with mock.patch.object(w.adapter, "final_answer", return_value=answer), \
+                mock.patch.object(w.adapter, "completion_problem", return_value=("ERROR", "missing terminal marker")), \
+                mock.patch.object(w.adapter, "completion_incomplete", return_value=True), \
+                mock.patch.object(stage3, "read_chunk", return_value=self.view), \
+                mock.patch.object(stage3, "save_chunk", side_effect=self._save_first_chunk) as save, \
+                mock.patch.object(w.adapter, "start", side_effect=AssertionError("must not call AI")):
+            w.sup._poll_run(w.store.batch(self.batch_id))
+        return save, next_chunk
+
+    def test_unknown_exit_routes_complete_unsaved_answer_through_strict_save_without_ai_retry(self):
+        save, next_chunk = self._poll_unknown_exit_with_answer("chunk 001\nD 1\n")
+        save.assert_called_once()
+        next_chunk.assert_called_once()
+        self.assertEqual(stage3.checkpoint(self.path, "001")["completed_chunks"], ["001"])
+
+    def test_unknown_exit_with_malformed_answer_does_not_save_or_advance(self):
+        w = self.w
+        log_file = self.path / "answer.log"
+        log_file.write_text("final response available", "utf-8")
+        self.w.store.update(self.batch_id, pid=123456, session_id="ses_exact", log_file=str(log_file),
+                            exit_file=str(self.path / "missing-exit-status"))
+        with mock.patch.object(w.adapter, "final_answer", return_value="chunk 001\nD\n"), \
+                mock.patch.object(w.adapter, "start", side_effect=AssertionError("must not call AI")), \
+                mock.patch.object(stage3, "save_chunk", side_effect=AssertionError("malformed answer must not save")):
+            w.sup._poll_run(w.store.batch(self.batch_id))
+        self.assertEqual(stage3.checkpoint(self.path, "001"), self.before)
+        self.assertEqual(w.store.batch(self.batch_id)["state"], "ERROR")
+
+    def test_unknown_exit_with_session_mismatch_preserves_answer_without_saving(self):
+        w = self.w
+        log_file = self.path / "answer.log"
+        log_file.write_text("final response available", "utf-8")
+        w.store.update(self.batch_id, pid=123456, session_id="ses_expected", log_file=str(log_file),
+                       exit_file=str(self.path / "missing-exit-status"))
+        w.store.add_run(self.batch_id, "s3_chunk_new", "ses_expected", 123456, log_file,
+                        self.path / "missing-exit-status", model="gpt-x", effort="high")
+        next_chunk = mock.Mock()
+        w.sup._launch_stage3_next = next_chunk
+        with mock.patch.object(w.adapter, "final_answer", return_value="chunk 001\nD 1\n"), \
+                mock.patch.object(w.adapter, "output_identity_problem", return_value=("ERROR", "session mismatch")), \
+                mock.patch.object(w.adapter, "completion_problem", return_value=("ERROR", "missing terminal marker")), \
+                mock.patch.object(w.adapter, "completion_incomplete", return_value=True), \
+                mock.patch.object(stage3, "save_chunk", side_effect=AssertionError("mismatched answer must not save")):
+            w.sup._poll_run(w.store.batch(self.batch_id))
+        next_chunk.assert_not_called()
+        self.assertEqual(stage3.checkpoint(self.path, "001"), self.before)
+        self.assertEqual(w.store.batch(self.batch_id)["state"], "ERROR")
+
     def test_nonzero_exit_with_header_only_answer_does_not_save_or_advance(self):
         w = self.w
         with mock.patch.object(w.adapter, "final_answer", return_value="chunk 001\n"), \
@@ -219,7 +280,9 @@ class Stage3MaintainerRelease(unittest.TestCase):
     def test_unchanged_view_retargets_head_and_reuses_bound_answer(self):
         w = self.w
         batch = w.store.batch(self.batch_id)
-        with mock.patch.object(stage3, "read_chunk", return_value=self.view):
+        refreshed = {"shard": "001", "chunk_count": 2, "current_chunk": "001",
+                     "active_changed": False, "current_view": self.view}
+        with mock.patch.object(stage3, "refresh_pending_chunks", return_value=refreshed):
             moved = w.sup.maint._retargeted_run_start(batch, HEAD2)
         self.assertIsNotNone(moved)
         baseline = json.loads(moved[1])
@@ -231,7 +294,9 @@ class Stage3MaintainerRelease(unittest.TestCase):
         batch = w.store.batch(self.batch_id)
         new_view = prepared_view()
         new_view["senses"][0]["relations"][0]["target"] = "changed"
-        with mock.patch.object(stage3, "read_chunk", return_value=new_view):
+        refreshed = {"shard": "001", "chunk_count": 2, "current_chunk": "001",
+                     "active_changed": True, "current_view": new_view}
+        with mock.patch.object(stage3, "refresh_pending_chunks", return_value=refreshed):
             moved = w.sup.maint._retargeted_run_start(batch, HEAD2)
         baseline = json.loads(moved[1])
         self.assertTrue(baseline["answer_invalidated"])
@@ -244,6 +309,13 @@ class Stage3MaintainerRelease(unittest.TestCase):
             w.sup._relaunch_stage3_chunk(w.store.batch(self.batch_id))
         launch.assert_called_once()
         self.assertEqual(launch.call_args.args[1], "s3_chunk_fallback_new")
+        self.assertEqual(stage3.checkpoint(self.path, "001"), self.before)
+
+    def test_changed_completed_view_keeps_release_held(self):
+        batch = self.w.store.batch(self.batch_id)
+        with mock.patch.object(stage3, "refresh_pending_chunks", side_effect=stage3.Stage3Error("completed chunk changed")):
+            moved = self.w.sup.maint._retargeted_run_start(batch, HEAD2)
+        self.assertIsNone(moved)
         self.assertEqual(stage3.checkpoint(self.path, "001"), self.before)
 
     def test_released_finalization_head_marker_allows_original_data_commit_after_fix(self):
@@ -270,7 +342,9 @@ class Stage3MaintainerRelease(unittest.TestCase):
         w.store.update_defect(defect["id"], state="FIX_MERGED", merge_sha=self.merge_sha)
         w.git.integrate_updates_head = True
         w.git.changed[self.merge_sha] = ["docs/fix.md"]
-        with mock.patch.object(stage3, "read_chunk", return_value=self.view):
+        refreshed = {"shard": "001", "chunk_count": 2, "current_chunk": "001",
+                     "active_changed": False, "current_view": self.view}
+        with mock.patch.object(stage3, "refresh_pending_chunks", return_value=refreshed):
             w.sup.maint._release()
         current = w.store.batch(self.batch_id)
         self.assertEqual(current["state"], "PRODUCING")

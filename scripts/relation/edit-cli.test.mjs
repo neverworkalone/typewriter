@@ -284,6 +284,69 @@ test('invalid saved Link Repair fails before either Relation or Drop file change
   assert.equal(await readFile(dropPath, 'utf8'), dropBefore);
 });
 
+test('refresh-pending renders current target glosses and aliases without changing the checkpoint', async (t) => {
+  const root = await repository(t);
+  await quiet(() => run(['prepare', '--shard', '001'], { root }));
+  const checkpointPath = path.join(root, '.warroom-scratch/relation-edit-001.json');
+  const checkpointBefore = await readFile(checkpointPath, 'utf8');
+  const stale = await quiet(() => run(['read-chunk', '--shard', '001'], { root }));
+  const staleRepair = stale.senses[0].relations.find((row) => row.text === '물결');
+  assert.deepEqual(staleRepair.targets.map((target) => target.alias), ['T1', 'T2']);
+
+  await updateTargetGloss(root, '물이 끓으며 거품이 일어나는 모양.');
+  await addTargetCompetitor(root);
+  const stillStale = await quiet(() => run(['read-chunk', '--shard', '001'], { root }));
+  assert.deepEqual(stillStale, stale, 'resume alone keeps the original prepared view until refresh');
+
+  const refreshed = await quiet(() => run(['refresh-pending', '--shard', '001'], { root }));
+  assert.equal(refreshed.current_chunk, '001');
+  assert.equal(refreshed.active_changed, true);
+  assert.equal(await readFile(checkpointPath, 'utf8'), checkpointBefore);
+  const current = await quiet(() => run(['read-chunk', '--shard', '001'], { root }));
+  const currentRepair = current.senses[0].relations.find((row) => row.text === '물결');
+  assert.deepEqual(currentRepair.targets.map((target) => target.alias), ['T1', 'T2', 'T3']);
+  assert.equal(currentRepair.targets[1].gloss, '물이 끓으며 거품이 일어나는 모양.');
+  assert.equal(refreshed.current_view.senses[0].relations.find((row) => row.text === '물결').targets.length, 3);
+});
+
+test('refresh-pending detects Relation row rebinding and ignores unrelated Git changes', async (t) => {
+  const root = await repository(t);
+  await quiet(() => run(['prepare', '--shard', '001'], { root }));
+  const checkpointPath = path.join(root, '.warroom-scratch/relation-edit-001.json');
+  const checkpointBefore = await readFile(checkpointPath, 'utf8');
+  const stale = await quiet(() => run(['read-chunk', '--shard', '001'], { root }));
+  await swapRelationRows(root, 1, 4, 'Reorder rows before resuming a pending Stage 3 chunk');
+  const refreshed = await quiet(() => run(['refresh-pending', '--shard', '001'], { root }));
+  assert.equal(refreshed.active_changed, true, 'hidden persisted row bindings must be refreshed too');
+  assert.equal(await readFile(checkpointPath, 'utf8'), checkpointBefore);
+  const current = await quiet(() => run(['read-chunk', '--shard', '001'], { root }));
+  assert.notDeepEqual(current, stale);
+  assert.equal(current.senses[0].relations[0].target, '유영');
+
+  await writeFile(path.join(root, 'unrelated-notes.md'), 'Documentation-only maintainer change.\n');
+  git(root, 'add', 'unrelated-notes.md');
+  git(root, 'commit', '-qm', 'Update unrelated documentation');
+  const afterDocs = await quiet(() => run(['refresh-pending', '--shard', '001'], { root }));
+  assert.equal(afterDocs.active_changed, false);
+  assert.equal(afterDocs.current_view.senses[0].relations[0].target, '유영');
+  assert.equal(await readFile(checkpointPath, 'utf8'), checkpointBefore);
+});
+
+test('refresh-pending refuses to rebind a completed chunk after its rendered input changes', async (t) => {
+  const root = await repository(t);
+  await quiet(() => run(['prepare', '--shard', '001'], { root }));
+  await save(root, 'chunk 001\nD 1\n');
+  const checkpointPath = path.join(root, '.warroom-scratch/relation-edit-001.json');
+  const viewPath = path.join(root, '.warroom-scratch/relation-edit-001/chunk-001.json');
+  const checkpointBefore = await readFile(checkpointPath, 'utf8');
+  const completedViewBefore = await readFile(viewPath, 'utf8');
+  await updateSourceGloss(root, '물이 깊고 차갑게 흐르는 모양.');
+
+  await assert.rejects(quiet(() => run(['refresh-pending', '--shard', '001'], { root })), /completed chunk 001 inputs changed/u);
+  assert.equal(await readFile(checkpointPath, 'utf8'), checkpointBefore);
+  assert.equal(await readFile(viewPath, 'utf8'), completedViewBefore);
+});
+
 test('apply refuses Drop and Link Repair decisions after their prepared Relation rows change', async (t) => {
   const root = await repository(t);
   await addSecondSenseTextRelation(root);

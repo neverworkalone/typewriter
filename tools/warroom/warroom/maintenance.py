@@ -547,13 +547,16 @@ class Maintenance:
                 current = stage3.checkpoint(wt, b["shard"])
                 if current != checkpoint and not stage3.chunk_saved_since(checkpoint, current):
                     return None
+                refreshed = stage3.refresh_pending_chunks(self.sup.runner, self.sup.env, wt, b["shard"])
                 if current == checkpoint:
-                    current_view = stage3.read_chunk(self.sup.runner, self.sup.env, wt, b["shard"])
-                    if current_view.get("chunk") != chunk:
+                    current_view = refreshed.get("current_view")
+                    if refreshed.get("current_chunk") != chunk or not isinstance(current_view, dict):
                         return None
-                    if current_view != base["view"]:
+                    if refreshed.get("active_changed") or current_view != base["view"]:
                         # The previous answer was bound to a different Stage 3 input view. Rebind the exact pending
-                        # chunk to the new view and make the Supervisor launch it afresh instead of reusing that answer.
+                        # chunk to the newly rendered Git inputs and make the Supervisor launch it afresh instead of
+                        # reusing the answer. refresh_pending_chunks also proves that every saved chunk's full raw view,
+                        # including hidden Relation row bindings, remains unchanged.
                         base["view"] = current_view
                         base["answer_invalidated"] = True
         except GitTransient:

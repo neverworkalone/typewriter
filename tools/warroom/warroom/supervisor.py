@@ -2199,20 +2199,25 @@ class Supervisor:
         if policy_refusal:
             return self._handle_ab_policy_refusal(b, policy_chunk)
         if code is None:
-            if self._saved_chunk_for_run(b):
+            saved_chunk = self._saved_chunk_for_run(b)
+            stage3_answer_only = self._stage3_answer_only(b)
+            if saved_chunk or stage3_answer_only:
                 if self._saved_output_failure(b, self._classify_run(b["producer"], b["log_file"])):
                     return
                 ad = self._adapter(b["producer"])
                 if problem := self._saved_chunk_identity_problem(b):
-                    return self._fail(b, problem[0], f"종료 기록은 없지만 청크 실행 소유권/핀을 확인하지 못했습니다: {problem[1]}")
+                    return self._fail(b, problem[0], f"종료 기록은 없지만 청크 응답 실행 소유권/핀을 확인하지 못했습니다: {problem[1]}")
                 problem = ad.completion_problem(Path(b["log_file"]), self._recorded_run(b), b["session_id"],
                                                 b["worktree"], self.env)
                 if problem and not ad.completion_incomplete(Path(b["log_file"]), self._recorded_run(b),
                                                             b["session_id"], b["worktree"], self.env):
-                    return self._fail(b, "ERROR", f"종료 상태 기록이 없고 실행 증거도 불완전합니다: {problem[1]}. 저장 청크와 worktree를 보존합니다.")
+                    return self._fail(b, "ERROR", f"종료 상태 기록이 없고 실행 증거도 불완전합니다: {problem[1]}. 청크 응답과 worktree를 보존합니다.")
                 if not self._denials_cleared(b, Path(b["log_file"])):
                     return
-                self.store.log(b["id"], "AI 종료 상태 기록은 없지만 현재 청크의 정확한 저장 증거와 실행 핀을 확인했습니다. 저장물을 다시 만들지 않고 진행합니다.", "warn")
+                if saved_chunk:
+                    self.store.log(b["id"], "AI 종료 상태 기록은 없지만 현재 청크의 정확한 저장 증거와 실행 핀을 확인했습니다. 저장물을 다시 만들지 않고 진행합니다.", "warn")
+                else:
+                    self.store.log(b["id"], "AI 종료 상태 기록은 없지만 현재 Stage 3 청크의 완전한 D/L 응답과 실행 핀을 확인했습니다. 같은 strict save 경로로 저장합니다.", "warn")
                 return self._run_ok(b)
             return self._fail(b, "ERROR", "AI 프로세스가 종료 상태 기록 없이 사라졌습니다. "
                               "자동 재생산하지 않음 — worktree/PR 확인 후 Retry.")
