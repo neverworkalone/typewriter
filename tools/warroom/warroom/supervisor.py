@@ -323,6 +323,12 @@ class Supervisor:
                 return False
             answer = self._adapter(b["producer"]).final_answer(Path(b["log_file"])) if b["log_file"] else None
             context = stage3.decision_context(baseline["view"], baseline["chunk"])
+            # The normalizer deliberately turns an empty body into `none` for its caller's save path. An
+            # answer-only recovery must require an explicit decision body so a truncated header cannot advance.
+            answer_lines = [line.strip() for line in answer.splitlines() if line.strip()] \
+                if isinstance(answer, str) else []
+            if len(answer_lines) < 2:
+                return False
             stage3.normalize_decisions(answer, baseline["chunk"], context)
             return True
         except (OSError, ValueError, KeyError, TypeError, stage3.Stage3Error):

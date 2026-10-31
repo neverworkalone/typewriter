@@ -70,6 +70,47 @@ class Stage3RunRecovery(unittest.TestCase):
         next_chunk.assert_called_once()
         self.assertEqual(stage3.checkpoint(self.path, "001")["completed_chunks"], ["001"])
 
+    def test_nonzero_exit_with_header_only_answer_does_not_save_or_advance(self):
+        w = self.w
+        with mock.patch.object(w.adapter, "final_answer", return_value="chunk 001\n"), \
+                mock.patch.object(stage3, "save_chunk", side_effect=AssertionError("incomplete answer must not save")):
+            w.sup._run_failed(self.batch, 1)
+        self.assertEqual(stage3.checkpoint(self.path, "001"), self.before)
+        self.assertEqual(w.store.batch(self.batch_id)["state"], "PAUSED")
+
+    def test_nonzero_exit_with_explicit_none_is_saved(self):
+        w = self.w
+        next_chunk = mock.Mock()
+
+        def save_none(_runner, _env, worktree, shard, chunk, decisions):
+            self.assertEqual((shard, chunk, decisions), ("001", "001", "chunk 001\nnone\n"))
+            stage3.checkpoint_path(worktree, shard).write_text(json.dumps(checkpoint(done=["001"])), "utf-8")
+            return {"chunk": chunk}
+
+        w.sup._launch_stage3_next = next_chunk
+        with mock.patch.object(w.adapter, "final_answer", return_value="chunk 001\nnone\n"), \
+                mock.patch.object(stage3, "read_chunk", return_value=self.view), \
+                mock.patch.object(stage3, "save_chunk", side_effect=save_none) as save, \
+                mock.patch.object(w.adapter, "start", side_effect=AssertionError("must not call AI")):
+            w.sup._run_failed(self.batch, 1)
+        save.assert_called_once()
+        next_chunk.assert_called_once()
+
+    def test_exit0_missing_marker_with_header_only_answer_does_not_save_or_advance(self):
+        w = self.w
+        next_chunk = mock.Mock()
+        w.sup._run_ok_stage3_chunk = next_chunk
+        with mock.patch.object(w.adapter, "final_answer", return_value="chunk 001\n"), \
+                mock.patch.object(w.adapter, "completion_problem", return_value=("ERROR", "missing terminal marker")), \
+                mock.patch.object(w.adapter, "completion_incomplete", return_value=True), \
+                mock.patch.object(w.sup, "_saved_chunk_identity_problem", return_value=None), \
+                mock.patch.object(w.sup, "_denials_cleared", return_value=True), \
+                mock.patch.object(stage3, "save_chunk", side_effect=AssertionError("incomplete answer must not save")):
+            w.sup._judge_exit0(self.batch)
+        next_chunk.assert_not_called()
+        self.assertEqual(stage3.checkpoint(self.path, "001"), self.before)
+        self.assertEqual(w.store.batch(self.batch_id)["state"], "ERROR")
+
     def test_nonzero_exit_with_saved_checkpoint_advances_without_resaving(self):
         w = self.w
         after = checkpoint(done=["001"])
