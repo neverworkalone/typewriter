@@ -1229,13 +1229,6 @@ class Supervisor:
             raise
         except Exception as error:
             return self._fail(b, "ERROR", f"Stage 3 재시도 전 worktree/PR 확인 실패: {error}. 보존합니다.")
-        if self._stage3_chunk_saved(b):
-            if problem := self._saved_chunk_identity_problem(b):
-                return self._fail(b, problem[0], f"저장된 Stage 3 청크의 실행 소유권/핀 확인 실패: {problem[1]}")
-            self.store.log(b["id"], "이전 실행의 현재 Stage 3 청크 저장을 확인했습니다. 재생산하지 않고 다음 청크로 진행합니다.")
-            self.store.delete(stage3.run_start_key(b["id"]))
-            self.store.update(b["id"], session_id=None, retries=0, retry_after=None, error=None)
-            return self._launch_stage3_next(self.store.batch(b["id"]))
         raw = self.store.get(stage3.run_start_key(b["id"]))
         if raw is not None:
             problem = self._stage3_chunk_boundary_problem(b)
@@ -1243,9 +1236,19 @@ class Supervisor:
                 return self._fail(b, "ERROR", problem)
             baseline = json.loads(raw)
             if baseline.get("view") is None:
+                if self._stage3_chunk_saved(b):
+                    return self._fail(b, "ERROR", "view 스냅샷이 없는 구 Stage 3 실행에서 checkpoint가 진행됐습니다. 저장 응답의 원본을 증명할 수 없어 다음 청크로 진행하지 않고 보존합니다.")
                 return self._stage3_fallback_for_missing_view(b)
             if not isinstance(baseline["view"], dict):
                 return self._fail(b, "ERROR", "Stage 3 실행 시작 read-chunk view 스냅샷이 손상되었습니다. worktree와 응답을 보존합니다.")
+        if self._stage3_chunk_saved(b):
+            if problem := self._saved_chunk_identity_problem(b):
+                return self._fail(b, problem[0], f"저장된 Stage 3 청크의 실행 소유권/핀 확인 실패: {problem[1]}")
+            self.store.log(b["id"], "이전 실행의 현재 Stage 3 청크 저장을 확인했습니다. 재생산하지 않고 다음 청크로 진행합니다.")
+            self.store.delete(stage3.run_start_key(b["id"]))
+            self.store.update(b["id"], session_id=None, retries=0, retry_after=None, error=None)
+            return self._launch_stage3_next(self.store.batch(b["id"]))
+        if raw is not None:
             if b["run_kind"] == "s3_chunk_fallback_new":
                 return self._fail(b, "PAUSED", "해당 Stage 3 청크의 허용된 새 세션도 완료되지 않았습니다. 추가 AI 재호출 없이 상태를 보존합니다.")
             latest_run = next(iter(self.store.runs(b["id"])), None)

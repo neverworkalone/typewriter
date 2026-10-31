@@ -209,6 +209,24 @@ class Stage3Recovery(unittest.TestCase):
         launch.assert_called_once()
         self.assertEqual(launch.call_args.args[1], "s3_chunk_fallback_new")
 
+    def test_legacy_saved_checkpoint_without_view_fails_closed_before_next_chunk(self):
+        w = self.world
+        baseline = json.loads(w.store.get(stage3.run_start_key(self.batch_id)))
+        del baseline["view"]
+        w.store.set(stage3.run_start_key(self.batch_id), json.dumps(baseline, sort_keys=True))
+        after = {**self.before, "completed_chunks": [*self.before["completed_chunks"], "008"]}
+        self.checkpoint_path.write_text(json.dumps(after), "utf-8")
+        next_chunk = mock.Mock()
+        w.sup._launch_stage3_next = next_chunk
+        with mock.patch.object(w.sup, "_saved_chunk_identity_problem", return_value=None) as identity:
+            w.sup._relaunch_stage3_chunk(self.batch)
+        self.assertEqual(w.store.batch(self.batch_id)["state"], "ERROR")
+        self.assertIn("원본을 증명할 수 없어", w.store.batch(self.batch_id)["error"])
+        self.assertEqual(stage3.checkpoint(w.paths.worktrees / "s3-001", "001"), after)
+        self.assertIsNotNone(w.store.get(stage3.run_start_key(self.batch_id)))
+        identity.assert_not_called()
+        next_chunk.assert_not_called()
+
     def test_wrong_chunk_header_fails_closed_without_saving(self):
         w = self.world
         with mock.patch.object(w.adapter, "final_answer", return_value="chunk 009\nD 491\n"), \
