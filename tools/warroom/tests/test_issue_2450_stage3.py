@@ -260,6 +260,7 @@ class Stage3SupervisorFlow(unittest.TestCase):
         w = self.w
         batch = self._batch(state="FIXING", run_kind="fix_new")
         w.store.update(batch["id"], pr_number=9, head_sha=HEAD1)
+        batch = w.store.batch(batch["id"])
         info = {"number": 9, "state": "open", "merged": False, "head_ref": batch["branch"],
                 "head_sha": HEAD2, "title": "[Relation Stage 3] 001", "body": "Implements #2450",
                 "base_ref": "master"}
