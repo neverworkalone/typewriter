@@ -26,7 +26,7 @@ from .adapters import (PREFLIGHT_PENDING, QUOTA_EVIDENCE, RunSpec, classify_clau
 from .config import (TIERED_ADAPTERS, adapter_label, config_problem, load_config, registry, registry_problems,
                      reload_problem, role_of, role_problem, run_spec, stage2_problem)
 from .github import GhError, GhTransient
-from .gitops import CleanupBlocked, FastForwardBlocked, FastForwardRace, GitError, GitTransient
+from .gitops import CleanupBlocked, FastForwardBlocked, FastForwardRace, GitError, GitTransient, IntegrationBlocked
 from .maintenance import Maintenance
 from .store import MAINTENANCE_METHOD, STAGE2_METHOD, LineBusy, LineNotRunnable
 
@@ -67,6 +67,9 @@ class Supervisor:
         self._worker_git_executables = []
         self._s2_fix_problem: dict[int, str] = {}   # batch id -> the save/format diagnostic for the next same-session fix
         self._s2_links_problem: dict[int, str] = {} # batch id -> optional-link save/format diagnostic
+        self._stage3_pr_files: dict[int, tuple[tuple, set[str]]] = {}
+        self._stage3_pr_inventory_sha: str | None = None
+        self._stage3_pr_inventory: list[dict] | None = None
         self.maint = Maintenance(self)   # shared-defect Issues, the hidden Maintainer and applying its merged fix
 
     def _adapter(self, producer: str):
@@ -925,7 +928,10 @@ class Supervisor:
                                    open_prs=self.gh.open_prs(), kv=self.store, pin=pin,
                                    verify=lambda *a: self.git.verify_stage2(sha, *a),
                                    outcome=lambda *a: self.git.verify_stage2_outcome(sha, *a), blocks=self.store,
-                                   changed=self.git.changed_between)
+                                   changed=self.git.changed_between,
+                                   relation_owners=self.git.stage2_affected_relation_shards,
+                                   relation_owners_many=self.git.stage2_affected_relation_shards_many,
+                                   reconcile_completed=lambda *args: self._stage2_start_reconcile(ln, *args))
         except TRANSIENT as e:
             return self._transient_wait(f"line:{model}:{method}:prepare", e, line=line)
         except Exception as e:   # BatchError, GitError, GhError
@@ -1057,15 +1063,21 @@ class Supervisor:
         wt = Path(b["worktree"])
         try:
             if not wt.exists():
-                self.git.fetch_base(self.cfg["base_branch"])
-                self.git.create_worktree(wt, b["branch"], self.cfg["base_branch"])
+                if self._stage2_reconcile_task(b):
+                    base_revision, _change_point, _commits = self._stage2_reconcile_task(b)
+                    self.git.create_worktree_at(wt, b["branch"], base_revision)
+                else:
+                    self.git.fetch_base(self.cfg["base_branch"])
+                    self.git.create_worktree(wt, b["branch"], self.cfg["base_branch"])
             elif self.git.registered(wt) != b["branch"]:
                 return self._fail(b, "ERROR", f"worktree가 있지만 소유 확인 불가: {wt}")
         except TRANSIENT:
             raise
-        except GitError as e:
+        except (GitError, ValueError) as e:
             return self._fail(b, "ERROR", f"worktree 준비 실패: {e}")
         if b["method"] == STAGE2_METHOD:
+            if self._stage2_reconcile_task(b):
+                return self._stage2_reconcile_finalize(b)
             return self._launch_stage2_next(b)
         if b["method"] == literary.METHOD:
             return self._launch_c_next(b)
@@ -1125,6 +1137,9 @@ class Supervisor:
 
     def _launch(self, b, kind: str, events=None) -> None:
         """Launch one run with the current effective settings; Stage 2 covers chunks, links and fresh review fixes."""
+        if (b["method"] == STAGE2_METHOD and str(b["run_kind"] or "").startswith("s2_reconcile|")
+                and isinstance(kind, str) and kind.startswith("fix")):
+            return self._stage2_reconcile_review_fix(b, events)
         ts = int(self.clock())
         while any((self.paths.logs / f"batch-{b['id']}-{ts}.{x}").exists() for x in ("log", "exit")):
             ts += 1   # one launch per log: a launch in the same second must not reuse (and append to) an earlier log
@@ -1870,6 +1885,33 @@ class Supervisor:
     def _stage2_final_pr_problem(self, b, info) -> str | None:
         """Require local checkpoint verification and an independent exact PR-HEAD verification."""
         try:
+            reconcile_task = self._stage2_reconcile_task(b)
+            if reconcile_task:
+                base_revision, _change_point, _commits = reconcile_task
+                if info.get("head_ref") != b["branch"]:
+                    return "Stage 2 reconciliation PR head branch does not match its owned branch"
+                wt = Path(b["worktree"])
+                if self.git.dirty(wt).strip():
+                    return "Stage 2 reconciliation PR worktree has uncommitted changes"
+                head = self.git.head(wt)
+                if not head or head != info.get("head_sha"):
+                    return f"Stage 2 reconciliation PR HEAD differs from its owned worktree ({info.get('head_sha')} / {head})"
+                if self.git.remote_head(b["branch"]) != head:
+                    return "Stage 2 reconciliation PR HEAD is not on its remote owned branch"
+                allowed = {f"data/relation-drops/drop-{b['shard']}.jsonl"}
+                files = {row.get("path") for row in self.gh.pull_files(info["number"])}
+                if files != allowed or set(self.git.changed_files(head)) != allowed:
+                    return f"Stage 2 reconciliation PR must change only its shard Drop file (found {sorted(files)})"
+                if not self.git.is_ancestor(base_revision, head, path=wt):
+                    return "Stage 2 reconciliation PR does not contain its recorded base revision"
+                bb, pp = stage2.split_key(b["batch"])
+                ok, tail = self.git.verify_stage2_local(wt, b["shard"], bb, pp, checkpoint=False)
+                if not ok:
+                    return f"{stage2.label(b['shard'], b['batch'])} reconciliation verify failed: {tail}"
+                ok, tail = self.git.verify_stage2_exact(head, b["shard"], bb, pp)
+                if not ok:
+                    return f"{stage2.label(b['shard'], b['batch'])} exact reconciliation PR HEAD verify failed: {tail}"
+                return None
             checkpoint = stage2.checkpoint(b["worktree"], b["shard"], b["batch"])
             if checkpoint is None or not checkpoint["complete"] or checkpoint["pending_chunk"] is not None or \
                     checkpoint["decided"] != checkpoint["total"] or not checkpoint["merged"] or \
@@ -2304,6 +2346,208 @@ class Supervisor:
         self._launch_stage2_repair_page(b)
         return True
 
+    def _stage3_commits_between(self, base_revision: str, head: str, worktree: Path,
+                                master_sha: str) -> list[str]:
+        """Return only verified merged #2450 Stage 3 data PR commits between two known master points."""
+        if not self.git.is_ancestor(base_revision, head, path=worktree):
+            raise IntegrationBlocked("Stage 2 change-point is not an ancestor of the synchronized worktree")
+        changed_paths = self.git.changed_between(base_revision, head)
+        if not any(re.fullmatch(r"data/relations/relation-\d{3}\.jsonl", item) for item in changed_paths):
+            return []
+        if not self.git.has_deleted_id_relation_rows(base_revision, head, path=worktree):
+            return []
+        if self._stage3_pr_inventory_sha != master_sha:
+            self._stage3_pr_inventory = self.gh.merged_relation_stage3_prs()
+            self._stage3_pr_inventory_sha = master_sha
+        commits = []
+        seen = set()
+        for pr in self._stage3_pr_inventory or []:
+            sha = pr.get("merge_commit_sha")
+            if pr.get("base_ref") != self.cfg["base_branch"] or not re.fullmatch(r"[a-f0-9]{40}", sha or ""):
+                continue
+            if not self.git.commit_in_range(base_revision, sha, head, path=worktree):
+                continue
+            shard = pr["shard"]
+            allowed = {f"data/relations/relation-{shard}.jsonl", f"data/relation-drops/drop-{shard}.jsonl"}
+            identity = (pr.get("title"), pr.get("base_ref"), shard, sha)
+            cached = self._stage3_pr_files.get(pr["number"])
+            if cached is None:
+                pr_paths = {row.get("path") for row in self.gh.pull_files(pr["number"])}
+                commit_paths = set(self.git.changed_files(sha))
+                self._stage3_pr_files[pr["number"]] = (identity, pr_paths)
+            else:
+                cached_identity, pr_paths = cached
+                if cached_identity != identity:
+                    raise IntegrationBlocked(f"merged Stage 3 PR #{pr['number']} identity changed after verification")
+                commit_paths = set(self.git.changed_files(sha))
+            if not pr_paths or not pr_paths.issubset(allowed) or commit_paths != pr_paths:
+                raise IntegrationBlocked(f"merged Stage 3 PR #{pr['number']} changed files do not match its declared shard scope")
+            if sha in seen:
+                raise IntegrationBlocked(f"multiple Stage 3 PR records claim merge commit {sha[:10]}")
+            seen.add(sha)
+            commits.append(sha)
+        return sorted(commits)
+
+    def _stage2_change_point(self, b, checkpoint, worktree: Path) -> str:
+        """Durably capture pre-sync HEAD for checkpoints created before `base_revision` was recorded."""
+        key = f"s2_stage3_change_point_{b['id']}"
+        stored = self.store.get(key)
+        checkpoint_revision = checkpoint.get("base_revision")
+        if stored is not None and checkpoint_revision is not None and stored != checkpoint_revision:
+            raise IntegrationBlocked("Stage 2 change point differs from its checkpoint; preserving the worktree")
+        revision = stored or checkpoint_revision
+        if revision is None:
+            revision = self.git.head(worktree)
+        if not re.fullmatch(r"[a-f0-9]{40}", revision or ""):
+            raise IntegrationBlocked("Stage 2 change-point revision is invalid; preserving the worktree")
+        if stored != revision:
+            self.store.set(key, revision)
+        return revision
+
+    @staticmethod
+    def _stage2_reconcile_task(b) -> tuple[str, str, list[str]] | None:
+        """Decode a durable, deterministic reconciliation task from its run_kind."""
+        value = b["run_kind"]
+        if not isinstance(value, str) or not value.startswith("s2_reconcile|"):
+            return None
+        fields = value.split("|", 3)
+        if len(fields) != 4 or not all(re.fullmatch(r"[a-f0-9]{40}", sha) for sha in fields[1:3]):
+            raise ValueError("Stage 2 reconciliation task has invalid base/change-point revisions")
+        commits = fields[3].split(",") if fields[3] else []
+        if not commits or any(not re.fullmatch(r"[a-f0-9]{40}", sha) for sha in commits) or len(set(commits)) != len(commits):
+            raise ValueError("Stage 2 reconciliation task has invalid Stage 3 commit IDs")
+        return fields[1], fields[2], commits
+
+    def _stage2_start_reconcile(self, ln, shard: str, batch: str, part: str,
+                                old_sha: str, sha: str) -> str | None:
+        """Preview the exact Part on latest master and enqueue a Stage2-only Drop repair if proven necessary."""
+        verifier = self.git._verify_checkout(sha)
+        commits = self._stage3_commits_between(old_sha, sha, verifier, sha)
+        if not commits:
+            return None
+        preview = self.git.stage2_reconcile_latest(sha, shard, commits, batch=batch, part=part)
+        if preview["added"] == 0:
+            return None
+        if self.git.fetch_base(self.cfg["base_branch"]) != sha:
+            return "master advanced during completed-Part reconciliation preview; checking the new head next"
+        model = ln["model"]
+        task = f"s2_reconcile|{sha}|{old_sha}|{','.join(commits)}"
+        branch = f"s2-reconcile-{model}-{shard}-{batch}-{part}-{sha[:8]}"
+        wt = self.paths.worktrees / branch
+        try:
+            fields = dict(producer=model, shard=shard, batch=stage2.batch_key(batch, part), branch=branch,
+                          worktree=str(wt), model_tier=ln["model_tier"], run_kind=task, from_run=True,
+                          shard_pin=shard if ln["mode"] == "single" else "")
+            bid = self.store.restart_completed_stage2_for_reconcile(**fields)
+            if bid is None:
+                bid = self.store.create_batch(method=STAGE2_METHOD, **fields)
+        except LineNotRunnable:
+            return "Stage 2 line stopped before reconciliation could be assigned"
+        except LineBusy:
+            return "another Stage 2 Part or reconciliation is active; waiting for its completion"
+        self.store.log(bid, f"Stage 3 삭제 후 고아 Candidate {preview['added']}개를 확인해 "
+                       f"{stage2.label(shard, stage2.batch_key(batch, part))} 전용 Drop 조정을 시작합니다")
+        self._prepare_existing(self.store.batch(bid))
+        return f"{stage2.label(shard, stage2.batch_key(batch, part))} Stage 3 고아 Candidate를 위한 Stage 2 reconcile PR 대기"
+
+    def _stage2_reconcile_review_fix(self, b, events) -> None:
+        """A reconcile PR has no Part checkpoint; preserve it for an explicit owner edit instead of launching AI."""
+        if not events:
+            return self._fail(b, "ERROR", "현재 HEAD에 유효한 reconcile 리뷰 수정 이벤트가 없습니다. PR과 worktree를 보존합니다.")
+        keys = ", ".join(str(event.get("key", "unknown")) for event in events)
+        self._fail(b, "PAUSED", "Stage 2 reconcile PR은 Part checkpoint가 없는 결정적 Drop 수정 작업입니다. "
+                   "AI 수정은 시작하지 않았습니다. 오너가 리뷰 근거에 따라 기존 소유 브랜치의 "
+                   "Drop 전용 변경을 명시적으로 수정하고 검증해 푸시한 뒤 Retry를 실행하세요. "
+                   f"현재 리뷰 이벤트: {keys}. 기존 Stage 2 Part 판정과 reconcile 증거는 보존했습니다.")
+
+    def _stage2_reconcile_finalize(self, b) -> None:
+        """Write only proven edit Drops, verify the exact Part, and submit a separate Stage2-only PR."""
+        wt = Path(b["worktree"])
+        try:
+            info = self._find_recovery_pr(b)
+            if info is not None:
+                if problem := self._stage2_final_pr_problem(b, info):
+                    return self._fail(b, "ERROR", problem)
+                return self._to_review(b, info)
+            base_revision, change_point, _stage3_commits = self._stage2_reconcile_task(b)
+            if not self.git.is_ancestor(base_revision, self.git.head(wt), path=wt):
+                raise IntegrationBlocked("reconciliation branch no longer contains its verified base revision")
+            latest = self.git.fetch_base(self.cfg["base_branch"])
+            if not self.git.contains(wt, latest):
+                self.git.integrate(wt, b["branch"], self.cfg["base_branch"], latest)
+            latest = self.git.fetch_base(self.cfg["base_branch"])
+            if not self.git.contains(wt, latest):
+                self.git.integrate(wt, b["branch"], self.cfg["base_branch"], latest)
+            latest = self.git.fetch_base(self.cfg["base_branch"])
+            if not self.git.contains(wt, latest):
+                raise IntegrationBlocked("latest master advanced during reconciliation; preserving the worktree")
+            head = self.git.head(wt)
+            stage3_commits = self._stage3_commits_between(change_point, head, wt, latest)
+            if not stage3_commits:
+                raise IntegrationBlocked("latest master no longer contains a verified Stage 3 relation change")
+            task = f"s2_reconcile|{base_revision}|{change_point}|{','.join(stage3_commits)}"
+            if task != b["run_kind"]:
+                self.store.update(b["id"], run_kind=task)
+                b = self.store.batch(b["id"])
+            bb, pp = stage2.split_key(b["batch"])
+            title = f"[Stage 2 Reconcile] {b['shard']}_{bb} Part {pp}"
+            allowed = {f"data/relation-drops/drop-{b['shard']}.jsonl"}
+            commit_key = f"s2_reconcile_commit_{b['id']}"
+            committed = self.store.get(commit_key)
+            head = self.git.head(wt)
+            if committed is not None:
+                if committed != head or self.git.dirty(wt).strip() or set(self.git.changed_files(head)) != allowed:
+                    raise GitError("recorded reconciliation commit differs from the clean owned HEAD")
+            elif self.git.commit_subject(wt) == title:
+                if set(self.git.changed_files(head)) != allowed:
+                    raise GitError("interrupted reconciliation commit changed unexpected paths")
+                self.store.set(commit_key, head)
+                committed = head
+            if committed is None:
+                result = self.git.stage2_reconcile(wt, b["shard"], stage3_commits, batch=bb, part=pp)
+                changed = self.git.changed_paths(wt)
+            else:
+                result, changed = {"added": 0}, set()
+            if result["added"] == 0 and not changed and committed is None:
+                ok, tail = self.git.verify_stage2_local(wt, b["shard"], bb, pp, checkpoint=False)
+                if not ok:
+                    raise GitError(f"reconciled Part verify failed without any proven orphan Drops: {tail}")
+                self.git.remove_owned(wt, b["branch"], self.git.head(wt))
+                self.store.complete_batch(b["id"])
+                self.store.log(b["id"], "최신 master에서 exact Part verify 통과; 고아 Candidate가 없어 PR 없이 정리 완료")
+                return
+            if committed is None and changed != allowed:
+                raise GitError(f"reconciliation changed paths outside its Stage2-only Drop output: {sorted(changed)}")
+            ok, tail = self.git.verify_stage2_local(wt, b["shard"], bb, pp, checkpoint=False)
+            if not ok:
+                raise GitError(f"reconciled Part verify failed: {tail}")
+            if committed is None:
+                head = self.git.commit_paths(wt, sorted(changed), title)
+                self.store.set(commit_key, head)
+            if self.git.dirty(wt).strip():
+                raise GitError("worktree is not clean after the reconciliation commit")
+            remote = self.git.remote_head(b["branch"])
+            if remote is None:
+                self.git.push_branch(wt, b["branch"])
+                remote = self.git.remote_head(b["branch"])
+            if remote != head:
+                raise GitError(f"reconciliation branch remote HEAD differs ({remote} / {head})")
+            issue = self.gh.issue(927)
+            labels = [label for label in issue.get("labels", []) if label != "batch"]
+            body = "\n".join([
+                "- 방식: Stage 2 고아 Candidate 조정",
+                f"- 샤드 / 배치 / 파트: {b['shard']} / {bb} / {pp}",
+                f"- Stage 3 머지 커밋: {', '.join(stage3_commits)}",
+                "- 근거: 머지된 #2450 Stage 3 PR에서 삭제된 정확한 ID Relation 행과 Part verify 통과",
+                "- 변경: 사유가 edit인 Drop만 추가; 신규 후보 발굴·의미 판단 없음",
+                "- 관련 이슈: #927, #2450",
+            ]) + "\n"
+            return self._create_pr_once(b, title, body, labels)
+        except TRANSIENT:
+            raise
+        except (GitError, IntegrationBlocked, RecoveryBlocked, OSError, ValueError, KeyError, TypeError) as error:
+            return self._fail(b, "ERROR", f"Stage 2 orphan reconciliation stopped: {error}. Worktree is preserved.")
+
     def _stage2_finalize_do(self, b) -> None:
         """Optional completion, snapshot merge, two validations, one commit/push and one owned PR; every step resumes from facts."""
         wt = Path(b["worktree"])
@@ -2322,12 +2566,9 @@ class Supervisor:
             bb, pp = stage2.split_key(b["batch"])
             base_key = f"s2_finalize_base_{b['id']}"
             base = self.store.get(base_key)
-            if base is None:
-                if checkpoint.get("merged"):
-                    return self._fail(b, "ERROR", "merged checkpoint has no deterministic finalization HEAD baseline; preserving the worktree")
-                base = self.git.head(wt)
-                self.store.set(base_key, base)
-            if not re.fullmatch(r"[a-f0-9]{40}", base):
+            if checkpoint.get("merged") and base is None:
+                return self._fail(b, "ERROR", "merged checkpoint has no deterministic finalization HEAD baseline; preserving the worktree")
+            if base is not None and not re.fullmatch(r"[a-f0-9]{40}", base):
                 return self._fail(b, "ERROR", "Stage 2 finalization HEAD baseline is invalid")
             if not checkpoint.get("merged"):
                 try:
@@ -2339,7 +2580,29 @@ class Supervisor:
                         cursor, groups = current_repair.get("cursor"), current_repair.get("groups")
                         if type(cursor) is int and isinstance(groups, list) and cursor < len(groups):
                             return self._launch_stage2_repair_page(b)
-                    self.git.stage2_prepare_merge(wt, b["shard"], bb, pp)
+                    premerge = checkpoint.get("premerge")
+                    integrated = False
+                    target = self.cfg["base_branch"]
+                    change_point = self._stage2_change_point(b, checkpoint, wt)
+                    latest = self.git.fetch_base(target)
+                    if not self.git.contains(wt, latest):
+                        self.git.integrate(wt, b["branch"], target, latest)
+                        integrated = True
+                    latest = self.git.fetch_base(target)
+                    if not self.git.contains(wt, latest):
+                        self.git.integrate(wt, b["branch"], target, latest)
+                        integrated = True
+                    latest = self.git.fetch_base(target)
+                    if not self.git.contains(wt, latest):
+                        raise IntegrationBlocked("latest master advanced during Stage 2 finalization; preserving the worktree")
+                    synchronized_head = self.git.head(wt)
+                    stage3_commits = self._stage3_commits_between(change_point, synchronized_head, wt, latest)
+                    refresh_premerge = integrated or not isinstance(premerge, dict) or \
+                        premerge.get("stage3_commits") != stage3_commits
+                    self.git.stage2_prepare_merge(wt, b["shard"], bb, pp, stage3_commits,
+                                                  refresh=refresh_premerge)
+                    base = synchronized_head
+                    self.store.set(base_key, base)
                     checkpoint = stage2.checkpoint(wt, b["shard"], b["batch"])
                     if checkpoint is None or not isinstance(checkpoint.get("premerge"), dict) \
                             or checkpoint["premerge"].get("status") != "ready":
@@ -2348,7 +2611,7 @@ class Supervisor:
                         return
                 except TRANSIENT:
                     raise
-                except (GitError, OSError, ValueError, KeyError, TypeError) as e:
+                except (GitError, IntegrationBlocked, OSError, ValueError, KeyError, TypeError) as e:
                     return self._fail(b, "ERROR", f"Stage 2 preflight preparation failed: {e}. Worktree is preserved.")
             self.git.stage2_merge(wt, b["shard"], bb, pp)
             checkpoint = stage2.checkpoint(wt, b["shard"], b["batch"])
@@ -4866,6 +5129,9 @@ class Supervisor:
         self.store.delete(f"stop_after_pr_{b['id']}")
         if b["method"] == STAGE2_METHOD:
             self.store.delete(stage2.run_start_key(b["id"]))
+            self.store.delete(f"s2_reconcile_commit_{b['id']}")
+            self.store.delete(f"s2_stage3_change_point_{b['id']}")
+            self.store.delete(f"s2_stage3_change_point_{b['id']}")
         self.store.finish_runs(b["id"], None)
         self.store.log(b["id"], f"배치 {b['shard']}_{b['batch']} 정리 완료")
 
@@ -4875,7 +5141,8 @@ class Supervisor:
         stopped in ERROR (verify failed); the worktree, PR and session stay and Retry re-verifies without any AI run."""
         bb, pp = stage2.split_key(b["batch"])
         ok_key, gate = stage2.ok_key(b["shard"], bb, pp), f"s2_merge_wait_{b['id']}"
-        if self.store.get(ok_key):
+        is_reconciliation = self._stage2_reconcile_task(b) is not None
+        if self.store.get(ok_key) and not is_reconciliation:
             return True
         if self.clock() - float(self.store.get(gate, "0")) < self.cfg["poll_seconds"]:
             return False
@@ -4897,7 +5164,8 @@ class Supervisor:
             self.store.set(gate, "0")
             return False
         self.store.set(ok_key, sha)
-        self.store.log(b["id"], f"최신 master {sha[:10]}에서 {stage2.label(b['shard'], b['batch'])} verify 통과")
+        self.store.log(b["id"], f"최신 master {sha[:10]}에서 {stage2.label(b['shard'], b['batch'])} "
+                       f"{'reconciliation ' if is_reconciliation else ''}verify 통과")
         return True
 
     # ---- daemon --------------------------------------------------------

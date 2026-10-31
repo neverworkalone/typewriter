@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 
 from .shell import Result, Runner, transient
 
@@ -137,6 +138,24 @@ class GhClient:
         """All files changed by a PR, including closed and merged PRs."""
         return [{"path": f.get("filename")} for f in
                 self._api(f"repos/{self.repo}/pulls/{n}/files", paginate=True)]
+
+    def merged_relation_stage3_prs(self) -> list[dict]:
+        """Merged data PRs explicitly linked to #2450; callers validate commit ancestry and fetch files once per match."""
+        rows = self._api(f"repos/{self.repo}/pulls?state=closed&per_page=100", paginate=True)
+        result = []
+        title_pattern = re.compile(r"^\[Relation Stage 3\] (\d{3})$")
+        issue_pattern = re.compile(r"(?:#2450|issues/2450)(?!\d)")
+        for row in rows:
+            title = row.get("title") or ""
+            match = title_pattern.fullmatch(title)
+            if not match or not row.get("merged_at") or not issue_pattern.search(row.get("body") or ""):
+                continue
+            result.append({
+                "number": row["number"], "title": title, "body": row.get("body") or "",
+                "base_ref": (row.get("base") or {}).get("ref"), "shard": match.group(1),
+                "merge_commit_sha": row.get("merge_commit_sha") or "",
+            })
+        return result
 
     def reviews(self, n: int) -> list[dict]:
         return self._api(f"repos/{self.repo}/pulls/{n}/reviews", paginate=True)

@@ -114,6 +114,9 @@ class FakeGit:
         self.reg: dict[str, str] = {}
         self.remote: dict[str, str | Exception | None] = {}   # branch -> origin SHA, None (absent) or an error to raise
         self.integrated: list[tuple[str, str]] = []           # (worktree, sha) of every shared fix merged in
+        self.ancestor_pairs: set[tuple[str, str]] = set()
+        self.commit_ranges: set[tuple[str, str, str]] = set()
+        self.integrate_updates_head = False
         self.integrate_error: Exception | None = None         # raised by integrate (IntegrationBlocked / GitError)
         self.changed: dict[str, list[str]] = {}               # merge sha -> files the merged PR changed
         self.verified: set[tuple] = set()                     # (kind, shard, batch, part) Stage 2 verifies that succeed on master
@@ -121,6 +124,8 @@ class FakeGit:
         self.verify_calls: list[tuple] = []
         self.verify_error: Exception | None = None
         self.changed_between_paths: list[str] = []            # what differs between two master commits
+        self.deleted_id_relation_ranges: set[tuple[str, str]] = set()
+        self.relation_owner_shards: set[str] | None = None    # changed Relation row owners; None models unavailable evidence
         self.base_sha = "m" * 40                              # origin/<base> as fetch_base reports it
         self.outcomes: dict[tuple, list] = {}                 # (kind, shard, batch) -> queued VerifyOutcome (last one repeats)
         self.on_base = True                                   # is a merge commit already on origin/<base>
@@ -151,13 +156,21 @@ class FakeGit:
         self.commit_empty_allowed: list[bool] = []
         self.stage2_merge_calls: list[tuple] = []
         self.stage2_prepare_merge_calls: list[tuple] = []
+        self.stage2_prepare_merge_meta: list[tuple] = []
         self.stage2_preflight_calls: list[tuple] = []
         self.stage2_preflight_reports: list[dict] = []
+        self.reconcile_preview_added = 0
+        self.reconcile_added = 0
+        self.reconcile_preview_calls: list[tuple] = []
+        self.reconcile_calls: list[tuple] = []
         self.stage2_repair_calls: list[dict] = []
         self.stage2_repair_results: list[dict] = []
 
     def fetch_base(self, base):
         return self.base_sha
+
+    def _verify_checkout(self, sha):
+        return self.wt_root
 
     # ---- Method C finalization (Issue #2033) ----
     def commit_paths(self, path, rels, message, *, allow_empty=False):
@@ -171,6 +184,8 @@ class FakeGit:
         self.commit_message = message
         self.commits.append((list(rels), message))
         self.local_head = "f" * 40
+        self.ancestor_pairs.add((self.commit_parent_sha, self.local_head))
+        self.changed[self.local_head] = list(rels)
         self.committed_rels = getattr(self, "committed_rels", set()) | set(rels)
         self.dirty_text = ""
         return self.local_head
@@ -206,6 +221,33 @@ class FakeGit:
 
     def changed_between(self, old, new):
         return list(self.changed_between_paths)
+
+    def has_deleted_id_relation_rows(self, old, new, *, path=None):
+        return (old, new) in self.deleted_id_relation_ranges
+
+    def stage2_affected_relation_shards(self, old, new):
+        from warroom.gitops import GitError
+        if self.relation_owner_shards is None:
+            raise GitError("fixture Relation row-owner evidence is unavailable")
+        return set(self.relation_owner_shards)
+
+    def stage2_affected_relation_shards_many(self, old_shas, new):
+        from warroom.gitops import GitError
+        if self.relation_owner_shards is None:
+            raise GitError("fixture Relation row-owner evidence is unavailable")
+        return {old: set(self.relation_owner_shards) for old in old_shas}
+
+    def stage2_reconcile_latest(self, sha, shard, stage3_commits, *, batch, part, timeout=900):
+        self.reconcile_preview_calls.append((sha, shard, tuple(stage3_commits), batch, part))
+        return {"version": 1, "ok": True, "shard": shard, "batch": batch, "part": part,
+                "added": self.reconcile_preview_added, "dry_run": True, "candidates": []}
+
+    def stage2_reconcile(self, worktree, shard, stage3_commits, *, batch=None, part=None, dry_run=False, timeout=900):
+        self.reconcile_calls.append((str(worktree), shard, tuple(stage3_commits), batch, part, dry_run))
+        if self.reconcile_added:
+            self.dirty_text = f" M data/relation-drops/drop-{shard}.jsonl\n"
+        return {"version": 1, "ok": True, "shard": shard, "batch": batch, "part": part,
+                "added": self.reconcile_added, "dry_run": dry_run, "candidates": []}
 
     def verify_stage2_outcome(self, sha, kind, shard, batch, part, timeout=900):
         """A queued VerifyOutcome for this scope (last one repeats), else success when verified/unclassified failure."""
@@ -324,8 +366,9 @@ class FakeGit:
             outputs = [f"data/relations/relation-{shard}.jsonl"]
         self.dirty_text = "".join(f" M {output}\n" for output in outputs)
 
-    def stage2_prepare_merge(self, worktree, shard, batch, part, timeout=900):
+    def stage2_prepare_merge(self, worktree, shard, batch, part, stage3_commits=None, *, refresh=False, timeout=900):
         self.stage2_prepare_merge_calls.append((shard, batch, part))
+        self.stage2_prepare_merge_meta.append((tuple(stage3_commits or []), refresh))
         path = Path(worktree) / ".warroom-scratch" / f"relation-admission-{shard}-{batch}-{part}.json"
         data = json.loads(path.read_text("utf-8"))
         data["premerge"] = {"status": "ready", "identity": f"{shard}/{batch}/{part}",
@@ -488,10 +531,24 @@ class FakeGit:
             raise self.integrate_error
         if (str(path), sha) not in self.integrated:
             self.integrated.append((str(path), sha))
+        if self.integrate_updates_head:
+            self.local_head = sha
         return self.local_head
 
     def contains(self, path, sha):
         return (str(path), sha) in self.integrated
+
+    def create_worktree_at(self, path, branch, commit):
+        self.create_worktree(path, branch, commit)
+        self.local_head = commit
+        self.integrated.append((str(path), commit))
+
+    def is_ancestor(self, ancestor, descendant, *, path=None):
+        return ancestor == descendant or (ancestor, descendant) in self.ancestor_pairs
+
+    def commit_in_range(self, base, commit, head, *, path=None):
+        return (base, commit, head) in self.commit_ranges or (
+            self.is_ancestor(base, commit, path=path) and self.is_ancestor(commit, head, path=path))
 
     def changed_files(self, sha):
         return self.changed.get(sha, ["README.md"])   # default: a documentation-only fix
@@ -521,6 +578,9 @@ class FakeGh:
         self.by_branch: dict[str, list] = {}
         self.branch_errors: dict[str, Exception] = {}
         self.files: dict[int, list | Exception] = {}
+        self.pull_files_calls: list[int] = []
+        self.merged_stage3_prs: list[dict] = []
+        self.merged_stage3_prs_calls = 0
         self.branch_queries = 0
         self.closed, self.close_error = [], None
         self.reviews_, self.inline_, self.issue_ = [], [], []
@@ -535,6 +595,10 @@ class FakeGh:
 
     def open_prs(self):
         return self.open
+
+    def merged_relation_stage3_prs(self):
+        self.merged_stage3_prs_calls += 1
+        return list(self.merged_stage3_prs)
 
     def create_pr(self, head, base, title, body, labels):
         self.created_prs = getattr(self, "created_prs", [])
@@ -628,13 +692,17 @@ class FakeGh:
         return comment_id
 
     def pull_files(self, n):
+        self.pull_files_calls.append(n)
         if n in self.files:
             files = self.files[n]
         else:
             # A branch-linked fake PR represents the normal producer output unless a test supplies another file list.
             branch = self.pull(n).get("head_ref", "")
             parts = branch.split("-")
-            if len(parts) >= 5 and parts[0] == "s2" and re.fullmatch(r"\d{3}", parts[-3]):
+            if len(parts) >= 7 and parts[:2] == ["s2", "reconcile"] and re.fullmatch(r"\d{3}", parts[-4]):
+                shard = parts[-4]
+                files = [{"path": f"data/relation-drops/drop-{shard}.jsonl"}]
+            elif len(parts) >= 5 and parts[0] == "s2" and re.fullmatch(r"\d{3}", parts[-3]):
                 shard = parts[-3]
                 files = [{"path": f"data/relations/relation-{shard}.jsonl"}]
             elif (len(parts) >= 4 and parts[0] in "abcd" and re.fullmatch(r"\d{3}", parts[-2])

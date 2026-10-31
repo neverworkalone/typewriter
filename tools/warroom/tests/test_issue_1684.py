@@ -164,6 +164,37 @@ class StageTwoSelection(unittest.TestCase):
         self.assertTrue(w.store.get(stage2.ok_key("001", "01", "01")))
         self.assertFalse(w.store.get(stage2.ok_key("001", "01", "03")))
 
+    def test_completed_part_reconciles_only_when_a_changed_relation_row_owns_its_shard(self):
+        w = s2_world(self, canon={1: 100})
+        old_sha, new_sha = "a" * 40, "b" * 40
+        w.store.set(stage2.ok_key("001", "01", "01"), old_sha)
+        calls = []
+        choice = stage2.choose(
+            w.runner, w.paths.repo_root, w.sup.env, ref="origin/master", sha=new_sha, open_prs=[], kv=w.store,
+            verify=lambda *args: self.fail(f"exact verify should wait for reconcile task: {args}"),
+            changed=lambda old, new: ["data/relations/relation-001.jsonl"],
+            relation_owners=lambda old, new: {"001"},
+            reconcile_completed=lambda *args: calls.append(args) or "reconciliation PR pending",
+        )
+        self.assertEqual((choice.status, choice.note), ("wait", "reconciliation PR pending"))
+        self.assertEqual(calls, [("001", "01", "01", old_sha, new_sha)])
+
+    def test_unrelated_relation_change_carries_completed_part_without_reverifying_it(self):
+        w = s2_world(self, canon={1: 100})
+        old_sha, new_sha = "c" * 40, "d" * 40
+        w.store.set(stage2.ok_key("001", "01", "01"), old_sha)
+        calls = []
+        choice = stage2.choose(
+            w.runner, w.paths.repo_root, w.sup.env, ref="origin/master", sha=new_sha, open_prs=[], kv=w.store,
+            verify=lambda *args: calls.append(args) or (True, ""),
+            changed=lambda old, new: ["data/relations/relation-002.jsonl"],
+            relation_owners=lambda old, new: {"002"},
+            reconcile_completed=lambda *args: self.fail(f"unrelated owner must not reconcile: {args}"),
+        )
+        self.assertEqual(choice.status, "done")
+        self.assertNotIn(("part", "001", "01", "01"), calls)
+        self.assertEqual(w.store.get(stage2.ok_key("001", "01", "01")), new_sha)
+
     def test_part_five_of_batch_one_then_batch_two_part_one(self):
         self.w = w = s2_world(self)
         w.git.verified |= {("part", "001", "01", f"{p:02d}") for p in range(1, 6)} | {("batch", "001", "01", None)}

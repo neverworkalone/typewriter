@@ -38,6 +38,35 @@ class RealGit(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
+    def test_deleted_id_relation_detection_ignores_additions_and_text_only_deletions(self):
+        relation = self.repo / "data" / "relations" / "relation-001.jsonl"
+        relation.parent.mkdir(parents=True)
+        id_row = '{"id":"r1","sid":"s1","tid":"s2","tsid":"s2"}'
+        text_row = '{"sid":"s1","text":"writer-facing note"}'
+        relation.write_text(id_row + "\n" + text_row + "\n")
+        sh("git", "add", "data/relations/relation-001.jsonl", cwd=self.repo)
+        sh("git", "commit", "-qm", "relations baseline", cwd=self.repo)
+        base = self.git.head(self.repo)
+
+        relation.write_text(id_row + "\n" + text_row + "\n" +
+                            '{"id":"r2","sid":"s3","tid":"s4","tsid":"s4"}\n')
+        sh("git", "add", "data/relations/relation-001.jsonl", cwd=self.repo)
+        sh("git", "commit", "-qm", "add id relation", cwd=self.repo)
+        added = self.git.head(self.repo)
+        self.assertFalse(self.git.has_deleted_id_relation_rows(base, added, path=self.repo))
+
+        relation.write_text(id_row + '\n{"id":"r2","sid":"s3","tid":"s4","tsid":"s4"}\n')
+        sh("git", "add", "data/relations/relation-001.jsonl", cwd=self.repo)
+        sh("git", "commit", "-qm", "remove text-only relation", cwd=self.repo)
+        text_removed = self.git.head(self.repo)
+        self.assertFalse(self.git.has_deleted_id_relation_rows(added, text_removed, path=self.repo))
+
+        relation.write_text('{"id":"r2","sid":"s3","tid":"s4","tsid":"s4"}\n')
+        sh("git", "add", "data/relations/relation-001.jsonl", cwd=self.repo)
+        sh("git", "commit", "-qm", "remove id relation", cwd=self.repo)
+        id_removed = self.git.head(self.repo)
+        self.assertTrue(self.git.has_deleted_id_relation_rows(text_removed, id_removed, path=self.repo))
+
     def test_worktree_gitdir_is_the_owned_linked_entry_and_fails_closed(self):
         """#1543 (real git): the Git admin dir comes from git for a War Room worktree; anything else is refused."""
         self.git.fetch_base("master")

@@ -6,8 +6,9 @@ under the reserved method `s2` with `batch` = "BB-PP", so launching, session/pin
 fixes, Stop/Drain/Retry/Clear and recovery are the Supervisor's existing code.
 
 This module owns only what is new: which Part comes next. A Part is complete only when the exact
-`admission-cli verify --shard S --batch B --part P` has succeeded on the latest master (cached in the kv table once it
-did, so a finished Part is never re-verified or re-produced). Past file existence or a PR never counts as completion.
+`admission-cli verify --shard S --batch B --part P` has succeeded on the latest master. Its cached success carries
+forward only while the Part's relevant inputs stay unchanged; otherwise it is re-verified, with proven Stage 3 orphan
+candidates reconciled through a separate deterministic PR. Past file existence or a PR never counts as completion.
 """
 from __future__ import annotations
 
@@ -83,11 +84,19 @@ _SHARED_VERIFY_INPUTS = ("data/canonical/", "scripts/relation/", "scripts/build/
                          "src/runtime/dictionary-contract.js")
 
 
-def scope_inputs_changed(paths, shard: str) -> bool:
-    """True if any changed path is something `admission-cli verify` for this shard reads (see `choose`)."""
+def scope_inputs_changed(paths, shard: str, relation_shards=None) -> bool:
+    """True if changed inputs can affect this shard's exact Stage 2 verify.
+
+    Relation JSONL is loaded globally, so those files are resolved by changed rows' source/target sense owners. An
+    unknown owner set fails closed; a mere edit to an unrelated Relation file does not invalidate every shard.
+    """
     own = (f"data/relation-drops/drop-{shard}.jsonl", f"data/relation-candidates/{shard}/")
-    # verify also loads every OTHER shard's approved Relation file (loadApprovedRelations), so any of them counts
-    return any(p.startswith(own + _SHARED_VERIFY_INPUTS) or _RELATION_FILE.fullmatch(p) for p in paths)
+    if any(p.startswith(own + _SHARED_VERIFY_INPUTS) for p in paths):
+        return True
+    relation_changed = any(_RELATION_FILE.fullmatch(p) for p in paths)
+    if not relation_changed:
+        return False
+    return relation_shards is None or shard in relation_shards
 
 
 def stop_head(kind: str, shard: str, batch: str | None) -> str:
@@ -707,7 +716,8 @@ def inputs_ready(cands: dict[str, int], shard: str, batch: str, records: int) ->
 
 
 def choose(runner, root, env, *, ref: str, sha: str, open_prs: list[dict], verify, kv, pin: str = "",
-           outcome=None, blocks=None, changed=None) -> Choice:
+           outcome=None, blocks=None, changed=None, relation_owners=None, relation_owners_many=None,
+           reconcile_completed=None) -> Choice:
     """The earliest ready, incomplete Part in canonical order (a pinned shard only, for a Single run).
 
     `verify(kind, shard, batch, part) -> (ok, tail)` runs the exact admission verify on the latest master; `kv` caches
@@ -715,17 +725,21 @@ def choose(runner, root, env, *, ref: str, sha: str, open_prs: list[dict], verif
     for, never skipped by changing the Single shard. Batch and shard verify close out their last Part. Raises
     BatchError / GitError on unreadable master data or an open PR with an unknown file list (never "no PR").
 
+    A completed Part's exact success is carried to a new SHA only when its relevant inputs are unchanged. A
+    Stage 3 Relation deletion may call `reconcile_completed(shard, batch, part, old_sha, sha)`: a returned note means
+    a deterministic Stage 2 reconciliation PR was started or is already active, so selection waits for that PR.
+
     Batch/shard close-out (#2154): with `outcome(kind, shard, batch, part) -> VerifyOutcome` a deterministic verify
     failure reproduced on the same SHA becomes `Choice("verify_failed")`, and `blocks` (the Store) holds the one active
     block per scope: while it is current on this SHA the scope waits; a new SHA is re-verified exactly, and only a
     success releases it. Without `outcome` a failure stops the Line as before.
 
     A cached Batch/shard success is the master SHA it was verified on. On another SHA it stands only while
-    `changed(old, new)` shows nothing that verify reads for that shard (any Relation file, its own Drop/Candidate files, canonical
-    data, shared verify code); otherwise the exact verify runs again, so a later regression is found and a RELEASED scope
-    can fail as a new event. Every shard's Relation file counts, since verify reads all of them.
+    `changed(old, new)` and, when needed, `relation_owners(old, new)` show that no relevant source/target Sense or other
+    verify input changed. Unknown diffs fail closed and trigger the exact verify.
     """
     diffs: dict[str, list[str] | None] = {}
+    relation_diffs: dict[str, set[str] | None] = {}
 
     def verified(key, shard):
         """True while the scope's cached success still holds on `sha`."""
@@ -740,10 +754,42 @@ def choose(runner, root, env, *, ref: str, sha: str, open_prs: list[dict], verif
             except GitError:
                 diffs[old] = None   # the old commit is unavailable: unknown, so verify again
         paths = diffs[old]
-        if paths is None or scope_inputs_changed(paths, shard):
+        relation_shards = None
+        if paths is not None and any(_RELATION_FILE.fullmatch(path) for path in paths):
+            if old not in relation_diffs:
+                if relation_owners is None:
+                    relation_diffs[old] = None
+                else:
+                    try:
+                        relation_diffs[old] = set(relation_owners(old, sha))
+                    except Exception:
+                        relation_diffs[old] = None
+            relation_shards = relation_diffs[old]
+        if paths is None or scope_inputs_changed(paths, shard, relation_shards):
             return False
         kv.set(key, sha)   # nothing it reads changed: the success carries over to this commit
         return True
+
+    def changed_for_scope(old, shard):
+        """Return (changed paths, affected Relation owners, relevant) for one cached scope."""
+        if old not in diffs:
+            try:
+                diffs[old] = changed(old, sha) if changed is not None else None
+            except GitError:
+                diffs[old] = None
+        paths = diffs[old]
+        relation_shards = None
+        if paths is not None and any(_RELATION_FILE.fullmatch(path) for path in paths):
+            if old not in relation_diffs:
+                if relation_owners is None:
+                    relation_diffs[old] = None
+                else:
+                    try:
+                        relation_diffs[old] = set(relation_owners(old, sha))
+                    except Exception:
+                        relation_diffs[old] = None
+            relation_shards = relation_diffs[old]
+        return paths, relation_shards, paths is None or scope_inputs_changed(paths, shard, relation_shards)
 
     def close(kind, shard, batch):
         """None once the scope's exact verify succeeded (cached), else the Choice that holds the Line."""
@@ -777,6 +823,41 @@ def choose(runner, root, env, *, ref: str, sha: str, open_prs: list[dict], verif
 
     canon = batches._counts(runner, root, env, ref, "data/canonical/stdict-*.jsonl")
     cands = batches._candidate_counts(runner, root, env, ref)
+    if changed is not None:
+        # Parts can have different completion SHAs. Inspect their path deltas first and resolve all changed
+        # Relation rows in one CLI call, which scans Canonical once regardless of the number of old Part SHAs.
+        old_shas = set()
+        for shard_number in range(1, batches.SHARDS + 1):
+            shard_id = f"{shard_number:03d}"
+            for batch_number in (1, 2):
+                records = batches.expected_records(canon, shard_number, batch_number)
+                if records == 0:
+                    continue
+                batch_id = f"{batch_number:02d}"
+                for part_id in (f"{part:02d}" for part in range(1, part_count(records) + 1)):
+                    old = kv.get(ok_key(shard_id, batch_id, part_id))
+                    if old and old != sha:
+                        old_shas.add(old)
+        relation_old_shas = []
+        for old in sorted(old_shas):
+            try:
+                diffs[old] = changed(old, sha)
+            except GitError:
+                diffs[old] = None
+            paths = diffs[old]
+            if paths is not None and any(_RELATION_FILE.fullmatch(path) for path in paths):
+                relation_old_shas.append(old)
+        if relation_old_shas and relation_owners_many is not None:
+            try:
+                relation_diffs.update(relation_owners_many(relation_old_shas, sha))
+            except Exception:
+                relation_diffs.update({old: None for old in relation_old_shas})
+        elif relation_old_shas and relation_owners is not None:
+            for old in relation_old_shas:
+                try:
+                    relation_diffs[old] = set(relation_owners(old, sha))
+                except Exception:
+                    relation_diffs[old] = None
     occupied: set[str] = set()
     for pr in open_prs:
         occupied |= batches.pr_stage2_shards(pr)
@@ -784,6 +865,9 @@ def choose(runner, root, env, *, ref: str, sha: str, open_prs: list[dict], verif
     for s in range(1, batches.SHARDS + 1):
         shard = f"{s:03d}"
         if pin and shard != pin:
+            continue
+        if shard in occupied:
+            waiting.append(f"샤드 {shard}에 열린 Stage 2 PR이 있음")
             continue
         batches_open = []
         for b in (1, 2):
@@ -793,18 +877,35 @@ def choose(runner, root, env, *, ref: str, sha: str, open_prs: list[dict], verif
             batch = f"{b:02d}"
             parts = [f"{p:02d}" for p in range(1, part_count(records) + 1)]
             for part in parts:
-                if kv.get(ok_key(shard, batch, part)):
+                part_key = ok_key(shard, batch, part)
+                completed_sha = kv.get(part_key)
+                if completed_sha:
+                    if completed_sha == sha:
+                        continue
+                    paths, relation_shards, relevant = changed_for_scope(completed_sha, shard)
+                    if not relevant:
+                        kv.set(part_key, sha)
+                        continue
+                    if (relation_shards is not None and shard in relation_shards and reconcile_completed is not None
+                            and paths is not None and any(_RELATION_FILE.fullmatch(path) for path in paths)):
+                        try:
+                            note = reconcile_completed(shard, batch, part, completed_sha, sha)
+                        except Exception as error:
+                            return Choice("stop", note=f"완료된 {label(shard, batch_key(batch, part))}의 Stage 3 삭제 조정 실패: {error}")
+                        if note:
+                            return Choice("wait", note=note)
+                    ok, tail = verify("part", shard, batch, part)
+                    if not ok:
+                        return Choice("stop", note=f"완료된 {label(shard, batch_key(batch, part))}가 새 master에서 verify에 실패했습니다: {tail}")
+                    kv.set(part_key, sha)
                     continue
                 if not inputs_ready(cands, shard, batch, records):
                     waiting.append(f"{shard}_{batch} Stage 1 입력(6개 Candidate 파일)이 master에 완성되지 않음")
                     break
-                if shard in occupied:
-                    waiting.append(f"샤드 {shard}에 열린 Stage 2 PR이 있음")
-                    break
                 ok, _tail = verify("part", shard, batch, part)
                 if not ok:
                     return Choice("part", Part(shard, batch, part, min(PART_SIZE, records - (int(part) - 1) * PART_SIZE)))
-                kv.set(ok_key(shard, batch, part), sha)
+                kv.set(part_key, sha)
             open_ = any(not kv.get(ok_key(shard, batch, part)) for part in parts)
             batches_open.append(open_)
             if not open_ and not verified(ok_key(shard, batch), shard):

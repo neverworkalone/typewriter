@@ -2,10 +2,15 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  availableReverseCandidateForms,
   buildCanonicalIndex,
   candidateInventory,
+  createReverseCandidateFormLookup,
+  mergeCandidates,
   normalizeCandidate,
+  orphanedCandidateDrops,
   prepareShard,
+  relationCandidateKeys,
   sameSpellingTargets,
   validateRelationRows,
   verifyAccounting,
@@ -96,6 +101,111 @@ test('prepare merges exact duplicates, keeps homograph ambiguity visible and ski
   assert.deepEqual(w1.candidates[1].same_spelling_records, ['w900', 'w901']);
   assert.equal(stats.skipped_existing, 1);
   assert.equal(stats.merged_duplicates, 1);
+});
+
+test('shared relation candidate attribution preserves assigned and legacy forward/reverse forms', () => {
+  const candidates = mergeCandidates(shardRows, [file('001_01_a_codex.jsonl', { w1: ['유일', '표제1x'] })], {
+    canonicalLemmaForms: new Set(rows.map((row) => normalizeCandidate(row.lemma))),
+  }).merged;
+  const legacy = {
+    source_record_id: 'w1', source_sense_id: 'w1-s1', target_record_id: 'w902', target_sense_id: 'w902-s1',
+    type: 'near', relevance: 3,
+  };
+  assert.deepEqual(relationCandidateKeys(legacy, candidates, index), {
+    forward: [{ senseId: 'w1-s1', candidate: '유일', kind: 'id', direction: 'forward', targetSenseId: 'w902-s1' }],
+    reverse: [{ senseId: 'w902-s1', candidate: '표제1', kind: 'id', direction: 'reverse', targetSenseId: 'w1-s1' }],
+    reverseAliases: [],
+    deferredForward: [],
+  });
+
+  const assigned = { ...legacy, candidate_assignment_version: 1, candidate_forms: ['표적 표기'], reverse_candidate_forms: ['출발 표기'] };
+  assert.deepEqual(relationCandidateKeys(assigned, candidates, index), {
+    forward: [{ senseId: 'w1-s1', candidate: '표적 표기', kind: 'id', direction: 'forward', targetSenseId: 'w902-s1' }],
+    reverse: [{ senseId: 'w902-s1', candidate: '출발 표기', kind: 'id', direction: 'reverse', targetSenseId: 'w1-s1' }],
+    reverseAliases: [],
+    deferredForward: [],
+  });
+});
+
+test('new ID rows leave already decided reverse Candidate forms unclaimed', () => {
+  const source = { ...rows[0], lemma: '표제 1', search_forms: ['표제 1', '표제1', '표제-1'] };
+  const reverseIndex = buildCanonicalIndex(rows.map((row) => row.id === source.id ? source : row));
+  const target = rows.find((row) => row.id === 'w902');
+  const alreadyClaimed = {
+    source_record_id: 'w900', source_sense_id: 'w900-s1',
+    target_record_id: target.id, target_sense_id: target.senses[0].id,
+    type: 'near', relevance: 3, reverse_type: 'near', reverse_relevance: 3,
+    candidate_assignment_version: 1, candidate_forms: ['동철'], reverse_candidate_forms: ['표제 1'],
+  };
+  const drop = { source_record_id: target.id, source_sense_id: target.senses[0].id, candidate: '표제1', reason: 'edit' };
+  const lookup = createReverseCandidateFormLookup({ relationRows: [alreadyClaimed], dropRows: [drop], index: reverseIndex });
+  assert.deepEqual(lookup.available(source, target.senses[0].id), ['표제-1'],
+    'the existing reverse Relation and edit Drop each own only their decided orthographic spelling');
+
+  const earlierNewRelation = {
+    source_record_id: source.id, source_sense_id: source.senses[0].id,
+    target_record_id: target.id, target_sense_id: target.senses[0].id,
+    type: 'near', relevance: 3, reverse_type: 'near', reverse_relevance: 3,
+    candidate_assignment_version: 1, candidate_forms: ['유일'], reverse_candidate_forms: ['표제-1'],
+  };
+  lookup.addRelation(earlierNewRelation);
+  assert.deepEqual(lookup.available(source, target.senses[0].id), [],
+    'an earlier new Relation also blocks only its assigned form');
+  assert.deepEqual(availableReverseCandidateForms(source, target.senses[0].id, {
+    relationRows: [], dropRows: [], index: reverseIndex,
+  }), ['표제 1', '표제1', '표제-1'], 'undecided orthographic spellings remain available');
+});
+
+test('Stage 3 deletion reconciliation emits only locally owned orphan Stage 1 candidates', () => {
+  const localRows = [...shardRows];
+  const indexWithDuplicate = buildCanonicalIndex([...rows, {
+    id: 'w903', lemma: '유일', senses: [{ id: 'w903-s1', pos: 'noun', gloss: '다른 뜻' }],
+  }]);
+  const candidateFiles = [file('001_01_a_codex.jsonl', { w1: ['유일', '동철'] })];
+  const removedForward = {
+    source_record_id: 'w1', source_sense_id: 'w1-s1', target_record_id: 'w902', target_sense_id: 'w902-s1',
+    type: 'near', relevance: 3, candidate_assignment_version: 1, candidate_forms: ['유일'], reverse_candidate_forms: [],
+  };
+  const removedReverse = {
+    source_record_id: 'w900', source_sense_id: 'w900-s1', target_record_id: 'w1', target_sense_id: 'w1-s1',
+    type: 'near', relevance: 3, candidate_assignment_version: 1, candidate_forms: ['동철'], reverse_candidate_forms: ['동철'],
+  };
+  const orphaned = orphanedCandidateDrops({
+    canonicalRows: localRows,
+    candidateFiles,
+    scopeRows: [localRows[0]],
+    removedRelationRows: [removedForward, removedReverse],
+    relationRows: [],
+    dropRows: [],
+    index: indexWithDuplicate,
+  });
+  assert.deepEqual(orphaned, [
+    { source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '유일', reason: 'edit' },
+    { source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '동철', reason: 'edit' },
+  ]);
+
+  const retained = orphanedCandidateDrops({
+    canonicalRows: localRows,
+    candidateFiles,
+    scopeRows: [localRows[0]],
+    removedRelationRows: [removedForward, removedReverse],
+    relationRows: [{ ...removedForward, target_record_id: 'w903', target_sense_id: 'w903-s1' }],
+    dropRows: [],
+    index: indexWithDuplicate,
+  });
+  assert.deepEqual(retained, [{ source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '동철', reason: 'edit' }],
+    'a surviving relation for the same candidate prevents a Drop');
+
+  const notPrepared = orphanedCandidateDrops({
+    canonicalRows: localRows,
+    candidateFiles: [file('001_01_a_codex.jsonl', { w1: ['다른후보'] })],
+    scopeRows: [localRows[0]],
+    removedRelationRows: [removedForward, removedReverse],
+    relationRows: [],
+    dropRows: [],
+    index: indexWithDuplicate,
+  });
+  assert.deepEqual(notPrepared, [], 'a deleted relation cannot create a Drop for a Candidate absent from the local Stage 1 input');
 });
 
 test('Stage 2 does not require a source gloss for candidates already covered by an approved Relation or Drop', () => {
@@ -357,7 +467,7 @@ test('accounting: every unique candidate is exactly one of relation, drop or exi
 });
 
 test('accounting treats complete gloss words as mentions, not substrings inside other words', () => {
-  const verifyDrop = (gloss, candidate) => {
+  const verifyDrop = (gloss, candidate, reason = '무관') => {
     const canonicalRows = canonical();
     canonicalRows[0].senses[0].gloss = gloss;
     const candidateFile = {
@@ -372,7 +482,7 @@ test('accounting treats complete gloss words as mentions, not substrings inside 
       canonicalRows,
       candidateFiles: [candidateFile],
       relationRows: [],
-      dropRows: [{ source_record_id: 'w1', source_sense_id: 'w1-s1', candidate, reason: '무관' }],
+      dropRows: [{ source_record_id: 'w1', source_sense_id: 'w1-s1', candidate, reason }],
       otherRelationRows: [],
       index: localIndex,
     });
@@ -387,6 +497,8 @@ test('accounting treats complete gloss words as mentions, not substrings inside 
   assert.equal(verifyDrop('들판과 떡갈나무가 보인다.', '들').drop, 1, 'a plural marker inside a different compound is not a gloss mention');
   assert.equal(verifyDrop('가로에 사는 민족.', '가로수').drop, 1, 'a longer candidate is not a mention of its prefix');
   assert.throws(() => verifyDrop('떡갈나무에 잎이 넓다.', '떡갈나무'), /named by the gloss/, 'a complete candidate phrase remains protected from Drop');
+  assert.equal(verifyDrop('가로에 사는 민족.', '가로', 'edit').drop, 1,
+    'the Stage 3 edit reconciliation reason may account for a source gloss naming the orphan candidate');
 });
 
 test('accounting allows an approved reverse candidate for a different target sense, but rejects the same sense pair twice', () => {

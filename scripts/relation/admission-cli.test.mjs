@@ -199,6 +199,70 @@ test('Stage 2 loaders ignore malformed historical Relation and Drop backups', as
   assert.deepEqual(texts(prepared), ['버릴말', '새 말', '유일', '텍스트']);
 });
 
+test('Stage 2 AI cannot author the reserved edit Drop reason', async (t) => {
+  const { root, checkpoint } = await prepareSixPart(t);
+  const chunk = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint], { root }));
+  const input = '.warroom-scratch/edit-drop-decision.json';
+  await writeFile(path.join(root, input), JSON.stringify({ chunk_id: chunk.chunk_id, decisions: chunk.items.flatMap((item) =>
+    item.candidates.map((candidate, index) => ({ source_sense_id: item.sense_id, candidate: candidate.text,
+      disposition: 'drop', reason: index === 0 ? 'edit' : '무관', }))) }));
+  await assert.rejects(() => quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', input], { root })),
+    /reason "edit" is reserved for Stage 3 reconciliation/u);
+});
+
+test('Stage 3 deletion reconciliation previews without writes and persists only proven edit Drops', async (t) => {
+  const { root } = await sixCandidateRepository(t);
+  const relationPath = path.join(root, 'data/relations/relation-001.jsonl');
+  const dropPath = path.join(root, 'data/relation-drops/drop-001.jsonl');
+  const sourceCandidates = ['다라', '첫 이미지', '저녁 산책', '먼 바다', '푸른 기척', '잔잔한 빛', '오래된 노래'];
+  const candidateFile = path.join(root, 'data/relation-candidates/001/001_01_a_codex.jsonl');
+  const rows = (await readFile(candidateFile, 'utf8')).trim().split('\n').map(JSON.parse);
+  rows[0].senses[0].candidates = sourceCandidates;
+  await writeFile(candidateFile, jsonl(rows));
+  const assigned = { source_record_id: 'w1', source_sense_id: 'w1-s1', target_record_id: 'w2', target_sense_id: 'w2-s1',
+    type: 'near', relevance: 2, reverse_type: 'near', reverse_relevance: 2,
+    candidate_assignment_version: 1, candidate_forms: ['다라'], reverse_candidate_forms: [] };
+  await writeFile(relationPath, relationJsonl([assigned]));
+  await writeFile(dropPath, dropJsonl(sourceCandidates.slice(1).map((candidate) => ({
+    source_record_id: 'w1', source_sense_id: 'w1-s1', candidate, reason: '이미 판단됨',
+  }))));
+
+  const git = (args) => {
+    const result = spawnSync('git', args, { cwd: root, encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    return result.stdout.trim();
+  };
+  git(['init', '-q', '-b', 'master']);
+  git(['config', 'user.name', 'Typewriter Test']);
+  git(['config', 'user.email', 'typewriter-test@example.invalid']);
+  git(['add', 'data']);
+  git(['commit', '-q', '-m', 'before Stage 3 deletion']);
+  const beforeDeletion = git(['rev-parse', 'HEAD']);
+  await writeFile(relationPath, '');
+  git(['add', relationPath]);
+  git(['commit', '-q', '-m', 'Stage 3 removes Relation']);
+  const stage3Commit = git(['rev-parse', 'HEAD']);
+  const affected = await quiet(() => run(['affected-shards-batch', '--from-sha', beforeDeletion, '--to', stage3Commit, '--json'], { root }));
+  assert.deepEqual(affected.by_from, [{ from: beforeDeletion, shards: ['001'] }]);
+
+  const beforePreview = await fileState(dropPath);
+  const preview = await quiet(() => run(['reconcile', '--shard', '001', '--batch', '01', '--part', '01',
+    '--stage3-commit', stage3Commit, '--dry-run', '--json'], { root }));
+  assert.deepEqual(preview, { version: 1, ok: true, shard: '001', batch: '01', part: '01', added: 1,
+    dry_run: true, candidates: [{ source_sense_id: 'w1-s1', candidate: '다라' }] });
+  assert.deepEqual(await fileState(dropPath), beforePreview);
+
+  const reconciled = await quiet(() => run(['reconcile', '--shard', '001', '--batch', '01', '--part', '01',
+    '--stage3-commit', stage3Commit, '--json'], { root }));
+  assert.equal(reconciled.added, 1);
+  assert.equal(reconciled.dry_run, false);
+  const drops = await readDropRows(dropPath);
+  assert.equal(drops.find((row) => row.candidate === '다라')?.reason, 'edit');
+  const verified = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01', '--json'], { root }));
+  assert.equal(verified.missing, 0, 'the reconciled Part has complete candidate accounting');
+  assert.notEqual(beforeDeletion, stage3Commit);
+});
+
 test('Part merge refuses a checkpoint prepared with incomplete Stage 1 inputs', async (t) => {
   const root = await repository(t);
   const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';

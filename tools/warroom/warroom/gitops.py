@@ -112,6 +112,26 @@ class Git:
         self.ignore_scratch()
         self._git("worktree", "add", "-b", branch, str(path), f"origin/{base}")
 
+    def create_worktree_at(self, path: Path, branch: str, commit: str) -> None:
+        """Create an owned branch at an already verified immutable commit, without resolving a moving base ref."""
+        if not re.fullmatch(r"[a-f0-9]{40}", commit or ""):
+            raise GitError("worktree commit must be a 40-character lowercase SHA")
+        self._git("cat-file", "-e", f"{commit}^{{commit}}")
+        path = Path(path)
+        if path.exists():
+            raise GitError(f"worktree path already exists (not ours to reuse): {path}")
+        if self._git("rev-parse", "--verify", "--quiet", f"refs/heads/{branch}", check=False).ok:
+            raise GitError(f"local branch already exists: {branch}")
+        remote = self._git("ls-remote", "--exit-code", "--heads", "origin", branch, check=False)
+        if remote.ok:
+            raise GitError(f"remote branch already exists: {branch}")
+        if remote.code != 2:
+            why = f"git ls-remote {branch}: {remote.err.strip() or remote.out.strip() or remote.code}"
+            raise GitTransient(why) if transient(remote) else GitError(why)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        self.ignore_scratch()
+        self._git("worktree", "add", "-b", branch, str(path), commit)
+
     def worktree_gitdir(self, path: Path) -> Path:
         """Absolute Git admin directory of the War Room-owned linked worktree at `path`, or GitError (fail closed).
 
@@ -704,6 +724,15 @@ class Git:
         """True iff commit `sha` is an ancestor of (or equal to) the worktree's HEAD."""
         return self._git("merge-base", "--is-ancestor", sha, "HEAD", cwd=path, check=False).ok
 
+    def is_ancestor(self, ancestor: str, descendant: str, *, path: Path | None = None) -> bool:
+        return self._git("merge-base", "--is-ancestor", ancestor, descendant, cwd=path, check=False).ok
+
+    def commit_in_range(self, base: str, commit: str, head: str, *, path: Path | None = None) -> bool:
+        """Whether `commit` is a merged ancestor after `base` and included by `head`."""
+        if not all(re.fullmatch(r"[a-f0-9]{40}", sha or "") for sha in (base, commit, head)):
+            raise GitError("commit range requires 40-character lowercase commit IDs")
+        return self.is_ancestor(base, commit, path=path) and self.is_ancestor(commit, head, path=path)
+
     def changed_files(self, sha: str) -> list[str]:
         """Paths a merged PR changed (first-parent diff of its merge/squash commit on the base branch)."""
         out = self._git("diff", "--name-only", f"{sha}^1", sha).out
@@ -715,6 +744,74 @@ class Git:
         `--no-renames`: a moved file is its old path deleted plus its new path added, so a verify input moved out of
         a watched location is still reported under its original path."""
         return [p for p in self._git("diff", "--name-only", "--no-renames", old, new).out.splitlines() if p]
+
+    def has_deleted_id_relation_rows(self, old: str, new: str, *, path: Path | None = None) -> bool:
+        """Cheaply detect candidate-covering ID Relation deletions before querying Stage 3 PR history."""
+        diff = self._git("diff", "--no-renames", "--unified=0", old, new, "--",
+                         "data/relations/relation-*.jsonl", cwd=path).out
+        relation_file = False
+        for line in diff.splitlines():
+            if line.startswith("diff --git "):
+                match = re.match(r"diff --git a/\S+ b/(\S+)$", line)
+                relation_file = bool(match and re.fullmatch(r"data/relations/relation-\d{3}\.jsonl", match.group(1)))
+            elif relation_file and line.startswith("-") and not line.startswith("---"):
+                try:
+                    row = json.loads(line[1:])
+                except json.JSONDecodeError as error:
+                    raise GitError(f"removed Relation line is not valid JSON: {error}") from error
+                if isinstance(row, dict) and all(isinstance(row.get(key), str) and row[key]
+                                                 for key in ("id", "sid", "tid", "tsid")):
+                    return True
+        return False
+
+    def stage2_affected_relation_shards(self, old: str, new: str) -> set[str]:
+        """Resolve changed Relation rows to the Canonical shards owning their source/target Senses."""
+        res = self.r.run(["node", "scripts/relation/admission-cli.mjs", "affected-shards", "--from", old,
+                          "--to", new, "--json"], cwd=self.root, env=self.env, timeout=900)
+        if not res.ok:
+            raise GitError(f"admission-cli affected-shards 실패: {' '.join((res.err or res.out).split())[-300:]}")
+        try:
+            payload = json.loads((res.out or "").strip().splitlines()[-1])
+        except (ValueError, IndexError):
+            raise GitError("admission-cli affected-shards exited 0 without JSON output")
+        if (not isinstance(payload, dict) or payload.get("version") != 1 or payload.get("ok") is not True
+                or payload.get("from") != old or payload.get("to") != new
+                or not isinstance(payload.get("shards"), list)
+                or any(not isinstance(shard, str) or not re.fullmatch(r"\d{3}", shard) for shard in payload["shards"])):
+            raise GitError("admission-cli affected-shards returned an invalid report")
+        return set(payload["shards"])
+
+    def stage2_affected_relation_shards_many(self, old_shas: list[str], new: str) -> dict[str, set[str]]:
+        """Resolve Relation row owners for several cached change points with one Canonical scan."""
+        if not old_shas:
+            return {}
+        args = ["node", "scripts/relation/admission-cli.mjs", "affected-shards-batch"]
+        for old in old_shas:
+            args.extend(["--from-sha", old])
+        args.extend(["--to", new, "--json"])
+        res = self.r.run(args, cwd=self.root, env=self.env, timeout=900)
+        if not res.ok:
+            raise GitError(f"admission-cli affected-shards-batch 실패: {' '.join((res.err or res.out).split())[-300:]}")
+        try:
+            payload = json.loads((res.out or "").strip().splitlines()[-1])
+        except (ValueError, IndexError):
+            raise GitError("admission-cli affected-shards-batch exited 0 without JSON output")
+        reports = payload.get("by_from") if isinstance(payload, dict) else None
+        if (not isinstance(payload, dict) or payload.get("version") != 1 or payload.get("ok") is not True or payload.get("to") != new
+                or not isinstance(reports, list) or len(reports) != len(old_shas)):
+            raise GitError("admission-cli affected-shards-batch returned an invalid report")
+        result = {}
+        for report in reports:
+            if not isinstance(report, dict):
+                raise GitError("admission-cli affected-shards-batch returned an invalid owner set")
+            old, shards = report.get("from"), report.get("shards")
+            if (old not in old_shas or old in result or not isinstance(shards, list)
+                    or any(not isinstance(shard, str) or not re.fullmatch(r"\d{3}", shard) for shard in shards)):
+                raise GitError("admission-cli affected-shards-batch returned an invalid owner set")
+            result[old] = set(shards)
+        if set(result) != set(old_shas):
+            raise GitError("admission-cli affected-shards-batch omitted a change point")
+        return result
 
     def integrate(self, path: Path, branch: str, base: str, sha: str) -> str:
         """Bring the merged shared fix `sha` into the paused batch worktree and return the resulting HEAD.
@@ -902,10 +999,16 @@ class Git:
             raise GitError(f"admission-cli merge 실패: {' '.join((res.err or res.out).split())[-300:]}")
 
     def stage2_prepare_merge(self, worktree: Path, shard: str, batch: str, part: str,
+                             stage3_commits: list[str] | None = None, *, refresh: bool = False,
                              timeout: int = 900) -> None:
         """Capture or validate the trusted premerge snapshot before the read-only preflight."""
         checkpoint = f".warroom-scratch/relation-admission-{shard}-{batch}-{part}.json"
-        res = self.r.run(["node", "scripts/relation/admission-cli.mjs", "prepare-merge", "--checkpoint", checkpoint, "--json"],
+        args = ["node", "scripts/relation/admission-cli.mjs", "prepare-merge", "--checkpoint", checkpoint, "--json"]
+        for sha in stage3_commits or []:
+            args.extend(["--stage3-commit", sha])
+        if refresh:
+            args.append("--refresh")
+        res = self.r.run(args,
                          cwd=worktree, env=self.env, timeout=timeout)
         if not res.ok:
             raise GitError(f"admission-cli prepare-merge 실패: {' '.join((res.err or res.out).split())[-300:]}")
@@ -915,6 +1018,38 @@ class Git:
             raise GitError("admission-cli prepare-merge exited 0 without JSON output")
         if not isinstance(payload, dict) or payload.get("ok") is not True:
             raise GitError("admission-cli prepare-merge exited 0 without {ok:true}")
+
+    def stage2_reconcile(self, worktree: Path, shard: str, stage3_commits: list[str], *, batch: str | None = None,
+                         part: str | None = None, dry_run: bool = False, timeout: int = 900) -> dict:
+        args = ["node", "scripts/relation/admission-cli.mjs", "reconcile", "--shard", shard]
+        if batch is not None:
+            args.extend(["--batch", batch])
+        if part is not None:
+            args.extend(["--part", part])
+        for sha in stage3_commits:
+            args.extend(["--stage3-commit", sha])
+        if dry_run:
+            args.append("--dry-run")
+        args.append("--json")
+        res = self.r.run(args, cwd=worktree, env=self.env, timeout=timeout)
+        if not res.ok:
+            raise GitError(f"admission-cli reconcile 실패: {' '.join((res.err or res.out).split())[-500:]}")
+        try:
+            payload = json.loads((res.out or "").strip().splitlines()[-1])
+        except (ValueError, IndexError):
+            raise GitError("admission-cli reconcile exited 0 without JSON output")
+        if (not isinstance(payload, dict) or payload.get("version") != 1 or payload.get("ok") is not True
+                or payload.get("shard") != shard or type(payload.get("added")) is not int or payload["added"] < 0):
+            raise GitError("admission-cli reconcile returned an invalid report")
+        if payload.get("dry_run") is not dry_run:
+            raise GitError("admission-cli reconcile dry-run state did not match the request")
+        return payload
+
+    def stage2_reconcile_latest(self, sha: str, shard: str, stage3_commits: list[str], *, batch: str,
+                                part: str, timeout: int = 900) -> dict:
+        """Read-only reconciliation preview on the exact detached master commit."""
+        return self.stage2_reconcile(self._verify_checkout(sha), shard, stage3_commits,
+                                     batch=batch, part=part, dry_run=True, timeout=timeout)
 
     def stage2_preflight(self, worktree: Path, shard: str, batch: str, part: str,
                          timeout: int = 900) -> dict:
