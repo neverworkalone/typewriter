@@ -64,17 +64,20 @@ class Stage3SelectionAndOwnership(unittest.TestCase):
         self.assertFalse(ok)
         self.assertIn("Codex", reason)
         w.cfg["producers"]["codex-backup"] = {"adapter": "codex", "model": "gpt-backup", "effort": "high",
-                                                "label": "Codex Backup"}
-        self.assertEqual(stage3_model(w.cfg), "codex")
+                                                "label": "ZZZ Backup"}
+        owner = stage3_model(w.cfg)
+        self.assertIn(owner, w.cfg["producers"])
         codex_controls = next(group for group in _controls(w.cfg)["adapters"] if group["id"] == "codex")
         self.assertIn("s3", [method["id"] for method in codex_controls["methods"]])
-        self.assertEqual(_controls(w.cfg)["stage3_model"], "codex")
-        self.assertFalse(control.start(w.store, "codex-backup", STAGE3_METHOD, "single", cfg=w.cfg)[0])
-        self.assertTrue(control.start(w.store, "codex", STAGE3_METHOD, "single", cfg=w.cfg)[0])
-        batch_id = w.store.create_batch(method=STAGE3_METHOD, producer="codex", shard="001", batch="all",
-                                        branch="s3-codex-001", worktree="/tmp/s3-001", from_run=True)
+        self.assertEqual(_controls(w.cfg)["stage3_model"], owner)
+        other_codex = next(model for model, producer in w.cfg["producers"].items()
+                           if producer["adapter"] == "codex" and model != owner)
+        self.assertFalse(control.start(w.store, other_codex, STAGE3_METHOD, "single", cfg=w.cfg)[0])
+        self.assertTrue(control.start(w.store, owner, STAGE3_METHOD, "single", cfg=w.cfg)[0])
+        batch_id = w.store.create_batch(method=STAGE3_METHOD, producer=owner, shard="001", batch="all",
+                                        branch=f"s3-{owner}-001", worktree="/tmp/s3-001", from_run=True)
         self.assertEqual(w.store.batch(batch_id)["method"], STAGE3_METHOD)
-        self.assertFalse(w.store.start_stage3("codex", "continuous")[0])
+        self.assertFalse(w.store.start_stage3(owner, "continuous")[0])
         with self.assertRaises(LineBusy):
             w.store.create_batch(method=STAGE2_METHOD, producer="claude", shard="001", batch="01-01",
                                  branch="s2-claude-001-01-01", worktree="/tmp/s2-001")
@@ -127,7 +130,7 @@ class Stage3EditContract(unittest.TestCase):
         prompt = prompts.stage3_chunk({"shard": "001", "branch": "s3-codex-001"}, "001",
                                       '{"chunk":"001","senses":[]}')
         self.assertIn("chunk 001", prompt)
-        self.assertIn("보호 사례 Keep 확인", prompt)
+        self.assertIn("깜빡대다→가물가물", prompt)
         self.assertIn('{"chunk":"001","senses":[]}', prompt)
 
     def test_pr_identity_requires_issue_link_base_and_only_its_own_relation_drop_files(self):
@@ -229,6 +232,8 @@ class Stage3SupervisorFlow(unittest.TestCase):
                 mock.patch.object(stage3, "report", return_value={"shard": "001", "deleted_relations": [],
                                                                     "link_repairs": [], "added_drops": []}):
             w.sup._stage3_finalize_do(batch)
+        self.assertEqual(w.store.batch(batch["id"])["state"], "WAITING_REVIEW",
+                         w.store.batch(batch["id"])["error"])
         self.assertEqual(w.git.commits, [([RELATION], "[Relation Stage 3] 001")])
         self.assertEqual(w.gh.created_prs[0]["title"], "[Relation Stage 3] 001")
         self.assertEqual(w.gh.created_prs[0]["labels"], ["batch"])
@@ -247,6 +252,8 @@ class Stage3SupervisorFlow(unittest.TestCase):
                 mock.patch.object(stage3, "report", return_value={"shard": "001", "deleted_relations": [],
                                                                     "link_repairs": [], "added_drops": []}):
             w.sup._stage3_finalize_do(batch)
+        self.assertEqual(w.store.batch(batch["id"])["state"], "WAITING_REVIEW",
+                         w.store.batch(batch["id"])["error"])
         body = w.gh.created_prs[0]["body"]
         self.assertIn("3행 삭제", body)
         self.assertIn("2행 Link Repair", body)
