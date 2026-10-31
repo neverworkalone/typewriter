@@ -298,9 +298,9 @@ test('independent approved rows in opposite directions between different senses 
       full.prepare('SELECT source_meaning_id, position, source_sense_id, target_sense_id, line FROM meaning_relation_authored_sources ORDER BY source_meaning_id, position').all().map((row) => ({ ...row })),
       [
         { source_meaning_id: 'm004', position: 0, source_sense_id: 'w004-s1', target_sense_id: 'w005-s1', line: 1 },
-        { source_meaning_id: 'm004', position: 1, source_sense_id: 'w005-s2', target_sense_id: 'w004-s2', line: 2 },
+        { source_meaning_id: 'm004', position: 0, source_sense_id: 'w005-s2', target_sense_id: 'w004-s2', line: 2 },
         { source_meaning_id: 'm005', position: 0, source_sense_id: 'w005-s2', target_sense_id: 'w004-s2', line: 2 },
-        { source_meaning_id: 'm005', position: 1, source_sense_id: 'w004-s1', target_sense_id: 'w005-s1', line: 1 },
+        { source_meaning_id: 'm005', position: 0, source_sense_id: 'w004-s1', target_sense_id: 'w005-s1', line: 1 },
       ],
     );
     full.close();

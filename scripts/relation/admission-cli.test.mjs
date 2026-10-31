@@ -139,7 +139,7 @@ test('CLI entrypoint prepares a Part without an injected repository root', async
   ]) {
     await mkdir(directory, { recursive: true });
   }
-  for (const file of ['admission-cli.mjs', 'admission.mjs', 'candidate-contract.mjs']) {
+  for (const file of ['admission-cli.mjs', 'admission.mjs', 'candidate-contract.mjs', 'persisted-jsonl.mjs']) {
     await copyFile(path.join(REPOSITORY_DIRECTORY, 'scripts/relation', file), path.join(relationScriptDirectory, file));
   }
   await copyFile(
@@ -710,8 +710,8 @@ test('Stage 2 chunks bind exact senses, resume safely, and preserve text-only Pa
   const resumed = await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
   assert.equal(resumed.items.length, prepared.items.length, 'prepare resumes the checkpoint instead of replacing it');
   assert.deepEqual(resumed.items[0].approved_peers, [{
-    target_lemma: '역방향표적', target_sense_id: 'w504-s1', target_pos: 'noun', target_gloss: '이미 연결된 뜻', type: 'mood', relevance: 5,
-  }], 'same-source reverse peers retain their own type and relevance');
+    target_lemma: '역방향표적', target_sense_id: 'w504-s1', target_pos: 'noun', target_gloss: '이미 연결된 뜻', type: 'scene', relevance: 2,
+  }], 'approved reverse peers use the stored source type and relevance');
 
   const first = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint, '--max-candidates', '2'], { root }));
   const retry = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint, '--max-candidates', '2'], { root }));
@@ -1134,7 +1134,7 @@ test('compact chunks are a lossless view and compact decisions expand into the s
   }
   assert.ok(lines.includes('c1\t유일표적\ta_codex\tT1,T2'));
   assert.ok(lines.includes('c2\t겹표기\ta_codex\tT3,T4'));
-  assert.ok(lines.includes('P\tmood\t5\tw504-s1 역방향표적 noun 이미 연결된 뜻'), 'approved reverse peers keep their own type and relevance');
+  assert.ok(lines.includes('P\tscene\t2\tw504-s1 역방향표적 noun 이미 연결된 뜻'), 'approved reverse peers use the stored source type and relevance');
 
   const save = async (body) => {
     await writeFile(path.join(root, input), body);
@@ -1168,12 +1168,12 @@ test('compact chunks are a lossless view and compact decisions expand into the s
   assert.match(missingAndBad, /^c2 겹표기: .*type must be one of/m);
   assert.deepEqual(await readFile(path.join(root, checkpoint)), before, 'a failed save leaves the checkpoint byte-identical');
 
-  await save(`# comments and blank lines are ignored\n${head}\n\nc1 R near 1 T1 mood 6\nc2 R association 7 none T4,T3\n`);
+  await save(`# comments and blank lines are ignored\n${head}\n\nc1 R near 1 T1 near 1\nc2 R association 7 none T4,T3\n`);
   const saved = JSON.parse(await readFile(path.join(root, checkpoint), 'utf8'));
   assert.deepEqual(saved.items[0].candidates.slice(0, 2).map((candidate) => candidate.decision), [
     {
       source_sense_id: 'w1-s1', candidate: '유일표적', disposition: 'relation', type: 'near', relevance: 1,
-      target_resolution: 'exact', target_record_id: 'w501', target_sense_id: 'w501-s1', reverse_type: 'mood', reverse_relevance: 6,
+      target_resolution: 'exact', target_record_id: 'w501', target_sense_id: 'w501-s1', reverse_type: 'near', reverse_relevance: 1,
     },
     {
       source_sense_id: 'w1-s1', candidate: '겹표기', disposition: 'relation', type: 'association', relevance: 7,
@@ -1184,7 +1184,7 @@ test('compact chunks are a lossless view and compact decisions expand into the s
   const next = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint, '--max-candidates', '3', '--format', 'compact'], { root }));
   const nextLines = next.text.split('\n');
   assert.ok(nextLines.includes('S\tw1-s1\tw1\t출발어\tnoun\t출발 의미\tcandidates 3-4/4'));
-  assert.ok(nextLines.includes('Q\t유일표적\trelation\tnear\t1\tw501-s1\tmood\t6'), 'a continuation shows the same sense\'s saved decisions');
+  assert.ok(nextLines.includes('Q\t유일표적\trelation\tnear\t1\tw501-s1\tnear\t1'), 'a continuation shows the same sense\'s saved decisions');
   assert.ok(nextLines.includes('Q\t겹표기\trelation\tassociation\t7\ttext-only'));
   assert.ok(nextLines.includes('c1\t낯선말\ta_codex\t-'));
   assert.ok(!nextLines.some((line) => line.startsWith('T1\t')), 'aliases restart for each chunk');
@@ -1261,7 +1261,7 @@ test('new Part mirrors source Type/Tier through compact, JSON revision, inspect 
   const amendPath = '.warroom-scratch/source-mirror-amend.txt';
   await writeFile(path.join(root, amendPath), `amend w1-s1 @${inspect.digest}\nc1 R scene 4 T1\n`);
   await quiet(() => run(['amend', '--checkpoint', checkpoint, '--in', amendPath], { root }));
-  const relation = JSON.parse((await readFile(path.join(root, 'data/relations/relation-001.jsonl'), 'utf8')).trim().split('\n')[0]);
+  const [relation] = await readRelationRows(path.join(root, 'data/relations/relation-001.jsonl'));
   assert.deepEqual([relation.type, relation.relevance, relation.reverse_type, relation.reverse_relevance], ['scene', 4, 'scene', 4]);
 });
 
@@ -1427,9 +1427,9 @@ test('merge accounts an ID relation against only its selected candidate spelling
   const resumedPrepare = await quiet(() => run(['prepare', '--shard', '001', '--batch', '01'], { root }));
   assert.deepEqual(texts(resumedPrepare), ['온순하다'], 'an existing ID row does not own its target record’s other spelling during prepare');
 
-  const lostAssignment = { ...idRelation };
-  delete lostAssignment.candidate_forms;
-  await writeFile(relationPath, relationJsonl([lostAssignment]));
+  const compactWithoutCandidateForms = JSON.parse(relationJsonl([idRelation]));
+  delete compactWithoutCandidateForms.fm;
+  await writeFile(relationPath, `${JSON.stringify(compactWithoutCandidateForms)}\n`);
   await assert.rejects(
     () => quiet(() => run(['verify', '--shard', '001', '--batch', '01'], { root })),
     /must have exactly .*candidate_forms/u,
@@ -1697,7 +1697,7 @@ async function spawnedVerifyRepository(t, { candidates = () => [], relations = [
   const root = await mkdtemp(path.join(scratch, 'admission-verify-json-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   for (const [from, to] of [
-    ['scripts/relation/admission-cli.mjs'], ['scripts/relation/admission.mjs'], ['scripts/relation/candidate-contract.mjs'],
+    ['scripts/relation/admission-cli.mjs'], ['scripts/relation/admission.mjs'], ['scripts/relation/candidate-contract.mjs'], ['scripts/relation/persisted-jsonl.mjs'],
     ['scripts/build/gloss-arrow-reference.mjs'], ['src/runtime/dictionary-contract.js'],
   ]) {
     await mkdir(path.dirname(path.join(root, from)), { recursive: true });
