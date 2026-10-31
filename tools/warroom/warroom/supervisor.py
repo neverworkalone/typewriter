@@ -68,6 +68,8 @@ class Supervisor:
         self._s2_fix_problem: dict[int, str] = {}   # batch id -> the save/format diagnostic for the next same-session fix
         self._s2_links_problem: dict[int, str] = {} # batch id -> optional-link save/format diagnostic
         self._stage3_pr_files: dict[int, tuple[tuple, set[str]]] = {}
+        self._stage3_pr_inventory_sha: str | None = None
+        self._stage3_pr_inventory: list[dict] | None = None
         self.maint = Maintenance(self)   # shared-defect Issues, the hidden Maintainer and applying its merged fix
 
     def _adapter(self, producer: str):
@@ -2341,16 +2343,20 @@ class Supervisor:
         self._launch_stage2_repair_page(b)
         return True
 
-    def _stage3_commits_between(self, base_revision: str, head: str, worktree: Path) -> list[str]:
+    def _stage3_commits_between(self, base_revision: str, head: str, worktree: Path,
+                                master_sha: str) -> list[str]:
         """Return only verified merged #2450 Stage 3 data PR commits between two known master points."""
         if not self.git.is_ancestor(base_revision, head, path=worktree):
             raise IntegrationBlocked("Stage 2 change-point is not an ancestor of the synchronized worktree")
         changed_paths = self.git.changed_between(base_revision, head)
         if not any(re.fullmatch(r"data/relations/relation-\d{3}\.jsonl", item) for item in changed_paths):
             return []
+        if self._stage3_pr_inventory_sha != master_sha:
+            self._stage3_pr_inventory = self.gh.merged_relation_stage3_prs()
+            self._stage3_pr_inventory_sha = master_sha
         commits = []
         seen = set()
-        for pr in self.gh.merged_relation_stage3_prs():
+        for pr in self._stage3_pr_inventory or []:
             sha = pr.get("merge_commit_sha")
             if pr.get("base_ref") != self.cfg["base_branch"] or not re.fullmatch(r"[a-f0-9]{40}", sha or ""):
                 continue
@@ -2411,7 +2417,7 @@ class Supervisor:
                                 old_sha: str, sha: str) -> str | None:
         """Preview the exact Part on latest master and enqueue a Stage2-only Drop repair if proven necessary."""
         verifier = self.git._verify_checkout(sha)
-        commits = self._stage3_commits_between(old_sha, sha, verifier)
+        commits = self._stage3_commits_between(old_sha, sha, verifier, sha)
         if not commits:
             return None
         preview = self.git.stage2_reconcile_latest(sha, shard, commits, batch=batch, part=part)
@@ -2461,7 +2467,7 @@ class Supervisor:
             if not self.git.contains(wt, latest):
                 raise IntegrationBlocked("latest master advanced during reconciliation; preserving the worktree")
             head = self.git.head(wt)
-            stage3_commits = self._stage3_commits_between(change_point, head, wt)
+            stage3_commits = self._stage3_commits_between(change_point, head, wt, latest)
             if not stage3_commits:
                 raise IntegrationBlocked("latest master no longer contains a verified Stage 3 relation change")
             task = f"s2_reconcile|{base_revision}|{change_point}|{','.join(stage3_commits)}"
@@ -2571,10 +2577,11 @@ class Supervisor:
                     if not self.git.contains(wt, latest):
                         self.git.integrate(wt, b["branch"], target, latest)
                         integrated = True
-                    if not self.git.contains(wt, self.git.fetch_base(target)):
+                    latest = self.git.fetch_base(target)
+                    if not self.git.contains(wt, latest):
                         raise IntegrationBlocked("latest master advanced during Stage 2 finalization; preserving the worktree")
                     synchronized_head = self.git.head(wt)
-                    stage3_commits = self._stage3_commits_between(change_point, synchronized_head, wt)
+                    stage3_commits = self._stage3_commits_between(change_point, synchronized_head, wt, latest)
                     refresh_premerge = integrated or not isinstance(premerge, dict) or \
                         premerge.get("stage3_commits") != stage3_commits
                     self.git.stage2_prepare_merge(wt, b["shard"], bb, pp, stage3_commits,

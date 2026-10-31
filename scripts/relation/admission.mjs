@@ -259,18 +259,34 @@ export function legacyCandidateFormsForRecord(record, index) {
   return [...new Set([...candidateFormsForRecord(record, index), ...canonicalNonOrthographicSearchForms(record)])];
 }
 
-/** Reverse spellings that are not already decided for the target sense by any Relation, reverse Relation or Drop. */
-export function availableReverseCandidateForms(record, targetSenseId, { relationRows = [], dropRows = [], index }) {
-  const decided = new Set(dropRows
-    .filter((row) => row.source_sense_id === targetSenseId)
-    .map((row) => normalizeCandidate(row.candidate)));
-  for (const row of relationRows) {
+/** Build the decided-candidate index once, then reuse it while assigning multiple reverse Relation rows. */
+export function createReverseCandidateFormLookup({ relationRows = [], dropRows = [], index }) {
+  const decidedBySense = new Map();
+  const decide = (senseId, candidate) => {
+    let candidates = decidedBySense.get(senseId);
+    if (!candidates) decidedBySense.set(senseId, candidates = new Set());
+    candidates.add(normalizeCandidate(candidate));
+  };
+  for (const row of dropRows) decide(row.source_sense_id, row.candidate);
+  const addRelation = (row) => {
     const keys = relationCandidateKeys(row, null, index);
     for (const key of [...keys.forward, ...keys.reverse, ...keys.reverseAliases, ...keys.deferredForward]) {
-      if (key.senseId === targetSenseId) decided.add(normalizeCandidate(key.candidate));
+      decide(key.senseId, key.candidate);
     }
-  }
-  return candidateFormsForRecord(record, index).filter((candidate) => !decided.has(normalizeCandidate(candidate)));
+  };
+  for (const row of relationRows) addRelation(row);
+  return {
+    addRelation,
+    available(record, targetSenseId) {
+      const decided = decidedBySense.get(targetSenseId);
+      return candidateFormsForRecord(record, index).filter((candidate) => !decided?.has(normalizeCandidate(candidate)));
+    },
+  };
+}
+
+/** Reverse spellings that are not already decided for the target sense by any Relation, reverse Relation or Drop. */
+export function availableReverseCandidateForms(record, targetSenseId, { relationRows = [], dropRows = [], index }) {
+  return createReverseCandidateFormLookup({ relationRows, dropRows, index }).available(record, targetSenseId);
 }
 
 /** Lemma, curated search-form, and id lookups over the full Canonical (all shards). */

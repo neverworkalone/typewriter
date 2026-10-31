@@ -576,6 +576,7 @@ class FakeGh:
         self.files: dict[int, list | Exception] = {}
         self.pull_files_calls: list[int] = []
         self.merged_stage3_prs: list[dict] = []
+        self.merged_stage3_prs_calls = 0
         self.branch_queries = 0
         self.closed, self.close_error = [], None
         self.reviews_, self.inline_, self.issue_ = [], [], []
@@ -592,6 +593,7 @@ class FakeGh:
         return self.open
 
     def merged_relation_stage3_prs(self):
+        self.merged_stage3_prs_calls += 1
         return list(self.merged_stage3_prs)
 
     def create_pr(self, head, base, title, body, labels):

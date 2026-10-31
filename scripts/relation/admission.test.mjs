@@ -5,6 +5,7 @@ import {
   availableReverseCandidateForms,
   buildCanonicalIndex,
   candidateInventory,
+  createReverseCandidateFormLookup,
   mergeCandidates,
   normalizeCandidate,
   orphanedCandidateDrops,
@@ -127,7 +128,7 @@ test('shared relation candidate attribution preserves assigned and legacy forwar
 });
 
 test('new ID rows leave already decided reverse Candidate forms unclaimed', () => {
-  const source = { ...rows[0], lemma: '표제 1', search_forms: ['표제 1', '표제1'] };
+  const source = { ...rows[0], lemma: '표제 1', search_forms: ['표제 1', '표제1', '표제-1'] };
   const reverseIndex = buildCanonicalIndex(rows.map((row) => row.id === source.id ? source : row));
   const target = rows.find((row) => row.id === 'w902');
   const alreadyClaimed = {
@@ -137,12 +138,22 @@ test('new ID rows leave already decided reverse Candidate forms unclaimed', () =
     candidate_assignment_version: 1, candidate_forms: ['동철'], reverse_candidate_forms: ['표제 1'],
   };
   const drop = { source_record_id: target.id, source_sense_id: target.senses[0].id, candidate: '표제1', reason: 'edit' };
-  assert.deepEqual(availableReverseCandidateForms(source, target.senses[0].id, {
-    relationRows: [alreadyClaimed], dropRows: [drop], index: reverseIndex,
-  }), [], 'the reverse Relation and edit Drop each own one orthographic spelling');
+  const lookup = createReverseCandidateFormLookup({ relationRows: [alreadyClaimed], dropRows: [drop], index: reverseIndex });
+  assert.deepEqual(lookup.available(source, target.senses[0].id), ['표제-1'],
+    'the existing reverse Relation and edit Drop each own only their decided orthographic spelling');
+
+  const earlierNewRelation = {
+    source_record_id: source.id, source_sense_id: source.senses[0].id,
+    target_record_id: target.id, target_sense_id: target.senses[0].id,
+    type: 'near', relevance: 3, reverse_type: 'near', reverse_relevance: 3,
+    candidate_assignment_version: 1, candidate_forms: ['유일'], reverse_candidate_forms: ['표제-1'],
+  };
+  lookup.addRelation(earlierNewRelation);
+  assert.deepEqual(lookup.available(source, target.senses[0].id), [],
+    'an earlier new Relation also blocks only its assigned form');
   assert.deepEqual(availableReverseCandidateForms(source, target.senses[0].id, {
     relationRows: [], dropRows: [], index: reverseIndex,
-  }), ['표제 1', '표제1'], 'undecided orthographic spellings remain available');
+  }), ['표제 1', '표제1', '표제-1'], 'undecided orthographic spellings remain available');
 });
 
 test('Stage 3 deletion reconciliation emits only locally owned orphan Stage 1 candidates', () => {

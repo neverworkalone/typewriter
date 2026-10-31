@@ -9,6 +9,7 @@ from warroom.gitops import IntegrationBlocked
 
 
 BASE, STAGE3, HEAD = "1" * 40, "2" * 40, "3" * 40
+OTHER_HEAD, NEW_MASTER = "4" * 40, "5" * 40
 RELATION = "data/relations/relation-001.jsonl"
 
 
@@ -30,15 +31,37 @@ class Stage3ChangePoint(unittest.TestCase):
     def test_only_exact_merged_stage3_pr_files_are_accepted_and_checked_once(self):
         self.configure_pr()
         worktree = Path(self.w.paths.repo_root)
-        first = self.w.sup._stage3_commits_between(BASE, HEAD, worktree)
-        second = self.w.sup._stage3_commits_between(BASE, HEAD, worktree)
+        first = self.w.sup._stage3_commits_between(BASE, HEAD, worktree, HEAD)
+        second = self.w.sup._stage3_commits_between(BASE, HEAD, worktree, HEAD)
         self.assertEqual((first, second), ([STAGE3], [STAGE3]))
+        self.assertEqual(self.w.gh.merged_stage3_prs_calls, 1)
+        self.assertEqual(self.w.gh.pull_files_calls, [2451])
+
+    def test_completed_parts_on_the_same_master_share_one_pr_inventory(self):
+        self.configure_pr()
+        self.w.git.ancestor_pairs |= {(BASE, OTHER_HEAD), (STAGE3, OTHER_HEAD)}
+        self.w.git.commit_ranges.add((BASE, STAGE3, OTHER_HEAD))
+        worktree = Path(self.w.paths.repo_root)
+        first = self.w.sup._stage3_commits_between(BASE, HEAD, worktree, HEAD)
+        second = self.w.sup._stage3_commits_between(BASE, OTHER_HEAD, worktree, HEAD)
+        self.assertEqual((first, second), ([STAGE3], [STAGE3]))
+        self.assertEqual(self.w.gh.merged_stage3_prs_calls, 1)
+        self.assertEqual(self.w.gh.pull_files_calls, [2451])
+
+    def test_a_new_master_sha_refreshes_the_pr_inventory(self):
+        self.configure_pr()
+        self.w.git.ancestor_pairs.add((NEW_MASTER, HEAD))
+        worktree = Path(self.w.paths.repo_root)
+        first = self.w.sup._stage3_commits_between(BASE, HEAD, worktree, HEAD)
+        second = self.w.sup._stage3_commits_between(BASE, HEAD, worktree, NEW_MASTER)
+        self.assertEqual((first, second), ([STAGE3], [STAGE3]))
+        self.assertEqual(self.w.gh.merged_stage3_prs_calls, 2)
         self.assertEqual(self.w.gh.pull_files_calls, [2451])
 
     def test_stage3_pr_file_list_must_match_its_declared_shard_and_merge_commit(self):
         self.configure_pr([RELATION, "README.md"])
         with self.assertRaises(IntegrationBlocked):
-            self.w.sup._stage3_commits_between(BASE, HEAD, Path(self.w.paths.repo_root))
+            self.w.sup._stage3_commits_between(BASE, HEAD, Path(self.w.paths.repo_root), HEAD)
         self.assertEqual(self.w.gh.pull_files_calls, [2451])
 
 

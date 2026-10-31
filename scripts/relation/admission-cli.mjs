@@ -10,7 +10,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   ADMISSION_TYPES,
   assertStage2SourceGloss,
-  availableReverseCandidateForms,
+  createReverseCandidateFormLookup,
   approvedPeersForSense,
   assertShard,
   batchScope,
@@ -2271,23 +2271,21 @@ async function materializePart(checkpoint, root, baseline) {
   validateRelationRows({ relationRows: existingRelations, dropRows: existingDrops, index: loaded.index,
     shardSenseIds: finalShardSenseIds, otherRelationRows: others });
   const { relations: newRelations, relationCandidates, drops: newDrops } = decisionRows(checkpoint);
-  const assignedRelations = [...others, ...existingRelations];
-  const assignedDrops = await loadAllApprovedDrops(root);
-  assignedDrops.push(...existingDrops, ...newDrops);
+  const allDrops = await loadAllApprovedDrops(root);
+  const reverseCandidates = createReverseCandidateFormLookup({
+    relationRows: [...others, ...existingRelations],
+    dropRows: [...allDrops, ...existingDrops, ...newDrops],
+    index: loaded.index,
+  });
   for (const relation of newRelations) {
     if ('text' in relation) continue;
     const source = loaded.index.byId.get(relation.source_record_id);
-    if (source) relation.reverse_candidate_forms = availableReverseCandidateForms(source, relation.target_sense_id, {
-      relationRows: assignedRelations,
-      dropRows: assignedDrops,
-      index: loaded.index,
-    });
-    assignedRelations.push(relation);
+    if (source) relation.reverse_candidate_forms = reverseCandidates.available(source, relation.target_sense_id);
+    reverseCandidates.addRelation(relation);
   }
   const merged = assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, newRelations, relationCandidates, newDrops, loaded.index);
   const scoped = partScope(loaded.canonicalRows, loaded.candidateFiles, checkpoint.batch, checkpoint.part);
   const stage3Removed = stage3DeletedRelationRows(baseline.stage3_commits ?? [], root);
-  const allDrops = await loadAllApprovedDrops(root);
   const editDrops = orphanedCandidateDrops({
     canonicalRows: loaded.canonicalRows,
     candidateFiles: scoped.files,
@@ -2384,18 +2382,17 @@ async function preflightCheckpoint(checkpoint, checkpointPath, root, limit = 20,
   validateRelationRows({ relationRows: existingRelations, dropRows: existingDrops, index: loaded.index,
     shardSenseIds: finalShardSenseIds, otherRelationRows: others });
   const generated = decisionRows(checkpoint);
-  const assignedRelations = [...others, ...existingRelations];
-  const assignedDrops = await loadAllApprovedDrops(root);
-  assignedDrops.push(...existingDrops, ...generated.drops);
+  const allDrops = await loadAllApprovedDrops(root);
+  const reverseCandidates = createReverseCandidateFormLookup({
+    relationRows: [...others, ...existingRelations],
+    dropRows: [...allDrops, ...existingDrops, ...generated.drops],
+    index: loaded.index,
+  });
   for (const relation of generated.relations) {
     if ('text' in relation) continue;
     const source = loaded.index.byId.get(relation.source_record_id);
-    if (source) relation.reverse_candidate_forms = availableReverseCandidateForms(source, relation.target_sense_id, {
-      relationRows: assignedRelations,
-      dropRows: assignedDrops,
-      index: loaded.index,
-    });
-    assignedRelations.push(relation);
+    if (source) relation.reverse_candidate_forms = reverseCandidates.available(source, relation.target_sense_id);
+    reverseCandidates.addRelation(relation);
   }
   const collected = collectMergeConflicts(checkpoint, existingRelations, existingDrops, generated.relations,
     generated.relationCandidates, generated.drops, loaded.index);
