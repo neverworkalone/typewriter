@@ -373,13 +373,13 @@ function preparedRowsByNumber(view, chunk) {
       if (!Number.isSafeInteger(relation._row) || relation._row < 1 || rows.has(relation._row)) {
         fail(`prepared Stage 3 chunk ${chunk} has an invalid Relation row reference`);
       }
-      rows.set(relation._row, relation);
+      rows.set(relation._row, { source: sense.source, relation });
     }
   }
   return rows;
 }
 
-async function validatePreparedDecisions(shard, root, decisions, currentRelations) {
+async function validatePreparedDecisions(shard, root, decisions, currentRelations, index) {
   const rowsByChunk = new Map();
   for (const decision of decisions) {
     if (!rowsByChunk.has(decision.chunk)) {
@@ -389,8 +389,18 @@ async function validatePreparedDecisions(shard, root, decisions, currentRelation
       catch (error) { fail(`prepared Stage 3 chunk ${decision.chunk} is unavailable or invalid: ${error.message}`); }
       rowsByChunk.set(decision.chunk, preparedRowsByNumber(view, decision.chunk));
     }
-    const prepared = rowsByChunk.get(decision.chunk).get(decision.row);
+    const preparedEntry = rowsByChunk.get(decision.chunk).get(decision.row);
+    const prepared = preparedEntry?.relation;
     const current = currentRelations[decision.row - 1];
+    const currentSource = prepared && index.senses.get(prepared._source_sense_id);
+    const samePreparedSourceSense = currentSource
+      && currentSource.record.id === prepared._source_record_id
+      && currentSource.record.lemma === preparedEntry.source?.lemma
+      && currentSource.sense.pos === preparedEntry.source?.pos
+      && currentSource.sense.gloss === preparedEntry.source?.gloss;
+    if (!samePreparedSourceSense) {
+      fail(`saved Stage 3 decision for Relation row ${decision.row} source Sense changed after prepare; prepare and review the changed rows again`);
+    }
     const samePreparedRelation = prepared && current
       && current.source_record_id === prepared._source_record_id
       && current.source_sense_id === prepared._source_sense_id
@@ -586,7 +596,7 @@ async function applyEdits(shard, root = REPOSITORY_DIRECTORY) {
     repaired: repairedRows.size, edit_drops_added: newDrops.length };
   const currentIsBase = sameFileState(relationCurrent, relationBase) && sameFileState(dropCurrent, dropBase);
   if (!currentIsBase) fail(`shard ${shard} Relation/Drop files changed from both the Git baseline and this apply result; no files were written`);
-  await validatePreparedDecisions(shard, root, checkpoint.decisions, beforeRelations);
+  await validatePreparedDecisions(shard, root, checkpoint.decisions, beforeRelations, context.index);
   if (!sameFileState(relationNext, relationBase) || !sameFileState(dropNext, dropBase)) {
     await writeFilesAtomically([
       { file: relationFile, current: relationCurrent, next: relationNext },
