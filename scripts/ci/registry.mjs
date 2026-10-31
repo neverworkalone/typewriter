@@ -261,6 +261,7 @@ const RAW_CI_CATEGORIES = Object.freeze({
         ...affectedTestCheck('scripts/relation/admission.test.mjs', 'Test Stage 2 Relation Admission preparation and accounting', [
           'scripts/relation/admission.mjs',
           'scripts/relation/candidate-contract.mjs',
+          'scripts/relation/persisted-jsonl.mjs',
         ]),
       },
       {
@@ -272,6 +273,7 @@ const RAW_CI_CATEGORIES = Object.freeze({
           'src/domain/projection.js',
           'src/runtime/dictionary-validation.js',
           'src/runtime/sqlite-query.js',
+          'scripts/relation/persisted-jsonl.mjs',
         ]),
       },
       {
@@ -279,6 +281,7 @@ const RAW_CI_CATEGORIES = Object.freeze({
           'scripts/relation/admission-cli.mjs',
           'scripts/relation/admission.mjs',
           'scripts/relation/candidate-contract.mjs',
+          'scripts/relation/persisted-jsonl.mjs',
         ]),
       },
       affectedTestCheck('tests/relation-relevance.test.mjs', 'Test exploratory relation relevance contract', [
