@@ -199,7 +199,144 @@ def read_chunk(runner, env: dict, worktree, shard: str) -> dict:
     state = checkpoint(worktree, shard)
     if state is None or result["chunk"] != next_chunk(state):
         raise Stage3Error("edit-cli read-chunk is not the next checkpoint chunk")
+    decision_context(result, result["chunk"])
     return result
+
+
+def decision_context(view: dict, chunk: str) -> dict:
+    """Keep only the source-bound facts the Supervisor needs to validate AI edit proposals."""
+    if (not isinstance(view, dict) or view.get("chunk") != chunk
+            or not isinstance(view.get("senses"), list)
+            or type(view.get("relation_count")) is not int or view["relation_count"] < 0):
+        raise Stage3Error(f"Stage 3 prepared view does not match chunk {chunk}")
+    relations = []
+    numbers = set()
+    for sense in view["senses"]:
+        if not isinstance(sense, dict) or not isinstance(sense.get("relations"), list):
+            raise Stage3Error(f"Stage 3 prepared view has an invalid Sense group in chunk {chunk}")
+        for relation in sense["relations"]:
+            if not isinstance(relation, dict) or type(relation.get("n")) is not int or relation["n"] < 1:
+                raise Stage3Error(f"Stage 3 prepared view has an invalid Relation number in chunk {chunk}")
+            number = relation["n"]
+            if number in numbers:
+                raise Stage3Error(f"Stage 3 prepared view repeats Relation number {number} in chunk {chunk}")
+            numbers.add(number)
+            text_only = "text" in relation
+            targets = []
+            if text_only:
+                if not isinstance(relation.get("text"), str) or not isinstance(relation.get("targets"), list):
+                    raise Stage3Error(f"Stage 3 prepared view has invalid text-only Relation {number} in chunk {chunk}")
+                for target in relation["targets"]:
+                    if (not isinstance(target, dict) or not isinstance(target.get("alias"), str)
+                            or not re.fullmatch(r"T[1-9]\d*", target["alias"])
+                            or not isinstance(target.get("record_id"), str) or not target["record_id"]
+                            or not isinstance(target.get("sense_id"), str) or not target["sense_id"]):
+                        raise Stage3Error(f"Stage 3 prepared view has an invalid target alias for Relation {number}")
+                    targets.append({"alias": target["alias"], "record_id": target["record_id"],
+                                    "sense_id": target["sense_id"]})
+                if len(targets) != len({target["alias"] for target in targets}):
+                    raise Stage3Error(f"Stage 3 prepared view repeats a target alias for Relation {number}")
+            elif "targets" in relation:
+                raise Stage3Error(f"Stage 3 prepared view has targets on ID-linked Relation {number} in chunk {chunk}")
+            relations.append({"n": number, "text_only": text_only, "targets": targets})
+    if len(relations) != view["relation_count"]:
+        raise Stage3Error(f"Stage 3 prepared view Relation count does not match chunk {chunk}")
+    return {"chunk": chunk, "relation_count": len(relations), "relations": relations}
+
+
+def normalize_decisions(answer: str | None, chunk: str, context: dict) -> tuple[str, list[str]]:
+    """Deterministically discard invalid per-Relation proposals before the strict edit CLI sees them.
+
+    The returned warnings describe discarded proposals or body lines. Each body line is independent; a missing or
+    mismatched chunk header fails closed because its decisions cannot be bound to the active chunk.
+    """
+    if (not isinstance(context, dict) or context.get("chunk") != chunk
+            or type(context.get("relation_count")) is not int or not isinstance(context.get("relations"), list)):
+        raise Stage3Error(f"Stage 3 decision context does not match chunk {chunk}")
+    by_number = {}
+    for relation in context["relations"]:
+        if (not isinstance(relation, dict) or type(relation.get("n")) is not int or relation["n"] < 1
+                or relation["n"] in by_number or type(relation.get("text_only")) is not bool
+                or not isinstance(relation.get("targets"), list)):
+            raise Stage3Error(f"Stage 3 decision context is invalid for chunk {chunk}")
+        targets = relation["targets"]
+        if (any(not isinstance(target, dict) or not isinstance(target.get("alias"), str)
+                or not re.fullmatch(r"T[1-9]\d*", target["alias"])
+                or not isinstance(target.get("record_id"), str) or not target["record_id"]
+                or not isinstance(target.get("sense_id"), str) or not target["sense_id"] for target in targets)
+                or len(targets) != len({target.get("alias") for target in targets if isinstance(target, dict)})):
+            raise Stage3Error(f"Stage 3 decision context has invalid target aliases for Relation {relation['n']}")
+        by_number[relation["n"]] = relation
+    if len(by_number) != context["relation_count"]:
+        raise Stage3Error(f"Stage 3 decision context Relation count does not match chunk {chunk}")
+
+    if not isinstance(answer, str):
+        raise Stage3Error("Stage 3 answer is missing")
+    lines = [line.strip() for line in answer.strip().splitlines() if line.strip()]
+    if not lines or lines[0] != f"chunk {chunk}":
+        raise Stage3Error(f"Stage 3 answer must begin with chunk {chunk}")
+    proposals: dict[int, list[tuple[str, str | None]]] = {}
+    warnings: list[str] = []
+
+    def add(number: int, action: str | None, target: str | None = None) -> None:
+        proposals.setdefault(number, []).append((action or "invalid", target))
+
+    body = lines[1:]
+    if body == ["none"]:
+        return f"chunk {chunk}\nnone\n", []
+
+    for line in body:
+        if line == "none":
+            warnings.append("혼합된 본문의 none 지시 줄 폐기; 다른 D/L은 계속 판정")
+            continue
+        drop = re.fullmatch(r"D\s+(\d+(?:\s+\d+)*)", line)
+        if drop:
+            for raw_number in re.split(r"\s+", drop.group(1)):
+                add(int(raw_number), "D")
+            continue
+        repair = re.fullmatch(r"L\s+(\d+)\s+T(\d+)", line)
+        if repair:
+            add(int(repair.group(1)), "L", f"T{int(repair.group(2))}")
+            continue
+        # Retain the row identity when the proposal is malformed so only that row is kept.
+        malformed = re.match(r"(?:D|L)\s+(\d+)(?:\s+|$)", line)
+        if malformed:
+            row_numbers = ([int(value) for value in line.split()[1:] if re.fullmatch(r"\d+", value)]
+                           if line.startswith("D") else [int(malformed.group(1))])
+            if row_numbers:
+                warnings.append(f"Relation {', '.join(map(str, row_numbers))}: 잘못된 제안 줄만 폐기; 원본 유지")
+            else:
+                warnings.append(f"Relation 번호를 식별할 수 없는 제안 줄 폐기: {line[:100]}")
+            continue
+        warnings.append(f"Relation 번호를 식별할 수 없는 제안 줄 폐기: {line[:100]}")
+
+    accepted = []
+    for number, row_proposals in proposals.items():
+        relation = by_number.get(number)
+        if relation is None:
+            warnings.append(f"Relation {number}: 존재하지 않는 번호의 제안 폐기; 원본 유지")
+            continue
+        if len(row_proposals) != 1:
+            warnings.append(f"Relation {number}: 중복 또는 상충 지시 전부 폐기; 원본 유지")
+            continue
+        action, target = row_proposals[0]
+        if action == "D":
+            accepted.append(f"D {number}")
+            continue
+        if action != "L":
+            warnings.append(f"Relation {number}: 형식이 잘못된 제안 폐기; 원본 유지")
+            continue
+        if not relation["text_only"]:
+            warnings.append(f"Relation {number}: ID-linked Relation에 대한 Link Repair 폐기; 원본 유지")
+            continue
+        if not any(candidate["alias"] == target for candidate in relation["targets"]):
+            warnings.append(f"Relation {number}: 실제 후보가 아닌 {target} Link Repair 폐기; 원본 유지")
+            continue
+        accepted.append(f"L {number} {target}")
+    normalized = "\n".join([f"chunk {chunk}", *accepted]) + "\n" if accepted else f"chunk {chunk}\nnone\n"
+    if not body:
+        warnings.append("청크 표식 뒤에 D/L 제안이 없어 none으로 저장")
+    return normalized, warnings
 
 
 def save_chunk(runner, env: dict, worktree, shard: str, chunk: str, answer: str) -> dict:

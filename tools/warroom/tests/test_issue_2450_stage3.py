@@ -210,12 +210,14 @@ class Stage3SupervisorFlow(unittest.TestCase):
         w = self.w
         batch = self._batch()
         before = checkpoint(total=2)
+        decision_view = {"chunk": "001", "relation_count": 0, "senses": []}
         path = stage3.checkpoint_path(batch["worktree"], "001")
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(before), "utf-8")
         w.store.set(stage3.run_start_key(batch["id"]), json.dumps({
             "checkpoint": before, "chunk": "001", "branch": batch["branch"],
             "worktree": batch["worktree"], "head": HEAD1, "remote_head": HEAD1,
+            "view": decision_view,
         }))
         w.store.update(batch["id"], log_file=str(Path(batch["worktree"]) / "answer.log"))
         next_step = mock.Mock()
@@ -227,7 +229,8 @@ class Stage3SupervisorFlow(unittest.TestCase):
             stage3.checkpoint_path(worktree, shard).write_text(json.dumps(updated), "utf-8")
             return {"chunk": chunk}
 
-        with mock.patch.object(stage3, "save_chunk", side_effect=save), \
+        with mock.patch.object(stage3, "read_chunk", return_value=decision_view), \
+                mock.patch.object(stage3, "save_chunk", side_effect=save), \
                 mock.patch.object(w.adapter, "final_answer", return_value="chunk 001\nnone\n"):
             w.sup._run_ok_stage3_chunk(w.store.batch(batch["id"]))
         next_step.assert_called_once()
@@ -246,6 +249,7 @@ class Stage3SupervisorFlow(unittest.TestCase):
         w.store.set(stage3.run_start_key(batch["id"]), json.dumps({
             "checkpoint": before, "chunk": "001", "branch": batch["branch"],
             "worktree": batch["worktree"], "head": HEAD1, "remote_head": HEAD1,
+            "view": {"chunk": "001", "relation_count": 0, "senses": []},
         }))
         next_step = mock.Mock()
         w.sup._launch_stage3_next = next_step
