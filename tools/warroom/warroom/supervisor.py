@@ -322,7 +322,8 @@ class Supervisor:
                     or baseline.get("chunk") != stage3.next_chunk(baseline["checkpoint"])):
                 return False
             answer = self._adapter(b["producer"]).final_answer(Path(b["log_file"])) if b["log_file"] else None
-            stage3.decision_text(answer, baseline["chunk"])
+            context = stage3.decision_context(baseline["view"], baseline["chunk"])
+            stage3.normalize_decisions(answer, baseline["chunk"], context)
             return True
         except (OSError, ValueError, KeyError, TypeError, stage3.Stage3Error):
             return False

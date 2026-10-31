@@ -104,7 +104,7 @@ class Stage3RunRecovery(unittest.TestCase):
         next_chunk.assert_called_once()
 
         next_chunk.reset_mock()
-        with mock.patch.object(w.adapter, "final_answer", return_value="chunk 001\nexplanation\n"), \
+        with mock.patch.object(w.adapter, "final_answer", return_value="chunk 002\nD 1\n"), \
                 mock.patch.object(w.adapter, "completion_problem", return_value=("ERROR", "missing terminal marker")), \
                 mock.patch.object(w.adapter, "completion_incomplete", return_value=True), \
                 mock.patch.object(w.sup, "_saved_chunk_identity_problem", return_value=None), \
