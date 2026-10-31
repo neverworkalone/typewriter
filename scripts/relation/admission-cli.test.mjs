@@ -8,9 +8,14 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import { run } from './admission-cli.mjs';
+import { parseDropJsonl, parseRelationJsonl, serializeDropJsonl, serializeRelationJsonl } from './persisted-jsonl.mjs';
 
 const REPOSITORY_DIRECTORY = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const jsonl = (rows) => `${rows.map((row) => JSON.stringify(row)).join('\n')}\n`;
+const relationJsonl = (rows) => serializeRelationJsonl(rows);
+const dropJsonl = (rows) => serializeDropJsonl(rows);
+const readRelationRows = async (file) => parseRelationJsonl(await readFile(file, 'utf8'), path.basename(file));
+const readDropRows = async (file) => parseDropJsonl(await readFile(file, 'utf8'), path.basename(file));
 const sortJsonKeys = (value) => Array.isArray(value) ? value.map(sortJsonKeys)
   : value && typeof value === 'object'
     ? Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortJsonKeys(value[key])]))
@@ -34,8 +39,8 @@ async function repository(t, { relations = [], drops = [], malformedBackups = fa
     { record_id: 'w2', senses: [{ sense_id: 'w2-s1', candidates: [] }] },
     { record_id: 'w3', senses: [{ sense_id: 'w3-s1', candidates: [] }] },
   ]));
-  if (relations.length > 0) await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), jsonl(relations));
-  if (drops.length > 0) await writeFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), jsonl(drops));
+  if (relations.length > 0) await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), relationJsonl(relations));
+  if (drops.length > 0) await writeFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), dropJsonl(drops));
   if (malformedBackups) {
     await writeFile(path.join(root, 'data/relations/relation-001-backup.jsonl'), '{historical Relation backup');
     await writeFile(path.join(root, 'data/relation-drops/drop-001-backup.jsonl'), '{historical Drop backup');
@@ -177,7 +182,7 @@ test('prepare re-run offers only undecided candidates: this shard\'s own approve
 
   const decided = await repository(t, {
     relations: [
-      { source_record_id: 'w1', source_sense_id: 'w1-s1', target_record_id: 'w3', target_sense_id: 'w3-s1', type: 'near', relevance: 2, reverse_type: 'near', reverse_relevance: 3 },
+      { source_record_id: 'w1', source_sense_id: 'w1-s1', target_record_id: 'w3', target_sense_id: 'w3-s1', type: 'near', relevance: 2, reverse_type: 'near', reverse_relevance: 2 },
       { source_record_id: 'w1', source_sense_id: 'w1-s1', text: '텍스트', type: 'scene', relevance: 4 },
     ],
     drops: [{ source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '버릴말', reason: '무관' }],
@@ -203,6 +208,26 @@ test('Part merge refuses a checkpoint prepared with incomplete Stage 1 inputs', 
     () => quiet(() => run(['merge', '--checkpoint', checkpoint], { root })),
     /Stage 1 inputs are incomplete for this Part/,
   );
+});
+
+test('Stage 2 loaders reject verbose persisted Relation and Drop fields without rewriting the files', async (t) => {
+  const root = await repository(t);
+  const relationPath = path.join(root, 'data/relations/relation-001.jsonl');
+  const dropPath = path.join(root, 'data/relation-drops/drop-001.jsonl');
+  const oldRelation = `${JSON.stringify({
+    source_record_id: 'w1', source_sense_id: 'w1-s1', text: '새 말', type: 'scene', relevance: 4,
+  })}\n`;
+  await writeFile(relationPath, oldRelation);
+  await assert.rejects(() => quiet(() => run(['prepare', '--shard', '001', '--allow-partial'], { root })), /obsolete Relation JSONL field/u);
+  assert.equal(await readFile(relationPath, 'utf8'), oldRelation);
+
+  await rm(relationPath);
+  const oldDrop = `${JSON.stringify({
+    source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '버릴말', reason: '무관',
+  })}\n`;
+  await writeFile(dropPath, oldDrop);
+  await assert.rejects(() => quiet(() => run(['prepare', '--shard', '001', '--allow-partial'], { root })), /obsolete Drop JSONL field/u);
+  assert.equal(await readFile(dropPath, 'utf8'), oldDrop);
 });
 
 test('--batch scopes prepare/verify to one 500-record batch: its own producers, records and rows', async (t) => {
@@ -235,7 +260,7 @@ test('--batch scopes prepare/verify to one 500-record batch: its own producers, 
 
   // Nothing authored yet: the candidate is unaccounted. A row for it makes batch 01 valid; a batch-02 row is not this run's concern.
   await assert.rejects(() => quiet(() => run(args('verify'), { root })), /has no relation, drop or existing/);
-  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), jsonl([
+  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), relationJsonl([
     { source_record_id: 'w1', source_sense_id: 'w1-s1', text: '새 말', type: 'scene', relevance: 4 },
     { source_record_id: 'w501', source_sense_id: 'w501-s1', text: '이월 말', type: 'scene', relevance: 4 },
   ]));
@@ -297,12 +322,12 @@ test('--part selects 100-record Stage 2 scopes, reports scoped stats, and keeps 
     }
   }
 
-  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), jsonl([
+  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), relationJsonl([
     { source_record_id: 'w1', source_sense_id: 'w1-s1', text: '후보1', type: 'scene', relevance: 4 },
     { source_record_id: 'w101', source_sense_id: 'w101-s1', target_record_id: 'w1', target_sense_id: 'w1-s1', type: 'near', relevance: 3, reverse_type: 'near', reverse_relevance: 3 },
     { source_record_id: 'w200', source_sense_id: 'w200-s1', text: '후보200', type: 'scene', relevance: 4 },
   ]));
-  await writeFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), jsonl([
+  await writeFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), dropJsonl([
     { source_record_id: 'w100', source_sense_id: 'w100-s1', candidate: '후보100', reason: '출발 의미와 무관' },
     { source_record_id: 'w101', source_sense_id: 'w101-s1', candidate: '후보101', reason: '출발 의미와 무관' },
   ]));
@@ -326,13 +351,13 @@ test('--part selects 100-record Stage 2 scopes, reports scoped stats, and keeps 
     source_record_id: 'w1', source_sense_id: 'w1-s1', target_record_id: 'w101', target_sense_id: 'w101-s1',
     type: 'near', relevance: 3, reverse_type: 'near', reverse_relevance: 3,
   };
-  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), jsonl([...initialRelations, reverseConflict, ...laterRelations]));
+  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), relationJsonl([...initialRelations, reverseConflict, ...laterRelations]));
   await assert.rejects(
     () => quiet(() => run(['verify', '--shard', '001', '--batch', '01'], { root })),
     /reverse-duplicate ID relation/,
     'Part verification keeps shard-wide reverse-duplicate checks',
   );
-  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), jsonl([...initialRelations, ...laterRelations]));
+  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), relationJsonl([...initialRelations, ...laterRelations]));
 
   const wholeBatch = await quiet(() => run(['verify', '--shard', '001', '--batch', '01'], { root }));
   assert.deepEqual([wholeBatch.unique, wholeBatch.relation, wholeBatch.drop, wholeBatch.reverse_covered, wholeBatch.missing], [12, 9, 2, 1, 0]);
@@ -381,8 +406,8 @@ test('an exact ID row owned by the other batch answers this batch\'s reverse can
     await writeFile(path.join(root, `data/relation-candidates/001/001_01_${name}.jsonl`), jsonl(records.slice(0, 500).map((record) => ({ record_id: record.id, senses: [{ sense_id: record.senses[0].id, candidates: name === 'a_codex' && record.id === 'w1' ? ['표제501'] : [] }] }))));
   }
   // The valid ID link is owned by batch 02 (w501 -> w1); its reverse is batch 01's candidate.
-  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), jsonl([
-    { source_record_id: 'w501', source_sense_id: 'w501-s1', target_record_id: 'w1', target_sense_id: 'w1-s1', type: 'near', relevance: 2, reverse_type: 'near', reverse_relevance: 3 },
+  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), relationJsonl([
+    { source_record_id: 'w501', source_sense_id: 'w501-s1', target_record_id: 'w1', target_sense_id: 'w1-s1', type: 'near', relevance: 2, reverse_type: 'near', reverse_relevance: 2 },
   ]));
   const args = (command) => [command, '--shard', '001', '--batch', '01'];
   const prepared = await quiet(() => run(args('prepare'), { root }));
@@ -419,17 +444,17 @@ test('a reverse candidate cannot also be a Drop or a text-only row, but may targ
       senses: [{ sense_id: record.senses[0].id, candidates: name === 'a_codex' && record.id === 'w1' ? ['표제501', '다른 말', '무관 말'] : [] }],
     }))));
   }
-  const idRow = { source_record_id: 'w501', source_sense_id: 'w501-s1', target_record_id: 'w1', target_sense_id: 'w1-s1', type: 'near', relevance: 2, reverse_type: 'near', reverse_relevance: 3 };
+  const idRow = { source_record_id: 'w501', source_sense_id: 'w501-s1', target_record_id: 'w1', target_sense_id: 'w1-s1', type: 'near', relevance: 2, reverse_type: 'near', reverse_relevance: 2 };
   const otherSenseRow = { source_record_id: 'w1', source_sense_id: 'w1-s1', target_record_id: 'w501', target_sense_id: 'w501-s2', type: 'scene', relevance: 4, reverse_type: 'scene', reverse_relevance: 4 };
   const other = { source_record_id: 'w1', source_sense_id: 'w1-s1', text: '다른 말', type: 'scene', relevance: 4 };
   const named = { source_record_id: 'w1', source_sense_id: 'w1-s1', text: '무관 말', type: 'scene', relevance: 5 };
   const dropOf = (candidate) => ({ source_record_id: 'w1', source_sense_id: 'w1-s1', candidate, reason: '무관' });
   const verify = async (relations, drops) => {
-    await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), jsonl(relations));
-    await writeFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), drops.length ? jsonl(drops) : '');
+    await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), relationJsonl(relations));
+    await writeFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), drops.length ? dropJsonl(drops) : '');
     return quiet(() => run(['verify', '--shard', '001', '--batch', '01'], { root }));
   };
-  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), jsonl([idRow]));
+  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), relationJsonl([idRow]));
   const prepared = await quiet(() => run(['prepare', '--shard', '001', '--batch', '01'], { root }));
   assert.ok(!texts(prepared).includes('표제501'), 'an existing reverse link accounts for the candidate without requiring another target-sense link');
   // Positive control: the reverse answers 표제501; 다른 말 is authored once.
@@ -463,7 +488,7 @@ test('verify CLI rejects direct plural mentions in current shard-002 glosses but
     { record_id: 'w933', senses: [{ sense_id: 'w933-s1', candidates: ['인부'] }] },
     { record_id: 'w999', senses: [{ sense_id: 'w999-s1', candidates: ['들', '떡'] }] },
   ]));
-  await writeFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), jsonl([
+  await writeFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), dropJsonl([
     { source_record_id: 'w828', source_sense_id: 'w828-s1', candidate: '수', reason: '무관' },
     { source_record_id: 'w933', source_sense_id: 'w933-s1', candidate: '인부', reason: '무관' },
     { source_record_id: 'w999', source_sense_id: 'w999-s1', candidate: '들', reason: '무관' },
@@ -504,7 +529,7 @@ test('an existing ID relation accounts for a candidate even when another target 
     type: 'near', relevance: 3, reverse_type: 'near', reverse_relevance: 3,
   });
   const args = (command) => [command, '--shard', '001', '--allow-partial'];
-  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), jsonl([link('w2-s1')]));
+  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), relationJsonl([link('w2-s1')]));
 
   const partiallyLinked = await quiet(() => run(args('prepare'), { root }));
   assert.deepEqual(texts(partiallyLinked), [], 'an existing ID relation already accounts for the source candidate');
@@ -560,13 +585,13 @@ test('an existing ID relation accounts for a candidate even when another target 
   const newDecisionNeeded = await quiet(() => run(args('prepare'), { root }));
   assert.deepEqual(texts(newDecisionNeeded), ['미끄럼저항기'], 'without an existing link, the full target sense context remains available for a new relation decision');
 
-  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), jsonl([link('w2-s1'), link('w2-s2')]));
+  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), relationJsonl([link('w2-s1'), link('w2-s2')]));
   const fullyLinked = await quiet(() => run(args('prepare'), { root }));
   assert.deepEqual(texts(fullyLinked), [], 'a unique target with all senses linked is existing coverage');
   assert.equal(fullyLinked.stats.skipped_existing, 1);
 
   await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), '');
-  await writeFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), jsonl([
+  await writeFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), dropJsonl([
     { source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '미끄럼저항기', reason: '출발 의미와 무관' },
   ]));
   await assert.rejects(() => quiet(() => run(args('verify'), { root })), /"미끄럼저항기" is named by the gloss of w1-s1 and cannot be dropped as unrelated/);
@@ -609,14 +634,14 @@ async function chunkRepository(t, base = tmpdir()) {
   }
   const priorRelation = {
     source_record_id: 'w201', source_sense_id: 'w201-s1', target_record_id: 'w501', target_sense_id: 'w501-s1',
-    type: 'association', relevance: 7, reverse_type: 'mood', reverse_relevance: 4,
+    type: 'association', relevance: 7, reverse_type: 'association', reverse_relevance: 7,
   };
   const priorDrop = { source_record_id: 'w301', source_sense_id: 'w301-s1', candidate: '이전Drop', reason: '다른 sense에서만 맞는 표현' };
-  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), jsonl([priorRelation]));
-  await writeFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), jsonl([priorDrop]));
-  await writeFile(path.join(root, 'data/relations/relation-002.jsonl'), jsonl([{
+  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), relationJsonl([priorRelation]));
+  await writeFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), dropJsonl([priorDrop]));
+  await writeFile(path.join(root, 'data/relations/relation-002.jsonl'), relationJsonl([{
     source_record_id: 'w504', source_sense_id: 'w504-s1', target_record_id: 'w1', target_sense_id: 'w1-s1',
-    type: 'scene', relevance: 2, reverse_type: 'mood', reverse_relevance: 5,
+    type: 'scene', relevance: 2, reverse_type: 'scene', reverse_relevance: 2,
   }]));
   return { root, priorRelation, priorDrop };
 }
@@ -746,13 +771,13 @@ test('Stage 2 chunks bind exact senses, resume safely, and preserve text-only Pa
   assert.deepEqual(await mergeForTest(root, checkpoint), {
     merged: true, relations_added: 0, drops_added: 0, already_merged: true, checkpoint: path.join(root, checkpoint),
   }, 'a repeated merge is idempotent');
-  assert.ok((await readFile(path.join(root, 'data/relations/relation-001.jsonl'), 'utf8')).includes(JSON.stringify(priorRelation)));
-  const mixedRelations = (await readFile(path.join(root, 'data/relations/relation-001.jsonl'), 'utf8')).trim().split('\n').map(JSON.parse);
+  assert.ok((await readFile(path.join(root, 'data/relations/relation-001.jsonl'), 'utf8')).includes(relationJsonl([priorRelation]).trim()));
+  const mixedRelations = await readRelationRows(path.join(root, 'data/relations/relation-001.jsonl'));
   const newlyAuthored = mixedRelations.find((row) => row.candidate_forms?.includes('유일표적'));
   assert.deepEqual([newlyAuthored.type, newlyAuthored.relevance, newlyAuthored.reverse_type, newlyAuthored.reverse_relevance],
-    ['near', 1, 'near', 1], 'a new relation mirrors its source judgment beside an unchanged historical asymmetric row');
+    ['near', 1, 'near', 1], 'a new relation mirrors its source judgment');
   assert.deepEqual(mixedRelations.find((row) => row.source_sense_id === priorRelation.source_sense_id), priorRelation);
-  assert.ok((await readFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), 'utf8')).includes(JSON.stringify(priorDrop)));
+  assert.ok((await readFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), 'utf8')).includes(dropJsonl([priorDrop]).trim()));
   const counts = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
   assert.deepEqual([counts.unique, counts.relation, counts.drop, counts.skipped_existing, counts.missing], [6, 4, 1, 1, 0]);
 
@@ -838,7 +863,7 @@ test('merge coalesces consistent source-mirror reciprocal ID decisions into one 
 
   const merged = await mergeForTest(root, checkpoint);
   assert.deepEqual([merged.relations_added, merged.drops_added], [3, 0]);
-  const relations = (await readFile(path.join(root, 'data/relations/relation-001.jsonl'), 'utf8')).trim().split('\n').map(JSON.parse);
+  const relations = await readRelationRows(path.join(root, 'data/relations/relation-001.jsonl'));
   assert.deepEqual(relations, [
     { source_record_id: 'w109230', source_sense_id: 'w109230-s1', target_record_id: 'w111040', target_sense_id: 'w111040-s1', type: 'near', relevance: 1, reverse_type: 'near', reverse_relevance: 1, candidate_assignment_version: 1, candidate_forms: ['말기름'], reverse_candidate_forms: ['마지'] },
     { source_record_id: 'w14296', source_sense_id: 'w14296-s1', target_record_id: 'w153363', target_sense_id: 'w153363-s1', type: 'near', relevance: 1, reverse_type: 'near', reverse_relevance: 1, candidate_assignment_version: 1, candidate_forms: ['불가입성'], reverse_candidate_forms: ['거성'] },
@@ -926,10 +951,10 @@ for (const includeTargetAlias of [false, true]) {
       source_record_id: 'w1', source_sense_id: 'w1-s1', target_record_id: 'w2', target_sense_id: 'w2-s1',
       type: 'near', relevance: 3, reverse_type: 'near', reverse_relevance: 3,
     };
-    await writeFile(relationPath, jsonl([legacyRow]));
+    await writeFile(relationPath, relationJsonl([legacyRow]));
     const merged = await mergeForTest(root, checkpoint);
     assert.equal(merged.merged, true);
-    const rows = (await readFile(relationPath, 'utf8')).trim().split('\n').map(JSON.parse);
+    const rows = await readRelationRows(relationPath);
     assert.equal(rows.length, 1, 'reciprocal decisions retain one bidirectional ID row');
     assert.equal(rows[0].candidate_assignment_version, 0, 'the original forward direction remains legacy-inferred');
     assert.deepEqual(rows[0].candidate_forms, includeTargetAlias ? ['생명 보험', '생명보험'] : ['생명 보험']);
@@ -946,7 +971,7 @@ for (const includeTargetAlias of [false, true]) {
     rows.push({
       source_record_id: 'w1', source_sense_id: 'w1-s1', text: '독립어', type: 'association', relevance: 5,
     });
-    await writeFile(relationPath, jsonl(rows));
+    await writeFile(relationPath, relationJsonl(rows));
     const batchCounts = await quiet(() => run(['verify', '--shard', '001', '--batch', '01'], { root }));
     assert.deepEqual([batchCounts.unique, batchCounts.relation, batchCounts.reverse_covered, batchCounts.missing], [3, 2, 1, 0]);
     const shardCounts = await quiet(() => run(['verify', '--shard', '001'], { root }));
@@ -994,7 +1019,7 @@ test('merge coalesces orthographic aliases for one target sense and keeps the ca
   const relationPath = path.join(root, 'data/relations/relation-001.jsonl');
   const checkpointPath = path.join(root, checkpoint);
   const relationBytes = await readFile(relationPath);
-  const relations = relationBytes.toString('utf8').trim().split('\n').map(JSON.parse);
+  const relations = parseRelationJsonl(relationBytes.toString('utf8'), path.basename(relationPath));
   assert.deepEqual(relations, [{
     source_record_id: 'w1', source_sense_id: 'w1-s1', target_record_id: 'w2', target_sense_id: 'w2-s1',
     type: 'near', relevance: 2, reverse_type: 'near', reverse_relevance: 2,
@@ -1073,7 +1098,7 @@ test('merge coalesces one sense pair reached by distinct candidates using the st
 
   const merged = await mergeForTest(root, checkpoint);
   assert.equal(merged.relations_added, 1);
-  const relations = (await readFile(path.join(root, 'data/relations/relation-001.jsonl'), 'utf8')).trim().split('\n').map(JSON.parse);
+  const relations = await readRelationRows(path.join(root, 'data/relations/relation-001.jsonl'));
   assert.deepEqual(relations, [{
     source_record_id: 'w228756', source_sense_id: 'w228756-s1',
     target_record_id: 'w459957', target_sense_id: 'w459957-s1',
@@ -1240,11 +1265,17 @@ test('new Part mirrors source Type/Tier through compact, JSON revision, inspect 
   assert.deepEqual([relation.type, relation.relevance, relation.reverse_type, relation.reverse_relevance], ['scene', 4, 'scene', 4]);
 });
 
-test('marker-free checkpoints preserve the legacy independent reverse judgment across prepare restart', async (t) => {
+test('marker-free checkpoints retain legacy decisions but block asymmetric output at the compact-schema boundary', async (t) => {
   const root = await repository(t);
+  const records = (await readFile(path.join(root, 'data/canonical/stdict-0001.jsonl'), 'utf8')).trim().split('\n').map(JSON.parse);
+  for (const producer of ['a_claude', 'b_codex', 'b_claude', 'c_codex', 'd_codex']) {
+    await writeFile(path.join(root, `data/relation-candidates/001/001_01_${producer}.jsonl`), jsonl(records.map((record) => ({
+      record_id: record.id, senses: record.senses.map((sense) => ({ sense_id: sense.id, candidates: [] })),
+    }))));
+  }
   const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
   const input = '.warroom-scratch/legacy-decisions.txt';
-  await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01', '--allow-partial'], { root }));
+  await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
   const legacy = JSON.parse(await readFile(path.join(root, checkpoint), 'utf8'));
   delete legacy.type_tier_policy;
   await writeFile(path.join(root, checkpoint), `${JSON.stringify(legacy)}\n`);
@@ -1253,11 +1284,18 @@ test('marker-free checkpoints preserve the legacy independent reverse judgment a
   await writeFile(path.join(root, input), `chunk ${compact.chunk_id}\nc1 R near 2 T1 mood 5\nc2 D 무관\nc3 D 무관\nc4 D 무관\n`);
   await quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', input, '--format', 'compact'], { root }));
   const savedBeforeRestart = await readFile(path.join(root, checkpoint));
-  const resumed = await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01', '--allow-partial'], { root }));
+  const resumed = await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
   assert.equal(resumed.type_tier_policy, undefined);
   assert.deepEqual(await readFile(path.join(root, checkpoint)), savedBeforeRestart);
   const current = JSON.parse(savedBeforeRestart).items[0].candidates.find((candidate) => candidate.text === '유일').decision;
   assert.deepEqual([current.type, current.relevance, current.reverse_type, current.reverse_relevance], ['near', 2, 'mood', 5]);
+
+  const relationPath = path.join(root, 'data/relations/relation-001.jsonl');
+  const dropPath = path.join(root, 'data/relation-drops/drop-001.jsonl');
+  const before = await Promise.all([fileState(relationPath), fileState(dropPath)]);
+  await assert.rejects(() => mergeForTest(root, checkpoint), /reverse_type and reverse_relevance must match/u);
+  assert.deepEqual(await Promise.all([fileState(relationPath), fileState(dropPath)]), before,
+    'legacy asymmetric decisions are not silently projected or written');
 });
 
 test('merge validates final Part accounting before writing and supports a local decision revision', async (t) => {
@@ -1314,8 +1352,8 @@ test('merge validates final Part accounting before writing and supports a local 
   assert.deepEqual([merged.relations_added, merged.drops_added], [1, 1]);
   const counts = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
   assert.deepEqual([counts.unique, counts.relation, counts.drop, counts.missing], [2, 1, 1, 0]);
-  const relations = (await readFile(path.join(root, 'data/relations/relation-001.jsonl'), 'utf8')).trim().split('\n').map(JSON.parse);
-  const drops = (await readFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), 'utf8')).trim().split('\n').map(JSON.parse);
+  const relations = await readRelationRows(path.join(root, 'data/relations/relation-001.jsonl'));
+  const drops = await readDropRows(path.join(root, 'data/relation-drops/drop-001.jsonl'));
   assert.deepEqual(relations.map((row) => row.text), ['가로']);
   assert.deepEqual(drops.map((row) => row.candidate), ['무관후보'], 'the earlier valid decision remains intact when the rejected Drop is revised');
 });
@@ -1371,7 +1409,7 @@ test('merge accounts an ID relation against only its selected candidate spelling
   const merged = await mergeForTest(root, checkpoint);
   assert.deepEqual([merged.relations_added, merged.drops_added], [2, 0]);
   const relationPath = path.join(root, 'data/relations/relation-001.jsonl');
-  const relations = (await readFile(relationPath, 'utf8')).trim().split('\n').map(JSON.parse);
+  const relations = await readRelationRows(relationPath);
   const idRelation = relations.find((row) => row.target_record_id === 'w462682');
   assert.deepEqual(idRelation.candidate_forms, ['온순'], 'the selected spelling is persisted with the ID row');
   assert.deepEqual(idRelation.reverse_candidate_forms, ['완만히']);
@@ -1385,13 +1423,13 @@ test('merge accounts an ID relation against only its selected candidate spelling
   assert.equal(relations.some((row) => row.target_record_id === 'w462682'), true, 'the selected alias candidate keeps its exact ID target');
   assert.equal(relations.some((row) => row.text === '온순하다'), true, 'the other spelling remains an independent text-only candidate');
 
-  await writeFile(relationPath, jsonl([idRelation]));
+  await writeFile(relationPath, relationJsonl([idRelation]));
   const resumedPrepare = await quiet(() => run(['prepare', '--shard', '001', '--batch', '01'], { root }));
   assert.deepEqual(texts(resumedPrepare), ['온순하다'], 'an existing ID row does not own its target record’s other spelling during prepare');
 
   const lostAssignment = { ...idRelation };
   delete lostAssignment.candidate_forms;
-  await writeFile(relationPath, jsonl([lostAssignment]));
+  await writeFile(relationPath, relationJsonl([lostAssignment]));
   await assert.rejects(
     () => quiet(() => run(['verify', '--shard', '001', '--batch', '01'], { root })),
     /must have exactly .*candidate_forms/u,
@@ -1451,7 +1489,7 @@ test('merge coalesces distinct candidate forms that share one identical sense-pa
   assert.deepEqual([merged.relations_added, merged.drops_added], [1, 0]);
   const relationPath = path.join(root, 'data/relations/relation-001.jsonl');
   const relationBytes = await readFile(relationPath);
-  const relations = relationBytes.toString('utf8').trim().split('\n').map(JSON.parse);
+  const relations = parseRelationJsonl(relationBytes.toString('utf8'), path.basename(relationPath));
   assert.deepEqual(relations, [{
     source_record_id: 'w226347', source_sense_id: 'w226347-s1',
     target_record_id: 'w334626', target_sense_id: 'w334626-s1',
@@ -1600,7 +1638,7 @@ test('repair rejects a changed optional relation after the presented state was c
     if (producer === 'a_codex') rows.find((row) => row.record_id === 'w1').senses[0].candidates.push('유일');
     await writeFile(candidatePath, jsonl(rows));
   }
-  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), jsonl([{
+  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), relationJsonl([{
     source_record_id: 'w1', source_sense_id: 'w1-s1', target_record_id: 'w3', target_sense_id: 'w3-s1',
     type: 'near', relevance: 3, reverse_type: 'near', reverse_relevance: 3,
   }]));
@@ -1672,7 +1710,7 @@ async function spawnedVerifyRepository(t, { candidates = () => [], relations = [
     await writeFile(path.join(root, `data/relation-candidates/001/001_01_${name}.jsonl`), jsonl(records.map((record, i) => ({
       record_id: record.id, senses: [{ sense_id: record.senses[0].id, candidates: name === 'a_codex' ? candidates(i) : [] }] }))));
   }
-  if (relations.length > 0) await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), jsonl(relations));
+  if (relations.length > 0) await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), relationJsonl(relations));
   return root;
 }
 const spawnVerify = (root, ...extra) => spawnSync(process.execPath, [path.join(root, 'scripts/relation/admission-cli.mjs'), 'verify', '--shard', '001', '--batch', '01', ...extra], { cwd: root, encoding: 'utf8' });
@@ -1800,7 +1838,7 @@ test('selected inspect preserves whole-sense digest and aliases while bounding Q
   producerRows.find((row) => row.record_id === 'w1').senses[0].candidates = longCandidates;
   producerRows.find((row) => row.record_id === 'w2').senses[0].candidates = ['대체 후보'];
   await writeFile(candidatePath, jsonl(producerRows));
-  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), jsonl([{
+  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), relationJsonl([{
     source_record_id: 'w2', source_sense_id: 'w2-s1', target_record_id: 'w1', target_sense_id: 'w1-s1',
     type: 'near', relevance: 3, reverse_type: 'near', reverse_relevance: 3,
   }]));
@@ -1942,18 +1980,45 @@ test('premerge preparation resumes only from matching source hashes and distingu
   await assert.rejects(readFile(path.join(absent.root, '.warroom-scratch/relation-admission-001-01-01.premerge-drops.jsonl')), { code: 'ENOENT' });
 });
 
+test('a trusted premerge snapshot in the prior verbose schema is preserved and refused at the Part boundary', async (t) => {
+  const { root, checkpoint } = await prepareSixPart(t);
+  await saveAllPrimaryAsDrops(root, checkpoint);
+  await completeOptionalForTest(root, checkpoint);
+  const checkpointPath = path.join(root, checkpoint);
+  const relationPath = path.join(root, 'data/relations/relation-001.jsonl');
+  const snapshotPath = path.join(root, '.warroom-scratch/relation-admission-001-01-01.premerge-relations.jsonl');
+  const legacyBytes = Buffer.from(`${JSON.stringify({
+    source_record_id: 'w1', source_sense_id: 'w1-s1', text: '기존말', type: 'scene', relevance: 4,
+  })}\n`);
+  await writeFile(relationPath, legacyBytes);
+  await writeFile(snapshotPath, legacyBytes);
+  const cp = JSON.parse(await readFile(checkpointPath, 'utf8'));
+  cp.premerge = {
+    status: 'ready', identity: '001/01/01',
+    relations: { exists: true, sha256: createHash('sha256').update(legacyBytes).digest('hex') },
+    drops: { exists: false, sha256: null },
+  };
+  await writeFile(checkpointPath, `${JSON.stringify(cp)}\n`);
+  const watched = [checkpointPath, relationPath, snapshotPath];
+  const before = await Promise.all(watched.map(fileState));
+
+  await assert.rejects(() => mergeForTest(root, checkpoint), /obsolete Relation JSONL field/u);
+  assert.deepEqual(await Promise.all(watched.map(fileState)), before,
+    'the previous-format snapshot and exact source bytes remain trusted and unchanged');
+});
+
 test('save-optional accepts multiple exact target links per candidate and rejects incomplete/duplicate rows atomically', async (t) => {
   const { root } = await chunkRepository(t);
   const canonicalPath = path.join(root, 'data/canonical/stdict-0001.jsonl');
   const canonical = (await readFile(canonicalPath, 'utf8')).trim().split('\n').map(JSON.parse);
   canonical.find((record) => record.id === 'w501').senses.push({ id: 'w501-s3', pos: 'noun', gloss: '표기가 같은 세 번째 뜻' });
   await writeFile(canonicalPath, jsonl(canonical));
-  const prior = JSON.parse((await readFile(path.join(root, 'data/relations/relation-001.jsonl'), 'utf8')).trim().split('\n')[0]);
+  const prior = (await readRelationRows(path.join(root, 'data/relations/relation-001.jsonl')))[0];
   const firstExisting = {
     source_record_id: 'w1', source_sense_id: 'w1-s1', target_record_id: 'w501', target_sense_id: 'w501-s1',
-    type: 'near', relevance: 3, reverse_type: 'scene', reverse_relevance: 4,
+    type: 'near', relevance: 3, reverse_type: 'near', reverse_relevance: 3,
   };
-  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), jsonl([prior, firstExisting]));
+  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), relationJsonl([prior, firstExisting]));
   const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
   await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
   await saveAllPrimaryAsDrops(root, checkpoint);
@@ -1982,7 +2047,7 @@ test('save-optional accepts multiple exact target links per candidate and reject
   await mergeForTest(root, checkpoint);
   const counts = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01', '--checkpoint', checkpoint], { root }));
   assert.equal(counts.missing, 0);
-  const relations = (await readFile(path.join(root, 'data/relations/relation-001.jsonl'), 'utf8')).trim().split('\n').map(JSON.parse);
+  const relations = await readRelationRows(path.join(root, 'data/relations/relation-001.jsonl'));
   assert.equal(relations.filter((row) => row.source_sense_id === 'w1-s1' && row.target_record_id === 'w501').length, 3);
 });
 
@@ -2070,7 +2135,7 @@ test('amend rewrites Drop reasons and same-count Drop-to-Relation swaps from the
   await mergeForTest(root, checkpoint);
 
   const dropPath = path.join(root, 'data/relation-drops/drop-001.jsonl');
-  const initialDrops = (await readFile(dropPath, 'utf8')).trim().split('\n').map(JSON.parse);
+  const initialDrops = await readDropRows(dropPath);
   assert.equal(initialDrops.length, 3);
   const inspect = await quiet(() => run(['inspect', '--checkpoint', checkpoint, '--source-sense-id', 'w1-s1'], { root }));
   const amendFile = '.warroom-scratch/amend-drop-reason-and-swap.txt';
@@ -2079,7 +2144,7 @@ test('amend rewrites Drop reasons and same-count Drop-to-Relation swaps from the
   await quiet(() => run(['amend', '--checkpoint', checkpoint, '--in', amendFile], { root }));
 
   const amendedBytes = await readFile(dropPath);
-  const amendedDrops = amendedBytes.toString('utf8').trim().split('\n').map(JSON.parse);
+  const amendedDrops = parseDropJsonl(amendedBytes.toString('utf8'), path.basename(dropPath));
   assert.equal(amendedDrops.length, initialDrops.length, 'the total Drop count stays unchanged');
   assert.deepEqual(amendedDrops.map(({ candidate }) => candidate), [sourceCandidates[0], sourceCandidates[2], sourceCandidates[3]]);
   assert.equal(amendedDrops[0].reason, '수정된 Drop 사유');

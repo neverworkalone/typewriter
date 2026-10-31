@@ -169,27 +169,28 @@ PR의 Normal 검사는 추가·수정된 `data/relation-candidates/` 파일마�
 3. 채택 후보만 말의 결(`near`, `mood`) 또는 연상(`scene`, `sensory`, `action`, `association`)으로 분류한다. 새 STDICT `direct/antonym`은 작성하지 않는다.
 4. 동일 출발 sense/동일 UI 그룹의 기존·신규 관계를 비교해 **Tier = relevance 1~9**를 부여한다(1이 최우선, 동순위 허용). 연상 Tier 1은 비공식 유의어 후보급에 한정한다.
 5. 정확한 Canonical target record/sense가 확인되면 ID 링크, 아니면 text-only로 확정한다. 같은 이름의 다른 의미에 연결하지 않는다.
-6. Typewriter-authored ID↔ID는 양방향 탐색을 제공한다. **새로 준비한 Stage 2 Part는 출발 sense의 Type/Tier를 한 번 판정하고 CLI가 같은 값을 역방향 필드에 저장한다.** 기존 marker 없는 checkpoint는 종전 독립 역방향 판정으로 재개하고, 이미 승인된 비대칭 Relation은 그대로 보존한다. text-only는 역방향이 없다.
+6. Typewriter-authored ID↔ID는 양방향 탐색을 제공한다. **출발 sense의 Type/Tier를 한 번 판정하고 제품의 양방향 링크에 같은 값을 쓴다.** marker 없는 checkpoint는 종전 독립 역방향 판단을 읽을 수 있지만, 서로 다른 값이 남은 Part는 저장 경계에서 중단한다. 기존 승인 데이터의 비대칭 역방향 값은 #2446 전환에서 source 값으로 정규화하며 다른 후보 판정은 다시 하지 않는다. text-only는 역방향이 없다.
 
 **출력:** 승인된 Relations JSONL(샤드당 한 파일). 재실행 때 중복 관계를 누적하거나 기존 결정을 임의로 삭제하지 않는다.
 
-### Relations / Drops JSONL v1 (Issue #928)
+### Persisted Relations / Drops JSONL (Issue #2446)
 
-한 줄 = 관계 하나. 스키마는 `scripts/relation/admission.mjs`가 한 번만 정의한다.
+한 줄 = 관계 하나. persisted field 매핑은 `scripts/relation/persisted-jsonl.mjs`가 한 번 정의하고, `scripts/relation/admission.mjs`는 descriptive in-memory 행을 검증한다.
 
 ```jsonl
-# data/relations/relation-001.jsonl — ID 링크(양방향 한 행; 예시는 marker 없는 legacy Part)
-{"source_record_id":"w1","source_sense_id":"w1-s1","target_record_id":"w9","target_sense_id":"w9-s1","type":"near","relevance":2,"reverse_type":"mood","reverse_relevance":5,"candidate_assignment_version":1,"candidate_forms":["표적 표기"],"reverse_candidate_forms":["출발 표기"]}
+# data/relations/relation-001.jsonl — ID 링크(양방향 한 행)
+{"id":"w1","sid":"w1-s1","tid":"w9","tsid":"w9-s1","tp":"near","rv":2,"ver":1,"fm":["표적 표기"],"rfm":["출발 표기"]}
 # text-only (reverse 없음, 클릭 불가)
-{"source_record_id":"w1","source_sense_id":"w1-s1","text":"새 말","type":"scene","relevance":4}
+{"id":"w1","sid":"w1-s1","tt":"새 말","tp":"scene","rv":4}
 # data/relation-drops/drop-001.jsonl — 실제 Drop만 (없으면 빈 파일/부재 허용)
-{"source_record_id":"w2","source_sense_id":"w2-s1","candidate":"버릴말","reason":"출발 의미와 무관"}
+{"id":"w2","sid":"w2-s1","cd":"버릴말","by":"출발 의미와 무관"}
 ```
 
-- `type`/`reverse_type`: `near|mood|scene|sensory|action|association`. `relevance`/`reverse_relevance`: 정수 1..9. 스키마는 legacy 비대칭 행을 계속 허용한다. 새로 준비한 Stage 2 Part에서는 CLI가 `reverse_type=type`, `reverse_relevance=relevance`를 저장하며, source 방향 값은 한 번만 판단한다.
-- 새 ID Relation에는 `candidate_assignment_version: 1`, `candidate_forms`, `reverse_candidate_forms`를 저장한다. 두 배열은 각 방향에서 이 ID 행이 처리하는 정확한 Stage 1 후보 문자열이다. 여러 후보형이 같은 source/target sense 쌍과 같은 정·역방향 type으로 이어지면 한 행으로 합쳐 모든 후보형을 보존한다. 후보별 relevance가 다를 때는 각 방향에서 가장 우선순위가 높은 값(숫자가 가장 작은 relevance)을 행에 저장한다. type 판단이 다르면 임의 선택하지 않고 merge를 거부한다. spacing/hyphen 표기 변형은 별도 규칙으로, 판단이 다를 때 Canonical headword spelling의 판단을 우선한다. 이 필드는 회계/재개용 provenance이고 제품 링크의 target을 바꾸지 않는다. 이 필드가 없는 기존 v1 행은 레거시 추론으로 읽는다. 기존 레거시 행에 새 역방향 판단을 병합하면 `candidate_assignment_version: 0`으로 승격한다. v0의 `candidate_forms`는 기존 정방향 추론의 가능한 표기 스냅샷이며 확정 선택이 아니다. 검증과 prepare는 기존 규칙대로 현재 Stage 1 후보와 대조해 소유권을 추론하고, 새 역방향 선택은 `reverse_candidate_forms`에 정확히 보존한다. 버전이 있는 행은 세 필드가 모두 있어야 하며, 후보 문자열은 해당 방향의 Canonical record 표기에 결속되어야 한다.
+- 파일에 저장하는 필드만 축약한다. Relation ID 행은 `id`/`sid`/`tid`/`tsid`/`tp`/`rv`와 선택적 `ver`/`fm`/`rfm`, text-only 행은 `id`/`sid`/`tt`/`tp`/`rv`, Drop 행은 `id`/`sid`/`cd`/`by`를 사용한다. JS 내부 객체와 checkpoint는 기존의 descriptive 필드명을 유지할 수 있다. 저장기는 compact 필드만 쓰고, 저장 파일을 읽는 Stage 2 및 제품 빌드 로더는 이전 verbose 키와 혼합된 키를 거부한다.
+- `tp`와 `rv`는 ID 링크의 유일한 관계 타입과 relevance다. 제품 역방향 링크도 같은 `tp`/`rv`를 사용하며 역방향 필드를 JSONL에 저장하지 않는다. 새 ID 판단에서 source 방향 값을 한 번만 판단하고 양방향에 적용한다. 이전 형식의 checkpoint에 서로 다른 역방향 판단이 남아 있으면 저장 결과가 달라지므로 해당 Part의 `merge`는 거부하며, 최신 스키마로 Part 경계를 다시 시작해야 한다. 이전 형식의 premerge snapshot은 내용과 hash를 보존하고 자동 변환하거나 다시 캡처하지 않는다.
+- `ver`/`fm`/`rfm`은 후보 귀속 근거이며 값과 의미를 보존한다. `ver`가 없는 legacy 행, `ver:0`, `ver:1`은 서로 다르다. 새로 선택한 ID 행은 `ver:1`과 두 배열을 저장한다. 여러 후보형이 같은 source/target sense 쌍으로 병합되면 각 방향에서 처리한 정확한 후보 표기를 합쳐 보존한다. 후보별 relevance가 다를 때는 가장 우선순위가 높은 값(숫자가 가장 작은 relevance)을 저장한다. type 판단이 다르면 임의 선택하지 않고 merge를 거부한다. spacing/hyphen 표기 변형은 별도 규칙으로, 판단이 다를 때 Canonical headword spelling의 판단을 우선한다. 기존 version-less 행에 새 반대 방향 후보 귀속을 합치면 `ver:0`으로 기록한다. 이때 `fm`은 기존 정방향 추론 표기, `rfm`은 새 반대 방향에서 처리된 정확한 후보 표기다. 이 정보는 accounting/restart용이며 제품 링크의 target을 바꾸지 않는다.
 - ID 링크의 target은 후보 문자열과 철자가 정확히 같은 Canonical record의 실제 sense여야 한다. Stage 2 Part의 `read-chunk` 입력은 같은 표기의 모든 target record, lemma, sense ID, POS, 전체 gloss를 제공한다. 동철 이의어·다의어는 출발 sense와 각 target sense를 비교해 선택하며 첫 항목을 자동 선택하지 않는다. text-only로 남길 때도 제공된 target sense ID를 전부 검토하고 `no_exact_match`로 명시한다. 일치하는 target이 없으면 text-only이며 가짜 ID를 쓰지 않는다.
-- 소유 샤드 = 출발(source) sense가 속한 샤드. 한 쌍(A↔B)은 한 행에만 저장하며, 다른 샤드에 이미 같은 쌍(정·역 모두)이나 같은 text-only가 있으면 거부한다. 새 Part의 각 방향은 source 기준으로 한 번 판단하고 동일한 반대 값을 저장한다. 양쪽 출발 sense의 Candidate가 같은 쌍을 동시에 만들면 기존 방향 충돌 검사가 두 source 판단의 일치 여부를 확인하며, 서로 다르면 한쪽을 임의 선택하지 않고 #2307 preflight/국소 재판정으로 해결한다. 이미 승인된 legacy 비대칭 행은 정상으로 보존한다. 빌드는 ID 행마다 방향별 2개 탐색 행을 만든다.
+- 소유 샤드 = 출발(source) sense가 속한 샤드. 한 쌍(A↔B)은 한 행에만 저장하며, 다른 샤드에 이미 같은 쌍(정·역 모두)이나 같은 text-only가 있으면 거부한다. 새 Part의 각 방향은 source 기준으로 한 번 판단하고 동일한 반대 값을 저장한다. 양쪽 출발 sense의 Candidate가 같은 쌍을 동시에 만들면 기존 방향 충돌 검사가 두 source 판단의 일치 여부를 확인하며, 서로 다르면 한쪽을 임의 선택하지 않고 #2307 preflight/국소 재판정으로 해결한다. 빌드는 ID 행마다 같은 Type/Tier의 양방향 탐색 행 2개를 만든다.
 - 모든 고유 후보는 **신규 관계 / Drop / 정확한 중복 병합 / 기존 승인 관계 제외**로 설명되어야 한다. 같은 후보 표기에 ID 관계가 여러 개 있으면 실제 target sense가 서로 다를 때 허용하며, 동일 source/target sense 쌍은 한 번만 저장한다. 여러 후보형이 같은 쌍을 공유하면 위의 type/relevance 병합 규칙을 적용한다. 같은 후보에 대한 text-only 관계나 Drop은 다른 처리와 중복할 수 없다.
 - Drop은 출발 의미와 명백히 무관한 후보에만 쓴다. 출발 sense의 뜻풀이가 그 후보를 직접 언급하면 Drop할 수 없으며(`verify`가 거부), 같은 sense의 승인 peer와 모순되는 Drop도 금지다. 약한 연상은 낮은 Tier의 관계로 보존한다.
 
@@ -214,7 +215,7 @@ node scripts/relation/admission-cli.mjs verify --shard 003 --batch 01 --part 01
 
 Part 모드는 선택한 Stage 1 Batch의 필수 후보 파일 6개를 기존 v1 계약대로 한 번 검증·통합하고, Part checkpoint에 source sense, 후보 provenance, 같은 표기의 모든 target sense/gloss, 같은 출발 sense의 기존 승인 동료, 후보별 판정 상태를 보존한다. 후보 accounting은 `(source sense, candidate)` 단위이므로 기존 ID 링크가 하나라도 있으면 새 필수 판정은 생략한다. 단, 일부 target sense만 연결된 후보는 checkpoint에서 `already_accounted`로 표시하고 나머지 sense 링크를 선택적으로 추가할 수 있다. `prepare --part`를 재실행하면 기존 checkpoint를 이어간다. `read-chunk`는 Canonical이나 승인 관계를 다시 읽지 않고 미판정 후보를 한 번에 보여 준다. 필수 후보 편집이 끝나면 `read-chunk --optional --format compact`가 남은 정확한 target sense/gloss를 부작용 없이 보여 준다. 미연결 링크가 없으면 `complete-optional`을 실행해 완료 증거를 저장하고, 링크가 있으면 `save-optional`로 후보마다 skip 또는 여러 exact target을 한 번에 기록한다. 예전 활성 revision이 남아 있으면 `cancel-revision --chunk-id <exact>`는 해당 미병합 revision ID에만 사용할 수 있다. 기본 250개 후보를 기준으로 여러 완전한 source sense를 묶으며, 하나의 sense가 그보다 크면 정확한 candidate 시작·끝 offset을 표시해 이어서 처리한다. source sense는 이 초과 경우에만 청크 사이에서 이어진다.
 
-`--format compact`는 primary와 `read-chunk --optional`을 모두 손실 없이 렌더링한다. primary 뷰는 target sense 전체 gloss, 출발 sense(`S`), 기존 승인 동료(`P`), 같은 sense의 앞 청크 판정(`Q`)을 싣는다. 새 marker-bearing checkpoint의 exact ID 입력은 `c<n> R <type> <tier> T<k>`이며 CLI가 reverse 값을 파생한다. marker 없는 legacy checkpoint는 `c<n> R <type> <tier> T<k> <reverse_type> <reverse_tier>`를 계속 사용한다. text-only·target 없는 후보·Drop 문법은 두 정책에서 같다. Optional도 동일 정책을 따르며 여러 target의 관계를 한 번에 기록할 수 있다. CLI는 alias를 exact record/sense ID로 펼친 뒤 source-bound 검증을 거친다. 각 view가 출력 상한을 넘으면 페이지 번호와 크기를 지정해 손실 없는 페이지로 나눈다.
+`--format compact`는 primary와 `read-chunk --optional`을 모두 손실 없이 렌더링한다. primary 뷰는 target sense 전체 gloss, 출발 sense(`S`), 기존 승인 동료(`P`), 같은 sense의 앞 청크 판정(`Q`)을 싣는다. 새 marker-bearing checkpoint의 exact ID 입력은 `c<n> R <type> <tier> T<k>`이며 CLI가 reverse 값을 파생한다. marker 없는 legacy checkpoint는 `c<n> R <type> <tier> T<k> <reverse_type> <reverse_tier>` 입력을 재개할 수 있지만, source와 reverse 판단이 다르면 compact 저장 형식으로 merge하지 않는다. text-only·target 없는 후보·Drop 문법은 두 정책에서 같다. Optional도 동일 정책을 따르며 여러 target의 관계를 한 번에 기록할 수 있다. CLI는 alias를 exact record/sense ID로 펼친 뒤 source-bound 검증을 거친다. 각 view가 출력 상한을 넘으면 페이지 번호와 크기를 지정해 손실 없는 페이지로 나눈다.
 
 각 후보는 한 번의 통합 판단으로 `relation` 또는 실제 `drop`을 선택한다. Relation은 후보별 `type`과 상대 Tier `1..9`를 가진다. 같은 표기의 target sense가 있으면 `target_resolution`을 명시한다. 정확한 대상은 `exact`와 제공된 record/sense ID를 저장한다. 새 정책에서는 CLI가 reverse type/Tier를 source 값에서 파생하고, legacy checkpoint의 입력은 정·역방향 값을 모두 요구한다. text-only는 `no_exact_match`와 제공된 target sense ID 전체를 `checked_target_sense_ids`에 적는다. 같은 표기의 target이 없으면 target 판정 필드는 생략한다. checkpoint에 필요한 비교 상태만 남기며 의미적 정답을 자동 판정하지 않는다. `save-chunk`는 청크의 누락·중복·범위 밖 decision 및 잘못된 target 결속을 저장 전에 거부한다. Drop은 후보별 근거를 가진다. Type/Tier 기본값이나 별도 ID/Tier 패스는 없다.
 
@@ -230,7 +231,7 @@ Part 모드는 선택한 Stage 1 Batch의 필수 후보 파일 6개를 기존 v1
 
 **현재 상태 (Issue #928):** 승인 Relations JSONL(`data/relations/relation-<SSS>.jsonl`)은 공식 Canonical 빌드에서 자동으로 읽힌다(고정 입력 디렉터리, 픽스처는 `relationsDirectory` 옵션). Candidate와 Drop은 빌드 입력이 아니다.
 
-- ID 행 하나 → `meaning_relations` 두 행: 정방향(`origin=typewriter-authored`, `type/relevance`)과 역방향(`typewriter-authored-reverse`, `reverse_type/reverse_relevance`). 둘 다 기존 `source_meaning_id` 조회·정렬 경로와 `idx_meaning_relations_target`를 그대로 쓰며, 같은 한 쌍은 한 행에서만 만들어져 중복 투영되지 않는다. 같은 두 meaning·같은 type에 여러 sense가 닿으면 가장 앞선 Tier 하나만 남긴다.
+- ID 행 하나 → `meaning_relations` 두 행: 정방향과 역방향 모두 같은 저장 `tp`/`rv`를 사용한다. 둘 다 기존 `source_meaning_id` 조회·정렬 경로와 `idx_meaning_relations_target`를 그대로 쓰며, 같은 한 쌍은 한 행에서만 만들어져 중복 투영되지 않는다. 같은 두 meaning·같은 type에 여러 sense가 닿으면 가장 앞선 Tier 하나만 남긴다.
 - text-only 행 → `meaning_text_relations`(Full/Lite 공통). 결과에는 텍스트로만 나오고 target이 없어 클릭·역방향이 생기지 않는다.
 - authored 행은 STDICT `note` 대신 빈 note를 가지며 `direct/antonym`을 쓸 수 없다. 기존 STDICT 관계와 같은 쌍·type이면 조용히 병합하지 않고 빌드가 실패한다.
 - Full에는 승인 파일 샤드·행 번호와 Canonical sense를 묶는 `meaning_relation_authored_sources`가 있고 Lite에는 싣지 않는다. 빌드 검증이 쌍 존재, 출처 존재, sense→meaning 결속을 확인한다. SQLite 스키마 버전 11.
