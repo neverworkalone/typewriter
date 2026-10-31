@@ -1241,7 +1241,23 @@ class Supervisor:
             problem = self._stage3_chunk_boundary_problem(b)
             if problem:
                 return self._fail(b, "ERROR", problem)
-            kind = "s3_chunk_resume" if b["session_id"] else "s3_chunk_new"
+            if b["run_kind"] == "s3_chunk_fallback_new":
+                return self._fail(b, "PAUSED", "해당 Stage 3 청크의 허용된 새 세션도 완료되지 않았습니다. 추가 AI 재호출 없이 상태를 보존합니다.")
+            latest_run = next(iter(self.store.runs(b["id"])), None)
+            submit_failures = int(latest_run["submit_failures"] or 0) if latest_run else 0
+            if submit_failures >= 2:
+                return self._fail(b, "ERROR", "정규화한 Stage 3 응답도 strict save-chunk가 거부했습니다. AI 재호출 없이 worktree와 응답을 보존합니다.")
+            answer = self._adapter(b["producer"]).final_answer(Path(b["log_file"])) if b["log_file"] else None
+            if answer is not None:
+                if problem := self._saved_chunk_identity_problem(b):
+                    self.store.log(b["id"], f"보존된 Stage 3 응답 소유권을 확인하지 못해 현재 청크만 새 세션으로 전환합니다: {problem[1]}", "warn")
+                else:
+                    self.store.log(b["id"], "보존된 Stage 3 응답과 청크 소유권을 확인했습니다. AI 재호출 없이 결정 정규화와 strict 저장을 다시 수행합니다.", "warn")
+                    return self._run_ok_stage3_chunk(self.store.batch(b["id"]))
+            else:
+                self.store.log(b["id"], "보존된 Stage 3 최종 응답이 없어 현재 미완료 청크만 새 세션으로 생성합니다.", "warn")
+            self.store.update(b["id"], session_id=None, run_kind="s3_chunk_fallback_new")
+            return self._launch(self.store.batch(b["id"]), "s3_chunk_fallback_new")
         else:
             # A failed launch can occur before a chunk baseline is saved. Start only from a clean owned worktree;
             # `_launch` will create/validate the checkpoint and pin the exact current next chunk.
@@ -1281,6 +1297,10 @@ class Supervisor:
                 return "Stage 3 AI 실행 중 원격 브랜치가 바뀌었습니다. 보존합니다."
             if self.git.dirty(wt).strip():
                 return "Stage 3 AI가 Git 추적 파일을 변경했습니다. 결정 파일로 받아들이지 않고 보존합니다."
+            current = stage3.checkpoint(wt, b["shard"])
+            original = baseline["checkpoint"]
+            if current is None or (current != original and not stage3.chunk_saved_since(original, current)):
+                return "Stage 3 checkpoint가 실행 시작 상태와 다릅니다. 변경을 Keep-all로 가리지 않고 보존합니다."
         except TRANSIENT:
             raise
         except Exception as error:
@@ -1301,7 +1321,19 @@ class Supervisor:
                 if info is not None:
                     raise stage3.Stage3Error(f"청크 실행 중 소유 PR #{info['number']}이 발견되었습니다")
                 answer = self._adapter(b["producer"]).final_answer(Path(b["log_file"]))
-                saved = stage3.save_chunk(self.runner, self.env, b["worktree"], b["shard"], chunk, answer)
+                view = stage3.read_chunk(self.runner, self.env, b["worktree"], b["shard"])
+                original_view = baseline.get("view")
+                if original_view is None:  # recover a pre-#2501 run from its unchanged prepared view
+                    original_view = view
+                    baseline["view"] = original_view
+                    self.store.set(stage3.run_start_key(b["id"]), json.dumps(baseline, sort_keys=True))
+                elif original_view != view:
+                    raise stage3.Stage3Error("read-chunk view가 실행 시작 시 저장한 결정 기준과 다릅니다")
+                context = stage3.decision_context(original_view, chunk)
+                normalized, warnings = stage3.normalize_decisions(answer, chunk, context)
+                if warnings:
+                    self.store.log(b["id"], f"Stage 3 청크 {chunk} 판정 정규화: {'; '.join(warnings)}", "warn")
+                saved = stage3.save_chunk(self.runner, self.env, b["worktree"], b["shard"], chunk, normalized)
                 after = stage3.checkpoint(b["worktree"], b["shard"])
                 if saved.get("chunk") != chunk or not stage3.chunk_saved_since(baseline["checkpoint"], after):
                     raise stage3.Stage3Error("save-chunk 결과가 checkpoint를 정확히 한 청크만 진행시키지 않았습니다")
@@ -1500,7 +1532,8 @@ class Supervisor:
                 prompt = prompts.stage3_chunk(b, chunk, json.dumps(view, ensure_ascii=False, indent=2),
                                               resumed=kind == "s3_chunk_resume")
                 baseline = {"checkpoint": checkpoint, "chunk": chunk, "branch": b["branch"],
-                            "worktree": str(wt), "head": self.git.head(Path(wt)), "remote_head": remote}
+                            "worktree": str(wt), "head": self.git.head(Path(wt)), "remote_head": remote,
+                            "view": view}
                 self.store.set(stage3.run_start_key(b["id"]), json.dumps(baseline, sort_keys=True))
                 title = f"Stage 3 {b['shard']} chunk {chunk}"
                 if kind == "s3_chunk_resume":
