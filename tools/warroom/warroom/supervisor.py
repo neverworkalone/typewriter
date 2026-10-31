@@ -1361,13 +1361,18 @@ class Supervisor:
             committed = self.store.get(commit_key)
             head = self.git.head(wt)
             if committed is not None:
-                if committed != head or changed:
-                    raise GitError(f"기록된 Stage 3 commit HEAD와 worktree가 다릅니다 ({committed} / {head})")
+                if (committed != head or changed
+                        or set(self.git.changed_files(head)) - allowed):
+                    raise GitError(f"기록된 Stage 3 commit이 같은 clean HEAD 및 허용 파일 범위와 다릅니다 ({committed} / {head})")
             elif changed:
                 head = self.git.commit_paths(wt, sorted(changed), title)
                 self.store.set(commit_key, head)
                 self.store.log(b["id"], f"Stage 3 변경 파일을 commit했습니다 ({head[:10]})")
             elif self.git.commit_subject(wt) == title and self.git.commit_parent(wt) is not None:
+                committed_paths = set(self.git.changed_files(head))
+                unexpected = committed_paths - allowed
+                if unexpected:
+                    raise GitError(f"기존 Stage 3 commit이 허용되지 않은 파일을 변경했습니다: {sorted(unexpected)}")
                 head = self.git.head(wt)
                 self.store.set(commit_key, head)
             else:
@@ -1884,6 +1889,9 @@ class Supervisor:
                         if problem := self._stage2_fix_result_problem(b, info):
                             return self._fail(b, "ERROR", problem)
                         self.store.delete(f"s2_fix_start_{b['id']}")
+                    elif b["method"] == STAGE3_METHOD:
+                        if problem := self._stage3_fix_completion_problem(b, info):
+                            return self._fail(b, "ERROR", problem)
                     self._to_review(b, info)
                 return
             if b["method"] in ("a", "b", "c", "d", STAGE3_METHOD):
@@ -2222,9 +2230,7 @@ class Supervisor:
                     return self._fail(b, "ERROR", problem)
                 self.store.delete(f"s2_fix_start_{b['id']}")
             elif b["method"] == STAGE3_METHOD:
-                if problem := self._stage3_fix_result_problem(b, info):
-                    return self._fail(b, "ERROR", problem)
-                if problem := self._complete_producer_fix_events(b):
+                if problem := self._stage3_fix_completion_problem(b, info):
                     return self._fail(b, "ERROR", problem)
             elif info["head_sha"] == b["head_sha"]:
                 self.store.log(b["id"], "수정 실행이 끝났지만 새 HEAD 없음 (코멘트로만 응답했을 수 있음)", "warn")
@@ -2256,6 +2262,12 @@ class Supervisor:
         if not ok:
             return f"Stage 3 리뷰 수정 HEAD의 shard verify 실패: {detail}. PR을 보존합니다."
         return None
+
+    def _stage3_fix_completion_problem(self, b, info) -> str | None:
+        """Share the same PR scope, exact-HEAD verify and event-reply gate across every fix completion route."""
+        if problem := self._stage3_fix_result_problem(b, info):
+            return problem
+        return self._complete_producer_fix_events(b)
 
     def _stage2_final_pr_problem(self, b, info) -> str | None:
         """Require local checkpoint verification and an independent exact PR-HEAD verification."""
@@ -5038,6 +5050,9 @@ class Supervisor:
                 if problem := self._stage2_fix_result_problem(b, info):
                     return self._fail(b, "ERROR", problem)
                 self.store.delete(f"s2_fix_start_{b['id']}")
+            elif b["method"] == STAGE3_METHOD:
+                if problem := self._stage3_fix_completion_problem(b, info):
+                    return self._fail(b, "ERROR", problem)
             self._to_review(b, info)
 
     def _find_pr(self, b):

@@ -602,8 +602,12 @@ async function applyEdits(shard, root = REPOSITORY_DIRECTORY) {
   const relationCurrent = await readOptional(relationFile);
   const dropCurrent = await readOptional(dropFile);
   const currentIsDesired = sameFileState(relationCurrent, relationNext) && sameFileState(dropCurrent, dropNext);
-  if (currentIsDesired) return { shard, status: 'already-applied', removed: dropRows.length,
-    repaired: repairedRows.size, edit_drops_added: newDrops.length };
+  if (currentIsDesired) {
+    await rm(chunkFiles(shard, root), { recursive: true, force: true });
+    await rm(CHECKPOINT_PATH(shard, root), { force: true });
+    return { shard, status: 'already-applied', removed: dropRows.length,
+      repaired: repairedRows.size, edit_drops_added: newDrops.length };
+  }
   const currentIsBase = sameFileState(relationCurrent, relationBase) && sameFileState(dropCurrent, dropBase);
   if (!currentIsBase) fail(`shard ${shard} Relation/Drop files changed from both the Git baseline and this apply result; no files were written`);
   await validatePreparedDecisions(shard, root, checkpoint.decisions, beforeRelations, context.index);
@@ -614,6 +618,7 @@ async function applyEdits(shard, root = REPOSITORY_DIRECTORY) {
     ]);
   }
   await rm(chunkFiles(shard, root), { recursive: true, force: true });
+  await rm(CHECKPOINT_PATH(shard, root), { force: true });
   return { shard, status: 'applied', removed: dropRows.length, repaired: repairedRows.size,
     edit_drops_added: newDrops.length, relation_count: afterOwnRows.length, drop_count: afterOwnDrops.length };
 }

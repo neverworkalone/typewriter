@@ -204,6 +204,7 @@ test('prepare, compact read, exact Link Repair, local orphan Drops, apply, and G
   const beforeDropBytes = await readFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), 'utf8');
   const result = await quiet(() => run(['apply', '--shard', '001'], { root }));
   assert.equal(result.status, 'applied');
+  await assert.rejects(access(checkpointPath));
   const relationText = await readFile(path.join(root, 'data/relations/relation-001.jsonl'), 'utf8');
   const outputRelations = parseRelationJsonl(relationText);
   assert.equal(outputRelations.length, 3);
@@ -220,8 +221,11 @@ test('prepare, compact read, exact Link Repair, local orphan Drops, apply, and G
   ]);
   assert.equal(beforeDropBytes.split('\n').filter(Boolean).length, 1);
 
+  // Simulate a process stopping after the two data files were written but before apply removed its checkpoint.
+  await writeFile(checkpointPath, checkpointBefore);
   const reapplied = await quiet(() => run(['apply', '--shard', '001'], { root }));
   assert.equal(reapplied.status, 'already-applied');
+  await assert.rejects(access(checkpointPath));
   assert.equal(await readFile(path.join(root, 'data/relations/relation-001.jsonl'), 'utf8'), relationText);
   assert.equal(parseDropJsonl(await readFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), 'utf8')).length, 3);
 

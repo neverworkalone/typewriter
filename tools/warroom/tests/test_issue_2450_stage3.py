@@ -179,6 +179,33 @@ class Stage3SupervisorFlow(unittest.TestCase):
         w.store.update(batch_id, state=state, run_kind=run_kind)
         return w.store.batch(batch_id)
 
+    def _claimed_fix(self, *, with_reply=True):
+        w = self.w
+        batch = self._batch(state="WAITING_REVIEW", run_kind="s3_finalize")
+        w.store.update(batch["id"], pr_number=9, head_sha=HEAD1, session_id="old-production-session")
+        batch = w.store.batch(batch["id"])
+        event = {"kind": "review", "author": "reviewer", "key": "review:stage3-test",
+                 "body": f"-1\nHEAD: {HEAD1}\nCorrect this shard row."}
+        with mock.patch.object(w.sup, "_preflight", return_value=None), \
+                mock.patch.object(w.sup, "_agent_env", return_value={}), \
+                mock.patch.object(w.sup, "_launch_env", return_value={}):
+            w.sup._launch(batch, "fix_new", [event])
+        run = w.store.runs(batch["id"])[0]
+        w.store.finish_runs(batch["id"], 0)
+        w.store.update(batch["id"], pid=None)
+        w.store.set(f"verified_completion_run_{batch['id']}", str(run["id"]))
+        w.git.local_head = HEAD2
+        w.git.remote[batch["branch"]] = HEAD2
+        w.gh.prs[9] = {"number": 9, "state": "open", "merged": False, "head_sha": HEAD2,
+                        "head_ref": batch["branch"], "title": "[Relation Stage 3] 001",
+                        "body": "Implements #2450", "base_ref": "master"}
+        w.gh.files[9] = [{"path": RELATION}, {"path": DROP}]
+        w.git.verify_heads.add((HEAD2, "shard", "001", None, None))
+        if with_reply:
+            w.gh.add_pr_reply(9, "Corrected and verified.\n\nWarRoom-Review-Event: review:stage3-test",
+                              login=w.cfg["expected_account"])
+        return w.store.batch(batch["id"]), run
+
     def test_completed_chunk_is_saved_once_and_next_chunk_gets_a_fresh_launch(self):
         w = self.w
         batch = self._batch()
@@ -276,6 +303,80 @@ class Stage3SupervisorFlow(unittest.TestCase):
             self.assertIsNone(w.sup._stage3_fix_result_problem(batch, info))
             verify.assert_called_once_with(HEAD2, "shard", "001", None, None)
 
+    def test_headlag_stage3_fix_completion_rechecks_scope_verify_and_event_reply(self):
+        w = self.w
+        batch, run = self._claimed_fix()
+        stale = dict(w.gh.prs[9], head_sha=HEAD1)
+        self.assertEqual(w.sup._check_fix_head(batch, stale), "wait")
+        before_launches = len(w.adapter.launches)
+        before_replies = len(w.gh.issue_comments(9))
+
+        w.sup._recheck_fix_head(batch)
+
+        result = w.store.batch(batch["id"])
+        event = w.store.handled_event(batch["id"], 9, HEAD1, "review:stage3-test")
+        self.assertEqual(result["state"], "WAITING_REVIEW")
+        self.assertEqual(event["status"], "HANDLED")
+        self.assertEqual(event["run_id"], run["id"])
+        self.assertEqual(len(w.adapter.launches), before_launches)
+        self.assertEqual(len(w.gh.issue_comments(9)), before_replies)
+
+    def test_headlag_stage3_fix_completion_stops_on_scope_verify_or_missing_reply(self):
+        for failure in ("scope", "verify", "reply"):
+            with self.subTest(failure=failure):
+                original = self.w
+                w = s3_world(self)
+                self.w = w
+                try:
+                    batch, _run = self._claimed_fix()
+                    if failure == "scope":
+                        w.gh.files[9] = [{"path": RELATION}, {"path": "README.md"}]
+                    elif failure == "verify":
+                        w.git.verify_heads.clear()
+                    else:
+                        w.gh.issue_comments_[9] = []
+                    before_launches = len(w.adapter.launches)
+
+                    w.sup._recheck_fix_head(batch)
+
+                    result = w.store.batch(batch["id"])
+                    event = w.store.handled_event(batch["id"], 9, HEAD1, "review:stage3-test")
+                    self.assertEqual(result["state"], "ERROR")
+                    self.assertEqual(event["status"], "CLAIMED")
+                    self.assertEqual(len(w.adapter.launches), before_launches)
+                finally:
+                    self.w = original
+
+    def test_verified_fix_operator_retry_uses_the_same_gate_without_duplicate_run_or_reply(self):
+        w = self.w
+        batch, run = self._claimed_fix()
+        before_launches = len(w.adapter.launches)
+        before_replies = len(w.gh.issue_comments(9))
+        with mock.patch.object(w.sup, "_retry_denied_success", return_value=False), \
+                mock.patch.object(w.sup, "_verified_fix_exit", return_value=True):
+            w.sup._relaunch_do(batch)
+        result = w.store.batch(batch["id"])
+        event = w.store.handled_event(batch["id"], 9, HEAD1, "review:stage3-test")
+        self.assertEqual(result["state"], "WAITING_REVIEW")
+        self.assertEqual(event["status"], "HANDLED")
+        self.assertEqual(event["run_id"], run["id"])
+        self.assertEqual(len(w.adapter.launches), before_launches)
+        self.assertEqual(len(w.gh.issue_comments(9)), before_replies)
+
+    def test_verified_fix_operator_retry_stops_when_the_pr_scope_is_invalid(self):
+        w = self.w
+        batch, _run = self._claimed_fix()
+        w.gh.files[9] = [{"path": RELATION}, {"path": "README.md"}]
+        before_launches = len(w.adapter.launches)
+        with mock.patch.object(w.sup, "_retry_denied_success", return_value=False), \
+                mock.patch.object(w.sup, "_verified_fix_exit", return_value=True):
+            w.sup._relaunch_do(batch)
+        result = w.store.batch(batch["id"])
+        event = w.store.handled_event(batch["id"], 9, HEAD1, "review:stage3-test")
+        self.assertEqual(result["state"], "ERROR")
+        self.assertEqual(event["status"], "CLAIMED")
+        self.assertEqual(len(w.adapter.launches), before_launches)
+
     def test_finalization_commits_only_the_two_shard_files_then_opens_one_issue_linked_pr(self):
         w = self.w
         batch = self._batch(state="PRODUCING", run_kind="s3_finalize")
@@ -315,6 +416,64 @@ class Stage3SupervisorFlow(unittest.TestCase):
         self.assertIn("3행 삭제", body)
         self.assertIn("2행 Link Repair", body)
         self.assertIn("1개 edit Drop", body)
+
+    def test_finalize_retry_after_commit_reuses_applied_edits_without_duplicate_commit(self):
+        w = self.w
+        batch = self._batch(state="PRODUCING", run_kind="s3_finalize")
+        w.git.remote.pop(batch["branch"], None)
+        w.git.verified.add(("shard", "001", None, None))
+        w.git.dirty_text = ""
+        w.gh.issues[2450] = {"state": "open", "labels": [], "title": "Stage 3", "body": ""}
+        checkpoint_path = stage3.checkpoint_path(batch["worktree"], "001")
+        checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
+        checkpoint_path.write_text(json.dumps(checkpoint(total=1, done=["001"])), "utf-8")
+
+        def apply(_runner, _env, _worktree, _shard):
+            checkpoint_path.unlink()
+            w.git.dirty_text = f" M {RELATION}\n M {DROP}\n"
+            return {"removed": 3, "repaired": 2, "edit_drops_added": 1}
+
+        report = {"shard": "001", "deleted_relations": [], "link_repairs": [], "added_drops": []}
+        with mock.patch.object(stage3, "apply", side_effect=apply) as apply_call, \
+                mock.patch.object(stage3, "report", return_value=report):
+            with mock.patch.object(w.gh, "issue", side_effect=RuntimeError("GitHub unavailable")):
+                w.sup._stage3_finalize_do(batch)
+            self.assertEqual(w.store.batch(batch["id"])["state"], "ERROR")
+            self.assertFalse(checkpoint_path.exists())
+            self.assertEqual(w.git.commits, [([DROP, RELATION], "[Relation Stage 3] 001")])
+            committed_head = w.git.local_head
+            self.assertEqual(w.store.get(f"s3_apply_result_{batch['id']}"), json.dumps({
+                "edit_drops_added": 1, "removed": 3, "repaired": 2,
+            }, sort_keys=True))
+
+            # Simulate a process stopping after the Git commit but before saving its Store commit marker.
+            w.store.delete(f"s3_commit_head_{batch['id']}")
+            w.sup._stage3_finalize_do(w.store.batch(batch["id"]))
+            apply_call.assert_called_once()
+        self.assertEqual(w.git.local_head, committed_head)
+        self.assertEqual(w.git.commits, [([DROP, RELATION], "[Relation Stage 3] 001")])
+        self.assertEqual(len(w.gh.created_prs), 1)
+        self.assertEqual(w.gh.created_prs[0]["title"], "[Relation Stage 3] 001")
+        self.assertEqual(w.store.batch(batch["id"])["state"], "WAITING_REVIEW")
+
+    def test_finalize_recovery_rejects_an_unmarked_commit_outside_stage3_file_scope(self):
+        w = self.w
+        batch = self._batch(state="PRODUCING", run_kind="s3_finalize")
+        head = "f" * 40
+        w.git.local_head = head
+        w.git.commit_message = "[Relation Stage 3] 001"
+        w.git.commit_parent_sha = HEAD1
+        w.git.changed[head] = ["README.md"]
+        w.store.set(f"s3_apply_ready_{batch['id']}", "1")
+        w.store.set(f"s3_apply_result_{batch['id']}", json.dumps({"removed": 1}))
+        with mock.patch.object(stage3, "checkpoint", return_value=None), \
+                mock.patch.object(stage3, "report", return_value={"shard": "001", "deleted_relations": [],
+                                                                    "link_repairs": [], "added_drops": []}):
+            w.sup._stage3_finalize_do(batch)
+        result = w.store.batch(batch["id"])
+        self.assertEqual(result["state"], "ERROR")
+        self.assertIn("허용되지 않은 파일", result["error"])
+        self.assertEqual(w.gh.created_prs, [])
 
     def test_merged_pr_recovery_requires_valid_files_and_latest_master_verify(self):
         w = self.w
