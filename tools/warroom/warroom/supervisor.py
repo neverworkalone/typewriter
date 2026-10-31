@@ -26,7 +26,7 @@ from .adapters import (PREFLIGHT_PENDING, QUOTA_EVIDENCE, RunSpec, classify_clau
 from .config import (TIERED_ADAPTERS, adapter_label, config_problem, load_config, registry, registry_problems,
                      reload_problem, role_of, role_problem, run_spec, stage2_problem)
 from .github import GhError, GhTransient
-from .gitops import CleanupBlocked, FastForwardBlocked, FastForwardRace, GitError, GitTransient
+from .gitops import CleanupBlocked, FastForwardBlocked, FastForwardRace, GitError, GitTransient, IntegrationBlocked
 from .maintenance import Maintenance
 from .store import MAINTENANCE_METHOD, STAGE2_METHOD, LineBusy, LineNotRunnable
 

@@ -33,6 +33,7 @@ import {
   verifyAccounting,
   AdmissionVerifyError,
 } from './admission.mjs';
+import { parseCandidateJsonl } from './candidate-contract.mjs';
 import { parseDropJsonl, parseRelationJsonl, serializeDropJsonl, serializeRelationJsonl } from './persisted-jsonl.mjs';
 
 const USAGE = `usage:
@@ -467,18 +468,24 @@ function changedRelationRowsBetween(from, to, root) {
   return { paths, rows: changed };
 }
 
-async function affectedRelationShards(from, to, root) {
-  const { rows } = changedRelationRowsBetween(from, to, root);
+async function canonicalSenseShardIndex(root) {
   const canonicalDirectory = path.join(root, 'data/canonical');
   const names = (await readdir(canonicalDirectory)).filter((name) => /^stdict-\d{4}\.jsonl$/u.test(name)).sort();
   const senseShard = new Map();
   for (const name of names) {
     const match = /^stdict-(\d{4})\.jsonl$/u.exec(name);
     const shard = Number(match[1]);
-    for (const record of await readJsonl(path.join(canonicalDirectory, name))) {
+    const file = path.join(canonicalDirectory, name);
+    for (const record of parseCandidateJsonl(await readFile(file, 'utf8'), file)) {
       for (const sense of record.senses) senseShard.set(sense.id, String(shard).padStart(3, '0'));
     }
   }
+  return senseShard;
+}
+
+async function affectedRelationShards(from, to, root) {
+  const { rows } = changedRelationRowsBetween(from, to, root);
+  const senseShard = await canonicalSenseShardIndex(root);
   const affected = new Set();
   for (const row of rows) {
     for (const senseId of ['source_sense_id', ...('text' in row ? [] : ['target_sense_id'])].map((key) => row[key])) {
@@ -491,16 +498,7 @@ async function affectedRelationShards(from, to, root) {
 }
 
 async function affectedRelationShardsMany(fromShas, to, root) {
-  const canonicalDirectory = path.join(root, 'data/canonical');
-  const names = (await readdir(canonicalDirectory)).filter((name) => /^stdict-\d{4}\.jsonl$/u.test(name)).sort();
-  const senseShard = new Map();
-  for (const name of names) {
-    const match = /^stdict-(\d{4})\.jsonl$/u.exec(name);
-    const shard = Number(match[1]);
-    for (const record of await readJsonl(path.join(canonicalDirectory, name))) {
-      for (const sense of record.senses) senseShard.set(sense.id, String(shard).padStart(3, '0'));
-    }
-  }
+  const senseShard = await canonicalSenseShardIndex(root);
   const byFrom = [];
   for (const from of fromShas) {
     const { rows } = changedRelationRowsBetween(from, to, root);
