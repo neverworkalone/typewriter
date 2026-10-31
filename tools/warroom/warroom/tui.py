@@ -163,18 +163,25 @@ class Card(Static, can_focus=True):
         self.app.push_screen(LineDetail(self.model, self.method))
 
     def action_move(self, drow: int, dcol: int) -> None:
-        """Arrow keys walk the Line grid (columns = models, rows = methods); up from the top row returns to the controls."""
+        """Arrow keys move through model columns and stage rows; up from the top row returns to the controls."""
         cards = list(self.app.query(Card))
         models = list(dict.fromkeys(c.model for c in cards))
-        methods = list(dict.fromkeys(c.method for c in cards))
-        row = methods.index(self.method) + drow
+
+        def nav_row(card: Card) -> str:
+            # Stage 2, Stage 3 and the Maintainer share the board's bottom card row.
+            if card.method == STAGE3_METHOD and self.app.stage3_col == self.app.stage2_col:
+                return STAGE3_METHOD
+            return "special" if card.method in (STAGE2_METHOD, STAGE3_METHOD, MAINTENANCE_METHOD) else card.method
+
+        rows = list(dict.fromkeys(nav_row(c) for c in cards))
+        row = rows.index(nav_row(self)) + drow
         col = models.index(self.model) + dcol
         if row < 0:
             self.app.query_one("#start").focus()
             return
-        while 0 <= col < len(models) and 0 <= row < len(methods):
+        while 0 <= col < len(models) and 0 <= row < len(rows):
             for c in cards:
-                if (c.model, c.method) == (models[col], methods[row]):
+                if c.model == models[col] and nav_row(c) == rows[row]:
                     c.focus()
                     return
             if not dcol:
