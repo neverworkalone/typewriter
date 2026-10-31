@@ -140,6 +140,34 @@ async function updateSourceGloss(root, gloss) {
   git(root, 'commit', '-qm', 'Correct the prepared source Sense gloss');
 }
 
+async function updateTargetGloss(root, gloss) {
+  const canonicalPath = path.join(root, 'data/canonical/stdict-0001.jsonl');
+  const canonicalRows = (await readFile(canonicalPath, 'utf8')).trimEnd().split('\n').map(JSON.parse);
+  canonicalRows.find((record) => record.id === 'w3').senses.find((sense) => sense.id === 'w3-s2').gloss = gloss;
+  await writeFile(canonicalPath, jsonl(canonicalRows));
+  git(root, 'add', 'data/canonical/stdict-0001.jsonl');
+  git(root, 'commit', '-qm', 'Correct the prepared Link Repair target gloss');
+}
+
+async function addTargetCompetitor(root) {
+  const canonicalPath = path.join(root, 'data/canonical/stdict-0001.jsonl');
+  const canonicalRows = (await readFile(canonicalPath, 'utf8')).trimEnd().split('\n').map(JSON.parse);
+  canonicalRows.find((record) => record.id === 'w3').senses.push({
+    id: 'w3-s3', pos: 'noun', gloss: '같은 표기의 새 경쟁 Sense.',
+  });
+  await writeFile(canonicalPath, jsonl(canonicalRows));
+
+  for (const producer of ['a_codex', 'a_claude', 'b_codex', 'b_claude', 'c_codex', 'd_codex']) {
+    const candidatePath = path.join(root, `data/relation-candidates/001/001_01_${producer}.jsonl`);
+    const candidateRows = (await readFile(candidatePath, 'utf8')).trimEnd().split('\n').map(JSON.parse);
+    candidateRows.find((record) => record.record_id === 'w3').senses.push({ sense_id: 'w3-s3', candidates: [] });
+    await writeFile(candidatePath, jsonl(candidateRows));
+  }
+
+  git(root, 'add', 'data');
+  git(root, 'commit', '-qm', 'Add a competing target Sense after Link Repair review');
+}
+
 test('Sense grouping targets 350–500 Relation rows without splitting any source Sense', () => {
   const groups = [200, 200, 100, 70].map((size, index) => ({ sense: String(index), relations: Array(size).fill(index) }));
   const chunks = chunkSenseGroups(groups);
@@ -288,6 +316,36 @@ test('apply refuses saved decisions when the prepared source Sense gloss changes
   const relationBefore = await readFile(relationPath, 'utf8');
   const dropBefore = await readFile(dropPath, 'utf8');
   await assert.rejects(quiet(() => run(['apply', '--shard', '001'], { root })), /source Sense changed after prepare/u);
+  assert.equal(await readFile(relationPath, 'utf8'), relationBefore);
+  assert.equal(await readFile(dropPath, 'utf8'), dropBefore);
+});
+
+test('apply refuses Link Repair when a selected target Sense gloss changes after preparation', async (t) => {
+  const root = await repository(t);
+  await quiet(() => run(['prepare', '--shard', '001'], { root }));
+  await save(root, 'chunk 001\nL 2 T2\n');
+  await updateTargetGloss(root, '물이 끓으며 거품이 일어나는 모양.');
+
+  const relationPath = path.join(root, 'data/relations/relation-001.jsonl');
+  const dropPath = path.join(root, 'data/relation-drops/drop-001.jsonl');
+  const relationBefore = await readFile(relationPath, 'utf8');
+  const dropBefore = await readFile(dropPath, 'utf8');
+  await assert.rejects(quiet(() => run(['apply', '--shard', '001'], { root })), /target meanings or same-spelling choices changed after prepare/u);
+  assert.equal(await readFile(relationPath, 'utf8'), relationBefore);
+  assert.equal(await readFile(dropPath, 'utf8'), dropBefore);
+});
+
+test('apply refuses Link Repair when a new same-spelling target Sense appears after preparation', async (t) => {
+  const root = await repository(t);
+  await quiet(() => run(['prepare', '--shard', '001'], { root }));
+  await save(root, 'chunk 001\nL 2 T2\n');
+  await addTargetCompetitor(root);
+
+  const relationPath = path.join(root, 'data/relations/relation-001.jsonl');
+  const dropPath = path.join(root, 'data/relation-drops/drop-001.jsonl');
+  const relationBefore = await readFile(relationPath, 'utf8');
+  const dropBefore = await readFile(dropPath, 'utf8');
+  await assert.rejects(quiet(() => run(['apply', '--shard', '001'], { root })), /target meanings or same-spelling choices changed after prepare/u);
   assert.equal(await readFile(relationPath, 'utf8'), relationBefore);
   assert.equal(await readFile(dropPath, 'utf8'), dropBefore);
 });

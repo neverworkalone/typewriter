@@ -215,6 +215,11 @@ function targetAliases(text, index) {
   })));
 }
 
+function targetMeaningSet(targets) {
+  return targets.map(({ record_id, lemma, sense_id, pos, gloss }) => ({ record_id, lemma, sense_id, pos, gloss }))
+    .sort((left, right) => left.record_id.localeCompare(right.record_id) || left.sense_id.localeCompare(right.sense_id));
+}
+
 function renderChunk(groups, index, number, total) {
   let relationNumber = 0;
   const senses = groups.map(({ record, sense, relations }) => ({
@@ -415,6 +420,11 @@ async function validatePreparedDecisions(shard, root, decisions, currentRelation
     if (decision.action === 'repair' && !prepared.targets?.some((target) =>
       target.record_id === decision.target_record_id && target.sense_id === decision.target_sense_id)) {
       fail(`saved Link Repair for Relation row ${decision.row} does not match an exact target shown in its prepared chunk`);
+    }
+    if (decision.action === 'repair'
+        && JSON.stringify(targetMeaningSet(prepared.targets ?? []))
+          !== JSON.stringify(targetMeaningSet(targetAliases(current.text, index)))) {
+      fail(`saved Link Repair target meanings or same-spelling choices changed after prepare for Relation row ${decision.row}; prepare and review the changed targets again`);
     }
   }
 }
