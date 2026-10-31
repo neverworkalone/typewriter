@@ -284,6 +284,14 @@ const RAW_CI_CATEGORIES = Object.freeze({
           'scripts/relation/persisted-jsonl.mjs',
         ]),
       },
+      {
+        ...affectedTestCheck('scripts/relation/edit-cli.test.mjs', 'Test Stage 3 Relation edit CLI and direct apply', [
+          'scripts/relation/edit-cli.mjs',
+          'scripts/relation/admission.mjs',
+          'scripts/relation/candidate-contract.mjs',
+          'scripts/relation/persisted-jsonl.mjs',
+        ]),
+      },
       affectedTestCheck('tests/relation-relevance.test.mjs', 'Test exploratory relation relevance contract', [
         'scripts/build/dictionary.mjs',
         'scripts/build/query.mjs',
