@@ -1,6 +1,6 @@
 # Relation Factory v1
 
-Typewriter 관계 제작은 **후보 발굴 → 관계 편집 → DB 빌드**로 분리한다. STDICT Canonical JSONL처럼 생성한 **Candidate JSONL을 영구 보관**하고, 이후 원본 문학·말뭉치 DB를 다시 검색하지 않고 Relations를 편집한다. 편집 기준은 [relation-editorial-policy.md](relation-editorial-policy.md)를 따른다.
+Typewriter 관계 제작은 **후보 발굴 → Relation Admission → 최종 관계 정제 → DB 빌드**로 분리한다. STDICT Canonical JSONL처럼 생성한 **Candidate JSONL을 영구 보관**하고, 이후 원본 문학·말뭉치 DB를 다시 검색하지 않고 Relations를 편집한다. 편집 기준은 [relation-editorial-policy.md](relation-editorial-policy.md)를 따른다.
 
 **1회성 전체 초기화 (오너 결정, Issue #1154):** 영구 보관·소급 수정 금지 원칙의 유일한 예외로, 오너가 기존 생산 데이터를 `candidate` 브랜치(2af4d21a)에 보관한 뒤 구형 A/B/C/D 정식 Candidate 236개, 승인 authored Relation, Drop 판정을 모두 삭제했다. A/B/C/D 모든 방식의 진행 위치는 `001_01`부터 재시작하며(A/B는 모델별, C/D는 방식별 공유 진행 위치 유지), 구형 Relation/Drop은 새 후보 생산 후 Stage 2에서 다시 판정한다. 초기화 이후 머지된 Candidate에는 영구 보관 원칙이 다시 적용된다.
 
@@ -8,8 +8,10 @@ Typewriter 관계 제작은 **후보 발굴 → 관계 편집 → DB 빌드**로
 Stage 1 — Candidate Generation: A / B / C / D 독립 병렬 생산
     → data/relation-candidates/<shard>/<shard>_<batch>_<method>_<model>.jsonl
 Stage 2 — Relation Admission: 후보 통합 → 채택/제외 → 타입/Tier/대상 확정
-    → 승인 Relations JSONL (샤드 단위 편집)
-pnpm run build: Canonical + 승인 Relations → Full / Lite SQLite
+    → 승인 Relations / Drops JSONL (샤드 단위)
+Stage 3 — Relation Editorial Refinement (#2450, 구현 예정): Drop / Link Repair
+    → 기존 Relation / Drop JSONL을 직접 수정 (추가 edit 파일 없음)
+pnpm run build: Canonical + 최종 Relations → Full / Lite SQLite
 ```
 
 **A/B/C/D는 생성 방법의 이름이며 Stage 번호가 아니다.** A와 B는 합쳐서 실행하지 않는다. C와 D도 앞 단계 결과를 누적하거나 수정하지 않는다. Stage 1 후보에는 타입·Tier·승인 상태·대상 ID가 없고, Stage 2는 새로운 후보를 탐색하지 않는다.
@@ -192,7 +194,7 @@ PR의 Normal 검사는 추가·수정된 `data/relation-candidates/` 파일마�
 - ID 링크의 target은 후보 문자열과 철자가 정확히 같은 Canonical record의 실제 sense여야 한다. Stage 2 Part의 `read-chunk` 입력은 같은 표기의 모든 target record, lemma, sense ID, POS, 전체 gloss를 제공한다. 동철 이의어·다의어는 출발 sense와 각 target sense를 비교해 선택하며 첫 항목을 자동 선택하지 않는다. text-only로 남길 때도 제공된 target sense ID를 전부 검토하고 `no_exact_match`로 명시한다. 일치하는 target이 없으면 text-only이며 가짜 ID를 쓰지 않는다.
 - 소유 샤드 = 출발(source) sense가 속한 샤드. 한 쌍(A↔B)은 한 행에만 저장하며, 다른 샤드에 이미 같은 쌍(정·역 모두)이나 같은 text-only가 있으면 거부한다. 새 Part의 각 방향은 source 기준으로 한 번 판단하고 동일한 반대 값을 저장한다. 양쪽 출발 sense의 Candidate가 같은 쌍을 동시에 만들면 기존 방향 충돌 검사가 두 source 판단의 일치 여부를 확인하며, 서로 다르면 한쪽을 임의 선택하지 않고 #2307 preflight/국소 재판정으로 해결한다. 빌드는 ID 행마다 같은 Type/Tier의 양방향 탐색 행 2개를 만든다.
 - 모든 고유 후보는 **신규 관계 / Drop / 정확한 중복 병합 / 기존 승인 관계 제외**로 설명되어야 한다. 같은 후보 표기에 ID 관계가 여러 개 있으면 실제 target sense가 서로 다를 때 허용하며, 동일 source/target sense 쌍은 한 번만 저장한다. 여러 후보형이 같은 쌍을 공유하면 위의 type/relevance 병합 규칙을 적용한다. 같은 후보에 대한 text-only 관계나 Drop은 다른 처리와 중복할 수 없다.
-- Drop은 출발 의미와 명백히 무관한 후보에만 쓴다. 출발 sense의 뜻풀이가 그 후보를 직접 언급하면 Drop할 수 없으며(`verify`가 거부), 같은 sense의 승인 peer와 모순되는 Drop도 금지다. 약한 연상은 낮은 Tier의 관계로 보존한다.
+- **Stage 2 Drop**은 출발 의미와 명백히 무관한 후보에만 쓴다. 출발 sense의 뜻풀이가 그 후보를 직접 언급하면 Drop할 수 없으며(`verify`가 거부), 같은 sense의 승인 peer와 모순되는 Drop도 금지다. 약한 연상은 낮은 Tier의 관계로 보존한다. **Stage 3의 `by:"edit"` Drop은 별도 편집 가치 판단으로 이 뜻풀이 제한의 예외**이지만, 기존 후보 회계·중복·샤드 소유 규칙은 유지한다(#2450, 구현 예정).
 
 **도구** (`pnpm run relation:admission -- <command>`, 샤드 번호만 바꿔 재사용):
 
@@ -225,7 +227,51 @@ Part 모드는 선택한 Stage 1 Batch의 필수 후보 파일 6개를 기존 v1
 
 **Stage 2 다음 작업 선택(#927):** 완료 단위는 `(shard, batch, part)`다. 샤드 001부터 Batch 01→02, 각 Batch 안에서 Part 01→05의 Canonical 순서로, 필수 Stage 1 파일 6개가 최신 master에 있고 그 master의 정확한 `verify --shard <SSS> --batch <BB> --part <PP>`가 아직 성공하지 못하는 가장 이른 Part를 고른다. 파일이나 이전 PR의 존재·머지만으로 완료를 판단하지 않는다. 해당 Part의 편집 세션 하나가 PR 하나다. 같은 샤드의 열린 Stage 2 PR이 있으면 누적 `relation-<SSS>.jsonl`/`drop-<SSS>.jsonl`의 충돌을 막기 위해 다음 Part를 시작하지 않는다. PR 머지 후 최신 master를 기준으로 다음 Part를 준비한다. 각 Batch의 **모든 유효 Part**가 성공적으로 검증된 뒤 `verify --shard <SSS> --batch <BB>`를 실행하고, 해당 샤드의 **모든 유효 Part**가 끝난 뒤 `verify --shard <SSS>`를 실행한다(샤드 428은 Batch 02의 Part 01만 유효하므로 총 6개 Part). 후보가 없거나 전부 다른 승인 관계로 처리된 범위도 `verify` 성공으로 완료될 수 있다. #927은 이 순차 생산·검증 계약을 계속 소유하며, 구현 이슈 #1665만 구현 완료 후 닫는다.
 
-## 5. Build와 검증 경계
+## 5. Stage 3 — Relation Editorial Refinement (#2450, implementation planned)
+
+> **구현 상태:** 이 절은 [#2450](https://github.com/neverworkalone/typewriter/issues/2450)의 확정된 Stage 3 구현 계약이다. **Phase 0 문서만 반영된 상태에서는 Stage 3 CLI/War Room 실행 및 Stage 2 reconcile이 아직 제공되지 않는다.** Phase 1~3을 구현한 뒤 아래 운영 흐름을 활성화한다. REVIEW.md의 *PR review Stage 3*와는 별개다.
+
+**목적:** Stage 2에서 의미적으로 성립한다고 승인한 관계 중, 작가가 실제로 다른 단어·문체·이미지·정서·장면을 선택하는 데 도움이 되는 관계를 선별한다. Stage 2의 느슨한 preserve-first Admission을 소급 변경하지 않는다. Stage 3에는 삭제율 할당량이 없다. 관계의 절반 이상 삭제되어도 괜찮지만, 독창적이고 유용한 연상은 보호한다.
+
+**허용:** (1) 승인 Relation **한 행 전체를 삭제**하는 Drop, (2) 기존 **text-only 관계를 정확한 Canonical target record/sense의 ID 관계로 전환**하는 Link Repair. Repair는 기존 `tp/rv`를 보존한다. ID 행 삭제는 **해당 행이 만든 정·역방향 투영**을 제거한다. 다른 살아 있는 Relation이 같은 meaning-level 관계를 만들면 제품 화면의 링크는 남을 수 있다. 표제어·Sense·후보·새 관계 추가, 대상어 바꿔치기, Type/Tier 재판정, STDICT direct/antonym 편집은 금지한다.
+
+### 5-A. 파일·후보 회계
+
+- **기존 파일만 사용:** `data/relations/relation-SSS.jsonl`에서 Drop 관계를 삭제하고 text-only를 ID 관계로 고친다. `data/relation-drops/drop-SSS.jsonl`에는 **삭제 후 어떤 Relation/역방향 커버도 처리하지 않는 후보 키**만 기존 `{id,sid,cd,by:"edit"}`로 추가한다. 같은 후보에 다른 유효 target Sense 관계가 남았다면 Drop하지 않는다. 여러 `fm`, legacy/`ver:0` 추론, `rfm`은 Stage 2의 동일한 후보 귀속 규칙으로 계산한다.
+- **Drop 소유:** `drop-SSS`의 `sid`는 항상 SSS의 Canonical source sense에 속한다. 다른 샤드 sense를 넣는 foreign tombstone이나 별도 `edit-SSS.jsonl` 원장은 금지한다. 다른 샤드의 역방향 고아 후보는 **그 샤드 자체 Stage 2 흐름에서** 원인에 따라 처리한다.
+- **Stage 3 Drop은 출발 의미와 무관해야 한다는 뜻이 아니다.** 후보가 의미상 유효해도 단순 활용형, 어미 변이, 명사화, 반복·중복, 효용 없는 유의어, 과도하게 먼 연상 또는 잘못 결속된 Sense면 편집상 Drop 가능하다. Stage 2 Drop의 `findGlossNamedDrops` 제한은 `by:"edit"`에만 예외를 두고, Stage 2 생산자는 예약 사유 `"edit"`를 쓸 수 없다.
+- **Link Repair:** 동일 표기 Canonical의 **모든 target Sense 및 전체 뜻풀이**를 비교해 정확한 하나를 선택한 경우에만 `{id,sid,tid,tsid,tp,rv,ver:1,fm:[tt],rfm:[…]}`로 교체한다. **현재 Stage 2의 신규 ID 행은 `rfm`을 출발 레코드의 모든 후보형으로 채워 기결정 후보와 충돌할 수 있다. Phase 1에서 신규 Stage 2 ID 행과 Stage 3 Link Repair가 함께 사용할 역방향 후보 필터 함수를 구현한다.** target 소유 샤드의 기존 Relation/Drop(`by:"edit"` 포함)·역방향 커버로 이미 결정된 형태는 `rfm`에서 제외한다. 아직 판정 전인 실제 후보형은 기존 계약대로 유지한다. 불명확하면 text-only 유지. 중복 ID 쌍·역방향 중복은 금지한다.
+- 최종 빌드는 계속 **`pnpm run build`**. 빌더나 persisted JSONL 스키마를 변경하지 않는다. SQLite의 meaning-level 병합/중복 출처가 있을 수 있으므로 관계 삭제의 최종 표시 효과는 실제 provenance를 고려한다.
+
+### 5-B. 실행·토큰·PR 경계
+
+1. **Stage 2 샤드 전체 완료 후 시작.** 해당 샤드의 모든 Batch/Part가 끝나고 최신 master에 대한 샤드 전체 verify 성공이 War Room에 유효해야 한다. Stage 2 Part 완료만으로 Stage 3를 시작하지 않는다. Stage 3 미완료 샤드 가운데 가장 빠른 샤드를 고르되, 같은 샤드 Relation/Drop을 수정하는 열린 PR이나 활성 작업이 있으면 대기한다.
+2. **AI 청크: 관계 350~500행 목표**, 출발 Sense의 관계 목록은 **분할하지 않는다**. 한 청크에 여러 Sense를 묶을 수 있다. Source Sense별 전체 gloss를 한 번 제공하고, target 의미 구분에 필요한 경우 ID Sense 뜻풀이를 제공한다. Link Repair 대상은 동일 표기 전체 Sense·전체 gloss를 제공한다.
+3. **최소 출력:** `chunk NN` 뒤에 `D 1 5 9`, `L 4 T1`, 또는 `none`만 출력. Keep은 별도 출력하지 않고 기존 Relation을 유지한다. 청크마다 새 AI 세션을 사용하고 이미 검토한 청크 전체를 반복해서 읽지 않는다. 재개용 로컬 checkpoint는 청크 완료 여부와 결정만 저장한다.
+4. **Shard당 Stage 3 데이터 PR 한 개.** 모든 청크 완료 후 Relation/Drop에 한꺼번에 반영하고 기존 `validateRelationRows`/`verifyAccounting` 및 실제 DB 결과를 확인한다. 생산 PR은 **해당 샤드의 Relation/Drop 두 파일만** 변경한다. Stage 2와 Stage 3의 같은 샤드 작업 경합은 금지한다.
+5. **리뷰:** Repair는 전건 정확한 source/target Sense 및 gloss 확인, Drop은 실제 PR diff에서 위험도 기준 표본 검토. 4만여 관계를 리뷰 AI가 다시 전수 편집하지 않는다. 잘못된 ID·고아 후보 회계·유익한 연상의 체계적 부당 삭제는 blocker; 취향 차이는 blocker가 아니다. 문서·지침 변경은 **별도 `no-review` PR**로 분리한다.
+
+### 5-C. Cross-shard와 기존 Stage 2 보호
+
+- 샤드 S의 Stage 3 ID Relation 삭제로 다른 샤드 T의 역방향 후보 커버가 사라질 수 있다. **모든 `missing`을 자동 Drop하는 것은 금지.** 이미 준비되었거나 완료한 T의 실제 Stage 1 후보이고, **실제 머지된 Stage 3 데이터 PR의 변경 파일/삭제 ID 행을 확인하고 삭제 전후 후보 커버리지를 비교해 그 관계로 인해 커버가 사라졌음이 입증**되고, 현재 다른 처리 관계/Drop도 없을 때만 T 자신의 `drop-TTT`에 `by:"edit"`를 추가하는 결정적 reconcile을 허용한다.
+- **삭제 근거의 범위:** 실제 머지된 Stage 3 데이터 PR과 그 삭제 행을 기준으로 한 번에 계산한다. 정방향 `by:"edit"` Drop이 있으면 보조 근거로 사용할 수 있지만 **필수 조건으로 삼지 않는다**. 정방향 후보가 다른 Relation에 계속 커버되어 Drop이 없더라도 삭제된 행 때문에 **역방향** 후보는 고아가 될 수 있기 때문이다. 일반 Stage 2 `amend`의 삭제는 Stage 3 PR 삭제가 아니므로 자동 reconcile에 포함하지 않는다. 후보마다 반복해 GitHub를 검색하거나 별도 영수증을 쌓지 않는다.
+- **C-3 / 역방향 후보 충돌 방지:** 기존 Stage 2 신규 ID 행의 `rfm` 전체 자동 채움은 금지한다. 신규 Stage 2 ID 링크와 Stage 3 Link Repair 모두 **target 소유 Sense에서 이미 Relation/Drop/역방향 커버로 결정된 후보형을 제외**하는 동일 공유 함수를 사용한다. 특히 Stage 3가 S에 기록한 `by:"edit"` Drop을 다른 샤드 T가 신규 링크의 `rfm`으로 다시 claim해 S의 verify를 깨뜨리지 않아야 한다. 다만 동일 ID 쌍을 T가 나중에 재승인할 수 있는 것은 별개 문제이며 T의 Stage 3에서 편집한다.
+- 아직 Stage 2 준비 전인 T의 후보는 **미리 Drop하지 않는다**. T가 동철 다른 Sense와 연결할 가능성을 기존 Stage 2 판정에 남긴다. 같은 ID 쌍이 나중에 다시 승인되면 그 소유 샤드의 Stage 3에서 판단한다.
+- 진행 중인 Stage 2 Part가 오래된 Relations를 기준으로 최종화하지 않게 **AI 판정이 끝난 후, materialize/premerge 전에 최신 master를 안전하게 반영**한다. 기존 AI 판단과 checkpoint를 보존하며 안전한 병합 불가 시 작업을 보존하고 명시적으로 정지한다. Stage 3 변경만으로 AI를 전수 재실행하지 않는다.
+- 영향 샤드 확인은 실제 변경된 Relation의 **양 끝 Sense 소유 샤드** 중심으로 하고, 자기 Drop/Candidate·공유 검증 코드·Canonical 등 기존 입력 변화는 계속 감지한다. 불명확한 경우 안전하게 verify한다. 재검증을 위한 새 SHA 영수증, 정책 digest, 전체 Sense 감사 원장, 범용 stale 시스템은 만들지 않는다.
+- Stage 3 완료는 War Room `s3` 작업의 실제 merged 상태로 판단하며, 상태 유실 시 **실제 머지된 PR·해당 샤드·변경 파일·이슈 연결**을 확인해 복구한다. PR 제목만으로 완료 확정하지 않는다.
+
+### 5-D. 편집 판단
+
+- **Drop:** 활용형/같은 어근의 단순 어미 변이 (`깜빡대다→깜빡이다`, `어정대다→어정거리다`), 형식만 바뀐 명사화 (`조퇴하다→조퇴`), 반복 (`팔딱하다→팔딱팔딱`), 가치 없는 같은 뜻 되풀이, Sense 혼입 (`팔딱하다 s1→심장` 검토), 단순 단어에서 너무 먼 임의 연상 (`어정대다→낙타` 등).
+- **Keep:** 실제 문장/장면/감각의 새로운 선택지를 여는 `깜빡대다→가물가물`(기억 Sense), `→점멸/명멸`(빛 Sense) 등. 낯설거나 Tier가 높다는 이유만으로 일괄 삭제하지 않는다.
+- **판정 시야:** 출발 Sense의 해당 샤드 소유 Relation 전체를 함께 보고 중복과 선택지를 비교한다. ID 삭제가 역방향에도 미치는 영향을 감안한다. 형태 패턴을 정규식으로 자동 Drop하지 않는다.
+
+**프롬프트 등록:** Phase 3의 War Room 연결에서는 `tools/warroom/warroom/prompts.py`의 `prompts.ALLOWED`에 `s3_policy_card`와 실제 Stage 3 청크 템플릿을 등록해야 한다. Phase 0에서 파일만 추가하는 것은 실행 가능 상태를 뜻하지 않는다.
+
+**구현·파일럿:** [#2450](https://github.com/neverworkalone/typewriter/issues/2450) Phase 0(정책 문서) → Phase 1(Stage 2 회계/최신 master/reconcile) → Phase 2(Stage 3 CLI) → Phase 3(War Room 연결) → Phase 4(Shard 001 파일럿). Shard 001의 앞 5청크와 `보다` 청크로 토큰/품질을 보정하고, 전체 청크 완료 후 데이터 PR 하나를 제출한다. 삭제 쌍 양방향 DB 반영, Repair 정확성, protected Keep, 실제 cross-shard orphan과 추가 reconcile PR 비용을 측정한다. 삭제율 목표는 없다.
+
+## 6. Build와 검증 경계
 
 `pnpm run build`는 **Canonical JSONL + 승인된 Relations JSONL**을 읽어 Full/Lite SQLite를 결정적으로 생성한다. **Candidate 파일을 직접 읽어 DB를 만들지 않는다.** STDICT 원본 및 공식 `direct/antonym`은 보존하고, text-only/양방향 관계/방향별 Tier/UI 그룹·정렬을 공통 검증한다.
 
