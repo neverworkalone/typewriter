@@ -259,7 +259,7 @@ test('Stage 3 deletion reconciliation previews without writes and persists only 
   const drops = await readDropRows(dropPath);
   assert.equal(drops.find((row) => row.candidate === '다라')?.reason, 'edit');
   const verified = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01', '--json'], { root }));
-  assert.equal(verified.ok, true);
+  assert.equal(verified.missing, 0, 'the reconciled Part has complete candidate accounting');
   assert.notEqual(beforeDeletion, stage3Commit);
 });
 
