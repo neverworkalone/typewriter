@@ -11,8 +11,8 @@ from datetime import datetime, time as wall_time, timedelta
 
 from . import stage2
 from .config import (maintainer_id, maintainer_problem, methods, ordered_models, registry, stage2_models,
-                     stage2_problem)
-from .store import MAINTENANCE_METHOD, STAGE2_METHOD, Store
+                     stage2_problem, stage3_model, role_problem)
+from .store import MAINTENANCE_METHOD, STAGE2_METHOD, STAGE3_METHOD, Store
 
 STATES_HELP = ("PREPARE", "PRODUCING", "WAITING_REVIEW", "FIXING", "MERGED", "CLEANUP",
                "COMPLETE", "PAUSED", "ERROR", "CLEARING")
@@ -28,6 +28,17 @@ def start(store: Store, model: str, method: str, mode: str, cfg: dict | None = N
     if method == STAGE2_METHOD:
         problem = "설정을 확인할 수 없어 Stage 2를 시작하지 않습니다" if cfg is None else stage2_problem(cfg, model)
         return (False, problem) if problem else store.start_stage2(model, mode)
+    if method == STAGE3_METHOD:
+        if cfg is None:
+            return False, "설정을 확인할 수 없어 Stage 3를 시작하지 않습니다"
+        owner = stage3_model(cfg)
+        if owner is None or model != owner:
+            return False, f"Stage 3 실행 모델은 지정된 Codex 라인 {owner or '(없음)'}이어야 합니다."
+        if why := stage2_problem(cfg, model):
+            return False, why
+        if why := role_problem(cfg, model, "stage2"):
+            return False, why
+        return store.start_stage3(model, mode)
     reason, b = store.request_start(model, method, mode)
     if reason == "active":
         return False, f"{model}/{method.upper()} 라인은 이미 미완료 배치 {b['shard']}_{b['batch']}({b['state']})를 소유 중입니다."
@@ -87,12 +98,15 @@ def board_line_keys(store: Store, cfg: dict) -> list[tuple[str, str]]:
     configured_methods = methods(cfg)
     keys = [(model, method) for model in models for method in configured_methods]
     keys += [(model, STAGE2_METHOD) for model in models if model in stage2_models(cfg)]
+    if owner := stage3_model(cfg):
+        keys.append((owner, STAGE3_METHOD))
     return [(model, method) for model, method in keys if method != MAINTENANCE_METHOD]
 
 
 def method_label(method: str) -> str:
     """Board/Detail name of a Line's method: `A`-`D`, `Stage 2` or `Maintainer`."""
-    return "Stage 2" if method == STAGE2_METHOD else "Maintainer" if method == MAINTENANCE_METHOD else method.upper()
+    return ("Stage 2" if method == STAGE2_METHOD else "Stage 3" if method == STAGE3_METHOD
+            else "Maintainer" if method == MAINTENANCE_METHOD else method.upper())
 
 
 def set_drain(store: Store, model: str, method: str, on: bool) -> None:
@@ -210,6 +224,8 @@ def line_status(store: Store, model: str, method: str) -> dict:
            "elapsed": None, "stage2": None, "wait": ""}
     if method == STAGE2_METHOD:
         out["wait"] = store.get(f"s2_wait_{model}") or ""
+    elif method == STAGE3_METHOD:
+        out["wait"] = store.get(f"s3_wait_{model}") or ""
     out["drain"] = out["line_drain"]
     keys = [f"tw_line:{model}:{method}:prepare"]
     if b is not None and b["state"] != "COMPLETE":

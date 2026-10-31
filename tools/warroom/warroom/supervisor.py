@@ -20,15 +20,15 @@ import time
 import traceback
 from pathlib import Path
 
-from . import auth, batches, control, dchunk, defects, literary, progress, prompts, reviews, stage1ab, stage2
+from . import auth, batches, control, dchunk, defects, literary, progress, prompts, reviews, stage1ab, stage2, stage3
 from .adapters import (PREFLIGHT_PENDING, QUOTA_EVIDENCE, RunSpec, classify_claude_failure, classify_failure,
                        opencode_free_quota)
 from .config import (TIERED_ADAPTERS, adapter_label, config_problem, load_config, registry, registry_problems,
-                     reload_problem, role_of, role_problem, run_spec, stage2_problem)
+                     reload_problem, role_of, role_problem, run_spec, stage2_problem, stage3_model)
 from .github import GhError, GhTransient
 from .gitops import CleanupBlocked, FastForwardBlocked, FastForwardRace, GitError, GitTransient, IntegrationBlocked
 from .maintenance import Maintenance
-from .store import MAINTENANCE_METHOD, STAGE2_METHOD, LineBusy, LineNotRunnable
+from .store import MAINTENANCE_METHOD, STAGE2_METHOD, STAGE3_METHOD, LineBusy, LineNotRunnable
 
 
 # A failed *query* asking again can fix. It is never a verdict: callers re-raise it past every broad `except`.
@@ -280,6 +280,8 @@ class Supervisor:
 
     def _saved_chunk_for_run(self, b) -> bool:
         """Exact active-chunk evidence for output-producing exits, bound to this run's start baseline."""
+        if b["method"] == STAGE3_METHOD and str(b["run_kind"] or "").startswith("s3_chunk_"):
+            return self._stage3_chunk_saved(b)
         if self._s2_chunk_run(b):
             return self._stage2_chunk_saved(b)
         if self._c_chunk_run(b):
@@ -690,9 +692,17 @@ class Supervisor:
         if info.get("number") != number or info.get("head_ref") != b["branch"]:
             raise RecoveryBlocked(f"PR #{number}의 head 브랜치가 배치 소유 브랜치와 다릅니다")
         files = self.gh.pull_files(number)
+        if b["method"] == STAGE3_METHOD:
+            try:
+                shard = stage3.validate_pr(info, files)
+            except stage3.Stage3Error as error:
+                raise RecoveryBlocked(str(error)) from error
+            if shard != b["shard"]:
+                raise RecoveryBlocked(f"PR #{number}가 Stage 3 소유 샤드 {b['shard']}와 다릅니다 ({shard})")
         candidates = batches.pr_claims(b, {"number": number, "files": files})
         expected = batches.expected_claim(b)
-        if candidates.count(expected) != 1 or any(item != expected for item in candidates):
+        stage3_empty_diff = b["method"] == STAGE3_METHOD and files == []
+        if not stage3_empty_diff and (candidates.count(expected) != 1 or any(item != expected for item in candidates)):
             raise RecoveryBlocked(f"PR #{number}의 Candidate 파일 소유권이 배치와 일치하지 않습니다 "
                                   f"(기대 {expected}, 확인 {candidates})")
         dup = self._duplicate_claim(b, number)
@@ -862,6 +872,11 @@ class Supervisor:
             return self._blocked(ln, "시작 차단: " + registry_problems(self.cfg)[model])
         if method == STAGE2_METHOD and (why := stage2_problem(self.cfg, model)):   # fail closed here too, not only in Start
             return self._blocked(ln, "시작 차단: " + why)
+        if method == STAGE3_METHOD:
+            if model != stage3_model(self.cfg):
+                return self._blocked(ln, "시작 차단: Stage 3는 고정된 Codex 역할 모델에서만 실행합니다")
+            if why := stage2_problem(self.cfg, model):
+                return self._blocked(ln, "시작 차단: " + why)
         if why := role_problem(self.cfg, model, role_of(method)):   # the stage's assigned profile must resolve to a valid pin
             return self._blocked(ln, "시작 차단: " + why)
         key, line = f"line:{model}:{method}:prepare", f"{model}/{method}"
@@ -879,6 +894,8 @@ class Supervisor:
             return self._blocked(ln, "시작 차단: " + problem)
         if method == STAGE2_METHOD:
             return self._prepare_new_stage2(ln)
+        if method == STAGE3_METHOD:
+            return self._prepare_new_stage3(ln)
         try:
             self.git.fetch_base(self.cfg["base_branch"])
             nb = batches.next_batch(
@@ -906,6 +923,83 @@ class Supervisor:
             return self.store.log(None, str(e), "warn", line=f"{model}/{method}")
         self.store.set_line(model, method, blocked="")
         self.store.log(bid, f"배치 {nb.stem} 선정, worktree 준비")
+        self._prepare_existing(self.store.batch(bid))
+
+    def _stage3_recover_merged(self, producer: str, base: str) -> None:
+        """Restore Stage 3 completion only from issue-linked, merged PRs with the exact shard file scope."""
+        if getattr(self, "_s3_recovery_sha", None) == base:
+            return
+        rows = self.gh.merged_relation_stage3_prs()
+        known = {(batch["shard"], batch["pr_number"]) for batch in self.store.all_batches()
+                 if batch["method"] == STAGE3_METHOD and batch["state"] == "COMPLETE"
+                 and batch["merged"] and batch["pr_number"] is not None}
+        seen: set[str] = set()
+        for pr in rows:
+            shard = stage3.shard_pr(pr)
+            if shard is None or pr.get("base_ref") != "master":
+                raise stage3.Stage3Error(f"PR #{pr.get('number')} is not a linked Stage 3 PR on master")
+            if shard in seen:
+                raise stage3.Stage3Error(f"여러 merged Stage 3 PR이 샤드 {shard}를 주장합니다")
+            seen.add(shard)
+            merge_sha = pr.get("merge_commit_sha") or ""
+            if (shard, pr.get("number")) in known:
+                continue
+            files = self.gh.pull_files(pr["number"])
+            if stage3.validate_pr(pr, files) != shard:
+                raise stage3.Stage3Error(f"PR #{pr['number']} changed files do not match its shard")
+            if not re.fullmatch(r"[a-f0-9]{40}", merge_sha):
+                raise stage3.Stage3Error(f"PR #{pr['number']}의 merge commit SHA를 확인할 수 없습니다")
+            if not self.git.contains_on_base(merge_sha, self.cfg["base_branch"]):
+                continue
+            ok, detail = self.git.verify_stage2(base, "shard", shard, None, None)
+            if not ok:
+                raise stage3.Stage3Error(f"PR #{pr['number']} 머지 후 master Stage 3 shard verify 실패: {detail}")
+            self.store.set(stage3.ok_key(shard), base)
+            if not self.store.restore_stage3_completion(producer=producer, shard=shard, pr_number=pr["number"],
+                                                        merge_sha=merge_sha):
+                raise stage3.Stage3Error(f"PR #{pr['number']}와 기존 Stage 3 Store 소유권이 충돌합니다")
+        self._s3_recovery_sha = base
+
+    def _prepare_new_stage3(self, ln) -> None:
+        """Select the earliest Stage 2 shard verify cached on this master and not occupied by an edit/PR."""
+        model, method = ln["model"], STAGE3_METHOD
+        base, line = self.cfg["base_branch"], f"{model}/{method}"
+        key = f"line:{model}:{method}:prepare"
+        try:
+            sha = self.git.fetch_base(base)
+            self._stage3_recover_merged(model, sha)
+            choice = stage3.choose(sha=sha, kv=self.store, open_prs=self.gh.open_prs(),
+                                   stage2_batches=[b for b in self.store.all_batches() if b["method"] == STAGE2_METHOD],
+                                   stage3_batches=[b for b in self.store.all_batches() if b["method"] == STAGE3_METHOD],
+                                   pin=ln["shard_pin"] if ln["mode"] == "single" else "")
+        except TRANSIENT as error:
+            return self._transient_wait(key, error, line=line)
+        except Exception as error:
+            return self._blocked(ln, f"Stage 3 샤드 선정 실패: {error}")
+        self._transient_clear(key, line=line)
+        if choice.status == "wait":
+            wait_key = f"s3_wait_{model}"
+            if self.store.get(wait_key) != choice.note:
+                self.store.log(None, f"Stage 3 대기: {choice.note}", line=line)
+            self.store.set(wait_key, choice.note)
+            return
+        self.store.set(f"s3_wait_{model}", "")
+        if choice.status == "done":
+            self.store.set_line(model, method, run=0, shard_pin="")
+            return self.store.log(None, choice.note, line=line)
+        shard = choice.shard
+        branch = f"s3-{model}-{shard}"
+        wt = self.paths.worktrees / f"s3-{shard}"
+        try:
+            bid = self.store.create_batch(method=method, producer=model, shard=shard, batch="all", branch=branch,
+                                          worktree=str(wt), model_tier=ln["model_tier"], from_run=True,
+                                          shard_pin=shard if ln["mode"] == "single" else None,
+                                          run_kind="s3_chunk_new")
+        except LineNotRunnable:
+            return
+        except LineBusy as error:
+            return self.store.log(None, str(error), "warn", line=line)
+        self.store.log(bid, f"Stage 3 샤드 {shard} 선정, 단일 PR 청크 편집을 준비합니다")
         self._prepare_existing(self.store.batch(bid))
 
     def _prepare_new_stage2(self, ln) -> None:
@@ -1040,7 +1134,8 @@ class Supervisor:
             env["WARROOM_STAGE2_REPAIR"] = "1"
         # Chunk runs suppress auto-loaded AGENTS.md and web lookup. Execution rules stay adapter-specific; Codex keeps
         # the operator's configured permission profile, while answer-only results are judged by their output contract.
-        if (b["method"] == STAGE2_METHOD and isinstance(kind, str) and kind.startswith(("s2_chunk_", "s2_links_", "s2_repair_"))) or \
+        if (b["method"] in (STAGE2_METHOD, STAGE3_METHOD) and isinstance(kind, str) and
+                kind.startswith(("s2_chunk_", "s2_links_", "s2_repair_", "s3_chunk_"))) or \
                 (b["method"] == literary.METHOD and isinstance(kind, str) and kind.startswith("c_chunk_")) or \
                 (b["method"] == dchunk.METHOD and isinstance(kind, str) and kind.startswith("d_chunk_")) or ab_chunk:
             env["WARROOM_STAGE2_CHUNK"] = "1"
@@ -1079,6 +1174,8 @@ class Supervisor:
             if self._stage2_reconcile_task(b):
                 return self._stage2_reconcile_finalize(b)
             return self._launch_stage2_next(b)
+        if b["method"] == STAGE3_METHOD:
+            return self._launch_stage3_next(b)
         if b["method"] == literary.METHOD:
             return self._launch_c_next(b)
         if b["method"] == dchunk.METHOD:
@@ -1111,6 +1208,217 @@ class Supervisor:
             return self._stage2_finalize(b)
         return self._launch(b, "s2_links_new" if phase == "links" else "s2_chunk_new")
 
+    def _launch_stage3_next(self, b) -> None:
+        self._guarded(b, "prelaunch", lambda current: self._launch(current, "s3_chunk_new"),
+                      entrypoint="launch_stage3_next")
+
+    def _relaunch_stage3_chunk(self, b) -> None:
+        """Resume this exact unsaved chunk or accept its one saved checkpoint advance; never select a new shard."""
+        try:
+            if self.git.registered(Path(b["worktree"])) != b["branch"]:
+                return self._fail(b, "ERROR", "Stage 3 worktree가 소유 브랜치에 등록되어 있지 않습니다. 보존합니다.")
+            if self.git.dirty(b["worktree"]).strip():
+                return self._fail(b, "ERROR", "Stage 3 재시도 전 추적 파일 변경이 있어 보존합니다.")
+            if self._find_recovery_pr(b) is not None:
+                return self._fail(b, "ERROR", "Stage 3 청크 중 예상하지 않은 소유 PR이 있어 재실행을 중단합니다. 보존합니다.")
+        except TRANSIENT:
+            raise
+        except Exception as error:
+            return self._fail(b, "ERROR", f"Stage 3 재시도 전 worktree/PR 확인 실패: {error}. 보존합니다.")
+        if self._stage3_chunk_saved(b):
+            if problem := self._saved_chunk_identity_problem(b):
+                return self._fail(b, problem[0], f"저장된 Stage 3 청크의 실행 소유권/핀 확인 실패: {problem[1]}")
+            self.store.log(b["id"], "이전 실행의 현재 Stage 3 청크 저장을 확인했습니다. 재생산하지 않고 다음 청크로 진행합니다.")
+            self.store.delete(stage3.run_start_key(b["id"]))
+            self.store.update(b["id"], session_id=None, retries=0, retry_after=None, error=None)
+            return self._launch_stage3_next(self.store.batch(b["id"]))
+        raw = self.store.get(stage3.run_start_key(b["id"]))
+        if raw is not None:
+            problem = self._stage3_chunk_boundary_problem(b)
+            if problem:
+                return self._fail(b, "ERROR", problem)
+            kind = "s3_chunk_resume" if b["session_id"] else "s3_chunk_new"
+        else:
+            # A failed launch can occur before a chunk baseline is saved. Start only from a clean owned worktree;
+            # `_launch` will create/validate the checkpoint and pin the exact current next chunk.
+            kind = "s3_chunk_new"
+        return self._launch(b, kind)
+
+    def _stage3_chunk_saved(self, b) -> bool:
+        raw = self.store.get(stage3.run_start_key(b["id"]))
+        if raw is None:
+            return False
+        try:
+            baseline = json.loads(raw)
+            if (not isinstance(baseline, dict) or not isinstance(baseline.get("checkpoint"), dict)
+                    or baseline.get("chunk") != stage3.next_chunk(baseline["checkpoint"])):
+                return False
+            after = stage3.checkpoint(b["worktree"], b["shard"])
+            return stage3.chunk_saved_since(baseline["checkpoint"], after)
+        except (OSError, ValueError, KeyError, TypeError, stage3.Stage3Error):
+            return False
+
+    def _stage3_chunk_boundary_problem(self, b) -> str | None:
+        raw = self.store.get(stage3.run_start_key(b["id"]))
+        if raw is None:
+            return "Stage 3 청크 실행 기준이 없어 재개를 중단합니다. worktree를 보존합니다."
+        try:
+            baseline = json.loads(raw)
+            if (not isinstance(baseline, dict) or baseline.get("branch") != b["branch"]
+                    or baseline.get("worktree") != str(b["worktree"])
+                    or baseline.get("chunk") != stage3.next_chunk(baseline.get("checkpoint", {}))):
+                return "Stage 3 청크 실행 기준이 손상되었거나 다른 실행을 가리킵니다. worktree를 보존합니다."
+            wt = Path(b["worktree"])
+            if self.git.registered(wt) != b["branch"]:
+                return "Stage 3 worktree가 소유 브랜치에 등록되어 있지 않습니다. 보존합니다."
+            if self.git.head(wt) != baseline.get("head"):
+                return "Stage 3 AI 실행 중 worktree HEAD가 바뀌었습니다. 보존합니다."
+            if self.git.remote_head(b["branch"]) != baseline.get("remote_head"):
+                return "Stage 3 AI 실행 중 원격 브랜치가 바뀌었습니다. 보존합니다."
+            if self.git.dirty(wt).strip():
+                return "Stage 3 AI가 Git 추적 파일을 변경했습니다. 결정 파일로 받아들이지 않고 보존합니다."
+        except TRANSIENT:
+            raise
+        except Exception as error:
+            return f"Stage 3 실행 경계를 확인하지 못했습니다: {error}. 보존합니다."
+        return None
+
+    def _run_ok_stage3_chunk(self, b) -> None:
+        if problem := self._stage3_chunk_boundary_problem(b):
+            return self._fail(b, "ERROR", problem)
+        try:
+            baseline = json.loads(self.store.get(stage3.run_start_key(b["id"])) or "{}")
+            chunk = baseline["chunk"]
+            if self._stage3_chunk_saved(b):
+                saved = {"chunk": chunk}
+                after = stage3.checkpoint(b["worktree"], b["shard"])
+            else:
+                info = self._find_recovery_pr(b)
+                if info is not None:
+                    raise stage3.Stage3Error(f"청크 실행 중 소유 PR #{info['number']}이 발견되었습니다")
+                answer = self._adapter(b["producer"]).final_answer(Path(b["log_file"]))
+                saved = stage3.save_chunk(self.runner, self.env, b["worktree"], b["shard"], chunk, answer)
+                after = stage3.checkpoint(b["worktree"], b["shard"])
+                if saved.get("chunk") != chunk or not stage3.chunk_saved_since(baseline["checkpoint"], after):
+                    raise stage3.Stage3Error("save-chunk 결과가 checkpoint를 정확히 한 청크만 진행시키지 않았습니다")
+            progress = stage3.progress(after)
+        except TRANSIENT:
+            raise
+        except (OSError, ValueError, KeyError, TypeError, RecoveryBlocked, DuplicateClaim, stage3.Stage3Error) as error:
+            self.store.add_submit_failure(b["id"])
+            return self._fail(b, "ERROR", f"Stage 3 청크 응답을 저장하지 못했습니다. worktree와 로그를 보존합니다: {error}")
+        self.store.delete(stage3.run_start_key(b["id"]))
+        self.store.update(b["id"], session_id=None, retries=0, retry_after=None, error=None,
+                          progress_kind="chunks", progress_done=progress[0], progress_total=progress[1])
+        self.store.log(b["id"], f"Stage 3 청크 {saved.get('chunk', chunk)} 저장 ({progress[0]}/{progress[1]}). 다음 청크는 새 세션에서 시작합니다.")
+        return self._launch_stage3_next(self.store.batch(b["id"]))
+
+    def _stage3_finalize(self, b) -> None:
+        self._guarded(b, "finalize", self._stage3_finalize_do)
+
+    def _stage3_finalize_do(self, b) -> None:
+        """Apply all persisted chunk edits, verify and submit the shard's single bounded data PR."""
+        wt = Path(b["worktree"])
+        self.store.update(b["id"], state="PRODUCING", pid=None, run_kind="s3_finalize", error=None)
+        allowed = {f"data/relations/relation-{b['shard']}.jsonl",
+                   f"data/relation-drops/drop-{b['shard']}.jsonl"}
+        title = f"[Relation Stage 3] {b['shard']}"
+        try:
+            info = self._find_recovery_pr(b)
+            if info is not None:
+                return self._to_review(b, info)
+            checkpoint = stage3.checkpoint(wt, b["shard"])
+            applied_key = f"s3_apply_ready_{b['id']}"
+            result_key = f"s3_apply_result_{b['id']}"
+            if checkpoint is not None:
+                if len(checkpoint["completed_chunks"]) != checkpoint["chunk_total"]:
+                    raise stage3.Stage3Error("모든 Stage 3 청크 완료 전에 apply 할 수 없습니다")
+                # The edit CLI removes the local checkpoint after its atomic two-file apply. Persist this in-flight
+                # finalization state so a Supervisor restart can report the Git diff and continue without re-editing.
+                self.store.set(applied_key, "1")
+                result = stage3.apply(self.runner, self.env, wt, b["shard"])
+                self.store.set(result_key, json.dumps(result, sort_keys=True))
+            elif self.store.get(applied_key) == "1":
+                raw_result = self.store.get(result_key)
+                try:
+                    result = json.loads(raw_result) if raw_result else {}
+                except (TypeError, ValueError) as error:
+                    raise stage3.Stage3Error("저장된 Stage 3 apply 결과를 읽을 수 없습니다") from error
+                if not isinstance(result, dict):
+                    raise stage3.Stage3Error("저장된 Stage 3 apply 결과 형식이 올바르지 않습니다")
+            else:
+                raise stage3.Stage3Error("Stage 3 checkpoint가 없어 apply 완료 여부를 복구할 수 없습니다")
+            report = stage3.report(self.runner, self.env, wt, b["shard"])
+            result.setdefault("removed", len(report.get("deleted_relations", [])))
+            result.setdefault("repaired", len(report.get("link_repairs", [])))
+            result.setdefault("edit_drops_added", len(report.get("added_drops", [])))
+            self.store.set(result_key, json.dumps(result, sort_keys=True))
+            changed = self.git.changed_paths(wt)
+            unexpected = changed - allowed
+            if unexpected:
+                raise GitError(f"Stage 3 apply가 허용되지 않은 파일을 변경했습니다: {sorted(unexpected)}")
+            commit_key = f"s3_commit_head_{b['id']}"
+            committed = self.store.get(commit_key)
+            head = self.git.head(wt)
+            if committed is not None:
+                if (committed != head or changed
+                        or set(self.git.changed_files(head)) - allowed):
+                    raise GitError(f"기록된 Stage 3 commit이 같은 clean HEAD 및 허용 파일 범위와 다릅니다 ({committed} / {head})")
+            elif changed:
+                head = self.git.commit_paths(wt, sorted(changed), title)
+                self.store.set(commit_key, head)
+                self.store.log(b["id"], f"Stage 3 변경 파일을 commit했습니다 ({head[:10]})")
+            elif self.git.commit_subject(wt) == title and self.git.commit_parent(wt) is not None:
+                committed_paths = set(self.git.changed_files(head))
+                unexpected = committed_paths - allowed
+                if unexpected:
+                    raise GitError(f"기존 Stage 3 commit이 허용되지 않은 파일을 변경했습니다: {sorted(unexpected)}")
+                head = self.git.head(wt)
+                self.store.set(commit_key, head)
+            else:
+                head = self.git.commit_paths(wt, [], title, allow_empty=True)
+                self.store.set(commit_key, head)
+                self.store.log(b["id"], "Stage 3 변경이 없는 샤드를 명시적 empty commit으로 기록했습니다")
+            if self.git.dirty(wt).strip():
+                raise GitError("Stage 3 commit 뒤 worktree가 깨끗하지 않아 push를 중단합니다")
+            ok, detail = self.git.verify_stage2(head, "shard", b["shard"], None, None)
+            if not ok:
+                raise GitError(f"Stage 3 변경의 shard verify 실패: {detail}")
+            remote = self.git.remote_head(b["branch"])
+            if remote != head:
+                if remote is not None and not self.git.contains(wt, remote):
+                    raise GitError(f"Stage 3 원격 브랜치가 로컬 HEAD의 조상이 아닙니다 ({remote} / {head})")
+                self.git.push_branch(wt, b["branch"])
+                remote = self.git.remote_head(b["branch"])
+            if remote != head:
+                raise GitError(f"push 뒤 Stage 3 원격 HEAD가 다릅니다 ({remote} / {head})")
+            open_prs = self.gh.open_prs()
+            occupied = set().union(*(batches.pr_stage3_shards(pr) for pr in open_prs)) if open_prs else set()
+            if b["shard"] in occupied:
+                raise stage3.Stage3Error(f"샤드 {b['shard']} Relation/Drop을 점유한 다른 PR이 열려 있습니다")
+            info = self._find_recovery_pr(b)
+            if info is not None:
+                return self._to_review(b, info)
+            issue = self.gh.issue(2450)
+            labels = issue.get("labels", [])
+            body = "\n".join([
+                "Relation Factory Stage 3 샤드 편집",
+                f"- 관련 작업: #2450",
+                f"- 샤드: {b['shard']}",
+                "- 범위: 승인 Relation Drop 및 text-only Link Repair",
+                f"- 결과: {result.get('removed', 0)}행 삭제, {result.get('repaired', 0)}행 Link Repair, "
+                f"{result.get('edit_drops_added', 0)}개 edit Drop 추가",
+                "- 검증: edit-cli apply 및 shard admission verify",
+                "- 변경 파일: 해당 샤드 Relation/Drop 파일만",
+            ]) + "\n"
+            return self._create_pr_once(b, title, body, labels)
+        except TRANSIENT:
+            raise
+        except (GitError, stage3.Stage3Error, OSError, ValueError, KeyError, TypeError) as error:
+            return self._fail(b, "ERROR", f"Stage 3 최종화 중단: {error}. worktree와 checkpoint를 보존합니다.")
+        except Exception as error:
+            return self._fail(b, "ERROR", f"Stage 3 최종화 중단: {error}. worktree와 checkpoint를 보존합니다.")
+
     # ---- launching runs ------------------------------------------------
     def _run(self, b) -> RunSpec:
         """The model and effort this batch's next run is pinned to (the current tier for OpenCode)."""
@@ -1136,7 +1444,7 @@ class Supervisor:
         return env
 
     def _launch(self, b, kind: str, events=None) -> None:
-        """Launch one run with the current effective settings; Stage 2 covers chunks, links and fresh review fixes."""
+        """Launch one run with the current effective settings; Stage 2/3 use bounded review-fix prompts."""
         if (b["method"] == STAGE2_METHOD and str(b["run_kind"] or "").startswith("s2_reconcile|")
                 and isinstance(kind, str) and kind.startswith("fix")):
             return self._stage2_reconcile_review_fix(b, events)
@@ -1151,7 +1459,7 @@ class Supervisor:
             run = self._run(b)
         except ValueError as e:
             return self._fail(b, "ERROR", f"실행 설정 오류로 AI를 시작하지 않았습니다: {e}")
-        if kind.startswith("fix") and b["method"] in ("a", "b", "c", "d") and not events:
+        if kind.startswith("fix") and b["method"] in ("a", "b", "c", "d", STAGE3_METHOD) and not events:
             return self._fail(b, "ERROR", "현재 PR HEAD에 유효한 리뷰 수정 이벤트가 없어 AI를 시작하지 않았습니다. 오래된 HEAD 이벤트는 되살리지 않습니다.")
         # Every launch proves the CLI again (cached once proven); C review fixes also need the approved source index.
         problem = self._preflight(b["producer"], b["method"])
@@ -1173,9 +1481,29 @@ class Supervisor:
         try:
             run_env = self._launch_env(b, kind, agent_env)
             remote = "?"
-            if isinstance(kind, str) and kind.startswith(("s2_chunk_", "s2_links_", "s2_repair_", "c_chunk_", "d_chunk_", "ab_chunk_")):
+            if isinstance(kind, str) and kind.startswith(("s2_chunk_", "s2_links_", "s2_repair_", "s3_chunk_", "c_chunk_", "d_chunk_", "ab_chunk_")):
                 remote = self.git.remote_head(b["branch"])   # the one remote read, before any view/page/decision write
-            if b["method"] == STAGE2_METHOD and kind.startswith("s2_"):
+            if b["method"] == STAGE3_METHOD and kind.startswith("s3_chunk_"):
+                checkpoint = stage3.checkpoint(wt, b["shard"])
+                if checkpoint is None:
+                    checkpoint = stage3.prepare(self.runner, run_env, wt, b["shard"])
+                chunk = stage3.next_chunk(checkpoint)
+                if chunk is None:
+                    return self._stage3_finalize(b)
+                view = stage3.read_chunk(self.runner, run_env, wt, b["shard"])
+                if view["chunk"] != chunk:
+                    raise prompts.PromptError("Stage 3 read-chunk가 checkpoint의 다음 청크와 다릅니다")
+                prompt = prompts.stage3_chunk(b, chunk, json.dumps(view, ensure_ascii=False, indent=2),
+                                              resumed=kind == "s3_chunk_resume")
+                baseline = {"checkpoint": checkpoint, "chunk": chunk, "branch": b["branch"],
+                            "worktree": str(wt), "head": self.git.head(Path(wt)), "remote_head": remote}
+                self.store.set(stage3.run_start_key(b["id"]), json.dumps(baseline, sort_keys=True))
+                title = f"Stage 3 {b['shard']} chunk {chunk}"
+                if kind == "s3_chunk_resume":
+                    h = ad.resume(sid, prompt, wt, run_env, run, log, ex, **extra)
+                else:
+                    h = ad.start(prompt, wt, run_env, run, title, log, ex, **extra)
+            elif b["method"] == STAGE2_METHOD and kind.startswith("s2_"):
                 checkpoint = stage2.checkpoint(wt, b["shard"], b["batch"])
                 if kind.startswith("s2_chunk_"):
                     if kind == "s2_chunk_new" and stage2.next_action(checkpoint) == "chunk":
@@ -1377,7 +1705,7 @@ class Supervisor:
         state = "FIXING" if kind.startswith("fix") else "PRODUCING"
         fields = dict(state=state, pid=h.pid, exit_file=str(ex), log_file=str(log),
                       run_kind=kind, retry_after=None, error=None)
-        if kind == "fix_new" or kind in ("produce", "produce_recover", "s2_chunk_new", "s2_links_new", "s2_repair_new", "s2_finalize_new", "c_chunk_new",
+        if kind == "fix_new" or kind in ("produce", "produce_recover", "s2_chunk_new", "s2_links_new", "s2_repair_new", "s2_finalize_new", "s3_chunk_new", "c_chunk_new",
                                          "d_chunk_new", "ab_chunk_new"):
             fields["session_id"] = None  # captured from the new run's log
         self.store.update(b["id"], **fields)
@@ -1385,7 +1713,7 @@ class Supervisor:
                                     model=run.model, effort=run.effort, permission_profile=run.permission_profile)
         if events:
             keys = [e["key"] for e in events]
-            if b["method"] in ("a", "b", "c", "d") and kind.startswith("fix"):
+            if b["method"] in ("a", "b", "c", "d", STAGE3_METHOD) and kind.startswith("fix"):
                 self.store.claim_events(b["id"], b["pr_number"], b["head_sha"], keys, run_id)
                 self.store.set(f"fix_claim_{b['id']}", json.dumps({
                     "pr": b["pr_number"], "head_sha": b["head_sha"], "event_keys": keys,
@@ -1436,6 +1764,11 @@ class Supervisor:
     def _relaunch_do(self, b) -> None:
         if self._retry_denied_success(b):
             return
+        if b["method"] == STAGE3_METHOD and not b["pr_number"]:
+            if b["run_kind"] == "s3_finalize":
+                return self._stage3_finalize(b)
+            if isinstance(b["run_kind"], str) and b["run_kind"].startswith("s3_chunk_"):
+                return self._relaunch_stage3_chunk(b)
         if self._c_chunk_run(b) and not b["pr_number"]:
             return self._relaunch_c(b)
         if b["method"] == literary.METHOD and not b["pr_number"] and b["run_kind"] == "c_finalize":
@@ -1556,9 +1889,12 @@ class Supervisor:
                         if problem := self._stage2_fix_result_problem(b, info):
                             return self._fail(b, "ERROR", problem)
                         self.store.delete(f"s2_fix_start_{b['id']}")
+                    elif b["method"] == STAGE3_METHOD:
+                        if problem := self._stage3_fix_completion_problem(b, info):
+                            return self._fail(b, "ERROR", problem)
                     self._to_review(b, info)
                 return
-            if b["method"] in ("a", "b", "c", "d"):
+            if b["method"] in ("a", "b", "c", "d", STAGE3_METHOD):
                 return self._retry_producer_fix(b)
             return self._launch(b, self._fix_kind(b), self._events(b)[1])
         if not b["pr_number"]:
@@ -1641,7 +1977,8 @@ class Supervisor:
                 ad.stop(b["pid"])
             return self._fail(b, state, msg)
         if ad.alive(b["pid"]):
-            if b["state"] == "PRODUCING" and not self._c_chunk_run(b) and not self._d_chunk_run(b) \
+            if b["state"] == "PRODUCING" and not (b["method"] == STAGE3_METHOD and
+                    str(b["run_kind"] or "").startswith("s3_chunk_")) and not self._c_chunk_run(b) and not self._d_chunk_run(b) \
                     and not self._ab_chunk_run(b):
                 self._adopt_pr_while_running(b)
             return
@@ -1800,6 +2137,17 @@ class Supervisor:
 
     def _record_progress(self, b) -> None:
         """Observed progress of the current worktree only: the final file's records, else saved chunks/senses."""
+        if b["method"] == STAGE3_METHOD:
+            try:
+                done, total = stage3.progress(stage3.checkpoint(b["worktree"], b["shard"]))
+            except (OSError, ValueError, KeyError, TypeError, stage3.Stage3Error):
+                return
+            fields = {"records_done": None, "progress_kind": "chunks" if total else None,
+                      "progress_done": done if total else None, "progress_total": total if total else None}
+            changed = {key: value for key, value in fields.items() if value != b[key]}
+            if changed:
+                self.store.update(b["id"], **changed)
+            return
         if b["method"] == STAGE2_METHOD:
             obs = progress.observe(b["worktree"], b["shard"], b["batch"], b["method"], b["producer"])
             fields = {"records_done": None, "progress_kind": obs[0] if obs else None,
@@ -1833,6 +2181,9 @@ class Supervisor:
         if b["method"] == STAGE2_METHOD and b["state"] == "PRODUCING" and \
                 isinstance(b["run_kind"], str) and b["run_kind"].startswith("s2_chunk_"):
             return self._run_ok_stage2_chunk(b)
+        if b["method"] == STAGE3_METHOD and b["state"] == "PRODUCING" and \
+                isinstance(b["run_kind"], str) and b["run_kind"].startswith("s3_chunk_"):
+            return self._run_ok_stage3_chunk(b)
         if b["method"] == STAGE2_METHOD and b["state"] == "PRODUCING" and b["run_kind"] in ("s2_links_new", "s2_links_fix"):
             return self._run_ok_stage2_links(b)
         if self._s2_repair_run(b) and b["state"] == "PRODUCING":
@@ -1878,9 +2229,45 @@ class Supervisor:
                 if problem := self._stage2_fix_result_problem(b, info):
                     return self._fail(b, "ERROR", problem)
                 self.store.delete(f"s2_fix_start_{b['id']}")
+            elif b["method"] == STAGE3_METHOD:
+                if problem := self._stage3_fix_completion_problem(b, info):
+                    return self._fail(b, "ERROR", problem)
             elif info["head_sha"] == b["head_sha"]:
                 self.store.log(b["id"], "수정 실행이 끝났지만 새 HEAD 없음 (코멘트로만 응답했을 수 있음)", "warn")
         self._to_review(b, info)
+
+    def _stage3_fix_result_problem(self, b, info) -> str | None:
+        """Accept a Stage 3 review fix only when its owned PR still has the shard scope and verify passes on its HEAD."""
+        if (info.get("number") != b["pr_number"] or info.get("head_ref") != b["branch"]
+                or info.get("state") != "open" or info.get("merged")):
+            return "Stage 3 리뷰 수정이 열린 소유 PR 번호/head 브랜치에서 끝나지 않았습니다. worktree와 PR을 보존합니다."
+        head = info.get("head_sha")
+        if not isinstance(head, str) or not re.fullmatch(r"[a-f0-9]{40}", head):
+            return "Stage 3 리뷰 수정 PR HEAD가 유효한 commit SHA가 아닙니다. PR을 보존합니다."
+        try:
+            files = self.gh.pull_files(b["pr_number"])
+            shard = stage3.validate_pr(info, files)
+        except TRANSIENT:
+            raise
+        except Exception as error:
+            return f"Stage 3 리뷰 수정 PR 파일 범위를 검증할 수 없습니다: {error}. PR을 보존합니다."
+        if shard != b["shard"]:
+            return f"Stage 3 리뷰 수정 PR 샤드 {shard}가 소유 샤드 {b['shard']}와 다릅니다. PR을 보존합니다."
+        try:
+            ok, detail = self.git.verify_stage2(head, "shard", b["shard"], None, None)
+        except TRANSIENT:
+            raise
+        except Exception as error:
+            return f"Stage 3 리뷰 수정 HEAD 검증을 실행할 수 없습니다: {error}. PR을 보존합니다."
+        if not ok:
+            return f"Stage 3 리뷰 수정 HEAD의 shard verify 실패: {detail}. PR을 보존합니다."
+        return None
+
+    def _stage3_fix_completion_problem(self, b, info) -> str | None:
+        """Share the same PR scope, exact-HEAD verify and event-reply gate across every fix completion route."""
+        if problem := self._stage3_fix_result_problem(b, info):
+            return problem
+        return self._complete_producer_fix_events(b)
 
     def _stage2_final_pr_problem(self, b, info) -> str | None:
         """Require local checkpoint verification and an independent exact PR-HEAD verification."""
@@ -3843,8 +4230,8 @@ class Supervisor:
         return self._ab_save_policy_skip(b, chunk)
 
     def _fix_kind(self, b) -> str:
-        """A/B review fixes start a small new session (never a resume of a long production session)."""
-        if b["method"] == STAGE2_METHOD:
+        """Stage 2/3 and chunked A/B review fixes start a bounded fresh session."""
+        if b["method"] in (STAGE2_METHOD, STAGE3_METHOD):
             return "fix_new"
         small = b["method"] in stage1ab.METHODS and self.cfg.get("ab_chunk_sessions", True)
         return "fix_new" if small or not b["session_id"] else "fix_resume"
@@ -4222,7 +4609,7 @@ class Supervisor:
             return f"source_context 없음: {e}\n", {}
 
     def _retry_producer_fix(self, b) -> None:
-        """Owner Retry rechecks the attached PR and its current-HEAD blockers before assigning an incomplete event."""
+        """Owner Retry rechecks the attached PR and current-HEAD blockers before assigning incomplete review events."""
         try:
             info, events = self._events(b)
             if info.get("number") != b["pr_number"] or info.get("head_ref") != b["branch"]:
@@ -4473,6 +4860,19 @@ class Supervisor:
                 if not protected:
                     raise FastForwardBlocked(f"PR #{info['number']}에 보호할 Stage 2 산출물이 없습니다")
                 return protected
+            if b["method"] == STAGE3_METHOD:
+                claim = batches.expected_claim(b)
+                found = batches.pr_claims(b, {"number": info["number"], "files": files})
+                expected = [] if not files else [claim]
+                if found != expected:
+                    raise FastForwardBlocked(f"PR #{info['number']}의 Stage 3 산출물 소유권이 샤드와 일치하지 않습니다")
+                try:
+                    shard = stage3.validate_pr(info, files)
+                except stage3.Stage3Error as error:
+                    raise FastForwardBlocked(str(error)) from error
+                if shard != b["shard"]:
+                    raise FastForwardBlocked(f"PR #{info['number']}의 Stage 3 샤드가 배치와 일치하지 않습니다")
+                return paths
             if b["method"] == MAINTENANCE_METHOD and paths:
                 return paths
             raise FastForwardBlocked(f"Method {b['method']!r}의 보호 산출물을 증명할 수 없습니다")
@@ -4650,6 +5050,9 @@ class Supervisor:
                 if problem := self._stage2_fix_result_problem(b, info):
                     return self._fail(b, "ERROR", problem)
                 self.store.delete(f"s2_fix_start_{b['id']}")
+            elif b["method"] == STAGE3_METHOD:
+                if problem := self._stage3_fix_completion_problem(b, info):
+                    return self._fail(b, "ERROR", problem)
             self._to_review(b, info)
 
     def _find_pr(self, b):
@@ -4743,7 +5146,7 @@ class Supervisor:
                 claims = batches.pr_claims(b, pr)
             except batches.BatchError as e:   # unknown file list: a duplicate cannot be ruled out -> stop
                 raise DuplicateClaim(f"{e} — 중복 방지로 중단") from e
-            if b["method"] == STAGE2_METHOD:   # one open Stage 2 PR per shard: the cumulative Relation/Drop files collide
+            if b["method"] in (STAGE2_METHOD, STAGE3_METHOD):   # one Stage 2/3 PR per shard: the Relation/Drop files collide
                 if batches.expected_claim(b) in claims:
                     return pr["number"]
                 continue
@@ -5035,7 +5438,7 @@ class Supervisor:
                     synced = True
                     continue   # re-read PR HEAD and review events after the FF; never act on a stale snapshot
                 self._transient_clear(f"b{b['id']}:branch_sync", b["id"])
-                if b["method"] in ("a", "b", "c", "d") and not live:
+                if b["method"] in ("a", "b", "c", "d", STAGE3_METHOD) and not live:
                     # Older versions marked an event handled when the fix process STARTED, not when the
                     # reply was confirmed. A safe Update branch can return that failed run to REVIEW.
                     # Likewise, a stranded CLAIMED event must not launch again without operator Retry.
@@ -5087,6 +5490,14 @@ class Supervisor:
                 return self._fail(b, "ERROR", "merged=true 아님 — 정리하지 않음")
             if b["method"] == STAGE2_METHOD and not self._stage2_merged_verify(b, info):
                 return
+            if b["method"] == STAGE3_METHOD:
+                try:
+                    if stage3.validate_pr(info, self.gh.pull_files(b["pr_number"])) != b["shard"]:
+                        return self._fail(b, "ERROR", "머지 Stage 3 PR 파일 범위가 소유 샤드와 다릅니다. worktree를 보존합니다.")
+                except stage3.Stage3Error as error:
+                    return self._fail(b, "ERROR", f"머지 Stage 3 PR 범위 검증 실패: {error}. worktree를 보존합니다.")
+                if not self._stage3_merged_verify(b, info):
+                    return
             path = Path(os.path.abspath(b["worktree"])).resolve()
             proof = {
                 "version": 1,
@@ -5132,6 +5543,12 @@ class Supervisor:
             self.store.delete(f"s2_reconcile_commit_{b['id']}")
             self.store.delete(f"s2_stage3_change_point_{b['id']}")
             self.store.delete(f"s2_stage3_change_point_{b['id']}")
+        if b["method"] == STAGE3_METHOD:
+            self.store.delete(stage3.run_start_key(b["id"]))
+            self.store.delete(f"s3_apply_ready_{b['id']}")
+            self.store.delete(f"s3_apply_result_{b['id']}")
+            self.store.delete(f"s3_commit_head_{b['id']}")
+            self.store.delete(f"s3_merge_wait_{b['id']}")
         self.store.finish_runs(b["id"], None)
         self.store.log(b["id"], f"배치 {b['shard']}_{b['batch']} 정리 완료")
 
@@ -5166,6 +5583,40 @@ class Supervisor:
         self.store.set(ok_key, sha)
         self.store.log(b["id"], f"최신 master {sha[:10]}에서 {stage2.label(b['shard'], b['batch'])} "
                        f"{'reconciliation ' if is_reconciliation else ''}verify 통과")
+        return True
+
+    def _stage3_merged_verify(self, b, info) -> bool:
+        """Count a Stage 3 shard complete only after its merged files verify on the current master."""
+        gate = f"s3_merge_wait_{b['id']}"
+        if self.clock() - float(self.store.get(gate, "0")) < self.cfg["poll_seconds"]:
+            return False
+        self.store.set(gate, str(self.clock()))
+        base = self.cfg["base_branch"]
+        try:
+            sha = self.git.fetch_base(base)
+            merge_sha = info.get("merge_commit_sha")
+            if not isinstance(merge_sha, str) or not re.fullmatch(r"[a-f0-9]{40}", merge_sha):
+                self._fail(b, "ERROR", "Stage 3 PR merge commit SHA를 확인할 수 없어 완료 처리하지 않습니다.")
+                return False
+            if not self.git.contains_on_base(merge_sha, base):
+                self.store.log(b["id"], f"머지 커밋 {merge_sha[:10]}이 아직 origin/{base}에 보이지 않습니다 — 재확인 예정", "warn")
+                return False
+            if self.store.get(stage3.ok_key(b["shard"])) == sha:
+                return True
+            ok, detail = self.git.verify_stage2(sha, "shard", b["shard"], None, None)
+        except TRANSIENT as error:
+            self._transient_wait(gate, error, b["id"])
+            return False
+        except Exception as error:
+            self.store.log(b["id"], f"머지 후 Stage 3 shard verify 준비 실패(재시도 예정): {error}", "warn")
+            return False
+        if not ok:
+            self._fail(b, "ERROR", f"PR #{info['number']} 머지 후 최신 master에서 샤드 {b['shard']} verify 실패: "
+                       f"{detail}. worktree를 보존하고 확인 후 Retry 하세요.")
+            self.store.set(gate, "0")
+            return False
+        self.store.set(stage3.ok_key(b["shard"]), sha)
+        self.store.log(b["id"], f"최신 master {sha[:10]}에서 Stage 3 샤드 {b['shard']} verify 통과")
         return True
 
     # ---- daemon --------------------------------------------------------

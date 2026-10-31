@@ -83,7 +83,9 @@ class GhClient:
         d = self._api(f"repos/{self.repo}/pulls/{n}")
         return {"number": n, "state": d["state"], "merged": bool(d.get("merged")),
                 "head_sha": d["head"]["sha"], "head_ref": self._owned_ref(d["head"]),
-                "url": d.get("html_url", ""), "merge_commit_sha": d.get("merge_commit_sha") or ""}
+                "url": d.get("html_url", ""), "merge_commit_sha": d.get("merge_commit_sha") or "",
+                "title": d.get("title") or "", "body": d.get("body") or "",
+                "base_ref": (d.get("base") or {}).get("ref")}
 
     # ---- Issues (Issue #1555: shared-defect urgent Issues) --------------------------------------------------------
     def issue(self, n: int) -> dict:
