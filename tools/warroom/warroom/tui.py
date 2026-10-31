@@ -664,9 +664,9 @@ class WarRoom(App):
                         yield Rule(classes="stage-divider")   # separates Stage 1 Methods A-D from row 5 (not a Card: arrows skip it)
                     if model == self.stage2_col:
                         yield Stage2Card(model)
-                    elif model == self.stage3_col:
+                    if model == self.stage3_col:
                         yield Static("Stage 3\n감사 및 수정\n비활성 자리", classes="stage3-placeholder")
-                    elif model == self.maintainer_col:   # ... and the Maintainer status in the DeepSeek column
+                    if model == self.maintainer_col:   # ... and the Maintainer status in the DeepSeek column
                         yield MaintainerCard(model)
         yield Static(id="banner")
         yield Static(id="drain-note")
