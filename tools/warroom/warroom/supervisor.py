@@ -329,8 +329,11 @@ class Supervisor:
                 if isinstance(answer, str) else []
             if len(answer_lines) < 2:
                 return False
-            stage3.normalize_decisions(answer, baseline["chunk"], context)
-            return True
+            normalized, warnings = stage3.normalize_decisions(answer, baseline["chunk"], context)
+            decisions = [line.strip() for line in normalized.splitlines() if line.strip()][1:]
+            if decisions == ["none"]:
+                return answer_lines[1:] == ["none"] and not warnings
+            return bool(decisions)
         except (OSError, ValueError, KeyError, TypeError, stage3.Stage3Error):
             return False
 

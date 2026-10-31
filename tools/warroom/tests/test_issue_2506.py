@@ -78,6 +78,14 @@ class Stage3RunRecovery(unittest.TestCase):
         self.assertEqual(stage3.checkpoint(self.path, "001"), self.before)
         self.assertEqual(w.store.batch(self.batch_id)["state"], "PAUSED")
 
+    def test_nonzero_exit_with_unparseable_body_does_not_save_or_advance(self):
+        w = self.w
+        with mock.patch.object(w.adapter, "final_answer", return_value="chunk 001\nD\n"), \
+                mock.patch.object(stage3, "save_chunk", side_effect=AssertionError("unparseable answer must not save")):
+            w.sup._run_failed(self.batch, 1)
+        self.assertEqual(stage3.checkpoint(self.path, "001"), self.before)
+        self.assertEqual(w.store.batch(self.batch_id)["state"], "PAUSED")
+
     def test_nonzero_exit_with_explicit_none_is_saved(self):
         w = self.w
         next_chunk = mock.Mock()
@@ -106,6 +114,21 @@ class Stage3RunRecovery(unittest.TestCase):
                 mock.patch.object(w.sup, "_saved_chunk_identity_problem", return_value=None), \
                 mock.patch.object(w.sup, "_denials_cleared", return_value=True), \
                 mock.patch.object(stage3, "save_chunk", side_effect=AssertionError("incomplete answer must not save")):
+            w.sup._judge_exit0(self.batch)
+        next_chunk.assert_not_called()
+        self.assertEqual(stage3.checkpoint(self.path, "001"), self.before)
+        self.assertEqual(w.store.batch(self.batch_id)["state"], "ERROR")
+
+    def test_exit0_missing_marker_with_unparseable_body_does_not_save_or_advance(self):
+        w = self.w
+        next_chunk = mock.Mock()
+        w.sup._run_ok_stage3_chunk = next_chunk
+        with mock.patch.object(w.adapter, "final_answer", return_value="chunk 001\nD\n"), \
+                mock.patch.object(w.adapter, "completion_problem", return_value=("ERROR", "missing terminal marker")), \
+                mock.patch.object(w.adapter, "completion_incomplete", return_value=True), \
+                mock.patch.object(w.sup, "_saved_chunk_identity_problem", return_value=None), \
+                mock.patch.object(w.sup, "_denials_cleared", return_value=True), \
+                mock.patch.object(stage3, "save_chunk", side_effect=AssertionError("unparseable answer must not save")):
             w.sup._judge_exit0(self.batch)
         next_chunk.assert_not_called()
         self.assertEqual(stage3.checkpoint(self.path, "001"), self.before)
