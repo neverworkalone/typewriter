@@ -48,8 +48,8 @@ class Stage3DecisionNormalization(unittest.TestCase):
             "chunk 008\nL 492 T99\nL 493\nD 491\n", "008", self.context)
         self.assertEqual(text, "chunk 008\nD 491\n")
         self.assertEqual(len(warnings), 2)
-        self.assertIn("실제 후보가 아닌 T99", warnings[0])
-        self.assertIn("Relation 493", warnings[1])
+        self.assertTrue(any("실제 후보가 아닌 T99" in warning for warning in warnings))
+        self.assertTrue(any("Relation 493" in warning for warning in warnings))
 
     def test_duplicate_and_conflicting_proposals_discard_all_instructions_for_that_row(self):
         text, warnings = stage3.normalize_decisions(

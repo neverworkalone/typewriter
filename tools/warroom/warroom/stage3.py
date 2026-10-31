@@ -334,8 +334,6 @@ def normalize_decisions(answer: str | None, chunk: str, context: dict) -> tuple[
             continue
         accepted.append(f"L {number} {target}")
     normalized = "\n".join([f"chunk {chunk}", *accepted]) + "\n" if accepted else f"chunk {chunk}\nnone\n"
-    if not accepted and body and not any("none 지시 줄 폐기" in warning for warning in warnings):
-        warnings.append("유효한 D/L 제안이 없어 none으로 저장")
     if not body:
         warnings.append("청크 표식 뒤에 D/L 제안이 없어 none으로 저장")
     return normalized, warnings
