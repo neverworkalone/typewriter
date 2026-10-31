@@ -1329,6 +1329,15 @@ class Supervisor:
         try:
             baseline = json.loads(self.store.get(stage3.run_start_key(b["id"])) or "{}")
             chunk = baseline["chunk"]
+            if baseline.get("view") is None:
+                if self._stage3_chunk_saved(b):
+                    return self._fail(b, "ERROR", "view 스냅샷이 없는 구 Stage 3 실행에서 checkpoint가 진행됐습니다. 저장 응답의 원본을 증명할 수 없어 다음 청크로 진행하지 않고 보존합니다.")
+                info = self._find_recovery_pr(b)
+                if info is not None:
+                    raise stage3.Stage3Error(f"청크 실행 중 소유 PR #{info['number']}이 발견되었습니다")
+                return self._stage3_fallback_for_missing_view(b)
+            if not isinstance(baseline["view"], dict):
+                raise stage3.Stage3Error("Stage 3 실행 시작 read-chunk view 스냅샷이 손상되었습니다")
             if self._stage3_chunk_saved(b):
                 saved = {"chunk": chunk}
                 after = stage3.checkpoint(b["worktree"], b["shard"])
@@ -1336,10 +1345,6 @@ class Supervisor:
                 info = self._find_recovery_pr(b)
                 if info is not None:
                     raise stage3.Stage3Error(f"청크 실행 중 소유 PR #{info['number']}이 발견되었습니다")
-                if baseline.get("view") is None:
-                    return self._stage3_fallback_for_missing_view(b)
-                if not isinstance(baseline["view"], dict):
-                    raise stage3.Stage3Error("Stage 3 실행 시작 read-chunk view 스냅샷이 손상되었습니다")
                 answer = self._adapter(b["producer"]).final_answer(Path(b["log_file"]))
                 view = stage3.read_chunk(self.runner, self.env, b["worktree"], b["shard"])
                 original_view = baseline["view"]

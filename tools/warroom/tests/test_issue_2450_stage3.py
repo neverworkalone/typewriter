@@ -249,6 +249,7 @@ class Stage3SupervisorFlow(unittest.TestCase):
         w.store.set(stage3.run_start_key(batch["id"]), json.dumps({
             "checkpoint": before, "chunk": "001", "branch": batch["branch"],
             "worktree": batch["worktree"], "head": HEAD1, "remote_head": HEAD1,
+            "view": {"chunk": "001", "relation_count": 0, "senses": []},
         }))
         next_step = mock.Mock()
         w.sup._launch_stage3_next = next_step
