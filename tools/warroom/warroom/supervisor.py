@@ -1439,7 +1439,7 @@ class Supervisor:
         return env
 
     def _launch(self, b, kind: str, events=None) -> None:
-        """Launch one run with the current effective settings; Stage 2 covers chunks, links and fresh review fixes."""
+        """Launch one run with the current effective settings; Stage 2/3 use bounded review-fix prompts."""
         if (b["method"] == STAGE2_METHOD and str(b["run_kind"] or "").startswith("s2_reconcile|")
                 and isinstance(kind, str) and kind.startswith("fix")):
             return self._stage2_reconcile_review_fix(b, events)
@@ -1454,7 +1454,7 @@ class Supervisor:
             run = self._run(b)
         except ValueError as e:
             return self._fail(b, "ERROR", f"실행 설정 오류로 AI를 시작하지 않았습니다: {e}")
-        if kind.startswith("fix") and b["method"] in ("a", "b", "c", "d") and not events:
+        if kind.startswith("fix") and b["method"] in ("a", "b", "c", "d", STAGE3_METHOD) and not events:
             return self._fail(b, "ERROR", "현재 PR HEAD에 유효한 리뷰 수정 이벤트가 없어 AI를 시작하지 않았습니다. 오래된 HEAD 이벤트는 되살리지 않습니다.")
         # Every launch proves the CLI again (cached once proven); C review fixes also need the approved source index.
         problem = self._preflight(b["producer"], b["method"])
@@ -1708,7 +1708,7 @@ class Supervisor:
                                     model=run.model, effort=run.effort, permission_profile=run.permission_profile)
         if events:
             keys = [e["key"] for e in events]
-            if b["method"] in ("a", "b", "c", "d") and kind.startswith("fix"):
+            if b["method"] in ("a", "b", "c", "d", STAGE3_METHOD) and kind.startswith("fix"):
                 self.store.claim_events(b["id"], b["pr_number"], b["head_sha"], keys, run_id)
                 self.store.set(f"fix_claim_{b['id']}", json.dumps({
                     "pr": b["pr_number"], "head_sha": b["head_sha"], "event_keys": keys,
@@ -1886,7 +1886,7 @@ class Supervisor:
                         self.store.delete(f"s2_fix_start_{b['id']}")
                     self._to_review(b, info)
                 return
-            if b["method"] in ("a", "b", "c", "d"):
+            if b["method"] in ("a", "b", "c", "d", STAGE3_METHOD):
                 return self._retry_producer_fix(b)
             return self._launch(b, self._fix_kind(b), self._events(b)[1])
         if not b["pr_number"]:
@@ -2221,9 +2221,41 @@ class Supervisor:
                 if problem := self._stage2_fix_result_problem(b, info):
                     return self._fail(b, "ERROR", problem)
                 self.store.delete(f"s2_fix_start_{b['id']}")
+            elif b["method"] == STAGE3_METHOD:
+                if problem := self._stage3_fix_result_problem(b, info):
+                    return self._fail(b, "ERROR", problem)
+                if problem := self._complete_producer_fix_events(b):
+                    return self._fail(b, "ERROR", problem)
             elif info["head_sha"] == b["head_sha"]:
                 self.store.log(b["id"], "수정 실행이 끝났지만 새 HEAD 없음 (코멘트로만 응답했을 수 있음)", "warn")
         self._to_review(b, info)
+
+    def _stage3_fix_result_problem(self, b, info) -> str | None:
+        """Accept a Stage 3 review fix only when its owned PR still has the shard scope and verify passes on its HEAD."""
+        if (info.get("number") != b["pr_number"] or info.get("head_ref") != b["branch"]
+                or info.get("state") != "open" or info.get("merged")):
+            return "Stage 3 리뷰 수정이 열린 소유 PR 번호/head 브랜치에서 끝나지 않았습니다. worktree와 PR을 보존합니다."
+        head = info.get("head_sha")
+        if not isinstance(head, str) or not re.fullmatch(r"[a-f0-9]{40}", head):
+            return "Stage 3 리뷰 수정 PR HEAD가 유효한 commit SHA가 아닙니다. PR을 보존합니다."
+        try:
+            files = self.gh.pull_files(b["pr_number"])
+            shard = stage3.validate_pr(info, files)
+        except TRANSIENT:
+            raise
+        except Exception as error:
+            return f"Stage 3 리뷰 수정 PR 파일 범위를 검증할 수 없습니다: {error}. PR을 보존합니다."
+        if shard != b["shard"]:
+            return f"Stage 3 리뷰 수정 PR 샤드 {shard}가 소유 샤드 {b['shard']}와 다릅니다. PR을 보존합니다."
+        try:
+            ok, detail = self.git.verify_stage2(head, "shard", b["shard"], None, None)
+        except TRANSIENT:
+            raise
+        except Exception as error:
+            return f"Stage 3 리뷰 수정 HEAD 검증을 실행할 수 없습니다: {error}. PR을 보존합니다."
+        if not ok:
+            return f"Stage 3 리뷰 수정 HEAD의 shard verify 실패: {detail}. PR을 보존합니다."
+        return None
 
     def _stage2_final_pr_problem(self, b, info) -> str | None:
         """Require local checkpoint verification and an independent exact PR-HEAD verification."""
@@ -4186,8 +4218,8 @@ class Supervisor:
         return self._ab_save_policy_skip(b, chunk)
 
     def _fix_kind(self, b) -> str:
-        """A/B review fixes start a small new session (never a resume of a long production session)."""
-        if b["method"] == STAGE2_METHOD:
+        """Stage 2/3 and chunked A/B review fixes start a bounded fresh session."""
+        if b["method"] in (STAGE2_METHOD, STAGE3_METHOD):
             return "fix_new"
         small = b["method"] in stage1ab.METHODS and self.cfg.get("ab_chunk_sessions", True)
         return "fix_new" if small or not b["session_id"] else "fix_resume"
@@ -4565,7 +4597,7 @@ class Supervisor:
             return f"source_context 없음: {e}\n", {}
 
     def _retry_producer_fix(self, b) -> None:
-        """Owner Retry rechecks the attached PR and its current-HEAD blockers before assigning an incomplete event."""
+        """Owner Retry rechecks the attached PR and current-HEAD blockers before assigning incomplete review events."""
         try:
             info, events = self._events(b)
             if info.get("number") != b["pr_number"] or info.get("head_ref") != b["branch"]:
@@ -5391,7 +5423,7 @@ class Supervisor:
                     synced = True
                     continue   # re-read PR HEAD and review events after the FF; never act on a stale snapshot
                 self._transient_clear(f"b{b['id']}:branch_sync", b["id"])
-                if b["method"] in ("a", "b", "c", "d") and not live:
+                if b["method"] in ("a", "b", "c", "d", STAGE3_METHOD) and not live:
                     # Older versions marked an event handled when the fix process STARTED, not when the
                     # reply was confirmed. A safe Update branch can return that failed run to REVIEW.
                     # Likewise, a stranded CLAIMED event must not launch again without operator Retry.

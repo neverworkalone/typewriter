@@ -16,6 +16,8 @@ _MAINTAIN = {"issue", "branch"}
 _STAGE2 = {"shard", "batch", "part", "branch", "phase", "checkpoint", "session_note", "chunk_input", "chunk_id",
            "relation_direction_rule"}
 _STAGE3 = {"shard", "branch", "chunk_id", "chunk_input", "session_note", "s3_policy_card"}
+_STAGE3_FIX = {"pr", "head", "branch", "shard", "review_events", "session_note", "relation_path",
+               "drop_path", "verify_command"}
 _AB_CHUNK = {"batch", "chunk_no", "session_note", "chunk_input", "method_contract"}
 _C_CHUNK = {"batch", "branch", "chunk_no", "checkpoint", "chunk_contexts", "session_note", "chunk_input", "method_contract"}
 ALLOWED = {"a": _PRODUCE, "b": _PRODUCE, "c": _PRODUCE, "d": _PRODUCE, "recovery": _PRODUCE | {"resolved_defects"},
@@ -23,6 +25,7 @@ ALLOWED = {"a": _PRODUCE, "b": _PRODUCE, "c": _PRODUCE, "d": _PRODUCE, "recovery
                    "s2_policy_card"},
            "producer_fix": {"pr", "head", "branch", "review_events", "session_note", "source_context",
                             "canonical", "output", "method_contract", "method_fix_scope"},
+           "s3_fix": _STAGE3_FIX,
            "contract_a": set(), "contract_b": set(), "contract_c": set(), "contract_d": set(),
            "s2_policy_card": {"relation_direction_rule"},
            "m": _MAINTAIN, "m_recovery": _MAINTAIN, "s2": _STAGE2,
@@ -333,7 +336,13 @@ def fix(b, events, resumed: bool, directory: Path | None = None, source_context:
         loc = f" {e['path']}:{e.get('line')}" if e.get("path") else ""
         lines.append(f"--- {e['kind']} by {e['author']}{loc} [{e['key']}]\n{e['body']}\n")
     note = "" if resumed else "새 리뷰 수정 세션이다. 아래 고정 계약과 제공된 리뷰 이벤트·source_context를 사용한다.\n"
-    template = "fix" if b["method"] == STAGE2_METHOD else "producer_fix"
+    if b["method"] == STAGE2_METHOD:
+        template = "fix"
+    elif b["method"] == "s3":
+        template = "s3_fix"
+        note = "" if resumed else "새 Stage 3 리뷰 수정 세션이다. 제공된 현재 HEAD 리뷰 이벤트만 처리한다.\n"
+    else:
+        template = "producer_fix"
     values = {"pr": b["pr_number"], "head": b["head_sha"], "branch": b["branch"],
               "shard": b["shard"], "batch": b["batch"].split("-")[0] if b["method"] == STAGE2_METHOD else b["batch"],
               "part": b["batch"].split("-")[1] if b["method"] == STAGE2_METHOD else "",
@@ -341,6 +350,10 @@ def fix(b, events, resumed: bool, directory: Path | None = None, source_context:
               "source_context": source_context,
               "s2_policy_card": (_stage2_policy_card(checkpoint, directory)
                                  if b["method"] == STAGE2_METHOD else "")}
+    if b["method"] == "s3":
+        values.update(relation_path=f"data/relations/relation-{b['shard']}.jsonl",
+                      drop_path=f"data/relation-drops/drop-{b['shard']}.jsonl",
+                      verify_command=f"node scripts/relation/admission-cli.mjs verify --shard {b['shard']} --json")
     if b["method"] in ("a", "b", "c", "d"):
         from . import dchunk, literary, stage1ab
 

@@ -133,6 +133,20 @@ class Stage3EditContract(unittest.TestCase):
         self.assertIn("깜빡대다→가물가물", prompt)
         self.assertIn('{"chunk":"001","senses":[]}', prompt)
 
+    def test_stage3_review_fix_prompt_is_shard_scoped_and_has_no_producer_contract_placeholders(self):
+        batch = {"method": STAGE3_METHOD, "pr_number": 9, "head_sha": HEAD1,
+                 "branch": "s3-codex-001", "shard": "001", "batch": "all"}
+        event = {"kind": "review", "author": "reviewer", "key": "review:123",
+                 "body": f"-1\nHEAD: {HEAD1}\nCorrect this shard row."}
+        prompt = prompts.fix(batch, [event], False)
+        self.assertIn("data/relations/relation-001.jsonl", prompt)
+        self.assertIn("data/relation-drops/drop-001.jsonl", prompt)
+        self.assertIn("node scripts/relation/admission-cli.mjs verify --shard 001 --json", prompt)
+        self.assertIn("WarRoom-Review-Event: review:<actual-event-id>", prompt)
+        self.assertIn("review:123", prompt)
+        self.assertNotIn("{{canonical}}", prompt)
+        self.assertNotIn("{{method_contract}}", prompt)
+
     def test_pr_identity_requires_issue_link_base_and_only_its_own_relation_drop_files(self):
         pr = {"number": 9, "title": "[Relation Stage 3] 001", "body": "Implements #2450", "base_ref": "master"}
         self.assertEqual(stage3.validate_pr(pr, [{"path": RELATION}, {"path": DROP}]), "001")
@@ -220,6 +234,46 @@ class Stage3SupervisorFlow(unittest.TestCase):
         w.gh.files[pr] = [{"path": RELATION}, {"path": "README.md"}]
         with self.assertRaises(RecoveryBlocked):
             w.sup._find_recovery_pr(batch)
+
+    def test_blocking_review_launches_the_stage3_fix_route_and_claims_its_event(self):
+        w = self.w
+        batch = self._batch(state="WAITING_REVIEW", run_kind="s3_finalize")
+        w.store.update(batch["id"], pr_number=9, head_sha=HEAD1, session_id="old-production-session")
+        event = {"kind": "review", "author": "reviewer", "key": "review:123",
+                 "body": f"-1\nHEAD: {HEAD1}\nCorrect this shard row."}
+        batch = w.store.batch(batch["id"])
+        self.assertEqual(w.sup._fix_kind(batch), "fix_new")
+        with mock.patch.object(w.sup, "_preflight", return_value=None), \
+                mock.patch.object(w.sup, "_agent_env", return_value={}), \
+                mock.patch.object(w.sup, "_launch_env", return_value={}):
+            w.sup._launch(batch, w.sup._fix_kind(batch), [event])
+        launched = w.adapter.launches[-1]
+        self.assertIn("data/relations/relation-001.jsonl", launched["prompt"])
+        self.assertIn("verify --shard 001 --json", launched["prompt"])
+        self.assertEqual(w.store.batch(batch["id"])["state"], "FIXING")
+        claim = json.loads(w.store.get(f"fix_claim_{batch['id']}"))
+        self.assertEqual((claim["pr"], claim["head_sha"], claim["event_keys"], claim["status"]),
+                         (9, HEAD1, ["review:123"], "CLAIMED"))
+        self.assertEqual(claim["run_id"], w.store.runs(batch["id"])[0]["id"])
+
+    def test_stage3_fix_rejects_unauthorized_pr_files_before_verify_and_reverifies_exact_head(self):
+        w = self.w
+        batch = self._batch(state="FIXING", run_kind="fix_new")
+        w.store.update(batch["id"], pr_number=9, head_sha=HEAD1)
+        info = {"number": 9, "state": "open", "merged": False, "head_ref": batch["branch"],
+                "head_sha": HEAD2, "title": "[Relation Stage 3] 001", "body": "Implements #2450",
+                "base_ref": "master"}
+        verify = mock.Mock(wraps=w.git.verify_stage2)
+        w.gh.files[9] = [{"path": RELATION}, {"path": "README.md"}]
+        with mock.patch.object(w.git, "verify_stage2", verify):
+            problem = w.sup._stage3_fix_result_problem(batch, info)
+            self.assertIn("changed files do not match", problem)
+            verify.assert_not_called()
+
+            w.gh.files[9] = [{"path": RELATION}, {"path": DROP}]
+            w.git.verify_heads.add((HEAD2, "shard", "001", None, None))
+            self.assertIsNone(w.sup._stage3_fix_result_problem(batch, info))
+            verify.assert_called_once_with(HEAD2, "shard", "001", None, None)
 
     def test_finalization_commits_only_the_two_shard_files_then_opens_one_issue_linked_pr(self):
         w = self.w
