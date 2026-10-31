@@ -35,6 +35,12 @@ class Stage3ChangePoint(unittest.TestCase):
         self.assertEqual((first, second), ([STAGE3], [STAGE3]))
         self.assertEqual(self.w.gh.pull_files_calls, [2451])
 
+    def test_stage3_pr_file_list_must_match_its_declared_shard_and_merge_commit(self):
+        self.configure_pr([RELATION, "README.md"])
+        with self.assertRaises(IntegrationBlocked):
+            self.w.sup._stage3_commits_between(BASE, HEAD, Path(self.w.paths.repo_root))
+        self.assertEqual(self.w.gh.pull_files_calls, [2451])
+
 
 class CompletedPartReconcile(unittest.TestCase):
     def configure(self, w):
@@ -91,8 +97,3 @@ class CompletedPartReconcile(unittest.TestCase):
         self.assertEqual(w.gh.created_prs, [])
         self.assertEqual(w.adapter.launches, [])
 
-    def test_stage3_pr_file_list_must_match_its_declared_shard_and_merge_commit(self):
-        self.configure_pr([RELATION, "README.md"])
-        with self.assertRaises(IntegrationBlocked):
-            self.w.sup._stage3_commits_between(BASE, HEAD, Path(self.w.paths.repo_root))
-        self.assertEqual(self.w.gh.pull_files_calls, [2451])

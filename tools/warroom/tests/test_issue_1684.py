@@ -170,7 +170,7 @@ class StageTwoSelection(unittest.TestCase):
         w.store.set(stage2.ok_key("001", "01", "01"), old_sha)
         calls = []
         choice = stage2.choose(
-            w.runner, w.paths.repo_root, w.env, ref="origin/master", sha=new_sha, open_prs=[], kv=w.store,
+            w.runner, w.paths.repo_root, w.sup.env, ref="origin/master", sha=new_sha, open_prs=[], kv=w.store,
             verify=lambda *args: self.fail(f"exact verify should wait for reconcile task: {args}"),
             changed=lambda old, new: ["data/relations/relation-001.jsonl"],
             relation_owners=lambda old, new: {"001"},
@@ -185,7 +185,7 @@ class StageTwoSelection(unittest.TestCase):
         w.store.set(stage2.ok_key("001", "01", "01"), old_sha)
         calls = []
         choice = stage2.choose(
-            w.runner, w.paths.repo_root, w.env, ref="origin/master", sha=new_sha, open_prs=[], kv=w.store,
+            w.runner, w.paths.repo_root, w.sup.env, ref="origin/master", sha=new_sha, open_prs=[], kv=w.store,
             verify=lambda *args: calls.append(args) or (True, ""),
             changed=lambda old, new: ["data/relations/relation-002.jsonl"],
             relation_owners=lambda old, new: {"002"},

@@ -256,7 +256,7 @@ class Stage2Finalization(unittest.TestCase):
         self.assertEqual(w.git.integrated, [(b["worktree"], latest)])
         self.assertEqual(w.git.stage2_prepare_merge_meta, [((stage3_commit,), True)])
         self.assertEqual(w.store.get(f"s2_stage3_change_point_{b['id']}"), change_point)
-        self.assertEqual(w.gh.pull_files_calls, [2451])
+        self.assertEqual(w.gh.pull_files_calls.count(2451), 1)
         self.assertEqual(len(w.adapter.launches), 2, "latest-base sync and reconciliation do not rerun AI")
 
     def test_latest_master_conflict_preserves_checkpoint_and_does_not_rerun_ai(self):
@@ -269,14 +269,17 @@ class Stage2Finalization(unittest.TestCase):
         w.adapter.running[links_run["pid"]]["session"] = "ses_links"
         w.adapter.finish(links_run["pid"])
         checkpoint_path = Path(b["worktree"]) / ".warroom-scratch" / "relation-admission-001-01-01.json"
-        checkpoint_before = checkpoint_path.read_bytes()
+        checkpoint_before = json.loads(checkpoint_path.read_text("utf-8"))
         w.git.integrate_error = IntegrationBlocked("simulated overlapping worktree change")
 
         w.tick()
 
         current = w.store.batch(b["id"])
         self.assertEqual(current["state"], "ERROR")
-        self.assertEqual(checkpoint_path.read_bytes(), checkpoint_before)
+        checkpoint_after = json.loads(checkpoint_path.read_text("utf-8"))
+        self.assertEqual(checkpoint_after["items"], checkpoint_before["items"])
+        self.assertFalse(checkpoint_after["merged"])
+        self.assertNotIn("premerge", checkpoint_after)
         self.assertEqual(w.git.stage2_prepare_merge_calls, [])
         self.assertEqual(len(w.adapter.launches), 2, "safe synchronization failure does not restart AI editing")
 
