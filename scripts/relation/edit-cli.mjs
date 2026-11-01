@@ -83,6 +83,12 @@ function sameFileState(left, right) {
   return left.exists === right.exists && left.text === right.text;
 }
 
+function idSensePairKey(sourceSenseId, targetSenseId) {
+  return sourceSenseId < targetSenseId
+    ? `${sourceSenseId}\u0000${targetSenseId}`
+    : `${targetSenseId}\u0000${sourceSenseId}`;
+}
+
 function readCheckpointText(text, shard) {
   let checkpoint;
   try { checkpoint = JSON.parse(text); } catch (error) { fail(`Stage 3 checkpoint is not valid JSON: ${error.message}`); }
@@ -582,18 +588,70 @@ async function applyEdits(shard, root = REPOSITORY_DIRECTORY) {
   }
 
   const dropRows = [];
-  const remainingOriginalRows = beforeRelations.filter((row, index) => {
+  const droppedRows = new Set();
+  beforeRelations.forEach((row, index) => {
     const decision = decisionByRow.get(index + 1);
-    if (decision?.action === 'drop') { dropRows.push(row); return false; }
-    return decision?.action !== 'repair';
+    if (decision?.action === 'drop') {
+      dropRows.push(row);
+      droppedRows.add(index + 1);
+    }
+  });
+
+  // Resolve only exact ID Sense-pair collisions. The baseline validator has already established that the
+  // existing Relations are valid; Drops remove their rows from this candidate set before repair selection.
+  const pairOrigins = new Map();
+  for (const row of context.otherRelations) {
+    if ('text' in row) continue;
+    const key = idSensePairKey(row.source_sense_id, row.target_sense_id);
+    if (!pairOrigins.has(key)) pairOrigins.set(key, {
+      kind: 'other_shard_relation', source_sense_id: row.source_sense_id, target_sense_id: row.target_sense_id,
+    });
+  }
+  beforeRelations.forEach((row, index) => {
+    const rowNumber = index + 1;
+    const decision = decisionByRow.get(rowNumber);
+    if (droppedRows.has(rowNumber) || decision?.action === 'repair' || 'text' in row) return;
+    const key = idSensePairKey(row.source_sense_id, row.target_sense_id);
+    if (!pairOrigins.has(key)) pairOrigins.set(key, {
+      kind: 'surviving_relation', relation_row: rowNumber,
+      source_sense_id: row.source_sense_id, target_sense_id: row.target_sense_id,
+    });
+  });
+
+  const repairConflicts = [];
+  const acceptedRepairRows = new Set();
+  beforeRelations.forEach((original, index) => {
+    const rowNumber = index + 1;
+    const decision = decisionByRow.get(rowNumber);
+    if (decision?.action !== 'repair') return;
+    const key = idSensePairKey(original.source_sense_id, decision.target_sense_id);
+    const conflict = pairOrigins.get(key);
+    if (conflict) {
+      repairConflicts.push({ relation_row: rowNumber, source_sense_id: original.source_sense_id,
+        target_sense_id: decision.target_sense_id, conflict });
+      return;
+    }
+    acceptedRepairRows.add(rowNumber);
+    pairOrigins.set(key, {
+      kind: 'earlier_link_repair', relation_row: rowNumber,
+      source_sense_id: original.source_sense_id, target_sense_id: decision.target_sense_id,
+    });
+  });
+
+  // Kept text-only rows must participate in reverse-candidate availability and accounting just like every other
+  // surviving original row. Otherwise an accepted reverse repair could silently claim their candidate spelling.
+  const remainingOriginalRows = beforeRelations.filter((row, index) => {
+    const rowNumber = index + 1;
+    return !droppedRows.has(rowNumber) && !acceptedRepairRows.has(rowNumber);
   });
   const reverseLookup = createReverseCandidateFormLookup({
     relationRows: [...context.otherRelations, ...remainingOriginalRows], dropRows: context.allDrops, index: context.index,
   });
   const repairedRows = new Map();
   for (const [index, original] of beforeRelations.entries()) {
-    const decision = decisionByRow.get(index + 1);
-    if (decision?.action !== 'repair') continue;
+    const rowNumber = index + 1;
+    const decision = decisionByRow.get(rowNumber);
+    if (decision?.action !== 'repair' || !acceptedRepairRows.has(rowNumber)) continue;
     const sourceRecord = context.index.byId.get(original.source_record_id);
     const reverseForms = reverseLookup.available(sourceRecord, decision.target_sense_id);
     const repaired = {
@@ -610,7 +668,7 @@ async function applyEdits(shard, root = REPOSITORY_DIRECTORY) {
       reverse_candidate_forms: reverseForms,
     };
     reverseLookup.addRelation(repaired);
-    repairedRows.set(index + 1, repaired);
+    repairedRows.set(rowNumber, repaired);
   }
 
   const afterOwnRows = [];
@@ -621,8 +679,13 @@ async function applyEdits(shard, root = REPOSITORY_DIRECTORY) {
     if (decision?.action === 'drop') continue;
     if (decision?.action === 'repair') {
       const repaired = repairedRows.get(rowNumber);
-      afterOwnRows.push(repaired);
-      afterRelationLines.push(serializeRelationJsonl([repaired]).trimEnd());
+      if (repaired) {
+        afterOwnRows.push(repaired);
+        afterRelationLines.push(serializeRelationJsonl([repaired]).trimEnd());
+      } else {
+        afterOwnRows.push(original);
+        afterRelationLines.push(relationLines[index]);
+      }
     } else {
       afterOwnRows.push(original);
       afterRelationLines.push(relationLines[index]);
@@ -657,7 +720,7 @@ async function applyEdits(shard, root = REPOSITORY_DIRECTORY) {
     await rm(chunkFiles(shard, root), { recursive: true, force: true });
     await rm(CHECKPOINT_PATH(shard, root), { force: true });
     return { shard, status: 'already-applied', removed: dropRows.length,
-      repaired: repairedRows.size, edit_drops_added: newDrops.length };
+      repaired: repairedRows.size, repair_conflicts: repairConflicts, edit_drops_added: newDrops.length };
   }
   const currentIsBase = sameFileState(relationCurrent, relationBase) && sameFileState(dropCurrent, dropBase);
   if (!currentIsBase) fail(`shard ${shard} Relation/Drop files changed from both the Git baseline and this apply result; no files were written`);
@@ -671,7 +734,8 @@ async function applyEdits(shard, root = REPOSITORY_DIRECTORY) {
   await rm(chunkFiles(shard, root), { recursive: true, force: true });
   await rm(CHECKPOINT_PATH(shard, root), { force: true });
   return { shard, status: 'applied', removed: dropRows.length, repaired: repairedRows.size,
-    edit_drops_added: newDrops.length, relation_count: afterOwnRows.length, drop_count: afterOwnDrops.length };
+    repair_conflicts: repairConflicts, edit_drops_added: newDrops.length,
+    relation_count: afterOwnRows.length, drop_count: afterOwnDrops.length };
 }
 
 async function parseDiffRows(root, shard) {

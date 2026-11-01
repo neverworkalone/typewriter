@@ -892,6 +892,15 @@ class Store:
         with self._conn() as c:
             self._add_event(c, batch_id, msg, line=line, level=level)
 
+    def log_once(self, batch_id: int | None, msg: str, level: str = "info", line: str | None = None) -> bool:
+        """Write one existing Audit Log event per batch/message, even when a finalization is retried."""
+        with self._conn() as c:
+            c.execute("BEGIN IMMEDIATE")
+            if c.execute("SELECT 1 FROM events WHERE batch_id IS ? AND msg=? LIMIT 1", (batch_id, msg)).fetchone():
+                return False
+            self._add_event(c, batch_id, msg, line=line, level=level)
+            return True
+
     def recent_events(self, limit: int = 100):
         with self._conn() as c:
             rows = c.execute("SELECT * FROM events ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
