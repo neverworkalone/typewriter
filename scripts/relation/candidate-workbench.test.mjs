@@ -296,12 +296,17 @@ test('compact save removes every definite self-repeat and reports every affected
   await mkdir(context.scratchDirectory, { recursive: true });
   await writeFile(inputPath, `${lines.join('\n')}\n`);
   const result = await saveCandidateChunk({ scratchDirectory: context.scratchDirectory, chunk: 1, inputPath, format: 'compact', repositoryDirectory: context.repositoryDirectory });
+  const saved = await readFile(path.join(context.scratchDirectory, 'candidates/chunk-001.jsonl'), 'utf8');
+  const savedRows = saved.split('\n').filter(Boolean).map(JSON.parse);
+  assert.deepEqual(savedRows.flatMap((row) => row.senses.flatMap((sense) => sense.candidates.map((candidate) => [row.record_id, sense.sense_id, candidate]))), [
+    ['w001', 'w001-s2', '별빛'],
+    ['w002', 'w002-s2', '독립 빛'],
+    ['w004', 'w004-s3', '설계도'],
+  ]);
   assert.equal(result.candidateCount, 3);
   assert.equal(result.autoRemoved.count, 133);
   assert.deepEqual(result.autoRemoved.items.map((item) => item.alias), Array.from({ length: 136 }, (_, i) => `S${i + 1}`).filter((alias) => !['S2', 'S5', 'S12'].includes(alias)));
   assert.ok(result.autoRemoved.items.every((item) => item.reason === 'source lemma repeat'));
-  const saved = await readFile(path.join(context.scratchDirectory, 'candidates/chunk-001.jsonl'), 'utf8');
-  const savedRows = saved.split('\n').filter(Boolean).map(JSON.parse);
   assert.deepEqual(savedRows[0].senses.map((sense) => sense.candidates), [[], ['별빛'], []]);
   assert.deepEqual(savedRows[1].senses.map((sense) => sense.candidates), [[], ['독립 빛'], []]);
   assert.deepEqual(savedRows[3].senses.map((sense) => sense.candidates), [[], [], ['설계도']]);
