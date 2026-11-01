@@ -264,6 +264,88 @@ function stripInternalRow(chunk) {
   })) };
 }
 
+const FIELD_ESCAPES = { '\\': '\\\\', '\t': '\\t', '\n': '\\n', '\r': '\\r' };
+const FIELD_UNESCAPES = { '\\': '\\', t: '\t', n: '\n', r: '\r' };
+
+export function escapeField(value) {
+  if (typeof value !== 'string') fail('Stage 3 prompt view fields must be strings');
+  return value.replace(/[\\\t\n\r]/gu, (character) => FIELD_ESCAPES[character]);
+}
+
+function unescapeField(value) {
+  return value.replace(/\\(.?)/gsu, (_match, character) => {
+    if (!(character in FIELD_UNESCAPES)) fail(`Stage 3 prompt view has an invalid escape: \\${character}`);
+    return FIELD_UNESCAPES[character];
+  });
+}
+
+/** Compact tab-separated model input; carries exactly the judgment facts of the stripped view (no record/sense IDs). */
+export function renderPromptView(chunk) {
+  const total = String(chunk.total_chunks).padStart(3, '0');
+  const lines = [`chunk ${chunk.chunk}/${total} relations ${chunk.relation_count}`];
+  const row = (...fields) => lines.push(fields.map(escapeField).join('\t'));
+  for (const { source, relations } of chunk.senses) {
+    row('S', source.lemma, source.pos, source.gloss);
+    for (const relation of relations) {
+      if ('text' in relation) {
+        row(`X${relation.n}`, relation.text, relation.type, String(relation.tier));
+        for (const target of relation.targets) row(target.alias, target.lemma, target.pos, target.gloss);
+      } else {
+        row(`I${relation.n}`, relation.target, relation.type, String(relation.tier),
+          ...('target_pos' in relation ? [relation.target_pos, relation.target_gloss] : []));
+      }
+    }
+  }
+  return lines.join('\n');
+}
+
+/** Inverse of renderPromptView, returning the judgment fields of the stripped view (ID fields are not in the text). */
+export function parsePromptView(text) {
+  if (typeof text !== 'string') fail('Stage 3 prompt view must be text');
+  const [header, ...body] = text.split('\n');
+  const match = /^chunk (\d+)\/(\d+) relations (\d+)$/u.exec(header);
+  if (!match) fail('Stage 3 prompt view header is invalid');
+  const view = { chunk: match[1], total_chunks: Number(match[2]), relation_count: Number(match[3]), senses: [] };
+  let sense = null;
+  let text_only = null;
+  for (const line of body) {
+    const fields = line.split('\t').map(unescapeField);
+    const tag = /^(S|I|X|T)(\d*)$/u.exec(fields[0]);
+    const number = Number(tag?.[2]);
+    if (!tag || (tag[1] === 'S') !== (tag[2] === '') || (tag[2] !== '' && !(number >= 1))) {
+      fail(`Stage 3 prompt view has an invalid row tag: ${fields[0]}`);
+    }
+    if (tag[1] === 'S') {
+      if (fields.length !== 4) fail('Stage 3 prompt view Sense row must have 4 fields');
+      sense = { source: { lemma: fields[1], pos: fields[2], gloss: fields[3] }, relations: [] };
+      view.senses.push(sense);
+      text_only = null;
+    } else if (!sense) {
+      fail('Stage 3 prompt view row precedes its Source Sense');
+    } else if (tag[1] === 'T') {
+      if (!text_only || fields.length !== 4) fail('Stage 3 prompt view target row is misplaced or malformed');
+      text_only.targets.push({ alias: fields[0], lemma: fields[1], pos: fields[2], gloss: fields[3] });
+    } else {
+      const tier = Number(fields[3]);
+      if (!Number.isInteger(tier) || String(tier) !== fields[3]) fail('Stage 3 prompt view tier is invalid');
+      const relation = { n: number, type: fields[2], tier };
+      if (tag[1] === 'X') {
+        if (fields.length !== 4) fail('Stage 3 prompt view text row must have 4 fields');
+        relation.text = fields[1];
+        relation.targets = [];
+        text_only = relation;
+      } else {
+        if (fields.length !== 4 && fields.length !== 6) fail('Stage 3 prompt view ID row must have 4 or 6 fields');
+        relation.target = fields[1];
+        if (fields.length === 6) Object.assign(relation, { target_pos: fields[4], target_gloss: fields[5] });
+        text_only = null;
+      }
+      sense.relations.push(relation);
+    }
+  }
+  return view;
+}
+
 async function renderPreparedViews(shard, root) {
   gitHead(root);
   const relationFile = RELATION_PATH(shard, root);
@@ -347,6 +429,7 @@ async function refreshPendingChunks(shard, root = REPOSITORY_DIRECTORY) {
     current_chunk: active?.fresh.chunk ?? null,
     active_changed: Boolean(active && !active.same),
     current_view: active ? stripInternalRow(active.fresh) : null,
+    prompt_view: active ? renderPromptView(stripInternalRow(active.fresh)) : null,
   };
 }
 
@@ -360,7 +443,8 @@ async function readNextChunk(shard, root = REPOSITORY_DIRECTORY) {
     const data = await readFile(file, 'utf8');
     let view;
     try { view = JSON.parse(data); } catch (error) { fail(`Stage 3 chunk ${chunk} is invalid JSON: ${error.message}`); }
-    return stripInternalRow(view);
+    const stripped = stripInternalRow(view);
+    return { ...stripped, prompt_view: renderPromptView(stripped) };
   }
   return { shard, complete: true, remaining_chunks: 0 };
 }

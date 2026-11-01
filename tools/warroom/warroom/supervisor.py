@@ -1731,11 +1731,11 @@ class Supervisor:
                 chunk = stage3.next_chunk(checkpoint)
                 if chunk is None:
                     return self._stage3_finalize(b)
-                view = stage3.read_chunk(self.runner, run_env, wt, b["shard"])
+                view, prompt_view = stage3.read_chunk_prompt(self.runner, run_env, wt, b["shard"])
                 if view["chunk"] != chunk:
                     raise prompts.PromptError("Stage 3 read-chunk가 checkpoint의 다음 청크와 다릅니다")
-                prompt = prompts.stage3_chunk(b, chunk, json.dumps(view, ensure_ascii=False, indent=2),
-                                              resumed=kind == "s3_chunk_resume")
+                # The model sees only the compact view; the baseline keeps the unchanged JSON view for equality checks.
+                prompt = prompts.stage3_chunk(b, chunk, prompt_view, resumed=kind == "s3_chunk_resume")
                 baseline = {"checkpoint": checkpoint, "chunk": chunk, "branch": b["branch"],
                             "worktree": str(wt), "head": self.git.head(Path(wt)), "remote_head": remote,
                             "view": view}

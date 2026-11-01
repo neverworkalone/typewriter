@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { chunkSenseGroups, run } from './edit-cli.mjs';
+import { chunkSenseGroups, escapeField, parsePromptView, renderPromptView, run } from './edit-cli.mjs';
 import { parseDropJsonl, parseRelationJsonl, serializeDropJsonl, serializeRelationJsonl } from './persisted-jsonl.mjs';
 
 const jsonl = (rows) => rows.map((row) => JSON.stringify(row)).join('\n') + (rows.length ? '\n' : '');
@@ -672,4 +672,57 @@ test('apply refuses Link Repair when a new same-spelling target Sense appears af
   await assert.rejects(quiet(() => run(['apply', '--shard', '001'], { root })), /target meanings or same-spelling choices changed after prepare/u);
   assert.equal(await readFile(relationPath, 'utf8'), relationBefore);
   assert.equal(await readFile(dropPath, 'utf8'), dropBefore);
+});
+
+const judgmentView = (view) => ({
+  ...Object.fromEntries(['chunk', 'total_chunks', 'relation_count'].map((key) => [key, view[key]])),
+  senses: view.senses.map(({ source, relations }) => ({ source, relations: relations.map((relation) => 'text' in relation
+    ? { n: relation.n, text: relation.text, type: relation.type, tier: relation.tier,
+      targets: relation.targets.map(({ alias, lemma, pos, gloss }) => ({ alias, lemma, pos, gloss })) }
+    : { n: relation.n, target: relation.target, type: relation.type, tier: relation.tier,
+      ...('target_pos' in relation ? { target_pos: relation.target_pos, target_gloss: relation.target_gloss } : {}) }) })),
+});
+
+test('compact prompt view round-trips every judgment field, including delimiter-like text', () => {
+  const awkward = 'tab\there\nline\rcr \\ back\\t | "quote" 😀 \u2028';
+  const view = { chunk: '007', total_chunks: 99, relation_count: 5, senses: [
+    { source: { lemma: '가', pos: 'noun', gloss: awkward }, relations: [
+      { n: 1, target: '나', target_record_id: 'r', target_sense_id: 's', type: 'near', tier: 1 },
+      { n: 2, text: awkward, type: 'mood', tier: 9, targets: [
+        { alias: 'T1', record_id: 'a', lemma: '다', sense_id: 'b', pos: 'noun', gloss: awkward },
+        { alias: 'T2', record_id: 'c', lemma: '다', sense_id: 'd', pos: 'verb', gloss: 'g' }] },
+      { n: 3, text: '없음', type: 'scene', tier: 2, targets: [] }] },
+    { source: { lemma: '라', pos: 'verb', gloss: '' }, relations: [
+      { n: 4, target: awkward, target_record_id: 'r', target_sense_id: 's', target_pos: 'noun', target_gloss: awkward,
+        type: 'action', tier: 5 },
+      { n: 51, text: '하나', type: 'sensory', tier: 4, targets: [
+        { alias: 'T1', record_id: 'e', lemma: '하나', sense_id: 'f', pos: 'noun', gloss: 'x' }] }] }] };
+  const prompt = renderPromptView(view);
+  assert.equal(prompt.split('\n').length, 1 + 10, 'delimiters inside fields never add rows');
+  assert.equal(prompt.split('\n')[0], 'chunk 007/099 relations 5');
+  assert.doesNotMatch(prompt, /record_id|sense_id/u);
+  assert.deepEqual(parsePromptView(prompt), judgmentView(view));
+  assert.equal(escapeField('\\\t\n\r'), '\\\\\\t\\n\\r');
+  for (const bad of ['chunk 1', 'chunk 001/001 relations 0\nX1\ta\tnear\t1', 'chunk 001/001 relations 1\nS\ta\tb\\q\tc',
+    'chunk 001/001 relations 1\nS\ta\tb\tc\nT1\ta\tb\tc', 'chunk 001/001 relations 1\nS\ta\tb\tc\nI1\ta\tnear\tx']) {
+    assert.throws(() => parsePromptView(bad), undefined, bad);
+  }
+});
+
+test('read-chunk and refresh-pending expose prompt_view beside the unchanged JSON view only', async (t) => {
+  const root = await repository(t);
+  await quiet(() => run(['prepare', '--shard', '001'], { root }));
+  const prepared = await readFile(path.join(root, '.warroom-scratch/relation-edit-001/chunk-001.json'), 'utf8');
+  assert.doesNotMatch(prepared, /prompt_view/u);
+  const { prompt_view: prompt, ...view } = await quiet(() => run(['read-chunk', '--shard', '001'], { root }));
+  assert.equal(typeof prompt, 'string');
+  assert.deepEqual(parsePromptView(prompt), judgmentView(view));
+  const refreshed = await quiet(() => run(['refresh-pending', '--shard', '001'], { root }));
+  assert.equal(refreshed.prompt_view, prompt);
+  assert.deepEqual(refreshed.current_view, view);
+  assert.equal(await readFile(path.join(root, '.warroom-scratch/relation-edit-001/chunk-001.json'), 'utf8'), prepared);
+  await save(root, 'chunk 001\nnone\n');
+  const done = await quiet(() => run(['refresh-pending', '--shard', '001'], { root }));
+  assert.equal(done.prompt_view, null);
+  assert.equal(done.current_view, null);
 });

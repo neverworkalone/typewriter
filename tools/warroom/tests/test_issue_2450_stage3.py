@@ -163,6 +163,117 @@ class Stage3EditContract(unittest.TestCase):
                 stage3.validate_pr(bad_pr, files)
 
 
+class Stage3PromptView(unittest.TestCase):
+    """The compact prompt view must bind to the unchanged JSON view's Relation numbers, order and T aliases."""
+
+    VIEW = {"chunk": "003", "total_chunks": 12, "relation_count": 4, "senses": [
+        {"source": {"lemma": "가", "pos": "noun", "gloss": "탭\t줄\n"}, "relations": [
+            {"n": 1, "target": "나", "target_record_id": "r1", "target_sense_id": "s1", "type": "near", "tier": 1},
+            {"n": 2, "text": "다", "type": "mood", "tier": 2, "targets": [
+                {"alias": "T1", "record_id": "r2", "lemma": "다", "sense_id": "s2", "pos": "noun", "gloss": "g1"},
+                {"alias": "T2", "record_id": "r3", "lemma": "다", "sense_id": "s3", "pos": "verb", "gloss": "g2"}]}]},
+        {"source": {"lemma": "라", "pos": "verb", "gloss": "백슬래시 \\ | \" 😀"}, "relations": [
+            {"n": 3, "target": "마", "target_record_id": "r4", "target_sense_id": "s4", "target_pos": "noun",
+             "target_gloss": "모호", "type": "scene", "tier": 3},
+            {"n": 4, "text": "바", "type": "action", "tier": 9, "targets": []}]}]}
+    PROMPT = ("chunk 003/012 relations 4\nS\t가\tnoun\t탭\\t줄\\n\nI1\t나\tnear\t1\n"
+              "X2\t다\tmood\t2\nT1\t다\tnoun\tg1\nT2\t다\tverb\tg2\n"
+              "S\t라\tverb\t백슬래시 \\\\ | \" 😀\nI3\t마\tscene\t3\tnoun\t모호\nX4\t바\taction\t9")
+
+    def context(self):
+        return stage3.decision_context(self.VIEW, "003")
+
+    def test_valid_view_passes_including_unusual_fields_and_zero_target_text_relation(self):
+        stage3.validate_prompt_view(self.PROMPT, self.context(), 12)
+
+    def test_prompt_view_fails_closed_when_it_does_not_bind_to_the_json_view(self):
+        p = self.PROMPT
+        cases = {
+            "missing": None, "not text": {"a": 1}, "empty": "",
+            "wrong chunk": p.replace("chunk 003/", "chunk 002/", 1),
+            "wrong total": p.replace("/012", "/011", 1),
+            "wrong count": p.replace("relations 4", "relations 3", 1),
+            "missing relation": p.replace("I1\t나\tnear\t1\n", ""),
+            "duplicate relation": p.replace("X4\t바", "X3\t바"),
+            "reordered relations": p.replace("I1\t나\tnear\t1\nX2\t다\tmood\t2\n", "X2\t다\tmood\t2\nI1\t나\tnear\t1\n"),
+            "kind swapped": p.replace("X4\t", "I4\t"),
+            "alias missing": p.replace("T2\t다\tverb\tg2\n", ""),
+            "alias added": p + "\nT1\tx\tnoun\tg",
+            "alias reordered": p.replace("T1\t다\tnoun\tg1\nT2\t다\tverb\tg2", "T2\t다\tverb\tg2\nT1\t다\tnoun\tg1"),
+            "alias under ID relation": p.replace("I1\t나\tnear\t1\n", "I1\t나\tnear\t1\nT1\tx\tnoun\tg\n"),
+            "bad escape": p.replace("g1", "g\\x"),
+            "bad tier": p.replace("near\t1", "near\t0"),
+            "short row": p.replace("X4\t바\taction\t9", "X4\t바\taction"),
+            "row before sense": p.replace("S\t가\tnoun\t탭\\t줄\\n\n", ""),
+            "empty sense": p.replace("S\t라", "S\t빈\tnoun\tg\nS\t라"),
+            "blank line": p.replace("I1", "\nI1"),
+        }
+        for name, value in cases.items():
+            with self.subTest(name), self.assertRaises(stage3.Stage3Error):
+                stage3.validate_prompt_view(value, self.context(), 12)
+
+    def test_read_chunk_separates_prompt_view_and_refuses_old_cli_output(self):
+        class Runner:
+            def __init__(self, payload):
+                self.payload = payload
+
+            def run(self, *_args, **_kwargs):
+                return mock.Mock(ok=True, out=json.dumps(self.payload), err="")
+
+        with __import__("tempfile").TemporaryDirectory() as directory:
+            path = stage3.checkpoint_path(directory, "001")
+            path.parent.mkdir(parents=True)
+            path.write_text(json.dumps(checkpoint(total=12, done=["001", "002"])), "utf-8")
+            view, prompt_view = stage3.read_chunk_prompt(Runner({**self.VIEW, "prompt_view": self.PROMPT}), {}, directory, "001")
+            self.assertEqual(view, self.VIEW)
+            self.assertEqual(prompt_view, self.PROMPT)
+            self.assertEqual(stage3.read_chunk(Runner({**self.VIEW, "prompt_view": self.PROMPT}), {}, directory, "001"), self.VIEW)
+            with self.assertRaises(stage3.Stage3Error):
+                stage3.read_chunk(Runner(self.VIEW), {}, directory, "001")
+            with self.assertRaises(stage3.Stage3Error):
+                stage3.read_chunk(Runner({**self.VIEW, "prompt_view": self.PROMPT.replace("I1", "I9")}), {}, directory, "001")
+
+    def test_refresh_pending_separates_prompt_view_and_accepts_null_when_no_active_chunk(self):
+        class Runner:
+            def __init__(self, payload):
+                self.payload = payload
+
+            def run(self, *_args, **_kwargs):
+                return mock.Mock(ok=True, out=json.dumps(self.payload), err="")
+
+        base = {"shard": "001", "chunk_count": 12, "current_chunk": "003", "active_changed": False,
+                "current_view": self.VIEW}
+        with __import__("tempfile").TemporaryDirectory() as directory:
+            path = stage3.checkpoint_path(directory, "001")
+            path.parent.mkdir(parents=True)
+            path.write_text(json.dumps(checkpoint(total=12, done=["001", "002"])), "utf-8")
+            refreshed = stage3.refresh_pending_chunks(Runner({**base, "prompt_view": self.PROMPT}), {}, directory, "001")
+            self.assertEqual(refreshed, base)
+            for bad in (None, "chunk 003/012 relations 4"):
+                with self.assertRaises(stage3.Stage3Error):
+                    stage3.refresh_pending_chunks(Runner({**base, "prompt_view": bad}), {}, directory, "001")
+            with self.assertRaises(stage3.Stage3Error):
+                stage3.refresh_pending_chunks(Runner(base), {}, directory, "001")
+            path.write_text(json.dumps(checkpoint(total=12, done=[f"{n:03d}" for n in range(1, 13)])), "utf-8")
+            done = {"shard": "001", "chunk_count": 12, "current_chunk": None, "active_changed": False,
+                    "current_view": None}
+            self.assertEqual(stage3.refresh_pending_chunks(Runner({**done, "prompt_view": None}), {}, directory, "001"), done)
+            with self.assertRaises(stage3.Stage3Error):
+                stage3.refresh_pending_chunks(Runner(done), {}, directory, "001")
+
+    def test_model_prompt_carries_the_compact_view_with_stable_prefix(self):
+        b = {"shard": "001", "branch": "s3-codex-001"}
+        first = prompts.stage3_chunk(b, "003", self.PROMPT)
+        other = prompts.stage3_chunk({"shard": "002", "branch": "s3-codex-002"}, "004", "chunk 004/012 relations 0",
+                                     resumed=True)
+        self.assertIn(self.PROMPT, first)
+        self.assertNotIn('"senses"', first)
+        shared = first.index("{{") if "{{" in first else first.index("chunk 003\nD 1 5 9") + 1
+        self.assertEqual(first[:shared].replace("003", "004"), other[:shared].replace("003", "004"))
+        self.assertLess(first.index("D 1 5 9"), first.index("shard 001"))
+        self.assertLess(first.index("D 1 5 9"), first.index("새 AI 세션"))
+
+
 class Stage3SupervisorFlow(unittest.TestCase):
     def setUp(self):
         self.w = s3_world(self)
