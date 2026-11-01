@@ -1433,9 +1433,8 @@ test('merge validates final Part accounting before writing and supports a local 
   assert.deepEqual([merged.relations_added, merged.drops_added], [0, 2]);
   const counts = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
   assert.deepEqual([counts.unique, counts.relation, counts.drop, counts.missing], [2, 0, 2, 0]);
-  const relations = await readRelationRows(path.join(root, 'data/relations/relation-001.jsonl'));
+  await assert.rejects(() => readFile(path.join(root, 'data/relations/relation-001.jsonl')), { code: 'ENOENT' });
   const drops = await readDropRows(path.join(root, 'data/relation-drops/drop-001.jsonl'));
-  assert.deepEqual(relations, []);
   assert.deepEqual(drops, [
     { source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '가로', reason: editorialReason },
     { source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '무관후보', reason: otherEditorialReason },
