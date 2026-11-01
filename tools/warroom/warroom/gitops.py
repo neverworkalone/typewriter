@@ -747,7 +747,7 @@ class Git:
         return [p for p in self._git("diff", "--name-only", "--no-renames", old, new).out.splitlines() if p]
 
     def has_deleted_id_relation_rows(self, old: str, new: str, *, path: Path | None = None) -> bool:
-        """Cheaply detect candidate-covering ID Relation deletions before querying Stage 3 PR history."""
+        """Cheaply detect candidate-covering ID Relation deletions before loading the affected candidate scopes."""
         diff = self._git("diff", "--no-renames", "--unified=0", old, new, "--",
                          "data/relations/relation-*.jsonl", cwd=path).out
         relation_file = False
@@ -1000,13 +1000,13 @@ class Git:
             raise GitError(f"admission-cli merge 실패: {' '.join((res.err or res.out).split())[-300:]}")
 
     def stage2_prepare_merge(self, worktree: Path, shard: str, batch: str, part: str,
-                             stage3_commits: list[str] | None = None, *, refresh: bool = False,
+                             relation_diff: tuple[str, str] | None = None, *, refresh: bool = False,
                              timeout: int = 900) -> None:
-        """Capture or validate the trusted premerge snapshot before the read-only preflight."""
+        """Capture or validate the trusted premerge snapshot and data-diff evidence before preflight."""
         checkpoint = f".warroom-scratch/relation-admission-{shard}-{batch}-{part}.json"
         args = ["node", "scripts/relation/admission-cli.mjs", "prepare-merge", "--checkpoint", checkpoint, "--json"]
-        for sha in stage3_commits or []:
-            args.extend(["--stage3-commit", sha])
+        if relation_diff is not None:
+            args.extend(["--diff-from", relation_diff[0], "--diff-to", relation_diff[1]])
         if refresh:
             args.append("--refresh")
         res = self.r.run(args,
@@ -1020,15 +1020,14 @@ class Git:
         if not isinstance(payload, dict) or payload.get("ok") is not True:
             raise GitError("admission-cli prepare-merge exited 0 without {ok:true}")
 
-    def stage2_reconcile(self, worktree: Path, shard: str, stage3_commits: list[str], *, batch: str | None = None,
+    def stage2_reconcile(self, worktree: Path, shard: str, diff_from: str, diff_to: str, *, batch: str | None = None,
                          part: str | None = None, dry_run: bool = False, timeout: int = 900) -> dict:
         args = ["node", "scripts/relation/admission-cli.mjs", "reconcile", "--shard", shard]
         if batch is not None:
             args.extend(["--batch", batch])
         if part is not None:
             args.extend(["--part", part])
-        for sha in stage3_commits:
-            args.extend(["--stage3-commit", sha])
+        args.extend(["--diff-from", diff_from, "--diff-to", diff_to])
         if dry_run:
             args.append("--dry-run")
         args.append("--json")
@@ -1046,10 +1045,10 @@ class Git:
             raise GitError("admission-cli reconcile dry-run state did not match the request")
         return payload
 
-    def stage2_reconcile_latest(self, sha: str, shard: str, stage3_commits: list[str], *, batch: str,
+    def stage2_reconcile_latest(self, sha: str, shard: str, diff_from: str, diff_to: str, *, batch: str,
                                 part: str, timeout: int = 900) -> dict:
         """Read-only reconciliation preview on the exact detached master commit."""
-        return self.stage2_reconcile(self._verify_checkout(sha), shard, stage3_commits,
+        return self.stage2_reconcile(self._verify_checkout(sha), shard, diff_from, diff_to,
                                      batch=batch, part=part, dry_run=True, timeout=timeout)
 
     def stage2_preflight(self, worktree: Path, shard: str, batch: str, part: str,

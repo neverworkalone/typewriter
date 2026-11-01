@@ -34,7 +34,7 @@ const file = (name, byId) => ({
 });
 const files = [
   file('001_01_a_codex.jsonl', { w1: ['유일', '새  말', '동철'], w2: ['버릴말'] }),
-  file('001_01_b_claude.jsonl', { w1: ['새 말', '표제1x'] }),
+  file('001_01_b_claude.jsonl', { w1: ['새 말', '분홍빛'] }),
 ];
 
 test('persisted Relation and Drop JSONL use one compact schema while preserving candidate-assignment states', () => {
@@ -96,7 +96,7 @@ test('prepare merges exact duplicates, keeps homograph ambiguity visible and ski
   ];
   const { items, stats } = prepareShard({ canonicalRows: shardRows, candidateFiles: files, approvedRelationRows: approved, index });
   const w1 = items.find((item) => item.sense_id === 'w1-s1');
-  assert.deepEqual(w1.candidates.map((c) => c.text), ['새 말', '동철', '표제1x']);
+  assert.deepEqual(w1.candidates.map((c) => c.text), ['새 말', '동철', '분홍빛']);
   assert.deepEqual(w1.candidates[0].producers, ['a_codex', 'b_claude']);
   assert.deepEqual(w1.candidates[1].same_spelling_records, ['w900', 'w901']);
   assert.equal(stats.skipped_existing, 1);
@@ -104,7 +104,7 @@ test('prepare merges exact duplicates, keeps homograph ambiguity visible and ski
 });
 
 test('shared relation candidate attribution preserves assigned and legacy forward/reverse forms', () => {
-  const candidates = mergeCandidates(shardRows, [file('001_01_a_codex.jsonl', { w1: ['유일', '표제1x'] })], {
+  const candidates = mergeCandidates(shardRows, [file('001_01_a_codex.jsonl', { w1: ['유일', '분홍빛'] })], {
     canonicalLemmaForms: new Set(rows.map((row) => normalizeCandidate(row.lemma))),
   }).merged;
   const legacy = {
@@ -156,7 +156,7 @@ test('new ID rows leave already decided reverse Candidate forms unclaimed', () =
   }), ['표제 1', '표제1', '표제-1'], 'undecided orthographic spellings remain available');
 });
 
-test('Stage 3 deletion reconciliation emits only locally owned orphan Stage 1 candidates', () => {
+test('data-diff reconciliation emits only locally owned orphan Stage 1 candidates', () => {
   const localRows = [...shardRows];
   const indexWithDuplicate = buildCanonicalIndex([...rows, {
     id: 'w903', lemma: '유일', senses: [{ id: 'w903-s1', pos: 'noun', gloss: '다른 뜻' }],
@@ -174,7 +174,9 @@ test('Stage 3 deletion reconciliation emits only locally owned orphan Stage 1 ca
     canonicalRows: localRows,
     candidateFiles,
     scopeRows: [localRows[0]],
-    removedRelationRows: [removedForward, removedReverse],
+    removedRelationRows: [removedForward, removedReverse, {
+      source_record_id: 'w1', source_sense_id: 'w1-s1', text: '유일', type: 'near', relevance: 2,
+    }],
     relationRows: [],
     dropRows: [],
     index: indexWithDuplicate,
@@ -196,6 +198,18 @@ test('Stage 3 deletion reconciliation emits only locally owned orphan Stage 1 ca
   assert.deepEqual(retained, [{ source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '동철', reason: 'z' }],
     'a surviving relation for the same candidate prevents a Drop');
 
+  const retainedByDrop = orphanedCandidateDrops({
+    canonicalRows: localRows,
+    candidateFiles,
+    scopeRows: [localRows[0]],
+    removedRelationRows: [removedForward, removedReverse],
+    relationRows: [],
+    dropRows: [{ source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '유일', reason: 'e' }],
+    index: indexWithDuplicate,
+  });
+  assert.deepEqual(retainedByDrop, [{ source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '동철', reason: 'z' }],
+    'a surviving Drop for the exact key prevents a duplicate or replacement Drop');
+
   const notPrepared = orphanedCandidateDrops({
     canonicalRows: localRows,
     candidateFiles: [file('001_01_a_codex.jsonl', { w1: ['다른후보'] })],
@@ -206,6 +220,41 @@ test('Stage 3 deletion reconciliation emits only locally owned orphan Stage 1 ca
     index: indexWithDuplicate,
   });
   assert.deepEqual(notPrepared, [], 'a deleted relation cannot create a Drop for a Candidate absent from the local Stage 1 input');
+
+  const twoSenseRows = localRows.map((row) => row.id === 'w1'
+    ? { ...row, senses: [...row.senses, { id: 'w1-s2', pos: 'noun', gloss: '두 번째 뜻' }] } : row);
+  const twoSenseFiles = [{ name: '001_01_a_codex.jsonl', rows: twoSenseRows.map((record) => ({
+    record_id: record.id,
+    senses: record.senses.map((sense) => ({ sense_id: sense.id,
+      candidates: record.id === 'w1' && sense.id === 'w1-s2' ? ['유일'] : [] })),
+  })) }];
+  const twoSenseIndex = buildCanonicalIndex([
+    ...twoSenseRows,
+    ...rows.slice(localRows.length),
+    { id: 'w903', lemma: '유일', senses: [{ id: 'w903-s1', pos: 'noun', gloss: '다른 뜻' }] },
+  ]);
+  const differentSense = orphanedCandidateDrops({
+    canonicalRows: twoSenseRows,
+    candidateFiles: twoSenseFiles,
+    scopeRows: [twoSenseRows[0]],
+    removedRelationRows: [removedForward],
+    relationRows: [],
+    dropRows: [],
+    index: twoSenseIndex,
+  });
+  assert.deepEqual(differentSense, [], 'the same spelling in another Sense does not inherit the removed Relation coverage');
+
+  const indexWithoutTarget = buildCanonicalIndex(rows.filter((row) => row.id !== 'w902'));
+  assert.throws(() => orphanedCandidateDrops({
+    canonicalRows: localRows,
+    candidateFiles,
+    scopeRows: [localRows[0]],
+    removedRelationRows: [removedForward],
+    relationRows: [],
+    dropRows: [],
+    index: indexWithoutTarget,
+  }), /no longer resolves to current Canonical senses/u,
+  'a deleted ID Relation with an unresolved endpoint fails closed');
 });
 
 test('Stage 2 does not require a source gloss for candidates already covered by an approved Relation or Drop', () => {
@@ -237,10 +286,10 @@ test('Stage 2 does not require a source gloss for candidates already covered by 
   }
 });
 
-test('Stage 2 retains an orthographic search form that is another Canonical lemma', () => {
+test('Stage 2 retains an independent search form that is another Canonical lemma', () => {
   const canonicalRows = canonical(1000);
   const source = {
-    id: 'w122481', lemma: '무릎 치기', search_forms: ['무릎 치기', '무릎치기'],
+    id: 'w122481', lemma: '씨름 기술', search_forms: ['씨름 기술', '무릎치기'],
     senses: [{ id: 'w122481-s1', pos: 'expression', gloss: '상대편의 무릎 뒤쪽을 치면서 끌어당겨 넘기는 씨름 기술.' }],
   };
   const target = {
@@ -257,17 +306,27 @@ test('Stage 2 retains an orthographic search form that is another Canonical lemm
   };
   const scopeRows = canonicalRows.slice(500);
 
-  assert.throws(
-    () => prepareShard({ canonicalRows, candidateFiles: [file], index: buildCanonicalIndex(canonicalRows), scopeRows }),
-    /repeats source lemma "무릎 치기" in orthographic search form "무릎치기"/u,
-  );
-
   const indexWithIndependentLemma = buildCanonicalIndex([...canonicalRows, target]);
   const { items } = prepareShard({ canonicalRows, candidateFiles: [file], index: indexWithIndependentLemma, scopeRows });
   assert.deepEqual(
     items.find((item) => item.sense_id === 'w122481-s1').candidates.map((candidate) => candidate.text),
     ['무릎치기'],
   );
+});
+
+test('Stage 2 prepare accepts historical partial source-lemma overlap without changing its file', () => {
+  const canonicalRows = [{
+    id: 'w012',
+    lemma: '가계 경제',
+    senses: [{ id: 'w012-s1', pos: 'noun', gloss: '가계에 관한 설명.' }],
+  }];
+  const rows = [{ record_id: 'w012', senses: [{ sense_id: 'w012-s1', candidates: ['경제'] }] }];
+  const candidateFile = { name: '001_01_a_claude.jsonl', rows };
+  const index = buildCanonicalIndex(canonicalRows);
+
+  const { items } = prepareShard({ canonicalRows, candidateFiles: [candidateFile], index });
+  assert.deepEqual(items[0].candidates.map((candidate) => candidate.text), ['경제']);
+  assert.deepEqual(rows[0].senses[0].candidates, ['경제']);
 });
 
 test('Stage 2 resolves curated lexical search forms alongside an unrelated exact lemma', () => {
@@ -330,7 +389,7 @@ test('Stage 2 resolves curated lexical search forms alongside an unrelated exact
   assert.equal(verified.missing, 0, 'an ID link to the curated search-form target accounts for its candidate spelling');
 });
 
-test('an exact Canonical lemma wins over a colliding orthographic form for existing ID coverage', () => {
+test('an exact Canonical lemma owns a form colliding with another record’s orthographic form', () => {
   const source = {
     id: 'w122481', lemma: '무릎 치기', search_forms: ['무릎 치기', '무릎치기'],
     senses: [{ id: 'w122481-s1', pos: 'expression', gloss: '상대편의 무릎 뒤쪽을 치면서 끌어당겨 넘기는 씨름 기술.' }],
@@ -342,53 +401,12 @@ test('an exact Canonical lemma wins over a colliding orthographic form for exist
       { id: 'w427808-s2', pos: 'noun', gloss: '옛 웃옷.' },
     ],
   };
-  const unrelatedSource = { id: 'w990000', lemma: '바지 관련어', senses: [{ id: 'w990000-s1', pos: 'noun', gloss: '뜻.' }] };
-  const index = buildCanonicalIndex([source, target, unrelatedSource]);
-  const candidateFile = (record, text) => ({
-    name: '090_01_a_codex.jsonl',
-    rows: [{ record_id: record.id, senses: [{ sense_id: record.senses[0].id, candidates: [text] }] }],
-  });
-  const crossShardLink = (targetSense) => ({
-    source_record_id: target.id, source_sense_id: targetSense,
-    target_record_id: source.id, target_sense_id: source.senses[0].id,
-    type: 'near', relevance: 3, reverse_type: 'near', reverse_relevance: 3,
-  });
-  const sourceCandidates = candidateFile(source, '무릎치기');
-  const prepare = (approvedRelationRows) => prepareShard({
-    canonicalRows: [source], candidateFiles: [sourceCandidates], approvedRelationRows, index, scopeRows: [source],
-  });
-  const verify = (approvedRelationRows) => verifyAccounting({
-    canonicalRows: [source], candidateFiles: [sourceCandidates], relationRows: [], dropRows: [],
-    otherRelationRows: approvedRelationRows, index, scopeRows: [source],
-  });
-
-  const firstSenseOnly = [crossShardLink('w427808-s1')];
-  assert.deepEqual(prepare(firstSenseOnly).items, [], 'an existing ID relation accounts for the candidate without requiring a link to every target sense');
-  assert.equal(prepare(firstSenseOnly).stats.skipped_existing, 1);
-  assert.equal(verify(firstSenseOnly).missing, 0, 'a valid other-shard reverse ID pair accounts for the candidate');
-
-  assert.deepEqual(prepare([]).items[0].candidates.map((candidate) => candidate.text), ['무릎치기'], 'a new candidate still needs a target-sense decision');
-  const everyTargetSense = [...firstSenseOnly, crossShardLink('w427808-s2')];
-  assert.deepEqual(prepare(everyTargetSense).items, [], 'additional approved target-sense links remain existing coverage');
-  assert.equal(prepare(everyTargetSense).stats.skipped_existing, 1);
-  assert.equal(verify(everyTargetSense).skipped_existing, 1);
-
-  const unrelatedCandidateFile = candidateFile(unrelatedSource, '무릎치기');
-  const aliasOnlyRelation = {
-    source_record_id: unrelatedSource.id, source_sense_id: unrelatedSource.senses[0].id,
-    target_record_id: source.id, target_sense_id: source.senses[0].id,
-    type: 'near', relevance: 3, reverse_type: 'near', reverse_relevance: 3,
-  };
-  const aliasPrepare = prepareShard({
-    canonicalRows: [unrelatedSource], candidateFiles: [unrelatedCandidateFile],
-    approvedRelationRows: [aliasOnlyRelation], index, scopeRows: [unrelatedSource],
-  });
-  assert.deepEqual(aliasPrepare.items[0].candidates[0].same_spelling_records, [target.id]);
-  assert.deepEqual(aliasPrepare.items[0].candidates.map((candidate) => candidate.text), ['무릎치기']);
-  assert.throws(() => verifyAccounting({
-    canonicalRows: [unrelatedSource], candidateFiles: [unrelatedCandidateFile],
-    relationRows: [aliasOnlyRelation], dropRows: [], otherRelationRows: [], index, scopeRows: [unrelatedSource],
-  }), /is not a Stage 1 candidate/u, 'a relation to the colliding search-form record cannot claim the exact lemma candidate');
+  const index = buildCanonicalIndex([source, target]);
+  assert.deepEqual(
+    sameSpellingTargets(index, '무릎치기').map((record) => record.record_id),
+    [target.id],
+    'the exact Canonical lemma owns the spelling instead of the other record’s orthographic search form',
+  );
 });
 
 test('an exact existing ID relation answers its reverse candidate despite homographic spelling', () => {
@@ -453,7 +471,7 @@ test('accounting: every unique candidate is exactly one of relation, drop or exi
     relations: [
       { ...base, target_record_id: 'w902', target_sense_id: 'w902-s1', type: 'near', relevance: 1, reverse_type: 'near', reverse_relevance: 1 },
       { ...base, text: '새 말', type: 'scene', relevance: 4 },
-      { ...base, text: '표제1x', type: 'scene', relevance: 4 },
+      { ...base, text: '분홍빛', type: 'scene', relevance: 4 },
       { ...base, target_record_id: 'w900', target_sense_id: 'w900-s1', type: 'near', relevance: 2, reverse_type: 'near', reverse_relevance: 2 },
     ],
     drops: [{ source_record_id: 'w2', source_sense_id: 'w2-s1', candidate: '버릴말', reason: 'x' }],
@@ -508,7 +526,7 @@ test('accounting treats complete gloss words as mentions, not substrings inside 
   assert.throws(() => verifyDrop('가로에 사는 민족.', '가로', 'x'), /named by the gloss/,
     'an unrelated Drop remains blocked for the same gloss-named candidate');
   assert.equal(verifyDrop('가로에 사는 민족.', '가로', 'z').drop, 1,
-    'the Stage 3 reconciliation code remains exempt from the unrelated Drop check');
+    'deterministic reconciliation remains exempt from the unrelated Drop check');
 });
 
 test('accounting allows an approved reverse candidate for a different target sense, but rejects the same sense pair twice', () => {

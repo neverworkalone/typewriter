@@ -203,7 +203,7 @@ test('Stage 2 loaders ignore malformed historical Relation and Drop backups', as
   assert.deepEqual(texts(prepared), ['버릴말', '새 말', '유일', '텍스트']);
 });
 
-test('Stage 2 accepts only x/e and reserves Stage 3 z; old free-form values fail', async (t) => {
+test('Stage 2 accepts only x/e and reserves z for deterministic orphan reconciliation', async (t) => {
   const { root, checkpoint } = await prepareSixPart(t);
   const chunk = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint], { root }));
   const input = '.warroom-scratch/drop-decision.json';
@@ -213,7 +213,7 @@ test('Stage 2 accepts only x/e and reserves Stage 3 z; old free-form values fail
         disposition: 'drop', reason }))) }));
     return quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', input], { root }));
   };
-  await assert.rejects(() => save('z'), /reason "z" is reserved for Stage 3 reconciliation/u);
+  await assert.rejects(() => save('z'), /reason "z" is reserved for deterministic orphan reconciliation/u);
   await assert.rejects(() => save('edit'), /new Stage 2 Drop reason must be "x" or "e"/u);
   await assert.rejects(() => save('editorial: source-bound explanation'), /new Stage 2 Drop reason must be "x" or "e"/u);
   await assert.rejects(() => save('unrelated'), /new Stage 2 Drop reason must be "x" or "e"/u);
@@ -227,7 +227,7 @@ test('Stage 2 accepts only x/e and reserves Stage 3 z; old free-form values fail
   assert.ok((await readDropRows(path.join(root, 'data/relation-drops/drop-001.jsonl'))).every((row) => row.reason === 'e'));
 });
 
-test('Stage 3 deletion reconciliation previews without writes and persists only proven edit Drops', async (t) => {
+test('data-diff reconciliation previews without writes and persists only proven orphan Drops', async (t) => {
   const { root } = await sixCandidateRepository(t);
   const relationPath = path.join(root, 'data/relations/relation-001.jsonl');
   const dropPath = path.join(root, 'data/relation-drops/drop-001.jsonl');
@@ -253,31 +253,78 @@ test('Stage 3 deletion reconciliation previews without writes and persists only 
   git(['config', 'user.name', 'Typewriter Test']);
   git(['config', 'user.email', 'typewriter-test@example.invalid']);
   git(['add', 'data']);
-  git(['commit', '-q', '-m', 'before Stage 3 deletion']);
+  git(['commit', '-q', '-m', 'before approved Relation deletion']);
   const beforeDeletion = git(['rev-parse', 'HEAD']);
   await writeFile(relationPath, '');
   git(['add', relationPath]);
-  git(['commit', '-q', '-m', 'Stage 3 removes Relation']);
-  const stage3Commit = git(['rev-parse', 'HEAD']);
-  const affected = await quiet(() => run(['affected-shards-batch', '--from-sha', beforeDeletion, '--to', stage3Commit, '--json'], { root }));
+  git(['commit', '-q', '-m', 'Data QA removes approved Relation']);
+  const deletionCommit = git(['rev-parse', 'HEAD']);
+  const affected = await quiet(() => run(['affected-shards-batch', '--from-sha', beforeDeletion, '--to', deletionCommit, '--json'], { root }));
   assert.deepEqual(affected.by_from, [{ from: beforeDeletion, shards: ['001'] }]);
 
   const beforePreview = await fileState(dropPath);
   const preview = await quiet(() => run(['reconcile', '--shard', '001', '--batch', '01', '--part', '01',
-    '--stage3-commit', stage3Commit, '--dry-run', '--json'], { root }));
+    '--diff-from', beforeDeletion, '--diff-to', deletionCommit, '--dry-run', '--json'], { root }));
   assert.deepEqual(preview, { version: 1, ok: true, shard: '001', batch: '01', part: '01', added: 1,
     dry_run: true, candidates: [{ source_sense_id: 'w1-s1', candidate: '다라' }] });
   assert.deepEqual(await fileState(dropPath), beforePreview);
 
   const reconciled = await quiet(() => run(['reconcile', '--shard', '001', '--batch', '01', '--part', '01',
-    '--stage3-commit', stage3Commit, '--json'], { root }));
+    '--diff-from', beforeDeletion, '--diff-to', deletionCommit, '--json'], { root }));
   assert.equal(reconciled.added, 1);
   assert.equal(reconciled.dry_run, false);
   const drops = await readDropRows(dropPath);
   assert.equal(drops.find((row) => row.candidate === '다라')?.reason, 'z');
+  assert.deepEqual(drops.slice(0, 6).map((row) => row.candidate), sourceCandidates.slice(1),
+    'existing Drop rows keep their order and the proven orphan is appended');
   const verified = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01', '--json'], { root }));
   assert.equal(verified.missing, 0, 'the reconciled Part has complete candidate accounting');
-  assert.notEqual(beforeDeletion, stage3Commit);
+  assert.notEqual(beforeDeletion, deletionCommit);
+});
+
+test('Stage 2 premerge materializes only candidates covered by an approved Relation removed in its data diff', async (t) => {
+  const { root } = await sixCandidateRepository(t);
+  const relationPath = path.join(root, 'data/relations/relation-001.jsonl');
+  const dropPath = path.join(root, 'data/relation-drops/drop-001.jsonl');
+  const candidateFile = path.join(root, 'data/relation-candidates/001/001_01_a_codex.jsonl');
+  const rows = (await readFile(candidateFile, 'utf8')).trim().split('\n').map(JSON.parse);
+  rows[0].senses[0].candidates.unshift('다라');
+  await writeFile(candidateFile, jsonl(rows));
+  const assigned = { source_record_id: 'w1', source_sense_id: 'w1-s1', target_record_id: 'w2', target_sense_id: 'w2-s1',
+    type: 'near', relevance: 2, reverse_type: 'near', reverse_relevance: 2,
+    candidate_assignment_version: 1, candidate_forms: ['다라'], reverse_candidate_forms: [] };
+  await writeFile(relationPath, relationJsonl([assigned]));
+
+  const git = (args) => {
+    const result = spawnSync('git', args, { cwd: root, encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    return result.stdout.trim();
+  };
+  git(['init', '-q', '-b', 'master']);
+  git(['config', 'user.name', 'Typewriter Test']);
+  git(['config', 'user.email', 'typewriter-test@example.invalid']);
+  git(['add', 'data']);
+  git(['commit', '-q', '-m', 'approved Relation baseline']);
+  const beforeDeletion = git(['rev-parse', 'HEAD']);
+
+  const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
+  await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01', '--checkpoint', checkpoint], { root }));
+  await saveAllPrimaryAsDrops(root, checkpoint);
+  await completeOptionalForTest(root, checkpoint);
+  await writeFile(relationPath, '');
+  git(['add', relationPath]);
+  git(['commit', '-q', '-m', 'post-merge QA removes approved Relation']);
+  const afterDeletion = git(['rev-parse', 'HEAD']);
+
+  await quiet(() => run(['prepare-merge', '--checkpoint', checkpoint, '--diff-from', beforeDeletion,
+    '--diff-to', afterDeletion, '--refresh', '--json'], { root }));
+  await quiet(() => run(['merge', '--checkpoint', checkpoint], { root }));
+  const drops = await readDropRows(dropPath);
+  assert.equal(drops.find((row) => row.candidate === '다라')?.reason, 'z');
+  assert.equal(drops.filter((row) => row.reason === 'x').length, 6,
+    'Stage 2 decisions remain intact while only the formerly covered candidate receives z');
+  const verified = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01', '--json'], { root }));
+  assert.equal(verified.missing, 0);
 });
 
 test('Part merge refuses a checkpoint prepared with incomplete Stage 1 inputs', async (t) => {
@@ -355,7 +402,7 @@ test('--part selects 100-record Stage 2 scopes, reports scoped stats, and keeps 
   t.after(() => rm(root, { recursive: true, force: true }));
   const records = Array.from({ length: 1000 }, (_, i) => ({
     id: `w${i + 1}`,
-    lemma: `표제${i + 1}`,
+    lemma: i === 0 ? '출발말' : i === 100 ? '도착말' : `표제${i + 1}`,
     senses: [{ id: `w${i + 1}-s1`, pos: 'noun', gloss: `뜻${i + 1}` }],
   }));
   for (const dir of ['data/canonical', 'data/relation-candidates/001', 'data/relations', 'data/relation-drops']) {
@@ -368,8 +415,8 @@ test('--part selects 100-record Stage 2 scopes, reports scoped stats, and keeps 
     candidatesById.set(`w${first}`, [`후보${first}`]);
     candidatesById.set(`w${first + 99}`, [`후보${first + 99}`]);
   }
-  candidatesById.set('w1', ['표제101', '후보1']);
-  candidatesById.set('w101', ['표제1', '후보101']);
+  candidatesById.set('w1', ['도착말', '후보1']);
+  candidatesById.set('w101', ['출발말', '후보101']);
 
   for (const batch of ['01', '02']) {
     const offset = (Number(batch) - 1) * 500;
@@ -984,9 +1031,9 @@ for (const includeTargetAlias of [false, true]) {
     const records = Array.from({ length: 1000 }, (_, index) => {
       if (index === 0) return { id: 'w1', lemma: '생명 보험 회사', senses: [{ id: 'w1-s1', pos: 'noun', gloss: '생명 보험을 판매하는 회사.' }] };
       if (index === 100) return {
-        id: 'w2', lemma: '생명 보험',
-        ...(includeTargetAlias ? { search_forms: ['생명보험'] } : {}),
-        senses: [{ id: 'w2-s1', pos: 'noun', gloss: '사람의 생명에 대하여 보험금을 지급하는 보험.' }],
+        id: 'w2', lemma: '화재 보장',
+        ...(includeTargetAlias ? { search_forms: ['화재 보장', '화재보장'] } : {}),
+        senses: [{ id: 'w2-s1', pos: 'noun', gloss: '화재로 인한 피해를 보장하는 보험.' }],
       };
       const id = `wfixture${index}`;
       return { id, lemma: `표제${index}`, senses: [{ id: `${id}-s1`, pos: 'noun', gloss: `뜻${index}` }] };
@@ -1004,7 +1051,7 @@ for (const includeTargetAlias of [false, true]) {
           senses: [{
             sense_id: record.senses[0].id,
             candidates: batch === '01' && producer === 'a_codex'
-              ? record.id === 'w1' ? ['생명 보험', '독립어'] : record.id === 'w2' ? ['생명 보험 회사'] : []
+              ? record.id === 'w1' ? ['화재 보장', '독립어'] : record.id === 'w2' ? ['생명 보험 회사'] : []
               : [],
           }],
         }))));
@@ -1038,7 +1085,7 @@ for (const includeTargetAlias of [false, true]) {
     const rows = await readRelationRows(relationPath);
     assert.equal(rows.length, 1, 'reciprocal decisions retain one bidirectional ID row');
     assert.equal(rows[0].candidate_assignment_version, 0, 'the original forward direction remains legacy-inferred');
-    assert.deepEqual(rows[0].candidate_forms, includeTargetAlias ? ['생명 보험', '생명보험'] : ['생명 보험']);
+    assert.deepEqual(rows[0].candidate_forms, includeTargetAlias ? ['화재 보장', '화재보장'] : ['화재 보장']);
     assert.deepEqual(rows[0].reverse_candidate_forms, ['생명 보험 회사'], 'the newly selected reciprocal spelling is persisted exactly');
 
     const partCounts = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '02'], { root }));
@@ -1067,7 +1114,7 @@ test('merge coalesces orthographic aliases for one target sense and keeps the ca
   t.after(() => rm(root, { recursive: true, force: true }));
   const records = Array.from({ length: 500 }, (_, index) => {
     if (index === 0) return { id: 'w1', lemma: '생명 보험 회사', senses: [{ id: 'w1-s1', pos: 'noun', gloss: '생명 보험을 판매하는 회사.' }] };
-    if (index === 1) return { id: 'w2', lemma: '생명 보험', search_forms: ['생명보험'], senses: [{ id: 'w2-s1', pos: 'noun', gloss: '사람의 생명에 대하여 보험금을 지급하는 보험.' }] };
+    if (index === 1) return { id: 'w2', lemma: '화재 보장', search_forms: ['화재 보장', '화재보장'], senses: [{ id: 'w2-s1', pos: 'noun', gloss: '화재에 대비해 보장하는 보험.' }] };
     return { id: `w${index + 1}`, lemma: `표제${index + 1}`, senses: [{ id: `w${index + 1}-s1`, pos: 'noun', gloss: `뜻${index + 1}` }] };
   });
   for (const directory of ['data/canonical', 'data/relation-candidates/001', 'data/relations', 'data/relation-drops']) {
@@ -1077,20 +1124,20 @@ test('merge coalesces orthographic aliases for one target sense and keeps the ca
   for (const producer of ['a_codex', 'a_claude', 'b_codex', 'b_claude', 'c_codex', 'd_codex']) {
     await writeFile(path.join(root, `data/relation-candidates/001/001_01_${producer}.jsonl`), jsonl(records.map((record, index) => ({
       record_id: record.id,
-      senses: [{ sense_id: record.senses[0].id, candidates: producer === 'a_codex' && index === 0 ? ['생명보험', '생명 보험'] : [] }],
+      senses: [{ sense_id: record.senses[0].id, candidates: producer === 'a_codex' && index === 0 ? ['화재보장', '화재 보장'] : [] }],
     }))));
   }
 
   const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
   await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
   const chunk = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint], { root }));
-  assert.deepEqual(chunk.items[0].candidates.map((candidate) => candidate.text), ['생명보험', '생명 보험']);
+  assert.deepEqual(chunk.items[0].candidates.map((candidate) => candidate.text), ['화재보장', '화재 보장']);
   const decisionsFile = '.warroom-scratch/decisions.json';
   await writeFile(path.join(root, decisionsFile), JSON.stringify({
     chunk_id: chunk.chunk_id,
     decisions: [
-      { source_sense_id: 'w1-s1', candidate: '생명보험', disposition: 'relation', target_resolution: 'exact', target_record_id: 'w2', target_sense_id: 'w2-s1', type: 'near', relevance: 7 },
-      { source_sense_id: 'w1-s1', candidate: '생명 보험', disposition: 'relation', target_resolution: 'exact', target_record_id: 'w2', target_sense_id: 'w2-s1', type: 'near', relevance: 2 },
+      { source_sense_id: 'w1-s1', candidate: '화재보장', disposition: 'relation', target_resolution: 'exact', target_record_id: 'w2', target_sense_id: 'w2-s1', type: 'near', relevance: 7 },
+      { source_sense_id: 'w1-s1', candidate: '화재 보장', disposition: 'relation', target_resolution: 'exact', target_record_id: 'w2', target_sense_id: 'w2-s1', type: 'near', relevance: 2 },
     ],
   }));
   await quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', decisionsFile], { root }));
@@ -1104,7 +1151,7 @@ test('merge coalesces orthographic aliases for one target sense and keeps the ca
   assert.deepEqual(relations, [{
     source_record_id: 'w1', source_sense_id: 'w1-s1', target_record_id: 'w2', target_sense_id: 'w2-s1',
     type: 'near', relevance: 2, reverse_type: 'near', reverse_relevance: 2,
-    candidate_assignment_version: 1, candidate_forms: ['생명보험', '생명 보험'], reverse_candidate_forms: ['생명 보험 회사'],
+    candidate_assignment_version: 1, candidate_forms: ['화재보장', '화재 보장'], reverse_candidate_forms: ['생명 보험 회사'],
   }], 'the canonical target headword spelling supplies the retained sense-pair judgment');
 
   const repeated = await mergeForTest(root, checkpoint);
@@ -1121,7 +1168,7 @@ test('merge coalesces orthographic aliases for one target sense and keeps the ca
   assert.equal(verified.missing, 0, 'the single ID row accounts for both orthographic candidate forms');
 
   const conflictingCheckpoint = JSON.parse(await readFile(checkpointPath, 'utf8'));
-  const conflictingDecision = conflictingCheckpoint.items[0].candidates.find((candidate) => candidate.text === '생명 보험').decision;
+  const conflictingDecision = conflictingCheckpoint.items[0].candidates.find((candidate) => candidate.text === '화재 보장').decision;
   conflictingDecision.type = 'scene';
   conflictingDecision.reverse_type = 'scene';
   await writeFile(checkpointPath, `${JSON.stringify(conflictingCheckpoint)}\n`);

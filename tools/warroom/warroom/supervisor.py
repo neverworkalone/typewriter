@@ -67,9 +67,6 @@ class Supervisor:
         self._worker_git_executables = []
         self._s2_fix_problem: dict[int, str] = {}   # batch id -> the save/format diagnostic for the next same-session fix
         self._s2_links_problem: dict[int, str] = {} # batch id -> optional-link save/format diagnostic
-        self._stage3_pr_files: dict[int, tuple[tuple, set[str]]] = {}
-        self._stage3_pr_inventory_sha: str | None = None
-        self._stage3_pr_inventory: list[dict] | None = None
         self.maint = Maintenance(self)   # shared-defect Issues, the hidden Maintainer and applying its merged fix
 
     def _adapter(self, producer: str):
@@ -1219,7 +1216,7 @@ class Supervisor:
         try:
             if not wt.exists():
                 if self._stage2_reconcile_task(b):
-                    base_revision, _change_point, _commits = self._stage2_reconcile_task(b)
+                    base_revision, _change_point = self._stage2_reconcile_task(b)
                     self.git.create_worktree_at(wt, b["branch"], base_revision)
                 else:
                     self.git.fetch_base(self.cfg["base_branch"])
@@ -2543,7 +2540,7 @@ class Supervisor:
         try:
             reconcile_task = self._stage2_reconcile_task(b)
             if reconcile_task:
-                base_revision, _change_point, _commits = reconcile_task
+                base_revision, _change_point = reconcile_task
                 if info.get("head_ref") != b["branch"]:
                     return "Stage 2 reconciliation PR head branch does not match its owned branch"
                 wt = Path(b["worktree"])
@@ -3002,52 +2999,20 @@ class Supervisor:
         self._launch_stage2_repair_page(b)
         return True
 
-    def _stage3_commits_between(self, base_revision: str, head: str, worktree: Path,
-                                master_sha: str) -> list[str]:
-        """Return only verified merged #2450 Stage 3 data PR commits between two known master points."""
+    def _relation_deletion_between(self, base_revision: str, head: str, worktree: Path) -> bool:
+        """Whether approved ID Relation coverage was actually deleted between two known data snapshots."""
         if not self.git.is_ancestor(base_revision, head, path=worktree):
             raise IntegrationBlocked("Stage 2 change-point is not an ancestor of the synchronized worktree")
-        changed_paths = self.git.changed_between(base_revision, head)
-        if not any(re.fullmatch(r"data/relations/relation-\d{3}\.jsonl", item) for item in changed_paths):
-            return []
-        if not self.git.has_deleted_id_relation_rows(base_revision, head, path=worktree):
-            return []
-        if self._stage3_pr_inventory_sha != master_sha:
-            self._stage3_pr_inventory = self.gh.merged_relation_stage3_prs()
-            self._stage3_pr_inventory_sha = master_sha
-        commits = []
-        seen = set()
-        for pr in self._stage3_pr_inventory or []:
-            sha = pr.get("merge_commit_sha")
-            if pr.get("base_ref") != self.cfg["base_branch"] or not re.fullmatch(r"[a-f0-9]{40}", sha or ""):
-                continue
-            if not self.git.commit_in_range(base_revision, sha, head, path=worktree):
-                continue
-            shard = pr["shard"]
-            allowed = {f"data/relations/relation-{shard}.jsonl", f"data/relation-drops/drop-{shard}.jsonl"}
-            identity = (pr.get("title"), pr.get("base_ref"), shard, sha)
-            cached = self._stage3_pr_files.get(pr["number"])
-            if cached is None:
-                pr_paths = {row.get("path") for row in self.gh.pull_files(pr["number"])}
-                commit_paths = set(self.git.changed_files(sha))
-                self._stage3_pr_files[pr["number"]] = (identity, pr_paths)
-            else:
-                cached_identity, pr_paths = cached
-                if cached_identity != identity:
-                    raise IntegrationBlocked(f"merged Stage 3 PR #{pr['number']} identity changed after verification")
-                commit_paths = set(self.git.changed_files(sha))
-            if not pr_paths or not pr_paths.issubset(allowed) or commit_paths != pr_paths:
-                raise IntegrationBlocked(f"merged Stage 3 PR #{pr['number']} changed files do not match its declared shard scope")
-            if sha in seen:
-                raise IntegrationBlocked(f"multiple Stage 3 PR records claim merge commit {sha[:10]}")
-            seen.add(sha)
-            commits.append(sha)
-        return sorted(commits)
+        return self.git.has_deleted_id_relation_rows(base_revision, head, path=worktree)
 
     def _stage2_change_point(self, b, checkpoint, worktree: Path) -> str:
         """Durably capture pre-sync HEAD for checkpoints created before `base_revision` was recorded."""
-        key = f"s2_stage3_change_point_{b['id']}"
+        key = f"s2_relation_change_point_{b['id']}"
+        legacy = self.store.get(f"s2_stage3_change_point_{b['id']}")
         stored = self.store.get(key)
+        if stored is not None and legacy is not None and stored != legacy:
+            raise IntegrationBlocked("Stage 2 change point differs from its legacy checkpoint; preserving the worktree")
+        stored = stored or legacy
         checkpoint_revision = checkpoint.get("base_revision")
         if stored is not None and checkpoint_revision is not None and stored != checkpoint_revision:
             raise IntegrationBlocked("Stage 2 change point differs from its checkpoint; preserving the worktree")
@@ -3056,38 +3021,38 @@ class Supervisor:
             revision = self.git.head(worktree)
         if not re.fullmatch(r"[a-f0-9]{40}", revision or ""):
             raise IntegrationBlocked("Stage 2 change-point revision is invalid; preserving the worktree")
-        if stored != revision:
+        if self.store.get(key) != revision:
             self.store.set(key, revision)
         return revision
 
     @staticmethod
-    def _stage2_reconcile_task(b) -> tuple[str, str, list[str]] | None:
-        """Decode a durable, deterministic reconciliation task from its run_kind."""
+    def _stage2_reconcile_task(b) -> tuple[str, str] | None:
+        """Decode a data-diff reconciliation task, accepting old commit payloads during rollout."""
         value = b["run_kind"]
         if not isinstance(value, str) or not value.startswith("s2_reconcile|"):
             return None
-        fields = value.split("|", 3)
-        if len(fields) != 4 or not all(re.fullmatch(r"[a-f0-9]{40}", sha) for sha in fields[1:3]):
+        fields = value.split("|")
+        if len(fields) not in {3, 4} or not all(re.fullmatch(r"[a-f0-9]{40}", sha) for sha in fields[1:3]):
             raise ValueError("Stage 2 reconciliation task has invalid base/change-point revisions")
-        commits = fields[3].split(",") if fields[3] else []
-        if not commits or any(not re.fullmatch(r"[a-f0-9]{40}", sha) for sha in commits) or len(set(commits)) != len(commits):
-            raise ValueError("Stage 2 reconciliation task has invalid Stage 3 commit IDs")
-        return fields[1], fields[2], commits
+        if len(fields) == 4:
+            commits = fields[3].split(",") if fields[3] else []
+            if not commits or any(not re.fullmatch(r"[a-f0-9]{40}", sha) for sha in commits) or len(set(commits)) != len(commits):
+                raise ValueError("legacy Stage 2 reconciliation task has invalid commit IDs")
+        return fields[1], fields[2]
 
     def _stage2_start_reconcile(self, ln, shard: str, batch: str, part: str,
                                 old_sha: str, sha: str) -> str | None:
         """Preview the exact Part on latest master and enqueue a Stage2-only Drop repair if proven necessary."""
         verifier = self.git._verify_checkout(sha)
-        commits = self._stage3_commits_between(old_sha, sha, verifier, sha)
-        if not commits:
+        if not self._relation_deletion_between(old_sha, sha, verifier):
             return None
-        preview = self.git.stage2_reconcile_latest(sha, shard, commits, batch=batch, part=part)
+        preview = self.git.stage2_reconcile_latest(sha, shard, old_sha, sha, batch=batch, part=part)
         if preview["added"] == 0:
             return None
         if self.git.fetch_base(self.cfg["base_branch"]) != sha:
             return "master advanced during completed-Part reconciliation preview; checking the new head next"
         model = ln["model"]
-        task = f"s2_reconcile|{sha}|{old_sha}|{','.join(commits)}"
+        task = f"s2_reconcile|{sha}|{old_sha}"
         branch = f"s2-reconcile-{model}-{shard}-{batch}-{part}-{sha[:8]}"
         wt = self.paths.worktrees / branch
         try:
@@ -3101,10 +3066,10 @@ class Supervisor:
             return "Stage 2 line stopped before reconciliation could be assigned"
         except LineBusy:
             return "another Stage 2 Part or reconciliation is active; waiting for its completion"
-        self.store.log(bid, f"Stage 3 삭제 후 고아 Candidate {preview['added']}개를 확인해 "
+        self.store.log(bid, f"승인 Relation 삭제 후 고아 Candidate {preview['added']}개를 확인해 "
                        f"{stage2.label(shard, stage2.batch_key(batch, part))} 전용 Drop 조정을 시작합니다")
         self._prepare_existing(self.store.batch(bid))
-        return f"{stage2.label(shard, stage2.batch_key(batch, part))} Stage 3 고아 Candidate를 위한 Stage 2 reconcile PR 대기"
+        return f"{stage2.label(shard, stage2.batch_key(batch, part))} 고아 Candidate를 위한 Stage 2 reconcile PR 대기"
 
     def _stage2_reconcile_review_fix(self, b, events) -> None:
         """A reconcile PR has no Part checkpoint; preserve it for an explicit owner edit instead of launching AI."""
@@ -3117,7 +3082,7 @@ class Supervisor:
                    f"현재 리뷰 이벤트: {keys}. 기존 Stage 2 Part 판정과 reconcile 증거는 보존했습니다.")
 
     def _stage2_reconcile_finalize(self, b) -> None:
-        """Write only proven edit Drops, verify the exact Part, and submit a separate Stage2-only PR."""
+        """Write only proven orphan Drops, verify the exact Part, and submit a separate Stage2-only PR."""
         wt = Path(b["worktree"])
         try:
             info = self._find_recovery_pr(b)
@@ -3125,7 +3090,7 @@ class Supervisor:
                 if problem := self._stage2_final_pr_problem(b, info):
                     return self._fail(b, "ERROR", problem)
                 return self._to_review(b, info)
-            base_revision, change_point, _stage3_commits = self._stage2_reconcile_task(b)
+            base_revision, change_point = self._stage2_reconcile_task(b)
             if not self.git.is_ancestor(base_revision, self.git.head(wt), path=wt):
                 raise IntegrationBlocked("reconciliation branch no longer contains its verified base revision")
             latest = self.git.fetch_base(self.cfg["base_branch"])
@@ -3138,10 +3103,16 @@ class Supervisor:
             if not self.git.contains(wt, latest):
                 raise IntegrationBlocked("latest master advanced during reconciliation; preserving the worktree")
             head = self.git.head(wt)
-            stage3_commits = self._stage3_commits_between(change_point, head, wt, latest)
-            if not stage3_commits:
-                raise IntegrationBlocked("latest master no longer contains a verified Stage 3 relation change")
-            task = f"s2_reconcile|{base_revision}|{change_point}|{','.join(stage3_commits)}"
+            if not self._relation_deletion_between(change_point, head, wt):
+                bb, pp = stage2.split_key(b["batch"])
+                ok, tail = self.git.verify_stage2_local(wt, b["shard"], bb, pp, checkpoint=False)
+                if not ok:
+                    raise IntegrationBlocked(f"no eligible Relation deletion remains and exact Part verify still fails: {tail}")
+                self.git.remove_owned(wt, b["branch"], head)
+                self.store.complete_batch(b["id"])
+                self.store.log(b["id"], "최신 데이터에서 실제 ID Relation 삭제가 없어 exact Part verify 통과; PR 없이 정리 완료")
+                return
+            task = f"s2_reconcile|{base_revision}|{change_point}"
             if task != b["run_kind"]:
                 self.store.update(b["id"], run_kind=task)
                 b = self.store.batch(b["id"])
@@ -3160,7 +3131,7 @@ class Supervisor:
                 self.store.set(commit_key, head)
                 committed = head
             if committed is None:
-                result = self.git.stage2_reconcile(wt, b["shard"], stage3_commits, batch=bb, part=pp)
+                result = self.git.stage2_reconcile(wt, b["shard"], change_point, head, batch=bb, part=pp)
                 changed = self.git.changed_paths(wt)
             else:
                 result, changed = {"added": 0}, set()
@@ -3193,10 +3164,10 @@ class Supervisor:
             body = "\n".join([
                 "- 방식: Stage 2 고아 Candidate 조정",
                 f"- 샤드 / 배치 / 파트: {b['shard']} / {bb} / {pp}",
-                f"- Stage 3 머지 커밋: {', '.join(stage3_commits)}",
-                "- 근거: 머지된 #2450 Stage 3 PR에서 삭제된 정확한 ID Relation 행과 Part verify 통과",
-                "- 변경: 사유가 edit인 Drop만 추가; 신규 후보 발굴·의미 판단 없음",
-                "- 관련 이슈: #927, #2450",
+                f"- 비교 커밋: {change_point} → {head}",
+                "- 근거: 이전 승인 데이터의 ID Relation 삭제, 현재 정·역방향 Relation/Drop 커버리지 확인 및 Part verify 통과",
+                "- 변경: 사유가 z인 Drop만 추가; 신규 후보 발굴·의미 판단 없음",
+                "- 관련 이슈: #927, #2567",
             ]) + "\n"
             return self._create_pr_once(b, title, body, labels)
         except TRANSIENT:
@@ -3252,10 +3223,12 @@ class Supervisor:
                     if not self.git.contains(wt, latest):
                         raise IntegrationBlocked("latest master advanced during Stage 2 finalization; preserving the worktree")
                     synchronized_head = self.git.head(wt)
-                    stage3_commits = self._stage3_commits_between(change_point, synchronized_head, wt, latest)
+                    relation_diff = (change_point, synchronized_head) if self._relation_deletion_between(
+                        change_point, synchronized_head, wt) else None
+                    relation_diff_manifest = {"from": relation_diff[0], "to": relation_diff[1]} if relation_diff else None
                     refresh_premerge = integrated or not isinstance(premerge, dict) or \
-                        premerge.get("stage3_commits") != stage3_commits
-                    self.git.stage2_prepare_merge(wt, b["shard"], bb, pp, stage3_commits,
+                        premerge.get("relation_diff") != relation_diff_manifest
+                    self.git.stage2_prepare_merge(wt, b["shard"], bb, pp, relation_diff,
                                                   refresh=refresh_premerge)
                     base = synchronized_head
                     self.store.set(base_key, base)
@@ -5827,7 +5800,7 @@ class Supervisor:
         if b["method"] == STAGE2_METHOD:
             self.store.delete(stage2.run_start_key(b["id"]))
             self.store.delete(f"s2_reconcile_commit_{b['id']}")
-            self.store.delete(f"s2_stage3_change_point_{b['id']}")
+            self.store.delete(f"s2_relation_change_point_{b['id']}")
             self.store.delete(f"s2_stage3_change_point_{b['id']}")
         if b["method"] == STAGE3_METHOD:
             self.store.delete(stage3.run_start_key(b["id"]))

@@ -7,7 +7,7 @@ fixes, Stop/Drain/Retry/Clear and recovery are the Supervisor's existing code.
 
 This module owns only what is new: which Part comes next. A Part is complete only when the exact
 `admission-cli verify --shard S --batch B --part P` has succeeded on the latest master. Its cached success carries
-forward only while the Part's relevant inputs stay unchanged; otherwise it is re-verified, with proven Stage 3 orphan
+forward only while the Part's relevant inputs stay unchanged; otherwise it is re-verified, with proven orphan
 candidates reconciled through a separate deterministic PR. Past file existence or a PR never counts as completion.
 """
 from __future__ import annotations
@@ -767,7 +767,7 @@ def choose(runner, root, env, *, ref: str, sha: str, open_prs: list[dict], verif
     BatchError / GitError on unreadable master data or an open PR with an unknown file list (never "no PR").
 
     A completed Part's exact success is carried to a new SHA only when its relevant inputs are unchanged. A
-    Stage 3 Relation deletion may call `reconcile_completed(shard, batch, part, old_sha, sha)`: a returned note means
+    An approved Relation deletion may call `reconcile_completed(shard, batch, part, old_sha, sha)`: a returned note means
     a deterministic Stage 2 reconciliation PR was started or is already active, so selection waits for that PR.
 
     Batch/shard close-out (#2154): with `outcome(kind, shard, batch, part) -> VerifyOutcome` a deterministic verify

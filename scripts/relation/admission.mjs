@@ -138,6 +138,9 @@ export function mergeCandidates(canonicalRows, candidateFiles, { canonicalLemmaF
       batch,
       candidateName: file.name,
       canonicalLemmaForms: independentLemmaForms,
+      // Historical Stage 1 files keep the validation contract under which they were merged.
+      // New Candidate submissions are checked strictly at save/export and PR validation boundaries.
+      enforceSourceLemmaContainment: false,
     });
     for (const row of file.rows) {
       for (const sense of row.senses) {
@@ -531,9 +534,10 @@ function existingCandidateLinks(relationRows, index, merged = null) {
 }
 
 /**
- * Stage 3 deletions may orphan only the exact Stage 1 candidate keys they previously covered. This returns Drops owned
- * by the selected Canonical scope, and only when no current forward/reverse Relation or existing Drop still covers
- * the key. Callers still run the ordinary row and accounting validators before persisting the result.
+ * Approved ID Relation deletions may orphan only the exact Stage 1 candidate keys they previously covered. This
+ * returns Drops owned by the selected Canonical scope, and only when no current forward/reverse Relation or existing
+ * Drop still covers the key. The deleted row must still resolve to both current Canonical senses. Callers still run
+ * the ordinary row and accounting validators before persisting the result.
  */
 export function orphanedCandidateDrops({ canonicalRows, candidateFiles, scopeRows = canonicalRows, removedRelationRows = [],
   relationRows = [], dropRows = [], index }) {
@@ -545,6 +549,11 @@ export function orphanedCandidateDrops({ canonicalRows, candidateFiles, scopeRow
   const orphaned = new Map();
   for (const removed of removedRelationRows) {
     if ('text' in removed) continue;
+    const source = index.senses.get(removed.source_sense_id);
+    const target = index.senses.get(removed.target_sense_id);
+    if (!source || source.record.id !== removed.source_record_id || !target || target.record.id !== removed.target_record_id) {
+      throw new Error(`deleted ID Relation ${removed.source_sense_id} -> ${removed.target_sense_id} no longer resolves to current Canonical senses`);
+    }
     const keys = relationCandidateKeys(removed, merged, index);
     for (const key of [...keys.forward, ...keys.reverse, ...keys.reverseAliases, ...keys.deferredForward]) {
       const candidate = normalizeCandidate(key.candidate);
@@ -826,11 +835,12 @@ export async function loadOptionalDropJsonl(file) {
   return existsSync(file) ? parseDropJsonl(await readFile(file, 'utf8'), path.basename(file)) : [];
 }
 
-export async function loadAllApprovedDrops(root = REPOSITORY_DIRECTORY) {
+export async function loadAllApprovedDrops(root = REPOSITORY_DIRECTORY, { exceptShard = null } = {}) {
   const directory = path.join(root, 'data/relation-drops');
   if (!existsSync(directory)) return [];
   const rows = [];
   for (const name of (await readdir(directory)).filter((item) => /^drop-\d{3}\.jsonl$/u.test(item)).sort()) {
+    if (exceptShard && name === `drop-${exceptShard}.jsonl`) continue;
     rows.push(...parseDropJsonl(await readFile(path.join(directory, name), 'utf8'), name));
   }
   return rows;

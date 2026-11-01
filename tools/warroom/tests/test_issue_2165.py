@@ -222,7 +222,7 @@ class Stage2Finalization(unittest.TestCase):
                 self.assertEqual(w.git.local_verify_calls[0], ("001", "01", "01", True))
                 self.assertEqual(w.git.exact_verify_calls[0], ("f" * 40, "001", "01", "01"))
 
-    def test_legacy_checkpoint_captures_old_head_then_integrates_exact_stage3_deletion_commits(self):
+    def test_legacy_checkpoint_captures_old_head_then_uses_actual_relation_diff(self):
         w, b = self.start_optional_part()
         checkpoint_path = Path(b["worktree"]) / ".warroom-scratch" / "relation-admission-001-01-01.json"
         checkpoint = json.loads(checkpoint_path.read_text("utf-8"))
@@ -230,18 +230,13 @@ class Stage2Finalization(unittest.TestCase):
         checkpoint_path.write_text(json.dumps(checkpoint), "utf-8")
 
         change_point = w.git.head(Path(b["worktree"]))
-        stage3_commit, latest = "2" * 40, "3" * 40
+        latest = "3" * 40
         relation = "data/relations/relation-001.jsonl"
         w.git.base_sha = latest
         w.git.integrate_updates_head = True
         w.git.changed_between_paths = [relation]
-        w.git.ancestor_pairs = {(change_point, stage3_commit), (stage3_commit, latest), (change_point, latest)}
-        w.git.commit_ranges = {(change_point, stage3_commit, latest)}
+        w.git.ancestor_pairs = {(change_point, latest)}
         w.git.deleted_id_relation_ranges.add((change_point, latest))
-        w.git.changed[stage3_commit] = [relation]
-        w.gh.merged_stage3_prs = [{"number": 2451, "title": "[Relation Stage 3] 001", "base_ref": "master",
-                                   "shard": "001", "merge_commit_sha": stage3_commit}]
-        w.gh.files[2451] = [{"path": relation}]
 
         w.adapter.finish(w.adapter.launches[-1]["pid"])
         w.tick()
@@ -255,9 +250,10 @@ class Stage2Finalization(unittest.TestCase):
         b = w.store.batch(b["id"])
         self.assertEqual(b["state"], "WAITING_REVIEW", b["error"])
         self.assertEqual(w.git.integrated, [(b["worktree"], latest)])
-        self.assertEqual(w.git.stage2_prepare_merge_meta, [((stage3_commit,), True)])
-        self.assertEqual(w.store.get(f"s2_stage3_change_point_{b['id']}"), change_point)
-        self.assertEqual(w.gh.pull_files_calls.count(2451), 1)
+        self.assertEqual(w.git.stage2_prepare_merge_meta, [((change_point, latest), True)])
+        self.assertEqual(w.store.get(f"s2_relation_change_point_{b['id']}"), change_point)
+        self.assertEqual(w.gh.merged_stage3_prs_calls, 0)
+        self.assertNotIn(2451, w.gh.pull_files_calls)
         self.assertEqual(len(w.adapter.launches), 2, "latest-base sync and reconciliation do not rerun AI")
 
     def test_latest_master_conflict_preserves_checkpoint_and_does_not_rerun_ai(self):

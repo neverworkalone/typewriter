@@ -998,7 +998,7 @@ test('export removes one normalized duplicate and reuses the checkpoint output a
   }
 });
 
-test('submit removes only source-lemma projections and preserves an independent orthographic target and evidence', async () => {
+test('submit removes all normalized source-lemma containment and preserves unrelated candidates and evidence', async () => {
   const fixture = await makeFixture({ unitCount: 1, firstForm: '기륭', firstSearchForms: ['기-륭'], secondLemma: '기-륭' });
   try {
     const [item] = (await chunk(fixture)).items;
@@ -1007,12 +1007,12 @@ test('submit removes only source-lemma projections and preserves an independent 
       verified: [item.contexts[0].k],
       candidates: ['기륭', '기륭(註)', '기륭항', '서리', '기-륭'],
     }]);
-    assert.equal(result.candidates, 3);
+    assert.equal(result.candidates, 1);
     const checkpoint = await load(fixture);
     const saved = checkpoint.records[0].senses[0].submission;
-    assert.deepEqual(saved.candidates, ['기륭항', '서리', '기-륭']);
+    assert.deepEqual(saved.candidates, ['서리']);
     assert.equal(saved.verified[0].locator_key.startsWith(item.contexts[0].k), true);
-    assert.equal((await exportOutput(fixture)).coverage.candidates, 3);
+    assert.equal((await exportOutput(fixture)).coverage.candidates, 1);
   } finally {
     await cleanup(fixture);
   }

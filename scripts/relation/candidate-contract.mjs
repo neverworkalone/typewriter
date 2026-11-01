@@ -29,11 +29,30 @@ export function isSourceLemmaProjection(candidate, lemma) {
   return TRAILING_PARENTHETICAL.test(normalized.slice(normalizedLemma.length));
 }
 
+/** A Stage 1 hard exclusion when either normalized surface contains the other after spacing/hyphen removal. */
+export function sourceLemmaContainmentMessage(candidate, source) {
+  const normalized = normalizeCandidate(candidate);
+  const normalizedLemma = normalizeCandidate(source.lemma ?? '');
+  if (!normalizedLemma) return undefined;
+  if (normalized === normalizedLemma) {
+    return `candidate repeats source lemma ${JSON.stringify(source.lemma)}`;
+  }
+  if (isSourceLemmaProjection(normalized, source.lemma)) {
+    return `candidate ${JSON.stringify(candidate)} repeats source lemma ${JSON.stringify(source.lemma)} with a parenthetical annotation`;
+  }
+  const candidateSurface = normalized.replace(/[\s-]/gu, '');
+  const lemmaSurface = normalizedLemma.replace(/[\s-]/gu, '');
+  if (candidateSurface && lemmaSurface
+    && (candidateSurface.includes(lemmaSurface) || lemmaSurface.includes(candidateSurface))) {
+    return `candidate ${JSON.stringify(candidate)} has normalized source-lemma containment with ${JSON.stringify(source.lemma)}`;
+  }
+  return undefined;
+}
+
 /**
- * Canonical search_forms is an index, not an identity list: it can contain a linked root headword that is a distinct
- * lexical item (for example, 강경 for the adjective 강경하다). Reject a search form as a self-projection only when it
- * differs from the lemma by surface spacing or hyphenation, the variants emitted by the STDICT converter, and it is
- * not the exact lemma of a separate Canonical entry.
+ * Identify an exact spacing/hyphen spelling alias from Canonical search_forms. Candidate validation applies the
+ * unconditional source-lemma containment gate before consulting this diagnostic helper, so another Canonical entry
+ * cannot make a contained spelling eligible.
  */
 export function matchingSourceOrthographicForm(candidate, lemma, searchForms, canonicalLemmaForms) {
   if (!Array.isArray(searchForms)) return undefined;
@@ -113,14 +132,14 @@ function hasExactKeys(value, keys) {
 }
 
 /** Validate one Candidate JSONL batch against its complete Canonical shard. */
-/** Why a candidate repeats its own source lemma (exact, parenthetical or spacing/hyphen search form), if it does. */
-export function sourceLemmaRepeatMessage(candidate, source, independentLemmaForms) {
-  if (normalizeCandidate(candidate) === normalizeCandidate(source.lemma ?? '')) {
-    return `candidate repeats source lemma ${JSON.stringify(source.lemma)}`;
-  }
-  if (isSourceLemmaProjection(candidate, source.lemma)) {
-    return `candidate ${JSON.stringify(candidate)} repeats source lemma ${JSON.stringify(source.lemma)} with a parenthetical annotation`;
-  }
+/** Why a candidate repeats or contains its own source lemma, if it does. */
+export function sourceLemmaRepeatMessage(candidate, source, independentLemmaForms, { enforceSourceLemmaContainment = true } = {}) {
+  const containment = enforceSourceLemmaContainment
+    ? sourceLemmaContainmentMessage(candidate, source)
+    : isSourceLemmaProjection(candidate, source.lemma)
+      ? sourceLemmaContainmentMessage(candidate, source)
+      : undefined;
+  if (containment !== undefined) return containment;
   const sourceSearchForm = matchingSourceOrthographicForm(candidate, source.lemma, source.search_forms, independentLemmaForms);
   if (sourceSearchForm !== undefined) {
     return `candidate ${JSON.stringify(candidate)} repeats source lemma ${JSON.stringify(source.lemma)} in orthographic search form ${JSON.stringify(sourceSearchForm)}`;
@@ -129,8 +148,8 @@ export function sourceLemmaRepeatMessage(candidate, source, independentLemmaForm
 }
 
 /** Candidate v1 content-only failures that can be removed from an exact, source-bound sense. */
-export function candidateV1ContentIssue(candidate, source, sourceSense, independentLemmaForms) {
-  const repeat = sourceLemmaRepeatMessage(candidate, source, independentLemmaForms);
+export function candidateV1ContentIssue(candidate, source, sourceSense, independentLemmaForms, { enforceSourceLemmaContainment = true } = {}) {
+  const repeat = sourceLemmaRepeatMessage(candidate, source, independentLemmaForms, { enforceSourceLemmaContainment });
   if (repeat !== undefined) return { kind: 'source_lemma_repeat', message: repeat };
   if (isThousandsCommaFragment(candidate, sourceSense.gloss)) {
     return {
@@ -146,6 +165,7 @@ export function validateCandidateBatch(canonicalRows, candidateRows, {
   sourceName = 'Canonical',
   candidateName = 'Candidate',
   canonicalLemmaForms,
+  enforceSourceLemmaContainment = true,
 } = {}) {
   const batchNumber = Number(batch);
   if (!Number.isInteger(batchNumber) || ![1, 2].includes(batchNumber)) {
@@ -213,7 +233,7 @@ export function validateCandidateBatch(canonicalRows, candidateRows, {
           });
           continue;
         }
-        const issue = candidateV1ContentIssue(candidate, source, sourceSense, independentLemmaForms);
+        const issue = candidateV1ContentIssue(candidate, source, sourceSense, independentLemmaForms, { enforceSourceLemmaContainment });
         if (issue !== undefined) {
           candidateIssues.push({
             record_id: source.id,
