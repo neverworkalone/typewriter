@@ -4,7 +4,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-import { normalizeCandidate, sourceLemmaContainmentMessage, validateCandidateBatch } from './candidate-contract.mjs';
+import { loadCanonicalLemmaForms, normalizeCandidate, sourceLemmaContainmentMessage, validateCandidateBatch } from './candidate-contract.mjs';
 
 export const CANDIDATE_WORKBENCH_CONTRACT = 'candidate-workbench-v2';
 export const DEFAULT_CANDIDATE_CHUNK_SIZE = 25;

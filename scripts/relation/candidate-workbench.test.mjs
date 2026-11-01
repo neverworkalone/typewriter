@@ -233,7 +233,7 @@ test('A/B: save removes every objective repeat, permits empty senses, resumes, a
   }
 });
 
-test('compact save removes source-lemma containment, preserves valid candidates and reports affected aliases', async (t) => {
+test('JSON save removes source-lemma containment, preserves valid candidates and prior saves on structural errors', async (t) => {
   const context = await setup(t);
   context.canonicalRows[0].lemma = '들소';
   context.canonicalRows[1].lemma = '뒷밭';
@@ -252,20 +252,27 @@ test('compact save removes source-lemma containment, preserves valid candidates 
     inputPath: await writeInput(context, rowsFor(context.canonicalRows, 0, 25, bySense), 'repeat.jsonl'),
     repositoryDirectory: context.repositoryDirectory,
   });
-  // Exact, parenthetical and search-form repeats in three different senses: one save names all three, and only them.
-  await assert.rejects(save({ 'w001-s1': ['들소'], 'w002-s1': ['뒷 밭'], 'w003-s1': ['드레싱(dressing)'] }), (error) => {
-    const summary = error.message.split('\n').at(-1);
-    assert.deepEqual([...summary.matchAll(/sense_id (\S+?)(?:;|$)/gu)].map((match) => match[1]).sort(), ['w001-s1', 'w002-s1', 'w003-s1']);
-    assert.match(summary, /source lemma repeat in 3 sense\(s\)/u);
-    return true;
+  const result = await save({
+    'w001-s1': ['들소'],
+    'w002-s1': ['뒷 밭'],
+    'w003-s1': ['드레싱(dressing)'],
+    'w004-s1': ['건축가', '건축 도면', '설계도', '측량'],
   });
-  assert.equal(await readFile(savedPath, 'utf8'), before);
-  // A structural defect is still a plain fail-closed error, not a self-repeat report.
+  assert.equal(result.candidateCount, 2);
+  assert.deepEqual(result.autoRemoved.map(({ senseId, candidate }) => [senseId, candidate]), [
+    ['w001-s1', '들소'],
+    ['w002-s1', '뒷 밭'],
+    ['w003-s1', '드레싱(dressing)'],
+    ['w004-s1', '건축가'],
+    ['w004-s1', '건축 도면'],
+  ]);
+  const savedAfterFilter = await readFile(savedPath, 'utf8');
+  const savedRows = savedAfterFilter.trim().split('\n').map(JSON.parse);
+  assert.deepEqual(savedRows[3].senses[0].candidates, ['설계도', '측량']);
+  // A structural defect is still a plain fail-closed error and preserves the last successful save.
   await assert.rejects(save({ 'w001-s1': ['들소', ' 별빛'] }), /non-empty trimmed string/u);
-  await assert.rejects(save({ 'w004-s1': ['건축가'] }), /normalized source-lemma containment/u);
-  await assert.rejects(save({ 'w004-s1': ['건축 도면'] }), /normalized source-lemma containment/u);
-  // Unrelated independent words remain valid.
-  assert.equal((await save({ 'w004-s1': ['설계도', '측량'] })).candidateCount, 2);
+  assert.equal(await readFile(savedPath, 'utf8'), savedAfterFilter);
+  assert.notEqual(savedAfterFilter, before);
 });
 
 test('compact save removes every definite self-repeat and reports every affected alias', async (t) => {
@@ -277,25 +284,28 @@ test('compact save removes every definite self-repeat and reports every affected
   await writeFile(path.join(context.repositoryDirectory, 'data/canonical/stdict-0001.jsonl'), `${context.canonicalRows.map((row) => JSON.stringify(row)).join('\n')}\n`);
   await prepare(context, 50);
   const lines = ['chunk 001'];
+  const valid = new Map([[2, '별빛'], [5, '독립 빛'], [12, '설계도']]);
+  const rejected = new Map([[1, '들소'], [3, '들소(註)'], [4, '뒷 밭'], [6, '뒷밭(註)'], [10, '건축가'], [11, '건축 도면']]);
   let alias = 0;
   for (const record of context.canonicalRows.slice(0, 50)) for (const _ of record.senses) {
     alias += 1;
-    lines.push(`S${alias}\t${alias === 2 ? '독립 빛' : record.lemma}`);
+    lines.push(`S${alias}\t${valid.get(alias) ?? rejected.get(alias) ?? record.lemma}`);
   }
   assert.equal(alias, 136);
   const inputPath = path.join(context.scratchDirectory, 'answer.tsv');
   await mkdir(context.scratchDirectory, { recursive: true });
   await writeFile(inputPath, `${lines.join('\n')}\n`);
   const result = await saveCandidateChunk({ scratchDirectory: context.scratchDirectory, chunk: 1, inputPath, format: 'compact', repositoryDirectory: context.repositoryDirectory });
-  assert.equal(result.candidateCount, 1);
-  assert.equal(result.autoRemoved.count, 135);
-  assert.deepEqual(result.autoRemoved.items.map((item) => item.alias), Array.from({ length: 136 }, (_, i) => `S${i + 1}`).filter((alias) => alias !== 'S2'));
+  assert.equal(result.candidateCount, 3);
+  assert.equal(result.autoRemoved.count, 133);
+  assert.deepEqual(result.autoRemoved.items.map((item) => item.alias), Array.from({ length: 136 }, (_, i) => `S${i + 1}`).filter((alias) => !['S2', 'S5', 'S12'].includes(alias)));
   assert.ok(result.autoRemoved.items.every((item) => item.reason === 'source lemma repeat'));
   const saved = await readFile(path.join(context.scratchDirectory, 'candidates/chunk-001.jsonl'), 'utf8');
   const savedRows = saved.split('\n').filter(Boolean).map(JSON.parse);
-  assert.deepEqual(savedRows[0].senses[0].candidates, []);
-  assert.deepEqual(savedRows[0].senses[1].candidates, ['독립 빛']);
-  assert.ok(savedRows.slice(1).every((row) => row.senses.every((sense) => sense.candidates.length === 0)));
+  assert.deepEqual(savedRows[0].senses.map((sense) => sense.candidates), [[], ['별빛'], []]);
+  assert.deepEqual(savedRows[1].senses.map((sense) => sense.candidates), [[], ['독립 빛'], []]);
+  assert.deepEqual(savedRows[3].senses.map((sense) => sense.candidates), [[], [], ['설계도']]);
+  assert.ok(savedRows.slice(4).every((row) => row.senses.every((sense) => sense.candidates.length === 0)));
 });
 
 test('patch rejects unknown IDs and absent removals, and writes nothing on failure', async (t) => {
