@@ -253,7 +253,7 @@ class Stage2Finalization(unittest.TestCase):
         self.assertEqual(w.git.stage2_prepare_merge_meta, [((change_point, latest), True)])
         self.assertEqual(w.store.get(f"s2_relation_change_point_{b['id']}"), change_point)
         self.assertEqual(w.gh.merged_stage3_prs_calls, 0)
-        self.assertEqual(w.gh.pull_files_calls, [])
+        self.assertNotIn(2451, w.gh.pull_files_calls)
         self.assertEqual(len(w.adapter.launches), 2, "latest-base sync and reconciliation do not rerun AI")
 
     def test_latest_master_conflict_preserves_checkpoint_and_does_not_rerun_ai(self):

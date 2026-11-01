@@ -310,6 +310,7 @@ test('Stage 2 premerge materializes only candidates covered by an approved Relat
   const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
   await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01', '--checkpoint', checkpoint], { root }));
   await saveAllPrimaryAsDrops(root, checkpoint);
+  await completeOptionalForTest(root, checkpoint);
   await writeFile(relationPath, '');
   git(['add', relationPath]);
   git(['commit', '-q', '-m', 'post-merge QA removes approved Relation']);
