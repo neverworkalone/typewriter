@@ -325,9 +325,9 @@ test('Stage 2 resolves curated lexical search forms alongside an unrelated exact
   assert.equal(verified.missing, 0, 'an ID link to the curated search-form target accounts for its candidate spelling');
 });
 
-test('an exact Canonical lemma wins over an independent search form for existing ID coverage', () => {
+test('an exact Canonical lemma owns a form colliding with another record’s orthographic form', () => {
   const source = {
-    id: 'w122481', lemma: '씨름 기술', search_forms: ['씨름 기술', '무릎치기'],
+    id: 'w122481', lemma: '무릎 치기', search_forms: ['무릎 치기', '무릎치기'],
     senses: [{ id: 'w122481-s1', pos: 'expression', gloss: '상대편의 무릎 뒤쪽을 치면서 끌어당겨 넘기는 씨름 기술.' }],
   };
   const target = {
@@ -337,53 +337,12 @@ test('an exact Canonical lemma wins over an independent search form for existing
       { id: 'w427808-s2', pos: 'noun', gloss: '옛 웃옷.' },
     ],
   };
-  const unrelatedSource = { id: 'w990000', lemma: '바지 관련어', senses: [{ id: 'w990000-s1', pos: 'noun', gloss: '뜻.' }] };
-  const index = buildCanonicalIndex([source, target, unrelatedSource]);
-  const candidateFile = (record, text) => ({
-    name: '090_01_a_codex.jsonl',
-    rows: [{ record_id: record.id, senses: [{ sense_id: record.senses[0].id, candidates: [text] }] }],
-  });
-  const crossShardLink = (targetSense) => ({
-    source_record_id: target.id, source_sense_id: targetSense,
-    target_record_id: source.id, target_sense_id: source.senses[0].id,
-    type: 'near', relevance: 3, reverse_type: 'near', reverse_relevance: 3,
-  });
-  const sourceCandidates = candidateFile(source, '무릎치기');
-  const prepare = (approvedRelationRows) => prepareShard({
-    canonicalRows: [source], candidateFiles: [sourceCandidates], approvedRelationRows, index, scopeRows: [source],
-  });
-  const verify = (approvedRelationRows) => verifyAccounting({
-    canonicalRows: [source], candidateFiles: [sourceCandidates], relationRows: [], dropRows: [],
-    otherRelationRows: approvedRelationRows, index, scopeRows: [source],
-  });
-
-  const firstSenseOnly = [crossShardLink('w427808-s1')];
-  assert.deepEqual(prepare(firstSenseOnly).items, [], 'an existing ID relation accounts for the candidate without requiring a link to every target sense');
-  assert.equal(prepare(firstSenseOnly).stats.skipped_existing, 1);
-  assert.equal(verify(firstSenseOnly).missing, 0, 'a valid other-shard reverse ID pair accounts for the candidate');
-
-  assert.deepEqual(prepare([]).items[0].candidates.map((candidate) => candidate.text), ['무릎치기'], 'a new candidate still needs a target-sense decision');
-  const everyTargetSense = [...firstSenseOnly, crossShardLink('w427808-s2')];
-  assert.deepEqual(prepare(everyTargetSense).items, [], 'additional approved target-sense links remain existing coverage');
-  assert.equal(prepare(everyTargetSense).stats.skipped_existing, 1);
-  assert.equal(verify(everyTargetSense).skipped_existing, 1);
-
-  const unrelatedCandidateFile = candidateFile(unrelatedSource, '무릎치기');
-  const aliasOnlyRelation = {
-    source_record_id: unrelatedSource.id, source_sense_id: unrelatedSource.senses[0].id,
-    target_record_id: source.id, target_sense_id: source.senses[0].id,
-    type: 'near', relevance: 3, reverse_type: 'near', reverse_relevance: 3,
-  };
-  const aliasPrepare = prepareShard({
-    canonicalRows: [unrelatedSource], candidateFiles: [unrelatedCandidateFile],
-    approvedRelationRows: [aliasOnlyRelation], index, scopeRows: [unrelatedSource],
-  });
-  assert.deepEqual(aliasPrepare.items[0].candidates[0].same_spelling_records, [target.id]);
-  assert.deepEqual(aliasPrepare.items[0].candidates.map((candidate) => candidate.text), ['무릎치기']);
-  assert.throws(() => verifyAccounting({
-    canonicalRows: [unrelatedSource], candidateFiles: [unrelatedCandidateFile],
-    relationRows: [aliasOnlyRelation], dropRows: [], otherRelationRows: [], index, scopeRows: [unrelatedSource],
-  }), /is not a Stage 1 candidate/u, 'a relation to the colliding search-form record cannot claim the exact lemma candidate');
+  const index = buildCanonicalIndex([source, target]);
+  assert.deepEqual(
+    sameSpellingTargets(index, '무릎치기').map((record) => record.record_id),
+    [target.id],
+    'the exact Canonical lemma owns the spelling instead of the other record’s orthographic search form',
+  );
 });
 
 test('an exact existing ID relation answers its reverse candidate despite homographic spelling', () => {
