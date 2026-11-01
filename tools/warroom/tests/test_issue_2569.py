@@ -38,7 +38,7 @@ class RealGitSync(unittest.TestCase):
 
         output = self.repo / OUTPUT
         output.parent.mkdir(parents=True)
-        output.write_text("source\n", "utf-8")
+        output.write_text("source\nmiddle\n", "utf-8")
         (self.repo / "validator.mjs").write_text("before\n", "utf-8")
         sh("git", "add", OUTPUT, "validator.mjs", cwd=self.repo)
         sh("git", "commit", "-qm", "base", cwd=self.repo)
@@ -48,7 +48,7 @@ class RealGitSync(unittest.TestCase):
         self.git.fetch_base("master")
         self.git.create_worktree(self.wt, BRANCH, "master")
         candidate = self.wt / OUTPUT
-        candidate.write_text("source\ncandidate\n", "utf-8")
+        candidate.write_text("source\nmiddle\ncandidate\n", "utf-8")
         sh("git", "add", OUTPUT, cwd=self.wt)
         sh("git", "commit", "-qm", "candidate output", cwd=self.wt)
         sh("git", "push", "-q", "origin", f"HEAD:refs/heads/{BRANCH}", cwd=self.wt)
@@ -65,7 +65,7 @@ class RealGitSync(unittest.TestCase):
             sh("git", "merge", "--ff-only", "origin/master", cwd=self.repo)
         target = self.repo / (OUTPUT if protected else "validator.mjs")
         if protected:
-            target.write_text("fixed source\ncandidate\n", "utf-8")
+            target.write_text("fixed source\nmiddle\n", "utf-8")
         else:
             target.write_text("after\n", "utf-8")
         sh("git", "add", str(target.relative_to(self.repo)), cwd=self.repo)

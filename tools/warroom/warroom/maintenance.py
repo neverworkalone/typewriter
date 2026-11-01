@@ -653,7 +653,7 @@ class Maintenance:
             if initial_pr.get("head_ref") != b["branch"]:
                 raise IntegrationBlocked(f"PR #{b['pr_number']}의 head 브랜치 {initial_pr.get('head_ref')!r}가 "
                                          "소유 브랜치와 다릅니다")
-            batch_head = b.get("head_sha")
+            batch_head = b["head_sha"]
             local = git.head(wt)
             pr_head = initial_pr.get("head_sha")
             if not isinstance(pr_head, str) or not re.fullmatch(r"[0-9a-f]{40}", pr_head):
