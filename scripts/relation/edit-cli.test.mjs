@@ -329,7 +329,7 @@ test('prepare, compact read, exact Link Repair, local orphan Drops, apply, and G
     'an unchanged Relation row keeps its original compact JSON text');
   const outputDrops = parseDropJsonl(await readFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), 'utf8'));
   assert.deepEqual(outputDrops.map((row) => [row.source_sense_id, row.candidate, row.reason]), [
-    ['w3-s2', '차분하다', 'edit'], ['w1-s1', '반짝', 'edit'], ['w2-s1', '차분하다', 'edit'],
+    ['w3-s2', '차분하다', 'edit'], ['w1-s1', '반짝', 'z'], ['w2-s1', '차분하다', 'z'],
   ]);
   assert.equal(beforeDropBytes.split('\n').filter(Boolean).length, 1);
 

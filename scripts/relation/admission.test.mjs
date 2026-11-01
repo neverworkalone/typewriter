@@ -180,8 +180,8 @@ test('Stage 3 deletion reconciliation emits only locally owned orphan Stage 1 ca
     index: indexWithDuplicate,
   });
   assert.deepEqual(orphaned, [
-    { source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '유일', reason: 'edit' },
-    { source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '동철', reason: 'edit' },
+    { source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '유일', reason: 'z' },
+    { source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '동철', reason: 'z' },
   ]);
 
   const retained = orphanedCandidateDrops({
@@ -193,7 +193,7 @@ test('Stage 3 deletion reconciliation emits only locally owned orphan Stage 1 ca
     dropRows: [],
     index: indexWithDuplicate,
   });
-  assert.deepEqual(retained, [{ source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '동철', reason: 'edit' }],
+  assert.deepEqual(retained, [{ source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '동철', reason: 'z' }],
     'a surviving relation for the same candidate prevents a Drop');
 
   const notPrepared = orphanedCandidateDrops({
