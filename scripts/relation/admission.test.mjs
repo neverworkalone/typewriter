@@ -265,6 +265,21 @@ test('Stage 2 retains an independent search form that is another Canonical lemma
   );
 });
 
+test('Stage 2 prepare accepts historical partial source-lemma overlap without changing its file', () => {
+  const canonicalRows = [{
+    id: 'w012',
+    lemma: '가계 경제',
+    senses: [{ id: 'w012-s1', pos: 'noun', gloss: '가계에 관한 설명.' }],
+  }];
+  const rows = [{ record_id: 'w012', senses: [{ sense_id: 'w012-s1', candidates: ['경제'] }] }];
+  const candidateFile = { name: '001_01_a_claude.jsonl', rows };
+  const index = buildCanonicalIndex(canonicalRows);
+
+  const { items } = prepareShard({ canonicalRows, candidateFiles: [candidateFile], index });
+  assert.deepEqual(items[0].candidates.map((candidate) => candidate.text), ['경제']);
+  assert.deepEqual(rows[0].senses[0].candidates, ['경제']);
+});
+
 test('Stage 2 resolves curated lexical search forms alongside an unrelated exact lemma', () => {
   const source = {
     id: 'w1', lemma: '야나치다',

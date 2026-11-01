@@ -165,8 +165,6 @@ test('save-chunk rejects wrong IDs and bad candidates without touching saved dat
     ['missing sense', good.map((row, index) => (index === 0 ? { ...row, senses: row.senses.slice(0, 1) } : row)), /sense_id mismatch for record_id w001/u],
     ['cross-mapped sense', good.map((row, index) => (index === 1 ? { ...row, senses: [{ sense_id: 'w001-s1', candidates: [] }] } : row)), /sense_id mismatch for record_id w002/u],
     ['untrimmed candidate', rowsFor(context.canonicalRows, 0, 25, { 'w001-s1': [' 달빛'] }), /non-empty trimmed string/u],
-    ['exact source lemma', rowsFor(context.canonicalRows, 0, 25, { 'w001-s1': ['표제어 1'] }), /repeats source lemma/u],
-    ['source lemma with parenthetical', rowsFor(context.canonicalRows, 0, 25, { 'w001-s1': ['표제어 1(標題語)'] }), /repeats source lemma/u],
     ['duplicate candidate', rowsFor(context.canonicalRows, 0, 25, { 'w001-s1': ['달빛', '달빛'] }), /duplicates candidate/u],
   ];
   for (const [name, rows, expected] of cases) {
@@ -178,7 +176,7 @@ test('save-chunk rejects wrong IDs and bad candidates without touching saved dat
   assert.deepEqual(page.items[0].senses[0].candidates, ['별빛']);
 });
 
-test('save-chunk rejects normalized source-lemma containment before the final merge validator', async (t) => {
+test('save-chunk removes normalized source-lemma containment and preserves independent candidates', async (t) => {
   const context = await setup(t);
   context.canonicalRows[0].lemma = '단 수';
   context.canonicalRows[0].search_forms = ['단 수', '단수', '단수가', '단순'];
@@ -191,21 +189,51 @@ test('save-chunk rejects normalized source-lemma containment before the final me
     inputPath: await writeInput(context, rowsFor(context.canonicalRows, 0, 25, bySense), 'repeat.jsonl'),
     repositoryDirectory: context.repositoryDirectory,
   });
-  for (const [name, candidate, expected] of [
-    ['exact lemma', '단 수', /repeats source lemma/u],
-    ['whitespace variant', '단  수', /repeats source lemma/u],
-    ['parenthetical annotation', '단 수(單數)', /repeats source lemma/u],
-    ['spacing-stripped search form', '단수', /normalized source-lemma containment/u],
+  for (const [name, candidate] of [
+    ['exact lemma', '단 수'],
+    ['whitespace variant', '단  수'],
+    ['parenthetical annotation', '단 수(單數)'],
+    ['spacing-stripped search form', '단수'],
+    ['lemma contained in candidate', '단수 조절'],
+    ['candidate contained in lemma', '단'],
+    ['hyphen-normalized containment', '단-수'],
   ]) {
-    await assert.rejects(save({ 'w001-s1': ['별빛', candidate] }), expected, name);
+    const result = await save({ 'w001-s1': ['별빛', candidate] });
+    assert.equal(result.candidateCount, 1, name);
+    assert.deepEqual(result.autoRemoved.map((item) => item.candidate), [candidate], name);
+    const saved = await readLines(path.join(context.scratchDirectory, 'candidates/chunk-001.jsonl'));
+    assert.deepEqual(saved[0].senses[0].candidates, ['별빛'], name);
   }
-  await assert.rejects(save({ 'w001-s1': ['단 수 조절', '단수가'] }), /normalized source-lemma containment/u);
   // An unrelated word that is another entry's lemma remains eligible.
   const saved = await save({ 'w001-s1': ['단순', '별빛'] });
   assert.equal(saved.candidateCount, 2);
 });
 
-test('save-chunk reports every source-lemma self-repeat of a chunk at once, keeps saved data, and still allows valid forms', async (t) => {
+test('A/B: save removes every objective repeat, permits empty senses, resumes, and merges cleanly', async (t) => {
+  for (const method of ['a', 'b']) {
+    const context = await setup(t, method);
+    await prepare(context);
+    const result = await saveChunk(context, 1, { 'w001-s1': ['별빛', '표제어 1'], 'w001-s2': ['표제어 1(標題語)'] });
+    assert.equal(result.candidateCount, 1);
+    assert.deepEqual(result.autoRemoved.map((item) => item.candidate), ['표제어 1', '표제어 1(標題語)']);
+    const savedChunk = await readLines(path.join(context.scratchDirectory, 'candidates/chunk-001.jsonl'));
+    assert.deepEqual(savedChunk[0].senses.map((sense) => sense.candidates), [['별빛'], []]);
+
+    const resumed = await prepare(context);
+    assert.equal(resumed.resumed, true);
+    const page = await readCandidateChunkPage({ scratchDirectory: context.scratchDirectory, chunk: 1, limit: 1, repositoryDirectory: context.repositoryDirectory });
+    assert.deepEqual(page.items[0].senses.map((sense) => sense.candidates), [['별빛'], []]);
+
+    for (let number = 2; number <= 20; number += 1) await saveChunk(context, number);
+    const outPath = path.join(context.scratchDirectory, 'merged.jsonl');
+    const merged = await mergeCandidateBatch({ scratchDirectory: context.scratchDirectory, outPath, repositoryDirectory: context.repositoryDirectory });
+    assert.equal(merged.validation.candidateCount, 1);
+    const outputRows = await readLines(outPath);
+    assert.deepEqual(outputRows[0].senses.map((sense) => sense.candidates), [['별빛'], []]);
+  }
+});
+
+test('compact save removes source-lemma containment, preserves valid candidates and reports affected aliases', async (t) => {
   const context = await setup(t);
   context.canonicalRows[0].lemma = '들소';
   context.canonicalRows[1].lemma = '뒷밭';
@@ -250,18 +278,24 @@ test('compact save removes every definite self-repeat and reports every affected
   await prepare(context, 50);
   const lines = ['chunk 001'];
   let alias = 0;
-  for (const record of context.canonicalRows.slice(0, 50)) for (const _ of record.senses) lines.push(`S${(alias += 1)}\t${record.lemma}`);
+  for (const record of context.canonicalRows.slice(0, 50)) for (const _ of record.senses) {
+    alias += 1;
+    lines.push(`S${alias}\t${alias === 2 ? '독립 빛' : record.lemma}`);
+  }
   assert.equal(alias, 136);
   const inputPath = path.join(context.scratchDirectory, 'answer.tsv');
   await mkdir(context.scratchDirectory, { recursive: true });
   await writeFile(inputPath, `${lines.join('\n')}\n`);
   const result = await saveCandidateChunk({ scratchDirectory: context.scratchDirectory, chunk: 1, inputPath, format: 'compact', repositoryDirectory: context.repositoryDirectory });
-  assert.equal(result.candidateCount, 0);
-  assert.equal(result.autoRemoved.count, 136);
-  assert.deepEqual(result.autoRemoved.items.map((item) => item.alias), Array.from({ length: 136 }, (_, i) => `S${i + 1}`));
+  assert.equal(result.candidateCount, 1);
+  assert.equal(result.autoRemoved.count, 135);
+  assert.deepEqual(result.autoRemoved.items.map((item) => item.alias), Array.from({ length: 136 }, (_, i) => `S${i + 1}`).filter((alias) => alias !== 'S2'));
   assert.ok(result.autoRemoved.items.every((item) => item.reason === 'source lemma repeat'));
   const saved = await readFile(path.join(context.scratchDirectory, 'candidates/chunk-001.jsonl'), 'utf8');
-  assert.ok(saved.split('\n').filter(Boolean).every((line) => JSON.parse(line).senses.every((sense) => sense.candidates.length === 0)));
+  const savedRows = saved.split('\n').filter(Boolean).map(JSON.parse);
+  assert.deepEqual(savedRows[0].senses[0].candidates, []);
+  assert.deepEqual(savedRows[0].senses[1].candidates, ['독립 빛']);
+  assert.ok(savedRows.slice(1).every((row) => row.senses.every((sense) => sense.candidates.length === 0)));
 });
 
 test('patch rejects unknown IDs and absent removals, and writes nothing on failure', async (t) => {

@@ -4,7 +4,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-import { loadCanonicalLemmaForms, matchingSourceOrthographicForm, normalizeCandidate, sourceLemmaContainmentMessage, validateCandidateBatch } from './candidate-contract.mjs';
+import { normalizeCandidate, sourceLemmaContainmentMessage, validateCandidateBatch } from './candidate-contract.mjs';
 
 export const CANDIDATE_WORKBENCH_CONTRACT = 'candidate-workbench-v2';
 export const DEFAULT_CANDIDATE_CHUNK_SIZE = 25;
@@ -549,39 +549,18 @@ export async function readCandidateChunkPage({ scratchDirectory, chunk: requeste
   });
 }
 
-/**
- * Source-lemma containment uses the same hard rule as final Candidate v1 validation so failures surface at save-chunk.
- * The remaining search-form diagnostic path is retained for orthographic aliases; it cannot override containment for a
- * candidate that matches the source spelling after spacing/hyphen removal.
- */
-function findSourceSelfRepeats(candidates, source, senseId) {
-  const repeats = [];
-  const suspects = [];
+/** Remove objective source-lemma containment in one pass before a chunk is saved. */
+function removeSourceSelfRepeats(candidates, source, senseId) {
+  const autoRemoved = [];
+  let retained;
   for (const [index, candidate] of candidates.entries()) {
     const containment = sourceLemmaContainmentMessage(candidate, source);
     if (containment !== undefined) {
-      repeats.push({ index, senseId, candidate, reason: 'source lemma repeat', text: containment });
-    } else if (matchingSourceOrthographicForm(candidate, source.lemma, source.search_forms, new Set()) !== undefined) {
-      suspects.push({ index, candidate, source, senseId });
-    }
+      if (retained === undefined) retained = candidates.slice(0, index);
+      autoRemoved.push({ senseId, candidate, reason: 'source lemma repeat' });
+    } else retained?.push(candidate);
   }
-  return { repeats, suspects };
-}
-
-/**
- * One bounded report for every self-repeat of a chunk. save-chunk diagnostics are tail-truncated downstream (1500 chars),
- * so the detail lines are capped and the complete target list comes last, where truncation keeps it. A compact save lists
- * the short `S<n>` view aliases (a 136-sense chunk stays well inside the limit); a JSON save has no alias, so `sense_id`s.
- */
-function sourceRepeatReport(label, repeats, aliasOfSense) {
-  const details = repeats.slice(0, 5).map(({ senseId, text }) => `sense_id ${senseId} ${text}`);
-  const omitted = repeats.length - details.length;
-  const senseIds = [...new Set(repeats.map(({ senseId }) => senseId))];
-  return [
-    ...details,
-    ...(omitted > 0 ? [`(+${omitted} more)`] : []),
-    `${label} source lemma repeat in ${senseIds.length} sense(s): ${senseIds.map((id) => aliasOfSense?.get(id) ?? `sense_id ${id}`).join(aliasOfSense ? ' ' : '; ')}`,
-  ].join('\n');
+  return { candidates: retained ?? candidates, autoRemoved };
 }
 
 function assertCandidateList(candidates, location) {
@@ -597,17 +576,11 @@ function assertCandidateList(candidates, location) {
   }
 }
 
-/**
- * Check a complete chunk's rows against its own source records: exact record/sense IDs and candidate format. Structural
- * defects fail at once; source-lemma self-repeats are collected in this same pass so one save reports all of them.
- */
-async function validateChunkRows(inputRows, sourceRows, chunkNumber, { compact = false, repositoryDirectory } = {}) {
-  const repeats = [];
-  const suspects = [];
+/** Check structure and remove only objectively forbidden source-lemma repetitions before saving a complete chunk. */
+async function validateChunkRows(inputRows, sourceRows, chunkNumber) {
   const autoRemoved = [];
   const label = `chunk ${String(chunkNumber).padStart(3, '0')}`;
   const sourceById = new Map(sourceRows.map((row) => [row.id, row]));
-  let lemmaForms;
   const seen = new Set();
   const checkedRows = [];
   for (const [index, row] of inputRows.entries()) {
@@ -629,28 +602,9 @@ async function validateChunkRows(inputRows, sourceRows, chunkNumber, { compact =
       senseIds.add(sense.sense_id);
       const senseLocation = `${location} record_id ${row.record_id} sense_id ${sense.sense_id}`;
       assertCandidateList(sense.candidates, senseLocation);
-      const found = findSourceSelfRepeats(sense.candidates, source, sense.sense_id);
-      if (!compact) {
-        repeats.push(...found.repeats);
-        suspects.push(...found.suspects);
-        checkedSenses.push(sense);
-      } else if (found.repeats.length === 0 && found.suspects.length === 0) {
-        checkedSenses.push(sense);
-      } else {
-        const removeByIndex = new Map(found.repeats.map((repeat) => [repeat.index, repeat.reason]));
-        if (found.suspects.length > 0 && lemmaForms === undefined) lemmaForms = await loadCanonicalLemmaForms(repositoryDirectory);
-        for (const suspect of found.suspects) {
-          const searchForm = matchingSourceOrthographicForm(suspect.candidate, source.lemma, source.search_forms, lemmaForms);
-          if (searchForm !== undefined) removeByIndex.set(suspect.index, `orthographic search-form repeat ${JSON.stringify(searchForm)}`);
-        }
-        const candidates = sense.candidates.filter((candidate, candidateIndex) => {
-          const reason = removeByIndex.get(candidateIndex);
-          if (reason === undefined) return true;
-          autoRemoved.push({ senseId: sense.sense_id, candidate, reason });
-          return false;
-        });
-        checkedSenses.push({ ...sense, candidates });
-      }
+      const filtered = removeSourceSelfRepeats(sense.candidates, source, sense.sense_id);
+      autoRemoved.push(...filtered.autoRemoved);
+      checkedSenses.push(filtered.candidates === sense.candidates ? sense : { ...sense, candidates: filtered.candidates });
     }
     const expected = source.senses.map((sense) => sense.id);
     const missing = expected.filter((id) => !senseIds.has(id));
@@ -662,25 +616,12 @@ async function validateChunkRows(inputRows, sourceRows, chunkNumber, { compact =
   }
   const missingRecords = sourceRows.map((row) => row.id).filter((id) => !seen.has(id));
   if (missingRecords.length) fail(`${label} is missing record_id(s): ${missingRecords.join(', ')}`);
-  return { label, repeats, suspects, autoRemoved, inputRows: checkedRows };
+  return { autoRemoved, inputRows: checkedRows };
 }
 
 /** Validate a complete chunk's input rows and write them (replacing any earlier save of it), in Canonical order. */
-async function writeChunkRows(workspace, chunk, sourceRows, inputRows, repositoryDirectory, { compact = false } = {}) {
-  const { label, repeats, suspects, autoRemoved, inputRows: checkedRows } = await validateChunkRows(inputRows, sourceRows, chunk.number, { compact, repositoryDirectory });
-  if (suspects.length > 0) {
-    const lemmaForms = await loadCanonicalLemmaForms(repositoryDirectory);
-    for (const { candidate, source, senseId } of suspects) {
-      const searchForm = matchingSourceOrthographicForm(candidate, source.lemma, source.search_forms, lemmaForms);
-      if (searchForm !== undefined) {
-        repeats.push({ senseId, text: `candidate ${JSON.stringify(candidate)} repeats source lemma ${JSON.stringify(source.lemma)} in orthographic search form ${JSON.stringify(searchForm)}` });
-      }
-    }
-  }
-  if (repeats.length > 0) {
-    const aliasOfSense = compact ? new Map(compactSenseModel(sourceRows).map((entry) => [entry.sense.id, entry.alias])) : undefined;
-    fail(sourceRepeatReport(label, repeats, aliasOfSense));
-  }
+async function writeChunkRows(workspace, chunk, sourceRows, inputRows) {
+  const { autoRemoved, inputRows: checkedRows } = await validateChunkRows(inputRows, sourceRows, chunk.number);
   const inputById = new Map(checkedRows.map((row) => [row.record_id, row]));
   const rows = sourceRows.map((source) => {
     const input = inputById.get(source.id);
@@ -758,7 +699,7 @@ export async function saveCandidateChunk({ scratchDirectory, chunk: requestedChu
   const contents = await readFile(resolvedInput, 'utf8');
   if (format === 'compact') {
     const { inputRows, duplicatesRemoved, autoRemoved: parsedRemovals } = parseCompactAnswer(contents, chunk, sourceRows);
-    const result = await writeChunkRows(workspace, chunk, sourceRows, inputRows, repositoryDirectory, { compact: true });
+    const result = await writeChunkRows(workspace, chunk, sourceRows, inputRows);
     const sourceAliases = new Map(compactSenseModel(sourceRows).map((entry) => [entry.sense.id, entry.alias]));
     const autoRemoved = [
       ...parsedRemovals,
@@ -767,7 +708,7 @@ export async function saveCandidateChunk({ scratchDirectory, chunk: requestedChu
     const { autoRemoved: _discard, ...saved } = result;
     return { ...saved, duplicatesRemoved, autoRemoved: { count: autoRemoved.length, items: autoRemoved } };
   }
-  return writeChunkRows(workspace, chunk, sourceRows, parseJsonl(contents, resolvedInput), repositoryDirectory);
+  return writeChunkRows(workspace, chunk, sourceRows, parseJsonl(contents, resolvedInput));
 }
 
 /**

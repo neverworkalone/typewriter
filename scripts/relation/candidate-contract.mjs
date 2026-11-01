@@ -133,8 +133,12 @@ function hasExactKeys(value, keys) {
 
 /** Validate one Candidate JSONL batch against its complete Canonical shard. */
 /** Why a candidate repeats or contains its own source lemma, if it does. */
-export function sourceLemmaRepeatMessage(candidate, source, independentLemmaForms) {
-  const containment = sourceLemmaContainmentMessage(candidate, source);
+export function sourceLemmaRepeatMessage(candidate, source, independentLemmaForms, { enforceSourceLemmaContainment = true } = {}) {
+  const containment = enforceSourceLemmaContainment
+    ? sourceLemmaContainmentMessage(candidate, source)
+    : isSourceLemmaProjection(candidate, source.lemma)
+      ? sourceLemmaContainmentMessage(candidate, source)
+      : undefined;
   if (containment !== undefined) return containment;
   const sourceSearchForm = matchingSourceOrthographicForm(candidate, source.lemma, source.search_forms, independentLemmaForms);
   if (sourceSearchForm !== undefined) {
@@ -144,8 +148,8 @@ export function sourceLemmaRepeatMessage(candidate, source, independentLemmaForm
 }
 
 /** Candidate v1 content-only failures that can be removed from an exact, source-bound sense. */
-export function candidateV1ContentIssue(candidate, source, sourceSense, independentLemmaForms) {
-  const repeat = sourceLemmaRepeatMessage(candidate, source, independentLemmaForms);
+export function candidateV1ContentIssue(candidate, source, sourceSense, independentLemmaForms, { enforceSourceLemmaContainment = true } = {}) {
+  const repeat = sourceLemmaRepeatMessage(candidate, source, independentLemmaForms, { enforceSourceLemmaContainment });
   if (repeat !== undefined) return { kind: 'source_lemma_repeat', message: repeat };
   if (isThousandsCommaFragment(candidate, sourceSense.gloss)) {
     return {
@@ -161,6 +165,7 @@ export function validateCandidateBatch(canonicalRows, candidateRows, {
   sourceName = 'Canonical',
   candidateName = 'Candidate',
   canonicalLemmaForms,
+  enforceSourceLemmaContainment = true,
 } = {}) {
   const batchNumber = Number(batch);
   if (!Number.isInteger(batchNumber) || ![1, 2].includes(batchNumber)) {
@@ -228,7 +233,7 @@ export function validateCandidateBatch(canonicalRows, candidateRows, {
           });
           continue;
         }
-        const issue = candidateV1ContentIssue(candidate, source, sourceSense, independentLemmaForms);
+        const issue = candidateV1ContentIssue(candidate, source, sourceSense, independentLemmaForms, { enforceSourceLemmaContainment });
         if (issue !== undefined) {
           candidateIssues.push({
             record_id: source.id,
