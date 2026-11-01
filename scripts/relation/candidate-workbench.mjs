@@ -549,31 +549,45 @@ export async function readCandidateChunkPage({ scratchDirectory, chunk: requeste
   });
 }
 
-/** Remove objective source-lemma containment in one pass before a chunk is saved. */
-function removeSourceSelfRepeats(candidates, source, senseId) {
+/** Remove objective source-lemma containment while validating candidate strings in one pass. */
+function removeSourceSelfRepeats(candidates, source, senseId, location, newCandidateStartIndex = 0) {
+  if (!Array.isArray(candidates)) fail(`${location} candidates must be an array`);
   const autoRemoved = [];
   let retained;
-  for (const [index, candidate] of candidates.entries()) {
-    const containment = sourceLemmaContainmentMessage(candidate, source);
-    if (containment !== undefined) {
-      if (retained === undefined) retained = candidates.slice(0, index);
-      autoRemoved.push({ senseId, candidate, reason: 'source lemma repeat' });
-    } else retained?.push(candidate);
-  }
-  return { candidates: retained ?? candidates, autoRemoved };
-}
-
-function assertCandidateList(candidates, location) {
-  if (!Array.isArray(candidates)) fail(`${location} candidates must be an array`);
-  const seen = new Set();
+  let newCandidateCount = 0;
   for (const [index, candidate] of candidates.entries()) {
     if (typeof candidate !== 'string' || candidate.length === 0 || candidate.trim() !== candidate) {
       fail(`${location} candidate ${index + 1} ${JSON.stringify(candidate)} must be a non-empty trimmed string`);
     }
+    const containment = sourceLemmaContainmentMessage(candidate, source);
+    if (containment !== undefined) {
+      if (retained === undefined) retained = candidates.slice(0, index);
+      autoRemoved.push({ senseId, candidate, reason: 'source lemma repeat' });
+    } else {
+      retained?.push(candidate);
+      if (index >= newCandidateStartIndex) newCandidateCount += 1;
+    }
+  }
+  return { candidates: retained ?? candidates, autoRemoved, newCandidateCount };
+}
+
+function assertCandidateDuplicates(candidates, location) {
+  const seen = new Set();
+  for (const [index, candidate] of candidates.entries()) {
     const normalized = normalizeCandidate(candidate);
     if (seen.has(normalized)) fail(`${location} duplicates candidate ${JSON.stringify(candidate)}`);
     seen.add(normalized);
   }
+}
+
+function assertCandidateList(candidates, location) {
+  if (!Array.isArray(candidates)) fail(`${location} candidates must be an array`);
+  for (const [index, candidate] of candidates.entries()) {
+    if (typeof candidate !== 'string' || candidate.length === 0 || candidate.trim() !== candidate) {
+      fail(`${location} candidate ${index + 1} ${JSON.stringify(candidate)} must be a non-empty trimmed string`);
+    }
+  }
+  assertCandidateDuplicates(candidates, location);
 }
 
 /** Check structure and remove only objectively forbidden source-lemma repetitions before saving a complete chunk. */
@@ -601,8 +615,8 @@ async function validateChunkRows(inputRows, sourceRows, chunkNumber) {
       if (senseIds.has(sense.sense_id)) fail(`${location} repeats sense_id ${sense.sense_id}`);
       senseIds.add(sense.sense_id);
       const senseLocation = `${location} record_id ${row.record_id} sense_id ${sense.sense_id}`;
-      assertCandidateList(sense.candidates, senseLocation);
-      const filtered = removeSourceSelfRepeats(sense.candidates, source, sense.sense_id);
+      const filtered = removeSourceSelfRepeats(sense.candidates, source, sense.sense_id, senseLocation);
+      assertCandidateDuplicates(filtered.candidates, senseLocation);
       autoRemoved.push(...filtered.autoRemoved);
       checkedSenses.push(filtered.candidates === sense.candidates ? sense : { ...sense, candidates: filtered.candidates });
     }
@@ -720,6 +734,7 @@ export async function patchCandidateSenses({ scratchDirectory, inputPath, reposi
   const resolvedInput = assertScratchPath(repositoryDirectory, inputPath, 'input');
   const patches = parseJsonl(await readFile(resolvedInput, 'utf8'), resolvedInput);
   const loaded = new Map();
+  const autoRemoved = [];
   let removed = 0;
   let added = 0;
   for (const [index, patch] of patches.entries()) {
@@ -739,9 +754,11 @@ export async function patchCandidateSenses({ scratchDirectory, inputPath, reposi
     if (!loaded.has(chunk.number)) {
       const rows = await readSavedChunk(workspace.scratchDirectory, chunk);
       if (rows === null) fail(`${location} chunk ${chunk.number} has not been saved; save-chunk it first`);
-      loaded.set(chunk.number, { chunk, rows });
+      const sourceRows = await readSourceChunk(workspace.scratchDirectory, chunk);
+      loaded.set(chunk.number, { chunk, rows, sourceById: new Map(sourceRows.map((row) => [row.id, row])) });
     }
-    const sense = loaded.get(chunk.number).rows.find((row) => row.record_id === patch.record_id)
+    const currentChunk = loaded.get(chunk.number);
+    const sense = currentChunk.rows.find((row) => row.record_id === patch.record_id)
       ?.senses.find((item) => item.sense_id === patch.sense_id);
     if (!sense) fail(`${location} unknown record_id ${patch.record_id} / sense_id ${patch.sense_id}`);
     for (const candidate of patch.remove ?? []) {
@@ -750,14 +767,21 @@ export async function patchCandidateSenses({ scratchDirectory, inputPath, reposi
       sense.candidates.splice(at, 1);
       removed += 1;
     }
+    const source = currentChunk.sourceById.get(patch.record_id);
+    if (!source) fail(`${location} missing Canonical source record ${patch.record_id} from the prepared chunk`);
+    const newCandidateStartIndex = sense.candidates.length;
     sense.candidates.push(...(patch.add ?? []));
-    added += (patch.add ?? []).length;
+    const filtered = removeSourceSelfRepeats(sense.candidates, source, patch.sense_id,
+      `${location} ${patch.record_id}/${patch.sense_id}`, newCandidateStartIndex);
+    autoRemoved.push(...filtered.autoRemoved);
+    sense.candidates = filtered.candidates;
+    added += filtered.newCandidateCount;
     assertCandidateList(sense.candidates, `${location} ${patch.record_id}/${patch.sense_id}`);
   }
   for (const { chunk, rows } of loaded.values()) {
     await writeFileAtomic(candidatePathOf(workspace.scratchDirectory, chunk), serializeJsonl(rows));
   }
-  return { patchCount: patches.length, removed, added, chunks: [...loaded.keys()] };
+  return { patchCount: patches.length, removed, added, autoRemoved, chunks: [...loaded.keys()] };
 }
 
 /** Assemble the saved chunks in Canonical order and run the full Candidate v1 batch validator once. */

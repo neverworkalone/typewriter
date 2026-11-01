@@ -207,6 +207,11 @@ test('save-chunk removes normalized source-lemma containment and preserves indep
   // An unrelated word that is another entry's lemma remains eligible.
   const saved = await save({ 'w001-s1': ['단순', '별빛'] });
   assert.equal(saved.candidateCount, 2);
+
+  const repeatedContainment = await save({ 'w001-s1': ['단수', '단-수', '별빛'] });
+  assert.equal(repeatedContainment.candidateCount, 1);
+  assert.deepEqual(repeatedContainment.autoRemoved.map((item) => item.candidate), ['단수', '단-수']);
+  assert.deepEqual((await readLines(path.join(context.scratchDirectory, 'candidates/chunk-001.jsonl')))[0].senses[0].candidates, ['별빛']);
 });
 
 test('A/B: save removes every objective repeat, permits empty senses, resumes, and merges cleanly', async (t) => {
@@ -387,20 +392,32 @@ test('partial final-shard batch keeps its 83-record boundary and merges', async 
   assert.deepEqual(output[75].senses[0].candidates, ['별빛']);
 });
 
-test('merge runs the Candidate v1 validator and leaves no partial output; inspect returns the full record', async (t) => {
-  const context = await setup(t);
-  await prepare(context);
-  await saveAll(context);
-  await patchCandidateSenses({
-    scratchDirectory: context.scratchDirectory,
-    inputPath: await writeInput(context, [{ record_id: 'w001', sense_id: 'w001-s1', add: ['표제어 1'] }], 'patch.jsonl'),
-    repositoryDirectory: context.repositoryDirectory,
-  });
-  const outPath = path.join(context.scratchDirectory, 'must-not-exist.jsonl');
-  await assert.rejects(mergeCandidateBatch({ scratchDirectory: context.scratchDirectory, outPath, repositoryDirectory: context.repositoryDirectory }), /candidate repeats source lemma "표제어 1"/u);
-  await assert.rejects(readFile(outPath, 'utf8'), { code: 'ENOENT' });
-  const inspected = await inspectCanonicalRecord({ shard: '001', recordId: 'w001', repositoryDirectory: context.repositoryDirectory });
-  assert.deepEqual(inspected.record.senses, context.canonicalRows[0].senses);
+test('A/B patch filters source-lemma containment, preserves valid additions, and merges cleanly', async (t) => {
+  for (const method of ['a', 'b']) {
+    const context = await setup(t, method);
+    context.canonicalRows[0].lemma = '바구미';
+    await writeFile(path.join(context.repositoryDirectory, 'data/canonical/stdict-0001.jsonl'), `${context.canonicalRows.map((row) => JSON.stringify(row)).join('\n')}\n`);
+    await prepare(context);
+    await saveAll(context);
+
+    const patched = await patchCandidateSenses({
+      scratchDirectory: context.scratchDirectory,
+      inputPath: await writeInput(context, [{ record_id: 'w001', sense_id: 'w001-s1', add: ['벼바구미', '은하수'] }], 'patch.jsonl'),
+      repositoryDirectory: context.repositoryDirectory,
+    });
+    assert.equal(patched.added, 1);
+    assert.deepEqual(patched.autoRemoved.map((item) => item.candidate), ['벼바구미']);
+    const savedRows = await readLines(path.join(context.scratchDirectory, 'candidates/chunk-001.jsonl'));
+    assert.deepEqual(savedRows[0].senses[0].candidates, ['은하수']);
+
+    const outPath = path.join(context.scratchDirectory, 'merged.jsonl');
+    const merged = await mergeCandidateBatch({ scratchDirectory: context.scratchDirectory, outPath, repositoryDirectory: context.repositoryDirectory });
+    assert.equal(merged.validation.candidateCount, 1);
+    assert.deepEqual((await readLines(outPath))[0].senses[0].candidates, ['은하수']);
+
+    const inspected = await inspectCanonicalRecord({ shard: '001', recordId: 'w001', repositoryDirectory: context.repositoryDirectory });
+    assert.deepEqual(inspected.record.senses, context.canonicalRows[0].senses);
+  }
 });
 
 // ---- compact I/O (#2035 PR A) ----
