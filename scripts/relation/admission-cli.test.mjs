@@ -180,21 +180,21 @@ test('prepare re-run offers only undecided candidates: this shard\'s own approve
   const first = await quiet(() => run(['prepare', '--shard', '001', '--allow-partial'], { root: none }));
   assert.deepEqual(texts(first), ['버릴말', '새 말', '유일', '텍스트']);
 
-  const historicalDrop = { source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '버릴말', reason: '기존 자유형 사유' };
+  const existingDrop = { source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '버릴말', reason: 'x' };
   const decided = await repository(t, {
     relations: [
       { source_record_id: 'w1', source_sense_id: 'w1-s1', target_record_id: 'w3', target_sense_id: 'w3-s1', type: 'near', relevance: 2, reverse_type: 'near', reverse_relevance: 2 },
       { source_record_id: 'w1', source_sense_id: 'w1-s1', text: '텍스트', type: 'scene', relevance: 4 },
     ],
-    drops: [historicalDrop],
+    drops: [existingDrop],
   });
   const dropPath = path.join(decided, 'data/relation-drops/drop-001.jsonl');
-  const historicalDropBytes = await readFile(dropPath);
+  const existingDropBytes = await readFile(dropPath);
   const again = await quiet(() => run(['prepare', '--shard', '001', '--allow-partial'], { root: decided }));
   assert.deepEqual(texts(again), ['새 말']);
   assert.equal(again.stats.skipped_existing, 2);
   assert.equal(again.stats.skipped_dropped, 1);
-  assert.deepEqual(await readFile(dropPath), historicalDropBytes, 'reading existing free-form Drops does not rewrite their stored reason');
+  assert.deepEqual(await readFile(dropPath), existingDropBytes, 'reading existing coded Drops does not rewrite their stored reason');
 });
 
 test('Stage 2 loaders ignore malformed historical Relation and Drop backups', async (t) => {
@@ -203,7 +203,7 @@ test('Stage 2 loaders ignore malformed historical Relation and Drop backups', as
   assert.deepEqual(texts(prepared), ['버릴말', '새 말', '유일', '텍스트']);
 });
 
-test('new Stage 2 Drops accept only x/e and reserve the Stage 3 z code', async (t) => {
+test('Stage 2 accepts only x/e and reserves Stage 3 z; old free-form values fail', async (t) => {
   const { root, checkpoint } = await prepareSixPart(t);
   const chunk = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint], { root }));
   const input = '.warroom-scratch/drop-decision.json';
@@ -214,7 +214,7 @@ test('new Stage 2 Drops accept only x/e and reserve the Stage 3 z code', async (
     return quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', input], { root }));
   };
   await assert.rejects(() => save('z'), /reason "z" is reserved for Stage 3 reconciliation/u);
-  await assert.rejects(() => save('edit'), /reason "edit" is a legacy Stage 3 value/u);
+  await assert.rejects(() => save('edit'), /new Stage 2 Drop reason must be "x" or "e"/u);
   await assert.rejects(() => save('editorial: source-bound explanation'), /new Stage 2 Drop reason must be "x" or "e"/u);
   await assert.rejects(() => save('unrelated'), /new Stage 2 Drop reason must be "x" or "e"/u);
 
@@ -241,7 +241,7 @@ test('Stage 3 deletion reconciliation previews without writes and persists only 
     candidate_assignment_version: 1, candidate_forms: ['다라'], reverse_candidate_forms: [] };
   await writeFile(relationPath, relationJsonl([assigned]));
   await writeFile(dropPath, dropJsonl(sourceCandidates.slice(1).map((candidate) => ({
-    source_record_id: 'w1', source_sense_id: 'w1-s1', candidate, reason: '이미 판단됨',
+    source_record_id: 'w1', source_sense_id: 'w1-s1', candidate, reason: 'x',
   }))));
 
   const git = (args) => {
@@ -304,7 +304,7 @@ test('Stage 2 loaders reject verbose persisted Relation and Drop fields without 
 
   await rm(relationPath);
   const oldDrop = `${JSON.stringify({
-    source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '버릴말', reason: '무관',
+    source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '버릴말', reason: 'x',
   })}\n`;
   await writeFile(dropPath, oldDrop);
   await assert.rejects(() => quiet(() => run(['prepare', '--shard', '001', '--allow-partial'], { root })), /obsolete Drop JSONL field/u);
@@ -409,8 +409,8 @@ test('--part selects 100-record Stage 2 scopes, reports scoped stats, and keeps 
     { source_record_id: 'w200', source_sense_id: 'w200-s1', text: '후보200', type: 'scene', relevance: 4 },
   ]));
   await writeFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), dropJsonl([
-    { source_record_id: 'w100', source_sense_id: 'w100-s1', candidate: '후보100', reason: '출발 의미와 무관' },
-    { source_record_id: 'w101', source_sense_id: 'w101-s1', candidate: '후보101', reason: '출발 의미와 무관' },
+    { source_record_id: 'w100', source_sense_id: 'w100-s1', candidate: '후보100', reason: 'x' },
+    { source_record_id: 'w101', source_sense_id: 'w101-s1', candidate: '후보101', reason: 'x' },
   ]));
 
   await assert.rejects(
@@ -529,7 +529,7 @@ test('a reverse candidate cannot also be a Drop or a text-only row, but may targ
   const otherSenseRow = { source_record_id: 'w1', source_sense_id: 'w1-s1', target_record_id: 'w501', target_sense_id: 'w501-s2', type: 'scene', relevance: 4, reverse_type: 'scene', reverse_relevance: 4 };
   const other = { source_record_id: 'w1', source_sense_id: 'w1-s1', text: '다른 말', type: 'scene', relevance: 4 };
   const named = { source_record_id: 'w1', source_sense_id: 'w1-s1', text: '무관 말', type: 'scene', relevance: 5 };
-  const dropOf = (candidate) => ({ source_record_id: 'w1', source_sense_id: 'w1-s1', candidate, reason: '무관' });
+  const dropOf = (candidate) => ({ source_record_id: 'w1', source_sense_id: 'w1-s1', candidate, reason: 'x' });
   const verify = async (relations, drops) => {
     await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), relationJsonl(relations));
     await writeFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), drops.length ? dropJsonl(drops) : '');
@@ -570,10 +570,10 @@ test('verify CLI rejects direct plural mentions in current shard-002 glosses but
     { record_id: 'w999', senses: [{ sense_id: 'w999-s1', candidates: ['들', '떡'] }] },
   ]));
   await writeFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), dropJsonl([
-    { source_record_id: 'w828', source_sense_id: 'w828-s1', candidate: '수', reason: '무관' },
-    { source_record_id: 'w933', source_sense_id: 'w933-s1', candidate: '인부', reason: '무관' },
-    { source_record_id: 'w999', source_sense_id: 'w999-s1', candidate: '들', reason: '무관' },
-    { source_record_id: 'w999', source_sense_id: 'w999-s1', candidate: '떡', reason: '무관' },
+    { source_record_id: 'w828', source_sense_id: 'w828-s1', candidate: '수', reason: 'x' },
+    { source_record_id: 'w933', source_sense_id: 'w933-s1', candidate: '인부', reason: 'x' },
+    { source_record_id: 'w999', source_sense_id: 'w999-s1', candidate: '들', reason: 'x' },
+    { source_record_id: 'w999', source_sense_id: 'w999-s1', candidate: '떡', reason: 'x' },
   ]));
 
   await assert.rejects(() => quiet(() => run(['verify', '--shard', '001', '--allow-partial'], { root })), (error) => {
@@ -673,7 +673,7 @@ test('an existing ID relation accounts for a candidate even when another target 
 
   await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), '');
   await writeFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), dropJsonl([
-    { source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '미끄럼저항기', reason: '출발 의미와 무관' },
+    { source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '미끄럼저항기', reason: 'x' },
   ]));
   await assert.rejects(() => quiet(() => run(args('verify'), { root })), /"미끄럼저항기" is named by the gloss of w1-s1 and cannot be dropped as unrelated/);
 });
@@ -717,7 +717,7 @@ async function chunkRepository(t, base = tmpdir()) {
     source_record_id: 'w201', source_sense_id: 'w201-s1', target_record_id: 'w501', target_sense_id: 'w501-s1',
     type: 'association', relevance: 7, reverse_type: 'association', reverse_relevance: 7,
   };
-  const priorDrop = { source_record_id: 'w301', source_sense_id: 'w301-s1', candidate: '이전Drop', reason: '다른 sense에서만 맞는 표현' };
+  const priorDrop = { source_record_id: 'w301', source_sense_id: 'w301-s1', candidate: '이전Drop', reason: 'x' };
   await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), relationJsonl([priorRelation]));
   await writeFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), dropJsonl([priorDrop]));
   await writeFile(path.join(root, 'data/relations/relation-002.jsonl'), relationJsonl([{
@@ -1896,7 +1896,7 @@ test('inspect and optional reads preserve checkpoint/output/snapshot bytes and m
     'inspect and optional read do not touch the checkpoint, Relation/Drop outputs or snapshots');
 
   const cp = JSON.parse(await readFile(checkpointPath, 'utf8'));
-  cp.items[0].candidates[0].decision.reason = '다른 유효한 수정 이유';
+  cp.items[0].candidates[0].decision.reason = 'e';
   await writeFile(checkpointPath, `${JSON.stringify(cp)}\n`);
   const changed = await quiet(() => run([
     'inspect', '--checkpoint', checkpoint, '--source-sense-id', 'w1-s1', '--format', 'json', '--page-size', '2', '--page', '1',

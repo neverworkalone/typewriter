@@ -28,6 +28,7 @@ const LEGACY_ID_ROW_KEYS = 'relevance,reverse_relevance,reverse_type,source_reco
 const ASSIGNED_ID_ROW_KEYS = 'candidate_assignment_version,candidate_forms,relevance,reverse_candidate_forms,reverse_relevance,reverse_type,source_record_id,source_sense_id,target_record_id,target_sense_id,type';
 const TEXT_ROW_KEYS = 'relevance,source_record_id,source_sense_id,text,type';
 const DROP_ROW_KEYS = 'candidate,reason,source_record_id,source_sense_id';
+const DROP_REASONS = Object.freeze(['x', 'e', 'z']);
 
 const keysOf = (row) => Object.keys(row).sort().join(',');
 const isPlainObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -440,7 +441,7 @@ export function validateRelationRows({ relationRows, dropRows = [], index, shard
     if (!isPlainObject(row) || keysOf(row) !== DROP_ROW_KEYS) { errors.push(`${at}: must have exactly ${DROP_ROW_KEYS}`); return; }
     checkSource(row, at);
     if (!isText(row.candidate) || row.candidate !== normalizeCandidate(row.candidate)) errors.push(`${at}: candidate must be a non-empty normalized string`);
-    if (!isText(row.reason)) errors.push(`${at}: reason must be non-empty text`);
+    if (!DROP_REASONS.includes(row.reason)) errors.push(`${at}: reason must be one of ${DROP_REASONS.join('/')}`);
     const key = textKey(row.source_sense_id, row.candidate ?? '');
     if (dropSeen.has(key)) errors.push(`${at}: duplicate drop ${row.source_sense_id} -> ${row.candidate}`);
     dropSeen.add(key);
@@ -686,7 +687,7 @@ export function findGlossNamedDrops({ dropRows, scopeRows, index }) {
   const scopeSenses = new Set(scopeRows.flatMap((record) => record.senses.map((sense) => sense.id)));
   const glossOf = new Map(scopeRows.flatMap((record) => record.senses.map((sense) => [sense.id, sense.gloss])));
   return dropRows.flatMap((row, position) => {
-    if (row.reason === 'edit' || row.reason === 'z' || row.reason === 'e' || !scopeSenses.has(row.source_sense_id)
+    if (row.reason === 'z' || row.reason === 'e' || !scopeSenses.has(row.source_sense_id)
         || !glossNamesCandidate(glossOf.get(row.source_sense_id) ?? '', row.candidate, index)) return [];
     return [{
       position: position + 1,

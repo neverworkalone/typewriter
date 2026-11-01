@@ -130,7 +130,7 @@ async function writeFileStateAtomically(file, state) {
   await writeTextAtomically(file, state.bytes);
 }
 
-function validateDecision(item, candidate, decision, { allowLegacyDropReason = false } = {}) {
+function validateDecision(item, candidate, decision) {
   if (!isPlainObject(decision)) throw new Error(`${item.sense_id}/${candidate.text}: decision must be an object`);
   if (decision.source_sense_id !== item.sense_id || decision.candidate !== candidate.text) {
     throw new Error(`${item.sense_id}/${candidate.text}: decision must retain the exact source sense and candidate`);
@@ -144,8 +144,7 @@ function validateDecision(item, candidate, decision, { allowLegacyDropReason = f
     if (typeof decision.reason !== 'string' || !decision.reason.trim()) throw new Error(`${item.sense_id}/${candidate.text}: Drop needs a reason`);
     const reason = decision.reason.trim();
     if (reason === 'z') throw new Error(`${item.sense_id}/${candidate.text}: Drop reason "z" is reserved for Stage 3 reconciliation`);
-    if (reason === 'edit') throw new Error(`${item.sense_id}/${candidate.text}: Drop reason "edit" is a legacy Stage 3 value and cannot be used in Stage 2`);
-    if (!allowLegacyDropReason && reason !== 'x' && reason !== 'e') {
+    if (reason !== 'x' && reason !== 'e') {
       throw new Error(`${item.sense_id}/${candidate.text}: new Stage 2 Drop reason must be "x" or "e"`);
     }
     return;
@@ -323,7 +322,7 @@ function validateCheckpointDecisions(checkpoint) {
         if (candidate.decision.disposition !== 'existing') throw new Error(`${item.sense_id}/${candidate.text}: existing coverage cannot be replaced by a required decision`);
         const seenTargets = new Set(candidate.existing_target_sense_ids);
         for (const [index, relation] of candidate.additional_relations.entries()) {
-          validateDecision(item, { ...candidate, additional_relations: candidate.additional_relations.slice(0, index) }, relation, { allowLegacyDropReason: true });
+          validateDecision(item, { ...candidate, additional_relations: candidate.additional_relations.slice(0, index) }, relation);
           if (usesSourceMirrorTypeTier(checkpoint) && relation.target_resolution === 'exact'
               && (relation.reverse_type !== relation.type || relation.reverse_relevance !== relation.relevance)) {
             throw new Error(`${item.sense_id}/${candidate.text}: new-policy optional ID relations must mirror source type/relevance`);
@@ -332,7 +331,7 @@ function validateCheckpointDecisions(checkpoint) {
           seenTargets.add(relation.target_sense_id);
         }
       } else {
-        validateDecision(item, candidate, candidate.decision, { allowLegacyDropReason: true });
+        validateDecision(item, candidate, candidate.decision);
         if (usesSourceMirrorTypeTier(checkpoint) && candidate.decision.target_resolution === 'exact'
             && (candidate.decision.reverse_type !== candidate.decision.type
               || candidate.decision.reverse_relevance !== candidate.decision.relevance)) {

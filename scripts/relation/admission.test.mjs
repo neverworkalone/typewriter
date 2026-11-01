@@ -45,7 +45,7 @@ test('persisted Relation and Drop JSONL use one compact schema while preserving 
   const versionZero = { ...legacy, candidate_assignment_version: 0, candidate_forms: ['표적 표기'], reverse_candidate_forms: [] };
   const versionOne = { ...legacy, candidate_assignment_version: 1, candidate_forms: ['표적 표기'], reverse_candidate_forms: ['출발 표기'] };
   const text = { source_record_id: 'w1', source_sense_id: 'w1-s1', text: '새 말', type: 'scene', relevance: 4 };
-  const drop = { source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '버릴말', reason: '출발 의미와 무관' };
+  const drop = { source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '버릴말', reason: 'x' };
 
   const persisted = serializeRelationJsonl([legacy, versionZero, versionOne, text]);
   const stored = persisted.trim().split('\n').map(JSON.parse);
@@ -68,7 +68,7 @@ test('persisted readers reject the previous verbose Relation and Drop contracts'
     id: 'w1', sid: 'w1-s1', tid: 'w2', tsid: 'w2-s1', tp: 'scene', rv: 4, reverse_type: 'mood', reverse_relevance: 5,
   })), /obsolete Relation JSONL field/u);
   assert.throws(() => parseDropJsonl(JSON.stringify({
-    source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '버릴말', reason: '무관',
+    source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '버릴말', reason: 'x',
   })), /obsolete Drop JSONL field/u);
   assert.throws(() => serializeRelationJsonl([{
     source_record_id: 'w1', source_sense_id: 'w1-s1', target_record_id: 'w2', target_sense_id: 'w2-s1',
@@ -137,7 +137,7 @@ test('new ID rows leave already decided reverse Candidate forms unclaimed', () =
     type: 'near', relevance: 3, reverse_type: 'near', reverse_relevance: 3,
     candidate_assignment_version: 1, candidate_forms: ['동철'], reverse_candidate_forms: ['표제 1'],
   };
-  const drop = { source_record_id: target.id, source_sense_id: target.senses[0].id, candidate: '표제1', reason: 'edit' };
+  const drop = { source_record_id: target.id, source_sense_id: target.senses[0].id, candidate: '표제1', reason: 'z' };
   const lookup = createReverseCandidateFormLookup({ relationRows: [alreadyClaimed], dropRows: [drop], index: reverseIndex });
   assert.deepEqual(lookup.available(source, target.senses[0].id), ['표제-1'],
     'the existing reverse Relation and edit Drop each own only their decided orthographic spelling');
@@ -221,7 +221,7 @@ test('Stage 2 does not require a source gloss for candidates already covered by 
       ? [{ source_record_id: 'w1', source_sense_id: 'w1-s1', text, type: 'near', relevance: 3 }]
       : [];
     const dropped = disposition === 'drop'
-      ? [{ source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: text, reason: '이미 결정됨' }]
+      ? [{ source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: text, reason: 'x' }]
       : [];
 
     const { items, stats } = prepareShard({
@@ -436,11 +436,13 @@ test('duplicates are rejected within the shard, in reverse and against other sha
 });
 
 test('drop rows need real reasons and unique candidates', () => {
-  const drop = { ...base, candidate: '버릴말', reason: '출발 의미와 무관' };
+  const drop = { ...base, candidate: '버릴말', reason: 'x' };
   assert.equal(validate([], [drop]).dropCount, 1);
   assert.throws(() => validate([], [{ ...drop, reason: ' ' }]), /reason/);
-  assert.equal(validate([], [{ ...drop, reason: 'editorial: historical reason' }]).dropCount, 1,
-    'historical persisted Drop reasons remain free-form and are not migrated');
+  for (const reason of ['x', 'e', 'z']) assert.equal(validate([], [{ ...drop, reason }]).dropCount, 1);
+  for (const reason of ['edit', 'editorial: historical reason', 'free-form']) {
+    assert.throws(() => validate([], [{ ...drop, reason }]), /reason must be one of x\/e\/z/u);
+  }
   assert.throws(() => validate([], [drop, drop]), /duplicate drop/);
   assert.throws(() => validate([], [{ ...drop, extra: 1 }]), /exactly/);
 });
@@ -454,7 +456,7 @@ test('accounting: every unique candidate is exactly one of relation, drop or exi
       { ...base, text: '표제1x', type: 'scene', relevance: 4 },
       { ...base, target_record_id: 'w900', target_sense_id: 'w900-s1', type: 'near', relevance: 2, reverse_type: 'near', reverse_relevance: 2 },
     ],
-    drops: [{ source_record_id: 'w2', source_sense_id: 'w2-s1', candidate: '버릴말', reason: '무관' }],
+    drops: [{ source_record_id: 'w2', source_sense_id: 'w2-s1', candidate: '버릴말', reason: 'x' }],
   };
   const counts = answer(full.relations, full.drops);
   assert.equal(counts.missing, 0);
@@ -469,7 +471,7 @@ test('accounting: every unique candidate is exactly one of relation, drop or exi
 });
 
 test('accounting treats complete gloss words as mentions, not substrings inside other words', () => {
-  const verifyDrop = (gloss, candidate, reason = '무관') => {
+  const verifyDrop = (gloss, candidate, reason = 'x') => {
     const canonicalRows = canonical();
     canonicalRows[0].senses[0].gloss = gloss;
     const candidateFile = {
@@ -503,14 +505,10 @@ test('accounting treats complete gloss words as mentions, not substrings inside 
     'a Drop for a connected candidate with no independent expression value may account for a gloss-named candidate');
   assert.throws(() => verifyDrop('가로에 사는 민족.', '가로', 'x'), /named by the gloss/,
     'an unrelated Drop code remains blocked for the same gloss-named candidate');
-  assert.throws(() => verifyDrop('가로에 사는 민족.', '가로', '출발 의미와 무관'), /named by the gloss/,
+  assert.throws(() => verifyDrop('가로에 사는 민족.', '가로', 'x'), /named by the gloss/,
     'an unrelated Drop remains blocked for the same gloss-named candidate');
-  assert.throws(() => verifyDrop('가로에 사는 민족.', '가로', 'editorial: historical reason'), /named by the gloss/,
-    'the old free-form editorial wording no longer receives the e exception');
   assert.equal(verifyDrop('가로에 사는 민족.', '가로', 'z').drop, 1,
-    'the current Stage 3 reconciliation code remains exempt from the unrelated Drop check');
-  assert.equal(verifyDrop('가로에 사는 민족.', '가로', 'edit').drop, 1,
-    'historical Stage 3 edit rows remain readable while their replacement code is z');
+    'the Stage 3 reconciliation code remains exempt from the unrelated Drop check');
 });
 
 test('accounting allows an approved reverse candidate for a different target sense, but rejects the same sense pair twice', () => {
