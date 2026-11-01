@@ -27,7 +27,7 @@ source and scope:
 | --- | --- |
 | STDICT-provided `direct`/`antonym` and approved explicit `→` reference projections (#834) | Unchanged and authoritative. Not re-judged, re-edited or extended by Typewriter. The `direct` bidirectional contract (#797/#834) stays. |
 | Historical relations and calibrations (M1/M9/M10, Stage D, the `direct`/`antonym` calibration examples below) | Records of past decisions. They are **not** permission to add new Typewriter-authored `direct`/`antonym`, and the data is not rewritten. |
-| New #838 Typewriter-authored 말의 결 (`near`, `mood`) and 연상 (`scene`, `sensory`, `action`, `association`) | Governed by this section. |
+| New #838 Typewriter-authored 말의 결 (`near`, `mood`) and 연상 (`scene`, `sensory`, `action`, `association`) | Governed by this section; **new Stage 2 admission** also follows the final writer-value gate below (#2544). Historical approved data are not retroactively re-edited. |
 
 **What changes for new #838 authored relations:**
 
@@ -84,6 +84,18 @@ non-blocking feedback; a clear, evidenced inversion against same-source/group
 peers can block. Tier 1 handed out to scene/object associations that are not
 synonym-candidate-level is a calibration defect only when it visibly distorts
 that group.
+
+## Stage 2 editorial admission — final writer-facing value (#2544)
+
+**For new Stage 2 Part decisions**, unlike the earlier preserve-first policy, *semantic plausibility is necessary but not sufficient*. The admitted relation must give a writer a **distinct usable choice** of wording, nuance, mood, image, action, sensation, scene, or association from the exact source Sense. Compare the candidate with same-Sense approved and pending peers; do not merely score an editorially useless relation 7–9. Stage 1 (#2545) filters **obvious** trivial variants in production; Stage 2 only decides those still present, plus context-dependent worth. Stage 3 becomes an independent audit of Stage 2 quality (while retaining its existing correction/Link Repair tools). No deletion quota.
+
+- **Drop when worth is absent**, even if a link exists: same-word/same-root ending variations (`깜빡대다→깜빡이다`), formal nominalization (`조퇴하다→조퇴`), trivial reduplication (`팔딱하다→팔딱팔딱`), predictable field→occupation derivation (`건축→건축가`), synonyms that offer no different register or expression, irrelevant incidental objects and weak unsupported multi-hop associations. These are contextual *decision examples*, not string-pattern validators.
+- **Keep when value is present:** legitimate stylistic alternatives and intelligible indirect, unusual or low-priority imagery. For example, `깜빡대다` in a memory Sense can suggest `가물가물`, and in a light Sense `점멸/명멸`. `어정대다→낙타` requires **individual** writer-path judgment, **not automatic rejection** by Stage 1 or Stage 2. `팔딱하다→심장` likewise depends on the bound Sense. A low Tier, unfamiliarity, different POS or a gloss mention is not itself a reason to keep or drop.
+- **ID links project in both directions:** assess the reverse-direction usefulness before admitting an ID edge. Existing approved/reverse-covered edges remain under existing accounting, not re-judged; text-only edges have no reverse.
+- **Drop reasons and validation:** a Stage 2 `editorial:` reason (plus a short source-bound explanation) distinguishes a meaningful-but-worthless candidate from a genuinely unrelated/wrong-Sense Drop. The existing gloss-named Drop safeguard remains for unrelated decisions; the **editorial-only exception requires the separate #2544 code/validator change before activation**. `edit` is reserved for Stage 3. No new fields, files, or accounting bypass.
+- **Review:** look for both unwarranted Relation approvals and overzealous Drops, with demonstrated source-Sense/peer context. Tier calibration, Type, target-sense fidelity, bidirectional behavior and candidate accounting continue unchanged. One subjective borderline case or an arbitrary target deletion percentage is not a blocker.
+
+This Stage 2-specific gate supersedes **only** earlier Typewriter-authored exploratory guidance below that says to reject *only* blatantly incoherent relations, or to **always** keep a weak but intelligible path at a lower Tier. It does **not** change STDICT `direct`/`antonym` review, Stage 1 Candidate format, historical approved edges, or Type/Tier definitions.
 
 ## Different goals, different review gates
 
@@ -195,8 +207,7 @@ new 사람 → 아빠 should normally also rank 2 unless a convincing
 writer-facing reason explains the distinction. Compare group peers,
 not unrelated words or unrelated source senses.
 
-When a creative path is plausible but weaker or context dependent,
-**retain it with a lower priority** instead of vetoing it. A judgment call
+When a creative path is plausible but weaker or context dependent, **and passes the Stage 2 writer-value gate above**, retain it with a lower priority rather than vetoing it. A merely plausible but editorially useless connection is a Stage 2 Drop. A judgment call
 such as 4 vs 5 is not a blocker. Do not require a universal perfect
 relative order, nor mechanically score or test subjective usefulness.
 
@@ -204,8 +215,7 @@ relative order, nor mechanically score or test subjective usefulness.
 
 1. Verify dictionary-type semantic accuracy and ordinary structural,
    source-bound, licensing, provenance and reference integrity.
-2. For exploratory types, screen **only clear errors** before evaluating
-   their relevance relative to existing same-source/group relationships.
+2. For **new Stage 2 authored** exploratory types, apply the writer-value gate above, then evaluate admitted relations' relevance relative to existing same-source/group peers. For historical/STDICT relations preserve their applicable original review boundary.
    Do not demand interchangeable wording, identical glosses or a generic
    no-hypernyms rule for all creative links.
 3. Suggest optional rank tweaks without blocking when disagreement is
