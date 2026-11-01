@@ -1,6 +1,6 @@
 # Relation Factory v1
 
-Typewriter 관계 제작은 **후보 발굴 → Relation Admission → 최종 관계 정제 → DB 빌드**로 분리한다. STDICT Canonical JSONL처럼 생성한 **Candidate JSONL을 영구 보관**하고, 이후 원본 문학·말뭉치 DB를 다시 검색하지 않고 Relations를 편집한다. 편집 기준은 [relation-editorial-policy.md](relation-editorial-policy.md)를 따른다.
+Typewriter 관계 제작은 **후보 발굴 → Stage 2 최종 편집·승인 → Stage 3 독립 감사·교정 → DB 빌드**로 분리한다. STDICT Canonical JSONL처럼 생성한 **Candidate JSONL을 영구 보관**하고, 이후 원본 문학·말뭉치 DB를 다시 검색하지 않고 Relations를 편집한다. 편집 기준은 [relation-editorial-policy.md](relation-editorial-policy.md)를 따른다.
 
 **1회성 전체 초기화 (오너 결정, Issue #1154):** 영구 보관·소급 수정 금지 원칙의 유일한 예외로, 오너가 기존 생산 데이터를 `candidate` 브랜치(2af4d21a)에 보관한 뒤 구형 A/B/C/D 정식 Candidate 236개, 승인 authored Relation, Drop 판정을 모두 삭제했다. A/B/C/D 모든 방식의 진행 위치는 `001_01`부터 재시작하며(A/B는 모델별, C/D는 방식별 공유 진행 위치 유지), 구형 Relation/Drop은 새 후보 생산 후 Stage 2에서 다시 판정한다. 초기화 이후 머지된 Candidate에는 영구 보관 원칙이 다시 적용된다.
 
@@ -9,7 +9,7 @@ Stage 1 — Candidate Generation: A / B / C / D 독립 병렬 생산
     → data/relation-candidates/<shard>/<shard>_<batch>_<method>_<model>.jsonl
 Stage 2 — Relation Admission: 후보 통합 → 채택/제외 → 타입/Tier/대상 확정
     → 승인 Relations / Drops JSONL (샤드 단위)
-Stage 3 — Relation Editorial Refinement (#2450, 구현 예정): Drop / Link Repair
+Stage 3 — Relation Editorial Refinement (#2455, 구현됨): 독립 감사 / Drop / Link Repair
     → 기존 Relation / Drop JSONL을 직접 수정 (추가 edit 파일 없음)
 pnpm run build: Canonical + 최종 Relations → Full / Lite SQLite
 ```
@@ -186,7 +186,7 @@ PR의 Normal 검사는 추가·수정된 `data/relation-candidates/` 파일마�
 # text-only (reverse 없음, 클릭 불가)
 {"id":"w1","sid":"w1-s1","tt":"새 말","tp":"scene","rv":4}
 # data/relation-drops/drop-001.jsonl — 실제 Drop만 (없으면 빈 파일/부재 허용)
-{"id":"w2","sid":"w2-s1","cd":"버릴말","by":"출발 의미와 무관"}
+{"id":"w2","sid":"w2-s1","cd":"버릴말","by":"x"}
 ```
 
 - 파일에 저장하는 필드만 축약한다. Relation ID 행은 `id`/`sid`/`tid`/`tsid`/`tp`/`rv`와 선택적 `ver`/`fm`/`rfm`, text-only 행은 `id`/`sid`/`tt`/`tp`/`rv`, Drop 행은 `id`/`sid`/`cd`/`by`를 사용한다. JS 내부 객체와 checkpoint는 기존의 descriptive 필드명을 유지할 수 있다. 저장기는 compact 필드만 쓰고, 저장 파일을 읽는 Stage 2 및 제품 빌드 로더는 이전 verbose 키와 혼합된 키를 거부한다.
@@ -228,9 +228,9 @@ Part 모드는 선택한 Stage 1 Batch의 필수 후보 파일 6개를 기존 v1
 
 **Stage 2 다음 작업 선택(#927):** 완료 단위는 `(shard, batch, part)`다. 샤드 001부터 Batch 01→02, 각 Batch 안에서 Part 01→05의 Canonical 순서로, 필수 Stage 1 파일 6개가 최신 master에 있고 그 master의 정확한 `verify --shard <SSS> --batch <BB> --part <PP>`가 아직 성공하지 못하는 가장 이른 Part를 고른다. 파일이나 이전 PR의 존재·머지만으로 완료를 판단하지 않는다. 해당 Part의 편집 세션 하나가 PR 하나다. 같은 샤드의 열린 Stage 2 PR이 있으면 누적 `relation-<SSS>.jsonl`/`drop-<SSS>.jsonl`의 충돌을 막기 위해 다음 Part를 시작하지 않는다. PR 머지 후 최신 master를 기준으로 다음 Part를 준비한다. 각 Batch의 **모든 유효 Part**가 성공적으로 검증된 뒤 `verify --shard <SSS> --batch <BB>`를 실행하고, 해당 샤드의 **모든 유효 Part**가 끝난 뒤 `verify --shard <SSS>`를 실행한다(샤드 428은 Batch 02의 Part 01만 유효하므로 총 6개 Part). 후보가 없거나 전부 다른 승인 관계로 처리된 범위도 `verify` 성공으로 완료될 수 있다. #927은 이 순차 생산·검증 계약을 계속 소유하며, 구현 이슈 #1665만 구현 완료 후 닫는다.
 
-## 5. Stage 3 — Relation Editorial Refinement (#2450, implementation planned)
+## 5. Stage 3 — Relation Editorial Refinement (#2455)
 
-> **구현 상태:** 이 절은 [#2450](https://github.com/neverworkalone/typewriter/issues/2450)의 확정된 Stage 3 구현 계약이다. **Phase 0 문서만 반영된 상태에서는 Stage 3 CLI/War Room 실행 및 Stage 2 reconcile이 아직 제공되지 않는다.** Phase 1~3을 구현한 뒤 아래 운영 흐름을 활성화한다. REVIEW.md의 *PR review Stage 3*와는 별개다.
+> **구현 상태:** [#2450](https://github.com/neverworkalone/typewriter/issues/2450)의 구현 작업은 종료되었으며 Stage 3 CLI(`scripts/relation/edit-cli.mjs`), War Room `s3` 실행(`tools/warroom/warroom/stage3.py`) 및 Stage 2 연계 reconcile 경로가 마련되어 있다. 실제 샤드 작업은 [#2455](https://github.com/neverworkalone/typewriter/issues/2455)의 선행 조건·검증·점유 규칙을 따른다. 구현 완료는 특정 샤드의 파일럿/생산 완료를 의미하지 않는다. REVIEW.md의 *PR review Stage 3*와는 별개다.
 
 **목적:** Stage 3는 **Stage 2 최종 편집 품질을 독립적으로 감사**한다(#2544). Stage 2와 동일한 작가 관점의 표현 가치 기준으로 잘못 승인된 관계·Sense·Link Repair 필요성을 확인하고 필요한 교정을 수행하되, 대량 편집을 정상 운영의 전제로 삼지 않는다. 과거 preserve-first 기준으로 생산된 샤드를 소급 재편집하거나 당시 Stage 2를 지침 위반으로 평가하지 않는다. Stage 3의 삭제 비율은 원인 진단 지표일 뿐 목표/쿼터가 아니며, 독창적이고 유용한 연상은 보호한다. 기존 Drop·Link Repair 교정 능력은 유지한다.
 
@@ -241,7 +241,7 @@ Part 모드는 선택한 Stage 1 Batch의 필수 후보 파일 6개를 기존 v1
 - **기존 파일만 사용:** `data/relations/relation-SSS.jsonl`에서 Drop 관계를 삭제하고 text-only를 ID 관계로 고친다. `data/relation-drops/drop-SSS.jsonl`에는 **삭제 후 어떤 Relation/역방향 커버도 처리하지 않는 후보 키**만 기존 `{id,sid,cd,by:"z"}`로 추가한다. 같은 후보에 다른 유효 target Sense 관계가 남았다면 Drop하지 않는다. 여러 `fm`, legacy/`ver:0` 추론, `rfm`은 Stage 2의 동일한 후보 귀속 규칙으로 계산한다.
 - **Drop 소유:** `drop-SSS`의 `sid`는 항상 SSS의 Canonical source sense에 속한다. 다른 샤드 sense를 넣는 foreign tombstone이나 별도 `edit-SSS.jsonl` 원장은 금지한다. 다른 샤드의 역방향 고아 후보는 **그 샤드 자체 Stage 2 흐름에서** 원인에 따라 처리한다.
 - **Stage 3 Drop은 출발 의미와 무관해야 한다는 뜻이 아니다.** 후보가 의미상 유효해도 단순 활용형, 어미 변이, 명사화, 반복·중복, 효용 없는 유의어, 가치 없는 연상 또는 잘못 결속된 Sense면 Relation 삭제 후 고아 후보 Drop이 될 수 있다. 이는 **Stage 2가 먼저 걸러야 할 유형을 감사하며 놓친 사례를 교정**하는 것이지 Stage 3 전용으로 분리된 느슨한 승인 기준이 아니다. Stage 3는 고아 후보의 회계 코드로 `by:"z"`를 만들며, 이 값은 Stage 2 `x`와 달리 출발 sense와 무관하다는 뜻이 아니므로 gloss-name 반례 검사에서 면제한다. Stage 2는 `x/e`만 사용한다.
-- **Link Repair:** 동일 표기 Canonical의 **모든 target Sense 및 전체 뜻풀이**를 비교해 정확한 하나를 선택한 경우에만 `{id,sid,tid,tsid,tp,rv,ver:1,fm:[tt],rfm:[…]}`로 교체한다. **현재 Stage 2의 신규 ID 행은 `rfm`을 출발 레코드의 모든 후보형으로 채워 기결정 후보와 충돌할 수 있다. Phase 1에서 신규 Stage 2 ID 행과 Stage 3 Link Repair가 함께 사용할 역방향 후보 필터 함수를 구현한다.** target 소유 샤드의 기존 Relation/Drop(`by:"z"` 포함)·역방향 커버로 이미 결정된 형태는 `rfm`에서 제외한다. 아직 판정 전인 실제 후보형은 기존 계약대로 유지한다. 불명확하면 text-only 유지. 중복 ID 쌍·역방향 중복은 금지한다.
+- **Link Repair:** 동일 표기 Canonical의 **모든 target Sense 및 전체 뜻풀이**를 비교해 정확한 하나를 선택한 경우에만 `{id,sid,tid,tsid,tp,rv,ver:1,fm:[tt],rfm:[…]}`로 교체한다. Stage 2 신규 ID 링크와 Stage 3 Link Repair는 **이미 처리된 target Sense 후보형을 `rfm`에서 제외하는 공유 필터**를 사용한다. target 소유 샤드의 기존 Relation/Drop(`by:"z"` 포함)·역방향 커버로 이미 결정된 형태는 `rfm`에서 제외한다. 아직 판정 전인 실제 후보형은 기존 계약대로 유지한다. 불명확하면 text-only 유지. 중복 ID 쌍·역방향 중복은 금지한다.
 - 최종 빌드는 계속 **`pnpm run build`**. 빌더나 persisted JSONL 스키마를 변경하지 않는다. SQLite의 meaning-level 병합/중복 출처가 있을 수 있으므로 관계 삭제의 최종 표시 효과는 실제 provenance를 고려한다.
 
 ### 5-B. 실행·토큰·PR 경계
@@ -264,13 +264,13 @@ Part 모드는 선택한 Stage 1 Batch의 필수 후보 파일 6개를 기존 v1
 
 ### 5-D. 편집 판단
 
-- **Drop:** 활용형/같은 어근의 단순 어미 변이 (`깜빡대다→깜빡이다`, `어정대다→어정거리다`), 형식만 바뀐 명사화 (`조퇴하다→조퇴`), 반복 (`팔딱하다→팔딱팔딱`), 가치 없는 같은 뜻 되풀이, Sense 혼입 (`팔딱하다 s1→심장` 검토), 단순 단어에서 너무 먼 임의 연상 (`어정대다→낙타` 등).
+- **Drop:** 활용형/같은 어근의 단순 어미 변이 (`깜빡대다→깜빡이다`, `어정대다→어정거리다`), 형식만 바뀐 명사화 (`조퇴하다→조퇴`), 반복 (`팔딱하다→팔딱팔딱`), 가치 없는 같은 뜻 되풀이, 잘못 결속된 Sense 및 **작가가 활용할 수 있는 연상 경로가 없는** 관계. `팔딱하다 s1→심장`, `어정대다→낙타`는 정확한 출발 Sense와 표현 가치를 개별 검토하며, 단지 멀거나 낯설다는 이유로 자동 Drop하지 않는다.
 - **Keep:** 실제 문장/장면/감각의 새로운 선택지를 여는 `깜빡대다→가물가물`(기억 Sense), `→점멸/명멸`(빛 Sense) 등. 낯설거나 Tier가 높다는 이유만으로 일괄 삭제하지 않는다.
 - **판정 시야:** 출발 Sense의 해당 샤드 소유 Relation 전체를 함께 보고 중복과 선택지를 비교한다. ID 삭제가 역방향에도 미치는 영향을 감안한다. 형태 패턴을 정규식으로 자동 Drop하지 않는다.
 
-**프롬프트 등록:** Phase 3의 War Room 연결에서는 `tools/warroom/warroom/prompts.py`의 `prompts.ALLOWED`에 `s3_policy_card`와 실제 Stage 3 청크 템플릿을 등록해야 한다. Phase 0에서 파일만 추가하는 것은 실행 가능 상태를 뜻하지 않는다.
+**프롬프트 등록(완료):** `tools/warroom/warroom/prompts.py`의 `prompts.ALLOWED`에 `s3_policy_card`와 `s3_chunk`가 등록되어 있으며 War Room은 해당 템플릿을 사용한다.
 
-**구현·파일럿:** [#2450](https://github.com/neverworkalone/typewriter/issues/2450) Phase 0(정책 문서) → Phase 1(Stage 2 회계/최신 master/reconcile) → Phase 2(Stage 3 CLI) → Phase 3(War Room 연결) → Phase 4(Shard 001 파일럿). Shard 001의 앞 5청크와 `보다` 청크로 토큰/품질을 보정하고, 전체 청크 완료 후 데이터 PR 하나를 제출한다. 삭제 쌍 양방향 DB 반영, Repair 정확성, protected Keep, 실제 cross-shard orphan과 추가 reconcile PR 비용을 측정한다. 삭제율 목표는 없다.
+**구현 이력·파일럿:** [#2450](https://github.com/neverworkalone/typewriter/issues/2450)은 정책·Stage 2 회계/최신 master/reconcile·Stage 3 CLI·War Room 연계의 구현 계획이었다. 파일럿 및 각 샤드의 실제 완료 여부는 [#2455](https://github.com/neverworkalone/typewriter/issues/2455)의 실행 결과와 **머지된 Stage 3 데이터 PR·검증 상태**로 판단하며, 계획 이슈의 종료만으로 완료 처리하지 않는다. 삭제율 목표는 없다.
 
 ## 6. Build와 검증 경계
 
