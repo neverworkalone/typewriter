@@ -439,6 +439,7 @@ test('drop rows need real reasons and unique candidates', () => {
   const drop = { ...base, candidate: '버릴말', reason: '출발 의미와 무관' };
   assert.equal(validate([], [drop]).dropCount, 1);
   assert.throws(() => validate([], [{ ...drop, reason: ' ' }]), /reason/);
+  assert.throws(() => validate([], [{ ...drop, reason: 'editorial:   ' }]), /specific explanation after "editorial:"/);
   assert.throws(() => validate([], [drop, drop]), /duplicate drop/);
   assert.throws(() => validate([], [{ ...drop, extra: 1 }]), /exactly/);
 });
@@ -497,6 +498,10 @@ test('accounting treats complete gloss words as mentions, not substrings inside 
   assert.equal(verifyDrop('들판과 떡갈나무가 보인다.', '들').drop, 1, 'a plural marker inside a different compound is not a gloss mention');
   assert.equal(verifyDrop('가로에 사는 민족.', '가로수').drop, 1, 'a longer candidate is not a mention of its prefix');
   assert.throws(() => verifyDrop('떡갈나무에 잎이 넓다.', '떡갈나무'), /named by the gloss/, 'a complete candidate phrase remains protected from Drop');
+  assert.equal(verifyDrop('가로에 사는 민족.', '가로', 'editorial: sense와 연결되지만 독립적인 표현 가치를 주지 않음').drop, 1,
+    'a specific Stage 2 editorial Drop may account for a gloss-named candidate');
+  assert.throws(() => verifyDrop('가로에 사는 민족.', '가로', '출발 의미와 무관'), /named by the gloss/,
+    'an unrelated Drop remains blocked for the same gloss-named candidate');
   assert.equal(verifyDrop('가로에 사는 민족.', '가로', 'edit').drop, 1,
     'the Stage 3 edit reconciliation reason may account for a source gloss naming the orphan candidate');
 });

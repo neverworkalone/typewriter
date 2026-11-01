@@ -15,6 +15,7 @@ import {
   assertShard,
   batchScope,
   findGlossNamedDrops,
+  isEditorialDropReason,
   loadAllApprovedDrops,
   orphanedCandidateDrops,
   candidateInventory,
@@ -142,7 +143,11 @@ function validateDecision(item, candidate, decision) {
   if (decision.disposition === 'drop') {
     if (keysOf(decision) !== 'candidate,disposition,reason,source_sense_id') throw new Error(`${item.sense_id}/${candidate.text}: Drop decision has unexpected or missing fields`);
     if (typeof decision.reason !== 'string' || !decision.reason.trim()) throw new Error(`${item.sense_id}/${candidate.text}: Drop needs a reason`);
-    if (decision.reason.trim() === 'edit') throw new Error(`${item.sense_id}/${candidate.text}: Drop reason "edit" is reserved for Stage 3 reconciliation`);
+    const reason = decision.reason.trim();
+    if (reason === 'edit') throw new Error(`${item.sense_id}/${candidate.text}: Drop reason "edit" is reserved for Stage 3 reconciliation`);
+    if (reason.startsWith('editorial:') && !isEditorialDropReason(reason)) {
+      throw new Error(`${item.sense_id}/${candidate.text}: editorial Drop needs a specific explanation after "editorial:"`);
+    }
     return;
   }
   if (decision.disposition !== 'relation') throw new Error(`${item.sense_id}/${candidate.text}: disposition must be relation or drop`);
