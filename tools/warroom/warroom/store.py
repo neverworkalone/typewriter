@@ -578,10 +578,10 @@ class Store:
         return True
 
     def request_drain_all(self, lines) -> int:
-        """Set Drain ON for every target Line in one transaction (shared with `create_batch`).
+        """Drain target Lines that own an unfinished batch, in one transaction shared with `create_batch`.
 
-        A Line with an active batch finishes it; a Line without one loses a pending run reservation and stays
-        drained until an explicit Cancel Drain. Returns the number of target Lines updated.
+        Empty Lines only lose a pending run reservation; they are not newly drained. Returns the number of
+        unfinished-batch Lines Drain All applied to.
         """
         now = time.time()
         with self._conn() as c:
@@ -648,7 +648,7 @@ class Store:
                 target = row["target"]
                 if target == "all":
                     count = self._drain_all_tx(c, board_lines, now)
-                    self._add_event(c, None, f"예약 Drain All 발화: {count}개 생산 Line Drain ON", ts=now)
+                    self._add_event(c, None, f"예약 Drain All 발화: {count}개 미완료 배치 보유 Line Drain ON", ts=now)
                     result = {"target": target, "status": "fired", "count": count}
                 else:
                     active = c.execute(
@@ -681,11 +681,18 @@ class Store:
         for model, method in lines:
             if method == MAINTENANCE_METHOD:
                 continue
+            active = c.execute("SELECT state FROM batches WHERE producer=? AND method=? AND state!='COMPLETE' "
+                               "ORDER BY id DESC LIMIT 1", (model, method)).fetchone()
+            if active is None:
+                # Cancel only a Start reservation. Preserve any explicitly set Drain and allow a later Start.
+                c.execute("UPDATE lines SET run=0, updated_at=? WHERE model=? AND method=? AND run!=0",
+                          (now, model, method))
+                continue
+            if active["state"] == "CLEARING":
+                continue
             c.execute("INSERT OR IGNORE INTO lines(model,method,updated_at) VALUES(?,?,?)", (model, method, now))
-            c.execute("UPDATE lines SET drain=1, run=CASE WHEN EXISTS ("
-                      "SELECT 1 FROM batches WHERE producer=? AND method=? AND state!='COMPLETE'"
-                      ") THEN run ELSE 0 END, updated_at=? WHERE model=? AND method=?",
-                      (model, method, now, model, method))
+            c.execute("UPDATE lines SET drain=1, updated_at=? WHERE model=? AND method=?",
+                      (now, model, method))
             count += 1
         return count
 
