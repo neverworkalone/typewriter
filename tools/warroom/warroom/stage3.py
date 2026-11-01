@@ -318,10 +318,16 @@ def normalize_decisions(answer: str | None, chunk: str, context: dict) -> tuple[
             for raw_number in re.split(r"\s+", drop.group(1)):
                 add(int(raw_number), "D")
             continue
-        repair = re.fullmatch(r"L\s+(\d+)\s+T(\d+)", line)
-        if repair:
-            add(int(repair.group(1)), "L", f"T{int(repair.group(2))}")
-            continue
+        tokens = line.split()
+        if tokens and tokens[0] == "L":
+            pairs = tokens[1:]
+            if (len(pairs) >= 2 and len(pairs) % 2 == 0
+                    and all(re.fullmatch(r"\d+", pairs[index])
+                            and re.fullmatch(r"T\d+", pairs[index + 1])
+                            for index in range(0, len(pairs), 2))):
+                for index in range(0, len(pairs), 2):
+                    add(int(pairs[index]), "L", f"T{int(pairs[index + 1][1:])}")
+                continue
         # Retain the row identity when the proposal is malformed so only that row is kept.
         malformed = re.match(r"(?:D|L)\s+(\d+)(?:\s+|$)", line)
         if malformed:
