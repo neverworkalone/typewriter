@@ -1505,6 +1505,25 @@ class Supervisor:
             return "reported"
         return "Stage 3 verify의 재현된 CLI 오류를 Maintainer 경로에 등록하지 못했습니다. worktree를 보존합니다."
 
+    def _stage3_log_repair_conflicts(self, b, result: dict) -> None:
+        conflicts = result.get("repair_conflicts", [])
+        if not conflicts:
+            return
+        details = []
+        for item in conflicts:
+            conflict = item["conflict"]
+            if conflict["kind"] == "other_shard_relation":
+                origin = "다른 샤드 승인 Relation"
+            elif conflict["kind"] == "surviving_relation":
+                origin = f"기존 Relation row {conflict['relation_row']}"
+            else:
+                origin = f"앞서 선택한 Link Repair row {conflict['relation_row']}"
+            details.append(
+                f"row {item['relation_row']} {item['source_sense_id']}↔{item['target_sense_id']} "
+                f"(중복 상대: {origin} {conflict['source_sense_id']}↔{conflict['target_sense_id']})"
+            )
+        self.store.log_once(b["id"], "중복 ID pair Link Repair를 text-only로 보존: " + "; ".join(details))
+
     def _stage3_finalize(self, b) -> None:
         self._guarded(b, "finalize", self._stage3_finalize_do)
 
@@ -1530,22 +1549,6 @@ class Supervisor:
                 self.store.set(applied_key, "1")
                 result = stage3.apply(self.runner, self.env, wt, b["shard"])
                 self.store.set(result_key, json.dumps(result, sort_keys=True))
-                conflicts = result.get("repair_conflicts", [])
-                if conflicts:
-                    details = []
-                    for item in conflicts:
-                        conflict = item["conflict"]
-                        if conflict["kind"] == "other_shard_relation":
-                            origin = "다른 샤드 승인 Relation"
-                        elif conflict["kind"] == "surviving_relation":
-                            origin = f"기존 Relation row {conflict['relation_row']}"
-                        else:
-                            origin = f"앞서 선택한 Link Repair row {conflict['relation_row']}"
-                        details.append(
-                            f"row {item['relation_row']} {item['source_sense_id']}↔{item['target_sense_id']} "
-                            f"(중복 상대: {origin} {conflict['source_sense_id']}↔{conflict['target_sense_id']})"
-                        )
-                    self.store.log(b["id"], "중복 ID pair Link Repair를 text-only로 보존: " + "; ".join(details))
             elif self.store.get(applied_key) == "1":
                 raw_result = self.store.get(result_key)
                 try:
@@ -1556,6 +1559,7 @@ class Supervisor:
                     raise stage3.Stage3Error("저장된 Stage 3 apply 결과 형식이 올바르지 않습니다")
             else:
                 raise stage3.Stage3Error("Stage 3 checkpoint가 없어 apply 완료 여부를 복구할 수 없습니다")
+            self._stage3_log_repair_conflicts(b, result)
             report = stage3.report(self.runner, self.env, wt, b["shard"])
             result.setdefault("removed", len(report.get("deleted_relations", [])))
             result.setdefault("repaired", len(report.get("link_repairs", [])))

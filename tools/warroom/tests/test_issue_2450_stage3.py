@@ -427,6 +427,62 @@ class Stage3SupervisorFlow(unittest.TestCase):
         self.assertIn("row 11292 w170946-s1↔w205046-s1", messages[0])
         self.assertIn("앞서 선택한 Link Repair row 11283", messages[0])
 
+    def test_finalize_retry_replays_saved_repair_conflicts_once_after_audit_write_failure(self):
+        w = self.w
+        batch = self._batch(state="PRODUCING", run_kind="s3_finalize")
+        w.git.remote.pop(batch["branch"], None)
+        w.git.verified.add(("shard", "001", None, None))
+        w.gh.issues[2450] = {"state": "open", "labels": [], "title": "Stage 3", "body": ""}
+        checkpoint_path = stage3.checkpoint_path(batch["worktree"], "001")
+        checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
+        checkpoint_path.write_text(json.dumps(checkpoint(total=1, done=["001"])), "utf-8")
+        conflicts = [{
+            "relation_row": 11292, "source_sense_id": "w170946-s1", "target_sense_id": "w205046-s1",
+            "conflict": {"kind": "earlier_link_repair", "relation_row": 11283,
+                         "source_sense_id": "w170946-s1", "target_sense_id": "w205046-s1"},
+        }]
+        result = {"removed": 0, "repaired": 0, "edit_drops_added": 0, "repair_conflicts": conflicts}
+
+        def apply(_runner, _env, _worktree, _shard):
+            checkpoint_path.unlink()
+            w.git.dirty_text = f" M {RELATION}\n"
+            return result
+
+        real_log_once = w.store.log_once
+        attempts = 0
+
+        def interrupt_before_log_write(*args, **kwargs):
+            nonlocal attempts
+            attempts += 1
+            if attempts == 1:
+                raise RuntimeError("simulated interruption after apply result persistence")
+            return real_log_once(*args, **kwargs)
+
+        report = {"shard": "001", "deleted_relations": [], "link_repairs": [], "added_drops": []}
+        with mock.patch.object(stage3, "apply", side_effect=apply) as apply_call, \
+                mock.patch.object(stage3, "report", side_effect=[RuntimeError("simulated interruption after audit write"), report]), \
+                mock.patch.object(w.store, "log_once", side_effect=interrupt_before_log_write):
+            w.sup._stage3_finalize_do(batch)
+            self.assertEqual(w.store.batch(batch["id"])["state"], "ERROR")
+            self.assertEqual(w.store.get(f"s3_apply_ready_{batch['id']}"), "1")
+            self.assertIn('"repair_conflicts"', w.store.get(f"s3_apply_result_{batch['id']}"))
+            self.assertFalse(checkpoint_path.exists(), "the retry must use the saved result without applying again")
+            self.assertFalse(any("중복 ID pair Link Repair를 text-only로 보존" in event["msg"]
+                                 for event in w.store.recent_events()))
+
+            w.sup._stage3_finalize_do(w.store.batch(batch["id"]))
+            self.assertEqual(w.store.batch(batch["id"])["state"], "ERROR")
+            self.assertEqual(sum("중복 ID pair Link Repair를 text-only로 보존" in event["msg"]
+                                 for event in w.store.recent_events()), 1)
+            w.sup._stage3_finalize_do(w.store.batch(batch["id"]))
+
+        apply_call.assert_called_once()
+        self.assertEqual(w.store.batch(batch["id"])["state"], "WAITING_REVIEW")
+        messages = [event["msg"] for event in w.store.recent_events()
+                    if "중복 ID pair Link Repair를 text-only로 보존" in event["msg"]]
+        self.assertEqual(len(messages), 1)
+        self.assertIn("row 11292 w170946-s1↔w205046-s1", messages[0])
+
     def test_finalize_restart_keeps_apply_report_counts_before_creating_pr(self):
         w = self.w
         batch = self._batch(state="PRODUCING", run_kind="s3_finalize")
