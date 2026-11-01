@@ -45,7 +45,7 @@ test('persisted Relation and Drop JSONL use one compact schema while preserving 
   const versionZero = { ...legacy, candidate_assignment_version: 0, candidate_forms: ['표적 표기'], reverse_candidate_forms: [] };
   const versionOne = { ...legacy, candidate_assignment_version: 1, candidate_forms: ['표적 표기'], reverse_candidate_forms: ['출발 표기'] };
   const text = { source_record_id: 'w1', source_sense_id: 'w1-s1', text: '새 말', type: 'scene', relevance: 4 };
-  const drop = { source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '버릴말', reason: '출발 의미와 무관' };
+  const drop = { source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '버릴말', reason: 'x' };
 
   const persisted = serializeRelationJsonl([legacy, versionZero, versionOne, text]);
   const stored = persisted.trim().split('\n').map(JSON.parse);
@@ -68,7 +68,7 @@ test('persisted readers reject the previous verbose Relation and Drop contracts'
     id: 'w1', sid: 'w1-s1', tid: 'w2', tsid: 'w2-s1', tp: 'scene', rv: 4, reverse_type: 'mood', reverse_relevance: 5,
   })), /obsolete Relation JSONL field/u);
   assert.throws(() => parseDropJsonl(JSON.stringify({
-    source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '버릴말', reason: '무관',
+    source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '버릴말', reason: 'x',
   })), /obsolete Drop JSONL field/u);
   assert.throws(() => serializeRelationJsonl([{
     source_record_id: 'w1', source_sense_id: 'w1-s1', target_record_id: 'w2', target_sense_id: 'w2-s1',
@@ -137,7 +137,7 @@ test('new ID rows leave already decided reverse Candidate forms unclaimed', () =
     type: 'near', relevance: 3, reverse_type: 'near', reverse_relevance: 3,
     candidate_assignment_version: 1, candidate_forms: ['동철'], reverse_candidate_forms: ['표제 1'],
   };
-  const drop = { source_record_id: target.id, source_sense_id: target.senses[0].id, candidate: '표제1', reason: 'edit' };
+  const drop = { source_record_id: target.id, source_sense_id: target.senses[0].id, candidate: '표제1', reason: 'z' };
   const lookup = createReverseCandidateFormLookup({ relationRows: [alreadyClaimed], dropRows: [drop], index: reverseIndex });
   assert.deepEqual(lookup.available(source, target.senses[0].id), ['표제-1'],
     'the existing reverse Relation and edit Drop each own only their decided orthographic spelling');
@@ -180,8 +180,8 @@ test('Stage 3 deletion reconciliation emits only locally owned orphan Stage 1 ca
     index: indexWithDuplicate,
   });
   assert.deepEqual(orphaned, [
-    { source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '유일', reason: 'edit' },
-    { source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '동철', reason: 'edit' },
+    { source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '유일', reason: 'z' },
+    { source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '동철', reason: 'z' },
   ]);
 
   const retained = orphanedCandidateDrops({
@@ -193,7 +193,7 @@ test('Stage 3 deletion reconciliation emits only locally owned orphan Stage 1 ca
     dropRows: [],
     index: indexWithDuplicate,
   });
-  assert.deepEqual(retained, [{ source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '동철', reason: 'edit' }],
+  assert.deepEqual(retained, [{ source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '동철', reason: 'z' }],
     'a surviving relation for the same candidate prevents a Drop');
 
   const notPrepared = orphanedCandidateDrops({
@@ -221,7 +221,7 @@ test('Stage 2 does not require a source gloss for candidates already covered by 
       ? [{ source_record_id: 'w1', source_sense_id: 'w1-s1', text, type: 'near', relevance: 3 }]
       : [];
     const dropped = disposition === 'drop'
-      ? [{ source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: text, reason: '이미 결정됨' }]
+      ? [{ source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: text, reason: 'x' }]
       : [];
 
     const { items, stats } = prepareShard({
@@ -436,10 +436,13 @@ test('duplicates are rejected within the shard, in reverse and against other sha
 });
 
 test('drop rows need real reasons and unique candidates', () => {
-  const drop = { ...base, candidate: '버릴말', reason: '출발 의미와 무관' };
+  const drop = { ...base, candidate: '버릴말', reason: 'x' };
   assert.equal(validate([], [drop]).dropCount, 1);
   assert.throws(() => validate([], [{ ...drop, reason: ' ' }]), /reason/);
-  assert.throws(() => validate([], [{ ...drop, reason: 'editorial:   ' }]), /specific explanation after "editorial:"/);
+  for (const reason of ['x', 'e', 'z']) assert.equal(validate([], [{ ...drop, reason }]).dropCount, 1);
+  for (const reason of ['edit', 'editorial: historical reason', 'free-form']) {
+    assert.throws(() => validate([], [{ ...drop, reason }]), /reason must be one of x\/e\/z/u);
+  }
   assert.throws(() => validate([], [drop, drop]), /duplicate drop/);
   assert.throws(() => validate([], [{ ...drop, extra: 1 }]), /exactly/);
 });
@@ -453,7 +456,7 @@ test('accounting: every unique candidate is exactly one of relation, drop or exi
       { ...base, text: '표제1x', type: 'scene', relevance: 4 },
       { ...base, target_record_id: 'w900', target_sense_id: 'w900-s1', type: 'near', relevance: 2, reverse_type: 'near', reverse_relevance: 2 },
     ],
-    drops: [{ source_record_id: 'w2', source_sense_id: 'w2-s1', candidate: '버릴말', reason: '무관' }],
+    drops: [{ source_record_id: 'w2', source_sense_id: 'w2-s1', candidate: '버릴말', reason: 'x' }],
   };
   const counts = answer(full.relations, full.drops);
   assert.equal(counts.missing, 0);
@@ -468,7 +471,7 @@ test('accounting: every unique candidate is exactly one of relation, drop or exi
 });
 
 test('accounting treats complete gloss words as mentions, not substrings inside other words', () => {
-  const verifyDrop = (gloss, candidate, reason = '무관') => {
+  const verifyDrop = (gloss, candidate, reason = 'x') => {
     const canonicalRows = canonical();
     canonicalRows[0].senses[0].gloss = gloss;
     const candidateFile = {
@@ -498,12 +501,14 @@ test('accounting treats complete gloss words as mentions, not substrings inside 
   assert.equal(verifyDrop('들판과 떡갈나무가 보인다.', '들').drop, 1, 'a plural marker inside a different compound is not a gloss mention');
   assert.equal(verifyDrop('가로에 사는 민족.', '가로수').drop, 1, 'a longer candidate is not a mention of its prefix');
   assert.throws(() => verifyDrop('떡갈나무에 잎이 넓다.', '떡갈나무'), /named by the gloss/, 'a complete candidate phrase remains protected from Drop');
-  assert.equal(verifyDrop('가로에 사는 민족.', '가로', 'editorial: sense와 연결되지만 독립적인 표현 가치를 주지 않음').drop, 1,
-    'a specific Stage 2 editorial Drop may account for a gloss-named candidate');
-  assert.throws(() => verifyDrop('가로에 사는 민족.', '가로', '출발 의미와 무관'), /named by the gloss/,
+  assert.equal(verifyDrop('가로에 사는 민족.', '가로', 'e').drop, 1,
+    'a Drop for a connected candidate with no independent expression value may account for a gloss-named candidate');
+  assert.throws(() => verifyDrop('가로에 사는 민족.', '가로', 'x'), /named by the gloss/,
+    'an unrelated Drop code remains blocked for the same gloss-named candidate');
+  assert.throws(() => verifyDrop('가로에 사는 민족.', '가로', 'x'), /named by the gloss/,
     'an unrelated Drop remains blocked for the same gloss-named candidate');
-  assert.equal(verifyDrop('가로에 사는 민족.', '가로', 'edit').drop, 1,
-    'the Stage 3 edit reconciliation reason may account for a source gloss naming the orphan candidate');
+  assert.equal(verifyDrop('가로에 사는 민족.', '가로', 'z').drop, 1,
+    'the Stage 3 reconciliation code remains exempt from the unrelated Drop check');
 });
 
 test('accounting allows an approved reverse candidate for a different target sense, but rejects the same sense pair twice', () => {

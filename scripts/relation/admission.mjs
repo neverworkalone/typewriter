@@ -28,20 +28,12 @@ const LEGACY_ID_ROW_KEYS = 'relevance,reverse_relevance,reverse_type,source_reco
 const ASSIGNED_ID_ROW_KEYS = 'candidate_assignment_version,candidate_forms,relevance,reverse_candidate_forms,reverse_relevance,reverse_type,source_record_id,source_sense_id,target_record_id,target_sense_id,type';
 const TEXT_ROW_KEYS = 'relevance,source_record_id,source_sense_id,text,type';
 const DROP_ROW_KEYS = 'candidate,reason,source_record_id,source_sense_id';
-const EDITORIAL_DROP_REASON_PREFIX = 'editorial:';
+const DROP_REASONS = Object.freeze(['x', 'e', 'z']);
 
 const keysOf = (row) => Object.keys(row).sort().join(',');
 const isPlainObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 const isTier = (value) => Number.isInteger(value) && value >= 1 && value <= 9;
 const isText = (value) => typeof value === 'string' && value.trim().length > 0;
-
-/** Stage 2 editorial Drops need a distinct prefix and a specific explanation after it. */
-export function isEditorialDropReason(reason) {
-  if (typeof reason !== 'string') return false;
-  const normalized = reason.trim();
-  return normalized.startsWith(EDITORIAL_DROP_REASON_PREFIX)
-    && normalized.slice(EDITORIAL_DROP_REASON_PREFIX.length).trim().length > 0;
-}
 
 /** Stage 2 must never ask an editor to judge candidates without an actual source meaning. */
 export function assertStage2SourceGloss(senseId, gloss, referenceGloss = null) {
@@ -449,10 +441,7 @@ export function validateRelationRows({ relationRows, dropRows = [], index, shard
     if (!isPlainObject(row) || keysOf(row) !== DROP_ROW_KEYS) { errors.push(`${at}: must have exactly ${DROP_ROW_KEYS}`); return; }
     checkSource(row, at);
     if (!isText(row.candidate) || row.candidate !== normalizeCandidate(row.candidate)) errors.push(`${at}: candidate must be a non-empty normalized string`);
-    if (!isText(row.reason)) errors.push(`${at}: reason must be non-empty text`);
-    else if (row.reason.trim().startsWith(EDITORIAL_DROP_REASON_PREFIX) && !isEditorialDropReason(row.reason)) {
-      errors.push(`${at}: editorial Drop reason needs a specific explanation after "editorial:"`);
-    }
+    if (!DROP_REASONS.includes(row.reason)) errors.push(`${at}: reason must be one of ${DROP_REASONS.join('/')}`);
     const key = textKey(row.source_sense_id, row.candidate ?? '');
     if (dropSeen.has(key)) errors.push(`${at}: duplicate drop ${row.source_sense_id} -> ${row.candidate}`);
     dropSeen.add(key);
@@ -563,7 +552,7 @@ export function orphanedCandidateDrops({ canonicalRows, candidateFiles, scopeRow
       if (!scopeSenses.has(key.senseId) || !merged.get(key.senseId)?.candidates.has(candidate)
           || covered.has(mapKey) || dropped.has(mapKey)) continue;
       const recordId = merged.get(key.senseId).record_id;
-      orphaned.set(mapKey, { source_record_id: recordId, source_sense_id: key.senseId, candidate, reason: 'edit' });
+      orphaned.set(mapKey, { source_record_id: recordId, source_sense_id: key.senseId, candidate, reason: 'z' });
     }
   }
   return [...orphaned.values()];
@@ -698,7 +687,7 @@ export function findGlossNamedDrops({ dropRows, scopeRows, index }) {
   const scopeSenses = new Set(scopeRows.flatMap((record) => record.senses.map((sense) => sense.id)));
   const glossOf = new Map(scopeRows.flatMap((record) => record.senses.map((sense) => [sense.id, sense.gloss])));
   return dropRows.flatMap((row, position) => {
-    if (row.reason === 'edit' || isEditorialDropReason(row.reason) || !scopeSenses.has(row.source_sense_id)
+    if (row.reason === 'z' || row.reason === 'e' || !scopeSenses.has(row.source_sense_id)
         || !glossNamesCandidate(glossOf.get(row.source_sense_id) ?? '', row.candidate, index)) return [];
     return [{
       position: position + 1,
@@ -751,7 +740,7 @@ export function verifyAccounting({ canonicalRows, candidateFiles, relationRows: 
     });
   });
   dropRows.forEach((row, position) => claim(row.source_sense_id, row.candidate, 'a drop', { kind: 'drop' }, `drop:${position + 1}`));
-  // A Drop says the candidate is unrelated to the source meaning; the source's own gloss naming it is direct counter-evidence.
+  // `x` marks an unrelated Drop, so a source gloss naming the candidate is counter-evidence; `e` means it is connected but expression-free.
   errors.push(...findGlossNamedDrops({ dropRows, scopeRows, index }).map((entry) => entry.message));
 
   // An ID pair is stored once. When both senses listed each other as a Stage 1 candidate, the stored row's reverse

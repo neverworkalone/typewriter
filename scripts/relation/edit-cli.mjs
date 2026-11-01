@@ -515,7 +515,7 @@ function relationTextDrops({ removedRows, relationRows, dropRows, canonicalRows,
     const source = index.senses.get(row.source_sense_id);
     if (!source || source.record.id !== row.source_record_id) continue;
     additions.set(key, { source_record_id: row.source_record_id, source_sense_id: row.source_sense_id,
-      candidate, reason: 'edit' });
+      candidate, reason: 'z' });
   }
   return [...additions.values()];
 }
