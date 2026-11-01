@@ -5,12 +5,15 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
-from tests.fakes import HEAD1
+from tests.fakes import HEAD1, World
 from tests.test_issue_1555 import MERGE, report
 from tests.test_lines import multi_world
+from warroom import stage3
 from warroom.gitops import Git, GitTransient, IntegrationBlocked
 from warroom.shell import Runner
+from warroom.store import STAGE3_METHOD
 
 ENV = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
        "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t",
@@ -284,6 +287,136 @@ class SupervisorRelease(unittest.TestCase):
         self.assertEqual(w.git.maintainer_pushes, [])
         self.assertEqual(w.store.defect(self.defect["id"])["state"], "HELD")
         self.assertEqual(w.store.batch(batch["id"])["state"], "PAUSED")
+
+
+class Stage3FinalizeRelease(unittest.TestCase):
+    relation = "data/relations/relation-001.jsonl"
+    drops = "data/relation-drops/drop-001.jsonl"
+
+    def setUp(self):
+        self.w = World()
+        self.addCleanup(self.w.tmp.cleanup)
+        self.w.cfg["producers"] = {"codex": {"adapter": "codex", "model": "gpt-x", "effort": "high"}}
+        self.path = self.w.paths.worktrees / "s3-001"
+        self.path.mkdir(parents=True)
+        self.branch = "s3-codex-001"
+        self.w.git.reg[str(self.path)] = self.branch
+        self.w.git.remote[self.branch] = None
+        self.batch_id = self.w.store.create_batch(method=STAGE3_METHOD, producer="codex", shard="001", batch="all",
+                                                  branch=self.branch, worktree=str(self.path))
+        self.w.store.update(self.batch_id, state="PRODUCING", run_kind="s3_finalize")
+        self.w.gh.issues[2450] = {"state": "open", "labels": [], "title": "Stage 3", "body": ""}
+        checkpoint_path = stage3.checkpoint_path(self.path, "001")
+        checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
+        checkpoint_path.write_text(json.dumps({"version": 1, "shard": "001", "chunk_total": 1,
+                                               "completed_chunks": ["001"], "decisions": []}), "utf-8")
+
+        def apply(_runner, _env, worktree, shard):
+            self.assertEqual((Path(worktree), shard), (self.path, "001"))
+            checkpoint_path.unlink()
+            self.w.git.dirty_text = f" M {self.relation}\n M {self.drops}\n"
+            return {"removed": 0, "repaired": 0, "edit_drops_added": 0}
+
+        with mock.patch.object(stage3, "apply", side_effect=apply), \
+                mock.patch.object(stage3, "report", return_value={"shard": "001", "deleted_relations": [],
+                                                                     "link_repairs": [], "added_drops": []}), \
+                mock.patch.object(self.w.sup, "_stage3_finalize_verify", return_value=None):
+            self.w.sup._stage3_finalize_do(self.w.store.batch(self.batch_id))
+
+        self.batch = self.w.store.batch(self.batch_id)
+        self.pr_number = self.batch["pr_number"]
+        self.committed_head = self.batch["head_sha"]
+        self.assertEqual((self.batch["state"], self.batch["run_kind"]), ("WAITING_REVIEW", "s3_finalize"))
+        self.assertEqual(self.w.store.get(f"s3_commit_remote_head_{self.batch_id}"), "")
+        self.assertEqual(self.w.git.remote_head(self.branch), self.committed_head)
+
+        body = (f"-1\nHEAD: {self.committed_head}\n공통 수정 필요\n```warroom-shared-defect\n"
+                + json.dumps(report()) + "\n```\n")
+        self.w.gh.reviews_ = [{"id": 41, "user": {"login": "genonfire"}, "body": body,
+                               "commit_id": self.committed_head, "submitted_at": "2026-10-21T10:00:00Z"}]
+        self.w.sup._watch(self.batch)
+        self.batch = self.w.store.batch(self.batch_id)
+        self.defect = self.w.store.defects()[0]
+        self.assertEqual((self.batch["state"], self.batch["paused_from"], self.batch["pr_number"]),
+                         ("PAUSED", "WAITING_REVIEW", self.pr_number))
+        self.w.git.integrated.append((str(self.path), self.committed_head))
+        self.w.git.integrate_updates_head = True
+        self.w.git.changed[MERGE] = ["README.md"]
+        self.w.store.update_defect(self.defect["id"], state="FIX_MERGED", merge_sha=MERGE)
+
+    def _reflect_push_in_github(self, sha):
+        info = self.w.gh.prs[self.pr_number]
+        self.w.gh.prs[self.pr_number] = info | {"head_sha": sha}
+        self.w.gh.by_branch[self.branch] = [{"number": self.pr_number, "state": "OPEN", "headRefOid": sha}]
+
+    def test_completed_stage3_pr_preflights_then_releases_on_the_same_updated_pr(self):
+        w = self.w
+        launches = len(w.adapter.launches)
+        w.git.maintainer_after_push = self._reflect_push_in_github
+
+        w.sup.maint._release()
+
+        current = w.store.batch(self.batch_id)
+        self.assertEqual((current["state"], current["pr_number"], current["branch"]),
+                         ("WAITING_REVIEW", self.pr_number, self.branch))
+        self.assertEqual(w.store.defect(self.defect["id"])["state"], "RELEASED")
+        self.assertEqual(w.store.get(f"s3_finalize_released_head_{self.batch_id}"), MERGE)
+        self.assertEqual(w.git.remote_head(self.branch), MERGE)
+        self.assertEqual(w.git.head(self.path), MERGE)
+        self.assertEqual(w.gh.pull(self.pr_number)["head_sha"], MERGE)
+        self.assertEqual(len(w.git.maintainer_pushes), 1)
+
+        # The trusted -1 belongs to the previous Stage 3 PR HEAD and must not replay after the safe rebind.
+        w.sup._watch(current)
+        self.assertEqual(w.store.batch(self.batch_id)["head_sha"], MERGE)
+        self.assertEqual(w.store.batch(self.batch_id)["state"], "WAITING_REVIEW")
+        self.assertEqual(len(w.adapter.launches), launches)
+        self.assertEqual(len(w.git.maintainer_pushes), 1)
+
+    def test_damaged_stage3_finalize_remote_baseline_blocks_before_pr_push(self):
+        w = self.w
+        w.store.set(f"s3_commit_remote_head_{self.batch_id}", "damaged-baseline")
+        w.git.maintainer_after_push = self._reflect_push_in_github
+
+        w.sup.maint._release()
+
+        self.assertEqual(w.git.maintainer_pushes, [])
+        self.assertEqual(w.git.remote_head(self.branch), self.committed_head)
+        self.assertEqual(w.gh.pull(self.pr_number)["head_sha"], self.committed_head)
+        self.assertEqual(w.store.defect(self.defect["id"])["state"], "HELD")
+        self.assertEqual(w.store.batch(self.batch_id)["state"], "PAUSED")
+
+    def test_stage3_api_lag_retry_reuses_the_completed_push_and_preflight(self):
+        w = self.w
+        w.git.maintainer_after_push = None
+
+        w.sup.maint._release()
+
+        self.assertEqual(len(w.git.maintainer_pushes), 1)
+        self.assertEqual(w.git.remote_head(self.branch), MERGE)
+        self.assertEqual(w.gh.pull(self.pr_number)["head_sha"], self.committed_head)
+        self.assertEqual(w.store.defect(self.defect["id"])["state"], "FIX_MERGED")
+        self.assertEqual(w.store.batch(self.batch_id)["state"], "PAUSED")
+
+        self._reflect_push_in_github(MERGE)
+        w.sup.maint._release()
+
+        self.assertEqual(len(w.git.maintainer_pushes), 1)
+        self.assertEqual(w.store.defect(self.defect["id"])["state"], "RELEASED")
+        self.assertEqual(w.store.batch(self.batch_id)["state"], "WAITING_REVIEW")
+        self.assertEqual(w.store.get(f"s3_finalize_released_head_{self.batch_id}"), MERGE)
+
+    def test_incomplete_stage3_finalize_cannot_use_completed_pr_rebind(self):
+        w = self.w
+        w.store.update(self.batch_id, paused_from="PRODUCING")
+        w.git.maintainer_after_push = self._reflect_push_in_github
+
+        w.sup.maint._release()
+
+        self.assertEqual(w.git.maintainer_pushes, [])
+        self.assertEqual(w.git.remote_head(self.branch), self.committed_head)
+        self.assertEqual(w.store.defect(self.defect["id"])["state"], "HELD")
+        self.assertEqual(w.store.batch(self.batch_id)["state"], "PAUSED")
 
 
 if __name__ == "__main__":

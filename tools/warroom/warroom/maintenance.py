@@ -470,7 +470,7 @@ class Maintenance:
             if not self._due(f"defect_release_try_{d['id']}"):
                 continue
             try:
-                head = self._apply(d, b)
+                head, run_start = self._apply(d, b)
             except IntegrationBlocked as e:
                 self._hold(d, b, str(e))
                 continue
@@ -481,7 +481,8 @@ class Maintenance:
                 continue
             if not self._archive_report(d, b):
                 continue   # the resolved report could not be set aside: never resume into a stale stop signal
-            run_start = self._retargeted_run_start(b, head)
+            if run_start is None:
+                run_start = self._retargeted_run_start(b, head)
             if (b["method"] == STAGE3_METHOD
                     and (str(b["run_kind"] or "").startswith("s3_chunk_") or b["run_kind"] == "s3_finalize")
                     and run_start is None):
@@ -492,12 +493,12 @@ class Maintenance:
                 self.store.log(b["id"], f"공통 수정 {d['merge_sha'][:10]} 반영·검증 완료 (HEAD {head[:10]}) → "
                                f"{b['paused_from'] or 'PRODUCING'}부터 자동 Retry 1회")
 
-    def _retargeted_run_start(self, b, new_head: str) -> tuple[str, str] | None:
+    def _retargeted_run_start(self, b, new_head: str, *, completed_pr_head: str | None = None) -> tuple[str, str] | None:
         """Retarget a Stage 2/3 run baseline after the approved fix is integrated and verified.
 
         Invariant: the baseline's owned HEAD may only advance to a HEAD that is a verified Maintainer integration of this
-        same branch/worktree. The old HEAD must be an ancestor (a plain forward merge) and the remote ref must still be
-        what the chunk started with; anything else keeps the old baseline so the boundary check still fails closed.
+        same branch/worktree. The old HEAD must be an ancestor (a plain forward merge). An in-flight run also requires
+        its original remote boundary; a completed Stage 3 PR may instead rebind at its exact current owner PR HEAD.
         """
         if b["method"] == STAGE3_METHOD and b["run_kind"] == "s3_finalize":
             commit_key = f"s3_commit_head_{b['id']}"
@@ -507,8 +508,18 @@ class Maintenance:
             wt = Path(b["worktree"])
             try:
                 remote = self.sup.git.remote_head(b["branch"])
+                saved_remote_is_ancestor = (saved_remote == "" or
+                                            (isinstance(saved_remote, str)
+                                             and re.fullmatch(r"[0-9a-f]{40}", saved_remote)
+                                             and self.sup.git.contains(wt, saved_remote)))
+                completed_pr = (completed_pr_head is not None and b["state"] == "PAUSED"
+                                and b["pause_reason"] == "shared_defect" and b["paused_from"] == "WAITING_REVIEW"
+                                and b["pr_number"] is not None
+                                and completed_pr_head in {b["head_sha"], new_head}
+                                and remote == completed_pr_head and saved_remote_is_ancestor)
+                remote_matches_start = (saved_remote is not None and saved_remote == (remote or ""))
                 if (not isinstance(committed, str) or not re.fullmatch(r"[0-9a-f]{40}", committed)
-                        or saved_remote is None or saved_remote != (remote or "")
+                        or not (completed_pr if completed_pr_head is not None else remote_matches_start)
                         or self.sup.git.registered(wt) != b["branch"] or self.sup.git.head(wt) != new_head
                         or not self.sup.git.contains(wt, committed)):
                     return None
@@ -639,7 +650,7 @@ class Maintenance:
                 "수정 후에도 같은 결함이 실제로 재현되거나 새로운 결함이 확인되면 그때는 새 증거로 `shared-defect.json`을 "
                 "다시 작성해 보고하고 멈춘다.\n")
 
-    def _apply(self, d, b) -> str | None:
+    def _apply(self, d, b) -> tuple[str, tuple[str, str] | None]:
         wt, git = Path(b["worktree"]), self.sup.git
         initial_pr = None
         batch_head = None
@@ -667,13 +678,19 @@ class Maintenance:
         problem = self._verify(d, wt)
         if problem:
             raise IntegrationBlocked(f"수정 반영 후 필수 검증 실패: {problem}")
+        run_start = None
         if initial_pr is not None:
             try:
                 protected = self.sup._pr_protected_paths(b, initial_pr)
             except (FastForwardBlocked, GitError) as e:
                 raise IntegrationBlocked(f"기존 PR의 보호 산출물 소유권을 확인할 수 없습니다: {e}") from e
+            if b["method"] == STAGE3_METHOD and b["run_kind"] == "s3_finalize":
+                run_start = self._retargeted_run_start(b, head, completed_pr_head=initial_pr["head_sha"])
+                if run_start is None:
+                    raise IntegrationBlocked("완료된 Stage 3 PR의 원래 finalize 기준을 승인된 최신 PR HEAD에 "
+                                             "안전하게 재결속할 수 없어 push를 중단합니다")
             head = self._sync_approved_integration(b, d, initial_pr, batch_head, head, protected)
-        return head
+        return head, run_start
 
     def _sync_approved_integration(self, b, d, initial_pr, batch_head: str, integrated_head: str,
                                    protected_paths: set[str]) -> str:
