@@ -505,7 +505,7 @@ test('deleting an ID Relation from shard 001 never writes a foreign shard Drop',
   await save(root, 'chunk 001\nD 1\n');
   await quiet(() => run(['apply', '--shard', '001'], { root }));
   const drops = parseDropJsonl(await readFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), 'utf8'));
-  assert.ok(drops.some((row) => row.source_sense_id === 'w1-s1' && row.candidate === '반짝' && row.reason === 'edit'));
+  assert.ok(drops.some((row) => row.source_sense_id === 'w1-s1' && row.candidate === '반짝' && row.reason === 'z'));
   assert.equal(drops.some((row) => row.source_sense_id === 'w2-s1'), false);
   await assert.rejects(access(path.join(root, 'data/relation-drops/drop-002.jsonl')), { code: 'ENOENT' });
 });
@@ -519,7 +519,7 @@ test('deleting a text-only Relation creates only its local orphan Drop', async (
   const relations = parseRelationJsonl(await readFile(path.join(root, 'data/relations/relation-001.jsonl'), 'utf8'));
   assert.equal(relations.some((row) => row.text === '어렴풋이'), false);
   const drops = parseDropJsonl(await readFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), 'utf8'));
-  assert.ok(drops.some((row) => row.source_sense_id === 'w1-s1' && row.candidate === '어렴풋이' && row.reason === 'edit'));
+  assert.ok(drops.some((row) => row.source_sense_id === 'w1-s1' && row.candidate === '어렴풋이' && row.reason === 'z'));
 });
 
 test('invalid saved Link Repair fails before either Relation or Drop file changes', async (t) => {

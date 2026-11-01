@@ -203,7 +203,7 @@ test('Stage 2 loaders ignore malformed historical Relation and Drop backups', as
   assert.deepEqual(texts(prepared), ['버릴말', '새 말', '유일', '텍스트']);
 });
 
-test('new Stage 2 Drops accept only x/e, while edit remains reserved for Stage 3', async (t) => {
+test('new Stage 2 Drops accept only x/e and reserve the Stage 3 z code', async (t) => {
   const { root, checkpoint } = await prepareSixPart(t);
   const chunk = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint], { root }));
   const input = '.warroom-scratch/drop-decision.json';
@@ -213,7 +213,8 @@ test('new Stage 2 Drops accept only x/e, while edit remains reserved for Stage 3
         disposition: 'drop', reason }))) }));
     return quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', input], { root }));
   };
-  await assert.rejects(() => save('edit'), /reason "edit" is reserved for Stage 3 reconciliation/u);
+  await assert.rejects(() => save('z'), /reason "z" is reserved for Stage 3 reconciliation/u);
+  await assert.rejects(() => save('edit'), /reason "edit" is a legacy Stage 3 value/u);
   await assert.rejects(() => save('editorial: source-bound explanation'), /new Stage 2 Drop reason must be "x" or "e"/u);
   await assert.rejects(() => save('unrelated'), /new Stage 2 Drop reason must be "x" or "e"/u);
 
@@ -273,7 +274,7 @@ test('Stage 3 deletion reconciliation previews without writes and persists only 
   assert.equal(reconciled.added, 1);
   assert.equal(reconciled.dry_run, false);
   const drops = await readDropRows(dropPath);
-  assert.equal(drops.find((row) => row.candidate === '다라')?.reason, 'edit');
+  assert.equal(drops.find((row) => row.candidate === '다라')?.reason, 'z');
   const verified = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01', '--json'], { root }));
   assert.equal(verified.missing, 0, 'the reconciled Part has complete candidate accounting');
   assert.notEqual(beforeDeletion, stage3Commit);

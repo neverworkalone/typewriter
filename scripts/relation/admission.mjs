@@ -551,7 +551,7 @@ export function orphanedCandidateDrops({ canonicalRows, candidateFiles, scopeRow
       if (!scopeSenses.has(key.senseId) || !merged.get(key.senseId)?.candidates.has(candidate)
           || covered.has(mapKey) || dropped.has(mapKey)) continue;
       const recordId = merged.get(key.senseId).record_id;
-      orphaned.set(mapKey, { source_record_id: recordId, source_sense_id: key.senseId, candidate, reason: 'edit' });
+      orphaned.set(mapKey, { source_record_id: recordId, source_sense_id: key.senseId, candidate, reason: 'z' });
     }
   }
   return [...orphaned.values()];
@@ -686,7 +686,7 @@ export function findGlossNamedDrops({ dropRows, scopeRows, index }) {
   const scopeSenses = new Set(scopeRows.flatMap((record) => record.senses.map((sense) => sense.id)));
   const glossOf = new Map(scopeRows.flatMap((record) => record.senses.map((sense) => [sense.id, sense.gloss])));
   return dropRows.flatMap((row, position) => {
-    if (row.reason === 'edit' || row.reason === 'e' || !scopeSenses.has(row.source_sense_id)
+    if (row.reason === 'edit' || row.reason === 'z' || row.reason === 'e' || !scopeSenses.has(row.source_sense_id)
         || !glossNamesCandidate(glossOf.get(row.source_sense_id) ?? '', row.candidate, index)) return [];
     return [{
       position: position + 1,

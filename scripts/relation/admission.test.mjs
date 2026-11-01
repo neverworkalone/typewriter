@@ -507,8 +507,10 @@ test('accounting treats complete gloss words as mentions, not substrings inside 
     'an unrelated Drop remains blocked for the same gloss-named candidate');
   assert.throws(() => verifyDrop('가로에 사는 민족.', '가로', 'editorial: historical reason'), /named by the gloss/,
     'the old free-form editorial wording no longer receives the e exception');
+  assert.equal(verifyDrop('가로에 사는 민족.', '가로', 'z').drop, 1,
+    'the current Stage 3 reconciliation code remains exempt from the unrelated Drop check');
   assert.equal(verifyDrop('가로에 사는 민족.', '가로', 'edit').drop, 1,
-    'the Stage 3 edit reconciliation reason may account for a source gloss naming the orphan candidate');
+    'historical Stage 3 edit rows remain readable while their replacement code is z');
 });
 
 test('accounting allows an approved reverse candidate for a different target sense, but rejects the same sense pair twice', () => {

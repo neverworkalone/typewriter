@@ -143,7 +143,8 @@ function validateDecision(item, candidate, decision, { allowLegacyDropReason = f
     if (keysOf(decision) !== 'candidate,disposition,reason,source_sense_id') throw new Error(`${item.sense_id}/${candidate.text}: Drop decision has unexpected or missing fields`);
     if (typeof decision.reason !== 'string' || !decision.reason.trim()) throw new Error(`${item.sense_id}/${candidate.text}: Drop needs a reason`);
     const reason = decision.reason.trim();
-    if (reason === 'edit') throw new Error(`${item.sense_id}/${candidate.text}: Drop reason "edit" is reserved for Stage 3 reconciliation`);
+    if (reason === 'z') throw new Error(`${item.sense_id}/${candidate.text}: Drop reason "z" is reserved for Stage 3 reconciliation`);
+    if (reason === 'edit') throw new Error(`${item.sense_id}/${candidate.text}: Drop reason "edit" is a legacy Stage 3 value and cannot be used in Stage 2`);
     if (!allowLegacyDropReason && reason !== 'x' && reason !== 'e') {
       throw new Error(`${item.sense_id}/${candidate.text}: new Stage 2 Drop reason must be "x" or "e"`);
     }
