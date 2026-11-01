@@ -26,6 +26,7 @@ ALLOWED = {"a": _PRODUCE, "b": _PRODUCE, "c": _PRODUCE, "d": _PRODUCE, "recovery
            "producer_fix": {"pr", "head", "branch", "review_events", "session_note", "source_context",
                             "canonical", "output", "method_contract", "method_fix_scope"},
            "s3_fix": _STAGE3_FIX,
+           "m_fix": {"issue", "pr", "head", "branch", "review_events", "session_note"},
            "contract_a": set(), "contract_b": set(), "contract_c": set(), "contract_d": set(),
            "s2_policy_card": {"relation_direction_rule"},
            "m": _MAINTAIN, "m_recovery": _MAINTAIN, "s2": _STAGE2,
@@ -336,7 +337,9 @@ def fix(b, events, resumed: bool, directory: Path | None = None, source_context:
         loc = f" {e['path']}:{e.get('line')}" if e.get("path") else ""
         lines.append(f"--- {e['kind']} by {e['author']}{loc} [{e['key']}]\n{e['body']}\n")
     note = "" if resumed else "새 리뷰 수정 세션이다. 아래 고정 계약과 제공된 리뷰 이벤트·source_context를 사용한다.\n"
-    if b["method"] == STAGE2_METHOD:
+    if b["method"] == MAINTENANCE_METHOD:
+        template = "m_fix"
+    elif b["method"] == STAGE2_METHOD:
         template = "fix"
     elif b["method"] == "s3":
         template = "s3_fix"
@@ -350,6 +353,8 @@ def fix(b, events, resumed: bool, directory: Path | None = None, source_context:
               "source_context": source_context,
               "s2_policy_card": (_stage2_policy_card(checkpoint, directory)
                                  if b["method"] == STAGE2_METHOD else "")}
+    if b["method"] == MAINTENANCE_METHOD:
+        values["issue"] = b["batch"]
     if b["method"] == "s3":
         values.update(relation_path=f"data/relations/relation-{b['shard']}.jsonl",
                       drop_path=f"data/relation-drops/drop-{b['shard']}.jsonl",
