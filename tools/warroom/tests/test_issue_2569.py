@@ -398,6 +398,12 @@ class Stage3FinalizeRelease(unittest.TestCase):
         self.assertEqual(w.store.defect(self.defect["id"])["state"], "FIX_MERGED")
         self.assertEqual(w.store.batch(self.batch_id)["state"], "PAUSED")
 
+        # A retry while GitHub still reports the old SHA waits; it must not hold or push again.
+        w.sup.maint._release()
+        self.assertEqual(len(w.git.maintainer_pushes), 1)
+        self.assertEqual(w.store.defect(self.defect["id"])["state"], "FIX_MERGED")
+        self.assertEqual(w.store.batch(self.batch_id)["state"], "PAUSED")
+
         self._reflect_push_in_github(MERGE)
         w.sup.maint._release()
 

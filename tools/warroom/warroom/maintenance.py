@@ -514,9 +514,9 @@ class Maintenance:
                                              and self.sup.git.contains(wt, saved_remote)))
                 completed_pr = (completed_pr_head is not None and b["state"] == "PAUSED"
                                 and b["pause_reason"] == "shared_defect" and b["paused_from"] == "WAITING_REVIEW"
-                                and b["pr_number"] is not None
+                                and b["pr_number"] is not None and isinstance(b["head_sha"], str)
                                 and completed_pr_head in {b["head_sha"], new_head}
-                                and remote == completed_pr_head and saved_remote_is_ancestor)
+                                and remote in {b["head_sha"], new_head} and saved_remote_is_ancestor)
                 remote_matches_start = (saved_remote is not None and saved_remote == (remote or ""))
                 if (not isinstance(committed, str) or not re.fullmatch(r"[0-9a-f]{40}", committed)
                         or not (completed_pr if completed_pr_head is not None else remote_matches_start)
