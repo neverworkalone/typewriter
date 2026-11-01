@@ -24,7 +24,7 @@ from . import auth, batches, control, dchunk, defects, literary, progress, promp
 from .adapters import (PREFLIGHT_PENDING, QUOTA_EVIDENCE, RunSpec, classify_claude_failure, classify_failure,
                        opencode_free_quota)
 from .config import (TIERED_ADAPTERS, adapter_label, config_problem, load_config, registry, registry_problems,
-                     reload_problem, role_of, role_problem, run_spec, stage2_problem, stage3_model)
+                     reload_problem, role_of, role_problem, run_spec, stage2_problem, stage3_model, stage3_problem)
 from .github import GhError, GhTransient
 from .gitops import CleanupBlocked, FastForwardBlocked, FastForwardRace, GitError, GitTransient, IntegrationBlocked
 from .maintenance import Maintenance
@@ -929,7 +929,7 @@ class Supervisor:
         if method == STAGE3_METHOD:
             if model != stage3_model(self.cfg):
                 return self._blocked(ln, "시작 차단: Stage 3는 고정된 Codex 역할 모델에서만 실행합니다")
-            if why := stage2_problem(self.cfg, model):
+            if why := stage3_problem(self.cfg, model):
                 return self._blocked(ln, "시작 차단: " + why)
         if why := role_problem(self.cfg, model, role_of(method)):   # the stage's assigned profile must resolve to a valid pin
             return self._blocked(ln, "시작 차단: " + why)
@@ -1130,6 +1130,8 @@ class Supervisor:
 
     def _preflight(self, producer: str, method: str = "a") -> str | None:
         """Fail closed before any process starts: the CLI must be able to run exactly the pinned model and effort."""
+        if method == STAGE3_METHOD and (problem := stage3_problem(self.cfg, producer)):
+            return problem
         problem = self._adapter_problem(producer)
         if problem:
             return problem
@@ -1686,6 +1688,21 @@ class Supervisor:
             run = self._run(b)
         except ValueError as e:
             return self._fail(b, "ERROR", f"실행 설정 오류로 AI를 시작하지 않았습니다: {e}")
+        if b["method"] == STAGE3_METHOD and kind.endswith("_resume"):
+            recorded = self._recorded_run(b)
+            if recorded is None:
+                return self._fail(b, "ERROR", "Stage 3 기존 세션의 model/effort/permission_profile 기록이 없어 재개하지 않습니다. "
+                                  "worktree와 세션을 보존합니다.")
+            if recorded != run:
+                return self._fail(
+                    b, "ERROR",
+                    "Stage 3 프로필이 기존 실행 후 바뀌어 그 세션을 새 설정으로 재개하지 않습니다 "
+                    f"(기존 model={recorded.model}, effort={recorded.effort}, "
+                    f"permission_profile={recorded.permission_profile or '(기본)'}; "
+                    f"현재 model={run.model}, effort={run.effort}, "
+                    f"permission_profile={run.permission_profile or '(기본)'}). "
+                    "worktree와 세션을 보존합니다.",
+                )
         if kind.startswith("fix") and b["method"] in ("a", "b", "c", "d", STAGE3_METHOD) and not events:
             return self._fail(b, "ERROR", "현재 PR HEAD에 유효한 리뷰 수정 이벤트가 없어 AI를 시작하지 않았습니다. 오래된 HEAD 이벤트는 되살리지 않습니다.")
         # Every launch proves the CLI again (cached once proven); C review fixes also need the approved source index.
@@ -1956,7 +1973,9 @@ class Supervisor:
             else:  # Stage 2 retains its existing event lifecycle; its behavior is outside #2322.
                 self.store.mark_handled(b["id"], b["pr_number"], b["head_sha"], keys)
         tier = f", tier={b['model_tier']}" if self._tiered(b["producer"]) else ""
-        self.store.log(b["id"], f"{state} 시작 ({kind}, model={run.model}, effort={run.effort}{tier})")
+        permission = (f", permission_profile={run.permission_profile or '(기본)'}"
+                      if registry(self.cfg)[b["producer"]]["adapter"] == "codex" else "")
+        self.store.log(b["id"], f"{state} 시작 ({kind}, model={run.model}, effort={run.effort}{permission}{tier})")
 
     def _retry_denied_success(self, b) -> bool:
         """Retry after a denial pause: if the last exited run was a successful one (own session/result evidence) whose only

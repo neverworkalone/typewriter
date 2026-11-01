@@ -294,12 +294,14 @@ def detail_header(st: dict, reg: dict, model: str) -> str:
 
 
 def _pins(reg: dict, st: dict) -> str:
-    """The Free/Go tier for OpenCode; the fixed model ID and effort for the single-model CLIs (no tiers there)."""
+    """The Free/Go tier for OpenCode; the fixed model, effort, and optional permission profile for other CLIs."""
     if reg.get("unassigned"):   # a stage with no profile: never show another stage's pin
         return "model id: (이 단계 미배정)   effort: (이 단계 미배정)"
     if reg.get("adapter") in TIERED_ADAPTERS:
         return f"tier: {st['tier']}   effort: {reg.get('effort') or '-'}"
-    return f"model id: {reg.get('model') or '-'}   effort: {reg.get('effort') or '-'}"
+    permission = (f"   permission_profile: {reg.get('permission_profile') or '(기본)'}"
+                  if reg.get("adapter") == "codex" else "")
+    return f"model id: {reg.get('model') or '-'}   effort: {reg.get('effort') or '-'}{permission}"
 
 
 def detail_meta(st: dict, reg: dict, model: str) -> str:

@@ -11,7 +11,7 @@ from datetime import datetime, time as wall_time, timedelta
 
 from . import stage2
 from .config import (maintainer_id, maintainer_problem, methods, ordered_models, registry, stage2_models,
-                     stage2_problem, stage3_model, role_problem)
+                     stage2_problem, stage3_model, stage3_problem)
 from .store import MAINTENANCE_METHOD, STAGE2_METHOD, STAGE3_METHOD, Store
 
 STATES_HELP = ("PREPARE", "PRODUCING", "WAITING_REVIEW", "FIXING", "MERGED", "CLEANUP",
@@ -22,8 +22,8 @@ MODES = {"single": "Single", "continuous": "Continuous"}   # Continuous = sequen
 def start(store: Store, model: str, method: str, mode: str, cfg: dict | None = None) -> tuple[bool, str]:
     """Request production on a Line. Never creates a second batch for an occupied Line.
 
-    Stage 2 (`s2`) is one serial process for the whole factory and runs on Claude/Codex only: it needs `cfg` to prove
-    the model, and its occupancy is reserved atomically in the store (a missing `cfg` fails closed).
+    Stage 2 (`s2`) is one serial process for the whole factory and Stage 3 (`s3`) uses the fixed Codex line; both need
+    `cfg` to prove the model and pin, and their occupancy is reserved atomically in the store (missing `cfg` fails closed).
     """
     if method == STAGE2_METHOD:
         problem = "설정을 확인할 수 없어 Stage 2를 시작하지 않습니다" if cfg is None else stage2_problem(cfg, model)
@@ -34,9 +34,7 @@ def start(store: Store, model: str, method: str, mode: str, cfg: dict | None = N
         owner = stage3_model(cfg)
         if owner is None or model != owner:
             return False, f"Stage 3 실행 모델은 지정된 Codex 라인 {owner or '(없음)'}이어야 합니다."
-        if why := stage2_problem(cfg, model):
-            return False, why
-        if why := role_problem(cfg, model, "stage2"):
+        if why := stage3_problem(cfg, model):
             return False, why
         return store.start_stage3(model, mode)
     reason, b = store.request_start(model, method, mode)
