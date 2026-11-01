@@ -253,15 +253,15 @@ class LineDetail(Screen):
         with Collapsible(title="Metadata / Details", collapsed=True):
             yield Static(id="meta")
         with Horizontal(id="line-controls"):
+            yield Button("Retry", id="retry")
+            yield Button("Stop", id="stop", variant="error")
+            yield Button("Back (Esc)", id="back")
+            yield Button("Clear", id="clear", variant="error")
             yield Button("Drain", id="drain")
             yield Select(SCHEDULE_HOURS, value=DEFAULT_SCHEDULE_HOUR, allow_blank=False, id="drain-time")
             yield Button("Schedule", id="schedule-drain")
-            yield Button("Stop", id="stop", variant="error")
-            yield Button("Retry", id="retry")
-            yield Button("Clear", id="clear", variant="error")
             yield Button("Auto-scroll: ON", id="follow")
             yield Button("Raw Log", id="raw")
-            yield Button("Back (Esc)", id="back")
         yield Select([("Agent Log — 최신 실행", "latest"), ("Audit Log", "audit")], value="latest",
                      allow_blank=False, id="source")
         yield RichLog(id="agentlog", wrap=True, markup=False, highlight=False, max_lines=5000)
@@ -337,15 +337,19 @@ class LineDetail(Screen):
                 if w.display and w.focusable]
 
     def action_switch_region(self) -> None:
-        """Tab: buttons + source Select  <->  log. Arrows move inside the button row."""
+        """Tab cycles Metadata / Details -> buttons/source -> log; arrows move inside the button row."""
         if in_open_select(self.focused):
             return
         top = self._top_controls()
+        metadata = self.query_one(Collapsible)
+        metadata_title = metadata.query_one("CollapsibleTitle")
         in_top = lambda w: w in top or any(a is self.query_one("#source") for a in w.ancestors_with_self)
+        in_metadata = lambda w: w is metadata_title or any(a is metadata for a in w.ancestors_with_self)
         switch_region(self, self.focused,
-                      {"top": in_top, "log": lambda w: w is self.log_w},
+                      {"metadata": in_metadata, "top": in_top, "log": lambda w: w is self.log_w},
                       self._region_memory,
-                      {"top": lambda: top[0] if top else None, "log": lambda: self.log_w})
+                      {"metadata": lambda: metadata_title, "top": lambda: top[0] if top else None,
+                       "log": lambda: self.log_w})
 
     def action_back(self) -> None:
         self.app.pop_screen()
