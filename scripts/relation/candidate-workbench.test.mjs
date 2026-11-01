@@ -275,8 +275,13 @@ test('JSON save removes source-lemma containment, preserves valid candidates and
   assert.notEqual(savedAfterFilter, before);
 });
 
-test('compact save removes every definite self-repeat and reports every affected alias', async (t) => {
+test('compact save removes source-lemma containment, preserves valid candidates and reports aliases', async (t) => {
   const context = await setup(t);
+  context.canonicalRows[0].lemma = '들소';
+  context.canonicalRows[1].lemma = '뒷밭';
+  context.canonicalRows[2].lemma = '드레싱';
+  context.canonicalRows[3].lemma = '건축';
+  context.canonicalRows[4].lemma = '건축가';
   for (const [index, record] of context.canonicalRows.slice(0, 50).entries()) {
     const extra = index < 36 ? 2 : 1;
     record.senses = Array.from({ length: extra + 1 }, (_, sense) => ({ id: `${record.id}-s${sense + 1}`, pos: 'noun', gloss: `뜻 ${index + 1}-${sense + 1}.` }));
