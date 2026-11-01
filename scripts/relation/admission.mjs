@@ -832,11 +832,12 @@ export async function loadOptionalDropJsonl(file) {
   return existsSync(file) ? parseDropJsonl(await readFile(file, 'utf8'), path.basename(file)) : [];
 }
 
-export async function loadAllApprovedDrops(root = REPOSITORY_DIRECTORY) {
+export async function loadAllApprovedDrops(root = REPOSITORY_DIRECTORY, { exceptShard = null } = {}) {
   const directory = path.join(root, 'data/relation-drops');
   if (!existsSync(directory)) return [];
   const rows = [];
   for (const name of (await readdir(directory)).filter((item) => /^drop-\d{3}\.jsonl$/u.test(item)).sort()) {
+    if (exceptShard && name === `drop-${exceptShard}.jsonl`) continue;
     rows.push(...parseDropJsonl(await readFile(path.join(directory, name), 'utf8'), name));
   }
   return rows;

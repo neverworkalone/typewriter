@@ -2278,7 +2278,7 @@ async function materializePart(checkpoint, root, baseline) {
   validateRelationRows({ relationRows: existingRelations, dropRows: existingDrops, index: loaded.index,
     shardSenseIds: finalShardSenseIds, otherRelationRows: others });
   const { relations: newRelations, relationCandidates, drops: newDrops } = decisionRows(checkpoint);
-  const allDrops = await loadAllApprovedDrops(root);
+  const allDrops = await loadAllApprovedDrops(root, { exceptShard: checkpoint.shard });
   const reverseCandidates = createReverseCandidateFormLookup({
     relationRows: [...others, ...existingRelations],
     dropRows: [...allDrops, ...existingDrops, ...newDrops],
@@ -2390,7 +2390,7 @@ async function preflightCheckpoint(checkpoint, checkpointPath, root, limit = 20,
   validateRelationRows({ relationRows: existingRelations, dropRows: existingDrops, index: loaded.index,
     shardSenseIds: finalShardSenseIds, otherRelationRows: others });
   const generated = decisionRows(checkpoint);
-  const allDrops = await loadAllApprovedDrops(root);
+  const allDrops = await loadAllApprovedDrops(root, { exceptShard: checkpoint.shard });
   const reverseCandidates = createReverseCandidateFormLookup({
     relationRows: [...others, ...existingRelations],
     dropRows: [...allDrops, ...existingDrops, ...generated.drops],
