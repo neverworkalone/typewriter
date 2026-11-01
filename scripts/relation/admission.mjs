@@ -138,6 +138,9 @@ export function mergeCandidates(canonicalRows, candidateFiles, { canonicalLemmaF
       batch,
       candidateName: file.name,
       canonicalLemmaForms: independentLemmaForms,
+      // Historical Stage 1 files keep the validation contract under which they were merged.
+      // New Candidate submissions are checked strictly at save/export and PR validation boundaries.
+      enforceSourceLemmaContainment: false,
     });
     for (const row of file.rows) {
       for (const sense of row.senses) {
