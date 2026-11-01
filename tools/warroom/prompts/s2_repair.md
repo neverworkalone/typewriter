@@ -38,7 +38,7 @@ Return this exact header on its own line, followed by one JSON object. No Markdo
 }
 ```
 
-For an ordinary candidate, `decision` must be a complete valid Stage 2 decision object. It must repeat the exact `source_sense_id` and `candidate` and use the CLI schema: Drop has `disposition:"drop"` and a reason; a relation has `disposition:"relation"`, type, relevance, and either the exact target fields or the complete checked-target list for a text-only decision. Follow the direction policy above; the CLI persists its required reverse fields.
+For an ordinary candidate, `decision` must be a complete valid Stage 2 decision object. It must repeat the exact `source_sense_id` and `candidate` and use the CLI schema: Drop has `disposition:"drop"` and reason `x` (unrelated/wrong Sense) or `e` (connected without independent expression value); a relation has `disposition:"relation"`, type, relevance, and either the exact target fields or the complete checked-target list for a text-only decision. Stage 2 cannot use `z`, free-form text, `editorial:`, or `edit`. Follow the direction policy above; the CLI persists its required reverse fields.
 
 For `already_accounted:true`, preserve the primary existing decision and return `additional_relations` as the complete reviewed optional-link list (an empty array means no optional links). Each added relation must choose an exact supplied target sense and follow the direction policy above.
 

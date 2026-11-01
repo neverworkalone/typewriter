@@ -17,7 +17,7 @@ compact 응답은 현재 CLI view의 `# decision` grammar를 따른다. CLI가 �
 - exact ID 결속은 위 compact view가 표시한 형식으로 쓴다.
 - `c4 R scene 6 none T7,T8` — text-only, c4의 target 별칭 전부 확인
 - `c5 R sensory 5` — target이 `-`인 후보
-- `c6 D editorial: 새 표현 가치 없이 출발 의미만 재진술` — 편집상 Drop (코드 지원 후 활성화)
-- `c7 D 출발 Sense와 무관한 이유` — 무관·오결속 Drop
+- `c6 D e` — 출발 Sense와 연결되지만 독립적인 표현 가치가 없는 Drop
+- `c7 D x` — 출발 Sense와 무관하거나 잘못 결속된 Drop
 
 {{chunk_input}}
