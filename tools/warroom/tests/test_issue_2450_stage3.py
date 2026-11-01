@@ -401,6 +401,32 @@ class Stage3SupervisorFlow(unittest.TestCase):
         self.assertIn("#2450", w.gh.created_prs[0]["body"])
         self.assertEqual(w.store.batch(batch["id"])["state"], "WAITING_REVIEW")
 
+    def test_finalize_writes_repair_conflicts_as_one_audit_log_line(self):
+        w = self.w
+        batch = self._batch(state="PRODUCING", run_kind="s3_finalize")
+        w.git.remote.pop(batch["branch"], None)
+        w.git.dirty_text = f" M {RELATION}\n"
+        w.git.verified.add(("shard", "001", None, None))
+        w.gh.issues[2450] = {"state": "open", "labels": [], "title": "Stage 3", "body": ""}
+        conflicts = [{
+            "relation_row": 11292, "source_sense_id": "w170946-s1", "target_sense_id": "w205046-s1",
+            "conflict": {"kind": "earlier_link_repair", "relation_row": 11283,
+                         "source_sense_id": "w170946-s1", "target_sense_id": "w205046-s1"},
+        }]
+        with mock.patch.object(stage3, "checkpoint", return_value=checkpoint(total=1, done=["001"])), \
+                mock.patch.object(stage3, "apply", return_value={"removed": 0, "repaired": 0,
+                                                                   "edit_drops_added": 0,
+                                                                   "repair_conflicts": conflicts}), \
+                mock.patch.object(stage3, "report", return_value={"shard": "001", "deleted_relations": [],
+                                                                    "link_repairs": [], "added_drops": []}):
+            w.sup._stage3_finalize_do(batch)
+
+        messages = [event["msg"] for event in w.store.recent_events()
+                    if "중복 ID pair Link Repair를 text-only로 보존" in event["msg"]]
+        self.assertEqual(len(messages), 1)
+        self.assertIn("row 11292 w170946-s1↔w205046-s1", messages[0])
+        self.assertIn("앞서 선택한 Link Repair row 11283", messages[0])
+
     def test_finalize_restart_keeps_apply_report_counts_before_creating_pr(self):
         w = self.w
         batch = self._batch(state="PRODUCING", run_kind="s3_finalize")

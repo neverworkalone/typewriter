@@ -1530,6 +1530,22 @@ class Supervisor:
                 self.store.set(applied_key, "1")
                 result = stage3.apply(self.runner, self.env, wt, b["shard"])
                 self.store.set(result_key, json.dumps(result, sort_keys=True))
+                conflicts = result.get("repair_conflicts", [])
+                if conflicts:
+                    details = []
+                    for item in conflicts:
+                        conflict = item["conflict"]
+                        if conflict["kind"] == "other_shard_relation":
+                            origin = "다른 샤드 승인 Relation"
+                        elif conflict["kind"] == "surviving_relation":
+                            origin = f"기존 Relation row {conflict['relation_row']}"
+                        else:
+                            origin = f"앞서 선택한 Link Repair row {conflict['relation_row']}"
+                        details.append(
+                            f"row {item['relation_row']} {item['source_sense_id']}↔{item['target_sense_id']} "
+                            f"(중복 상대: {origin} {conflict['source_sense_id']}↔{conflict['target_sense_id']})"
+                        )
+                    self.store.log(b["id"], "중복 ID pair Link Repair를 text-only로 보존: " + "; ".join(details))
             elif self.store.get(applied_key) == "1":
                 raw_result = self.store.get(result_key)
                 try:

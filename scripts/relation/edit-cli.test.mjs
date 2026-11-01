@@ -92,11 +92,122 @@ async function repository(t, { crossShardTarget = false } = {}) {
   return root;
 }
 
+function recordForSenseIds(senseIds) {
+  const byRecord = new Map();
+  for (const senseId of senseIds) {
+    const match = /^(w\d+)-s(\d+)$/u.exec(senseId);
+    assert.ok(match, `invalid fixture Sense ID ${senseId}`);
+    const [, recordId, suffix] = match;
+    byRecord.set(recordId, Math.max(byRecord.get(recordId) ?? 0, Number(suffix)));
+  }
+  return [...byRecord].map(([id, count]) => {
+    const lemma = `말${id.slice(1)}`;
+    return { id, lemma, search_forms: [lemma], senses: Array.from({ length: count }, (_, index) => ({
+      id: `${id}-s${index + 1}`, pos: 'noun', gloss: `뜻:${id}-s${index + 1}.`,
+    })) };
+  });
+}
+
+async function repositoryFromRows(t, { localSenseIds, externalSenseIds = [], relations, externalRelations = [], drops = [], extraCandidates = [] }) {
+  const root = await mkdtemp(path.join(tmpdir(), 'typewriter-relation-edit-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const local = recordForSenseIds(localSenseIds);
+  const external = recordForSenseIds(externalSenseIds);
+  const fillers = Array.from({ length: 1000 - local.length }, (_, index) => {
+    const serial = String(index + 1).padStart(6, '0');
+    return { id: `w${serial}`, lemma: `표제${serial}`, search_forms: [`표제${serial}`],
+      senses: [{ id: `w${serial}-s1`, pos: 'noun', gloss: `뜻:${serial}.` }] };
+  });
+  const canonical = [...local, ...fillers];
+  const candidatesBySense = new Map();
+  const addCandidate = (senseId, candidate) => {
+    const candidates = candidatesBySense.get(senseId) ?? new Set();
+    candidates.add(candidate);
+    candidatesBySense.set(senseId, candidates);
+  };
+  for (const row of relations) {
+    if ('text' in row) addCandidate(row.source_sense_id, row.text);
+    else {
+      for (const candidate of row.candidate_forms ?? []) addCandidate(row.source_sense_id, candidate);
+      for (const candidate of row.reverse_candidate_forms ?? []) addCandidate(row.target_sense_id, candidate);
+    }
+  }
+  for (const row of drops) addCandidate(row.source_sense_id, row.candidate);
+  for (const { sense_id, candidate } of extraCandidates) addCandidate(sense_id, candidate);
+
+  for (const directory of [
+    'data/canonical', 'data/relation-candidates/001', 'data/relations', 'data/relation-drops',
+  ]) await mkdir(path.join(root, directory), { recursive: true });
+  await writeFile(path.join(root, 'data/canonical/stdict-0001.jsonl'), jsonl(canonical));
+  if (external.length) await writeFile(path.join(root, 'data/canonical/stdict-0002.jsonl'), jsonl(external));
+  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), serializeRelationJsonl(relations));
+  if (externalRelations.length) {
+    await writeFile(path.join(root, 'data/relations/relation-002.jsonl'), serializeRelationJsonl(externalRelations));
+  }
+  if (drops.length) await writeFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), serializeDropJsonl(drops));
+
+  const producers = ['a_codex', 'a_claude', 'b_codex', 'b_claude', 'c_codex', 'd_codex'];
+  for (const batch of ['01', '02']) {
+    const offset = (Number(batch) - 1) * 500;
+    const batchRows = canonical.slice(offset, offset + 500);
+    for (const producer of producers) {
+      const assigned = producer === 'a_codex';
+      const rows = batchRows.map((record) => ({
+        record_id: record.id,
+        senses: record.senses.map((sense) => ({
+          sense_id: sense.id,
+          candidates: assigned ? [...(candidatesBySense.get(sense.id) ?? [])] : [],
+        })),
+      }));
+      await writeFile(path.join(root, `data/relation-candidates/001/001_${batch}_${producer}.jsonl`), jsonl(rows));
+    }
+  }
+
+  git(root, 'init', '-q', '--initial-branch=master');
+  git(root, 'config', 'user.name', 'Typewriter Test');
+  git(root, 'config', 'user.email', 'test@example.invalid');
+  git(root, 'add', 'data');
+  git(root, 'commit', '-qm', 'Stage 2 baseline');
+  return root;
+}
+
+function textRelation(sourceSenseId, targetSenseId) {
+  const sourceRecordId = sourceSenseId.replace(/-s\d+$/u, '');
+  const targetRecordId = targetSenseId.replace(/-s\d+$/u, '');
+  return { source_record_id: sourceRecordId, source_sense_id: sourceSenseId,
+    text: `말${targetRecordId.slice(1)}`, type: 'scene', relevance: 4 };
+}
+
 async function save(root, text) {
   const input = path.join(root, '.warroom-scratch', 'decisions.txt');
   await mkdir(path.dirname(input), { recursive: true });
   await writeFile(input, text, 'utf8');
   return quiet(() => run(['save-chunk', '--shard', '001', '--in', input], { root }));
+}
+
+function decisionTextForView(view, { linkTargets = new Map(), dropTexts = new Set(), dropIds = new Set() } = {}) {
+  const lines = [`chunk ${view.chunk}`];
+  for (const sense of view.senses) {
+    const sourceSenseId = /^뜻:(w\d+-s\d+)\.$/u.exec(sense.source.gloss)?.[1];
+    assert.ok(sourceSenseId, `fixture source gloss does not identify a Sense: ${sense.source.gloss}`);
+    for (const relation of sense.relations) {
+      if ('text' in relation) {
+        const key = `${sourceSenseId}\u0000${relation.text}`;
+        if (dropTexts.has(key)) {
+          lines.push(`D ${relation.n}`);
+          continue;
+        }
+        const targetSenseId = linkTargets.get(key);
+        if (!targetSenseId) throw new Error(`fixture has no Link Repair target for ${sourceSenseId} -> ${relation.text}`);
+        const target = relation.targets.find((candidate) => candidate.sense_id === targetSenseId);
+        assert.ok(target, `prepared view has no exact target ${targetSenseId} for ${relation.text}`);
+        lines.push(`L ${relation.n} ${target.alias}`);
+      } else if (dropIds.has(`${sourceSenseId}\u0000${relation.target_sense_id}`)) {
+        lines.push(`D ${relation.n}`);
+      }
+    }
+  }
+  return `${lines.join('\n')}\n`;
 }
 
 async function addSecondSenseTextRelation(root) {
@@ -241,6 +352,151 @@ test('prepare, compact read, exact Link Repair, local orphan Drops, apply, and G
   assert.equal(report.link_repairs[0].after.type, 'scene');
   assert.equal(report.added_drops.length, 2);
   assert.notEqual(beforeRelationBytes, relationText);
+});
+
+test('apply deterministically keeps only Link Repairs that do not duplicate the five reported ID pairs', async (t) => {
+  const pairs = [
+    ['w170946-s1', 'w205046-s1'],
+    ['w170946-s1', 'w444566-s1'],
+    ['w170946-s1', 'w179646-s4'],
+    ['w221831-s1', 'w227676-s1'],
+    ['w225185-s1', 'w64134-s1'],
+  ];
+  const rows = [];
+  const linkTargets = new Map();
+  const localSenseIds = new Set(['w900001-s1', 'w900002-s1', 'w900003-s1']);
+  for (const [left, right] of pairs) {
+    localSenseIds.add(left);
+    localSenseIds.add(right);
+    rows.push(textRelation(left, right), textRelation(right, left));
+    linkTargets.set(`${left}\u0000${textRelation(left, right).text}`, right);
+    linkTargets.set(`${right}\u0000${textRelation(right, left).text}`, left);
+  }
+  const extraRepair = textRelation('w900001-s1', 'w900002-s1');
+  const editedDrop = { source_record_id: 'w900003', source_sense_id: 'w900003-s1',
+    text: '연상 후보', type: 'association', relevance: 2 };
+  rows.push(extraRepair, editedDrop);
+  linkTargets.set(`w900001-s1\u0000${extraRepair.text}`, 'w900002-s1');
+  const baselineDrops = [{ source_record_id: 'w900002', source_sense_id: 'w900002-s1',
+    candidate: '말900001', reason: 'edit' }];
+  const root = await repositoryFromRows(t, {
+    localSenseIds: [...localSenseIds], relations: rows, drops: baselineDrops,
+  });
+
+  await quiet(() => run(['prepare', '--shard', '001'], { root }));
+  const view = await quiet(() => run(['read-chunk', '--shard', '001'], { root }));
+  const dropKey = `w900003-s1\u0000${editedDrop.text}`;
+  await save(root, decisionTextForView(view, { linkTargets, dropTexts: new Set([dropKey]) }));
+
+  const result = await quiet(() => run(['apply', '--shard', '001'], { root }));
+  assert.equal(result.repaired, 6, 'the five first-in-order repairs and the unrelated repair all apply');
+  assert.equal(result.removed, 1, 'the unrelated Drop decision still applies');
+  assert.deepEqual(result.repair_conflicts.map(({ relation_row, source_sense_id, target_sense_id, conflict }) => ({
+    relation_row, source_sense_id, target_sense_id, conflict_row: conflict.relation_row, conflict_kind: conflict.kind,
+  })), [
+    { relation_row: 2, source_sense_id: 'w205046-s1', target_sense_id: 'w170946-s1', conflict_row: 1, conflict_kind: 'earlier_link_repair' },
+    { relation_row: 4, source_sense_id: 'w444566-s1', target_sense_id: 'w170946-s1', conflict_row: 3, conflict_kind: 'earlier_link_repair' },
+    { relation_row: 6, source_sense_id: 'w179646-s4', target_sense_id: 'w170946-s1', conflict_row: 5, conflict_kind: 'earlier_link_repair' },
+    { relation_row: 8, source_sense_id: 'w227676-s1', target_sense_id: 'w221831-s1', conflict_row: 7, conflict_kind: 'earlier_link_repair' },
+    { relation_row: 10, source_sense_id: 'w64134-s1', target_sense_id: 'w225185-s1', conflict_row: 9, conflict_kind: 'earlier_link_repair' },
+  ]);
+
+  const applied = parseRelationJsonl(await readFile(path.join(root, 'data/relations/relation-001.jsonl'), 'utf8'));
+  assert.equal(applied.length, 11, 'only the Drop row is removed');
+  assert.equal(applied.filter((row) => !('text' in row)).length, 6);
+  assert.deepEqual(applied.filter((row) => 'text' in row).map((row) => [row.source_sense_id, row.text]), [
+    ['w205046-s1', '말170946'], ['w444566-s1', '말170946'], ['w179646-s4', '말170946'],
+    ['w227676-s1', '말221831'], ['w64134-s1', '말225185'],
+  ]);
+  for (const row of applied.filter((relation) => !('text' in relation) && pairs.some(([left, right]) =>
+    relation.source_sense_id === left && relation.target_sense_id === right))) {
+    const sourceRecord = row.source_record_id;
+    assert.equal(row.reverse_candidate_forms.includes(`말${sourceRecord.slice(1)}`), false,
+      'kept reverse text relations reserve their candidate before reverse forms are materialized');
+  }
+  const drops = parseDropJsonl(await readFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), 'utf8'));
+  assert.ok(drops.some((row) => row.source_sense_id === 'w900002-s1' && row.candidate === '말900001'),
+    'the pre-existing reverse candidate Drop remains part of accounting');
+  assert.ok(drops.some((row) => row.source_sense_id === 'w900003-s1' && row.candidate === '연상 후보'),
+    'the unrelated Drop decision is materialized');
+});
+
+test('apply keeps a cross-shard duplicate Link Repair text-only and reports its existing Relation', async (t) => {
+  const text = textRelation('w170946-s1', 'w205046-s1');
+  const external = { source_record_id: 'w205046', source_sense_id: 'w205046-s1',
+    target_record_id: 'w170946', target_sense_id: 'w170946-s1', type: 'scene', relevance: 4,
+    reverse_type: 'scene', reverse_relevance: 4, candidate_assignment_version: 1,
+    candidate_forms: ['말170946'], reverse_candidate_forms: [] };
+  const root = await repositoryFromRows(t, {
+    localSenseIds: ['w170946-s1'], externalSenseIds: ['w205046-s1'], relations: [text], externalRelations: [external],
+  });
+  const linkTargets = new Map([[`w170946-s1\u0000${text.text}`, 'w205046-s1']]);
+
+  await quiet(() => run(['prepare', '--shard', '001'], { root }));
+  const view = await quiet(() => run(['read-chunk', '--shard', '001'], { root }));
+  await save(root, decisionTextForView(view, { linkTargets }));
+  const result = await quiet(() => run(['apply', '--shard', '001'], { root }));
+
+  assert.equal(result.repaired, 0);
+  assert.equal(result.repair_conflicts.length, 1);
+  assert.deepEqual(result.repair_conflicts[0], {
+    relation_row: 1, source_sense_id: 'w170946-s1', target_sense_id: 'w205046-s1',
+    conflict: { kind: 'other_shard_relation', source_sense_id: 'w205046-s1', target_sense_id: 'w170946-s1' },
+  });
+  const applied = parseRelationJsonl(await readFile(path.join(root, 'data/relations/relation-001.jsonl'), 'utf8'));
+  assert.deepEqual(applied, [text], 'the source Relation remains byte-for-byte text-only');
+});
+
+test('apply keeps a duplicate Link Repair text-only when a same-shard ID Relation survives', async (t) => {
+  const existingId = { source_record_id: 'w205046', source_sense_id: 'w205046-s1',
+    target_record_id: 'w170946', target_sense_id: 'w170946-s1', type: 'scene', relevance: 4,
+    reverse_type: 'scene', reverse_relevance: 4, candidate_assignment_version: 1,
+    candidate_forms: ['말170946'], reverse_candidate_forms: [] };
+  const text = textRelation('w170946-s1', 'w205046-s1');
+  const root = await repositoryFromRows(t, {
+    localSenseIds: ['w170946-s1', 'w205046-s1'], relations: [existingId, text],
+  });
+  const linkTargets = new Map([[`w170946-s1\u0000${text.text}`, 'w205046-s1']]);
+
+  await quiet(() => run(['prepare', '--shard', '001'], { root }));
+  const view = await quiet(() => run(['read-chunk', '--shard', '001'], { root }));
+  await save(root, decisionTextForView(view, { linkTargets }));
+  const result = await quiet(() => run(['apply', '--shard', '001'], { root }));
+
+  assert.equal(result.repaired, 0);
+  assert.deepEqual(result.repair_conflicts, [{
+    relation_row: 2, source_sense_id: 'w170946-s1', target_sense_id: 'w205046-s1',
+    conflict: { kind: 'surviving_relation', relation_row: 1,
+      source_sense_id: 'w205046-s1', target_sense_id: 'w170946-s1' },
+  }]);
+  const applied = parseRelationJsonl(await readFile(path.join(root, 'data/relations/relation-001.jsonl'), 'utf8'));
+  assert.deepEqual(applied, [existingId, text]);
+});
+
+test('apply excludes a same-shard ID pair removed by a saved Drop before choosing repairs', async (t) => {
+  const existingId = { source_record_id: 'w205046', source_sense_id: 'w205046-s1',
+    target_record_id: 'w170946', target_sense_id: 'w170946-s1', type: 'scene', relevance: 4,
+    reverse_type: 'scene', reverse_relevance: 4, candidate_assignment_version: 1,
+    candidate_forms: ['말170946'], reverse_candidate_forms: [] };
+  const repair = textRelation('w170946-s1', 'w205046-s1');
+  const root = await repositoryFromRows(t, {
+    localSenseIds: ['w170946-s1', 'w205046-s1'], relations: [existingId, repair],
+  });
+  const linkTargets = new Map([[`w170946-s1\u0000${repair.text}`, 'w205046-s1']]);
+  const dropIds = new Set([`w205046-s1\u0000w170946-s1`]);
+
+  await quiet(() => run(['prepare', '--shard', '001'], { root }));
+  const view = await quiet(() => run(['read-chunk', '--shard', '001'], { root }));
+  await save(root, decisionTextForView(view, { linkTargets, dropIds }));
+  const result = await quiet(() => run(['apply', '--shard', '001'], { root }));
+
+  assert.equal(result.repair_conflicts.length, 0);
+  assert.equal(result.repaired, 1);
+  assert.equal(result.removed, 1);
+  const applied = parseRelationJsonl(await readFile(path.join(root, 'data/relations/relation-001.jsonl'), 'utf8'));
+  assert.equal(applied.length, 1);
+  assert.equal(applied[0].source_sense_id, 'w170946-s1');
+  assert.equal(applied[0].target_sense_id, 'w205046-s1');
 });
 
 test('deleting an ID Relation from shard 001 never writes a foreign shard Drop', async (t) => {
