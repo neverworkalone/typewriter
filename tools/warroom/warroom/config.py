@@ -23,8 +23,8 @@ DEFAULTS = {
     # Model registry: logical model id (= Candidate filename producer suffix) ->
     # {"label", "adapter", "models": {"free", "go"}}. No count limit.
     "producers": {},
-    # Issue #1867: reusable run settings (adapter/model/effort/permission_profile) and which one each stage uses.
-    # `assignments.stage1|stage2` map a logical producer ID to a profile ID; `maintainer` may also be a profile ID.
+    # Issues #1867/#2538: reusable run settings (adapter/model/effort/permission_profile) and each stage's profile.
+    # `assignments.stage1|stage2|stage3` map a logical producer ID to a profile ID; `maintainer` may also be a profile ID.
     "model_profiles": {},
     "assignments": {},
     "methods": ["a", "b", "c", "d"],
@@ -127,7 +127,8 @@ def registry(cfg: dict) -> dict[str, dict]:
     profs = _profiles(cfg)
     for pid, p in prods.items():
         adapter = p.get("adapter", "opencode")
-        prof = profs.get(_assigned(cfg, STAGE1, pid) or _assigned(cfg, STAGE2, pid) or "")
+        prof = profs.get(_assigned(cfg, STAGE1, pid) or _assigned(cfg, STAGE2, pid)
+                         or _assigned(cfg, STAGE3, pid) or "")
         governed = bool(_assigned_profiles(cfg, pid))
         if prof:   # a governed producer has no pin of its own (config_problem): board/settings show its first assigned profile
             p = {**p, "model": prof["model"], "effort": prof["effort"], "permission_profile": prof["permission_profile"]}
@@ -139,13 +140,13 @@ def registry(cfg: dict) -> dict[str, dict]:
     return out
 
 
-STAGE1, STAGE2, MAINTAINER = "stage1", "stage2", "maintainer"
-ASSIGNMENT_ROLES = (STAGE1, STAGE2)   # `assignments` keys; the Maintainer is the single top-level `maintainer`
+STAGE1, STAGE2, STAGE3, MAINTAINER = "stage1", "stage2", "stage3", "maintainer"
+ASSIGNMENT_ROLES = (STAGE1, STAGE2, STAGE3)   # Maintainer remains the single top-level `maintainer`
 
 
 def role_of(method: str) -> str:
-    """The assignment role of a batch's method: Stage 2 (`s2`), the Maintainer (`m`), else a Stage 1 Method (a-d)."""
-    return {"s2": STAGE2, "s3": STAGE2, "m": MAINTAINER}.get(method, STAGE1)
+    """The assignment role of a batch's method: Stage 2 (`s2`), Stage 3 (`s3`), Maintainer (`m`), or Stage 1."""
+    return {"s2": STAGE2, "s3": STAGE3, "m": MAINTAINER}.get(method, STAGE1)
 
 
 def _profiles(cfg: dict) -> dict[str, dict]:
@@ -197,7 +198,7 @@ def maintainer_target(cfg: dict) -> tuple[str | None, str | None, str | None]:
 def role_entry(cfg: dict, producer: str, role: str) -> dict:
     """The registry entry of `producer` with the pin (model/effort/permission_profile) its `role` runs on.
 
-    Stage 1/2: the assigned profile, else the producer's own pin. Maintainer: the configured profile when `maintainer`
+    Stage 1/2/3: the assigned profile, else the producer's own pin. Maintainer: the configured profile when `maintainer`
     names one (it must resolve to this producer), else the producer's own pin. Raises ValueError on a mismatch.
     """
     p = dict(registry(cfg)[producer])
@@ -212,6 +213,9 @@ def role_entry(cfg: dict, producer: str, role: str) -> dict:
     else:
         pid = _assigned(cfg, role, producer)
         if not pid and _assigned_profiles(cfg, producer):   # governed: another stage's profile is never borrowed
+            if role == STAGE3:
+                raise ValueError(f"{producer}: Stage 3 프로필이 배정되지 않았습니다 (assignments.stage3). "
+                                 "기존 설정으로 실행하려면 Stage 2와 같은 프로필 ID를 지정하세요.")
             raise ValueError(f"{producer}: {role} 단계에 배정된 프로필이 없습니다 (assignments.{role}).")
         if not pid:
             return p
@@ -383,7 +387,7 @@ def _profile_config_problems(cfg: dict) -> list[str]:
     if not isinstance(profiles, dict) or not all(isinstance(p, dict) for p in profiles.values()):
         return ["model_profiles는 {프로필 ID: 객체} 형태여야 합니다"]
     if not isinstance(assign, dict) or not all(isinstance(v, dict) for v in assign.values()):
-        return ["assignments는 {stage1|stage2: {모델 ID: 프로필 ID}} 형태여야 합니다"]
+        return ["assignments는 {stage1|stage2|stage3: {모델 ID: 프로필 ID}} 형태여야 합니다"]
     for pid, p in profiles.items():
         bad += _entry_problems(f"model_profiles.{pid}", p, ("adapter", "model", "effort", "permission_profile"))
     if bad:
@@ -401,6 +405,8 @@ def _profile_config_problems(cfg: dict) -> list[str]:
             prod = cfg["producers"].get(producer)
             if prod is None:
                 bad.append(f"assignments.{role}.{producer}: 등록되지 않은 모델 ID입니다")
+            elif role == STAGE3 and prod.get("adapter", "opencode") != "codex":
+                bad.append(f"assignments.stage3.{producer}: Stage 3는 Codex 모델에만 배정할 수 있습니다")
             elif not isinstance(pid, str) or pid not in profiles:
                 bad.append(f"assignments.{role}.{producer}: 프로필 {pid!r}가 없습니다")
             elif profiles[pid].get("adapter") != prod.get("adapter", "opencode"):
@@ -492,9 +498,21 @@ def stage2_models(cfg: dict) -> list[str]:
 
 
 def stage3_model(cfg: dict) -> str | None:
-    """Stage 3 is shown in the established Codex role column; that model uses its Stage 2 pin."""
+    """Stage 3 stays on the established fixed Codex role column; its pin is resolved independently."""
     reg = registry(cfg)
     return next((pid for pid in ordered_models(cfg) if reg[pid]["adapter"] == "codex"), None)
+
+
+def stage3_problem(cfg: dict, model: str) -> str | None:
+    """Why `model` must not run Stage 3 (None = fixed Codex model with a valid Stage 3 pin)."""
+    reg = registry(cfg)
+    if model not in reg:
+        return f"등록되지 않은 모델 {model!r}"
+    if reg[model]["adapter"] != "codex":
+        return f"Stage 3는 Codex에서만 실행할 수 있습니다 ({reg[model]['label']}: {adapter_label(reg[model]['adapter'])})"
+    if model != stage3_model(cfg):
+        return f"Stage 3는 고정된 Codex 역할 모델 {stage3_model(cfg) or '(없음)'}에서만 실행할 수 있습니다"
+    return role_problem(cfg, model, STAGE3)
 
 
 ADAPTER_LABELS = {"claude": "Claude", "codex": "Codex", "opencode": "OpenCode"}   # display names only
@@ -577,10 +595,16 @@ def role_pin_lines(cfg: dict) -> list[str]:
     profs, lines = _profiles(cfg), []
     def one(label, pid):
         p = profs.get(pid, {})
-        return f"  {label}: {pid} (model={p.get('model') or '(미설정)'} effort={p.get('effort') or '(미설정)'})"
+        permission = (f" permission_profile={p.get('permission_profile') or '(기본)'}"
+                      if p.get("adapter") == "codex" else "")
+        return (f"  {label}: {pid} (model={p.get('model') or '(미설정)'} "
+                f"effort={p.get('effort') or '(미설정)'}{permission})")
     for role in ASSIGNMENT_ROLES:
         for producer, pid in sorted((cfg.get("assignments", {}).get(role) or {}).items()):
             lines.append(one(f"{role}/{producer}", pid))
+    owner = stage3_model(cfg)
+    if owner and _assigned_profiles(cfg, owner) and not _assigned(cfg, STAGE3, owner):
+        lines.append(f"  stage3/{owner}: (미배정; assignments.stage3에 프로필 ID를 지정하세요)")
     if cfg.get("maintainer") in profs:
         lines.append(one("maintainer", cfg["maintainer"]))
     return lines

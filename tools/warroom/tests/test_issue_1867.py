@@ -90,7 +90,7 @@ class Resolution(unittest.TestCase):
             ("profile missing", mut(lambda c: c["assignments"]["stage1"].update(codex="nope"))),
             ("producer missing", mut(lambda c: c["assignments"]["stage1"].update(ghost="luna-high"))),
             ("adapter mismatch", mut(lambda c: c["assignments"]["stage1"].update(codex="sonnet-medium"))),
-            ("unknown stage", mut(lambda c: c["assignments"].update(stage3={"codex": "luna-high"}))),
+            ("unknown stage", mut(lambda c: c["assignments"].update(stage4={"codex": "luna-high"}))),
             ("bad effort", mut(lambda c: c["model_profiles"]["luna-high"].update(effort="turbo"))),
             ("no effort", mut(lambda c: c["model_profiles"]["luna-high"].pop("effort"))),
             ("no model", mut(lambda c: c["model_profiles"]["luna-high"].pop("model"))),
