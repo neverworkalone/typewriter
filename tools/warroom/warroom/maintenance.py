@@ -20,7 +20,7 @@ from pathlib import Path
 
 from . import auth, defects, stage2, stage3
 from .config import maintainer_id, maintainer_problem
-from .gitops import GitError, GitTransient, IntegrationBlocked
+from .gitops import FastForwardBlocked, GitError, GitTransient, IntegrationBlocked
 from .store import MAINTENANCE_METHOD, STAGE2_METHOD, STAGE3_METHOD
 
 _NODE_TEST = re.compile(r"(?:.+/)?[^/]+\.test\.mjs")   # `node --test <file>` regression files wherever they live (AGENTS.md)
@@ -470,7 +470,7 @@ class Maintenance:
             if not self._due(f"defect_release_try_{d['id']}"):
                 continue
             try:
-                head = self._apply(d, b)
+                head, run_start = self._apply(d, b)
             except IntegrationBlocked as e:
                 self._hold(d, b, str(e))
                 continue
@@ -481,7 +481,8 @@ class Maintenance:
                 continue
             if not self._archive_report(d, b):
                 continue   # the resolved report could not be set aside: never resume into a stale stop signal
-            run_start = self._retargeted_run_start(b, head)
+            if run_start is None:
+                run_start = self._retargeted_run_start(b, head)
             if (b["method"] == STAGE3_METHOD
                     and (str(b["run_kind"] or "").startswith("s3_chunk_") or b["run_kind"] == "s3_finalize")
                     and run_start is None):
@@ -492,12 +493,12 @@ class Maintenance:
                 self.store.log(b["id"], f"공통 수정 {d['merge_sha'][:10]} 반영·검증 완료 (HEAD {head[:10]}) → "
                                f"{b['paused_from'] or 'PRODUCING'}부터 자동 Retry 1회")
 
-    def _retargeted_run_start(self, b, new_head: str) -> tuple[str, str] | None:
+    def _retargeted_run_start(self, b, new_head: str, *, completed_pr_head: str | None = None) -> tuple[str, str] | None:
         """Retarget a Stage 2/3 run baseline after the approved fix is integrated and verified.
 
         Invariant: the baseline's owned HEAD may only advance to a HEAD that is a verified Maintainer integration of this
-        same branch/worktree. The old HEAD must be an ancestor (a plain forward merge) and the remote ref must still be
-        what the chunk started with; anything else keeps the old baseline so the boundary check still fails closed.
+        same branch/worktree. The old HEAD must be an ancestor (a plain forward merge). An in-flight run also requires
+        its original remote boundary; a completed Stage 3 PR may instead rebind at its exact current owner PR HEAD.
         """
         if b["method"] == STAGE3_METHOD and b["run_kind"] == "s3_finalize":
             commit_key = f"s3_commit_head_{b['id']}"
@@ -507,8 +508,18 @@ class Maintenance:
             wt = Path(b["worktree"])
             try:
                 remote = self.sup.git.remote_head(b["branch"])
+                saved_remote_is_ancestor = (saved_remote == "" or
+                                            (isinstance(saved_remote, str)
+                                             and re.fullmatch(r"[0-9a-f]{40}", saved_remote)
+                                             and self.sup.git.contains(wt, saved_remote)))
+                completed_pr = (completed_pr_head is not None and b["state"] == "PAUSED"
+                                and b["pause_reason"] == "shared_defect" and b["paused_from"] == "WAITING_REVIEW"
+                                and b["pr_number"] is not None and isinstance(b["head_sha"], str)
+                                and completed_pr_head in {b["head_sha"], new_head}
+                                and remote in {b["head_sha"], new_head} and saved_remote_is_ancestor)
+                remote_matches_start = (saved_remote is not None and saved_remote == (remote or ""))
                 if (not isinstance(committed, str) or not re.fullmatch(r"[0-9a-f]{40}", committed)
-                        or saved_remote is None or saved_remote != (remote or "")
+                        or not (completed_pr if completed_pr_head is not None else remote_matches_start)
                         or self.sup.git.registered(wt) != b["branch"] or self.sup.git.head(wt) != new_head
                         or not self.sup.git.contains(wt, committed)):
                     return None
@@ -639,24 +650,86 @@ class Maintenance:
                 "수정 후에도 같은 결함이 실제로 재현되거나 새로운 결함이 확인되면 그때는 새 증거로 `shared-defect.json`을 "
                 "다시 작성해 보고하고 멈춘다.\n")
 
-    def _apply(self, d, b) -> str | None:
+    def _apply(self, d, b) -> tuple[str, tuple[str, str] | None]:
         wt, git = Path(b["worktree"]), self.sup.git
+        initial_pr = None
+        batch_head = None
         if b["pr_number"]:   # an existing PR: the worktree must still be exactly what the PR holds
-            info = self.sup.gh.pull(b["pr_number"])
-            if info["merged"] or info["state"] != "open":
-                raise IntegrationBlocked(f"PR #{b['pr_number']}이 더 이상 열려 있지 않습니다 (state={info['state']}, merged={info['merged']})")
-            if info["head_ref"] != b["branch"]:
-                raise IntegrationBlocked(f"PR #{b['pr_number']}의 head 브랜치 {info['head_ref']!r}가 소유 브랜치와 다릅니다")
+            initial_pr = self.sup.gh.pull(b["pr_number"])
+            if initial_pr.get("number") != b["pr_number"]:
+                raise IntegrationBlocked(f"조회한 PR 번호가 배치 소유 PR #{b['pr_number']}과 다릅니다")
+            if initial_pr.get("merged") or initial_pr.get("state") != "open":
+                raise IntegrationBlocked(f"PR #{b['pr_number']}이 더 이상 열려 있지 않습니다 "
+                                         f"(state={initial_pr.get('state')}, merged={initial_pr.get('merged')})")
+            if initial_pr.get("head_ref") != b["branch"]:
+                raise IntegrationBlocked(f"PR #{b['pr_number']}의 head 브랜치 {initial_pr.get('head_ref')!r}가 "
+                                         "소유 브랜치와 다릅니다")
+            batch_head = b["head_sha"]
             local = git.head(wt)
-            if local != info["head_sha"] and not git.contains(wt, info["head_sha"]):
-                raise IntegrationBlocked(f"로컬 HEAD {local[:10]}가 PR HEAD {info['head_sha'][:10]}를 포함하지 않습니다 (HEAD 불일치)")
+            pr_head = initial_pr.get("head_sha")
+            if not isinstance(pr_head, str) or not re.fullmatch(r"[0-9a-f]{40}", pr_head):
+                raise IntegrationBlocked(f"PR #{b['pr_number']} HEAD가 유효한 commit SHA가 아닙니다")
+            if local != pr_head and not git.contains(wt, pr_head):
+                raise IntegrationBlocked(f"로컬 HEAD {local[:10]}가 PR HEAD {pr_head[:10]}를 포함하지 않습니다 "
+                                         "(HEAD 불일치)")
         head = git.integrate(wt, b["branch"], self.cfg["base_branch"], d["merge_sha"])
         if not git.contains(wt, d["merge_sha"]):   # proof by the commit actually applied, not by the Issue/PR state
             raise IntegrationBlocked("수정 commit이 배치 HEAD에 포함된 것을 확인하지 못했습니다")
         problem = self._verify(d, wt)
         if problem:
             raise IntegrationBlocked(f"수정 반영 후 필수 검증 실패: {problem}")
-        return head
+        run_start = None
+        if initial_pr is not None:
+            try:
+                protected = self.sup._pr_protected_paths(b, initial_pr)
+            except (FastForwardBlocked, GitError) as e:
+                raise IntegrationBlocked(f"기존 PR의 보호 산출물 소유권을 확인할 수 없습니다: {e}") from e
+            if b["method"] == STAGE3_METHOD and b["run_kind"] == "s3_finalize":
+                run_start = self._retargeted_run_start(b, head, completed_pr_head=initial_pr["head_sha"])
+                if run_start is None:
+                    raise IntegrationBlocked("완료된 Stage 3 PR의 원래 finalize 기준을 승인된 최신 PR HEAD에 "
+                                             "안전하게 재결속할 수 없어 push를 중단합니다")
+            head = self._sync_approved_integration(b, d, initial_pr, batch_head, head, protected)
+        return head, run_start
+
+    def _sync_approved_integration(self, b, d, initial_pr, batch_head: str, integrated_head: str,
+                                   protected_paths: set[str]) -> str:
+        """Sync an approved fix to this exact open PR before releasing its one automatic Retry."""
+        number, branch, wt = b["pr_number"], b["branch"], Path(b["worktree"])
+        allowed_heads = {batch_head, integrated_head}
+
+        def recheck(expected_head: str) -> None:
+            current_batch = self.store.batch(b["id"])
+            if (current_batch is None or current_batch["state"] != "PAUSED"
+                    or current_batch["pause_reason"] != "shared_defect"
+                    or current_batch["defect_id"] != d["id"] or current_batch["pid"] is not None
+                    or current_batch["pr_number"] != number or current_batch["branch"] != branch
+                    or Path(current_batch["worktree"]) != wt or current_batch["head_sha"] != batch_head):
+                raise IntegrationBlocked("동기화 직전 batch/AI/PR 소유 상태가 바뀌었습니다")
+            if self.store.get(f"defect_hold_{b['id']}"):
+                raise GitTransient("운영자 Stop이 대기 중이므로 PR 동기화와 자동 재개를 미룹니다")
+
+            info = self.sup.gh.pull(number)
+            if info.get("number") != number or info.get("head_ref") != branch:
+                raise IntegrationBlocked(f"PR #{number}의 repo 또는 소유 head 브랜치가 바뀌었습니다")
+            if info.get("state") != "open" or info.get("merged"):
+                raise IntegrationBlocked(f"PR #{number}가 동기화 중 open 상태를 벗어났습니다")
+            current_head = info.get("head_sha")
+            if not isinstance(current_head, str) or not re.fullmatch(r"[0-9a-f]{40}", current_head):
+                raise IntegrationBlocked(f"PR #{number} HEAD가 유효한 commit SHA가 아닙니다")
+            if current_head != expected_head:
+                if current_head in allowed_heads and expected_head in allowed_heads:
+                    raise GitTransient(f"PR #{number} API가 동기화 HEAD를 아직 반영하지 않았습니다 "
+                                        f"({expected_head} / {current_head})")
+                raise IntegrationBlocked(f"PR #{number} HEAD가 승인 통합과 다른 commit으로 이동했습니다 "
+                                         f"({expected_head} / {current_head})")
+
+        try:
+            return self.sup.git.push_approved_maintainer_integration(
+                wt, branch, initial_pr["head_sha"], batch_head, d["merge_sha"], protected_paths,
+                recheck=recheck)
+        except FastForwardBlocked as e:
+            raise IntegrationBlocked(str(e)) from e
 
     def _verify(self, d, wt: Path) -> str | None:
         """Required verification of the merged fix, derived from what its PR changed. None = verified.

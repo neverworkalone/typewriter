@@ -10,7 +10,7 @@ from pathlib import Path
 from warroom import control
 from warroom.adapters import AgentAdapter, Handle, OpenCodeAdapter
 from warroom.config import DEFAULTS, Paths
-from warroom.gitops import (CleanupBlocked, FastForwardBlocked, FastForwardRace, GitError,
+from warroom.gitops import (CleanupBlocked, FastForwardBlocked, FastForwardRace, GitError, GitTransient,
                             IntegrationBlocked)
 from warroom.shell import Result
 from warroom.store import Store
@@ -114,6 +114,11 @@ class FakeGit:
         self.reg: dict[str, str] = {}
         self.remote: dict[str, str | Exception | None] = {}   # branch -> origin SHA, None (absent) or an error to raise
         self.integrated: list[tuple[str, str]] = []           # (worktree, sha) of every shared fix merged in
+        self.maintainer_sync_calls: list[tuple] = []
+        self.maintainer_pushes: list[tuple[str, str, str]] = []
+        self.maintainer_sync_error: Exception | None = None
+        self.maintainer_changed_paths: set[str] = set()
+        self.maintainer_after_push = None
         self.ancestor_pairs: set[tuple[str, str]] = set()
         self.commit_ranges: set[tuple[str, str, str]] = set()
         self.integrate_updates_head = False
@@ -539,6 +544,44 @@ class FakeGit:
 
     def contains(self, path, sha):
         return (str(path), sha) in self.integrated
+
+    def push_approved_maintainer_integration(self, path, branch, pr_head_sha, batch_head_sha, merge_sha,
+                                             protected_paths, *, recheck=None):
+        if self.maintainer_sync_error:
+            raise self.maintainer_sync_error
+        path = Path(path)
+        self.maintainer_sync_calls.append((str(path), branch, pr_head_sha, batch_head_sha, merge_sha,
+                                           set(protected_paths)))
+        if self.registered(path) != branch:
+            raise IntegrationBlocked("not the owned worktree")
+        self.worktree_gitdir(path)
+        if self.dirty(path).strip():
+            raise IntegrationBlocked("dirty worktree")
+        local = self.head(path)
+        if not self.contains(path, merge_sha):
+            raise IntegrationBlocked("approved merge missing")
+        if self.maintainer_changed_paths & set(protected_paths):
+            raise IntegrationBlocked("protected artifact changed")
+        remote = self.remote_head(branch)
+        expected = {batch_head_sha, local}
+        if pr_head_sha not in expected or remote not in expected:
+            raise IntegrationBlocked("unexpected PR or remote HEAD")
+        if remote != pr_head_sha:
+            raise GitTransient("PR API / remote lag")
+        if recheck is not None:
+            recheck(pr_head_sha)
+        if local != pr_head_sha:
+            if remote != batch_head_sha:
+                raise IntegrationBlocked("remote moved")
+            self.maintainer_pushes.append((branch, pr_head_sha, local))
+            self.remote[branch] = local
+            if self.maintainer_after_push:
+                self.maintainer_after_push(local)
+            if recheck is not None:
+                recheck(local)
+        if self.remote_head(branch) != local or self.head(path) != local or self.dirty(path).strip():
+            raise IntegrationBlocked("post-push verification failed")
+        return local
 
     def create_worktree_at(self, path, branch, commit):
         self.create_worktree(path, branch, commit)
