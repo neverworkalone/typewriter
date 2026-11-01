@@ -199,15 +199,22 @@ test('Stage 2 loaders ignore malformed historical Relation and Drop backups', as
   assert.deepEqual(texts(prepared), ['버릴말', '새 말', '유일', '텍스트']);
 });
 
-test('Stage 2 AI cannot author the reserved edit Drop reason', async (t) => {
+test('Stage 2 AI can use editorial Drop reasons but cannot author the reserved edit reason', async (t) => {
   const { root, checkpoint } = await prepareSixPart(t);
   const chunk = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint], { root }));
   const input = '.warroom-scratch/edit-drop-decision.json';
   await writeFile(path.join(root, input), JSON.stringify({ chunk_id: chunk.chunk_id, decisions: chunk.items.flatMap((item) =>
     item.candidates.map((candidate, index) => ({ source_sense_id: item.sense_id, candidate: candidate.text,
-      disposition: 'drop', reason: index === 0 ? 'edit' : '무관', }))) }));
+      disposition: 'drop', reason: index === 0 ? 'edit' : 'editorial: sense와 연결되지만 독립적인 표현 가치를 주지 않음', }))) }));
   await assert.rejects(() => quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', input], { root })),
     /reason "edit" is reserved for Stage 3 reconciliation/u);
+
+  const malformed = '.warroom-scratch/malformed-editorial-drop-decision.json';
+  await writeFile(path.join(root, malformed), JSON.stringify({ chunk_id: chunk.chunk_id, decisions: chunk.items.flatMap((item) =>
+    item.candidates.map((candidate) => ({ source_sense_id: item.sense_id, candidate: candidate.text,
+      disposition: 'drop', reason: 'editorial:  ', }))) }));
+  await assert.rejects(() => quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', malformed], { root })),
+    /editorial Drop needs a specific explanation after "editorial:"/u);
 });
 
 test('Stage 3 deletion reconciliation previews without writes and persists only proven edit Drops', async (t) => {
@@ -1388,12 +1395,21 @@ test('merge validates final Part accounting before writing and supports a local 
 
   const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
   await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
-  const chunk = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint], { root }));
+  const compact = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint, '--format', 'compact'], { root }));
+  const aliasFor = (candidate) => {
+    const row = compact.text.split('\n').find((line) => line.startsWith('c') && line.includes(`\t${candidate}\t`));
+    assert.ok(row, `compact chunk includes ${candidate}`);
+    return row.split('\t')[0];
+  };
   const decisionsFile = '.warroom-scratch/decisions.json';
-  const badDrop = { source_sense_id: 'w1-s1', candidate: '가로', disposition: 'drop', reason: '무관 후보' };
-  const validDrop = { source_sense_id: 'w1-s1', candidate: '무관후보', disposition: 'drop', reason: '출발 의미와 무관' };
-  await writeFile(path.join(root, decisionsFile), JSON.stringify({ chunk_id: chunk.chunk_id, decisions: [badDrop, validDrop] }));
-  await quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', decisionsFile], { root }));
+  const badDrop = { source_sense_id: 'w1-s1', candidate: '가로', disposition: 'drop', reason: '출발 의미와 무관' };
+  const otherEditorialReason = 'editorial: sense와 연결되지만 독립적인 표현 가치를 주지 않음';
+  await writeFile(path.join(root, decisionsFile), [
+    `chunk ${compact.chunk_id}`,
+    `${aliasFor('가로')} D ${badDrop.reason}`,
+    `${aliasFor('무관후보')} D ${otherEditorialReason}`,
+  ].join('\n') + '\n');
+  await quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', decisionsFile, '--format', 'compact'], { root }));
 
   await completeOptionalForTest(root, checkpoint);
   await assert.rejects(
@@ -1408,18 +1424,21 @@ test('merge validates final Part accounting before writing and supports a local 
   ], { root }));
   assert.deepEqual(texts(revision), ['가로']);
   assert.deepEqual(revision.items[0].candidates[0].previous_decision, badDrop);
-  const corrected = { source_sense_id: 'w1-s1', candidate: '가로', disposition: 'relation', type: 'association', relevance: 4 };
+  const editorialReason = 'editorial: 출발 Sense와 연결되지만 독립적인 표현 가치를 주지 않음';
+  const corrected = { source_sense_id: 'w1-s1', candidate: '가로', disposition: 'drop', reason: editorialReason };
   await writeFile(path.join(root, decisionsFile), JSON.stringify({ chunk_id: revision.chunk_id, decisions: [corrected] }));
   await quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', decisionsFile], { root }));
 
   const merged = await mergeForTest(root, checkpoint);
-  assert.deepEqual([merged.relations_added, merged.drops_added], [1, 1]);
+  assert.deepEqual([merged.relations_added, merged.drops_added], [0, 2]);
   const counts = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
-  assert.deepEqual([counts.unique, counts.relation, counts.drop, counts.missing], [2, 1, 1, 0]);
-  const relations = await readRelationRows(path.join(root, 'data/relations/relation-001.jsonl'));
+  assert.deepEqual([counts.unique, counts.relation, counts.drop, counts.missing], [2, 0, 2, 0]);
+  await assert.rejects(() => readFile(path.join(root, 'data/relations/relation-001.jsonl')), { code: 'ENOENT' });
   const drops = await readDropRows(path.join(root, 'data/relation-drops/drop-001.jsonl'));
-  assert.deepEqual(relations.map((row) => row.text), ['가로']);
-  assert.deepEqual(drops.map((row) => row.candidate), ['무관후보'], 'the earlier valid decision remains intact when the rejected Drop is revised');
+  assert.deepEqual(drops, [
+    { source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '가로', reason: editorialReason },
+    { source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '무관후보', reason: otherEditorialReason },
+  ], 'the editorial reason is persisted exactly and the other candidate decision remains intact');
 });
 
 test('merge accounts an ID relation against only its selected candidate spelling', async (t) => {
