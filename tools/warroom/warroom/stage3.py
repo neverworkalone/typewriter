@@ -192,15 +192,23 @@ def prepare(runner, env: dict, worktree, shard: str) -> dict:
     return state
 
 
-def read_chunk(runner, env: dict, worktree, shard: str) -> dict:
+def read_chunk_prompt(runner, env: dict, worktree, shard: str) -> tuple[dict, str]:
+    """Return the unchanged prepared view and its validated compact prompt view (never a JSON fallback)."""
     result = cli(runner, env, worktree, "read-chunk", "--shard", shard)
     if not isinstance(result, dict) or not isinstance(result.get("chunk"), str):
         raise Stage3Error("edit-cli read-chunk returned no active chunk")
     state = checkpoint(worktree, shard)
     if state is None or result["chunk"] != next_chunk(state):
         raise Stage3Error("edit-cli read-chunk is not the next checkpoint chunk")
-    decision_context(result, result["chunk"])
-    return result
+    if "prompt_view" not in result:
+        raise Stage3Error("edit-cli read-chunk returned no prompt_view")
+    view = {key: value for key, value in result.items() if key != "prompt_view"}
+    validate_prompt_view(result["prompt_view"], decision_context(view, view["chunk"]), state["chunk_total"])
+    return view, result["prompt_view"]
+
+
+def read_chunk(runner, env: dict, worktree, shard: str) -> dict:
+    return read_chunk_prompt(runner, env, worktree, shard)[0]
 
 
 def refresh_pending_chunks(runner, env: dict, worktree, shard: str) -> dict:
@@ -215,16 +223,78 @@ def refresh_pending_chunks(runner, env: dict, worktree, shard: str) -> dict:
     state = checkpoint(worktree, shard)
     if state is None or result["chunk_count"] != state["chunk_total"]:
         raise Stage3Error("edit-cli refresh-pending did not preserve the Stage 3 checkpoint")
+    if "prompt_view" not in result:
+        raise Stage3Error("edit-cli refresh-pending returned no prompt_view")
+    prompt_view = result.pop("prompt_view")
     expected = next_chunk(state)
     if expected is None:
-        if result.get("current_chunk") is not None or result.get("current_view") is not None:
+        if (result.get("current_chunk") is not None or result.get("current_view") is not None
+                or prompt_view is not None):
             raise Stage3Error("edit-cli refresh-pending returned a chunk after checkpoint completion")
         return result
     if (result.get("current_chunk") != expected or not isinstance(result.get("current_view"), dict)
             or type(result.get("active_changed")) is not bool):
         raise Stage3Error("edit-cli refresh-pending returned no exact next chunk view")
-    decision_context(result["current_view"], expected)
+    validate_prompt_view(prompt_view, decision_context(result["current_view"], expected), state["chunk_total"])
     return result
+
+
+def validate_prompt_view(prompt_view, context: dict, total: int) -> None:
+    """Fail closed unless the compact view binds to the same chunk, Relation numbers/order and T aliases as the JSON view."""
+    if not isinstance(prompt_view, str):
+        raise Stage3Error("Stage 3 prompt_view is missing or not text")
+    chunk = context["chunk"]
+    lines = prompt_view.split("\n")
+    header = re.fullmatch(r"chunk (\d+)/(\d+) relations (\d+)", lines[0])
+    if (not header or header.group(1) != chunk or int(header.group(2)) != total
+            or int(header.group(3)) != context["relation_count"]):
+        raise Stage3Error(f"Stage 3 prompt_view header does not match chunk {chunk}")
+    expected = iter(context["relations"])
+    sense_relations = 0
+    current = None
+    sense_seen = False
+    aliases: list[str] = []
+
+    def close_relation() -> None:
+        if current is not None and aliases != [target["alias"] for target in current["targets"]]:
+            raise Stage3Error(f"Stage 3 prompt_view target aliases do not match Relation {current['n']}")
+
+    for line in lines[1:]:
+        fields = line.split("\t")
+        if any("\\" in re.sub(r"\\[\\tnr]", "", field) for field in fields):
+            raise Stage3Error(f"Stage 3 prompt_view has an invalid escape in chunk {chunk}")
+        tag = re.fullmatch(r"([SIXT])([1-9]\d*)?", fields[0])
+        if not tag or (tag.group(1) == "S") != (tag.group(2) is None):
+            raise Stage3Error(f"Stage 3 prompt_view has an invalid row tag in chunk {chunk}")
+        kind = tag.group(1)
+        if kind == "S":
+            close_relation()
+            current = None
+            if sense_relations == 0 and sense_seen:
+                raise Stage3Error(f"Stage 3 prompt_view has an empty Source Sense in chunk {chunk}")
+            sense_seen, sense_relations = True, 0
+            if len(fields) != 4:
+                raise Stage3Error(f"Stage 3 prompt_view Sense row is malformed in chunk {chunk}")
+        elif not sense_seen:
+            raise Stage3Error(f"Stage 3 prompt_view row precedes its Source Sense in chunk {chunk}")
+        elif kind == "T":
+            if current is None or not current["text_only"] or len(fields) != 4:
+                raise Stage3Error(f"Stage 3 prompt_view has a misplaced target row in chunk {chunk}")
+            aliases.append(fields[0])
+        else:
+            close_relation()
+            number = int(tag.group(2))
+            current = next(expected, None)
+            if current is None or current["n"] != number or current["text_only"] != (kind == "X"):
+                raise Stage3Error(f"Stage 3 prompt_view Relation {kind}{number} does not match chunk {chunk}")
+            if not re.fullmatch(r"[1-9]\d*", fields[3] if len(fields) > 3 else ""):
+                raise Stage3Error(f"Stage 3 prompt_view Relation {number} tier is invalid")
+            if len(fields) not in ((4,) if kind == "X" else (4, 6)):
+                raise Stage3Error(f"Stage 3 prompt_view Relation {number} is malformed")
+            aliases, sense_relations = [], sense_relations + 1
+    close_relation()
+    if next(expected, None) is not None or (context["relation_count"] and sense_relations == 0):
+        raise Stage3Error(f"Stage 3 prompt_view is missing Relations in chunk {chunk}")
 
 
 def decision_context(view: dict, chunk: str) -> dict:
