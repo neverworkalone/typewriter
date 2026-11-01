@@ -93,7 +93,7 @@ async function sixCandidateRepository(t) {
 async function saveAllPrimaryAsDrops(root, checkpoint) {
   const chunk = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint], { root }));
   const decisions = chunk.items.flatMap((item) => item.candidates.map((candidate) => ({
-    source_sense_id: item.sense_id, candidate: candidate.text, disposition: 'drop', reason: '출발 의미와 무관',
+    source_sense_id: item.sense_id, candidate: candidate.text, disposition: 'drop', reason: 'x',
   })));
   const input = '.warroom-scratch/primary-decisions.json';
   await writeFile(path.join(root, input), JSON.stringify({ chunk_id: chunk.chunk_id, decisions }));
@@ -180,17 +180,21 @@ test('prepare re-run offers only undecided candidates: this shard\'s own approve
   const first = await quiet(() => run(['prepare', '--shard', '001', '--allow-partial'], { root: none }));
   assert.deepEqual(texts(first), ['버릴말', '새 말', '유일', '텍스트']);
 
+  const historicalDrop = { source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '버릴말', reason: '기존 자유형 사유' };
   const decided = await repository(t, {
     relations: [
       { source_record_id: 'w1', source_sense_id: 'w1-s1', target_record_id: 'w3', target_sense_id: 'w3-s1', type: 'near', relevance: 2, reverse_type: 'near', reverse_relevance: 2 },
       { source_record_id: 'w1', source_sense_id: 'w1-s1', text: '텍스트', type: 'scene', relevance: 4 },
     ],
-    drops: [{ source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '버릴말', reason: '무관' }],
+    drops: [historicalDrop],
   });
+  const dropPath = path.join(decided, 'data/relation-drops/drop-001.jsonl');
+  const historicalDropBytes = await readFile(dropPath);
   const again = await quiet(() => run(['prepare', '--shard', '001', '--allow-partial'], { root: decided }));
   assert.deepEqual(texts(again), ['새 말']);
   assert.equal(again.stats.skipped_existing, 2);
   assert.equal(again.stats.skipped_dropped, 1);
+  assert.deepEqual(await readFile(dropPath), historicalDropBytes, 'reading existing free-form Drops does not rewrite their stored reason');
 });
 
 test('Stage 2 loaders ignore malformed historical Relation and Drop backups', async (t) => {
@@ -199,22 +203,27 @@ test('Stage 2 loaders ignore malformed historical Relation and Drop backups', as
   assert.deepEqual(texts(prepared), ['버릴말', '새 말', '유일', '텍스트']);
 });
 
-test('Stage 2 AI can use editorial Drop reasons but cannot author the reserved edit reason', async (t) => {
+test('new Stage 2 Drops accept only x/e, while edit remains reserved for Stage 3', async (t) => {
   const { root, checkpoint } = await prepareSixPart(t);
   const chunk = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint], { root }));
-  const input = '.warroom-scratch/edit-drop-decision.json';
-  await writeFile(path.join(root, input), JSON.stringify({ chunk_id: chunk.chunk_id, decisions: chunk.items.flatMap((item) =>
-    item.candidates.map((candidate, index) => ({ source_sense_id: item.sense_id, candidate: candidate.text,
-      disposition: 'drop', reason: index === 0 ? 'edit' : 'editorial: sense와 연결되지만 독립적인 표현 가치를 주지 않음', }))) }));
-  await assert.rejects(() => quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', input], { root })),
-    /reason "edit" is reserved for Stage 3 reconciliation/u);
+  const input = '.warroom-scratch/drop-decision.json';
+  const save = async (reason) => {
+    await writeFile(path.join(root, input), JSON.stringify({ chunk_id: chunk.chunk_id, decisions: chunk.items.flatMap((item) =>
+      item.candidates.map((candidate) => ({ source_sense_id: item.sense_id, candidate: candidate.text,
+        disposition: 'drop', reason }))) }));
+    return quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', input], { root }));
+  };
+  await assert.rejects(() => save('edit'), /reason "edit" is reserved for Stage 3 reconciliation/u);
+  await assert.rejects(() => save('editorial: source-bound explanation'), /new Stage 2 Drop reason must be "x" or "e"/u);
+  await assert.rejects(() => save('unrelated'), /new Stage 2 Drop reason must be "x" or "e"/u);
 
-  const malformed = '.warroom-scratch/malformed-editorial-drop-decision.json';
-  await writeFile(path.join(root, malformed), JSON.stringify({ chunk_id: chunk.chunk_id, decisions: chunk.items.flatMap((item) =>
-    item.candidates.map((candidate) => ({ source_sense_id: item.sense_id, candidate: candidate.text,
-      disposition: 'drop', reason: 'editorial:  ', }))) }));
-  await assert.rejects(() => quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', malformed], { root })),
-    /editorial Drop needs a specific explanation after "editorial:"/u);
+  await save('e');
+  const saved = JSON.parse(await readFile(path.join(root, checkpoint), 'utf8'));
+  assert.ok(saved.items.flatMap((item) => item.candidates).every((candidate) => candidate.decision.reason === 'e'));
+  await mergeForTest(root, checkpoint);
+  const verified = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01', '--checkpoint', checkpoint], { root }));
+  assert.equal(verified.drop, 6);
+  assert.ok((await readDropRows(path.join(root, 'data/relation-drops/drop-001.jsonl'))).every((row) => row.reason === 'e'));
 });
 
 test('Stage 3 deletion reconciliation previews without writes and persists only proven edit Drops', async (t) => {
@@ -830,7 +839,7 @@ test('Stage 2 chunks bind exact senses, resume safely, and preserve text-only Pa
   const noTargetText = {
     source_sense_id: 'w1-s1', candidate: '낯선말', disposition: 'relation', type: 'sensory', relevance: 5,
   };
-  const drop = { source_sense_id: 'w1-s1', candidate: '버릴말', disposition: 'drop', reason: '출발 sense와 무관한 임시 표기' };
+  const drop = { source_sense_id: 'w1-s1', candidate: '버릴말', disposition: 'drop', reason: 'x' };
   const secondSenseText = {
     source_sense_id: 'w2-s1', candidate: '두번째표현', disposition: 'relation', type: 'scene', relevance: 4,
   };
@@ -1239,6 +1248,8 @@ test('compact chunks are a lossless view and compact decisions expand into the s
   assert.match(missingAndBad, /^c2 겹표기: .*type must be one of/m);
   assert.deepEqual(await readFile(path.join(root, checkpoint)), before, 'a failed save leaves the checkpoint byte-identical');
 
+  await assert.rejects(() => save(`${head}\nc1 R near 1 T1 near 1\nc2 D editorial: legacy wording`),
+    /new Stage 2 Drop reason must be "x" or "e"/u);
   await save(`# comments and blank lines are ignored\n${head}\n\nc1 R near 1 T1 near 1\nc2 R association 7 none T4,T3\n`);
   const saved = JSON.parse(await readFile(path.join(root, checkpoint), 'utf8'));
   assert.deepEqual(saved.items[0].candidates.slice(0, 2).map((candidate) => candidate.decision), [
@@ -1259,7 +1270,7 @@ test('compact chunks are a lossless view and compact decisions expand into the s
   assert.ok(nextLines.includes('Q\t겹표기\trelation\tassociation\t7\ttext-only'));
   assert.ok(nextLines.includes('c1\t낯선말\ta_codex\t-'));
   assert.ok(!nextLines.some((line) => line.startsWith('T1\t')), 'aliases restart for each chunk');
-  await save(`chunk ${next.chunk_id}\nc1 R sensory 5\nc2 D 출발 sense와 무관한 임시 표기\nc3 R scene 4`);
+  await save(`chunk ${next.chunk_id}\nc1 R sensory 5\nc2 D x\nc3 R scene 4`);
   const finished = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint, '--format', 'compact'], { root }));
   assert.equal(finished.complete, true);
   assert.deepEqual(await mergeForTest(root, checkpoint), {
@@ -1289,7 +1300,7 @@ test('new Part mirrors source Type/Tier through compact, JSON revision, inspect 
 
   const compact = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint, '--format', 'compact'], { root }));
   assert.match(compact.text, /c<n> R <type> <tier> T<k>.*derived by the CLI/u);
-  const compactBody = `chunk ${compact.chunk_id}\nc1 R near 2 T1\nc2 D 무관\nc3 D 무관\nc4 D 무관\n`;
+  const compactBody = `chunk ${compact.chunk_id}\nc1 R near 2 T1\nc2 D x\nc3 D x\nc4 D x\n`;
   const beforeRejectedCompact = await readFile(path.join(root, checkpoint));
   await writeFile(path.join(root, input), compactBody.replace('c1 R near 2 T1', 'c1 R near 2 T1 mood 5'));
   await assert.rejects(() => quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', input, '--format', 'compact'], { root })),
@@ -1352,7 +1363,7 @@ test('marker-free checkpoints retain legacy decisions but block asymmetric outpu
   await writeFile(path.join(root, checkpoint), `${JSON.stringify(legacy)}\n`);
   const compact = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint, '--format', 'compact'], { root }));
   assert.match(compact.text, /T<k> <reverse_type> <reverse_tier>/u);
-  await writeFile(path.join(root, input), `chunk ${compact.chunk_id}\nc1 R near 2 T1 mood 5\nc2 D 무관\nc3 D 무관\nc4 D 무관\n`);
+  await writeFile(path.join(root, input), `chunk ${compact.chunk_id}\nc1 R near 2 T1 mood 5\nc2 D x\nc3 D x\nc4 D x\n`);
   await quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', input, '--format', 'compact'], { root }));
   const savedBeforeRestart = await readFile(path.join(root, checkpoint));
   const resumed = await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
@@ -1402,12 +1413,11 @@ test('merge validates final Part accounting before writing and supports a local 
     return row.split('\t')[0];
   };
   const decisionsFile = '.warroom-scratch/decisions.json';
-  const badDrop = { source_sense_id: 'w1-s1', candidate: '가로', disposition: 'drop', reason: '출발 의미와 무관' };
-  const otherEditorialReason = 'editorial: sense와 연결되지만 독립적인 표현 가치를 주지 않음';
+  const badDrop = { source_sense_id: 'w1-s1', candidate: '가로', disposition: 'drop', reason: 'x' };
   await writeFile(path.join(root, decisionsFile), [
     `chunk ${compact.chunk_id}`,
     `${aliasFor('가로')} D ${badDrop.reason}`,
-    `${aliasFor('무관후보')} D ${otherEditorialReason}`,
+    `${aliasFor('무관후보')} D e`,
   ].join('\n') + '\n');
   await quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', decisionsFile, '--format', 'compact'], { root }));
 
@@ -1424,8 +1434,7 @@ test('merge validates final Part accounting before writing and supports a local 
   ], { root }));
   assert.deepEqual(texts(revision), ['가로']);
   assert.deepEqual(revision.items[0].candidates[0].previous_decision, badDrop);
-  const editorialReason = 'editorial: 출발 Sense와 연결되지만 독립적인 표현 가치를 주지 않음';
-  const corrected = { source_sense_id: 'w1-s1', candidate: '가로', disposition: 'drop', reason: editorialReason };
+  const corrected = { source_sense_id: 'w1-s1', candidate: '가로', disposition: 'drop', reason: 'e' };
   await writeFile(path.join(root, decisionsFile), JSON.stringify({ chunk_id: revision.chunk_id, decisions: [corrected] }));
   await quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', decisionsFile], { root }));
 
@@ -1436,9 +1445,9 @@ test('merge validates final Part accounting before writing and supports a local 
   await assert.rejects(() => readFile(path.join(root, 'data/relations/relation-001.jsonl')), { code: 'ENOENT' });
   const drops = await readDropRows(path.join(root, 'data/relation-drops/drop-001.jsonl'));
   assert.deepEqual(drops, [
-    { source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '가로', reason: editorialReason },
-    { source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '무관후보', reason: otherEditorialReason },
-  ], 'the editorial reason is persisted exactly and the other candidate decision remains intact');
+    { source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '가로', reason: 'e' },
+    { source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '무관후보', reason: 'e' },
+  ], 'the connected-but-not-useful code is persisted and the other candidate decision remains intact');
 });
 
 test('merge accounts an ID relation against only its selected candidate spelling', async (t) => {
@@ -1618,7 +1627,7 @@ test('preflight repair accepts Supervisor sorted-state round-trip and remains st
       target_resolution: 'exact', target_record_id: 'w2', target_sense_id: 'w2-s1' },
     { source_sense_id: 'w1-s1', candidate: '유일하다', disposition: 'relation', type: 'mood', relevance: 4,
       target_resolution: 'exact', target_record_id: 'w2', target_sense_id: 'w2-s1' },
-    { source_sense_id: 'w1-s1', candidate: '버릴말', disposition: 'drop', reason: '무관' },
+    { source_sense_id: 'w1-s1', candidate: '버릴말', disposition: 'drop', reason: 'x' },
   ];
   const decisionsPath = '.warroom-scratch/preflight-decisions.json';
   await writeFile(path.join(root, decisionsPath), JSON.stringify({ chunk_id: chunk.chunk_id, decisions }));
@@ -1872,7 +1881,7 @@ test('inspect and optional reads preserve checkpoint/output/snapshot bytes and m
     'inspect', '--checkpoint', checkpoint, '--source-sense-id', 'w1-s1', '--format', 'compact', '--page-size', '2',
   ], { root }));
   assert.match(compact.text, /^inspect w1-s1 @[a-f0-9]{64}/u);
-  assert.match(compact.text, /# current c1: D 출발 의미와 무관/u);
+  assert.match(compact.text, /# current c1: D x/u);
   const optional = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint, '--optional', '--page-size', '1'], { root }));
   assert.equal(optional.links.length, 0);
   assert.equal(optional.optional_review_complete, false);
@@ -1929,7 +1938,7 @@ test('selected inspect preserves whole-sense digest and aliases while bounding Q
   await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
   const chunk = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint], { root }));
   const rows = chunk.items.flatMap((item) => item.candidates.map((candidate) => ({ sense: item.sense_id, text: candidate.text })));
-  const decisions = rows.map((_, index) => index === 0 ? `c${index + 1} D unrelated` : `c${index + 1} R near 3`);
+  const decisions = rows.map((_, index) => index === 0 ? `c${index + 1} D x` : `c${index + 1} R near 3`);
   const decisionsPath = '.warroom-scratch/review-fix-decisions.txt';
   await writeFile(path.join(root, decisionsPath), `chunk ${chunk.chunk_id}\n${decisions.join('\n')}\n`);
   await quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', decisionsPath, '--format', 'compact'], { root }));
@@ -2141,7 +2150,7 @@ test('cancel-revision only clears the exact active revision and leaves its decis
   const first = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint, '--max-candidates', '1'], { root }));
   const input = '.warroom-scratch/one-decision.json';
   await writeFile(path.join(root, input), JSON.stringify({ chunk_id: first.chunk_id, decisions: [
-    { source_sense_id: 'w1-s1', candidate: first.items[0].candidates[0].text, disposition: 'drop', reason: '초기 판정' },
+    { source_sense_id: 'w1-s1', candidate: first.items[0].candidates[0].text, disposition: 'drop', reason: 'x' },
   ] }));
   await quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', input], { root }));
   const saved = JSON.parse(await readFile(path.join(root, checkpoint), 'utf8'));
@@ -2210,7 +2219,7 @@ test('amend rewrites Drop reasons and same-count Drop-to-Relation swaps from the
   const { root, checkpoint, sourceCandidates } = await prepareSixPart(t, { emptyRelation: true });
   const chunk = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint], { root }));
   const decisions = sourceCandidates.map((candidate, index) => index < 3
-    ? { source_sense_id: 'w1-s1', candidate, disposition: 'drop', reason: '초기 Drop 사유' }
+    ? { source_sense_id: 'w1-s1', candidate, disposition: 'drop', reason: 'x' }
     : { source_sense_id: 'w1-s1', candidate, disposition: 'relation', type: 'scene', relevance: 4 });
   const decisionsFile = '.warroom-scratch/mixed-initial-decisions.json';
   await writeFile(path.join(root, decisionsFile), JSON.stringify({ chunk_id: chunk.chunk_id, decisions }));
@@ -2221,8 +2230,13 @@ test('amend rewrites Drop reasons and same-count Drop-to-Relation swaps from the
   const initialDrops = await readDropRows(dropPath);
   assert.equal(initialDrops.length, 3);
   const inspect = await quiet(() => run(['inspect', '--checkpoint', checkpoint, '--source-sense-id', 'w1-s1'], { root }));
+  const invalidAmendFile = '.warroom-scratch/amend-invalid-drop-reason.txt';
+  await writeFile(path.join(root, invalidAmendFile), `amend w1-s1 @${inspect.digest}\nc1 D unrelated\n`);
+  await assert.rejects(() => quiet(() => run(['amend', '--checkpoint', checkpoint, '--in', invalidAmendFile], { root })),
+    /new Stage 2 Drop reason must be "x" or "e"/u);
+
   const amendFile = '.warroom-scratch/amend-drop-reason-and-swap.txt';
-  const amendText = `amend w1-s1 @${inspect.digest}\nc1 D 수정된 Drop 사유\nc2 R scene 6\nc4 D Relation에서 변경된 Drop\n`;
+  const amendText = `amend w1-s1 @${inspect.digest}\nc1 D e\nc2 R scene 6\nc4 D x\n`;
   await writeFile(path.join(root, amendFile), amendText);
   await quiet(() => run(['amend', '--checkpoint', checkpoint, '--in', amendFile], { root }));
 
@@ -2230,8 +2244,8 @@ test('amend rewrites Drop reasons and same-count Drop-to-Relation swaps from the
   const amendedDrops = parseDropJsonl(amendedBytes.toString('utf8'), path.basename(dropPath));
   assert.equal(amendedDrops.length, initialDrops.length, 'the total Drop count stays unchanged');
   assert.deepEqual(amendedDrops.map(({ candidate }) => candidate), [sourceCandidates[0], sourceCandidates[2], sourceCandidates[3]]);
-  assert.equal(amendedDrops[0].reason, '수정된 Drop 사유');
-  assert.equal(amendedDrops[2].reason, 'Relation에서 변경된 Drop');
+  assert.equal(amendedDrops[0].reason, 'e');
+  assert.equal(amendedDrops[2].reason, 'x');
   const counts = await quiet(() => run(['verify', '--shard', '001', '--batch', '01', '--part', '01', '--checkpoint', checkpoint], { root }));
   assert.equal(counts.missing, 0);
   const repeated = await quiet(() => run(['amend', '--checkpoint', checkpoint, '--in', amendFile], { root }));
@@ -2301,7 +2315,7 @@ test('amend resumes each of its four allowed file states and refuses a different
     relations: Buffer.alloc(0),
     drops: Buffer.from(JSON.stringify({
       source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: sourceCandidates[0],
-      reason: '출발 의미와 무관',
+      reason: 'x',
     }) + '\n'),
   };
   // Use the journal's deterministic old materialization to preserve exact old JSONL bytes for every candidate.
@@ -2309,7 +2323,7 @@ test('amend resumes each of its four allowed file states and refuses a different
   const oldDecisionInput = '.warroom-scratch/recovery-old-decisions.json';
   const oldChunk = {
     chunk_id: '001-01-01-001',
-    decisions: sourceCandidates.map((candidate) => ({ source_sense_id: 'w1-s1', candidate, disposition: 'drop', reason: '출발 의미와 무관' })),
+    decisions: sourceCandidates.map((candidate) => ({ source_sense_id: 'w1-s1', candidate, disposition: 'drop', reason: 'x' })),
   };
   // Recreate the pre-amend merged Drop bytes from its saved decisions without invoking a new production path.
   const oldRoot = await prepareSixPart(t, { emptyRelation: true });

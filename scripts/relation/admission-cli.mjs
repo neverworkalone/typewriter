@@ -15,7 +15,6 @@ import {
   assertShard,
   batchScope,
   findGlossNamedDrops,
-  isEditorialDropReason,
   loadAllApprovedDrops,
   orphanedCandidateDrops,
   candidateInventory,
@@ -131,7 +130,7 @@ async function writeFileStateAtomically(file, state) {
   await writeTextAtomically(file, state.bytes);
 }
 
-function validateDecision(item, candidate, decision) {
+function validateDecision(item, candidate, decision, { allowLegacyDropReason = false } = {}) {
   if (!isPlainObject(decision)) throw new Error(`${item.sense_id}/${candidate.text}: decision must be an object`);
   if (decision.source_sense_id !== item.sense_id || decision.candidate !== candidate.text) {
     throw new Error(`${item.sense_id}/${candidate.text}: decision must retain the exact source sense and candidate`);
@@ -145,8 +144,8 @@ function validateDecision(item, candidate, decision) {
     if (typeof decision.reason !== 'string' || !decision.reason.trim()) throw new Error(`${item.sense_id}/${candidate.text}: Drop needs a reason`);
     const reason = decision.reason.trim();
     if (reason === 'edit') throw new Error(`${item.sense_id}/${candidate.text}: Drop reason "edit" is reserved for Stage 3 reconciliation`);
-    if (reason.startsWith('editorial:') && !isEditorialDropReason(reason)) {
-      throw new Error(`${item.sense_id}/${candidate.text}: editorial Drop needs a specific explanation after "editorial:"`);
+    if (!allowLegacyDropReason && reason !== 'x' && reason !== 'e') {
+      throw new Error(`${item.sense_id}/${candidate.text}: new Stage 2 Drop reason must be "x" or "e"`);
     }
     return;
   }
@@ -323,7 +322,7 @@ function validateCheckpointDecisions(checkpoint) {
         if (candidate.decision.disposition !== 'existing') throw new Error(`${item.sense_id}/${candidate.text}: existing coverage cannot be replaced by a required decision`);
         const seenTargets = new Set(candidate.existing_target_sense_ids);
         for (const [index, relation] of candidate.additional_relations.entries()) {
-          validateDecision(item, { ...candidate, additional_relations: candidate.additional_relations.slice(0, index) }, relation);
+          validateDecision(item, { ...candidate, additional_relations: candidate.additional_relations.slice(0, index) }, relation, { allowLegacyDropReason: true });
           if (usesSourceMirrorTypeTier(checkpoint) && relation.target_resolution === 'exact'
               && (relation.reverse_type !== relation.type || relation.reverse_relevance !== relation.relevance)) {
             throw new Error(`${item.sense_id}/${candidate.text}: new-policy optional ID relations must mirror source type/relevance`);
@@ -332,7 +331,7 @@ function validateCheckpointDecisions(checkpoint) {
           seenTargets.add(relation.target_sense_id);
         }
       } else {
-        validateDecision(item, candidate, candidate.decision);
+        validateDecision(item, candidate, candidate.decision, { allowLegacyDropReason: true });
         if (usesSourceMirrorTypeTier(checkpoint) && candidate.decision.target_resolution === 'exact'
             && (candidate.decision.reverse_type !== candidate.decision.type
               || candidate.decision.reverse_relevance !== candidate.decision.relevance)) {
@@ -1239,7 +1238,7 @@ export const COMPACT_DECISION_GRAMMAR = [
   'c<n> R <type> <tier> T<k> <reverse_type> <reverse_tier>   exact target sense T<k>',
   'c<n> R <type> <tier> none T<a>,T<b>,...           text-only; list every target alias of c<n>',
   'c<n> R <type> <tier>                              text-only; c<n> has no targets (-)',
-  'c<n> D <reason>                                   Drop',
+  'c<n> D x|e                                         unrelated/wrong Sense | no independent expression value',
 ];
 
 const SOURCE_MIRROR_COMPACT_DECISION_GRAMMAR = [
@@ -1247,7 +1246,7 @@ const SOURCE_MIRROR_COMPACT_DECISION_GRAMMAR = [
   'c<n> R <type> <tier> T<k>                         exact target sense T<k>; reverse values are derived by the CLI',
   'c<n> R <type> <tier> none T<a>,T<b>,...           text-only; list every target alias of c<n>',
   'c<n> R <type> <tier>                              text-only; c<n> has no targets (-)',
-  'c<n> D <reason>                                   Drop',
+  'c<n> D x|e                                         unrelated/wrong Sense | no independent expression value',
 ];
 
 function renderCompactChunk(checkpoint, pending) {
@@ -1338,11 +1337,11 @@ function parseCompactDecisions(text, checkpoint, pending) {
 
 /** The compact rows a candidate may use, given its own same-spelling target aliases. */
 function compactHint(row, checkpoint) {
-  if (row.targets.length === 0) return `${row.alias} R <type> <tier> | ${row.alias} D <reason>`;
+  if (row.targets.length === 0) return `${row.alias} R <type> <tier> | ${row.alias} D x|e`;
   const exact = usesSourceMirrorTypeTier(checkpoint)
     ? `${row.alias} R <type> <tier> T<k>`
     : `${row.alias} R <type> <tier> T<k> <reverse_type> <reverse_tier>`;
-  return `${exact} (T<k> one of ${row.targets.join(',')}) | ${row.alias} R <type> <tier> none ${row.targets.join(',')} | ${row.alias} D <reason>`;
+  return `${exact} (T<k> one of ${row.targets.join(',')}) | ${row.alias} R <type> <tier> none ${row.targets.join(',')} | ${row.alias} D x|e`;
 }
 
 function stableDigest(value) {
@@ -2708,7 +2707,7 @@ function parseAmendDecision(line, row, targets, selectedOptional = [], checkpoin
     validateDecision(row.item, row.candidate, decision);
     return { optional: false, decision };
   }
-  if (kind !== 'R' || fields.length < 4) throw new Error('use R <type> <tier> with a valid target form, or D <reason>');
+  if (kind !== 'R' || fields.length < 4) throw new Error('use R <type> <tier> with a valid target form, or D x|e');
   const type = fields[2];
   const relevance = compactTier(fields[3], alias);
   const rest = fields.slice(4);
