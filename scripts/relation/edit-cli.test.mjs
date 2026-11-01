@@ -66,7 +66,7 @@ async function repository(t, { crossShardTarget = false } = {}) {
       type: 'association', relevance: 5, reverse_type: 'association', reverse_relevance: 5,
       candidate_assignment_version: 1, candidate_forms: ['유영'], reverse_candidate_forms: [] },
   ];
-  const drops = [{ source_record_id: 'w3', source_sense_id: 'w3-s2', candidate: '차분하다', reason: 'edit' }];
+  const drops = [{ source_record_id: 'w3', source_sense_id: 'w3-s2', candidate: '차분하다', reason: 'z' }];
   await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), serializeRelationJsonl(relations));
   await writeFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), serializeDropJsonl(drops));
 
@@ -329,7 +329,7 @@ test('prepare, compact read, exact Link Repair, local orphan Drops, apply, and G
     'an unchanged Relation row keeps its original compact JSON text');
   const outputDrops = parseDropJsonl(await readFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), 'utf8'));
   assert.deepEqual(outputDrops.map((row) => [row.source_sense_id, row.candidate, row.reason]), [
-    ['w3-s2', '차분하다', 'edit'], ['w1-s1', '반짝', 'edit'], ['w2-s1', '차분하다', 'edit'],
+    ['w3-s2', '차분하다', 'z'], ['w1-s1', '반짝', 'z'], ['w2-s1', '차분하다', 'z'],
   ]);
   assert.equal(beforeDropBytes.split('\n').filter(Boolean).length, 1);
 
@@ -378,7 +378,7 @@ test('apply deterministically keeps only Link Repairs that do not duplicate the 
   rows.push(extraRepair, editedDrop);
   linkTargets.set(`w900001-s1\u0000${extraRepair.text}`, 'w900002-s1');
   const baselineDrops = [{ source_record_id: 'w900002', source_sense_id: 'w900002-s1',
-    candidate: '말900001', reason: 'edit' }];
+    candidate: '말900001', reason: 'z' }];
   const root = await repositoryFromRows(t, {
     localSenseIds: [...localSenseIds], relations: rows, drops: baselineDrops,
   });
@@ -505,7 +505,7 @@ test('deleting an ID Relation from shard 001 never writes a foreign shard Drop',
   await save(root, 'chunk 001\nD 1\n');
   await quiet(() => run(['apply', '--shard', '001'], { root }));
   const drops = parseDropJsonl(await readFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), 'utf8'));
-  assert.ok(drops.some((row) => row.source_sense_id === 'w1-s1' && row.candidate === '반짝' && row.reason === 'edit'));
+  assert.ok(drops.some((row) => row.source_sense_id === 'w1-s1' && row.candidate === '반짝' && row.reason === 'z'));
   assert.equal(drops.some((row) => row.source_sense_id === 'w2-s1'), false);
   await assert.rejects(access(path.join(root, 'data/relation-drops/drop-002.jsonl')), { code: 'ENOENT' });
 });
@@ -519,7 +519,7 @@ test('deleting a text-only Relation creates only its local orphan Drop', async (
   const relations = parseRelationJsonl(await readFile(path.join(root, 'data/relations/relation-001.jsonl'), 'utf8'));
   assert.equal(relations.some((row) => row.text === '어렴풋이'), false);
   const drops = parseDropJsonl(await readFile(path.join(root, 'data/relation-drops/drop-001.jsonl'), 'utf8'));
-  assert.ok(drops.some((row) => row.source_sense_id === 'w1-s1' && row.candidate === '어렴풋이' && row.reason === 'edit'));
+  assert.ok(drops.some((row) => row.source_sense_id === 'w1-s1' && row.candidate === '어렴풋이' && row.reason === 'z'));
 });
 
 test('invalid saved Link Repair fails before either Relation or Drop file changes', async (t) => {
