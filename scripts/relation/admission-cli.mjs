@@ -2212,7 +2212,7 @@ async function ensurePremerge(checkpoint, checkpointPath, root, { diffFrom = nul
       relations: stateManifest(relations), drops: stateManifest(drops), relation_diff: relationDiff,
     };
     await writeJsonAtomically(checkpointPath, checkpoint);
-    return { relations, drops, relationFile, dropFile };
+    return { relations, drops, relationFile, dropFile, relation_diff: relationDiff };
   }
   let manifest = checkpoint.premerge;
   if (!manifest) {
@@ -2250,7 +2250,7 @@ async function ensurePremerge(checkpoint, checkpointPath, root, { diffFrom = nul
     checkpoint.premerge = { ...manifest, status: 'ready', relation_diff: relationDiff };
     await writeJsonAtomically(checkpointPath, checkpoint);
   }
-  return { relations, drops, relationFile, dropFile };
+  return { relations, drops, relationFile, dropFile, relation_diff: relationDiff };
 }
 
 async function readReadyPremerge(checkpoint, checkpointPath) {
