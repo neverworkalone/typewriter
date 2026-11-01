@@ -363,7 +363,7 @@ test('Candidate v1 thousands-comma check ignores digits inside other numbers and
   }
 });
 
-test('Candidate v1 reports every source-lemma repetition in one run and keeps independent words', () => {
+test('Candidate v1 reports every normalized source-lemma containment in one run and keeps unrelated words', () => {
   const canonicalRows = [
     { id: 'w1', lemma: '기회비용', search_forms: ['기회비용', '기회 비용'], senses: [{ id: 'w1-s1' }, { id: 'w1-s2' }] },
     { id: 'w2', lemma: '기상', search_forms: ['기상'], senses: [{ id: 'w2-s1' }] },
@@ -382,15 +382,15 @@ test('Candidate v1 reports every source-lemma repetition in one run and keeps in
   assert.throws(
     () => validateCandidateBatch(canonicalRows, rows(['기업-공개', '기업공개'], ['기업공개']), { batch: '01' }),
     (error) => {
-      for (const expected of ['Candidate:1:1 ', 'Candidate:1:2 ', 'Candidate:2:1 ', 'Candidate:3:1 ']) {
+      for (const expected of ['Candidate:1:1 ', 'Candidate:1:2 ', 'Candidate:2:1 ', 'Candidate:3:1 ', 'Candidate:4:1 ']) {
         assert.ok(error.message.includes(expected), `${expected} missing from ${error.message}`);
       }
       return true;
     },
   );
-  // Independent compounds, annotated-only look-alikes and another record's lemma stay valid.
-  const valid = rows(['기업 공개 시장', '공모주'], ['기업공개를 앞두다']);
-  valid[0].senses = [sense('w1-s1', ['기회']), sense('w1-s2', ['기회비용 계산'])];
-  valid[1].senses = [sense('w2-s1', ['기상 캐스터', '기상청'])];
+  // Unrelated words remain valid even when other Canonical lemmas share some characters.
+  const valid = rows(['공모 시장', '공모주'], ['시장 개장']);
+  valid[0].senses = [sense('w1-s1', ['희망 가격']), sense('w1-s2', ['경제 전망'])];
+  valid[1].senses = [sense('w2-s1', ['일기예보', '비구름'])];
   assert.equal(validateCandidateBatch(canonicalRows, valid, { batch: '01' }).candidateCount, 7);
 });

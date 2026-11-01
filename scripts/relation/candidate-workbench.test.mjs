@@ -178,7 +178,7 @@ test('save-chunk rejects wrong IDs and bad candidates without touching saved dat
   assert.deepEqual(page.items[0].senses[0].candidates, ['별빛']);
 });
 
-test('save-chunk rejects exact source lemma self-repeats that the final validator would reject at merge', async (t) => {
+test('save-chunk rejects normalized source-lemma containment before the final merge validator', async (t) => {
   const context = await setup(t);
   context.canonicalRows[0].lemma = '단 수';
   context.canonicalRows[0].search_forms = ['단 수', '단수', '단수가', '단순'];
@@ -195,13 +195,14 @@ test('save-chunk rejects exact source lemma self-repeats that the final validato
     ['exact lemma', '단 수', /repeats source lemma/u],
     ['whitespace variant', '단  수', /repeats source lemma/u],
     ['parenthetical annotation', '단 수(單數)', /repeats source lemma/u],
-    ['spacing-stripped search form', '단수', /orthographic search form/u],
+    ['spacing-stripped search form', '단수', /normalized source-lemma containment/u],
   ]) {
     await assert.rejects(save({ 'w001-s1': ['별빛', candidate] }), expected, name);
   }
-  // Valid-but-unusual: a compound containing the lemma, a longer search form, and another entry's lemma stay allowed.
-  const saved = await save({ 'w001-s1': ['단 수 조절', '단수가', '단순', '별빛'] });
-  assert.equal(saved.candidateCount, 4);
+  await assert.rejects(save({ 'w001-s1': ['단 수 조절', '단수가'] }), /normalized source-lemma containment/u);
+  // An unrelated word that is another entry's lemma remains eligible.
+  const saved = await save({ 'w001-s1': ['단순', '별빛'] });
+  assert.equal(saved.candidateCount, 2);
 });
 
 test('save-chunk reports every source-lemma self-repeat of a chunk at once, keeps saved data, and still allows valid forms', async (t) => {
@@ -224,7 +225,7 @@ test('save-chunk reports every source-lemma self-repeat of a chunk at once, keep
     repositoryDirectory: context.repositoryDirectory,
   });
   // Exact, parenthetical and search-form repeats in three different senses: one save names all three, and only them.
-  await assert.rejects(save({ 'w001-s1': ['들소'], 'w002-s1': ['뒷 밭'], 'w003-s1': ['드레싱(dressing)'], 'w004-s1': ['건축가'] }), (error) => {
+  await assert.rejects(save({ 'w001-s1': ['들소'], 'w002-s1': ['뒷 밭'], 'w003-s1': ['드레싱(dressing)'] }), (error) => {
     const summary = error.message.split('\n').at(-1);
     assert.deepEqual([...summary.matchAll(/sense_id (\S+?)(?:;|$)/gu)].map((match) => match[1]).sort(), ['w001-s1', 'w002-s1', 'w003-s1']);
     assert.match(summary, /source lemma repeat in 3 sense\(s\)/u);
@@ -554,7 +555,7 @@ test('compact save-chunk removes normalized source-lemma containment even for a 
   await writeFile(path.join(context.repositoryDirectory, 'data/canonical/stdict-0001.jsonl'), `${context.canonicalRows.map((row) => JSON.stringify(row)).join('\n')}\n`);
   await prepare(context, 25);
   const inputPath = path.join(context.scratchDirectory, 'answer.tsv');
-  const lines = ['chunk 001', ...Array.from({ length: 26 }, (_, index) => (index === 3 ? 'S4\t건축가\t건축 도면' : `S${index + 1}`))];
+  const lines = ['chunk 001', ...Array.from({ length: 26 }, (_, index) => (index === 4 ? 'S5\t건축가\t건축 도면' : `S${index + 1}`))];
   await mkdir(context.scratchDirectory, { recursive: true });
   await writeFile(inputPath, `${lines.join('\n')}\n`);
   const result = await saveCandidateChunk({ scratchDirectory: context.scratchDirectory, chunk: 1, inputPath, format: 'compact', repositoryDirectory: context.repositoryDirectory });

@@ -34,7 +34,7 @@ const file = (name, byId) => ({
 });
 const files = [
   file('001_01_a_codex.jsonl', { w1: ['유일', '새  말', '동철'], w2: ['버릴말'] }),
-  file('001_01_b_claude.jsonl', { w1: ['새 말', '표제1x'] }),
+  file('001_01_b_claude.jsonl', { w1: ['새 말', '분홍빛'] }),
 ];
 
 test('persisted Relation and Drop JSONL use one compact schema while preserving candidate-assignment states', () => {
@@ -96,7 +96,7 @@ test('prepare merges exact duplicates, keeps homograph ambiguity visible and ski
   ];
   const { items, stats } = prepareShard({ canonicalRows: shardRows, candidateFiles: files, approvedRelationRows: approved, index });
   const w1 = items.find((item) => item.sense_id === 'w1-s1');
-  assert.deepEqual(w1.candidates.map((c) => c.text), ['새 말', '동철', '표제1x']);
+  assert.deepEqual(w1.candidates.map((c) => c.text), ['새 말', '동철', '분홍빛']);
   assert.deepEqual(w1.candidates[0].producers, ['a_codex', 'b_claude']);
   assert.deepEqual(w1.candidates[1].same_spelling_records, ['w900', 'w901']);
   assert.equal(stats.skipped_existing, 1);
@@ -104,7 +104,7 @@ test('prepare merges exact duplicates, keeps homograph ambiguity visible and ski
 });
 
 test('shared relation candidate attribution preserves assigned and legacy forward/reverse forms', () => {
-  const candidates = mergeCandidates(shardRows, [file('001_01_a_codex.jsonl', { w1: ['유일', '표제1x'] })], {
+  const candidates = mergeCandidates(shardRows, [file('001_01_a_codex.jsonl', { w1: ['유일', '분홍빛'] })], {
     canonicalLemmaForms: new Set(rows.map((row) => normalizeCandidate(row.lemma))),
   }).merged;
   const legacy = {
@@ -237,10 +237,10 @@ test('Stage 2 does not require a source gloss for candidates already covered by 
   }
 });
 
-test('Stage 2 retains an orthographic search form that is another Canonical lemma', () => {
+test('Stage 2 retains an independent search form that is another Canonical lemma', () => {
   const canonicalRows = canonical(1000);
   const source = {
-    id: 'w122481', lemma: '무릎 치기', search_forms: ['무릎 치기', '무릎치기'],
+    id: 'w122481', lemma: '씨름 기술', search_forms: ['씨름 기술', '무릎치기'],
     senses: [{ id: 'w122481-s1', pos: 'expression', gloss: '상대편의 무릎 뒤쪽을 치면서 끌어당겨 넘기는 씨름 기술.' }],
   };
   const target = {
@@ -256,11 +256,6 @@ test('Stage 2 retains an orthographic search form that is another Canonical lemm
     })),
   };
   const scopeRows = canonicalRows.slice(500);
-
-  assert.throws(
-    () => prepareShard({ canonicalRows, candidateFiles: [file], index: buildCanonicalIndex(canonicalRows), scopeRows }),
-    /repeats source lemma "무릎 치기" in orthographic search form "무릎치기"/u,
-  );
 
   const indexWithIndependentLemma = buildCanonicalIndex([...canonicalRows, target]);
   const { items } = prepareShard({ canonicalRows, candidateFiles: [file], index: indexWithIndependentLemma, scopeRows });
@@ -330,9 +325,9 @@ test('Stage 2 resolves curated lexical search forms alongside an unrelated exact
   assert.equal(verified.missing, 0, 'an ID link to the curated search-form target accounts for its candidate spelling');
 });
 
-test('an exact Canonical lemma wins over a colliding orthographic form for existing ID coverage', () => {
+test('an exact Canonical lemma wins over an independent search form for existing ID coverage', () => {
   const source = {
-    id: 'w122481', lemma: '무릎 치기', search_forms: ['무릎 치기', '무릎치기'],
+    id: 'w122481', lemma: '씨름 기술', search_forms: ['씨름 기술', '무릎치기'],
     senses: [{ id: 'w122481-s1', pos: 'expression', gloss: '상대편의 무릎 뒤쪽을 치면서 끌어당겨 넘기는 씨름 기술.' }],
   };
   const target = {
@@ -453,7 +448,7 @@ test('accounting: every unique candidate is exactly one of relation, drop or exi
     relations: [
       { ...base, target_record_id: 'w902', target_sense_id: 'w902-s1', type: 'near', relevance: 1, reverse_type: 'near', reverse_relevance: 1 },
       { ...base, text: '새 말', type: 'scene', relevance: 4 },
-      { ...base, text: '표제1x', type: 'scene', relevance: 4 },
+      { ...base, text: '분홍빛', type: 'scene', relevance: 4 },
       { ...base, target_record_id: 'w900', target_sense_id: 'w900-s1', type: 'near', relevance: 2, reverse_type: 'near', reverse_relevance: 2 },
     ],
     drops: [{ source_record_id: 'w2', source_sense_id: 'w2-s1', candidate: '버릴말', reason: 'x' }],
