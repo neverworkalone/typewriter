@@ -1395,12 +1395,21 @@ test('merge validates final Part accounting before writing and supports a local 
 
   const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
   await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
-  const chunk = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint], { root }));
+  const compact = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint, '--format', 'compact'], { root }));
+  const aliasFor = (candidate) => {
+    const row = compact.text.split('\n').find((line) => line.startsWith('c') && line.includes(`\t${candidate}\t`));
+    assert.ok(row, `compact chunk includes ${candidate}`);
+    return row.split('\t')[0];
+  };
   const decisionsFile = '.warroom-scratch/decisions.json';
   const badDrop = { source_sense_id: 'w1-s1', candidate: '가로', disposition: 'drop', reason: '출발 의미와 무관' };
-  const validDrop = { source_sense_id: 'w1-s1', candidate: '무관후보', disposition: 'drop', reason: '출발 의미와 무관' };
-  await writeFile(path.join(root, decisionsFile), JSON.stringify({ chunk_id: chunk.chunk_id, decisions: [badDrop, validDrop] }));
-  await quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', decisionsFile], { root }));
+  const otherEditorialReason = 'editorial: sense와 연결되지만 독립적인 표현 가치를 주지 않음';
+  await writeFile(path.join(root, decisionsFile), [
+    `chunk ${compact.chunk_id}`,
+    `${aliasFor('가로')} D ${badDrop.reason}`,
+    `${aliasFor('무관후보')} D ${otherEditorialReason}`,
+  ].join('\n') + '\n');
+  await quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', decisionsFile, '--format', 'compact'], { root }));
 
   await completeOptionalForTest(root, checkpoint);
   await assert.rejects(
@@ -1416,8 +1425,9 @@ test('merge validates final Part accounting before writing and supports a local 
   assert.deepEqual(texts(revision), ['가로']);
   assert.deepEqual(revision.items[0].candidates[0].previous_decision, badDrop);
   const editorialReason = 'editorial: 출발 Sense와 연결되지만 독립적인 표현 가치를 주지 않음';
-  await writeFile(path.join(root, decisionsFile), `chunk ${revision.chunk_id}\nc1 D ${editorialReason}\n`);
-  await quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', decisionsFile, '--format', 'compact'], { root }));
+  const corrected = { source_sense_id: 'w1-s1', candidate: '가로', disposition: 'drop', reason: editorialReason };
+  await writeFile(path.join(root, decisionsFile), JSON.stringify({ chunk_id: revision.chunk_id, decisions: [corrected] }));
+  await quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', decisionsFile], { root }));
 
   const merged = await mergeForTest(root, checkpoint);
   assert.deepEqual([merged.relations_added, merged.drops_added], [0, 2]);
@@ -1428,7 +1438,7 @@ test('merge validates final Part accounting before writing and supports a local 
   assert.deepEqual(relations, []);
   assert.deepEqual(drops, [
     { source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '가로', reason: editorialReason },
-    { source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '무관후보', reason: '출발 의미와 무관' },
+    { source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '무관후보', reason: otherEditorialReason },
   ], 'the editorial reason is persisted exactly and the other candidate decision remains intact');
 });
 
