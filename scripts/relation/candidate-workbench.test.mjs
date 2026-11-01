@@ -233,8 +233,10 @@ test('save-chunk reports every source-lemma self-repeat of a chunk at once, keep
   assert.equal(await readFile(savedPath, 'utf8'), before);
   // A structural defect is still a plain fail-closed error, not a self-repeat report.
   await assert.rejects(save({ 'w001-s1': ['들소', ' 별빛'] }), /non-empty trimmed string/u);
-  // Valid-but-unusual: an independent compound and another Canonical lemma are accepted.
-  assert.equal((await save({ 'w004-s1': ['건축가', '건축 도면'] })).candidateCount, 2);
+  await assert.rejects(save({ 'w004-s1': ['건축가'] }), /normalized source-lemma containment/u);
+  await assert.rejects(save({ 'w004-s1': ['건축 도면'] }), /normalized source-lemma containment/u);
+  // Unrelated independent words remain valid.
+  assert.equal((await save({ 'w004-s1': ['설계도', '측량'] })).candidateCount, 2);
 });
 
 test('compact save removes every definite self-repeat and reports every affected alias', async (t) => {
@@ -545,7 +547,7 @@ test('compact save treats empty fields as no candidates and removes only invalid
   assert.deepEqual(merged.validation, { recordCount: 500, senseCount: 501, candidateCount: 2, emptySenseCount: 500 });
 });
 
-test('compact save-chunk allows an independent compound of the source lemma and a separate Canonical lemma', async (t) => {
+test('compact save-chunk removes normalized source-lemma containment even for a separate Canonical lemma', async (t) => {
   const context = await setup(t);
   context.canonicalRows[3].lemma = '건축';
   context.canonicalRows[4].lemma = '건축가';
@@ -556,5 +558,7 @@ test('compact save-chunk allows an independent compound of the source lemma and 
   await mkdir(context.scratchDirectory, { recursive: true });
   await writeFile(inputPath, `${lines.join('\n')}\n`);
   const result = await saveCandidateChunk({ scratchDirectory: context.scratchDirectory, chunk: 1, inputPath, format: 'compact', repositoryDirectory: context.repositoryDirectory });
-  assert.equal(result.candidateCount, 2);
+  assert.equal(result.candidateCount, 0);
+  assert.equal(result.autoRemoved.count, 2);
+  assert.ok(result.autoRemoved.items.every((item) => item.reason === 'source lemma repeat'));
 });

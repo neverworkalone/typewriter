@@ -730,7 +730,7 @@ test('checkDecisions: evidence rules for V / N / Z, and Candidate v1 form rules,
     assert.deepEqual(errors, []);
     return checkDecisions({ meta: metaValue, records, entries, decisions, lemmaForms }).errors;
   };
-  // valid-but-unusual: independent compound of the lemma, V with no candidates, N after a LIMITED search with hits
+  // A source-lemma compound is removed while unrelated words, V with no candidates, and N after a LIMITED search remain valid.
   assert.deepEqual(run('s1 V 건축가|설계도\ns2 V\ns3 N', [hit('w1'), hit('w2')]), []);
   // Z only with every recorded search complete and 0 hits
   assert.deepEqual(run('s1 Z\ns2 Z\ns3 Z', [zero('w1'), zero('w2')]), []);
@@ -742,13 +742,14 @@ test('checkDecisions: evidence rules for V / N / Z, and Candidate v1 form rules,
   // missing, unknown, auto
   assert.match(run('s1 V\ns9 V', [hit('w1'), hit('w2')]).join('\n'), /s9: unknown[\s\S]*s2: missing[\s\S]*s3: missing/u);
   // Save removes only common Candidate v1 content failures and normalized duplicates.
-  const parsed = parseDecisions('s1 V 건축|건축(建築)|건축 |설계도|설계도\ns2 V 460미터\ns3 V');
+  const parsed = parseDecisions('s1 V 건축|건축가|건축(建築)|건축 |설계도|설계도\ns2 V 460미터\ns3 V');
   const cleaned = checkDecisions({ meta: metaValue, records, entries: [hit('w1'), hit('w2')], decisions: parsed.decisions, lemmaForms });
   assert.deepEqual(cleaned.errors, []);
   assert.deepEqual(cleaned.rows[0].senses[0].candidates, ['설계도']);
   assert.deepEqual(cleaned.rows[0].senses[1].candidates, []);
   assert.deepEqual(cleaned.removedCandidates.map(({ ref, candidate, kind }) => [ref, candidate, kind]), [
     ['s1', '건축', 'source_lemma_repeat'],
+    ['s1', '건축가', 'source_lemma_repeat'],
     ['s1', '건축(建築)', 'source_lemma_repeat'],
     ['s1', '건축', 'duplicate_normalized'],
     ['s1', '설계도', 'duplicate_normalized'],

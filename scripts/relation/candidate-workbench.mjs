@@ -4,7 +4,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-import { isSourceLemmaProjection, loadCanonicalLemmaForms, matchingSourceOrthographicForm, normalizeCandidate, validateCandidateBatch } from './candidate-contract.mjs';
+import { loadCanonicalLemmaForms, matchingSourceOrthographicForm, normalizeCandidate, sourceLemmaContainmentMessage, validateCandidateBatch } from './candidate-contract.mjs';
 
 export const CANDIDATE_WORKBENCH_CONTRACT = 'candidate-workbench-v2';
 export const DEFAULT_CANDIDATE_CHUNK_SIZE = 25;
@@ -550,18 +550,17 @@ export async function readCandidateChunkPage({ scratchDirectory, chunk: requeste
 }
 
 /**
- * Self-repeats of the chunk's own source lemma, using the same rules as the final Candidate v1 validator so the failure
- * surfaces at save-chunk instead of at merge. Definite repeats are returned for batch reporting. A spelling variant that
- * matches a source search_form is returned as a suspect: it is only an error when it is not the lemma of another
- * Canonical entry, which needs the all-Canonical lemma set, loaded lazily by the caller for these rare cases only.
+ * Source-lemma containment uses the same hard rule as final Candidate v1 validation so failures surface at save-chunk.
+ * The remaining search-form diagnostic path is retained for orthographic aliases; it cannot override containment for a
+ * candidate that matches the source spelling after spacing/hyphen removal.
  */
 function findSourceSelfRepeats(candidates, source, senseId) {
-  const lemma = normalizeCandidate(source.lemma ?? '');
   const repeats = [];
   const suspects = [];
   for (const [index, candidate] of candidates.entries()) {
-    if (normalizeCandidate(candidate) === lemma || isSourceLemmaProjection(candidate, source.lemma)) {
-      repeats.push({ index, senseId, candidate, reason: 'source lemma repeat', text: `candidate ${JSON.stringify(candidate)} repeats source lemma ${JSON.stringify(source.lemma)}` });
+    const containment = sourceLemmaContainmentMessage(candidate, source);
+    if (containment !== undefined) {
+      repeats.push({ index, senseId, candidate, reason: 'source lemma repeat', text: containment });
     } else if (matchingSourceOrthographicForm(candidate, source.lemma, source.search_forms, new Set()) !== undefined) {
       suspects.push({ index, candidate, source, senseId });
     }
