@@ -168,7 +168,7 @@ PR의 Normal 검사는 추가·수정된 `data/relation-candidates/` 파일마�
 샤드 내부에서는 출발 source sense별로 작업할 수 있으나 승인/기록은 **샤드 단위로 직렬** 수행한다.
 
 1. A/B/C/D의 후보를 모아 문자열·의미 중복을 검토한다.
-2. **출발 sense와 명백히 무관한 후보만 Drop**한다. 약하거나 간접적인 연상, 낯설거나 드문 표현도 출발 의미에서 설명 가능한 연결이 있다면 낮은 Tier로 보존한다. 신규 Relation이 0건인 Part도 모든 후보가 중복·기승인 관계·정당한 Drop 등으로 처리되어 `verify`를 통과하면 정상이다. 승인 수나 Drop 수를 맞추기 위한 할당량은 없다. Stage 1 후보는 채택/제외와 관계없이 영구 보관한다.
+2. **새 Stage 2 Part의 승인 기준은 (a) 출발 sense와의 실제 연결 및 (b) 작가에게 주는 독립적인 표현 가치** 두 가지다(#2544). 후보를 출발 sense 전체 gloss와 기존 승인·이번 Part 동료 관계에 비추어 판정한다. 명백히 무관한 후보뿐 아니라 단순 어미 변이·명사화·반복, 별도 표현 가치가 없는 유의어·직업인 파생, 우연한 문맥 사물·근거 없는 다단계 연상도 Drop한다. Stage 1(#2545)이 명백한 네 유형을 사전 차단하므로 Stage 2는 실제로 넘어온 잔여 후보만 판단하고 동일 필터를 새로 만들지 않는다. **낯선 연상·낮은 Tier 자체는 Drop 근거가 아니다**. `어정대다→낙타`처럼 애매한 경우는 자동 삭제하지 않고 원 Sense에 관한 실제 연상 가치를 판단하며, 유익한 저우선순위 관계는 보존한다. 승인 여부를 정한 뒤 Type/Tier를 부여한다. 신규 Relation이 0건인 Part도 중복·기승인·정당한 Drop 등으로 회계를 맞추어 `verify`에 성공하면 정상이다. 승인·Drop 수 할당량은 없고 Stage 1 원본을 수정하지 않는다.
 3. 채택 후보만 말의 결(`near`, `mood`) 또는 연상(`scene`, `sensory`, `action`, `association`)으로 분류한다. 새 STDICT `direct/antonym`은 작성하지 않는다.
 4. 동일 출발 sense/동일 UI 그룹의 기존·신규 관계를 비교해 **Tier = relevance 1~9**를 부여한다(1이 최우선, 동순위 허용). 연상 Tier 1은 비공식 유의어 후보급에 한정한다.
 5. 정확한 Canonical target record/sense가 확인되면 ID 링크, 아니면 text-only로 확정한다. 같은 이름의 다른 의미에 연결하지 않는다.
@@ -195,7 +195,7 @@ PR의 Normal 검사는 추가·수정된 `data/relation-candidates/` 파일마�
 - ID 링크의 target은 후보 문자열과 철자가 정확히 같은 Canonical record의 실제 sense여야 한다. Stage 2 Part의 `read-chunk` 입력은 같은 표기의 모든 target record, lemma, sense ID, POS, 전체 gloss를 제공한다. 동철 이의어·다의어는 출발 sense와 각 target sense를 비교해 선택하며 첫 항목을 자동 선택하지 않는다. text-only로 남길 때도 제공된 target sense ID를 전부 검토하고 `no_exact_match`로 명시한다. 일치하는 target이 없으면 text-only이며 가짜 ID를 쓰지 않는다.
 - 소유 샤드 = 출발(source) sense가 속한 샤드. 한 쌍(A↔B)은 한 행에만 저장하며, 다른 샤드에 이미 같은 쌍(정·역 모두)이나 같은 text-only가 있으면 거부한다. 새 Part의 각 방향은 source 기준으로 한 번 판단하고 동일한 반대 값을 저장한다. 양쪽 출발 sense의 Candidate가 같은 쌍을 동시에 만들면 기존 방향 충돌 검사가 두 source 판단의 일치 여부를 확인하며, 서로 다르면 한쪽을 임의 선택하지 않고 #2307 preflight/국소 재판정으로 해결한다. 빌드는 ID 행마다 같은 Type/Tier의 양방향 탐색 행 2개를 만든다.
 - 모든 고유 후보는 **신규 관계 / Drop / 정확한 중복 병합 / 기존 승인 관계 제외**로 설명되어야 한다. 같은 후보 표기에 ID 관계가 여러 개 있으면 실제 target sense가 서로 다를 때 허용하며, 동일 source/target sense 쌍은 한 번만 저장한다. 여러 후보형이 같은 쌍을 공유하면 위의 type/relevance 병합 규칙을 적용한다. 같은 후보에 대한 text-only 관계나 Drop은 다른 처리와 중복할 수 없다.
-- **Stage 2 Drop**은 출발 의미와 명백히 무관한 후보에만 쓴다. 출발 sense의 뜻풀이가 그 후보를 직접 언급하면 Drop할 수 없으며(`verify`가 거부), 같은 sense의 승인 peer와 모순되는 Drop도 금지다. 약한 연상은 낮은 Tier의 관계로 보존한다. **Stage 3의 `by:"edit"` Drop은 별도 편집 가치 판단으로 이 뜻풀이 제한의 예외**이지만, 기존 후보 회계·중복·샤드 소유 규칙은 유지한다(#2450, 구현 예정).
+- **Stage 2 Drop**은 (1) 실제 출발 sense와 관계가 없는 후보 또는 (2) 의미가 연결되더라도 작가에게 독립적인 표현 가치를 주지 않는 후보에만 쓴다(#2544). 후자의 기존 `by` 사유에는 `editorial:` 접두어와 짧은 sense-bound 근거를 사용하고, 전자의 무관·오결속 사유와 구별한다. **뜻풀이에 직접 등장하는 후보에 대한 기존 `findGlossNamedDrops` 제한은 무관 사유에는 유지**하고, 편집상 사유에만 한정해서 예외를 허용하는 것은 #2544의 별도 코드·테스트 PR이 구현·머지된 **이후에만 유효**하다. 같은 sense의 기존 승인 peer와 모순되는 Drop, 잘못된 후보 회계·중복·샤드 소유는 여전히 금지다. Stage 2는 Stage 3 전용 예약 사유 `"edit"`를 사용하지 않으며, Stage 3 `by:"edit"`의 기존 의미와 저장 스키마는 유지한다.
 
 **도구** (`pnpm run relation:admission -- <command>`, 샤드 번호만 바꿔 재사용):
 
@@ -232,7 +232,7 @@ Part 모드는 선택한 Stage 1 Batch의 필수 후보 파일 6개를 기존 v1
 
 > **구현 상태:** 이 절은 [#2450](https://github.com/neverworkalone/typewriter/issues/2450)의 확정된 Stage 3 구현 계약이다. **Phase 0 문서만 반영된 상태에서는 Stage 3 CLI/War Room 실행 및 Stage 2 reconcile이 아직 제공되지 않는다.** Phase 1~3을 구현한 뒤 아래 운영 흐름을 활성화한다. REVIEW.md의 *PR review Stage 3*와는 별개다.
 
-**목적:** Stage 2에서 의미적으로 성립한다고 승인한 관계 중, 작가가 실제로 다른 단어·문체·이미지·정서·장면을 선택하는 데 도움이 되는 관계를 선별한다. Stage 2의 느슨한 preserve-first Admission을 소급 변경하지 않는다. Stage 3에는 삭제율 할당량이 없다. 관계의 절반 이상 삭제되어도 괜찮지만, 독창적이고 유용한 연상은 보호한다.
+**목적:** Stage 3는 **Stage 2 최종 편집 품질을 독립적으로 감사**한다(#2544). Stage 2와 동일한 작가 관점의 표현 가치 기준으로 잘못 승인된 관계·Sense·Link Repair 필요성을 확인하고 필요한 교정을 수행하되, 대량 편집을 정상 운영의 전제로 삼지 않는다. 과거 preserve-first 기준으로 생산된 샤드를 소급 재편집하거나 당시 Stage 2를 지침 위반으로 평가하지 않는다. Stage 3의 삭제 비율은 원인 진단 지표일 뿐 목표/쿼터가 아니며, 독창적이고 유용한 연상은 보호한다. 기존 Drop·Link Repair 교정 능력은 유지한다.
 
 **허용:** (1) 승인 Relation **한 행 전체를 삭제**하는 Drop, (2) 기존 **text-only 관계를 정확한 Canonical target record/sense의 ID 관계로 전환**하는 Link Repair. Repair는 기존 `tp/rv`를 보존한다. ID 행 삭제는 **해당 행이 만든 정·역방향 투영**을 제거한다. 다른 살아 있는 Relation이 같은 meaning-level 관계를 만들면 제품 화면의 링크는 남을 수 있다. 표제어·Sense·후보·새 관계 추가, 대상어 바꿔치기, Type/Tier 재판정, STDICT direct/antonym 편집은 금지한다.
 
@@ -240,7 +240,7 @@ Part 모드는 선택한 Stage 1 Batch의 필수 후보 파일 6개를 기존 v1
 
 - **기존 파일만 사용:** `data/relations/relation-SSS.jsonl`에서 Drop 관계를 삭제하고 text-only를 ID 관계로 고친다. `data/relation-drops/drop-SSS.jsonl`에는 **삭제 후 어떤 Relation/역방향 커버도 처리하지 않는 후보 키**만 기존 `{id,sid,cd,by:"edit"}`로 추가한다. 같은 후보에 다른 유효 target Sense 관계가 남았다면 Drop하지 않는다. 여러 `fm`, legacy/`ver:0` 추론, `rfm`은 Stage 2의 동일한 후보 귀속 규칙으로 계산한다.
 - **Drop 소유:** `drop-SSS`의 `sid`는 항상 SSS의 Canonical source sense에 속한다. 다른 샤드 sense를 넣는 foreign tombstone이나 별도 `edit-SSS.jsonl` 원장은 금지한다. 다른 샤드의 역방향 고아 후보는 **그 샤드 자체 Stage 2 흐름에서** 원인에 따라 처리한다.
-- **Stage 3 Drop은 출발 의미와 무관해야 한다는 뜻이 아니다.** 후보가 의미상 유효해도 단순 활용형, 어미 변이, 명사화, 반복·중복, 효용 없는 유의어, 과도하게 먼 연상 또는 잘못 결속된 Sense면 편집상 Drop 가능하다. Stage 2 Drop의 `findGlossNamedDrops` 제한은 `by:"edit"`에만 예외를 두고, Stage 2 생산자는 예약 사유 `"edit"`를 쓸 수 없다.
+- **Stage 3 Drop은 출발 의미와 무관해야 한다는 뜻이 아니다.** 후보가 의미상 유효해도 단순 활용형, 어미 변이, 명사화, 반복·중복, 효용 없는 유의어, 가치 없는 연상 또는 잘못 결속된 Sense면 편집상 Drop 가능하다. 이는 **Stage 2가 먼저 걸러야 할 유형을 감사하며 놓친 사례를 교정**하는 것이지 Stage 3 전용으로 분리된 느슨한 승인 기준이 아니다. Stage 3의 `by:"edit"` 회계 예외는 그대로 유지하고, Stage 2가 쓰는 별도의 `editorial:` 사유는 #2544 코드 구현 후에만 gloss 제한의 편집상 예외가 된다. Stage 2는 예약 사유 `"edit"`를 쓸 수 없다.
 - **Link Repair:** 동일 표기 Canonical의 **모든 target Sense 및 전체 뜻풀이**를 비교해 정확한 하나를 선택한 경우에만 `{id,sid,tid,tsid,tp,rv,ver:1,fm:[tt],rfm:[…]}`로 교체한다. **현재 Stage 2의 신규 ID 행은 `rfm`을 출발 레코드의 모든 후보형으로 채워 기결정 후보와 충돌할 수 있다. Phase 1에서 신규 Stage 2 ID 행과 Stage 3 Link Repair가 함께 사용할 역방향 후보 필터 함수를 구현한다.** target 소유 샤드의 기존 Relation/Drop(`by:"edit"` 포함)·역방향 커버로 이미 결정된 형태는 `rfm`에서 제외한다. 아직 판정 전인 실제 후보형은 기존 계약대로 유지한다. 불명확하면 text-only 유지. 중복 ID 쌍·역방향 중복은 금지한다.
 - 최종 빌드는 계속 **`pnpm run build`**. 빌더나 persisted JSONL 스키마를 변경하지 않는다. SQLite의 meaning-level 병합/중복 출처가 있을 수 있으므로 관계 삭제의 최종 표시 효과는 실제 provenance를 고려한다.
 
