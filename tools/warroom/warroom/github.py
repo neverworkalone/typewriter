@@ -142,7 +142,7 @@ class GhClient:
                 self._api(f"repos/{self.repo}/pulls/{n}/files", paginate=True)]
 
     def merged_relation_stage3_prs(self) -> list[dict]:
-        """Merged data PRs explicitly linked to #2450; callers validate commit ancestry and fetch files once per match."""
+        """Merged, explicitly identified Stage 3 PRs used only to recover Stage 3 worker completion."""
         rows = self._api(f"repos/{self.repo}/pulls?state=closed&per_page=100", paginate=True)
         result = []
         title_pattern = re.compile(r"^\[Relation Stage 3\] (\d{3})$")

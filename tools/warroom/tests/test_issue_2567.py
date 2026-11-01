@@ -1,4 +1,4 @@
-"""#2450 Phase 1: Stage 3 change evidence and source/target owner scoped Stage 2 reconciliation."""
+"""#2567: data-diff evidence and source/target owner scoped Stage 2 reconciliation."""
 import unittest
 from pathlib import Path
 
@@ -8,94 +8,59 @@ from warroom import control, stage2
 from warroom.gitops import IntegrationBlocked
 
 
-BASE, STAGE3, HEAD = "1" * 40, "2" * 40, "3" * 40
-OTHER_HEAD, NEW_MASTER = "4" * 40, "5" * 40
+BASE, HEAD = "1" * 40, "3" * 40
+OTHER_HEAD = "4" * 40
 RELATION = "data/relations/relation-001.jsonl"
 
 
-class Stage3ChangePoint(unittest.TestCase):
+class RelationChangePoint(unittest.TestCase):
     def setUp(self):
         self.w = World()
         self.addCleanup(self.w.tmp.cleanup)
 
-    def configure_pr(self, files=None, *, deleted=True):
+    def configure_diff(self, *, deleted=True):
         w = self.w
         w.git.changed_between_paths = [RELATION]
-        w.git.ancestor_pairs = {(BASE, STAGE3), (STAGE3, HEAD), (BASE, HEAD)}
-        w.git.commit_ranges = {(BASE, STAGE3, HEAD)}
+        w.git.ancestor_pairs = {(BASE, HEAD), (BASE, OTHER_HEAD)}
         if deleted:
             w.git.deleted_id_relation_ranges.add((BASE, HEAD))
-        w.git.changed[STAGE3] = [RELATION]
-        w.gh.merged_stage3_prs = [{"number": 2451, "title": "[Relation Stage 3] 001", "base_ref": "master",
-                                   "shard": "001", "merge_commit_sha": STAGE3}]
-        w.gh.files[2451] = [{"path": path} for path in (files or [RELATION])]
 
-    def test_only_exact_merged_stage3_pr_files_are_accepted_and_checked_once(self):
-        self.configure_pr()
+    def test_any_actual_approved_relation_deletion_is_eligible_without_pr_metadata(self):
+        self.configure_diff()
         worktree = Path(self.w.paths.repo_root)
-        first = self.w.sup._stage3_commits_between(BASE, HEAD, worktree, HEAD)
-        second = self.w.sup._stage3_commits_between(BASE, HEAD, worktree, HEAD)
-        self.assertEqual((first, second), ([STAGE3], [STAGE3]))
-        self.assertEqual(self.w.gh.merged_stage3_prs_calls, 1)
-        self.assertEqual(self.w.gh.pull_files_calls, [2451])
-
-    def test_completed_parts_on_the_same_master_share_one_pr_inventory(self):
-        self.configure_pr()
-        self.w.git.ancestor_pairs |= {(BASE, OTHER_HEAD), (STAGE3, OTHER_HEAD)}
-        self.w.git.commit_ranges.add((BASE, STAGE3, OTHER_HEAD))
-        self.w.git.deleted_id_relation_ranges.add((BASE, OTHER_HEAD))
-        worktree = Path(self.w.paths.repo_root)
-        first = self.w.sup._stage3_commits_between(BASE, HEAD, worktree, HEAD)
-        second = self.w.sup._stage3_commits_between(BASE, OTHER_HEAD, worktree, HEAD)
-        self.assertEqual((first, second), ([STAGE3], [STAGE3]))
-        self.assertEqual(self.w.gh.merged_stage3_prs_calls, 1)
-        self.assertEqual(self.w.gh.pull_files_calls, [2451])
-
-    def test_a_new_master_sha_refreshes_the_pr_inventory(self):
-        self.configure_pr()
-        self.w.git.ancestor_pairs.add((NEW_MASTER, HEAD))
-        worktree = Path(self.w.paths.repo_root)
-        first = self.w.sup._stage3_commits_between(BASE, HEAD, worktree, HEAD)
-        second = self.w.sup._stage3_commits_between(BASE, HEAD, worktree, NEW_MASTER)
-        self.assertEqual((first, second), ([STAGE3], [STAGE3]))
-        self.assertEqual(self.w.gh.merged_stage3_prs_calls, 2)
-        self.assertEqual(self.w.gh.pull_files_calls, [2451])
-
-    def test_relation_additions_across_new_master_shas_skip_pr_inventory(self):
-        self.configure_pr(deleted=False)
-        self.w.git.ancestor_pairs |= {(BASE, OTHER_HEAD), (OTHER_HEAD, NEW_MASTER)}
-        worktree = Path(self.w.paths.repo_root)
-        first = self.w.sup._stage3_commits_between(BASE, HEAD, worktree, HEAD)
-        second = self.w.sup._stage3_commits_between(OTHER_HEAD, NEW_MASTER, worktree, NEW_MASTER)
-        self.assertEqual((first, second), ([], []))
+        first = self.w.sup._relation_deletion_between(BASE, HEAD, worktree)
+        second = self.w.sup._relation_deletion_between(BASE, HEAD, worktree)
+        self.assertEqual((first, second), (True, True))
         self.assertEqual(self.w.gh.merged_stage3_prs_calls, 0)
         self.assertEqual(self.w.gh.pull_files_calls, [])
 
-    def test_stage3_pr_file_list_must_match_its_declared_shard_and_merge_commit(self):
-        self.configure_pr([RELATION, "README.md"])
+    def test_non_deleting_relation_changes_do_not_trigger_reconciliation(self):
+        self.configure_diff(deleted=False)
+        worktree = Path(self.w.paths.repo_root)
+        self.assertFalse(self.w.sup._relation_deletion_between(BASE, HEAD, worktree))
+        self.assertEqual(self.w.gh.merged_stage3_prs_calls, 0)
+
+    def test_unrelated_change_point_fails_closed(self):
+        self.configure_diff()
+        worktree = Path(self.w.paths.repo_root)
         with self.assertRaises(IntegrationBlocked):
-            self.w.sup._stage3_commits_between(BASE, HEAD, Path(self.w.paths.repo_root), HEAD)
-        self.assertEqual(self.w.gh.pull_files_calls, [2451])
+            self.w.sup._relation_deletion_between(OTHER_HEAD, HEAD, worktree)
+        self.assertEqual(self.w.gh.merged_stage3_prs_calls, 0)
 
 
 class CompletedPartReconcile(unittest.TestCase):
     def configure(self, w):
-        old_sha, stage3_commit, latest = BASE, STAGE3, HEAD
+        old_sha, latest = BASE, HEAD
         w.git.base_sha = latest
         w.git.relation_owner_shards = {"001"}
         w.git.changed_between_paths = [RELATION]
-        w.git.ancestor_pairs = {(old_sha, stage3_commit), (stage3_commit, latest), (old_sha, latest)}
-        w.git.commit_ranges = {(old_sha, stage3_commit, latest)}
+        w.git.ancestor_pairs = {(old_sha, latest)}
         w.git.deleted_id_relation_ranges.add((old_sha, latest))
-        w.git.changed[stage3_commit] = [RELATION]
-        w.gh.merged_stage3_prs = [{"number": 2451, "title": "[Relation Stage 3] 001", "base_ref": "master",
-                                   "shard": "001", "merge_commit_sha": stage3_commit}]
-        w.gh.files[2451] = [{"path": RELATION}]
-        return old_sha, stage3_commit, latest
+        return old_sha, latest
 
     def test_proven_orphans_open_a_drop_only_reconciliation_pr_without_ai(self):
         w = s2_world(self, canon={1: 100})
-        old_sha, stage3_commit, latest = self.configure(w)
+        old_sha, latest = self.configure(w)
         prior_id = w.store.create_batch(method=S2, producer="claude", shard="001", batch="01-01",
                                         branch="s2-claude-001-01-01", worktree="/old/stage2-part")
         w.store.update(prior_id, state="COMPLETE", merged=1, pr_number=2410, head_sha=old_sha)
@@ -107,11 +72,11 @@ class CompletedPartReconcile(unittest.TestCase):
 
         batch = w.store.active_batch("claude", S2)
         self.assertEqual(batch["id"], prior_id, "the unique Stage 2 Part identity is reused for reconciliation")
-        self.assertEqual(batch["run_kind"], f"s2_reconcile|{latest}|{old_sha}|{stage3_commit}")
+        self.assertEqual(batch["run_kind"], f"s2_reconcile|{latest}|{old_sha}")
         self.assertEqual(batch["state"], "WAITING_REVIEW", batch["error"])
         self.assertTrue(any("이전 PR #2410" in event["msg"] for event in w.store.line_events_tail("claude", S2)))
-        self.assertEqual(w.git.reconcile_preview_calls, [(latest, "001", (stage3_commit,), "01", "01")])
-        self.assertEqual(w.git.reconcile_calls, [(batch["worktree"], "001", (stage3_commit,), "01", "01", False)])
+        self.assertEqual(w.git.reconcile_preview_calls, [(latest, "001", old_sha, latest, "01", "01")])
+        self.assertEqual(w.git.reconcile_calls, [(batch["worktree"], "001", old_sha, latest, "01", "01", False)])
         self.assertEqual(w.git.commits, [(["data/relation-drops/drop-001.jsonl"], "[Stage 2 Reconcile] 001_01 Part 01")])
         self.assertEqual(w.adapter.launches, [])
         self.assertEqual(w.gh.created_prs[0]["title"], "[Stage 2 Reconcile] 001_01 Part 01")
@@ -119,7 +84,7 @@ class CompletedPartReconcile(unittest.TestCase):
 
     def test_no_proven_orphan_drop_means_exact_verify_without_a_pr(self):
         w = s2_world(self, canon={1: 100})
-        old_sha, _stage3_commit, latest = self.configure(w)
+        old_sha, latest = self.configure(w)
         w.store.set(stage2.ok_key("001", "01", "01"), old_sha)
         w.git.reconcile_preview_added = 0
         w.git.verified |= {("part", "001", "01", "01"), ("batch", "001", "01", None),
@@ -136,7 +101,7 @@ class CompletedPartReconcile(unittest.TestCase):
 
     def test_reconcile_review_fix_uses_checkpoint_free_owner_path_and_retry_returns_to_review(self):
         w = s2_world(self, canon={1: 100})
-        old_sha, stage3_commit, latest = self.configure(w)
+        old_sha, latest = self.configure(w)
         prior_id = w.store.create_batch(method=S2, producer="claude", shard="001", batch="01-01",
                                         branch="s2-claude-001-01-01", worktree="/old/stage2-part")
         w.store.update(prior_id, state="COMPLETE", merged=1, pr_number=2410, head_sha=old_sha)

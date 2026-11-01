@@ -237,13 +237,13 @@ class FakeGit:
             raise GitError("fixture Relation row-owner evidence is unavailable")
         return {old: set(self.relation_owner_shards) for old in old_shas}
 
-    def stage2_reconcile_latest(self, sha, shard, stage3_commits, *, batch, part, timeout=900):
-        self.reconcile_preview_calls.append((sha, shard, tuple(stage3_commits), batch, part))
+    def stage2_reconcile_latest(self, sha, shard, diff_from, diff_to, *, batch, part, timeout=900):
+        self.reconcile_preview_calls.append((sha, shard, diff_from, diff_to, batch, part))
         return {"version": 1, "ok": True, "shard": shard, "batch": batch, "part": part,
                 "added": self.reconcile_preview_added, "dry_run": True, "candidates": []}
 
-    def stage2_reconcile(self, worktree, shard, stage3_commits, *, batch=None, part=None, dry_run=False, timeout=900):
-        self.reconcile_calls.append((str(worktree), shard, tuple(stage3_commits), batch, part, dry_run))
+    def stage2_reconcile(self, worktree, shard, diff_from, diff_to, *, batch=None, part=None, dry_run=False, timeout=900):
+        self.reconcile_calls.append((str(worktree), shard, diff_from, diff_to, batch, part, dry_run))
         if self.reconcile_added:
             self.dirty_text = f" M data/relation-drops/drop-{shard}.jsonl\n"
         return {"version": 1, "ok": True, "shard": shard, "batch": batch, "part": part,
@@ -366,14 +366,16 @@ class FakeGit:
             outputs = [f"data/relations/relation-{shard}.jsonl"]
         self.dirty_text = "".join(f" M {output}\n" for output in outputs)
 
-    def stage2_prepare_merge(self, worktree, shard, batch, part, stage3_commits=None, *, refresh=False, timeout=900):
+    def stage2_prepare_merge(self, worktree, shard, batch, part, relation_diff=None, *, refresh=False, timeout=900):
         self.stage2_prepare_merge_calls.append((shard, batch, part))
-        self.stage2_prepare_merge_meta.append((tuple(stage3_commits or []), refresh))
+        self.stage2_prepare_merge_meta.append((relation_diff, refresh))
         path = Path(worktree) / ".warroom-scratch" / f"relation-admission-{shard}-{batch}-{part}.json"
         data = json.loads(path.read_text("utf-8"))
         data["premerge"] = {"status": "ready", "identity": f"{shard}/{batch}/{part}",
                             "relations": {"exists": False, "sha256": None},
-                            "drops": {"exists": False, "sha256": None}}
+                            "drops": {"exists": False, "sha256": None},
+                            "relation_diff": ({"from": relation_diff[0], "to": relation_diff[1]}
+                                              if relation_diff else None)}
         path.write_text(json.dumps(data), "utf-8")
 
     def stage2_preflight(self, worktree, shard, batch, part, timeout=900):

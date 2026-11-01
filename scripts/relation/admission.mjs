@@ -531,9 +531,10 @@ function existingCandidateLinks(relationRows, index, merged = null) {
 }
 
 /**
- * Stage 3 deletions may orphan only the exact Stage 1 candidate keys they previously covered. This returns Drops owned
- * by the selected Canonical scope, and only when no current forward/reverse Relation or existing Drop still covers
- * the key. Callers still run the ordinary row and accounting validators before persisting the result.
+ * Approved ID Relation deletions may orphan only the exact Stage 1 candidate keys they previously covered. This
+ * returns Drops owned by the selected Canonical scope, and only when no current forward/reverse Relation or existing
+ * Drop still covers the key. The deleted row must still resolve to both current Canonical senses. Callers still run
+ * the ordinary row and accounting validators before persisting the result.
  */
 export function orphanedCandidateDrops({ canonicalRows, candidateFiles, scopeRows = canonicalRows, removedRelationRows = [],
   relationRows = [], dropRows = [], index }) {
@@ -545,6 +546,11 @@ export function orphanedCandidateDrops({ canonicalRows, candidateFiles, scopeRow
   const orphaned = new Map();
   for (const removed of removedRelationRows) {
     if ('text' in removed) continue;
+    const source = index.senses.get(removed.source_sense_id);
+    const target = index.senses.get(removed.target_sense_id);
+    if (!source || source.record.id !== removed.source_record_id || !target || target.record.id !== removed.target_record_id) {
+      throw new Error(`deleted ID Relation ${removed.source_sense_id} -> ${removed.target_sense_id} no longer resolves to current Canonical senses`);
+    }
     const keys = relationCandidateKeys(removed, merged, index);
     for (const key of [...keys.forward, ...keys.reverse, ...keys.reverseAliases, ...keys.deferredForward]) {
       const candidate = normalizeCandidate(key.candidate);

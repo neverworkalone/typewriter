@@ -156,7 +156,7 @@ test('new ID rows leave already decided reverse Candidate forms unclaimed', () =
   }), ['표제 1', '표제1', '표제-1'], 'undecided orthographic spellings remain available');
 });
 
-test('Stage 3 deletion reconciliation emits only locally owned orphan Stage 1 candidates', () => {
+test('data-diff reconciliation emits only locally owned orphan Stage 1 candidates', () => {
   const localRows = [...shardRows];
   const indexWithDuplicate = buildCanonicalIndex([...rows, {
     id: 'w903', lemma: '유일', senses: [{ id: 'w903-s1', pos: 'noun', gloss: '다른 뜻' }],
@@ -174,7 +174,9 @@ test('Stage 3 deletion reconciliation emits only locally owned orphan Stage 1 ca
     canonicalRows: localRows,
     candidateFiles,
     scopeRows: [localRows[0]],
-    removedRelationRows: [removedForward, removedReverse],
+    removedRelationRows: [removedForward, removedReverse, {
+      source_record_id: 'w1', source_sense_id: 'w1-s1', text: '유일', type: 'near', relevance: 2,
+    }],
     relationRows: [],
     dropRows: [],
     index: indexWithDuplicate,
@@ -196,6 +198,18 @@ test('Stage 3 deletion reconciliation emits only locally owned orphan Stage 1 ca
   assert.deepEqual(retained, [{ source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '동철', reason: 'z' }],
     'a surviving relation for the same candidate prevents a Drop');
 
+  const retainedByDrop = orphanedCandidateDrops({
+    canonicalRows: localRows,
+    candidateFiles,
+    scopeRows: [localRows[0]],
+    removedRelationRows: [removedForward, removedReverse],
+    relationRows: [],
+    dropRows: [{ source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '유일', reason: 'e' }],
+    index: indexWithDuplicate,
+  });
+  assert.deepEqual(retainedByDrop, [{ source_record_id: 'w1', source_sense_id: 'w1-s1', candidate: '동철', reason: 'z' }],
+    'a surviving Drop for the exact key prevents a duplicate or replacement Drop');
+
   const notPrepared = orphanedCandidateDrops({
     canonicalRows: localRows,
     candidateFiles: [file('001_01_a_codex.jsonl', { w1: ['다른후보'] })],
@@ -206,6 +220,41 @@ test('Stage 3 deletion reconciliation emits only locally owned orphan Stage 1 ca
     index: indexWithDuplicate,
   });
   assert.deepEqual(notPrepared, [], 'a deleted relation cannot create a Drop for a Candidate absent from the local Stage 1 input');
+
+  const twoSenseRows = localRows.map((row) => row.id === 'w1'
+    ? { ...row, senses: [...row.senses, { id: 'w1-s2', pos: 'noun', gloss: '두 번째 뜻' }] } : row);
+  const twoSenseFiles = [{ name: '001_01_a_codex.jsonl', rows: twoSenseRows.map((record) => ({
+    record_id: record.id,
+    senses: record.senses.map((sense) => ({ sense_id: sense.id,
+      candidates: record.id === 'w1' && sense.id === 'w1-s2' ? ['유일'] : [] })),
+  })) }];
+  const twoSenseIndex = buildCanonicalIndex([
+    ...twoSenseRows,
+    ...rows.slice(localRows.length),
+    { id: 'w903', lemma: '유일', senses: [{ id: 'w903-s1', pos: 'noun', gloss: '다른 뜻' }] },
+  ]);
+  const differentSense = orphanedCandidateDrops({
+    canonicalRows: twoSenseRows,
+    candidateFiles: twoSenseFiles,
+    scopeRows: [twoSenseRows[0]],
+    removedRelationRows: [removedForward],
+    relationRows: [],
+    dropRows: [],
+    index: twoSenseIndex,
+  });
+  assert.deepEqual(differentSense, [], 'the same spelling in another Sense does not inherit the removed Relation coverage');
+
+  const indexWithoutTarget = buildCanonicalIndex(rows.filter((row) => row.id !== 'w902'));
+  assert.throws(() => orphanedCandidateDrops({
+    canonicalRows: localRows,
+    candidateFiles,
+    scopeRows: [localRows[0]],
+    removedRelationRows: [removedForward],
+    relationRows: [],
+    dropRows: [],
+    index: indexWithoutTarget,
+  }), /no longer resolves to current Canonical senses/u,
+  'a deleted ID Relation with an unresolved endpoint fails closed');
 });
 
 test('Stage 2 does not require a source gloss for candidates already covered by an approved Relation or Drop', () => {
@@ -508,7 +557,7 @@ test('accounting treats complete gloss words as mentions, not substrings inside 
   assert.throws(() => verifyDrop('가로에 사는 민족.', '가로', 'x'), /named by the gloss/,
     'an unrelated Drop remains blocked for the same gloss-named candidate');
   assert.equal(verifyDrop('가로에 사는 민족.', '가로', 'z').drop, 1,
-    'the Stage 3 reconciliation code remains exempt from the unrelated Drop check');
+    'deterministic reconciliation remains exempt from the unrelated Drop check');
 });
 
 test('accounting allows an approved reverse candidate for a different target sense, but rejects the same sense pair twice', () => {

@@ -47,11 +47,11 @@ const USAGE = `usage:
   node scripts/relation/admission-cli.mjs complete-optional --checkpoint <file.json>
   node scripts/relation/admission-cli.mjs cancel-revision --checkpoint <file.json> --chunk-id <exact>
   node scripts/relation/admission-cli.mjs merge --checkpoint <file.json>
-  node scripts/relation/admission-cli.mjs prepare-merge --checkpoint <file.json> --json
+  node scripts/relation/admission-cli.mjs prepare-merge --checkpoint <file.json> [--diff-from <sha> --diff-to <sha>] --json
   node scripts/relation/admission-cli.mjs amend --checkpoint <file.json> --in <decisions>
   node scripts/relation/admission-cli.mjs preflight --checkpoint <file.json> --json [--limit <n>] [--offset <n>]
   node scripts/relation/admission-cli.mjs repair --checkpoint <file.json> --in <repair.json> --json
-  node scripts/relation/admission-cli.mjs reconcile --shard 001 [--batch 01 [--part 01]] --stage3-commit <sha>... [--dry-run] --json
+  node scripts/relation/admission-cli.mjs reconcile --shard 001 [--batch 01 [--part 01]] --diff-from <sha> --diff-to <sha> [--dry-run] --json
   node scripts/relation/admission-cli.mjs affected-shards --from <sha> --to <sha> --json
   node scripts/relation/admission-cli.mjs affected-shards-batch --from-sha <sha>... --to <sha> --json
   node scripts/relation/admission-cli.mjs verify --shard 001 [--batch 01 [--part 01]] [--checkpoint <file.json>] [--allow-partial] [--json]`;
@@ -143,7 +143,7 @@ function validateDecision(item, candidate, decision) {
     if (keysOf(decision) !== 'candidate,disposition,reason,source_sense_id') throw new Error(`${item.sense_id}/${candidate.text}: Drop decision has unexpected or missing fields`);
     if (typeof decision.reason !== 'string' || !decision.reason.trim()) throw new Error(`${item.sense_id}/${candidate.text}: Drop needs a reason`);
     const reason = decision.reason.trim();
-    if (reason === 'z') throw new Error(`${item.sense_id}/${candidate.text}: Drop reason "z" is reserved for Stage 3 reconciliation`);
+    if (reason === 'z') throw new Error(`${item.sense_id}/${candidate.text}: Drop reason "z" is reserved for deterministic orphan reconciliation`);
     if (reason !== 'x' && reason !== 'e') {
       throw new Error(`${item.sense_id}/${candidate.text}: new Stage 2 Drop reason must be "x" or "e"`);
     }
@@ -304,9 +304,10 @@ function validateCheckpoint(checkpoint, identity = {}) {
     if (!isPlainObject(manifest) || !['preparing', 'ready'].includes(manifest.status)
         || manifest.identity !== `${checkpoint.shard}/${checkpoint.batch}/${checkpoint.part}`
         || !fileMeta(manifest.relations) || !fileMeta(manifest.drops)
-        || (manifest.stage3_commits !== undefined && (!Array.isArray(manifest.stage3_commits)
-          || manifest.stage3_commits.some((sha) => typeof sha !== 'string' || !/^[a-f0-9]{40}$/u.test(sha))
-          || new Set(manifest.stage3_commits).size !== manifest.stage3_commits.length))) {
+        || (manifest.relation_diff !== undefined && manifest.relation_diff !== null
+          && (!isPlainObject(manifest.relation_diff)
+            || Object.keys(manifest.relation_diff).sort().join(',') !== 'from,to'
+            || ![manifest.relation_diff.from, manifest.relation_diff.to].every((sha) => typeof sha === 'string' && /^[a-f0-9]{40}$/u.test(sha))))) {
       throw new Error('checkpoint contains invalid premerge snapshot metadata');
     }
   }
@@ -408,31 +409,18 @@ function gitText(args, root, { missing = false } = {}) {
   return result.stdout;
 }
 
-function stage3DeletedRelationRows(commits, root) {
-  const deleted = [];
-  for (const commit of commits ?? []) {
-    if (!/^[a-f0-9]{40}$/u.test(commit)) throw new Error(`invalid Stage 3 merge commit ${JSON.stringify(commit)}`);
-    gitText(['cat-file', '-e', `${commit}^{commit}`], root);
-    const changedPaths = gitText(['diff', '--name-only', '--no-renames', `${commit}^1`, commit], root)
-      .split(/\r?\n/u).filter(Boolean);
-    const invalid = changedPaths.filter((file) => !/^data\/(?:relations\/relation-\d{3}\.jsonl|relation-drops\/drop-\d{3}\.jsonl)$/u.test(file));
-    if (invalid.length) throw new Error(`Stage 3 merge ${commit.slice(0, 10)} changed an unsupported data path: ${invalid.join(', ')}`);
-    for (const file of changedPaths.filter((item) => item.startsWith('data/relations/relation-'))) {
-      const beforeText = gitText(['show', `${commit}^1:${file}`], root, { missing: true });
-      const afterText = gitText(['show', `${commit}:${file}`], root, { missing: true });
-      const beforeRows = beforeText.trim() ? parseRelationJsonl(beforeText, `${commit}^1:${file}`) : [];
-      const afterRows = afterText.trim() ? parseRelationJsonl(afterText, `${commit}:${file}`) : [];
-      const keptCounts = new Map();
-      for (const row of afterRows) keptCounts.set(stableRow(row), (keptCounts.get(stableRow(row)) ?? 0) + 1);
-      for (const row of beforeRows) {
-        const key = stableRow(row);
-        const count = keptCounts.get(key) ?? 0;
-        if (count > 0) keptCounts.set(key, count - 1);
-        else if (!('text' in row)) deleted.push(row);
-      }
-    }
+function assertRelationDiffRange(from, to, root) {
+  if (![from, to].every((sha) => /^[a-f0-9]{40}$/u.test(sha ?? ''))) {
+    throw new Error('Relation deletion comparison requires 40-character lowercase commit IDs');
   }
-  return deleted;
+  gitText(['cat-file', '-e', `${from}^{commit}`], root);
+  gitText(['cat-file', '-e', `${to}^{commit}`], root);
+  gitText(['merge-base', '--is-ancestor', from, to], root);
+}
+
+function deletedIdRelationRowsBetween(from, to, root) {
+  assertRelationDiffRange(from, to, root);
+  return changedRelationRowsBetween(from, to, root).removed.filter((row) => !('text' in row));
 }
 
 function compareRelationRows(beforeText, afterText, beforeLabel, afterLabel) {
@@ -462,14 +450,16 @@ function compareRelationRows(beforeText, afterText, beforeLabel, afterLabel) {
 function changedRelationRowsBetween(from, to, root) {
   if (![from, to].every((sha) => /^[a-f0-9]{40}$/u.test(sha))) throw new Error('affected-shards requires 40-character lowercase commit IDs');
   const paths = gitText(['diff', '--name-only', '--no-renames', from, to], root).split(/\r?\n/u).filter(Boolean);
-  const changed = [];
+  const removed = [];
+  const added = [];
   for (const file of paths.filter((item) => /^data\/relations\/relation-\d{3}\.jsonl$/u.test(item))) {
     const beforeText = gitText(['show', `${from}:${file}`], root, { missing: true });
     const afterText = gitText(['show', `${to}:${file}`], root, { missing: true });
     const diff = compareRelationRows(beforeText, afterText, `${from}:${file}`, `${to}:${file}`);
-    changed.push(...diff.removed, ...diff.added);
+    removed.push(...diff.removed);
+    added.push(...diff.added);
   }
-  return { paths, rows: changed };
+  return { paths, removed, added, rows: [...removed, ...added] };
 }
 
 async function canonicalSenseShardIndex(root) {
@@ -799,7 +789,7 @@ function parseArgs(argv) {
   const options = { command, shard: null, batch: null, part: null, out: null, checkpoint: null, input: null,
     maxCandidates: DEFAULT_CHUNK_CANDIDATES, allowPartial: false, json: false, sourceSenseId: null, candidateText: null,
     selectPath: null, format: null, optional: false, chunkId: null, page: 1, pageSize: INSPECT_PAGE_SIZE, limit: 20, offset: 0,
-    stage3Commits: [], refreshPremerge: false, dryRun: false, from: null, fromShas: [], to: null };
+    diffFrom: null, diffTo: null, refreshPremerge: false, dryRun: false, from: null, fromShas: [], to: null };
   for (let index = 0; index < rest.length; index += 1) {
     const flag = rest[index];
     if (flag === '--shard') options.shard = rest[++index];
@@ -821,7 +811,8 @@ function parseArgs(argv) {
     else if (flag === '--allow-partial') options.allowPartial = true;
     else if (flag === '--json') options.json = true;
     else if (flag === '--format') options.format = rest[++index];
-    else if (flag === '--stage3-commit') options.stage3Commits.push(rest[++index]);
+    else if (flag === '--diff-from') options.diffFrom = rest[++index];
+    else if (flag === '--diff-to') options.diffTo = rest[++index];
     else if (flag === '--refresh') options.refreshPremerge = true;
     else if (flag === '--dry-run') options.dryRun = true;
     else if (flag === '--from') options.from = rest[++index];
@@ -853,8 +844,11 @@ function parseArgs(argv) {
   if (!Number.isInteger(options.limit) || options.limit < 1 || options.limit > 100) throw new Error(`--limit must be an integer 1..100\n${USAGE}`);
   if (!Number.isInteger(options.offset) || options.offset < 0) throw new Error(`--offset must be a non-negative integer\n${USAGE}`);
   if (options.chunkId && command !== 'cancel-revision') throw new Error(`--chunk-id is only valid for cancel-revision\n${USAGE}`);
-  if (options.stage3Commits.some((commit) => !/^[a-f0-9]{40}$/u.test(commit))) throw new Error('--stage3-commit must be a 40-character lowercase commit SHA');
-  if (options.stage3Commits.length && !['prepare-merge', 'reconcile'].includes(command)) throw new Error(`--stage3-commit is only valid for prepare-merge/reconcile\n${USAGE}`);
+  const hasDiff = options.diffFrom !== null || options.diffTo !== null;
+  if (hasDiff && !['prepare-merge', 'reconcile'].includes(command)) throw new Error(`--diff-from/--diff-to are only valid for prepare-merge/reconcile\n${USAGE}`);
+  if (hasDiff && ![options.diffFrom, options.diffTo].every((sha) => typeof sha === 'string' && /^[a-f0-9]{40}$/u.test(sha))) {
+    throw new Error('--diff-from and --diff-to must both be 40-character lowercase commit SHAs');
+  }
   if ((options.from !== null || options.to !== null) && !['affected-shards', 'affected-shards-batch'].includes(command)) throw new Error(`--from/--to are only valid for affected-shards\n${USAGE}`);
   if (options.fromShas.length && command !== 'affected-shards-batch') throw new Error(`--from-sha is only valid for affected-shards-batch\n${USAGE}`);
   if (command === 'affected-shards' && (![options.from, options.to].every((sha) => typeof sha === 'string' && /^[a-f0-9]{40}$/u.test(sha)))) {
@@ -867,7 +861,7 @@ function parseArgs(argv) {
     throw new Error(`affected-shards-batch requires unique --from-sha values and a 40-character --to commit ID\n${USAGE}`);
   }
   if (options.refreshPremerge && command !== 'prepare-merge') throw new Error(`--refresh is only valid for prepare-merge\n${USAGE}`);
-  if (command === 'reconcile' && options.stage3Commits.length === 0) throw new Error(`reconcile requires at least one --stage3-commit\n${USAGE}`);
+  if (command === 'reconcile' && !hasDiff) throw new Error(`reconcile requires --diff-from and --diff-to\n${USAGE}`);
   if (options.dryRun && command !== 'reconcile') throw new Error(`--dry-run is only valid for reconcile\n${USAGE}`);
   if (options.json && !['verify', 'prepare-merge', 'preflight', 'repair', 'reconcile', 'affected-shards', 'affected-shards-batch'].includes(command)) throw new Error(`--json is only valid for verify/prepare-merge/preflight/repair/reconcile/affected-shards\n${USAGE}`);
   if (['prepare-merge', 'preflight', 'repair', 'reconcile', 'affected-shards', 'affected-shards-batch'].includes(command) && !options.json) throw new Error(`${command} requires --json\n${USAGE}`);
@@ -915,7 +909,7 @@ export async function run(argv, { root } = {}) {
   }
   if (options.command === 'reconcile') {
     const result = await reconcileScope({ shard: options.shard, batch: options.batch, part: options.part,
-      stage3Commits: options.stage3Commits, dryRun: options.dryRun, root: repositoryRoot });
+      diffFrom: options.diffFrom, diffTo: options.diffTo, dryRun: options.dryRun, root: repositoryRoot });
     console.log(JSON.stringify(result));
     return result;
   }
@@ -937,7 +931,7 @@ export async function run(argv, { root } = {}) {
     assertOptionalComplete(checkpoint);
     if (checkpoint.merged) throw new Error('cannot prepare a merged Part for merge');
     const prepared = await ensurePremerge(checkpoint, checkpointPath, repositoryRoot, {
-      stage3Commits: options.stage3Commits,
+      diffFrom: options.diffFrom, diffTo: options.diffTo,
       refresh: options.refreshPremerge,
     });
     const payload = { version: 1, ok: true, shard: checkpoint.shard, batch: checkpoint.batch, part: checkpoint.part,
@@ -2190,12 +2184,21 @@ async function snapshotState(file, expected, current, status, family) {
   return { ...current, bytes: Buffer.from(current.bytes) };
 }
 
-async function ensurePremerge(checkpoint, checkpointPath, root, { stage3Commits, refresh = false } = {}) {
+function normalizeRelationDiff(diffFrom, diffTo) {
+  if (diffFrom === null && diffTo === null) return null;
+  if (![diffFrom, diffTo].every((sha) => /^[a-f0-9]{40}$/u.test(sha ?? ''))) {
+    throw new Error('premerge Relation diff requires both valid --diff-from and --diff-to commits');
+  }
+  return { from: diffFrom, to: diffTo };
+}
+
+async function ensurePremerge(checkpoint, checkpointPath, root, { diffFrom = null, diffTo = null, refresh = false } = {}) {
   const relationFile = shardRelationPath(checkpoint.shard, root);
   const dropFile = shardDropPath(checkpoint.shard, root);
   const snapshots = premergeSnapshotPaths(checkpoint, checkpointPath);
-  const normalizedCommits = [...new Set(stage3Commits ?? checkpoint.premerge?.stage3_commits ?? [])].sort();
-  if (normalizedCommits.some((commit) => !/^[a-f0-9]{40}$/u.test(commit))) throw new Error('premerge Stage 3 commit list is invalid');
+  const relationDiff = diffFrom === null && diffTo === null
+    ? checkpoint.premerge?.relation_diff ?? null : normalizeRelationDiff(diffFrom, diffTo);
+  if (relationDiff) assertRelationDiffRange(relationDiff.from, relationDiff.to, root);
   if (refresh) {
     if (checkpoint.merged) throw new Error('cannot refresh a merged Part premerge snapshot');
     const [relations, drops] = await Promise.all([readFileState(relationFile), readFileState(dropFile)]);
@@ -2206,7 +2209,7 @@ async function ensurePremerge(checkpoint, checkpointPath, root, { stage3Commits,
     await Promise.all([writeSnapshot(snapshots.relations, relations), writeSnapshot(snapshots.drops, drops)]);
     checkpoint.premerge = {
       status: 'ready', identity: `${checkpoint.shard}/${checkpoint.batch}/${checkpoint.part}`,
-      relations: stateManifest(relations), drops: stateManifest(drops), stage3_commits: normalizedCommits,
+      relations: stateManifest(relations), drops: stateManifest(drops), relation_diff: relationDiff,
     };
     await writeJsonAtomically(checkpointPath, checkpoint);
     return { relations, drops, relationFile, dropFile };
@@ -2224,13 +2227,13 @@ async function ensurePremerge(checkpoint, checkpointPath, root, { stage3Commits,
       identity: `${checkpoint.shard}/${checkpoint.batch}/${checkpoint.part}`,
       relations: stateManifest(relations),
       drops: stateManifest(drops),
-      stage3_commits: normalizedCommits,
+      relation_diff: relationDiff,
     };
     checkpoint.premerge = manifest;
     await writeJsonAtomically(checkpointPath, checkpoint);
   }
-  if (manifest.stage3_commits !== undefined && JSON.stringify(manifest.stage3_commits) !== JSON.stringify(normalizedCommits)) {
-    throw new Error('premerge Stage 3 merge inputs changed after snapshot preparation');
+  if (JSON.stringify(manifest.relation_diff ?? null) !== JSON.stringify(relationDiff)) {
+    throw new Error('premerge Relation diff changed after snapshot preparation');
   }
   const [currentRelations, currentDrops] = await Promise.all([readFileState(relationFile), readFileState(dropFile)]);
   if (manifest.status === 'preparing') {
@@ -2244,7 +2247,7 @@ async function ensurePremerge(checkpoint, checkpointPath, root, { stage3Commits,
     snapshotState(snapshots.drops, manifest.drops, currentDrops, manifest.status, 'Drop'),
   ]);
   if (manifest.status === 'preparing') {
-    checkpoint.premerge = { ...manifest, status: 'ready', stage3_commits: normalizedCommits };
+    checkpoint.premerge = { ...manifest, status: 'ready', relation_diff: relationDiff };
     await writeJsonAtomically(checkpointPath, checkpoint);
   }
   return { relations, drops, relationFile, dropFile };
@@ -2260,7 +2263,7 @@ async function readReadyPremerge(checkpoint, checkpointPath) {
     snapshotState(files.relations, manifest.relations, { exists: false, bytes: Buffer.alloc(0), sha256: null }, 'ready', 'Relation'),
     snapshotState(files.drops, manifest.drops, { exists: false, bytes: Buffer.alloc(0), sha256: null }, 'ready', 'Drop'),
   ]);
-  return { relations, drops, stage3_commits: manifest.stage3_commits ?? [] };
+  return { relations, drops, relation_diff: manifest.relation_diff ?? null };
 }
 
 async function materializePart(checkpoint, root, baseline) {
@@ -2289,12 +2292,13 @@ async function materializePart(checkpoint, root, baseline) {
   }
   const merged = assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, newRelations, relationCandidates, newDrops, loaded.index);
   const scoped = partScope(loaded.canonicalRows, loaded.candidateFiles, checkpoint.batch, checkpoint.part);
-  const stage3Removed = stage3DeletedRelationRows(baseline.stage3_commits ?? [], root);
+  const removedRelationRows = baseline.relation_diff
+    ? deletedIdRelationRowsBetween(baseline.relation_diff.from, baseline.relation_diff.to, root) : [];
   const editDrops = orphanedCandidateDrops({
     canonicalRows: loaded.canonicalRows,
     candidateFiles: scoped.files,
     scopeRows: scoped.scopeRows,
-    removedRelationRows: stage3Removed,
+    removedRelationRows,
     relationRows: [...others, ...merged.relations],
     dropRows: [...allDrops, ...merged.drops],
     index: loaded.index,
@@ -2311,7 +2315,7 @@ async function materializePart(checkpoint, root, baseline) {
   return { relations, drops, merged, existingRelations, existingDrops };
 }
 
-async function reconcileScope({ shard, batch = null, part = null, stage3Commits, dryRun = false, root }) {
+async function reconcileScope({ shard, batch = null, part = null, diffFrom, diffTo, dryRun = false, root }) {
   const loaded = await loadShard(shard, root, { batch });
   const scope = part ? partScope(loaded.canonicalRows, loaded.candidateFiles, batch, part)
     : batch ? batchScope(loaded.canonicalRows, loaded.candidateFiles, batch)
@@ -2326,7 +2330,7 @@ async function reconcileScope({ shard, batch = null, part = null, stage3Commits,
     loadApprovedRelations(root, { exceptShard: shard }),
     loadAllApprovedDrops(root),
   ]);
-  const removedRelationRows = stage3DeletedRelationRows(stage3Commits, root);
+  const removedRelationRows = deletedIdRelationRowsBetween(diffFrom, diffTo, root);
   const shardSenseIds = new Set(loaded.canonicalRows.flatMap((record) => record.senses.map((sense) => sense.id)));
   const editDrops = orphanedCandidateDrops({ canonicalRows: loaded.canonicalRows, candidateFiles: scope.files,
     scopeRows: scope.scopeRows, removedRelationRows, relationRows: [...others, ...ownRelations], dropRows: allDrops, index: loaded.index });
