@@ -844,6 +844,111 @@ class Git:
             raise IntegrationBlocked("merge 후에도 수정 commit이 HEAD에 포함되지 않았습니다")
         return self.head(path)
 
+    def push_approved_maintainer_integration(self, path: Path, branch: str, pr_head_sha: str,
+                                             batch_head_sha: str, merge_sha: str,
+                                             protected_paths: set[str], *, recheck=None) -> str:
+        """Push only the exact Maintainer merge already integrated into an owned, paused PR worktree.
+
+        The only accepted local history beyond the batch's recorded PR HEAD is either the approved merge commit
+        itself (a fast-forward) or one merge commit whose parents are exactly that PR HEAD and the approved merge.
+        The owned output paths must be identical across that range. A plain push is used after rechecking the PR,
+        remote ref, worktree registration, clean state, and HEAD; no reset, rebase, or force is involved.
+
+        `recheck(expected_sha)` must re-read the exact PR and fail closed if its identity/state changed. A temporary
+        mismatch between the old and newly pushed SHA is retryable so a post-push crash or GitHub API lag can recover
+        from existing Git and PR evidence without a new state record.
+        """
+        path = self._owned(Path(path))
+        if not isinstance(branch, str) or not branch or any(c.isspace() for c in branch):
+            raise IntegrationBlocked("소유 PR 브랜치 이름을 확인할 수 없습니다")
+        if not all(re.fullmatch(r"[a-f0-9]{40}", sha or "")
+                   for sha in (pr_head_sha, batch_head_sha, merge_sha)):
+            raise IntegrationBlocked("PR/배치/승인 수정 SHA를 확인할 수 없습니다")
+        if not protected_paths or any(not isinstance(p, str) or not p for p in protected_paths):
+            raise IntegrationBlocked("PR의 보호 산출물 경로를 확인할 수 없습니다")
+
+        def check_worktree(expected_head: str) -> None:
+            if self.registered(path) != branch:
+                raise IntegrationBlocked(f"worktree가 소유 브랜치 {branch!r}로 등록되어 있지 않습니다")
+            try:
+                self.worktree_gitdir(path)
+            except GitError as e:
+                raise IntegrationBlocked(str(e)) from e
+            current = self.head(path)
+            if current != expected_head:
+                raise IntegrationBlocked(f"작업 중 local HEAD가 이동했습니다 ({expected_head} / {current})")
+            if (dirty := self.dirty(path)).strip():
+                raise IntegrationBlocked(f"worktree가 clean 상태가 아닙니다: {dirty.strip()[:400]}")
+
+        local = self.head(path)
+        check_worktree(local)
+        if not self.contains(path, merge_sha):
+            raise IntegrationBlocked("승인된 Maintainer 수정 commit이 local HEAD에 포함되지 않았습니다")
+
+        # Do not accept arbitrary local-only commits. `integrate()` makes only these two shapes.
+        if local == batch_head_sha:
+            allowed = True  # The approved fix was already present on this PR head.
+        elif local == merge_sha:
+            allowed = self.is_ancestor(batch_head_sha, merge_sha, path=path)
+        else:
+            parents = self._git("rev-list", "--parents", "-n", "1", local, cwd=path).out.split()
+            allowed = parents == [local, batch_head_sha, merge_sha]
+        if not allowed:
+            raise IntegrationBlocked("local HEAD에 이번 승인 Maintainer 통합 외의 추가 commit이 있습니다")
+
+        diff = self._git("diff", "--name-only", "-z", "--no-renames", batch_head_sha, local, "--",
+                         *sorted(protected_paths), cwd=path)
+        changed = {p for p in diff.out.split("\0") if p}
+        altered = sorted(changed & protected_paths)
+        if altered:
+            raise IntegrationBlocked("승인 수정 통합이 PR 보호 산출물을 변경했습니다: " + ", ".join(altered))
+
+        # API and the live ref must both identify either the original PR head or a previously completed push.
+        remote = self.remote_head(branch)
+        if remote is None:
+            raise IntegrationBlocked(f"원격 소유 브랜치 {branch}가 없습니다")
+        expected_heads = {batch_head_sha, local}
+        if pr_head_sha not in expected_heads or remote not in expected_heads:
+            raise IntegrationBlocked(f"PR 또는 원격 브랜치가 승인된 통합과 다른 HEAD로 이동했습니다 "
+                                     f"(PR {pr_head_sha} / remote {remote} / local {local})")
+        if remote != pr_head_sha:
+            # One side may still be reflecting the previous SHA after a successful push.
+            raise GitTransient(f"PR API와 원격 브랜치의 SHA가 일시적으로 다릅니다 ({pr_head_sha} / {remote})")
+
+        if local == pr_head_sha:
+            if recheck is not None:
+                recheck(local)
+            check_worktree(local)
+            if self.remote_head(branch) != local:
+                raise IntegrationBlocked("확인 중 원격 소유 브랜치가 이동했습니다")
+            return local  # Idempotent recovery after a push that completed before release was recorded.
+
+        # At this point PR and remote are exactly the original branch head, and only the approved integration is ahead.
+        if recheck is not None:
+            recheck(batch_head_sha)
+        check_worktree(local)
+        if self.remote_head(branch) != batch_head_sha:
+            raise IntegrationBlocked("push 직전에 원격 소유 브랜치가 이동했습니다")
+        try:
+            self._git("push", "origin", f"HEAD:refs/heads/{branch}", cwd=path, timeout=600, net=True)
+        except GitTransient:
+            raise
+        except GitError as e:
+            # A rejected non-fast-forward push is a moved branch, not a retry opportunity to overwrite it.
+            raise IntegrationBlocked(f"일반 push가 거부되어 배치를 보류합니다: {e}") from e
+
+        pushed = self.remote_head(branch)
+        if pushed != local:
+            if pushed == batch_head_sha:
+                raise GitTransient(f"push 결과 원격 SHA 반영을 아직 확인하지 못했습니다 ({local} / {pushed})")
+            raise IntegrationBlocked(f"push 후 원격 소유 브랜치가 local HEAD와 다릅니다 ({local} / {pushed})")
+        if recheck is not None:
+            recheck(local)
+        check_worktree(local)
+        if self.remote_head(branch) != local:
+            raise IntegrationBlocked("push 확인 중 원격 소유 브랜치가 다시 이동했습니다")
+        return local
+
     # ---- Stage 2 verification on the latest master (Issue #1684) -------------------------------------------------
     VERIFY_DIR = "s2-verify"   # War Room's own detached checkout; it holds no work, only the exact commit being verified
 
