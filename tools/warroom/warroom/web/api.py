@@ -312,7 +312,7 @@ def command(store: Store, cfg: dict, body) -> dict:
             raise ApiError(409, msg)
         return {"ok": True, "message": "Clear 요청됨 — 정리 진행 중"}
     if cmd == "drain_all":
-        return {"ok": True, "message": f"{control.drain_all(store, keys)}개 라인 종료 요청"}
+        return {"ok": True, "message": f"{control.drain_all(store, keys)}개 미완료 배치 보유 Line에 Drain 적용"}
     need(STOP_ALL_CONFIRM)                    # stop_all
     if not control.can_stop_all(store, keys):
         raise ApiError(409, "중지할 라인이 없습니다.")

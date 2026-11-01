@@ -46,9 +46,9 @@ def start(store: Store, model: str, method: str, mode: str, cfg: dict | None = N
 
 
 def drain_all(store: Store, lines) -> int:
-    """Set the same per-Line Drain as Detail on for every target, including empty Lines."""
+    """Drain only target Lines that currently own an unfinished batch; cancel empty Start reservations."""
     n = store.request_drain_all(lines)
-    store.log(None, f"Drain All: {n}개 생산 라인 Drain ON")
+    store.log(None, f"Drain All: {n}개 미완료 배치 보유 Line Drain ON")
     return n
 
 

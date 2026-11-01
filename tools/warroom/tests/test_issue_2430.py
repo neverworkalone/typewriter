@@ -62,19 +62,30 @@ class DrainSchedules(unittest.TestCase):
         ok, msg = control.schedule_drain_all(w.store, "23", w.now)
         self.assertTrue(ok, msg)
         due = w.store.drain_schedule("all")["due_at"]
+        w.store.complete_batch(batch_id)  # target selection happens when Drain All fires
+        next_batch_id = self.add_paused_batch(method="b")
+        self.assertNotEqual(batch_id, next_batch_id)
+        w.store.set_line("deepseek", "c", run=1)  # an empty pending Start is canceled without a Drain
         w.now = due
         w.sup = w.make_sup()  # reservations survive a Supervisor restart
         w.tick()
         keys = control.board_line_keys(w.store, w.cfg)
         self.assertIn(("deepseek", "a"), keys)
-        self.assertTrue(all(w.store.peek_line(model, method)["drain"] for model, method in keys))
+        self.assertEqual(w.store.peek_line("deepseek", "a")["drain"], 0)  # completed before firing
+        self.assertEqual(w.store.peek_line("deepseek", "b")["drain"], 1)  # started after scheduling
+        self.assertEqual((w.store.peek_line("deepseek", "c")["run"],
+                          w.store.peek_line("deepseek", "c")["drain"]), (0, 0))
+        self.assertTrue(all(w.store.peek_line(model, method)["drain"] == (method == "b")
+                            for model, method in keys))
         self.assertEqual(w.store.peek_line("deepseek", "m")["drain"], 0)
         self.assertIsNone(w.store.drain_schedule("all"))
         self.assertIsNone(w.store.drain_schedule(f"batch:{batch_id}"))
         w.tick()
         events = [event["msg"] for event in w.store.recent_events(100)]
         self.assertEqual(sum("예약 Drain All 발화" in msg for msg in events), 1)
-        self.assertEqual(sum("예약 Drain 발화" in msg and f"batch id {batch_id}" in msg for msg in events), 1)
+        self.assertTrue(any("예약 Drain All 발화: 1개 미완료 배치 보유 Line Drain ON" == msg for msg in events))
+        self.assertEqual(sum("예약 Drain 발화" in msg and f"batch id {batch_id}" in msg for msg in events), 0)
+        self.assertEqual(sum("예약 Drain 만료" in msg and f"batch id {batch_id}" in msg for msg in events), 1)
 
     def test_canceled_future_schedule_never_drains(self):
         w = self.w
