@@ -109,16 +109,17 @@ def stage3_body(model: str, shard: str, *, result: dict, apply_pass: bool, shard
 
 
 def run_cost(runs) -> str | None:
-    """Sum tokens and wall time of recorded runs, only if every run was measured; otherwise None (never a partial sum)."""
+    """Sum total input + output tokens and wall time of recorded runs, only if every run was measured; otherwise None (never a partial sum)."""
     rows = list(runs)
     if not rows:
         return None
     tokens = 0
     seconds = 0.0
     for row in rows:
-        values = [row[key] for key in ("input_tokens", "cached_input_tokens", "cache_write_tokens", "output_tokens")]
+        # input_tokens already includes cached/cache-write input (usage.py), so cache fields are never added again.
         if row["input_tokens"] is None or row["output_tokens"] is None or row["ended_at"] is None:
             return None
-        tokens += sum(value or 0 for value in values)
+        tokens += row["input_tokens"] + row["output_tokens"]
         seconds += max(0.0, row["ended_at"] - row["started_at"])
     return f"{tokens} tokens / {round(seconds / 60)} min"
+

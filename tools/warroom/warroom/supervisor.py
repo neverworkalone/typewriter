@@ -1549,17 +1549,22 @@ class Supervisor:
             checkpoint = stage3.checkpoint(wt, b["shard"])
             applied_key = f"s3_apply_ready_{b['id']}"
             result_key = f"s3_apply_result_{b['id']}"
+            pre_key = f"s3_pre_apply_{b['id']}"
             if checkpoint is not None:
                 if len(checkpoint["completed_chunks"]) != checkpoint["chunk_total"]:
                     raise stage3.Stage3Error("모든 Stage 3 청크 완료 전에 apply 할 수 없습니다")
                 # The edit CLI removes the local checkpoint after its atomic two-file apply. Persist this in-flight
                 # finalization state so a Supervisor restart can report the Git diff and continue without re-editing.
                 self.store.set(applied_key, "1")
-                reviewed = self.git.row_count(self.git.head(wt), f"data/relations/relation-{b['shard']}.jsonl")   # the apply baseline
-                result = stage3.apply(self.runner, self.env, wt, b["shard"])
-                result["chunks_done"], result["chunks_total"] = len(checkpoint["completed_chunks"]), checkpoint["chunk_total"]
+                # The CLI deletes the checkpoint when apply finishes: persist the baseline measurements first so a
+                # restart between apply and the result save can still report them.
+                pre = {"chunks_done": len(checkpoint["completed_chunks"]), "chunks_total": checkpoint["chunk_total"]}
+                reviewed = self.git.row_count(self.git.head(wt), f"data/relations/relation-{b['shard']}.jsonl")
                 if reviewed is not None:
-                    result["reviewed"] = reviewed
+                    pre["reviewed"] = reviewed
+                self.store.set(pre_key, json.dumps(pre, sort_keys=True))
+                result = stage3.apply(self.runner, self.env, wt, b["shard"])
+                result.update(pre)
                 self.store.set(result_key, json.dumps(result, sort_keys=True))
             elif self.store.get(applied_key) == "1":
                 raw_result = self.store.get(result_key)
@@ -1569,6 +1574,12 @@ class Supervisor:
                     raise stage3.Stage3Error("저장된 Stage 3 apply 결과를 읽을 수 없습니다") from error
                 if not isinstance(result, dict):
                     raise stage3.Stage3Error("저장된 Stage 3 apply 결과 형식이 올바르지 않습니다")
+                try:
+                    pre = json.loads(self.store.get(pre_key) or "{}")
+                except ValueError:
+                    pre = {}
+                for key, value in (pre if isinstance(pre, dict) else {}).items():
+                    result.setdefault(key, value)
             else:
                 raise stage3.Stage3Error("Stage 3 checkpoint가 없어 apply 완료 여부를 복구할 수 없습니다")
             self._stage3_log_repair_conflicts(b, result)

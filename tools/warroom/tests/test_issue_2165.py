@@ -237,6 +237,14 @@ class Stage2Finalization(unittest.TestCase):
         self.assertIsNotNone(prbody.stage2_counts_problem({**ok, "skipped_existing": 3}))
         self.assertEqual(prbody.s2_title("Codex", "003", "01", "02"), "[S2/Codex] 003_01 Part 02")
 
+    def test_run_cost_counts_input_and_output_once_and_only_when_all_runs_measured(self):
+        run = lambda **kw: {"input_tokens": 100, "cached_input_tokens": 60, "cache_write_tokens": 10,
+                            "output_tokens": 20, "started_at": 0.0, "ended_at": 120.0, **kw}
+        self.assertEqual(prbody.run_cost([run(), run()]), "240 tokens / 4 min")
+        self.assertIsNone(prbody.run_cost([run(), run(output_tokens=None)]))
+        self.assertIsNone(prbody.run_cost([run(ended_at=None)]))
+        self.assertIsNone(prbody.run_cost([]))
+
     def test_failed_exact_verify_creates_no_pr(self):
         w = s2_world(self)
         w.git.chunk_view_total = 0
