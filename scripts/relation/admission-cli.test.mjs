@@ -5,7 +5,7 @@ import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { run } from './admission-cli.mjs';
 import { parseDropJsonl, parseRelationJsonl, serializeDropJsonl, serializeRelationJsonl } from './persisted-jsonl.mjs';
@@ -1378,12 +1378,15 @@ test('technical Drop f requires the CLI parent to own the active Supervisor lock
     'lock = open(sys.argv[1], "r+")',
     'fcntl.lockf(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)',
     'lock.seek(0); lock.truncate(); lock.write(str(os.getpid())); lock.flush()',
-    'result = subprocess.run(["node", sys.argv[2], *sys.argv[4:]], cwd=sys.argv[3], env=os.environ.copy())',
+    'result = subprocess.run(["node", "--input-type=module", "-e", sys.argv[2]], cwd=sys.argv[3], env=os.environ.copy())',
     'raise SystemExit(result.returncode)',
   ].join('\n');
   const cliPath = path.join(REPOSITORY_DIRECTORY, 'scripts/relation/admission-cli.mjs');
-  const authorized = spawnSync('python3', ['-c', supervisorDriver, supervisorLock, cliPath, root, ...fallbackArgs],
-    { cwd: root, encoding: 'utf8', timeout: 10000 });
+  const nodeDriver = `import { run } from ${JSON.stringify(pathToFileURL(cliPath).href)}; await run(JSON.parse(process.env.TEST_CLI_ARGS), { root: process.env.TEST_REPO_ROOT });`;
+  const authorized = spawnSync('python3', ['-c', supervisorDriver, supervisorLock, nodeDriver, root], {
+    cwd: root, encoding: 'utf8', timeout: 10000,
+    env: { ...process.env, TEST_CLI_ARGS: JSON.stringify(fallbackArgs), TEST_REPO_ROOT: root },
+  });
   assert.equal(authorized.status, 0, `${authorized.stdout}\n${authorized.stderr}`);
   await mergeForTest(root, checkpoint);
   const drops = await readDropRows(path.join(root, 'data/relation-drops/drop-001.jsonl'));
