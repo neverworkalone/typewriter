@@ -49,6 +49,9 @@ def acquire_lock(path: Path):
     path.parent.mkdir(parents=True, exist_ok=True)
     f = open(path, "a+")
     try:
+        # flock preserves the existing same-process single-instance behavior; lockf exposes
+        # the owner PID through F_GETLK to the admission CLI's Supervisor-only fallback gate.
+        fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
         fcntl.lockf(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except OSError:
         f.close()
