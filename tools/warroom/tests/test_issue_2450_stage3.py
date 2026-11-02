@@ -641,7 +641,7 @@ class Stage3SupervisorFlow(unittest.TestCase):
             saved.side_effect = crash
             w.sup._stage3_finalize_do(batch)
         self.assertIsNone(w.store.get(f"s3_apply_result_{batch['id']}"))
-        w.store.set(f"s3_apply_result_{batch['id']}", json.dumps({"removed": 1, "repaired": 0, "edit_drops_added": 0}))
+        self.assertEqual(w.store.get(f"s3_apply_ready_{batch['id']}"), "1")   # real failure state: applied, no result key
         with mock.patch.object(stage3, "checkpoint", return_value=None), \
                 mock.patch.object(stage3, "apply", side_effect=AssertionError("apply already completed")), \
                 mock.patch.object(stage3, "report", return_value=report):
