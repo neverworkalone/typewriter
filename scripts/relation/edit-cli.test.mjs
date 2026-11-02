@@ -443,6 +443,8 @@ test('scoped Link Repair uses the exact Stage 2 Part, checks homographs, and lea
     candidate_assignment_version: 1, candidate_forms: ['가장'], reverse_candidate_forms: ['가식적'] });
   assert.equal(relations[2].text, '미등록어', 'a candidate with no Canonical target remains text-only');
   await assert.rejects(access(path.join(root, 'data/relation-drops/drop-001.jsonl')), { code: 'ENOENT' });
+  git(root, 'add', 'data/relations/relation-001.jsonl');
+  git(root, 'commit', '-qm', 'Merge the scoped Link Repair fixture');
 
   const resumed = await quiet(() => run(['prepare', ...scope], { root }));
   assert.equal(resumed.relation_count, 1, 'already repaired rows are excluded from another scoped run');
