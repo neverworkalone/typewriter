@@ -38,23 +38,30 @@ class DWorld(World):
                 self.runner.dchunk.save(self.wt(), self.active()["chunk_no"])
         self.adapter.plan.append({"code": code, "session": session, "effect": effect})
 
-    def ai_rejected(self, code=0, session="ses_d", scope="decisions", stale=False, failed_search_after=False):
+    def ai_rejected(self, code=0, session="ses_d", scope="decisions", stale=False, failed_search_after=False,
+                    failed_record=None):
         """A fake AI whose `save` is rejected: decisions.txt stays, the CLI's diagnostic for the active chunk is written."""
         def effect():
             rec = self.active()
             names = dchunk.chunk_names(self.row_(), rec["chunk_no"])
             folder = self.wt() / names.directory
-            (self.wt() / names.decisions).write_text("s1 Z\n")
+            active = dchunk.read_active(self.wt(), self.row_())
+            target_record = failed_record or active["senses"][0]["sense_id"].rsplit("-s", 1)[0]
+            sense_id = f"{target_record}-s1"
+            sense_ref = next(sense["ref"] for sense in active["senses"]
+                             if sense["sense_id"] == sense_id)
+            error = f"{sense_ref}: Z needs every recorded search of this record to be complete with 0 hits"
+            (self.wt() / names.decisions).write_text(f"{sense_ref} Z\n")
             if failed_search_after:   # a search after the rejected save failed: the repairable diagnostic is now stale
                 with open(self.wt() / names.searches, "a") as fh:
-                    fh.write(json.dumps({"record_id": "w0001", "status": "SEARCH_FAILED", "hits": 0,
+                    fh.write(json.dumps({"record_id": target_record, "status": "SEARCH_FAILED", "hits": 0,
                                          "chunk_no": rec["chunk_no"], "view_sha256": rec["view_sha256"]}) + "\n")
             (self.wt() / names.rejected).write_text(json.dumps({
                 "diagnostic": "save_rejected", "chunk_no": rec["chunk_no"],
                 "view_sha256": "0" * 64 if stale else rec["view_sha256"], "git_head": rec["git_head"], "repair_scope": scope,
-                "senses": ["s1"], "errors": ["s1: Z needs every recorded search of this record to be complete with 0 hits"],
-                "failed_records": [{"record_id": "w0001", "failed_sense_ids": ["w0001-s1"],
-                                    "errors": ["s1: Z needs every recorded search of this record to be complete with 0 hits"]}],
+                "senses": [sense_ref], "errors": [error],
+                "failed_records": [{"record_id": target_record, "failed_sense_ids": [sense_id],
+                                    "errors": [error]}],
                 "decisions_sha256": hashlib.sha256((self.wt() / names.decisions).read_bytes()).hexdigest(),
                 "searches_sha256": hashlib.sha256((self.wt() / names.searches).read_bytes()).hexdigest(),
                 "error_count": 1}))
@@ -377,13 +384,13 @@ class SaveRejectedFix(unittest.TestCase):
     def test_repeated_record_local_rejection_skips_only_that_record_and_continues(self):
         w = self.w
         w.start("single", "deepseek", "d")
-        w.ai_rejected()
+        w.ai_rejected(failed_record="w0003")
         w.tick()
         w.finish_last()
         rec = w.active()
         with self.assertRaisesRegex(dchunk.DChunkError, "exhausted fix budget"):
             dchunk.supervisor_skip(w.store, w.runner, w.sup._d_env(w.row_()), w.wt(), w.row_(), rec)
-        w.ai_rejected()
+        w.ai_rejected(failed_record="w0003")
         w.tick()
         self.assertEqual(w.adapter.launches[-1]["kind"], "resume")
         w.finish_last()
@@ -392,14 +399,18 @@ class SaveRejectedFix(unittest.TestCase):
                          ("PRODUCING", "d_chunk_new", 2))
         self.assertEqual(len(w.adapter.launches), 3)                 # fallback saves chunk 1 and immediately launches chunk 2
         rows = [json.loads(line) for line in (w.wt() / dchunk.names(w.row_()).directory / "chunk-001.jsonl").read_text().splitlines()]
-        first = next(row for row in rows if row["record_id"] == "w0001")
+        first = next(row for row in rows if row["record_id"] == "w0003")
         other = next(row for row in rows if row["record_id"] == "w0002")
-        self.assertTrue(all(sense["candidates"] == [] for sense in first["senses"]))
+        self.assertEqual(first["senses"], [
+            {"sense_id": "w0003-s1", "candidates": []},
+            {"sense_id": "w0003-s2", "candidates": ["후보"]},
+        ])
         self.assertTrue(all(sense["candidates"] == ["후보"] for sense in other["senses"]))
         skip = json.loads((w.wt() / dchunk.chunk_names(w.row_(), 1).technical_skips).read_text())
-        self.assertEqual((skip["fix_attempts"], skip["skips"][0]["record_id"], skip["skips"][0]["sense_ids"]),
-                         (1, "w0001", ["w0001-s1"]))
-        self.assertTrue(any("records=w0001" in event["msg"] for event in w.store.recent_events()
+        self.assertEqual((skip["fix_attempts"], skip["skips"][0]["record_id"], skip["skips"][0]["sense_ids"],
+                          skip["skips"][0]["failed_sense_ids"]),
+                         (1, "w0003", ["w0003-s1", "w0003-s2"], ["w0003-s1"]))
+        self.assertTrue(any("records=w0003" in event["msg"] for event in w.store.recent_events()
                             if event["batch_id"] == w.row_()["id"]))
         w.tick(3)
         self.assertEqual(len(w.adapter.launches), 3)

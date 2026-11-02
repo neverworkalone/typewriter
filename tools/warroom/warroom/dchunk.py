@@ -235,9 +235,13 @@ def _validate_technical_skip_file(path: Path, chunk_path: Path, expected: list[t
                 or (isinstance(sense_ids, list) and not set(failed_senses) <= set(sense_ids))
                 or not isinstance(errors, list) or not errors or any(not isinstance(error, str) or not error for error in errors)):
             raise DChunkError(f"{path.name} technical skip IDs do not match this Canonical chunk")
+        if len(set(failed_senses)) != len(failed_senses):
+            raise DChunkError(f"{path.name} technical skip repeats a failed Sense for {rid}")
+        failed_set = set(failed_senses)
         row = by_id.get(rid)
-        if row is None or any(sense.get("candidates") != [] for sense in row.get("senses", [])):
-            raise DChunkError(f"{path.name} technical skip Candidate row is not empty for {rid}")
+        if row is None or any(sense.get("candidates") != [] for sense in row.get("senses", [])
+                              if sense.get("sense_id") in failed_set):
+            raise DChunkError(f"{path.name} technical skip failed Sense candidates are not empty for {rid}")
         seen.add(rid)
     return data["skips"]
 
@@ -455,12 +459,15 @@ def supervisor_skip(store, runner, env, worktree, b, rec: dict) -> dict:
         temporary = skip_path.with_name(skip_path.name + ".tmp")
         temporary.write_text(serialized_skip, "utf-8")
         os.replace(temporary, skip_path)
-    skipped_ids = {item["record_id"] for item in failed}
+    skipped_senses = {item["record_id"]: set(item["failed_sense_ids"]) for item in failed}
     output_rows = []
     for row in rows:
         row = {"record_id": row["record_id"], "senses": row["senses"]}
-        if row["record_id"] in skipped_ids:
-            row["senses"] = [{"sense_id": sense["sense_id"], "candidates": []} for sense in row["senses"]]
+        failed_sense_ids = skipped_senses.get(row["record_id"], set())
+        if failed_sense_ids:
+            row["senses"] = [{"sense_id": sense["sense_id"],
+                              "candidates": [] if sense["sense_id"] in failed_sense_ids else sense["candidates"]}
+                             for sense in row["senses"]]
         output_rows.append(row)
     output = Path(worktree) / n.directory / f"chunk-{rec['chunk_no']:03d}.jsonl"
     if output.exists():
