@@ -1333,6 +1333,38 @@ test('compact chunks are a lossless view and compact decisions expand into the s
   await assert.rejects(() => run(['read-chunk', '--checkpoint', checkpoint, '--format', 'yaml'], { root }), /json or compact/);
 });
 
+test('technical Drop f is unavailable to model rows and accepted only through a source-bound Supervisor fallback', async (t) => {
+  const { root, sourceCandidates } = await sixCandidateRepository(t);
+  const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
+  const input = '.warroom-scratch/decisions.txt';
+  const proofPath = '.warroom-scratch/s2-technical-fallback.json';
+  const prepared = await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  delete prepared.type_tier_policy;
+  await writeFile(path.join(root, checkpoint), `${JSON.stringify(prepared)}\n`);
+  const chunk = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint, '--format', 'compact'], { root }));
+  const modelRows = sourceCandidates.map((_, index) => `c${index + 1} D ${index === 0 ? 'f' : 'x'}`).join('\n');
+  await writeFile(path.join(root, input), `chunk ${chunk.chunk_id}\n${modelRows}\n`);
+  const before = await readFile(path.join(root, checkpoint));
+  await assert.rejects(() => quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', input, '--format', 'compact'], { root })),
+    /new Stage 2 Drop reason must be "x" or "e"/u);
+  assert.deepEqual(await readFile(path.join(root, checkpoint)), before, 'model-authored D f does not advance the checkpoint');
+
+  const remainingRows = sourceCandidates.slice(1).map((_, index) => `c${index + 2} D x`).join('\n');
+  await writeFile(path.join(root, input), `chunk ${chunk.chunk_id}\n${remainingRows}\n`);
+  await writeFile(path.join(root, proofPath), JSON.stringify({
+    alias: 'c1', candidate: sourceCandidates[0], chunk_id: chunk.chunk_id,
+    failure_reason: `chunk ${chunk.chunk_id} not saved, checkpoint unchanged: 1 problem(s)\nc1 ${sourceCandidates[0]}: original issue`,
+    record_id: 'w1', retry_count: 1, sense_id: 'w1-s1',
+  }));
+  await quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', input, '--format', 'compact',
+    '--supervisor-fallback', proofPath], { root }));
+  await mergeForTest(root, checkpoint);
+  const drops = await readDropRows(path.join(root, 'data/relation-drops/drop-001.jsonl'));
+  assert.equal(drops.find((row) => row.candidate === sourceCandidates[0])?.reason, 'f');
+  const saved = JSON.parse(await readFile(path.join(root, checkpoint), 'utf8'));
+  assert.equal(saved.items[0].candidates[0].decision.reason, 'f');
+});
+
 test('new Part mirrors source Type/Tier through compact, JSON revision, inspect and amend boundaries', async (t) => {
   const root = await repository(t);
   const records = (await readFile(path.join(root, 'data/canonical/stdict-0001.jsonl'), 'utf8')).trim().split('\n').map(JSON.parse);

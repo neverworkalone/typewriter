@@ -137,9 +137,10 @@ class FakeGit:
         self.chunk_views: list[tuple] = []                    # (worktree, shard, batch, part, prepare) pre-chunk renders
         self.chunk_view_error: Exception | None = None
         self.chunk_view_total = 1                             # candidates a fake `prepare` writes
-        self.chunk_view_text: str | None = None               # rendered view (default: one short line)
+        self.chunk_view_text: str | None = None               # rendered compact view
         self.chunk_view_sense_id = "source-sense"
         self.save_calls: list[str] = []                       # decisions.txt text at each save-chunk
+        self.technical_fallback_calls: list[dict] = []
         self.optional_view_text: str | None = None
         self.optional_candidate_after_chunk = False
         self.optional_save_result: tuple[bool, str] | None = None
@@ -150,7 +151,7 @@ class FakeGit:
         self.exact_verify_ok = True
         self.exact_counts = {"records": 100, "senses": 130, "unique": 40, "skipped_existing": 5, "reverse_covered": 3,
                              "merged_duplicates": 2, "raw": 42, "missing": 0, "relation": 999, "drop": 999}
-        self.row_delta_result = {"relations": 20, "drops": 12}
+        self.row_delta_result = {"relations": 20, "drops": 12, "automation_failure_candidates": []}
         self.row_counts = {}
         self.local_verify_calls: list[tuple] = []
         self.exact_verify_calls: list[tuple] = []
@@ -278,7 +279,7 @@ class FakeGit:
             path.write_text(json.dumps({
                 "version": 1, "shard": shard, "batch": batch, "part": part, "complete": True, "stats": {},
                 "next_chunk_number": 1, "pending_chunk": None, "merged": False,
-                "items": [{"sense_id": self.chunk_view_sense_id, "candidates": [
+                "items": [{"record_id": "source-record", "sense_id": self.chunk_view_sense_id, "candidates": [
                     {"text": f"candidate-{i}", "decision": None} for i in range(self.chunk_view_total)]}],
             }), "utf-8")
         data = json.loads(path.read_text("utf-8"))
@@ -289,10 +290,21 @@ class FakeGit:
                                      "candidate_count": len(candidates) - start,
                                      "slices": [{"sense_id": self.chunk_view_sense_id, "start": start, "end": len(candidates)}]}
             path.write_text(json.dumps(data), "utf-8")
-        (path.parent / "active-chunk.txt").write_text(
-            self.chunk_view_text or f"# chunk {data['pending_chunk']}\n", "utf-8")
+        pending = data["pending_chunk"]
+        if self.chunk_view_text is not None:
+            view = self.chunk_view_text
+        elif pending is None:
+            view = f"# complete: no primary chunk remains ({data['next_chunk_number'] - 1} saved chunks)\n"
+        else:
+            rows = [f"# Stage 2 chunk {pending['chunk_id']} · shard {shard} batch {batch} part {part} · "
+                    f"{pending['candidate_count']} candidates", "# compact view fixture",
+                    f"S\t{self.chunk_view_sense_id}\tsource-record\tnoun\tfixture gloss\t"
+                    f"candidates 1-{pending['candidate_count']}/{pending['candidate_count']}"]
+            rows.extend(f"c{i + 1}\tcandidate-{i}\tfixture\t-" for i in range(pending["candidate_count"]))
+            view = "\n".join(rows) + "\n"
+        (path.parent / "active-chunk.txt").write_text(view, "utf-8")
 
-    def stage2_save_chunk(self, worktree, shard, batch, part, timeout=900):
+    def stage2_save_chunk(self, worktree, shard, batch, part, timeout=900, supervisor_fallback=None):
         """Mimic `admission-cli save-chunk --format compact`: one `c<n>` row per pending candidate, none other, else the
         complete error list with the checkpoint untouched; on success the cursor advances and the chunk is decided."""
         wt = Path(worktree)
@@ -306,20 +318,26 @@ class FakeGit:
         for line in text.split("\n")[1:]:
             if line.strip():
                 rows.setdefault(line.split()[0], []).append(line.strip())
+        if supervisor_fallback is not None:
+            self.technical_fallback_calls.append(dict(supervisor_fallback))
+            alias = supervisor_fallback["alias"]
+            if alias in rows:
+                return False, "Supervisor fallback candidate must be omitted from model decisions"
+            rows[alias] = [f"{alias} D f"]
         problems = []
         for alias, found in rows.items():
             n = int(alias[1:]) if alias[1:].isdigit() else 0
             if not 1 <= n <= count:
                 problems.append(f"{alias}: names no candidate")
-            elif len(found) > 1 or " BAD" in found[0]:
-                problems.append(f"{alias} candidate-{n}: bad decision")
+            elif len(found) > 1 or " BAD" in found[0] or " T999" in found[0]:
+                problems.append(f"{alias} candidate-{n - 1}: bad decision")
         problems += [f"c{n} candidate-{n - 1}: chunk has missing decisions" for n in range(1, count + 1) if f"c{n}" not in rows]
         problems.sort(key=lambda p: int(p.split()[0][1:]) if p.split()[0][1:].isdigit() else 0)
         if problems:
             return False, f"chunk {pending['chunk_id']} not saved, checkpoint unchanged: {len(problems)} problem(s)\n" + "\n".join(problems)
         for sl in pending["slices"]:
             for c in data["items"][0]["candidates"][sl["start"]:sl["end"]]:
-                c["decision"] = {"disposition": "drop"}
+                c["decision"] = {"disposition": "drop", "reason": "f" if supervisor_fallback and c["text"] == supervisor_fallback["candidate"] else "x"}
                 if self.optional_candidate_after_chunk:
                     c.update({"already_accounted": True, "decision": {"disposition": "existing"},
                               "existing_target_sense_ids": ["target-1"],

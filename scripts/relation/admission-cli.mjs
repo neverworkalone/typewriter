@@ -43,6 +43,7 @@ const USAGE = `usage:
   node scripts/relation/admission-cli.mjs read-chunk --checkpoint <file.json> --optional [--format json|compact] [--page <n>] [--page-size <n>] [--out <file>]
   node scripts/relation/admission-cli.mjs inspect --checkpoint <file.json> --source-sense-id <id>[,<id>...] [--candidate <text> | --select <file.json>] [--format json|compact] [--page <n>] [--page-size <n>] [--out <file>]
   node scripts/relation/admission-cli.mjs save-chunk --checkpoint <file.json> --in <decisions> [--format json|compact]
+  node scripts/relation/admission-cli.mjs save-chunk --checkpoint <file.json> --in <decisions> --format compact --supervisor-fallback <evidence.json>
   node scripts/relation/admission-cli.mjs save-optional --checkpoint <file.json> --in <decisions>
   node scripts/relation/admission-cli.mjs complete-optional --checkpoint <file.json>
   node scripts/relation/admission-cli.mjs cancel-revision --checkpoint <file.json> --chunk-id <exact>
@@ -130,7 +131,7 @@ async function writeFileStateAtomically(file, state) {
   await writeTextAtomically(file, state.bytes);
 }
 
-function validateDecision(item, candidate, decision) {
+function validateDecision(item, candidate, decision, allowSupervisorFailureDrop = false) {
   if (!isPlainObject(decision)) throw new Error(`${item.sense_id}/${candidate.text}: decision must be an object`);
   if (decision.source_sense_id !== item.sense_id || decision.candidate !== candidate.text) {
     throw new Error(`${item.sense_id}/${candidate.text}: decision must retain the exact source sense and candidate`);
@@ -144,7 +145,7 @@ function validateDecision(item, candidate, decision) {
     if (typeof decision.reason !== 'string' || !decision.reason.trim()) throw new Error(`${item.sense_id}/${candidate.text}: Drop needs a reason`);
     const reason = decision.reason.trim();
     if (reason === 'z') throw new Error(`${item.sense_id}/${candidate.text}: Drop reason "z" is reserved for deterministic orphan reconciliation`);
-    if (reason !== 'x' && reason !== 'e') {
+    if (reason !== 'x' && reason !== 'e' && !(allowSupervisorFailureDrop && reason === 'f')) {
       throw new Error(`${item.sense_id}/${candidate.text}: new Stage 2 Drop reason must be "x" or "e"`);
     }
     return;
@@ -332,7 +333,8 @@ function validateCheckpointDecisions(checkpoint) {
           seenTargets.add(relation.target_sense_id);
         }
       } else {
-        validateDecision(item, candidate, candidate.decision);
+        validateDecision(item, candidate, candidate.decision,
+          candidate.decision?.disposition === 'drop' && candidate.decision.reason === 'f');
         if (usesSourceMirrorTypeTier(checkpoint) && candidate.decision.target_resolution === 'exact'
             && (candidate.decision.reverse_type !== candidate.decision.type
               || candidate.decision.reverse_relevance !== candidate.decision.relevance)) {
@@ -786,7 +788,7 @@ function assertNoMergeConflicts(checkpoint, existingRelations, existingDrops, ne
 
 function parseArgs(argv) {
   const [command, ...rest] = argv;
-  const options = { command, shard: null, batch: null, part: null, out: null, checkpoint: null, input: null,
+  const options = { command, shard: null, batch: null, part: null, out: null, checkpoint: null, input: null, supervisorFallback: null,
     maxCandidates: DEFAULT_CHUNK_CANDIDATES, allowPartial: false, json: false, sourceSenseId: null, candidateText: null,
     selectPath: null, format: null, optional: false, chunkId: null, page: 1, pageSize: INSPECT_PAGE_SIZE, limit: 20, offset: 0,
     diffFrom: null, diffTo: null, refreshPremerge: false, dryRun: false, from: null, fromShas: [], to: null };
@@ -798,6 +800,7 @@ function parseArgs(argv) {
     else if (flag === '--out') options.out = rest[++index];
     else if (flag === '--checkpoint') options.checkpoint = rest[++index];
     else if (flag === '--in') options.input = rest[++index];
+    else if (flag === '--supervisor-fallback') options.supervisorFallback = rest[++index];
     else if (flag === '--max-candidates') options.maxCandidates = Number(rest[++index]);
     else if (flag === '--source-sense-id') options.sourceSenseId = rest[++index];
     else if (flag === '--candidate') options.candidateText = rest[++index];
@@ -826,6 +829,10 @@ function parseArgs(argv) {
     throw new Error(`--format compact covers primary chunks only; read a revision as JSON\n${USAGE}`);
   }
   options.format ??= 'json';
+  if (options.supervisorFallback !== null
+      && (command !== 'save-chunk' || options.format !== 'compact' || typeof options.supervisorFallback !== 'string' || !options.supervisorFallback)) {
+    throw new Error('--supervisor-fallback requires save-chunk --format compact and an evidence file\n' + USAGE);
+  }
   if (!['prepare', 'inspect', 'read-chunk', 'save-chunk', 'save-optional', 'complete-optional', 'cancel-revision', 'merge', 'prepare-merge', 'amend', 'preflight', 'repair', 'reconcile', 'affected-shards', 'affected-shards-batch', 'verify'].includes(command)) throw new Error(USAGE);
   if (['prepare', 'verify', 'reconcile'].includes(command)) assertShard(options.shard);
   if (options.batch !== null && !['01', '02'].includes(options.batch)) throw new Error(`--batch must be 01 or 02\n${USAGE}`);
@@ -957,7 +964,7 @@ export async function run(argv, { root } = {}) {
     const checkpoint = await readCheckpoint(checkpointPath);
     if (options.command === 'read-chunk') return readChunk(checkpoint, checkpointPath, options.maxCandidates, options.out, repositoryRoot,
       options.sourceSenseId, options.candidateText, options.format, options.optional, options.page, options.pageSize);
-    return saveChunk(checkpoint, checkpointPath, options.input, repositoryRoot, options.format);
+    return saveChunk(checkpoint, checkpointPath, options.input, repositoryRoot, options.format, options.supervisorFallback);
   }
   if (options.command === 'save-optional') {
     const result = await saveOptional(await readCheckpoint(checkpointPath), checkpointPath, options.input, repositoryRoot);
@@ -2058,12 +2065,13 @@ async function readChunk(checkpoint, checkpointPath, maxCandidates, out, root, s
   return payload;
 }
 
-async function saveChunk(checkpoint, checkpointPath, inputPath, root, format = 'json') {
+async function saveChunk(checkpoint, checkpointPath, inputPath, root, format = 'json', supervisorFallbackPath = null) {
   const pending = checkpoint.pending_chunk;
   if (!pending) throw new Error('checkpoint has no unread or unsaved chunk');
   const problems = [];
   let input;
   let model = null;
+  let supervisorFallback = null;
   try {
     const raw = await readFile(resolveRootPath(root, inputPath), 'utf8');
     if (format === 'compact') {
@@ -2073,6 +2081,12 @@ async function saveChunk(checkpoint, checkpointPath, inputPath, root, format = '
       input = { chunk_id: pending.chunk_id, decisions: parsed.decisions };
     } else input = JSON.parse(raw);
   } catch (error) { throw new Error(`cannot read chunk decisions: ${error.message}`); }
+  if (supervisorFallbackPath !== null) {
+    if (format !== 'compact') throw new Error('Supervisor technical fallback is only valid with --format compact');
+    try {
+      supervisorFallback = JSON.parse(await readFile(resolveRootPath(root, supervisorFallbackPath), 'utf8'));
+    } catch (error) { throw new Error(`cannot read Supervisor fallback evidence: ${error.message}`); }
+  }
   if (!isPlainObject(input) || keysOf(input) !== 'chunk_id,decisions' || input.chunk_id !== pending.chunk_id || !Array.isArray(input.decisions)) {
     throw new Error(`decision file must contain the active chunk_id ${pending.chunk_id} and a decisions array`);
   }
@@ -2082,6 +2096,45 @@ async function saveChunk(checkpoint, checkpointPath, inputPath, root, format = '
     for (const candidate of item.candidates.slice(slice.start, slice.end)) expected.set(`${item.sense_id}\u0000${candidate.text}`, { item, candidate });
   }
   const rowByKey = new Map((model?.candidates ?? []).map((row) => [`${row.item.sense_id}\u0000${row.candidate.text}`, row]));
+  let fallbackKey = null;
+  if (supervisorFallback !== null) {
+    const fallbackKeys = 'alias,candidate,chunk_id,failure_reason,record_id,retry_count,sense_id';
+    if (!isPlainObject(supervisorFallback) || keysOf(supervisorFallback) !== fallbackKeys
+        || supervisorFallback.chunk_id !== pending.chunk_id || !/^c\d+$/u.test(supervisorFallback.alias)
+        || supervisorFallback.retry_count !== 1 || typeof supervisorFallback.failure_reason !== 'string'
+        || !supervisorFallback.failure_reason.trim()) {
+      throw new Error('Supervisor fallback evidence is malformed or does not prove exactly one correction attempt');
+    }
+    const row = model?.candidates.find((candidate) => candidate.alias === supervisorFallback.alias);
+    if (!row || row.item.record_id !== supervisorFallback.record_id
+        || row.item.sense_id !== supervisorFallback.sense_id || row.candidate.text !== supervisorFallback.candidate) {
+      throw new Error('Supervisor fallback evidence does not bind to the exact active chunk candidate');
+    }
+    const diagnosticLines = supervisorFallback.failure_reason.split(/\r?\n/u);
+    const diagnosticPrefix = `chunk ${pending.chunk_id} not saved, checkpoint unchanged: `;
+    const diagnosticHeader = diagnosticLines[0] ?? '';
+    const diagnosticCount = diagnosticHeader.startsWith(diagnosticPrefix) && diagnosticHeader.endsWith(' problem(s)')
+      ? Number(diagnosticHeader.slice(diagnosticPrefix.length, -' problem(s)'.length)) : NaN;
+    const problemLines = diagnosticLines.slice(1).map((line) => line.trim()).filter((line) => line && !line.startsWith('types:'));
+    const errorAliases = problemLines.map((line) => /^(c\d+)\b/u.exec(line)?.[1] ?? null);
+    if (!Number.isInteger(diagnosticCount) || diagnosticCount !== problemLines.length
+        || problemLines.length === 0 || errorAliases.some((alias) => alias !== supervisorFallback.alias)
+        || !problemLines.some((line) => line.startsWith(`${supervisorFallback.alias} ${supervisorFallback.candidate}:`))) {
+      throw new Error('Supervisor fallback requires a current save-chunk diagnostic for this one exact candidate');
+    }
+    fallbackKey = `${row.item.sense_id}\u0000${row.candidate.text}`;
+    if (input.decisions.some((decision) => decision.source_sense_id === row.item.sense_id
+        && decision.candidate === row.candidate.text)) {
+      throw new Error('Supervisor fallback candidate must be omitted from model decisions');
+    }
+    const fallbackDecision = {
+      source_sense_id: row.item.sense_id, candidate: row.candidate.text,
+      disposition: 'drop', reason: 'f',
+    };
+    try { validateDecision(row.item, row.candidate, fallbackDecision, true); }
+    catch (error) { throw new Error(`Supervisor fallback is invalid: ${error.message}`); }
+    input.decisions.push(fallbackDecision);
+  }
   const labelOf = (key) => rowByKey.get(key)?.alias ?? key.replace('\u0000', '/');
   const failed = new Set(problems.map((problem) => problem.alias).filter((alias) => alias !== null));
   const failedKeys = new Set([...rowByKey].filter(([, row]) => failed.has(row.alias)).map(([key]) => key));
@@ -2102,7 +2155,7 @@ async function saveChunk(checkpoint, checkpointPath, inputPath, root, format = '
     if (!source) { problems.push({ alias: null, message: `decision ${decision.source_sense_id}/${decision.candidate} is outside the active chunk` }); continue; }
     try {
       const normalizedDecision = normalizeInputDecision(checkpoint, decision);
-      validateDecision(source.item, source.candidate, normalizedDecision);
+      validateDecision(source.item, source.candidate, normalizedDecision, key === fallbackKey);
       received.set(key, normalizedDecision);
     } catch (error) { problem(key, error.message); }
   }

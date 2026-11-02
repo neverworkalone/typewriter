@@ -216,7 +216,8 @@ class Stage2Finalization(unittest.TestCase):
         self.assertEqual(pr["body"], "\n".join([
             "- Method: S2", "- Model: claude", "- Shard: 001", "- Batch: 01", "- Part: 01",
             "- Coverage: 100 records / 130 senses", "- Unique Candidates: 40", "- New Relations: 20",
-            "- New Drops: 12", "- Duplicates: 2", "- Already Approved: 5", "- Reverse Absorbed: 3",
+            "- New Drops: 12", "- Technical Failure Drops (f): 0", "- Technical Failure Candidates: none",
+            "- Duplicates: 2", "- Already Approved: 5", "- Reverse Absorbed: 3",
             "- Part Verify: PASS", "- Exact PR HEAD Verify: PASS", "", "Refs #927"]) + "\n")
         self.assertNotIn("999", pr["body"])   # the shard's cumulative relation/drop counts are never used
         self.assertNotIn("Closes", pr["body"])
@@ -229,6 +230,7 @@ class Stage2Finalization(unittest.TestCase):
                                           part_verify=True, exact_verify=True)
                 self.assertIn("- Coverage: 미측정\n", body)
                 self.assertIn("- New Relations: 미측정\n", body)
+                self.assertIn("- Technical Failure Drops (f): 미측정\n", body)
                 self.assertNotIn(": 0\n", body)
         ok = dict(records=2, senses=3, unique=3, skipped_existing=1, reverse_covered=1, merged_duplicates=1,
                   raw=4, missing=0)
@@ -236,6 +238,19 @@ class Stage2Finalization(unittest.TestCase):
         self.assertIsNotNone(prbody.stage2_counts_problem({**ok, "missing": 1}))
         self.assertIsNotNone(prbody.stage2_counts_problem({**ok, "skipped_existing": 3}))
         self.assertEqual(prbody.s2_title("Codex", "003", "01", "02"), "[S2/Codex] 003_01 Part 02")
+
+    def test_technical_failure_candidates_are_listed_and_counted_outside_editorial_drops(self):
+        body = prbody.stage2_body(
+            "Codex", "003", "01", "02",
+            counts=None,
+            delta={"relations": 4, "drops": 7, "automation_failure_candidates": [
+                {"record_id": "w2035", "sense_id": "w2035-s1", "candidate": "믿음직"},
+            ]},
+            part_verify=True, exact_verify=True,
+        )
+        self.assertIn("- New Drops: 7\n", body)
+        self.assertIn("- Technical Failure Drops (f): 1\n", body)
+        self.assertIn("- Technical Failure Candidates: w2035/w2035-s1: 믿음직\n", body)
 
     def test_run_cost_counts_input_and_output_once_and_only_when_all_runs_measured(self):
         run = lambda **kw: {"input_tokens": 100, "cached_input_tokens": 60, "cache_write_tokens": 10,
