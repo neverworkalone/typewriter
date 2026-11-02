@@ -45,7 +45,7 @@ class FakeLiteraryCli:
         path.write_text(json.dumps(cp))
 
     # -- CLI ----------------------------------------------------------------------------------------------------
-    def run(self, argv, cwd, env=None):
+    def run(self, argv, cwd, env=None, input=None):
         self.calls.append(list(argv))
         cmd = argv[2]
         if cmd in self.fail:
@@ -136,23 +136,30 @@ class FakeLiteraryCli:
             self.save(cwd, argv, cp)
             self.export_error = None
             return Result(0, json.dumps({"status": "CLEARED", "senses": len(ids), "candidates": len(ids)}))
-        if cmd == "supervisor-skip":
-            # The real CLI reads the trusted DB from Git's common repository root. The Supervisor calls this fake only
-            # after it independently confirms both same-session retries in its own Store.
-            retry_attempts = 2
-            input_path = Path(cwd) / self.opt(argv, "--input")
-            submission = json.loads(input_path.read_text("utf-8"))
-            diagnostic = json.loads(input_path.with_name(input_path.name + ".diag.json").read_text("utf-8"))
-            active = json.loads((Path(cwd) / ".warroom-scratch/c-active-chunk.json").read_text("utf-8"))
+        if cmd == "validate":
+            return Result(0, json.dumps({"status": "VALID", "recordCount": 500, "senseCount": len(cp["ids"]),
+                                         "candidateCount": 7, "emptySenseCount": 1}))
+        return Result(1, "", f"unknown command {cmd}")
+
+    def run_internal(self, argv, input):
+        try:
+            payload = json.loads(input or "{}")
+            checkpoint = Path(payload["checkpointPath"])
+            scratch = Path(payload["scratchDirectory"])
+            submission = payload["submission"]
+            diagnostic = payload["diagnostic"]
+            retry_attempts = payload["retryAttempts"]
+            cp = json.loads(checkpoint.read_text("utf-8"))
+            active = json.loads((scratch / "c-active-chunk.json").read_text("utf-8"))
             entry_number = diagnostic["affected"]["entry_number"]
             target = diagnostic["affected"]["sense_id"]
-            if submission["senses"][entry_number - 1]["sense_id"] != target or target not in active["sense_ids"]:
-                return Result(1, "", "diagnostic mismatch")
+            if (retry_attempts < 2 or submission["senses"][entry_number - 1]["sense_id"] != target
+                    or target not in active["sense_ids"]):
+                return Result(1, "", "diagnostic or Supervisor retry count mismatch")
             for entry in submission["senses"]:
-                if entry["sense_id"] == target:
-                    continue
-                cp["status"][entry["sense_id"]] = "SUBMITTED"
-                cp.setdefault("submitted", {})[entry["sense_id"]] = entry
+                if entry["sense_id"] != target:
+                    cp["status"][entry["sense_id"]] = "SUBMITTED"
+                    cp.setdefault("submitted", {})[entry["sense_id"]] = entry
             cp["status"][target] = "TECHNICAL_SKIPPED"
             record_id = f"record-{target}"
             skip = {"record_id": record_id, "sense_id": target, "diagnostic": diagnostic["diagnostic"],
@@ -160,10 +167,8 @@ class FakeLiteraryCli:
                     "retry_attempts": retry_attempts}
             cp.setdefault("technical_skips", []).append(skip)
             cp["output"] = None
-            self.save(cwd, argv, cp)
+            checkpoint.write_text(json.dumps(cp))
             return Result(0, json.dumps({"status": "TECHNICAL_SKIPPED", **skip,
                                          "pending_senses": sum(status not in DONE for status in cp["status"].values())}))
-        if cmd == "validate":
-            return Result(0, json.dumps({"status": "VALID", "recordCount": 500, "senseCount": len(cp["ids"]),
-                                         "candidateCount": 7, "emptySenseCount": 1}))
-        return Result(1, "", f"unknown command {cmd}")
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            return Result(1, "", str(error))

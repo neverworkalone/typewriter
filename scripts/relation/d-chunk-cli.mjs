@@ -35,7 +35,6 @@ import {
   searchContexts,
   validateSearchCursor,
 } from './corpus-utility.mjs';
-import { readSupervisorRetryBudget } from './supervisor-retry-state.mjs';
 
 export const CHUNK_RECORDS = 25;
 export const BATCH_RECORDS = 500;
@@ -1163,19 +1162,11 @@ export async function saveActive({ inputPath, root }) {
   return saveActiveInternal({ inputPath, root });
 }
 
-/** Internal Supervisor-only path: the retry budget comes from the separate War Room state database. */
-export async function supervisorSkipActive({ inputPath, root, worktree = process.cwd() }) {
-  const { meta } = await findActive(root);
-  const fixAttempts = readSupervisorRetryBudget({
-    method: 'd',
-    model: meta.model,
-    shard: meta.shard,
-    batch: meta.batch,
-    worktree,
-    retryKeyForBatchId: (batchId) => `d_fix_${batchId}:${meta.chunk_no}`,
-    retryKind: 'd_chunk_fix',
-    minimum: MAX_FIXES,
-  });
+/** Internal API called by the War Room Supervisor after it verifies the same-session retry budget. */
+export async function supervisorSkipActive({ inputPath, root, fixAttempts }) {
+  if (!Number.isSafeInteger(fixAttempts) || fixAttempts < MAX_FIXES) {
+    fail('supervisor technical skip requires the Supervisor retry budget');
+  }
   return saveActiveInternal({ inputPath, root, supervisorFixAttempts: fixAttempts });
 }
 
@@ -1265,16 +1256,6 @@ async function main(argv) {
     only(options, 'in');
     if (positional.length) fail('save takes options only');
     console.log(JSON.stringify(await saveActive({ inputPath: need(options, 'in') })));
-    return 0;
-  }
-  if (command === 'supervisor-skip') {
-    only(options, 'in', 'dir');
-    if (positional.length) fail('supervisor-skip takes options only');
-    console.log(JSON.stringify(await supervisorSkipActive({
-      inputPath: need(options, 'in'),
-      root: options.dir,
-      worktree: process.cwd(),
-    })));
     return 0;
   }
   return fail('usage: d-chunk-cli.mjs prepare|search|search-batch|save');

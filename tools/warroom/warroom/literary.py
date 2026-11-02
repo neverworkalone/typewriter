@@ -136,11 +136,36 @@ def deterministic_context_trim_candidate(worktree, b, chunk_no: int) -> bool:
 
 
 def supervisor_skip(runner, env, worktree, b, rec: dict, retry_attempts: int) -> dict:
-    """Invoke the internal CLI fallback; its CLI resolves the Supervisor DB from Git's shared repository root."""
+    """Invoke the internal fallback only after this Supervisor has counted both same-session resubmits."""
+    if retry_attempts < MAX_RESUBMITS:
+        raise LiteraryError("C technical skip requires the exhausted Supervisor resubmit budget")
     n = names(b)
     input_path = f"{n.submit_prefix}{rec['chunk_no']:03d}.submit.json"
-    data = _json(cli(runner, env, worktree, "supervisor-skip", "--db", env["TYPEWRITER_APPROVED_LITERARY_DB"],
-                     "--checkpoint", n.checkpoint, "--input", input_path), "C supervisor technical skip")
+    absolute_input = Path(worktree) / input_path
+    try:
+        input_bytes = absolute_input.read_bytes()
+        submission = json.loads(input_bytes)
+        diagnostic = json.loads(absolute_input.with_name(absolute_input.name + ".diag.json").read_text("utf-8"))
+        input_sha256 = hashlib.sha256(input_bytes).hexdigest()
+    except (OSError, ValueError) as error:
+        raise LiteraryError("C technical skip inputs are unavailable") from error
+    payload = {
+        "databasePath": env["TYPEWRITER_APPROVED_LITERARY_DB"],
+        "checkpointPath": str(Path(worktree) / n.checkpoint),
+        "submission": submission,
+        "diagnostic": diagnostic,
+        "inputSha256": input_sha256,
+        "retryAttempts": retry_attempts,
+        "scratchDirectory": str(Path(worktree) / SCRATCH),
+    }
+    script = ("import { supervisorSkipLiterarySense } from './scripts/relation/literary-context.mjs';\n"
+              "let input = ''; for await (const part of process.stdin) input += part;\n"
+              "const result = await supervisorSkipLiterarySense(JSON.parse(input));\n"
+              "process.stdout.write(JSON.stringify(result) + '\\n');")
+    supervisor_root = Path(__file__).resolve().parents[3]
+    result = runner.run(["node", "--input-type=module", "-e", script], cwd=supervisor_root, env=env,
+                        input=json.dumps(payload, ensure_ascii=False), timeout=900)
+    data = _json(result, "C supervisor technical skip")
     if data.get("status") != "TECHNICAL_SKIPPED" or not all(isinstance(data.get(key), str) and data[key]
                                                                 for key in ("record_id", "sense_id", "diagnostic", "reason", "field")) \
             or data.get("retry_attempts") != retry_attempts:

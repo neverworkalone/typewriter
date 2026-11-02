@@ -392,12 +392,21 @@ def read_rejection(worktree, b, rec: dict) -> dict | None:
 
 
 def supervisor_skip(runner, env, worktree, b, rec: dict, fix_attempts: int) -> dict:
-    """Use the internal D CLI path; its CLI resolves the Supervisor DB from Git's shared repository root."""
+    """Use the internal fallback only after this Supervisor counted the same-session correction."""
     diag = read_rejection(worktree, b, rec)
     if diag is None or fix_attempts < MAX_FIXES:
         raise DChunkError("D technical skip lacks an exact current rejection or exhausted fix budget")
     n = chunk_names(b, rec["chunk_no"])
-    data = _json(cli(runner, env, worktree, "supervisor-skip", "--in", n.decisions), "D supervisor technical skip")
+    payload = {"inputPath": str((Path(worktree) / n.decisions).resolve()),
+               "root": str((Path(worktree) / SCRATCH).resolve()), "fixAttempts": fix_attempts}
+    script = ("import { supervisorSkipActive } from './scripts/relation/d-chunk-cli.mjs';\n"
+              "let input = ''; for await (const part of process.stdin) input += part;\n"
+              "const result = await supervisorSkipActive(JSON.parse(input));\n"
+              "process.stdout.write(JSON.stringify(result) + '\\n');")
+    supervisor_root = Path(__file__).resolve().parents[3]
+    result = runner.run(["node", "--input-type=module", "-e", script], cwd=supervisor_root, env=env,
+                        input=json.dumps(payload), timeout=900)
+    data = _json(result, "D supervisor technical skip")
     if data.get("status") != "SAVED_WITH_TECHNICAL_SKIPS" or data.get("chunk_no") != rec["chunk_no"] \
             or data.get("technical_skipped_records") != len(diag["failed_records"]) \
             or not isinstance(data.get("technical_skips"), list):

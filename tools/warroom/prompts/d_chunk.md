@@ -68,7 +68,7 @@ node scripts/relation/d-chunk-cli.mjs save --in .warroom-scratch/d-{{batch}}/dec
 
 - 한 Sense 한 줄: `sN V 후보|후보` (VERIFIED + 후보), `sN V` (VERIFIED + 적격 후보 0), `sN N`, `sN Z`. `auto_z` Sense는 쓰지 않는다. 다른 모든 Sense를 정확히 한 번씩 쓴다.
 - 저장은 청크 전체를 한 번에 검사하고 같은 유형의 오류를 모두 알려 준다. 거부되면 아무것도 저장되지 않는다. 지목된 줄만 고쳐 다시 한 번의 호출로 제출한다. 정상 저장(`SAVED`)되면 즉시 종료하며 다음 청크는 시작하지 않는다.
-- technical-skip은 오너 Supervisor가 실제 완료된 same-session 수정 횟수를 확인한 뒤 처리하는 내부 fallback이다. producer 세션에는 Supervisor 상태 DB 결속이 없으므로 직접 호출할 수 없고, 시도 횟수를 주장해도 인정되지 않는다. `save` 입력에 skip 표식/상태를 넣거나 실제 검색·Sense 판독·후보 판단을 생략하지 않는다.
+- technical-skip은 오너 Supervisor가 실제 완료된 same-session 수정 횟수를 확인한 뒤 처리하는 내부 fallback이다. producer CLI에는 이 명령이 없으며, producer는 내부 API를 호출하거나 `save` 입력에 skip 표식/상태를 넣어서는 안 된다. 실제 검색·Sense 판독·후보 판단을 생략하지 않는다.
 - 저장은 Candidate v1이 명백히 부적격으로 판정한 source lemma 반복·천 단위 쉼표 파편과 정규화 중복만 자동 제거하고 `removed_candidates`로 보고한다. 독립 합성어와 정상 후보는 보존하며 `V`의 후보가 모두 제거되어 빈 배열이 되어도 저장할 수 있다.
 - `V`는 내가 VERIFIED 문맥을 읽었다는 뜻이다. 저장 도구는 문맥의 source-sense 진위를 기계적으로 검증했다고 주장하지 않으며, `N`·`Z`의 의미적 타당성은 나와 독립 리뷰의 책임이다.
 - 셸 명령은 그 외에는 개별로 실행해 종료 코드와 출력을 확인한다.

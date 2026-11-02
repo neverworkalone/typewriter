@@ -18,7 +18,6 @@ import {
   renderChunkText,
   reportLiteraryCheckpointSenses,
   submitLiteraryChunk,
-  supervisorSkipLiterarySense,
   summarizeLiteraryCheckpoint,
   validateExistingLiteraryCandidates,
 } from './literary-context.mjs';
@@ -281,25 +280,6 @@ async function main() {
         databasePath: options.db,
         checkpointPath: options.checkpoint,
         submission: await readSubmission(options.input),
-        scratchDirectory: SCRATCH_DIRECTORY,
-      });
-      break;
-    }
-    case 'supervisor-skip': {
-      only(options, 'db', 'checkpoint', 'input');
-      required(options, 'db', 'checkpoint', 'input');
-      assertSubmissionPath(options.input);
-      const diagnosticPath = `${path.resolve(options.input)}.diag.json`;
-      assertSubmissionPath(diagnosticPath);
-      const diagnostic = JSON.parse(await readFile(diagnosticPath, 'utf8'));
-      const submission = await readSubmission(options.input);
-      result = await supervisorSkipLiterarySense({
-        databasePath: options.db,
-        checkpointPath: options.checkpoint,
-        submission,
-        diagnostic,
-        worktree: process.cwd(),
-        inputSha256: submitDiagnosticInputSha256,
         scratchDirectory: SCRATCH_DIRECTORY,
       });
       break;

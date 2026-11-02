@@ -235,19 +235,19 @@ has only surrounding whitespace; the CLI trims it and still requires the same
 unique context-key match. It never guesses a different key.
 
 After the existing two same-session resubmits are exhausted, the War Room
-Supervisor may use its separate `supervisor-skip` command only when the latest
-diagnostic names one active, known Sense and one matching submission-array
-entry. It verifies the unchanged submit-file digest and active view, submits
-the other pending entries through the ordinary `submit` validator, then records
-that exact Sense as `TECHNICAL_SKIPPED` with its Record/Sense IDs, diagnostic,
-reason, field, chunk/head binding, and retry count. Its candidate list is `[]`;
-its search state and VERIFIED evidence are left untouched. The ordinary
-producer `submit` schema has no skip field, and multiple, stale, unbound, or
-system-level failures remain stopped for the operator. The skip command reads
-the retry count and completed same-session run history from the War Room state
-database; it accepts no producer-supplied attempt count and the producer
-process does not receive that database binding. `report` includes exact
-technical exclusions so export and the production PR can disclose them.
+Supervisor may invoke its internal fallback only when the latest diagnostic
+names one active, known Sense and one matching submission-array entry. The
+producer-facing CLI has no technical-skip command. The Supervisor verifies the
+unchanged submit-file digest and active view, submits the other pending entries
+through the ordinary `submit` validator, then records that exact Sense as
+`TECHNICAL_SKIPPED` with its Record/Sense IDs, diagnostic, reason, field,
+chunk/head binding, and retry count. Its candidate list is `[]`; its search
+state and VERIFIED evidence are left untouched. Multiple, stale, unbound, or
+system-level failures remain stopped for the operator. The retry count comes
+from the Supervisor's own state before it invokes the internal implementation;
+no repository selected by producer code grants fallback authority. `report`
+includes exact technical exclusions so export and the production PR can
+disclose them.
 
 Index access, identity, schema, metadata, and search failures use an index
 diagnostic with `repair_scope: stop_and_report`; stop the batch and report those
