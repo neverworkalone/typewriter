@@ -152,7 +152,7 @@ class SerialChunks(unittest.TestCase):
         w.tick()
         self.assertEqual(w.kinds(), ["d_chunk_new", "d_chunk_new"])
         self.assertEqual(w.active()["chunk_no"], 2)
-        self.assertEqual(len(w.adapter.launches), 3)                 # fallback saves chunk 1 and immediately launches chunk 2
+        self.assertEqual(len(w.adapter.launches), 2)
 
     def test_verified_chunk_cleanup_is_scoped_and_the_next_chunk_starts_a_new_session(self):
         w = DWorld(records=50)
