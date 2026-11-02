@@ -495,8 +495,6 @@ const chunkPaths = (directory, number) => {
 const legacyFiles = new Set(['active-chunk.json', 'active-chunk.txt', 'searches.jsonl', 'decisions.txt', 'save-rejected.json']);
 const MAX_REJECTED_ERRORS = 40;
 const MAX_REJECTED_ERROR_CHARS = 300;
-const MAX_FIXES = 1;
-const TECHNICAL_SKIP_CONTRACT = 'd-technical-skips-v1';
 
 async function writeAtomic(target, text) {
   await mkdir(path.dirname(target), { recursive: true });
@@ -1061,7 +1059,7 @@ function failedRecordsForErrors(allErrors, meta, records) {
     failed_sense_ids: [...item.failed_sense_ids], errors: item.errors }));
 }
 
-async function saveActiveInternal({ inputPath, root, supervisorFixAttempts }) {
+async function saveActiveInternal({ inputPath, root, readOnly = false }) {
   const { directory, meta, files } = await findActive(root);
   if (path.resolve(inputPath) !== path.resolve(files.decisions))
     fail(`save input must be the decision file for active chunk ${String(meta.chunk_no).padStart(3, '0')}; no other chunk file is read`);
@@ -1072,7 +1070,6 @@ async function saveActiveInternal({ inputPath, root, supervisorFixAttempts }) {
   }
   const all = await loadBatchRecords(meta.canonical, meta.shard, meta.batch);
   const records = chunkRecords(all, meta.chunk_no);
-  const recordById = new Map(records.map((record) => [record.id, record]));
   if (JSON.stringify(records.map((record) => [record.id, record.senses.map((sense) => sense.id)]))
     !== JSON.stringify(meta.records.map((record) => [record.record_id, record.sense_ids]))) {
     fail('the Canonical records of this chunk changed since prepare');
@@ -1098,53 +1095,9 @@ async function saveActiveInternal({ inputPath, root, supervisorFixAttempts }) {
       errors: all_errors.slice(0, MAX_REJECTED_ERRORS).map((message) => message.slice(0, MAX_REJECTED_ERROR_CHARS)),
       error_count: all_errors.length,
     };
-    if (supervisorFixAttempts !== undefined) {
-      if (!Number.isSafeInteger(supervisorFixAttempts) || supervisorFixAttempts < MAX_FIXES
-        || repairScope !== 'decisions' || !failedRecords?.length || hitBearingZ.length > 0 || searchFailed) {
-        fail('supervisor technical skip requires exhausted fixes and exact record-local decision errors');
-      }
-      let prior;
-      try {
-        prior = JSON.parse(await readFile(files.rejected, 'utf8'));
-      } catch {
-        fail('supervisor technical skip requires the current CLI rejection record');
-      }
-      if (prior.diagnostic !== 'save_rejected' || prior.repair_scope !== 'decisions'
-        || prior.chunk_no !== meta.chunk_no || prior.view_sha256 !== meta.view_sha256 || prior.git_head !== meta.git_head
-        || prior.decisions_sha256 !== rejection.decisions_sha256 || prior.searches_sha256 !== rejection.searches_sha256
-        || prior.error_count !== rejection.error_count
-        || JSON.stringify(prior.failed_records) !== JSON.stringify(rejection.failed_records)) {
-        fail('supervisor technical skip rejection is stale or does not match the current decision and search files');
-      }
-      const skippedIds = new Set(failedRecords.map((item) => item.record_id));
-      const skipFile = {
-        contract: TECHNICAL_SKIP_CONTRACT,
-        diagnostic: 'save_rejected',
-        shard: meta.shard, batch: meta.batch, model: meta.model, chunk_no: meta.chunk_no,
-        view_sha256: meta.view_sha256, git_head: meta.git_head, fix_attempts: supervisorFixAttempts,
-        decisions_sha256: rejection.decisions_sha256, searches_sha256: rejection.searches_sha256,
-        error_count: rejection.error_count,
-        skips: failedRecords.map((item) => {
-          const record = recordById.get(item.record_id);
-          return { record_id: record.id, sense_ids: record.senses.map((sense) => sense.id),
-            failed_sense_ids: item.failed_sense_ids, errors: item.errors };
-        }),
-      };
-      const serializedSkips = JSON.stringify(skipFile);
-      if (existsSync(files.technicalSkips)) {
-        let existing;
-        try { existing = JSON.parse(await readFile(files.technicalSkips, 'utf8')); } catch { fail('existing technical skip record is damaged'); }
-        if (JSON.stringify(existing) !== serializedSkips) fail('existing technical skip record does not match the current failure');
-      } else {
-        await writeAtomic(files.technicalSkips, serializedSkips);
-      }
-      const skippedRows = rows.map((row, index) => skippedIds.has(row.record_id) ? emptyRows([records[index]])[0] : row);
-      await saveChunk(directory, meta.chunk_no, skippedRows, expectedOf(records));
-      return { status: 'SAVED_WITH_TECHNICAL_SKIPS', chunk_no: meta.chunk_no, records: skippedRows.length,
-        senses: meta.senses.length, technical_skipped_records: failedRecords.length,
-        technical_skips: skipFile.skips.map(({ record_id, sense_ids, failed_sense_ids }) => ({ record_id, sense_ids, failed_sense_ids })),
-        removed_candidates: removedCandidates };
-    }
+    if (readOnly) return { status: 'REJECTED', repair_scope: repairScope, rows, failed_records: failedRecords,
+      hit_bearing_z: hitBearingZ, search_failed: searchFailed, decisions_sha256: rejection.decisions_sha256,
+      searches_sha256: rejection.searches_sha256, error_count: rejection.error_count };
     // One diagnostic bound to this active chunk, for the War Room Supervisor (never read from tool logs). It holds only
     // the rejection reasons, never the view or search contexts. A hit-bearing Z cannot be repaired by editing decisions.
     await writeAtomic(files.rejected, JSON.stringify(rejection));
@@ -1152,7 +1105,7 @@ async function saveActiveInternal({ inputPath, root, supervisorFixAttempts }) {
     error.exitCode = 2;
     throw error;
   }
-  if (supervisorFixAttempts !== undefined) fail('supervisor technical skip requires a current rejected decision file');
+  if (readOnly) return { status: 'VALID', rows, removed_candidates: removedCandidates };
   await saveChunk(directory, meta.chunk_no, rows, expectedOf(records));
   return { status: 'SAVED', chunk_no: meta.chunk_no, records: rows.length, senses: meta.senses.length,
     removed_candidates: removedCandidates };
@@ -1162,12 +1115,9 @@ export async function saveActive({ inputPath, root }) {
   return saveActiveInternal({ inputPath, root });
 }
 
-/** Internal API called by the War Room Supervisor after it verifies the same-session retry budget. */
-export async function supervisorSkipActive({ inputPath, root, fixAttempts }) {
-  if (!Number.isSafeInteger(fixAttempts) || fixAttempts < MAX_FIXES) {
-    fail('supervisor technical skip requires the Supervisor retry budget');
-  }
-  return saveActiveInternal({ inputPath, root, supervisorFixAttempts: fixAttempts });
+/** Read-only validation for the War Room Supervisor's own fallback writer. This API cannot save a chunk or a skip. */
+export async function inspectActiveForSupervisor({ inputPath, root }) {
+  return saveActiveInternal({ inputPath, root, readOnly: true });
 }
 
 // ---- command line -----------------------------------------------------------------------------------------------------

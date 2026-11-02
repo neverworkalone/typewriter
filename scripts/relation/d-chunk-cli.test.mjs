@@ -23,7 +23,6 @@ import {
   searchActive,
   searchBatchActive,
   searchForContexts,
-  supervisorSkipActive,
 } from './d-chunk-cli.mjs';
 
 const SYLLABLES = ['가', '나', '다', '라', '마', '바', '사', '아', '자', '차'];
@@ -161,29 +160,6 @@ const chunkPath = (world, kind, number = 1) => path.join(world.directory, {
 }[kind]);
 const meta = (world, number = 1) => readFile(chunkPath(world, 'active', number), 'utf8').then(JSON.parse);
 const view = (world, number = 1) => readFile(chunkPath(world, 'view', number), 'utf8');
-
-async function makeSupervisorRetryState(world, { attempts, completedRetries, databaseName = 'warroom.db',
-  ownerWorktree = world.root }) {
-  const active = await meta(world);
-  const databasePath = databaseName === 'warroom.db'
-    ? path.join(world.repositoryRoot ?? world.root, 'tools/warroom/.local/warroom.db')
-    : path.join(world.root, databaseName);
-  await mkdir(path.dirname(databasePath), { recursive: true });
-  const database = new DatabaseSync(databasePath);
-  database.exec(`
-    CREATE TABLE batches (id INTEGER PRIMARY KEY, method TEXT, producer TEXT, shard TEXT, batch TEXT,
-      worktree TEXT, session_id TEXT);
-    CREATE TABLE kv (key TEXT PRIMARY KEY, value TEXT NOT NULL);
-    CREATE TABLE runs (id INTEGER PRIMARY KEY, batch_id INTEGER, kind TEXT, session_id TEXT, ended_at REAL);
-  `);
-  database.prepare('INSERT INTO batches VALUES (1, ?, ?, ?, ?, ?, ?)')
-    .run('d', active.model, active.shard, active.batch, ownerWorktree, 'ses_d');
-  database.prepare('INSERT INTO kv VALUES (?, ?)').run('d_fix_1:1', String(attempts));
-  const run = database.prepare('INSERT INTO runs(batch_id, kind, session_id, ended_at) VALUES (1, ?, ?, ?)');
-  for (let index = 0; index < completedRetries; index += 1) run.run('d_chunk_fix', 'ses_d', index + 1);
-  database.close();
-  return databasePath;
-}
 
 withWorld('prepare shares one record search across senses and judges each sense separately', async (world) => {
   const result = await prepareChunk({ ...world.options, chunkNumber: 1 });
@@ -1050,46 +1026,11 @@ withWorld('cursor next resumes recorded search pages and invalid cursor input le
   assert.ok(manualNext.result.items.length > 0, 'the exact manual forms order and boundary resumes successfully');
 });
 
-withWorld('copied D producer CLI cannot invoke technical skip; the Supervisor internal API excludes only the failed Record', async (world) => {
-  await prepareChunk({ ...world.options, chunkNumber: 1 });
-  const active = await meta(world);
-  const failedRef = active.senses.find((item) => item.sense_id === 'w001-s1').ref;
-  const lines = active.senses.filter((item) => !item.auto && item.ref !== failedRef).map((item) => {
-    if (item.record_id === 'w001') return `${item.ref} V 해무`;
-    if (item.record_id === 'w005') return `${item.ref} V 선택`;
-    return `${item.ref} Z`;
-  });
-  const decisionsPath = chunkPath(world, 'decisions');
-  await writeFile(decisionsPath, `${lines.join('\n')}\n`);
-  await assert.rejects(saveActive({ inputPath: decisionsPath, root: world.root }), /missing/u);
-  const rejection = JSON.parse(await readFile(chunkPath(world, 'rejected'), 'utf8'));
-  assert.deepEqual(rejection.failed_records.map(({ record_id, failed_sense_ids }) => [record_id, failed_sense_ids]),
-    [['w001', ['w001-s1']]]);
-  assert.equal(rejection.repair_scope, 'decisions');
-
-  const originalDecisions = await readFile(decisionsPath, 'utf8');
-  const forgedDatabasePath = await makeSupervisorRetryState(world, { attempts: 1, completedRetries: 1 });
-  const cliPath = path.join(world.repositoryRoot, 'scripts/relation/d-chunk-cli.mjs');
-  const forged = await runCli(['supervisor-skip', '--in', decisionsPath, '--dir', world.root], '', {
-    WARROOM_SUPERVISOR_STATE_DB: forgedDatabasePath, WARROOM_SUPERVISOR_BATCH_ID: '999',
-  }, world.root, cliPath);
-  assert.notEqual(forged.code, 0);
-  assert.match(forged.stderr, /usage: d-chunk-cli\.mjs/u);
-  assert.equal(existsSync(path.join(world.directory, 'chunk-001.jsonl')), false);
-  await writeFile(decisionsPath, `${originalDecisions}\n`);
-  await assert.rejects(supervisorSkipActive({ inputPath: decisionsPath, root: world.root, fixAttempts: 1 }), /stale/u);
-  assert.equal(existsSync(path.join(world.directory, 'chunk-001.jsonl')), false);
-  await writeFile(decisionsPath, originalDecisions);
-  const result = await supervisorSkipActive({ inputPath: decisionsPath, root: world.root, fixAttempts: 1 });
-  assert.equal(result.status, 'SAVED_WITH_TECHNICAL_SKIPS');
-  assert.deepEqual(result.technical_skips.map((item) => item.record_id), ['w001']);
-  const rows = (await readFile(path.join(world.directory, 'chunk-001.jsonl'), 'utf8')).trim().split('\n').map(JSON.parse);
-  assert.ok(rows[0].senses.every((sense) => sense.candidates.length === 0), 'all senses share the excluded Record evidence');
-  assert.deepEqual(rows.find((row) => row.record_id === 'w005').senses[0].candidates, ['선택']);
-  assert.equal((await readFile(chunkPath(world, 'technicalSkips'), 'utf8')).length > 0, true);
-  assert.equal((await readFile(chunkPath(world, 'decisions'), 'utf8')).includes(`${failedRef} `), false,
-    'the submitted decision file remains unchanged and does not gain a skip marker');
-}, { supervisorWorktree: true });
+test('D producer-visible module has no technical-skip writer', async () => {
+  const module = await import('./d-chunk-cli.mjs');
+  assert.equal('supervisorSkipActive' in module, false);
+  assert.throws(() => module.supervisorSkipActive({ fixAttempts: 1 }), TypeError);
+});
 
 withWorld('single and batch continuation SEARCH_FAILED is returned, persisted, and blocks save', async (world) => {
   await prepareChunk({ ...world.options, chunkNumber: 1 });

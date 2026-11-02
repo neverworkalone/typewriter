@@ -18,7 +18,6 @@ export const LITERARY_CONTEXT_CONTRACT = 'literary-context-v3';
 export const CHECKPOINT_CONTRACT = 'literary-checkpoint-v3';
 const LEGACY_CHECKPOINT_CONTRACT = 'literary-checkpoint-v2';
 export const MAX_RESPONSE_CHARS = 40_000;
-export const REQUIRED_SUPERVISOR_RESUBMITS = 2;
 export const SWEEP_LENSES = Object.freeze([
   'image',
   'action',
@@ -1281,120 +1280,6 @@ export async function submitLiteraryChunk({ databasePath, checkpointPath, submis
     candidates: accepted.reduce((sum, item) => sum + item.submission.candidates.length, 0),
     pending_senses: targetsPending(checkpoint),
   };
-}
-
-/**
- * Supervisor-only final fallback for one exactly diagnosed source Sense. The ordinary `submit` schema remains
- * unchanged: only this separate command may record TECHNICAL_SKIPPED, and only after every unaffected active Sense
- * is already accepted or is saved through the ordinary submit validator.
- */
-export async function supervisorSkipLiterarySense({ databasePath, checkpointPath, submission, diagnostic,
-  retryAttempts, inputSha256,
-  scratchDirectory = path.resolve(CHECKPOINT_SCRATCH_DIRECTORY) }) {
-  const { checkpoint, path: resolvedCheckpoint } = await loadLiteraryCheckpoint(checkpointPath, { scratchDirectory });
-  if (checkpoint.contract !== CHECKPOINT_CONTRACT) fail('technical skip requires a v3 literary checkpoint');
-  if (!isPlainObject(submission) || !exactKeys(submission, ['senses']) || !Array.isArray(submission.senses) || submission.senses.length === 0) {
-    fail('technical skip requires the unchanged active submit file');
-  }
-  if (!isPlainObject(diagnostic) || diagnostic.status !== 'FAILED' || diagnostic.diagnostic !== 'submit_validation'
-    || diagnostic.repair_scope !== 'resubmit_affected_sense' || diagnostic.issues_truncated === true
-    || !Array.isArray(diagnostic.issues) || diagnostic.issues.length !== 1
-    || !/^[a-f0-9]{64}$/u.test(inputSha256 ?? '') || diagnostic.input_sha256 !== inputSha256) {
-    fail('technical skip requires one current, source-Sense-local submit diagnostic');
-  }
-  const affected = diagnostic.affected;
-  const issue = diagnostic.issues[0];
-  const entryNumber = affected?.entry_number;
-  const reason = diagnostic.reason;
-  const allowedReasons = new Set([
-    'context_key_not_found', 'context_key_ambiguous', 'context_key_too_short', 'duplicate_verified',
-    'missing_verified', 'no_literary_hits', 'submission_schema',
-  ]);
-  if (!Number.isSafeInteger(entryNumber) || entryNumber < 1 || entryNumber > submission.senses.length
-    || !isNonEmptyString(affected?.sense_id) || !allowedReasons.has(reason)
-    || issue?.entry_number !== entryNumber || issue?.reason !== reason || issue?.field !== affected.field) {
-    fail('technical skip diagnostic does not identify one eligible submit entry');
-  }
-
-  const activePath = assertScratchPath(path.resolve(scratchDirectory, 'c-active-chunk.json'), scratchDirectory);
-  const active = JSON.parse(await readFile(activePath, 'utf8'));
-  if (!isPlainObject(active) || active.repair === true || !Number.isSafeInteger(active.chunk_no)
-    || !Array.isArray(active.sense_ids) || active.sense_ids.length === 0) {
-    fail('technical skip active chunk binding is damaged');
-  }
-  if (active.shard !== checkpoint.batch.shard || active.batch !== checkpoint.batch.batch
-    || active.model !== checkpoint.batch.model || typeof active.view_sha256 !== 'string'
-    || !/^[a-f0-9]{64}$/u.test(active.view_sha256) || active.git_head !== checkpoint.batch.git_head || active.chunk_no < 1) {
-    fail('technical skip active chunk belongs to another batch or has no view/head binding');
-  }
-  if (!Number.isSafeInteger(retryAttempts) || retryAttempts < REQUIRED_SUPERVISOR_RESUBMITS) {
-    fail('technical skip requires the Supervisor retry budget');
-  }
-  const activeView = await readFile(assertScratchPath(path.resolve(scratchDirectory, 'c-active-chunk.txt'), scratchDirectory));
-  if (sha256(activeView) !== active.view_sha256) fail('technical skip active view no longer matches the rejected chunk');
-  const targetId = affected.sense_id;
-  const target = submission.senses[entryNumber - 1];
-  if (!isPlainObject(target) || target.sense_id !== targetId
-    || submission.senses.filter((entry) => entry?.sense_id === targetId).length !== 1
-    || !active.sense_ids.includes(targetId)) {
-    fail('technical skip entry number does not match the exact active source Sense');
-  }
-
-  const activeIds = new Set(active.sense_ids);
-  const seen = new Set();
-  for (const entry of submission.senses) {
-    if (!isPlainObject(entry) || !isNonEmptyString(entry.sense_id) || !activeIds.has(entry.sense_id) || seen.has(entry.sense_id)) {
-      fail('technical skip submit file contains a duplicate, unknown, or foreign Sense');
-    }
-    seen.add(entry.sense_id);
-  }
-  const { sense: targetSense } = findSense(checkpoint, targetId);
-  if (targetSense.submission) fail('technical skip cannot overwrite a saved Sense submission');
-
-  const pending = [];
-  for (const entry of submission.senses) {
-    if (entry.sense_id === targetId) continue;
-    const { sense } = findSense(checkpoint, entry.sense_id);
-    if (!senseDone(sense)) pending.push(entry);
-  }
-  if (pending.length > 0) {
-    const remaining = { senses: pending };
-    validateSubmission(remaining, checkpoint);
-    await submitLiteraryChunk({ databasePath, checkpointPath, submission: remaining, scratchDirectory });
-  }
-  const { checkpoint: currentCheckpoint } = await loadLiteraryCheckpoint(resolvedCheckpoint, { scratchDirectory });
-  const { record: targetRecord, sense: currentTarget } = findSense(currentCheckpoint, targetId);
-  if (currentTarget.submission) fail('technical skip cannot overwrite a Sense saved while processing unaffected entries');
-  for (const senseId of active.sense_ids) {
-    const { sense } = findSense(currentCheckpoint, senseId);
-    if (senseId !== targetId && !senseDone(sense)) {
-      fail(`technical skip refused: unaffected active Sense ${senseId} is not saved`);
-    }
-  }
-
-  currentTarget.submission = {
-    status: 'TECHNICAL_SKIPPED',
-    candidates: [],
-    technical_skip: {
-      record_id: targetRecord.record_id,
-      sense_id: targetId,
-      diagnostic: diagnostic.diagnostic,
-      reason,
-      field: affected.field,
-      entry_number: entryNumber,
-      chunk_no: active.chunk_no,
-      view_sha256: active.view_sha256,
-      git_head: active.git_head,
-      retry_attempts: retryAttempts,
-      input_sha256: inputSha256,
-      skipped_at: new Date().toISOString(),
-    },
-  };
-  markOutputStale(currentCheckpoint, 'supervisor technical skip');
-  await saveCheckpoint(resolvedCheckpoint, currentCheckpoint);
-  return { status: 'TECHNICAL_SKIPPED', record_id: targetRecord.record_id, sense_id: targetId,
-    diagnostic: diagnostic.diagnostic, reason, field: affected.field, retry_attempts: retryAttempts,
-    pending_senses: targetsPending(currentCheckpoint) };
 }
 
 export function summarizeLiteraryCheckpoint(checkpoint) {

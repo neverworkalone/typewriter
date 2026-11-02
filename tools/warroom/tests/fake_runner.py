@@ -42,10 +42,8 @@ class ScriptedRunner(Runner):
         argv = ["git", *argv[1:]] if argv and os.path.basename(argv[0]) == "git" else argv   # a resolved Git path
         self.calls.append(list(argv))
         if argv[:3] == ["node", "--input-type=module", "-e"]:
-            if "supervisorSkipLiterarySense" in argv[3]:
-                return self.literary.run_internal(argv, input)
-            if "supervisorSkipActive" in argv[3]:
-                return self.dchunk.run_internal(argv, input)
+            if "inspectActiveForSupervisor" in argv[3]:
+                return self.dchunk.inspect_internal(argv, input)
         if argv[:2] == ["node", "scripts/relation/literary-context-cli.mjs"]:
             return self.literary.run(argv, cwd, env, input)
         if argv[:2] == WORKBENCH_CLI:

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -391,31 +392,90 @@ def read_rejection(worktree, b, rec: dict) -> dict | None:
     return diag
 
 
-def supervisor_skip(runner, env, worktree, b, rec: dict, fix_attempts: int) -> dict:
-    """Use the internal fallback only after this Supervisor counted the same-session correction."""
+def supervisor_skip(store, runner, env, worktree, b, rec: dict) -> dict:
+    """Validate and write D's technical fallback inside War Room using its persisted retry count."""
+    owner = store.batch(b["id"])
+    if (not owner or owner["method"] != "d" or owner["producer"] != b["producer"]
+            or owner["shard"] != b["shard"] or owner["batch"] != b["batch"]
+            or Path(owner["worktree"]) != Path(worktree) or owner["session_id"] != b.get("session_id")):
+        raise DChunkError("D technical skip requires the active War Room-owned batch")
+    fix_attempts = int(store.get(fix_key(b["id"], rec["chunk_no"])) or 0)
     diag = read_rejection(worktree, b, rec)
     if diag is None or fix_attempts < MAX_FIXES:
         raise DChunkError("D technical skip lacks an exact current rejection or exhausted fix budget")
     n = chunk_names(b, rec["chunk_no"])
     payload = {"inputPath": str((Path(worktree) / n.decisions).resolve()),
-               "root": str((Path(worktree) / SCRATCH).resolve()), "fixAttempts": fix_attempts}
-    script = ("import { supervisorSkipActive } from './scripts/relation/d-chunk-cli.mjs';\n"
+               "root": str((Path(worktree) / SCRATCH).resolve())}
+    script = ("import { inspectActiveForSupervisor } from './scripts/relation/d-chunk-cli.mjs';\n"
               "let input = ''; for await (const part of process.stdin) input += part;\n"
-              "const result = await supervisorSkipActive(JSON.parse(input));\n"
+              "const result = await inspectActiveForSupervisor(JSON.parse(input));\n"
               "process.stdout.write(JSON.stringify(result) + '\\n');")
     supervisor_root = Path(__file__).resolve().parents[3]
     result = runner.run(["node", "--input-type=module", "-e", script], cwd=supervisor_root, env=env,
                         input=json.dumps(payload), timeout=900)
-    data = _json(result, "D supervisor technical skip")
-    if data.get("status") != "SAVED_WITH_TECHNICAL_SKIPS" or data.get("chunk_no") != rec["chunk_no"] \
-            or data.get("technical_skipped_records") != len(diag["failed_records"]) \
-            or not isinstance(data.get("technical_skips"), list):
-        raise DChunkError("D technical skip did not return the exact failed Record scope")
-    got = [item.get("record_id") for item in data["technical_skips"] if isinstance(item, dict)]
-    expected = [item["record_id"] for item in diag["failed_records"]]
-    if got != expected or len(got) != len(expected):
-        raise DChunkError("D technical skip Record IDs differ from the CLI rejection")
-    return data
+    inspection = _json(result, "D supervisor read-only inspection")
+    failed = inspection.get("failed_records")
+    if (inspection.get("status") != "REJECTED" or inspection.get("repair_scope") != "decisions"
+            or inspection.get("hit_bearing_z") or inspection.get("search_failed") is not False
+            or inspection.get("decisions_sha256") != diag["decisions_sha256"]
+            or inspection.get("searches_sha256") != diag["searches_sha256"]
+            or inspection.get("error_count") != diag.get("error_count")
+            or failed != diag["failed_records"] or not isinstance(inspection.get("rows"), list)):
+        raise DChunkError("D read-only inspection differs from the current retryable rejection")
+    active = read_active(worktree, b)
+    if active is None or active.get("chunk_no") != rec["chunk_no"]:
+        raise DChunkError("D active chunk changed during technical fallback")
+    rows = inspection["rows"]
+    rows_by_id = {row.get("record_id"): row for row in rows if isinstance(row, dict)}
+    if len(rows_by_id) != len(rows):
+        raise DChunkError("D read-only inspection returned malformed Candidate rows")
+    skips = []
+    for item in failed:
+        row = rows_by_id.get(item["record_id"])
+        if row is None or not isinstance(row.get("senses"), list) or not row["senses"]:
+            raise DChunkError("D rejected Record is absent from the validated chunk rows")
+        skips.append({"record_id": item["record_id"],
+                      "sense_ids": [sense["sense_id"] for sense in row["senses"]],
+                      "failed_sense_ids": item["failed_sense_ids"], "errors": item["errors"]})
+    skip_file = {"contract": "d-technical-skips-v1", "diagnostic": "save_rejected",
+                 "shard": active["shard"], "batch": active["batch"], "model": active["model"],
+                 "chunk_no": rec["chunk_no"], "view_sha256": rec["view_sha256"], "git_head": rec["git_head"],
+                 "fix_attempts": fix_attempts, "decisions_sha256": diag["decisions_sha256"],
+                 "searches_sha256": diag["searches_sha256"], "error_count": diag["error_count"], "skips": skips}
+    skip_path = Path(worktree) / n.technical_skips
+    serialized_skip = json.dumps(skip_file, ensure_ascii=False, separators=(",", ":"))
+    if skip_path.exists():
+        try:
+            existing = json.loads(skip_path.read_text("utf-8"))
+        except (OSError, ValueError) as error:
+            raise DChunkError("existing D technical skip record is damaged") from error
+        if existing != skip_file:
+            raise DChunkError("existing D technical skip record differs from this failure")
+    else:
+        temporary = skip_path.with_name(skip_path.name + ".tmp")
+        temporary.write_text(serialized_skip, "utf-8")
+        os.replace(temporary, skip_path)
+    skipped_ids = {item["record_id"] for item in failed}
+    output_rows = []
+    for row in rows:
+        row = {"record_id": row["record_id"], "senses": row["senses"]}
+        if row["record_id"] in skipped_ids:
+            row["senses"] = [{"sense_id": sense["sense_id"], "candidates": []} for sense in row["senses"]]
+        output_rows.append(row)
+    output = Path(worktree) / n.directory / f"chunk-{rec['chunk_no']:03d}.jsonl"
+    if output.exists():
+        raise DChunkError("D chunk became saved before the technical fallback")
+    temporary_output = output.with_name(output.name + ".tmp")
+    temporary_output.write_text("".join(json.dumps(row, ensure_ascii=False, separators=(",", ":")) + "\n"
+                                    for row in output_rows), "utf-8")
+    os.replace(temporary_output, output)
+    prefix, _ = verified_prefix(worktree, b)
+    if prefix < rec["chunk_no"]:
+        raise DChunkError("D technical fallback output did not validate as the next Candidate chunk")
+    return {"status": "SAVED_WITH_TECHNICAL_SKIPS", "chunk_no": rec["chunk_no"], "records": len(rows),
+            "technical_skipped_records": len(skips),
+            "technical_skips": [{"record_id": item["record_id"], "sense_ids": item["sense_ids"],
+                                  "failed_sense_ids": item["failed_sense_ids"]} for item in skips]}
 
 
 def has_search_failure(worktree, b) -> bool:

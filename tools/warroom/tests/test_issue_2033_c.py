@@ -208,6 +208,12 @@ class SerialChunks(unittest.TestCase):
             else:
                 w.finish_last()
                 w.tick()
+                if attempt == 1:
+                    batch = w.row("deepseek", "c")
+                    active = w.active()
+                    self.assertEqual(w.store.get(literary.resubmit_key(batch["id"])), "1")
+                    with self.assertRaisesRegex(literary.LiteraryError, "exhausted Supervisor resubmit budget"):
+                        literary.supervisor_skip(w.store, w.runner, w.sup._c_env(batch), w.wt(), batch, active)
             if attempt < 2:
                 self.assertEqual(w.row("deepseek", "c")["state"], "PRODUCING")
         w.finish_last()

@@ -89,33 +89,21 @@ class FakeDChunkCli:
             "senses": senses}))
         return Result(0, json.dumps({"status": "READY", "ai_senses": len(senses), **base}))
 
-    def run_internal(self, argv, input):
+    def inspect_internal(self, argv, input):
         try:
             payload = json.loads(input or "{}")
             scratch = Path(payload["root"])
             folder = scratch / "d-001_01"
             number = int(Path(payload["inputPath"]).stem.split("-")[-1])
-            fix_attempts = payload["fixAttempts"]
             rejected = json.loads((folder / f"rejected-{number:03d}.json").read_text("utf-8"))
-            active = json.loads((folder / f"active-{number:03d}.json").read_text("utf-8"))
-            failed = rejected["failed_records"]
-            rows = {row["id"]: row for row in self.chunk(number)}
-            skips = [{"record_id": item["record_id"], "sense_ids": [sense["id"] for sense in rows[item["record_id"]]["senses"]],
-                      "failed_sense_ids": item["failed_sense_ids"], "errors": item["errors"]} for item in failed]
+            rows = [{"record_id": row["id"], "senses": [{"sense_id": sense["id"], "candidates": ["후보"]}
+                                                               for sense in row["senses"]]}
+                    for row in self.chunk(number)]
             decisions_sha = hashlib.sha256((folder / f"decision-{number:03d}.txt").read_bytes()).hexdigest()
             searches_sha = hashlib.sha256((folder / f"search-{number:03d}.jsonl").read_bytes()).hexdigest()
-            if (fix_attempts < 1 or decisions_sha != rejected["decisions_sha256"]
-                    or searches_sha != rejected["searches_sha256"] or rejected["repair_scope"] != "decisions"):
-                return Result(1, "", "stale rejection or Supervisor retry count")
-            skip_path = folder / f"technical-skip-{number:03d}.json"
-            skip_path.write_text(json.dumps({"contract": "d-technical-skips-v1", "diagnostic": "save_rejected",
-                "shard": "001", "batch": "01", "model": "deepseek", "chunk_no": number,
-                "view_sha256": active["view_sha256"], "git_head": active["git_head"],
-                "fix_attempts": fix_attempts, "decisions_sha256": decisions_sha,
-                "searches_sha256": searches_sha, "error_count": rejected["error_count"], "skips": skips}), "utf-8")
-            excluded = {item["record_id"] for item in skips}
-            self.save(scratch.parent, number, lambda sid: [] if sid.rsplit("-s", 1)[0] in excluded else ["후보"])
-            return Result(0, json.dumps({"status": "SAVED_WITH_TECHNICAL_SKIPS", "chunk_no": number,
-                "technical_skipped_records": len(skips), "technical_skips": skips}))
+            return Result(0, json.dumps({"status": "REJECTED", "repair_scope": rejected["repair_scope"],
+                "rows": rows, "failed_records": rejected["failed_records"], "hit_bearing_z": [],
+                "search_failed": False, "decisions_sha256": decisions_sha,
+                "searches_sha256": searches_sha, "error_count": rejected["error_count"]}))
         except (OSError, ValueError, KeyError, TypeError) as error:
             return Result(1, "", str(error))

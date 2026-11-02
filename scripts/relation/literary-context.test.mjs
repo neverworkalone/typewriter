@@ -5,7 +5,6 @@ import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import test from 'node:test';
 import { DatabaseSync } from 'node:sqlite';
-import { pathToFileURL } from 'node:url';
 
 import {
   addSearchForm,
@@ -172,30 +171,6 @@ async function makeFixture({ unitCount = 2, unitText, unitTexts, firstForm = '�
 
 async function cleanup(fixture) {
   await rm(fixture.containerRoot ?? fixture.root, { recursive: true, force: true });
-}
-
-async function makeSupervisorRetryState(fixture, { attempts, completedRetries, databaseName = 'warroom.db',
-  ownerWorktree = fixture.root }) {
-  const worktree = fixture.root;
-  const repositoryRoot = fixture.repositoryRoot ?? worktree;
-  const databasePath = databaseName === 'warroom.db'
-    ? path.join(repositoryRoot, 'tools/warroom/.local/warroom.db')
-    : path.join(worktree, databaseName);
-  await mkdir(path.dirname(databasePath), { recursive: true });
-  const database = new DatabaseSync(databasePath);
-  database.exec(`
-    CREATE TABLE batches (id INTEGER PRIMARY KEY, method TEXT, producer TEXT, shard TEXT, batch TEXT,
-      worktree TEXT, session_id TEXT);
-    CREATE TABLE kv (key TEXT PRIMARY KEY, value TEXT NOT NULL);
-    CREATE TABLE runs (id INTEGER PRIMARY KEY, batch_id INTEGER, kind TEXT, session_id TEXT, ended_at REAL);
-  `);
-  database.prepare('INSERT INTO batches VALUES (1, ?, ?, ?, ?, ?, ?)')
-    .run('c', 'codex', '001', '01', ownerWorktree, 'ses_c');
-  database.prepare('INSERT INTO kv VALUES (?, ?)').run('c_resubmit_1', String(attempts));
-  const run = database.prepare('INSERT INTO runs(batch_id, kind, session_id, ended_at) VALUES (1, ?, ?, ?)');
-  for (let index = 0; index < completedRetries; index += 1) run.run('c_chunk_resume', 'ses_c', index + 1);
-  database.close();
-  return databasePath;
 }
 
 async function makeRetiredParagraphIndex() {
@@ -477,133 +452,10 @@ test('submission fails closed and writes nothing for uncited, duplicate or unkno
   }
 });
 
-test('Supervisor C technical fallback preserves unaffected submissions and records a distinct empty status', async () => {
-  const fixture = await makeFixture({ unitCount: 3, firstSenseGlosses: ['meaning one', 'meaning two'],
-    supervisorWorktree: true });
-  try {
-    const { supervisorSkipLiterarySense: supervisorSkip } = await import(pathToFileURL(
-      path.join(fixture.repositoryRoot, 'scripts/relation/literary-context.mjs'),
-    ).href);
-    const ids = fixture.records[0].senses.map((sense) => sense.id);
-    const view = await readLiteraryChunk({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath,
-      senseIds: ids.join(','), limit: 2, contexts: 8, skip: 0, format: 'json', scratchDirectory: fixture.scratchDirectory });
-    const goodKey = view.items.find((item) => item.sense_id === ids[1]).contexts[0].k;
-    const submission = { senses: [
-      { sense_id: ids[0], verified: ['0'.repeat(12)], candidates: ['어둠'] },
-      { sense_id: ids[1], verified: [goodKey], candidates: ['새벽'] },
-    ] };
-    const inputText = JSON.stringify(submission);
-    const inputPath = path.join(fixture.scratchDirectory, 'c-chunk-014.submit.json');
-    await writeFile(inputPath, inputText);
-    const inputSha256 = createHash('sha256').update(inputText).digest('hex');
-    const diagnostic = { status: 'FAILED', diagnostic: 'submit_validation', repair_scope: 'resubmit_affected_sense',
-      reason: 'context_key_not_found', affected: { sense_id: ids[0], field: 'verified', entry_number: 1 },
-      issues: [{ entry_number: 1, reason: 'context_key_not_found', field: 'verified' }], input_sha256: inputSha256 };
-    const viewText = renderChunkText(view);
-    await writeFile(path.join(fixture.scratchDirectory, 'c-active-chunk.txt'), viewText);
-    await writeFile(path.join(fixture.scratchDirectory, 'c-active-chunk.json'), JSON.stringify({
-      shard: '001', batch: '01', model: 'codex', chunk_no: 14, sense_ids: ids,
-      view_sha256: createHash('sha256').update(viewText).digest('hex'), git_head: (await loadLiteraryCheckpoint(fixture.checkpointPath,
-        { scratchDirectory: fixture.scratchDirectory })).checkpoint.batch.git_head,
-    }));
-    const before = await loadLiteraryCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory });
-    const targetBefore = before.checkpoint.records[0].senses[0];
-    await assert.rejects(supervisorSkip({ databasePath: fixture.databasePath,
-      checkpointPath: fixture.checkpointPath, submission, diagnostic,
-      retryAttempts: 1, inputSha256: 'f'.repeat(64),
-      scratchDirectory: fixture.scratchDirectory }), /current, source-Sense-local/u);
-    await assert.rejects(supervisorSkip({ databasePath: fixture.databasePath,
-      checkpointPath: fixture.checkpointPath, submission,
-      diagnostic: { ...diagnostic, issues: [...diagnostic.issues, diagnostic.issues[0]] },
-      retryAttempts: 1, inputSha256,
-      scratchDirectory: fixture.scratchDirectory }), /one current, source-Sense-local/u);
-    await assert.rejects(supervisorSkip({ databasePath: fixture.databasePath,
-      checkpointPath: fixture.checkpointPath, submission,
-      diagnostic: { ...diagnostic, affected: { ...diagnostic.affected, entry_number: 2 } },
-      retryAttempts: 1, inputSha256,
-      scratchDirectory: fixture.scratchDirectory }), /diagnostic does not identify/u);
-    await assert.rejects(supervisorSkip({ databasePath: fixture.databasePath,
-      checkpointPath: fixture.checkpointPath, submission, diagnostic,
-      retryAttempts: 1, inputSha256, scratchDirectory: fixture.scratchDirectory }), /Supervisor retry budget/u);
-    const result = await supervisorSkip({ databasePath: fixture.databasePath,
-      checkpointPath: fixture.checkpointPath, submission, diagnostic,
-      retryAttempts: 2, inputSha256,
-      scratchDirectory: fixture.scratchDirectory });
-    assert.deepEqual([result.status, result.record_id, result.sense_id, result.reason],
-      ['TECHNICAL_SKIPPED', 'record-000001', ids[0], 'context_key_not_found']);
-
-    const after = (await loadLiteraryCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory })).checkpoint;
-    const skipped = after.records[0].senses[0];
-    const saved = after.records[0].senses[1];
-    assert.equal(skipped.submission.status, 'TECHNICAL_SKIPPED');
-    assert.deepEqual(skipped.submission.candidates, []);
-    assert.deepEqual(skipped.search, targetBefore.search);
-    assert.deepEqual(skipped.contexts, targetBefore.contexts);
-    assert.equal(saved.submission.status, 'SUBMITTED');
-    assert.deepEqual(saved.submission.candidates, ['새벽']);
-    assert.deepEqual(summarizeLiteraryCheckpoint(after).technical_skips, [{ record_id: 'record-000001', sense_id: ids[0],
-      diagnostic: 'submit_validation', reason: 'context_key_not_found', field: 'verified', retry_attempts: 2 }]);
-  } finally {
-    await cleanup(fixture);
-  }
-});
-
-test('copied C producer CLI cannot invoke technical skip; the Supervisor internal API preserves the other Sense', async () => {
-  const fixture = await makeFixture({ unitCount: 3, firstSenseGlosses: ['meaning one', 'meaning two'],
-    supervisorWorktree: true });
-  try {
-    const ids = fixture.records[0].senses.map((sense) => sense.id);
-    const view = await readLiteraryChunk({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath,
-      senseIds: ids.join(','), limit: 2, contexts: 8, skip: 0, format: 'json', scratchDirectory: fixture.scratchDirectory });
-    const goodKey = view.items.find((item) => item.sense_id === ids[1]).contexts[0].k;
-    const inputPath = path.join(fixture.scratchDirectory, 'c-chunk-014.submit.json');
-    const inputText = JSON.stringify({ senses: [
-      { sense_id: ids[0], verified: ['0'.repeat(12)], candidates: ['어둠'] },
-      { sense_id: ids[1], verified: [goodKey], candidates: ['새벽'] },
-    ] });
-    await writeFile(inputPath, inputText);
-    const viewText = renderChunkText(view);
-    await writeFile(path.join(fixture.scratchDirectory, 'c-active-chunk.txt'), viewText);
-    const checkpoint = await loadLiteraryCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory });
-    await writeFile(path.join(fixture.scratchDirectory, 'c-active-chunk.json'), JSON.stringify({
-      shard: '001', batch: '01', model: 'codex', chunk_no: 14, sense_ids: ids,
-      view_sha256: createHash('sha256').update(viewText).digest('hex'), git_head: checkpoint.checkpoint.batch.git_head,
-    }));
-
-    const failed = runCli(fixture, ['submit', '--db', fixture.databasePath, '--checkpoint', fixture.checkpointPath, '--input', inputPath]);
-    assert.equal(failed.status, 1);
-    const diagnostic = JSON.parse(await readFile(`${inputPath}.diag.json`, 'utf8'));
-    assert.equal(diagnostic.reason, 'context_key_not_found');
-    assert.equal(diagnostic.affected.sense_id, ids[0]);
-    assert.equal(diagnostic.affected.entry_number, 1);
-
-    const forgedDatabasePath = await makeSupervisorRetryState(fixture, { attempts: 2, completedRetries: 2 });
-    const checkpointBefore = await readFile(fixture.checkpointPath);
-    const copiedCliSkip = runCli(fixture, ['supervisor-skip', '--db', fixture.databasePath,
-      '--checkpoint', fixture.checkpointPath, '--input', inputPath], {
-      WARROOM_SUPERVISOR_STATE_DB: forgedDatabasePath, WARROOM_SUPERVISOR_BATCH_ID: '1',
-    });
-    assert.equal(copiedCliSkip.status, 1);
-    assert.match(copiedCliSkip.stderr, /unknown command/u);
-    assert.deepEqual(await readFile(fixture.checkpointPath), checkpointBefore);
-    const copiedLibrary = await import(pathToFileURL(
-      path.join(fixture.repositoryRoot, 'scripts/relation/literary-context.mjs'),
-    ).href);
-    const result = await copiedLibrary.supervisorSkipLiterarySense({
-      databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath,
-      submission: JSON.parse(inputText), diagnostic,
-      retryAttempts: 2, inputSha256: createHash('sha256').update(inputText).digest('hex'),
-      scratchDirectory: fixture.scratchDirectory,
-    });
-    assert.deepEqual([result.status, result.record_id, result.sense_id, result.retry_attempts],
-      ['TECHNICAL_SKIPPED', 'record-000001', ids[0], 2]);
-    const saved = (await loadLiteraryCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory })).checkpoint;
-    assert.equal(saved.records[0].senses[0].submission.status, 'TECHNICAL_SKIPPED');
-    assert.equal(saved.records[0].senses[1].submission.status, 'SUBMITTED');
-    assert.deepEqual(saved.records[0].senses[1].submission.candidates, ['새벽']);
-  } finally {
-    await cleanup(fixture);
-  }
+test('C producer-visible module has no technical-skip writer', async () => {
+  const module = await import('./literary-context.mjs');
+  assert.equal('supervisorSkipLiterarySense' in module, false);
+  assert.throws(() => module.supervisorSkipLiterarySense({ retryAttempts: 2 }), TypeError);
 });
 
 test('submit validation returns bounded reason codes and source-sense fields without echoing private input', async () => {

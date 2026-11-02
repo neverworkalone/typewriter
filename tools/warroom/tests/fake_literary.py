@@ -40,6 +40,10 @@ class FakeLiteraryCli:
         cp = json.loads(path.read_text())
         for i in ids:
             cp["status"][i] = status
+            for record in cp.get("records", []):
+                for sense in record.get("senses", []):
+                    if sense.get("sense_id") == i:
+                        sense["submission"] = {"status": status, "candidates": []}
         cp["output"] = None
         cp["submits"] = cp.get("submits", 0) + 1   # the real CLI rewrites submitted_at timestamps
         path.write_text(json.dumps(cp))
@@ -54,8 +58,11 @@ class FakeLiteraryCli:
         if cmd == "init":
             ids = [f"s{i:04d}" for i in range(self.senses)]
             cp = {"batch": {"shard": shard, "batch": batch, "model": model, "git_head": self.head},
+                  "contract": "literary-checkpoint-v3",
                   "ids": ids, "status": {i: ("PENDING" if self.zero_hit_every == 0 or n % self.zero_hit_every else "PENDING")
-                                          for n, i in enumerate(ids)}, "output": None}
+                                          for n, i in enumerate(ids)},
+                  "records": [{"record_id": f"record-{i}", "senses": [{"sense_id": i, "submission": None}]}
+                              for i in ids], "output": None}
             (Path(cwd) / self.opt(argv, "--checkpoint")).parent.mkdir(parents=True, exist_ok=True)
             self.save(cwd, argv, cp)
             return Result(0, json.dumps({"status": "READY"}))
@@ -63,6 +70,18 @@ class FakeLiteraryCli:
         if cmd == "submit":
             input_path = Path(cwd) / self.opt(argv, "--input")
             diagnostic_path = input_path.with_name(input_path.name + ".diag.json")
+            if input_path.name.endswith(".supervisor-submit.json") and not diagnostic_path.exists():
+                submission = json.loads(input_path.read_text("utf-8"))
+                for entry in submission["senses"]:
+                    cp["status"][entry["sense_id"]] = "SUBMITTED"
+                    cp.setdefault("submitted", {})[entry["sense_id"]] = entry
+                    for record in cp["records"]:
+                        for sense in record["senses"]:
+                            if sense["sense_id"] == entry["sense_id"]:
+                                sense["submission"] = {"status": "SUBMITTED", "candidates": entry["candidates"]}
+                cp["output"] = None
+                self.save(cwd, argv, cp)
+                return Result(0, json.dumps({"status": "SAVED"}))
             if diagnostic_path.is_file():
                 diagnostic = json.loads(diagnostic_path.read_text("utf-8"))
                 submission = json.loads(input_path.read_text("utf-8"))
@@ -86,7 +105,12 @@ class FakeLiteraryCli:
             return Result(1, "", "submit_validation")
         if cmd == "report" and "--sense-ids" not in argv:
             counts: dict = {}
-            for s in cp["status"].values():
+            states = {sense_id: cp["status"][sense_id] for sense_id in cp["ids"]}
+            for record in cp.get("records", []):
+                for sense in record.get("senses", []):
+                    if sense.get("submission"):
+                        states[sense["sense_id"]] = sense["submission"]["status"]
+            for s in states.values():
                 counts[s] = counts.get(s, 0) + 1
             out = cp["output"]
             return Result(0, json.dumps({"batch": cp["batch"], "coverage": {"records": 500, "senses": len(cp["ids"]),
@@ -98,7 +122,12 @@ class FakeLiteraryCli:
             ids = self.opt(argv, "--sense-ids").split(",")
             if len(set(ids)) != len(ids) or any(i not in cp["status"] for i in ids):
                 return Result(1, "", "unknown sense")
-            senses = [{"sense_id": i, "status": cp["status"][i], "done": cp["status"][i] in DONE} for i in ids]
+            states = {i: cp["status"][i] for i in ids}
+            for record in cp.get("records", []):
+                for sense in record.get("senses", []):
+                    if sense.get("sense_id") in states and sense.get("submission"):
+                        states[sense["sense_id"]] = sense["submission"]["status"]
+            senses = [{"sense_id": i, "status": states[i], "done": states[i] in DONE} for i in ids]
             return Result(0, json.dumps({"batch": cp["batch"], "all_done": all(s["done"] for s in senses), "senses": senses}))
         if cmd == "chunk":
             wanted = self.opt(argv, "--sense-ids")
@@ -140,35 +169,3 @@ class FakeLiteraryCli:
             return Result(0, json.dumps({"status": "VALID", "recordCount": 500, "senseCount": len(cp["ids"]),
                                          "candidateCount": 7, "emptySenseCount": 1}))
         return Result(1, "", f"unknown command {cmd}")
-
-    def run_internal(self, argv, input):
-        try:
-            payload = json.loads(input or "{}")
-            checkpoint = Path(payload["checkpointPath"])
-            scratch = Path(payload["scratchDirectory"])
-            submission = payload["submission"]
-            diagnostic = payload["diagnostic"]
-            retry_attempts = payload["retryAttempts"]
-            cp = json.loads(checkpoint.read_text("utf-8"))
-            active = json.loads((scratch / "c-active-chunk.json").read_text("utf-8"))
-            entry_number = diagnostic["affected"]["entry_number"]
-            target = diagnostic["affected"]["sense_id"]
-            if (retry_attempts < 2 or submission["senses"][entry_number - 1]["sense_id"] != target
-                    or target not in active["sense_ids"]):
-                return Result(1, "", "diagnostic or Supervisor retry count mismatch")
-            for entry in submission["senses"]:
-                if entry["sense_id"] != target:
-                    cp["status"][entry["sense_id"]] = "SUBMITTED"
-                    cp.setdefault("submitted", {})[entry["sense_id"]] = entry
-            cp["status"][target] = "TECHNICAL_SKIPPED"
-            record_id = f"record-{target}"
-            skip = {"record_id": record_id, "sense_id": target, "diagnostic": diagnostic["diagnostic"],
-                    "reason": diagnostic["reason"], "field": diagnostic["affected"]["field"],
-                    "retry_attempts": retry_attempts}
-            cp.setdefault("technical_skips", []).append(skip)
-            cp["output"] = None
-            checkpoint.write_text(json.dumps(cp))
-            return Result(0, json.dumps({"status": "TECHNICAL_SKIPPED", **skip,
-                                         "pending_senses": sum(status not in DONE for status in cp["status"].values())}))
-        except (OSError, ValueError, KeyError, TypeError) as error:
-            return Result(1, "", str(error))

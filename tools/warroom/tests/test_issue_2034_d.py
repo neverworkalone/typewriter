@@ -378,8 +378,14 @@ class SaveRejectedFix(unittest.TestCase):
         w = self.w
         w.start("single", "deepseek", "d")
         w.ai_rejected()
+        w.tick()
+        w.finish_last()
+        rec = w.active()
+        with self.assertRaisesRegex(dchunk.DChunkError, "exhausted fix budget"):
+            dchunk.supervisor_skip(w.store, w.runner, w.sup._d_env(w.row_()), w.wt(), w.row_(), rec)
         w.ai_rejected()
-        self.run_once()
+        w.tick()
+        self.assertEqual(w.adapter.launches[-1]["kind"], "resume")
         w.finish_last()
         w.tick()
         self.assertEqual((w.row_()["state"], w.row_()["run_kind"], w.active()["chunk_no"]),
