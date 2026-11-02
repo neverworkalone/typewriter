@@ -230,7 +230,8 @@ class SerialChunks(unittest.TestCase):
         for sense_id in active_ids:
             if sense_id != "s0003":
                 self.assertEqual(cp["submitted"][sense_id], expected_active_entries[sense_id])
-        self.assertEqual(cp["technical_skips"][0]["reason"], "context_key_not_found")
+        self.assertEqual(checkpoint_senses["s0003"]["submission"]["technical_skip"]["reason"],
+                         "context_key_not_found")
         self.assertTrue(any(call[2] == "submit" for call in w.runner.literary.calls),
                         "the final full submit is revalidated by the ordinary CLI before a technical skip")
         self.assertTrue(any("record=record-s0003" in event["msg"] for event in w.store.recent_events()
