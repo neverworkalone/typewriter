@@ -155,6 +155,7 @@ class GhClient:
             result.append({
                 "number": row["number"], "title": title, "body": row.get("body") or "",
                 "base_ref": (row.get("base") or {}).get("ref"), "shard": match.group(1),
+                "head_ref": self._owned_ref(row["head"]),
                 "merge_commit_sha": row.get("merge_commit_sha") or "",
             })
         return result

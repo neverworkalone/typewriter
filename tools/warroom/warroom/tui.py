@@ -19,11 +19,11 @@ import time
 
 from . import auth, control
 from .config import (Paths, role_view, adapter_label, adapters, load_config, methods, ordered_models, registry,
-                     stage2_models, stage3_model, STAGE2_ADAPTERS)
+                     stage2_models, stage3_models, STAGE2_ADAPTERS)
 from .logrender import render_line
 from .views import (_hhmm, _when, control_columns, select_width, card_text, detail_header, maintainer_card_text,
                     model_title, tier_footer, detail_meta, scheduled_at, usage_text, stage2_column,
-                    stage2_display_model)
+                    stage2_display_model, stage3_column, stage3_display_model)
 from .logtail import LogTail, redact
 from .store import MAINTENANCE_METHOD, STAGE2_METHOD, STAGE3_METHOD, Store
 
@@ -151,9 +151,9 @@ class Card(Static, can_focus=True):
                 ("up", "move(-1,0)", ""), ("down", "move(1,0)", "")]
 
     def __init__(self, model: str, method: str, card_id: str | None = None):
-        # Stage 2 cards start neutral: colour belongs to a task that exists, never to an idle slot.
+        # Stage 2/3 cards start neutral: colour belongs to a task that exists, never to an idle slot.
         super().__init__("", id=card_id or f"card-{model}-{method}",
-                         classes="card empty" if method == STAGE2_METHOD else "card")
+                         classes="card empty" if method in (STAGE2_METHOD, STAGE3_METHOD) else "card")
         self.model, self.method = model, method
 
     def on_click(self) -> None:
@@ -198,6 +198,17 @@ class Stage2Card(Card):
 
     def action_open(self) -> None:
         self.app.push_screen(LineDetail(self.owner_model, STAGE2_METHOD))
+
+
+class Stage3Card(Card):
+    """One shared Stage 3 card whose detail target follows the selected Claude/Codex owner."""
+
+    def __init__(self, column_model: str):
+        super().__init__(column_model, STAGE3_METHOD, card_id="card-stage3")
+        self.owner_model = column_model
+
+    def action_open(self) -> None:
+        self.app.push_screen(LineDetail(self.owner_model, STAGE3_METHOD))
 
 
 class MaintainerCard(Card):
@@ -620,6 +631,11 @@ class WarRoom(App):
         return set(stage2_models(self.cfg))
 
     @property
+    def stage3_capable(self) -> set:
+        """Claude / Codex columns that can own the single shared Stage 3 queue."""
+        return set(stage3_models(self.cfg))
+
+    @property
     def maintainer_col(self):
         """Row 5, the first registered column that cannot run Stage 2 (DeepSeek): the Maintainer's status, whichever
         model actually runs the Maintainer."""
@@ -632,7 +648,7 @@ class WarRoom(App):
 
     @property
     def stage3_col(self):
-        return stage3_model(self.cfg)
+        return stage3_column(self.cfg)
 
     def _line_keys(self):
         """Every production Line on the Board; also shared with scheduled Drain All execution."""
@@ -672,12 +688,12 @@ class WarRoom(App):
                     yield Static(model_title(registry(self.cfg).get(model, {}).get("label", model)), classes="coltitle", id=f"title-{model}")
                     for me in self.methods:
                         yield Card(model, me)
-                    if model in self.stage2_capable or model == self.maintainer_col or model == self.stage3_col:
+                    if (model in self.stage2_capable or model == self.maintainer_col or model == self.stage3_col):
                         yield Rule(classes="stage-divider")   # separates Stage 1 Methods A-D from row 5 (not a Card: arrows skip it)
                     if model == self.stage2_col:
                         yield Stage2Card(model)
                     if model == self.stage3_col:
-                        yield Card(model, STAGE3_METHOD)
+                        yield Stage3Card(model)
                     if model == self.maintainer_col:   # ... and the Maintainer status in the DeepSeek column
                         yield MaintainerCard(model)
         yield Static(id="banner")
@@ -772,11 +788,11 @@ class WarRoom(App):
                 if reg[pid]["adapter"] == adapter]
 
     def _method_options(self, adapter: str, model: str | None = None):
-        """Stage 1 Methods; Stage 2 on Claude/Codex and Stage 3 on its one fixed Codex model."""
+        """Stage 1 Methods; Stage 2 and Stage 3 on Claude/Codex models."""
         opts = [(m.upper(), m) for m in self.methods]
         if adapter in STAGE2_ADAPTERS:
             opts.append(("Stage 2", STAGE2_METHOD))
-        if adapter == "codex" and model == stage3_model(self.cfg):
+        if model in stage3_models(self.cfg):
             opts.append(("Stage 3", STAGE3_METHOD))
         return opts
 
@@ -789,8 +805,8 @@ class WarRoom(App):
             sel.set_options(opts)
             sel.value = cur if any(v == cur for _, v in opts) else self.methods[0]
         labels = [label for label, _ in self._method_options("claude")]
-        if owner := stage3_model(self.cfg):
-            labels.extend(label for label, _ in self._method_options("codex", owner))
+        if stage3_models(self.cfg):
+            labels.append("Stage 3")
         sel.styles.width = select_width(labels)
         self._fit_controls()
 
@@ -812,7 +828,7 @@ class WarRoom(App):
         """Static top-bar Selects get a width from their longest label (no mid-word wrap)."""
         for sid, labels in (("adapter", [adapter_label(a) for a in adapters(self.cfg)]),
                             ("method", [label for label, _ in self._method_options("claude")] +
-                             (["Stage 3"] if stage3_model(self.cfg) else [])),
+                             (["Stage 3"] if stage3_models(self.cfg) else [])),
                             ("mode", ["Single", "Continuous"]),
                             ("drain-all-time", [label for label, _ in SCHEDULE_HOURS])):
             self.query_one(f"#{sid}", Select).styles.width = select_width(labels)
@@ -877,8 +893,8 @@ class WarRoom(App):
         statuses = {}
         for model, me in self._line_keys():
             st = statuses[(model, me)] = control.line_status(store, model, me)
-            if me == STAGE2_METHOD:
-                continue   # the Stage 2 lines remain independent; only their Board card is shared
+            if me in (STAGE2_METHOD, STAGE3_METHOD):
+                continue   # Stage 2/3 lines remain independent; each Board role card is shared
             try:
                 card = root.query_one(f"#card-{model}-{me}", Card)
             except Exception:
@@ -892,6 +908,16 @@ class WarRoom(App):
             st = statuses[(owner, STAGE2_METHOD)]
             owner_label = adapter_label(registry(self.cfg)[owner]["adapter"])
             card = root.query_one("#card-stage2", Stage2Card)
+            card.owner_model = owner
+            card.update(Text(card_text({**st, "display_owner": owner_label})))
+            card.set_classes("card " + (st["state"] if st["batch"] else "empty"))
+        owner = stage3_display_model(store, self.cfg, {
+            model: statuses[(model, STAGE3_METHOD)] for model in self.stage3_capable
+        })
+        if owner and self.stage3_col:
+            st = statuses[(owner, STAGE3_METHOD)]
+            owner_label = adapter_label(registry(self.cfg)[owner]["adapter"])
+            card = root.query_one("#card-stage3", Stage3Card)
             card.owner_model = owner
             card.update(Text(card_text({**st, "display_owner": owner_label})))
             card.set_classes("card " + (st["state"] if st["batch"] else "empty"))

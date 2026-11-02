@@ -405,8 +405,8 @@ def _profile_config_problems(cfg: dict) -> list[str]:
             prod = cfg["producers"].get(producer)
             if prod is None:
                 bad.append(f"assignments.{role}.{producer}: 등록되지 않은 모델 ID입니다")
-            elif role == STAGE3 and prod.get("adapter", "opencode") != "codex":
-                bad.append(f"assignments.stage3.{producer}: Stage 3는 Codex 모델에만 배정할 수 있습니다")
+            elif role == STAGE3 and prod.get("adapter", "opencode") not in STAGE2_ADAPTERS:
+                bad.append(f"assignments.stage3.{producer}: Stage 3는 Claude 또는 Codex 모델에만 배정할 수 있습니다")
             elif not isinstance(pid, str) or pid not in profiles:
                 bad.append(f"assignments.{role}.{producer}: 프로필 {pid!r}가 없습니다")
             elif profiles[pid].get("adapter") != prod.get("adapter", "opencode"):
@@ -477,7 +477,7 @@ def methods(cfg: dict) -> list[str]:
 
 
 RESERVED_METHODS = {"m", "s2", "s3"}   # hidden Maintainer and Stage 2/3 execution methods (never Stage 1 Methods)
-STAGE2_ADAPTERS = ("claude", "codex")   # Issue #1684: Stage 2 runs on Claude or Codex only, never DeepSeek/OpenCode
+STAGE2_ADAPTERS = ("claude", "codex")   # Stages 2 and 3 run on Claude or Codex, never DeepSeek/OpenCode
 
 
 def stage2_problem(cfg: dict, model: str) -> str | None:
@@ -497,21 +497,26 @@ def stage2_models(cfg: dict) -> list[str]:
     return [pid for pid in ordered_models(cfg) if reg[pid]["adapter"] in STAGE2_ADAPTERS]
 
 
+def stage3_models(cfg: dict) -> list[str]:
+    """Registered Claude/Codex models that may run Stage 3, in board order."""
+    return stage2_models(cfg)
+
+
 def stage3_model(cfg: dict) -> str | None:
-    """Stage 3 stays on the established fixed Codex role column; its pin is resolved independently."""
+    """Compatibility helper: prefer the first Codex Stage 3 model, then the first eligible model."""
     reg = registry(cfg)
-    return next((pid for pid in ordered_models(cfg) if reg[pid]["adapter"] == "codex"), None)
+    return next((pid for pid in stage3_models(cfg) if reg[pid]["adapter"] == "codex"),
+                next(iter(stage3_models(cfg)), None))
 
 
 def stage3_problem(cfg: dict, model: str) -> str | None:
-    """Why `model` must not run Stage 3 (None = fixed Codex model with a valid Stage 3 pin)."""
+    """Why `model` must not run Stage 3 (None = Claude/Codex model with a valid Stage 3 pin)."""
     reg = registry(cfg)
     if model not in reg:
         return f"등록되지 않은 모델 {model!r}"
-    if reg[model]["adapter"] != "codex":
-        return f"Stage 3는 Codex에서만 실행할 수 있습니다 ({reg[model]['label']}: {adapter_label(reg[model]['adapter'])})"
-    if model != stage3_model(cfg):
-        return f"Stage 3는 고정된 Codex 역할 모델 {stage3_model(cfg) or '(없음)'}에서만 실행할 수 있습니다"
+    if reg[model]["adapter"] not in STAGE2_ADAPTERS:
+        return (f"Stage 3는 Claude 또는 Codex에서만 실행할 수 있습니다 "
+                f"({reg[model]['label']}: {adapter_label(reg[model]['adapter'])})")
     return role_problem(cfg, model, STAGE3)
 
 
@@ -602,9 +607,9 @@ def role_pin_lines(cfg: dict) -> list[str]:
     for role in ASSIGNMENT_ROLES:
         for producer, pid in sorted((cfg.get("assignments", {}).get(role) or {}).items()):
             lines.append(one(f"{role}/{producer}", pid))
-    owner = stage3_model(cfg)
-    if owner and _assigned_profiles(cfg, owner) and not _assigned(cfg, STAGE3, owner):
-        lines.append(f"  stage3/{owner}: (미배정; assignments.stage3에 프로필 ID를 지정하세요)")
+    for model in stage3_models(cfg):
+        if _assigned_profiles(cfg, model) and not _assigned(cfg, STAGE3, model):
+            lines.append(f"  stage3/{model}: (미배정; assignments.stage3에 프로필 ID를 지정하세요)")
     if cfg.get("maintainer") in profs:
         lines.append(one("maintainer", cfg["maintainer"]))
     return lines

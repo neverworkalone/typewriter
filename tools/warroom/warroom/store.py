@@ -557,10 +557,12 @@ class Store:
                                                        model, STAGE3_METHOD))
         return True, ""
 
-    def restore_stage3_completion(self, *, producer: str, shard: str, pr_number: int, merge_sha: str) -> bool:
+    def restore_stage3_completion(self, *, producer: str, shard: str, pr_number: int, merge_sha: str,
+                                  branch: str) -> bool:
         """Restore one lost Stage 3 completion from a validated merged PR identity; no parallel ledger is created."""
         now = time.time()
-        branch = f"s3-{producer}-{shard}"
+        if branch != f"s3-{producer}-{shard}":
+            return False
         with self._conn() as c:
             c.execute("BEGIN IMMEDIATE")
             rows = c.execute("SELECT id, producer, state, merged, pr_number, head_sha FROM batches WHERE method=? AND shard=?",

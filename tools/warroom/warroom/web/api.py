@@ -12,7 +12,7 @@ from pathlib import Path
 
 from .. import control, views
 from ..config import (Paths, adapter_label, adapters, methods, ordered_models, registry, role_view, stage2_models,
-                      stage3_model, STAGE2_ADAPTERS)
+                      stage3_model, stage3_models, STAGE2_ADAPTERS)
 from ..logrender import render_line
 from ..logtail import INITIAL_BYTES, MAX_CHUNK, redact
 from ..store import STAGE2_METHOD, STAGE3_METHOD, Store
@@ -48,8 +48,7 @@ def board_lines(store: Store, cfg: dict) -> tuple[list[str], list[tuple[str, str
     s2 = set(stage2_models(cfg))
     ms = methods(cfg)
     lines = [(m, me) for m in cols for me in ms] + [(m, STAGE2_METHOD) for m in cols if m in s2]
-    if owner := stage3_model(cfg):
-        lines.append((owner, STAGE3_METHOD))
+    lines += [(model, STAGE3_METHOD) for model in stage3_models(cfg)]
     return cols, lines
 
 
@@ -74,17 +73,19 @@ def _line_view(st: dict) -> dict:
 def _controls(cfg: dict) -> dict:
     reg = registry(cfg)
     ms = methods(cfg)
+    s3_models = stage3_models(cfg)
+    s3 = set(s3_models)
     groups = []
     for a in adapters(cfg):
         meths = [{"id": m, "label": m.upper()} for m in ms]
         if a in STAGE2_ADAPTERS:
             meths.append({"id": STAGE2_METHOD, "label": "Stage 2"})
-        if a == "codex" and stage3_model(cfg):
+        if any(reg[model]["adapter"] == a for model in s3):
             meths.append({"id": STAGE3_METHOD, "label": "Stage 3"})
         groups.append({"id": a, "label": adapter_label(a), "methods": meths,
                        "models": [{"id": p, "label": f"{reg[p]['label']} ({p})"}
                                   for p in ordered_models(cfg) if reg[p]["adapter"] == a]})
-    return {"adapters": groups, "stage3_model": stage3_model(cfg),
+    return {"adapters": groups, "stage3_model": stage3_model(cfg), "stage3_models": s3_models,
             "modes": [{"id": k, "label": v} for k, v in control.MODES.items()]}
 
 
@@ -101,10 +102,14 @@ def board(store: Store, cfg: dict) -> dict:
         stage2_card = _line_view(statuses[(stage2_owner, STAGE2_METHOD)])
         stage2_card["owner_label"] = adapter_label(reg[stage2_owner]["adapter"])
         stage2_card["column"] = views.stage2_column(cfg)
-    stage3_owner = stage3_model(cfg)
+    s3_models = stage3_models(cfg)
+    stage3_owner = views.stage3_display_model(store, cfg, {
+        model: statuses[(model, STAGE3_METHOD)] for model in s3_models
+    })
     stage3_card = _line_view(statuses[(stage3_owner, STAGE3_METHOD)]) if stage3_owner else None
     if stage3_card:
-        stage3_card["column"] = stage3_owner
+        stage3_card["column"] = views.stage3_column(cfg)
+        stage3_card["owner_label"] = adapter_label(reg[stage3_owner]["adapter"])
     alive = control.supervisor_alive(store)
     notes = [f"{s['model']}/{control.method_label(s['method'])} BLOCKED: {s['blocked']}"
              for s in statuses.values() if s["blocked"]]
