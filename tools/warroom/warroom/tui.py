@@ -947,7 +947,9 @@ class WarRoom(App):
         root.query_one("#drain-note", Static).display = bool(yellow)
         # Only auth/model problems surface on the board.
         a, notes = self._auth, []
-        if a is not None and not a["ok"]:
+        if a is not None and a.get("transient"):
+            notes += ["! GitHub 조회 복구 대기: " + a["transient"]]
+        elif a is not None and not a["ok"]:
             notes += ["! GitHub 인증: " + "; ".join(a["problems"])]
         notes += [f"! {s['model']}/{control.method_label(s['method'])} BLOCKED: {s['blocked']}"
                   for s in statuses.values() if s["blocked"]]

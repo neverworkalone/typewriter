@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .shell import Runner, transient
+from .shell import Runner, gh_transient
 
 SCRUBBED = ("GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "GITHUB_ENTERPRISE_TOKEN",
             "GH_HOST", "GH_REPO", "GIT_ASKPASS", "SSH_ASKPASS", "GIT_SSH_COMMAND", "GIT_SSH")
@@ -53,7 +53,7 @@ def diagnose(runner: Runner, env: dict, repo: str, expected: str) -> dict:
     why: str | None = None
     who = runner.run(["gh", "api", "user", "--jq", ".login"], env=env, timeout=30)
     if not who.ok:
-        why = transient(who)
+        why = gh_transient(who)
         if not why:
             problems.append(
                 "GitHub 인증 없음: `GH_CONFIG_DIR=%s gh auth login` 으로 %s 계정을 로그인하세요."
@@ -64,15 +64,15 @@ def diagnose(runner: Runner, env: dict, repo: str, expected: str) -> dict:
             problems.append(f"계정 불일치: 실제 {account!r}, 기대 {expected!r}")
         perm = runner.run(["gh", "api", f"repos/{repo}", "--jq", ".permissions.push"],
                           env=env, timeout=30)
-        if not perm.ok and transient(perm):
-            why = transient(perm)
+        if not perm.ok and gh_transient(perm):
+            why = gh_transient(perm)
         elif perm.out.strip() != "true":
             problems.append(f"{account} 계정에 {repo} push 권한이 없습니다")
         cred = runner.run(["gh", "auth", "git-credential", "get"], env=env, timeout=30,
                           input="protocol=https\nhost=github.com\n\n")
         user_line = next((l for l in cred.out.splitlines() if l.startswith("username=")), "")
-        if not cred.ok and transient(cred):
-            why = why or transient(cred)
+        if not cred.ok and gh_transient(cred):
+            why = why or gh_transient(cred)
         elif not cred.ok or "password=" not in cred.out or not user_line:
             problems.append("git push 자격증명(gh auth git-credential)을 사용할 수 없습니다")
     if why and not problems:   # a definite problem outranks a transient one; otherwise nothing is decided yet

@@ -184,6 +184,30 @@ class Prepare(unittest.TestCase):
         w.tick()
         self.assertIn("인증 없음", w.store.line("deepseek", "a")["blocked"])
 
+    def test_auth_api_answers_of_any_status_wait_instead_of_blocking(self):
+        """#2810: 401/403/404/422 from `gh api user` / the permission lookup retry; the Line is never BLOCKED."""
+        for target, err in [("user", "gh: Bad credentials (HTTP 401)"), ("user", "gh: Not Found (HTTP 404)"),
+                            ("repos", "gh: Resource not accessible (HTTP 403)"), ("repos", "gh: Not Found (HTTP 404)"),
+                            ("repos", "gh: Validation Failed (HTTP 422)")]:
+            with self.subTest(target, err=err):
+                w = World()
+                self.addCleanup(w.tmp.cleanup)
+                real, state = w.runner.run, {"fail": 2}
+
+                def run(argv, real=real, state=state, target=target, err=err, **k):
+                    if argv[:2] == ["gh", "api"] and argv[2].startswith(target) and state["fail"]:
+                        state["fail"] -= 1
+                        return Result(1, "", err)
+                    return real(argv, **k)
+                w.runner.run = run
+                w.start("single")
+                w.tick()
+                self.assertEqual((w.store.line("deepseek", "a")["blocked"], w.store.line("deepseek", "a")["run"]), ("", 1))
+                for _ in range(3):
+                    w.now += 40
+                    w.tick(2)
+                self.assertEqual(w.row()["state"], "PRODUCING")
+
     def test_worktree_lookup_failure_stays_prepare_and_launches_once(self):
         w = self.w
         w.start("single")
