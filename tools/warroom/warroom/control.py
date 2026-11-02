@@ -11,7 +11,7 @@ from datetime import datetime, time as wall_time, timedelta
 
 from . import stage2
 from .config import (maintainer_id, maintainer_problem, methods, ordered_models, registry, stage2_models,
-                     stage2_problem, stage3_model, stage3_problem)
+                     stage2_problem, stage3_models, stage3_problem)
 from .store import MAINTENANCE_METHOD, STAGE2_METHOD, STAGE3_METHOD, Store
 
 STATES_HELP = ("PREPARE", "PRODUCING", "WAITING_REVIEW", "FIXING", "MERGED", "CLEANUP",
@@ -22,8 +22,8 @@ MODES = {"single": "Single", "continuous": "Continuous"}   # Continuous = sequen
 def start(store: Store, model: str, method: str, mode: str, cfg: dict | None = None) -> tuple[bool, str]:
     """Request production on a Line. Never creates a second batch for an occupied Line.
 
-    Stage 2 (`s2`) is one serial process for the whole factory and Stage 3 (`s3`) uses the fixed Codex line; both need
-    `cfg` to prove the model and pin, and their occupancy is reserved atomically in the store (missing `cfg` fails closed).
+    Stage 2 (`s2`) and Stage 3 (`s3`) each use one serial process for the whole factory; both need `cfg` to prove the
+    selected model and role pin, and their occupancy is reserved atomically in the store (missing `cfg` fails closed).
     """
     if method == STAGE2_METHOD:
         problem = "설정을 확인할 수 없어 Stage 2를 시작하지 않습니다" if cfg is None else stage2_problem(cfg, model)
@@ -31,9 +31,6 @@ def start(store: Store, model: str, method: str, mode: str, cfg: dict | None = N
     if method == STAGE3_METHOD:
         if cfg is None:
             return False, "설정을 확인할 수 없어 Stage 3를 시작하지 않습니다"
-        owner = stage3_model(cfg)
-        if owner is None or model != owner:
-            return False, f"Stage 3 실행 모델은 지정된 Codex 라인 {owner or '(없음)'}이어야 합니다."
         if why := stage3_problem(cfg, model):
             return False, why
         return store.start_stage3(model, mode)
@@ -96,8 +93,7 @@ def board_line_keys(store: Store, cfg: dict) -> list[tuple[str, str]]:
     configured_methods = methods(cfg)
     keys = [(model, method) for model in models for method in configured_methods]
     keys += [(model, STAGE2_METHOD) for model in models if model in stage2_models(cfg)]
-    if owner := stage3_model(cfg):
-        keys.append((owner, STAGE3_METHOD))
+    keys += [(model, STAGE3_METHOD) for model in stage3_models(cfg)]
     return [(model, method) for model, method in keys if method != MAINTENANCE_METHOD]
 
 

@@ -60,7 +60,7 @@ const lineName = (l) => `${l.model} / ${l.label}`;
 // --- Board ---
 function card(l) {
   const go = () => (location.hash = `#/line/${l.model}/${l.method}`);
-  const name = l.method === "s2" ? `${l.owner_label} · ${l.label}` : l.label;
+  const name = ["s2", "s3"].includes(l.method) ? `${l.owner_label} · ${l.label}` : l.label;
   if (l.idle) {
     return h("button", { class: "card empty", onclick: go },
       h("div", { class: "t" }, h("span", {}, name), h("span", { class: "s" }, l.idle_text)),
@@ -70,7 +70,7 @@ function card(l) {
   const bar = h("div", { class: "bar2" }, h("i"));
   bar.firstChild.style.width = (l.progress_pct || 0) + "%";
   const batch = l.stage2 ? `S${l.stage2.shard} B${l.stage2.batch} P${l.stage2.part}` : l.batch;
-  const title = l.method === "s2" ? `${l.owner_label} · ${l.label} · ${batch}`
+  const title = ["s2", "s3"].includes(l.method) ? `${l.owner_label} · ${l.label} · ${batch}`
     : (mobile.matches ? l.model + " · " : "") + l.label + " · " + batch;
   return h("button", { class: "card " + l.state, onclick: go },
     h("div", { class: "t" }, h("span", {}, title),
@@ -103,7 +103,7 @@ function controls(b) {
     model.replaceChildren(...a.models.map((m) => h("option", { value: m.id }, m.label)));
     model.style.display = a.models.length > 1 ? "" : "none";
     if (sel.model && a.models.some((m) => m.id === sel.model)) model.value = sel.model;
-    const available = a.methods.filter((m) => m.id !== "s3" || model.value === c.stage3_model);
+    const available = a.methods.filter((m) => m.id !== "s3" || c.stage3_models.includes(model.value));
     method.replaceChildren(...available.map((m) => h("option", { value: m.id }, m.label)));
     if (sel.method && available.some((m) => m.id === sel.method)) method.value = sel.method;
     sel.model = model.value;

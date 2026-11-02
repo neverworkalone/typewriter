@@ -58,22 +58,24 @@ class Stage3SelectionAndOwnership(unittest.TestCase):
             self.assertEqual(stage3.choose(sha=HEAD1, kv=w.store, open_prs=[], stage2_batches=[],
                                            stage3_batches=done).shard, "002")
 
-    def test_only_fixed_codex_line_can_start_and_store_reserves_one_shard(self):
+    def test_claude_or_codex_line_can_start_and_store_reserves_one_shard(self):
         w = self.w
-        ok, reason = control.start(w.store, "claude", STAGE3_METHOD, "single", cfg=w.cfg)
-        self.assertFalse(ok)
-        self.assertIn("Codex", reason)
         w.cfg["producers"]["codex-backup"] = {"adapter": "codex", "model": "gpt-backup", "effort": "high",
                                                 "label": "ZZZ Backup"}
         owner = stage3_model(w.cfg)
         self.assertIn(owner, w.cfg["producers"])
-        codex_controls = next(group for group in _controls(w.cfg)["adapters"] if group["id"] == "codex")
-        self.assertIn("s3", [method["id"] for method in codex_controls["methods"]])
+        controls = _controls(w.cfg)["adapters"]
+        for adapter in ("claude", "codex"):
+            group = next(group for group in controls if group["id"] == adapter)
+            self.assertIn("s3", [method["id"] for method in group["methods"]])
         self.assertEqual(_controls(w.cfg)["stage3_model"], owner)
         other_codex = next(model for model, producer in w.cfg["producers"].items()
                            if producer["adapter"] == "codex" and model != owner)
-        self.assertFalse(control.start(w.store, other_codex, STAGE3_METHOD, "single", cfg=w.cfg)[0])
+        self.assertTrue(control.start(w.store, "claude", STAGE3_METHOD, "single", cfg=w.cfg)[0])
+        self.assertFalse(control.start(w.store, owner, STAGE3_METHOD, "single", cfg=w.cfg)[0])
+        w.store.set_line("claude", STAGE3_METHOD, run=0)
         self.assertTrue(control.start(w.store, owner, STAGE3_METHOD, "single", cfg=w.cfg)[0])
+        self.assertFalse(control.start(w.store, other_codex, STAGE3_METHOD, "single", cfg=w.cfg)[0])
         batch_id = w.store.create_batch(method=STAGE3_METHOD, producer=owner, shard="001", batch="all",
                                         branch=f"s3-{owner}-001", worktree="/tmp/s3-001", from_run=True)
         self.assertEqual(w.store.batch(batch_id)["method"], STAGE3_METHOD)

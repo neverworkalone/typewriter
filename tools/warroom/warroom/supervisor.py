@@ -24,7 +24,7 @@ from . import auth, batches, control, dchunk, defects, literary, progress, promp
 from .adapters import (PREFLIGHT_PENDING, QUOTA_EVIDENCE, RunSpec, classify_claude_failure, classify_failure,
                        opencode_free_quota)
 from .config import (TIERED_ADAPTERS, adapter_label, config_problem, load_config, registry, registry_problems,
-                     reload_problem, role_of, role_problem, run_spec, stage2_problem, stage3_model, stage3_problem)
+                     reload_problem, role_of, role_problem, run_spec, stage2_problem, stage3_problem)
 from .github import GhError, GhTransient
 from .gitops import CleanupBlocked, FastForwardBlocked, FastForwardRace, GitError, GitTransient, IntegrationBlocked
 from .maintenance import Maintenance
@@ -924,8 +924,6 @@ class Supervisor:
         if method == STAGE2_METHOD and (why := stage2_problem(self.cfg, model)):   # fail closed here too, not only in Start
             return self._blocked(ln, "시작 차단: " + why)
         if method == STAGE3_METHOD:
-            if model != stage3_model(self.cfg):
-                return self._blocked(ln, "시작 차단: Stage 3는 고정된 Codex 역할 모델에서만 실행합니다")
             if why := stage3_problem(self.cfg, model):
                 return self._blocked(ln, "시작 차단: " + why)
         if why := role_problem(self.cfg, model, role_of(method)):   # the stage's assigned profile must resolve to a valid pin
