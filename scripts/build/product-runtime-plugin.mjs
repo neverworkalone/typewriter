@@ -125,7 +125,7 @@ export function createProductRuntimeAssets({
 
       console.log(
         `Full dictionary built: ${summary.recordCount} records, `
-          + `${summary.senseCount} senses, ${summary.relationCount} relations.`,
+          + `${summary.senseCount} senses, ${summary.relationCount} relations, ${summary.meaningProjection.authored_row_count} echoes.`,
       );
     }
     await extractLiteDictionary({ fullPath, litePath: outputPath });
