@@ -550,7 +550,7 @@ test('real C CLI records one failed Sense as technical skip only after ordinary 
     const early = runCli(fixture, ['supervisor-skip', '--db', fixture.databasePath, '--checkpoint', fixture.checkpointPath,
       '--input', inputPath], { WARROOM_SUPERVISOR_STATE_DB: supervisorDatabasePath, WARROOM_SUPERVISOR_BATCH_ID: '1' });
     assert.equal(early.status, 1);
-    assert.match(early.stderr, /not exhausted/u);
+    assert.match(early.stderr, /"diagnostic":"operation"/u);
     const supervisorDb = new DatabaseSync(supervisorDatabasePath);
     supervisorDb.prepare('UPDATE kv SET value=? WHERE key=?').run('2', 'c_resubmit_1');
     supervisorDb.prepare('INSERT INTO runs(batch_id, kind, session_id, ended_at) VALUES (1, ?, ?, ?)')
