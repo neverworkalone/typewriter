@@ -393,7 +393,7 @@ class SaveRejectedFix(unittest.TestCase):
         skip = json.loads((w.wt() / dchunk.chunk_names(w.row_(), 1).technical_skips).read_text())
         self.assertEqual((skip["fix_attempts"], skip["skips"][0]["record_id"], skip["skips"][0]["sense_ids"]),
                          (1, "w0001", ["w0001-s1"]))
-        self.assertTrue(any("record=w0001" in event["msg"] for event in w.store.recent_events()
+        self.assertTrue(any("records=w0001" in event["msg"] for event in w.store.recent_events()
                             if event["batch_id"] == w.row_()["id"]))
         w.tick(3)
         self.assertEqual(len(w.adapter.launches), 3)
