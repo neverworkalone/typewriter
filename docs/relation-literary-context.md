@@ -243,7 +243,10 @@ that exact Sense as `TECHNICAL_SKIPPED` with its Record/Sense IDs, diagnostic,
 reason, field, chunk/head binding, and retry count. Its candidate list is `[]`;
 its search state and VERIFIED evidence are left untouched. The ordinary
 producer `submit` schema has no skip field, and multiple, stale, unbound, or
-system-level failures remain stopped for the operator. `report` includes exact
+system-level failures remain stopped for the operator. The skip command reads
+the retry count and completed same-session run history from the War Room state
+database; it accepts no producer-supplied attempt count and the producer
+process does not receive that database binding. `report` includes exact
 technical exclusions so export and the production PR can disclose them.
 
 Index access, identity, schema, metadata, and search failures use an index

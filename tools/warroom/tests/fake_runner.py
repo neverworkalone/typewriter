@@ -42,11 +42,11 @@ class ScriptedRunner(Runner):
         argv = ["git", *argv[1:]] if argv and os.path.basename(argv[0]) == "git" else argv   # a resolved Git path
         self.calls.append(list(argv))
         if argv[:2] == ["node", "scripts/relation/literary-context-cli.mjs"]:
-            return self.literary.run(argv, cwd)
+            return self.literary.run(argv, cwd, env)
         if argv[:2] == WORKBENCH_CLI:
             return self.workbench.run(argv, cwd)
         if argv[:2] in (["node", "scripts/relation/d-chunk-cli.mjs"], ["node", "scripts/relation/candidate-contract.mjs"]):
-            return self.dchunk.run(argv, cwd)
+            return self.dchunk.run(argv, cwd, env)
         if argv[:3] == ["gh", "api", "user"]:
             return Result(0, self.account + "\n") if self.api_ok else Result(1, "", "not logged in")
         if argv[:2] == ["gh", "api"] and ".permissions.push" in argv:

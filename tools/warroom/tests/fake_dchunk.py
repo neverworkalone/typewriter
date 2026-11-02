@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sqlite3
 from pathlib import Path
 
 from warroom.shell import Result
@@ -52,7 +53,7 @@ class FakeDChunkCli:
     def opt(argv, name):
         return argv[argv.index(name) + 1] if name in argv else None
 
-    def run(self, argv, cwd):
+    def run(self, argv, cwd, env=None):
         self.calls.append(list(argv))
         if argv[1] == "scripts/relation/candidate-contract.mjs":
             self.validations += 1
@@ -66,6 +67,15 @@ class FakeDChunkCli:
         if argv[2] == "supervisor-skip":
             folder = Path(cwd) / D_DIR
             number = int(self.opt(argv, "--in").split("-")[-1].split(".")[0])
+            supervisor_db = (env or {}).get("WARROOM_SUPERVISOR_STATE_DB")
+            batch_id = (env or {}).get("WARROOM_SUPERVISOR_BATCH_ID")
+            if not supervisor_db or not batch_id:
+                return Result(1, "", "Supervisor retry state is unavailable")
+            with sqlite3.connect(supervisor_db) as database:
+                row = database.execute("SELECT value FROM kv WHERE key=?", (f"d_fix_{batch_id}:{number}",)).fetchone()
+            fix_attempts = int(row[0]) if row else 0
+            if fix_attempts < 1:
+                return Result(1, "", "Supervisor has not exhausted the same-session fix budget")
             rejected = json.loads((folder / f"rejected-{number:03d}.json").read_text("utf-8"))
             active = json.loads((folder / f"active-{number:03d}.json").read_text("utf-8"))
             failed = rejected["failed_records"]
@@ -82,7 +92,7 @@ class FakeDChunkCli:
             skip_path.write_text(json.dumps({"contract": "d-technical-skips-v1", "diagnostic": "save_rejected",
                 "shard": "001", "batch": "01", "model": "deepseek", "chunk_no": number,
                 "view_sha256": active["view_sha256"], "git_head": active["git_head"],
-                "fix_attempts": int(self.opt(argv, "--fix-attempts")), "decisions_sha256": decisions_sha,
+                "fix_attempts": fix_attempts, "decisions_sha256": decisions_sha,
                 "searches_sha256": searches_sha, "error_count": rejected["error_count"], "skips": skips}), "utf-8")
             excluded = {item["record_id"] for item in skips}
             self.save(Path(cwd), number, lambda sid: [] if sid.rsplit("-s", 1)[0] in excluded else ["후보"])

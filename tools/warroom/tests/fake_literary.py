@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import hashlib
+import sqlite3
 from pathlib import Path
 
 from warroom.shell import Result
@@ -45,7 +46,7 @@ class FakeLiteraryCli:
         path.write_text(json.dumps(cp))
 
     # -- CLI ----------------------------------------------------------------------------------------------------
-    def run(self, argv, cwd):
+    def run(self, argv, cwd, env=None):
         self.calls.append(list(argv))
         cmd = argv[2]
         if cmd in self.fail:
@@ -137,6 +138,15 @@ class FakeLiteraryCli:
             self.export_error = None
             return Result(0, json.dumps({"status": "CLEARED", "senses": len(ids), "candidates": len(ids)}))
         if cmd == "supervisor-skip":
+            supervisor_db = (env or {}).get("WARROOM_SUPERVISOR_STATE_DB")
+            batch_id = (env or {}).get("WARROOM_SUPERVISOR_BATCH_ID")
+            if not supervisor_db or not batch_id:
+                return Result(1, "", "Supervisor retry state is unavailable")
+            with sqlite3.connect(supervisor_db) as database:
+                row = database.execute("SELECT value FROM kv WHERE key=?", (f"c_resubmit_{batch_id}",)).fetchone()
+            retry_attempts = int(row[0]) if row else 0
+            if retry_attempts < 2:
+                return Result(1, "", "Supervisor has not exhausted the same-session retry budget")
             input_path = Path(cwd) / self.opt(argv, "--input")
             submission = json.loads(input_path.read_text("utf-8"))
             diagnostic = json.loads(input_path.with_name(input_path.name + ".diag.json").read_text("utf-8"))
@@ -154,7 +164,7 @@ class FakeLiteraryCli:
             record_id = f"record-{target}"
             skip = {"record_id": record_id, "sense_id": target, "diagnostic": diagnostic["diagnostic"],
                     "reason": diagnostic["reason"], "field": diagnostic["affected"]["field"],
-                    "retry_attempts": int(self.opt(argv, "--retry-attempts"))}
+                    "retry_attempts": retry_attempts}
             cp.setdefault("technical_skips", []).append(skip)
             cp["output"] = None
             self.save(cwd, argv, cp)

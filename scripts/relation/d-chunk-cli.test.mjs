@@ -98,9 +98,9 @@ const withWorld = (name, body) => test(name, async () => {
   }
 });
 
-const runCli = (args, input, environment) => new Promise((resolve, reject) => {
+const runCli = (args, input, environment = {}, cwd = process.cwd()) => new Promise((resolve, reject) => {
   const child = spawn(process.execPath, [path.resolve('scripts/relation/d-chunk-cli.mjs'), ...args], {
-    cwd: process.cwd(), env: { ...process.env, ...environment }, stdio: ['pipe', 'pipe', 'pipe'],
+    cwd, env: { ...process.env, ...environment }, stdio: ['pipe', 'pipe', 'pipe'],
   });
   let stdout = '';
   let stderr = '';
@@ -121,6 +121,25 @@ const chunkPath = (world, kind, number = 1) => path.join(world.directory, {
 }[kind]);
 const meta = (world, number = 1) => readFile(chunkPath(world, 'active', number), 'utf8').then(JSON.parse);
 const view = (world, number = 1) => readFile(chunkPath(world, 'view', number), 'utf8');
+
+async function makeSupervisorRetryState(world, { attempts, completedRetries }) {
+  const active = await meta(world);
+  const databasePath = path.join(world.root, 'warroom.sqlite');
+  const database = new DatabaseSync(databasePath);
+  database.exec(`
+    CREATE TABLE batches (id INTEGER PRIMARY KEY, method TEXT, producer TEXT, shard TEXT, batch TEXT,
+      worktree TEXT, session_id TEXT);
+    CREATE TABLE kv (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+    CREATE TABLE runs (id INTEGER PRIMARY KEY, batch_id INTEGER, kind TEXT, session_id TEXT, ended_at REAL);
+  `);
+  database.prepare('INSERT INTO batches VALUES (1, ?, ?, ?, ?, ?, ?)')
+    .run('d', active.model, active.shard, active.batch, world.root, 'ses_d');
+  database.prepare('INSERT INTO kv VALUES (?, ?)').run('d_fix_1:1', String(attempts));
+  const run = database.prepare('INSERT INTO runs(batch_id, kind, session_id, ended_at) VALUES (1, ?, ?, ?)');
+  for (let index = 0; index < completedRetries; index += 1) run.run('d_chunk_fix', 'ses_d', index + 1);
+  database.close();
+  return databasePath;
+}
 
 withWorld('prepare shares one record search across senses and judges each sense separately', async (world) => {
   const result = await prepareChunk({ ...world.options, chunkNumber: 1 });
@@ -1005,11 +1024,29 @@ withWorld('Supervisor technical fallback excludes the exact shared-evidence Reco
   assert.equal(rejection.repair_scope, 'decisions');
 
   const originalDecisions = await readFile(decisionsPath, 'utf8');
+  const supervisorDatabasePath = await makeSupervisorRetryState(world, { attempts: 0, completedRetries: 0 });
+  await assert.rejects(supervisorSkipActive({ inputPath: decisionsPath, root: world.root, worktree: world.root,
+    supervisorDatabasePath, supervisorBatchId: 1 }), /not exhausted/u);
+  const forged = await runCli(['supervisor-skip', '--in', decisionsPath, '--dir', world.root, '--fix-attempts', '1'], '', {
+    WARROOM_SUPERVISOR_STATE_DB: supervisorDatabasePath, WARROOM_SUPERVISOR_BATCH_ID: '1',
+  }, world.root);
+  assert.notEqual(forged.code, 0);
+  assert.match(forged.stderr, /unsupported option.*fix-attempts/u);
+  const supervisorDb = new DatabaseSync(supervisorDatabasePath);
+  supervisorDb.prepare('UPDATE kv SET value=? WHERE key=?').run('1', 'd_fix_1:1');
+  supervisorDb.prepare('INSERT INTO runs(batch_id, kind, session_id, ended_at) VALUES (1, ?, ?, ?)')
+    .run('d_chunk_fix', 'ses_d', 1);
+  supervisorDb.close();
   await writeFile(decisionsPath, `${originalDecisions}\n`);
-  await assert.rejects(supervisorSkipActive({ inputPath: decisionsPath, root: world.root, fixAttempts: 1 }), /stale/u);
+  await assert.rejects(supervisorSkipActive({ inputPath: decisionsPath, root: world.root, worktree: world.root,
+    supervisorDatabasePath, supervisorBatchId: 1 }), /stale/u);
   assert.equal(existsSync(path.join(world.directory, 'chunk-001.jsonl')), false);
   await writeFile(decisionsPath, originalDecisions);
-  const result = await supervisorSkipActive({ inputPath: decisionsPath, root: world.root, fixAttempts: 1 });
+  const saved = await runCli(['supervisor-skip', '--in', decisionsPath, '--dir', world.root], '', {
+    WARROOM_SUPERVISOR_STATE_DB: supervisorDatabasePath, WARROOM_SUPERVISOR_BATCH_ID: '1',
+  }, world.root);
+  assert.equal(saved.code, 0, saved.stderr);
+  const result = JSON.parse(saved.stdout);
   assert.equal(result.status, 'SAVED_WITH_TECHNICAL_SKIPS');
   assert.deepEqual(result.technical_skips.map((item) => item.record_id), ['w001']);
   const rows = (await readFile(path.join(world.directory, 'chunk-001.jsonl'), 'utf8')).trim().split('\n').map(JSON.parse);

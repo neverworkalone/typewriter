@@ -35,6 +35,7 @@ import {
   searchContexts,
   validateSearchCursor,
 } from './corpus-utility.mjs';
+import { readSupervisorRetryBudget } from './supervisor-retry-state.mjs';
 
 export const CHUNK_RECORDS = 25;
 export const BATCH_RECORDS = 500;
@@ -1162,8 +1163,22 @@ export async function saveActive({ inputPath, root }) {
   return saveActiveInternal({ inputPath, root });
 }
 
-/** Internal Supervisor-only path: normal `save` never accepts a technical-skip marker or option. */
-export async function supervisorSkipActive({ inputPath, root, fixAttempts }) {
+/** Internal Supervisor-only path: the retry budget comes from the separate War Room state database. */
+export async function supervisorSkipActive({ inputPath, root, worktree = process.cwd(), supervisorDatabasePath,
+  supervisorBatchId }) {
+  const { meta } = await findActive(root);
+  const fixAttempts = readSupervisorRetryBudget({
+    databasePath: supervisorDatabasePath,
+    batchId: supervisorBatchId,
+    method: 'd',
+    model: meta.model,
+    shard: meta.shard,
+    batch: meta.batch,
+    worktree,
+    retryKey: `d_fix_${supervisorBatchId}:${meta.chunk_no}`,
+    retryKind: 'd_chunk_fix',
+    minimum: MAX_FIXES,
+  });
   return saveActiveInternal({ inputPath, root, supervisorFixAttempts: fixAttempts });
 }
 
@@ -1256,11 +1271,15 @@ async function main(argv) {
     return 0;
   }
   if (command === 'supervisor-skip') {
-    only(options, 'in', 'fix-attempts');
+    only(options, 'in', 'dir');
     if (positional.length) fail('supervisor-skip takes options only');
-    const fixAttempts = Number(need(options, 'fix-attempts'));
-    if (!Number.isSafeInteger(fixAttempts) || fixAttempts < MAX_FIXES) fail('--fix-attempts must prove the exhausted D fix budget');
-    console.log(JSON.stringify(await supervisorSkipActive({ inputPath: need(options, 'in'), fixAttempts })));
+    console.log(JSON.stringify(await supervisorSkipActive({
+      inputPath: need(options, 'in'),
+      root: options.dir,
+      supervisorDatabasePath: process.env.WARROOM_SUPERVISOR_STATE_DB,
+      supervisorBatchId: process.env.WARROOM_SUPERVISOR_BATCH_ID,
+      worktree: process.cwd(),
+    })));
     return 0;
   }
   return fail('usage: d-chunk-cli.mjs prepare|search|search-batch|save');

@@ -13,6 +13,7 @@ import {
   normalizeCandidate,
   validateCandidateBatch,
 } from './candidate-contract.mjs';
+import { readSupervisorRetryBudget } from './supervisor-retry-state.mjs';
 
 export const LITERARY_CONTEXT_CONTRACT = 'literary-context-v3';
 export const CHECKPOINT_CONTRACT = 'literary-checkpoint-v3';
@@ -1287,11 +1288,11 @@ export async function submitLiteraryChunk({ databasePath, checkpointPath, submis
  * unchanged: only this separate command may record TECHNICAL_SKIPPED, and only after every unaffected active Sense
  * is already accepted or is saved through the ordinary submit validator.
  */
-export async function supervisorSkipLiterarySense({ databasePath, checkpointPath, submission, diagnostic, retryAttempts,
-  inputSha256, scratchDirectory = path.resolve(CHECKPOINT_SCRATCH_DIRECTORY) }) {
+export async function supervisorSkipLiterarySense({ databasePath, checkpointPath, submission, diagnostic,
+  supervisorDatabasePath, supervisorBatchId, worktree = process.cwd(), inputSha256,
+  scratchDirectory = path.resolve(CHECKPOINT_SCRATCH_DIRECTORY) }) {
   const { checkpoint, path: resolvedCheckpoint } = await loadLiteraryCheckpoint(checkpointPath, { scratchDirectory });
   if (checkpoint.contract !== CHECKPOINT_CONTRACT) fail('technical skip requires a v3 literary checkpoint');
-  if (!Number.isSafeInteger(retryAttempts) || retryAttempts < 2) fail('technical skip requires the exhausted two-submit retry budget');
   if (!isPlainObject(submission) || !exactKeys(submission, ['senses']) || !Array.isArray(submission.senses) || submission.senses.length === 0) {
     fail('technical skip requires the unchanged active submit file');
   }
@@ -1325,6 +1326,23 @@ export async function supervisorSkipLiterarySense({ databasePath, checkpointPath
     || active.model !== checkpoint.batch.model || typeof active.view_sha256 !== 'string'
     || !/^[a-f0-9]{64}$/u.test(active.view_sha256) || active.git_head !== checkpoint.batch.git_head || active.chunk_no < 1) {
     fail('technical skip active chunk belongs to another batch or has no view/head binding');
+  }
+  let retryAttempts;
+  try {
+    retryAttempts = readSupervisorRetryBudget({
+      databasePath: supervisorDatabasePath,
+      batchId: supervisorBatchId,
+      method: 'c',
+      model: checkpoint.batch.model,
+      shard: checkpoint.batch.shard,
+      batch: checkpoint.batch.batch,
+      worktree,
+      retryKey: `c_resubmit_${supervisorBatchId}`,
+      retryKind: 'c_chunk_resume',
+      minimum: 2,
+    });
+  } catch (error) {
+    fail(error.message);
   }
   const activeView = await readFile(assertScratchPath(path.resolve(scratchDirectory, 'c-active-chunk.txt'), scratchDirectory));
   if (sha256(activeView) !== active.view_sha256) fail('technical skip active view no longer matches the rejected chunk');

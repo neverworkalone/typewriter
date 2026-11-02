@@ -286,13 +286,11 @@ async function main() {
       break;
     }
     case 'supervisor-skip': {
-      only(options, 'db', 'checkpoint', 'input', 'retry-attempts');
-      required(options, 'db', 'checkpoint', 'input', 'retry-attempts');
+      only(options, 'db', 'checkpoint', 'input');
+      required(options, 'db', 'checkpoint', 'input');
       assertSubmissionPath(options.input);
       const diagnosticPath = `${path.resolve(options.input)}.diag.json`;
       assertSubmissionPath(diagnosticPath);
-      const retryAttempts = Number(options['retry-attempts']);
-      if (!Number.isSafeInteger(retryAttempts) || retryAttempts < 2) fail('--retry-attempts must prove the exhausted C submit retry budget');
       const diagnostic = JSON.parse(await readFile(diagnosticPath, 'utf8'));
       const submission = await readSubmission(options.input);
       result = await supervisorSkipLiterarySense({
@@ -300,7 +298,9 @@ async function main() {
         checkpointPath: options.checkpoint,
         submission,
         diagnostic,
-        retryAttempts,
+        supervisorDatabasePath: process.env.WARROOM_SUPERVISOR_STATE_DB,
+        supervisorBatchId: process.env.WARROOM_SUPERVISOR_BATCH_ID,
+        worktree: process.cwd(),
         inputSha256: submitDiagnosticInputSha256,
         scratchDirectory: SCRATCH_DIRECTORY,
       });
