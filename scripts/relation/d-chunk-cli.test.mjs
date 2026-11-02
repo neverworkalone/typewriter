@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { spawn, spawnSync } from 'node:child_process';
+import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
@@ -57,8 +57,48 @@ function canonicalRows() {
   return rows;
 }
 
-async function makeWorld({ fillerParagraphs = 2000 } = {}) {
-  const root = await mkdtemp(path.join((await mkdir(path.resolve('.warroom-scratch'), { recursive: true })) ?? path.resolve('.warroom-scratch'), 'd-chunk-'));
+async function makeWorld({ fillerParagraphs = 2000, supervisorWorktree = false } = {}) {
+  const scratchRoot = path.resolve('.warroom-scratch');
+  await mkdir(scratchRoot, { recursive: true });
+  const containerRoot = await mkdtemp(path.join(scratchRoot, 'd-chunk-'));
+  const root = supervisorWorktree ? path.join(containerRoot, 'worktree') : containerRoot;
+  const repositoryRoot = supervisorWorktree ? path.join(containerRoot, 'repository') : null;
+  if (supervisorWorktree) {
+    await mkdir(repositoryRoot, { recursive: true });
+    const sourceFiles = [
+      'scripts/relation/candidate-contract.mjs',
+      'scripts/relation/literary-context-cli.mjs',
+      'scripts/relation/literary-context.mjs',
+      'scripts/relation/d-chunk-cli.mjs',
+      'scripts/relation/corpus-utility.mjs',
+      'docs/relation-literary-context.md',
+      'docs/relation-factory.md',
+      'tools/warroom/prompts/c.md',
+    ];
+    for (const file of sourceFiles) {
+      const target = path.join(repositoryRoot, file);
+      await mkdir(path.dirname(target), { recursive: true });
+      await copyFile(path.resolve(file), target);
+    }
+    const canonicalDirectory = path.join(repositoryRoot, 'data/canonical');
+    await mkdir(canonicalDirectory, { recursive: true });
+    await writeFile(path.join(canonicalDirectory, 'stdict-0001.jsonl'),
+      `${canonicalRows().map((row) => JSON.stringify(row)).join('\n')}\n`);
+    const initialized = spawnSync('git', ['init', '--quiet'], { cwd: repositoryRoot, encoding: 'utf8' });
+    assert.equal(initialized.status, 0, initialized.stderr);
+    const staged = spawnSync('git', ['add', '--', 'scripts/relation', 'docs/relation-literary-context.md',
+      'docs/relation-factory.md', 'tools/warroom/prompts/c.md', 'data/canonical/stdict-0001.jsonl'], {
+      cwd: repositoryRoot, encoding: 'utf8',
+    });
+    assert.equal(staged.status, 0, staged.stderr);
+    const committed = spawnSync('git', ['-c', 'user.name=Typewriter Test', '-c', 'user.email=test@example.invalid',
+      'commit', '--quiet', '--allow-empty', '-m', 'fixture'], { cwd: repositoryRoot, encoding: 'utf8' });
+    assert.equal(committed.status, 0, committed.stderr);
+    const added = spawnSync('git', ['worktree', 'add', '--quiet', '--detach', root, 'HEAD'], {
+      cwd: repositoryRoot, encoding: 'utf8',
+    });
+    assert.equal(added.status, 0, added.stderr);
+  }
   const canonicalPath = path.join(root, 'stdict-0001.jsonl');
   await writeFile(canonicalPath, `${canonicalRows().map((row) => JSON.stringify(row)).join('\n')}\n`);
   const databasePath = path.join(root, 'corpus.sqlite');
@@ -85,21 +125,21 @@ async function makeWorld({ fillerParagraphs = 2000 } = {}) {
   database.close();
   const directory = path.join(root, 'd-001_01');
   const options = { canonicalPath, shard: '001', batch: '01', databasePath, model: 'codex', head: 'a'.repeat(40), directory };
-  return { root, directory, options };
+  return { root, containerRoot, repositoryRoot, directory, options };
 }
 
-const withWorld = (name, body) => test(name, async () => {
-  const world = await makeWorld();
+const withWorld = (name, body, options = {}) => test(name, async () => {
+  const world = await makeWorld(options);
   try {
     await body(world);
   } finally {
-    await rm(world.root, { recursive: true, force: true });
+    await rm(world.containerRoot ?? world.root, { recursive: true, force: true });
   }
 });
 
-const runCli = (args, input, environment) => new Promise((resolve, reject) => {
-  const child = spawn(process.execPath, [path.resolve('scripts/relation/d-chunk-cli.mjs'), ...args], {
-    cwd: process.cwd(), env: { ...process.env, ...environment }, stdio: ['pipe', 'pipe', 'pipe'],
+const runCli = (args, input, environment = {}, cwd = process.cwd(), scriptPath = null) => new Promise((resolve, reject) => {
+  const child = spawn(process.execPath, [scriptPath ?? path.resolve('scripts/relation/d-chunk-cli.mjs'), ...args], {
+    cwd, env: { ...process.env, ...environment }, stdio: ['pipe', 'pipe', 'pipe'],
   });
   let stdout = '';
   let stderr = '';
@@ -116,6 +156,7 @@ const chunkPath = (world, kind, number = 1) => path.join(world.directory, {
   searches: `search-${String(number).padStart(3, '0')}.jsonl`,
   decisions: `decision-${String(number).padStart(3, '0')}.txt`,
   rejected: `rejected-${String(number).padStart(3, '0')}.json`,
+  technicalSkips: `technical-skip-${String(number).padStart(3, '0')}.json`,
 }[kind]);
 const meta = (world, number = 1) => readFile(chunkPath(world, 'active', number), 'utf8').then(JSON.parse);
 const view = (world, number = 1) => readFile(chunkPath(world, 'view', number), 'utf8');
@@ -983,6 +1024,12 @@ withWorld('cursor next resumes recorded search pages and invalid cursor input le
     databasePath: world.options.databasePath, root: world.root,
   });
   assert.ok(manualNext.result.items.length > 0, 'the exact manual forms order and boundary resumes successfully');
+});
+
+test('D producer-visible module has no technical-skip writer', async () => {
+  const module = await import('./d-chunk-cli.mjs');
+  assert.equal('supervisorSkipActive' in module, false);
+  assert.throws(() => module.supervisorSkipActive({ fixAttempts: 1 }), TypeError);
 });
 
 withWorld('single and batch continuation SEARCH_FAILED is returned, persisted, and blocks save', async (world) => {

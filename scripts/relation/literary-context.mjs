@@ -849,7 +849,7 @@ function senseState(sense) {
 }
 
 function senseDone(sense) {
-  return ['ZERO_HITS', 'SUBMITTED', 'NO_VERIFIED', 'SAMPLED_NO_VERIFIED', 'DISCOVERED'].includes(senseState(sense));
+  return ['ZERO_HITS', 'SUBMITTED', 'NO_VERIFIED', 'SAMPLED_NO_VERIFIED', 'DISCOVERED', 'TECHNICAL_SKIPPED'].includes(senseState(sense));
 }
 
 function checkpointSummary(checkpoint) {
@@ -857,12 +857,23 @@ function checkpointSummary(checkpoint) {
   let finalCount = 0;
   let emptySenses = 0;
   let senses = 0;
+  const technicalSkips = [];
   const outputIsCurrent = Boolean(checkpoint.output && !checkpoint.output.stale);
   for (const record of checkpoint.records) {
     for (const sense of record.senses) {
       senses += 1;
       const status = senseState(sense);
       senseStatuses[status] = (senseStatuses[status] ?? 0) + 1;
+      if (status === 'TECHNICAL_SKIPPED') {
+        technicalSkips.push({
+          record_id: record.record_id,
+          sense_id: sense.sense_id,
+          diagnostic: sense.submission.technical_skip.diagnostic,
+          reason: sense.submission.technical_skip.reason,
+          field: sense.submission.technical_skip.field,
+          retry_attempts: sense.submission.technical_skip.retry_attempts,
+        });
+      }
       const count = senseDone(sense) ? finalCandidates(sense).length : 0;
       finalCount += count;
       if (count === 0) emptySenses += 1;
@@ -873,6 +884,7 @@ function checkpointSummary(checkpoint) {
     batch: { shard: checkpoint.batch.shard, batch: checkpoint.batch.batch, model: checkpoint.batch.model, state: outputIsCurrent ? 'OUTPUT' : checkpoint.output ? 'OUTPUT_STALE' : 'IN_PROGRESS' },
     coverage: { records: checkpoint.records.length, senses, sense_statuses: senseStatuses },
     final_candidates: { count: finalCount, empty_senses: emptySenses },
+    technical_skips: technicalSkips,
     output: checkpoint.output ? {
       state: outputIsCurrent ? 'OUTPUT' : 'OUTPUT_STALE',
       path: checkpoint.output.path ?? null,
@@ -1188,8 +1200,11 @@ function validateSubmission(submission, checkpoint) {
 }
 
 export function resolveVerifiedContextKey(key, senseId, results, entryNumber = null) {
-  if (key.length < SHORT_KEY_LENGTH) failSubmission('context_key_too_short', senseId, 'verified', entryNumber);
-  const matches = results.filter((row) => row.locator_key.startsWith(key));
+  // Whitespace around a copied key has one deterministic repair: trim it, then keep the same strict unique-prefix
+  // check. Never guess at a misspelling or alter the source context identity.
+  const normalizedKey = key.trim();
+  if (normalizedKey.length < SHORT_KEY_LENGTH) failSubmission('context_key_too_short', senseId, 'verified', entryNumber);
+  const matches = results.filter((row) => row.locator_key.startsWith(normalizedKey));
   if (matches.length === 0) failSubmission('context_key_not_found', senseId, 'verified', entryNumber);
   if (matches.length > 1) failSubmission('context_key_ambiguous', senseId, 'verified', entryNumber);
   return matches[0];
@@ -1271,7 +1286,7 @@ export function summarizeLiteraryCheckpoint(checkpoint) {
   return checkpointSummary(checkpoint);
 }
 
-const SUBMISSION_STATUSES = ['ZERO_HITS', 'SUBMITTED'];
+const SUBMISSION_STATUSES = ['ZERO_HITS', 'SUBMITTED', 'TECHNICAL_SKIPPED'];
 const isPlainObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 const isNonEmptyString = (value) => typeof value === 'string' && value !== '';
 
@@ -1298,9 +1313,20 @@ function assertCheckpointStructure(checkpoint) {
           || !saved.candidates.every((candidate) => typeof candidate === 'string')) fail('checkpoint sense submission is damaged');
         // Per-status invariants: a candidate always rests on a stored VERIFIED context, and ZERO_HITS has neither.
         const verified = saved.verified ?? [];
+        const technicalSkip = saved.technical_skip;
         if (!Array.isArray(verified) || !verified.every((item) => isPlainObject(item) && isNonEmptyString(item.locator_key))
           || (saved.status === 'SUBMITTED' && !Array.isArray(saved.verified))
           || (saved.status === 'ZERO_HITS' && (saved.candidates.length > 0 || verified.length > 0))
+          || (saved.status === 'TECHNICAL_SKIPPED' && (saved.candidates.length > 0 || !isPlainObject(technicalSkip)
+            || technicalSkip.record_id !== record.record_id || technicalSkip.sense_id !== sense.sense_id
+            || technicalSkip.diagnostic !== 'submit_validation'
+            || !['context_key_not_found', 'context_key_ambiguous', 'context_key_too_short', 'duplicate_verified',
+              'missing_verified', 'no_literary_hits', 'submission_schema'].includes(technicalSkip.reason)
+            || !isNonEmptyString(technicalSkip.field) || !Number.isSafeInteger(technicalSkip.entry_number) || technicalSkip.entry_number < 1
+            || !Number.isSafeInteger(technicalSkip.chunk_no) || technicalSkip.chunk_no < 1
+            || !/^[a-f0-9]{64}$/u.test(technicalSkip.view_sha256 ?? '') || !/^[a-f0-9]{40}$/u.test(technicalSkip.git_head ?? '')
+            || !/^[a-f0-9]{64}$/u.test(technicalSkip.input_sha256 ?? '') || technicalSkip.retry_attempts !== 2
+            || !isNonEmptyString(technicalSkip.skipped_at)))
           || (saved.candidates.length > 0 && verified.length === 0)) fail('checkpoint sense submission is damaged');
       } else if (sense.search !== null && sense.search !== undefined) {
         if (!isPlainObject(sense.search) || typeof sense.search.status !== 'string'

@@ -11,8 +11,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 
 from . import stage2
@@ -28,7 +30,7 @@ CHUNK_CONTEXTS = 8
 # (MAX_ARG_STRLEN) and macOS the whole command line at 1 MiB; stay clearly below the smaller one.
 INLINE_MAX_PROMPT_BYTES = 100_000
 # The CLI's own `senseDone` set (literary-context.mjs). Kept for the in-process sanity check of `report` output only.
-DONE_STATUSES = ("ZERO_HITS", "SUBMITTED", "NO_VERIFIED", "SAMPLED_NO_VERIFIED", "DISCOVERED")
+DONE_STATUSES = ("ZERO_HITS", "SUBMITTED", "NO_VERIFIED", "SAMPLED_NO_VERIFIED", "DISCOVERED", "TECHNICAL_SKIPPED")
 _HEADER = re.compile(r"^## ([A-Za-z0-9][A-Za-z0-9._:-]{0,127}) — (.*)$")
 _ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}")
 
@@ -77,6 +79,204 @@ def submit_retryable(worktree, b, chunk_no: int) -> bool:
         return False
     return (isinstance(diag, dict) and diag.get("diagnostic") in ("submit_validation", "candidate_validation")
             and diag.get("repair_scope") != "stop_and_report")
+
+
+def technical_skip_candidate(worktree, b, chunk_no: int) -> bool:
+    """Cheap routing check; the C CLI revalidates the full active view, file, and diagnostic before it writes."""
+    n = names(b)
+    path = Path(worktree) / f"{n.submit_prefix}{chunk_no:03d}.submit.json.diag.json"
+    try:
+        diag = json.loads(path.read_text("utf-8"))
+        submit_path = Path(worktree) / f"{n.submit_prefix}{chunk_no:03d}.submit.json"
+        submission = json.loads(submit_path.read_text("utf-8"))
+    except (OSError, ValueError):
+        return False
+    affected = diag.get("affected") if isinstance(diag, dict) else None
+    issues = diag.get("issues") if isinstance(diag, dict) else None
+    if not (isinstance(diag, dict) and diag.get("status") == "FAILED"
+            and diag.get("diagnostic") == "submit_validation"
+            and diag.get("repair_scope") == "resubmit_affected_sense"
+            and diag.get("issues_truncated") is not True and isinstance(issues, list) and len(issues) == 1
+            and isinstance(affected, dict) and isinstance(affected.get("sense_id"), str)
+            and isinstance(affected.get("entry_number"), int) and not isinstance(affected.get("entry_number"), bool)
+            and isinstance(submission, dict) and isinstance(submission.get("senses"), list)
+            and 1 <= affected["entry_number"] <= len(submission["senses"])):
+        return False
+    entry = submission["senses"][affected["entry_number"] - 1]
+    return isinstance(entry, dict) and entry.get("sense_id") == affected["sense_id"]
+
+
+def deterministic_context_trim_candidate(worktree, b, chunk_no: int) -> bool:
+    """True only when the exact failed verified key has surrounding whitespace that the CLI can trim safely."""
+    n = names(b)
+    path = Path(worktree) / f"{n.submit_prefix}{chunk_no:03d}.submit.json.diag.json"
+    submit_path = Path(worktree) / f"{n.submit_prefix}{chunk_no:03d}.submit.json"
+    try:
+        diag = json.loads(path.read_text("utf-8"))
+        submission = json.loads(submit_path.read_text("utf-8"))
+    except (OSError, ValueError):
+        return False
+    affected = diag.get("affected") if isinstance(diag, dict) else None
+    issues = diag.get("issues") if isinstance(diag, dict) else None
+    if not (isinstance(diag, dict) and diag.get("status") == "FAILED"
+            and diag.get("diagnostic") == "submit_validation" and diag.get("reason") == "context_key_not_found"
+            and diag.get("repair_scope") == "resubmit_affected_sense" and diag.get("issues_truncated") is not True
+            and isinstance(issues, list) and len(issues) == 1
+            and isinstance(affected, dict) and affected.get("field") == "verified"
+            and isinstance(affected.get("entry_number"), int) and not isinstance(affected.get("entry_number"), bool)
+            and isinstance(submission, dict) and isinstance(submission.get("senses"), list)
+            and 1 <= affected["entry_number"] <= len(submission["senses"])):
+        return False
+    issue = issues[0]
+    entry = submission["senses"][affected["entry_number"] - 1]
+    if not (isinstance(issue, dict) and isinstance(entry, dict) and entry.get("sense_id") == affected.get("sense_id")
+            and issue.get("entry_number") == affected["entry_number"]
+            and issue.get("reason") == diag["reason"] and issue.get("field") == affected["field"]
+            and isinstance(entry.get("verified"), list)):
+        return False
+    return any(isinstance(key, str) and key != key.strip() and len(key.strip()) >= 12 for key in entry["verified"])
+
+
+def supervisor_skip(store, runner, env, worktree, b, rec: dict) -> dict:
+    """Apply C's final fallback inside War Room, after checking its persisted retry count."""
+    owner = store.batch(b["id"])
+    if (not owner or owner["method"] != "c" or owner["producer"] != b["producer"]
+            or owner["shard"] != b["shard"] or owner["batch"] != b["batch"]
+            or Path(owner["worktree"]) != Path(worktree) or owner["session_id"] != b["session_id"]):
+        raise LiteraryError("C technical skip requires the active War Room-owned batch")
+    retry_attempts = int(store.get(resubmit_key(b["id"])) or 0)
+    if retry_attempts != MAX_RESUBMITS:
+        raise LiteraryError("C technical skip requires the exhausted Supervisor resubmit budget")
+    n = names(b)
+    input_path = f"{n.submit_prefix}{rec['chunk_no']:03d}.submit.json"
+    absolute_input = Path(worktree) / input_path
+    checkpoint_path = Path(worktree) / n.checkpoint
+    try:
+        input_bytes = absolute_input.read_bytes()
+        submission = json.loads(input_bytes)
+        diagnostic = json.loads(absolute_input.with_name(absolute_input.name + ".diag.json").read_text("utf-8"))
+        input_sha256 = hashlib.sha256(input_bytes).hexdigest()
+    except (OSError, ValueError) as error:
+        raise LiteraryError("C technical skip inputs are unavailable") from error
+    allowed_reasons = {"context_key_not_found", "context_key_ambiguous", "context_key_too_short",
+                       "duplicate_verified", "missing_verified", "no_literary_hits", "submission_schema"}
+    affected = diagnostic.get("affected") if isinstance(diagnostic, dict) else None
+    issues = diagnostic.get("issues") if isinstance(diagnostic, dict) else None
+    if not (isinstance(diagnostic, dict) and diagnostic.get("status") == "FAILED"
+            and diagnostic.get("diagnostic") == "submit_validation"
+            and diagnostic.get("repair_scope") == "resubmit_affected_sense"
+            and diagnostic.get("issues_truncated") is not True and isinstance(issues, list) and len(issues) == 1
+            and diagnostic.get("reason") in allowed_reasons and diagnostic.get("input_sha256") == input_sha256
+            and isinstance(submission, dict) and set(submission) == {"senses"}
+            and isinstance(submission.get("senses"), list) and submission["senses"]):
+        raise LiteraryError("C technical skip requires one current source-Sense-local submit diagnostic")
+    entry_number = affected.get("entry_number") if isinstance(affected, dict) else None
+    target_id = affected.get("sense_id") if isinstance(affected, dict) else None
+    issue = issues[0]
+    target_entry = submission["senses"][entry_number - 1] if isinstance(entry_number, int) and not isinstance(entry_number, bool) \
+        and 1 <= entry_number <= len(submission["senses"]) else None
+    if (not isinstance(entry_number, int) or isinstance(entry_number, bool) or not 1 <= entry_number <= len(submission["senses"])
+            or not isinstance(target_id, str) or not isinstance(target_entry, dict) or target_id != target_entry.get("sense_id")
+            or not isinstance(issue, dict) or issue.get("entry_number") != entry_number or issue.get("reason") != diagnostic["reason"]
+            or issue.get("field") != affected.get("field")):
+        raise LiteraryError("C technical skip diagnostic does not identify its exact submitted Sense")
+    entries = submission["senses"]
+    active_ids = rec.get("sense_ids")
+    if (rec.get("repair") is True or not isinstance(active_ids, list) or target_id not in active_ids
+            or len({entry.get("sense_id") for entry in entries if isinstance(entry, dict)}) != len(entries)
+            or any(not isinstance(entry, dict) or set(entry) != {"sense_id", "verified", "candidates"}
+                   or entry.get("sense_id") not in active_ids for entry in entries)):
+        raise LiteraryError("C technical skip submission does not match the active chunk")
+    read_view(worktree, rec)
+    try:
+        checkpoint = json.loads(checkpoint_path.read_text("utf-8"))
+    except (OSError, ValueError) as error:
+        raise LiteraryError("C technical skip checkpoint is unavailable") from error
+    if not isinstance(checkpoint, dict):
+        raise LiteraryError("C technical skip checkpoint structure is damaged")
+    batch = checkpoint.get("batch")
+    if (checkpoint.get("contract") != "literary-checkpoint-v3" or not isinstance(batch, dict)
+            or (batch.get("shard"), batch.get("batch"), batch.get("model"), batch.get("git_head"))
+            != (b["shard"], b["batch"], b["producer"], rec.get("git_head"))
+            or (rec.get("shard"), rec.get("batch"), rec.get("model")) != (b["shard"], b["batch"], b["producer"])):
+        raise LiteraryError("C technical skip checkpoint and active chunk bindings differ")
+    records = checkpoint.get("records")
+    if not isinstance(records, list) or any(not isinstance(record, dict) or not isinstance(record.get("senses"), list)
+                                             or any(not isinstance(sense, dict) for sense in record["senses"])
+                                             for record in records):
+        raise LiteraryError("C technical skip checkpoint Records are damaged")
+    target_record = next((record for record in records if any(isinstance(sense, dict) and sense.get("sense_id") == target_id
+                                                                for sense in record["senses"])), None)
+    target_sense = next((sense for sense in target_record["senses"] if sense.get("sense_id") == target_id), None) \
+        if target_record else None
+    if target_sense is None or target_sense.get("submission") is not None:
+        raise LiteraryError("C technical skip cannot overwrite a saved or unknown Sense")
+
+    before = sense_report(runner, env, worktree, b, active_ids)
+    done = {item["sense_id"] for item in before["senses"] if item["done"]}
+    pending = [entry for entry in entries if entry["sense_id"] != target_id and entry["sense_id"] not in done]
+    if pending:
+        temporary = absolute_input.with_name(f"c-chunk-{rec['chunk_no']:03d}.supervisor-submit.json")
+        diagnostic_path = temporary.with_name(temporary.name + ".diag.json")
+        temporary.write_text(json.dumps({"senses": pending}, ensure_ascii=False), "utf-8")
+        try:
+            result = cli(runner, env, worktree, "submit", "--db", env["TYPEWRITER_APPROVED_LITERARY_DB"],
+                         "--checkpoint", n.checkpoint, "--input", str(temporary.relative_to(worktree)))
+            _json(result, "C unaffected Sense resubmission")
+        finally:
+            temporary.unlink(missing_ok=True)
+            diagnostic_path.unlink(missing_ok=True)
+
+    current = sense_report(runner, env, worktree, b, active_ids)
+    if any(not item["done"] for item in current["senses"] if item["sense_id"] != target_id):
+        raise LiteraryError("C technical skip refused while an unaffected active Sense is still pending")
+    checkpoint = json.loads(checkpoint_path.read_text("utf-8"))
+    target_record = next(record for record in checkpoint["records"]
+                         if any(isinstance(sense, dict) and sense.get("sense_id") == target_id for sense in record["senses"]))
+    target_sense = next(sense for sense in target_record["senses"] if sense.get("sense_id") == target_id)
+    if target_sense.get("submission") is not None:
+        raise LiteraryError("C technical skip cannot overwrite a Sense saved while processing unaffected entries")
+    target_sense["submission"] = {
+        "status": "TECHNICAL_SKIPPED", "candidates": [],
+        "technical_skip": {"record_id": target_record["record_id"], "sense_id": target_id,
+                           "diagnostic": diagnostic["diagnostic"], "reason": diagnostic["reason"],
+                           "field": affected["field"], "entry_number": entry_number,
+                           "chunk_no": rec["chunk_no"], "view_sha256": rec["view_sha256"],
+                           "git_head": rec["git_head"], "retry_attempts": retry_attempts,
+                           "input_sha256": input_sha256,
+                           "skipped_at": datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")},
+    }
+    output = checkpoint.get("output")
+    if output:
+        output["stale"] = True
+        output["stale_reason"] = "supervisor technical skip"
+    temporary_checkpoint = checkpoint_path.with_name(checkpoint_path.name + ".supervisor.tmp")
+    temporary_checkpoint.write_text(json.dumps(checkpoint, ensure_ascii=False, indent=2) + "\n", "utf-8")
+    os.replace(temporary_checkpoint, checkpoint_path)
+    after = sense_report(runner, env, worktree, b, active_ids)
+    if not all(item["done"] for item in after["senses"]):
+        raise LiteraryError("C technical skip was written but the complete active chunk did not validate")
+    return {"status": "TECHNICAL_SKIPPED", "record_id": target_record["record_id"], "sense_id": target_id,
+            "diagnostic": diagnostic["diagnostic"], "reason": diagnostic["reason"], "field": affected["field"],
+            "retry_attempts": retry_attempts, "pending_senses": 0}
+
+
+def revalidate_submit_before_skip(runner, env, worktree, b, chunk_no: int) -> dict | None:
+    """Re-run the unchanged full submit through the normal CLI before a skip, refreshing its exact failure binding.
+
+    A successful deterministic CLI repair completes the chunk without a skip. A failed validation leaves the CLI's
+    current diagnostic beside the unchanged submission for the Supervisor-only fallback to verify.
+    """
+    n = names(b)
+    input_path = f"{n.submit_prefix}{chunk_no:03d}.submit.json"
+    result = cli(runner, env, worktree, "submit", "--db", env["TYPEWRITER_APPROVED_LITERARY_DB"],
+                 "--checkpoint", n.checkpoint, "--input", input_path)
+    if not result.ok:
+        return None
+    data = _json(result, "C normal submit revalidation")
+    if data.get("status") != "SAVED":
+        raise LiteraryError("C normal submit revalidation returned an unexpected state")
+    return data
 
 
 def cli(runner, env, worktree, *args, db: bool = False, timeout: float = 900):
@@ -293,10 +493,15 @@ def pr_title(label: str, b) -> str:
 
 
 def pr_body(label: str, b, coverage: dict) -> str:
-    """Exactly the six production-PR items, from the real export/validate result (never #1155, paths or reports)."""
-    return "\n".join([f"- Method: C", f"- Model: {label}", f"- Shard: {b['shard']}", f"- Batch: {b['batch']}",
-                      f"- Coverage: {coverage['records']} records / {coverage['senses']} senses",
-                      f"- Candidates: {coverage['candidates']}"]) + "\n"
+    """Six standard production items plus an auditable exclusion line only when a technical skip occurred."""
+    lines = [f"- Method: C", f"- Model: {label}", f"- Shard: {b['shard']}", f"- Batch: {b['batch']}",
+             f"- Coverage: {coverage['records']} records / {coverage['senses']} senses",
+             f"- Candidates: {coverage['candidates']}"]
+    skips = coverage.get("technical_skips", [])
+    if skips:
+        details = ", ".join(f"{item['record_id']}/{item['sense_id']} ({item['reason']})" for item in skips)
+        lines.append(f"- Technical skips: {len(skips)} senses — {details}")
+    return "\n".join(lines) + "\n"
 
 
 def affected_senses(stderr: str) -> list[str]:
@@ -330,6 +535,12 @@ def ensure_export(runner, env, worktree, b) -> Export:
     report = summary(runner, env, wt, b)
     if not all_done(report):
         raise LiteraryError(f"모든 sense가 완료되지 않았습니다: {unfinished(report)}")
+    technical_skips = report.get("technical_skips", [])
+    if not isinstance(technical_skips, list) or any(not isinstance(item, dict)
+            or not all(isinstance(item.get(key), str) and item[key]
+                       for key in ("record_id", "sense_id", "diagnostic", "reason", "field"))
+            for item in technical_skips):
+        raise LiteraryError("report technical skip 목록이 손상되었습니다")
     out = report.get("output")
     target = wt / n.output
     if isinstance(out, dict) and out.get("state") == "OUTPUT" and out.get("validation_status") == "VALID" \
@@ -340,7 +551,9 @@ def ensure_export(runner, env, worktree, b) -> Export:
         data = _json(res, "literary validate")
         if data.get("status") != "VALID":
             raise LiteraryError("기존 export 산출물의 Candidate v1 검증이 실패했습니다")
-        return Export("ready", _coverage(data))
+        coverage = _coverage(data)
+        coverage["technical_skips"] = technical_skips
+        return Export("ready", coverage)
     res = cli(runner, env, wt, "export", "--checkpoint", n.checkpoint, "--canonical", n.canonical, "--output", n.output)
     if not res.ok:
         ids = affected_senses(res.err)
@@ -353,7 +566,9 @@ def ensure_export(runner, env, worktree, b) -> Export:
     data = _json(res, "literary export")
     if data.get("status") != "OUTPUT" or not isinstance(data.get("coverage"), dict):
         raise LiteraryError("export 결과가 올바르지 않습니다")
-    return Export("ready", _coverage(data["coverage"]))
+    coverage = _coverage(data["coverage"])
+    coverage["technical_skips"] = technical_skips
+    return Export("ready", coverage)
 
 
 def _candidate_content_issues(stderr: str, sense_ids: list[str]) -> tuple[int, list[dict]]:

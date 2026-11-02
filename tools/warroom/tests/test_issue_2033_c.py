@@ -1,5 +1,6 @@
 """Issue #2033 (PR 2): Method C runs as serial chunk sessions with a deterministic, idempotent finalization."""
 import json
+import hashlib
 import tempfile
 import unittest
 
@@ -164,6 +165,117 @@ class SerialChunks(unittest.TestCase):
         self.assertIn("checkpoint 완료 증거 없음", b["error"])
         self.assertEqual(len(w.adapter.launches), 3)
         self.assertEqual(w.active()["chunk_no"], chunk_no)
+
+    def test_exact_single_sense_submit_failure_skips_only_that_sense_after_two_resubmits(self):
+        w = CWorld(senses=36)
+        self.addCleanup(w.tmp.cleanup)
+        w.start("single", "deepseek", "c")
+        prior_submissions = {}
+        expected_active_entries = {}
+        active_ids = []
+
+        def rejected_submit():
+            rec = w.active()
+            entries = [{"sense_id": sense_id, "verified": ["abcdef123456"], "candidates": [f"후보-{index}"]}
+                       for index, sense_id in enumerate(rec["sense_ids"])]
+            expected_active_entries.update({entry["sense_id"]: entry for entry in entries})
+            payload = json.dumps({"senses": entries}, ensure_ascii=False)
+            input_path = w.wt() / f".warroom-scratch/c-chunk-{rec['chunk_no']:03d}.submit.json"
+            input_path.write_text(payload, "utf-8")
+            input_sha = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+            (input_path.with_name(input_path.name + ".diag.json")).write_text(json.dumps({
+                "status": "FAILED", "diagnostic": "submit_validation", "repair_scope": "resubmit_affected_sense",
+                "reason": "context_key_not_found",
+                "affected": {"sense_id": rec["sense_ids"][3], "field": "verified", "entry_number": 4},
+                "issues": [{"entry_number": 4, "reason": "context_key_not_found", "field": "verified"}],
+                "input_sha256": input_sha,
+            }))
+
+        for attempt in range(3):
+            w.adapter.plan.append({"code": 0, "session": "ses_c", "effect": rejected_submit})
+            if attempt == 0:
+                w.tick()
+                active_ids = w.active()["sense_ids"]
+                checkpoint_path = w.wt() / f".warroom-scratch/{CP_NAME}"
+                checkpoint = json.loads(checkpoint_path.read_text())
+                prior_ids = checkpoint["ids"][12:18]   # completed work outside this active chunk remains untouched
+                for index, sense_id in enumerate(prior_ids):
+                    checkpoint["status"][sense_id] = "SUBMITTED"
+                    checkpoint.setdefault("submitted", {})[sense_id] = {
+                        "sense_id": sense_id, "verified": [f"prior-key-{index}"], "candidates": [f"prior-{index}"]}
+                prior_submissions = {sense_id: checkpoint["submitted"][sense_id] for sense_id in prior_ids}
+                checkpoint_path.write_text(json.dumps(checkpoint))
+            else:
+                w.finish_last()
+                w.tick()
+                if attempt == 1:
+                    batch = w.row("deepseek", "c")
+                    active = w.active()
+                    self.assertEqual(w.store.get(literary.resubmit_key(batch["id"])), "1")
+                    with self.assertRaisesRegex(literary.LiteraryError, "exhausted Supervisor resubmit budget"):
+                        literary.supervisor_skip(w.store, w.runner, w.sup._c_env(batch), w.wt(), batch, active)
+            if attempt < 2:
+                self.assertEqual(w.row("deepseek", "c")["state"], "PRODUCING")
+        w.finish_last()
+        w.tick()
+        b = w.row("deepseek", "c")
+        self.assertEqual((b["state"], w.active()["chunk_no"]), ("PRODUCING", 2))
+        cp = json.loads((w.wt() / f".warroom-scratch/{CP_NAME}").read_text())
+        checkpoint_senses = {sense["sense_id"]: sense for record in cp["records"] for sense in record["senses"]}
+        self.assertEqual(checkpoint_senses["s0003"]["submission"]["status"], "TECHNICAL_SKIPPED")
+        self.assertEqual(sum(checkpoint_senses[sense_id]["submission"]["status"] == "SUBMITTED"
+                             for sense_id in active_ids), 11)
+        self.assertEqual({sense_id: cp["submitted"][sense_id] for sense_id in prior_submissions}, prior_submissions,
+                         "previously completed checkpoint entries remain unchanged")
+        for sense_id in active_ids:
+            if sense_id != "s0003":
+                self.assertEqual(cp["submitted"][sense_id], expected_active_entries[sense_id])
+        self.assertEqual(checkpoint_senses["s0003"]["submission"]["technical_skip"]["reason"],
+                         "context_key_not_found")
+        self.assertTrue(any(call[2] == "submit" for call in w.runner.literary.calls),
+                        "the final full submit is revalidated by the ordinary CLI before a technical skip")
+        self.assertTrue(any("record=record-s0003" in event["msg"] for event in w.store.recent_events()
+                            if event["batch_id"] == b["id"]))
+
+    def test_context_key_whitespace_is_repaired_by_normal_submit_before_ai_resubmit(self):
+        w = CWorld(senses=24)
+        self.addCleanup(w.tmp.cleanup)
+        w.start("single", "deepseek", "c")
+
+        def rejected_submit():
+            rec = w.active()
+            entries = [{"sense_id": sense_id, "verified": ["abcdef123456"], "candidates": [f"후보-{index}"]}
+                       for index, sense_id in enumerate(rec["sense_ids"])]
+            entries[3]["verified"] = ["  abcdef123456  "]
+            payload = json.dumps({"senses": entries}, ensure_ascii=False)
+            input_path = w.wt() / f".warroom-scratch/c-chunk-{rec['chunk_no']:03d}.submit.json"
+            input_path.write_text(payload, "utf-8")
+            (input_path.with_name(input_path.name + ".diag.json")).write_text(json.dumps({
+                "status": "FAILED", "diagnostic": "submit_validation", "repair_scope": "resubmit_affected_sense",
+                "reason": "context_key_not_found",
+                "affected": {"sense_id": rec["sense_ids"][3], "field": "verified", "entry_number": 4},
+                "issues": [{"entry_number": 4, "reason": "context_key_not_found", "field": "verified"}],
+            }))
+
+        w.adapter.plan.append({"code": 0, "session": "ses_c", "effect": rejected_submit})
+        w.tick()
+        w.finish_last()
+        w.tick()
+        b = w.row("deepseek", "c")
+        cp = json.loads((w.wt() / f".warroom-scratch/{CP_NAME}").read_text())
+        self.assertEqual((b["state"], w.active()["chunk_no"]), ("PRODUCING", 2))
+        self.assertEqual(cp["status"]["s0003"], "SUBMITTED")
+        self.assertEqual(cp["submitted"]["s0003"]["verified"], ["abcdef123456"])
+        self.assertEqual(cp.get("technical_skips", []), [])
+        self.assertNotIn("c_chunk_resume", w.kinds())
+        self.assertTrue(any(call[2] == "submit" for call in w.runner.literary.calls))
+
+    def test_c_production_pr_reports_exact_technical_skip_count_only_when_present(self):
+        batch = {"shard": "001", "batch": "01"}
+        base = {"records": 500, "senses": 505, "candidates": 20, "technical_skips": []}
+        self.assertNotIn("Technical skips", literary.pr_body("DeepSeek", batch, base))
+        skipped = {**base, "technical_skips": [{"record_id": "r1", "sense_id": "s1", "reason": "context_key_not_found"}]}
+        self.assertIn("Technical skips: 1 senses — r1/s1 (context_key_not_found)", literary.pr_body("DeepSeek", batch, skipped))
 
     def test_only_a_repairable_cli_diagnostic_allows_an_automatic_resume(self):
         cases = {

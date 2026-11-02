@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile, realpath, rm, stat, symlink, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { copyFile, mkdtemp, mkdir, readFile, realpath, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import test from 'node:test';
@@ -24,10 +25,42 @@ import {
 const jsonl = (items) => `${items.map((item) => JSON.stringify(item)).join('\n')}\n`;
 
 async function makeFixture({ unitCount = 2, unitText, unitTexts, firstForm = '가나다', firstSenseGlosses,
-  firstSearchForms = [], secondLemma, workCount = 1 } = {}) {
+  firstSearchForms = [], secondLemma, workCount = 1, supervisorWorktree = false } = {}) {
   const fixtureRoot = path.resolve('.warroom-scratch');
   await mkdir(fixtureRoot, { recursive: true });
-  const root = await mkdtemp(path.join(fixtureRoot, 'typewriter-literary-context-'));
+  const containerRoot = await mkdtemp(path.join(fixtureRoot, 'typewriter-literary-context-'));
+  const root = supervisorWorktree ? path.join(containerRoot, 'worktree') : containerRoot;
+  const repositoryRoot = supervisorWorktree ? path.join(containerRoot, 'repository') : null;
+  if (supervisorWorktree) {
+    await mkdir(repositoryRoot, { recursive: true });
+    const sourceFiles = [
+      'scripts/relation/candidate-contract.mjs',
+      'scripts/relation/literary-context-cli.mjs',
+      'scripts/relation/literary-context.mjs',
+      'scripts/relation/d-chunk-cli.mjs',
+      'scripts/relation/corpus-utility.mjs',
+      'docs/relation-literary-context.md',
+      'docs/relation-factory.md',
+      'tools/warroom/prompts/c.md',
+    ];
+    for (const file of sourceFiles) {
+      const target = path.join(repositoryRoot, file);
+      await mkdir(path.dirname(target), { recursive: true });
+      await copyFile(path.resolve(file), target);
+    }
+    const initialized = spawnSync('git', ['init', '--quiet'], { cwd: repositoryRoot, encoding: 'utf8' });
+    assert.equal(initialized.status, 0, initialized.stderr);
+    const staged = spawnSync('git', ['add', '--', 'scripts/relation', 'docs/relation-literary-context.md',
+      'docs/relation-factory.md', 'tools/warroom/prompts/c.md'], { cwd: repositoryRoot, encoding: 'utf8' });
+    assert.equal(staged.status, 0, staged.stderr);
+    const committed = spawnSync('git', ['-c', 'user.name=Typewriter Test', '-c', 'user.email=test@example.invalid',
+      'commit', '--quiet', '--allow-empty', '-m', 'fixture'], { cwd: repositoryRoot, encoding: 'utf8' });
+    assert.equal(committed.status, 0, committed.stderr);
+    const added = spawnSync('git', ['worktree', 'add', '--quiet', '--detach', root, 'HEAD'], {
+      cwd: repositoryRoot, encoding: 'utf8',
+    });
+    assert.equal(added.status, 0, added.stderr);
+  }
   const canonicalDirectory = path.join(root, 'data/canonical');
   const scratchDirectory = path.join(root, '.warroom-scratch');
   await mkdir(canonicalDirectory, { recursive: true });
@@ -131,11 +164,13 @@ async function makeFixture({ unitCount = 2, unitText, unitTexts, firstForm = '�
     checkpointPath,
     scratchDirectory,
   });
-  return { root, scratchDirectory, canonicalPath, databasePath, checkpointPath, records, initialized };
+  return {
+    root, containerRoot, repositoryRoot, scratchDirectory, canonicalPath, databasePath, checkpointPath, records, initialized,
+  };
 }
 
 async function cleanup(fixture) {
-  await rm(fixture.root, { recursive: true, force: true });
+  await rm(fixture.containerRoot ?? fixture.root, { recursive: true, force: true });
 }
 
 async function makeRetiredParagraphIndex() {
@@ -417,6 +452,12 @@ test('submission fails closed and writes nothing for uncited, duplicate or unkno
   }
 });
 
+test('C producer-visible module has no technical-skip writer', async () => {
+  const module = await import('./literary-context.mjs');
+  assert.equal('supervisorSkipLiterarySense' in module, false);
+  assert.throws(() => module.supervisorSkipLiterarySense({ retryAttempts: 2 }), TypeError);
+});
+
 test('submit validation returns bounded reason codes and source-sense fields without echoing private input', async () => {
   const fixture = await makeFixture({ unitCount: 3 });
   try {
@@ -552,6 +593,7 @@ test('submit validation returns bounded reason codes and source-sense fields wit
       const diagnostic = JSON.parse(result.stderr);
       assert.equal(diagnostic.status, 'FAILED', scenario.name);
       assert.equal(diagnostic.diagnostic, 'submit_validation', scenario.name);
+      assert.match(diagnostic.input_sha256, /^[a-f0-9]{64}$/u, scenario.name);
       assert.equal(diagnostic.reason, scenario.reason, scenario.name);
       const entryNumber = scenario.entryNumber ?? (scenario.senses ? 1 : null);
       assert.deepEqual(diagnostic.affected, { sense_id: scenario.senseId, field: scenario.field, entry_number: entryNumber }, scenario.name);
@@ -571,6 +613,7 @@ test('submit validation returns bounded reason codes and source-sense fields wit
       const left = JSON.parse(await readFile(path.join(fixture.scratchDirectory, 'submit-input.json.diag.json'), 'utf8'));
       assert.equal(left.diagnostic, 'submit_validation', scenario.name);
       assert.equal(left.repair_scope, diagnostic.repair_scope, scenario.name);
+      assert.equal(left.input_sha256, diagnostic.input_sha256, scenario.name);
       const expectedRepairScope = scenario.reason === 'submission_schema'
         ? 'correct_submission_shape'
         : scenario.reason === 'unknown_sense'
@@ -700,6 +743,11 @@ test('ambiguous context prefixes are classified without including the key', () =
       && error.affected.field === 'verified'
       && !error.message.includes('abcdef123456'),
   );
+});
+
+test('verified context keys trim surrounding whitespace before the unique-prefix check', () => {
+  const row = { locator_key: 'abcdef123456' + '0'.repeat(52) };
+  assert.equal(resolveVerifiedContextKey('  abcdef123456  ', 'sense-000001', [row]), row);
 });
 
 test('submit index access and identity failures stop safely and leave the checkpoint unchanged', async () => {
@@ -1161,7 +1209,9 @@ test('adding a search form after chunk drops the shown contexts so the changed f
   }
 });
 
-const runCli = (fixture, args) => spawnSync(process.execPath, [path.resolve('scripts/relation/literary-context-cli.mjs'), ...args], { cwd: fixture.root, encoding: 'utf8' });
+const runCli = (fixture, args, environment = {}, cwd = fixture.root) => spawnSync(process.execPath,
+  [path.join(fixture.repositoryRoot ?? process.cwd(), 'scripts/relation/literary-context-cli.mjs'), ...args],
+  { cwd, env: { ...process.env, ...environment }, encoding: 'utf8' });
 const cliChunkArgs = (fixture, extra = []) => ['chunk', '--db', fixture.databasePath, '--checkpoint', fixture.checkpointPath, ...extra];
 
 test('chunk CLI accepts --skip and emits only the unseen context suffix', async () => {
