@@ -81,10 +81,16 @@ async function makeWorld({ fillerParagraphs = 2000, supervisorWorktree = false }
       await mkdir(path.dirname(target), { recursive: true });
       await copyFile(path.resolve(file), target);
     }
+    const canonicalDirectory = path.join(repositoryRoot, 'data/canonical');
+    await mkdir(canonicalDirectory, { recursive: true });
+    await writeFile(path.join(canonicalDirectory, 'stdict-0001.jsonl'),
+      `${canonicalRows().map((row) => JSON.stringify(row)).join('\n')}\n`);
     const initialized = spawnSync('git', ['init', '--quiet'], { cwd: repositoryRoot, encoding: 'utf8' });
     assert.equal(initialized.status, 0, initialized.stderr);
     const staged = spawnSync('git', ['add', '--', 'scripts/relation', 'docs/relation-literary-context.md',
-      'docs/relation-factory.md', 'tools/warroom/prompts/c.md'], { cwd: repositoryRoot, encoding: 'utf8' });
+      'docs/relation-factory.md', 'tools/warroom/prompts/c.md', 'data/canonical/stdict-0001.jsonl'], {
+      cwd: repositoryRoot, encoding: 'utf8',
+    });
     assert.equal(staged.status, 0, staged.stderr);
     const committed = spawnSync('git', ['-c', 'user.name=Typewriter Test', '-c', 'user.email=test@example.invalid',
       'commit', '--quiet', '--allow-empty', '-m', 'fixture'], { cwd: repositoryRoot, encoding: 'utf8' });
