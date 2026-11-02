@@ -384,7 +384,7 @@ class SaveRejectedFix(unittest.TestCase):
         w.tick()
         self.assertEqual((w.row_()["state"], w.row_()["run_kind"], w.active()["chunk_no"]),
                          ("PRODUCING", "d_chunk_new", 2))
-        self.assertEqual(len(w.adapter.launches), 2)
+        self.assertEqual(len(w.adapter.launches), 3)                 # fallback saves chunk 1 and immediately launches chunk 2
         rows = [json.loads(line) for line in (w.wt() / dchunk.names(w.row_()).directory / "chunk-001.jsonl").read_text().splitlines()]
         first = next(row for row in rows if row["record_id"] == "w0001")
         other = next(row for row in rows if row["record_id"] == "w0002")

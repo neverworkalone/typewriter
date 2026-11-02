@@ -198,7 +198,7 @@ class SerialChunks(unittest.TestCase):
                 active_ids = w.active()["sense_ids"]
                 checkpoint_path = w.wt() / f".warroom-scratch/{CP_NAME}"
                 checkpoint = json.loads(checkpoint_path.read_text())
-                prior_ids = [sense_id for sense_id in checkpoint["ids"] if sense_id not in active_ids]
+                prior_ids = checkpoint["ids"][12:18]   # completed work outside this active chunk remains untouched
                 for index, sense_id in enumerate(prior_ids):
                     checkpoint["status"][sense_id] = "SUBMITTED"
                     checkpoint.setdefault("submitted", {})[sense_id] = {
