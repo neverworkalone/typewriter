@@ -1195,6 +1195,7 @@ class Supervisor:
         env.pop("WARROOM_STAGE2_CHUNK", None)
         env.pop("WARROOM_STAGE2_REPAIR", None)
         env.pop("WARROOM_GIT_EXECUTABLES", None)
+        env.pop("WARROOM_PROTECTED_PATHS", None)
         env.pop("WARROOM_ANSWER_ONLY", None)
         env.pop("OPENCODE_CONFIG_CONTENT", None)
         ab_chunk = b["method"] in stage1ab.METHODS and isinstance(kind, str) and kind.startswith("ab_chunk_")
@@ -1213,6 +1214,9 @@ class Supervisor:
                 (b["method"] == dchunk.METHOD and isinstance(kind, str) and kind.startswith("d_chunk_")) or ab_chunk:
             env["WARROOM_STAGE2_CHUNK"] = "1"
             env["WARROOM_GIT_EXECUTABLES"] = json.dumps(self._worker_git_executables)
+            env["WARROOM_PROTECTED_PATHS"] = json.dumps([
+                str(self.paths.git_admin_dir.resolve()), str((Path(b["worktree"]) / ".git").resolve()),
+            ])
         return env
 
     def _pinned_runs(self, producer: str, role: str = "stage1"):
@@ -3702,7 +3706,8 @@ class Supervisor:
         if supervisor_fallback is None:
             return self.git.stage2_save_chunk(Path(b["worktree"]), b["shard"], bb, pp)
         return self.git.stage2_save_chunk(Path(b["worktree"]), b["shard"], bb, pp,
-                                          supervisor_fallback=supervisor_fallback)
+                                          supervisor_fallback=supervisor_fallback,
+                                          supervisor_state_dir=self.paths.supervisor_state)
 
     def _stage2_accept(self, b) -> None:
         self._clear_batch_retry(b["id"])

@@ -43,7 +43,7 @@ const USAGE = `usage:
   node scripts/relation/admission-cli.mjs read-chunk --checkpoint <file.json> --optional [--format json|compact] [--page <n>] [--page-size <n>] [--out <file>]
   node scripts/relation/admission-cli.mjs inspect --checkpoint <file.json> --source-sense-id <id>[,<id>...] [--candidate <text> | --select <file.json>] [--format json|compact] [--page <n>] [--page-size <n>] [--out <file>]
   node scripts/relation/admission-cli.mjs save-chunk --checkpoint <file.json> --in <decisions> [--format json|compact]
-  node scripts/relation/admission-cli.mjs save-chunk --checkpoint <file.json> --in <decisions> --format compact --supervisor-fallback <evidence.json>
+  node scripts/relation/admission-cli.mjs save-chunk --checkpoint <file.json> --in <decisions> --format compact --supervisor-fallback
   node scripts/relation/admission-cli.mjs save-optional --checkpoint <file.json> --in <decisions>
   node scripts/relation/admission-cli.mjs complete-optional --checkpoint <file.json>
   node scripts/relation/admission-cli.mjs cancel-revision --checkpoint <file.json> --chunk-id <exact>
@@ -800,7 +800,7 @@ function parseArgs(argv) {
     else if (flag === '--out') options.out = rest[++index];
     else if (flag === '--checkpoint') options.checkpoint = rest[++index];
     else if (flag === '--in') options.input = rest[++index];
-    else if (flag === '--supervisor-fallback') options.supervisorFallback = rest[++index];
+    else if (flag === '--supervisor-fallback') options.supervisorFallback = true;
     else if (flag === '--max-candidates') options.maxCandidates = Number(rest[++index]);
     else if (flag === '--source-sense-id') options.sourceSenseId = rest[++index];
     else if (flag === '--candidate') options.candidateText = rest[++index];
@@ -830,8 +830,8 @@ function parseArgs(argv) {
   }
   options.format ??= 'json';
   if (options.supervisorFallback !== null
-      && (command !== 'save-chunk' || options.format !== 'compact' || typeof options.supervisorFallback !== 'string' || !options.supervisorFallback)) {
-    throw new Error('--supervisor-fallback requires save-chunk --format compact and an evidence file\n' + USAGE);
+      && (command !== 'save-chunk' || options.format !== 'compact')) {
+    throw new Error('--supervisor-fallback requires save-chunk --format compact\n' + USAGE);
   }
   if (!['prepare', 'inspect', 'read-chunk', 'save-chunk', 'save-optional', 'complete-optional', 'cancel-revision', 'merge', 'prepare-merge', 'amend', 'preflight', 'repair', 'reconcile', 'affected-shards', 'affected-shards-batch', 'verify'].includes(command)) throw new Error(USAGE);
   if (['prepare', 'verify', 'reconcile'].includes(command)) assertShard(options.shard);
@@ -2065,7 +2065,7 @@ async function readChunk(checkpoint, checkpointPath, maxCandidates, out, root, s
   return payload;
 }
 
-async function saveChunk(checkpoint, checkpointPath, inputPath, root, format = 'json', supervisorFallbackPath = null) {
+async function saveChunk(checkpoint, checkpointPath, inputPath, root, format = 'json', supervisorFallbackRequested = false) {
   const pending = checkpoint.pending_chunk;
   if (!pending) throw new Error('checkpoint has no unread or unsaved chunk');
   const problems = [];
@@ -2081,11 +2081,12 @@ async function saveChunk(checkpoint, checkpointPath, inputPath, root, format = '
       input = { chunk_id: pending.chunk_id, decisions: parsed.decisions };
     } else input = JSON.parse(raw);
   } catch (error) { throw new Error(`cannot read chunk decisions: ${error.message}`); }
-  if (supervisorFallbackPath !== null) {
+  if (supervisorFallbackRequested) {
     if (format !== 'compact') throw new Error('Supervisor technical fallback is only valid with --format compact');
     try {
-      supervisorFallback = JSON.parse(await readFile(resolveRootPath(root, supervisorFallbackPath), 'utf8'));
-      await assertSupervisorFallbackProcess(root);
+      const supervisorState = await supervisorStateDirectory(root);
+      await assertSupervisorFallbackProcess(supervisorState);
+      supervisorFallback = JSON.parse(await readFile(path.join(supervisorState, 's2-technical-fallback.json'), 'utf8'));
       if (!isPlainObject(supervisorFallback)) throw new Error('Supervisor fallback evidence must be an object');
     } catch (error) { throw new Error(`cannot read Supervisor fallback evidence: ${error.message}`); }
   }
@@ -2185,7 +2186,7 @@ async function saveChunk(checkpoint, checkpointPath, inputPath, root, format = '
   return result;
 }
 
-async function assertSupervisorFallbackProcess(root) {
+async function supervisorStateDirectory(root) {
   const dotGit = path.join(root, '.git');
   let gitDirectory;
   try {
@@ -2203,8 +2204,11 @@ async function assertSupervisorFallbackProcess(root) {
   } catch (error) {
     if (error.code !== 'ENOENT') throw new Error('active Supervisor lock is unavailable');
   }
-  const repositoryRoot = path.dirname(commonDirectory);
-  const lockPath = path.join(repositoryRoot, 'tools/warroom/.local/supervisor-owner.lock');
+  return path.join(commonDirectory, 'typewriter-supervisor');
+}
+
+async function assertSupervisorFallbackProcess(supervisorState) {
+  const lockPath = path.join(supervisorState, 'supervisor-owner.lock');
   const probe = [
     'import fcntl, os, struct, sys',
     'lock = open(sys.argv[1], "rb")',

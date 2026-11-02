@@ -21,29 +21,36 @@ def sh(*a, cwd):
 
 
 class Stage2FallbackInvocation(unittest.TestCase):
-    def test_supervisor_save_writes_candidate_bound_proof_without_a_caller_secret(self):
+    def test_supervisor_save_writes_candidate_bound_proof_to_protected_state(self):
         class CaptureRunner:
+            def __init__(self, proof_path):
+                self.proof_path = proof_path
+
             def run(self, argv, cwd=None, env=None, **_kwargs):
                 self.argv, self.cwd, self.env = argv, cwd, env
+                self.proof = json.loads(self.proof_path.read_text("utf-8"))
                 return Result(0, "saved")
 
         with tempfile.TemporaryDirectory() as directory:
             worktree = Path(directory)
-            runner = CaptureRunner()
+            supervisor_state = worktree / ".git" / "typewriter-supervisor"
+            runner = CaptureRunner(supervisor_state / "s2-technical-fallback.json")
             git = Git.__new__(Git)
             git.r, git.env = runner, {"PATH": "/bin"}
             proof = {"alias": "c1", "candidate": "후보", "chunk_id": "001-01-01-001",
                      "failure_reason": "original save-chunk failure", "record_id": "w1",
                      "retry_count": 1, "sense_id": "w1-s1"}
 
-            ok, detail = git.stage2_save_chunk(worktree, "001", "01", "01", supervisor_fallback=proof)
+            ok, detail = git.stage2_save_chunk(worktree, "001", "01", "01", supervisor_fallback=proof,
+                                               supervisor_state_dir=supervisor_state)
 
-            saved_proof = json.loads((worktree / ".warroom-scratch/s2-technical-fallback.json").read_text("utf-8"))
+            self.assertFalse((supervisor_state / "s2-technical-fallback.json").exists(),
+                             "the protected authorization is removed after the official CLI returns")
             self.assertTrue(ok)
             self.assertEqual(detail, "saved")
-            self.assertEqual(saved_proof, proof)
+            self.assertEqual(runner.proof, proof)
             self.assertEqual(runner.env, git.env, "authority comes from the held kernel lock, not caller env")
-            self.assertEqual(runner.argv[-2:], ["--supervisor-fallback", ".warroom-scratch/s2-technical-fallback.json"])
+            self.assertEqual(runner.argv[-1], "--supervisor-fallback")
 
 
 class RealGit(unittest.TestCase):

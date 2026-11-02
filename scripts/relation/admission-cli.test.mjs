@@ -1337,11 +1337,12 @@ test('technical Drop f requires the CLI parent to own the active Supervisor lock
   const { root, sourceCandidates } = await sixCandidateRepository(t);
   const mainRoot = path.join(root, '.supervisor-main');
   const commonGit = path.join(mainRoot, '.git');
+  const supervisorState = path.join(commonGit, 'typewriter-supervisor');
   const worktreeGit = path.join(commonGit, 'worktrees', 'stage2');
-  const supervisorLock = path.join(mainRoot, 'tools/warroom/.local/supervisor.lock');
-  const supervisorOwnerLock = path.join(mainRoot, 'tools/warroom/.local/supervisor-owner.lock');
+  const supervisorLock = path.join(supervisorState, 'supervisor.lock');
+  const supervisorOwnerLock = path.join(supervisorState, 'supervisor-owner.lock');
   await mkdir(worktreeGit, { recursive: true });
-  await mkdir(path.dirname(supervisorLock), { recursive: true });
+  await mkdir(supervisorState, { recursive: true });
   await writeFile(path.join(worktreeGit, 'commondir'), '../..\n');
   await writeFile(path.join(root, '.git'), `gitdir: ${worktreeGit}\n`);
   await writeFile(supervisorLock, `${process.ppid}\n`);
@@ -1368,33 +1369,103 @@ test('technical Drop f requires the CLI parent to own the active Supervisor lock
     record_id: 'w1', retry_count: 1, sense_id: 'w1-s1',
   };
   const fallbackArgs = ['save-chunk', '--checkpoint', checkpoint, '--in', input, '--format', 'compact',
-    '--supervisor-fallback', proofPath];
+    '--supervisor-fallback'];
   const beforeForged = await readFile(path.join(root, checkpoint));
   await writeFile(path.join(root, proofPath), JSON.stringify(proof));
   await assert.rejects(() => quiet(() => run(fallbackArgs, { root })), /active Supervisor lock/u);
   assert.deepEqual(await readFile(path.join(root, checkpoint)), beforeForged,
     'a caller-written PID and fabricated proof cannot advance the checkpoint without the kernel lock');
 
+  await writeFile(path.join(supervisorState, 's2-technical-fallback.json'), JSON.stringify(proof));
   const supervisorDriver = [
     'import fcntl, os, subprocess, sys',
-    'lock = open(sys.argv[1], "r+")',
-    'fcntl.lockf(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)',
-    'lock.seek(0); lock.truncate(); lock.write(str(os.getpid())); lock.flush()',
-    'result = subprocess.run(["node", "--input-type=module", "-e", sys.argv[2]], cwd=sys.argv[3], env=os.environ.copy())',
+    'instance = open(sys.argv[1], "r+")',
+    'owner = open(sys.argv[2], "r+")',
+    'fcntl.flock(instance, fcntl.LOCK_EX | fcntl.LOCK_NB)',
+    'fcntl.lockf(owner, fcntl.LOCK_EX | fcntl.LOCK_NB)',
+    'owner.seek(0); owner.truncate(); owner.write(str(os.getpid())); owner.flush()',
+    'result = subprocess.run(["node", "--input-type=module", "-e", sys.argv[3]], cwd=sys.argv[4], env=os.environ.copy())',
     'raise SystemExit(result.returncode)',
   ].join('\n');
   const cliPath = path.join(REPOSITORY_DIRECTORY, 'scripts/relation/admission-cli.mjs');
   const nodeDriver = `import { run } from ${JSON.stringify(pathToFileURL(cliPath).href)}; await run(JSON.parse(process.env.TEST_CLI_ARGS), { root: process.env.TEST_REPO_ROOT });`;
-  const authorized = spawnSync('python3', ['-c', supervisorDriver, supervisorOwnerLock, nodeDriver, root], {
+  const authorized = spawnSync('python3', ['-c', supervisorDriver, supervisorLock, supervisorOwnerLock, nodeDriver, root], {
     cwd: root, encoding: 'utf8', timeout: 10000,
     env: { ...process.env, TEST_CLI_ARGS: JSON.stringify(fallbackArgs), TEST_REPO_ROOT: root },
   });
   assert.equal(authorized.status, 0, `${authorized.stdout}\n${authorized.stderr}`);
+  await rm(path.join(supervisorState, 's2-technical-fallback.json'), { force: true });
   await mergeForTest(root, checkpoint);
   const drops = await readDropRows(path.join(root, 'data/relation-drops/drop-001.jsonl'));
   assert.equal(drops.find((row) => row.candidate === sourceCandidates[0])?.reason, 'f');
   const saved = JSON.parse(await readFile(path.join(root, checkpoint), 'utf8'));
   assert.equal(saved.items[0].candidates[0].decision.reason, 'f');
+});
+
+test('sandboxed worker cannot replace the locked Supervisor path or forge an f authorization', async (t) => {
+  if (process.platform !== 'darwin') return t.skip('runtime path-replacement sandbox test uses macOS sandbox-exec');
+  const pythonProbe = spawnSync('python3', ['-c', 'import shutil; print(shutil.which("sandbox-exec") or "")'], { encoding: 'utf8' });
+  if (pythonProbe.status !== 0 || !pythonProbe.stdout.trim()) return t.skip('sandbox-exec is unavailable');
+
+  const { root, sourceCandidates } = await sixCandidateRepository(t);
+  const mainRoot = path.join(root, '.supervisor-main');
+  const commonGit = path.join(mainRoot, '.git');
+  const supervisorState = path.join(commonGit, 'typewriter-supervisor');
+  const worktreeGit = path.join(commonGit, 'worktrees', 'stage2');
+  const supervisorLock = path.join(supervisorState, 'supervisor.lock');
+  const supervisorOwnerLock = path.join(supervisorState, 'supervisor-owner.lock');
+  await mkdir(worktreeGit, { recursive: true });
+  await mkdir(supervisorState, { recursive: true });
+  await writeFile(path.join(worktreeGit, 'commondir'), '../..\n');
+  await writeFile(path.join(root, '.git'), `gitdir: ${worktreeGit}\n`);
+
+  const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
+  const input = '.warroom-scratch/decisions.txt';
+  const prepared = await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  delete prepared.type_tier_policy;
+  await writeFile(path.join(root, checkpoint), `${JSON.stringify(prepared)}\n`);
+  const chunk = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint, '--format', 'compact'], { root }));
+  const modelRows = sourceCandidates.slice(1).map((_, index) => `c${index + 2} D x`).join('\n');
+  await writeFile(path.join(root, input), `chunk ${chunk.chunk_id}\n${modelRows}\n`);
+  const before = await readFile(path.join(root, checkpoint));
+  const fakeProof = {
+    alias: 'c1', candidate: sourceCandidates[0], chunk_id: chunk.chunk_id,
+    failure_reason: `chunk ${chunk.chunk_id} not saved, checkpoint unchanged: 1 problem(s)\nc1 ${sourceCandidates[0]}: original issue`,
+    record_id: 'w1', retry_count: 1, sense_id: 'w1-s1',
+  };
+  const fallbackArgs = ['save-chunk', '--checkpoint', checkpoint, '--in', input, '--format', 'compact', '--supervisor-fallback'];
+  const cliPath = path.join(REPOSITORY_DIRECTORY, 'scripts/relation/admission-cli.mjs');
+  const nodeDriver = `import { run } from ${JSON.stringify(pathToFileURL(cliPath).href)}; await run(JSON.parse(process.env.TEST_CLI_ARGS), { root: process.env.TEST_REPO_ROOT });`;
+  const driver = [
+    'import json, os, subprocess, sys',
+    'from warroom.adapters import stage2_chunk_sandbox_command',
+    'common, instance_path, owner_path, worktree_gitfile, root, cli_path = sys.argv[1:]',
+    'holder_code = "import fcntl,sys,time; a=open(sys.argv[1],\\\"a+\\\"); b=open(sys.argv[2],\\\"a+\\\"); fcntl.flock(a,fcntl.LOCK_EX); fcntl.lockf(b,fcntl.LOCK_EX); print(\\\"LOCKED\\\",flush=True); time.sleep(60)"',
+    'holder = subprocess.Popen(["python3", "-c", holder_code, instance_path, owner_path], stdout=subprocess.PIPE, text=True)',
+    'if holder.stdout.readline().strip() != "LOCKED": raise SystemExit("could not establish the real Supervisor lock")',
+    'worker_code = "import fcntl,json,os,subprocess,sys; common,owner_path,state,root,cli_path=sys.argv[1:]; state=os.path.join(common,\\\"typewriter-supervisor\\\"); fake=os.path.join(state,\\\"s2-technical-fallback.json\\"); renamed=False;\\ntry: os.rename(common,common+\\\".replaced\\\"); renamed=True\\nexcept OSError: print(\\\"RENAME_DENIED\\\");\\nif renamed: print(\\\"RENAME_ALLOWED\\\"); os.makedirs(os.path.dirname(owner_path),exist_ok=True); f=open(owner_path,\\\"a+\\\"); fcntl.lockf(f,fcntl.LOCK_EX|fcntl.LOCK_NB);\\ntry: os.makedirs(state,exist_ok=True); open(fake,\\\"w\\\").write(os.environ[\\\"TEST_FAKE_PROOF\\\"]); print(\\\"FAKE_EVIDENCE_WRITTEN\\\")\\nexcept OSError: print(\\\"FAKE_EVIDENCE_DENIED\\\");\\nr=subprocess.run([\\\"node\\\",\\\"--input-type=module\\\",\\\"-e\\\",os.environ[\\\"TEST_NODE_DRIVER\\\"]],cwd=root,env=os.environ.copy(),capture_output=True,text=True); print(\\\"CLI_STATUS=\\\"+str(r.returncode)); print(r.stderr); sys.exit(0)"',
+    'worker = ["python3", "-c", worker_code, common, owner_path, state, root, cli_path]',
+    'command = stage2_chunk_sandbox_command(worker, ["/usr/bin/git"], [common, worktree_gitfile], os.environ.get("PATH", ""))',
+    'result = subprocess.run(command, cwd=root, env=os.environ.copy(), capture_output=True, text=True)',
+    'holder.terminate(); holder.wait(timeout=5)',
+    'print(result.stdout); print(result.stderr)',
+    'if result.returncode != 0: raise SystemExit(result.returncode)',
+    'if "RENAME_DENIED" not in result.stdout or "FAKE_EVIDENCE_DENIED" not in result.stdout or "CLI_STATUS=1" not in result.stdout: raise SystemExit("sandbox did not block the fallback authority replacement")',
+  ].join('\n');
+  const attempted = spawnSync('python3', ['-c', driver, commonGit, supervisorLock, supervisorOwnerLock,
+    path.join(root, '.git'), root, cliPath], {
+    cwd: root, encoding: 'utf8', timeout: 20000,
+    env: {
+      ...process.env,
+      PYTHONPATH: path.join(REPOSITORY_DIRECTORY, 'tools/warroom'),
+      PYTHONDONTWRITEBYTECODE: '1',
+      TEST_CLI_ARGS: JSON.stringify(fallbackArgs), TEST_REPO_ROOT: root,
+      TEST_FAKE_PROOF: JSON.stringify(fakeProof), TEST_NODE_DRIVER: nodeDriver,
+    },
+  });
+  assert.equal(attempted.status, 0, `${attempted.stdout}\n${attempted.stderr}`);
+  assert.deepEqual(await readFile(path.join(root, checkpoint)), before,
+    'the worker cannot advance the checkpoint by replacing the active lock inode or planting fallback evidence');
 });
 
 test('new Part mirrors source Type/Tier through compact, JSON revision, inspect and amend boundaries', async (t) => {

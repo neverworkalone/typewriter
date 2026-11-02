@@ -1,4 +1,4 @@
-"""Paths and operator configuration. Everything mutable lives under .local/."""
+"""Operator configuration and worktrees live under .local; Supervisor authority state lives in Git admin data."""
 from __future__ import annotations
 
 import json
@@ -77,19 +77,41 @@ class Paths:
         return self.local / "worktrees"
 
     @property
+    def git_admin_dir(self) -> Path:
+        dot_git = self.repo_root / ".git"
+        if dot_git.is_dir():
+            git_directory = dot_git.resolve()
+        elif dot_git.is_file():
+            match = re.fullmatch(r"gitdir:\s*(.+)\s*", dot_git.read_text("utf-8"))
+            if not match:
+                raise ValueError("repository .git pointer is malformed")
+            git_directory = (self.repo_root / match.group(1)).resolve()
+        else:
+            return dot_git
+        common_file = git_directory / "commondir"
+        if common_file.is_file():
+            return (git_directory / common_file.read_text("utf-8").strip()).resolve()
+        return git_directory
+
+    @property
+    def supervisor_state(self) -> Path:
+        """Supervisor-only state inside Git administration data, outside writable worktree files."""
+        return self.git_admin_dir / "typewriter-supervisor"
+
+    @property
     def logs(self) -> Path:
         return self.local / "logs"
 
     @property
     def lock(self) -> Path:
-        return self.local / "supervisor.lock"
+        return self.supervisor_state / "supervisor.lock"
 
     @property
     def config_file(self) -> Path:
         return self.local / "config.json"
 
     def ensure(self) -> None:
-        for d in (self.local, self.gh_config, self.worktrees, self.logs):
+        for d in (self.local, self.gh_config, self.worktrees, self.logs, self.supervisor_state):
             d.mkdir(parents=True, exist_ok=True)
 
 

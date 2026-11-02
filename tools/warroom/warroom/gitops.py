@@ -989,23 +989,35 @@ class Git:
                 raise GitError(f"admission-cli {args[0]} 실패: {tail}")
 
     def stage2_save_chunk(self, worktree: Path, shard: str, batch: str, part: str, timeout: int = 900,
-                          supervisor_fallback: dict | None = None) -> tuple[bool, str]:
+                          supervisor_fallback: dict | None = None,
+                          supervisor_state_dir: Path | None = None) -> tuple[bool, str]:
         """Run the existing `admission-cli save-chunk --format compact` on the Supervisor-written decision file.
-        A technical Drop is possible only with Supervisor-supplied, candidate-bound evidence.
+        A technical Drop is possible only with Supervisor-supplied, candidate-bound evidence in protected state.
         (ok, output): on rejection the CLI's complete error list, with the checkpoint unchanged."""
         checkpoint = f".warroom-scratch/relation-admission-{shard}-{batch}-{part}.json"
         args = ["node", "scripts/relation/admission-cli.mjs", "save-chunk", "--checkpoint", checkpoint,
                 "--in", ".warroom-scratch/decisions.txt", "--format", "compact"]
+        fallback_path = None
+        temporary = None
         if supervisor_fallback is not None:
-            fallback_path = Path(worktree) / ".warroom-scratch" / "s2-technical-fallback.json"
+            if supervisor_state_dir is None:
+                raise ValueError("Supervisor fallback requires its protected state directory")
+            fallback_path = Path(supervisor_state_dir) / "s2-technical-fallback.json"
             fallback_path.parent.mkdir(parents=True, exist_ok=True)
             temporary = fallback_path.with_suffix(".json.tmp")
-            temporary.write_text(json.dumps(supervisor_fallback, ensure_ascii=False,
-                                             separators=(",", ":")) + "\n", "utf-8")
-            temporary.replace(fallback_path)
-            args.extend(["--supervisor-fallback", ".warroom-scratch/s2-technical-fallback.json"])
-        res = self.r.run(args, cwd=worktree, env=self.env, timeout=timeout)
-        return res.ok, (res.err or res.out).strip()
+        try:
+            if fallback_path is not None:
+                temporary.write_text(json.dumps(supervisor_fallback, ensure_ascii=False,
+                                                 separators=(",", ":")) + "\n", "utf-8")
+                temporary.replace(fallback_path)
+                args.append("--supervisor-fallback")
+            res = self.r.run(args, cwd=worktree, env=self.env, timeout=timeout)
+            return res.ok, (res.err or res.out).strip()
+        finally:
+            if fallback_path is not None:
+                fallback_path.unlink(missing_ok=True)
+            if temporary is not None:
+                temporary.unlink(missing_ok=True)
 
     def stage2_optional_view(self, worktree: Path, shard: str, batch: str, part: str, timeout: int = 900) -> str:
         """Read every optional-link page without touching the checkpoint; return the complete compact view."""

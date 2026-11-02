@@ -21,35 +21,45 @@ class Stage2GitSandbox(unittest.TestCase):
     def test_linux_policy_masks_each_git_executable_and_keeps_worker_command(self):
         with tempfile.TemporaryDirectory() as tmp:
             alias = self.git_alias(tmp)
+            protected = Path(tmp) / "common.git"
+            protected.mkdir()
             with patch("warroom.adapters.sys.platform", "linux"), \
                     patch("warroom.adapters.shutil.which", return_value="/usr/bin/bwrap"):
-                command = stage2_chunk_sandbox_command(["python", "worker.py"], [alias], "/safe/bin")
+                command = stage2_chunk_sandbox_command(["python", "worker.py"], [alias], [str(protected)], "/safe/bin")
             self.assertEqual(command[:6], [
                 "/usr/bin/bwrap", "--die-with-parent", "--new-session", "--bind", "/", "/",
             ])
             for path in stage2_git_executables({"WARROOM_GIT_EXECUTABLES": json.dumps([alias])}):
                 self.assertIn(["--ro-bind", "/dev/null", path], [command[i:i + 3] for i in range(len(command) - 2)])
+            self.assertIn(["--ro-bind", str(protected), str(protected)],
+                          [command[i:i + 3] for i in range(len(command) - 2)])
             self.assertEqual(command[command.index("--") + 1:], ["python", "worker.py"])
 
     def test_macos_policy_denies_each_git_executable(self):
         with tempfile.TemporaryDirectory() as tmp:
             alias = self.git_alias(tmp)
+            protected = Path(tmp) / "common.git"
+            protected.mkdir()
             with patch("warroom.adapters.sys.platform", "darwin"), \
                     patch("warroom.adapters.shutil.which", return_value="/usr/bin/sandbox-exec"):
-                command = stage2_chunk_sandbox_command(["python", "worker.py"], [alias], "/safe/bin")
+                command = stage2_chunk_sandbox_command(["python", "worker.py"], [alias], [str(protected)], "/safe/bin")
             self.assertEqual(command[:2], ["/usr/bin/sandbox-exec", "-p"])
             for path in stage2_git_executables({"WARROOM_GIT_EXECUTABLES": json.dumps([alias])}):
                 self.assertIn(f"(deny process-exec (literal {json.dumps(path)}))", command[2])
+            self.assertIn(f"(deny file-write* (subpath {json.dumps(str(protected))}))", command[2])
             self.assertEqual(command[3:], ["python", "worker.py"])
 
     def test_process_adapter_applies_policy_and_does_not_forward_git_paths(self):
         git_path = "/opt/typewriter/bin/git"
-        env = {"PATH": "/safe/bin", "WARROOM_STAGE2_CHUNK": "1",
-               "WARROOM_GIT_EXECUTABLES": json.dumps([git_path])}
         with tempfile.TemporaryDirectory() as tmp, \
                 patch("warroom.adapters.sys.platform", "linux"), \
                 patch("warroom.adapters.shutil.which", return_value="/usr/bin/bwrap"), \
                 patch("warroom.adapters.subprocess.Popen") as popen:
+            protected = Path(tmp) / "common.git"
+            protected.mkdir()
+            env = {"PATH": "/safe/bin", "WARROOM_STAGE2_CHUNK": "1",
+                   "WARROOM_GIT_EXECUTABLES": json.dumps([git_path]),
+                   "WARROOM_PROTECTED_PATHS": json.dumps([str(protected)])}
             popen.return_value.pid = 42
             ProcessAdapter()._spawn(["python", "worker.py"], tmp, env,
                                     Path(tmp) / "worker.log", Path(tmp) / "worker.exit")
@@ -58,8 +68,11 @@ class Stage2GitSandbox(unittest.TestCase):
         command = spawned[spawned.index("/usr/bin/bwrap"):]
         self.assertIn(["--ro-bind", "/dev/null", git_path],
                       [command[i:i + 3] for i in range(len(command) - 2)])
+        self.assertIn(["--ro-bind", str(protected), str(protected)],
+                      [command[i:i + 3] for i in range(len(command) - 2)])
         self.assertEqual(command[command.index("--") + 1:], ["python", "worker.py"])
         self.assertNotIn("WARROOM_GIT_EXECUTABLES", worker_env)
+        self.assertNotIn("WARROOM_PROTECTED_PATHS", worker_env)
         self.assertEqual(worker_env["WARROOM_STAGE2_CHUNK"], "1")
 
 
