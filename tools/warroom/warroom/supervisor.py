@@ -20,7 +20,7 @@ import time
 import traceback
 from pathlib import Path
 
-from . import auth, batches, control, dchunk, defects, literary, progress, prompts, reviews, stage1ab, stage2, stage3
+from . import auth, batches, control, dchunk, defects, literary, prbody, progress, prompts, reviews, stage1ab, stage2, stage3
 from .adapters import (PREFLIGHT_PENDING, QUOTA_EVIDENCE, RunSpec, classify_claude_failure, classify_failure,
                        opencode_free_quota)
 from .config import (TIERED_ADAPTERS, adapter_label, config_problem, load_config, registry, registry_problems,
@@ -1539,7 +1539,9 @@ class Supervisor:
         self.store.update(b["id"], state="PRODUCING", pid=None, run_kind="s3_finalize", error=None)
         allowed = {f"data/relations/relation-{b['shard']}.jsonl",
                    f"data/relation-drops/drop-{b['shard']}.jsonl"}
-        title = f"[Relation Stage 3] {b['shard']}"
+        label = registry(self.cfg)[b["producer"]].get("label", b["producer"])
+        title = prbody.s3_title(label, b["shard"])
+        legacy_title = prbody.s3_legacy_title(b["shard"])   # commits made before #2838
         try:
             info = self._find_recovery_pr(b)
             if info is not None:
@@ -1553,7 +1555,11 @@ class Supervisor:
                 # The edit CLI removes the local checkpoint after its atomic two-file apply. Persist this in-flight
                 # finalization state so a Supervisor restart can report the Git diff and continue without re-editing.
                 self.store.set(applied_key, "1")
+                reviewed = self.git.row_count(self.git.head(wt), f"data/relations/relation-{b['shard']}.jsonl")   # the apply baseline
                 result = stage3.apply(self.runner, self.env, wt, b["shard"])
+                result["chunks_done"], result["chunks_total"] = len(checkpoint["completed_chunks"]), checkpoint["chunk_total"]
+                if reviewed is not None:
+                    result["reviewed"] = reviewed
                 self.store.set(result_key, json.dumps(result, sort_keys=True))
             elif self.store.get(applied_key) == "1":
                 raw_result = self.store.get(result_key)
@@ -1593,7 +1599,7 @@ class Supervisor:
                 head = self.git.commit_paths(wt, sorted(changed), title)
                 self.store.set(commit_key, head)
                 self.store.log(b["id"], f"Stage 3 변경 파일을 commit했습니다 ({head[:10]})")
-            elif self.git.commit_subject(wt) == title and self.git.commit_parent(wt) is not None:
+            elif self.git.commit_subject(wt) in (title, legacy_title) and self.git.commit_parent(wt) is not None:
                 committed_paths = set(self.git.changed_files(head))
                 unexpected = committed_paths - allowed
                 if unexpected:
@@ -1632,18 +1638,10 @@ class Supervisor:
             info = self._find_recovery_pr(b)
             if info is not None:
                 return self._to_review(b, info)
-            issue = self.gh.issue(2450)
+            issue = self.gh.issue(prbody.S3_ISSUE)
             labels = issue.get("labels", [])
-            body = "\n".join([
-                "Relation Factory Stage 3 샤드 편집",
-                f"- 관련 작업: #2450",
-                f"- 샤드: {b['shard']}",
-                "- 범위: 승인 Relation Drop 및 text-only Link Repair",
-                f"- 결과: {result.get('removed', 0)}행 삭제, {result.get('repaired', 0)}행 Link Repair, "
-                f"{result.get('edit_drops_added', 0)}개 edit Drop 추가",
-                "- 검증: edit-cli apply 및 shard admission verify",
-                "- 변경 파일: 해당 샤드 Relation/Drop 파일만",
-            ]) + "\n"
+            body = prbody.stage3_body(label, b["shard"], result=result, apply_pass=True, shard_verify=True,
+                                      cost=prbody.run_cost(self.store.runs(b["id"])))
             return self._create_pr_once(b, title, body, labels)
         except TRANSIENT:
             raise
@@ -3198,7 +3196,9 @@ class Supervisor:
     def _stage2_finalize_do(self, b) -> None:
         """Optional completion, snapshot merge, two validations, one commit/push and one owned PR; every step resumes from facts."""
         wt = Path(b["worktree"])
-        title = f"[Stage 2] {b['shard']}_{b['batch'].split('-')[0]} Part {b['batch'].split('-')[1]}"
+        label = registry(self.cfg)[b["producer"]].get("label", b["producer"])
+        title = prbody.s2_title(label, b["shard"], *b["batch"].split("-"))
+        legacy_title = prbody.s2_legacy_title(b["shard"], *b["batch"].split("-"))   # commits made before #2838
         self.store.update(b["id"], state="PRODUCING", pid=None, run_kind="s2_deterministic_finalize", error=None)
         try:
             info = self._find_recovery_pr(b)
@@ -3289,7 +3289,7 @@ class Supervisor:
                 head = self.git.commit_paths(wt, [], title, allow_empty=True)
                 self.store.set(commit_key, head)
                 self.store.log(b["id"], "출력 파일 변경이 없는 완전한 Part를 명시적 empty commit으로 기록했습니다")
-            elif self.git.commit_parent(wt) == base and self.git.commit_subject(wt) == title:
+            elif self.git.commit_parent(wt) == base and self.git.commit_subject(wt) in (title, legacy_title):
                 # A crash after Git commit but before the persistent marker; accept only our exact one-commit transition.
                 self.store.set(commit_key, head)
             else:
@@ -3309,19 +3309,16 @@ class Supervisor:
                 if problem := self._stage2_final_pr_problem(b, info):
                     return self._fail(b, "ERROR", problem)
                 return self._to_review(b, info)
-            label = registry(self.cfg)[b["producer"]].get("label", b["producer"])
-            body = "\n".join([
-                "- 방식: Stage 2",
-                f"- 모델: {label}",
-                f"- 샤드: {b['shard']}",
-                f"- 배치: {bb}",
-                f"- 파트: {pp}",
-                "- 관련 작업: #927 Stage 2 production",
-                "- 검증: 로컬 checkpoint 포함 Part verify 및 PR 정확한 HEAD의 별도 verify",
-                "- 무변경 정책: 변경 파일이 없는 완전한 Part도 명시적 empty commit과 전용 PR을 생성",
-                "- 참고 기준선: Opus 보고값으로 001/01/05의 fix_resume 5회 누적 약 80M tokens, s2_finalize_resume 4회 누적 약 9.7M tokens; 원로그 대조 및 독립 재집계 전이라 검증되지 않음",
-                "- 이번 실행 측정: 입력/출력/cache read/cache write tokens, finalizer·fix 실행 횟수, 시간은 미측정; 다음 정식 Part에서 기록",
-            ]) + "\n"
+            # Statistics come from the exact pushed commit: its own Part verify (no private checkpoint) and the rows
+            # this Part's commit added relative to the finalization baseline, never the shard's cumulative files.
+            exact_ok, exact_detail, counts = self.git.verify_stage2_exact_counts(head, b["shard"], bb, pp)
+            if not exact_ok:
+                return self._fail(b, "ERROR", f"Stage 2 PR 생성 전 정확한 HEAD verify 실패: {exact_detail}")
+            if (problem := prbody.stage2_counts_problem(counts)) is not None:
+                self.store.log(b["id"], f"Stage 2 통계를 측정하지 못해 미측정으로 표기합니다: {problem}", "warn")
+            delta = self.git.row_delta(base, head, b["shard"]) if base else None
+            body = prbody.stage2_body(label, b["shard"], bb, pp, counts=counts, delta=delta,
+                                      part_verify=True, exact_verify=True)
             issue = self.gh.issue(927)
             labels = [label for label in issue.get("labels", []) if label != "batch"]
             return self._create_pr_once(b, title, body, labels)

@@ -771,7 +771,8 @@ export function verifyAccounting({ canonicalRows, candidateFiles, relationRows: 
     claim(alias.source_sense_id, alias.form, 'an ID relation', alias.link, alias.at);
   }
 
-  const counts = { unique: 0, relation: relationRows.length, drop: dropRows.length, skipped_existing: 0, reverse_covered: 0, missing: 0 };
+  const counts = { unique: 0, relation: relationRows.length, drop: dropRows.length, skipped_existing: 0, reverse_covered: 0, missing: 0,
+    records: scopeRows.length, senses: scopeSenses.size };
   for (const record of scopeRows) {
     for (const sense of record.senses) {
       for (const text of merged.get(sense.id)?.candidates.keys() ?? []) {

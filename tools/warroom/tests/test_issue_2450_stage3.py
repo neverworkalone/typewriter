@@ -12,8 +12,8 @@ from warroom.supervisor import RecoveryBlocked
 from warroom.web.api import _controls
 
 PRODUCERS = {
-    "claude": {"adapter": "claude", "model": "claude-x", "effort": "high"},
-    "codex": {"adapter": "codex", "model": "gpt-x", "effort": "high"},
+    "claude": {"label": "Claude", "adapter": "claude", "model": "claude-x", "effort": "high"},
+    "codex": {"label": "Codex", "adapter": "codex", "model": "gpt-x", "effort": "high"},
     "deepseek": {"adapter": "opencode", "models": {"free": "p/free-x-free", "go": "p/go"}},
 }
 RELATION = "data/relations/relation-001.jsonl"
@@ -500,7 +500,8 @@ class Stage3SupervisorFlow(unittest.TestCase):
         w.git.remote.pop(batch["branch"], None)
         w.git.dirty_text = f" M {RELATION}\n"
         w.git.verified.add(("shard", "001", None, None))
-        w.gh.issues[2450] = {"state": "open", "labels": ["batch"], "title": "Stage 3", "body": ""}
+        w.gh.issues[2455] = {"state": "open", "labels": ["batch"], "title": "Stage 3", "body": ""}
+        w.git.row_counts[RELATION] = 7
         with mock.patch.object(stage3, "checkpoint", return_value=checkpoint(total=1, done=["001"])), \
                 mock.patch.object(stage3, "apply", return_value={"removed": 1, "repaired": 0, "edit_drops_added": 1}), \
                 mock.patch.object(stage3, "report", return_value={"shard": "001", "deleted_relations": [],
@@ -508,10 +509,15 @@ class Stage3SupervisorFlow(unittest.TestCase):
             w.sup._stage3_finalize_do(batch)
         self.assertEqual(w.store.batch(batch["id"])["state"], "WAITING_REVIEW",
                          w.store.batch(batch["id"])["error"])
-        self.assertEqual(w.git.commits, [([RELATION], "[Relation Stage 3] 001")])
-        self.assertEqual(w.gh.created_prs[0]["title"], "[Relation Stage 3] 001")
+        self.assertEqual(w.git.commits, [([RELATION], "[S3/Codex] 001")])
+        self.assertEqual(w.gh.created_prs[0]["title"], "[S3/Codex] 001")
         self.assertEqual(w.gh.created_prs[0]["labels"], ["batch"])
-        self.assertIn("#2450", w.gh.created_prs[0]["body"])
+        self.assertIn("Refs #2455", w.gh.created_prs[0]["body"])
+        self.assertNotIn("2450", w.gh.created_prs[0]["body"])
+        self.assertEqual(w.gh.created_prs[0]["body"], "\n".join([
+            "- Method: S3", "- Model: Codex", "- Shard: 001", "- Scope: Shard-wide editorial audit",
+            "- Reviewed Relations: 7", "- Completed Chunks: 1/1", "- Removed Relations: 1", "- Link Repairs: 0",
+            "- Added Orphan Drops (z): 1", "- Edit Apply: PASS", "- Shard Verify: PASS", "", "Refs #2455"]) + "\n")
         self.assertEqual(w.store.batch(batch["id"])["state"], "WAITING_REVIEW")
 
     def test_finalize_writes_repair_conflicts_as_one_audit_log_line(self):
@@ -520,7 +526,7 @@ class Stage3SupervisorFlow(unittest.TestCase):
         w.git.remote.pop(batch["branch"], None)
         w.git.dirty_text = f" M {RELATION}\n"
         w.git.verified.add(("shard", "001", None, None))
-        w.gh.issues[2450] = {"state": "open", "labels": [], "title": "Stage 3", "body": ""}
+        w.gh.issues[2455] = {"state": "open", "labels": [], "title": "Stage 3", "body": ""}
         conflicts = [{
             "relation_row": 11292, "source_sense_id": "w170946-s1", "target_sense_id": "w205046-s1",
             "conflict": {"kind": "earlier_link_repair", "relation_row": 11283,
@@ -545,7 +551,7 @@ class Stage3SupervisorFlow(unittest.TestCase):
         batch = self._batch(state="PRODUCING", run_kind="s3_finalize")
         w.git.remote.pop(batch["branch"], None)
         w.git.verified.add(("shard", "001", None, None))
-        w.gh.issues[2450] = {"state": "open", "labels": [], "title": "Stage 3", "body": ""}
+        w.gh.issues[2455] = {"state": "open", "labels": [], "title": "Stage 3", "body": ""}
         checkpoint_path = stage3.checkpoint_path(batch["worktree"], "001")
         checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
         checkpoint_path.write_text(json.dumps(checkpoint(total=1, done=["001"])), "utf-8")
@@ -603,7 +609,7 @@ class Stage3SupervisorFlow(unittest.TestCase):
         w.store.set(f"s3_apply_ready_{batch['id']}", "1")
         w.store.set(f"s3_apply_result_{batch['id']}", json.dumps({"removed": 3, "repaired": 2, "edit_drops_added": 1}))
         w.git.verified.add(("shard", "001", None, None))
-        w.gh.issues[2450] = {"state": "open", "labels": [], "title": "Stage 3", "body": ""}
+        w.gh.issues[2455] = {"state": "open", "labels": [], "title": "Stage 3", "body": ""}
         with mock.patch.object(stage3, "checkpoint", return_value=None), \
                 mock.patch.object(stage3, "apply", side_effect=AssertionError("apply already completed")), \
                 mock.patch.object(stage3, "report", return_value={"shard": "001", "deleted_relations": [],
@@ -612,9 +618,10 @@ class Stage3SupervisorFlow(unittest.TestCase):
         self.assertEqual(w.store.batch(batch["id"])["state"], "WAITING_REVIEW",
                          w.store.batch(batch["id"])["error"])
         body = w.gh.created_prs[0]["body"]
-        self.assertIn("3행 삭제", body)
-        self.assertIn("2행 Link Repair", body)
-        self.assertIn("1개 edit Drop", body)
+        self.assertIn("- Removed Relations: 3\n", body)
+        self.assertIn("- Link Repairs: 2\n", body)
+        self.assertIn("- Added Orphan Drops (z): 1\n", body)
+        self.assertIn("- Reviewed Relations: 미측정\n", body)   # a legacy in-flight result has no baseline: no guess
 
     def test_finalize_retry_after_commit_reuses_applied_edits_without_duplicate_commit(self):
         w = self.w
@@ -622,7 +629,7 @@ class Stage3SupervisorFlow(unittest.TestCase):
         w.git.remote.pop(batch["branch"], None)
         w.git.verified.add(("shard", "001", None, None))
         w.git.dirty_text = ""
-        w.gh.issues[2450] = {"state": "open", "labels": [], "title": "Stage 3", "body": ""}
+        w.gh.issues[2455] = {"state": "open", "labels": [], "title": "Stage 3", "body": ""}
         checkpoint_path = stage3.checkpoint_path(batch["worktree"], "001")
         checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
         checkpoint_path.write_text(json.dumps(checkpoint(total=1, done=["001"])), "utf-8")
@@ -639,10 +646,10 @@ class Stage3SupervisorFlow(unittest.TestCase):
                 w.sup._stage3_finalize_do(batch)
             self.assertEqual(w.store.batch(batch["id"])["state"], "ERROR")
             self.assertFalse(checkpoint_path.exists())
-            self.assertEqual(w.git.commits, [([DROP, RELATION], "[Relation Stage 3] 001")])
+            self.assertEqual(w.git.commits, [([DROP, RELATION], "[S3/Codex] 001")])
             committed_head = w.git.local_head
             self.assertEqual(w.store.get(f"s3_apply_result_{batch['id']}"), json.dumps({
-                "edit_drops_added": 1, "removed": 3, "repaired": 2,
+                "chunks_done": 1, "chunks_total": 1, "edit_drops_added": 1, "removed": 3, "repaired": 2,
             }, sort_keys=True))
 
             # Simulate a process stopping after the Git commit but before saving its Store commit marker.
@@ -650,9 +657,9 @@ class Stage3SupervisorFlow(unittest.TestCase):
             w.sup._stage3_finalize_do(w.store.batch(batch["id"]))
             apply_call.assert_called_once()
         self.assertEqual(w.git.local_head, committed_head)
-        self.assertEqual(w.git.commits, [([DROP, RELATION], "[Relation Stage 3] 001")])
+        self.assertEqual(w.git.commits, [([DROP, RELATION], "[S3/Codex] 001")])
         self.assertEqual(len(w.gh.created_prs), 1)
-        self.assertEqual(w.gh.created_prs[0]["title"], "[Relation Stage 3] 001")
+        self.assertEqual(w.gh.created_prs[0]["title"], "[S3/Codex] 001")
         self.assertEqual(w.store.batch(batch["id"])["state"], "WAITING_REVIEW")
 
     def test_finalize_recovery_rejects_an_unmarked_commit_outside_stage3_file_scope(self):

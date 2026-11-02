@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import re
 
+from . import prbody
 from .shell import Result, Runner, gh_transient
 
 
@@ -145,8 +146,7 @@ class GhClient:
         """Merged, explicitly identified Stage 3 PRs used only to recover Stage 3 worker completion."""
         rows = self._api(f"repos/{self.repo}/pulls?state=closed&per_page=100", paginate=True)
         result = []
-        title_pattern = re.compile(r"^\[Relation Stage 3\] (\d{3})$")
-        issue_pattern = re.compile(r"(?:#2450|issues/2450)(?!\d)")
+        title_pattern, issue_pattern = prbody.S3_TITLE, prbody.S3_ISSUE_LINK
         for row in rows:
             title = row.get("title") or ""
             match = title_pattern.fullmatch(title)

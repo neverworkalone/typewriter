@@ -489,6 +489,7 @@ test('--part selects 100-record Stage 2 scopes, reports scoped stats, and keeps 
 
   const wholeBatch = await quiet(() => run(['verify', '--shard', '001', '--batch', '01'], { root }));
   assert.deepEqual([wholeBatch.unique, wholeBatch.relation, wholeBatch.drop, wholeBatch.reverse_covered, wholeBatch.missing], [12, 9, 2, 1, 0]);
+  assert.deepEqual([wholeBatch.records, wholeBatch.senses], [500, 500], 'verify counts expose the scope coverage for PR bodies');
   const wholeShard = await quiet(() => run(['verify', '--shard', '001'], { root }));
   assert.deepEqual([wholeShard.unique, wholeShard.relation, wholeShard.drop, wholeShard.reverse_covered, wholeShard.missing], [22, 19, 2, 1, 0]);
 });

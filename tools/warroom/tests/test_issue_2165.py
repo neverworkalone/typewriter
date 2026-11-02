@@ -5,7 +5,7 @@ from pathlib import Path
 
 from tests.test_issue_1684 import S2
 from tests.test_issue_1908 import s2_world, write_state
-from warroom import control, prompts, stage2
+from warroom import control, prbody, prompts, stage2, stage3
 from warroom.gitops import IntegrationBlocked
 
 
@@ -200,10 +200,60 @@ class Stage2Finalization(unittest.TestCase):
         b = w.store.active_batch("claude", S2)
         self.assertEqual((b["state"], b["run_kind"], len(w.adapter.launches)),
                          ("WAITING_REVIEW", "s2_deterministic_finalize", 0))
-        self.assertEqual(w.git.commits, [([], "[Stage 2] 001_01 Part 01")])
+        self.assertEqual(w.git.commits, [([], "[S2/claude] 001_01 Part 01")])
         self.assertEqual(w.git.commit_empty_allowed, [True])
         self.assertEqual(w.git.pushes, [b["branch"]])
         self.assertEqual(len(w.gh.created_prs), 1)
+
+    def test_pr_title_and_body_carry_measured_part_statistics_only(self):
+        w = s2_world(self)
+        w.git.chunk_view_total = 0
+        w.git.finalize_output_paths = []
+        control.start(w.store, "claude", S2, "single", cfg=w.cfg)
+        w.tick()
+        pr = w.gh.created_prs[0]
+        self.assertEqual(pr["title"], "[S2/claude] 001_01 Part 01")
+        self.assertEqual(pr["body"], "\n".join([
+            "- Method: S2", "- Model: claude", "- Shard: 001", "- Batch: 01", "- Part: 01",
+            "- Coverage: 100 records / 130 senses", "- Unique Candidates: 40", "- New Relations: 20",
+            "- New Drops: 12", "- Duplicates: 2", "- Already Approved: 5", "- Reverse Absorbed: 3",
+            "- Part Verify: PASS", "- Exact PR HEAD Verify: PASS", "", "Refs #927"]) + "\n")
+        self.assertNotIn("999", pr["body"])   # the shard's cumulative relation/drop counts are never used
+        self.assertNotIn("Closes", pr["body"])
+
+    def test_unmeasured_or_inconsistent_counts_are_never_written_as_numbers(self):
+        for counts in (None, {"unique": 3}, {**dict(records=1, senses=1, unique=3, skipped_existing=0,
+                       reverse_covered=0, merged_duplicates=0, raw=4, missing=0)}):
+            with self.subTest(counts=counts):
+                body = prbody.stage2_body("Codex", "003", "01", "02", counts=counts, delta=None,
+                                          part_verify=True, exact_verify=True)
+                self.assertIn("- Coverage: 미측정\n", body)
+                self.assertIn("- New Relations: 미측정\n", body)
+                self.assertNotIn(": 0\n", body)
+        ok = dict(records=2, senses=3, unique=3, skipped_existing=1, reverse_covered=1, merged_duplicates=1,
+                  raw=4, missing=0)
+        self.assertIsNone(prbody.stage2_counts_problem(ok))
+        self.assertIsNotNone(prbody.stage2_counts_problem({**ok, "missing": 1}))
+        self.assertIsNotNone(prbody.stage2_counts_problem({**ok, "skipped_existing": 3}))
+        self.assertEqual(prbody.s2_title("Codex", "003", "01", "02"), "[S2/Codex] 003_01 Part 02")
+
+    def test_failed_exact_verify_creates_no_pr(self):
+        w = s2_world(self)
+        w.git.chunk_view_total = 0
+        w.git.finalize_output_paths = []
+        w.git.exact_verify_ok = False
+        control.start(w.store, "claude", S2, "single", cfg=w.cfg)
+        w.tick()
+        self.assertEqual(w.gh.created_prs, [])
+        self.assertEqual(w.store.active_batch("claude", S2)["state"], "ERROR")
+
+    def test_legacy_stage2_and_stage3_titles_still_identify_existing_prs(self):
+        legacy = {"title": "[Relation Stage 3] 003", "body": "Implements #2450"}
+        new = {"title": "[S3/Claude] 003", "body": "- Method: S3\n\nRefs #2455"}
+        for pr in (legacy, new):
+            self.assertEqual(stage3.shard_pr(pr), "003")
+        for pr in ({"title": "[S3/Claude] 003_01", "body": "Refs #2455"}, {"title": "[S3/Claude] 003", "body": "Refs #9"}):
+            self.assertIsNone(stage3.shard_pr(pr))
 
     def test_finalization_commits_only_changed_relation_or_drop_outputs(self):
         relation = "data/relations/relation-001.jsonl"
@@ -217,7 +267,7 @@ class Stage2Finalization(unittest.TestCase):
                 w.tick()
                 b = w.store.active_batch("claude", S2)
                 self.assertEqual(b["state"], "WAITING_REVIEW")
-                self.assertEqual(w.git.commits, [(sorted(outputs), "[Stage 2] 001_01 Part 01")])
+                self.assertEqual(w.git.commits, [(sorted(outputs), "[S2/claude] 001_01 Part 01")])
                 self.assertEqual(w.git.commit_empty_allowed, [False])
                 self.assertEqual(w.git.local_verify_calls[0], ("001", "01", "01", True))
                 self.assertEqual(w.git.exact_verify_calls[0], ("f" * 40, "001", "01", "01"))

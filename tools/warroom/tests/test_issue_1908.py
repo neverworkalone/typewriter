@@ -117,7 +117,7 @@ class Stage2ChunkRuns(unittest.TestCase):
         self.assertEqual(b["branch"], w.git.created[0][1])
         self.assertEqual((b["pr_number"], len(w.gh.created_prs)), (100, 1))
         self.assertEqual(w.git.local_verify_calls, [("001", "01", "01", True), ("001", "01", "01", True)])
-        self.assertEqual(w.git.exact_verify_calls, [("f" * 40, "001", "01", "01")])
+        self.assertEqual(w.git.exact_verify_calls, [("f" * 40, "001", "01", "01")] * 2)
         self.assertEqual([r["kind"] for r in w.store.runs(b["id"])], ["s2_chunk_new", "s2_chunk_new"])
 
     def test_zero_exit_without_checkpoint_advance_retries_once_then_stops(self):
