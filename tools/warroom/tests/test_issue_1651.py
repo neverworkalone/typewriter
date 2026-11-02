@@ -22,6 +22,22 @@ class PullRequestFiles(unittest.TestCase):
             {"path": "README.md"},
         ])
 
+    def test_merged_stage3_pr_listing_keeps_its_owned_head_branch(self):
+        class Runner:
+            def run(self, argv, **kwargs):
+                row = {"number": 2800, "title": "[Relation Stage 3] 001", "body": "implements #2450",
+                       "merged_at": "2026-11-02T08:00:00Z", "base": {"ref": "master"},
+                       "head": {"ref": "s3-codex-001", "repo": {"full_name": "neverworkalone/typewriter"}},
+                       "merge_commit_sha": HEAD2}
+                return Result(0, json.dumps([[row]]))
+
+        gh = GhClient(Runner(), {}, "neverworkalone/typewriter")
+
+        self.assertEqual(gh.merged_relation_stage3_prs(), [{
+            "number": 2800, "title": "[Relation Stage 3] 001", "body": "implements #2450",
+            "base_ref": "master", "shard": "001", "head_ref": "s3-codex-001", "merge_commit_sha": HEAD2,
+        }])
+
     def test_branch_pr_listing_includes_merge_timestamp_for_closed_state_classification(self):
         class Runner:
             argv = None

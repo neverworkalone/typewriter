@@ -24,7 +24,7 @@ from . import auth, batches, control, dchunk, defects, literary, progress, promp
 from .adapters import (PREFLIGHT_PENDING, QUOTA_EVIDENCE, RunSpec, classify_claude_failure, classify_failure,
                        opencode_free_quota)
 from .config import (TIERED_ADAPTERS, adapter_label, config_problem, load_config, registry, registry_problems,
-                     reload_problem, role_of, role_problem, run_spec, stage2_problem, stage3_problem)
+                     reload_problem, role_of, role_problem, run_spec, stage2_problem, stage3_models, stage3_problem)
 from .github import GhError, GhTransient
 from .gitops import CleanupBlocked, FastForwardBlocked, FastForwardRace, GitError, GitTransient, IntegrationBlocked
 from .maintenance import Maintenance
@@ -974,12 +974,14 @@ class Supervisor:
         self.store.log(bid, f"배치 {nb.stem} 선정, worktree 준비")
         self._prepare_existing(self.store.batch(bid))
 
-    def _stage3_recover_merged(self, producer: str, base: str) -> None:
+    def _stage3_recover_merged(self, base: str) -> None:
         """Restore Stage 3 completion only from issue-linked, merged PRs with the exact shard file scope."""
         if getattr(self, "_s3_recovery_sha", None) == base:
             return
         rows = self.gh.merged_relation_stage3_prs()
-        known = {(batch["shard"], batch["pr_number"]) for batch in self.store.all_batches()
+        producers = stage3_models(self.cfg)
+        known = {(batch["shard"], batch["pr_number"]): (batch["producer"], batch["branch"])
+                 for batch in self.store.all_batches()
                  if batch["method"] == STAGE3_METHOD and batch["state"] == "COMPLETE"
                  and batch["merged"] and batch["pr_number"] is not None}
         seen: set[str] = set()
@@ -987,11 +989,18 @@ class Supervisor:
             shard = stage3.shard_pr(pr)
             if shard is None or pr.get("base_ref") != "master":
                 raise stage3.Stage3Error(f"PR #{pr.get('number')} is not a linked Stage 3 PR on master")
+            head_ref = pr.get("head_ref") or ""
+            owner = next((model for model in producers if head_ref == f"s3-{model}-{shard}"), None)
+            if owner is None:
+                raise stage3.Stage3Error(f"PR #{pr.get('number')} head branch does not identify a configured Stage 3 producer")
             if shard in seen:
                 raise stage3.Stage3Error(f"여러 merged Stage 3 PR이 샤드 {shard}를 주장합니다")
             seen.add(shard)
             merge_sha = pr.get("merge_commit_sha") or ""
-            if (shard, pr.get("number")) in known:
+            key = (shard, pr.get("number"))
+            if key in known:
+                if known[key] != (owner, head_ref):
+                    raise stage3.Stage3Error(f"PR #{pr['number']} 기존 Stage 3 복구의 producer/branch가 원본과 다릅니다")
                 continue
             files = self.gh.pull_files(pr["number"])
             if stage3.validate_pr(pr, files) != shard:
@@ -1004,8 +1013,8 @@ class Supervisor:
             if not ok:
                 raise stage3.Stage3Error(f"PR #{pr['number']} 머지 후 master Stage 3 shard verify 실패: {detail}")
             self.store.set(stage3.ok_key(shard), base)
-            if not self.store.restore_stage3_completion(producer=producer, shard=shard, pr_number=pr["number"],
-                                                        merge_sha=merge_sha):
+            if not self.store.restore_stage3_completion(producer=owner, shard=shard, pr_number=pr["number"],
+                                                        merge_sha=merge_sha, branch=head_ref):
                 raise stage3.Stage3Error(f"PR #{pr['number']}와 기존 Stage 3 Store 소유권이 충돌합니다")
         self._s3_recovery_sha = base
 
@@ -1016,7 +1025,7 @@ class Supervisor:
         key = f"line:{model}:{method}:prepare"
         try:
             sha = self.git.fetch_base(base)
-            self._stage3_recover_merged(model, sha)
+            self._stage3_recover_merged(sha)
             choice = stage3.choose(sha=sha, kv=self.store, open_prs=self.gh.open_prs(),
                                    stage2_batches=[b for b in self.store.all_batches() if b["method"] == STAGE2_METHOD],
                                    stage3_batches=[b for b in self.store.all_batches() if b["method"] == STAGE3_METHOD],

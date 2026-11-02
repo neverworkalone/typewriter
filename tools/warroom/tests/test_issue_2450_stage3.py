@@ -676,29 +676,42 @@ class Stage3SupervisorFlow(unittest.TestCase):
 
     def test_merged_pr_recovery_requires_valid_files_and_latest_master_verify(self):
         w = self.w
-        merge = "2" * 40
+        codex_merge, claude_merge = "2" * 40, "3" * 40
+        self.assertTrue(w.store.start_stage3("claude", "single")[0])
         w.git.on_base = True
-        w.git.verified.add(("shard", "001", None, None))
-        w.gh.merged_stage3_prs = [{"number": 88, "title": "[Relation Stage 3] 001", "body": "implements #2450",
-                                   "base_ref": "master", "merge_commit_sha": merge}]
+        w.git.verified.update({("shard", "001", None, None), ("shard", "002", None, None)})
+        w.gh.merged_stage3_prs = [
+            {"number": 88, "title": "[Relation Stage 3] 001", "body": "implements #2450",
+             "base_ref": "master", "head_ref": "s3-codex-001", "merge_commit_sha": codex_merge},
+            {"number": 89, "title": "[Relation Stage 3] 002", "body": "implements #2450",
+             "base_ref": "master", "head_ref": "s3-claude-002", "merge_commit_sha": claude_merge},
+        ]
         w.gh.files[88] = [{"path": RELATION}]
-        w.sup._stage3_recover_merged("codex", w.git.base_sha)
-        row = w.store.latest_batch("codex", STAGE3_METHOD)
-        self.assertEqual((row["state"], row["merged"], row["pr_number"], row["head_sha"]),
-                         ("COMPLETE", 1, 88, merge))
+        w.gh.files[89] = [{"path": "data/relation-drops/drop-002.jsonl"}]
+        w.sup._stage3_recover_merged(w.git.base_sha)
+        codex_row = w.store.latest_batch("codex", STAGE3_METHOD)
+        claude_row = w.store.latest_batch("claude", STAGE3_METHOD)
+        self.assertEqual((codex_row["state"], codex_row["merged"], codex_row["pr_number"],
+                          codex_row["head_sha"], codex_row["branch"]),
+                         ("COMPLETE", 1, 88, codex_merge, "s3-codex-001"))
+        self.assertEqual((claude_row["state"], claude_row["merged"], claude_row["pr_number"],
+                          claude_row["head_sha"], claude_row["branch"]),
+                         ("COMPLETE", 1, 89, claude_merge, "s3-claude-002"))
         self.assertEqual(w.store.get(stage3.ok_key("001")), w.git.base_sha)
-        w.sup._stage3_recover_merged("codex", w.git.base_sha)
+        self.assertEqual(w.store.get(stage3.ok_key("002")), w.git.base_sha)
+        w.sup._stage3_recover_merged(w.git.base_sha)
         self.assertEqual(w.gh.merged_stage3_prs_calls, 1)
-        self.assertEqual(w.gh.pull_files_calls, [88])
+        self.assertEqual(w.gh.pull_files_calls, [88, 89])
 
     def test_merged_pr_recovery_does_not_mark_shard_complete_when_verify_fails(self):
         w = self.w
         w.git.on_base = True
         w.gh.merged_stage3_prs = [{"number": 89, "title": "[Relation Stage 3] 001", "body": "implements #2450",
-                                   "base_ref": "master", "merge_commit_sha": "2" * 40}]
+                                   "base_ref": "master", "head_ref": "s3-codex-001",
+                                   "merge_commit_sha": "2" * 40}]
         w.gh.files[89] = [{"path": RELATION}]
         with self.assertRaises(stage3.Stage3Error):
-            w.sup._stage3_recover_merged("codex", w.git.base_sha)
+            w.sup._stage3_recover_merged(w.git.base_sha)
         self.assertIsNone(w.store.latest_batch("codex", STAGE3_METHOD))
 
 
