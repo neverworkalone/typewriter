@@ -1,3 +1,6 @@
+import hashlib
+import hmac
+import json
 import os
 import shutil
 import stat
@@ -17,6 +20,36 @@ ENV = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COM
 
 def sh(*a, cwd):
     subprocess.run(a, cwd=cwd, env=ENV, check=True, capture_output=True)
+
+
+class Stage2FallbackInvocation(unittest.TestCase):
+    def test_supervisor_save_signs_fallback_and_keeps_key_out_of_the_worktree(self):
+        class CaptureRunner:
+            def run(self, argv, cwd=None, env=None, **_kwargs):
+                self.argv, self.cwd, self.env = argv, cwd, env
+                return Result(0, "saved")
+
+        with tempfile.TemporaryDirectory() as directory:
+            worktree = Path(directory)
+            runner = CaptureRunner()
+            git = Git.__new__(Git)
+            git.r, git.env = runner, {"PATH": "/bin"}
+            proof = {"alias": "c1", "candidate": "후보", "chunk_id": "001-01-01-001",
+                     "failure_reason": "original save-chunk failure", "record_id": "w1",
+                     "retry_count": 1, "sense_id": "w1-s1"}
+
+            ok, detail = git.stage2_save_chunk(worktree, "001", "01", "01", supervisor_fallback=proof)
+
+            envelope = json.loads((worktree / ".warroom-scratch/s2-technical-fallback.json").read_text("utf-8"))
+            key = runner.env["TYPEWRITER_SUPERVISOR_FALLBACK_KEY"]
+            payload = json.dumps(proof, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+            expected = hmac.new(key.encode("ascii"), payload.encode("utf-8"), hashlib.sha256).hexdigest()
+            self.assertTrue(ok)
+            self.assertEqual(detail, "saved")
+            self.assertEqual(envelope, {"proof": proof, "signature": expected})
+            self.assertNotIn("TYPEWRITER_SUPERVISOR_FALLBACK_KEY", git.env)
+            self.assertNotIn(key, (worktree / ".warroom-scratch/s2-technical-fallback.json").read_text("utf-8"))
+            self.assertEqual(runner.argv[-2:], ["--supervisor-fallback", ".warroom-scratch/s2-technical-fallback.json"])
 
 
 class RealGit(unittest.TestCase):
