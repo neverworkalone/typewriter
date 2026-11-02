@@ -238,6 +238,15 @@ Part 모드는 선택한 Stage 1 Batch의 필수 후보 파일 6개를 기존 v1
 
 **허용:** (1) 승인 Relation **한 행 전체를 삭제**하는 Drop, (2) 기존 **text-only 관계를 정확한 Canonical target record/sense의 ID 관계로 전환**하는 Link Repair. Repair는 기존 `tp/rv`를 보존한다. ID 행 삭제는 **해당 행이 만든 정·역방향 투영**을 제거한다. 다른 살아 있는 Relation이 같은 meaning-level 관계를 만들면 제품 화면의 링크는 남을 수 있다. 표제어·Sense·후보·새 관계 추가, 대상어 바꿔치기, Type/Tier 재판정, STDICT direct/antonym 편집은 금지한다.
 
+Stage 3의 사후 국소 Link Repair는 `edit-cli`에 `--batch BB --part PP`를 함께 지정한다. 이 경로는 정식 Stage 2 `partScope`와 같은 Canonical 순서로 source record/sense 집합을 만들고, 그 범위에서 현재 text-only 행만 준비한다. scoped checkpoint는 샤드 전체 Stage 3 checkpoint와 분리하며 `save-chunk`는 `L <row> T<target>` 또는 `none`만 허용한다. `apply`는 exact target, source/target gloss와 동철 선택지, 충돌, 양방향 후보 회계를 기존 Stage 3 검증기로 확인하고 Relation 파일만 갱신한다. 대상 표제어가 없거나 의미가 확실하지 않으면 text-only 상태로 둔다. 사용 예:
+
+```sh
+node scripts/relation/edit-cli.mjs prepare --shard 002 --batch 02 --part 02
+node scripts/relation/edit-cli.mjs read-chunk --shard 002 --batch 02 --part 02
+node scripts/relation/edit-cli.mjs save-chunk --shard 002 --batch 02 --part 02 --in .warroom-scratch/decisions.txt
+node scripts/relation/edit-cli.mjs apply --shard 002 --batch 02 --part 02
+```
+
 ### 5-A. 파일·후보 회계
 
 - **기존 파일만 사용:** `data/relations/relation-SSS.jsonl`에서 Drop 관계를 삭제하고 text-only를 ID 관계로 고친다. `data/relation-drops/drop-SSS.jsonl`에는 **삭제 후 어떤 Relation/역방향 커버도 처리하지 않는 후보 키**만 기존 `{id,sid,cd,by:"z"}`로 추가한다. 같은 후보에 다른 유효 target Sense 관계가 남았다면 Drop하지 않는다. 여러 `fm`, legacy/`ver:0` 추론, `rfm`은 Stage 2의 동일한 후보 귀속 규칙으로 계산한다.
