@@ -304,7 +304,8 @@ class FakeGit:
             view = "\n".join(rows) + "\n"
         (path.parent / "active-chunk.txt").write_text(view, "utf-8")
 
-    def stage2_save_chunk(self, worktree, shard, batch, part, timeout=900, supervisor_fallback=None):
+    def stage2_save_chunk(self, worktree, shard, batch, part, timeout=900, supervisor_fallback=None,
+                          supervisor_state_dir=None):
         """Mimic `admission-cli save-chunk --format compact`: one `c<n>` row per pending candidate, none other, else the
         complete error list with the checkpoint untouched; on success the cursor advances and the chunk is decided."""
         wt = Path(worktree)

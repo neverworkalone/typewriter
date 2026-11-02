@@ -31,7 +31,7 @@ class Stage2GitSandbox(unittest.TestCase):
             ])
             for path in stage2_git_executables({"WARROOM_GIT_EXECUTABLES": json.dumps([alias])}):
                 self.assertIn(["--ro-bind", "/dev/null", path], [command[i:i + 3] for i in range(len(command) - 2)])
-            self.assertIn(["--ro-bind", str(protected), str(protected)],
+            self.assertIn(["--ro-bind", str(protected.resolve()), str(protected.resolve())],
                           [command[i:i + 3] for i in range(len(command) - 2)])
             self.assertEqual(command[command.index("--") + 1:], ["python", "worker.py"])
 
@@ -46,7 +46,7 @@ class Stage2GitSandbox(unittest.TestCase):
             self.assertEqual(command[:2], ["/usr/bin/sandbox-exec", "-p"])
             for path in stage2_git_executables({"WARROOM_GIT_EXECUTABLES": json.dumps([alias])}):
                 self.assertIn(f"(deny process-exec (literal {json.dumps(path)}))", command[2])
-            self.assertIn(f"(deny file-write* (subpath {json.dumps(str(protected))}))", command[2])
+            self.assertIn(f"(deny file-write* (subpath {json.dumps(str(protected.resolve()))}))", command[2])
             self.assertEqual(command[3:], ["python", "worker.py"])
 
     def test_process_adapter_applies_policy_and_does_not_forward_git_paths(self):
@@ -68,7 +68,7 @@ class Stage2GitSandbox(unittest.TestCase):
         command = spawned[spawned.index("/usr/bin/bwrap"):]
         self.assertIn(["--ro-bind", "/dev/null", git_path],
                       [command[i:i + 3] for i in range(len(command) - 2)])
-        self.assertIn(["--ro-bind", str(protected), str(protected)],
+        self.assertIn(["--ro-bind", str(protected.resolve()), str(protected.resolve())],
                       [command[i:i + 3] for i in range(len(command) - 2)])
         self.assertEqual(command[command.index("--") + 1:], ["python", "worker.py"])
         self.assertNotIn("WARROOM_GIT_EXECUTABLES", worker_env)
