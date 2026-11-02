@@ -123,7 +123,6 @@ class FakeLiteraryCli:
             path.parent.mkdir(parents=True, exist_ok=True)
             text = "".join(json.dumps({"record_id": i}) + "\n" for i in range(500))
             path.write_text(text)
-            import hashlib
             cp["output"] = {"path": out, "sha256": hashlib.sha256(text.encode()).hexdigest()}
             self.save(cwd, argv, cp)
             return Result(0, json.dumps({"status": "OUTPUT", "coverage": {"records": 500, "senses": len(cp["ids"]),

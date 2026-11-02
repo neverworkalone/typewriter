@@ -424,7 +424,7 @@ test('Supervisor C technical fallback preserves unaffected submissions and recor
   try {
     const ids = fixture.records[0].senses.map((sense) => sense.id);
     const view = await readLiteraryChunk({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath,
-      senseIds: ids, limit: 2, contexts: 8, skip: 0, format: 'json', scratchDirectory: fixture.scratchDirectory });
+      senseIds: ids.join(','), limit: 2, contexts: 8, skip: 0, format: 'json', scratchDirectory: fixture.scratchDirectory });
     const goodKey = view.items.find((item) => item.sense_id === ids[1]).contexts[0].k;
     const submission = { senses: [
       { sense_id: ids[0], verified: ['0'.repeat(12)], candidates: ['어둠'] },
@@ -485,7 +485,7 @@ test('real C CLI records one failed Sense as technical skip only after ordinary 
   try {
     const ids = fixture.records[0].senses.map((sense) => sense.id);
     const view = await readLiteraryChunk({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath,
-      senseIds: ids, limit: 2, contexts: 8, skip: 0, format: 'json', scratchDirectory: fixture.scratchDirectory });
+      senseIds: ids.join(','), limit: 2, contexts: 8, skip: 0, format: 'json', scratchDirectory: fixture.scratchDirectory });
     const goodKey = view.items.find((item) => item.sense_id === ids[1]).contexts[0].k;
     const inputPath = path.join(fixture.scratchDirectory, 'c-chunk-014.submit.json');
     const inputText = JSON.stringify({ senses: [

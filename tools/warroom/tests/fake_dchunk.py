@@ -73,7 +73,6 @@ class FakeDChunkCli:
             skips = [{"record_id": item["record_id"], "sense_ids": rows[item["record_id"]]["senses"] and
                       [sense["id"] for sense in rows[item["record_id"]]["senses"]],
                       "failed_sense_ids": item["failed_sense_ids"], "errors": item["errors"]} for item in failed]
-            import hashlib
             decisions_sha = hashlib.sha256((folder / f"decision-{number:03d}.txt").read_bytes()).hexdigest()
             searches_sha = hashlib.sha256((folder / f"search-{number:03d}.jsonl").read_bytes()).hexdigest()
             if (decisions_sha != rejected["decisions_sha256"] or searches_sha != rejected["searches_sha256"]
