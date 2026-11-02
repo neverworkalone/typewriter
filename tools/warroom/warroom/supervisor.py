@@ -2544,17 +2544,16 @@ class Supervisor:
 
     @staticmethod
     def _merged_owned_pr(b, info) -> bool:
-        """Merge is a fact about the PR, checked before any open-PR gate: a merged PR on this batch's owned branch.
+        """Merge is a fact about the PR: a merged PR on this batch's owned branch.
 
-        Its remote branch is normally deleted by the merge, so open-PR checks (remote HEAD, worktree HEAD, exact-HEAD
-        verify) must not apply; CLEANUP separately re-proves merged=true, the Stage 2 merged verify and the worktree."""
+        The merge normally deletes its remote branch, so only the remote-HEAD comparison is waived for it; ownership,
+        reconcile scope, base commit, worktree HEAD and Part/exact-HEAD verify still apply."""
         return (info.get("merged") is True and info.get("state") == "closed"
                 and info.get("head_ref") == b["branch"] and isinstance(info.get("number"), int))
 
     def _stage2_final_pr_problem(self, b, info) -> str | None:
         """Require local checkpoint verification and an independent exact PR-HEAD verification."""
-        if self._merged_owned_pr(b, info):
-            return None
+        merged = self._merged_owned_pr(b, info)
         try:
             reconcile_task = self._stage2_reconcile_task(b)
             if reconcile_task:
@@ -2567,7 +2566,7 @@ class Supervisor:
                 head = self.git.head(wt)
                 if not head or head != info.get("head_sha"):
                     return f"Stage 2 reconciliation PR HEAD differs from its owned worktree ({info.get('head_sha')} / {head})"
-                if self.git.remote_head(b["branch"]) != head:
+                if not merged and self.git.remote_head(b["branch"]) != head:
                     return "Stage 2 reconciliation PR HEAD is not on its remote owned branch"
                 allowed = {f"data/relation-drops/drop-{b['shard']}.jsonl"}
                 files = {row.get("path") for row in self.gh.pull_files(info["number"])}
@@ -2597,9 +2596,10 @@ class Supervisor:
             head = self.git.head(wt)
             if not head or head != info.get("head_sha"):
                 return f"Stage 2 PR HEAD와 소유 worktree HEAD가 다릅니다 ({info.get('head_sha')} / {head})"
-            remote = self.git.remote_head(b["branch"])
-            if remote != head:
-                return f"Stage 2 PR HEAD가 원격 소유 브랜치에 없습니다 ({remote} / {head})"
+            if not merged:   # a merged PR's remote branch is normally deleted
+                remote = self.git.remote_head(b["branch"])
+                if remote != head:
+                    return f"Stage 2 PR HEAD가 원격 소유 브랜치에 없습니다 ({remote} / {head})"
             batch, part = stage2.split_key(b["batch"])
             ok, tail = self.git.verify_stage2_local(wt, b["shard"], batch, part, checkpoint=True)
             if not ok:

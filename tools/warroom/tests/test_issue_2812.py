@@ -81,6 +81,35 @@ class MergedStage2Recovery(unittest.TestCase):
                 row = self.settle(w, b)
                 self.assertNotIn(row["state"], ("MERGED", "CLEANUP", "COMPLETE"))
 
+    def reconcile_problem(self, files, *, merged, remote):
+        """`_stage2_final_pr_problem` for a reconcile PR whose Drop-only scope is the only thing that can differ."""
+        w, b = self.drive_to_lost_pr()
+        head = w.git.local_head
+        w.gh.files[2809] = [{"path": p} for p in files]
+        w.git.changed[head] = files
+        w.git.ancestor_pairs.add(("base-sha", head))
+        w.git.remote.pop(b["branch"], None)
+        if remote:
+            w.git.remote[b["branch"]] = head
+        w.sup._stage2_reconcile_task = lambda _b: ("base-sha", "change-sha")
+        info = {"number": 2809, "state": "closed" if merged else "open", "merged": merged,
+                "head_sha": head, "head_ref": b["branch"]}
+        return w.sup._stage2_final_pr_problem(w.store.batch(b["id"]), info)
+
+    def test_merged_reconcile_pr_keeps_scope_check_but_not_remote_head(self):
+        drop, rel = "data/relation-drops/drop-001.jsonl", "data/relations/relation-001.jsonl"
+        cases = [
+            ("drop only, branch deleted", [drop], True, False, False),
+            ("drop only, branch present", [drop], True, True, False),
+            ("drop + same-shard relation", [drop, rel], True, False, True),
+            ("relation only", [rel], True, False, True),
+            ("open drop only, branch deleted", [drop], False, False, True),
+        ]
+        for name, files, merged, remote, blocked in cases:
+            with self.subTest(name):
+                problem = self.reconcile_problem(files, merged=merged, remote=remote)
+                self.assertEqual(problem is not None, blocked, problem)
+
 
 if __name__ == "__main__":
     unittest.main()
