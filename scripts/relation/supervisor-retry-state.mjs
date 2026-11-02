@@ -1,30 +1,61 @@
 import { DatabaseSync } from 'node:sqlite';
-import { execFileSync } from 'node:child_process';
-import { realpathSync } from 'node:fs';
+import { lstatSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const MODULE_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
+const REPOSITORY_ROOT = path.resolve(MODULE_DIRECTORY, '../..');
+
+function gitDirectoryAt(repositoryRoot) {
+  const gitEntry = path.join(repositoryRoot, '.git');
+  const entryStat = lstatSync(gitEntry);
+  if (entryStat.isDirectory()) return realpathSync(gitEntry);
+  if (!entryStat.isFile()) throw new Error('invalid Git metadata');
+  const gitdirMatch = /^gitdir:\s*(.+)\s*$/mu.exec(readFileSync(gitEntry, 'utf8'));
+  if (!gitdirMatch) throw new Error('invalid Git worktree metadata');
+  return realpathSync(path.resolve(repositoryRoot, gitdirMatch[1]));
+}
+
+function commonGitDirectory(repositoryRoot) {
+  const gitDirectory = gitDirectoryAt(repositoryRoot);
+  let commonDirectory = gitDirectory;
+  try {
+    commonDirectory = realpathSync(path.resolve(gitDirectory, readFileSync(path.join(gitDirectory, 'commondir'), 'utf8').trim()));
+  } catch (error) {
+    if (error?.code !== 'ENOENT') throw error;
+  }
+  if (path.basename(commonDirectory) !== '.git') throw new Error('not a Typewriter Git common directory');
+  return commonDirectory;
+}
+
+function isRegisteredWorktree(worktree, commonDirectory) {
+  const root = realpathSync(path.resolve(worktree));
+  const gitEntry = path.join(root, '.git');
+  if (!lstatSync(gitEntry).isFile()) return false;
+  const gitDirectory = gitDirectoryAt(root);
+  const worktreesDirectory = realpathSync(path.join(commonDirectory, 'worktrees'));
+  const relativeGitDirectory = path.relative(worktreesDirectory, gitDirectory);
+  if (!relativeGitDirectory || relativeGitDirectory === '..' || relativeGitDirectory.startsWith(`..${path.sep}`)
+    || path.isAbsolute(relativeGitDirectory)) return false;
+  const registeredGitEntry = path.resolve(gitDirectory, readFileSync(path.join(gitDirectory, 'gitdir'), 'utf8').trim());
+  if (realpathSync(registeredGitEntry) !== realpathSync(gitEntry)) return false;
+  const linkedCommonDirectory = realpathSync(path.resolve(gitDirectory,
+    readFileSync(path.join(gitDirectory, 'commondir'), 'utf8').trim()));
+  return linkedCommonDirectory === commonDirectory;
+}
 
 function supervisorDatabasePath(worktree) {
   try {
-    const gitEnvironment = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_')));
-    const commonDirectory = execFileSync('git', ['rev-parse', '--path-format=absolute', '--git-common-dir'], {
-      cwd: path.resolve(worktree),
-      env: gitEnvironment,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-    }).trim();
-    if (!path.isAbsolute(commonDirectory)) {
-      throw new Error('not a Typewriter Git common directory');
-    }
-    const realCommonDirectory = realpathSync(commonDirectory);
-    if (path.basename(realCommonDirectory) !== '.git') throw new Error('not a Typewriter Git common directory');
-    const repositoryRoot = path.dirname(realCommonDirectory);
-    return path.join(repositoryRoot, 'tools/warroom/.local/warroom.db');
+    // Resolve only from the repository root containing this source file; caller cwd can be a nested, producer-created repo.
+    const commonDirectory = commonGitDirectory(REPOSITORY_ROOT);
+    if (!isRegisteredWorktree(worktree, commonDirectory)) throw new Error('unregistered Typewriter worktree');
+    return path.join(path.dirname(commonDirectory), 'tools/warroom/.local/warroom.db');
   } catch {
     throw new Error('Supervisor retry state is unavailable; technical skip is Supervisor-only');
   }
 }
 
-/** Read retry state only from the War Room database anchored to this worktree's shared Git repository. */
+/** Read retry state only from the War Room database anchored to this installed CLI's shared Git repository. */
 export function readSupervisorRetryBudget({ method, model, shard, batch, worktree, retryKeyForBatchId, retryKind, minimum }) {
   if (typeof retryKeyForBatchId !== 'function' || !Number.isSafeInteger(minimum) || minimum < 1) {
     throw new Error('Supervisor retry state is unavailable; technical skip is Supervisor-only');

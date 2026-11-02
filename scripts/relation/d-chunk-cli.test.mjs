@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
@@ -23,7 +23,6 @@ import {
   searchActive,
   searchBatchActive,
   searchForContexts,
-  supervisorSkipActive,
 } from './d-chunk-cli.mjs';
 
 const SYLLABLES = ['가', '나', '다', '라', '마', '바', '사', '아', '자', '차'];
@@ -66,8 +65,27 @@ async function makeWorld({ fillerParagraphs = 2000, supervisorWorktree = false }
   const repositoryRoot = supervisorWorktree ? path.join(containerRoot, 'repository') : null;
   if (supervisorWorktree) {
     await mkdir(repositoryRoot, { recursive: true });
+    const sourceFiles = [
+      'scripts/relation/candidate-contract.mjs',
+      'scripts/relation/literary-context-cli.mjs',
+      'scripts/relation/literary-context.mjs',
+      'scripts/relation/supervisor-retry-state.mjs',
+      'scripts/relation/d-chunk-cli.mjs',
+      'scripts/relation/corpus-utility.mjs',
+      'docs/relation-literary-context.md',
+      'docs/relation-factory.md',
+      'tools/warroom/prompts/c.md',
+    ];
+    for (const file of sourceFiles) {
+      const target = path.join(repositoryRoot, file);
+      await mkdir(path.dirname(target), { recursive: true });
+      await copyFile(path.resolve(file), target);
+    }
     const initialized = spawnSync('git', ['init', '--quiet'], { cwd: repositoryRoot, encoding: 'utf8' });
     assert.equal(initialized.status, 0, initialized.stderr);
+    const staged = spawnSync('git', ['add', '--', 'scripts/relation', 'docs/relation-literary-context.md',
+      'docs/relation-factory.md', 'tools/warroom/prompts/c.md'], { cwd: repositoryRoot, encoding: 'utf8' });
+    assert.equal(staged.status, 0, staged.stderr);
     const committed = spawnSync('git', ['-c', 'user.name=Typewriter Test', '-c', 'user.email=test@example.invalid',
       'commit', '--quiet', '--allow-empty', '-m', 'fixture'], { cwd: repositoryRoot, encoding: 'utf8' });
     assert.equal(committed.status, 0, committed.stderr);
@@ -114,8 +132,8 @@ const withWorld = (name, body, options = {}) => test(name, async () => {
   }
 });
 
-const runCli = (args, input, environment = {}, cwd = process.cwd()) => new Promise((resolve, reject) => {
-  const child = spawn(process.execPath, [path.resolve('scripts/relation/d-chunk-cli.mjs'), ...args], {
+const runCli = (args, input, environment = {}, cwd = process.cwd(), scriptPath = null) => new Promise((resolve, reject) => {
+  const child = spawn(process.execPath, [scriptPath ?? path.resolve('scripts/relation/d-chunk-cli.mjs'), ...args], {
     cwd, env: { ...process.env, ...environment }, stdio: ['pipe', 'pipe', 'pipe'],
   });
   let stdout = '';
@@ -138,7 +156,8 @@ const chunkPath = (world, kind, number = 1) => path.join(world.directory, {
 const meta = (world, number = 1) => readFile(chunkPath(world, 'active', number), 'utf8').then(JSON.parse);
 const view = (world, number = 1) => readFile(chunkPath(world, 'view', number), 'utf8');
 
-async function makeSupervisorRetryState(world, { attempts, completedRetries, databaseName = 'warroom.db' }) {
+async function makeSupervisorRetryState(world, { attempts, completedRetries, databaseName = 'warroom.db',
+  ownerWorktree = world.root }) {
   const active = await meta(world);
   const databasePath = databaseName === 'warroom.db'
     ? path.join(world.repositoryRoot ?? world.root, 'tools/warroom/.local/warroom.db')
@@ -152,7 +171,7 @@ async function makeSupervisorRetryState(world, { attempts, completedRetries, dat
     CREATE TABLE runs (id INTEGER PRIMARY KEY, batch_id INTEGER, kind TEXT, session_id TEXT, ended_at REAL);
   `);
   database.prepare('INSERT INTO batches VALUES (1, ?, ?, ?, ?, ?, ?)')
-    .run('d', active.model, active.shard, active.batch, world.root, 'ses_d');
+    .run('d', active.model, active.shard, active.batch, ownerWorktree, 'ses_d');
   database.prepare('INSERT INTO kv VALUES (?, ?)').run('d_fix_1:1', String(attempts));
   const run = database.prepare('INSERT INTO runs(batch_id, kind, session_id, ended_at) VALUES (1, ?, ?, ?)');
   for (let index = 0; index < completedRetries; index += 1) run.run('d_chunk_fix', 'ses_d', index + 1);
@@ -1044,34 +1063,44 @@ withWorld('Supervisor technical fallback excludes the exact shared-evidence Reco
 
   const originalDecisions = await readFile(decisionsPath, 'utf8');
   const supervisorDatabasePath = await makeSupervisorRetryState(world, { attempts: 0, completedRetries: 0 });
+  const nestedWorktree = path.join(world.root, 'nested-producer');
+  await mkdir(nestedWorktree, { recursive: true });
+  const nestedGit = spawnSync('git', ['init', '--quiet'], { cwd: nestedWorktree, encoding: 'utf8' });
+  assert.equal(nestedGit.status, 0, nestedGit.stderr);
   const forgedDatabasePath = await makeSupervisorRetryState(world, {
-    attempts: 1, completedRetries: 1, databaseName: 'forged-warroom.sqlite',
+    attempts: 1, completedRetries: 1,
+    databaseName: 'nested-producer/tools/warroom/.local/warroom.db', ownerWorktree: nestedWorktree,
   });
-  await assert.rejects(supervisorSkipActive({ inputPath: decisionsPath, root: world.root, worktree: world.root,
-  }), /not exhausted/u);
+  const cliPath = path.join(world.repositoryRoot, 'scripts/relation/d-chunk-cli.mjs');
   const forged = await runCli(['supervisor-skip', '--in', decisionsPath, '--dir', world.root, '--fix-attempts', '1'], '', {
     WARROOM_SUPERVISOR_STATE_DB: forgedDatabasePath, WARROOM_SUPERVISOR_BATCH_ID: '999',
-  }, world.root);
+  }, world.root, cliPath);
   assert.notEqual(forged.code, 0);
   assert.match(forged.stderr, /unsupported option.*fix-attempts/u);
   const early = await runCli(['supervisor-skip', '--in', decisionsPath, '--dir', world.root], '', {
     WARROOM_SUPERVISOR_STATE_DB: forgedDatabasePath, WARROOM_SUPERVISOR_BATCH_ID: '999',
-  }, world.root);
+  }, world.root, cliPath);
   assert.notEqual(early.code, 0);
   assert.match(early.stderr, /not exhausted/u);
+  const nested = await runCli(['supervisor-skip', '--in', decisionsPath, '--dir', world.root], '', {
+    WARROOM_SUPERVISOR_STATE_DB: forgedDatabasePath, WARROOM_SUPERVISOR_BATCH_ID: '1',
+  }, nestedWorktree, cliPath);
+  assert.notEqual(nested.code, 0);
+  assert.match(nested.stderr, /unavailable|unregistered/u);
   const supervisorDb = new DatabaseSync(supervisorDatabasePath);
   supervisorDb.prepare('UPDATE kv SET value=? WHERE key=?').run('1', 'd_fix_1:1');
   supervisorDb.prepare('INSERT INTO runs(batch_id, kind, session_id, ended_at) VALUES (1, ?, ?, ?)')
     .run('d_chunk_fix', 'ses_d', 1);
   supervisorDb.close();
   await writeFile(decisionsPath, `${originalDecisions}\n`);
-  await assert.rejects(supervisorSkipActive({ inputPath: decisionsPath, root: world.root, worktree: world.root,
-  }), /stale/u);
+  const stale = await runCli(['supervisor-skip', '--in', decisionsPath, '--dir', world.root], '', {}, world.root, cliPath);
+  assert.notEqual(stale.code, 0);
+  assert.match(stale.stderr, /stale/u);
   assert.equal(existsSync(path.join(world.directory, 'chunk-001.jsonl')), false);
   await writeFile(decisionsPath, originalDecisions);
   const saved = await runCli(['supervisor-skip', '--in', decisionsPath, '--dir', world.root], '', {
     WARROOM_SUPERVISOR_STATE_DB: forgedDatabasePath, WARROOM_SUPERVISOR_BATCH_ID: '999',
-  }, world.root);
+  }, world.root, cliPath);
   assert.equal(saved.code, 0, saved.stderr);
   const result = JSON.parse(saved.stdout);
   assert.equal(result.status, 'SAVED_WITH_TECHNICAL_SKIPS');

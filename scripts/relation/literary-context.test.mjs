@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdtemp, mkdir, readFile, realpath, rm, stat, symlink, writeFile } from 'node:fs/promises';
+import { copyFile, mkdtemp, mkdir, readFile, realpath, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import test from 'node:test';
 import { DatabaseSync } from 'node:sqlite';
+import { pathToFileURL } from 'node:url';
 
 import {
   addSearchForm,
@@ -18,7 +19,6 @@ import {
   reportLiteraryCheckpointSenses,
   resolveVerifiedContextKey,
   submitLiteraryChunk,
-  supervisorSkipLiterarySense,
   summarizeLiteraryCheckpoint,
   validateExistingLiteraryCandidates,
 } from './literary-context.mjs';
@@ -34,8 +34,27 @@ async function makeFixture({ unitCount = 2, unitText, unitTexts, firstForm = 'ê°
   const repositoryRoot = supervisorWorktree ? path.join(containerRoot, 'repository') : null;
   if (supervisorWorktree) {
     await mkdir(repositoryRoot, { recursive: true });
+    const sourceFiles = [
+      'scripts/relation/candidate-contract.mjs',
+      'scripts/relation/literary-context-cli.mjs',
+      'scripts/relation/literary-context.mjs',
+      'scripts/relation/supervisor-retry-state.mjs',
+      'scripts/relation/d-chunk-cli.mjs',
+      'scripts/relation/corpus-utility.mjs',
+      'docs/relation-literary-context.md',
+      'docs/relation-factory.md',
+      'tools/warroom/prompts/c.md',
+    ];
+    for (const file of sourceFiles) {
+      const target = path.join(repositoryRoot, file);
+      await mkdir(path.dirname(target), { recursive: true });
+      await copyFile(path.resolve(file), target);
+    }
     const initialized = spawnSync('git', ['init', '--quiet'], { cwd: repositoryRoot, encoding: 'utf8' });
     assert.equal(initialized.status, 0, initialized.stderr);
+    const staged = spawnSync('git', ['add', '--', 'scripts/relation', 'docs/relation-literary-context.md',
+      'docs/relation-factory.md', 'tools/warroom/prompts/c.md'], { cwd: repositoryRoot, encoding: 'utf8' });
+    assert.equal(staged.status, 0, staged.stderr);
     const committed = spawnSync('git', ['-c', 'user.name=Typewriter Test', '-c', 'user.email=test@example.invalid',
       'commit', '--quiet', '--allow-empty', '-m', 'fixture'], { cwd: repositoryRoot, encoding: 'utf8' });
     assert.equal(committed.status, 0, committed.stderr);
@@ -156,7 +175,8 @@ async function cleanup(fixture) {
   await rm(fixture.containerRoot ?? fixture.root, { recursive: true, force: true });
 }
 
-async function makeSupervisorRetryState(fixture, { attempts, completedRetries, databaseName = 'warroom.db' }) {
+async function makeSupervisorRetryState(fixture, { attempts, completedRetries, databaseName = 'warroom.db',
+  ownerWorktree = fixture.root }) {
   const worktree = fixture.root;
   const repositoryRoot = fixture.repositoryRoot ?? worktree;
   const databasePath = databaseName === 'warroom.db'
@@ -171,7 +191,7 @@ async function makeSupervisorRetryState(fixture, { attempts, completedRetries, d
     CREATE TABLE runs (id INTEGER PRIMARY KEY, batch_id INTEGER, kind TEXT, session_id TEXT, ended_at REAL);
   `);
   database.prepare('INSERT INTO batches VALUES (1, ?, ?, ?, ?, ?, ?)')
-    .run('c', 'codex', '001', '01', worktree, 'ses_c');
+    .run('c', 'codex', '001', '01', ownerWorktree, 'ses_c');
   database.prepare('INSERT INTO kv VALUES (?, ?)').run('c_resubmit_1', String(attempts));
   const run = database.prepare('INSERT INTO runs(batch_id, kind, session_id, ended_at) VALUES (1, ?, ?, ?)');
   for (let index = 0; index < completedRetries; index += 1) run.run('c_chunk_resume', 'ses_c', index + 1);
@@ -462,6 +482,9 @@ test('Supervisor C technical fallback preserves unaffected submissions and recor
   const fixture = await makeFixture({ unitCount: 3, firstSenseGlosses: ['meaning one', 'meaning two'],
     supervisorWorktree: true });
   try {
+    const { supervisorSkipLiterarySense: supervisorSkip } = await import(pathToFileURL(
+      path.join(fixture.repositoryRoot, 'scripts/relation/literary-context.mjs'),
+    ).href);
     const ids = fixture.records[0].senses.map((sense) => sense.id);
     const view = await readLiteraryChunk({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath,
       senseIds: ids.join(','), limit: 2, contexts: 8, skip: 0, format: 'json', scratchDirectory: fixture.scratchDirectory });
@@ -488,21 +511,21 @@ test('Supervisor C technical fallback preserves unaffected submissions and recor
     const targetBefore = before.checkpoint.records[0].senses[0];
     const supervisorDatabasePath = await makeSupervisorRetryState(fixture, { attempts: 1, completedRetries: 1 });
 
-    await assert.rejects(supervisorSkipLiterarySense({ databasePath: fixture.databasePath,
+    await assert.rejects(supervisorSkip({ databasePath: fixture.databasePath,
       checkpointPath: fixture.checkpointPath, submission, diagnostic,
       worktree: fixture.root, inputSha256: 'f'.repeat(64),
       scratchDirectory: fixture.scratchDirectory }), /current, source-Sense-local/u);
-    await assert.rejects(supervisorSkipLiterarySense({ databasePath: fixture.databasePath,
+    await assert.rejects(supervisorSkip({ databasePath: fixture.databasePath,
       checkpointPath: fixture.checkpointPath, submission,
       diagnostic: { ...diagnostic, issues: [...diagnostic.issues, diagnostic.issues[0]] },
       worktree: fixture.root, inputSha256,
       scratchDirectory: fixture.scratchDirectory }), /one current, source-Sense-local/u);
-    await assert.rejects(supervisorSkipLiterarySense({ databasePath: fixture.databasePath,
+    await assert.rejects(supervisorSkip({ databasePath: fixture.databasePath,
       checkpointPath: fixture.checkpointPath, submission,
       diagnostic: { ...diagnostic, affected: { ...diagnostic.affected, entry_number: 2 } },
       worktree: fixture.root, inputSha256,
       scratchDirectory: fixture.scratchDirectory }), /diagnostic does not identify/u);
-    await assert.rejects(supervisorSkipLiterarySense({ databasePath: fixture.databasePath,
+    await assert.rejects(supervisorSkip({ databasePath: fixture.databasePath,
       checkpointPath: fixture.checkpointPath, submission, diagnostic,
       worktree: fixture.root, inputSha256, scratchDirectory: fixture.scratchDirectory }), /not exhausted/u);
     const supervisorDb = new DatabaseSync(supervisorDatabasePath);
@@ -510,7 +533,7 @@ test('Supervisor C technical fallback preserves unaffected submissions and recor
     supervisorDb.prepare('INSERT INTO runs(batch_id, kind, session_id, ended_at) VALUES (1, ?, ?, ?)')
       .run('c_chunk_resume', 'ses_c', 3);
     supervisorDb.close();
-    const result = await supervisorSkipLiterarySense({ databasePath: fixture.databasePath,
+    const result = await supervisorSkip({ databasePath: fixture.databasePath,
       checkpointPath: fixture.checkpointPath, submission, diagnostic,
       worktree: fixture.root, inputSha256,
       scratchDirectory: fixture.scratchDirectory });
@@ -563,13 +586,35 @@ test('real C CLI records one failed Sense as technical skip only after ordinary 
     assert.equal(diagnostic.affected.entry_number, 1);
 
     const supervisorDatabasePath = await makeSupervisorRetryState(fixture, { attempts: 1, completedRetries: 1 });
+    const nestedWorktree = path.join(fixture.root, 'nested-producer');
+    await mkdir(nestedWorktree, { recursive: true });
+    const nestedGit = spawnSync('git', ['init', '--quiet'], { cwd: nestedWorktree, encoding: 'utf8' });
+    assert.equal(nestedGit.status, 0, nestedGit.stderr);
     const forgedDatabasePath = await makeSupervisorRetryState(fixture, {
-      attempts: 2, completedRetries: 2, databaseName: 'forged-warroom.sqlite',
+      attempts: 2, completedRetries: 2,
+      databaseName: 'nested-producer/tools/warroom/.local/warroom.db', ownerWorktree: nestedWorktree,
     });
+    const nestedScratch = path.join(nestedWorktree, '.warroom-scratch');
+    await mkdir(nestedScratch, { recursive: true });
+    const nestedInput = path.join(nestedScratch, path.basename(inputPath));
+    const nestedCheckpoint = path.join(nestedScratch, path.basename(fixture.checkpointPath));
+    await Promise.all([
+      copyFile(inputPath, nestedInput),
+      copyFile(`${inputPath}.diag.json`, `${nestedInput}.diag.json`),
+      copyFile(path.join(fixture.scratchDirectory, 'c-active-chunk.json'), path.join(nestedScratch, 'c-active-chunk.json')),
+      copyFile(path.join(fixture.scratchDirectory, 'c-active-chunk.txt'), path.join(nestedScratch, 'c-active-chunk.txt')),
+      copyFile(fixture.checkpointPath, nestedCheckpoint),
+    ]);
     const forged = runCli(fixture, ['supervisor-skip', '--db', fixture.databasePath, '--checkpoint', fixture.checkpointPath,
       '--input', inputPath, '--retry-attempts', '2']);
     assert.equal(forged.status, 1);
     assert.match(forged.stderr, /unsupported option/u);
+    const nestedSkip = runCli(fixture, ['supervisor-skip', '--db', fixture.databasePath, '--checkpoint', nestedCheckpoint,
+      '--input', nestedInput], {
+      WARROOM_SUPERVISOR_STATE_DB: forgedDatabasePath, WARROOM_SUPERVISOR_BATCH_ID: '1',
+    }, nestedWorktree);
+    assert.equal(nestedSkip.status, 1);
+    assert.match(nestedSkip.stderr, /"diagnostic":"operation"/u);
     const early = runCli(fixture, ['supervisor-skip', '--db', fixture.databasePath, '--checkpoint', fixture.checkpointPath,
       '--input', inputPath], { WARROOM_SUPERVISOR_STATE_DB: forgedDatabasePath, WARROOM_SUPERVISOR_BATCH_ID: '999' });
     assert.equal(early.status, 1);
@@ -1345,9 +1390,9 @@ test('adding a search form after chunk drops the shown contexts so the changed f
   }
 });
 
-const runCli = (fixture, args, environment = {}) => spawnSync(process.execPath,
-  [path.resolve('scripts/relation/literary-context-cli.mjs'), ...args],
-  { cwd: fixture.root, env: { ...process.env, ...environment }, encoding: 'utf8' });
+const runCli = (fixture, args, environment = {}, cwd = fixture.root) => spawnSync(process.execPath,
+  [path.join(fixture.repositoryRoot ?? process.cwd(), 'scripts/relation/literary-context-cli.mjs'), ...args],
+  { cwd, env: { ...process.env, ...environment }, encoding: 'utf8' });
 const cliChunkArgs = (fixture, extra = []) => ['chunk', '--db', fixture.databasePath, '--checkpoint', fixture.checkpointPath, ...extra];
 
 test('chunk CLI accepts --skip and emits only the unseen context suffix', async () => {
