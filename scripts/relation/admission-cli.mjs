@@ -2086,6 +2086,7 @@ async function saveChunk(checkpoint, checkpointPath, inputPath, root, format = '
     try {
       const envelope = JSON.parse(await readFile(resolveRootPath(root, supervisorFallbackPath), 'utf8'));
       const key = process.env.TYPEWRITER_SUPERVISOR_FALLBACK_KEY;
+      await assertSupervisorFallbackProcess(root);
       if (!key || !isPlainObject(envelope) || keysOf(envelope) !== 'proof,signature'
           || typeof envelope.signature !== 'string' || !/^[a-f0-9]{64}$/u.test(envelope.signature)
           || !isPlainObject(envelope.proof)) {
@@ -2191,6 +2192,33 @@ async function saveChunk(checkpoint, checkpointPath, inputPath, root, format = '
   const result = { saved: received.size, ...checkpointProgressPayload(checkpoint), checkpoint: checkpointPath };
   console.log(`Saved ${received.size} decisions: ${result.decided}/${result.total} -> ${checkpointPath}`);
   return result;
+}
+
+async function assertSupervisorFallbackProcess(root) {
+  const dotGit = path.join(root, '.git');
+  let gitDirectory;
+  try {
+    const pointer = await readFile(dotGit, 'utf8');
+    const match = /^gitdir:\s*(.+)\s*$/mu.exec(pointer);
+    if (!match) throw new Error('worktree Git directory pointer is malformed');
+    gitDirectory = path.resolve(root, match[1]);
+  } catch (error) {
+    if (error.code !== 'EISDIR') throw new Error('active Supervisor lock is unavailable');
+    gitDirectory = dotGit;
+  }
+  let commonDirectory = gitDirectory;
+  try {
+    commonDirectory = path.resolve(gitDirectory, (await readFile(path.join(gitDirectory, 'commondir'), 'utf8')).trim());
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw new Error('active Supervisor lock is unavailable');
+  }
+  const repositoryRoot = path.dirname(commonDirectory);
+  let owner;
+  try { owner = (await readFile(path.join(repositoryRoot, 'tools/warroom/.local/supervisor.lock'), 'utf8')).trim(); }
+  catch { throw new Error('active Supervisor lock is unavailable'); }
+  if (!/^\d+$/u.test(owner) || Number(owner) !== process.ppid) {
+    throw new Error('technical Drop fallback may only be called by the active Supervisor process');
+  }
 }
 
 function stableJson(value) {

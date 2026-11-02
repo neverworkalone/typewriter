@@ -1335,6 +1335,15 @@ test('compact chunks are a lossless view and compact decisions expand into the s
 
 test('technical Drop f rejects forged evidence and accepts only a signed source-bound Supervisor fallback', async (t) => {
   const { root, sourceCandidates } = await sixCandidateRepository(t);
+  const mainRoot = path.join(root, '.supervisor-main');
+  const commonGit = path.join(mainRoot, '.git');
+  const worktreeGit = path.join(commonGit, 'worktrees', 'stage2');
+  const supervisorLock = path.join(mainRoot, 'tools/warroom/.local/supervisor.lock');
+  await mkdir(worktreeGit, { recursive: true });
+  await mkdir(path.dirname(supervisorLock), { recursive: true });
+  await writeFile(path.join(worktreeGit, 'commondir'), '../..\n');
+  await writeFile(path.join(root, '.git'), `gitdir: ${worktreeGit}\n`);
+  await writeFile(supervisorLock, `${process.pid}\n`);
   const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
   const input = '.warroom-scratch/decisions.txt';
   const proofPath = '.warroom-scratch/s2-technical-fallback.json';
@@ -1363,7 +1372,7 @@ test('technical Drop f rejects forged evidence and accepts only a signed source-
   try {
     await writeFile(path.join(root, proofPath), JSON.stringify({ proof, signature: '0'.repeat(64) }));
     delete process.env.TYPEWRITER_SUPERVISOR_FALLBACK_KEY;
-    await assert.rejects(() => quiet(() => run(fallbackArgs, { root })), /Supervisor invocation/u);
+    await assert.rejects(() => quiet(() => run(fallbackArgs, { root })), /active Supervisor/u);
     assert.deepEqual(await readFile(path.join(root, checkpoint)), beforeForged,
       'caller-created evidence without Supervisor authority cannot advance the checkpoint');
 
@@ -1371,6 +1380,11 @@ test('technical Drop f rejects forged evidence and accepts only a signed source-
     const signature = createHmac('sha256', key).update(JSON.stringify(sortJsonKeys(proof)), 'utf8').digest('hex');
     await writeFile(path.join(root, proofPath), JSON.stringify({ proof, signature }));
     process.env.TYPEWRITER_SUPERVISOR_FALLBACK_KEY = key;
+    await assert.rejects(() => quiet(() => run(fallbackArgs, { root })), /active Supervisor process/u);
+    assert.deepEqual(await readFile(path.join(root, checkpoint)), beforeForged,
+      'a caller-chosen signing key still cannot authorize a direct CLI invocation');
+
+    await writeFile(supervisorLock, `${process.ppid}\n`);
     await quiet(() => run(fallbackArgs, { root }));
   } finally {
     if (previousKey === undefined) delete process.env.TYPEWRITER_SUPERVISOR_FALLBACK_KEY;
