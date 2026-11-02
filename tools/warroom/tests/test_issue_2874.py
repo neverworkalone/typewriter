@@ -90,7 +90,7 @@ class TechnicalFallback(unittest.TestCase):
     def test_retry_restores_and_rejects_changes_to_non_target_decision_rows(self):
         w, b = self.world({"code": 0, "session": "s1", "text": answer(
             f"chunk {CHUNK}\nc1 D BAD\nc2 D x")},
-            {"code": 0, "session": "s1", "text": answer("c1 D e")}, candidates=2)
+            {"code": 0, "session": "s1", "text": answer(f"chunk {CHUNK}\nc1 D e")}, candidates=2)
         b = self.finish(w, b, 1)
         self.assertEqual(b["run_kind"], "s2_chunk_fix")
         decisions = Path(b["worktree"]) / stage2.DECISIONS
