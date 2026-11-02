@@ -87,6 +87,28 @@ class TechnicalFallback(unittest.TestCase):
                          ("ERROR", 1, []))
         self.assertIn("정확히 결속하지 못해", b["error"])
 
+    def test_retry_restores_and_rejects_changes_to_non_target_decision_rows(self):
+        w, b = self.world({"code": 0, "session": "s1", "text": answer(
+            f"chunk {CHUNK}\nc1 D BAD\nc2 D x")},
+            {"code": 0, "session": "s1", "text": answer("c1 D e")}, candidates=2)
+        b = self.finish(w, b, 1)
+        self.assertEqual(b["run_kind"], "s2_chunk_fix")
+        decisions = Path(b["worktree"]) / stage2.DECISIONS
+        initial = decisions.read_bytes()
+        self.assertIn(b"c2 D x\n", initial)
+        decisions.write_bytes(initial.replace(b"c2 D x\n", b"c2 D e\n"))
+
+        b = self.finish(w, b)
+        checkpoint_path = Path(b["worktree"]) / ".warroom-scratch" / \
+            f"relation-admission-{b['shard']}-01-01.json"
+        checkpoint = json.loads(checkpoint_path.read_text("utf-8"))
+        self.assertEqual(b["state"], "ERROR")
+        self.assertIn("Retry 중 기존 판정 파일이 바뀌어 최초 스냅샷을 복원", b["error"])
+        self.assertEqual(decisions.read_bytes(), initial, "all original rows are restored before stopping")
+        self.assertIsNotNone(checkpoint["pending_chunk"], "the rejected retry cannot advance the checkpoint")
+        self.assertEqual(len(w.git.save_calls), 1, "no retry save runs against the changed non-target row")
+        self.assertEqual(w.git.technical_fallback_calls, [])
+
     def test_missing_fix_output_keeps_the_single_retry_budget_across_manual_retry(self):
         w, b = self.world({"code": 0, "session": "s1", "text": answer(f"chunk {CHUNK}\nc1 D BAD")},
                           {"code": 0, "session": "s1", "text": ""})

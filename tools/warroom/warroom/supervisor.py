@@ -10,6 +10,7 @@ The AI process exiting never completes a batch; only GitHub `merged=true` does.
 """
 from __future__ import annotations
 
+import base64
 import fcntl
 import hashlib
 import json
@@ -3535,12 +3536,14 @@ class Supervisor:
             raise ValueError("Stage 2 correction budget is malformed") from error
         required = {"version", "batch_id", "shard", "batch", "chunk_id", "retry_count",
                     "initial_failure", "candidate", "retry_answer_applied", "retry_answer_alias",
-                    "retry_decisions_sha256", "retry_save_failed", "header_repaired", "retry_run_id"}
+                    "initial_decisions_b64", "retry_decisions_sha256", "retry_save_failed",
+                    "header_repaired", "retry_run_id"}
         if not isinstance(state, dict) or set(state) != required or type(state.get("version")) is not int or state.get("version") != 1 \
                 or type(state.get("batch_id")) is not int or type(state.get("retry_count")) is not int \
                 or state.get("batch_id") != b["id"] or state.get("shard") != b["shard"] \
                 or state.get("batch") != b["batch"] or state.get("chunk_id") != pending \
                 or state.get("retry_count") != stage2.MAX_CANDIDATE_RETRIES or not isinstance(state.get("initial_failure"), str) \
+                or not isinstance(state.get("initial_decisions_b64"), str) \
                 or not isinstance(state.get("candidate"), dict) \
                 or not isinstance(state.get("retry_answer_applied"), bool) \
                 or (state.get("retry_answer_alias") is not None and not isinstance(state.get("retry_answer_alias"), str)) \
@@ -3556,6 +3559,11 @@ class Supervisor:
                 or not all(isinstance(candidate.get(name), str) and candidate[name]
                            for name in ("alias", "record_id", "sense_id", "candidate")):
             raise ValueError("Stage 2 correction candidate binding is malformed")
+        try:
+            snapshot = base64.b64decode(state["initial_decisions_b64"], validate=True)
+            snapshot.decode("utf-8")
+        except (ValueError, UnicodeError):
+            raise ValueError("Stage 2 correction decision snapshot is malformed") from None
         applied = state["retry_answer_applied"]
         if (applied and (state["retry_answer_alias"] != candidate["alias"]
                          or state["retry_decisions_sha256"] is None)) \
@@ -3583,10 +3591,18 @@ class Supervisor:
             b["worktree"], pending, alias, baseline.get("chunk_view_sha256", ""))
         if candidate is None or stage2.single_candidate_failure_alias(diagnostic, pending, candidate) != alias:
             return None
+        decisions_path = Path(b["worktree"]) / stage2.DECISIONS
+        try:
+            initial_decisions = decisions_path.read_bytes()
+            if stage2.decision_file_state(b["worktree"], pending) != "current":
+                return None
+        except OSError:
+            return None
         state = {
             "version": 1, "batch_id": b["id"], "shard": b["shard"], "batch": b["batch"],
             "chunk_id": pending, "retry_count": stage2.MAX_CANDIDATE_RETRIES, "initial_failure": diagnostic,
             "candidate": candidate, "retry_answer_applied": False,
+            "initial_decisions_b64": base64.b64encode(initial_decisions).decode("ascii"),
             "retry_answer_alias": None, "retry_decisions_sha256": None, "retry_save_failed": False,
             "header_repaired": False, "retry_run_id": None,
         }
@@ -3595,6 +3611,21 @@ class Supervisor:
                     "retry_count": 1, "deterministic_header_repair": "pending"}
         self.store.log(b["id"], "Stage 2 후보 단위 수정 1회를 결속했습니다: " + json.dumps(evidence, ensure_ascii=False, sort_keys=True), "warn")
         return state
+
+    def _stage2_restore_unchanged_decisions(self, b, pending: str, correction: dict) -> bool:
+        """Require the retry to start from the exact Supervisor snapshot; restore it and fail closed on any drift."""
+        try:
+            snapshot = base64.b64decode(correction["initial_decisions_b64"], validate=True)
+            path = Path(b["worktree"]) / stage2.DECISIONS
+            current = path.read_bytes()
+            if current == snapshot:
+                return True
+            temporary = path.with_name(path.name + ".restore")
+            temporary.write_bytes(snapshot)
+            temporary.replace(path)
+            return False
+        except (KeyError, OSError, ValueError):
+            return False
 
     def _stage2_mark_candidate_correction(self, b, pending: str, alias: str, *, header_repaired: bool) -> bool:
         state = self._stage2_correction_state(b, pending)
@@ -3741,6 +3772,8 @@ class Supervisor:
             return self._fail(b, "ERROR", "header-only 복구의 시작 checkpoint가 현재 pending 청크와 다릅니다. 파일과 checkpoint를 보존합니다.")
         if stage2.decision_file_state(b["worktree"], pending) != "current":
             return self._fail(b, "ERROR", "현재 청크의 정상 판정 파일이 없어 header-only 복구를 결속할 수 없습니다. worktree와 checkpoint를 보존합니다.")
+        if not self._stage2_restore_unchanged_decisions(b, pending, correction):
+            return self._fail(b, "ERROR", "Retry 중 기존 판정 파일이 바뀌어 최초 스냅샷을 복원했습니다. header-only 복구를 중단하고 checkpoint를 보존합니다.")
         try:
             ok, detail = self._stage2_save(b)
             if ok:
@@ -3751,6 +3784,8 @@ class Supervisor:
             existing = stage2.read_rows(b["worktree"])
             if sum(stage2.alias_of(saved) == candidate["alias"] for saved in existing) != 1:
                 return self._fail(b, "ERROR", "현재 decisions.txt에서 대상 alias가 정확히 한 행이 아니어서 header-only 복구를 중단합니다.")
+            if not self._stage2_restore_unchanged_decisions(b, pending, correction):
+                return self._fail(b, "ERROR", "header-only 행을 적용하기 전 기존 판정 파일이 바뀌어 최초 스냅샷을 복원했습니다. checkpoint를 보존합니다.")
             merged, ignored = stage2.merge_fix(existing, [row], [candidate["alias"]])
             if ignored:
                 return self._fail(b, "ERROR", "현재 최종 응답을 초기 실패 alias에 결속하지 못해 복구하지 않습니다.")
@@ -3914,6 +3949,8 @@ class Supervisor:
                 if not isinstance(baseline, dict) or not self._stage2_checkpoint_unchanged(b, pending, baseline):
                     return self._fail(b, "ERROR", "수정 응답의 시작 checkpoint가 현재 pending 청크와 다릅니다. 판정 파일과 checkpoint를 보존합니다.")
                 candidate = correction["candidate"]
+                if not self._stage2_restore_unchanged_decisions(b, pending, correction):
+                    return self._fail(b, "ERROR", "Retry 중 기존 판정 파일이 바뀌어 최초 스냅샷을 복원했습니다. 수정 응답과 저장을 중단하고 checkpoint를 보존합니다.")
                 ok, detail = self._stage2_save(b)   # the same rejection the fix prompt was built from, to find its rows
                 if ok:
                     return self._stage2_saved_or_fail(b)
@@ -3922,6 +3959,8 @@ class Supervisor:
                 targets = [candidate["alias"]]
                 if len(rows) != 1 or stage2.alias_of(rows[0]) != candidate["alias"]:
                     return self._fail(b, "ERROR", "Stage 2 수정 응답이 실패한 후보 하나의 행과 정확히 일치하지 않습니다. 아무 행도 병합하지 않고 보존합니다.")
+                if not self._stage2_restore_unchanged_decisions(b, pending, correction):
+                    return self._fail(b, "ERROR", "Retry 중 기존 판정 파일이 바뀌어 최초 스냅샷을 복원했습니다. 수정 응답 병합을 중단하고 checkpoint를 보존합니다.")
                 merged, ignored = stage2.merge_fix(stage2.read_rows(b["worktree"]), rows, targets)
                 if ignored:
                     self.store.log(b["id"], f"수정 응답의 허용 범위 밖 행 {len(ignored)}개를 무시했습니다: "

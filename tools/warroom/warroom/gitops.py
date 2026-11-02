@@ -1,9 +1,12 @@
 """Git/worktree handling. War Room only ever removes worktrees/branches it owns."""
 from __future__ import annotations
 
+import hashlib
+import hmac
 import json
 import os
 import re
+import secrets
 import shutil
 import tempfile
 from dataclasses import dataclass
@@ -1000,11 +1003,20 @@ class Git:
             fallback_path = Path(worktree) / ".warroom-scratch" / "s2-technical-fallback.json"
             fallback_path.parent.mkdir(parents=True, exist_ok=True)
             temporary = fallback_path.with_suffix(".json.tmp")
-            temporary.write_text(json.dumps(supervisor_fallback, ensure_ascii=False, separators=(",", ":")) + "\n", "utf-8")
+            # The worktree is shared with the Stage 2 worker. Bind the evidence to this trusted
+            # Supervisor invocation instead of treating a caller-writable JSON file as authority.
+            proof_json = json.dumps(supervisor_fallback, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+            key = secrets.token_hex(32)
+            signature = hmac.new(key.encode("ascii"), proof_json.encode("utf-8"), hashlib.sha256).hexdigest()
+            envelope = json.dumps({"proof": supervisor_fallback, "signature": signature},
+                                  ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+            temporary.write_text(envelope + "\n", "utf-8")
             temporary.replace(fallback_path)
             args.extend(["--supervisor-fallback", ".warroom-scratch/s2-technical-fallback.json"])
-        res = self.r.run(args,
-                         cwd=worktree, env=self.env, timeout=timeout)
+            env = {**self.env, "TYPEWRITER_SUPERVISOR_FALLBACK_KEY": key}
+        else:
+            env = self.env
+        res = self.r.run(args, cwd=worktree, env=env, timeout=timeout)
         return res.ok, (res.err or res.out).strip()
 
     def stage2_optional_view(self, worktree: Path, shard: str, batch: str, part: str, timeout: int = 900) -> str:

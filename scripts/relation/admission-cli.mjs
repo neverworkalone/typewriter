@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import { mkdir, readdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash, createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import path from 'node:path';
 import process from 'node:process';
 import { isDeepStrictEqual } from 'node:util';
@@ -2084,7 +2084,17 @@ async function saveChunk(checkpoint, checkpointPath, inputPath, root, format = '
   if (supervisorFallbackPath !== null) {
     if (format !== 'compact') throw new Error('Supervisor technical fallback is only valid with --format compact');
     try {
-      supervisorFallback = JSON.parse(await readFile(resolveRootPath(root, supervisorFallbackPath), 'utf8'));
+      const envelope = JSON.parse(await readFile(resolveRootPath(root, supervisorFallbackPath), 'utf8'));
+      const key = process.env.TYPEWRITER_SUPERVISOR_FALLBACK_KEY;
+      if (!key || !isPlainObject(envelope) || keysOf(envelope) !== 'proof,signature'
+          || typeof envelope.signature !== 'string' || !/^[a-f0-9]{64}$/u.test(envelope.signature)
+          || !isPlainObject(envelope.proof)) {
+        throw new Error('fallback authority must come from a Supervisor invocation');
+      }
+      const signature = createHmac('sha256', key).update(stableJson(envelope.proof), 'utf8').digest();
+      const supplied = Buffer.from(envelope.signature, 'hex');
+      if (!timingSafeEqual(signature, supplied)) throw new Error('Supervisor fallback signature is invalid');
+      supervisorFallback = envelope.proof;
     } catch (error) { throw new Error(`cannot read Supervisor fallback evidence: ${error.message}`); }
   }
   if (!isPlainObject(input) || keysOf(input) !== 'chunk_id,decisions' || input.chunk_id !== pending.chunk_id || !Array.isArray(input.decisions)) {
@@ -2181,6 +2191,14 @@ async function saveChunk(checkpoint, checkpointPath, inputPath, root, format = '
   const result = { saved: received.size, ...checkpointProgressPayload(checkpoint), checkpoint: checkpointPath };
   console.log(`Saved ${received.size} decisions: ${result.decided}/${result.total} -> ${checkpointPath}`);
   return result;
+}
+
+function stableJson(value) {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`;
+  if (value && typeof value === 'object') {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableJson(value[key])}`).join(',')}}`;
+  }
+  return JSON.stringify(value);
 }
 
 function premergeSnapshotPaths(checkpoint, checkpointPath) {

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
+import { createHash, createHmac } from 'node:crypto';
 import { copyFile, mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
@@ -1333,7 +1333,7 @@ test('compact chunks are a lossless view and compact decisions expand into the s
   await assert.rejects(() => run(['read-chunk', '--checkpoint', checkpoint, '--format', 'yaml'], { root }), /json or compact/);
 });
 
-test('technical Drop f is unavailable to model rows and accepted only through a source-bound Supervisor fallback', async (t) => {
+test('technical Drop f rejects forged evidence and accepts only a signed source-bound Supervisor fallback', async (t) => {
   const { root, sourceCandidates } = await sixCandidateRepository(t);
   const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
   const input = '.warroom-scratch/decisions.txt';
@@ -1351,13 +1351,31 @@ test('technical Drop f is unavailable to model rows and accepted only through a 
 
   const remainingRows = sourceCandidates.slice(1).map((_, index) => `c${index + 2} D x`).join('\n');
   await writeFile(path.join(root, input), `chunk ${chunk.chunk_id}\n${remainingRows}\n`);
-  await writeFile(path.join(root, proofPath), JSON.stringify({
+  const proof = {
     alias: 'c1', candidate: sourceCandidates[0], chunk_id: chunk.chunk_id,
     failure_reason: `chunk ${chunk.chunk_id} not saved, checkpoint unchanged: 1 problem(s)\nc1 ${sourceCandidates[0]}: original issue`,
     record_id: 'w1', retry_count: 1, sense_id: 'w1-s1',
-  }));
-  await quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', input, '--format', 'compact',
-    '--supervisor-fallback', proofPath], { root }));
+  };
+  const fallbackArgs = ['save-chunk', '--checkpoint', checkpoint, '--in', input, '--format', 'compact',
+    '--supervisor-fallback', proofPath];
+  const beforeForged = await readFile(path.join(root, checkpoint));
+  const previousKey = process.env.TYPEWRITER_SUPERVISOR_FALLBACK_KEY;
+  try {
+    await writeFile(path.join(root, proofPath), JSON.stringify({ proof, signature: '0'.repeat(64) }));
+    delete process.env.TYPEWRITER_SUPERVISOR_FALLBACK_KEY;
+    await assert.rejects(() => quiet(() => run(fallbackArgs, { root })), /Supervisor invocation/u);
+    assert.deepEqual(await readFile(path.join(root, checkpoint)), beforeForged,
+      'caller-created evidence without Supervisor authority cannot advance the checkpoint');
+
+    const key = 'supervisor-test-capability';
+    const signature = createHmac('sha256', key).update(JSON.stringify(sortJsonKeys(proof)), 'utf8').digest('hex');
+    await writeFile(path.join(root, proofPath), JSON.stringify({ proof, signature }));
+    process.env.TYPEWRITER_SUPERVISOR_FALLBACK_KEY = key;
+    await quiet(() => run(fallbackArgs, { root }));
+  } finally {
+    if (previousKey === undefined) delete process.env.TYPEWRITER_SUPERVISOR_FALLBACK_KEY;
+    else process.env.TYPEWRITER_SUPERVISOR_FALLBACK_KEY = previousKey;
+  }
   await mergeForTest(root, checkpoint);
   const drops = await readDropRows(path.join(root, 'data/relation-drops/drop-001.jsonl'));
   assert.equal(drops.find((row) => row.candidate === sourceCandidates[0])?.reason, 'f');
