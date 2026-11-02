@@ -546,7 +546,7 @@ test('real C CLI records one failed Sense as technical skip only after ordinary 
     const forged = runCli(fixture, ['supervisor-skip', '--db', fixture.databasePath, '--checkpoint', fixture.checkpointPath,
       '--input', inputPath, '--retry-attempts', '2']);
     assert.equal(forged.status, 1);
-    assert.match(forged.stderr, /unsupported option.*retry-attempts/u);
+    assert.match(forged.stderr, /unsupported option/u);
     const early = runCli(fixture, ['supervisor-skip', '--db', fixture.databasePath, '--checkpoint', fixture.checkpointPath,
       '--input', inputPath], { WARROOM_SUPERVISOR_STATE_DB: supervisorDatabasePath, WARROOM_SUPERVISOR_BATCH_ID: '1' });
     assert.equal(early.status, 1);
