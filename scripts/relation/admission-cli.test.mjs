@@ -1345,6 +1345,7 @@ test('technical Drop f requires the CLI parent to own the active Supervisor lock
   await writeFile(path.join(worktreeGit, 'commondir'), '../..\n');
   await writeFile(path.join(root, '.git'), `gitdir: ${worktreeGit}\n`);
   await writeFile(supervisorLock, `${process.ppid}\n`);
+  await writeFile(supervisorOwnerLock, '');
   const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
   const input = '.warroom-scratch/decisions.txt';
   const proofPath = '.warroom-scratch/s2-technical-fallback.json';
