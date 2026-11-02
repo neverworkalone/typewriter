@@ -5,11 +5,12 @@ State lives in the checkpoint file inside the worktree (like the real CLI), so a
 from __future__ import annotations
 
 import json
+import hashlib
 from pathlib import Path
 
 from warroom.shell import Result
 
-DONE = ("ZERO_HITS", "SUBMITTED", "NO_VERIFIED", "SAMPLED_NO_VERIFIED", "DISCOVERED")
+DONE = ("ZERO_HITS", "SUBMITTED", "NO_VERIFIED", "SAMPLED_NO_VERIFIED", "DISCOVERED", "TECHNICAL_SKIPPED")
 
 
 class FakeLiteraryCli:
@@ -59,6 +60,30 @@ class FakeLiteraryCli:
             self.save(cwd, argv, cp)
             return Result(0, json.dumps({"status": "READY"}))
         cp = self.load(cwd, argv)
+        if cmd == "submit":
+            input_path = Path(cwd) / self.opt(argv, "--input")
+            diagnostic_path = input_path.with_name(input_path.name + ".diag.json")
+            if diagnostic_path.is_file():
+                diagnostic = json.loads(diagnostic_path.read_text("utf-8"))
+                submission = json.loads(input_path.read_text("utf-8"))
+                affected = diagnostic.get("affected") or {}
+                entries = submission.get("senses") or []
+                target = entries[affected["entry_number"] - 1] if 1 <= affected.get("entry_number", 0) <= len(entries) else {}
+                if (diagnostic.get("reason") == "context_key_not_found" and isinstance(target, dict)
+                        and any(isinstance(key, str) and key != key.strip() and len(key.strip()) >= 12
+                                for key in target.get("verified", []))):
+                    for entry in entries:
+                        saved = dict(entry)
+                        saved["verified"] = [key.strip() if isinstance(key, str) else key for key in entry.get("verified", [])]
+                        cp["status"][entry["sense_id"]] = "SUBMITTED"
+                        cp.setdefault("submitted", {})[entry["sense_id"]] = saved
+                    cp["output"] = None
+                    self.save(cwd, argv, cp)
+                    diagnostic_path.unlink(missing_ok=True)
+                    return Result(0, json.dumps({"status": "SAVED"}))
+                diagnostic["input_sha256"] = hashlib.sha256(input_path.read_bytes()).hexdigest()
+                diagnostic_path.write_text(json.dumps(diagnostic) + "\n")
+            return Result(1, "", "submit_validation")
         if cmd == "report" and "--sense-ids" not in argv:
             counts: dict = {}
             for s in cp["status"].values():
@@ -67,7 +92,8 @@ class FakeLiteraryCli:
             return Result(0, json.dumps({"batch": cp["batch"], "coverage": {"records": 500, "senses": len(cp["ids"]),
                                                                              "sense_statuses": counts},
                                          "output": ({"state": "OUTPUT", "path": out["path"], "sha256": out["sha256"],
-                                                     "validation_status": "VALID"} if out else None)}))
+                                                     "validation_status": "VALID"} if out else None),
+                                         "technical_skips": cp.get("technical_skips", [])}))
         if cmd == "report":
             ids = self.opt(argv, "--sense-ids").split(",")
             if len(set(ids)) != len(ids) or any(i not in cp["status"] for i in ids):
@@ -111,6 +137,30 @@ class FakeLiteraryCli:
             self.save(cwd, argv, cp)
             self.export_error = None
             return Result(0, json.dumps({"status": "CLEARED", "senses": len(ids), "candidates": len(ids)}))
+        if cmd == "supervisor-skip":
+            input_path = Path(cwd) / self.opt(argv, "--input")
+            submission = json.loads(input_path.read_text("utf-8"))
+            diagnostic = json.loads(input_path.with_name(input_path.name + ".diag.json").read_text("utf-8"))
+            active = json.loads((Path(cwd) / ".warroom-scratch/c-active-chunk.json").read_text("utf-8"))
+            entry_number = diagnostic["affected"]["entry_number"]
+            target = diagnostic["affected"]["sense_id"]
+            if submission["senses"][entry_number - 1]["sense_id"] != target or target not in active["sense_ids"]:
+                return Result(1, "", "diagnostic mismatch")
+            for entry in submission["senses"]:
+                if entry["sense_id"] == target:
+                    continue
+                cp["status"][entry["sense_id"]] = "SUBMITTED"
+                cp.setdefault("submitted", {})[entry["sense_id"]] = entry
+            cp["status"][target] = "TECHNICAL_SKIPPED"
+            record_id = f"record-{target}"
+            skip = {"record_id": record_id, "sense_id": target, "diagnostic": diagnostic["diagnostic"],
+                    "reason": diagnostic["reason"], "field": diagnostic["affected"]["field"],
+                    "retry_attempts": int(self.opt(argv, "--retry-attempts"))}
+            cp.setdefault("technical_skips", []).append(skip)
+            cp["output"] = None
+            self.save(cwd, argv, cp)
+            return Result(0, json.dumps({"status": "TECHNICAL_SKIPPED", **skip,
+                                         "pending_senses": sum(status not in DONE for status in cp["status"].values())}))
         if cmd == "validate":
             return Result(0, json.dumps({"status": "VALID", "recordCount": 500, "senseCount": len(cp["ids"]),
                                          "candidateCount": 7, "emptySenseCount": 1}))

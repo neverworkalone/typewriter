@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { mkdtemp, mkdir, readFile, realpath, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
@@ -17,6 +18,7 @@ import {
   reportLiteraryCheckpointSenses,
   resolveVerifiedContextKey,
   submitLiteraryChunk,
+  supervisorSkipLiterarySense,
   summarizeLiteraryCheckpoint,
   validateExistingLiteraryCandidates,
 } from './literary-context.mjs';
@@ -417,6 +419,110 @@ test('submission fails closed and writes nothing for uncited, duplicate or unkno
   }
 });
 
+test('Supervisor C technical fallback preserves unaffected submissions and records a distinct empty status', async () => {
+  const fixture = await makeFixture({ unitCount: 3, firstSenseGlosses: ['meaning one', 'meaning two'] });
+  try {
+    const ids = fixture.records[0].senses.map((sense) => sense.id);
+    const view = await readLiteraryChunk({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath,
+      senseIds: ids, limit: 2, contexts: 8, skip: 0, format: 'json', scratchDirectory: fixture.scratchDirectory });
+    const goodKey = view.items.find((item) => item.sense_id === ids[1]).contexts[0].k;
+    const submission = { senses: [
+      { sense_id: ids[0], verified: ['0'.repeat(12)], candidates: ['어둠'] },
+      { sense_id: ids[1], verified: [goodKey], candidates: ['새벽'] },
+    ] };
+    const inputText = JSON.stringify(submission);
+    const inputPath = path.join(fixture.scratchDirectory, 'c-chunk-014.submit.json');
+    await writeFile(inputPath, inputText);
+    const inputSha256 = createHash('sha256').update(inputText).digest('hex');
+    const diagnostic = { status: 'FAILED', diagnostic: 'submit_validation', repair_scope: 'resubmit_affected_sense',
+      reason: 'context_key_not_found', affected: { sense_id: ids[0], field: 'verified', entry_number: 1 },
+      issues: [{ entry_number: 1, reason: 'context_key_not_found', field: 'verified' }], input_sha256: inputSha256 };
+    const viewText = renderChunkText(view);
+    await writeFile(path.join(fixture.scratchDirectory, 'c-active-chunk.txt'), viewText);
+    await writeFile(path.join(fixture.scratchDirectory, 'c-active-chunk.json'), JSON.stringify({
+      shard: '001', batch: '01', model: 'codex', chunk_no: 14, sense_ids: ids,
+      view_sha256: createHash('sha256').update(viewText).digest('hex'), git_head: (await loadLiteraryCheckpoint(fixture.checkpointPath,
+        { scratchDirectory: fixture.scratchDirectory })).checkpoint.batch.git_head,
+    }));
+    const before = await loadLiteraryCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory });
+    const targetBefore = before.checkpoint.records[0].senses[0];
+
+    await assert.rejects(supervisorSkipLiterarySense({ databasePath: fixture.databasePath,
+      checkpointPath: fixture.checkpointPath, submission, diagnostic, retryAttempts: 2, inputSha256: 'f'.repeat(64),
+      scratchDirectory: fixture.scratchDirectory }), /current, source-Sense-local/u);
+    await assert.rejects(supervisorSkipLiterarySense({ databasePath: fixture.databasePath,
+      checkpointPath: fixture.checkpointPath, submission,
+      diagnostic: { ...diagnostic, issues: [...diagnostic.issues, diagnostic.issues[0]] },
+      retryAttempts: 2, inputSha256, scratchDirectory: fixture.scratchDirectory }), /one current, source-Sense-local/u);
+    await assert.rejects(supervisorSkipLiterarySense({ databasePath: fixture.databasePath,
+      checkpointPath: fixture.checkpointPath, submission,
+      diagnostic: { ...diagnostic, affected: { ...diagnostic.affected, entry_number: 2 } },
+      retryAttempts: 2, inputSha256, scratchDirectory: fixture.scratchDirectory }), /diagnostic does not identify/u);
+    const result = await supervisorSkipLiterarySense({ databasePath: fixture.databasePath,
+      checkpointPath: fixture.checkpointPath, submission, diagnostic, retryAttempts: 2, inputSha256,
+      scratchDirectory: fixture.scratchDirectory });
+    assert.deepEqual([result.status, result.record_id, result.sense_id, result.reason],
+      ['TECHNICAL_SKIPPED', 'record-000001', ids[0], 'context_key_not_found']);
+
+    const after = (await loadLiteraryCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory })).checkpoint;
+    const skipped = after.records[0].senses[0];
+    const saved = after.records[0].senses[1];
+    assert.equal(skipped.submission.status, 'TECHNICAL_SKIPPED');
+    assert.deepEqual(skipped.submission.candidates, []);
+    assert.deepEqual(skipped.search, targetBefore.search);
+    assert.deepEqual(skipped.contexts, targetBefore.contexts);
+    assert.equal(saved.submission.status, 'SUBMITTED');
+    assert.deepEqual(saved.submission.candidates, ['새벽']);
+    assert.deepEqual(summarizeLiteraryCheckpoint(after).technical_skips, [{ record_id: 'record-000001', sense_id: ids[0],
+      diagnostic: 'submit_validation', reason: 'context_key_not_found', field: 'verified', retry_attempts: 2 }]);
+  } finally {
+    await cleanup(fixture);
+  }
+});
+
+test('real C CLI records one failed Sense as technical skip only after ordinary submit rejects the exact file', async () => {
+  const fixture = await makeFixture({ unitCount: 3, firstSenseGlosses: ['meaning one', 'meaning two'] });
+  try {
+    const ids = fixture.records[0].senses.map((sense) => sense.id);
+    const view = await readLiteraryChunk({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath,
+      senseIds: ids, limit: 2, contexts: 8, skip: 0, format: 'json', scratchDirectory: fixture.scratchDirectory });
+    const goodKey = view.items.find((item) => item.sense_id === ids[1]).contexts[0].k;
+    const inputPath = path.join(fixture.scratchDirectory, 'c-chunk-014.submit.json');
+    const inputText = JSON.stringify({ senses: [
+      { sense_id: ids[0], verified: ['0'.repeat(12)], candidates: ['어둠'] },
+      { sense_id: ids[1], verified: [goodKey], candidates: ['새벽'] },
+    ] });
+    await writeFile(inputPath, inputText);
+    const viewText = renderChunkText(view);
+    await writeFile(path.join(fixture.scratchDirectory, 'c-active-chunk.txt'), viewText);
+    const checkpoint = await loadLiteraryCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory });
+    await writeFile(path.join(fixture.scratchDirectory, 'c-active-chunk.json'), JSON.stringify({
+      shard: '001', batch: '01', model: 'codex', chunk_no: 14, sense_ids: ids,
+      view_sha256: createHash('sha256').update(viewText).digest('hex'), git_head: checkpoint.checkpoint.batch.git_head,
+    }));
+
+    const failed = runCli(fixture, ['submit', '--db', fixture.databasePath, '--checkpoint', fixture.checkpointPath, '--input', inputPath]);
+    assert.equal(failed.status, 1);
+    const diagnostic = JSON.parse(await readFile(`${inputPath}.diag.json`, 'utf8'));
+    assert.equal(diagnostic.reason, 'context_key_not_found');
+    assert.equal(diagnostic.affected.sense_id, ids[0]);
+    assert.equal(diagnostic.affected.entry_number, 1);
+
+    const skipped = runCli(fixture, ['supervisor-skip', '--db', fixture.databasePath, '--checkpoint', fixture.checkpointPath,
+      '--input', inputPath, '--retry-attempts', '2']);
+    assert.equal(skipped.status, 0, skipped.stderr);
+    const result = JSON.parse(skipped.stdout);
+    assert.deepEqual([result.status, result.record_id, result.sense_id, result.retry_attempts],
+      ['TECHNICAL_SKIPPED', 'record-000001', ids[0], 2]);
+    const saved = (await loadLiteraryCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory })).checkpoint;
+    assert.equal(saved.records[0].senses[0].submission.status, 'TECHNICAL_SKIPPED');
+    assert.equal(saved.records[0].senses[1].submission.status, 'SUBMITTED');
+    assert.deepEqual(saved.records[0].senses[1].submission.candidates, ['새벽']);
+  } finally {
+    await cleanup(fixture);
+  }
+});
+
 test('submit validation returns bounded reason codes and source-sense fields without echoing private input', async () => {
   const fixture = await makeFixture({ unitCount: 3 });
   try {
@@ -552,6 +658,7 @@ test('submit validation returns bounded reason codes and source-sense fields wit
       const diagnostic = JSON.parse(result.stderr);
       assert.equal(diagnostic.status, 'FAILED', scenario.name);
       assert.equal(diagnostic.diagnostic, 'submit_validation', scenario.name);
+      assert.match(diagnostic.input_sha256, /^[a-f0-9]{64}$/u, scenario.name);
       assert.equal(diagnostic.reason, scenario.reason, scenario.name);
       const entryNumber = scenario.entryNumber ?? (scenario.senses ? 1 : null);
       assert.deepEqual(diagnostic.affected, { sense_id: scenario.senseId, field: scenario.field, entry_number: entryNumber }, scenario.name);
@@ -571,6 +678,7 @@ test('submit validation returns bounded reason codes and source-sense fields wit
       const left = JSON.parse(await readFile(path.join(fixture.scratchDirectory, 'submit-input.json.diag.json'), 'utf8'));
       assert.equal(left.diagnostic, 'submit_validation', scenario.name);
       assert.equal(left.repair_scope, diagnostic.repair_scope, scenario.name);
+      assert.equal(left.input_sha256, diagnostic.input_sha256, scenario.name);
       const expectedRepairScope = scenario.reason === 'submission_schema'
         ? 'correct_submission_shape'
         : scenario.reason === 'unknown_sense'
@@ -700,6 +808,11 @@ test('ambiguous context prefixes are classified without including the key', () =
       && error.affected.field === 'verified'
       && !error.message.includes('abcdef123456'),
   );
+});
+
+test('verified context keys trim surrounding whitespace before the unique-prefix check', () => {
+  const row = { locator_key: 'abcdef123456' + '0'.repeat(52) };
+  assert.equal(resolveVerifiedContextKey('  abcdef123456  ', 'sense-000001', [row]), row);
 });
 
 test('submit index access and identity failures stop safely and leave the checkpoint unchanged', async () => {

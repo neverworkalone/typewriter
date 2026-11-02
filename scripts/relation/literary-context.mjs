@@ -849,7 +849,7 @@ function senseState(sense) {
 }
 
 function senseDone(sense) {
-  return ['ZERO_HITS', 'SUBMITTED', 'NO_VERIFIED', 'SAMPLED_NO_VERIFIED', 'DISCOVERED'].includes(senseState(sense));
+  return ['ZERO_HITS', 'SUBMITTED', 'NO_VERIFIED', 'SAMPLED_NO_VERIFIED', 'DISCOVERED', 'TECHNICAL_SKIPPED'].includes(senseState(sense));
 }
 
 function checkpointSummary(checkpoint) {
@@ -857,12 +857,23 @@ function checkpointSummary(checkpoint) {
   let finalCount = 0;
   let emptySenses = 0;
   let senses = 0;
+  const technicalSkips = [];
   const outputIsCurrent = Boolean(checkpoint.output && !checkpoint.output.stale);
   for (const record of checkpoint.records) {
     for (const sense of record.senses) {
       senses += 1;
       const status = senseState(sense);
       senseStatuses[status] = (senseStatuses[status] ?? 0) + 1;
+      if (status === 'TECHNICAL_SKIPPED') {
+        technicalSkips.push({
+          record_id: record.record_id,
+          sense_id: sense.sense_id,
+          diagnostic: sense.submission.technical_skip.diagnostic,
+          reason: sense.submission.technical_skip.reason,
+          field: sense.submission.technical_skip.field,
+          retry_attempts: sense.submission.technical_skip.retry_attempts,
+        });
+      }
       const count = senseDone(sense) ? finalCandidates(sense).length : 0;
       finalCount += count;
       if (count === 0) emptySenses += 1;
@@ -873,6 +884,7 @@ function checkpointSummary(checkpoint) {
     batch: { shard: checkpoint.batch.shard, batch: checkpoint.batch.batch, model: checkpoint.batch.model, state: outputIsCurrent ? 'OUTPUT' : checkpoint.output ? 'OUTPUT_STALE' : 'IN_PROGRESS' },
     coverage: { records: checkpoint.records.length, senses, sense_statuses: senseStatuses },
     final_candidates: { count: finalCount, empty_senses: emptySenses },
+    technical_skips: technicalSkips,
     output: checkpoint.output ? {
       state: outputIsCurrent ? 'OUTPUT' : 'OUTPUT_STALE',
       path: checkpoint.output.path ?? null,
@@ -1188,8 +1200,11 @@ function validateSubmission(submission, checkpoint) {
 }
 
 export function resolveVerifiedContextKey(key, senseId, results, entryNumber = null) {
-  if (key.length < SHORT_KEY_LENGTH) failSubmission('context_key_too_short', senseId, 'verified', entryNumber);
-  const matches = results.filter((row) => row.locator_key.startsWith(key));
+  // Whitespace around a copied key has one deterministic repair: trim it, then keep the same strict unique-prefix
+  // check. Never guess at a misspelling or alter the source context identity.
+  const normalizedKey = key.trim();
+  if (normalizedKey.length < SHORT_KEY_LENGTH) failSubmission('context_key_too_short', senseId, 'verified', entryNumber);
+  const matches = results.filter((row) => row.locator_key.startsWith(normalizedKey));
   if (matches.length === 0) failSubmission('context_key_not_found', senseId, 'verified', entryNumber);
   if (matches.length > 1) failSubmission('context_key_ambiguous', senseId, 'verified', entryNumber);
   return matches[0];
@@ -1267,11 +1282,122 @@ export async function submitLiteraryChunk({ databasePath, checkpointPath, submis
   };
 }
 
+/**
+ * Supervisor-only final fallback for one exactly diagnosed source Sense. The ordinary `submit` schema remains
+ * unchanged: only this separate command may record TECHNICAL_SKIPPED, and only after every unaffected active Sense
+ * is already accepted or is saved through the ordinary submit validator.
+ */
+export async function supervisorSkipLiterarySense({ databasePath, checkpointPath, submission, diagnostic, retryAttempts,
+  inputSha256, scratchDirectory = path.resolve(CHECKPOINT_SCRATCH_DIRECTORY) }) {
+  const { checkpoint, path: resolvedCheckpoint } = await loadLiteraryCheckpoint(checkpointPath, { scratchDirectory });
+  if (checkpoint.contract !== CHECKPOINT_CONTRACT) fail('technical skip requires a v3 literary checkpoint');
+  if (!Number.isSafeInteger(retryAttempts) || retryAttempts < 2) fail('technical skip requires the exhausted two-submit retry budget');
+  if (!isPlainObject(submission) || !exactKeys(submission, ['senses']) || !Array.isArray(submission.senses) || submission.senses.length === 0) {
+    fail('technical skip requires the unchanged active submit file');
+  }
+  if (!isPlainObject(diagnostic) || diagnostic.status !== 'FAILED' || diagnostic.diagnostic !== 'submit_validation'
+    || diagnostic.repair_scope !== 'resubmit_affected_sense' || diagnostic.issues_truncated === true
+    || !Array.isArray(diagnostic.issues) || diagnostic.issues.length !== 1
+    || !/^[a-f0-9]{64}$/u.test(inputSha256 ?? '') || diagnostic.input_sha256 !== inputSha256) {
+    fail('technical skip requires one current, source-Sense-local submit diagnostic');
+  }
+  const affected = diagnostic.affected;
+  const issue = diagnostic.issues[0];
+  const entryNumber = affected?.entry_number;
+  const reason = diagnostic.reason;
+  const allowedReasons = new Set([
+    'context_key_not_found', 'context_key_ambiguous', 'context_key_too_short', 'duplicate_verified',
+    'missing_verified', 'no_literary_hits', 'submission_schema',
+  ]);
+  if (!Number.isSafeInteger(entryNumber) || entryNumber < 1 || entryNumber > submission.senses.length
+    || !isNonEmptyString(affected?.sense_id) || !allowedReasons.has(reason)
+    || issue?.entry_number !== entryNumber || issue?.reason !== reason || issue?.field !== affected.field) {
+    fail('technical skip diagnostic does not identify one eligible submit entry');
+  }
+
+  const activePath = assertScratchPath(path.resolve(scratchDirectory, 'c-active-chunk.json'), scratchDirectory);
+  const active = JSON.parse(await readFile(activePath, 'utf8'));
+  if (!isPlainObject(active) || active.repair === true || !Number.isSafeInteger(active.chunk_no)
+    || !Array.isArray(active.sense_ids) || active.sense_ids.length === 0) {
+    fail('technical skip active chunk binding is damaged');
+  }
+  if (active.shard !== checkpoint.batch.shard || active.batch !== checkpoint.batch.batch
+    || active.model !== checkpoint.batch.model || typeof active.view_sha256 !== 'string'
+    || !/^[a-f0-9]{64}$/u.test(active.view_sha256) || active.git_head !== checkpoint.batch.git_head || active.chunk_no < 1) {
+    fail('technical skip active chunk belongs to another batch or has no view/head binding');
+  }
+  const activeView = await readFile(assertScratchPath(path.resolve(scratchDirectory, 'c-active-chunk.txt'), scratchDirectory));
+  if (sha256(activeView) !== active.view_sha256) fail('technical skip active view no longer matches the rejected chunk');
+  const targetId = affected.sense_id;
+  const target = submission.senses[entryNumber - 1];
+  if (!isPlainObject(target) || target.sense_id !== targetId
+    || submission.senses.filter((entry) => entry?.sense_id === targetId).length !== 1
+    || !active.sense_ids.includes(targetId)) {
+    fail('technical skip entry number does not match the exact active source Sense');
+  }
+
+  const activeIds = new Set(active.sense_ids);
+  const seen = new Set();
+  for (const entry of submission.senses) {
+    if (!isPlainObject(entry) || !isNonEmptyString(entry.sense_id) || !activeIds.has(entry.sense_id) || seen.has(entry.sense_id)) {
+      fail('technical skip submit file contains a duplicate, unknown, or foreign Sense');
+    }
+    seen.add(entry.sense_id);
+  }
+  const { sense: targetSense } = findSense(checkpoint, targetId);
+  if (targetSense.submission) fail('technical skip cannot overwrite a saved Sense submission');
+
+  const pending = [];
+  for (const entry of submission.senses) {
+    if (entry.sense_id === targetId) continue;
+    const { sense } = findSense(checkpoint, entry.sense_id);
+    if (!senseDone(sense)) pending.push(entry);
+  }
+  if (pending.length > 0) {
+    const remaining = { senses: pending };
+    validateSubmission(remaining, checkpoint);
+    await submitLiteraryChunk({ databasePath, checkpointPath, submission: remaining, scratchDirectory });
+  }
+  const { checkpoint: currentCheckpoint } = await loadLiteraryCheckpoint(resolvedCheckpoint, { scratchDirectory });
+  const { record: targetRecord, sense: currentTarget } = findSense(currentCheckpoint, targetId);
+  if (currentTarget.submission) fail('technical skip cannot overwrite a Sense saved while processing unaffected entries');
+  for (const senseId of active.sense_ids) {
+    const { sense } = findSense(currentCheckpoint, senseId);
+    if (senseId !== targetId && !senseDone(sense)) {
+      fail(`technical skip refused: unaffected active Sense ${senseId} is not saved`);
+    }
+  }
+
+  currentTarget.submission = {
+    status: 'TECHNICAL_SKIPPED',
+    candidates: [],
+    technical_skip: {
+      record_id: targetRecord.record_id,
+      sense_id: targetId,
+      diagnostic: diagnostic.diagnostic,
+      reason,
+      field: affected.field,
+      entry_number: entryNumber,
+      chunk_no: active.chunk_no,
+      view_sha256: active.view_sha256,
+      git_head: active.git_head,
+      retry_attempts: retryAttempts,
+      input_sha256: inputSha256,
+      skipped_at: new Date().toISOString(),
+    },
+  };
+  markOutputStale(currentCheckpoint, 'supervisor technical skip');
+  await saveCheckpoint(resolvedCheckpoint, currentCheckpoint);
+  return { status: 'TECHNICAL_SKIPPED', record_id: targetRecord.record_id, sense_id: targetId,
+    diagnostic: diagnostic.diagnostic, reason, field: affected.field, retry_attempts: retryAttempts,
+    pending_senses: targetsPending(currentCheckpoint) };
+}
+
 export function summarizeLiteraryCheckpoint(checkpoint) {
   return checkpointSummary(checkpoint);
 }
 
-const SUBMISSION_STATUSES = ['ZERO_HITS', 'SUBMITTED'];
+const SUBMISSION_STATUSES = ['ZERO_HITS', 'SUBMITTED', 'TECHNICAL_SKIPPED'];
 const isPlainObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 const isNonEmptyString = (value) => typeof value === 'string' && value !== '';
 
@@ -1298,9 +1424,20 @@ function assertCheckpointStructure(checkpoint) {
           || !saved.candidates.every((candidate) => typeof candidate === 'string')) fail('checkpoint sense submission is damaged');
         // Per-status invariants: a candidate always rests on a stored VERIFIED context, and ZERO_HITS has neither.
         const verified = saved.verified ?? [];
+        const technicalSkip = saved.technical_skip;
         if (!Array.isArray(verified) || !verified.every((item) => isPlainObject(item) && isNonEmptyString(item.locator_key))
           || (saved.status === 'SUBMITTED' && !Array.isArray(saved.verified))
           || (saved.status === 'ZERO_HITS' && (saved.candidates.length > 0 || verified.length > 0))
+          || (saved.status === 'TECHNICAL_SKIPPED' && (saved.candidates.length > 0 || !isPlainObject(technicalSkip)
+            || technicalSkip.record_id !== record.record_id || technicalSkip.sense_id !== sense.sense_id
+            || technicalSkip.diagnostic !== 'submit_validation'
+            || !['context_key_not_found', 'context_key_ambiguous', 'context_key_too_short', 'duplicate_verified',
+              'missing_verified', 'no_literary_hits', 'submission_schema'].includes(technicalSkip.reason)
+            || !isNonEmptyString(technicalSkip.field) || !Number.isSafeInteger(technicalSkip.entry_number) || technicalSkip.entry_number < 1
+            || !Number.isSafeInteger(technicalSkip.chunk_no) || technicalSkip.chunk_no < 1
+            || !/^[a-f0-9]{64}$/u.test(technicalSkip.view_sha256 ?? '') || !/^[a-f0-9]{40}$/u.test(technicalSkip.git_head ?? '')
+            || !/^[a-f0-9]{64}$/u.test(technicalSkip.input_sha256 ?? '') || technicalSkip.retry_attempts !== 2
+            || !isNonEmptyString(technicalSkip.skipped_at)))
           || (saved.candidates.length > 0 && verified.length === 0)) fail('checkpoint sense submission is damaged');
       } else if (sense.search !== null && sense.search !== undefined) {
         if (!isPlainObject(sense.search) || typeof sense.search.status !== 'string'

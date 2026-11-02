@@ -1,4 +1,5 @@
 """Issue #2034: Method D runs as serial 25-record chunk sessions with a deterministic, idempotent finalization."""
+import hashlib
 import json
 import unittest
 
@@ -52,6 +53,10 @@ class DWorld(World):
                 "diagnostic": "save_rejected", "chunk_no": rec["chunk_no"],
                 "view_sha256": "0" * 64 if stale else rec["view_sha256"], "git_head": rec["git_head"], "repair_scope": scope,
                 "senses": ["s1"], "errors": ["s1: Z needs every recorded search of this record to be complete with 0 hits"],
+                "failed_records": [{"record_id": "w0001", "failed_sense_ids": ["w0001-s1"],
+                                    "errors": ["s1: Z needs every recorded search of this record to be complete with 0 hits"]}],
+                "decisions_sha256": hashlib.sha256((self.wt() / names.decisions).read_bytes()).hexdigest(),
+                "searches_sha256": hashlib.sha256((self.wt() / names.searches).read_bytes()).hexdigest(),
                 "error_count": 1}))
         self.adapter.plan.append({"code": code, "session": session, "effect": effect})
 
@@ -369,7 +374,7 @@ class SaveRejectedFix(unittest.TestCase):
         self.assertEqual(w.active()["chunk_no"], 2)
         self.assertFalse((w.wt() / dchunk.chunk_names(w.row_(), 1).rejected).exists())   # accepted chunk scratch was removed
 
-    def test_repeated_rejection_stops_after_the_limit_and_extra_ticks_launch_nothing(self):
+    def test_repeated_record_local_rejection_skips_only_that_record_and_continues(self):
         w = self.w
         w.start("single", "deepseek", "d")
         w.ai_rejected()
@@ -377,9 +382,19 @@ class SaveRejectedFix(unittest.TestCase):
         self.run_once()
         w.finish_last()
         w.tick()
-        self.assertEqual(w.row_()["state"], "ERROR")
-        self.assertIn("마지막 save 거부", w.row_()["error"])
+        self.assertEqual((w.row_()["state"], w.row_()["run_kind"], w.active()["chunk_no"]),
+                         ("PRODUCING", "d_chunk_new", 2))
         self.assertEqual(len(w.adapter.launches), 2)
+        rows = [json.loads(line) for line in (w.wt() / dchunk.names(w.row_()).directory / "chunk-001.jsonl").read_text().splitlines()]
+        first = next(row for row in rows if row["record_id"] == "w0001")
+        other = next(row for row in rows if row["record_id"] == "w0002")
+        self.assertTrue(all(sense["candidates"] == [] for sense in first["senses"]))
+        self.assertTrue(all(sense["candidates"] == ["후보"] for sense in other["senses"]))
+        skip = json.loads((w.wt() / dchunk.chunk_names(w.row_(), 1).technical_skips).read_text())
+        self.assertEqual((skip["fix_attempts"], skip["skips"][0]["record_id"], skip["skips"][0]["sense_ids"]),
+                         (1, "w0001", ["w0001-s1"]))
+        self.assertTrue(any("record=w0001" in event["msg"] for event in w.store.recent_events()
+                            if event["batch_id"] == w.row_()["id"]))
         w.tick(3)
         self.assertEqual(len(w.adapter.launches), 2)
         self.assertEqual(w.store.get(dchunk.fix_key(w.row_()["id"], 1)), "1")
@@ -884,6 +899,13 @@ class VerifiedPrefix(unittest.TestCase):
 
 
 class Prompts(unittest.TestCase):
+    def test_d_production_pr_reports_exact_technical_skip_count_only_when_present(self):
+        batch = {"shard": "001", "batch": "01"}
+        base = {"records": 25, "senses": 27, "candidates": 20, "empty_senses": 4, "technical_skips": []}
+        self.assertNotIn("Technical skips", dchunk.pr_body("DeepSeek", batch, base))
+        skipped = {**base, "technical_skips": [{"record_id": "w1", "sense_ids": ["s1", "s2"]}]}
+        self.assertIn("Technical skips: 1 records — w1 (2 senses)", dchunk.pr_body("DeepSeek", batch, skipped))
+
     def test_exactly_one_of_view_or_pages_and_the_card_binds_the_save_call(self):
         b = {"shard": "001", "batch": "01", "branch": "d-x-001-01"}
         with self.assertRaises(prompts.PromptError):

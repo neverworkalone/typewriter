@@ -63,6 +63,32 @@ class FakeDChunkCli:
             cands = sum(len(s["candidates"]) for r in rows for s in r["senses"])
             empty = sum(1 for r in rows for s in r["senses"] if not s["candidates"])
             return Result(0, f"Candidate v1 valid: {len(rows)} records, {senses} senses, {cands} candidates, {empty} empty senses, 0 source-lemma candidates.\n")
+        if argv[2] == "supervisor-skip":
+            folder = Path(cwd) / D_DIR
+            number = int(self.opt(argv, "--in").split("-")[-1].split(".")[0])
+            rejected = json.loads((folder / f"rejected-{number:03d}.json").read_text("utf-8"))
+            active = json.loads((folder / f"active-{number:03d}.json").read_text("utf-8"))
+            failed = rejected["failed_records"]
+            rows = {row["id"]: row for row in self.chunk(number)}
+            skips = [{"record_id": item["record_id"], "sense_ids": rows[item["record_id"]]["senses"] and
+                      [sense["id"] for sense in rows[item["record_id"]]["senses"]],
+                      "failed_sense_ids": item["failed_sense_ids"], "errors": item["errors"]} for item in failed]
+            import hashlib
+            decisions_sha = hashlib.sha256((folder / f"decision-{number:03d}.txt").read_bytes()).hexdigest()
+            searches_sha = hashlib.sha256((folder / f"search-{number:03d}.jsonl").read_bytes()).hexdigest()
+            if (decisions_sha != rejected["decisions_sha256"] or searches_sha != rejected["searches_sha256"]
+                    or rejected["repair_scope"] != "decisions"):
+                return Result(1, "", "stale rejection")
+            skip_path = folder / f"technical-skip-{number:03d}.json"
+            skip_path.write_text(json.dumps({"contract": "d-technical-skips-v1", "diagnostic": "save_rejected",
+                "shard": "001", "batch": "01", "model": "deepseek", "chunk_no": number,
+                "view_sha256": active["view_sha256"], "git_head": active["git_head"],
+                "fix_attempts": int(self.opt(argv, "--fix-attempts")), "decisions_sha256": decisions_sha,
+                "searches_sha256": searches_sha, "error_count": rejected["error_count"], "skips": skips}), "utf-8")
+            excluded = {item["record_id"] for item in skips}
+            self.save(Path(cwd), number, lambda sid: [] if sid.rsplit("-s", 1)[0] in excluded else ["후보"])
+            return Result(0, json.dumps({"status": "SAVED_WITH_TECHNICAL_SKIPS", "chunk_no": number,
+                "technical_skipped_records": len(skips), "technical_skips": skips}))
         if argv[2] != "prepare":
             return Result(1, "", f"unknown command {argv[2]}")
         number = int(self.opt(argv, "--chunk"))

@@ -23,6 +23,7 @@ import {
   searchActive,
   searchBatchActive,
   searchForContexts,
+  supervisorSkipActive,
 } from './d-chunk-cli.mjs';
 
 const SYLLABLES = ['가', '나', '다', '라', '마', '바', '사', '아', '자', '차'];
@@ -116,6 +117,7 @@ const chunkPath = (world, kind, number = 1) => path.join(world.directory, {
   searches: `search-${String(number).padStart(3, '0')}.jsonl`,
   decisions: `decision-${String(number).padStart(3, '0')}.txt`,
   rejected: `rejected-${String(number).padStart(3, '0')}.json`,
+  technicalSkips: `technical-skip-${String(number).padStart(3, '0')}.json`,
 }[kind]);
 const meta = (world, number = 1) => readFile(chunkPath(world, 'active', number), 'utf8').then(JSON.parse);
 const view = (world, number = 1) => readFile(chunkPath(world, 'view', number), 'utf8');
@@ -983,6 +985,39 @@ withWorld('cursor next resumes recorded search pages and invalid cursor input le
     databasePath: world.options.databasePath, root: world.root,
   });
   assert.ok(manualNext.result.items.length > 0, 'the exact manual forms order and boundary resumes successfully');
+});
+
+withWorld('Supervisor technical fallback excludes the exact shared-evidence Record and preserves other Records', async (world) => {
+  await prepareChunk({ ...world.options, chunkNumber: 1 });
+  const active = await meta(world);
+  const failedRef = active.senses.find((item) => item.sense_id === 'w001-s1').ref;
+  const lines = active.senses.filter((item) => !item.auto && item.ref !== failedRef).map((item) => {
+    if (item.record_id === 'w001') return `${item.ref} V 해무`;
+    if (item.record_id === 'w005') return `${item.ref} V 선택`;
+    return `${item.ref} Z`;
+  });
+  const decisionsPath = chunkPath(world, 'decisions');
+  await writeFile(decisionsPath, `${lines.join('\n')}\n`);
+  await assert.rejects(saveActive({ inputPath: decisionsPath, root: world.root }), /missing/u);
+  const rejection = JSON.parse(await readFile(chunkPath(world, 'rejected'), 'utf8'));
+  assert.deepEqual(rejection.failed_records.map(({ record_id, failed_sense_ids }) => [record_id, failed_sense_ids]),
+    [['w001', ['w001-s1']]]);
+  assert.equal(rejection.repair_scope, 'decisions');
+
+  const originalDecisions = await readFile(decisionsPath, 'utf8');
+  await writeFile(decisionsPath, `${originalDecisions}\n`);
+  await assert.rejects(supervisorSkipActive({ inputPath: decisionsPath, root: world.root, fixAttempts: 1 }), /stale/u);
+  assert.equal(existsSync(path.join(world.directory, 'chunk-001.jsonl')), false);
+  await writeFile(decisionsPath, originalDecisions);
+  const result = await supervisorSkipActive({ inputPath: decisionsPath, root: world.root, fixAttempts: 1 });
+  assert.equal(result.status, 'SAVED_WITH_TECHNICAL_SKIPS');
+  assert.deepEqual(result.technical_skips.map((item) => item.record_id), ['w001']);
+  const rows = (await readFile(path.join(world.directory, 'chunk-001.jsonl'), 'utf8')).trim().split('\n').map(JSON.parse);
+  assert.ok(rows[0].senses.every((sense) => sense.candidates.length === 0), 'all senses share the excluded Record evidence');
+  assert.deepEqual(rows.find((row) => row.record_id === 'w005').senses[0].candidates, ['선택']);
+  assert.equal((await readFile(chunkPath(world, 'technicalSkips'), 'utf8')).length > 0, true);
+  assert.equal((await readFile(chunkPath(world, 'decisions'), 'utf8')).includes(`${failedRef} `), false,
+    'the submitted decision file remains unchanged and does not gain a skip marker');
 });
 
 withWorld('single and batch continuation SEARCH_FAILED is returned, persisted, and blocks save', async (world) => {

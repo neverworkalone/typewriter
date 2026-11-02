@@ -28,7 +28,7 @@ CHUNK_CONTEXTS = 8
 # (MAX_ARG_STRLEN) and macOS the whole command line at 1 MiB; stay clearly below the smaller one.
 INLINE_MAX_PROMPT_BYTES = 100_000
 # The CLI's own `senseDone` set (literary-context.mjs). Kept for the in-process sanity check of `report` output only.
-DONE_STATUSES = ("ZERO_HITS", "SUBMITTED", "NO_VERIFIED", "SAMPLED_NO_VERIFIED", "DISCOVERED")
+DONE_STATUSES = ("ZERO_HITS", "SUBMITTED", "NO_VERIFIED", "SAMPLED_NO_VERIFIED", "DISCOVERED", "TECHNICAL_SKIPPED")
 _HEADER = re.compile(r"^## ([A-Za-z0-9][A-Za-z0-9._:-]{0,127}) — (.*)$")
 _ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}")
 
@@ -77,6 +77,94 @@ def submit_retryable(worktree, b, chunk_no: int) -> bool:
         return False
     return (isinstance(diag, dict) and diag.get("diagnostic") in ("submit_validation", "candidate_validation")
             and diag.get("repair_scope") != "stop_and_report")
+
+
+def technical_skip_candidate(worktree, b, chunk_no: int) -> bool:
+    """Cheap routing check; the C CLI revalidates the full active view, file, and diagnostic before it writes."""
+    n = names(b)
+    path = Path(worktree) / f"{n.submit_prefix}{chunk_no:03d}.submit.json.diag.json"
+    try:
+        diag = json.loads(path.read_text("utf-8"))
+        submit_path = Path(worktree) / f"{n.submit_prefix}{chunk_no:03d}.submit.json"
+        submission = json.loads(submit_path.read_text("utf-8"))
+    except (OSError, ValueError):
+        return False
+    affected = diag.get("affected") if isinstance(diag, dict) else None
+    issues = diag.get("issues") if isinstance(diag, dict) else None
+    if not (isinstance(diag, dict) and diag.get("status") == "FAILED"
+            and diag.get("diagnostic") == "submit_validation"
+            and diag.get("repair_scope") == "resubmit_affected_sense"
+            and diag.get("issues_truncated") is not True and isinstance(issues, list) and len(issues) == 1
+            and isinstance(affected, dict) and isinstance(affected.get("sense_id"), str)
+            and isinstance(affected.get("entry_number"), int) and not isinstance(affected.get("entry_number"), bool)
+            and isinstance(submission, dict) and isinstance(submission.get("senses"), list)
+            and 1 <= affected["entry_number"] <= len(submission["senses"])):
+        return False
+    entry = submission["senses"][affected["entry_number"] - 1]
+    return isinstance(entry, dict) and entry.get("sense_id") == affected["sense_id"]
+
+
+def deterministic_context_trim_candidate(worktree, b, chunk_no: int) -> bool:
+    """True only when the exact failed verified key has surrounding whitespace that the CLI can trim safely."""
+    n = names(b)
+    path = Path(worktree) / f"{n.submit_prefix}{chunk_no:03d}.submit.json.diag.json"
+    submit_path = Path(worktree) / f"{n.submit_prefix}{chunk_no:03d}.submit.json"
+    try:
+        diag = json.loads(path.read_text("utf-8"))
+        submission = json.loads(submit_path.read_text("utf-8"))
+    except (OSError, ValueError):
+        return False
+    affected = diag.get("affected") if isinstance(diag, dict) else None
+    issues = diag.get("issues") if isinstance(diag, dict) else None
+    if not (isinstance(diag, dict) and diag.get("status") == "FAILED"
+            and diag.get("diagnostic") == "submit_validation" and diag.get("reason") == "context_key_not_found"
+            and diag.get("repair_scope") == "resubmit_affected_sense" and diag.get("issues_truncated") is not True
+            and isinstance(issues, list) and len(issues) == 1
+            and isinstance(affected, dict) and affected.get("field") == "verified"
+            and isinstance(affected.get("entry_number"), int) and not isinstance(affected.get("entry_number"), bool)
+            and isinstance(submission, dict) and isinstance(submission.get("senses"), list)
+            and 1 <= affected["entry_number"] <= len(submission["senses"])):
+        return False
+    issue = issues[0]
+    entry = submission["senses"][affected["entry_number"] - 1]
+    if not (isinstance(issue, dict) and isinstance(entry, dict) and entry.get("sense_id") == affected.get("sense_id")
+            and issue.get("entry_number") == affected["entry_number"]
+            and issue.get("reason") == diag["reason"] and issue.get("field") == affected["field"]
+            and isinstance(entry.get("verified"), list)):
+        return False
+    return any(isinstance(key, str) and key != key.strip() and len(key.strip()) >= 12 for key in entry["verified"])
+
+
+def supervisor_skip(runner, env, worktree, b, rec: dict, retry_attempts: int) -> dict:
+    """Invoke the internal CLI fallback; it saves unaffected entries through ordinary submit validation first."""
+    n = names(b)
+    input_path = f"{n.submit_prefix}{rec['chunk_no']:03d}.submit.json"
+    data = _json(cli(runner, env, worktree, "supervisor-skip", "--db", env["TYPEWRITER_APPROVED_LITERARY_DB"],
+                     "--checkpoint", n.checkpoint, "--input", input_path,
+                     "--retry-attempts", str(retry_attempts)), "C supervisor technical skip")
+    if data.get("status") != "TECHNICAL_SKIPPED" or not all(isinstance(data.get(key), str) and data[key]
+                                                                for key in ("record_id", "sense_id", "diagnostic", "reason", "field")) \
+            or data.get("retry_attempts") != retry_attempts:
+        raise LiteraryError("C technical skip did not return exact source-Sense evidence")
+    return data
+
+
+def revalidate_submit_before_skip(runner, env, worktree, b, chunk_no: int) -> dict | None:
+    """Re-run the unchanged full submit through the normal CLI before a skip, refreshing its exact failure binding.
+
+    A successful deterministic CLI repair completes the chunk without a skip. A failed validation leaves the CLI's
+    current diagnostic beside the unchanged submission for the Supervisor-only fallback to verify.
+    """
+    n = names(b)
+    input_path = f"{n.submit_prefix}{chunk_no:03d}.submit.json"
+    result = cli(runner, env, worktree, "submit", "--db", env["TYPEWRITER_APPROVED_LITERARY_DB"],
+                 "--checkpoint", n.checkpoint, "--input", input_path)
+    if not result.ok:
+        return None
+    data = _json(result, "C normal submit revalidation")
+    if data.get("status") != "SAVED":
+        raise LiteraryError("C normal submit revalidation returned an unexpected state")
+    return data
 
 
 def cli(runner, env, worktree, *args, db: bool = False, timeout: float = 900):
@@ -293,10 +381,15 @@ def pr_title(label: str, b) -> str:
 
 
 def pr_body(label: str, b, coverage: dict) -> str:
-    """Exactly the six production-PR items, from the real export/validate result (never #1155, paths or reports)."""
-    return "\n".join([f"- Method: C", f"- Model: {label}", f"- Shard: {b['shard']}", f"- Batch: {b['batch']}",
-                      f"- Coverage: {coverage['records']} records / {coverage['senses']} senses",
-                      f"- Candidates: {coverage['candidates']}"]) + "\n"
+    """Six standard production items plus an auditable exclusion line only when a technical skip occurred."""
+    lines = [f"- Method: C", f"- Model: {label}", f"- Shard: {b['shard']}", f"- Batch: {b['batch']}",
+             f"- Coverage: {coverage['records']} records / {coverage['senses']} senses",
+             f"- Candidates: {coverage['candidates']}"]
+    skips = coverage.get("technical_skips", [])
+    if skips:
+        details = ", ".join(f"{item['record_id']}/{item['sense_id']} ({item['reason']})" for item in skips)
+        lines.append(f"- Technical skips: {len(skips)} senses — {details}")
+    return "\n".join(lines) + "\n"
 
 
 def affected_senses(stderr: str) -> list[str]:
@@ -330,6 +423,12 @@ def ensure_export(runner, env, worktree, b) -> Export:
     report = summary(runner, env, wt, b)
     if not all_done(report):
         raise LiteraryError(f"모든 sense가 완료되지 않았습니다: {unfinished(report)}")
+    technical_skips = report.get("technical_skips", [])
+    if not isinstance(technical_skips, list) or any(not isinstance(item, dict)
+            or not all(isinstance(item.get(key), str) and item[key]
+                       for key in ("record_id", "sense_id", "diagnostic", "reason", "field"))
+            for item in technical_skips):
+        raise LiteraryError("report technical skip 목록이 손상되었습니다")
     out = report.get("output")
     target = wt / n.output
     if isinstance(out, dict) and out.get("state") == "OUTPUT" and out.get("validation_status") == "VALID" \
@@ -340,7 +439,9 @@ def ensure_export(runner, env, worktree, b) -> Export:
         data = _json(res, "literary validate")
         if data.get("status") != "VALID":
             raise LiteraryError("기존 export 산출물의 Candidate v1 검증이 실패했습니다")
-        return Export("ready", _coverage(data))
+        coverage = _coverage(data)
+        coverage["technical_skips"] = technical_skips
+        return Export("ready", coverage)
     res = cli(runner, env, wt, "export", "--checkpoint", n.checkpoint, "--canonical", n.canonical, "--output", n.output)
     if not res.ok:
         ids = affected_senses(res.err)
@@ -353,7 +454,9 @@ def ensure_export(runner, env, worktree, b) -> Export:
     data = _json(res, "literary export")
     if data.get("status") != "OUTPUT" or not isinstance(data.get("coverage"), dict):
         raise LiteraryError("export 결과가 올바르지 않습니다")
-    return Export("ready", _coverage(data["coverage"]))
+    coverage = _coverage(data["coverage"])
+    coverage["technical_skips"] = technical_skips
+    return Export("ready", coverage)
 
 
 def _candidate_content_issues(stderr: str, sense_ids: list[str]) -> tuple[int, list[dict]]:

@@ -229,6 +229,23 @@ check that the active chunk's expected senses are covered exactly once. A
 rejected submit does not partially update the checkpoint, and saved senses from
 an earlier resume remain intact.
 
+Before requesting a same-session repair, the War Room Supervisor can re-run the
+unchanged submission through the normal CLI when the exact failed verified key
+has only surrounding whitespace; the CLI trims it and still requires the same
+unique context-key match. It never guesses a different key.
+
+After the existing two same-session resubmits are exhausted, the War Room
+Supervisor may use its separate `supervisor-skip` command only when the latest
+diagnostic names one active, known Sense and one matching submission-array
+entry. It verifies the unchanged submit-file digest and active view, submits
+the other pending entries through the ordinary `submit` validator, then records
+that exact Sense as `TECHNICAL_SKIPPED` with its Record/Sense IDs, diagnostic,
+reason, field, chunk/head binding, and retry count. Its candidate list is `[]`;
+its search state and VERIFIED evidence are left untouched. The ordinary
+producer `submit` schema has no skip field, and multiple, stale, unbound, or
+system-level failures remain stopped for the operator. `report` includes exact
+technical exclusions so export and the production PR can disclose them.
+
 Index access, identity, schema, metadata, and search failures use an index
 diagnostic with `repair_scope: stop_and_report`; stop the batch and report those
 instead of changing producer input or retrying the same chunk. An unexpected
@@ -236,8 +253,9 @@ failure remains the generic `operation` diagnostic.
 
 ## Export, final validation, and fixes
 
-`export` requires every sense to be `ZERO_HITS` or submitted, preserves Canonical
-record/sense order, writes only Candidate v1 fields and runs the shared
+`export` requires every sense to be `ZERO_HITS`, submitted, or explicitly
+`TECHNICAL_SKIPPED` by the Supervisor, preserves Canonical record/sense order,
+writes only Candidate v1 fields and runs the shared
 Candidate v1 batch validator **once** over the whole batch before creating the
 output. Do not run a second `validate` on the same file. A validator failure
 names the affected row; resubmit only that sense, then export again (the

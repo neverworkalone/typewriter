@@ -3823,8 +3823,6 @@ class Supervisor:
         except Exception as e:
             return self._fail(b, "ERROR", f"청크 종료 후 기존 PR 소유권 확인 실패: {e}. worktree를 보존합니다.")
         if not self._c_chunk_saved(b):
-            if self._c_resubmit(b):
-                return
             rec = diag = None
             try:
                 rec = literary.read_active(Path(b["worktree"]), b)
@@ -3832,11 +3830,57 @@ class Supervisor:
                     diag = Path(b["worktree"]) / f"{literary.names(b).submit_prefix}{rec['chunk_no']:03d}.submit.json.diag.json"
             except (literary.LiteraryError, OSError, ValueError, KeyError, TypeError):
                 pass
-            if rec is not None and diag is not None and not diag.exists() and b["run_kind"] != "c_chunk_fix" \
-                    and self._retry_unsaved_chunk(b, "checkpoint 미완료"):
+            revalidated_saved = False
+            submit_revalidated = False
+            if rec is not None and literary.deterministic_context_trim_candidate(Path(b["worktree"]), b, rec["chunk_no"]):
+                try:
+                    refreshed = literary.revalidate_submit_before_skip(
+                        self.runner, self._c_env(b), Path(b["worktree"]), b, rec["chunk_no"])
+                    submit_revalidated = True
+                    if refreshed is not None:
+                        if not self._c_chunk_saved(b):
+                            return self._fail(b, "ERROR", "C 결정적 CLI 복구 뒤에도 활성 청크 완료를 확인하지 못했습니다. 보존합니다.")
+                        revalidated_saved = True
+                        self.store.log(b["id"], f"C 활성 청크 {rec['chunk_no']:03d}의 변경 없는 제출을 일반 CLI로 재검증해 저장했습니다. "
+                                       "문맥 키의 양끝 공백을 정규화했습니다.", "warn")
+                except (literary.LiteraryError, OSError, ValueError, KeyError, TypeError) as e:
+                    return self._fail(b, "ERROR", f"C 결정적 제출 복구를 검증하지 못했습니다: {e}. 원본을 보존합니다.")
+            if not revalidated_saved and self._c_resubmit(b):
                 return
-            return self._fail(b, "ERROR", "C 청크 실행이 종료됐지만 활성 청크의 모든 sense가 완료되지 않았습니다 (checkpoint 완료 증거 없음). "
-                              "자동 재진입 한도를 소진했거나 제출 진단 때문에 안전하지 않아 보존합니다 — Retry는 같은 청크의 미완료 sense만 이어갑니다.")
+            used = int(self.store.get(literary.resubmit_key(b["id"])) or 0)
+            skip_result = None
+            if not revalidated_saved and rec is not None and used >= literary.MAX_RESUBMITS and b["session_id"] \
+                    and literary.technical_skip_candidate(Path(b["worktree"]), b, rec["chunk_no"]):
+                try:
+                    refreshed = None
+                    if not submit_revalidated:
+                        refreshed = literary.revalidate_submit_before_skip(
+                            self.runner, self._c_env(b), Path(b["worktree"]), b, rec["chunk_no"])
+                        submit_revalidated = True
+                    if refreshed is not None:
+                        if not self._c_chunk_saved(b):
+                            return self._fail(b, "ERROR", "C 결정적 CLI 복구 뒤에도 활성 청크 완료를 확인하지 못했습니다. 보존합니다.")
+                        revalidated_saved = True
+                        self.store.log(b["id"], f"C 활성 청크 {rec['chunk_no']:03d}의 변경 없는 제출을 일반 CLI로 재검증해 저장했습니다. "
+                                       "결정적 정규화가 성공해 technical skip 없이 진행합니다.", "warn")
+                    else:
+                        if not literary.technical_skip_candidate(Path(b["worktree"]), b, rec["chunk_no"]):
+                            return self._fail(b, "ERROR", "C 재검증 뒤에도 현재 단일-Sense 진단을 증명하지 못했습니다. 원본을 보존합니다.")
+                        skip_result = literary.supervisor_skip(self.runner, self._c_env(b), Path(b["worktree"]), b, rec, used)
+                except (literary.LiteraryError, OSError, ValueError, KeyError, TypeError) as e:
+                    return self._fail(b, "ERROR", f"C 국소 기술적 제외를 증명하지 못했습니다: {e}. 원본을 보존합니다.")
+                if skip_result is not None:
+                    self.store.log(b["id"], f"C 기술적 생산 제외: chunk={rec['chunk_no']:03d} record={skip_result['record_id']} "
+                                   f"sense={skip_result['sense_id']} diagnostic={skip_result['diagnostic']}/{skip_result['reason']} "
+                                   f"field={skip_result['field']} same-session-resubmits={used}; 나머지 제출은 기존 CLI 경로로 저장했습니다.", "warn")
+                    if not self._c_chunk_saved(b):
+                        return self._fail(b, "ERROR", "C technical skip 이후에도 활성 청크 전체 완료를 확인하지 못했습니다. 보존합니다.")
+            if skip_result is None and not revalidated_saved:
+                if rec is not None and diag is not None and not diag.exists() and b["run_kind"] != "c_chunk_fix" \
+                        and self._retry_unsaved_chunk(b, "checkpoint 미완료"):
+                    return
+                return self._fail(b, "ERROR", "C 청크 실행이 종료됐지만 활성 청크의 모든 sense가 완료되지 않았습니다 (checkpoint 완료 증거 없음). "
+                                  "자동 재진입 한도를 소진했거나 제출 진단 때문에 안전하지 않아 보존합니다 — Retry는 같은 청크의 미완료 sense만 이어갑니다.")
         self.store.delete(literary.run_start_key(b["id"]))
         self.store.delete(literary.resubmit_key(b["id"]))
         self.store.update(b["id"], session_id=None, retries=0, retry_after=None, error=None)
@@ -4046,6 +4090,13 @@ class Supervisor:
                 known = self.store.get(f"d_chunk_sha_{b['id']}_{k}")
                 if known is not None and known != dchunk.chunk_sha(wt, b, k):
                     return f"이미 저장된 청크 {k:03d}이 수정되었습니다. 덮어쓰지 않고 보존합니다."
+                skip_key = f"d_technical_skip_sha_{b['id']}_{k}"
+                known_skip = self.store.get(skip_key)
+                actual_skip = dchunk.technical_skip_sha(wt, b, k) or "none"
+                if known_skip is not None and known_skip != actual_skip:
+                    return f"이미 저장된 청크 {k:03d}의 technical skip 근거가 수정되었습니다. 보존합니다."
+                if known_skip is None:
+                    self.store.set(skip_key, actual_skip)
         except dchunk.DChunkError as e:
             return str(e)
         return None
@@ -4216,17 +4267,30 @@ class Supervisor:
             if self._d_fix(b):
                 return
             wt = Path(b["worktree"])
+            skip_result = None
             try:
-                rec = dchunk.read_active(wt, b)
-            except (dchunk.DChunkError, OSError, ValueError) as e:
-                return self._fail(b, "ERROR", f"활성 D 청크 상태를 읽지 못했습니다. 임시 파일을 보존합니다: {e}")
-            rejected = wt / dchunk.chunk_names(b, rec["chunk_no"]).rejected if rec else wt / "missing-d-rejection"
-            if b["run_kind"] != "d_chunk_fix" and not rejected.exists() \
-                    and not dchunk.has_search_failure(wt, b) \
-                    and self._retry_unsaved_chunk(b, "활성 청크 저장 누락"):
-                return
-            return self._fail(b, "ERROR", "D 청크 실행이 종료됐지만 활성 청크가 저장되지 않았습니다 (chunk-NNN.jsonl 증거 없음). "
-                              "자동 재진입 한도를 소진했거나 저장/검색 진단 때문에 안전하지 않아 보존합니다 — Retry는 같은 청크를 이어갑니다." + self._d_rejection_note(b))
+                skip_result = self._d_technical_skip(b)
+            except (dchunk.DChunkError, OSError, ValueError, KeyError, TypeError) as e:
+                return self._fail(b, "ERROR", f"D Record 범위 기술적 제외를 증명하지 못했습니다: {e}. 원본을 보존합니다.")
+            if skip_result is not None:
+                records = ", ".join(item["record_id"] for item in skip_result["technical_skips"])
+                self.store.log(b["id"], f"D 기술적 생산 제외: chunk={skip_result['chunk_no']:03d} records={records} "
+                               f"save_rejected 이후 same-session-fixes={self.store.get(dchunk.fix_key(b['id'], skip_result['chunk_no']))}; "
+                               "공유 검색 증거가 결속된 Record 전체를 후보 []로 저장했습니다.", "warn")
+                if not self._d_chunk_saved(b):
+                    return self._fail(b, "ERROR", "D technical skip 이후에도 활성 청크 저장을 확인하지 못했습니다. 보존합니다.")
+            else:
+                try:
+                    rec = dchunk.read_active(wt, b)
+                except (dchunk.DChunkError, OSError, ValueError) as e:
+                    return self._fail(b, "ERROR", f"활성 D 청크 상태를 읽지 못했습니다. 임시 파일을 보존합니다: {e}")
+                rejected = wt / dchunk.chunk_names(b, rec["chunk_no"]).rejected if rec else wt / "missing-d-rejection"
+                if b["run_kind"] != "d_chunk_fix" and not rejected.exists() \
+                        and not dchunk.has_search_failure(wt, b) \
+                        and self._retry_unsaved_chunk(b, "활성 청크 저장 누락"):
+                    return
+                return self._fail(b, "ERROR", "D 청크 실행이 종료됐지만 활성 청크가 저장되지 않았습니다 (chunk-NNN.jsonl 증거 없음). "
+                                  "자동 재진입 한도를 소진했거나 저장/검색 진단 때문에 안전하지 않아 보존합니다 — Retry는 같은 청크를 이어갑니다." + self._d_rejection_note(b))
         if problem := self._d_accept_saved(b, boundary_checked=True):
             return self._fail(b, "ERROR", problem)
         self._d_prepare_handoff(b)
@@ -4258,6 +4322,24 @@ class Supervisor:
                        f"같은 세션에서 지목된 판정만 수정해 다시 저장합니다 ({used + 1}/{dchunk.MAX_FIXES})", "warn")
         self._launch(self.store.batch(b["id"]), "d_chunk_fix")
         return True
+
+    def _d_technical_skip(self, b) -> dict | None:
+        """After the existing one same-session correction, save only the exact failed Records through the CLI fallback."""
+        wt = Path(b["worktree"])
+        try:
+            rec = dchunk.read_active(wt, b)
+            diag = dchunk.read_rejection(wt, b, rec) if rec else None
+            has_decisions = (wt / dchunk.chunk_names(b, rec["chunk_no"]).decisions).is_file() if rec else False
+        except (dchunk.DChunkError, OSError, ValueError):
+            return None
+        if rec is None or diag is None or not has_decisions or not b["session_id"]:
+            return None
+        attempts = int(self.store.get(dchunk.fix_key(b["id"], rec["chunk_no"])) or 0)
+        if attempts < dchunk.MAX_FIXES:
+            return None
+        result = dchunk.supervisor_skip(self.runner, self._d_env(b), wt, b, rec, attempts)
+        result["failure_records"] = diag["failed_records"]
+        return result
 
     def _d_rejection_note(self, b) -> str:
         """The recorded `save` rejection of the active chunk (reasons only), shown with the ERROR so the operator sees why."""
@@ -4386,6 +4468,7 @@ class Supervisor:
                 return self._fail(b, "ERROR", problem)
             dchunk.assemble(wt, b)
             coverage = dchunk.validate(self.runner, self._d_env(b), wt, b)   # fails closed: no rewrite session exists
+            coverage["technical_skips"] = dchunk.technical_skip_report(wt, b)["items"]
             title = dchunk.pr_title(label, b)
             if not self.git.is_committed(wt, n.output):
                 sha = self.git.commit_paths(wt, [n.output], title)

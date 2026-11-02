@@ -51,6 +51,7 @@ class ChunkNames:
     searches: str
     decisions: str
     rejected: str
+    technical_skips: str
 
 
 def names(b) -> Names:
@@ -67,7 +68,8 @@ def chunk_names(b, chunk_no: int) -> ChunkNames:
     number = f"{chunk_no:03d}"
     return ChunkNames(directory=directory, active=f"{directory}/active-{number}.json",
                       view=f"{directory}/view-{number}.txt", searches=f"{directory}/search-{number}.jsonl",
-                      decisions=f"{directory}/decision-{number}.txt", rejected=f"{directory}/rejected-{number}.json")
+                      decisions=f"{directory}/decision-{number}.txt", rejected=f"{directory}/rejected-{number}.json",
+                      technical_skips=f"{directory}/technical-skip-{number}.json")
 
 
 def run_start_key(batch_id: int) -> str:
@@ -85,6 +87,19 @@ def sha256_bytes(data: bytes) -> str:
 
 def cli(runner, env, worktree, *args, timeout: float = 900):
     return runner.run(["node", CLI, *args], cwd=worktree, env=env, timeout=timeout)
+
+
+def _json(res, what: str) -> dict:
+    if not res.ok:
+        tail = " ".join((res.err or res.out).split())[-500:]
+        raise DChunkError(f"{what} 실패: {tail}")
+    try:
+        data = json.loads(res.out)
+    except ValueError as e:
+        raise DChunkError(f"{what} 출력이 JSON이 아닙니다") from e
+    if not isinstance(data, dict):
+        raise DChunkError(f"{what} 출력 형식이 올바르지 않습니다")
+    return data
 
 
 # ---- Canonical structure and the verified prefix ---------------------------------------------------------------------
@@ -158,7 +173,11 @@ def verified_prefix(worktree, b) -> tuple[int, int]:
     if len(numbers) != done:
         raise DChunkError(f"연속 prefix 뒤에 청크 파일이 있습니다 (연속 {done}개, 존재 {sorted(numbers)})")
     for k in range(1, done + 1):
-        _check_chunk(folder / f"chunk-{k:03d}.jsonl", records[(k - 1) * D_CHUNK_RECORDS:k * D_CHUNK_RECORDS])
+        expected = records[(k - 1) * D_CHUNK_RECORDS:k * D_CHUNK_RECORDS]
+        chunk_path = folder / f"chunk-{k:03d}.jsonl"
+        _check_chunk(chunk_path, expected)
+        _validate_technical_skip_file(folder / f"technical-skip-{k:03d}.json", chunk_path, expected,
+                                      b, k)
     return done, total
 
 
@@ -167,6 +186,74 @@ def chunk_sha(worktree, b, number: int) -> str:
         return sha256_bytes((Path(worktree) / names(b).directory / f"chunk-{number:03d}.jsonl").read_bytes())
     except OSError as e:
         raise DChunkError(f"청크 {number}을 읽을 수 없습니다: {e}") from e
+
+
+def technical_skip_sha(worktree, b, number: int) -> str | None:
+    path = Path(worktree) / chunk_names(b, number).technical_skips
+    try:
+        data = path.read_bytes()
+    except FileNotFoundError:
+        return None
+    except OSError as e:
+        raise DChunkError(f"청크 {number} technical skip 증거를 읽을 수 없습니다: {e}") from e
+    return sha256_bytes(data)
+
+
+def _validate_technical_skip_file(path: Path, chunk_path: Path, expected: list[tuple[str, list[str]]], b, number: int) -> list[dict]:
+    if not path.exists():
+        return []
+    try:
+        data = json.loads(path.read_text("utf-8"))
+        rows = [json.loads(line) for line in chunk_path.read_text("utf-8").splitlines() if line]
+    except (OSError, ValueError) as e:
+        raise DChunkError(f"{path.name} technical skip 증거를 읽지 못했습니다: {e}") from e
+    if not isinstance(data, dict) or data.get("contract") != "d-technical-skips-v1" \
+            or data.get("diagnostic") != "save_rejected" \
+            or (data.get("shard"), data.get("batch"), data.get("model")) != (b["shard"], b["batch"], b["producer"]) \
+            or data.get("chunk_no") != number or not re.fullmatch(r"[a-f0-9]{64}", str(data.get("view_sha256", ""))) \
+            or not re.fullmatch(r"[a-f0-9]{40}", str(data.get("git_head", ""))) \
+            or not re.fullmatch(r"[a-f0-9]{64}", str(data.get("decisions_sha256", ""))) \
+            or not re.fullmatch(r"[a-f0-9]{64}", str(data.get("searches_sha256", ""))) \
+            or not isinstance(data.get("error_count"), int) or data["error_count"] < 1 \
+            or not isinstance(data.get("fix_attempts"), int) or isinstance(data.get("fix_attempts"), bool) or data["fix_attempts"] < 1 \
+            or not isinstance(data.get("skips"), list) or not data["skips"]:
+        raise DChunkError(f"{path.name} technical skip 증거의 batch/chunk 계약이 손상되었습니다")
+    by_id = {row.get("record_id"): row for row in rows if isinstance(row, dict)}
+    expected_senses = dict(expected)
+    seen = set()
+    for item in data["skips"]:
+        if not isinstance(item, dict):
+            raise DChunkError(f"{path.name} technical skip record 구조가 손상되었습니다")
+        rid = item.get("record_id")
+        sense_ids = item.get("sense_ids")
+        failed_senses = item.get("failed_sense_ids")
+        errors = item.get("errors")
+        if (rid not in expected_senses or rid in seen or sense_ids != expected_senses[rid]
+                or not isinstance(failed_senses, list) or not failed_senses
+                or any(not isinstance(sense_id, str) for sense_id in failed_senses)
+                or (isinstance(sense_ids, list) and not set(failed_senses) <= set(sense_ids))
+                or not isinstance(errors, list) or not errors or any(not isinstance(error, str) or not error for error in errors)):
+            raise DChunkError(f"{path.name} technical skip IDs do not match this Canonical chunk")
+        row = by_id.get(rid)
+        if row is None or any(sense.get("candidates") != [] for sense in row.get("senses", [])):
+            raise DChunkError(f"{path.name} technical skip Candidate row is not empty for {rid}")
+        seen.add(rid)
+    return data["skips"]
+
+
+def technical_skip_report(worktree, b) -> dict:
+    """Return validated, source-bound technical exclusions for the complete D Candidate batch."""
+    done, total = verified_prefix(worktree, b)
+    if done != total:
+        raise DChunkError(f"technical skip report requires every chunk ({done}/{total})")
+    records = canonical_batch(worktree, b)
+    folder = Path(worktree) / names(b).directory
+    skips = []
+    for number in range(1, total + 1):
+        expected = records[(number - 1) * D_CHUNK_RECORDS:number * D_CHUNK_RECORDS]
+        skips.extend(_validate_technical_skip_file(folder / f"technical-skip-{number:03d}.json",
+                                                    folder / f"chunk-{number:03d}.jsonl", expected, b, number))
+    return {"records": len(skips), "items": skips}
 
 
 # ---- prepare / active chunk --------------------------------------------------------------------------------------------
@@ -281,14 +368,46 @@ def read_rejection(worktree, b, rec: dict) -> dict | None:
         diag = json.loads((Path(worktree) / chunk_names(b, rec["chunk_no"]).rejected).read_text("utf-8"))
     except (OSError, ValueError):
         return None
+    n = chunk_names(b, rec["chunk_no"])
+    try:
+        decisions_sha = sha256_bytes((Path(worktree) / n.decisions).read_bytes())
+        searches_sha = sha256_bytes((Path(worktree) / n.searches).read_bytes())
+    except OSError:
+        return None
     if not (isinstance(diag, dict) and diag.get("diagnostic") == "save_rejected" and diag.get("repair_scope") == "decisions"
             and diag.get("chunk_no") == rec["chunk_no"] and diag.get("view_sha256") == rec["view_sha256"]
             and diag.get("git_head") == rec["git_head"]
+            and diag.get("decisions_sha256") == decisions_sha and diag.get("searches_sha256") == searches_sha
+            and isinstance(diag.get("failed_records"), list) and diag["failed_records"]
+            and all(isinstance(item, dict) and isinstance(item.get("record_id"), str)
+                    and isinstance(item.get("failed_sense_ids"), list) and item["failed_sense_ids"]
+                    and all(isinstance(sense_id, str) for sense_id in item["failed_sense_ids"])
+                    and isinstance(item.get("errors"), list) and item["errors"]
+                    and all(isinstance(error, str) and error for error in item["errors"]) for item in diag["failed_records"])
             and isinstance(diag.get("errors"), list) and diag["errors"] and all(isinstance(e, str) for e in diag["errors"])):
         return None
     if has_search_failure(worktree, b):
         return None
     return diag
+
+
+def supervisor_skip(runner, env, worktree, b, rec: dict, fix_attempts: int) -> dict:
+    """Use the internal D CLI path to empty only failed Records after the bounded same-session fix is spent."""
+    diag = read_rejection(worktree, b, rec)
+    if diag is None or fix_attempts < MAX_FIXES:
+        raise DChunkError("D technical skip lacks an exact current rejection or exhausted fix budget")
+    n = chunk_names(b, rec["chunk_no"])
+    data = _json(cli(runner, env, worktree, "supervisor-skip", "--in", n.decisions,
+                     "--fix-attempts", str(fix_attempts)), "D supervisor technical skip")
+    if data.get("status") != "SAVED_WITH_TECHNICAL_SKIPS" or data.get("chunk_no") != rec["chunk_no"] \
+            or data.get("technical_skipped_records") != len(diag["failed_records"]) \
+            or not isinstance(data.get("technical_skips"), list):
+        raise DChunkError("D technical skip did not return the exact failed Record scope")
+    got = [item.get("record_id") for item in data["technical_skips"] if isinstance(item, dict)]
+    expected = [item["record_id"] for item in diag["failed_records"]]
+    if got != expected or len(got) != len(expected):
+        raise DChunkError("D technical skip Record IDs differ from the CLI rejection")
+    return data
 
 
 def has_search_failure(worktree, b) -> bool:
@@ -377,11 +496,16 @@ def pr_title(label: str, b) -> str:
 
 def pr_body(label: str, b, coverage: dict) -> str:
     """The real model, shard/batch, counts and validation facts; never #1156, paths, contexts or search logs."""
-    return "\n".join([
+    lines = [
         "- Method: D", f"- Model: {label}", f"- Shard: {b['shard']}", f"- Batch: {b['batch']}",
         f"- Coverage: {coverage['records']} records / {coverage['senses']} senses",
         f"- Candidates: {coverage['candidates']} ({coverage['empty_senses']} empty senses)",
         "- Source-sense check: 청크별 AI 판독(승인 문어 index read-only 검색). 독립 검증이 아니며 리뷰에서 확인합니다.",
         "- Candidate v1: validated (candidate-contract.mjs)",
         "- Limits: 청크 병렬화 없음; ZERO_HITS/NO_VERIFIED 상세 집계는 포함하지 않습니다.",
-    ]) + "\n"
+    ]
+    skips = coverage.get("technical_skips", [])
+    if skips:
+        details = ", ".join(f"{item['record_id']} ({len(item['sense_ids'])} senses)" for item in skips)
+        lines.append(f"- Technical skips: {len(skips)} records — {details}")
+    return "\n".join(lines) + "\n"

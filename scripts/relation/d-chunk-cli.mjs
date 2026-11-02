@@ -489,11 +489,14 @@ const chunkPaths = (directory, number) => {
     searches: path.join(directory, `search-${n}.jsonl`),
     decisions: path.join(directory, `decision-${n}.txt`),
     rejected: path.join(directory, `rejected-${n}.json`),
+    technicalSkips: path.join(directory, `technical-skip-${n}.json`),
   };
 };
 const legacyFiles = new Set(['active-chunk.json', 'active-chunk.txt', 'searches.jsonl', 'decisions.txt', 'save-rejected.json']);
 const MAX_REJECTED_ERRORS = 40;
 const MAX_REJECTED_ERROR_CHARS = 300;
+const MAX_FIXES = 1;
+const TECHNICAL_SKIP_CONTRACT = 'd-technical-skips-v1';
 
 async function writeAtomic(target, text) {
   await mkdir(path.dirname(target), { recursive: true });
@@ -518,7 +521,7 @@ export async function prepareChunk({ canonicalPath, shard, batch, chunkNumber, d
   const filesForChunk = chunkPaths(directory, chunkNumber);
   if (existsSync(path.join(directory, chunkFile(chunkNumber)))) fail(`${chunkFile(chunkNumber)} is already saved; it is never overwritten`);
   const temporary = [filesForChunk.active, filesForChunk.view, filesForChunk.searches, filesForChunk.decisions,
-    filesForChunk.rejected].flatMap((file) => [file, `${file}.tmp`]);
+    filesForChunk.rejected, filesForChunk.technicalSkips].flatMap((file) => [file, `${file}.tmp`]);
   if (temporary.some((file) => existsSync(file)) || files.some((name) => name.startsWith(`view-${String(chunkNumber).padStart(3, '0')}.p`)))
     fail(`temporary files for chunk ${String(chunkNumber).padStart(3, '0')} already exist; preserving them`);
   const database = openReadonlyDb(databasePath);
@@ -1039,7 +1042,26 @@ export function checkDecisions({ meta, records, entries, decisions, lemmaForms }
   return { errors, rows, hitBearingZ, removedCandidates, failedEvidence };
 }
 
-export async function saveActive({ inputPath, root }) {
+function failedRecordsForErrors(allErrors, meta, records) {
+  const senseByRef = new Map(meta.senses.map((sense) => [sense.ref, sense]));
+  const recordById = new Map(records.map((record) => [record.id, record]));
+  const grouped = new Map();
+  for (const message of allErrors) {
+    const match = /^(s[1-9]\d*):\s/u.exec(message);
+    if (!match) return null;
+    const sense = senseByRef.get(match[1]);
+    const record = sense && recordById.get(sense.record_id);
+    if (!sense || !record || !record.senses.some((item) => item.id === sense.sense_id)) return null;
+    const item = grouped.get(record.id) ?? { record_id: record.id, failed_sense_ids: new Set(), errors: [] };
+    item.failed_sense_ids.add(sense.sense_id);
+    item.errors.push(message.slice(0, MAX_REJECTED_ERROR_CHARS));
+    grouped.set(record.id, item);
+  }
+  return [...grouped.values()].map((item) => ({ record_id: item.record_id,
+    failed_sense_ids: [...item.failed_sense_ids], errors: item.errors }));
+}
+
+async function saveActiveInternal({ inputPath, root, supervisorFixAttempts }) {
   const { directory, meta, files } = await findActive(root);
   if (path.resolve(inputPath) !== path.resolve(files.decisions))
     fail(`save input must be the decision file for active chunk ${String(meta.chunk_no).padStart(3, '0')}; no other chunk file is read`);
@@ -1050,6 +1072,7 @@ export async function saveActive({ inputPath, root }) {
   }
   const all = await loadBatchRecords(meta.canonical, meta.shard, meta.batch);
   const records = chunkRecords(all, meta.chunk_no);
+  const recordById = new Map(records.map((record) => [record.id, record]));
   if (JSON.stringify(records.map((record) => [record.id, record.senses.map((sense) => sense.id)]))
     !== JSON.stringify(meta.records.map((record) => [record.record_id, record.sense_ids]))) {
     fail('the Canonical records of this chunk changed since prepare');
@@ -1062,22 +1085,86 @@ export async function saveActive({ inputPath, root }) {
   if (all_errors.length > 0) {
     // A recorded SEARCH_FAILED means the evidence itself is broken: re-judging is never an automatic repair.
     const searchFailed = failedEvidence.size > 0 || entries.some((entry) => entry.status === 'SEARCH_FAILED');
-    // One diagnostic bound to this active chunk, for the War Room Supervisor (never read from tool logs). It holds only
-    // the rejection reasons, never the view or search contexts. A hit-bearing Z cannot be repaired by editing decisions.
-    await writeAtomic(files.rejected, JSON.stringify({
+    const repairScope = hitBearingZ.length > 0 || searchFailed ? 'stop_and_report' : 'decisions';
+    const failedRecords = failedRecordsForErrors(all_errors, meta, records);
+    const decisionBytes = await readFile(files.decisions);
+    const searchBytes = await readFile(files.searches);
+    const rejection = {
       diagnostic: 'save_rejected', chunk_no: meta.chunk_no, view_sha256: meta.view_sha256, git_head: meta.git_head,
-      repair_scope: hitBearingZ.length > 0 || searchFailed ? 'stop_and_report' : 'decisions',
+      repair_scope: repairScope,
       senses: [...new Set(all_errors.map((message) => /^(s[1-9]\d*):/u.exec(message)?.[1]).filter(Boolean))],
+      failed_records: failedRecords ?? [],
+      decisions_sha256: sha256(decisionBytes), searches_sha256: sha256(searchBytes),
       errors: all_errors.slice(0, MAX_REJECTED_ERRORS).map((message) => message.slice(0, MAX_REJECTED_ERROR_CHARS)),
       error_count: all_errors.length,
-    }));
+    };
+    if (supervisorFixAttempts !== undefined) {
+      if (!Number.isSafeInteger(supervisorFixAttempts) || supervisorFixAttempts < MAX_FIXES
+        || repairScope !== 'decisions' || !failedRecords?.length || hitBearingZ.length > 0 || searchFailed) {
+        fail('supervisor technical skip requires exhausted fixes and exact record-local decision errors');
+      }
+      let prior;
+      try {
+        prior = JSON.parse(await readFile(files.rejected, 'utf8'));
+      } catch {
+        fail('supervisor technical skip requires the current CLI rejection record');
+      }
+      if (prior.diagnostic !== 'save_rejected' || prior.repair_scope !== 'decisions'
+        || prior.chunk_no !== meta.chunk_no || prior.view_sha256 !== meta.view_sha256 || prior.git_head !== meta.git_head
+        || prior.decisions_sha256 !== rejection.decisions_sha256 || prior.searches_sha256 !== rejection.searches_sha256
+        || prior.error_count !== rejection.error_count
+        || JSON.stringify(prior.failed_records) !== JSON.stringify(rejection.failed_records)) {
+        fail('supervisor technical skip rejection is stale or does not match the current decision and search files');
+      }
+      const skippedIds = new Set(failedRecords.map((item) => item.record_id));
+      const skipFile = {
+        contract: TECHNICAL_SKIP_CONTRACT,
+        diagnostic: 'save_rejected',
+        shard: meta.shard, batch: meta.batch, model: meta.model, chunk_no: meta.chunk_no,
+        view_sha256: meta.view_sha256, git_head: meta.git_head, fix_attempts: supervisorFixAttempts,
+        decisions_sha256: rejection.decisions_sha256, searches_sha256: rejection.searches_sha256,
+        error_count: rejection.error_count,
+        skips: failedRecords.map((item) => {
+          const record = recordById.get(item.record_id);
+          return { record_id: record.id, sense_ids: record.senses.map((sense) => sense.id),
+            failed_sense_ids: item.failed_sense_ids, errors: item.errors };
+        }),
+      };
+      const serializedSkips = JSON.stringify(skipFile);
+      if (existsSync(files.technicalSkips)) {
+        let existing;
+        try { existing = JSON.parse(await readFile(files.technicalSkips, 'utf8')); } catch { fail('existing technical skip record is damaged'); }
+        if (JSON.stringify(existing) !== serializedSkips) fail('existing technical skip record does not match the current failure');
+      } else {
+        await writeAtomic(files.technicalSkips, serializedSkips);
+      }
+      const skippedRows = rows.map((row, index) => skippedIds.has(row.record_id) ? emptyRows([records[index]])[0] : row);
+      await saveChunk(directory, meta.chunk_no, skippedRows, expectedOf(records));
+      return { status: 'SAVED_WITH_TECHNICAL_SKIPS', chunk_no: meta.chunk_no, records: skippedRows.length,
+        senses: meta.senses.length, technical_skipped_records: failedRecords.length,
+        technical_skips: skipFile.skips.map(({ record_id, sense_ids, failed_sense_ids }) => ({ record_id, sense_ids, failed_sense_ids })),
+        removed_candidates: removedCandidates };
+    }
+    // One diagnostic bound to this active chunk, for the War Room Supervisor (never read from tool logs). It holds only
+    // the rejection reasons, never the view or search contexts. A hit-bearing Z cannot be repaired by editing decisions.
+    await writeAtomic(files.rejected, JSON.stringify(rejection));
     const error = new Error(`save rejected (${all_errors.length}); nothing was stored:\n${all_errors.join('\n')}`);
     error.exitCode = 2;
     throw error;
   }
+  if (supervisorFixAttempts !== undefined) fail('supervisor technical skip requires a current rejected decision file');
   await saveChunk(directory, meta.chunk_no, rows, expectedOf(records));
   return { status: 'SAVED', chunk_no: meta.chunk_no, records: rows.length, senses: meta.senses.length,
     removed_candidates: removedCandidates };
+}
+
+export async function saveActive({ inputPath, root }) {
+  return saveActiveInternal({ inputPath, root });
+}
+
+/** Internal Supervisor-only path: normal `save` never accepts a technical-skip marker or option. */
+export async function supervisorSkipActive({ inputPath, root, fixAttempts }) {
+  return saveActiveInternal({ inputPath, root, supervisorFixAttempts: fixAttempts });
 }
 
 // ---- command line -----------------------------------------------------------------------------------------------------
@@ -1166,6 +1253,14 @@ async function main(argv) {
     only(options, 'in');
     if (positional.length) fail('save takes options only');
     console.log(JSON.stringify(await saveActive({ inputPath: need(options, 'in') })));
+    return 0;
+  }
+  if (command === 'supervisor-skip') {
+    only(options, 'in', 'fix-attempts');
+    if (positional.length) fail('supervisor-skip takes options only');
+    const fixAttempts = Number(need(options, 'fix-attempts'));
+    if (!Number.isSafeInteger(fixAttempts) || fixAttempts < MAX_FIXES) fail('--fix-attempts must prove the exhausted D fix budget');
+    console.log(JSON.stringify(await supervisorSkipActive({ inputPath: need(options, 'in'), fixAttempts })));
     return 0;
   }
   return fail('usage: d-chunk-cli.mjs prepare|search|search-batch|save');

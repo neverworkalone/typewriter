@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { realpathSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { readFile, stat, unlink } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
@@ -17,6 +18,7 @@ import {
   renderChunkText,
   reportLiteraryCheckpointSenses,
   submitLiteraryChunk,
+  supervisorSkipLiterarySense,
   summarizeLiteraryCheckpoint,
   validateExistingLiteraryCandidates,
 } from './literary-context.mjs';
@@ -118,10 +120,19 @@ function print(payload) {
 // A submit rejection the model can repair in place is also left next to the submit file, so the Supervisor decides
 // retryability from this diagnostic and never from the file merely remaining. Any other failure leaves none.
 let submitDiagnosticPath = null;
+let submitDiagnosticInputSha256 = null;
 function emitRetryable(text) {
-  process.stderr.write(text);
+  let output = text;
+  if (submitDiagnosticInputSha256) {
+    try {
+      const diagnostic = JSON.parse(text);
+      diagnostic.input_sha256 = submitDiagnosticInputSha256;
+      output = `${JSON.stringify(diagnostic)}\n`;
+    } catch { /* preserve the original diagnostic if it cannot be enriched safely */ }
+  }
+  process.stderr.write(output);
   if (submitDiagnosticPath) {
-    try { writeFileSync(submitDiagnosticPath, text, { flag: 'wx' }); } catch { /* no file means no automatic retry */ }
+    try { writeFileSync(submitDiagnosticPath, output, { flag: 'wx' }); } catch { /* no file means no automatic retry */ }
   }
 }
 
@@ -158,7 +169,9 @@ async function readSubmission(filePath) {
   assertSubmissionPath(filePath);
   const fileStat = await stat(filePath).catch((error) => { throw error?.code === 'ENOENT' ? inputFailure('not_found') : error; });
   if (fileStat.size > 64_000) throw inputFailure('too_large');
-  const text = await readFile(filePath, 'utf8');
+  const bytes = await readFile(filePath);
+  const text = bytes.toString('utf8');
+  submitDiagnosticInputSha256 = createHash('sha256').update(bytes).digest('hex');
   try {
     return JSON.parse(text);
   } catch (error) {
@@ -262,11 +275,33 @@ async function main() {
       required(options, 'db', 'checkpoint', 'input');
       assertSubmissionPath(options.input);   // only a sidecar inside .warroom-scratch/ is ever touched
       submitDiagnosticPath = `${path.resolve(options.input)}.diag.json`;
+      submitDiagnosticInputSha256 = null;
       await unlink(submitDiagnosticPath).catch(() => {});
       result = await submitLiteraryChunk({
         databasePath: options.db,
         checkpointPath: options.checkpoint,
         submission: await readSubmission(options.input),
+        scratchDirectory: SCRATCH_DIRECTORY,
+      });
+      break;
+    }
+    case 'supervisor-skip': {
+      only(options, 'db', 'checkpoint', 'input', 'retry-attempts');
+      required(options, 'db', 'checkpoint', 'input', 'retry-attempts');
+      assertSubmissionPath(options.input);
+      const diagnosticPath = `${path.resolve(options.input)}.diag.json`;
+      assertSubmissionPath(diagnosticPath);
+      const retryAttempts = Number(options['retry-attempts']);
+      if (!Number.isSafeInteger(retryAttempts) || retryAttempts < 2) fail('--retry-attempts must prove the exhausted C submit retry budget');
+      const diagnostic = JSON.parse(await readFile(diagnosticPath, 'utf8'));
+      const submission = await readSubmission(options.input);
+      result = await supervisorSkipLiterarySense({
+        databasePath: options.db,
+        checkpointPath: options.checkpoint,
+        submission,
+        diagnostic,
+        retryAttempts,
+        inputSha256: submitDiagnosticInputSha256,
         scratchDirectory: SCRATCH_DIRECTORY,
       });
       break;
