@@ -482,7 +482,8 @@ def supervisor_skip(store, runner, env, worktree, b, rec: dict) -> dict:
     return {"status": "SAVED_WITH_TECHNICAL_SKIPS", "chunk_no": rec["chunk_no"], "records": len(rows),
             "technical_skipped_records": len(skips),
             "technical_skips": [{"record_id": item["record_id"], "sense_ids": item["sense_ids"],
-                                  "failed_sense_ids": item["failed_sense_ids"]} for item in skips]}
+                                  "failed_sense_ids": item["failed_sense_ids"], "errors": item["errors"]}
+                                 for item in skips]}
 
 
 def has_search_failure(worktree, b) -> bool:

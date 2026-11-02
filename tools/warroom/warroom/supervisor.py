@@ -4276,10 +4276,11 @@ class Supervisor:
             except (dchunk.DChunkError, OSError, ValueError, KeyError, TypeError) as e:
                 return self._fail(b, "ERROR", f"D Record 범위 기술적 제외를 증명하지 못했습니다: {e}. 원본을 보존합니다.")
             if skip_result is not None:
-                records = ", ".join(item["record_id"] for item in skip_result["technical_skips"])
-                self.store.log(b["id"], f"D 기술적 생산 제외: chunk={skip_result['chunk_no']:03d} records={records} "
-                               f"save_rejected 이후 same-session-fixes={self.store.get(dchunk.fix_key(b['id'], skip_result['chunk_no']))}; "
-                               "공유 검색 증거가 결속된 Record 전체를 후보 []로 저장했습니다.", "warn")
+                skip_details = json.dumps(skip_result["technical_skips"], ensure_ascii=False, separators=(",", ":"))
+                self.store.log(b["id"], f"D 기술적 생산 제외: chunk={skip_result['chunk_no']:03d} "
+                               f"technical_skips={skip_details} "
+                               f"same-session-fixes={self.store.get(dchunk.fix_key(b['id'], skip_result['chunk_no']))}; "
+                               "실패 Sense만 후보 []로 저장했습니다.", "warn")
                 if not self._d_chunk_saved(b):
                     return self._fail(b, "ERROR", "D technical skip 이후에도 활성 청크 저장을 확인하지 못했습니다. 보존합니다.")
             else:

@@ -410,8 +410,13 @@ class SaveRejectedFix(unittest.TestCase):
         self.assertEqual((skip["fix_attempts"], skip["skips"][0]["record_id"], skip["skips"][0]["sense_ids"],
                           skip["skips"][0]["failed_sense_ids"]),
                          (1, "w0003", ["w0003-s1", "w0003-s2"], ["w0003-s1"]))
-        self.assertTrue(any("records=w0003" in event["msg"] for event in w.store.recent_events()
-                            if event["batch_id"] == w.row_()["id"]))
+        audit = next(event["msg"] for event in w.store.recent_events()
+                     if event["batch_id"] == w.row_()["id"] and "D 기술적 생산 제외:" in event["msg"])
+        expected = json.dumps(skip["skips"], ensure_ascii=False, separators=(",", ":"))
+        self.assertIn(f"technical_skips={expected}", audit)
+        self.assertIn("same-session-fixes=1", audit)
+        self.assertIn("실패 Sense만 후보 []로 저장", audit)
+        self.assertNotIn("Record 전체", audit)
         w.tick(3)
         self.assertEqual(len(w.adapter.launches), 3)
         self.assertEqual(w.store.get(dchunk.fix_key(w.row_()["id"], 1)), "1")
