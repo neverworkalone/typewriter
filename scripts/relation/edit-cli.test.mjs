@@ -440,7 +440,7 @@ test('scoped Link Repair uses the exact Stage 2 Part, checks homographs, and lea
   assert.deepEqual(relations[0], { source_record_id: 'w1', source_sense_id: 'w1-s1', text: '가장', type: 'association', relevance: 3 });
   assert.deepEqual(relations[1], { source_record_id: 'w600', source_sense_id: 'w600-s1', target_record_id: 'w4',
     target_sense_id: 'w4-s1', type: 'near', relevance: 4, reverse_type: 'near', reverse_relevance: 4,
-    candidate_assignment_version: 1, candidate_forms: ['가장'], reverse_candidate_forms: [] });
+    candidate_assignment_version: 1, candidate_forms: ['가장'], reverse_candidate_forms: ['가식적'] });
   assert.equal(relations[2].text, '미등록어', 'a candidate with no Canonical target remains text-only');
   await assert.rejects(access(path.join(root, 'data/relation-drops/drop-001.jsonl')), { code: 'ENOENT' });
 
