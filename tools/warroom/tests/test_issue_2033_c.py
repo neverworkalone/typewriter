@@ -221,8 +221,10 @@ class SerialChunks(unittest.TestCase):
         b = w.row("deepseek", "c")
         self.assertEqual((b["state"], w.active()["chunk_no"]), ("PRODUCING", 2))
         cp = json.loads((w.wt() / f".warroom-scratch/{CP_NAME}").read_text())
-        self.assertEqual(cp["status"]["s0003"], "TECHNICAL_SKIPPED")
-        self.assertEqual(sum(cp["status"][sense_id] == "SUBMITTED" for sense_id in active_ids), 11)
+        checkpoint_senses = {sense["sense_id"]: sense for record in cp["records"] for sense in record["senses"]}
+        self.assertEqual(checkpoint_senses["s0003"]["submission"]["status"], "TECHNICAL_SKIPPED")
+        self.assertEqual(sum(checkpoint_senses[sense_id]["submission"]["status"] == "SUBMITTED"
+                             for sense_id in active_ids), 11)
         self.assertEqual({sense_id: cp["submitted"][sense_id] for sense_id in prior_submissions}, prior_submissions,
                          "previously completed checkpoint entries remain unchanged")
         for sense_id in active_ids:
