@@ -407,6 +407,8 @@ class Maintenance:
         if problem:
             return self.store.log(None, f"Maintainer 시작 차단 ({producer}): {problem}", "error")
         d = auth.diagnose(self.sup.runner, self.sup.env, self.cfg["repo"], self.cfg["expected_account"])
+        if d.get("transient"):   # a GitHub API/network answer, whatever its status: ask again, never block (#2810)
+            return self.store.log(None, f"Maintainer 시작 보류 — GitHub 조회 복구 대기, 다음 주기에 재시도: {d['transient']}", "warn")
         if not d["ok"]:
             return self.store.log(None, "Maintainer 시작 차단: " + "; ".join(d["problems"]), "error")
         issue = self.sup.gh.issue(m["issue_number"])

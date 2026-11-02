@@ -77,8 +77,8 @@ class FixHeadLag(unittest.TestCase):
         self.assertEqual(w.store.kv_prefix(f"tw_b{b['id']}:"), [])   # the warning counter left with the transition
 
     def test_gh_failure_while_waiting_is_a_wait_only_when_retryable(self):
-        cases = [("transient", GhTransient("HTTP 502"), "FIXING"), ("401", GhError("gh api: HTTP 401: Bad credentials"), "ERROR"),
-                 ("404", GhError("gh api: HTTP 404: Not Found"), "ERROR"), ("unknown", RuntimeError("boom"), "ERROR")]
+        cases = [("transient", GhTransient("HTTP 502"), "FIXING"), ("401", GhTransient("gh api: HTTP 401: Bad credentials"), "FIXING"),
+                 ("404", GhTransient("gh api: HTTP 404: Not Found"), "FIXING"), ("local", GhError("gh api: unknown flag"), "ERROR"), ("unknown", RuntimeError("boom"), "ERROR")]
         for name, exc, want in cases:
             with self.subTest(name):
                 w = World()

@@ -64,3 +64,22 @@ def transient(res: Result) -> str | None:
     if any(t in text for t in RATE_LIMIT_TOKENS + NETWORK_TOKENS):
         return why or "network"
     return None
+
+
+# `gh` talks only to GitHub, so (#2810) a failed gh command is retried unless the diagnostic proves it never reached
+# GitHub's API: every HTTP status (404/401/403/422 included), a GraphQL error, a timeout or a network failure is a
+# retryable API/network outcome; a missing binary or a usage/argument error is a local bug and stays definite.
+_GH_API_TOKENS = ("graphql:", "error connecting to", "api.github.com")
+
+
+def gh_transient(res: Result) -> str | None:
+    """Why a failed `gh` command is retried, or None when the failure is local (no gh binary, bad arguments)."""
+    if res.ok or res.code == 127:
+        return None
+    why = (res.err.strip() or res.out.strip())[:300]
+    if res.code == 124:
+        return why or "timeout"
+    text = f"{res.err}\n{res.out}".lower()
+    if _STATUS.search(text) or any(t in text for t in RATE_LIMIT_TOKENS + NETWORK_TOKENS + _GH_API_TOKENS):
+        return why or "gh api"
+    return None
