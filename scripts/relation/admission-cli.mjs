@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import { mkdir, readdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
-import { createHash, createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import path from 'node:path';
 import process from 'node:process';
 import { isDeepStrictEqual } from 'node:util';
@@ -2084,18 +2084,9 @@ async function saveChunk(checkpoint, checkpointPath, inputPath, root, format = '
   if (supervisorFallbackPath !== null) {
     if (format !== 'compact') throw new Error('Supervisor technical fallback is only valid with --format compact');
     try {
-      const envelope = JSON.parse(await readFile(resolveRootPath(root, supervisorFallbackPath), 'utf8'));
-      const key = process.env.TYPEWRITER_SUPERVISOR_FALLBACK_KEY;
+      supervisorFallback = JSON.parse(await readFile(resolveRootPath(root, supervisorFallbackPath), 'utf8'));
       await assertSupervisorFallbackProcess(root);
-      if (!key || !isPlainObject(envelope) || keysOf(envelope) !== 'proof,signature'
-          || typeof envelope.signature !== 'string' || !/^[a-f0-9]{64}$/u.test(envelope.signature)
-          || !isPlainObject(envelope.proof)) {
-        throw new Error('fallback authority must come from a Supervisor invocation');
-      }
-      const signature = createHmac('sha256', key).update(stableJson(envelope.proof), 'utf8').digest();
-      const supplied = Buffer.from(envelope.signature, 'hex');
-      if (!timingSafeEqual(signature, supplied)) throw new Error('Supervisor fallback signature is invalid');
-      supervisorFallback = envelope.proof;
+      if (!isPlainObject(supervisorFallback)) throw new Error('Supervisor fallback evidence must be an object');
     } catch (error) { throw new Error(`cannot read Supervisor fallback evidence: ${error.message}`); }
   }
   if (!isPlainObject(input) || keysOf(input) !== 'chunk_id,decisions' || input.chunk_id !== pending.chunk_id || !Array.isArray(input.decisions)) {
@@ -2213,20 +2204,22 @@ async function assertSupervisorFallbackProcess(root) {
     if (error.code !== 'ENOENT') throw new Error('active Supervisor lock is unavailable');
   }
   const repositoryRoot = path.dirname(commonDirectory);
-  let owner;
-  try { owner = (await readFile(path.join(repositoryRoot, 'tools/warroom/.local/supervisor.lock'), 'utf8')).trim(); }
-  catch { throw new Error('active Supervisor lock is unavailable'); }
-  if (!/^\d+$/u.test(owner) || Number(owner) !== process.ppid) {
-    throw new Error('technical Drop fallback may only be called by the active Supervisor process');
+  const lockPath = path.join(repositoryRoot, 'tools/warroom/.local/supervisor.lock');
+  const probe = [
+    'import fcntl, os, struct, sys',
+    'lock = open(sys.argv[1], "rb")',
+    'darwin = sys.platform == "darwin"',
+    'fmt = "@qqihh4x" if darwin else "@hhqqi4x"',
+    'request = struct.pack(fmt, 0, 0, 0, fcntl.F_WRLCK, os.SEEK_SET) if darwin else struct.pack(fmt, fcntl.F_WRLCK, os.SEEK_SET, 0, 0, 0)',
+    'result = fcntl.fcntl(lock, fcntl.F_GETLK, request)',
+    'fields = struct.unpack(fmt, result)',
+    'print(fields[2] if darwin else fields[4])',
+  ].join('\n');
+  const owner = spawnSync('python3', ['-c', probe, lockPath], { encoding: 'utf8', timeout: 5000 });
+  const lockOwnerPid = Number(owner.stdout?.trim());
+  if (owner.status !== 0 || !Number.isSafeInteger(lockOwnerPid) || lockOwnerPid !== process.ppid) {
+    throw new Error('technical Drop fallback requires the CLI parent to own the active Supervisor lock');
   }
-}
-
-function stableJson(value) {
-  if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`;
-  if (value && typeof value === 'object') {
-    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableJson(value[key])}`).join(',')}}`;
-  }
-  return JSON.stringify(value);
 }
 
 function premergeSnapshotPaths(checkpoint, checkpointPath) {

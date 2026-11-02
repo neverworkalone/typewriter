@@ -49,7 +49,7 @@ def acquire_lock(path: Path):
     path.parent.mkdir(parents=True, exist_ok=True)
     f = open(path, "a+")
     try:
-        fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        fcntl.lockf(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except OSError:
         f.close()
         return None

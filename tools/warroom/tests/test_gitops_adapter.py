@@ -1,5 +1,3 @@
-import hashlib
-import hmac
 import json
 import os
 import shutil
@@ -23,7 +21,7 @@ def sh(*a, cwd):
 
 
 class Stage2FallbackInvocation(unittest.TestCase):
-    def test_supervisor_save_signs_fallback_and_keeps_key_out_of_the_worktree(self):
+    def test_supervisor_save_writes_candidate_bound_proof_without_a_caller_secret(self):
         class CaptureRunner:
             def run(self, argv, cwd=None, env=None, **_kwargs):
                 self.argv, self.cwd, self.env = argv, cwd, env
@@ -40,15 +38,11 @@ class Stage2FallbackInvocation(unittest.TestCase):
 
             ok, detail = git.stage2_save_chunk(worktree, "001", "01", "01", supervisor_fallback=proof)
 
-            envelope = json.loads((worktree / ".warroom-scratch/s2-technical-fallback.json").read_text("utf-8"))
-            key = runner.env["TYPEWRITER_SUPERVISOR_FALLBACK_KEY"]
-            payload = json.dumps(proof, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
-            expected = hmac.new(key.encode("ascii"), payload.encode("utf-8"), hashlib.sha256).hexdigest()
+            saved_proof = json.loads((worktree / ".warroom-scratch/s2-technical-fallback.json").read_text("utf-8"))
             self.assertTrue(ok)
             self.assertEqual(detail, "saved")
-            self.assertEqual(envelope, {"proof": proof, "signature": expected})
-            self.assertNotIn("TYPEWRITER_SUPERVISOR_FALLBACK_KEY", git.env)
-            self.assertNotIn(key, (worktree / ".warroom-scratch/s2-technical-fallback.json").read_text("utf-8"))
+            self.assertEqual(saved_proof, proof)
+            self.assertEqual(runner.env, git.env, "authority comes from the held kernel lock, not caller env")
             self.assertEqual(runner.argv[-2:], ["--supervisor-fallback", ".warroom-scratch/s2-technical-fallback.json"])
 
 

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createHash, createHmac } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import { copyFile, mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
@@ -1333,7 +1333,7 @@ test('compact chunks are a lossless view and compact decisions expand into the s
   await assert.rejects(() => run(['read-chunk', '--checkpoint', checkpoint, '--format', 'yaml'], { root }), /json or compact/);
 });
 
-test('technical Drop f rejects forged evidence and accepts only a signed source-bound Supervisor fallback', async (t) => {
+test('technical Drop f requires the CLI parent to own the active Supervisor lock', async (t) => {
   const { root, sourceCandidates } = await sixCandidateRepository(t);
   const mainRoot = path.join(root, '.supervisor-main');
   const commonGit = path.join(mainRoot, '.git');
@@ -1343,7 +1343,7 @@ test('technical Drop f rejects forged evidence and accepts only a signed source-
   await mkdir(path.dirname(supervisorLock), { recursive: true });
   await writeFile(path.join(worktreeGit, 'commondir'), '../..\n');
   await writeFile(path.join(root, '.git'), `gitdir: ${worktreeGit}\n`);
-  await writeFile(supervisorLock, `${process.pid}\n`);
+  await writeFile(supervisorLock, `${process.ppid}\n`);
   const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
   const input = '.warroom-scratch/decisions.txt';
   const proofPath = '.warroom-scratch/s2-technical-fallback.json';
@@ -1368,28 +1368,23 @@ test('technical Drop f rejects forged evidence and accepts only a signed source-
   const fallbackArgs = ['save-chunk', '--checkpoint', checkpoint, '--in', input, '--format', 'compact',
     '--supervisor-fallback', proofPath];
   const beforeForged = await readFile(path.join(root, checkpoint));
-  const previousKey = process.env.TYPEWRITER_SUPERVISOR_FALLBACK_KEY;
-  try {
-    await writeFile(path.join(root, proofPath), JSON.stringify({ proof, signature: '0'.repeat(64) }));
-    delete process.env.TYPEWRITER_SUPERVISOR_FALLBACK_KEY;
-    await assert.rejects(() => quiet(() => run(fallbackArgs, { root })), /active Supervisor/u);
-    assert.deepEqual(await readFile(path.join(root, checkpoint)), beforeForged,
-      'caller-created evidence without Supervisor authority cannot advance the checkpoint');
+  await writeFile(path.join(root, proofPath), JSON.stringify(proof));
+  await assert.rejects(() => quiet(() => run(fallbackArgs, { root })), /active Supervisor lock/u);
+  assert.deepEqual(await readFile(path.join(root, checkpoint)), beforeForged,
+    'a caller-written PID and fabricated proof cannot advance the checkpoint without the kernel lock');
 
-    const key = 'supervisor-test-capability';
-    const signature = createHmac('sha256', key).update(JSON.stringify(sortJsonKeys(proof)), 'utf8').digest('hex');
-    await writeFile(path.join(root, proofPath), JSON.stringify({ proof, signature }));
-    process.env.TYPEWRITER_SUPERVISOR_FALLBACK_KEY = key;
-    await assert.rejects(() => quiet(() => run(fallbackArgs, { root })), /active Supervisor process/u);
-    assert.deepEqual(await readFile(path.join(root, checkpoint)), beforeForged,
-      'a caller-chosen signing key still cannot authorize a direct CLI invocation');
-
-    await writeFile(supervisorLock, `${process.ppid}\n`);
-    await quiet(() => run(fallbackArgs, { root }));
-  } finally {
-    if (previousKey === undefined) delete process.env.TYPEWRITER_SUPERVISOR_FALLBACK_KEY;
-    else process.env.TYPEWRITER_SUPERVISOR_FALLBACK_KEY = previousKey;
-  }
+  const supervisorDriver = [
+    'import fcntl, os, subprocess, sys',
+    'lock = open(sys.argv[1], "r+")',
+    'fcntl.lockf(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)',
+    'lock.seek(0); lock.truncate(); lock.write(str(os.getpid())); lock.flush()',
+    'result = subprocess.run(["node", sys.argv[2], *sys.argv[4:]], cwd=sys.argv[3], env=os.environ.copy())',
+    'raise SystemExit(result.returncode)',
+  ].join('\n');
+  const cliPath = path.join(REPOSITORY_DIRECTORY, 'scripts/relation/admission-cli.mjs');
+  const authorized = spawnSync('python3', ['-c', supervisorDriver, supervisorLock, cliPath, root, ...fallbackArgs],
+    { cwd: root, encoding: 'utf8', timeout: 10000 });
+  assert.equal(authorized.status, 0, `${authorized.stdout}\n${authorized.stderr}`);
   await mergeForTest(root, checkpoint);
   const drops = await readDropRows(path.join(root, 'data/relation-drops/drop-001.jsonl'));
   assert.equal(drops.find((row) => row.candidate === sourceCandidates[0])?.reason, 'f');
