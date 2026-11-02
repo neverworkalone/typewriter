@@ -1406,6 +1406,8 @@ test('sandboxed worker cannot replace the locked Supervisor path or forge an f a
   if (process.platform !== 'darwin') return t.skip('runtime path-replacement sandbox test uses macOS sandbox-exec');
   const pythonProbe = spawnSync('python3', ['-c', 'import shutil; print(shutil.which("sandbox-exec") or "")'], { encoding: 'utf8' });
   if (pythonProbe.status !== 0 || !pythonProbe.stdout.trim()) return t.skip('sandbox-exec is unavailable');
+  const sandboxProbe = spawnSync(pythonProbe.stdout.trim(), ['-p', '(version 1) (allow default)', '/usr/bin/true'], { encoding: 'utf8' });
+  if (sandboxProbe.status !== 0) return t.skip('host policy does not permit starting a nested macOS sandbox');
 
   const { root, sourceCandidates } = await sixCandidateRepository(t);
   const mainRoot = path.join(root, '.supervisor-main');
