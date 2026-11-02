@@ -2781,6 +2781,8 @@ class Supervisor:
             answer = stage2.extract_repair_answer(final, current["fingerprint"])
         except ValueError as error:
             current["last_error"] = str(error)
+            if isinstance(error, stage2.RepairFormatError) and current.get("attempt_log"):
+                current["attempt_log"][-1]["status"] = "rejected"
             self._save_stage2_repair_state(b, state)
             raise
         if answer is None:
@@ -3508,9 +3510,13 @@ class Supervisor:
             if info is not None:
                 return self._fail(b, "ERROR", f"Stage 2 repair completed after an unexpected PR #{info['number']} appeared; preserving evidence")
             state = self._stage2_repair_state(b, required=True)
-            answer = self._stage2_repair_response(b, state)
-            if answer is None:
-                return self._fail(b, "ERROR", "Stage 2 repair answer is missing the exact fingerprint header; preserving the run and checkpoint")
+            try:
+                answer = self._stage2_repair_response(b, state)
+            except stage2.RepairFormatError:
+                answer = None
+            if answer is None:   # output-format failure only: same page, bounded by the persisted attempt budget
+                self.store.log(b["id"], "Stage 2 repair 응답이 형식 검증을 통과하지 못했습니다. 같은 페이지만 남은 attempt 한도 안에서 다시 실행합니다", "warn")
+                return self._launch_stage2_repair_page(b)
             return self._apply_stage2_repair_answer(b, state)
         except TRANSIENT:
             raise

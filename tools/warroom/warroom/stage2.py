@@ -541,8 +541,17 @@ def repair_run_start_key(batch_id: int) -> str:
     return f"s2_repair_run_start_{batch_id}"
 
 
+class RepairFormatError(ValueError):
+    """The repair answer is not a parseable single JSON object of the required shape (an output-wrapping failure, not a judgment)."""
+
+
+_REPAIR_FENCE = re.compile(r"```(?:json)?[ \t]*\n(.*)\n```", re.DOTALL)
+
+
 def extract_repair_answer(final_text: str | None, fingerprint_: str) -> dict | None:
-    """A self-contained final answer for one exact preflight fingerprint; never parse prose as a decision."""
+    """A self-contained final answer for one exact preflight fingerprint; never parse prose as a decision.
+
+    Accepts exactly one JSON object after the header, either raw or wrapped losslessly in a single ```json fence."""
     if not isinstance(final_text, str):
         return None
     lines = final_text.replace("\r\n", "\n").split("\n")
@@ -552,15 +561,18 @@ def extract_repair_answer(final_text: str | None, fingerprint_: str) -> dict | N
         return None
     body = "\n".join(lines[starts[0] + 1:]).strip()
     if not body:
-        raise ValueError("repair answer has no JSON body")
+        raise RepairFormatError("repair answer has no JSON body")
+    fenced = _REPAIR_FENCE.fullmatch(body)
+    if fenced and "```" not in fenced.group(1):
+        body = fenced.group(1).strip()
     try:
         result = json.loads(body)
     except ValueError as error:
-        raise ValueError(f"repair answer JSON is malformed: {error}") from error
+        raise RepairFormatError(f"repair answer JSON is malformed: {error}") from error
     if not isinstance(result, dict) or set(result) != {"decisions", "peer_adjustments", "unresolved"} \
             or not isinstance(result["decisions"], list) or not isinstance(result["peer_adjustments"], list) \
             or not isinstance(result["unresolved"], list):
-        raise ValueError('repair answer must contain exactly "decisions", "peer_adjustments" and "unresolved" arrays')
+        raise RepairFormatError('repair answer must contain exactly "decisions", "peer_adjustments" and "unresolved" arrays')
     return result
 
 
