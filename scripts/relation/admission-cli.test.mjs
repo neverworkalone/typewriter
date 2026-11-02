@@ -1339,6 +1339,7 @@ test('technical Drop f requires the CLI parent to own the active Supervisor lock
   const commonGit = path.join(mainRoot, '.git');
   const worktreeGit = path.join(commonGit, 'worktrees', 'stage2');
   const supervisorLock = path.join(mainRoot, 'tools/warroom/.local/supervisor.lock');
+  const supervisorOwnerLock = path.join(mainRoot, 'tools/warroom/.local/supervisor-owner.lock');
   await mkdir(worktreeGit, { recursive: true });
   await mkdir(path.dirname(supervisorLock), { recursive: true });
   await writeFile(path.join(worktreeGit, 'commondir'), '../..\n');
@@ -1383,7 +1384,7 @@ test('technical Drop f requires the CLI parent to own the active Supervisor lock
   ].join('\n');
   const cliPath = path.join(REPOSITORY_DIRECTORY, 'scripts/relation/admission-cli.mjs');
   const nodeDriver = `import { run } from ${JSON.stringify(pathToFileURL(cliPath).href)}; await run(JSON.parse(process.env.TEST_CLI_ARGS), { root: process.env.TEST_REPO_ROOT });`;
-  const authorized = spawnSync('python3', ['-c', supervisorDriver, supervisorLock, nodeDriver, root], {
+  const authorized = spawnSync('python3', ['-c', supervisorDriver, supervisorOwnerLock, nodeDriver, root], {
     cwd: root, encoding: 'utf8', timeout: 10000,
     env: { ...process.env, TEST_CLI_ARGS: JSON.stringify(fallbackArgs), TEST_REPO_ROOT: root },
   });

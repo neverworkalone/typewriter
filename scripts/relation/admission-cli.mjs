@@ -2204,7 +2204,7 @@ async function assertSupervisorFallbackProcess(root) {
     if (error.code !== 'ENOENT') throw new Error('active Supervisor lock is unavailable');
   }
   const repositoryRoot = path.dirname(commonDirectory);
-  const lockPath = path.join(repositoryRoot, 'tools/warroom/.local/supervisor.lock');
+  const lockPath = path.join(repositoryRoot, 'tools/warroom/.local/supervisor-owner.lock');
   const probe = [
     'import fcntl, os, struct, sys',
     'lock = open(sys.argv[1], "rb")',

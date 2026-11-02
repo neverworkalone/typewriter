@@ -48,19 +48,35 @@ def acquire_lock(path: Path):
     """Single War Room instance: returns an open locked file, or None if held."""
     path.parent.mkdir(parents=True, exist_ok=True)
     f = open(path, "a+")
+    owner_path = path.with_name(f"{path.stem}-owner{path.suffix}")
+    owner = None
     try:
-        # flock preserves the existing same-process single-instance behavior; lockf exposes
-        # the owner PID through F_GETLK to the admission CLI's Supervisor-only fallback gate.
+        owner = open(owner_path, "a+")
+        # flock preserves same-process and cross-process single-instance behavior. POSIX record
+        # locks conflict with flock on macOS, so hold the queryable owner lock on a companion file.
         fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        fcntl.lockf(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        fcntl.lockf(owner, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except OSError:
+        if owner is not None:
+            owner.close()
         f.close()
         return None
     f.seek(0)
     f.truncate()
     f.write(str(os.getpid()))
     f.flush()
-    return f
+    return _SupervisorLock(f, owner)
+
+
+class _SupervisorLock:
+    """Keep both OS locks alive and release them together through the existing close() seam."""
+
+    def __init__(self, instance_file, owner_file):
+        self.instance_file, self.owner_file = instance_file, owner_file
+
+    def close(self):
+        self.owner_file.close()
+        self.instance_file.close()
 
 
 class Supervisor:
