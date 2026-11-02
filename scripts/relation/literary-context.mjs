@@ -1289,7 +1289,7 @@ export async function submitLiteraryChunk({ databasePath, checkpointPath, submis
  * is already accepted or is saved through the ordinary submit validator.
  */
 export async function supervisorSkipLiterarySense({ databasePath, checkpointPath, submission, diagnostic,
-  supervisorDatabasePath, supervisorBatchId, worktree = process.cwd(), inputSha256,
+  worktree = process.cwd(), inputSha256,
   scratchDirectory = path.resolve(CHECKPOINT_SCRATCH_DIRECTORY) }) {
   const { checkpoint, path: resolvedCheckpoint } = await loadLiteraryCheckpoint(checkpointPath, { scratchDirectory });
   if (checkpoint.contract !== CHECKPOINT_CONTRACT) fail('technical skip requires a v3 literary checkpoint');
@@ -1330,14 +1330,12 @@ export async function supervisorSkipLiterarySense({ databasePath, checkpointPath
   let retryAttempts;
   try {
     retryAttempts = readSupervisorRetryBudget({
-      databasePath: supervisorDatabasePath,
-      batchId: supervisorBatchId,
       method: 'c',
       model: checkpoint.batch.model,
       shard: checkpoint.batch.shard,
       batch: checkpoint.batch.batch,
       worktree,
-      retryKey: `c_resubmit_${supervisorBatchId}`,
+      retryKeyForBatchId: (batchId) => `c_resubmit_${batchId}`,
       retryKind: 'c_chunk_resume',
       minimum: 2,
     });

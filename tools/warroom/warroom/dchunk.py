@@ -391,15 +391,13 @@ def read_rejection(worktree, b, rec: dict) -> dict | None:
     return diag
 
 
-def supervisor_skip(runner, env, worktree, b, rec: dict, fix_attempts: int, supervisor_db_path) -> dict:
-    """Use the internal D CLI path, bound to the Supervisor DB's completed same-session fixes."""
+def supervisor_skip(runner, env, worktree, b, rec: dict, fix_attempts: int) -> dict:
+    """Use the internal D CLI path; its CLI resolves the Supervisor DB from Git's shared repository root."""
     diag = read_rejection(worktree, b, rec)
     if diag is None or fix_attempts < MAX_FIXES:
         raise DChunkError("D technical skip lacks an exact current rejection or exhausted fix budget")
     n = chunk_names(b, rec["chunk_no"])
-    supervisor_env = {**env, "WARROOM_SUPERVISOR_STATE_DB": str(supervisor_db_path),
-                      "WARROOM_SUPERVISOR_BATCH_ID": str(b["id"])}
-    data = _json(cli(runner, supervisor_env, worktree, "supervisor-skip", "--in", n.decisions), "D supervisor technical skip")
+    data = _json(cli(runner, env, worktree, "supervisor-skip", "--in", n.decisions), "D supervisor technical skip")
     if data.get("status") != "SAVED_WITH_TECHNICAL_SKIPS" or data.get("chunk_no") != rec["chunk_no"] \
             or data.get("technical_skipped_records") != len(diag["failed_records"]) \
             or not isinstance(data.get("technical_skips"), list):

@@ -1164,18 +1164,15 @@ export async function saveActive({ inputPath, root }) {
 }
 
 /** Internal Supervisor-only path: the retry budget comes from the separate War Room state database. */
-export async function supervisorSkipActive({ inputPath, root, worktree = process.cwd(), supervisorDatabasePath,
-  supervisorBatchId }) {
+export async function supervisorSkipActive({ inputPath, root, worktree = process.cwd() }) {
   const { meta } = await findActive(root);
   const fixAttempts = readSupervisorRetryBudget({
-    databasePath: supervisorDatabasePath,
-    batchId: supervisorBatchId,
     method: 'd',
     model: meta.model,
     shard: meta.shard,
     batch: meta.batch,
     worktree,
-    retryKey: `d_fix_${supervisorBatchId}:${meta.chunk_no}`,
+    retryKeyForBatchId: (batchId) => `d_fix_${batchId}:${meta.chunk_no}`,
     retryKind: 'd_chunk_fix',
     minimum: MAX_FIXES,
   });
@@ -1276,8 +1273,6 @@ async function main(argv) {
     console.log(JSON.stringify(await supervisorSkipActive({
       inputPath: need(options, 'in'),
       root: options.dir,
-      supervisorDatabasePath: process.env.WARROOM_SUPERVISOR_STATE_DB,
-      supervisorBatchId: process.env.WARROOM_SUPERVISOR_BATCH_ID,
       worktree: process.cwd(),
     })));
     return 0;

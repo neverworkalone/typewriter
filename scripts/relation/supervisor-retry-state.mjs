@@ -1,23 +1,50 @@
 import { DatabaseSync } from 'node:sqlite';
+import { execFileSync } from 'node:child_process';
+import { realpathSync } from 'node:fs';
 import path from 'node:path';
 
-/** Read the retry budget written by the War Room Supervisor, never a count supplied by the producer. */
-export function readSupervisorRetryBudget({ databasePath, batchId, method, model, shard, batch, worktree,
-  retryKey, retryKind, minimum }) {
-  const id = Number(batchId);
-  if (!path.isAbsolute(databasePath ?? '') || !Number.isSafeInteger(id) || id < 1) {
+function supervisorDatabasePath(worktree) {
+  try {
+    const gitEnvironment = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_')));
+    const commonDirectory = execFileSync('git', ['rev-parse', '--path-format=absolute', '--git-common-dir'], {
+      cwd: path.resolve(worktree),
+      env: gitEnvironment,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+    if (!path.isAbsolute(commonDirectory)) {
+      throw new Error('not a Typewriter Git common directory');
+    }
+    const realCommonDirectory = realpathSync(commonDirectory);
+    if (path.basename(realCommonDirectory) !== '.git') throw new Error('not a Typewriter Git common directory');
+    const repositoryRoot = path.dirname(realCommonDirectory);
+    return path.join(repositoryRoot, 'tools/warroom/.local/warroom.db');
+  } catch {
+    throw new Error('Supervisor retry state is unavailable; technical skip is Supervisor-only');
+  }
+}
+
+/** Read retry state only from the War Room database anchored to this worktree's shared Git repository. */
+export function readSupervisorRetryBudget({ method, model, shard, batch, worktree, retryKeyForBatchId, retryKind, minimum }) {
+  if (typeof retryKeyForBatchId !== 'function' || !Number.isSafeInteger(minimum) || minimum < 1) {
     throw new Error('Supervisor retry state is unavailable; technical skip is Supervisor-only');
   }
   let database;
   try {
-    database = new DatabaseSync(databasePath, { readOnly: true });
+    database = new DatabaseSync(supervisorDatabasePath(worktree), { readOnly: true });
     const owner = database.prepare(
-      'SELECT id, method, producer, shard, batch, worktree, session_id FROM batches WHERE id=?',
-    ).get(id);
+      'SELECT id, method, producer, shard, batch, worktree, session_id FROM batches '
+      + 'WHERE method=? AND producer=? AND shard=? AND batch=? AND worktree=?',
+    ).get(method, model, String(shard), String(batch), path.resolve(worktree));
     if (!owner || owner.method !== method || owner.producer !== model || owner.shard !== String(shard)
       || owner.batch !== String(batch) || path.resolve(owner.worktree) !== path.resolve(worktree)
       || typeof owner.session_id !== 'string' || !owner.session_id) {
       throw new Error('Supervisor retry state is not bound to this active batch and worktree');
+    }
+    const id = Number(owner.id);
+    const retryKey = retryKeyForBatchId(id);
+    if (!Number.isSafeInteger(id) || id < 1 || typeof retryKey !== 'string' || !retryKey) {
+      throw new Error('Supervisor retry state is unavailable; technical skip is Supervisor-only');
     }
     const saved = database.prepare('SELECT value FROM kv WHERE key=?').get(retryKey);
     const attempts = Number(saved?.value);

@@ -135,13 +135,11 @@ def deterministic_context_trim_candidate(worktree, b, chunk_no: int) -> bool:
     return any(isinstance(key, str) and key != key.strip() and len(key.strip()) >= 12 for key in entry["verified"])
 
 
-def supervisor_skip(runner, env, worktree, b, rec: dict, retry_attempts: int, supervisor_db_path) -> dict:
-    """Invoke the internal CLI fallback, bound to the Supervisor DB's completed same-session retries."""
+def supervisor_skip(runner, env, worktree, b, rec: dict, retry_attempts: int) -> dict:
+    """Invoke the internal CLI fallback; its CLI resolves the Supervisor DB from Git's shared repository root."""
     n = names(b)
     input_path = f"{n.submit_prefix}{rec['chunk_no']:03d}.submit.json"
-    supervisor_env = {**env, "WARROOM_SUPERVISOR_STATE_DB": str(supervisor_db_path),
-                      "WARROOM_SUPERVISOR_BATCH_ID": str(b["id"])}
-    data = _json(cli(runner, supervisor_env, worktree, "supervisor-skip", "--db", env["TYPEWRITER_APPROVED_LITERARY_DB"],
+    data = _json(cli(runner, env, worktree, "supervisor-skip", "--db", env["TYPEWRITER_APPROVED_LITERARY_DB"],
                      "--checkpoint", n.checkpoint, "--input", input_path), "C supervisor technical skip")
     if data.get("status") != "TECHNICAL_SKIPPED" or not all(isinstance(data.get(key), str) and data[key]
                                                                 for key in ("record_id", "sense_id", "diagnostic", "reason", "field")) \

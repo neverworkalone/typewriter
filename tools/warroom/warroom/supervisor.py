@@ -1179,6 +1179,8 @@ class Supervisor:
         key = "TYPEWRITER_APPROVED_LITERARY_DB"
         env.pop(key, None)
         env.pop("TYPEWRITER_APPROVED_CORPUS_DB", None)
+        env.pop("WARROOM_SUPERVISOR_STATE_DB", None)
+        env.pop("WARROOM_SUPERVISOR_BATCH_ID", None)
         if b["method"] == "c":
             env[key] = str(Path(self.cfg["literary_index_path"].strip()).expanduser())
         if b["method"] == "d" and isinstance(kind, str) and kind.startswith(("d_chunk_", "d_cli")):
@@ -3867,7 +3869,7 @@ class Supervisor:
                         if not literary.technical_skip_candidate(Path(b["worktree"]), b, rec["chunk_no"]):
                             return self._fail(b, "ERROR", "C 재검증 뒤에도 현재 단일-Sense 진단을 증명하지 못했습니다. 원본을 보존합니다.")
                         skip_result = literary.supervisor_skip(
-                            self.runner, self._c_env(b), Path(b["worktree"]), b, rec, used, self.paths.db)
+                            self.runner, self._c_env(b), Path(b["worktree"]), b, rec, used)
                 except (literary.LiteraryError, OSError, ValueError, KeyError, TypeError) as e:
                     return self._fail(b, "ERROR", f"C 국소 기술적 제외를 증명하지 못했습니다: {e}. 원본을 보존합니다.")
                 if skip_result is not None:
@@ -4338,7 +4340,7 @@ class Supervisor:
         attempts = int(self.store.get(dchunk.fix_key(b["id"], rec["chunk_no"])) or 0)
         if attempts < dchunk.MAX_FIXES:
             return None
-        result = dchunk.supervisor_skip(self.runner, self._d_env(b), wt, b, rec, attempts, self.paths.db)
+        result = dchunk.supervisor_skip(self.runner, self._d_env(b), wt, b, rec, attempts)
         result["failure_records"] = diag["failed_records"]
         return result
 

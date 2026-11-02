@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
@@ -58,8 +58,24 @@ function canonicalRows() {
   return rows;
 }
 
-async function makeWorld({ fillerParagraphs = 2000 } = {}) {
-  const root = await mkdtemp(path.join((await mkdir(path.resolve('.warroom-scratch'), { recursive: true })) ?? path.resolve('.warroom-scratch'), 'd-chunk-'));
+async function makeWorld({ fillerParagraphs = 2000, supervisorWorktree = false } = {}) {
+  const scratchRoot = path.resolve('.warroom-scratch');
+  await mkdir(scratchRoot, { recursive: true });
+  const containerRoot = await mkdtemp(path.join(scratchRoot, 'd-chunk-'));
+  const root = supervisorWorktree ? path.join(containerRoot, 'worktree') : containerRoot;
+  const repositoryRoot = supervisorWorktree ? path.join(containerRoot, 'repository') : null;
+  if (supervisorWorktree) {
+    await mkdir(repositoryRoot, { recursive: true });
+    const initialized = spawnSync('git', ['init', '--quiet'], { cwd: repositoryRoot, encoding: 'utf8' });
+    assert.equal(initialized.status, 0, initialized.stderr);
+    const committed = spawnSync('git', ['-c', 'user.name=Typewriter Test', '-c', 'user.email=test@example.invalid',
+      'commit', '--quiet', '--allow-empty', '-m', 'fixture'], { cwd: repositoryRoot, encoding: 'utf8' });
+    assert.equal(committed.status, 0, committed.stderr);
+    const added = spawnSync('git', ['worktree', 'add', '--quiet', '--detach', root, 'HEAD'], {
+      cwd: repositoryRoot, encoding: 'utf8',
+    });
+    assert.equal(added.status, 0, added.stderr);
+  }
   const canonicalPath = path.join(root, 'stdict-0001.jsonl');
   await writeFile(canonicalPath, `${canonicalRows().map((row) => JSON.stringify(row)).join('\n')}\n`);
   const databasePath = path.join(root, 'corpus.sqlite');
@@ -86,15 +102,15 @@ async function makeWorld({ fillerParagraphs = 2000 } = {}) {
   database.close();
   const directory = path.join(root, 'd-001_01');
   const options = { canonicalPath, shard: '001', batch: '01', databasePath, model: 'codex', head: 'a'.repeat(40), directory };
-  return { root, directory, options };
+  return { root, containerRoot, repositoryRoot, directory, options };
 }
 
-const withWorld = (name, body) => test(name, async () => {
-  const world = await makeWorld();
+const withWorld = (name, body, options = {}) => test(name, async () => {
+  const world = await makeWorld(options);
   try {
     await body(world);
   } finally {
-    await rm(world.root, { recursive: true, force: true });
+    await rm(world.containerRoot ?? world.root, { recursive: true, force: true });
   }
 });
 
@@ -122,9 +138,12 @@ const chunkPath = (world, kind, number = 1) => path.join(world.directory, {
 const meta = (world, number = 1) => readFile(chunkPath(world, 'active', number), 'utf8').then(JSON.parse);
 const view = (world, number = 1) => readFile(chunkPath(world, 'view', number), 'utf8');
 
-async function makeSupervisorRetryState(world, { attempts, completedRetries }) {
+async function makeSupervisorRetryState(world, { attempts, completedRetries, databaseName = 'warroom.db' }) {
   const active = await meta(world);
-  const databasePath = path.join(world.root, 'warroom.sqlite');
+  const databasePath = databaseName === 'warroom.db'
+    ? path.join(world.repositoryRoot ?? world.root, 'tools/warroom/.local/warroom.db')
+    : path.join(world.root, databaseName);
+  await mkdir(path.dirname(databasePath), { recursive: true });
   const database = new DatabaseSync(databasePath);
   database.exec(`
     CREATE TABLE batches (id INTEGER PRIMARY KEY, method TEXT, producer TEXT, shard TEXT, batch TEXT,
@@ -1025,13 +1044,21 @@ withWorld('Supervisor technical fallback excludes the exact shared-evidence Reco
 
   const originalDecisions = await readFile(decisionsPath, 'utf8');
   const supervisorDatabasePath = await makeSupervisorRetryState(world, { attempts: 0, completedRetries: 0 });
+  const forgedDatabasePath = await makeSupervisorRetryState(world, {
+    attempts: 1, completedRetries: 1, databaseName: 'forged-warroom.sqlite',
+  });
   await assert.rejects(supervisorSkipActive({ inputPath: decisionsPath, root: world.root, worktree: world.root,
-    supervisorDatabasePath, supervisorBatchId: 1 }), /not exhausted/u);
+  }), /not exhausted/u);
   const forged = await runCli(['supervisor-skip', '--in', decisionsPath, '--dir', world.root, '--fix-attempts', '1'], '', {
-    WARROOM_SUPERVISOR_STATE_DB: supervisorDatabasePath, WARROOM_SUPERVISOR_BATCH_ID: '1',
+    WARROOM_SUPERVISOR_STATE_DB: forgedDatabasePath, WARROOM_SUPERVISOR_BATCH_ID: '999',
   }, world.root);
   assert.notEqual(forged.code, 0);
   assert.match(forged.stderr, /unsupported option.*fix-attempts/u);
+  const early = await runCli(['supervisor-skip', '--in', decisionsPath, '--dir', world.root], '', {
+    WARROOM_SUPERVISOR_STATE_DB: forgedDatabasePath, WARROOM_SUPERVISOR_BATCH_ID: '999',
+  }, world.root);
+  assert.notEqual(early.code, 0);
+  assert.match(early.stderr, /not exhausted/u);
   const supervisorDb = new DatabaseSync(supervisorDatabasePath);
   supervisorDb.prepare('UPDATE kv SET value=? WHERE key=?').run('1', 'd_fix_1:1');
   supervisorDb.prepare('INSERT INTO runs(batch_id, kind, session_id, ended_at) VALUES (1, ?, ?, ?)')
@@ -1039,11 +1066,11 @@ withWorld('Supervisor technical fallback excludes the exact shared-evidence Reco
   supervisorDb.close();
   await writeFile(decisionsPath, `${originalDecisions}\n`);
   await assert.rejects(supervisorSkipActive({ inputPath: decisionsPath, root: world.root, worktree: world.root,
-    supervisorDatabasePath, supervisorBatchId: 1 }), /stale/u);
+  }), /stale/u);
   assert.equal(existsSync(path.join(world.directory, 'chunk-001.jsonl')), false);
   await writeFile(decisionsPath, originalDecisions);
   const saved = await runCli(['supervisor-skip', '--in', decisionsPath, '--dir', world.root], '', {
-    WARROOM_SUPERVISOR_STATE_DB: supervisorDatabasePath, WARROOM_SUPERVISOR_BATCH_ID: '1',
+    WARROOM_SUPERVISOR_STATE_DB: forgedDatabasePath, WARROOM_SUPERVISOR_BATCH_ID: '999',
   }, world.root);
   assert.equal(saved.code, 0, saved.stderr);
   const result = JSON.parse(saved.stdout);
@@ -1055,7 +1082,7 @@ withWorld('Supervisor technical fallback excludes the exact shared-evidence Reco
   assert.equal((await readFile(chunkPath(world, 'technicalSkips'), 'utf8')).length > 0, true);
   assert.equal((await readFile(chunkPath(world, 'decisions'), 'utf8')).includes(`${failedRef} `), false,
     'the submitted decision file remains unchanged and does not gain a skip marker');
-});
+}, { supervisorWorktree: true });
 
 withWorld('single and batch continuation SEARCH_FAILED is returned, persisted, and blocks save', async (world) => {
   await prepareChunk({ ...world.options, chunkNumber: 1 });

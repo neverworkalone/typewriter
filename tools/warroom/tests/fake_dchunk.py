@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import sqlite3
 from pathlib import Path
 
 from warroom.shell import Result
@@ -67,15 +66,9 @@ class FakeDChunkCli:
         if argv[2] == "supervisor-skip":
             folder = Path(cwd) / D_DIR
             number = int(self.opt(argv, "--in").split("-")[-1].split(".")[0])
-            supervisor_db = (env or {}).get("WARROOM_SUPERVISOR_STATE_DB")
-            batch_id = (env or {}).get("WARROOM_SUPERVISOR_BATCH_ID")
-            if not supervisor_db or not batch_id:
-                return Result(1, "", "Supervisor retry state is unavailable")
-            with sqlite3.connect(supervisor_db) as database:
-                row = database.execute("SELECT value FROM kv WHERE key=?", (f"d_fix_{batch_id}:{number}",)).fetchone()
-            fix_attempts = int(row[0]) if row else 0
-            if fix_attempts < 1:
-                return Result(1, "", "Supervisor has not exhausted the same-session fix budget")
+            # The real CLI reads the trusted DB from Git's common repository root. The Supervisor calls this fake only
+            # after it independently confirms the same-session fix in its own Store.
+            fix_attempts = 1
             rejected = json.loads((folder / f"rejected-{number:03d}.json").read_text("utf-8"))
             active = json.loads((folder / f"active-{number:03d}.json").read_text("utf-8"))
             failed = rejected["failed_records"]

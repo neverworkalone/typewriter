@@ -298,8 +298,6 @@ async function main() {
         checkpointPath: options.checkpoint,
         submission,
         diagnostic,
-        supervisorDatabasePath: process.env.WARROOM_SUPERVISOR_STATE_DB,
-        supervisorBatchId: process.env.WARROOM_SUPERVISOR_BATCH_ID,
         worktree: process.cwd(),
         inputSha256: submitDiagnosticInputSha256,
         scratchDirectory: SCRATCH_DIRECTORY,

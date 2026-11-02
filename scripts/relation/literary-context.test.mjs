@@ -26,10 +26,24 @@ import {
 const jsonl = (items) => `${items.map((item) => JSON.stringify(item)).join('\n')}\n`;
 
 async function makeFixture({ unitCount = 2, unitText, unitTexts, firstForm = '가나다', firstSenseGlosses,
-  firstSearchForms = [], secondLemma, workCount = 1 } = {}) {
+  firstSearchForms = [], secondLemma, workCount = 1, supervisorWorktree = false } = {}) {
   const fixtureRoot = path.resolve('.warroom-scratch');
   await mkdir(fixtureRoot, { recursive: true });
-  const root = await mkdtemp(path.join(fixtureRoot, 'typewriter-literary-context-'));
+  const containerRoot = await mkdtemp(path.join(fixtureRoot, 'typewriter-literary-context-'));
+  const root = supervisorWorktree ? path.join(containerRoot, 'worktree') : containerRoot;
+  const repositoryRoot = supervisorWorktree ? path.join(containerRoot, 'repository') : null;
+  if (supervisorWorktree) {
+    await mkdir(repositoryRoot, { recursive: true });
+    const initialized = spawnSync('git', ['init', '--quiet'], { cwd: repositoryRoot, encoding: 'utf8' });
+    assert.equal(initialized.status, 0, initialized.stderr);
+    const committed = spawnSync('git', ['-c', 'user.name=Typewriter Test', '-c', 'user.email=test@example.invalid',
+      'commit', '--quiet', '--allow-empty', '-m', 'fixture'], { cwd: repositoryRoot, encoding: 'utf8' });
+    assert.equal(committed.status, 0, committed.stderr);
+    const added = spawnSync('git', ['worktree', 'add', '--quiet', '--detach', root, 'HEAD'], {
+      cwd: repositoryRoot, encoding: 'utf8',
+    });
+    assert.equal(added.status, 0, added.stderr);
+  }
   const canonicalDirectory = path.join(root, 'data/canonical');
   const scratchDirectory = path.join(root, '.warroom-scratch');
   await mkdir(canonicalDirectory, { recursive: true });
@@ -133,14 +147,22 @@ async function makeFixture({ unitCount = 2, unitText, unitTexts, firstForm = '�
     checkpointPath,
     scratchDirectory,
   });
-  return { root, scratchDirectory, canonicalPath, databasePath, checkpointPath, records, initialized };
+  return {
+    root, containerRoot, repositoryRoot, scratchDirectory, canonicalPath, databasePath, checkpointPath, records, initialized,
+  };
 }
 
 async function cleanup(fixture) {
-  await rm(fixture.root, { recursive: true, force: true });
+  await rm(fixture.containerRoot ?? fixture.root, { recursive: true, force: true });
 }
 
-function makeSupervisorRetryState(databasePath, { worktree, attempts, completedRetries }) {
+async function makeSupervisorRetryState(fixture, { attempts, completedRetries, databaseName = 'warroom.db' }) {
+  const worktree = fixture.root;
+  const repositoryRoot = fixture.repositoryRoot ?? worktree;
+  const databasePath = databaseName === 'warroom.db'
+    ? path.join(repositoryRoot, 'tools/warroom/.local/warroom.db')
+    : path.join(worktree, databaseName);
+  await mkdir(path.dirname(databasePath), { recursive: true });
   const database = new DatabaseSync(databasePath);
   database.exec(`
     CREATE TABLE batches (id INTEGER PRIMARY KEY, method TEXT, producer TEXT, shard TEXT, batch TEXT,
@@ -437,7 +459,8 @@ test('submission fails closed and writes nothing for uncited, duplicate or unkno
 });
 
 test('Supervisor C technical fallback preserves unaffected submissions and records a distinct empty status', async () => {
-  const fixture = await makeFixture({ unitCount: 3, firstSenseGlosses: ['meaning one', 'meaning two'] });
+  const fixture = await makeFixture({ unitCount: 3, firstSenseGlosses: ['meaning one', 'meaning two'],
+    supervisorWorktree: true });
   try {
     const ids = fixture.records[0].senses.map((sense) => sense.id);
     const view = await readLiteraryChunk({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath,
@@ -463,26 +486,24 @@ test('Supervisor C technical fallback preserves unaffected submissions and recor
     }));
     const before = await loadLiteraryCheckpoint(fixture.checkpointPath, { scratchDirectory: fixture.scratchDirectory });
     const targetBefore = before.checkpoint.records[0].senses[0];
-    const supervisorDatabasePath = makeSupervisorRetryState(path.join(fixture.root, 'warroom.sqlite'), {
-      worktree: fixture.root, attempts: 1, completedRetries: 1,
-    });
+    const supervisorDatabasePath = await makeSupervisorRetryState(fixture, { attempts: 1, completedRetries: 1 });
 
     await assert.rejects(supervisorSkipLiterarySense({ databasePath: fixture.databasePath,
-      checkpointPath: fixture.checkpointPath, submission, diagnostic, supervisorDatabasePath, supervisorBatchId: 1,
+      checkpointPath: fixture.checkpointPath, submission, diagnostic,
       worktree: fixture.root, inputSha256: 'f'.repeat(64),
       scratchDirectory: fixture.scratchDirectory }), /current, source-Sense-local/u);
     await assert.rejects(supervisorSkipLiterarySense({ databasePath: fixture.databasePath,
       checkpointPath: fixture.checkpointPath, submission,
       diagnostic: { ...diagnostic, issues: [...diagnostic.issues, diagnostic.issues[0]] },
-      supervisorDatabasePath, supervisorBatchId: 1, worktree: fixture.root, inputSha256,
+      worktree: fixture.root, inputSha256,
       scratchDirectory: fixture.scratchDirectory }), /one current, source-Sense-local/u);
     await assert.rejects(supervisorSkipLiterarySense({ databasePath: fixture.databasePath,
       checkpointPath: fixture.checkpointPath, submission,
       diagnostic: { ...diagnostic, affected: { ...diagnostic.affected, entry_number: 2 } },
-      supervisorDatabasePath, supervisorBatchId: 1, worktree: fixture.root, inputSha256,
+      worktree: fixture.root, inputSha256,
       scratchDirectory: fixture.scratchDirectory }), /diagnostic does not identify/u);
     await assert.rejects(supervisorSkipLiterarySense({ databasePath: fixture.databasePath,
-      checkpointPath: fixture.checkpointPath, submission, diagnostic, supervisorDatabasePath, supervisorBatchId: 1,
+      checkpointPath: fixture.checkpointPath, submission, diagnostic,
       worktree: fixture.root, inputSha256, scratchDirectory: fixture.scratchDirectory }), /not exhausted/u);
     const supervisorDb = new DatabaseSync(supervisorDatabasePath);
     supervisorDb.prepare('UPDATE kv SET value=? WHERE key=?').run('2', 'c_resubmit_1');
@@ -490,7 +511,7 @@ test('Supervisor C technical fallback preserves unaffected submissions and recor
       .run('c_chunk_resume', 'ses_c', 3);
     supervisorDb.close();
     const result = await supervisorSkipLiterarySense({ databasePath: fixture.databasePath,
-      checkpointPath: fixture.checkpointPath, submission, diagnostic, supervisorDatabasePath, supervisorBatchId: 1,
+      checkpointPath: fixture.checkpointPath, submission, diagnostic,
       worktree: fixture.root, inputSha256,
       scratchDirectory: fixture.scratchDirectory });
     assert.deepEqual([result.status, result.record_id, result.sense_id, result.reason],
@@ -513,7 +534,8 @@ test('Supervisor C technical fallback preserves unaffected submissions and recor
 });
 
 test('real C CLI records one failed Sense as technical skip only after ordinary submit rejects the exact file', async () => {
-  const fixture = await makeFixture({ unitCount: 3, firstSenseGlosses: ['meaning one', 'meaning two'] });
+  const fixture = await makeFixture({ unitCount: 3, firstSenseGlosses: ['meaning one', 'meaning two'],
+    supervisorWorktree: true });
   try {
     const ids = fixture.records[0].senses.map((sense) => sense.id);
     const view = await readLiteraryChunk({ databasePath: fixture.databasePath, checkpointPath: fixture.checkpointPath,
@@ -540,15 +562,16 @@ test('real C CLI records one failed Sense as technical skip only after ordinary 
     assert.equal(diagnostic.affected.sense_id, ids[0]);
     assert.equal(diagnostic.affected.entry_number, 1);
 
-    const supervisorDatabasePath = makeSupervisorRetryState(path.join(fixture.root, 'warroom.sqlite'), {
-      worktree: fixture.root, attempts: 1, completedRetries: 1,
+    const supervisorDatabasePath = await makeSupervisorRetryState(fixture, { attempts: 1, completedRetries: 1 });
+    const forgedDatabasePath = await makeSupervisorRetryState(fixture, {
+      attempts: 2, completedRetries: 2, databaseName: 'forged-warroom.sqlite',
     });
     const forged = runCli(fixture, ['supervisor-skip', '--db', fixture.databasePath, '--checkpoint', fixture.checkpointPath,
       '--input', inputPath, '--retry-attempts', '2']);
     assert.equal(forged.status, 1);
     assert.match(forged.stderr, /unsupported option/u);
     const early = runCli(fixture, ['supervisor-skip', '--db', fixture.databasePath, '--checkpoint', fixture.checkpointPath,
-      '--input', inputPath], { WARROOM_SUPERVISOR_STATE_DB: supervisorDatabasePath, WARROOM_SUPERVISOR_BATCH_ID: '1' });
+      '--input', inputPath], { WARROOM_SUPERVISOR_STATE_DB: forgedDatabasePath, WARROOM_SUPERVISOR_BATCH_ID: '999' });
     assert.equal(early.status, 1);
     assert.match(early.stderr, /"diagnostic":"operation"/u);
     const supervisorDb = new DatabaseSync(supervisorDatabasePath);
@@ -557,7 +580,7 @@ test('real C CLI records one failed Sense as technical skip only after ordinary 
       .run('c_chunk_resume', 'ses_c', 3);
     supervisorDb.close();
     const skipped = runCli(fixture, ['supervisor-skip', '--db', fixture.databasePath, '--checkpoint', fixture.checkpointPath,
-      '--input', inputPath], { WARROOM_SUPERVISOR_STATE_DB: supervisorDatabasePath, WARROOM_SUPERVISOR_BATCH_ID: '1' });
+      '--input', inputPath], { WARROOM_SUPERVISOR_STATE_DB: forgedDatabasePath, WARROOM_SUPERVISOR_BATCH_ID: '999' });
     assert.equal(skipped.status, 0, skipped.stderr);
     const result = JSON.parse(skipped.stdout);
     assert.deepEqual([result.status, result.record_id, result.sense_id, result.retry_attempts],
