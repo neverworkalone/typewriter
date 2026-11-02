@@ -167,7 +167,7 @@ class SerialChunks(unittest.TestCase):
         self.assertEqual(w.active()["chunk_no"], chunk_no)
 
     def test_exact_single_sense_submit_failure_skips_only_that_sense_after_two_resubmits(self):
-        w = CWorld(senses=30)
+        w = CWorld(senses=36)
         self.addCleanup(w.tmp.cleanup)
         w.start("single", "deepseek", "c")
         prior_submissions = {}

@@ -152,7 +152,7 @@ class SerialChunks(unittest.TestCase):
         w.tick()
         self.assertEqual(w.kinds(), ["d_chunk_new", "d_chunk_new"])
         self.assertEqual(w.active()["chunk_no"], 2)
-        self.assertEqual(len(w.adapter.launches), 2)
+        self.assertEqual(len(w.adapter.launches), 3)                 # fallback saves chunk 1 and immediately launches chunk 2
 
     def test_verified_chunk_cleanup_is_scoped_and_the_next_chunk_starts_a_new_session(self):
         w = DWorld(records=50)
@@ -396,28 +396,26 @@ class SaveRejectedFix(unittest.TestCase):
         self.assertTrue(any("record=w0001" in event["msg"] for event in w.store.recent_events()
                             if event["batch_id"] == w.row_()["id"]))
         w.tick(3)
-        self.assertEqual(len(w.adapter.launches), 2)
+        self.assertEqual(len(w.adapter.launches), 3)
         self.assertEqual(w.store.get(dchunk.fix_key(w.row_()["id"], 1)), "1")
 
-    def test_operator_retry_regrants_exactly_one_correction(self):
+    def test_operator_retry_regrants_one_correction_before_the_local_fallback(self):
         w = self.w
         w.start("single", "deepseek", "d")
-        for _ in range(3):
-            w.ai_rejected()
+        w.ai_rejected(session=None)  # without a live session the Supervisor preserves the failure for an operator
         self.run_once()
-        w.finish_last()
-        w.tick()
         self.assertEqual(w.row_()["state"], "ERROR")
+        w.ai_rejected(session="ses_retry")
+        w.ai_rejected(session="ses_retry")
         self.assertTrue(control.retry(w.store, "deepseek", "d"))
-        w.tick(2)                                                        # the Retry resumes the chunk (existing path)
+        w.tick(2)
         w.finish_last()
         w.tick()
-        self.assertEqual(w.kinds()[-1], "d_chunk_fix")                   # ...and a new rejection gets one fresh correction
+        self.assertEqual(w.kinds()[-1], "d_chunk_fix")
         w.finish_last()
         w.tick()
-        self.assertEqual(w.row_()["state"], "ERROR")
-        w.tick(3)
-        self.assertEqual(w.kinds().count("d_chunk_fix"), 2)
+        self.assertEqual((w.row_()["state"], w.active()["chunk_no"]), ("PRODUCING", 2))
+        self.assertEqual(w.store.get(dchunk.fix_key(w.row_()["id"], 1)), "1")
 
     def test_unrepairable_or_stale_diagnostics_start_no_ai(self):
         for label, kw in (("hit-bearing Z", {"scope": "stop_and_report"}), ("stale view", {"stale": True}),
