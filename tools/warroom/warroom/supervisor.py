@@ -2542,8 +2542,19 @@ class Supervisor:
             return problem
         return self._complete_producer_fix_events(b)
 
+    @staticmethod
+    def _merged_owned_pr(b, info) -> bool:
+        """Merge is a fact about the PR, checked before any open-PR gate: a merged PR on this batch's owned branch.
+
+        Its remote branch is normally deleted by the merge, so open-PR checks (remote HEAD, worktree HEAD, exact-HEAD
+        verify) must not apply; CLEANUP separately re-proves merged=true, the Stage 2 merged verify and the worktree."""
+        return (info.get("merged") is True and info.get("state") == "closed"
+                and info.get("head_ref") == b["branch"] and isinstance(info.get("number"), int))
+
     def _stage2_final_pr_problem(self, b, info) -> str | None:
         """Require local checkpoint verification and an independent exact PR-HEAD verification."""
+        if self._merged_owned_pr(b, info):
+            return None
         try:
             reconcile_task = self._stage2_reconcile_task(b)
             if reconcile_task:
@@ -5069,6 +5080,9 @@ class Supervisor:
             return f"source_context 조회 실패: {e}. 전체 checkpoint를 출력하지 말고 필요한 ID만 inspect 하세요."
 
     def _to_review(self, b, info, recovery_note: str | None = None) -> None:
+        if self._merged_owned_pr(b, info):   # already merged: recover through MERGED→CLEANUP, never back to review
+            self._enter_merged(b, info, "기존 소유 PR 재발견:")
+            return
         if b["method"] == STAGE2_METHOD:
             self._record_progress(b)   # the verified final checkpoint may be newer than the last producer poll
             self.store.delete(stage2.run_start_key(b["id"]))
