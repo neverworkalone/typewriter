@@ -397,7 +397,7 @@ def supervisor_skip(store, runner, env, worktree, b, rec: dict) -> dict:
     owner = store.batch(b["id"])
     if (not owner or owner["method"] != "d" or owner["producer"] != b["producer"]
             or owner["shard"] != b["shard"] or owner["batch"] != b["batch"]
-            or Path(owner["worktree"]) != Path(worktree) or owner["session_id"] != b.get("session_id")):
+            or Path(owner["worktree"]) != Path(worktree) or owner["session_id"] != b["session_id"]):
         raise DChunkError("D technical skip requires the active War Room-owned batch")
     fix_attempts = int(store.get(fix_key(b["id"], rec["chunk_no"])) or 0)
     diag = read_rejection(worktree, b, rec)

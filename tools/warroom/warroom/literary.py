@@ -142,7 +142,7 @@ def supervisor_skip(store, runner, env, worktree, b, rec: dict) -> dict:
     owner = store.batch(b["id"])
     if (not owner or owner["method"] != "c" or owner["producer"] != b["producer"]
             or owner["shard"] != b["shard"] or owner["batch"] != b["batch"]
-            or Path(owner["worktree"]) != Path(worktree) or owner["session_id"] != b.get("session_id")):
+            or Path(owner["worktree"]) != Path(worktree) or owner["session_id"] != b["session_id"]):
         raise LiteraryError("C technical skip requires the active War Room-owned batch")
     retry_attempts = int(store.get(resubmit_key(b["id"])) or 0)
     if retry_attempts != MAX_RESUBMITS:
