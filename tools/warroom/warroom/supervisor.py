@@ -3929,9 +3929,12 @@ class Supervisor:
             waited = self.clock() - float(json.loads(raw)["at"])
         except (TypeError, ValueError, KeyError):
             waited = 0
-        note = "PR 생성 여부 미확정 — 운영자 확인 필요(GitHub에서 소유 브랜치로 PR을 만들면 인계됩니다)" \
-            if waited >= self.cfg["pr_head_lag_timeout_seconds"] else "PR 생성 반영 대기(목록 조회만 반복, 재생성 없음)"
-        raise GhTransient(note)
+        if waited >= self.cfg["pr_head_lag_timeout_seconds"]:
+            # Past the head-lag window the owned-branch listing still shows no PR, so the earlier request created none
+            # (a rejected/lost create, #2810): forget the marker and let the next pass ask exactly once more.
+            self.store.delete(key)
+            raise GhTransient("PR 생성 여부 확인 시간 초과 — 소유 브랜치에 PR이 없어 생성 요청을 한 번 다시 보냅니다(복구 대기)")
+        raise GhTransient("PR 생성 반영 대기(목록 조회만 반복, 재생성 없음)")
 
     def _shared_occupied(self, b) -> str | None:
         """Claim at PR-creation time, same key as `_duplicate_claim` and `batches.next_batch`: A/B conflict only with

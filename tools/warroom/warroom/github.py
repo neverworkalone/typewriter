@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 import re
 
-from .shell import Result, Runner, transient
+from .shell import Result, Runner, gh_transient
 
 
 class GhError(Exception):
@@ -12,7 +12,7 @@ class GhError(Exception):
 
 
 class GhTransient(GhError):
-    """The query failed in a way asking again can fix (timeout, 5xx, 429, rate limit, network); nothing was decided."""
+    """The gh call failed on the API/network side (any HTTP status incl. 404/401/403/422, timeout, DNS, TLS); nothing was decided."""
 
 
 class GhClient:
@@ -21,7 +21,7 @@ class GhClient:
 
     @staticmethod
     def _fail(what: str, r: Result) -> GhError:
-        why = transient(r)
+        why = gh_transient(r)
         text = r.err.strip() or r.out.strip()
         return GhTransient(f"{what}: {text or why}") if why else GhError(f"{what}: {text}")
 
@@ -67,7 +67,7 @@ class GhClient:
         """Close without merging; the branch is left alone (deleted separately, after verification)."""
         r = self.runner.run(["gh", "pr", "close", str(n), "--repo", self.repo], env=self.env, timeout=60)
         if not r.ok:
-            raise GhError(f"gh pr close {n}: {r.err.strip() or r.out.strip()}")
+            raise self._fail(f"gh pr close {n}", r)
 
     def _owned_ref(self, head: dict) -> str:
         """The PR's head branch name, but only for a PR whose head lives in THIS repository.
@@ -106,7 +106,7 @@ class GhClient:
         r = self.runner.run(["gh", "issue", "list", "--repo", self.repo, "--label", "urgent", "--state", "all",
                              "--limit", "500", "--json", "number,state,title,body"], env=self.env, timeout=60)
         if not r.ok:
-            raise GhError(f"gh issue list: {r.err.strip()}")
+            raise self._fail("gh issue list", r)
         return [{**i, "state": str(i["state"]).lower()} for i in json.loads(r.out or "[]")]
 
     def all_issues(self) -> list[dict]:
@@ -124,7 +124,7 @@ class GhClient:
             argv += ["--label", label]
         r = self.runner.run(argv, env=self.env, timeout=60)
         if not r.ok:
-            raise GhError(f"gh issue create: {r.err.strip() or r.out.strip()}")
+            raise self._fail("gh issue create", r)
         tail = r.out.strip().rsplit("/", 1)[-1]
         if not tail.isdigit():
             raise GhError(f"gh issue create: Issue 번호를 알 수 없습니다: {r.out.strip()[:200]}")
@@ -134,7 +134,7 @@ class GhClient:
         r = self.runner.run(["gh", "issue", "comment", str(n), "--repo", self.repo, "--body", body],
                             env=self.env, timeout=60)
         if not r.ok:
-            raise GhError(f"gh issue comment: {r.err.strip() or r.out.strip()}")
+            raise self._fail("gh issue comment", r)
 
     def pull_files(self, n: int) -> list[dict]:
         """All files changed by a PR, including closed and merged PRs."""

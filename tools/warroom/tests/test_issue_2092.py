@@ -14,9 +14,9 @@ from tests.test_issue_2034_d import DWorld
 from tests.test_issue_2035 import ABWorld, log_text
 from warroom import control
 from warroom.adapters import classify_failure
-from warroom.github import GhError, GhTransient
+from warroom.github import GhClient, GhError, GhTransient
 from warroom.gitops import Git, GitError, GitTransient
-from warroom.shell import Result, Runner, transient
+from warroom.shell import Result, Runner, gh_transient, transient
 
 BRANCH = "a-deepseek-001-01"
 ENV = {**os.environ, "GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_SYSTEM": "/dev/null"}
@@ -57,6 +57,37 @@ class Classifier(unittest.TestCase):
         for res, want in cases:
             with self.subTest(res.err or res.code):
                 self.assertEqual(transient(res) is not None, want)
+
+    def test_gh_table_retries_every_api_or_network_failure_but_not_local_ones(self):
+        """#2810: any gh API response failure (404 included) retries; a missing binary / usage error is a local bug."""
+        cases = [(Result(1, "", "gh: Not Found (HTTP 404)"), True), (Result(1, "", "gh: Bad credentials (HTTP 401)"), True),
+                 (Result(1, "", "gh: Resource not accessible (HTTP 403)"), True),
+                 (Result(1, "", "gh: Validation Failed (HTTP 422)"), True), (Result(1, "", "HTTP 429"), True),
+                 (Result(1, "", "HTTP 502"), True), (Result(124, "", "timeout: gh"), True),
+                 (Result(1, "", "GraphQL: Could not resolve to a Repository (repository)"), True),
+                 (Result(1, "", "error connecting to api.github.com"), True),
+                 (Result(1, "", "dial tcp: lookup api.github.com: i/o timeout"), True),
+                 (Result(1, "", "tls handshake timeout"), True),
+                 (Result(127, "", "[Errno 2] No such file or directory: 'gh'"), False),
+                 (Result(1, "", "unknown flag: --bogus"), False), (Result(1, "", "accepts 1 arg(s), received 0"), False),
+                 (Result(1, "", ""), False), (Result(0, "ok", ""), False)]
+        for res, want in cases:
+            with self.subTest(res.err or res.code):
+                self.assertEqual(gh_transient(res) is not None, want)
+
+    def test_gh_client_failures_are_transient_unless_local(self):
+        for err, code, exc in [("gh: Not Found (HTTP 404)", 1, GhTransient), ("HTTP 422: Validation Failed", 1, GhTransient),
+                               ("unknown flag: --x", 1, GhError), ("no gh", 127, GhError)]:
+            for call in (lambda c: c.pull(1), lambda c: c.prs_for_branch("b"), lambda c: c.close_pr(1),
+                         lambda c: c.urgent_issues(), lambda c: c.create_issue("t", "b", []),
+                         lambda c: c.comment_issue(1, "x"), lambda c: c.create_pr("h", "m", "t", "b", [])):
+                with self.subTest(err):
+                    class R(Runner):
+                        def run(self, argv, cwd=None, env=None, input=None, timeout=120):
+                            return Result(code, "", err)
+                    with self.assertRaises(exc) as cm:
+                        call(GhClient(R(), {}, "o/r"))
+                    self.assertIs(type(cm.exception), exc)
 
     def test_transient_errors_are_caught_by_their_base_classes(self):
         self.assertTrue(issubclass(GhTransient, GhError) and issubclass(GitTransient, GitError))
@@ -226,10 +257,10 @@ class ExitJudgement(unittest.TestCase):
         self.assertIn("pending 재판정 증거 불일치", w.row()["error"])
         self.assertEqual(len(w.adapter.launches), 1)
 
-    def test_permanent_query_failure_and_real_mismatch_remain_errors(self):
+    def test_local_gh_failure_remains_an_error(self):
         w = self.w
         self.produce()
-        flaky(w.gh, "prs_for_branch", [GhError("gh pr list --head: HTTP 404: Not Found")])
+        flaky(w.gh, "prs_for_branch", [GhError("gh pr list --head: unknown flag: --bogus")])
         w.tick()
         self.assertEqual(w.row()["state"], "ERROR")
 
@@ -344,15 +375,15 @@ class PrCreatedOnce(unittest.TestCase):
         calls = []
         real = w.gh.create_pr
         w.gh.create_pr = lambda *a, **k: (calls.append(1), real(*a, **k))[1]
-        for _ in range(6):                                # far beyond the lag window: still no second request
-            w.now += 2000
+        for _ in range(6):                                # inside the lag window: lookups only, no second request
+            w.now += 200
             w.tick(2)
         self.assertEqual((calls, len(getattr(w.gh, "created_prs", [])), w.row_()["state"]), ([], 0, "PRODUCING"))
         w.sup = w.make_sup()                              # the marker survives a restart
         w.tick(2)
         self.assertEqual(calls, [])
         w.gh._register(b["branch"], "t", "b", ["batch"])  # the operator (or a late listing) shows the owned PR
-        w.now += 2000
+        w.now += 200
         w.tick(2)
         self.assertEqual(w.row_()["state"], "WAITING_REVIEW")
         self.assertEqual(len(w.gh.created_prs), 1)
@@ -377,9 +408,9 @@ class PrCreatedOnce(unittest.TestCase):
         b = self.to_finalize()
         self.assertEqual((b["state"], len(w.gh.created_prs)), ("WAITING_REVIEW", 1))
 
-    def test_definite_rejection_is_an_error_and_clears_the_marker(self):
+    def test_local_cli_failure_is_an_error_and_clears_the_marker(self):
         w = self.w
-        w.gh.create_pr_error = GhError("gh pr create: HTTP 422: Validation Failed: no commits between master and x")
+        w.gh.create_pr_error = GhError("gh pr create: unknown flag: --label")
         b = self.to_finalize()
         self.assertEqual(b["state"], "ERROR")
         self.assertIsNone(w.store.get(f"pr_create_{b['id']}"))
