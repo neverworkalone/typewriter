@@ -171,6 +171,61 @@ async function repositoryFromRows(t, { localSenseIds, externalSenseIds = [], rel
   return root;
 }
 
+async function repositoryForScopedRepair(t) {
+  const root = await mkdtemp(path.join(tmpdir(), 'typewriter-relation-edit-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const outside = { id: 'w1', lemma: '바깥말', senses: [{ id: 'w1-s1', pos: 'noun', gloss: '범위 밖 출발 의미.' }] };
+  const targets = [
+    { id: 'w2', lemma: '가장', senses: [
+      { id: 'w2-s1', pos: 'adverb', gloss: '여럿 가운데 어느 것보다 정도가 높거나 세게.' },
+      { id: 'w2-s2', pos: 'noun', gloss: '한 가정을 이끌어 나가는 사람.' },
+    ] },
+    { id: 'w3', lemma: '가장', senses: [{ id: 'w3-s1', pos: 'noun', gloss: '임시로 장사 지냄. 또는 그 장사.' }] },
+    { id: 'w4', lemma: '가장', senses: [{ id: 'w4-s1', pos: 'noun', gloss: '태도를 거짓으로 꾸밈.' }] },
+  ];
+  const source = { id: 'w600', lemma: '가식적', senses: [
+    { id: 'w600-s1', pos: 'noun', gloss: '말이나 행동 따위를 거짓으로 꾸미는 것.' },
+  ] };
+  const canonical = [outside, ...targets];
+  while (canonical.length < 600) {
+    const serial = 10_000 + canonical.length;
+    canonical.push({ id: `w${serial}`, lemma: `표제${serial}`, senses: [{ id: `w${serial}-s1`, pos: 'noun', gloss: `뜻${serial}.` }] });
+  }
+  canonical.push(source);
+  while (canonical.length < 1000) {
+    const serial = 10_000 + canonical.length;
+    canonical.push({ id: `w${serial}`, lemma: `표제${serial}`, senses: [{ id: `w${serial}-s1`, pos: 'noun', gloss: `뜻${serial}.` }] });
+  }
+  for (const directory of ['data/canonical', 'data/relation-candidates/001', 'data/relations', 'data/relation-drops']) {
+    await mkdir(path.join(root, directory), { recursive: true });
+  }
+  await writeFile(path.join(root, 'data/canonical/stdict-0001.jsonl'), jsonl(canonical));
+  const relations = [
+    { source_record_id: 'w1', source_sense_id: 'w1-s1', text: '가장', type: 'association', relevance: 3 },
+    { source_record_id: 'w600', source_sense_id: 'w600-s1', text: '가장', type: 'near', relevance: 4 },
+    { source_record_id: 'w600', source_sense_id: 'w600-s1', text: '미등록어', type: 'scene', relevance: 2 },
+  ];
+  await writeFile(path.join(root, 'data/relations/relation-001.jsonl'), serializeRelationJsonl(relations));
+  const candidatesBySense = new Map([['w1-s1', ['가장']], ['w600-s1', ['가장', '미등록어']]]);
+  const producers = ['a_codex', 'a_claude', 'b_codex', 'b_claude', 'c_codex', 'd_codex'];
+  for (const batch of ['01', '02']) {
+    const offset = (Number(batch) - 1) * 500;
+    for (const producer of producers) {
+      const batchRows = canonical.slice(offset, offset + 500);
+      const rows = batchRows.map((record) => ({ record_id: record.id,
+        senses: record.senses.map((sense) => ({ sense_id: sense.id,
+          candidates: producer === 'a_codex' ? candidatesBySense.get(sense.id) ?? [] : [] })) }));
+      await writeFile(path.join(root, `data/relation-candidates/001/001_${batch}_${producer}.jsonl`), jsonl(rows));
+    }
+  }
+  git(root, 'init', '-q', '--initial-branch=master');
+  git(root, 'config', 'user.name', 'Typewriter Test');
+  git(root, 'config', 'user.email', 'test@example.invalid');
+  git(root, 'add', 'data');
+  git(root, 'commit', '-qm', 'Scoped Stage 3 baseline');
+  return root;
+}
+
 function textRelation(sourceSenseId, targetSenseId) {
   const sourceRecordId = sourceSenseId.replace(/-s\d+$/u, '');
   const targetRecordId = targetSenseId.replace(/-s\d+$/u, '');
@@ -352,6 +407,78 @@ test('prepare, compact read, exact Link Repair, local orphan Drops, apply, and G
   assert.equal(report.link_repairs[0].after.type, 'scene');
   assert.equal(report.added_drops.length, 2);
   assert.notEqual(beforeRelationBytes, relationText);
+});
+
+test('scoped Link Repair uses the exact Stage 2 Part, checks homographs, and leaves unresolved text-only rows intact', async (t) => {
+  const root = await repositoryForScopedRepair(t);
+  const scope = ['--shard', '001', '--batch', '02', '--part', '02'];
+  const prepared = await quiet(() => run(['prepare', ...scope], { root }));
+  assert.deepEqual(prepared, { shard: '001', batch: '02', part: '02', source_record_count: 100,
+    chunk_count: 1, relation_count: 2, resumed: false });
+
+  const view = await quiet(() => run(['read-chunk', ...scope], { root }));
+  assert.deepEqual(view.senses.map((sense) => sense.source), [{ lemma: '가식적', pos: 'noun', gloss: '말이나 행동 따위를 거짓으로 꾸미는 것.' }]);
+  const homograph = view.senses[0].relations.find((relation) => relation.text === '가장');
+  assert.deepEqual(homograph.targets.map(({ alias, sense_id, gloss }) => [alias, sense_id, gloss]), [
+    ['T1', 'w2-s1', '여럿 가운데 어느 것보다 정도가 높거나 세게.'],
+    ['T2', 'w2-s2', '한 가정을 이끌어 나가는 사람.'],
+    ['T3', 'w3-s1', '임시로 장사 지냄. 또는 그 장사.'],
+    ['T4', 'w4-s1', '태도를 거짓으로 꾸밈.'],
+  ]);
+
+  const input = path.join(root, '.warroom-scratch/scoped-decisions.txt');
+  await mkdir(path.dirname(input), { recursive: true });
+  await writeFile(input, 'chunk 001\nD 2\n');
+  await assert.rejects(quiet(() => run(['save-chunk', ...scope, '--in', input], { root })), /scoped Stage 3 Link Repair does not allow Drops/u);
+  await writeFile(input, 'chunk 001\nL 1 T4\n');
+  await quiet(() => run(['save-chunk', ...scope, '--in', input], { root }));
+  const applied = await quiet(() => run(['apply', ...scope], { root }));
+  assert.equal(applied.repaired, 1);
+  assert.equal(applied.removed, 0);
+
+  const relations = parseRelationJsonl(await readFile(path.join(root, 'data/relations/relation-001.jsonl'), 'utf8'));
+  assert.deepEqual(relations[0], { source_record_id: 'w1', source_sense_id: 'w1-s1', text: '가장', type: 'association', relevance: 3 });
+  assert.deepEqual(relations[1], { source_record_id: 'w600', source_sense_id: 'w600-s1', target_record_id: 'w4',
+    target_sense_id: 'w4-s1', type: 'near', relevance: 4, reverse_type: 'near', reverse_relevance: 4,
+    candidate_assignment_version: 1, candidate_forms: ['가장'], reverse_candidate_forms: [] });
+  assert.equal(relations[2].text, '미등록어', 'a candidate with no Canonical target remains text-only');
+  await assert.rejects(access(path.join(root, 'data/relation-drops/drop-001.jsonl')), { code: 'ENOENT' });
+
+  const resumed = await quiet(() => run(['prepare', ...scope], { root }));
+  assert.equal(resumed.relation_count, 1, 'already repaired rows are excluded from another scoped run');
+  const remaining = await quiet(() => run(['read-chunk', ...scope], { root }));
+  assert.deepEqual(remaining.senses[0].relations.map((relation) => [relation.text, relation.targets.length]), [['미등록어', 0]]);
+  await writeFile(input, 'chunk 001\nnone\n');
+  await quiet(() => run(['save-chunk', ...scope, '--in', input], { root }));
+  const repeated = await quiet(() => run(['apply', ...scope], { root }));
+  assert.equal(repeated.status, 'already-applied');
+  assert.deepEqual(parseRelationJsonl(await readFile(path.join(root, 'data/relations/relation-001.jsonl'), 'utf8')), relations);
+});
+
+test('scoped Link Repair failure preserves its checkpoint and Relation baseline', async (t) => {
+  const root = await repositoryForScopedRepair(t);
+  const scope = ['--shard', '001', '--batch', '02', '--part', '02'];
+  await quiet(() => run(['prepare', ...scope], { root }));
+  const input = path.join(root, '.warroom-scratch/scoped-decisions.txt');
+  await mkdir(path.dirname(input), { recursive: true });
+  await writeFile(input, 'chunk 001\nL 1 T4\n');
+  await quiet(() => run(['save-chunk', ...scope, '--in', input], { root }));
+  const checkpointPath = path.join(root, '.warroom-scratch/relation-edit-001-02-02.json');
+  const checkpointBefore = await readFile(checkpointPath, 'utf8');
+  const relationPath = path.join(root, 'data/relations/relation-001.jsonl');
+  const relationBefore = await readFile(relationPath, 'utf8');
+
+  const canonicalPath = path.join(root, 'data/canonical/stdict-0001.jsonl');
+  const canonical = (await readFile(canonicalPath, 'utf8')).trimEnd().split('\n').map(JSON.parse);
+  canonical.find((record) => record.id === 'w4').senses[0].gloss = '거짓과 무관한 다른 뜻.';
+  await writeFile(canonicalPath, jsonl(canonical));
+  git(root, 'add', canonicalPath);
+  git(root, 'commit', '-qm', 'Change an exact target meaning after review');
+
+  await assert.rejects(quiet(() => run(['apply', ...scope], { root })), /target meanings or same-spelling choices changed after prepare/u);
+  assert.equal(await readFile(checkpointPath, 'utf8'), checkpointBefore);
+  assert.equal(await readFile(relationPath, 'utf8'), relationBefore);
+  await assert.rejects(access(path.join(root, 'data/relation-drops/drop-001.jsonl')), { code: 'ENOENT' });
 });
 
 test('apply deterministically keeps only Link Repairs that do not duplicate the five reported ID pairs', async (t) => {

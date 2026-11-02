@@ -18,6 +18,7 @@ import {
   mergeCandidates,
   normalizeCandidate,
   orphanedCandidateDrops,
+  partScope,
   sameSpellingTargets,
   validateRelationRows,
   verifyAccounting,
@@ -25,8 +26,9 @@ import {
 import { parseDropJsonl, parseRelationJsonl, serializeDropJsonl, serializeRelationJsonl } from './persisted-jsonl.mjs';
 
 const REPOSITORY_DIRECTORY = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const VIEW_DIRECTORY = (shard, root) => path.join(root, '.warroom-scratch', `relation-edit-${shard}`);
-const CHECKPOINT_PATH = (shard, root) => path.join(root, '.warroom-scratch', `relation-edit-${shard}.json`);
+const scopeName = (shard, scope) => scope ? `${shard}-${scope.batch}-${scope.part}` : shard;
+const VIEW_DIRECTORY = (shard, root, scope = null) => path.join(root, '.warroom-scratch', `relation-edit-${scopeName(shard, scope)}`);
+const CHECKPOINT_PATH = (shard, root, scope = null) => path.join(root, '.warroom-scratch', `relation-edit-${scopeName(shard, scope)}.json`);
 const RELATION_PATH = (shard, root) => path.join(root, 'data/relations', `relation-${shard}.jsonl`);
 const DROP_PATH = (shard, root) => path.join(root, 'data/relation-drops', `drop-${shard}.jsonl`);
 const MIN_CHUNK_RELATIONS = 350;
@@ -89,12 +91,15 @@ function idSensePairKey(sourceSenseId, targetSenseId) {
     : `${targetSenseId}\u0000${sourceSenseId}`;
 }
 
-function readCheckpointText(text, shard) {
+function readCheckpointText(text, shard, scope = null) {
   let checkpoint;
   try { checkpoint = JSON.parse(text); } catch (error) { fail(`Stage 3 checkpoint is not valid JSON: ${error.message}`); }
+  const expectedKeys = scope ? 'chunk_total,completed_chunks,decisions,scope,shard,version' : 'chunk_total,completed_chunks,decisions,shard,version';
   if (!checkpoint || Array.isArray(checkpoint) || typeof checkpoint !== 'object'
-      || Object.keys(checkpoint).sort().join(',') !== 'chunk_total,completed_chunks,decisions,shard,version'
+      || Object.keys(checkpoint).sort().join(',') !== expectedKeys
       || checkpoint.version !== 1 || checkpoint.shard !== shard
+      || (scope && (checkpoint.scope?.batch !== scope.batch || checkpoint.scope?.part !== scope.part
+        || Object.keys(checkpoint.scope).sort().join(',') !== 'batch,part'))
       || !Number.isSafeInteger(checkpoint.chunk_total) || checkpoint.chunk_total < 0
       || !Array.isArray(checkpoint.completed_chunks) || !Array.isArray(checkpoint.decisions)) {
     fail(`Stage 3 checkpoint does not match shard ${shard} or the compact v1 contract`);
@@ -124,11 +129,11 @@ function readCheckpointText(text, shard) {
   return checkpoint;
 }
 
-async function loadCheckpoint(shard, root) {
-  const file = CHECKPOINT_PATH(shard, root);
+async function loadCheckpoint(shard, root, scope = null) {
+  const file = CHECKPOINT_PATH(shard, root, scope);
   const state = await readOptional(file);
   if (!state.exists) fail(`Stage 3 is not prepared for shard ${shard}; run prepare first`);
-  return readCheckpointText(state.text, shard);
+  return readCheckpointText(state.text, shard, scope);
 }
 
 async function writeJsonAtomically(file, value) {
@@ -192,9 +197,11 @@ export function chunkSenseGroups(groups, { minimum = MIN_CHUNK_RELATIONS, maximu
   return chunks;
 }
 
-function buildSenseGroups({ canonicalRows, relationRows }) {
+function buildSenseGroups({ canonicalRows, relationRows, scopeSenseIds = null, textOnlyOnly = false }) {
   const bySense = new Map();
   relationRows.forEach((row, index) => {
+    if (scopeSenseIds && !scopeSenseIds.has(row.source_sense_id)) return;
+    if (textOnlyOnly && !('text' in row)) return;
     const entry = bySense.get(row.source_sense_id) ?? [];
     entry.push({ rowIndex: index + 1, row });
     bySense.set(row.source_sense_id, entry);
@@ -346,7 +353,7 @@ export function parsePromptView(text) {
   return view;
 }
 
-async function renderPreparedViews(shard, root) {
+async function renderPreparedViews(shard, root, scope = null) {
   gitHead(root);
   const relationFile = RELATION_PATH(shard, root);
   const dropFile = DROP_PATH(shard, root);
@@ -360,39 +367,47 @@ async function renderPreparedViews(shard, root) {
     'data/canonical', 'data/relation-candidates', 'data/relations', 'data/relation-drops']);
   if (inputStatus.trim()) fail('Stage 3 view refresh requires clean Canonical, Candidate, Relation, and Drop inputs');
   const context = await loadContext(shard, root, { relationText: relationBase.text, dropText: dropBase.text });
-  const groups = buildSenseGroups({ canonicalRows: context.canonicalRows, relationRows: context.ownRelations });
+  const scopeRows = scope
+    ? partScope(context.canonicalRows, context.candidateFiles, scope.batch, scope.part).scopeRows
+    : context.canonicalRows;
+  const scopeSenseIds = scope ? new Set(scopeRows.flatMap((record) => record.senses.map((sense) => sense.id))) : null;
+  const groups = buildSenseGroups({ canonicalRows: context.canonicalRows, relationRows: context.ownRelations,
+    scopeSenseIds, textOnlyOnly: Boolean(scope) });
   const chunks = chunkSenseGroups(groups);
   const views = chunks.map((chunkGroups, index) => renderChunk(chunkGroups, context.index, index + 1, chunks.length));
-  return { context, views };
+  return { context, views, scope_record_count: scopeRows.length };
 }
 
-function chunkFiles(shard, root) {
-  return VIEW_DIRECTORY(shard, root);
+function chunkFiles(shard, root, scope = null) {
+  return VIEW_DIRECTORY(shard, root, scope);
 }
 
-async function prepare(shard, root = REPOSITORY_DIRECTORY) {
+async function prepare(shard, root = REPOSITORY_DIRECTORY, scope = null) {
   assertShard(shard);
-  const checkpointPath = CHECKPOINT_PATH(shard, root);
+  const checkpointPath = CHECKPOINT_PATH(shard, root, scope);
   if (existsSync(checkpointPath)) {
-    const checkpoint = await loadCheckpoint(shard, root);
-    return { shard, chunk_count: checkpoint.chunk_total, completed_chunks: checkpoint.completed_chunks.length, resumed: true };
+    const checkpoint = await loadCheckpoint(shard, root, scope);
+    return { shard, ...(scope ? { batch: scope.batch, part: scope.part } : {}),
+      chunk_count: checkpoint.chunk_total, completed_chunks: checkpoint.completed_chunks.length, resumed: true };
   }
-  const { context, views } = await renderPreparedViews(shard, root);
+  const { views, scope_record_count } = await renderPreparedViews(shard, root, scope);
   const chunks = views;
-  const directory = chunkFiles(shard, root);
+  const directory = chunkFiles(shard, root, scope);
   await rm(directory, { recursive: true, force: true });
   await mkdir(directory, { recursive: true });
   for (const view of views) {
     // The view is derived scratch input; the checkpoint stores only chunk completion and edit decisions.
     await writeFile(path.join(directory, `chunk-${view.chunk}.json`), `${JSON.stringify(view)}\n`, 'utf8');
   }
-  const checkpoint = { version: 1, shard, chunk_total: chunks.length, completed_chunks: [], decisions: [] };
+  const checkpoint = { version: 1, shard, ...(scope ? { scope: { batch: scope.batch, part: scope.part } } : {}),
+    chunk_total: chunks.length, completed_chunks: [], decisions: [] };
   await writeJsonAtomically(checkpointPath, checkpoint);
-  return { shard, chunk_count: chunks.length, relation_count: context.ownRelations.length, resumed: false };
+  return { shard, ...(scope ? { batch: scope.batch, part: scope.part, source_record_count: scope_record_count } : {}),
+    chunk_count: chunks.length, relation_count: views.reduce((sum, view) => sum + view.relation_count, 0), resumed: false };
 }
 
-async function readRawPreparedView(shard, chunk, root) {
-  const file = path.join(chunkFiles(shard, root), `chunk-${chunk}.json`);
+async function readRawPreparedView(shard, chunk, root, scope = null) {
+  const file = path.join(chunkFiles(shard, root, scope), `chunk-${chunk}.json`);
   let view;
   try { view = JSON.parse(await readFile(file, 'utf8')); }
   catch (error) { fail(`Stage 3 prepared chunk ${chunk} is unavailable or invalid: ${error.message}`); }
@@ -400,16 +415,16 @@ async function readRawPreparedView(shard, chunk, root) {
   return view;
 }
 
-async function refreshPendingChunks(shard, root = REPOSITORY_DIRECTORY) {
-  const checkpoint = await loadCheckpoint(shard, root);
-  const { views } = await renderPreparedViews(shard, root);
+async function refreshPendingChunks(shard, root = REPOSITORY_DIRECTORY, scope = null) {
+  const checkpoint = await loadCheckpoint(shard, root, scope);
+  const { views } = await renderPreparedViews(shard, root, scope);
   if (views.length !== checkpoint.chunk_total) {
     fail(`Stage 3 refresh changed shard ${shard} chunk count; completed decisions cannot be rebound safely`);
   }
   const completed = new Set(checkpoint.completed_chunks);
   const prepared = [];
   for (const fresh of views) {
-    const previous = await readRawPreparedView(shard, fresh.chunk, root);
+    const previous = await readRawPreparedView(shard, fresh.chunk, root, scope);
     const same = JSON.stringify(previous) === JSON.stringify(fresh);
     if (completed.has(fresh.chunk) && !same) {
       fail(`Stage 3 completed chunk ${fresh.chunk} inputs changed after save; checkpoint is preserved`);
@@ -419,12 +434,13 @@ async function refreshPendingChunks(shard, root = REPOSITORY_DIRECTORY) {
   const pending = prepared.filter((entry) => !entry.isCompleted);
   for (const entry of pending) {
     if (!entry.same) {
-      await writeJsonAtomically(path.join(chunkFiles(shard, root), `chunk-${entry.fresh.chunk}.json`), entry.fresh);
+      await writeJsonAtomically(path.join(chunkFiles(shard, root, scope), `chunk-${entry.fresh.chunk}.json`), entry.fresh);
     }
   }
   const active = pending[0];
   return {
     shard,
+    ...(scope ? { batch: scope.batch, part: scope.part } : {}),
     chunk_count: views.length,
     current_chunk: active?.fresh.chunk ?? null,
     active_changed: Boolean(active && !active.same),
@@ -433,13 +449,13 @@ async function refreshPendingChunks(shard, root = REPOSITORY_DIRECTORY) {
   };
 }
 
-async function readNextChunk(shard, root = REPOSITORY_DIRECTORY) {
-  const checkpoint = await loadCheckpoint(shard, root);
+async function readNextChunk(shard, root = REPOSITORY_DIRECTORY, scope = null) {
+  const checkpoint = await loadCheckpoint(shard, root, scope);
   if (checkpoint.completed_chunks.length === checkpoint.chunk_total) return { shard, complete: true, remaining_chunks: 0 };
   for (let number = 1; number <= checkpoint.chunk_total; number += 1) {
     const chunk = String(number).padStart(3, '0');
     if (checkpoint.completed_chunks.includes(chunk)) continue;
-    const file = path.join(chunkFiles(shard, root), `chunk-${chunk}.json`);
+    const file = path.join(chunkFiles(shard, root, scope), `chunk-${chunk}.json`);
     const data = await readFile(file, 'utf8');
     let view;
     try { view = JSON.parse(data); } catch (error) { fail(`Stage 3 chunk ${chunk} is invalid JSON: ${error.message}`); }
@@ -468,6 +484,7 @@ function parseDecisionText(text, view, checkpoint) {
     const drop = /^D\s+(\d+(?:\s+\d+)*)$/u.exec(line);
     const repair = /^L\s+(\d+)\s+T(\d+)$/u.exec(line);
     if (drop) {
+      if (checkpoint.scope) fail('scoped Stage 3 Link Repair does not allow Drops');
       for (const rawNumber of drop[1].split(/\s+/u)) {
         const number = Number(rawNumber);
         const relation = byNumber.get(number);
@@ -495,12 +512,12 @@ function parseDecisionText(text, view, checkpoint) {
   return decisions;
 }
 
-async function rawNextChunk(shard, root, checkpoint) {
+async function rawNextChunk(shard, root, checkpoint, scope = null) {
   if (checkpoint.completed_chunks.length === checkpoint.chunk_total) return null;
   for (let number = 1; number <= checkpoint.chunk_total; number += 1) {
     const chunk = String(number).padStart(3, '0');
     if (checkpoint.completed_chunks.includes(chunk)) continue;
-    const file = path.join(chunkFiles(shard, root), `chunk-${chunk}.json`);
+    const file = path.join(chunkFiles(shard, root, scope), `chunk-${chunk}.json`);
     let view;
     try { view = JSON.parse(await readFile(file, 'utf8')); }
     catch (error) { fail(`Stage 3 chunk ${chunk} is unavailable or invalid: ${error.message}`); }
@@ -525,11 +542,11 @@ function preparedRowsByNumber(view, chunk) {
   return rows;
 }
 
-async function validatePreparedDecisions(shard, root, decisions, currentRelations, index) {
+async function validatePreparedDecisions(shard, root, decisions, currentRelations, index, scope = null) {
   const rowsByChunk = new Map();
   for (const decision of decisions) {
     if (!rowsByChunk.has(decision.chunk)) {
-      const file = path.join(chunkFiles(shard, root), `chunk-${decision.chunk}.json`);
+      const file = path.join(chunkFiles(shard, root, scope), `chunk-${decision.chunk}.json`);
       let view;
       try { view = JSON.parse(await readFile(file, 'utf8')); }
       catch (error) { fail(`prepared Stage 3 chunk ${decision.chunk} is unavailable or invalid: ${error.message}`); }
@@ -570,16 +587,16 @@ async function validatePreparedDecisions(shard, root, decisions, currentRelation
   }
 }
 
-async function saveChunk(shard, inputPath, root = REPOSITORY_DIRECTORY) {
-  const checkpoint = await loadCheckpoint(shard, root);
-  const view = await rawNextChunk(shard, root, checkpoint);
+async function saveChunk(shard, inputPath, root = REPOSITORY_DIRECTORY, scope = null) {
+  const checkpoint = await loadCheckpoint(shard, root, scope);
+  const view = await rawNextChunk(shard, root, checkpoint, scope);
   if (!view) fail('all Stage 3 chunks are already saved');
   const input = path.isAbsolute(inputPath) ? inputPath : path.resolve(root, inputPath);
   const decisions = parseDecisionText(await readFile(input, 'utf8'), view, checkpoint);
   const completed = [...checkpoint.completed_chunks, view.chunk].sort();
   const next = { ...checkpoint, completed_chunks: completed, decisions: [...checkpoint.decisions, ...decisions] };
-  await writeJsonAtomically(CHECKPOINT_PATH(shard, root), next);
-  return { shard, chunk: view.chunk, completed_chunks: completed.length, total_chunks: next.chunk_total,
+  await writeJsonAtomically(CHECKPOINT_PATH(shard, root, scope), next);
+  return { shard, ...(scope ? { batch: scope.batch, part: scope.part } : {}), chunk: view.chunk, completed_chunks: completed.length, total_chunks: next.chunk_total,
     dropped: decisions.filter((decision) => decision.action === 'drop').length,
     repaired: decisions.filter((decision) => decision.action === 'repair').length,
     kept: view.relation_count - decisions.length };
@@ -639,8 +656,8 @@ async function writeFilesAtomically(changes) {
   await Promise.all(backups.map((item) => rm(item.backup, { force: true })));
 }
 
-async function applyEdits(shard, root = REPOSITORY_DIRECTORY) {
-  const checkpoint = await loadCheckpoint(shard, root);
+async function applyEdits(shard, root = REPOSITORY_DIRECTORY, scope = null) {
+  const checkpoint = await loadCheckpoint(shard, root, scope);
   if (checkpoint.completed_chunks.length !== checkpoint.chunk_total) {
     fail(`Stage 3 has ${checkpoint.completed_chunks.length}/${checkpoint.chunk_total} completed chunks`);
   }
@@ -652,6 +669,10 @@ async function applyEdits(shard, root = REPOSITORY_DIRECTORY) {
   const dropLines = jsonlLines(dropBase.text, path.basename(dropFile));
   const beforeRelations = context.ownRelations;
   const beforeDrops = context.ownDrops;
+  const scopedSenseIds = scope
+    ? new Set(partScope(context.canonicalRows, context.candidateFiles, scope.batch, scope.part)
+      .scopeRows.flatMap((record) => record.senses.map((sense) => sense.id)))
+    : null;
   if (relationLines.length !== beforeRelations.length || dropLines.length !== beforeDrops.length) {
     fail('Git baseline JSONL lines do not match the parsed Stage 3 inputs');
   }
@@ -660,6 +681,9 @@ async function applyEdits(shard, root = REPOSITORY_DIRECTORY) {
   for (const decision of checkpoint.decisions) {
     const original = beforeRelations[decision.row - 1];
     if (!original) fail(`saved decision refers to missing Relation row ${decision.row}`);
+    if (scope && (decision.action !== 'repair' || !scopedSenseIds.has(original.source_sense_id))) {
+      fail(`scoped Stage 3 Link Repair decision is outside ${scope.batch}/${scope.part} or is not a Link Repair`);
+    }
     if (decision.action === 'repair') {
       if (!('text' in original)) fail(`saved Link Repair row ${decision.row} is no longer text-only`);
       const targets = sameSpellingTargets(context.index, original.text).flatMap((record) => record.senses.map((sense) => ({
@@ -801,23 +825,23 @@ async function applyEdits(shard, root = REPOSITORY_DIRECTORY) {
   const dropCurrent = await readOptional(dropFile);
   const currentIsDesired = sameFileState(relationCurrent, relationNext) && sameFileState(dropCurrent, dropNext);
   if (currentIsDesired) {
-    await rm(chunkFiles(shard, root), { recursive: true, force: true });
-    await rm(CHECKPOINT_PATH(shard, root), { force: true });
-    return { shard, status: 'already-applied', removed: dropRows.length,
+    await rm(chunkFiles(shard, root, scope), { recursive: true, force: true });
+    await rm(CHECKPOINT_PATH(shard, root, scope), { force: true });
+    return { shard, ...(scope ? { batch: scope.batch, part: scope.part } : {}), status: 'already-applied', removed: dropRows.length,
       repaired: repairedRows.size, repair_conflicts: repairConflicts, edit_drops_added: newDrops.length };
   }
   const currentIsBase = sameFileState(relationCurrent, relationBase) && sameFileState(dropCurrent, dropBase);
   if (!currentIsBase) fail(`shard ${shard} Relation/Drop files changed from both the Git baseline and this apply result; no files were written`);
-  await validatePreparedDecisions(shard, root, checkpoint.decisions, beforeRelations, context.index);
+  await validatePreparedDecisions(shard, root, checkpoint.decisions, beforeRelations, context.index, scope);
   if (!sameFileState(relationNext, relationBase) || !sameFileState(dropNext, dropBase)) {
     await writeFilesAtomically([
       { file: relationFile, current: relationCurrent, next: relationNext },
       { file: dropFile, current: dropCurrent, next: dropNext },
     ]);
   }
-  await rm(chunkFiles(shard, root), { recursive: true, force: true });
-  await rm(CHECKPOINT_PATH(shard, root), { force: true });
-  return { shard, status: 'applied', removed: dropRows.length, repaired: repairedRows.size,
+  await rm(chunkFiles(shard, root, scope), { recursive: true, force: true });
+  await rm(CHECKPOINT_PATH(shard, root, scope), { force: true });
+  return { shard, ...(scope ? { batch: scope.batch, part: scope.part } : {}), status: 'applied', removed: dropRows.length, repaired: repairedRows.size,
     repair_conflicts: repairConflicts, edit_drops_added: newDrops.length,
     relation_count: afterOwnRows.length, drop_count: afterOwnDrops.length };
 }
@@ -919,30 +943,42 @@ async function reportEdits(shard, root = REPOSITORY_DIRECTORY) {
 
 const USAGE = `Usage:
   node scripts/relation/edit-cli.mjs prepare --shard SSS
+  node scripts/relation/edit-cli.mjs prepare --shard SSS --batch BB --part PP  # scoped text-only Link Repair
   node scripts/relation/edit-cli.mjs read-chunk --shard SSS [--out <file>]
+  node scripts/relation/edit-cli.mjs read-chunk --shard SSS --batch BB --part PP
   node scripts/relation/edit-cli.mjs refresh-pending --shard SSS
   node scripts/relation/edit-cli.mjs save-chunk --shard SSS --in <decisions.txt>
+  node scripts/relation/edit-cli.mjs save-chunk --shard SSS --batch BB --part PP --in <decisions.txt>
   node scripts/relation/edit-cli.mjs apply --shard SSS
+  node scripts/relation/edit-cli.mjs apply --shard SSS --batch BB --part PP
   node scripts/relation/edit-cli.mjs report --shard SSS [--out <file>]`;
 
 function parseArgs(argv) {
   const command = argv[0];
   if (command === '--help' || command === '-h') return { command: 'help' };
   if (!['prepare', 'read-chunk', 'refresh-pending', 'save-chunk', 'apply', 'report'].includes(command)) fail(USAGE);
-  const options = { command, shard: null, input: null, output: null };
+  const options = { command, shard: null, batch: null, part: null, input: null, output: null };
   for (let index = 1; index < argv.length; index += 1) {
     const flag = argv[index];
     const value = argv[index + 1];
-    if (!['--shard', '--in', '--out'].includes(flag) || !value || value.startsWith('--')) fail(`invalid arguments\n${USAGE}`);
+    if (!['--shard', '--batch', '--part', '--in', '--out'].includes(flag) || !value || value.startsWith('--')) fail(`invalid arguments\n${USAGE}`);
     index += 1;
-    const key = flag === '--shard' ? 'shard' : flag === '--in' ? 'input' : 'output';
+    const key = flag === '--shard' ? 'shard' : flag === '--batch' ? 'batch' : flag === '--part' ? 'part' : flag === '--in' ? 'input' : 'output';
     if (options[key] !== null) fail(`${flag} may be supplied only once`);
     options[key] = value;
   }
   assertShard(options.shard);
+  if ((options.batch === null) !== (options.part === null)) fail(`--batch and --part must be supplied together\n${USAGE}`);
+  if (options.batch !== null && (!['01', '02'].includes(options.batch) || !['01', '02', '03', '04', '05'].includes(options.part))) {
+    fail(`--batch must be 01 or 02 and --part must be 01..05\n${USAGE}`);
+  }
+  if (options.batch !== null && !['prepare', 'read-chunk', 'refresh-pending', 'save-chunk', 'apply'].includes(command)) {
+    fail(`--batch/--part are only valid for scoped Stage 3 Link Repair commands\n${USAGE}`);
+  }
   if (command === 'save-chunk' && !options.input) fail(`save-chunk requires --in\n${USAGE}`);
   if (command !== 'save-chunk' && options.input) fail(`--in is only valid for save-chunk\n${USAGE}`);
   if (!['read-chunk', 'report'].includes(command) && options.output) fail(`--out is only valid for read-chunk/report\n${USAGE}`);
+  options.scope = options.batch === null ? null : { batch: options.batch, part: options.part };
   return options;
 }
 
@@ -959,11 +995,11 @@ export async function run(argv, { root = REPOSITORY_DIRECTORY } = {}) {
     return { usage: USAGE };
   }
   let result;
-  if (options.command === 'prepare') result = await prepare(options.shard, root);
-  else if (options.command === 'read-chunk') result = await readNextChunk(options.shard, root);
-  else if (options.command === 'refresh-pending') result = await refreshPendingChunks(options.shard, root);
-  else if (options.command === 'save-chunk') result = await saveChunk(options.shard, options.input, root);
-  else if (options.command === 'apply') result = await applyEdits(options.shard, root);
+  if (options.command === 'prepare') result = await prepare(options.shard, root, options.scope);
+  else if (options.command === 'read-chunk') result = await readNextChunk(options.shard, root, options.scope);
+  else if (options.command === 'refresh-pending') result = await refreshPendingChunks(options.shard, root, options.scope);
+  else if (options.command === 'save-chunk') result = await saveChunk(options.shard, options.input, root, options.scope);
+  else if (options.command === 'apply') result = await applyEdits(options.shard, root, options.scope);
   else result = await reportEdits(options.shard, root);
   const serialized = `${JSON.stringify(result, null, 2)}\n`;
   if (options.output) await writeOutput(options.output, serialized, root);
