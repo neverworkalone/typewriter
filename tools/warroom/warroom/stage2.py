@@ -265,7 +265,8 @@ def write_pages(worktree, view: str, pages: list[str]) -> list[str]:
 
 
 DECISIONS = ".warroom-scratch/decisions.txt"
-MAX_FIXES = 2   # AI correction runs per fresh `s2_chunk_new` session
+MAX_FIXES = 2   # existing optional-link correction runs
+MAX_CANDIDATE_RETRIES = 1   # one persisted correction run for one source-bound primary candidate
 MAX_REPAIR_ROUNDS = 4
 REPAIR_GROUPS_PER_RUN = 8
 REPAIR_ATTEMPTS_PER_PAGE = 2
@@ -274,6 +275,11 @@ _ROW_START = re.compile(r"c\d+(?:\s|$)")
 _RELATION_TYPES = r"near|mood|scene|sensory|action|association"
 _DECISION_ROW_PATTERN = rf"(?P<alias>c\d+)[ \t]+(?:R[ \t]+(?:{_RELATION_TYPES})\b|D[ \t]+\S)"
 _DECISION_ROW = re.compile(rf"^{_DECISION_ROW_PATTERN}$")
+_HEADERLESS_FIX_ROW = re.compile(
+    rf"^c\d+[ \t]+(?:R[ \t]+(?:{_RELATION_TYPES})[ \t]+[1-9]"
+    r"(?:[ \t]+(?:T\d+(?:[ \t]+(?:near|mood|scene|sensory|action|association)[ \t]+[1-9])?"
+    r"|none[ \t]+T\d+(?:,T\d+)*))?|D[ \t]+[xe])$"
+)
 _JOINED_DECISION_ROW = re.compile(rf"[ \t]+{_DECISION_ROW_PATTERN}")
 _ERROR_ALIAS = re.compile(r"^(c\d+)\b", re.M)
 _FENCE = re.compile(r"^\s*```")
@@ -620,6 +626,49 @@ def write_decisions(worktree, chunk_id: str, rows: list[str]) -> None:
     tmp.replace(path)
 
 
+def headerless_fix_row(final_text: str | None, expected_alias: str) -> str | None:
+    """A single final compact row for one known failed alias, with only the current chunk header omitted."""
+    if not isinstance(final_text, str) or not re.fullmatch(r"c\d+", expected_alias):
+        return None
+    rows = [line.strip() for line in final_text.replace("\r\n", "\n").split("\n") if line.strip()]
+    if len(rows) != 1 or not _HEADERLESS_FIX_ROW.fullmatch(rows[0]):
+        return None
+    return rows[0] if rows[0].split(None, 1)[0] == expected_alias else None
+
+
+def candidate_binding_from_view(worktree, chunk_id: str, alias: str, expected_sha256: str) -> dict | None:
+    """Bind one alias to its source record/sense and candidate from the exact saved compact view."""
+    if not re.fullmatch(r"c\d+", alias) or not re.fullmatch(r"[a-f0-9]{64}", expected_sha256):
+        return None
+    try:
+        raw = (Path(worktree) / CHUNK_VIEW).read_bytes()
+    except OSError:
+        return None
+    if hashlib.sha256(raw).hexdigest() != expected_sha256:
+        return None
+    try:
+        lines = raw.decode("utf-8").splitlines()
+    except UnicodeDecodeError:
+        return None
+    if not lines or not lines[0].startswith(f"# Stage 2 chunk {chunk_id} · "):
+        return None
+    source_record_id = source_sense_id = None
+    matches = []
+    for line in lines[1:]:
+        fields = line.split("\t")
+        if fields[0] == "S":
+            if len(fields) < 6:
+                source_record_id = source_sense_id = None
+                continue
+            source_sense_id, source_record_id = fields[1], fields[2]
+        elif fields[0] == alias:
+            if len(fields) != 4 or not source_record_id or not source_sense_id:
+                return None
+            matches.append({"alias": alias, "record_id": source_record_id,
+                            "sense_id": source_sense_id, "candidate": fields[1]})
+    return matches[0] if len(matches) == 1 else None
+
+
 def clear_decisions(worktree) -> None:
     (Path(worktree) / DECISIONS).unlink(missing_ok=True)
 
@@ -638,6 +687,33 @@ def alias_of(row: str) -> str:
 def error_aliases(diagnostic: str) -> list[str]:
     """The `c<n>` aliases a save-chunk rejection names (errors and missing rows), in order of first mention."""
     return list(dict.fromkeys(_ERROR_ALIAS.findall(diagnostic)))
+
+
+def single_candidate_failure_alias(diagnostic: str, chunk_id: str, candidate: dict | None = None) -> str | None:
+    """Return one alias only for the official save-chunk's complete, candidate-local rejection shape."""
+    if not isinstance(diagnostic, str):
+        return None
+    lines = diagnostic.splitlines()
+    prefix = f"chunk {chunk_id} not saved, checkpoint unchanged: "
+    suffix = " problem(s)"
+    if not lines or not lines[0].startswith(prefix) or not lines[0].endswith(suffix):
+        return None
+    try:
+        problem_count = int(lines[0][len(prefix):-len(suffix)])
+    except ValueError:
+        return None
+    problem_lines = [line.strip() for line in lines[1:] if line.strip() and not line.strip().startswith("types:")]
+    if problem_count != len(problem_lines) or not problem_lines:
+        return None
+    aliases = [_ERROR_ALIAS.match(line).group(1) if _ERROR_ALIAS.match(line) else None for line in problem_lines]
+    if any(alias is None for alias in aliases) or len(set(aliases)) != 1:
+        return None
+    alias = aliases[0]
+    if candidate is not None:
+        if candidate.get("alias") != alias or not isinstance(candidate.get("candidate"), str) \
+                or not any(line.startswith(f"{alias} {candidate['candidate']}:") for line in problem_lines):
+            return None
+    return alias
 
 
 def joined_decision_rows_problem(rows: list[str]) -> str | None:
@@ -735,9 +811,9 @@ def fixes_used(runs, new_kind: str, fix_kinds: tuple[str, ...]) -> int:
     return n
 
 
-def retry_fix_key(batch_id: int) -> str:
-    """The one-use explicit owner Retry allowance for a Stage 2 chunk and its recorded session."""
-    return f"s2_chunk_retry_fix_{batch_id}"
+def correction_key(batch_id: int) -> str:
+    """One automatic correction reservation per persisted pending chunk, across restarts and owner Retry."""
+    return f"s2_chunk_correction_{batch_id}"
 
 
 def run_start_key(batch_id: int) -> str:

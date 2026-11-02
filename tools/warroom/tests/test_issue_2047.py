@@ -1,5 +1,4 @@
-"""Issue #2047: a Stage 2 chunk run is answer-only; the Supervisor stores the decisions, runs save-chunk and
-corrects only the rejected rows in the same session (at most twice)."""
+"""Stage 2 answer-only behavior and its candidate-bound, one-correction recovery contract."""
 import json
 import tempfile
 import unittest
@@ -63,19 +62,12 @@ class AnswerOnlyChunk(unittest.TestCase):
                 self.assertFalse((Path(b["worktree"]) / stage2.DECISIONS).exists())
                 self.assertEqual(len(w.adapter.launches), 1)
 
-    def test_nonzero_exit_with_a_structural_but_malformed_current_answer_uses_same_session_format_fix(self):
+    def test_nonzero_exit_with_a_malformed_multi_candidate_answer_fails_closed(self):
         malformed = f"chunk {CHUNK} c1 R near 1 c2 R near 3"
-        w, b = self.world({"code": 2, "session": "s1", "text": answer(malformed)},
-                          {"code": 0, "session": "s1", "text": answer(GOOD)})
+        w, b = self.world({"code": 2, "session": "s1", "text": answer(malformed)})
         b = self.finish(w, b, 1)
-        fix = w.adapter.launches[-1]
-        self.assertEqual((b["run_kind"], fix["kind"], fix["session"]),
-                         ("s2_chunk_format_fix", "resume", "s1"))
-        self.assertIn("현재 청크 전체", fix["prompt"])
-        self.assertNotIn("c1 R near 1 c2 R near 3", fix["prompt"])
-        b = self.finish(w, b, 1)
-        self.assertEqual((self.decisions(b), b["run_kind"]), (GOOD + "\n", "s2_deterministic_finalize"))
-        self.assertEqual(len(w.git.save_calls), 1)
+        self.assertEqual((b["state"], len(w.adapter.launches), w.git.save_calls), ("ERROR", 1, []))
+        self.assertIn("후보 하나", b["error"])
 
     def test_nonzero_exit_format_fix_is_blocked_by_auth_usage_and_run_pin_failures(self):
         malformed = f"chunk {CHUNK} c1 R near 1 c2 R near 3"
@@ -89,27 +81,21 @@ class AnswerOnlyChunk(unittest.TestCase):
                 b = self.finish(w, b, 1)
                 self.assertEqual((b["state"], len(w.adapter.launches), w.git.save_calls), ("PAUSED" if name != "pin" else "ERROR", 1, []))
 
-    def test_partial_fix_with_bad_format_rechecks_aliases_and_preserves_good_rows(self):
+    def test_malformed_candidate_fix_preserves_good_rows_without_a_second_ai_correction(self):
         w, b = self.world(
             {"code": 0, "session": "s1", "text": answer(f"chunk {CHUNK}\nc1 D first")},
-            {"code": 0, "session": "s1", "text": answer(f"chunk {CHUNK} c2 D second")},
-            {"code": 0, "session": "s1", "text": answer(GOOD)})
+            {"code": 0, "session": "s1", "text": answer(f"chunk {CHUNK} c2 D second")})
         b = self.finish(w, b, 1)
         first_fix = w.adapter.launches[-1]
         self.assertEqual((b["run_kind"], first_fix["kind"]), ("s2_chunk_fix", "resume"))
-        b = self.finish(w, b, 1)
-        second_fix = w.adapter.launches[-1]
-        self.assertEqual((b["run_kind"], second_fix["kind"], second_fix["session"]),
-                         ("s2_chunk_fix", "resume", "s1"))
-        self.assertIn("c2", second_fix["prompt"])
-        self.assertIn("출력 형식이 잘못", second_fix["prompt"])
+        b = self.finish(w, b)
+        self.assertEqual((b["state"], len(w.adapter.launches)), ("ERROR", 2))
+        self.assertIn("Retry 1회", b["error"])
         self.assertEqual(self.decisions(b), f"chunk {CHUNK}\nc1 D first\n")
-        b = self.finish(w, b, 1)
-        self.assertEqual((self.decisions(b), b["run_kind"]), (GOOD + "\n", "s2_deterministic_finalize"))
         self.assertEqual(stage2.fixes_used(w.store.runs(b["id"]), "s2_chunk_new",
-                                           ("s2_chunk_fix", "s2_chunk_format_fix")), 2)
+                                           ("s2_chunk_fix", "s2_chunk_format_fix")), 1)
 
-    def test_usage_limit_retry_revalidates_current_rows_and_fixes_only_rejected_aliases(self):
+    def test_usage_limit_during_the_single_candidate_fix_does_not_grant_a_second_attempt(self):
         quota = json.dumps({"type": "result", "subtype": "error_during_execution", "is_error": True,
                             "api_error": "usage_limit_reached", "api_error_status": 429, "session_id": "s1",
                             "usage": {"input_tokens": 0, "output_tokens": 0}, "result": ""}) + "\n"
@@ -129,14 +115,10 @@ class AnswerOnlyChunk(unittest.TestCase):
             self.assertTrue(control.retry(w.store, "claude", S2))
             w.tick(2)
             clear.assert_not_called()
-        fix = w.adapter.launches[-1]
-        self.assertEqual((w.store.batch(b["id"])["run_kind"], fix["kind"], fix.get("session")),
-                         ("s2_chunk_fix", "resume", "s1"))
-        self.assertIn("c2", fix["prompt"])
-        self.assertNotIn("c1 D first", fix["prompt"])
-        self.assertEqual(self.decisions(w.store.batch(b["id"])), f"chunk {CHUNK}\nc1 D first\n")
-        b = self.finish(w, b)
-        self.assertEqual((self.decisions(b), b["run_kind"]), (GOOD + "\n", "s2_deterministic_finalize"))
+        b = w.store.batch(b["id"])
+        self.assertEqual((b["state"], len(w.adapter.launches)), ("ERROR", 2))
+        self.assertIn("Retry 1회", b["error"])
+        self.assertEqual(self.decisions(b), f"chunk {CHUNK}\nc1 D first\n")
 
     def test_current_decisions_without_session_stop_and_preserve_on_retry(self):
         w, b = self.world()
@@ -150,7 +132,7 @@ class AnswerOnlyChunk(unittest.TestCase):
         w.tick(2)
         b = w.store.batch(b["id"])
         self.assertEqual((b["state"], len(w.adapter.launches), self.decisions(b)), ("ERROR", 1, before))
-        self.assertIn("새 전체 재판정은 하지 않습니다", b["error"])
+        self.assertIn("연결된 기존 Stage 2 세션이 없어", b["error"])
 
     def test_failed_same_session_resume_with_current_decisions_does_not_start_a_fresh_session(self):
         w, b = self.world({"code": 0, "session": "s1", "text": answer(f"chunk {CHUNK}\nc1 D keep")},
@@ -189,7 +171,7 @@ class AnswerOnlyChunk(unittest.TestCase):
                                  ("ERROR", 1, []))
                 self.assertEqual(path.read_text("utf-8"), contents)
 
-    def test_rejection_resumes_the_same_session_for_only_the_reported_rows(self):
+    def test_candidate_fix_with_an_extra_alias_row_fails_closed_and_preserves_prior_rows(self):
         w, b = self.world(
             {"code": 0, "session": "s1", "text": answer(f"chunk {CHUNK}\nc1 D first")},
             {"code": 0, "session": "s1", "text": answer(f"chunk {CHUNK}\nc2 D second\nc1 D REPLACED")})
@@ -201,68 +183,47 @@ class AnswerOnlyChunk(unittest.TestCase):
         self.assertIn("c2", fix["prompt"])
         self.assertNotIn("<<<CHUNK_VIEW_BEGIN>>>", fix["prompt"])
         self.assertEqual(len(w.git.chunk_views), views)                       # no new prepare / view / cursor
-        self.assertEqual(self.decisions(b), f"chunk {CHUNK}\nc1 D first\n")   # incomplete answer is kept
         b = self.finish(w, b)
-        self.assertEqual(self.decisions(b), f"chunk {CHUNK}\nc1 D first\nc2 D second\n")   # c1 unchanged, extra row ignored
-        self.assertEqual(b["run_kind"], "s2_deterministic_finalize")
-        self.assertEqual(self.failures(w, b)[:2], [1, 0])
+        self.assertEqual((b["state"], len(w.adapter.launches)), ("ERROR", 2))
+        self.assertIn("실패한 후보 하나의 행", b["error"])
+        self.assertEqual(self.decisions(b), f"chunk {CHUNK}\nc1 D first\n")
+        self.assertEqual(w.git.technical_fallback_calls, [])
 
-    def test_out_of_range_alias_rows_are_removed_and_do_not_block_the_chunk(self):
+    def test_out_of_range_alias_rows_are_preserved_and_block_automatic_recovery(self):
         w, b = self.world({"code": 0, "session": "s1", "text": answer(f"chunk {CHUNK}\nc1 D first\nc2 D second\nc3 D extra")})
         b = self.finish(w, b)
-        self.assertEqual(self.decisions(b), GOOD + "\n")
-        self.assertEqual((len(w.git.save_calls), b["run_kind"]), (2, "s2_deterministic_finalize"))   # no fix run was needed
+        self.assertEqual((b["state"], len(w.adapter.launches)), ("ERROR", 1))
+        self.assertIn("한 개의 현재 청크 후보", b["error"])
+        self.assertEqual(self.decisions(b), f"{GOOD}\nc3 D extra\n")
         w, b = self.world({"code": 0, "session": "s1", "text": answer(f"chunk {CHUNK}\nc1 D first\nc3 D extra")},
                           {"code": 0, "session": "s1", "text": answer(f"chunk {CHUNK}\nc2 D second")})
-        b = self.finish(w, b, 1)
-        self.assertEqual(self.decisions(b), f"chunk {CHUNK}\nc1 D first\n")   # c3 gone, c1 kept, only c2 to fix
         b = self.finish(w, b)
-        self.assertEqual((self.decisions(b), b["run_kind"]), (GOOD + "\n", "s2_deterministic_finalize"))
+        self.assertEqual((b["state"], len(w.adapter.launches)), ("ERROR", 1))
+        self.assertEqual(self.decisions(b), f"chunk {CHUNK}\nc1 D first\nc3 D extra\n")
 
-    def test_two_failed_corrections_then_owner_retry_preserves_rows_and_grants_one_same_session_fix(self):
+    def test_one_failed_candidate_correction_uses_only_its_technical_fallback(self):
         bad = answer(f"chunk {CHUNK}\nc1 D first\nc2 R x BAD")
-        w, b = self.world({"code": 0, "session": "s1", "text": bad}, {"code": 0, "session": "s1", "text": bad},
-                          {"code": 0, "session": "s1", "text": bad}, {"code": 0, "session": "s1", "text": answer(GOOD)})
+        w, b = self.world({"code": 0, "session": "s1", "text": bad},
+                          {"code": 0, "session": "s1", "text": answer(f"chunk {CHUNK}\nc2 R near 1 BAD")})
         b = self.finish(w, b, 1)
-        b = self.finish(w, b, 1)
-        self.assertEqual((b["run_kind"], len(w.adapter.launches)), ("s2_chunk_fix", 3))
         b = self.finish(w, b)
-        self.assertEqual((b["state"], len(w.adapter.launches)), ("ERROR", 3))   # 1 answer + 2 fixes, then preserved
-        self.assertIn("c2", b["error"])
-        self.assertEqual(stage2.fixes_used(w.store.runs(b["id"]), "s2_chunk_new", ("s2_chunk_fix", "s2_chunk_format_fix")), 2)
-        w.tick(3)
-        self.assertEqual((w.store.batch(b["id"])["state"], len(w.adapter.launches)), ("ERROR", 3))   # no automatic restart
-        with mock.patch.object(stage2, "clear_decisions", wraps=stage2.clear_decisions) as clear:
-            self.assertTrue(control.retry(w.store, "claude", S2))
-            w.tick(2)
-            clear.assert_not_called()
-        fix = w.adapter.launches[-1]
-        self.assertEqual((fix["kind"], fix.get("session")), ("resume", "s1"))
-        self.assertEqual(w.store.batch(b["id"])["run_kind"], "s2_chunk_fix")
-        self.assertEqual(self.decisions(w.store.batch(b["id"])), f"chunk {CHUNK}\nc1 D first\nc2 R x BAD\n")
-        grant = json.loads(w.store.get(stage2.retry_fix_key(b["id"])))
-        self.assertEqual((grant["chunk_id"], grant["session_id"], grant["state"]), (CHUNK, "s1", "consumed"))
-        b = self.finish(w, b)
-        self.assertEqual((b["run_kind"], len(w.adapter.launches)), ("s2_deterministic_finalize", 4))
-        self.assertEqual(self.decisions(b), GOOD + "\n")
+        self.assertEqual((len(w.adapter.launches), len(w.git.technical_fallback_calls)), (2, 1))
+        checkpoint_path = Path(b["worktree"]) / ".warroom-scratch" / "relation-admission-001-01-01.json"
+        checkpoint = json.loads(checkpoint_path.read_text("utf-8"))
+        self.assertEqual([candidate["decision"]["reason"] for candidate in checkpoint["items"][0]["candidates"]],
+                         ["x", "f"])
+        self.assertEqual(stage2.fixes_used(w.store.runs(b["id"]), "s2_chunk_new",
+                                           ("s2_chunk_fix", "s2_chunk_format_fix")), 1)
 
     def test_consumed_operator_retry_grant_cannot_be_regranted_for_the_same_chunk_session(self):
-        bad = answer(f"chunk {CHUNK}\nc1 D first\nc2 R x BAD")
-        w, b = self.world({"code": 0, "session": "s1", "text": bad}, {"code": 0, "session": "s1", "text": bad},
-                          {"code": 0, "session": "s1", "text": bad}, {"code": 0, "session": "s1", "text": bad})
-        b = self.finish(w, b, 1)
+        original = answer(f"chunk {CHUNK}\nc1 D first\nc2 R near 1 BAD")
+        fix = answer(f"chunk {CHUNK}\nc2 R near 1 BAD")
+        w, b = self.world({"code": 0, "session": "s1", "text": original},
+                          {"code": 0, "session": "s1", "text": fix})
         b = self.finish(w, b, 1)
         b = self.finish(w, b)
-        self.assertEqual(b["state"], "ERROR")
-        self.assertTrue(control.retry(w.store, "claude", S2))
-        w.tick(2)
-        self.assertEqual((w.adapter.launches[-1]["kind"], w.adapter.launches[-1].get("session")), ("resume", "s1"))
-        self.assertEqual(json.loads(w.store.get(stage2.retry_fix_key(b["id"])))["state"], "consumed")
-        b = self.finish(w, b)
-        self.assertEqual((b["state"], len(w.adapter.launches)), ("ERROR", 4))
-        self.assertTrue(control.retry(w.store, "claude", S2))
-        w.tick(3)
-        self.assertEqual((w.store.batch(b["id"])["state"], len(w.adapter.launches)), ("ERROR", 4))
+        self.assertEqual((len(w.adapter.launches), len(w.git.technical_fallback_calls)), (2, 1))
+        self.assertIsNone(w.store.get(stage2.correction_key(b["id"])))
 
     def test_recovery_revalidates_only_the_current_chunks_decisions_without_a_failure_record(self):
         w, b = self.world({"code": 2, "session": "s1", "text": answer("작업 중")}, {"code": 0, "session": "s2"})

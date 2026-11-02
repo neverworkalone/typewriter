@@ -10,6 +10,7 @@ The AI process exiting never completes a batch; only GitHub `merged=true` does.
 """
 from __future__ import annotations
 
+import base64
 import fcntl
 import hashlib
 import json
@@ -47,16 +48,35 @@ def acquire_lock(path: Path):
     """Single War Room instance: returns an open locked file, or None if held."""
     path.parent.mkdir(parents=True, exist_ok=True)
     f = open(path, "a+")
+    owner_path = path.with_name(f"{path.stem}-owner{path.suffix}")
+    owner = None
     try:
+        owner = open(owner_path, "a+")
+        # flock preserves same-process and cross-process single-instance behavior. POSIX record
+        # locks conflict with flock on macOS, so hold the queryable owner lock on a companion file.
         fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        fcntl.lockf(owner, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except OSError:
+        if owner is not None:
+            owner.close()
         f.close()
         return None
     f.seek(0)
     f.truncate()
     f.write(str(os.getpid()))
     f.flush()
-    return f
+    return _SupervisorLock(f, owner)
+
+
+class _SupervisorLock:
+    """Keep both OS locks alive and release them together through the existing close() seam."""
+
+    def __init__(self, instance_file, owner_file):
+        self.instance_file, self.owner_file = instance_file, owner_file
+
+    def close(self):
+        self.owner_file.close()
+        self.instance_file.close()
 
 
 class Supervisor:
@@ -514,17 +534,6 @@ class Supervisor:
             target = self._chunk_retry_target(b)
             if target is not None:
                 self.store.delete(self._auto_retry_key(b, target))   # only an explicit operator Retry grants one new chance
-            if (b["method"] == STAGE2_METHOD and b["state"] in ("PAUSED", "ERROR") and not b["pr_number"]
-                    and self._s2_chunk_run(b)
-                    and stage2.fixes_used(self.store.runs(b["id"]), "s2_chunk_new",
-                                          ("s2_chunk_fix", "s2_chunk_format_fix")) >= stage2.MAX_FIXES):
-                pending = self._stage2_pending(b)
-                file_state = stage2.decision_file_state(b["worktree"], pending) if pending else "corrupt"
-                if b["session_id"] and pending and file_state in ("current", "missing"):
-                    status = self._s2_retry_fix_status(b, pending)
-                    if status is None:
-                        self._write_s2_retry_fix_status(b, pending, "granted")
-                        self.store.log(b["id"], "운영자 Retry: 현재 청크/세션에 추가 판정 수정 1회를 결속했습니다")
             if self._d_chunk_run(b) and not b["pr_number"]:
                 self.store.delete_prefix(f"d_fix_{b['id']}:")   # only an explicit Retry regrants the automatic correction
             resume_state = b["paused_from"] or "PRODUCING"
@@ -1186,6 +1195,7 @@ class Supervisor:
         env.pop("WARROOM_STAGE2_CHUNK", None)
         env.pop("WARROOM_STAGE2_REPAIR", None)
         env.pop("WARROOM_GIT_EXECUTABLES", None)
+        env.pop("WARROOM_PROTECTED_PATHS", None)
         env.pop("WARROOM_ANSWER_ONLY", None)
         env.pop("OPENCODE_CONFIG_CONTENT", None)
         ab_chunk = b["method"] in stage1ab.METHODS and isinstance(kind, str) and kind.startswith("ab_chunk_")
@@ -1204,6 +1214,9 @@ class Supervisor:
                 (b["method"] == dchunk.METHOD and isinstance(kind, str) and kind.startswith("d_chunk_")) or ab_chunk:
             env["WARROOM_STAGE2_CHUNK"] = "1"
             env["WARROOM_GIT_EXECUTABLES"] = json.dumps(self._worker_git_executables)
+            env["WARROOM_PROTECTED_PATHS"] = json.dumps([
+                str(self.paths.git_admin_dir.resolve()), str((Path(b["worktree"]) / ".git").resolve()),
+            ])
         return env
 
     def _pinned_runs(self, producer: str, role: str = "stage1"):
@@ -1783,6 +1796,12 @@ class Supervisor:
                         if problem:
                             return self._fail(b, "ERROR", problem)
                         detail = self._s2_fix_problem.pop(b["id"], None)
+                        if detail is None and kind == "s2_chunk_fix" and checkpoint.get("pending_chunk"):
+                            try:
+                                correction = self._stage2_correction_state(b, checkpoint["pending_chunk"])
+                            except ValueError as error:
+                                return self._fail(b, "ERROR", f"Stage 2 수정 재개 기준이 손상되어 중단합니다: {error}")
+                            detail = correction.get("initial_failure") if correction is not None else None
                         if not sid or not checkpoint["pending_chunk"] or not detail:
                             raise prompts.PromptError("수정 요청에 기존 세션·pending 청크·오류 목록이 모두 필요합니다")
                         file_state = stage2.decision_file_state(wt, checkpoint["pending_chunk"])
@@ -1802,8 +1821,13 @@ class Supervisor:
                             prompt = prompts.stage2_chunk_resume(checkpoint["pending_chunk"], checkpoint)
                         else:
                             prompt = prompts.stage2(b, "chunk", checkpoint, resumed=False, view=view)
+                        view_bytes = (Path(wt) / stage2.CHUNK_VIEW).read_bytes()
+                        checkpoint_path = Path(wt) / ".warroom-scratch" / \
+                            f"relation-admission-{b['shard']}-{b['batch'].split('-')[0]}-{b['batch'].split('-')[1]}.json"
                         baseline = {"checkpoint": checkpoint, "branch": b["branch"], "worktree": str(wt),
-                                    "head": self.git.head(wt), "remote_head": remote}
+                                    "head": self.git.head(wt), "remote_head": remote,
+                                    "chunk_view_sha256": hashlib.sha256(view_bytes).hexdigest(),
+                                    "checkpoint_sha256": hashlib.sha256(checkpoint_path.read_bytes()).hexdigest()}
                         self.store.set(stage2.run_start_key(b["id"]), json.dumps(baseline, sort_keys=True))
                         if kind.endswith("_resume"):
                             h = ad.resume(sid, prompt, wt, run_env, run, log, ex, **extra)
@@ -2105,9 +2129,6 @@ class Supervisor:
                 return self._fail(b, "ERROR", f"현재 청크 판정 파일이 손상되었거나 다른 청크에 속해 있습니다. "
                                   f"파일과 checkpoint를 보존합니다: {stage2.DECISIONS}")
             if file_state == "current":
-                if not b["session_id"]:
-                    return self._fail(b, "ERROR", f"현재 청크 판정 파일은 보존했지만 연결된 세션이 없습니다. "
-                                      f"새 전체 재판정은 하지 않습니다: {stage2.DECISIONS}")
                 # Restart / Retry: re-validate the saved decisions of THIS chunk only (an older chunk's file is "no
                 # response"); no AI run, and no failure is recorded for this re-check.
                 try:
@@ -2119,6 +2140,12 @@ class Supervisor:
                 if ok:
                     return self._stage2_saved_or_fail(b)
                 return self._stage2_rejected(b, detail)
+            try:
+                correction = self._stage2_correction_state(b, pending) if pending is not None else None
+            except ValueError as error:
+                return self._fail(b, "ERROR", f"Stage 2 후보 Retry 한도를 검증하지 못해 AI 재실행을 막았습니다: {error}")
+            if correction is not None:
+                return self._fail(b, "ERROR", "이 pending 후보의 자동 수정 1회는 이미 사용됐습니다. 새 AI run으로 한도를 재설정하지 않고 worktree와 기록을 보존합니다.")
             # An incomplete chunk may resume only its own session; without one, a fresh session reads the same pending
             # checkpoint chunk. It never selects a different Part or changes the owned checkout.
             kind = "s2_chunk_resume" if b["session_id"] else "s2_chunk_new"
@@ -3431,39 +3458,6 @@ class Supervisor:
             return None
         return checkpoint["pending_chunk"] if checkpoint else None
 
-    def _s2_retry_fix_status(self, b, pending: str) -> str | None:
-        key = stage2.retry_fix_key(b["id"])
-        raw = self.store.get(key)
-        if raw is None:
-            return None
-        try:
-            status = json.loads(raw)
-        except (TypeError, ValueError):
-            self.store.delete(key)
-            return None
-        if not isinstance(status, dict):
-            self.store.delete(key)
-            return None
-        expected = {"batch_id": b["id"], "shard": b["shard"], "batch": b["batch"],
-                    "chunk_id": pending, "session_id": b["session_id"]}
-        if any(status.get(name) != value for name, value in expected.items()) \
-                or status.get("state") not in ("granted", "consumed"):
-            self.store.delete(key)
-            return None
-        return status["state"]
-
-    def _write_s2_retry_fix_status(self, b, pending: str, state: str) -> None:
-        self.store.set(stage2.retry_fix_key(b["id"]), json.dumps({
-            "batch_id": b["id"], "shard": b["shard"], "batch": b["batch"],
-            "chunk_id": pending, "session_id": b["session_id"], "state": state,
-        }, sort_keys=True))
-
-    def _consume_s2_retry_fix(self, b, pending: str) -> bool:
-        if self._s2_retry_fix_status(b, pending) != "granted":
-            return False
-        self._write_s2_retry_fix_status(b, pending, "consumed")
-        return True
-
     def _run_ok_stage2_links(self, b) -> None:
         """Save the final optional-link answer through the official CLI; retries stay in this session."""
         if problem := self._stage2_links_boundary_problem(b):
@@ -3555,21 +3549,170 @@ class Supervisor:
         final = self._adapter(b["producer"]).final_answer(Path(b["log_file"]))
         return stage2.format_problem(final, pending)
 
-    def _stage2_save(self, b) -> tuple[bool, str]:
+    def _stage2_correction_state(self, b, pending: str) -> dict | None:
+        raw = self.store.get(stage2.correction_key(b["id"]))
+        if raw is None:
+            return None
+        try:
+            state = json.loads(raw)
+        except (TypeError, ValueError) as error:
+            raise ValueError("Stage 2 correction budget is malformed") from error
+        required = {"version", "batch_id", "shard", "batch", "chunk_id", "retry_count",
+                    "initial_failure", "candidate", "retry_answer_applied", "retry_answer_alias",
+                    "initial_decisions_b64", "retry_decisions_sha256", "retry_save_failed",
+                    "header_repaired", "retry_run_id"}
+        if not isinstance(state, dict) or set(state) != required or type(state.get("version")) is not int or state.get("version") != 1 \
+                or type(state.get("batch_id")) is not int or type(state.get("retry_count")) is not int \
+                or state.get("batch_id") != b["id"] or state.get("shard") != b["shard"] \
+                or state.get("batch") != b["batch"] or state.get("chunk_id") != pending \
+                or state.get("retry_count") != stage2.MAX_CANDIDATE_RETRIES or not isinstance(state.get("initial_failure"), str) \
+                or not isinstance(state.get("initial_decisions_b64"), str) \
+                or not isinstance(state.get("candidate"), dict) \
+                or not isinstance(state.get("retry_answer_applied"), bool) \
+                or (state.get("retry_answer_alias") is not None and not isinstance(state.get("retry_answer_alias"), str)) \
+                or (state.get("retry_decisions_sha256") is not None
+                    and (not isinstance(state.get("retry_decisions_sha256"), str)
+                         or not re.fullmatch(r"[a-f0-9]{64}", state["retry_decisions_sha256"]))) \
+                or not isinstance(state.get("retry_save_failed"), bool) \
+                or not isinstance(state.get("header_repaired"), bool) \
+                or (state.get("retry_run_id") is not None and type(state.get("retry_run_id")) is not int):
+            raise ValueError("Stage 2 correction budget is damaged or belongs to another pending chunk")
+        candidate = state["candidate"]
+        if set(candidate) != {"alias", "record_id", "sense_id", "candidate"} \
+                or not all(isinstance(candidate.get(name), str) and candidate[name]
+                           for name in ("alias", "record_id", "sense_id", "candidate")):
+            raise ValueError("Stage 2 correction candidate binding is malformed")
+        try:
+            snapshot = base64.b64decode(state["initial_decisions_b64"], validate=True)
+            snapshot.decode("utf-8")
+        except (ValueError, UnicodeError):
+            raise ValueError("Stage 2 correction decision snapshot is malformed") from None
+        applied = state["retry_answer_applied"]
+        if (applied and (state["retry_answer_alias"] != candidate["alias"]
+                         or state["retry_decisions_sha256"] is None)) \
+                or (not applied and (state["retry_answer_alias"] is not None
+                                     or state["retry_decisions_sha256"] is not None
+                                     or state["retry_save_failed"] or state["header_repaired"])) \
+                or (state["retry_save_failed"] and not applied):
+            raise ValueError("Stage 2 correction outcome fields are inconsistent")
+        return state
+
+    def _stage2_reserve_candidate_correction(self, b, pending: str, diagnostic: str) -> dict | None:
+        alias = stage2.single_candidate_failure_alias(diagnostic, pending)
+        if alias is None:
+            return None
+        try:
+            baseline = json.loads(self.store.get(stage2.run_start_key(b["id"])) or "null")
+        except (TypeError, ValueError):
+            return None
+        if not isinstance(baseline, dict) or baseline.get("branch") != b["branch"] \
+                or baseline.get("worktree") != str(b["worktree"]) or not isinstance(baseline.get("head"), str) \
+                or not isinstance(baseline.get("remote_head"), (str, type(None))) \
+                or not self._stage2_checkpoint_unchanged(b, pending, baseline):
+            return None
+        candidate = stage2.candidate_binding_from_view(
+            b["worktree"], pending, alias, baseline.get("chunk_view_sha256", ""))
+        if candidate is None or stage2.single_candidate_failure_alias(diagnostic, pending, candidate) != alias:
+            return None
+        decisions_path = Path(b["worktree"]) / stage2.DECISIONS
+        try:
+            initial_decisions = decisions_path.read_bytes()
+            if stage2.decision_file_state(b["worktree"], pending) != "current":
+                return None
+        except OSError:
+            return None
+        state = {
+            "version": 1, "batch_id": b["id"], "shard": b["shard"], "batch": b["batch"],
+            "chunk_id": pending, "retry_count": stage2.MAX_CANDIDATE_RETRIES, "initial_failure": diagnostic,
+            "candidate": candidate, "retry_answer_applied": False,
+            "initial_decisions_b64": base64.b64encode(initial_decisions).decode("ascii"),
+            "retry_answer_alias": None, "retry_decisions_sha256": None, "retry_save_failed": False,
+            "header_repaired": False, "retry_run_id": None,
+        }
+        self.store.set(stage2.correction_key(b["id"]), json.dumps(state, ensure_ascii=False, sort_keys=True))
+        evidence = {**candidate, "chunk_id": pending, "failure_reason": diagnostic,
+                    "retry_count": 1, "deterministic_header_repair": "pending"}
+        self.store.log(b["id"], "Stage 2 후보 단위 수정 1회를 결속했습니다: " + json.dumps(evidence, ensure_ascii=False, sort_keys=True), "warn")
+        return state
+
+    def _stage2_restore_unchanged_decisions(self, b, pending: str, correction: dict) -> bool:
+        """Require the retry to start from the exact Supervisor snapshot; restore it and fail closed on any drift."""
+        try:
+            snapshot = base64.b64decode(correction["initial_decisions_b64"], validate=True)
+            path = Path(b["worktree"]) / stage2.DECISIONS
+            current = path.read_bytes()
+            if current == snapshot:
+                return True
+            temporary = path.with_name(path.name + ".restore")
+            temporary.write_bytes(snapshot)
+            temporary.replace(path)
+            return False
+        except (KeyError, OSError, ValueError):
+            return False
+
+    def _stage2_mark_candidate_correction(self, b, pending: str, alias: str, *, header_repaired: bool) -> bool:
+        state = self._stage2_correction_state(b, pending)
+        if state is None or state["candidate"]["alias"] != alias:
+            return False
+        state["retry_answer_applied"] = True
+        state["retry_answer_alias"] = alias
+        decisions_path = Path(b["worktree"]) / stage2.DECISIONS
+        state["retry_decisions_sha256"] = hashlib.sha256(decisions_path.read_bytes()).hexdigest()
+        state["retry_save_failed"] = False
+        state["header_repaired"] = bool(header_repaired)
+        self.store.set(stage2.correction_key(b["id"]), json.dumps(state, ensure_ascii=False, sort_keys=True))
+        return True
+
+    def _stage2_mark_candidate_failure(self, b, pending: str, diagnostic: str, correction: dict) -> bool:
+        candidate = correction["candidate"]
+        if not correction["retry_answer_applied"] or correction["retry_answer_alias"] != candidate["alias"] \
+                or not self._stage2_correction_run_completed(b, correction) \
+                or stage2.single_candidate_failure_alias(diagnostic, pending, candidate) != candidate["alias"]:
+            return False
+        decisions_path = Path(b["worktree"]) / stage2.DECISIONS
+        try:
+            if not decisions_path.is_file() or hashlib.sha256(decisions_path.read_bytes()).hexdigest() != correction["retry_decisions_sha256"]:
+                return False
+        except OSError:
+            return False
+        correction["retry_save_failed"] = True
+        self.store.set(stage2.correction_key(b["id"]), json.dumps(correction, ensure_ascii=False, sort_keys=True))
+        return True
+
+    def _stage2_correction_run_completed(self, b, correction: dict) -> bool:
+        run_id = correction.get("retry_run_id")
+        if type(run_id) is not int:
+            return False
+        return any(run["id"] == run_id and run["kind"] == "s2_chunk_fix"
+                   and run["ended_at"] is not None for run in self.store.runs(b["id"]))
+
+    def _stage2_checkpoint_unchanged(self, b, pending: str, baseline: dict) -> bool:
+        expected = baseline.get("checkpoint")
+        expected_hash = baseline.get("checkpoint_sha256")
+        if not isinstance(expected, dict) or expected.get("pending_chunk") != pending \
+                or not isinstance(expected_hash, str) or not re.fullmatch(r"[a-f0-9]{64}", expected_hash):
+            return False
+        try:
+            batch, part = stage2.split_key(b["batch"])
+            checkpoint_path = Path(b["worktree"]) / ".warroom-scratch" / \
+                f"relation-admission-{b['shard']}-{batch}-{part}.json"
+            return stage2.checkpoint(b["worktree"], b["shard"], b["batch"]) == expected \
+                and hashlib.sha256(checkpoint_path.read_bytes()).hexdigest() == expected_hash
+        except (OSError, ValueError, KeyError, TypeError):
+            return False
+
+    def _stage2_save(self, b, supervisor_fallback: dict | None = None) -> tuple[bool, str]:
         bb, pp = stage2.split_key(b["batch"])
-        ok, detail = self.git.stage2_save_chunk(Path(b["worktree"]), b["shard"], bb, pp)
-        extra = stage2.unknown_aliases(detail) if not ok else []
-        if extra:   # a row for a candidate this chunk does not have can never be saved or corrected: drop it, then re-check
-            stage2.write_decisions(b["worktree"], stage2.decisions_header(b["worktree"]),
-                                   [r for r in stage2.read_rows(b["worktree"]) if stage2.alias_of(r) not in extra])
-            self.store.log(b["id"], f"청크에 없는 후보 별칭 행 {', '.join(extra)}을 제거하고 다시 검증합니다", "warn")
-            ok, detail = self.git.stage2_save_chunk(Path(b["worktree"]), b["shard"], bb, pp)
-        return ok, detail
+        if supervisor_fallback is None:
+            return self.git.stage2_save_chunk(Path(b["worktree"]), b["shard"], bb, pp)
+        return self.git.stage2_save_chunk(Path(b["worktree"]), b["shard"], bb, pp,
+                                          supervisor_fallback=supervisor_fallback,
+                                          supervisor_state_dir=self.paths.supervisor_state)
 
     def _stage2_accept(self, b) -> None:
         self._clear_batch_retry(b["id"])
         self.store.delete(stage2.run_start_key(b["id"]))
-        self.store.delete(stage2.retry_fix_key(b["id"]))
+        self.store.delete(stage2.correction_key(b["id"]))
         self.store.update(b["id"], session_id=None, retries=0, retry_after=None, error=None)
         self.store.log(b["id"], "Stage 2 청크가 admission-cli save-chunk를 통과해 checkpoint에 저장됐습니다. 다음 단계는 새 세션으로 실행합니다.")
         return self._launch_stage2_next(self.store.batch(b["id"]))
@@ -3581,7 +3724,7 @@ class Supervisor:
         return self._stage2_accept(b)
 
     def _stage2_rejected(self, b, diagnostic: str) -> None:
-        """Route a saved/format rejection by the preserved decisions file: absent means full format repair, current means alias repair."""
+        """Retry one source-bound candidate once, then use only its technical Drop fallback if it still fails."""
         pending = self._stage2_pending(b)
         if pending is None:
             return self._fail(b, "ERROR", "Stage 2 수정 요청에 현재 pending 청크가 없습니다. 결정 파일과 checkpoint를 보존합니다.")
@@ -3589,16 +3732,163 @@ class Supervisor:
         if file_state == "corrupt":
             return self._fail(b, "ERROR", f"Stage 2 판정 파일이 비어 있거나 현재 청크와 맞지 않거나 손상되어 수정하지 않습니다. "
                               f"파일과 checkpoint를 보존합니다: {stage2.DECISIONS}")
-        used = stage2.fixes_used(self.store.runs(b["id"]), "s2_chunk_new",
-                                 ("s2_chunk_fix", "s2_chunk_format_fix"))
-        extra = bool(b["session_id"] and used >= stage2.MAX_FIXES and self._consume_s2_retry_fix(b, pending))
-        if b["session_id"] and (used < stage2.MAX_FIXES or extra):
+        if file_state != "current":
+            return self._fail(b, "ERROR", "Stage 2 전체 응답·판정 파일을 후보 하나에 결속할 수 없어 자동 수정하거나 Drop하지 않습니다. "
+                              f"worktree와 checkpoint를 보존합니다: {diagnostic[:600]}")
+        if problem := self._stage2_chunk_boundary_problem(b):
+            return self._fail(b, "ERROR", problem)
+        try:
+            correction = self._stage2_correction_state(b, pending)
+        except ValueError as error:
+            return self._fail(b, "ERROR", f"Stage 2 수정 한도 증거를 확인하지 못해 중단합니다: {error}")
+        if correction is None:
+            if not b["session_id"]:
+                return self._fail(b, "ERROR", "후보 단위 오류는 확인했지만 연결된 기존 Stage 2 세션이 없어 AI Retry를 시작하지 않습니다. "
+                                  f"worktree와 checkpoint를 보존합니다: {diagnostic[:600]}")
+            correction = self._stage2_reserve_candidate_correction(b, pending, diagnostic)
+            if correction is None:
+                return self._fail(b, "ERROR", "save-chunk 오류를 한 개의 현재 청크 후보와 정확히 결속하지 못해 자동 Retry/Fallback을 하지 않습니다. "
+                                  f"worktree와 checkpoint를 보존합니다: {diagnostic[:800]}")
             self._s2_fix_problem[b["id"]] = stage2.compact_fix_diagnostic(diagnostic)
             self.store.update(b["id"], retries=0, retry_after=None, error=None)
-            kind = "s2_chunk_format_fix" if file_state == "missing" else "s2_chunk_fix"
-            return self._launch(self.store.batch(b["id"]), kind)
-        return self._fail(b, "ERROR", "Stage 2 청크 판정이 저장 검증을 통과하지 못했고 자동 수정 기회가 없습니다 "
-                          f"(결정 파일 {stage2.DECISIONS} 보존; 명시적 Retry는 같은 세션의 추가 수정 1회만 허용): {diagnostic[:600]}")
+            result = self._launch(self.store.batch(b["id"]), "s2_chunk_fix")
+            runs = self.store.runs(b["id"])
+            if runs and runs[0]["kind"] == "s2_chunk_fix":
+                correction["retry_run_id"] = runs[0]["id"]
+                self.store.set(stage2.correction_key(b["id"]), json.dumps(correction, ensure_ascii=False, sort_keys=True))
+                evidence = {**correction["candidate"], "chunk_id": pending,
+                            "retry_count": correction["retry_count"], "retry_run_id": correction["retry_run_id"]}
+                self.store.log(b["id"], "Stage 2 후보 수정 run 결속: " + json.dumps(evidence, ensure_ascii=False, sort_keys=True))
+            return result
+        if correction["retry_answer_applied"] and not correction["retry_save_failed"]:
+            if not self._stage2_mark_candidate_failure(b, pending, diagnostic, correction):
+                return self._fail(b, "ERROR", "수정 응답을 적용한 decisions.txt와 현재 후보 단위 save-chunk 실패를 함께 증명하지 못했습니다. Fallback 없이 기록을 보존합니다.")
+        result = self._stage2_technical_fallback(b, pending, diagnostic, correction)
+        if result is not None:
+            return result
+        return self._fail(b, "ERROR", "Stage 2의 후보 단위 Retry 1회가 끝났으나 기술적 Fallback 조건을 증명하지 못했습니다. "
+                          f"판정 파일과 checkpoint를 보존합니다: {diagnostic[:800]}")
+
+    def _stage2_recover_headerless_fix(self, b, final_text: str | None):
+        """Restore only the current fix run's one valid alias row when its exact chunk header alone is missing."""
+        pending = self._stage2_pending(b)
+        if pending is None or b["run_kind"] != "s2_chunk_fix":
+            return None
+        try:
+            correction = self._stage2_correction_state(b, pending)
+        except ValueError as error:
+            return self._fail(b, "ERROR", f"Stage 2 header 복구 기준이 손상되어 중단합니다: {error}")
+        if correction is None or not b["session_id"]:
+            return None
+        if not self._stage2_correction_run_completed(b, correction):
+            return self._fail(b, "ERROR", "현재 headerless 응답을 완료된 단일 Retry run에 결속하지 못해 복구하지 않습니다.")
+        candidate = correction["candidate"]
+        row = stage2.headerless_fix_row(final_text, candidate["alias"])
+        if row is None or correction["retry_count"] != stage2.MAX_CANDIDATE_RETRIES:
+            return None
+        if problem := self._stage2_chunk_boundary_problem(b):
+            return self._fail(b, "ERROR", problem)
+        try:
+            baseline = json.loads(self.store.get(stage2.run_start_key(b["id"])) or "null")
+        except (TypeError, ValueError):
+            baseline = None
+        if not isinstance(baseline, dict) or not self._stage2_checkpoint_unchanged(b, pending, baseline):
+            return self._fail(b, "ERROR", "header-only 복구의 시작 checkpoint가 현재 pending 청크와 다릅니다. 파일과 checkpoint를 보존합니다.")
+        if stage2.decision_file_state(b["worktree"], pending) != "current":
+            return self._fail(b, "ERROR", "현재 청크의 정상 판정 파일이 없어 header-only 복구를 결속할 수 없습니다. worktree와 checkpoint를 보존합니다.")
+        if not self._stage2_restore_unchanged_decisions(b, pending, correction):
+            return self._fail(b, "ERROR", "Retry 중 기존 판정 파일이 바뀌어 최초 스냅샷을 복원했습니다. header-only 복구를 중단하고 checkpoint를 보존합니다.")
+        try:
+            ok, detail = self._stage2_save(b)
+            if ok:
+                return self._stage2_saved_or_fail(b)
+            if stage2.single_candidate_failure_alias(detail, pending, candidate) != candidate["alias"]:
+                return self._fail(b, "ERROR", f"header-only 복구 전에 기존 CLI 오류가 동일한 한 후보로 재현되지 않았습니다. "
+                                  f"판정 파일과 checkpoint를 보존합니다: {detail[:800]}")
+            existing = stage2.read_rows(b["worktree"])
+            if sum(stage2.alias_of(saved) == candidate["alias"] for saved in existing) != 1:
+                return self._fail(b, "ERROR", "현재 decisions.txt에서 대상 alias가 정확히 한 행이 아니어서 header-only 복구를 중단합니다.")
+            if not self._stage2_restore_unchanged_decisions(b, pending, correction):
+                return self._fail(b, "ERROR", "header-only 행을 적용하기 전 기존 판정 파일이 바뀌어 최초 스냅샷을 복원했습니다. checkpoint를 보존합니다.")
+            merged, ignored = stage2.merge_fix(existing, [row], [candidate["alias"]])
+            if ignored:
+                return self._fail(b, "ERROR", "현재 최종 응답을 초기 실패 alias에 결속하지 못해 복구하지 않습니다.")
+            stage2.write_decisions(b["worktree"], pending, merged)
+            if not self._stage2_mark_candidate_correction(b, pending, candidate["alias"], header_repaired=True):
+                return self._fail(b, "ERROR", "현재 최종 응답을 적용한 decisions.txt와 수정 한도를 결속하지 못해 복구하지 않습니다.")
+            event = {**candidate, "chunk_id": pending, "failure_reason": detail,
+                     "retry_count": 1, "deterministic_recovery": "restored_exact_chunk_header"}
+            self.store.log(b["id"], "Stage 2 header-only 결정적 복구를 적용했습니다: " + json.dumps(event, ensure_ascii=False, sort_keys=True), "warn")
+            ok, detail = self._stage2_save(b)
+        except TRANSIENT:
+            raise
+        except (OSError, ValueError, GitError, KeyError, TypeError) as error:
+            return self._fail(b, "ERROR", f"Stage 2 header-only 복구 처리 실패: {error}. 판정 파일과 checkpoint를 보존합니다.")
+        if ok:
+            return self._stage2_saved_or_fail(b)
+        self.store.add_submit_failure(b["id"])
+        self.store.log(b["id"], f"header-only 복구 뒤 후보 저장 거부: {detail[:800]}", "warn")
+        return self._stage2_rejected(b, detail)
+
+    def _stage2_technical_fallback(self, b, pending: str, diagnostic: str, correction: dict):
+        """Apply reason f to the one retried candidate through the restricted official save-chunk path."""
+        candidate = correction["candidate"]
+        alias = candidate["alias"]
+        if not correction["retry_answer_applied"] or not correction["retry_save_failed"] \
+                or correction["retry_answer_alias"] != alias \
+                or correction["retry_count"] != stage2.MAX_CANDIDATE_RETRIES \
+                or not self._stage2_correction_run_completed(b, correction):
+            return None
+        if stage2.single_candidate_failure_alias(diagnostic, pending, candidate) != alias:
+            return None
+        try:
+            baseline = json.loads(self.store.get(stage2.run_start_key(b["id"])) or "null")
+        except (TypeError, ValueError):
+            return None
+        if not isinstance(baseline, dict) or baseline.get("branch") != b["branch"] \
+                or baseline.get("worktree") != str(b["worktree"]) \
+                or baseline.get("chunk_view_sha256") is None \
+                or not self._stage2_checkpoint_unchanged(b, pending, baseline):
+            return None
+        actual = stage2.candidate_binding_from_view(b["worktree"], pending, alias, baseline["chunk_view_sha256"])
+        if actual != candidate:
+            return None
+        rows = stage2.read_rows(b["worktree"])
+        matching = [row for row in rows if stage2.alias_of(row) == alias]
+        if len(matching) != 1 or stage2.decisions_header(b["worktree"]) != pending:
+            return None
+        decisions_path = Path(b["worktree"]) / stage2.DECISIONS
+        try:
+            if hashlib.sha256(decisions_path.read_bytes()).hexdigest() != correction["retry_decisions_sha256"]:
+                return None
+        except OSError:
+            return None
+        proof = {
+            "alias": alias, "candidate": candidate["candidate"], "chunk_id": pending,
+            "failure_reason": diagnostic, "record_id": candidate["record_id"],
+            "retry_count": correction["retry_count"], "sense_id": candidate["sense_id"],
+        }
+        original_rows = rows
+        try:
+            stage2.write_decisions(b["worktree"], pending, [row for row in rows if stage2.alias_of(row) != alias])
+            ok, detail = self._stage2_save(b, supervisor_fallback=proof)
+        except TRANSIENT:
+            raise
+        except (OSError, ValueError, GitError, KeyError, TypeError) as error:
+            try:
+                stage2.write_decisions(b["worktree"], pending, original_rows)
+            except OSError as restore_error:
+                return self._fail(b, "ERROR", f"Stage 2 technical Fallback 처리 및 원래 판정 복원이 실패했습니다: {error}; {restore_error}")
+            return self._fail(b, "ERROR", f"Stage 2 technical Fallback 처리에 실패해 원래 판정을 복원했습니다: {error}")
+        if ok or self._stage2_chunk_saved(b):
+            event = {**candidate, "chunk_id": pending, "failure_reason": diagnostic,
+                     "initial_failure": correction["initial_failure"], "retry_count": 1,
+                     "deterministic_header_repair": correction["header_repaired"], "drop_reason": "f"}
+            self.store.log(b["id"], "Stage 2 technical Drop Fallback 저장: " + json.dumps(event, ensure_ascii=False, sort_keys=True), "warn")
+            return self._stage2_saved_or_fail(b)
+        stage2.write_decisions(b["worktree"], pending, original_rows)
+        self.store.log(b["id"], f"Stage 2 technical Fallback CLI 저장이 거부되어 원래 판정 행을 복원했습니다: {detail[:800]}", "warn")
+        return self._fail(b, "ERROR", f"reason f Fallback도 공식 save-chunk 검증을 통과하지 못했습니다. 판정 파일과 checkpoint를 보존합니다: {detail[:800]}")
 
     def _stage2_invalid_format(self, b, problem: str) -> None:
         """Reject a parse-level format failure to the same session without discarding a prior partial decision file."""
@@ -3648,12 +3938,19 @@ class Supervisor:
         if rows is None:
             if format_problem := self._stage2_format_problem(b):
                 return self._stage2_invalid_format(b, format_problem)
-            # No recognizable current-chunk judgment: keep the bounded missing-output path, never relabel it as format.
-            if b["run_kind"] not in ("s2_chunk_fix", "s2_chunk_format_fix") \
+            if b["run_kind"] == "s2_chunk_fix":
+                try:
+                    final_text = self._adapter(b["producer"]).final_answer(Path(b["log_file"]))
+                except (OSError, ValueError, TypeError) as error:
+                    return self._fail(b, "ERROR", f"현재 Stage 2 수정 응답을 읽지 못해 보존합니다: {error}")
+                recovered = self._stage2_recover_headerless_fix(b, final_text)
+                if recovered is not None:
+                    return recovered
+            elif b["run_kind"] != "s2_chunk_format_fix" \
                     and self._retry_unsaved_chunk(b, "현재 청크 응답 누락"):
                 return
             return self._fail(b, "ERROR", "Stage 2 청크 실행은 종료됐지만 현재 청크 ID 헤더가 있는 판정 응답이 없고 시작 시점 대비 "
-                              "checkpoint가 정확히 전진하지 않았거나 pending_chunk가 남아 있습니다. 자동 재진입 한도를 소진했거나 안전하지 않아 기록을 보존합니다.")
+                              "checkpoint가 정확히 전진하지 않았거나 pending_chunk가 남아 있습니다. 전체 응답 누락/비국소 형식 오류는 자동 재실행하지 않고 기록을 보존합니다.")
         if format_problem := stage2.joined_decision_rows_problem(rows):
             return self._stage2_invalid_format(b, format_problem)
         pending = self._stage2_pending(b)
@@ -3663,15 +3960,38 @@ class Supervisor:
                 if file_state != "current":
                     return self._fail(b, "ERROR", "부분 수정 응답을 병합할 현재 청크 판정 파일이 없거나 손상됐습니다. "
                                       f"수정하지 않고 파일과 checkpoint를 보존합니다: {stage2.DECISIONS}")
+                try:
+                    correction = self._stage2_correction_state(b, pending)
+                except ValueError as error:
+                    return self._fail(b, "ERROR", f"Stage 2 후보 Retry 증거가 손상되어 응답을 병합하지 않습니다: {error}")
+                if correction is None:
+                    return self._fail(b, "ERROR", "Stage 2 수정 응답에 결속된 단일 후보 Retry 증거가 없습니다. 판정 파일을 보존합니다.")
+                try:
+                    baseline = json.loads(self.store.get(stage2.run_start_key(b["id"])) or "null")
+                except (TypeError, ValueError):
+                    baseline = None
+                if not isinstance(baseline, dict) or not self._stage2_checkpoint_unchanged(b, pending, baseline):
+                    return self._fail(b, "ERROR", "수정 응답의 시작 checkpoint가 현재 pending 청크와 다릅니다. 판정 파일과 checkpoint를 보존합니다.")
+                candidate = correction["candidate"]
+                if not self._stage2_restore_unchanged_decisions(b, pending, correction):
+                    return self._fail(b, "ERROR", "Retry 중 기존 판정 파일이 바뀌어 최초 스냅샷을 복원했습니다. 수정 응답과 저장을 중단하고 checkpoint를 보존합니다.")
                 ok, detail = self._stage2_save(b)   # the same rejection the fix prompt was built from, to find its rows
                 if ok:
                     return self._stage2_saved_or_fail(b)
-                targets = stage2.error_aliases(detail)
+                if stage2.single_candidate_failure_alias(detail, pending, candidate) != candidate["alias"]:
+                    return self._fail(b, "ERROR", f"수정 전 저장 진단이 처음 실패한 후보와 달라져 응답을 병합하지 않습니다: {detail[:800]}")
+                targets = [candidate["alias"]]
+                if len(rows) != 1 or stage2.alias_of(rows[0]) != candidate["alias"]:
+                    return self._fail(b, "ERROR", "Stage 2 수정 응답이 실패한 후보 하나의 행과 정확히 일치하지 않습니다. 아무 행도 병합하지 않고 보존합니다.")
+                if not self._stage2_restore_unchanged_decisions(b, pending, correction):
+                    return self._fail(b, "ERROR", "Retry 중 기존 판정 파일이 바뀌어 최초 스냅샷을 복원했습니다. 수정 응답 병합을 중단하고 checkpoint를 보존합니다.")
                 merged, ignored = stage2.merge_fix(stage2.read_rows(b["worktree"]), rows, targets)
                 if ignored:
                     self.store.log(b["id"], f"수정 응답의 허용 범위 밖 행 {len(ignored)}개를 무시했습니다: "
                                    f"{', '.join(stage2.alias_of(r) for r in ignored[:10])}", "warn")
                 stage2.write_decisions(b["worktree"], pending, merged)
+                if not self._stage2_mark_candidate_correction(b, pending, candidate["alias"], header_repaired=False):
+                    return self._fail(b, "ERROR", "Stage 2 수정 행을 적용한 decisions.txt와 단일 후보 Retry에 결속하지 못해 보존합니다.")
             else:
                 if file_state != "missing":
                     return self._fail(b, "ERROR", "전체 Stage 2 응답을 쓸 판정 파일이 이미 있거나 손상됐습니다. "

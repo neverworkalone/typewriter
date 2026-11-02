@@ -988,14 +988,36 @@ class Git:
                 tail = " ".join((res.err or res.out).split())[-300:]
                 raise GitError(f"admission-cli {args[0]} 실패: {tail}")
 
-    def stage2_save_chunk(self, worktree: Path, shard: str, batch: str, part: str, timeout: int = 900) -> tuple[bool, str]:
+    def stage2_save_chunk(self, worktree: Path, shard: str, batch: str, part: str, timeout: int = 900,
+                          supervisor_fallback: dict | None = None,
+                          supervisor_state_dir: Path | None = None) -> tuple[bool, str]:
         """Run the existing `admission-cli save-chunk --format compact` on the Supervisor-written decision file.
+        A technical Drop is possible only with Supervisor-supplied, candidate-bound evidence in protected state.
         (ok, output): on rejection the CLI's complete error list, with the checkpoint unchanged."""
         checkpoint = f".warroom-scratch/relation-admission-{shard}-{batch}-{part}.json"
-        res = self.r.run(["node", "scripts/relation/admission-cli.mjs", "save-chunk", "--checkpoint", checkpoint,
-                          "--in", ".warroom-scratch/decisions.txt", "--format", "compact"],
-                         cwd=worktree, env=self.env, timeout=timeout)
-        return res.ok, (res.err or res.out).strip()
+        args = ["node", "scripts/relation/admission-cli.mjs", "save-chunk", "--checkpoint", checkpoint,
+                "--in", ".warroom-scratch/decisions.txt", "--format", "compact"]
+        fallback_path = None
+        temporary = None
+        if supervisor_fallback is not None:
+            if supervisor_state_dir is None:
+                raise ValueError("Supervisor fallback requires its protected state directory")
+            fallback_path = Path(supervisor_state_dir) / "s2-technical-fallback.json"
+            fallback_path.parent.mkdir(parents=True, exist_ok=True)
+            temporary = fallback_path.with_suffix(".json.tmp")
+        try:
+            if fallback_path is not None:
+                temporary.write_text(json.dumps(supervisor_fallback, ensure_ascii=False,
+                                                 separators=(",", ":")) + "\n", "utf-8")
+                temporary.replace(fallback_path)
+                args.append("--supervisor-fallback")
+            res = self.r.run(args, cwd=worktree, env=self.env, timeout=timeout)
+            return res.ok, (res.err or res.out).strip()
+        finally:
+            if fallback_path is not None:
+                fallback_path.unlink(missing_ok=True)
+            if temporary is not None:
+                temporary.unlink(missing_ok=True)
 
     def stage2_optional_view(self, worktree: Path, shard: str, batch: str, part: str, timeout: int = 900) -> str:
         """Read every optional-link page without touching the checkpoint; return the complete compact view."""
@@ -1261,10 +1283,11 @@ class Git:
         return self._verify_stage2_part(path, shard, batch, part, checkpoint=False, timeout=timeout)
 
     def row_delta(self, base: str, head: str, shard: str) -> dict:
-        """New Relation / Drop rows (Drop reasons x/e only) that `head` adds to the shard files relative to `base`.
+        """New Relation / Drop rows that `head` adds to the shard files relative to `base`.
 
         Rows are compared as exact JSONL lines, so a row that exists at `base` is never new and the shard's cumulative
-        file size is never used. A file absent at a revision has no rows.
+        file size is never used. Editorial Drops (x/e) and technical fallbacks (f) stay separate. A file absent at a
+        revision has no rows.
         """
         def rows(rev: str, rel: str) -> set[str]:
             res = self._git("show", f"{rev}:{rel}", check=False)
@@ -1273,8 +1296,15 @@ class Git:
         relation = f"data/relations/relation-{shard}.jsonl"
         drop = f"data/relation-drops/drop-{shard}.jsonl"
         new_drops = rows(head, drop) - rows(base, drop)
+        parsed_drops = [json.loads(line) for line in new_drops]
+        failure_candidates = sorted(
+            ({"record_id": row["id"], "sense_id": row["sid"], "candidate": row["cd"]}
+             for row in parsed_drops if row.get("by") == "f"),
+            key=lambda row: (row["record_id"], row["sense_id"], row["candidate"]),
+        )
         return {"relations": len(rows(head, relation) - rows(base, relation)),
-                "drops": sum(1 for line in new_drops if json.loads(line).get("by") in ("x", "e"))}
+                "drops": sum(1 for row in parsed_drops if row.get("by") in ("x", "e")),
+                "automation_failure_candidates": failure_candidates}
 
     def row_count(self, rev: str, rel: str) -> int | None:
         """Number of JSONL rows of `rel` at `rev`; None if the file is not there."""

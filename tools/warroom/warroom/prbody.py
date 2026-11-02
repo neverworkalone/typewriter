@@ -65,6 +65,16 @@ def stage2_body(model: str, shard: str, batch: str, part: str, *, counts: dict |
     coverage = "미측정" if records is None or senses is None else f"{records} records / {senses} senses"
     get = (lambda key: counts.get(key)) if counts else (lambda key: None)
     new = (lambda key: _count(delta.get(key))) if isinstance(delta, dict) else (lambda key: None)
+    failure_candidates = delta.get("automation_failure_candidates") if isinstance(delta, dict) else None
+    if isinstance(failure_candidates, list) and all(
+            isinstance(row, dict) and all(isinstance(row.get(key), str) for key in ("record_id", "sense_id", "candidate"))
+            for row in failure_candidates):
+        failure_candidate_list = "; ".join(
+            f"{row['record_id']}/{row['sense_id']}: {row['candidate']}" for row in failure_candidates
+        ) or "none"
+        failure_count = len(failure_candidates)
+    else:
+        failure_candidate_list, failure_count = "미측정", None
     return "\n".join([
         "- Method: S2",
         f"- Model: {model}",
@@ -75,6 +85,8 @@ def stage2_body(model: str, shard: str, batch: str, part: str, *, counts: dict |
         f"- Unique Candidates: {_n(get('unique'))}",
         f"- New Relations: {_n(new('relations'))}",
         f"- New Drops: {_n(new('drops'))}",
+        f"- Technical Failure Drops (f): {_n(failure_count)}",
+        f"- Technical Failure Candidates: {failure_candidate_list}",
         f"- Duplicates: {_n(get('merged_duplicates'))}",
         f"- Already Approved: {_n(get('skipped_existing'))}",
         f"- Reverse Absorbed: {_n(get('reverse_covered'))}",

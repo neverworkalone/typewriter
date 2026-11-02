@@ -179,10 +179,13 @@ class Lifecycle(unittest.TestCase):
                 env = w.sup._launch_env({"method": method}, "fix_new")
                 self.assertIsNone(env.get("TYPEWRITER_APPROVED_LITERARY_DB"))
         # Method D receives the approved index only for its chunk sessions and the Supervisor's own prepare.
+        d_worktree = w.paths.worktrees / "method-d-launch-env"
+        d_worktree.mkdir(parents=True)
+        (d_worktree / ".git").write_text("gitdir: ../git-admin/worktrees/method-d-launch-env\n", "utf-8")
         for kind in ("d_chunk_new", "d_chunk_resume", "d_cli"):
             with self.subTest(kind=kind):
                 w.cfg["corpus_index_path"] = str(index)
-                env = w.sup._launch_env({"method": "d"}, kind)
+                env = w.sup._launch_env({"method": "d", "worktree": str(d_worktree)}, kind)
                 self.assertEqual(env["TYPEWRITER_APPROVED_CORPUS_DB"], str(index))
                 self.assertIsNone(env.get("TYPEWRITER_APPROVED_LITERARY_DB"))
 

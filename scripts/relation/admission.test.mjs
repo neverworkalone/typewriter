@@ -457,9 +457,9 @@ test('drop rows need real reasons and unique candidates', () => {
   const drop = { ...base, candidate: '버릴말', reason: 'x' };
   assert.equal(validate([], [drop]).dropCount, 1);
   assert.throws(() => validate([], [{ ...drop, reason: ' ' }]), /reason/);
-  for (const reason of ['x', 'e', 'z']) assert.equal(validate([], [{ ...drop, reason }]).dropCount, 1);
+  for (const reason of ['x', 'e', 'z', 'f']) assert.equal(validate([], [{ ...drop, reason }]).dropCount, 1);
   for (const reason of ['edit', 'editorial: historical reason', 'free-form']) {
-    assert.throws(() => validate([], [{ ...drop, reason }]), /reason must be one of x\/e\/z/u);
+    assert.throws(() => validate([], [{ ...drop, reason }]), /reason must be one of x\/e\/z\/f/u);
   }
   assert.throws(() => validate([], [drop, drop]), /duplicate drop/);
   assert.throws(() => validate([], [{ ...drop, extra: 1 }]), /exactly/);
@@ -521,6 +521,8 @@ test('accounting treats complete gloss words as mentions, not substrings inside 
   assert.throws(() => verifyDrop('떡갈나무에 잎이 넓다.', '떡갈나무'), /named by the gloss/, 'a complete candidate phrase remains protected from Drop');
   assert.equal(verifyDrop('가로에 사는 민족.', '가로', 'e').drop, 1,
     'a Drop for a connected candidate with no independent expression value may account for a gloss-named candidate');
+  assert.equal(verifyDrop('가로에 사는 민족.', '가로', 'f').drop, 1,
+    'a technical execution fallback bypasses editorial gloss-name checks');
   assert.throws(() => verifyDrop('가로에 사는 민족.', '가로', 'x'), /named by the gloss/,
     'an unrelated Drop code remains blocked for the same gloss-named candidate');
   assert.throws(() => verifyDrop('가로에 사는 민족.', '가로', 'x'), /named by the gloss/,

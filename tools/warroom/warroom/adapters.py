@@ -130,14 +130,40 @@ def stage2_git_executables(env) -> list[str]:
     return sorted(paths)
 
 
-def stage2_chunk_sandbox_command(cmd: list[str], git_executables: list[str], path: str) -> list[str]:
-    """Run a chunk worker inside an OS policy that denies executing every discovered Git binary."""
+def stage2_protected_paths(env) -> list[str]:
+    """Supervisor-owned paths that a chunk worker must not replace or write."""
+    try:
+        items = json.loads(env.get("WARROOM_PROTECTED_PATHS") or "[]")
+    except json.JSONDecodeError as e:
+        raise RuntimeError("Stage 2 청크의 보호 경로 설정이 손상되었습니다") from e
+    if not isinstance(items, list) or not items:
+        raise RuntimeError("Stage 2 청크를 시작하지 않습니다: Supervisor 보호 경로를 확인하지 못했습니다")
+    paths = set()
+    for item in items:
+        if not isinstance(item, str) or not item or not Path(item).is_absolute():
+            raise RuntimeError("Stage 2 청크를 시작하지 않습니다: 보호 경로가 절대 경로가 아닙니다")
+        resolved = Path(item).resolve()
+        if not resolved.exists():
+            raise RuntimeError("Stage 2 청크를 시작하지 않습니다: 보호 경로가 없습니다")
+        paths.add(str(resolved))
+    return sorted(paths)
+
+
+def stage2_chunk_sandbox_command(cmd: list[str], git_executables: list[str], protected_paths: list[str],
+                                 path: str) -> list[str]:
+    """Deny Git execution and writes to Supervisor-owned state for a chunk worker."""
     paths = stage2_git_executables({"WARROOM_GIT_EXECUTABLES": json.dumps(git_executables)})
+    protected = stage2_protected_paths({"WARROOM_PROTECTED_PATHS": json.dumps(protected_paths)})
     if sys.platform == "darwin":
         sandbox = shutil.which("sandbox-exec", path=path)
         if not sandbox:
             raise RuntimeError("Stage 2 청크를 시작하지 않습니다: macOS sandbox-exec를 찾을 수 없습니다")
-        rules = " ".join(f"(deny process-exec (literal {json.dumps(item)}))" for item in paths)
+        protected_rules = [
+            f"(deny file-write* ({'subpath' if Path(item).is_dir() else 'literal'} {json.dumps(item)}))"
+            for item in protected
+        ]
+        rules = " ".join([*(f"(deny process-exec (literal {json.dumps(item)}))" for item in paths),
+                           *protected_rules])
         profile = f"(version 1) (allow default) {rules}"
         return [sandbox, "-p", profile, *cmd]
     if sys.platform.startswith("linux"):
@@ -145,7 +171,8 @@ def stage2_chunk_sandbox_command(cmd: list[str], git_executables: list[str], pat
         if not bubblewrap:
             raise RuntimeError("Stage 2 청크를 시작하지 않습니다: Git 실행을 차단할 bwrap을 찾을 수 없습니다")
         masked = [arg for item in paths for arg in ("--ro-bind", "/dev/null", item)]
-        return [bubblewrap, "--die-with-parent", "--new-session", "--bind", "/", "/", *masked,
+        readonly = [arg for item in protected for arg in ("--ro-bind", item, item)]
+        return [bubblewrap, "--die-with-parent", "--new-session", "--bind", "/", "/", *masked, *readonly,
                 "--", *cmd]
     raise RuntimeError(f"Stage 2 청크를 시작하지 않습니다: {sys.platform}용 Git 실행 샌드박스가 없습니다")
 
@@ -177,8 +204,10 @@ class ProcessAdapter(AgentAdapter):
         exit_file.unlink(missing_ok=True)
         env = dict(env)
         if is_stage2_chunk(env) and not self.native_stage2_chunk_sandbox:
-            cmd = stage2_chunk_sandbox_command(cmd, stage2_git_executables(env), env.get("PATH", os.defpath))
+            cmd = stage2_chunk_sandbox_command(cmd, stage2_git_executables(env), stage2_protected_paths(env),
+                                               env.get("PATH", os.defpath))
         env.pop("WARROOM_GIT_EXECUTABLES", None)
+        env.pop("WARROOM_PROTECTED_PATHS", None)
         # The wrapper records the exit status so a restarted Supervisor can still
         # learn how the (detached) child ended.
         wrapper = ['"$@"', "echo $? > \"$WARROOM_EXIT_FILE\""]
