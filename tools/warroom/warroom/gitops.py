@@ -1223,9 +1223,9 @@ class Git:
             raise GitError("admission-cli repair exited 0 without {ok:true}")
         return payload
 
-    def verify_stage2_local(self, worktree: Path, shard: str, batch: str, part: str,
-                            *, checkpoint: bool, timeout: int = 900) -> tuple[bool, str]:
-        """Verify the exact local Part, optionally requiring its private checkpoint evidence; demand success JSON."""
+    def _verify_stage2_part(self, worktree: Path, shard: str, batch: str, part: str,
+                            *, checkpoint: bool, timeout: int) -> tuple[bool, str, dict | None]:
+        """Run the Part verify; demand success JSON and return its `counts` (None if the CLI reported none)."""
         checkpoint_path = f".warroom-scratch/relation-admission-{shard}-{batch}-{part}.json"
         args = ["--shard", shard, "--batch", batch, "--part", part]
         if checkpoint:
@@ -1233,19 +1233,53 @@ class Git:
         res = self.r.run(["node", "scripts/relation/admission-cli.mjs", "verify", *args, "--json"],
                          cwd=worktree, env=self.env, timeout=timeout)
         if not res.ok:
-            return False, " ".join((res.err or res.out).split())[-300:]
+            return False, " ".join((res.err or res.out).split())[-300:], None
         try:
             payload = json.loads(res.out.strip().splitlines()[-1])
         except (ValueError, IndexError):
-            return False, "verify exited 0 without valid JSON success output"
+            return False, "verify exited 0 without valid JSON success output", None
         if not isinstance(payload, dict) or payload.get("ok") is not True:
-            return False, "verify exited 0 without {ok:true}"
-        return True, ""
+            return False, "verify exited 0 without {ok:true}", None
+        counts = payload.get("counts")
+        return True, "", counts if isinstance(counts, dict) else None
+
+    def verify_stage2_local(self, worktree: Path, shard: str, batch: str, part: str,
+                            *, checkpoint: bool, timeout: int = 900) -> tuple[bool, str]:
+        """Verify the exact local Part, optionally requiring its private checkpoint evidence; demand success JSON."""
+        ok, detail, _counts = self._verify_stage2_part(worktree, shard, batch, part, checkpoint=checkpoint, timeout=timeout)
+        return ok, detail
 
     def verify_stage2_exact(self, sha: str, shard: str, batch: str, part: str, timeout: int = 900) -> tuple[bool, str]:
         """Verify the exact PR commit in War Room's detached checkout, without its private checkpoint."""
+        ok, detail, _counts = self.verify_stage2_exact_counts(sha, shard, batch, part, timeout=timeout)
+        return ok, detail
+
+    def verify_stage2_exact_counts(self, sha: str, shard: str, batch: str, part: str,
+                                   timeout: int = 900) -> tuple[bool, str, dict | None]:
+        """Like `verify_stage2_exact`, also returning the Part-scoped accounting counts of that exact commit."""
         path = self._verify_checkout(sha)
-        return self.verify_stage2_local(path, shard, batch, part, checkpoint=False, timeout=timeout)
+        return self._verify_stage2_part(path, shard, batch, part, checkpoint=False, timeout=timeout)
+
+    def row_delta(self, base: str, head: str, shard: str) -> dict:
+        """New Relation / Drop rows (Drop reasons x/e only) that `head` adds to the shard files relative to `base`.
+
+        Rows are compared as exact JSONL lines, so a row that exists at `base` is never new and the shard's cumulative
+        file size is never used. A file absent at a revision has no rows.
+        """
+        def rows(rev: str, rel: str) -> set[str]:
+            res = self._git("show", f"{rev}:{rel}", check=False)
+            return {line for line in res.out.splitlines() if line.strip()} if res.ok else set()
+
+        relation = f"data/relations/relation-{shard}.jsonl"
+        drop = f"data/relation-drops/drop-{shard}.jsonl"
+        new_drops = rows(head, drop) - rows(base, drop)
+        return {"relations": len(rows(head, relation) - rows(base, relation)),
+                "drops": sum(1 for line in new_drops if json.loads(line).get("by") in ("x", "e"))}
+
+    def row_count(self, rev: str, rel: str) -> int | None:
+        """Number of JSONL rows of `rel` at `rev`; None if the file is not there."""
+        res = self._git("show", f"{rev}:{rel}", check=False)
+        return sum(1 for line in res.out.splitlines() if line.strip()) if res.ok else None
 
     def verify_stage2(self, sha: str, kind: str, shard: str, batch: str | None, part: str | None,
                       timeout: int = 900) -> tuple[bool, str]:

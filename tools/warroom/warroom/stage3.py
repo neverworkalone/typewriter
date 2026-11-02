@@ -6,15 +6,15 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from . import batches, stage2
+from . import batches, prbody, stage2
 from .store import STAGE3_METHOD
 
 METHOD = STAGE3_METHOD
 EDIT_CLI = "scripts/relation/edit-cli.mjs"
 SHARDS = 428
 _SHARD = re.compile(r"^\d{3}$")
-_PR_TITLE = re.compile(r"^\[Relation Stage 3\] (\d{3})$")
-_ISSUE_LINK = re.compile(r"(?:#2450|issues/2450)(?!\d)")
+_PR_TITLE = prbody.S3_TITLE   # new `[S3/<Model>] SSS` and legacy `[Relation Stage 3] SSS` (#2838)
+_ISSUE_LINK = prbody.S3_ISSUE_LINK   # #2455 (production contract) or legacy #2450
 
 
 class Stage3Error(ValueError):

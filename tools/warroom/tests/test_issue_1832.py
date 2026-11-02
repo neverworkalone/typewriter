@@ -52,7 +52,8 @@ class DeterministicStage2Completion(unittest.TestCase):
         self.assertEqual(len(w.git.commits), 1)
         self.assertEqual(w.git.pushes, [b["branch"]])
         self.assertEqual(len(w.gh.created_prs), 1)
-        self.assertEqual(w.git.exact_verify_calls, [("f" * 40, "001", "01", "01")])
+        # once before the PR body states PASS, once as the PR-owned acceptance gate
+        self.assertEqual(w.git.exact_verify_calls, [("f" * 40, "001", "01", "01")] * 2)
 
     def test_failed_exact_head_verification_does_not_accept_the_pr(self):
         w = self.w
@@ -63,7 +64,7 @@ class DeterministicStage2Completion(unittest.TestCase):
         b = w.store.batch(b["id"])
         self.assertEqual(b["state"], "ERROR")
         self.assertIsNone(b["pr_number"])
-        self.assertEqual(len(w.gh.created_prs), 1)
+        self.assertEqual(len(w.gh.created_prs), 0)   # a failed exact verify never reaches PR creation (#2838)
         self.assertEqual(len(w.adapter.launches), 1)
 
     def test_non_stage2_denial_still_requires_a_clean_owned_pr_at_local_head(self):

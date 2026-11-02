@@ -148,6 +148,10 @@ class FakeGit:
         self.finalize_error: Exception | None = None
         self.local_verify_ok = True
         self.exact_verify_ok = True
+        self.exact_counts = {"records": 100, "senses": 130, "unique": 40, "skipped_existing": 5, "reverse_covered": 3,
+                             "merged_duplicates": 2, "raw": 42, "missing": 0, "relation": 999, "drop": 999}
+        self.row_delta_result = {"relations": 20, "drops": 12}
+        self.row_counts = {}
         self.local_verify_calls: list[tuple] = []
         self.exact_verify_calls: list[tuple] = []
         self.inspect_calls: list[tuple] = []
@@ -436,6 +440,16 @@ class FakeGit:
     def verify_stage2_exact(self, sha, shard, batch, part, timeout=900):
         self.exact_verify_calls.append((sha, shard, batch, part))
         return self.exact_verify_ok, "" if self.exact_verify_ok else "exact HEAD verify failed"
+
+    def verify_stage2_exact_counts(self, sha, shard, batch, part, timeout=900):
+        ok, detail = self.verify_stage2_exact(sha, shard, batch, part, timeout=timeout)
+        return ok, detail, (dict(self.exact_counts) if ok and self.exact_counts is not None else None)
+
+    def row_delta(self, base, head, shard):
+        return dict(self.row_delta_result)
+
+    def row_count(self, rev, rel):
+        return self.row_counts.get(rel)
 
     def stage2_inspect(self, worktree, shard, batch, part, sense_ids, timeout=900, selection_path=None):
         self.inspect_calls.append((str(worktree), shard, batch, part, list(sense_ids)))
