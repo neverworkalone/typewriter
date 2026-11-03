@@ -114,6 +114,32 @@ class LegacyRepairAttemptReconciliation(unittest.TestCase):
         state_restarted = json.loads(w.store.get(stage2.repair_state_key(b["id"])))
         self.assertEqual(len(state_restarted["rebindings"]), 1)
 
+    def test_receipted_attempt_without_run_identity_is_not_rebound_as_legacy_replay(self):
+        w, b, checkpoint = _legacy_world(self, statuses=("applied",))
+        state = json.loads(w.store.get(stage2.repair_state_key(b["id"])))
+        applied = state["current"]["attempt_log"][0]
+        applied["attempt"] = 2
+        applied["replay_source"] = {
+            "source_attempt": 1, "source_run_id": 1, "response_sha256": "7" * 64,
+            "cli_input_sha256": "8" * 64, "checkpoint_sha256": "9" * 64,
+        }
+        state["current"]["attempt_log"].insert(0, {
+            "cursor": 0, "attempt": 1, "fingerprint": FP, "target_keys": [KEY],
+            "status": "rejected", "reason_code": "format", "run_id": 1,
+        })
+        w.store.set(stage2.repair_state_key(b["id"]), json.dumps(state, sort_keys=True))
+        state_before = w.store.get(stage2.repair_state_key(b["id"]))
+        checkpoint_before = checkpoint.read_bytes()
+
+        stopped = w.sup._stage2_preflight_repair(
+            b, stage2.checkpoint(b["worktree"], b["shard"], b["batch"]))
+
+        self.assertTrue(stopped)
+        self.assertEqual(w.store.batch(b["id"])["state"], "ERROR")
+        self.assertEqual(w.store.get(stage2.repair_state_key(b["id"])), state_before)
+        self.assertEqual(checkpoint.read_bytes(), checkpoint_before)
+        self.assertEqual(w.git.stage2_repair_calls, [])
+
     def test_ambiguous_or_incomplete_legacy_evidence_stays_fail_closed(self):
         cases = (
             ("two_legacy_failures", ("launched", "launched", "applied"), True, False, False),

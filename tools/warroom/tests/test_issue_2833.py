@@ -36,16 +36,6 @@ class RepairAnswerExtraction(unittest.TestCase):
         for text in (f"repair @{'b' * 64}\n{body}", f"repair @{FP[:-1]}\n{body}", None):
             self.assertIsNone(stage2.extract_repair_answer(text, FP))
 
-    def test_bound_legacy_replay_parses_body_only_after_the_supervisor_proves_the_run(self):
-        body = valid_body()
-        self.assertEqual(stage2.extract_bound_repair_answer(f"repair @{FP[:-1]}\n{body}"), json.loads(body))
-        for text in (f"comment\nrepair @{FP[:-1]}\n{body}", f"repair @not-a-digest\n{body}",
-                     f"repair @{FP[:-1]}\n{body}\nextra"):
-            with self.subTest(text=text[:40]):
-                with self.assertRaises(stage2.RepairFormatError):
-                    stage2.extract_bound_repair_answer(text)
-
-
 class RepairFormatRetry(unittest.TestCase):
     def run_text(self, w, text):
         run = w.adapter.launches[-1]
@@ -84,47 +74,35 @@ class RepairFormatRetry(unittest.TestCase):
         self.assertEqual(len(w.adapter.launches), launches + 1)
         self.assertEqual(len(w.gh.created_prs), 1)
 
-    def test_operator_retry_replays_one_exact_saved_format_run_without_a_new_ai_attempt(self):
-        w, batch = start_repair(self, [conflict_report(FP, CANDIDATES), clean_report("2" * 64)])
-        launches = len(w.adapter.launches)
-        self.run_text(w, f"repair @{'b' * 64}\n{valid_body()}")
-        self.run_text(w, f"repair @{FP[:-1]}\n{valid_body()}")
-        batch = w.store.batch(batch["id"])
-        self.assertEqual(batch["state"], "ERROR")
-        self.assertEqual(len(w.adapter.launches), launches + 1)
-        before = json.loads(w.store.get(stage2.repair_state_key(batch["id"])))
-        source = before["current"]["attempt_log"][-1]
-        source_hash = source["response_sha256"]
+    def test_operator_retry_preserves_legacy_format_replay_state_without_reusing_it(self):
+        for pending in (False, True):
+            with self.subTest(pending=pending):
+                w, batch = start_repair(self, [conflict_report(FP, CANDIDATES), clean_report("2" * 64)])
+                launches = len(w.adapter.launches)
+                self.run_text(w, f"repair @{'b' * 64}\n{valid_body()}")
+                self.run_text(w, f"repair @{FP[:-1]}\n{valid_body()}")
+                self.assertEqual(w.store.batch(batch["id"])["state"], "ERROR")
 
-        w.sup._relaunch_do(batch)
+                state = json.loads(w.store.get(stage2.repair_state_key(batch["id"])))
+                attempt = state["current"]["attempt_log"][-1]
+                state["current"]["response_replay"] = {
+                    "version": 1, "status": "answer_saved" if pending else "rejected",
+                    "source_attempt": attempt["attempt"], "source_run_id": attempt["run_id"],
+                    "fingerprint": state["current"]["fingerprint"], "cursor": state["current"]["cursor"],
+                    "target_keys": attempt["target_keys"], "response_sha256": attempt["response_sha256"],
+                }
+                if pending:
+                    state["current"]["pending_answer"] = json.loads(valid_body())
+                w.store.set(stage2.repair_state_key(batch["id"]), json.dumps(state, sort_keys=True))
+                before = w.store.get(stage2.repair_state_key(batch["id"]))
 
-        after = json.loads(w.store.get(stage2.repair_state_key(batch["id"])))
-        self.assertEqual(w.store.batch(batch["id"])["state"], "WAITING_REVIEW")
-        self.assertEqual(len(w.adapter.launches), launches + 1)
-        self.assertEqual(len(w.git.stage2_repair_calls), 1)
-        self.assertEqual([row["status"] for row in after["current"]["attempt_log"]],
-                         ["rejected", "rejected", "applied"])
-        replay = after["current"]["attempt_log"][-1]["replay_source"]
-        self.assertEqual(replay["source_attempt"], source["attempt"])
-        self.assertEqual(replay["source_run_id"], source["run_id"])
-        self.assertEqual(replay["response_sha256"], source_hash)
+                w.sup._relaunch_do(w.store.batch(batch["id"]))
 
-    def test_saved_response_replay_rejects_a_run_id_that_does_not_match_its_output_hash(self):
-        w, batch = start_repair(self, [conflict_report(FP, CANDIDATES), clean_report("2" * 64)])
-        self.run_text(w, f"repair @{'b' * 64}\n{valid_body()}")
-        self.run_text(w, f"repair @{FP[:-1]}\n{valid_body()}")
-        state = json.loads(w.store.get(stage2.repair_state_key(batch["id"])))
-        original_run_id = state["current"]["attempt_log"][-1]["run_id"]
-        state["current"]["attempt_log"][-1]["run_id"] = state["current"]["attempt_log"][0]["run_id"]
-        w.store.set(stage2.repair_state_key(batch["id"]), json.dumps(state, sort_keys=True))
-
-        handled, problem = w.sup._stage2_repair_replay_saved_format(w.store.batch(batch["id"]), state)
-
-        self.assertTrue(handled)
-        self.assertIn("cannot be rebound", problem)
-        self.assertIsNone(state["current"].get("pending_answer"))
-        self.assertEqual(len(w.git.stage2_repair_calls), 0)
-        self.assertNotEqual(original_run_id, state["current"]["attempt_log"][-1]["run_id"])
+                after = w.store.get(stage2.repair_state_key(batch["id"]))
+                self.assertEqual(after, before)
+                self.assertEqual(w.store.batch(batch["id"])["state"], "ERROR")
+                self.assertEqual(len(w.adapter.launches), launches + 1)
+                self.assertEqual(w.git.stage2_repair_calls, [])
 
     def test_restart_rebinds_the_unique_run_written_before_attempt_run_id(self):
         w, batch = start_repair(self, [conflict_report(FP, CANDIDATES), clean_report("2" * 64)])

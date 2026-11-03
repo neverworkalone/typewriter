@@ -615,26 +615,6 @@ def extract_legacy_repair_answer(final_text: str | None, fingerprint_: str) -> d
     return _parse_repair_json(body)
 
 
-def extract_bound_repair_answer(final_text: str | None) -> dict:
-    """Parse a persisted response only after its Supervisor run/page/fingerprint proof has been checked.
-
-    For one-time recovery of pre-change runs, discard their legacy `repair @...` line as presentation text;
-    that line is deliberately not identity evidence. Callers must bind the exact output hash and run to saved state.
-    """
-    if not isinstance(final_text, str):
-        raise RepairFormatError("saved repair run has no complete final response")
-    normalized = final_text.replace("\r\n", "\n").strip()
-    if normalized.startswith("{"):
-        return _parse_repair_json(normalized)
-    lines = normalized.split("\n")
-    if not lines or not re.fullmatch(r"repair @[a-f0-9]{1,64}", lines[0].strip()):
-        raise RepairFormatError("saved legacy response has no recognized repair header")
-    body = "\n".join(lines[1:]).strip()
-    if not body:
-        raise RepairFormatError("saved repair run has no JSON body")
-    return _parse_repair_json(body)
-
-
 def decision_file_state(worktree, chunk_id: str, rel: str = DECISIONS) -> str:
     """Classify the decisions file as `missing`, `current`, or fail-closed `corrupt` for a pending chunk."""
     path = Path(worktree) / rel
