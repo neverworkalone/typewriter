@@ -125,9 +125,10 @@ class Stage2RepairSchemaCorrection(unittest.TestCase):
 
     def test_second_schema_failure_stops_without_saving_or_an_extra_attempt(self):
         w, batch = self.start()
+        initial_launches = len(w.adapter.launches)
         self.run_text(w, repair_text([accounted_row("candidate-0", extra_decision=True),
                                       accounted_row("candidate-1"), accounted_row("candidate-2")]))
-        self.assertEqual(len(w.adapter.launches), 2)
+        self.assertEqual(len(w.adapter.launches), initial_launches + 1)
         self.run_text(w, repair_text([accounted_row("candidate-0", extra_decision=True)]))
 
         batch = w.store.batch(batch["id"])
@@ -137,6 +138,7 @@ class Stage2RepairSchemaCorrection(unittest.TestCase):
         self.assertEqual((state["current"]["attempts"],
                           [row["status"] for row in state["current"]["attempt_log"]]),
                          (2, ["rejected", "rejected"]))
+        self.assertEqual(len(w.adapter.launches), initial_launches + 1)
         self.assertEqual(w.git.stage2_repair_calls, [])
 
 

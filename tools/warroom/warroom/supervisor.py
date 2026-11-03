@@ -3152,16 +3152,11 @@ class Supervisor:
                 f"{row['source_sense_id']}/{row['candidate']}: {row['reason']}" for row in unresolved_rows[:8])
             self._save_stage2_repair_state(b, state)
             raise ValueError(current["last_error"])
-        for key in sorted(response_keys - seen):
-            required_fields = ({"source_sense_id", "candidate", "additional_relations"}
-                               if required[key]["already_accounted"] else
-                               {"source_sense_id", "candidate", "decision"})
-            schema_diagnostics.append({"candidate_key": f"{key[0]}\u0000{key[1]}",
-                "code": "missing_candidate_row", "required_fields": sorted(required_fields), "actual_fields": []})
         if schema_repair is not None and (peer_rows or unresolved_rows):
             raise ValueError("schema-correction response may contain only the requested candidate rows")
-        if seen - response_keys:
-            raise ValueError("repair response contains a candidate outside the schema-correction request")
+        if seen != response_keys:
+            missing = sorted(response_keys - seen)
+            raise ValueError(f"repair response does not cover every requested candidate ({len(missing)} missing)")
         affected_types = {}
         for row in valid_direct_rows:
             candidate = required[(row["source_sense_id"], row["candidate"])]
@@ -3201,9 +3196,6 @@ class Supervisor:
                 current["attempt_log"][-1]["status"] = "rejected"
             self._save_stage2_repair_state(b, state)
             raise Stage2RepairSchemaError(current["last_error"])
-        if seen != response_keys:
-            missing = sorted(response_keys - seen)
-            raise ValueError(f"repair response does not cover every requested candidate ({len(missing)} missing)")
         if schema_repair is not None:
             answer["decisions"] = accepted_rows + valid_direct_rows
             answer["peer_adjustments"] = accepted_peers
