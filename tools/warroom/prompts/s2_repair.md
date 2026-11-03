@@ -13,6 +13,8 @@ You are a fresh, short, answer-only Stage 2 semantic rejudgment session. The Sup
 - If a change moves a relation between UI groups, use only the directly affected same-source group peers to judge relative ordering. Return `peer_adjustments` only for those directly affected saved decisions; leave every other peer unchanged.
 - If a case cannot be judged from the supplied evidence, put its exact source sense and candidate in `unresolved` with a short reason and do not guess.
 - Do not use tools, edit files, call the admission CLI, or modify the checkpoint. Return only the answer below.
+- Each candidate in `repair_input` declares its exact `required_output_fields` and `forbidden_output_fields`. Follow those fields for that candidate; a page may contain both output shapes.
+- If `repair_input` contains `schema_correction`, return rows only for its listed candidate keys. Correct the listed field-shape errors using the supplied cases. Do not repeat other candidates or add peer adjustments or unresolved rows; the Supervisor retains the already-valid rows from the first response.
 
 ## Required answer
 
@@ -40,7 +42,24 @@ Return this exact header on its own line, followed by one JSON object. No Markdo
 
 For an ordinary candidate, `decision` must be a complete valid Stage 2 decision object. It must repeat the exact `source_sense_id` and `candidate` and use the CLI schema: Drop has `disposition:"drop"` and reason `x` (unrelated/wrong Sense) or `e` (connected without independent expression value); a relation has `disposition:"relation"`, type, relevance, and either the exact target fields or the complete checked-target list for a text-only decision. This repair input cannot use `z` or `f`; `z` is Stage 3 orphan accounting and `f` is reserved for the Supervisor's #2874 fallback path. Free-form text, `editorial:`, and `edit` remain invalid. Follow the direction policy above; the CLI persists its required reverse fields.
 
-For `already_accounted:true`, preserve the primary existing decision and return `additional_relations` as the complete reviewed optional-link list (an empty array means no optional links). Each added relation must choose an exact supplied target sense and follow the direction policy above.
+For `already_accounted:true`, the row must contain exactly `source_sense_id`, `candidate`, and `additional_relations`. Preserve the primary existing decision and return `additional_relations` as the complete reviewed optional-link list (an empty array means no optional links). Each added relation must choose an exact supplied target sense and follow the direction policy above. Do not include `decision` in this row.
+
+The two valid row shapes are distinct:
+
+```json
+[
+{
+  "source_sense_id":"...",
+  "candidate":"...",
+  "decision":{"disposition":"drop","reason":"e"}
+},
+{
+  "source_sense_id":"...",
+  "candidate":"...",
+  "additional_relations":[]
+}
+]
+```
 
 `peer_adjustments` is an array of `{ "source_sense_id":"...", "candidate":"...", "decision":{...} }` for directly affected same-source peers only. Omit unchanged peers. `unresolved` is an array of `{ "source_sense_id":"...", "candidate":"...", "reason":"..." }`.
 
