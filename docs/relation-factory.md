@@ -235,7 +235,7 @@ Part 모드는 선택한 Stage 1 Batch의 필수 후보 파일 6개를 기존 v1
 
 ## 5. Stage 3 — Relation Editorial Refinement (#2455)
 
-> **구현 상태:** [#2450](https://github.com/neverworkalone/typewriter/issues/2450)의 구현 작업은 종료되었으며 Stage 3 CLI(`scripts/relation/edit-cli.mjs`), War Room `s3` 실행(`tools/warroom/warroom/stage3.py`) 및 Stage 2 연계 reconcile 경로가 마련되어 있다. 실제 샤드 작업은 [#2455](https://github.com/neverworkalone/typewriter/issues/2455)의 선행 조건·검증·점유 규칙을 따른다. 구현 완료는 특정 샤드의 파일럿/생산 완료를 의미하지 않는다. REVIEW.md의 *PR review Stage 3*와는 별개다.
+> **구현 상태:** [#2450](https://github.com/neverworkalone/typewriter/issues/2450)의 구현 작업은 종료되었으며 Stage 3 CLI(`scripts/relation/edit-cli.mjs`), War Room `s3` 실행(`tools/warroom/warroom/stage3.py`) 및 Stage 2 연계 reconcile 경로가 마련되어 있다. 실제 샤드 작업은 [#2455](https://github.com/neverworkalone/typewriter/issues/2455)의 선행 조건·검증·점유 규칙을 따른다. 구현 완료는 특정 샤드의 파일럿/생산 완료를 의미하지 않는다. 이 Factory 생산 단계는 REVIEW.md의 *PR review Stage 1(기술 검토) / Stage 2(최종 HEAD·CI 확인 및 merge)*와는 별개다.
 
 **목적:** Stage 3는 **Stage 2 최종 편집 품질을 독립적으로 감사**한다(#2544). Stage 2와 동일한 작가 관점의 표현 가치 기준으로 잘못 승인된 관계·Sense·Link Repair 필요성을 확인하고 필요한 교정을 수행하되, 대량 편집을 정상 운영의 전제로 삼지 않는다. 과거 preserve-first 기준으로 생산된 샤드를 소급 재편집하거나 당시 Stage 2를 지침 위반으로 평가하지 않는다. Stage 3의 삭제 비율은 원인 진단 지표일 뿐 목표/쿼터가 아니며, 독창적이고 유용한 연상은 보호한다. 기존 Drop·Link Repair 교정 능력은 유지한다.
 

@@ -89,9 +89,10 @@ are historical evidence, not instructions to start the named model.
   Do not retroactively modify M9 B05–B09 review history.
 - Retain source-bound semantic checks, fail-closed decisions, CI and canonical
   invariants. Optimize total measured token usage, not just wall-clock speed.
-- The independent Stage 1/2 **PR review** process is separate and governed
-  exclusively by `REVIEW.md`; this instruction addresses *implementation*
-  subagents, not separately commissioned reviewers.
+- The **PR review** process is separate: Stage 1 owns consolidated technical/data
+  review; Stage 2 owns the final HEAD/CI gate and merge. It is governed exclusively
+  by `REVIEW.md`; this instruction addresses *implementation* subagents, not
+  separately commissioned reviewers.
 
 ## Communication
 

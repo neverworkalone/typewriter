@@ -9,8 +9,8 @@ Consult `domain-model.md` only if the affected contract needs it.
 
 **Apply the current owner decision in [relation-editorial-policy.md](relation-editorial-policy.md).**
 It overrides stricter historical near/direct substitution and broader/narrower
-exclusion criteria. These rules apply to Stage 1 focused review and Stage 2
-independent review of Issue #838 말의 결/연상 and of STDICT-sourced
+exclusion criteria. These rules apply to the consolidated technical Stage 1
+PR review of Issue #838 말의 결/연상 and of STDICT-sourced
 `direct`/`antonym` projection changes.
 
 The 2026-10-12 clarification treats short canonical glosses as anchors for the
@@ -58,19 +58,22 @@ only* do not apply to the new scope.
   `term`+`meaning_hint`, and obvious junk or a candidate whose same meaning is obviously already an existing headword (same spelling with a different meaning is a distinct valid candidate; never reject by spelling alone). Skip
   promotion merit and detailed QA; this never relaxes review of the PR's actual
   relations, Tier or product behaviour. The PR relation stays text regardless.
-- Stage 1/2 independence, exact-HEAD verification and shared regressions are
-  unchanged.
+- Technical Stage 1 remains independent of the producer and checks shared
+  regressions. Final Stage 2 verifies the effective technical PASS, exact HEAD
+  and required CI under `REVIEW.md`; it does not repeat editorial review.
 
-## Canonical relation contracts## Stage 1 Candidate production-form audit (A/B/C/D)
+## Factory Stage 1 Candidate production-form audit (A/B/C/D)
 
-The root `REVIEW.md` **Stage 1 Candidate form gate** is the review authority for new/changed `data/relation-candidates/` batches and experimental producer outputs. This check is **distinct from Stage 2's `near/mood/scene/sensory/action/association` choice or relevance 1–9**. The source sense remains the semantic anchor; word associations may be loose, indirect, ordinary or surprising.
+The root `REVIEW.md` **Stage 1 Candidate form gate** is the review authority for new/changed `data/relation-candidates/` batches and experimental producer outputs. This check is **distinct from Relation Factory Stage 2's `near/mood/scene/sensory/action/association` choice or relevance 1–9**. The source sense remains the semantic anchor; word associations may be loose, indirect, ordinary or surprising.
 
 **Risk-first checks:** inspect the source's exact Canonical `lemma` and bound `sense_id/gloss` together with output candidates. Confirm the producer checked every submitted string for narrative form. Start with suspicious clauses, gloss paraphrases, compound/derived forms containing the lemma, and multiword expressions. Use ordinary independent word candidates as positive controls. Look for recurring failure classes across changed records rather than imposing arbitrary lexical preferences.
 
 - **PASS-leaning:** `검사하다 → 차표/흉기/결산` can be valid word associations when the actual source sense/context supports them. `수괘` (frost) → `겨울 아침` opens a scene; `산뜩 → 가슴 철렁` extends into a bodily/emotional image. These compact, potentially familiar expressions should survive Stage 1 regardless of subjective originality or eventual Tier when neither surface contains the other after whitespace/hyphen normalization.
 - **Reject:** any candidate whose whitespace/hyphen-normalized surface contains the source lemma, or is contained by it, including `건축 → 건축가`, `공탁 → 공탁(供托)`, `개 → 개집`, `눈 → 눈빛`, and `마흔 → 마흔 살`; an independent dictionary headword or expressive path is not an exception. Also reject `걸음걸이 → 느린 걸음걸이` as a merely modified source rather than a new discovery; `가는소금 → 하얀 소금` and `가는솜방망이 → 노란 꽃` merely repackage the gloss's attribute and object; `검지기 → 누전이 되면 경보가 울린다` is a full sentence; `격벽 → 격벽을 여는 데 에너지가 필요하다` is a declarative explanation; `겅중 → 긴 다리로 뜀` is a narrated action compressed into a nominal phrase. Illustrations are **generalized form classes**, not an exception/blacklist of individual words.
 - **Judgment boundary:** real standalone multiword lexical units exist, and verbs ending in `-다` can be standalone headwords. Apart from the mandatory normalized source-lemma containment ban, whitespace, punctuation, shared roots or derivational similarity alone do not decide eligibility. Retain defensible weak and concise scene/image/sensory associations as Stage 1 inputs; apply **strict anti-gloss-copy/anti-disguised-clause scrutiny**, not an originality or literary-worth threshold, to phrases and a **zero-tolerance narrative ban**. Keep confirmed recurring defects at the producer/shared review boundary, not as one-off patches to the example.
-- **Evidence and disposition:** record the inspected extent and contrast true failing examples with positive controls. If a forbidden sentence or repeated lemma survives, `-1` even if the JSONL schema passes. If repeated gloss paraphrases/routine modified-lemma phrases are proven, `-1` with a shared production remedy. Don't demand Stage 2-type qualitative perfection or reject all sense-bound words due to subjective taste. Changes to already merged historical batches are separate scoped work.
+- **Evidence and disposition:** record the inspected extent and contrast true failing examples with positive controls. If a forbidden sentence or repeated lemma survives, `-1` even if the JSONL schema passes. If repeated gloss paraphrases/routine modified-lemma phrases are proven, `-1` with a shared production remedy. Don't demand Relation Factory Stage 2 admission quality during Candidate review or reject all sense-bound words due to subjective taste. Changes to already merged historical batches are separate scoped work.
+
+**Batch cost and review rounds:** Follow `REVIEW.md`'s single broad initial review and narrow follow-up boundary. Run the required independent whole-batch containment check once initially, reuse applicable validation evidence and inspect semantic risks in groups; do not re-audit stable pipeline implementations or add a second blanket semantic pass. Consolidate exact blocker targets in the first `-1`. Re-review only reported targets, author responses, actual added/changed/removed candidates and direct regressions, including collateral deletion of eligible candidates. A shared defect class does not authorize adding unchanged, previously unreported candidates as later blockers.
 
 ## Canonical relation contracts
 
@@ -107,7 +110,7 @@ The root `REVIEW.md` **Stage 1 Candidate form gate** is the review authority for
   **not** semantic distance or confidence.
 - Reverse links require valid source/target IDs and provenance. Never create them for text-only or STDICT types other than the existing `direct` projection. Older asymmetric scores and zero relations remain valid; no mechanical scoring validators.
 
-## Systemic relation defects — Stage 2 and re-review
+## Systemic relation defects — technical Stage 1 and re-review
 
 A **proven shared defect** requires an actual incorrect behavior and a
 demonstrable shared rule or implementation flaw. One subjective near/mood/
@@ -123,10 +126,12 @@ association judgment, a broader definition or a slight relevance disagreement
 2. When genuinely shared, fix the relevant producer/policy path and verify
    the affected existing records and applicable future authoring paths.
    Do not demand a word-specific exception or mechanical creativity validator.
-3. Re-review the demonstrated affected class after the fix; do not inflate
-   one questionable association into a mandatory audit of all near relations,
-   all historical reverse links, or unrelated canonical senses.
-4. **Blocking discipline:** Stage 1/2 -1 requires a concrete, material
+3. Verify reported defects, their shared cause, actual fixes and direct regressions
+   within `REVIEW.md`'s review-round boundary. Do not inflate one questionable
+   association into an audit of all near relations, historical reverse links or
+   unrelated canonical senses; unchanged, unreported Candidate targets remain
+   outside follow-up blockers even if they match an earlier defect class.
+4. **Blocking discipline:** technical Stage 1 `-1` requires a concrete, material
    lexical, structural, provenance or user-facing error, or an evidenced
    substantial relevance inversion. For a disputed `direct`/`antonym`, explain
    why the actual bound meanings remain materially unsupported after the
@@ -139,9 +144,10 @@ association judgment, a broader definition or a slight relevance disagreement
 
 ## Review route, honesty and fail-closed decisions
 
-The Stage 1→2→3 lexical-production factory, its batch hand-off, Stage D packets
-and batch metadata duties are **retired** (historical records are kept, not
-reviewed as current procedure). Current route for data changes: **source**
+The historical Stage 1→2→3 lexical-production factory, its batch hand-off, Stage D
+packets and batch metadata duties are **retired** (historical records are kept,
+not reviewed as current procedure). This does not retire the current Relation
+Factory production stages in `relation-factory.md` or define PR review roles. Current route for data changes: **source**
 (STDICT Canonical, or the #838 authored-relation source once it exists) →
 **shared validator** → **build** (Full → Lite) → **runtime/UI**. For #838
 authored relations, once implemented, sample exact sense/ID binding, Tier 1
@@ -157,7 +163,9 @@ reverse-less text-only rows through that route.
   defect.
 - Repair systemic defects in the shared producer/validator/build/consumer
   boundary, then check all applicable existing records and future additions,
-  rather than hand-editing generated records or fixing one example.
+  rather than hand-editing generated records or fixing one example. Apply the
+  initial/follow-up scope limits in `REVIEW.md`; shared-cause verification is not
+  permission to reopen unchanged, unreported Candidate targets.
 
 If external materials feed authoring or product artifacts, also load
 `docs/review-licensing.md`. A public research workflow is not permission
