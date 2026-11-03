@@ -14,6 +14,7 @@ import {
   buildSearchBatch,
   checkDecisions,
   hadaPrefetchForms,
+  inspectActiveForSupervisor,
   parseDecisions,
   prepareChunk,
   recordEvidence,
@@ -814,10 +815,10 @@ withWorld('end to end: search records evidence, save stores the chunk once, a re
   await writeFile(decisionsFile, `${lines({ [ref('w005-s1')]: 'Z' })}\n`);
   await assert.rejects(saveActive({ inputPath: decisionsFile, root: world.root }), (error) => error.exitCode === 2 && /w005|s\d+: Z needs/u.test(error.message));
   assert.equal(existsSync(path.join(world.directory, 'chunk-001.jsonl')), false);
-  // the rejection leaves one diagnostic bound to the active chunk; a hit-bearing record's Z is not repairable by re-judging
+  // the rejection leaves one diagnostic bound to the active chunk; the hit-bearing Z is a local decision error
   const rejected = JSON.parse(await readFile(chunkPath(world, 'rejected'), 'utf8'));
   assert.deepEqual([rejected.diagnostic, rejected.chunk_no, rejected.view_sha256, rejected.repair_scope],
-    ['save_rejected', 1, saved.view_sha256, 'stop_and_report']);
+    ['save_rejected', 1, saved.view_sha256, 'decisions']);
   assert.ok(rejected.senses.includes(ref('w005-s1')) && rejected.errors.some((line) => /Z needs/u.test(line)));
 
   // a recorded SEARCH_FAILED makes even a hit-free rejection non-repairable; without it the same rejection stays repairable
@@ -856,6 +857,69 @@ withWorld('end to end: search records evidence, save stores the chunk once, a re
   assert.deepEqual(rows[0], { record_id: 'w001', senses: [{ sense_id: 'w001-s1', candidates: ['해무', '새벽 공기'] }, { sense_id: 'w001-s2', candidates: ['해무', '새벽 공기'] }] });
   assert.deepEqual(rows[1].senses[0].candidates, [], 'automatic Z is stored as an empty sense');
   await assert.rejects(saveActive({ inputPath: decisionsFile, root: world.root }), /already saved/u);
+});
+
+withWorld('mixed zero-hit V, hit-bearing LIMITED Z, and zero-hit V are locally recoverable', async (world) => {
+  const rows = canonicalRows();
+  rows[18] = rec('w019', '제로판정스무', [['verb', '문맥이 없는 동작.']]);
+  rows[19] = rec('w020', '히트판정스물', [['verb', '문맥이 있는 동작.']]);
+  rows[20] = rec('w021', '제로판정스물하나', [['verb', '문맥이 없는 다른 동작.']]);
+  await writeFile(world.options.canonicalPath, `${rows.map((row) => JSON.stringify(row)).join('\n')}\n`);
+  const database = new DatabaseSync(world.options.databasePath);
+  const insertParagraph = database.prepare('INSERT INTO paragraphs VALUES (?, 1, ?, ?, ?)');
+  const insertFts = database.prepare('INSERT INTO paragraph_fts(rowid, form) VALUES (?, ?)');
+  const start = database.prepare('SELECT COALESCE(MAX(paragraph_rowid), 0) AS max_id FROM paragraphs').get().max_id;
+  for (let index = 1; index <= 5; index += 1) {
+    const rowid = start + index;
+    const form = `히트판정스물 문맥 ${index}.`;
+    insertParagraph.run(rowid, `mixed-${index}`, index, form);
+    insertFts.run(rowid, form);
+  }
+  database.close();
+
+  await prepareChunk({ ...world.options, chunkNumber: 1 });
+  const active = await meta(world);
+  const entries = (await readFile(chunkPath(world, 'searches'), 'utf8')).trim().split('\n').filter(Boolean).map(JSON.parse);
+  const refs = Object.fromEntries(['w019', 'w020', 'w021'].map((recordId) => [
+    recordId, active.senses.find((sense) => sense.record_id === recordId).ref,
+  ]));
+  assert.deepEqual([refs.w019, refs.w020, refs.w021], ['s20', 's21', 's22']);
+  const senseLines = active.senses.filter((sense) => !sense.auto).map((sense) => {
+    if (sense.ref === refs.w019 || sense.ref === refs.w021) return `${sense.ref} V`;
+    if (sense.ref === refs.w020) return `${sense.ref} Z`;
+    const evidence = recordEvidence(entries, sense.record_id);
+    return evidence.hits > 0 ? `${sense.ref} V` : `${sense.ref} Z`;
+  });
+  const decisionPath = chunkPath(world, 'decisions');
+  await writeFile(decisionPath, `${senseLines.join('\n')}\n`);
+  await assert.rejects(saveActive({ inputPath: decisionPath, root: world.root }), (error) => {
+    assert.equal(error.exitCode, 2);
+    assert.match(error.message, /s20: V needs at least one recorded search hit/u);
+    assert.match(error.message, /s21: Z needs every recorded search/u);
+    assert.match(error.message, /s22: V needs at least one recorded search hit/u);
+    return true;
+  });
+  const rejected = JSON.parse(await readFile(chunkPath(world, 'rejected'), 'utf8'));
+  assert.equal(rejected.repair_scope, 'decisions');
+  assert.equal(rejected.error_count, 3);
+  assert.deepEqual(rejected.senses, [refs.w019, refs.w020, refs.w021]);
+  assert.deepEqual(rejected.failed_records.map((item) => item.record_id), ['w019', 'w020', 'w021']);
+  assert.equal(recordEvidence(entries, 'w020').hits, 4);
+  assert.equal(recordEvidence(entries, 'w020').allComplete, false);
+  const inspection = await inspectActiveForSupervisor({ inputPath: decisionPath, root: world.root });
+  assert.equal(inspection.repair_scope, 'decisions');
+  assert.equal(inspection.search_failed, false);
+  assert.deepEqual(inspection.hit_bearing_z, [refs.w020]);
+
+  await writeFile(decisionPath, `${senseLines.map((line) => {
+    const [ref, kind] = line.split(' ');
+    if (ref === refs.w019 || ref === refs.w021) return `${ref} Z`;
+    if (ref === refs.w020) return `${ref} V`;
+    return `${ref} ${kind}`;
+  }).join('\n')}\n`);
+  const savedResult = await saveActive({ inputPath: decisionPath, root: world.root });
+  assert.equal(savedResult.status, 'SAVED');
+  assert.equal(existsSync(path.join(world.directory, 'chunk-001.jsonl')), true);
 });
 
 withWorld('search-batch reuses prepare completion for same-record senses without returning stale contexts', async (world) => {

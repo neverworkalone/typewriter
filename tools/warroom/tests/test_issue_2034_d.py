@@ -50,7 +50,9 @@ class DWorld(World):
             sense_id = f"{target_record}-s1"
             sense_ref = next(sense["ref"] for sense in active["senses"]
                              if sense["sense_id"] == sense_id)
-            error = f"{sense_ref}: Z needs every recorded search of this record to be complete with 0 hits"
+            error = (f"{sense_ref}: Z needs every recorded search of this record to be complete with 0 hits "
+                     "(a LIMITED, failed, or hit-bearing search cannot support Z; "
+                     "decision_state=V_N_ALLOWED searches=1 recorded_hits=4 all_complete=false)")
             (self.wt() / names.decisions).write_text(f"{sense_ref} Z\n")
             if failed_search_after:   # a search after the rejected save failed: the repairable diagnostic is now stale
                 with open(self.wt() / names.searches, "a") as fh:
@@ -62,6 +64,7 @@ class DWorld(World):
                 "senses": [sense_ref], "errors": [error],
                 "failed_records": [{"record_id": target_record, "failed_sense_ids": [sense_id],
                                     "errors": [error]}],
+                "hit_bearing_z": [sense_ref],
                 "decisions_sha256": hashlib.sha256((self.wt() / names.decisions).read_bytes()).hexdigest(),
                 "searches_sha256": hashlib.sha256((self.wt() / names.searches).read_bytes()).hexdigest(),
                 "error_count": 1}))
@@ -371,6 +374,8 @@ class SaveRejectedFix(unittest.TestCase):
         fix = w.adapter.launches[-1]
         self.assertEqual((fix["kind"], w.kinds()[-1]), ("resume", "d_chunk_fix"))
         self.assertIn("Z needs every recorded search", fix["prompt"])
+        self.assertIn("실제 hit 문맥을 읽고", fix["prompt"])
+        self.assertIn("decision_state=V_N_ALLOWED", fix["prompt"])
         self.assertIn(".warroom-scratch/d-001_01/decision-001.txt", fix["prompt"])
         self.assertNotIn(prompts.VIEW_BEGIN, fix["prompt"])
         self.assertNotIn("{{", fix["prompt"])
@@ -417,6 +422,8 @@ class SaveRejectedFix(unittest.TestCase):
         self.assertIn("same-session-fixes=1", audit)
         self.assertIn("실패 Sense만 후보 []로 저장", audit)
         self.assertNotIn("Record 전체", audit)
+        self.assertIn("failed_records=w0003:w0003-s1", next(event["msg"] for event in w.store.recent_events()
+                     if event["batch_id"] == w.row_()["id"] and "판정 오류" in event["msg"]))
         w.tick(3)
         self.assertEqual(len(w.adapter.launches), 3)
         self.assertEqual(w.store.get(dchunk.fix_key(w.row_()["id"], 1)), "1")
@@ -440,7 +447,7 @@ class SaveRejectedFix(unittest.TestCase):
         self.assertEqual(w.store.get(dchunk.fix_key(w.row_()["id"], 1)), "1")
 
     def test_unrepairable_or_stale_diagnostics_start_no_ai(self):
-        for label, kw in (("hit-bearing Z", {"scope": "stop_and_report"}), ("stale view", {"stale": True}),
+        for label, kw in (("search evidence failure", {"scope": "stop_and_report"}), ("stale view", {"stale": True}),
                            ("search failed after the rejection", {"failed_search_after": True})):
             with self.subTest(label):
                 w = DWorld()
