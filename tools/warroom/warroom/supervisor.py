@@ -44,6 +44,10 @@ class RecoveryBlocked(Exception):
     """A discovered PR cannot be tied safely to this batch's completed producer run."""
 
 
+class Stage2RepairSchemaError(ValueError):
+    """A candidate row's answer fields do not match its persisted per-candidate output contract."""
+
+
 def acquire_lock(path: Path):
     """Single War Room instance: returns an open locked file, or None if held."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -1895,8 +1899,9 @@ class Supervisor:
                                 "remote_head": remote, "checkpoint_sha256": hashlib.sha256(cp_path.read_bytes()).hexdigest(),
                                 "fingerprint": current["fingerprint"], "cursor": cursor, "page_keys": page_keys}
                     self.store.set(stage2.repair_run_start_key(b["id"]), json.dumps(baseline, sort_keys=True))
+                    repair_input = self._stage2_repair_prompt_input(current, page, page_keys)
                     prompt = prompts.stage2_repair(
-                        b, current["fingerprint"], json.dumps({"groups": page}, ensure_ascii=False, separators=(",", ":")),
+                        b, current["fingerprint"], json.dumps(repair_input, ensure_ascii=False, separators=(",", ":")),
                         f"{state['rounds_used']}/{stage2.MAX_REPAIR_ROUNDS}; groups {cursor + 1}..{cursor + len(page)} of {len(groups)}",
                         type_tier_policy=current.get("type_tier_policy", "legacy-independent"),
                     )
@@ -2966,10 +2971,25 @@ class Supervisor:
             page_keys = sorted({key for group in page for key in group.get("candidate_keys", [])})
             if not page_keys:
                 return self._fail(b, "ERROR", "Stage 2 repair page has no target candidates")
+            schema_repair = current.get("schema_repair")
+            if schema_repair is not None and (
+                    not isinstance(schema_repair, dict)
+                    or schema_repair.get("fingerprint") != current.get("fingerprint")
+                    or schema_repair.get("page_keys") != page_keys
+                    or not isinstance(schema_repair.get("requested_keys"), list)
+                    or not schema_repair["requested_keys"]
+                    or any(key not in page_keys for key in schema_repair["requested_keys"])
+                    or not re.fullmatch(r"[a-f0-9]{64}", schema_repair.get("response_sha256", ""))
+                    or hashlib.sha256((current.get("last_response") or "").encode("utf-8")).hexdigest()
+                    != schema_repair.get("response_sha256")):
+                return self._fail(b, "ERROR", "Stage 2 repair schema-correction evidence does not match the active page; preserving all evidence")
             current["attempts"] = current.get("attempts", 0) + 1
             current["page_keys"] = page_keys
-            current.setdefault("attempt_log", []).append({"cursor": cursor, "attempt": current["attempts"],
-                "fingerprint": current["fingerprint"], "target_keys": page_keys, "status": "launched"})
+            attempt = {"cursor": cursor, "attempt": current["attempts"],
+                       "fingerprint": current["fingerprint"], "target_keys": page_keys, "status": "launched"}
+            if schema_repair is not None:
+                attempt["correction_candidate_keys"] = schema_repair["requested_keys"]
+            current.setdefault("attempt_log", []).append(attempt)
             self._save_stage2_repair_state(b, state)
             info = self._find_recovery_pr(b)
             if info is not None:
@@ -2990,6 +3010,39 @@ class Supervisor:
             raise
         except (OSError, ValueError, KeyError, TypeError, GitError) as error:
             return self._fail(b, "ERROR", f"Stage 2 repair page 준비 실패: {error}. worktree와 checkpoint를 보존합니다.")
+
+    def _stage2_repair_prompt_input(self, current: dict, page: list, page_keys: list[str]) -> dict:
+        """Render only the active page, or only its schema-invalid rows for a bounded correction."""
+        schema_repair = current.get("schema_repair")
+        selected_keys = set(schema_repair["requested_keys"]) if isinstance(schema_repair, dict) else set(page_keys)
+        prompt_groups = []
+        for group in page:
+            candidates = []
+            for candidate in group.get("candidates", []):
+                key = f"{candidate['source_sense_id']}\u0000{candidate['candidate']}"
+                if key not in selected_keys:
+                    continue
+                if candidate.get("already_accounted") is True:
+                    required_fields = ["source_sense_id", "candidate", "additional_relations"]
+                    forbidden_fields = ["decision"]
+                else:
+                    required_fields = ["source_sense_id", "candidate", "decision"]
+                    forbidden_fields = ["additional_relations"]
+                candidates.append({**candidate, "required_output_fields": required_fields,
+                                   "forbidden_output_fields": forbidden_fields})
+            if candidates:
+                prompt_groups.append({**group,
+                    "candidate_keys": sorted(f"{row['source_sense_id']}\u0000{row['candidate']}" for row in candidates),
+                    "candidates": candidates})
+        prompt_keys = {key for group in prompt_groups for key in group["candidate_keys"]}
+        if prompt_keys != selected_keys:
+            raise ValueError("Stage 2 repair prompt candidate keys differ from its persisted page/correction scope")
+        if schema_repair is None:
+            return {"groups": prompt_groups}
+        diagnostics = [{key: row[key] for key in ("candidate_key", "code", "required_fields", "actual_fields")}
+                       for row in schema_repair.get("diagnostics", [])]
+        return {"schema_correction": {"candidate_keys": sorted(selected_keys), "diagnostics": diagnostics},
+                "groups": prompt_groups}
 
     def _stage2_repair_response(self, b, state: dict) -> dict | None:
         current = state["current"]
@@ -3024,38 +3077,93 @@ class Supervisor:
         direct_rows = answer["decisions"]
         unresolved_rows = answer["unresolved"]
         peer_rows = answer["peer_adjustments"]
+        schema_repair = current.get("schema_repair")
+        page_keys = sorted(f"{sense_id}\u0000{candidate}" for sense_id, candidate in required)
+        if schema_repair is None:
+            response_keys = set(required)
+            accepted_rows, accepted_peers = [], []
+        else:
+            if not isinstance(schema_repair, dict) or schema_repair.get("fingerprint") != current["fingerprint"] \
+                    or schema_repair.get("page_keys") != page_keys:
+                raise ValueError("schema-correction evidence is stale or belongs to another repair page")
+            requested_keys = schema_repair.get("requested_keys")
+            accepted = schema_repair.get("accepted_answer")
+            if not isinstance(requested_keys, list) or not requested_keys or any(
+                    not isinstance(key, str) or key.count("\u0000") != 1 for key in requested_keys) \
+                    or len(set(requested_keys)) != len(requested_keys):
+                raise ValueError("schema-correction candidate keys are malformed")
+            response_keys = {tuple(key.split("\u0000", 1)) for key in requested_keys}
+            if not response_keys.issubset(set(required)) or not isinstance(accepted, dict) \
+                    or not isinstance(accepted.get("decisions"), list) \
+                    or not isinstance(accepted.get("peer_adjustments"), list):
+                raise ValueError("schema-correction answer evidence is malformed")
+            accepted_rows = accepted["decisions"]
+            accepted_peers = accepted["peer_adjustments"]
+            accepted_keys = {(row.get("source_sense_id"), row.get("candidate")) for row in accepted_rows
+                             if isinstance(row, dict)}
+            if len(accepted_keys) != len(accepted_rows) or accepted_keys & response_keys \
+                    or accepted_keys | response_keys != set(required):
+                raise ValueError("schema-correction evidence does not cover the unchanged page exactly once")
         seen = set()
+        valid_direct_rows = []
+        schema_diagnostics = []
         for row in direct_rows:
             if not isinstance(row, dict) or not isinstance(row.get("source_sense_id"), str) or not isinstance(row.get("candidate"), str):
                 raise ValueError("repair decision needs an exact source_sense_id/candidate key")
             key = (row["source_sense_id"], row["candidate"])
-            if key not in required or key in seen:
+            if key not in required or key not in response_keys or key in seen:
                 raise ValueError("repair response contains a duplicate or out-of-page candidate")
             candidate = required[key]
             if candidate["already_accounted"]:
-                if set(row) != {"source_sense_id", "candidate", "additional_relations"} or not isinstance(row["additional_relations"], list):
-                    raise ValueError(f"{key[0]}/{key[1]} must return a complete optional-link list")
-            elif set(row) != {"source_sense_id", "candidate", "decision"} or not isinstance(row["decision"], dict):
-                raise ValueError(f"{key[0]}/{key[1]} must return one complete decision")
+                required_fields = {"source_sense_id", "candidate", "additional_relations"}
+                if set(row) != required_fields:
+                    schema_diagnostics.append({"candidate_key": f"{key[0]}\u0000{key[1]}",
+                        "code": "already_accounted_fields_mismatch", "required_fields": sorted(required_fields),
+                        "actual_fields": sorted(row)})
+                elif not isinstance(row["additional_relations"], list):
+                    schema_diagnostics.append({"candidate_key": f"{key[0]}\u0000{key[1]}",
+                        "code": "additional_relations_not_array", "required_fields": sorted(required_fields),
+                        "actual_fields": sorted(row)})
+                else:
+                    valid_direct_rows.append(row)
+            else:
+                required_fields = {"source_sense_id", "candidate", "decision"}
+                if set(row) != required_fields:
+                    schema_diagnostics.append({"candidate_key": f"{key[0]}\u0000{key[1]}",
+                        "code": "ordinary_candidate_fields_mismatch", "required_fields": sorted(required_fields),
+                        "actual_fields": sorted(row)})
+                elif not isinstance(row["decision"], dict):
+                    schema_diagnostics.append({"candidate_key": f"{key[0]}\u0000{key[1]}",
+                        "code": "decision_not_object", "required_fields": sorted(required_fields),
+                        "actual_fields": sorted(row)})
+                else:
+                    valid_direct_rows.append(row)
             seen.add(key)
         for row in unresolved_rows:
             if not isinstance(row, dict) or set(row) != {"source_sense_id", "candidate", "reason"} \
                     or not isinstance(row.get("reason"), str) or not row["reason"].strip():
                 raise ValueError("unresolved repair items need an exact candidate key and reason")
             key = (row["source_sense_id"], row["candidate"])
-            if key not in required or key in seen:
+            if key not in required or key not in response_keys or key in seen:
                 raise ValueError("unresolved response contains a duplicate or out-of-page candidate")
             seen.add(key)
-        if seen != set(required):
-            missing = sorted(set(required) - seen)
-            raise ValueError(f"repair response does not cover every target candidate ({len(missing)} missing)")
         if unresolved_rows:
             current["last_error"] = "unresolved: " + "; ".join(
                 f"{row['source_sense_id']}/{row['candidate']}: {row['reason']}" for row in unresolved_rows[:8])
             self._save_stage2_repair_state(b, state)
             raise ValueError(current["last_error"])
+        for key in sorted(response_keys - seen):
+            required_fields = ({"source_sense_id", "candidate", "additional_relations"}
+                               if required[key]["already_accounted"] else
+                               {"source_sense_id", "candidate", "decision"})
+            schema_diagnostics.append({"candidate_key": f"{key[0]}\u0000{key[1]}",
+                "code": "missing_candidate_row", "required_fields": sorted(required_fields), "actual_fields": []})
+        if schema_repair is not None and (peer_rows or unresolved_rows):
+            raise ValueError("schema-correction response may contain only the requested candidate rows")
+        if seen - response_keys:
+            raise ValueError("repair response contains a candidate outside the schema-correction request")
         affected_types = {}
-        for row in direct_rows:
+        for row in valid_direct_rows:
             candidate = required[(row["source_sense_id"], row["candidate"])]
             previous = candidate.get("decision") or {}
             changed = row.get("decision", {}).get("type") if isinstance(row.get("decision"), dict) else None
@@ -3075,8 +3183,34 @@ class Supervisor:
                     or peer["decision"].get("type") not in affected_types[row["source_sense_id"]]:
                 raise ValueError("peer adjustment is outside the directly affected same-source UI group")
             normalized_peers.add(key)
-        answer["decisions"] = direct_rows
-        answer["peer_adjustments"] = peer_rows
+        if schema_diagnostics:
+            if schema_repair is not None:
+                current["last_error"] = "schema correction rejected: " + ", ".join(
+                    f"{row['candidate_key']} [{row['code']}]" for row in schema_diagnostics)
+            else:
+                current["schema_repair"] = {
+                    "fingerprint": current["fingerprint"], "page_keys": page_keys,
+                    "requested_keys": sorted(row["candidate_key"] for row in schema_diagnostics),
+                    "response_sha256": hashlib.sha256((final or "").encode("utf-8")).hexdigest(),
+                    "diagnostics": schema_diagnostics,
+                    "accepted_answer": {"decisions": valid_direct_rows, "peer_adjustments": peer_rows},
+                }
+                current["last_error"] = "schema correction required: " + ", ".join(
+                    f"{row['candidate_key']} [{row['code']}]" for row in schema_diagnostics)
+            if current.get("attempt_log"):
+                current["attempt_log"][-1]["status"] = "rejected"
+            self._save_stage2_repair_state(b, state)
+            raise Stage2RepairSchemaError(current["last_error"])
+        if seen != response_keys:
+            missing = sorted(response_keys - seen)
+            raise ValueError(f"repair response does not cover every requested candidate ({len(missing)} missing)")
+        if schema_repair is not None:
+            answer["decisions"] = accepted_rows + valid_direct_rows
+            answer["peer_adjustments"] = accepted_peers
+        else:
+            answer["decisions"] = valid_direct_rows
+            answer["peer_adjustments"] = peer_rows
+        answer["unresolved"] = []
         current["pending_answer"] = answer
         if current.get("attempt_log"):
             current["attempt_log"][-1]["status"] = "answer_saved"
@@ -3154,6 +3288,7 @@ class Supervisor:
             current["pending_answer"] = None
             current.pop("apply_intent", None)
             current.pop("last_response", None)
+            current.pop("schema_repair", None)
             if state.get("history"):
                 state["history"][-1]["applied_candidate_keys"] = list(current["applied_candidate_keys"])
             if current.get("attempt_log"):
@@ -3739,6 +3874,12 @@ class Supervisor:
             state = self._stage2_repair_state(b, required=True)
             try:
                 answer = self._stage2_repair_response(b, state)
+            except Stage2RepairSchemaError as error:
+                current = state.get("current", {})
+                if current.get("attempts", 0) >= stage2.REPAIR_ATTEMPTS_PER_PAGE:
+                    return self._fail(b, "ERROR", f"Stage 2 repair schema correction exhausted its page attempt budget; preserving prior decisions and receipts: {error}")
+                self.store.log(b["id"], f"Stage 2 repair output schema rejected ({error}); requesting only the identified candidate rows within the existing attempt budget", "warn")
+                return self._launch_stage2_repair_page(b)
             except stage2.RepairFormatError:
                 answer = None
             if answer is None:   # output-format failure only: same page, bounded by the persisted attempt budget
