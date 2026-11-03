@@ -594,6 +594,16 @@ class Maintenance:
             raise
         except Exception:
             return None
+        if b["method"] == literary.METHOD:   # each preserved active chunk follows the one approved runtime baseline
+            try:
+                for number, rec in literary.active_chunks(wt, b).items():
+                    if rec["git_head"] != new_head:
+                        path = wt / literary._active_paths(number)[0]
+                        tmp = path.with_name(path.name + ".tmp")
+                        tmp.write_text(json.dumps({**rec, "git_head": new_head}, sort_keys=True), "utf-8")
+                        tmp.replace(path)
+            except Exception:
+                return None
         if base["head"] != new_head:
             base["head"] = new_head
             stage = {STAGE2_METHOD: "Stage 2", dchunk.METHOD: "D", literary.METHOD: "C"}.get(b["method"], "Stage 3")

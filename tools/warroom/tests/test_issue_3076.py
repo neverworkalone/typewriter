@@ -295,6 +295,9 @@ class ParallelCBoundary(Helpers, unittest.TestCase):
         key, value = w.sup.maint._retargeted_run_start(b, new)
         self.assertEqual((key, json.loads(value)["head"]), (literary.run_start_key(b["id"]), new))
         w.store.set(key, value)
+        self.assertEqual({r["git_head"] for r in literary.active_chunks(w.wt(), b).values()}, {new})   # views follow the baseline
+        rec = literary.read_active(w.wt(), b, 1)
+        self.assertEqual(rec["git_head"], cparallel.baseline(w.store, b)["head"])
         self.assertIsNone(cparallel.ParallelC._boundary_problem(w.sup.cp, b, cparallel._Round(w.sup.cp, b)))
         # the old approved HEAD is not a valid runtime baseline any more
         w.git.local_head = base["head"]
@@ -303,6 +306,23 @@ class ParallelCBoundary(Helpers, unittest.TestCase):
         w.git.local_head = new
         (w.wt() / "data/canonical/stdict-0001.jsonl").write_text('{"id":2}\n')
         self.assertIsNone(w.sup.maint._retargeted_run_start(b, new))
+
+    def test_active_chunk_bound_to_an_older_head_is_not_launched_or_accepted(self):
+        w = self.world(senses=26)
+        w.start("single", "deepseek", "c")
+        w.tick()
+        b = self.b(w)
+        for r in list(self.open_runs(w)):
+            w.adapter.stop(r["pid"])
+            w.store.finish_run(r["id"], "stopped")
+        path = w.wt() / ".warroom-scratch/c-active-001.json"
+        rec = json.loads(path.read_text())
+        path.write_text(json.dumps({**rec, "git_head": "d" * 40}))
+        w.store.update_task(b["id"], "001", state="PENDING", run_id=None)
+        before = len(w.adapter.launches)
+        w.tick()
+        self.assertEqual(self.b(w)["state"], "ERROR")
+        self.assertEqual(len(w.adapter.launches), before)
 
     def test_serial_world_keeps_the_serial_path(self):
         w = CWorld(senses=13)

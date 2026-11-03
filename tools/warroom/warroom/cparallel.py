@@ -543,8 +543,8 @@ class ParallelC:
             rec = literary.read_active(wt, b, n)
             if rec is not None:
                 base = baseline(self.store, b)
-                if rec["git_head"] != base["head"] and not self.sup.git.contains(wt, rec["git_head"]):
-                    return self._task_failed(b, row, data, f"[{task}] 청크의 준비 HEAD가 배치 기준과 이어지지 않습니다. 보존합니다.")
+                if base is None or rec["git_head"] != base["head"]:
+                    return self._task_failed(b, row, data, f"[{task}] 청크의 준비 HEAD가 현재 runtime baseline과 다릅니다. 보존합니다.")
                 literary.read_view(wt, rec, n)   # the saved record must still bind the exact view being cleaned
                 if self._pending(b, rec):
                     return self._task_failed(b, row, data, f"[{task}] 청크의 모든 Sense 저장이 검증되지 않았습니다. 보존합니다.")
@@ -634,7 +634,7 @@ class ParallelC:
                 excluded = literary.excluded_pending(view)
                 number = self._next_number(b)
                 if failed:   # no new assignment; running tasks finish and are collected, then the batch pauses
-                    rec = literary.write_active(wt, b, view, ids, self.sup.git.head(wt), number, numbered=True)
+                    rec = literary.write_active(wt, b, view, ids, self._runtime_head(b), number, numbered=True)
                     task = f"{number:03d}"
                     self.store.add_tasks(b["id"], [(task, task)])
                     self._task_failed(b, self.store.task_row(b["id"], task), {"pause": True, "search_failed": True},
@@ -651,7 +651,7 @@ class ParallelC:
                     self.sup._fail(b, "ERROR", "chunk가 항목도 ZERO_HITS 진전도 예약 사유도 없이 비었는데 미완료 sense가 남았습니다. 보존합니다.")
                     return None
                 literary.sense_report(self.sup.runner, env, wt, b, ids)   # unknown / damaged ids fail closed
-                rec = literary.write_active(wt, b, view, ids, self.sup.git.head(wt), number, numbered=True)
+                rec = literary.write_active(wt, b, view, ids, self._runtime_head(b), number, numbered=True)
                 task = f"{number:03d}"
                 self.store.add_tasks(b["id"], [(task, task)])
                 self._set(b, task, {}, state="PENDING", view_sha256=rec["view_sha256"])
@@ -662,6 +662,12 @@ class ParallelC:
         except _ERRORS + (GitError,) as error:
             self.sup._fail(b, "ERROR", f"Method C 상태 확인 실패: {error}. worktree를 보존합니다.")
         return None
+
+    def _runtime_head(self, b) -> str:
+        base = baseline(self.store, b)
+        if base is None:
+            raise literary.LiteraryError("runtime baseline이 없습니다")
+        return base["head"]
 
     def _next_number(self, b) -> int:
         """max(task rows, active files) + 1: a number is never reused, even after a restart between the two records."""
@@ -695,6 +701,9 @@ class ParallelC:
                 raise prompts.PromptError("수정 요청에 기존 세션이 필요합니다")
             if kind == FIX and not self._fix_allowed(data):
                 raise prompts.PromptError("자동 수정 허용량과 운영자 grant를 모두 사용했습니다")
+            base = baseline(self.store, b)
+            if base is None or rec["git_head"] != base["head"]:
+                raise prompts.PromptError("활성 청크의 HEAD가 현재 runtime baseline과 다릅니다")
             remaining = self._pending(b, rec)
             if not remaining:
                 raise prompts.PromptError("이어갈 미완료 Sense가 없습니다")
@@ -717,7 +726,7 @@ class ParallelC:
         if kind == FIX:   # the first AUTO_FIX_LIMIT completed corrections are automatic, any further one is an operator grant
             data.setdefault("fix_launch", {})[str(run_id)] = \
                 "auto" if len(data.get("auto_fix_runs", [])) < AUTO_FIX_LIMIT else "grant"
-        data["run_start"] = {"branch": b["branch"], "worktree": str(wt), "head": rec["git_head"],
+        data["run_start"] = {"branch": b["branch"], "worktree": str(wt), "head": base["head"],
                              "remote_head": round_.remote(), "chunk_id": rec["chunk_id"], "chunk_no": n,
                              "retry_state": literary.retry_state(wt, b, rec, remaining, session_available=bool(sid),
                                                                  task_state=True)}

@@ -1201,15 +1201,6 @@ function assertSupervisorSkipAuthority({ supervisorStorePath, batchId, branch, s
   }
 }
 
-function isAncestorCommit(directory, ancestor, descendant) {
-  try {
-    execFileSync('git', ['merge-base', '--is-ancestor', ancestor, descendant], { cwd: directory, stdio: 'ignore' });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 function isWithin(root, target) {
   const relative = path.relative(root, target);
   return Boolean(relative) && relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
@@ -1325,7 +1316,7 @@ async function applySupervisorTechnicalSkipLocked({
   const identityOk = taskNo === undefined
     ? batch?.git_head === expectedHead && batch?.canonical_revision === expectedHead && active?.git_head === expectedHead
     : batch?.git_head === batch?.canonical_revision && /^[a-f0-9]{40}$/u.test(batch?.git_head ?? '')
-      && /^[a-f0-9]{40}$/u.test(active?.git_head ?? '') && isAncestorCommit(worktreeDirectory, active.git_head, expectedHead);
+      && active?.git_head === expectedHead;
   if (checkpoint.contract !== CHECKPOINT_CONTRACT || batch?.procedure_contract !== 'issue-1155-c-literary-v2'
       || !identityOk
       || !Number.isSafeInteger(active?.chunk_no) || active.chunk_no !== chunkNo
