@@ -2692,6 +2692,7 @@ test('Stage 2 task plan splits a Part deterministically and saves tasks in any o
   const read = async () => JSON.parse(await readFile(path.join(root, checkpoint), 'utf8'));
   const startCursor = (await read()).next_chunk_number;
 
+  const checkpointBytes = await readFile(path.join(root, checkpoint), 'utf8');
   const planned = await quiet(() => run(['plan-chunks', '--checkpoint', checkpoint, '--target', '2', '--out', plan], { root }));
   assert.equal(planned.reused, false);
   const { tasks } = JSON.parse(await readFile(path.join(root, plan), 'utf8'));
@@ -2701,6 +2702,7 @@ test('Stage 2 task plan splits a Part deterministically and saves tasks in any o
   const planBytes = await readFile(path.join(root, plan), 'utf8');
   assert.equal((await quiet(() => run(['plan-chunks', '--checkpoint', checkpoint, '--target', '1', '--out', plan], { root }))).reused, true);
   assert.equal(await readFile(path.join(root, plan), 'utf8'), planBytes, 'an existing plan is reused, never rewritten');
+  assert.equal(await readFile(path.join(root, checkpoint), 'utf8'), checkpointBytes, 'planning leaves the checkpoint untouched');
   assert.equal((await read()).pending_chunk, null);
   await assert.rejects(() => quiet(() => run(['read-chunk', '--checkpoint', checkpoint, '--max-candidates', '1'], { root })), /open task plan/);
   await assert.rejects(() => quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', plan], { root })), /open task plan/);

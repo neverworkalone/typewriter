@@ -316,10 +316,6 @@ function validateCheckpoint(checkpoint, identity = {}) {
       throw new Error('checkpoint contains invalid premerge snapshot metadata');
     }
   }
-  if (checkpoint.task_plan !== undefined && (!isPlainObject(checkpoint.task_plan) || keysOf(checkpoint.task_plan) !== 'closed,plan_digest'
-      || typeof checkpoint.task_plan.closed !== 'boolean' || !/^[a-f0-9]{64}$/u.test(checkpoint.task_plan.plan_digest ?? ''))) {
-    throw new Error('checkpoint contains an invalid task plan record');
-  }
   if (checkpoint.optional_review_complete === true) assertOptionalComplete(checkpoint);
   return checkpoint;
 }
@@ -1023,7 +1019,7 @@ export async function run(argv, { root } = {}) {
     const checkpoint = await readCheckpoint(checkpointPath);
     if (options.taskPlan !== null) {
       const plan = await readTaskPlan(checkpoint, options.taskPlan, repositoryRoot);
-      if (options.command === 'read-chunk') return readTaskChunk(checkpoint, plan, options.taskId, options.out, repositoryRoot);
+      if (options.command === 'read-chunk') return readTaskChunk(checkpoint, checkpointPath, plan, options.taskId, options.out, repositoryRoot);
       return saveTaskChunk(checkpoint, checkpointPath, plan, options.taskId, options.input, repositoryRoot, options.expectViewSha256, options.supervisorFallback);
     }
     if (options.command === 'read-chunk') return readChunk(checkpoint, checkpointPath, options.maxCandidates, options.out, repositoryRoot,
@@ -2052,7 +2048,7 @@ async function cancelRevision(checkpoint, checkpointPath, chunkId) {
 async function readChunk(checkpoint, checkpointPath, maxCandidates, out, root, sourceSenseId = null, candidateText = null, format = 'json',
                           optional = false, page = 1, pageSize = INSPECT_PAGE_SIZE) {
   if (optional) return readOptional(checkpoint, out, root, format, page, pageSize);
-  assertNoOpenTaskPlan(checkpoint);
+  await assertNoOpenTaskPlan(checkpointPath);
   let pending = checkpoint.pending_chunk;
   if (format === 'compact' && pending?.revision === true) throw new Error(`active chunk ${pending.chunk_id} is a revision; read it as JSON`);
   if (sourceSenseId !== null) {
@@ -2262,7 +2258,7 @@ function applyChunkDecisions(received, expected) {
 }
 
 async function saveChunk(checkpoint, checkpointPath, inputPath, root, format = 'json', supervisorFallbackRequested = false) {
-  assertNoOpenTaskPlan(checkpoint);
+  await assertNoOpenTaskPlan(checkpointPath);
   const pending = checkpoint.pending_chunk;
   if (!pending) throw new Error('checkpoint has no unread or unsaved chunk');
   const { received, expected } = await evaluateChunkDecisions(checkpoint, pending, inputPath, root, format, supervisorFallbackRequested);
@@ -2277,9 +2273,21 @@ async function saveChunk(checkpoint, checkpointPath, inputPath, root, format = '
 
 const TASK_PLAN_VERSION = 1;
 
+/** Plan ownership lives beside the checkpoint, never in it, so planning leaves the checkpoint file untouched. */
+const taskPlanStatePath = (checkpointPath) => `${checkpointPath}.task-plan.json`;
+
+async function readTaskPlanState(checkpointPath) {
+  let state;
+  try { state = JSON.parse(await readFile(taskPlanStatePath(checkpointPath), 'utf8')); }
+  catch (error) { if (error.code === 'ENOENT') return null; throw new Error(`cannot read task plan state: ${error.message}`); }
+  if (!isPlainObject(state) || keysOf(state) !== 'closed,plan_digest' || typeof state.closed !== 'boolean'
+      || !/^[a-f0-9]{64}$/u.test(state.plan_digest ?? '')) throw new Error('task plan state is malformed');
+  return state;
+}
+
 /** While a task plan is open the checkpoint belongs to its tasks; legacy pending/revision chunks wait for close-plan. */
-function assertNoOpenTaskPlan(checkpoint) {
-  if (checkpoint.task_plan?.closed === false) {
+async function assertNoOpenTaskPlan(checkpointPath) {
+  if ((await readTaskPlanState(checkpointPath))?.closed === false) {
     throw new Error('checkpoint has an open task plan; use --task, or close-plan once every task is saved');
   }
 }
@@ -2368,21 +2376,20 @@ async function readTaskPlan(checkpoint, planPath, root) {
 async function planChunks(checkpoint, checkpointPath, target, out, root) {
   if (checkpoint.merged) throw new Error('cannot plan chunks for a merged Part checkpoint');
   if (checkpoint.pending_chunk) throw new Error(`save the active chunk ${checkpoint.pending_chunk.chunk_id} before planning tasks`);
-  if (checkpoint.task_plan?.closed === true) throw new Error('this Part\'s task plan is closed; it is not planned again');
+  const state = await readTaskPlanState(checkpointPath);
+  if (state?.closed === true) throw new Error('this Part\'s task plan is closed; it is not planned again');
   const planPath = resolveRootPath(root, out);
   let plan = null;
   if (existsSync(planPath)) {
     // An existing plan for this Part is reused as is, never rewritten.
     try { plan = JSON.parse(await readFile(planPath, 'utf8')); } catch (error) { throw new Error(`cannot read existing task plan: ${error.message}`); }
     assertTaskPlanFor(checkpoint, plan);
-  } else if (checkpoint.task_plan) throw new Error('checkpoint has an open task plan whose file is missing; refusing to plan again');
+  } else if (state) throw new Error('checkpoint has an open task plan whose file is missing; refusing to plan again');
   const reused = plan !== null;
   plan ??= buildTaskPlan(checkpoint, target);
   if (!reused) await writeJsonAtomically(planPath, plan);
-  if (!checkpoint.task_plan) {
-    checkpoint.task_plan = { plan_digest: plan.plan_digest, closed: false };
-    await writeJsonAtomically(checkpointPath, checkpoint);
-  } else if (checkpoint.task_plan.plan_digest !== plan.plan_digest) throw new Error('task plan is not the plan this checkpoint registered');
+  if (!state) await writeJsonAtomically(taskPlanStatePath(checkpointPath), { plan_digest: plan.plan_digest, closed: false });
+  else if (state.plan_digest !== plan.plan_digest) throw new Error('task plan is not the plan this checkpoint registered');
   const result = { version: 1, ok: true, plan: planPath, reused, target: plan.target, tasks: plan.tasks.length,
     candidates: plan.tasks.reduce((sum, task) => sum + task.candidate_count, 0), plan_digest: plan.plan_digest };
   console.log(JSON.stringify(result));
@@ -2390,12 +2397,12 @@ async function planChunks(checkpoint, checkpointPath, target, out, root) {
 }
 
 async function closeTaskPlan(checkpoint, checkpointPath, plan) {
-  if (checkpoint.task_plan?.plan_digest !== plan.plan_digest) throw new Error('task plan is not the plan this checkpoint registered');
-  if (checkpoint.task_plan.closed !== true) {
+  const state = await readTaskPlanState(checkpointPath);
+  if (state?.plan_digest !== plan.plan_digest) throw new Error('task plan is not the plan this checkpoint registered');
+  if (!state.closed) {
     const unsaved = plan.tasks.filter((task) => taskState(checkpoint, task) !== 'saved');
     if (unsaved.length) throw new Error(`cannot close the task plan: unsaved task(s) ${unsaved.map((task) => task.id).join(', ')}`);
-    checkpoint.task_plan.closed = true;
-    await writeJsonAtomically(checkpointPath, checkpoint);
+    await writeJsonAtomically(taskPlanStatePath(checkpointPath), { ...state, closed: true });
   }
   const result = { version: 1, ok: true, closed: true, plan_digest: plan.plan_digest };
   console.log(JSON.stringify(result));
@@ -2415,9 +2422,10 @@ function taskState(checkpoint, task) {
   return states.has('partial') || states.has('saved') ? 'partial' : 'blocked';
 }
 
-function taskContext(checkpoint, plan, taskId) {
+async function taskContext(checkpoint, checkpointPath, plan, taskId) {
   if (checkpoint.merged) throw new Error('cannot use a task of a merged Part checkpoint');
-  if (checkpoint.task_plan?.plan_digest !== plan.plan_digest || checkpoint.task_plan.closed !== false) {
+  const registered = await readTaskPlanState(checkpointPath);
+  if (registered?.plan_digest !== plan.plan_digest || registered.closed !== false) {
     throw new Error('task plan is not the open plan registered in this checkpoint');
   }
   if (checkpoint.pending_chunk) throw new Error(`checkpoint has an active chunk ${checkpoint.pending_chunk.chunk_id}; tasks and pending chunks cannot be mixed`);
@@ -2431,8 +2439,8 @@ const assertTaskNotBlocked = (task, state) => {
   if (state === 'partial') throw new Error(`task ${task.id} is only partly saved; refusing to continue it`);
 };
 
-async function readTaskChunk(checkpoint, plan, taskId, out, root) {
-  const { task, pending, state } = taskContext(checkpoint, plan, taskId);
+async function readTaskChunk(checkpoint, checkpointPath, plan, taskId, out, root) {
+  const { task, pending, state } = await taskContext(checkpoint, checkpointPath, plan, taskId);
   assertTaskNotBlocked(task, state);
   if (state === 'saved') throw new Error(`task ${task.id} is already saved`);
   const text = renderCompactChunk(checkpoint, pending);
@@ -2445,7 +2453,7 @@ async function readTaskChunk(checkpoint, plan, taskId, out, root) {
 }
 
 async function saveTaskChunk(checkpoint, checkpointPath, plan, taskId, inputPath, root, expectViewSha256, supervisorFallbackRequested) {
-  const { task, pending, state } = taskContext(checkpoint, plan, taskId);
+  const { task, pending, state } = await taskContext(checkpoint, checkpointPath, plan, taskId);
   assertTaskNotBlocked(task, state);
   const viewSha256 = sha256(Buffer.from(renderCompactChunk(checkpoint, pending), 'utf8'));
   if (viewSha256 !== expectViewSha256) throw new Error(`task ${task.id} view changed since it was launched; not saved`);
