@@ -47,8 +47,18 @@ For `already_accounted:true`, the row must contain exactly `source_sense_id`, `c
 The two valid row shapes are distinct:
 
 ```json
-{"source_sense_id":"...","candidate":"...","decision":{"disposition":"drop","reason":"e"}}
-{"source_sense_id":"...","candidate":"...","additional_relations":[]}
+[
+{
+  "source_sense_id":"...",
+  "candidate":"...",
+  "decision":{"disposition":"drop","reason":"e"}
+},
+{
+  "source_sense_id":"...",
+  "candidate":"...",
+  "additional_relations":[]
+}
+]
 ```
 
 `peer_adjustments` is an array of `{ "source_sense_id":"...", "candidate":"...", "decision":{...} }` for directly affected same-source peers only. Omit unchanged peers. `unresolved` is an array of `{ "source_sense_id":"...", "candidate":"...", "reason":"..." }`.
