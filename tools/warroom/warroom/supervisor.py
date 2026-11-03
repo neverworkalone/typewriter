@@ -4932,7 +4932,9 @@ class Supervisor:
         if not legacy_handoff:
             try:
                 active = dchunk.read_active(Path(b["worktree"]), b)
-                if active is not None and dchunk.reissue_legacy_rejection(
+                rejection_exists = (active is not None and
+                                    (Path(b["worktree"]) / dchunk.chunk_names(b, active["chunk_no"]).rejected).is_file())
+                if rejection_exists and dchunk.reissue_legacy_rejection(
                         self.store, self.runner, self._d_env(b), self.git, Path(b["worktree"]), b, active):
                     self.store.log(b["id"], f"D 청크 {active['chunk_no']:03d}의 구형 거부 진단을 최신 CLI로 read-only 재검증하고 판정 오류 범위만 재발급했습니다.", "warn")
             except (dchunk.DChunkError, OSError, ValueError, KeyError, TypeError) as e:
