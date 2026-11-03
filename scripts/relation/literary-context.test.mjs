@@ -1259,7 +1259,7 @@ test('pre-#2889 C worktree is revalidated and resumed through the current Superv
       'tools/warroom/prompts/c.md',
     ];
     await mkdir(supervisorRoot, { recursive: true });
-    for (const file of legacyFiles) {
+    for (const file of [...legacyFiles, 'scripts/relation/literary-context-supervisor-cli.mjs']) {
       const target = path.join(supervisorRoot, file);
       await mkdir(path.dirname(target), { recursive: true });
       await copyFile(path.join(repoRoot, file), target);
