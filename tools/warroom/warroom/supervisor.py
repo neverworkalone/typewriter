@@ -3694,8 +3694,8 @@ class Supervisor:
                 raise Stage2RepairMissingCandidatesError(
                     f"repair correction still omits {len(missing)} requested candidate(s)")
             diagnostics = list(schema_diagnostics)
-            for key in missing:
-                source_sense_id, candidate = key.split("\u0000", 1)
+            for source_sense_id, candidate in missing:
+                key = f"{source_sense_id}\u0000{candidate}"
                 candidate_row = required[(source_sense_id, candidate)]
                 required_fields = (["source_sense_id", "candidate", "additional_relations"]
                                    if candidate_row["already_accounted"]
