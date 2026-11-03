@@ -5642,6 +5642,10 @@ class Supervisor:
                 has_saved_submit_file = (producer_outcome.get("status") == "submission_artifact_present"
                                          or (producer_outcome.get("status") == "checkpoint_changed_without_pending_progress"
                                              and rec is not None and (Path(b["worktree"]) /
+                                             f"{literary.names(b).submit_prefix}{rec['chunk_no']:03d}.submit.json").is_file())
+                                         or (producer_outcome.get("status") == "not_applicable"
+                                             and rec is not None and rec.get("repair") is True
+                                             and (Path(b["worktree"]) /
                                              f"{literary.names(b).submit_prefix}{rec['chunk_no']:03d}.submit.json").is_file()))
                 if (rec is not None and diag is not None and not diag.exists()
                         and (producer_outcome.get("status") == "checkpoint_progress" or has_saved_submit_file)
