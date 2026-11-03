@@ -55,7 +55,7 @@ source and scope:
   plain text with no ID (a word, name, phrase or multi-word expression such as
   `디아블로와 바알`): not clickable, no reverse relation, no invented record
   or ID.
-- **ID↔ID bidirectional exploration.** Authored exact links remain available both ways. Newly prepared Stage 2 Parts score Type/Tier once from the source and the CLI mirrors it; **equal reverse values are intended, not review defects**. Marker-free checkpoints retain independent reverse scoring, and previously approved rows may remain asymmetric. Do not rewrite historical/STDICT relations; text-only has no reverse.
+- **ID↔ID bidirectional exploration.** Authored exact links remain available both ways. Under #2446, every persisted ID row uses one source `tp`/`rv` judgment in both directions, including previously approved rows; **equal reverse values are required, not review defects**. Do not independently re-score reverse links or exempt historical approvals from the current storage contract. Preserve historical review evidence and STDICT relations; text-only has no reverse.
 - **Headword-promotion candidates** are collected separately, never in the
   relation rows: `data/headword-candidates/pr-<PR number>.jsonl` in the
   Schema v1 defined in #838 (`term`, `meaning_hint`, `source_lemma`,
@@ -71,10 +71,12 @@ source and scope:
   later). This policy approves no production prompt or bulk backfill.
 
 **Implementation status.** Text-only targets, the Typewriter-authored
-relation source, and bidirectional ID projection are implemented. Newly
-prepared Stage 2 checkpoints mirror Type/Tier from the source sense; marker-
-free checkpoints and historical rows may retain independently judged reverse
-values. Review those behaviors against the current CLI and build contracts.
+relation source, and bidirectional ID projection are implemented. Current
+persisted ID rows use the source Type/Tier in both directions. Marker-free
+legacy checkpoints may retain old judgments for recovery, but a Part with
+differing reverse values must not merge. Follow `relation-factory.md`'s
+Part-boundary transition rules and preserve historical evidence and premerge
+snapshots. Review those behaviors against the current CLI and build contracts.
 
 **Block thresholds (this scope).** Reject a demonstrably wrong sense/homograph
 target, a type that plainly contradicts the relation, a forced or incoherent
@@ -228,7 +230,7 @@ relative order, nor mechanically score or test subjective usefulness.
    Fix genuine shared producer defects and test the applicable current
    and future authoring paths, without mechanical synonym-or-creativity
    validators.
-5. Reverse links: STDICT `direct` (including `→`, #834) keeps its projection (#797); other STDICT types remain unchanged. Authored exact ID links are bidirectional: new Stage 2 Parts mirror source Type/Tier; marker-free checkpoints and historical approvals may be asymmetric. **Neither equality in new Parts nor asymmetry in old Parts is a blocker.** Text-only has no reverse. Preserve history; no quotas.
+5. Reverse links: STDICT `direct` (including `→`, #834) keeps its projection (#797); other STDICT types remain unchanged. All persisted authored ID links use the source Type/Tier in both directions under #2446. **Equal reverse values are required; historical approval does not permit persisted asymmetry.** Legacy checkpoints follow the current Part-boundary transition rules. Text-only has no reverse. Preserve review history; no quotas.
 
 The consolidated technical Stage 1 PR reviewer applies these principles with
 producer independence, exact-HEAD requirements and confirmed-error gates. Final
