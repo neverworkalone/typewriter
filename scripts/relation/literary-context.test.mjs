@@ -1225,7 +1225,7 @@ const runScriptAt = (cwd, script, args) => spawnSync(process.execPath, [script, 
 
 test('pre-#2889 C worktree is revalidated and resumed through the current Supervisor CLI', async () => {
   const fixture = await makeFixture({ supervisorWorktree: true, senseCount: 613, repeatFirstLemma: true });
-  const temporaryRoot = await mkdtemp(path.join(tmpdir(), 'typewriter-c-legacy-test-'));
+  const temporaryRoot = await realpath(await mkdtemp(path.join(tmpdir(), 'typewriter-c-legacy-test-')));
   const legacyRoot = path.join(temporaryRoot, 'worktree');
   const supervisorRoot = path.join(temporaryRoot, 'supervisor');
   const repoRoot = path.resolve('.');
