@@ -48,7 +48,7 @@ class ScriptedRunner(Runner):
         if len(argv) > 1 and Path(argv[1]).name == "literary-context-cli.mjs":
             return self.literary.run(argv, cwd, env, input)
         if len(argv) > 1 and Path(argv[1]).name == "literary-context-supervisor-cli.mjs":
-            return self.literary.run_supervisor(argv, cwd, env)
+            return self.literary.run(argv, cwd, env, input)
         if argv[:2] == WORKBENCH_CLI:
             return self.workbench.run(argv, cwd)
         if argv[:2] in (["node", "scripts/relation/d-chunk-cli.mjs"], ["node", "scripts/relation/candidate-contract.mjs"]):
