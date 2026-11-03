@@ -233,7 +233,8 @@ class Stage2RepairRebind(unittest.TestCase):
         self.assertEqual(current["fingerprint"], new_fp)
         self.assertEqual(current["target_keys"], ["source-sense\u0000candidate-1"])
         self.assertEqual(w.adapter.launches[-1]["kind"], "start")
-        self.assertIn(f"repair @{new_fp}", w.adapter.launches[-1]["prompt"])
+        self.assertNotIn("repair @", w.adapter.launches[-1]["prompt"])
+        self.assertNotIn(new_fp, w.adapter.launches[-1]["prompt"])
         self.assertEqual(w.git.stage2_repair_calls, [])
 
     def test_two_master_advances_and_supervisor_restart_preserve_repair_history(self):

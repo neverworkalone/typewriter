@@ -224,10 +224,13 @@ def stage2_links_fix(digest: str, problem: str, checkpoint: dict | None = None,
                                     "relation_direction_rule": _relation_direction_rule(checkpoint)}, directory)
 
 
-def stage2_repair(b, fingerprint: str, repair_input: str, round_info: str,
-                  type_tier_policy: str = "source-mirror-v1", directory: Path | None = None) -> str:
+def stage2_repair(b, repair_input: str, round_info: str, type_tier_policy: str = "source-mirror-v1",
+                  directory: Path | None = None, *, format_error: str | None = None) -> str:
     values = _stage2_values(b)
-    values.update(fingerprint=fingerprint, repair_input=repair_input, round_info=round_info,
+    values.update(repair_input=repair_input, round_info=round_info,
+                  format_feedback=(f"The previous response failed deterministic format validation: {format_error}\n"
+                                   "Correct the response format only; preserve the already supplied judgments."
+                                   if format_error else ""),
                   relation_direction_rule=_relation_direction_rule({"type_tier_policy": type_tier_policy}))
     return render("s2_repair", values, directory)
 

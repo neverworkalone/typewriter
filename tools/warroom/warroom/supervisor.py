@@ -1999,9 +1999,13 @@ class Supervisor:
                                 "correction_response_sha256": correction.get("response_sha256") if correction else None}
                     self.store.set(stage2.repair_run_start_key(b["id"]), json.dumps(baseline, sort_keys=True))
                     repair_input = self._stage2_repair_prompt_input(current, page, page_keys)
+                    attempts = current.get("attempt_log") or []
+                    format_error = (current.get("last_error") if attempts and isinstance(attempts[-1], dict)
+                                    and attempts[-1].get("reason_code") == "format" else None)
                     prompt = prompts.stage2_repair(
-                        b, current["fingerprint"], json.dumps(repair_input, ensure_ascii=False, separators=(",", ":")),
+                        b, json.dumps(repair_input, ensure_ascii=False, separators=(",", ":")),
                         f"{state['rounds_used']}/{stage2.MAX_REPAIR_ROUNDS}; groups {cursor + 1}..{cursor + len(page)} of {len(groups)}",
+                        format_error=format_error,
                         type_tier_policy=current.get("type_tier_policy", "legacy-independent"),
                     )
                     h = ad.start(prompt, wt, run_env, run,
@@ -2219,6 +2223,11 @@ class Supervisor:
                     return self._apply_stage2_repair_answer(b, state)
                 if problem := self._stage2_repair_boundary_problem(b):
                     return self._fail(b, "ERROR", problem)
+                replayed, replay_problem = self._stage2_repair_replay_saved_format(b, state)
+                if replay_problem:
+                    return self._fail(b, "ERROR", replay_problem)
+                if replayed:
+                    return self._apply_stage2_repair_answer(self.store.batch(b["id"]), state)
                 if problem := self._stage2_repair_replay_missing_response(b, state):
                     return self._fail(b, "ERROR", problem)
                 return self._launch_stage2_repair_page(b)
@@ -2934,13 +2943,32 @@ class Supervisor:
                     or attempt.get("correction_response_sha256") != baseline.get("correction_response_sha256")):
                 return "Stage 2 repair run does not match its persisted attempt and correction scope"
             if current.get("pending_answer") is not None and "attempt" in baseline:
-                if not isinstance(attempt, dict) or attempt.get("status") != "answer_saved" \
-                        or type(attempt.get("run_id")) is not int \
-                        or not re.fullmatch(r"[a-f0-9]{64}", attempt.get("response_sha256", "")) \
-                        or hashlib.sha256((current.get("last_response") or "").encode("utf-8")).hexdigest() \
-                        != attempt.get("response_sha256"):
-                    return "Stage 2 pending repair answer is not bound to its completed attempt output"
-                run = next((row for row in self.store.runs(b["id"]) if row["id"] == attempt["run_id"]), None)
+                response_replay = current.get("response_replay")
+                if response_replay is not None:
+                    if not isinstance(response_replay, dict) or response_replay.get("version") != 1 \
+                            or response_replay.get("status") != "answer_saved" \
+                            or not isinstance(attempt, dict) or attempt.get("status") != "rejected" \
+                            or attempt.get("reason_code") != "format" \
+                            or response_replay.get("source_attempt") != attempt.get("attempt") \
+                            or response_replay.get("source_run_id") != attempt.get("run_id") \
+                            or response_replay.get("fingerprint") != baseline.get("fingerprint") \
+                            or response_replay.get("cursor") != baseline.get("cursor") \
+                            or response_replay.get("target_keys") != baseline.get("page_keys") \
+                            or not re.fullmatch(r"[a-f0-9]{64}", response_replay.get("response_sha256", "")) \
+                            or response_replay.get("response_sha256") != attempt.get("response_sha256") \
+                            or hashlib.sha256((current.get("last_response") or "").encode("utf-8")).hexdigest() \
+                            != response_replay.get("response_sha256"):
+                        return "Stage 2 replayed repair answer is not bound to its rejected source run and page"
+                    run_id = response_replay["source_run_id"]
+                else:
+                    if not isinstance(attempt, dict) or attempt.get("status") != "answer_saved" \
+                            or type(attempt.get("run_id")) is not int \
+                            or not re.fullmatch(r"[a-f0-9]{64}", attempt.get("response_sha256", "")) \
+                            or hashlib.sha256((current.get("last_response") or "").encode("utf-8")).hexdigest() \
+                            != attempt.get("response_sha256"):
+                        return "Stage 2 pending repair answer is not bound to its completed attempt output"
+                    run_id = attempt["run_id"]
+                run = next((row for row in self.store.runs(b["id"]) if row["id"] == run_id), None)
                 if run is None or run["kind"] != "s2_repair_new" or run["ended_at"] is None \
                         or str(run["exit_status"]) != "0" or run["log_file"] != b["log_file"] \
                         or self._adapter(b["producer"]).final_answer(Path(run["log_file"])) != current.get("last_response"):
@@ -3041,7 +3069,7 @@ class Supervisor:
             response = self._adapter(b["producer"]).final_answer(Path(run["log_file"]))
             if not isinstance(response, str):
                 continue
-            answer = stage2.extract_repair_answer(response, fingerprint)
+            answer = stage2.extract_legacy_repair_answer(response, fingerprint)
             if answer is not None:
                 if run["ended_at"] is None or str(run["exit_status"]) != "0":
                     return normalized, "a fingerprint-matched legacy repair run is not complete"
@@ -3153,7 +3181,8 @@ class Supervisor:
         response = self._adapter(b["producer"]).final_answer(Path(run["log_file"]))
         if not isinstance(response, str) or hashlib.sha256(response.encode("utf-8")).hexdigest() != attempt["response_sha256"]:
             return "Stage 2 rejected attempt response hash differs from its run log"
-        parsed_answer = stage2.extract_repair_answer(response, current_fp)
+        parsed_answer = (None if attempt["reason_code"] == "format"
+                         else stage2.extract_repair_answer(response, current_fp))
         if attempt["reason_code"] != "format" and parsed_answer is None:
             return "Stage 2 rejected answer fingerprint differs from its run output"
         if attempt["reason_code"] == "coverage":
@@ -3329,6 +3358,41 @@ class Supervisor:
                                        for key in group.get("candidate_keys", [])})
                 if not page_targets or attempt.get("target_keys") != page_targets:
                     return "Stage 2 repair attempt targets do not match their page"
+                replay_source = attempt.get("replay_source")
+                if replay_source is not None:
+                    if not isinstance(replay_source, dict) or set(replay_source) != {
+                            "source_attempt", "source_run_id", "response_sha256", "cli_input_sha256", "checkpoint_sha256"} \
+                            or type(replay_source.get("source_attempt")) is not int \
+                            or type(replay_source.get("source_run_id")) is not int \
+                            or any(not re.fullmatch(r"[a-f0-9]{64}", replay_source.get(key, ""))
+                                   for key in ("response_sha256", "cli_input_sha256", "checkpoint_sha256")) \
+                            or attempt.get("run_id") is not None:
+                        return "Stage 2 replay receipt evidence is malformed"
+                    source_attempt = next((row for row in attempt_log if isinstance(row, dict)
+                                           and row.get("cursor") == attempt["cursor"]
+                                           and row.get("attempt") == replay_source["source_attempt"]), None)
+                    source_run = runs_by_id.get(replay_source["source_run_id"])
+                    if not isinstance(source_attempt, dict) or source_attempt.get("status") != "rejected" \
+                            or source_attempt.get("reason_code") != "format" \
+                            or source_attempt.get("fingerprint") != current_fp \
+                            or source_attempt.get("target_keys") != page_targets \
+                            or source_attempt.get("run_id") != replay_source["source_run_id"] \
+                            or source_attempt.get("response_sha256") != replay_source["response_sha256"] \
+                            or source_run is None or source_run["kind"] != "s2_repair_new" \
+                            or source_run["ended_at"] is None or str(source_run["exit_status"]) != "0" \
+                            or not source_run["log_file"]:
+                        return "Stage 2 replay attempt does not match its rejected format source run"
+                    source_response = self._adapter(b["producer"]).final_answer(Path(source_run["log_file"]))
+                    if not isinstance(source_response, str) \
+                            or hashlib.sha256(source_response.encode("utf-8")).hexdigest() != replay_source["response_sha256"]:
+                        return "Stage 2 replay source output hash does not match its rejected run"
+                    if problem := self._stage2_repair_explicit_rejection_problem(
+                            b, current_fp, source_attempt, runs_by_id):
+                        return f"Stage 2 replay source output is not proven: {problem}"
+                    try:
+                        stage2.extract_bound_repair_answer(source_response)
+                    except stage2.RepairFormatError as error:
+                        return f"Stage 2 replay source no longer parses as one repair JSON object: {error}"
                 if "correction_source_attempt" in attempt:
                     source_attempt = next((row for row in attempt_log if isinstance(row, dict)
                                            and row.get("cursor") == attempt["cursor"]
@@ -3642,11 +3706,141 @@ class Supervisor:
                 if row.get("source_sense_id") in {peer["source_sense_id"] for peer in peers}]
         return payload
 
+    def _stage2_repair_response_run(self, b, current: dict):
+        """Resolve the response only from the exact completed run recorded for this active page attempt."""
+        attempts = current.get("attempt_log")
+        attempt = attempts[-1] if isinstance(attempts, list) and attempts else None
+        groups, cursor = current.get("groups"), current.get("cursor")
+        if not isinstance(attempt, dict) or attempt.get("status") != "launched" \
+                or not isinstance(groups, list) or type(cursor) is not int or not 0 <= cursor < len(groups):
+            raise ValueError("repair response has no active persisted page attempt")
+        page = groups[cursor:cursor + stage2.REPAIR_GROUPS_PER_RUN]
+        page_keys = sorted({key for group in page if isinstance(group, dict)
+                            for key in group.get("candidate_keys", [])})
+        if not page_keys or attempt.get("fingerprint") != current.get("fingerprint") \
+                or attempt.get("cursor") != cursor or attempt.get("target_keys") != page_keys \
+                or type(attempt.get("run_id")) is not int:
+            raise ValueError("repair response attempt does not bind the active fingerprint, page, and run")
+        try:
+            baseline = json.loads(self.store.get(stage2.repair_run_start_key(b["id"])) or "")
+        except (TypeError, ValueError) as error:
+            raise ValueError("repair response has no valid persisted run-start boundary") from error
+        if not isinstance(baseline, dict) or baseline.get("branch") != b["branch"] \
+                or baseline.get("worktree") != str(b["worktree"]) \
+                or baseline.get("fingerprint") != current.get("fingerprint") \
+                or baseline.get("cursor") != cursor or baseline.get("page_keys") != page_keys \
+                or baseline.get("attempt") != attempt.get("attempt"):
+            raise ValueError("repair response does not match its persisted Supervisor page/run-start boundary")
+        run = next((row for row in self.store.runs(b["id"]) if row["id"] == attempt["run_id"]), None)
+        if run is None or run["kind"] != "s2_repair_new" or run["ended_at"] is None \
+                or str(run["exit_status"]) != "0" or not run["log_file"] \
+                or str(run["log_file"]) != str(b["log_file"]):
+            raise ValueError("repair response does not belong to its exact completed run")
+        if attempt.get("run_exit_status") not in (None, "0") \
+                or attempt.get("run_ended_at") not in (None, run["ended_at"]):
+            raise ValueError("repair response run completion differs from its saved attempt")
+        return run
+
+    def _stage2_repair_replay_saved_format(self, b, state: dict) -> tuple[bool, str | None]:
+        """On an explicit Retry, validate one saved format-rejected output against its exact run and page once."""
+        current = state.get("current")
+        if not isinstance(current, dict) or current.get("pending_answer") is not None:
+            return False, None
+        attempts = current.get("attempt_log")
+        attempt = attempts[-1] if isinstance(attempts, list) and attempts else None
+        replay = current.get("response_replay")
+        if replay is None:
+            if not isinstance(attempt, dict) or attempt.get("status") != "rejected" \
+                    or attempt.get("reason_code") != "format" \
+                    or self._stage2_repair_noncandidate_attempts(current) < stage2.REPAIR_ATTEMPTS_PER_PAGE:
+                return False, None
+            groups, cursor = current.get("groups"), current.get("cursor")
+            if not isinstance(groups, list) or type(cursor) is not int or not 0 <= cursor < len(groups):
+                return True, "Saved repair response has no valid current page; all evidence is preserved"
+            page = groups[cursor:cursor + stage2.REPAIR_GROUPS_PER_RUN]
+            page_keys = sorted({key for group in page if isinstance(group, dict)
+                                for key in group.get("candidate_keys", [])})
+            if not page_keys or attempt.get("fingerprint") != current.get("fingerprint") \
+                    or attempt.get("cursor") != cursor or attempt.get("target_keys") != page_keys:
+                return True, "Saved repair response is not bound to the current fingerprint and page; all evidence is preserved"
+            run_id = attempt.get("run_id")
+            runs_by_id = {row["id"]: row for row in self.store.runs(b["id"])}
+            if type(run_id) is not int:
+                return True, "Saved repair response has no persisted run identity; all evidence is preserved"
+            problem = self._stage2_repair_explicit_rejection_problem(b, current["fingerprint"], attempt, runs_by_id)
+            if problem:
+                return True, f"Saved repair response cannot be rebound to its exact completed run: {problem}"
+            run = runs_by_id[run_id]
+            if str(run["log_file"]) != str(b["log_file"]):
+                return True, "Saved repair response log is not the active Part run; all evidence is preserved"
+            raw = self.store.get(stage2.repair_run_start_key(b["id"]))
+            try:
+                baseline = json.loads(raw or "")
+            except (TypeError, ValueError):
+                baseline = None
+            if not isinstance(baseline, dict) or baseline.get("branch") != b["branch"] \
+                    or baseline.get("worktree") != str(b["worktree"]) \
+                    or baseline.get("fingerprint") != current["fingerprint"] \
+                    or baseline.get("cursor") != cursor or baseline.get("page_keys") != page_keys \
+                    or baseline.get("attempt") != attempt.get("attempt"):
+                return True, "Saved repair response has no matching Supervisor page/run-start boundary; all evidence is preserved"
+            final = self._adapter(b["producer"]).final_answer(Path(run["log_file"]))
+            if not isinstance(final, str) or hashlib.sha256(final.encode("utf-8")).hexdigest() != attempt.get("response_sha256") \
+                    or hashlib.sha256(final.encode("utf-8")).hexdigest() != hashlib.sha256(
+                        (current.get("last_response") or "").encode("utf-8")).hexdigest() \
+                    or not isinstance(current.get("last_error"), str) \
+                    or hashlib.sha256(current["last_error"].encode("utf-8")).hexdigest() != attempt.get("error_sha256"):
+                return True, "Saved repair response or recorded format failure changed; all evidence is preserved"
+            replay = {"version": 1, "status": "validating", "source_attempt": attempt["attempt"],
+                      "source_run_id": run_id, "fingerprint": current["fingerprint"], "cursor": cursor,
+                      "target_keys": page_keys, "response_sha256": attempt["response_sha256"],
+                      "started_at": self.clock()}
+            current["response_replay"] = replay
+            self._save_stage2_repair_state(b, state)
+        else:
+            if not isinstance(replay, dict) or replay.get("version") != 1 or replay.get("status") != "validating":
+                return True, "Saved repair response replay is already used or malformed; all evidence is preserved"
+            source_attempt = next((row for row in attempts if isinstance(row, dict)
+                                   and row.get("attempt") == replay.get("source_attempt")
+                                   and row.get("cursor") == replay.get("cursor")), None)
+            if source_attempt is not attempt or replay.get("fingerprint") != current.get("fingerprint") \
+                    or replay.get("cursor") != current.get("cursor") or replay.get("target_keys") != attempt.get("target_keys") \
+                    or replay.get("source_run_id") != attempt.get("run_id") \
+                    or replay.get("response_sha256") != attempt.get("response_sha256"):
+                return True, "Saved repair response replay no longer matches its rejected attempt; all evidence is preserved"
+            runs_by_id = {row["id"]: row for row in self.store.runs(b["id"])}
+            if (problem := self._stage2_repair_explicit_rejection_problem(
+                    b, current["fingerprint"], attempt, runs_by_id)):
+                return True, f"Saved repair response cannot be rebound to its exact completed run: {problem}"
+            run = runs_by_id[replay["source_run_id"]]
+            if str(run["log_file"]) != str(b["log_file"]):
+                return True, "Saved repair response log is not the active Part run; all evidence is preserved"
+            final = self._adapter(b["producer"]).final_answer(Path(run["log_file"]))
+            if not isinstance(final, str) or hashlib.sha256(final.encode("utf-8")).hexdigest() != replay.get("response_sha256"):
+                return True, "Saved repair response output changed during replay; all evidence is preserved"
+        try:
+            parsed = stage2.extract_bound_repair_answer(final)
+            answer = self._stage2_repair_validate_response(b, state, final, parsed_answer=parsed)
+            if answer is None:
+                raise stage2.RepairFormatError("saved repair response has no single JSON object")
+        except TRANSIENT:
+            raise
+        except (stage2.RepairFormatError, Stage2RepairSchemaError, Stage2RepairUnresolvedError,
+                Stage2RepairMissingCandidatesError, Stage2RepairContentError, OSError, ValueError,
+                TypeError, KeyError, GitError) as error:
+            replay["status"] = "rejected"
+            replay["error"] = str(error)[:800]
+            current["last_error"] = str(error)[:800]
+            self._save_stage2_repair_state(b, state)
+            return True, f"Saved repair response failed one-time replay validation; all evidence is preserved: {error}"
+        return True, None
+
     def _stage2_repair_response(self, b, state: dict) -> dict | None:
         current = state["current"]
         if current.get("pending_answer") is not None:
             return current["pending_answer"]
-        final = self._adapter(b["producer"]).final_answer(Path(b["log_file"]))
+        run = self._stage2_repair_response_run(b, current)
+        final = self._adapter(b["producer"]).final_answer(Path(run["log_file"]))
         current["last_response"] = final
         self._save_stage2_repair_state(b, state)
         if final is None:
@@ -3678,7 +3872,11 @@ class Supervisor:
             self._stage2_repair_mark_rejected(b, state, final, error, "content")
             raise
         if answer is None:
-            current["last_error"] = "repair response is missing the exact fingerprint header"
+            current["last_error"] = (
+                "repair response has a header that does not match the active legacy contract; return the JSON object without a header"
+                if isinstance(final, str) and any(line.strip().startswith("repair @") for line in final.splitlines())
+                else "repair response must be one JSON object without prose or a header"
+            )
             error = ValueError(current["last_error"])
             self._stage2_repair_mark_rejected(b, state, final, error, "format")
             return None
@@ -3899,9 +4097,10 @@ class Supervisor:
                                   "problem": {"field_path": problem["field_path"], "condition": problem["condition"]}},
                 "current_row": current_row}
 
-    def _stage2_repair_validate_response(self, b, state: dict, final: str) -> dict | None:
+    def _stage2_repair_validate_response(self, b, state: dict, final: str,
+                                         parsed_answer: dict | None = None) -> dict | None:
         current = state["current"]
-        answer = stage2.extract_repair_answer(final, current["fingerprint"])
+        answer = parsed_answer if parsed_answer is not None else stage2.extract_repair_answer(final, current["fingerprint"])
         if answer is None:
             return None
         page = current["groups"][current["cursor"]:current["cursor"] + stage2.REPAIR_GROUPS_PER_RUN]
@@ -4165,9 +4364,17 @@ class Supervisor:
             answer["peer_adjustments"] = all_peers
         answer["unresolved"] = []
         current["pending_answer"] = answer
-        if current.get("attempt_log"):
-            current["attempt_log"][-1]["status"] = "answer_saved"
-        self._stage2_repair_mark_answer_saved(b, state, final)
+        response_replay = current.get("response_replay")
+        if response_replay is not None:
+            if not isinstance(response_replay, dict) or response_replay.get("status") != "validating" \
+                    or response_replay.get("response_sha256") != hashlib.sha256(final.encode("utf-8")).hexdigest():
+                raise ValueError("saved response replay no longer matches its verified output")
+            response_replay["status"] = "answer_saved"
+            response_replay["validated_at"] = self.clock()
+        else:
+            if current.get("attempt_log"):
+                current["attempt_log"][-1]["status"] = "answer_saved"
+            self._stage2_repair_mark_answer_saved(b, state, final)
         current["pending_binding"] = self._stage2_repair_binding(b, current, answer, final, check)
         current.pop("last_error", None)
         self._save_stage2_repair_state(b, state)
@@ -4261,7 +4468,26 @@ class Supervisor:
             current.pop("response_correction", None)
             if state.get("history"):
                 state["history"][-1]["applied_candidate_keys"] = list(current["applied_candidate_keys"])
-            if current.get("attempt_log"):
+            response_replay = current.get("response_replay")
+            if isinstance(response_replay, dict):
+                if response_replay.get("status") != "answer_saved" or not isinstance(current.get("pending_binding"), dict):
+                    return self._fail(b, "ERROR", "Stage 2 replayed answer has no persisted validation binding; preserving its receipt")
+                prior_numbers = [row.get("attempt", 0) for row in current.get("attempt_log", [])
+                                 if isinstance(row, dict) and row.get("cursor") == response_replay["cursor"]]
+                replay_source = {key: response_replay[key] for key in (
+                    "source_attempt", "source_run_id", "response_sha256")}
+                replay_source.update({key: current["pending_binding"][key] for key in (
+                    "cli_input_sha256", "checkpoint_sha256")})
+                current.setdefault("attempt_log", []).append({
+                    "cursor": response_replay["cursor"],
+                    "attempt": max(prior_numbers, default=0) + 1,
+                    "fingerprint": response_replay["fingerprint"],
+                    "target_keys": response_replay["target_keys"],
+                    "status": "applied", "receipt": receipt["request_id"],
+                    "replay_source": replay_source,
+                })
+                current.pop("response_replay", None)
+            elif current.get("attempt_log"):
                 current["attempt_log"][-1]["status"] = "applied"
                 current["attempt_log"][-1]["receipt"] = receipt["request_id"]
             self._save_stage2_repair_state(b, state)

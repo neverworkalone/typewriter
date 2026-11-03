@@ -25,10 +25,15 @@ class DirectionPolicyPrompts(unittest.TestCase):
 
         links = prompts.stage2_links(self.batch, self.new, "links @digest\n")
         self.assertIn("CLI derives and saves the same type/relevance", links)
-        repair = prompts.stage2_repair(self.batch, "f" * 64, '{"groups":[]}', "1/2", "source-mirror-v1")
-        legacy_repair = prompts.stage2_repair(self.batch, "f" * 64, '{"groups":[]}', "1/2", "legacy-independent")
+        repair = prompts.stage2_repair(self.batch, '{"groups":[]}', "1/2", type_tier_policy="source-mirror-v1")
+        legacy_repair = prompts.stage2_repair(self.batch, '{"groups":[]}', "1/2", type_tier_policy="legacy-independent")
         self.assertIn("Never supply or independently judge reverse values", repair)
         self.assertIn("independently judge the reverse type/relevance", legacy_repair)
+        self.assertNotIn("repair @", repair)
+        self.assertNotIn("f" * 64, repair)
+        corrected = prompts.stage2_repair(self.batch, '{"groups":[]}', "1/2",
+                                           format_error="repair response must be one JSON object")
+        self.assertIn("repair response must be one JSON object", corrected)
 
         resume = prompts.stage2_chunk_resume("001-01-01-001", self.new)
         correction = prompts.stage2_chunk_fix("001-01-01-001", "c1: format", self.new)

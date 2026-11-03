@@ -141,7 +141,7 @@ class LegacyRepairAttemptReconciliation(unittest.TestCase):
 
 class RepairRejectionReasonCodes(unittest.TestCase):
     def _record_response(self, test, response, *, already_accounted=False):
-        w, b, _checkpoint = _world(test, total=1)
+        w, b, checkpoint = _world(test, total=1)
         state = json.loads(w.store.get(stage2.repair_state_key(b["id"])))
         state["current"]["fingerprint"] = FP
         state["history"][-1]["fingerprint"] = FP
@@ -160,6 +160,13 @@ class RepairRejectionReasonCodes(unittest.TestCase):
         run_id = w.store.add_run(b["id"], "s2_repair_new", "session-response", 5555,
                                  log, exit_file, model="test-model", effort="high")
         w.store.finish_runs(b["id"], "0")
+        state["current"]["attempt_log"][-1]["run_id"] = run_id
+        w.store.set(stage2.repair_state_key(b["id"]), json.dumps(state, sort_keys=True))
+        w.store.set(stage2.repair_run_start_key(b["id"]), json.dumps({
+            "branch": b["branch"], "worktree": str(b["worktree"]), "fingerprint": FP,
+            "cursor": 0, "page_keys": [KEY], "attempt": 1,
+            "checkpoint_sha256": hashlib.sha256(checkpoint.read_bytes()).hexdigest(),
+        }, sort_keys=True))
         w.store.update(b["id"], log_file=str(log), run_kind="s2_repair_new", state="PRODUCING")
         return w, w.store.batch(b["id"]), run_id
 

@@ -555,32 +555,84 @@ class RepairFormatError(ValueError):
 _REPAIR_FENCE = re.compile(r"```(?:json)?[ \t]*\n(.*)\n```", re.DOTALL)
 
 
-def extract_repair_answer(final_text: str | None, fingerprint_: str) -> dict | None:
-    """A self-contained final answer for one exact preflight fingerprint; never parse prose as a decision.
+def _repair_json_object(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"repair answer JSON contains duplicate field {key!r}")
+        result[key] = value
+    return result
 
-    Accepts exactly one JSON object after the header, either raw or wrapped losslessly in a single ```json fence."""
-    if not isinstance(final_text, str):
-        return None
-    lines = final_text.replace("\r\n", "\n").split("\n")
-    header = f"repair @{fingerprint_}"
-    starts = [index for index, line in enumerate(lines) if line.strip() == header]
-    if len(starts) != 1:
-        return None
-    body = "\n".join(lines[starts[0] + 1:]).strip()
-    if not body:
-        raise RepairFormatError("repair answer has no JSON body")
+
+def _parse_repair_json(body: str) -> dict:
     fenced = _REPAIR_FENCE.fullmatch(body)
     if fenced and "```" not in fenced.group(1):
         body = fenced.group(1).strip()
     try:
-        result = json.loads(body)
+        result = json.loads(body, object_pairs_hook=_repair_json_object)
     except ValueError as error:
-        raise RepairFormatError(f"repair answer JSON is malformed: {error}") from error
+        raise RepairFormatError(f"repair answer must be one strict JSON object: {error}") from error
     if not isinstance(result, dict) or set(result) != {"decisions", "peer_adjustments", "unresolved"} \
             or not isinstance(result["decisions"], list) or not isinstance(result["peer_adjustments"], list) \
             or not isinstance(result["unresolved"], list):
         raise RepairFormatError('repair answer must contain exactly "decisions", "peer_adjustments" and "unresolved" arrays')
     return result
+
+
+def extract_repair_answer(final_text: str | None, fingerprint_: str) -> dict | None:
+    """Parse the new headerless JSON contract or the exact legacy header for this fingerprint.
+
+    Output ownership comes from the Supervisor's persisted attempt and run evidence, never from model-authored text."""
+    if not isinstance(final_text, str):
+        return None
+    normalized = final_text.replace("\r\n", "\n").strip()
+    if normalized.startswith("{"):
+        return _parse_repair_json(normalized)
+    lines = normalized.split("\n")
+    header = f"repair @{fingerprint_}"
+    starts = [index for index, line in enumerate(lines) if line.strip() == header]
+    if len(starts) == 1:
+        body = "\n".join(lines[starts[0] + 1:]).strip()
+        if not body:
+            raise RepairFormatError("repair answer has no JSON body")
+        return _parse_repair_json(body)
+    if any(line.strip().startswith("repair @") for line in lines):
+        return None
+    return _parse_repair_json(normalized)
+
+
+def extract_legacy_repair_answer(final_text: str | None, fingerprint_: str) -> dict | None:
+    """Parse only the pre-change exact-header contract when reconciling historical unbound attempts."""
+    if not isinstance(final_text, str):
+        return None
+    lines = final_text.replace("\r\n", "\n").split("\n")
+    starts = [index for index, line in enumerate(lines) if line.strip() == f"repair @{fingerprint_}"]
+    if len(starts) != 1:
+        return None
+    body = "\n".join(lines[starts[0] + 1:]).strip()
+    if not body:
+        raise RepairFormatError("repair answer has no JSON body")
+    return _parse_repair_json(body)
+
+
+def extract_bound_repair_answer(final_text: str | None) -> dict:
+    """Parse a persisted response only after its Supervisor run/page/fingerprint proof has been checked.
+
+    For one-time recovery of pre-change runs, discard their legacy `repair @...` line as presentation text;
+    that line is deliberately not identity evidence. Callers must bind the exact output hash and run to saved state.
+    """
+    if not isinstance(final_text, str):
+        raise RepairFormatError("saved repair run has no complete final response")
+    normalized = final_text.replace("\r\n", "\n").strip()
+    if normalized.startswith("{"):
+        return _parse_repair_json(normalized)
+    lines = normalized.split("\n")
+    if not lines or not re.fullmatch(r"repair @[a-f0-9]{1,64}", lines[0].strip()):
+        raise RepairFormatError("saved legacy response has no recognized repair header")
+    body = "\n".join(lines[1:]).strip()
+    if not body:
+        raise RepairFormatError("saved repair run has no JSON body")
+    return _parse_repair_json(body)
 
 
 def decision_file_state(worktree, chunk_id: str, rel: str = DECISIONS) -> str:
