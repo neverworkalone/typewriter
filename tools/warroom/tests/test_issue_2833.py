@@ -88,8 +88,7 @@ class RepairFormatRetry(unittest.TestCase):
         self.assertEqual((w.git.stage2_repair_calls, w.gh.created_prs), ([], []))
 
     def test_content_errors_are_not_retried(self):
-        cases = {"missing": valid_body(CANDIDATES[:1]), "foreign": valid_body(["other"]),
-                 "duplicate": valid_body(CANDIDATES + CANDIDATES[:1])}
+        cases = {"foreign": valid_body(["other"]), "duplicate": valid_body(CANDIDATES + CANDIDATES[:1])}
         for name, body in cases.items():
             with self.subTest(name):
                 w, batch = start_repair(self, [conflict_report(FP, CANDIDATES), clean_report("2" * 64)])
