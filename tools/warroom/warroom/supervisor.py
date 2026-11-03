@@ -2000,8 +2000,10 @@ class Supervisor:
                     self.store.set(stage2.repair_run_start_key(b["id"]), json.dumps(baseline, sort_keys=True))
                     repair_input = self._stage2_repair_prompt_input(current, page, page_keys)
                     attempts = current.get("attempt_log") or []
-                    format_error = (current.get("last_error") if attempts and isinstance(attempts[-1], dict)
-                                    and attempts[-1].get("reason_code") == "format" else None)
+                    prior_attempt = attempts[-2] if len(attempts) >= 2 and isinstance(attempts[-1], dict) \
+                        and attempts[-1].get("status") == "launched" else (attempts[-1] if attempts else None)
+                    format_error = (current.get("last_error") if isinstance(prior_attempt, dict)
+                                    and prior_attempt.get("reason_code") == "format" else None)
                     prompt = prompts.stage2_repair(
                         b, json.dumps(repair_input, ensure_ascii=False, separators=(",", ":")),
                         f"{state['rounds_used']}/{stage2.MAX_REPAIR_ROUNDS}; groups {cursor + 1}..{cursor + len(page)} of {len(groups)}",
@@ -3852,7 +3854,7 @@ class Supervisor:
         except stage2.RepairFormatError as error:
             current["last_error"] = str(error)
             self._stage2_repair_mark_rejected(b, state, final, error, "format")
-            raise
+            return None
         except Stage2RepairSchemaError as error:
             current["last_error"] = str(error)
             self._stage2_repair_mark_rejected(b, state, final, error, "schema")
