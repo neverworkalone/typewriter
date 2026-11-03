@@ -842,6 +842,35 @@ test('contexts per sense are capped at 16, unseen hits stay explicit and any sho
   }
 });
 
+test('an empty submission completes a fully sampled sense with no verified context despite unread hits', async () => {
+  const fixture = await makeFixture({ unitCount: 20 });
+  try {
+    const senseId = 'sense-000001';
+    const first = (await chunk(fixture, { senseIds: senseId, contexts: 8 })).items[0];
+    const extra = (await chunk(fixture, { senseIds: senseId, contexts: 16, skip: 8 })).items[0];
+    assert.equal(first.contexts.length, 8);
+    assert.equal(extra.contexts.length, 8);
+    assert.equal(extra.unseen_hits, 4);
+    assert.equal((await load(fixture)).records[0].senses[0].shown.unit_rowids.length, 16);
+
+    const saved = await submit(fixture, [{ sense_id: senseId, verified: [], candidates: [] }]);
+    assert.equal(saved.status, 'SAVED');
+    const report = reportCli(fixture, senseId);
+    assert.equal(report.status, 0, report.stderr);
+    const completion = JSON.parse(report.stdout);
+    assert.equal(completion.all_done, true);
+    assert.equal(completion.senses[0].status, 'SAMPLED_NO_VERIFIED');
+    const checkpoint = await load(fixture);
+    assert.deepEqual(checkpoint.records[0].senses[0].submission.verified, []);
+    assert.deepEqual(checkpoint.records[0].senses[0].submission.candidates, []);
+    const damaged = structuredClone(checkpoint);
+    damaged.records[0].senses[0].submission.contexts_available = 8;
+    assert.throws(() => reportLiteraryCheckpointSenses(damaged, senseId), /checkpoint sense submission is damaged/u);
+  } finally {
+    await cleanup(fixture);
+  }
+});
+
 test('chunk --skip returns only new contexts while preserving the full lookup evidence for submission', async () => {
   const fixture = await makeFixture({ unitCount: 20 });
   try {
@@ -1598,6 +1627,7 @@ test('CLI usage diagnostics are fixed and validation precedes checkpoint/databas
       [['--sense-ids', 'a', 'b'], 'arguments must use --option value pairs'],
       [['--unknown', 'private-value'], 'unsupported option'],
       [['--skip', '0'], '--skip requires --sense-ids'],
+      [['--sense-ids', 'sense-000001', '--skip', '16', '--contexts', '16'], '--skip must be an integer 0..contexts-1'],
     ];
     for (const [args, expectedMessage] of cases) {
       const result = runCli(fixture, cliChunkArgs(fixture, args));

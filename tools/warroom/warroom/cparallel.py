@@ -94,8 +94,70 @@ def retry_block_reason(store, b) -> str | None:
                                              session_available=bool(row["session_id"])):
             return None
         codes.extend(guard.get("reason_codes") or [])
+    if len(failed) == 1 and _legacy_shown_only_retry_available(store, b, failed[0], _data(failed[0]).get("guard")):
+        return None   # one owner Retry recovers this exact pre-policy 16-context no-submit task
     return (f"[same_failure; {','.join(dict.fromkeys(codes)) or 'checkpoint_or_chunk_mismatch'}] 실패한 task의 Sense·제출·진단 "
             "evidence가 그대로여서 Retry를 막았습니다. 증거가 바뀐 뒤 재시도하세요.")
+
+
+def _legacy_shown_only_guard(data: dict, guard) -> bool:
+    """Only the known pre-field-summary guard gets the one-time compatibility path."""
+    codes = guard.get("reason_codes") if isinstance(guard, dict) else None
+    start = data.get("run_start") if isinstance(data, dict) else None
+    retry = start.get("retry_state") if isinstance(start, dict) else None
+    return (codes == ["checkpoint_changed_without_pending_progress"]
+            and isinstance(retry, dict) and isinstance(retry.get("own_state"), str))
+
+
+def _legacy_shown_only_retry_available(store, b, row, guard) -> bool:
+    """Prove the specific pre-policy task 16-context case before allowing one explicit Retry."""
+    data = _data(row)
+    if (not _legacy_shown_only_guard(data, guard) or data.get("recovery")
+            or data.get("operator_grants", 0) != 0 or data.get("completed_fix_runs")
+            or data.get("auto_fix_runs")):
+        return False
+    baseline_state = guard.get("baseline") if isinstance(guard, dict) else None
+    start = data.get("run_start")
+    retry = start.get("retry_state") if isinstance(start, dict) else None
+    if (not isinstance(baseline_state, dict) or not isinstance(retry, dict)
+            or not isinstance(baseline_state.get("own_state"), str)
+            or baseline_state.get("own_state") == retry.get("own_state")):
+        return False
+    try:
+        rec = literary.read_active(Path(b["worktree"]), b, int(row["task"]))
+        if not literary.task_retry_unchanged(Path(b["worktree"]), b, int(row["task"]), baseline_state,
+                                             session_available=bool(row["session_id"])):
+            return False
+        raw_run = store.run(row["run_id"]) if row["run_id"] is not None else None
+        run = dict(raw_run) if raw_run is not None else None
+        runtime = baseline(store, b)
+        if (rec is None or not isinstance(run, dict) or run.get("task") != row["task"]
+                or run.get("kind") != NEW or str(run.get("exit_status")) != "0"
+                or run.get("ended_at") is None or run.get("session_id") != row["session_id"]
+                or not row["session_id"] or start.get("branch") != b["branch"]
+                or Path(start.get("worktree", "")) != Path(b["worktree"])
+                or not isinstance(runtime, dict) or start.get("head") != runtime.get("head")
+                or start.get("remote_head") != runtime.get("remote_head")
+                or start.get("head") != rec.get("git_head") or start.get("chunk_no") != rec.get("chunk_no")
+                or retry.get("chunk_id") != rec.get("chunk_id")
+                or retry.get("chunk_no") != rec.get("chunk_no")
+                or retry.get("view_sha256") != rec.get("view_sha256")
+                or retry.get("repair") is not False
+                or retry.get("pending_sense_ids") != rec.get("sense_ids")
+                or baseline_state.get("pending_sense_ids") != rec.get("sense_ids")):
+            return False
+        submit = Path(b["worktree"]) / f"{literary.names(b).submit_prefix}{rec['chunk_no']:03d}.submit.json"
+        if submit.exists() or submit.with_name(submit.name + ".diag.json").exists():
+            return False
+        from .adapters import final_answer
+        from .usage import submit_attempts
+        log = Path(run["log_file"]) if run.get("log_file") else None
+        answer = final_answer(log) if log else None
+        if log is None or submit_attempts(log) != 0 or not answer or literary.reported_stop(answer):
+            return False
+        return literary.legacy_shown_only_sample(Path(b["worktree"]), b, rec, rec["sense_ids"])
+    except (OSError, ValueError, KeyError, TypeError, literary.LiteraryError):
+        return False
 
 
 class _Round:
@@ -462,11 +524,13 @@ class ParallelC:
             if sid and len(data.get("auto_fix_runs", [])) >= AUTO_FIX_LIMIT and literary.technical_skip_candidate(wt, b, n):
                 return self._technical_skip(b, row, data, run, rec, round_)
             outcome = self._no_submission(b, row, data, rec, run, pending)
-            if outcome.get("status") == "no_submission" and not data.get("recovery"):
+            if outcome.get("status") in ("no_submission", "shown_only_progress") and not data.get("recovery"):
                 data["recovery"] = {"source_run_id": run["id"], "pending_sense_ids": list(pending)}
                 data["kind"] = "recovery"
                 self._set(b, task, data, state="FIXQ", run_id=None)
-                return self.store.log(b["id"], f"[{task}] 정상 종료·submit 호출 없음으로 확인했습니다. 기존 view의 미완료 Sense만 "
+                detail = ("새 문맥 조회만 저장되어 submit 없이 종료된 것을 확인했습니다."
+                          if outcome.get("status") == "shown_only_progress" else "정상 종료·submit 호출 없음으로 확인했습니다.")
+                return self.store.log(b["id"], f"[{task}] {detail} 기존 view의 미완료 Sense만 "
                                       "새 세션에서 한 번 재개합니다.", "warn")
             progress = outcome.get("status") == "checkpoint_progress" or submit.is_file()
             if not diagnostic.exists() and progress and run["kind"] != FIX and not data.get("progress_retry"):
@@ -480,6 +544,8 @@ class ParallelC:
             self._task_failed(b, row, data, f"[{task}] 미완료 청크 상태를 확인하지 못했습니다: {error}. 원본을 보존합니다.")
 
     def _no_submission(self, b, row, data, rec, run, pending) -> dict:
+        if run["id"] != row["run_id"] or run["task"] != row["task"]:
+            return {"status": "task_or_run_mismatch"}
         start = data.get("run_start")
         log = Path(run["log_file"]) if run["log_file"] else None
         return literary.no_submission_result(
@@ -745,12 +811,20 @@ class ParallelC:
             return prompts.c_chunk_resume(n, checkpoint, remaining, note=note, scoped=True)
         view = literary.read_view(wt, rec, n)
         if kind == RECOVERY:
+            shown = literary.own_state(wt, b, remaining)["senses"]
+            capped = [sense_id for sense_id, state in shown.items()
+                      if state.get("shown", {}).get("valid") is True
+                      and state.get("shown", {}).get("context_count") == 16]
             note += ("무제출 복구 정책 v1: 직전 정상 종료 실행은 공식 submit 호출 0회였고 submit/diag 파일도 없었다. "
                      "새 self-contained 세션에서 기존 active view의 아래 미완료 Sense만 처리한다. 이미 checkpoint에 저장된 Sense는 "
                      "다시 판독하거나 제출하지 않는다. 제공된 같은 view 증거를 우선 재사용하고, 기존 view로 판독할 수 없을 때에만 "
                      "카드에 정한 공식 추가 조회를 수행한다. 아래 Sense의 source-sense 판독과 C의 발굴·형태 검사는 정해진 전체 계약대로 "
                      "수행하고, 완료 Sense를 모두 포함한 단일 제출을 실행한다. 필수 검색·출처 근거가 불충분하거나 정당한 stop 사유가 "
                      "있으면 추측·technical skip 없이 그 사유를 보고한다: " + ", ".join(remaining) + "\n")
+            if capped:
+                note += ("이전에 기록된 16문맥 상한 Sense: " + ", ".join(capped) + ". 전체 16개가 이미 보였으므로 추가 페이지를 요구하지 않는다. "
+                         "같은 표본을 다시 판독해야 하면 카드의 `--skip 8 --contexts 16` 조회만 사용하고, 16개에 VERIFIED가 없으면 "
+                         "`verified: []`, `candidates: []`로 제출한다. `unseen_hits`가 남아 있어도 정상적인 `SAMPLED_NO_VERIFIED` 완료다.\n")
             view = literary.view_for_senses(view, remaining)
         elif data.get("continued") or len(remaining) < len(rec["sense_ids"]):
             note += ("같은 활성 청크의 미완료 Sense만 새 세션으로 이어간다. 제공된 view와 제출 배열에는 아래 남은 ID만 포함하고, "
@@ -795,12 +869,23 @@ class ParallelC:
                 self._set(b, row["task"], {"superseded": True}, state="SAVED", run_id=None)
                 round_.force = True
                 continue
+            guard = data.get("guard")
+            legacy_retry = _legacy_shown_only_guard(data, guard)
+            if legacy_retry and not _legacy_shown_only_retry_available(self.store, b, row, guard):
+                return self.sup._fail(b, "ERROR", f"[{row['task']}] 16문맥 무제출 복구의 기존 증거가 달라져 Retry를 차단했습니다. 원본을 보존합니다.")
             for key in ("ack", "error", "pause", "guard", "progress_retry"):
                 data.pop(key, None)
-            if epoch > int(data.get("last_operator_retry_epoch", 0)):
+            if not legacy_retry and epoch > int(data.get("last_operator_retry_epoch", 0)):
                 data["operator_grants"] = int(data.get("operator_grants", 0)) + 1
                 data["last_operator_retry_epoch"] = epoch
-            data.pop("kind", None)
+            if legacy_retry:
+                run = self.store.run(row["run_id"])
+                rec = literary.read_active(self._wt(b), b, int(row["task"]))
+                data["kind"] = "recovery"
+                data["recovery"] = {"source_run_id": run["id"], "pending_sense_ids": list(rec["sense_ids"]),
+                                    "operator_retry_epoch": epoch}
+            else:
+                data.pop("kind", None)
             self._set(b, row["task"], data, state="PENDING", run_id=None)
             round_.force = True
             fresh = self.store.task_row(b["id"], row["task"])

@@ -14,13 +14,14 @@
 - 문맥마다 **그 출발 Sense의 실제 용례인지** 판정한다: `VERIFIED`(정확한 그 Sense) / `AMBIGUOUS` / `REJECTED`. 동음이의어, 다른 품사, 부분 문자열 오탐은 VERIFIED가 아니다. 읽지 않은 문맥을 판독한 것으로 간주하지 않는다.
 - 작품·작가·장르·화자·장면이 다양하도록 VERIFIED를 고르고, 한 작품에서는 최대 2개 문맥을 선호한다.
 - 항목이 `SEARCH_FAILED`면 판독하지 말고 제출 없이 그 사실만 보고하고 종료한다. `UNSEARCHABLE`이면 그 Sense에 한해 검토된 활용형을 `add-form --checkpoint <checkpoint> --sense-id <id> --form <활용형> --basis '<근거>'`로 추가한 뒤 `chunk --sense-ids <id>`로 다시 읽는다. 해결할 수 없으면 후보를 비워 제출하지 말고 보고하고 종료한다.
-- 검색 결과가 없거나(`ZERO_HITS`) 아직 읽지 않은 Sense를 정상적인 빈 결과로 위장하지 않는다. VERIFIED가 하나도 없으면 후보도 없다: `"verified": []`, `"candidates": []`로 제출한다. 후보가 있는 Sense는 반드시 실제 VERIFIED 근거가 있어야 한다.
+- 검색 결과가 없거나(`ZERO_HITS`) 아직 읽지 않은 Sense를 정상적인 빈 결과로 위장하지 않는다. 각 Sense는 서로 다른 문맥을 **최대 16개**까지만 판독한다. 16개를 모두 읽었는데 VERIFIED가 하나도 없으면, 미조회 hit(`unseen_hits`)가 남아 있어도 그 Sense를 `"verified": []`, `"candidates": []`로 제출한다. 이는 정상 표본 완료(`SAMPLED_NO_VERIFIED`)이며, 검색 실패·UNSEARCHABLE·승인 DB 접근 실패와 다르다. 후보가 있는 Sense는 반드시 실제 VERIFIED 근거가 있어야 한다.
 
 ## 같은 Sense의 추가 문맥 조회
 
 - 초기 view에는 각 Sense당 최대 **{{chunk_contexts}}개** 문맥이 있다. `unseen=0`이면 같은 검색 형태의 추가 문맥을 조회하지 않는다. 다른 승인 활용형이 실제로 필요할 때만 기존 `add-form` 경로를 쓴다. 이미 읽은 문맥을 단순히 다시 보기 위한 호출은 하지 않는다.
 - 추가 문맥이 실제로 필요한 AMBIGUOUS Sense ID만 쉼표로 묶어 한 번에 조회한다. `--skip`은 초기 view에 해당 Sense의 앞 {{chunk_contexts}}개 문맥이 실제로 표시된 경우에만 쓴다. 반환된 Sense ID와 요청 ID를 대조한다. 출력 예산으로 일부가 빠졌으면 이미 받은 ID는 반복하지 않고 누락된 ID만 다음 호출에 넣는다. 출력 제한 오류로 아무 내용도 반환되지 않았다면 아직 받은 ID가 없으므로, 같은 요청을 더 작은 묶음으로 나눈다.
-- 추가 조회도 source sense의 VERIFIED 판정에 필요한 문맥까지만 읽는다. 16개가 상한이며, 이미 표시된 앞부분의 순서가 달라지거나 증거가 일치하지 않아 도구가 거부하면 이를 우회하지 말고 보고한다.
+- 초기 8개 뒤에 상한까지 확장할 때는 `--skip 8 --contexts 16`을 사용한다. 이는 같은 Sense의 9–16번째 문맥을 반환한다. `--skip 16`은 호출하지 않는다. `--skip 16 --contexts 16`의 usage 오류는 16개 상한에 도달했다는 뜻이므로, 더 큰 페이지를 요구하거나 검색 실패로 보고하지 않는다.
+- 추가 조회도 source sense의 VERIFIED 판정에 필요한 문맥까지만 읽는다. **초기 view와 추가 조회를 합쳐 Sense당 서로 다른 문맥 16개가 상한**이다. 상한까지 읽고도 VERIFIED가 없으면 앞의 빈 `verified`/`candidates` 제출 규칙으로 정상 완료한다. 이미 표시된 앞부분의 순서가 달라지거나 증거가 일치하지 않아 도구가 거부되면 이를 우회하지 말고 실제 오류를 보고한다.
 
 ## 발굴 (모든 VERIFIED 문맥)
 

@@ -1763,7 +1763,9 @@ export async function submitLiteraryChunk({ databasePath, checkpointPath, submis
         entryNumber,
         start: senseSnapshot(sense),
         submission: {
-          status: result.total_hits === 0 ? 'ZERO_HITS' : 'SUBMITTED',
+          status: result.total_hits === 0 ? 'ZERO_HITS'
+            : verified.length === 0 && candidates.size === 0 && result.results.length === MAX_CONTEXTS_PER_SENSE
+              && result.total_hits > result.results.length ? 'SAMPLED_NO_VERIFIED' : 'SUBMITTED',
           submitted_at: new Date().toISOString(),
           total_hits: result.total_hits,
           contexts_available: result.results.length,
@@ -1802,7 +1804,7 @@ export function summarizeLiteraryCheckpoint(checkpoint) {
   return checkpointSummary(checkpoint);
 }
 
-const SUBMISSION_STATUSES = ['ZERO_HITS', 'SUBMITTED', 'TECHNICAL_SKIPPED'];
+const SUBMISSION_STATUSES = ['ZERO_HITS', 'SUBMITTED', 'SAMPLED_NO_VERIFIED', 'TECHNICAL_SKIPPED'];
 const isPlainObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 const isNonEmptyString = (value) => typeof value === 'string' && value !== '';
 
@@ -1833,6 +1835,12 @@ function assertCheckpointStructure(checkpoint) {
         if (!Array.isArray(verified) || !verified.every((item) => isPlainObject(item) && isNonEmptyString(item.locator_key))
           || (saved.status === 'SUBMITTED' && !Array.isArray(saved.verified))
           || (saved.status === 'ZERO_HITS' && (saved.candidates.length > 0 || verified.length > 0))
+          || (saved.status === 'SAMPLED_NO_VERIFIED' && (saved.candidates.length > 0 || verified.length > 0
+            || !Array.isArray(saved.verified)
+            || saved.contexts_available !== MAX_CONTEXTS_PER_SENSE
+            || !Number.isSafeInteger(saved.total_hits) || saved.total_hits <= MAX_CONTEXTS_PER_SENSE
+            || !Number.isSafeInteger(saved.remaining_hit_count)
+            || saved.remaining_hit_count !== saved.total_hits - saved.contexts_available))
           || (saved.status === 'TECHNICAL_SKIPPED' && (saved.candidates.length > 0 || !isPlainObject(technicalSkip)
             || technicalSkip.record_id !== record.record_id || technicalSkip.sense_id !== sense.sense_id
             || technicalSkip.diagnostic !== 'submit_validation'

@@ -73,6 +73,10 @@ _REPORTED_STOP = re.compile(
 )
 
 
+def reported_stop(final_answer: str | None) -> bool:
+    return isinstance(final_answer, str) and _REPORTED_STOP.search(final_answer) is not None
+
+
 def resubmit_key(batch_id: int) -> str:
     return f"c_resubmit_{batch_id}"
 
@@ -96,19 +100,159 @@ def _file_state(path: Path) -> dict | None:
     return {"size": stat.st_size, "mtime_ns": stat.st_mtime_ns, "inode": stat.st_ino}
 
 
-def own_state(worktree, b, sense_ids: list[str]) -> str:
-    """Digest of exactly these Senses' checkpoint state (forms, shown contexts, submission): what a task owns.
-    Another task's save changes the checkpoint file but never this digest."""
+def _task_senses(worktree, b, sense_ids: list[str]) -> dict:
     try:
         data = json.loads((Path(worktree) / names(b).checkpoint).read_text("utf-8"))
         wanted = set(sense_ids)
-        found = {sense["sense_id"]: sense for record in data["records"] for sense in record["senses"]
+        found = {sense["sense_id"]: (record, sense) for record in data["records"] for sense in record["senses"]
                  if sense.get("sense_id") in wanted}
     except (OSError, ValueError, KeyError, TypeError) as error:
         raise LiteraryError("task Sense 상태를 읽을 수 없습니다") from error
     if set(found) != wanted:
         raise LiteraryError("task Sense가 checkpoint에 없습니다")
-    return sha256_text(json.dumps([found[i] for i in sorted(found)], sort_keys=True, ensure_ascii=False))
+    return found
+
+
+def _state_digest(value) -> str:
+    return sha256_text(json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(",", ":")))
+
+
+def _sense_forms(record: dict, sense: dict) -> tuple[list[str], bool]:
+    search_forms, added_forms = sense.get("search_forms"), sense.get("added_forms")
+    valid = (isinstance(search_forms, list) and all(isinstance(form, str) and form for form in search_forms)
+             and isinstance(added_forms, list)
+             and all(isinstance(item, dict) and isinstance(item.get("form"), str) and item["form"]
+                     for item in added_forms))
+    if not valid:
+        return [], False
+    return sorted(set(search_forms + [item["form"] for item in added_forms])), True
+
+
+def _shown_state(shown, forms_sha256: str, forms_valid: bool) -> dict:
+    valid = shown is None
+    count, total_hits, shown_forms = 0, None, None
+    if isinstance(shown, dict):
+        rowids = shown.get("unit_rowids")
+        total_hits, shown_forms = shown.get("total_hits"), shown.get("forms_sha256")
+        valid = (set(shown) == {"forms_sha256", "total_hits", "unit_rowids"}
+                 and isinstance(shown_forms, str) and re.fullmatch(r"[a-f0-9]{64}", shown_forms) is not None
+                 and isinstance(total_hits, int) and not isinstance(total_hits, bool) and total_hits > 0
+                 and isinstance(rowids, list) and 1 <= len(rowids) <= 16
+                 and all(isinstance(rowid, int) and not isinstance(rowid, bool) and rowid > 0 for rowid in rowids)
+                 and len(set(rowids)) == len(rowids)
+                 and len(rowids) <= total_hits)
+        count = len(rowids) if isinstance(rowids, list) else 0
+    elif shown is not None:
+        valid = False
+    return {"sha256": _state_digest(shown), "valid": valid and (shown is None or forms_valid and shown_forms == forms_sha256),
+            "context_count": count, "total_hits": total_hits, "forms_sha256": shown_forms}
+
+
+def _legacy_own_state(worktree, b, sense_ids: list[str]) -> str:
+    """Read the former whole-Sense digest only to keep already-written task Retry guards comparable."""
+    found = _task_senses(worktree, b, sense_ids)
+    return sha256_text(json.dumps([found[i][1] for i in sorted(found)], sort_keys=True, ensure_ascii=False))
+
+
+def own_state(worktree, b, sense_ids: list[str]) -> dict:
+    """Field-level summary of exactly this task's forms, shown contexts and submission; no candidate content is stored.
+
+    Another task's save changes the checkpoint file but never this summary. Separate fields let no-submit recovery
+    recognize a successful context lookup without confusing a form or submission change for useful progress.
+    """
+    found = _task_senses(worktree, b, sense_ids)
+    senses = {}
+    for sense_id in sorted(found):
+        record, sense = found[sense_id]
+        forms, forms_valid = _sense_forms(record, sense)
+        forms_sha256 = _state_digest(forms)
+        shown = _shown_state(sense.get("shown"), forms_sha256, forms_valid)
+        senses[sense_id] = {"forms_sha256": forms_sha256, "forms_valid": forms_valid,
+                            "shown": shown, "submission_sha256": _state_digest(sense.get("submission"))}
+    return {"version": 1, "senses": senses}
+
+
+def shown_only_progress(baseline, current) -> list[str] | None:
+    """Return Senses whose valid shown-context sample grew while forms and submissions stayed byte-stable."""
+    if (not isinstance(baseline, dict) or baseline.get("version") != 1
+            or not isinstance(current, dict) or current.get("version") != 1
+            or not isinstance(baseline.get("senses"), dict) or not isinstance(current.get("senses"), dict)
+            or set(baseline["senses"]) != set(current["senses"])):
+        return None
+    progressed = []
+    for sense_id, before in baseline["senses"].items():
+        after = current["senses"].get(sense_id)
+        if not isinstance(before, dict) or not isinstance(after, dict):
+            return None
+        if (before.get("forms_sha256") != after.get("forms_sha256")
+                or before.get("submission_sha256") != after.get("submission_sha256")
+                or before.get("forms_valid") is not True or after.get("forms_valid") is not True):
+            return None
+        old_shown, new_shown = before.get("shown"), after.get("shown")
+        if not isinstance(old_shown, dict) or not isinstance(new_shown, dict):
+            return None
+        if old_shown.get("sha256") == new_shown.get("sha256"):
+            continue
+        if (old_shown.get("valid") is not True or new_shown.get("valid") is not True
+                or old_shown.get("context_count", 0) < 1
+                or new_shown.get("context_count", 0) <= old_shown.get("context_count", 0)
+                or old_shown.get("total_hits") != new_shown.get("total_hits")
+                or new_shown.get("forms_sha256") != after.get("forms_sha256")):
+            return None
+        progressed.append(sense_id)
+    return progressed or None
+
+
+def legacy_shown_only_sample(worktree, b, rec: dict, pending_sense_ids: list[str]) -> bool:
+    """Validate the old 16-context ERROR shape whose run-start state only kept a whole-Sense digest."""
+    if pending_sense_ids != rec.get("sense_ids"):
+        return False
+    try:
+        view = read_view(worktree, rec, rec["chunk_no"])
+        ids, failed, unsearchable = view_ids(view)
+        if ids != rec.get("sense_ids") or failed or unsearchable:
+            return False
+        view_items = {}
+        for block in re.split(r"\n\n(?=## )", view.partition("\n\n")[2]):
+            match = _HEADER.match(block.split("\n", 1)[0])
+            if not match:
+                continue
+            lines = block.splitlines()
+            lemma_match = re.match(r"^(.*?) \[[^\]]+\]$", match.group(2))
+            if not lemma_match:
+                return False
+            lemma = lemma_match.group(1)
+            forms = [lemma]
+            forms_line = next((line for line in lines if line.startswith("forms: ")), None)
+            if forms_line is not None:
+                forms = forms_line.removeprefix("forms: ").split(", ")
+            hits_line = next((line for line in lines if line.startswith("hits=")), None)
+            hits = re.fullmatch(r"hits=(\d+) unseen=(\d+)", hits_line or "")
+            if not hits:
+                return False
+            view_items[match.group(1)] = {"forms": forms, "total_hits": int(hits.group(1)),
+                                          "unseen_hits": int(hits.group(2)),
+                                          "visible_contexts": sum(1 for line in lines
+                                                                   if re.match(r"^\[[A-Za-z0-9]{12}\] ", line))}
+        found = _task_senses(worktree, b, pending_sense_ids)
+    except (OSError, LiteraryError, ValueError, KeyError, TypeError):
+        return False
+    reached_cap = False
+    for sense_id in pending_sense_ids:
+        item = view_items.get(sense_id)
+        record, sense = found[sense_id]
+        forms, forms_valid = _sense_forms(record, sense)
+        shown = _shown_state(sense.get("shown"), _state_digest(forms), forms_valid)
+        if (item is None or not forms_valid or forms != item["forms"] or sense.get("submission") is not None
+                or sense.get("contexts", []) not in ([], None) or sense.get("candidate_reviews", []) not in ([], None)
+                or shown.get("valid") is not True or shown.get("context_count", 0) > 16
+                or shown.get("total_hits") != item["total_hits"]
+                or shown.get("forms_sha256") != _state_digest(forms)):
+            return False
+        if (shown.get("context_count") == 16 and item["visible_contexts"] == CHUNK_CONTEXTS
+                and item["total_hits"] > 16 and item["unseen_hits"] > 0):
+            reached_cap = True
+    return reached_cap
 
 
 def retry_state(worktree, b, rec: dict, pending_sense_ids: list[str], *, session_available: bool,
@@ -132,6 +276,8 @@ def retry_state(worktree, b, rec: dict, pending_sense_ids: list[str], *, session
 def task_retry_unchanged(worktree, b, chunk_no: int, baseline: dict, *, session_available: bool) -> bool:
     """Cheap Retry gate of one failed parallel task: unchanged when its view, submit/diagnostic files and OWN Sense
     state are as at the failure (the whole checkpoint file is never compared). Damaged evidence stays blocked."""
+    if not isinstance(baseline.get("own_state"), (str, dict)):
+        return True
     try:
         rec = read_active(worktree, b, chunk_no)
         if (rec is None or rec.get("chunk_id") != baseline.get("chunk_id")
@@ -140,7 +286,13 @@ def task_retry_unchanged(worktree, b, chunk_no: int, baseline: dict, *, session_
         current = retry_state(worktree, b, rec, baseline.get("pending_sense_ids", []),
                               session_available=session_available, task_state=True)
         keys = ("chunk_id", "chunk_no", "view_sha256", "repair", "session_available", "submit", "diagnostic", "own_state")
-        return all(current.get(key) == baseline.get(key) for key in keys)
+        for key in keys:
+            if key == "own_state" and isinstance(baseline.get(key), str):
+                if _legacy_own_state(worktree, b, rec["sense_ids"]) != baseline[key]:
+                    return False
+            elif current.get(key) != baseline.get(key):
+                return False
+        return True
     except (LiteraryError, OSError, ValueError, KeyError, TypeError):
         return True
 
@@ -176,7 +328,7 @@ def retry_state_same(current: dict, baseline: dict) -> bool:
 def no_submission_result(worktree, b, rec: dict | None, run: dict | None, run_start: dict | None,
                          pending_sense_ids: list[str], *, final_answer: str | None,
                          submit_call_count: int | None, task_session: str | None = None,
-                         own_state_now: str | None = None) -> dict:
+                         own_state_now: dict | None = None) -> dict:
     """Classify an ended C chunk without reading or storing candidate content.
 
     A recoverable no-submission result requires a successful, session-bound run; unchanged checkpoint and active
@@ -234,7 +386,7 @@ def no_submission_result(worktree, b, rec: dict | None, run: dict | None, run_st
         return {"status": "search_failed", "sense_count": len(failed)}
     if unsearchable:
         return {"status": "unsearchable", "sense_count": len(unsearchable)}
-    if isinstance(final_answer, str) and _REPORTED_STOP.search(final_answer):
+    if reported_stop(final_answer):
         return {"status": "producer_reported_stop"}
 
     baseline_pending = retry.get("pending_sense_ids")
@@ -247,7 +399,14 @@ def no_submission_result(worktree, b, rec: dict | None, run: dict | None, run_st
         return {"status": "checkpoint_or_chunk_mismatch"}
     if retry.get("pending_sense_ids") != pending_sense_ids:
         return {"status": "checkpoint_or_chunk_mismatch"}
-    if (retry.get("own_state") != own_state_now) if task_mode else (retry.get("checkpoint") != current_checkpoint):
+    task_progress = None
+    if task_mode:
+        baseline_own_state = retry.get("own_state")
+        if baseline_own_state != own_state_now:
+            task_progress = shown_only_progress(baseline_own_state, own_state_now)
+            if task_progress is None:
+                return {"status": "checkpoint_changed_without_pending_progress"}
+    elif retry.get("checkpoint") != current_checkpoint:
         return {"status": "checkpoint_changed_without_pending_progress"}
 
     submit = Path(worktree) / f"{n.submit_prefix}{rec['chunk_no']:03d}.submit.json"
@@ -265,7 +424,8 @@ def no_submission_result(worktree, b, rec: dict | None, run: dict | None, run_st
     if not isinstance(final_answer, str) or not final_answer.strip():
         return {"status": "producer_output_missing"}
 
-    return {"status": "no_submission", "policy_version": NO_SUBMISSION_RECOVERY_POLICY_VERSION,
+    return {"status": "shown_only_progress" if task_progress is not None else "no_submission",
+            "shown_sense_ids": task_progress or [], "policy_version": NO_SUBMISSION_RECOVERY_POLICY_VERSION,
             "source_run_id": run.get("id"), "chunk_id": rec.get("chunk_id"),
             "view_sha256": rec.get("view_sha256"), "pending_sense_ids": list(pending_sense_ids),
             "submit_calls": 0}
