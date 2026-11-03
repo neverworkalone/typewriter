@@ -446,8 +446,6 @@ class StageTwoPromptLoader(unittest.TestCase):
             prompts.produce({**b, "batch": "02"})
 
 
-class StageTwoMigration(unittest.TestCase):
-
 if __name__ == "__main__":
     unittest.main()
 

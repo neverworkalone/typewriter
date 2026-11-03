@@ -316,8 +316,6 @@ class VerifiedFixExit(unittest.TestCase):
         self.assertEqual((len(w.adapter.launches), getattr(w.git, "commits", []), getattr(w.git, "pushes", [])), (n, [], []))
 
 
-class ABFixWithoutScopeGate(unittest.TestCase):
-
 class ABRescue(unittest.TestCase):
     def setUp(self):
         self.w = ABWorld()

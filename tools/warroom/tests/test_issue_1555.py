@@ -770,8 +770,6 @@ class MaintainerConfig(unittest.TestCase):
         w.tmp.cleanup()
 
 
-class Schema(unittest.TestCase):
-
 # ---------------------------------------------------------------------------------------------------------------------
 # Real git: a paused batch worktree with uncommitted partial output receives a merged shared fix.
 ENV = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t",

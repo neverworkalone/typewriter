@@ -728,8 +728,11 @@ class PureHelpers(unittest.TestCase):
             literary.progress_numbers("nonsense")
 
     def test_delivery_and_pages_are_lossless(self):
+        original_limit = literary.INLINE_MAX_PROMPT_BYTES
+        literary.INLINE_MAX_PROMPT_BYTES = 16
+        self.addCleanup(setattr, literary, "INLINE_MAX_PROMPT_BYTES", original_limit)
+        self.assertEqual(literary.delivery(4, "짧은 view\n"), "inline")
         self.assertEqual(literary.delivery(8, "짧은 view\n"), "pages")
-        self.assertEqual(literary.delivery(16, "짧은 view\n"), "inline")
 
     def test_affected_senses(self):
         ok = json.dumps({"diagnostic": "candidate_validation", "affected": {"sense_id": "s1"}})
