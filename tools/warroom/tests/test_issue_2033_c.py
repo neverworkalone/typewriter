@@ -136,6 +136,7 @@ class SerialChunks(unittest.TestCase):
         b = w.row("deepseek", "c")
         self.assertEqual(b["state"], "ERROR")   # fail-closed once the cap is spent; nothing is regenerated
         self.assertIn("checkpoint 완료 증거 없음", b["error"])
+        self.assertIn("technical_skip_ineligible:current_evidence_unavailable", b["error"])
         self.assertEqual(len(w.adapter.launches), 3)
         self.assertEqual(w.active()["chunk_no"], chunk_no)
 
@@ -272,6 +273,7 @@ class SerialChunks(unittest.TestCase):
                 w.tick()
                 b = w.row("deepseek", "c")
                 self.assertEqual(b["state"], "ERROR")
+                self.assertIn("submit_validation_blocked", b["error"])
                 self.assertEqual(len(w.adapter.launches), 1)
 
     def test_missing_cli_diagnostic_gets_one_same_session_retry(self):
@@ -297,6 +299,120 @@ class SerialChunks(unittest.TestCase):
         self.assertFalse(diagnostic.exists())
         self.assertFalse(any(call[2] == "submit" for call in w.runner.literary.calls))
 
+    def test_unsubmitted_chunk_reports_the_real_stop_reason_and_blocks_unchanged_retry(self):
+        w = self.w
+        w.start("single", "deepseek", "c")
+        w.adapter.plan.extend([{"code": 0, "session": "ses_c"}, {"code": 0, "session": "ses_c"}])
+        w.tick()
+        chunk_no = w.active()["chunk_no"]
+        w.finish_last()
+        w.tick()
+        self.assertEqual((w.row("deepseek", "c")["state"], len(w.adapter.launches)), ("PRODUCING", 2))
+        w.finish_last()
+        w.tick()
+
+        b = w.row("deepseek", "c")
+        self.assertEqual(b["state"], "ERROR")
+        self.assertIn("[retry_budget_exhausted,diagnostic_unavailable_or_invalid]", b["error"])
+        self.assertIn("pending=12/12", b["error"])
+        self.assertEqual(w.store.get(w.sup._auto_retry_key(b, f"c:{chunk_no}")), "1")
+        self.assertIsNone(w.store.get(literary.resubmit_key(b["id"])))
+        self.assertFalse(any(call[2] == "submit" for call in w.runner.literary.calls))
+        self.assertEqual(literary.technical_skip_reason_code(w.wt(), b, chunk_no), "current_evidence_unavailable")
+        self.assertFalse(control.line_status(w.store, "deepseek", "c")["can_retry"])
+
+        # The persisted guard and one-shot budget survive a Supervisor restart.
+        w.sup = w.make_sup()
+        status = control.line_status(w.store, "deepseek", "c")
+        self.assertFalse(status["can_retry"])
+        self.assertIn("same_failure", status["retry_blocked_reason"])
+        self.assertFalse(control.retry(w.store, "deepseek", "c"))
+        self.assertEqual(len(w.adapter.launches), 2)
+        self.assertEqual(w.store.get(w.sup._auto_retry_key(b, f"c:{chunk_no}")), "1")
+        self.assertTrue(any("same_failure" in event["msg"] for event in w.store.recent_events(20)
+                            if event["batch_id"] == b["id"]))
+
+    def test_changed_checkpoint_progress_unlocks_retry_and_keeps_completed_senses_out_of_resume(self):
+        w = self.w
+        w.start("single", "deepseek", "c")
+        w.ai(mark=5)
+        w.adapter.plan.append({"code": 0, "session": "ses_c"})   # one automatic resume with no new progress
+        w.tick()
+        active = w.active()
+        ids = list(active["sense_ids"])
+        w.finish_last()
+        w.tick()
+        w.finish_last()
+        w.tick()
+        b = w.row("deepseek", "c")
+        self.assertEqual(b["state"], "ERROR")
+        self.assertFalse(control.line_status(w.store, "deepseek", "c")["can_retry"])
+
+        # Model a later, valid partial submit. The next run may resume only the remaining seven senses.
+        w.runner.literary.mark(w.wt(), f".warroom-scratch/{CP_NAME}", ids[5:7])
+        prior = json.loads((w.wt() / f".warroom-scratch/{CP_NAME}").read_text())
+        prior_by_id = {s["sense_id"]: s["submission"] for r in prior["records"] for s in r["senses"]}
+        self.assertTrue(control.line_status(w.store, "deepseek", "c")["can_retry"])
+        w.adapter.plan.append({"code": 0, "session": "ses_c",
+                               "effect": lambda: w.runner.literary.mark(
+                                   w.wt(), f".warroom-scratch/{CP_NAME}", ids[7:])})
+        self.assertTrue(control.retry(w.store, "deepseek", "c"))
+        w.tick(2)
+        resume = w.adapter.launches[-1]
+        self.assertEqual((resume["kind"], w.active()["chunk_no"]), ("resume", active["chunk_no"]))
+        for sense_id in ids[:7]:
+            self.assertNotIn(sense_id, resume["prompt"])
+        for sense_id in ids[7:]:
+            self.assertIn(sense_id, resume["prompt"])
+        w.finish_last()
+        w.tick(2)
+        after = json.loads((w.wt() / f".warroom-scratch/{CP_NAME}").read_text())
+        after_by_id = {s["sense_id"]: s["submission"] for r in after["records"] for s in r["senses"]}
+        self.assertEqual({sense_id: after_by_id[sense_id] for sense_id in ids[:7]},
+                         {sense_id: prior_by_id[sense_id] for sense_id in ids[:7]})
+
+    def test_missing_session_is_a_changed_recovery_condition_for_the_same_chunk(self):
+        w = self.w
+        w.start("single", "deepseek", "c")
+        w.ai(mark=5)
+        w.adapter.plan.append({"code": 0, "session": "ses_c"})  # one automatic resume without further progress
+        w.tick()
+        active = w.active()
+        chunk_no = active["chunk_no"]
+        ids = list(active["sense_ids"])
+        w.finish_last()
+        w.tick()
+        w.finish_last()
+        w.tick()
+        b = w.row("deepseek", "c")
+        self.assertEqual(b["state"], "ERROR")
+        self.assertFalse(control.line_status(w.store, "deepseek", "c")["can_retry"])
+
+        checkpoint_path = w.wt() / f".warroom-scratch/{CP_NAME}"
+        before = json.loads(checkpoint_path.read_text())
+        before_by_id = {sense["sense_id"]: sense["submission"] for record in before["records"]
+                        for sense in record["senses"]}
+        w.store.update(b["id"], session_id=None)
+        self.assertTrue(control.line_status(w.store, "deepseek", "c")["can_retry"])
+        w.adapter.plan.append({"code": 0, "session": "ses_new",
+                               "effect": lambda: w.runner.literary.mark(w.wt(), f".warroom-scratch/{CP_NAME}", ids[5:])})
+        self.assertTrue(control.retry(w.store, "deepseek", "c"))
+        w.tick(2)
+        launch = w.adapter.launches[-1]
+        self.assertEqual((launch["kind"], w.active()["chunk_no"]), ("start", chunk_no))
+        self.assertIn("이전 세션을 찾지 못해 새 세션", launch["prompt"])
+        for sense_id in ids[:5]:
+            self.assertNotIn(sense_id, launch["prompt"])
+        for sense_id in ids[5:]:
+            self.assertIn(sense_id, launch["prompt"])
+        w.finish_last()
+        w.tick()
+        after = json.loads(checkpoint_path.read_text())
+        after_by_id = {sense["sense_id"]: sense["submission"] for record in after["records"]
+                       for sense in record["senses"]}
+        self.assertEqual({sense_id: after_by_id[sense_id] for sense_id in ids[:5]},
+                         {sense_id: before_by_id[sense_id] for sense_id in ids[:5]})
+
     def test_repaired_submit_resets_the_budget_and_next_chunk_starts_new(self):
         w = self.w
         w.start("single", "deepseek", "c")
@@ -315,7 +431,7 @@ class SerialChunks(unittest.TestCase):
         w = self.w
         w.start("single", "deepseek", "c")
         w.ai(mark=5)
-        w.ai(mark=5)
+        w.adapter.plan.append({"code": 0, "session": "ses_c"})  # automatic resume that makes no progress
         w.tick()
         active_before = w.active()
         ids = list(active_before["sense_ids"])
@@ -336,8 +452,16 @@ class SerialChunks(unittest.TestCase):
         self.assertEqual(w.active()["chunk_no"], active_before["chunk_no"])
         self.assertEqual(w.active()["sense_ids"], ids)
         self.assertEqual(len(w.adapter.launches), 2)
+        self.assertFalse(control.retry(w.store, "deepseek", "c"))
 
-        w.ai()
+        # A real checkpoint change makes Retry useful and narrows it to the remaining Sense set.
+        w.runner.literary.mark(w.wt(), f".warroom-scratch/{CP_NAME}", ids[5:7])
+        prior = json.loads((w.wt() / f".warroom-scratch/{CP_NAME}").read_text())
+        prior_by_id = {sense["sense_id"]: sense["submission"] for record in prior["records"]
+                       for sense in record["senses"]}
+        def save_remaining():
+            w.runner.literary.mark(w.wt(), f".warroom-scratch/{CP_NAME}", ids[7:])
+        w.adapter.plan.append({"code": 0, "session": "ses_c", "effect": save_remaining})
         self.assertTrue(control.retry(w.store, "deepseek", "c"))
         w.tick(2)
 
@@ -348,11 +472,18 @@ class SerialChunks(unittest.TestCase):
         self.assertEqual(resume["kind"], "resume")
         self.assertEqual(w.active()["chunk_no"], active_before["chunk_no"])
         self.assertEqual(w.active()["sense_ids"], ids)
-        for done in ids[:5]:
+        for done in ids[:7]:
             self.assertNotIn(done, resume["prompt"])
-        for remaining in ids[5:]:
+        for remaining in ids[7:]:
             self.assertIn(remaining, resume["prompt"])
         self.assertIsNone(b["pr_number"])
+        w.finish_last()
+        w.tick(2)
+        after = json.loads((w.wt() / f".warroom-scratch/{CP_NAME}").read_text())
+        after_by_id = {sense["sense_id"]: sense["submission"] for record in after["records"]
+                       for sense in record["senses"]}
+        self.assertEqual({sense_id: after_by_id[sense_id] for sense_id in ids[:7]},
+                         {sense_id: prior_by_id[sense_id] for sense_id in ids[:7]})
 
     def test_c_recovery_keeps_merged_pr_eligible_beside_old_closed_history(self):
         w = self.w

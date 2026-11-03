@@ -527,7 +527,10 @@ class LineDetail(Screen):
                 if not control.retry_maintainer(store, st["issue_number"], st["batch_id"]):
                     self.notify("재시도할 Maintainer 작업이 화면과 달라졌습니다 (화면을 새로 고치세요).", severity="warning")
             else:
-                control.retry(store, m, me)
+                if not control.retry(store, m, me):
+                    st = self._status()
+                    self.notify(st.get("retry_blocked_reason") or "재시도할 배치가 현재 상태와 다릅니다.",
+                                severity="warning")
         elif e.button.id == "stop":
             what = "Maintainer의 현재 실행(worktree·PR·Issue·세션·로그 보존, 다른 라인/Stage 2는 영향 없음)" if self.maint \
                 else f"{m} / {control.method_label(me)} 라인의 AI 실행"

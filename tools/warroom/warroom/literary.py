@@ -69,6 +69,61 @@ def resubmit_key(batch_id: int) -> str:
     return f"c_resubmit_{batch_id}"
 
 
+def retry_guard_key(batch_id: int) -> str:
+    """Failure evidence for the current C chunk, used to block an unchanged manual Retry."""
+    return f"c_retry_guard_{batch_id}"
+
+
+def _file_state(path: Path) -> dict | None:
+    try:
+        stat = path.stat()
+    except FileNotFoundError:
+        return None
+    except OSError as error:
+        raise LiteraryError("C retry evidence file is unavailable") from error
+    return {"size": stat.st_size, "mtime_ns": stat.st_mtime_ns, "inode": stat.st_ino}
+
+
+def retry_state(worktree, b, rec: dict, pending_sense_ids: list[str], *, session_available: bool) -> dict:
+    """Compact exact active-chunk recovery state; it avoids re-reading candidate content."""
+    n = names(b)
+    submit = Path(worktree) / f"{n.submit_prefix}{rec['chunk_no']:03d}.submit.json"
+    diagnostic = submit.with_name(submit.name + ".diag.json")
+    return {"chunk_id": rec.get("chunk_id"), "chunk_no": rec["chunk_no"],
+            "view_sha256": rec.get("view_sha256"), "repair": rec.get("repair") is True,
+            "pending_sense_ids": list(pending_sense_ids), "session_available": bool(session_available),
+            "checkpoint": _file_state(Path(worktree) / n.checkpoint),
+            "submit": _file_state(submit), "diagnostic": _file_state(diagnostic)}
+
+
+def retry_guard_unchanged_fast(worktree, b, guard: dict, *, session_available: bool) -> bool:
+    """Cheap UI/control gate. The Supervisor verifies the full pending-sense state before launching."""
+    try:
+        baseline = guard.get("baseline")
+        if not isinstance(baseline, dict):
+            return True
+        rec = read_active(worktree, b)
+        if (rec is None or rec.get("chunk_no") != baseline.get("chunk_no")
+                or rec.get("chunk_id") != baseline.get("chunk_id")
+                or rec.get("view_sha256") != baseline.get("view_sha256")):
+            return True
+        current = retry_state(worktree, b, rec, baseline.get("pending_sense_ids", []),
+                              session_available=session_available)
+        keys = ("chunk_id", "chunk_no", "view_sha256", "repair", "session_available", "checkpoint", "submit", "diagnostic")
+        return all(current.get(key) == baseline.get(key) for key in keys)
+    except (LiteraryError, OSError, ValueError, KeyError, TypeError):
+        return True   # missing or damaged evidence never enables another production run
+
+
+def retry_state_same(current: dict, baseline: dict) -> bool:
+    """Compare semantic progress and local recovery evidence; ignore checkpoint timestamp-only rewrites."""
+    keys = ("chunk_id", "chunk_no", "view_sha256", "repair", "pending_sense_ids", "session_available",
+            "submit", "diagnostic")
+    if not all(current.get(key) == baseline.get(key) for key in keys):
+        return False
+    return not baseline.get("repair") or current.get("checkpoint") == baseline.get("checkpoint")
+
+
 def submit_retryable(worktree, b, chunk_no: int) -> bool:
     """True only when the submit CLI left a diagnostic for this chunk that a local file repair can fix."""
     path = Path(worktree) / f"{names(b).submit_prefix}{chunk_no:03d}.submit.json.diag.json"
@@ -359,6 +414,26 @@ def view_ids(text: str) -> tuple[list[str], list[str], list[str]]:
         elif m.group(2) == "UNSEARCHABLE":
             unsearchable.append(m.group(1))
     return ids, failed, unsearchable
+
+
+def view_for_senses(text: str, sense_ids: list[str]) -> str:
+    """Select only requested Sense blocks from a validated active view; malformed scope fails closed."""
+    if not sense_ids or len(set(sense_ids)) != len(sense_ids) or not all(_ID.fullmatch(i) for i in sense_ids):
+        raise LiteraryError("새 세션의 미완료 Sense 목록이 올바르지 않습니다")
+    header, separator, body = text.partition("\n\n")
+    if not separator or not header.startswith("batch="):
+        raise LiteraryError("미완료 Sense용 chunk view 형식이 올바르지 않습니다")
+    blocks = {}
+    for block in re.split(r"\n\n(?=## )", body):
+        match = _HEADER.match(block.split("\n", 1)[0])
+        if not match or match.group(1) in blocks:
+            raise LiteraryError("미완료 Sense용 chunk view에 잘못된 항목이 있습니다")
+        blocks[match.group(1)] = block
+    if any(sense_id not in blocks for sense_id in sense_ids):
+        raise LiteraryError("미완료 Sense가 저장된 chunk view에 없습니다")
+    selected = "\n\n".join(blocks[sense_id] for sense_id in sense_ids)
+    suffix = "\n" if text.endswith("\n") else ""
+    return f"{header}\n\n{selected}{suffix}"
 
 
 def progress_numbers(text: str) -> tuple[int, int, int, int]:
