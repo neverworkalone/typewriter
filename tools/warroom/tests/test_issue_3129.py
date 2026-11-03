@@ -99,6 +99,37 @@ class Issue3129(Helpers, unittest.TestCase):
             self.assertIsNone(literary.shown_only_progress(before, after), field)
             checkpoint_path.write_text(json.dumps(checkpoint, ensure_ascii=False))
 
+    def test_malformed_task_sense_fails_closed_in_retry_status(self):
+        w = self.world(senses=12)
+        w.start("single", "deepseek", "c")
+        w.tick()
+        w.tick()
+        b = self.b(w)
+        row = w.store.task_row(b["id"], "001")
+        rec = literary.read_active(w.wt(), b, 1)
+        run = w.store.run(row["run_id"])
+        w.adapter.stop(run["pid"])
+        w.store.finish_run(run["id"], "stopped")
+        data = self.data(w, "001")
+        data["guard"] = {"baseline": literary.retry_state(
+            w.wt(), b, rec, rec["sense_ids"], session_available=True, task_state=True),
+            "reason_codes": ["checkpoint_changed_without_pending_progress"]}
+        w.sup.cp._task_failed(b, row, data, "[001] C malformed checkpoint guard fixture")
+        w.sup.cp._halt(b, [w.store.task_row(b["id"], "001")])
+
+        checkpoint_path = w.wt() / literary.names(b).checkpoint
+        checkpoint = json.loads(checkpoint_path.read_text("utf-8"))
+        for record in checkpoint["records"]:
+            for index, sense in enumerate(record["senses"]):
+                if sense["sense_id"] == rec["sense_ids"][0]:
+                    record["senses"][index] = None
+        checkpoint_path.write_text(json.dumps(checkpoint, ensure_ascii=False))
+
+        with self.assertRaises(literary.LiteraryError):
+            literary.own_state(w.wt(), b, rec["sense_ids"])
+        self.assertFalse(control.line_status(w.store, "deepseek", "c")["can_retry"])
+        self.assertFalse(control.retry(w.store, "deepseek", "c"))
+
     @staticmethod
     def _write_no_submit_log(w, run, *, query=True):
         info = w.adapter.running[run["pid"]]

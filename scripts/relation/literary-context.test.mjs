@@ -866,8 +866,37 @@ test('an empty submission completes a fully sampled sense with no verified conte
     const damaged = structuredClone(checkpoint);
     damaged.records[0].senses[0].submission.contexts_available = 8;
     assert.throws(() => reportLiteraryCheckpointSenses(damaged, senseId), /checkpoint sense submission is damaged/u);
+    const missingShown = structuredClone(checkpoint);
+    missingShown.records[0].senses[0].shown = null;
+    assert.throws(() => reportLiteraryCheckpointSenses(missingShown, senseId), /checkpoint sense submission is damaged/u);
   } finally {
     await cleanup(fixture);
+  }
+});
+
+test('SAMPLED_NO_VERIFIED requires 16 distinct contexts exposed for the current forms', async () => {
+  const unopened = await makeFixture({ unitCount: 20 });
+  try {
+    const saved = await submit(unopened, [{ sense_id: 'sense-000001', verified: [], candidates: [] }]);
+    assert.equal(saved.status, 'SAVED');
+    assert.equal((await load(unopened)).records[0].senses[0].submission.status, 'SUBMITTED');
+  } finally {
+    await cleanup(unopened);
+  }
+
+  const reformed = await makeFixture({ unitCount: 20 });
+  try {
+    await chunk(reformed, { senseIds: 'sense-000001', contexts: 8 });
+    await addSearchForm(reformed.checkpointPath, 'sense-000001', '새로운 검색 형태', 'reviewed fixture form',
+      { scratchDirectory: reformed.scratchDirectory });
+    const saved = await submit(reformed, [{ sense_id: 'sense-000001', verified: [], candidates: [] }]);
+    assert.equal(saved.status, 'SAVED');
+    const sense = (await load(reformed)).records[0].senses[0];
+    assert.equal(sense.shown, null);
+    assert.equal(sense.submission.status, 'SUBMITTED');
+    assert.equal(sense.submission.contexts_available, 16);
+  } finally {
+    await cleanup(reformed);
   }
 });
 

@@ -103,11 +103,25 @@ def _file_state(path: Path) -> dict | None:
 def _task_senses(worktree, b, sense_ids: list[str]) -> dict:
     try:
         data = json.loads((Path(worktree) / names(b).checkpoint).read_text("utf-8"))
-        wanted = set(sense_ids)
-        found = {sense["sense_id"]: (record, sense) for record in data["records"] for sense in record["senses"]
-                 if sense.get("sense_id") in wanted}
     except (OSError, ValueError, KeyError, TypeError) as error:
         raise LiteraryError("task Sense 상태를 읽을 수 없습니다") from error
+    if (not isinstance(sense_ids, list) or not sense_ids
+            or any(not isinstance(sense_id, str) for sense_id in sense_ids)
+            or len(set(sense_ids)) != len(sense_ids)
+            or not isinstance(data, dict) or not isinstance(data.get("records"), list)):
+        raise LiteraryError("task Sense 상태를 읽을 수 없습니다")
+    wanted, found = set(sense_ids), {}
+    for record in data["records"]:
+        if not isinstance(record, dict) or not isinstance(record.get("senses"), list):
+            raise LiteraryError("task Sense 상태를 읽을 수 없습니다")
+        for sense in record["senses"]:
+            if not isinstance(sense, dict) or not isinstance(sense.get("sense_id"), str):
+                raise LiteraryError("task Sense 상태를 읽을 수 없습니다")
+            sense_id = sense["sense_id"]
+            if sense_id in wanted:
+                if sense_id in found:
+                    raise LiteraryError("task Sense checkpoint ID가 중복되었습니다")
+                found[sense_id] = (record, sense)
     if set(found) != wanted:
         raise LiteraryError("task Sense가 checkpoint에 없습니다")
     return found

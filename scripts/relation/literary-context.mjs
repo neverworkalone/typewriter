@@ -1764,7 +1764,12 @@ export async function submitLiteraryChunk({ databasePath, checkpointPath, submis
         start: senseSnapshot(sense),
         submission: {
           status: result.total_hits === 0 ? 'ZERO_HITS'
-            : verified.length === 0 && candidates.size === 0 && result.results.length === MAX_CONTEXTS_PER_SENSE
+            : verified.length === 0 && candidates.size === 0
+              && sense.shown?.forms_sha256 === digest
+              && Array.isArray(sense.shown.unit_rowids)
+              && sense.shown.unit_rowids.length === MAX_CONTEXTS_PER_SENSE
+              && new Set(sense.shown.unit_rowids).size === MAX_CONTEXTS_PER_SENSE
+              && result.results.length === MAX_CONTEXTS_PER_SENSE
               && result.total_hits > result.results.length ? 'SAMPLED_NO_VERIFIED' : 'SUBMITTED',
           submitted_at: new Date().toISOString(),
           total_hits: result.total_hits,
@@ -1832,11 +1837,23 @@ function assertCheckpointStructure(checkpoint) {
         // Per-status invariants: a candidate always rests on a stored VERIFIED context, and ZERO_HITS has neither.
         const verified = saved.verified ?? [];
         const technicalSkip = saved.technical_skip;
+        const shownIds = sense.shown?.unit_rowids;
+        const sampledShownValid = isPlainObject(sense.shown)
+          && sense.search_forms.every((form) => typeof form === 'string' && form.length > 0)
+          && sense.added_forms.every((item) => isPlainObject(item) && typeof item.form === 'string' && item.form.length > 0)
+          && Object.keys(sense.shown).length === 3
+          && typeof sense.shown.forms_sha256 === 'string'
+          && sense.shown.forms_sha256 === formsDigest(senseForms(sense))
+          && sense.shown.total_hits === saved.total_hits
+          && Array.isArray(shownIds) && shownIds.length === MAX_CONTEXTS_PER_SENSE
+          && shownIds.every((rowId) => Number.isSafeInteger(rowId) && rowId > 0)
+          && new Set(shownIds).size === MAX_CONTEXTS_PER_SENSE;
         if (!Array.isArray(verified) || !verified.every((item) => isPlainObject(item) && isNonEmptyString(item.locator_key))
           || (saved.status === 'SUBMITTED' && !Array.isArray(saved.verified))
           || (saved.status === 'ZERO_HITS' && (saved.candidates.length > 0 || verified.length > 0))
           || (saved.status === 'SAMPLED_NO_VERIFIED' && (saved.candidates.length > 0 || verified.length > 0
             || !Array.isArray(saved.verified)
+            || !sampledShownValid
             || saved.contexts_available !== MAX_CONTEXTS_PER_SENSE
             || !Number.isSafeInteger(saved.total_hits) || saved.total_hits <= MAX_CONTEXTS_PER_SENSE
             || !Number.isSafeInteger(saved.remaining_hit_count)
