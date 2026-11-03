@@ -39,7 +39,7 @@ ALLOWED = {"a": _PRODUCE, "b": _PRODUCE, "c": _PRODUCE, "d": _PRODUCE, "recovery
            "s2_chunk_format_fix": {"chunk_id", "problem", "relation_direction_rule"},
            "s2_links": _STAGE2 | {"link_input"},
            "s2_links_fix": {"digest", "problem", "relation_direction_rule"},
-           "s2_repair": _STAGE2 | {"fingerprint", "repair_input", "round_info"},
+           "s2_repair": _STAGE2 | {"repair_input", "round_info", "format_feedback"},
            "s3_policy_card": set(), "s3_chunk": _STAGE3,
            "c_chunk": _C_CHUNK, "c_chunk_resume": {"chunk_no", "checkpoint", "remaining", "session_note", "cli_path"},
            "d_chunk": {"batch", "branch", "chunk_no", "session_note", "chunk_input", "method_contract"},
