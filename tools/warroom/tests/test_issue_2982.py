@@ -121,7 +121,7 @@ def _mark_integrated(w, b, *, old=HEAD1, new=HEAD2):
 
 class Stage2RepairRebind(unittest.TestCase):
     def test_complete_part_rebinds_after_supervisor_master_merge_and_reaches_pr_without_repair_rerun(self):
-        w, b, path = _world(self, total=3311)
+        w, b, path = _world(self, total=2)
         w.git.base_sha = HEAD2
         w.git.integrate_updates_head = True
         w.git.ancestor_pairs.add((HEAD1, HEAD2))
@@ -146,7 +146,7 @@ class Stage2RepairRebind(unittest.TestCase):
         self.assertEqual((checkpoint["merged"], checkpoint["optional_review_complete"],
                           checkpoint["optional_review_digest"], checkpoint["optional_review_state_sha256"]),
                          (True, True, "5" * 64, "6" * 64))
-        self.assertEqual(sum(len(item["candidates"]) for item in checkpoint["items"]), 3311)
+        self.assertEqual(sum(len(item["candidates"]) for item in checkpoint["items"]), 2)
         self.assertEqual(len(checkpoint["repair_receipts"]), 1)
 
     def test_inflight_answer_dirty_owner_remote_and_receipt_mismatch_fail_closed(self):

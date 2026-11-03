@@ -2,7 +2,7 @@
 import json
 import unittest
 
-from tests.test_issue_2307 import Stage2PreflightRepair as Base, answer, clean_report, conflict_report, repair_answer
+from tests.test_issue_2307 import answer, clean_report, conflict_report, start_repair
 from warroom import stage2
 
 FP = "a" * 64
@@ -36,7 +36,7 @@ class RepairAnswerExtraction(unittest.TestCase):
             self.assertIsNone(stage2.extract_repair_answer(text, FP))
 
 
-class RepairFormatRetry(Base):
+class RepairFormatRetry(unittest.TestCase):
     def run_text(self, w, text):
         run = w.adapter.launches[-1]
         w.adapter.running[run["pid"]]["text"] = answer(text)
@@ -48,7 +48,7 @@ class RepairFormatRetry(Base):
         return state["current"]["attempts"], [a["status"] for a in state["current"]["attempt_log"]]
 
     def test_fenced_answer_succeeds_without_retry(self):
-        w, batch = self.start_repair([conflict_report(FP, CANDIDATES), clean_report("2" * 64)])
+        w, batch = start_repair(self, [conflict_report(FP, CANDIDATES), clean_report("2" * 64)])
         launches = len(w.adapter.launches)
         self.run_text(w, f"repair @{FP}\n```json\n{valid_body()}\n```")
         batch = w.store.batch(batch["id"])
@@ -60,7 +60,7 @@ class RepairFormatRetry(Base):
         for bad in ("repair @{fp}\nHere is my answer:\n```json\n{body}\n```", "repair @{fp}\n{trunc}",
                     "repair @{fp}\n```python\n{body}\n```", "no header\n{body}", "repair @{wrong}\n{body}"):
             with self.subTest(bad=bad[:30]):
-                w, batch = self.start_repair([conflict_report(FP, CANDIDATES), clean_report("2" * 64)])
+                w, batch = start_repair(self, [conflict_report(FP, CANDIDATES), clean_report("2" * 64)])
                 launches = len(w.adapter.launches)
                 body = valid_body()
                 self.run_text(w, bad.format(fp=FP, body=body, trunc=body[:-4], wrong="c" * 64))
@@ -78,7 +78,7 @@ class RepairFormatRetry(Base):
                 self.assertEqual(len(w.gh.created_prs), 1)
 
     def test_two_format_failures_error_and_never_exceed_the_budget(self):
-        w, batch = self.start_repair([conflict_report(FP, CANDIDATES), clean_report("2" * 64)])
+        w, batch = start_repair(self, [conflict_report(FP, CANDIDATES), clean_report("2" * 64)])
         launches = len(w.adapter.launches)
         self.run_text(w, f"repair @{FP}\nnot json")
         self.run_text(w, f"repair @{FP}\n```json\n{valid_body()[:-3]}\n```")
@@ -93,7 +93,7 @@ class RepairFormatRetry(Base):
                  "duplicate": valid_body(CANDIDATES + CANDIDATES[:1])}
         for name, body in cases.items():
             with self.subTest(name):
-                w, batch = self.start_repair([conflict_report(FP, CANDIDATES), clean_report("2" * 64)])
+                w, batch = start_repair(self, [conflict_report(FP, CANDIDATES), clean_report("2" * 64)])
                 launches = len(w.adapter.launches)
                 self.run_text(w, f"repair @{FP}\n{body}")
                 batch = w.store.batch(batch["id"])

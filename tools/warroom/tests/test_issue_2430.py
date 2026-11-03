@@ -1,13 +1,11 @@
 """#2430: durable one-shot Drain schedules and Supervisor execution."""
-import sqlite3
-import tempfile
 import unittest
 from datetime import datetime
 from pathlib import Path
 
 from tests.fakes import World
 from warroom import control
-from warroom.store import SCHEMA_VERSION, Store
+from warroom.store import Store
 
 
 def local_time(year, month, day, hour, minute=0):
@@ -120,16 +118,3 @@ class DrainSchedules(unittest.TestCase):
         self.assertFalse(control.schedule_batch_drain(w.store, "deepseek", "m", batch_id, "23", w.now)[0])
         self.assertFalse(control.schedule_batch_drain(w.store, "deepseek", "a", batch_id + 100, "23", w.now)[0])
 
-    def test_v12_database_migrates_to_schedules_idempotently(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / "warroom.db"
-            Store(path)
-            with sqlite3.connect(path) as db:
-                db.execute("DROP TABLE drain_schedules")
-                db.execute("PRAGMA user_version=12")
-            migrated = Store(path)
-            with sqlite3.connect(path) as db:
-                self.assertEqual(db.execute("PRAGMA user_version").fetchone()[0], SCHEMA_VERSION)
-                self.assertIsNotNone(db.execute(
-                    "SELECT name FROM sqlite_master WHERE type='table' AND name='drain_schedules'").fetchone())
-            Store(path)  # opening a second time must leave the new table and version alone

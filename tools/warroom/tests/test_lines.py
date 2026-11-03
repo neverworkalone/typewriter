@@ -11,7 +11,7 @@ from tests.test_supervisor import review
 from warroom import batches, control
 from warroom.config import DEFAULTS, registry, registry_problems
 from warroom.logtail import INITIAL_BYTES, LogTail, redact
-from warroom.store import DuplicateBatch, LineBusy, Store
+from warroom.store import SCHEMA_VERSION, DuplicateBatch, LineBusy, Store
 from warroom.supervisor import DuplicateClaim
 
 PRODUCERS = {
@@ -713,6 +713,10 @@ class Migration(unittest.TestCase):
                 self.assertEqual((old["exit_status"], old["kind"]), ("0", "legacy"))
                 self.assertEqual(len(s.line_events("deepseek", "a")), 1)
                 self.assertEqual(s.get("heartbeat"), "5")
+            with sqlite3.connect(db) as migrated:
+                self.assertEqual(migrated.execute("PRAGMA user_version").fetchone()[0], SCHEMA_VERSION)
+                self.assertIsNotNone(migrated.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name='drain_schedules'").fetchone())
             self.assertEqual(s.active_batch("deepseek", "a")["batch"], "02")
 
 

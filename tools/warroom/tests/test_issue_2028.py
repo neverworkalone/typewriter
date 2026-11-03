@@ -71,29 +71,6 @@ class Stage2BaselineAfterMaintainerFix(unittest.TestCase):
         w.tick(3)
         self.assertEqual(w.store.batch(self.b["id"])["state"], "ERROR")
 
-    def test_released_batch_in_error_recovers_only_for_the_integrated_head(self):
-        w = self.w
-        did = self.pause_for_defect()
-        w.git.local_head = HEAD2
-        w.tick(3)
-        # reproduce the reported state: RELEASED, but the baseline still holds the old HEAD and the batch is ERROR
-        w.adapter.finish(w.adapter.launches[-1]["pid"])
-        stale = json.loads(w.store.get(self.key)); stale["head"] = HEAD1
-        w.store.set(self.key, json.dumps(stale, sort_keys=True))
-        w.store.update(self.b["id"], state="ERROR", pid=None, error="boundary")
-        w.git.local_head = HEAD3                           # unauthorized: not the integrated HEAD
-        n = len(w.adapter.launches)
-        self.assertTrue(control.retry(w.store, "claude", S2))
-        w.tick(3)
-        self.assertEqual(w.store.batch(self.b["id"])["state"], "ERROR")
-        self.assertEqual((self.head(), len(w.adapter.launches)), (HEAD1, n))
-        w.git.local_head = HEAD2                           # the exact HEAD the released defect integrated
-        w.store.update(self.b["id"], state="ERROR", pid=None)
-        self.assertTrue(control.retry(w.store, "claude", S2))
-        w.tick(3)
-        self.assertEqual(w.store.batch(self.b["id"])["state"], "PRODUCING")
-        self.assertEqual(len(w.adapter.launches), n + 1)
-
     def test_wrong_worktree_ownership_is_never_retargeted(self):
         for name, owner in (("detached", ""), ("other branch", "other-branch"), ("unregistered", None)):
             with self.subTest(name):

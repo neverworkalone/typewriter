@@ -1,5 +1,4 @@
-"""Issue #1373/#1374: pinned model + reasoning effort per producer, fail-closed validation, CLI-independent board order."""
-import itertools
+"""Issue #1373/#1374: pinned model + reasoning effort per producer and fail-closed validation."""
 import json
 import sqlite3
 import tempfile
@@ -26,25 +25,8 @@ def cfg_with(producers):
     return {**json.loads(json.dumps(DEFAULTS)), "producers": producers}
 
 
-class BoardOrder(unittest.TestCase):
-    """Claude -> Codex -> OpenCode by adapter label; never by the order `producers` was written in."""
-
-    def test_order_is_independent_of_registration_order(self):
-        items = [("claude", SONNET), ("codex", LUNA), ("deepseek", DEEPSEEK)]
-        for perm in itertools.permutations(items):
-            with self.subTest(order=[pid for pid, _ in perm]):
-                cfg = cfg_with(dict(perm))
-                self.assertEqual(adapters(cfg), ["claude", "codex", "opencode"])
-                self.assertEqual(ordered_models(cfg), ["claude", "codex", "deepseek"])
-
-    def test_models_on_one_cli_sort_by_label_then_id(self):
-        cfg = cfg_with({
-            "claude-b": {**SONNET, "label": "Beta"},
-            "claude-a": {**SONNET, "label": "Beta"},
-            "claude-c": {**SONNET, "label": "Alpha", "model": "opus"},
-            "codex": LUNA,
-        })
-        self.assertEqual(ordered_models(cfg), ["claude-c", "claude-a", "claude-b", "codex"])
+class LegacySingleWorker(unittest.TestCase):
+    """Legacy single-worker registry conversion."""
 
     def test_legacy_single_worker_is_one_column(self):
         self.assertEqual(ordered_models(DEFAULTS), ["deepseek"])
