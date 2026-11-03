@@ -1959,7 +1959,7 @@ test('preflight classifies a newly integrated cross-shard optional pair for loca
 
   const view = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint, '--optional'], { root }));
   const compactView = await quiet(() => run(['read-chunk', '--checkpoint', checkpoint, '--optional', '--format', 'compact'], { root }));
-  const targetAlias = /^T(\d+)\tw3-s1\t/u.exec(compactView.text)?.[1];
+  const targetAlias = /^T(\d+)\tw3-s1\t/mu.exec(compactView.text)?.[1];
   assert.ok(targetAlias, 'the stale link target is presented as an unlinked compact target');
   const optionalInput = '.warroom-scratch/optional-decisions.txt';
   await writeFile(path.join(root, optionalInput), `links @${view.digest}\nc1 R association 3 T${targetAlias}\n`);
