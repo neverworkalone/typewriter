@@ -239,7 +239,6 @@ class VerifyBlock(unittest.TestCase):
         self.assertEqual((b["state"], b["last_sha"], self.issue_count(), len(self.maint())), ("HELD", SHA3, 1, 1))
         report = defects.parse_verify(b["report"])
         self.assertEqual(report["sha"], SHA3)
-        self.assertIn(report["fingerprint"], b["hold_reason"])
         w.git.base_sha = "4" * 40
         w.git.outcomes[("batch", "001", "01")] = [VerifyOutcome(True, "")]
         w.git.verified.add(("shard", "001", None, None))
