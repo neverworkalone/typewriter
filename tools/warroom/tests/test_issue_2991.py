@@ -85,7 +85,7 @@ class LegacyRepairAttemptReconciliation(unittest.TestCase):
         rejected_response = _answer(valid=False)
 
         stopped = w.sup._stage2_preflight_repair(
-            b, stage2.checkpoint(b["worktree"], b["shard"], "01", "05"))
+            b, stage2.checkpoint(b["worktree"], b["shard"], b["batch"]))
 
         self.assertFalse(stopped, w.store.batch(b["id"])["error"])
         state_after = json.loads(w.store.get(stage2.repair_state_key(b["id"])))
@@ -110,7 +110,7 @@ class LegacyRepairAttemptReconciliation(unittest.TestCase):
         # Re-entry after a restart sees the already-recorded reconciliation and does not append a second rebind.
         w.git.stage2_preflight_reports.append(clean_report())
         self.assertFalse(w.sup._stage2_preflight_repair(
-            w.store.batch(b["id"]), stage2.checkpoint(b["worktree"], b["shard"], "01", "05")))
+            w.store.batch(b["id"]), stage2.checkpoint(b["worktree"], b["shard"], b["batch"])))
         state_restarted = json.loads(w.store.get(stage2.repair_state_key(b["id"])))
         self.assertEqual(len(state_restarted["rebindings"]), 1)
 
@@ -132,7 +132,7 @@ class LegacyRepairAttemptReconciliation(unittest.TestCase):
                 before_checkpoint = checkpoint.read_bytes()
 
                 stopped = w.sup._stage2_preflight_repair(
-                    b, stage2.checkpoint(b["worktree"], b["shard"], "01", "05"))
+                    b, stage2.checkpoint(b["worktree"], b["shard"], b["batch"]))
 
                 self.assertTrue(stopped)
                 self.assertEqual(w.store.batch(b["id"])["state"], "ERROR")

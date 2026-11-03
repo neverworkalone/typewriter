@@ -2805,7 +2805,7 @@ class Supervisor:
         if run is None or run["kind"] != "s2_repair_new" or run["ended_at"] is None \
                 or str(run["exit_status"]) != "0" \
                 or attempts[-1].get("run_id") not in (None, run["id"]) \
-                or str(run["log_file"]) != str(b.get("log_file")):
+                or str(run["log_file"]) != str(b["log_file"]):
             self._save_stage2_repair_state(b, state)
             return
         attempt = attempts[-1]
@@ -3027,7 +3027,7 @@ class Supervisor:
             identity = state.get("identity")
             if not isinstance(identity, dict):
                 return "Stage 2 repair has no owner identity to rebind"
-            if b.get("pid") is not None:
+            if b["pid"] is not None:
                 return "Stage 2 repair still has a running process; preserving state"
             old_head = identity.get("base_head")
             if not re.fullmatch(r"[a-f0-9]{40}", old_head or ""):
