@@ -21,7 +21,8 @@ import time
 import traceback
 from pathlib import Path
 
-from . import auth, batches, control, dchunk, defects, literary, prbody, progress, prompts, reviews, stage1ab, stage2, stage3
+from . import (auth, batches, control, dchunk, defects, literary, prbody, progress, prompts, reviews, s2parallel, stage1ab,
+               stage2, stage3)
 from .adapters import (PREFLIGHT_PENDING, QUOTA_EVIDENCE, RunSpec, classify_claude_failure, classify_failure,
                        opencode_free_quota)
 from .config import (TIERED_ADAPTERS, adapter_label, config_problem, load_config, registry, registry_problems,
@@ -104,6 +105,8 @@ class Supervisor:
         self._s2_fix_problem: dict[int, str] = {}   # batch id -> the save/format diagnostic for the next same-session fix
         self._s2_links_problem: dict[int, str] = {} # batch id -> optional-link save/format diagnostic
         self.maint = Maintenance(self)   # shared-defect Issues, the hidden Maintainer and applying its merged fix
+        self.s2p = s2parallel.ParallelStage2(self)   # parallel Stage 2 primary tasks of new Parts (#3047)
+        self.parallel_new_parts = True   # False only lets a fixture exercise the serial path an already running Part keeps
 
     def _adapter(self, producer: str):
         """`adapter` is one AgentAdapter, or a {name: adapter} map resolved via the registry."""
@@ -176,11 +179,21 @@ class Supervisor:
             if ln["run"] and not control.drained(self.store, ln):
                 self._prepare_new(ln)
             return
-        handler = {"PREPARE": self._prepare_existing, "PRODUCING": self._poll_run,
+        handler = {"PREPARE": self._prepare_existing, "PRODUCING": self._poll_producing,
                    "FIXING": self._poll_run, "WAITING_REVIEW": self._watch,
                    "MERGED": self._to_cleanup, "CLEANUP": self._cleanup,
                    "PAUSED": self._wait_operator, "ERROR": self._wait_operator}[b["state"]]
         handler(b)
+
+    def _poll_producing(self, b) -> None:
+        """A parallel Stage 2 Part is driven by its task plan (checked before the single-run poll); a closed plan
+        re-enters the existing follow-up stages; every other batch keeps the single-run path."""
+        plan = s2parallel.plan_state(self.store, b)
+        if plan == "open":
+            return self.s2p.poll(b)
+        if plan == "closed" and b["run_kind"] == s2parallel.RUN_KIND and b["pid"] is None:
+            return self.s2p.continue_after_close(b)
+        return self._poll_run(b)
 
     def _fail(self, b, state: str, msg: str) -> None:
         prev = b["state"] if b["state"] not in ("PAUSED", "ERROR") else b["paused_from"]
@@ -507,6 +520,8 @@ class Supervisor:
 
     def _reap_stopped(self, b) -> bool:
         """Clear the PID of a stop-requested run only once the process is really gone."""
+        if s2parallel.is_parallel(self.store, b) and not self.s2p.stop_workers(b):
+            return False   # parallel Stage 2: every task process must be confirmed gone
         if b["pid"] is None:
             return True
         if self._adapter(b["producer"]).alive(b["pid"]):
@@ -844,6 +859,8 @@ class Supervisor:
 
     def _force_stop(self, b) -> None:
         ad = self._adapter(b["producer"])
+        if s2parallel.is_parallel(self.store, b):
+            self.s2p.stop_workers(b)   # every task process; exits are confirmed by _reap_stopped
         if b["pid"] and ad.alive(b["pid"]):
             ad.stop(b["pid"])   # keep the PID: it is cleared only after exit is confirmed
         self.store.set_line(b["producer"], b["method"], run=0, retry_batch=None)  # Stop wins over Retry
@@ -869,6 +886,8 @@ class Supervisor:
         if req["status"] == "BLOCKED":
             return
         ad = self._adapter(b["producer"])
+        if s2parallel.is_parallel(self.store, b) and not self.s2p.stop_workers(b):
+            return self.store.log(b["id"], "Clear: 병렬 Stage 2 task AI 프로세스 종료 요청, 종료 확인 대기")
         if b["pid"] is not None:
             if ad.alive(b["pid"]):
                 ad.stop(b["pid"])
@@ -1163,6 +1182,8 @@ class Supervisor:
             return
         except LineBusy as e:   # another model already holds the one Stage 2 occupancy
             return self.store.log(None, str(e), "warn", line=line)
+        if self.parallel_new_parts:
+            self.store.set(stage2.mode_key(bid), stage2.PARALLEL)   # fixed for this Part; a Part without it stays serial
         self.store.log(bid, f"Stage 2 {stage2.label(part.shard, part.key)} 선정, worktree 준비")
         self._prepare_existing(self.store.batch(bid))
 
@@ -1325,6 +1346,9 @@ class Supervisor:
             return self._launch_stage2_next(self.store.batch(b["id"]))
         if phase == "finalize":
             return self._stage2_finalize(b)
+        if phase == "chunk" and s2parallel.plan_state(self.store, b) in (None, "open") \
+                and s2parallel.is_parallel(self.store, b):
+            return self.s2p.begin(b)
         return self._launch(b, "s2_links_new" if phase == "links" else "s2_chunk_new")
 
     def _launch_stage3_next(self, b) -> None:
@@ -2502,6 +2526,39 @@ class Supervisor:
             ad.stop(b["pid"])   # the PID is cleared only once the exit is confirmed (_reap_stopped)
         self.maint.report(b, "report", key, raw)
         return True
+
+    def _scan_task_reports(self, b, s2p) -> bool:
+        """Shared-defect reports of parallel Stage 2 tasks (`s2-tasks/<id>/shared-defect.json`): same stability and
+        once-per-content rules as `_scan_report`, but ALL task workers are stopped and the defect remembers the exact
+        report file (the Maintainer archives that file, not a Part-wide one)."""
+        for row in self.store.task_rows(b["id"]):
+            rel = stage2.task_path(row["task"], "shared-defect.json")
+            f = Path(b["worktree"]) / rel
+            try:
+                st = f.stat()
+                raw = f.read_text("utf-8", errors="replace")
+            except OSError:
+                continue
+            if not raw.strip():
+                continue
+            key = defects.report_event_key(b["id"], raw)
+            prior = self.store.defect_by_event(key)
+            while prior is not None and prior["state"] == "RELEASED":
+                key = f"{key}:after:{prior['id']}"
+                prior = self.store.defect_by_event(key)
+            if prior is not None:
+                continue
+            live = s2p.workers_alive(b)
+            sig, sig_key = f"{st.st_mtime_ns}:{st.st_size}", f"defect_file_{b['id']}_{row['task']}"
+            if live and self.store.get(sig_key) != sig:
+                self.store.set(sig_key, sig)
+                continue
+            if live:
+                s2p.stop_workers(b)
+            self.store.set(f"s2_defect_path_{b['id']}", rel)
+            self.maint.report(b, "report", key, raw)
+            return True
+        return False
 
     def _record_progress(self, b) -> None:
         """Observed progress of the current worktree only: the final file's records, else saved chunks/senses."""

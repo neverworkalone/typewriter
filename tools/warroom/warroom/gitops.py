@@ -1063,6 +1063,12 @@ class Git:
         checkpoint = f".warroom-scratch/relation-admission-{shard}-{batch}-{part}.json"
         args = ["node", "scripts/relation/admission-cli.mjs", "save-chunk", "--checkpoint", checkpoint,
                 "--in", ".warroom-scratch/decisions.txt", "--format", "compact"]
+        return self._admission_save(args, worktree, timeout, supervisor_fallback, supervisor_state_dir)
+
+    def _admission_save(self, args: list[str], worktree: Path, timeout: int, supervisor_fallback: dict | None,
+                        supervisor_state_dir: Path | None) -> tuple[bool, str]:
+        """Run an official save command; the technical-fallback evidence file is rewritten into the Supervisor's
+        protected directory just for this call and removed afterwards."""
         fallback_path = None
         temporary = None
         if supervisor_fallback is not None:
@@ -1076,7 +1082,7 @@ class Git:
                 temporary.write_text(json.dumps(supervisor_fallback, ensure_ascii=False,
                                                  separators=(",", ":")) + "\n", "utf-8")
                 temporary.replace(fallback_path)
-                args.append("--supervisor-fallback")
+                args = [*args, "--supervisor-fallback"]
             res = self.r.run(args, cwd=worktree, env=self.env, timeout=timeout)
             return res.ok, (res.err or res.out).strip()
         finally:
@@ -1084,6 +1090,58 @@ class Git:
                 fallback_path.unlink(missing_ok=True)
             if temporary is not None:
                 temporary.unlink(missing_ok=True)
+
+    # ---- parallel primary tasks (#3047): thin wrappers over the Admission task API ----
+    def _admission_json(self, args: list[str], worktree: Path, what: str, timeout: int) -> dict:
+        res = self.r.run(["node", "scripts/relation/admission-cli.mjs", *args], cwd=worktree, env=self.env, timeout=timeout)
+        if not res.ok:
+            raise GitError(f"admission-cli {what} 실패: {' '.join((res.err or res.out).split())[-300:]}")
+        try:
+            out = json.loads(res.out.strip().splitlines()[-1])
+        except (ValueError, IndexError) as error:
+            raise GitError(f"admission-cli {what}가 JSON 결과를 출력하지 않았습니다: {error}") from error
+        if not isinstance(out, dict):
+            raise GitError(f"admission-cli {what}가 올바르지 않은 결과를 출력했습니다")
+        return out
+
+    def stage2_prepare(self, worktree: Path, shard: str, batch: str, part: str, timeout: int = 900) -> None:
+        checkpoint = f".warroom-scratch/relation-admission-{shard}-{batch}-{part}.json"
+        res = self.r.run(["node", "scripts/relation/admission-cli.mjs", "prepare", "--shard", shard, "--batch", batch,
+                          "--part", part, "--checkpoint", checkpoint], cwd=worktree, env=self.env, timeout=timeout)
+        if not res.ok:
+            raise GitError(f"admission-cli prepare 실패: {' '.join((res.err or res.out).split())[-300:]}")
+
+    def stage2_plan_chunks(self, worktree: Path, shard: str, batch: str, part: str, target: int, plan: str,
+                           timeout: int = 900) -> dict:
+        """Write (or reuse) the Part's fixed task plan; the checkpoint itself is not changed."""
+        checkpoint = f".warroom-scratch/relation-admission-{shard}-{batch}-{part}.json"
+        return self._admission_json(["plan-chunks", "--checkpoint", checkpoint, "--target", str(target), "--out", plan],
+                                    worktree, "plan-chunks", timeout)
+
+    def stage2_task_view(self, worktree: Path, shard: str, batch: str, part: str, plan: str, task: str, out: str,
+                         timeout: int = 900) -> dict:
+        """Render one task's complete compact view to `out`; returns task/chunk_id/candidate_count/view_sha256."""
+        checkpoint = f".warroom-scratch/relation-admission-{shard}-{batch}-{part}.json"
+        return self._admission_json(["read-chunk", "--checkpoint", checkpoint, "--task", plan, task, "--format",
+                                     "compact", "--out", out], worktree, "read-chunk --task", timeout)
+
+    def stage2_save_task(self, worktree: Path, shard: str, batch: str, part: str, plan: str, task: str,
+                         decisions: str, view_sha256: str, timeout: int = 900, supervisor_fallback: dict | None = None,
+                         supervisor_state_dir: Path | None = None) -> tuple[bool, str]:
+        """Official `save-chunk --task` bound to the view the task was launched with. (ok, output) like save_chunk;
+        an already saved identical result is a success the CLI reports as `already_saved`."""
+        checkpoint = f".warroom-scratch/relation-admission-{shard}-{batch}-{part}.json"
+        args = ["node", "scripts/relation/admission-cli.mjs", "save-chunk", "--checkpoint", checkpoint, "--task", plan,
+                task, "--in", decisions, "--expect-view-sha256", view_sha256]
+        return self._admission_save(args, worktree, timeout, supervisor_fallback, supervisor_state_dir)
+
+    def stage2_close_plan(self, worktree: Path, shard: str, batch: str, part: str, plan: str,
+                          timeout: int = 900) -> None:
+        checkpoint = f".warroom-scratch/relation-admission-{shard}-{batch}-{part}.json"
+        res = self.r.run(["node", "scripts/relation/admission-cli.mjs", "close-plan", "--checkpoint", checkpoint,
+                          "--plan", plan], cwd=worktree, env=self.env, timeout=timeout)
+        if not res.ok:
+            raise GitError(f"admission-cli close-plan 실패: {' '.join((res.err or res.out).split())[-300:]}")
 
     def stage2_optional_view(self, worktree: Path, shard: str, batch: str, part: str, timeout: int = 900) -> str:
         """Read every optional-link page without touching the checkpoint; return the complete compact view."""

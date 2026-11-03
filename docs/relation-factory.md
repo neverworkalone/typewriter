@@ -43,7 +43,7 @@ data/relation-candidates/
     ...
 ```
 
-경로 계약: `data/relation-candidates/<SSS>/<SSS>_<BB>_<method>_<model>.jsonl`. 샤드 3자리, 배치 2자리(`01`/`02`), method는 `a|b|c|d`, model은 실행한 모델 이름의 소문자 식별자. **A/B는 500레코드 배치·방식·모델당 하나의 파일**, **C/D는 모델을 가리지 않고 500레코드 배치·방식당 하나의 파일**을 허용한다. 실제 생산 모델은 파일명에 남긴다. 배치별 하위 폴더는 만들지 않는다. **War Room 정식 Stage 1 생산은 지정된 배치·방식·모델의 Candidate 파일 하나를 PR 하나로 제출**하고, Stage 2는 `(shard, batch, part)`마다 PR 하나를 제출한다. 이는 기존 파일 형식이나 별도 수정 PR의 범위를 바꾸지 않는다.
+경로 계약: `data/relation-candidates/<SSS>/<SSS>_<BB>_<method>_<model>.jsonl`. 샤드 3자리, 배치 2자리(`01`/`02`), method는 `a|b|c|d`, model은 실행한 모델 이름의 소문자 식별자. **A/B는 500레코드 배치·방식·모델당 하나의 파일**, **C/D는 모델을 가리지 않고 500레코드 배치·방식당 하나의 파일**을 허용한다. 실제 생산 모델은 파일명에 남긴다. 배치별 하위 폴더는 만들지 않는다. **War Room 정식 Stage 1 생산은 지정된 배치·방식·모델의 Candidate 파일 하나를 PR 하나로 제출**하고, Stage 2는 `(shard, batch, part)`마다 PR 하나를 제출한다. Part 안의 primary 판정은 War Room Supervisor가 오너 설정(`stage2_chunk_candidates` 기본 250, `stage2_max_parallel` 기본 16) 범위에서 고정 task로 나누어 병렬 실행할 수 있으며(#3047), checkpoint 저장은 Supervisor의 단일 경로가 `save-chunk --task`로 맡는다. 판정 기준·검증·리뷰 게이트와 Part당 PR 계약은 바뀌지 않는다. 이는 기존 파일 형식이나 별도 수정 PR의 범위를 바꾸지 않는다.
 
 ## 2. Stage 1 — Candidate Generation
 

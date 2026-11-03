@@ -148,7 +148,7 @@ def defect_locked(store: Store, b) -> bool:
 def retry(store: Store, model: str, method: str) -> bool:
     b = store.active_batch(model, method)
     if (b is not None and store.clear_request(model, method) is None and b["state"] in ("PAUSED", "ERROR")
-            and b["pid"] is None and not defect_locked(store, b)):
+            and b["pid"] is None and not store.open_task_runs(b["id"]) and not defect_locked(store, b)):
         if method == literary.METHOD and b["state"] == "ERROR":
             reason = _c_retry_block_reason(store, b)
             if reason:
@@ -264,6 +264,11 @@ def line_status(store: Store, model: str, method: str) -> dict:
         if method == STAGE2_METHOD:   # the Part's identity replaces the record counters
             batch, part = stage2.split_key(b["batch"])
             out["stage2"] = {"shard": b["shard"], "batch": batch, "part": part}
+            tasks = store.task_rows(b["id"])
+            if tasks:   # parallel primary: running / queued (not started or waiting for a slot) / saved task counts
+                count = lambda *states: sum(1 for t in tasks if t["state"] in states)
+                out["stage2"]["tasks"] = {"running": count("RUNNING"), "queued": count("PENDING", "FIXQ", "RESPONDED"),
+                                          "saved": count("SAVED"), "failed": count("FAILED"), "total": len(tasks)}
         if b["progress_kind"] and b["progress_done"] is not None and b["progress_total"]:
             out["progress"] = f"{b['progress_done']}/{b['progress_total']} {b['progress_kind']}"
         elif b["records_done"] is not None and b["records_total"]:
@@ -282,7 +287,8 @@ def line_status(store: Store, model: str, method: str) -> dict:
     out["stoppable"] = (out["occupied"] and st != "CLEARING") or out["run"]   # what `stop_lines` can actually affect
     retry_blocked_reason = (_c_retry_block_reason(store, b) if method == literary.METHOD and st == "ERROR" else None)
     out["retry_blocked_reason"] = retry_blocked_reason
-    out["can_retry"] = (st in ("PAUSED", "ERROR") and b["pid"] is None and not defect_locked(store, b)
+    out["can_retry"] = (st in ("PAUSED", "ERROR") and b["pid"] is None and not store.open_task_runs(b["id"])
+                        and not defect_locked(store, b)
                         and retry_blocked_reason is None)
     req = store.clear_request(model, method) if out["occupied"] else None
     out["clear"] = None if req is None else {"status": req["status"], "error": req["error"]}

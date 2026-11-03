@@ -32,6 +32,8 @@ ALLOWED = {"a": _PRODUCE, "b": _PRODUCE, "c": _PRODUCE, "d": _PRODUCE, "recovery
            "s2_policy_card": {"relation_direction_rule"},
            "m": _MAINTAIN, "m_recovery": _MAINTAIN, "s2": _STAGE2,
            "s2_chunk": _STAGE2 | {"s2_policy_card"}, "s2_recovery": _STAGE2,
+           "s2_task": {"shard", "batch", "part", "branch", "chunk_id", "defect_path", "session_note", "chunk_input",
+                       "s2_policy_card"},
            "s2_chunk_resume": {"chunk_id", "relation_direction_rule"},
            "s2_chunk_fix": {"chunk_id", "problem", "relation_direction_rule"},
            "s2_chunk_format_fix": {"chunk_id", "problem", "relation_direction_rule"},
@@ -191,6 +193,21 @@ def stage2(b, phase: str, checkpoint: dict | None, *, resumed: bool = False,
                   session_note=("중단된 같은 청크를 이어간다. 이미 checkpoint에 저장된 결정을 다시 만들지 않는다.\n"
                                 if resumed else ""))
     return render("s2_chunk", values, directory)
+
+
+def stage2_task(b, task_id: str, view: str, defect_path: str, checkpoint: dict | None = None, *,
+                resumed: bool = False, directory: Path | None = None) -> str:
+    """One parallel Stage 2 primary task (#3047). Order: shared instructions and policy card (identical for every task
+    of a Part and across Parts), then the variable task block (ID, reporting path), then that task's whole view.
+    The Part-wide progress counters are intentionally absent so the prefix never changes while tasks are saved."""
+    values = _stage2_values(b)
+    chunk_input = (f"아래가 이번 task의 **전체 view**다(손실 없음).\n{VIEW_BEGIN}\n{view}"
+                   f"{'' if view.endswith(chr(10)) else chr(10)}{VIEW_END}")
+    values.update(chunk_id=task_id, defect_path=defect_path, chunk_input=chunk_input,
+                  s2_policy_card=_stage2_policy_card(checkpoint, directory),
+                  session_note=("중단된 같은 task를 이어간다. 이미 checkpoint에 저장된 결정을 다시 만들지 않는다.\n"
+                                if resumed else ""))
+    return render("s2_task", values, directory)
 
 
 def stage2_links(b, checkpoint: dict, links: str, directory: Path | None = None) -> str:
