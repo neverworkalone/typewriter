@@ -973,7 +973,7 @@ export function parseDecisions(text) {
  */
 export function checkDecisions({ meta, records, entries, decisions, lemmaForms }) {
   const errors = [];
-  const hitBearingZ = []; // Z refused because a recorded search of the record has hits: re-judging alone cannot fix it
+  const hitBearingZ = []; // Z conflicts with recorded hits; the named Sense needs context review or more search.
   const failedEvidence = new Set();
   const evidenceByRecord = new Map();
   for (const record of records) {
@@ -1080,9 +1080,10 @@ async function saveActiveInternal({ inputPath, root, readOnly = false }) {
   const { errors, rows, hitBearingZ, removedCandidates, failedEvidence } = checkDecisions({ meta, records, entries, decisions, lemmaForms });
   const all_errors = [...parseErrors, ...errors];
   if (all_errors.length > 0) {
-    // A recorded SEARCH_FAILED means the evidence itself is broken: re-judging is never an automatic repair.
+    // SEARCH_FAILED or malformed recorded evidence is a global safety boundary. A wrong decision over intact
+    // evidence, including Z when hits exist or searches remain LIMITED, is local to the named Sense.
     const searchFailed = failedEvidence.size > 0 || entries.some((entry) => entry.status === 'SEARCH_FAILED');
-    const repairScope = hitBearingZ.length > 0 || searchFailed ? 'stop_and_report' : 'decisions';
+    const repairScope = searchFailed ? 'stop_and_report' : 'decisions';
     const failedRecords = failedRecordsForErrors(all_errors, meta, records);
     const decisionBytes = await readFile(files.decisions);
     const searchBytes = await readFile(files.searches);
@@ -1099,7 +1100,7 @@ async function saveActiveInternal({ inputPath, root, readOnly = false }) {
       hit_bearing_z: hitBearingZ, search_failed: searchFailed, decisions_sha256: rejection.decisions_sha256,
       searches_sha256: rejection.searches_sha256, error_count: rejection.error_count };
     // One diagnostic bound to this active chunk, for the War Room Supervisor (never read from tool logs). It holds only
-    // the rejection reasons, never the view or search contexts. A hit-bearing Z cannot be repaired by editing decisions.
+    // rejection reasons, never the view or search contexts. Decisions over intact evidence are locally repairable.
     await writeAtomic(files.rejected, JSON.stringify(rejection));
     const error = new Error(`save rejected (${all_errors.length}); nothing was stored:\n${all_errors.join('\n')}`);
     error.exitCode = 2;

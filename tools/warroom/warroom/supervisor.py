@@ -4624,8 +4624,8 @@ class Supervisor:
 
     def _d_fix(self, b) -> bool:
         """The run ended with nothing saved and the CLI's own `save` rejection for exactly this active chunk says the
-        decisions can be repaired (a hit-bearing Z, `SEARCH_FAILED` or any other state never qualifies). Ask the SAME
-        session to correct only the reported senses, at most `MAX_FIXES` times per chunk. The count is a persistent KV
+        decisions can be repaired over intact evidence. This includes a hit-bearing Z, but never `SEARCH_FAILED` or
+        malformed evidence. Ask the SAME session to correct only the reported senses, at most `MAX_FIXES` times per chunk. The count is a persistent KV
         written before the launch, so a restart or a duplicate tick cannot add a second one; only an operator Retry clears it."""
         wt = Path(b["worktree"])
         try:
@@ -4642,7 +4642,10 @@ class Supervisor:
             return False
         self.store.set(key, str(used + 1))
         self.store.update(b["id"], retries=0, retry_after=None, error=None)
-        self.store.log(b["id"], f"D 청크 {rec['chunk_no']:03d} 저장 거부({diag.get('error_count', len(diag['errors']))}건). "
+        failed_records = ",".join(f"{item['record_id']}:{','.join(item['failed_sense_ids'])}"
+                                   for item in diag["failed_records"])
+        self.store.log(b["id"], f"D 청크 {rec['chunk_no']:03d} 판정 오류 "
+                       f"(failed_records={failed_records}; {diag.get('error_count', len(diag['errors']))}건). "
                        f"같은 세션에서 지목된 판정만 수정해 다시 저장합니다 ({used + 1}/{dchunk.MAX_FIXES})", "warn")
         self._launch(self.store.batch(b["id"]), "d_chunk_fix")
         return True
@@ -4672,8 +4675,18 @@ class Supervisor:
             if rec is None:
                 return ""
             diag = json.loads((Path(b["worktree"]) / dchunk.chunk_names(b, rec["chunk_no"]).rejected).read_text("utf-8"))
-            return " 마지막 save 거부: " + " / ".join(str(e) for e in diag["errors"][:3])[:600]
-        except (OSError, ValueError, KeyError, TypeError):
+            scope = diag.get("repair_scope")
+            cause = "판정 오류" if scope == "decisions" else "검색 증거/시스템 오류"
+            targets = diag.get("failed_records", [])
+            target_text = ",".join(f"{item['record_id']}:{','.join(item['failed_sense_ids'])}"
+                                   for item in targets if isinstance(item, dict)
+                                   and isinstance(item.get("record_id"), str)
+                                   and isinstance(item.get("failed_sense_ids"), list)
+                                   and all(isinstance(sense_id, str) for sense_id in item["failed_sense_ids"]))[:300]
+            return (f" 마지막 save 거부 [{cause}; failed_records={target_text or 'unknown'}; "
+                    f"same-session-fixes={self.store.get(dchunk.fix_key(b['id'], rec['chunk_no'])) or 0}]: "
+                    + " / ".join(str(e) for e in diag["errors"][:3])[:600])
+        except (OSError, ValueError, KeyError, TypeError, AttributeError):
             return ""
 
     def _relaunch_d(self, b) -> None:

@@ -367,8 +367,9 @@ def clear_active(worktree, b, chunk_no: int) -> None:
 
 def read_rejection(worktree, b, rec: dict) -> dict | None:
     """The CLI's `save` rejection for exactly this active chunk (number and view hash), or None when there is none, it is
-    stale/foreign/damaged, or it says the rejection cannot be repaired by re-judging (`stop_and_report`, e.g. a Z
-    refused because a recorded search of the record has hits). Only this file decides repairability; no tool log is parsed."""
+    stale/foreign/damaged, or it says the rejection cannot be repaired by re-judging (`stop_and_report`, such as failed or
+    malformed search evidence). A decision error over intact evidence remains repairable even when Z is contradicted by
+    recorded hits or an unfinished search. Only this file decides repairability; no tool log is parsed."""
     try:
         diag = json.loads((Path(worktree) / chunk_names(b, rec["chunk_no"]).rejected).read_text("utf-8"))
     except (OSError, ValueError):
@@ -420,7 +421,7 @@ def supervisor_skip(store, runner, env, worktree, b, rec: dict) -> dict:
     inspection = _json(result, "D supervisor read-only inspection")
     failed = inspection.get("failed_records")
     if (inspection.get("status") != "REJECTED" or inspection.get("repair_scope") != "decisions"
-            or inspection.get("hit_bearing_z") or inspection.get("search_failed") is not False
+            or inspection.get("search_failed") is not False
             or inspection.get("decisions_sha256") != diag["decisions_sha256"]
             or inspection.get("searches_sha256") != diag["searches_sha256"]
             or inspection.get("error_count") != diag.get("error_count")

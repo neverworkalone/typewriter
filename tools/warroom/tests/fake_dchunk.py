@@ -102,7 +102,8 @@ class FakeDChunkCli:
             decisions_sha = hashlib.sha256((folder / f"decision-{number:03d}.txt").read_bytes()).hexdigest()
             searches_sha = hashlib.sha256((folder / f"search-{number:03d}.jsonl").read_bytes()).hexdigest()
             return Result(0, json.dumps({"status": "REJECTED", "repair_scope": rejected["repair_scope"],
-                "rows": rows, "failed_records": rejected["failed_records"], "hit_bearing_z": [],
+                "rows": rows, "failed_records": rejected["failed_records"],
+                "hit_bearing_z": rejected.get("hit_bearing_z", []),
                 "search_failed": False, "decisions_sha256": decisions_sha,
                 "searches_sha256": searches_sha, "error_count": rejected["error_count"]}))
         except (OSError, ValueError, KeyError, TypeError) as error:
