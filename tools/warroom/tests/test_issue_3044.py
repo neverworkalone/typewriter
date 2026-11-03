@@ -185,7 +185,7 @@ class Stage2RepairMissingCandidates(unittest.TestCase):
                 self.assertEqual(w.git.stage2_repair_calls, [])
 
     def test_stale_fingerprint_page_head_or_checkpoint_cannot_apply_response(self):
-        candidates = ["candidate-0", "candidate-1"]
+        candidates = ["candidate-0", "candidate-1", "candidate-2"]
         for mutation in ("fingerprint", "page", "head", "checkpoint"):
             with self.subTest(mutation=mutation):
                 w, batch, fp = self.start(candidates)

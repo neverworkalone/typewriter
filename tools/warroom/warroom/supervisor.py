@@ -2826,7 +2826,7 @@ class Supervisor:
                     return "Stage 2 pending repair answer is not bound to its completed attempt output"
                 run = next((row for row in self.store.runs(b["id"]) if row["id"] == attempt["run_id"]), None)
                 if run is None or run["kind"] != "s2_repair_new" or run["ended_at"] is None \
-                        or str(run["exit_status"]) != "0" or run.get("log_file") != b["log_file"] \
+                        or str(run["exit_status"]) != "0" or run["log_file"] != b["log_file"] \
                         or self._adapter(b["producer"]).final_answer(Path(run["log_file"])) != current.get("last_response"):
                     return "Stage 2 pending repair answer differs from its completed output run"
         except TRANSIENT:

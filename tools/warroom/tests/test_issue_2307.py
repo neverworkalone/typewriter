@@ -175,6 +175,7 @@ class Stage2PreflightRepair(unittest.TestCase):
         run = w.adapter.launches[-1]
         w.adapter.running[run["pid"]]["text"] = repair_answer(fingerprint, ["candidate-0"])
         w.adapter.finish(run["pid"])
+        w.store.finish_runs(batch["id"], "0")
         state = w.sup._stage2_repair_state(batch, required=True)
         self.assertIsNotNone(w.sup._stage2_repair_response(batch, state))
 
@@ -206,6 +207,7 @@ class Stage2PreflightRepair(unittest.TestCase):
         run = w.adapter.launches[-1]
         w.adapter.running[run["pid"]]["text"] = repair_answer(fingerprint, ["candidate-0"])
         w.adapter.finish(run["pid"])
+        w.store.finish_runs(batch["id"], "0")
         state = w.sup._stage2_repair_state(batch, required=True)
         self.assertIsNotNone(w.sup._stage2_repair_response(batch, state))
 
