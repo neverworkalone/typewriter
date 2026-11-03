@@ -244,7 +244,7 @@ withWorld('the current Supervisor D CLI uses explicit owner-worktree roots and s
   const direct = await inspectRejectionForSupervisor({ inputPath: decisionsPath, root: scratch, canonicalRoot: ownerRoot });
   assert.equal(direct.decisions_sha256, summary.decisions_sha256);
   assert.equal(direct.errors_sha256, summary.errors_sha256);
-});
+}, { supervisorWorktree: true });
 
 withWorld('automatic Z is only mechanically proven noun ZERO_HITS; view states expose exact decision evidence', async (world) => {
   await prepareChunk({ ...world.options, chunkNumber: 1 });
