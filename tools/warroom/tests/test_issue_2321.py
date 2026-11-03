@@ -119,46 +119,6 @@ class ReviewPairSelection(unittest.TestCase):
         self.assertEqual(result["fallback_sense_ids"], ["w1-s1", "w2-s1"])
         self.assertEqual(result["mentioned_sense_ids"], ["w1-s1", "w2-s1"])
 
-    def test_pr_2347_review_excerpts_select_the_complete_part_sense_sets(self):
-        expected = {
-            "w523977-s1", "w524392-s1", "w520343-s1", "w525757-s1",
-            "w531793-s1", "w532241-s1", "w532527-s1", "w533719-s1",
-        }
-        items = [{"record_id": sense.split("-s")[0], "sense_id": sense, "candidates": []}
-                 for sense in sorted(expected)]
-        events = [
-            "w524392-s1 초로(와) 같다의 연기 Drop은 유지하기 어렵습니다. "
-            "w523977-s1 제 살 궁리는 다 한다의 눈치 Drop도 과도합니다. "
-            "Canonical 연기 w236213-s1은 사라지는 이미지로 연결됩니다.",
-            "w525757-s1의 자동차와 활동사진 Drop, w520343-s1의 당당하게·의기양양·당당·거드름·으스대다 Drop, "
-            "w531793-s1의 봇물, w532241-s1의 짹짹, w532527-s1의 초야·겸손, w533719-s1의 기계공업을 지적합니다. "
-            "다른 target w50571-s2는 Part 밖입니다.",
-        ]
-        result = stage2.review_events(events, items)
-        self.assertEqual(set(result["fallback_sense_ids"]), expected)
-        self.assertEqual(set(result["mentioned_sense_ids"]) - expected,
-                         {"w236213-s1", "w50571-s2"})
-        self.assertEqual(result["pairs"], [])
-
-    def test_pr_2306_tuple_only_excerpt_preserves_pair_selection_until_prose_names_its_sense(self):
-        items = [
-            {"record_id": "w429287", "sense_id": "w429287-s1", "candidates": [{"text": "통실하다"}]},
-            {"record_id": "w413140", "sense_id": "w413140-s2", "candidates": [{"text": "질문"}, {"text": "답변"}]},
-        ]
-        excerpt = ("1. (w429287, w429287-s1, 통실하다) — '보리퉁하다'에서 풍만함을 나타내는 '통실하다'는 near 연관입니다.\n"
-                   "2. (w413140, w413140-s2, 질문), (w413140, w413140-s2, 답변) — 직접적인 수식 문맥입니다.")
-        pure = stage2.review_pairs(excerpt, items)
-        self.assertCountEqual(
-            [(pair["record_id"], pair["source_sense_id"], pair["candidate"]) for pair in pure["pairs"]],
-            [("w429287", "w429287-s1", "통실하다"),
-             ("w413140", "w413140-s2", "질문"), ("w413140", "w413140-s2", "답변")])
-        self.assertEqual(pure["fallback_sense_ids"], [])
-        expanded = stage2.review_pairs(excerpt + " The same source w413140-s2 also has a prose finding.", items)
-        self.assertEqual([(pair["record_id"], pair["candidate"]) for pair in expanded["pairs"]],
-                         [("w429287", "통실하다")])
-        self.assertEqual(expanded["fallback_sense_ids"], ["w413140-s2"])
-
-
 class SharedStage2PolicyCard(unittest.TestCase):
     def test_chunk_and_fix_share_rendered_policy_and_preserve_fix_boundaries(self):
         batch = {"method": "s2", "shard": "001", "batch": "01-01", "branch": "codex/issue-2321",

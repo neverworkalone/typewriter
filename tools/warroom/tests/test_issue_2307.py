@@ -51,32 +51,33 @@ def repair_answer(fingerprint, candidates):
         {"decisions": decisions, "peer_adjustments": [], "unresolved": []}, ensure_ascii=False))
 
 
-class Stage2PreflightRepair(unittest.TestCase):
-    def start_repair(self, reports, candidate_count=3):
-        w = s2_world(self)
-        w.git.chunk_view_total = candidate_count
-        w.git.optional_candidate_after_chunk = True
-        control.start(w.store, "claude", S2, "single", cfg=w.cfg)
-        w.adapter.plan.append({"code": 0, "session": "ses_chunk",
-                               "text": answer("chunk 001-01-01-001\nc1 D first\nc2 D second\nc3 D third")})
-        w.tick()
-        batch = w.store.active_batch("claude", S2)
-        w.adapter.finish(w.adapter.launches[-1]["pid"])
-        w.tick()
-        links = w.adapter.launches[-1]
-        self.assertEqual(w.store.batch(batch["id"])["run_kind"], "s2_links_new")
-        digest = json.loads(w.store.get(stage2.links_start_key(batch["id"])))['digest']
-        w.adapter.running[links["pid"]]["text"] = answer(f"links @{digest}\nc1 skip\nc2 skip\nc3 skip")
-        w.adapter.running[links["pid"]]["session"] = "ses_links"
-        w.git.stage2_preflight_reports.extend(reports)
-        w.adapter.finish(links["pid"])
-        w.tick()
-        return w, w.store.batch(batch["id"])
+def start_repair(testcase, reports, candidate_count=3):
+    w = s2_world(testcase)
+    w.git.chunk_view_total = candidate_count
+    w.git.optional_candidate_after_chunk = True
+    control.start(w.store, "claude", S2, "single", cfg=w.cfg)
+    w.adapter.plan.append({"code": 0, "session": "ses_chunk",
+                           "text": answer("chunk 001-01-01-001\nc1 D first\nc2 D second\nc3 D third")})
+    w.tick()
+    batch = w.store.active_batch("claude", S2)
+    w.adapter.finish(w.adapter.launches[-1]["pid"])
+    w.tick()
+    links = w.adapter.launches[-1]
+    testcase.assertEqual(w.store.batch(batch["id"])["run_kind"], "s2_links_new")
+    digest = json.loads(w.store.get(stage2.links_start_key(batch["id"])))['digest']
+    w.adapter.running[links["pid"]]["text"] = answer(f"links @{digest}\nc1 skip\nc2 skip\nc3 skip")
+    w.adapter.running[links["pid"]]["session"] = "ses_links"
+    w.git.stage2_preflight_reports.extend(reports)
+    w.adapter.finish(links["pid"])
+    w.tick()
+    return w, w.store.batch(batch["id"])
 
+
+class Stage2PreflightRepair(unittest.TestCase):
     def test_one_fresh_repair_covers_every_candidate_in_a_conflict_group_before_pr(self):
         fingerprint = "1" * 64
         candidates = ["candidate-0", "candidate-1", "candidate-2"]
-        w, batch = self.start_repair([conflict_report(fingerprint, candidates), clean_report("2" * 64)])
+        w, batch = start_repair(self, [conflict_report(fingerprint, candidates), clean_report("2" * 64)])
 
         self.assertEqual(batch["run_kind"], "s2_repair_new")
         repair = w.adapter.launches[-1]
@@ -106,7 +107,7 @@ class Stage2PreflightRepair(unittest.TestCase):
         first, second = "3" * 64, "4" * 64
         reports = [conflict_report(first, ["candidate-0"]),
                    conflict_report(second, ["candidate-1"]), clean_report("5" * 64)]
-        w, batch = self.start_repair(reports)
+        w, batch = start_repair(self, reports)
         run1 = w.adapter.launches[-1]
         w.adapter.running[run1["pid"]]["text"] = repair_answer(first, ["candidate-0"])
         w.adapter.finish(run1["pid"])
@@ -132,7 +133,7 @@ class Stage2PreflightRepair(unittest.TestCase):
 
     def test_repeated_fingerprint_stops_without_merge_or_duplicate_repair(self):
         fingerprint = "6" * 64
-        w, batch = self.start_repair([conflict_report(fingerprint, ["candidate-0"]),
+        w, batch = start_repair(self, [conflict_report(fingerprint, ["candidate-0"]),
                                       conflict_report(fingerprint, ["candidate-0"])])
         run = w.adapter.launches[-1]
         w.adapter.running[run["pid"]]["text"] = repair_answer(fingerprint, ["candidate-0"])
@@ -148,7 +149,7 @@ class Stage2PreflightRepair(unittest.TestCase):
 
     def test_checkpoint_change_during_ai_run_is_preserved_and_blocks_repair(self):
         fingerprint = "7" * 64
-        w, batch = self.start_repair([conflict_report(fingerprint, ["candidate-0"]), clean_report("8" * 64)])
+        w, batch = start_repair(self, [conflict_report(fingerprint, ["candidate-0"]), clean_report("8" * 64)])
         run = w.adapter.launches[-1]
         checkpoint = Path(batch["worktree"]) / ".warroom-scratch" / \
             "relation-admission-001-01-01.json"
@@ -170,7 +171,7 @@ class Stage2PreflightRepair(unittest.TestCase):
 
     def test_unrelated_decision_and_forged_receipt_cannot_cross_repair_boundary(self):
         fingerprint = "b" * 64
-        w, batch = self.start_repair([conflict_report(fingerprint, ["candidate-0"]), clean_report("c" * 64)])
+        w, batch = start_repair(self, [conflict_report(fingerprint, ["candidate-0"]), clean_report("c" * 64)])
         run = w.adapter.launches[-1]
         w.adapter.running[run["pid"]]["text"] = repair_answer(fingerprint, ["candidate-0"])
         w.adapter.finish(run["pid"])
@@ -201,7 +202,7 @@ class Stage2PreflightRepair(unittest.TestCase):
 
     def test_receipt_backed_replay_survives_supervisor_restart(self):
         fingerprint = "9" * 64
-        w, batch = self.start_repair([conflict_report(fingerprint, ["candidate-0"]), clean_report("a" * 64)])
+        w, batch = start_repair(self, [conflict_report(fingerprint, ["candidate-0"]), clean_report("a" * 64)])
         run = w.adapter.launches[-1]
         w.adapter.running[run["pid"]]["text"] = repair_answer(fingerprint, ["candidate-0"])
         w.adapter.finish(run["pid"])
@@ -240,7 +241,7 @@ class Stage2PreflightRepair(unittest.TestCase):
 
     def test_four_round_limit_preserves_checkpoint_and_does_not_launch_a_fifth_run(self):
         reports = [conflict_report(f"{i:064x}", ["candidate-0"]) for i in range(1, 6)]
-        w, batch = self.start_repair(reports)
+        w, batch = start_repair(self, reports)
         for round_number in range(1, 5):
             run = w.adapter.launches[-1]
             fingerprint = f"{round_number:064x}"

@@ -71,30 +71,31 @@ class Stage2BaselineAfterMaintainerFix(unittest.TestCase):
         w.tick(3)
         self.assertEqual(w.store.batch(self.b["id"])["state"], "ERROR")
 
-    def test_released_batch_in_error_recovers_only_for_the_integrated_head(self):
-        w = self.w
+    def test_released_baseline_retry_requires_integrated_head_and_owned_worktree(self):
+        w, b = self.w, self.b
         did = self.pause_for_defect()
         w.git.local_head = HEAD2
-        w.tick(3)
-        # reproduce the reported state: RELEASED, but the baseline still holds the old HEAD and the batch is ERROR
-        w.adapter.finish(w.adapter.launches[-1]["pid"])
-        stale = json.loads(w.store.get(self.key)); stale["head"] = HEAD1
-        w.store.set(self.key, json.dumps(stale, sort_keys=True))
-        w.store.update(self.b["id"], state="ERROR", pid=None, error="boundary")
-        w.git.local_head = HEAD3                           # unauthorized: not the integrated HEAD
-        n = len(w.adapter.launches)
-        self.assertTrue(control.retry(w.store, "claude", S2))
-        w.tick(3)
-        self.assertEqual(w.store.batch(self.b["id"])["state"], "ERROR")
-        self.assertEqual((self.head(), len(w.adapter.launches)), (HEAD1, n))
-        w.git.local_head = HEAD2                           # the exact HEAD the released defect integrated
-        w.store.update(self.b["id"], state="ERROR", pid=None)
-        self.assertTrue(control.retry(w.store, "claude", S2))
-        w.tick(3)
-        self.assertEqual(w.store.batch(self.b["id"])["state"], "PRODUCING")
-        self.assertEqual(len(w.adapter.launches), n + 1)
+        w.git.integrated.extend([(str(b["worktree"]), MERGE), (str(b["worktree"]), HEAD2)])
+        # A legacy release could persist RELEASED while run_start remained at HEAD1.
+        self.assertTrue(w.store.release_defect(did, b["id"], HEAD2))
+        self.assertEqual(w.store.defect(did)["state"], "RELEASED")
+        self.assertEqual(self.head(), HEAD1)
+        w.store.update(b["id"], state="ERROR", pid=None, error="legacy released baseline")
 
-    def test_wrong_worktree_ownership_is_never_retargeted(self):
+        launches = len(w.adapter.launches)
+        w.git.local_head = HEAD3  # an unrelated HEAD must not rebind the old saved baseline
+        self.assertTrue(control.retry(w.store, "claude", S2))
+        w.tick(3)
+        self.assertEqual((w.store.batch(b["id"])["state"], self.head(), len(w.adapter.launches)),
+                         ("ERROR", HEAD1, launches))
+
+        w.git.local_head = HEAD2  # only the recorded Maintainer integration may adopt the legacy baseline
+        w.store.update(b["id"], state="ERROR", pid=None)
+        self.assertTrue(control.retry(w.store, "claude", S2))
+        w.tick(3)
+        self.assertEqual((w.store.batch(b["id"])["state"], self.head(), len(w.adapter.launches)),
+                         ("PRODUCING", HEAD2, launches + 1))
+
         for name, owner in (("detached", ""), ("other branch", "other-branch"), ("unregistered", None)):
             with self.subTest(name):
                 self.setUp()   # fresh world per case

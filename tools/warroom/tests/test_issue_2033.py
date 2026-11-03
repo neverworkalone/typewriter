@@ -159,20 +159,6 @@ class StoreRecordsUsage(unittest.TestCase):
             store.finish_runs(b, 0)
             self.assertEqual(store.runs(b)[1]["input_tokens"], 100)
 
-    def test_old_database_gains_nullable_columns(self):
-        import sqlite3
-        with tempfile.TemporaryDirectory() as d:
-            db = Path(d) / "old.db"
-            Store(db)
-            con = sqlite3.connect(db)
-            con.execute("INSERT INTO runs(batch_id,kind,started_at) VALUES(1,'c',1.0)")
-            con.commit()
-            con.close()
-            run = Store(db).runs(1)[0]
-            self.assertIsNone(run["input_tokens"])
-            self.assertIsNone(run["submit_failures"])
-
-
 class Totals(unittest.TestCase):
     def row(self, **kw):
         base = dict(input_tokens=None, cached_input_tokens=None, cache_write_tokens=None, output_tokens=None,

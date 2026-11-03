@@ -313,6 +313,7 @@ class FixEventLifecycle(unittest.TestCase):
         w.store.add_run(b["id"], "fix_new", "ses_old", 999, "old.log", "old.exit")
         w.store.finish_runs(b["id"], 1)
         w.store.mark_handled(b["id"], 7, HEAD1, ["review:11"])
+        self.assertTrue(w.store.is_handled(b["id"], 7, HEAD1, "review:11"))
 
         w.tick()
         self.assertEqual(w.row()["state"], "ERROR")
@@ -330,6 +331,7 @@ class FixEventLifecycle(unittest.TestCase):
         self.assertEqual(w.row()["state"], "FIXING")
         self.assertEqual(len(w.adapter.launches), launches + 1)
         self.assertEqual(w.store.handled_event(b["id"], 7, HEAD1, "review:11")["status"], "CLAIMED")
+        self.assertFalse(w.store.is_handled(b["id"], 7, HEAD1, "review:11"))
 
     def test_review_watch_does_not_automatically_relaunch_stranded_claim(self):
         w, b = self.w, self.b
@@ -344,23 +346,6 @@ class FixEventLifecycle(unittest.TestCase):
         launches = len(w.adapter.launches)
         w.tick(4)
         self.assertEqual(len(w.adapter.launches), launches)
-
-    def test_historical_legacy_handled_marker_is_reclaimed_only_on_operator_retry(self):
-        w, b = self.w, self.b
-        w.gh.reviews_ = [review(11, HEAD1)]
-        w.store.add_run(b["id"], "fix_new", "ses_old", 999, "old.log", "old.exit")
-        w.store.finish_runs(b["id"], 1)
-        w.store.mark_handled(b["id"], 7, HEAD1, ["review:11"])  # pre-#2322 row has no run or reply proof
-        self.assertTrue(w.store.is_handled(b["id"], 7, HEAD1, "review:11"))
-        w.store.update(b["id"], state="ERROR", paused_from="FIXING", run_kind="fix_new", error="legacy incomplete fix")
-        self.assertTrue(control.retry(w.store, "deepseek", "a"))
-        w.tick()
-        w.adapter.plan.append({"code": 0, "session": "ses_recovered"})
-        w.tick()
-        event = w.store.handled_event(b["id"], 7, HEAD1, "review:11")
-        self.assertEqual(event["status"], "CLAIMED")
-        self.assertFalse(w.store.is_handled(b["id"], 7, HEAD1, "review:11"))
-        self.assertEqual(len(w.adapter.launches), 2)
 
     def test_legacy_marker_with_old_pr_reply_is_preserved_as_ambiguous(self):
         w, b = self.w, self.b

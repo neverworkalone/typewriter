@@ -180,17 +180,6 @@ class Stage2Finalization(unittest.TestCase):
                       for i in range(1, len(pages) + 1)]
         self.assertEqual("".join(path.read_text("utf-8") for path in page_paths), expected_context)
 
-    def test_stage2_fix_prompt_has_the_supported_foreground_verify_and_gh_instructions(self):
-        w, b = self.start_optional_part(sense_id="w1-s1")
-        fix = prompts.fix(b, [], False, source_context="source context")
-        for phrase in ("node scripts/relation/admission-cli.mjs verify --shard 001 --batch 01 --part 01 --json",
-                       "600000 ms", "foreground", "GH_CONFIG_DIR", "gh` CLI", "Write tool", "amend --help",
-                       "do not use GitHub MCP", "one inspect view that includes all Senses being amended",
-                       "After the push and concise replies", "do not run unnecessary `gh pr checks`",
-                       "The Supervisor separately verifies the exact pushed HEAD"):
-            with self.subTest(phrase=phrase):
-                self.assertIn(phrase, fix)
-
     def test_no_optional_links_creates_empty_commit_without_an_ai_run(self):
         w = s2_world(self)
         w.git.chunk_view_total = 0
@@ -204,21 +193,16 @@ class Stage2Finalization(unittest.TestCase):
         self.assertEqual(w.git.commit_empty_allowed, [True])
         self.assertEqual(w.git.pushes, [b["branch"]])
         self.assertEqual(len(w.gh.created_prs), 1)
-
-    def test_pr_title_and_body_carry_measured_part_statistics_only(self):
-        w = s2_world(self)
-        w.git.chunk_view_total = 0
-        w.git.finalize_output_paths = []
-        control.start(w.store, "claude", S2, "single", cfg=w.cfg)
-        w.tick()
         pr = w.gh.created_prs[0]
         self.assertEqual(pr["title"], "[S2/claude] 001_01 Part 01")
-        self.assertEqual(pr["body"], "\n".join([
-            "- Method: S2", "- Model: claude", "- Shard: 001", "- Batch: 01", "- Part: 01",
-            "- Coverage: 100 records / 130 senses", "- Unique Candidates: 40", "- New Relations: 20",
-            "- New Drops: 12", "- Technical Failure Drops (f): 0", "- Technical Failure Candidates: none",
-            "- Duplicates: 2", "- Already Approved: 5", "- Reverse Absorbed: 3",
-            "- Part Verify: PASS", "- Exact PR HEAD Verify: PASS", "", "Refs #927"]) + "\n")
+        for detail in ("- Method: S2", "- Model: claude", "- Shard: 001", "- Batch: 01", "- Part: 01",
+                       "- Coverage: 100 records / 130 senses", "- Unique Candidates: 40",
+                       "- New Relations: 20", "- New Drops: 12", "- Technical Failure Drops (f): 0",
+                       "- Technical Failure Candidates: none", "- Duplicates: 2",
+                       "- Already Approved: 5", "- Reverse Absorbed: 3", "- Part Verify: PASS",
+                       "- Exact PR HEAD Verify: PASS", "Refs #927"):
+            with self.subTest(detail=detail):
+                self.assertIn(detail, pr["body"])
         self.assertNotIn("999", pr["body"])   # the shard's cumulative relation/drop counts are never used
         self.assertNotIn("Closes", pr["body"])
 

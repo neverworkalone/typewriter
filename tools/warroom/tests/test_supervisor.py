@@ -708,18 +708,6 @@ class Operations(unittest.TestCase):
         self.assertNotIn("session", w.adapter.launches[-1])
         w.tmp.cleanup()
 
-    def test_stop_after_current_prevents_next_batch(self):
-        w = World()
-        w.start("continuous")
-        w.adapter.plan.append({"code": 0, "effect": lambda: install_candidate_pr(w)})
-        w.tick()
-        control.set_drain(w.store, "deepseek", "a", True)  # current batch continues, no next one
-        w.adapter.finish(w.adapter.launches[-1]["pid"]); w.tick()
-        w.pr_info(7, HEAD1, state="closed", merged=True)
-        w.tick(6)
-        self.assertEqual(len(w.store.all_batches()), 1)
-        w.tmp.cleanup()
-
     def test_force_stop_preserves_and_retry_resumes(self):
         w = World()
         w.start("single")

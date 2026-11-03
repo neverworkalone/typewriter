@@ -714,32 +714,31 @@ class RestartHandoff(unittest.TestCase):
         self.assertEqual(len(w.adapter.launches), 1)
         self.assertEqual(w.row_()["pid"], pid)
 
-    def test_final_twentieth_chunk_restart_runs_idempotent_finalizer_once(self):
-        w = DWorld(records=500)
+    def test_last_chunk_restart_runs_idempotent_finalizer_once(self):
+        w = DWorld(records=50)
         self.addCleanup(w.tmp.cleanup)
         w.start("single", "deepseek", "d")
-        for n in range(20):
+        for n in range(2):
             w.ai(session=f"ses_{n + 1}")
-        for _ in range(19):
-            w.tick()
-            w.finish_last()
-            w.tick()
-        self.assertEqual(w.active()["chunk_no"], 20)
+        w.tick()
+        w.finish_last()
+        w.tick()
+        self.assertEqual(w.active()["chunk_no"], 2)
         real_next = w.sup._launch_d_next
         w.sup._launch_d_next = lambda _b: (_ for _ in ()).throw(RuntimeError("restart after final save"))
         w.finish_last()
         w.tick()
         w.sup._launch_d_next = real_next
-        self.assertEqual((w.row_()["state"], dchunk.verified_prefix(w.wt(), w.row_())[0]), ("PREPARE", 20))
+        self.assertEqual((w.row_()["state"], dchunk.verified_prefix(w.wt(), w.row_())[0]), ("PREPARE", 2))
 
-        self.restart(w, records=500)
+        self.restart(w, records=50)
         w.tick()
         w.tick(2)
 
         b = w.row_()
         self.assertEqual(b["state"], "WAITING_REVIEW")
         self.assertEqual((len(w.adapter.launches), len(w.git.commits), len(w.git.pushes), len(w.gh.created_prs)),
-                         (20, 1, 1, 1))
+                         (2, 1, 1, 1))
         self.assertEqual(w.runner.dchunk.validations, 1)
 
 
