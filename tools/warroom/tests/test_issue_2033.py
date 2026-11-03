@@ -6,7 +6,7 @@ from pathlib import Path
 
 from warroom.config import DEFAULTS, config_problem
 from warroom.store import Store
-from warroom.usage import estimate_cost, parse_usage, pricing_problems, sum_usage
+from warroom.usage import estimate_cost, parse_usage, pricing_problems, submit_attempts, sum_usage
 
 SUBMIT = "node scripts/relation/literary-context-cli.mjs submit --file x.json"
 
@@ -155,6 +155,34 @@ class StoreRecordsUsage(unittest.TestCase):
             first.write_text("")
             store.finish_runs(b, 0)
             self.assertEqual(store.runs(b)[1]["input_tokens"], 100)
+
+class SubmitAttemptParsing(unittest.TestCase):
+    def count(self, *events):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "run.log"
+            path.write_text(jl(*events), encoding="utf-8")
+            return submit_attempts(path)
+
+    def test_codex_counts_only_official_submit_invocations_and_deduplicates_events(self):
+        chunk = cmd(1, "node scripts/relation/literary-context-cli.mjs chunk --sense-ids s1")
+        submit = cmd(2, SUBMIT)
+        self.assertEqual(self.count({"type": "thread.started", "thread_id": "t"}, chunk), 0)
+        self.assertEqual(self.count({"type": "thread.started", "thread_id": "t"}, submit,
+                                    {"type": "item.started", "item": submit["item"]}, submit), 1)
+
+    def test_claude_and_opencode_recognized_logs_count_submit_tools(self):
+        claude = claude_bash("tool-1", SUBMIT)
+        opencode = {"type": "tool_use", "part": {"callID": "call-1", "state": {"input": {
+            "command": SUBMIT}}}}
+        self.assertEqual(self.count(claude, claude, claude_result()), 1)
+        self.assertEqual(self.count(opencode, opencode, {"type": "step_finish"}), 1)
+
+    def test_unknown_or_non_json_logs_are_not_assumed_to_prove_zero(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "run.log"
+            path.write_text("ordinary output\nnot json\n", encoding="utf-8")
+            self.assertIsNone(submit_attempts(path))
+
 
 class Totals(unittest.TestCase):
     def row(self, **kw):

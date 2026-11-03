@@ -63,6 +63,13 @@ def run_start_key(batch_id: int) -> str:
 
 
 MAX_RESUBMITS = 2   # same-session repairs of a rejected submit file per chunk
+NO_SUBMISSION_RECOVERY_POLICY_VERSION = 1
+_REPORTED_STOP = re.compile(
+    r"\b(?:SEARCH_FAILED|UNSEARCHABLE|WRITE_FAILED|SUBMIT_FAILED|stop[_ -]and[_ -]report)\b|"
+    r"\b(?:truncated|rate[ -]?limit|usage[ -]?limit|quota|context window|token limit)\b|"
+    r"검색\s*(?:실패|불가)|출력\s*(?:한도|제한)|(?:중단|멈추고).{0,20}(?:보고|종료)|(?:보고하고|보고한 뒤).{0,12}종료",
+    re.IGNORECASE,
+)
 
 
 def resubmit_key(batch_id: int) -> str:
@@ -72,6 +79,10 @@ def resubmit_key(batch_id: int) -> str:
 def retry_guard_key(batch_id: int) -> str:
     """Failure evidence for the current C chunk, used to block an unchanged manual Retry."""
     return f"c_retry_guard_{batch_id}"
+
+
+def no_submission_recovery_key(batch_id: int, chunk_id: str) -> str:
+    return f"c_no_submission_recovery_v{NO_SUBMISSION_RECOVERY_POLICY_VERSION}_{batch_id}:{chunk_id}"
 
 
 def _file_state(path: Path) -> dict | None:
@@ -122,6 +133,97 @@ def retry_state_same(current: dict, baseline: dict) -> bool:
     if not all(current.get(key) == baseline.get(key) for key in keys):
         return False
     return not baseline.get("repair") or current.get("checkpoint") == baseline.get("checkpoint")
+
+
+def no_submission_result(worktree, b, rec: dict | None, run: dict | None, run_start: dict | None,
+                         pending_sense_ids: list[str], *, final_answer: str | None,
+                         submit_call_count: int | None) -> dict:
+    """Classify an ended C chunk without reading or storing candidate content.
+
+    A recoverable no-submission result requires a successful, session-bound run; unchanged checkpoint and active
+    view; no submit/diagnostic artifacts; and a recognized adapter log proving zero official submit calls.
+    """
+    if not isinstance(b, dict):
+        b = dict(b)
+    if rec is None or rec.get("repair") is True or not isinstance(run, dict):
+        return {"status": "not_applicable"}
+    if run.get("kind") not in ("c_chunk_new", "c_chunk_resume", "c_chunk_recovery"):
+        return {"status": "not_applicable"}
+    if str(run.get("exit_status")) != "0":
+        return {"status": "run_not_successful"}
+    if run.get("session_id") != b.get("session_id") or not run.get("session_id"):
+        return {"status": "session_mismatch"}
+
+    required = {"branch", "worktree", "head", "remote_head", "chunk_no", "retry_state"}
+    baseline = run_start if isinstance(run_start, dict) else {}
+    retry = baseline.get("retry_state") if isinstance(baseline.get("retry_state"), dict) else {}
+    retry_required = {"chunk_id", "chunk_no", "view_sha256", "repair", "pending_sense_ids",
+                      "session_available", "checkpoint", "submit", "diagnostic"}
+    if (not required <= set(baseline) or not retry_required <= set(retry)
+            or baseline.get("branch") != b.get("branch")
+            or not isinstance(baseline.get("worktree"), str)
+            or Path(baseline["worktree"]) != Path(worktree)
+            or baseline.get("head") != rec.get("git_head")
+            or baseline.get("chunk_no") != rec.get("chunk_no")
+            or retry.get("chunk_id") != rec.get("chunk_id")
+            or retry.get("chunk_no") != rec.get("chunk_no")
+            or retry.get("view_sha256") != rec.get("view_sha256")
+            or retry.get("repair") is not False
+            or retry.get("submit") is not None or retry.get("diagnostic") is not None):
+        return {"status": "checkpoint_or_chunk_mismatch"}
+    n = names(b)
+    try:
+        current_checkpoint = _file_state(Path(worktree) / n.checkpoint)
+    except LiteraryError:
+        return {"status": "checkpoint_or_chunk_mismatch"}
+    if current_checkpoint is None:
+        return {"status": "checkpoint_or_chunk_mismatch"}
+
+    try:
+        ids, failed, unsearchable = view_ids(read_view(worktree, rec))
+    except (OSError, LiteraryError, ValueError, KeyError, TypeError):
+        return {"status": "checkpoint_or_chunk_mismatch"}
+    if ids != rec.get("sense_ids"):
+        return {"status": "checkpoint_or_chunk_mismatch"}
+    if failed:
+        return {"status": "search_failed", "sense_count": len(failed)}
+    if unsearchable:
+        return {"status": "unsearchable", "sense_count": len(unsearchable)}
+    if isinstance(final_answer, str) and _REPORTED_STOP.search(final_answer):
+        return {"status": "producer_reported_stop"}
+
+    baseline_pending = retry.get("pending_sense_ids")
+    if not isinstance(baseline_pending, list) or not all(isinstance(sense_id, str) for sense_id in baseline_pending):
+        return {"status": "checkpoint_or_chunk_mismatch"}
+    if pending_sense_ids != baseline_pending:
+        if (current_checkpoint != retry.get("checkpoint")
+                and set(pending_sense_ids) < set(baseline_pending)):
+            return {"status": "checkpoint_progress", "pending_sense_ids": list(pending_sense_ids)}
+        return {"status": "checkpoint_or_chunk_mismatch"}
+    if retry.get("pending_sense_ids") != pending_sense_ids:
+        return {"status": "checkpoint_or_chunk_mismatch"}
+    if retry.get("checkpoint") != current_checkpoint:
+        return {"status": "checkpoint_changed_without_pending_progress"}
+
+    submit = Path(worktree) / f"{n.submit_prefix}{rec['chunk_no']:03d}.submit.json"
+    diagnostic = submit.with_name(submit.name + ".diag.json")
+    try:
+        if submit.exists() or diagnostic.exists():
+            return {"status": "submission_artifact_present", "submit_calls": submit_call_count}
+    except OSError:
+        return {"status": "submission_artifact_unavailable"}
+
+    if submit_call_count is None:
+        return {"status": "submission_status_unknown"}
+    if submit_call_count:
+        return {"status": "submit_attempt_without_artifacts", "submit_calls": submit_call_count}
+    if not isinstance(final_answer, str) or not final_answer.strip():
+        return {"status": "producer_output_missing"}
+
+    return {"status": "no_submission", "policy_version": NO_SUBMISSION_RECOVERY_POLICY_VERSION,
+            "source_run_id": run.get("id"), "chunk_id": rec.get("chunk_id"),
+            "view_sha256": rec.get("view_sha256"), "pending_sense_ids": list(pending_sense_ids),
+            "submit_calls": 0}
 
 
 def submit_retryable(worktree, b, chunk_no: int) -> bool:
@@ -231,7 +333,7 @@ def supervisor_skip(store, runner, env, worktree, b, rec: dict) -> dict:
         raise LiteraryError("C technical skip requires an idle, Supervisor-owned batch")
     current_runs = store.runs(b["id"])
     current_run = current_runs[0] if current_runs else None
-    if (not current_run or current_run["kind"] not in ("c_chunk_new", "c_chunk_resume")
+    if (not current_run or current_run["kind"] not in ("c_chunk_new", "c_chunk_resume", "c_chunk_recovery")
             or current_run["session_id"] != b["session_id"] or current_run["ended_at"] is None
             or owner["run_kind"] != current_run["kind"]):
         raise LiteraryError("C technical skip requires the finished current C chunk run")
