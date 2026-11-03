@@ -2683,3 +2683,62 @@ test('amend resumes each of its four allowed file states and refuses a different
     assert.deepEqual(await readFile(checkpointPath), newCheckpoint);
   }
 });
+
+test('Stage 2 task plan splits a Part deterministically and saves tasks in any order with idempotent recovery', async (t) => {
+  const { root } = await chunkRepository(t);
+  const checkpoint = '.warroom-scratch/relation-admission-001-01-01.json';
+  const plan = '.warroom-scratch/001-01-01.plan.json';
+  await quiet(() => run(['prepare', '--shard', '001', '--batch', '01', '--part', '01'], { root }));
+  const read = async () => JSON.parse(await readFile(path.join(root, checkpoint), 'utf8'));
+  const startCursor = (await read()).next_chunk_number;
+
+  const checkpointBytes = await readFile(path.join(root, checkpoint), 'utf8');
+  const planned = await quiet(() => run(['plan-chunks', '--checkpoint', checkpoint, '--target', '2', '--out', plan], { root }));
+  assert.equal(planned.reused, false);
+  const { tasks } = JSON.parse(await readFile(path.join(root, plan), 'utf8'));
+  assert.deepEqual(tasks.map((task) => [task.id, task.candidate_count, task.depends_on]), [
+    ['001-01-01-t01', 2, []], ['001-01-01-t02', 2, ['001-01-01-t01']], ['001-01-01-t03', 1, []],
+  ], 'a Sense above the target becomes an ordered chain; a small Sense is its own task');
+  const planBytes = await readFile(path.join(root, plan), 'utf8');
+  assert.equal((await quiet(() => run(['plan-chunks', '--checkpoint', checkpoint, '--target', '1', '--out', plan], { root }))).reused, true);
+  assert.equal(await readFile(path.join(root, plan), 'utf8'), planBytes, 'an existing plan is reused, never rewritten');
+  assert.equal(await readFile(path.join(root, checkpoint), 'utf8'), checkpointBytes, 'planning leaves the checkpoint untouched');
+  assert.equal((await read()).pending_chunk, null);
+  await assert.rejects(() => quiet(() => run(['read-chunk', '--checkpoint', checkpoint, '--max-candidates', '1'], { root })), /open task plan/);
+  await assert.rejects(() => quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--in', plan], { root })), /open task plan/);
+  await assert.rejects(() => quiet(() => run(['close-plan', '--checkpoint', checkpoint, '--plan', plan], { root })), /unsaved task/);
+
+  const view = (id) => `.warroom-scratch/${id}.view.txt`;
+  const decisions = (id) => `.warroom-scratch/${id}.decisions.txt`;
+  const readTask = async (id) => quiet(() => run(['read-chunk', '--checkpoint', checkpoint, '--task', plan, id, '--format', 'compact', '--out', view(id)], { root }));
+  const saveTask = (id, sha, lines) => writeFile(path.join(root, decisions(id)), `chunk ${id}\n${lines.join('\n')}\n`)
+    .then(() => quiet(() => run(['save-chunk', '--checkpoint', checkpoint, '--task', plan, id, '--in', decisions(id), '--expect-view-sha256', sha], { root })));
+
+  await assert.rejects(() => readTask('001-01-01-t02'), /waits for unsaved earlier task/);
+  const t03 = await readTask('001-01-01-t03');
+  const sha = (text) => createHash('sha256').update(text, 'utf8').digest('hex');
+  assert.equal(t03.view_sha256, sha(await readFile(path.join(root, view('001-01-01-t03')), 'utf8')));
+  await assert.rejects(() => saveTask('001-01-01-t03', '0'.repeat(64), ['c1 D e']), /view changed/);
+  const saved = await saveTask('001-01-01-t03', t03.view_sha256, ['c1 D e']);
+  assert.deepEqual([saved.saved, saved.already_saved], [1, false]);
+  const cursor = (await read()).next_chunk_number;
+  assert.equal(cursor, startCursor + 1, 'one task save advances the cursor once');
+
+  const again = await saveTask('001-01-01-t03', t03.view_sha256, ['c1 D e']);
+  assert.equal(again.already_saved, true);
+  assert.equal((await read()).next_chunk_number, cursor, 'recovery does not advance the cursor');
+  await assert.rejects(() => saveTask('001-01-01-t03', t03.view_sha256, ['c1 D x']), /already saved with a different result/);
+  await assert.rejects(() => readTask('001-01-01-t03'), /already saved/);
+
+  const t01 = await readTask('001-01-01-t01');
+  await saveTask('001-01-01-t01', t01.view_sha256, ['c1 D e', 'c2 D e']);
+  const t02 = await readTask('001-01-01-t02');
+  assert.match(await readFile(path.join(root, view('001-01-01-t02')), 'utf8'), /^Q\t유일표적\tdrop\te$/mu, 'a later piece sees its earlier piece as Q rows');
+  const done = await saveTask('001-01-01-t02', t02.view_sha256, ['c1 D e', 'c2 D e']);
+  assert.equal(done.decided, done.total);
+  assert.equal((await read()).next_chunk_number, startCursor + 3);
+  await quiet(() => run(['close-plan', '--checkpoint', checkpoint, '--plan', plan], { root }));
+  await assert.rejects(() => quiet(() => run(['plan-chunks', '--checkpoint', checkpoint, '--target', '2', '--out', plan], { root })), /closed/);
+  await assert.rejects(() => readTask('001-01-01-t01'), /not the open plan/);
+  assert.equal((await quiet(() => run(['read-chunk', '--checkpoint', checkpoint], { root }))).complete, true, 'the legacy path works again once the plan is closed');
+});
