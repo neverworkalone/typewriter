@@ -984,10 +984,12 @@ function assertSupervisorSkipAuthority({ supervisorStorePath, batchId, branch, s
   checkpointBatch, worktreeDirectory }) {
   const expectedStorePath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..',
     'tools/warroom/.local/warroom.db');
-  if (!Number.isSafeInteger(batchId) || batchId < 1 || !Number.isSafeInteger(runId) || runId < 1
-      || typeof sessionId !== 'string' || sessionId === '' || typeof branch !== 'string' || branch === ''
-      || path.resolve(supervisorStorePath ?? '') !== expectedStorePath) {
+  if (path.resolve(supervisorStorePath ?? '') !== expectedStorePath) {
     technicalSkipBlocked('supervisor_store_identity_mismatch');
+  }
+  if (!Number.isSafeInteger(batchId) || batchId < 1 || !Number.isSafeInteger(runId) || runId < 1
+      || typeof sessionId !== 'string' || sessionId === '' || typeof branch !== 'string' || branch === '') {
+    technicalSkipBlocked('supervisor_call_binding_invalid');
   }
 
   let database;
