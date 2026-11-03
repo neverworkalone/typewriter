@@ -297,7 +297,9 @@ async function main() {
       const submission = await readSubmission(options.input);
       if (chunkNo !== undefined) {
         const entries = Array.isArray(submission?.senses) ? submission.senses : [];
-        await assertActiveChunkScope({ checkpointPath: options.checkpoint, chunkNo, senseIds: entries.map((entry) => entry?.sense_id).filter((id) => typeof id === 'string'), scratchDirectory: SCRATCH_DIRECTORY });
+        const ids = entries.map((entry) => entry?.sense_id).filter((id) => typeof id === 'string');
+        // Without any identifiable Sense there is nothing to scope; the submit validator reports the repairable schema error.
+        if (ids.length > 0) await assertActiveChunkScope({ checkpointPath: options.checkpoint, chunkNo, senseIds: ids, scratchDirectory: SCRATCH_DIRECTORY });
       }
       result = await submitLiteraryChunk({
         databasePath: options.db,

@@ -1918,6 +1918,14 @@ test('--chunk keeps chunk/add-form/submit inside the active chunk record; omitti
     const outsideSubmit = await submitCliWithChunk(fixture, [{ sense_id: 'sense-000001-2', verified: [items[1].contexts[0].k], candidates: ['눈'] }], 1);
     assert.equal(diagnostic(outsideSubmit).diagnostic, 'chunk_scope');
     assert.equal(await readFile(fixture.checkpointPath, 'utf8'), before);
+    for (const malformed of [[], [{ verified: [], candidates: [] }]]) {
+      const shape = await submitCliWithChunk(fixture, malformed, 1);
+      assert.equal(shape.status, 1);
+      const shapeDiagnostic = diagnostic(shape);
+      assert.equal(shapeDiagnostic.diagnostic, 'submit_validation');
+      assert.equal(shapeDiagnostic.repair_scope, 'correct_submission_shape');
+    }
+    assert.equal(await readFile(fixture.checkpointPath, 'utf8'), before);
 
     const inside = runCli(fixture, cliChunkArgs(fixture, ['--sense-ids', 'sense-000001', '--chunk', '1']));
     assert.equal(inside.status, 0, inside.stderr);
